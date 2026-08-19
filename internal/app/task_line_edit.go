@@ -53,6 +53,8 @@ type TaskLineEditRequest struct {
 	Priority             *int
 	DueSet               bool
 	Due                  *time.Time
+	DeferSet             bool
+	Defer                *time.Time
 	Context              *string
 	Pinned               *bool
 	Destination          *CaptureDestination
@@ -62,6 +64,11 @@ type TaskLineEditRequest struct {
 	Parent               TaskLineParentPatch
 	Children             []TaskLocator
 	PlanningArtifacts    PlanningArtifactBuilder
+
+	// Action names the edit in the undo ledger. A caller that reaches this
+	// request through a narrower surface than the inline editor sets it so the
+	// undo entry says what the user did; blank keeps the generic edit label.
+	Action string
 }
 
 // TaskLineEditResult identifies the final task and the single durable
@@ -83,6 +90,8 @@ type preparedTaskLineEdit struct {
 	priority           *int
 	dueSet             bool
 	due                *time.Time
+	deferSet           bool
+	deferUntil         *time.Time
 	context            *string
 	pinned             *bool
 	tags               []string
@@ -92,6 +101,7 @@ type preparedTaskLineEdit struct {
 	parentChanged      bool
 	children           []*models.Task
 	destinationProject *models.Project
+	action             string
 }
 
 // EditTaskLine applies every inline-text patch as one application transaction.
@@ -161,6 +171,7 @@ func (s *Service) EditTaskLine(req TaskLineEditRequest) (TaskLineEditResult, err
 		return TaskLineEditResult{}, err
 	}
 	changed = changed || destinationChanged
+	changed = applyPreparedTaskLineDeferral(ref.Task, prepared, s.clock.Now()) || changed
 	artifacts, err := planningArtifactsForTargets(
 		planningTargets,
 		nil,
@@ -183,7 +194,7 @@ func (s *Service) EditTaskLine(req TaskLineEditRequest) (TaskLineEditResult, err
 		ref,
 		snap.Revision(ref.Project.ID),
 		artifacts,
-		"Edit Task Line",
+		prepared.action,
 		fmt.Sprintf("#%d %s", ref.Task.ShortID, ref.Task.Title),
 	)
 	if err != nil {
@@ -272,6 +283,7 @@ func (s *Service) editTaskLineAcrossProjects(snap Snapshot, sourceRef TaskRef, p
 	if err != nil {
 		return TaskLineEditResult{}, err
 	}
+	applyPreparedTaskLineDeferral(sourceRef.Task, prepared, s.clock.Now())
 	artifacts, err := taskLineCrossProjectPlanningArtifacts(
 		planningTargets,
 		move.PlanningMoves,
@@ -297,7 +309,7 @@ func (s *Service) editTaskLineAcrossProjects(snap Snapshot, sourceRef TaskRef, p
 	}
 	outcome, err := s.commitProjects(
 		commits,
-		"Edit Task Line",
+		prepared.action,
 		fmt.Sprintf("#%d %s → %s", finalRef.Task.ShortID, finalRef.Task.Title, destination.Slug),
 	)
 	if err != nil {
@@ -359,10 +371,39 @@ func prepareTaskLineScalars(prepared *preparedTaskLineEdit, req TaskLineEditRequ
 	return nil
 }
 
+// prepareTaskLineDeferral routes an inline deferral through deferTask's policy.
+// The refusal is measured against the state this edit produces, so a line that
+// reopens and defers in one breath is judged on its result rather than on the
+// terminal state it replaced.
+func prepareTaskLineDeferral(prepared *preparedTaskLineEdit, ref TaskRef, req TaskLineEditRequest) error {
+	if !req.DeferSet {
+		return nil
+	}
+	prepared.deferSet = true
+	if req.Defer == nil {
+		return nil
+	}
+	prepared.deferUntil = cloneInstantPtr(req.Defer)
+	state := ref.Task.State()
+	if prepared.destination != nil {
+		state = prepared.destination.WorkflowState()
+	}
+	if err := deferralRefusesState(state); err != nil {
+		return err
+	}
+	backlog := CaptureDestinationBacklog
+	prepared.destination = &backlog
+	return nil
+}
+
 func prepareTaskLineEdit(snap Snapshot, ref TaskRef, req TaskLineEditRequest) (preparedTaskLineEdit, error) {
 	title := strings.TrimSpace(req.Title)
 	if err := models.ValidateTaskTitle(title); err != nil {
 		return preparedTaskLineEdit{}, invalidInput("title", err.Error())
+	}
+	action := strings.TrimSpace(req.Action)
+	if action == "" {
+		action = "Edit Task Line"
 	}
 	prepared := preparedTaskLineEdit{
 		title:              title,
@@ -370,8 +411,12 @@ func prepareTaskLineEdit(snap Snapshot, ref TaskRef, req TaskLineEditRequest) (p
 		due:                cloneCalendarDatePtr(req.Due),
 		parentMode:         req.Parent.Mode,
 		destinationProject: ref.Project,
+		action:             action,
 	}
 	if err := prepareTaskLineScalars(&prepared, req); err != nil {
+		return preparedTaskLineEdit{}, err
+	}
+	if err := prepareTaskLineDeferral(&prepared, ref, req); err != nil {
 		return preparedTaskLineEdit{}, err
 	}
 
@@ -548,6 +593,18 @@ func applyPreparedTaskLineFields(task *models.Task, prepared preparedTaskLineEdi
 	return changed
 }
 
+// applyPreparedTaskLineDeferral writes the deferral after the lifecycle move,
+// because entering a state clears DeferredUntil. A line that defers always moves
+// to Backlog, so writing it alongside the other scalars would lose it.
+func applyPreparedTaskLineDeferral(task *models.Task, prepared preparedTaskLineEdit, now time.Time) bool {
+	if !prepared.deferSet || instantPtrsEqual(task.DeferredUntil, prepared.deferUntil) {
+		return false
+	}
+	task.DeferredUntil = cloneInstantPtr(prepared.deferUntil)
+	task.UpdatedAt = now
+	return true
+}
+
 func patchedTaskLineTags(existing, add, remove []string) []string {
 	result := slices.Clone(existing)
 	for _, tag := range remove {
@@ -565,6 +622,13 @@ func patchedTaskLineTags(existing, add, remove []string) []string {
 		}
 	}
 	return result
+}
+
+func instantPtrsEqual(a, b *time.Time) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return a.Equal(*b)
 }
 
 func calendarDatePtrsEqual(a, b *time.Time) bool {

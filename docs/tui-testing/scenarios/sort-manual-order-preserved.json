@@ -4,7 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "label": "move to the last task", "key": "end" },
-    { "type": "key", "label": "pin Explore social login", "key": "P" },
+    { "type": "key", "label": "pin Explore social login", "key": "*" },
     { "type": "wait" },
     { "type": "key", "label": "return to the top of the projection", "key": "home" },
     { "type": "key", "key": "down" },
@@ -12,7 +12,7 @@
     { "type": "key", "key": "down" },
     { "type": "key", "key": "down" },
     { "type": "key", "label": "move to Build login form", "key": "down" },
-    { "type": "key", "label": "pin Build login form", "key": "P" },
+    { "type": "key", "label": "pin Build login form", "key": "*" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "@ Pinned  (2)" },
     { "type": "assert", "label": "the newest pin leads the manual order", "assert": "contains", "value": "├── ▶   Build login form" },

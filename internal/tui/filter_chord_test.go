@@ -59,13 +59,12 @@ func TestFilterChordWhichKeyHints(t *testing.T) {
 	}
 	row := pendingChordHintRowForTest(app)
 	for _, want := range []string{
-		"p priority threshold",
+		"! priority threshold",
 		"c completion age",
 		"@ due",
-		"s states",
-		"t tags",
+		"$ states",
+		"# tags",
 		"r review",
-		"d deferred",
 		"h hierarchy",
 		"x clear all",
 	} {
@@ -74,13 +73,13 @@ func TestFilterChordWhichKeyHints(t *testing.T) {
 		}
 	}
 
-	if handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'p', Text: "p"}); !handled || cmd != nil {
-		t.Fatalf("fp = handled %v cmd %T; want a pending prefix", handled, cmd)
+	if handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: '!', Text: "!"}); !handled || cmd != nil {
+		t.Fatalf("f! = handled %v cmd %T; want a pending prefix", handled, cmd)
 	}
 	row = pendingChordHintRowForTest(app)
 	for _, want := range []string{"0 clear", "1 high", "2 medium+", "3 low+"} {
 		if !strings.Contains(row, want) {
-			t.Errorf("fp which-key row %q omits %q", row, want)
+			t.Errorf("f! which-key row %q omits %q", row, want)
 		}
 	}
 }
@@ -89,7 +88,6 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	taskFilter := &app.crossOutliner.filter.CommonFilterState
 	taskFilter.Priority = models.PriorityHigh
-	taskFilter.DueDate = DueDateToday
 	taskFilter.Tags = map[string]bool{reviewTaskTag: true, "deep": true}
 	taskFilter.Deferred = true
 	taskFilter.Hierarchy = HierarchyParent
@@ -105,15 +103,24 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 	}
 	row := pendingChordHintRowForTest(app)
 	for _, want := range []string{
-		"p priority:high+", "s states:2", "c completed:90d+", "@ due:today",
-		"t tags:2", "r review:on", "d deferred:on", "h hierarchy:parent", "x clear:6",
+		"! priority:high+", "$ states:2", "c completed:90d+", "@ deferred:on",
+		"# tags:2", "r review:on", "h hierarchy:parent", "x clear:5",
 	} {
 		if !strings.Contains(row, want) {
 			t.Errorf("decorated f row %q omits %q", row, want)
 		}
 	}
-	if got := app.crossOutliner.ActiveFilterCount(); got != 6 {
-		t.Errorf("task filter count = %d, want 6 independently clearable facets", got)
+	if got := app.crossOutliner.ActiveFilterCount(); got != 5 {
+		t.Errorf("task filter count = %d, want 5 independently clearable facets", got)
+	}
+
+	// The f@ row now names two mutually exclusive facets, so the due-date branch
+	// needs its own reading once the deferred one is cleared.
+	taskFilter.Deferred = false
+	taskFilter.DueDate = DueDateToday
+	row = pendingChordHintRowForTest(app)
+	if !strings.Contains(row, "@ due:today") {
+		t.Errorf("decorated f row %q omits %q", row, "@ due:today")
 	}
 
 	app.pendingChord = []string{"F"}
@@ -124,7 +131,7 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 	projectFilter.ArchivedMode = projectPopulationInclude
 	row = pendingChordHintRowForTest(app)
 	for _, want := range []string{
-		"t project tags:3", "p parked:on", "P only parked",
+		"# project tags:3", "p parked:on", "P only parked",
 		"a archived:on", "A only archived", "x clear:3",
 	} {
 		if !strings.Contains(row, want) {
@@ -142,8 +149,8 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 			t.Errorf("isolated F row %q omits %q", row, want)
 		}
 	}
-	if got := app.crossOutliner.ActiveFilterCount(); got != 9 {
-		t.Errorf("combined filter count = %d, want 9 independent task/project facets", got)
+	if got := app.crossOutliner.ActiveFilterCount(); got != 8 {
+		t.Errorf("combined filter count = %d, want 8 independent task/project facets", got)
 	}
 }
 
@@ -174,7 +181,7 @@ func TestFilterChordPresetsCarryValuesAndStatuses(t *testing.T) {
 		verify func(t *testing.T)
 	}{
 		{
-			path:   []string{"f", "p", "3"},
+			path:   []string{"f", "!", "3"},
 			status: "Filtering Low priority or higher",
 			verify: func(t *testing.T) {
 				if filter.Priority != 3 {
@@ -183,7 +190,7 @@ func TestFilterChordPresetsCarryValuesAndStatuses(t *testing.T) {
 			},
 		},
 		{
-			path:   []string{"f", "p", "2"},
+			path:   []string{"f", "!", "2"},
 			status: "Filtering Medium priority or higher",
 			verify: func(t *testing.T) {
 				if filter.Priority != 2 {
@@ -192,7 +199,7 @@ func TestFilterChordPresetsCarryValuesAndStatuses(t *testing.T) {
 			},
 		},
 		{
-			path:   []string{"f", "p", "0"},
+			path:   []string{"f", "!", "0"},
 			status: "Priority filter cleared",
 			verify: func(t *testing.T) {
 				if filter.Priority != 0 {
@@ -277,26 +284,26 @@ func TestFilterChordPriorityThresholdNarrowsRows(t *testing.T) {
 		}
 	}
 
-	if cmd := pressFilterChord(t, app, "fp2"); cmd == nil {
-		t.Fatal("fp2 produced no status command")
+	if cmd := pressFilterChord(t, app, "f!2"); cmd == nil {
+		t.Fatal("f!2 produced no status command")
 	}
 	if out.filter.Priority != 2 {
 		t.Fatalf("Priority = %d, want 2", out.filter.Priority)
 	}
 	visible := visibleOutlinerTaskIDs(out)
 	if !visible["critical"] || !visible["medium"] {
-		t.Errorf("fp2 should keep High and Medium tasks; visible = %v", visible)
+		t.Errorf("f!2 should keep High and Medium tasks; visible = %v", visible)
 	}
 	if visible["low"] {
-		t.Errorf("fp2 should hide the low-priority task; visible = %v", visible)
+		t.Errorf("f!2 should hide the low-priority task; visible = %v", visible)
 	}
 
-	pressFilterChord(t, app, "fp3")
+	pressFilterChord(t, app, "f!3")
 	if out.filter.Priority != 3 {
 		t.Fatalf("Priority = %d, want 3", out.filter.Priority)
 	}
 	if visible := visibleOutlinerTaskIDs(out); !visible["low"] {
-		t.Errorf("fp3 should keep the low-priority task; visible = %v", visible)
+		t.Errorf("f!3 should keep the low-priority task; visible = %v", visible)
 	}
 
 	pressFilterChord(t, app, "fx")
@@ -308,20 +315,42 @@ func TestFilterChordPriorityThresholdNarrowsRows(t *testing.T) {
 	}
 }
 
-func TestFilterChordDeferredFacet(t *testing.T) {
+// Deferral is a scheduling instant like a due date, so it is a row on the f@
+// picker rather than a chord of its own. The row and the four due-date rows are
+// mutually exclusive: choosing one has to clear the other field.
+func TestFilterDuePickerDeferredRowOwnsTheDeferredFacet(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	filter := &app.crossOutliner.filter.CommonFilterState
+	filter.DueDate = DueDateToday
 
-	if cmd := pressFilterChord(t, app, "fd"); cmd == nil {
-		t.Fatal("fd produced no status command")
+	result := app.executeFilterOperation(OperationInvocation{
+		Descriptor: OperationDescriptor{ID: operationFilterDue},
+		Value:      filterDeferredOnly{},
+	})
+	if result.Err != nil {
+		t.Fatalf("deferred row error: %v", result.Err)
 	}
 	if !filter.Deferred {
-		t.Fatal("fd did not enable the deferred-only facet")
+		t.Fatal("the deferred row did not enable the deferred-only facet")
+	}
+	if filter.DueDate != DueDateAll {
+		t.Fatalf("DueDate = %v, want the due-date facet cleared", filter.DueDate)
+	}
+
+	result = app.executeFilterOperation(OperationInvocation{
+		Descriptor: OperationDescriptor{ID: operationFilterDue},
+		Value:      DueDateOverdue,
+	})
+	if result.Err != nil {
+		t.Fatalf("overdue row error: %v", result.Err)
+	}
+	if filter.Deferred {
+		t.Fatalf("a due-date row left deferred enabled: %+v", filter)
 	}
 
 	pressFilterChord(t, app, "fx")
-	if filter.Deferred {
-		t.Fatalf("fx left deferred enabled: %+v", filter)
+	if filter.Deferred || filter.DueDate != DueDateAll {
+		t.Fatalf("fx left the f@ facets active: %+v", filter)
 	}
 }
 
@@ -344,6 +373,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 			"filter-due:today",
 			"filter-due:week",
 			"filter-due:none",
+			"filter-due:deferred",
 		}
 		if len(items) != len(wantIDs) {
 			t.Fatalf("due-date picker items = %v, want %v", items, wantIDs)
@@ -358,7 +388,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 		}
 	})
 
-	t.Run("fs states", func(t *testing.T) {
+	t.Run("f$ states", func(t *testing.T) {
 		app := newFilterChordTestApp(t)
 		set, err := models.NewWorkflowStateSet(models.StateWaiting)
 		if err != nil {
@@ -366,13 +396,13 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 		}
 		app.crossOutliner.filter.setStateFilter(set, true)
 
-		cmd := pressFilterChord(t, app, "fs")
+		cmd := pressFilterChord(t, app, "f$")
 		if cmd == nil {
-			t.Fatal("fs produced no value-request command")
+			t.Fatal("f$ produced no value-request command")
 		}
 		app.handleOperationOverlayMessage(cmd())
 		if app.operationValuePicker == nil || app.operationValuePicker.provider != ValueProviderFilterStates {
-			t.Fatalf("fs did not open the states picker: %#v", app.operationValuePicker)
+			t.Fatalf("f$ did not open the states picker: %#v", app.operationValuePicker)
 		}
 		selected := app.operationValuePicker.surface.SelectedIDs()
 		if len(selected) != 1 || selected[0] != "state:waiting" {
@@ -412,17 +442,17 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 		}
 	})
 
-	t.Run("ft tags", func(t *testing.T) {
+	t.Run("f# tags", func(t *testing.T) {
 		app := newFilterChordTestApp(t)
 		app.crossOutliner.filter.Tags = map[string]bool{"deep": true}
 
-		cmd := pressFilterChord(t, app, "ft")
+		cmd := pressFilterChord(t, app, "f#")
 		if cmd == nil {
-			t.Fatal("ft produced no value-request command")
+			t.Fatal("f# produced no value-request command")
 		}
 		app.handleOperationOverlayMessage(cmd())
 		if app.operationValuePicker == nil || app.operationValuePicker.provider != ValueProviderFilterTags {
-			t.Fatalf("ft did not open the tags picker: %#v", app.operationValuePicker)
+			t.Fatalf("f# did not open the tags picker: %#v", app.operationValuePicker)
 		}
 		selected := app.operationValuePicker.surface.SelectedIDs()
 		if len(selected) != 1 || selected[0] != "tag:deep" {
@@ -574,6 +604,27 @@ func TestFilterDueChordIsOneTerminalPickerBinding(t *testing.T) {
 	} {
 		if _, _, got := registry.InputBindingForSequence(InputStrategySimplified, retired, ctx); got != ChordNoMatch {
 			t.Errorf("retired due path %v resolution = %v, want no match", retired, got)
+		}
+	}
+}
+
+// The filter and sort second keys are the sigils their facets already spell, so
+// the letters they replaced must lead nowhere rather than keep acting. A letter
+// still bound to something else would silently apply the wrong facet.
+func TestRetiredFilterAndSortLetterPathsResolveToNoMatch(t *testing.T) {
+	registry := registeredSimplifiedOperationRegistry(t)
+	ctx := simplifiedOperationContext()
+
+	for _, retired := range [][]string{
+		{"f", "p"},
+		{"f", "s"},
+		{"f", "t"},
+		{"f", "d"},
+		{"F", "t"},
+		{"o", "p"},
+	} {
+		if _, _, got := registry.InputBindingForSequence(InputStrategySimplified, retired, ctx); got != ChordNoMatch {
+			t.Errorf("retired path %v resolution = %v, want no match", retired, got)
 		}
 	}
 }
@@ -815,8 +866,8 @@ func TestFilterOperationsStayChordOnly(t *testing.T) {
 	registry := app.GetOperationRegistry()
 
 	descriptors := filterOperationDescriptors()
-	if len(descriptors) != 9 {
-		t.Fatalf("filter family declares %d operations, want 9", len(descriptors))
+	if len(descriptors) != 8 {
+		t.Fatalf("filter family declares %d operations, want 8", len(descriptors))
 	}
 	for _, declared := range descriptors {
 		_, ok := registry.Descriptor(declared.ID)

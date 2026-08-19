@@ -304,6 +304,74 @@ func TestBulkPatchTagsPreservesSomeMembershipAndCommitsOnce(t *testing.T) {
 	}
 }
 
+func TestSetTagsWritesTagsAndContextInOneTransaction(t *testing.T) {
+	task := newTask("task", 1, "task")
+	task.Tags = []string{"keep"}
+	task.Context = "office"
+	project := newProject("project", "Project", task)
+	repo := newFakeRepo(project)
+	svc := newTestService(repo)
+
+	result, err := svc.ExecuteTaskOperation(app.TaskOperationRequest{
+		Operation:  app.TaskOperationSetTags,
+		Targets:    []app.TaskLocator{{ProjectID: project.ID, TaskID: task.ID}},
+		TagPatch:   true,
+		TagsToAdd:  []string{"bug"},
+		ContextSet: true,
+		Context:    "Deep Work",
+	})
+	if err != nil {
+		t.Fatalf("ExecuteTaskOperation: %v", err)
+	}
+	if !slices.Equal(task.Tags, []string{"keep", "bug"}) {
+		t.Fatalf("tags = %v, want [keep bug]", task.Tags)
+	}
+	if task.Context != "deep-work" {
+		t.Fatalf("context = %q, want the normalized deep-work", task.Context)
+	}
+	if len(repo.commits) != 1 || result.TransactionID == "" {
+		t.Fatalf("commits = %+v, transaction = %q, want one transaction",
+			repo.commits, result.TransactionID)
+	}
+}
+
+func TestSetTagsClearsContextAndRejectsAnInvalidOneBeforeMutation(t *testing.T) {
+	task := newTask("task", 1, "task")
+	task.Tags = []string{"keep"}
+	task.Context = "office"
+	project := newProject("project", "Project", task)
+	repo := newFakeRepo(project)
+	svc := newTestService(repo)
+
+	_, err := svc.ExecuteTaskOperation(app.TaskOperationRequest{
+		Operation:  app.TaskOperationSetTags,
+		Targets:    []app.TaskLocator{{ProjectID: project.ID, TaskID: task.ID}},
+		TagPatch:   true,
+		TagsToAdd:  []string{"bug"},
+		ContextSet: true,
+		Context:    "!!!",
+	})
+	if !errors.Is(err, app.ErrInvalidInput) {
+		t.Fatalf("error = %v, want ErrInvalidInput", err)
+	}
+	if !slices.Equal(task.Tags, []string{"keep"}) || task.Context != "office" || len(repo.commits) != 0 {
+		t.Fatalf("refused edit mutated the task: tags=%v context=%q commits=%d",
+			task.Tags, task.Context, len(repo.commits))
+	}
+
+	if _, err := svc.ExecuteTaskOperation(app.TaskOperationRequest{
+		Operation:  app.TaskOperationSetTags,
+		Targets:    []app.TaskLocator{{ProjectID: project.ID, TaskID: task.ID}},
+		TagPatch:   true,
+		ContextSet: true,
+	}); err != nil {
+		t.Fatalf("ExecuteTaskOperation: %v", err)
+	}
+	if task.Context != "" {
+		t.Fatalf("context = %q, want the field cleared", task.Context)
+	}
+}
+
 func TestBulkPatchTagsRejectsConflictingPatchBeforeMutation(t *testing.T) {
 	task := newTask("task", 1, "task")
 	task.Tags = []string{"keep"}

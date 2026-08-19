@@ -66,16 +66,41 @@ type ValueProviderID string
 const (
 	ValueProviderState     ValueProviderID = "state"
 	ValueProviderPriority  ValueProviderID = "priority"
-	ValueProviderDueDate   ValueProviderID = "due-date"
-	ValueProviderDefer     ValueProviderID = "defer"
 	ValueProviderTags      ValueProviderID = "tags"
 	ValueProviderNoteTitle ValueProviderID = "note-title"
 	ValueProviderTagName   ValueProviderID = "tag-name"
+
+	// ValueProviderDate is the one date picker a task operation reaches. It
+	// sections due presets above defer presets so a single key answers both
+	// fields, and the selected row carries which field it writes.
+	ValueProviderDate ValueProviderID = "date"
+
+	// ValueProviderDueDate is the due-only projection of the same presets. Only
+	// the waiting check-back chain opens it, because that step is asking for a
+	// deadline specifically and a defer section would be noise there.
+	ValueProviderDueDate ValueProviderID = "due-date"
 
 	// ValueProviderChecklistItem is the typed text of one checklist item. It is
 	// a separate provider from the note title because the prompt prefills the
 	// item under the cursor rather than a note's own name.
 	ValueProviderChecklistItem ValueProviderID = "checklist-item"
+
+	// ValueProviderParent lists the tasks the cursor task may hang under. It is a
+	// plain list: the vocabulary is the project's own open tasks, so there is
+	// nothing to mint and no inline entry mode.
+	ValueProviderParent ValueProviderID = "parent"
+
+	// ValueProviderChild lists the tasks the cursor task may adopt. It is
+	// multi-select because the <child sigil is repeatable, and additive because
+	// that sigil has no detaching form: rows the task already parents are absent,
+	// so no selection state can express a detach.
+	ValueProviderChild ValueProviderID = "child"
+
+	// ValueProviderProject lists the projects the cursor task may move to. Its
+	// population is AvailableProjects rather than the Outliner's own, so a parked
+	// project stays a reachable destination, and the task's current project is
+	// absent because a move to it is not a move.
+	ValueProviderProject ValueProviderID = "project"
 
 	// ValueProviderProjectTags edits a project's own tag set, which is a
 	// different vocabulary and a different target from the task tags on
@@ -121,14 +146,7 @@ func (id ValueProviderID) tagEntry() bool {
 // presets cannot express. The calendar is not a closed enumeration either, so
 // both date providers need the same escape hatch.
 func (id ValueProviderID) dateEntry() bool {
-	return id == ValueProviderDueDate || id == ValueProviderDefer
-}
-
-// instantEntry reports whether the inline date mode resolves to an instant
-// rather than a calendar day, which is what makes the hour form typeable.
-// Deferral is the only value that can land later the same day.
-func (id ValueProviderID) instantEntry() bool {
-	return id == ValueProviderDefer
+	return id == ValueProviderDate || id == ValueProviderDueDate
 }
 
 func withValueProvider(descriptor OperationDescriptor, provider ValueProviderID) OperationDescriptor {

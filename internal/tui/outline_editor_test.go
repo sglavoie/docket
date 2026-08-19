@@ -313,6 +313,12 @@ func TestOutlineParseRejectsEveryLinePhaseError(t *testing.T) {
 			message: "the outline buffer owns the project; remove the %project sigil",
 		},
 		{
+			name:    "defer sigil",
+			buffer:  "Ship auth rewrite @@+2h  [[tt:4f2a9c11]]",
+			line:    1,
+			message: "the outline buffer cannot defer; remove the @@defer sigil",
+		},
+		{
 			name:   "unknown destination",
 			buffer: "Ship auth rewrite $ready  [[tt:4f2a9c11]]",
 			line:   1,

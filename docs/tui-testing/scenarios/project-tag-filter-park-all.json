@@ -19,7 +19,7 @@
 
     { "type": "key", "label": "uppercase F is the population chord", "key": "F" },
     { "type": "assert", "assert": "contains", "value": "project filter" },
-    { "type": "key", "label": "open the project tag facet", "key": "t" },
+    { "type": "key", "label": "open the project tag facet", "key": "#" },
     { "type": "assert", "assert": "contains", "value": "Filter Projects by Tag" },
     { "type": "assert", "label": "the vocabulary is listed, not just the loaded tags", "assert": "contains", "value": "focus" },
     { "type": "assert", "label": "the legal empty tag set is a facet of its own", "assert": "contains", "value": "Untagged" },

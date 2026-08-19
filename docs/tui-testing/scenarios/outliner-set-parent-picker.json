@@ -1,0 +1,35 @@
+{
+  "name": "outliner-set-parent-picker",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "command", "label": "open the global Outliner root", "command": "outliner root" },
+    { "type": "key", "label": "search for the task to reparent", "key": "/" },
+    { "type": "text", "text": "redirect" },
+    { "type": "key", "label": "accept the temporary search projection", "key": "enter" },
+    { "type": "key", "label": "leave search on the result", "key": "enter" },
+    { "type": "key", "label": "unwind the focus onto the result's ordinary row", "key": "esc" },
+
+    { "type": "key", "label": "open Set Parent", "key": ">" },
+    { "type": "assert", "assert": "contains", "value": "Set Parent: Fix redirect loop after logout" },
+    { "type": "assert", "label": "the detach row leads, expressing >0", "assert": "contains", "value": "No parent (project root)" },
+    { "type": "assert", "label": "every open task in the project is offered", "assert": "contains", "value": "Launch platform" },
+    { "type": "assert", "assert": "contains", "value": "Triage support inbox" },
+    { "type": "assert", "label": "a completed task is not a suggestion", "assert": "not_contains", "value": "Design login mockup" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "step from the preselected detach row onto Launch platform", "key": "down" },
+    { "type": "key", "label": "commit the reparent", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "status_contains", "value": "Reparent Task" },
+    { "type": "assert", "label": "the moved task names the parent it now hangs under", "assert": "contains", "value": "Fix redirect loop after logout  ‹" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "undo the reparent", "key": "u" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the task is a root again", "assert": "not_contains", "value": "Fix redirect loop after logout  ‹" },
+    { "type": "assert", "assert": "contains", "value": "Fix redirect loop after logout" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

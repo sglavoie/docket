@@ -46,7 +46,7 @@
 
     { "type": "key", "key": "esc" },
     { "type": "key", "label": "open the project-tag filter facet, which carries no explainer", "key": "F" },
-    { "type": "key", "key": "t" },
+    { "type": "key", "key": "#" },
     { "type": "assert", "assert": "contains", "value": "Filter Projects by Tag" },
     { "type": "assert", "label": "a picker that clipped nothing leaves the footer to the Outliner", "assert": "not_contains", "value": "hides them from" },
     { "type": "assert", "assert": "contains", "value": "Space tag actions" },

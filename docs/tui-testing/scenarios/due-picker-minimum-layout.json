@@ -6,8 +6,8 @@
     { "type": "key", "label": "open the go-to chord", "key": "g" },
     { "type": "key", "label": "jump straight to Inbox", "key": "i" },
     { "type": "key", "label": "step off the project group header onto the first task", "key": "j" },
-    { "type": "key", "label": "open the due-date picker with its direct key", "key": "@" },
-    { "type": "assert", "assert": "contains", "value": "Set Due Date" },
+    { "type": "key", "label": "open the date picker with its direct key", "key": "@" },
+    { "type": "assert", "assert": "contains", "value": "Set Date" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

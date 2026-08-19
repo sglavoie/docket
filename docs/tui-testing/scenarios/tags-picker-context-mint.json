@@ -1,0 +1,49 @@
+{
+  "name": "tags-picker-context-mint",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "move the cursor onto the Doing task", "key": "j" },
+
+    { "type": "key", "label": "open tags and context together", "key": "#" },
+    { "type": "assert", "assert": "contains", "value": "Set Tags & Context: Build login form" },
+    { "type": "key", "label": "jump to the context section", "key": "c" },
+    { "type": "assert", "label": "the task carries no context, so the clear row is checked", "assert": "contains", "value": "› [x] No context" },
+
+    { "type": "key", "label": "the cursor decides what the inline add mode mints", "key": "a" },
+    { "type": "assert", "assert": "contains", "value": "Add New Context" },
+    { "type": "assert", "assert": "contains", "value": "Enter a context name" },
+    { "type": "assert", "assert": "contains", "value": "Enter add context" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "text", "label": "0 is reserved, because the clear row is what it would mean", "text": "0" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "0 is reserved" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "key": "backspace" },
+    { "type": "text", "text": "deep-work" },
+    { "type": "key", "label": "the minted context becomes the selected radio row", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "› [x] ##deep-work" },
+    { "type": "assert", "assert": "contains", "value": "[ ] No context" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "change a tag in the same pending edit", "key": "s" },
+    { "type": "key", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "› [x] bug" },
+
+    { "type": "key", "label": "apply the tag and the context together", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "[deep-work]" },
+    { "type": "assert", "assert": "contains", "value": "#bug" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "one transaction means one undo entry reverts both", "key": "u" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "[deep-work]" },
+    { "type": "assert", "assert": "not_contains", "value": "#bug" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

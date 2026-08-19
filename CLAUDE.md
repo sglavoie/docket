@@ -20,7 +20,7 @@ Go accepts packages, not files, as test targets.
 
 ## Architecture
 
-Bubble Tea is the product; Cobra contains only the launcher and maintenance
+Bubble Tea is the product; Cobra holds only the launcher and maintenance
 commands.
 
 Layer ownership is strict: `internal/models` pure invariants, `internal/app` use
@@ -34,8 +34,7 @@ A mutation resolves targets from one immutable workspace snapshot, validates in
 the application layer, and submits every project, domain, note, and attachment
 effect through one checked repository transaction. Do not recreate cross-project
 behavior with independent `SaveProject` calls. Direct storage writes are limited
-to narrowly audited maintenance, migration, restore, and transaction
-infrastructure.
+to audited maintenance, migration, restore, and transaction infrastructure.
 
 ## Task and planning invariants
 
@@ -45,12 +44,13 @@ The live states are:
 inbox, backlog, doing, waiting, paused, someday, done, canceled
 ```
 
-Review is not a lifecycle state: it is the ordinary canonical `review` tag with
-a promoted All-mode lane. Retired states and fields may appear only in named
-migration DTOs and audit code. Ordinary task Markdown is schema 11 with generic
-`Task` headings, a project-local ShortID, retained fields, and optional
-single-valued task-level `Context`. `DueDate` is a calendar date;
-`DeferredUntil` is an RFC3339Nano instant that can expire later the same day.
+Review is not a lifecycle state and has no key of its own: it is the canonical
+`review` tag with a promoted All-mode lane. Retired states and fields may
+appear only in named migration DTOs and audit code. Ordinary task Markdown is
+schema 11 with generic `Task` headings, a project-local ShortID, retained
+fields, and optional single-valued task-level `Context`. `DueDate` is a
+calendar date; `DeferredUntil` is an RFC3339Nano instant that can expire later
+the same day.
 
 `StateChangedAt` is the state clock and `UpdatedAt` is the touch time. Only the
 lifecycle transitions in `internal/models/task_lifecycle.go` write the clock,
@@ -101,7 +101,7 @@ Checklist rules:
 
 Emit project group headers through the shared `appendProjectGroupHeader` kernel,
 never a per-mode copy. Each grouping surface owns a disjoint `collapsedSections`
-namespace, since that map is never cleared on a mode change, and grouping never
+namespace, since that map is never cleared on a mode change; grouping never
 reorders a mode's primary sort.
 
 `computeOutlinerViewport` is the single window authority and the only place a
@@ -122,13 +122,13 @@ deferred closure in `AppModel.Update`. The divider appearance must feed all
 three dividers `renderFooterChrome` emits, or the flash dies under a which-key
 row; the strip's divider stays outside it. The interactive TUI ignores an
 inherited `NO_COLOR`; `--no-color` still disables color and non-interactive
-commands retain the inherited environment.
+commands keep the inherited environment.
 
 A value provider is exactly one of `textEntry()` (a separate overlay),
 `tagEntry()` or `dateEntry()` (inline add modes), or a plain list. A value the
-presets cannot express belongs in an inline mode on the one picker, never in a
-standalone form. `instantEntry()` narrows the date mode to defer, the only
-place `+Nh` parses.
+presets cannot express belongs in an inline mode on that picker, never a
+standalone form. `@` is the one date picker over both fields, so the cursor's
+defer section, not a provider method, lets `+Nh` parse.
 
 Row and Peek budget:
 
@@ -144,8 +144,8 @@ Row and Peek budget:
   values. `taskRelationMarker` is one segment both ways: `‹` up, `›N` down only
   when the row renders no child. `taskPinnedMarker` reads
   `task.Pinned && !row.IsPinnedSection`, not `ShowsPinned`.
-- `formatDeferDate` reads against `now`: a midnight deferral is a whole day and
-  still renders bare, today is `15:04`, else `Jan 2 15:04` with `'06` off-year.
+- `formatDeferDate` reads against `now`: midnight is a whole day and renders
+  bare, today is `15:04`, else `Jan 2 15:04` with `'06` off-year.
 - Waiting age reads the state clock, and `formatCheckBackIndicator` replaces the
   plain due segment rather than joining it.
 - The pulse ladder in `formatWorkspacePulseComponents` has exactly three steps
@@ -167,22 +167,22 @@ tags, task links, pins, bulk actions, or previews. `T` toggles only dark/light.
 
 ## Key bindings
 
-The old standalone `b` and `t` actions and the comma state prefix stay unbound,
-along with `c`, `m`, `:`, `C`, `R`, and `Ctrl+Esc`. `SortByStatus` stays
-unbound; repeating a sort field key is the only reverse route.
+The old `b`, `c`, `d`, `m`, `t`, `w`, `P`, `:`, `C`, `R`, `Ctrl+Esc`, and the
+comma state prefix stay unbound, as does `SortByStatus`; repeating a sort field
+key is the only reverse route. Done is `$d` alone and no `d` alias may return.
 
-`d` is Set Defer and never Done — Done stays `wd` alone and no `d`-means-done
-alias may return. Root `z` and `g` are chord prefixes, not direct keys: `z`
-never means snooze or defer, and cursor-top is `gg` or `Home`.
+Root `$`, `z`, and `g` are chord prefixes, not direct keys: `z` never means
+snooze or defer, and cursor-top is `gg` or `Home`.
 
 `Ctrl+P` forces All rather than inheriting the origin mode, and its scope push
 must precede the mode switch, since the push captures the frame `Esc` restores.
 
-Pin's two routes, `P` and the `*pin` sigil, are not a direct-only/menu-only
-violation: that rule governs the `Space` menu, not the text grammar.
+`>` and `<` are Set Parent and Adopt Children; indent and outdent are `]` and
+`[`, which own no sigil. Pin's key is its sigil, `*`; the `*pin` grammar route
+is not a second path.
 
-An abandoned chord prefix warns, naming the path it left (`wq is not a workflow
-action`); an unbound root key stays silent.
+An abandoned chord prefix warns, naming the path it left (`$q is not a workflow
+action`); an unbound root key is silent.
 
 ## Project and task tags
 
@@ -214,19 +214,22 @@ focusable rows use `RowSummary`, explainers the full `Summary`.
 Canonical capture sigils are:
 
 ```text
-!1-3  #tag  ##context  @date  $destination  *pin  %project  >parent  <child
+!1-3 #tag ##context @date @@defer $destination *pin %project >parent <child
 ```
 
-`##context` sets the optional singleton task context with tag normalization; it
-is unrelated to the retired v4 project context. `##0` clears it on the edit
-surfaces; outline omission clears it. `##0` permanently reserves `"0"` as a
-context name, unlike legal `!0`, `@0`, and `>0`.
+Due's last alternative is `[^\s@]\S*` so `@` can never eat `@@`; RE2 has no
+lookahead. Deferring refuses a terminal task and otherwise claims Backlog.
 
-`$destination` accepts Inbox, Backlog, Today, Next, Doing, Waiting, Paused,
-Someday, Done, or Canceled. `^type`, `~recurrence`, priorities 4–5, `$ready`,
-and `$in_progress` stay recognized errors with replacement guidance, and aliases
-such as `priority:`, `due:`, `state:`, `proj:` stay unimplemented. Multiline
-capture validates every nonblank line before committing one transaction.
+`##context` sets the optional singleton task context with tag normalization.
+`##0` clears it and `@@0` a deferral on the edit surfaces; outline omission
+clears the context, so `"0"` is permanently reserved as a context name, unlike
+legal `!0`, `@0`, and `>0`.
+
+`$destination` accepts the eight live states plus Today and Next. `^type`,
+`~recurrence`, priorities 4–5, `$ready`, and `$in_progress` stay recognized
+errors with replacement guidance; `priority:`, `due:`, `state:`, and `proj:`
+stay unimplemented. Multiline capture validates every nonblank line before
+committing one transaction.
 
 - Project moves and reparenting belong only to the edit grammar (`%project`,
   `>parent`, `>0`, `<child`), applied as one `ApplyParentAssignments` batch so
@@ -234,21 +237,19 @@ capture validates every nonblank line before committing one transaction.
 - Inline `e` and the `Ctrl+E` title share `parseQuickEdit`, which reads that
   title only when it changed. A refusal reopens the buffer; saving it unchanged
   abandons the edit.
-- `*unpin` belongs to edit and search: capture has nothing to clear and refuses
-  it by name, and the outline surface refuses it because dropping the `*pin`
-  token says it.
+- `*unpin` belongs to edit and search: capture refuses it by name, and dropping
+  the `*pin` token is what unpins in the outline buffer.
 - `FieldChild` declares no `Clears`, which makes `<0` an ordinary unresolvable
-  reference rather than a detach. A task leaves its parent through `>parent` or
-  `>0` and nowhere else.
-- Aliases resolving to the same task ID collapse to the first occurrence, in the
-  parser and again in the application layer; both must stay first-occurrence or
-  preview and commit disagree about order.
-- Children resolve only in the effective project, so `<child` can never pull a
-  subtree across a project boundary.
-- A terminal destination refuses an open adopted child, stated the same way on
-  both surfaces.
-- A `>parent` or `<child` sigil in the outline buffer is an error, not a second
-  parentage channel: indentation is parentage there.
+  reference rather than a detach and the `<` picker additive: unchecking never
+  detaches. A task leaves its parent through `>parent` or `>0` and nowhere else.
+- Aliases naming one task ID collapse to the first occurrence, in the parser and
+  again in the application layer; both must stay so or preview and commit
+  disagree about order.
+- Children resolve only in the effective project, so `<child` never crosses a
+  project boundary.
+- A terminal destination refuses an open adopted child on both surfaces.
+- `>parent`, `<child`, and `@@defer` are errors in the outline buffer:
+  indentation is parentage there and the buffer holds no deferral.
 
 Slash search is the fourth surface of the same registry, not a parallel query
 language. Its sigil set is the capture set minus `>parent` and `<child`, which

@@ -1,0 +1,83 @@
+{
+  "name": "workflow-chord-destinations",
+  "fixture": "workflow",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "key", "label": "step past the Backlog group header", "key": "j" },
+    { "type": "key", "label": "step past the project group header onto the first task", "key": "j" },
+
+    { "type": "key", "label": "hold the workflow prefix", "key": "$" },
+    { "type": "assert", "label": "the sigil names every destination it reaches", "assert": "contains", "value": "i inbox" },
+    { "type": "assert", "assert": "contains", "value": "b backlog" },
+    { "type": "assert", "assert": "contains", "value": "n next" },
+    { "type": "assert", "assert": "contains", "value": "t today" },
+    { "type": "assert", "assert": "contains", "value": "g doing" },
+    { "type": "assert", "assert": "contains", "value": "w waiting" },
+    { "type": "assert", "assert": "contains", "value": "p paused" },
+    { "type": "assert", "assert": "contains", "value": "m someday" },
+    { "type": "assert", "assert": "contains", "value": "d done" },
+    { "type": "assert", "assert": "contains", "value": "c canceled" },
+    { "type": "assert", "label": "the retired review action answers no second key", "assert": "not_contains", "value": "r review" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "$i sends it to Inbox", "key": "i" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Change State: Inbox" },
+    { "type": "assert", "assert": "contains", "value": "Sketch intake flow" },
+
+    { "type": "key", "key": "$" },
+    { "type": "key", "label": "$g starts it", "key": "g" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Change State: Doing" },
+
+    { "type": "key", "key": "$" },
+    { "type": "key", "label": "$w blocks it, which chains into the check-back", "key": "w" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Set Due Date" },
+    { "type": "key", "label": "decline the check-back", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "status_contains", "value": "Change State: Waiting" },
+
+    { "type": "key", "key": "$" },
+    { "type": "key", "label": "$p parks it", "key": "p" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Change State: Paused" },
+
+    { "type": "key", "key": "$" },
+    { "type": "key", "label": "$m shelves it", "key": "m" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Change State: Someday" },
+
+    { "type": "key", "key": "$" },
+    { "type": "key", "label": "$b returns it to Backlog", "key": "b" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Move to Backlog: Sketch intake flow" },
+
+    { "type": "key", "key": "$" },
+    { "type": "key", "label": "$n plans it into Next", "key": "n" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Move to Next: Sketch intake flow" },
+
+    { "type": "key", "key": "$" },
+    { "type": "key", "label": "$t moves it to Today, which Next cannot share", "key": "t" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Plan for Today: Sketch intake flow" },
+
+    { "type": "key", "key": "$" },
+    { "type": "key", "label": "$c abandons it, which the live projection stops showing", "key": "c" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Change State: Canceled" },
+    { "type": "assert", "assert": "not_contains", "value": "Sketch intake flow" },
+
+    { "type": "key", "label": "back to the top of the Outliner", "key": "home" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "onto the next remaining task", "key": "j" },
+    { "type": "key", "key": "$" },
+    { "type": "key", "label": "$d completes that one", "key": "d" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Change State: Done" },
+    { "type": "assert", "assert": "not_contains", "value": "Design settings screen" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

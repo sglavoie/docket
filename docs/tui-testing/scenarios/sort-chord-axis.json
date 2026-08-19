@@ -8,7 +8,7 @@
 
     { "type": "key", "label": "hold the sort prefix", "key": "o" },
     { "type": "assert", "assert": "contains", "value": "@ due date" },
-    { "type": "assert", "assert": "contains", "value": "p priority" },
+    { "type": "assert", "assert": "contains", "value": "! priority" },
     { "type": "assert", "assert": "contains", "value": "c created" },
     { "type": "assert", "assert": "contains", "value": "u updated" },
     { "type": "assert", "assert": "contains", "value": "t title" },
@@ -48,7 +48,7 @@
 
     { "type": "resize", "label": "shrink to the comfortable minimum", "width": 80, "height": 24 },
     { "type": "key", "key": "o" },
-    { "type": "key", "key": "p" },
+    { "type": "key", "key": "!" },
     { "type": "assert", "assert": "status_contains", "value": "Sorting by priority ↑" },
     { "type": "assert", "assert": "no_layout_issues" },
 

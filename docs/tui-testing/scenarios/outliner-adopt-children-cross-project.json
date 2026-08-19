@@ -1,0 +1,23 @@
+{
+  "name": "outliner-adopt-children-cross-project",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "step onto Client Alpha's only task", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "assert", "label": "every project's task is on screen", "assert": "contains", "value": "Beta rollout checklist" },
+    { "type": "assert", "assert": "contains", "value": "Renew passport" },
+
+    { "type": "key", "label": "open Adopt Children", "key": "<" },
+    { "type": "assert", "assert": "contains", "value": "Adopt Children: Alpha migration kickoff" },
+    { "type": "assert", "label": "candidates come from the effective project alone, and it has none", "assert": "contains", "value": "No values available." },
+    { "type": "assert", "label": "a task in another project is on screen but never a row", "assert": "count_contains", "value": "Beta rollout checklist", "count": 1 },
+    { "type": "assert", "assert": "count_contains", "value": "Renew passport", "count": 1 },
+    { "type": "assert", "assert": "count_contains", "value": "Finish the distributed systems book", "count": 1 },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "leave the empty picker", "key": "esc" },
+    { "type": "assert", "label": "nothing was adopted across the boundary", "assert": "not_contains", "value": "Beta rollout checklist  ‹" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

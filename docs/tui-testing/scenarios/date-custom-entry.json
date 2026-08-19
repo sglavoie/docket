@@ -6,7 +6,7 @@
     { "type": "key", "key": "j" },
     { "type": "key", "label": "move the cursor onto the Doing task", "key": "j" },
 
-    { "type": "key", "label": "open the due-date picker", "key": "@" },
+    { "type": "key", "label": "open the one date picker, cursor in the due section", "key": "@" },
     { "type": "key", "label": "the relative presets cannot express every date, so type one", "key": "a" },
     { "type": "assert", "assert": "contains", "value": "Set a Specific Date" },
     { "type": "assert", "assert": "contains", "value": "Exact date (YYYY-MM-DD)" },
@@ -27,7 +27,7 @@
 
     { "type": "key", "label": "leave typed entry for the preset list", "key": "esc" },
     { "type": "assert", "assert": "not_contains", "value": "Set a Specific Date" },
-    { "type": "assert", "assert": "contains", "value": "Set Due Date: Build login form" },
+    { "type": "assert", "assert": "contains", "value": "Set Date: Build login form" },
 
     { "type": "key", "label": "re-enter typed entry", "key": "a" },
     { "type": "text", "text": "2027-03-15" },
@@ -38,9 +38,15 @@
     { "type": "assert", "label": "the typed date reaches the row through the ordinary payload", "assert": "contains", "value": "Mar 15 '27" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "the same shared predicate gates the defer picker", "key": "d" },
-    { "type": "key", "key": "a" },
+    { "type": "key", "label": "reopen the same picker", "key": "@" },
+    { "type": "key", "label": "step past the five due rows into the defer section", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "the cursor's section is what widens typed entry to instants", "key": "a" },
     { "type": "assert", "assert": "contains", "value": "Set a Specific Date" },
+    { "type": "assert", "label": "the hour form is offered here and nowhere else", "assert": "contains", "value": "Hours from now (defer only)" },
     { "type": "text", "label": "a relative offset the presets do not carry", "text": "+3d" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },

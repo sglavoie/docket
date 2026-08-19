@@ -10,7 +10,7 @@
     { "type": "assert", "assert": "contains", "value": "project filter" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "open the project tag facet", "key": "t" },
+    { "type": "key", "label": "open the project tag facet", "key": "#" },
     { "type": "assert", "assert": "contains", "value": "Filter Projects by Tag" },
     { "type": "assert", "assert": "contains", "value": "parked" },
     { "type": "assert", "assert": "contains", "value": "Untagged" },

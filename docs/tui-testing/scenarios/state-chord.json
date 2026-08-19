@@ -6,7 +6,7 @@
     { "type": "key", "key": "j" },
     { "type": "key", "label": "move the cursor onto the Doing task", "key": "j" },
 
-    { "type": "key", "label": "hold the workflow prefix", "key": "w" },
+    { "type": "key", "label": "hold the workflow prefix", "key": "$" },
     { "type": "assert", "assert": "contains", "value": "i inbox" },
     { "type": "assert", "assert": "contains", "value": "b backlog" },
     { "type": "assert", "assert": "contains", "value": "n next" },
@@ -29,7 +29,7 @@
     { "type": "assert", "assert": "contains", "value": "⊘   Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "abandon a half-typed chord", "key": "w" },
+    { "type": "key", "label": "abandon a half-typed chord", "key": "$" },
     { "type": "key", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "not_contains", "value": "w waiting" },
@@ -37,7 +37,7 @@
 
     { "type": "key", "label": "select the cursored task and enter multi-select", "key": "v" },
     { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 1 selected" },
-    { "type": "key", "label": "open workflow actions", "key": "w" },
+    { "type": "key", "label": "open workflow actions", "key": "$" },
     { "type": "key", "label": "park the selection in Someday", "key": "m" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "@ Someday  (2)" },

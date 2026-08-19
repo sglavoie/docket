@@ -11,14 +11,14 @@
     { "type": "assert", "assert": "contains", "value": "[x] Outline the rollback steps" },
     { "type": "assert", "assert": "not_contains", "value": "move the cursor to a task row to use this action" },
 
-    { "type": "key", "label": "the workflow chord names the owner, not the item", "key": "w" },
+    { "type": "key", "label": "the workflow chord names the owner, not the item", "key": "$" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task row to use this action" },
     { "type": "assert", "label": "no which-key row opened", "assert": "not_contains", "value": "b backlog" },
 
     { "type": "key", "label": "Set Priority has no item meaning", "key": "!" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task row to use this action" },
 
-    { "type": "key", "label": "Set Due Date has no item meaning", "key": "@" },
+    { "type": "key", "label": "Set Date has no item meaning", "key": "@" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task row to use this action" },
 
@@ -26,10 +26,7 @@
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task row to use this action" },
 
-    { "type": "key", "label": "Set Defer has no item meaning", "key": "d" },
-    { "type": "assert", "assert": "contains", "value": "move the cursor to a task row to use this action" },
-
-    { "type": "key", "label": "Toggle Pin has no item meaning", "key": "P" },
+    { "type": "key", "label": "Toggle Pin has no item meaning", "key": "*" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task row to use this action" },
 
     { "type": "key", "label": "Copy Title has no item meaning", "key": "y" },
@@ -45,10 +42,13 @@
     { "type": "key", "label": "the external editor has no item meaning", "key": "ctrl+e" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task row to use this action" },
 
-    { "type": "key", "label": "Indent has no item meaning", "key": ">" },
+    { "type": "key", "label": "Indent has no item meaning", "key": "]" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task row to use this action" },
 
-    { "type": "key", "label": "Outdent has no item meaning", "key": "<" },
+    { "type": "key", "label": "Outdent has no item meaning", "key": "[" },
+    { "type": "assert", "assert": "contains", "value": "move the cursor to a task row to use this action" },
+
+    { "type": "key", "label": "Set Parent has no item meaning", "key": ">" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task row to use this action" },
 
     { "type": "key", "label": "Peek has no item meaning", "key": "ctrl+enter" },
@@ -73,6 +73,7 @@
     { "type": "assert", "label": "no picker, editor, or Peek ever took the screen", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "not_contains", "value": "Set Due Date" },
     { "type": "assert", "assert": "not_contains", "value": "Set Priority" },
+    { "type": "assert", "assert": "not_contains", "value": "No parent (project root)" },
     { "type": "assert", "label": "every row survived the refusals", "assert": "contains", "value": "Draft the launch runbook" },
     { "type": "assert", "assert": "contains", "value": "[x] Outline the rollback steps" },
     { "type": "assert", "assert": "contains", "value": "[ ] Name the on-call owner" },

@@ -4,7 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "label": "stack a priority threshold", "key": "f" },
-    { "type": "key", "key": "p" },
+    { "type": "key", "key": "!" },
     { "type": "key", "key": "2" },
     { "type": "assert", "assert": "status_contains", "value": "Filtering Medium priority or higher" },
     { "type": "assert", "assert": "contains", "value": "priority:Medium+" },

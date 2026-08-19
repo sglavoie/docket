@@ -15,11 +15,11 @@ func newSession4TaggedProject(t *testing.T, name string, tags ...string) *models
 	return project
 }
 
-// parkTagMembersThroughFtVocabulary drives the Ft tag row action the way the
-// vocabulary sheet does: the tag's members become the bulk targets, and the park
-// is answered at the shared confirmation. It returns the committed follow-up so
-// the caller can inspect the anchor before the reload consumes it.
-func parkTagMembersThroughFtVocabulary(
+// parkTagMembersThroughProjectTagVocabulary drives the F# tag row action the
+// way the vocabulary sheet does: the tag's members become the bulk targets, and
+// the park is answered at the shared confirmation. It returns the committed
+// follow-up so the caller can inspect the anchor before the reload consumes it.
+func parkTagMembersThroughProjectTagVocabulary(
 	t *testing.T,
 	fixture *session4LifecycleFixture,
 	tag string,
@@ -62,7 +62,7 @@ func TestProjectTagParkAllMembersAnchorsTheOutlinerCursorOnASurvivor(t *testing.
 	second := newSession4TaggedProject(t, "Keel", "hold")
 	fixture := newSession4LifecycleFixture(t, first, survivor, second)
 
-	cmd := parkTagMembersThroughFtVocabulary(t, fixture, "hold")
+	cmd := parkTagMembersThroughProjectTagVocabulary(t, fixture, "hold")
 	if got := fixture.cross.crossReloadHeaderProjectID; got != survivor.ID {
 		t.Fatalf("bulk park anchor = %q, want the surviving header %q", got, survivor.ID)
 	}
@@ -111,7 +111,7 @@ func TestProjectTagParkAllMembersWithNoSurvivorLandsAtTheTopOfTheProjection(t *t
 	fixture := newSession4LifecycleFixture(t, first, second)
 	fixture.cross.cursor = len(fixture.cross.rows) - 1
 
-	cmd := parkTagMembersThroughFtVocabulary(t, fixture, "hold")
+	cmd := parkTagMembersThroughProjectTagVocabulary(t, fixture, "hold")
 	anchor := fixture.cross.crossReloadHeaderProjectID
 	if anchor != first.ID && anchor != second.ID {
 		t.Fatalf("bulk park anchor = %q, want a departing project as the section-header sentinel", anchor)

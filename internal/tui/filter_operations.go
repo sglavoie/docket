@@ -17,9 +17,13 @@ const (
 	operationFilterDue           OperationID = "tui.filter.due"
 	operationFilterCompletionAge OperationID = "tui.filter.completion-age"
 	operationFilterHierarchy     OperationID = "tui.filter.hierarchy"
-	operationFilterDeferred      OperationID = "tui.filter.deferred"
 	operationFilterClear         OperationID = "tui.filter.clear"
 )
+
+// filterDeferredOnly is the value the due picker's deferred row carries. It is
+// its own type because that row writes CommonFilterState.Deferred rather than
+// the DueDate facet the other four rows write.
+type filterDeferredOnly struct{}
 
 // filterOperationDescriptor is the shape every facet shares: no target, no
 // transaction, and applicability decided by the Outliner alone.
@@ -52,7 +56,6 @@ func filterOperationDescriptors() []OperationDescriptor {
 		descriptor(operationFilterDue, "Filter by Due Date", ValueProviderFilterDue, "due filter"),
 		descriptor(operationFilterCompletionAge, "Filter by Completion Age", ValueProviderFilterCompletionAge, "completion age", "cleanup age"),
 		descriptor(operationFilterHierarchy, "Filter by Hierarchy", ValueProviderFilterHierarchy, "hierarchy position", "parent or child"),
-		descriptor(operationFilterDeferred, "Filter Deferred Tasks", "", "deferred only"),
 		descriptor(operationFilterClear, "Clear Filters", "", "reset filters"),
 	}
 }
@@ -61,12 +64,12 @@ func (m *AppModel) registerFilterOperations() error {
 	if m.operationRegistry == nil || m.operationExecutor == nil {
 		return fmt.Errorf("operation registry and executor are required")
 	}
-	// Priority is the only preset-only facet: each fp0-3 binding carries its
+	// Priority is the only preset-only facet: each f!0-3 binding carries its
 	// threshold, so reaching the provider means a caller bypassed the grammar.
 	if err := m.operationExecutor.RegisterValueProvider(ValueProviderFilterPriority,
 		func(OperationInvocation) OperationValueProviderResult {
 			return OperationValueProviderResult{
-				Err: fmt.Errorf("this filter takes its value from the fp0-3 chord"),
+				Err: fmt.Errorf("this filter takes its value from the f!0-3 chord"),
 			}
 		}); err != nil {
 		return err
@@ -140,11 +143,18 @@ func (m *AppModel) executeFilterOperation(invocation OperationInvocation) Operat
 			status = "Filtering " + priorityThresholdLabel(threshold)
 		}
 	case operationFilterDue:
+		if _, deferred := invocation.Value.(filterDeferredOnly); deferred {
+			filter.DueDate = DueDateAll
+			filter.Deferred = true
+			status = "Filtering deferred tasks"
+			break
+		}
 		due, ok := invocation.Value.(DueDateFilter)
 		if !ok {
 			return OperationHandlerResult{Err: fmt.Errorf("invalid due-date filter value")}
 		}
 		filter.DueDate = due
+		filter.Deferred = false
 		status = "Filtering due: " + dueDateFilterLabel(due)
 	case operationFilterCompletionAge:
 		age, ok := invocation.Value.(CompletionAgeFilter)
@@ -212,9 +222,6 @@ func (m *AppModel) executeFilterOperation(invocation OperationInvocation) Operat
 			filter.Tags[reviewTaskTag] = true
 			status = "Filtering Review"
 		}
-	case operationFilterDeferred:
-		filter.Deferred = true
-		status = "Filtering deferred tasks"
 	case operationFilterClear:
 		clearCommonFilters(filter)
 		status = "Filters cleared"
@@ -277,8 +284,10 @@ func completionAgeFilterLabel(filter CompletionAgeFilter) string {
 	return "all ages"
 }
 
-// newFilterDuePicker is the fd single-select picker over the four public
-// due-date facets, seeded from the active facet when one is set.
+// newFilterDuePicker is the f@ single-select picker over the four public
+// due-date facets plus the deferred-only facet, seeded from the active facet
+// when one is set. Deferral is a scheduling instant like a due date, so it is a
+// row here rather than a chord of its own.
 func (m *AppModel) newFilterDuePicker(
 	request OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
@@ -286,12 +295,13 @@ func (m *AppModel) newFilterDuePicker(
 		id        string
 		label     string
 		secondary string
-		value     DueDateFilter
+		value     any
 	}{
 		{id: "overdue", label: "Overdue", secondary: "before today", value: DueDateOverdue},
 		{id: "today", label: "Today", secondary: "due today", value: DueDateToday},
 		{id: "week", label: "This week", secondary: "within seven days", value: DueDateThisWeek},
 		{id: "none", label: "No due date", secondary: "unscheduled tasks", value: DueDateNone},
+		{id: "deferred", label: "Deferred only", secondary: "waking later", value: filterDeferredOnly{}},
 	}
 	items := make([]ListItem, 0, len(options))
 	for _, option := range options {
@@ -305,16 +315,16 @@ func (m *AppModel) newFilterDuePicker(
 	}
 	selected := []ListItemID(nil)
 	if m.crossOutliner != nil {
-		switch m.crossOutliner.filter.DueDate {
-		case DueDateAll:
-			selected = nil
-		case DueDateOverdue:
+		switch {
+		case m.crossOutliner.filter.Deferred:
+			selected = []ListItemID{"filter-due:deferred"}
+		case m.crossOutliner.filter.DueDate == DueDateOverdue:
 			selected = []ListItemID{"filter-due:overdue"}
-		case DueDateToday:
+		case m.crossOutliner.filter.DueDate == DueDateToday:
 			selected = []ListItemID{"filter-due:today"}
-		case DueDateThisWeek:
+		case m.crossOutliner.filter.DueDate == DueDateThisWeek:
 			selected = []ListItemID{"filter-due:week"}
-		case DueDateNone:
+		case m.crossOutliner.filter.DueDate == DueDateNone:
 			selected = []ListItemID{"filter-due:none"}
 		}
 	}
@@ -432,7 +442,7 @@ func (m *AppModel) newFilterCompletionAgePicker(
 	)
 }
 
-// newFilterStatesPicker is the fs multi-select picker over the canonical
+// newFilterStatesPicker is the f$ multi-select picker over the canonical
 // workflow states, seeded from the active state filter facet.
 func (m *AppModel) newFilterStatesPicker(
 	request OperationExecutionRequest,
@@ -547,7 +557,7 @@ func renderProspectiveFilterCount(count int) string {
 	return fmt.Sprintf("⋅ %d", count)
 }
 
-// newFilterTagsPicker is the ft multi-select picker over the active scope's
+// newFilterTagsPicker is the f# multi-select picker over the active scope's
 // tag-and-context vocabulary, seeded from the active tag filter facet.
 func (m *AppModel) newFilterTagsPicker(
 	request OperationExecutionRequest,

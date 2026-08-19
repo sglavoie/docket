@@ -1,0 +1,46 @@
+{
+  "name": "date-picker-terminal-task",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open the filter chord", "key": "f" },
+    { "type": "key", "label": "pick workflow states", "key": "$" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "label": "highlight Done, the seventh state row", "key": "down" },
+    { "type": "key", "key": "space" },
+    { "type": "key", "label": "isolate terminal work", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Design login mockup" },
+
+    { "type": "key", "label": "move the cursor onto the Done task", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+
+    { "type": "key", "label": "the one date key still opens on a terminal task", "key": "@" },
+    { "type": "assert", "assert": "contains", "value": "Set Date: Design login mockup" },
+    { "type": "assert", "label": "the defer section is refused on the row rather than hidden", "assert": "contains", "value": "terminal tasks cannot be deferred" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "step onto the first defer row", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "the refusal is what Enter reports", "key": "enter" },
+    { "type": "assert", "assert": "status_contains", "value": "terminal tasks cannot be deferred" },
+    { "type": "assert", "label": "the picker stays open on the refused row", "assert": "contains", "value": "Set Date: Design login mockup" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "due is still reachable on the same task", "key": "home" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "highlight Tomorrow, two rows into the due section", "key": "j" },
+    { "type": "key", "label": "commit the due date", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "status_contains", "value": "Set Due Date" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

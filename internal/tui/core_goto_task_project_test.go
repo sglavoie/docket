@@ -123,7 +123,7 @@ func TestGotoTaskProjectKeepsTheOriginModeWhenAllOmitsTheTask(t *testing.T) {
 	driver := gotoProjectDriver(t)
 	outliner := gotoProjectOutliner(t, driver)
 	gotoProjectCursorOnTask(t, outliner)
-	sortPressKeys(t, driver, "w", "d")
+	sortPressKeys(t, driver, "$", "d")
 	driver.Wait(defaultWaitTimeout)
 
 	sortPressKeys(t, driver, "g", "r")

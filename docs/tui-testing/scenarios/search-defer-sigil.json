@@ -1,0 +1,41 @@
+{
+  "name": "search-defer-sigil",
+  "fixture": "signals",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "search the entire active scope", "key": "/" },
+    { "type": "text", "label": "the presence form splits the deferred population", "text": "@@any" },
+    { "type": "assert", "assert": "contains", "value": "Alpha still hidden" },
+    { "type": "assert", "assert": "contains", "value": "Alpha waking at nine" },
+    { "type": "assert", "label": "a lapsed deferral is not a pending one", "assert": "not_contains", "value": "Alpha back from a break" },
+    { "type": "assert", "label": "the double sigil is not a due query, so nothing is refused", "assert": "not_contains", "value": "invalid due" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "clear the query", "key": "esc" },
+    { "type": "key", "key": "/" },
+    { "type": "text", "label": "a bare instant matches the wake day", "text": "@@tomorrow" },
+    { "type": "assert", "assert": "contains", "value": "Alpha waking at nine" },
+    { "type": "assert", "label": "a deferral five days out is a different day", "assert": "not_contains", "value": "Alpha still hidden" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "clear the query", "key": "esc" },
+    { "type": "key", "key": "/" },
+    { "type": "text", "label": "the absence form is its complement", "text": "@@none" },
+    { "type": "assert", "assert": "contains", "value": "Alpha overdue audit" },
+    { "type": "assert", "assert": "not_contains", "value": "Alpha waking at nine" },
+    { "type": "assert", "assert": "not_contains", "value": "Alpha still hidden" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "clear the query", "key": "esc" },
+    { "type": "key", "key": "/" },
+    { "type": "text", "label": "the single sigil still owns the due day beside it", "text": "@overdue" },
+    { "type": "assert", "assert": "contains", "value": "Alpha overdue audit" },
+    { "type": "assert", "assert": "contains", "value": "Alpha overdue rollout" },
+    { "type": "assert", "assert": "not_contains", "value": "Alpha waking at nine" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "restore the ordinary projection", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

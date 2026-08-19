@@ -1,0 +1,34 @@
+{
+  "name": "outliner-set-parent-disabled-rows",
+  "fixture": "rich",
+  "size": "160x55",
+  "actions": [
+    { "type": "command", "label": "open the global Outliner root", "command": "outliner root" },
+    { "type": "key", "label": "search for the task at the top of a subtree", "key": "/" },
+    { "type": "text", "text": "launch platform" },
+    { "type": "key", "label": "accept the temporary search projection", "key": "enter" },
+    { "type": "key", "label": "leave search on the result", "key": "enter" },
+    { "type": "key", "label": "unwind the focus onto the result's ordinary row", "key": "esc" },
+
+    { "type": "key", "label": "open Set Parent", "key": ">" },
+    { "type": "assert", "assert": "contains", "value": "Set Parent: Launch platform" },
+    { "type": "assert", "label": "a refused parent is listed with its reason, not hidden", "assert": "contains", "value": "disabled: task cannot be its own parent" },
+    { "type": "assert", "label": "so is every task inside the edited subtree", "assert": "contains", "value": "disabled: parent #2 is inside the edited task's subtree" },
+    { "type": "assert", "assert": "contains", "value": "disabled: parent #3 is inside the edited task's subtree" },
+    { "type": "assert", "assert": "contains", "value": "disabled: parent #4 is inside the edited task's subtree" },
+    { "type": "assert", "label": "the legal parents carry no reason", "assert": "contains", "value": "Explore social login" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "step onto the task's own row", "key": "down" },
+    { "type": "key", "label": "a disabled row refuses rather than committing", "key": "enter" },
+    { "type": "assert", "label": "the picker is still open", "assert": "contains", "value": "Set Parent: Launch platform" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "abandon the picker", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "nothing moved", "assert": "contains", "value": "Launch platform" },
+    { "type": "assert", "assert": "contains", "value": "User authentication" },
+    { "type": "assert", "assert": "not_contains", "value": "Launch platform  ‹" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

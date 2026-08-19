@@ -7,10 +7,13 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
 	"unicode"
+
+	"github.com/sglavoie/tt/internal/tui"
 )
 
 func TestRetiredProductVocabularyOwnership(t *testing.T) {
@@ -130,6 +133,75 @@ func TestRetiredProductVocabularyOwnership(t *testing.T) {
 			}
 			return true
 		})
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestRetiredFilterChordVocabularyStaysOutOfComments audits comments alone, so an
+// unrelated identifier that happens to spell a retired chord stays legal; only a
+// maintainer being told to press a path dispatch rejects is a failure. The
+// retired set is explicit rather than "every f-prefixed pair the keymap does not
+// bind", because pairs like fn and fg are ordinary variable names.
+func TestRetiredFilterChordVocabularyStaysOutOfComments(t *testing.T) {
+	replacements := map[string]string{
+		"ft":  "f#",
+		"Ft":  "F#",
+		"fp0": "f!0",
+		"fz":  "f@",
+	}
+	live := make(map[string]bool)
+	for _, binding := range tui.SimplifiedInputStrategy().Bindings {
+		if len(binding.Sequence) > 0 {
+			live[strings.Join(binding.Sequence, "")] = true
+		}
+	}
+	patterns := make(map[string]*regexp.Regexp, len(replacements))
+	for retired, replacement := range replacements {
+		if live[retired] {
+			t.Errorf("%q is bound again; drop it from the retired filter vocabulary rather than rejecting a live path", retired)
+		}
+		if !live[replacement] {
+			t.Errorf("%q replaces %q but is not bound by SimplifiedInputStrategy", replacement, retired)
+		}
+		patterns[retired] = regexp.MustCompile(`\b` + regexp.QuoteMeta(retired) + `\b`)
+	}
+
+	fileSet := token.NewFileSet()
+	err := filepath.WalkDir(".", func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			if entry.Name() == ".git" || entry.Name() == "vendor" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if filepath.Ext(path) != ".go" || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		file, parseErr := parser.ParseFile(fileSet, path, nil, parser.ParseComments)
+		if parseErr != nil {
+			return parseErr
+		}
+		for _, group := range file.Comments {
+			for _, comment := range group.List {
+				for retired, pattern := range patterns {
+					if pattern.MatchString(comment.Text) {
+						t.Errorf(
+							"%s:%d: comment names the retired filter chord %q; the live path is %q",
+							filepath.ToSlash(path),
+							fileSet.Position(comment.Slash).Line,
+							retired,
+							replacements[retired],
+						)
+					}
+				}
+			}
+		}
 		return nil
 	})
 	if err != nil {

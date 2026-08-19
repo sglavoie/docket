@@ -11,6 +11,11 @@ import (
 // advertise @overdue while capturing.
 var searchDuePresetNames = []string{"overdue", "today", "week", "none"}
 
+// searchDeferPresetNames are the relational deferral values only search
+// understands. "any" and "none" split the population the deferral instant
+// itself cannot express.
+var searchDeferPresetNames = []string{"any", "none"}
+
 // ParseSearch parses one live search-box value on SurfaceSearch and adds the
 // diagnostics only search can raise: the reserved context name and the
 // placement sigils, which are grammar everywhere else and refusals here. It

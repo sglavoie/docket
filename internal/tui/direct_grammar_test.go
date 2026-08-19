@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
 func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
@@ -36,7 +37,10 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"l": operationCoreExpand, "right": operationCoreExpand,
 		"S": operationCoreToggleSections,
 		"n": operationCoreNextHeader, "N": operationCorePreviousHeader,
-		"<": operationTaskOutdent, ">": operationTaskIndent,
+		"[": operationTaskOutdent, "]": operationTaskIndent,
+		">":           operationTaskSetParent,
+		"<":           operationTaskAdoptChildren,
+		"%":           operationTaskMoveToProject,
 		"shift+enter": operationCoreFocusParent,
 		"ctrl+enter":  operationCorePeek,
 		"/":           operationCoreScopeSearch,
@@ -48,7 +52,7 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"esc": operationCoreBack, "?": operationCoreHelp, "ctrl+c": operationCoreQuit,
 		"tab": operationCoreNextWorkMode, "shift+tab": operationCorePreviousWorkMode,
 		"@": operationTaskSetDueDate,
-		"d": operationTaskSetDefer, "P": operationTaskTogglePin,
+		"*": operationTaskTogglePin,
 		"y": operationTaskCopyTitle, "Y": operationTaskCopyDetails,
 		"ctrl+y": operationTaskCopyTitleDescription,
 	}
@@ -94,13 +98,202 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		}
 	}
 
-	// g became the go-to chord prefix, so cursor-top answers to gg and Home only.
+	// g became the go-to chord prefix, so cursor-top answers to gg and Home only,
+	// and d went with the defer picker when @ absorbed both date fields.
 	for _, removed := range []string{
-		"b", "c", "g", "t", "z", ",", "m", ":", "C", "R", "ctrl+esc",
+		"b", "c", "d", "g", "t", "z", ",", "m", ":", "C", "R", "ctrl+esc",
 	} {
 		if owners := owners[removed]; len(owners) > 0 {
 			t.Errorf("removed key %q still resolves to %s", removed, owners[0])
 		}
+	}
+}
+
+// sigilKeyRoute is how one text-grammar trigger reaches the keyboard.
+type sigilKeyRoute int
+
+const (
+	sigilRootKey sigilKeyRoute = iota
+	sigilChordPrefix
+	sigilPickerOnly
+)
+
+// grammarSigilRoutes pairs every advertised text-grammar trigger with the route
+// the Outliner gives it. The eight keyed sigils are the correspondence itself:
+// the character that writes a field in a capture line is the key that edits it
+// on a row. The three picker-only triggers are named rather than omitted so a
+// new sigil forces a deliberate decision instead of silently passing, and a
+// renamed one breaks the keymap loudly.
+var grammarSigilRoutes = map[string]sigilKeyRoute{
+	"!": sigilChordPrefix,
+	"#": sigilRootKey,
+	"@": sigilRootKey,
+	"$": sigilChordPrefix,
+	"*": sigilRootKey,
+	"%": sigilRootKey,
+	">": sigilRootKey,
+	"<": sigilRootKey,
+	// Two runes are not one key event, and the # picker already unchecks a tag.
+	"-#": sigilPickerOnly,
+	// The trie is prefix-free, so ## and @@ cannot be chords under keys # and @
+	// that already resolve. Both live as modes inside the picker their first
+	// character opens: ## is the context radio, @@ the defer section.
+	"##": sigilPickerOnly,
+	"@@": sigilPickerOnly,
+}
+
+func TestSigilKeysMatchTextGrammarSigils(t *testing.T) {
+	strategy := SimplifiedInputStrategy()
+	rootKeys := make(map[string]OperationID)
+	prefixes := make(map[string]OperationID)
+	for _, binding := range strategy.Bindings {
+		for _, key := range binding.Keys {
+			rootKeys[key] = binding.OperationID
+		}
+		if len(binding.Sequence) > 0 {
+			prefixes[binding.Sequence[0]] = binding.OperationID
+		}
+	}
+
+	declared := make(map[string]bool, len(grammarSigilRoutes))
+	for _, surface := range []textgrammar.Surface{
+		textgrammar.SurfaceCapture,
+		textgrammar.SurfaceEdit,
+		textgrammar.SurfaceOutline,
+		textgrammar.SurfaceSearch,
+	} {
+		for _, definition := range textgrammar.Definitions(surface) {
+			trigger := definition.Trigger
+			if declared[trigger] {
+				continue
+			}
+			declared[trigger] = true
+			route, named := grammarSigilRoutes[trigger]
+			if !named {
+				t.Errorf(
+					"text grammar trigger %q (%s) has no declared keyboard route; bind it or name it picker-only",
+					trigger,
+					definition.Field,
+				)
+				continue
+			}
+			_, isRoot := rootKeys[trigger]
+			_, isPrefix := prefixes[trigger]
+			switch route {
+			case sigilRootKey:
+				if !isRoot {
+					t.Errorf("sigil %q (%s) is not bound as a root key", trigger, definition.Field)
+				}
+				if isPrefix {
+					t.Errorf("sigil %q (%s) is a root key and a chord prefix at once", trigger, definition.Field)
+				}
+			case sigilChordPrefix:
+				if !isPrefix {
+					t.Errorf("sigil %q (%s) is not a chord prefix", trigger, definition.Field)
+				}
+				if isRoot {
+					t.Errorf("sigil %q (%s) is a chord prefix and a root key at once", trigger, definition.Field)
+				}
+			case sigilPickerOnly:
+				if isRoot || isPrefix {
+					t.Errorf(
+						"sigil %q (%s) is documented as picker-only but the keymap binds it",
+						trigger,
+						definition.Field,
+					)
+				}
+			}
+		}
+	}
+	for trigger := range grammarSigilRoutes {
+		if !declared[trigger] {
+			t.Errorf("keyboard route names %q, which the text grammar no longer declares", trigger)
+		}
+	}
+
+	// A retired sigil is recognized only to produce a migration error, so it must
+	// never reach the advertised set the keymap answers to.
+	for _, field := range []textgrammar.Field{textgrammar.FieldTaskType, textgrammar.FieldRecurrence} {
+		if definition, ok := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, field); ok {
+			t.Errorf("retired field %s is advertised as %q", field, definition.Trigger)
+		}
+	}
+}
+
+// TestReviewHasNoDirectKey holds the one sigil the grammar explicitly rejects.
+// $review is a refused destination, so binding a review setter anywhere would
+// teach a route the parser refuses to honor. Review survives as the ordinary
+// review tag, its promoted All-mode lane, and the fr presentation facet.
+func TestReviewHasNoDirectKey(t *testing.T) {
+	registry := registeredSimplifiedOperationRegistry(t)
+	if _, exists := registry.Descriptor(OperationID("tui.task.toggle-review")); exists {
+		t.Error("the retired review setter is registered again")
+	}
+	for _, entry := range taskOperationDescriptorManifest() {
+		if strings.Contains(string(entry.ID), "review") {
+			t.Errorf("task operation manifest lists review setter %s", entry.ID)
+		}
+	}
+	strategy := SimplifiedInputStrategy()
+	for _, binding := range strategy.Bindings {
+		if !strings.Contains(string(binding.OperationID), "review") {
+			continue
+		}
+		if binding.OperationID != operationFilterReview {
+			t.Errorf("%s is bound to %v; review has no setter key", binding.OperationID, binding.paths())
+		}
+	}
+	binding, _, resolution := registry.InputBindingForSequence(
+		InputStrategySimplified,
+		[]string{"f", "r"},
+		simplifiedOperationContext(),
+	)
+	if resolution != ChordTerminal || binding.OperationID != operationFilterReview {
+		t.Fatalf("fr = %s (%v), want %s terminal", binding.OperationID, resolution, operationFilterReview)
+	}
+}
+
+// TestFilterAndSortSecondKeysUseSigilsWhereOneExists keeps the second key of a
+// chord spelled like the field it narrows. A filter over a sigil-carrying field
+// answers to that sigil, and the mnemonic initials those chords used to take are
+// gone rather than kept as aliases.
+func TestFilterAndSortSecondKeysUseSigilsWhereOneExists(t *testing.T) {
+	registry := registeredSimplifiedOperationRegistry(t)
+	ctx := simplifiedOperationContext()
+	for _, testCase := range []struct {
+		sequence []string
+		want     ChordResolution
+	}{
+		{sequence: []string{"f", "!"}, want: ChordPending},
+		{sequence: []string{"f", "!", "1"}, want: ChordTerminal},
+		{sequence: []string{"f", "#"}, want: ChordTerminal},
+		{sequence: []string{"f", "$"}, want: ChordTerminal},
+		{sequence: []string{"f", "@"}, want: ChordTerminal},
+		{sequence: []string{"F", "#"}, want: ChordTerminal},
+		{sequence: []string{"o", "!"}, want: ChordTerminal},
+		{sequence: []string{"o", "@"}, want: ChordTerminal},
+		{sequence: []string{"f", "p"}, want: ChordNoMatch},
+		{sequence: []string{"f", "t"}, want: ChordNoMatch},
+		{sequence: []string{"f", "s"}, want: ChordNoMatch},
+		{sequence: []string{"f", "d"}, want: ChordNoMatch},
+		{sequence: []string{"o", "p"}, want: ChordNoMatch},
+		{sequence: []string{"F", "t"}, want: ChordNoMatch},
+	} {
+		t.Run(strings.Join(testCase.sequence, ""), func(t *testing.T) {
+			_, _, resolution := registry.InputBindingForSequence(
+				InputStrategySimplified,
+				testCase.sequence,
+				ctx,
+			)
+			if resolution != testCase.want {
+				t.Fatalf(
+					"%s = %v, want %v",
+					strings.Join(testCase.sequence, ""),
+					resolution,
+					testCase.want,
+				)
+			}
+		})
 	}
 }
 
@@ -156,48 +349,45 @@ func TestFinalStateChordOwnsEveryStateAndPlanningAction(t *testing.T) {
 		operation OperationID
 		value     any
 		hasValue  bool
+		display   string
 	}
 	got := make(map[string]terminal)
-	gotDisplay := make(map[string]string)
 	gotOrder := make([]string, 0, 10)
 	for _, binding := range strategy.Bindings {
-		if len(binding.Sequence) != 2 || binding.Sequence[0] != "w" {
+		if len(binding.Sequence) != 2 || binding.Sequence[0] != "$" {
 			continue
 		}
 		key := binding.Sequence[1]
 		gotOrder = append(gotOrder, key)
-		gotDisplay[key] = binding.DisplayKey
 		got[key] = terminal{
 			operation: binding.OperationID,
 			value:     binding.PresetValue,
 			hasValue:  binding.HasPresetValue,
+			display:   binding.DisplayKey,
 		}
 	}
+	const stateSpelling = "$i/g/w/p/m/d/c"
 	want := map[string]terminal{
-		"i": {operation: operationTaskSetState, value: models.StateInbox, hasValue: true},
-		"b": {operation: operationCoreBacklog},
-		"n": {operation: operationCoreNext},
-		"t": {operation: operationCoreToday},
-		"g": {operation: operationTaskSetState, value: models.StateDoing, hasValue: true},
-		"r": {operation: operationTaskToggleReview},
-		"w": {operation: operationTaskSetState, value: models.StateWaiting, hasValue: true},
-		"p": {operation: operationTaskSetState, value: models.StatePaused, hasValue: true},
-		"m": {operation: operationTaskSetState, value: models.StateSomeday, hasValue: true},
-		"d": {operation: operationTaskSetState, value: models.StateDone, hasValue: true},
-		"c": {operation: operationTaskSetState, value: models.StateCanceled, hasValue: true},
+		"i": {operation: operationTaskSetState, value: models.StateInbox, hasValue: true, display: stateSpelling},
+		"b": {operation: operationCoreBacklog, display: "$b"},
+		"n": {operation: operationCoreNext, display: "$n"},
+		"t": {operation: operationCoreToday, display: "$t"},
+		"g": {operation: operationTaskSetState, value: models.StateDoing, hasValue: true, display: stateSpelling},
+		"w": {operation: operationTaskSetState, value: models.StateWaiting, hasValue: true, display: stateSpelling},
+		"p": {operation: operationTaskSetState, value: models.StatePaused, hasValue: true, display: stateSpelling},
+		"m": {operation: operationTaskSetState, value: models.StateSomeday, hasValue: true, display: stateSpelling},
+		"d": {operation: operationTaskSetState, value: models.StateDone, hasValue: true, display: stateSpelling},
+		"c": {operation: operationTaskSetState, value: models.StateCanceled, hasValue: true, display: stateSpelling},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("state chord terminals = %v, want %v", got, want)
 	}
-	if wantOrder := []string{"i", "b", "n", "t", "g", "r", "w", "p", "m", "d", "c"}; !reflect.DeepEqual(gotOrder, wantOrder) {
+	if wantOrder := []string{"i", "b", "n", "t", "g", "w", "p", "m", "d", "c"}; !reflect.DeepEqual(gotOrder, wantOrder) {
 		t.Fatalf("state chord terminal order = %v, want %v", gotOrder, wantOrder)
 	}
 	for key, terminal := range want {
 		if !reflect.DeepEqual(got[key], terminal) {
-			t.Errorf("w%s = %+v, want %+v", key, got[key], terminal)
-		}
-		if gotDisplay[key] != "w"+key {
-			t.Errorf("w%s display key = %q, want %q", key, gotDisplay[key], "w"+key)
+			t.Errorf("$%s = %+v, want %+v", key, got[key], terminal)
 		}
 	}
 	for _, binding := range strategy.Bindings {
@@ -217,7 +407,7 @@ func TestDirectTaskGrammarRemainsDocumentedWithoutACursorTarget(t *testing.T) {
 	for _, item := range items {
 		keys[item.Key] = true
 	}
-	for _, key := range []string{"A", "@", "#", "d", "P", "<", ">", "y", "Y", "Ctrl+Y"} {
+	for _, key := range []string{"A", "@", "#", "*", "[", "]", ">", "<", "y", "Y", "Ctrl+Y"} {
 		if !keys[key] {
 			t.Errorf("target-free help omits documented direct key %q", key)
 		}
@@ -267,7 +457,7 @@ func TestTaskOperationsCannotAppearInBothDirectGrammarAndMenu(t *testing.T) {
 	t.Run("unreachable direct-only operation", func(t *testing.T) {
 		candidate := cloneInputStrategy(strategy)
 		candidate.Bindings = slices.DeleteFunc(candidate.Bindings, func(binding OperationKeyBinding) bool {
-			return binding.OperationID == operationTaskSetDefer
+			return binding.OperationID == operationTaskSetDueDate
 		})
 		err := validateTaskOperationOnePath(candidate)
 		if err == nil || !strings.Contains(err.Error(), "direct-only but has no direct binding") {

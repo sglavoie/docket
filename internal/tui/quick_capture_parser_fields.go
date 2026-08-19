@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func (p *quickCaptureParser) applySharedTokens(parsed textgrammar.Result) {
@@ -31,6 +32,10 @@ func (p *quickCaptureParser) applySharedTokens(parsed textgrammar.Result) {
 		return
 	}
 	p.parseDueTokens(parsed.TokensFor(textgrammar.FieldDue))
+	if p.err != nil {
+		return
+	}
+	p.parseDeferTokens(parsed.TokensFor(textgrammar.FieldDefer))
 	if p.err != nil {
 		return
 	}
@@ -174,6 +179,31 @@ func (p *quickCaptureParser) parseDueToken(token textgrammar.Token, parse func(s
 		return
 	}
 	p.result.dueDate = &date
+}
+
+// parseDeferTokens reads the deferral token. The clear value reaches here on
+// purpose: capture does not advertise it, so the refusal names the surface
+// rather than letting @@0 fold into the title.
+func (p *quickCaptureParser) parseDeferTokens(tokens []textgrammar.Token) {
+	definition, ok := textgrammar.DefinitionFor(p.surface, textgrammar.FieldDefer)
+	if !ok {
+		return
+	}
+	for _, token := range tokens {
+		if token.Value == "0" {
+			p.failf("%s%s is not available when capturing; a new task starts without a deferral", definition.Trigger, token.Value)
+			return
+		}
+		instant, err := util.ParseDeferInstant(token.Value)
+		if err != nil {
+			if p.failf("invalid defer: %s", token.Value) {
+				return
+			}
+			continue
+		}
+		p.result.deferSet = true
+		p.result.deferUntil = &instant
+	}
 }
 
 func (p *quickCaptureParser) parseRetiredRecurrenceTokens(tokens []textgrammar.Token) {

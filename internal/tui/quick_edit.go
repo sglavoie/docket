@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 type quickEditParentMode uint8
@@ -37,6 +38,10 @@ type quickEditResult struct {
 	dueDate      *time.Time
 	dueDateSet   bool
 	dueDateClear bool
+
+	deferUntil *time.Time
+	deferSet   bool
+	deferClear bool
 
 	destination    textgrammar.Destination
 	destinationSet bool
@@ -100,7 +105,7 @@ func parseQuickEditShared(input string, task *models.Task, project *models.Proje
 		strict:           strict,
 	}
 	if parser.applyDiagnostics() || parser.applyPriority() || parser.applyTags() || parser.applyContext() ||
-		parser.applyDueDate() || parser.applyDestination() {
+		parser.applyDueDate() || parser.applyDestination() || parser.applyDefer() {
 		return parser.result, parser.errMsg
 	}
 	parser.applyPin()
@@ -222,6 +227,45 @@ func (p *quickEditParser) applyDueDate() bool {
 		return p.setError(fmt.Sprintf("invalid date: %s", token.Value))
 	}
 	p.result.dueDate = &date
+	return false
+}
+
+// applyDefer runs after applyDestination because a deferral carries a lifecycle
+// effect of its own: it refuses a terminal task and otherwise claims Backlog,
+// which is the same route the defer picker and the application layer take. The
+// state it judges is the one this edit produces, so a line that reopens and
+// defers together is measured on its result.
+func (p *quickEditParser) applyDefer() bool {
+	tokens := p.parsed.TokensFor(textgrammar.FieldDefer)
+	if len(tokens) == 0 {
+		return false
+	}
+	token := tokens[0]
+	p.result.deferSet = true
+	if token.Value == "0" {
+		p.result.deferClear = true
+		return false
+	}
+	instant, err := util.ParseDeferInstant(token.Value)
+	if err != nil {
+		return p.setError(fmt.Sprintf("invalid defer: %s", token.Value))
+	}
+	p.result.deferUntil = &instant
+
+	state := models.StateBacklog
+	switch {
+	case p.result.destinationSet:
+		state = p.result.destination.WorkflowState()
+	case p.task != nil:
+		state = p.task.State()
+	}
+	if state.IsTerminal() {
+		return p.setError(fmt.Sprintf("cannot defer a %s task", state))
+	}
+	p.result.destination = textgrammar.DestinationBacklog
+	p.result.destinationSet = true
+	p.result.state = models.StateBacklog
+	p.result.stateSet = true
 	return false
 }
 
@@ -793,6 +837,12 @@ func buildQuickEditPreview(result *quickEditResult, task *models.Task, project *
 		preview.DueDate = result.dueDate
 		if result.dueDateClear {
 			preview.DueDate = nil
+		}
+	}
+	if result.deferSet {
+		preview.DeferredUntil = result.deferUntil
+		if result.deferClear {
+			preview.DeferredUntil = nil
 		}
 	}
 	if result.pinnedSet {

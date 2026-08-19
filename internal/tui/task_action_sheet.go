@@ -163,12 +163,6 @@ func taskActionDisabledReason(
 	descriptor OperationDescriptor,
 	context CommandContext,
 ) string {
-	if descriptor.ID == operationTaskSetDefer {
-		switch context.Entity.State {
-		case "done", "canceled":
-			return "terminal tasks cannot be deferred"
-		}
-	}
 	if descriptor.Risk == OperationRiskMutation && context.Entity.Archived {
 		return "project is archived"
 	}

@@ -41,7 +41,7 @@ type ProjectFilterState struct {
 	Untagged bool
 
 	// ParkedMode is the parked population axis. Fp, FP, and the parked row inside
-	// Ft all write this one field, so the routes cannot disagree.
+	// F# all write this one field, so the routes cannot disagree.
 	ParkedMode projectPopulationMode
 
 	// ArchivedMode is the archived population axis. It composes with ParkedMode

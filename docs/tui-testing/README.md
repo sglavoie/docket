@@ -108,28 +108,35 @@ ctrl+enter
 The final public grammar is:
 
 ```text
-Tab/Shift+Tab                    All, Today, Inbox, Next, Backlog, Due
-j/k h/l S g/G Ctrl+U/Ctrl+D      navigation
+Tab/Shift+Tab                    All, Today, Inbox, Next, Backlog, Due, Recent
+ga gi gt gn gb g@ gr             go-to chord, one key per mode
+j/k h/l S gg/G Ctrl+U/Ctrl+D     navigation
 H/M/L                            cursor to top/middle/bottom of screen
 zt zz zb                         cursor row to top/middle/bottom of screen
 n/N                              next/previous grouping header, wrapping
-Ctrl+O/Ctrl+I                     older/newer relocated-task positions
+Ctrl+O/Ctrl+I                    older/newer relocated-task positions
 Ctrl+L                           Recent, focused on the newest activity
 Ctrl+P                           the cursor task's project, in All
 a/A e/E Ctrl+E O                 capture and edit
-wi wb wn wt wg wr ww wp wm wd wc    workflow chord
-!0-3 @ # d P                    metadata
-< > J K                          structure
-y Y Ctrl+Y                      clipboard
-v V Ctrl+A Space                selection and actions
-Enter Shift+Enter Ctrl+Enter    Focus, widen focus, and Peek
-x                               tick the checklist item under the cursor
+$i $b $n $t $g $w $p $m $d $c    workflow chord
+!0-3 @ # *                       metadata
+[ ] > < % J K Ctrl+J Ctrl+K      structure
+y Y Ctrl+Y                       clipboard
+v V Ctrl+A Space                 selection and actions
+Enter Shift+Enter Ctrl+Enter     Focus, widen focus, and Peek
+x                                tick the checklist item under the cursor
 p Ctrl+N T / ? u Ctrl+R Esc Ctrl+C   global
-fp0-3 fs fc ft fr f@ fd fx      filters
+f!0-3 f$ fc f# fr f@ fh fx       filters
+F# Fp FP Fa FA Fx                project population filters
+o@ o! oc ou ot ox                sort axis
 ```
 
-The old standalone `b`, `d`, and `t` actions and comma state prefix are
-intentionally unbound, as are `c`, `m`, `:`, `R`, and `Ctrl+Esc`.
+The metadata keys are the capture sigils themselves: `@` opens the one picker
+holding both the due date and the deferral, and `#` opens the one picker holding
+both tags and the task context, so neither `@@` nor `##` is a key sequence. The
+old standalone `b`, `d`, and `t` actions and comma state prefix are
+intentionally unbound, as are `c`, `m`, `w`, `P`, `:`, `C`, `R`, and
+`Ctrl+Esc`.
 
 The presentation grammar is also part of the scenario contract. Full-screen
 titles stay on one row and carry the workspace pulse; browse guidance uses one
@@ -166,11 +173,11 @@ The committed suite exercises the product contracts directly:
 | Contract | Representative scenarios |
 | --- | --- |
 | Fresh install and protected-Unfiled routing | `fresh-install-default.json`, `fresh-install-capture.json`, `capture-grammar.json` |
-| Inbox triage through the unified `s` state/planning chord | `daily-loop.json`, `state-chord.json` |
+| Inbox triage through the unified `$` state/planning chord | `daily-loop.json`, `state-chord.json`, `workflow-chord-destinations.json` |
 | Six modes and navigation aliases | `mode-catalog.json`, `navigate-outliner.json`, `outliner-navigation-aliases.json` |
 | Header-to-header jumps, wrapping, and the headerless refusal | `outliner-header-jump.json` |
 | Priority, workflow, deferred, and clear filters | `filter-chord-priority.json`, `filter-chord-states.json`, `filter-chord-clear.json` |
-| Hour-granular deferral presets, `+Nh` typed entry, and the defer-only refusal | `defer-hour-presets.json`, `defer-picker-direct.json`, `defer-custom-entry-bulk.json`, `date-custom-entry.json`, `defer-wake-marker.json` |
+| One `@` picker over due and defer, hour-granular deferral presets, `+Nh` typed entry, and the terminal-task defer refusal | `defer-hour-presets.json`, `defer-picker-direct.json`, `defer-custom-entry-bulk.json`, `date-custom-entry.json`, `defer-wake-marker.json`, `date-picker-terminal-task.json`, `due-picker-direct.json` |
 | Scope and project administration | `project-hub-*.json`, `project-*.json` |
 | Workspace-wide Notes, scope, search, and location pickers | `notes-tool.json`, `notes-scope-picker.json`, `notes-search.json`, `notes-location-pickers.json`, `global-notes-resize-minimum-layout.json` |
 | Comments and attachments | `rich-tools.json` |
@@ -189,8 +196,9 @@ The committed suite exercises the product contracts directly:
 | Project tags on the shared `#` key, with parked confirm and recovery | `project-tags-picker.json`, `project-park-confirm-and-recover.json` |
 | Project picker multi-select and bulk tag actions | `project-hub-bulk-tag-selection.json` |
 | Cleanup plus workspace undo/redo | `cleanup-undo-redo.json` |
-| Semantic task tag split, seeded in `#` and usage-derived in `ft` | `semantic-task-tags-split.json`, `tags-picker-direct.json` |
-| Planning membership outranking the Review lane, so `wn` moves one row | `review-lane-planning-precedence.json` |
+| Semantic task tag split, seeded in `#` and usage-derived in `f#` | `semantic-task-tags-split.json`, `tags-picker-direct.json` |
+| Context radio inside `#`, its inline mint, and one undo over a simultaneous tag and context change | `tags-picker-context-radio.json`, `tags-picker-context-mint.json` |
+| Planning membership outranking the Review lane, so `$n` moves one row | `review-lane-planning-precedence.json` |
 | Semantic colors in both themes | `theme-toggle.json` plus `semantic_tag_title_style_test.go` |
 | Deterministic launch and duplicate-submit hardening | `app_deterministic_startup_test.go`, `task_composer_test.go`, `task_form_save_create_test.go`, `task_form_save_edit_test.go` |
 | Generated operation help and retired-key absence | `in-app-help.json`, `mode-catalog.json` |

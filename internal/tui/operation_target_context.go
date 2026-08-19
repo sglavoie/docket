@@ -39,7 +39,6 @@ func (m *AppModel) operationCommandContext() CommandContext {
 		ctx.Entity = EntityContext{
 			ProjectID: project.ID,
 			TaskID:    task.ID,
-			State:     string(task.State()),
 			Archived:  project.Archived,
 		}
 	case header != nil:
@@ -121,7 +120,6 @@ func (m *OutlinerModel) operationCommandContext() CommandContext {
 		ctx.Entity = EntityContext{
 			ProjectID: project.ID,
 			TaskID:    task.ID,
-			State:     string(task.State()),
 			Archived:  project.Archived,
 		}
 	} else if header := m.cursorProjectHeaderProject(); header != nil {
@@ -197,7 +195,6 @@ func taskOperationEntity(task *models.Task, project *models.Project) EntityConte
 	return EntityContext{
 		ProjectID: project.ID,
 		TaskID:    task.ID,
-		State:     string(task.State()),
 		Archived:  project.Archived,
 	}
 }

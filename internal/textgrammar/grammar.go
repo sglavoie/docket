@@ -32,6 +32,7 @@ const (
 	FieldRemoveTag   Field = "remove_tag"
 	FieldContext     Field = "context"
 	FieldDue         Field = "due"
+	FieldDefer       Field = "defer"
 	FieldRecurrence  Field = "recurrence"
 	FieldTaskType    Field = "type"
 	FieldParent      Field = "parent"
@@ -173,8 +174,29 @@ var registry = []definitionSpec{
 			{Text: "@date", Surfaces: allSurfaces},
 			{Text: "@0", Surfaces: SurfaceEdit},
 		},
-		pattern:           `(?i)(?:^|\s)@(next\s+\w+|in\s+\d+\s+\w+|\S+)`,
+		// The last alternative refuses a leading @ so @@ can never be consumed here,
+		// whatever order the registry is walked in. No legal due value starts with @.
+		pattern:           `(?i)(?:^|\s)@(next\s+\w+|in\s+\d+\s+\w+|[^\s@]\S*)`,
 		searchDescription: "Match a due bucket or exact due day",
+	},
+	{
+		Definition: Definition{
+			Field: FieldDefer, Group: "Schedule", Trigger: "@@",
+			Description: "Defer task until a later instant",
+			Values: []string{
+				"+2h", "+8h", "tomorrow", "+1d", "+3d", "+1w", "monday", "friday",
+			},
+			Examples:    []string{"@@+2h", "@@tomorrow", "@@+3d"},
+			Surfaces:    SurfaceCapture | SurfaceEdit | SurfaceSearch,
+			Cardinality: CardinalitySingleton,
+			Clears:      []ClearOperation{{Value: clearValue, Description: "Clear deferral", Surfaces: SurfaceEdit}},
+		},
+		forms: []surfaceForm{
+			{Text: "@@defer", Surfaces: SurfaceCapture | SurfaceEdit | SurfaceSearch},
+			{Text: "@@0", Surfaces: SurfaceEdit},
+		},
+		pattern:           `(?i)(?:^|\s)@@(next\s+\w+|in\s+\d+\s+\w+|\S+)`,
+		searchDescription: "Match tasks deferred until that day",
 	},
 	{
 		Definition: Definition{

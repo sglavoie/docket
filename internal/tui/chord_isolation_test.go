@@ -66,7 +66,7 @@ func TestAbandonedChordNamesThePathItLeft(t *testing.T) {
 		sequence []string
 		want     string
 	}{
-		{sequence: []string{"w", "q"}, want: "wq is not a workflow action"},
+		{sequence: []string{"$", "q"}, want: "$q is not a workflow action"},
 		{sequence: []string{"f", "q"}, want: "fq is not a filter action"},
 		{sequence: []string{"F", "q"}, want: "Fq is not a project filter action"},
 	} {
@@ -88,20 +88,37 @@ func TestAbandonedChordNamesThePathItLeft(t *testing.T) {
 	}
 }
 
-// TestUnboundRootKeyStaysSilent keeps the chord-miss status scoped to abandoned
-// chords. A root key never promised anything, so explaining it would turn every
-// stray keystroke into a message.
-func TestUnboundRootKeyStaysSilent(t *testing.T) {
+// TestRetiredRootKeysStaySilentlyUnbound keeps the chord-miss status scoped to
+// abandoned chords. A root key never promised anything, so explaining it would
+// turn every stray keystroke into a message. The table holds the keys the sigil
+// grammar retired beside a key that was never bound at all, because a retired
+// key has to be as silent as an unknown one: a shim that answered w or P would
+// keep two vocabularies alive.
+func TestRetiredRootKeysStaySilentlyUnbound(t *testing.T) {
+	strategy := SimplifiedInputStrategy()
 	app := headerTargetAuditApp(t)
-	app.statusMessage = ""
-	key, err := parseUITestKey("q")
-	if err != nil {
-		t.Fatalf("parse q: %v", err)
-	}
-	if handled, cmd := app.handleSimplifiedInputKey(key); !handled || cmd != nil {
-		t.Fatalf("unbound root key q = handled %v, cmd %v; want consumed no-op", handled, cmd)
-	}
-	if app.statusMessage != "" {
-		t.Fatalf("unbound root key set status %q", app.statusMessage)
+	for _, name := range []string{
+		"w", "P", "d", "b", "t", "c", "m", ":", "C", "R", ",", "q",
+	} {
+		t.Run(name, func(t *testing.T) {
+			for _, binding := range strategy.Bindings {
+				for _, path := range binding.paths() {
+					if len(path) == 1 && path[0] == name {
+						t.Fatalf("retired root key %q is bound to %s", name, binding.OperationID)
+					}
+				}
+			}
+			app.statusMessage = ""
+			key, err := parseUITestKey(name)
+			if err != nil {
+				t.Fatalf("parse %q: %v", name, err)
+			}
+			if handled, cmd := app.handleSimplifiedInputKey(key); !handled || cmd != nil {
+				t.Fatalf("unbound root key %q = handled %v, cmd %v; want consumed no-op", name, handled, cmd)
+			}
+			if app.statusMessage != "" {
+				t.Fatalf("unbound root key %q set status %q", name, app.statusMessage)
+			}
+		})
 	}
 }

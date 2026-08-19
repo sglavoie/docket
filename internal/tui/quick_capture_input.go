@@ -27,6 +27,7 @@ const (
 	acModeProject            // Completing a %project
 	acModePin                // Completing a *pin
 	acModeContext            // Completing a ##context
+	acModeDefer              // Completing a @@defer
 )
 
 // acVisibleCount is the number of suggestions visible at once (scrollable window size)
@@ -51,6 +52,8 @@ type quickCaptureResult struct {
 	tags              []string
 	context           string
 	dueDate           *time.Time
+	deferUntil        *time.Time
+	deferSet          bool
 	parentID          *string
 	children          []capturedChildRef
 	destination       app.CaptureDestination
@@ -164,6 +167,8 @@ func autocompleteModeForField(field textgrammar.Field) int {
 		return acModePriority
 	case textgrammar.FieldDue:
 		return acModeDate
+	case textgrammar.FieldDefer:
+		return acModeDefer
 	case textgrammar.FieldDestination:
 		return acModeDestination
 	case textgrammar.FieldProject:
@@ -375,6 +380,8 @@ func (q *quickCaptureInput) refreshAutocomplete() {
 		items = q.getPrioritySuggestions(partial)
 	case acModeDate:
 		items = q.getDateSuggestions(partial)
+	case acModeDefer:
+		items = q.getDeferSuggestions(partial)
 	case acModeDestination:
 		items = q.getDestinationSuggestions(partial)
 	case acModeProject:
@@ -395,6 +402,8 @@ func autocompleteSingletonField(mode int) (textgrammar.Field, bool) {
 		return textgrammar.FieldPriority, true
 	case acModeDate:
 		return textgrammar.FieldDue, true
+	case acModeDefer:
+		return textgrammar.FieldDefer, true
 	case acModeDestination:
 		return textgrammar.FieldDestination, true
 	case acModeProject:
@@ -539,14 +548,24 @@ func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	pinnedDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldPinned)
 
 	destination := app.CaptureDestinationInbox
-	destinationLabel := destinationDefinition.Trigger + string(destination) + " (default)"
 	if q.preview.parentID != nil {
 		destination = app.CaptureDestinationBacklog
-		destinationLabel = destinationDefinition.Trigger + string(destination) + " (default)"
 	}
 	if q.preview.destinationSet {
 		destination = q.preview.destination
-		destinationLabel = destinationDefinition.Trigger + string(destination)
+	}
+	// The deferral route runs through the same helper the submitted request uses,
+	// so the preview never promises a landing place the capture will not honor.
+	deferred := false
+	if routed := composerDeferredDestination(q.preview, destination); routed != destination {
+		destination, deferred = routed, true
+	}
+	destinationLabel := destinationDefinition.Trigger + string(destination)
+	switch {
+	case deferred:
+		destinationLabel += " (deferred)"
+	case !q.preview.destinationSet:
+		destinationLabel += " (default)"
 	}
 	routeChunks := []string{destination.WorkflowState().Icon() + " " + destinationLabel}
 	if q.preview.targetProjectName != "" {
@@ -568,6 +587,10 @@ func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	var scheduleChunks []string
 	if q.preview.dueDate != nil {
 		scheduleChunks = append(scheduleChunks, dueDefinition.Trigger+q.preview.dueDate.Format("Jan 2"))
+	}
+	if q.preview.deferUntil != nil {
+		deferDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDefer)
+		scheduleChunks = append(scheduleChunks, deferDefinition.Trigger+formatDeferDate(*q.preview.deferUntil, time.Now()))
 	}
 	if len(scheduleChunks) > 0 {
 		groups = append(groups, previewGroup{label: "Schedule", chunks: scheduleChunks})

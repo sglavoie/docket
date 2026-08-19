@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/models"
 )
 
 // contextActionTestDescriptor is a global, value-free operation so engine tests
@@ -351,7 +349,7 @@ func TestContextActionSheetTaskAdapterKeepsStableItemIdentity(t *testing.T) {
 	sheet, err := NewTaskActionSheetModel(
 		registry,
 		NewOperationExecutor(registry),
-		taskActionTestContext(models.StateBacklog),
+		taskActionTestContext(),
 		"Selected task",
 	)
 	if err != nil {

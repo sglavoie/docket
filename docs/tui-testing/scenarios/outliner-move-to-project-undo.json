@@ -1,0 +1,30 @@
+{
+  "name": "outliner-move-to-project-undo",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "step onto Client Alpha's only task", "key": "j" },
+    { "type": "key", "key": "j" },
+
+    { "type": "key", "label": "open Move to Project", "key": "%" },
+    { "type": "assert", "assert": "contains", "value": "Move to Project: Alpha migration kickoff" },
+    { "type": "assert", "label": "every other available project is a destination", "assert": "contains", "value": "Client Beta  [client-beta]" },
+    { "type": "assert", "assert": "contains", "value": "Unfiled  [unfiled]" },
+    { "type": "assert", "label": "the task's own project is not", "assert": "not_contains", "value": "Client Alpha  [client-alpha]" },
+
+    { "type": "key", "label": "choose Client Beta", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the ledger entry names the move, not the request that carried it", "assert": "status_contains", "value": "Move to Project: #2 Alpha migration kickoff → client-beta" },
+    { "type": "assert", "assert": "contains", "value": "[client-beta] (2)" },
+
+    { "type": "key", "label": "undo names the same action back", "key": "u" },
+    { "type": "assert", "assert": "status_contains", "value": "Undid: Move to Project: #2 Alpha migration kickoff → client-beta" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "[client-alpha] (1)" },
+
+    { "type": "key", "label": "redo the same transaction", "key": "ctrl+r" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "[client-beta] (2)" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

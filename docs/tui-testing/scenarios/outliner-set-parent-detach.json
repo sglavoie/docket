@@ -1,0 +1,33 @@
+{
+  "name": "outliner-set-parent-detach",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "command", "label": "open the global Outliner root", "command": "outliner root" },
+    { "type": "key", "label": "search for a task that already has a parent", "key": "/" },
+    { "type": "text", "text": "login form" },
+    { "type": "key", "label": "accept the temporary search projection", "key": "enter" },
+    { "type": "key", "label": "leave search on the result", "key": "enter" },
+    { "type": "key", "label": "unwind the focus onto the result's ordinary row", "key": "esc" },
+    { "type": "assert", "label": "the child names the parent rendered in another section", "assert": "contains", "value": "Build login form  ‹" },
+
+    { "type": "key", "label": "open Set Parent", "key": ">" },
+    { "type": "assert", "assert": "contains", "value": "Set Parent: Build login form" },
+    { "type": "assert", "assert": "contains", "value": "No parent (project root)" },
+
+    { "type": "key", "label": "step up from the preselected current parent", "key": "up" },
+    { "type": "key", "label": "onto the detach row", "key": "up" },
+    { "type": "key", "label": "commit the detach, which is what >0 says", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "status_contains", "value": "Reparent Task" },
+    { "type": "assert", "label": "the task is a project root now, so it names no parent", "assert": "not_contains", "value": "Build login form  ‹" },
+    { "type": "assert", "assert": "contains", "value": "Build login form" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "undo the detach", "key": "u" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the parent edge comes back unchanged", "assert": "contains", "value": "Build login form  ‹" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

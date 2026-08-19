@@ -1,7 +1,7 @@
 {
   "name": "outliner-inline-edit-child-adoption",
   "fixture": "rich",
-  "size": "100x35",
+  "size": "120x35",
   "actions": [
     { "type": "key", "label": "go to Backlog", "key": "g" },
     { "type": "key", "key": "b" },
@@ -9,7 +9,8 @@
     { "type": "key", "label": "step onto User authentication", "key": "j" },
     { "type": "key", "label": "edit the row in place", "key": "e" },
     { "type": "assert", "assert": "contains", "value": "EDIT TASK" },
-    { "type": "assert", "label": "the edit grammar advertises the seventh sigil", "assert": "contains", "value": "<child adopt" },
+    { "type": "assert", "label": "the edit grammar advertises the structural sigil", "assert": "contains", "value": "<child adopt" },
+    { "type": "assert", "label": "and the deferral sigil beside it", "assert": "contains", "value": "@@defer/@@0 defer" },
 
     { "type": "text", "label": "<0 is an ordinary unresolvable reference, never a clear", "text": " <0" },
     { "type": "key", "key": "enter" },

@@ -176,6 +176,13 @@ func parseOutlineBodies(structural []outlineBufferLine, project *models.Project)
 			})
 			forbidden = true
 		}
+		if len(structuralTokens.TokensFor(textgrammar.FieldDefer)) > 0 {
+			errs = append(errs, lineError{
+				line:    item.sourceLine,
+				message: "the outline buffer cannot defer; remove the @@defer sigil",
+			})
+			forbidden = true
+		}
 		if forbidden {
 			continue
 		}

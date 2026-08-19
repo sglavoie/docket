@@ -52,8 +52,13 @@ type TaskOperationRequest struct {
 	TagPatch     bool
 	TagsToAdd    []string
 	TagsToRemove []string
-	Tag          string
-	Pinned       bool
+	// ContextSet makes SetTags also write the singleton task context in the same
+	// transaction, so a simultaneous tag and context edit is one undo entry. An
+	// empty Context clears the field.
+	ContextSet bool
+	Context    string
+	Tag        string
+	Pinned     bool
 }
 
 // TaskClipboardProjection is application-owned clipboard text. The application
@@ -157,10 +162,11 @@ func (s *Service) ExecuteTaskOperation(req TaskOperationRequest) (TaskOperationR
 			result BulkResult
 			err    error
 		)
+		edit := taskContextEdit{Set: req.ContextSet, Value: req.Context}
 		if req.TagPatch {
-			result, err = s.BulkPatchTagsByLocators(req.Targets, req.TagsToAdd, req.TagsToRemove)
+			result, err = s.bulkPatchTags(req.Targets, req.TagsToAdd, req.TagsToRemove, edit)
 		} else {
-			result, err = s.BulkSetTagsByLocators(req.Targets, req.Tags)
+			result, err = s.bulkSetTags(nil, req.Targets, req.Tags, edit)
 		}
 		return bulkTaskOperationResult(result, err)
 

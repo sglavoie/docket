@@ -1,0 +1,44 @@
+{
+  "name": "tags-picker-context-radio",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "search for the one task carrying a context", "key": "/" },
+    { "type": "text", "text": "password" },
+    { "type": "key", "label": "Enter exits search onto the result", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "Add password validation" },
+
+    { "type": "key", "label": "the tag key now opens tags and the context together", "key": "#" },
+    { "type": "assert", "assert": "contains", "value": "Set Tags & Context: Add password validation" },
+    { "type": "assert", "label": "the context the task already carries is the checked radio row", "assert": "contains", "value": "[x] ##platform" },
+    { "type": "assert", "label": "the clear row is offered beside it", "assert": "contains", "value": "[ ] No context" },
+    { "type": "assert", "assert": "contains", "value": "# set context" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "jump to the context section, whose first row clears the field", "key": "c" },
+    { "type": "assert", "assert": "contains", "value": "› [ ] No context" },
+    { "type": "key", "label": "radio-select the clear row", "key": "#" },
+    { "type": "assert", "assert": "contains", "value": "› [x] No context" },
+    { "type": "assert", "label": "the context is single-valued, so the old row gives up its check", "assert": "contains", "value": "[ ] ##platform" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "the taller picker still fits the minimum layout", "width": 72, "height": 20 },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "width": 100, "height": 35 },
+
+    { "type": "key", "label": "apply the cleared context", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "the row loses its context badge", "assert": "not_contains", "value": "[platform]" },
+    { "type": "assert", "label": "the tags the picker did not touch survive", "assert": "contains", "value": "Add password validation" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "one undo restores the context", "key": "u" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "[platform]" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

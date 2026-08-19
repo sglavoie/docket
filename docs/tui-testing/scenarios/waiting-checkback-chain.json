@@ -6,7 +6,7 @@
     { "type": "key", "key": "j" },
     { "type": "key", "label": "move the cursor onto the Doing task", "key": "j" },
 
-    { "type": "key", "label": "hold the workflow prefix", "key": "w" },
+    { "type": "key", "label": "hold the workflow prefix", "key": "$" },
     { "type": "key", "label": "block the task on someone else", "key": "w" },
     { "type": "wait" },
     { "type": "assert", "label": "the check-back is asked for while the answer is known", "assert": "contains", "value": "Set Due Date" },
@@ -22,7 +22,7 @@
     { "type": "key", "label": "go back to the top of the Outliner", "key": "home" },
     { "type": "key", "key": "j" },
     { "type": "key", "label": "move the cursor onto the Inbox task", "key": "j" },
-    { "type": "key", "key": "w" },
+    { "type": "key", "key": "$" },
     { "type": "key", "label": "block this one too", "key": "w" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "Set Due Date" },

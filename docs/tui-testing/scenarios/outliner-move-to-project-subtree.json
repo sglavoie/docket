@@ -1,0 +1,28 @@
+{
+  "name": "outliner-move-to-project-subtree",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "go to Backlog", "key": "g" },
+    { "type": "key", "key": "b" },
+    { "type": "key", "label": "step onto Launch platform", "key": "j" },
+    { "type": "key", "label": "step onto User authentication", "key": "j" },
+
+    { "type": "key", "label": "open Move to Project", "key": "%" },
+    { "type": "assert", "assert": "contains", "value": "Move to Project: User authentication" },
+    { "type": "assert", "label": "the project the task already lives in is not a destination", "assert": "not_contains", "value": "Rich Project" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "choose the system Inbox", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the destination minted its own ShortID for the moved root", "assert": "status_contains", "value": "Move to Project: #1 User authentication → unfiled" },
+    { "type": "assert", "label": "the root and its backlog child left together", "assert": "contains", "value": "[unfiled] (2)" },
+    { "type": "assert", "label": "the ancestor that was not selected stayed behind", "assert": "contains", "value": "[rich-project] (1)" },
+
+    { "type": "key", "label": "back to All", "key": "g" },
+    { "type": "key", "key": "a" },
+    { "type": "assert", "label": "the Doing child moved too, so the destination now owns rows in two lanes", "assert": "count_contains", "value": "[unfiled]", "count": 2 },
+    { "type": "assert", "label": "and it still hangs under a parent", "assert": "contains", "value": "Build login form  ‹" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

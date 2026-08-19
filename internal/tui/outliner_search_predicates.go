@@ -17,6 +17,15 @@ type searchDuePredicate struct {
 	hasDay    bool
 }
 
+// searchDeferPredicate is either one population split or one exact day. A
+// deferral is an instant, so the day compare is what makes @@+2h and @@today
+// name the same set.
+type searchDeferPredicate struct {
+	day      time.Time
+	hasDay   bool
+	presence int // 0 none, +1 @@any, -1 @@none
+}
+
 // searchPredicates is the compiled sigil gate for one search query. It is
 // deliberately built without a fuzzy.Matcher: the case-relaxation retry re-runs
 // the scoring pass, and a gate that read the matcher could admit a different set
@@ -27,6 +36,7 @@ type searchPredicates struct {
 	excludedTags   []string
 	contexts       []string
 	due            searchDuePredicate
+	deferral       searchDeferPredicate
 	destination    textgrammar.Destination
 	hasDestination bool
 	pinned         int // 0 none, +1 *pin, -1 *unpin
@@ -62,6 +72,8 @@ func (m *OutlinerModel) compileSearchQuery(projects []*models.Project) (string, 
 			predicates.contexts = append(predicates.contexts, normalizeSearchTagPrefix(token.Value))
 		case textgrammar.FieldDue:
 			predicates.due = compileSearchDue(token.Value)
+		case textgrammar.FieldDefer:
+			predicates.deferral = compileSearchDefer(token.Value, predicates.now)
 		case textgrammar.FieldDestination:
 			predicates.setDestination(token.Value, projects, m)
 		case textgrammar.FieldPinned:
@@ -131,6 +143,20 @@ func compileSearchDue(value string) searchDuePredicate {
 	return searchDuePredicate{day: day, hasDay: true}
 }
 
+func compileSearchDefer(value string, now time.Time) searchDeferPredicate {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "any":
+		return searchDeferPredicate{presence: 1}
+	case "none":
+		return searchDeferPredicate{presence: -1}
+	}
+	instant, err := util.ParseDeferInstantAt(value, now)
+	if err != nil {
+		return searchDeferPredicate{}
+	}
+	return searchDeferPredicate{day: instant, hasDay: true}
+}
+
 // normalizeSearchTagPrefix runs the prefix through the same kebab normalization
 // the stored tag went through, so #source:github matches the tag persisted as
 // source-github rather than nothing.
@@ -180,7 +206,7 @@ func (p *searchPredicates) admits(task *models.Task, project *models.Project) bo
 	if p.pinned < 0 && task.Pinned {
 		return false
 	}
-	if !p.admitsTags(task) || !p.admitsContext(task) || !p.admitsDue(task) {
+	if !p.admitsTags(task) || !p.admitsContext(task) || !p.admitsDue(task) || !p.admitsDeferral(task) {
 		return false
 	}
 	return p.admitsDestination(task, project)
@@ -227,6 +253,24 @@ func (p *searchPredicates) admitsDue(task *models.Task) bool {
 	}
 }
 
+// admitsDeferral splits the population the way the deferred filter facet does:
+// a lapsed deferral keeps its instant but is no longer deferred, so @@any names
+// the tasks currently hidden and @@none everything else. The day form is
+// deliberately literal instead, since a query naming a wake day is asking about
+// the instant itself.
+func (p *searchPredicates) admitsDeferral(task *models.Task) bool {
+	switch {
+	case p.deferral.presence > 0:
+		return task.IsDeferredAt(p.now)
+	case p.deferral.presence < 0:
+		return !task.IsDeferredAt(p.now)
+	case p.deferral.hasDay:
+		return task.DeferredUntil != nil && util.DaysBetween(p.deferral.day, *task.DeferredUntil) == 0
+	default:
+		return true
+	}
+}
+
 func (p *searchPredicates) admitsDestination(task *models.Task, project *models.Project) bool {
 	if !p.hasDestination {
 		return true
@@ -242,7 +286,7 @@ func (p *searchPredicates) admitsDestination(task *models.Task, project *models.
 	}
 }
 
-// taskCarriesTagPrefix matches over normalized tag names only. The ft facet's
+// taskCarriesTagPrefix matches over normalized tag names only. The f# facet's
 // taskMatchesTagFacet deliberately conflates tags and contexts; search keeps the
 // two axes apart because it offers a separate sigil for each.
 func taskCarriesTagPrefix(task *models.Task, prefix string) bool {

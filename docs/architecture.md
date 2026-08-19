@@ -214,14 +214,19 @@ a checklist cursor refuses `v`, `V`, and `Ctrl+A`, and entering selection from a
 task row suppresses any open checklist rows while leaving the map untouched,
 which is what lets `Esc` restore the same rows.
 
-A checklist row owns six operations of its own — Toggle, Edit, Move Down, Move
-Up, Add, and an actions menu holding Edit and Delete — registered in
+A checklist row owns nine operations of its own — Toggle Item, Edit Item, Move
+Item Down, Move Item Up, Move Item to Bottom, Move Item to Top, Add Item,
+Checklist Actions, and Delete Item — registered in
 `checklist_row_operations.go` as ordinary descriptors that apply only under a
-checklist cursor. All six reuse the key their task-row counterpart holds, which
-works because resolution takes the first applicable binding and the two are
-disjoint by cursor. The refusal that keeps them disjoint is one predicate,
-`operationRefusedOnChecklistRow`, read by `OperationDescriptor.Applicable` for
-key resolution, help, and footer hints, and again by `OperationExecutor.Execute`
+checklist cursor. Eight of them reuse the key their task-row counterpart holds
+— `x`, `e`, `J`, `K`, `Ctrl+J`, `Ctrl+K`, `A`, and `Space` — which works
+because resolution takes the first applicable binding and the two are disjoint
+by cursor. Delete Item is the ninth and answers no key at all: it reaches the
+user only from the `Space` menu that Checklist Actions opens, behind the
+executor's destructive confirmation. The refusal that keeps them disjoint is one
+predicate, `operationRefusedOnChecklistRow`, read by
+`OperationDescriptor.Applicable` for key resolution, help, and footer hints,
+and again by `OperationExecutor.Execute`
 so a non-keyboard route refuses identically. It stays out of the descriptor's
 `Applicability` field so an unconditional descriptor keeps looking
 unconditional to the registry's static direct-key collision check. The predicate
@@ -332,9 +337,12 @@ identity suppression set, so promoted tasks appear only once.
 Review similarly promotes open tasks carrying the ordinary `review` tag, after
 Doing. Claim order and draw order are different things: the Review lane draws
 after Doing, but claims a row only after Pinned, Today, and Next have taken
-theirs. A deliberate planning commitment outranks a descriptive tag, so `wn` on
+theirs. A deliberate planning commitment outranks a descriptive tag, so `$n` on
 a review-tagged row visibly moves it into Next rather than appearing to copy it.
-The projection does not change lifecycle or planning.
+The projection does not change lifecycle or planning. The tag itself is set from
+the `#` picker and nowhere else: the lane has no key of its own, because
+`$review` is a rejected destination and a `$r` terminal would contradict the
+parser.
 
 #### Row indicators
 
@@ -482,18 +490,31 @@ applicability, target cardinality, risk, value provider, and capabilities.
 confirmation, and invokes the bound handler.
 
 A value provider is exactly one of `textEntry()` (a separate overlay),
-`tagEntry()` (inline add mode), `dateEntry()` (inline add mode), or a plain list.
+`tagEntry()` (inline add mode), `dateEntry()` (inline add mode), or a plain list
+such as `ValueProviderParent`.
 Inline modes bind `a` inside `OperationValuePickerModel` and must emit the same
 value type the provider's preset rows carry, so the executor and the single and
 bulk handlers stay untouched. A value the presets cannot express belongs in an
 inline mode on the one picker, never in a standalone form.
 
-`instantEntry()` is `dateEntry()` narrowed to the granularity a deferral stores.
-`ValueProviderDefer` is its only member, so it alone builds the inline mode with
-`NewInstantDateAdder`, and `allowsTime` is what makes `+Nh` parse there and be
-refused by name everywhere a calendar day is stored. The same case passes
-`deferred` to `operationDatePresets`, which is what puts the three hour rows and
-the morning row on the defer list alone. A preset is reported as the current
+`ValueProviderDate` is the one date picker a task operation reaches. It sections
+due presets above defer presets so a single key answers both fields, and the
+committed row carries `OperationDateValue.Deferred`, which is what tells the
+single and bulk handlers which field to write. Because the two sections share
+preset names, `dateListItemID` namespaces every row by its field.
+`ValueProviderDueDate` is the due-only projection of the same presets, built
+from the same namespace so one resolver answers either list.
+
+Narrowing the inline mode is therefore a cursor question rather than a provider
+question, which is why `instantEntry()` cannot be a `ValueProviderID` method:
+`dateSectionUnderCursor` reads the highlighted row, and only a defer row builds
+the adder with `NewInstantDateAdder`, whose `allowsTime` is what makes `+Nh`
+parse there and be refused by name where a calendar day is stored. The same flag
+passes `deferred` to `operationDatePresets`, which is what puts the three hour
+rows and the morning row on the defer section alone. A terminal task carries
+`deferRefusalReason` on its defer rows only, so the existing
+`ErrListItemDisabled` path refuses the field on the row it belongs to instead of
+hiding it, and the due rows beside it stay reachable. A preset is reported as the current
 value only when the stored instant is reproducible from the clock, which is why
 the hour rows never highlight: they inherit `time.Now()`'s monotonic reading,
 while the day and morning rows are built with `time.Date` and compare cleanly
@@ -503,10 +524,13 @@ stays 09:00 across both daylight-saving transitions instead of drifting to 10:00
 or 08:00.
 
 One operation may chain into a second one by following its committed command with
-an `OperationValueRequestMsg`, which is how `ww` asks for the check-back date it
+an `OperationValueRequestMsg`, which is how `$w` asks for the check-back date it
 has just made relevant. `withWaitingCheckBackStep` runs the set-state command,
 and only a committed result — the `transactionCommitted` gate — is followed
-through `tea.Sequence` by the value request for `operationTaskSetDueDate`. A
+through `tea.Sequence` by the value request for `operationTaskSetDueDate`. That
+request names `ValueProviderDueDate` rather than the combined list `@` opens,
+because the step is asking for a deadline and a defer section would answer a
+different question. A
 rejected move returns its `TransactionErrorMsg` untouched, so a task that never
 reached Waiting can never be given a check-back date. The chain keys off
 `invocation.Value` rather than runtime context, and it sits on the one shared
@@ -521,11 +545,87 @@ keys jump straight to one mode, so a seventh mode never costs six `Tab` presses.
 That binding is the one place a single operation declares both `Keys` and a
 `Sequence`; prefix-freeness is still fully enforced by the chord trie.
 
-Pin has two routes: the `P` key on an existing row and the `*pin` sigil in the
+`$`, `z`, `f`, `F`, and `o` are the other root prefixes. `$` is the workflow
+chord, so no lifecycle destination carries a bare root key and `d` is unbound
+rather than aliasing `$d`; `z` is the scroll chord and never means defer. Every
+other retired root key — `b`, `c`, `m`, `t`, `w`, `P`, `:`, `C`, `R`, the comma
+state prefix, and `Ctrl+Esc` — is simply absent from the strategy, because a
+compatibility shim would keep a second vocabulary alive next to the sigils.
+
+Set Parent's key is its sigil too: `>` opens `ValueProviderParent`, a plain list
+built by `operationParentListSource` from the cursor task's own
+`structuralCandidates`, above one `No parent (project root)` row carrying the nil
+parent `>0` names. Each candidate row carries `invalidQuickEditParent` as its
+`DisabledReason`, so a self-reference, a task inside the edited subtree, and a
+parent that would breach `models.MaxNestingDepth` are visible refusals in the
+list rather than errors behind `Enter` — the same three sentences the `>parent`
+sigil produces, read from the same function. The chosen value reaches
+`TaskItemCoordinator.Reparent`, which is the existing `Service.ReparentByLocator`
+path, so `>` adds a key and a picker but no second reparent route. Indent and
+outdent moved to `]` and `[` to free the sigil; they remain one-step tree moves,
+not a parent choice.
+
+`<` is the mirror: it opens `ValueProviderChild`, a multi-select plain list built
+by `operationChildListSource`, and adopts the checked tasks. It is a separate
+operation from Set Parent because `<child` is repeatable and additive, which a
+single-valued replace cannot express. Two things make the additive contract
+structural rather than a convention. Nothing is preselected, so an unchecked row
+is the resting state and never reads as a removal; and the tasks the cursor task
+already parents are filtered out of the source entirely, so no selection state in
+the picker can ask for a detach — `FieldChild` declares no `Clears`, and `<0` is
+an unresolvable reference, not the inverse of `>0`. Pressing `Enter` with nothing
+checked therefore sends no children, which `Service.EditTaskLine` reports as an
+unchanged no-op.
+
+The checked IDs become `TaskLineEditRequest.Children` with the title carried
+verbatim and the parent patch left on `TaskLineParentPreserve`, so the request
+travels the same `applyTaskLineEditEdges` path the `<child` sigil does and lands
+as one `ApplyParentAssignments` batch: cycles and depth are measured on the graph
+the adoption produces, and the inherited `taskLineDestinationChildrenGuard` still
+refuses a terminal destination holding an open adopted child. `TaskLineEditRequest`
+carries an optional `Action` for the undo ledger, defaulted to `Edit Task Line`,
+which the picker sets to `Adopt Children` so the entry names what the user did
+rather than the request type that carried it.
+
+`%` completes the set: it opens `ValueProviderProject` and moves the cursor
+task's subtree to the chosen project. The list is built by
+`operationProjectListSource` from `Runtime.AvailableProjects()` minus the task's
+own project, so a parked destination stays reachable exactly as it is for Notes
+and the `%project` sigil, while a move to the current owner — which is not a
+move — has no row to press. The adapted rows carry the project ID as their
+payload, which is what `TaskLineEditRequest.DestinationProjectID` names, and
+their secondary text is the project slug rather than a task count: these are
+catalog records whose task trees are not loaded in the picker, so a count would
+report every destination as empty. `EditTaskLine` sees a destination that
+differs from the source and takes `editTaskLineAcrossProjects`, so the subtree
+lands through `moveTaskSubtreeBetweenProjects` with destination-minted ShortIDs
+and both projects commit in one checked transaction. The command therefore
+builds `shellStructuralPlanningArtifactBuilder` rather than the reconcile
+builder Adopt Children uses, because planning references have to be requalified
+to the new owner rather than merely reconciled, and it sets `Action` to `Move to
+Project` for the ledger. `p` keeps Select Project: that operation changes the
+projection, not a task's owner, so the two carry separate keys, labels, and
+footer entries.
+
+Pin's key is its sigil: `*` on an existing row does what `*pin` does in the
 capture, inline-edit, and outline grammars. That is not a direct-only/menu-only
 violation, because that rule governs which task operations reach the `Space`
 menu, not whether an attribute is also expressible in the text grammar: `!`, `@`,
-`#`, and the `w` chord already sit beside the sigils that say the same things.
+`#`, and the `$` chord are the sigils that say the same things.
+
+Every keyed capture sigil binds the character it is written with: `!` and `$` as
+chord prefixes, `#`, `@`, `*`, `%`, `>`, and `<` as root keys.
+`TestSigilKeysMatchTextGrammarSigils` walks the `textgrammar` triggers against
+the strategy's own bindings, so renaming a sigil breaks the keymap loudly rather
+than silently splitting the two vocabularies. Three triggers deliberately have no
+key of their own. `##` and `@@` cannot be chords under `#` and `@`, because the
+chord trie is prefix-free and both first characters already resolve; each is
+instead a mode inside the picker its first character opens — `##` the context
+radio group inside Set Tags & Context, `@@` the defer section of the one date
+picker. `-#` is a search-only exclusion form, and two runes are not one key
+event, so the `#` picker expresses it by unchecking a tag. Indent and outdent are
+the reverse case: `]` and `[` are keys that answer no sigil, because a relative
+one-step move has no capture form to name.
 
 `SimplifiedInputStrategy` is the only Outliner key grammar. Direct dispatch,
 handled-key metadata, chord hints, guidance hints, `?` help, and harness discovery
@@ -561,8 +661,8 @@ any transaction begins.
 
 A chord prefix that its second key abandons is explained rather than swallowed.
 `ChordGroupLabelForPrefix` names the longest declared group the path passed
-through, and the miss sets a warning status such as `sq is not a state /
-planning action`. An unbound root key stays silent because it never showed a
+through, and the miss sets a warning status such as `$q is not a workflow
+action`. An unbound root key stays silent because it never showed a
 which-key row, and a key the cursor's entity turned off keeps its own target
 rejection sentence instead. A chord prefix whose whole subtree that entity turned
 off refuses at the prefix, so a project header row never opens a which-key row
@@ -599,6 +699,36 @@ outline input reject `##0`; inline edit consumes it as the explicit clear while
 the outline buffer clears context by omitting the token. That permanently
 reserves `"0"` as a context name even though `!0`, `@0`, and `>0` retain their
 ordinary meanings.
+
+`@@defer` is the deferral sigil, and it lives one character away from `@date`.
+Go's RE2 engine has no lookahead, so the separation is structural instead: the
+due pattern's last alternative is `[^\s@]\S*`, which refuses a leading `@` and
+makes `@@` unreachable by the due pattern whatever order the registry is walked
+in. No legal due value starts with `@`, so the tightening costs nothing, and
+`TestDueSigilCannotSwallowTheDeferSigil` and
+`TestDueFormsSurviveTheDeferTightening` pin both halves of that claim.
+
+A deferral is an instant rather than a calendar day, which is why the sigil
+accepts the `+Nh` offsets `util.ParseCalendarDate` refuses by name. It also
+carries a lifecycle effect the other metadata sigils do not: `deferralRefusesState`
+is the terminal half of `deferTask`'s policy, shared by capture and inline edit so
+a refusal is worded the same wherever it is expressed, and a deferral that is
+honored claims Backlog. `composerDeferredDestination` applies that route to both
+the composer's header and its preview, so neither promises a landing place the
+submitted request will not honor. Entering a state clears `DeferredUntil`, so both
+surfaces write the instant *after* the transition — `buildPreparedCapturedTask`
+after `initializeCreatedTask`, and `applyPreparedTaskLineDeferral` after
+`applyTaskLineDestination`. Written alongside the other scalars it would be
+wiped by the Backlog move the deferral itself asked for.
+
+On the search surface `@@any` and `@@none` split the population the deferred
+filter facet splits, reading `IsDeferredAt` rather than the field's presence, so
+a lapsed deferral counts as awake. A value that names an instant is literal
+instead and compares calendar days, which is what makes `@@+2h` and `@@today`
+name the same set. The outline surface declares no defer form at all, and
+`parseOutlineBodies` rejects the token by name for the same reason it rejects
+`%project`, `>parent`, and `<child`: `applyOutlinePlan` has no field to put it in,
+so silently folding it into a title would be the only alternative.
 
 `*pin`'s value set is closed to `pin` and `unpin`, and an unrecognized value is
 not consumed: `Refactor *args handling` keeps `*args` in its title. That is the
@@ -775,8 +905,11 @@ context values are normalized lowercase, and `project#shortID` stays `EqualFold`
 because it is an exact ID lookup rather than a text search.
 Ordinary filter facets compose as priority threshold, OR states, AND tag/context
 values, due bucket, completion age, hierarchy position, and deferred-only and
-remain session-only.
-The `ft` vocabulary is the union of task tags and task contexts; each selected
+remain session-only. The deferred-only facet is a fifth row on the `f@` picker
+rather than a chord of its own, because a deferral is a scheduling instant like
+a due date; the picker is single-select, so choosing the deferred row clears the
+due bucket and choosing a due bucket clears the deferred flag.
+The `f#` vocabulary is the union of task tags and task contexts; each selected
 value matches either field while different selected values still compose with
 AND. `BuildTagFacetList` stamps `TagInfo.ContextCount` on the values the context
 axis contributed, which routes them into the picker's `CONTEXTS` section without
@@ -794,7 +927,7 @@ census is complete. `doctor` reports malformed lifecycle timestamps.
 
 Population facets are a separate chord because they answer a different question.
 The lowercase `f` facets refine the rows a projection already holds and rebuild
-in place; the uppercase `F` facets — `Ft` project tags, `Fp`/`FP` parked,
+in place; the uppercase `F` facets — `F#` project tags, `Fp`/`FP` parked,
 `Fa`/`FA` archived, `Fx` clear — decide which projects the snapshot contains at
 all, so each one reloads. `ProjectFilterState` carries the tag restriction, an
 `Untagged` entry for the legal empty tag set, and one `projectPopulationMode`
@@ -802,11 +935,11 @@ per lifecycle axis, and `filteredProjectPopulation` applies it between the
 runtime population and the scope. Each axis is exclude, include, or only, the
 lowercase key owns include and the uppercase key owns only, and pressing the key
 that already holds clears the axis. The two axes compose with AND, like every
-other facet. `Fp`, `FP`, and the `parked` row inside the `Ft` picker write the
+other facet. `Fp`, `FP`, and the `parked` row inside the `F#` picker write the
 same `ParkedMode` field, so the routes cannot disagree about which population is
 loaded; a checked parked row that is already isolating keeps Only, because the
 picker cannot express the difference and widening it would answer a question
-nobody asked. The `Ft` picker sources the whole cataloged vocabulary rather than
+nobody asked. The `F#` picker sources the whole cataloged vocabulary rather than
 the loaded projects, otherwise a facet could never be widened back out from
 inside it.
 
@@ -1065,10 +1198,10 @@ differ for the same reason: `BehavioralProjectTags` is a map keyed by tag name
 because its entries are independent, and `SemanticTaskTags` is an ordered slice
 because the `bug` > `epic` > `story` > `feature` > `idea` precedence is part of
 what it publishes. `models.SemanticTaskTagForTags` resolves that precedence, and
-the `#` and `ft` pickers read the slice order to build their `SEMANTIC` section.
+the `#` and `f#` pickers read the slice order to build their `SEMANTIC` section.
 Their seeding is asymmetric on purpose: `#` offers all five whether or not any
 task carries them, because offering an unused tag is how it gets discovered,
-while `ft` stays usage-derived, because a filter row nothing carries can only
+while `f#` stays usage-derived, because a filter row nothing carries can only
 empty the projection. The retained `internal/tui/tag_selector.go` path reached
 from `handler_tag.go` (`ShowTagSelectorMsg`) carries no semantic tier, as do the
 task row and Peek tag chips; the obsolete bulk-selector message path has been
@@ -1086,6 +1219,20 @@ polymorphic operation would have to branch on runtime context inside
 resolves the first *applicable* one in declaration order, which lets the cursor
 decide the meaning while `?` help and contextual guidance keep two honest labels. A key
 declared twice without `SharedKey` is still a hard registration error.
+
+The task descriptor is `Set Tags & Context`, because the singleton task context
+is edited in the same overlay. Its rows carry a `context:` ID prefix and a
+`taskContextRow` payload, which keeps them apart from the `tag:` rows the
+`CONTEXTS` section also collects by context usage; the clear row takes the
+reserved `context:0` name, so no real context can mint a colliding ID. Context
+is single-valued, so those rows answer `#` as a radio group and refuse `Space`
+by name, while `a` mints a tag or a context depending on the row under the
+cursor. The picker configures tri-state membership at every cardinality, so it
+always emits `OperationTagsValue`; a chosen context that differs from the one
+every target already agreed on rides that payload into
+`TaskOperationRequest.ContextSet`, and the same `bulkAttribute` mutate closure
+writes the tags and the context, so a simultaneous edit is one transaction and
+one undo entry.
 
 Setting the reserved tag is the one project tag edit that confirms first. The
 prompt names the task count leaving the base workspace, the committed status
@@ -1107,7 +1254,7 @@ alone. With no surviving header the anchor deliberately names a departing
 project, which stops resolving after the reload and settles the cursor at the
 top of the projection.
 
-The `Ft` picker doubles as the tag vocabulary editor: `v` toggles a facet and
+The `F#` picker doubles as the tag vocabulary editor: `v` toggles a facet and
 `Space` on a tag row opens a sheet closed over Rename everywhere, Remove
 everywhere, Park all members, and Unpark all members. The sheet freezes the
 tag's member projects into the command context and emits an ordinary

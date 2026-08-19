@@ -162,6 +162,7 @@ func harnessOutlineProblems() []lineError {
 		{line: 11, message: "task title cannot be empty"},
 		{line: 12, message: "indentation sets parentage here; remove the >parent sigil"},
 		{line: 14, message: "indentation sets parentage here; remove the <child sigil"},
+		{line: 15, message: "the outline buffer cannot defer; remove the @@defer sigil"},
 	}
 }
 

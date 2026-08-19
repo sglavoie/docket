@@ -6,8 +6,9 @@
     { "type": "key", "key": "j" },
     { "type": "key", "label": "move the cursor onto the Doing task", "key": "j" },
 
-    { "type": "key", "label": "open the due-date picker with its direct key", "key": "@" },
-    { "type": "assert", "assert": "contains", "value": "Set Due Date: Build login form" },
+    { "type": "key", "label": "open the date picker with its direct key", "key": "@" },
+    { "type": "assert", "assert": "contains", "value": "Set Date: Build login form" },
+    { "type": "assert", "label": "the cursor opens in the due section, so due is one Enter away", "assert": "contains", "value": "DUE" },
     { "type": "assert", "assert": "contains", "value": "Clear" },
     { "type": "assert", "assert": "contains", "value": "Today" },
     { "type": "assert", "assert": "contains", "value": "Esc back" },
@@ -15,7 +16,7 @@
 
     { "type": "key", "label": "cancel back to the Outliner", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "not_contains", "value": "Set Due Date" },
+    { "type": "assert", "assert": "not_contains", "value": "Set Date" },
 
     { "type": "key", "label": "reopen the picker", "key": "@" },
     { "type": "key", "label": "highlight Today", "key": "j" },

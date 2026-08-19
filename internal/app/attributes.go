@@ -310,6 +310,16 @@ func (s *Service) DeferByLocator(locator TaskLocator, until *time.Time) (TaskRes
 	return s.deferTask("", locator, until)
 }
 
+// deferralRefusesState is the terminal half of the one deferral policy. The
+// capture and inline-edit grammars route their @@ token through it so a refused
+// deferral is worded the same wherever it is expressed.
+func deferralRefusesState(state models.WorkflowState) error {
+	if !state.IsTerminal() {
+		return nil
+	}
+	return invalidInput("defer", fmt.Sprintf("cannot defer a %s task", state))
+}
+
 func (s *Service) deferTask(taskID string, locator TaskLocator, until *time.Time) (TaskResult, error) {
 	ref, snap, revision, err := s.loadTaskSelection(taskID, locator)
 	if err != nil {
@@ -338,8 +348,8 @@ func (s *Service) deferTask(taskID string, locator TaskLocator, until *time.Time
 		committed = true
 		return result, nil
 	}
-	if ref.Task.IsTerminalState() {
-		return TaskResult{}, invalidInput("defer", fmt.Sprintf("cannot defer a %s task", ref.Task.State()))
+	if refusal := deferralRefusesState(ref.Task.State()); refusal != nil {
+		return TaskResult{}, refusal
 	}
 	if stateErr := applyState(ref.Task, models.StateBacklog, now); stateErr != nil {
 		return TaskResult{}, invalidInput("defer", stateErr.Error())

@@ -38,6 +38,7 @@ func taskLineEditRequest(source TaskIdentity, result *quickEditResult) app.TaskL
 		Source:               source.Locator(),
 		Title:                result.title,
 		DueSet:               result.dueDateSet,
+		DeferSet:             result.deferSet,
 		TagsToAdd:            append([]string(nil), result.tagsToAdd...),
 		TagsToRemove:         append([]string(nil), result.tagsToRemove...),
 		DestinationProjectID: source.ProjectID,
@@ -56,6 +57,9 @@ func taskLineEditRequest(source TaskIdentity, result *quickEditResult) app.TaskL
 	}
 	if result.dueDateSet && !result.dueDateClear {
 		req.Due = result.dueDate
+	}
+	if result.deferSet && !result.deferClear {
+		req.Defer = result.deferUntil
 	}
 	if result.destinationSet {
 		destination := result.destination

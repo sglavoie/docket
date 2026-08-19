@@ -125,6 +125,22 @@ func (q *quickCaptureInput) getDateSuggestions(partial string) []ACSuggestion {
 	return suggestions
 }
 
+// getDeferSuggestions returns common deferral targets for the partial query.
+func (q *quickCaptureInput) getDeferSuggestions(partial string) []ACSuggestion {
+	var suggestions []ACSuggestion
+	partialLower := strings.ToLower(partial)
+	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDefer)
+	for _, value := range def.Values {
+		if partial == "" || strings.Contains(value, partialLower) {
+			suggestions = append(suggestions, ACSuggestion{
+				Display: def.Trigger + value,
+				Value:   value,
+			})
+		}
+	}
+	return suggestions
+}
+
 // getDestinationSuggestions returns lifecycle and planning destinations from
 // the shared capture grammar.
 func (q *quickCaptureInput) getDestinationSuggestions(partial string) []ACSuggestion {

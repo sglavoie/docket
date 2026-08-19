@@ -1,0 +1,21 @@
+{
+  "name": "outliner-move-to-project-parked",
+  "fixture": "parked",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "step onto the first task", "key": "j" },
+    { "type": "key", "key": "j" },
+
+    { "type": "key", "label": "open Move to Project", "key": "%" },
+    { "type": "assert", "assert": "contains", "value": "Move to Project: Ship the delivery checklist" },
+    { "type": "assert", "label": "a parked project is a destination even though its work never reaches the Outliner", "assert": "contains", "value": "Parked Work  [parked-work] · #parked" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "move the task into the parked project", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Move to Project: #3 Ship the delivery checklist → parked-work" },
+    { "type": "assert", "label": "the moved task follows its new owner out of the base task workspace, so the status names it but no row does", "assert": "count_contains", "value": "Ship the delivery checklist", "count": 1 },
+    { "type": "assert", "assert": "contains", "value": "[active-delivery] (1)" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

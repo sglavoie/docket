@@ -349,6 +349,7 @@ func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, bool) {
 		if dueDateIsToday(due) {
 			destination = app.CaptureDestinationToday
 		}
+		destination = composerDeferredDestination(parsed, destination)
 		req := app.CaptureRequest{
 			SourceLine:  idx + 1,
 			ProjectID:   target.ID,
@@ -357,6 +358,8 @@ func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, bool) {
 			Tags:        mergeComposerTags(m.preset.Shared.Tags, parsed.tags),
 			Context:     parsed.context,
 			Due:         due,
+			DeferSet:    parsed.deferSet,
+			Defer:       parsed.deferUntil,
 			ParentID:    parentID,
 			ChildIDs:    parsed.childIDs(),
 			Destination: destination,
@@ -379,6 +382,20 @@ func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, bool) {
 		return nil, false
 	}
 	return reqs, true
+}
+
+// composerDeferredDestination follows the deferral route the application layer
+// takes, so the composer header and the request it submits agree about where a
+// deferred line lands. A terminal destination is left alone because the refusal
+// belongs to the application layer and has its own wording.
+func composerDeferredDestination(parsed *quickCaptureResult, destination app.CaptureDestination) app.CaptureDestination {
+	if parsed == nil || !parsed.deferSet || parsed.deferUntil == nil {
+		return destination
+	}
+	if destination.WorkflowState().IsTerminal() {
+		return destination
+	}
+	return app.CaptureDestinationBacklog
 }
 
 // validateComposerParent mirrors the application-layer child placement rule so a
@@ -567,6 +584,7 @@ func (m *TaskComposerModel) effectiveRouteForLine(line string) composerEffective
 	if dueDateIsToday(due) {
 		destination = app.CaptureDestinationToday
 	}
+	destination = composerDeferredDestination(parsed, destination)
 
 	route := composerEffectiveRoute{destination: destination}
 	if project != nil {

@@ -1,0 +1,44 @@
+{
+  "name": "outliner-adopt-children-picker",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "go to Backlog", "key": "g" },
+    { "type": "key", "key": "b" },
+    { "type": "key", "label": "step onto Launch platform", "key": "j" },
+    { "type": "key", "label": "step onto User authentication", "key": "j" },
+
+    { "type": "key", "label": "open Adopt Children", "key": "<" },
+    { "type": "assert", "assert": "contains", "value": "Adopt Children: User authentication" },
+    { "type": "assert", "label": "the subtitle says the picker only ever adds", "assert": "contains", "value": "adds children, never detaches" },
+    { "type": "assert", "label": "there is no detach row, because <0 is not the inverse of >0", "assert": "not_contains", "value": "No parent (project root)" },
+    { "type": "assert", "label": "every open task the project offers starts unchecked", "assert": "contains", "value": "[ ] Triage support inbox" },
+    { "type": "assert", "assert": "contains", "value": "[ ] Explore social login" },
+    { "type": "assert", "label": "an ancestor is listed disabled rather than hidden", "assert": "contains", "value": "[ ] Launch platform" },
+    { "type": "assert", "assert": "contains", "value": "is inside the edited task's subtree" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "step off the disabled ancestor", "key": "down" },
+    { "type": "key", "label": "check the first task to adopt", "key": "space" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "label": "check the second one, in the same pass", "key": "space" },
+    { "type": "key", "label": "adopt the whole checked set at once", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Adopt Children: #2 User authentication" },
+
+    { "type": "key", "label": "back to All", "key": "g" },
+    { "type": "key", "key": "a" },
+    { "type": "assert", "label": "both adopted tasks now name a parent rendered elsewhere", "assert": "contains", "value": "Fix redirect loop after logout  ‹" },
+    { "type": "assert", "assert": "contains", "value": "Explore social login  ‹" },
+    { "type": "assert", "label": "the children the task already had are untouched", "assert": "contains", "value": "Build login form  ‹" },
+    { "type": "assert", "assert": "contains", "value": "Add password validation" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "one undo takes back both adoptions", "key": "u" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Fix redirect loop after logout  ‹" },
+    { "type": "assert", "assert": "not_contains", "value": "Explore social login  ‹" },
+    { "type": "assert", "assert": "contains", "value": "Build login form  ‹" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

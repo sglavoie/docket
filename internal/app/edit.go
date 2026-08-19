@@ -87,6 +87,16 @@ func (s *Service) applyEdit(task *models.Task, req EditRequest) error {
 	return nil
 }
 
+// cloneInstantPtr copies t whole. Deferral is the one date field that keeps its
+// clock component, because a deferral can expire later the same day.
+func cloneInstantPtr(t *time.Time) *time.Time {
+	if t == nil {
+		return nil
+	}
+	value := *t
+	return &value
+}
+
 // cloneCalendarDatePtr returns the local calendar date represented by t with
 // its clock component removed.
 func cloneCalendarDatePtr(t *time.Time) *time.Time {

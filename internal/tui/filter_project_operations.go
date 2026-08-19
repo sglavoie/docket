@@ -57,7 +57,7 @@ func (m *AppModel) executeProjectFilterOperation(invocation OperationInvocation)
 		applyProjectTagFilterValue(filter, names)
 		status = projectTagFilterStatus(filter)
 	case operationFilterShowParked:
-		// Fp, FP, and the Ft picker's parked row all write this one field, so the
+		// Fp, FP, and the F# picker's parked row all write this one field, so the
 		// routes cannot leave the population claiming different things.
 		filter.ParkedMode = toggleProjectPopulation(filter.ParkedMode, projectPopulationInclude)
 		status = projectPopulationStatus(filter.ParkedMode, "Parked")
@@ -114,7 +114,7 @@ func (m *AppModel) projectFilterReloadCmd(status string) tea.Cmd {
 	)
 }
 
-// newFilterProjectTagsPicker is the Ft multi-select picker over the whole
+// newFilterProjectTagsPicker is the F# multi-select picker over the whole
 // project tag vocabulary. It sources the catalog rather than the loaded projects
 // so a facet can still name a tag whose only projects the current facets exclude
 // — otherwise a filter could never be widened back out from inside the picker.

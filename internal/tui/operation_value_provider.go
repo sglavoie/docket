@@ -21,23 +21,46 @@ const (
 	operationTaskSetState    OperationID = "tui.task.set-state"
 	operationTaskSetPriority OperationID = "tui.task.set-priority"
 	operationTaskSetDueDate  OperationID = "tui.task.set-due-date"
-	operationTaskSetDefer    OperationID = "tui.task.set-defer"
 	operationTaskSetTags     OperationID = "tui.task.set-tags"
+	operationTaskSetParent   OperationID = "tui.task.set-parent"
 	operationTaskIndent      OperationID = "tui.task.indent"
 	operationTaskOutdent     OperationID = "tui.task.outdent"
+
+	// operationTaskAdoptChildren is the `<child` sigil's key. It is a separate
+	// operation from set-parent because the sigil is repeatable and additive,
+	// which set-parent's single-valued replace semantics cannot express.
+	operationTaskAdoptChildren OperationID = "tui.task.adopt-children"
+
+	// operationTaskMoveToProject is the `%project` sigil's key. It travels the
+	// same cross-project edit path the sigil does rather than adding a second
+	// relocation route.
+	operationTaskMoveToProject OperationID = "tui.task.move-to-project"
 )
 
-// OperationDateValue is the picker-neutral due/defer payload. Nil clears the field.
+// OperationParentValue is the picker-neutral reparent payload. A nil ParentID
+// is the project root, which is what the `>0` edit sigil expresses.
+type OperationParentValue struct {
+	ParentID *string
+}
+
+// OperationDateValue is the picker-neutral due/defer payload. Nil clears the
+// field. Deferred names which of the two fields the value writes, because one
+// picker answers both.
 type OperationDateValue struct {
-	Date *time.Time
+	Date     *time.Time
+	Deferred bool
 }
 
 // OperationTagsValue is the tri-state bulk tag edit emitted by the value
 // picker. Add and Remove are uniform patches; tags in neither set preserve
-// their existing per-task membership.
+// their existing per-task membership. ContextSet carries the singleton task
+// context in the same payload so both land in one transaction; an empty Context
+// clears the field.
 type OperationTagsValue struct {
-	Add    []string
-	Remove []string
+	Add        []string
+	Remove     []string
+	ContextSet bool
+	Context    string
 }
 
 type operationTagMembership uint8
@@ -71,6 +94,15 @@ type OperationValuePickerModel struct {
 	tagCurrent map[ListItemID]operationTagMembership
 	tagAdder   TagAdder
 	dateAdder  DateAdder
+	// dateDeferred records which section the inline date mode was opened from,
+	// so the typed value writes the same field the row under the cursor names.
+	dateDeferred bool
+	// contextEntry records that the inline add mode was opened from a context
+	// row, so the typed name mints a context instead of a tag.
+	contextEntry bool
+	// contextInitial is the context row every target already agreed on. An empty
+	// ID means the targets disagreed, so any chosen row is a change.
+	contextInitial ListItemID
 }
 
 func newOperationValuePickerModel(
@@ -119,13 +151,27 @@ func newOperationValuePickerModel(
 		model.tagAdder = NewTagAdder()
 	}
 	if provider.dateEntry() {
-		if provider.instantEntry() {
-			model.dateAdder = NewInstantDateAdder()
-		} else {
-			model.dateAdder = NewDateAdder()
-		}
+		model.dateAdder = NewDateAdder()
 	}
 	return model, nil
+}
+
+// dateSectionUnderCursor reports whether the cursor sits on a defer row, and
+// refuses when that row is disabled so the inline mode cannot type past a
+// refusal the preset rows already carry.
+func (model *OperationValuePickerModel) dateSectionUnderCursor() (bool, error) {
+	item, ok := model.surface.CurrentItem()
+	if !ok {
+		return false, ErrListItemNotFound
+	}
+	if !item.Enabled() {
+		return false, fmt.Errorf("%w: %s", ErrListItemDisabled, item.DisabledReason)
+	}
+	value, ok := item.Data.(OperationDateValue)
+	if !ok {
+		return false, ErrListItemNotFound
+	}
+	return value.Deferred, nil
 }
 
 //nolint:gocyclo // Centralized key dispatch preserves picker, freeform, and tag-input precedence.
@@ -150,7 +196,7 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 		if chosen != nil {
 			return nil, true, OperationValueSelectedMsg{
 				Request: model.request,
-				Value:   OperationDateValue{Date: chosen},
+				Value:   OperationDateValue{Date: chosen, Deferred: model.dateDeferred},
 			}
 		}
 		return cmd, false, nil
@@ -196,9 +242,20 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 		model.searching = true
 	case "a":
 		if model.provider.tagEntry() {
+			model.contextEntry = model.contextRowUnderCursor()
 			return model.tagAdder.EnterAddMode(), false, nil
 		}
 		if model.provider.dateEntry() {
+			deferred, err := model.dateSectionUnderCursor()
+			if err != nil {
+				return nil, false, StatusMsg(err.Error())
+			}
+			model.dateDeferred = deferred
+			if deferred {
+				model.dateAdder = NewInstantDateAdder()
+			} else {
+				model.dateAdder = NewDateAdder()
+			}
 			return model.dateAdder.EnterAddMode(), false, nil
 		}
 	case "up", "k", "ctrl+p":
@@ -251,6 +308,14 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 		if semanticTaskTagProvider(model.provider) {
 			return nil, false, model.jumpToTagCategory(key)
 		}
+	case "#":
+		// The context is single-valued, so its rows are a radio group rather than
+		// the checkboxes the tag rows beside them are.
+		if model.provider == ValueProviderTags {
+			if err := model.selectContextUnderCursor(); err != nil {
+				return nil, false, StatusMsg(err.Error())
+			}
+		}
 	default:
 		if model.provider == ValueProviderPriority && len(key) == 1 && key[0] >= '0' && key[0] <= '3' {
 			if model.surface.SetCursorToID(ListItemID("priority:" + key)) {
@@ -283,7 +348,110 @@ func (model *OperationValuePickerModel) jumpToTagCategory(key string) tea.Msg {
 	return StatusMsg(fmt.Sprintf("No %s rows", strings.ToUpper(label)))
 }
 
+// tagAdderNoun names what the inline add mode is minting, which the cursor
+// decided when the mode was entered.
+func (model *OperationValuePickerModel) tagAdderNoun() string {
+	if model.contextEntry {
+		return "context"
+	}
+	return "tag"
+}
+
+// contextRowUnderCursor reports whether the cursor sits on a context row.
+func (model *OperationValuePickerModel) contextRowUnderCursor() bool {
+	item, ok := model.surface.CurrentItem()
+	if !ok {
+		return false
+	}
+	_, isContext := taskContextRowName(item)
+	return isContext
+}
+
+// selectContextUnderCursor makes the context row under the cursor the only
+// selected context, leaving the tag checkboxes beside it untouched.
+func (model *OperationValuePickerModel) selectContextUnderCursor() error {
+	item, ok := model.surface.CurrentItem()
+	if !ok {
+		return ErrListItemNotFound
+	}
+	if _, isContext := taskContextRowName(item); !isContext {
+		return fmt.Errorf("# sets a context: press c to jump to CONTEXTS")
+	}
+	selected := make([]ListItemID, 0, len(model.surface.SelectedIDs())+1)
+	for _, id := range model.surface.SelectedIDs() {
+		if !isTaskContextRowID(id) {
+			selected = append(selected, id)
+		}
+	}
+	selected = append(selected, item.ID)
+	if err := model.surface.SetSelectedIDs(selected); err != nil {
+		return err
+	}
+	if model.tagCurrent == nil {
+		return nil
+	}
+	for id := range model.tagCurrent {
+		if isTaskContextRowID(id) {
+			model.tagCurrent[id] = operationTagNone
+		}
+	}
+	model.tagCurrent[item.ID] = operationTagAll
+	return model.syncTagMembershipRows()
+}
+
+// selectedContextRow returns the chosen context row, if any. The clear row
+// answers with an empty name, which is what an empty context field means.
+func (model *OperationValuePickerModel) selectedContextRow() (ListItemID, string, bool) {
+	for _, item := range model.surface.Items() {
+		name, isContext := taskContextRowName(item)
+		if isContext && model.surface.IsSelected(item.ID) {
+			return item.ID, name, true
+		}
+	}
+	return "", "", false
+}
+
+// addOrSelectContext mints one context row and makes it the selection. "0" is
+// permanently reserved, because `##0` is how the grammar clears the field.
+func (model *OperationValuePickerModel) addOrSelectContext(raw string) error {
+	name, err := models.NormalizeTaskContext(raw)
+	if err != nil {
+		return err
+	}
+	if name == "0" {
+		return fmt.Errorf("0 is reserved: the No context row clears the field")
+	}
+	id := taskContextRowID(name)
+	items := model.surface.Items()
+	known := false
+	for _, item := range items {
+		if item.ID == id {
+			known = true
+			break
+		}
+	}
+	model.surface.SetQuery("")
+	if !known {
+		items = append(items, taskContextListItem(name))
+		sort.SliceStable(items, taskTagPickerLess(items))
+		if err := model.surface.SetItems(items); err != nil {
+			return err
+		}
+		if model.tagCurrent != nil {
+			model.tagInitial[id] = operationTagNone
+			model.tagCurrent[id] = operationTagNone
+		}
+	}
+	if !model.surface.SetCursorToID(id) {
+		return fmt.Errorf("%w: %s", ErrListItemNotFound, id)
+	}
+	return model.selectContextUnderCursor()
+}
+
 func (model *OperationValuePickerModel) addOrSelectTag(tag string) error {
+	if model.contextEntry {
+		return model.addOrSelectContext(tag)
+	}
 	if model.provider == ValueProviderProjectTags {
 		// The project tag namespace is folded at rest, so the row a typed tag
 		// creates must already carry the spelling the catalog will store.
@@ -313,21 +481,7 @@ func (model *OperationValuePickerModel) addOrSelectTag(tag string) error {
 		item = semanticTaskTagItem(tag, entry, 0)
 	}
 	items = append(items, item)
-	// A global alphabetical sort would reorder the semantic section into bug,
-	// epic, feature, idea, story and contradict the precedence line under it.
-	sort.SliceStable(items, func(i, j int) bool {
-		left, right := items[i], items[j]
-		leftSemantic := left.CategoryID == taskTagSemanticCategory
-		rightSemantic := right.CategoryID == taskTagSemanticCategory
-		switch {
-		case leftSemantic != rightSemantic:
-			return leftSemantic
-		case leftSemantic:
-			return semanticTaskTagPrecedence(left.PrimaryText) < semanticTaskTagPrecedence(right.PrimaryText)
-		default:
-			return left.PrimaryText < right.PrimaryText
-		}
-	})
+	sort.SliceStable(items, taskTagPickerLess(items))
 
 	model.surface.SetQuery("")
 	if err := model.surface.SetItems(items); err != nil {
@@ -370,6 +524,9 @@ func (model *OperationValuePickerModel) toggleCurrentMultiValue() error {
 	item, ok := model.surface.CurrentItem()
 	if !ok {
 		return ErrListItemNotFound
+	}
+	if _, isContext := taskContextRowName(item); isContext {
+		return fmt.Errorf("a task holds one context: press # to set it")
 	}
 	state := model.tagCurrent[item.ID]
 	if state == operationTagAll {
@@ -422,6 +579,9 @@ func (model *OperationValuePickerModel) selectedValue() (any, error) {
 	if model.provider == ValueProviderTags && len(model.tagCurrent) > 0 {
 		value := OperationTagsValue{}
 		for _, item := range model.surface.Items() {
+			if _, isContext := taskContextRowName(item); isContext {
+				continue
+			}
 			initial := model.tagInitial[item.ID]
 			current := model.tagCurrent[item.ID]
 			switch {
@@ -441,6 +601,10 @@ func (model *OperationValuePickerModel) selectedValue() (any, error) {
 		}
 		sort.Strings(value.Add)
 		sort.Strings(value.Remove)
+		if id, name, ok := model.selectedContextRow(); ok && id != model.contextInitial {
+			value.ContextSet = true
+			value.Context = name
+		}
 		return value, nil
 	}
 	if model.multi {
@@ -484,8 +648,10 @@ func (model *OperationValuePickerModel) guidanceSpec() (GuidanceSpec, bool) {
 	}
 	if model.provider.tagEntry() && model.tagAdder.AddTagMode {
 		return GuidanceSpec{
-			Hints: requiredGuidanceHints("Enter add tag", "Esc cancel"),
-			Rows:  2,
+			Hints: requiredGuidanceHints(
+				"Enter add "+model.tagAdderNoun(), "Esc cancel",
+			),
+			Rows: 2,
 		}, true
 	}
 	if model.provider.dateEntry() && model.dateAdder.AddDateMode {
@@ -538,7 +704,16 @@ func (model *OperationValuePickerModel) guidanceSpec() (GuidanceSpec, bool) {
 		add("space", "Toggle current value", "toggle", 3, func() bool { return !searching && count > 0 })
 	}
 	if model.provider.tagEntry() {
-		add("a", "Add a tag", "add tag", 4, func() bool { return !searching })
+		noun := "tag"
+		if model.contextRowUnderCursor() {
+			noun = "context"
+		}
+		add("a", "Add a "+noun, "add "+noun, 4, func() bool { return !searching })
+	}
+	if model.provider == ValueProviderTags {
+		add("#", "Set the task context", "set context", 5, func() bool {
+			return !searching && count > 0
+		})
 	}
 	if model.provider.dateEntry() {
 		add("a", "Type a specific date", "set date", 4, func() bool { return !searching })
@@ -559,14 +734,18 @@ func (model *OperationValuePickerModel) renderWithin(width, height int) string {
 	}
 	innerWidth := operationValuePickerInnerWidth(width)
 	if model.provider.tagEntry() && model.tagAdder.AddTagMode {
+		noun := model.tagAdderNoun()
 		content := MutedStyle.Render(fmt.Sprintf(
-			"Enter a tag name (max %d characters)",
+			"Enter a %s name (max %d characters)",
+			noun,
 			model.tagAdder.AddTagInput.CharLimit,
 		)) + "\n\n" + model.tagAdder.AddTagInput.View()
 		if model.tagAdder.AddTagError != "" {
 			content += "\n\n" + BoldStyle.Foreground(ColorError).Render(model.tagAdder.AddTagError)
 		}
-		title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Add New Tag")
+		title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render(
+			"Add New " + strings.ToUpper(noun[:1]) + noun[1:],
+		)
 		guidance, _ := model.guidanceSpec()
 		return renderOverlayBox(
 			content,
@@ -713,9 +892,6 @@ func (m *AppModel) taskActionOperationApplicable(id OperationID, context Command
 		if entity.Archived && entry.Risk != OperationRiskReadOnly {
 			return false
 		}
-		if context.Selection.Visual && id == operationTaskSetDefer && !taskStateAllowsDefer(entity.State) {
-			return false
-		}
 		if !m.taskStructureAllowsOperation(id, entity) {
 			return false
 		}
@@ -734,6 +910,22 @@ func taskStateAllowsDefer(state string) bool {
 	default:
 		return false
 	}
+}
+
+// deferRefusalReason disables the whole defer section when any resolved task
+// cannot be deferred. One reason covers the single terminal task and the bulk
+// selection alike, and it leaves the due section reachable on the same rows the
+// old defer-specific applicability check used to hide outright.
+func deferRefusalReason(refs []TaskProjectRef) string {
+	for _, ref := range refs {
+		if ref.Task == nil {
+			continue
+		}
+		if !taskStateAllowsDefer(string(ref.Task.State())) {
+			return "terminal tasks cannot be deferred"
+		}
+	}
+	return ""
 }
 
 // taskStructureAllowsOperation hides destination-dependent actions that the
@@ -776,9 +968,12 @@ func (m *AppModel) registerTaskActionOperations() error {
 	for _, provider := range []ValueProviderID{
 		ValueProviderState,
 		ValueProviderPriority,
+		ValueProviderDate,
 		ValueProviderDueDate,
-		ValueProviderDefer,
 		ValueProviderTags,
+		ValueProviderParent,
+		ValueProviderChild,
+		ValueProviderProject,
 	} {
 		if err := executor.RegisterValueProvider(provider, func(OperationInvocation) OperationValueProviderResult {
 			// Returning no immediate value asks the shell to construct the
@@ -820,6 +1015,9 @@ func (id ValueProviderID) acceptsPresetValue(value any) bool {
 		_, ok := value.(int)
 		return ok
 	case ValueProviderFilterDue:
+		if _, ok := value.(filterDeferredOnly); ok {
+			return true
+		}
 		_, ok := value.(DueDateFilter)
 		return ok
 	case ValueProviderFilterCompletionAge:
@@ -828,11 +1026,17 @@ func (id ValueProviderID) acceptsPresetValue(value any) bool {
 	case ValueProviderFilterStates, ValueProviderFilterTags, ValueProviderFilterProjectTags:
 		_, ok := value.([]string)
 		return ok
-	case ValueProviderProjectTagDestination:
+	case ValueProviderProjectTagDestination, ValueProviderProject:
 		_, ok := value.(string)
 		return ok
-	case ValueProviderDueDate, ValueProviderDefer:
+	case ValueProviderDate, ValueProviderDueDate:
 		_, ok := value.(OperationDateValue)
+		return ok
+	case ValueProviderParent:
+		_, ok := value.(OperationParentValue)
+		return ok
+	case ValueProviderChild:
+		_, ok := value.([]string)
 		return ok
 	case ValueProviderTags:
 		if _, ok := value.([]string); ok {
@@ -865,9 +1069,6 @@ func (m *AppModel) executeTaskOperation(
 	if invocation.Descriptor.ID == operationTaskTogglePin {
 		return m.executeTaskTogglePinOperation(invocation)
 	}
-	if invocation.Descriptor.ID == operationTaskToggleReview {
-		return m.executeTaskToggleReviewOperation(invocation)
-	}
 	if request, action, summary, handled, err := applicationTaskOperationRequest(invocation); handled {
 		if err != nil {
 			return OperationHandlerResult{Err: err}
@@ -892,8 +1093,9 @@ func (m *AppModel) executeTaskOperation(
 }
 
 // withWaitingCheckBackStep follows a committed move into Waiting with the
-// due-date picker, so the check-back is asked for at the one moment the answer
-// is known. The chain is keyed off the operation's own value rather than runtime
+// due-only picker rather than the combined one `@` opens, because the step is
+// asking for a check-back deadline and a defer section would answer a different
+// question. The chain is keyed off the operation's own value rather than runtime
 // context, and it is gated on the transition's own outcome: a rejected move
 // returns its error untouched, so no picker opens and no due date can be
 // committed on a task that never reached Waiting. On the success path the state
@@ -936,32 +1138,6 @@ func transactionCommitted(msg tea.Msg) bool {
 	default:
 		return false
 	}
-}
-
-func (m *AppModel) executeTaskToggleReviewOperation(
-	invocation OperationInvocation,
-) OperationHandlerResult {
-	capture := m.captureOutlinerRelocationForTargets(invocation.Targets)
-	locators := make([]app.TaskLocator, 0, len(invocation.Targets.Targets))
-	for _, target := range invocation.Targets.Targets {
-		if !target.Task.Valid() {
-			return OperationHandlerResult{Err: fmt.Errorf(
-				"operation %s resolved an invalid task", invocation.Descriptor.ID,
-			)}
-		}
-		locators = append(locators, target.Task.Locator())
-	}
-	return OperationHandlerResult{Message: OperationCommandResultMsg{
-		Cmd: withOutlinerRelocationCapture(m.secondaryFeatures.TaskItem.ExecuteOperation(
-			app.TaskOperationRequest{
-				Operation: app.TaskOperationToggleTag,
-				Targets:   locators,
-				Tag:       reviewTaskTag,
-			},
-			"Toggle Review",
-			fmt.Sprintf("Toggled Review for %d task(s)", len(locators)),
-		), capture),
-	}}
 }
 
 // executeTaskTogglePinOperation applies one deterministic toggle to the whole
@@ -1046,10 +1222,19 @@ func applicationTaskOperationRequest(
 	case operationTaskSetDueDate:
 		value, ok := invocation.Value.(OperationDateValue)
 		if !ok {
-			return request, "", "", true, fmt.Errorf("invalid due-date value")
+			return request, "", "", true, fmt.Errorf("invalid date value")
+		}
+		request.Date = cloneOperationDate(value.Date)
+		if value.Deferred {
+			request.Operation = app.TaskOperationSetDefer
+			verb := "Deferred"
+			if value.Date == nil {
+				verb = "Cleared defer on"
+			}
+			return request, "Set Defer",
+				fmt.Sprintf("Set Defer · %s %d task(s)", verb, count), true, nil
 		}
 		request.Operation = app.TaskOperationSetDueDate
-		request.Date = cloneOperationDate(value.Date)
 		request.PlanForToday = dueDateIsToday(value.Date)
 		verb := "Set due date on"
 		if value.Date == nil {
@@ -1057,20 +1242,6 @@ func applicationTaskOperationRequest(
 		}
 		return request, "Set Due Date",
 			fmt.Sprintf("Set Due Date · %s %d task(s)", verb, count), true, nil
-
-	case operationTaskSetDefer:
-		value, ok := invocation.Value.(OperationDateValue)
-		if !ok {
-			return request, "", "", true, fmt.Errorf("invalid defer value")
-		}
-		request.Operation = app.TaskOperationSetDefer
-		request.Date = cloneOperationDate(value.Date)
-		verb := "Deferred"
-		if value.Date == nil {
-			verb = "Cleared defer on"
-		}
-		return request, "Set Defer",
-			fmt.Sprintf("Set Defer · %s %d task(s)", verb, count), true, nil
 
 	case operationTaskSetTags:
 		switch value := invocation.Value.(type) {
@@ -1080,10 +1251,20 @@ func applicationTaskOperationRequest(
 			request.TagPatch = true
 			request.TagsToAdd = append([]string(nil), value.Add...)
 			request.TagsToRemove = append([]string(nil), value.Remove...)
+			request.ContextSet = value.ContextSet
+			request.Context = value.Context
 		default:
 			return request, "", "", true, fmt.Errorf("invalid tag value")
 		}
 		request.Operation = app.TaskOperationSetTags
+		if request.ContextSet {
+			verb := "Set context on"
+			if request.Context == "" {
+				verb = "Cleared context on"
+			}
+			return request, "Set Tags & Context",
+				fmt.Sprintf("Set Tags & Context · %s %d task(s)", verb, count), true, nil
+		}
 		return request, "Set Tags",
 			fmt.Sprintf("Set Tags · Tagged %d task(s)", count), true, nil
 
@@ -1143,15 +1324,12 @@ func (m *AppModel) executeSingleTaskOperation(
 	case operationTaskSetDueDate:
 		value, ok := invocation.Value.(OperationDateValue)
 		if !ok {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid due-date value")}
+			return OperationHandlerResult{Err: fmt.Errorf("invalid date value")}
+		}
+		if value.Deferred {
+			return cmdResult(m.secondaryFeatures.TaskItem.Defer(identity, cloneOperationDate(value.Date)))
 		}
 		return cmdResult(m.secondaryFeatures.TaskItem.SetDueDate(identity, cloneOperationDate(value.Date)))
-	case operationTaskSetDefer:
-		value, ok := invocation.Value.(OperationDateValue)
-		if !ok {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid defer value")}
-		}
-		return cmdResult(m.secondaryFeatures.TaskItem.Defer(identity, cloneOperationDate(value.Date)))
 	case operationTaskSetTags:
 		tags, ok := invocation.Value.([]string)
 		if !ok {
@@ -1161,6 +1339,32 @@ func (m *AppModel) executeSingleTaskOperation(
 			[]app.TaskLocator{identity.Locator()},
 			tags,
 		))
+	case operationTaskSetParent:
+		value, ok := invocation.Value.(OperationParentValue)
+		if !ok {
+			return OperationHandlerResult{Err: fmt.Errorf("invalid parent value")}
+		}
+		return relocationResult(m.secondaryFeatures.TaskItem.Reparent(identity, value.ParentID))
+	case operationTaskAdoptChildren:
+		children, ok := invocation.Value.([]string)
+		if !ok {
+			return OperationHandlerResult{Err: fmt.Errorf("invalid child value")}
+		}
+		return cmdResult(m.adoptChildrenCmd(
+			identity,
+			children,
+			m.captureOutlinerRelocationForTargets(invocation.Targets),
+		))
+	case operationTaskMoveToProject:
+		projectID, ok := invocation.Value.(string)
+		if !ok || strings.TrimSpace(projectID) == "" {
+			return OperationHandlerResult{Err: fmt.Errorf("invalid project value")}
+		}
+		return cmdResult(m.moveTaskToProjectCmd(
+			identity,
+			projectID,
+			m.captureOutlinerRelocationForTargets(invocation.Targets),
+		))
 	case operationTaskIndent:
 		return relocationResult(m.secondaryFeatures.TaskItem.Indent(identity))
 	case operationTaskOutdent:
@@ -1168,6 +1372,64 @@ func (m *AppModel) executeSingleTaskOperation(
 	default:
 		return m.executeAuxiliaryTaskOperation(invocation, identity)
 	}
+}
+
+// adoptChildrenCmd routes the picker's checked set through the same task-line
+// edit the `<child` sigil uses, so adoption is validated as one hierarchy patch
+// and lands in one transaction with one undo entry. The title is carried
+// verbatim and never reparsed, and the request names no parent patch, so the
+// adopting task keeps its own place in the tree.
+func (m *AppModel) adoptChildrenCmd(
+	identity TaskIdentity,
+	childIDs []string,
+	relocation *outlinerRelocationCapture,
+) tea.Cmd {
+	task, project := m.taskAndProjectForIdentity(identity)
+	if task == nil || project == nil {
+		return func() tea.Msg {
+			return TaskLineEditFailedMsg{Source: identity, Err: fmt.Errorf("selected task is no longer available")}
+		}
+	}
+	req := app.TaskLineEditRequest{
+		Source:               identity.Locator(),
+		Title:                task.Title,
+		DestinationProjectID: identity.ProjectID,
+		Parent:               app.TaskLineParentPatch{Mode: app.TaskLineParentPreserve},
+		Action:               "Adopt Children",
+		PlanningArtifacts:    shellPlanningReconcileArtifactBuilder(m.runtime, m.configManager),
+	}
+	for _, childID := range childIDs {
+		req.Children = append(req.Children, app.TaskLocator{
+			ProjectID: identity.ProjectID,
+			TaskID:    childID,
+		})
+	}
+	return m.secondaryFeatures.TaskItem.EditTaskLine(req, relocation)
+}
+
+// moveTaskToProjectCmd routes the picked project through the same task-line edit
+// the `%project` sigil uses, so the subtree moves under one transaction that
+// reassigns destination ShortIDs and reconciles planning membership. The title is
+// carried verbatim so the edit never reads as a rename.
+func (m *AppModel) moveTaskToProjectCmd(
+	identity TaskIdentity,
+	projectID string,
+	relocation *outlinerRelocationCapture,
+) tea.Cmd {
+	task, project := m.taskAndProjectForIdentity(identity)
+	if task == nil || project == nil {
+		return func() tea.Msg {
+			return TaskLineEditFailedMsg{Source: identity, Err: fmt.Errorf("selected task is no longer available")}
+		}
+	}
+	req := app.TaskLineEditRequest{
+		Source:               identity.Locator(),
+		Title:                task.Title,
+		DestinationProjectID: projectID,
+		Action:               "Move to Project",
+		PlanningArtifacts:    shellStructuralPlanningArtifactBuilder(m.runtime, m.configManager),
+	}
+	return m.secondaryFeatures.TaskItem.EditTaskLine(req, relocation)
 }
 
 func (m *AppModel) executeBulkTaskValueOperation(
@@ -1207,7 +1469,10 @@ func (m *AppModel) executeBulkTaskValueOperation(
 	case operationTaskSetDueDate:
 		value, ok := invocation.Value.(OperationDateValue)
 		if !ok {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid due-date value")}
+			return OperationHandlerResult{Err: fmt.Errorf("invalid date value")}
+		}
+		if value.Deferred {
+			return cmdResult(m.secondaryFeatures.Bulk.DeferLocators(locators, cloneOperationDate(value.Date)))
 		}
 		if value.Date == nil {
 			return cmdResult(m.secondaryFeatures.Bulk.ClearDueDateLocators(locators))
@@ -1216,12 +1481,6 @@ func (m *AppModel) executeBulkTaskValueOperation(
 			locators,
 			*cloneOperationDate(value.Date),
 		))
-	case operationTaskSetDefer:
-		value, ok := invocation.Value.(OperationDateValue)
-		if !ok {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid defer value")}
-		}
-		return cmdResult(m.secondaryFeatures.Bulk.DeferLocators(locators, cloneOperationDate(value.Date)))
 	case operationTaskSetTags:
 		tags, ok := invocation.Value.([]string)
 		if !ok {
@@ -1319,6 +1578,22 @@ func (m *AppModel) newOperationValuePicker(
 			false,
 			selected,
 		)
+	case ValueProviderDate:
+		selected := []ListItemID(nil)
+		due, dueShared := commonTaskDate(refs, false)
+		deferred, deferShared := commonTaskDate(refs, true)
+		if dueShared && deferShared {
+			selected = operationDateSelectedID(due, deferred)
+		}
+		return newOperationValuePickerModel(
+			request,
+			provider,
+			"Set Date",
+			subtitle,
+			operationDateListSource(deferRefusalReason(refs)),
+			false,
+			selected,
+		)
 	case ValueProviderDueDate:
 		selected := []ListItemID(nil)
 		if date, ok := commonTaskDate(refs, false); ok {
@@ -1329,23 +1604,42 @@ func (m *AppModel) newOperationValuePicker(
 			provider,
 			"Set Due Date",
 			subtitle,
-			operationDateListSource(false),
+			operationDueDateListSource(),
 			false,
 			selected,
 		)
-	case ValueProviderDefer:
-		selected := []ListItemID(nil)
-		if date, ok := commonTaskDate(refs, true); ok {
-			selected = deferSelectedID(date)
-		}
+	case ValueProviderParent:
 		return newOperationValuePickerModel(
 			request,
 			provider,
-			"Set Defer",
+			"Set Parent",
 			subtitle,
-			operationDateListSource(true),
+			operationParentListSource(refs[0].Task, refs[0].Project),
 			false,
-			selected,
+			parentSelectedID(refs[0].Task),
+		)
+	case ValueProviderChild:
+		// Nothing is preselected: the checked set is the adoption, so a preselected
+		// row would make unchecking it read as a detach the `<child` sigil cannot
+		// express.
+		return newOperationValuePickerModel(
+			request,
+			provider,
+			"Adopt Children",
+			subtitle+" · adds children, never detaches",
+			operationChildListSource(refs[0].Task, refs[0].Project),
+			true,
+			nil,
+		)
+	case ValueProviderProject:
+		return newOperationValuePickerModel(
+			request,
+			provider,
+			"Move to Project",
+			subtitle,
+			operationProjectListSource(m.runtime.AvailableProjects(), refs[0].Project.ID),
+			false,
+			nil,
 		)
 	case ValueProviderTags:
 		projects := make([]*models.Project, 0, len(refs))
@@ -1354,32 +1648,39 @@ func (m *AppModel) newOperationValuePicker(
 		}
 		tagList := BuildProjectsTagList(projects, false)
 		source := taskTagListSource(tagList, true)
-		membership := taskTagMembership(refs)
-		selected := make([]ListItemID, 0, len(membership))
-		for tag, state := range membership {
-			if state == operationTagAll {
-				selected = append(selected, ListItemID("tag:"+tag))
-			}
-		}
+		// The context rows lead the CONTEXTS section, ahead of the tag rows the
+		// source recategorized there by context usage.
+		source.Items = append(
+			taskContextListItems(collectContextNames(projects)), source.Items...,
+		)
 		picker, err := newOperationValuePickerModel(
-			request, provider, "Set Tags", subtitle, source, true, selected,
+			request, provider, "Set Tags & Context", subtitle, source, true, nil,
 		)
 		if err != nil {
 			return nil, err
 		}
-		if request.Context.Selection.Visual {
-			byID := make(map[ListItemID]operationTagMembership, len(membership))
-			for tag, state := range membership {
-				byID[ListItemID("tag:"+tag)] = state
+		// Membership is configured at every cardinality, so the picker always
+		// emits the patch payload the context field rides on. For one task the
+		// patch and a replacement describe the same edit.
+		byID := make(map[ListItemID]operationTagMembership, len(source.Items))
+		for _, item := range source.Items {
+			byID[item.ID] = operationTagNone
+		}
+		for tag, state := range taskTagMembership(refs) {
+			id := ListItemID("tag:" + tag)
+			if _, ok := byID[id]; ok {
+				byID[id] = state
 			}
-			for _, item := range picker.surface.Items() {
-				if _, ok := byID[item.ID]; !ok {
-					byID[item.ID] = operationTagNone
-				}
+		}
+		contextInitial, contextStates := taskContextMembership(refs)
+		for id, state := range contextStates {
+			if _, ok := byID[id]; ok {
+				byID[id] = state
 			}
-			if err := picker.configureTagMembership(byID); err != nil {
-				return nil, err
-			}
+		}
+		picker.contextInitial = contextInitial
+		if err := picker.configureTagMembership(byID); err != nil {
+			return nil, err
 		}
 		return picker, nil
 	default:
@@ -1471,6 +1772,49 @@ func taskTagMembership(refs []TaskProjectRef) map[string]operationTagMembership 
 	return membership
 }
 
+// collectContextNames unions the context vocabulary of every project a target
+// lives in, so a cross-project selection offers every name it could already
+// carry.
+func collectContextNames(projects []*models.Project) []string {
+	seen := make(map[string]bool)
+	for _, project := range projects {
+		for _, name := range CollectContextNamesForProject(project) {
+			seen[name] = true
+		}
+	}
+	names := make([]string, 0, len(seen))
+	for name := range seen {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// taskContextMembership reports the context row every target already agrees on
+// and the per-row state the checkboxes render. Disagreement leaves the agreed
+// row empty, so any chosen row reads as a change.
+func taskContextMembership(refs []TaskProjectRef) (ListItemID, map[ListItemID]operationTagMembership) {
+	counts := make(map[string]int)
+	for _, ref := range refs {
+		if ref.Task == nil {
+			continue
+		}
+		counts[ref.Task.Context]++
+	}
+	states := make(map[ListItemID]operationTagMembership, len(counts))
+	agreed := ListItemID("")
+	for name, count := range counts {
+		id := taskContextRowID(name)
+		if count == len(refs) {
+			states[id] = operationTagAll
+			agreed = id
+			continue
+		}
+		states[id] = operationTagSome
+	}
+	return agreed, states
+}
+
 // datePreset is one row of a date picker's vocabulary. The list the picker
 // renders and the resolver that decides which row is highlighted both read
 // this table, so the two cannot describe different presets.
@@ -1529,7 +1873,22 @@ func operationDateSecondaryText(value time.Time) string {
 	return value.Format("Mon Jan 2 15:04")
 }
 
-func operationDateListSource(deferred bool) ListSource {
+// The two date sections share preset names, so a row's identity carries its
+// field. Both sections are always built from the same namespace, including in
+// the due-only projection, so one resolver answers either list.
+const (
+	dateListCategoryDue   ListCategoryID = "date-due"
+	dateListCategoryDefer ListCategoryID = "date-defer"
+)
+
+func dateListItemID(deferred bool, presetID string) ListItemID {
+	if deferred {
+		return ListItemID("date:defer:" + presetID)
+	}
+	return ListItemID("date:due:" + presetID)
+}
+
+func operationDateItems(deferred bool, categoryID ListCategoryID, disabledReason string) []ListItem {
 	presets := operationDatePresets(deferred, time.Now())
 	items := make([]ListItem, 0, len(presets))
 	for _, preset := range presets {
@@ -1541,28 +1900,189 @@ func operationDateListSource(deferred bool) ListSource {
 			secondary = operationDateSecondaryText(value)
 		}
 		items = append(items, ListItem{
-			ID:            ListItemID("date:" + preset.id),
-			PrimaryText:   preset.label,
-			SecondaryText: secondary,
-			Aliases:       []string{preset.id, secondary},
-			Data:          OperationDateValue{Date: date},
+			ID:             dateListItemID(deferred, preset.id),
+			CategoryID:     categoryID,
+			PrimaryText:    preset.label,
+			SecondaryText:  secondary,
+			Aliases:        []string{preset.id, secondary},
+			DisabledReason: disabledReason,
+			Data:           OperationDateValue{Date: date, Deferred: deferred},
+		})
+	}
+	return items
+}
+
+// operationDateListSource is the one picker `@` opens. Due rows come first
+// because a deadline is the commoner answer, and deferReason disables the whole
+// defer section when a resolved task cannot be deferred, which leaves due
+// reachable on the same terminal task.
+func operationDateListSource(deferReason string) ListSource {
+	items := operationDateItems(false, dateListCategoryDue, "")
+	items = append(items, operationDateItems(true, dateListCategoryDefer, deferReason)...)
+	return ListSource{
+		Items: items,
+		Categories: []ListCategory{
+			{ID: dateListCategoryDue, Label: "Due"},
+			{ID: dateListCategoryDefer, Label: "Defer"},
+		},
+	}
+}
+
+// operationDueDateListSource is the due-only projection. The waiting check-back
+// chain is the one caller: that step asks for a deadline specifically, so a
+// defer section there would offer an answer to a question nobody asked.
+func operationDueDateListSource() ListSource {
+	return ListSource{Items: operationDateItems(false, "", "")}
+}
+
+// parentListNoneID is the row expressing the `>0` grammar: no parent, task at
+// the project root.
+const parentListNoneID ListItemID = "parent:none"
+
+// operationParentListSource offers every structural candidate in the task's own
+// project, carrying the refusal reason on the row rather than behind Enter, so
+// a cycle, self-reference, or depth-six overflow reads as a disabled row.
+// Children resolve only in the effective project, exactly as `>parent` does.
+func operationParentListSource(task *models.Task, project *models.Project) ListSource {
+	candidates := structuralCandidates(project)
+	items := make([]ListItem, 0, len(candidates)+1)
+	items = append(items, ListItem{
+		ID:            parentListNoneID,
+		PrimaryText:   "No parent (project root)",
+		SecondaryText: ">0",
+		Aliases:       []string{"none", "root", "0", ">0", "detach"},
+		Data:          OperationParentValue{},
+	})
+	for _, candidate := range candidates {
+		id := candidate.ID
+		shortID := "#" + strconv.Itoa(candidate.ShortID)
+		items = append(items, ListItem{
+			ID:             ListItemID("parent:" + id),
+			PrimaryText:    candidate.Title,
+			SecondaryText:  shortID,
+			Aliases:        []string{shortID, strconv.Itoa(candidate.ShortID), candidate.Title},
+			DisabledReason: invalidQuickEditParent(task, project, project, candidate),
+			Data:           OperationParentValue{ParentID: &id},
 		})
 	}
 	return ListSource{Items: items}
 }
 
+// operationChildListSource offers every structural candidate in the task's own
+// project that the task does not already parent, exactly the population
+// `<child` resolves against. Omitting the existing children is what keeps the
+// picker additive: with no row for a child the task already has, no selection
+// state can ask for a detach, which `<0` is not.
+func operationChildListSource(task *models.Task, project *models.Project) ListSource {
+	candidates := structuralCandidates(project)
+	items := make([]ListItem, 0, len(candidates))
+	for _, candidate := range candidates {
+		if candidate.ID == task.ID {
+			continue
+		}
+		if candidate.ParentID != nil && *candidate.ParentID == task.ID {
+			continue
+		}
+		id := candidate.ID
+		shortID := "#" + strconv.Itoa(candidate.ShortID)
+		items = append(items, ListItem{
+			ID:             ListItemID("child:" + id),
+			PrimaryText:    candidate.Title,
+			SecondaryText:  shortID,
+			Aliases:        []string{shortID, strconv.Itoa(candidate.ShortID), candidate.Title},
+			DisabledReason: invalidQuickEditParent(candidate, project, project, task),
+			Data:           id,
+		})
+	}
+	return ListSource{Items: items}
+}
+
+// moveProjectPickerItem adapts one destination project for the Move to Project
+// list.
+type moveProjectPickerItem struct {
+	project *models.Project
+}
+
+func (item moveProjectPickerItem) FilterText() string {
+	return item.project.Name + " " + item.project.Slug
+}
+
+func (item moveProjectPickerItem) DisplayText() string {
+	return item.project.Name
+}
+
+func (item moveProjectPickerItem) CountValue() int {
+	return item.project.CountTasks()
+}
+
+func (item moveProjectPickerItem) ItemID() string {
+	return "project:" + item.project.ID
+}
+
+func (item moveProjectPickerItem) IsPinned() bool {
+	return item.project.Pinned
+}
+
+// operationProjectListSource offers every available project except the task's
+// own, since a move to the current owner is not a move. The population is
+// AvailableProjects rather than the Outliner's TaskWorkspaceProjects, so a
+// parked project stays a destination exactly as it does for `%project`.
+func operationProjectListSource(projects []*models.Project, currentProjectID string) ListSource {
+	items := make([]moveProjectPickerItem, 0, len(projects))
+	for _, project := range projects {
+		if project == nil || project.ID == currentProjectID {
+			continue
+		}
+		items = append(items, moveProjectPickerItem{project: project})
+	}
+	source := ListSourceFromPickerItems(items, false)
+	for i := range source.Items {
+		project := items[i].project
+		source.Items[i].SecondaryText = moveProjectRowSecondary(project)
+		// The executor's request names a project by ID, so the adapted payload is
+		// narrowed from the picker item to that identifier.
+		source.Items[i].Data = project.ID
+	}
+	return source
+}
+
+// moveProjectRowSecondary names the destination by slug rather than by task
+// count. These are catalog records whose task trees are not loaded here, so a
+// count would read as "empty"; the slug is what the Outliner's own project
+// headers show, and the tag chips are what make a parked destination legible.
+func moveProjectRowSecondary(project *models.Project) string {
+	secondary := "[" + project.Slug + "]"
+	if chips := projectTagChips(project.Tags); chips != "" {
+		secondary += " · " + chips
+	}
+	return secondary
+}
+
+func parentSelectedID(task *models.Task) []ListItemID {
+	if task == nil || task.ParentID == nil {
+		return []ListItemID{parentListNoneID}
+	}
+	return []ListItemID{ListItemID("parent:" + *task.ParentID)}
+}
+
 func dueDateSelectedID(date *time.Time) []ListItemID {
 	if date == nil {
-		return []ListItemID{"date:clear"}
+		return []ListItemID{dateListItemID(false, "clear")}
 	}
 	return relativeDateSelectedID(date, false)
 }
 
-func deferSelectedID(date *time.Time) []ListItemID {
-	if date == nil {
-		return []ListItemID{"date:clear"}
+// operationDateSelectedID highlights the row the task's own values name. Due
+// wins when both fields are set, because the cursor can only sit in one section
+// and the due section is the one the list opens on.
+func operationDateSelectedID(due, deferred *time.Time) []ListItemID {
+	if due != nil {
+		return relativeDateSelectedID(due, false)
 	}
-	return relativeDateSelectedID(date, true)
+	if deferred != nil {
+		return relativeDateSelectedID(deferred, true)
+	}
+	return []ListItemID{dateListItemID(false, "clear")}
 }
 
 // relativeDateSelectedID highlights a preset only when the stored value is
@@ -1575,7 +2095,7 @@ func relativeDateSelectedID(date *time.Time, deferred bool) []ListItemID {
 			continue
 		}
 		if preset.value().Equal(*date) {
-			return []ListItemID{ListItemID("date:" + preset.id)}
+			return []ListItemID{dateListItemID(deferred, preset.id)}
 		}
 	}
 	return nil

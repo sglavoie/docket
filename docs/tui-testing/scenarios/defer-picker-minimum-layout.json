@@ -6,12 +6,18 @@
     { "type": "key", "label": "open the go-to chord", "key": "g" },
     { "type": "key", "label": "jump straight to Inbox", "key": "i" },
     { "type": "key", "label": "step off the project group header onto the first task", "key": "j" },
-    { "type": "assert", "label": "defer earns a footer slot at the minimum width", "assert": "contains", "value": "d defer" },
-    { "type": "key", "label": "open direct defer values", "key": "d" },
-    { "type": "assert", "assert": "contains", "value": "Set Defer" },
-    { "type": "assert", "label": "the eight-row list fits whole at the minimum width", "assert": "contains", "value": "In 1 hour" },
-    { "type": "assert", "assert": "contains", "value": "Tomorrow morning" },
-    { "type": "assert", "label": "the last row is on screen, so nothing is scrolled away", "assert": "contains", "value": "For one month" },
+    { "type": "assert", "label": "one date key earns a footer slot at the minimum width", "assert": "contains", "value": "@ date" },
+    { "type": "assert", "label": "defer no longer holds a key of its own", "assert": "not_contains", "value": "d defer" },
+    { "type": "key", "label": "open direct date values", "key": "@" },
+    { "type": "assert", "assert": "contains", "value": "Set Date" },
+    { "type": "assert", "label": "the combined list is longer than the minimum height allows, so it scrolls", "assert": "contains", "value": "DUE" },
+    { "type": "assert", "assert": "contains", "value": "Clear" },
+    { "type": "assert", "label": "the overflow is announced rather than silently clipped", "assert": "contains", "value": "more" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "walk to the last row of the defer section", "key": "G" },
+    { "type": "assert", "label": "every defer row is reachable, the window just moves", "assert": "contains", "value": "Clear defer" },
+    { "type": "assert", "assert": "contains", "value": "For one month" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

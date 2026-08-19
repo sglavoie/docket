@@ -175,14 +175,14 @@ func TestArchivedTaskRefusesMutatingDirectKeys(t *testing.T) {
 		name string
 		keys []string
 	}{
-		{name: "set state", keys: []string{"w", "i"}},
+		{name: "set state", keys: []string{"$", "i"}},
 		{name: "set priority", keys: []string{"!", "1"}},
 		{name: "set due date", keys: []string{"@"}},
 		{name: "set tags", keys: []string{"#"}},
-		{name: "toggle pin", keys: []string{"P"}},
+		{name: "toggle pin", keys: []string{"*"}},
 		{name: "edit title", keys: []string{"e"}},
 		{name: "edit description", keys: []string{"E"}},
-		{name: "toggle today", keys: []string{"w", "t"}},
+		{name: "toggle today", keys: []string{"$", "t"}},
 		{name: "reorder down", keys: []string{"J"}},
 	}
 	for _, testCase := range cases {
@@ -240,7 +240,7 @@ func TestArchivedMixedSelectionRefusesBulkDirectKeys(t *testing.T) {
 	activeBefore := env.tasksFileBytes(t, env.active)
 	archivedBefore := env.tasksFileBytes(t, env.archived)
 
-	env.act(t, "w", "i")
+	env.act(t, "$", "i")
 
 	env.archivedRejection(t, "bulk set state")
 	if after := env.tasksFileBytes(t, env.active); after != activeBefore {
@@ -270,7 +270,7 @@ func TestArchivedPopulationLeavesActiveTasksMutable(t *testing.T) {
 	activeTaskID := env.taskID(t, env.active, archivedGuardActiveTaskTitle)
 	env.focusTask(t, activeTaskID)
 
-	env.act(t, "w", "i")
+	env.act(t, "$", "i")
 
 	if err := env.driver.App().err; err != nil {
 		t.Fatalf("the active task refused a state change: %v", err)

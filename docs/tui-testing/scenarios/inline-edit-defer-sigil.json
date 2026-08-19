@@ -1,0 +1,53 @@
+{
+  "name": "inline-edit-defer-sigil",
+  "fixture": "signals",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open the filter chord", "key": "f" },
+    { "type": "key", "label": "the deferred facet is a row on the due picker", "key": "@" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "label": "highlight Deferred only, below the four due-date rows", "key": "down" },
+    { "type": "key", "label": "isolate the pending deferrals", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Alpha still hidden defer" },
+
+    { "type": "key", "key": "home" },
+    { "type": "key", "label": "past the project header", "key": "j" },
+    { "type": "key", "label": "onto the whole-day deferral", "key": "j" },
+    { "type": "key", "label": "edit the row in place", "key": "e" },
+    { "type": "assert", "assert": "contains", "value": "EDIT TASK" },
+    { "type": "assert", "label": "the breadcrumb names the deferral being edited", "assert": "contains", "value": "backlog · defer" },
+    { "type": "text", "label": "give the deferred task a due day as well", "text": " @tomorrow " },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Edit Task Line: #4 Alpha still hidden" },
+    { "type": "assert", "label": "the task now carries both a deferral and a due day", "assert": "contains", "value": "Alpha still hidden ⊡ Tomorrow defer" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "edit the same row again", "key": "e" },
+    { "type": "text", "label": "the clear form belongs to the edit surface", "text": " @@0 " },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the deferral is gone, so the deferred-only filter drops the row", "assert": "not_contains", "value": "□ Alpha still hidden" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "reopen the filter chord", "key": "f" },
+    { "type": "key", "label": "clear every facet", "key": "x" },
+    { "type": "assert", "label": "@@0 cleared the deferral without touching the due day @ owns", "assert": "contains", "value": "Alpha still hidden ⊡ Tomorrow" },
+    { "type": "assert", "assert": "not_contains", "value": "Alpha still hidden ⊡ Tomorrow defer" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "step onto the Today membership, which holds no deferral", "key": "home" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "edit the row in place", "key": "e" },
+    { "type": "text", "label": "an hour offset defers from the edit line", "text": " @@+2h " },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Edit Task Line: #6 Alpha overdue intake" },
+    { "type": "assert", "label": "a same-day deferral hides the row at once", "assert": "not_contains", "value": "□ Alpha overdue intake" },
+    { "type": "assert", "label": "deferring takes the task out of Today with it", "assert": "not_contains", "value": "@ Today" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

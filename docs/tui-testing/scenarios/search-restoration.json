@@ -4,7 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "label": "keep only High priority rows", "key": "f" },
-    { "type": "key", "key": "p" },
+    { "type": "key", "key": "!" },
     { "type": "key", "key": "1" },
     { "type": "assert", "assert": "contains", "value": "priority:High+" },
     { "type": "assert", "assert": "not_contains", "value": "Build login form" },

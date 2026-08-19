@@ -49,13 +49,13 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 		{path: []string{"!", "0"}, want: operationTaskSetPriority, value: 0},
 		{path: []string{"!", "1"}, want: operationTaskSetPriority, value: 1},
 		{path: []string{"!", "3"}, want: operationTaskSetPriority, value: 3},
-		{path: []string{"w", "i"}, want: operationTaskSetState, value: models.StateInbox},
-		{path: []string{"w", "g"}, want: operationTaskSetState, value: models.StateDoing},
-		{path: []string{"w", "w"}, want: operationTaskSetState, value: models.StateWaiting},
-		{path: []string{"w", "p"}, want: operationTaskSetState, value: models.StatePaused},
-		{path: []string{"w", "m"}, want: operationTaskSetState, value: models.StateSomeday},
-		{path: []string{"w", "d"}, want: operationTaskSetState, value: models.StateDone},
-		{path: []string{"w", "c"}, want: operationTaskSetState, value: models.StateCanceled},
+		{path: []string{"$", "i"}, want: operationTaskSetState, value: models.StateInbox},
+		{path: []string{"$", "g"}, want: operationTaskSetState, value: models.StateDoing},
+		{path: []string{"$", "w"}, want: operationTaskSetState, value: models.StateWaiting},
+		{path: []string{"$", "p"}, want: operationTaskSetState, value: models.StatePaused},
+		{path: []string{"$", "m"}, want: operationTaskSetState, value: models.StateSomeday},
+		{path: []string{"$", "d"}, want: operationTaskSetState, value: models.StateDone},
+		{path: []string{"$", "c"}, want: operationTaskSetState, value: models.StateCanceled},
 	}
 
 	for _, preset := range presets {
@@ -95,9 +95,9 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 		path []string
 		want OperationID
 	}{
-		{path: []string{"w", "b"}, want: operationCoreBacklog},
-		{path: []string{"w", "n"}, want: operationCoreNext},
-		{path: []string{"w", "t"}, want: operationCoreToday},
+		{path: []string{"$", "b"}, want: operationCoreBacklog},
+		{path: []string{"$", "n"}, want: operationCoreNext},
+		{path: []string{"$", "t"}, want: operationCoreToday},
 	} {
 		ctx := taskOperationTestContext(loose, project)
 		binding, descriptor, resolution := model.operationRegistry.InputBindingForSequence(
@@ -113,15 +113,14 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 		}
 	}
 
-	// The three unpresetable operations keep the existing pickers.
+	// The two unpresetable operations keep the existing pickers.
 	for _, picker := range []struct {
 		key      string
 		want     OperationID
 		provider ValueProviderID
 	}{
-		{key: "@", want: operationTaskSetDueDate, provider: ValueProviderDueDate},
+		{key: "@", want: operationTaskSetDueDate, provider: ValueProviderDate},
 		{key: "#", want: operationTaskSetTags, provider: ValueProviderTags},
-		{key: "d", want: operationTaskSetDefer, provider: ValueProviderDefer},
 	} {
 		ctx := taskOperationTestContext(loose, project)
 		result := executeDirectPath(t, model, ctx, []string{picker.key})
@@ -185,9 +184,9 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 
 	t.Run("state prefix shows every action and dispatches a transition", func(t *testing.T) {
 		app := newApp(t)
-		handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'w', Text: "w"})
+		handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: '$', Text: "$"})
 		if !handled || cmd != nil {
-			t.Fatalf("w = handled %v cmd %T; want a pending prefix", handled, cmd)
+			t.Fatalf("$ = handled %v cmd %T; want a pending prefix", handled, cmd)
 		}
 		row := pendingChordHintRowForTest(app)
 		for _, want := range []string{
@@ -209,7 +208,7 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 
 		handled, cmd = app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'w', Text: "w"})
 		if !handled || cmd == nil {
-			t.Fatalf("ww = handled %v cmd %T; want the waiting transition", handled, cmd)
+			t.Fatalf("$w = handled %v cmd %T; want the waiting transition", handled, cmd)
 		}
 	})
 
@@ -217,9 +216,8 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 		key      rune
 		provider ValueProviderID
 	}{
-		{key: '@', provider: ValueProviderDueDate},
+		{key: '@', provider: ValueProviderDate},
 		{key: '#', provider: ValueProviderTags},
-		{key: 'd', provider: ValueProviderDefer},
 	} {
 		t.Run(string(picker.key)+" opens its picker", func(t *testing.T) {
 			app := newApp(t)

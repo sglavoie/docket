@@ -118,13 +118,13 @@ type SelectionContext struct {
 // Count returns the number of selected tasks.
 func (s SelectionContext) Count() int { return len(s.Tasks) }
 
-// EntityContext describes the entity a command would act on. State remains a
-// string at this shell seam so command discovery does not depend on a domain
-// model package or force route migrations to share a concrete entity type.
+// EntityContext describes the entity a command would act on. It carries
+// identity and the archive guard only: an applicability rule that needs live
+// task fields reads them from the resolved targets, so a frozen context can
+// never disagree with the workspace snapshot the handler mutates.
 type EntityContext struct {
 	ProjectID string
 	TaskID    string
-	State     string
 	Archived  bool
 	// HasChecklistCursor reports that the cursor rests on a checklist row owned
 	// by the task TaskID names. The owner's task and project stay filled beside

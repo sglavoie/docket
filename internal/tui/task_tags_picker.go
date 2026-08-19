@@ -14,6 +14,11 @@ const (
 	taskTagSemanticCategory ListCategoryID = "task-tag:semantic"
 	taskContextCategory     ListCategoryID = "task-tag:context"
 
+	// taskContextRowPrefix keeps the context radio rows in an ID namespace the
+	// "tag:" rows they share the CONTEXTS section with can never enter.
+	taskContextRowPrefix  = "context:"
+	taskContextClearRowID = ListItemID(taskContextRowPrefix + "0")
+
 	semanticTaskTagExplainerLabel     = "semantic"
 	semanticTaskTagExplainerSeparator = " › "
 	semanticTaskTagExplainerSummary   = "— the highest one a task carries colors its title."
@@ -144,6 +149,91 @@ func taskTagListSource(tags []TagInfo, seedUnused bool) ListSource {
 			{ID: taskContextCategory, Label: "Contexts"},
 			{ID: tagDescriptiveCategory, Label: "Tags"},
 		},
+	}
+}
+
+// taskContextRow is the payload one selectable context row carries. The
+// CONTEXTS section also holds tag rows recategorized by context usage, so a
+// shared string payload could not tell the two populations apart.
+type taskContextRow struct{ Name string }
+
+// taskContextListItems builds the radio rows: one clear row plus one row per
+// context in use. The clear row borrows the permanently reserved "0" context
+// name for its ID, so a real context can never mint a colliding row.
+func taskContextListItems(names []string) []ListItem {
+	items := make([]ListItem, 0, len(names)+1)
+	items = append(items, ListItem{
+		ID:            taskContextClearRowID,
+		CategoryID:    taskContextCategory,
+		PrimaryText:   "No context",
+		SecondaryText: "clears the task context",
+		Aliases:       []string{"no context", "clear context", "##0"},
+		Preview: ListPreview{Title: "No context", Fields: []ListPreviewField{
+			{Label: "Sigil", Value: "##0"},
+		}},
+		Data: taskContextRow{},
+	})
+	for _, name := range names {
+		items = append(items, taskContextListItem(name))
+	}
+	return items
+}
+
+func taskContextListItem(name string) ListItem {
+	return ListItem{
+		ID:            taskContextRowID(name),
+		CategoryID:    taskContextCategory,
+		PrimaryText:   "##" + name,
+		SecondaryText: "task context",
+		Aliases:       []string{name, "##" + name},
+		Preview: ListPreview{Title: "##" + name, Fields: []ListPreviewField{
+			{Label: "Context", Value: name},
+		}},
+		Data: taskContextRow{Name: name},
+	}
+}
+
+func taskContextRowID(name string) ListItemID {
+	if name == "" {
+		return taskContextClearRowID
+	}
+	return ListItemID(taskContextRowPrefix + name)
+}
+
+// taskContextRowName reports the context a row sets, and whether the row is a
+// context row at all. The clear row answers true with an empty name.
+func taskContextRowName(item ListItem) (string, bool) {
+	row, ok := item.Data.(taskContextRow)
+	return row.Name, ok
+}
+
+func isTaskContextRowID(id ListItemID) bool {
+	return strings.HasPrefix(string(id), taskContextRowPrefix)
+}
+
+// taskTagPickerLess orders the rows a minted tag or context is inserted into. A
+// global alphabetical sort would reorder the semantic section into bug, epic,
+// feature, idea, story and contradict the precedence line under it, and would
+// bury the context radio rows among the tag rows they share a section with.
+func taskTagPickerLess(items []ListItem) func(i, j int) bool {
+	return func(i, j int) bool {
+		left, right := items[i], items[j]
+		leftSemantic := left.CategoryID == taskTagSemanticCategory
+		rightSemantic := right.CategoryID == taskTagSemanticCategory
+		leftName, leftContext := taskContextRowName(left)
+		rightName, rightContext := taskContextRowName(right)
+		switch {
+		case leftSemantic != rightSemantic:
+			return leftSemantic
+		case leftSemantic:
+			return semanticTaskTagPrecedence(left.PrimaryText) < semanticTaskTagPrecedence(right.PrimaryText)
+		case leftContext != rightContext:
+			return leftContext
+		case leftContext:
+			return leftName < rightName
+		default:
+			return left.PrimaryText < right.PrimaryText
+		}
 	}
 }
 

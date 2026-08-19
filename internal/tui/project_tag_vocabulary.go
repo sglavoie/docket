@@ -12,7 +12,7 @@ import (
 )
 
 // The vocabulary actions edit one project tag across every project that carries
-// it. They are reachable only from a tag row inside the Ft picker, which is the
+// it. They are reachable only from a tag row inside the F# picker, which is the
 // one surface that names a tag rather than a project.
 const (
 	operationProjectTagRenameAll OperationID = "tui.project-tag.rename-all"

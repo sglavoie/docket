@@ -102,7 +102,6 @@ var headerTargetAudit = map[OperationID]string{
 	"tui.filter.project-clear":        "target-free",
 	"tui.filter.project-tags":         "target-free",
 	"tui.filter.show-parked":          "target-free",
-	"tui.filter.deferred":             "target-free",
 	"tui.filter.states":               "target-free",
 	"tui.filter.tags":                 "target-free",
 	"tui.project.set-tags":            "project",
@@ -112,19 +111,20 @@ var headerTargetAudit = map[OperationID]string{
 	"tui.sort.priority":               "target-free",
 	"tui.sort.title":                  "target-free",
 	"tui.sort.updated":                "target-free",
+	"tui.task.adopt-children":         "reject",
 	"tui.task.copy-details":           "reject",
 	"tui.task.copy-title":             "reject",
 	"tui.task.copy-title-description": "reject",
 	"tui.task.indent":                 "reject",
+	"tui.task.move-to-project":        "reject",
 	"tui.task.new-child":              "reject",
 	"tui.task.outdent":                "reject",
 	"tui.task.set-due-date":           "reject",
 	"tui.task.set-priority":           "reject",
-	"tui.task.set-defer":              "reject",
+	"tui.task.set-parent":             "reject",
 	"tui.task.set-state":              "reject",
 	"tui.task.set-tags":               "reject",
 	"tui.task.toggle-pin":             "reject",
-	"tui.task.toggle-review":          "reject",
 }
 
 func TestHeaderTargetResolutionIsClassified(t *testing.T) {
@@ -244,14 +244,13 @@ func TestHeaderTargetCoreOperationsRefuseInsteadOfNoOp(t *testing.T) {
 // the keys one at a time from a clean shell instead.
 func TestHeaderTargetKeyPressesReachTheRejection(t *testing.T) {
 	for _, sequence := range [][]string{
-		// Every operation under w and under ! is a task mutation, so both chords
+		// Every operation under $ and under ! is a task mutation, so both chords
 		// refuse at the prefix rather than waiting for a second key that can never
 		// resolve.
-		{"w"},
+		{"$"},
 		{"!"},
 		{"@"},
-		{"d"},
-		{"P"},
+		{"*"},
 		{"y"},
 		{"e"},
 		{"E"},
@@ -260,6 +259,9 @@ func TestHeaderTargetKeyPressesReachTheRejection(t *testing.T) {
 		{"ctrl+enter"},
 		{">"},
 		{"<"},
+		{"%"},
+		{"]"},
+		{"["},
 	} {
 		t.Run(strings.Join(sequence, ""), func(t *testing.T) {
 			app := headerTargetAuditApp(t)

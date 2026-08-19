@@ -58,12 +58,12 @@ func TestOperationRegistryDetectsPredicateCollisionInActiveContext(t *testing.T)
 	ready := operationTestDescriptor("task.ready", "Ready task action")
 	ready.DirectKey = "x"
 	ready.Applicability = func(ctx CommandContext) bool {
-		return ctx.Entity.State == "ready" || ctx.Entity.State == "both"
+		return ctx.Entity.TaskID == "ready" || ctx.Entity.TaskID == "both"
 	}
 	inbox := operationTestDescriptor("task.inbox", "Inbox task action")
 	inbox.DirectKey = "x"
 	inbox.Applicability = func(ctx CommandContext) bool {
-		return ctx.Entity.State == "inbox" || ctx.Entity.State == "both"
+		return ctx.Entity.TaskID == "inbox" || ctx.Entity.TaskID == "both"
 	}
 	if err := registry.Register(ready); err != nil {
 		t.Fatalf("Register ready: %v", err)
@@ -73,13 +73,13 @@ func TestOperationRegistryDetectsPredicateCollisionInActiveContext(t *testing.T)
 	}
 
 	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
-	ctx.Entity.State = "ready"
+	ctx.Entity.TaskID = "ready"
 	applicable, err := registry.ForContext(ctx)
 	if err != nil || len(applicable) != 1 || applicable[0].ID != ready.ID {
 		t.Fatalf("ready context = (%v, %v), want only %s", applicable, err, ready.ID)
 	}
 
-	ctx.Entity.State = "both"
+	ctx.Entity.TaskID = "both"
 	if err := registry.ValidateContext(ctx); err == nil || !strings.Contains(err.Error(), "collision") {
 		t.Fatalf("both context error = %v, want active collision", err)
 	}

@@ -7,24 +7,20 @@
     { "type": "key", "label": "step onto the Doing project header", "key": "j" },
     { "type": "assert", "assert": "not_contains", "value": "move the cursor to a task to use this action" },
 
-    { "type": "key", "label": "the workflow chord has no task here", "key": "w" },
+    { "type": "key", "label": "the workflow chord has no task here", "key": "$" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
-    { "type": "assert", "label": "the footer never offers the chord", "assert": "not_contains", "value": "w workflow" },
+    { "type": "assert", "label": "the footer never offers the chord", "assert": "not_contains", "value": "$ workflow" },
     { "type": "assert", "label": "no which-key row opened", "assert": "not_contains", "value": "b backlog" },
 
     { "type": "key", "key": "!" },
     { "type": "key", "label": "Set Priority has no task here", "key": "1" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
 
-    { "type": "key", "label": "Set Due Date has no task here", "key": "@" },
-    { "type": "assert", "label": "the due picker never opens", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "Set Date has no task here", "key": "@" },
+    { "type": "assert", "label": "the date picker never opens", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
 
-    { "type": "key", "label": "Set Defer has no task here", "key": "d" },
-    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
-
-    { "type": "key", "label": "Toggle Pin has no task here", "key": "P" },
+    { "type": "key", "label": "Toggle Pin has no task here", "key": "*" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
 
     { "type": "key", "label": "Copy Title has no task here", "key": "y" },
@@ -34,12 +30,19 @@
     { "type": "assert", "label": "the title editor never opens", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
 
-    { "type": "key", "label": "Indent has no task here", "key": ">" },
+    { "type": "key", "label": "Indent has no task here", "key": "]" },
+    { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
+
+    { "type": "key", "label": "Outdent has no task here", "key": "[" },
+    { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
+
+    { "type": "key", "label": "Set Parent has no task here", "key": ">" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task to use this action" },
 
     { "type": "assert", "label": "no picker or editor ever took the screen", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "not_contains", "value": "Set Due Date" },
     { "type": "assert", "assert": "not_contains", "value": "Set Priority" },
+    { "type": "assert", "assert": "not_contains", "value": "No parent (project root)" },
     { "type": "assert", "label": "every row survived the refusals", "assert": "contains", "value": "▾ [rich-project] (1)" },
     { "type": "assert", "assert": "contains", "value": "Build login form" },
     { "type": "assert", "assert": "contains", "value": "Triage support inbox" },

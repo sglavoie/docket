@@ -101,6 +101,7 @@ func quickEditGrammarGuidance() []string {
 		textgrammar.FieldTag:         "add tag",
 		textgrammar.FieldRemoveTag:   "remove tag",
 		textgrammar.FieldDue:         "due",
+		textgrammar.FieldDefer:       "defer",
 		textgrammar.FieldDestination: "destination",
 		textgrammar.FieldPinned:      "pin",
 		textgrammar.FieldProject:     "move",
@@ -234,11 +235,11 @@ func (m *OutlinerModel) decoratePendingChordHint(path []string, hint ChordHint) 
 	case "f":
 		filter := &m.filter.CommonFilterState
 		switch path[1] {
-		case "p":
+		case "!":
 			if filter.Priority > 0 {
 				hint.Label = "priority:" + strings.ToLower(models.PriorityName(filter.Priority)) + "+"
 			}
-		case "s":
+		case "$":
 			if filter.hasStateFilter() {
 				hint.Label = fmt.Sprintf("states:%d", len(filter.States.Values()))
 			}
@@ -250,20 +251,19 @@ func (m *OutlinerModel) decoratePendingChordHint(path []string, hint ChordHint) 
 				}
 			}
 		case "@":
-			if filter.DueDate != DueDateAll {
+			switch {
+			case filter.Deferred:
+				hint.Label = "deferred:on"
+			case filter.DueDate != DueDateAll:
 				hint.Label = "due:" + dueDateFilterLabel(filter.DueDate)
 			}
-		case "t":
+		case "#":
 			if len(filter.Tags) > 0 {
 				hint.Label = fmt.Sprintf("tags:%d", len(filter.Tags))
 			}
 		case "r":
 			if filter.Tags[reviewTaskTag] {
 				hint.Label = "review:on"
-			}
-		case "d":
-			if filter.Deferred {
-				hint.Label = "deferred:on"
 			}
 		case "h":
 			if filter.Hierarchy != HierarchyAll {
@@ -286,7 +286,7 @@ func (m *OutlinerModel) decoratePendingChordHint(path []string, hint ChordHint) 
 func (m *OutlinerModel) decorateProjectFilterChordHint(key string, hint ChordHint) ChordHint {
 	filter := &m.projectFilter
 	switch key {
-	case "t":
+	case "#":
 		if selected := projectFilterSelection(filter); len(selected) > 0 {
 			hint.Label = fmt.Sprintf("project tags:%d", len(selected))
 		}

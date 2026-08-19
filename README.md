@@ -30,9 +30,10 @@ The Outliner is the only primary task presentation:
 
 1. `a` captures one or more tasks.
 2. `gi` moves to Inbox for triage.
-3. `w` opens the shared workflow chord.
-4. `wb`, `wn`, `wt`, and `wr` organize work; `wg` starts it and `wd` completes it.
-5. Direct metadata keys handle priority, state, due date, tags, defer, and pin.
+3. `$` opens the shared workflow chord, the sigil the grammar already uses for a
+   destination.
+4. `$b`, `$n`, and `$t` organize work; `$g` starts it and `$d` completes it.
+5. Direct metadata keys handle priority, state, dates, tags, and pin.
 6. `Space` opens the six occasional task tools.
 
 Together, these operations form one capture, triage, plan, execute, and
@@ -135,33 +136,46 @@ were in and says so.
 | Modes | `Tab` / `Shift+Tab` cycle the seven modes; `g` opens the go-to chord: `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `g@` Due, `gr` Recent |
 | Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items, and `h` on a direct child of a focus root steps out of that Focus frame onto the root; `S` toggles all visible sections; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `H`/`M`/`L` land on the highest, middle, and lowest visible row without scrolling; `z` opens the scroll chord, which does the opposite and moves the window under the cursor: `zt` puts the cursor's row at the top, `zz` centers it, `zb` puts it at the bottom; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `Ctrl+P` opens the cursor task's project in All and keeps the cursor on it; `Enter` focuses descendants; `Shift+Enter` widens focus one level; `Ctrl+Enter` toggles Peek |
 | Capture and edit | `a` capture, `A` child, `e` inline task edit, `E` description, `Ctrl+E` external editor, whose title line speaks the same edit grammar as `e`, `O` outline edit the cursor's project |
-| Workflow | `w` opens the workflow chord: `wi` Inbox, `wb` Backlog, `wn` toggle Next, `wt` toggle Today, `wg` Doing, `wr` toggle Review, `ww` Waiting, `wp` Paused, `wm` Someday, `wd` Done, `wc` Canceled; `ww` then asks for a check-back date |
-| Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date; `#` tags; `##` context; `d` defer; `P` pin |
-| Structure | `<` outdent, `>` indent, `J`/`K` reorder one step, `Ctrl+J`/`Ctrl+K` reorder to the far end of the visible peers |
-| Sorting | `o` opens the sort chord: `o@` due date, `op` priority, `oc` created, `ou` updated, `ot` title, `ox` clear; repeat a field key to reverse it |
+| Workflow | `$` opens the workflow chord over the ten destinations the `$` capture sigil names: `$i` Inbox, `$b` Backlog, `$n` toggle Next, `$t` toggle Today, `$g` Doing, `$w` Waiting, `$p` Paused, `$m` Someday, `$d` Done, `$c` Canceled; `$w` then asks for a check-back date |
+| Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date and defer; `#` tags and context; `*` pin |
+| Structure | `[` outdent, `]` indent, `>` Set Parent, `<` Adopt Children, `%` Move to Project, `J`/`K` reorder one step, `Ctrl+J`/`Ctrl+K` reorder to the far end of the visible peers |
+| Sorting | `o` opens the sort chord: `o@` due date, `o!` priority, `oc` created, `ou` updated, `ot` title, `ox` clear; repeat a field key to reverse it |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
 | Selection | `v` toggles the cursor task; `V` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
 | Global | `p` Select Project, `Ctrl+N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
 
-Inside the `@` and `d` pickers, `a` opens a typed-date input for any date the
-relative presets do not cover: `2026-01-15`, `tomorrow`, `+3d`, `+1w`, `fri`,
-`next mon`, or `dec 15`. `+4h` and the other `+Nh` hour offsets work in the `d`
-picker alone, because a deferral is an instant and a due date is a calendar day;
-`@` refuses them by name. Inside the `#` picker the same key adds a new tag.
+`@` opens one Set Date picker holding both fields. Its DUE section lists Clear,
+Today, Tomorrow, In one week, and In one month; its DEFER section lists Clear
+defer, In 1 hour, In 4 hours, In 8 hours, Tomorrow morning, Until tomorrow, For
+one week, and For one month. The row you commit decides which field is written,
+and the cursor opens in the due section, so a due date is one `Enter` away.
+Tomorrow morning is 09:00 on the local wall clock, on daylight-saving transition
+days too. A preset is highlighted as the current value only when it is
+reproducible from the clock alone, so the three hour rows never highlight. On a
+terminal task the defer rows are disabled and say so rather than disappearing,
+and the due rows stay reachable beside them.
 
-The `d` presets are Clear defer, In 1 hour, In 4 hours, In 8 hours, Tomorrow
-morning, Until tomorrow, For one week, and For one month. Tomorrow morning is
-09:00 on the local wall clock, on daylight-saving transition days too. A preset
-is highlighted as the current value only when it is reproducible from the clock
-alone, so the three hour rows never highlight.
+Inside the `@` picker, `a` opens a typed-date input for any date the relative
+presets do not cover: `2026-01-15`, `tomorrow`, `+3d`, `+1w`, `fri`, `next mon`,
+or `dec 15`. `+4h` and the other `+Nh` hour offsets parse only when the cursor
+sits in the defer section, because a deferral is an instant and a due date is a
+calendar day; the due section refuses them by name. Inside the `#` picker the
+same key adds a new tag, or a new context when the cursor sits on a context row.
 
 The operation descriptors are the single source for dispatch, contextual
-guidance, chord hints, and `?` help. The old standalone `b` and `t`
-actions and comma state prefix have no compatibility action; neither do removed
-keys such as `m`, `:`, `R`, and `Ctrl+Esc`.
-`d` is bound again, but to Set Defer and never to Done: Done stays `wd` alone, and root `z` is now the scroll chord prefix.
+guidance, chord hints, and `?` help. Every key an earlier vocabulary used and
+the sigils replaced is simply unbound, with no compatibility action: the old
+standalone `b`, `c`, `m`, `t`, `w`, and `P` actions, the comma state prefix, and
+`:`, `C`, `R`, and `Ctrl+Esc`.
+`d` is unbound: Done stays `$d` alone, `@` answers both dates, and root `z` is the scroll chord prefix.
+`$` joins them as a chord prefix rather than a key of its own. Pressing an
+unfinished chord and then a key it does not offer names the path you left, as
+`$q is not a workflow action`; pressing a key that was never bound does nothing
+and says nothing, because it never promised anything.
+Review has no key of its own: it is the ordinary `review` tag set from `#`, and
+`$review` is a rejected destination, so no `$` terminal could honor it.
 
-Task updates that move the focused task—such as `wg` moving it into In
+Task updates that move the focused task—such as `$g` moving it into In
 Progress—add a session-only jump entry. `Ctrl+O` returns to the task that
 followed its old position (or the preceding/nearest surviving row), and
 `Ctrl+I` returns to the relocated task. Changing mode, scope, search, filters,
@@ -169,9 +183,46 @@ sorting, folds, or focus clears this history. Terminals that do not report
 enhanced keyboard events encode `Ctrl+I` as `Tab`, so mode cycling remains the
 fallback there.
 
-`#` opens Set Tags for the current task or visual selection. Inside the
-overlay, `Space` toggles tags, `a` creates and selects a new tag, and `Enter`
-applies the pending changes.
+`#` opens Set Tags & Context for the current task or visual selection. Inside
+the overlay, `Space` toggles tags, `a` creates and selects a new tag, and
+`Enter` applies the pending changes. A task carries any number of tags but at
+most one context, so the `CONTEXTS` section is a radio group answering `#`
+rather than `Space`: the row you press it on becomes the only checked context,
+and the leading `No context` row clears the field the way `##0` does. Tags and
+context apply together, in one transaction that undoes in one step.
+
+`[` and `]` move the cursor task one step along the tree it is already in: `[`
+outdents it to its parent's level, `]` nests it under the peer above. They are
+the two structural keys that answer no sigil, because a relative nudge has no
+capture form to name. `>` opens
+Set Parent, the picker form of the `>parent` edit sigil. It lists every open
+task in the cursor task's project, above a leading `No parent (project root)`
+row that does what `>0` does. A parent the move would reject — the task itself,
+a task inside its own subtree, or one that would push the subtree past six
+levels — is still listed, disabled and carrying the reason, so the refusal is
+visible before you press `Enter`. Set Parent never crosses a project boundary;
+`%` is what moves a subtree between projects.
+
+`<` opens Adopt Children, the picker form of the `<child` edit sigil, and points
+the other way: it hands the cursor task new children instead of choosing its
+parent. Because `<child` is repeatable, the list is multi-select; because it has
+no clearing form, the list is strictly additive. Nothing is preselected, `Space`
+checks the tasks to adopt, and `Enter` adopts the whole checked set in one
+transaction that undoes in one step. Tasks the cursor task already parents are
+absent from the list, so unchecking can never mean detaching — a child leaves
+its parent through `>parent` or `>0` and nowhere else. Candidates come from the
+cursor task's own project only, and one the adoption would reject is listed
+disabled with the reason.
+
+`%` opens Move to Project, the picker form of the `%project` edit sigil, and is
+the one key that carries a task out of its project. It moves the whole subtree
+in one transaction that undoes in one step, and the destination mints its own
+`#N` numbers for every task it receives. The list names each project by slug and
+skips the one the task already lives in, since a move to it is not a move. It is
+drawn from every non-archived project rather than the ones the Outliner shows,
+so a parked project is still a destination — the task simply follows it out of
+view. `p` remains Select Project, which changes what you are looking at rather
+than where a task lives.
 
 ### Outline editing
 
@@ -180,7 +231,8 @@ applies the pending changes.
 parentage: two spaces per level, up to the usual depth of six. Every line
 otherwise speaks the ordinary capture grammar, so `!2`, `#tag`, `##context`, `@friday`,
 `$backlog`, and `*pin` all work, while `>parent` and `<child` are rejected
-because the indentation already said it. The dump prints the values a task
+because the indentation already said it, and `@@defer` is rejected because the
+buffer carries no deferral at all. The dump prints the values a task
 currently holds, so a pinned task arrives carrying `*pin` and deleting that
 token unpins it; there is no `*unpin` here.
 
@@ -259,13 +311,12 @@ reordering — still asks you to exit search first.
 
 | Keys | Effect |
 | --- | --- |
-| `fp0`, `fp1`–`fp3` | Clear priority filtering or keep High, Medium-or-higher, or Low-or-higher assigned priorities; Unset never matches |
-| `fs` | Pick workflow states with OR semantics, including terminal states |
+| `f!0`, `f!1`–`f!3` | Clear priority filtering or keep High, Medium-or-higher, or Low-or-higher assigned priorities; Unset never matches |
+| `f$` | Pick workflow states with OR semantics, including terminal states |
 | `fc` | Pick completed at least 7, 30, or 90 local-calendar days ago, or all valid completion ages; also filters states to Done and Canceled |
-| `ft` | Pick tags and task contexts with AND semantics; each selected value matches either field, and a value used as a context is listed under `CONTEXTS` above `TAGS` |
+| `f#` | Pick tags and task contexts with AND semantics; each selected value matches either field, and a value used as a context is listed under `CONTEXTS` above `TAGS` |
 | `fr` | Toggle the `review` tag facet |
-| `f@` | Open the due-date facet picker: overdue, today, this week, or no due date |
-| `fd` | Deferred-only |
+| `f@` | Open the due-date facet picker: overdue, today, this week, no due date, or deferred-only |
 | `fh` | Pick one hierarchy position: parent, child, root, or leaf; parent and leaf read open children |
 | `fx` | Clear every facet |
 | `/` | Ranked title, description, tag, and project search over every scoped nonterminal task, gated by any capture sigils the query carries |
@@ -277,12 +328,14 @@ filter, and a query with no sigils behaves exactly as it did before:
 
 | Token | Effect |
 | --- | --- |
-| `!1`–`!3` | Match that priority exactly, unlike `fp`'s threshold; Unset never matches |
+| `!1`–`!3` | Match that priority exactly, unlike `f!`'s threshold; Unset never matches |
 | `#tag` | Match a tag by normalized-name prefix; repeatable, combined with AND |
 | `-#tag` | Exclude every task carrying a tag with that prefix |
 | `##context` | Match the task context by prefix, a separate axis from tags |
 | `@overdue`, `@today`, `@week`, `@none` | Match the same due buckets `f@` offers |
 | `@2026-03-05` | Match that exact calendar due day |
+| `@@any`, `@@none` | Split the currently deferred population, the way `f@`'s deferred facet does |
+| `@@tomorrow`, `@@+2h` | Match tasks whose wake instant falls on that day |
 | `$state` | Match a lifecycle state exactly |
 | `$today`, `$next` | Match membership in the durable planning list |
 | `*pin`, `*unpin` | Match pinned or unpinned tasks |
@@ -315,7 +368,7 @@ The lowercase `f` chord refines the rows a projection already holds. Uppercase
 
 | Keys | Effect |
 | --- | --- |
-| `Ft` | Pick project tags with AND semantics, plus an `Untagged` entry for projects carrying none |
+| `F#` | Pick project tags with AND semantics, plus an `Untagged` entry for projects carrying none |
 | `Fp` | Add parked projects to the population |
 | `FP` | Isolate the parked projects |
 | `Fa` | Add archived projects to the population |
@@ -327,8 +380,8 @@ key that selects a state also clears it when pressed again. The two axes compose
 with AND, so `FP` with `FA` names the projects that are both archived and
 parked.
 
-`Fp`, `FP`, and selecting `parked` inside `Ft` are the same switch, so they can
-never disagree about which population is loaded. Inside `Ft`, `v` toggles a tag
+`Fp`, `FP`, and selecting `parked` inside `F#` are the same switch, so they can
+never disagree about which population is loaded. Inside `F#`, `v` toggles a tag
 and `Space` over a tag row offers Rename everywhere, Remove everywhere, Park all
 members, and Unpark all members across every project carrying it, as one undo
 entry. Removing a tag that is a project's only tag asks where those projects
@@ -347,7 +400,7 @@ read in:
 | Keys | Effect |
 | --- | --- |
 | `o@` | Order by due date |
-| `op` | Order by priority |
+| `o!` | Order by priority |
 | `oc` | Order by creation date |
 | `ou` | Order by last touch |
 | `ot` | Order alphabetically by title |
@@ -369,7 +422,7 @@ you return to All, Inbox, or Backlog.
 
 For intentional cleanup, use `fc` to choose an age — it filters states to Done
 and Canceled for you — then `Ctrl+A` to select the visible matches, and
-`Space` → Delete. Use `fs` afterwards to narrow to Done or Canceled alone.
+`Space` → Delete. Use `f$` afterwards to narrow to Done or Canceled alone.
 The confirmation freezes root, descendant, visible/hidden, and attachment counts;
 the entire deletion is one undoable transaction.
 
@@ -387,20 +440,22 @@ A checklist row is not a task row. Every task action refuses there with one
 sentence — "move the cursor to a task row to use this action" — instead of
 quietly applying to the owner.
 
-What a checklist row does own is eight actions of its own, each reusing the key
-its task-row counterpart holds:
+What a checklist row does own is nine operations of its own. Eight of them
+answer a key its task-row counterpart also holds:
 
-| Key | Action |
+| Key | Operation |
 | --- | --- |
-| `x` | Tick or untick the item |
-| `e` | Rewrite the item |
-| `J` / `K` | Swap the item with the one below or above it |
-| `Ctrl+J` / `Ctrl+K` | Send the item to the end or the start of the checklist |
-| `A` | Append an item to this checklist |
-| `Space` | Open the item menu: Edit Item and Delete Item |
+| `x` | Toggle Item — tick or untick it |
+| `e` | Edit Item — rewrite its text |
+| `J` | Move Item Down — swap it with the item below |
+| `K` | Move Item Up — swap it with the item above |
+| `Ctrl+J` | Move Item to Bottom — send it past every item below |
+| `Ctrl+K` | Move Item to Top — send it past every item above |
+| `A` | Add Item — append an item to this checklist |
+| `Space` | Checklist Actions — the item menu: Edit Item and Delete Item |
 
-Delete has no direct key. It is reachable only from the `Space` menu and
-confirms before it removes anything.
+Delete Item is the ninth and answers no key. It is reachable only from the
+`Space` menu and confirms before it removes anything.
 
 Visual selection is one of the actions a checklist row refuses, because a
 selection names task rows. Entering it from a task row hides any open checklist
@@ -436,7 +491,7 @@ Waiting rather than from the last time anything touched it, so recording a chase
 in the comments does not reset how long the work has been blocked. If it also
 carries a due date, that date is the check-back, so the row replaces the plain
 date with `check <age>` counting down to chasing it, `check today`, or an
-overdue `check +<age>`. Moving a task to Waiting with `ww` therefore asks for the
+overdue `check +<age>`. Moving a task to Waiting with `$w` therefore asks for the
 check-back date immediately; `Esc` there declines the date and the Waiting move
 still stands.
 
@@ -491,7 +546,7 @@ ancestor chain is named there in full, root-first, as
 continuation are the two blocks that raise the five-line cap rather than spend
 it. `Esc` closes Peek before unwinding Outliner navigation.
 
-State, Today/Next/Review, priority, due, tags, defer, and pin actions apply atomically
+State, Today/Next, priority, due, tags, defer, and pin actions apply atomically
 to the complete project-qualified selection, including hidden members. `v`
 toggles the cursor task in or out of the selection, so a selection can name rows
 that are not adjacent; movement never changes what `v` picked. `V` starts a
@@ -510,7 +565,7 @@ One nonblank line creates one task. Multiple lines are fully parsed and
 validated before one atomic transaction is committed.
 
 ```text
-!1-3  #tag  ##context  @date  $destination  *pin  %project  >parent  <child
+!1-3  #tag  ##context  @date  @@defer  $destination  *pin  %project  >parent  <child
 ```
 
 - `!1` through `!3` set High, Medium, or Low priority.
@@ -524,10 +579,16 @@ validated before one atomic transaction is committed.
   the otherwise legal clearing/reference forms `!0`, `@0`, and `>0`.
 - `@date` accepts the supported date expressions and stores a local calendar
   date.
+- `@@defer` hides the task until an instant rather than a day, so it also
+  accepts the `+Nh` hour offsets a due date refuses. Deferring carries the same
+  lifecycle effect the picker's defer section does: the task moves to Backlog, loses any
+  Today or Next membership, and a terminal task refuses outright. `@@0` clears
+  the deferral on the edit surfaces; the outline buffer has no deferral channel
+  and rejects the sigil by name.
 - `$destination` accepts `inbox`, `backlog`, `today`, `next`, `doing`,
   `waiting`, `paused`, `someday`, `done`, or `canceled`. Today and Next create
   Backlog tasks with an explicit planning membership.
-- `*pin` pins the task, exactly as the `P` key does on an existing row. Only
+- `*pin` pins the task, exactly as the `*` key does on an existing row. Only
   `pin` and `unpin` are recognized, and any other value stays in the title, so
   `Refactor *args handling` keeps its `*args`.
 - `%project` overrides scope routing.
@@ -586,16 +647,17 @@ task titles in that precedence order. Namespaced values such as `type:bug` and
 partial matches remain ordinary tags and add no prefix or marker icon. Both tag
 pickers group those five under a `SEMANTIC` section above the rest: `#` Set Tags
 always offers all five with a one-line summary each, whether or not any task
-carries them, while `ft` Filter by Tags stays usage-derived and lists only the
+carries them, while `f#` Filter by Tags stays usage-derived and lists only the
 ones in use.
 
-`ft` also gives task contexts their own `CONTEXTS` section above `TAGS`; a value
+`f#` also gives task contexts their own `CONTEXTS` section above `TAGS`; a value
 carried as both a tag and a context is one row there, with the combined count,
 because the facet matches either field. In both tag pickers `w`, `s`, `c`, and
 `t` jump the cursor to the first `WORKFLOW`, `SEMANTIC`, `CONTEXTS`, and `TAGS`
 row, and a hint line inside the overlay names the sections that picker actually
-has. `#` Set Tags has no context vocabulary, so `c` there reports the empty
-section and leaves the cursor alone.
+has. The two pickers mean different things by `CONTEXTS`: in `f#` those rows are
+facet values to match, while in `#` they are the `##name` radio rows that write
+the field, listed above the tag rows the section also collects.
 
 ## Workflow and hierarchy
 

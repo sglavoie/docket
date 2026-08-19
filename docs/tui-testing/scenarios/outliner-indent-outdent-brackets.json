@@ -1,0 +1,35 @@
+{
+  "name": "outliner-indent-outdent-brackets",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "command", "label": "open the global Outliner root", "command": "outliner root" },
+    { "type": "key", "label": "search for the last root task", "key": "/" },
+    { "type": "text", "text": "triage" },
+    { "type": "key", "label": "accept the temporary search projection", "key": "enter" },
+    { "type": "key", "label": "leave search on the result", "key": "enter" },
+    { "type": "key", "label": "unwind the focus onto the result's ordinary row", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Triage support inbox  ‹" },
+
+    { "type": "key", "label": "] nests the task under the task above it", "key": "]" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "status_contains", "value": "Indent Task" },
+    { "type": "assert", "label": "the nested task names the parent it gained", "assert": "contains", "value": "Triage support inbox  ‹" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "[ puts it back at its parent's level", "key": "[" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Outdent Task" },
+    { "type": "assert", "assert": "not_contains", "value": "Triage support inbox  ‹" },
+    { "type": "assert", "assert": "contains", "value": "Triage support inbox" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the freed sigil never indents", "key": ">" },
+    { "type": "assert", "label": "> opens Set Parent instead", "assert": "contains", "value": "Set Parent: Triage support inbox" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "not_contains", "value": "Triage support inbox  ‹" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

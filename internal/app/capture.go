@@ -58,6 +58,11 @@ type CaptureRequest struct {
 	Description string
 	// Due, when non-nil, sets the task's calendar due date.
 	Due *time.Time
+	// DeferSet marks that the request expressed a deferral at all, so a caller
+	// reads the same pair here as on TaskLineEditRequest. Defer holds the instant
+	// when one was named; a set flag with no instant captures without deferring.
+	DeferSet bool
+	Defer    *time.Time
 	// ParentID, when non-nil, nests the new task under an existing task in the
 	// same project. The parent must exist and leave the child within the nesting cap.
 	ParentID *string
@@ -384,6 +389,10 @@ func (s *Service) prepareCapturedTask(project *models.Project, req CaptureReques
 	if err != nil {
 		return preparedCapture{}, err
 	}
+	destination, err = deferredCaptureDestination(destination, req)
+	if err != nil {
+		return preparedCapture{}, err
+	}
 
 	return preparedCapture{
 		req:         req,
@@ -459,7 +468,27 @@ func (s *Service) buildPreparedCapturedTask(project *models.Project, prepared pr
 	if err := s.initializeCreatedTask(task, prepared.destination.state); err != nil {
 		return nil, err
 	}
+	// The deferral is written after the state transition because entering a state
+	// clears it: a captured deferral is the destination's companion, not a value
+	// the transition should wipe.
+	if req.DeferSet && req.Defer != nil {
+		task.DeferredUntil = cloneInstantPtr(req.Defer)
+	}
 	return task, nil
+}
+
+// deferredCaptureDestination routes a captured deferral through deferTask's
+// policy: a terminal destination refuses, and every other one lands in Backlog
+// with neither planning horizon populated. A capture that names no instant keeps
+// the destination it asked for.
+func deferredCaptureDestination(destination captureDestinationEffect, req CaptureRequest) (captureDestinationEffect, error) {
+	if !req.DeferSet || req.Defer == nil {
+		return destination, nil
+	}
+	if err := deferralRefusesState(destination.state); err != nil {
+		return captureDestinationEffect{}, err
+	}
+	return normalizeCaptureDestination(CaptureDestinationBacklog, req.ParentID != nil)
 }
 
 type captureDestinationEffect struct {

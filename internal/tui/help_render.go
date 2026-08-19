@@ -8,6 +8,10 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
+// helpKeyColumnWidth is the fixed cell width of the help key column. A display
+// key wider than this wraps mid-token, so every composed spelling must fit.
+const helpKeyColumnWidth = 16
+
 // helpIntentOrder defines the display order of intent buckets in first-level
 // (per-view) help. Buckets with no matching items in the current view are
 // skipped during rendering.
@@ -63,7 +67,7 @@ var helpNavigateKeys = map[string]bool{
 	"backspace": true,
 	"space":     true,
 	"q":         true,
-	"w":         true,
+	"$":         true,
 }
 
 // intentForItem classifies a HelpItem into one of helpIntentOrder buckets.
@@ -103,7 +107,7 @@ func (m *HelpViewModel) renderByIntentContent() string {
 	}
 
 	contentWidth := max(m.viewport.Width(), 1)
-	keyWidth := 16
+	keyWidth := helpKeyColumnWidth
 	columnGap := 4
 	columnOverhead := keyWidth + 2
 	descWidth := max((contentWidth-2*columnOverhead-columnGap)/2, 1)

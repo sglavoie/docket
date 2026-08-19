@@ -1,0 +1,38 @@
+{
+  "name": "capture-defer-sigil",
+  "fixture": "signals",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open capture", "key": "a" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "text", "label": "the double sigil defers at capture time", "text": "Sigil deferred intake @@+2h " },
+    { "type": "assert", "assert": "contains", "value": "Schedule" },
+    { "type": "assert", "assert": "contains", "value": "@@" },
+    { "type": "assert", "label": "a deferral routes the capture to Backlog", "assert": "contains", "value": "$backlog (deferred)" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "commit the capture", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "a same-day deferral hides the new row at once", "assert": "not_contains", "value": "□ Sigil deferred intake" },
+    { "type": "assert", "assert": "contains", "value": "Task is hidden by current filters" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "open the filter chord", "key": "f" },
+    { "type": "key", "label": "the deferred facet is a row on the due picker", "key": "@" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "label": "highlight Deferred only, below the four due-date rows", "key": "down" },
+    { "type": "key", "label": "isolate the pending deferrals", "key": "enter" },
+    { "type": "assert", "label": "the captured task is deferred, not merely backlogged", "assert": "contains", "value": "Sigil deferred intake defer" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "reopen the filter chord", "key": "f" },
+    { "type": "key", "label": "clear every facet", "key": "x" },
+    { "type": "key", "label": "undo the capture", "key": "u" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "□ Sigil deferred intake" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

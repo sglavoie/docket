@@ -1,0 +1,26 @@
+{
+  "name": "outliner-adopt-children-additive",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "go to Backlog, where Build login form is out of the tree", "key": "g" },
+    { "type": "key", "key": "b" },
+    { "type": "assert", "assert": "not_contains", "value": "Build login form" },
+    { "type": "assert", "assert": "count_contains", "value": "Add password validation", "count": 1 },
+    { "type": "key", "label": "step onto Launch platform", "key": "j" },
+    { "type": "key", "label": "step onto User authentication, which already has three children", "key": "j" },
+
+    { "type": "key", "label": "open Adopt Children", "key": "<" },
+    { "type": "assert", "label": "a task it already parents is not offered, so no row can be unchecked to detach", "assert": "not_contains", "value": "Build login form" },
+    { "type": "assert", "label": "the other existing child is still only the row behind the overlay", "assert": "count_contains", "value": "Add password validation", "count": 1 },
+
+    { "type": "key", "label": "commit with nothing checked, which is the closest thing to a detach", "key": "enter" },
+    { "type": "assert", "label": "an empty adoption is a no-op, never a detach", "assert": "status_contains", "value": "No task changes" },
+
+    { "type": "key", "label": "back to All", "key": "g" },
+    { "type": "key", "key": "a" },
+    { "type": "assert", "label": "every existing child kept its parent", "assert": "contains", "value": "Build login form  ‹" },
+    { "type": "assert", "assert": "contains", "value": "Add password validation" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

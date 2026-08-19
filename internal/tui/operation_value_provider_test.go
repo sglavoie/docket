@@ -29,7 +29,7 @@ func TestStateValueProviderAcceptsOnlyCanonicalPresets(t *testing.T) {
 func TestTaskStatePickerContainsExactCanonicalStatesAndTransitionReasons(t *testing.T) {
 	request := OperationExecutionRequest{
 		ID:      operationTaskSetState,
-		Context: taskActionTestContext(models.StateDone),
+		Context: taskActionTestContext(),
 	}
 	picker, err := NewTaskStatePickerForTargets(request, []models.WorkflowState{models.StateDone}, "Completed task")
 	if err != nil {
@@ -375,7 +375,7 @@ func TestTaskActionNativeOperationRequestsOneListSurfaceValue(t *testing.T) {
 	if err := model.registerTaskActionOperations(); err != nil {
 		t.Fatalf("registerTaskActionOperations: %v", err)
 	}
-	context := taskActionTestContext(models.StateBacklog)
+	context := taskActionTestContext()
 	result := model.operationExecutor.Execute(OperationExecutionRequest{
 		ID:      operationTaskSetState,
 		Context: context,
@@ -596,7 +596,7 @@ func TestTaskOperationManifestOrdersTheSingleTaskActionSheet(t *testing.T) {
 func waitingCheckBackInvocation(id OperationID, value any) OperationInvocation {
 	return OperationInvocation{
 		Descriptor: OperationDescriptor{ID: id},
-		Context:    taskActionTestContext(models.StateBacklog),
+		Context:    taskActionTestContext(),
 		Value:      value,
 		HasValue:   true,
 	}
@@ -690,7 +690,7 @@ func TestWaitingCheckBackStepRejectedMoveOpensNoPicker(t *testing.T) {
 	rejected := func() tea.Msg { return TransactionErrorMsg{Err: errors.New("cannot move to waiting")} }
 
 	contexts := map[string]CommandContext{
-		"single":   taskActionTestContext(models.StateBacklog),
+		"single":   taskActionTestContext(),
 		"multiple": bulkTaskActionTestContext(project, first, second),
 	}
 	for name, context := range contexts {

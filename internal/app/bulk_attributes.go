@@ -337,20 +337,55 @@ func (s *Service) bulkDefer(taskIDs []string, locators []TaskLocator, until *tim
 // malformed tag aborts before any snapshot is mutated. An empty tags slice clears
 // every task's tags. Tasks may span projects.
 func (s *Service) BulkSetTags(taskIDs []string, tags []string) (BulkResult, error) {
-	return s.bulkSetTags(taskIDs, nil, tags)
+	return s.bulkSetTags(taskIDs, nil, tags, taskContextEdit{})
 }
 
 func (s *Service) BulkSetTagsByLocators(locators []TaskLocator, tags []string) (BulkResult, error) {
-	return s.bulkSetTags(nil, locators, tags)
+	return s.bulkSetTags(nil, locators, tags, taskContextEdit{})
 }
 
-func (s *Service) bulkSetTags(taskIDs []string, locators []TaskLocator, tags []string) (BulkResult, error) {
+// taskContextEdit is an optional singleton-context write carried by a tag
+// mutation. Riding the same mutate closure keeps a simultaneous tag and context
+// change inside one transaction and one undo entry.
+type taskContextEdit struct {
+	Set   bool
+	Value string
+}
+
+func (edit taskContextEdit) normalize() (taskContextEdit, error) {
+	if !edit.Set || edit.Value == "" {
+		return taskContextEdit{Set: edit.Set}, nil
+	}
+	normalized, err := models.NormalizeTaskContext(edit.Value)
+	if err != nil {
+		return taskContextEdit{}, invalidInput("context", err.Error())
+	}
+	return taskContextEdit{Set: true, Value: normalized}, nil
+}
+
+func (edit taskContextEdit) apply(t *models.Task) {
+	if edit.Set {
+		t.Context = edit.Value
+	}
+}
+
+func (s *Service) bulkSetTags(
+	taskIDs []string,
+	locators []TaskLocator,
+	tags []string,
+	context taskContextEdit,
+) (BulkResult, error) {
 	normalized, err := normalizeBulkTags(tags)
+	if err != nil {
+		return BulkResult{}, err
+	}
+	contextEdit, err := context.normalize()
 	if err != nil {
 		return BulkResult{}, err
 	}
 	return s.bulkAttribute(taskIDs, locators, "Set Tags", "tags", nil, func(t *models.Task) {
 		t.Tags = append([]string{}, normalized...)
+		contextEdit.apply(t)
 		t.UpdatedAt = s.clock.Now()
 	})
 }
@@ -365,7 +400,20 @@ func (s *Service) BulkPatchTagsByLocators(
 	add []string,
 	remove []string,
 ) (BulkResult, error) {
+	return s.bulkPatchTags(locators, add, remove, taskContextEdit{})
+}
+
+func (s *Service) bulkPatchTags(
+	locators []TaskLocator,
+	add []string,
+	remove []string,
+	context taskContextEdit,
+) (BulkResult, error) {
 	normalizedAdd, err := normalizeBulkTags(add)
+	if err != nil {
+		return BulkResult{}, err
+	}
+	contextEdit, err := context.normalize()
 	if err != nil {
 		return BulkResult{}, err
 	}
@@ -404,6 +452,7 @@ func (s *Service) BulkPatchTagsByLocators(
 	}
 	return s.bulkAttribute(nil, locators, "Set Tags", "tags", validate, func(t *models.Task) {
 		t.Tags, _ = patchedTags(t.Tags)
+		contextEdit.apply(t)
 		t.UpdatedAt = s.clock.Now()
 	})
 }

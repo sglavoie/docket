@@ -12,14 +12,10 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func taskActionTestContext(state models.WorkflowState) CommandContext {
+func taskActionTestContext() CommandContext {
 	context := PresentationCommandContext(ViewCrossProjectOutliner)
 	context.Capabilities.Add(CapabilitySimplifiedInput)
-	context.Entity = EntityContext{
-		ProjectID: "project",
-		TaskID:    "task",
-		State:     state.String(),
-	}
+	context.Entity = EntityContext{ProjectID: "project", TaskID: "task"}
 	return context
 }
 
@@ -125,8 +121,9 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		operationTaskSetPriority,
 		operationTaskSetDueDate,
 		operationTaskSetTags,
-		operationTaskSetDefer,
 		operationTaskTogglePin,
+		operationTaskSetParent,
+		operationTaskAdoptChildren,
 		operationTaskIndent,
 		operationTaskOutdent,
 		operationCoreEdit,
@@ -207,7 +204,7 @@ func TestTaskActionSheetMovesWithCtrlJAndCtrlK(t *testing.T) {
 	sheet, err := NewTaskActionSheetModel(
 		registry,
 		NewOperationExecutor(registry),
-		taskActionTestContext(models.StateBacklog),
+		taskActionTestContext(),
 		"Selected task",
 	)
 	if err != nil {
@@ -236,7 +233,7 @@ func TestTaskActionSheetMovesWithCtrlJAndCtrlK(t *testing.T) {
 	}
 }
 
-func TestTaskActionSheetOmitsDirectDeferOperation(t *testing.T) {
+func TestTaskActionSheetOmitsDirectDateOperation(t *testing.T) {
 	registry := NewOperationRegistry()
 	for _, descriptor := range taskActionTestDescriptors() {
 		registerTaskActionTestDescriptor(t, registry, descriptor)
@@ -244,15 +241,15 @@ func TestTaskActionSheetOmitsDirectDeferOperation(t *testing.T) {
 	sheet, err := NewTaskActionSheetModel(
 		registry,
 		NewOperationExecutor(registry),
-		taskActionTestContext(models.StateDoing),
+		taskActionTestContext(),
 		"Active task",
 	)
 	if err != nil {
 		t.Fatalf("NewTaskActionSheetModel: %v", err)
 	}
 	for _, item := range sheet.surface.Items() {
-		if item.ID == ListItemID("task-action:"+string(operationTaskSetDefer)) {
-			t.Fatal("direct defer operation is repeated in the task menu")
+		if item.ID == ListItemID("task-action:"+string(operationTaskSetDueDate)) {
+			t.Fatal("direct date operation is repeated in the task menu")
 		}
 	}
 }
@@ -263,7 +260,6 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 	setTestAppProjects(model, project, &models.Project{ID: "beta", Name: "Beta", Slug: "beta"})
 	registry := model.operationRegistry
 
-	// The in-progress member is what removes defer from the intersection.
 	story := project.GetTaskByID("story")
 	loose := project.GetTaskByID("loose")
 	loose.WorkflowState = models.StateDoing
@@ -278,13 +274,13 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 		t.Fatalf("bulk action sheet IDs = %v, want Delete", ids)
 	}
 	for _, excluded := range []OperationID{
-		// Defer is bulk-capable but the in-progress member removes it.
-		operationTaskSetDefer,
 		// The four metadata operations reach a selection through their direct key.
 		operationTaskSetState,
 		operationTaskSetPriority,
 		operationTaskSetDueDate,
 		operationTaskSetTags,
+		operationTaskSetParent,
+		operationTaskAdoptChildren,
 		operationTaskIndent,
 		operationTaskOutdent,
 		operationCoreEdit,
@@ -397,9 +393,9 @@ func TestSimplifiedVisualSelectionKeysOpenBulkActionsAndEscFreezes(t *testing.T)
 		t.Fatal("bulk action sheet still lists the direct-only set-priority action")
 	}
 	if sheet.surface.SetCursorToID(
-		ListItemID("task-action:" + string(operationTaskSetDefer)),
+		ListItemID("task-action:" + string(operationTaskSetDueDate)),
 	) {
-		t.Fatal("bulk action sheet repeats direct-only set-defer")
+		t.Fatal("bulk action sheet repeats direct-only set-due-date")
 	}
 	if !sheet.surface.SetCursorToID(
 		ListItemID("task-action:" + string(operationTaskDelete)),

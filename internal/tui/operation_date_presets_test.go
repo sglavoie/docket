@@ -145,7 +145,7 @@ func TestRelativeDateSelectedIDHighlightsEveryReproduciblePreset(t *testing.T) {
 			}
 			value := preset.value()
 			got := relativeDateSelectedID(&value, deferred)
-			want := ListItemID("date:" + preset.id)
+			want := dateListItemID(deferred, preset.id)
 			if len(got) != 1 || got[0] != want {
 				t.Errorf("deferred=%v preset %q highlighted %v, want [%s]", deferred, preset.id, got, want)
 			}
@@ -166,7 +166,59 @@ func TestRelativeDateSelectedIDRefusesToApproximateAnIntraDayDefer(t *testing.T)
 	if got := relativeDateSelectedID(&todayMidnight, true); got != nil {
 		t.Errorf("today highlighted %v, but the defer list has no Today row", got)
 	}
-	if got := relativeDateSelectedID(&todayMidnight, false); len(got) != 1 || got[0] != "date:today" {
-		t.Errorf("today highlighted %v on the due list, want [date:today]", got)
+	if got := relativeDateSelectedID(&todayMidnight, false); len(got) != 1 || got[0] != "date:due:today" {
+		t.Errorf("today highlighted %v on the due list, want [date:due:today]", got)
+	}
+}
+
+// The combined picker shows both fields, so the two preset families cannot
+// share a row identity: "tomorrow" means a deadline in one section and a
+// deferral in the other.
+func TestDateListItemIDsSeparateTheTwoFields(t *testing.T) {
+	source := operationDateListSource("")
+	seen := make(map[ListItemID]bool, len(source.Items))
+	deferredRows := 0
+	for _, item := range source.Items {
+		if seen[item.ID] {
+			t.Errorf("date list repeats row ID %q", item.ID)
+		}
+		seen[item.ID] = true
+		value, ok := item.Data.(OperationDateValue)
+		if !ok {
+			t.Fatalf("row %q carries %T, want OperationDateValue", item.ID, item.Data)
+		}
+		if value.Deferred {
+			deferredRows++
+			if item.CategoryID != dateListCategoryDefer {
+				t.Errorf("deferred row %q sits in category %q", item.ID, item.CategoryID)
+			}
+			continue
+		}
+		if item.CategoryID != dateListCategoryDue {
+			t.Errorf("due row %q sits in category %q", item.ID, item.CategoryID)
+		}
+	}
+	if want := len(operationDatePresets(true, time.Now())); deferredRows != want {
+		t.Errorf("defer section = %d rows, want %d", deferredRows, want)
+	}
+}
+
+// A terminal task keeps the due section reachable: only the defer rows carry
+// the refusal, which is what lets one key answer both fields on a Done task.
+func TestTerminalTaskDisablesOnlyTheDeferSection(t *testing.T) {
+	source := operationDateListSource("terminal tasks cannot be deferred")
+	for _, item := range source.Items {
+		value := item.Data.(OperationDateValue)
+		if value.Deferred == item.Enabled() {
+			t.Errorf("row %q enabled = %v with deferred = %v", item.ID, item.Enabled(), value.Deferred)
+		}
+	}
+	for _, item := range operationDueDateListSource().Items {
+		if !item.Enabled() {
+			t.Errorf("due-only row %q is disabled", item.ID)
+		}
+		if item.CategoryID != "" {
+			t.Errorf("due-only row %q carries category %q, want an unsectioned list", item.ID, item.CategoryID)
+		}
 	}
 }

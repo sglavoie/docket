@@ -49,6 +49,7 @@ var projectPopulationInventory = map[string]string{
 	"internal/tui/manage_hub.go:AvailableProjects":                   "Notes owners and project-note command scope",
 	"internal/tui/workspace_pulse.go:TaskWorkspaceProjects":          "workspace pulse counting is a task projection",
 	"internal/tui/operation_target_context.go:taskWorkspaceProjects": "operation command scope IDs follow the context scope",
+	"internal/tui/operation_value_provider.go:AvailableProjects":     "Move to Project destinations match %project, so a parked project stays reachable",
 	"internal/tui/outliner_scope.go:TaskWorkspaceProjects":           "a focus needs the parked exception only while the task projection excludes it",
 	"internal/tui/project_hub.go:AvailableProjects":                  "project administration rows and project-level search",
 }

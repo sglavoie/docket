@@ -28,7 +28,7 @@ func TestParseUsesSharedSurfaceGrammar(t *testing.T) {
 	}
 }
 
-func TestSharedParserAdvertisesExactlyNineCaptureSigils(t *testing.T) {
+func TestSharedParserAdvertisesExactlyTenCaptureSigils(t *testing.T) {
 	parsed := Parse(
 		"Keep type:bug priority:1 pri:2 tag:backend due:tomorrow recur:weekly project:core proj:core p:core parent:1 child:1 children:1 state:ready has:due no:tag is:pinned",
 		SurfaceCapture|SurfaceEdit,
@@ -41,10 +41,10 @@ func TestSharedParserAdvertisesExactlyNineCaptureSigils(t *testing.T) {
 	}
 
 	defs := Definitions(SurfaceCapture)
-	if len(defs) != 9 {
-		t.Fatalf("capture definitions = %d, want 9: %+v", len(defs), defs)
+	if len(defs) != 10 {
+		t.Fatalf("capture definitions = %d, want 10: %+v", len(defs), defs)
 	}
-	wantForms := []string{"!1-3", "#tag", "##context", "@date", "$destination", "*pin", "%project", ">parent", "<child"}
+	wantForms := []string{"!1-3", "#tag", "##context", "@date", "@@defer", "$destination", "*pin", "%project", ">parent", "<child"}
 	gotForms := make([]string, len(defs))
 	for i, def := range defs {
 		if len(def.Forms) != 1 {
@@ -207,6 +207,7 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 			name: "capture", surface: SurfaceCapture,
 			want: map[Field][]string{
 				FieldPriority: {"!1-3"}, FieldTag: {"#tag"}, FieldContext: {"##context"}, FieldDue: {"@date"},
+				FieldDefer:       {"@@defer"},
 				FieldDestination: {"$destination"}, FieldPinned: {"*pin"},
 				FieldProject: {"%project"}, FieldParent: {">parent"},
 				FieldChild: {"<child"},
@@ -217,7 +218,8 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 			want: map[Field][]string{
 				FieldPriority: {"!1-3", "!0"}, FieldTag: {"#tag"}, FieldRemoveTag: {"-#tag"},
 				FieldContext: {"##context", "##0"},
-				FieldDue:     {"@date", "@0"}, FieldDestination: {"$destination"},
+				FieldDue:     {"@date", "@0"},
+				FieldDefer:   {"@@defer", "@@0"}, FieldDestination: {"$destination"},
 				FieldPinned:  {"*pin", "*unpin"},
 				FieldProject: {"%project"}, FieldParent: {">parent", ">0"},
 				FieldChild: {"<child"},
@@ -234,7 +236,7 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 			name: "search", surface: SurfaceSearch,
 			want: map[Field][]string{
 				FieldPriority: {"!1-3"}, FieldTag: {"#tag"}, FieldRemoveTag: {"-#tag"},
-				FieldContext: {"##context"}, FieldDue: {"@date"},
+				FieldContext: {"##context"}, FieldDue: {"@date"}, FieldDefer: {"@@defer"},
 				FieldDestination: {"$destination"}, FieldPinned: {"*pin", "*unpin"},
 				FieldProject: {"%project"},
 			},
@@ -521,5 +523,50 @@ func TestDueSigilStaysDayOnlyAndRefusesHourOffsets(t *testing.T) {
 	}
 	if _, err := util.ParseCalendarDate(tokens[0].Value); err == nil {
 		t.Fatalf("@%s resolved to a due date; hours are defer-only", tokens[0].Value)
+	}
+}
+
+// TestDueSigilCannotSwallowTheDeferSigil pins the structural guard rather than
+// registry order: the due pattern's last alternative refuses a leading @, so no
+// walk order can let @ consume half of an @@ token.
+func TestDueSigilCannotSwallowTheDeferSigil(t *testing.T) {
+	for _, surface := range []Surface{SurfaceCapture, SurfaceEdit, SurfaceSearch} {
+		parsed := Parse("Ship it @@+2h", surface)
+		if got := parsed.TokensFor(FieldDue); len(got) != 0 {
+			t.Errorf("surface %d produced due tokens %+v from @@+2h", surface, got)
+		}
+		deferred := parsed.TokensFor(FieldDefer)
+		if len(deferred) != 1 || deferred[0].Value != "+2h" {
+			t.Errorf("surface %d defer tokens = %+v, want one +2h", surface, deferred)
+		}
+		if parsed.Text != "Ship it" {
+			t.Errorf("surface %d text = %q, want Ship it", surface, parsed.Text)
+		}
+	}
+
+	both := Parse("Ship it @tomorrow @@+2h", SurfaceEdit)
+	due := both.TokensFor(FieldDue)
+	if len(due) != 1 || due[0].Value != "tomorrow" {
+		t.Fatalf("due tokens = %+v, want one tomorrow", due)
+	}
+	if got := both.TokensFor(FieldDefer); len(got) != 1 || got[0].Value != "+2h" {
+		t.Fatalf("defer tokens = %+v, want one +2h", got)
+	}
+}
+
+// TestDueFormsSurviveTheDeferTightening re-checks every advertised due value
+// against the tightened pattern, since [^\s@]\S* is the one alternative that
+// could silently stop recognizing a legal form.
+func TestDueFormsSurviveTheDeferTightening(t *testing.T) {
+	definition, ok := DefinitionFor(SurfaceEdit, FieldDue)
+	if !ok {
+		t.Fatal("edit due definition is missing")
+	}
+	values := slices.Concat(definition.Values, []string{clearValue, "2026-08-18", "+1h"})
+	for _, value := range values {
+		tokens := Parse("Ship it @"+value, SurfaceEdit).TokensFor(FieldDue)
+		if len(tokens) != 1 || tokens[0].Value != value {
+			t.Errorf("@%s tokens = %+v, want exactly that value", value, tokens)
+		}
 	}
 }

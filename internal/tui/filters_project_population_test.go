@@ -41,7 +41,7 @@ func TestProjectFilterAdmitsAcrossPopulationModes(t *testing.T) {
 	}
 }
 
-// The Ft picker's parked row is a checkbox, so it cannot express the difference
+// The F# picker's parked row is a checkbox, so it cannot express the difference
 // between including and isolating. Confirming it must therefore preserve an
 // isolation the F keys set rather than widening the population behind the user.
 func TestProjectTagFilterValuePreservesIsolatedParkedPopulation(t *testing.T) {

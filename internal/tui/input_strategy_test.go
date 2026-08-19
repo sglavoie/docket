@@ -108,7 +108,7 @@ func TestSimplifiedInputStrategyIsCollisionAndPrefixFree(t *testing.T) {
 	footer := guidanceHintsText(registry.GuidanceHintsForInputStrategy(
 		InputStrategySimplified, simplifiedOperationContext(),
 	))
-	for _, want := range []string{"a capture", "w workflow", "/ search", "T theme", "? help"} {
+	for _, want := range []string{"a capture", "$ workflow", "/ search", "T theme", "? help"} {
 		if !strings.Contains(footer, want) {
 			t.Errorf("footer %q does not contain %q", footer, want)
 		}

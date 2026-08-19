@@ -77,7 +77,7 @@ func TestSortAxisInstallsAndReversesOnRepeat(t *testing.T) {
 		{[]string{"o", "t"}, SortByTitle, false},
 		{[]string{"o", "t"}, SortByTitle, true},
 		{[]string{"o", "@"}, SortByDueDate, true},
-		{[]string{"o", "p"}, SortByPriority, true},
+		{[]string{"o", "!"}, SortByPriority, true},
 		{[]string{"o", "c"}, SortByCreatedAt, true},
 		{[]string{"o", "u"}, SortByUpdatedAt, true},
 		{[]string{"o", "x"}, SortByDefault, true},
@@ -120,7 +120,7 @@ func TestSortAxisNeverReordersProjectGroups(t *testing.T) {
 	driver := sortDriver(t, FixtureMultiProject)
 	before := sortProjectHeaderOrder(t, driver)
 
-	for _, keys := range [][]string{{"o", "t"}, {"o", "t"}, {"o", "p"}, {"o", "@"}, {"o", "u"}} {
+	for _, keys := range [][]string{{"o", "t"}, {"o", "t"}, {"o", "!"}, {"o", "@"}, {"o", "u"}} {
 		sortPressKeys(t, driver, keys...)
 		if after := sortProjectHeaderOrder(t, driver); !equalStringSlices(before, after) {
 			t.Fatalf("%s reordered the project groups: %v, want %v", strings.Join(keys, ""), after, before)
@@ -131,9 +131,9 @@ func TestSortAxisNeverReordersProjectGroups(t *testing.T) {
 // TestSortAxisNeverReachesManualOrder locks the ruling that Pinned keeps the
 // order the user built by hand, whatever the axis says.
 func TestSortAxisNeverReachesManualOrder(t *testing.T) {
-	driver := sortDriver(t, FixtureRich, "end", "P")
+	driver := sortDriver(t, FixtureRich, "end", "*")
 	driver.Wait(defaultWaitTimeout)
-	sortPressKeys(t, driver, "home", "down", "down", "down", "down", "down", "P")
+	sortPressKeys(t, driver, "home", "down", "down", "down", "down", "down", "*")
 	driver.Wait(defaultWaitTimeout)
 
 	pinned := func() []string {
@@ -147,7 +147,7 @@ func TestSortAxisNeverReachesManualOrder(t *testing.T) {
 		t.Fatalf("pinned manual order = %v, want %v", before, want)
 	}
 
-	for _, keys := range [][]string{{"o", "t"}, {"o", "t"}, {"o", "p"}, {"o", "c"}} {
+	for _, keys := range [][]string{{"o", "t"}, {"o", "t"}, {"o", "!"}, {"o", "c"}} {
 		sortPressKeys(t, driver, keys...)
 		if after := pinned(); !equalStringSlices(before, after) {
 			t.Fatalf("%s reached the manual Pinned order: %v, want %v", strings.Join(keys, ""), after, before)

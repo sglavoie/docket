@@ -1,0 +1,32 @@
+{
+  "name": "outliner-adopt-children-undo",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "go to Backlog", "key": "g" },
+    { "type": "key", "key": "b" },
+    { "type": "key", "label": "step onto Launch platform", "key": "j" },
+    { "type": "key", "label": "step onto User authentication", "key": "j" },
+
+    { "type": "key", "label": "open Adopt Children", "key": "<" },
+    { "type": "key", "label": "step off the disabled ancestor onto a candidate", "key": "down" },
+    { "type": "key", "label": "check it", "key": "space" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the ledger entry names the adoption, not the request that carried it", "assert": "status_contains", "value": "Adopt Children: #2 User authentication" },
+
+    { "type": "key", "label": "back to All", "key": "g" },
+    { "type": "key", "key": "a" },
+    { "type": "assert", "assert": "contains", "value": "Fix redirect loop after logout  ‹" },
+
+    { "type": "key", "label": "undo names the same action back", "key": "u" },
+    { "type": "assert", "assert": "status_contains", "value": "Undid: Adopt Children: #2 User authentication" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Fix redirect loop after logout  ‹" },
+
+    { "type": "key", "label": "redo the same transaction", "key": "ctrl+r" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Fix redirect loop after logout  ‹" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

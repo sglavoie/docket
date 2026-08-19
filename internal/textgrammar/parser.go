@@ -206,6 +206,12 @@ func searchValueViable(spec definitionSpec, value string) bool {
 		}
 		_, err := util.ParseCalendarDate(value)
 		return err == nil
+	case FieldDefer:
+		if slices.Contains(searchDeferPresetNames, strings.ToLower(strings.TrimSpace(value))) {
+			return true
+		}
+		_, err := util.ParseDeferInstant(value)
+		return err == nil
 	case FieldProject:
 		return strings.TrimSpace(value) != ""
 	default:
