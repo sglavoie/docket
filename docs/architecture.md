@@ -394,11 +394,18 @@ would state one fact twice. It compares calendar days through `util.StartOfDay`,
 like `ClassifyDueDate`, because a due date is a day and not an instant, and it is
 the one indicator that styles an overdue reading (`check +<age>`) as pressure.
 
+Doing age follows the same state-clock contract.
+`formatDoingAgeIndicator` is gated on `IsInState(models.StateDoing)` and formats
+`StateChangedAt` through `formatRecencyChip`, so edits to active work do not
+reset how long it has remained in Doing. It stays neutral and renders alongside
+a due date rather than competing with the row's one hero attribute.
+
 `indicatorDropLadder` is the row's drop order, and it is a list rather than a set
-because eight segments cannot all fit at minimum width. Counts go first, since
-the row's own badges and Peek still carry them; the check-back goes last, because
-it is the one indicator naming work that has gone quiet on someone else's desk. A
-new indicator gets a position in that list, not an append.
+because nine segments cannot all fit at minimum width. Counts go first, since
+the row's own badges and Peek still carry them, followed by recency, defer,
+Waiting age, due date, and Doing age; check-back goes last because it is the one
+indicator naming work that has gone quiet on someone else's desk. A new
+indicator gets a position in that list, not an append.
 
 The relation marker is not in that ladder and never drops.
 `taskRelationMarker` writes both directions of the hidden-family relation into

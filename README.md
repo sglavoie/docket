@@ -495,10 +495,16 @@ overdue `check +<age>`. Moving a task to Waiting with `$w` therefore asks for th
 check-back date immediately; `Esc` there declines the date and the Waiting move
 still stands.
 
+A Doing task similarly reads as `doing <age>`, measured from the moment it
+entered Doing rather than from its last touch. The neutral age remains beside a
+due date when both apply; it reports how long work has stayed active without
+turning age alone into another urgency badge.
+
 A row that cannot fit every indicator sheds them in a fixed order rather than
 squeezing the title: checklist, comment, and attachment counts go first because
 the checklist rows and Peek still carry them, then the recency and defer
-markers, then the waiting age, and the check-back date goes last.
+markers, then the waiting age, due date, and Doing age; the check-back date goes
+last.
 
 A task shown under a section it did not root — a child promoted into Doing,
 Today, Pinned, or a tag facet — ends its title with a bare `‹`, which says only

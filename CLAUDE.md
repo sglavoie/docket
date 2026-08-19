@@ -140,9 +140,10 @@ Row and Peek budget:
   `truncateToVisualWidth`, or a character is duplicated or lost.
 - `indicatorDropLadder` is a list: a new indicator gets a position, not an
   append; the relation marker, the task context segment, and the pin marker stay
-  out of it. `taskRowSegments` reserves all three at every width; Peek names full
-  values. `taskRelationMarker` is one segment both ways: `‹` up, `›N` down only
-  when the row renders no child. `taskPinnedMarker` reads
+  out of it. Tail: waiting, due, doing, check. `taskRowSegments`
+  reserves all three; Peek names full values. `taskRelationMarker` is one
+  segment both ways: `‹` up and `›N` down, only when no child renders.
+  `taskPinnedMarker` reads
   `task.Pinned && !row.IsPinnedSection`, not `ShowsPinned`.
 - `formatDeferDate` reads against `now`: midnight is a whole day and renders
   bare, today is `15:04`, else `Jan 2 15:04` with `'06` off-year.

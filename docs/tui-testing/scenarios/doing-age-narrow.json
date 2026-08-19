@@ -1,0 +1,13 @@
+{
+  "name": "doing-age-narrow",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "label": "active work names its state age", "assert": "contains", "value": "doing now" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "narrow rows preserve the title before secondary signals", "width": 60, "height": 24 },
+    { "type": "assert", "label": "the Doing age survives at its high-pressure position", "assert": "contains", "value": "doing now" },
+    { "type": "assert", "label": "the active task title remains readable", "assert": "contains", "value": "Build login form" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

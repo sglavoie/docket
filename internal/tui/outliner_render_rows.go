@@ -468,6 +468,7 @@ func (m *OutlinerModel) renderTaskTitleStyle(task *models.Task, selected bool) l
 type taskIndicatorSegments struct {
 	recency     string
 	waiting     string
+	doing       string
 	check       string
 	due         string
 	deferred    string
@@ -480,6 +481,7 @@ func (segments taskIndicatorSegments) render() string {
 	rendered := JoinGroupParts(
 		segments.recency,
 		segments.waiting,
+		segments.doing,
 		segments.check,
 		segments.due,
 		segments.deferred,
@@ -505,6 +507,7 @@ var indicatorDropLadder = []func(*taskIndicatorSegments){
 	func(segments *taskIndicatorSegments) { segments.deferred = "" },
 	func(segments *taskIndicatorSegments) { segments.waiting = "" },
 	func(segments *taskIndicatorSegments) { segments.due = "" },
+	func(segments *taskIndicatorSegments) { segments.doing = "" },
 	func(segments *taskIndicatorSegments) { segments.check = "" },
 }
 
@@ -527,6 +530,9 @@ func (m *OutlinerModel) renderTaskIndicatorSegments(row outlinerRow) taskIndicat
 		if m.columnConfig.IsVisible(ColDueDate) {
 			segments.check = formatCheckBackIndicator(task, now)
 		}
+	}
+	if task.IsInState(models.StateDoing) {
+		segments.doing = formatDoingAgeIndicator(task, now)
 	}
 	// A waiting task's due date is its check-back date, so the countdown replaces
 	// the plain date rather than restating it beside itself.
@@ -559,6 +565,19 @@ func formatWaitingAgeIndicator(task *models.Task, now time.Time) string {
 		return ""
 	}
 	return MutedStyle.Render("waiting") + " " + age
+}
+
+// formatDoingAgeIndicator reads the state clock rather than UpdatedAt, so
+// touching active work does not reset how long it has remained in Doing.
+func formatDoingAgeIndicator(task *models.Task, now time.Time) string {
+	if !task.IsInState(models.StateDoing) {
+		return ""
+	}
+	age := formatRecencyChip(task.StateChangedAt, now)
+	if age == "" {
+		return ""
+	}
+	return MutedStyle.Render("doing") + " " + age
 }
 
 // formatCheckBackIndicator renders a waiting task's due date as the countdown to

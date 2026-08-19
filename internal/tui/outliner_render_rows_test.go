@@ -364,6 +364,135 @@ func TestWaitingAgeIndicatorReadsTheStateClock(t *testing.T) {
 	}
 }
 
+func TestDoingAgeIndicatorReadsTheStateClock(t *testing.T) {
+	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
+	doing := &models.Task{
+		ID:             "active",
+		Title:          "Active",
+		WorkflowState:  models.StateDoing,
+		StateChangedAt: now.AddDate(0, 0, -9),
+		UpdatedAt:      now,
+	}
+	if got := ansi.Strip(formatDoingAgeIndicator(doing, now)); got != "doing 9d" {
+		t.Fatalf("doing age = %q, want %q; touching the task must not reset it", got, "doing 9d")
+	}
+
+	for _, state := range []models.WorkflowState{models.StateBacklog, models.StateWaiting, models.StateDone} {
+		other := &models.Task{
+			ID:             "other",
+			Title:          "Other",
+			WorkflowState:  state,
+			StateChangedAt: now.AddDate(0, 0, -9),
+		}
+		if got := formatDoingAgeIndicator(other, now); got != "" {
+			t.Fatalf("state %q wore a doing age: %q", state, ansi.Strip(got))
+		}
+	}
+}
+
+func TestTaskIndicatorSegmentsRenderDoingInOrder(t *testing.T) {
+	segments := taskIndicatorSegments{
+		recency:     "recency",
+		waiting:     "waiting",
+		doing:       "doing",
+		check:       "check",
+		due:         "due",
+		deferred:    "deferred",
+		checklist:   "checklist",
+		comments:    "comments",
+		attachments: "attachments",
+	}
+	plain := ansi.Strip(segments.render())
+	previous := -1
+	for _, part := range []string{
+		"recency", "waiting", "doing", "check", "due", "deferred", "checklist", "comments", "attachments",
+	} {
+		index := strings.Index(plain, part)
+		if index <= previous {
+			t.Fatalf("indicator %q rendered out of order in %q", part, plain)
+		}
+		previous = index
+	}
+}
+
+func TestIndicatorDropLadderOrder(t *testing.T) {
+	segments := taskIndicatorSegments{
+		recency:     "recency",
+		waiting:     "waiting",
+		doing:       "doing",
+		check:       "check",
+		due:         "due",
+		deferred:    "deferred",
+		checklist:   "checklist",
+		comments:    "comments",
+		attachments: "attachments",
+	}
+	want := segments
+	if got := len(indicatorDropLadder); got != 9 {
+		t.Fatalf("indicator drop ladder has %d entries, want 9", got)
+	}
+	for index, drop := range indicatorDropLadder {
+		switch index {
+		case 0:
+			want.checklist = ""
+		case 1:
+			want.comments = ""
+		case 2:
+			want.attachments = ""
+		case 3:
+			want.recency = ""
+		case 4:
+			want.deferred = ""
+		case 5:
+			want.waiting = ""
+		case 6:
+			want.due = ""
+		case 7:
+			want.doing = ""
+		case 8:
+			want.check = ""
+		}
+		drop(&segments)
+		if segments != want {
+			t.Fatalf("indicator drop %d produced %+v, want %+v", index+1, segments, want)
+		}
+	}
+}
+
+func TestDoingRowRendersAgeAndDueDateAtSixtyColumns(t *testing.T) {
+	now := time.Now()
+	due := now.AddDate(0, 0, 4)
+	task := &models.Task{
+		ID:             "active",
+		Title:          "Ship the migration safely",
+		WorkflowState:  models.StateDoing,
+		StateChangedAt: now.AddDate(0, 0, -9),
+		UpdatedAt:      now,
+		DueDate:        &due,
+	}
+	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
+	outliner := NewOutlinerModel(project, nil, newTestConfig())
+	row := outlinerRow{task: task, ProjectID: project.ID}
+
+	segments := outliner.renderTaskIndicatorSegments(row)
+	if got := ansi.Strip(segments.doing); got != "doing 9d" {
+		t.Fatalf("rendered doing segment = %q, want %q", got, "doing 9d")
+	}
+	if segments.due == "" {
+		t.Fatal("Doing task with a due date omitted its due segment")
+	}
+
+	plain := ansi.Strip(outliner.renderOutlinerTaskRow(row, false, 60, 60, 0, nil))
+	for _, want := range []string{"Ship the migration safely", "doing 9d", ansi.Strip(formatDueDate(task))} {
+		if !strings.Contains(plain, want) {
+			t.Fatalf("60-column Doing row missing %q: %q", want, plain)
+		}
+	}
+	if got := lipgloss.Width(plain); got > 60 {
+		t.Fatalf("60-column Doing row assembled %d columns: %q", got, plain)
+	}
+}
+
 func TestCheckBackIndicatorCountsTowardChasing(t *testing.T) {
 	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
 	cases := []struct {
