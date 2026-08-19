@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func primaryRowsTask(id string, state models.WorkflowState) *models.Task {
@@ -169,6 +170,126 @@ func TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership(t *testing.
 	if contextReviewed.Context != reviewTaskTag || len(contextReviewed.Tags) != 0 {
 		t.Fatalf("Review projection mutated context task: context=%q tags=%v", contextReviewed.Context, contextReviewed.Tags)
 	}
+}
+
+func TestPrimaryAllStaleLanePrecedenceAndOrder(t *testing.T) {
+	old := time.Now().AddDate(0, 0, -(staleTaskThresholdDays + 10))
+	staleTask := func(id string, state models.WorkflowState) *models.Task {
+		task := primaryRowsTask(id, state)
+		task.UpdatedAt = old
+		return task
+	}
+
+	pinned := staleTask("pinned-stale", models.StateBacklog)
+	pinned.Pinned = true
+	pinned.PinnedAt = &old
+	today := staleTask("today-stale", models.StateBacklog)
+	next := staleTask("next-stale", models.StateBacklog)
+	review := staleTask("review-stale", models.StateBacklog)
+	review.AddTag(reviewTaskTag)
+	review.UpdatedAt = old
+	doing := staleTask("doing-stale", models.StateDoing)
+	stale := staleTask("plain-stale", models.StateBacklog)
+	inbox := primaryRowsTask("fresh-inbox", models.StateInbox)
+	project := primaryRowsProject("alpha", pinned, today, next, review, doing, stale, inbox)
+	outliner, runtime := primaryRowsOutliner(project)
+	runtime.Planning().SetToday([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: today.ID}})
+	runtime.Planning().SetNext([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: next.ID}})
+	outliner.selectOutlinerMode(ModeAll)
+
+	wantLane := map[string]string{
+		pinned.ID: "Pinned",
+		today.ID:  "Today",
+		next.ID:   "Next",
+		review.ID: "Review",
+		doing.ID:  "Doing",
+		stale.ID:  "Stale",
+	}
+	for id, want := range wantLane {
+		if got := countTaskRows(outliner, id); got != 1 {
+			t.Fatalf("task %q row count = %d, want one: %v", id, got, visibleTaskIDs(outliner))
+		}
+		if got := primarySectionForTask(outliner, id); got != want {
+			t.Errorf("task %q section = %q, want %q", id, got, want)
+		}
+	}
+
+	sectionIndex := make(map[string]int)
+	for index, row := range outliner.rows {
+		if row.IsSectionHeader {
+			sectionIndex[row.SectionName] = index
+		}
+	}
+	if sectionIndex["Doing"] >= sectionIndex["Review"] ||
+		sectionIndex["Review"] >= sectionIndex["Stale"] ||
+		sectionIndex["Stale"] >= sectionIndex["Inbox"] {
+		t.Fatalf("section indexes = %v, want Doing < Review < Stale < Inbox", sectionIndex)
+	}
+	if staleSectionCollapseKey == reviewSectionCollapseKey ||
+		staleProjectSectionCollapsePrefix == reviewProjectSectionCollapsePrefix {
+		t.Fatal("Stale and Review collapse namespaces overlap")
+	}
+}
+
+func TestBuildStaleSectionUsesUpdatedCalendarDayAndVisibilityGuards(t *testing.T) {
+	location, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, time.November, 2, 0, 1, 0, 0, location)
+	taskAt := func(id string, updated time.Time) *models.Task {
+		task := primaryRowsTask(id, models.StateBacklog)
+		task.UpdatedAt = updated
+		return task
+	}
+	day90 := now.AddDate(0, 0, -staleTaskThresholdDays)
+	boundary := taskAt("boundary", time.Date(
+		day90.Year(), day90.Month(), day90.Day(), 23, 59, 0, 0, location,
+	))
+	boundary.StateChangedAt = now
+	day89 := now.AddDate(0, 0, -(staleTaskThresholdDays - 1))
+	fresh := taskAt("fresh", util.StartOfDay(day89))
+	fresh.StateChangedAt = now.AddDate(0, 0, -200)
+	terminal := taskAt("terminal", boundary.UpdatedAt)
+	terminal.WorkflowState = models.StateDone
+	deferred := taskAt("deferred", boundary.UpdatedAt)
+	deferredUntil := now.Add(time.Hour)
+	deferred.DeferredUntil = &deferredUntil
+	excluded := taskAt("excluded", boundary.UpdatedAt)
+	filtered := taskAt("filtered", boundary.UpdatedAt)
+	project := primaryRowsProject("alpha", boundary, fresh, terminal, deferred, excluded, filtered)
+	outliner, _ := primaryRowsOutliner(project)
+	input := OutlinerModeInput{
+		Projects: []*models.Project{project},
+		Now:      now,
+		TaskExclude: func(task *models.Task, _ *models.Project) bool {
+			return task.ID == excluded.ID
+		},
+		TaskFilter: func(task *models.Task, _ *models.Project) bool {
+			return task.ID != filtered.ID
+		},
+	}
+	empty := map[TaskIdentity]bool{}
+	section := outliner.buildStaleSection(input, empty, empty, empty, empty, empty)
+
+	want := TaskIdentity{ProjectID: project.ID, TaskID: boundary.ID}
+	if section.count != 1 || len(section.projected) != 1 || !section.projected[want] {
+		t.Fatalf("Stale projection = count %d identities %v, want only %v", section.count, section.projected, want)
+	}
+}
+
+func primarySectionForTask(outliner *OutlinerModel, taskID string) string {
+	section := ""
+	for _, row := range outliner.rows {
+		if row.IsSectionHeader {
+			section = row.SectionName
+			continue
+		}
+		if row.isTaskRow() && row.task.ID == taskID {
+			return section
+		}
+	}
+	return ""
 }
 
 func TestPrimaryAllExplicitFiltersOverrideTerminalAndDeferredDefaults(t *testing.T) {

@@ -269,6 +269,10 @@ func (m *OutlinerModel) decoratePendingChordHint(path []string, hint ChordHint) 
 			if filter.Hierarchy != HierarchyAll {
 				hint.Label = "hierarchy:" + hierarchyFilterLabel(filter.Hierarchy)
 			}
+		case "s":
+			if filter.Stale {
+				hint.Label = "stale:on"
+			}
 		case "x":
 			if count := commonFilterFacetCount(filter); count > 0 {
 				hint.Label = fmt.Sprintf("clear:%d", count)

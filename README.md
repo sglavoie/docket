@@ -83,7 +83,7 @@ relocated task.
 All mode shows open, undeferred work in this order:
 
 ```text
-Pinned, Today, Doing, Review, Inbox, Next, Paused, Backlog, Waiting, Someday
+Pinned, Today, Doing, Review, Stale, Inbox, Next, Paused, Backlog, Waiting, Someday
 ```
 
 Pinned leads All and Today. Inbox, Next, Backlog, Due, and Recent each answer
@@ -98,7 +98,9 @@ in one press and one undo entry. All, Inbox, and Backlog preserve hierarchy and
 manual sibling order. Today and Next preserve workspace-wide planning order. Review is the sparse set of open tasks
 tagged `review`. That list is draw order, not claim order: a pinned task or one
 you have planned into Today or Next claims its row there and never also appears
-under Review. Due is date ordered. Done, Canceled,
+under Review. Stale follows Review and collects open, undeferred work whose
+`UpdatedAt` touch time is at least 90 local-calendar days old. Pinned, Today,
+Next, Review, and Doing keep stronger claims, so a task appears only once. Due is date ordered. Done, Canceled,
 and deferred work stay hidden unless a filter explicitly asks for them.
 
 Every mode groups its tasks by project when you are looking at more than one
@@ -324,6 +326,7 @@ reordering — still asks you to exit search first.
 | `fr` | Toggle the `review` tag facet |
 | `f@` | Open the due-date facet picker: overdue, today, this week, no due date, or deferred-only |
 | `fh` | Pick one hierarchy position: parent, child, root, or leaf; parent and leaf read open children |
+| `fs` | Toggle open, undeferred work untouched for at least 90 local-calendar days |
 | `fx` | Clear every facet |
 | `/` | Ranked title, description, tag, and project search over every scoped nonterminal task, gated by any capture sigils the query carries |
 

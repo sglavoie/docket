@@ -20,7 +20,11 @@ echo "Checking documentation..."
 # standalone use. golangci-lint runs govet with enable-all, so `go vet` here
 # would be a third pass over the same analyzers.
 echo "Running race tests and collecting coverage..."
-go test -race -count=1 -coverprofile=coverage.out ./...
+# The race-enabled TUI package can exceed Go's implicit 10-minute package
+# deadline on shared CI runners even when every test passes. Keep the package
+# deadline inside this script's outer CI budget instead of inheriting that
+# environment-sensitive default.
+go test -race -count=1 -timeout=20m -coverprofile=coverage.out ./...
 ./scripts/check_coverage.sh coverage.out
 
 echo "Running golangci-lint..."

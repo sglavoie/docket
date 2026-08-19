@@ -53,6 +53,7 @@ against the drain budget.
 | `parked` | One project in the base task workspace and one tagged `parked`. |
 | `project-mix` | An active project with a task, an active project with none, a parked project with a task, and an archived project with none. |
 | `signals` | A lapsed deferral beside a whole-day and an hour-valued pending one, concentrated overdue work, and a durable Today membership. |
+| `stale` | Old and fresh open work for the Stale lane, facet, fold, and narrow-width contracts. |
 | `checklist` | The only fixture whose tasks carry checklist items, in the three shapes the fold ladder distinguishes. |
 
 Only `parked` and `project-mix` split the base task workspace from the catalog.
@@ -126,7 +127,7 @@ v V Ctrl+A Space                 selection and actions
 Enter Shift+Enter Ctrl+Enter     Focus, widen focus, and Peek
 x                                tick the checklist item under the cursor
 p Ctrl+N T / ? u Ctrl+R Esc Ctrl+C   global
-f!0-3 f$ fc f# fr f@ fh fx       filters
+f!0-3 f$ fc f# fr f@ fh fs fx    filters
 F# Fp FP Fa FA Fx                project population filters
 o@ o! oc ou ot ox                sort axis
 ```
@@ -199,6 +200,7 @@ The committed suite exercises the product contracts directly:
 | Semantic task tag split, seeded in `#` and usage-derived in `f#` | `semantic-task-tags-split.json`, `tags-picker-direct.json` |
 | Context radio inside `#`, its inline mint, and one undo over a simultaneous tag and context change | `tags-picker-context-radio.json`, `tags-picker-context-mint.json` |
 | Planning membership outranking the Review lane, so `$n` moves one row | `review-lane-planning-precedence.json` |
+| Stale lane visibility and folding, `fs` outside All, and narrow layout | `stale-lane-and-filter.json` |
 | Semantic colors in both themes | `theme-toggle.json` plus `semantic_tag_title_style_test.go` |
 | Deterministic launch and duplicate-submit hardening | `app_deterministic_startup_test.go`, `task_composer_test.go`, `task_form_save_create_test.go`, `task_form_save_edit_test.go` |
 | Generated operation help and retired-key absence | `in-app-help.json`, `mode-catalog.json` |

@@ -38,17 +38,16 @@ to audited maintenance, migration, restore, and transaction infrastructure.
 
 ## Task and planning invariants
 
-The live states are:
-
 ```text
 inbox, backlog, doing, waiting, paused, someday, done, canceled
 ```
 
-Review is not a lifecycle state and has no key of its own: it is the canonical
-`review` tag with a promoted All-mode lane. Retired states and fields may
-appear only in named migration DTOs and audit code. Ordinary task Markdown is
-schema 11 with generic `Task` headings, a project-local ShortID, retained
-fields, and optional single-valued task-level `Context`. `DueDate` is a
+Review is not a lifecycle state and has no key of its own: `review` promotes an
+All-mode lane. Stale: inclusive 90-local-day `UpdatedAt`; terminal/deferred
+excluded; after Review; below Pinned/Today/Next/Review/Doing.
+Retired fields/states: migration DTOs/audits only. Task Markdown schema
+11 uses generic `Task` headings, project-local ShortID, retained fields, and
+optional single-valued task `Context`. `DueDate` is a
 calendar date; `DeferredUntil` is an RFC3339Nano instant that can expire later
 the same day.
 

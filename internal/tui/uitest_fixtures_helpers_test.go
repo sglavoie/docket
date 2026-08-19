@@ -45,6 +45,7 @@ const (
 	FixtureParked       = "parked"
 	FixtureProjectMix   = "project-mix"
 	FixtureSignals      = "signals"
+	FixtureStale        = "stale"
 	FixtureChecklist    = "checklist"
 )
 
@@ -100,6 +101,7 @@ var builtinFixtures = map[string]func(*uitestWorkspace) error{
 	FixtureParked:       buildParkedFixture,
 	FixtureProjectMix:   buildProjectMixFixture,
 	FixtureSignals:      buildSignalsFixture,
+	FixtureStale:        buildStaleFixture,
 	FixtureChecklist:    buildChecklistFixture,
 }
 
@@ -806,6 +808,32 @@ func buildSignalsFixture(w *uitestWorkspace) error {
 		return err
 	}
 	w.Runtime.Planning().AddToToday(triage.ID, project.ID)
+	w.setCurrentProject(project.ID)
+	return nil
+}
+
+// buildStaleFixture isolates old touch times so the Stale lane and fs facet can
+// be exercised without shifting cursor-sensitive scenarios on other fixtures.
+func buildStaleFixture(w *uitestWorkspace) error {
+	project, err := w.addProject("Dormant Delivery", func(p *models.Project) {
+		old := time.Now().AddDate(0, 0, -(staleTaskThresholdDays + 10))
+		for _, title := range []string{
+			"Revisit dormant launch checklist",
+			"Renew untouched vendor briefing",
+		} {
+			task := newFixtureTask(p, title)
+			task.ApplyWorkflowState(models.StateBacklog)
+			task.CreatedAt = old
+			task.UpdatedAt = old
+			task.StateChangedAt = old
+		}
+
+		fresh := newFixtureTask(p, "Draft current launch note")
+		fresh.ApplyWorkflowState(models.StateBacklog)
+	})
+	if err != nil {
+		return err
+	}
 	w.setCurrentProject(project.ID)
 	return nil
 }

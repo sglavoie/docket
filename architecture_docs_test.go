@@ -39,6 +39,8 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"Eight of them reuse the key their task-row counterpart holds",
 		"one predicate, `operationRefusedOnChecklistRow`, read by `OperationDescriptor.Applicable`",
 		"Recent is the activity review projection",
+		"Stale draws immediately after Review",
+		"The lowercase `fs` facet applies that same predicate as a row refinement in every mode",
 		"`Ctrl+L` is the one key that reaches the newest task from anywhere",
 		"#### Row indicators",
 		"#### Status flash",

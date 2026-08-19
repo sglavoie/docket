@@ -14,6 +14,7 @@
     { "type": "assert", "assert": "contains", "value": "Toggle Theme" },
     { "type": "assert", "assert": "contains", "value": "Select Project" },
     { "type": "assert", "label": "the population chord is projected from the same descriptors", "assert": "contains", "value": "Filter Projects by Tag" },
+    { "type": "assert", "label": "the Stale facet is projected from its descriptor", "assert": "contains", "value": "Filter Stale" },
     { "type": "assert", "assert": "contains", "value": "Include Parked Projects" },
     { "type": "assert", "assert": "contains", "value": "Only Parked Projects" },
     { "type": "assert", "assert": "contains", "value": "Include Archived Projects" },

@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -66,6 +67,7 @@ func TestFilterChordWhichKeyHints(t *testing.T) {
 		"# tags",
 		"r review",
 		"h hierarchy",
+		"s stale",
 		"x clear all",
 	} {
 		if !strings.Contains(row, want) {
@@ -91,6 +93,7 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 	taskFilter.Tags = map[string]bool{reviewTaskTag: true, "deep": true}
 	taskFilter.Deferred = true
 	taskFilter.Hierarchy = HierarchyParent
+	taskFilter.Stale = true
 	terminal, err := models.NewWorkflowStateSet(models.StateDone, models.StateCanceled)
 	if err != nil {
 		t.Fatal(err)
@@ -104,14 +107,14 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 	row := pendingChordHintRowForTest(app)
 	for _, want := range []string{
 		"! priority:high+", "$ states:2", "c completed:90d+", "@ deferred:on",
-		"# tags:2", "r review:on", "h hierarchy:parent", "x clear:5",
+		"# tags:2", "r review:on", "h hierarchy:parent", "s stale:on", "x clear:6",
 	} {
 		if !strings.Contains(row, want) {
 			t.Errorf("decorated f row %q omits %q", row, want)
 		}
 	}
-	if got := app.crossOutliner.ActiveFilterCount(); got != 5 {
-		t.Errorf("task filter count = %d, want 5 independently clearable facets", got)
+	if got := app.crossOutliner.ActiveFilterCount(); got != 6 {
+		t.Errorf("task filter count = %d, want 6 independently clearable facets", got)
 	}
 
 	// The f@ row now names two mutually exclusive facets, so the due-date branch
@@ -149,8 +152,8 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 			t.Errorf("isolated F row %q omits %q", row, want)
 		}
 	}
-	if got := app.crossOutliner.ActiveFilterCount(); got != 8 {
-		t.Errorf("combined filter count = %d, want 8 independent task/project facets", got)
+	if got := app.crossOutliner.ActiveFilterCount(); got != 9 {
+		t.Errorf("combined filter count = %d, want 9 independent task/project facets", got)
 	}
 }
 
@@ -167,6 +170,33 @@ func TestReviewFilterChordTogglesCanonicalTagFacet(t *testing.T) {
 	pressFilterChord(t, app, "fr")
 	if filter.Tags[reviewTaskTag] {
 		t.Fatalf("second fr filter = %v", filter.Tags)
+	}
+}
+
+func TestStaleFilterChordTogglesTouchAgeFacet(t *testing.T) {
+	app := newFilterChordTestApp(t)
+	filter := &app.crossOutliner.filter.CommonFilterState
+	now := time.Now()
+	app.crossOutliner.loadedProjects[0].Tasks[0].UpdatedAt = now.AddDate(0, 0, -staleTaskThresholdDays)
+	for _, task := range app.crossOutliner.loadedProjects[0].Tasks[1:] {
+		task.UpdatedAt = now
+	}
+	app.crossOutliner.rebuildRows()
+
+	pressFilterChord(t, app, "fs")
+	if !filter.Stale {
+		t.Fatal("fs did not activate the Stale facet")
+	}
+	if visible := visibleOutlinerTaskIDs(app.crossOutliner); !maps.Equal(visible, map[string]bool{"critical": true}) {
+		t.Fatalf("Stale filter visible = %v, want only critical", visible)
+	}
+	if got := commonFilterParts(filter); !slices.Equal(got, []string{"stale"}) {
+		t.Fatalf("Stale badge parts = %v, want stale", got)
+	}
+
+	pressFilterChord(t, app, "fs")
+	if filter.Stale {
+		t.Fatal("second fs did not clear the Stale facet")
 	}
 }
 
@@ -608,6 +638,33 @@ func TestFilterDueChordIsOneTerminalPickerBinding(t *testing.T) {
 	}
 }
 
+func TestFilterStaleChordIsOneGeneratedHelpTerminal(t *testing.T) {
+	registry := registeredSimplifiedOperationRegistry(t)
+	ctx := simplifiedOperationContext()
+
+	binding, descriptor, resolution := registry.InputBindingForSequence(
+		InputStrategySimplified,
+		[]string{"f", "s"},
+		ctx,
+	)
+	if resolution != ChordTerminal || descriptor.ID != operationFilterStale {
+		t.Fatalf("fs = resolution %v operation %s, want terminal %s", resolution, descriptor.ID, operationFilterStale)
+	}
+	if binding.HasPresetValue || binding.DisplayKey != "fs" {
+		t.Errorf("fs binding = preset %v display %q, want toggle display fs", binding.HasPresetValue, binding.DisplayKey)
+	}
+	helpDocumentsStaleFacet := false
+	for _, item := range registry.HelpItemsForInputStrategy(InputStrategySimplified, ctx) {
+		if item.Key == "fs" && item.Description == "Filter Stale" {
+			helpDocumentsStaleFacet = true
+			break
+		}
+	}
+	if !helpDocumentsStaleFacet {
+		t.Error("help_filter projection omits the terminal fs Stale facet")
+	}
+}
+
 // The filter and sort second keys are the sigils their facets already spell, so
 // the letters they replaced must lead nowhere rather than keep acting. A letter
 // still bound to something else would silently apply the wrong facet.
@@ -617,7 +674,6 @@ func TestRetiredFilterAndSortLetterPathsResolveToNoMatch(t *testing.T) {
 
 	for _, retired := range [][]string{
 		{"f", "p"},
-		{"f", "s"},
 		{"f", "t"},
 		{"f", "d"},
 		{"F", "t"},
@@ -866,8 +922,8 @@ func TestFilterOperationsStayChordOnly(t *testing.T) {
 	registry := app.GetOperationRegistry()
 
 	descriptors := filterOperationDescriptors()
-	if len(descriptors) != 8 {
-		t.Fatalf("filter family declares %d operations, want 8", len(descriptors))
+	if len(descriptors) != 9 {
+		t.Fatalf("filter family declares %d operations, want 9", len(descriptors))
 	}
 	for _, declared := range descriptors {
 		_, ok := registry.Descriptor(declared.ID)

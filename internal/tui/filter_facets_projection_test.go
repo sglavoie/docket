@@ -268,6 +268,43 @@ func TestCompletionAgeFacetUsesLocalCalendarDaysAndRejectsInvalidTimestamps(t *t
 	}
 }
 
+func TestStaleFacetUsesUpdatedLocalCalendarAgeAndBaseVisibility(t *testing.T) {
+	location := time.FixedZone("stale-local", -6*60*60)
+	now := time.Date(2026, time.August, 3, 0, 15, 0, 0, location)
+	day90 := time.Date(2026, time.May, 5, 23, 59, 0, 0, location)
+	day89 := time.Date(2026, time.May, 6, 23, 59, 0, 0, location)
+	wake := now.AddDate(0, 0, 1)
+
+	filter := newFilterState()
+	filter.Stale = true
+	oldEnough := &models.Task{ID: "old", WorkflowState: models.StateBacklog, UpdatedAt: day90}
+	tooRecent := &models.Task{ID: "recent", WorkflowState: models.StateBacklog, UpdatedAt: day89}
+	terminal := &models.Task{ID: "done", WorkflowState: models.StateDone, UpdatedAt: day90}
+	deferred := &models.Task{ID: "deferred", WorkflowState: models.StateBacklog, UpdatedAt: day90, DeferredUntil: &wake}
+
+	if !passesCommonFiltersAt(oldEnough, &filter, now) {
+		t.Fatal("touch on the ninetieth local calendar day should match Stale")
+	}
+	if passesCommonFiltersAt(tooRecent, &filter, now) {
+		t.Fatal("touch on the eighty-ninth local calendar day should not match Stale")
+	}
+	if passesCommonFiltersAt(terminal, &filter, now) || passesCommonFiltersAt(deferred, &filter, now) {
+		t.Fatal("Stale facet admitted terminal or currently deferred work")
+	}
+
+	copy := copyCommonFilterState(&filter)
+	if !copy.Stale || !hasActiveCommonFilters(copy) || commonFilterFacetCount(copy) != 1 {
+		t.Fatalf("copied Stale facet lost active state: %+v", copy)
+	}
+	clearCommonFilters(copy)
+	if copy.Stale || hasActiveCommonFilters(copy) {
+		t.Fatalf("clearCommonFilters left Stale active: %+v", copy)
+	}
+	if fresh := newFilterState(); fresh.Stale {
+		t.Fatal("newFilterState starts with Stale active")
+	}
+}
+
 func TestCompletionCleanupProjectionRequiresExplicitTerminalStateChoice(t *testing.T) {
 	now := time.Now()
 	old := now.AddDate(0, 0, -45)

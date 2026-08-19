@@ -74,7 +74,7 @@ func TestREADMEDocumentsFinalDailyLoop(t *testing.T) {
 	})
 	// The final section catalog is intentionally checked as one ordered string.
 	requireDocumentationText(t, content, []string{
-		"Pinned, Today, Doing, Review, Inbox, Next, Paused, Backlog, Waiting, Someday",
+		"Pinned, Today, Doing, Review, Stale, Inbox, Next, Paused, Backlog, Waiting, Someday",
 	})
 	rejectDocumentationText(t, content, []string{
 		"Next → Backlog → Active → All",
@@ -153,6 +153,7 @@ func TestREADMEDocumentsFiltersPeekAndBulkSemantics(t *testing.T) {
 		"`fr` | Toggle the `review` tag facet",
 		"`f@` | Open the due-date facet picker: overdue, today, this week, no due date, or deferred-only",
 		"`fh` | Pick one hierarchy position: parent, child, root, or leaf; parent and leaf read open children",
+		"`fs` | Toggle open, undeferred work untouched for at least 90 local-calendar days",
 		"`fx` | Clear every facet",
 		"`F#` | Pick project tags with AND semantics",
 		"`Fp` | Add parked projects to the population",

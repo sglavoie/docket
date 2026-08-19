@@ -20,6 +20,7 @@ type CommonFilterState struct {
 	DueDate       DueDateFilter           // filter by due date
 	CompletionAge CompletionAgeFilter     // local-calendar age threshold for completed tasks
 	Hierarchy     HierarchyFilter         // filter by hierarchy position
+	Stale         bool                    // only show open work untouched for at least 90 local days
 	Deferred      bool                    // only show currently deferred tasks
 	Pinned        bool                    // only show pinned tasks
 
@@ -39,6 +40,7 @@ func copyCommonFilterState(src *CommonFilterState) *CommonFilterState {
 		DueDate:          src.DueDate,
 		CompletionAge:    src.CompletionAge,
 		Hierarchy:        src.Hierarchy,
+		Stale:            src.Stale,
 		Deferred:         src.Deferred,
 		Pinned:           src.Pinned,
 		statesSet:        src.statesSet,
@@ -98,6 +100,9 @@ func passesCommonFiltersAt(
 		return false
 	}
 	if f.Priority > 0 && models.EffectivePriority(task.Priority) > f.Priority {
+		return false
+	}
+	if f.Stale && !taskIsStale(task, now) {
 		return false
 	}
 	if f.Deferred && !task.IsDeferredAt(now) {
@@ -166,6 +171,7 @@ func hasActiveCommonFilters(f *CommonFilterState) bool {
 		len(f.Tags) > 0 ||
 		f.DueDate != DueDateAll ||
 		f.Hierarchy != HierarchyAll ||
+		f.Stale ||
 		f.Deferred ||
 		f.Pinned
 }
@@ -196,6 +202,9 @@ func commonFilterFacetCount(f *CommonFilterState) int {
 	if f.Hierarchy != HierarchyAll {
 		count++
 	}
+	if f.Stale {
+		count++
+	}
 	if f.Deferred {
 		count++
 	}
@@ -223,6 +232,7 @@ func clearCommonFilters(f *CommonFilterState) {
 	f.CompletionAge = CompletionAgeAll
 	f.completionAgeSet = false
 	f.Hierarchy = HierarchyAll
+	f.Stale = false
 	f.Deferred = false
 	f.Pinned = false
 }
@@ -277,6 +287,9 @@ func commonFilterParts(f *CommonFilterState) []string {
 	}
 	if f.Hierarchy != HierarchyAll {
 		parts = append(parts, "hierarchy:"+hierarchyFilterLabel(f.Hierarchy))
+	}
+	if f.Stale {
+		parts = append(parts, "stale")
 	}
 	if f.Deferred {
 		parts = append(parts, "deferred")
@@ -346,6 +359,7 @@ func renderFilterBadge(parts []string) string {
 // newFilterState returns an initialized CommonFilterState with allocated maps.
 func newFilterState() CommonFilterState {
 	return CommonFilterState{
-		Tags: make(map[string]bool),
+		Tags:  make(map[string]bool),
+		Stale: false,
 	}
 }

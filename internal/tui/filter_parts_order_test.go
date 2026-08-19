@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -36,6 +37,34 @@ func TestCommonFilterParts_TagsDeterministicOrder(t *testing.T) {
 		if got != first {
 			t.Fatalf("iteration %d: tag part changed across calls: got %q, want %q", i, got, first)
 		}
+	}
+}
+
+func TestCommonFilterParts_StaleKeepsCanonicalFacetOrder(t *testing.T) {
+	f := newFilterState()
+	f.Priority = models.PriorityMedium
+	f.setStateFilter(testWorkflowStateSet(models.StateBacklog), true)
+	f.setCompletionAgeFilter(CompletionAge30Days)
+	f.Tags["focus"] = true
+	f.DueDate = DueDateToday
+	f.Hierarchy = HierarchyLeaf
+	f.Stale = true
+	f.Deferred = true
+	f.Pinned = true
+
+	want := []string{
+		"priority:Medium+",
+		"state:backlog",
+		"completed:30d+",
+		"#focus",
+		"due:today",
+		"hierarchy:leaf",
+		"stale",
+		"deferred",
+		"pinned",
+	}
+	if got := commonFilterParts(&f); !slices.Equal(got, want) {
+		t.Fatalf("commonFilterParts() = %v, want %v", got, want)
 	}
 }
 

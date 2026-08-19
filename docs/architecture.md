@@ -330,8 +330,8 @@ when it equals the newest global ledger entry. Relocations add `Ctrl+O origin`
 only after jump history records an origin; `Ctrl+I` returns to the relocated
 task.
 
-All mode projects open, undeferred work as Pinned, Today, Doing, Review, Inbox,
-Next, Paused, Backlog, Waiting, and Someday. Pinned is a transient projection
+All mode projects open, undeferred work as Pinned, Today, Doing, Review, Stale,
+Inbox, Next, Paused, Backlog, Waiting, and Someday. Pinned is a transient projection
 the mode catalog admits through `ShowsPinned`, set on All and Today
 only; Inbox, Next, Backlog, Due, and Recent own one narrow ordered answer that a
 promoted group would split. It is
@@ -353,6 +353,14 @@ The projection does not change lifecycle or planning. The tag itself is set from
 the `#` picker and nowhere else: the lane has no key of its own, because
 `$review` is a rejected destination and a `$r` terminal would contradict the
 parser.
+
+Stale draws immediately after Review. It promotes open, currently undeferred
+work whose `UpdatedAt` touch time is at least 90 local-calendar days old,
+measured inclusively by local calendar day. Its claim loses to Pinned, Today,
+Next, Review, and Doing, so deliberate planning, descriptive review, and active
+work stay in their stronger lanes without duplication. The lowercase `fs`
+facet applies that same predicate as a row refinement in every mode; it never
+reloads the project population.
 
 #### Row indicators
 
@@ -922,7 +930,7 @@ the action sheet, and the Project Hub stay case-insensitive because tag and
 context values are normalized lowercase, and `project#shortID` stays `EqualFold`
 because it is an exact ID lookup rather than a text search.
 Ordinary filter facets compose as priority threshold, OR states, AND tag/context
-values, due bucket, completion age, hierarchy position, and deferred-only and
+values, due bucket, completion age, hierarchy position, Stale, and deferred-only and
 remain session-only. The deferred-only facet is a fifth row on the `f@` picker
 rather than a chord of its own, because a deferral is a scheduling instant like
 a due date; the picker is single-select, so choosing the deferred row clears the

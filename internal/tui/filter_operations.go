@@ -17,6 +17,7 @@ const (
 	operationFilterDue           OperationID = "tui.filter.due"
 	operationFilterCompletionAge OperationID = "tui.filter.completion-age"
 	operationFilterHierarchy     OperationID = "tui.filter.hierarchy"
+	operationFilterStale         OperationID = "tui.filter.stale"
 	operationFilterClear         OperationID = "tui.filter.clear"
 )
 
@@ -56,6 +57,7 @@ func filterOperationDescriptors() []OperationDescriptor {
 		descriptor(operationFilterDue, "Filter by Due Date", ValueProviderFilterDue, "due filter"),
 		descriptor(operationFilterCompletionAge, "Filter by Completion Age", ValueProviderFilterCompletionAge, "completion age", "cleanup age"),
 		descriptor(operationFilterHierarchy, "Filter by Hierarchy", ValueProviderFilterHierarchy, "hierarchy position", "parent or child"),
+		descriptor(operationFilterStale, "Filter Stale", "", "stale work", "untouched work"),
 		descriptor(operationFilterClear, "Clear Filters", "", "reset filters"),
 	}
 }
@@ -221,6 +223,13 @@ func (m *AppModel) executeFilterOperation(invocation OperationInvocation) Operat
 		} else {
 			filter.Tags[reviewTaskTag] = true
 			status = "Filtering Review"
+		}
+	case operationFilterStale:
+		filter.Stale = !filter.Stale
+		if filter.Stale {
+			status = "Filtering Stale"
+		} else {
+			status = "Stale filter cleared"
 		}
 	case operationFilterClear:
 		clearCommonFilters(filter)

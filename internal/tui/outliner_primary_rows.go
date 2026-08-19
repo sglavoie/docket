@@ -121,6 +121,10 @@ func (m *OutlinerModel) buildAllPrimaryRows(
 	today := m.buildTodaySection(input, pinned)
 	next := m.buildNextSection(input, pinned, today.suppressed)
 	review := m.buildReviewSection(input, pinned, today.suppressed, next.suppressed)
+	doing := projectedDoingTasks(input)
+	stale := m.buildStaleSection(
+		input, pinned, today.suppressed, next.suppressed, review.projected, doing,
+	)
 
 	grouped := make(map[models.WorkflowStateGroup][]stateGroupProjectForest)
 	for _, project := range projects {
@@ -136,6 +140,7 @@ func (m *OutlinerModel) buildAllPrimaryRows(
 		roots = removePlanningRowsFromTree(roots, project.ID, next.suppressed)
 		roots = removeProjectedRowsFromTree(roots, project.ID, pinned)
 		roots = removeProjectedRowsFromTree(roots, project.ID, review.projected)
+		roots = removeProjectedRowsFromTree(roots, project.ID, stale.projected)
 		roots = m.sortPrimaryTaskTree(roots)
 		for group, forest := range buildStateGroupTaskForests(roots) {
 			if forest == nil || forest.count == 0 {
@@ -159,8 +164,24 @@ func (m *OutlinerModel) buildAllPrimaryRows(
 		}
 		if group == models.StateGroupDoing {
 			m.appendReviewSection(review)
+			m.appendStaleSection(stale)
 		}
 	}
+}
+
+// projectedDoingTasks names the qualified rows claimed by the lifecycle Doing
+// lane so derived sections can apply precedence without conflating state age
+// with touch age. The section builders apply their own visibility guards.
+func projectedDoingTasks(input OutlinerModeInput) map[TaskIdentity]bool {
+	projected := make(map[TaskIdentity]bool)
+	for _, candidate := range orderedModeTasks(input) {
+		task, project := candidate.row.Task, candidate.row.Project
+		if task == nil || project == nil || task.State() != models.StateDoing {
+			continue
+		}
+		projected[taskIdentityFor(task, project)] = true
+	}
+	return projected
 }
 
 func (m *OutlinerModel) appendPlanningModeRows(
