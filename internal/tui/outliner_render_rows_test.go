@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -422,7 +423,7 @@ func TestTaskIndicatorSegmentsRenderDoingInOrder(t *testing.T) {
 	plain := ansi.Strip(segments.render())
 	previous := -1
 	for _, part := range []string{
-		"recency", "waiting", "doing", "check", "due", "deferred", "checklist", "comments", "attachments",
+		"recency", "waiting", "doing", "check", "due", "deferred", "deferCount", "checklist", "comments", "attachments",
 	} {
 		index := strings.Index(plain, part)
 		if index <= previous {
@@ -434,6 +435,7 @@ func TestTaskIndicatorSegmentsRenderDoingInOrder(t *testing.T) {
 
 func TestIndicatorDropLadderOrder(t *testing.T) {
 	segments := taskIndicatorSegments{
+		deferCount:  "deferCount",
 		recency:     "recency",
 		waiting:     "waiting",
 		doing:       "doing",
@@ -475,6 +477,61 @@ func TestIndicatorDropLadderOrder(t *testing.T) {
 		if segments != want {
 			t.Fatalf("indicator drop %d produced %+v, want %+v", index+1, segments, want)
 		}
+	}
+}
+
+func TestBehavioralSignalsRowReconcilesWidthsAndOverflow(t *testing.T) {
+	now := time.Now()
+	due := now.AddDate(0, 0, -4)
+	title := "Investigate intermittent timeout when syncing the customer portal release archive"
+	task := &models.Task{
+		ID:             "combined-signals",
+		Title:          title,
+		Context:        "abcdefghijklmnop",
+		Tags:           []string{"release"},
+		WorkflowState:  models.StateDoing,
+		StateChangedAt: now.AddDate(0, 0, -120),
+		UpdatedAt:      now,
+		DueDate:        &due,
+		DeferCount:     3,
+	}
+	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
+	outliner := NewOutlinerModel(project, nil, newTestConfig())
+	row := outlinerRow{task: task, ProjectID: project.ID, prefix: "│   ├── "}
+
+	for _, width := range []int{60, 80} {
+		t.Run(strconv.Itoa(width), func(t *testing.T) {
+			segments := outliner.buildTaskRowSegments(row, width, nil)
+			indicators := ansi.Strip(segments.indicators)
+			plain := ansi.Strip(outliner.renderOutlinerTaskRow(row, false, width, width, 0, nil))
+			if got := lipgloss.Width(plain); got > width {
+				t.Fatalf("%d-column row assembled %d columns: %q", width, got, plain)
+			}
+			for _, want := range []string{"[abcdefghijk…]", "doing 120d", ansi.Strip(formatDueDate(task))} {
+				if !strings.Contains(plain, want) {
+					t.Fatalf("%d-column row missing %q: %q", width, want, plain)
+				}
+			}
+
+			wantDeferCount := width == 80
+			if got := strings.Contains(indicators, "deferred ×3"); got != wantDeferCount {
+				t.Fatalf("%d-column defer count present = %v, want %v: %q", width, got, wantDeferCount, indicators)
+			}
+			if !strings.Contains(indicators, "doing 120d") || !strings.Contains(indicators, ansi.Strip(formatDueDate(task))) {
+				t.Fatalf("%d-column row dropped due or Doing before defer count: %q", width, indicators)
+			}
+
+			titleWidth := segments.titleWidth(width)
+			visible := truncateToVisualWidth(title, titleWidth)
+			overflow := outliner.taskRowTitleOverflow(row, width, nil)
+			if overflow == "" {
+				t.Fatalf("%d-column row did not expose its clipped title tail", width)
+			}
+			head := strings.TrimSuffix(visible, "…")
+			if got := head + overflow; got != title {
+				t.Fatalf("%d-column visible head plus overflow = %q, want %q", width, got, title)
+			}
+		})
 	}
 }
 

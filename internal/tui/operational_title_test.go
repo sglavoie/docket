@@ -141,6 +141,46 @@ func TestOperationalTitleTodayPaceFittingOrder(t *testing.T) {
 	}
 }
 
+func TestOperationalTitlePulseAndTodayPaceFitEverySupportedWidth(t *testing.T) {
+	pulse := WorkspacePulse{Inbox: 9, Today: 8, Overdue: 7, Done: 6}
+	pace := todayPaceReadout{openCount: 8, medianPerDay: 1.5}
+	spec := operationalTitleSpec{Scope: activeProjectsScopeLabel, Mode: "Today", Pace: &pace, Pulse: &pulse}
+	sawPaceOnly := false
+	sawPaceAndPulse := false
+
+	for width := 40; width <= 160; width++ {
+		rendered := renderOperationalTitle(spec, width)
+		plain := ansi.Strip(rendered)
+		if strings.Contains(rendered, "\n") {
+			t.Fatalf("width %d wrapped the title: %q", width, plain)
+		}
+		if got := lipgloss.Width(rendered); got > width {
+			t.Fatalf("width %d rendered %d cells: %q", width, got, plain)
+		}
+
+		hasPace := strings.Contains(plain, "/day")
+		hasPulse := strings.Contains(plain, "workspace:")
+		if hasPulse && !strings.Contains(plain, "median 1.5/day (30d)") {
+			t.Fatalf("width %d kept the pulse beside a shortened or absent pace: %q", width, plain)
+		}
+		if hasPace && !hasPulse {
+			sawPaceOnly = true
+		}
+		if hasPace && hasPulse {
+			sawPaceAndPulse = true
+			paceEnd := strings.Index(plain, "(30d)") + len("(30d)")
+			pulseStart := strings.Index(plain, "workspace:")
+			if pulseStart-paceEnd < operationalTitlePulseGap {
+				t.Fatalf("width %d pace and pulse collided: %q", width, plain)
+			}
+		}
+	}
+
+	if !sawPaceOnly || !sawPaceAndPulse {
+		t.Fatalf("width sweep missed a required title state: pace-only=%v pace-and-pulse=%v", sawPaceOnly, sawPaceAndPulse)
+	}
+}
+
 func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 	task := &models.Task{ID: "launch", ShortID: 1, Title: "Launch", WorkflowState: models.StateBacklog}
 	project := scopeTestProject("alpha", "Alpha", task.ID)
