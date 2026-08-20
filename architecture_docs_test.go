@@ -204,7 +204,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`visualWidthOverflow` must subtract the same ellipsis column as `truncateToVisualWidth`",
 		"`indicatorDropLadder` is a list: a new indicator gets a position, not an append",
 		"the relation marker, the task context segment, and the pin marker stay out of it",
-		"`taskRowSegments` reserves the relation marker, task context segment, and pin marker at every width",
+		"`taskRowSegments` reserves all three at every width",
 		"`taskRelationMarker` is one segment both ways",
 		"The four-step pulse ladder drops done, inbox, overdue, then today",
 		"pace outranks the workspace pulse: exhaust that ladder first, then shorten and remove pace before " +

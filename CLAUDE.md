@@ -139,11 +139,10 @@ Row and Peek budget:
   `truncateToVisualWidth`, or a character is duplicated or lost.
 - `indicatorDropLadder` is a list: a new indicator gets a position, not an
   append; the relation marker, the task context segment, and the pin marker stay
-  out of it. `taskRowSegments` reserves the relation marker, task context
-  segment, and pin marker at every width; Peek names full values.
-  `taskRelationMarker` is one segment both ways: `‹` up and `›N` down, only
-  when no child renders. `taskPinnedMarker` reads
-  `task.Pinned && !row.IsPinnedSection`, not `ShowsPinned`.
+  out of it — `taskRowSegments` reserves all three at every width, and Peek
+  names full values. `taskRelationMarker` is one segment both ways.
+  `taskPinnedMarker` reads `task.Pinned && !row.IsPinnedSection`, not
+  `ShowsPinned`.
 - The four-step pulse ladder drops done, inbox, overdue, then today. In Today,
   pace outranks the workspace pulse: exhaust that ladder first, then shorten and
   remove pace before truncating required interaction context.
@@ -203,8 +202,7 @@ projects reachable for Notes, `%project`, Select Project, and one explicit
 focus.
 
 Parking is the one project tag edit that confirms. It preserves Today/Next refs;
-archiving preserves tags. Both filter at read time. Tag explainers wrap;
-focusable rows use `RowSummary`, explainers the full `Summary`.
+archiving preserves tags. Both filter at read time.
 
 ## Capture and edit grammar
 
@@ -214,8 +212,8 @@ Canonical capture sigils are:
 !1-3 #tag ##context @date @@defer $destination *pin %project >parent <child
 ```
 
-Due's last alternative is `[^\s@]\S*` so `@` can never eat `@@`; RE2 has no
-lookahead. Deferring refuses a terminal task and otherwise claims Backlog.
+Due's last alternative is `[^\s@]\S*` so `@` can never eat `@@`. Deferring
+refuses a terminal task and otherwise claims Backlog.
 
 `##context` sets the optional singleton task context with tag normalization.
 `##0` clears it and `@@0` a deferral on the edit surfaces; outline omission
