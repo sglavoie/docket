@@ -3,6 +3,7 @@ package tui
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
@@ -143,6 +144,30 @@ func TestFeatureCoordinatorRunEmitsError(t *testing.T) {
 	}
 	if !errors.Is(failure.Err, sentinel) {
 		t.Fatalf("error = %v, want sentinel", failure.Err)
+	}
+}
+
+// The activity reader is acquired by a runtime type assertion over the mutation
+// surface, so the construction seam is where a lost reader would go unnoticed.
+func TestNewFeatureCoordinatorsBindsActivityReaderOrReportsItMissing(t *testing.T) {
+	now := time.Date(2026, time.August, 20, 9, 0, 0, 0, time.UTC)
+	done := primaryRowsTask("done-today", models.StateDone)
+	done.CompletedAt = &now
+	project := primaryRowsProject("activity-wiring", done)
+	installPulseRepository(t, project)
+	service := app.NewServiceWithArtifacts(newTestAppRepo(project), fixedCompletionActivityClock{now: now}, nil, nil)
+
+	activity, err := newFeatureCoordinators(service).Activity.CompletionActivity()
+	if err != nil {
+		t.Fatalf("activity query over *app.Service: %v", err)
+	}
+	if activity.CompletedToday() != 1 || !activity.HasHistory() {
+		t.Fatalf("activity = %+v, want the service-computed same-day completion", activity)
+	}
+
+	_, err = newFeatureCoordinators(&stubMutator{}).Activity.CompletionActivity()
+	if !errors.Is(err, errCompletionActivityReaderUnavailable) {
+		t.Fatalf("mutator-only coordinator error = %v, want %v", err, errCompletionActivityReaderUnavailable)
 	}
 }
 

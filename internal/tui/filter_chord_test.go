@@ -689,6 +689,17 @@ func TestFilterStaleChordAndHelpAreUnavailableInRecent(t *testing.T) {
 	if row := pendingChordHintRowForTest(app); strings.Contains(row, "s stale") {
 		t.Fatalf("Recent f which-key row retained Stale: %q", row)
 	}
+
+	app.statusMessage = ""
+	if handled, _ := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 's', Text: "s"}); !handled {
+		t.Fatal("s after f was not consumed by the Outliner grammar")
+	}
+	if app.crossOutliner.filter.Stale {
+		t.Fatal("fs enabled the Stale facet in Recent")
+	}
+	if want := "fs is not a filter action"; app.statusMessage != want {
+		t.Fatalf("Recent fs status = %q, want %q", app.statusMessage, want)
+	}
 }
 
 // The filter and sort second keys are the sigils their facets already spell, so
