@@ -2,6 +2,8 @@ package tui
 
 import (
 	"errors"
+	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -145,14 +147,31 @@ func TestWorkspacePulseRefreshUsesSameDayCompletionActivity(t *testing.T) {
 func TestPeriodicTickRefreshesActivityAcrossIdleLocalMidnight(t *testing.T) {
 	model := typedTestApp(t)
 	tickAt := time.Date(2040, time.January, 2, 0, 1, 0, 0, time.Local)
-	reader := &staticCompletionActivityReader{activity: app.CompletionActivity{
-		AsOf: tickAt,
-		DailyCompletions: map[time.Time]int{
-			time.Date(2040, time.January, 2, 0, 0, 0, 0, time.Local): 1,
-		},
-	}}
+	yesterday := tickAt.AddDate(0, 0, -1)
+	firstYesterday := primaryRowsTask("done-yesterday-1", models.StateDone)
+	firstYesterday.CompletedAt = &yesterday
+	secondYesterday := primaryRowsTask("done-yesterday-2", models.StateDone)
+	secondYesterday.CompletedAt = &yesterday
+	doneToday := primaryRowsTask("done-today", models.StateDone)
+	doneToday.CompletedAt = &tickAt
+	project := primaryRowsProject("idle-midnight", firstYesterday, secondYesterday, doneToday)
+	installPulseRepository(t, project)
+	repository := newTestAppRepo(project)
+	cached, err := app.NewServiceWithArtifacts(repository, fixedCompletionActivityClock{now: yesterday}, nil, nil).CompletionActivity()
+	if err != nil {
+		t.Fatalf("seed previous-day activity: %v", err)
+	}
+	if cached.CompletedToday() != 2 {
+		t.Fatalf("seeded previous-day count = %d, want 2", cached.CompletedToday())
+	}
+	refreshed, err := app.NewServiceWithArtifacts(repository, fixedCompletionActivityClock{now: tickAt}, nil, nil).CompletionActivity()
+	if err != nil {
+		t.Fatalf("seed current-day activity: %v", err)
+	}
+	reader := &staticCompletionActivityReader{activity: refreshed}
 	model.features.Activity = ActivityCoordinator{reader: reader}
-	model.completionActivity = app.CompletionActivity{AsOf: tickAt.AddDate(0, 0, -1)}
+	model.completionActivity = cached
+	model.workspacePulse.Done = cached.CompletedToday()
 	model.crossOutliner.crossForceRebuild = false
 	model.crossOutliner.nextDeferWake = tickAt.Add(-time.Minute)
 
@@ -165,6 +184,9 @@ func TestPeriodicTickRefreshesActivityAcrossIdleLocalMidnight(t *testing.T) {
 	if !model.completionActivity.IsCurrentLocalDay(tickAt) {
 		t.Fatal("periodic tick did not install the current-day activity")
 	}
+	if model.workspacePulse.Done != 1 {
+		t.Fatalf("Done = %d, want the new local day's count rather than the previous day's 2", model.workspacePulse.Done)
+	}
 	if !model.crossOutliner.crossForceRebuild {
 		t.Fatal("periodic tick did not use its supplied timestamp for the defer wake")
 	}
@@ -174,6 +196,9 @@ func TestPeriodicTickRefreshesActivityAcrossIdleLocalMidnight(t *testing.T) {
 	}
 	if reader.calls != 1 {
 		t.Fatalf("same-day periodic activity queries = %d, want cached snapshot reuse", reader.calls)
+	}
+	if model.workspacePulse.Done != 1 {
+		t.Fatalf("same-day Done = %d, want the refreshed count to stand", model.workspacePulse.Done)
 	}
 }
 
@@ -288,4 +313,90 @@ func TestWorkspacePulseFormattingFollowsFourStepLadder(t *testing.T) {
 	if got := ansi.Strip(formatWorkspacePulseComponents(WorkspacePulse{}, workspacePulseFull)); got != "workspace: today 0 · done 0" {
 		t.Fatalf("zero pulse = %q, want Today and Done zeroes", got)
 	}
+}
+
+func TestWorkspacePulseFullFormKeepsMutedForegroundThroughDone(t *testing.T) {
+	muted := activeForegroundAt(t, MutedStyle.Render("probe"), "probe")
+	warning := activeForegroundAt(t, PreviewWarningStyle.Render("probe"), "probe")
+	if muted == "" || warning == "" || muted == warning {
+		t.Fatalf("style probes: muted = %q, warning = %q, want two distinct non-empty foregrounds", muted, warning)
+	}
+
+	full := formatWorkspacePulseComponents(WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4}, workspacePulseFull)
+	for _, tt := range []struct {
+		segment string
+		want    string
+	}{
+		{"workspace: ", muted},
+		{"inbox 3", muted},
+		{"today 2", muted},
+		{"overdue 1", warning},
+		{"done 4", muted},
+	} {
+		if got := activeForegroundAt(t, full, tt.segment); got != tt.want {
+			t.Errorf("foreground in effect at %q = %q, want %q", tt.segment, got, tt.want)
+		}
+	}
+
+	// Wrapping a pre-styled warning segment in an outer muted style leaves the
+	// warning's own reset inside the string, so everything after it renders in the
+	// terminal default. This is the composition the per-component styling replaces.
+	nested := MutedStyle.Render("workspace: inbox 3 · today 2 · " + PreviewWarningStyle.Render("overdue 1") + " · done 4")
+	if got := activeForegroundAt(t, nested, "done 4"); got != "" {
+		t.Fatalf("nested-reset composition foreground at %q = %q, want the terminal default", "done 4", got)
+	}
+}
+
+var sgrSequencePattern = regexp.MustCompile("\x1b\\[[0-9;:]*m")
+
+// activeForegroundAt replays every SGR sequence preceding segment and reports the
+// foreground parameters a terminal would still have applied when printing it.
+// An empty result means the terminal default foreground.
+func activeForegroundAt(t *testing.T, rendered, segment string) string {
+	t.Helper()
+	plain := ansi.Strip(rendered)
+	target := strings.Index(plain, segment)
+	if target < 0 {
+		t.Fatalf("segment %q missing from %q", segment, plain)
+	}
+
+	foreground := ""
+	printed, cursor := 0, 0
+	for _, location := range sgrSequencePattern.FindAllStringIndex(rendered, -1) {
+		text := rendered[cursor:location[0]]
+		if printed+len(text) > target {
+			return foreground
+		}
+		printed += len(text)
+		foreground = applyForegroundSGR(foreground, rendered[location[0]+2:location[1]-1])
+		cursor = location[1]
+	}
+	return foreground
+}
+
+// applyForegroundSGR folds one SGR parameter list into the active foreground,
+// tracking only the codes that can change it.
+func applyForegroundSGR(current, params string) string {
+	if params == "" {
+		return ""
+	}
+	fields := strings.Split(params, ";")
+	for i := 0; i < len(fields); i++ {
+		code := fields[i]
+		switch {
+		case code == "" || code == "0" || code == "39":
+			current = ""
+		case code == "38":
+			span := 3
+			if i+1 < len(fields) && fields[i+1] == "2" {
+				span = 5
+			}
+			end := min(i+span, len(fields))
+			current = strings.Join(fields[i:end], ";")
+			i = end - 1
+		case len(code) == 2 && (code[0] == '3' || code[0] == '9') && code[1] >= '0' && code[1] <= '7':
+			current = code
+		}
+	}
+	return current
 }

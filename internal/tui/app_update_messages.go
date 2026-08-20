@@ -86,8 +86,10 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 	case periodicSaveMsg:
 		m.saveProjectViewState()
 		m.saveOutlinerFilterState()
-		m.wakeDeferredRows(msg.at)
-		if !m.completionActivity.IsCurrentLocalDay(msg.at) {
+		// A consumed wake makes rows visible that ComputeWorkspacePulse excluded
+		// while their deferral was pending, so the same update recounts the pulse
+		// even within one local day.
+		if m.wakeDeferredRows(msg.at) || !m.completionActivity.IsCurrentLocalDay(msg.at) {
 			m.refreshWorkspacePulseAt(msg.at)
 		}
 		return true, tickCmd(periodicSaveInterval, func(at time.Time) tea.Msg {
@@ -108,20 +110,22 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 }
 
 // wakeDeferredRows returns a lapsed deferral to the outline on the first tick
-// past it. It flips the memoization bypass instead of rebuilding, so the render
-// pass Bubble Tea runs right after Update stays the single rebuild authority
-// and computeOutlinerViewport keeps sole ownership of viewScrollOffset. A
-// refusal leaves nextDeferWake standing, so the next tick retries.
-func (m *AppModel) wakeDeferredRows(now time.Time) {
+// past it, reporting whether it consumed the wake. It flips the memoization
+// bypass instead of rebuilding, so the render pass Bubble Tea runs right after
+// Update stays the single rebuild authority and computeOutlinerViewport keeps
+// sole ownership of viewScrollOffset. A refusal leaves nextDeferWake standing,
+// so the next tick retries.
+func (m *AppModel) wakeDeferredRows(now time.Time) bool {
 	out := m.crossOutliner
 	if out == nil || out.nextDeferWake.IsZero() || now.Before(out.nextDeferWake) {
-		return
+		return false
 	}
 	if !m.safeToRebuildForWake() {
-		return
+		return false
 	}
 	out.nextDeferWake = time.Time{}
 	out.crossForceRebuild = true
+	return true
 }
 
 // safeToRebuildForWake refuses while a new row would invalidate what the user

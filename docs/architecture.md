@@ -410,7 +410,11 @@ Bubble Tea runs next as the single rebuild authority and
 visual selection, or search projection is live, because rebuilding underneath
 one of those moves ground the user is standing on. A refusal leaves the clock
 standing so the next tick retries; the wake is deferred, never dropped, at a
-cost of at most one tick.
+cost of at most one tick. A consumed wake also recomputes the workspace pulse at
+the tick's own timestamp, because `ComputeWorkspacePulse` excluded that task
+while its deferral was pending: the counts and the row it makes visible move in
+the same update. A refused wake refreshes nothing, so the clock and the pulse
+stay in step.
 
 Waiting age reads the state clock, never the touch time.
 `formatWaitingAgeIndicator` is gated on `IsInState(models.StateWaiting)` and
