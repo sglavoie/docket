@@ -665,6 +665,32 @@ func TestFilterStaleChordIsOneGeneratedHelpTerminal(t *testing.T) {
 	}
 }
 
+func TestFilterStaleChordAndHelpAreUnavailableInRecent(t *testing.T) {
+	app := newFilterChordTestApp(t)
+	app.crossOutliner.selectOutlinerMode(ModeRecent)
+	ctx := app.operationCommandContext()
+
+	if _, _, resolution := app.operationRegistry.InputBindingForSequence(
+		InputStrategySimplified,
+		[]string{"f", "s"},
+		ctx,
+	); resolution != ChordNoMatch {
+		t.Fatalf("fs resolution = %v, want no match in Recent", resolution)
+	}
+	for _, item := range app.operationRegistry.HelpItemsForInputStrategy(InputStrategySimplified, ctx) {
+		if item.Key == "fs" || item.Description == "Filter Stale" {
+			t.Fatalf("Recent help retained Stale item: %+v", item)
+		}
+	}
+
+	if handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'f', Text: "f"}); !handled || cmd != nil {
+		t.Fatalf("f = handled %v cmd %T; want a pending prefix", handled, cmd)
+	}
+	if row := pendingChordHintRowForTest(app); strings.Contains(row, "s stale") {
+		t.Fatalf("Recent f which-key row retained Stale: %q", row)
+	}
+}
+
 // The filter and sort second keys are the sigils their facets already spell, so
 // the letters they replaced must lead nowhere rather than keep acting. A letter
 // still bound to something else would silently apply the wrong facet.

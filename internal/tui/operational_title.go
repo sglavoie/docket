@@ -160,11 +160,7 @@ func joinOperationalTitleRegions(identity, context string) string {
 func operationalPulseVariants(pulse WorkspacePulse) []string {
 	variants := make([]string, 0, int(workspacePulseHidden)+1)
 	for level := workspacePulseFull; level <= workspacePulseHidden; level++ {
-		candidate := formatWorkspacePulseComponents(pulse, level)
-		rendered := ""
-		if candidate != "" {
-			rendered = MutedStyle.Render(candidate)
-		}
+		rendered := formatWorkspacePulseComponents(pulse, level)
 		if len(variants) == 0 || rendered != variants[len(variants)-1] {
 			variants = append(variants, rendered)
 		}

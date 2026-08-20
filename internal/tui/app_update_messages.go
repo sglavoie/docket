@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/storage"
 )
@@ -85,9 +86,12 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 	case periodicSaveMsg:
 		m.saveProjectViewState()
 		m.saveOutlinerFilterState()
-		m.wakeDeferredRows(time.Now())
-		return true, tickCmd(periodicSaveInterval, func(time.Time) tea.Msg {
-			return periodicSaveMsg{}
+		m.wakeDeferredRows(msg.at)
+		if !m.completionActivity.IsCurrentLocalDay(msg.at) {
+			m.refreshWorkspacePulseAt(msg.at)
+		}
+		return true, tickCmd(periodicSaveInterval, func(at time.Time) tea.Msg {
+			return periodicSaveMsg{at: at}
 		})
 	case SaveCompleteMsg:
 		return true, m.handleSaveComplete(msg)
@@ -276,11 +280,17 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState, reloadCrossProject 
 }
 
 func (m *AppModel) refreshWorkspacePulseAt(now time.Time) {
+	cachedActivityIsCurrent := m.completionActivity.IsCurrentLocalDay(now)
 	m.workspacePulse = ComputeWorkspacePulse(m.runtime, m.todayIDs, now)
 	activity, err := m.features.Activity.CompletionActivity()
 	if err != nil {
 		logging.Warn("refresh completion activity: %v", err)
-		m.workspacePulse.Done = m.completionActivity.CompletedToday()
+		if cachedActivityIsCurrent {
+			m.workspacePulse.Done = m.completionActivity.CompletedToday()
+		} else {
+			m.completionActivity = app.CompletionActivity{}
+			m.workspacePulse.Done = 0
+		}
 		return
 	}
 	m.completionActivity = activity

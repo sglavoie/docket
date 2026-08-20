@@ -20,6 +20,18 @@ var workModeCycleOrder = func() []OutlinerModeID {
 	return ids
 }()
 
+const recentStaleFilterClearedStatus = "Stale filter cleared: Recent only includes the last 30 days"
+
+// clearStaleForRecentMode enforces the facet contract at every path that can
+// activate Recent, including restoration of a captured project-scope frame.
+func (m *OutlinerModel) clearStaleForRecentMode() {
+	if m.primaryMode != ModeRecent || !m.filter.Stale {
+		return
+	}
+	m.filter.Stale = false
+	m.setTransientStatus(recentStaleFilterClearedStatus)
+}
+
 // activeOutlinerMode returns the sole mode identity owned by the Outliner.
 func (m *OutlinerModel) activeOutlinerMode() OutlinerModeID {
 	if _, ok := OutlinerModeByID(m.primaryMode); ok {
@@ -128,6 +140,7 @@ func (m *OutlinerModel) selectOutlinerMode(id OutlinerModeID) (tea.Model, tea.Cm
 	}
 	m.applyOutlinerModeTransition(mode)
 	m.primaryMode = mode.ID
+	m.clearStaleForRecentMode()
 	m.crossForceRebuild = true
 	m.rebuildRows()
 	return m, nil
@@ -137,10 +150,14 @@ func (m *OutlinerModel) selectOutlinerMode(id OutlinerModeID) (tea.Model, tea.Cm
 // admits. Entry re-reads activity, so the landing row is the task you touched
 // last rather than the one that led the snapshot you have been triaging.
 func (m *OutlinerModel) focusLatestActivity() tea.Cmd {
+	staleWasActive := m.filter.Stale
 	m.selectOutlinerMode(ModeRecent)
+	staleWasCleared := staleWasActive && !m.filter.Stale
 	task, project, sectionKey, ok := m.recentActivityLead()
 	if !ok {
-		m.setTransientStatus("No activity in the last 30 days")
+		if !staleWasCleared {
+			m.setTransientStatus("No activity in the last 30 days")
+		}
 		return nil
 	}
 	identity := taskIdentityFor(task, project)
@@ -149,7 +166,9 @@ func (m *OutlinerModel) focusLatestActivity() tea.Cmd {
 		m.revealRecentActivityLead(task, identity, sectionKey)
 		m.rebuildRows()
 		if index, found = m.rowIndexForTask(identity); !found {
-			m.setTransientStatus("Latest activity is unavailable in this projection")
+			if !staleWasCleared {
+				m.setTransientStatus("Latest activity is unavailable in this projection")
+			}
 			return nil
 		}
 	}
@@ -160,7 +179,9 @@ func (m *OutlinerModel) focusLatestActivity() tea.Cmd {
 	// reading the window from row zero keeps those headers on screen.
 	m.viewScrollOffset = 0
 	m.cursor = index
-	m.setTransientStatus("Latest activity: " + task.Title)
+	if !staleWasCleared {
+		m.setTransientStatus("Latest activity: " + task.Title)
+	}
 	return flashIfJumped(oldCursor, index, &m.cursorFlash)
 }
 

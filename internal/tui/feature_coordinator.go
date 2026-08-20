@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"errors"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
@@ -59,8 +61,11 @@ type CompletionActivityReader interface {
 // Compile-time assurance that the application service satisfies the mutation
 // surface, so a production coordinator can be built from one *app.Service.
 var (
-	_ FeatureMutator = (*app.Service)(nil)
+	_ FeatureMutator           = (*app.Service)(nil)
+	_ CompletionActivityReader = (*app.Service)(nil)
 )
+
+var errCompletionActivityReaderUnavailable = errors.New("completion activity reader is unavailable")
 
 // TransactionResultMsg is emitted when a coordinator mutation commits. It
 // carries the presentation-neutral outcome (the committed revision, the affected
@@ -249,7 +254,7 @@ type ActivityCoordinator struct {
 
 func (c ActivityCoordinator) CompletionActivity() (app.CompletionActivity, error) {
 	if c.reader == nil {
-		return app.CompletionActivity{}, nil
+		return app.CompletionActivity{}, errCompletionActivityReaderUnavailable
 	}
 	return c.reader.CompletionActivity()
 }

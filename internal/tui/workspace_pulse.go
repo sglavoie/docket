@@ -118,14 +118,14 @@ func formatWorkspacePulseComponents(pulse WorkspacePulse, level workspacePulseLe
 
 	parts := make([]string, 0, 4)
 	if level < workspacePulseWithoutInbox && pulse.Inbox > 0 {
-		parts = append(parts, fmt.Sprintf("inbox %d", pulse.Inbox))
+		parts = append(parts, MutedStyle.Render(fmt.Sprintf("inbox %d", pulse.Inbox)))
 	}
-	parts = append(parts, fmt.Sprintf("today %d", pulse.Today))
+	parts = append(parts, MutedStyle.Render(fmt.Sprintf("today %d", pulse.Today)))
 	if level < workspacePulseTodayOnly && pulse.Overdue > 0 {
 		parts = append(parts, PreviewWarningStyle.Render(fmt.Sprintf("overdue %d", pulse.Overdue)))
 	}
 	if level < workspacePulseWithoutDone {
-		parts = append(parts, fmt.Sprintf("done %d", pulse.Done))
+		parts = append(parts, MutedStyle.Render(fmt.Sprintf("done %d", pulse.Done)))
 	}
-	return "workspace: " + strings.Join(parts, " · ")
+	return MutedStyle.Render("workspace: ") + strings.Join(parts, MutedStyle.Render(" · "))
 }

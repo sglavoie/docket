@@ -14,12 +14,13 @@ import (
 
 type staticCompletionActivityReader struct {
 	activity app.CompletionActivity
+	err      error
 	calls    int
 }
 
 func (r *staticCompletionActivityReader) CompletionActivity() (app.CompletionActivity, error) {
 	r.calls++
-	return r.activity, nil
+	return r.activity, r.err
 }
 
 func TestPresentationChromePolicyClassifiesEveryPresentation(t *testing.T) {
@@ -129,7 +130,7 @@ func TestTodayPaceReadoutIsTodayOnlyAndRequiresHistory(t *testing.T) {
 	}
 }
 
-func TestAppViewRefreshesCompletionActivityImmediatelyBeforePaint(t *testing.T) {
+func TestAppViewUsesCachedCompletionActivityWithoutRenderTimeRead(t *testing.T) {
 	model := typedTestApp(t)
 	reader := &staticCompletionActivityReader{activity: app.CompletionActivity{
 		DailyCompletions: map[time.Time]int{time.Date(2026, time.August, 19, 0, 0, 0, 0, time.UTC): 1},

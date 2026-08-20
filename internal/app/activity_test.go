@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -19,6 +20,9 @@ func TestCompletionActivityEmptyWorkspace(t *testing.T) {
 	if activity.HasHistory() {
 		t.Fatalf("HasHistory() = true, want false; activity = %+v", activity)
 	}
+	if activity.AsOf != now {
+		t.Fatalf("AsOf = %s, want service clock %s", activity.AsOf, now)
+	}
 	if activity.MedianPerDay() != 0 || activity.CompletedToday() != 0 || len(activity.DailyCompletions) != 0 {
 		t.Fatalf("empty activity = %+v, want zero values", activity)
 	}
@@ -27,6 +31,23 @@ func TestCompletionActivityEmptyWorkspace(t *testing.T) {
 	}
 	if len(repo.commits) != 0 {
 		t.Fatalf("Commit calls = %d, want 0 for read-only query", len(repo.commits))
+	}
+}
+
+func TestCompletionActivityFreshnessUsesTheSuppliedLocalDay(t *testing.T) {
+	location := time.FixedZone("test", -6*60*60)
+	now := time.Date(2026, time.August, 19, 0, 30, 0, 0, location)
+
+	if (app.CompletionActivity{}).IsCurrentLocalDay(now) {
+		t.Fatal("zero AsOf reported current")
+	}
+	sameLocalDay := app.CompletionActivity{AsOf: time.Date(2026, time.August, 19, 6, 45, 0, 0, time.UTC)}
+	if !sameLocalDay.IsCurrentLocalDay(now) {
+		t.Fatal("UTC AsOf on the supplied clock's local day reported stale")
+	}
+	previousLocalDay := app.CompletionActivity{AsOf: time.Date(2026, time.August, 19, 5, 45, 0, 0, time.UTC)}
+	if previousLocalDay.IsCurrentLocalDay(now) {
+		t.Fatal("AsOf on the previous local day reported current")
 	}
 }
 
@@ -117,6 +138,30 @@ func TestCompletionActivityBucketsAndBoundsByLocalCalendarDayAcrossDST(t *testin
 	}
 	if _, ok := activity.DailyCompletions[outsideDay]; ok {
 		t.Fatalf("day before calendar window unexpectedly included: %s", outsideDay)
+	}
+}
+
+func TestCompletionActivityUsesThirtyCalendarBucketsAcrossMidnightDST(t *testing.T) {
+	location, err := time.LoadLocation("America/Santiago")
+	if err != nil {
+		t.Fatalf("load location: %v", err)
+	}
+	now := time.Date(2024, time.September, 8, 12, 0, 0, 0, location)
+	tasks := make([]*models.Task, 0, 30)
+	for dayOffset := 0; dayOffset < 30; dayOffset++ {
+		completed := now.AddDate(0, 0, -dayOffset)
+		tasks = append(tasks, completedTask("done-"+completed.Format("20060102"), dayOffset+1, completed))
+	}
+
+	activity, err := newTestServiceWithClock(newFakeRepo(newProject("p1", "Midnight DST", tasks...)), fixedClock{t: now}).CompletionActivity()
+	if err != nil {
+		t.Fatalf("CompletionActivity: %v", err)
+	}
+	if got := len(activity.DailyCompletions); got != 30 {
+		t.Fatalf("activity buckets = %d, want exactly 30", got)
+	}
+	if got := activity.MedianPerDay(); got != 1 {
+		t.Fatalf("MedianPerDay = %v, want 1 from one completion in every bucket", got)
 	}
 }
 

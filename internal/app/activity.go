@@ -17,8 +17,19 @@ const completionActivityWindowDays = 30
 // zero median with HasHistory.
 type CompletionActivity struct {
 	DailyCompletions map[time.Time]int
+	AsOf             time.Time
 	medianPerDay     float64
 	completedToday   int
+}
+
+// IsCurrentLocalDay reports whether the snapshot was computed on the same
+// calendar day as now in now's location. A zero AsOf is never current.
+func (a CompletionActivity) IsCurrentLocalDay(now time.Time) bool {
+	if a.AsOf.IsZero() {
+		return false
+	}
+	asOf := a.AsOf.In(now.Location())
+	return asOf.Year() == now.Year() && asOf.Month() == now.Month() && asOf.Day() == now.Day()
 }
 
 // HasHistory reports whether the activity window contains any completion.
@@ -52,9 +63,15 @@ func (s *Service) CompletionActivity() (CompletionActivity, error) {
 }
 
 func completionActivityFromSnapshot(snapshot Snapshot, now time.Time) CompletionActivity {
-	today := util.StartOfDay(now)
-	windowStart := today.AddDate(0, 0, -(completionActivityWindowDays - 1))
-	windowEnd := today.AddDate(0, 0, 1)
+	calendarAnchor := time.Date(now.Year(), now.Month(), now.Day(), 12, 0, 0, 0, now.Location())
+	activityDays := make([]time.Time, 0, completionActivityWindowDays)
+	activityDaySet := make(map[time.Time]struct{}, completionActivityWindowDays)
+	for dayOffset := completionActivityWindowDays - 1; dayOffset >= 0; dayOffset-- {
+		day := util.StartOfDay(calendarAnchor.AddDate(0, 0, -dayOffset))
+		activityDays = append(activityDays, day)
+		activityDaySet[day] = struct{}{}
+	}
+	today := activityDays[len(activityDays)-1]
 	daily := make(map[time.Time]int)
 
 	if snapshot != nil {
@@ -67,7 +84,7 @@ func completionActivityFromSnapshot(snapshot Snapshot, now time.Time) Completion
 					continue
 				}
 				completedDay := util.StartOfDay(task.CompletedAt.In(now.Location()))
-				if completedDay.Before(windowStart) || !completedDay.Before(windowEnd) {
+				if _, ok := activityDaySet[completedDay]; !ok {
 					continue
 				}
 				daily[completedDay]++
@@ -76,15 +93,16 @@ func completionActivityFromSnapshot(snapshot Snapshot, now time.Time) Completion
 	}
 
 	counts := make([]int, 0, completionActivityWindowDays)
-	for day := windowStart; day.Before(windowEnd); day = day.AddDate(0, 0, 1) {
+	for _, day := range activityDays {
 		counts = append(counts, daily[day])
 	}
 	sort.Ints(counts)
-	middle := completionActivityWindowDays / 2
+	middle := len(counts) / 2
 	median := float64(counts[middle-1]+counts[middle]) / 2
 
 	return CompletionActivity{
 		DailyCompletions: daily,
+		AsOf:             now,
 		medianPerDay:     median,
 		completedToday:   daily[today],
 	}

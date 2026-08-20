@@ -326,7 +326,7 @@ reordering — still asks you to exit search first.
 | `fr` | Toggle the `review` tag facet |
 | `f@` | Open the due-date facet picker: overdue, today, this week, no due date, or deferred-only |
 | `fh` | Pick one hierarchy position: parent, child, root, or leaf; parent and leaf read open children |
-| `fs` | Toggle open, undeferred work untouched for at least 90 local-calendar days |
+| `fs` | Toggle open, undeferred work untouched for at least 90 local-calendar days; unavailable in Recent, whose entry clears only Stale and reports `Stale filter cleared: Recent only includes the last 30 days` |
 | `fx` | Clear every facet |
 | `/` | Ranked title, description, tag, and project search over every scoped nonterminal task, gated by any capture sigils the query carries |
 

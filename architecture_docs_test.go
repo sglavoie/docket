@@ -41,7 +41,11 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"one predicate, `operationRefusedOnChecklistRow`, read by `OperationDescriptor.Applicable`",
 		"Recent is the activity review projection",
 		"Stale draws immediately after Review",
-		"The lowercase `fs` facet applies that same predicate as a row refinement in every mode",
+		"The lowercase `fs` facet applies that same predicate as a row refinement except in Recent, where it " +
+			"is unavailable",
+		"Entering Recent with it active clears only Stale and reports " +
+			"`Stale filter cleared: Recent only includes the last 30 days`",
+		"The `fs` facet never reloads the project population",
 		"`Ctrl+L` is the one key that reaches the newest task from anywhere",
 		"#### Row indicators",
 		"#### Status flash",
@@ -164,7 +168,7 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read CLAUDE.md: %v", err)
 	}
-	const budget = 16000
+	const budget = 15800
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -175,6 +179,9 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 	content := normalizedDocumentation(t, "CLAUDE.md")
 	for _, required := range []string{
 		"Contributor rules only: invariants, forbidden patterns, forwarding addresses",
+		"[`docs/decisions/behavioral-signals-contracts.md`](docs/decisions/behavioral-signals-contracts.md) " +
+			"is the locked behavioral-signal authority",
+		"The lifecycle states are:",
 		"eight-state, seven-mode, Outliner-only product",
 		"Do not recreate cross-project behavior with independent `SaveProject` calls",
 		"`StateChangedAt` is the state clock and `UpdatedAt` is the touch time",
@@ -197,8 +204,14 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`visualWidthOverflow` must subtract the same ellipsis column as `truncateToVisualWidth`",
 		"`indicatorDropLadder` is a list: a new indicator gets a position, not an append",
 		"the relation marker, the task context segment, and the pin marker stay out of it",
+		"`taskRowSegments` reserves the relation marker, task context segment, and pin marker at every width",
 		"`taskRelationMarker` is one segment both ways",
 		"The four-step pulse ladder drops done, inbox, overdue, then today",
+		"pace outranks the workspace pulse: exhaust that ladder first, then shorten and remove pace before " +
+			"truncating required interaction context",
+		"All's Stale lane follows Review; below Pinned/Today/Next/Review/Doing",
+		"`fs` is unavailable in Recent; entry clears only Stale: " +
+			"`Stale filter cleared: Recent only includes the last 30 days`",
 		"There is no `$delete` sigil",
 		"The old `b`, `c`, `d`, `m`, `t`, `w`, `P`, `:`, `C`, `R`, `Ctrl+Esc`, and the " +
 			"comma state prefix stay unbound, as does `SortByStatus`",

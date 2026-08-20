@@ -8,8 +8,9 @@ import (
 
 // outlinerScopeFrame captures the outliner state that a project-scope push
 // replaces, so popping the scope restores navigation and presentation axes that
-// remain scope-owned. Task facets are intentionally absent: they refine the one
-// Outliner for the whole run and therefore survive every mode and scope change.
+// remain scope-owned. Task facets are intentionally absent and remain global
+// across mode and scope changes. The sole exception is Stale, which explicit
+// mode selection and frame restoration both clear whenever they activate Recent.
 //
 // Fold state is deliberately NOT snapshotted and remains shared across scopes:
 //   - collapsedSections / expandedNodes are keyed by project and section, so a
@@ -55,6 +56,7 @@ func (m *OutlinerModel) restoreScopeFrame(f outlinerScopeFrame) {
 	m.cursor = f.cursor
 	m.viewScrollOffset = f.viewScrollOffset
 	m.primaryMode = f.primaryMode
+	m.clearStaleForRecentMode()
 	m.sort = f.sort
 	m.treeSort = f.treeSort
 	m.focusStack = slices.Clone(f.focusStack)

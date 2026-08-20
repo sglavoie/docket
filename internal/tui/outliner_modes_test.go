@@ -64,6 +64,124 @@ func TestOutlinerTabCyclingWrapsForwardAndBackwardAcrossSevenModes(t *testing.T)
 	}
 }
 
+func TestEnteringRecentClearsOnlyStaleFacet(t *testing.T) {
+	const status = "Stale filter cleared: Recent only includes the last 30 days"
+	latest := recentTask("latest", models.StateBacklog, 0)
+	latest.Priority = models.PriorityMedium
+	latest.Tags = []string{"deep"}
+	tests := []struct {
+		name             string
+		tasks            []*models.Task
+		enter            func(*OutlinerModel)
+		wantEmpty        bool
+		wantCursorTaskID string
+	}{
+		{
+			name: "direct",
+			enter: func(outliner *OutlinerModel) {
+				outliner.selectOutlinerMode(ModeRecent)
+			},
+		},
+		{
+			name: "Tab",
+			enter: func(outliner *OutlinerModel) {
+				outliner.cycleWorkMode(1)
+			},
+		},
+		{
+			name: "Ctrl+L empty",
+			enter: func(outliner *OutlinerModel) {
+				outliner.focusLatestActivity()
+			},
+			wantEmpty: true,
+		},
+		{
+			name:  "Ctrl+L successful jump",
+			tasks: []*models.Task{latest},
+			enter: func(outliner *OutlinerModel) {
+				outliner.focusLatestActivity()
+			},
+			wantCursorTaskID: latest.ID,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			project := primaryRowsProject("alpha", test.tasks...)
+			project.Tags = []string{"client"}
+			outliner := NewOutlinerModel(project, nil, nil)
+			outliner.selectOutlinerMode(ModeDue)
+			outliner.filter.Priority = models.PriorityMedium
+			outliner.filter.Tags = map[string]bool{"deep": true}
+			outliner.filter.Stale = true
+			outliner.projectFilter.Tags = map[string]bool{"client": true}
+			outliner.projectFilter.ParkedMode = projectPopulationInclude
+
+			test.enter(outliner)
+
+			if got := outliner.activeOutlinerMode(); got != ModeRecent {
+				t.Fatalf("mode = %q, want %q", got, ModeRecent)
+			}
+			if outliner.filter.Stale {
+				t.Fatal("Recent retained the Stale facet")
+			}
+			if outliner.filter.Priority != models.PriorityMedium || !outliner.filter.Tags["deep"] {
+				t.Fatalf("Recent changed unrelated common filters: %+v", outliner.filter.CommonFilterState)
+			}
+			if !outliner.projectFilter.Tags["client"] ||
+				outliner.projectFilter.ParkedMode != projectPopulationInclude {
+				t.Fatalf("Recent changed project filters: %+v", outliner.projectFilter)
+			}
+			if outliner.statusMessage != status || !outliner.StatusIsTransient() {
+				t.Fatalf("status = %q transient=%t, want transient %q",
+					outliner.statusMessage, outliner.StatusIsTransient(), status)
+			}
+			if test.wantEmpty && len(visibleTaskIDs(outliner)) != 0 {
+				t.Fatalf("Recent rows = %v, want an empty Ctrl+L result", visibleTaskIDs(outliner))
+			}
+			if test.wantCursorTaskID != "" && cursorTaskID(outliner) != test.wantCursorTaskID {
+				t.Fatalf("cursor task = %q, want %q after Ctrl+L",
+					cursorTaskID(outliner), test.wantCursorTaskID)
+			}
+		})
+	}
+}
+
+func TestProjectScopePopClearsStaleWhenRestoringRecent(t *testing.T) {
+	const status = "Stale filter cleared: Recent only includes the last 30 days"
+	project := primaryRowsProject("alpha", recentTask("latest", models.StateBacklog, 0))
+	outliner, _ := primaryRowsOutliner(project)
+	outliner.selectOutlinerMode(ModeRecent)
+
+	// Ctrl+P captures Recent as the base scope before switching the focused
+	// project to All, where fs is available.
+	outliner.pushProjectScope(project.ID)
+	outliner.selectOutlinerMode(ModeAll)
+	result := (&AppModel{crossOutliner: outliner}).executeFilterOperation(OperationInvocation{
+		Descriptor: OperationDescriptor{ID: operationFilterStale},
+	})
+	if result.Err != nil {
+		t.Fatalf("apply Stale filter in focused project: %v", result.Err)
+	}
+	if !outliner.filter.Stale {
+		t.Fatal("fs did not enable the Stale facet in All")
+	}
+
+	// Esc returns through popProjectScope to the captured Recent frame.
+	if !outliner.popProjectScope() {
+		t.Fatal("project scope did not pop")
+	}
+	if got := outliner.activeOutlinerMode(); got != ModeRecent {
+		t.Fatalf("mode = %q, want %q", got, ModeRecent)
+	}
+	if outliner.filter.Stale {
+		t.Fatal("scope pop restored Recent with the Stale facet active")
+	}
+	if outliner.statusMessage != status || !outliner.StatusIsTransient() {
+		t.Fatalf("status = %q transient=%t, want transient %q",
+			outliner.statusMessage, outliner.StatusIsTransient(), status)
+	}
+}
+
 func TestDueModeProjectsDatedOpenWorkInGlobalAndProjectScopes(t *testing.T) {
 	now := time.Now()
 	dueTask := func(id string, dayOffset int) *models.Task {

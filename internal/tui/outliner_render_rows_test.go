@@ -42,16 +42,48 @@ func TestDeferIndicatorSeparatesPendingFromWoken(t *testing.T) {
 
 func TestDeferCountIndicatorStartsAtThirdDeferral(t *testing.T) {
 	for _, tc := range []struct {
+		count         int
+		wantRepeated  bool
+		wantIndicator string
+	}{
+		{count: repeatedDeferralThreshold - 1, wantRepeated: false, wantIndicator: ""},
+		{count: repeatedDeferralThreshold, wantRepeated: true, wantIndicator: "deferred ×3"},
+		{count: 12, wantRepeated: true, wantIndicator: "deferred ×12"},
+	} {
+		task := &models.Task{DeferCount: tc.count}
+		if got := taskHasRepeatedDeferrals(task); got != tc.wantRepeated {
+			t.Errorf("count %d repeated = %v, want %v", tc.count, got, tc.wantRepeated)
+		}
+		if got := ansi.Strip(formatDeferCountIndicator(task)); got != tc.wantIndicator {
+			t.Errorf("count %d indicator = %q, want %q", tc.count, got, tc.wantIndicator)
+		}
+	}
+}
+
+func TestRepeatedDeferralSurfacesIgnoreHiddenDeferColumn(t *testing.T) {
+	now := time.Date(2026, time.August, 10, 12, 0, 0, 0, time.UTC)
+	pending := now.Add(24 * time.Hour)
+	outliner := &OutlinerModel{
+		columnConfig: NewColumnConfig(map[string]bool{ColDefer: false}, nil, nil),
+	}
+
+	for _, tc := range []struct {
 		count int
 		want  string
 	}{
-		{count: 2, want: ""},
-		{count: 3, want: "deferred ×3"},
-		{count: 12, want: "deferred ×12"},
+		{count: repeatedDeferralThreshold - 1, want: ""},
+		{count: repeatedDeferralThreshold, want: "deferred ×3"},
 	} {
-		task := &models.Task{DeferCount: tc.count}
-		if got := ansi.Strip(formatDeferCountIndicator(task)); got != tc.want {
-			t.Errorf("count %d indicator = %q, want %q", tc.count, got, tc.want)
+		task := &models.Task{DeferCount: tc.count, DeferredUntil: &pending}
+		segments := outliner.renderTaskIndicatorSegments(outlinerRow{task: task})
+		if segments.deferred != "" {
+			t.Fatalf("count %d hidden defer column rendered defer date %q", tc.count, ansi.Strip(segments.deferred))
+		}
+
+		rowCount := ansi.Strip(segments.deferCount)
+		peekCount := ansi.Strip(inlinePeekDatesLine(task, now, 80))
+		if rowCount != tc.want || peekCount != tc.want {
+			t.Fatalf("count %d hidden-column surfaces = row %q, Peek %q; want %q", tc.count, rowCount, peekCount, tc.want)
 		}
 	}
 }

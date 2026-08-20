@@ -2,6 +2,8 @@
 
 Contributor rules only: invariants, forbidden patterns, forwarding addresses.
 Behavior: [`README.md`](README.md). Mechanism: [`docs/architecture.md`](docs/architecture.md).
+[`docs/decisions/behavioral-signals-contracts.md`](docs/decisions/behavioral-signals-contracts.md)
+is the locked behavioral-signal authority.
 
 ## Build and verification
 
@@ -38,14 +40,14 @@ to audited maintenance, migration, restore, and transaction infrastructure.
 
 ## Task and planning invariants
 
+The lifecycle states are:
+
 ```text
 inbox, backlog, doing, waiting, paused, someday, done, canceled
 ```
 
 Review is not a lifecycle state and has no key of its own: `review` promotes an
-All-mode lane. Stale: inclusive 90-local-day `UpdatedAt`; terminal/deferred
-excluded; after Review; below Pinned/Today/Next/Review/Doing.
-Retired fields/states: migration DTOs/audits only. Task Markdown schema
+All-mode lane. Retired fields/states: migration DTOs/audits only. Task Markdown schema
 12 uses generic `Task` headings, project-local ShortID, retained fields, and
 optional single-valued task `Context`. `DueDate` is a
 calendar date; `DeferredUntil` is an RFC3339Nano instant that can expire later
@@ -89,19 +91,21 @@ target source on runtime context.
 
 Checklist rules:
 
-- The checklist is absent from the task `Space` menu; its rows own the whole
-  mutation set, so an entry there would be a second route.
-- The checklist row's own menu lists Edit Item, which also answers `e`, because
-  the menu is the only route to Delete Item — the one place the
-  direct-only-or-menu-only rule bends.
+- Checklist rows own their mutations, so the checklist is absent from the task
+  `Space` menu. Their menu lists Edit Item (also `e`) and exclusively routes
+  Delete Item; this is the only direct-or-menu exception.
 - Keep `operationRefusedOnChecklistRow` out of the descriptor's `Applicability`
-  field: an unconditional descriptor must keep looking unconditional to
-  `Register`'s static direct-key collision check.
+  field so an unconditional descriptor stays unconditional to `Register`.
 
 Emit project group headers through the shared `appendProjectGroupHeader` kernel,
 never a per-mode copy. Each grouping surface owns a disjoint `collapsedSections`
 namespace, since that map is never cleared on a mode change; grouping never
 reorders a mode's primary sort.
+
+All's Stale lane follows Review; below Pinned/Today/Next/Review/Doing. It
+admits open, undeferred work untouched for at least 90 days. `fs` is
+unavailable in Recent; entry clears only Stale: `Stale filter cleared: Recent
+only includes the last 30 days`.
 
 `computeOutlinerViewport` is the single window authority and the only place a
 render moves `viewScrollOffset`; the `zt`/`zz`/`zb` chord is the one key press
@@ -115,13 +119,11 @@ The Outliner's notice and status render only in the shell-pinned strip;
 `statusStripHeight` reserves its height from `computeOutlinerViewport`. A view
 status is transient except the multi-select summary.
 
-The footer flash is armed by status text only, never by a breadcrumb, mode badge
-or which-key change, and cleared text arms nothing. Arming stays in the one
-deferred closure in `AppModel.Update`. The divider appearance must feed all
-three dividers `renderFooterChrome` emits, or the flash dies under a which-key
-row; the strip's divider stays outside it. The interactive TUI ignores an
-inherited `NO_COLOR`; `--no-color` still disables color and non-interactive
-commands keep the inherited environment.
+Only status text arms footer flash; cleared text and other chrome do not. Arming
+stays in the one deferred closure in `AppModel.Update`. Feed divider appearance
+to all three `renderFooterChrome` dividers and keep the strip divider outside.
+The interactive TUI ignores an inherited `NO_COLOR`; `--no-color` still
+disables color, and non-interactive commands honor it.
 
 A value provider is exactly one of `textEntry()` (a separate overlay),
 `tagEntry()` or `dateEntry()` (inline add modes), or a plain list. A value the
@@ -131,25 +133,20 @@ defer section, not a provider method, lets `+Nh` parse.
 
 Row and Peek budget:
 
-- `inlinePeekLines` owns a drop order, not a set; a new line takes a deliberate
-  position or the five-line cap starts eating something else. Peek holds no
-  checklist line, and the title continuation and the parent line are its only
-  cap-raisers.
+- `inlinePeekLines` owns a drop order, not a set; place new lines deliberately.
+  Peek holds no checklist line; only title continuation and parent raise its cap.
 - `visualWidthOverflow` must subtract the same ellipsis column as
   `truncateToVisualWidth`, or a character is duplicated or lost.
 - `indicatorDropLadder` is a list: a new indicator gets a position, not an
-  append; defer count is first; the relation marker, the task context segment,
-  and the pin marker stay out of it.
-  Tail: waiting, due, doing, check. `taskRowSegments`
-  reserves all three; Peek names full values. `taskRelationMarker` is one
-  segment both ways: `‹` up and `›N` down, only when no child renders.
-  `taskPinnedMarker` reads
+  append; the relation marker, the task context segment, and the pin marker stay
+  out of it. `taskRowSegments` reserves the relation marker, task context
+  segment, and pin marker at every width; Peek names full values.
+  `taskRelationMarker` is one segment both ways: `‹` up and `›N` down, only
+  when no child renders. `taskPinnedMarker` reads
   `task.Pinned && !row.IsPinnedSection`, not `ShowsPinned`.
-- `formatDeferDate` reads against `now`: midnight is a whole day and renders
-  bare, today is `15:04`, else `Jan 2 15:04` with `'06` off-year.
-- Waiting age reads the state clock, and `formatCheckBackIndicator` replaces the
-  plain due segment rather than joining it.
-- The four-step pulse ladder drops done, inbox, overdue, then today; no `woke`.
+- The four-step pulse ladder drops done, inbox, overdue, then today. In Today,
+  pace outranks the workspace pulse: exhaust that ladder first, then shorten and
+  remove pace before truncating required interaction context.
 
 `O` refuses under a visual selection and in every mode that is not
 `OrderPolicyTree`; its scope is what the dump actually printed, never

@@ -95,9 +95,14 @@ func (m *AppModel) registerFilterOperations() error {
 	}
 	register := func(descriptors []OperationDescriptor, handler OperationHandler) error {
 		for _, descriptor := range descriptors {
+			stale := descriptor.ID == operationFilterStale
 			descriptor.Applicability = func(ctx CommandContext) bool {
-				return coreOutlinerApplicability(ctx) &&
-					(m.crossOutliner == nil || !m.crossOutliner.hasSearchProjection())
+				if !coreOutlinerApplicability(ctx) ||
+					(m.crossOutliner != nil && m.crossOutliner.hasSearchProjection()) {
+					return false
+				}
+				return !stale || m.crossOutliner == nil ||
+					m.crossOutliner.activeOutlinerMode() != ModeRecent
 			}
 			if err := m.registerOperation(descriptor, OperationBinding{
 				RequiredCapabilities:     NewCapabilitySet(CapabilitySimplifiedInput),

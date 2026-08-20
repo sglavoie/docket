@@ -233,17 +233,25 @@ func TestRetiredFocusStackZoomVocabulary(t *testing.T) {
 
 func TestCurrentProductDocsExcludeRetiredConcepts(t *testing.T) {
 	paths := []string{"README.md", "CLAUDE.md", "docs/architecture.md", "docs/tui-testing/README.md"}
-	err := filepath.WalkDir("docs/tui-testing/scenarios", func(path string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
+	for _, source := range []struct {
+		root      string
+		extension string
+	}{
+		{root: "docs/decisions", extension: ".md"},
+		{root: "docs/tui-testing/scenarios", extension: ".json"},
+	} {
+		err := filepath.WalkDir(source.root, func(path string, entry fs.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if !entry.IsDir() && filepath.Ext(path) == source.extension {
+				paths = append(paths, path)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
 		}
-		if !entry.IsDir() && filepath.Ext(path) == ".json" {
-			paths = append(paths, path)
-		}
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
 	}
 
 	retired := map[string]bool{

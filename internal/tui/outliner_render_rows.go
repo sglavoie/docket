@@ -546,8 +546,8 @@ func (m *OutlinerModel) renderTaskIndicatorSegments(row outlinerRow) taskIndicat
 		if task.DeferredUntil != nil {
 			segments.deferred = formatDeferIndicator(task, now)
 		}
-		segments.deferCount = formatDeferCountIndicator(task)
 	}
+	segments.deferCount = formatDeferCountIndicator(task)
 	if m.columnConfig.IsVisible(ColChecklist) {
 		segments.checklist = renderChecklistIndicator(task)
 	}
@@ -620,8 +620,14 @@ func formatDeferIndicator(task *models.Task, now time.Time) string {
 	return MutedStyle.Render("woke") + " " + formatRecencyChip(*task.DeferredUntil, now)
 }
 
+const repeatedDeferralThreshold = 3
+
+func taskHasRepeatedDeferrals(task *models.Task) bool {
+	return task != nil && task.DeferCount >= repeatedDeferralThreshold
+}
+
 func formatDeferCountIndicator(task *models.Task) string {
-	if task == nil || task.DeferCount < 3 {
+	if !taskHasRepeatedDeferrals(task) {
 		return ""
 	}
 	return MutedStyle.Render(fmt.Sprintf("deferred ×%d", task.DeferCount))

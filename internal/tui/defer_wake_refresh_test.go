@@ -33,18 +33,19 @@ func TestPeriodicTickWakesOnlyPastTheDeferWake(t *testing.T) {
 	app := typedTestApp(t)
 	setTestPresentationPath(app, ViewCrossProjectOutliner)
 	out := app.crossOutliner
+	tickAt := time.Now()
 
 	out.crossForceRebuild = false
-	out.nextDeferWake = time.Now().Add(time.Hour)
-	if handled, _ := app.handleGlobalSaveMessage(periodicSaveMsg{}); !handled {
+	out.nextDeferWake = tickAt.Add(time.Hour)
+	if handled, _ := app.handleGlobalSaveMessage(periodicSaveMsg{at: tickAt}); !handled {
 		t.Fatal("periodicSaveMsg was not handled")
 	}
 	if out.crossForceRebuild {
 		t.Fatal("a tick short of nextDeferWake forced a rebuild")
 	}
 
-	out.nextDeferWake = time.Now().Add(-time.Minute)
-	if handled, _ := app.handleGlobalSaveMessage(periodicSaveMsg{}); !handled {
+	out.nextDeferWake = tickAt.Add(-time.Minute)
+	if handled, _ := app.handleGlobalSaveMessage(periodicSaveMsg{at: tickAt}); !handled {
 		t.Fatal("periodicSaveMsg was not handled")
 	}
 	if !out.crossForceRebuild {
@@ -84,7 +85,7 @@ func TestDeferWakeIsDeferredWhileTheUserIsMidOperation(t *testing.T) {
 			lapsed := time.Now().Add(-time.Minute)
 			out.nextDeferWake = lapsed
 
-			if handled, _ := app.handleGlobalSaveMessage(periodicSaveMsg{}); !handled {
+			if handled, _ := app.handleGlobalSaveMessage(periodicSaveMsg{at: time.Now()}); !handled {
 				t.Fatal("periodicSaveMsg was not handled")
 			}
 			if out.crossForceRebuild {

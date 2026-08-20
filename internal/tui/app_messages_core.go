@@ -69,7 +69,7 @@ type CursorFlashClearMsg struct{}
 type FooterFlashTickMsg struct{ Seq uint64 }
 
 // periodicSaveMsg triggers a periodic save of spatial state (cursor/fold).
-type periodicSaveMsg struct{}
+type periodicSaveMsg struct{ at time.Time }
 
 // StatusMsg sets a temporary status message.
 type StatusMsg string
