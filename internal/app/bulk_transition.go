@@ -73,7 +73,11 @@ func (s *Service) bulkTransition(taskIDs []string, locators []TaskLocator, targe
 		return BulkResult{}, planningErr
 	}
 
-	outcome, err := s.commitProjects(commits, "Bulk Change State", models.WorkflowStateGroupForState(target).Label())
+	undoAction := "Bulk Change State"
+	if len(refs) == 1 {
+		undoAction = "Change State"
+	}
+	outcome, err := s.commitProjects(commits, undoAction, models.WorkflowStateGroupForState(target).Label())
 	if err != nil {
 		return BulkResult{}, err
 	}

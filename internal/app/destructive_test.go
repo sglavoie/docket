@@ -234,6 +234,52 @@ func TestBulkTransitionAcrossProjectsIsOneTransaction(t *testing.T) {
 	}
 }
 
+func TestBulkTransitionUndoActionReflectsResolvedTargetCardinality(t *testing.T) {
+	tests := []struct {
+		name       string
+		taskIDs    []string
+		wantTasks  int
+		wantAction string
+	}{
+		{
+			name:       "duplicate identifiers resolve to one task",
+			taskIDs:    []string{"a", "a"},
+			wantTasks:  1,
+			wantAction: "Change State",
+		},
+		{
+			name:       "two resolved tasks remain bulk",
+			taskIDs:    []string{"a", "b"},
+			wantTasks:  2,
+			wantAction: "Bulk Change State",
+		},
+	}
+
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			a := newTask("a", 1, "a")
+			b := newTask("b", 2, "b")
+			project := newProject("proj-1", "Alpha", a, b)
+			repo := newFakeRepo(project)
+			svc := newTestService(repo)
+
+			result, err := svc.BulkTransition(testCase.taskIDs, models.StateDoing)
+			if err != nil {
+				t.Fatalf("BulkTransition: %v", err)
+			}
+			if len(result.Tasks) != testCase.wantTasks {
+				t.Fatalf("resolved tasks = %d, want %d", len(result.Tasks), testCase.wantTasks)
+			}
+			if len(repo.commits) != 1 || len(repo.commits[0]) != 1 {
+				t.Fatalf("commits = %v, want one transaction with one project changeset", repo.commits)
+			}
+			if got := repo.commits[0][0].UndoAction; got != testCase.wantAction {
+				t.Fatalf("UndoAction = %q, want %q", got, testCase.wantAction)
+			}
+		})
+	}
+}
+
 func TestBulkTransitionAbortsWholeBatchOnInvalidTransition(t *testing.T) {
 	a := newTask("a", 1, "a")
 	a.ApplyWorkflowState(models.StateInbox)
