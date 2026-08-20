@@ -117,6 +117,81 @@ func TestPeriodicTickRefreshesWorkspacePulseWhenDeferredTaskWakes(t *testing.T) 
 	}
 }
 
+func TestPeriodicTickAcrossMidnightHoldsActionableCountsUntilTheWakeIsConsumed(t *testing.T) {
+	model := typedTestApp(t)
+	setTestPresentationPath(model, ViewCrossProjectOutliner)
+	out := model.crossOutliner
+	tickAt := time.Date(2040, time.March, 5, 0, 1, 0, 0, time.Local)
+	wake := tickAt.Add(-2 * time.Minute)
+	beforeWake := wake.Add(-time.Hour)
+	due := tickAt.AddDate(0, 0, -3)
+
+	deferred := primaryRowsTask("deferred-inbox", models.StateInbox)
+	deferred.DeferredUntil = &wake
+	deferred.DueDate = &due
+	firstYesterday := primaryRowsTask("done-yesterday-1", models.StateDone)
+	firstYesterday.CompletedAt = &beforeWake
+	secondYesterday := primaryRowsTask("done-yesterday-2", models.StateDone)
+	secondYesterday.CompletedAt = &beforeWake
+	doneToday := primaryRowsTask("done-today", models.StateDone)
+	doneToday.CompletedAt = &tickAt
+	project := primaryRowsProject("cross-midnight-wake", deferred, firstYesterday, secondYesterday, doneToday)
+	setTestAppProjects(model, project)
+	installPulseRepository(t, project)
+
+	repository := newTestAppRepo(project)
+	cached, err := app.NewServiceWithArtifacts(repository, fixedCompletionActivityClock{now: beforeWake}, nil, nil).CompletionActivity()
+	if err != nil {
+		t.Fatalf("seed previous-day activity: %v", err)
+	}
+	refreshed, err := app.NewServiceWithArtifacts(repository, fixedCompletionActivityClock{now: tickAt}, nil, nil).CompletionActivity()
+	if err != nil {
+		t.Fatalf("seed current-day activity: %v", err)
+	}
+	reader := &staticCompletionActivityReader{activity: cached}
+	model.features.Activity = ActivityCoordinator{reader: reader}
+	model.todayIDs = map[TaskIdentity]bool{taskIdentityFor(deferred, project): true}
+
+	model.refreshWorkspacePulseAt(beforeWake)
+	pending := WorkspacePulse{Done: 2}
+	if model.workspacePulse != pending {
+		t.Fatalf("previous-day pending-deferral pulse = %+v, want %+v", model.workspacePulse, pending)
+	}
+	reader.activity = refreshed
+
+	pushTestPresentationOverlay(model, ViewTaskComments)
+	out.crossForceRebuild = false
+	out.nextDeferWake = wake
+	if handled, _ := model.handleGlobalSaveMessage(periodicSaveMsg{at: tickAt}); !handled {
+		t.Fatal("periodicSaveMsg was not handled")
+	}
+	if out.crossForceRebuild || !out.nextDeferWake.Equal(wake) {
+		t.Fatalf("a refused wake changed its clock: rebuild %t, wake %s", out.crossForceRebuild, out.nextDeferWake)
+	}
+	if !model.completionActivity.IsCurrentLocalDay(tickAt) {
+		t.Fatal("the cross-midnight tick did not install the new local day's activity")
+	}
+	frozen := WorkspacePulse{Done: 1}
+	if model.workspacePulse != frozen {
+		t.Fatalf("cross-midnight refused-wake pulse = %+v, want %+v", model.workspacePulse, frozen)
+	}
+
+	setTestPresentationPath(model, ViewCrossProjectOutliner)
+	if handled, _ := model.handleGlobalSaveMessage(periodicSaveMsg{at: tickAt}); !handled {
+		t.Fatal("second periodicSaveMsg was not handled")
+	}
+	if !out.crossForceRebuild {
+		t.Fatal("a safely consumed wake did not force the row rebuild")
+	}
+	if !out.nextDeferWake.IsZero() {
+		t.Fatalf("the consumed wake clock survived: %s", out.nextDeferWake)
+	}
+	woken := WorkspacePulse{Inbox: 1, Today: 1, Overdue: 1, Done: 1}
+	if model.workspacePulse != woken {
+		t.Fatalf("cross-midnight consumed-wake pulse = %+v, want %+v", model.workspacePulse, woken)
+	}
+}
+
 func TestDeferWakeIsDeferredWhileTheUserIsMidOperation(t *testing.T) {
 	cases := []struct {
 		name string

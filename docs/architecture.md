@@ -413,8 +413,12 @@ standing so the next tick retries; the wake is deferred, never dropped, at a
 cost of at most one tick. A consumed wake also recomputes the workspace pulse at
 the tick's own timestamp, because `ComputeWorkspacePulse` excluded that task
 while its deferral was pending: the counts and the row it makes visible move in
-the same update. A refused wake refreshes nothing, so the clock and the pulse
-stay in step.
+the same update. A refused wake refreshes nothing within the day, so the clock
+and the pulse stay in step. Across local midnight the cached completion activity
+is stale and has to be requeried anyway, so `refreshWorkspacePulseAcrossLocalDay`
+runs the same refresh and then restores Inbox, Today, and Overdue whenever
+`deferWakeOwedAt` still reports a lapsed clock: the new day's `Done` advances
+while those three counters wait for the rebuild that makes their rows visible.
 
 Waiting age reads the state clock, never the touch time.
 `formatWaitingAgeIndicator` is gated on `IsInState(models.StateWaiting)` and

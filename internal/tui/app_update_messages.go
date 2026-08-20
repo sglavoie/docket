@@ -89,8 +89,10 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 		// A consumed wake makes rows visible that ComputeWorkspacePulse excluded
 		// while their deferral was pending, so the same update recounts the pulse
 		// even within one local day.
-		if m.wakeDeferredRows(msg.at) || !m.completionActivity.IsCurrentLocalDay(msg.at) {
+		if m.wakeDeferredRows(msg.at) {
 			m.refreshWorkspacePulseAt(msg.at)
+		} else if !m.completionActivity.IsCurrentLocalDay(msg.at) {
+			m.refreshWorkspacePulseAcrossLocalDay(msg.at)
 		}
 		return true, tickCmd(periodicSaveInterval, func(at time.Time) tea.Msg {
 			return periodicSaveMsg{at: at}
@@ -116,16 +118,21 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 // sole ownership of viewScrollOffset. A refusal leaves nextDeferWake standing,
 // so the next tick retries.
 func (m *AppModel) wakeDeferredRows(now time.Time) bool {
+	if !m.deferWakeOwedAt(now) || !m.safeToRebuildForWake() {
+		return false
+	}
 	out := m.crossOutliner
-	if out == nil || out.nextDeferWake.IsZero() || now.Before(out.nextDeferWake) {
-		return false
-	}
-	if !m.safeToRebuildForWake() {
-		return false
-	}
 	out.nextDeferWake = time.Time{}
 	out.crossForceRebuild = true
 	return true
+}
+
+// deferWakeOwedAt reports whether a lapsed defer wake is still standing. After a
+// wake attempt only a refusal leaves one, because wakeDeferredRows zeroes the
+// clock it consumes.
+func (m *AppModel) deferWakeOwedAt(now time.Time) bool {
+	out := m.crossOutliner
+	return out != nil && !out.nextDeferWake.IsZero() && !now.Before(out.nextDeferWake)
 }
 
 // safeToRebuildForWake refuses while a new row would invalidate what the user
@@ -299,6 +306,22 @@ func (m *AppModel) refreshWorkspacePulseAt(now time.Time) {
 	}
 	m.completionActivity = activity
 	m.workspacePulse.Done = activity.CompletedToday()
+}
+
+// refreshWorkspacePulseAcrossLocalDay refreshes a pulse whose cached completion
+// activity belongs to an earlier local day. A wake still owed here was refused
+// for interaction safety, so its task remains hidden from the outline and only
+// Done may move: holding Inbox, Today, and Overdue keeps the counts and the rows
+// they describe in step until the rebuild is allowed.
+func (m *AppModel) refreshWorkspacePulseAcrossLocalDay(now time.Time) {
+	held := m.workspacePulse
+	m.refreshWorkspacePulseAt(now)
+	if !m.deferWakeOwedAt(now) {
+		return
+	}
+	m.workspacePulse.Inbox = held.Inbox
+	m.workspacePulse.Today = held.Today
+	m.workspacePulse.Overdue = held.Overdue
 }
 
 func (m *AppModel) refreshProjectViewAfterTaskMutation(persistProjectTreeState bool) {
