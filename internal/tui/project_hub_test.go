@@ -101,6 +101,22 @@ func writeProjectHubTasks(t *testing.T, project *models.Project, count int) {
 	}
 }
 
+// finishProjectHubTasks completes the first n tasks a project holds and rewrites
+// its tasks file, so the Hub reads a total that outruns the open count.
+func finishProjectHubTasks(t *testing.T, project *models.Project, n int) {
+	t.Helper()
+	if n > len(project.Tasks) {
+		t.Fatalf("finishProjectHubTasks(%q, %d): project holds %d tasks", project.ID, n, len(project.Tasks))
+	}
+	for _, task := range project.Tasks[:n] {
+		markDone(task)
+	}
+	project.BuildTaskTree()
+	if err := storage.SaveProject(project); err != nil {
+		t.Fatalf("SaveProject(%q): %v", project.ID, err)
+	}
+}
+
 func projectHubItem(t *testing.T, hub *ProjectHubModel, id ListItemID) ListItem {
 	t.Helper()
 	for _, item := range hub.surface.Items() {
@@ -112,14 +128,14 @@ func projectHubItem(t *testing.T, hub *ProjectHubModel, id ListItemID) ListItem 
 	return ListItem{}
 }
 
-func projectHubPreviewTasks(t *testing.T, hub *ProjectHubModel, id ListItemID) string {
+func projectHubPreviewField(t *testing.T, hub *ProjectHubModel, id ListItemID, label string) string {
 	t.Helper()
 	for _, field := range projectHubItem(t, hub, id).Preview.Fields {
-		if field.Label == "Tasks" {
+		if field.Label == label {
 			return field.Value
 		}
 	}
-	t.Fatalf("project hub preview for %q carries no Tasks field", id)
+	t.Fatalf("project hub preview for %q carries no %s field", id, label)
 	return ""
 }
 
@@ -202,11 +218,62 @@ func TestProjectHubCountsParkedAndArchivedProjects(t *testing.T) {
 	addTestAppProject(app, archived)
 
 	hub := openProjectHub(t, app)
-	if got := projectHubItem(t, hub, "project-hub:project:parked").SecondaryText; got != "3 tasks · #parked" {
+	if got := projectHubItem(t, hub, "project-hub:project:parked").SecondaryText; got != "3 open · 3 tasks · #parked" {
 		t.Fatalf("parked row secondary = %q, want the real count", got)
 	}
-	if got := projectHubPreviewTasks(t, hub, "project-hub:archived:archived"); got != "2" {
+	if got := projectHubPreviewField(t, hub, "project-hub:archived:archived", "Tasks"); got != "2" {
 		t.Fatalf("archived row task count = %q, want %q", got, "2")
+	}
+	if got := projectHubPreviewField(t, hub, "project-hub:archived:archived", "Open"); got != "2" {
+		t.Fatalf("archived row open count = %q, want %q", got, "2")
+	}
+}
+
+func TestProjectHubCountsOpenTasksBesideTotal(t *testing.T) {
+	app := projectHubDiskApp(t)
+	mixed := projectHubDiskProject(app, "mixed", "Mixed")
+	writeProjectHubTasks(t, mixed, 3)
+	finishProjectHubTasks(t, mixed, 2)
+	addTestAppProject(app, mixed)
+
+	hub := openProjectHub(t, app)
+	if got := projectHubItem(t, hub, "project-hub:project:mixed").SecondaryText; got != "1 open · 3 tasks" {
+		t.Fatalf("partly finished row secondary = %q, want %q", got, "1 open · 3 tasks")
+	}
+	if got := projectHubPreviewField(t, hub, "project-hub:project:mixed", "Tasks"); got != "3" {
+		t.Fatalf("partly finished row task count = %q, want %q", got, "3")
+	}
+	if got := projectHubPreviewField(t, hub, "project-hub:project:mixed", "Open"); got != "1" {
+		t.Fatalf("partly finished row open count = %q, want %q", got, "1")
+	}
+}
+
+func TestProjectHubKeepsAllFinishedProjectUnderTaskFilter(t *testing.T) {
+	app := projectHubDiskApp(t)
+	finished := projectHubDiskProject(app, "finished", "Finished")
+	writeProjectHubTasks(t, finished, 2)
+	finishProjectHubTasks(t, finished, 2)
+	addTestAppProject(app, finished)
+
+	hub := openProjectHub(t, app)
+	if got := projectHubItem(t, hub, "project-hub:project:finished").SecondaryText; got != "0 open · 2 tasks" {
+		t.Fatalf("all-finished row secondary = %q, want %q", got, "0 open · 2 tasks")
+	}
+
+	hub.Update(syntheticCtrlKey('t'))
+	if hub.taskFilter != projectHubTaskFilterWithTasks {
+		t.Fatalf("Ctrl+T left filter=%v, want projects holding tasks", hub.taskFilter)
+	}
+	if !projectHubHasItem(hub, "project-hub:project:finished") {
+		t.Error("the with-tasks filter hid a project whose every task is finished")
+	}
+
+	hub.Update(syntheticCtrlKey('t'))
+	if hub.taskFilter != projectHubTaskFilterWithoutTasks {
+		t.Fatalf("second Ctrl+T left filter=%v, want projects without tasks", hub.taskFilter)
+	}
+	if projectHubHasItem(hub, "project-hub:project:finished") {
+		t.Error("the without-tasks filter listed a project whose every task is finished")
 	}
 }
 

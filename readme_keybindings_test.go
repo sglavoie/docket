@@ -254,6 +254,8 @@ func TestREADMEDocumentsSelectProjectGrammar(t *testing.T) {
 	content := readREADMEForContractTest(t)
 	requireDocumentationText(t, content, []string{
 		"`p` opens Select Project on a live cursor",
+		"carries its open task count beside its total and its tag chips, so a project whose tasks " +
+			"are all finished reads `0 open · 2 tasks` instead of passing for one with work left",
 		"`Enter` focuses it in the same Outliner, `a` creates one, `e` edits the one under the cursor, " +
 			"`*` toggles its pin, `#` sets its tags, and `Ctrl+N` opens its Notes",
 		"`Ctrl+T` cycles between every project, only those holding tasks, and only those holding none",

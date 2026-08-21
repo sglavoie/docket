@@ -743,7 +743,9 @@ Parents are project-local and hierarchy depth is capped at six.
 
 The Outliner opens on Active Projects, and scope is session-only. `p` opens
 Select Project on a live cursor, browsing active and archived projects. Each row
-carries its task count and its tag chips. Administering a project is one press:
+carries its open task count beside its total and its tag chips, so a project
+whose tasks are all finished reads `0 open · 2 tasks` instead of passing for one
+with work left. Administering a project is one press:
 `Enter` focuses it in the same Outliner, `a` creates one, `e` edits the one
 under the cursor, `*` toggles its pin, `#` sets its tags, and `Ctrl+N` opens its
 Notes. `Ctrl+T` cycles between every project, only those holding tasks, and only

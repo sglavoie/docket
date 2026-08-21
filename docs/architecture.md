@@ -1299,12 +1299,14 @@ owns keys and while browsing matches. The two narrowings are one cycling axis
 rather than two toggles because they are mutually exclusive readings of the same
 count. The filter runs at item-build time, so `ListSurfaceModel.Reload` prunes
 hidden rows from the selection and rebuilds matches against the retained query.
-Its data is `ProjectHubModel.taskCounts`, which now covers every cataloged
-project — available, parked, and archived — rather than only the base task
-workspace, so the filter and the count the row prints can never disagree and
-`tasks not loaded` leaves the Hub in the ordinary case. A project whose count is
-unknown stays visible in all three states: `projectHubFilterHides` returns early
-on an absent count, so neither narrowing may claim a project it could not read.
+Its data is `ProjectHubModel.taskCounts`, a per-project tally of the open tasks
+beside the total that covers every cataloged project — available, parked, and
+archived — rather than only the base task workspace, so `tasks not loaded`
+leaves the Hub in the ordinary case. Both narrowings read that tally's total,
+and the total is the number the row prints beside its open count, so the filter
+and the row still cannot disagree. A project whose count is unknown stays
+visible in all three states: `projectHubFilterHides` returns early on an absent
+count, so neither narrowing may claim a project it could not read.
 
 The footer hint and the two empty-list lines all read through
 `projectHubTaskFilter.next()`, naming the state the next press installs rather

@@ -51,7 +51,7 @@ against the drain budget.
 | `multi-project` | Several distinctly named projects, each holding one backlog task. |
 | `release` | A large Unicode catalog for viewport and resize stress. |
 | `parked` | One project in the base task workspace and one tagged `parked`. |
-| `project-mix` | An active project with a task, an active project with none, a parked project with a task, and an archived project with none. |
+| `project-mix` | An active project with a task, an active project with none, an active project whose two tasks are both finished, a parked project with a task, and an archived project with none. |
 | `signals` | A lapsed deferral beside a whole-day and an hour-valued pending one, concentrated overdue work, and a durable Today membership. |
 | `stale` | Old and fresh open work for the Stale lane, facet, fold, and narrow-width contracts. |
 | `checklist` | The only fixture whose tasks carry checklist items, in the three shapes the fold ladder distinguishes. |

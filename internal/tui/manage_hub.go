@@ -39,7 +39,7 @@ type ManageHubDependencies struct {
 	Wire               func(View)
 	ResolveProject     func(string) *models.Project
 	ActiveProjectFocus func() string
-	TaskCounts         func() map[string]int
+	TaskCounts         func() map[string]projectTaskTally
 	OperationRegistry  *OperationRegistry
 	OperationExecutor  *OperationExecutor
 	DispatchKey        operationKeyDispatch

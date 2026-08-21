@@ -82,6 +82,7 @@ const (
 const (
 	projectMixActiveName   = "Mix Active Delivery"
 	projectMixEmptyName    = "Mix Quiet Planning"
+	projectMixFinishedName = "Mix Finished Cleanup"
 	projectMixParkedName   = "Mix Parked Migration"
 	projectMixArchivedName = "Mix Retired Pilot"
 )
@@ -718,11 +719,12 @@ func buildParkedFixture(w *uitestWorkspace) error {
 	return nil
 }
 
-// buildProjectMixFixture holds the four project shapes the Select Project task
-// filter distinguishes: active with a task, active with none, parked with a
-// task, and archived with none. It is the only fixture carrying an archived
-// project, and the only one where "holds tasks" and "reaches the base task
-// workspace" disagree in both directions.
+// buildProjectMixFixture holds the five project shapes the Select Project task
+// filter distinguishes: active with a task, active with none, active whose
+// tasks are all finished, parked with a task, and archived with none. It is the
+// only fixture carrying an archived project, the only one where "holds tasks"
+// and "reaches the base task workspace" disagree in both directions, and the
+// finished project is where "holds tasks" and "holds open work" disagree.
 func buildProjectMixFixture(w *uitestWorkspace) error {
 	active, err := w.addProject(projectMixActiveName, func(p *models.Project) {
 		rollout := newFixtureTask(p, "Mix rollout plan")
@@ -732,6 +734,12 @@ func buildProjectMixFixture(w *uitestWorkspace) error {
 		return err
 	}
 	if _, err = w.addProject(projectMixEmptyName, nil); err != nil {
+		return err
+	}
+	if _, err = w.addProject(projectMixFinishedName, func(p *models.Project) {
+		markDone(newFixtureTask(p, "Mix cleanup sweep"))
+		markDone(newFixtureTask(p, "Mix cleanup follow-up"))
+	}); err != nil {
 		return err
 	}
 	if _, err = w.addProject(projectMixParkedName, func(p *models.Project) {

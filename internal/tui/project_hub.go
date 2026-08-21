@@ -110,6 +110,25 @@ type projectHubEntry struct {
 	Project *models.Project
 }
 
+// projectTaskCountUnknown is the count reported for a project whose task tree
+// has not been loaded.
+const projectTaskCountUnknown = "unknown"
+
+// projectTaskTally pairs the tasks a project holds with the open subset.
+// Both travel together because a total alone reads as pending work when
+// every task in it is finished.
+type projectTaskTally struct {
+	Open  int
+	Total int
+}
+
+func projectTaskTallyOf(project *models.Project) projectTaskTally {
+	return projectTaskTally{
+		Open:  project.CountActiveTasks(),
+		Total: project.CountTasks(),
+	}
+}
+
 // projectHubActionTarget freezes project identity before an action sheet or
 // direct project operation executes.
 type projectHubActionTarget struct {
@@ -123,7 +142,7 @@ type projectHubActionTarget struct {
 type ProjectHubModel struct {
 	BaseSearchableView
 	runtime          *config.RuntimeState
-	taskCounts       map[string]int
+	taskCounts       map[string]projectTaskTally
 	surface          *ListSurfaceModel
 	actions          *ContextActionSheetModel
 	registry         *OperationRegistry
@@ -167,7 +186,7 @@ func (m *ProjectHubModel) SetProjectFocus(projectID string) {
 	m.rebuildProjectSurface(m.currentProjectHubItemID())
 }
 
-func (m *ProjectHubModel) SetTaskCounts(counts map[string]int) {
+func (m *ProjectHubModel) SetTaskCounts(counts map[string]projectTaskTally) {
 	if len(counts) == 0 {
 		m.taskCounts = nil
 	} else {
@@ -425,15 +444,15 @@ func (m *ProjectHubModel) projectHubItems() []ListItem {
 // counts and is not known to be empty or to hold work, so neither narrowing may
 // claim it.
 func (m *ProjectHubModel) projectHubFilterHides(project *models.Project) bool {
-	count, ok := m.taskCounts[project.ID]
+	tally, ok := m.taskCounts[project.ID]
 	if !ok {
 		return false
 	}
 	switch m.taskFilter {
 	case projectHubTaskFilterWithTasks:
-		return count == 0
+		return tally.Total == 0
 	case projectHubTaskFilterWithoutTasks:
-		return count > 0
+		return tally.Total > 0
 	default:
 		return false
 	}
@@ -444,41 +463,57 @@ func (m *ProjectHubModel) projectPreview(project *models.Project, archived bool)
 	if archived {
 		lifecycle = "Archived"
 	}
+	total, open := projectTaskCountUnknown, projectTaskCountUnknown
+	if tally, ok := m.projectTally(project); ok {
+		total = strconv.Itoa(tally.Total)
+		open = strconv.Itoa(tally.Open)
+	}
 	return ListPreview{
 		Title:   project.Name,
 		Summary: project.Description,
 		Fields: []ListPreviewField{
 			{Label: "Lifecycle", Value: lifecycle},
-			{Label: "Tasks", Value: m.projectTaskCount(project)},
+			{Label: "Tasks", Value: total},
+			{Label: "Open", Value: open},
 			{Label: "Pinned", Value: strconv.FormatBool(project.Pinned)},
 			{Label: "Slug", Value: project.Slug},
 		},
 	}
 }
 
-// projectTaskCount reports the loaded task count, or unknown. A project outside
-// the base task workspace is not loaded, and its rehydrated catalog record
-// counts zero tasks; reporting that zero would read as "empty" rather than "not
+// projectTally reports the loaded task tally, or unknown. A project outside the
+// base task workspace is not loaded, and its rehydrated catalog record counts
+// zero tasks; reporting that zero would read as "empty" rather than "not
 // counted", so an unloaded project is never given a number.
-func (m *ProjectHubModel) projectTaskCount(project *models.Project) string {
+func (m *ProjectHubModel) projectTally(project *models.Project) (projectTaskTally, bool) {
 	if project == nil {
-		return projectTaskCountUnknown
+		return projectTaskTally{}, false
 	}
-	if count, ok := m.taskCounts[project.ID]; ok {
-		return strconv.Itoa(count)
+	if tally, ok := m.taskCounts[project.ID]; ok {
+		return tally, true
 	}
-	return projectTaskCountLabel(project)
+	if !project.IsLoaded() {
+		return projectTaskTally{}, false
+	}
+	return projectTaskTallyOf(project), true
 }
 
-// projectSecondary carries the task count and the project's own tag chips. The
-// chips are plain text rather than styled badges because the row layout measures
-// this string, and they are what makes a parked project legible here: the Hub
-// lists parked projects alongside every other active one.
+// projectSecondary carries the task tally and the project's own tag chips. Both
+// numbers ride the row because a total alone reads as pending work when every
+// task in it is finished, and the open count leads because a narrow row
+// truncates secondary text from the right. A known-empty project has no open
+// subset worth naming and keeps its bare total. The chips are plain text rather
+// than styled badges because the row layout measures this string, and they are
+// what makes a parked project legible here: the Hub lists parked projects
+// alongside every other active one.
 func (m *ProjectHubModel) projectSecondary(project *models.Project) string {
-	count := m.projectTaskCount(project)
-	secondary := fmt.Sprintf("%s tasks", count)
-	if count == projectTaskCountUnknown {
-		secondary = "tasks not loaded"
+	secondary := "tasks not loaded"
+	if tally, ok := m.projectTally(project); ok {
+		if tally.Total == 0 {
+			secondary = "0 tasks"
+		} else {
+			secondary = fmt.Sprintf("%d open · %d tasks", tally.Open, tally.Total)
+		}
 	}
 	if chips := projectTagChips(project.Tags); chips != "" {
 		secondary += " · " + chips
@@ -992,8 +1027,8 @@ func (m *AppModel) refreshProjectHubIfActive() {
 // A project that fails to load is absent from the map rather than counted zero,
 // and its diagnostic is dropped: the Hub is a picker, and a project it cannot
 // parse still needs to be listed and selectable.
-func (m *AppModel) projectHubTaskCounts() map[string]int {
-	counts := make(map[string]int)
+func (m *AppModel) projectHubTaskCounts() map[string]projectTaskTally {
+	counts := make(map[string]projectTaskTally)
 	if m == nil {
 		return counts
 	}
@@ -1001,7 +1036,7 @@ func (m *AppModel) projectHubTaskCounts() map[string]int {
 	if m.crossOutliner != nil {
 		for _, project := range m.crossOutliner.loadedProjects {
 			if project != nil {
-				counts[project.ID] = project.CountTasks()
+				counts[project.ID] = projectTaskTallyOf(project)
 			}
 		}
 		if m.crossOutliner.projectService != nil {
@@ -1031,7 +1066,7 @@ func (m *AppModel) projectHubTaskCounts() map[string]int {
 	_, loaded, _ := loadCrossScopeSelection(remainder, loader)
 	for _, project := range loaded {
 		if project != nil {
-			counts[project.ID] = project.CountTasks()
+			counts[project.ID] = projectTaskTallyOf(project)
 		}
 	}
 	return counts
