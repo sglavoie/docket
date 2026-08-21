@@ -70,14 +70,14 @@ func (m *NotesViewModel) emptyGuidance() (GuidanceSpec, bool) {
 	if query := strings.TrimSpace(m.searchApplied); query != "" {
 		return GuidanceSpec{
 			Hints: append(requiredGuidanceHints("Esc clear search"),
-				optionalGuidanceHints(10, "s edit search")...),
+				optionalGuidanceHints(10, "/ edit search")...),
 			Supplemental: "search: " + query,
 			Rows:         1,
 		}, true
 	}
 	return GuidanceSpec{
-		Hints: append(requiredGuidanceHints("n choose location"),
-			optionalGuidanceHints(10, "v scope", "Esc close")...),
+		Hints: append(requiredGuidanceHints("a choose location"),
+			optionalGuidanceHints(10, "p scope", "Esc close")...),
 		Rows: 1,
 	}, true
 }

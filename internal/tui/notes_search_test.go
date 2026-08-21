@@ -69,6 +69,7 @@ func TestNotesSearchRankingPrefersTitlesAndUsesDeterministicTies(t *testing.T) {
 		alpha,
 		beta,
 	)
+	mountNotesManager(t, view)
 
 	view.searchApplied = "needle"
 	view.rederiveVisibleRows()
@@ -95,6 +96,7 @@ func TestNotesSearchSmartCaseNarrowsThenFallsBackWithLabel(t *testing.T) {
 		},
 	}}
 	view := NewNotesViewModelWithService(t.TempDir(), AllNotesScope(), service, nil, project)
+	mountNotesManager(t, view)
 	view.SetSize(120, 24)
 
 	view.searchApplied = "api"
@@ -157,17 +159,18 @@ func TestNotesSearchLiveInputNavigationAndEscTransitions(t *testing.T) {
 		nil,
 		project,
 	)
+	shell := mountNotesManager(t, view)
 	view.SetSize(80, 24)
 
-	_, cmd := view.Update(syntheticKey('s'))
+	_, cmd := view.Update(syntheticKey('/'))
 	if cmd == nil || !view.HasTextInput() || !view.ShouldCaptureEsc() {
-		t.Fatal("s did not open a focused search input that owns Esc")
+		t.Fatal("/ did not open a focused search input that owns Esc")
 	}
 	for _, r := range "needle" {
 		_, _ = view.Update(syntheticKey(r))
 	}
 	if view.locationPicker != nil {
-		t.Fatal("search text propagated n to the note creation control")
+		t.Fatal("search text propagated a to the note creation control")
 	}
 	if view.SearchQuery() != "" || len(view.visibleRows) != 2 {
 		t.Fatalf(
@@ -210,18 +213,18 @@ func TestNotesSearchLiveInputNavigationAndEscTransitions(t *testing.T) {
 	if _, openCmd := view.Update(syntheticSpecialKey(tea.KeyEnter)); openCmd == nil {
 		t.Fatal("applied search result could not be opened")
 	}
-	_, _ = view.Update(syntheticKey('r'))
+	_, _ = view.Update(syntheticKey('e'))
 	if !view.renaming {
 		t.Fatal("applied search result could not be renamed")
 	}
 	_, _ = view.Update(syntheticSpecialKey(tea.KeyEsc))
-	_, _ = view.Update(syntheticKey('x'))
-	if !view.confirm.IsActive() {
-		t.Fatal("applied search result could not be deleted")
+	_, _ = view.Update(syntheticKey(' '))
+	if shell.contextActionSheet == nil {
+		t.Fatal("applied search result could not reach its action sheet")
 	}
-	_, _ = view.Update(syntheticSpecialKey(tea.KeyEsc))
+	shell.contextActionSheet = nil
 
-	_, _ = view.Update(syntheticKey('s'))
+	_, _ = view.Update(syntheticKey('/'))
 	_, _ = view.Update(syntheticKey('z'))
 	if len(view.visibleRows) != 0 || view.SearchQuery() != "needle" {
 		t.Fatalf("draft edit = rows %d accepted %q, want zero rows and prior query", len(view.visibleRows), view.SearchQuery())
@@ -266,7 +269,8 @@ func TestNotesSearchAcceptedQuerySurvivesScopeAndRefresh(t *testing.T) {
 		nil,
 		project,
 	)
-	_, _ = view.Update(syntheticKey('s'))
+	mountNotesManager(t, view)
+	_, _ = view.Update(syntheticKey('/'))
 	for _, r := range "needle" {
 		_, _ = view.Update(syntheticKey(r))
 	}

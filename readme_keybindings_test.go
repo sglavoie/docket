@@ -116,6 +116,10 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 		"`d` is unbound: Done stays `$d` alone, `@` answers both dates, and root `z` is the scroll chord prefix",
 		"`$` joins them as a chord prefix rather than a key of its own",
 		"`$q is not a workflow action`; pressing a key that was never bound does nothing and says nothing",
+		"Attachments retired `u`, `d`, and `x` for its `Space` sheet, `o` for `Enter`, and `O`, `Ctrl+E`, and `Ctrl+O` for that same sheet",
+		"a key that means undo everywhere else may not unlink a file here",
+		"Comments retired the hidden `n` add alias for `a`, and `d` and `x` for its `Space` sheet",
+		"a comment may not stay one press from deletion while a task cannot be deleted that way",
 		"They are the two structural keys that answer no sigil",
 		"`@` opens one Set Date picker holding both fields",
 		"On a terminal task the defer rows are disabled and say so rather than disappearing",
@@ -139,6 +143,10 @@ func TestREADMEDocumentsExactTaskMenu(t *testing.T) {
 		"The list filters as soon as printable text is typed",
 		"Delete always asks for confirmation",
 		"The checklist is absent because it is edited on its own rows",
+		"1. Reveal original 2. Open original 3. Open attachments folder 4. Unlink 5. Delete",
+		"removing an attachment is now a deliberate menu row rather than a single press",
+		"Its own `Space` sheet holds Delete alone, which confirms and has no direct key",
+		"a comment leaves the list only through a deliberate menu row",
 		"Append `%project` to move its subtree, `>parent` to reparent it, `>0` to move it to the project root, or `<child` once per task you want to adopt",
 	})
 }
@@ -217,17 +225,50 @@ func TestREADMEDocumentsWorkspaceWideNotesManager(t *testing.T) {
 		"`Ctrl+N` opens All Notes",
 		"On a project header row it opens that project's notes instead",
 		"Global plus every unarchived project, including the protected Unfiled project and every parked project",
-		"`v` opens a searchable All, Global, or single-project scope picker",
-		"`s` applies a persistent title/body search",
-		"`m` moves the selected note to another such owner as one atomic workspace transaction",
+		"`p` opens a searchable All, Global, or single-project scope picker",
+		"`/` applies a persistent title/body search",
+		"`%` moves the selected note to another such owner as one atomic workspace transaction",
+		"`Space` opens the note action sheet, which holds Delete alone and confirms before deleting; " +
+			"deletion has no direct key",
+		"Notes has no multi-select, so that sheet always acts on the one note under the cursor",
 		"Notes support open/edit, create, rename, move, delete, undo, and redo",
 		"Note tags, task links, pins, bulk actions, previews, and archived-project ownership remain excluded",
+		"All Notes retired `s`, `r`, `m`, `n`, and `x` for `/`, `e`, `%`, `a`, and the `Space` sheet, " +
+			"and freed `v` rather than reassigning it, because Notes has no selection for it to toggle; " +
+			"all six are silent there",
 	})
 	rejectDocumentationText(t, content, []string{
 		"Global notes and, when a project is focused",
 		"focused-project Notes",
 		"search and moving are removed",
 		"a `Ctrl+N` alias remain excluded",
+		"`n` (or its `a` alias)",
+	})
+}
+
+// TestREADMEDocumentsSelectProjectGrammar holds the Select Project vocabulary to
+// the same standard as the Outliner's: every press is named, and the three
+// spellings the browse-first grammar retired are named as silent rather than
+// left to be rediscovered.
+func TestREADMEDocumentsSelectProjectGrammar(t *testing.T) {
+	content := readREADMEForContractTest(t)
+	requireDocumentationText(t, content, []string{
+		"`p` opens Select Project on a live cursor",
+		"`Enter` focuses it in the same Outliner, `a` creates one, `e` edits the one under the cursor, " +
+			"`*` toggles its pin, `#` sets its tags, and `Ctrl+N` opens its Notes",
+		"`Ctrl+T` cycles between every project, only those holding tasks, and only those holding none",
+		"`/` opens project search and `Esc` leaves the query for the matches it found",
+		"`v` selects the project under the cursor and `Ctrl+A` selects every project matching the current search",
+		"`Space` offers Archive on an active project and Unarchive on an archived one",
+		"the two lifecycle actions no direct key reaches",
+		"`Esc` unwinds one rung at a time: the action sheet, then the query, then the selection, " +
+			"then the surface itself",
+		"`n` no longer creates a project, `A` no longer clears a selection, and bare `g` is the go-to prefix " +
+			"rather than cursor-top, so all three are silent there",
+	})
+	rejectDocumentationText(t, content, []string{
+		"Select Project with search focused",
+		"`a`/`A` select or clear every",
 	})
 }
 

@@ -2,6 +2,10 @@ package tui
 
 import tea "charm.land/bubbletea/v2"
 
+func syntheticKey(r rune) tea.KeyPressMsg {
+	return tea.KeyPressMsg{Code: r, Text: string(r)}
+}
+
 func syntheticSpecialKey(code rune) tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: code}
 }

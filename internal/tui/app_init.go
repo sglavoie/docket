@@ -137,6 +137,9 @@ func (app *AppModel) registerOperationCatalog() error {
 		{"project bulk", app.registerProjectBulkOperations},
 		{"project tag vocabulary", app.registerProjectTagVocabularyOperations},
 		{"note", app.registerNoteOperations},
+		{"notes surface", app.registerNotesSurfaceOperations},
+		{"attachment", app.registerAttachmentOperations},
+		{"comment", app.registerCommentOperations},
 		{"checklist row", app.registerChecklistRowOperations},
 	}
 	for _, registration := range registrations {
@@ -144,12 +147,25 @@ func (app *AppModel) registerOperationCatalog() error {
 			return fmt.Errorf("register %s operations: %w", registration.name, err)
 		}
 	}
-	strategy := SimplifiedInputStrategy()
-	if err := validateTaskOperationOnePath(strategy); err != nil {
-		return fmt.Errorf("validate direct and task-menu placement: %w", err)
-	}
-	if err := app.operationRegistry.RegisterInputStrategy(strategy); err != nil {
-		return fmt.Errorf("register simplified input strategy: %w", err)
+	return app.registerSurfaceInputStrategies()
+}
+
+// registerSurfaceInputStrategies holds every manifested surface to the one-path
+// rule and then installs its grammar. A surface that declares no bindings yet
+// names only its identity, so it passes through without a strategy.
+func (app *AppModel) registerSurfaceInputStrategies() error {
+	for _, gate := range surfaceOperationGates() {
+		if gate.validate != nil {
+			if err := gate.validate(gate.strategy); err != nil {
+				return fmt.Errorf("validate direct and menu placement for %s: %w", gate.strategy.ID, err)
+			}
+		}
+		if len(gate.strategy.Bindings) == 0 {
+			continue
+		}
+		if err := app.operationRegistry.RegisterInputStrategy(gate.strategy); err != nil {
+			return fmt.Errorf("register %s input strategy: %w", gate.strategy.ID, err)
+		}
 	}
 	return nil
 }

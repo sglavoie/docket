@@ -27,6 +27,18 @@
     { "type": "key", "label": "open task attachments", "key": "enter" },
     { "type": "assert", "assert": "view", "value": "TaskAttachments" },
     { "type": "assert", "assert": "contains", "value": "Attachments" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "add a URL attachment", "key": "a" },
+    { "type": "text", "text": "https://example.com/spec.pdf" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Space actions" },
+
+    { "type": "resize", "label": "the regrown footer degrades rather than clipping", "width": 60, "height": 24 },
+    { "type": "assert", "assert": "view", "value": "TaskAttachments" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "the sheet still opens on a minimum terminal", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Attachment Actions" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

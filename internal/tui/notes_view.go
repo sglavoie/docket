@@ -105,6 +105,21 @@ type NotesViewModel struct {
 
 	locationPicker *notesLocationPicker
 	moveSource     *noteMutationRef
+
+	registry *OperationRegistry
+	dispatch operationKeyDispatch
+}
+
+// SetOperationSystem hands the manager the descriptor authority and the shell's
+// key dispatch seam. Without them the browse grammar resolves nothing and `?`
+// documents nothing, so a host that mounts this model must supply both. The
+// executor stays out because the Space sheet is shell-owned.
+func (m *NotesViewModel) SetOperationSystem(
+	registry *OperationRegistry,
+	dispatch operationKeyDispatch,
+) {
+	m.registry = registry
+	m.dispatch = dispatch
 }
 
 // NewNotesViewModelWithService constructs the workspace-wide Notes manager.

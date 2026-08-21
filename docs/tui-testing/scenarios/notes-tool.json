@@ -12,7 +12,7 @@
     { "type": "assert", "assert": "contains", "value": "Rich Project delivery plan" },
     { "type": "assert", "assert": "contains", "value": "Global" },
     { "type": "assert", "assert": "contains", "value": "Rich Project" },
-    { "type": "assert", "assert": "contains", "value": "m move" },
+    { "type": "assert", "assert": "contains", "value": "% move" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "close Notes", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" }

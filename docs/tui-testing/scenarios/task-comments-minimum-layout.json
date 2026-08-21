@@ -1,0 +1,38 @@
+{
+  "name": "task-comments-minimum-layout",
+  "fixture": "rich",
+  "size": "60x20",
+  "actions": [
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "select Build login form", "key": "j" },
+
+    { "type": "key", "label": "open the Comments panel at the minimum supported size", "key": "space" },
+    { "type": "text", "text": "comments" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "TaskComments" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the add mode narrows the same footer", "key": "a" },
+    { "type": "text", "text": "checked the redirect handler" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "save the comment", "key": "ctrl+s" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "checked the redirect handler" },
+    { "type": "assert", "assert": "contains", "value": "Space actions" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the sheet fits the same terminal", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Comment Actions" },
+    { "type": "assert", "assert": "contains", "value": "Delete comment" },
+    { "type": "assert", "label": "the direct keys never repeat as menu rows", "assert": "not_contains", "value": "Expand comment" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "close the sheet", "key": "esc" },
+
+    { "type": "key", "label": "the expanded comment fits it too", "key": "enter" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "assert", "assert": "view", "value": "TaskComments" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

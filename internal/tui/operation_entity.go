@@ -68,7 +68,24 @@ func ProjectEntity(projectID string) EntityIdentity {
 }
 
 // GlobalNoteEntity returns the identity of one workspace scratch note.
+func GlobalNoteEntity(filename string) EntityIdentity {
+	return normalizeEntityIdentity(EntityIdentity{
+		Kind:  EntityKindNote,
+		Scope: EntityScopeGlobal,
+		Name:  filename,
+	})
+}
+
 // ProjectNoteEntity returns the identity of one project note.
+func ProjectNoteEntity(projectID, filename string) EntityIdentity {
+	return normalizeEntityIdentity(EntityIdentity{
+		Kind:      EntityKindNote,
+		Scope:     EntityScopeProject,
+		ProjectID: projectID,
+		Name:      filename,
+	})
+}
+
 // WorkspaceTagEntity returns the identity of one tag aggregated across the
 // workspace.
 // ProjectTagEntity returns the identity of one tag inside one project.

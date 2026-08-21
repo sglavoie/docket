@@ -1,0 +1,228 @@
+package tui
+
+import (
+	"errors"
+	"fmt"
+
+	tea "charm.land/bubbletea/v2"
+)
+
+// Comment operation IDs. They name what the Comments panel does to the comment
+// under its cursor, so they stay apart from tui.task.comments, which only opens
+// the panel and belongs to the task row that owns it.
+const (
+	operationCommentAdd          OperationID = "tui.comment.add"
+	operationCommentEdit         OperationID = "tui.comment.edit"
+	operationCommentEditExternal OperationID = "tui.comment.edit-in-external-editor"
+	operationCommentDelete       OperationID = "tui.comment.delete"
+	operationCommentCopy         OperationID = "tui.comment.copy"
+	operationCommentCopyAll      OperationID = "tui.comment.copy-all-as-markdown"
+	operationCommentExpand       OperationID = "tui.comment.expand"
+	operationCommentActions      OperationID = "tui.comment.actions"
+)
+
+// CommentsInputStrategy is the Comments panel's whole browse grammar and the
+// single declaration of what each of its keys means. Six keys stay direct
+// because they are what the panel is for; Delete reaches the user through the
+// Space sheet instead, so removing a comment costs a deliberate menu row rather
+// than one press of a key the Outliner retired.
+//
+// The cursor keys and Esc resolve to the core operations because they are the
+// same acts everywhere. Those descriptors answer only to the Outliner, so they
+// document the panel's grammar without dispatching here: the panel moves its own
+// cursor and closes itself. `?` is absent because the panel never raised help.
+//
+// No binding carries footer metadata. The panel's footer has to narrow with the
+// add, edit, expanded, and confirmation sub-states, which only the gated keymap
+// beside this strategy can express, so ranking a key here would be a second
+// description of the same footer with no way to stay in step.
+func CommentsInputStrategy() InputStrategy {
+	return InputStrategy{
+		ID: InputStrategyComments,
+		Bindings: []OperationKeyBinding{
+			{OperationID: operationCommentExpand, Keys: []string{"enter"}, DisplayKey: "Enter"},
+			{OperationID: operationCommentAdd, Keys: []string{"a"}, DisplayKey: "a"},
+			{OperationID: operationCommentEdit, Keys: []string{"e"}, DisplayKey: "e"},
+			{OperationID: operationCommentActions, Keys: []string{"space"}, DisplayKey: "Space"},
+			{OperationID: operationCommentCopy, Keys: []string{"y"}, DisplayKey: "y"},
+			{OperationID: operationCommentCopyAll, Keys: []string{"Y"}, DisplayKey: "Y"},
+			{OperationID: operationCommentEditExternal, Keys: []string{"E"}, DisplayKey: "E"},
+			{OperationID: operationCoreCursorDown, Keys: []string{"j", "down"}, DisplayKey: "j/k"},
+			{OperationID: operationCoreCursorUp, Keys: []string{"k", "up"}, DisplayKey: "k/↑"},
+			{OperationID: operationCoreCursorTop, Keys: []string{"home"}, DisplayKey: "Home"},
+			{OperationID: operationCoreCursorBottom, Keys: []string{"G"}, DisplayKey: "G"},
+			{OperationID: operationCoreBack, Keys: []string{"esc"}, DisplayKey: "Esc"},
+		},
+	}
+}
+
+// commentOperationDescriptors declares the seven acts the Comments panel
+// performs on one comment, plus the sheet that lists the destructive one. None
+// of them names a target the registry can resolve: a comment has no entity
+// identity, so the cursor inside the panel is the only thing that says which
+// comment an operation means, and every descriptor is therefore target-free and
+// capability-scoped to the mounted panel.
+func commentOperationDescriptors() []OperationDescriptor {
+	comment := func(
+		id OperationID,
+		label string,
+		description string,
+		risk OperationRisk,
+	) OperationDescriptor {
+		return OperationDescriptor{
+			ID:                   id,
+			Label:                label,
+			Description:          description,
+			Category:             OperationCategoryTask,
+			TargetSource:         OperationTargetGlobal,
+			TargetCardinality:    TargetCardinalityNone,
+			RequiredCapabilities: NewCapabilitySet(CapabilityCommentsPanel),
+			Risk:                 risk,
+		}
+	}
+	return []OperationDescriptor{
+		comment(operationCommentAdd, "Add comment", "Write a new comment on this task", OperationRiskMutation),
+		comment(operationCommentEdit, "Edit comment", "Edit this comment inline", OperationRiskMutation),
+		comment(operationCommentEditExternal, "Edit comment in external editor", "Edit this comment in the external editor", OperationRiskMutation),
+		comment(operationCommentDelete, "Delete comment", "Remove this comment from the task", OperationRiskDestructive),
+		comment(operationCommentCopy, "Copy comment text", "Copy this comment's text to the clipboard", OperationRiskReadOnly),
+		comment(operationCommentCopyAll, "Copy all as Markdown", "Copy every comment as a numbered Markdown list", OperationRiskReadOnly),
+		comment(operationCommentExpand, "Expand comment", "Show this comment's full text", OperationRiskReadOnly),
+		comment(operationCommentActions, "Comment actions", "Open the action sheet for the comment under the cursor", OperationRiskReadOnly),
+	}
+}
+
+// commentOperationManifest is the authoritative ordered Comments action list.
+// Seven entries are DirectOnly: they keep the keys the panel exists for and
+// leave the Space sheet to Delete, which is destructive and so carries no direct
+// key at all.
+func commentOperationManifest() []operationManifestEntry {
+	return []operationManifestEntry{
+		{ID: operationCommentExpand, Label: "Expand comment", Risk: OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationCommentAdd, Label: "Add comment", Risk: OperationRiskMutation, DirectOnly: true},
+		{ID: operationCommentEdit, Label: "Edit comment", Risk: OperationRiskMutation, DirectOnly: true},
+		{ID: operationCommentEditExternal, Label: "Edit comment in external editor", Risk: OperationRiskMutation, DirectOnly: true},
+		{ID: operationCommentCopy, Label: "Copy comment text", Risk: OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationCommentCopyAll, Label: "Copy all as Markdown", Risk: OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationCommentActions, Label: "Comment actions", Risk: OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationCommentDelete, Label: "Delete comment", Risk: OperationRiskDestructive},
+	}
+}
+
+// commentActionSheetOperations is the Comments Space sheet. It holds Delete
+// alone: the panel has no multi-select, so this is one comment's action sheet
+// rather than a bulk menu, and Delete reaches the user only here behind the
+// panel's own confirmation.
+var commentActionSheetOperations = []OperationID{operationCommentDelete}
+
+// openCommentsActionSheet raises the shell-owned sheet over the panel. Its row
+// acts on the panel's cursor rather than on a named entity, so an empty list or
+// a cursor past its end names nothing and the sheet refuses to open.
+func (m *AppModel) openCommentsActionSheet(ctx CommandContext, panel *TaskCommentsModel) error {
+	if !panel.hasSelection() {
+		return errors.New("select a comment to open actions")
+	}
+	sheet, err := NewContextActionSheetModel(
+		m.GetOperationRegistry(),
+		m.operationExecutor,
+		ctx,
+		commentActionSheetOperations,
+		ContextActionSheetConfig{
+			Host:         ContextActionHostComments,
+			Completion:   ContextActionCompleteCloseSheet,
+			Title:        "Comment Actions",
+			Subtitle:     fmt.Sprintf("Comment [%d]", panel.cursor),
+			ItemIDPrefix: "comment-action:",
+			SecondaryFor: operationActionSecondaryText,
+			Targets:      1,
+			EmptyState: ListEmptyState{
+				Title:  "No comment actions available.",
+				Detail: "Move the cursor to a comment.",
+			},
+			NoMatchState: ListEmptyState{
+				Title:  "No matching actions.",
+				Detail: "Clear or change the search.",
+			},
+		},
+	)
+	if err != nil {
+		return err
+	}
+	m.contextActionSheet = sheet
+	return nil
+}
+
+// validateCommentOperationOnePath holds Comments to the shared one-path rule: a
+// manifested operation is either bound directly and marked DirectOnly or listed
+// in a menu, never both.
+func validateCommentOperationOnePath(strategy InputStrategy) error {
+	return validateOperationOnePath(commentOperationManifest(), strategy)
+}
+
+// registerCommentOperations installs the panel's vocabulary. Every binding
+// delegates all four executor stages because the panel already owns them: it
+// resolves its own comment from its cursor, collects the text in its own
+// textarea, runs its own confirmation before a delete, and commits through the
+// subview coordinator's transaction.
+func (m *AppModel) registerCommentOperations() error {
+	for _, descriptor := range commentOperationDescriptors() {
+		if err := m.registerOperation(descriptor, OperationBinding{
+			RequiredCapabilities:     NewCapabilitySet(CapabilityCommentsPanel),
+			Handler:                  m.executeCommentOperation,
+			DelegateTargetResolution: true,
+			DelegateValueProvider:    true,
+			DelegateConfirmation:     true,
+			DelegateTransaction:      true,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// executeCommentOperation applies one operation to the live panel. Every one of
+// them moves the model the user is looking at, so the handler reaches for the
+// mounted panel rather than rebuilding one.
+//
+//nolint:exhaustive // Only the Comments grammar's operations are registered with this handler.
+func (m *AppModel) executeCommentOperation(invocation OperationInvocation) OperationHandlerResult {
+	panel := m.activeCommentsPanel()
+	if panel == nil {
+		return OperationHandlerResult{Err: fmt.Errorf("the Comments panel is not open")}
+	}
+	command := func(cmd tea.Cmd) OperationHandlerResult {
+		return OperationHandlerResult{Message: OperationCommandResultMsg{Cmd: cmd}}
+	}
+	switch invocation.Descriptor.ID {
+	case operationCommentAdd:
+		return command(panel.beginAddMode())
+	case operationCommentEdit:
+		return command(panel.startEditSelectedComment())
+	case operationCommentEditExternal:
+		return command(panel.editSelectedCommentInExternalEditor())
+	case operationCommentCopy:
+		panel.copySelectedCommentText()
+	case operationCommentCopyAll:
+		panel.copyAllCommentsText()
+	case operationCommentActions:
+		if err := m.openCommentsActionSheet(invocation.Context, panel); err != nil {
+			return OperationHandlerResult{Err: err}
+		}
+	case operationCommentDelete:
+		panel.confirmDeleteSelectedComment()
+	case operationCommentExpand:
+		panel.expandSelectedComment()
+	}
+	return OperationHandlerResult{}
+}
+
+// activeCommentsPanel returns the mounted panel, or nil when the route moved on.
+// A dispatched key already knows the panel is what it came from, so the lookup
+// keys on the current view rather than searching the whole stack.
+func (m *AppModel) activeCommentsPanel() *TaskCommentsModel {
+	if m == nil || m.views == nil || m.currentView() != ViewTaskComments {
+		return nil
+	}
+	panel, _ := m.views.Get(ViewTaskComments).(*TaskCommentsModel)
+	return panel
+}

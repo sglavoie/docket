@@ -22,6 +22,15 @@ type TaskAttachmentsModel struct {
 	// Add mode
 	addMode   bool
 	textInput textinput.Model
+
+	dispatch operationKeyDispatch
+}
+
+// SetOperationDispatch hands the panel the shell's key dispatch seam. Without it
+// the browse grammar resolves nothing, so a host that mounts this model must
+// supply it. The registry stays out because help still derives from buildKeyMap.
+func (m *TaskAttachmentsModel) SetOperationDispatch(dispatch operationKeyDispatch) {
+	m.dispatch = dispatch
 }
 
 // NewTaskAttachmentsModel creates a new task attachments viewer.

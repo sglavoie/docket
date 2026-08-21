@@ -15,6 +15,7 @@ func (m *AppModel) handleViewSupportMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.runtime,
 			m.secondaryFeatures.Attachment,
 		)
+		view.SetOperationDispatch(m.dispatchOperationKey)
 		return m.showViewInit(ViewTaskAttachments, view)
 	}
 

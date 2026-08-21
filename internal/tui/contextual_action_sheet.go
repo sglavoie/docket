@@ -16,8 +16,11 @@ import (
 type ContextActionSheetHost string
 
 const (
-	ContextActionHostOutliner   ContextActionSheetHost = "outliner"
-	ContextActionHostProjectHub ContextActionSheetHost = "project-hub"
+	ContextActionHostOutliner    ContextActionSheetHost = "outliner"
+	ContextActionHostProjectHub  ContextActionSheetHost = "project-hub"
+	ContextActionHostNotes       ContextActionSheetHost = "notes"
+	ContextActionHostAttachments ContextActionSheetHost = "attachments"
+	ContextActionHostComments    ContextActionSheetHost = "comments"
 )
 
 // ContextActionSheetCompletion is the lifecycle applied after an action

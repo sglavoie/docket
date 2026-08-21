@@ -82,10 +82,7 @@ func (m *TaskAttachmentsModel) updateNormalKey(key string) tea.Cmd {
 	if cmd, handled := m.handleAttachmentsNavigationKey(key); handled {
 		return cmd
 	}
-	if cmd, handled := m.handleAttachmentsOpenKey(key); handled {
-		return cmd
-	}
-	if cmd, handled := m.handleAttachmentsMutationKey(key); handled {
+	if cmd, handled := m.handleAttachmentsGrammarKey(key); handled {
 		return cmd
 	}
 	if key == "?" {
@@ -116,44 +113,40 @@ func (m *TaskAttachmentsModel) handleAttachmentsNavigationKey(key string) (tea.C
 	}
 }
 
-func (m *TaskAttachmentsModel) handleAttachmentsOpenKey(key string) (tea.Cmd, bool) {
+// handleAttachmentsGrammarKey routes the keys that act on an attachment through
+// the registry. Navigation, `?` and Esc stay above and below it because the
+// panel performs those itself; every key listed here reaches its operation
+// descriptor instead, so the Space sheet and the key pressed today can never
+// describe the same act differently. Space is spelled out because a bare space
+// rune normalizes to nothing.
+func (m *TaskAttachmentsModel) handleAttachmentsGrammarKey(key string) (tea.Cmd, bool) {
 	switch key {
-	case "a":
-		return m.beginAddMode(), true
-	case "o", "enter":
-		return m.openSelectedAttachmentDefault(), true
-	case "e":
-		return m.openSelectedAttachmentInEditor(), true
-	case "ctrl+e":
-		return m.openSelectedOriginalPath(), true
-	case "ctrl+o":
-		return m.revealSelectedOriginalFile(), true
-	case "O":
-		return m.openAttachmentsDir(), true
+	case "a", "enter", "e", "y", "Y", "J", "K":
+		return m.dispatchAttachmentsKey(key), true
+	case " ", "space":
+		return m.dispatchAttachmentsKey("space"), true
 	default:
 		return nil, false
 	}
 }
 
-func (m *TaskAttachmentsModel) handleAttachmentsMutationKey(key string) (tea.Cmd, bool) {
-	switch key {
-	case "d", "x":
-		m.confirmDeleteSelectedAttachment()
-		return nil, true
-	case "u":
-		m.confirmUnlinkSelectedAttachment()
-		return nil, true
-	case "y":
-		return m.copySelectedPath(), true
-	case "Y":
-		return m.copySelectedPathWithLine(), true
-	case "J":
-		return m.moveSelectedAttachmentDown(), true
-	case "K":
-		return m.moveSelectedAttachmentUp(), true
-	default:
-		return nil, false
+// dispatchAttachmentsKey resolves one browse key through the Attachments grammar
+// and runs whatever operation it reaches.
+func (m *TaskAttachmentsModel) dispatchAttachmentsKey(key string) tea.Cmd {
+	if m.dispatch == nil {
+		return nil
 	}
+	_, cmd := m.dispatch(InputStrategyAttachments, []string{key}, m.attachmentsCommandContext())
+	return cmd
+}
+
+// attachmentsCommandContext names the panel rather than an item: an attachment
+// carries no entity identity, so the cursor the handler reads is the only thing
+// that says which item an operation means.
+func (m *TaskAttachmentsModel) attachmentsCommandContext() CommandContext {
+	ctx := PresentationCommandContext(ViewTaskAttachments)
+	ctx.Capabilities.Add(CapabilityAttachmentsPanel)
+	return ctx
 }
 
 func (m *TaskAttachmentsModel) HandledKeys() []string {

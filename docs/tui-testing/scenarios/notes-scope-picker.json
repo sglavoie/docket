@@ -5,7 +5,7 @@
   "actions": [
     { "type": "key", "label": "open All Notes", "key": "ctrl+n" },
     { "type": "assert", "assert": "contains", "value": "All Notes" },
-    { "type": "key", "label": "open searchable scope picker", "key": "v" },
+    { "type": "key", "label": "open searchable scope picker", "key": "p" },
     { "type": "assert", "assert": "contains", "value": "Select scope" },
     { "type": "assert", "assert": "contains", "value": "Search:" },
     { "type": "assert", "assert": "contains", "value": "All Notes" },

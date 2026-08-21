@@ -1,34 +1,10 @@
 package tui
 
-import "fmt"
-
-// taskOperationManifestEntry describes one ordered production task action.
-type taskOperationManifestEntry struct {
-	ID       OperationID
-	Label    string
-	Aliases  []string
-	Provider ValueProviderID
-	Category ListCategoryID
-	Risk     OperationRisk
-	// Bulk marks the operations an existing multi-task coordinator supports.
-	Bulk bool
-	// Core marks entries whose descriptor registerCoreInputOperations already
-	// owns. The manifest still ranks and groups them; their label, aliases and
-	// risk stay on the single core descriptor so the action sheet and the
-	// direct key can never describe the same operation differently.
-	Core bool
-	// DirectOnly marks entries the input strategy reaches faster than any list
-	// can. They keep their descriptor, bulk coordinator and value provider but
-	// leave the row action list, so the action sheet does not repeat a
-	// key the footer already advertises.
-	DirectOnly bool
-}
-
 // taskOperationManifest is the authoritative ordered single-task action list.
 // Descriptor metadata, action-sheet grouping and ordering, and bulk eligibility
 // all read it, so no surface can describe the same operation differently.
-func taskOperationManifest() []taskOperationManifestEntry {
-	return []taskOperationManifestEntry{
+func taskOperationManifest() []operationManifestEntry {
+	return []operationManifestEntry{
 		{
 			ID:       operationTaskComments,
 			Label:    "Comments",
@@ -57,8 +33,8 @@ func taskOperationManifest() []taskOperationManifestEntry {
 // taskDirectOperationManifest keeps the direct grammar descriptors registered
 // without making them task-menu rows. The task menu itself is exactly the three
 // entries returned by taskOperationManifest.
-func taskDirectOperationManifest() []taskOperationManifestEntry {
-	return []taskOperationManifestEntry{
+func taskDirectOperationManifest() []operationManifestEntry {
+	return []operationManifestEntry{
 		{ID: operationTaskSetState, Label: "Set State", Aliases: []string{"workflow state", "status"}, Provider: ValueProviderState, Category: taskActionCategoryPlan, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operationTaskSetPriority, Label: "Set Priority", Aliases: []string{"importance"}, Provider: ValueProviderPriority, Category: taskActionCategoryPlan, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operationTaskSetDueDate, Label: "Set Date", Aliases: []string{"deadline", "due date", "defer", "hide until"}, Provider: ValueProviderDate, Category: taskActionCategoryPlan, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
@@ -79,21 +55,21 @@ func taskDirectOperationManifest() []taskOperationManifestEntry {
 	}
 }
 
-func taskOperationDescriptorManifest() []taskOperationManifestEntry {
-	entries := append([]taskOperationManifestEntry(nil), taskOperationManifest()...)
+func taskOperationDescriptorManifest() []operationManifestEntry {
+	entries := append([]operationManifestEntry(nil), taskOperationManifest()...)
 	return append(entries, taskDirectOperationManifest()...)
 }
 
 // taskOperationManifestIDs returns the authoritative action list a task row
 // carries, in manifest order. Hosts attach it verbatim; the contextual sheet
 // drops whatever the frozen target cannot do.
-func taskOperationManifestEntryFor(id OperationID) (taskOperationManifestEntry, bool) {
+func taskOperationManifestEntryFor(id OperationID) (operationManifestEntry, bool) {
 	for _, entry := range taskOperationDescriptorManifest() {
 		if entry.ID == id {
 			return entry, true
 		}
 	}
-	return taskOperationManifestEntry{}, false
+	return operationManifestEntry{}, false
 }
 
 // taskOperationManifestRank orders manifest operations ahead of any other task
@@ -115,27 +91,9 @@ func taskOperationSupportsBulk(id OperationID) bool {
 	return ok && entry.Bulk
 }
 
-// validateTaskOperationOnePath rejects drift between the direct grammar and
-// the task menu before the application starts. A manifested operation is either
-// bound directly and marked DirectOnly or listed in the menu, never both.
+// validateTaskOperationOnePath holds the task surface to the shared one-path
+// rule: a manifested operation is either bound directly and marked DirectOnly
+// or listed in the task menu, never both.
 func validateTaskOperationOnePath(strategy InputStrategy) error {
-	direct := make(map[OperationID]bool, len(strategy.Bindings))
-	for _, binding := range strategy.Bindings {
-		direct[binding.OperationID] = true
-	}
-	for _, entry := range taskOperationDescriptorManifest() {
-		switch {
-		case direct[entry.ID] && !entry.DirectOnly:
-			return fmt.Errorf(
-				"task operation %s is bound directly and listed in the task menu",
-				entry.ID,
-			)
-		case entry.DirectOnly && !direct[entry.ID]:
-			return fmt.Errorf(
-				"task operation %s is direct-only but has no direct binding",
-				entry.ID,
-			)
-		}
-	}
-	return nil
+	return validateOperationOnePath(taskOperationDescriptorManifest(), strategy)
 }

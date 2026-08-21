@@ -6,8 +6,8 @@
     { "type": "key", "label": "open Projects", "key": "p" },
     { "type": "assert", "assert": "view", "value": "ProjectHub" },
     { "type": "assert", "assert": "no_layout_issues" },
-    { "type": "key", "label": "leave the Project search interaction", "key": "esc" },
-    { "type": "key", "label": "return to the Outliner", "key": "esc" },
+    { "type": "key", "label": "browse holds no unwind rung, so one Esc returns to the Outliner", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
 
     { "type": "key", "label": "open Notes", "key": "ctrl+n" },
     { "type": "assert", "assert": "view", "value": "GlobalNotes" },

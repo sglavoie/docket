@@ -53,10 +53,11 @@ func TestNotesMovePickerOffersEveryOtherOwner(t *testing.T) {
 				alpha,
 				beta,
 			)
+			mountNotesManager(t, view)
 
-			_, _ = view.Update(syntheticKey('m'))
+			_, _ = view.Update(syntheticKey('%'))
 			if view.locationPicker == nil || view.locationPicker.purpose != notesLocationPickerMove {
-				t.Fatal("m did not open the move destination picker")
+				t.Fatal("% did not open the move destination picker")
 			}
 			var got []app.NoteLocation
 			for _, item := range view.locationPicker.SourceItems() {
@@ -108,8 +109,9 @@ func TestNotesMoveEnterCommitsFrozenLocatedRequestWithoutConfirmation(t *testing
 		alpha,
 		beta,
 	)
+	mountNotesManager(t, view)
 
-	_, _ = view.Update(syntheticKey('m'))
+	_, _ = view.Update(syntheticKey('%'))
 	view.locationPicker.SetCursorToID(notesLocationPickerItem{
 		Scope: ProjectNotesScope(beta.ID),
 	}.ItemID())
@@ -165,8 +167,9 @@ func TestNotesMoveRejectsMalformedNotesAndMissingDestinations(t *testing.T) {
 			nil,
 			project,
 		)
+		mountNotesManager(t, view)
 
-		_, cmd := view.Update(syntheticKey('m'))
+		_, cmd := view.Update(syntheticKey('%'))
 		if cmd != nil || view.locationPicker != nil || !view.statusIsError ||
 			!strings.Contains(view.statusMessage, "press Enter to repair") {
 			t.Fatalf("malformed move state = cmd %v picker %v status %q", cmd, view.locationPicker, view.statusMessage)
@@ -186,8 +189,9 @@ func TestNotesMoveRejectsMalformedNotesAndMissingDestinations(t *testing.T) {
 			service,
 			nil,
 		)
+		mountNotesManager(t, view)
 
-		_, cmd := view.Update(syntheticKey('m'))
+		_, cmd := view.Update(syntheticKey('%'))
 		if cmd != nil || view.locationPicker != nil || view.statusIsError ||
 			!strings.Contains(view.statusMessage, "note was not moved") ||
 			view.currentRow() == nil {
@@ -305,7 +309,7 @@ func TestNotesMoveUndoRedoRefreshesEveryAffectedOwner(t *testing.T) {
 	source := app.GlobalNoteLocation()
 	destination := app.ProjectNoteLocation(env.project.ID)
 
-	_, _ = env.view.Update(syntheticKey('m'))
+	_, _ = env.view.Update(syntheticKey('%'))
 	_, pickerCmd := env.view.Update(syntheticSpecialKey(tea.KeyEnter))
 	pickerResult := pickerCmd().(notesLocationPickerResultMsg)
 	_, mutationCmd := env.view.Update(pickerResult)
@@ -355,9 +359,10 @@ func TestNotesMoveFailureKeepsVisibleOwnership(t *testing.T) {
 		nil,
 		project,
 	)
+	mountNotesManager(t, view)
 	before := view.currentRow().Identity()
 
-	_, _ = view.Update(syntheticKey('m'))
+	_, _ = view.Update(syntheticKey('%'))
 	_, resultCmd := view.Update(syntheticSpecialKey(tea.KeyEnter))
 	result := resultCmd().(notesLocationPickerResultMsg)
 	_, mutationCmd := view.Update(result)
@@ -371,17 +376,22 @@ func TestNotesMoveFailureKeepsVisibleOwnership(t *testing.T) {
 	}
 }
 
+// Move is described by both the registry and the keymap, so the merged help
+// must keep the registry's row and drop the keymap's duplicate.
 func TestNotesMoveKeymapAndHelpStayInParity(t *testing.T) {
-	view := &NotesViewModel{}
-	wantKeys := []string{
-		"j", "k", "down", "up", "enter", "n", "a", "v", "s", "r", "m", "x", "u", "ctrl+r",
-	}
-	if got := view.HandledKeys(); !slices.Equal(got, wantKeys) {
-		t.Fatalf("Notes handled keys = %v, want %v", got, wantKeys)
+	project := &models.Project{ID: "alpha", Name: "Alpha", Path: t.TempDir()}
+	service := &combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{
+		app.GlobalNoteLocation(): {{Title: "Move me", Filename: "move.md"}},
+	}}
+	view := NewNotesViewModelWithService(t.TempDir(), AllNotesScope(), service, nil, project)
+	mountNotesManager(t, view)
+
+	if !slices.Contains(view.HandledKeys(), "%") {
+		t.Fatalf("Notes handled keys omit move: %v", view.HandledKeys())
 	}
 	moveHelp := 0
 	for _, item := range view.GetHelpItems() {
-		if item.Key == "m" {
+		if item.Key == "%" {
 			moveHelp++
 		}
 	}

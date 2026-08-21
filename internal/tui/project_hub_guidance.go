@@ -2,7 +2,6 @@ package tui
 
 import (
 	"sort"
-	"strings"
 
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
@@ -19,8 +18,7 @@ func (m *ProjectHubModel) ContextualGuidance() (GuidanceSpec, bool) {
 	}
 	state := m.surface.GuidanceState(m.HasActiveSearch())
 	km := m.projectHubGuidanceKeyMap(state)
-	actions := m.projectHubGuidanceActions(state)
-	spec, ok := listSurfaceGuidanceSpec(state, km, actions)
+	spec, ok := listSurfaceGuidanceSpec(state, km, m.projectHubActionHints(state))
 	// Registry-derived operations are appended by the shared list adapter. Sort
 	// the complete projection so required interaction controls precede optional
 	// browse actions regardless of which source supplied them.
@@ -36,6 +34,10 @@ func (m *ProjectHubModel) ContextualGuidance() (GuidanceSpec, bool) {
 	return spec, ok
 }
 
+// projectHubGuidanceKeyMap carries only the keys the operation registry cannot
+// describe here: the cursor keys, whose core descriptors answer to the Outliner,
+// the Esc unwind, which is no operation at all, and Ctrl+T, whose hint names the
+// next filter rather than the operation's fixed label.
 func (m *ProjectHubModel) projectHubGuidanceKeyMap(state ListGuidanceState) *keymap.KeyMap {
 	profile := state.Profile
 	hasRows := m.surface != nil && len(m.surface.Matches()) > 0
@@ -43,7 +45,6 @@ func (m *ProjectHubModel) projectHubGuidanceKeyMap(state ListGuidanceState) *key
 		return hasRows && profile != ListGuidanceSearchEditing && profile != ListGuidanceEmpty
 	}
 	searchEditing := func() bool { return profile == ListGuidanceSearchEditing }
-	selection := func() bool { return profile == ListGuidanceSelection }
 	// The hint names what the next press shows, so a three-state cycle is legible
 	// one press at a time.
 	filterFooterLabel := m.taskFilter.next().shortLabel()
@@ -58,86 +59,48 @@ func (m *ProjectHubModel) projectHubGuidanceKeyMap(state ListGuidanceState) *key
 		keymap.Bind("ctrl+d", "Move half page", "Navigation",
 			keymap.WithGate(func() bool { return browseList() || searchEditing() }),
 			keymap.WithFooter(30, "half page", false), keymap.WithFooterKey("Ctrl+D/U")),
-		keymap.Bind("/", "Search projects", "Filters",
-			keymap.WithGate(func() bool {
-				return !searchEditing() &&
-					(profile != ListGuidanceEmpty || state.Empty.Kind == ListEmptyNoMatches)
-			}),
-			keymap.WithFooter(12, "search", false)),
-		// Deliberately ungated: the filter can empty the list itself, and this is
-		// then the only way back, so it must survive ListGuidanceEmpty where the
-		// '/' hint above does not. The label names the result, not the state.
+		// Deliberately ungated: the filter can empty the list itself and is then
+		// the only way back. The label names the result, not the state.
 		keymap.Bind("ctrl+t", "Cycle every project, only those holding tasks, only those holding none", "Filters",
 			keymap.WithFooter(13, filterFooterLabel, false),
 			keymap.WithFooterKey("Ctrl+T")),
 		keymap.Bind("esc", "Browse the current matches", "Navigation",
 			keymap.WithGate(searchEditing),
 			keymap.WithFooter(1, "browse matches", true), keymap.WithFooterKey("Esc")),
-		keymap.Bind("v", "Toggle project selection", "Selection",
-			keymap.WithGate(browseList), keymap.WithFooter(8, "toggle", false)),
-		keymap.Bind("a", "Select every match", "Selection",
-			keymap.WithGate(selection), keymap.WithFooter(9, "all", false),
-			keymap.WithFooterKey("a/A")),
 	}}
 }
 
-func (m *ProjectHubModel) projectHubGuidanceActions(state ListGuidanceState) []GuidanceHint {
-	if state.Profile == ListGuidanceEmpty {
-		if state.Empty.Kind == ListEmptySource {
-			if hint, ok := m.projectHubOperationGuidance(operationScopeCreateProject, "n", 1, true); ok {
-				return []GuidanceHint{hint}
-			}
-		}
+// projectHubActionHints projects the direct grammar's ranked bindings into
+// footer hints. Two states narrow that to the single press that resolves them:
+// while the query is being typed the browse keys are not live, and a list its
+// own source emptied cannot be searched or browsed at all.
+func (m *ProjectHubModel) projectHubActionHints(state ListGuidanceState) []GuidanceHint {
+	if m.registry == nil {
 		return nil
 	}
-	if state.Profile == ListGuidanceSelection {
-		if len(projectHubBulkOperationIDs(m.surface.ActionState().OperationIDs)) > 0 {
-			return []GuidanceHint{newGuidanceHint("Space bulk actions", 1, true)}
-		}
-		return nil
-	}
-
-	var hints []GuidanceHint
-	if entry, ok := m.selectedProjectHubEntry(); ok && entry.Kind == projectHubEntryActive && entry.Project != nil {
-		if hint, live := m.projectHubOperationGuidance(operationProjectOpen, "Enter", 1, state.Profile == ListGuidanceSearchEditing); live {
-			hints = append(hints, hint)
-		}
-	}
-	if state.Profile != ListGuidanceSearchEditing {
-		if m.surface.ActionState().Enabled() && m.registry != nil {
-			hints = append(hints, newGuidanceHint("Space actions", 2, false))
-		}
-		if hint, ok := m.projectHubOperationGuidance(operationScopeCreateProject, "n", 3, false); ok {
-			hints = append(hints, hint)
-		}
+	hints := m.registry.GuidanceHintsForInputStrategy(
+		InputStrategyProjectHub,
+		m.projectHubCommandContext(m.cursorProjectID()),
+	)
+	switch {
+	case state.Profile == ListGuidanceSearchEditing:
+		return m.soleRequiredHint(hints, operationProjectOpen)
+	case state.Profile == ListGuidanceEmpty && state.Empty.Kind == ListEmptySource:
+		return m.soleRequiredHint(hints, operationScopeCreateProject)
 	}
 	return hints
 }
 
-func (m *ProjectHubModel) projectHubOperationGuidance(
-	id OperationID,
-	key string,
-	priority int,
-	required bool,
-) (GuidanceHint, bool) {
-	if m.registry == nil {
-		return GuidanceHint{}, false
+// soleRequiredHint keeps one operation's hint and promotes it, so a narrowed
+// state advertises the press that leaves it rather than the whole grammar.
+func (m *ProjectHubModel) soleRequiredHint(hints []GuidanceHint, id OperationID) []GuidanceHint {
+	key := m.registry.InputShortcutForOperation(InputStrategyProjectHub, id)
+	for _, hint := range hints {
+		if hint.Key != key {
+			continue
+		}
+		hint.Required = true
+		return []GuidanceHint{hint}
 	}
-	descriptor, ok := m.registry.Descriptor(id)
-	if !ok {
-		return GuidanceHint{}, false
-	}
-	projectID := ""
-	if entry, selected := m.selectedProjectHubEntry(); selected && entry.Project != nil {
-		projectID = entry.Project.ID
-	}
-	if !descriptor.Applicable(m.projectHubCommandContext(projectID)) {
-		return GuidanceHint{}, false
-	}
-	return GuidanceHint{
-		Key:      key,
-		Label:    strings.ToLower(descriptor.Label),
-		Priority: priority,
-		Required: required,
-	}, true
+	return nil
 }

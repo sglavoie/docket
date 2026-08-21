@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -344,6 +345,167 @@ func TestTaskCommentsLeanPanelHasNoResolvedControl(t *testing.T) {
 	for _, key := range model.HandledKeys() {
 		if key == "r" {
 			t.Fatal("retired resolved key remains in comments key map")
+		}
+	}
+}
+
+// mountCommentsPanel opens the panel over a live shell on a task carrying two
+// comments, and returns the driver, the panel, and a key press helper.
+func mountCommentsPanel(t *testing.T) (*UITestDriver, *TaskCommentsModel, func(string)) {
+	t.Helper()
+	driver, workspace, err := NewFixtureDriver(FixtureFresh, 100, 30)
+	if err != nil {
+		t.Fatalf("NewFixtureDriver: %v", err)
+	}
+	t.Cleanup(func() { _ = workspace.Cleanup() })
+
+	project, err := models.NewProject("project-1", "Comments Project", t.TempDir())
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+	task.Comments = []*models.Comment{
+		{Text: "first comment", CreatedAt: time.Now()},
+		{Text: "second comment", CreatedAt: time.Now()},
+	}
+	project.Tasks = []*models.Task{task}
+
+	driver.dispatch(ShowTaskCommentsMsg{Task: task, Project: project})
+	panel := driver.App().activeCommentsPanel()
+	if panel == nil {
+		t.Fatal("ShowTaskCommentsMsg did not mount the Comments panel")
+	}
+	if panel.dispatch == nil {
+		t.Fatal("the mounted panel holds no dispatch seam, so every routed key resolves nothing")
+	}
+
+	press := func(key string) {
+		t.Helper()
+		if err := driver.SendKey(key); err != nil {
+			t.Fatalf("SendKey(%q): %v", key, err)
+		}
+	}
+	return driver, panel, press
+}
+
+// TestCommentsPanelKeysReachTheirOperations presses routed keys through a live
+// shell. The Comments scenarios only add and save a comment, so a dispatch seam
+// the shell forgot to hand down would leave the acting keys silently doing
+// nothing with every other check still green.
+func TestCommentsPanelKeysReachTheirOperations(t *testing.T) {
+	driver, panel, press := mountCommentsPanel(t)
+
+	press("enter")
+	if !panel.expandedView {
+		t.Fatal("Enter did not reach tui.comment.expand")
+	}
+	press("esc")
+
+	press("space")
+	if driver.App().contextActionSheet == nil {
+		t.Fatal("Space did not reach tui.comment.actions")
+	}
+	press("esc")
+	if driver.App().contextActionSheet != nil {
+		t.Fatal("Esc left the comment action sheet open")
+	}
+
+	press("e")
+	if !panel.editMode {
+		t.Fatal("e did not reach tui.comment.edit")
+	}
+	press("esc")
+
+	var captured string
+	withFakeClipboard(t, nil, &captured)
+	press("y")
+	if captured != "first comment" {
+		t.Fatalf("y copied %q, want the comment under the cursor", captured)
+	}
+	press("Y")
+	if captured != "1. first comment\n2. second comment" {
+		t.Fatalf("Y copied %q, want every comment as a numbered list", captured)
+	}
+
+	press("a")
+	if !panel.addMode {
+		t.Fatal("a did not reach tui.comment.add")
+	}
+}
+
+// TestCommentsRetiredKeysAreSilent holds the keys the panel gave up. Each one
+// means something else app-wide, so the panel must answer none of them rather
+// than quietly keeping its old meaning.
+func TestCommentsRetiredKeysAreSilent(t *testing.T) {
+	driver, panel, press := mountCommentsPanel(t)
+
+	for _, key := range []string{"n", "d", "x"} {
+		press(key)
+		if panel.confirm.IsActive() {
+			t.Fatalf("retired key %q raised confirm %q", key, panel.confirm.Action())
+		}
+		if panel.addMode {
+			t.Fatalf("retired key %q entered add mode", key)
+		}
+		if driver.App().contextActionSheet != nil {
+			t.Fatalf("retired key %q opened the action sheet", key)
+		}
+	}
+}
+
+// TestCommentsSpaceSheetReachesDelete walks the whole new path for Delete, which
+// is the retirement this session is really about: neither d nor x removes a
+// comment now, so the Space sheet has to, and the confirmation behind it has to
+// still commit the removal.
+func TestCommentsSpaceSheetReachesDelete(t *testing.T) {
+	driver, panel, press := mountCommentsPanel(t)
+
+	press("space")
+	sheet := driver.App().contextActionSheet
+	if sheet == nil {
+		t.Fatal("Space did not open the comment action sheet")
+	}
+	want := []OperationID{operationCommentDelete}
+	if got := sheet.operationIDs(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("comment sheet lists %v, want exactly %v", got, want)
+	}
+
+	press("enter")
+	if driver.App().contextActionSheet != nil {
+		t.Fatal("choosing Delete left the sheet open over the confirmation")
+	}
+	if !panel.confirm.IsActive() || panel.confirm.Action() != "delete" {
+		t.Fatalf("the sheet's Delete row raised confirm %q, want the delete prompt", panel.confirm.Action())
+	}
+
+	press("y")
+	if len(panel.task.Comments) != 1 || panel.task.Comments[0].Text != "second comment" {
+		t.Fatalf("confirming the sheet's Delete left %d comment(s), want the first one removed", len(panel.task.Comments))
+	}
+}
+
+// TestCommentsPanelUnboundKeysAreSilent holds the keys the Comments grammar
+// never declared. They must stay quiet rather than falling through to some other
+// surface's meaning.
+func TestCommentsPanelUnboundKeysAreSilent(t *testing.T) {
+	driver, panel, press := mountCommentsPanel(t)
+
+	for _, key := range []string{"?", "u", "o", "p", "%"} {
+		press(key)
+		if panel.confirm.IsActive() {
+			t.Fatalf("unbound key %q raised confirm %q", key, panel.confirm.Action())
+		}
+		if panel.addMode || panel.editMode || panel.expandedView {
+			t.Fatalf("unbound key %q changed the panel mode", key)
+		}
+		if driver.App().contextActionSheet != nil {
+			t.Fatalf("unbound key %q opened an action sheet", key)
+		}
+		if got := driver.App().currentView(); got != ViewTaskComments {
+			t.Fatalf("unbound key %q left the panel for %v", key, got)
 		}
 	}
 }

@@ -1,0 +1,34 @@
+{
+  "name": "task-attachments-minimum-layout",
+  "fixture": "rich",
+  "size": "60x20",
+  "actions": [
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "select Build login form", "key": "j" },
+
+    { "type": "key", "label": "open the Attachments panel at the minimum supported size", "key": "space" },
+    { "type": "text", "text": "attachments" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "TaskAttachments" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the add mode narrows the same footer", "key": "a" },
+    { "type": "text", "text": "https://example.com/spec.pdf" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "https://example.com/spec.pdf" },
+    { "type": "assert", "assert": "contains", "value": "Space actions" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the sheet fits the same terminal", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Attachment Actions" },
+    { "type": "assert", "assert": "contains", "value": "Unlink attachment" },
+    { "type": "assert", "assert": "contains", "value": "Delete attachment" },
+    { "type": "assert", "label": "the direct keys never repeat as menu rows", "assert": "not_contains", "value": "Copy attachment path" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "close the sheet", "key": "esc" },
+
+    { "type": "assert", "assert": "view", "value": "TaskAttachments" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

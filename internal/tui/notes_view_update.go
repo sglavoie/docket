@@ -98,21 +98,10 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "home":
 			m.cursor = 0
 			m.resetScrollOffset()
-		case "enter":
-			return m, m.editCurrentNote()
-		case "n":
-			return m, m.beginDestinationPicker()
-		case "v":
-			return m, m.beginScopePicker()
-		case "s":
-			return m, m.beginSearch()
-		case "r":
-			m.startRename()
-		case "m":
-			return m, m.beginMovePicker()
-		case "x":
-			m.deleteCurrentNote()
-			return m, nil
+		case "enter", "a", "e", "%", "/", "p":
+			return m, m.dispatchNotesKey(key)
+		case " ", "space":
+			return m, m.dispatchNotesKey("space")
 		case "u":
 			return m, m.undoDelete()
 		case "ctrl+r":

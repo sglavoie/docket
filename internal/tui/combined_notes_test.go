@@ -67,6 +67,7 @@ func TestNotesManagerLoadsEveryOwnerWithStableLocatedOrdering(t *testing.T) {
 		alpha,
 		beta,
 	)
+	mountNotesManager(t, view)
 	view.SetSize(80, 24)
 
 	if service.queryCount != 1 {
@@ -116,6 +117,7 @@ func TestNotesManagerRetainsPartialResultsAndOwnerErrors(t *testing.T) {
 		alpha,
 		beta,
 	)
+	mountNotesManager(t, view)
 	view.SetSize(80, 24)
 
 	if len(view.visibleRows) != 1 || len(view.collectionErrors) != 1 || view.snapshotError != nil {
@@ -144,6 +146,7 @@ func TestNotesManagerScopeDerivationAndRefreshPreserveLocatedSelection(t *testin
 		nil,
 		alpha,
 	)
+	mountNotesManager(t, view)
 	projectID := NoteRowIdentity{Location: app.ProjectNoteLocation(alpha.ID), Filename: "duplicate.md"}
 	for i := range view.visibleRows {
 		if view.visibleRows[i].Identity() == projectID {
@@ -179,6 +182,7 @@ func TestNotesManagerTotalSnapshotFailureBlocksRows(t *testing.T) {
 		&combinedNotesService{snapshotErr: snapshotErr},
 		nil,
 	)
+	mountNotesManager(t, view)
 	view.SetSize(80, 24)
 	if len(view.loadedRows) != 0 || len(view.visibleRows) != 0 || !errors.Is(view.snapshotError, snapshotErr) {
 		t.Fatalf("total failure = rows %d/%d error %v", len(view.loadedRows), len(view.visibleRows), view.snapshotError)
@@ -214,6 +218,7 @@ func TestNotesManagerMalformedEditorUsesSelectedRowsActualOwner(t *testing.T) {
 		alpha,
 		beta,
 	)
+	mountNotesManager(t, view)
 	for i := range view.visibleRows {
 		if view.visibleRows[i].Identity() == (NoteRowIdentity{Location: app.ProjectNoteLocation(beta.ID), Filename: filename}) {
 			view.cursor = i
@@ -242,10 +247,11 @@ func TestNotesManagerCreationRequiresLocationConfirmation(t *testing.T) {
 		nil,
 		project,
 	)
+	mountNotesManager(t, view)
 
-	_, _ = view.Update(syntheticKey('n'))
+	_, _ = view.Update(syntheticKey('a'))
 	if view.locationPicker == nil || view.locationPicker.purpose != notesLocationPickerCreation {
-		t.Fatal("n did not open the destination picker")
+		t.Fatal("a did not open the destination picker")
 	}
 	if !view.ShouldCaptureEsc() {
 		t.Fatal("destination picker did not retain Esc for explicit cancellation")
@@ -285,9 +291,10 @@ func TestNotesManagerCreationOffersEveryActiveProject(t *testing.T) {
 		alpha,
 		beta,
 	)
+	mountNotesManager(t, view)
 	view.SetSize(80, 24)
 
-	_, _ = view.Update(syntheticKey('n'))
+	_, _ = view.Update(syntheticKey('a'))
 	want := []app.NoteLocation{
 		app.GlobalNoteLocation(),
 		app.ProjectNoteLocation(alpha.ID),
@@ -322,11 +329,12 @@ func TestNotesScopePickerFiltersNavigatesAndCancelsWithoutChangingScope(t *testi
 		alpha,
 		beta,
 	)
+	mountNotesManager(t, view)
 	view.SetSize(80, 24)
 
-	_, _ = view.Update(syntheticKey('v'))
+	_, _ = view.Update(syntheticKey('p'))
 	if view.locationPicker == nil || !view.HasTextInput() || !view.ShouldCaptureEsc() {
-		t.Fatal("v did not open a focused scope picker that owns Esc")
+		t.Fatal("p did not open a focused scope picker that owns Esc")
 	}
 	if got := view.locationPicker.SelectedItem().Scope; got != GlobalNotesScope() {
 		t.Fatalf("initial scope picker selection = %#v, want Global", got)
@@ -372,7 +380,8 @@ func TestNotesScopePickerEmptyResultsAreSafeAndResize(t *testing.T) {
 		&combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{}},
 		nil,
 	)
-	_, _ = view.Update(syntheticKey('v'))
+	mountNotesManager(t, view)
+	_, _ = view.Update(syntheticKey('p'))
 	for _, r := range "nothing-matches" {
 		_, _ = view.Update(syntheticKey(r))
 	}
@@ -447,10 +456,12 @@ func TestNotesManagerRestoresOnlyMoveToTheMinimalOperations(t *testing.T) {
 
 	view := &NotesViewModel{}
 	keys := view.HandledKeys()
-	if !slices.Contains(keys, "m") {
+	if !slices.Contains(keys, "%") {
 		t.Fatalf("Notes manager keys omit restored move key: %v", keys)
 	}
-	for _, removed := range []string{"e", "/", "p", "t", "space", "ctrl+o"} {
+	// Delete is destructive, so it reaches the user only through the Space sheet;
+	// tags and previews were never restored at all.
+	for _, removed := range []string{"x", "t", "ctrl+o"} {
 		if slices.Contains(keys, removed) {
 			t.Fatalf("Notes manager still exposes removed key %q in %v", removed, keys)
 		}

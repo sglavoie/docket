@@ -3,6 +3,7 @@ package tui
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -60,6 +61,149 @@ func (f *fakeAttachmentMutator) ReorderAttachmentByLocator(locator app.TaskLocat
 func newFakeAttachmentCoordinator() (AttachmentCoordinator, *fakeAttachmentMutator) {
 	fake := &fakeAttachmentMutator{}
 	return AttachmentCoordinator{attach: fake}, fake
+}
+
+// mountAttachmentsPanel opens the panel over a live shell on a task carrying two
+// file attachments, and returns the driver, the panel, and a key press helper.
+func mountAttachmentsPanel(t *testing.T) (*UITestDriver, *TaskAttachmentsModel, func(string)) {
+	t.Helper()
+	driver, workspace, err := NewFixtureDriver(FixtureFresh, 100, 30)
+	if err != nil {
+		t.Fatalf("NewFixtureDriver: %v", err)
+	}
+	t.Cleanup(func() { _ = workspace.Cleanup() })
+
+	project, err := models.NewProject("project-1", "Attachments Project", t.TempDir())
+	if err != nil {
+		t.Fatalf("NewProject: %v", err)
+	}
+	task, err := models.NewGenericTask("task-1", 1, "Test task")
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+	task.Attachments = []models.Attachment{
+		{Filename: "file1.txt", OriginalPath: "/tmp/file1.txt", AddedAt: time.Now()},
+		{Filename: "file2.txt", OriginalPath: "/tmp/file2.txt", AddedAt: time.Now()},
+	}
+	project.Tasks = []*models.Task{task}
+
+	driver.dispatch(ShowTaskAttachmentsMsg{Task: task, Project: project})
+	panel := driver.App().activeAttachmentsPanel()
+	if panel == nil {
+		t.Fatal("ShowTaskAttachmentsMsg did not mount the Attachments panel")
+	}
+	if panel.dispatch == nil {
+		t.Fatal("the mounted panel holds no dispatch seam, so every routed key resolves nothing")
+	}
+
+	press := func(key string) {
+		t.Helper()
+		if err := driver.SendKey(key); err != nil {
+			t.Fatalf("SendKey(%q): %v", key, err)
+		}
+	}
+	return driver, panel, press
+}
+
+// TestAttachmentsPanelKeysReachTheirOperations presses routed keys through a
+// live shell. Neither Attachments scenario presses a key that acts on an item,
+// so a dispatch seam the shell forgot to hand down would leave every operation
+// silently doing nothing with every other check still green.
+func TestAttachmentsPanelKeysReachTheirOperations(t *testing.T) {
+	driver, panel, press := mountAttachmentsPanel(t)
+
+	press("space")
+	if driver.App().contextActionSheet == nil {
+		t.Fatal("Space did not reach tui.attachment.actions")
+	}
+	press("esc")
+	if driver.App().contextActionSheet != nil {
+		t.Fatal("Esc left the attachment action sheet open")
+	}
+
+	coordinator, fake := newFakeAttachmentCoordinator()
+	panel.coordinator = coordinator
+	press("J")
+	if driver.pendingCmd == nil {
+		t.Fatal("J did not reach tui.attachment.reorder-down")
+	}
+	driver.pendingCmd()
+	if len(fake.reorders) != 1 || fake.reorders[0].from != 0 || fake.reorders[0].to != 1 {
+		t.Fatalf("J recorded %+v, want ReorderAttachment(0, 1) on press one", fake.reorders)
+	}
+
+	press("a")
+	if !panel.addMode {
+		t.Fatal("a did not reach tui.attachment.add")
+	}
+}
+
+// TestAttachmentsRetiredKeysAreSilent holds the keys the panel gave up. Each one
+// now means something else app-wide, so the panel must answer none of them
+// rather than quietly keeping its old meaning.
+func TestAttachmentsRetiredKeysAreSilent(t *testing.T) {
+	driver, panel, press := mountAttachmentsPanel(t)
+
+	for _, key := range []string{"u", "d", "x", "o", "O", "ctrl+e", "ctrl+o"} {
+		press(key)
+		if panel.confirm.IsActive() {
+			t.Fatalf("retired key %q raised confirm %q", key, panel.confirm.Action())
+		}
+		if panel.addMode {
+			t.Fatalf("retired key %q entered add mode", key)
+		}
+		if driver.App().contextActionSheet != nil {
+			t.Fatalf("retired key %q opened the action sheet", key)
+		}
+	}
+}
+
+// TestAttachmentsSpaceSheetReachesUnlink walks the whole new path for Unlink,
+// which is the retirement this session is really about: `u` no longer unlinks,
+// so the Space sheet has to, and the confirmation behind it has to still commit
+// the keep-the-file removal the coordinator records.
+func TestAttachmentsSpaceSheetReachesUnlink(t *testing.T) {
+	driver, panel, press := mountAttachmentsPanel(t)
+
+	press("space")
+	sheet := driver.App().contextActionSheet
+	if sheet == nil {
+		t.Fatal("Space did not open the attachment action sheet")
+	}
+	want := []OperationID{
+		operationAttachmentRevealOriginal,
+		operationAttachmentOpenOriginalDirectory,
+		operationAttachmentOpenFolder,
+		operationAttachmentUnlink,
+		operationAttachmentDelete,
+	}
+	if got := sheet.operationIDs(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("attachment sheet lists %v, want exactly %v", got, want)
+	}
+
+	for range 3 {
+		press("down")
+	}
+	press("enter")
+
+	if driver.App().contextActionSheet != nil {
+		t.Fatal("choosing Unlink left the sheet open over the confirmation")
+	}
+	if !panel.confirm.IsActive() || panel.confirm.Action() != "unlink" {
+		t.Fatalf("the sheet's Unlink row raised confirm %q, want the unlink prompt", panel.confirm.Action())
+	}
+
+	coordinator, fake := newFakeAttachmentCoordinator()
+	panel.coordinator = coordinator
+	press("y")
+	if driver.pendingCmd == nil {
+		t.Fatal("confirming Unlink produced no command")
+	}
+	driver.pendingCmd()
+
+	if len(fake.removals) != 1 || fake.removals[0].index != 0 || fake.removals[0].deleteFile {
+		t.Fatalf("confirming the sheet's Unlink recorded %+v, want RemoveAttachment(index=0, deleteFile=false)", fake.removals)
+	}
 }
 
 func TestTaskAttachmentsDeleteDispatchesCoordinator(t *testing.T) {

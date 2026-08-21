@@ -41,7 +41,8 @@ func TestCommentsGuidanceTracksBrowseEmptyInputExpandedAndConfirmation(t *testin
 
 	spec, ok := model.guidanceSpec()
 	assertGuidanceContains(t, "comments browse", spec, ok,
-		"Enter expand", "a add", "e edit", "d delete", "y copy", "Y copy all", "Esc close")
+		"Enter expand", "a add", "e edit", "Space actions", "y copy", "Y copy all", "Esc close")
+	assertGuidanceExcludes(t, "comments browse", spec, "delete")
 	if spec.Rows != 1 {
 		t.Fatalf("comments browse rows = %d, want 1", spec.Rows)
 	}
@@ -66,7 +67,7 @@ func TestCommentsGuidanceTracksBrowseEmptyInputExpandedAndConfirmation(t *testin
 	task.Comments = nil
 	spec, ok = model.guidanceSpec()
 	assertGuidanceContains(t, "comments empty", spec, ok, "a add", "Esc close")
-	assertGuidanceExcludes(t, "comments empty", spec, "expand", "edit", "delete", "copy", "navigate")
+	assertGuidanceExcludes(t, "comments empty", spec, "expand", "edit", "delete", "copy", "actions", "navigate")
 }
 
 func TestAttachmentGuidanceTracksFileCodeURLAndEmptyVariants(t *testing.T) {
@@ -80,24 +81,24 @@ func TestAttachmentGuidanceTracksFileCodeURLAndEmptyVariants(t *testing.T) {
 
 	spec, ok := model.guidanceSpec()
 	assertGuidanceContains(t, "file attachment", spec, ok,
-		"o open", "e edit", "Ctrl+O original", "y copy", "d delete", "u unlink", "J/K reorder", "Esc close")
-	assertGuidanceExcludes(t, "file attachment", spec, "copy path:line")
+		"Enter open", "e edit", "y copy", "Space actions", "J/K reorder", "Esc close")
+	assertGuidanceExcludes(t, "file attachment", spec, "copy path:line", "delete", "unlink", "original")
 
 	model.cursor = 1
 	spec, ok = model.guidanceSpec()
-	assertGuidanceContains(t, "code attachment", spec, ok, "o open", "e edit", "Y copy path:line", "J/K reorder")
-	assertGuidanceExcludes(t, "code attachment", spec, "Ctrl+O original")
+	assertGuidanceContains(t, "code attachment", spec, ok, "Enter open", "e edit", "Y copy path:line", "J/K reorder")
+	assertGuidanceExcludes(t, "code attachment", spec, "original")
 
 	model.cursor = 2
 	spec, ok = model.guidanceSpec()
-	assertGuidanceContains(t, "URL attachment", spec, ok, "o open", "y copy", "d delete", "u unlink")
-	assertGuidanceExcludes(t, "URL attachment", spec, "e edit", "Ctrl+O original", "copy path:line")
+	assertGuidanceContains(t, "URL attachment", spec, ok, "Enter open", "y copy", "Space actions")
+	assertGuidanceExcludes(t, "URL attachment", spec, "e edit", "original", "copy path:line", "delete", "unlink")
 
 	task.Attachments = nil
 	model.cursor = 0
 	spec, ok = model.guidanceSpec()
 	assertGuidanceContains(t, "attachments empty", spec, ok, "a add", "Esc close")
-	assertGuidanceExcludes(t, "attachments empty", spec, "open", "edit", "copy", "delete", "unlink", "reorder", "navigate")
+	assertGuidanceExcludes(t, "attachments empty", spec, "open", "edit", "copy", "actions", "reorder", "navigate")
 
 	model.addMode = true
 	spec, ok = model.guidanceSpec()

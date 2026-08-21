@@ -13,6 +13,24 @@
     { "type": "assert", "assert": "contains", "value": "Comments" },
     { "type": "assert", "assert": "not_contains", "value": "Decisions" },
     { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "add a comment", "key": "a" },
+    { "type": "text", "text": "checked the redirect handler" },
+    { "type": "key", "label": "save the comment", "key": "ctrl+s" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "checked the redirect handler" },
+    { "type": "assert", "label": "expand is Enter and delete moved behind Space", "assert": "contains", "value": "Enter expand" },
+    { "type": "assert", "assert": "contains", "value": "Space actions" },
+    { "type": "assert", "label": "the retired keys left the footer with them", "assert": "not_contains", "value": "d delete" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "open the comment action sheet", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Comment Actions" },
+    { "type": "assert", "assert": "contains", "value": "Delete comment" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "close the comment sheet", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Comment Actions" },
+
     { "type": "key", "label": "return to Outliner", "key": "esc" },
 
     { "type": "key", "label": "open task actions for attachments", "key": "space" },
@@ -21,6 +39,29 @@
     { "type": "assert", "assert": "view", "value": "TaskAttachments" },
     { "type": "assert", "assert": "contains", "value": "Attachments" },
     { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "add a URL attachment", "key": "a" },
+    { "type": "text", "text": "https://example.com/spec.pdf" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "https://example.com/spec.pdf" },
+    { "type": "assert", "label": "open is Enter and the rare acts moved behind Space", "assert": "contains", "value": "Enter open" },
+    { "type": "assert", "assert": "contains", "value": "Space actions" },
+    { "type": "assert", "label": "the retired keys left the footer with them", "assert": "not_contains", "value": "u unlink" },
+    { "type": "assert", "assert": "not_contains", "value": "d delete" },
+    { "type": "assert", "assert": "not_contains", "value": "O directory" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "open the attachment action sheet", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Attachment Actions" },
+    { "type": "assert", "assert": "contains", "value": "Reveal original file" },
+    { "type": "assert", "assert": "contains", "value": "Open original directory" },
+    { "type": "assert", "assert": "contains", "value": "Open attachments directory" },
+    { "type": "assert", "assert": "contains", "value": "Unlink attachment" },
+    { "type": "assert", "assert": "contains", "value": "Delete attachment" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "close the attachment sheet", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Attachment Actions" },
+
     { "type": "key", "label": "return to Outliner", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" }
   ]

@@ -6,19 +6,25 @@
     { "type": "key", "label": "open Select Project", "key": "p" },
     { "type": "assert", "assert": "view", "value": "ProjectHub" },
     { "type": "assert", "assert": "contains", "value": "Mix Quiet Planning" },
-    { "type": "key", "label": "filter to projects holding tasks without leaving the search input", "key": "ctrl+t" },
+    { "type": "key", "label": "filter to projects holding tasks from the browse grammar", "key": "ctrl+t" },
     { "type": "assert", "assert": "not_contains", "value": "Mix Quiet Planning" },
     { "type": "assert", "assert": "contains", "value": "Mix Parked Migration" },
     { "type": "assert", "assert": "contains", "value": "· with tasks" },
-    { "type": "key", "label": "leave the search input for the browse grammar", "key": "esc" },
-    { "type": "key", "label": "cycle to the projects holding no tasks", "key": "ctrl+t" },
+    { "type": "key", "label": "open project search", "key": "/" },
+    { "type": "key", "label": "cycle to the projects holding no tasks without leaving the search input", "key": "ctrl+t" },
     { "type": "assert", "assert": "contains", "value": "Mix Quiet Planning" },
     { "type": "assert", "assert": "not_contains", "value": "Mix Parked Migration" },
     { "type": "assert", "assert": "contains", "value": "· without tasks" },
+    { "type": "key", "label": "leave the search input for the browse grammar", "key": "esc" },
     { "type": "key", "label": "cycle back to every project", "key": "ctrl+t" },
     { "type": "assert", "assert": "contains", "value": "Mix Quiet Planning" },
     { "type": "assert", "assert": "contains", "value": "Mix Parked Migration" },
     { "type": "assert", "assert": "not_contains", "value": "· without tasks" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "the ten browse hints and a filter chip at their narrowest", "width": 60, "height": 20 },
+    { "type": "key", "label": "put the chip back beside the hints", "key": "ctrl+t" },
+    { "type": "assert", "assert": "contains", "value": "· with tasks" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

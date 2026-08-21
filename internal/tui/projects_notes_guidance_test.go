@@ -12,26 +12,32 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-func TestProjectHubGuidanceFollowsSearchBrowseSelectionAndActions(t *testing.T) {
+func TestProjectHubGuidanceFollowsBrowseSearchSelectionAndActions(t *testing.T) {
 	hub := openProjectHub(t, projectHubApp(t))
 
 	spec, ok := hub.ContextualGuidance()
+	assertGuidanceContains(t, "project browse", spec, ok,
+		"Enter open", "Space actions", "a new", "e edit", "* pin",
+		"# project tags", "Ctrl+N notes", "/ search")
+	if spec.Rows != 1 {
+		t.Fatalf("browse guidance rows = %d, want 1", spec.Rows)
+	}
+
+	_, _ = hub.Update(syntheticKey('/'))
+	spec, ok = hub.ContextualGuidance()
 	assertGuidanceContains(t, "project search editing", spec, ok,
-		"Enter open project", "Esc browse matches", "↑/↓ or Ctrl+J/K navigate")
+		"Enter open", "Esc browse matches", "↑/↓ or Ctrl+J/K navigate")
 	if spec.Rows != 2 {
 		t.Fatalf("search-edit guidance rows = %d, want 2", spec.Rows)
 	}
 	if len(spec.Hints) < 2 || !spec.Hints[0].Required || !spec.Hints[1].Required {
 		t.Fatalf("required search controls do not precede browse hints: %+v", spec.Hints)
 	}
-
-	_, _ = hub.Update(syntheticSpecialKey(tea.KeyEsc))
-	spec, ok = hub.ContextualGuidance()
-	assertGuidanceContains(t, "project browse", spec, ok,
-		"Enter open project", "Space actions", "n new project", "/ search")
-	if spec.Rows != 1 {
-		t.Fatalf("browse guidance rows = %d, want 1", spec.Rows)
+	// Typing the query is not the moment to advertise the whole grammar.
+	if got := guidanceEntryText(spec); strings.Contains(got, "a new") {
+		t.Fatalf("search-edit guidance still offers the browse grammar: %q", got)
 	}
+	_, _ = hub.Update(syntheticSpecialKey(tea.KeyEsc))
 
 	hub.SetSearchQuery("alpha")
 	hub.applyProjectFilter()
@@ -48,7 +54,7 @@ func TestProjectHubGuidanceFollowsSearchBrowseSelectionAndActions(t *testing.T) 
 	hub.applyProjectFilter()
 	hub.toggleProjectHubSelection()
 	spec, ok = hub.ContextualGuidance()
-	assertGuidanceContains(t, "project selection", spec, ok, "Space bulk actions", "v toggle", "a/A all")
+	assertGuidanceContains(t, "project selection", spec, ok, "Space actions", "v select", "Ctrl+A select all")
 	if spec.Supplemental != "1 selected" {
 		t.Fatalf("selection supplemental = %q", spec.Supplemental)
 	}
@@ -70,12 +76,11 @@ func TestProjectHubGuidanceFollowsSearchBrowseSelectionAndActions(t *testing.T) 
 
 func TestProjectHubGuidanceUsesCausalEmptyRecovery(t *testing.T) {
 	hub := openProjectHub(t, projectHubApp(t))
-	_, _ = hub.Update(syntheticSpecialKey(tea.KeyEsc))
 	if err := hub.surface.Reload(nil, hub.projectHubCategories()); err != nil {
 		t.Fatalf("empty Project Hub surface: %v", err)
 	}
 	spec, ok := hub.ContextualGuidance()
-	assertGuidanceContains(t, "empty projects", spec, ok, "n new project")
+	assertGuidanceContains(t, "empty projects", spec, ok, "a new")
 	if len(spec.Hints) == 0 || !spec.Hints[0].Required {
 		t.Fatalf("empty-project recovery is not required: %+v", spec.Hints)
 	}
@@ -87,15 +92,16 @@ func TestNotesGuidanceFollowsBrowseSearchRenameMoveAndDelete(t *testing.T) {
 		app.GlobalNoteLocation(): {{Title: "Global note", Filename: "global.md"}},
 	}}
 	view := NewNotesViewModelWithService(t.TempDir(), AllNotesScope(), service, nil, project)
+	shell := mountNotesManager(t, view)
 	view.SetSize(80, 24)
 
 	spec, ok := view.ContextualGuidance()
-	assertGuidanceContains(t, "notes browse", spec, ok, "Enter open/edit", "n new", "v scope", "s search")
+	assertGuidanceContains(t, "notes browse", spec, ok, "Enter open/edit", "a new", "p scope", "/ search")
 	if !strings.Contains(spec.Supplemental, "location: Global") {
 		t.Fatalf("browse guidance omits location context: %+v", spec)
 	}
 
-	_, _ = view.Update(syntheticKey('s'))
+	_, _ = view.Update(syntheticKey('/'))
 	spec, ok = view.ContextualGuidance()
 	assertRequiredGuidance(t, "notes search", spec, ok, "Enter apply search", "Esc cancel edit")
 	for _, r := range "missing" {
@@ -110,12 +116,12 @@ func TestNotesGuidanceFollowsBrowseSearchRenameMoveAndDelete(t *testing.T) {
 	assertRequiredGuidance(t, "notes applied no-match", spec, ok, "Esc clear search")
 	_, _ = view.Update(syntheticSpecialKey(tea.KeyEsc))
 
-	_, _ = view.Update(syntheticKey('r'))
+	_, _ = view.Update(syntheticKey('e'))
 	spec, ok = view.ContextualGuidance()
 	assertRequiredGuidance(t, "notes rename", spec, ok, "Enter save", "Esc cancel")
 	_, _ = view.Update(syntheticSpecialKey(tea.KeyEsc))
 
-	_, _ = view.Update(syntheticKey('m'))
+	_, _ = view.Update(syntheticKey('%'))
 	if view.locationPicker == nil || view.locationPicker.purpose != notesLocationPickerMove {
 		t.Fatal("move did not open the location picker")
 	}
@@ -124,7 +130,19 @@ func TestNotesGuidanceFollowsBrowseSearchRenameMoveAndDelete(t *testing.T) {
 	_, cancelCmd := view.Update(syntheticSpecialKey(tea.KeyEsc))
 	_, _ = view.Update(cancelCmd())
 
-	_, _ = view.Update(syntheticKey('x'))
+	// Delete has no direct key: the Space sheet is its one path, and choosing it
+	// hands the confirmation back to the manager that owns the row.
+	_, _ = view.Update(syntheticKey(' '))
+	if shell.contextActionSheet == nil {
+		t.Fatal("Space did not open the note action sheet")
+	}
+	handled, sheetCmd := shell.handleGlobalKeyPress(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if !handled || sheetCmd == nil {
+		t.Fatalf("sheet Enter = handled %t cmd %v", handled, sheetCmd)
+	}
+	if handled, _ := shell.handleOperationOverlayMessage(sheetCmd()); !handled {
+		t.Fatal("the sheet's Delete row was not executed")
+	}
 	spec, ok = view.ContextualGuidance()
 	assertRequiredGuidance(t, "notes delete", spec, ok, "Y delete", "N/Esc cancel")
 }
@@ -134,10 +152,11 @@ func TestNotesGuidanceCausalEmptyAndFooterHeightKeepSelectionVisible(t *testing.
 		t.TempDir(), AllNotesScope(),
 		&combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{}}, nil,
 	)
+	mountNotesManager(t, empty)
 	empty.SetSize(32, 12)
 	spec, ok := empty.ContextualGuidance()
-	assertRequiredGuidance(t, "empty notes", spec, ok, "n choose location")
-	_, _ = empty.Update(syntheticKey('n'))
+	assertRequiredGuidance(t, "empty notes", spec, ok, "a choose location")
+	_, _ = empty.Update(syntheticKey('a'))
 	spec, ok = empty.ContextualGuidance()
 	assertRequiredGuidance(t, "notes creation location", spec, ok, "Enter choose", "Esc cancel")
 	assertGuidanceFits(t, spec, 24)
@@ -154,10 +173,11 @@ func TestNotesGuidanceCausalEmptyAndFooterHeightKeepSelectionVisible(t *testing.
 			app.GlobalNoteLocation(): notes,
 		}}, nil,
 	)
+	mountNotesManager(t, view)
 	view.SetSize(48, 12)
 	view.cursor = len(view.visibleRows) - 1
 	_ = view.View()
-	_, _ = view.Update(syntheticKey('s'))
+	_, _ = view.Update(syntheticKey('/'))
 	rendered := view.View().Content
 	if !strings.Contains(rendered, "Note 23") || view.scrollOffset == 0 {
 		t.Fatalf("two-row search footer lost persistent selection: offset=%d\n%s", view.scrollOffset, rendered)

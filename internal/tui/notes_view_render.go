@@ -65,7 +65,7 @@ func (m *NotesViewModel) renderListPaneHeight(listHeight int) string {
 	}
 	if len(m.visibleRows) == 0 {
 		if strings.TrimSpace(m.activeSearchQuery()) != "" {
-			hint := "Press s to edit the search or Esc to clear it."
+			hint := "Press / to edit the search or Esc to clear it."
 			if m.searchEditing {
 				hint = "Keep typing or press Esc to restore the accepted search."
 			}
@@ -78,7 +78,7 @@ func (m *NotesViewModel) renderListPaneHeight(listHeight int) string {
 		if len(m.collectionErrors) > 0 {
 			message = "No notes loaded from the available owners."
 		}
-		return renderEmptyState(message, "Press n or a to choose a location and create one.") + "\n"
+		return renderEmptyState(message, "Press a to choose a location and create one.") + "\n"
 	}
 
 	var b strings.Builder
@@ -220,22 +220,26 @@ func (m *NotesViewModel) renderStatusBar() string {
 	return SuccessStyle.Render(m.statusMessage)
 }
 
-// GetHelpItems returns keybinding help for the Notes manager.
+// GetHelpItems documents the Notes grammar from the two sources that own it:
+// the registry describes every operation the strategy binds, and the keymap
+// names the cursor and undo/redo keys whose descriptors answer only to the
+// Outliner. Keys documented by both keep the registry's spelling.
 func (m *NotesViewModel) GetHelpItems() []HelpItem {
 	if m.locationPicker != nil {
 		return m.locationPicker.GetHelpItems()
 	}
-	return []HelpItem{
-		{Key: "j/k", Description: "Navigate"},
-		{Key: "Enter", Description: "Open in external editor"},
-		{Key: "n/a", Description: "Create in Global or an active project"},
-		{Key: "v", Description: "Choose All, Global, or active-project scope"},
-		{Key: "s", Description: "Search note titles and bodies"},
-		{Key: "r", Description: "Rename note"},
-		{Key: "m", Description: "Move to Global or an active project"},
-		{Key: "x", Description: "Delete note"},
-		{Key: "u", Description: "Undo workspace change"},
-		{Key: "Ctrl+R", Description: "Redo workspace change"},
-		{Key: "Esc", Description: "Cancel search, clear it, or close Notes"},
+	if m.registry == nil {
+		return nil
 	}
+	items := m.registry.HelpItemsForInputStrategy(InputStrategyNotes, m.notesCommandContext())
+	documented := make(map[string]bool, len(items))
+	for _, item := range items {
+		documented[strings.ToLower(item.Key)] = true
+	}
+	for _, item := range helpItemsFromKeyMap(m.buildKeyMap()) {
+		if !documented[strings.ToLower(item.Key)] {
+			items = append(items, item)
+		}
+	}
+	return items
 }

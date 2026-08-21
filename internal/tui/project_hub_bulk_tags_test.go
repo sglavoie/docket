@@ -16,7 +16,6 @@ import (
 // browse grammar stops reaching selection.
 func selectProjectHubRows(t *testing.T, hub *ProjectHubModel, ids ...ListItemID) {
 	t.Helper()
-	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	for _, id := range ids {
 		focusProjectHubItem(t, hub, id)
 		hub.Update(syntheticKey('v'))
@@ -40,18 +39,22 @@ func TestProjectHubSelectionOpensExactlyTheBulkTagActions(t *testing.T) {
 	}
 }
 
+// Retiring A left Esc as the only way to drop every checkbox at once, so the
+// selection is an unwind rung ahead of closing the Hub.
 func TestProjectHubSelectEveryMatchThenClear(t *testing.T) {
 	app := projectHubApp(t)
 	hub := openProjectHub(t, app)
-	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 
-	hub.Update(syntheticKey('a'))
+	hub.Update(syntheticCtrlKey('a'))
 	if hub.selectionCount() != len(hub.surface.Matches()) {
-		t.Fatalf("a selected %d of %d matches", hub.selectionCount(), len(hub.surface.Matches()))
+		t.Fatalf("Ctrl+A selected %d of %d matches", hub.selectionCount(), len(hub.surface.Matches()))
 	}
-	hub.Update(syntheticKey('A'))
+	if !hub.ShouldCaptureEsc() {
+		t.Fatal("a selection did not claim Esc")
+	}
+	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	if hub.selectionCount() != 0 {
-		t.Fatalf("A left %d rows selected", hub.selectionCount())
+		t.Fatalf("Esc left %d rows selected", hub.selectionCount())
 	}
 }
 

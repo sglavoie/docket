@@ -1,15 +1,5 @@
 package tui
 
-func GlobalNoteEntity(filename string) EntityIdentity {
-	return normalizeEntityIdentity(EntityIdentity{Kind: EntityKindNote, Scope: EntityScopeGlobal, Name: filename})
-}
-
-func ProjectNoteEntity(projectID, filename string) EntityIdentity {
-	return normalizeEntityIdentity(EntityIdentity{
-		Kind: EntityKindNote, Scope: EntityScopeProject, ProjectID: projectID, Name: filename,
-	})
-}
-
 func WorkspaceTagEntity(name string) EntityIdentity {
 	return normalizeEntityIdentity(EntityIdentity{Kind: EntityKindTag, Scope: EntityScopeGlobal, Name: name})
 }

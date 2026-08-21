@@ -42,6 +42,7 @@ type ManageHubDependencies struct {
 	TaskCounts         func() map[string]int
 	OperationRegistry  *OperationRegistry
 	OperationExecutor  *OperationExecutor
+	DispatchKey        operationKeyDispatch
 }
 
 // ManageHubModel is the sole live Manage destination for collection and log
@@ -82,26 +83,11 @@ func (m *ManageHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	if key, ok := msg.(tea.KeyPressMsg); ok && !m.HasTextInput() && !m.IsConfirmActive() {
-		msg = m.normalizeCollectionKey(key)
-	}
-
 	updated, cmd := m.active.Update(msg)
 	if view, ok := updated.(View); ok {
 		m.active = view
 	}
 	return m, cmd
-}
-
-func (m *ManageHubModel) normalizeCollectionKey(key tea.KeyPressMsg) tea.Msg {
-	switch m.params.Module { //nolint:exhaustive // Only collection modules translate shared action keys.
-	case ManageNotes:
-		switch key.String() {
-		case "a":
-			return syntheticKey('n')
-		}
-	}
-	return key
 }
 
 // Activate validates and installs one collection module. App scope and project
@@ -128,7 +114,7 @@ func (m *ManageHubModel) Activate(params ManageParams) error {
 		}
 	}
 	// Projects reads live state at construction time, so a cached instance would
-	// show stale rows and would not reopen in search.
+	// show stale rows.
 	if key == m.activeKey && m.active != nil && params.Module != ManageProjects {
 		return nil
 	}
@@ -136,16 +122,18 @@ func (m *ManageHubModel) Activate(params ManageParams) error {
 	var view View
 	switch params.Module {
 	case ManageNotes:
-		view = NewNotesViewModelWithService(
+		notes := NewNotesViewModelWithService(
 			storage.GlobalNotesDir(m.deps.Runtime.DataDir()),
 			params.NotesScope,
 			m.deps.NoteService,
 			m.deps.HistoryLedger,
 			m.deps.Runtime.AvailableProjects()...,
 		)
+		notes.SetOperationSystem(m.deps.OperationRegistry, m.deps.DispatchKey)
+		view = notes
 	case ManageProjects:
 		hub := NewProjectHubModel(m.deps.Runtime)
-		hub.SetOperationSystem(m.deps.OperationRegistry, m.deps.OperationExecutor)
+		hub.SetOperationSystem(m.deps.OperationRegistry, m.deps.OperationExecutor, m.deps.DispatchKey)
 		if m.deps.ActiveProjectFocus != nil {
 			hub.SetProjectFocus(m.deps.ActiveProjectFocus())
 		}
@@ -297,14 +285,9 @@ func (m *ManageHubModel) GetHelpItems() []HelpItem {
 	if provider, ok := m.active.(HelpProvider); ok {
 		return append([]HelpItem(nil), provider.GetHelpItems()...)
 	}
-	return []HelpItem{
-		{Key: "j/k", Description: "Move selection", Category: "Navigation"},
-		{Key: "enter", Description: "Open selected item", Category: "Navigation"},
-		{Key: "a/e/x", Description: "Add, edit, or delete", Category: "Actions"},
-		{Key: "space", Description: "Select or toggle", Category: "Actions"},
-		{Key: "/", Description: "Filter collection", Category: "Filters"},
-		{Key: "v", Description: "Scope or view", Category: "View"},
-	}
+	// Both collections answer HelpProvider, so an unactivated hub has no grammar
+	// to describe rather than a generic one.
+	return nil
 }
 
 func (m *ManageHubModel) StatusBarLabel() string {

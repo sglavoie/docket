@@ -74,20 +74,36 @@ Active Projects, All, with no restored navigation, search, filters, or
 selection.
 
 `OperationRegistry` is the descriptor authority, `OperationExecutor` the single
-invocation pipeline, and `SimplifiedInputStrategy` the source of direct
-dispatch, handled keys, footer and chord hints, `?` help, and scenario
-discovery. Register an operation once and let those projections consume it; do
-not add a parallel key router, palette, or view-specific copy.
+invocation pipeline, and each surface's `InputStrategy` the source of its direct
+dispatch, handled keys, chord hints, `?` help, and scenario discovery. Register
+an operation once and let those projections consume it; do not add a parallel
+key router, palette, or view-specific copy. `surfaceOperationGates()` lists the
+five live strategies. A footer has one source: the strategy's ranks, or the
+gated keymap where modal sub-states narrow a key.
 
-A task operation is direct-only or menu-only, never both, enforced by
-`validateTaskOperationOnePath`. The task-row `Space` menu is exactly Comments,
-Attachments, Delete; the bulk menu is Delete only; Delete has no direct key and
-confirms first.
+An entity operation is direct-only or menu-only, never both, on every surface,
+enforced by `validateOperationOnePath` over that surface's manifest. The
+task-row `Space` menu is exactly Comments, Attachments, Delete; the bulk menu is
+Delete only; Delete has no direct key and confirms first. The Hub sheet is
+Archive or Unarchive plus bulk tags; Notes and Comments list Delete alone.
 
-`#` is the one shared key, declared by `tui.task.set-tags` and
-`tui.project.set-tags` with the cursor deciding. Keep them two operations so the
-footer and `?` help carry two honest labels; never branch one descriptor's
-target source on runtime context.
+One key is one act on every entity surface:
+
+| Keys | Act |
+| --- | --- |
+| `Enter` `a` `e` `E`/`Ctrl+E` | open · create · edit · body/external |
+| `/` `v` `Ctrl+A` `p` `%` | search · select · select all · scope · reown |
+| `y`/`Y` `J`/`K` `*` `#` | copy · reorder · pin · tags |
+| `u`/`Ctrl+R` `gg`/`G` `Esc` `?` | undo/redo · ends · unwind · help |
+| `Space` | menu: destructive and rare operations only |
+
+Transient input overlays are exempt: composer, project editor/creator, text
+editor, operation text prompt, tag/date add modes, list picker adapter, and the
+outline error and help viewers. They are modal value entry, not grammars.
+
+`#` is the one shared key: `tui.task.set-tags` and `tui.project.set-tags`, the
+cursor deciding. Keep them two so the footer and `?` help carry two honest
+labels; never branch one descriptor's target source on runtime context.
 
 Checklist rules:
 
@@ -99,8 +115,8 @@ Checklist rules:
 
 Emit project group headers through the shared `appendProjectGroupHeader` kernel,
 never a per-mode copy. Each grouping surface owns a disjoint `collapsedSections`
-namespace, since that map is never cleared on a mode change; grouping never
-reorders a mode's primary sort.
+namespace, since it is never cleared on a mode change; grouping never reorders a
+mode's primary sort.
 
 All's Stale lane follows Review; below Pinned/Today/Next/Review/Doing. It
 admits open, undeferred work untouched for at least 90 days. `fs` is
@@ -115,9 +131,9 @@ Manual order is never touched by the sort axis, and that holds by construction
 rather than by a guard — do not add one. Group order never changes: a sort
 reorders tasks within their group only.
 
-The Outliner's notice and status render only in the shell-pinned strip;
-`statusStripHeight` reserves its height from `computeOutlinerViewport`. A view
-status is transient except the multi-select summary.
+Notice and status render only in the shell-pinned strip, whose height
+`statusStripHeight` reserves from `computeOutlinerViewport`. A view status is
+transient except the multi-select summary.
 
 Only status text arms footer flash; cleared text and other chrome do not. Arming
 stays in the one deferred closure in `AppModel.Update`. Feed divider appearance
@@ -147,16 +163,15 @@ Row and Peek budget:
   pace outranks the workspace pulse: exhaust that ladder first, then shorten and
   remove pace before truncating required interaction context.
 
-`O` refuses under a visual selection and in every mode that is not
-`OrderPolicyTree`; its scope is what the dump actually printed, never
-`project.Tasks`. There is no `$delete` sigil: a dumped task whose line is gone
+`O` refuses under a visual selection and outside `OrderPolicyTree`; its scope is
+what the dump printed, never `project.Tasks`. There is no `$delete` sigil: a dumped task whose line is gone
 is deleted, under one confirmation, in the same transaction and undo entry as
 the edits beside it.
 
-Entering visual selection closes Peek, and while a selection exists structural,
-edit, Peek, relation, and clipboard operations must reject it rather than fall
-back to the cursor. Only Focus and `Ctrl+P` exit search onto the result.
-Relocation jump history is session-only and scoped to the current projection.
+Entering visual selection closes Peek; while one exists, structural, edit, Peek,
+relation, and clipboard operations must reject rather than fall back to the
+cursor. Only Focus and `Ctrl+P` exit search onto the result. Jump history is
+session-only, scoped to the current projection.
 
 Notes stay location-qualified, exclude archived projects, and do not regain
 tags, task links, pins, bulk actions, or previews. `T` toggles only dark/light.
@@ -174,8 +189,7 @@ snooze or defer, and cursor-top is `gg` or `Home`.
 must precede the mode switch, since the push captures the frame `Esc` restores.
 
 `>` and `<` are Set Parent and Adopt Children; indent and outdent are `]` and
-`[`, which own no sigil. Pin's key is its sigil, `*`; the `*pin` grammar route
-is not a second path.
+`[`, which own no sigil. `*pin` is not a second route to `*`.
 
 An abandoned chord prefix warns, naming the path it left (`$q is not a workflow
 action`); an unbound root key is silent.
@@ -197,9 +211,8 @@ metadata. Parking stays hardcoded in `TaskWorkspaceProjects()`; precedence
 
 Keep the two populations named apart: `Runtime.TaskWorkspaceProjects()` is
 non-archived and not parked and is the only one the base Outliner reads, while
-`Runtime.AvailableProjects()` is every non-archived project and keeps parked
-projects reachable for Notes, `%project`, Select Project, and one explicit
-focus.
+`Runtime.AvailableProjects()` is every non-archived project and is what keeps
+parked ones reachable.
 
 Parking is the one project tag edit that confirms. It preserves Today/Next refs;
 archiving preserves tags. Both filter at read time.
@@ -291,7 +304,7 @@ records nothing.
 ## Documentation and scenarios
 
 User-facing docs must describe only the eight-state, seven-mode, Outliner-only
-product and maintenance-only CLI. Historical fields may appear only in clearly
+product and maintenance-only CLI. Historical fields may appear only in
 identified migration sections.
 
 Every JSON file in `docs/tui-testing/scenarios/` is a committed final-product
@@ -305,19 +318,13 @@ rules live in
 
 ## Where the details live
 
+Guessable addresses are omitted; do not restore them.
+
 | Topic | `README.md` § | `docs/architecture.md` § |
 | --- | --- | --- |
 | Modes, key table, grouping, checklist, Recent | Outliner grammar; Inline checklist rows | TUI architecture |
-| Pinned, Review, title fitter, guidance | Presentation grammar | Presentation chrome |
+| Pinned, Review, title fitter, guidance, status strip, footer flash | Presentation grammar | Presentation chrome; Status flash |
 | Defer, waiting, check-back, drop ladder | Peek and multi-select | Row indicators |
-| Status strip, footer flash | Presentation grammar | Status flash |
 | Registry, executor, providers, chaining | Task actions | One operation grammar |
-| Capture sigils, adoption, destinations | Capture grammar | Capture and inline-edit grammar |
-| Outline editor, declarative deletion | Outline editing | Outline editor |
-| Filters, `F`, search, jumps, Focus, Peek | Filters and search; Peek and multi-select | Search, filters, and Peek |
-| Sort axis, manual-order exemption | Sorting | Sorting axis |
-| Selection, Select Project, `Ctrl+T` | Peek and multi-select | Selection and subordinate tools |
-| Project tags, parking, populations, Notes | Project tags; Scope, projects, and Notes | Project tags |
+| Filters, search, jumps, Focus, Peek, selection, `Ctrl+T` | Filters and search; Peek and multi-select | Search, filters, and Peek; Selection and subordinate tools |
 | Storage layout, migration chain | Schema 13 storage and migration | Persistence layout; Snapshot-first schema migration |
-| Transactions, undo ledger, conflicts | Undo, recovery, and conflicts | Transactions and recovery |
-| Maintenance CLI, platform support | Maintenance CLI | Maintenance CLI and platform support |

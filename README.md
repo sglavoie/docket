@@ -172,14 +172,27 @@ same key adds a new tag, or a new context when the cursor sits on a context row.
 
 The operation descriptors are the single source for dispatch, contextual
 guidance, chord hints, and `?` help. Every key an earlier vocabulary used and
-the sigils replaced is simply unbound, with no compatibility action: the old
-standalone `b`, `c`, `m`, `t`, `w`, and `P` actions, the comma state prefix, and
-`:`, `C`, `R`, and `Ctrl+Esc`.
-`d` is unbound: Done stays `$d` alone, `@` answers both dates, and root `z` is the scroll chord prefix.
-`$` joins them as a chord prefix rather than a key of its own. Pressing an
-unfinished chord and then a key it does not offer names the path you left, as
-`$q is not a workflow action`; pressing a key that was never bound does nothing
-and says nothing, because it never promised anything.
+the sigils replaced is simply unbound, with no compatibility action, and every
+surface's retirements are inventoried here rather than left beside the surface
+that dropped them. The Outliner gave up the old standalone `b`, `c`, `m`, `t`,
+`w`, and `P` actions, the comma state prefix, and `:`, `C`, `R`, and `Ctrl+Esc`.
+`d` is unbound: Done stays `$d` alone, `@` answers both dates, and root `z` is
+the scroll chord prefix. `$` joins them as a chord prefix rather than a key of
+its own. Select Project holds the same line: `n` no longer creates a project,
+`A` no longer clears a selection, and bare `g` is the go-to prefix rather than
+cursor-top, so all three are silent there. All Notes retired `s`, `r`, `m`, `n`,
+and `x` for `/`, `e`, `%`, `a`, and the `Space` sheet, and freed `v` rather than
+reassigning it, because Notes has no selection for it to toggle; all six are
+silent there. Attachments retired `u`, `d`, and `x` for its `Space` sheet, `o`
+for `Enter`, and `O`, `Ctrl+E`, and `Ctrl+O` for that same sheet; all seven are
+silent there, and `u` most of all, because a key that means undo everywhere else
+may not unlink a file here. Comments retired the hidden `n` add alias for `a`,
+and `d` and `x` for its `Space` sheet; all three are silent there, because a
+comment may not stay one press from deletion while a task cannot be deleted that
+way. One rule covers that whole inventory. Pressing an unfinished chord and then
+a key it does not offer names the path you left, as `$q is not a workflow
+action`; pressing a key that was never bound does nothing and says nothing,
+because it never promised anything.
 Review has no key of its own: it is the ordinary `review` tag set from `#`, and
 `$review` is a rejected destination, so no `$` terminal could honor it.
 
@@ -286,6 +299,26 @@ The list filters as soon as printable text is typed. Frequent direct operations
 do not repeat in this menu. Delete always asks for confirmation. The checklist
 is absent because it is edited on its own rows, and a second route to the same
 mutations is the shape this menu exists to avoid.
+
+The Attachments panel that `Space` opens carries the same split. `Enter` opens
+the attachment under the cursor, `a` adds one, `e` opens it in the editor, `y`
+and `Y` copy its path and its `path:line` form, and `J`/`K` reorder it. Its own
+`Space` sheet holds the five acts a direct key would have spent for nothing:
+
+1. Reveal original
+2. Open original
+3. Open attachments folder
+4. Unlink
+5. Delete
+
+Unlink and Delete both confirm, and neither has a direct key: removing an
+attachment is now a deliberate menu row rather than a single press.
+
+The Comments panel splits the same way. `Enter` expands the comment under the
+cursor, `a` adds one, `e` edits it inline, `E` opens it in the external editor,
+and `y` and `Y` copy that comment and every comment as Markdown. Its own `Space`
+sheet holds Delete alone, which confirms and has no direct key, so a comment
+leaves the list only through a deliberate menu row.
 
 Press `e` to edit the selected task in place. Append `%project` to move its
 subtree, `>parent` to reparent it, `>0` to move it to the project root, or
@@ -697,18 +730,22 @@ Parents are project-local and hierarchy depth is capped at six.
 ## Scope, projects, and Notes
 
 The Outliner opens on Active Projects, and scope is session-only. `p` opens
-Select Project with search focused immediately
-and includes active and archived projects. Each row carries its task count and
-its tag chips. `Enter` focuses
-the matching project in the same Outliner; `Esc` clears search and leaves the
-project surface open. Project administration supports create, edit, pin,
-archive, restore, and project Notes. The catalog ID, not a display
-name, protects the system Unfiled project.
+Select Project on a live cursor, browsing active and archived projects. Each row
+carries its task count and its tag chips. Administering a project is one press:
+`Enter` focuses it in the same Outliner, `a` creates one, `e` edits the one
+under the cursor, `*` toggles its pin, `#` sets its tags, and `Ctrl+N` opens its
+Notes. `Ctrl+T` cycles between every project, only those holding tasks, and only
+those holding none. The catalog ID, not a display name, protects the system
+Unfiled project.
 
-`v` selects the project under the cursor and `a`/`A` select or clear every
-project matching the current search. With a selection, `Space` offers Add tag,
-Remove tag, Park and Unpark across all of it, and the whole edit commits as one
-undo entry.
+`/` opens project search and `Esc` leaves the query for the matches it found.
+`v` selects the project under the cursor and `Ctrl+A` selects every project
+matching the current search. With a selection, `Space` offers Add tag, Remove
+tag, Park and Unpark across all of it, and the whole edit commits as one undo
+entry. Without one, `Space` offers Archive on an active project and Unarchive on
+an archived one — the two lifecycle actions no direct key reaches. `Esc` unwinds
+one rung at a time: the action sheet, then the query, then the selection, then
+the surface itself.
 
 ### Project tags
 
@@ -754,18 +791,21 @@ them unchanged.
 unarchived project, including the protected Unfiled project and every parked
 project. On a project header row it opens that project's notes instead. Rows
 are ordered by most recent
-modification and carry an owner label. `v` opens a searchable All, Global, or
-single-project scope picker, while `s` applies a persistent title/body search
+modification and carry an owner label. `p` opens a searchable All, Global, or
+single-project scope picker, while `/` applies a persistent title/body search
 inside the selected scope.
 
-`n` (or its `a` alias) always asks for a Global or unarchived-project
-destination before starting the editor, and `m` moves the selected note to
+`a` always asks for a Global or unarchived-project
+destination before starting the editor, `e` renames the note under the cursor,
+and `%` moves the selected note to
 another such owner as one atomic workspace transaction. `Enter` opens and edits the selected
 note in
 `TT_EDITOR`, then `VISUAL`, then `EDITOR`; if none is set, `tt` reports how to
-configure one. Notes support open/edit, create, rename, move, delete, undo, and
-redo. Note tags, task links, pins, bulk actions, previews, and archived-project
-ownership remain excluded.
+configure one. `Space` opens the note action sheet, which holds Delete alone and
+confirms before deleting; deletion has no direct key. Notes has no multi-select,
+so that sheet always acts on the one note under the cursor. Notes support
+open/edit, create, rename, move, delete, undo, and redo. Note tags, task links,
+pins, bulk actions, previews, and archived-project ownership remain excluded.
 
 `T` toggles exactly two maintained machine-local themes: dark and light.
 

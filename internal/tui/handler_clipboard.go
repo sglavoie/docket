@@ -1,13 +1,38 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
+	"os/exec"
+	"runtime"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/external"
 )
+
+var errClipboardUnsupported = errors.New("clipboard not supported on this OS")
+
+// copyTextToClipboard is a package var so tests can inject clipboard success,
+// unsupported, and error paths without shelling out to the platform tool.
+var copyTextToClipboard = func(text string) error {
+	var clipCmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		clipCmd = exec.Command("pbcopy")
+	case "linux":
+		clipCmd = exec.Command("xclip", "-selection", "clipboard")
+	case "windows":
+		clipCmd = exec.Command("clip")
+	default:
+		return errClipboardUnsupported
+	}
+
+	clipCmd.Stdin = strings.NewReader(text)
+	return clipCmd.Run()
+}
 
 // handleClipboardMessages handles clipboard-related messages (copy task title/details).
 // Returns true if the message was handled.

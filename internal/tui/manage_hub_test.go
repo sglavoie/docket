@@ -85,9 +85,9 @@ func TestManageHubScopeUsesRouteParams(t *testing.T) {
 		app.manageHub.StatusBarLabel() != "Notes · Global" {
 		t.Fatalf("initial Global scope = %#v/%#v/%q", params.NotesScope, globalNotes.scope, app.manageHub.StatusBarLabel())
 	}
-	_, _ = app.manageHub.Update(syntheticKey('v'))
+	_, _ = app.manageHub.Update(syntheticKey('p'))
 	if globalNotes.locationPicker == nil || globalNotes.locationPicker.purpose != notesLocationPickerScope {
-		t.Fatal("Manage Hub did not forward v to the Notes scope picker")
+		t.Fatal("Manage Hub did not forward p to the Notes scope picker")
 	}
 	globalNotes.locationPicker.SetCursorToID(notesLocationPickerItem{
 		Scope: ProjectNotesScope(project.ID),
@@ -115,7 +115,7 @@ func TestManageHubScopeUsesRouteParams(t *testing.T) {
 	if notes != globalNotes {
 		t.Fatal("scope selection rebuilt the Notes manager")
 	}
-	_, _ = app.manageHub.Update(syntheticKey('n'))
+	_, _ = app.manageHub.Update(syntheticKey('a'))
 	if notes.locationPicker == nil || notes.locationPicker.purpose != notesLocationPickerCreation ||
 		notes.locationPicker.SelectedItem().Location != apppkg.ProjectNoteLocation(project.ID) {
 		t.Fatalf("project scope creation picker = %#v, want project %q selected", notes.locationPicker, project.ID)
@@ -231,10 +231,18 @@ func TestManageHubCollectionGrammarAndProjectPickerFallback(t *testing.T) {
 		Location:   apppkg.GlobalNoteLocation(),
 		OwnerLabel: "Global",
 	}}
+	// Notes has no multi-select, so Space is one note's action sheet.
 	_, spaceCmd := app.manageHub.Update(tea.KeyPressMsg{Code: tea.KeySpace})
-	if spaceCmd != nil || len(notes.visibleRows) != 1 {
-		t.Fatal("Space exposed retired Notes multi-select behavior")
+	sheet := app.contextActionSheet
+	if spaceCmd != nil || len(notes.visibleRows) != 1 || sheet == nil ||
+		sheet.config.Bulk || sheet.config.Targets != 1 {
+		t.Fatalf("Space did not open a single-note action sheet: %#v", sheet)
 	}
+	if got := len(sheet.surface.Items()); got != 1 ||
+		!sheet.surface.SetCursorToID(ListItemID("note-action:"+string(operationNoteDelete))) {
+		t.Fatalf("note action sheet holds %d rows, want Delete alone", got)
+	}
+	app.contextActionSheet = nil
 	_, _ = app.manageHub.Update(syntheticKey('a'))
 	if notes.locationPicker == nil || notes.locationPicker.purpose != notesLocationPickerCreation {
 		t.Fatal("Notes a did not open the destination picker")
@@ -310,9 +318,19 @@ func TestManageHubNotesDeleteKeyDeletesGlobalAndProjectNotes(t *testing.T) {
 				OwnerLabel: notes.locationLabel(location),
 			}}
 
-			_, cmd := app.manageHub.Update(syntheticKey('x'))
-			if cmd != nil || !notes.confirm.IsActive() {
-				t.Fatalf("x did not open delete confirmation: cmd=%v active=%t", cmd, notes.confirm.IsActive())
+			_, cmd := app.manageHub.Update(tea.KeyPressMsg{Code: tea.KeySpace})
+			if cmd != nil || app.contextActionSheet == nil {
+				t.Fatalf("Space did not open the note action sheet: cmd=%v", cmd)
+			}
+			handled, sheetCmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: tea.KeyEnter})
+			if !handled || sheetCmd == nil {
+				t.Fatalf("sheet Enter = handled %t cmd %v", handled, sheetCmd)
+			}
+			if handled, _ := app.handleOperationOverlayMessage(sheetCmd()); !handled {
+				t.Fatal("the sheet's Delete row was not executed")
+			}
+			if app.contextActionSheet != nil || !notes.confirm.IsActive() {
+				t.Fatalf("sheet Delete did not hand the confirmation back: active=%t", notes.confirm.IsActive())
 			}
 			if overlay := app.renderConfirmDialogOverlay(); !strings.Contains(overlay, note.Title) {
 				t.Fatalf("delete confirmation overlay missing note title %q: %q", note.Title, overlay)

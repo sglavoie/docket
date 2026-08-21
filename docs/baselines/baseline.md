@@ -6,15 +6,17 @@ these numbers to prove the migration neither loses test coverage nor silently
 grows the direct-mutation surface. Regenerate the machine-checked pieces with the
 commands below; the counts here are a human-readable snapshot, not a hard gate.
 
-Recorded on: session 1 (Baseline and regression harness).
+Recorded on: session 1 (Baseline and regression harness). Every count below was
+last re-measured on 2026-08-20 by rerunning the command in its own `Reproduce`
+cell; a stale number here is a documentation bug, not a coverage regression.
 
 ## Test suite
 
 | Metric                    | Value | Reproduce |
 | ------------------------- | ----- | --------- |
-| Test functions (`func Test…`) | 5345 | `grep -rn '^func Test' . --include='*_test.go' \| wc -l` |
-| Test files                | 842   | `find . -name '*_test.go' -not -path './.git/*' \| wc -l` |
-| Packages                  | 25    | `go list ./... \| wc -l` |
+| Test functions (`func Test…`) | 2579 | `grep -rn '^func Test' . --include='*_test.go' \| wc -l` |
+| Test files                | 492   | `find . -name '*_test.go' -not -path './.git/*' \| wc -l` |
+| Packages                  | 23    | `go list ./... \| wc -l` |
 | Full suite (nonflaky)     | pass  | `go test -count=1 ./...` — run twice to confirm no flakes |
 
 The full suite is the primary regression gate. Session 1's completion contract
@@ -35,15 +37,16 @@ gates:
 | Public cutover milestones | `go test -race ./...` and `go vet ./...` |
 
 The uncached baseline command `/usr/bin/time -p go test -count=1 ./...` passed
-in **270.08 seconds wall time** (`user 86.73s`, `sys 70.97s`) from the repository
-root. Later measurements should use the same uncached command so Go's test cache
-does not hide a duration regression.
+in **173.21 seconds wall time** (`user 23.04s`, `sys 31.79s`) from the repository
+root, measured on 2026-08-20 after `go clean -testcache`. Later measurements
+should use the same uncached command so Go's test cache does not hide a duration
+regression.
 
 ## TUI scenarios
 
 | Metric                   | Value | Reproduce |
 | ------------------------ | ----- | --------- |
-| Committed TUI scenarios  | 43    | `find docs/tui-testing/scenarios -name '*.json' \| wc -l` |
+| Committed TUI scenarios  | 143   | `find docs/tui-testing/scenarios -name '*.json' \| wc -l` |
 
 Scenario fixtures live in `docs/tui-testing/scenarios/*.json` and are replayed by
 the committed TUI scenario tests.

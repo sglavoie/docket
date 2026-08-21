@@ -26,5 +26,6 @@ func (m *AppModel) handleShowTaskComments(msg ShowTaskCommentsMsg) (bool, tea.Cm
 		"",
 		m.secondaryFeatures.Subview,
 	)
+	view.SetOperationDispatch(m.dispatchOperationKey)
 	return m.showViewInit(ViewTaskComments, view)
 }

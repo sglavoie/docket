@@ -18,7 +18,9 @@
 
     { "type": "key", "label": "60x20 opens the Project Hub", "key": "p" },
     { "type": "assert", "assert": "view", "value": "ProjectHub" },
-    { "type": "assert", "label": "Project Hub fits at 60x20", "assert": "no_layout_issues" },
+    { "type": "assert", "label": "the whole browse grammar fits one row at 60x20", "assert": "no_layout_issues" },
+    { "type": "key", "label": "open Project search", "key": "/" },
+    { "type": "assert", "label": "Project Hub search editing keeps its two-row budget at 60x20", "assert": "no_layout_issues" },
     { "type": "key", "label": "leave Project search", "key": "esc" },
     { "type": "key", "label": "return to the Outliner", "key": "esc" },
 
@@ -27,6 +29,15 @@
     { "type": "command", "label": "60x20 opens a task tool", "command": "task comments" },
     { "type": "assert", "assert": "view", "value": "TaskComments" },
     { "type": "assert", "label": "task comments fit at 60x20", "assert": "no_layout_issues" },
+    { "type": "key", "label": "add a comment so the browse footer is the populated one", "key": "a" },
+    { "type": "text", "text": "narrow terminal note" },
+    { "type": "key", "key": "ctrl+s" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the regrown comments footer degrades rather than clipping", "assert": "no_layout_issues" },
+    { "type": "key", "label": "the sheet still opens on a minimum terminal", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Comment Actions" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "close the comment sheet", "key": "esc" },
     { "type": "key", "key": "esc" },
     { "type": "wait", "label": "clear the task-tool close feedback before checking Outliner guidance" },
 

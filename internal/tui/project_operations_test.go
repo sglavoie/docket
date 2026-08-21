@@ -54,28 +54,20 @@ func TestProjectOperationsShareOneHandlerAcrossHosts(t *testing.T) {
 func TestProjectOperationsResolveTheProjectFreshAtExecution(t *testing.T) {
 	app := projectHubApp(t)
 	hub := openProjectHub(t, app)
-	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	focusProjectHubItem(t, hub, "project-hub:project:beta")
-	hub.Update(syntheticKey(' '))
-	if hub.actions == nil {
-		t.Fatal("Space did not freeze the project action target")
-	}
 
-	// Pin beta after the sheet froze its target: the toggle must read the live
-	// project, not the metadata the row was built from.
+	// Pin beta after the row was built: the press freezes only the project ID, so
+	// the toggle must read the live project rather than the row's metadata.
 	beta := app.projectByID("beta")
 	beta.Pin()
 
-	if !hub.actions.surface.SetCursorToID(ListItemID("project-hub-action:" + string(operationScopePinProject))) {
-		t.Fatal("pin action was not selectable")
-	}
-	_, cmd := hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	_, cmd := hub.Update(syntheticKey('*'))
 	if cmd == nil {
-		t.Fatal("pin action emitted no request")
+		t.Fatal("* emitted no pin request")
 	}
 	pin, ok := cmd().(ProjectPinRequestMsg)
 	if !ok || pin.Project == nil || pin.Project.ID != "beta" {
-		t.Fatalf("pin action emitted %#v, want a beta pin request", cmd())
+		t.Fatalf("* emitted %#v, want a beta pin request", cmd())
 	}
 	if pin.Pinned {
 		t.Fatal("pin toggle used the frozen row state instead of the freshly resolved project")
@@ -122,7 +114,6 @@ func TestOpenProjectNotesRejectsArchivedProject(t *testing.T) {
 	addTestAppProject(app, archived)
 
 	hub := openProjectHub(t, app)
-	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	focusProjectHubItem(t, hub, "project-hub:archived:archived")
 	hub.Update(syntheticKey(' '))
 	if got := projectHubActionIDs(hub); containsOperationID(got, operationScopeOpenProjectNote) {
@@ -185,36 +176,28 @@ func TestProjectArchiveDelegatesToTheShellConfirmation(t *testing.T) {
 	}
 }
 
-func TestProjectHubActiveProjectOffersOnlyLeanAdministration(t *testing.T) {
+// TestProjectHubActiveProjectOffersOnlyArchive holds the Space menu to what the
+// direct grammar cannot reach. Opening, editing, pinning, tagging and notes are
+// all one press away, so a single active row offers archiving alone; the four
+// bulk tag actions need a selection and drop out of a one-row sheet.
+func TestProjectHubActiveProjectOffersOnlyArchive(t *testing.T) {
 	hub := openProjectHub(t, projectHubApp(t))
-	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	focusProjectHubItem(t, hub, "project-hub:project:beta")
 	hub.Update(syntheticKey(' '))
 
 	got := projectHubActionIDs(hub)
-	for _, want := range []OperationID{
-		operationProjectOpen,
-		operationScopeRenameProject,
-		operationScopePinProject,
-		operationScopeArchiveProject,
-		operationScopeOpenProjectNote,
-	} {
-		if !containsOperationID(got, want) {
-			t.Fatalf("active project actions omitted %s: %v", want, got)
-		}
-	}
-	if containsOperationID(got, operationScopeRestoreProject) {
-		t.Fatalf("active project offered unarchive: %v", got)
-	}
-	if len(got) != 6 {
-		t.Fatalf("active project actions = %v, want exactly six lean actions", got)
+	if len(got) != 1 || !containsOperationID(got, operationScopeArchiveProject) {
+		t.Fatalf("active project actions = %v, want archive alone", got)
 	}
 }
 
 func TestProjectHubEnterSharesTheOpenProjectOperation(t *testing.T) {
 	app := projectHubApp(t)
+	archived := scopeTestProject("stale", "Stale", "1")
+	archived.Archived = true
+	addTestAppProject(app, archived)
+
 	hub := openProjectHub(t, app)
-	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	focusProjectHubItem(t, hub, "project-hub:project:beta")
 
 	_, cmd := hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -226,10 +209,8 @@ func TestProjectHubEnterSharesTheOpenProjectOperation(t *testing.T) {
 		t.Fatalf("Enter emitted %#v, want a beta focus request", cmd())
 	}
 
-	archived := scopeTestProject("stale", "Stale", "1")
-	archived.Archived = true
-	addTestAppProject(app, archived)
-	if cmd := hub.executeProjectOperation(operationProjectOpen, "stale"); cmd != nil {
+	focusProjectHubItem(t, hub, "project-hub:archived:stale")
+	if _, cmd := hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter}); cmd != nil {
 		t.Fatalf("opening an archived project emitted %#v", cmd())
 	}
 	if hub.notice == "" {

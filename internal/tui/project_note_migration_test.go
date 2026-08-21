@@ -60,6 +60,7 @@ func newProjectNoteTUIEnv(t *testing.T, titles ...string) *projectNoteTUIEnv {
 		ledger,
 		project,
 	)
+	mountNotesManager(t, view)
 	view.SetSize(80, 40)
 	views := NewViewRegistry()
 	views.Register(ViewNotes, view)

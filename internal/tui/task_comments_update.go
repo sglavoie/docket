@@ -1,36 +1,63 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
 )
 
-func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
-	return updateTaskItemPanel(msg, taskItemPanelModeHandlers{
-		expanded:       m.expandedView,
-		confirmActive:  m.confirm.IsActive(),
-		editMode:       m.editMode,
-		addMode:        m.addMode,
-		updateExpanded: m.updateExpandedView,
-		updateConfirm:  m.updateConfirmMode,
-		updateEdit:     m.updateEditMode,
-		updateAdd:      m.updateAddMode,
-		updateNormal:   m.updateNormalMode,
-	})
+func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch {
+	case m.expandedView:
+		return m.updateExpandedView(msg)
+	case m.confirm.IsActive():
+		return m.updateConfirmMode(msg)
+	case m.editMode:
+		return m.updateEditMode(msg)
+	case m.addMode:
+		return m.updateAddMode(msg)
+	default:
+		return m.updateNormalMode(msg)
+	}
 }
 
 func (m *TaskCommentsModel) updateExpandedView(msg tea.Msg) (tea.Model, tea.Cmd) {
-	return updateTaskItemPanelExpandedView(m, msg, &m.expandedView)
+	switch msg := msg.(type) {
+	case tea.KeyPressMsg:
+		switch msg.String() {
+		case "esc", "enter":
+			m.expandedView = false
+		}
+	}
+
+	return m, nil
 }
 
 func (m *TaskCommentsModel) updateConfirmMode(msg tea.Msg) (tea.Model, tea.Cmd) {
-	return updateTaskItemPanelConfirmMode(m, msg, &m.BaseView, &m.InteractiveViewState, taskItemPanelConfirmActions{
-		executeDelete: m.executeDelete,
-		cancelAdd:     m.cancelAddMode,
-		cancelEdit:    m.cancelEditMode,
-	})
+	switch msg := msg.(type) {
+	case tea.KeyPressMsg:
+		action := m.confirm.Action()
+		if confirmed, handled := m.HandleConfirmKey(msg.String()); handled {
+			if confirmed {
+				switch action {
+				case "delete":
+					return m, m.executeDelete()
+				case "discard-add":
+					m.cancelAddMode()
+					return m, nil
+				case "discard-edit":
+					m.cancelEditMode()
+					return m, nil
+				}
+			}
+			m.ClearError()
+			return m, nil
+		}
+	}
+
+	return m, nil
 }
 
 func (m *TaskCommentsModel) updateEditMode(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -88,11 +115,86 @@ func (m *TaskCommentsModel) updateAddMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *TaskCommentsModel) updateNormalMode(msg tea.Msg) (tea.Model, tea.Cmd) {
-	return updateTaskItemPanelNormalMode(m, msg, &m.BaseView, &m.InteractiveViewState, m.handleNormalKey)
+	switch msg := msg.(type) {
+	case CursorFlashClearMsg:
+		m.cursorFlash = false
+		return m, nil
+	case tea.WindowSizeMsg:
+		m.BaseView.SetSize(msg.Width, msg.Height)
+		return m, nil
+	case tea.KeyPressMsg:
+		return m, m.handleNormalKey(msg.String())
+	}
+
+	return m, nil
 }
 
 func (m *TaskCommentsModel) handleNormalKey(key string) tea.Cmd {
-	return m.panelActions().handleNormalKey(key)
+	if cmd, handled := m.handleCommentsNavigationKey(key); handled {
+		return cmd
+	}
+	if cmd, handled := m.handleCommentsGrammarKey(key); handled {
+		return cmd
+	}
+
+	return nil
+}
+
+func (m *TaskCommentsModel) handleCommentsNavigationKey(key string) (tea.Cmd, bool) {
+	switch key {
+	case "esc":
+		return func() tea.Msg { return CloseTaskCommentsMsg{} }, true
+	case "j", "down":
+		m.moveCursorDown()
+		return nil, true
+	case "k", "up":
+		m.moveCursorUp()
+		return nil, true
+	case "home":
+		m.cursor = 0
+		return nil, true
+	case "G":
+		m.moveCursorBottom()
+		return nil, true
+	default:
+		return nil, false
+	}
+}
+
+// handleCommentsGrammarKey routes the keys that act on a comment through the
+// registry. Navigation and Esc stay above it because the panel performs those
+// itself; every key listed here reaches its operation descriptor instead, so the
+// key pressed and the descriptor that names it can never drift apart. Space is
+// spelled out because a bare space key and the name the grammar binds describe
+// the same act differently.
+func (m *TaskCommentsModel) handleCommentsGrammarKey(key string) (tea.Cmd, bool) {
+	switch key {
+	case "enter", "a", "e", "E", "y", "Y":
+		return m.dispatchCommentsKey(key), true
+	case " ", "space":
+		return m.dispatchCommentsKey("space"), true
+	default:
+		return nil, false
+	}
+}
+
+// dispatchCommentsKey resolves one browse key through the Comments grammar and
+// runs whatever operation it reaches.
+func (m *TaskCommentsModel) dispatchCommentsKey(key string) tea.Cmd {
+	if m.dispatch == nil {
+		return nil
+	}
+	_, cmd := m.dispatch(InputStrategyComments, []string{key}, m.commentsCommandContext())
+	return cmd
+}
+
+// commentsCommandContext names the panel rather than a comment: a comment
+// carries no entity identity, so the cursor the handler reads is the only thing
+// that says which one an operation means.
+func (m *TaskCommentsModel) commentsCommandContext() CommandContext {
+	ctx := PresentationCommandContext(ViewTaskComments)
+	ctx.Capabilities.Add(CapabilityCommentsPanel)
+	return ctx
 }
 
 func (m *TaskCommentsModel) HandledKeys() []string {
@@ -129,6 +231,38 @@ func (m *TaskCommentsModel) beginAddMode() tea.Cmd {
 	m.addMode = true
 	m.textInput.Focus()
 	return textarea.Blink
+}
+
+func (m *TaskCommentsModel) startEditSelectedComment() tea.Cmd {
+	if !m.hasSelection() {
+		return nil
+	}
+	return m.startEditComment()
+}
+
+func (m *TaskCommentsModel) editSelectedCommentInExternalEditor() tea.Cmd {
+	if !m.hasSelection() {
+		return nil
+	}
+	return m.editInExternalEditor()
+}
+
+func (m *TaskCommentsModel) copySelectedCommentText() {
+	if m.hasSelection() {
+		m.copyCommentText()
+	}
+}
+
+func (m *TaskCommentsModel) confirmDeleteSelectedComment() {
+	if m.hasSelection() {
+		m.confirm.Show("delete", fmt.Sprintf("Delete comment [%d]?", m.cursor))
+	}
+}
+
+func (m *TaskCommentsModel) expandSelectedComment() {
+	if m.hasSelection() {
+		m.expandedView = true
+	}
 }
 
 func (m *TaskCommentsModel) cancelAddMode() {

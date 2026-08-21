@@ -35,6 +35,7 @@ func (m *AppModel) ensureManageHub() *ManageHubModel {
 		TaskCounts:        m.projectHubTaskCounts,
 		OperationRegistry: m.operationRegistry,
 		OperationExecutor: m.operationExecutor,
+		DispatchKey:       m.dispatchOperationKey,
 	}
 	if m.manageHub == nil {
 		m.manageHub = NewManageHubModel(deps)

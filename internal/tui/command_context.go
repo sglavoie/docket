@@ -19,10 +19,20 @@ const (
 	CapabilityScopeHub Capability = "surface:scope-hub"
 	// CapabilityProjectHub limits global project creation to the routed project
 	// selection and administration surface.
-	CapabilityProjectHub   Capability = "surface:project-hub"
-	CapabilityAppScope     Capability = "scope:app"
-	CapabilityProjectScope Capability = "scope:project"
-	CapabilityTaskScope    Capability = "scope:task"
+	CapabilityProjectHub Capability = "surface:project-hub"
+	// CapabilityNotesManager limits the Notes grammar's operations to the
+	// mounted manager that owns the rename, picker, and confirmation states
+	// they delegate to.
+	CapabilityNotesManager Capability = "surface:notes-manager"
+	// CapabilityAttachmentsPanel limits the Attachments grammar's operations to
+	// the mounted panel whose cursor names the item they act on.
+	CapabilityAttachmentsPanel Capability = "surface:attachments-panel"
+	// CapabilityCommentsPanel limits the Comments grammar's operations to the
+	// mounted panel whose cursor names the comment they act on.
+	CapabilityCommentsPanel Capability = "surface:comments-panel"
+	CapabilityAppScope      Capability = "scope:app"
+	CapabilityProjectScope  Capability = "scope:project"
+	CapabilityTaskScope     Capability = "scope:task"
 )
 
 // capabilityFamilies are the prefixes reserved for capabilities generated per
@@ -44,6 +54,9 @@ func validCapability(capability Capability) bool {
 		CapabilitySimplifiedInput,
 		CapabilityScopeHub,
 		CapabilityProjectHub,
+		CapabilityNotesManager,
+		CapabilityAttachmentsPanel,
+		CapabilityCommentsPanel,
 		CapabilityAppScope,
 		CapabilityProjectScope,
 		CapabilityTaskScope:

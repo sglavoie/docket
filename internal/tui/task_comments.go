@@ -29,6 +29,15 @@ type TaskCommentsModel struct {
 
 	// Editor config
 	editor string
+
+	dispatch operationKeyDispatch
+}
+
+// SetOperationDispatch hands the panel the shell's key dispatch seam. Without it
+// the browse grammar resolves nothing, so a host that mounts this model must
+// supply it. The registry stays out because help still derives from buildKeyMap.
+func (m *TaskCommentsModel) SetOperationDispatch(dispatch operationKeyDispatch) {
+	m.dispatch = dispatch
 }
 
 // NewTaskCommentsModel creates a new task comments viewer.
@@ -79,6 +88,15 @@ func (m *TaskCommentsModel) refreshAfterReload() bool {
 		m.cursor = max(len(m.task.Comments)-1, 0)
 	}
 	return true
+}
+
+// refreshTaskReference re-resolves the task pointer before a mutation reads its
+// comment slice, so an edit or a delete measures the indices the workspace holds
+// rather than the ones the panel captured when it mounted.
+func (m *TaskCommentsModel) refreshTaskReference() {
+	if current := m.project.GetTaskByID(m.task.ID); current != nil {
+		m.task = current
+	}
 }
 
 func (m *TaskCommentsModel) getTaskRef() (*models.Task, *models.Project) {

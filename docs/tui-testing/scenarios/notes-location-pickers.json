@@ -4,7 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "label": "open All Notes", "key": "ctrl+n" },
-    { "type": "key", "label": "open creation destination picker", "key": "n" },
+    { "type": "key", "label": "open creation destination picker", "key": "a" },
     { "type": "assert", "assert": "contains", "value": "Create note in" },
     { "type": "assert", "assert": "contains", "value": "Global" },
     { "type": "assert", "assert": "contains", "value": "Rich Project" },
@@ -12,7 +12,7 @@
     { "type": "assert", "assert": "contains", "value": "Rich Project" },
     { "type": "key", "label": "cancel creation picker in one step", "key": "esc" },
     { "type": "assert", "assert": "contains", "value": "All Notes" },
-    { "type": "key", "label": "open move destination picker", "key": "m" },
+    { "type": "key", "label": "open move destination picker", "key": "%" },
     { "type": "assert", "assert": "contains", "value": "Move note to" },
     { "type": "assert", "assert": "contains", "value": "Global" },
     { "type": "key", "label": "cancel move picker", "key": "esc" },

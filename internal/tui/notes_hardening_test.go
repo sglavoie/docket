@@ -34,11 +34,12 @@ func TestNotesWorkspaceRefreshRebuildsOwnersAndRejectsStalePickerResults(t *test
 		alpha,
 		beta,
 	)
+	mountNotesManager(t, view)
 	view.SetSize(80, 24)
 	view.searchApplied = "needle"
 	view.rederiveVisibleRows()
 
-	_, _ = view.Update(syntheticKey('m'))
+	_, _ = view.Update(syntheticKey('%'))
 	betaItem := notesLocationPickerItem{
 		Label:    beta.Name,
 		Scope:    ProjectNotesScope(beta.ID),
@@ -128,7 +129,7 @@ func TestNotesWorkspaceRefreshNormalizesInvalidScopeAndTypedRouteImmediately(t *
 			notes := shell.getActiveNotesView()
 			notes.searchApplied = "needle"
 			notes.rederiveVisibleRows()
-			_, _ = notes.Update(syntheticKey('n'))
+			_, _ = notes.Update(syntheticKey('a'))
 
 			setTestAppProjects(shell, tc.projects(project)...)
 			_ = shell.refreshActiveNotesManager()
@@ -170,7 +171,7 @@ func TestNotesWorkspaceRefreshUpdatesOpenPickerLabelsAndQuery(t *testing.T) {
 	setTestAppProjects(shell, alpha, beta)
 	_, _ = shell.handleNotesMessages(ShowNotesManagerMsg{Scope: AllNotesScope()})
 	notes := shell.getActiveNotesView()
-	_, _ = notes.Update(syntheticKey('n'))
+	_, _ = notes.Update(syntheticKey('a'))
 	for _, r := range "renamed" {
 		_, _ = notes.Update(syntheticKey(r))
 	}
@@ -333,6 +334,7 @@ func TestNotesInteractionLayersFitMinimumLayoutWithLargeOwnerCatalog(t *testing.
 		nil,
 		projects...,
 	)
+	mountNotesManager(t, view)
 	view.SetSize(width, height)
 	view.setErrorStatus(strings.Repeat("actionable visible error summary ", 8))
 
@@ -341,8 +343,8 @@ func TestNotesInteractionLayersFitMinimumLayoutWithLargeOwnerCatalog(t *testing.
 		t.Fatalf("duplicate located rows = %d, want three", len(view.visibleRows))
 	}
 
-	_, _ = view.Update(syntheticKey('s'))
-	for _, r := range "needlemvx" {
+	_, _ = view.Update(syntheticKey('/'))
+	for _, r := range "needleae%p" {
 		_, _ = view.Update(syntheticKey(r))
 	}
 	if view.locationPicker != nil || view.renaming || view.confirm.IsActive() {
@@ -351,8 +353,8 @@ func TestNotesInteractionLayersFitMinimumLayoutWithLargeOwnerCatalog(t *testing.
 	assertNotesLayoutFits(t, "persistent search", view)
 	_, _ = view.Update(syntheticSpecialKey(tea.KeyEsc))
 
-	_, _ = view.Update(syntheticKey('v'))
-	for _, r := range "project 159 smnx" {
+	_, _ = view.Update(syntheticKey('p'))
+	for _, r := range "project 159 ae%/" {
 		_, _ = view.Update(syntheticKey(r))
 	}
 	if view.locationPicker == nil || view.locationPicker.purpose != notesLocationPickerScope ||
@@ -362,8 +364,8 @@ func TestNotesInteractionLayersFitMinimumLayoutWithLargeOwnerCatalog(t *testing.
 	assertNotesLayoutFits(t, "scope picker", view)
 	cancelNotesPicker(t, view)
 
-	_, _ = view.Update(syntheticKey('n'))
-	for _, r := range "project 159 smvx" {
+	_, _ = view.Update(syntheticKey('a'))
+	for _, r := range "project 159 e%/p" {
 		_, _ = view.Update(syntheticKey(r))
 	}
 	if view.locationPicker == nil || view.locationPicker.purpose != notesLocationPickerCreation ||
@@ -373,8 +375,8 @@ func TestNotesInteractionLayersFitMinimumLayoutWithLargeOwnerCatalog(t *testing.
 	assertNotesLayoutFits(t, "creation picker", view)
 	cancelNotesPicker(t, view)
 
-	_, _ = view.Update(syntheticKey('m'))
-	for _, r := range "project 159 snvx" {
+	_, _ = view.Update(syntheticKey('%'))
+	for _, r := range "project 159 ae/p" {
 		_, _ = view.Update(syntheticKey(r))
 	}
 	if view.locationPicker == nil || view.locationPicker.purpose != notesLocationPickerMove ||
@@ -414,21 +416,31 @@ func cancelNotesPicker(t *testing.T, view *NotesViewModel) {
 }
 
 func TestNotesHelpDocumentsTheWorkspaceManager(t *testing.T) {
-	got := (&NotesViewModel{}).GetHelpItems()
+	project := &models.Project{ID: "alpha", Name: "Alpha", Path: t.TempDir()}
+	service := &combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{
+		app.GlobalNoteLocation(): {{Title: "Needle", Filename: "needle.md"}},
+	}}
+	view := NewNotesViewModelWithService(t.TempDir(), AllNotesScope(), service, nil, project)
+	mountNotesManager(t, view)
+	view.SetSize(80, 24)
+
+	// The registry names every operation the Notes grammar binds; the keymap
+	// supplies only the cursor and ledger keys whose core descriptors answer to
+	// the Outliner. Delete is absent because the Space sheet is its one path.
 	want := []HelpItem{
-		{Key: "j/k", Description: "Navigate"},
-		{Key: "Enter", Description: "Open in external editor"},
-		{Key: "n/a", Description: "Create in Global or an active project"},
-		{Key: "v", Description: "Choose All, Global, or active-project scope"},
-		{Key: "s", Description: "Search note titles and bodies"},
-		{Key: "r", Description: "Rename note"},
-		{Key: "m", Description: "Move to Global or an active project"},
-		{Key: "x", Description: "Delete note"},
-		{Key: "u", Description: "Undo workspace change"},
-		{Key: "Ctrl+R", Description: "Redo workspace change"},
-		{Key: "Esc", Description: "Cancel search, clear it, or close Notes"},
+		{Key: "Enter", Description: "Open note", Category: "Notes"},
+		{Key: "a", Description: "New note", Category: "Notes"},
+		{Key: "e", Description: "Rename note", Category: "Notes"},
+		{Key: "%", Description: "Move note", Category: "Notes"},
+		{Key: "/", Description: "Search notes", Category: "Discovery"},
+		{Key: "p", Description: "Choose Notes scope", Category: "Notes"},
+		{Key: "Space", Description: "Note actions", Category: "Notes"},
+		{Key: "j", Description: "Move cursor down", Category: "Navigation"},
+		{Key: "k", Description: "Move cursor up", Category: "Navigation"},
+		{Key: "u", Description: "Undo workspace change", Category: "Actions"},
+		{Key: "ctrl+r", Description: "Redo workspace change", Category: "Actions"},
 	}
-	if !reflect.DeepEqual(got, want) {
+	if got := view.GetHelpItems(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("Notes help = %#v, want %#v", got, want)
 	}
 }

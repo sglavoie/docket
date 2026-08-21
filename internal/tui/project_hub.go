@@ -116,8 +116,10 @@ type projectHubActionTarget struct {
 	ProjectID string
 }
 
-// ProjectHubModel is the search-first surface for selecting and administering
-// every active and archived project.
+// ProjectHubModel is the browse-first surface for selecting and administering
+// every active and archived project. The cursor is live on press one and `/`
+// opens the query, so the Hub's project vocabulary answers immediately instead
+// of typing into a search input.
 type ProjectHubModel struct {
 	BaseSearchableView
 	runtime          *config.RuntimeState
@@ -126,9 +128,13 @@ type ProjectHubModel struct {
 	actions          *ContextActionSheetModel
 	registry         *OperationRegistry
 	executor         *OperationExecutor
+	dispatch         operationKeyDispatch
 	focusedProjectID string
 	notice           string
 	taskFilter       projectHubTaskFilter
+	// pendingTopChord holds the first g of gg. The shell's chord state serves the
+	// Outliner only, so the Hub keeps its own one-key prefix.
+	pendingTopChord bool
 }
 
 func NewProjectHubModel(runtime *config.RuntimeState) *ProjectHubModel {
@@ -138,19 +144,19 @@ func NewProjectHubModel(runtime *config.RuntimeState) *ProjectHubModel {
 	m := &ProjectHubModel{runtime: runtime}
 	m.InitSearchInput("Search projects", 64, 32)
 	m.rebuildProjectSurface("")
-	// Search is active before Init so direct model tests and the first routed
-	// keypress both behave as search input.
-	_ = m.ActivateSearch()
 	return m
 }
 
-func (m *ProjectHubModel) Init() tea.Cmd {
-	return m.ActivateSearch()
-}
+func (m *ProjectHubModel) Init() tea.Cmd { return nil }
 
-func (m *ProjectHubModel) SetOperationSystem(registry *OperationRegistry, executor *OperationExecutor) {
+func (m *ProjectHubModel) SetOperationSystem(
+	registry *OperationRegistry,
+	executor *OperationExecutor,
+	dispatch operationKeyDispatch,
+) {
 	m.registry = registry
 	m.executor = executor
+	m.dispatch = dispatch
 }
 
 func (m *ProjectHubModel) SetProjectFocus(projectID string) {
@@ -182,8 +188,7 @@ func (m *ProjectHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// from browse alike; the action sheet above still owns its whole key stream.
 	if key.String() == "ctrl+t" {
 		m.notice = ""
-		m.taskFilter = m.taskFilter.next()
-		m.rebuildProjectSurface(m.currentProjectHubItemID())
+		m.cycleProjectHubTaskFilter()
 		return m, nil
 	}
 	if m.HasActiveSearch() {
@@ -213,14 +218,17 @@ func (m *ProjectHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	m.notice = ""
+	if m.completeProjectHubTopChord(key.String()) {
+		return m, nil
+	}
 	switch key.String() {
-	case "/":
-		return m, m.ActivateSearch()
 	case "j", "down":
 		m.surface.MoveCursor(1)
 	case "k", "up":
 		m.surface.MoveCursor(-1)
-	case "g", "home":
+	case "g":
+		m.pendingTopChord = true
+	case "home":
 		m.surface.MoveCursorToStart()
 	case "G", "end":
 		m.surface.MoveCursorToEnd()
@@ -228,20 +236,54 @@ func (m *ProjectHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.moveProjectHubHalfPage(1)
 	case "ctrl+u":
 		m.moveProjectHubHalfPage(-1)
-	case "n":
-		return m, m.executeProjectHubCreate()
-	case "v":
-		m.toggleProjectHubSelection()
-	case "a":
-		m.selectEveryMatchingProject(true)
-	case "A":
-		m.selectEveryMatchingProject(false)
+	case "esc":
+		// The shell only routes Esc here while ShouldCaptureEsc holds it, so this
+		// is the selection rung of the unwind and never the close.
+		m.surface.ClearSelection()
+	case "/", "a", "e", "*", "#", "ctrl+n", "v", "ctrl+a":
+		return m, m.dispatchProjectHubKey(key.String())
 	case " ", "space":
-		m.openProjectHubActions()
+		return m, m.dispatchProjectHubKey("space")
 	case "enter":
 		return m, m.activateProjectHubCurrent()
 	}
 	return m, nil
+}
+
+// completeProjectHubTopChord answers the second g of gg and reports the press as
+// consumed. Any other key abandons the prefix silently and is then handled
+// normally, so a stray g never swallows the key after it.
+func (m *ProjectHubModel) completeProjectHubTopChord(key string) bool {
+	if !m.pendingTopChord {
+		return false
+	}
+	m.pendingTopChord = false
+	if key != "g" {
+		return false
+	}
+	m.surface.MoveCursorToStart()
+	return true
+}
+
+// dispatchProjectHubKey resolves one browse key through the Hub's own strategy
+// and runs whatever operation it reaches. The cursor's project is frozen into
+// the context here because every project operation resolves its target from the
+// context rather than from a host value.
+func (m *ProjectHubModel) dispatchProjectHubKey(key string) tea.Cmd {
+	if m.dispatch == nil {
+		return nil
+	}
+	_, cmd := m.dispatch(
+		InputStrategyProjectHub,
+		[]string{key},
+		m.projectHubCommandContext(m.cursorProjectID()),
+	)
+	return cmd
+}
+
+func (m *ProjectHubModel) cycleProjectHubTaskFilter() {
+	m.taskFilter = m.taskFilter.next()
+	m.rebuildProjectSurface(m.currentProjectHubItemID())
 }
 
 // toggleProjectHubSelection mirrors the Outliner's v: Enter already focuses a
@@ -256,12 +298,8 @@ func (m *ProjectHubModel) toggleProjectHubSelection() {
 	}
 }
 
-func (m *ProjectHubModel) selectEveryMatchingProject(selected bool) {
+func (m *ProjectHubModel) selectEveryMatchingProject() {
 	if m.surface == nil {
-		return
-	}
-	if !selected {
-		m.surface.ClearSelection()
 		return
 	}
 	matches := m.surface.Matches()
@@ -357,12 +395,7 @@ func (m *ProjectHubModel) projectHubItems() []ListItem {
 			Aliases:       []string{project.Name, project.Slug, "active project"},
 			Preview:       m.projectPreview(project, false),
 			OperationIDs: append([]OperationID{
-				operationProjectOpen,
-				operationScopeCreateProject,
-				operationScopeRenameProject,
-				operationScopePinProject,
 				operationScopeArchiveProject,
-				operationScopeOpenProjectNote,
 			}, projectBulkOperations...),
 			Data: projectHubEntry{Kind: projectHubEntryActive, Project: project},
 		})
@@ -379,8 +412,6 @@ func (m *ProjectHubModel) projectHubItems() []ListItem {
 			Aliases:       []string{project.Name, project.Slug, "archived project"},
 			Preview:       m.projectPreview(project, true),
 			OperationIDs: []OperationID{
-				operationScopeCreateProject,
-				operationScopeRenameProject,
 				operationScopeRestoreProject,
 			},
 			Data: projectHubEntry{Kind: projectHubEntryArchived, Project: project},
@@ -486,7 +517,7 @@ func (m *ProjectHubModel) projectHubEmptyState() ListEmptyState {
 	default:
 		return ListEmptyState{
 			Title:  "No projects are available.",
-			Detail: "Press n to create a project.",
+			Detail: "Press a to create a project.",
 		}
 	}
 }
@@ -520,6 +551,11 @@ func (m *ProjectHubModel) selectedProjectHubEntry() (projectHubEntry, bool) {
 	return entry, ok
 }
 
+// activateProjectHubCurrent is the one Enter path: the search input and the
+// browse grammar both reach it, so the key means the same thing whether or not
+// the query is focused. The archived refusal stays here because it names the row
+// the cursor sits on, which the operation's own applicability can only report as
+// a missing action.
 func (m *ProjectHubModel) activateProjectHubCurrent() tea.Cmd {
 	entry, ok := m.selectedProjectHubEntry()
 	if !ok || entry.Project == nil {
@@ -529,7 +565,7 @@ func (m *ProjectHubModel) activateProjectHubCurrent() tea.Cmd {
 		m.notice = "Archived projects must be unarchived from Space actions before they can be focused"
 		return nil
 	}
-	return m.executeProjectOperation(operationProjectOpen, entry.Project.ID)
+	return m.dispatchProjectHubKey("enter")
 }
 
 func (m *ProjectHubModel) projectHubCommandContext(projectID string) CommandContext {
@@ -539,33 +575,6 @@ func (m *ProjectHubModel) projectHubCommandContext(projectID string) CommandCont
 		ctx.CurrentEntity = ProjectEntity(projectID)
 	}
 	return ctx
-}
-
-func (m *ProjectHubModel) executeProjectOperation(id OperationID, projectID string) tea.Cmd {
-	if m.executor == nil {
-		m.notice = "Project actions are unavailable"
-		return nil
-	}
-	result := m.executor.Execute(OperationExecutionRequest{
-		ID:      id,
-		Context: m.projectHubCommandContext(projectID),
-	})
-	return m.applyProjectHubExecutionResult(result)
-}
-
-func (m *ProjectHubModel) executeProjectHubCreate() tea.Cmd {
-	if m.executor == nil {
-		m.notice = "Project actions are unavailable"
-		return nil
-	}
-	target := projectHubActionTarget{}
-	result := m.executor.Execute(OperationExecutionRequest{
-		ID:       operationScopeCreateProject,
-		Context:  m.projectHubCommandContext(""),
-		Value:    target,
-		HasValue: true,
-	})
-	return m.applyProjectHubExecutionResult(result)
 }
 
 // openProjectHubActions offers the cursor's project, or the whole selection
@@ -675,11 +684,10 @@ func projectHubBulkOperationIDs(available []OperationID) []OperationID {
 }
 
 func projectHubActionCategory(descriptor OperationDescriptor) ListCategoryID {
-	if descriptor.Risk == OperationRiskDestructive {
-		return projectHubActionCategoryDanger
-	}
-	if descriptor.ID == operationScopeRestoreProject {
-		return projectHubActionCategoryRecovery
+	for _, entry := range projectOperationManifest() {
+		if entry.ID == descriptor.ID {
+			return entry.Category
+		}
 	}
 	return projectHubActionCategoryProject
 }
@@ -810,56 +818,108 @@ func (m *ProjectHubModel) HasTextInput() bool {
 	return m.actions != nil || m.DefaultHasTextInput()
 }
 
+// ShouldCaptureEsc claims Esc for the Hub's own unwind rungs: the action sheet,
+// the query, then the selection. A selection rung exists because retiring `A`
+// left no other way to drop every checkbox at once.
 func (m *ProjectHubModel) ShouldCaptureEsc() bool {
-	return m.actions != nil || m.SearchShouldCaptureEsc()
+	return m.actions != nil || m.SearchShouldCaptureEsc() || m.selectionCount() > 0
 }
 
 func (m *ProjectHubModel) IsFullHeight() bool { return true }
 
 func (m *ProjectHubModel) StatusBarLabel() string { return "Projects" }
 
+// GetHelpItems documents the Hub grammar from the two sources that own it: the
+// registry describes every operation the strategy binds, and the keymap names
+// the cursor and unwind keys whose descriptors answer only to the Outliner.
+// Ctrl+T is in both because the footer needs its cycling label, so the merge
+// keeps the registry's spelling and drops the keymap's duplicate.
 func (m *ProjectHubModel) GetHelpItems() []HelpItem {
-	return []HelpItem{
-		{Key: "j/k", Description: "Move selection", Category: "Navigation"},
-		{Key: "Ctrl+d/u", Description: "Move half a page down/up", Category: "Navigation"},
-		{Key: "Enter", Description: "Focus the selected active project", Category: "Actions"},
-		{Key: "Space", Description: "Open actions for the selection, or the cursor when nothing is selected", Category: "Actions"},
-		{Key: "n", Description: "Create a project", Category: "Actions"},
-		{Key: "v", Description: "Select or deselect the project under the cursor", Category: "Selection"},
-		{Key: "a/A", Description: "Select or deselect every matching project", Category: "Selection"},
-		{Key: "/", Description: "Search projects", Category: "Filters"},
-		{Key: "Ctrl+T", Description: "Cycle every project, only those holding tasks, only those holding none", Category: "Filters"},
-		{Key: "Esc", Description: "Leave search, then close", Category: "Navigation"},
+	if m.registry == nil {
+		return nil
 	}
+	items := m.registry.HelpItemsForInputStrategy(
+		InputStrategyProjectHub,
+		m.projectHubCommandContext(m.cursorProjectID()),
+	)
+	documented := make(map[string]bool, len(items))
+	for _, item := range items {
+		documented[strings.ToLower(item.Key)] = true
+	}
+	for _, item := range helpItemsFromKeyMap(m.projectHubGuidanceKeyMap(m.guidanceState())) {
+		if !documented[strings.ToLower(item.Key)] {
+			items = append(items, item)
+		}
+	}
+	return items
+}
+
+// guidanceState reads the list state both the footer and `?` help project.
+func (m *ProjectHubModel) guidanceState() ListGuidanceState {
+	if m.surface == nil {
+		return ListGuidanceState{}
+	}
+	return m.surface.GuidanceState(m.HasActiveSearch())
+}
+
+// cursorProjectID names the project the direct grammar would act on, so
+// applicability drops Enter, e, *, # and Ctrl+N when the list has no cursor.
+func (m *ProjectHubModel) cursorProjectID() string {
+	entry, ok := m.selectedProjectHubEntry()
+	if !ok || entry.Project == nil {
+		return ""
+	}
+	return entry.Project.ID
 }
 
 func (m *ProjectHubModel) RefreshProjectHub() {
 	m.rebuildProjectSurface(m.currentProjectHubItemID())
 }
 
+// projectHubOperationDescriptors declares everything the Hub grammar reaches
+// that no project row carries: creating a project, and the list vocabulary the
+// surface applies to its own cursor, query, and selection.
 func projectHubOperationDescriptors() []OperationDescriptor {
-	return []OperationDescriptor{{
-		ID:                   operationScopeCreateProject,
-		Label:                "New project",
-		Aliases:              []string{"create project"},
-		Category:             OperationCategoryProject,
-		TargetSource:         OperationTargetGlobal,
-		TargetCardinality:    TargetCardinalityNone,
-		RequiredCapabilities: NewCapabilitySet(CapabilityProjectHub),
-		Risk:                 OperationRiskMutation,
-	}}
+	surface := func(
+		id OperationID,
+		label string,
+		category OperationCategory,
+		risk OperationRisk,
+		aliases ...string,
+	) OperationDescriptor {
+		return OperationDescriptor{
+			ID:                   id,
+			Label:                label,
+			Aliases:              aliases,
+			Category:             category,
+			TargetSource:         OperationTargetGlobal,
+			TargetCardinality:    TargetCardinalityNone,
+			RequiredCapabilities: NewCapabilitySet(CapabilityProjectHub),
+			Risk:                 risk,
+		}
+	}
+	// needsRow gates the vocabulary that only means something against a project
+	// row. Search and the task filter stay ungated because either can empty the
+	// list and is then the only way back.
+	needsRow := func(descriptor OperationDescriptor) OperationDescriptor {
+		descriptor.Applicability = projectOperationApplicable
+		return descriptor
+	}
+	return []OperationDescriptor{
+		surface(operationScopeCreateProject, "New project", OperationCategoryProject, OperationRiskMutation, "create project"),
+		surface(operationProjectHubSearch, "Search projects", OperationCategoryFilter, OperationRiskReadOnly, "filter the project list"),
+		needsRow(surface(operationProjectHubToggleSelection, "Select project", OperationCategoryProject, OperationRiskReadOnly, "toggle project selection")),
+		needsRow(surface(operationProjectHubSelectAll, "Select every matching project", OperationCategoryProject, OperationRiskReadOnly, "select all projects")),
+		needsRow(surface(operationProjectHubActions, "Project actions", OperationCategoryProject, OperationRiskReadOnly, "project action sheet")),
+		surface(operationProjectHubTaskFilter, "Cycle every project, only those holding tasks, only those holding none", OperationCategoryFilter, OperationRiskReadOnly, "projects holding tasks", "projects holding no tasks"),
+	}
 }
 
 func (m *AppModel) registerProjectHubOperations() error {
 	for _, descriptor := range projectHubOperationDescriptors() {
 		if err := m.registerOperation(descriptor, OperationBinding{
-			RequiredCapabilities: NewCapabilitySet(CapabilityProjectHub),
-			Handler: func(invocation OperationInvocation) OperationHandlerResult {
-				if _, ok := invocation.Value.(projectHubActionTarget); !ok {
-					return OperationHandlerResult{Err: fmt.Errorf("project creation has no frozen hub target")}
-				}
-				return OperationHandlerResult{Message: CreateProjectMsg{}}
-			},
+			RequiredCapabilities:     NewCapabilitySet(CapabilityProjectHub),
+			Handler:                  m.executeProjectHubOperation,
 			DelegateTargetResolution: true,
 			DelegateValueProvider:    true,
 			DelegateConfirmation:     true,
@@ -871,12 +931,48 @@ func (m *AppModel) registerProjectHubOperations() error {
 	return nil
 }
 
-func (m *AppModel) refreshProjectHubIfActive() {
-	if m == nil || m.manageHub == nil || m.manageHub.Params().Module != ManageProjects {
-		return
+// executeProjectHubOperation applies a Hub surface operation to the live Hub.
+// The list vocabulary mutates the model the user is looking at, exactly as the
+// Outliner's own core operations do, so the handler reaches for the mounted
+// module rather than rebuilding one.
+//
+//nolint:exhaustive // Only Project Hub surface operations are registered with this handler.
+func (m *AppModel) executeProjectHubOperation(invocation OperationInvocation) OperationHandlerResult {
+	if invocation.Descriptor.ID == operationScopeCreateProject {
+		return OperationHandlerResult{Message: CreateProjectMsg{}}
 	}
-	hub, ok := m.manageHub.ActiveModuleView().(*ProjectHubModel)
-	if !ok {
+	hub := m.activeProjectHub()
+	if hub == nil {
+		return OperationHandlerResult{Err: fmt.Errorf("the Project Hub is not open")}
+	}
+	switch invocation.Descriptor.ID {
+	case operationProjectHubSearch:
+		return OperationHandlerResult{Message: commandMessage(hub.ActivateSearch())}
+	case operationProjectHubToggleSelection:
+		hub.toggleProjectHubSelection()
+	case operationProjectHubSelectAll:
+		hub.selectEveryMatchingProject()
+	case operationProjectHubActions:
+		hub.openProjectHubActions()
+	case operationProjectHubTaskFilter:
+		hub.cycleProjectHubTaskFilter()
+	}
+	return OperationHandlerResult{}
+}
+
+// activeProjectHub returns the mounted Project Hub, or nil when Manage is on
+// another module.
+func (m *AppModel) activeProjectHub() *ProjectHubModel {
+	if m == nil || m.manageHub == nil || m.manageHub.Params().Module != ManageProjects {
+		return nil
+	}
+	hub, _ := m.manageHub.ActiveModuleView().(*ProjectHubModel)
+	return hub
+}
+
+func (m *AppModel) refreshProjectHubIfActive() {
+	hub := m.activeProjectHub()
+	if hub == nil {
 		return
 	}
 	hub.RefreshProjectHub()

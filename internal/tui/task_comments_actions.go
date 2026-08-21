@@ -10,12 +10,14 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/external"
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
 
+// The panel mutates its model synchronously in Update() (avoiding data races
+// with View()); adaptSubviewCommit then hands the same mutation to the
+// application layer, which re-applies it against a fresh snapshot and commits
+// one ChangeSet before the panel's own success message resolves.
 func (m *TaskCommentsModel) saveComment() tea.Cmd {
-	// Mutate model state synchronously in Update() to avoid data races with View().
 	text := m.textInput.Value()
 	task, err := appendComment(m.project, m.task.ID, text)
 	if err != nil {
@@ -28,28 +30,26 @@ func (m *TaskCommentsModel) saveComment() tea.Cmd {
 	m.err = nil
 	m.cursor = len(m.task.Comments) - 1
 
-	return commitTaskItemMutation(m.project, task, m.coordinator.AddComment(taskIdentityFor(task, m.project), text), func(fresh *models.Task) tea.Msg {
-		return CommentAddedMsg{}
-	})
+	return adaptSubviewCommit(
+		m.coordinator.AddComment(taskIdentityFor(task, m.project), text),
+		func() tea.Msg { return CommentAddedMsg{} },
+	)
 }
 
 func (m *TaskCommentsModel) executeDelete() tea.Cmd {
-	return executeTaskItemDeleteMutation(taskItemDeleteMutation{
-		project: m.project,
-		task:    &m.task,
-		cursor:  &m.cursor,
-		remove: func(task *models.Task, index int) bool {
-			return task.RemoveComment(index)
-		},
-		count: func(task *models.Task) int {
-			return len(task.Comments)
-		},
-		errorMessage: "failed to remove comment",
-		commit:       m.coordinator.RemoveComment,
-		success: func(task *models.Task) tea.Msg {
-			return CommentDeletedMsg{}
-		},
-	})
+	m.refreshTaskReference()
+	index := m.cursor
+	if !m.task.RemoveComment(index) {
+		return func() tea.Msg { return ErrorMsg{Err: errors.New("failed to remove comment")} }
+	}
+	if m.cursor >= len(m.task.Comments) && m.cursor > 0 {
+		m.cursor--
+	}
+
+	return adaptSubviewCommit(
+		m.coordinator.RemoveComment(taskIdentityFor(m.task, m.project), index),
+		func() tea.Msg { return CommentDeletedMsg{} },
+	)
 }
 
 func (m *TaskCommentsModel) startEditComment() tea.Cmd {
@@ -69,7 +69,7 @@ func (m *TaskCommentsModel) saveEditedComment() tea.Cmd {
 		return nil
 	}
 
-	refreshTaskReference(m.project, &m.task)
+	m.refreshTaskReference()
 	if m.editIndex >= len(m.task.Comments) {
 		m.cancelEditMode()
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("comment was deleted externally")} }
@@ -80,9 +80,10 @@ func (m *TaskCommentsModel) saveEditedComment() tea.Cmd {
 	m.cancelEditMode()
 	m.err = nil
 
-	return commitTaskItemMutation(m.project, m.task, m.coordinator.EditComment(taskIdentityFor(m.task, m.project), editIndex, text), func(fresh *models.Task) tea.Msg {
-		return CommentEditedMsg{}
-	})
+	return adaptSubviewCommit(
+		m.coordinator.EditComment(taskIdentityFor(m.task, m.project), editIndex, text),
+		func() tea.Msg { return CommentEditedMsg{} },
+	)
 }
 
 func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
@@ -105,9 +106,10 @@ func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
 		}
 
 		task.Comments[editIndex].Text = newText
-		return commitTaskItemMutation(project, task, coordinator.EditComment(taskIdentityFor(task, project), editIndex, newText), func(fresh *models.Task) tea.Msg {
-			return CommentEditedMsg{}
-		})()
+		return adaptSubviewCommit(
+			coordinator.EditComment(taskIdentityFor(task, project), editIndex, newText),
+			func() tea.Msg { return CommentEditedMsg{} },
+		)()
 	})
 }
 
@@ -129,9 +131,10 @@ func (m *TaskCommentsModel) addCommentInExternalEditor() tea.Cmd {
 		}
 
 		task.AddComment(newText)
-		return commitTaskItemMutation(project, task, coordinator.AddComment(taskIdentityFor(task, project), newText), func(fresh *models.Task) tea.Msg {
-			return CommentAddedMsg{}
-		})()
+		return adaptSubviewCommit(
+			coordinator.AddComment(taskIdentityFor(task, project), newText),
+			func() tea.Msg { return CommentAddedMsg{} },
+		)()
 	})
 }
 
@@ -163,32 +166,32 @@ func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 		}
 
 		task.Comments[editIndex].Text = newText
-		return commitTaskItemMutation(project, task, coordinator.EditComment(taskIdentityFor(task, project), editIndex, newText), func(fresh *models.Task) tea.Msg {
-			return CommentEditedMsg{}
-		})()
+		return adaptSubviewCommit(
+			coordinator.EditComment(taskIdentityFor(task, project), editIndex, newText),
+			func() tea.Msg { return CommentEditedMsg{} },
+		)()
 	})
 }
 
-func (m *TaskCommentsModel) copyCommentText() tea.Cmd {
+func (m *TaskCommentsModel) copyCommentText() {
 	comment := m.task.Comments[m.cursor]
 
 	if err := copyTextToClipboard(comment.Text); err != nil {
 		if errors.Is(err, errClipboardUnsupported) {
 			m.setStatus(err.Error())
-			return nil
+			return
 		}
 		m.err = fmt.Errorf("failed to copy to clipboard: %w", err)
-		return nil
+		return
 	}
 
 	m.setStatus("Comment copied to clipboard")
-	return nil
 }
 
-func (m *TaskCommentsModel) copyAllCommentsText() tea.Cmd {
+func (m *TaskCommentsModel) copyAllCommentsText() {
 	if len(m.task.Comments) == 0 {
 		m.setStatus("Nothing to copy")
-		return nil
+		return
 	}
 	texts := make([]string, len(m.task.Comments))
 	for i, c := range m.task.Comments {
@@ -198,14 +201,32 @@ func (m *TaskCommentsModel) copyAllCommentsText() tea.Cmd {
 	if err := copyTextToClipboard(formatNumberedMarkdownList(texts)); err != nil {
 		if errors.Is(err, errClipboardUnsupported) {
 			m.setStatus(err.Error())
-			return nil
+			return
 		}
 		m.err = fmt.Errorf("failed to copy to clipboard: %w", err)
-		return nil
+		return
 	}
 
 	m.setStatus("All comments copied to clipboard")
-	return nil
+}
+
+// formatNumberedMarkdownList renders items as a numbered Markdown list in
+// display order (1-based). Multiline item text keeps its continuation lines,
+// indented beneath the "N. " marker so the list stays readable when pasted.
+func formatNumberedMarkdownList(items []string) string {
+	var out []string
+	for i, item := range items {
+		marker := fmt.Sprintf("%d. ", i+1)
+		indent := strings.Repeat(" ", len(marker))
+		for j, line := range strings.Split(item, "\n") {
+			if j == 0 {
+				out = append(out, marker+line)
+			} else {
+				out = append(out, indent+line)
+			}
+		}
+	}
+	return strings.Join(out, "\n")
 }
 
 func (m *TaskCommentsModel) editCommentWithExternalEditor(content string, emptyIsError bool, apply func(string) tea.Msg) tea.Cmd {

@@ -538,6 +538,49 @@ applicability, target cardinality, risk, value provider, and capabilities.
 `OperationExecutor` freezes and resolves typed targets, requests values, gates
 confirmation, and invokes the bound handler.
 
+Five surfaces hold entities, so five `InputStrategy` values exist, and
+`surfaceOperationGates()` is the whole inventory: there is no sixth grammar and
+no unlisted one. Each pairs a strategy with an ordered manifest of that
+surface's production operations, and the two are the only inputs any projection
+reads.
+
+| Strategy | Manifest | Menu keeps |
+| --- | --- | --- |
+| `SimplifiedInputStrategy` | `taskOperationManifest` + `taskDirectOperationManifest` | Comments, Attachments, Delete |
+| `ProjectHubInputStrategy` | `projectOperationManifest` | Archive or Unarchive, bulk tags |
+| `NotesInputStrategy` | `notesOperationManifest` | Delete |
+| `AttachmentsInputStrategy` | `attachmentOperationManifest` | three origin acts, Unlink, Delete |
+| `CommentsInputStrategy` | `commentOperationManifest` | Delete |
+
+A manifest entry is a single record — ID, label, aliases, value provider,
+category, risk, bulk eligibility — so descriptor metadata, action-sheet order,
+and grouping all read one place and no surface can describe an operation two
+ways. `DirectOnly` is the field that splits it: a `DirectOnly` entry keeps its
+descriptor, provider, and bulk coordinator but leaves the menu, because the
+grammar already reaches it on press one, and every remaining entry is a menu row
+with no direct key. `Core` marks the entries whose descriptor
+`registerCoreInputOperations` owns, so the manifest ranks and groups them
+without restating a label or a risk the core descriptor already carries.
+
+The split lands the same way everywhere. What the surface is for stays direct;
+what is destructive or rare goes behind `Space`, and a destructive row confirms
+before any transaction begins. That is why the four entity menus are so short:
+they are the residue of the rule, not a curated list.
+
+Footers do not follow the strategy everywhere, and the difference is
+deliberate. The Outliner and the Project Hub rank their bindings and project the
+footer through `GuidanceHintsForInputStrategy`, because a key there means one
+thing whenever the list has a cursor. Notes, Attachments, and Comments cannot:
+their footers have to narrow with a rename, an add, an edit, an expanded
+comment, a confirmation, and — on Attachments — whether the selected row is a
+URL or a code reference. Only the gated keymap beside those strategies can say
+that, so it is their single footer source and their bindings carry no ranks or
+labels at all. A footer has one source per surface, never two ranked
+descriptions that can drift apart, and
+`TestPanelFootersOnlyAdvertiseKeysTheStrategyBinds` holds the three panels to
+it: every key their footer advertises is one their strategy binds, except the
+three modal keys a comment composer owns while its textarea has focus.
+
 A value provider is exactly one of `textEntry()` (a separate overlay),
 `tagEntry()` (inline add mode), `dateEntry()` (inline add mode), or a plain list
 such as `ValueProviderParent`.
@@ -702,11 +745,47 @@ shape the post-mutation reconciliation would have to undo.
 The checklist is absent because its rows own the whole mutation set; a menu
 entry would be a second route to it.
 
-Startup validation rejects an operation that appears in both that task menu and
-the direct grammar. The checklist row's own menu is outside that manifest and
+`AttachmentsInputStrategy` is the third peer grammar and splits the same way.
+`Enter`, `a`, `e`, `y`, `Y`, and `J`/`K` stay direct because they are what the
+panel is for; `attachmentActionSheetOperations` orders the five the panel keeps
+behind `Space`, hosted as `ContextActionHostAttachments`:
+
+1. Reveal original
+2. Open original
+3. Open attachments folder
+4. Unlink
+5. Delete
+
+The three origin acts are rare enough that a direct key spent them for nothing,
+and Unlink and Delete are why the sheet exists: an attachment now leaves the list
+only through a deliberate menu row and the panel's own confirmation, which the
+binding delegates back to the panel that owns the cursor. The retirement that
+matters most is `u`, which meant unlink here while meaning undo everywhere else;
+`d` and `x` go the same way, `o` folds into `Enter`, and `O`, `Ctrl+E`, and
+`Ctrl+O` become sheet rows, so the panel no longer answers any of the seven.
+`validateAttachmentOperationOnePath` holds them to the same direct-or-menu rule.
+
+`CommentsInputStrategy` is the fourth peer grammar and splits the same way.
+`Enter`, `a`, `e`, `E`, `y`, and `Y` stay direct because they are what the panel
+is for; `commentActionSheetOperations` holds Delete alone behind `Space`, hosted
+as `ContextActionHostComments`. The panel has no multi-select, so that sheet is
+one comment's action list rather than a bulk menu, and its binding delegates the
+confirmation back to the panel that owns the cursor. The retirements are the
+hidden `n` add alias and the `d`/`x` delete pair, which were the same house-style
+aliases the Outliner and Notes already gave up; nothing named them, so the panel
+simply stops answering them. `validateCommentOperationOnePath` holds them to the
+same direct-or-menu rule.
+
+`registerSurfaceInputStrategies` walks `surfaceOperationGates()` and runs each
+surface's check before registering its strategy, so a surface that drifted fails
+at model construction rather than at the key press that would have found it. The
+five named wrappers each delegate to one `validateOperationOnePath`, which reads
+the strategy's own bindings and rejects an entry that is both bound and listed,
+or marked `DirectOnly` with no binding left to justify it. Keeping the wrappers
+named per surface is what puts the surface's ID in the error text; the rule
+itself exists once. The checklist row's own menu is outside every manifest and
 deliberately lists Edit Item, which also answers `e`, because the menu is the
-only route to Delete Item. Destructive descriptors require confirmation before
-any transaction begins.
+only route to Delete Item.
 
 A chord prefix that its second key abandons is explained rather than swallowed.
 `ChordGroupLabelForPrefix` names the longest declared group the path passed
@@ -1165,17 +1244,31 @@ cursor. Only a committed Delete clears selection.
 
 The Outliner opens on Active Projects. Applying scope clears navigation and
 selection but preserves the active mode, search, and filters. `p` opens Select
-Project with search focused, over active and archived projects, each row
-carrying its task count and its tag chips. Project
-administration supports create, edit, pin, archive, restore, and project Notes.
-The catalog-owned Unfiled ID is the protection authority. `Esc` leaves the search
-input with the query and its matches intact, so a search result set is browsable
-with the full browse grammar; `Esc` from browse closes Select Project, and `/`
-reopens search with the previous query still editable.
+Project on a live cursor, over active and archived projects, each row carrying
+its task count and its tag chips. Administering a project is a direct key rather
+than a menu row: `Enter` focuses, `a` creates, `e` edits, `*` pins, `#` sets
+tags, and `Ctrl+N` opens project Notes, which leaves the `Space` sheet holding
+the two lifecycle actions and the bulk tag set. The catalog-owned Unfiled ID is
+the protection authority. `/` opens search; `Esc` leaves the search input with
+the query and its matches intact, so a search result set is browsable with the
+full browse grammar; `/` reopens search with the previous query still editable.
+`ShouldCaptureEsc` names the unwind rungs in order — the action sheet, the
+query, then the selection — and browse holding none of them is what lets `Esc`
+close Select Project. The selection is a rung because retiring `A` left no other
+way to drop every checkbox at once.
+
+`ProjectHubInputStrategy` is that grammar, and it is a peer of
+`SimplifiedInputStrategy` rather than a copy: the registry projects one strategy
+into dispatch, footer hints, `?` help, and `validateOperationOnePath`, so a
+surface earns its own vocabulary by declaring bindings, not by adding a key
+router. The Hub's cursor keys resolve to the core navigation operations because
+moving a list cursor is the same act everywhere; those descriptors answer only
+to the Outliner, so the Hub moves its own cursor and the keymap beside the
+strategy carries their footer hints.
 
 Select Project is a `ListSelectionMulti` surface: `v` toggles the row under the
-cursor, `a`/`A` select or clear every match, and `Space` over a non-empty
-selection opens a bulk sheet closed over Add tag, Remove tag, Park, and Unpark.
+cursor, `Ctrl+A` selects every match, and `Space` over a non-empty selection
+opens a bulk sheet closed over Add tag, Remove tag, Park, and Unpark.
 The four descriptors resolve `OperationTargetSelectedEntities`, so the sheet
 freezes the project identities into the command context rather than into a host
 value, leaving the executor's central value-provider step free to open the tag
@@ -1341,9 +1434,16 @@ modified time breaks ties, and every row renders its owner label. Title and body
 search follow the same smart-case rule as the Outliner, and a relaxed retry says
 so in the count label.
 
-`v` opens the searchable scope picker, `s` edits the accepted search, `n`
-chooses a creation destination, and `m` moves one parsed note to another Global
-or active-project owner. Open/edit, create, rename, move, delete, undo, and redo
+`p` opens the searchable scope picker, `/` edits the accepted search, `a`
+chooses a creation destination, `e` renames, and `%` moves one parsed note to
+another Global or active-project owner. `Space` opens the shell's context action
+sheet over the single row under the cursor, hosted as `ContextActionHostNotes`
+and holding Delete alone; Delete is menu-only and delegates its confirmation
+back to the manager that owns the row, which is why Notes gains a sheet without
+gaining a selection. `NotesInputStrategy` is a peer strategy that declares those
+bindings, and `validateNotesOperationOnePath` holds them to the same
+direct-or-menu rule as the Outliner and the Project Hub.
+Open/edit, create, rename, move, delete, undo, and redo
 all refresh the affected canonical collections through the workspace ledger;
 move commits its destination write and revision-checked source delete as one
 artifact transaction. Malformed notes remain available for raw editing and

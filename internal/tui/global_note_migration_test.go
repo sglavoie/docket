@@ -54,6 +54,7 @@ func newGlobalNoteTUIEnv(t *testing.T, titles ...string) *globalNoteTUIEnv {
 		ledger,
 		project,
 	)
+	mountNotesManager(t, view)
 	view.SetSize(80, 40)
 	views := NewViewRegistry()
 	views.Register(ViewGlobalNotes, view)

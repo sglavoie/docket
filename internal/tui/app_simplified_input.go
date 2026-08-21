@@ -34,14 +34,29 @@ func (m *AppModel) handleSimplifiedInputKey(msg tea.KeyPressMsg) (bool, tea.Cmd)
 
 	ctx := m.operationCommandContext()
 	ctx.View = view
-	registry := m.operationRegistry
-	key := msg.String()
-	if len(m.pendingChord) > 0 && normalizeOperationKey(key) == "esc" {
+	sequence := append(slices.Clone(m.pendingChord), msg.String())
+	return m.dispatchOperationKey(InputStrategySimplified, sequence, ctx)
+}
+
+// operationKeyDispatch is how a mounted surface reaches dispatchOperationKey.
+// A view model holds no shell reference, so the shell hands the seam down when
+// it mounts the surface.
+type operationKeyDispatch func(InputStrategyID, []string, CommandContext) (bool, tea.Cmd)
+
+// dispatchOperationKey resolves one surface's key path against that surface's
+// strategy and runs whatever operation it reaches. Chord bookkeeping, the
+// abandoned-path explanation, and executor message unwrapping say nothing about
+// which entity is under the cursor, so every surface shares this one path.
+func (m *AppModel) dispatchOperationKey(
+	strategyID InputStrategyID,
+	sequence []string,
+	ctx CommandContext,
+) (bool, tea.Cmd) {
+	if len(sequence) > 1 && normalizeOperationKey(sequence[len(sequence)-1]) == "esc" {
 		m.pendingChord = nil
 		return true, nil
 	}
-	sequence := append(slices.Clone(m.pendingChord), key)
-	binding, _, resolution := registry.InputBindingForSequence(InputStrategySimplified, sequence, ctx)
+	binding, _, resolution := m.operationRegistry.InputBindingForSequence(strategyID, sequence, ctx)
 	switch resolution {
 	case ChordPending:
 		m.pendingChord = sequence
@@ -50,10 +65,10 @@ func (m *AppModel) handleSimplifiedInputKey(msg tea.KeyPressMsg) (bool, tea.Cmd)
 		// A complete strategy consumes unknown root keys instead of allowing a
 		// retired legacy key or an abandoned chord to run in the view beneath it.
 		m.pendingChord = nil
-		if cmd := m.entityScopedKeyRejection(sequence, ctx); cmd != nil {
+		if cmd := m.entityScopedKeyRejection(strategyID, sequence, ctx); cmd != nil {
 			return true, cmd
 		}
-		return true, m.chordMissStatus(sequence)
+		return true, m.chordMissStatus(strategyID, sequence)
 	case ChordTerminal:
 	}
 	m.pendingChord = nil
@@ -79,13 +94,17 @@ func (m *AppModel) handleSimplifiedInputKey(msg tea.KeyPressMsg) (bool, tea.Cmd)
 // off. Naming the project on a header row makes every task operation
 // inapplicable there, and an inapplicable terminal resolves to ChordNoMatch, so
 // without this the key would silently do nothing instead of saying why.
-func (m *AppModel) entityScopedKeyRejection(sequence []string, ctx CommandContext) tea.Cmd {
+func (m *AppModel) entityScopedKeyRejection(
+	strategyID InputStrategyID,
+	sequence []string,
+	ctx CommandContext,
+) tea.Cmd {
 	// A checklist cursor found its owner task, so the shared sentence would tell
 	// the user to do what they already did. It names the row kind instead, and it
 	// asks whether the path reaches a refused operation rather than what category
 	// they share, because a shared key's two meanings need not agree.
 	if ctx.Entity.HasChecklistCursor {
-		if !m.operationRegistry.InputPrefixRefusedOnChecklistRow(InputStrategySimplified, sequence) {
+		if !m.operationRegistry.InputPrefixRefusedOnChecklistRow(strategyID, sequence) {
 			return nil
 		}
 		rejection := errors.New(checklistRowRejectionMessage)
@@ -94,7 +113,7 @@ func (m *AppModel) entityScopedKeyRejection(sequence []string, ctx CommandContex
 	if !commandContextNamesNonTaskEntity(ctx) {
 		return nil
 	}
-	category, ok := m.operationRegistry.InputCategoryForPrefix(InputStrategySimplified, sequence)
+	category, ok := m.operationRegistry.InputCategoryForPrefix(strategyID, sequence)
 	if !ok {
 		return nil
 	}
@@ -105,8 +124,8 @@ func (m *AppModel) entityScopedKeyRejection(sequence []string, ctx CommandContex
 // chordMissStatus names the path a second key abandoned. An unbound root key is
 // left silent because it never promised anything, but a chord that showed a
 // which-key row and then resolved to nothing has to say so.
-func (m *AppModel) chordMissStatus(sequence []string) tea.Cmd {
-	label, ok := m.operationRegistry.ChordGroupLabelForPrefix(InputStrategySimplified, sequence)
+func (m *AppModel) chordMissStatus(strategyID InputStrategyID, sequence []string) tea.Cmd {
+	label, ok := m.operationRegistry.ChordGroupLabelForPrefix(strategyID, sequence)
 	if !ok {
 		return nil
 	}

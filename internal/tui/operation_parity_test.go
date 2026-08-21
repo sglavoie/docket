@@ -63,6 +63,10 @@ func TestEveryRegisteredOperationHasOneCompatibleHandler(t *testing.T) {
 var delegatedDestructiveConfirmations = map[OperationID]string{
 	operationTaskDelete:          "handleTaskDeleteRequested prompts before confirmTaskDelete writes",
 	operationScopeArchiveProject: "showProjectArchiveConfirm prompts",
+	operationNoteDelete:          "deleteCurrentNote prompts on the Notes manager's own confirm dialog before performDelete writes",
+	operationAttachmentDelete:    "confirmDeleteSelectedAttachment prompts on the panel's own confirm dialog before executeDelete writes",
+	operationAttachmentUnlink:    "confirmUnlinkSelectedAttachment prompts on the panel's own confirm dialog before executeKeep writes",
+	operationCommentDelete:       "confirmDeleteSelectedComment prompts on the panel's own confirm dialog before executeDelete writes",
 }
 
 func TestEveryDestructiveOperationPromptsBeforeItWrites(t *testing.T) {
@@ -309,11 +313,13 @@ func sharesInputPath(strategy InputStrategy, path []string, id OperationID) bool
 
 func TestNotesOperationCatalogMatchesDirectActions(t *testing.T) {
 	app := parityAuditApp(t)
+	// Delete carries no key: it is destructive, so the Space sheet is its one
+	// path and the empty spelling is what the one-path rule demands.
 	wantKeys := map[OperationID]string{
 		operationNoteOpen:   "enter",
-		operationNoteRename: "r",
-		operationNoteMove:   "m",
-		operationNoteDelete: "x",
+		operationNoteRename: "e",
+		operationNoteMove:   "%",
+		operationNoteDelete: "",
 	}
 	descriptors := noteOperationDescriptors()
 	if len(descriptors) != len(wantKeys) {
@@ -326,7 +332,10 @@ func TestNotesOperationCatalogMatchesDirectActions(t *testing.T) {
 			t.Errorf("unexpected note operation %s", descriptor.ID)
 			continue
 		}
-		if !slices.Contains(handled, key) {
+		switch {
+		case key == "" && !slices.Contains(notesActionSheetOperations, descriptor.ID):
+			t.Errorf("note operation %s has no direct key and no Space sheet row", descriptor.ID)
+		case key != "" && !slices.Contains(handled, key):
 			t.Errorf("note operation %s has no Notes direct key %q", descriptor.ID, key)
 		}
 		registered, ok := app.GetOperationRegistry().Descriptor(descriptor.ID)

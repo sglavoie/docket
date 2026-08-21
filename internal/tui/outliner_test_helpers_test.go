@@ -49,11 +49,20 @@ func typedTestApp(t *testing.T) *AppModel {
 	if err := model.registerNoteOperations(); err != nil {
 		t.Fatalf("register note operations: %v", err)
 	}
+	if err := model.registerNotesSurfaceOperations(); err != nil {
+		t.Fatalf("register notes surface operations: %v", err)
+	}
+	if err := model.registerAttachmentOperations(); err != nil {
+		t.Fatalf("register attachment operations: %v", err)
+	}
+	if err := model.registerCommentOperations(); err != nil {
+		t.Fatalf("register comment operations: %v", err)
+	}
 	if err := model.registerChecklistRowOperations(); err != nil {
 		t.Fatalf("register checklist row operations: %v", err)
 	}
-	if err := model.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
-		t.Fatalf("register simplified input strategy: %v", err)
+	if err := model.registerSurfaceInputStrategies(); err != nil {
+		t.Fatalf("register surface input strategies: %v", err)
 	}
 	model.wireOutlinerOperationExecutor(model.crossOutliner)
 	model.ensureManageHub()

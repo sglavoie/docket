@@ -4,7 +4,6 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "label": "open Select Project", "key": "p" },
-    { "type": "key", "label": "leave search for the browse grammar", "key": "esc" },
     { "type": "key", "label": "select the first two projects", "key": "v" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "v" },
@@ -14,6 +13,9 @@
     { "type": "text", "label": "give both projects a shared descriptive tag", "text": "focus" },
     { "type": "key", "key": "enter" },
     { "type": "assert", "assert": "status_contains", "value": "Add Project Tag: 2 projects · #focus · u undo" },
+    { "type": "key", "label": "the surviving selection is the first Esc rung", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "2 selected" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
     { "type": "key", "label": "back to the Outliner", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
 

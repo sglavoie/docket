@@ -5,7 +5,6 @@
   "actions": [
     { "type": "key", "label": "open Select Project", "key": "p" },
     { "type": "assert", "assert": "view", "value": "ProjectHub" },
-    { "type": "key", "label": "leave search for the browse grammar", "key": "esc" },
     { "type": "key", "label": "select the project under the cursor", "key": "v" },
     { "type": "assert", "assert": "contains", "value": "1 selected" },
     { "type": "key", "label": "move to the next project", "key": "j" },

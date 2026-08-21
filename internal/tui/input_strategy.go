@@ -10,12 +10,17 @@ import (
 )
 
 // InputStrategyID identifies a complete top-level key grammar.
-// InputStrategySimplified is the sole production daily-loop grammar and is
-// built from OperationRegistry identities.
+// InputStrategySimplified is the production daily-loop grammar and is built
+// from OperationRegistry identities. The four surface grammars beside it name
+// the other entity surfaces that dispatch through the same registry.
 type InputStrategyID string
 
 const (
-	InputStrategySimplified InputStrategyID = "simplified"
+	InputStrategySimplified  InputStrategyID = "simplified"
+	InputStrategyProjectHub  InputStrategyID = "project-hub"
+	InputStrategyNotes       InputStrategyID = "notes"
+	InputStrategyAttachments InputStrategyID = "attachments"
+	InputStrategyComments    InputStrategyID = "comments"
 )
 
 // OperationKeyBinding assigns one operation any number of equivalent direct key

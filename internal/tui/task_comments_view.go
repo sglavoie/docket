@@ -96,11 +96,16 @@ func (m *TaskCommentsModel) renderAddMode(b *strings.Builder) tea.View {
 }
 
 func (m *TaskCommentsModel) renderCommentsSummary(b *strings.Builder) {
-	renderTaskItemSummary(b, "comment", len(m.task.Comments))
+	b.WriteString(MutedStyle.Render(fmt.Sprintf("%d comment(s)", len(m.task.Comments))))
+	b.WriteString("\n\n")
 }
 
 func (m *TaskCommentsModel) renderMessages(b *strings.Builder) {
-	renderTaskItemMessages(b, m.err)
+	if m.err == nil {
+		return
+	}
+	b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
+	b.WriteString("\n\n")
 }
 
 func (m *TaskCommentsModel) renderCommentsList(b *strings.Builder, availableRows int) {
@@ -132,7 +137,11 @@ func (m *TaskCommentsModel) renderCommentsList(b *strings.Builder, availableRows
 }
 
 func (m *TaskCommentsModel) renderStatusMessage(b *strings.Builder) {
-	renderTaskItemStatusMessage(b, m.statusMessage)
+	if m.statusMessage == "" {
+		return
+	}
+	b.WriteString(MutedStyle.Render(m.statusMessage))
+	b.WriteString("\n")
 }
 
 func (m *TaskCommentsModel) renderCommentEntry(index int, comment *models.Comment, maxLen int) string {
@@ -150,7 +159,23 @@ func (m *TaskCommentsModel) renderCommentEntry(index int, comment *models.Commen
 	}
 	entry.WriteString("\n")
 
-	renderTaskItemPreview(&entry, comment.Text, maxLen, false)
+	renderCommentPreview(&entry, comment.Text, maxLen)
 
 	return entry.String()
+}
+
+// renderCommentPreview shows the first two rendered lines of a comment and says
+// how many remain, so a long comment costs the list a fixed three rows.
+func renderCommentPreview(entry *strings.Builder, text string, maxLen int) {
+	renderedLines := strings.Split(renderMarkdown(text, maxLen), "\n")
+	for j, line := range renderedLines {
+		if j > 1 {
+			fmt.Fprintf(entry, "      ... (%d more lines, press Enter to expand)\n", len(renderedLines)-2)
+			break
+		}
+
+		entry.WriteString("      ")
+		entry.WriteString(truncateIntentional(line, maxLen, ""))
+		entry.WriteString("\n")
+	}
 }

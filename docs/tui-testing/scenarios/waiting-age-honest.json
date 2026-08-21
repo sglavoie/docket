@@ -17,6 +17,8 @@
     { "type": "key", "label": "save the comment", "key": "ctrl+s" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "chased the vendor again" },
+    { "type": "assert", "label": "removing the comment is a menu row rather than a press", "assert": "contains", "value": "Space actions" },
+    { "type": "assert", "assert": "not_contains", "value": "d delete" },
     { "type": "key", "label": "return to the Outliner", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
 
