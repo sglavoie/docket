@@ -138,6 +138,9 @@ func (m *OutlinerModel) selectOutlinerMode(id OutlinerModeID) (tea.Model, tea.Cm
 		m.recencyKeys = nil
 		m.recencyProjection = ""
 	}
+	// A zoom names a section of the mode it was taken in, so carrying it across
+	// would silence every gated emitter of a mode that never emits that key.
+	m.clearSectionZoom()
 	m.applyOutlinerModeTransition(mode)
 	m.primaryMode = mode.ID
 	m.clearStaleForRecentMode()

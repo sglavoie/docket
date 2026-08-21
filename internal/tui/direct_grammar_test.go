@@ -233,7 +233,7 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"K":      {operationChecklistMoveUp, operationCoreReorderUp},
 		"ctrl+j": {operationChecklistMoveBottom, operationCoreReorderBottom},
 		"ctrl+k": {operationChecklistMoveTop, operationCoreReorderTop},
-		"enter":  {operationCoreFocusSubtree, operationCoreActivateGroup},
+		"enter":  {operationCoreFocusSubtree, operationCoreZoomSection, operationCoreActivateGroup},
 	}
 
 	owners := make(map[string][]OperationID)

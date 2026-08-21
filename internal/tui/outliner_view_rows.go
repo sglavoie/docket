@@ -81,7 +81,38 @@ func (r outlinerRow) effectiveCollapseKey() string {
 
 // isSectionRowCollapsed reports whether a section-header row is collapsed.
 func (m *OutlinerModel) isSectionRowCollapsed(row outlinerRow) bool {
-	return m.collapsedSections[row.effectiveCollapseKey()]
+	return m.sectionCollapsed(row.effectiveCollapseKey())
+}
+
+// sectionCollapsed is the one read of persistent fold state. A zoomed section
+// ignores its own fold so it can be zoomed without mutating the fold the user
+// set, and without the zoom having to write and restore it.
+func (m *OutlinerModel) sectionCollapsed(key string) bool {
+	return m.collapsedSections[key] && key != m.zoom.key
+}
+
+// sectionZoomAdmits reports whether a section may emit rows at all.
+func (m *OutlinerModel) sectionZoomAdmits(key string) bool {
+	return !m.zoom.active() || m.zoom.key == key
+}
+
+// cursorNamesSectionHeader is the one read of the cursor's row kind, shared by
+// the Outliner's own command context and the shell's, so the key that dispatches
+// and the footer that advertises it can never disagree.
+func (m *OutlinerModel) cursorNamesSectionHeader() bool {
+	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
+		return false
+	}
+	return m.rows[m.cursor].IsSectionHeader
+}
+
+// isZoomedSectionRow names the header of the section the projection is zoomed
+// to. The zoom overrides that section's fold, so folding it is refused rather
+// than written: l already refuses because the section always reads expanded, and
+// h and S would otherwise persist a fold with no visible effect that Esc then
+// reveals.
+func (m *OutlinerModel) isZoomedSectionRow(row outlinerRow) bool {
+	return m.zoom.active() && row.IsSectionHeader && row.effectiveCollapseKey() == m.zoom.key
 }
 
 // buildTreePrefix computes the connector prefix string from the ancestor

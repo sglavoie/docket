@@ -170,22 +170,82 @@ func (m *OutlinerModel) popFocusLevel() bool {
 	return false
 }
 
-// activateGroupAtCursor preserves Enter's non-task behavior: section headers
-// toggle their rows and project headers focus the Outliner on that project.
+// enterSectionZoom narrows the projection to the one section the header names,
+// retaining the viewport Esc restores. Unlike Focus, the world narrows around a
+// stationary cursor: the zoomed header is the surviving projection's first row,
+// so the cursor keeps naming the row it was pressed on. Re-entering the section
+// already zoomed to changes nothing, which keeps the retained viewport the
+// pre-zoom one.
+func (m *OutlinerModel) enterSectionZoom(row outlinerRow) bool {
+	if m == nil || m.multiSelectMode || m.hasSearchProjection() || !row.IsSectionHeader {
+		return false
+	}
+	key := row.effectiveCollapseKey()
+	if m.zoom.key == key {
+		return true
+	}
+	m.zoom = sectionZoom{
+		key:    key,
+		name:   row.SectionName,
+		cursor: m.cursor,
+		scroll: m.viewScrollOffset,
+	}
+	m.peekMode = false
+	m.crossForceRebuild = true
+	m.rebuildRows()
+	m.moveCursorToSectionHeader(key)
+	return true
+}
+
+// exitSectionZoom widens back to the whole mode, restoring the viewport the zoom
+// was entered from. Work completed inside the zoom can have shortened the list
+// that cursor was taken against, so the restore clamps.
+func (m *OutlinerModel) exitSectionZoom() bool {
+	if m == nil || !m.zoom.active() {
+		return false
+	}
+	cursor, scroll := m.zoom.cursor, m.zoom.scroll
+	m.zoom = sectionZoom{}
+	m.cursor = cursor
+	m.viewScrollOffset = scroll
+	m.crossForceRebuild = true
+	m.rebuildRows()
+	m.clampCursor()
+	return true
+}
+
+// clearSectionZoom drops the zoom for a transition that reshapes the projection
+// on its own terms — a scope push, a mode change, a reveal — so the pre-zoom
+// viewport exitSectionZoom would restore is discarded with it. The force flag is
+// set here rather than left to the fingerprint so every clear invalidates the
+// cross-project memoization guard the same way a scope push does.
+func (m *OutlinerModel) clearSectionZoom() {
+	if m == nil || !m.zoom.active() {
+		return
+	}
+	m.zoom = sectionZoom{}
+	m.crossForceRebuild = true
+}
+
+// zoomSectionAtCursor narrows the Outliner to the section the cursor header
+// names.
+func (m *OutlinerModel) zoomSectionAtCursor() bool {
+	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
+		return false
+	}
+	return m.enterSectionZoom(m.rows[m.cursor])
+}
+
+// activateGroupAtCursor scopes the Outliner to the project the cursor sub-header
+// names. Enter on a section header is the separate zoom act.
 func (m *OutlinerModel) activateGroupAtCursor() bool {
 	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
 		return false
 	}
 	row := m.rows[m.cursor]
-	switch {
-	case row.IsProjectHeader && row.ProjectID != "":
-		m.pushProjectScope(row.ProjectID)
-		return true
-	case row.IsSectionHeader:
-		m.setSectionRowCollapsed(row, !m.isSectionRowCollapsed(row))
-		m.rebuildRows()
-		return true
-	default:
+	if !row.IsProjectHeader || row.ProjectID == "" {
 		return false
 	}
+	m.pushProjectScope(row.ProjectID)
+	return true
 }

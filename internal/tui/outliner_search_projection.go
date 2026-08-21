@@ -15,7 +15,8 @@ import (
 // outlinerSearchSnapshot is the complete session-only presentation state that
 // slash search temporarily replaces. Scope is deliberately not captured: the
 // active project/context scope owns the search candidate set and may be changed
-// independently, while mode, facets, folds, ordering, and viewport are restored.
+// independently, while mode, facets, folds, zoom, ordering, and viewport are
+// restored.
 type outlinerSearchSnapshot struct {
 	mode               OutlinerModeID
 	filter             FilterState
@@ -26,6 +27,7 @@ type outlinerSearchSnapshot struct {
 	collapsedSections  map[string]bool
 	focusStack         []FocusEntry
 	crossFocusStack    []CrossProjectFocusEntry
+	zoom               sectionZoom
 	cursor             modeCursorAnchor
 }
 
@@ -59,9 +61,14 @@ func (m *OutlinerModel) beginSearchProjection() {
 		collapsedSections:  copyBoolMap(m.collapsedSections),
 		focusStack:         append([]FocusEntry(nil), m.focusStack...),
 		crossFocusStack:    append([]CrossProjectFocusEntry(nil), m.crossFocusStack...),
+		zoom:               m.zoom,
 		cursor:             m.captureModeCursor(),
 	}
 	m.searchProjection = snapshot
+	// Search results bypass the section emitters the zoom gates, so a zoom left
+	// live here would be state no projection reads. Suspending it keeps the model
+	// honest for the Esc cascade and the fingerprints.
+	m.clearSectionZoom()
 	m.crossForceRebuild = true
 	m.rebuildRows()
 }
@@ -108,6 +115,7 @@ func (m *OutlinerModel) ClearSearch() {
 	m.collapsedSections = copyBoolMap(snapshot.collapsedSections)
 	m.focusStack = append([]FocusEntry(nil), snapshot.focusStack...)
 	m.crossFocusStack = append([]CrossProjectFocusEntry(nil), snapshot.crossFocusStack...)
+	m.zoom = snapshot.zoom
 	m.crossForceRebuild = true
 	m.rebuildRows()
 	m.restoreSearchCursor(snapshot.cursor)

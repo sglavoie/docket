@@ -58,10 +58,24 @@ func TestFocusKeyGrammarDispatchHelpAndGuidanceAgree(t *testing.T) {
 		}
 	}
 
+	section := simplifiedOperationContext()
+	section.Entity = EntityContext{HasSectionHeaderCursor: true}
+	binding, _, ok := registry.InputBindingForKey(InputStrategySimplified, "enter", section)
+	if !ok || binding.OperationID != operationCoreZoomSection {
+		t.Fatalf("section header Enter = %s available=%t, want %s", binding.OperationID, ok, operationCoreZoomSection)
+	}
+	sectionHelp := registry.HelpItemsForInputStrategy(InputStrategySimplified, section)
+	if !slices.ContainsFunc(sectionHelp, func(item HelpItem) bool {
+		return item.Key == "Enter" && item.Description == "Zoom to Section"
+	}) {
+		t.Error("generated help omits Enter Zoom to Section")
+	}
+
 	header := simplifiedOperationContext()
-	binding, _, ok := registry.InputBindingForKey(InputStrategySimplified, "enter", header)
+	header.Entity = EntityContext{ProjectID: "project"}
+	binding, _, ok = registry.InputBindingForKey(InputStrategySimplified, "enter", header)
 	if !ok || binding.OperationID != operationCoreActivateGroup {
-		t.Fatalf("header Enter = %s available=%t, want %s", binding.OperationID, ok, operationCoreActivateGroup)
+		t.Fatalf("project header Enter = %s available=%t, want %s", binding.OperationID, ok, operationCoreActivateGroup)
 	}
 }
 
@@ -505,43 +519,53 @@ func searchProjectionCursorOnTitle(t *testing.T, out *OutlinerModel, title strin
 	return TaskIdentity{}
 }
 
-func TestEnterActivatesSectionAndProjectHeaders(t *testing.T) {
+func TestEnterZoomsSectionHeadersAndScopesProjectHeaders(t *testing.T) {
 	project := scopeTestProject("project", "Project", "task")
-	out := scopeTestOutliner(project)
+	other := scopeTestProject("other", "Other", "other-task")
+	out := scopeTestOutliner(project, other)
 	sectionIndex := -1
-	projectIndex := -1
 	for index, row := range out.rows {
-		if sectionIndex < 0 && row.IsSectionHeader {
+		if row.IsSectionHeader {
 			sectionIndex = index
-		}
-		if projectIndex < 0 && row.IsProjectHeader && row.ProjectID == project.ID {
-			projectIndex = index
+			break
 		}
 	}
-	if sectionIndex < 0 || projectIndex < 0 {
-		t.Fatalf("header fixture = section %d project %d", sectionIndex, projectIndex)
+	if sectionIndex < 0 {
+		t.Fatal("the fixture emits no section header")
 	}
+	fullRows := len(out.rows)
 
 	out.cursor = sectionIndex
-	sectionKey := out.rows[sectionIndex].effectiveCollapseKey()
-	if !out.activateGroupAtCursor() || !out.collapsedSections[sectionKey] {
-		t.Fatal("Enter did not collapse the selected section header")
+	sectionName := out.rows[sectionIndex].SectionName
+	if !out.zoomSectionAtCursor() {
+		t.Fatal("Enter did not zoom into the selected section header")
 	}
-	if !out.activateGroupAtCursor() || out.collapsedSections[sectionKey] {
-		t.Fatal("Enter did not expand the selected section header")
+	if names := sectionHeaderNames(out); len(names) != 1 || names[0] != sectionName {
+		t.Fatalf("zoomed sections = %v, want %q alone", names, sectionName)
 	}
-	out.crossForceRebuild = true
-	out.crossProjectRebuildRows()
-	for index, row := range out.rows {
-		if row.IsProjectHeader && row.ProjectID == project.ID {
-			out.cursor = index
-			if !out.activateGroupAtCursor() || out.scopedProjectID != project.ID {
-				t.Fatal("Enter did not focus the selected project header")
-			}
-			return
-		}
+
+	if !RunEscCascade(out.escSteps()) {
+		t.Fatal("Esc did not leave the zoom")
 	}
-	t.Fatal("project header disappeared after section activation")
+	if out.zoom.active() || len(out.rows) != fullRows {
+		t.Fatalf("unzoomed state = zoom %+v rows %d, want no zoom and the pre-zoom %d", out.zoom, len(out.rows), fullRows)
+	}
+
+	out.cursor = sectionHeaderIndex(t, out, sectionName)
+	if out.activateGroupAtCursor() {
+		t.Fatal("a section header still reached the project scope act")
+	}
+
+	out.cursor = projectHeaderIndex(t, out, project.ID)
+	if !out.activateGroupAtCursor() || out.scopedProjectID != project.ID {
+		t.Fatalf("Enter on the project header scoped to %q, want %q", out.scopedProjectID, project.ID)
+	}
+	if out.zoom.active() {
+		t.Fatalf("the project header took a zoom %+v", out.zoom)
+	}
+	if ids := taskRowProjectIDs(out); len(ids) != 1 || ids[0] != project.ID {
+		t.Fatalf("scoped task rows = %v, want %q alone", ids, project.ID)
+	}
 }
 
 func TestFocusConstrainsModesFiltersSortFoldsAndSearch(t *testing.T) {

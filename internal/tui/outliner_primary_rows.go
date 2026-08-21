@@ -390,6 +390,9 @@ func (m *OutlinerModel) appendStateGroupForests(
 		total += item.forest.count
 	}
 	collapseKey := stateGroupCollapsePrefix + string(group)
+	if !m.sectionZoomAdmits(collapseKey) {
+		return
+	}
 	m.rows = append(m.rows, outlinerRow{
 		IsSectionHeader: true,
 		SectionName:     group.Label(),
@@ -397,7 +400,7 @@ func (m *OutlinerModel) appendStateGroupForests(
 		StateGroup:      group,
 		CollapseKey:     collapseKey,
 	})
-	if m.collapsedSections[collapseKey] {
+	if m.sectionCollapsed(collapseKey) {
 		return
 	}
 	for _, item := range forests {

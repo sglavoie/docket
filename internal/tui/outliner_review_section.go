@@ -48,7 +48,7 @@ func (m *OutlinerModel) buildReviewSection(
 }
 
 func (m *OutlinerModel) appendReviewSection(section reviewSectionBuild) {
-	if section.count == 0 {
+	if section.count == 0 || !m.sectionZoomAdmits(reviewSectionCollapseKey) {
 		return
 	}
 	m.rows = append(m.rows, outlinerRow{
@@ -58,7 +58,7 @@ func (m *OutlinerModel) appendReviewSection(section reviewSectionBuild) {
 		CollapseKey:     reviewSectionCollapseKey,
 		PromotedTag:     reviewTaskTag,
 	})
-	if m.collapsedSections[reviewSectionCollapseKey] {
+	if m.sectionCollapsed(reviewSectionCollapseKey) {
 		return
 	}
 	m.appendProjectGroupedForests(

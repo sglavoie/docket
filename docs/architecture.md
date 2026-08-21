@@ -1108,6 +1108,21 @@ task's descendants. Nested Focus frames retain the exact parent cursor and
 scroll offset; `Esc` restores one frame at a time. A leaf reports
 `No children to focus` instead of falling through to Peek.
 
+On a section header the same key is `tui.core.zoom-section`, a third `Enter`
+descriptor rather than a branch inside the focus one: `EntityContext.HasSectionHeaderCursor`
+is what makes the three applicabilities disjoint, and it is filled by both
+command-context builders so the key that dispatches and the footer that
+advertises it can never disagree. `enterSectionZoom` snapshots the pre-zoom
+cursor and `viewScrollOffset` into one `sectionZoom` value and `sectionZoomAdmits`
+then lets exactly one section emit rows. The zoom overrides that section's fold
+rather than writing one, which is what lets a collapsed section zoom open and
+stay collapsed after `Esc`, and is why `h` and `S` refuse on the zoomed header
+instead of persisting a fold with no visible effect. A zoom is a single
+snapshotted value, not a stack: `pushProjectScope` clears it exactly as it
+clears `crossFocusStack`, and the scope frame carries it back on the pop. An
+emptied zoom is left standing, because auto-unwinding would move the world under
+a user who has just completed the last task they were looking at.
+
 Pressed on a search result, `Enter` and `Shift+Enter` exit the temporary
 projection first rather than refusing it, which makes search the fastest way to
 reach an arbitrary task. `exitSearchOntoCursorTask` reads the result's identity,
@@ -1147,8 +1162,10 @@ focus root and that row stays silent.
 
 An active inline row editor consumes `Esc` first and cancels the draft. The
 ordinary Outliner `Esc` priority is Peek, live range, frozen selection,
-temporary search projection, one Focus frame, then the existing project/base
-escape behavior.
+temporary search projection, one Focus frame, one cross-project Focus frame, the
+section zoom, then the existing project/base escape behavior. The zoom narrows
+one mode, so it unwinds after the Focus stacks and before the project scope that
+owns the mode.
 
 `Ctrl+Enter` toggles a session-only, project-qualified Peek below the cursor
 task. Peek follows cursor, mode, and scope navigation. It carries no checklist

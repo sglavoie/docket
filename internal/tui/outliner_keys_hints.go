@@ -19,6 +19,7 @@ const (
 	outlinerEmptySearch
 	outlinerEmptySearchInvalid
 	outlinerEmptyFocus
+	outlinerEmptySection
 )
 
 func (m *OutlinerModel) HandledKeys() []string {
@@ -142,27 +143,36 @@ func (m *OutlinerModel) cursorNamesHeader() bool {
 	return m.rows[m.cursor].isHeaderRow()
 }
 
+// headerGuidance names only the keys the header under the cursor can act on. On
+// the zoomed section header three of them cannot: Enter re-enters the zoom it is
+// already in, and the zoom overrides that section's fold, so h/l and S refuse
+// rather than write one. Esc is the act that remains, so it takes the fold
+// hint's rank and is required.
 func (m *OutlinerModel) headerGuidance() GuidanceSpec {
 	row := m.rows[m.cursor]
+	zoomed := m.isZoomedSectionRow(row)
 	hints := make([]GuidanceHint, 0, 8)
 	if m.operationRegistry != nil {
 		for _, hint := range m.operationRegistry.GuidanceHintsForInputStrategy(
 			InputStrategySimplified,
 			m.operationCommandContext(),
 		) {
-			if hint.Key == "Enter" || hint.Key == "Ctrl+Enter" {
+			if (hint.Key == "Enter" && !zoomed) || hint.Key == "Ctrl+Enter" {
 				hints = append(hints, hint)
 			}
 		}
 	}
-	if m.isSectionRowCollapsed(row) {
+	switch {
+	case zoomed:
+		hints = append(hints, newGuidanceHint("Esc unzoom", 1, true))
+	case m.isSectionRowCollapsed(row):
 		hints = append(hints, newGuidanceHint("l/Right expand", 1, false))
-	} else {
+	default:
 		hints = append(hints, newGuidanceHint("h/Left collapse", 1, false))
 	}
 	if row.IsProjectHeader {
 		hints = append(hints, newGuidanceHint("# project tags", 2, false))
-	} else {
+	} else if !zoomed {
 		hints = append(hints, newGuidanceHint("S sections", 2, false))
 	}
 	hints = append(hints, optionalGuidanceHints(3, "Tab next mode", "p projects", "/ search", "? help")...)
@@ -186,7 +196,7 @@ func (m *OutlinerModel) emptyGuidance() GuidanceSpec {
 		required = "Fx clear project filters"
 	case outlinerEmptySearch, outlinerEmptySearchInvalid:
 		required = "Esc clear search"
-	case outlinerEmptyFocus:
+	case outlinerEmptyFocus, outlinerEmptySection:
 		required = "Esc return"
 	default:
 		required = "a capture"
@@ -211,6 +221,12 @@ func (m *OutlinerModel) classifyEmptyCause() outlinerEmptyCause {
 			return outlinerEmptyProjectFiltered
 		}
 		return outlinerEmptyNoProjects
+	}
+	// A zoom outranks the filter and focus causes below it: whatever else
+	// narrowed the list, Esc is the press that widens it back, and naming a
+	// filter would send the user to a key that leaves the section empty.
+	if m.zoom.active() {
+		return outlinerEmptySection
 	}
 	if hasActiveCommonFilters(&m.filter.CommonFilterState) {
 		return outlinerEmptyFiltered

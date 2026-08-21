@@ -251,6 +251,9 @@ func (m *OutlinerModel) appendFilteredModeSections(
 	taskFilter func(*models.Task, *models.Project) bool,
 ) {
 	for _, section := range sections {
+		if !m.sectionZoomAdmits(section.CollapseKey) {
+			continue
+		}
 		rows := make([]OutlinerModeRow, 0, len(section.Rows))
 		for _, row := range section.Rows {
 			if row.Task != nil &&
@@ -278,7 +281,7 @@ func (m *OutlinerModel) appendFilteredModeSections(
 			SectionCount:     total,
 			CollapseKey:      section.CollapseKey,
 		})
-		if m.collapsedSections[section.CollapseKey] {
+		if m.sectionCollapsed(section.CollapseKey) {
 			continue
 		}
 		m.appendProjectGroupedForests(groups, outlinerRow{}, func(projectID string) string {

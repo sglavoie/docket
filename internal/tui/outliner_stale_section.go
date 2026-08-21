@@ -72,7 +72,7 @@ func (m *OutlinerModel) buildStaleSection(
 }
 
 func (m *OutlinerModel) appendStaleSection(section staleSectionBuild) {
-	if section.count == 0 {
+	if section.count == 0 || !m.sectionZoomAdmits(staleSectionCollapseKey) {
 		return
 	}
 	m.rows = append(m.rows, outlinerRow{
@@ -81,7 +81,7 @@ func (m *OutlinerModel) appendStaleSection(section staleSectionBuild) {
 		SectionCount:    section.count,
 		CollapseKey:     staleSectionCollapseKey,
 	})
-	if m.collapsedSections[staleSectionCollapseKey] {
+	if m.sectionCollapsed(staleSectionCollapseKey) {
 		return
 	}
 	m.appendProjectGroupedForests(

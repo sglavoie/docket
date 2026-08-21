@@ -28,6 +28,17 @@ type CrossProjectFocusEntry struct {
 	ScrollOffset int    // Persistent viewport offset at the moment of focus
 }
 
+// sectionZoom narrows the Outliner to one section of the active mode, plus the
+// viewport Esc restores. A zero value means no zoom.
+type sectionZoom struct {
+	key    string // Collapse key of the zoomed section
+	name   string // Display name, for chrome only
+	cursor int    // Cursor row the zoom was entered from
+	scroll int    // Persistent viewport offset the zoom was entered from
+}
+
+func (z sectionZoom) active() bool { return z.key != "" }
+
 // OutlinerModel is the outliner view for navigating tasks in a hierarchical,
 // focusable tree. It is the sole per-project primary view and implements the
 // View interface as a standalone struct, owning its own navigation semantics,
@@ -49,6 +60,7 @@ type OutlinerModel struct {
 	focusStack      []FocusEntry             // Focus stack for single-project mode
 	crossFocusStack []CrossProjectFocusEntry // Focus stack for cross-project mode (m.project == nil)
 	focusNotice     string                   // Transient message shown when focus target is removed
+	zoom            sectionZoom              // Section the projection is narrowed to; zero when none
 
 	rows []outlinerRow // Flattened rows, rebuilt on each render
 	// lastViewport is the window the last render actually drew. H/M/L read it

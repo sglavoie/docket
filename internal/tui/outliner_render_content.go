@@ -137,7 +137,7 @@ func (m *OutlinerModel) buildOutlinerFilterContext() string {
 }
 
 func (m *OutlinerModel) buildOutlinerInteractionContext(width int) []string {
-	context := make([]string, 0, 4)
+	context := make([]string, 0, 5)
 	if m.multiSelectMode {
 		context = append(context, SelectionCountStyle.Render(fmt.Sprintf("MULTI-SELECT: %d selected", m.SelectedCount())))
 	}
@@ -149,6 +149,11 @@ func (m *OutlinerModel) buildOutlinerInteractionContext(width int) []string {
 	}
 	if focus := m.outlinerFocusContext(); focus != "" {
 		context = append(context, MutedStyle.Render(focus))
+	}
+	// Last, so that the one joined Context region loses the zoom before it loses
+	// a narrowing the user cannot leave with a single Esc.
+	if m.zoom.active() && m.zoom.name != "" {
+		context = append(context, MutedStyle.Render("Section: "+m.zoom.name))
 	}
 	return context
 }
@@ -198,6 +203,8 @@ func (m *OutlinerModel) outlinerEmptyMessage() string {
 		return EmptyStateFiltered
 	case outlinerEmptyFocus:
 		return "No tasks are visible in this Focus. Press Esc to return."
+	case outlinerEmptySection:
+		return "No tasks are left in this section. Press Esc to return."
 	case outlinerEmptyMode:
 		mode := m.activeOutlinerModeEntry()
 		if mode.ID == ModeInbox {

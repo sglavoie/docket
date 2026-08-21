@@ -319,6 +319,7 @@ func (m *OutlinerModel) crossProjectRowsFingerprint() string {
 	fmt.Fprintf(&b, "loaded=%s|", loadedProjectIDsFingerprint(m.loadedProjects))
 	fmt.Fprintf(&b, "scope=%q|", m.scopedProjectID)
 	fmt.Fprintf(&b, "mode=%s|", m.primaryMode)
+	fmt.Fprintf(&b, "zoom=%q|", m.zoom.key)
 	fmt.Fprintf(&b, "today-fold=%t|next-fold=%t|", m.collapsedSections[todaySectionCollapseKey], m.collapsedSections[nextSectionCollapseKey])
 	b.WriteString("today-plan=")
 	if m.runtime != nil {

@@ -279,7 +279,12 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationTaskSetParent, Keys: []string{">"}, DisplayKey: ">"},
 			{OperationID: operationTaskAdoptChildren, Keys: []string{"<"}, DisplayKey: "<"},
 			{OperationID: operationTaskMoveToProject, Keys: []string{"%"}, DisplayKey: "%"},
+			// Enter zooms in on whatever the cursor names. The three acts carry
+			// different targets and different vocabularies, so they stay three
+			// descriptors with three honest labels rather than one that branches on
+			// runtime context.
 			{OperationID: operationCoreFocusSubtree, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 9, FooterLabel: "focus", SharedKey: true},
+			{OperationID: operationCoreZoomSection, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 9, FooterLabel: "zoom", SharedKey: true},
 			{OperationID: operationCoreActivateGroup, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 9, FooterLabel: "open", SharedKey: true},
 			{OperationID: operationCoreFocusParent, Keys: []string{"shift+enter"}, DisplayKey: "Shift+Enter"},
 			{OperationID: operationCorePeek, Keys: []string{"ctrl+enter"}, DisplayKey: "Ctrl+Enter", FooterRank: 10, FooterLabel: "peek"},

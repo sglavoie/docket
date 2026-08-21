@@ -49,21 +49,23 @@ func gotoProjectCursorTitle(outliner *OutlinerModel) string {
 	return row.task.Title
 }
 
-func gotoProjectIDNamed(t *testing.T, app *AppModel, name string) string {
+const gotoProjectName = "Client Beta"
+
+func gotoProjectID(t *testing.T, app *AppModel) string {
 	t.Helper()
 	for _, project := range app.projects {
-		if project != nil && project.Name == name {
+		if project != nil && project.Name == gotoProjectName {
 			return project.ID
 		}
 	}
-	t.Fatalf("no project named %q", name)
+	t.Fatalf("no project named %q", gotoProjectName)
 	return ""
 }
 
 func TestGotoTaskProjectScopesToTheCursorTaskAndForcesAll(t *testing.T) {
 	driver := gotoProjectDriver(t)
 	outliner := gotoProjectOutliner(t, driver)
-	beta := gotoProjectIDNamed(t, driver.App(), "Client Beta")
+	beta := gotoProjectID(t, driver.App())
 	gotoProjectCursorOnTask(t, outliner)
 
 	sortPressKeys(t, driver, "ctrl+p")
@@ -96,7 +98,7 @@ func TestGotoTaskProjectEscRestoresTheOriginMode(t *testing.T) {
 	if outliner.primaryMode != ModeBacklog {
 		t.Fatalf("origin mode = %q, want %q", outliner.primaryMode, ModeBacklog)
 	}
-	beta := gotoProjectIDNamed(t, driver.App(), "Client Beta")
+	beta := gotoProjectID(t, driver.App())
 	gotoProjectCursorOnTask(t, outliner)
 
 	sortPressKeys(t, driver, "ctrl+p")
@@ -127,7 +129,7 @@ func TestGotoTaskProjectKeepsTheOriginModeWhenAllOmitsTheTask(t *testing.T) {
 	driver.Wait(defaultWaitTimeout)
 
 	sortPressKeys(t, driver, "g", "r")
-	beta := gotoProjectIDNamed(t, driver.App(), "Client Beta")
+	beta := gotoProjectID(t, driver.App())
 	gotoProjectCursorOnTask(t, outliner)
 
 	sortPressKeys(t, driver, "ctrl+p")

@@ -50,6 +50,7 @@ const (
 	operationCoreFocusSubtree       OperationID = "tui.core.focus-subtree"
 	operationCoreFocusParent        OperationID = "tui.core.focus-parent"
 	operationCoreActivateGroup      OperationID = "tui.core.activate-group"
+	operationCoreZoomSection        OperationID = "tui.core.zoom-section"
 	operationCorePeek               OperationID = "tui.core.peek"
 	operationCoreScopeSearch        OperationID = "tui.core.scope-search"
 	operationCoreSelectProject      OperationID = "tui.core.select-project"
@@ -162,19 +163,36 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 			!ctx.Entity.HasChecklistCursor &&
 			currentTaskIdentity(ctx).Valid()
 	}
-	activateGroup := core(
-		operationCoreActivateGroup,
-		"Activate Group",
+	zoomSection := core(
+		operationCoreZoomSection,
+		"Zoom to Section",
 		OperationCategoryNavigation,
 		TargetCardinalityNone,
 		OperationRiskReadOnly,
-		"toggle section",
+		"zoom section",
+		"section only",
+		"narrow to section",
+	)
+	zoomSection.Applicability = func(ctx CommandContext) bool {
+		return coreOutlinerApplicability(ctx) &&
+			!ctx.Selection.Visual &&
+			!ctx.Entity.HasChecklistCursor &&
+			ctx.Entity.HasSectionHeaderCursor
+	}
+	activateGroup := core(
+		operationCoreActivateGroup,
+		"Open Project",
+		OperationCategoryNavigation,
+		TargetCardinalityNone,
+		OperationRiskReadOnly,
 		"focus project",
+		"scope to project",
 	)
 	activateGroup.Applicability = func(ctx CommandContext) bool {
 		return coreOutlinerApplicability(ctx) &&
 			!ctx.Selection.Visual &&
 			!ctx.Entity.HasChecklistCursor &&
+			!ctx.Entity.HasSectionHeaderCursor &&
 			!currentTaskIdentity(ctx).Valid()
 	}
 	// The outline editor restructures a whole project tree, so it names no task
@@ -229,6 +247,7 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		focusSubtree,
 		focusParent,
 		gotoTaskProject,
+		zoomSection,
 		activateGroup,
 		peek,
 		core(operationCoreScopeSearch, "Search Scoped Tasks", OperationCategoryFilter, TargetCardinalityNone, OperationRiskReadOnly, "scope-wide search"),
@@ -499,6 +518,10 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 			if !out.focusParentAtCursor() {
 				return OperationHandlerResult{Status: "No parent to focus"}
 			}
+		}
+	case operationCoreZoomSection:
+		if out, ok := m.outlinerPrimary(); ok {
+			out.zoomSectionAtCursor()
 		}
 	case operationCoreActivateGroup:
 		if out, ok := m.outlinerPrimary(); ok {

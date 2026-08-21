@@ -16,6 +16,10 @@ import (
 //   - collapsedSections / expandedNodes are keyed by project and section, so a
 //     scope change cannot corrupt another project's folds.
 //   - computed section fold maps are not per-scope state.
+//
+// The section zoom is snapshotted precisely because it is not fold state: it is
+// a narrowing of the projection the push replaces, like the focus stacks beside
+// it, so the pop owes the user the zoom they left.
 type outlinerScopeFrame struct {
 	scopedProjectID  string
 	cursor           int
@@ -30,6 +34,9 @@ type outlinerScopeFrame struct {
 	// Focus stacks (single-project and cross-project).
 	focusStack      []FocusEntry
 	crossFocusStack []CrossProjectFocusEntry
+
+	// Section zoom the push dropped.
+	zoom sectionZoom
 }
 
 // captureScopeFrame snapshots the current restorable state into a frame. Every
@@ -45,6 +52,7 @@ func (m *OutlinerModel) captureScopeFrame() outlinerScopeFrame {
 		treeSort:         m.treeSort,
 		focusStack:       slices.Clone(m.focusStack),
 		crossFocusStack:  slices.Clone(m.crossFocusStack),
+		zoom:             m.zoom,
 	}
 }
 
@@ -61,6 +69,7 @@ func (m *OutlinerModel) restoreScopeFrame(f outlinerScopeFrame) {
 	m.treeSort = f.treeSort
 	m.focusStack = slices.Clone(f.focusStack)
 	m.crossFocusStack = slices.Clone(f.crossFocusStack)
+	m.zoom = f.zoom
 	m.crossForceRebuild = true
 	m.crossProjectRebuildRows()
 	m.clampCursor()
@@ -214,6 +223,7 @@ func (m *OutlinerModel) pushProjectScope(projectID string) {
 	}
 	m.scopedProjectID = projectID
 	m.crossFocusStack = nil
+	m.clearSectionZoom()
 	m.cursor = 0
 	m.resetViewScrollOffset()
 	m.crossForceRebuild = true
@@ -273,6 +283,10 @@ func (m *OutlinerModel) resetToGlobalAll() {
 	m.dropParkedProjectFocus()
 	m.focusStack = nil
 	m.crossFocusStack = nil
+	// Restated rather than left to the selectOutlinerMode(ModeAll) below, which
+	// also clears it: the reset names every axis it drops, the way it already
+	// restates the focus-stack nils.
+	m.clearSectionZoom()
 	m.collapsedSections = make(map[string]bool)
 	m.expandedNodes = make(map[TaskIdentity]bool)
 	m.expandedChecklists = make(map[TaskIdentity]bool)
@@ -316,6 +330,7 @@ func (m *OutlinerModel) reconcileProjectScope() (string, bool) {
 	// No captured frame remained; fall back to the active context base in place.
 	m.scopedProjectID = ""
 	m.crossFocusStack = nil
+	m.clearSectionZoom()
 	m.cursor = 0
 	m.resetViewScrollOffset()
 	m.crossForceRebuild = true

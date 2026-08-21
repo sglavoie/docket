@@ -46,7 +46,7 @@ func pinnedProjectSectionCollapseKey(projectID string) string {
 }
 
 func (m *OutlinerModel) appendPinnedSection(section pinnedSectionBuild) {
-	if section.count == 0 {
+	if section.count == 0 || !m.sectionZoomAdmits(pinnedSectionCollapseKey) {
 		return
 	}
 	m.rows = append(m.rows, outlinerRow{
@@ -56,7 +56,7 @@ func (m *OutlinerModel) appendPinnedSection(section pinnedSectionBuild) {
 		SectionCount:    section.count,
 		CollapseKey:     pinnedSectionCollapseKey,
 	})
-	if m.collapsedSections[pinnedSectionCollapseKey] {
+	if m.sectionCollapsed(pinnedSectionCollapseKey) {
 		return
 	}
 

@@ -209,7 +209,24 @@ func TestRetiredFilterChordVocabularyStaysOutOfComments(t *testing.T) {
 	}
 }
 
+// TestRetiredFocusStackZoomVocabulary keeps the Focus stack from being spelled
+// as a zoom again. The section zoom is live product vocabulary, so the retired
+// set names the Focus stack's own compounds rather than the bare word, which
+// would now reject `sectionZoom` and every honest use around it.
 func TestRetiredFocusStackZoomVocabulary(t *testing.T) {
+	retired := []string{
+		"zoomstack",
+		"crosszoom",
+		"zoomentry",
+		"zoomroot",
+		"zoomdepth",
+		"zoomcontext",
+		"zoomboundary",
+		"zoomnotice",
+		"zoomcopy",
+		"zoomable",
+		"emptyzoom",
+	}
 	err := filepath.WalkDir("internal", func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -221,8 +238,11 @@ func TestRetiredFocusStackZoomVocabulary(t *testing.T) {
 		if readErr != nil {
 			return readErr
 		}
-		if strings.Contains(strings.ToLower(string(data)), "zoom") {
-			t.Errorf("%s contains retired Focus-stack vocabulary %q", filepath.ToSlash(path), "zoom")
+		lowered := strings.ToLower(string(data))
+		for _, spelling := range retired {
+			if strings.Contains(lowered, spelling) {
+				t.Errorf("%s contains retired Focus-stack vocabulary %q", filepath.ToSlash(path), spelling)
+			}
 		}
 		return nil
 	})

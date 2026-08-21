@@ -50,6 +50,7 @@ func (m *OutlinerModel) navigateToTask(task *models.Task) bool {
 	if bucket := taskStateGroupLabel(task); bucket != "" && m.project != nil {
 		delete(m.collapsedSections, bucket)
 	}
+	m.clearSectionZoom()
 	m.ensureExpandedNodes()
 	for ancestor := task.Parent; ancestor != nil; ancestor = ancestor.Parent {
 		m.expandedNodes[TaskIdentity{ProjectID: projectID, TaskID: ancestor.ID}] = true
@@ -74,6 +75,7 @@ func (m *OutlinerModel) revealTask(task *models.Task) {
 	}
 
 	m.focusStack = nil
+	m.clearSectionZoom()
 	m.filter = NewFilterState()
 	m.clearSearchProjectionWithoutRestore()
 	if task.IsTerminalState() {
@@ -129,6 +131,7 @@ func (m *OutlinerModel) NavigateToTaskInProject(task *models.Task, project *mode
 	section := effectiveDisplaySection(task)
 	delete(m.collapsedSections, "_xp:"+section)
 	m.crossFocusStack = nil
+	m.clearSectionZoom()
 	m.ensureExpandedNodes()
 	for ancestor := task.Parent; ancestor != nil; ancestor = ancestor.Parent {
 		m.expandedNodes[TaskIdentity{ProjectID: projectID, TaskID: ancestor.ID}] = true

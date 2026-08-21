@@ -18,6 +18,15 @@ func (m *AppModel) cursorProjectHeaderProject() *models.Project {
 	return nil
 }
 
+// cursorNamesSectionHeader reports whether the Outliner cursor rests on a
+// grouping section header.
+func (m *AppModel) cursorNamesSectionHeader() bool {
+	if out := m.activeOutliner(); out != nil {
+		return out.cursorNamesSectionHeader()
+	}
+	return false
+}
+
 // cursorChecklistItem returns the checklist item the Outliner cursor names.
 func (m *AppModel) cursorChecklistItem() (checklistCursor, bool) {
 	if out := m.activeOutliner(); out != nil {

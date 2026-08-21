@@ -334,6 +334,7 @@ func (m *OutlinerModel) jumpProjectionFingerprint() string {
 		m.hasSearchProjection(), m.SearchQuery(),
 		m.sort.Field, m.sort.Ascending, m.treeSort.Field, m.treeSort.Ascending)
 	fmt.Fprintf(&b, "filters=%q|", strings.Join(commonFilterParts(&m.filter.CommonFilterState), "\x1f"))
+	fmt.Fprintf(&b, "zoom=%q|", m.zoom.key)
 
 	collapsed := make([]string, 0, len(m.collapsedSections))
 	for key, value := range m.collapsedSections {

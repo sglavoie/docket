@@ -66,6 +66,7 @@ var coreOperationsRefusedOnChecklistRow = map[OperationID]bool{
 	operationCoreActions:         true,
 	operationCoreFocusSubtree:    true,
 	operationCoreFocusParent:     true,
+	operationCoreZoomSection:     true,
 	operationCorePeek:            true,
 	operationCoreReorderDown:     true,
 	operationCoreReorderUp:       true,

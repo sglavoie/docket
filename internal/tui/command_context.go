@@ -148,6 +148,10 @@ type EntityContext struct {
 	// ChecklistIndex is the item's position inside the owner's checklist. It is
 	// meaningful only while HasChecklistCursor holds.
 	ChecklistIndex int
+	// HasSectionHeaderCursor reports that the cursor rests on a grouping section
+	// header, which names neither a task nor a project. Nothing else
+	// distinguishes it from an empty entity in a single-project scope.
+	HasSectionHeaderCursor bool
 }
 
 // CommandContext is the complete input to capability-based command

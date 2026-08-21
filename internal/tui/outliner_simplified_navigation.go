@@ -22,7 +22,7 @@ func (m *OutlinerModel) collapseOrMoveToParent() bool {
 	}
 	row := m.rows[m.cursor]
 	if row.isHeaderRow() {
-		if m.isSectionRowCollapsed(row) {
+		if m.isZoomedSectionRow(row) || m.isSectionRowCollapsed(row) {
 			return false
 		}
 		m.setSectionRowCollapsed(row, true)
@@ -130,9 +130,11 @@ func (m *OutlinerModel) moveCursorToAdjacentHeader(delta int) (tea.Cmd, bool) {
 
 // toggleVisibleSections expands every visible top-level section when any is
 // collapsed; otherwise it collapses them all. Project subheaders and task tree
-// folds are deliberately outside this bulk operation.
+// folds are deliberately outside this bulk operation. A zoom leaves exactly one
+// section visible and overrides its fold, so the bulk toggle refuses there
+// instead of writing a fold nothing shows.
 func (m *OutlinerModel) toggleVisibleSections() bool {
-	if m == nil {
+	if m == nil || m.zoom.active() {
 		return false
 	}
 	headers := m.visibleSectionHeaders()

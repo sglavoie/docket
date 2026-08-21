@@ -125,6 +125,9 @@ func (m *OutlinerModel) appendPlanningSection(section planningSectionBuild) {
 	if isToday {
 		collapseKey = todaySectionCollapseKey
 	}
+	if !m.sectionZoomAdmits(collapseKey) {
+		return
+	}
 	m.rows = append(m.rows, outlinerRow{
 		IsSectionHeader: true,
 		IsTodaySection:  isToday,
@@ -134,7 +137,7 @@ func (m *OutlinerModel) appendPlanningSection(section planningSectionBuild) {
 		StateGroup:      section.group,
 		CollapseKey:     collapseKey,
 	})
-	if !m.collapsedSections[collapseKey] {
+	if !m.sectionCollapsed(collapseKey) {
 		m.appendPlanningRows(section.rows, section.group)
 	}
 }

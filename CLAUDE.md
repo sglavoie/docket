@@ -91,7 +91,7 @@ One key is one act on every entity surface:
 
 | Keys | Act |
 | --- | --- |
-| `Enter` `a` `e` `E`/`Ctrl+E` | open · create · edit · body/external |
+| `Enter` `a` `e` `E`/`Ctrl+E` | zoom in · create · edit · body/external |
 | `/` `v` `Ctrl+A` `p` `%` | search · select · select all · scope · reown |
 | `y`/`Y` `J`/`K` `*` `#` | copy · reorder · pin · tags |
 | `u`/`Ctrl+R` `gg`/`G` `Esc` `?` | undo/redo · ends · unwind · help |

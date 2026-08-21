@@ -110,8 +110,9 @@ func (m *OutlinerModel) taskLineEditRequest(source TaskIdentity, result *quickEd
 	return req
 }
 
-// escSteps defines the Esc dismissal cascade for Outliner:
-// Peek → active range → frozen selection → search query → Focus stack.
+// escSteps defines the Esc dismissal cascade for Outliner, narrowest to widest:
+// Peek → active range → frozen selection → search query → Focus stack →
+// cross-project Focus stack → section zoom → project scope.
 func (m *OutlinerModel) escSteps() []EscStep {
 	return []EscStep{
 		{Active: func() bool { return m.peekMode }, Clear: func() {
@@ -133,8 +134,14 @@ func (m *OutlinerModel) escSteps() []EscStep {
 		{Active: func() bool { return len(m.crossFocusStack) > 0 }, Clear: func() {
 			m.popFocusLevel()
 		}},
-		// Task focus unwinds before project scope: Esc pops one scope frame,
-		// restoring the previous scope's mode, filter, cursor, and scroll.
+		// A zoom narrows one mode, so it unwinds after task focus and before the
+		// project scope that owns the mode.
+		{Active: func() bool { return m.zoom.active() }, Clear: func() {
+			m.exitSectionZoom()
+		}},
+		// Task focus and section zoom both unwind before project scope: Esc pops
+		// one scope frame, restoring the previous scope's mode, filter, cursor,
+		// scroll, and zoom.
 		{Active: func() bool { return m.isProjectScoped() }, Clear: func() {
 			m.popProjectScope()
 		}},

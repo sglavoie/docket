@@ -142,7 +142,7 @@ were in and says so.
 | Area | Keys |
 | --- | --- |
 | Modes | `Tab` / `Shift+Tab` cycle the seven modes; `g` opens the go-to chord: `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `g@` Due, `gr` Recent |
-| Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items, and `h` on a direct child of a focus root steps out of that Focus frame onto the root; `S` toggles all visible sections; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `H`/`M`/`L` land on the highest, middle, and lowest visible row without scrolling; `z` opens the scroll chord, which does the opposite and moves the window under the cursor: `zt` puts the cursor's row at the top, `zz` centers it, `zb` puts it at the bottom; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `Ctrl+P` opens the cursor task's project in All and keeps the cursor on it; `Enter` focuses descendants; `Shift+Enter` widens focus one level; `Ctrl+Enter` toggles Peek |
+| Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items, and `h` on a direct child of a focus root steps out of that Focus frame onto the root; `S` toggles all visible sections; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `H`/`M`/`L` land on the highest, middle, and lowest visible row without scrolling; `z` opens the scroll chord, which does the opposite and moves the window under the cursor: `zt` puts the cursor's row at the top, `zz` centers it, `zb` puts it at the bottom; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `Ctrl+P` opens the cursor task's project in All and keeps the cursor on it; `Enter` zooms in on whatever the cursor names — descendants on a task row, that project on a project sub-header, that section alone on a section header; `Shift+Enter` widens focus one level; `Ctrl+Enter` toggles Peek |
 | Capture and edit | `a` capture, `A` child, `e` inline task edit, `E` description, `Ctrl+E` external editor, whose title line speaks the same edit grammar as `e`, `O` outline edit the cursor's project |
 | Workflow | `$` opens the workflow chord over the ten destinations the `$` capture sigil names: `$i` Inbox, `$b` Backlog, `$n` toggle Next, `$t` toggle Today, `$g` Doing, `$w` Waiting, `$p` Paused, `$m` Someday, `$d` Done, `$c` Canceled; `$w` then asks for a check-back date |
 | Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date and defer; `#` tags and context; `*` pin |
@@ -582,6 +582,18 @@ focused, `a` captures a direct child of the focus root rather than a root task
 elsewhere. Pressed on a search result, `Enter` dismisses search first and lands
 the ordinary projection on that task, so `Esc` unwinds onto its own row; a leaf
 still reports `No children to focus`, with the jump already made.
+`Enter` is that same zoom-in act on the two header rows. On a project sub-header
+it scopes the Outliner to that project. On a section header it narrows the mode
+to that one section: `Enter` on `Next` in All shows the Next lane for every
+project, and in a single-project scope shows only that project's. A collapsed
+section zooms open without disturbing its fold, and the title carries a
+`Section: Next` segment for as long as the zoom holds. `Esc` restores the whole
+mode on the header the zoom was entered from, unwinding after Focus and before
+the project scope. Zoom and project scope never compose: `Enter` on a project
+sub-header inside a zoom scopes and drops the zoom, and the `Esc` that pops that
+scope brings the zoom back with it. An emptied zoom stays put and reports
+`No tasks are left in this section. Press Esc to return.` rather than unwinding
+under you.
 `Shift+Enter` widens in the other direction. Outside Focus it opens Focus on the
 cursor task's parent, so the task's own siblings come into view; a root task
 reports `No parent to focus`. Inside Focus it climbs one level from the focus
