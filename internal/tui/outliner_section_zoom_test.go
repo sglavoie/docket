@@ -163,6 +163,69 @@ func TestSectionZoomOnPinnedEmitsNoSeparator(t *testing.T) {
 	}
 }
 
+func TestSectionZoomNarrowsTodayPinnedToPinnedRows(t *testing.T) {
+	now := time.Now()
+	pinned := primaryRowsTask("pinned-today", models.StateBacklog)
+	pinned.Pinned = true
+	pinned.PinnedAt = &now
+	plain := primaryRowsTask("plain-today", models.StateBacklog)
+	project := primaryRowsProject("alpha", pinned, plain)
+	outliner, runtime := primaryRowsOutliner(project)
+	runtime.Planning().SetToday([]config.ProjectTaskLocator{
+		{ProjectID: project.ID, TaskID: pinned.ID},
+		{ProjectID: project.ID, TaskID: plain.ID},
+	})
+	outliner.selectOutlinerMode(ModeToday)
+
+	fullRows := len(outliner.rows)
+	if ids := visibleOutlinerTaskIDs(outliner); !ids[pinned.ID] || !ids[plain.ID] {
+		t.Fatalf("pre-zoom Today rows = %v, want both the pinned and the ordinary task", ids)
+	}
+	folds := maps.Clone(outliner.collapsedSections)
+
+	pinnedIndex := sectionHeaderIndex(t, outliner, pinnedSectionName)
+	outliner.cursor = pinnedIndex
+	outliner.viewScrollOffset = 2
+	if !outliner.zoomSectionAtCursor() {
+		t.Fatal("Enter on the Today Pinned header refused the zoom")
+	}
+	if row := outliner.rows[0]; !row.IsSectionHeader || !row.IsPinnedSection {
+		t.Fatalf("zoomed row 0 = %+v, want the Pinned header", row)
+	}
+	for _, row := range outliner.rows {
+		if row.isTaskRow() && row.task.ID != pinned.ID {
+			t.Fatalf("zoomed Today Pinned kept %q, an ordinary Today row", row.task.ID)
+		}
+	}
+	for index, row := range outliner.rows {
+		if row.IsSeparator {
+			t.Fatalf("zoomed Today Pinned kept the separator at row %d", index)
+		}
+	}
+
+	if !RunEscCascade(outliner.escSteps()) {
+		t.Fatal("Esc did not leave the Today Pinned zoom")
+	}
+	if outliner.zoom.active() {
+		t.Fatalf("the zoom survived Esc: %+v", outliner.zoom)
+	}
+	if len(outliner.rows) != fullRows {
+		t.Fatalf("unzoomed Today rows = %d, want the pre-zoom %d", len(outliner.rows), fullRows)
+	}
+	if ids := visibleOutlinerTaskIDs(outliner); !ids[pinned.ID] || !ids[plain.ID] {
+		t.Fatalf("unzoomed Today rows = %v, want the complete projection back", ids)
+	}
+	if outliner.cursor != pinnedIndex || outliner.viewScrollOffset != 2 {
+		t.Fatalf(
+			"unzoomed viewport = cursor %d scroll %d, want cursor %d scroll 2",
+			outliner.cursor, outliner.viewScrollOffset, pinnedIndex,
+		)
+	}
+	if !maps.Equal(outliner.collapsedSections, folds) {
+		t.Fatalf("the Today zoom changed fold state: got %v, want %v", outliner.collapsedSections, folds)
+	}
+}
+
 func TestSectionZoomNarrowsComputedDueAndRecentBuckets(t *testing.T) {
 	now := time.Now()
 	dueToday := primaryRowsTask("due-today", models.StateBacklog)
