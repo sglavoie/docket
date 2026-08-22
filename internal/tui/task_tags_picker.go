@@ -75,12 +75,21 @@ func taskTagListSource(tags []TagInfo, seedUnused bool) ListSource {
 			}
 		}
 		if seedUnused || inUse {
+			// A workflow row wears the color of the lane it promotes: the same
+			// PurpleStyle renderOutlinerSectionHeaderRow already gives the Review
+			// header, reused rather than minted so the row and the lane it opens
+			// cannot name one tag in two colors. Every promoted tag takes it from
+			// the loop rather than by name, so a registry entry that does not exist
+			// yet still renders colored; a second promoted tag wanting its own lane
+			// color would have to teach both places at once.
+			style := PurpleStyle
 			items = append(items, ListItem{
 				ID:            ListItemID("tag:" + entry.Tag),
 				CategoryID:    taskTagWorkflowCategory,
 				PrimaryText:   entry.Tag,
 				SecondaryText: "workflow lane",
 				Aliases:       []string{entry.Tag, "#" + entry.Tag, entry.Label},
+				PrimaryStyle:  &style,
 				Preview: ListPreview{Title: entry.Label, Fields: []ListPreviewField{
 					{Label: "Tag", Value: "#" + entry.Tag},
 					{Label: "Tasks", Value: strconv.Itoa(count)},
@@ -127,12 +136,18 @@ func taskTagListSource(tags []TagInfo, seedUnused bool) ListSource {
 			aliases = append(aliases, "##"+tag.Name)
 			fields = append(fields, ListPreviewField{Label: "Context", Value: "##" + tag.Name})
 		}
+		// A descriptive tag changes no other color, so its own chip is its whole
+		// identity: the row wears exactly what the task row and Peek will render.
+		// The full stored spelling hashes here as it does there, so an 8-column
+		// row chip and this row are one color.
+		style := tagChipStyle(tag.Name)
 		items = append(items, ListItem{
 			ID:            ListItemID("tag:" + tag.Name),
 			CategoryID:    category,
 			PrimaryText:   tag.Name,
 			SecondaryText: fmt.Sprintf("%d tasks", tag.TaskCount),
 			Aliases:       aliases,
+			PrimaryStyle:  &style,
 			Preview: ListPreview{
 				Title:  tag.Name,
 				Fields: fields,

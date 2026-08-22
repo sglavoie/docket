@@ -37,6 +37,7 @@ func rebuildStyles() {
 	rebuildCategoryStyles()
 	rebuildMiscStyles()
 	rebuildPriorityTitleStyles()
+	rebuildTagChipColors()
 }
 
 // ApplyTheme rebuilds every active style from one maintained built-in theme.

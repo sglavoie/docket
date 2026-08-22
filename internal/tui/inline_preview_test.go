@@ -311,7 +311,9 @@ func TestInlinePeekShowsTagsWithinAvailableWidth(t *testing.T) {
 
 	styled := inlinePeekTagsLine(task, 80)
 	wantStyled := MutedStyle.Render("Tags: ") +
-		TagInlineStyle.Bold(true).Render("#backend #security #type:authentication")
+		tagChipStyle("backend").Render("#backend") + " " +
+		tagChipStyle("security").Render("#security") + " " +
+		tagChipStyle("type:authentication").Render("#type:authentication")
 	if styled != wantStyled {
 		t.Fatalf("styled Peek tags = %q, want %q", styled, wantStyled)
 	}

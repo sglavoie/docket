@@ -51,7 +51,10 @@ func DefaultLightTheme() Theme {
 // (≤65%) and a contrast lift for primary readable text against #1a1b26. The
 // semantic title family is the deliberate exception: it runs at full chroma and
 // spreads its five hues apart, because only a tagged task wears one and telling
-// them apart at a glance is the whole point of the color.
+// them apart at a glance is the whole point of the color. The tag chip ramp
+// (DefaultTagChipRamp) is the explicit tier below it: chips hold to the ≤65%
+// rule, so a chip stays subordinate to a title by construction rather than by
+// convention.
 func DefaultDarkTheme() Theme {
 	return Theme{
 		BackgroundColor: "#1a1b26",
@@ -102,4 +105,22 @@ func DefaultTheme(variant string) Theme {
 		return DefaultLightTheme()
 	}
 	return DefaultDarkTheme()
+}
+
+// DefaultTagChipRamp returns the curated tag chip colors for the given variant.
+// Unknown variants fall back to dark, and each call hands back a fresh slice.
+//
+// The ramp is a mnemonic, not a legend: a slot promises "this tag is reliably
+// that color", never "this color means that kind of tag". It is six slots
+// because six is what two themes can hold at once — every slot has to stay
+// perceptually clear of the other five, of the semantic and priority titles it
+// shares a row with, and of both alert row backgrounds, all at ≤65% saturation.
+// Slot order carries across variants: slot i is the same color family light and
+// dark, so toggling the theme never reshuffles which tag wears which hue.
+// theme_defaults_test.go gates each of those properties.
+func DefaultTagChipRamp(variant string) []string {
+	if variant == "light" {
+		return []string{"#a16058", "#677921", "#568760", "#2586a7", "#6d68bb", "#b44e7e"}
+	}
+	return []string{"#cc846f", "#90ae52", "#45a572", "#2cafc3", "#877cb7", "#e283c9"}
 }

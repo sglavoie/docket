@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"hash/fnv"
 	"image/color"
 	"strings"
 
@@ -119,6 +120,35 @@ func taskContextBadgeStyle(task *models.Task) lipgloss.Style {
 		style = style.Foreground(ColorTaskContextDeferred).Faint(true)
 	}
 	return style
+}
+
+// tagChipSlot resolves a tag name to its index in the chip ramp. The normalized
+// spelling is what hashes, so Bug and bug are one chip while the stored spelling
+// still reaches the screen. The hash is FNV-1a from the standard library because
+// it is specified rather than merely implemented: a tag keeps its color across
+// Go versions, machines, and workspaces, which is the whole promise of a
+// mnemonic. maphash would not — its seed varies per process.
+//
+// The mapping is fixed per name, so a workspace that gains tags never repaints
+// the ones it already had; new tags simply land wherever their name hashes,
+// collisions included. Color is a mnemonic, not a legend: two unrelated tags
+// sharing slot 3 is expected, not a bug.
+func tagChipSlot(tag string) int {
+	if len(tagChipColors) == 0 {
+		return 0
+	}
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(models.NormalizeTag(tag)))
+	return int(h.Sum32() % uint32(len(tagChipColors)))
+}
+
+// tagChipStyle returns the one style every rendered tag chip wears. Foreground
+// only: chips carry no bold, so bold stays the title's selection channel.
+func tagChipStyle(tag string) lipgloss.Style {
+	if len(tagChipColors) == 0 {
+		return TagInlineStyle
+	}
+	return lipgloss.NewStyle().Foreground(tagChipColors[tagChipSlot(tag)])
 }
 
 // TaskTitleStyleFor returns the canonical style for a rendered task title.

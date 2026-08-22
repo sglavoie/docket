@@ -472,6 +472,11 @@ func (model *OperationValuePickerModel) addOrSelectTag(tag string) error {
 	}
 	item := source.Items[0]
 	item.Data = tag
+	// A typed tag lands under TAGS beside rows that already wear their chip, so
+	// it takes the same color here rather than being the one plain row in a
+	// colored section.
+	style := tagChipStyle(tag)
+	item.PrimaryStyle = &style
 	if model.provider == ValueProviderProjectTags {
 		item.SecondaryText = ""
 	}

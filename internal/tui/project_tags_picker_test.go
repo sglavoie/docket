@@ -28,6 +28,41 @@ func TestBehavioralProjectTagRowIsShortButPreviewStaysComplete(t *testing.T) {
 	}
 }
 
+// TestProjectTagFilterPickerRowsWearTheSameColorsAsTheEditor covers the one
+// project-tag surface that builds its own rows instead of sharing
+// projectTagListSource, so parked cannot render in warning at # and plain at F#.
+// Untagged is exempt by name: it stands for the empty tag set, so there is no
+// tag whose color it could honestly wear.
+func TestProjectTagFilterPickerRowsWearTheSameColorsAsTheEditor(t *testing.T) {
+	app := newUITestApp()
+	setTestAppProjects(app,
+		&models.Project{ID: "held", Name: "Held", Slug: "held", Tags: []string{models.ParkedProjectTag}},
+		&models.Project{ID: "platform", Name: "Platform", Slug: "platform", Tags: []string{"infra"}},
+		&models.Project{ID: "bare", Name: "Bare", Slug: "bare"},
+	)
+	picker, err := app.newFilterProjectTagsPicker(
+		OperationExecutionRequest{ID: operationFilterProjectTags},
+	)
+	if err != nil {
+		t.Fatalf("newFilterProjectTagsPicker: %v", err)
+	}
+
+	colored := 0
+	for _, item := range picker.surface.Items() {
+		if item.Data == untaggedProjectFilterKey {
+			if item.PrimaryStyle != nil {
+				t.Fatalf("the untagged row wears %v, want no tag color", item.PrimaryStyle.GetForeground())
+			}
+			continue
+		}
+		assertRowWearsTheColorItApplies(t, item)
+		colored++
+	}
+	if colored != 2 {
+		t.Fatalf("colored %d facet rows, want the parked and infra rows", colored)
+	}
+}
+
 func TestBehavioralProjectTagExplainerWrapsEverySummaryInline(t *testing.T) {
 	for _, width := range []int{40, 49, 60} {
 		explainer := behavioralProjectTagExplainer(ValueProviderProjectTags, width)

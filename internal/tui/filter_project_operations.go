@@ -130,6 +130,11 @@ func (m *AppModel) newFilterProjectTagsPicker(
 
 	items := make([]ListItem, 0, len(names)+1)
 	for _, name := range names {
+		// The facet rows name the same vocabulary the editor at # does, so they
+		// take the same two styles: a chip for a descriptive tag, the badge for a
+		// behavioral one. Otherwise parked would render plain on one project-tag
+		// surface and in warning on the other.
+		style := tagChipStyle(name)
 		item := ListItem{
 			ID:            ListItemID("tag:" + name),
 			CategoryID:    tagDescriptiveCategory,
@@ -141,7 +146,9 @@ func (m *AppModel) newFilterProjectTagsPicker(
 		if info, behavioral := models.BehavioralProjectTags[name]; behavioral {
 			item.CategoryID = projectTagBehavioralCategory
 			item.SecondaryText = info.Summary
+			style = behavioralProjectTagBadgeStyle(info.BadgeRole)
 		}
+		item.PrimaryStyle = &style
 		items = append(items, item)
 	}
 	// The empty tag set is legal, so without this row a tag facet could never

@@ -1381,13 +1381,54 @@ Their seeding is asymmetric on purpose: `#` offers all five whether or not any
 task carries them, because offering an unused tag is how it gets discovered,
 while `f#` stays usage-derived, because a filter row nothing carries can only
 empty the projection. The retained `internal/tui/tag_selector.go` path reached
-from `handler_tag.go` (`ShowTagSelectorMsg`) carries no semantic tier, as do the
-task row and Peek tag chips; the obsolete bulk-selector message path has been
-removed.
+from `handler_tag.go` (`ShowTagSelectorMsg`) is the one tag surface that carries
+no semantic tier, because it never reads `taskTagListSource`; the obsolete
+bulk-selector message path has been removed.
 Those explaining surfaces wrap complete summaries inline; focusable picker
 lists give up viewport rows and scroll when the explainer needs more height.
 Focusable rows use the registry's compact `RowSummary`; previews and the inline
 explainer use the complete `Summary`.
+
+`tagChipStyle` (`internal/tui/styles_helpers.go`) is the single tag color
+authority, and it generalizes that "one lookup, so the surface previews the
+effect" rule to every tag rather than the five semantic ones. Every rendered tag
+resolves through it — the task row chips, the Peek `Tags:` line, the descriptive
+and context rows of `#`, the minted row an inline add mode produces, and the
+facet rows of `f#` and `F#` — so one tag is one color everywhere with no
+configuration. It hashes `models.NormalizeTag(tag)` onto a slot of
+`tagChipColors`, which `rebuildTagChipColors` re-resolves from
+`config.DefaultTagChipRamp(variant)` on every `ApplyTheme`. The slot index, not
+a resolved hex, is therefore the durable unit of tag identity: `T` re-colors
+every chip and slot `i` stays the same color family in both themes, so toggling
+never reshuffles which tag wears which hue. The ramp is the explicit tier below
+the semantic titles — six slots at ≤65% saturation, gated in
+`internal/config/theme_defaults_test.go` for perceptual distance from each
+other, from the nine title colors, and from both alert row backgrounds — which
+keeps a chip subordinate to the title beside it by construction rather than by
+convention.
+
+The ramp is a mnemonic, not a legend. A slot promises "this tag is reliably that
+color", never "this color means that kind of tag": six slots over an unbounded
+vocabulary collide by design, and two unrelated tags sharing one hue is expected
+rather than a defect. Nothing reads a chip color back, so no behavior can depend
+on one. Do not engineer that ambiguity away by adding meaning to a slot.
+
+A colored chip and a colored row are one rule seen twice: a row wears the color
+of the strongest thing its tag does, and its chip color only when it changes no
+other color. So a `WORKFLOW` row takes the lane's `PurpleStyle`, a `SEMANTIC`
+row `semanticTaskTitleStyle`, and a behavioral project row its badge role, while
+a descriptive row falls back to `tagChipStyle`.
+
+`orderedTaskTags` (`internal/tui/shared_render_helpers.go`) is the matching
+order authority over both chip surfaces: every non-semantic tag alphabetically,
+then every semantic tag, also alphabetically. Storage keeps tags in insertion
+order, so this is what makes the tag set rather than the typing history decide
+what a row shows. It is a pure permutation, which keeps `renderTruncatedTags`'
+`+N` overflow honest by construction and makes the row a strict prefix of the
+Peek line. Semantic tags are deprioritized, never excluded: the title color
+already carries that signal, so a row spends its two chips on what the title
+cannot say, but `RunOptions.DisableColor` only reaches `tea.WithEnvironment` and
+no renderer can detect it, so a task tagged only `bug` must still show `#bug`.
 
 `#` is bound to two descriptors, `tui.task.set-tags` and
 `tui.project.set-tags`, marked `SharedKey` on the input strategy. A descriptor

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -89,22 +90,70 @@ func renderSectionHeader(opts SectionHeaderOpts) string {
 	return line
 }
 
+// orderedTaskTags is the one display order both tag surfaces render: every
+// non-semantic tag first in alphabetical order, then every semantic tag, also
+// alphabetical. Storage keeps tags in insertion order (AddTag appends), so two
+// tasks tagged the same way could show different chips; this makes the tag set,
+// not the typing history, decide what a row shows.
+//
+// It is a pure permutation — nothing is dropped, nothing is added — so a
+// caller's overflow count stays honest by construction and each surface keeps
+// its own rules about which tags are renderable at all.
+//
+// Semantic tags are deprioritized, never excluded. The title color already
+// carries the semantic signal, so a row that can afford two chips spends them on
+// what the title cannot say; but under --no-color there is no title color
+// channel and no renderer can detect that (RunOptions.DisableColor only reaches
+// tea.WithEnvironment), so a task tagged only bug must still show #bug.
+// Membership in that deprioritized group is decided by the same
+// SemanticTaskTagByName lookup TaskTitleStyleFor consults, so a tag is demoted
+// exactly when the title can speak for it.
+//
+// The sort key is models.NormalizeTag, the same canonical spelling tagChipSlot
+// hashes, so a tag's position and its color agree about what one tag is. The raw
+// spelling breaks a tie, which is what makes the result independent of insertion
+// order rather than merely stable under it.
+func orderedTaskTags(tags []string) []string {
+	semantic := func(tag string) bool {
+		_, ok := models.SemanticTaskTagByName(tag)
+		return ok
+	}
+	ordered := slices.Clone(tags)
+	slices.SortFunc(ordered, func(a, b string) int {
+		if aSemantic, bSemantic := semantic(a), semantic(b); aSemantic != bSemantic {
+			if aSemantic {
+				return 1
+			}
+			return -1
+		}
+		if cmp := strings.Compare(models.NormalizeTag(a), models.NormalizeTag(b)); cmp != 0 {
+			return cmp
+		}
+		return strings.Compare(a, b)
+	})
+	return ordered
+}
+
 // renderTruncatedTags renders a compact inline tag string with per-tag truncation
 // and overflow count. Shows at most maxTags tags, each truncated to maxTagLen chars.
+// Each tag wears its own chip color from tagChipStyle; the +N overflow stays
+// muted because it counts tags rather than naming one.
 // Returns an empty string if there are no tags.
 func renderTruncatedTags(tags []string, maxTags, maxTagLen int) string {
 	if len(tags) == 0 {
 		return ""
 	}
 	var parts []string
-	for i, tag := range tags {
+	for i, tag := range orderedTaskTags(tags) {
 		if i >= maxTags {
 			break
 		}
+		// The full tag decides the color; truncation is presentation only, so a
+		// clipped chip keeps the color its Peek counterpart shows in full.
 		display := truncateToVisualWidth(tag, maxTagLen)
-		parts = append(parts, "#"+display)
+		parts = append(parts, tagChipStyle(tag).Render("#"+display))
 	}
-	result := TagInlineStyle.Render(strings.Join(parts, " "))
+	result := strings.Join(parts, " ")
 	if len(tags) > maxTags {
 		result += MutedStyle.Render(fmt.Sprintf(" +%d", len(tags)-maxTags))
 	}

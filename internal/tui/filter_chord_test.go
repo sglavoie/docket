@@ -488,6 +488,17 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 		if len(selected) != 1 || selected[0] != "tag:deep" {
 			t.Errorf("seeded selection = %v, want [tag:deep]", selected)
 		}
+		// The filter picker builds its rows from taskTagListSource, so it wears
+		// the same colors as # with no code of its own. This asserts that
+		// inheritance rather than restating it: the fixture carries the review
+		// workflow tag and the deep descriptive one, so both rules are exercised.
+		items := app.operationValuePicker.surface.Items()
+		if len(items) == 0 {
+			t.Fatal("f# picker has no rows to color")
+		}
+		for _, item := range items {
+			assertRowWearsTheColorItApplies(t, item)
+		}
 	})
 }
 

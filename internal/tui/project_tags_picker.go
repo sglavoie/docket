@@ -64,12 +64,17 @@ func (m *AppModel) projectTagListSource(project *models.Project) ListSource {
 	sort.Strings(behavioral)
 	for _, name := range behavioral {
 		info := models.BehavioralProjectTags[name]
+		// The row takes the same expression the explainer below the list renders
+		// the name with, so the row and the sentence explaining it cannot disagree
+		// about what parked looks like.
+		style := behavioralProjectTagBadgeStyle(info.BadgeRole)
 		items = append(items, ListItem{
 			ID:            ListItemID("tag:" + name),
 			CategoryID:    projectTagBehavioralCategory,
 			PrimaryText:   name,
 			SecondaryText: info.RowSummary,
 			Aliases:       []string{name, "#" + name},
+			PrimaryStyle:  &style,
 			Preview: ListPreview{
 				Title:  name,
 				Fields: []ListPreviewField{{Label: "Effect", Value: info.Summary}},
@@ -84,13 +89,18 @@ func (m *AppModel) projectTagListSource(project *models.Project) ListSource {
 	}
 	sort.Strings(names)
 	for _, tag := range names {
+		// One ramp serves both namespaces, so #infra on a project reads as the
+		// same color as #infra on a task even though the two tag sets are
+		// otherwise unrelated.
+		style := tagChipStyle(tag)
 		items = append(items, ListItem{
-			ID:          ListItemID("tag:" + tag),
-			CategoryID:  tagDescriptiveCategory,
-			PrimaryText: tag,
-			Aliases:     []string{tag, "#" + tag},
-			Preview:     ListPreview{Title: tag},
-			Data:        tag,
+			ID:           ListItemID("tag:" + tag),
+			CategoryID:   tagDescriptiveCategory,
+			PrimaryText:  tag,
+			Aliases:      []string{tag, "#" + tag},
+			PrimaryStyle: &style,
+			Preview:      ListPreview{Title: tag},
+			Data:         tag,
 		})
 	}
 

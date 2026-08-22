@@ -207,22 +207,22 @@ func inlinePeekTagsLine(task *models.Task, width int) string {
 		return ""
 	}
 
-	tags := make([]string, 0, len(task.Tags))
-	for _, tag := range task.Tags {
+	chips := make([]string, 0, len(task.Tags))
+	for _, tag := range orderedTaskTags(task.Tags) {
 		if tag = strings.TrimSpace(tag); tag != "" {
-			tags = append(tags, "#"+tag)
+			chips = append(chips, tagChipStyle(tag).Render("#"+tag))
 		}
 	}
 	showFullContext := lipgloss.Width(task.Context) > 12
-	if len(tags) == 0 && !showFullContext {
+	if len(chips) == 0 && !showFullContext {
 		return ""
 	}
 	parts := make([]string, 0, 2)
 	if showFullContext {
 		parts = append(parts, taskContextBadgeStyle(task).Render("["+task.Context+"]"))
 	}
-	if len(tags) > 0 {
-		parts = append(parts, TagInlineStyle.Bold(true).Render(strings.Join(tags, " ")))
+	if len(chips) > 0 {
+		parts = append(parts, strings.Join(chips, " "))
 	}
 	line := MutedStyle.Render("Tags: ") + strings.Join(parts, " ")
 	return truncateIntentional(line, width, "…")

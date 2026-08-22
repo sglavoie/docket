@@ -76,6 +76,30 @@ workspace-ledger entry is that exact transaction. A task relocation adds
 `Ctrl+O origin` only after its origin was recorded; `Ctrl+I` returns to the
 relocated task.
 
+Every tag carries a color, and it is the same color in every place a tag is
+rendered as itself: the chips on a task row, the `Tags:` line in Peek, and the
+tag rows inside `#`, `f#`, and `F#`. Nothing needs configuring — a tag earns its
+color from its own name the first time you type it and keeps it for good, and
+`T` re-resolves the whole set for the new theme so a tag stays recognizably
+itself in dark and light.
+
+Read that color as a mnemonic, not a legend. It tells you `#billing` is reliably
+that one color; it never tells you what that color means. Six chip colors cover
+an unlimited tag vocabulary, so two unrelated tags will sometimes share one, and
+nothing in `tt` ever decides anything from a chip color. The colors that do
+carry meaning stay louder than the chips: a `bug`, `epic`, `story`, `feature`,
+or `idea` tag colors the whole title, `parked` wears the warning badge, and a
+`review` row wears its lane's purple.
+
+A row shows at most two chips, and it chooses them instead of showing the first
+two you typed: descriptive tags come first in alphabetical order, then the
+semantic ones, with a `+N` counting whatever did not fit. A task tagged `ux`,
+`bug`, and `billing` reads `#billing #ux +1` however you typed it, because the
+red title has already said `bug`. Peek names the whole set in the same order and
+the same colors, so a row is always the beginning of its own Peek line. A task
+carrying nothing but semantic tags still shows them, because under `--no-color`
+the chip is the only channel left.
+
 `Tab` cycles exactly All → Today → Inbox → Next → Backlog → Due → Recent, and
 `Shift+Tab` reverses that cycle. The `g` chord jumps straight to one mode:
 `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `g@` Due, `gr` Recent.

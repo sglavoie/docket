@@ -207,6 +207,7 @@ The committed suite exercises the product contracts directly:
 | Planning membership outranking the Review lane, so `$n` moves one row | `review-lane-planning-precedence.json` |
 | Stale lane visibility and folding, `fs` outside All, and narrow layout | `stale-lane-and-filter.json` |
 | Semantic colors in both themes | `theme-toggle.json` plus `semantic_tag_title_style_test.go` |
+| Tag chip order, its `+N` remainder, and the row as a prefix of Peek | `task-tag-chip-order.json` plus `tag_chip_style_test.go` |
 | Deterministic launch and duplicate-submit hardening | `app_deterministic_startup_test.go`, `task_composer_test.go`, `task_form_save_create_test.go`, `task_form_save_edit_test.go` |
 | Generated operation help and retired-key absence | `in-app-help.json`, `mode-catalog.json` |
 | Each surface's `?` naming its own grammar rather than the Outliner's | `project-hub-help.json`, `task-comments-help.json` |

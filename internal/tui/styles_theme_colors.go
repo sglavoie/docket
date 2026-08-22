@@ -60,6 +60,30 @@ var (
 	ColorSemanticIdeaDeferredTitle    = lipgloss.Color(defaultColorSemanticIdeaDeferredTitle)
 )
 
+// tagChipColors is the active theme's tag chip ramp, indexed by slot. The slot
+// index — not the hex — is what a tag owns: tagChipStyle hashes a tag onto a
+// slot and reads this slice at render time, so toggling the theme repaints a
+// tag without moving it to a different hue family. Declared dark and rebuilt
+// per theme like every other derived color set.
+var tagChipColors = tagChipRamp("dark")
+
+// tagChipRamp lifts one variant's curated ramp into lipgloss colors. The ramp
+// itself lives in internal/config, where its perceptual distance from the
+// semantic and priority titles can be gated against the same palette.
+func tagChipRamp(variant string) []color.Color {
+	hexes := config.DefaultTagChipRamp(variant)
+	ramp := make([]color.Color, len(hexes))
+	for i, hex := range hexes {
+		ramp[i] = lipgloss.Color(hex)
+	}
+	return ramp
+}
+
+// rebuildTagChipColors re-resolves the chip ramp for the active theme.
+func rebuildTagChipColors() {
+	tagChipColors = tagChipRamp(activeThemeName)
+}
+
 // darkenHex takes a 6-digit hex color (#rrggbb) and darkens each channel
 // toward 0 by factor (0.0 = unchanged, 1.0 = black). Returns #rrggbb.
 func darkenHex(hex string, factor float64) string {

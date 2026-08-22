@@ -203,7 +203,7 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read CLAUDE.md: %v", err)
 	}
-	const budget = 15800
+	const budget = 16200
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

@@ -399,51 +399,131 @@ func TestOperationTagPickerRoutesAMintedSemanticTagIntoTheSemanticSection(t *tes
 	}
 }
 
+// TestSemanticTagPickerRowsWearTheTitleColorTheyApply walks every section of
+// both tag pickers, not just the semantic one the name grew out of: a semantic
+// row wearing its title color is one case of the general rule that a row wears
+// the color of what it does. The table is keyed by section rather than by row,
+// so a registry entry added to an existing section is covered the moment it is
+// declared, and a new section fails until tagPickerRowColor is taught what it
+// applies.
 func TestSemanticTagPickerRowsWearTheTitleColorTheyApply(t *testing.T) {
-	source := taskTagListSource([]TagInfo{
-		{Name: "urgent", TaskCount: 3},
-		{Name: "platform", TaskCount: 1, ContextCount: 1},
-		{Name: "review", TaskCount: 1},
-	}, true)
-
-	semantic := 0
-	for _, item := range source.Items {
-		if item.CategoryID != taskTagSemanticCategory {
-			if item.PrimaryStyle != nil {
-				t.Fatalf("row %q carries a color it cannot apply", item.ID)
+	for _, tc := range []struct {
+		name   string
+		source ListSource
+		rows   map[ListCategoryID]int
+	}{
+		{
+			name: "task tags picker",
+			source: taskTagListSource([]TagInfo{
+				{Name: "urgent", TaskCount: 3},
+				{Name: "platform", TaskCount: 1, ContextCount: 1},
+				{Name: reviewTaskTag, TaskCount: 1},
+			}, true),
+			rows: map[ListCategoryID]int{
+				taskTagWorkflowCategory: len(promotedTaskTags),
+				taskTagSemanticCategory: len(models.SemanticTaskTags),
+				taskContextCategory:     1,
+				tagDescriptiveCategory:  1,
+			},
+		},
+		{
+			name: "project tags picker",
+			source: (&AppModel{}).projectTagListSource(&models.Project{
+				Tags: []string{"infra", "ux"},
+			}),
+			rows: map[ListCategoryID]int{
+				projectTagBehavioralCategory: len(models.BehavioralProjectTags),
+				tagDescriptiveCategory:       2,
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			seen := make(map[ListCategoryID]int, len(tc.source.Categories))
+			for _, item := range tc.source.Items {
+				assertRowWearsTheColorItApplies(t, item)
+				seen[item.CategoryID]++
 			}
-			continue
-		}
-		semantic++
-		assertRowWearsItsTitleColor(t, item)
-	}
-	if semantic != len(models.SemanticTaskTags) {
-		t.Fatalf("colored %d semantic rows, want %d", semantic, len(models.SemanticTaskTags))
+			// Every declared section has to hold the rows the fixture seeds it
+			// with, or the walk above would pass by silently skipping the section
+			// a future registry entry lands in.
+			for _, category := range tc.source.Categories {
+				if got, want := seen[category.ID], tc.rows[category.ID]; got != want {
+					t.Fatalf("section %q has %d rows, want %d", category.ID, got, want)
+				}
+			}
+			if len(seen) != len(tc.source.Categories) {
+				t.Fatalf(
+					"rows landed in %d sections, want the %d the source declares",
+					len(seen), len(tc.source.Categories),
+				)
+			}
+		})
 	}
 
-	picker := newSemanticTagPickerForTest(t, []TagInfo{{Name: "alpha", TaskCount: 1}}, false)
-	if err := picker.addOrSelectTag("bug"); err != nil {
-		t.Fatalf("addOrSelectTag: %v", err)
-	}
-	for _, item := range picker.surface.Items() {
-		if item.ID == "tag:bug" {
-			assertRowWearsItsTitleColor(t, item)
+	// A typed tag builds its row on a different path than the source does, so
+	// both minting outcomes are walked too: semantic routes into SEMANTIC and
+	// everything else into TAGS.
+	t.Run("minted rows", func(t *testing.T) {
+		picker := newSemanticTagPickerForTest(t, []TagInfo{{Name: "alpha", TaskCount: 1}}, false)
+		minted := map[ListItemID]bool{"tag:bug": true, "tag:brandnew": true}
+		for _, tag := range []string{"bug", "brandnew"} {
+			if err := picker.addOrSelectTag(tag); err != nil {
+				t.Fatalf("addOrSelectTag(%q): %v", tag, err)
+			}
 		}
+		for _, item := range picker.surface.Items() {
+			assertRowWearsTheColorItApplies(t, item)
+			delete(minted, item.ID)
+		}
+		if len(minted) != 0 {
+			t.Fatalf("minted rows never reached the picker: %v", minted)
+		}
+	})
+}
+
+// tagPickerRowColor is the one rule for what color a tag picker row wears: the
+// color of the strongest thing the row does. A workflow row paints an All lane,
+// a semantic row paints a task title, a behavioral row paints its own badge, and
+// a row that changes no other color falls back to the chip its tag already wears
+// on the task row. A section with no case here answers false rather than a
+// fallback color, which is what stops a new one from shipping uncolored.
+func tagPickerRowColor(t *testing.T, item ListItem) (lipgloss.Style, bool) {
+	t.Helper()
+	switch item.CategoryID {
+	case taskTagWorkflowCategory:
+		return PurpleStyle, true
+	case taskTagSemanticCategory:
+		task := &models.Task{Tags: []string{item.PrimaryText}}
+		return TaskTitleStyleFor(task, TaskTitleStyleOptions{}), true
+	case projectTagBehavioralCategory:
+		info, ok := models.BehavioralProjectTags[item.PrimaryText]
+		if !ok {
+			t.Fatalf("behavioral row %q names no registry entry", item.ID)
+		}
+		return behavioralProjectTagBadgeStyle(info.BadgeRole), true
+	case taskContextCategory, tagDescriptiveCategory:
+		// Both hold tag rows: CONTEXTS merely recategorizes a tag also carried as
+		// a context, and that row still toggles the tag.
+		return tagChipStyle(item.PrimaryText), true
+	default:
+		return lipgloss.Style{}, false
 	}
 }
 
-// assertRowWearsItsTitleColor ties the row to TaskTitleStyleFor rather than to a
-// hex constant, so the assertion means "the color this row will appear" and a
-// palette edit can never silently split the two.
-func assertRowWearsItsTitleColor(t *testing.T, item ListItem) {
+// assertRowWearsTheColorItApplies ties the row to the style its effect resolves
+// through rather than to a hex constant, so the assertion means "the color this
+// row will appear" and a palette edit can never silently split the two.
+func assertRowWearsTheColorItApplies(t *testing.T, item ListItem) {
 	t.Helper()
-	if item.PrimaryStyle == nil {
-		t.Fatalf("semantic row %q has no color", item.ID)
+	want, ruled := tagPickerRowColor(t, item)
+	if !ruled {
+		t.Fatalf("row %q sits in section %q, which declares no color", item.ID, item.CategoryID)
 	}
-	task := &models.Task{Tags: []string{item.PrimaryText}}
-	want := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).GetForeground()
-	if got := item.PrimaryStyle.GetForeground(); got != want {
-		t.Fatalf("row %q foreground = %v, want the title color %v", item.ID, got, want)
+	if item.PrimaryStyle == nil {
+		t.Fatalf("row %q has no color", item.ID)
+	}
+	if got := item.PrimaryStyle.GetForeground(); got != want.GetForeground() {
+		t.Fatalf("row %q foreground = %v, want %v", item.ID, got, want.GetForeground())
 	}
 }
 
