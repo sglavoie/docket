@@ -83,7 +83,7 @@ func TestZoomedHeaderGuidanceOffersUnzoomInsteadOfDeadKeys(t *testing.T) {
 		t.Fatal("the unzoomed section header produced no guidance")
 	}
 	if before := guidanceEntryText(spec); !strings.Contains(before, "Enter") ||
-		!strings.Contains(before, "collapse") || !strings.Contains(before, "S sections") {
+		!strings.Contains(before, "collapse") || !strings.Contains(before, "s sections") {
 		t.Fatalf("unzoomed header guidance = %q, want the acts the zoom later removes", before)
 	}
 
@@ -99,7 +99,7 @@ func TestZoomedHeaderGuidanceOffersUnzoomInsteadOfDeadKeys(t *testing.T) {
 	if !strings.Contains(got, "Esc unzoom") {
 		t.Fatalf("zoomed header guidance omits the unzoom act: %q", got)
 	}
-	for _, dead := range []string{"Enter", "collapse", "expand", "S sections"} {
+	for _, dead := range []string{"Enter", "collapse", "expand", "s sections"} {
 		if strings.Contains(got, dead) {
 			t.Errorf("zoomed header guidance names %q, which cannot act there: %q", dead, got)
 		}

@@ -18,7 +18,7 @@
     { "type": "key", "label": "close Peek", "key": "ctrl+enter" },
 
     { "type": "key", "label": "H lands on the highest visible row, a section header", "key": "H" },
-    { "type": "assert", "assert": "contains", "value": "S sections" },
+    { "type": "assert", "assert": "contains", "value": "s sections" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

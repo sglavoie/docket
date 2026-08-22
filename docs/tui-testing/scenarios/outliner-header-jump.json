@@ -3,11 +3,11 @@
   "fixture": "multi-project",
   "size": "100x35",
   "actions": [
-    { "type": "assert", "label": "the cursor opens on the Backlog section header", "assert": "contains", "value": "S sections" },
+    { "type": "assert", "label": "the cursor opens on the Backlog section header", "assert": "contains", "value": "s sections" },
 
     { "type": "key", "label": "n steps onto the first project header", "key": "n" },
     { "type": "assert", "assert": "contains", "value": "# project tags" },
-    { "type": "assert", "assert": "not_contains", "value": "S sections" },
+    { "type": "assert", "assert": "not_contains", "value": "s sections" },
 
     { "type": "key", "label": "n walks the remaining three project headers", "key": "n" },
     { "type": "key", "key": "n" },
@@ -15,7 +15,7 @@
     { "type": "assert", "assert": "contains", "value": "# project tags" },
 
     { "type": "key", "label": "n past the last header wraps to the section header", "key": "n" },
-    { "type": "assert", "assert": "contains", "value": "S sections" },
+    { "type": "assert", "assert": "contains", "value": "s sections" },
 
     { "type": "key", "label": "N from the first header wraps to the last", "key": "N" },
     { "type": "assert", "assert": "contains", "value": "# project tags" },

@@ -3,7 +3,7 @@
   "fixture": "multi-project",
   "size": "60x20",
   "actions": [
-    { "type": "key", "label": "open Select Project at the minimum supported size", "key": "p" },
+    { "type": "key", "label": "open Select Project at the minimum supported size", "key": "P" },
     { "type": "assert", "assert": "view", "value": "ProjectHub" },
     { "type": "assert", "assert": "no_layout_issues" },
 

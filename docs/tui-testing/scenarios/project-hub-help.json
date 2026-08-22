@@ -3,7 +3,7 @@
   "fixture": "rich",
   "size": "160x55",
   "actions": [
-    { "type": "key", "label": "open Select Project", "key": "p" },
+    { "type": "key", "label": "open Select Project", "key": "P" },
     { "type": "assert", "assert": "view", "value": "ProjectHub" },
     { "type": "key", "label": "open the Hub's own help", "key": "?" },
     { "type": "assert", "assert": "view", "value": "Help" },

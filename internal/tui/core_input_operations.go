@@ -43,6 +43,8 @@ const (
 	operationCoreCollapseParent     OperationID = "tui.core.collapse-parent"
 	operationCoreExpand             OperationID = "tui.core.expand"
 	operationCoreToggleSections     OperationID = "tui.core.toggle-sections"
+	operationCoreToggleProjectGroup OperationID = "tui.core.toggle-project-groups"
+	operationCoreToggleSubtrees     OperationID = "tui.core.toggle-subtrees"
 	operationCoreReorderDown        OperationID = "tui.core.reorder-down"
 	operationCoreReorderUp          OperationID = "tui.core.reorder-up"
 	operationCoreReorderBottom      OperationID = "tui.core.reorder-bottom"
@@ -239,7 +241,12 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreFocusLatest, "Focus Latest Activity", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "latest activity", "last touched"),
 		core(operationCoreCollapseParent, "Collapse or Go to Parent", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreExpand, "Expand", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
-		core(operationCoreToggleSections, "Toggle All Sections", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
+		// The three fold axes are three toggles, not six directional operations:
+		// each owns one map, and the aliases stay direction-free because a toggle
+		// must not advertise a way it does not always go.
+		core(operationCoreToggleSections, "Toggle All Sections", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "fold sections"),
+		core(operationCoreToggleProjectGroup, "Toggle All Project Groups", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "fold project groups"),
+		core(operationCoreToggleSubtrees, "Toggle All Subtrees", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "fold subtrees"),
 		core(operationCoreReorderDown, "Reorder Down", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
 		core(operationCoreReorderUp, "Reorder Up", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
 		core(operationCoreReorderBottom, "Reorder to Bottom", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
@@ -304,6 +311,8 @@ func coreInputOperationRefusesSearchProjection(id OperationID) bool {
 		operationCoreCollapseParent,
 		operationCoreExpand,
 		operationCoreToggleSections,
+		operationCoreToggleProjectGroup,
+		operationCoreToggleSubtrees,
 		operationCoreReorderDown,
 		operationCoreReorderUp,
 		operationCoreReorderBottom,
@@ -489,9 +498,27 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		if out, ok := m.outlinerPrimary(); ok {
 			out.expandAtCursor()
 		}
+	// The three fold toggles report their refusals and nothing else: a productive
+	// press returns a zero result, so it arms no footer flash for a change already
+	// on screen. p names P because it always refuses inside a project scope, which
+	// is exactly where the key used to open Select Project.
 	case operationCoreToggleSections:
 		if out, ok := m.outlinerPrimary(); ok {
-			out.toggleVisibleSections()
+			if !out.toggleVisibleSections() {
+				return OperationHandlerResult{Status: "No foldable sections here"}
+			}
+		}
+	case operationCoreToggleProjectGroup:
+		if out, ok := m.outlinerPrimary(); ok {
+			if !out.toggleVisibleProjectGroups() {
+				return OperationHandlerResult{Status: "No project groups here; P switches project"}
+			}
+		}
+	case operationCoreToggleSubtrees:
+		if out, ok := m.outlinerPrimary(); ok {
+			if !out.toggleAllSubtrees() {
+				return OperationHandlerResult{Status: "No foldable subtrees here"}
+			}
 		}
 	case operationCoreReorderDown:
 		message = commandMessage(m.coreReorder(1))

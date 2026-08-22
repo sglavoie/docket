@@ -3,7 +3,7 @@
   "fixture": "multi-project",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "open Select Project", "key": "p" },
+    { "type": "key", "label": "open Select Project", "key": "P" },
     { "type": "assert", "assert": "view", "value": "ProjectHub" },
     { "type": "key", "label": "select the project under the cursor", "key": "v" },
     { "type": "assert", "assert": "contains", "value": "1 selected" },

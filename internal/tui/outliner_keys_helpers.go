@@ -1,6 +1,11 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/models"
+import (
+	"maps"
+	"slices"
+
+	"github.com/sglavoie/tt/internal/models"
+)
 
 // ensureExpandedNodes initializes the expanded nodes map if it's empty,
 // marking all parent tasks as expanded.
@@ -19,12 +24,79 @@ func (m *OutlinerModel) ensureExpandedNodes() {
 
 // markAllExpanded marks all parent tasks as expanded recursively.
 func (m *OutlinerModel) markAllExpanded(projectID string, tasks []*models.Task) {
+	m.markAllFolds(projectID, tasks, true)
+}
+
+// markAllFolds writes one fold state onto every parent task in the subtree and
+// reports whether any of them moved. Childless tasks stay absent: they have
+// nothing to fold, and an entry for one would only make isExpanded answer a
+// question nobody asks.
+func (m *OutlinerModel) markAllFolds(projectID string, tasks []*models.Task, expanded bool) bool {
+	changed := false
 	for _, task := range tasks {
-		if len(task.Children) > 0 {
-			m.expandedNodes[TaskIdentity{ProjectID: projectID, TaskID: task.ID}] = true
-			m.markAllExpanded(projectID, task.Children)
+		if len(task.Children) == 0 {
+			continue
+		}
+		identity := TaskIdentity{ProjectID: projectID, TaskID: task.ID}
+		if previous, known := m.expandedNodes[identity]; !known || previous != expanded {
+			changed = true
+		}
+		m.expandedNodes[identity] = expanded
+		if m.markAllFolds(projectID, task.Children, expanded) {
+			changed = true
 		}
 	}
+	return changed
+}
+
+// anyTaskFoldCollapsed reports whether any task subtree is currently folded. An
+// absent key reads as expanded, so only a false entry counts. It is the one
+// definition of that question, shared by the direction rule t decides with and
+// by the mutation below that has to know whether unfolding changes anything.
+func (m *OutlinerModel) anyTaskFoldCollapsed() bool {
+	if m == nil {
+		return false
+	}
+	return slices.Contains(slices.Collect(maps.Values(m.expandedNodes)), false)
+}
+
+// setAllTaskFolds drives every task subtree to one fold state and reports
+// whether that changed anything, so the caller can refuse instead of rebuilding
+// rows nothing moved. It owns expandedNodes alone: sections answer to s through
+// collapsedSections, and checklists default collapsed under their own map.
+//
+// The walk covers every loaded project rather than the active projection,
+// matching markAllExpanded. Folds are project-qualified and outlive a mode
+// change, so folding only what a filter happens to show would leave the modes
+// beside it disagreeing about the same task.
+func (m *OutlinerModel) setAllTaskFolds(expanded bool) bool {
+	if m == nil {
+		return false
+	}
+	if expanded {
+		// An empty map is the canonical all-expanded state, so clearing beats
+		// writing true over every node. Only a false entry hides anything, so
+		// only a false entry makes this a change.
+		if !m.anyTaskFoldCollapsed() {
+			return false
+		}
+		m.expandedNodes = make(map[TaskIdentity]bool)
+		return true
+	}
+
+	if m.expandedNodes == nil {
+		m.expandedNodes = make(map[TaskIdentity]bool)
+	}
+	if m.project != nil {
+		return m.markAllFolds(m.project.ID, m.project.GetRootTasks(), false)
+	}
+	changed := false
+	for _, project := range m.loadedProjects {
+		if m.markAllFolds(project.ID, project.GetRootTasks(), false) {
+			changed = true
+		}
+	}
+	return changed
 }
 
 // parentIDOf returns the parent task ID for t, or "" if t is a root.

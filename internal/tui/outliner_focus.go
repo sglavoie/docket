@@ -193,7 +193,7 @@ func (m *OutlinerModel) enterSectionZoom(row outlinerRow) bool {
 	m.peekMode = false
 	m.crossForceRebuild = true
 	m.rebuildRows()
-	m.moveCursorToSectionHeader(key)
+	m.moveCursorToHeaderKey(key)
 	return true
 }
 

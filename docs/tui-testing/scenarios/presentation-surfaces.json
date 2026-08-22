@@ -3,7 +3,7 @@
   "fixture": "rich",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "open Projects", "key": "p" },
+    { "type": "key", "label": "open Projects", "key": "P" },
     { "type": "assert", "assert": "view", "value": "ProjectHub" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "browse holds no unwind rung, so one Esc returns to the Outliner", "key": "esc" },

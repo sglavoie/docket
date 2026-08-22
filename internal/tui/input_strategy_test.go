@@ -132,7 +132,7 @@ func TestSimplifiedInputStrategyUsesVisibleSearchAndFinalNavigation(t *testing.T
 		{key: "left", want: operationCoreCollapseParent},
 		{key: "l", want: operationCoreExpand},
 		{key: "right", want: operationCoreExpand},
-		{key: "S", want: operationCoreToggleSections},
+		{key: "s", want: operationCoreToggleSections},
 		{key: "ctrl+o", want: operationCoreJumpBackward},
 		{key: "ctrl+i", want: operationCoreJumpForward},
 		{key: "ctrl+e", want: operationCoreExternalEditor},
@@ -150,7 +150,7 @@ func TestSimplifiedInputStrategyUsesVisibleSearchAndFinalNavigation(t *testing.T
 	helpHasJumpBackward := false
 	helpHasJumpForward := false
 	for _, item := range registry.HelpItemsForInputStrategy(InputStrategySimplified, ctx) {
-		if item.Key == "S" && item.Description == "Toggle All Sections" {
+		if item.Key == "s" && item.Description == "Toggle All Sections" {
 			helpHasToggleSections = true
 		}
 		if item.Key == "Ctrl+O" && item.Description == "Jump to Older Task Position" {
@@ -161,7 +161,7 @@ func TestSimplifiedInputStrategyUsesVisibleSearchAndFinalNavigation(t *testing.T
 		}
 	}
 	if !helpHasToggleSections {
-		t.Error("generated help omits S Toggle All Sections")
+		t.Error("generated help omits s Toggle All Sections")
 	}
 	if !helpHasJumpBackward || !helpHasJumpForward {
 		t.Errorf("generated help jump rows = backward %t forward %t, want both", helpHasJumpBackward, helpHasJumpForward)
@@ -667,9 +667,11 @@ func TestSimplifiedDispatchConsumesLegacyKeysAndDefersInlineSearch(t *testing.T)
 	}
 	app.wireOutlinerOperationExecutor(app.crossOutliner)
 
+	// s and t are absent: the three-toggle fold family took both back, s for
+	// section headers and t for task subtrees.
 	for _, retired := range []string{
-		"q", "s", "i", "|", "ctrl+x",
-		":", "R", "ctrl+esc", "m", "b", "t", ",",
+		"q", "i", "|", "ctrl+x",
+		":", "R", "ctrl+esc", "m", "b", ",",
 	} {
 		key, err := parseUITestKey(retired)
 		if err != nil {
@@ -696,7 +698,7 @@ func TestSimplifiedHelpContainsNoRetiredShortcutAliases(t *testing.T) {
 		keys[item.Key] = true
 	}
 	for _, retired := range []string{
-		"q", "s", "i", "x", "|", "Ctrl+X",
+		"q", "i", "x", "|", "Ctrl+X",
 		":", "R", "Ctrl+Esc", "m",
 	} {
 		if keys[retired] {
@@ -798,7 +800,8 @@ func TestGoToChordResolvesTopJumpAndEveryMode(t *testing.T) {
 }
 
 // TestScrollChordResolvesEveryAnchor keeps z a chord prefix rather than the
-// retired snooze key, with the three scroll anchors under it.
+// retired snooze key, with the three scroll anchors under it. Folding left the
+// prefix entirely for the s/p/t family, so the group is named "scroll" again.
 func TestScrollChordResolvesEveryAnchor(t *testing.T) {
 	registry := registeredSimplifiedOperationRegistry(t)
 	ctx := simplifiedOperationContext()

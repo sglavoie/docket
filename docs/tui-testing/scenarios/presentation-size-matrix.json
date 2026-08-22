@@ -16,7 +16,7 @@
     { "type": "assert", "label": "Notes fit at 60x20", "assert": "no_layout_issues" },
     { "type": "key", "key": "esc" },
 
-    { "type": "key", "label": "60x20 opens the Project Hub", "key": "p" },
+    { "type": "key", "label": "60x20 opens the Project Hub", "key": "P" },
     { "type": "assert", "assert": "view", "value": "ProjectHub" },
     { "type": "assert", "label": "the whole browse grammar fits one row at 60x20", "assert": "no_layout_issues" },
     { "type": "key", "label": "open Project search", "key": "/" },

@@ -77,7 +77,7 @@ func (m *OutlinerModel) ContextualGuidance() (GuidanceSpec, bool) {
 	case m.hasSearchProjection():
 		return GuidanceSpec{
 			Hints: append(requiredGuidanceHints("Esc clear search"),
-				optionalGuidanceHints(10, "/ edit search", "a capture", "p projects", "? help")...),
+				optionalGuidanceHints(10, "/ edit search", "a capture", "P projects", "? help")...),
 			Rows: 1,
 		}, true
 	case m.cursorNamesHeader():
@@ -145,7 +145,7 @@ func (m *OutlinerModel) cursorNamesHeader() bool {
 
 // headerGuidance names only the keys the header under the cursor can act on. On
 // the zoomed section header three of them cannot: Enter re-enters the zoom it is
-// already in, and the zoom overrides that section's fold, so h/l and S refuse
+// already in, and the zoom overrides that section's fold, so h/l and s refuse
 // rather than write one. Esc is the act that remains, so it takes the fold
 // hint's rank and is required.
 func (m *OutlinerModel) headerGuidance() GuidanceSpec {
@@ -173,9 +173,9 @@ func (m *OutlinerModel) headerGuidance() GuidanceSpec {
 	if row.IsProjectHeader {
 		hints = append(hints, newGuidanceHint("# project tags", 2, false))
 	} else if !zoomed {
-		hints = append(hints, newGuidanceHint("S sections", 2, false))
+		hints = append(hints, newGuidanceHint("s sections", 2, false))
 	}
-	hints = append(hints, optionalGuidanceHints(3, "Tab next mode", "p projects", "/ search", "? help")...)
+	hints = append(hints, optionalGuidanceHints(3, "Tab next mode", "P projects", "/ search", "? help")...)
 	return GuidanceSpec{Hints: hints, Rows: 1}
 }
 
@@ -183,7 +183,7 @@ func (m *OutlinerModel) emptyGuidance() GuidanceSpec {
 	var required string
 	switch m.classifyEmptyCause() {
 	case outlinerEmptyNoProjects:
-		required = "p projects"
+		required = "P projects"
 	case outlinerEmptyMode:
 		if m.primaryMode == ModeInbox {
 			required = "a capture"
@@ -201,8 +201,8 @@ func (m *OutlinerModel) emptyGuidance() GuidanceSpec {
 	default:
 		required = "a capture"
 	}
-	optional := []string{"p projects", "? help"}
-	if strings.HasPrefix(required, "p ") {
+	optional := []string{"P projects", "? help"}
+	if strings.HasPrefix(required, "P ") {
 		optional = []string{"? help"}
 	}
 	hints := append(requiredGuidanceHints(required), optionalGuidanceHints(10, optional...)...)

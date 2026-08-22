@@ -180,7 +180,7 @@ were in and says so.
 | Area | Keys |
 | --- | --- |
 | Modes | `Tab` / `Shift+Tab` cycle the seven modes; `g` opens the go-to chord: `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `g@` Due, `gr` Recent |
-| Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items, and `h` on a direct child of a focus root steps out of that Focus frame onto the root; `S` toggles all visible sections; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `H`/`M`/`L` land on the highest, middle, and lowest visible row without scrolling; `z` opens the scroll chord, which does the opposite and moves the window under the cursor: `zt` puts the cursor's row at the top, `zz` centers it, `zb` puts it at the bottom; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `Ctrl+P` opens the cursor task's project in All and keeps the cursor on it; `Enter` zooms in on whatever the cursor names — descendants on a task row, that project on a project sub-header, that section alone on a section header; `Shift+Enter` widens focus one level; `Ctrl+Enter` toggles Peek |
+| Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items, and `h` on a direct child of a focus root steps out of that Focus frame onto the root; `s`, `p`, and `t` are the three bulk fold toggles — every visible section header, every project group header, every task subtree — and each expands its whole set if any part of it is folded and otherwise folds the set; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `H`/`M`/`L` land on the highest, middle, and lowest visible row without scrolling; `z` opens the scroll chord, which does the opposite and moves the window under the cursor: `zt` puts the cursor's row at the top, `zz` centers it, `zb` puts it at the bottom; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `Ctrl+P` opens the cursor task's project in All and keeps the cursor on it; `Enter` zooms in on whatever the cursor names — descendants on a task row, that project on a project sub-header, that section alone on a section header; `Shift+Enter` widens focus one level; `Ctrl+Enter` toggles Peek |
 | Capture and edit | `a` capture, `A` child, `e` inline task edit, `E` description, `Ctrl+E` external editor, whose title line speaks the same edit grammar as `e`, `O` outline edit the cursor's project |
 | Workflow | `$` opens the workflow chord over the ten destinations the `$` capture sigil names: `$i` Inbox, `$b` Backlog, `$n` toggle Next, `$t` toggle Today, `$g` Doing, `$w` Waiting, `$p` Paused, `$m` Someday, `$d` Done, `$c` Canceled; `$w` then asks for a check-back date |
 | Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date and defer; `#` tags and context; `*` pin |
@@ -188,7 +188,7 @@ were in and says so.
 | Sorting | `o` opens the sort chord: `o@` due date, `o!` priority, `oc` created, `ou` updated, `ot` title, `ox` clear; repeat a field key to reverse it |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
 | Selection | `v` toggles the cursor task; `V` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
-| Global | `p` Select Project, `Ctrl+N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
+| Global | `P` Select Project, `Ctrl+N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
 
 `@` opens one Set Date picker holding both fields. Its DUE section lists Clear,
 Today, Tomorrow, In one week, and In one month; its DEFER section lists Clear
@@ -212,8 +212,10 @@ The operation descriptors are the single source for dispatch, contextual
 guidance, chord hints, and `?` help. Every key an earlier vocabulary used and
 the sigils replaced is simply unbound, with no compatibility action, and every
 surface's retirements are inventoried here rather than left beside the surface
-that dropped them. The Outliner gave up the old standalone `b`, `c`, `m`, `t`,
-`w`, and `P` actions, the comma state prefix, and `:`, `C`, `R`, and `Ctrl+Esc`.
+that dropped them. The Outliner gave up the old standalone `b`, `c`, `m`, and
+`w` actions, the comma state prefix, and `:`, `C`, `R`, and `Ctrl+Esc`. Two
+names came back with new acts rather than as aliases: `t` is the task-subtree
+fold and `P` is Select Project.
 `d` is unbound: Done stays `$d` alone, `@` answers both dates, and root `z` is
 the scroll chord prefix. `$` joins them as a chord prefix rather than a key of
 its own. Select Project holds the same line: `n` no longer creates a project,
@@ -283,7 +285,7 @@ in one transaction that undoes in one step, and the destination mints its own
 skips the one the task already lives in, since a move to it is not a move. It is
 drawn from every non-archived project rather than the ones the Outliner shows,
 so a parked project is still a destination — the task simply follows it out of
-view. `p` remains Select Project, which changes what you are looking at rather
+view. `P` remains Select Project, which changes what you are looking at rather
 than where a task lives.
 
 ### Outline editing
@@ -796,7 +798,7 @@ Parents are project-local and hierarchy depth is capped at six.
 
 ## Scope, projects, and Notes
 
-The Outliner opens on Active Projects, and scope is session-only. `p` opens
+The Outliner opens on Active Projects, and scope is session-only. `P` opens
 Select Project on a live cursor, browsing active and archived projects. Each row
 carries its open task count beside its total and its tag chips, so a project
 whose tasks are all finished reads `0 open · 2 tasks` instead of passing for one

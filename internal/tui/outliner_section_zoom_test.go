@@ -124,7 +124,7 @@ func TestSectionZoomOverridesTheSectionFoldWithoutWritingIt(t *testing.T) {
 		t.Fatal("h folded the zoomed section")
 	}
 	if outliner.toggleVisibleSections() {
-		t.Fatal("S folded the zoomed section")
+		t.Fatal("s folded the zoomed section")
 	}
 	if !maps.Equal(outliner.collapsedSections, foldsBefore) {
 		t.Fatalf("the zoom changed fold state: got %v, want %v", outliner.collapsedSections, foldsBefore)

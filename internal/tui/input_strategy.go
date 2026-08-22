@@ -263,7 +263,11 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationCoreGotoTaskProject, Keys: []string{"ctrl+p"}, DisplayKey: "Ctrl+P"},
 			{OperationID: operationCoreCollapseParent, Keys: []string{"h", "left"}, DisplayKey: "h/←"},
 			{OperationID: operationCoreExpand, Keys: []string{"l", "right"}, DisplayKey: "l/→"},
-			{OperationID: operationCoreToggleSections, Keys: []string{"S"}, DisplayKey: "S"},
+			// One lowercase toggle per fold axis, declared together so the family
+			// reads as one: s sections, p project groups, t task subtrees.
+			{OperationID: operationCoreToggleSections, Keys: []string{"s"}, DisplayKey: "s"},
+			{OperationID: operationCoreToggleProjectGroup, Keys: []string{"p"}, DisplayKey: "p"},
+			{OperationID: operationCoreToggleSubtrees, Keys: []string{"t"}, DisplayKey: "t"},
 			{OperationID: operationCoreNextHeader, Keys: []string{"n"}, DisplayKey: "n"},
 			{OperationID: operationCorePreviousHeader, Keys: []string{"N"}, DisplayKey: "N"},
 			{OperationID: operationChecklistMoveDown, Keys: []string{"J"}, DisplayKey: "J", SharedKey: true},
@@ -292,7 +296,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationCoreMultiSelect, Keys: []string{"v"}, DisplayKey: "v", FooterRank: 7, FooterLabel: "select"},
 			{OperationID: operationCoreRangeSelect, Keys: []string{"V"}, DisplayKey: "V"},
 			{OperationID: operationCoreSelectAll, Keys: []string{"ctrl+a"}, DisplayKey: "Ctrl+A"},
-			{OperationID: operationCoreSelectProject, Keys: []string{"p"}, DisplayKey: "p", FooterRank: 18, FooterLabel: "projects"},
+			{OperationID: operationCoreSelectProject, Keys: []string{"P"}, DisplayKey: "P", FooterRank: 18, FooterLabel: "projects"},
 			{OperationID: operationCoreNotes, Keys: []string{"ctrl+n"}, DisplayKey: "Ctrl+N"},
 			{OperationID: operationCoreToggleTheme, Keys: []string{"T"}, DisplayKey: "T", FooterRank: 22, FooterLabel: "theme"},
 			{OperationID: operationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},

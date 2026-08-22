@@ -35,6 +35,13 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"Project grouping is universal, not per-mode",
 		"through the shared `appendProjectGroupHeader` kernel",
 		"`n`/`N` step the cursor between grouping headers, and their stop set is `isHeaderRow()`",
+		"There are three fold axes and therefore three bulk keys: `s` for section headers, " +
+			"`p` for project group headers, `t` for task subtrees",
+		"if any member of the set is folded the press expands them all, otherwise it folds them all",
+		"they separate by scanning row kind, `IsSectionHeader` against `IsProjectHeader`, " +
+			"rather than by matching a key prefix",
+		"`t` owns `expandedNodes` alone, and its walk covers every loaded project",
+		"`s` refuses under a section zoom and `p` does not, which is the one place the family diverges",
 		"The walk wraps at either end",
 		"A checklist row owns nine operations",
 		"Eight of them reuse the key their task-row counterpart holds",
@@ -97,6 +104,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"`taskPinnedMarker` renders a bold `*` when `task.Pinned && !row.IsPinnedSection`",
 		"`H`, `M`, and `L` are the screen-relative jumps",
 		"`zt`, `zz`, and `zb` are the inverse family",
+		"The `z` prefix is scroll alone: the bulk fold that once shared it moved to `t`",
 		"`Enter` pushes a project-qualified Focus frame",
 		"`Esc` restores one frame at a time",
 		"`Shift+Enter` widens by exactly one level",
@@ -111,7 +119,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"`V` starts a fresh inclusive task-row range",
 		"`Ctrl+A` replaces the selection with every visible task row",
 		"Only a committed Delete clears selection",
-		"`p` opens Select Project on a live cursor",
+		"`P` opens Select Project on a live cursor",
 		"Administering a project is a direct key rather than a menu row",
 		"`ProjectHubInputStrategy` is that grammar, and it is a peer of `SimplifiedInputStrategy` rather than a copy",
 		"a surface earns its own vocabulary by declaring bindings, not by adding a key router",
@@ -191,6 +199,8 @@ func TestArchitectureDocumentationRejectsRetiredLiveProduct(t *testing.T) {
 		"### Project boundaries",
 		"Boundary Manager",
 		"BoundaryID",
+		"`zM` and `zR` share that prefix",
+		"`S` keeps its own narrower `visibleSectionHeaders()` scan",
 	} {
 		if strings.Contains(content, stale) {
 			t.Errorf("architecture documentation contains retired runtime guidance %q", stale)
@@ -253,11 +263,12 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`fs` is unavailable in Recent; entry clears only Stale: " +
 			"`Stale filter cleared: Recent only includes the last 30 days`",
 		"There is no `$delete` sigil",
-		"The old `b`, `c`, `d`, `m`, `t`, `w`, `P`, `:`, `C`, `R`, `Ctrl+Esc`, and the " +
+		"The old `b`, `c`, `d`, `m`, `w`, `:`, `C`, `R`, `Ctrl+Esc`, and the " +
 			"comma state prefix stay unbound, as does `SortByStatus`",
 		"Done is `$d` alone and no `d` alias may return",
 		"Root `$`, `z`, and `g` are chord prefixes, not direct keys: `z` never means snooze or defer, " +
 			"and cursor-top is `gg` or `Home`",
+		"`s`, `p`, and `t` fold the section, project, and task axes; `P` is Select Project",
 		"`>` and `<` are Set Parent and Adopt Children; indent and outdent are `]` and `[`, " +
 			"which own no sigil",
 		"`@` is the one date picker over both fields, so the cursor's defer section, " +

@@ -3,7 +3,7 @@
   "fixture": "rich",
   "size": "72x20",
   "actions": [
-    { "type": "key", "label": "open Select Project", "key": "p" },
+    { "type": "key", "label": "open Select Project", "key": "P" },
     { "type": "key", "label": "open project search", "key": "/" },
     { "type": "text", "label": "find Rich Project", "text": "rprj" },
     { "type": "key", "label": "focus the selected project", "key": "enter" },

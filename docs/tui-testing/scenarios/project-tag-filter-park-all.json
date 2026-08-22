@@ -3,7 +3,7 @@
   "fixture": "multi-project",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "open Select Project", "key": "p" },
+    { "type": "key", "label": "open Select Project", "key": "P" },
     { "type": "key", "label": "select the first two projects", "key": "v" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "v" },

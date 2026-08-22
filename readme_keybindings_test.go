@@ -106,14 +106,19 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 		"the destination mints its own `#N` numbers for every task it receives",
 		"skips the one the task already lives in, since a move to it is not a move",
 		"drawn from every non-archived project rather than the ones the Outliner shows",
-		"`p` remains Select Project, which changes what you are looking at rather than where a task lives",
+		"`P` remains Select Project, which changes what you are looking at rather than where a task lives",
 		"`y` title, `Y` description, `Ctrl+Y` both",
 		"`o` opens the sort chord: `o@` due date, `o!` priority, `oc` created, `ou` updated, `ot` title, `ox` clear; repeat a field key to reverse it",
 		"`Ctrl+N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit",
 		"`n`/`N` jump to the next/previous section or project header, wrapping at either end",
-		"the old standalone `b`, `c`, `m`, `t`, `w`, and `P` actions, the comma state prefix, and " +
+		"the old standalone `b`, `c`, `m`, and `w` actions, the comma state prefix, and " +
 			"`:`, `C`, `R`, and `Ctrl+Esc`",
+		"Two names came back with new acts rather than as aliases: `t` is the task-subtree fold and " +
+			"`P` is Select Project",
 		"`d` is unbound: Done stays `$d` alone, `@` answers both dates, and root `z` is the scroll chord prefix",
+		"`s`, `p`, and `t` are the three bulk fold toggles — every visible section header, " +
+			"every project group header, every task subtree — and each expands its whole set if " +
+			"any part of it is folded and otherwise folds the set",
 		"`$` joins them as a chord prefix rather than a key of its own",
 		"`$q is not a workflow action`; pressing a key that was never bound does nothing and says nothing",
 		"Attachments retired `d` and `x` for its `Space` sheet, `o` for `Enter`, `e` for `E`, and " +
@@ -265,7 +270,7 @@ func TestREADMEDocumentsWorkspaceWideNotesManager(t *testing.T) {
 func TestREADMEDocumentsSelectProjectGrammar(t *testing.T) {
 	content := readREADMEForContractTest(t)
 	requireDocumentationText(t, content, []string{
-		"`p` opens Select Project on a live cursor",
+		"`P` opens Select Project on a live cursor",
 		"carries its open task count beside its total and its tag chips, so a project whose tasks " +
 			"are all finished reads `0 open · 2 tasks` instead of passing for one with work left",
 		"`Enter` focuses it in the same Outliner, `a` creates one, `e` edits the one under the cursor, " +

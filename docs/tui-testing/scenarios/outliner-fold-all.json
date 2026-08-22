@@ -1,0 +1,32 @@
+{
+  "name": "outliner-fold-all",
+  "fixture": "rich",
+  "size": "99x35",
+  "actions": [
+    { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "contains", "value": "Add password validation" },
+
+    { "type": "key", "label": "t folds every task subtree at once", "key": "t" },
+    { "type": "assert", "assert": "not_contains", "value": "Add password validation" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "the same key restores them", "key": "t" },
+    { "type": "assert", "assert": "contains", "value": "Add password validation" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "s folds every section header", "key": "s" },
+    { "type": "assert", "assert": "not_contains", "value": "Add password validation" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "the same key restores them", "key": "s" },
+    { "type": "assert", "assert": "contains", "value": "Add password validation" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "p folds every project group header", "key": "p" },
+    { "type": "assert", "assert": "not_contains", "value": "Build login form" },
+    { "type": "assert", "label": "a folded group still renders the header naming it", "assert": "contains", "value": "▸ [rich-project]" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "the same key restores them", "key": "p" },
+    { "type": "assert", "assert": "contains", "value": "Build login form" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

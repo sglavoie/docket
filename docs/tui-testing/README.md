@@ -120,9 +120,10 @@ The final public grammar is:
 ```text
 Tab/Shift+Tab                    All, Today, Inbox, Next, Backlog, Due, Recent
 ga gi gt gn gb g@ gr             go-to chord, one key per mode
-j/k h/l S gg/G Ctrl+U/Ctrl+D     navigation
+j/k h/l gg/G Ctrl+U/Ctrl+D       navigation
 H/M/L                            cursor to top/middle/bottom of screen
 zt zz zb                         cursor row to top/middle/bottom of screen
+s p t                            fold toggles: sections, project groups, subtrees
 n/N                              next/previous grouping header, wrapping
 Ctrl+O/Ctrl+I                    older/newer relocated-task positions
 Ctrl+L                           Recent, focused on the newest activity
@@ -135,7 +136,7 @@ y Y Ctrl+Y                       clipboard
 v V Ctrl+A Space                 selection and actions
 Enter Shift+Enter Ctrl+Enter     Focus, widen focus, and Peek
 x                                tick the checklist item under the cursor
-p Ctrl+N T / ? u Ctrl+R Esc Ctrl+C   global
+P Ctrl+N T / ? u Ctrl+R Esc Ctrl+C   global
 f!0-3 f$ fc f# fr f@ fh fs fx    filters
 F# Fp FP Fa FA Fx                project population filters
 o@ o! oc ou ot ox                sort axis
@@ -144,9 +145,9 @@ o@ o! oc ou ot ox                sort axis
 The metadata keys are the capture sigils themselves: `@` opens the one picker
 holding both the due date and the deferral, and `#` opens the one picker holding
 both tags and the task context, so neither `@@` nor `##` is a key sequence. The
-old standalone `b`, `d`, and `t` actions and comma state prefix are
-intentionally unbound, as are `c`, `m`, `w`, `P`, `:`, `C`, `R`, and
-`Ctrl+Esc`.
+old standalone `b` and `d` actions and comma state prefix are intentionally
+unbound, as are `c`, `m`, `w`, `:`, `C`, `R`, and `Ctrl+Esc`. `t` and `P` are
+live again with different acts: the subtree fold and Select Project.
 
 The presentation grammar is also part of the scenario contract. Full-screen
 titles stay on one row and carry the workspace pulse; browse guidance uses one

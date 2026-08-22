@@ -109,7 +109,7 @@ func (m *OutlinerModel) cursorNamesSectionHeader() bool {
 // isZoomedSectionRow names the header of the section the projection is zoomed
 // to. The zoom overrides that section's fold, so folding it is refused rather
 // than written: l already refuses because the section always reads expanded, and
-// h and S would otherwise persist a fold with no visible effect that Esc then
+// h and s would otherwise persist a fold with no visible effect that Esc then
 // reveals.
 func (m *OutlinerModel) isZoomedSectionRow(row outlinerRow) bool {
 	return m.zoom.active() && row.IsSectionHeader && row.effectiveCollapseKey() == m.zoom.key

@@ -192,7 +192,7 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int) string {
 func (m *OutlinerModel) outlinerEmptyMessage() string {
 	switch m.classifyEmptyCause() {
 	case outlinerEmptyNoProjects:
-		return "No projects are available. Press p to open Projects."
+		return "No projects are available. Press P to open Projects."
 	case outlinerEmptyProjectFiltered:
 		return "No projects match project filters. Press Fx to clear project filters."
 	case outlinerEmptySearch:

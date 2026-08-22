@@ -98,8 +98,8 @@ func TestOutlinerEmptyStatesAdvertiseCausalRecovery(t *testing.T) {
 				out.loadedProjects = nil
 				out.rows = nil
 			},
-			wantMessage: "No projects are available. Press p to open Projects.",
-			wantHint:    "p projects",
+			wantMessage: "No projects are available. Press P to open Projects.",
+			wantHint:    "P projects",
 		},
 		{
 			name: "empty mode",

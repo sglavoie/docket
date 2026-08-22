@@ -197,9 +197,34 @@ stop set would leave the keys dead in four of the seven modes. That predicate is
 the same one `h`/`l` fold on and the same one the header guidance reads. The
 walk wraps at either end, and a projection holding no header at all — a
 project-scoped view or a search projection — reports so through
-`OperationHandlerResult.Status` rather than leaving the key silent. `S` keeps
-its own narrower `visibleSectionHeaders()` scan, which deliberately excludes
-project headers.
+`OperationHandlerResult.Status` rather than leaving the key silent.
+
+There are three fold axes and therefore three bulk keys: `s` for section
+headers, `p` for project group headers, `t` for task subtrees. Each is one
+toggle rather than a collapse/expand pair, and all three take the same
+direction rule — if any member of the set is folded the press expands them all,
+otherwise it folds them all — so the key never advertises a direction it does
+not always go. `s` and `p` share `collapsedSections`, since a fold is a fold
+whichever header kind declares it, and they separate by scanning row kind,
+`IsSectionHeader` against `IsProjectHeader`, rather than by matching a key
+prefix: the ~13 collapse-key constructors are disjoint by construction but not
+by spelling, so one scan over the rendered rows is what lets `p` reach all five
+project-header namespaces without enumerating any of them. `t` owns
+`expandedNodes` alone, and its walk covers every loaded project rather than the
+active projection, matching `markAllExpanded`, because folds are
+project-qualified and outlive a mode change; folding only what a filter happens
+to show would leave the modes beside it disagreeing about the same task.
+Unfolding clears that map instead of writing `true` over every node, since
+`isExpanded` reads an absent key as expanded and the empty map is the canonical
+all-expanded state.
+
+`s` refuses under a section zoom and `p` does not, which is the one place the
+family diverges. A zoom overrides exactly one section's fold, so a bulk section
+write there would move nothing on screen; but the admitted section still emits
+its project headers, so `p` there folds rows the user can see. Each reports
+that refusal through `OperationHandlerResult.Status` and stays silent when it
+acts, since a status would arm the footer flash for a change already fully
+rendered.
 
 Checklist items are a fourth row kind, emitted by one `expandChecklistRows`
 post-pass rather than by each mode strategy. `IsChecklistItem` takes a row out of
@@ -652,9 +677,12 @@ That binding is the one place a single operation declares both `Keys` and a
 `$`, `z`, `f`, `F`, and `o` are the other root prefixes. `$` is the workflow
 chord, so no lifecycle destination carries a bare root key and `d` is unbound
 rather than aliasing `$d`; `z` is the scroll chord and never means defer. Every
-other retired root key — `b`, `c`, `m`, `t`, `w`, `P`, `:`, `C`, `R`, the comma
-state prefix, and `Ctrl+Esc` — is simply absent from the strategy, because a
+other retired root key — `b`, `c`, `m`, `w`, `:`, `C`, `R`, the comma state
+prefix, and `Ctrl+Esc` — is simply absent from the strategy, because a
 compatibility shim would keep a second vocabulary alive next to the sigils.
+`t` and `P` left that list by an explicit decision rather than by drift: `t`
+took the task-subtree fold and `P` took Select Project, so both are live keys
+with new acts rather than aliases for the ones they used to name.
 
 Set Parent's key is its sigil too: `>` opens `ValueProviderParent`, a plain list
 built by `operationParentListSource` from the cursor task's own
@@ -707,7 +735,7 @@ and both projects commit in one checked transaction. The command therefore
 builds `shellStructuralPlanningArtifactBuilder` rather than the reconcile
 builder Adopt Children uses, because planning references have to be requalified
 to the new owner rather than merely reconciled, and it sets `Action` to `Move to
-Project` for the ledger. `p` keeps Select Project: that operation changes the
+Project` for the ledger. `P` keeps Select Project: that operation changes the
 projection, not a task's owner, so the two carry separate keys, labels, and
 footer entries.
 
@@ -1127,6 +1155,13 @@ and the scrollbar math; `zt` near the end of the list therefore scrolls as far a
 it can and stops. Success is silent, since a status would arm the footer flash
 for a change already fully on screen.
 
+The `z` prefix is scroll alone: the bulk fold that once shared it moved to `t`,
+described with its two siblings under project grouping above, and writes
+`expandedNodes` rather than `viewScrollOffset`, so the one-writer rule stands
+without qualification. After a fold the cursor rides up its `ParentID` chain to
+the nearest ancestor that still renders, since the row it sat on may now be
+under a fold.
+
 `Enter` pushes a project-qualified Focus frame and projects only the selected
 task's descendants. Nested Focus frames retain the exact parent cursor and
 scroll offset; `Esc` restores one frame at a time. A leaf reports
@@ -1140,7 +1175,7 @@ advertises it can never disagree. `enterSectionZoom` snapshots the pre-zoom
 cursor and `viewScrollOffset` into one `sectionZoom` value and `sectionZoomAdmits`
 then lets exactly one section emit rows. The zoom overrides that section's fold
 rather than writing one, which is what lets a collapsed section zoom open and
-stay collapsed after `Esc`, and is why `h` and `S` refuse on the zoomed header
+stay collapsed after `Esc`, and is why `h` and `s` refuse on the zoomed header
 instead of persisting a fold with no visible effect. A zoom is a single
 snapshotted value, not a stack: `pushProjectScope` clears it exactly as it
 clears `crossFocusStack`, and the scope frame carries it back on the pop. An
@@ -1284,7 +1319,7 @@ clipboard actions reject visual selection rather than falling back to the
 cursor. Only a committed Delete clears selection.
 
 The Outliner opens on Active Projects. Applying scope clears navigation and
-selection but preserves the active mode, search, and filters. `p` opens Select
+selection but preserves the active mode, search, and filters. `P` opens Select
 Project on a live cursor, over active and archived projects, each row carrying
 its task count and its tag chips. Administering a project is a direct key rather
 than a menu row: `Enter` focuses, `a` creates, `e` edits, `*` pins, `#` sets
@@ -1337,7 +1372,7 @@ The footer hint and the two empty-list lines all read through
 than the one the axis holds: with three states a single press no longer returns
 to the whole list, so copy describing the current narrowing would leave the way
 back unsaid. The axis is session state on a Hub that
-`ManageHubModel.prepareActive` rebuilds on every `p`, so it resets on every open.
+`ManageHubModel.prepareActive` rebuilds on every `P`, so it resets on every open.
 
 ### Project tags
 

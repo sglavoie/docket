@@ -143,13 +143,14 @@ func TestAbandonedChordNamesThePathItLeft(t *testing.T) {
 // abandoned chords. A root key never promised anything, so explaining it would
 // turn every stray keystroke into a message. The table holds the keys the sigil
 // grammar retired beside a key that was never bound at all, because a retired
-// key has to be as silent as an unknown one: a shim that answered w or P would
-// keep two vocabularies alive.
+// key has to be as silent as an unknown one: a shim that answered w or m would
+// keep two vocabularies alive. t and P are deliberately absent — the fold family
+// took t back for task subtrees and P back for Select Project.
 func TestRetiredRootKeysStaySilentlyUnbound(t *testing.T) {
 	strategy := SimplifiedInputStrategy()
 	app := headerTargetAuditApp(t)
 	for _, name := range []string{
-		"w", "P", "d", "b", "t", "c", "m", ":", "C", "R", ",", "q",
+		"w", "d", "b", "c", "m", ":", "C", "R", ",", "q",
 	} {
 		t.Run(name, func(t *testing.T) {
 			for _, binding := range strategy.Bindings {

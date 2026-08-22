@@ -14,6 +14,15 @@
     { "type": "key", "label": "unfold the same group", "key": "l" },
     { "type": "assert", "assert": "contains", "value": "Build login form" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "h folds one group; p folds every one of them", "key": "h" },
+    { "type": "key", "label": "the set is mixed, so p expands rather than folding the rest", "key": "p" },
+    { "type": "assert", "assert": "contains", "value": "Build login form" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "now that all are expanded the same key folds them", "key": "p" },
+    { "type": "assert", "assert": "not_contains", "value": "Build login form" },
+    { "type": "assert", "label": "the cursor stays on the header it was folded from", "assert": "contains", "value": "▸ [rich-project] (1)" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

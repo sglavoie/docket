@@ -3,7 +3,7 @@
   "fixture": "project-mix",
   "size": "100x35",
   "actions": [
-    { "type": "key", "label": "open Select Project", "key": "p" },
+    { "type": "key", "label": "open Select Project", "key": "P" },
     { "type": "assert", "assert": "view", "value": "ProjectHub" },
     { "type": "assert", "assert": "contains", "value": "Mix Quiet Planning" },
     { "type": "assert", "assert": "contains", "value": "0 open · 2 tasks" },

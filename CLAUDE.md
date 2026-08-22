@@ -92,7 +92,7 @@ One key is one act on every entity surface:
 | Keys | Act |
 | --- | --- |
 | `Enter` `a` `e` `E`/`Ctrl+E` | zoom in · create · edit · body/external |
-| `/` `v` `Ctrl+A` `p` `%` | search · select · select all · scope · reown |
+| `/` `v` `Ctrl+A` `P` `%` | search · select · select all · scope · reown |
 | `y`/`Y` `J`/`K` `*` `#` | copy · reorder · pin · tags |
 | `u`/`Ctrl+R` `gg`/`G` `Esc` `?` | undo/redo · ends · unwind · help |
 | `Space` | menu: destructive and rare operations only |
@@ -178,12 +178,13 @@ tags, task links, pins, bulk actions, or previews. `T` toggles only dark/light.
 
 ## Key bindings
 
-The old `b`, `c`, `d`, `m`, `t`, `w`, `P`, `:`, `C`, `R`, `Ctrl+Esc`, and the
+The old `b`, `c`, `d`, `m`, `w`, `:`, `C`, `R`, `Ctrl+Esc`, and the
 comma state prefix stay unbound, as does `SortByStatus`; repeating a sort field
 key is the only reverse route. Done is `$d` alone and no `d` alias may return.
 
 Root `$`, `z`, and `g` are chord prefixes, not direct keys: `z` never means
-snooze or defer, and cursor-top is `gg` or `Home`.
+snooze or defer, and cursor-top is `gg` or `Home`. `s`, `p`, and `t` fold the
+section, project, and task axes; `P` is Select Project.
 
 `Ctrl+P` forces All rather than inheriting the origin mode, and its scope push
 must precede the mode switch, since the push captures the frame `Esc` restores.

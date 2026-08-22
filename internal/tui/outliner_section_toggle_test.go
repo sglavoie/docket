@@ -159,7 +159,7 @@ func TestToggleVisibleSectionsKeepsUnsectionedPrimaryTaskFocused(t *testing.T) {
 	}
 }
 
-func TestToggleVisibleSectionsDispatchesUppercaseS(t *testing.T) {
+func TestToggleVisibleSectionsDispatchesLowercaseS(t *testing.T) {
 	app := newUITestApp()
 	project := scopeTestProject("project", "Project", "task")
 	app.projects[project.ID] = project
@@ -168,26 +168,61 @@ func TestToggleVisibleSectionsDispatchesUppercaseS(t *testing.T) {
 	outliner.crossForceRebuild = true
 	outliner.crossProjectRebuildRows()
 	if !outliner.moveCursorToIdentity(TaskIdentity{ProjectID: project.ID, TaskID: "task"}) {
-		t.Fatal("task is missing before S dispatch")
+		t.Fatal("task is missing before s dispatch")
 	}
 
-	handled, cmd := app.handleGlobalKeyPress(syntheticKey('S'))
+	// Both presses are productive, so both stay silent: the refusal status the
+	// handler carries is paid only when the toggle reports no change.
+	handled, cmd := app.handleGlobalKeyPress(syntheticKey('s'))
 	if !handled || cmd != nil {
-		t.Fatalf("S = handled %v, cmd %v; want handled with no command", handled, cmd)
+		t.Fatalf("s = handled %v, cmd %v; want handled with no command", handled, cmd)
 	}
 	headers := outliner.visibleSectionHeaders()
 	if len(headers) != 1 || !outliner.collapsedSections[headers[0].effectiveCollapseKey()] {
-		t.Fatalf("S did not collapse the visible section: headers=%+v collapsed=%v", headers, outliner.collapsedSections)
+		t.Fatalf("s did not collapse the visible section: headers=%+v collapsed=%v", headers, outliner.collapsedSections)
 	}
 	if row := outliner.rows[outliner.cursor]; !row.IsSectionHeader {
-		t.Fatalf("cursor after S = %+v, want section header", row)
+		t.Fatalf("cursor after s = %+v, want section header", row)
 	}
 
-	handled, cmd = app.handleGlobalKeyPress(syntheticKey('S'))
+	handled, cmd = app.handleGlobalKeyPress(syntheticKey('s'))
 	if !handled || cmd != nil {
-		t.Fatalf("second S = handled %v, cmd %v; want handled with no command", handled, cmd)
+		t.Fatalf("second s = handled %v, cmd %v; want handled with no command", handled, cmd)
 	}
 	if task, _ := outliner.getTaskRef(); task == nil || task.ID != "task" {
-		t.Fatalf("task after second S = %v, want task", task)
+		t.Fatalf("task after second s = %v, want task", task)
+	}
+}
+
+// A zoom overrides the one section it leaves visible, so s has no fold to write
+// and says so. This is the divergence p deliberately does not share: an admitted
+// section still emits its project headers, so p there folds rows on screen.
+func TestToggleVisibleSectionsReportsInsideASectionZoom(t *testing.T) {
+	app := newUITestApp()
+	project := scopeTestProject("project", "Project", "task")
+	app.projects[project.ID] = project
+	outliner := app.crossOutliner
+	outliner.loadedProjects = []*models.Project{project}
+	outliner.crossForceRebuild = true
+	outliner.crossProjectRebuildRows()
+
+	headers := outliner.visibleSectionHeaders()
+	if len(headers) != 1 {
+		t.Fatalf("section header count = %d, want exactly one to zoom into", len(headers))
+	}
+	if !outliner.enterSectionZoom(headers[0]) {
+		t.Fatal("the section header refused a zoom")
+	}
+	foldsBefore := maps.Clone(outliner.collapsedSections)
+
+	handled, cmd := app.handleGlobalKeyPress(syntheticKey('s'))
+	if !handled || cmd == nil {
+		t.Fatalf("zoomed s = handled %v, cmd %v; want handled with a status", handled, cmd)
+	}
+	if status, ok := cmd().(StatusMsg); !ok || string(status) != "No foldable sections here" {
+		t.Fatalf("zoomed s message = %#v, want the refusal status", cmd())
+	}
+	if !maps.Equal(outliner.collapsedSections, foldsBefore) {
+		t.Fatalf("zoomed s wrote a fold: got %v, want %v", outliner.collapsedSections, foldsBefore)
 	}
 }

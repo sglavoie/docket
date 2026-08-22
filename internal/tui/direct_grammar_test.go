@@ -232,7 +232,9 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"ctrl+p": operationCoreGotoTaskProject,
 		"h":      operationCoreCollapseParent, "left": operationCoreCollapseParent,
 		"l": operationCoreExpand, "right": operationCoreExpand,
-		"S": operationCoreToggleSections,
+		"s": operationCoreToggleSections,
+		"p": operationCoreToggleProjectGroup,
+		"t": operationCoreToggleSubtrees,
 		"n": operationCoreNextHeader, "N": operationCorePreviousHeader,
 		"[": operationTaskOutdent, "]": operationTaskIndent,
 		">":           operationTaskSetParent,
@@ -243,7 +245,7 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"/":           operationCoreScopeSearch,
 		"v":           operationCoreMultiSelect, "V": operationCoreRangeSelect,
 		"ctrl+a": operationCoreSelectAll,
-		"p":      operationCoreSelectProject,
+		"P":      operationCoreSelectProject,
 		"ctrl+n": operationCoreNotes, "T": operationCoreToggleTheme,
 		"u": operationCoreUndo, "ctrl+r": operationCoreRedo,
 		"esc": operationCoreBack, "?": operationCoreHelp, "ctrl+c": operationCoreQuit,
@@ -298,7 +300,7 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	// g became the go-to chord prefix, so cursor-top answers to gg and Home only,
 	// and d went with the defer picker when @ absorbed both date fields.
 	for _, removed := range []string{
-		"b", "c", "d", "g", "t", "z", ",", "m", ":", "C", "R", "ctrl+esc",
+		"b", "c", "d", "g", "z", ",", "m", ":", "C", "R", "ctrl+esc",
 	} {
 		if owners := owners[removed]; len(owners) > 0 {
 			t.Errorf("removed key %q still resolves to %s", removed, owners[0])
