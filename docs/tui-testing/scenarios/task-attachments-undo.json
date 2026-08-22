@@ -34,6 +34,8 @@
     { "type": "assert", "assert": "view", "value": "Help" },
     { "type": "assert", "assert": "contains", "value": "Undo workspace change" },
     { "type": "assert", "assert": "contains", "value": "Redo workspace change" },
+    { "type": "assert", "label": "both ends are spelled as the whole paths the panel answers", "assert": "contains", "value": "gg/Home" },
+    { "type": "assert", "assert": "contains", "value": "G/End" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

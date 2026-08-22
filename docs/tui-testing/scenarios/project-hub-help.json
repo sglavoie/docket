@@ -11,6 +11,8 @@
     { "type": "assert", "assert": "contains", "value": "Open project" },
     { "type": "assert", "assert": "contains", "value": "Set project tags" },
     { "type": "assert", "assert": "contains", "value": "Toggle project pin" },
+    { "type": "assert", "label": "both ends are spelled as the whole paths the Hub answers", "assert": "contains", "value": "gg/Home" },
+    { "type": "assert", "assert": "contains", "value": "G/End" },
     { "type": "assert", "label": "the ledger keys the Hub now answers are named here too", "assert": "contains", "value": "Undo workspace change" },
     { "type": "assert", "assert": "contains", "value": "Redo workspace change" },
     { "type": "assert", "label": "the Hub grammar names itself rather than the Outliner's", "assert": "not_contains", "value": "Capture" },

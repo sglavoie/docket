@@ -425,8 +425,10 @@ func TestNotesHelpDocumentsTheWorkspaceManager(t *testing.T) {
 	view.SetSize(80, 24)
 
 	// The registry names every operation the Notes grammar binds; the keymap
-	// supplies only the cursor and ledger keys whose core descriptors answer to
-	// the Outliner. Delete is absent because the Space sheet is its one path.
+	// supplies only the cursor, end, and ledger keys whose core descriptors answer
+	// to the Outliner. Delete is absent because the Space sheet is its one path,
+	// and the two end rows carry the strategy's own spellings rather than the
+	// single physical key each keymap entry binds.
 	want := []HelpItem{
 		{Key: "Enter", Description: "Open note", Category: "Notes"},
 		{Key: "a", Description: "New note", Category: "Notes"},
@@ -439,6 +441,8 @@ func TestNotesHelpDocumentsTheWorkspaceManager(t *testing.T) {
 		{Key: "Space", Description: "Note actions", Category: "Notes"},
 		{Key: "j", Description: "Move cursor down", Category: "Navigation"},
 		{Key: "k", Description: "Move cursor up", Category: "Navigation"},
+		{Key: "gg/Home", Description: "Jump to first note", Category: "Navigation"},
+		{Key: "G/End", Description: "Jump to last note", Category: "Navigation"},
 		{Key: "u", Description: "Undo workspace change", Category: "Actions"},
 		{Key: "ctrl+r", Description: "Redo workspace change", Category: "Actions"},
 	}

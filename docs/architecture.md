@@ -581,6 +581,18 @@ descriptions that can drift apart, and
 it: every key their footer advertises is one their strategy binds, except the
 three modal keys a comment composer owns while its textarea has focus.
 
+`?` help meets the same limit from the other side. Core descriptors carry
+`coreOutlinerApplicability`, so the registry half of a surface's help drops the
+cursor keys, both ends of the list, `u`, `Ctrl+R`, and `?` itself, and only the
+surface's own keymap can name them. That keymap binds one physical key per row,
+which is why the composed spellings its strategy declares needed a projection of
+their own: `keymap.WithHelpKey` renames the help row the way `WithFooterKey`
+renames the compact hint, leaving `Binding.Key` authoritative for dispatch and
+`HandledKeys`. `gg/Home` and `G/End` are therefore one row apiece on the Project
+Hub, Notes, Comments, and Attachments — the chord, its alternate key, and the
+hidden `end` alias documented once rather than four times or not at all — and
+`TestEntitySurfaceHelpDocumentsBothEndSpellings` holds all four surfaces to it.
+
 A value provider is exactly one of `textEntry()` (a separate overlay),
 `tagEntry()` (inline add mode), `dateEntry()` (inline add mode), or a plain list
 such as `ValueProviderParent`.

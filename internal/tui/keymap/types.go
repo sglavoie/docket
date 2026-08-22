@@ -10,7 +10,8 @@ type Binding struct {
 	Category       string
 	Gate           Gate // nil = always active
 	Hidden         bool // excluded from help and guidance, included in HandledKeys
-	FooterRank     int  // zero excludes the binding from compact guidance
+	HelpKey        string
+	FooterRank     int // zero excludes the binding from compact guidance
 	FooterKey      string
 	FooterLabel    string
 	FooterRequired bool
@@ -55,6 +56,16 @@ func WithFooter(rank int, label string, required bool) BindOption {
 // while aliases such as j/k or Ctrl+J/K can be presented as one concise hint.
 func WithFooterKey(key string) BindOption {
 	return func(b *Binding) { b.FooterKey = key }
+}
+
+// WithHelpKey overrides only the `?` help spelling, the way WithFooterKey
+// overrides the compact one. The physical key retained by Binding stays
+// authoritative for dispatch and HandledKeys, so a surface whose grammar reaches
+// one act through a chord and an alternate key — gg/Home, G/End — can name that
+// complete path once in help without declaring a second dispatch spelling or
+// listing the aliases as separate rows.
+func WithHelpKey(key string) BindOption {
+	return func(b *Binding) { b.HelpKey = key }
 }
 
 // Bind constructs a Binding entry.

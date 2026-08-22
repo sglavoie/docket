@@ -496,8 +496,11 @@ func TestFilterAndSortSecondKeysUseSigilsWhereOneExists(t *testing.T) {
 
 func TestNotesDirectGrammarMatchesTheWorkspaceManager(t *testing.T) {
 	view := &NotesViewModel{}
+	// home and G are the physical keys behind the two end rows the manager's own
+	// help names as gg/Home and G/End; the help spelling is display only, so
+	// HandledKeys still reports the keys the keymap actually carries.
 	want := []string{
-		"j", "k", "down", "up", "enter", "a", "e", "%", "/", "p", "space", "u", "ctrl+r", "y", "Y",
+		"j", "k", "down", "up", "home", "G", "enter", "a", "e", "%", "/", "p", "space", "u", "ctrl+r", "y", "Y",
 	}
 	if got := view.HandledKeys(); !slices.Equal(got, want) {
 		t.Fatalf("Notes direct keys = %v, want %v", got, want)

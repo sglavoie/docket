@@ -22,14 +22,20 @@ type FooterHint struct {
 	Required bool
 }
 
-// HelpItems returns all active non-hidden direct bindings.
+// HelpItems returns all active non-hidden direct bindings. A binding carrying a
+// help spelling is named by it, so the hidden aliases and chords beside it are
+// documented by the one row rather than repeated or omitted.
 func (km *KeyMap) HelpItems() []HelpItem {
 	var items []HelpItem
 	for _, entry := range km.Entries {
 		binding := entry.Binding
 		if binding != nil && !binding.Hidden && (binding.Gate == nil || binding.Gate()) {
+			key := strings.TrimSpace(binding.HelpKey)
+			if key == "" {
+				key = binding.Key
+			}
 			items = append(items, HelpItem{
-				Key: binding.Key, Description: binding.Description, Category: binding.Category,
+				Key: key, Description: binding.Description, Category: binding.Category,
 			})
 		}
 	}

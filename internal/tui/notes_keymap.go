@@ -19,6 +19,16 @@ func (m *NotesViewModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("k", "Move cursor up", "Navigation"),
 		keymap.Bind("down", "Move cursor down", "Navigation", keymap.AsHidden()),
 		keymap.Bind("up", "Move cursor up", "Navigation", keymap.AsHidden()),
+
+		// The manager reaches both ends through the strategy's core bindings, whose
+		// descriptors answer only to the Outliner, so these two unranked rows are
+		// the only place its own `?` help can name them. Each is spelled as the
+		// whole path — the chord and its alternate key — rather than as the one
+		// physical key the row carries.
+		keymap.Bind("home", "Jump to first note", "Navigation",
+			keymap.WithGate(hasRow), keymap.WithHelpKey("gg/Home")),
+		keymap.Bind("G", "Jump to last note", "Navigation",
+			keymap.WithGate(hasRow), keymap.WithHelpKey("G/End")),
 		keymap.Bind("enter", "Open in external editor", "Actions",
 			keymap.WithGate(hasRow), keymap.WithFooter(1, "open/edit", false),
 			keymap.WithFooterKey("Enter")),

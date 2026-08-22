@@ -43,6 +43,72 @@ func TestPanelEndKeysReachBothEndsOfTheList(t *testing.T) {
 	})
 }
 
+// TestEntitySurfaceHelpDocumentsBothEndSpellings holds all four entity surfaces
+// to the grammar the test above proves they execute. Each surface's own `?` help
+// must name gg/Home and G/End once apiece: once, because four physical keys
+// reaching two acts are two rows rather than four, and named, because a key the
+// surface answers and never spells is undiscoverable from inside it.
+//
+// The Outliner is absent because its help is the registry's own projection of
+// the same two DisplayKeys, which is what these four surfaces are being held to.
+func TestEntitySurfaceHelpDocumentsBothEndSpellings(t *testing.T) {
+	for _, surface := range []struct {
+		name string
+		help func(*testing.T) []HelpItem
+	}{
+		{
+			name: "project hub",
+			help: func(t *testing.T) []HelpItem {
+				return openProjectHub(t, projectHubApp(t)).GetHelpItems()
+			},
+		},
+		{
+			name: "notes",
+			help: func(t *testing.T) []HelpItem {
+				return mountEndsNavigationNotes(t).GetHelpItems()
+			},
+		},
+		{
+			name: "comments",
+			help: func(t *testing.T) []HelpItem {
+				_, panel, _ := mountCommentsPanel(t)
+				return panel.GetHelpItems()
+			},
+		},
+		{
+			name: "attachments",
+			help: func(t *testing.T) []HelpItem {
+				_, panel, _ := mountAttachmentsPanel(t)
+				return panel.GetHelpItems()
+			},
+		},
+	} {
+		t.Run(surface.name, func(t *testing.T) {
+			items := surface.help(t)
+			if len(items) == 0 {
+				t.Fatal("the surface documents no keys at all")
+			}
+			spelled := make(map[string]int, len(items))
+			for _, item := range items {
+				spelled[item.Key]++
+			}
+			for _, spelling := range []string{"gg/Home", "G/End"} {
+				if spelled[spelling] != 1 {
+					t.Errorf("help names %q %d times, want exactly 1: %+v", spelling, spelled[spelling], items)
+				}
+			}
+			// The composed spellings replace the bare keys rather than joining them,
+			// so the same act cannot be discovered twice under two names. `end` was
+			// already hidden on the panels that bind it.
+			for _, superseded := range []string{"home", "G", "end", "gg"} {
+				if spelled[superseded] != 0 {
+					t.Errorf("help still names the bare key %q beside the composed spelling", superseded)
+				}
+			}
+		})
+	}
+}
+
 // assertPanelReachesBothEnds presses each of the four end spellings in turn. The
 // presses alternate ends so a cursor that never moved cannot pass by sitting
 // where the previous step left it.

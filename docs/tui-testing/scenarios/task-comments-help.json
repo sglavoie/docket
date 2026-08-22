@@ -23,6 +23,8 @@
     { "type": "assert", "assert": "contains", "value": "Expand comment" },
     { "type": "assert", "assert": "contains", "value": "Comment actions" },
     { "type": "assert", "assert": "contains", "value": "Copy all as Markdown" },
+    { "type": "assert", "label": "both ends are spelled as the whole paths the panel answers", "assert": "contains", "value": "gg/Home" },
+    { "type": "assert", "assert": "contains", "value": "G/End" },
     { "type": "assert", "label": "the help lists the key that raised it", "assert": "contains", "value": "Help" },
     { "type": "assert", "label": "the panel grammar names itself rather than the Outliner's", "assert": "not_contains", "value": "Capture" },
     { "type": "assert", "assert": "not_contains", "value": "Move to Backlog" },

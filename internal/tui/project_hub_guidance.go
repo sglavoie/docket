@@ -35,10 +35,10 @@ func (m *ProjectHubModel) ContextualGuidance() (GuidanceSpec, bool) {
 }
 
 // projectHubGuidanceKeyMap carries only the keys the operation registry cannot
-// describe here: the cursor keys, `?`, and the ledger's u and Ctrl+R, whose core
-// descriptors answer to the Outliner, the Esc unwind, which is no operation at
-// all, and Ctrl+T, whose hint names the next filter rather than the operation's
-// fixed label.
+// describe here: the cursor keys and both ends of the list, `?`, and the
+// ledger's u and Ctrl+R, whose core descriptors answer to the Outliner, the Esc
+// unwind, which is no operation at all, and Ctrl+T, whose hint names the next
+// filter rather than the operation's fixed label.
 func (m *ProjectHubModel) projectHubGuidanceKeyMap(state ListGuidanceState) *keymap.KeyMap {
 	profile := state.Profile
 	hasRows := m.surface != nil && len(m.surface.Matches()) > 0
@@ -60,6 +60,14 @@ func (m *ProjectHubModel) projectHubGuidanceKeyMap(state ListGuidanceState) *key
 		keymap.Bind("ctrl+d", "Move half page", "Navigation",
 			keymap.WithGate(func() bool { return browseList() || searchEditing() }),
 			keymap.WithFooter(30, "half page", false), keymap.WithFooterKey("Ctrl+D/U")),
+		// Unranked, like `?` and the ledger keys below: the Hub's ranked bindings
+		// are the project acts it exists for. Each row is spelled as the whole path
+		// the strategy binds — the gg chord and its Home alias, G and End — so the
+		// one row names every press that reaches that end.
+		keymap.Bind("home", "Jump to first project", "Navigation",
+			keymap.WithGate(browseList), keymap.WithHelpKey("gg/Home")),
+		keymap.Bind("G", "Jump to last project", "Navigation",
+			keymap.WithGate(browseList), keymap.WithHelpKey("G/End")),
 		// Deliberately ungated: the filter can empty the list itself and is then
 		// the only way back. The label names the result, not the state.
 		keymap.Bind("ctrl+t", "Cycle every project, only those holding tasks, only those holding none", "Filters",

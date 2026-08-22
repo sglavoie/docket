@@ -28,9 +28,13 @@ func (m *TaskAttachmentsModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("down", "Move cursor down", "Navigation", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("k", "Move cursor up", "Navigation", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("up", "Move cursor up", "Navigation", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
-		keymap.Bind("G", "Jump to last attachment", "Navigation", keymap.WithGate(hasBrowseSelection)),
+		// One row per end, spelled as the whole path the panel answers to. gg is a
+		// chord this keymap cannot bind and end is the hidden alias beside G, so the
+		// help spelling is what names all four presses without inventing a dispatch
+		// key for any of them.
+		keymap.Bind("home", "Jump to first attachment", "Navigation", keymap.WithHelpKey("gg/Home"), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("G", "Jump to last attachment", "Navigation", keymap.WithHelpKey("G/End"), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("end", "Jump to last attachment", "Navigation", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
-		keymap.Bind("home", "Jump to first attachment", "Navigation", keymap.WithGate(hasBrowseSelection)),
 
 		keymap.Bind("enter", "Open attachment", "Actions", keymap.WithFooter(1, "open", false), keymap.WithFooterKey("Enter"), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("a", "Add attachment", "Actions", keymap.WithFooter(2, "add", false), keymap.WithGate(inBrowseMode)),

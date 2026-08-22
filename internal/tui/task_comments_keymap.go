@@ -25,9 +25,13 @@ func (m *TaskCommentsModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("down", "Move cursor down", "Navigation", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("k", "Move cursor up", "Navigation", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("up", "Move cursor up", "Navigation", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
-		keymap.Bind("G", "Jump to last comment", "Navigation", keymap.WithGate(hasBrowseSelection)),
+		// One row per end, spelled as the whole path the panel answers to. gg is a
+		// chord this keymap cannot bind and end is the hidden alias beside G, so the
+		// help spelling is what names all four presses without inventing a dispatch
+		// key for any of them.
+		keymap.Bind("home", "Jump to first comment", "Navigation", keymap.WithHelpKey("gg/Home"), keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("G", "Jump to last comment", "Navigation", keymap.WithHelpKey("G/End"), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("end", "Jump to last comment", "Navigation", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
-		keymap.Bind("home", "Jump to first", "Navigation", keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("a", "Add comment", "Actions", keymap.WithFooter(2, "add", false), keymap.WithGate(inBrowseMode)),
 		keymap.Bind("e", "Edit comment", "Actions", keymap.WithFooter(3, "edit", false), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("E", "Edit in external editor", "Actions", keymap.WithFooter(7, "editor", false), keymap.WithGate(hasBrowseSelection)),
