@@ -21,6 +21,15 @@
     { "type": "assert", "assert": "status_contains", "value": "Add Project Tag: 2 projects · #focus · u undo" },
     { "type": "assert", "assert": "view", "value": "ProjectHub" },
     { "type": "assert", "assert": "contains", "value": "#focus" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "the strip offered u undo, so the Hub answers it", "key": "u" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "assert", "label": "the undone tag is gone from the rebuilt list", "assert": "not_contains", "value": "#focus" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "Ctrl+R replays it without leaving the Hub", "key": "ctrl+r" },
+    { "type": "assert", "assert": "status_contains", "value": "Redo: Add Project Tag" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "assert", "assert": "contains", "value": "#focus" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

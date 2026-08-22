@@ -26,6 +26,7 @@ func (m *TaskCommentsModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("k", "Move cursor up", "Navigation", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("up", "Move cursor up", "Navigation", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("G", "Jump to last comment", "Navigation", keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("end", "Jump to last comment", "Navigation", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("home", "Jump to first", "Navigation", keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("a", "Add comment", "Actions", keymap.WithFooter(2, "add", false), keymap.WithGate(inBrowseMode)),
 		keymap.Bind("e", "Edit comment", "Actions", keymap.WithFooter(3, "edit", false), keymap.WithGate(hasBrowseSelection)),
@@ -37,6 +38,13 @@ func (m *TaskCommentsModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("y", "Copy comment text", "Actions", keymap.WithFooter(5, "copy", false), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("Y", "Copy all as Markdown", "Actions", keymap.WithFooter(6, "copy all", false), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("enter", "Expand comment", "Actions", keymap.WithFooter(1, "expand", false), keymap.WithFooterKey("Enter"), keymap.WithGate(hasBrowseSelection)),
+		// Gated to browse mode like its neighbors because Update hands the add,
+		// edit, and expanded states their whole key streams, and deliberately
+		// unranked: the panel is a HelpProvider now, so the shell strip under this
+		// footer already prints "? help" beside the breadcrumb. "System" is the core
+		// descriptor's own category, so the row lands in the same help bucket as the
+		// Outliner's `?`.
+		keymap.Bind("?", "Help", "System", keymap.WithGate(inBrowseMode)),
 		keymap.Bind("esc", "Close panel", "Navigation", keymap.WithFooter(9, "close", false), keymap.WithFooterKey("Esc"), keymap.WithGate(inBrowseMode)),
 		keymap.Bind("ctrl+s", "Save comment", "Actions", keymap.WithFooter(1, saveLabel, true), keymap.WithFooterKey("Ctrl+S"), keymap.WithGate(inputMode)),
 		keymap.Bind("ctrl+e", "Open in external editor", "Actions", keymap.WithFooter(3, "editor", false), keymap.WithFooterKey("Ctrl+E"), keymap.WithGate(inputMode)),

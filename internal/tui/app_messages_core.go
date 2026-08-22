@@ -53,6 +53,19 @@ type StatusClearMsg struct{ ScheduledAt time.Time }
 // destructive actions do not cancel each other prematurely.
 type UndoToastTimeoutMsg struct{}
 
+// WorkspaceUndoMsg asks the shell to undo (Redo false) or redo (Redo true) the
+// newest workspace-ledger transaction on behalf of a panel. The Project Hub and
+// the Attachments panel hold no AppModel, and the core undo descriptors answer
+// only to the Outliner, so this message is how a panel key reaches the one
+// ledger without a second key router: the shell runs coreUndo/coreRedo, which
+// names what moved in the status strip and refreshes every open surface.
+type WorkspaceUndoMsg struct{ Redo bool }
+
+// workspaceUndoCmd is the command a panel returns for its u / Ctrl+R press.
+func workspaceUndoCmd(redo bool) tea.Cmd {
+	return func() tea.Msg { return WorkspaceUndoMsg{Redo: redo} }
+}
+
 // ViewStatusClearMsg clears a view-owned status message after a timeout. View
 // and Seq identify the message generation, so an older tick can never dismiss a
 // newer message or a message belonging to a different view.

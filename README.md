@@ -183,16 +183,19 @@ its own. Select Project holds the same line: `n` no longer creates a project,
 cursor-top, so all three are silent there. All Notes retired `s`, `r`, `m`, `n`,
 and `x` for `/`, `e`, `%`, `a`, and the `Space` sheet, and freed `v` rather than
 reassigning it, because Notes has no selection for it to toggle; all six are
-silent there. Attachments retired `u`, `d`, and `x` for its `Space` sheet, `o`
-for `Enter`, and `O`, `Ctrl+E`, and `Ctrl+O` for that same sheet; all seven are
-silent there, and `u` most of all, because a key that means undo everywhere else
-may not unlink a file here. Comments retired the hidden `n` add alias for `a`,
-and `d` and `x` for its `Space` sheet; all three are silent there, because a
-comment may not stay one press from deletion while a task cannot be deleted that
-way. One rule covers that whole inventory. Pressing an unfinished chord and then
-a key it does not offer names the path you left, as `$q is not a workflow
-action`; pressing a key that was never bound does nothing and says nothing,
-because it never promised anything.
+silent there. Attachments retired `d` and `x` for its `Space` sheet, `o`
+for `Enter`, `e` for `E`, and `O`, `Ctrl+E`, and `Ctrl+O` for that same sheet;
+all seven are silent there. `u` was retired with them and has since come back:
+once unlink moved to that sheet the key was free, so it now means here what it
+means everywhere else. `e` is the one that had to move
+rather than retire outright: it means edit or rename on every other surface, and
+a panel with nothing to rename may not spend it on the editor. Comments retired
+the hidden `n` add alias for `a`, and `d` and `x` for its `Space` sheet; all
+three are silent there, because a comment may not stay one press from deletion
+while a task cannot be deleted that way. One rule covers that whole inventory.
+Pressing an unfinished chord and then a key it does not offer names the path you
+left, as `$q is not a workflow action`; pressing a key that was never bound does
+nothing and says nothing, because it never promised anything.
 Review has no key of its own: it is the ordinary `review` tag set from `#`, and
 `$review` is a rejected destination, so no `$` terminal could honor it.
 
@@ -301,9 +304,10 @@ is absent because it is edited on its own rows, and a second route to the same
 mutations is the shape this menu exists to avoid.
 
 The Attachments panel that `Space` opens carries the same split. `Enter` opens
-the attachment under the cursor, `a` adds one, `e` opens it in the editor, `y`
-and `Y` copy its path and its `path:line` form, and `J`/`K` reorder it. Its own
-`Space` sheet holds the five acts a direct key would have spent for nothing:
+the attachment under the cursor, `a` adds one, `E` opens it in the external
+editor, `y` and `Y` copy its path and its `path:line` form, and `J`/`K` reorder
+it. Its own `Space` sheet holds the five acts a direct key would have spent for
+nothing:
 
 1. Reveal original
 2. Open original
@@ -312,13 +316,23 @@ and `Y` copy its path and its `path:line` form, and `J`/`K` reorder it. Its own
 5. Delete
 
 Unlink and Delete both confirm, and neither has a direct key: removing an
-attachment is now a deliberate menu row rather than a single press.
+attachment is now a deliberate menu row rather than a single press. `u` and
+`Ctrl+R` reach the same workspace ledger they reach everywhere else, so an
+attachment added or removed by mistake comes back without leaving the panel, and
+the status strip names the transaction that moved.
 
 The Comments panel splits the same way. `Enter` expands the comment under the
 cursor, `a` adds one, `e` edits it inline, `E` opens it in the external editor,
 and `y` and `Y` copy that comment and every comment as Markdown. Its own `Space`
 sheet holds Delete alone, which confirms and has no direct key, so a comment
-leaves the list only through a deliberate menu row.
+leaves the list only through a deliberate menu row. `?` lists that grammar
+rather than the Outliner's, and stays a literal character while a comment is
+being typed.
+
+Both panels and All Notes move the way every other list does: `j`/`k` or arrows
+step one row, and `gg`/`Home` and `G`/`End` reach the first and last. A `g` you
+do not complete is abandoned silently and does not swallow the key after it, so
+a mistyped prefix costs one press rather than the act the next key names.
 
 Press `e` to edit the selected task in place. Append `%project` to move its
 subtree, `>parent` to reparent it, `>0` to move it to the project root, or
@@ -759,7 +773,11 @@ tag, Park and Unpark across all of it, and the whole edit commits as one undo
 entry. Without one, `Space` offers Archive on an active project and Unarchive on
 an archived one — the two lifecycle actions no direct key reaches. `Esc` unwinds
 one rung at a time: the action sheet, then the query, then the selection, then
-the surface itself.
+the surface itself. `?` lists the grammar above rather than the Outliner's, and
+inside the query it is an ordinary character to search for. `u` and `Ctrl+R` sit
+on that same line: inside the query they are ordinary characters, and outside it
+they undo and redo the workspace ledger, which is what makes the `u undo` the
+strip offers after a park or a bulk tag answerable without leaving the Hub.
 
 ### Project tags
 
@@ -815,11 +833,15 @@ and `%` moves the selected note to
 another such owner as one atomic workspace transaction. `Enter` opens and edits the selected
 note in
 `TT_EDITOR`, then `VISUAL`, then `EDITOR`; if none is set, `tt` reports how to
-configure one. `Space` opens the note action sheet, which holds Delete alone and
+configure one. `y` and `Y` copy that note's title and its full file path, and
+because a global note and a project note live in different directories the
+copied path says which collection it came from without a word of context.
+`Space` opens the note action sheet, which holds Delete alone and
 confirms before deleting; deletion has no direct key. Notes has no multi-select,
 so that sheet always acts on the one note under the cursor. Notes support
-open/edit, create, rename, move, delete, undo, and redo. Note tags, task links,
-pins, bulk actions, previews, and archived-project ownership remain excluded.
+open/edit, create, rename, move, copy, delete, undo, and redo. Note tags, task
+links, pins, bulk actions, previews, and archived-project ownership remain
+excluded.
 
 `T` toggles exactly two maintained machine-local themes: dark and light.
 
@@ -827,7 +849,11 @@ pins, bulk actions, previews, and archived-project ownership remain excluded.
 
 `u` and `Ctrl+R` use one workspace-wide ledger capped at 50 committed
 transactions. Task, project, note, and attachment changes share that history.
-A new forward mutation clears redo; a failed operation creates no entry.
+A new forward mutation clears redo; a failed operation creates no entry. The
+Outliner, Select Project, Notes, and the Attachments panel all answer both keys
+against that one ledger, and each refreshes what it is showing rather than
+leaving a reversed row on screen; the Comments panel is the one surface that
+answers neither.
 
 Workspace commits validate paths and revisions, stage a durable manifest, and
 publish every affected artifact atomically. Startup rolls an interrupted

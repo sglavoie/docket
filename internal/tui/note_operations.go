@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -15,10 +16,12 @@ import (
 // Note operation IDs. Every one of them targets a single note identity, which
 // names the collection (project or global) and the filename inside it.
 const (
-	operationNoteOpen   OperationID = "tui.note.open"
-	operationNoteRename OperationID = "tui.note.rename"
-	operationNoteMove   OperationID = "tui.note.move-to-project"
-	operationNoteDelete OperationID = "tui.note.delete"
+	operationNoteOpen      OperationID = "tui.note.open"
+	operationNoteRename    OperationID = "tui.note.rename"
+	operationNoteMove      OperationID = "tui.note.move-to-project"
+	operationNoteCopyTitle OperationID = "tui.note.copy-title"
+	operationNoteCopyPath  OperationID = "tui.note.copy-path"
+	operationNoteDelete    OperationID = "tui.note.delete"
 )
 
 // noteOperationDescriptors is the authoritative catalog of note-targeted
@@ -59,6 +62,8 @@ func noteOperationDescriptors() []OperationDescriptor {
 			ValueProviderNoteTitle,
 		),
 		note(operationNoteMove, "Move note", "Move this note to another location", OperationRiskMutation),
+		note(operationNoteCopyTitle, "Copy note title", "Copy this note's title to the clipboard", OperationRiskReadOnly),
+		note(operationNoteCopyPath, "Copy note path", "Copy this note's file path to the clipboard", OperationRiskReadOnly),
 		note(operationNoteDelete, "Delete note", "Delete this note", OperationRiskDestructive),
 	}
 }
@@ -147,6 +152,15 @@ func (m *AppModel) noteOperationDir(resolved resolvedNote) string {
 	return storage.NotesDir(resolved.Project)
 }
 
+// noteOperationPath names the note's Markdown file on disk. The two collections
+// live in different directories — the workspace's global-notes folder and the
+// owning project's own notes folder — so the full path is the one copied value
+// that says which note is meant without a second word of context, whichever
+// collection the row came from.
+func (m *AppModel) noteOperationPath(resolved resolvedNote) string {
+	return filepath.Join(m.noteOperationDir(resolved), resolved.Note.Filename)
+}
+
 func (m *AppModel) executeNoteOperation(
 	invocation OperationInvocation,
 	target OperationTarget,
@@ -203,6 +217,12 @@ func (m *AppModel) noteOperationResult(
 			MoveSource: newNoteMutationRef(resolved.Location, note),
 		}}
 
+	case operationNoteCopyTitle:
+		return copyNoteValue(note.Title, "Note title copied to clipboard")
+
+	case operationNoteCopyPath:
+		return copyNoteValue(m.noteOperationPath(resolved), "Note path copied to clipboard")
+
 	case operationNoteDelete:
 		return command(noteMutationCmd(m.appService, resolved.Location, app.NoteBatchRequest{
 			Operations:  []app.NoteMutationRequest{{Kind: app.NoteDelete, Location: resolved.Location, Note: note}},
@@ -213,6 +233,16 @@ func (m *AppModel) noteOperationResult(
 	default:
 		return OperationHandlerResult{Err: fmt.Errorf("%w: %s", ErrOperationHandler, invocation.Descriptor.ID)}
 	}
+}
+
+// copyNoteValue is the one clipboard seam both note copies share. Neither carries
+// a message, so the handler's Status is the whole outcome and the shell's status
+// strip is what confirms the copy on every host that lists a note row.
+func copyNoteValue(value string, status string) OperationHandlerResult {
+	if err := copyTextToClipboard(value); err != nil {
+		return OperationHandlerResult{Err: fmt.Errorf("copy failed: %w", err)}
+	}
+	return OperationHandlerResult{Status: status}
 }
 
 // renameNoteOperation renames through the same atomic create/delete note

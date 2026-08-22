@@ -35,9 +35,10 @@ func (m *ProjectHubModel) ContextualGuidance() (GuidanceSpec, bool) {
 }
 
 // projectHubGuidanceKeyMap carries only the keys the operation registry cannot
-// describe here: the cursor keys, whose core descriptors answer to the Outliner,
-// the Esc unwind, which is no operation at all, and Ctrl+T, whose hint names the
-// next filter rather than the operation's fixed label.
+// describe here: the cursor keys, `?`, and the ledger's u and Ctrl+R, whose core
+// descriptors answer to the Outliner, the Esc unwind, which is no operation at
+// all, and Ctrl+T, whose hint names the next filter rather than the operation's
+// fixed label.
 func (m *ProjectHubModel) projectHubGuidanceKeyMap(state ListGuidanceState) *keymap.KeyMap {
 	profile := state.Profile
 	hasRows := m.surface != nil && len(m.surface.Matches()) > 0
@@ -67,6 +68,22 @@ func (m *ProjectHubModel) projectHubGuidanceKeyMap(state ListGuidanceState) *key
 		keymap.Bind("esc", "Browse the current matches", "Navigation",
 			keymap.WithGate(searchEditing),
 			keymap.WithFooter(1, "browse matches", true), keymap.WithFooterKey("Esc")),
+		// Gated off the query because `?` is a literal character there, and
+		// deliberately unranked: the shell strip already prints "? help" beside the
+		// breadcrumb, so a footer hint here would say it a second time. "System" is
+		// the core descriptor's own category, so the row lands in the same help
+		// bucket as the Outliner's `?`.
+		keymap.Bind("?", "Help", "System",
+			keymap.WithGate(func() bool { return !searchEditing() })),
+		// Gated off the query for the same reason as `?`, and unranked for a
+		// different one: the strip already offers "u undo" while a toast is live,
+		// and the Hub's seventeen ranked bindings are the project acts the surface
+		// exists for. "System" is the core descriptors' own category, so the two
+		// rows land in the same help bucket as the Outliner's undo.
+		keymap.Bind("u", "Undo workspace change", "System",
+			keymap.WithGate(func() bool { return !searchEditing() })),
+		keymap.Bind("ctrl+r", "Redo workspace change", "System",
+			keymap.WithGate(func() bool { return !searchEditing() })),
 	}}
 }
 

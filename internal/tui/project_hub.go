@@ -205,10 +205,12 @@ func (m *ProjectHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	// Above the search branch, so the cycle answers from the query input and
 	// from browse alike; the action sheet above still owns its whole key stream.
+	// The early position is the only thing this branch owns: the press itself
+	// resolves through the Hub's strategy like every other browse key, so the
+	// registered task-filter operation is what runs.
 	if key.String() == "ctrl+t" {
 		m.notice = ""
-		m.cycleProjectHubTaskFilter()
-		return m, nil
+		return m, m.dispatchProjectHubKey("ctrl+t")
 	}
 	if m.HasActiveSearch() {
 		switch key.String() {
@@ -255,6 +257,18 @@ func (m *ProjectHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.moveProjectHubHalfPage(1)
 	case "ctrl+u":
 		m.moveProjectHubHalfPage(-1)
+	case "?":
+		// Below the search branch on purpose: `?` is a literal character in the
+		// query, so help is a browse-only press. The core help descriptor answers
+		// only to the Outliner, so raising it through the executor would render the
+		// Outliner grammar; the Hub names its own instead.
+		return m, helpCmd(ViewProjectHub, "Projects", m.GetHelpItems())
+	case "u", "ctrl+r":
+		// Below the search branch for the same reason as `?`: u is a literal
+		// character in the query. The core undo descriptors answer only to the
+		// Outliner, so the press asks the shell for the one workspace ledger
+		// instead of dispatching, and the shell names what moved.
+		return m, workspaceUndoCmd(key.String() == "ctrl+r")
 	case "esc":
 		// The shell only routes Esc here while ShouldCaptureEsc holds it, so this
 		// is the selection rung of the unwind and never the close.

@@ -79,6 +79,9 @@ func (m *TaskAttachmentsModel) updateAddMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *TaskAttachmentsModel) updateNormalKey(key string) tea.Cmd {
+	if m.completeAttachmentsTopChord(key) {
+		return nil
+	}
 	if cmd, handled := m.handleAttachmentsNavigationKey(key); handled {
 		return cmd
 	}
@@ -88,29 +91,50 @@ func (m *TaskAttachmentsModel) updateNormalKey(key string) tea.Cmd {
 	if key == "?" {
 		return helpCmd(ViewTaskAttachments, "Attachments", m.GetHelpItems())
 	}
+	// The core undo descriptors answer only to the Outliner, so the press asks
+	// the shell for the one workspace ledger rather than dispatching. Update has
+	// already ruled out the add and confirmation modes above, so u is never a
+	// character being typed into the attachment input here.
+	if key == "u" || key == "ctrl+r" {
+		return workspaceUndoCmd(key == "ctrl+r")
+	}
 
 	return nil
 }
 
+// handleAttachmentsNavigationKey moves the panel's own cursor. The keys it names
+// are the panel's whole navigation grammar and handleListNavigation performs
+// them, so listing them here rather than handing the helper every press is what
+// keeps the paging keys the panel never bound from arriving through the back
+// door.
 func (m *TaskAttachmentsModel) handleAttachmentsNavigationKey(key string) (tea.Cmd, bool) {
 	switch key {
 	case "esc":
 		return func() tea.Msg { return CloseTaskAttachmentsMsg{} }, true
-	case "j", "down":
-		m.moveCursorDown()
+	case "g":
+		m.pendingTopChord = true
 		return nil, true
-	case "k", "up":
-		m.moveCursorUp()
-		return nil, true
-	case "home":
-		m.cursor = 0
-		return nil, true
-	case "G":
-		m.moveCursorBottom()
-		return nil, true
+	case "j", "down", "k", "up", "home", "G", "end":
+		_, cmd := handleListNavigation(key, &m.cursor, len(m.task.Attachments), m.height, &m.cursorFlash)
+		return cmd, true
 	default:
 		return nil, false
 	}
+}
+
+// completeAttachmentsTopChord answers the second g of gg and reports the press
+// as consumed. Any other key abandons the prefix silently and is then handled
+// normally, so a stray g never swallows the key after it.
+func (m *TaskAttachmentsModel) completeAttachmentsTopChord(key string) bool {
+	if !m.pendingTopChord {
+		return false
+	}
+	m.pendingTopChord = false
+	if key != "g" {
+		return false
+	}
+	m.cursor = 0
+	return true
 }
 
 // handleAttachmentsGrammarKey routes the keys that act on an attachment through
@@ -121,7 +145,7 @@ func (m *TaskAttachmentsModel) handleAttachmentsNavigationKey(key string) (tea.C
 // rune normalizes to nothing.
 func (m *TaskAttachmentsModel) handleAttachmentsGrammarKey(key string) (tea.Cmd, bool) {
 	switch key {
-	case "a", "enter", "e", "y", "Y", "J", "K":
+	case "a", "enter", "E", "y", "Y", "J", "K":
 		return m.dispatchAttachmentsKey(key), true
 	case " ", "space":
 		return m.dispatchAttachmentsKey("space"), true
@@ -151,24 +175,6 @@ func (m *TaskAttachmentsModel) attachmentsCommandContext() CommandContext {
 
 func (m *TaskAttachmentsModel) HandledKeys() []string {
 	return m.buildKeyMap().HandledKeys()
-}
-
-func (m *TaskAttachmentsModel) moveCursorDown() {
-	if len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments)-1 {
-		m.cursor++
-	}
-}
-
-func (m *TaskAttachmentsModel) moveCursorUp() {
-	if m.cursor > 0 {
-		m.cursor--
-	}
-}
-
-func (m *TaskAttachmentsModel) moveCursorBottom() {
-	if len(m.task.Attachments) > 0 {
-		m.cursor = len(m.task.Attachments) - 1
-	}
 }
 
 func (m *TaskAttachmentsModel) beginAddMode() tea.Cmd {

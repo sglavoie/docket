@@ -116,8 +116,15 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 		"`d` is unbound: Done stays `$d` alone, `@` answers both dates, and root `z` is the scroll chord prefix",
 		"`$` joins them as a chord prefix rather than a key of its own",
 		"`$q is not a workflow action`; pressing a key that was never bound does nothing and says nothing",
-		"Attachments retired `u`, `d`, and `x` for its `Space` sheet, `o` for `Enter`, and `O`, `Ctrl+E`, and `Ctrl+O` for that same sheet",
-		"a key that means undo everywhere else may not unlink a file here",
+		"Attachments retired `d` and `x` for its `Space` sheet, `o` for `Enter`, `e` for `E`, and " +
+			"`O`, `Ctrl+E`, and `Ctrl+O` for that same sheet",
+		"a panel with nothing to rename may not spend it on the editor",
+		"once unlink moved to that sheet the key was free, so it now means here " +
+			"what it means everywhere else",
+		"`Ctrl+R` reach the same workspace ledger they reach everywhere else",
+		"Outliner, Select Project, Notes, and the Attachments panel all answer both keys " +
+			"against that one ledger",
+		"the Comments panel is the one surface that answers neither",
 		"Comments retired the hidden `n` add alias for `a`, and `d` and `x` for its `Space` sheet",
 		"a comment may not stay one press from deletion while a task cannot be deleted that way",
 		"They are the two structural keys that answer no sigil",
@@ -228,10 +235,13 @@ func TestREADMEDocumentsWorkspaceWideNotesManager(t *testing.T) {
 		"`p` opens a searchable All, Global, or single-project scope picker",
 		"`/` applies a persistent title/body search",
 		"`%` moves the selected note to another such owner as one atomic workspace transaction",
+		"`y` and `Y` copy that note's title and its full file path, and because a global note and " +
+			"a project note live in different directories the copied path says which collection it " +
+			"came from without a word of context",
 		"`Space` opens the note action sheet, which holds Delete alone and confirms before deleting; " +
 			"deletion has no direct key",
 		"Notes has no multi-select, so that sheet always acts on the one note under the cursor",
-		"Notes support open/edit, create, rename, move, delete, undo, and redo",
+		"Notes support open/edit, create, rename, move, copy, delete, undo, and redo",
 		"Note tags, task links, pins, bulk actions, previews, and archived-project ownership remain excluded",
 		"All Notes retired `s`, `r`, `m`, `n`, and `x` for `/`, `e`, `%`, `a`, and the `Space` sheet, " +
 			"and freed `v` rather than reassigning it, because Notes has no selection for it to toggle; " +

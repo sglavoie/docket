@@ -183,6 +183,7 @@ The committed suite exercises the product contracts directly:
 | Workspace-wide Notes, scope, search, and location pickers | `notes-tool.json`, `notes-scope-picker.json`, `notes-search.json`, `notes-location-pickers.json`, `global-notes-resize-minimum-layout.json` |
 | Comments and attachments | `rich-tools.json` |
 | Attachments direct grammar, its five-row `Space` sheet, and the retired keys | `rich-tools.json`, `action-sheet-picker-cancel.json` |
+| `gg`/`Home` and `G`/`End` on Notes, Comments, and Attachments, and the silent abandon of a lone `g` | `notes-ends-navigation.json`, `task-comments-ends-navigation.json`, `task-attachments-ends-navigation.json` |
 | Checklist row grammar and its central task-key refusal | `outliner-checklist-row-actions.json`, `outliner-checklist-row-rejects-task-keys.json` |
 | Exact three-item `Space` menu | `outliner-space-action-catalog.json` |
 | Every entity surface's footer and `Space` sheet at the 60x20 minimum | `outliner-multiselect-minimum-layout.json`, `project-hub-minimum-layout.json`, `global-notes-resize-minimum-layout.json`, `task-attachments-minimum-layout.json`, `task-comments-minimum-layout.json` |
@@ -206,6 +207,7 @@ The committed suite exercises the product contracts directly:
 | Semantic colors in both themes | `theme-toggle.json` plus `semantic_tag_title_style_test.go` |
 | Deterministic launch and duplicate-submit hardening | `app_deterministic_startup_test.go`, `task_composer_test.go`, `task_form_save_create_test.go`, `task_form_save_edit_test.go` |
 | Generated operation help and retired-key absence | `in-app-help.json`, `mode-catalog.json` |
+| Each surface's `?` naming its own grammar rather than the Outliner's | `project-hub-help.json`, `task-comments-help.json` |
 | Responsive and large-catalog rendering | `baseline-layout.json`, `resize-stress.json` |
 | Integrated title, guidance, and terminal-size matrix | `presentation-size-matrix.json` |
 | Workspace-pulse composition and transient-overlay ownership | `workspace-pulse-presentation-grammar.json` |

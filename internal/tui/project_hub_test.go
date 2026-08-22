@@ -460,6 +460,48 @@ func TestProjectHubSearchPlainJAndKRemainQueryInput(t *testing.T) {
 	}
 }
 
+// TestProjectHubUndoKeysAskTheShellForTheWorkspaceLedger pins both halves of the
+// Hub's undo binding. Archiving, parking, renaming, pinning and tagging are
+// ledger transactions, so the browse press has to reach the one workspace
+// history; the core undo descriptors answer only to the Outliner, so it asks the
+// shell rather than dispatching through the executor.
+func TestProjectHubUndoKeysAskTheShellForTheWorkspaceLedger(t *testing.T) {
+	hub := openProjectHub(t, projectHubApp(t))
+
+	_, cmd := hub.Update(syntheticKey('u'))
+	if cmd == nil {
+		t.Fatal("browse u emitted no workspace undo request")
+	}
+	if msg, ok := cmd().(WorkspaceUndoMsg); !ok || msg.Redo {
+		t.Fatalf("browse u emitted %#v, want an undo request", cmd())
+	}
+
+	_, cmd = hub.Update(syntheticCtrlKey('r'))
+	if cmd == nil {
+		t.Fatal("browse Ctrl+R emitted no workspace redo request")
+	}
+	if msg, ok := cmd().(WorkspaceUndoMsg); !ok || !msg.Redo {
+		t.Fatalf("browse Ctrl+R emitted %#v, want a redo request", cmd())
+	}
+}
+
+// TestProjectHubSearchPlainURemainsQueryInput holds u below the search branch
+// where `?` already sits. u is a literal character in a project name, so a Hub
+// that answered it above the query would reverse the last project mutation while
+// the user was still typing.
+func TestProjectHubSearchPlainURemainsQueryInput(t *testing.T) {
+	hub := openProjectHub(t, projectHubApp(t))
+	hub.Update(syntheticKey('/'))
+	if _, cmd := hub.Update(syntheticKey('u')); cmd != nil {
+		if _, ok := cmd().(WorkspaceUndoMsg); ok {
+			t.Fatal("u undid a transaction while the query was being typed")
+		}
+	}
+	if query := hub.SearchQuery(); query != "u" {
+		t.Fatalf("typed u query = %q, want %q", query, "u")
+	}
+}
+
 func TestProjectHubArchivedEnterKeepsHubOpenWithNotice(t *testing.T) {
 	app := projectHubApp(t)
 	archived := scopeTestProject("archived", "Archived", "1")
@@ -929,6 +971,64 @@ func TestProjectHubHelpNamesTheTaskFilterOnce(t *testing.T) {
 	}
 	if found != 1 {
 		t.Fatalf("Ctrl+T help entries = %d, want exactly 1", found)
+	}
+}
+
+// TestProjectHubHelpKeyRaisesTheHubGrammar holds `?` to the surface it was
+// pressed on. The core help descriptor hardcodes the Outliner, so dispatching it
+// through the executor would answer a Hub press with the Outliner's grammar; the
+// Hub raises its own instead, and the press stays a literal character inside the
+// query where a search is being typed.
+func TestProjectHubHelpKeyRaisesTheHubGrammar(t *testing.T) {
+	app := projectHubApp(t)
+	hub := openProjectHub(t, app)
+
+	_, cmd := hub.Update(syntheticKey('?'))
+	if cmd == nil {
+		t.Fatal("? raised no help on the Project Hub")
+	}
+	help, ok := cmd().(ShowHelpMsg)
+	if !ok {
+		t.Fatalf("? produced %T, want ShowHelpMsg", cmd())
+	}
+	if help.SourceView != ViewProjectHub || help.ViewName != "Projects" {
+		t.Fatalf("help header = %s/%q, want ViewProjectHub/\"Projects\"", help.SourceView, help.ViewName)
+	}
+
+	documented := make(map[string]string, len(help.Items))
+	for _, item := range help.Items {
+		documented[item.Key] = item.Description
+	}
+	if documented["Enter"] != "Open project" {
+		t.Fatalf("Hub help describes Enter as %q, want the Hub's own grammar: %+v", documented["Enter"], help.Items)
+	}
+	// `?` documents itself only because the keymap names it: the core descriptor
+	// is inapplicable off the Outliner, so the registry half of the merge drops it.
+	if documented["?"] != "Help" {
+		t.Fatalf("Hub help omits ? itself: %+v", help.Items)
+	}
+	for _, outlinerOnly := range []string{"tab", "T", "ctrl+p"} {
+		if description, listed := documented[outlinerOnly]; listed {
+			t.Fatalf("Hub help leaked the Outliner key %q (%q)", outlinerOnly, description)
+		}
+	}
+
+	searching := openProjectHub(t, projectHubApp(t))
+	searching.Update(syntheticKey('/'))
+	// The input's own cursor blink can ride along, so the message decides rather
+	// than the presence of a command.
+	if _, cmd := searching.Update(syntheticKey('?')); cmd != nil {
+		if raised, isHelp := cmd().(ShowHelpMsg); isHelp {
+			t.Fatalf("? raised %q help from inside the query instead of typing a character", raised.ViewName)
+		}
+	}
+	if got := searching.SearchQuery(); got != "?" {
+		t.Fatalf("query after ? = %q, want a literal %q", got, "?")
+	}
+	for _, item := range searching.GetHelpItems() {
+		if item.Key == "?" {
+			t.Fatalf("search-editing help still offers ?: %+v", item)
+		}
 	}
 }
 

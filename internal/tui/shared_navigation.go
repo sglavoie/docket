@@ -34,7 +34,7 @@ func handleListNavigation(key string, cursor *int, total, height int, flash *boo
 	case "home":
 		*cursor = 0
 		return true, flashIfJumped(old, *cursor, flash)
-	case "G":
+	case "G", "end":
 		if total > 0 {
 			*cursor = total - 1
 		}

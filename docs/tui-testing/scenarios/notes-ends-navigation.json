@@ -1,0 +1,47 @@
+{
+  "name": "notes-ends-navigation",
+  "fixture": "rich",
+  "size": "100x30",
+  "actions": [
+    { "type": "key", "label": "open workspace-wide Notes", "key": "ctrl+n" },
+    { "type": "assert", "assert": "view", "value": "GlobalNotes" },
+    { "type": "assert", "assert": "contains", "value": "Rich Project delivery plan" },
+    { "type": "assert", "assert": "contains", "value": "Workspace launch brief" },
+
+    { "type": "key", "label": "G reaches the last note", "key": "G" },
+    { "type": "key", "label": "the sheet names the row under the cursor", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Note Actions: Workspace launch brief" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "gg reaches the first, and the shell hands a bare g to the manager", "key": "g" },
+    { "type": "key", "key": "g" },
+    { "type": "key", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Note Actions: Rich Project delivery plan" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "End is the other spelling of G", "key": "end" },
+    { "type": "key", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Note Actions: Workspace launch brief" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "Home is the other spelling of gg", "key": "home" },
+    { "type": "key", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Note Actions: Rich Project delivery plan" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "a g the user never completes is abandoned silently", "key": "g" },
+    { "type": "assert", "assert": "view", "value": "GlobalNotes" },
+    { "type": "assert", "assert": "not_contains", "value": "is not a" },
+    { "type": "key", "label": "and does not swallow the key after it", "key": "j" },
+    { "type": "key", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Note Actions: Workspace launch brief" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "width": 60, "height": 20 },
+    { "type": "key", "key": "g" },
+    { "type": "key", "key": "g" },
+    { "type": "assert", "assert": "view", "value": "GlobalNotes" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

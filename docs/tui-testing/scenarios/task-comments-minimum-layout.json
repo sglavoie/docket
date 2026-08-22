@@ -33,6 +33,14 @@
     { "type": "key", "key": "esc" },
 
     { "type": "assert", "assert": "view", "value": "TaskComments" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the panel's own help fits the same terminal", "key": "?" },
+    { "type": "assert", "assert": "view", "value": "Help" },
+    { "type": "assert", "assert": "contains", "value": "Help  Comments" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "close help back onto the panel", "key": "?" },
+    { "type": "assert", "assert": "view", "value": "TaskComments" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

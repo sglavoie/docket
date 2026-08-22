@@ -30,6 +30,10 @@ type TaskCommentsModel struct {
 	// Editor config
 	editor string
 
+	// pendingTopChord holds the first g of gg. The shell's chord state serves the
+	// Outliner only, so the panel keeps its own one-key prefix.
+	pendingTopChord bool
+
 	dispatch operationKeyDispatch
 }
 
@@ -135,6 +139,14 @@ func (m *TaskCommentsModel) OnExit() {
 // ShouldCaptureEsc returns true when in expanded, add/edit, or delete confirmation modes.
 func (m *TaskCommentsModel) ShouldCaptureEsc() bool {
 	return m.expandedView || m.DefaultShouldCaptureEsc() || m.addMode || m.editMode
+}
+
+// GetHelpItems returns help items for the comments panel. The keymap is the one
+// source: the core help descriptor the strategy binds is inapplicable off the
+// Outliner, so the registry half of a merge would contribute nothing and only the
+// keymap can name this panel's own grammar.
+func (m *TaskCommentsModel) GetHelpItems() []HelpItem {
+	return helpItemsFromKeyMap(m.buildKeyMap())
 }
 
 func (m *TaskCommentsModel) StatusBarLabel() string { return "Comments" }

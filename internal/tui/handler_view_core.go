@@ -56,6 +56,15 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 		}
 		return true, nil
 
+	case WorkspaceUndoMsg:
+		// The panels reach the workspace ledger through the same entry point the
+		// Outliner's u and Ctrl+R press, so a live undo toast still outranks the
+		// ledger and an exhausted ledger stays silent here too.
+		if msg.Redo {
+			return true, m.coreRedo()
+		}
+		return true, m.coreUndo()
+
 	case StatusMsg:
 		m.setSuccessStatus(string(msg))
 		return true, defaultStatusTimeout()

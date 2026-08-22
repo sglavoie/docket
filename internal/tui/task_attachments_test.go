@@ -132,6 +132,19 @@ func TestAttachmentsPanelKeysReachTheirOperations(t *testing.T) {
 		t.Fatalf("J recorded %+v, want ReorderAttachment(0, 1) on press one", fake.reorders)
 	}
 
+	// E is read through the refusal it earns rather than through a command: the
+	// fixture names a file that was never written, so the operation reaches the
+	// panel, resolves the path, and fails there. Anything that stopped short of
+	// the handler would leave the panel with no error at all.
+	press("E")
+	if panel.err == nil {
+		t.Fatal("E did not reach tui.attachment.open-in-editor")
+	}
+	if !strings.Contains(panel.err.Error(), "file not found") {
+		t.Fatalf("E raised %v, want the editor's missing-file refusal", panel.err)
+	}
+	panel.ClearError()
+
 	press("a")
 	if !panel.addMode {
 		t.Fatal("a did not reach tui.attachment.add")
@@ -140,11 +153,16 @@ func TestAttachmentsPanelKeysReachTheirOperations(t *testing.T) {
 
 // TestAttachmentsRetiredKeysAreSilent holds the keys the panel gave up. Each one
 // now means something else app-wide, so the panel must answer none of them
-// rather than quietly keeping its old meaning.
+// rather than quietly keeping its old meaning. `e` is the last to join them: the
+// external editor answers `E` here the way it does everywhere else, so the key
+// the rest of the app spends on edit and rename reaches nothing on a panel with
+// nothing to rename. `u` left this list going the other way: retiring unlink
+// freed the key, so the panel now answers it with the app-wide undo rather than
+// with silence.
 func TestAttachmentsRetiredKeysAreSilent(t *testing.T) {
 	driver, panel, press := mountAttachmentsPanel(t)
 
-	for _, key := range []string{"u", "d", "x", "o", "O", "ctrl+e", "ctrl+o"} {
+	for _, key := range []string{"e", "d", "x", "o", "O", "ctrl+e", "ctrl+o"} {
 		press(key)
 		if panel.confirm.IsActive() {
 			t.Fatalf("retired key %q raised confirm %q", key, panel.confirm.Action())
@@ -155,6 +173,55 @@ func TestAttachmentsRetiredKeysAreSilent(t *testing.T) {
 		if driver.App().contextActionSheet != nil {
 			t.Fatalf("retired key %q opened the action sheet", key)
 		}
+		if driver.pendingCmd != nil {
+			t.Fatalf("retired key %q returned a command, so it still does something", key)
+		}
+	}
+}
+
+// TestAttachmentsUndoKeysAskTheShellForTheWorkspaceLedger pins the two keys the
+// panel took back from silence. Adding and removing an attachment are ledger
+// transactions, so the panel that made them answers the app-wide undo; the core
+// undo descriptors answer only to the Outliner, so the press asks the shell
+// rather than dispatching through the executor.
+func TestAttachmentsUndoKeysAskTheShellForTheWorkspaceLedger(t *testing.T) {
+	driver, _, press := mountAttachmentsPanel(t)
+
+	press("u")
+	if driver.pendingCmd == nil {
+		t.Fatal("u emitted no workspace undo request")
+	}
+	if msg, ok := driver.pendingCmd().(WorkspaceUndoMsg); !ok || msg.Redo {
+		t.Fatalf("u emitted %#v, want an undo request", driver.pendingCmd())
+	}
+
+	press("ctrl+r")
+	if driver.pendingCmd == nil {
+		t.Fatal("Ctrl+R emitted no workspace redo request")
+	}
+	if msg, ok := driver.pendingCmd().(WorkspaceUndoMsg); !ok || !msg.Redo {
+		t.Fatalf("Ctrl+R emitted %#v, want a redo request", driver.pendingCmd())
+	}
+}
+
+// TestAttachmentsAddModeKeepsUAsTypedText holds u inside the add input. The
+// panel answers it only in browse, so typing a URL that carries the letter can
+// never reverse the transaction the user is in the middle of writing.
+func TestAttachmentsAddModeKeepsUAsTypedText(t *testing.T) {
+	driver, panel, press := mountAttachmentsPanel(t)
+
+	press("a")
+	if !panel.addMode {
+		t.Fatal("a did not enter add mode")
+	}
+	press("u")
+	if driver.pendingCmd != nil {
+		if _, ok := driver.pendingCmd().(WorkspaceUndoMsg); ok {
+			t.Fatal("u undid a transaction while the attachment path was being typed")
+		}
+	}
+	if got := panel.textInput.Value(); got != "u" {
+		t.Fatalf("add-mode input = %q, want %q", got, "u")
 	}
 }
 

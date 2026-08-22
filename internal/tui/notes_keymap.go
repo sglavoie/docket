@@ -40,6 +40,14 @@ func (m *NotesViewModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("u", "Undo workspace change", "Actions", keymap.WithFooter(8, "undo", false)),
 		keymap.Bind("ctrl+r", "Redo workspace change", "Actions",
 			keymap.WithFooter(9, "redo", false), keymap.WithFooterKey("Ctrl+R")),
+
+		// The copies rank last so the footer sheds them before any key that
+		// changes a note. They are the widest pair here and the cheapest to
+		// rediscover from ? help, and nothing else in this table moves.
+		keymap.Bind("y", "Copy note title", "Actions",
+			keymap.WithGate(hasRow), keymap.WithFooter(10, "copy title", false)),
+		keymap.Bind("Y", "Copy note path", "Actions",
+			keymap.WithGate(hasRow), keymap.WithFooter(11, "copy path", false)),
 	}
 	return &keymap.KeyMap{Entries: entries}
 }

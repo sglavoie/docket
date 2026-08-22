@@ -28,9 +28,10 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 
 // assertCommentsOwnsEveryDocumentedKeyOnce spells the whole Comments grammar.
 // Six keys act on the comment under the cursor, Space raises the sheet that
-// holds the seventh, and the rest navigate or close, so the table is the panel's
-// complete contract. `n`, `d`, and `x` are absent because the panel retired
-// them, and `?` is absent because it never raised help.
+// holds the seventh, and the rest navigate, explain, or close, so the table is
+// the panel's complete contract. `n`, `d`, and `x` are absent because the panel
+// retired them. gg is spelled as the complete path it is, the way the Hub table
+// below spells it.
 func assertCommentsOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	direct := map[string]OperationID{
 		"enter": operationCommentExpand,
@@ -44,8 +45,11 @@ func assertCommentsOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"down":  operationCoreCursorDown,
 		"k":     operationCoreCursorUp,
 		"up":    operationCoreCursorUp,
+		"gg":    operationCoreCursorTop,
 		"home":  operationCoreCursorTop,
 		"G":     operationCoreCursorBottom,
+		"end":   operationCoreCursorBottom,
+		"?":     operationCoreHelp,
 		"esc":   operationCoreBack,
 	}
 	assertStrategyOwnsEveryKeyOnce(t, CommentsInputStrategy(), direct)
@@ -53,36 +57,55 @@ func assertCommentsOwnsEveryDocumentedKeyOnce(t *testing.T) {
 
 // assertAttachmentsOwnsEveryDocumentedKeyOnce spells the whole Attachments
 // grammar. Seven keys act on the item under the cursor, Space raises the sheet
-// that holds the remaining five acts, and the rest navigate, explain, or close,
-// so the table is the panel's complete contract. `o`, `d`, `x`, `u`, `O`,
-// `Ctrl+E`, and `Ctrl+O` are absent because the panel retired them; `u` in
-// particular is silent here so it never contradicts the global undo key.
+// that holds the remaining five acts, and the rest navigate, undo, explain, or
+// close, so the table is the panel's complete contract. `e`, `o`, `d`, `x`, `O`,
+// `Ctrl+E`, and `Ctrl+O` are absent because the panel retired them; `u` left
+// that list once unlink moved to the sheet, and now serves the global undo the
+// way it does on every other surface, because adding and removing an attachment
+// are workspace-ledger transactions.
 func assertAttachmentsOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	direct := map[string]OperationID{
-		"enter": operationAttachmentOpen,
-		"a":     operationAttachmentAdd,
-		"e":     operationAttachmentOpenInEditor,
-		"y":     operationAttachmentCopyPath,
-		"Y":     operationAttachmentCopyPathWithLine,
-		"J":     operationAttachmentReorderDown,
-		"K":     operationAttachmentReorderUp,
-		"space": operationAttachmentActions,
-		"j":     operationCoreCursorDown,
-		"down":  operationCoreCursorDown,
-		"k":     operationCoreCursorUp,
-		"up":    operationCoreCursorUp,
-		"home":  operationCoreCursorTop,
-		"G":     operationCoreCursorBottom,
-		"?":     operationCoreHelp,
-		"esc":   operationCoreBack,
+		"enter":  operationAttachmentOpen,
+		"a":      operationAttachmentAdd,
+		"E":      operationAttachmentOpenInEditor,
+		"y":      operationAttachmentCopyPath,
+		"Y":      operationAttachmentCopyPathWithLine,
+		"J":      operationAttachmentReorderDown,
+		"K":      operationAttachmentReorderUp,
+		"space":  operationAttachmentActions,
+		"u":      operationCoreUndo,
+		"ctrl+r": operationCoreRedo,
+		"j":      operationCoreCursorDown,
+		"down":   operationCoreCursorDown,
+		"k":      operationCoreCursorUp,
+		"up":     operationCoreCursorUp,
+		"gg":     operationCoreCursorTop,
+		"home":   operationCoreCursorTop,
+		"G":      operationCoreCursorBottom,
+		"end":    operationCoreCursorBottom,
+		"?":      operationCoreHelp,
+		"esc":    operationCoreBack,
 	}
-	assertStrategyOwnsEveryKeyOnce(t, AttachmentsInputStrategy(), direct)
+
+	owners := assertStrategyOwnsEveryKeyOnce(t, AttachmentsInputStrategy(), direct)
+
+	// The external editor is E, the slot it holds on every other surface, so the
+	// e that used to open it resolves to nothing here alongside the six
+	// spellings the panel retired before it. e is the one the count above cannot
+	// guard on its own: an editor binding that drifted back to the lowercase key
+	// would keep the same count and only this loop would notice.
+	for _, removed := range []string{"e", "o", "d", "x", "O", "ctrl+e", "ctrl+o"} {
+		if owners := owners[removed]; len(owners) > 0 {
+			t.Errorf("removed key %q still resolves to %s", removed, owners[0])
+		}
+	}
 }
 
-// assertNotesOwnsEveryDocumentedKeyOnce spells the whole Notes grammar. Seven
+// assertNotesOwnsEveryDocumentedKeyOnce spells the whole Notes grammar. Nine
 // keys act and the rest navigate or unwind, so the table is the surface's
 // complete contract rather than a sample of it. Delete is absent because the
-// Space sheet is its one path.
+// Space sheet is its one path. gg is spelled as the complete path it is, the way
+// the Hub table below spells it.
 func assertNotesOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	direct := map[string]OperationID{
 		"enter":  operationNoteOpen,
@@ -91,6 +114,8 @@ func assertNotesOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"%":      operationNoteMove,
 		"/":      operationNotesSearch,
 		"p":      operationNotesScope,
+		"y":      operationNoteCopyTitle,
+		"Y":      operationNoteCopyPath,
 		"space":  operationNotesActions,
 		"u":      operationCoreUndo,
 		"ctrl+r": operationCoreRedo,
@@ -98,8 +123,10 @@ func assertNotesOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"down":   operationCoreCursorDown,
 		"k":      operationCoreCursorUp,
 		"up":     operationCoreCursorUp,
+		"gg":     operationCoreCursorTop,
 		"home":   operationCoreCursorTop,
 		"G":      operationCoreCursorBottom,
+		"end":    operationCoreCursorBottom,
 		"ctrl+d": operationCoreCursorPageDown,
 		"pgdown": operationCoreCursorPageDown,
 		"ctrl+u": operationCoreCursorPageUp,
@@ -162,6 +189,10 @@ func assertProjectHubOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"space":  operationProjectHubActions,
 		"enter":  operationProjectOpen,
 		"ctrl+t": operationProjectHubTaskFilter,
+		"u":      operationCoreUndo,
+		"ctrl+r": operationCoreRedo,
+		"?":      operationCoreHelp,
+		"esc":    operationCoreBack,
 	}
 
 	owners := assertStrategyOwnsEveryKeyOnce(t, ProjectHubInputStrategy(), direct)
@@ -461,7 +492,7 @@ func TestFilterAndSortSecondKeysUseSigilsWhereOneExists(t *testing.T) {
 func TestNotesDirectGrammarMatchesTheWorkspaceManager(t *testing.T) {
 	view := &NotesViewModel{}
 	want := []string{
-		"j", "k", "down", "up", "enter", "a", "e", "%", "/", "p", "space", "u", "ctrl+r",
+		"j", "k", "down", "up", "enter", "a", "e", "%", "/", "p", "space", "u", "ctrl+r", "y", "Y",
 	}
 	if got := view.HandledKeys(); !slices.Equal(got, want) {
 		t.Fatalf("Notes direct keys = %v, want %v", got, want)

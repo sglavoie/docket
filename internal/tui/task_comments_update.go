@@ -130,35 +130,60 @@ func (m *TaskCommentsModel) updateNormalMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *TaskCommentsModel) handleNormalKey(key string) tea.Cmd {
+	if m.completeCommentsTopChord(key) {
+		return nil
+	}
 	if cmd, handled := m.handleCommentsNavigationKey(key); handled {
 		return cmd
 	}
 	if cmd, handled := m.handleCommentsGrammarKey(key); handled {
 		return cmd
 	}
+	// Last on purpose: Update routes the add, edit, expanded, and confirm states
+	// elsewhere, so a trailing `?` is a browse-only press and stays a literal
+	// character inside a comment being typed. The core help descriptor answers only
+	// to the Outliner, so raising it through the executor would render the Outliner
+	// grammar; the panel names its own instead.
+	if key == "?" {
+		return helpCmd(ViewTaskComments, "Comments", m.GetHelpItems())
+	}
 
 	return nil
 }
 
+// handleCommentsNavigationKey moves the panel's own cursor. The keys it names
+// are the panel's whole navigation grammar and handleListNavigation performs
+// them, so listing them here rather than handing the helper every press is what
+// keeps the paging keys the panel never bound from arriving through the back
+// door.
 func (m *TaskCommentsModel) handleCommentsNavigationKey(key string) (tea.Cmd, bool) {
 	switch key {
 	case "esc":
 		return func() tea.Msg { return CloseTaskCommentsMsg{} }, true
-	case "j", "down":
-		m.moveCursorDown()
+	case "g":
+		m.pendingTopChord = true
 		return nil, true
-	case "k", "up":
-		m.moveCursorUp()
-		return nil, true
-	case "home":
-		m.cursor = 0
-		return nil, true
-	case "G":
-		m.moveCursorBottom()
-		return nil, true
+	case "j", "down", "k", "up", "home", "G", "end":
+		_, cmd := handleListNavigation(key, &m.cursor, len(m.task.Comments), m.height, &m.cursorFlash)
+		return cmd, true
 	default:
 		return nil, false
 	}
+}
+
+// completeCommentsTopChord answers the second g of gg and reports the press as
+// consumed. Any other key abandons the prefix silently and is then handled
+// normally, so a stray g never swallows the key after it.
+func (m *TaskCommentsModel) completeCommentsTopChord(key string) bool {
+	if !m.pendingTopChord {
+		return false
+	}
+	m.pendingTopChord = false
+	if key != "g" {
+		return false
+	}
+	m.cursor = 0
+	return true
 }
 
 // handleCommentsGrammarKey routes the keys that act on a comment through the
@@ -207,24 +232,6 @@ func (m *TaskCommentsModel) hasSelection() bool {
 
 func (m *TaskCommentsModel) hasUnsavedEditChanges() bool {
 	return m.editIndex < len(m.task.Comments) && strings.TrimSpace(m.editTextInput.Value()) != strings.TrimSpace(m.task.Comments[m.editIndex].Text)
-}
-
-func (m *TaskCommentsModel) moveCursorDown() {
-	if len(m.task.Comments) > 0 && m.cursor < len(m.task.Comments)-1 {
-		m.cursor++
-	}
-}
-
-func (m *TaskCommentsModel) moveCursorUp() {
-	if m.cursor > 0 {
-		m.cursor--
-	}
-}
-
-func (m *TaskCommentsModel) moveCursorBottom() {
-	if len(m.task.Comments) > 0 {
-		m.cursor = len(m.task.Comments) - 1
-	}
 }
 
 func (m *TaskCommentsModel) beginAddMode() tea.Cmd {

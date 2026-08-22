@@ -29,11 +29,14 @@ func (m *TaskAttachmentsModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("k", "Move cursor up", "Navigation", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("up", "Move cursor up", "Navigation", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("G", "Jump to last attachment", "Navigation", keymap.WithGate(hasBrowseSelection)),
+		keymap.Bind("end", "Jump to last attachment", "Navigation", keymap.AsHidden(), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("home", "Jump to first attachment", "Navigation", keymap.WithGate(hasBrowseSelection)),
 
 		keymap.Bind("enter", "Open attachment", "Actions", keymap.WithFooter(1, "open", false), keymap.WithFooterKey("Enter"), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("a", "Add attachment", "Actions", keymap.WithFooter(2, "add", false), keymap.WithGate(inBrowseMode)),
-		keymap.Bind("e", "Open in editor", "Actions", keymap.WithFooter(3, "edit", false), keymap.WithGate(func() bool {
+		// E, not e: the footer says "editor" the way Comments does, because the
+		// panel has nothing to rename and e means edit everywhere else.
+		keymap.Bind("E", "Open in external editor", "Actions", keymap.WithFooter(3, "editor", false), keymap.WithGate(func() bool {
 			return hasBrowseSelection() && !selectedIsURL()
 		})),
 		keymap.Bind("y", "Copy path to clipboard", "Actions", keymap.WithFooter(4, "copy", false), keymap.WithGate(hasBrowseSelection)),
@@ -44,6 +47,12 @@ func (m *TaskAttachmentsModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("Y", "Copy path with line", "Actions", keymap.WithFooter(6, "copy path:line", false), keymap.WithGate(selectedIsCodeRef)),
 		keymap.Bind("J", "Reorder attachment down", "Actions", keymap.WithFooter(7, "reorder", false), keymap.WithFooterKey("J/K"), keymap.WithGate(hasMultipleAttachments)),
 		keymap.Bind("K", "Reorder attachment up", "Actions", keymap.AsHidden(), keymap.WithGate(hasMultipleAttachments)),
+		// Deliberately unranked. The core undo descriptors answer only to the
+		// Outliner, so this keymap is the only place that can put u and Ctrl+R in
+		// the panel's `?` help; the footer stays spent on the acts the panel exists
+		// for, and the undo toast already says "u undo" when one is live.
+		keymap.Bind("u", "Undo workspace change", "Actions", keymap.WithGate(inBrowseMode)),
+		keymap.Bind("ctrl+r", "Redo workspace change", "Actions", keymap.WithGate(inBrowseMode)),
 		keymap.Bind("?", "Toggle help", "Navigation", keymap.WithFooter(10, "help", false), keymap.WithGate(inBrowseMode)),
 		keymap.Bind("esc", "Close attachments", "Navigation", keymap.WithFooter(11, "close", false), keymap.WithFooterKey("Esc"), keymap.WithGate(inBrowseMode)),
 

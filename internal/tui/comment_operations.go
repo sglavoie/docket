@@ -27,10 +27,10 @@ const (
 // Space sheet instead, so removing a comment costs a deliberate menu row rather
 // than one press of a key the Outliner retired.
 //
-// The cursor keys and Esc resolve to the core operations because they are the
-// same acts everywhere. Those descriptors answer only to the Outliner, so they
-// document the panel's grammar without dispatching here: the panel moves its own
-// cursor and closes itself. `?` is absent because the panel never raised help.
+// The cursor keys, help, and Esc resolve to the core operations because they are
+// the same acts everywhere. Those descriptors answer only to the Outliner, so
+// they document the panel's grammar without dispatching here: the panel moves its
+// own cursor, raises its own help, and closes itself.
 //
 // No binding carries footer metadata. The panel's footer has to narrow with the
 // add, edit, expanded, and confirmation sub-states, which only the gated keymap
@@ -47,11 +47,15 @@ func CommentsInputStrategy() InputStrategy {
 			{OperationID: operationCommentCopy, Keys: []string{"y"}, DisplayKey: "y"},
 			{OperationID: operationCommentCopyAll, Keys: []string{"Y"}, DisplayKey: "Y"},
 			{OperationID: operationCommentEditExternal, Keys: []string{"E"}, DisplayKey: "E"},
-			{OperationID: operationCoreCursorDown, Keys: []string{"j", "down"}, DisplayKey: "j/k"},
+			{OperationID: operationCoreCursorDown, Keys: []string{"j", "down"}, DisplayKey: "j/↓"},
 			{OperationID: operationCoreCursorUp, Keys: []string{"k", "up"}, DisplayKey: "k/↑"},
-			{OperationID: operationCoreCursorTop, Keys: []string{"home"}, DisplayKey: "Home"},
-			{OperationID: operationCoreCursorBottom, Keys: []string{"G"}, DisplayKey: "G"},
+			{OperationID: operationCoreCursorTop, Keys: []string{"home"}, Sequence: []string{"g", "g"}, DisplayKey: "gg/Home", HintLabel: "top"},
+			{OperationID: operationCoreCursorBottom, Keys: []string{"G", "end"}, DisplayKey: "G/End"},
+			{OperationID: operationCoreHelp, Keys: []string{"?"}, DisplayKey: "?"},
 			{OperationID: operationCoreBack, Keys: []string{"esc"}, DisplayKey: "Esc"},
+		},
+		ChordGroups: []OperationChordGroup{
+			{Sequence: []string{"g"}, HintLabel: "go to"},
 		},
 	}
 }

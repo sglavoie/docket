@@ -30,13 +30,23 @@ const (
 // and the single declaration of what each of its keys means. Seven keys stay
 // direct because they are what the panel is for; the five rare or destructive
 // acts reach the user through the Space sheet instead, so the panel's direct
-// grammar no longer contradicts the app-wide meanings of u, d, x, O, Ctrl+E, and
-// Ctrl+O.
+// grammar no longer contradicts the app-wide meanings of d, x, O, Ctrl+E, and
+// Ctrl+O. u is the one the panel took back: it no longer unlinks, so it is free
+// to mean here what it means everywhere else.
 //
-// The cursor keys, help, and Esc resolve to the core operations because they are
-// the same acts everywhere. Those descriptors answer only to the Outliner, so
-// they document the panel's grammar without dispatching here: the panel moves
-// its own cursor, raises its own help, and closes itself.
+// The external editor answers E, the slot it holds everywhere else, and e is
+// deliberately bound to nothing at all. e means edit or rename on all four other
+// surfaces and this panel has nothing to rename — an attachment is a file it
+// hands to another program — so the key stays silent here rather than becoming a
+// second meaning for the one key the app spends on editing.
+//
+// The cursor keys, help, Esc, and the workspace ledger's undo and redo resolve
+// to the core operations because they are the same acts everywhere. Those
+// descriptors answer only to the Outliner, so they document the panel's grammar
+// without dispatching here: the panel moves its own cursor, raises its own help,
+// closes itself, and hands u and Ctrl+R to the shell's one ledger. Adding and
+// removing an attachment are ledger transactions, so undo has something to
+// reverse from inside the panel that made them.
 //
 // No binding carries footer metadata. The panel's footer has to narrow with the
 // add and confirmation sub-states and with whether the selected attachment is a
@@ -49,18 +59,23 @@ func AttachmentsInputStrategy() InputStrategy {
 		Bindings: []OperationKeyBinding{
 			{OperationID: operationAttachmentOpen, Keys: []string{"enter"}, DisplayKey: "Enter"},
 			{OperationID: operationAttachmentAdd, Keys: []string{"a"}, DisplayKey: "a"},
-			{OperationID: operationAttachmentOpenInEditor, Keys: []string{"e"}, DisplayKey: "e"},
+			{OperationID: operationAttachmentOpenInEditor, Keys: []string{"E"}, DisplayKey: "E"},
 			{OperationID: operationAttachmentCopyPath, Keys: []string{"y"}, DisplayKey: "y"},
 			{OperationID: operationAttachmentActions, Keys: []string{"space"}, DisplayKey: "Space"},
 			{OperationID: operationAttachmentCopyPathWithLine, Keys: []string{"Y"}, DisplayKey: "Y"},
-			{OperationID: operationAttachmentReorderDown, Keys: []string{"J"}, DisplayKey: "J/K"},
+			{OperationID: operationAttachmentReorderDown, Keys: []string{"J"}, DisplayKey: "J"},
 			{OperationID: operationAttachmentReorderUp, Keys: []string{"K"}, DisplayKey: "K"},
-			{OperationID: operationCoreCursorDown, Keys: []string{"j", "down"}, DisplayKey: "j/k"},
+			{OperationID: operationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},
+			{OperationID: operationCoreRedo, Keys: []string{"ctrl+r"}, DisplayKey: "Ctrl+R"},
+			{OperationID: operationCoreCursorDown, Keys: []string{"j", "down"}, DisplayKey: "j/↓"},
 			{OperationID: operationCoreCursorUp, Keys: []string{"k", "up"}, DisplayKey: "k/↑"},
-			{OperationID: operationCoreCursorTop, Keys: []string{"home"}, DisplayKey: "Home"},
-			{OperationID: operationCoreCursorBottom, Keys: []string{"G"}, DisplayKey: "G"},
+			{OperationID: operationCoreCursorTop, Keys: []string{"home"}, Sequence: []string{"g", "g"}, DisplayKey: "gg/Home", HintLabel: "top"},
+			{OperationID: operationCoreCursorBottom, Keys: []string{"G", "end"}, DisplayKey: "G/End"},
 			{OperationID: operationCoreHelp, Keys: []string{"?"}, DisplayKey: "?"},
 			{OperationID: operationCoreBack, Keys: []string{"esc"}, DisplayKey: "Esc"},
+		},
+		ChordGroups: []OperationChordGroup{
+			{Sequence: []string{"g"}, HintLabel: "go to"},
 		},
 	}
 }

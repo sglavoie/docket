@@ -91,6 +91,10 @@ type NotesViewModel struct {
 	scrollOffset int
 	cursorFlash  bool
 
+	// pendingTopChord holds the first g of gg. The shell's chord state serves the
+	// Outliner only, so the manager keeps its own one-key prefix.
+	pendingTopChord bool
+
 	confirm       ConfirmDialog
 	pendingDelete NoteRowIdentity
 

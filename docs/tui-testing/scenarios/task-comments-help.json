@@ -1,0 +1,52 @@
+{
+  "name": "task-comments-help",
+  "fixture": "rich",
+  "size": "160x55",
+  "actions": [
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "select Build login form", "key": "j" },
+
+    { "type": "key", "label": "open task actions for comments", "key": "space" },
+    { "type": "text", "text": "comments" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "TaskComments" },
+    { "type": "assert", "label": "the panel promises the key it now answers", "assert": "contains", "value": "? help" },
+
+    { "type": "key", "label": "add a comment so the acting keys are live", "key": "a" },
+    { "type": "text", "text": "checked the redirect handler" },
+    { "type": "key", "key": "ctrl+s" },
+    { "type": "wait" },
+
+    { "type": "key", "label": "open the panel's own help", "key": "?" },
+    { "type": "assert", "assert": "view", "value": "Help" },
+    { "type": "assert", "assert": "contains", "value": "Help  Comments" },
+    { "type": "assert", "assert": "contains", "value": "Expand comment" },
+    { "type": "assert", "assert": "contains", "value": "Comment actions" },
+    { "type": "assert", "assert": "contains", "value": "Copy all as Markdown" },
+    { "type": "assert", "label": "the help lists the key that raised it", "assert": "contains", "value": "Help" },
+    { "type": "assert", "label": "the panel grammar names itself rather than the Outliner's", "assert": "not_contains", "value": "Capture" },
+    { "type": "assert", "assert": "not_contains", "value": "Move to Backlog" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "close help back onto the panel", "key": "?" },
+    { "type": "assert", "assert": "view", "value": "TaskComments" },
+    { "type": "assert", "assert": "contains", "value": "checked the redirect handler" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the add buffer owns the whole key stream", "key": "a" },
+    { "type": "text", "text": "?" },
+    { "type": "assert", "assert": "view", "value": "TaskComments" },
+    { "type": "assert", "assert": "not_contains", "value": "Help  Comments" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "discard the typed character", "key": "esc" },
+    { "type": "key", "key": "y" },
+
+    { "type": "key", "label": "the expanded comment owns it too", "key": "enter" },
+    { "type": "key", "key": "?" },
+    { "type": "assert", "assert": "view", "value": "TaskComments" },
+    { "type": "assert", "assert": "not_contains", "value": "Help  Comments" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "TaskComments" }
+  ]
+}

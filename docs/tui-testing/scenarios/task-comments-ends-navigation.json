@@ -1,0 +1,62 @@
+{
+  "name": "task-comments-ends-navigation",
+  "fixture": "rich",
+  "size": "100x30",
+  "actions": [
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "select Build login form", "key": "j" },
+    { "type": "key", "label": "open task actions for comments", "key": "space" },
+    { "type": "text", "text": "comments" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "TaskComments" },
+
+    { "type": "key", "label": "two comments make the ends distinguishable", "key": "a" },
+    { "type": "text", "text": "checked the redirect handler" },
+    { "type": "key", "key": "ctrl+s" },
+    { "type": "wait" },
+    { "type": "key", "key": "a" },
+    { "type": "text", "text": "queued the follow-up" },
+    { "type": "key", "key": "ctrl+s" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "checked the redirect handler" },
+    { "type": "assert", "assert": "contains", "value": "queued the follow-up" },
+
+    { "type": "key", "label": "G reaches the last comment", "key": "G" },
+    { "type": "key", "label": "the expanded comment names the row under the cursor", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Comment [1]" },
+    { "type": "assert", "assert": "contains", "value": "queued the follow-up" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "gg reaches the first", "key": "g" },
+    { "type": "key", "key": "g" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Comment [0]" },
+    { "type": "assert", "assert": "contains", "value": "checked the redirect handler" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "End is the other spelling of G", "key": "end" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Comment [1]" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "Home is the other spelling of gg", "key": "home" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Comment [0]" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "a g the user never completes is abandoned silently", "key": "g" },
+    { "type": "assert", "assert": "view", "value": "TaskComments" },
+    { "type": "assert", "assert": "not_contains", "value": "is not a" },
+    { "type": "key", "label": "and does not swallow the key after it", "key": "j" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Comment [1]" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "width": 60, "height": 20 },
+    { "type": "key", "key": "g" },
+    { "type": "key", "key": "g" },
+    { "type": "assert", "assert": "view", "value": "TaskComments" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

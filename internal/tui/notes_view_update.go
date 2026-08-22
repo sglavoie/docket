@@ -91,14 +91,18 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.clearStatus()
+		if m.completeNotesTopChord(key) {
+			return m, nil
+		}
 		switch key {
-		case "j", "down", "k", "up", "G", "ctrl+u", "pgup", "ctrl+d", "pgdown":
+		case "j", "down", "k", "up", "G", "end", "ctrl+u", "pgup", "ctrl+d", "pgdown":
 			_, cmd := handleListNavigation(key, &m.cursor, len(m.visibleRows), m.height, &m.cursorFlash)
 			return m, cmd
+		case "g":
+			m.pendingTopChord = true
 		case "home":
-			m.cursor = 0
-			m.resetScrollOffset()
-		case "enter", "a", "e", "%", "/", "p":
+			m.moveCursorToTop()
+		case "enter", "a", "e", "%", "/", "p", "y", "Y":
 			return m, m.dispatchNotesKey(key)
 		case " ", "space":
 			return m, m.dispatchNotesKey("space")
@@ -119,6 +123,28 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetSize(msg.Width, msg.Height)
 	}
 	return m, nil
+}
+
+// completeNotesTopChord answers the second g of gg and reports the press as
+// consumed. Any other key abandons the prefix silently and is then handled
+// normally, so a stray g never swallows the key after it.
+func (m *NotesViewModel) completeNotesTopChord(key string) bool {
+	if !m.pendingTopChord {
+		return false
+	}
+	m.pendingTopChord = false
+	if key != "g" {
+		return false
+	}
+	m.moveCursorToTop()
+	return true
+}
+
+// moveCursorToTop is the one act Home and gg share, so the window follows the
+// cursor to the first row under either spelling.
+func (m *NotesViewModel) moveCursorToTop() {
+	m.cursor = 0
+	m.resetScrollOffset()
 }
 
 // ShouldCaptureEsc returns true while Notes owns an internal interaction layer.

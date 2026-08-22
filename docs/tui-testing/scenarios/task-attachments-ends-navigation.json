@@ -1,0 +1,59 @@
+{
+  "name": "task-attachments-ends-navigation",
+  "fixture": "rich",
+  "size": "100x30",
+  "actions": [
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "select Build login form", "key": "j" },
+    { "type": "key", "label": "open the task action sheet", "key": "space" },
+    { "type": "text", "text": "attachments" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "TaskAttachments" },
+
+    { "type": "key", "label": "two attachments make the ends distinguishable", "key": "a" },
+    { "type": "text", "text": "https://example.com/one.pdf" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "key", "key": "a" },
+    { "type": "text", "text": "https://example.com/two.pdf" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "2 attachment(s)" },
+
+    { "type": "key", "label": "G reaches the last attachment", "key": "G" },
+    { "type": "key", "label": "the sheet names the row under the cursor", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Attachment Actions: https://example.com/two.pdf" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "gg reaches the first", "key": "g" },
+    { "type": "key", "key": "g" },
+    { "type": "key", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Attachment Actions: https://example.com/one.pdf" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "End is the other spelling of G", "key": "end" },
+    { "type": "key", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Attachment Actions: https://example.com/two.pdf" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "Home is the other spelling of gg", "key": "home" },
+    { "type": "key", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Attachment Actions: https://example.com/one.pdf" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "a g the user never completes is abandoned silently", "key": "g" },
+    { "type": "assert", "assert": "view", "value": "TaskAttachments" },
+    { "type": "assert", "assert": "not_contains", "value": "is not a" },
+    { "type": "key", "label": "and does not swallow the key after it", "key": "j" },
+    { "type": "key", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Attachment Actions: https://example.com/two.pdf" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "width": 60, "height": 20 },
+    { "type": "key", "key": "g" },
+    { "type": "key", "key": "g" },
+    { "type": "assert", "assert": "view", "value": "TaskAttachments" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

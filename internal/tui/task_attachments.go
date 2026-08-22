@@ -23,6 +23,10 @@ type TaskAttachmentsModel struct {
 	addMode   bool
 	textInput textinput.Model
 
+	// pendingTopChord holds the first g of gg. The shell's chord state serves the
+	// Outliner only, so the panel keeps its own one-key prefix.
+	pendingTopChord bool
+
 	dispatch operationKeyDispatch
 }
 

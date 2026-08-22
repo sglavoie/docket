@@ -20,10 +20,14 @@ const (
 )
 
 // NotesInputStrategy is the Notes manager's whole direct key grammar and the
-// single declaration of what each of its keys means. Three of its operations are
+// single declaration of what each of its keys means. Five of its operations are
 // note descriptors any host reaches; the four beside them belong to the manager,
 // because creating, searching, rescoping, and opening the action sheet act on
 // the list rather than on the note under the cursor.
+//
+// y and Y copy the note under the cursor, taking the row's primary text and its
+// fuller qualified form the way they do on the Outliner, Comments, and
+// Attachments: the title, and the full path of the Markdown file behind it.
 //
 // Deleting a note is the one note operation with no direct key. It is
 // destructive, so it reaches the user only through the Space sheet and its
@@ -49,25 +53,30 @@ func NotesInputStrategy() InputStrategy {
 			{OperationID: operationNoteMove, Keys: []string{"%"}, DisplayKey: "%"},
 			{OperationID: operationNotesSearch, Keys: []string{"/"}, DisplayKey: "/"},
 			{OperationID: operationNotesScope, Keys: []string{"p"}, DisplayKey: "p"},
+			{OperationID: operationNoteCopyTitle, Keys: []string{"y"}, DisplayKey: "y"},
+			{OperationID: operationNoteCopyPath, Keys: []string{"Y"}, DisplayKey: "Y"},
 			{OperationID: operationNotesActions, Keys: []string{"space"}, DisplayKey: "Space"},
 			{OperationID: operationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},
 			{OperationID: operationCoreRedo, Keys: []string{"ctrl+r"}, DisplayKey: "Ctrl+R"},
 			{OperationID: operationCoreCursorDown, Keys: []string{"j", "down"}, DisplayKey: "j/↓"},
 			{OperationID: operationCoreCursorUp, Keys: []string{"k", "up"}, DisplayKey: "k/↑"},
-			{OperationID: operationCoreCursorTop, Keys: []string{"home"}, DisplayKey: "Home"},
-			{OperationID: operationCoreCursorBottom, Keys: []string{"G"}, DisplayKey: "G"},
+			{OperationID: operationCoreCursorTop, Keys: []string{"home"}, Sequence: []string{"g", "g"}, DisplayKey: "gg/Home", HintLabel: "top"},
+			{OperationID: operationCoreCursorBottom, Keys: []string{"G", "end"}, DisplayKey: "G/End"},
 			{OperationID: operationCoreCursorPageDown, Keys: []string{"ctrl+d", "pgdown"}, DisplayKey: "Ctrl+D"},
 			{OperationID: operationCoreCursorPageUp, Keys: []string{"ctrl+u", "pgup"}, DisplayKey: "Ctrl+U"},
 			{OperationID: operationCoreHelp, Keys: []string{"?"}, DisplayKey: "?"},
 			{OperationID: operationCoreBack, Keys: []string{"esc"}, DisplayKey: "Esc"},
+		},
+		ChordGroups: []OperationChordGroup{
+			{Sequence: []string{"g"}, HintLabel: "go to"},
 		},
 	}
 }
 
 // dispatchNotesKey resolves one browse key through the Notes grammar and runs
 // whatever operation it reaches. The row under the cursor is frozen into the
-// context here because the four note operations resolve their target from it,
-// and an empty list therefore names nothing and refuses them.
+// context here because every note operation resolves its target from it, and an
+// empty list therefore names nothing and refuses them.
 func (m *NotesViewModel) dispatchNotesKey(key string) tea.Cmd {
 	if m.dispatch == nil {
 		return nil
@@ -162,10 +171,16 @@ func notesSurfaceOperationDescriptors() []OperationDescriptor {
 	}
 }
 
-// notesOperationManifest is the authoritative ordered Notes action list. Six of
-// the seven entries are DirectOnly: they keep their descriptor and value
+// notesOperationManifest is the authoritative ordered Notes action list. Nine
+// of the ten entries are DirectOnly: they keep their descriptor and value
 // provider and leave the Space sheet to Delete, which is destructive and so
 // carries no direct key at all.
+//
+// Space itself is manifested for the same reason the other eight are: a manifest
+// is all validateOperationOnePath inspects, so leaving the key that opens the
+// sheet out of it was the one binding the gate could not check. The sheet lists
+// notesActionSheetOperations, not this manifest, so the row it opens is
+// unchanged.
 func notesOperationManifest() []operationManifestEntry {
 	return []operationManifestEntry{
 		{ID: operationNoteOpen, Label: "Open note", Risk: OperationRiskMutation, DirectOnly: true},
@@ -174,6 +189,9 @@ func notesOperationManifest() []operationManifestEntry {
 		{ID: operationNoteMove, Label: "Move note", Risk: OperationRiskMutation, DirectOnly: true},
 		{ID: operationNotesSearch, Label: "Search notes", Risk: OperationRiskReadOnly, DirectOnly: true},
 		{ID: operationNotesScope, Label: "Choose Notes scope", Risk: OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationNoteCopyTitle, Label: "Copy note title", Risk: OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationNoteCopyPath, Label: "Copy note path", Risk: OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationNotesActions, Label: "Note actions", Risk: OperationRiskReadOnly, DirectOnly: true},
 		{ID: operationNoteDelete, Label: "Delete note", Risk: OperationRiskDestructive},
 	}
 }
@@ -243,6 +261,10 @@ func validateNotesOperationOnePath(strategy InputStrategy) error {
 // note it cannot see; the manager owns an inline rename, a location picker, and
 // a confirmation of its own, so inside Notes those steps belong to the surface
 // and the binding delegates all four executor stages to it.
+//
+// The two copies are absent on purpose. They prompt nothing, pick nothing, and
+// confirm nothing, so the manager has no step to own and the global binding from
+// registerNoteOperations is what the executor selects for them here.
 func (m *AppModel) registerNotesSurfaceOperations() error {
 	for _, descriptor := range notesSurfaceOperationDescriptors() {
 		if err := m.registerOperation(descriptor, OperationBinding{

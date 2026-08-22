@@ -81,18 +81,18 @@ func TestAttachmentGuidanceTracksFileCodeURLAndEmptyVariants(t *testing.T) {
 
 	spec, ok := model.guidanceSpec()
 	assertGuidanceContains(t, "file attachment", spec, ok,
-		"Enter open", "e edit", "y copy", "Space actions", "J/K reorder", "Esc close")
+		"Enter open", "E editor", "y copy", "Space actions", "J/K reorder", "Esc close")
 	assertGuidanceExcludes(t, "file attachment", spec, "copy path:line", "delete", "unlink", "original")
 
 	model.cursor = 1
 	spec, ok = model.guidanceSpec()
-	assertGuidanceContains(t, "code attachment", spec, ok, "Enter open", "e edit", "Y copy path:line", "J/K reorder")
+	assertGuidanceContains(t, "code attachment", spec, ok, "Enter open", "E editor", "Y copy path:line", "J/K reorder")
 	assertGuidanceExcludes(t, "code attachment", spec, "original")
 
 	model.cursor = 2
 	spec, ok = model.guidanceSpec()
 	assertGuidanceContains(t, "URL attachment", spec, ok, "Enter open", "y copy", "Space actions")
-	assertGuidanceExcludes(t, "URL attachment", spec, "e edit", "original", "copy path:line", "delete", "unlink")
+	assertGuidanceExcludes(t, "URL attachment", spec, "E editor", "original", "copy path:line", "delete", "unlink")
 
 	task.Attachments = nil
 	model.cursor = 0

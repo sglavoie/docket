@@ -316,10 +316,12 @@ func TestNotesOperationCatalogMatchesDirectActions(t *testing.T) {
 	// Delete carries no key: it is destructive, so the Space sheet is its one
 	// path and the empty spelling is what the one-path rule demands.
 	wantKeys := map[OperationID]string{
-		operationNoteOpen:   "enter",
-		operationNoteRename: "e",
-		operationNoteMove:   "%",
-		operationNoteDelete: "",
+		operationNoteOpen:      "enter",
+		operationNoteRename:    "e",
+		operationNoteMove:      "%",
+		operationNoteCopyTitle: "y",
+		operationNoteCopyPath:  "Y",
+		operationNoteDelete:    "",
 	}
 	descriptors := noteOperationDescriptors()
 	if len(descriptors) != len(wantKeys) {

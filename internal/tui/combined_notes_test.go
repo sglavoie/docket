@@ -448,6 +448,8 @@ func TestNotesManagerRestoresOnlyMoveToTheMinimalOperations(t *testing.T) {
 		operationNoteOpen,
 		operationNoteRename,
 		operationNoteMove,
+		operationNoteCopyTitle,
+		operationNoteCopyPath,
 		operationNoteDelete,
 	}
 	if !slices.Equal(ids, want) {

@@ -434,6 +434,8 @@ func TestNotesHelpDocumentsTheWorkspaceManager(t *testing.T) {
 		{Key: "%", Description: "Move note", Category: "Notes"},
 		{Key: "/", Description: "Search notes", Category: "Discovery"},
 		{Key: "p", Description: "Choose Notes scope", Category: "Notes"},
+		{Key: "y", Description: "Copy note title", Category: "Notes"},
+		{Key: "Y", Description: "Copy note path", Category: "Notes"},
 		{Key: "Space", Description: "Note actions", Category: "Notes"},
 		{Key: "j", Description: "Move cursor down", Category: "Navigation"},
 		{Key: "k", Description: "Move cursor up", Category: "Navigation"},

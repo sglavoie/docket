@@ -2,6 +2,7 @@ package tui
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -456,6 +457,25 @@ func TestCommentsRetiredKeysAreSilent(t *testing.T) {
 	}
 }
 
+// TestCommentsLeavesTheWorkspaceLedgerAlone holds the one panel that did not
+// gain u and Ctrl+R when the Hub and Attachments did. It is a scope line, not a
+// property of the surface: a comment mutation commits through commitProject with
+// an UndoAction, so the ledger does hold it. Until that binding is decided the
+// panel must stay silent rather than half-answer the key.
+func TestCommentsLeavesTheWorkspaceLedgerAlone(t *testing.T) {
+	driver, _, press := mountCommentsPanel(t)
+
+	for _, key := range []string{"u", "ctrl+r"} {
+		press(key)
+		if driver.pendingCmd == nil {
+			continue
+		}
+		if _, ok := driver.pendingCmd().(WorkspaceUndoMsg); ok {
+			t.Fatalf("Comments answered %q with a workspace ledger request", key)
+		}
+	}
+}
+
 // TestCommentsSpaceSheetReachesDelete walks the whole new path for Delete, which
 // is the retirement this session is really about: neither d nor x removes a
 // comment now, so the Space sheet has to, and the confirmation behind it has to
@@ -487,13 +507,112 @@ func TestCommentsSpaceSheetReachesDelete(t *testing.T) {
 	}
 }
 
+// TestCommentsHelpKeyRaisesTheCommentsGrammar holds `?` to the surface it was
+// pressed on. The core help descriptor hardcodes the Outliner, so dispatching it
+// through the executor would answer a Comments press with the Outliner's
+// grammar; the panel raises its own instead, and the press stays a literal
+// character in every sub-state that owns the key stream.
+func TestCommentsHelpKeyRaisesTheCommentsGrammar(t *testing.T) {
+	driver, panel, sendKey := mountCommentsPanel(t)
+	// Help arrives as a command rather than a synchronous mutation, so every press
+	// drains the way the scenario runner and the live program do.
+	press := func(key string) {
+		t.Helper()
+		sendKey(key)
+		driver.drain()
+	}
+
+	press("?")
+	if got := driver.App().currentView(); got != ViewHelp {
+		t.Fatalf("? left the panel on %v, want the Help view", got)
+	}
+	help, ok := driver.App().views.Get(ViewHelp).(*HelpViewModel)
+	if !ok {
+		t.Fatalf("the Help view is %T, want *HelpViewModel", driver.App().views.Get(ViewHelp))
+	}
+	if help.viewName != "Comments" || help.sourceView != ViewTaskComments {
+		t.Fatalf("help header = %s/%q, want ViewTaskComments/\"Comments\"", help.sourceView, help.viewName)
+	}
+
+	documented := make(map[string]string, len(help.items))
+	for _, item := range help.items {
+		documented[item.Key] = item.Description
+	}
+	if documented["enter"] != "Expand comment" {
+		t.Fatalf("Comments help describes Enter as %q, want the panel's own grammar: %+v", documented["enter"], help.items)
+	}
+	if documented["space"] != "Comment actions" {
+		t.Fatalf("Comments help omits the Space sheet: %+v", help.items)
+	}
+	// `?` documents itself only because the keymap names it: the core descriptor
+	// is inapplicable off the Outliner, so a registry projection would drop it.
+	if documented["?"] != "Help" {
+		t.Fatalf("Comments help omits ? itself: %+v", help.items)
+	}
+	for _, outlinerOnly := range []string{"tab", "T", "ctrl+p"} {
+		if description, listed := documented[outlinerOnly]; listed {
+			t.Fatalf("Comments help leaked the Outliner key %q (%q)", outlinerOnly, description)
+		}
+	}
+	press("?")
+	if got := driver.App().currentView(); got != ViewTaskComments {
+		t.Fatalf("closing help landed on %v, want the panel it came from", got)
+	}
+
+	// Every sub-state owns its whole key stream, so help is a browse-only press.
+	press("a")
+	press("?")
+	if got := driver.App().currentView(); got != ViewTaskComments {
+		t.Fatalf("? in add mode left the panel for %v", got)
+	}
+	if got := panel.textInput.Value(); got != "?" {
+		t.Fatalf("add-mode buffer after ? = %q, want a literal %q", got, "?")
+	}
+	press("esc")
+	press("y")
+	if panel.addMode {
+		t.Fatal("discarding the add buffer left add mode active")
+	}
+
+	press("e")
+	press("?")
+	if got := driver.App().currentView(); got != ViewTaskComments {
+		t.Fatalf("? in edit mode left the panel for %v", got)
+	}
+	if got := panel.editTextInput.Value(); !strings.Contains(got, "?") {
+		t.Fatalf("edit-mode buffer after ? = %q, want a literal %q in it", got, "?")
+	}
+	press("esc")
+	press("y")
+
+	press("enter")
+	if !panel.expandedView {
+		t.Fatal("Enter did not expand the comment under the cursor")
+	}
+	press("?")
+	if got := driver.App().currentView(); got != ViewTaskComments {
+		t.Fatalf("? in the expanded comment left the panel for %v", got)
+	}
+	press("esc")
+
+	panel.confirm.Show("delete", "Delete comment [0]?")
+	press("?")
+	if got := driver.App().currentView(); got != ViewTaskComments {
+		t.Fatalf("? under the delete confirmation left the panel for %v", got)
+	}
+	if !panel.confirm.IsActive() {
+		t.Fatal("? answered the delete confirmation instead of being ignored")
+	}
+	press("n")
+}
+
 // TestCommentsPanelUnboundKeysAreSilent holds the keys the Comments grammar
 // never declared. They must stay quiet rather than falling through to some other
 // surface's meaning.
 func TestCommentsPanelUnboundKeysAreSilent(t *testing.T) {
 	driver, panel, press := mountCommentsPanel(t)
 
-	for _, key := range []string{"?", "u", "o", "p", "%"} {
+	for _, key := range []string{"u", "o", "p", "%"} {
 		press(key)
 		if panel.confirm.IsActive() {
 			t.Fatalf("unbound key %q raised confirm %q", key, panel.confirm.Action())

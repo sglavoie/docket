@@ -3,6 +3,7 @@ package tui
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -166,5 +167,163 @@ func TestNoteDeleteRunsOnlyAfterConfirmation(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(storage.NotesDir(project), filename)); !os.IsNotExist(err) {
 		t.Fatalf("note file still present after delete: %v", err)
+	}
+}
+
+// TestNoteCopyOperationsNameTheNoteInEitherCollection holds the two copies to the
+// one thing that makes the pair worth having: y takes the row's primary text and
+// Y the fuller qualified form. Two notes sharing a title — one global, one in a
+// project — are the case that proves it, because the title alone cannot say
+// which of them the user is holding and the full path always can.
+func TestNoteCopyOperationsNameTheNoteInEitherCollection(t *testing.T) {
+	model, project := entityOperationApp(t, "Design log")
+	projectFile := onlyNoteFilename(t, model, app.ProjectNoteLocation(project.ID))
+
+	globalDir := storage.GlobalNotesDir(model.runtime.DataDir())
+	globalNote := models.NewNote("Design log")
+	globalNote.Body = "Design log body"
+	if err := saveTestNote(globalDir, globalNote); err != nil {
+		t.Fatalf("seed global note: %v", err)
+	}
+
+	var copied string
+	withFakeClipboard(t, nil, &copied)
+
+	for _, testCase := range []struct {
+		name   string
+		entity EntityIdentity
+		path   string
+	}{
+		{
+			name:   "project",
+			entity: ProjectNoteEntity(project.ID, projectFile),
+			path:   filepath.Join(storage.NotesDir(project), projectFile),
+		},
+		{
+			name:   "global",
+			entity: GlobalNoteEntity(globalNote.Filename),
+			path:   filepath.Join(globalDir, globalNote.Filename),
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			copied = ""
+			title := executeEntityOperation(model, operationNoteCopyTitle, testCase.entity)
+			if title.Err != nil {
+				t.Fatalf("copy note title: %v", title.Err)
+			}
+			if copied != "Design log" {
+				t.Fatalf("copied title = %q, want %q", copied, "Design log")
+			}
+			if title.Status != "Note title copied to clipboard" {
+				t.Fatalf("copy title status = %q, want the clipboard confirmation", title.Status)
+			}
+
+			copied = ""
+			path := executeEntityOperation(model, operationNoteCopyPath, testCase.entity)
+			if path.Err != nil {
+				t.Fatalf("copy note path: %v", path.Err)
+			}
+			if copied != testCase.path {
+				t.Fatalf("copied path = %q, want %q", copied, testCase.path)
+			}
+			if path.Status != "Note path copied to clipboard" {
+				t.Fatalf("copy path status = %q, want the clipboard confirmation", path.Status)
+			}
+			if _, err := os.Stat(copied); err != nil {
+				t.Fatalf("copied path does not name a file on disk: %v", err)
+			}
+		})
+	}
+}
+
+// TestNoteCopyOperationsSurviveAMalformedNoteAndAFailedClipboard covers the two
+// ways a copy can meet something broken. A note that will not parse still has a
+// title and a path, so copying stays available where moving does not; a
+// clipboard that refuses reports the failure rather than claiming a copy.
+func TestNoteCopyOperationsSurviveAMalformedNoteAndAFailedClipboard(t *testing.T) {
+	model, project := entityOperationApp(t)
+	dir := storage.NotesDir(project)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "broken.md"), []byte("no frontmatter here\n"), 0o644); err != nil {
+		t.Fatalf("write malformed note: %v", err)
+	}
+	entity := ProjectNoteEntity(project.ID, "broken.md")
+
+	var copied string
+	withFakeClipboard(t, nil, &copied)
+	if result := executeEntityOperation(model, operationNoteCopyPath, entity); result.Err != nil {
+		t.Fatalf("copy path on a malformed note: %v", result.Err)
+	}
+	if want := filepath.Join(dir, "broken.md"); copied != want {
+		t.Fatalf("copied path = %q, want %q", copied, want)
+	}
+	if result := executeEntityOperation(model, operationNoteCopyTitle, entity); result.Err != nil {
+		t.Fatalf("copy title on a malformed note: %v", result.Err)
+	}
+	if copied == "" {
+		t.Fatal("copy title on a malformed note copied nothing, want the filename fallback title")
+	}
+
+	withFakeClipboard(t, errClipboardUnsupported, nil)
+	failed := executeEntityOperation(model, operationNoteCopyTitle, entity)
+	if failed.Err == nil {
+		t.Fatalf("a refusing clipboard emitted %#v, want an error", failed.Message)
+	}
+	if !strings.Contains(failed.Err.Error(), "copy failed") {
+		t.Fatalf("clipboard failure = %v, want it named as a copy failure", failed.Err)
+	}
+}
+
+// TestNotesBrowseKeysReachTheCopyOperations presses the two keys on the live
+// manager rather than executing their IDs. The browse switch in the Notes update
+// loop is what decides whether a key ever reaches the grammar, so a binding the
+// strategy declares and that switch drops would pass every other Notes test.
+func TestNotesBrowseKeysReachTheCopyOperations(t *testing.T) {
+	model, project := entityOperationApp(t, "Design log")
+	filename := onlyNoteFilename(t, model, app.ProjectNoteLocation(project.ID))
+
+	view := NewNotesViewModelWithService(
+		storage.GlobalNotesDir(model.runtime.DataDir()),
+		AllNotesScope(),
+		model.appService,
+		nil,
+		project,
+	)
+	model.manageHub.params = ManageParams{Module: ManageNotes, NotesScope: view.scope}
+	model.manageHub.active = view
+	view.SetOperationSystem(model.GetOperationRegistry(), model.dispatchOperationKey)
+	view.SetSize(80, 24)
+	if len(view.visibleRows) != 1 {
+		t.Fatalf("notes rows = %d, want the one seeded note", len(view.visibleRows))
+	}
+
+	var copied string
+	withFakeClipboard(t, nil, &copied)
+
+	_, cmd := view.Update(keyPress("y"))
+	if cmd == nil {
+		t.Fatal("y produced no command on the Notes manager")
+	}
+	if copied != "Design log" {
+		t.Fatalf("y copied %q, want the note title", copied)
+	}
+	// The status strip is the only place a copy is visible, so the key has to
+	// carry the confirmation out of the handler and not just the copied value.
+	if status, ok := cmd().(StatusMsg); !ok || string(status) != "Note title copied to clipboard" {
+		t.Fatalf("y emitted %#v, want the clipboard confirmation status", cmd())
+	}
+
+	copied = ""
+	_, cmd = view.Update(keyPress("Y"))
+	if cmd == nil {
+		t.Fatal("Y produced no command on the Notes manager")
+	}
+	if want := filepath.Join(storage.NotesDir(project), filename); copied != want {
+		t.Fatalf("Y copied %q, want %q", copied, want)
+	}
+	if status, ok := cmd().(StatusMsg); !ok || string(status) != "Note path copied to clipboard" {
+		t.Fatalf("Y emitted %#v, want the clipboard confirmation status", cmd())
 	}
 }

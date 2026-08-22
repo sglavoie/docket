@@ -17,12 +17,20 @@ const (
 // operations the Hub reaches carry their own bindings and leave the Space menu
 // to the two lifecycle actions and the bulk tag set.
 //
-// The cursor keys resolve to the core navigation operations because moving a
-// list cursor is the same act everywhere; the Hub's own list vocabulary gets its
-// own operations so the grammar names projects rather than tasks. Those core
-// descriptors answer only to the Outliner, so they document the Hub's navigation
-// without dispatching here: the Hub moves its own cursor and the keymap beside
-// this strategy carries their footer hints.
+// The cursor keys, Esc, `?`, and the workspace ledger's undo and redo resolve to
+// the core operations because moving a list cursor, unwinding, asking what the
+// keys do, and reversing the last transaction are the same acts everywhere; the
+// Hub's own list vocabulary gets its own operations so the grammar names
+// projects rather than tasks. Those core descriptors answer only to the
+// Outliner, so they document the Hub's navigation without dispatching here: the
+// Hub moves its own cursor, clears its own selection on Esc, raises its own help
+// on `?`, hands u and Ctrl+R to the shell's one ledger, and the keymap beside
+// this strategy carries their footer hints and help rows.
+//
+// u and Ctrl+R are here because a project mutation is a ledger transaction: the
+// Hub archives, parks, renames, pins, and tags, and the status strip it already
+// renders offers `u undo` after a bulk tag set. Binding them closes that
+// promise rather than adding a new one.
 func ProjectHubInputStrategy() InputStrategy {
 	return InputStrategy{
 		ID: InputStrategyProjectHub,
@@ -38,12 +46,16 @@ func ProjectHubInputStrategy() InputStrategy {
 			{OperationID: operationScopeOpenProjectNote, Keys: []string{"ctrl+n"}, DisplayKey: "Ctrl+N", FooterRank: 16, FooterLabel: "notes"},
 			{OperationID: operationProjectHubSelectAll, Keys: []string{"ctrl+a"}, DisplayKey: "Ctrl+A", FooterRank: 17, FooterLabel: "select all"},
 			{OperationID: operationProjectHubTaskFilter, Keys: []string{"ctrl+t"}, DisplayKey: "Ctrl+T"},
+			{OperationID: operationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},
+			{OperationID: operationCoreRedo, Keys: []string{"ctrl+r"}, DisplayKey: "Ctrl+R"},
 			{OperationID: operationCoreCursorDown, Keys: []string{"j", "down"}, DisplayKey: "j/↓"},
 			{OperationID: operationCoreCursorUp, Keys: []string{"k", "up"}, DisplayKey: "k/↑"},
 			{OperationID: operationCoreCursorTop, Keys: []string{"home"}, Sequence: []string{"g", "g"}, DisplayKey: "gg/Home", HintLabel: "top"},
 			{OperationID: operationCoreCursorBottom, Keys: []string{"G", "end"}, DisplayKey: "G/End"},
 			{OperationID: operationCoreCursorPageDown, Keys: []string{"ctrl+d"}, DisplayKey: "Ctrl+D"},
 			{OperationID: operationCoreCursorPageUp, Keys: []string{"ctrl+u"}, DisplayKey: "Ctrl+U"},
+			{OperationID: operationCoreHelp, Keys: []string{"?"}, DisplayKey: "?"},
+			{OperationID: operationCoreBack, Keys: []string{"esc"}, DisplayKey: "Esc"},
 		},
 		ChordGroups: []OperationChordGroup{
 			{Sequence: []string{"g"}, HintLabel: "go to"},
@@ -52,10 +64,17 @@ func ProjectHubInputStrategy() InputStrategy {
 }
 
 // projectOperationManifest is the authoritative ordered Project Hub action list
-// and the source the action sheet groups by. The six operations the grammar
+// and the source the action sheet groups by. The eleven operations the grammar
 // reaches on press one are DirectOnly: they keep their descriptor, value
 // provider and category, and leave the Space menu to archiving, unarchiving, and
 // the bulk tag set.
+//
+// The five list operations below the six project ones are here so the one-path
+// rule sees them: a manifest is all validateOperationOnePath inspects, so an
+// unmanifested operation is the one thing that gate cannot check. Listing them
+// adds no menu row, because both sheets take an explicit operation list rather
+// than this one; their category is stated so projectHubActionCategory keeps
+// answering what it answered while they were absent.
 func projectOperationManifest() []operationManifestEntry {
 	return []operationManifestEntry{
 		{ID: operationProjectOpen, Label: "Open project", Aliases: []string{"focus project"}, Category: projectHubActionCategoryProject, Risk: OperationRiskReadOnly, DirectOnly: true},
@@ -64,6 +83,11 @@ func projectOperationManifest() []operationManifestEntry {
 		{ID: operationScopePinProject, Label: "Toggle project pin", Aliases: []string{"pin project", "unpin project"}, Category: projectHubActionCategoryProject, Risk: OperationRiskMutation, DirectOnly: true},
 		{ID: operationProjectSetTags, Label: "Set project tags", Aliases: []string{"project tags"}, Provider: ValueProviderProjectTags, Category: projectHubActionCategoryProject, Risk: OperationRiskMutation, DirectOnly: true},
 		{ID: operationScopeOpenProjectNote, Label: "Open project notes", Category: projectHubActionCategoryProject, Risk: OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationProjectHubSearch, Label: "Search projects", Aliases: []string{"filter the project list"}, Category: projectHubActionCategoryProject, Risk: OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationProjectHubToggleSelection, Label: "Select project", Aliases: []string{"toggle project selection"}, Category: projectHubActionCategoryProject, Risk: OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationProjectHubSelectAll, Label: "Select every matching project", Aliases: []string{"select all projects"}, Category: projectHubActionCategoryProject, Risk: OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationProjectHubActions, Label: "Project actions", Aliases: []string{"project action sheet"}, Category: projectHubActionCategoryProject, Risk: OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationProjectHubTaskFilter, Label: "Cycle every project, only those holding tasks, only those holding none", Aliases: []string{"projects holding tasks", "projects holding no tasks"}, Category: projectHubActionCategoryProject, Risk: OperationRiskReadOnly, DirectOnly: true},
 		{ID: operationProjectBulkAddTag, Label: "Add tag", Category: projectHubActionCategoryProject, Risk: OperationRiskMutation, Bulk: true},
 		{ID: operationProjectBulkRemoveTag, Label: "Remove tag", Category: projectHubActionCategoryProject, Risk: OperationRiskMutation, Bulk: true},
 		{ID: operationProjectBulkPark, Label: "Park projects", Category: projectHubActionCategoryProject, Risk: OperationRiskMutation, Bulk: true},
