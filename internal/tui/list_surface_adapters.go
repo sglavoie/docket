@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"charm.land/lipgloss/v2"
+
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -33,6 +35,16 @@ type ListSurfacePreviewPickerItem interface {
 // ListSurfaceOperationPickerItem optionally supplies contextual operation IDs.
 type ListSurfaceOperationPickerItem interface {
 	ListSurfaceOperationIDs() []OperationID
+}
+
+// ListSurfaceStyledPickerItem optionally colors an adapted row's primary text.
+// The style is resolved on every adaptation rather than cached on the payload,
+// so a source rebuilt after ApplyTheme wears the current theme's color. An item
+// that is also a pinned PinnablePickerItem would have this style wrap text the
+// pin marker already rendered, so a payload implementing both owes that pair a
+// decision rather than both hooks.
+type ListSurfaceStyledPickerItem interface {
+	ListSurfacePrimaryStyle() lipgloss.Style
 }
 
 // ListSourceFromPickerItems adapts legacy PickerItem values without changing
@@ -70,6 +82,10 @@ func ListSourceFromPickerItems[T PickerItem](items []T, showCounts bool) ListSou
 				[]OperationID(nil),
 				operations.ListSurfaceOperationIDs()...,
 			)
+		}
+		if styled, ok := any(item).(ListSurfaceStyledPickerItem); ok {
+			style := styled.ListSurfacePrimaryStyle()
+			adaptedItem.PrimaryStyle = &style
 		}
 		adapted = append(adapted, adaptedItem)
 	}
