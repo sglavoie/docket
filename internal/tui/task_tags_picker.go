@@ -245,23 +245,25 @@ func semanticTaskTagItem(name string, entry models.SemanticTaskTag, taskCount in
 	if taskCount > 0 {
 		fields = append(fields, ListPreviewField{Label: "Tasks", Value: strconv.Itoa(taskCount)})
 	}
+	style := semanticTaskTitleStyle(entry.Role, 0, false, false)
 	return ListItem{
 		ID:            ListItemID("tag:" + name),
 		CategoryID:    taskTagSemanticCategory,
 		PrimaryText:   name,
 		SecondaryText: entry.RowSummary,
 		Aliases:       []string{name, "#" + name},
+		PrimaryStyle:  &style,
 		Preview:       ListPreview{Title: name, Fields: fields},
 		Data:          name,
 	}
 }
 
 // semanticTaskTagExplainer states the precedence the section order applies
-// silently. Five restated summaries would swamp the overlay, so it is one line,
-// and every name renders in the title color it produces so the line
-// demonstrates what it describes. The complete block wraps inline when needed;
-// the color lookup is the row one, which keeps a future registry entry from
-// rendering uncolored.
+// silently, which is the one thing the SEMANTIC rows above it cannot show. Five
+// restated summaries would swamp the overlay, so it is one line. Its names and
+// those rows resolve one semanticTaskTitleStyle lookup, so the chain here and
+// the section above it can never disagree and a future registry entry cannot
+// render uncolored. The complete block wraps inline when needed.
 func semanticTaskTagExplainer(provider ValueProviderID, width int) string {
 	if !semanticTaskTagProvider(provider) {
 		return ""

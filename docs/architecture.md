@@ -1375,6 +1375,8 @@ because its entries are independent, and `SemanticTaskTags` is an ordered slice
 because the `bug` > `epic` > `story` > `feature` > `idea` precedence is part of
 what it publishes. `models.SemanticTaskTagForTags` resolves that precedence, and
 the `#` and `f#` pickers read the slice order to build their `SEMANTIC` section.
+Those rows and the explainer line beneath them resolve one color through
+`semanticTaskTitleStyle`, so the section previews the effect it describes.
 Their seeding is asymmetric on purpose: `#` offers all five whether or not any
 task carries them, because offering an unused tag is how it gets discovered,
 while `f#` stays usage-derived, because a filter row nothing carries can only

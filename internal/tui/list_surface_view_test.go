@@ -162,6 +162,38 @@ func TestRetainedListSurfaceDomainAdaptersProvideStableTargets(t *testing.T) {
 	}
 }
 
+func TestListSurfaceRowKeepsItemColorWhenCheckedAndDropsItUnderTheCursor(t *testing.T) {
+	style := semanticTaskTitleStyle(models.SemanticTaskTagBug, 0, false, false)
+	colored := ListItem{ID: "bug", PrimaryText: "bug", SecondaryText: "a defect", PrimaryStyle: &style}
+	plain := colored
+	plain.PrimaryStyle = nil
+
+	for _, state := range []struct {
+		name      string
+		row       ListSurfaceRow
+		wantColor bool
+	}{
+		{name: "unchecked", row: ListSurfaceRow{}, wantColor: true},
+		{name: "checked", row: ListSurfaceRow{Selected: true}, wantColor: true},
+		{name: "cursor", row: ListSurfaceRow{Cursor: true}, wantColor: false},
+	} {
+		t.Run(state.name, func(t *testing.T) {
+			styledRow, plainRow := state.row, state.row
+			styledRow.Match = ListMatch{Item: colored}
+			plainRow.Match = ListMatch{Item: plain}
+			got := renderListSurfaceRow(styledRow, ListSelectionMulti, 40)
+			want := renderListSurfaceRow(plainRow, ListSelectionMulti, 40)
+
+			if has := strings.Contains(got, style.Render("bug")); has != state.wantColor {
+				t.Fatalf("colored primary text present = %v, want %v:\n%q", has, state.wantColor, got)
+			}
+			if ansi.Strip(got) != ansi.Strip(want) {
+				t.Fatalf("text moved: %q, want %q", ansi.Strip(got), ansi.Strip(want))
+			}
+		})
+	}
+}
+
 func assertListSurfaceWidth(t *testing.T, rendered string, width int) {
 	t.Helper()
 	for index, line := range strings.Split(rendered, "\n") {

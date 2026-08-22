@@ -1,7 +1,9 @@
 package config
 
 import (
+	"maps"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -52,21 +54,21 @@ func TestDefaultDarkTheme_KeyFields(t *testing.T) {
 		{"Priority3Title", d.Palette.Priority3Title, "#7aa2f7"},
 		{"TaskContext", d.Palette.TaskContext, "#73daca"},
 		{"TaskContextDeferred", d.Palette.TaskContextDeferred, "#4f948f"},
-		{"SemanticBugTitle", d.Palette.SemanticBugTitle, "#ff9e9e"},
-		{"SemanticEpicTitle", d.Palette.SemanticEpicTitle, "#bb9af7"},
-		{"SemanticStoryTitle", d.Palette.SemanticStoryTitle, "#7dcfff"},
-		{"SemanticFeatureTitle", d.Palette.SemanticFeatureTitle, "#b9f27c"},
-		{"SemanticIdeaTitle", d.Palette.SemanticIdeaTitle, "#ff9e64"},
-		{"SemanticBugSelectedTitle", d.Palette.SemanticBugSelectedTitle, "#ffd1d1"},
-		{"SemanticEpicSelectedTitle", d.Palette.SemanticEpicSelectedTitle, "#dccbff"},
-		{"SemanticStorySelectedTitle", d.Palette.SemanticStorySelectedTitle, "#b6e5ff"},
-		{"SemanticFeatureSelectedTitle", d.Palette.SemanticFeatureSelectedTitle, "#d7f7b5"},
-		{"SemanticIdeaSelectedTitle", d.Palette.SemanticIdeaSelectedTitle, "#ffd0b5"},
-		{"SemanticBugDeferredTitle", d.Palette.SemanticBugDeferredTitle, "#c97b7b"},
-		{"SemanticEpicDeferredTitle", d.Palette.SemanticEpicDeferredTitle, "#8d73bd"},
-		{"SemanticStoryDeferredTitle", d.Palette.SemanticStoryDeferredTitle, "#5f9bbf"},
-		{"SemanticFeatureDeferredTitle", d.Palette.SemanticFeatureDeferredTitle, "#8bb65f"},
-		{"SemanticIdeaDeferredTitle", d.Palette.SemanticIdeaDeferredTitle, "#b97852"},
+		{"SemanticBugTitle", d.Palette.SemanticBugTitle, "#ff4f58"},
+		{"SemanticEpicTitle", d.Palette.SemanticEpicTitle, "#e17bff"},
+		{"SemanticStoryTitle", d.Palette.SemanticStoryTitle, "#3fc5ff"},
+		{"SemanticFeatureTitle", d.Palette.SemanticFeatureTitle, "#35d67f"},
+		{"SemanticIdeaTitle", d.Palette.SemanticIdeaTitle, "#ffd23f"},
+		{"SemanticBugSelectedTitle", d.Palette.SemanticBugSelectedTitle, "#ff9ea3"},
+		{"SemanticEpicSelectedTitle", d.Palette.SemanticEpicSelectedTitle, "#eeb6ff"},
+		{"SemanticStorySelectedTitle", d.Palette.SemanticStorySelectedTitle, "#95dfff"},
+		{"SemanticFeatureSelectedTitle", d.Palette.SemanticFeatureSelectedTitle, "#90e8b9"},
+		{"SemanticIdeaSelectedTitle", d.Palette.SemanticIdeaSelectedTitle, "#ffe695"},
+		{"SemanticBugDeferredTitle", d.Palette.SemanticBugDeferredTitle, "#c47074"},
+		{"SemanticEpicDeferredTitle", d.Palette.SemanticEpicDeferredTitle, "#b16fc4"},
+		{"SemanticStoryDeferredTitle", d.Palette.SemanticStoryDeferredTitle, "#4891b0"},
+		{"SemanticFeatureDeferredTitle", d.Palette.SemanticFeatureDeferredTitle, "#549572"},
+		{"SemanticIdeaDeferredTitle", d.Palette.SemanticIdeaDeferredTitle, "#9c8740"},
 		{"CursorColor", d.CursorColor, "#33467c"},
 		{"CursorTextColor", d.CursorTextColor, "#c0caf5"},
 		{"BackgroundColor", d.BackgroundColor, "#1a1b26"},
@@ -228,6 +230,96 @@ func TestDefaultTaskContextColorsContrastWithRowAlerts(t *testing.T) {
 			t.Errorf("%s contrast = %.2f:1, want at least %.1f:1", tc.name, got, tc.minimum)
 		}
 	}
+}
+
+// TestSemanticTitleColorsStayPerceptuallyDistinct guards the property the five
+// semantic titles exist for: a glance must tell them apart. Contrast checks
+// cannot see this, because two colors can each be readable and still be the same
+// color to a reader. The floor is CIE ΔE76 within a tier, since only same-tier
+// colors ever appear side by side.
+func TestSemanticTitleColorsStayPerceptuallyDistinct(t *testing.T) {
+	const minimumDeltaE = 30.0
+
+	tiers := func(name string, p PaletteColors) []struct {
+		tier   string
+		colors map[string]string
+	} {
+		return []struct {
+			tier   string
+			colors map[string]string
+		}{
+			{name + " base", map[string]string{
+				"bug":     p.SemanticBugTitle,
+				"epic":    p.SemanticEpicTitle,
+				"story":   p.SemanticStoryTitle,
+				"feature": p.SemanticFeatureTitle,
+				"idea":    p.SemanticIdeaTitle,
+			}},
+			{name + " selected", map[string]string{
+				"bug":     p.SemanticBugSelectedTitle,
+				"epic":    p.SemanticEpicSelectedTitle,
+				"story":   p.SemanticStorySelectedTitle,
+				"feature": p.SemanticFeatureSelectedTitle,
+				"idea":    p.SemanticIdeaSelectedTitle,
+			}},
+			{name + " deferred", map[string]string{
+				"bug":     p.SemanticBugDeferredTitle,
+				"epic":    p.SemanticEpicDeferredTitle,
+				"story":   p.SemanticStoryDeferredTitle,
+				"feature": p.SemanticFeatureDeferredTitle,
+				"idea":    p.SemanticIdeaDeferredTitle,
+			}},
+		}
+	}
+
+	all := append(tiers("dark", DefaultDarkTheme().Palette), tiers("light", DefaultLightTheme().Palette)...)
+	for _, tier := range all {
+		names := slices.Sorted(maps.Keys(tier.colors))
+		for i, left := range names {
+			for _, right := range names[i+1:] {
+				got := deltaE76(t, tier.colors[left], tier.colors[right])
+				if got < minimumDeltaE {
+					t.Errorf("%s: %s (%s) and %s (%s) differ by only %.1f, want at least %.1f",
+						tier.tier, left, tier.colors[left], right, tier.colors[right], got, minimumDeltaE)
+				}
+			}
+		}
+	}
+}
+
+// deltaE76 reports the CIE 1976 perceptual distance between two #rrggbb colors.
+func deltaE76(t *testing.T, a, b string) float64 {
+	t.Helper()
+
+	l1, a1, b1 := labFromHex(t, a)
+	l2, a2, b2 := labFromHex(t, b)
+	return math.Sqrt((l1-l2)*(l1-l2) + (a1-a2)*(a1-a2) + (b1-b2)*(b1-b2))
+}
+
+// labFromHex converts a #rrggbb color to CIE Lab under the D65 white point.
+func labFromHex(t *testing.T, hex string) (float64, float64, float64) {
+	t.Helper()
+
+	value := strings.TrimPrefix(hex, "#")
+	if len(value) != 6 {
+		t.Fatalf("invalid hex color %q: want #rrggbb", hex)
+	}
+	r := linearizedColorChannel(t, value[0:2])
+	g := linearizedColorChannel(t, value[2:4])
+	b := linearizedColorChannel(t, value[4:6])
+
+	x := (0.4124*r + 0.3576*g + 0.1805*b) / 0.95047
+	y := 0.2126*r + 0.7152*g + 0.0722*b
+	z := (0.0193*r + 0.1192*g + 0.9505*b) / 1.08883
+
+	f := func(v float64) float64 {
+		if v > 216.0/24389.0 {
+			return math.Cbrt(v)
+		}
+		return v*(841.0/108.0) + 4.0/29.0
+	}
+	fx, fy, fz := f(x), f(y), f(z)
+	return 116*fy - 16, 500 * (fx - fy), 200 * (fy - fz)
 }
 
 func wcagContrastRatio(t *testing.T, a, b string) float64 {

@@ -27,28 +27,31 @@ func DefaultLightTheme() Theme {
 			TaskContext:         "#0f766e",
 			TaskContextDeferred: "#5f8782",
 
-			SemanticBugTitle:             "#b42318",
-			SemanticEpicTitle:            "#6d28d9",
-			SemanticStoryTitle:           "#0e7490",
-			SemanticFeatureTitle:         "#237a3b",
-			SemanticIdeaTitle:            "#c2410c",
-			SemanticBugSelectedTitle:     "#7f1d1d",
-			SemanticEpicSelectedTitle:    "#4c1d95",
-			SemanticStorySelectedTitle:   "#155e75",
-			SemanticFeatureSelectedTitle: "#14532d",
-			SemanticIdeaSelectedTitle:    "#9a3412",
-			SemanticBugDeferredTitle:     "#9f5656",
-			SemanticEpicDeferredTitle:    "#8b6bb7",
-			SemanticStoryDeferredTitle:   "#5f8793",
-			SemanticFeatureDeferredTitle: "#5f8f6c",
-			SemanticIdeaDeferredTitle:    "#9a6a55",
+			SemanticBugTitle:             "#cc2222",
+			SemanticEpicTitle:            "#9d1fb8",
+			SemanticStoryTitle:           "#0b6ba8",
+			SemanticFeatureTitle:         "#067a3f",
+			SemanticIdeaTitle:            "#8f6b00",
+			SemanticBugSelectedTitle:     "#8f1818",
+			SemanticEpicSelectedTitle:    "#6e1681",
+			SemanticStorySelectedTitle:   "#084b76",
+			SemanticFeatureSelectedTitle: "#04552c",
+			SemanticIdeaSelectedTitle:    "#644b00",
+			SemanticBugDeferredTitle:     "#b06c6c",
+			SemanticEpicDeferredTitle:    "#a26aaf",
+			SemanticStoryDeferredTitle:   "#4d84a7",
+			SemanticFeatureDeferredTitle: "#3f8d66",
+			SemanticIdeaDeferredTitle:    "#927d3c",
 		},
 	}
 }
 
 // DefaultDarkTheme returns a Theme with curated dark-mode hex values for all
 // maintained palette roles. Inspired by Tokyo Night with controlled saturation
-// (≤65%) and a contrast lift for primary readable text against #1a1b26.
+// (≤65%) and a contrast lift for primary readable text against #1a1b26. The
+// semantic title family is the deliberate exception: it runs at full chroma and
+// spreads its five hues apart, because only a tagged task wears one and telling
+// them apart at a glance is the whole point of the color.
 func DefaultDarkTheme() Theme {
 	return Theme{
 		BackgroundColor: "#1a1b26",
@@ -73,21 +76,21 @@ func DefaultDarkTheme() Theme {
 			TaskContext:         "#73daca",
 			TaskContextDeferred: "#4f948f",
 
-			SemanticBugTitle:             "#ff9e9e",
-			SemanticEpicTitle:            "#bb9af7",
-			SemanticStoryTitle:           "#7dcfff",
-			SemanticFeatureTitle:         "#b9f27c",
-			SemanticIdeaTitle:            "#ff9e64",
-			SemanticBugSelectedTitle:     "#ffd1d1",
-			SemanticEpicSelectedTitle:    "#dccbff",
-			SemanticStorySelectedTitle:   "#b6e5ff",
-			SemanticFeatureSelectedTitle: "#d7f7b5",
-			SemanticIdeaSelectedTitle:    "#ffd0b5",
-			SemanticBugDeferredTitle:     "#c97b7b",
-			SemanticEpicDeferredTitle:    "#8d73bd",
-			SemanticStoryDeferredTitle:   "#5f9bbf",
-			SemanticFeatureDeferredTitle: "#8bb65f",
-			SemanticIdeaDeferredTitle:    "#b97852",
+			SemanticBugTitle:             "#ff4f58",
+			SemanticEpicTitle:            "#e17bff",
+			SemanticStoryTitle:           "#3fc5ff",
+			SemanticFeatureTitle:         "#35d67f",
+			SemanticIdeaTitle:            "#ffd23f",
+			SemanticBugSelectedTitle:     "#ff9ea3",
+			SemanticEpicSelectedTitle:    "#eeb6ff",
+			SemanticStorySelectedTitle:   "#95dfff",
+			SemanticFeatureSelectedTitle: "#90e8b9",
+			SemanticIdeaSelectedTitle:    "#ffe695",
+			SemanticBugDeferredTitle:     "#c47074",
+			SemanticEpicDeferredTitle:    "#b16fc4",
+			SemanticStoryDeferredTitle:   "#4891b0",
+			SemanticFeatureDeferredTitle: "#549572",
+			SemanticIdeaDeferredTitle:    "#9c8740",
 		},
 	}
 }

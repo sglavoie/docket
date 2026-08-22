@@ -280,6 +280,22 @@ func renderListSurfaceRow(
 		}
 	}
 	layout := LayoutListText(item.PrimaryText, secondary, max(width-markerWidth, 0))
+	// A checked row keeps its color because "applied" is the state worth
+	// previewing; the [x] still says it is applied. The cursor row does not,
+	// because SelectedLine owns the whole line there exactly as the Outliner
+	// cursor row does, and a disabled row must not advertise a color it cannot
+	// deliver.
+	if item.PrimaryStyle != nil && item.Enabled() && !row.Cursor {
+		chrome := func(text string) string { return text }
+		if row.Selected {
+			chrome = func(text string) string { return SelectionStyle.Render(text) }
+		}
+		styled := chrome(marker) + item.PrimaryStyle.Render(layout.Primary)
+		if layout.Secondary != "" {
+			styled += chrome(layout.Gap + layout.Secondary)
+		}
+		return truncateToVisualWidth(styled, width)
+	}
 	line := marker + layout.Text()
 	if !item.Enabled() {
 		line = MutedStyle.Render(line)

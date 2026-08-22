@@ -107,9 +107,14 @@ type ListItem struct {
 	// It is presentation metadata only; adapters still own how toggling the row
 	// changes the underlying value.
 	Indeterminate bool
-	Preview       ListPreview
-	OperationIDs  []OperationID
-	Data          any
+	// PrimaryStyle colors the primary text alone. Like Indeterminate it is
+	// presentation metadata the behavior model never inspects: query, ranking, and
+	// ordering keep reading the plain PrimaryText, which is what lets a row carry a
+	// color without becoming unfindable or unsortable.
+	PrimaryStyle *lipgloss.Style
+	Preview      ListPreview
+	OperationIDs []OperationID
+	Data         any
 }
 
 // Enabled reports whether the item may be selected or activated.

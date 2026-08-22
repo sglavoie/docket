@@ -399,6 +399,54 @@ func TestOperationTagPickerRoutesAMintedSemanticTagIntoTheSemanticSection(t *tes
 	}
 }
 
+func TestSemanticTagPickerRowsWearTheTitleColorTheyApply(t *testing.T) {
+	source := taskTagListSource([]TagInfo{
+		{Name: "urgent", TaskCount: 3},
+		{Name: "platform", TaskCount: 1, ContextCount: 1},
+		{Name: "review", TaskCount: 1},
+	}, true)
+
+	semantic := 0
+	for _, item := range source.Items {
+		if item.CategoryID != taskTagSemanticCategory {
+			if item.PrimaryStyle != nil {
+				t.Fatalf("row %q carries a color it cannot apply", item.ID)
+			}
+			continue
+		}
+		semantic++
+		assertRowWearsItsTitleColor(t, item)
+	}
+	if semantic != len(models.SemanticTaskTags) {
+		t.Fatalf("colored %d semantic rows, want %d", semantic, len(models.SemanticTaskTags))
+	}
+
+	picker := newSemanticTagPickerForTest(t, []TagInfo{{Name: "alpha", TaskCount: 1}}, false)
+	if err := picker.addOrSelectTag("bug"); err != nil {
+		t.Fatalf("addOrSelectTag: %v", err)
+	}
+	for _, item := range picker.surface.Items() {
+		if item.ID == "tag:bug" {
+			assertRowWearsItsTitleColor(t, item)
+		}
+	}
+}
+
+// assertRowWearsItsTitleColor ties the row to TaskTitleStyleFor rather than to a
+// hex constant, so the assertion means "the color this row will appear" and a
+// palette edit can never silently split the two.
+func assertRowWearsItsTitleColor(t *testing.T, item ListItem) {
+	t.Helper()
+	if item.PrimaryStyle == nil {
+		t.Fatalf("semantic row %q has no color", item.ID)
+	}
+	task := &models.Task{Tags: []string{item.PrimaryText}}
+	want := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).GetForeground()
+	if got := item.PrimaryStyle.GetForeground(); got != want {
+		t.Fatalf("row %q foreground = %v, want the title color %v", item.ID, got, want)
+	}
+}
+
 func TestOperationTagPickerKeepsThePrecedenceOrderAfterAddingATag(t *testing.T) {
 	picker := newSemanticTagPickerForTest(t, []TagInfo{{Name: "zeta", TaskCount: 1}}, true)
 	if err := picker.addOrSelectTag("alpha"); err != nil {

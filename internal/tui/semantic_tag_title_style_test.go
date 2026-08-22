@@ -86,11 +86,11 @@ func TestSemanticTagTitleStylesCoverThemeSelectedAndDeferredVariants(t *testing.
 			selected string
 			deferred string
 		}{
-			{tag: "bug", base: "#ff9e9e", selected: "#ffd1d1", deferred: "#c97b7b"},
-			{tag: "epic", base: "#bb9af7", selected: "#dccbff", deferred: "#8d73bd"},
-			{tag: "story", base: "#7dcfff", selected: "#b6e5ff", deferred: "#5f9bbf"},
-			{tag: "feature", base: "#b9f27c", selected: "#d7f7b5", deferred: "#8bb65f"},
-			{tag: "idea", base: "#ff9e64", selected: "#ffd0b5", deferred: "#b97852"},
+			{tag: "bug", base: "#ff4f58", selected: "#ff9ea3", deferred: "#c47074"},
+			{tag: "epic", base: "#e17bff", selected: "#eeb6ff", deferred: "#b16fc4"},
+			{tag: "story", base: "#3fc5ff", selected: "#95dfff", deferred: "#4891b0"},
+			{tag: "feature", base: "#35d67f", selected: "#90e8b9", deferred: "#549572"},
+			{tag: "idea", base: "#ffd23f", selected: "#ffe695", deferred: "#9c8740"},
 		}},
 		{name: "light", roles: []struct {
 			tag      string
@@ -98,11 +98,11 @@ func TestSemanticTagTitleStylesCoverThemeSelectedAndDeferredVariants(t *testing.
 			selected string
 			deferred string
 		}{
-			{tag: "bug", base: "#b42318", selected: "#7f1d1d", deferred: "#9f5656"},
-			{tag: "epic", base: "#6d28d9", selected: "#4c1d95", deferred: "#8b6bb7"},
-			{tag: "story", base: "#0e7490", selected: "#155e75", deferred: "#5f8793"},
-			{tag: "feature", base: "#237a3b", selected: "#14532d", deferred: "#5f8f6c"},
-			{tag: "idea", base: "#c2410c", selected: "#9a3412", deferred: "#9a6a55"},
+			{tag: "bug", base: "#cc2222", selected: "#8f1818", deferred: "#b06c6c"},
+			{tag: "epic", base: "#9d1fb8", selected: "#6e1681", deferred: "#a26aaf"},
+			{tag: "story", base: "#0b6ba8", selected: "#084b76", deferred: "#4d84a7"},
+			{tag: "feature", base: "#067a3f", selected: "#04552c", deferred: "#3f8d66"},
+			{tag: "idea", base: "#8f6b00", selected: "#644b00", deferred: "#927d3c"},
 		}},
 	}
 	for _, theme := range themes {
