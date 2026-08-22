@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	tea "charm.land/bubbletea/v2"
 )
 
 // TestChordPrefixesNeverFallThroughToRootOperations presses every root key of
@@ -53,6 +55,55 @@ func TestChordPrefixesNeverFallThroughToRootOperations(t *testing.T) {
 					strings.Join(group.Sequence, ""),
 				)
 			}
+		}
+	}
+}
+
+// TestModifierKeyPressDoesNotAbandonAPendingChord keeps a chord alive across the
+// Shift its own second key requires. A terminal that reports every key as an
+// escape code sends the modifier as its own press, and consuming that press as
+// the chord's second key put every shifted facet — f!, f@, f$, f#, F#, o@, g@ —
+// permanently out of reach. It enters at handleGlobalMessage because the shell
+// drops the press above handleGlobalKeyPress, where the other chord tests start.
+func TestModifierKeyPressDoesNotAbandonAPendingChord(t *testing.T) {
+	app := newFilterChordTestApp(t)
+	out := app.crossOutliner
+
+	for _, name := range []string{"f", "leftshift", "!", "2"} {
+		key, err := parseUITestKey(name)
+		if err != nil {
+			t.Fatalf("parse %q: %v", name, err)
+		}
+		if handled, _ := app.handleGlobalMessage(key); !handled {
+			t.Fatalf("key %q was not consumed by the shell", name)
+		}
+	}
+
+	if app.statusMessage == "fleftshift is not a filter action" {
+		t.Fatal("the bare Shift press was consumed as the chord's second key")
+	}
+	if len(app.pendingChord) != 0 {
+		t.Fatalf("f!2 left pending prefix %v", app.pendingChord)
+	}
+	if out.filter.Priority != 2 {
+		t.Fatalf("Priority = %d after f!2 with a Shift press mid-chord, want 2", out.filter.Priority)
+	}
+}
+
+// TestModifiedKeysStayKeystrokes keeps the modifier drop narrow. A modifier that
+// qualifies another key names a keystroke the grammar binds, so widening the
+// drop to anything carrying a KeyMod would unbind Shift+Tab and Shift+Enter.
+func TestModifiedKeysStayKeystrokes(t *testing.T) {
+	for _, msg := range []tea.KeyPressMsg{
+		{Code: tea.KeyTab, Mod: tea.ModShift},
+		{Code: tea.KeyEnter, Mod: tea.ModShift},
+		{Code: tea.KeyLeft, Mod: tea.ModShift},
+		{Code: tea.KeyRight, Mod: tea.ModShift},
+		{Code: 'a', Text: "a"},
+		{Code: '#', Text: "#"},
+	} {
+		if isModifierOnlyKeyPress(msg) {
+			t.Errorf("%s was dropped as a modifier-only key press", msg)
 		}
 	}
 }

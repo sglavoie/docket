@@ -192,7 +192,8 @@ must precede the mode switch, since the push captures the frame `Esc` restores.
 `[`, which own no sigil. `*pin` is not a second route to `*`.
 
 An abandoned chord prefix warns, naming the path it left (`$q is not a workflow
-action`); an unbound root key is silent.
+action`); an unbound root key is silent. A modifier or lock key pressed alone is
+not a keystroke and never abandons one.
 
 ## Project and task tags
 

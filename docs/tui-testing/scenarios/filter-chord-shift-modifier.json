@@ -1,0 +1,41 @@
+{
+  "name": "filter-chord-shift-modifier",
+  "fixture": "rich",
+  "size": "99x35",
+  "actions": [
+    { "type": "key", "label": "hold the filter prefix", "key": "f" },
+    { "type": "assert", "assert": "contains", "value": "! priority threshold" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "reach for the Shift the ! facet needs", "key": "leftshift" },
+    { "type": "assert", "label": "the modifier alone never abandons the chord", "assert": "not_contains", "value": "is not a filter action" },
+    { "type": "assert", "label": "the which-key row still offers the filter facets", "assert": "contains", "value": "! priority threshold" },
+
+    { "type": "key", "label": "enter the priority threshold facet", "key": "!" },
+    { "type": "assert", "assert": "contains", "value": "1 high" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "keep only High-priority tasks", "key": "1" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "status_contains", "value": "Filtering High priority" },
+    { "type": "assert", "assert": "contains", "value": "priority:High+" },
+    { "type": "assert", "assert": "not_contains", "value": "User authentication" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "clear the threshold again", "key": "f" },
+    { "type": "key", "key": "leftshift" },
+    { "type": "key", "key": "!" },
+    { "type": "key", "key": "0" },
+    { "type": "assert", "assert": "status_contains", "value": "Priority filter cleared" },
+
+    { "type": "key", "label": "f# is the sharpest case: # alone is bound at root", "key": "f" },
+    { "type": "key", "key": "leftshift" },
+    { "type": "key", "key": "#" },
+    { "type": "assert", "label": "the sigil landed inside the filter chord", "assert": "contains", "value": "Filter by Tags" },
+    { "type": "assert", "label": "and not on the root key that would edit the cursor task's tags", "assert": "not_contains", "value": "Set Tags & Context" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" }
+  ]
+}

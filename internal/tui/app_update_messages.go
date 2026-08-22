@@ -32,9 +32,14 @@ func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
 func (m *AppModel) handleGlobalInputMessage(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
+		// A bare modifier is not a grammar key on any surface, so it is dropped
+		// here rather than reaching a strategy and abandoning a pending chord.
+		if isModifierOnlyKeyPress(msg) {
+			return true, nil
+		}
 		return m.handleGlobalKeyPress(msg)
 	case tea.KeyboardEnhancementsMsg:
-		return true, upgradeKittyKeyboard()
+		return true, nil
 	case tea.KeyReleaseMsg:
 		return true, nil
 	case tea.WindowSizeMsg:

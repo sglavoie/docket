@@ -811,6 +811,15 @@ rejection sentence instead. A chord prefix whose whole subtree that entity turne
 off refuses at the prefix, so a project header row never opens a which-key row
 that could not complete.
 
+A modifier or lock key pressed by itself is not a keystroke and never reaches the
+grammar. `isModifierOnlyKeyPress` drops it in the one switch where key events
+enter the app, beside the key-release swallow, so the Shift a chord's own second
+key requires — `f#`, `f!`, `f$`, `F#`, `o@`, `g@` — cannot resolve as that second
+key, and no view has to know the terminal reports it. The app requests no
+keyboard enhancement beyond the disambiguation Bubble Tea already negotiates:
+a richer Kitty flag set is what made a terminal report those presses at all, and
+nothing may request one behind the renderer's back.
+
 ### Capture and inline-edit grammar
 
 One parser in `internal/textgrammar` serves capture, inline edit, the external

@@ -1,10 +1,7 @@
 package tui
 
 import (
-	"os"
-
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 )
 
 // keyInterceptor is implemented by overlay widgets that intercept key presses
@@ -53,21 +50,24 @@ func isCtrlEscKey(msg tea.KeyPressMsg) bool {
 	return (msg.Code == tea.KeyEsc || msg.Code == tea.KeyEscape) && msg.Mod.Contains(tea.ModCtrl)
 }
 
-// upgradeKittyKeyboard adds the KittyReportAllKeysAsEscapeCodes flag to the
-// terminal's Kitty keyboard protocol. Bubble Tea v2 only requests mode 1
-// (disambiguate escape codes) which doesn't report shift modifiers for
-// printable keys like space. This upgrade makes shift+space distinguishable
-// from plain space.
-func upgradeKittyKeyboard() tea.Cmd {
-	return func() tea.Msg {
-		f, err := os.OpenFile("/dev/tty", os.O_WRONLY, 0)
-		if err != nil {
-			return nil
-		}
-		defer f.Close() //nolint:errcheck
-		_, _ = f.WriteString(ansi.KittyKeyboard(ansi.KittyReportAllKeysAsEscapeCodes|ansi.KittyReportAlternateKeys|ansi.KittyReportAssociatedKeys, 2))
-		return nil
+// isModifierOnlyKeyPress reports whether the event is a modifier or lock key
+// pressed by itself. Keyboard protocols that report every key as an escape code
+// emit these as their own presses, and no surface binds one. Letting one through
+// would append "leftshift" to a pending chord and abandon the path mid-typing,
+// so the shell drops them the way it already drops key releases.
+func isModifierOnlyKeyPress(msg tea.KeyPressMsg) bool {
+	switch msg.Code {
+	case tea.KeyLeftShift, tea.KeyRightShift,
+		tea.KeyLeftCtrl, tea.KeyRightCtrl,
+		tea.KeyLeftAlt, tea.KeyRightAlt,
+		tea.KeyLeftSuper, tea.KeyRightSuper,
+		tea.KeyLeftHyper, tea.KeyRightHyper,
+		tea.KeyLeftMeta, tea.KeyRightMeta,
+		tea.KeyIsoLevel3Shift, tea.KeyIsoLevel5Shift,
+		tea.KeyCapsLock, tea.KeyNumLock, tea.KeyScrollLock:
+		return true
 	}
+	return false
 }
 
 // hasActiveConfirmDialog returns true if the current view has an active confirm dialog.

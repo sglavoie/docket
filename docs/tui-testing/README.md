@@ -104,7 +104,16 @@ tab shift+tab enter space esc
 up down left right home end pgup pgdown
 ctrl+e ctrl+r ctrl+u ctrl+d ctrl+o ctrl+i ctrl+l ctrl+n ctrl+p ctrl+y ctrl+c
 ctrl+enter
+leftshift rightshift leftctrl rightctrl leftalt rightalt
+leftsuper rightsuper leftmeta rightmeta lefthyper righthyper
+capslock numlock scrolllock
 ```
+
+The modifier and lock names on the last three lines are a key pressed by itself,
+which a terminal reporting every key as an escape code sends between a chord
+prefix and the shifted second key that needs it. Send one to replay what a real
+keyboard produces for `f!` or `F#`; the shell drops it before any strategy sees
+it, so the chord survives.
 
 The final public grammar is:
 
