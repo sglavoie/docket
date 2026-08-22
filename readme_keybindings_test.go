@@ -122,9 +122,11 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 		"once unlink moved to that sheet the key was free, so it now means here " +
 			"what it means everywhere else",
 		"`Ctrl+R` reach the same workspace ledger they reach everywhere else",
-		"Outliner, Select Project, Notes, and the Attachments panel all answer both keys " +
-			"against that one ledger",
-		"the Comments panel is the one surface that answers neither",
+		"Outliner, Select Project, Notes, and the Comments and Attachments panels all answer " +
+			"both keys against that one ledger",
+		"No surface offers the `u undo` a recovery toast advertises and then consumes the key in silence",
+		"`u` and `Ctrl+R` reach the same workspace ledger here too",
+		"both it and `u` stay literal characters while a comment is being typed",
 		"Comments retired the hidden `n` add alias for `a`, and `d` and `x` for its `Space` sheet",
 		"a comment may not stay one press from deletion while a task cannot be deleted that way",
 		"They are the two structural keys that answer no sigil",

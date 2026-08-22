@@ -1,0 +1,46 @@
+{
+  "name": "task-comments-undo",
+  "fixture": "rich",
+  "size": "100x30",
+  "actions": [
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "select Build login form", "key": "j" },
+    { "type": "key", "label": "open task actions for comments", "key": "space" },
+    { "type": "text", "text": "comments" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "TaskComments" },
+
+    { "type": "key", "label": "write a comment, which commits a workspace transaction", "key": "a" },
+    { "type": "text", "text": "checked the redirect handler" },
+    { "type": "key", "key": "ctrl+s" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "checked the redirect handler" },
+    { "type": "assert", "label": "the strip offers the undo the panel now answers", "assert": "status_contains", "value": "Add Comment · u undo" },
+
+    { "type": "key", "label": "u undoes it without leaving the panel", "key": "u" },
+    { "type": "assert", "assert": "view", "value": "TaskComments" },
+    { "type": "assert", "label": "the strip names what moved rather than undoing silently", "assert": "status_contains", "value": "Undid: Add Comment" },
+    { "type": "assert", "label": "the panel rebuilt rather than keeping a reversed row", "assert": "not_contains", "value": "checked the redirect handler" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "Ctrl+R replays it", "key": "ctrl+r" },
+    { "type": "assert", "assert": "view", "value": "TaskComments" },
+    { "type": "assert", "assert": "status_contains", "value": "Redo: Add Comment" },
+    { "type": "assert", "assert": "contains", "value": "checked the redirect handler" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the add composer keeps u as typed text", "key": "a" },
+    { "type": "text", "text": "u" },
+    { "type": "assert", "assert": "view", "value": "TaskComments" },
+    { "type": "assert", "assert": "not_contains", "value": "Undid:" },
+    { "type": "key", "label": "discard the typed character", "key": "esc" },
+    { "type": "key", "key": "y" },
+    { "type": "assert", "assert": "view", "value": "TaskComments" },
+
+    { "type": "key", "label": "the panel's own help names both keys", "key": "?" },
+    { "type": "assert", "assert": "view", "value": "Help" },
+    { "type": "assert", "assert": "contains", "value": "Undo workspace change" },
+    { "type": "assert", "assert": "contains", "value": "Redo workspace change" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

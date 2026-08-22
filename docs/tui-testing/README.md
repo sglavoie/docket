@@ -184,6 +184,7 @@ The committed suite exercises the product contracts directly:
 | Comments and attachments | `rich-tools.json` |
 | Attachments direct grammar, its five-row `Space` sheet, and the retired keys | `rich-tools.json`, `action-sheet-picker-cancel.json` |
 | `gg`/`Home` and `G`/`End` on Notes, Comments, and Attachments, and the silent abandon of a lone `g` | `notes-ends-navigation.json`, `task-comments-ends-navigation.json`, `task-attachments-ends-navigation.json` |
+| `u` and `Ctrl+R` reaching the one workspace ledger from inside a panel, refreshing its list and naming the transaction | `task-attachments-undo.json`, `task-comments-undo.json` |
 | Checklist row grammar and its central task-key refusal | `outliner-checklist-row-actions.json`, `outliner-checklist-row-rejects-task-keys.json` |
 | Exact three-item `Space` menu | `outliner-space-action-catalog.json` |
 | Every entity surface's footer and `Space` sheet at the 60x20 minimum | `outliner-multiselect-minimum-layout.json`, `project-hub-minimum-layout.json`, `global-notes-resize-minimum-layout.json`, `task-attachments-minimum-layout.json`, `task-comments-minimum-layout.json` |

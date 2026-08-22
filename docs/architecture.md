@@ -773,8 +773,11 @@ one comment's action list rather than a bulk menu, and its binding delegates the
 confirmation back to the panel that owns the cursor. The retirements are the
 hidden `n` add alias and the `d`/`x` delete pair, which were the same house-style
 aliases the Outliner and Notes already gave up; nothing named them, so the panel
-simply stops answering them. `validateCommentOperationOnePath` holds them to the
-same direct-or-menu rule.
+simply stops answering them. `u` and `Ctrl+R` join the Attachments panel in
+reaching the one workspace ledger through `WorkspaceUndoMsg`: every comment
+mutation commits with an undo action and installs a `u undo` toast, so the
+surface that advertises the key has to answer it.
+`validateCommentOperationOnePath` holds them to the same direct-or-menu rule.
 
 `registerSurfaceInputStrategies` walks `surfaceOperationGates()` and runs each
 surface's check before registering its strategy, so a surface that drifted fails

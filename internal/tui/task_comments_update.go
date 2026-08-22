@@ -147,6 +147,13 @@ func (m *TaskCommentsModel) handleNormalKey(key string) tea.Cmd {
 	if key == "?" {
 		return helpCmd(ViewTaskComments, "Comments", m.GetHelpItems())
 	}
+	// The core undo descriptors answer only to the Outliner, so the press asks the
+	// shell for the one workspace ledger rather than dispatching. Update has
+	// already routed the add, edit, expanded, and confirm states elsewhere, so u is
+	// never a character being typed into a comment here.
+	if key == "u" || key == "ctrl+r" {
+		return workspaceUndoCmd(key == "ctrl+r")
+	}
 
 	return nil
 }

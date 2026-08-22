@@ -28,29 +28,34 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 
 // assertCommentsOwnsEveryDocumentedKeyOnce spells the whole Comments grammar.
 // Six keys act on the comment under the cursor, Space raises the sheet that
-// holds the seventh, and the rest navigate, explain, or close, so the table is
-// the panel's complete contract. `n`, `d`, and `x` are absent because the panel
-// retired them. gg is spelled as the complete path it is, the way the Hub table
-// below spells it.
+// holds the seventh, and the rest navigate, undo, explain, or close, so the
+// table is the panel's complete contract. `n`, `d`, and `x` are absent because
+// the panel retired them; `u` and `Ctrl+R` are present because adding, editing,
+// and removing a comment are workspace-ledger transactions, so the panel that
+// made them answers the app-wide undo rather than advertising one it consumes in
+// silence. gg is spelled as the complete path it is, the way the Hub table below
+// spells it.
 func assertCommentsOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	direct := map[string]OperationID{
-		"enter": operationCommentExpand,
-		"a":     operationCommentAdd,
-		"e":     operationCommentEdit,
-		"E":     operationCommentEditExternal,
-		"space": operationCommentActions,
-		"y":     operationCommentCopy,
-		"Y":     operationCommentCopyAll,
-		"j":     operationCoreCursorDown,
-		"down":  operationCoreCursorDown,
-		"k":     operationCoreCursorUp,
-		"up":    operationCoreCursorUp,
-		"gg":    operationCoreCursorTop,
-		"home":  operationCoreCursorTop,
-		"G":     operationCoreCursorBottom,
-		"end":   operationCoreCursorBottom,
-		"?":     operationCoreHelp,
-		"esc":   operationCoreBack,
+		"enter":  operationCommentExpand,
+		"a":      operationCommentAdd,
+		"e":      operationCommentEdit,
+		"E":      operationCommentEditExternal,
+		"space":  operationCommentActions,
+		"y":      operationCommentCopy,
+		"Y":      operationCommentCopyAll,
+		"u":      operationCoreUndo,
+		"ctrl+r": operationCoreRedo,
+		"j":      operationCoreCursorDown,
+		"down":   operationCoreCursorDown,
+		"k":      operationCoreCursorUp,
+		"up":     operationCoreCursorUp,
+		"gg":     operationCoreCursorTop,
+		"home":   operationCoreCursorTop,
+		"G":      operationCoreCursorBottom,
+		"end":    operationCoreCursorBottom,
+		"?":      operationCoreHelp,
+		"esc":    operationCoreBack,
 	}
 	assertStrategyOwnsEveryKeyOnce(t, CommentsInputStrategy(), direct)
 }

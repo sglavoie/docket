@@ -38,6 +38,13 @@ func (m *TaskCommentsModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("y", "Copy comment text", "Actions", keymap.WithFooter(5, "copy", false), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("Y", "Copy all as Markdown", "Actions", keymap.WithFooter(6, "copy all", false), keymap.WithGate(hasBrowseSelection)),
 		keymap.Bind("enter", "Expand comment", "Actions", keymap.WithFooter(1, "expand", false), keymap.WithFooterKey("Enter"), keymap.WithGate(hasBrowseSelection)),
+		// Deliberately unranked. The core undo descriptors answer only to the
+		// Outliner, so this keymap is the only place that can put u and Ctrl+R in
+		// the panel's `?` help; the footer stays spent on the acts the panel exists
+		// for, and the recovery toast a comment mutation installs already says
+		// "u undo" while it is live.
+		keymap.Bind("u", "Undo workspace change", "Actions", keymap.WithGate(inBrowseMode)),
+		keymap.Bind("ctrl+r", "Redo workspace change", "Actions", keymap.WithGate(inBrowseMode)),
 		// Gated to browse mode like its neighbors because Update hands the add,
 		// edit, and expanded states their whole key streams, and deliberately
 		// unranked: the panel is a HelpProvider now, so the shell strip under this

@@ -325,9 +325,12 @@ The Comments panel splits the same way. `Enter` expands the comment under the
 cursor, `a` adds one, `e` edits it inline, `E` opens it in the external editor,
 and `y` and `Y` copy that comment and every comment as Markdown. Its own `Space`
 sheet holds Delete alone, which confirms and has no direct key, so a comment
-leaves the list only through a deliberate menu row. `?` lists that grammar
-rather than the Outliner's, and stays a literal character while a comment is
-being typed.
+leaves the list only through a deliberate menu row. `u` and `Ctrl+R` reach the
+same workspace ledger here too, so the `u undo` the strip offers after a comment
+is added, edited, or removed is answerable without leaving the panel, and the
+list rebuilds around what came back. `?` lists that grammar
+rather than the Outliner's, and both it and `u` stay literal characters while a
+comment is being typed.
 
 Both panels and All Notes move the way every other list does: `j`/`k` or arrows
 step one row, and `gg`/`Home` and `G`/`End` reach the first and last. A `g` you
@@ -850,10 +853,10 @@ excluded.
 `u` and `Ctrl+R` use one workspace-wide ledger capped at 50 committed
 transactions. Task, project, note, and attachment changes share that history.
 A new forward mutation clears redo; a failed operation creates no entry. The
-Outliner, Select Project, Notes, and the Attachments panel all answer both keys
-against that one ledger, and each refreshes what it is showing rather than
-leaving a reversed row on screen; the Comments panel is the one surface that
-answers neither.
+Outliner, Select Project, Notes, and the Comments and Attachments panels all
+answer both keys against that one ledger, and each refreshes what it is showing
+rather than leaving a reversed row on screen. No surface offers the `u undo` a
+recovery toast advertises and then consumes the key in silence.
 
 Workspace commits validate paths and revisions, stage a durable manifest, and
 publish every affected artifact atomically. Startup rolls an interrupted

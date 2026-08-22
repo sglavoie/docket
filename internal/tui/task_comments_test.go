@@ -2,9 +2,12 @@ package tui
 
 import (
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -457,23 +460,187 @@ func TestCommentsRetiredKeysAreSilent(t *testing.T) {
 	}
 }
 
-// TestCommentsLeavesTheWorkspaceLedgerAlone holds the one panel that did not
-// gain u and Ctrl+R when the Hub and Attachments did. It is a scope line, not a
-// property of the surface: a comment mutation commits through commitProject with
-// an UndoAction, so the ledger does hold it. Until that binding is decided the
-// panel must stay silent rather than half-answer the key.
-func TestCommentsLeavesTheWorkspaceLedgerAlone(t *testing.T) {
+// TestCommentsUndoKeysAskTheShellForTheWorkspaceLedger pins the two keys the
+// panel took back from silence. Adding, editing, and removing a comment are
+// ledger transactions, so the panel that made them answers the app-wide undo;
+// the core undo descriptors answer only to the Outliner, so the press asks the
+// shell rather than dispatching through the executor.
+func TestCommentsUndoKeysAskTheShellForTheWorkspaceLedger(t *testing.T) {
 	driver, _, press := mountCommentsPanel(t)
 
-	for _, key := range []string{"u", "ctrl+r"} {
-		press(key)
+	press("u")
+	if driver.pendingCmd == nil {
+		t.Fatal("u emitted no workspace undo request")
+	}
+	if msg, ok := driver.pendingCmd().(WorkspaceUndoMsg); !ok || msg.Redo {
+		t.Fatalf("u emitted %#v, want an undo request", driver.pendingCmd())
+	}
+
+	press("ctrl+r")
+	if driver.pendingCmd == nil {
+		t.Fatal("Ctrl+R emitted no workspace redo request")
+	}
+	if msg, ok := driver.pendingCmd().(WorkspaceUndoMsg); !ok || !msg.Redo {
+		t.Fatalf("Ctrl+R emitted %#v, want a redo request", driver.pendingCmd())
+	}
+}
+
+// TestCommentsSubStatesKeepUAsTypedText holds u inside every sub-state that owns
+// the key stream. The panel answers it only in browse, so a comment carrying the
+// letter can never reverse the transaction the user is in the middle of writing,
+// and neither the expanded reader nor the delete confirmation turns a stray
+// press into a ledger restore.
+func TestCommentsSubStatesKeepUAsTypedText(t *testing.T) {
+	driver, panel, press := mountCommentsPanel(t)
+	refuseLedger := func(state string) {
+		t.Helper()
 		if driver.pendingCmd == nil {
-			continue
+			return
 		}
 		if _, ok := driver.pendingCmd().(WorkspaceUndoMsg); ok {
-			t.Fatalf("Comments answered %q with a workspace ledger request", key)
+			t.Fatalf("u reached the workspace ledger while %s owned the key stream", state)
 		}
 	}
+
+	press("a")
+	if !panel.addMode {
+		t.Fatal("a did not enter add mode")
+	}
+	press("u")
+	refuseLedger("the add composer")
+	if got := panel.textInput.Value(); got != "u" {
+		t.Fatalf("add-mode input = %q, want %q", got, "u")
+	}
+	press("esc")
+	press("y")
+
+	press("e")
+	if !panel.editMode {
+		t.Fatal("e did not enter edit mode")
+	}
+	press("u")
+	refuseLedger("the edit composer")
+	if got := panel.editTextInput.Value(); !strings.HasSuffix(got, "u") {
+		t.Fatalf("edit-mode input = %q, want the typed u appended", got)
+	}
+	press("esc")
+	press("y")
+
+	press("enter")
+	if !panel.expandedView {
+		t.Fatal("Enter did not open the expanded comment")
+	}
+	press("u")
+	refuseLedger("the expanded comment")
+	press("esc")
+
+	press("space")
+	press("enter")
+	if !panel.confirm.IsActive() {
+		t.Fatal("the sheet's Delete row raised no confirmation")
+	}
+	press("u")
+	refuseLedger("the delete confirmation")
+}
+
+// TestCommentsPanelWorkspaceUndoRedoRefreshesAndNamesTheLedgerEntry walks the
+// promise the panel used to break. A comment mutation commits through
+// commitProject with an UndoAction and installs a live `u undo` toast, so the
+// panel that made it has to answer both ledger keys itself: the open list
+// rebuilds rather than keeping a reversed row on screen, and the status strip
+// names the transaction that moved rather than restoring in silence.
+func TestCommentsPanelWorkspaceUndoRedoRefreshesAndNamesTheLedgerEntry(t *testing.T) {
+	driver, press, typeText := mountLiveCommentsPanel(t)
+	comments := func() []string {
+		t.Helper()
+		panel := driver.App().activeCommentsPanel()
+		if panel == nil {
+			t.Fatal("the Comments panel left the route")
+		}
+		texts := make([]string, 0, len(panel.task.Comments))
+		for _, comment := range panel.task.Comments {
+			texts = append(texts, comment.Text)
+		}
+		return texts
+	}
+
+	const added = "checked the redirect handler"
+	before := len(comments())
+	press("a")
+	typeText(added)
+	press("ctrl+s")
+	driver.Wait(defaultWaitTimeout)
+	if got := comments(); len(got) != before+1 || got[len(got)-1] != added {
+		t.Fatalf("after the add the panel lists %v, want %q appended", got, added)
+	}
+	if !strings.Contains(driver.App().statusMessage, "u undo") {
+		t.Fatalf("the add left status %q, want the recovery toast that offers u", driver.App().statusMessage)
+	}
+
+	press("u")
+	driver.Wait(defaultWaitTimeout)
+	if driver.App().currentView() != ViewTaskComments {
+		t.Fatalf("u left the panel for %s", driver.App().currentView())
+	}
+	if got := comments(); len(got) != before || slices.Contains(got, added) {
+		t.Fatalf("after u the panel lists %v, want the added comment gone", got)
+	}
+	if got := driver.App().statusMessage; !strings.Contains(got, "Undid: Add Comment") {
+		t.Fatalf("u left status %q, want it to name the restored transaction", got)
+	}
+
+	press("ctrl+r")
+	driver.Wait(defaultWaitTimeout)
+	if driver.App().currentView() != ViewTaskComments {
+		t.Fatalf("Ctrl+R left the panel for %s", driver.App().currentView())
+	}
+	if got := comments(); len(got) != before+1 || !slices.Contains(got, added) {
+		t.Fatalf("after Ctrl+R the panel lists %v, want the comment back", got)
+	}
+	if got := driver.App().statusMessage; !strings.Contains(got, "Redo: Add Comment") {
+		t.Fatalf("Ctrl+R left status %q, want it to name the replayed transaction", got)
+	}
+
+	if !strings.Contains(driver.Render(), added) {
+		t.Fatal("the replayed comment is absent from the rendered list")
+	}
+}
+
+// mountLiveCommentsPanel opens the panel the way a user does, over a workspace
+// whose commits reach the durable ledger. mountCommentsPanel's task is built in
+// memory beside the fixture, so a mutation there records nothing to undo.
+func mountLiveCommentsPanel(t *testing.T) (*UITestDriver, func(string), func(string)) {
+	t.Helper()
+	driver, workspace, err := NewFixtureDriver(FixtureRich, 100, 30)
+	if err != nil {
+		t.Fatalf("NewFixtureDriver: %v", err)
+	}
+	t.Cleanup(func() { _ = workspace.Cleanup() })
+
+	press := func(key string) {
+		t.Helper()
+		if err := driver.SendKey(key); err != nil {
+			t.Fatalf("SendKey(%q): %v", key, err)
+		}
+		driver.drain()
+	}
+	typeText := func(text string) {
+		t.Helper()
+		for _, r := range text {
+			driver.dispatch(tea.KeyPressMsg{Code: r, Text: string(r)})
+			driver.drain()
+		}
+	}
+
+	press("j")
+	press("j")
+	press("space")
+	typeText("comments")
+	press("enter")
+	if driver.App().activeCommentsPanel() == nil {
+		t.Fatalf("the task action sheet did not open the Comments panel; view = %s", driver.App().currentView())
+	}
+	return driver, press, typeText
 }
 
 // TestCommentsSpaceSheetReachesDelete walks the whole new path for Delete, which

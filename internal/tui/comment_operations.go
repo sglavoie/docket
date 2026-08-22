@@ -27,10 +27,14 @@ const (
 // Space sheet instead, so removing a comment costs a deliberate menu row rather
 // than one press of a key the Outliner retired.
 //
-// The cursor keys, help, and Esc resolve to the core operations because they are
-// the same acts everywhere. Those descriptors answer only to the Outliner, so
-// they document the panel's grammar without dispatching here: the panel moves its
-// own cursor, raises its own help, and closes itself.
+// The cursor keys, help, Esc, and the workspace ledger's undo and redo resolve
+// to the core operations because they are the same acts everywhere. Those
+// descriptors answer only to the Outliner, so they document the panel's grammar
+// without dispatching here: the panel moves its own cursor, raises its own help,
+// closes itself, and hands u and Ctrl+R to the shell's one ledger. Adding,
+// editing, and removing a comment are ledger transactions that already install a
+// `u undo` recovery toast, so undo has something to reverse from inside the
+// panel that made them rather than a promise only the Outliner could keep.
 //
 // No binding carries footer metadata. The panel's footer has to narrow with the
 // add, edit, expanded, and confirmation sub-states, which only the gated keymap
@@ -47,6 +51,8 @@ func CommentsInputStrategy() InputStrategy {
 			{OperationID: operationCommentCopy, Keys: []string{"y"}, DisplayKey: "y"},
 			{OperationID: operationCommentCopyAll, Keys: []string{"Y"}, DisplayKey: "Y"},
 			{OperationID: operationCommentEditExternal, Keys: []string{"E"}, DisplayKey: "E"},
+			{OperationID: operationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},
+			{OperationID: operationCoreRedo, Keys: []string{"ctrl+r"}, DisplayKey: "Ctrl+R"},
 			{OperationID: operationCoreCursorDown, Keys: []string{"j", "down"}, DisplayKey: "j/↓"},
 			{OperationID: operationCoreCursorUp, Keys: []string{"k", "up"}, DisplayKey: "k/↑"},
 			{OperationID: operationCoreCursorTop, Keys: []string{"home"}, Sequence: []string{"g", "g"}, DisplayKey: "gg/Home", HintLabel: "top"},
