@@ -76,20 +76,34 @@ workspace-ledger entry is that exact transaction. A task relocation adds
 `Ctrl+O origin` only after its origin was recorded; `Ctrl+I` returns to the
 relocated task.
 
-Every tag carries a color, and it is the same color in every place a tag is
-rendered as itself: the chips on a task row, the `Tags:` line in Peek, and the
-tag rows inside `#`, `f#`, and `F#`. Nothing needs configuring — a tag earns its
-color from its own name the first time you type it and keeps it for good, and
-`T` re-resolves the whole set for the new theme so a tag stays recognizably
-itself in dark and light.
+Every tag carries a color, and it is the same color everywhere a tag is rendered
+as itself: the chips on a task row, the `Tags:` line in Peek, and every row of
+the tag list the composer's expanded detail opens. Nothing needs configuring — a
+tag earns its color from its own name the first time you type it and keeps it
+for good, and `T` re-resolves the whole set for the new theme so a tag stays
+recognizably itself in dark and light.
 
-Read that color as a mnemonic, not a legend. It tells you `#billing` is reliably
-that one color; it never tells you what that color means. Six chip colors cover
-an unlimited tag vocabulary, so two unrelated tags will sometimes share one, and
-nothing in `tt` ever decides anything from a chip color. The colors that do
-carry meaning stay louder than the chips: a `bug`, `epic`, `story`, `feature`,
-or `idea` tag colors the whole title, `parked` wears the warning badge, and a
-`review` row wears its lane's purple.
+A row inside `#`, `f#`, or `F#` is an offer rather than a label, so it shows you
+the color it is about to paint. Most of those rows paint nothing else and simply
+wear their own chip: the descriptive tag rows, and the tag rows that `CONTEXTS`
+collects because the same value is also in use as a context. A tag that does
+something louder shows that instead — a row under `SEMANTIC` wears the title
+color it applies, `review` under `WORKFLOW` wears its lane's purple, and a
+`parked` project row wears the warning badge it hangs on the project. So the
+same tag can read as one color in a picker and another as a chip; when they
+disagree, the picker is naming the effect. Two rows stay plain on purpose: the
+`##name` radio rows in `#`, which set a field rather than name a tag, and `F#`'s
+`Untagged` row, which names the projects carrying no tag at all. A Select
+Project row is the one place a tag is named without its color, because its tags
+share the one secondary line that carries the counts beside them.
+
+Read a chip color as a mnemonic, not a legend. It tells you `#billing` is
+reliably that one color; it never tells you what that color means. Six chip
+colors cover an unlimited tag vocabulary, so two unrelated tags will sometimes
+share one, and nothing in `tt` ever decides anything from a chip color. The
+colors that do carry meaning stay louder than the chips: a `bug`, `epic`,
+`story`, `feature`, or `idea` tag colors the whole title, and a chip never
+overrides the title beside it.
 
 A row shows at most two chips, and it chooses them instead of showing the first
 two you typed: descriptive tags come first in alphabetical order, then the

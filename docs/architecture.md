@@ -1391,21 +1391,17 @@ explainer use the complete `Summary`.
 
 `tagChipStyle` (`internal/tui/styles_helpers.go`) is the single tag color
 authority, and it generalizes that "one lookup, so the surface previews the
-effect" rule to every tag rather than the five semantic ones. Every rendered tag
-resolves through it — the task row chips, the Peek `Tags:` line, the descriptive
-and context rows of `#`, the minted row an inline add mode produces, and the
-facet rows of `f#` and `F#` — so one tag is one color everywhere with no
-configuration. It hashes `models.NormalizeTag(tag)` onto a slot of
-`tagChipColors`, which `rebuildTagChipColors` re-resolves from
-`config.DefaultTagChipRamp(variant)` on every `ApplyTheme`. The slot index, not
-a resolved hex, is therefore the durable unit of tag identity: `T` re-colors
-every chip and slot `i` stays the same color family in both themes, so toggling
-never reshuffles which tag wears which hue. The ramp is the explicit tier below
-the semantic titles — six slots at ≤65% saturation, gated in
-`internal/config/theme_defaults_test.go` for perceptual distance from each
-other, from the nine title colors, and from both alert row backgrounds — which
-keeps a chip subordinate to the title beside it by construction rather than by
-convention.
+effect" rule to every tag rather than the five semantic ones. It hashes
+`models.NormalizeTag(tag)` onto a slot of `tagChipColors`, which
+`rebuildTagChipColors` re-resolves from `config.DefaultTagChipRamp(variant)` on
+every `ApplyTheme`. The slot index, not a resolved hex, is therefore the durable
+unit of tag identity: `T` re-colors every chip and slot `i` stays the same color
+family in both themes, so toggling never reshuffles which tag wears which hue.
+The ramp is the explicit tier below the semantic titles — six slots at ≤65%
+saturation, gated in `internal/config/theme_defaults_test.go` for perceptual
+distance from each other, from the nine title colors, and from both alert row
+backgrounds — which keeps a chip subordinate to the title beside it by
+construction rather than by convention.
 
 The ramp is a mnemonic, not a legend. A slot promises "this tag is reliably that
 color", never "this color means that kind of tag": six slots over an unbounded
@@ -1413,11 +1409,29 @@ vocabulary collide by design, and two unrelated tags sharing one hue is expected
 rather than a defect. Nothing reads a chip color back, so no behavior can depend
 on one. Do not engineer that ambiguity away by adding meaning to a slot.
 
-A colored chip and a colored row are one rule seen twice: a row wears the color
-of the strongest thing its tag does, and its chip color only when it changes no
-other color. So a `WORKFLOW` row takes the lane's `PurpleStyle`, a `SEMANTIC`
-row `semanticTaskTitleStyle`, and a behavioral project row its badge role, while
-a descriptive row falls back to `tagChipStyle`.
+Which surfaces resolve through it splits in two. A surface that renders a tag
+*as itself* takes the chip: the task row chips, the Peek `Tags:` line, and every
+row of the retained tag selector, whose `TagInfo` payload answers
+`ListSurfacePrimaryStyle` (`internal/tui/list_surface_adapters.go`) so the
+initial adaptation and each `ReplaceItems` land one color without either call
+site knowing. A picker row is an offer rather than a label, so it previews the
+color it is about to paint, which makes a colored chip and a colored row one
+rule seen twice: a row wears the color of the strongest thing its tag does, and
+its chip color only when it changes no other color. So a `WORKFLOW` row takes
+the lane's `PurpleStyle`, a `SEMANTIC` row `semanticTaskTitleStyle`, and a
+behavioral project row its badge role, while the descriptive rows of both `#`
+editors and of `f#`, the tag rows the task pickers' `CONTEXTS` section collects
+by context usage, the minted row an inline add mode produces, and the facet rows
+of `F#` fall back to `tagChipStyle`. One tag can therefore wear two colors
+across surfaces — `#bug` is title red under `SEMANTIC` and its own slot color in
+Peek — so a document or test expecting a semantic picker row and its chip to
+agree is naming a contract that does not exist. Two rows stay plain
+deliberately: the `##name` context radio rows, which write a field rather than
+name a tag and whose "No context" clear row would read as disabled in
+`MutedStyle`, and `F#`'s `Untagged` sentinel row, which names the empty tag set
+rather than a tag. The Project Hub is outside the split entirely:
+`projectTagChips` joins names into `ListItem.SecondaryText`, which has no
+per-tag style hook, so those tags render in the row's one secondary color.
 
 `orderedTaskTags` (`internal/tui/shared_render_helpers.go`) is the matching
 order authority over both chip surfaces: every non-semantic tag alphabetically,
