@@ -36,7 +36,7 @@ type surfaceOperationGate struct {
 // grammar governs.
 func surfaceOperationGates() []surfaceOperationGate {
 	return []surfaceOperationGate{
-		{strategy: SimplifiedInputStrategy(), validate: validateTaskOperationOnePath},
+		{strategy: SimplifiedInputStrategy(), validate: validateOutlinerOperationOnePath},
 		{strategy: ProjectHubInputStrategy(), validate: validateProjectOperationOnePath},
 		{strategy: NotesInputStrategy(), validate: validateNotesOperationOnePath},
 		{strategy: AttachmentsInputStrategy(), validate: validateAttachmentOperationOnePath},

@@ -107,6 +107,9 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 	if err := m.registerProjectOperations(); err != nil {
 		t.Fatalf("register project operations: %v", err)
 	}
+	if err := m.registerProjectActionSheetOperation(); err != nil {
+		t.Fatalf("register project action sheet operation: %v", err)
+	}
 	if err := m.registerChecklistRowOperations(); err != nil {
 		t.Fatalf("register checklist row operations: %v", err)
 	}

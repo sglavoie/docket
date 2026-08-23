@@ -152,6 +152,11 @@ type EntityContext struct {
 	// header, which names neither a task nor a project. Nothing else
 	// distinguishes it from an empty entity in a single-project scope.
 	HasSectionHeaderCursor bool
+	// HasProjectHeaderCursor reports that the cursor rests on a project group
+	// header. ProjectID alone cannot say so: a single-project scope fills it from
+	// the scope on every row, section headers included, so an operation that acts
+	// on the project as a whole reads this flag instead.
+	HasProjectHeaderCursor bool
 }
 
 // CommandContext is the complete input to capability-based command

@@ -734,9 +734,15 @@ func (l *WorkspaceLedger) restore(scope LedgerScope, redo bool) (LedgerEntry, st
 		// directory itself did not transition. Creating a per-file lock inside an
 		// attachment directory would add a non-user sibling and alter cleanup.
 		directoryLockPaths = append(directoryLockPaths, attachmentDirectoryPaths(entry)...)
+		directoryLockPaths = outermostDirectoryPaths(directoryLockPaths)
+		// Every image the kept directories cover — files and nested directories
+		// alike — yields to the one lock above it. A nested lock would sit inside a
+		// directory this restore expects to find absent, and
+		// createArtifactLockDirectories would recreate it before preflight could
+		// read the disk.
 		artifacts := make([]ArtifactChange, 0, len(entry.Artifacts)+len(directoryLockPaths))
 		for _, image := range entry.Artifacts {
-			if image.imageKind() == ArtifactImageKindFile && pathWithinAnyDirectory(image.Path, directoryLockPaths) {
+			if pathWithinAnyDirectory(image.Path, directoryLockPaths) {
 				continue
 			}
 			artifacts = append(artifacts, ArtifactChange{Path: image.Path})
@@ -777,6 +783,37 @@ func pathWithinAnyDirectory(path string, dirs []string) bool {
 		}
 	}
 	return false
+}
+
+// outermostDirectoryPaths drops any directory contained in another one from the
+// same entry, leaving exactly the set of locks that covers every image without
+// placing one inside another. Whole-tree deletes — a project with its notes and
+// attachments — are what make the difference visible: there the enclosing
+// directory is itself leaving, so a lock beside `notes` would recreate the
+// project directory the restore expects to find absent.
+func outermostDirectoryPaths(dirs []string) []string {
+	outermost := make([]string, 0, len(dirs))
+	kept := make(map[string]bool, len(dirs))
+	for _, dir := range dirs {
+		if kept[dir] {
+			continue
+		}
+		nested := false
+		for _, other := range dirs {
+			if other == dir {
+				continue
+			}
+			if pathWithinArtifactRoot(other, dir) {
+				nested = true
+				break
+			}
+		}
+		if !nested {
+			kept[dir] = true
+			outermost = append(outermost, dir)
+		}
+	}
+	return outermost
 }
 
 // prepareRestoreTransaction validates the complete selected entry before it

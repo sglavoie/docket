@@ -343,6 +343,12 @@ do not repeat in this menu. Delete always asks for confirmation. The checklist
 is absent because it is edited on its own rows, and a second route to the same
 mutations is the shape this menu exists to avoid.
 
+The same key on a project group header opens a different sheet, because the row
+names a project rather than a task. Project Actions holds Edit project and
+Toggle project pin, then Archive project and Delete project under Danger.
+Opening the project and opening its notes are absent for the reason above:
+`Enter` and `Ctrl+N` already reach both from that row.
+
 The Attachments panel that `Space` opens carries the same split. `Enter` opens
 the attachment under the cursor, `a` adds one, `E` opens it in the external
 editor, `y` and `Y` copy its path and its `path:line` form, and `J`/`K` reorder
@@ -817,6 +823,19 @@ under the cursor, `*` toggles its pin, `#` sets its tags, and `Ctrl+N` opens its
 Notes. `Ctrl+T` cycles between every project, only those holding tasks, and only
 those holding none. The catalog ID, not a display name, protects the system
 Unfiled project.
+
+Those acts also reach a project from the Outliner itself: `Space` on a project
+group header opens Project Actions, so editing, pinning, archiving, or deleting
+a project no longer needs a trip through Select Project. Archiving is one-way
+from there — an Outliner header is only ever drawn for an active project — so
+Unarchive stays here, where an archived project is visible.
+
+Deleting a project is the one act with no second chance, and it asks first,
+naming the cascade by name: the project's tasks, its notes, and its attachments
+all go. The removal and the catalog and planning rewrites beside it are one
+transaction, so `u` brings every byte back. The system Unfiled project cannot be
+deleted, and an archived project still can be — archiving is a step toward
+removal, never a state that traps a project in the catalog.
 
 `/` opens project search and `Esc` leaves the query for the matches it found.
 `v` selects the project under the cursor and `Ctrl+A` selects every project

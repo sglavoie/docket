@@ -20,6 +20,7 @@ const (
 
 	operationProjectOpen    OperationID = "tui.project.open"
 	operationProjectSetTags OperationID = "tui.project.set-tags"
+	operationProjectDelete  OperationID = "tui.project.delete"
 )
 
 // projectOperationDescriptors is the authoritative catalog of project-targeted
@@ -53,6 +54,7 @@ func projectOperationDescriptors() []OperationDescriptor {
 		descriptor(operationScopePinProject, "Toggle project pin", "Pin or unpin the project", OperationCategoryProject, OperationRiskMutation, "pin project", "unpin project"),
 		descriptor(operationScopeArchiveProject, "Archive project", "Archive the project", OperationCategoryProject, OperationRiskDestructive),
 		descriptor(operationScopeRestoreProject, "Unarchive project", "Return the project to active", OperationCategoryProject, OperationRiskMutation, "restore archived project"),
+		descriptor(operationProjectDelete, "Delete project", "Delete the project and everything it owns", OperationCategoryProject, OperationRiskDestructive, "remove project", "destroy project"),
 		descriptor(operationScopeOpenProjectNote, "Open project notes", "Open notes owned by this project", OperationCategoryNote, OperationRiskReadOnly),
 		withValueProvider(
 			descriptor(operationProjectSetTags, "Set project tags", "Edit the tags carried by this project", OperationCategoryProject, OperationRiskMutation, "project tags", "park project", "unpark project"),
@@ -107,7 +109,9 @@ func (m *AppModel) projectOperationApplicability(
 // Archiving a project delegates confirmation because the shell's project
 // archive prompt is also where the sandbox and system Inbox restrictions live;
 // archiving completed tasks had no prompt at all and therefore uses the
-// executor's canonical destructive confirmation.
+// executor's canonical destructive confirmation. Deleting delegates for the
+// same reason and one more: its prompt names the cascade the executor's generic
+// sentence cannot count.
 func (m *AppModel) registerProjectOperations() error {
 	if m.operationRegistry == nil || m.operationExecutor == nil {
 		return fmt.Errorf("operation registry and executor are required")
@@ -118,7 +122,8 @@ func (m *AppModel) registerProjectOperations() error {
 			SingleHandler:         m.executeProjectOperation,
 			DelegateValueProvider: true,
 			DelegateTransaction:   true,
-			DelegateConfirmation:  descriptor.ID == operationScopeArchiveProject,
+			DelegateConfirmation: descriptor.ID == operationScopeArchiveProject ||
+				descriptor.ID == operationProjectDelete,
 		}); err != nil {
 			return err
 		}
@@ -191,6 +196,10 @@ var projectOperationRequirements = map[OperationID]projectOperationRequirement{
 	operationScopeRestoreProject:  {requireArchived: true},
 	operationScopeOpenProjectNote: {requireActive: true},
 	operationProjectSetTags:       {requireActive: true},
+	// Deleting carries no lifecycle requirement on purpose: an archived project
+	// stays deletable, so archiving is a step toward removal rather than a state
+	// that traps the project in the catalog.
+	operationProjectDelete: {rejectSystemUnfiled: true},
 }
 
 // projectOperationUnavailable checks the freshly reloaded project rather than
@@ -239,6 +248,8 @@ func (m *AppModel) projectOperationMessage(id OperationID, project *models.Proje
 		return ProjectArchiveRequestMsg{Project: project, Archive: true}
 	case operationScopeRestoreProject:
 		return ProjectArchiveRequestMsg{Project: project, Archive: false}
+	case operationProjectDelete:
+		return ProjectDeleteRequestMsg{Project: project}
 	case operationScopeOpenProjectNote:
 		return ShowNotesManagerMsg{Scope: ProjectNotesScope(project.ID)}
 	default:

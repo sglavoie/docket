@@ -2,10 +2,12 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -42,6 +44,18 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 
 	case ProjectArchivedMsg:
 		return true, m.commitProjectArchive(msg.Project)
+
+	case ProjectDeleteRequestMsg:
+		if msg.Project != nil && m.runtime.IsSystemUnfiledProject(msg.Project.ID) {
+			return true, errorCmd("cannot delete the system Unfiled project")
+		}
+		return true, m.showProjectDeleteConfirm(msg.Project)
+
+	case projectDeleteConfirmedMsg:
+		return true, m.confirmProjectDelete()
+
+	case ProjectDeletedMsg:
+		return true, m.commitProjectDelete(msg.Project)
 
 	case ProjectPinRequestMsg:
 		if msg.Project == nil {
@@ -261,6 +275,163 @@ func (m *AppModel) commitProjectArchive(project *models.Project) tea.Cmd {
 		m.statusIsInfo = true
 		m.appendRecoveryFeedbackDetail("machine-state cleanup incomplete; retrying")
 	}
+	m.refreshProjectHubIfActive()
+	return tea.Batch(
+		m.requestCrossProjectOutlinerReload(),
+		m.refreshActiveNotesManager(),
+		feedbackCmd,
+	)
+}
+
+// showProjectDeleteConfirm raises the shell's own delete prompt. The project's
+// tasks are read here rather than at commit time because the count is what makes
+// the prompt honest, and the loaded copy is what the commit then reuses: a
+// refused or abandoned confirmation leaves the live project pointer untouched.
+func (m *AppModel) showProjectDeleteConfirm(project *models.Project) tea.Cmd {
+	if project == nil {
+		m.clearPendingProjectDelete()
+		return nil
+	}
+	if m.runtime.IsSystemUnfiledProject(project.ID) {
+		m.clearPendingProjectDelete()
+		return errorCmd("cannot delete the system Unfiled project")
+	}
+
+	loaded := *project
+	if loaded.Tasks == nil && m.persister != nil {
+		if err := m.persister.Load(&loaded); err != nil {
+			m.clearPendingProjectDelete()
+			return errorCmd("cannot delete project: %v", err)
+		}
+	}
+	m.pendingProjectDelete = &loaded
+
+	m.projectDeleteConfirm.ShowWithDetail(
+		projectDeleteConfirmAction,
+		fmt.Sprintf("Delete %s and everything it owns?", loaded.Name),
+		&ConfirmDetail{
+			CascadeNote: m.projectDeleteCascadeNote(&loaded),
+			UndoHint:    true,
+		},
+	)
+	return nil
+}
+
+// projectDeleteCascadeNote names what leaves the workspace with the project. A
+// population the shell could not read is omitted rather than reported as zero,
+// so the sentence never understates the delete.
+func (m *AppModel) projectDeleteCascadeNote(project *models.Project) string {
+	parts := []string{projectTaskCountPhrase(project)}
+	attachments := 0
+	for _, task := range project.Tasks {
+		if task != nil {
+			attachments += len(task.Attachments)
+		}
+	}
+	if m.appService != nil {
+		if notes, err := m.appService.Notes(project.ID); err == nil && len(notes) > 0 {
+			parts = append(parts, fmt.Sprintf("%d %s", len(notes), pluralize(len(notes), "note", "notes")))
+		}
+	}
+	if attachments > 0 {
+		parts = append(parts, fmt.Sprintf("%d %s", attachments, pluralize(attachments, "attachment", "attachments")))
+	}
+	return "Deletes " + joinWithAnd(parts) + ". This cannot be reopened, only undone."
+}
+
+// joinWithAnd renders a list as an English series so the cascade note reads as a
+// sentence rather than as comma-separated fields.
+func joinWithAnd(parts []string) string {
+	switch len(parts) {
+	case 0:
+		return ""
+	case 1:
+		return parts[0]
+	case 2:
+		return parts[0] + " and " + parts[1]
+	default:
+		return strings.Join(parts[:len(parts)-1], ", ") + ", and " + parts[len(parts)-1]
+	}
+}
+
+func (m *AppModel) clearPendingProjectDelete() {
+	m.pendingProjectDelete = nil
+	m.projectDeleteConfirm.Cancel()
+}
+
+func (m *AppModel) confirmProjectDelete() tea.Cmd {
+	project := m.pendingProjectDelete
+	m.clearPendingProjectDelete()
+
+	if project == nil {
+		return nil
+	}
+	if m.runtime.IsSystemUnfiledProject(project.ID) {
+		return errorCmd("cannot delete the system Unfiled project")
+	}
+	return func() tea.Msg {
+		return ProjectDeletedMsg{Project: project}
+	}
+}
+
+// commitProjectDelete removes the project's data directory and its catalog and
+// planning entries as one journaled transaction, so the workspace undo ledger
+// holds a single entry that restores the tasks, notes, and attachments together.
+// Nothing is published to a live cache until that commit returns.
+func (m *AppModel) commitProjectDelete(project *models.Project) tea.Cmd {
+	if project == nil {
+		return nil
+	}
+	if m.runtime == nil || m.appService == nil {
+		return errorCmd("cannot delete project: project storage is unavailable")
+	}
+	updated := *project
+	if updated.Tasks == nil {
+		if m.persister == nil {
+			return errorCmd("cannot delete project: project storage is unavailable")
+		}
+		if err := m.persister.Load(&updated); err != nil {
+			return errorCmd("cannot delete project: %v", err)
+		}
+	}
+
+	// The anchor reads the rows the delete is about to remove, so it runs before
+	// any cache the reload rebuilds from.
+	m.anchorOutlinerCursorAfterProjectPark(updated.ID)
+
+	domains := cloneRuntimeDomains(m.runtime)
+	if _, err := domains.RemoveProject(updated.ID, updated.Slug); err != nil {
+		m.err = err
+		return nil
+	}
+	artifacts, err := syncedDomainArtifacts(m.runtime, domains.Catalog, domains.Planning)
+	if err != nil {
+		m.err = err
+		return nil
+	}
+	transactionID, err := m.appService.DeleteProjectResult(app.DeleteProjectRequest{
+		Project:                &updated,
+		SystemUnfiledProjectID: m.runtime.Catalog().SystemUnfiledProjectID,
+		DataDir:                m.runtime.DataDir(),
+		Config:                 artifacts,
+	})
+	if err != nil {
+		m.err = err
+		return nil
+	}
+	if err := m.runtime.RefreshAfterCommit(); err != nil {
+		m.err = err
+		return nil
+	}
+	m.syncProjectCache()
+
+	if m.currentProject != nil && m.currentProject.ID == updated.ID {
+		m.currentProject = nil
+	}
+	m.rebuildPlanningFromRuntime()
+	m.pruneDeletedTaskRefs()
+	m.refreshWorkspacePulseAt(time.Now())
+	feedbackCmd := m.setRecoveryFeedback(fmt.Sprintf("Deleted %s", updated.Name), transactionID, false)
 	m.refreshProjectHubIfActive()
 	return tea.Batch(
 		m.requestCrossProjectOutlinerReload(),

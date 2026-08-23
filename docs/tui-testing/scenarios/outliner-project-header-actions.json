@@ -1,0 +1,40 @@
+{
+  "name": "outliner-project-header-actions",
+  "fixture": "multi-project",
+  "size": "100x30",
+  "actions": [
+    { "type": "key", "label": "step from the section header onto Client Alpha's project header", "key": "j" },
+    { "type": "assert", "label": "the header footer offers the menu that reaches every project act", "assert": "contains", "value": "Space actions" },
+    { "type": "assert", "assert": "contains", "value": "# project tags" },
+
+    { "type": "key", "label": "Space on a project header opens the project sheet", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Project Actions: Client Alpha" },
+    { "type": "assert", "label": "reversible edits sit above the pair that ends the project's presence", "assert": "contains", "value": "PROJECT" },
+    { "type": "assert", "assert": "contains", "value": "Edit project" },
+    { "type": "assert", "assert": "contains", "value": "Toggle project pin" },
+    { "type": "assert", "assert": "contains", "value": "DANGER" },
+    { "type": "assert", "assert": "contains", "value": "Archive project  confirmation required" },
+    { "type": "assert", "assert": "contains", "value": "Delete project  confirmation required" },
+    { "type": "assert", "label": "Enter and Ctrl+N already reach these from the same row, so neither repeats as a menu row", "assert": "not_contains", "value": "Open project" },
+    { "type": "assert", "label": "an Outliner header is always an active project", "assert": "not_contains", "value": "Unarchive project" },
+    { "type": "assert", "label": "the task menu's rows never leak into the project sheet", "assert": "not_contains", "value": "Attachments" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "Esc closes the sheet without acting", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Project Actions" },
+    { "type": "assert", "assert": "contains", "value": "[client-alpha] (1)" },
+
+    { "type": "key", "label": "the same key one row down is the task menu, because the row names a task", "key": "j" },
+    { "type": "key", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Task Actions: Alpha migration kickoff" },
+    { "type": "assert", "assert": "not_contains", "value": "Delete project" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "resize", "label": "the sheet survives the narrowest supported terminal", "width": 60, "height": 20 },
+    { "type": "key", "key": "k" },
+    { "type": "key", "key": "space" },
+    { "type": "assert", "assert": "contains", "value": "Project Actions: Client Alpha" },
+    { "type": "assert", "assert": "contains", "value": "Delete project" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

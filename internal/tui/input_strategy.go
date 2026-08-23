@@ -246,7 +246,11 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationTaskNewChild, Keys: []string{"A"}, DisplayKey: "A", FooterRank: 21, FooterLabel: "child", SharedKey: true},
 			{OperationID: operationChecklistToggleItem, Keys: []string{"x"}, DisplayKey: "x", FooterRank: 13, FooterLabel: "tick", SharedKey: true},
 			{OperationID: operationChecklistStart, Keys: []string{"x"}, DisplayKey: "x", FooterRank: 13, FooterLabel: "checklist", SharedKey: true},
+			// Space is a three-way shared key: checklist row, project header, task
+			// row. Exactly one of the three applies at any cursor, so declaration
+			// order only decides which is asked first, never which one wins.
 			{OperationID: operationChecklistActions, Keys: []string{"space"}, DisplayKey: "Space", FooterRank: 5, FooterLabel: "actions", SharedKey: true},
+			{OperationID: operationProjectActions, Keys: []string{"space"}, DisplayKey: "Space", FooterRank: 5, FooterLabel: "actions", SharedKey: true},
 			{OperationID: operationCoreActions, Keys: []string{"space"}, DisplayKey: "Space", FooterRank: 5, FooterLabel: "actions", SharedKey: true},
 			{OperationID: operationCoreCursorDown, Keys: []string{"j", "down"}, DisplayKey: "j/↓"},
 			{OperationID: operationCoreCursorUp, Keys: []string{"k", "up"}, DisplayKey: "k/↑"},

@@ -111,8 +111,18 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 	}
 	// Direct-key core navigation, capture, and the sheet's own opener are not
 	// task actions; the metadata operations the input strategy binds directly
-	// leave the sheet rather than repeating their key as a row.
+	// leave the sheet rather than repeating their key as a row. The registered
+	// project operations are listed too: the one-path gate reads both manifests
+	// concatenated, so only the two sheets asking their own manifest keeps a
+	// project row out of the task menu.
 	for _, excluded := range []OperationID{
+		operationProjectActions,
+		operationProjectDelete,
+		operationScopeRenameProject,
+		operationScopePinProject,
+		operationScopeArchiveProject,
+		operationScopeRestoreProject,
+		operationProjectSetTags,
 		operationCoreActions,
 		operationCoreCapture,
 		operationCoreMultiSelect,

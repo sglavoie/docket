@@ -51,6 +51,7 @@ func (m *AppModel) operationCommandContext() CommandContext {
 	// This is the context the shell dispatches keys against, so the row kind has
 	// to be filled here too or Enter never reaches the zoom the footer offers.
 	ctx.Entity.HasSectionHeaderCursor = m.cursorNamesSectionHeader()
+	ctx.Entity.HasProjectHeaderCursor = header != nil
 
 	if selected, ok := m.activeView().(operationSelectionProvider); ok {
 		ctx.Selection.Tasks = selected.SelectedTaskIdentities()
@@ -117,6 +118,7 @@ func (m *OutlinerModel) operationCommandContext() CommandContext {
 	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
 	ctx.Capabilities.Add(CapabilitySimplifiedInput)
 	task, project := m.getTaskRef()
+	header := m.cursorProjectHeaderProject()
 	if checklist, onChecklistRow := m.cursorChecklistItem(); onChecklistRow {
 		ctx.Entity = checklistOperationEntity(checklist)
 	} else if task != nil && project != nil {
@@ -125,7 +127,7 @@ func (m *OutlinerModel) operationCommandContext() CommandContext {
 			TaskID:    task.ID,
 			Archived:  project.Archived,
 		}
-	} else if header := m.cursorProjectHeaderProject(); header != nil {
+	} else if header != nil {
 		ctx.Entity.ProjectID = header.ID
 		ctx.Entity.Archived = header.Archived
 	} else if m.project != nil {
@@ -136,6 +138,7 @@ func (m *OutlinerModel) operationCommandContext() CommandContext {
 	// section header in a single-project Outliner still needs that project's
 	// Archived guard, which only the fallback fills.
 	ctx.Entity.HasSectionHeaderCursor = m.cursorNamesSectionHeader()
+	ctx.Entity.HasProjectHeaderCursor = header != nil
 	ctx.Selection.Tasks = m.SelectedTaskIdentities()
 	ctx.Selection.Visual = m.IsMultiSelectActive()
 	counts := m.selectionCounts()

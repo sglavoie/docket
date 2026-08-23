@@ -59,14 +59,21 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"### One operation grammar",
 		"Five surfaces hold entities, so five `InputStrategy` values exist, and `surfaceOperationGates()` is " +
 			"the whole inventory: there is no sixth grammar and no unlisted one",
-		"| `SimplifiedInputStrategy` | `taskOperationManifest` + `taskDirectOperationManifest` | " +
-			"Comments, Attachments, Delete |",
+		"| `SimplifiedInputStrategy` | `taskOperationManifest` + `taskDirectOperationManifest` + " +
+			"`outlinerProjectOperationManifest` | Comments, Attachments, Delete on a task row; " +
+			"Edit, pin, Archive, Delete on a project header |",
 		"| `ProjectHubInputStrategy` | `projectOperationManifest` | Archive or Unarchive, bulk tags |",
 		"| `NotesInputStrategy` | `notesOperationManifest` | Delete |",
 		"| `AttachmentsInputStrategy` | `attachmentOperationManifest` | three origin acts, Unlink, Delete |",
 		"| `CommentsInputStrategy` | `commentOperationManifest` | Delete |",
 		"`DirectOnly` is the field that splits it",
 		"What the surface is for stays direct; what is destructive or rare goes behind `Space`",
+		"The Outliner is the one surface whose strategy reads more than one manifest, because its rows " +
+			"name more than one kind of entity",
+		"`validateOutlinerOperationOnePath` therefore reads the manifests concatenated, and each sheet " +
+			"projects only its own",
+		"an Outliner project header is drawn from `TaskWorkspaceProjects()`, which is non-archived by " +
+			"definition, so applicability could never admit the row",
 		"Footers do not follow the strategy everywhere, and the difference is deliberate",
 		"Only the gated keymap beside those strategies can say that, so it is their single footer source " +
 			"and their bindings carry no ranks or labels at all",
@@ -149,6 +156,12 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"planning.json",
 		"## Transactions and recovery",
 		"at most 50 transactions",
+		"A delete op is `os.Remove`: one entry, and never a non-empty directory",
+		"`PlanProjectDelete` therefore enumerates the project tree and emits one op per path in reverse " +
+			"`WalkDir` order, which is post-order",
+		"a project can never be absent from disk while still named in either file",
+		"restore holds one advisory lock per outermost directory rather than one per image, or creating " +
+			"the nested lock's parent would recreate the directory preflight is about to find absent",
 		"## Concurrent edits and conflicts",
 		"## Snapshot-first schema migration",
 		"pre-simplification-v5-<UTC>.tar.gz",
@@ -213,7 +226,12 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read CLAUDE.md: %v", err)
 	}
-	const budget = 16200
+	// The budget polices prose, not rule count: it is what forces mechanism into
+	// docs/architecture.md and behavior into README.md. It moves only when a
+	// feature adds invariants that cannot live anywhere else — the Outliner
+	// project sheet, the enumerated project delete, and the restore lock scope
+	// are the three that raised it from 16200 — and never to absorb explanation.
+	const budget = 16800
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -236,6 +254,13 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 			"enforced by `validateOperationOnePath` over that surface's manifest",
 		"The task-row `Space` menu is exactly Comments, Attachments, Delete; the bulk menu is Delete only; " +
 			"Delete has no direct key and confirms first",
+		"The Outliner project-header sheet is Edit, pin, Archive, Delete, and never Unarchive: " +
+			"that header is drawn from the active population",
+		"`#` and `Space` are the shared keys, the cursor deciding",
+		"`OpDelete` is `os.Remove`, so a project delete enumerates its tree post-order and commits it " +
+			"with the catalog and planning rewrites",
+		"It confirms, names the cascade, and refuses the system Unfiled project",
+		"Restore locks outermost directories only; a nested lock recreates the directory the entry removed",
 		"One key is one act on every entity surface",
 		"| `Space` | menu: destructive and rare operations only |",
 		"Transient input overlays are exempt: composer, project editor/creator, text editor, " +

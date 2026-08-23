@@ -176,6 +176,12 @@ type AppModel struct {
 	pendingProjectArchiveArchive bool
 	projectArchiveConfirm        ConfirmDialog
 
+	// Pending project delete confirmation. Deleting is the one project act that
+	// removes files, so it keeps its own dialog rather than sharing the archive
+	// one: the prompt counts the cascade the archive sentence never names.
+	pendingProjectDelete *models.Project
+	projectDeleteConfirm ConfirmDialog
+
 	// Pending project park confirmation. Only a tag edit that newly adds the
 	// reserved parked tag prompts; every other project tag applies straight away.
 	pendingProjectTags       *models.Project

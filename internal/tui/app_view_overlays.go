@@ -71,6 +71,9 @@ func (m *AppModel) renderConfirmDialogOverlay() string {
 	if m.projectArchiveConfirm.IsActive() {
 		return m.projectArchiveConfirm.RenderOverlay(m.width)
 	}
+	if m.projectDeleteConfirm.IsActive() {
+		return m.projectDeleteConfirm.RenderOverlay(m.width)
+	}
 	if m.projectParkConfirm.IsActive() {
 		return m.projectParkConfirm.RenderOverlay(m.width)
 	}

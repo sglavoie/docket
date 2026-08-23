@@ -152,3 +152,45 @@ func (s *Service) RenameProjectResult(req RenameProjectRequest) (string, error) 
 	req.Project.Path = plan.NewPath
 	return transactionID, nil
 }
+
+// DeleteProjectRequest asks to delete a project as one atomic transaction.
+// Project is the project being removed, Config the encoded catalog and planning
+// artifacts that no longer reference it. The system Unfiled project is never
+// deletable, so SystemUnfiledProjectID is the guard the application layer
+// checks rather than trusting the caller's list.
+type DeleteProjectRequest struct {
+	Project                *models.Project
+	SystemUnfiledProjectID string
+	DataDir                string
+	Config                 []storage.ArtifactChange
+}
+
+// DeleteProjectResult removes a project's data directory and the catalog and
+// planning entries naming it as ONE atomic journaled transaction. Either the
+// whole delete lands or none of it does, and the workspace undo ledger captures
+// every removed file's bytes first so `u` restores the project entire. It
+// returns the transaction ID that correlates the resulting user feedback with
+// the newest ledger entry.
+func (s *Service) DeleteProjectResult(req DeleteProjectRequest) (string, error) {
+	if req.Project == nil {
+		return "", invalidInput("project", "project is required")
+	}
+	if req.SystemUnfiledProjectID != "" && req.Project.ID == req.SystemUnfiledProjectID {
+		return "", fmt.Errorf(
+			"%w: project %q cannot be deleted",
+			ErrProtectedSystemUnfiled,
+			req.Project.ID,
+		)
+	}
+	ops, err := storage.PlanProjectDelete(req.DataDir, req.Project.Slug)
+	if err != nil {
+		return "", err
+	}
+	return s.CommitProjectMutationResult(storage.OpsCommitRequest{
+		Ops:         ops,
+		Artifacts:   req.Config,
+		ProjectIDs:  []string{req.Project.ID},
+		UndoAction:  "Delete Project",
+		UndoContext: req.Project.Name,
+	})
+}

@@ -32,6 +32,9 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		if handled, cmd := m.handleProjectArchiveConfirmKey(key); handled {
 			return true, cmd
 		}
+		if handled, cmd := m.handleProjectDeleteConfirmKey(key); handled {
+			return true, cmd
+		}
 		if handled, cmd := m.handleProjectParkConfirmKey(key); handled {
 			return true, cmd
 		}
@@ -53,6 +56,10 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 	}
 
 	if handled, cmd := m.handleProjectArchiveConfirmKey(key); handled {
+		return true, cmd
+	}
+
+	if handled, cmd := m.handleProjectDeleteConfirmKey(key); handled {
 		return true, cmd
 	}
 
@@ -114,6 +121,25 @@ func (m *AppModel) handleProjectArchiveConfirmKey(key string) (bool, tea.Cmd) {
 	switch key {
 	case "n", "N", "esc":
 		m.clearPendingProjectArchive()
+	}
+	return true, nil
+}
+
+func (m *AppModel) handleProjectDeleteConfirmKey(key string) (bool, tea.Cmd) {
+	if !m.projectDeleteConfirm.IsActive() {
+		return false, nil
+	}
+
+	confirmed, handled := m.projectDeleteConfirm.HandleKey(key)
+	if !handled {
+		return false, nil
+	}
+	if confirmed {
+		return true, func() tea.Msg { return projectDeleteConfirmedMsg{} }
+	}
+	switch key {
+	case "n", "N", "esc":
+		m.clearPendingProjectDelete()
 	}
 	return true, nil
 }

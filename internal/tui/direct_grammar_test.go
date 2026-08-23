@@ -258,15 +258,16 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 
 	// A shared key is one the cursor disambiguates, and each meaning keeps its own
 	// descriptor so help and the footer can name both honestly. # asks whether the
-	// cursor names a task or a project; the rest ask whether it names a checklist
-	// item, and the checklist meaning is listed first because resolution takes the
-	// first applicable binding.
+	// cursor names a task or a project; Space asks the same question with a third
+	// answer, the checklist row; the rest ask whether it names a checklist item,
+	// and the checklist meaning is listed first because resolution takes the first
+	// applicable binding.
 	shared := map[string][]OperationID{
 		"#":      {operationTaskSetTags, operationProjectSetTags},
 		"e":      {operationChecklistEditItem, operationCoreEdit},
 		"A":      {operationChecklistAddItem, operationTaskNewChild},
 		"x":      {operationChecklistToggleItem, operationChecklistStart},
-		"space":  {operationChecklistActions, operationCoreActions},
+		"space":  {operationChecklistActions, operationProjectActions, operationCoreActions},
 		"J":      {operationChecklistMoveDown, operationCoreReorderDown},
 		"K":      {operationChecklistMoveUp, operationCoreReorderUp},
 		"ctrl+j": {operationChecklistMoveBottom, operationCoreReorderBottom},
@@ -621,7 +622,7 @@ func TestDirectTaskGrammarRemainsDocumentedWithoutACursorTarget(t *testing.T) {
 func TestTaskOperationsCannotAppearInBothDirectGrammarAndMenu(t *testing.T) {
 	registry := registeredSimplifiedOperationRegistry(t)
 	strategy := SimplifiedInputStrategy()
-	if err := validateTaskOperationOnePath(strategy); err != nil {
+	if err := validateOutlinerOperationOnePath(strategy); err != nil {
 		t.Fatalf("production grammar: %v", err)
 	}
 
@@ -652,7 +653,7 @@ func TestTaskOperationsCannotAppearInBothDirectGrammarAndMenu(t *testing.T) {
 			OperationID: operationTaskComments,
 			Keys:        []string{"Z"},
 		})
-		err := validateTaskOperationOnePath(candidate)
+		err := validateOutlinerOperationOnePath(candidate)
 		if err == nil || !strings.Contains(err.Error(), "bound directly and listed") {
 			t.Fatalf("error = %v, want duplicate-placement rejection", err)
 		}
@@ -663,7 +664,7 @@ func TestTaskOperationsCannotAppearInBothDirectGrammarAndMenu(t *testing.T) {
 		candidate.Bindings = slices.DeleteFunc(candidate.Bindings, func(binding OperationKeyBinding) bool {
 			return binding.OperationID == operationTaskSetDueDate
 		})
-		err := validateTaskOperationOnePath(candidate)
+		err := validateOutlinerOperationOnePath(candidate)
 		if err == nil || !strings.Contains(err.Error(), "direct-only but has no direct binding") {
 			t.Fatalf("error = %v, want unreachable-direct rejection", err)
 		}
@@ -688,7 +689,7 @@ func TestEverySurfaceManifestSatisfiesTheOnePathRule(t *testing.T) {
 		strategy InputStrategy
 		manifest []operationManifestEntry
 	}{
-		{"task", SimplifiedInputStrategy(), taskOperationDescriptorManifest()},
+		{"outliner", SimplifiedInputStrategy(), outlinerOperationDescriptorManifest()},
 		{"project hub", ProjectHubInputStrategy(), projectOperationManifest()},
 		{"notes", NotesInputStrategy(), notesOperationManifest()},
 		{"attachments", AttachmentsInputStrategy(), attachmentOperationManifest()},

@@ -85,7 +85,9 @@ An entity operation is direct-only or menu-only, never both, on every surface,
 enforced by `validateOperationOnePath` over that surface's manifest. The
 task-row `Space` menu is exactly Comments, Attachments, Delete; the bulk menu is
 Delete only; Delete has no direct key and confirms first. The Hub sheet is
-Archive or Unarchive plus bulk tags; Notes and Comments list Delete alone.
+Archive or Unarchive plus bulk tags; Notes and Comments list Delete alone. The
+Outliner project-header sheet is Edit, pin, Archive, Delete, and never Unarchive:
+that header is drawn from the active population.
 
 One key is one act on every entity surface:
 
@@ -101,9 +103,10 @@ Transient input overlays are exempt: composer, project editor/creator, text
 editor, operation text prompt, tag/date add modes, list picker adapter, and the
 outline error and help viewers. They are modal value entry, not grammars.
 
-`#` is the one shared key: `tui.task.set-tags` and `tui.project.set-tags`, the
-cursor deciding. Keep them two so the footer and `?` help carry two honest
-labels; never branch one descriptor's target source on runtime context.
+`#` and `Space` are the shared keys, the cursor deciding: task or project tags,
+and checklist, project, or task actions. Keep each set distinct so the footer and
+`?` help carry honest labels; never branch one descriptor's target source on
+runtime context.
 
 Checklist rules:
 
@@ -305,7 +308,12 @@ must not import them. There is no down-migration.
 
 Undo/redo is one 50-entry workspace ledger over task, project, note, and
 attachment transactions. A successful forward mutation clears redo; failure
-records nothing.
+records nothing. Restore locks outermost directories only; a nested lock
+recreates the directory the entry removed.
+
+`OpDelete` is `os.Remove`, so a project delete enumerates its tree post-order and
+commits it with the catalog and planning rewrites. It confirms, names the
+cascade, and refuses the system Unfiled project.
 
 ## Documentation and scenarios
 

@@ -218,6 +218,9 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, tas
 	if err := appModel.registerProjectOperations(); err != nil {
 		t.Fatalf("register project operations: %v", err)
 	}
+	if err := appModel.registerProjectActionSheetOperation(); err != nil {
+		t.Fatalf("register project action sheet operation: %v", err)
+	}
 	if err := appModel.registerChecklistRowOperations(); err != nil {
 		t.Fatalf("register checklist row operations: %v", err)
 	}

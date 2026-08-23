@@ -56,3 +56,53 @@ func PlanProjectRename(dataDir, oldSlug, newSlug string) (RenamePlan, error) {
 		NewPath: newPath,
 	}, nil
 }
+
+// PlanProjectDelete validates a project slug and returns the journal operations
+// that remove <data>/projects/<slug> in full — tasks.md, notes, and attachments
+// together. It performs no filesystem mutation: the caller appends its own
+// catalog and planning rewrites and commits the set atomically, so removing a
+// project is one transaction whose byte images the workspace undo ledger
+// captures beforehand. It fails closed on an empty or unsafe slug, and returns
+// no op when the directory does not exist, so a project whose tasks.md was never
+// written still deletes cleanly from the catalog.
+//
+// The tree is enumerated into one op per path rather than a single op on the
+// directory because transaction.OpDelete is os.Remove: it removes one entry and
+// refuses a non-empty directory. Enumerating keeps the delete inside the
+// existing primitive instead of widening every delete in the workspace into a
+// recursive one.
+func PlanProjectDelete(dataDir, slug string) ([]transaction.Op, error) {
+	if slug == "" {
+		return nil, fmt.Errorf("project slug cannot be empty")
+	}
+	path, err := SafeJoin(filepath.Join(dataDir, "projects"), slug)
+	if err != nil {
+		return nil, fmt.Errorf("invalid project slug %q: %w", slug, err)
+	}
+	if _, statErr := os.Stat(path); os.IsNotExist(statErr) {
+		return nil, nil
+	}
+	return planTreeDeleteOps(path)
+}
+
+// planTreeDeleteOps orders one delete per path so that no directory is removed
+// before its contents. WalkDir is pre-order and lexical, so reversing its visit
+// order is exactly post-order: deterministic, and children always precede the
+// parent the journal applies next.
+func planTreeDeleteOps(root string) ([]transaction.Op, error) {
+	var paths []string
+	if err := filepath.WalkDir(root, func(path string, _ os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		paths = append(paths, path)
+		return nil
+	}); err != nil {
+		return nil, fmt.Errorf("enumerating project directory %q: %w", root, err)
+	}
+	ops := make([]transaction.Op, 0, len(paths))
+	for index := len(paths) - 1; index >= 0; index-- {
+		ops = append(ops, transaction.Op{Kind: transaction.OpDelete, Target: paths[index]})
+	}
+	return ops, nil
+}

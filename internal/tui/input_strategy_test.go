@@ -43,6 +43,7 @@ func simplifiedTaskActionDescriptors() []OperationDescriptor {
 	descriptors = append(descriptors, sortAxisOperationDescriptors()...)
 	descriptors = append(descriptors, checklistRowOperationDescriptors()...)
 	descriptors = append(descriptors, (&AppModel{}).checklistStartOperationDescriptor())
+	descriptors = append(descriptors, projectActionSheetOperationDescriptor())
 	return append(descriptors, projectOperationDescriptors()...)
 }
 
@@ -658,6 +659,9 @@ func TestSimplifiedDispatchConsumesLegacyKeysAndDefersInlineSearch(t *testing.T)
 	}
 	if err := app.registerProjectOperations(); err != nil {
 		t.Fatalf("registerProjectOperations: %v", err)
+	}
+	if err := app.registerProjectActionSheetOperation(); err != nil {
+		t.Fatalf("registerProjectActionSheetOperation: %v", err)
 	}
 	if err := app.registerChecklistRowOperations(); err != nil {
 		t.Fatalf("registerChecklistRowOperations: %v", err)

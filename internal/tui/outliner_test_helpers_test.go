@@ -43,6 +43,9 @@ func typedTestApp(t *testing.T) *AppModel {
 	if err := model.registerProjectOperations(); err != nil {
 		t.Fatalf("register project operations: %v", err)
 	}
+	if err := model.registerProjectActionSheetOperation(); err != nil {
+		t.Fatalf("register project action sheet operation: %v", err)
+	}
 	if err := model.registerProjectBulkOperations(); err != nil {
 		t.Fatalf("register project bulk operations: %v", err)
 	}

@@ -134,6 +134,7 @@ func (app *AppModel) registerOperationCatalog() error {
 		{"sort", app.registerSortOperations},
 		{"project hub", app.registerProjectHubOperations},
 		{"project", app.registerProjectOperations},
+		{"project action sheet", app.registerProjectActionSheetOperation},
 		{"project bulk", app.registerProjectBulkOperations},
 		{"project tag vocabulary", app.registerProjectTagVocabularyOperations},
 		{"note", app.registerNoteOperations},

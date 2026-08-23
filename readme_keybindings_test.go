@@ -154,6 +154,9 @@ func TestREADMEDocumentsExactTaskMenu(t *testing.T) {
 	content := readREADMEForContractTest(t)
 	requireDocumentationText(t, content, []string{
 		"1. Comments 2. Attachments 3. Delete",
+		"Project Actions holds Edit project and Toggle project pin, then Archive project and " +
+			"Delete project under Danger",
+		"`Enter` and `Ctrl+N` already reach both from that row",
 		"The list filters as soon as printable text is typed",
 		"Delete always asks for confirmation",
 		"The checklist is absent because it is edited on its own rows",
@@ -284,6 +287,14 @@ func TestREADMEDocumentsSelectProjectGrammar(t *testing.T) {
 			"then the surface itself",
 		"`n` no longer creates a project, `A` no longer clears a selection, and bare `g` is the go-to prefix " +
 			"rather than cursor-top, so all three are silent there",
+		"`Space` on a project group header opens Project Actions",
+		"Archiving is one-way from there — an Outliner header is only ever drawn for an active project — " +
+			"so Unarchive stays here, where an archived project is visible",
+		"Deleting a project is the one act with no second chance, and it asks first, naming the cascade " +
+			"by name: the project's tasks, its notes, and its attachments all go",
+		"The removal and the catalog and planning rewrites beside it are one transaction, so `u` brings " +
+			"every byte back",
+		"The system Unfiled project cannot be deleted, and an archived project still can be",
 	})
 	rejectDocumentationText(t, content, []string{
 		"Select Project with search focused",

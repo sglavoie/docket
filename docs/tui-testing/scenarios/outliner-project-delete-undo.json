@@ -1,0 +1,50 @@
+{
+  "name": "outliner-project-delete-undo",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "step onto the Rich Project header", "key": "j" },
+    { "type": "key", "label": "open the project sheet", "key": "space" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "label": "move to Delete project under Danger", "key": "down" },
+
+    { "type": "key", "label": "Delete has no direct key, so the menu row is the only route", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Delete Rich Project and everything it owns?" },
+    { "type": "assert", "label": "the prompt counts the cascade rather than describing it vaguely", "assert": "contains", "value": "Deletes 8 tasks and 1 note" },
+    { "type": "assert", "assert": "contains", "value": "This cannot be" },
+    { "type": "assert", "assert": "contains", "value": "Undo available (u)" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "Esc abandons the delete with nothing written", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "and everything it owns?" },
+    { "type": "assert", "assert": "contains", "value": "[rich-project]" },
+
+    { "type": "key", "label": "raise it again and confirm", "key": "space" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "key", "key": "y" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the workspace's only project leaves with everything it owned", "assert": "contains", "value": "No tasks yet. Press a to capture one." },
+    { "type": "assert", "assert": "not_contains", "value": "[rich-project]" },
+    { "type": "assert", "label": "one transaction, so the strip offers one undo", "assert": "status_contains", "value": "Delete Project: Rich Project" },
+    { "type": "assert", "assert": "status_contains", "value": "u undo" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "undo restores the whole tree, not just the catalog entry", "key": "u" },
+    { "type": "assert", "assert": "status_contains", "value": "Undid: Delete Project: Rich Project" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "[rich-project]" },
+    { "type": "assert", "assert": "contains", "value": "Build login form" },
+    { "type": "assert", "assert": "contains", "value": "Add password validation #backend #security" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "the restored workspace still fits the narrowest supported terminal", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "[rich-project]" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

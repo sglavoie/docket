@@ -277,6 +277,9 @@ func wireInvariantSimplifiedOutliner(t *testing.T, app *AppModel, outliner *Outl
 	if err := app.registerProjectOperations(); err != nil {
 		t.Fatalf("register project operations: %v", err)
 	}
+	if err := app.registerProjectActionSheetOperation(); err != nil {
+		t.Fatalf("register project action sheet operation: %v", err)
+	}
 	if err := app.registerChecklistRowOperations(); err != nil {
 		t.Fatalf("register checklist row operations: %v", err)
 	}
@@ -416,6 +419,9 @@ func newFocusToggleTestAppState(t *testing.T) (*AppModel, *models.Task) {
 	}
 	if err := appModel.registerProjectOperations(); err != nil {
 		t.Fatalf("register project operations: %v", err)
+	}
+	if err := appModel.registerProjectActionSheetOperation(); err != nil {
+		t.Fatalf("register project action sheet operation: %v", err)
 	}
 	if err := appModel.registerChecklistRowOperations(); err != nil {
 		t.Fatalf("register checklist row operations: %v", err)

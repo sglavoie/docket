@@ -63,6 +63,7 @@ func TestEveryRegisteredOperationHasOneCompatibleHandler(t *testing.T) {
 var delegatedDestructiveConfirmations = map[OperationID]string{
 	operationTaskDelete:          "handleTaskDeleteRequested prompts before confirmTaskDelete writes",
 	operationScopeArchiveProject: "showProjectArchiveConfirm prompts",
+	operationProjectDelete:       "showProjectDeleteConfirm prompts with the cascade note before commitProjectDelete writes",
 	operationNoteDelete:          "deleteCurrentNote prompts on the Notes manager's own confirm dialog before performDelete writes",
 	operationAttachmentDelete:    "confirmDeleteSelectedAttachment prompts on the panel's own confirm dialog before executeDelete writes",
 	operationAttachmentUnlink:    "confirmUnlinkSelectedAttachment prompts on the panel's own confirm dialog before executeKeep writes",

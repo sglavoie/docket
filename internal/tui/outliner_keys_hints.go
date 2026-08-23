@@ -148,6 +148,12 @@ func (m *OutlinerModel) cursorNamesHeader() bool {
 // already in, and the zoom overrides that section's fold, so h/l and s refuse
 // rather than write one. Esc is the act that remains, so it takes the fold
 // hint's rank and is required.
+//
+// The two projected hints are re-ranked to 1 rather than kept at the rank the
+// strategy declares. That rank orders them among a task row's many keys, where
+// they are minor; on a header, opening what the row names is the act the row
+// exists for, so it must outlive the mode and search chrome when the terminal
+// narrows.
 func (m *OutlinerModel) headerGuidance() GuidanceSpec {
 	row := m.rows[m.cursor]
 	zoomed := m.isZoomedSectionRow(row)
@@ -158,6 +164,7 @@ func (m *OutlinerModel) headerGuidance() GuidanceSpec {
 			m.operationCommandContext(),
 		) {
 			if (hint.Key == "Enter" && !zoomed) || hint.Key == "Ctrl+Enter" {
+				hint.Priority = 1
 				hints = append(hints, hint)
 			}
 		}
@@ -171,7 +178,13 @@ func (m *OutlinerModel) headerGuidance() GuidanceSpec {
 		hints = append(hints, newGuidanceHint("h/Left collapse", 1, false))
 	}
 	if row.IsProjectHeader {
-		hints = append(hints, newGuidanceHint("# project tags", 2, false))
+		// Both sit at rank 2 and the stable sort keeps them in this order, so the
+		// narrowest header footer that carries a project act carries the menu that
+		// reaches every one of them rather than the single key beside it.
+		hints = append(hints,
+			newGuidanceHint("Space actions", 2, false),
+			newGuidanceHint("# project tags", 2, false),
+		)
 	} else if !zoomed {
 		hints = append(hints, newGuidanceHint("s sections", 2, false))
 	}

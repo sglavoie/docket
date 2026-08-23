@@ -50,6 +50,19 @@ const projectArchiveConfirmAction = "project-archive"
 
 type projectArchiveConfirmedMsg struct{}
 
+// ProjectDeleteRequestMsg requests a confirmed project delete. Deleting removes
+// the project's whole data directory alongside its catalog and planning
+// entries, so it always passes through the shell's own confirmation rather than
+// the executor's generic destructive prompt.
+type ProjectDeleteRequestMsg struct{ Project *models.Project }
+
+// ProjectDeletedMsg requests the checked commit of a confirmed delete.
+type ProjectDeletedMsg struct{ Project *models.Project }
+
+const projectDeleteConfirmAction = "project-delete"
+
+type projectDeleteConfirmedMsg struct{}
+
 // ProjectPinRequestMsg requests a durable project pin-state change.
 type ProjectPinRequestMsg struct {
 	Project *models.Project

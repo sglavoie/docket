@@ -588,7 +588,7 @@ reads.
 
 | Strategy | Manifest | Menu keeps |
 | --- | --- | --- |
-| `SimplifiedInputStrategy` | `taskOperationManifest` + `taskDirectOperationManifest` | Comments, Attachments, Delete |
+| `SimplifiedInputStrategy` | `taskOperationManifest` + `taskDirectOperationManifest` + `outlinerProjectOperationManifest` | Comments, Attachments, Delete on a task row; Edit, pin, Archive, Delete on a project header |
 | `ProjectHubInputStrategy` | `projectOperationManifest` | Archive or Unarchive, bulk tags |
 | `NotesInputStrategy` | `notesOperationManifest` | Delete |
 | `AttachmentsInputStrategy` | `attachmentOperationManifest` | three origin acts, Unlink, Delete |
@@ -606,8 +606,21 @@ without restating a label or a risk the core descriptor already carries.
 
 The split lands the same way everywhere. What the surface is for stays direct;
 what is destructive or rare goes behind `Space`, and a destructive row confirms
-before any transaction begins. That is why the four entity menus are so short:
-they are the residue of the rule, not a curated list.
+before any transaction begins. That is why the entity menus are so short: they
+are the residue of the rule, not a curated list.
+
+The Outliner is the one surface whose strategy reads more than one manifest,
+because its rows name more than one kind of entity. `Space` resolves against the
+row under the cursor — a checklist item, a project group header, or a task — and
+`outlinerProjectOperationManifest` is the third answer. One-path is per-surface,
+so an operation may legitimately be a direct key on one surface and a menu row
+on another: Edit project is `e` on the Project Hub and a menu row here, because
+the Outliner's `e` already edits a task. `validateOutlinerOperationOnePath`
+therefore reads the manifests concatenated, and each sheet projects only its own,
+which is what keeps a project row out of the task menu and the reverse. Unarchive
+project is absent from the Outliner manifest for a different reason than Open
+project: an Outliner project header is drawn from `TaskWorkspaceProjects()`,
+which is non-archived by definition, so applicability could never admit the row.
 
 Footers do not follow the strategy everywhere, and the difference is
 deliberate. The Outliner and the Project Hub rank their bindings and project the
@@ -1670,6 +1683,18 @@ The ledger retains at most 50 transactions across undo and redo. `u` and
 notes, and attachment topology. Every successful forward mutation clears redo.
 Failed operations record nothing. Undo is convenience history in the same
 workspace, not an independent backup.
+
+Deleting a project is the widest single transaction the product commits, and it
+is built from the same primitive as every other. A delete op is `os.Remove`: one
+entry, and never a non-empty directory. `PlanProjectDelete` therefore enumerates
+the project tree and emits one op per path in reverse `WalkDir` order, which is
+post-order — deterministic, and with every child named before the directory that
+holds it. The catalog and planning rewrites ride in the same commit, so a project
+can never be absent from disk while still named in either file. Undo restores the
+tree from the images capture took beforehand; because those images cover a
+directory that is itself leaving, restore holds one advisory lock per outermost
+directory rather than one per image, or creating the nested lock's parent would
+recreate the directory preflight is about to find absent.
 
 ## Concurrent edits and conflicts
 

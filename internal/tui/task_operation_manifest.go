@@ -91,9 +91,17 @@ func taskOperationSupportsBulk(id OperationID) bool {
 	return ok && entry.Bulk
 }
 
-// validateTaskOperationOnePath holds the task surface to the shared one-path
-// rule: a manifested operation is either bound directly and marked DirectOnly
-// or listed in the task menu, never both.
-func validateTaskOperationOnePath(strategy InputStrategy) error {
-	return validateOperationOnePath(taskOperationDescriptorManifest(), strategy)
+// outlinerOperationDescriptorManifest is every operation the Outliner grammar
+// manifests, tasks and projects together. Only the one-path gate reads the
+// concatenation: the two sheets keep asking their own manifest, so a project row
+// can never appear in the task Space menu or the reverse.
+func outlinerOperationDescriptorManifest() []operationManifestEntry {
+	return append(taskOperationDescriptorManifest(), outlinerProjectOperationManifest()...)
+}
+
+// validateOutlinerOperationOnePath holds the whole Outliner surface to the
+// shared one-path rule: a manifested operation is either bound directly and
+// marked DirectOnly or listed in one of its menus, never both.
+func validateOutlinerOperationOnePath(strategy InputStrategy) error {
+	return validateOperationOnePath(outlinerOperationDescriptorManifest(), strategy)
 }
