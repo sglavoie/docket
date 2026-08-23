@@ -79,7 +79,7 @@
     { "type": "text", "text": "today" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },
-    { "type": "assert", "label": "Due now holds exactly Overdue and Today at any hour", "assert": "contains", "value": "Due soon: renew certificate ⊡ Today" },
+    { "type": "assert", "label": "Due now holds exactly Overdue and Today at any hour; the due chip is a padded badge, so it sits behind two spaces", "assert": "contains", "value": "Due soon: renew certificate  ⊡ Today" },
     { "type": "assert", "assert": "not_contains", "value": "Next Seven Days" },
     { "type": "assert", "assert": "no_layout_issues" },
 

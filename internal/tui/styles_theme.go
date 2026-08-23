@@ -210,6 +210,21 @@ func makeViewModeStyle(dark, lightHex string) lipgloss.Style {
 		Padding(0, 1)
 }
 
+// makeDueBadgeStyle creates a due-date chip with the section badge's contrast
+// contract: a tone-aware background under a high-contrast foreground. It omits
+// bold deliberately — chips carry no bold, so bold stays the title's selection
+// channel, exactly as tagChipStyle already holds.
+func makeDueBadgeStyle(darkHex, lightHex string) lipgloss.Style {
+	bgStr, fgStr := darkHex, "#c0caf5"
+	if activeThemeName == "light" {
+		bgStr, fgStr = lightHex, "#ffffff"
+	}
+	return lipgloss.NewStyle().
+		Background(lipgloss.Color(bgStr)).
+		Foreground(lipgloss.Color(fgStr)).
+		Padding(0, 1)
+}
+
 // makeColorStyle creates a style with just a foreground color.
 func makeColorStyle(c color.Color) lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(c)

@@ -34,7 +34,7 @@ func rebuildTaskStyles() {
 	StandbyStyle = lipgloss.NewStyle().Foreground(ColorViewStandby)
 	MaybeStyle = lipgloss.NewStyle().Foreground(ColorViewSomeday)
 	CanceledStyle = lipgloss.NewStyle().Foreground(ColorMuted).Strikethrough(true)
-	OverdueStyle = lipgloss.NewStyle().Foreground(ColorError)
+	OverdueStyle = newOverdueBadgeStyle()
 	DueSoonStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 
 	if activeThemeName == "light" {
@@ -45,8 +45,8 @@ func rebuildTaskStyles() {
 		OverdueRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#2d1f0e"))
 	}
 
-	DueDateStyle = lipgloss.NewStyle().Foreground(ColorMuted)
-	DueTodayStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+	DueDateStyle = newDueDateBadgeStyle()
+	DueTodayStyle = newDueTodayBadgeStyle()
 	PinnedProjectStyle = lipgloss.NewStyle().Foreground(ColorSuccess).Bold(true)
 	PinnedNumberStyle = lipgloss.NewStyle().Foreground(ColorWarning).Bold(true)
 	PinnedMarkerStyle = lipgloss.NewStyle().Foreground(ColorAccent).Bold(true)

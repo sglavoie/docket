@@ -455,6 +455,23 @@ would state one fact twice. It compares calendar days through `util.StartOfDay`,
 like `ClassifyDueDate`, because a due date is a day and not an instant, and it is
 the one indicator that styles an overdue reading (`check +<age>`) as pressure.
 
+Every due reading is a background badge rather than colored text, so a date
+reads as one bounded object in a row that already tints titles, tags, and
+context. `ClassifyDueDate`'s three tiers and `formatCheckBackIndicator`'s three
+tiers share the `makeDueBadgeStyle` family, which holds the section header's
+contrast contract — a tone-aware fill under a high-contrast foreground — while
+omitting bold, so bold stays the title's selection channel. The fills are
+curated dark/light pairs rather than palette derivations, so a palette override
+cannot mint an unreadable badge. They live in the teal band because the eleven
+`ViewMode` section fills already claim every other hue, and a chip that borrowed
+one read as a section header instead of a date; `TestDueBadgeFillsAvoidSectionBadges`
+holds the two populations apart, and urgency travels on saturation within the
+one hue so lightness stays in the band section badges already occupy. The chip's
+two `Padding(0, 1)` cells need
+no width formula of their own: `outlinerNonTitleWidth` sums `lipgloss.Width`
+over the already-styled segments, so the title budget shrinks by exactly two
+like any other segment growth.
+
 Doing age follows the same state-clock contract.
 `formatDoingAgeIndicator` is gated on `IsInState(models.StateDoing)` and formats
 `StateChangedAt` through `formatRecencyChip`, so edits to active work do not

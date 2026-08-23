@@ -623,7 +623,10 @@ func TestCheckBackIndicatorCountsTowardChasing(t *testing.T) {
 				StateChangedAt: now.AddDate(0, 0, -1),
 				DueDate:        tc.due,
 			}
-			if got := ansi.Strip(formatCheckBackIndicator(task, now)); got != tc.want {
+			// The chip's padding cells are presentation, not content: trim them
+			// so the case list stays a statement about the text. The empty case
+			// stays honest because TrimSpace("") is "".
+			if got := strings.TrimSpace(ansi.Strip(formatCheckBackIndicator(task, now))); got != tc.want {
 				t.Fatalf("check-back = %q, want %q", got, tc.want)
 			}
 		})

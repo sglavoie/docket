@@ -602,7 +602,7 @@ func formatCheckBackIndicator(task *models.Task, now time.Time) string {
 	case dueDay.Equal(today):
 		return DueTodayStyle.Render("check today")
 	default:
-		return MutedStyle.Render("check " + formatRecencyAge(today, dueDay))
+		return DueDateStyle.Render("check " + formatRecencyAge(today, dueDay))
 	}
 }
 

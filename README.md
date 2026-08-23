@@ -594,6 +594,15 @@ overdue `check +<age>`. Moving a task to Waiting with `$w` therefore asks for th
 check-back date immediately; `Esc` there declines the date and the Waiting move
 still stands.
 
+Due dates and check-backs both render as a filled chip rather than as colored
+text, so a date reads as one bounded object beside the titles, tags, and context
+badges that share the row. All three tiers are chips — overdue, today, and
+upcoming — and they share one hue that no section header uses, so a date is
+never mistaken for a section; urgency is carried by how saturated the fill is
+rather than by its hue. Under the cursor the chip
+flattens into the selection colors like every other colored segment, and under
+`--no-color` the fill drops away and the `⊡` glyph marks the date on its own.
+
 A Doing task similarly reads as `doing <age>`, measured from the moment it
 entered Doing rather than from its last touch. The neutral age remains beside a
 due date when both apply; it reports how long work has stayed active without
