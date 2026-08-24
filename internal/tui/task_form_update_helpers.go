@@ -23,12 +23,20 @@ func (m *TaskFormModel) buildValidParents() []*models.Task {
 }
 
 // handlePaste forwards a tea.PasteMsg to the currently focused text input.
+// An active Extras item overlay owns the paste: tea.PasteMsg never reaches
+// handleFormOverlayKey, which only sees tea.KeyPressMsg, so the overlay inputs
+// are routed here instead. The overlay stays open, exactly as a typed rune
+// leaves it open.
 func (m *TaskFormModel) handlePaste(msg tea.PasteMsg) (tea.Model, tea.Cmd) {
 	markDirty := func() {
 		m.hasChanges = true
 		m.err = nil
 	}
 	switch {
+	case m.activeOverlay == formOverlayAttachmentEdit:
+		return m, m.pasteIntoInput(msg, &m.attachmentItemInput, markDirty)
+	case m.activeOverlay == formOverlayCommentEdit:
+		return m, m.pasteIntoInput(msg, &m.commentItemInput, markDirty)
 	case m.activeTab == formTabBasics && m.focusIndex == 0:
 		var cmd tea.Cmd
 		m.titleInput, cmd = m.titleInput.Update(msg)
@@ -41,6 +49,23 @@ func (m *TaskFormModel) handlePaste(msg tea.PasteMsg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 	return m, nil
+}
+
+// pasteIntoInput forwards a paste to one textinput and marks the form dirty
+// only when the pasted content actually changed the value, mirroring the
+// before/after comparison handleTextInputKey uses for typed keys.
+func (m *TaskFormModel) pasteIntoInput(
+	msg tea.PasteMsg,
+	input *textinput.Model,
+	markDirty func(),
+) tea.Cmd {
+	before := input.Value()
+	var cmd tea.Cmd
+	*input, cmd = input.Update(msg)
+	if input.Value() != before {
+		markDirty()
+	}
+	return cmd
 }
 
 // handleTextInputKey consolidates the common key handling for textinput fields

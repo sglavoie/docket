@@ -413,3 +413,72 @@ func TestTaskComposer_ExpandSeedsCommentDraft(t *testing.T) {
 		t.Errorf("title = %q, want the comment span peeled off it", got)
 	}
 }
+
+// A terminal paste arrives as tea.PasteMsg, not tea.KeyPressMsg, so it never
+// reaches handleFormOverlayKey; these two tests drive the real Update dispatch
+// to prove the Extras item overlays still receive it.
+func TestTaskForm_Extras_AttachmentOverlayAcceptsPaste(t *testing.T) {
+	m := navigateToExtrasTab(newTestTaskForm())
+	m = sendFormKey(m, syntheticCtrlKey('l'))
+	if m.activeOverlay != formOverlayAttachmentEdit {
+		t.Fatalf("activeOverlay = %d, want formOverlayAttachmentEdit", m.activeOverlay)
+	}
+	m.hasChanges = false
+
+	const pasted = "https://github.com/acme/app/issues/412"
+	m = sendFormMsg(m, tea.PasteMsg{Content: pasted})
+
+	if m.activeOverlay != formOverlayAttachmentEdit {
+		t.Fatalf("a paste must leave the overlay open; activeOverlay = %d", m.activeOverlay)
+	}
+	if got := m.attachmentItemInput.Value(); got != pasted {
+		t.Fatalf("attachmentItemInput = %q, want the pasted value %q", got, pasted)
+	}
+	if !m.hasChanges {
+		t.Error("a paste that changed the input should mark the form dirty")
+	}
+
+	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
+	if len(m.draft.attachments) != 1 || m.draft.attachments[0].value != pasted {
+		t.Errorf("confirmed drafts = %+v, want the pasted value", m.draft.attachments)
+	}
+}
+
+func TestTaskForm_Extras_CommentOverlayAcceptsPaste(t *testing.T) {
+	m := navigateToExtrasTab(newTestTaskForm())
+	m = sendFormKey(m, syntheticCtrlKey('y'))
+	if m.activeOverlay != formOverlayCommentEdit {
+		t.Fatalf("activeOverlay = %d, want formOverlayCommentEdit", m.activeOverlay)
+	}
+	m.hasChanges = false
+
+	const pasted = "ask about the SSO deadline"
+	m = sendFormMsg(m, tea.PasteMsg{Content: pasted})
+
+	if m.activeOverlay != formOverlayCommentEdit {
+		t.Fatalf("a paste must leave the overlay open; activeOverlay = %d", m.activeOverlay)
+	}
+	if got := m.commentItemInput.Value(); got != pasted {
+		t.Fatalf("commentItemInput = %q, want the pasted text %q", got, pasted)
+	}
+	if !m.hasChanges {
+		t.Error("a paste that changed the input should mark the form dirty")
+	}
+
+	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEnter))
+	if len(m.draft.comments) != 1 || m.draft.comments[0].text != pasted {
+		t.Errorf("confirmed drafts = %+v, want the pasted text", m.draft.comments)
+	}
+}
+
+func TestTaskForm_Extras_EmptyPasteLeavesTheFormClean(t *testing.T) {
+	m := navigateToExtrasTab(newTestTaskForm())
+	m = sendFormKey(m, syntheticCtrlKey('l'))
+	m.hasChanges = false
+
+	m = sendFormMsg(m, tea.PasteMsg{Content: ""})
+
+	if m.hasChanges {
+		t.Error("a paste that changed nothing should not mark the form dirty")
+	}
+}
