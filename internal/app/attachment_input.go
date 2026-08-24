@@ -46,8 +46,8 @@ type ResolvedAttachmentInput struct {
 // ResolveAttachmentInput classifies a pasted attachment value across the URL,
 // code-reference, and file paths, normalizing the paste and resolving a file path
 // (~-expansion, then absolute, then existence) before any caller mutates anything.
-// A value that names a missing file is rejected here, so a rejected paste never
-// stages a byte.
+// A value that names a missing file, or one shaped like a URL that is not an
+// absolute http(s) one, is rejected here, so a rejected paste never stages a byte.
 func ResolveAttachmentInput(raw string) (ResolvedAttachmentInput, error) {
 	input := util.NormalizePastedPathInput(raw)
 	if input == "" {
@@ -55,7 +55,14 @@ func ResolveAttachmentInput(raw string) (ResolvedAttachmentInput, error) {
 	}
 
 	if strings.HasPrefix(input, "http://") || strings.HasPrefix(input, "https://") {
-		return ResolvedAttachmentInput{Kind: AttachmentInputURL, URL: input}, nil
+		// A prefix is not a URL: the canonical AttachURL validation is what decides
+		// here too, so a malformed value is refused before any surface mutates a
+		// task rather than persisted for the panel to reject on read.
+		validated, err := validateAttachmentURL(input)
+		if err != nil {
+			return ResolvedAttachmentInput{}, err
+		}
+		return ResolvedAttachmentInput{Kind: AttachmentInputURL, URL: validated}, nil
 	}
 
 	if codePath, lineNum, isCodeRef := storage.ParseCodeReference(input); isCodeRef {
@@ -128,7 +135,10 @@ func applyCapturedAttachments(ref TaskRef, inputs []ResolvedAttachmentInput, now
 	for _, input := range inputs {
 		switch input.Kind {
 		case AttachmentInputURL:
-			if err := ref.Task.AddAttachmentAt(input.URL, true, "", now); err != nil {
+			// OriginalPath carries the URL, matching AttachURL: the panel's
+			// original-path action copies that field, so an empty one would copy
+			// nothing.
+			if err := ref.Task.AddAttachmentAt(input.URL, true, input.URL, now); err != nil {
 				return nil, err
 			}
 		case AttachmentInputCodeReference:
