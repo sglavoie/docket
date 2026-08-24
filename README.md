@@ -76,6 +76,21 @@ workspace-ledger entry is that exact transaction. A task relocation adds
 `Ctrl+O origin` only after its origin was recorded; `Ctrl+I` returns to the
 relocated task.
 
+The Outliner marks its cursor row in the margins rather than over the row. One
+bright column at the far left says where the cursor is, and the empty columns
+past the row's text carry a dim recess saying how far the row reaches. Nothing
+between them changes: the multi-select box, the tree connectors and the fold
+arrow keep the colors they wear on every other row, and so do the state badge,
+the priority-colored title, the tag chips, the due tier, the project badge and
+the search-match highlight — all of which read the same under the cursor as
+beside it, leaving a waiting or overdue row visibly waiting or overdue while you
+stand on it. The bar is the row's leftmost column on every row type: a blank
+margin, except on a section header, where it reverses the fold arrow. A cursor
+flash floods the whole gutter rather than changing the bar's color, so a pulse
+reads as more of the same mark. Every other list — the pickers, the tag and
+parent selectors, notes, the project hub — still inverts the whole row, because a
+flat list row has no margins to paint.
+
 Every tag carries a color, and it is the same color everywhere a tag is rendered
 as itself: the chips on a task row, the `Tags:` line in Peek, and every row of
 the tag list the composer's expanded detail opens. Nothing needs configuring — a

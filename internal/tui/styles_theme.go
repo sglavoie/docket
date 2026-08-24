@@ -10,6 +10,33 @@ import (
 
 const zebraBackgroundDarkenFactor = 0.08
 
+// The cursor row is marked by one bright column at its left edge and a dim fill
+// past its content. Both are derived from the theme's cursor color, in opposite
+// directions: the bar away from the terminal's own paper so a single column is
+// still unmissable, the fill toward it so the reach never competes with the mark.
+//
+// Every factor is per-theme, because the two directions are not symmetric.
+// Darkening keeps a color's chroma, so a light theme reads a moderate step as a
+// distinct dark block; lightening washes chroma out, so the same step on a dark
+// theme lands on a mid gray that a row full of colored titles and badges already
+// out-shouts. A dark bar therefore goes most of the way to white, which is what
+// makes it the brightest thing on the row rather than one more bright thing.
+const (
+	cursorBarDarkFactor  = 0.85
+	cursorBarLightFactor = 0.55
+
+	// A flash is the same mark spent wider rather than recolored, so its color
+	// only has to stay past the bar's — see cursorPaint.gutterBg.
+	cursorFlashDarkFactor  = 1.0
+	cursorFlashLightFactor = 0.8
+
+	// A dark theme can take the fill past its own paper, where it reads as a
+	// recess; a light one washes out to invisible long before that, so it stops
+	// at a tint of the cursor color.
+	cursorTrailDarkFactor  = 0.8
+	cursorTrailLightFactor = 0.5
+)
+
 // ThemeConfig identifies one of the two maintained themes.
 type ThemeConfig struct {
 	Name string // "light" or "dark"; every other value resolves to dark
@@ -63,11 +90,27 @@ func ApplyTheme(tc ThemeConfig) {
 
 	effectiveBg := themeDefaults.CursorColor
 	effectiveFg := themeDefaults.CursorTextColor
-	effectiveFlash := lightenHex(effectiveBg, 0.4)
+
+	// Which way "louder" and "quieter" point depends on the paper, so the pair of
+	// directions flips with the theme rather than being fixed to lighter/darker,
+	// and each step's size flips with it.
+	pop, dim := lightenHex, darkenHex
+	barFactor, flashFactor, dimFactor := cursorBarDarkFactor, cursorFlashDarkFactor, cursorTrailDarkFactor
+	if tc.Name == "light" {
+		pop, dim = darkenHex, lightenHex
+		barFactor, flashFactor, dimFactor = cursorBarLightFactor, cursorFlashLightFactor, cursorTrailLightFactor
+	}
+	effectiveBar := pop(effectiveBg, barFactor)
+	effectiveFlash := pop(effectiveBg, flashFactor)
 
 	ColorSelectedBg = lipgloss.Color(effectiveBg)
 	ColorSelectedFg = lipgloss.Color(effectiveFg)
+	ColorCursorBarBg = lipgloss.Color(effectiveBar)
+	// The bar is inverse video, so its glyph takes the terminal's own paper.
+	ColorCursorBarFg = lipgloss.Color(effectiveBgColor)
 	ColorFlashBg = lipgloss.Color(effectiveFlash)
+	ColorSelectedDimBg = lipgloss.Color(dim(effectiveBg, dimFactor))
+	ColorFlashDimBg = lipgloss.Color(dim(effectiveFlash, dimFactor))
 	if tc.Name == "light" {
 		ColorSelectedTextFg = lipgloss.Color("#0f172a")
 	} else {
@@ -82,8 +125,22 @@ func ApplyTheme(tc ThemeConfig) {
 	SelectionRowStyle = lipgloss.NewStyle().
 		Background(ColorSelectedBg)
 
+	CursorBarStyle = lipgloss.NewStyle().
+		Background(ColorCursorBarBg).
+		Foreground(ColorCursorBarFg)
+
+	CursorTrailStyle = lipgloss.NewStyle().
+		Background(ColorSelectedDimBg)
+
+	CursorFlashBarStyle = lipgloss.NewStyle().
+		Background(ColorFlashBg).
+		Foreground(ColorCursorBarFg)
+
 	CursorFlashRowStyle = lipgloss.NewStyle().
 		Background(ColorFlashBg)
+
+	CursorFlashTrailStyle = lipgloss.NewStyle().
+		Background(ColorFlashDimBg)
 
 	PickerSelectedStyle = lipgloss.NewStyle().
 		Background(ColorSelectedBg).

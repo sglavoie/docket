@@ -99,7 +99,7 @@ func TestTaskContextSegmentIsReservedAndBudgeted(t *testing.T) {
 	outliner := NewOutlinerModel(project, nil, newTestConfig())
 	row := outlinerRow{task: task, ProjectID: project.ID}
 
-	segments := outliner.buildTaskRowSegments(row, 60, nil)
+	segments := outliner.buildTaskRowSegments(row, 60, nil, cursorPaint{})
 	if got := ansi.Strip(segments.contextSegment); got != "[abcdefghijk…] " {
 		t.Fatalf("context segment = %q, want a 12-column value budget", got)
 	}
@@ -533,7 +533,7 @@ func TestBehavioralSignalsRowReconcilesWidthsAndOverflow(t *testing.T) {
 
 	for _, width := range []int{60, 80} {
 		t.Run(strconv.Itoa(width), func(t *testing.T) {
-			segments := outliner.buildTaskRowSegments(row, width, nil)
+			segments := outliner.buildTaskRowSegments(row, width, nil, cursorPaint{})
 			indicators := ansi.Strip(segments.indicators)
 			plain := ansi.Strip(outliner.renderOutlinerTaskRow(row, false, width, width, 0, nil))
 			if got := lipgloss.Width(plain); got > width {

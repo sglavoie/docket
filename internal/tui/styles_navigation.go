@@ -32,8 +32,26 @@ var (
 	SelectionRowStyle = lipgloss.NewStyle().
 				Background(ColorSelectedBg)
 
+	// CursorBarStyle is the Outliner cursor row's first column and CursorTrailStyle
+	// the columns past its content; the Flash pair is the same mark while the
+	// cursor pulses. The bar is inverse video rather than a background merged into
+	// the glyph it covers, because one column has to carry the whole mark.
+	CursorBarStyle = lipgloss.NewStyle().
+			Background(ColorCursorBarBg).
+			Foreground(ColorCursorBarFg)
+
+	CursorTrailStyle = lipgloss.NewStyle().
+				Background(ColorSelectedDimBg)
+
+	CursorFlashBarStyle = lipgloss.NewStyle().
+				Background(ColorFlashBg).
+				Foreground(ColorCursorBarFg)
+
 	CursorFlashRowStyle = lipgloss.NewStyle().
 				Background(ColorFlashBg)
+
+	CursorFlashTrailStyle = lipgloss.NewStyle().
+				Background(ColorFlashDimBg)
 
 	SelectionStyle = lipgloss.NewStyle().
 			Foreground(ColorSecondary)

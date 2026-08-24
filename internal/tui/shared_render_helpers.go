@@ -60,34 +60,37 @@ type SectionHeaderOpts struct {
 	AccentColor lipgloss.Style // applied to the name portion
 	Width       int            // if > 0, trailing ─ fill is added
 	Prefix      string         // inserted between indicator and name (e.g. "@ ")
+	Cursor      cursorPaint    // how this header wears the cursor; zero on an ordinary row
 }
 
 // renderSectionHeader renders a standardized collapsible section header:
 //
 //	▾ [prefix]Name (count) ─────
 //
+// It returns the leading fold gutter and the rest separately, so a caller
+// marking the cursor row can paint the gutter without repainting the name. This
+// is the one header whose first column is a glyph rather than a blank, so the
+// cursor bar reverses the fold arrow instead of a space.
 // AccentColor is applied to the name; indicator and count use MutedStyle.
 // When Width > 0 a trailing horizontal rule fills the remaining line width.
 // Callers are responsible for applying selection/zebra highlights on the
-// returned string.
-func renderSectionHeader(opts SectionHeaderOpts) string {
+// returned strings.
+func renderSectionHeader(opts SectionHeaderOpts) (gutter, content string) {
 	indicator := IconExpanded
 	if opts.Collapsed {
 		indicator = IconCollapsed
 	}
-	indPart := MutedStyle.Render(indicator)
+	gutter = opts.Cursor.bar(MutedStyle, indicator) + gutterSpace(opts.Cursor.gutterBg())
 	namePart := opts.AccentColor.Bold(true).Render(opts.Prefix + opts.Name)
-	countPart := MutedStyle.Render(fmt.Sprintf("(%d)", opts.Count))
-
-	line := indPart + " " + namePart + " " + countPart
+	content = namePart + " " + MutedStyle.Render(fmt.Sprintf("(%d)", opts.Count))
 
 	if opts.Width > 0 {
-		visible := lipgloss.Width(line)
+		visible := lipgloss.Width(gutter) + lipgloss.Width(content)
 		if opts.Width > visible+2 {
-			line += " " + MutedStyle.Render(strings.Repeat("─", opts.Width-visible-1))
+			content += " " + MutedStyle.Render(strings.Repeat("─", opts.Width-visible-1))
 		}
 	}
-	return line
+	return gutter, content
 }
 
 // orderedTaskTags is the one display order both tag surfaces render: every

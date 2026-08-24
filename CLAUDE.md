@@ -150,6 +150,12 @@ presets cannot express belongs in an inline mode on that picker, never a
 standalone form. `@` is the one date picker over both fields, so the cursor's
 defer section, not a provider method, lets `+Nh` parse.
 
+`outlinerCursorRow` marks the cursor row in its first column and trailing fill
+alone, not its content and not the gutter between; only a flash widens it. Each
+renderer supplies that split via `cursorPaint` and paints per piece, never over
+assembled text; the row is exactly `rowWidth`. `SelectedLine` stays the
+whole-line authority on every other list surface.
+
 Row and Peek budget:
 
 - `inlinePeekLines` owns a drop order, not a set; place new lines deliberately.

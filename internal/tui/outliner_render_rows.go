@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"image/color"
 	"strings"
 	"time"
 
@@ -64,6 +65,90 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 	return attachScrollbarAtWidth(rowBuilder.String(), scrollbar, viewport.rowWidth)
 }
 
+// cursorPaint decides how one row wears the cursor. One call answers both
+// whether a row is the cursor and whether it is mid-flash, so no renderer reads
+// m.cursorFlash on its own.
+type cursorPaint struct {
+	marked bool
+	flash  bool
+}
+
+func (m *OutlinerModel) cursorPaintFor(selected bool) cursorPaint {
+	return cursorPaint{marked: selected, flash: selected && m.cursorFlash}
+}
+
+// bar renders the row's leftmost column, the whole of the resting mark. It is
+// inverse video rather than a background merged into the glyph's own style
+// because one column has to carry the mark alone, so it takes the loudest
+// treatment available and gives up the muted gray it would otherwise wear. Every
+// column it can cover is structural margin: a blank, or a fold arrow that stays
+// legible reversed.
+func (p cursorPaint) bar(style lipgloss.Style, text string) string {
+	switch {
+	case !p.marked:
+		return style.Render(text)
+	case p.flash:
+		return CursorFlashBarStyle.Render(text)
+	default:
+		return CursorBarStyle.Render(text)
+	}
+}
+
+// gutterBg names the background the gutter columns after the bar carry. At rest
+// there is none — the connectors, the fold arrow and the multi-select box stay
+// ordinary, because widening the mark is what made it compete with the row. A
+// flash spends exactly that: it floods the whole gutter, which reads as more of
+// the same mark rather than a different one.
+func (p cursorPaint) gutterBg() color.Color {
+	if !p.flash {
+		return nil
+	}
+	return ColorFlashBg
+}
+
+// trail styles the columns past the row's content, dim enough to read as the
+// cursor's reach rather than compete with the bar for the eye.
+func (p cursorPaint) trail() lipgloss.Style {
+	if p.flash {
+		return CursorFlashTrailStyle
+	}
+	return CursorTrailStyle
+}
+
+// gutterPiece renders one leading structural glyph in its own style, carrying
+// the cursor background when bg is non-nil. The background belongs on each piece
+// rather than on the assembled gutter: a style applied over already-styled text
+// ends at that text's own reset, which would leave the rest of the block bare.
+func gutterPiece(bg color.Color, style lipgloss.Style, text string) string {
+	return withOptionalBg(style, bg).Render(text)
+}
+
+// gutterSpace paints one of the gutter's structural blank columns, which carry
+// no color of their own to preserve.
+func gutterSpace(bg color.Color) string {
+	return gutterPiece(bg, lipgloss.NewStyle(), " ")
+}
+
+// outlinerCursorRow marks the cursor without repainting it. The gutter arrives
+// already painted — its first column bright, the rest of it ordinary — and the
+// columns past the content take a dim fill, so every color the row earned
+// survives under the cursor and no drawn column is covered. The result is always
+// exactly rowWidth wide, which is what attachScrollbarAtWidth expects.
+// Truncation only ever removes from the end, so clamping the content to the
+// columns the gutter leaves cuts where a clamp of the whole line would.
+func outlinerCursorRow(gutter, content string, rowWidth int, paint cursorPaint) string {
+	gutterWidth := lipgloss.Width(gutter)
+	if rowWidth <= gutterWidth {
+		return truncateToVisualWidth(gutter, rowWidth)
+	}
+	content = truncateToVisualWidth(content, rowWidth-gutterWidth)
+	fill := rowWidth - gutterWidth - lipgloss.Width(content)
+	if fill <= 0 {
+		return gutter + content
+	}
+	return gutter + content + paint.trail().Render(strings.Repeat(" ", fill))
+}
+
 func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected bool, rowWidth, rowIndex int) string {
 	displayName := row.SectionName
 	if displayName == "" {
@@ -82,12 +167,14 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 		prefix = "◷ "
 	}
 
-	line := renderSectionHeader(SectionHeaderOpts{
+	paint := m.cursorPaintFor(selected)
+	gutter, content := renderSectionHeader(SectionHeaderOpts{
 		Name:        displayName,
 		Count:       row.SectionCount,
 		Collapsed:   m.isSectionRowCollapsed(row),
 		AccentColor: sectionStyle,
 		Prefix:      prefix,
+		Cursor:      paint,
 	})
 
 	if row.ProjectID != "" {
@@ -96,18 +183,15 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 		if project != nil {
 			projectName = project.Name
 		}
-		line += "  " + projectColorStyle(project).Render("["+projectName+"]")
+		content += "  " + projectColorStyle(project).Render("["+projectName+"]")
 	}
-	line = appendManualOrderMarker(line, row, m.sort.Field, rowWidth)
+	content = appendManualOrderMarker(content, row, m.sort.Field, rowWidth-lipgloss.Width(gutter))
 
 	if selected {
-		if m.cursorFlash {
-			return SelectedFlashLine(line, rowWidth)
-		}
-		return SelectedLine(line, rowWidth)
+		return outlinerCursorRow(gutter, content, rowWidth, paint)
 	}
 
-	return ZebraLine(line, rowWidth, rowIndex)
+	return ZebraLine(gutter+content, rowWidth, rowIndex)
 }
 
 // rowKeepsManualOrder reports whether the section a row belongs to is one the
@@ -123,15 +207,17 @@ func rowKeepsManualOrder(row outlinerRow) bool {
 // appendManualOrderMarker names an exempt section while a sort is active, so a
 // lane that did not move says why instead of reading as a broken key. It is
 // dropped rather than allowed to overflow, exactly as the pressure chips are.
-func appendManualOrderMarker(line string, row outlinerRow, field SortField, rowWidth int) string {
+// budget is the columns the content region has, which is the row width less the
+// gutter the cursor highlight owns.
+func appendManualOrderMarker(content string, row outlinerRow, field SortField, budget int) string {
 	if field == SortByDefault || !rowKeepsManualOrder(row) {
-		return line
+		return content
 	}
 	suffix := MutedStyle.Render("  · manual")
-	if lipgloss.Width(line)+lipgloss.Width(suffix) > rowWidth {
-		return line
+	if lipgloss.Width(content)+lipgloss.Width(suffix) > budget {
+		return content
 	}
-	return line + suffix
+	return content + suffix
 }
 
 // renderOutlinerProjectHeaderRow renders a synthetic project sub-header row
@@ -157,21 +243,22 @@ func (m *OutlinerModel) renderOutlinerProjectHeaderRow(row outlinerRow, selected
 	if m.isSectionRowCollapsed(row) {
 		indicator = IconCollapsed
 	}
-	line := " " + MutedStyle.Render(indicator) + " " + badge
+	paint := m.cursorPaintFor(selected)
+	bg := paint.gutterBg()
+	gutter := paint.bar(lipgloss.NewStyle(), " ") +
+		gutterPiece(bg, MutedStyle, indicator) +
+		gutterSpace(bg)
+	content := badge
 	if row.SectionCount > 0 {
-		line += " " + MutedStyle.Render(fmt.Sprintf("(%d)", row.SectionCount))
+		content += " " + MutedStyle.Render(fmt.Sprintf("(%d)", row.SectionCount))
 	}
-	line = appendProjectHeaderPressure(line, row, rowWidth)
-	line = truncateToVisualWidth(line, rowWidth)
+	content = appendProjectHeaderPressure(content, row, rowWidth-lipgloss.Width(gutter))
 
 	if selected {
-		if m.cursorFlash {
-			return SelectedFlashLine(line, rowWidth)
-		}
-		return SelectedLine(line, rowWidth)
+		return outlinerCursorRow(gutter, content, rowWidth, paint)
 	}
 
-	return ZebraLine(line, rowWidth, rowIndex)
+	return ZebraLine(truncateToVisualWidth(gutter+content, rowWidth), rowWidth, rowIndex)
 }
 
 // appendProjectHeaderPressure names the overdue and Today-planned work a
@@ -179,7 +266,9 @@ func (m *OutlinerModel) renderOutlinerProjectHeaderRow(row outlinerRow, selected
 // The suffix degrades before the row is truncated — today drops first, then
 // overdue — because a clipped count reads as a different number. Each chip
 // carries a glyph so it cannot be mistaken for the bare group size beside it.
-func appendProjectHeaderPressure(line string, row outlinerRow, rowWidth int) string {
+// budget is the columns the content region has, which is the row width less the
+// gutter the cursor highlight owns.
+func appendProjectHeaderPressure(content string, row outlinerRow, budget int) string {
 	var parts []string
 	if row.OverdueCount > 0 {
 		parts = append(parts, PreviewWarningStyle.Render(fmt.Sprintf("! overdue %d", row.OverdueCount)))
@@ -189,11 +278,11 @@ func appendProjectHeaderPressure(line string, row outlinerRow, rowWidth int) str
 	}
 	for ; len(parts) > 0; parts = parts[:len(parts)-1] {
 		suffix := "  " + strings.Join(parts, MutedStyle.Render(" · "))
-		if lipgloss.Width(line)+lipgloss.Width(suffix) <= rowWidth {
-			return line + suffix
+		if lipgloss.Width(content)+lipgloss.Width(suffix) <= budget {
+			return content + suffix
 		}
 	}
-	return line
+	return content
 }
 
 // renderOutlinerChecklistRow renders one expanded checklist item beneath its
@@ -209,20 +298,16 @@ func (m *OutlinerModel) renderOutlinerChecklistRow(row outlinerRow, selected boo
 		box = "[x] "
 		text = MutedStyle.Render(text)
 	}
+	paint := m.cursorPaintFor(selected)
 	prefixBudget := max(min(rowWidth/3, 12), 4)
-	line := RenderCursorPrefix() +
-		MutedStyle.Render(compactOutlinerTreePrefix(row.prefix, prefixBudget)) +
-		MutedStyle.Render(box) +
-		text
-	line = truncateToVisualWidth(line, rowWidth)
+	gutter := paint.bar(lipgloss.NewStyle(), RenderCursorPrefix()) +
+		gutterPiece(paint.gutterBg(), MutedStyle, compactOutlinerTreePrefix(row.prefix, prefixBudget))
+	content := MutedStyle.Render(box) + text
 
 	if selected {
-		if m.cursorFlash {
-			return SelectedFlashLine(line, rowWidth)
-		}
-		return SelectedLine(line, rowWidth)
+		return outlinerCursorRow(gutter, content, rowWidth, paint)
 	}
-	return ZebraLine(line, rowWidth, rowIndex)
+	return ZebraLine(truncateToVisualWidth(gutter+content, rowWidth), rowWidth, rowIndex)
 }
 
 // taskRowSegments holds every rendered piece of a task row except the title, so
@@ -241,6 +326,30 @@ func (s taskRowSegments) titleWidth(rowWidth int) int {
 		s.statusIcon, s.prioritySegment, s.pinMarker, s.contextSegment,
 		s.tagSegment, s.indicators, s.relationMarker,
 	), 1)
+}
+
+// gutter is the leading structural region the cursor highlight owns: the left
+// margin, the multi-select box, the tree connectors and the fold arrow. It is a
+// concatenation only — the seam changes nothing about how wide each piece is, so
+// titleWidth stays the single title-budget authority.
+func (s taskRowSegments) gutter() string {
+	return s.cursorPrefix + s.checkbox + s.prefixStr + s.foldIndicator
+}
+
+// content is everything from the state badge on, the region that keeps its own
+// colors under the cursor. The space after the badge is the one outlinerNonTitleWidth
+// counts.
+func (s taskRowSegments) content(title string) string {
+	return fmt.Sprintf("%s %s%s%s%s%s%s%s",
+		s.statusIcon,
+		s.prioritySegment,
+		s.pinMarker,
+		s.contextSegment,
+		title,
+		s.relationMarker,
+		s.tagSegment,
+		s.indicators,
+	)
 }
 
 // taskRelationMarker names the family the outline placed elsewhere: `‹` for a
@@ -278,9 +387,14 @@ func (m *OutlinerModel) taskPinnedMarker(row outlinerRow) string {
 	return PinnedMarkerStyle.Render("*") + " "
 }
 
-func (m *OutlinerModel) buildTaskRowSegments(row outlinerRow, rowWidth int, colLayout *ColumnLayout) taskRowSegments {
+// buildTaskRowSegments assembles every rendered piece of a task row except the
+// title. paint is how the row wears the cursor, and the zero value on an
+// ordinary row; it changes no piece's width, so a caller measuring the title
+// budget can pass the zero value.
+func (m *OutlinerModel) buildTaskRowSegments(row outlinerRow, rowWidth int, colLayout *ColumnLayout, paint cursorPaint) taskRowSegments {
 	task := row.task
-	foldIndicator := m.renderTaskFoldIndicator(row)
+	bg := paint.gutterBg()
+	foldIndicator := m.renderTaskFoldIndicator(row, bg)
 	statusIcon := m.renderTaskStatusIcon(task)
 	if colLayout != nil && colLayout.HasStatus {
 		statusIcon = PadBadge(statusIcon, colLayout.StatusWidth)
@@ -314,11 +428,11 @@ func (m *OutlinerModel) buildTaskRowSegments(row outlinerRow, rowWidth int, colL
 		}
 	}
 	prefixBudget := max(min(rowWidth/3, 12), 4)
-	prefixStr, foldIndicator := renderTaskPrefix(compactOutlinerTreePrefix(row.prefix, prefixBudget), foldIndicator)
+	prefixStr, foldIndicator := renderTaskPrefix(compactOutlinerTreePrefix(row.prefix, prefixBudget), foldIndicator, bg)
 
 	segments := taskRowSegments{
-		cursorPrefix:    RenderCursorPrefix(),
-		checkbox:        m.renderTaskCheckbox(row),
+		cursorPrefix:    paint.bar(lipgloss.NewStyle(), RenderCursorPrefix()),
+		checkbox:        m.renderTaskCheckbox(row, bg),
 		prefixStr:       prefixStr,
 		foldIndicator:   foldIndicator,
 		statusIcon:      statusIcon,
@@ -353,40 +467,18 @@ func (m *OutlinerModel) taskRowTitleOverflow(row outlinerRow, rowWidth int, colL
 	if m == nil || row.task == nil {
 		return ""
 	}
-	segments := m.buildTaskRowSegments(row, rowWidth, colLayout)
+	segments := m.buildTaskRowSegments(row, rowWidth, colLayout, cursorPaint{})
 	return visualWidthOverflow(row.task.Title, segments.titleWidth(rowWidth))
 }
 
 func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, rowWidth, width, rowIndex int, colLayout *ColumnLayout) string {
 	task := row.task
-	titleStyle := m.renderTaskTitleStyle(task, selected)
-	segments := m.buildTaskRowSegments(row, rowWidth, colLayout)
+	titleStyle := m.renderTaskTitleStyle(task)
+	paint := m.cursorPaintFor(selected)
+	segments := m.buildTaskRowSegments(row, rowWidth, colLayout, paint)
 	title := m.renderTaskTitle(task, titleStyle, rowWidth, segments)
 
-	line := fmt.Sprintf("%s%s%s%s%s %s%s%s%s%s%s%s",
-		segments.cursorPrefix,
-		segments.checkbox,
-		segments.prefixStr,
-		segments.foldIndicator,
-		segments.statusIcon,
-		segments.prioritySegment,
-		segments.pinMarker,
-		segments.contextSegment,
-		title,
-		segments.relationMarker,
-		segments.tagSegment,
-		segments.indicators,
-	)
-
-	// renderTaskTitle floors the title budget at 10 cols, so a deeply-nested row
-	// (long tree prefix + multi-select checkbox) can assemble wider than rowWidth.
-	// The row style below applies Width(rowWidth), which *wraps* an over-wide line
-	// to a second terminal row — but computeOutlinerViewport budgets one line per
-	// row, so the extra wrapped rows overflow terminal height. Clamp to rowWidth
-	// (ANSI-aware) so every row stays exactly one line.
-	line = truncateToVisualWidth(line, rowWidth)
-
-	line = m.applyTaskRowLineStyle(line, task, selected, rowWidth, rowIndex)
+	line := applyTaskRowLineStyle(segments.gutter(), segments.content(title), task, paint, rowWidth, rowIndex)
 
 	if m.peekMode && rowIndex == m.cursor {
 		var b strings.Builder
@@ -434,7 +526,7 @@ func (m *OutlinerModel) rowRecencyKey(row outlinerRow) time.Time {
 // answer first because the ladder collapses the checklist before them, so a task
 // whose only foldable content is its checklist is the one that reports the
 // checklist's own state.
-func (m *OutlinerModel) renderTaskFoldIndicator(row outlinerRow) string {
+func (m *OutlinerModel) renderTaskFoldIndicator(row outlinerRow, bg color.Color) string {
 	task := row.task
 	if task == nil {
 		return ""
@@ -450,19 +542,20 @@ func (m *OutlinerModel) renderTaskFoldIndicator(row outlinerRow) string {
 		return ""
 	}
 	if expanded {
-		return MutedStyle.Render(IconExpanded) + " "
+		return gutterPiece(bg, MutedStyle, IconExpanded) + gutterSpace(bg)
 	}
-	return MutedStyle.Render(IconCollapsed) + " "
+	return gutterPiece(bg, MutedStyle, IconCollapsed) + gutterSpace(bg)
 }
 
 func (m *OutlinerModel) renderTaskStatusIcon(task *models.Task) string {
 	return GetStateBadge(task.State())
 }
 
-func (m *OutlinerModel) renderTaskTitleStyle(task *models.Task, selected bool) lipgloss.Style {
-	return TaskTitleStyleFor(task, TaskTitleStyleOptions{
-		CursorSelected: selected,
-	})
+// renderTaskTitleStyle resolves an Outliner title's color. It passes no
+// CursorSelected: the cursor is marked by the gutter and the trailing fill, so
+// the title under it keeps the priority or semantic color it earned.
+func (m *OutlinerModel) renderTaskTitleStyle(task *models.Task) lipgloss.Style {
+	return TaskTitleStyleFor(task, TaskTitleStyleOptions{})
 }
 
 type taskIndicatorSegments struct {
@@ -655,14 +748,14 @@ func (m *OutlinerModel) renderTaskPrioritySegment(task *models.Task, colLayout *
 	return priorityBadge + " "
 }
 
-func (m *OutlinerModel) renderTaskCheckbox(row outlinerRow) string {
+func (m *OutlinerModel) renderTaskCheckbox(row outlinerRow, bg color.Color) string {
 	if !m.multiSelectMode {
 		return ""
 	}
 	if m.isRowSelected(row) {
-		return SelectionCheckStyle.Render("[x]") + " "
+		return gutterPiece(bg, SelectionCheckStyle, "[x]") + gutterSpace(bg)
 	}
-	return MutedStyle.Render("[ ]") + " "
+	return gutterPiece(bg, MutedStyle, "[ ]") + gutterSpace(bg)
 }
 
 func compactOutlinerTreePrefix(prefix string, maxWidth int) string {
@@ -680,10 +773,10 @@ func compactOutlinerTreePrefix(prefix string, maxWidth int) string {
 	return "…" + string(runes[len(runes)-tailWidth:])
 }
 
-func renderTaskPrefix(prefix, foldIndicator string) (string, string) {
+func renderTaskPrefix(prefix, foldIndicator string, bg color.Color) (string, string) {
 	// A leaf connector already communicates its tree position with ├──/└──.
 	// Do not extend it into the task-content gutter.
-	return MutedStyle.Render(prefix), foldIndicator
+	return gutterPiece(bg, MutedStyle, prefix), foldIndicator
 }
 
 func (m *OutlinerModel) renderTaskTitle(task *models.Task, titleStyle lipgloss.Style, rowWidth int, segments taskRowSegments) string {
@@ -710,18 +803,40 @@ func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, sta
 		lipgloss.Width(relationMarker)
 }
 
-func (m *OutlinerModel) applyTaskRowLineStyle(line string, task *models.Task, selected bool, rowWidth, rowIndex int) string {
-	if selected {
-		if m.cursorFlash {
-			return SelectedFlashLine(line, rowWidth)
+// taskRowTint names the row-level background a task earns from its own state. It
+// is returned rather than applied so the cursor row can wear it on the content
+// region alone, leaving the gutter and the trailing fill to say where the cursor
+// is. A waiting row therefore stays visibly waiting while you stand on it.
+func taskRowTint(task *models.Task) (lipgloss.Style, bool) {
+	switch {
+	case task.IsInState(models.StateWaiting):
+		return WaitingRowStyle, true
+	case task.IsOverdue():
+		return OverdueRowStyle, true
+	default:
+		return lipgloss.Style{}, false
+	}
+}
+
+func applyTaskRowLineStyle(gutter, content string, task *models.Task, paint cursorPaint, rowWidth, rowIndex int) string {
+	tint, tinted := taskRowTint(task)
+	if paint.marked {
+		if tinted {
+			content = tint.Render(content)
 		}
-		return SelectedLine(line, rowWidth)
+		return outlinerCursorRow(gutter, content, rowWidth, paint)
 	}
-	if task.IsInState(models.StateWaiting) {
-		return WaitingRowStyle.Width(rowWidth).Render(line)
-	}
-	if task.IsOverdue() {
-		return OverdueRowStyle.Width(rowWidth).Render(line)
+
+	// renderTaskTitle floors the title budget at 10 cols, so a deeply-nested row
+	// (long tree prefix + multi-select checkbox) can assemble wider than rowWidth.
+	// The row style below applies Width(rowWidth), which *wraps* an over-wide line
+	// to a second terminal row — but computeOutlinerViewport budgets one line per
+	// row, so the extra wrapped rows overflow terminal height. Clamp to rowWidth
+	// (ANSI-aware) so every row stays exactly one line. outlinerCursorRow clamps
+	// the cursor row the same way, against the columns its gutter leaves.
+	line := truncateToVisualWidth(gutter+content, rowWidth)
+	if tinted {
+		return tint.Width(rowWidth).Render(line)
 	}
 	return ZebraLine(line, rowWidth, rowIndex)
 }

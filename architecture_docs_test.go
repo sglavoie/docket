@@ -229,9 +229,10 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// The budget polices prose, not rule count: it is what forces mechanism into
 	// docs/architecture.md and behavior into README.md. It moves only when a
 	// feature adds invariants that cannot live anywhere else — the Outliner
-	// project sheet, the enumerated project delete, and the restore lock scope
-	// are the three that raised it from 16200 — and never to absorb explanation.
-	const budget = 16800
+	// project sheet, the enumerated project delete, the restore lock scope, and
+	// the cursor row's gutter/content seam are the four that raised it from
+	// 16200 — and never to absorb explanation.
+	const budget = 17000
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

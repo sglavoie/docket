@@ -18,9 +18,3 @@ func SelectedLine(line string, width int) string {
 	stripped := ansi.Strip(line)
 	return SelectedStyle.Width(width).Render(stripped)
 }
-
-// SelectedFlashLine is like SelectedLine but uses the flash background.
-func SelectedFlashLine(line string, width int) string {
-	stripped := ansi.Strip(line)
-	return SelectedStyle.Background(ColorFlashBg).Width(width).Render(stripped)
-}

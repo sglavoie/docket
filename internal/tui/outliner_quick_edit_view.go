@@ -56,7 +56,9 @@ func (m *OutlinerModel) renderOutlinerQuickEditRow(row outlinerRow, rowWidth int
 	status := m.renderTaskStatusIcon(previewTask)
 	prefixBudget := max(min(rowWidth/3, 12), 4)
 	prefix := MutedStyle.Render(compactOutlinerTreePrefix(row.prefix, prefixBudget))
-	fold := m.renderTaskFoldIndicator(row)
+	// The quick-edit row is a transient input overlay, not a row grammar: it owns
+	// its own selection paint, so the fold indicator takes no cursor background.
+	fold := m.renderTaskFoldIndicator(row, nil)
 	inputPrefix := RenderCursorPrefix() + prefix + fold + status + " "
 	indentWidth := lipgloss.Width(inputPrefix)
 	// textinput.View() renders Width()+1 cells: the horizontal scroll window plus

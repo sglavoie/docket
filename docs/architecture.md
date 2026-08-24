@@ -356,6 +356,49 @@ budget, and `ViewStatusStrip` consumes the one-shot focus notice — safe becaus
 `AppModel.View` renders the view before the status bar, so the reservation and
 the strip see one frame's inputs.
 
+The Outliner cursor row is drawn by `outlinerCursorRow`, not by `SelectedLine`.
+Every Outliner row renderer splits itself at one seam: a leading structural
+gutter and the content that follows it. For a task row the gutter is
+`taskRowSegments.gutter()` — cursor prefix, multi-select box, tree connectors,
+fold arrow — and the content is `taskRowSegments.content()`, the state badge
+onward; a checklist row's gutter stops before its `[ ]` box, and a section or
+project header's gutter is its fold indicator and the spaces around it.
+
+`cursorPaint` decides once per row how it wears the cursor, and every renderer
+asks it three questions. `bar` renders the row's first column, and on the cursor
+row it discards that column's own style for `CursorBarStyle` — inverse video, the
+loudest treatment one column can carry alone. Every column it can cover is
+structural: a blank margin, or a section header's fold arrow, which stays legible
+reversed. `gutterBg` is what the columns after the bar carry, and it is nil at
+rest — the resting mark is one column, so the connectors and the box beside it
+stay ordinary. A flash spends exactly that width: `gutterBg` becomes
+`ColorFlashBg` and floods the gutter, which reads as more of the same mark rather
+than a different one. `gutterPiece`/`gutterSpace` merge that background into each
+glyph's own style, because a background applied over already-styled text ends at
+that text's first reset. `trail` is the third question, answered in
+`outlinerCursorRow`.
+
+The bar and the trail are derived in `ApplyTheme` from the theme's cursor color
+in opposite directions — the bar away from the terminal's own paper so one column
+is unmissable, the trail toward and past it so the reach never competes with the
+mark — and which of `lightenHex`/`darkenHex` is which flips with the theme. So
+does the size of each step, because the two directions are not symmetric.
+Darkening preserves chroma, so the light theme's bar is a distinct dark block at
+a moderate factor; lightening washes chroma out, so the dark theme's bar goes to
+`0.85` — most of the way to white — or it lands on a mid gray that the row's own
+colored titles and badges already out-shout.
+
+`outlinerCursorRow` truncates the content to the columns the gutter leaves, then
+pads the remainder with `cursorPaint.trail()`, so a marked row is exactly
+`rowWidth` columns at every width — the contract `attachScrollbarAtWidth` depends
+on — and degrades to a truncated gutter when `rowWidth` is no wider than the
+gutter itself. The seam is a concatenation only: it joins the same pieces at the
+same widths the row already had, so `titleWidth` remains the single title-budget
+authority. `taskRowTint` returns the waiting/overdue row background instead of
+applying it, which is what lets the cursor row wear that tint on its content
+region while the bar and trailing fill say where the cursor is. `SelectedLine`
+stays the whole-line authority on every other list surface.
+
 Recovery feedback is transaction-correlated. `storage.CommitResult.TransactionID`
 flows through application results and TUI messages, and `u undo` appears only
 when it equals the newest global ledger entry. Relocations add `Ctrl+O origin`
