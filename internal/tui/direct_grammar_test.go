@@ -242,6 +242,8 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		">":           operationTaskSetParent,
 		"<":           operationTaskAdoptChildren,
 		"%":           operationTaskMoveToProject,
+		"&":           operationTaskAttachments,
+		";":           operationTaskComments,
 		"shift+enter": operationCoreFocusParent,
 		"ctrl+enter":  operationCorePeek,
 		"/":           operationCoreScopeSearch,
@@ -321,7 +323,7 @@ const (
 )
 
 // grammarSigilRoutes pairs every advertised text-grammar trigger with the route
-// the Outliner gives it. The eight keyed sigils are the correspondence itself:
+// the Outliner gives it. The ten keyed sigils are the correspondence itself:
 // the character that writes a field in a capture line is the key that edits it
 // on a row. The three picker-only triggers are named rather than omitted so a
 // new sigil forces a deliberate decision instead of silently passing, and a
@@ -335,6 +337,11 @@ var grammarSigilRoutes = map[string]sigilKeyRoute{
 	"%": sigilRootKey,
 	">": sigilRootKey,
 	"<": sigilRootKey,
+	// The attachment and comment sigils open their panels rather than a picker:
+	// the panel already owns add, reorder, unlink and delete, so the key that
+	// writes the field at capture time is the key that reaches it on a row.
+	"&": sigilRootKey,
+	";": sigilRootKey,
 	// Two runes are not one key event, and the # picker already unchecks a tag.
 	"-#": sigilPickerOnly,
 	// The trie is prefix-free, so ## and @@ cannot be chords under keys # and @
@@ -614,7 +621,7 @@ func TestDirectTaskGrammarRemainsDocumentedWithoutACursorTarget(t *testing.T) {
 	for _, item := range items {
 		keys[item.Key] = true
 	}
-	for _, key := range []string{"A", "@", "#", "*", "[", "]", ">", "<", "y", "Y", "Ctrl+Y"} {
+	for _, key := range []string{"A", "@", "#", "*", "[", "]", ">", "<", "&", ";", "y", "Y", "Ctrl+Y"} {
 		if !keys[key] {
 			t.Errorf("target-free help omits documented direct key %q", key)
 		}
@@ -652,7 +659,7 @@ func TestTaskOperationsCannotAppearInBothDirectGrammarAndMenu(t *testing.T) {
 	t.Run("duplicate placement", func(t *testing.T) {
 		candidate := cloneInputStrategy(strategy)
 		candidate.Bindings = append(candidate.Bindings, OperationKeyBinding{
-			OperationID: operationTaskComments,
+			OperationID: operationTaskDelete,
 			Keys:        []string{"Z"},
 		})
 		err := validateOutlinerOperationOnePath(candidate)

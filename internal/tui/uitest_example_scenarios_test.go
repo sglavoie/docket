@@ -15,9 +15,14 @@ const exampleScenariosDir = "../../docs/tui-testing/scenarios"
 func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 	required := []string{
 		"capture-grammar.json",
+		"capture-attachment.json",
+		"capture-comment.json",
 		"capture-child-adoption.json",
 		"capture-pin.json",
 		"capture-project-header-destination.json",
+		"form-extras-attachments-narrow.json",
+		"form-extras-attachments-minimum-layout.json",
+		"form-extras-comments-narrow.json",
 		"cleanup-undo-redo.json",
 		"daily-loop.json",
 		"fresh-install-capture.json",

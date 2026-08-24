@@ -28,6 +28,8 @@ const (
 	acModePin                // Completing a *pin
 	acModeContext            // Completing a ##context
 	acModeDefer              // Completing a @@defer
+	acModeAttachment         // Completing an &link
+	acModeComment            // Completing a ;comment;
 )
 
 // acVisibleCount is the number of suggestions visible at once (scrollable window size)
@@ -59,6 +61,8 @@ type quickCaptureResult struct {
 	destination       app.CaptureDestination
 	destinationSet    bool
 	pinned            bool
+	attachments       []string
+	comments          []string
 	targetProjectID   *string // Target project ID for cross-project capture
 	targetProjectName string  // Target project name (for preview display)
 }
@@ -175,6 +179,16 @@ func autocompleteModeForField(field textgrammar.Field) int {
 		return acModeProject
 	case textgrammar.FieldPinned:
 		return acModePin
+	case textgrammar.FieldAttachment:
+		// An attachment value is a pasted URL or path, so there is nothing to
+		// suggest. The mode exists because quickCaptureTriggers drops a field
+		// returning acModeNone, and the registry projection must stay one-to-one;
+		// refreshAutocomplete has no default arm, so the mode simply shows nothing.
+		return acModeAttachment
+	case textgrammar.FieldComment:
+		// A comment is free prose, so there is nothing to suggest either; the mode
+		// exists for the same one-to-one reason acModeAttachment does.
+		return acModeComment
 	default:
 		return acModeNone
 	}
@@ -602,6 +616,28 @@ func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	if q.preview.pinned {
 		groups = append(groups, previewGroup{label: "Pinned", chunks: []string{pinnedDefinition.Trigger + "pin"}})
 	}
+	// Attachments sit below the metadata groups and one chunk per entry, so the
+	// preview states how many the line would create. Without this group a pasted
+	// URL would vanish from the title with nothing said in its place.
+	if len(q.preview.attachments) > 0 {
+		attachmentDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldAttachment)
+		attachmentChunks := make([]string, len(q.preview.attachments))
+		for i, value := range q.preview.attachments {
+			attachmentChunks[i] = attachmentDefinition.Trigger + value
+		}
+		groups = append(groups, previewGroup{label: "Attach", chunks: attachmentChunks})
+	}
+	// Comments sit beside attachments for the same reason: the span is peeled out
+	// of the title, so without this group a comment whose closing delimiter is
+	// still missing would be indistinguishable from one already recognized.
+	if len(q.preview.comments) > 0 {
+		commentDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldComment)
+		commentChunks := make([]string, len(q.preview.comments))
+		for i, text := range q.preview.comments {
+			commentChunks[i] = commentDefinition.Trigger + text + commentDefinition.Trigger
+		}
+		groups = append(groups, previewGroup{label: "Comments", chunks: commentChunks})
+	}
 	if len(q.preview.tags) > 0 {
 		tagStrs := make([]string, len(q.preview.tags))
 		for i, t := range q.preview.tags {
@@ -771,13 +807,15 @@ type syntaxGuideGroup struct {
 	entries []syntaxGuideEntry
 }
 
-// syntaxGuideGroups returns the grouped sigil reference. Project Routing is
-// only included when %project capture is enabled, so the Linked Task Creator
-// (which skips project syntax) never advertises it.
+// syntaxGuideGroups returns the grouped sigil reference in teach order, which is
+// why it reads GuideDefinitions rather than the parse-order projection: the
+// attachment sigil has to be peeled before #tag and would otherwise lead the
+// guide. Project Routing is only included when %project capture is enabled, so
+// the Linked Task Creator (which skips project syntax) never advertises it.
 func (q *quickCaptureInput) syntaxGuideGroups() []syntaxGuideGroup {
 	var groupOrder []string
 	byGroup := make(map[string][]syntaxGuideEntry)
-	for _, def := range textgrammar.Definitions(textgrammar.SurfaceCapture) {
+	for _, def := range textgrammar.GuideDefinitions(textgrammar.SurfaceCapture) {
 		if def.Legacy || (q.skipProjectSyntax && def.Field == textgrammar.FieldProject) {
 			continue
 		}

@@ -1,0 +1,63 @@
+{
+  "name": "form-extras-comments-narrow",
+  "fixture": "fresh",
+  "size": "72x20",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "capture into Unfiled", "key": "a" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "text", "label": "a compact line carrying a comment span", "text": "Wire the Comments section ;ask about the SSO deadline;" },
+    { "type": "key", "label": "expand into the full task form", "key": "ctrl+f" },
+    { "type": "assert", "label": "expanding no longer refuses a line carrying a comment", "assert": "contains", "value": "Task Composer · Expanded" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "wrap backward onto Extras", "key": "shift+left" },
+    { "type": "assert", "label": "the seeded section opens so the value is visible", "assert": "contains", "value": "Comments (1)" },
+    { "type": "assert", "assert": "contains", "value": "ask about the SSO deadline" },
+    { "type": "assert", "assert": "contains", "value": "Attachments (0)" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "collapse the seeded Comments section", "key": "c" },
+    { "type": "assert", "assert": "not_contains", "value": "ask about the SSO deadline" },
+    { "type": "key", "label": "expand it again", "key": "c" },
+    { "type": "assert", "assert": "contains", "value": "ask about the SSO deadline" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "add a second comment draft", "key": "ctrl+y" },
+    { "type": "assert", "assert": "contains", "value": "Edit Comment" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "text", "text": "confirm the rollout window" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Comments (2)" },
+    { "type": "assert", "assert": "contains", "value": "confirm the rollout window" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "add an attachment draft beside the comments", "key": "ctrl+l" },
+    { "type": "text", "text": "https://example.com/spec.pdf" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Attachments (1)" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "save task, attachment, and comments as one transaction", "key": "ctrl+s" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "status_contains", "value": "Add Task: #1 Wire the Comments section" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "key": "home" },
+    { "type": "key", "label": "past the Inbox section header", "key": "j" },
+    { "type": "key", "label": "past the project header onto the new row", "key": "j" },
+    { "type": "key", "label": "open the Comments panel with its sigil key", "key": ";" },
+    { "type": "assert", "assert": "view", "value": "TaskComments" },
+    { "type": "assert", "label": "both drafts committed in the same transaction as the task", "assert": "contains", "value": "2 comment(s)" },
+    { "type": "assert", "assert": "contains", "value": "ask about the SSO deadline" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "one undo takes back the task, its attachment, and its comments", "key": "u" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Wire the Comments section" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

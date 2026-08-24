@@ -252,29 +252,10 @@ func (s *Service) mutateAttachmentSelection(taskID string, locator TaskLocator, 
 	return result, nil
 }
 
-// commitTaskWithSideEffects runs the post-mutation hooks and commits a single
-// project write plus zero or more attachment file side effects (copy/delete) as
-// ONE ChangeSet, so a task's attachment bytes and the metadata that references
-// them are staged, committed, and crash-recovered together. It is the attachment
-// analog of commitProjectWithArtifacts.
+// commitTaskWithSideEffects is the attachment-ops-only spelling of
+// commitProjectWithSideEffects, kept for the attachment mutations that carry no
+// auxiliary artifact: a task's attachment bytes and the metadata that references
+// them are staged, committed, and crash-recovered together.
 func (s *Service) commitTaskWithSideEffects(ref TaskRef, expectedRevision string, ops []storage.AttachmentOp, undoAction, undoContext string) (TaskResult, error) {
-	applyPostMutationHooks(ref.Project)
-	results, err := s.repo.Commit(storage.ChangeSet{
-		Project:          ref.Project,
-		ExpectedRevision: expectedRevision,
-		Base:             ref.Base,
-		AttachmentOps:    ops,
-		UndoAction:       undoAction,
-		UndoContext:      undoContext,
-	})
-	if err != nil {
-		return TaskResult{}, err
-	}
-	revision := ""
-	transactionID := ""
-	if len(results) > 0 && results[0] != nil {
-		revision = results[0].Revision
-		transactionID = results[0].TransactionID
-	}
-	return newTaskResult(ref, revision, transactionID), nil
+	return s.commitProjectWithSideEffects(ref, expectedRevision, nil, ops, undoAction, undoContext)
 }

@@ -161,19 +161,20 @@ func (s *Service) commitProject(ref TaskRef, expectedRevision, undoAction, undoC
 	return s.commitProjectWithArtifacts(ref, expectedRevision, nil, undoAction, undoContext)
 }
 
-// commitProjectWithArtifacts commits a project write plus zero or more auxiliary
-// durable artifacts supplied by an adapter as
+// commitProjectWithSideEffects commits a project write plus zero or more auxiliary
+// durable artifacts and zero or more attachment file side effects (copy/delete) as
 // ONE ChangeSet, so a mutation whose side effects live outside tasks.md stays
 // atomic with the task write — either the task and its side effects all land or
-// none do. It is the single-project analog of the note/blocker commitArtifact
-// path, generalized to carry an already-encoded artifact set the caller assembled.
-func (s *Service) commitProjectWithArtifacts(ref TaskRef, expectedRevision string, artifacts []storage.ArtifactChange, undoAction, undoContext string) (TaskResult, error) {
+// none do. It is the single-project analog of commitProjects, carrying the same
+// pair of side-effect kinds projectCommit does for a multi-project transaction.
+func (s *Service) commitProjectWithSideEffects(ref TaskRef, expectedRevision string, artifacts []storage.ArtifactChange, ops []storage.AttachmentOp, undoAction, undoContext string) (TaskResult, error) {
 	applyPostMutationHooks(ref.Project)
 	results, err := s.repo.Commit(storage.ChangeSet{
 		Project:          ref.Project,
 		ExpectedRevision: expectedRevision,
 		Base:             ref.Base,
 		Artifacts:        artifacts,
+		AttachmentOps:    ops,
 		UndoAction:       undoAction,
 		UndoContext:      undoContext,
 	})
@@ -187,6 +188,13 @@ func (s *Service) commitProjectWithArtifacts(ref TaskRef, expectedRevision strin
 		transactionID = results[0].TransactionID
 	}
 	return newTaskResult(ref, revision, transactionID), nil
+}
+
+// commitProjectWithArtifacts is the artifacts-only spelling of
+// commitProjectWithSideEffects, kept for the mutations that carry no attachment
+// side effect at all (planning writes, state changes, line edits).
+func (s *Service) commitProjectWithArtifacts(ref TaskRef, expectedRevision string, artifacts []storage.ArtifactChange, undoAction, undoContext string) (TaskResult, error) {
+	return s.commitProjectWithSideEffects(ref, expectedRevision, artifacts, nil, undoAction, undoContext)
 }
 
 // projectCommit pairs a mutated project with the revision it was loaded at, so a

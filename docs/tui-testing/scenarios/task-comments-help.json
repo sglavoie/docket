@@ -6,9 +6,7 @@
     { "type": "key", "key": "j" },
     { "type": "key", "label": "select Build login form", "key": "j" },
 
-    { "type": "key", "label": "open task actions for comments", "key": "space" },
-    { "type": "text", "text": "comments" },
-    { "type": "key", "key": "enter" },
+    { "type": "key", "label": "open the Comments panel with its sigil key", "key": ";" },
     { "type": "assert", "assert": "view", "value": "TaskComments" },
     { "type": "assert", "label": "the panel promises the key it now answers", "assert": "contains", "value": "? help" },
 

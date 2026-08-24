@@ -76,7 +76,10 @@ func TestSyntaxGuideExamplesAndGroupsComeFromCanonicalRegistry(t *testing.T) {
 	for _, group := range q.syntaxGuideGroups() {
 		entries = append(entries, group.entries...)
 	}
-	definitions := textgrammar.Definitions(textgrammar.SurfaceCapture)
+	// Teach order, not parse order: the guide is the one consumer that reads
+	// GuideDefinitions, because the attachment sigil has to be peeled before #tag
+	// and must not lead the guide on that account.
+	definitions := textgrammar.GuideDefinitions(textgrammar.SurfaceCapture)
 	if len(entries) != len(definitions) {
 		t.Fatalf("syntax entries = %d, want %d registry definitions", len(entries), len(definitions))
 	}

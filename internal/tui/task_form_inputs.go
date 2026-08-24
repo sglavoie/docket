@@ -81,6 +81,34 @@ func (m *TaskFormModel) initSubtaskItemInput(value string) {
 	}
 }
 
+// initAttachmentItemInput creates and configures the attachment value edit
+// textinput. The limit is generous because a pasted URL or absolute path is
+// routinely longer than a checklist item.
+func (m *TaskFormModel) initAttachmentItemInput(value string) {
+	m.attachmentItemInput = textinput.New()
+	m.attachmentItemInput.Placeholder = "URL, path:line, or file path..."
+	m.attachmentItemInput.CharLimit = 500
+	m.attachmentItemInput.SetWidth(50)
+	applyThemedTextInput(&m.attachmentItemInput)
+	if value != "" {
+		m.attachmentItemInput.SetValue(value)
+	}
+}
+
+// initCommentItemInput creates and configures the comment text edit textinput.
+// It shares the attachment input's generous limit because a comment is free
+// prose, not a label.
+func (m *TaskFormModel) initCommentItemInput(value string) {
+	m.commentItemInput = textinput.New()
+	m.commentItemInput.Placeholder = "Comment text..."
+	m.commentItemInput.CharLimit = 500
+	m.commentItemInput.SetWidth(50)
+	applyThemedTextInput(&m.commentItemInput)
+	if value != "" {
+		m.commentItemInput.SetValue(value)
+	}
+}
+
 // formatDateInput formats a date for text inputs.
 func formatDateInput(value *time.Time) string {
 	if value == nil {

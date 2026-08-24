@@ -1,0 +1,27 @@
+{
+  "name": "form-extras-attachments-minimum-layout",
+  "fixture": "fresh",
+  "size": "60x20",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "capture into Unfiled", "key": "a" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "text", "text": "Wire the Extras tab" },
+    { "type": "key", "label": "expand into the full task form", "key": "ctrl+f" },
+    { "type": "assert", "label": "the fixed-width form degrades to the min-size notice below 68 columns rather than overflowing", "assert": "contains", "value": "Terminal too small" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "wrap backward onto Extras behind the notice", "key": "shift+left" },
+    { "type": "key", "label": "add an attachment draft behind the notice", "key": "ctrl+l" },
+    { "type": "text", "text": "https://example.com/spec.pdf" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "give the fixed-width body the columns it needs", "width": 72, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "Task Composer · Expanded" },
+    { "type": "assert", "label": "the draft entered behind the notice survived the resize", "assert": "contains", "value": "Attachments (1)" },
+    { "type": "assert", "assert": "contains", "value": "https://example.com/spec.pdf" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

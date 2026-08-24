@@ -64,6 +64,8 @@ func (m *TaskFormModel) View() tea.View {
 			tabContent = m.renderScheduleTab()
 		case formTabChildren:
 			tabContent = m.renderChildrenTab()
+		case formTabExtras:
+			tabContent = m.renderExtrasTab()
 		}
 
 		helpWidth := max(min(m.width*35/100, 30), 20)
@@ -125,9 +127,13 @@ func (m *TaskFormModel) guidanceSpec() GuidanceSpec {
 		commit = "Ctrl+S retry"
 	}
 	optional := []string{"[/] tabs", "Tab next", "Shift+Tab previous"}
-	if m.activeTab == formTabChildren {
+	switch m.activeTab {
+	case formTabChildren:
 		optional = []string{"c checklist", "Ctrl+A add item", "Enter edit item", "Space toggle", "Ctrl+D delete", "Ctrl+J/K reorder"}
 		optional = append([]string{"S subtasks", "Ctrl+T add subtask"}, optional...)
+	case formTabExtras:
+		optional = []string{"a attachments", "Ctrl+L add", "Enter edit", "Ctrl+D delete", "Ctrl+J/K reorder"}
+		optional = append([]string{"c comments", "Ctrl+Y add comment"}, optional...)
 	}
 	return requiredActionGuidanceSpec(commit, optional...)
 }

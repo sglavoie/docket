@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -48,6 +49,35 @@ func normalizeCommentText(text string) (string, error) {
 		return "", invalidInput("comment", "text is required")
 	}
 	return trimmed, nil
+}
+
+// resolveCapturedComments normalizes every ;comment; text on one creation
+// request before the request mutates anything, so a rejected comment aborts with
+// nothing written. It is the comment sibling of resolveCapturedAttachments and
+// runs the same normalizeCommentText an interactively added comment goes
+// through, which is what keeps the two entry points from disagreeing.
+func resolveCapturedComments(values []string) ([]string, error) {
+	if len(values) == 0 {
+		return nil, nil
+	}
+	resolved := make([]string, 0, len(values))
+	for _, value := range values {
+		trimmed, err := normalizeCommentText(value)
+		if err != nil {
+			return nil, err
+		}
+		resolved = append(resolved, trimmed)
+	}
+	return resolved, nil
+}
+
+// applyCapturedComments records each normalized comment on the newly created
+// task. Unlike attachments it stages no side effect: a comment is task document
+// content, so it commits with the task write itself.
+func applyCapturedComments(task *models.Task, texts []string, now time.Time) {
+	for _, text := range texts {
+		task.AddCommentAt(text, now)
+	}
 }
 
 func (s *Service) addComment(task *models.Task, text string) {

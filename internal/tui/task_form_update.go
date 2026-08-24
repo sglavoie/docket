@@ -176,6 +176,13 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// ── Extras-tab keys ───────────────────────────────────────────────────
+		if m.activeTab == formTabExtras {
+			if ret, handled := m.handleExtrasTabKey(msg); handled {
+				return ret, nil
+			}
+		}
+
 		// ── Normal navigation ──────────────────────────────────────────────────
 		switch msg.String() {
 		case "shift+right":
@@ -202,6 +209,10 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			if m.activeTab == formTabChildren {
 				m.handleChildrenEnter()
+				return m, nil
+			}
+			if m.activeTab == formTabExtras {
+				m.handleExtrasEnter()
 				return m, nil
 			}
 		case "ctrl+e":

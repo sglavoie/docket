@@ -94,15 +94,13 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		ids = append(ids, descriptor.ID)
 	}
 	wantIDs := []OperationID{
-		operationTaskComments,
-		operationTaskAttachments,
 		operationTaskDelete,
 	}
 	if !slices.Equal(ids, wantIDs) {
-		t.Fatalf("action sheet IDs = %v, want exact three %v", ids, wantIDs)
+		t.Fatalf("action sheet IDs = %v, want exactly Delete %v", ids, wantIDs)
 	}
 	wantLabels := []string{
-		"Comments", "Attachments", "Delete",
+		"Delete",
 	}
 	for index, descriptor := range descriptors {
 		if descriptor.Label != wantLabels[index] {
@@ -144,6 +142,8 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		operationTaskCopyDetails,
 		operationTaskCopyTitleDescription,
 		operationTaskNewChild,
+		operationTaskComments,
+		operationTaskAttachments,
 	} {
 		if slices.Contains(ids, excluded) {
 			t.Errorf("action sheet exposed non-contextual %s: %v", excluded, ids)
@@ -166,13 +166,13 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 			seenCategories[row.Category.ID] = true
 		}
 	}
-	for _, category := range []ListCategoryID{
-		taskActionCategoryContent,
-		taskActionCategoryDanger,
-	} {
-		if !seenCategories[category] {
-			t.Errorf("grouped sheet missing category %s", category)
-		}
+	// Delete is the whole menu, so Danger is the whole grouping: the Content
+	// header left with Comments and Attachments when they became direct keys.
+	if !seenCategories[taskActionCategoryDanger] {
+		t.Errorf("grouped sheet missing category %s", taskActionCategoryDanger)
+	}
+	if seenCategories[taskActionCategoryContent] {
+		t.Errorf("grouped sheet still renders the retired %s header", taskActionCategoryContent)
 	}
 
 	// Printable letters filter immediately. This query includes k, which is no
@@ -206,24 +206,29 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 	}
 }
 
-func TestTaskActionSheetMovesWithCtrlJAndCtrlK(t *testing.T) {
-	registry := NewOperationRegistry()
-	for _, descriptor := range taskActionTestDescriptors() {
-		registerTaskActionTestDescriptor(t, registry, descriptor)
-	}
-	sheet, err := NewTaskActionSheetModel(
+// TestActionSheetMovesWithCtrlJAndCtrlK covers the sheet navigation the task
+// menu used to demonstrate. The task menu is Delete alone now that Comments and
+// Attachments answer to & and ;, so a single row can no longer move; the shared
+// sheet engine is exercised through an Outliner-hosted two-row sheet instead.
+func TestActionSheetMovesWithCtrlJAndCtrlK(t *testing.T) {
+	registry, executor := contextActionTestEngine(t, []OperationDescriptor{
+		contextActionTestDescriptor("test.first", "First"),
+		contextActionTestDescriptor("test.second", "Second"),
+	}, nil)
+	sheet, err := NewContextActionSheetModel(
 		registry,
-		NewOperationExecutor(registry),
-		taskActionTestContext(),
-		"Selected task",
+		executor,
+		contextActionTestContext(),
+		[]OperationID{"test.first", "test.second"},
+		ContextActionSheetConfig{Host: ContextActionHostOutliner, ImmediateFilter: true},
 	)
 	if err != nil {
-		t.Fatalf("NewTaskActionSheetModel: %v", err)
+		t.Fatalf("NewContextActionSheetModel: %v", err)
 	}
 
 	first, ok := sheet.surface.CurrentItem()
 	if !ok {
-		t.Fatal("task action sheet has no initial item")
+		t.Fatal("action sheet has no initial item")
 	}
 	_, _, _ = sheet.handleKey(syntheticCtrlKey('j'))
 	second, ok := sheet.surface.CurrentItem()
@@ -239,7 +244,7 @@ func TestTaskActionSheetMovesWithCtrlJAndCtrlK(t *testing.T) {
 		t.Fatalf("Ctrl+J/Ctrl+K changed the immediate-filter query to %q", query)
 	}
 	if view := sheet.render(100); !strings.Contains(ansi.Strip(view), "↑↓/Ctrl+j/k move") {
-		t.Fatalf("task action sheet footer does not advertise Ctrl+j/k navigation:\n%s", view)
+		t.Fatalf("action sheet footer does not advertise Ctrl+j/k navigation:\n%s", view)
 	}
 }
 

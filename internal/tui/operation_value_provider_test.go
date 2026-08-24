@@ -573,10 +573,8 @@ func TestTaskOperationManifestOrdersTheSingleTaskActionSheet(t *testing.T) {
 		}
 	}
 	// Every direct and retired operation is absent. The remaining projection is
-	// the exact three-item task menu in its canonical order.
+	// the single-row task menu, which Delete alone now occupies.
 	want := []OperationID{
-		operationTaskComments,
-		operationTaskAttachments,
 		operationTaskDelete,
 	}
 	if !reflect.DeepEqual(ordered, want) {

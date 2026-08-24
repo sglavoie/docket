@@ -5,10 +5,11 @@ const (
 	formTabBasics   = 0
 	formTabSchedule = 1
 	formTabChildren = 2
-	formTabCount    = 3
+	formTabExtras   = 3
+	formTabCount    = 4
 )
 
-var formTabNames = []string{"Basics", "Schedule", "Children"}
+var formTabNames = []string{"Basics", "Schedule", "Children", "Extras"}
 
 // Static field counts per tab (dynamic items like checklist are added on top).
 const (
@@ -17,7 +18,8 @@ const (
 )
 
 // formStaticFieldCount returns the number of static focusable fields in a tab.
-// Children tab returns 0 here; its count is computed dynamically.
+// The Children and Extras tabs return 0 here; both counts are computed
+// dynamically from their collapsible sections.
 func formStaticFieldCount(tab int) int {
 	switch tab {
 	case formTabBasics:
@@ -25,6 +27,8 @@ func formStaticFieldCount(tab int) int {
 	case formTabSchedule:
 		return formScheduleFieldCount
 	case formTabChildren:
+		return 0
+	case formTabExtras:
 		return 0
 	}
 	return 0

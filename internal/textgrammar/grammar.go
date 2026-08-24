@@ -40,6 +40,8 @@ const (
 	FieldProject     Field = "project"
 	FieldDestination Field = "destination"
 	FieldPinned      Field = "pinned"
+	FieldAttachment  Field = "attachment"
+	FieldComment     Field = "comment"
 )
 
 // Cardinality describes whether a field may occur once or many times in one
@@ -88,6 +90,7 @@ const (
 	validatePriority
 	validateTag
 	validatePin
+	validateAttachment
 )
 
 // definitionSpec adds the search wording beside the mutation wording because
@@ -107,6 +110,43 @@ var retiredPriorityNames = []string{"4", "5"}
 const clearValue = "0"
 
 var registry = []definitionSpec{
+	// Comment is parsed FIRST, ahead of every other field including attachment,
+	// and that position is the whole reason a comment can hold sigil characters.
+	// RE2 has no lookaround, so no other pattern can say "not inside a ;…; span";
+	// peeling the comment before anything else is what keeps
+	// "Fix login ;check the #auth flow;" from losing #auth to the tag rule. The
+	// closing delimiter is required, so an unterminated ";note" stays prose, and
+	// the leading-whitespace boundary keeps "Fix a; then b" literal. The teaching
+	// surfaces read guideOrder instead, so this position never leads the guide.
+	{
+		Definition: Definition{
+			Field: FieldComment, Group: "Comments", Trigger: ";",
+			Description: "Add a comment to the new task (repeatable)",
+			Examples:    []string{";ask about the SSO deadline;", ";blocked on design;"},
+			Surfaces:    SurfaceCapture, Cardinality: CardinalityRepeatable,
+		},
+		forms:      []surfaceForm{{Text: ";comment;", Surfaces: SurfaceCapture}},
+		pattern:    `(?:^|\s);(\S[^;]*);`,
+		validation: validateAny,
+	},
+	// Attachment is parsed BEFORE tag, and that position is load-bearing rather
+	// than cosmetic. RE2 has no lookaround, so the tag pattern cannot say "not
+	// followed by &": #([\w][\w.:-]*) stops at the &, and the rewrite that removes
+	// the tag leaves the & whitespace-preceded, which would turn
+	// "Task #work&http://x/y" into a spurious attachment. Peeling & first leaves
+	// that & glued to the tag, where it stays literal title text. The teaching
+	// surfaces read guideOrder instead, so this position never leads the guide.
+	{
+		Definition: Definition{
+			Field: FieldAttachment, Group: "Attachments", Trigger: "&",
+			Description: "Attach a URL, file path, or code reference (repeatable)",
+			Examples:    []string{"&https://example.com/spec.pdf", "&internal/app/add.go:19"},
+			Surfaces:    SurfaceCapture, Cardinality: CardinalityRepeatable,
+		},
+		forms:      []surfaceForm{{Text: "&link", Surfaces: SurfaceCapture}},
+		pattern:    `(?:^|\s)&(\S+)`,
+		validation: validateAttachment,
+	},
 	{
 		Definition: Definition{
 			Field: FieldPriority, Group: "Priority & Tags", Trigger: "!",
@@ -291,8 +331,33 @@ var registry = []definitionSpec{
 	},
 }
 
+// guideOrder is teach order, which is a different concern from the parse order
+// `registry` declares. Parse order answers "which pattern peels first", and one
+// field can only be disambiguated by sitting early; teach order answers "what
+// does a user meet first", where the same field belongs beside its neighbors.
+// The two held one list until the attachment sigil needed to be parsed ahead of
+// #tag without leading the syntax guide. validateGuideOrder keeps them the same
+// set, so a field added to one and forgotten in the other fails at init.
+var guideOrder = []Field{
+	FieldPriority,
+	FieldTag,
+	FieldRemoveTag,
+	FieldContext,
+	FieldDue,
+	FieldDefer,
+	FieldDestination,
+	FieldPinned,
+	FieldProject,
+	FieldParent,
+	FieldChild,
+	FieldAttachment,
+	FieldComment,
+	FieldTaskType,
+	FieldRecurrence,
+}
+
 // Definitions returns defensive copies of the canonical definitions available
-// on a surface.
+// on a surface, in parse order.
 func Definitions(surface Surface) []Definition {
 	result := make([]Definition, 0, len(registry))
 	for _, spec := range registry {
@@ -310,6 +375,25 @@ func Definitions(surface Surface) []Definition {
 		def.Examples = slices.Clone(def.Examples)
 		def.Clears = clearsForSurface(def.Clears, surface, spec.searchClearText)
 		result = append(result, def)
+	}
+	return result
+}
+
+// GuideDefinitions returns the same definitions Definitions returns for a
+// surface, in teach order. Every surface that presents the grammar to a
+// human — the capture syntax guide today — reads this projection, so parse
+// order stays free to move a field for disambiguation alone.
+func GuideDefinitions(surface Surface) []Definition {
+	available := Definitions(surface)
+	byField := make(map[Field]Definition, len(available))
+	for _, def := range available {
+		byField[def.Field] = def
+	}
+	result := make([]Definition, 0, len(available))
+	for _, field := range guideOrder {
+		if def, ok := byField[field]; ok {
+			result = append(result, def)
+		}
 	}
 	return result
 }
@@ -377,7 +461,34 @@ func validateRegistry() error {
 			return err
 		}
 	}
+	if err := validateGuideOrder(); err != nil {
+		return err
+	}
 	return validateDestinationDefinition()
+}
+
+// validateGuideOrder asserts parse order and teach order hold identical sets.
+// Splitting the two lists is what lets a field be parsed early and taught late,
+// and this is the fence that makes the split safe: a field added to one list and
+// forgotten in the other would otherwise silently vanish from the syntax guide
+// or gain a second, unreachable entry.
+func validateGuideOrder() error {
+	seen := make(map[Field]bool, len(guideOrder))
+	for _, field := range guideOrder {
+		if seen[field] {
+			return fmt.Errorf("grammar guide order lists %q twice", field)
+		}
+		seen[field] = true
+		if _, ok := registrySpecFor(field); !ok {
+			return fmt.Errorf("grammar guide order names %q, which the registry does not declare", field)
+		}
+	}
+	for _, spec := range registry {
+		if !seen[spec.Field] {
+			return fmt.Errorf("grammar field %q is missing from the guide order", spec.Field)
+		}
+	}
+	return nil
 }
 
 func validateDefinitionIdentity(spec definitionSpec, seenFields map[Field]bool, seenTriggers map[string]Field) error {

@@ -634,11 +634,9 @@ func mountLiveCommentsPanel(t *testing.T) (*UITestDriver, func(string), func(str
 
 	press("j")
 	press("j")
-	press("space")
-	typeText("comments")
-	press("enter")
+	press(";")
 	if driver.App().activeCommentsPanel() == nil {
-		t.Fatalf("the task action sheet did not open the Comments panel; view = %s", driver.App().currentView())
+		t.Fatalf("the comment sigil key did not open the Comments panel; view = %s", driver.App().currentView())
 	}
 	return driver, press, typeText
 }

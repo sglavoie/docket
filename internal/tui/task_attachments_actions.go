@@ -10,31 +10,33 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/util"
 )
 
+// addAttachment routes a pasted value to one of the three attach paths. The
+// classification itself lives in app.ResolveAttachmentInput so every surface that
+// accepts a pasted attachment agrees on it; the panel keeps only the optimistic
+// add-mode teardown and its own error state.
 func (m *TaskAttachmentsModel) addAttachment() tea.Cmd {
-	input := util.NormalizePastedPathInput(m.textInput.Value())
-	if input == "" {
-		m.err = fmt.Errorf("path/URL cannot be empty")
+	resolved, err := app.ResolveAttachmentInput(m.textInput.Value())
+	if err != nil {
+		m.err = err
 		return nil
 	}
 
 	m.resolveTask()
 
-	if strings.HasPrefix(input, "http://") || strings.HasPrefix(input, "https://") {
-		return m.addURLAttachment(input)
+	switch resolved.Kind {
+	case app.AttachmentInputURL:
+		return m.addURLAttachment(resolved.URL)
+	case app.AttachmentInputCodeReference:
+		return m.addCodeReference(resolved)
+	default:
+		return m.addFileAttachment(resolved.SourcePath)
 	}
-
-	codePath, lineNum, isCodeRef := storage.ParseCodeReference(input)
-	if isCodeRef {
-		return m.addCodeReference(codePath, lineNum)
-	}
-
-	return m.addFileAttachment(input)
 }
 
 func (m *TaskAttachmentsModel) addURLAttachment(input string) tea.Cmd {
@@ -42,36 +44,16 @@ func (m *TaskAttachmentsModel) addURLAttachment(input string) tea.Cmd {
 	return m.coordinator.AttachURL(taskIdentityFor(m.task, m.project), input)
 }
 
-func (m *TaskAttachmentsModel) addCodeReference(codePath string, lineNum int) tea.Cmd {
-	if !storage.CodeReferenceFileExists(codePath) {
+func (m *TaskAttachmentsModel) addCodeReference(resolved app.ResolvedAttachmentInput) tea.Cmd {
+	if resolved.SourceMissing {
 		m.setStatus("Code reference added (file may not exist)")
 	}
 
 	m.finishOptimisticAdd()
-	return m.coordinator.AttachCodeReference(taskIdentityFor(m.task, m.project), codePath, lineNum)
+	return m.coordinator.AttachCodeReference(taskIdentityFor(m.task, m.project), resolved.CodePath, resolved.CodeLine)
 }
 
-func (m *TaskAttachmentsModel) addFileAttachment(input string) tea.Cmd {
-	path := input
-	if strings.HasPrefix(path, "~/") {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			m.err = fmt.Errorf("failed to expand home directory: %w", err)
-			return nil
-		}
-		path = filepath.Join(home, path[2:])
-	}
-
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		m.err = fmt.Errorf("failed to resolve path: %w", err)
-		return nil
-	}
-	if _, statErr := os.Stat(absPath); os.IsNotExist(statErr) {
-		m.err = fmt.Errorf("file not found: %s", absPath)
-		return nil
-	}
-
+func (m *TaskAttachmentsModel) addFileAttachment(absPath string) tea.Cmd {
 	m.finishOptimisticAdd()
 	return m.coordinator.AttachFile(taskIdentityFor(m.task, m.project), absPath)
 }

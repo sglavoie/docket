@@ -1,0 +1,32 @@
+{
+  "name": "capture-attachment",
+  "fixture": "fresh",
+  "size": "100x30",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "capture into Unfiled", "key": "a" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "text", "label": "an attachable value and ordinary prose on one line", "text": "Plan the R&D offsite &https://example.com/spec.pdf " },
+    { "type": "assert", "label": "the preview names the attachment rather than dropping it", "assert": "contains", "value": "Attach" },
+    { "type": "assert", "assert": "contains", "value": "&https://example.com/spec.pdf" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "commit the capture", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "the unrecognized ampersand stayed in the title", "assert": "status_contains", "value": "Add Task: #1 Plan the R&D offsite" },
+    { "type": "assert", "assert": "contains", "value": "Plan the R&D offsite" },
+    { "type": "assert", "label": "the attachment value left the title", "assert": "not_contains", "value": "example.com/spec.pdf" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "assert", "label": "the row carries the attachment indicator", "assert": "contains", "value": "⊕ 1" },
+
+    { "type": "key", "key": "home" },
+    { "type": "key", "label": "past the Inbox section header", "key": "j" },
+    { "type": "key", "label": "past the project header onto the new row", "key": "j" },
+    { "type": "key", "label": "open the Attachments panel with its sigil key", "key": "&" },
+    { "type": "assert", "assert": "view", "value": "TaskAttachments" },
+    { "type": "assert", "label": "the captured URL landed in the same transaction as the task", "assert": "contains", "value": "1 attachment(s)" },
+    { "type": "assert", "assert": "contains", "value": "https://example.com/spec.pdf" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

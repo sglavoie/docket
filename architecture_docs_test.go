@@ -60,7 +60,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"Five surfaces hold entities, so five `InputStrategy` values exist, and `surfaceOperationGates()` is " +
 			"the whole inventory: there is no sixth grammar and no unlisted one",
 		"| `SimplifiedInputStrategy` | `taskOperationManifest` + `taskDirectOperationManifest` + " +
-			"`outlinerProjectOperationManifest` | Comments, Attachments, Delete on a task row; " +
+			"`outlinerProjectOperationManifest` | Delete alone on a task row; " +
 			"Edit, pin, Archive, Delete on a project header |",
 		"| `ProjectHubInputStrategy` | `projectOperationManifest` | Archive or Unarchive, bulk tags |",
 		"| `NotesInputStrategy` | `notesOperationManifest` | Delete |",
@@ -82,7 +82,9 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 			"before registering its strategy",
 		"The five named wrappers each delegate to one `validateOperationOnePath`",
 		"`SimplifiedInputStrategy` is the only Outliner key grammar",
-		"the exact three `Space` actions",
+		"the one `Space` action",
+		"`taskDirectOperationManifest` holds Comments and Attachments as `DirectOnly` entries instead, " +
+			"bound to `;` and `&`",
 		"The checklist is absent because its rows own the whole mutation set",
 		"`AttachmentsInputStrategy` is the third peer grammar and splits the same way",
 		"hosted as `ContextActionHostAttachments`",
@@ -230,10 +232,12 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// docs/architecture.md and behavior into README.md. It moves only when a
 	// feature adds invariants that cannot live anywhere else — the Outliner
 	// project sheet, the enumerated project delete, the restore lock scope, the
-	// cursor row's gutter/content seam, and Select Project's preview pane owning a
-	// second scroll are the five that raised it from 16200 — and never to absorb
+	// cursor row's gutter/content seam, Select Project's preview pane owning a
+	// second scroll, the parse-order/teach-order registry split that the
+	// attachment sigil forced, and the paired-delimiter comment sigil that leads
+	// parse order are the seven that raised it from 16200 — and never to absorb
 	// explanation.
-	const budget = 17500
+	const budget = 18600
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -254,8 +258,8 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"do not add a parallel key router, palette, or view-specific copy",
 		"An entity operation is direct-only or menu-only, never both, on every surface, " +
 			"enforced by `validateOperationOnePath` over that surface's manifest",
-		"The task-row `Space` menu is exactly Comments, Attachments, Delete; the bulk menu is Delete only; " +
-			"Delete has no direct key and confirms first",
+		"The task-row `Space` menu is Delete alone, identical to the bulk menu: Delete has no " +
+			"direct key and confirms first",
 		"The Outliner project-header sheet is Edit, pin, Archive, Delete, and never Unarchive: " +
 			"that header is drawn from the active population",
 		"`#` and `Space` are the shared keys, the cursor deciding",
@@ -304,7 +308,8 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`parked` is the one behavioral project tag",
 		"Keep the two populations named apart: `Runtime.TaskWorkspaceProjects()` is non-archived and not " +
 			"parked and is the only one the base Outliner reads",
-		"!1-3 #tag ##context @date @@defer $destination *pin %project >parent <child",
+		"!1-3 #tag ##context @date @@defer $destination *pin %project >parent <child &link ;comment;",
+		"`registry` is parse order and `guideOrder` teach order",
 		"Due's last alternative is `[^\\s@]\\S*` so `@` can never eat `@@`",
 		"`*unpin` belongs to edit and search",
 		"Slash search is the fourth surface of the same registry, not a parallel query language",

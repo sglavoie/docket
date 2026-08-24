@@ -62,6 +62,14 @@ type AddTaskRequest struct {
 	// Focus Queue membership is independent planning state handled at the
 	// config-aware layer, not a task field set here.
 	Pinned bool
+	// Attachments are raw &link values in line order, carried through the same
+	// classification and the same ChangeSet as CaptureRequest.Attachments. The CLI
+	// `tt task add` path leaves it nil.
+	Attachments []string
+	// Comments are raw ;comment; texts in line order, carried through the same
+	// normalization and the same ChangeSet as CaptureRequest.Comments. The CLI
+	// `tt task add` path leaves it nil.
+	Comments []string
 	// Subtasks are child tasks created under the new task in the SAME ChangeSet
 	// (task-form Epic/Story create). Each inherits the parent's priority, state,
 	// and tags; a blank-title subtask is skipped.
@@ -108,7 +116,7 @@ func (s *Service) AddTask(req AddTaskRequest) (TaskResult, error) {
 		return TaskResult{}, err
 	}
 	artifacts := append(append([]storage.ArtifactChange(nil), req.Artifacts...), planning...)
-	result, err := s.commitProjectWithArtifacts(ref, built.revision, artifacts, "Add Task", fmt.Sprintf("#%d %s", ref.Task.ShortID, ref.Task.Title))
+	result, err := s.commitProjectWithSideEffects(ref, built.revision, artifacts, built.attachmentOps, "Add Task", fmt.Sprintf("#%d %s", ref.Task.ShortID, ref.Task.Title))
 	if err != nil {
 		return TaskResult{}, err
 	}
@@ -168,6 +176,9 @@ type addTaskBuild struct {
 	destination CaptureDestination
 	snap        Snapshot
 	before      Snapshot
+	// attachmentOps are the file copies the request's &link values produced, to
+	// ride the same ChangeSet as the task write.
+	attachmentOps []storage.AttachmentOp
 }
 
 // buildAddTask validates an AddTaskRequest against a fresh snapshot and appends
@@ -176,6 +187,17 @@ type addTaskBuild struct {
 // the atomic commit fails.
 func (s *Service) buildAddTask(req AddTaskRequest) (addTaskBuild, error) {
 	normalized, err := normalizeAddTaskRequest(req)
+	if err != nil {
+		return addTaskBuild{}, err
+	}
+
+	// Attachments and comments are resolved before the snapshot is taken, because
+	// a rejected value must abort with nothing mutated and nothing staged.
+	attachments, err := resolveCapturedAttachments(req.Attachments)
+	if err != nil {
+		return addTaskBuild{}, err
+	}
+	comments, err := resolveCapturedComments(req.Comments)
 	if err != nil {
 		return addTaskBuild{}, err
 	}
@@ -194,7 +216,20 @@ func (s *Service) buildAddTask(req AddTaskRequest) (addTaskBuild, error) {
 		restoreSnapshotProjects(snap, before)
 		return addTaskBuild{}, err
 	}
-	return addTaskBuild{ref: ref, revision: revision, destination: normalized.destination, snap: snap, before: before}, nil
+	ops, err := applyCapturedAttachments(ref, attachments, s.clock.Now())
+	if err != nil {
+		restoreSnapshotProjects(snap, before)
+		return addTaskBuild{}, err
+	}
+	applyCapturedComments(ref.Task, comments, s.clock.Now())
+	return addTaskBuild{
+		ref:           ref,
+		revision:      revision,
+		destination:   normalized.destination,
+		snap:          snap,
+		before:        before,
+		attachmentOps: ops,
+	}, nil
 }
 
 // buildNormalizedAddTask constructs a validated task inside a caller-owned
@@ -313,7 +348,7 @@ func (s *Service) AddTaskWithChildren(req AddTaskRequest) (FormCreateResult, err
 		return FormCreateResult{}, err
 	}
 	artifacts := append(append([]storage.ArtifactChange(nil), req.Artifacts...), planning...)
-	result, err := s.commitProjectWithArtifacts(ref, built.revision, artifacts, "Add Task", fmt.Sprintf("#%d %s", ref.Task.ShortID, ref.Task.Title))
+	result, err := s.commitProjectWithSideEffects(ref, built.revision, artifacts, built.attachmentOps, "Add Task", fmt.Sprintf("#%d %s", ref.Task.ShortID, ref.Task.Title))
 	if err != nil {
 		return FormCreateResult{}, err
 	}

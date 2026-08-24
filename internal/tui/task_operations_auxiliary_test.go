@@ -112,7 +112,9 @@ func TestTaskOperationSheetOmitsDirectCoreEditAndDetail(t *testing.T) {
 		key := strings.ToLower(descriptor.Label)
 		labels[key] = append(labels[key], descriptor.ID)
 	}
-	for _, label := range []string{"edit title", "edit description", "inspect task"} {
+	for _, label := range []string{
+		"edit title", "edit description", "inspect task", "attachments", "comments",
+	} {
 		if ids := labels[label]; len(ids) != 0 {
 			t.Errorf("direct operation %q appears in the task sheet: %v", label, ids)
 		}

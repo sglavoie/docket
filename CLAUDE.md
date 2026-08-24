@@ -83,8 +83,8 @@ gated keymap where modal sub-states narrow a key.
 
 An entity operation is direct-only or menu-only, never both, on every surface,
 enforced by `validateOperationOnePath` over that surface's manifest. The
-task-row `Space` menu is exactly Comments, Attachments, Delete; the bulk menu is
-Delete only; Delete has no direct key and confirms first. The Hub sheet is
+task-row `Space` menu is Delete alone, identical to the bulk menu: Delete has no
+direct key and confirms first. The Hub sheet is
 Archive or Unarchive plus bulk tags; Notes and Comments list Delete alone. The
 Outliner project-header sheet is Edit, pin, Archive, Delete, and never Unarchive:
 that header is drawn from the active population.
@@ -96,6 +96,7 @@ One key is one act on every entity surface:
 | `Enter` `a` `e` `E`/`Ctrl+E` | zoom in · create · edit · body/external |
 | `/` `v` `Ctrl+A` `P` `%` | search · select · select all · scope · reown |
 | `y`/`Y` `J`/`K` `*` `#` | copy · reorder · pin · tags |
+| `&` `;` | attachments · comments |
 | `u`/`Ctrl+R` `gg`/`G` `Esc` `?` | undo/redo · ends · unwind · help |
 | `Space` | menu: destructive and rare operations only |
 
@@ -244,8 +245,18 @@ archiving preserves tags. Both filter at read time.
 Canonical capture sigils are:
 
 ```text
-!1-3 #tag ##context @date @@defer $destination *pin %project >parent <child
+!1-3 #tag ##context @date @@defer $destination *pin %project >parent <child &link ;comment;
 ```
+
+`registry` is parse order and `guideOrder` teach order; `validateGuideOrder`
+holds them to one set. `&link` is registered before `#tag` because RE2 has no
+lookaround, so peeling the tag first would leave the `&` whitespace-preceded and
+mint a spurious attachment; only `GuideDefinitions` feeds a human. `&link` is
+repeatable, takes a URL, a `path:line` code reference, or a local file, and
+leaves anything else in the title, so `R&D` stays prose. `;comment;` leads parse
+order for the same absent lookaround, which is what keeps a `#auth` inside a
+comment literal. It is repeatable and needs both delimiters, so `Fix a; then b`
+stays prose.
 
 Due's last alternative is `[^\s@]\S*` so `@` can never eat `@@`. Deferring
 refuses a terminal task and otherwise claims Backlog.
@@ -278,12 +289,17 @@ committing one transaction.
 - Children resolve only in the effective project, so `<child` never crosses a
   project boundary.
 - A terminal destination refuses an open adopted child on both surfaces.
-- `>parent`, `<child`, and `@@defer` are errors in the outline buffer:
-  indentation is parentage there and the buffer holds no deferral.
+- `>parent`, `<child`, `@@defer`, `&link`, and `;comment;` are errors in the
+  outline buffer: indentation is parentage there, and the buffer holds no
+  deferral, attachment, or comment. Expanded mode carries both: `&link` and
+  `;comment;` seed the form's Extras tab, which is that channel.
+- `&link` and `;comment;` are capture-only and ride the capturing task's own
+  ChangeSet, so one undo entry covers the task, its bytes, and its comments. Two
+  files on a line resolving to one destination name refuse by name.
 
 Slash search is the fourth surface of the same registry, not a parallel query
-language. Its sigil set is the capture set minus `>parent` and `<child`, which
-refuse by name. Sigils compile to an AND gate applied before scoring, and the
+language. Its sigil set is the capture set minus `>parent`, `<child`, `&link`,
+and `;comment;`, which refuse by name. Sigils compile to an AND gate applied before scoring, and the
 case-relaxed retry re-runs that same gate.
 Only a recognized value the grammar cannot honor blocks a query.
 

@@ -63,7 +63,37 @@ func (p *quickCaptureParser) applySharedTokens(parsed textgrammar.Result) {
 	if p.err != nil {
 		return
 	}
+	p.parseAttachmentTokens(parsed.TokensFor(textgrammar.FieldAttachment))
+	if p.err != nil {
+		return
+	}
+	p.parseCommentTokens(parsed.TokensFor(textgrammar.FieldComment))
+	if p.err != nil {
+		return
+	}
 	p.parseTerminalAdoption()
+}
+
+// parseAttachmentTokens collects every &link reference in input order. The token
+// is already lexically valid — the grammar leaves an unattachable value in the
+// title rather than tokenizing it — and whether the value names a reachable file
+// is the application layer's question, asked once through
+// app.ResolveAttachmentInput so every surface classifies identically.
+func (p *quickCaptureParser) parseAttachmentTokens(tokens []textgrammar.Token) {
+	for _, token := range tokens {
+		p.result.attachments = append(p.result.attachments, token.Value)
+	}
+}
+
+// parseCommentTokens collects every ;comment; span in input order. The grammar
+// already guarantees a nonblank span — the pattern requires a non-space first
+// character and a closing delimiter — and the application layer runs the same
+// normalization an interactively typed comment goes through, so this stage only
+// carries the text.
+func (p *quickCaptureParser) parseCommentTokens(tokens []textgrammar.Token) {
+	for _, token := range tokens {
+		p.result.comments = append(p.result.comments, token.Value)
+	}
 }
 
 func (p *quickCaptureParser) parseContextTokens(tokens []textgrammar.Token) {

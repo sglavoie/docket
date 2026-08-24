@@ -365,6 +365,8 @@ func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, bool) {
 			Destination: destination,
 			Prepend:     true,
 			Pinned:      parsed.pinned,
+			Attachments: parsed.attachments,
+			Comments:    parsed.comments,
 		}
 		if parentID != nil {
 			if err := validateComposerParent(target, *parentID); err != nil {
@@ -508,6 +510,17 @@ func (m *TaskComposerModel) expandRequest(req app.CaptureRequest) tea.Cmd {
 	form.draft.parentID = cloneStringPtr(req.ParentID)
 	form.draft.dueDate = cloneTime(req.Due)
 	form.draft.dueInput = formatDateInput(req.Due)
+	// Seed the Extras tab's drafts so an expanded &link or ;comment; is carried
+	// into the form rather than silently dropped. Each section starts expanded
+	// when it has content, so the values are visible without a keystroke.
+	for _, raw := range req.Attachments {
+		form.draft.attachments = append(form.draft.attachments, formAttachmentDraft{value: raw})
+	}
+	form.attachmentsExpanded = len(form.draft.attachments) > 0
+	for _, raw := range req.Comments {
+		form.draft.comments = append(form.draft.comments, formCommentDraft{text: raw})
+	}
+	form.commentsExpanded = len(form.draft.comments) > 0
 	form.titleInput.SetValue(req.Title)
 	form.dueTextInput.SetValue(form.draft.dueInput)
 	form.presetDestination = destination

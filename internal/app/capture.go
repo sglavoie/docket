@@ -80,6 +80,14 @@ type CaptureRequest struct {
 	// Pinned pins the new task; the pinned section still filters terminal tasks,
 	// so a terminal destination pins without rendering a row.
 	Pinned bool
+	// Attachments are raw &link values in line order: URLs, code references, or
+	// local file paths. They are classified and validated before the capture
+	// mutates anything, and a file copy rides the task's own ChangeSet.
+	Attachments []string
+	// Comments are raw ;comment; texts in line order. Each is normalized with the
+	// same rule an interactively added comment goes through and lands on the new
+	// task inside the ChangeSet that creates it.
+	Comments []string
 }
 
 // Capture creates a new task in the target project and commits it as one
@@ -124,6 +132,11 @@ func (s *Service) Capture(req CaptureRequest) (TaskResult, error) {
 	}
 
 	ref := TaskRef{Task: task, Project: project, Base: snap.Document(project.ID)}
+	attachmentOps, err := applyCapturedAttachments(ref, prepared.attachments, s.clock.Now())
+	if err != nil {
+		return TaskResult{}, err
+	}
+	applyCapturedComments(task, prepared.comments, s.clock.Now())
 	artifacts, err := planningArtifactsForTargets(
 		[]PlanningReconcileTarget{prepared.destination.planningTarget(task.ID, project.ID)},
 		nil,
@@ -132,7 +145,7 @@ func (s *Service) Capture(req CaptureRequest) (TaskResult, error) {
 	if err != nil {
 		return TaskResult{}, err
 	}
-	result, err := s.commitProjectWithArtifacts(ref, revision, artifacts, "Add Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
+	result, err := s.commitProjectWithSideEffects(ref, revision, artifacts, attachmentOps, "Add Task", fmt.Sprintf("#%d %s", task.ShortID, task.Title))
 	if err != nil {
 		return TaskResult{}, err
 	}
@@ -239,6 +252,20 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 		}
 	}
 
+	// Attachments are recorded after the hierarchy settles, so a batch a guard
+	// rejects has staged no copy, and they are grouped by project because each
+	// project commits its own document with its own side effects.
+	attachmentOpsByProject := make(map[string][]storage.AttachmentOp, len(projectOrder))
+	for i, item := range items {
+		ops, opsErr := applyCapturedAttachments(
+			TaskRef{Task: item.task, Project: item.project}, item.prepared.attachments, now)
+		if opsErr != nil {
+			return nil, captureRequestError(reqs[i], i, opsErr)
+		}
+		attachmentOpsByProject[item.project.ID] = append(attachmentOpsByProject[item.project.ID], ops...)
+		applyCapturedComments(item.task, item.prepared.comments, now)
+	}
+
 	planningBuilder := s.defaultedPlanningArtifacts(nil)
 
 	ctxTitle := fmt.Sprintf("%d tasks across %d projects", len(items), len(projectOrder))
@@ -262,6 +289,7 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 			project:          project,
 			expectedRevision: snap.Revision(project.ID),
 			base:             snap.Document(project.ID),
+			attachmentOps:    attachmentOpsByProject[project.ID],
 		}
 	}
 	if len(commits) > 0 {
@@ -342,6 +370,8 @@ type preparedCapture struct {
 	parent      *models.Task
 	children    []*models.Task
 	destination captureDestinationEffect
+	attachments []ResolvedAttachmentInput
+	comments    []string
 }
 
 func (s *Service) prepareCapturedTask(project *models.Project, req CaptureRequest) (preparedCapture, error) {
@@ -394,6 +424,16 @@ func (s *Service) prepareCapturedTask(project *models.Project, req CaptureReques
 		return preparedCapture{}, err
 	}
 
+	attachments, err := resolveCapturedAttachments(req.Attachments)
+	if err != nil {
+		return preparedCapture{}, err
+	}
+
+	comments, err := resolveCapturedComments(req.Comments)
+	if err != nil {
+		return preparedCapture{}, err
+	}
+
 	return preparedCapture{
 		req:         req,
 		title:       title,
@@ -404,6 +444,8 @@ func (s *Service) prepareCapturedTask(project *models.Project, req CaptureReques
 		parent:      parent,
 		children:    children,
 		destination: destination,
+		attachments: attachments,
+		comments:    comments,
 	}, nil
 }
 

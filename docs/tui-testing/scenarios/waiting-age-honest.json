@@ -8,9 +8,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "put the cursor on the waiting task", "key": "end" },
-    { "type": "key", "label": "open task actions", "key": "space" },
-    { "type": "text", "text": "comments" },
-    { "type": "key", "key": "enter" },
+    { "type": "key", "label": "open the Comments panel with its sigil key", "key": ";" },
     { "type": "assert", "assert": "view", "value": "TaskComments" },
     { "type": "key", "label": "start a comment", "key": "a" },
     { "type": "text", "text": "chased the vendor again" },

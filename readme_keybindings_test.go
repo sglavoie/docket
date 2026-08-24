@@ -107,6 +107,8 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 		"skips the one the task already lives in, since a move to it is not a move",
 		"drawn from every non-archived project rather than the ones the Outliner shows",
 		"`P` remains Select Project, which changes what you are looking at rather than where a task lives",
+		"`&` opens the cursor task's Attachments panel, `;` its Comments panel — the two capture " +
+			"sigils reaching, as keys, the panels that own add, reorder, unlink, and delete",
 		"`y` title, `Y` description, `Ctrl+Y` both",
 		"`o` opens the sort chord: `o@` due date, `o!` priority, `oc` created, `ou` updated, `ot` title, `ox` clear; repeat a field key to reverse it",
 		"`Ctrl+N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit",
@@ -153,7 +155,8 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 func TestREADMEDocumentsExactTaskMenu(t *testing.T) {
 	content := readREADMEForContractTest(t)
 	requireDocumentationText(t, content, []string{
-		"1. Comments 2. Attachments 3. Delete",
+		"`Space` contains exactly: 1. Delete",
+		"Comments and Attachments left this menu when they gained `;` and `&`",
 		"Project Actions holds Edit project and Toggle project pin, then Archive project and " +
 			"Delete project under Danger",
 		"`Enter` and `Ctrl+N` already reach both from that row",

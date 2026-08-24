@@ -28,7 +28,7 @@ func TestParseUsesSharedSurfaceGrammar(t *testing.T) {
 	}
 }
 
-func TestSharedParserAdvertisesExactlyTenCaptureSigils(t *testing.T) {
+func TestSharedParserAdvertisesExactlyTwelveCaptureSigils(t *testing.T) {
 	parsed := Parse(
 		"Keep type:bug priority:1 pri:2 tag:backend due:tomorrow recur:weekly project:core proj:core p:core parent:1 child:1 children:1 state:ready has:due no:tag is:pinned",
 		SurfaceCapture|SurfaceEdit,
@@ -41,10 +41,13 @@ func TestSharedParserAdvertisesExactlyTenCaptureSigils(t *testing.T) {
 	}
 
 	defs := Definitions(SurfaceCapture)
-	if len(defs) != 10 {
-		t.Fatalf("capture definitions = %d, want 10: %+v", len(defs), defs)
+	if len(defs) != 12 {
+		t.Fatalf("capture definitions = %d, want 12: %+v", len(defs), defs)
 	}
-	wantForms := []string{"!1-3", "#tag", "##context", "@date", "@@defer", "$destination", "*pin", "%project", ">parent", "<child"}
+	// Parse order, not teach order: ;comment; leads because nothing else may peel
+	// a sigil out of a comment's span, and &link sits ahead of #tag because the
+	// tag pattern would otherwise hand it a whitespace-preceded &.
+	wantForms := []string{";comment;", "&link", "!1-3", "#tag", "##context", "@date", "@@defer", "$destination", "*pin", "%project", ">parent", "<child"}
 	gotForms := make([]string, len(defs))
 	for i, def := range defs {
 		if len(def.Forms) != 1 {
@@ -210,7 +213,7 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 				FieldDefer:       {"@@defer"},
 				FieldDestination: {"$destination"}, FieldPinned: {"*pin"},
 				FieldProject: {"%project"}, FieldParent: {">parent"},
-				FieldChild: {"<child"},
+				FieldChild: {"<child"}, FieldAttachment: {"&link"}, FieldComment: {";comment;"},
 			},
 		},
 		{
@@ -568,5 +571,192 @@ func TestDueFormsSurviveTheDeferTightening(t *testing.T) {
 		if len(tokens) != 1 || tokens[0].Value != value {
 			t.Errorf("@%s tokens = %+v, want exactly that value", value, tokens)
 		}
+	}
+}
+
+// TestAttachmentSigilLeavesOrdinaryProseLiteral pins the lexical half of the
+// attachment rule. The & character occurs constantly in real titles, so anything
+// the application layer could not attach must stay in the text rather than
+// vanish from it.
+func TestAttachmentSigilLeavesOrdinaryProseLiteral(t *testing.T) {
+	for _, input := range []string{
+		"R&D pipeline",
+		"Q&A with legal",
+		"Fix A & B",
+		"&10:30 standup",
+		"Escape &nbsp; in the footer",
+		"Ship &",
+	} {
+		parsed := Parse(input, SurfaceCapture)
+		if got := parsed.TokensFor(FieldAttachment); len(got) != 0 {
+			t.Errorf("%q produced attachment tokens %+v", input, got)
+		}
+		if parsed.Text != input {
+			t.Errorf("%q text = %q, want it unchanged", input, parsed.Text)
+		}
+	}
+}
+
+// TestAttachmentSigilRecognizesEveryAttachableShape covers the three paths the
+// application layer classifies into: URL, code reference, and file path.
+func TestAttachmentSigilRecognizesEveryAttachableShape(t *testing.T) {
+	parsed := Parse("Fix OAuth &https://example.com/i/412 &main.go:42 &~/notes/report.pdf", SurfaceCapture)
+	var values []string
+	for _, token := range parsed.TokensFor(FieldAttachment) {
+		values = append(values, token.Value)
+	}
+	want := []string{"https://example.com/i/412", "main.go:42", "~/notes/report.pdf"}
+	if !reflect.DeepEqual(values, want) {
+		t.Fatalf("attachment values = %v, want %v", values, want)
+	}
+	if parsed.Text != "Fix OAuth" {
+		t.Fatalf("Text = %q, want Fix OAuth", parsed.Text)
+	}
+}
+
+// TestAttachmentIsParsedBeforeTag pins the one place registry order carries
+// meaning. The tag pattern stops at the &, so peeling tags first would leave a
+// whitespace-preceded & that becomes a spurious attachment.
+func TestAttachmentIsParsedBeforeTag(t *testing.T) {
+	parsed := Parse("Task #work&http://x/y", SurfaceCapture)
+	if got := parsed.TokensFor(FieldAttachment); len(got) != 0 {
+		t.Fatalf("attachment tokens = %+v, want none; the & is glued to the tag", got)
+	}
+	tags := parsed.TokensFor(FieldTag)
+	if len(tags) != 1 || tags[0].Value != "work" {
+		t.Fatalf("tag tokens = %+v, want one work", tags)
+	}
+	if parsed.Text != "Task &http://x/y" {
+		t.Fatalf("Text = %q, want the remainder to stay literal", parsed.Text)
+	}
+}
+
+// TestCommentSigilLeavesOrdinaryProseLiteral pins the lexical half of the
+// comment rule. A semicolon is ordinary punctuation, so only a paired,
+// whitespace-preceded delimiter may consume anything.
+func TestCommentSigilLeavesOrdinaryProseLiteral(t *testing.T) {
+	for _, input := range []string{
+		"Fix a; then b",
+		"Ship ;unterminated",
+		"Escape &nbsp; in the footer",
+		"Ship ;",
+		"Ship ; ;",
+	} {
+		parsed := Parse(input, SurfaceCapture)
+		if got := parsed.TokensFor(FieldComment); len(got) != 0 {
+			t.Errorf("%q produced comment tokens %+v", input, got)
+		}
+		if parsed.Text != input {
+			t.Errorf("%q text = %q, want it unchanged", input, parsed.Text)
+		}
+	}
+}
+
+// TestCommentIsParsedBeforeEveryOtherSigil pins the reason the comment leads the
+// registry: RE2 has no lookaround, so peeling any other field first would let it
+// reach inside the comment's span and mint metadata out of comment prose.
+func TestCommentIsParsedBeforeEveryOtherSigil(t *testing.T) {
+	parsed := Parse("Fix login ;check the #auth flow;", SurfaceCapture)
+	comments := parsed.TokensFor(FieldComment)
+	if len(comments) != 1 || comments[0].Value != "check the #auth flow" {
+		t.Fatalf("comment tokens = %+v, want one holding the whole span", comments)
+	}
+	if got := parsed.TokensFor(FieldTag); len(got) != 0 {
+		t.Fatalf("tag tokens = %+v, want none; #auth is comment text", got)
+	}
+	if parsed.Text != "Fix login" {
+		t.Fatalf("Text = %q, want Fix login", parsed.Text)
+	}
+}
+
+// TestCommentSigilIsRepeatable keeps two comments on one line distinct rather
+// than folding them into one span.
+func TestCommentSigilIsRepeatable(t *testing.T) {
+	parsed := Parse("Call Dana ;ask about SSO; ;then confirm the date;", SurfaceCapture)
+	var values []string
+	for _, token := range parsed.TokensFor(FieldComment) {
+		values = append(values, token.Value)
+	}
+	want := []string{"ask about SSO", "then confirm the date"}
+	if !reflect.DeepEqual(values, want) {
+		t.Fatalf("comment values = %v, want %v", values, want)
+	}
+	if parsed.Text != "Call Dana" {
+		t.Fatalf("Text = %q, want Call Dana", parsed.Text)
+	}
+}
+
+// TestSearchRefusesTheCommentSigilByName mirrors the attachment refusal: search
+// is a fourth surface of the same registry, not a place a comment can be written.
+func TestSearchRefusesTheCommentSigilByName(t *testing.T) {
+	guidance := SearchGuidance(ParseSearch("dana ;ask about SSO;"))
+	if !strings.Contains(guidance, ";comment; is not a search predicate") {
+		t.Fatalf("guidance = %q, want the comment refusal", guidance)
+	}
+	if !strings.Contains(guidance, "Comments panel") {
+		t.Fatalf("guidance = %q, want it to name where comments are added", guidance)
+	}
+	if got := SearchGuidance(ParseSearch("fix a; then b")); got != "" {
+		t.Fatalf("guidance = %q, want an ordinary query to run", got)
+	}
+}
+
+// TestGuideOrderTeachesTheSameFieldsParseOrderRecognizes is the fence that makes
+// splitting the two lists safe. Parse order can move a field for
+// disambiguation; it may never change what the guide teaches.
+func TestGuideOrderTeachesTheSameFieldsParseOrderRecognizes(t *testing.T) {
+	for _, surface := range []Surface{SurfaceCapture, SurfaceEdit, SurfaceOutline, SurfaceSearch} {
+		parseOrder := Definitions(surface)
+		guide := GuideDefinitions(surface)
+		if len(parseOrder) != len(guide) {
+			t.Fatalf("surface %d guide = %d definitions, want %d", surface, len(guide), len(parseOrder))
+		}
+		parseFields := make([]Field, len(parseOrder))
+		for i, def := range parseOrder {
+			parseFields[i] = def.Field
+		}
+		guideFields := make([]Field, len(guide))
+		for i, def := range guide {
+			guideFields[i] = def.Field
+		}
+		slices.Sort(parseFields)
+		slices.Sort(guideFields)
+		if !slices.Equal(parseFields, guideFields) {
+			t.Errorf("surface %d guide fields = %v, want %v", surface, guideFields, parseFields)
+		}
+	}
+
+	// The attachment and comment sigils are the reason the split exists: parsed
+	// first and second, taught last.
+	capture := Definitions(SurfaceCapture)
+	if capture[0].Field != FieldComment {
+		t.Errorf("parse order position 0 = %s, want comment ahead of every other field", capture[0].Field)
+	}
+	if capture[1].Field != FieldAttachment {
+		t.Errorf("parse order position 1 = %s, want attachment ahead of tag", capture[1].Field)
+	}
+	guide := GuideDefinitions(SurfaceCapture)
+	if guide[len(guide)-2].Field != FieldAttachment {
+		t.Errorf("guide order second-to-last = %s, want attachment", guide[len(guide)-2].Field)
+	}
+	if guide[len(guide)-1].Field != FieldComment {
+		t.Errorf("guide order ends with %s, want comment", guide[len(guide)-1].Field)
+	}
+}
+
+// TestSearchRefusesTheAttachmentSigilByName keeps the refusal specific: the
+// sigil is named only when the value is one capture would have honored, so an
+// ordinary query containing an ampersand still runs.
+func TestSearchRefusesTheAttachmentSigilByName(t *testing.T) {
+	refused := ParseSearch("spec &https://example.com/spec.pdf")
+	guidance := SearchGuidance(refused)
+	if !strings.Contains(guidance, "&link is not a search predicate") {
+		t.Fatalf("guidance = %q, want the attachment refusal", guidance)
+	}
+	if !strings.Contains(guidance, "Attachments panel") {
+		t.Fatalf("guidance = %q, want it to name where attachments are added", guidance)
+	}
+	if got := SearchGuidance(ParseSearch("escape &nbsp; in the footer")); got != "" {
+		t.Fatalf("guidance = %q, want an ordinary query to run", got)
 	}
 }

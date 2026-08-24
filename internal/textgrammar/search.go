@@ -56,25 +56,50 @@ func searchDiagnostics(result Result) []Diagnostic {
 	return append(diagnostics, placementDiagnostics(result.Text)...)
 }
 
-// placementDiagnostics re-scans the remainder with the registry's own parent and
-// child patterns. Neither field reaches the search surface, so Parse leaves both
+// refusedSearchField pairs one field search refuses by name with the sentence
+// that says where the sigil does belong. The wording is per field rather than one
+// shared string because the fields are refused for different reasons: placement
+// is an edit act, while an attachment and a comment are creation-time or panel acts.
+type refusedSearchField struct {
+	field       Field
+	replacement string
+}
+
+var refusedSearchFields = []refusedSearchField{
+	{FieldParent, "placement is set with e"},
+	{FieldChild, "placement is set with e"},
+	{FieldAttachment, "attachments are added at capture or in the task's Attachments panel"},
+	{FieldComment, "comments are added at capture or in the task's Comments panel"},
+}
+
+// placementDiagnostics re-scans the remainder with each refused field's own
+// registry pattern. None of them reaches the search surface, so Parse leaves them
 // in the text and this is the only place they can be named.
 func placementDiagnostics(text string) []Diagnostic {
 	var diagnostics []Diagnostic
-	for _, field := range []Field{FieldParent, FieldChild} {
-		spec, ok := registrySpecFor(field)
+	for _, refused := range refusedSearchFields {
+		spec, ok := registrySpecFor(refused.field)
 		if !ok {
 			continue
 		}
-		pattern, ok := registryPatternFor(field)
-		if !ok || !pattern.MatchString(text) {
+		pattern, ok := registryPatternFor(refused.field)
+		if !ok {
+			continue
+		}
+		// The value is re-validated on the field's own capture surface so the
+		// refusal names only what capture would have honored. Placement accepts any
+		// value and so refuses on the sigil alone; an attachment does not, which is
+		// what keeps a search for "&nbsp;" an ordinary query rather than a blocked one.
+		match := pattern.FindStringSubmatch(text)
+		if len(match) < 2 || !validTokenValue(spec, match[1], SurfaceCapture) {
 			continue
 		}
 		diagnostics = append(diagnostics, Diagnostic{
-			Field: field,
+			Field: refused.field,
 			Message: fmt.Sprintf(
-				"%s is not a search predicate; placement is set with e",
+				"%s is not a search predicate; %s",
 				spec.forms[0].Text,
+				refused.replacement,
 			),
 		})
 	}

@@ -183,6 +183,26 @@ func parseOutlineBodies(structural []outlineBufferLine, project *models.Project)
 			})
 			forbidden = true
 		}
+		// The buffer edits tasks that already exist, and an attachment is a
+		// creation-time or panel act, so a dumped &link would either duplicate an
+		// existing attachment or silently vanish on the round trip.
+		if len(structuralTokens.TokensFor(textgrammar.FieldAttachment)) > 0 {
+			errs = append(errs, lineError{
+				line:    item.sourceLine,
+				message: "the outline buffer cannot attach; remove the &link sigil",
+			})
+			forbidden = true
+		}
+		// The buffer holds no comment either: a dumped task's comments are not in
+		// the line, so a ;comment; span could only ever append a duplicate on every
+		// round trip.
+		if len(structuralTokens.TokensFor(textgrammar.FieldComment)) > 0 {
+			errs = append(errs, lineError{
+				line:    item.sourceLine,
+				message: "the outline buffer cannot comment; remove the ;comment; sigil",
+			})
+			forbidden = true
+		}
 		if forbidden {
 			continue
 		}

@@ -12,13 +12,15 @@ import (
 type formOverlayKind int
 
 const (
-	formOverlayNone          formOverlayKind = iota
-	formOverlayPriority                      // formPriorityPicker
-	formOverlayState                         // formStatePicker
-	formOverlayFlags                         // formFlagsPicker
-	formOverlayDue                           // formDueDatePicker
-	formOverlayChecklistEdit                 // inline textinput for editing a checklist item
-	formOverlaySubtaskEdit                   // inline overlay for editing a subtask draft
+	formOverlayNone           formOverlayKind = iota
+	formOverlayPriority                       // formPriorityPicker
+	formOverlayState                          // formStatePicker
+	formOverlayFlags                          // formFlagsPicker
+	formOverlayDue                            // formDueDatePicker
+	formOverlayChecklistEdit                  // inline textinput for editing a checklist item
+	formOverlaySubtaskEdit                    // inline overlay for editing a subtask draft
+	formOverlayAttachmentEdit                 // inline textinput for editing an attachment draft
+	formOverlayCommentEdit                    // inline textinput for editing a comment draft
 )
 
 // ── Overlay rendering dispatch ────────────────────────────────────────────────
@@ -49,6 +51,10 @@ func (m *TaskFormModel) renderFormOverlay() string {
 		return m.renderChecklistEditOverlay()
 	case formOverlaySubtaskEdit:
 		return m.renderSubtaskEditOverlay()
+	case formOverlayAttachmentEdit:
+		return m.renderAttachmentEditOverlay()
+	case formOverlayCommentEdit:
+		return m.renderCommentEditOverlay()
 	}
 	return ""
 }
@@ -82,31 +88,21 @@ func (m *TaskFormModel) handleFormOverlayKey(msg tea.KeyPressMsg) (tea.Cmd, bool
 		cmd, dismiss, result = m.handleChecklistEditKey(msg)
 	case formOverlaySubtaskEdit:
 		cmd, dismiss, result = m.handleSubtaskEditKey(msg)
+	case formOverlayAttachmentEdit:
+		cmd, dismiss, result = m.handleAttachmentEditKey(msg)
+	case formOverlayCommentEdit:
+		cmd, dismiss, result = m.handleCommentEditKey(msg)
 	default:
 		return nil, false
 	}
 
 	if dismiss {
 		// When canceling a brand-new item, remove it from the draft.
-		if result == nil && m.childrenAddingNew {
-			switch m.activeOverlay { //nolint:exhaustive // only checklist/subtask overlays have items to remove
-			case formOverlayChecklistEdit:
-				if m.childrenEditIdx >= 0 && m.childrenEditIdx < len(m.draft.checklist) {
-					m.draft.checklist = append(
-						m.draft.checklist[:m.childrenEditIdx],
-						m.draft.checklist[m.childrenEditIdx+1:]...,
-					)
-				}
-			case formOverlaySubtaskEdit:
-				if m.childrenEditIdx >= 0 && m.childrenEditIdx < len(m.draft.subtasks) {
-					m.draft.subtasks = append(
-						m.draft.subtasks[:m.childrenEditIdx],
-						m.draft.subtasks[m.childrenEditIdx+1:]...,
-					)
-				}
-			}
+		if result == nil {
+			m.discardCanceledNewItem()
 		}
 		m.childrenAddingNew = false
+		m.extrasAddingNew = false
 		m.closeInlineOverlay()
 	}
 	if result != nil {
@@ -118,6 +114,43 @@ func (m *TaskFormModel) handleFormOverlayKey(msg tea.KeyPressMsg) (tea.Cmd, bool
 		}
 	}
 	return cmd, true
+}
+
+// discardCanceledNewItem removes the blank draft row an item overlay appended
+// when that overlay is dismissed without a result, so an abandoned add leaves
+// nothing behind. Only the four item overlays append a row; the pickers edit a
+// scalar and have nothing to undo.
+func (m *TaskFormModel) discardCanceledNewItem() {
+	switch m.activeOverlay { //nolint:exhaustive // only item overlays have a draft row to remove
+	case formOverlayChecklistEdit:
+		if m.childrenAddingNew && m.childrenEditIdx >= 0 && m.childrenEditIdx < len(m.draft.checklist) {
+			m.draft.checklist = append(
+				m.draft.checklist[:m.childrenEditIdx],
+				m.draft.checklist[m.childrenEditIdx+1:]...,
+			)
+		}
+	case formOverlaySubtaskEdit:
+		if m.childrenAddingNew && m.childrenEditIdx >= 0 && m.childrenEditIdx < len(m.draft.subtasks) {
+			m.draft.subtasks = append(
+				m.draft.subtasks[:m.childrenEditIdx],
+				m.draft.subtasks[m.childrenEditIdx+1:]...,
+			)
+		}
+	case formOverlayAttachmentEdit:
+		if m.extrasAddingNew && m.extrasEditIdx >= 0 && m.extrasEditIdx < len(m.draft.attachments) {
+			m.draft.attachments = append(
+				m.draft.attachments[:m.extrasEditIdx],
+				m.draft.attachments[m.extrasEditIdx+1:]...,
+			)
+		}
+	case formOverlayCommentEdit:
+		if m.extrasAddingNew && m.extrasEditIdx >= 0 && m.extrasEditIdx < len(m.draft.comments) {
+			m.draft.comments = append(
+				m.draft.comments[:m.extrasEditIdx],
+				m.draft.comments[m.extrasEditIdx+1:]...,
+			)
+		}
+	}
 }
 
 // closeInlineOverlay resets the inline overlay state.
@@ -188,6 +221,42 @@ func (m *TaskFormModel) applyFormOverlayResult(msg tea.Msg) {
 			m.err = nil
 		}
 		m.childrenAddingNew = false
+
+	case TaskFormAttachmentEditedMsg:
+		if msg.Idx >= 0 && msg.Idx < len(m.draft.attachments) {
+			if strings.TrimSpace(msg.Value) == "" {
+				// Drop the draft when confirmed with a blank value
+				// (consistent with checklist and subtask handling above).
+				m.draft.attachments = append(
+					m.draft.attachments[:msg.Idx],
+					m.draft.attachments[msg.Idx+1:]...,
+				)
+			} else {
+				m.draft.attachments[msg.Idx].value = msg.Value
+			}
+			m.hasChanges = true
+			m.err = nil
+			m.clampExtrasFocusIndex()
+		}
+		m.extrasAddingNew = false
+
+	case TaskFormCommentEditedMsg:
+		if msg.Idx >= 0 && msg.Idx < len(m.draft.comments) {
+			if strings.TrimSpace(msg.Text) == "" {
+				// Drop the draft when confirmed with blank text
+				// (consistent with every other item overlay above).
+				m.draft.comments = append(
+					m.draft.comments[:msg.Idx],
+					m.draft.comments[msg.Idx+1:]...,
+				)
+			} else {
+				m.draft.comments[msg.Idx].text = msg.Text
+			}
+			m.hasChanges = true
+			m.err = nil
+			m.clampExtrasFocusIndex()
+		}
+		m.extrasAddingNew = false
 	}
 }
 

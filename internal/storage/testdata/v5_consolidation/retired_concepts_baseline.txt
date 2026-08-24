@@ -70,6 +70,6 @@ recurrence	internal/storage/format/v6_task_convert.go	Recurrence	2
 recurrence	internal/storage/format/v6_task_convert.go	formatV5Recurrence	1
 recurrence	internal/storage/v5_archive_reintegration.go	Recurrence	3
 recurrence	internal/storage/v5_archive_reintegration.go	recurrence	2
-recurrence	internal/textgrammar/grammar.go	FieldRecurrence	2
+recurrence	internal/textgrammar/grammar.go	FieldRecurrence	3
 recurrence	internal/tui/quick_capture_parser_fields.go	FieldRecurrence	1
 recurrence	internal/tui/quick_capture_parser_fields.go	parseRetiredRecurrenceTokens	2

@@ -56,6 +56,8 @@ func (m *TaskFormModel) helpPaneHeader() string {
 		return "Due Date"
 	case formTabChildren:
 		return "Children"
+	case formTabExtras:
+		return "Extras"
 	}
 	return "Keys"
 }
@@ -68,6 +70,8 @@ func (m *TaskFormModel) helpPaneEntries() []helpEntry {
 		return m.scheduleHelpEntries()
 	case formTabChildren:
 		return m.childrenHelpEntries()
+	case formTabExtras:
+		return m.extrasHelpEntries()
 	}
 	return nil
 }
@@ -131,4 +135,17 @@ func (m *TaskFormModel) childrenHelpEntries() []helpEntry {
 	}
 	entries = append([]helpEntry{{key: "Ctrl+T", desc: "add subtask"}}, entries...)
 	return entries
+}
+
+func (m *TaskFormModel) extrasHelpEntries() []helpEntry {
+	return []helpEntry{
+		{key: "a", desc: "toggle attachments"},
+		{key: "c", desc: "toggle comments"},
+		{key: "Ctrl+L", desc: "add attachment"},
+		{key: "Ctrl+Y", desc: "add comment"},
+		{key: "Enter", desc: "edit/save item"},
+		{key: "Ctrl+D", desc: "delete"},
+		{key: "Ctrl+J/K", desc: "reorder attachments"},
+		{key: "Ctrl+S", desc: "save task"},
+	}
 }

@@ -1,0 +1,33 @@
+{
+  "name": "capture-comment",
+  "fixture": "fresh",
+  "size": "100x30",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "capture into Unfiled", "key": "a" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "text", "label": "a comment span holding a sigil, and a semicolon that is ordinary punctuation", "text": "Fix login ;check the #auth flow; then retry " },
+    { "type": "assert", "label": "the preview names the comment rather than dropping it", "assert": "contains", "value": "Comments" },
+    { "type": "assert", "assert": "contains", "value": ";check the #auth flow;" },
+    { "type": "assert", "label": "the tag rule never saw inside the comment span", "assert": "not_contains", "value": "Tags" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "commit the capture", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "the comment span left the title and the rest stayed literal", "assert": "status_contains", "value": "Add Task: #1 Fix login then retry" },
+    { "type": "assert", "assert": "contains", "value": "Fix login then retry" },
+    { "type": "assert", "label": "no tag was minted from the comment text", "assert": "not_contains", "value": "auth" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "assert", "label": "the row carries the comment indicator", "assert": "contains", "value": "▪ 1" },
+
+    { "type": "key", "key": "home" },
+    { "type": "key", "label": "past the Inbox section header", "key": "j" },
+    { "type": "key", "label": "past the project header onto the new row", "key": "j" },
+    { "type": "key", "label": "open the Comments panel with its sigil key", "key": ";" },
+    { "type": "assert", "assert": "view", "value": "TaskComments" },
+    { "type": "assert", "label": "the captured comment landed in the same transaction as the task", "assert": "contains", "value": "1 comment(s)" },
+    { "type": "assert", "label": "the sigil inside the span is literal comment text", "assert": "contains", "value": "check the #auth flow" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

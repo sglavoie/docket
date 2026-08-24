@@ -10,11 +10,11 @@
     { "type": "assert", "assert": "not_contains", "value": "Recurrence" },
     { "type": "assert", "assert": "not_contains", "value": "Move Project" },
     { "type": "assert", "assert": "not_contains", "value": "Set Parent" },
-    { "type": "assert", "assert": "contains", "value": "CONTENT" },
+    { "type": "assert", "label": "Delete is the whole menu, so DANGER is the whole grouping", "assert": "not_contains", "value": "CONTENT" },
     { "type": "assert", "label": "the checklist lives on its own rows, never in the task menu", "assert": "not_contains", "value": "Checklist" },
-    { "type": "assert", "assert": "contains", "value": "Comments" },
+    { "type": "assert", "label": "the two content panels answer to & and ; instead", "assert": "not_contains", "value": "Comments" },
     { "type": "assert", "assert": "not_contains", "value": "Decisions" },
-    { "type": "assert", "assert": "contains", "value": "Attachments" },
+    { "type": "assert", "assert": "not_contains", "value": "Attachments" },
     { "type": "assert", "label": "direct operations do not repeat as sheet rows", "assert": "not_contains", "value": "Edit Title" },
     { "type": "assert", "assert": "not_contains", "value": "Edit Task" },
     { "type": "assert", "assert": "not_contains", "value": "Edit Description" },
@@ -42,6 +42,15 @@
     { "type": "assert", "assert": "not_contains", "value": "y confirm" },
     { "type": "assert", "assert": "not_contains", "value": "Task Actions" },
     { "type": "assert", "assert": "contains", "value": "Build login form" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the route the two rows left the menu for", "key": "&" },
+    { "type": "assert", "assert": "view", "value": "TaskAttachments" },
+    { "type": "key", "key": "esc" },
+    { "type": "key", "key": ";" },
+    { "type": "assert", "assert": "view", "value": "TaskComments" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

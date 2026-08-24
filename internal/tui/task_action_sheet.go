@@ -130,8 +130,8 @@ func taskActionDescriptorApplicableToEveryTarget(
 
 func taskActionSheetEligible(descriptor OperationDescriptor) bool {
 	// The task manifest is an allowlist, not merely an ordering hint. Keeping
-	// eligibility closed over its three menu entries prevents newly registered
-	// task operations from silently expanding the Space menu.
+	// eligibility closed over its one menu entry prevents newly registered task
+	// operations from silently expanding the Space menu.
 	entry, manifested := taskOperationManifestEntryFor(descriptor.ID)
 	return manifested && !entry.DirectOnly
 }

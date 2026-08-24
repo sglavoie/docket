@@ -6,9 +6,7 @@
     { "type": "key", "key": "j" },
     { "type": "key", "label": "select Build login form", "key": "j" },
 
-    { "type": "key", "label": "open the Comments panel at the minimum supported size", "key": "space" },
-    { "type": "text", "text": "comments" },
-    { "type": "key", "key": "enter" },
+    { "type": "key", "label": "open the Comments panel at the minimum supported size", "key": ";" },
     { "type": "assert", "assert": "view", "value": "TaskComments" },
     { "type": "assert", "assert": "no_layout_issues" },
 

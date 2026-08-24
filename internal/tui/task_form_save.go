@@ -100,6 +100,33 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 		created++
 	}
 
+	// Build the attachment request list (blank values skipped), so the drafts
+	// ride the same ChangeSet as the task write and one u undoes both. The raw
+	// value is passed through verbatim: classification, resolution, and the
+	// staged file copy all belong to the application layer, exactly as they do
+	// for a captured &link.
+	var attachmentReqs []string
+	for _, att := range m.draft.attachments {
+		value := strings.TrimSpace(att.value)
+		if value == "" {
+			continue
+		}
+		attachmentReqs = append(attachmentReqs, value)
+	}
+
+	// Build the comment request list the same way (blank texts skipped), so the
+	// task, its attachments, and its comments all commit in one ChangeSet under
+	// one undo entry. normalizeCommentText runs in the application layer, on the
+	// same path a captured ;comment; takes.
+	var commentReqs []string
+	for _, comment := range m.draft.comments {
+		text := strings.TrimSpace(comment.text)
+		if text == "" {
+			continue
+		}
+		commentReqs = append(commentReqs, text)
+	}
+
 	req := app.AddTaskRequest{
 		ProjectID:      m.project.ID,
 		Title:          m.draft.title,
@@ -112,6 +139,8 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 		DueDate:        m.draft.dueDate,
 		Pinned:         m.draft.pinned,
 		Subtasks:       subReqs,
+		Attachments:    attachmentReqs,
+		Comments:       commentReqs,
 	}
 
 	openContent := false

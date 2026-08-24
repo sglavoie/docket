@@ -287,6 +287,11 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationTaskSetParent, Keys: []string{">"}, DisplayKey: ">"},
 			{OperationID: operationTaskAdoptChildren, Keys: []string{"<"}, DisplayKey: "<"},
 			{OperationID: operationTaskMoveToProject, Keys: []string{"%"}, DisplayKey: "%"},
+			// The two capture sigils that carry task content keep the same
+			// correspondence the other keyed sigils do: the character that writes an
+			// attachment or a comment on a capture line opens that panel on a row.
+			{OperationID: operationTaskAttachments, Keys: []string{"&"}, DisplayKey: "&", FooterRank: 14, FooterLabel: "attachments"},
+			{OperationID: operationTaskComments, Keys: []string{";"}, DisplayKey: ";", FooterRank: 15, FooterLabel: "comments"},
 			// Enter zooms in on whatever the cursor names. The three acts carry
 			// different targets and different vocabularies, so they stay three
 			// descriptors with three honest labels rather than one that branches on

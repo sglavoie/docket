@@ -21,16 +21,20 @@ func TestTaskForm_TabSwitchForward(t *testing.T) {
 		t.Errorf("after ]]: expected tab %d, got %d", formTabChildren, m.activeTab)
 	}
 	m = sendFormKey(m, syntheticShiftKey(tea.KeyRight))
+	if m.activeTab != formTabExtras {
+		t.Errorf("after ]]]: expected tab %d, got %d", formTabExtras, m.activeTab)
+	}
+	m = sendFormKey(m, syntheticShiftKey(tea.KeyRight))
 	if m.activeTab != formTabBasics {
-		t.Errorf("after ]]]: expected tab %d, got %d", formTabBasics, m.activeTab)
+		t.Errorf("after ]]]]: expected tab %d, got %d", formTabBasics, m.activeTab)
 	}
 }
 
 func TestTaskForm_TabSwitchBackward(t *testing.T) {
 	m := newTestTaskForm()
 	m = sendFormKey(m, syntheticShiftKey(tea.KeyLeft))
-	if m.activeTab != formTabChildren {
-		t.Errorf("[: expected wrap to tab %d, got %d", formTabChildren, m.activeTab)
+	if m.activeTab != formTabExtras {
+		t.Errorf("[: expected wrap to tab %d, got %d", formTabExtras, m.activeTab)
 	}
 }
 

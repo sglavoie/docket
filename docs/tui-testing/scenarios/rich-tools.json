@@ -6,9 +6,7 @@
     { "type": "key", "key": "j" },
     { "type": "key", "label": "select Build login form", "key": "j" },
 
-    { "type": "key", "label": "open task actions for comments", "key": "space" },
-    { "type": "text", "text": "comments" },
-    { "type": "key", "key": "enter" },
+    { "type": "key", "label": "open the Comments panel with its sigil key", "key": ";" },
     { "type": "assert", "assert": "view", "value": "TaskComments" },
     { "type": "assert", "assert": "contains", "value": "Comments" },
     { "type": "assert", "assert": "not_contains", "value": "Decisions" },
@@ -33,9 +31,7 @@
 
     { "type": "key", "label": "return to Outliner", "key": "esc" },
 
-    { "type": "key", "label": "open task actions for attachments", "key": "space" },
-    { "type": "text", "text": "attachments" },
-    { "type": "key", "key": "enter" },
+    { "type": "key", "label": "open the Attachments panel with its sigil key", "key": "&" },
     { "type": "assert", "assert": "view", "value": "TaskAttachments" },
     { "type": "assert", "assert": "contains", "value": "Attachments" },
     { "type": "assert", "assert": "no_layout_issues" },

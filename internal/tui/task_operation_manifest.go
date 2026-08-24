@@ -6,20 +6,6 @@ package tui
 func taskOperationManifest() []operationManifestEntry {
 	return []operationManifestEntry{
 		{
-			ID:       operationTaskComments,
-			Label:    "Comments",
-			Aliases:  []string{"add comment"},
-			Category: taskActionCategoryContent,
-			Risk:     OperationRiskMutation,
-		},
-		{
-			ID:       operationTaskAttachments,
-			Label:    "Attachments",
-			Aliases:  []string{"add attachment"},
-			Category: taskActionCategoryContent,
-			Risk:     OperationRiskMutation,
-		},
-		{
 			ID:       operationTaskDelete,
 			Label:    "Delete",
 			Aliases:  []string{"remove task", "destroy task", "delete subtree"},
@@ -31,10 +17,12 @@ func taskOperationManifest() []operationManifestEntry {
 }
 
 // taskDirectOperationManifest keeps the direct grammar descriptors registered
-// without making them task-menu rows. The task menu itself is exactly the three
-// entries returned by taskOperationManifest.
+// without making them task-menu rows. The task menu itself is exactly the one
+// entry returned by taskOperationManifest.
 func taskDirectOperationManifest() []operationManifestEntry {
 	return []operationManifestEntry{
+		{ID: operationTaskAttachments, Label: "Attachments", Aliases: []string{"add attachment"}, Category: taskActionCategoryContent, Risk: OperationRiskMutation, DirectOnly: true},
+		{ID: operationTaskComments, Label: "Comments", Aliases: []string{"add comment"}, Category: taskActionCategoryContent, Risk: OperationRiskMutation, DirectOnly: true},
 		{ID: operationTaskSetState, Label: "Set State", Aliases: []string{"workflow state", "status"}, Provider: ValueProviderState, Category: taskActionCategoryPlan, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operationTaskSetPriority, Label: "Set Priority", Aliases: []string{"importance"}, Provider: ValueProviderPriority, Category: taskActionCategoryPlan, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operationTaskSetDueDate, Label: "Set Date", Aliases: []string{"deadline", "due date", "defer", "hide until"}, Provider: ValueProviderDate, Category: taskActionCategoryPlan, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},

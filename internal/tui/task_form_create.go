@@ -31,6 +31,8 @@ func NewTaskFormModelCreate(
 	m.initDueInput("")
 	m.initChecklistItemInput("")
 	m.initSubtaskItemInput("")
+	m.initAttachmentItemInput("")
+	m.initCommentItemInput("")
 	return m
 }
 

@@ -201,6 +201,7 @@ were in and says so.
 | Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date and defer; `#` tags and context; `*` pin |
 | Structure | `[` outdent, `]` indent, `>` Set Parent, `<` Adopt Children, `%` Move to Project, `J`/`K` reorder one step, `Ctrl+J`/`Ctrl+K` reorder to the far end of the visible peers |
 | Sorting | `o` opens the sort chord: `o@` due date, `o!` priority, `oc` created, `ou` updated, `ot` title, `ox` clear; repeat a field key to reverse it |
+| Content | `&` opens the cursor task's Attachments panel, `;` its Comments panel — the two capture sigils reaching, as keys, the panels that own add, reorder, unlink, and delete |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
 | Selection | `v` toggles the cursor task; `V` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
 | Global | `P` Select Project, `Ctrl+N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
@@ -310,8 +311,10 @@ than where a task lives.
 parentage: two spaces per level, up to the usual depth of six. Every line
 otherwise speaks the ordinary capture grammar, so `!2`, `#tag`, `##context`, `@friday`,
 `$backlog`, and `*pin` all work, while `>parent` and `<child` are rejected
-because the indentation already said it, and `@@defer` is rejected because the
-buffer carries no deferral at all. The dump prints the values a task
+because the indentation already said it, `@@defer` is rejected because the
+buffer carries no deferral at all, and `&link` and `;comment;` are rejected
+because attaching and commenting are creation-time acts the buffer could only
+duplicate. The dump prints the values a task
 currently holds, so a pinned task arrives carrying `*pin` and deleting that
 token unpins it; there is no `*unpin` here.
 
@@ -349,14 +352,15 @@ undoable transaction.
 
 `Space` contains exactly:
 
-1. Comments
-2. Attachments
-3. Delete
+1. Delete
 
 The list filters as soon as printable text is typed. Frequent direct operations
 do not repeat in this menu. Delete always asks for confirmation. The checklist
 is absent because it is edited on its own rows, and a second route to the same
-mutations is the shape this menu exists to avoid.
+mutations is the shape this menu exists to avoid. Comments and Attachments left
+this menu when they gained `;` and `&`, which is that same rule: a panel reached
+by a key is not also a row, so the single-task sheet is now identical to the
+bulk one.
 
 The same key on a project group header opens a different sheet, because the row
 names a project rather than a task. Project Actions holds Edit project and
@@ -364,7 +368,7 @@ Toggle project pin, then Archive project and Delete project under Danger.
 Opening the project and opening its notes are absent for the reason above:
 `Enter` and `Ctrl+N` already reach both from that row.
 
-The Attachments panel that `Space` opens carries the same split. `Enter` opens
+The Attachments panel that `&` opens carries the same split. `Enter` opens
 the attachment under the cursor, `a` adds one, `E` opens it in the external
 editor, `y` and `Y` copy its path and its `path:line` form, and `J`/`K` reorder
 it. Its own `Space` sheet holds the five acts a direct key would have spent for
@@ -382,7 +386,7 @@ attachment is now a deliberate menu row rather than a single press. `u` and
 attachment added or removed by mistake comes back without leaving the panel, and
 the status strip names the transaction that moved.
 
-The Comments panel splits the same way. `Enter` expands the comment under the
+The Comments panel that `;` opens splits the same way. `Enter` expands the comment under the
 cursor, `a` adds one, `e` edits it inline, `E` opens it in the external editor,
 and `y` and `Y` copy that comment and every comment as Markdown. Its own `Space`
 sheet holds Delete alone, which confirms and has no direct key, so a comment
@@ -469,9 +473,12 @@ project the current scope or Focus excluded.
 
 Only a token the grammar recognizes but cannot honor blocks the query: an
 out-of-range priority such as `!9`, a retired destination such as `$ready`, the
-reserved `##0`, and the structural `>parent` and `<child` sigils that belong to
-the edit grammar alone. Those refuse by name in the search chrome and list
-nothing. Everything else stays prose, so `find @sarah`, `!important`, and
+reserved `##0`, the structural `>parent` and `<child` sigils that belong to the
+edit grammar alone, an `&link` naming something genuinely attachable, which
+belongs to capture and to the task's Attachments panel, and a paired
+`;comment;`, which belongs to capture and to the task's Comments panel. Those
+refuse by name in
+the search chrome and list nothing. Everything else stays prose, so `find @sarah`, `!important`, and
 `$100` search for the words you typed.
 
 Search reads case as a narrowing signal, applied to the free text after the
@@ -717,7 +724,7 @@ One nonblank line creates one task. Multiple lines are fully parsed and
 validated before one atomic transaction is committed.
 
 ```text
-!1-3  #tag  ##context  @date  @@defer  $destination  *pin  %project  >parent  <child
+!1-3  #tag  ##context  @date  @@defer  $destination  *pin  %project  >parent  <child  &link  ;comment;
 ```
 
 - `!1` through `!3` set High, Medium, or Low priority.
@@ -748,6 +755,35 @@ validated before one atomic transaction is committed.
 - `<child` adopts a task that already exists, and may be repeated. `>parent`
   stays singleton because a task has one parent, while a task can gain many
   children at once.
+- `&link` attaches something to the new task and may be repeated. It takes an
+  `http://` or `https://` URL, a `path:line` code reference such as
+  `&internal/app/add.go:19`, or a local file path, which is copied into the
+  task's attachments in the very same transaction that creates the task, so one
+  undo takes back the task and its bytes together. Anything else stays in the
+  title, so `Plan the R&D offsite`, `Q&A with legal`, and `&10:30 standup` are
+  ordinary prose. Two files on one line whose names would collide in the
+  attachments directory are refused by name rather than silently overwritten.
+  The sigil is capture-only: the outline buffer and search both reject it and say
+  where attachments do belong. Expanding the line into the full form instead
+  carries the value onto that form's Extras tab, which is where the expanded
+  composer attaches.
+- `;comment;` writes a comment onto the new task and may be repeated. Both
+  delimiters are required and the opening one has to follow a space, which is
+  what keeps ordinary punctuation ordinary: `Fix a; then b` and an unterminated
+  `Ship ;note` are prose, while `Call Dana ;ask about the SSO deadline;` creates
+  the task with that comment already on it, in the same transaction. Everything
+  between the delimiters is literal text, so `Fix login ;check the #auth flow;`
+  files one comment mentioning `#auth` and creates no tag at all. Like `&link`,
+  the sigil is capture-only: the outline buffer and search both reject it and
+  name the Comments panel instead, while expanding the line into the full form
+  carries the text onto that form's Extras tab, which is where the expanded
+  composer comments.
+
+The syntax guide teaches the sigils in a different order from the one the parser
+peels them in. `;comment;` has to be recognized first, or a sigil written inside
+a comment would be claimed by its own rule, and `&link` before `#tag`, or
+`#work&http://x/y` would leave a stray `&` that reads as an attachment. Both are
+parsing details and neither leads the guide.
 
 Both structural sigils name a task by exact short ID or by a unique
 case-insensitive title prefix, and both resolve in the effective project — the

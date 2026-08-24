@@ -133,6 +133,7 @@ a/A e/E Ctrl+E O                 capture and edit
 $i $b $n $t $g $w $p $m $d $c    workflow chord
 !0-3 @ # *                       metadata
 [ ] > < % J K Ctrl+J Ctrl+K      structure
+& ;                              attachments and comments panels
 y Y Ctrl+Y                       clipboard
 v V Ctrl+A Space                 selection and actions
 Enter Shift+Enter Ctrl+Enter     Focus, widen focus, and Peek
@@ -145,7 +146,11 @@ o@ o! oc ou ot ox                sort axis
 
 The metadata keys are the capture sigils themselves: `@` opens the one picker
 holding both the due date and the deferral, and `#` opens the one picker holding
-both tags and the task context, so neither `@@` nor `##` is a key sequence. The
+both tags and the task context, so neither `@@` nor `##` is a key sequence. `&`
+and `;` are the last two sigils to become keys, and the only pair that opens a
+panel rather than a picker: `&link` and `;comment;` write at capture time, and
+on a row the same characters open the Attachments and Comments panels that own
+add, reorder, unlink, and delete. The
 old standalone `b` and `d` actions and comma state prefix are intentionally
 unbound, as are `c`, `m`, `w`, `:`, `C`, `R`, and `Ctrl+Esc`. `t` and `P` are
 live again with different acts: the subtree fold and Select Project.
@@ -158,8 +163,8 @@ The committed size matrix is exactly 60×20, 72×20, 100×35, and 160×55.
 
 | Terminal size | Presentations and states |
 | --- | --- |
-| 60×20 | Outliner, Help, Global Notes, Project Hub, and task comments |
-| 72×20 | Outliner pending-filter chord |
+| 60×20 | Outliner, Help, Global Notes, Project Hub, task comments, and the expanded task form below its width floor |
+| 72×20 | Outliner pending-filter chord, and the expanded task form's Extras tab |
 | 100×35 | Outliner Peek and visual selection |
 | 160×55 | Help |
 
@@ -198,7 +203,7 @@ The committed suite exercises the product contracts directly:
 | Both end spellings named once in each entity surface's own `?` help | `project-hub-help.json`, `notes-help.json`, `task-comments-help.json`, `task-attachments-undo.json` |
 | `u` and `Ctrl+R` reaching the one workspace ledger from inside a panel, refreshing its list and naming the transaction | `task-attachments-undo.json`, `task-comments-undo.json` |
 | Checklist row grammar and its central task-key refusal | `outliner-checklist-row-actions.json`, `outliner-checklist-row-rejects-task-keys.json` |
-| Exact three-item `Space` menu | `outliner-space-action-catalog.json` |
+| Single-row `Space` menu, and the `&`/`;` keys that emptied it | `outliner-space-action-catalog.json` |
 | The same `Space` resolving to the project sheet on a header, and the enumerated project delete under one undo | `outliner-project-header-actions.json`, `outliner-project-delete-undo.json` |
 | Every entity surface's footer and `Space` sheet at the 60x20 minimum | `outliner-multiselect-minimum-layout.json`, `project-hub-minimum-layout.json`, `global-notes-resize-minimum-layout.json`, `task-attachments-minimum-layout.json`, `task-comments-minimum-layout.json` |
 | Inline edit validation, autocomplete, atomic cross-project relocation, resize, undo, and redo | `outliner-inline-edit-transaction.json`, `recovery-origin-guidance.json` |
@@ -206,6 +211,9 @@ The committed suite exercises the product contracts directly:
 | Repeatable `<child` adoption, alias dedupe, additive children, and undo/redo on both surfaces | `capture-child-adoption.json`, `outliner-inline-edit-child-adoption.json` |
 | Relation marker in both directions, reserved across a resize | `outliner-parent-marker.json`, `capture-child-adoption.json` |
 | `*pin` at capture and the edit-only `*unpin` clear | `capture-pin.json` |
+| `&link` and `;comment;` committing with the task they create, and the prose both sigils leave alone | `capture-attachment.json`, `capture-comment.json` |
+| The expanded form's Extras tab attaching a draft that commits with the task, and the fixed-width body degrading to the min-size notice below 68 columns | `form-extras-attachments-narrow.json`, `form-extras-attachments-minimum-layout.json` |
+| A compact `;comment;` expanding into a seeded Extras tab, a second comment added there, and task, attachment, and comments undone as one entry | `form-extras-comments-narrow.json` |
 | Outline editing refusing both structural sigils as competing parentage channels | `outline-editor-guard.json` |
 | Full-width cursor-following Peek | `outliner-peek-wide-layout.json`, `outliner-peek-narrow-layout.json` |
 | Search projection and exact restoration | `visible-search-minimum-layout.json`, `search-restoration.json` |

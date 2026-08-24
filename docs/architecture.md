@@ -631,7 +631,7 @@ reads.
 
 | Strategy | Manifest | Menu keeps |
 | --- | --- | --- |
-| `SimplifiedInputStrategy` | `taskOperationManifest` + `taskDirectOperationManifest` + `outlinerProjectOperationManifest` | Comments, Attachments, Delete on a task row; Edit, pin, Archive, Delete on a project header |
+| `SimplifiedInputStrategy` | `taskOperationManifest` + `taskDirectOperationManifest` + `outlinerProjectOperationManifest` | Delete alone on a task row; Edit, pin, Archive, Delete on a project header |
 | `ProjectHubInputStrategy` | `projectOperationManifest` | Archive or Unarchive, bulk tags |
 | `NotesInputStrategy` | `notesOperationManifest` | Delete |
 | `AttachmentsInputStrategy` | `attachmentOperationManifest` | three origin acts, Unlink, Delete |
@@ -819,7 +819,9 @@ menu, not whether an attribute is also expressible in the text grammar: `!`, `@`
 `#`, and the `$` chord are the sigils that say the same things.
 
 Every keyed capture sigil binds the character it is written with: `!` and `$` as
-chord prefixes, `#`, `@`, `*`, `%`, `>`, and `<` as root keys.
+chord prefixes, `#`, `@`, `*`, `%`, `>`, `<`, `&`, and `;` as root keys. The
+last two are the only pair that opens a panel rather than a picker, because the
+panel already owns add, reorder, unlink, and delete.
 `TestSigilKeysMatchTextGrammarSigils` walks the `textgrammar` triggers against
 the strategy's own bindings, so renaming a sigil breaks the keymap loudly rather
 than silently splitting the two vocabularies. Three triggers deliberately have no
@@ -834,12 +836,15 @@ one-step move has no capture form to name.
 
 `SimplifiedInputStrategy` is the only Outliner key grammar. Direct dispatch,
 handled-key metadata, chord hints, guidance hints, `?` help, and harness discovery
-all project from that strategy. The task operation manifest separately orders
-the exact three `Space` actions:
+all project from that strategy. The task operation manifest separately holds the
+one `Space` action:
 
-1. Comments
-2. Attachments
-3. Delete
+1. Delete
+
+`taskDirectOperationManifest` holds Comments and Attachments as `DirectOnly`
+entries instead, bound to `;` and `&`. The one-path rule is what forces the
+choice: a panel a key opens cannot also be a menu row, so the single-task sheet
+became identical to the bulk sheet and stopped rendering a Content group.
 
 Project moves and reparenting are expressed in the inline `e` editor with
 `%project`, `>parent`/`>0`, and the repeatable `<child`, so structural edits
@@ -992,6 +997,103 @@ in code identifiers, so pin would diagnose far more real titles than typos.
 Re-pinning an already-pinned task preserves `PinnedAt`, since that field is the
 pinned section's manual order and every outline apply would otherwise reshuffle
 it.
+
+`&link` is the attachment sigil, and it reuses `*pin`'s rejection behavior for
+the same reason: `&` is ordinary prose. `validAttachmentTokenValue` is a purely
+lexical test — an `http://` or `https://` prefix, a `/` anywhere, or a
+`name:digits` shape whose name half contains a dot — so `R&D`, `Q&A`,
+`&10:30 standup`, and `&nbsp;` are never consumed, while `&main.go:42` is. The
+test is lexical because `internal/textgrammar` must not import
+`internal/storage`; whether a path resolves is `app.ResolveAttachmentInput`'s
+question, asked once so every surface classifies a paste identically.
+
+That sigil is also why the registry now carries two orders. `registry` is parse
+order and `guideOrder` is teach order, projected by `Definitions` and
+`GuideDefinitions` respectively. The attachment entry has to sit ahead of
+`FieldTag`, because RE2 has no lookaround: `#([\w][\w.:-]*)` stops at the `&`, and
+`extractTokens` replaces the matched span with a single space, so peeling
+`#work` out of `Task #work&http://x/y` would leave a whitespace-preceded `&` and
+mint an attachment the user never wrote. Peeling `&` first leaves it glued to
+the tag, where it stays literal title text. Parse order is not a curriculum,
+though, so `guideOrder` teaches attachments last, beside their own group, and
+`syntaxGuideGroups` is the one consumer reading that projection.
+`validateGuideOrder` runs at `init()` and asserts the two lists hold identical
+sets, which is what makes the split safe: a field added to one and forgotten in
+the other would otherwise vanish from the guide or gain an unreachable entry.
+
+An `&link` value reaches the application layer as a raw string on
+`CaptureRequest.Attachments` or `AddTaskRequest.Attachments`.
+`resolveCapturedAttachments` classifies the whole line before anything mutates,
+adding the two guards a single paste does not need — `storage.SafeChildName` on
+the destination filename, and a per-line dedupe so two files resolving to one
+name refuse by name instead of overwriting each other. `applyCapturedAttachments`
+then records the metadata and returns the `storage.AttachmentCopy` ops, which
+ride the capturing task's own `ChangeSet` through
+`commitProjectWithSideEffects`. Metadata precedes staging exactly as in
+`attachFile`, so a rejected attachment aborts the capture without writing a byte,
+and one undo entry takes back the task and its attachments together. In
+`CaptureMany` the ops are grouped per project onto each `projectCommit`, and they
+are built after the hierarchy guards run so a rejected batch has staged nothing.
+The sigil is capture-only: `parseOutlineBodies` rejects it beside `%project`,
+`>parent`, `<child`, and `@@defer`, and search names it in `refusedSearchFields`,
+which re-validates the captured value on `SurfaceCapture` first so only a
+genuinely attachable value blocks a query. `expandSingle` no longer refuses it:
+the expanded form's Extras tab is the attachment channel it was missing, so
+`expandRequest` seeds `taskFormDraft.attachments` from `CaptureRequest.Attachments`
+and the two halves of that rule — a refusal only while the value has nowhere to
+land — moved together.
+
+The Extras tab is the fourth `formTabNames` entry and the second dynamic one,
+counting its focusable rows from its two collapsible sections exactly as
+Children does. `a` toggles the Attachments section and `c` the Comments one,
+`Ctrl+L` appends an attachment draft and opens `formOverlayAttachmentEdit` on
+it, `Ctrl+Y` appends a comment draft and opens `formOverlayCommentEdit`, `Enter`
+edits the focused draft or toggles the section its header names, and `Ctrl+D`
+deletes the focused draft. `Ctrl+J`/`Ctrl+K` reorder attachments only: a comment
+carries its own creation timestamp, so its position is chronology rather than an
+ordering the author chooses. Confirming an item overlay with a blank value drops
+the draft, which is the rule `TaskFormChecklistItemEditedMsg` and
+`TaskFormSubtaskEditedMsg` already followed; `discardCanceledNewItem` is the one
+place all four undo a canceled add. `saveCreate` skips blank drafts and passes
+the raw values through as `AddTaskRequest.Attachments` and
+`AddTaskRequest.Comments`, so the form classifies and normalizes nothing and the
+task, its bytes, and its comments commit in one `ChangeSet` under one undo
+entry. Extras is also why `buildKeyMap` became tab-aware: its `Ctrl+D` and
+`Ctrl+J`/`Ctrl+K` mean something different from Schedule's due-date picker and
+Children's reorder rows, and its `c` means something different from Children's
+checklist toggle, so the Schedule, Children, and Extras blocks are each scoped
+to `m.activeTab` wholesale rather than row by row, following the precedent
+`guidanceSpec` set.
+
+`;comment;` sits at parse-order position 0, ahead of the attachment entry, and it
+is there for a stronger version of the same reason. A comment is free prose that
+may legitimately contain any other sigil, and RE2 cannot express "not inside a
+`;…;` span", so the only way `Fix login ;check the #auth flow;` can file one
+comment mentioning `#auth` rather than a comment plus a tag is for the comment
+span to be peeled before every other pattern runs. The pattern
+`(?:^|\s);(\S[^;]*);` carries the rest of the rule: the leading boundary keeps
+`Fix a; then b` literal, the required closing delimiter keeps an unterminated
+`Ship ;note` literal, and `\S[^;]*` makes an empty or blank span unmatchable, so
+`validateAny` never sees a comment the application layer would have to reject.
+Teach order is unaffected — `guideOrder` places `FieldComment` last, after
+`FieldAttachment`, each in its own group.
+
+Comments reach the application layer as raw strings on `CaptureRequest.Comments`
+and `AddTaskRequest.Comments`. `resolveCapturedComments` runs every one through
+the same `normalizeCommentText` an interactively added comment goes through,
+before the snapshot in `buildAddTask` and inside `prepareCapturedTask` on the
+capture path, so a rejected comment aborts with nothing mutated.
+`applyCapturedComments` then calls `Task.AddCommentAt` with the service clock's
+instant. Unlike an attachment it stages no side effect at all: a comment is task
+document content, so it commits with the task write itself and needs no
+`AttachmentOp`, and the single ChangeSet that creates the task already covers it.
+Its refusals mirror the attachment's exactly — `parseOutlineBodies` and
+`refusedSearchFields` — with wording that names the Comments panel, and so does
+the one refusal that lifted: `expandSingle` carries a comment span into the
+expanded form now that `expandRequest` seeds `taskFormDraft.comments` from
+`CaptureRequest.Comments`. With that pair moved together, `expandSingle` is back
+to exactly the three refusals it had before this grammar landed — `ChildIDs`,
+`Pinned`, and `Context` — each still a value the form has no channel for.
 
 `<child` is the one repeatable structural sigil. `>parent` stays
 `CardinalitySingleton` because a task has one parent, while `FieldChild` is

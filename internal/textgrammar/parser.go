@@ -184,9 +184,35 @@ func validTokenValue(spec definitionSpec, value string, surface Surface) bool {
 		return slices.ContainsFunc(spec.Clears, func(clear ClearOperation) bool {
 			return clear.Value == value
 		})
+	case validateAttachment:
+		return validAttachmentTokenValue(value)
 	default:
 		return false
 	}
+}
+
+// validAttachmentTokenValue decides lexically whether an & token names something
+// attachable. It is deliberately lexical only: this package must not import
+// internal/storage, and whether a path exists is the application layer's
+// question. An unrecognized value is not consumed, the validatePin behavior
+// rather than priority's, because & is ordinary prose ("R&D", "Q&A", "&nbsp;").
+func validAttachmentTokenValue(value string) bool {
+	if value == "" {
+		return false
+	}
+	if strings.HasPrefix(value, "http://") || strings.HasPrefix(value, "https://") {
+		return true
+	}
+	if strings.Contains(value, "/") {
+		return true
+	}
+	// A bare name:digits shape is a code reference only when the name part looks
+	// like a file. Without that clause "&10:30 standup" would attach file 10 at
+	// line 30, while "&main.go:42" must still land.
+	if index := strings.LastIndex(value, ":"); index > 0 && isAllDigits(value[index+1:]) {
+		return strings.Contains(value[:index], ".")
+	}
+	return false
 }
 
 // searchValueViable decides whether a free-form token shape is a search

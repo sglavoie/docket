@@ -14,7 +14,8 @@
 
     { "type": "key", "label": "clear the action filter", "key": "esc" },
     { "type": "assert", "assert": "contains", "value": "Task Actions: Build login form" },
-    { "type": "assert", "assert": "contains", "value": "Comments" },
+    { "type": "assert", "label": "Delete is the whole task menu now", "assert": "contains", "value": "Delete" },
+    { "type": "assert", "assert": "not_contains", "value": "Comments" },
     { "type": "key", "label": "cancel the sheet", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "not_contains", "value": "Task Actions" },
@@ -22,9 +23,7 @@
     { "type": "assert", "assert": "contains", "value": "▶   Build login form" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "reopen the contextual action sheet", "key": "space" },
-    { "type": "text", "label": "find the attachments action", "text": "attachments" },
-    { "type": "key", "label": "open task attachments", "key": "enter" },
+    { "type": "key", "label": "the attachment sigil opens the panel directly", "key": "&" },
     { "type": "assert", "assert": "view", "value": "TaskAttachments" },
     { "type": "assert", "assert": "contains", "value": "Attachments" },
     { "type": "assert", "assert": "no_layout_issues" },
