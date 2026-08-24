@@ -26,6 +26,10 @@ const (
 	ListSurfaceDefaultListMinWidth    = 24
 	ListSurfaceDefaultPreviewMinWidth = 24
 	listSurfacePaneGapWidth           = 3
+	// listSurfacePreviewBodyLines caps the wrapped Body lines the preview header
+	// may spend. Body is a description, and a long one would otherwise swallow the
+	// rows PreviewBody exists to fill.
+	listSurfacePreviewBodyLines = 2
 )
 
 // ListSurfaceRenderConfig configures presentation only. Query, cursor,
@@ -40,6 +44,13 @@ type ListSurfaceRenderConfig struct {
 	WideMinWidth    int
 	ListMinWidth    int
 	PreviewMinWidth int
+	// PreviewBody renders pane-owned lines below the preview header, at the
+	// resolved pane width and within the rows the header left. It returns lines
+	// already fitted to width; the renderer appends them verbatim. ListPreview
+	// cannot carry them: it is a renderer-neutral value snapshotted into each item
+	// long before a pane width exists, and its text is wrapped rather than
+	// truncated, which no height budget survives. Compact layout ignores the hook.
+	PreviewBody func(width, height int) []string
 }
 
 // ListSurfaceRenderer renders a headless ListSurfaceModel into a Bubble Tea
@@ -124,14 +135,33 @@ func listSurfaceRenderLayout(
 	if !ok {
 		return ListSurfaceLayoutCompact, ListPreview{}
 	}
+	if _, previewWidth := listSurfacePreviewGeometry(config); previewWidth <= 0 {
+		return ListSurfaceLayoutCompact, ListPreview{}
+	}
+	return ListSurfaceLayoutWide, preview
+}
+
+// listSurfacePreviewGeometry is the one copy of the two-pane split. A preview
+// width of zero means the terminal cannot satisfy both panes' minimums and the
+// layout falls back to the list alone, so a caller deciding whether to advertise
+// a key that only acts inside the preview asks this rather than re-deriving the
+// 55%/gap formula and drifting from what the renderer draws.
+func listSurfacePreviewGeometry(config ListSurfaceRenderConfig) (int, int) {
+	config = normalizeListSurfaceRenderConfig(config, nil)
 	required := max(
 		config.WideMinWidth,
 		config.ListMinWidth+listSurfacePaneGapWidth+config.PreviewMinWidth,
 	)
 	if config.Width < required {
-		return ListSurfaceLayoutCompact, ListPreview{}
+		return config.Width, 0
 	}
-	return ListSurfaceLayoutWide, preview
+	listWidth := max(config.Width*55/100, config.ListMinWidth)
+	previewWidth := config.Width - listWidth - listSurfacePaneGapWidth
+	if previewWidth < config.PreviewMinWidth {
+		previewWidth = config.PreviewMinWidth
+		listWidth = config.Width - previewWidth - listSurfacePaneGapWidth
+	}
+	return listWidth, previewWidth
 }
 
 func renderCompactListSurface(
@@ -154,16 +184,11 @@ func renderWideListSurface(
 	config ListSurfaceRenderConfig,
 	preview ListPreview,
 ) string {
-	listWidth := max(config.Width*55/100, config.ListMinWidth)
-	previewWidth := config.Width - listWidth - listSurfacePaneGapWidth
-	if previewWidth < config.PreviewMinWidth {
-		previewWidth = config.PreviewMinWidth
-		listWidth = config.Width - previewWidth - listSurfacePaneGapWidth
-	}
+	listWidth, previewWidth := listSurfacePreviewGeometry(config)
 
 	showContinuations := sizeListSurfaceViewport(model, listWidth, config.Height)
 	listPane := renderListSurfacePane(model, listWidth, showContinuations)
-	previewPane := renderListSurfacePreview(preview, previewWidth, config.Height)
+	previewPane := renderListSurfacePreview(preview, previewWidth, config.Height, config.PreviewBody)
 	content := joinListSurfacePanes(listPane, previewPane, listWidth, previewWidth)
 	if !config.HideHelp {
 		content = appendListSurfaceHelp(content, listSurfaceHelp(model, config.HelpText), config.Width)
@@ -315,7 +340,11 @@ func renderListContinuation(direction string, count, width int) string {
 	return MutedStyle.Render(truncateToVisualWidth(label, width))
 }
 
-func renderListSurfacePreview(preview ListPreview, width, height int) string {
+func renderListSurfacePreview(
+	preview ListPreview,
+	width, height int,
+	body func(width, height int) []string,
+) string {
 	lines := make([]string, 0, height)
 	appendLine := func(line string) {
 		if height > 0 && len(lines) >= height {
@@ -323,38 +352,54 @@ func renderListSurfacePreview(preview ListPreview, width, height int) string {
 		}
 		lines = append(lines, truncateToVisualWidth(line, width))
 	}
-	appendWrapped := func(text string, style lipgloss.Style) {
+	appendWrapped := func(text string, style lipgloss.Style, limit int) {
 		if strings.TrimSpace(text) == "" {
 			return
 		}
-		for _, line := range wrapText(text, max(width, 1)) {
+		wrapped := wrapText(text, max(width, 1))
+		if limit > 0 && len(wrapped) > limit {
+			wrapped = wrapped[:limit]
+		}
+		for _, line := range wrapped {
 			appendLine(style.Render(line))
 		}
 	}
 
 	if preview.Title != "" {
-		appendWrapped(preview.Title, ListPreviewHeaderStyle)
+		appendWrapped(preview.Title, ListPreviewHeaderStyle, 0)
 	}
 	if preview.Summary != "" {
-		appendWrapped(preview.Summary, MutedStyle)
+		appendWrapped(preview.Summary, MutedStyle, 0)
 	}
 	for _, field := range preview.Fields {
 		label := strings.TrimSpace(field.Label)
 		value := strings.TrimSpace(field.Value)
 		switch {
 		case label != "" && value != "":
-			appendWrapped(label+": "+value, lipgloss.NewStyle())
+			appendWrapped(label+": "+value, lipgloss.NewStyle(), 0)
 		case label != "":
-			appendWrapped(label, lipgloss.NewStyle())
+			appendWrapped(label, lipgloss.NewStyle(), 0)
 		case value != "":
-			appendWrapped(value, lipgloss.NewStyle())
+			appendWrapped(value, lipgloss.NewStyle(), 0)
 		}
 	}
 	if preview.Body != "" {
 		if len(lines) > 0 {
 			appendLine("")
 		}
-		appendWrapped(preview.Body, lipgloss.NewStyle())
+		appendWrapped(preview.Body, lipgloss.NewStyle(), listSurfacePreviewBodyLines)
+	}
+	if body != nil && height > 0 {
+		// The rule costs a row of its own, so draw it only when a pane row would
+		// still follow it.
+		if capacity := height - len(lines) - 1; capacity > 0 {
+			if rows := body(width, capacity); len(rows) > 0 {
+				appendLine(MutedStyle.Render(strings.Repeat("─", max(width, 1))))
+				for _, row := range rows {
+					appendLine(row)
+				}
+			}
+		}
 	}
 	if len(lines) == 0 {
 		appendLine(MutedStyle.Render("No preview available."))

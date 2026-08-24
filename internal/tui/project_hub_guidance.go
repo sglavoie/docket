@@ -60,6 +60,12 @@ func (m *ProjectHubModel) projectHubGuidanceKeyMap(state ListGuidanceState) *key
 		keymap.Bind("ctrl+d", "Move half page", "Navigation",
 			keymap.WithGate(func() bool { return browseList() || searchEditing() }),
 			keymap.WithFooter(30, "half page", false), keymap.WithFooterKey("Ctrl+D/U")),
+		// Ranked just below Ctrl+D so the pane's own paging is the first navigation
+		// hint the single footer row drops: the list cursor is what the surface is
+		// for, and the preview follows it.
+		keymap.Bind("ctrl+f", "Page project tasks", "Navigation",
+			keymap.WithGate(m.previewTasksScrollable),
+			keymap.WithFooter(31, "task page", false), keymap.WithFooterKey("Ctrl+F/B")),
 		// Unranked, like `?` and the ledger keys below: the Hub's ranked bindings
 		// are the project acts it exists for. Each row is spelled as the whole path
 		// the strategy binds — the gg chord and its Home alias, G and End — so the

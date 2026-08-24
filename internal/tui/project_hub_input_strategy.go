@@ -9,6 +9,8 @@ const (
 	operationProjectHubSelectAll       OperationID = "tui.project-hub.select-all"
 	operationProjectHubActions         OperationID = "tui.project-hub.actions"
 	operationProjectHubTaskFilter      OperationID = "tui.project-hub.task-filter"
+	operationProjectHubPreviewPageDown OperationID = "tui.project-hub.preview-page-down"
+	operationProjectHubPreviewPageUp   OperationID = "tui.project-hub.preview-page-up"
 )
 
 // ProjectHubInputStrategy is the Project Hub's whole direct key grammar and the
@@ -46,6 +48,11 @@ func ProjectHubInputStrategy() InputStrategy {
 			{OperationID: operationScopeOpenProjectNote, Keys: []string{"ctrl+n"}, DisplayKey: "Ctrl+N", FooterRank: 16, FooterLabel: "notes"},
 			{OperationID: operationProjectHubSelectAll, Keys: []string{"ctrl+a"}, DisplayKey: "Ctrl+A", FooterRank: 17, FooterLabel: "select all"},
 			{OperationID: operationProjectHubTaskFilter, Keys: []string{"ctrl+t"}, DisplayKey: "Ctrl+T"},
+			// Ctrl+F/B page the preview pane rather than the list: Ctrl+D/U already own
+			// the list cursor here, and the two panes scroll independently, so the two
+			// halves of vim's paging vocabulary split between them.
+			{OperationID: operationProjectHubPreviewPageDown, Keys: []string{"ctrl+f"}, DisplayKey: "Ctrl+F"},
+			{OperationID: operationProjectHubPreviewPageUp, Keys: []string{"ctrl+b"}, DisplayKey: "Ctrl+B"},
 			{OperationID: operationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},
 			{OperationID: operationCoreRedo, Keys: []string{"ctrl+r"}, DisplayKey: "Ctrl+R"},
 			{OperationID: operationCoreCursorDown, Keys: []string{"j", "down"}, DisplayKey: "j/↓"},
@@ -64,12 +71,12 @@ func ProjectHubInputStrategy() InputStrategy {
 }
 
 // projectOperationManifest is the authoritative ordered Project Hub action list
-// and the source the action sheet groups by. The eleven operations the grammar
+// and the source the action sheet groups by. The thirteen operations the grammar
 // reaches on press one are DirectOnly: they keep their descriptor, value
 // provider and category, and leave the Space menu to archiving, unarchiving, and
 // the bulk tag set.
 //
-// The five list operations below the six project ones are here so the one-path
+// The seven list operations below the six project ones are here so the one-path
 // rule sees them: a manifest is all validateOperationOnePath inspects, so an
 // unmanifested operation is the one thing that gate cannot check. Listing them
 // adds no menu row, because both sheets take an explicit operation list rather
@@ -88,6 +95,8 @@ func projectOperationManifest() []operationManifestEntry {
 		{ID: operationProjectHubSelectAll, Label: "Select every matching project", Aliases: []string{"select all projects"}, Category: projectHubActionCategoryProject, Risk: OperationRiskReadOnly, DirectOnly: true},
 		{ID: operationProjectHubActions, Label: "Project actions", Aliases: []string{"project action sheet"}, Category: projectHubActionCategoryProject, Risk: OperationRiskReadOnly, DirectOnly: true},
 		{ID: operationProjectHubTaskFilter, Label: "Cycle every project, only those holding tasks, only those holding none", Aliases: []string{"projects holding tasks", "projects holding no tasks"}, Category: projectHubActionCategoryProject, Risk: OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationProjectHubPreviewPageDown, Label: "Page project tasks down", Aliases: []string{"scroll project preview down"}, Category: projectHubActionCategoryProject, Risk: OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationProjectHubPreviewPageUp, Label: "Page project tasks up", Aliases: []string{"scroll project preview up"}, Category: projectHubActionCategoryProject, Risk: OperationRiskReadOnly, DirectOnly: true},
 		{ID: operationProjectBulkAddTag, Label: "Add tag", Category: projectHubActionCategoryProject, Risk: OperationRiskMutation, Bulk: true},
 		{ID: operationProjectBulkRemoveTag, Label: "Remove tag", Category: projectHubActionCategoryProject, Risk: OperationRiskMutation, Bulk: true},
 		{ID: operationProjectBulkPark, Label: "Park projects", Category: projectHubActionCategoryProject, Risk: OperationRiskMutation, Bulk: true},

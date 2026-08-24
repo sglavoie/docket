@@ -130,6 +130,13 @@ only includes the last 30 days`.
 render moves `viewScrollOffset`; the `zt`/`zz`/`zb` chord is the one key press
 that may write it. Never recompute the window in a key handler.
 
+Select Project's preview header is a name, one meta line, and a description
+capped at `listSurfacePreviewBodyLines`, and it declares no `Fields`. Below its
+rule, `PreviewBody` paints the project's tasks with `renderOutlinerTaskRow`, from
+the tally-retained tree, over a cache `rebuildProjectSurface` invalidates. The
+render owns the tail clamp; `Ctrl+F`/`Ctrl+B` page it by `height-2`, never
+`Ctrl+D`/`Ctrl+U`, which stay the list cursor's.
+
 Manual order is never touched by the sort axis, and that holds by construction
 rather than by a guard — do not add one. Group order never changes: a sort
 reorders tasks within their group only.

@@ -1447,6 +1447,55 @@ to the whole list, so copy describing the current narrowing would leave the way
 back unsaid. The axis is session state on a Hub that
 `ManageHubModel.prepareActive` rebuilds on every `P`, so it resets on every open.
 
+The preview pane carries two blocks with different owners. The header is
+`ListPreview`, the renderer-neutral text snapshot taken when the item is built:
+`projectPreview` spends a title row on the name and one `Summary` row on
+`<lifecycle> · <tally phrase> · slug <slug>`, appending ` · pinned` only when
+there is a pin to report. It declares no `Fields`. Five labeled rows cost six
+lines of a pane thirty tall to print four numbers and a boolean, and
+`Pinned: false` was noise on every project that had no pin. `projectTaskPhrase`
+is the one reading of the tally, so the meta line and the row's own counts
+cannot disagree. `Body` stays the description and is capped at
+`listSurfacePreviewBodyLines` wrapped lines, since free text of any length would
+otherwise swallow the rows the rest of the pane exists to fill.
+
+Everything below the rule is the Hub's, through
+`ListSurfaceRenderConfig.PreviewBody`: the renderer resolves the pane width,
+subtracts the header it has just drawn and the rule, and hands the remainder to
+the callback. Task rows cannot travel as `ListPreview` text, because a row is
+styled per segment, sized to its column budget, and thinned by
+`indicatorDropLadder` at the width it is drawn at — none of which an item built
+before layout knows. So the hook lets the pane paint during the render instead
+of letting the item carry a string it could not have sized. What it paints is
+`renderOutlinerTaskRow` on an unmounted `OutlinerModel` over the previewed
+project: the pane shows the product's own task row rather than a second row
+grammar that would drift from it, and it has no cursor, so no row opens Peek.
+
+`projectPreviewTaskRows` flattens the tree once per project and
+`projectHubPreviewState` caches it beside the painter until
+`rebuildProjectSurface` invalidates both. Roots there are the tasks no other
+task claims as a child rather than the tasks reporting no parent, so a task
+whose `ParentID` dangles is still listed exactly once and the pane's row count
+keeps agreeing with the total the header printed. The tasks come from
+`projectTaskTally.Tasks`, retained by the count pass that already reads every
+cataloged project from disk, which is what fills the pane for a parked or
+archived project — each reaches the Hub as a rehydrated catalog record holding
+no tasks of its own. A project the pass could not read says so rather than
+rendering as an empty one.
+
+Paging is `Ctrl+F`/`Ctrl+B` because `Ctrl+D`/`Ctrl+U` already move the list
+cursor, and the cursor is the surface's subject while the pane merely follows
+it. `pageProjectPreview` applies the lower bound alone: the pane's row capacity
+belongs to the render pass that computes the height, so `projectPreviewWindow`
+clamps the tail there, converging on a slice that pays for the continuation rows
+it turns out to need. A page is `height-2`, both continuations always
+subtracted, so a page down and a page up land on the same offset whether or not
+a continuation happened to be showing; the price is one row of deliberate
+overlap. `previewTasksScrollable` gates the footer hint on the pane being on
+screen — `listSurfacePreviewGeometry` is the same width arithmetic the renderer
+runs — and on the cursor project holding tasks, never on a page count, which
+would be one frame stale in the very pass that settles it.
+
 ### Project tags
 
 Three orthogonal axes describe where work sits, and none of them substitutes for

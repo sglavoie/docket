@@ -95,6 +95,67 @@ func TestListSurfaceWideRendererShowsPreviewAndFallsBackAtMinimumWidth(t *testin
 	assertListSurfaceWidth(t, compact, 48)
 }
 
+func TestListSurfacePreviewBodyCapsTheDescriptionAndFillsTheRest(t *testing.T) {
+	t.Parallel()
+
+	model := mustListSurface(t, []ListItem{{
+		ID:          "alpha",
+		PrimaryText: "Alpha",
+		Preview: ListPreview{
+			Title:   "Alpha preview",
+			Summary: "Active · 0 tasks · slug alpha",
+			Body:    strings.Repeat("A very long description that wraps well past two lines. ", 6),
+		},
+	}}, nil, ListSurfaceConfig{})
+
+	var gotWidth, gotHeight int
+	rendered := NewListSurfaceRenderer(ListSurfaceRenderConfig{
+		Width:       90,
+		Height:      10,
+		Layout:      ListSurfaceLayoutWide,
+		ShowPreview: true,
+		HideHelp:    true,
+		PreviewBody: func(width, height int) []string {
+			gotWidth, gotHeight = width, height
+			return []string{"pane row one", "pane row two"}
+		},
+	}).Render(model)
+
+	if gotWidth <= 0 {
+		t.Fatalf("preview body ran at width %d, want the resolved pane width", gotWidth)
+	}
+	// Title, meta, blank, and two capped description lines leave five rows, one of
+	// which the rule spends.
+	if want := 4; gotHeight != want {
+		t.Fatalf("preview body capacity = %d, want %d", gotHeight, want)
+	}
+	for _, want := range []string{"Alpha preview", "─", "pane row one", "pane row two"} {
+		if !strings.Contains(rendered, want) {
+			t.Fatalf("preview omitted %q:\n%s", want, rendered)
+		}
+	}
+	// The description repeats six times and would otherwise wrap over the whole
+	// pane; two wrapped lines of it survive the cap.
+	if got := strings.Count(rendered, "very long"); got != 2 {
+		t.Fatalf("description showed %d fragments, want the two-line cap:\n%s", got, rendered)
+	}
+	assertListSurfaceWidth(t, rendered, 90)
+
+	// Compact fallback owns no preview pane, so the hook must not run at all.
+	ran := false
+	compact := NewListSurfaceRenderer(ListSurfaceRenderConfig{
+		Width:       48,
+		Height:      10,
+		Layout:      ListSurfaceLayoutWide,
+		ShowPreview: true,
+		HideHelp:    true,
+		PreviewBody: func(int, int) []string { ran = true; return []string{"pane row one"} },
+	}).Render(model)
+	if ran || strings.Contains(compact, "pane row one") {
+		t.Fatalf("narrow fallback ran the preview body:\n%s", compact)
+	}
+}
+
 func TestListSurfaceRendererKeepsCursorInsideContinuationRowBudget(t *testing.T) {
 	t.Parallel()
 

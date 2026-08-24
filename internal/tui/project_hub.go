@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"slices"
-	"strconv"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -110,22 +109,25 @@ type projectHubEntry struct {
 	Project *models.Project
 }
 
-// projectTaskCountUnknown is the count reported for a project whose task tree
-// has not been loaded.
-const projectTaskCountUnknown = "unknown"
-
 // projectTaskTally pairs the tasks a project holds with the open subset.
 // Both travel together because a total alone reads as pending work when
 // every task in it is finished.
 type projectTaskTally struct {
 	Open  int
 	Total int
+	// Tasks retains the tree the counts were read from. The count pass already
+	// loads every cataloged project through the Outliner's cached loader and then
+	// discards the record, so keeping the tasks costs nothing and is the only way
+	// the preview pane can list work for a parked or archived project, whose Hub
+	// entry is a rehydrated catalog record holding no tasks at all.
+	Tasks []*models.Task
 }
 
 func projectTaskTallyOf(project *models.Project) projectTaskTally {
 	return projectTaskTally{
 		Open:  project.CountActiveTasks(),
 		Total: project.CountTasks(),
+		Tasks: project.Tasks,
 	}
 }
 
@@ -154,6 +156,7 @@ type ProjectHubModel struct {
 	// pendingTopChord holds the first g of gg. The shell's chord state serves the
 	// Outliner only, so the Hub keeps its own one-key prefix.
 	pendingTopChord bool
+	preview         projectHubPreviewState
 }
 
 func NewProjectHubModel(runtime *config.RuntimeState) *ProjectHubModel {
@@ -232,6 +235,11 @@ func (m *ProjectHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+u":
 			m.moveProjectHubHalfPage(-1)
 			return m, nil
+		case "ctrl+f", "ctrl+b":
+			// The preview pane keeps answering while the query is open: it shows the
+			// project the cursor is on, and narrowing the list is exactly when reading
+			// one project's tasks is worth doing.
+			return m, m.dispatchProjectHubKey(key.String())
 		}
 		if model, cmd, handled := m.HandleSearchMode(key, m, m.applyProjectFilter); handled {
 			return model, cmd
@@ -273,7 +281,7 @@ func (m *ProjectHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// The shell only routes Esc here while ShouldCaptureEsc holds it, so this
 		// is the selection rung of the unwind and never the close.
 		m.surface.ClearSelection()
-	case "/", "a", "e", "*", "#", "ctrl+n", "v", "ctrl+a":
+	case "/", "a", "e", "*", "#", "ctrl+n", "v", "ctrl+a", "ctrl+f", "ctrl+b":
 		return m, m.dispatchProjectHubKey(key.String())
 	case " ", "space":
 		return m, m.dispatchProjectHubKey("space")
@@ -399,6 +407,9 @@ func (m *ProjectHubModel) rebuildProjectSurface(prefer ListItemID) {
 	if prefer != "" {
 		m.surface.SetCursorToID(prefer)
 	}
+	// The population was rebuilt, so the tasks behind the previewed row may have
+	// moved with it; a cached tree would keep painting the ones that are gone.
+	m.preview.invalidate()
 }
 
 // projectHubCategories orders the listing groups: the base task workspace
@@ -472,26 +483,24 @@ func (m *ProjectHubModel) projectHubFilterHides(project *models.Project) bool {
 	}
 }
 
+// projectPreview spends two rows on the project's identity and leaves the rest
+// of the pane to its tasks. The five labeled fields this replaced cost six rows
+// to say what one muted line says, and `Pinned: false` said nothing at all: an
+// unpinned project is the ordinary case, so the marker appears only when it is
+// true.
 func (m *ProjectHubModel) projectPreview(project *models.Project, archived bool) ListPreview {
 	lifecycle := "Active"
 	if archived {
 		lifecycle = "Archived"
 	}
-	total, open := projectTaskCountUnknown, projectTaskCountUnknown
-	if tally, ok := m.projectTally(project); ok {
-		total = strconv.Itoa(tally.Total)
-		open = strconv.Itoa(tally.Open)
+	meta := fmt.Sprintf("%s · %s · slug %s", lifecycle, m.projectTaskPhrase(project), project.Slug)
+	if project.Pinned {
+		meta += " · pinned"
 	}
 	return ListPreview{
 		Title:   project.Name,
-		Summary: project.Description,
-		Fields: []ListPreviewField{
-			{Label: "Lifecycle", Value: lifecycle},
-			{Label: "Tasks", Value: total},
-			{Label: "Open", Value: open},
-			{Label: "Pinned", Value: strconv.FormatBool(project.Pinned)},
-			{Label: "Slug", Value: project.Slug},
-		},
+		Summary: meta,
+		Body:    project.Description,
 	}
 }
 
@@ -521,18 +530,25 @@ func (m *ProjectHubModel) projectTally(project *models.Project) (projectTaskTall
 // what makes a parked project legible here: the Hub lists parked projects
 // alongside every other active one.
 func (m *ProjectHubModel) projectSecondary(project *models.Project) string {
-	secondary := "tasks not loaded"
-	if tally, ok := m.projectTally(project); ok {
-		if tally.Total == 0 {
-			secondary = "0 tasks"
-		} else {
-			secondary = fmt.Sprintf("%d open · %d tasks", tally.Open, tally.Total)
-		}
-	}
+	secondary := m.projectTaskPhrase(project)
 	if chips := projectTagChips(project.Tags); chips != "" {
 		secondary += " · " + chips
 	}
 	return secondary
+}
+
+// projectTaskPhrase is the one wording of a project's tally, so the row and the
+// preview header never disagree about how much work a project holds.
+func (m *ProjectHubModel) projectTaskPhrase(project *models.Project) string {
+	tally, ok := m.projectTally(project)
+	switch {
+	case !ok:
+		return "tasks not loaded"
+	case tally.Total == 0:
+		return "0 tasks"
+	default:
+		return fmt.Sprintf("%d open · %d tasks", tally.Open, tally.Total)
+	}
 }
 
 func projectTagChips(tags []string) string {
@@ -798,13 +814,7 @@ func (m *ProjectHubModel) View() tea.View {
 	if m.actions != nil {
 		content = m.actions.render(width)
 	} else {
-		content = NewListSurfaceRenderer(ListSurfaceRenderConfig{
-			Width:       width,
-			Height:      contentHeight,
-			Layout:      ListSurfaceLayoutAuto,
-			ShowPreview: true,
-			HideHelp:    true,
-		}).Render(m.surface)
+		content = NewListSurfaceRenderer(m.projectHubRenderConfig(contentHeight)).Render(m.surface)
 	}
 	if notice := m.notice; notice != "" {
 		content = lipgloss.JoinVertical(
@@ -819,6 +829,21 @@ func (m *ProjectHubModel) View() tea.View {
 		fitBlockHeight(content, contentHeight),
 		footer,
 	))
+}
+
+// projectHubRenderConfig is the one description of the Hub's list surface, so
+// the footer gate asking whether a preview pane fits reads the same widths the
+// frame is about to draw. Height is the caller's because only the render pass
+// has measured the header and footer around the list.
+func (m *ProjectHubModel) projectHubRenderConfig(height int) ListSurfaceRenderConfig {
+	return ListSurfaceRenderConfig{
+		Width:       max(m.width, 1),
+		Height:      height,
+		Layout:      ListSurfaceLayoutAuto,
+		ShowPreview: true,
+		HideHelp:    true,
+		PreviewBody: m.renderProjectPreviewTasks,
+	}
 }
 
 func (m *ProjectHubModel) subtitle() string {
@@ -961,6 +986,8 @@ func projectHubOperationDescriptors() []OperationDescriptor {
 		needsRow(surface(operationProjectHubSelectAll, "Select every matching project", OperationCategoryProject, OperationRiskReadOnly, "select all projects")),
 		needsRow(surface(operationProjectHubActions, "Project actions", OperationCategoryProject, OperationRiskReadOnly, "project action sheet")),
 		surface(operationProjectHubTaskFilter, "Cycle every project, only those holding tasks, only those holding none", OperationCategoryFilter, OperationRiskReadOnly, "projects holding tasks", "projects holding no tasks"),
+		needsRow(surface(operationProjectHubPreviewPageDown, "Page project tasks down", OperationCategoryNavigation, OperationRiskReadOnly, "scroll project preview down")),
+		needsRow(surface(operationProjectHubPreviewPageUp, "Page project tasks up", OperationCategoryNavigation, OperationRiskReadOnly, "scroll project preview up")),
 	}
 }
 
@@ -1005,6 +1032,10 @@ func (m *AppModel) executeProjectHubOperation(invocation OperationInvocation) Op
 		hub.openProjectHubActions()
 	case operationProjectHubTaskFilter:
 		hub.cycleProjectHubTaskFilter()
+	case operationProjectHubPreviewPageDown:
+		hub.pageProjectPreview(1)
+	case operationProjectHubPreviewPageUp:
+		hub.pageProjectPreview(-1)
 	}
 	return OperationHandlerResult{}
 }

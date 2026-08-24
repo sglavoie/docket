@@ -1,0 +1,43 @@
+{
+  "name": "project-hub-task-preview",
+  "fixture": "project-mix",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open Select Project", "key": "P" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+
+    { "type": "assert", "label": "the preview header is one muted meta line, not five labelled fields", "assert": "contains", "value": "Active · 1 open · 1 tasks" },
+    { "type": "assert", "assert": "not_contains", "value": "Lifecycle:" },
+    { "type": "assert", "assert": "not_contains", "value": "Pinned:" },
+    { "type": "assert", "label": "the pane below it lists the cursor project's own tasks", "assert": "contains", "value": "Mix rollout plan" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "move to the project whose every task is finished", "key": "j" },
+    { "type": "assert", "assert": "contains", "value": "Active · 0 open · 2 tasks" },
+    { "type": "assert", "label": "a finished task is still a task the pane lists", "assert": "contains", "value": "Mix cleanup sweep" },
+    { "type": "assert", "assert": "contains", "value": "Mix cleanup follow-up" },
+    { "type": "assert", "assert": "not_contains", "value": "Mix rollout plan" },
+    { "type": "key", "label": "page a list shorter than the pane", "key": "ctrl+f" },
+    { "type": "assert", "label": "paging past the end shows the same rows rather than blanking the pane", "assert": "contains", "value": "Mix cleanup sweep" },
+    { "type": "key", "label": "page back", "key": "ctrl+b" },
+    { "type": "assert", "assert": "contains", "value": "Mix cleanup follow-up" },
+
+    { "type": "key", "label": "move to the parked project", "key": "j" },
+    { "type": "assert", "label": "a parked project's tasks are read from the tally the count pass retained", "assert": "contains", "value": "Mix migration audit" },
+
+    { "type": "key", "label": "move to the project holding nothing", "key": "j" },
+    { "type": "assert", "label": "an empty project says so rather than showing a blank pane", "assert": "contains", "value": "No tasks." },
+    { "type": "assert", "assert": "not_contains", "value": "Mix migration audit" },
+
+    { "type": "key", "label": "jump to the archived tail", "key": "G" },
+    { "type": "assert", "assert": "contains", "value": "Archived · 0 tasks" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "below the two-pane minimum, where the preview has nowhere to go", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "assert", "label": "the compact fallback carries no preview pane at all", "assert": "not_contains", "value": "No tasks." },
+    { "type": "assert", "assert": "not_contains", "value": "Archived · 0 tasks" },
+    { "type": "assert", "assert": "contains", "value": "Mix Retired Pilot" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

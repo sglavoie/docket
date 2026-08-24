@@ -839,6 +839,19 @@ Notes. `Ctrl+T` cycles between every project, only those holding tasks, and only
 those holding none. The catalog ID, not a display name, protects the system
 Unfiled project.
 
+On a terminal wide enough for two panes, the right one belongs to the project
+under the cursor. It opens with the project's name and a single muted line —
+`Active · 4 open · 4 tasks · slug tt`, with ` · pinned` appended only when the
+project is pinned — followed by up to two lines of its description. The rest of
+the pane is the project's own tasks, every one of them, in tree order with the
+same connectors, badges, and indicators the Outliner draws, because they are the
+Outliner's rows. `Ctrl+F` and `Ctrl+B` page that list a pane at a time, `↑ N
+more` and `↓ N more` count what sits off either end, and moving the list cursor
+swaps the tasks and returns to the top of the new project. A project holding
+nothing reads `No tasks.`, and one whose tasks could not be read says `Tasks not
+loaded.` rather than passing for the first. Below the two-pane minimum width the
+pane is gone and the paging keys go quiet with it.
+
 Those acts also reach a project from the Outliner itself: `Space` on a project
 group header opens Project Actions, so editing, pinning, archiving, or deleting
 a project no longer needs a trip through Select Project. Archiving is one-way

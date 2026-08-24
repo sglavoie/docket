@@ -128,15 +128,17 @@ func projectHubItem(t *testing.T, hub *ProjectHubModel, id ListItemID) ListItem 
 	return ListItem{}
 }
 
-func projectHubPreviewField(t *testing.T, hub *ProjectHubModel, id ListItemID, label string) string {
+// projectHubPreviewSummary reads the preview header's one muted meta line, which
+// carries the lifecycle, the tally, the slug, and a pin when there is one. The
+// five labeled fields it replaced spent six rows saying the same thing and left
+// the task pane below them nowhere to go.
+func projectHubPreviewSummary(t *testing.T, hub *ProjectHubModel, id ListItemID) string {
 	t.Helper()
-	for _, field := range projectHubItem(t, hub, id).Preview.Fields {
-		if field.Label == label {
-			return field.Value
-		}
+	preview := projectHubItem(t, hub, id).Preview
+	if len(preview.Fields) > 0 {
+		t.Fatalf("project hub preview for %q carries %d labeled fields, want the meta line alone", id, len(preview.Fields))
 	}
-	t.Fatalf("project hub preview for %q carries no %s field", id, label)
-	return ""
+	return preview.Summary
 }
 
 // projectHubFilterApp catalogs a project the Outliner loaded with no tasks, so
@@ -221,11 +223,9 @@ func TestProjectHubCountsParkedAndArchivedProjects(t *testing.T) {
 	if got := projectHubItem(t, hub, "project-hub:project:parked").SecondaryText; got != "3 open · 3 tasks · #parked" {
 		t.Fatalf("parked row secondary = %q, want the real count", got)
 	}
-	if got := projectHubPreviewField(t, hub, "project-hub:archived:archived", "Tasks"); got != "2" {
-		t.Fatalf("archived row task count = %q, want %q", got, "2")
-	}
-	if got := projectHubPreviewField(t, hub, "project-hub:archived:archived", "Open"); got != "2" {
-		t.Fatalf("archived row open count = %q, want %q", got, "2")
+	want := "Archived · 2 open · 2 tasks · slug archived"
+	if got := projectHubPreviewSummary(t, hub, "project-hub:archived:archived"); got != want {
+		t.Fatalf("archived preview meta = %q, want %q", got, want)
 	}
 }
 
@@ -240,11 +240,9 @@ func TestProjectHubCountsOpenTasksBesideTotal(t *testing.T) {
 	if got := projectHubItem(t, hub, "project-hub:project:mixed").SecondaryText; got != "1 open · 3 tasks" {
 		t.Fatalf("partly finished row secondary = %q, want %q", got, "1 open · 3 tasks")
 	}
-	if got := projectHubPreviewField(t, hub, "project-hub:project:mixed", "Tasks"); got != "3" {
-		t.Fatalf("partly finished row task count = %q, want %q", got, "3")
-	}
-	if got := projectHubPreviewField(t, hub, "project-hub:project:mixed", "Open"); got != "1" {
-		t.Fatalf("partly finished row open count = %q, want %q", got, "1")
+	want := "Active · 1 open · 3 tasks · slug mixed"
+	if got := projectHubPreviewSummary(t, hub, "project-hub:project:mixed"); got != want {
+		t.Fatalf("partly finished preview meta = %q, want %q", got, want)
 	}
 }
 

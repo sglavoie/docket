@@ -72,6 +72,7 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"task-context-tag-facet.json",
 		"theme-toggle.json",
 		"in-app-help.json",
+		"project-hub-task-preview.json",
 	}
 	for _, name := range required {
 		if _, err := os.Stat(filepath.Join(exampleScenariosDir, name)); err != nil {

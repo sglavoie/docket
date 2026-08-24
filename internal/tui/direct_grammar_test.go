@@ -184,6 +184,8 @@ func assertProjectHubOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"end":    operationCoreCursorBottom,
 		"ctrl+d": operationCoreCursorPageDown,
 		"ctrl+u": operationCoreCursorPageUp,
+		"ctrl+f": operationProjectHubPreviewPageDown,
+		"ctrl+b": operationProjectHubPreviewPageUp,
 		"a":      operationScopeCreateProject,
 		"e":      operationScopeRenameProject,
 		"*":      operationScopePinProject,
