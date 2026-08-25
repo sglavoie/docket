@@ -107,7 +107,7 @@ func placementDiagnostics(text string) []Diagnostic {
 		// value and so refuses on the sigil alone; an attachment does not, which is
 		// what keeps a search for "&nbsp;" an ordinary query rather than a blocked one.
 		match := pattern.FindStringSubmatch(text)
-		if len(match) < 2 || !validTokenValue(spec, match[1], SurfaceCapture) {
+		if len(match) < 2 || !validTokenValue(spec, tokenValue(spec, match[1]), SurfaceCapture) {
 			continue
 		}
 		diagnostics = append(diagnostics, Diagnostic{

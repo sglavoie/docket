@@ -27,6 +27,28 @@
     { "type": "assert", "assert": "view", "value": "TaskAttachments" },
     { "type": "assert", "label": "the captured URL landed in the same transaction as the task", "assert": "contains", "value": "1 attachment(s)" },
     { "type": "assert", "assert": "contains", "value": "https://example.com/spec.pdf" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "leave the panel for the outline", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "capture a second task", "key": "a" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "text", "label": "a path quoted the way a file manager copies one", "text": "Review the layout &'docs/Design Notes.md:19' " },
+    { "type": "assert", "label": "the quoted span is one value, with its quoting stripped", "assert": "contains", "value": "&docs/Design Notes.md:19" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "commit the capture", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "no half of the path stayed in the title", "assert": "status_contains", "value": "Add Task: #2 Review the layout" },
+    { "type": "assert", "assert": "not_contains", "value": "Design" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "key": "home" },
+    { "type": "key", "label": "past the Inbox section header", "key": "j" },
+    { "type": "key", "label": "past the project header onto the newest row", "key": "j" },
+    { "type": "key", "label": "open the Attachments panel with its sigil key", "key": "&" },
+    { "type": "assert", "assert": "view", "value": "TaskAttachments" },
+    { "type": "assert", "label": "the space survived capture rather than splitting the value", "assert": "contains", "value": "docs/Design Notes.md:19" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

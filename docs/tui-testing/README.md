@@ -211,7 +211,7 @@ The committed suite exercises the product contracts directly:
 | Repeatable `<child` adoption, alias dedupe, additive children, and undo/redo on both surfaces | `capture-child-adoption.json`, `outliner-inline-edit-child-adoption.json` |
 | Relation marker in both directions, reserved across a resize | `outliner-parent-marker.json`, `capture-child-adoption.json` |
 | `*pin` at capture and the edit-only `*unpin` clear | `capture-pin.json` |
-| `&link` and `;comment;` committing with the task they create, and the prose both sigils leave alone | `capture-attachment.json`, `capture-comment.json` |
+| `&link` and `;comment;` committing with the task they create, the prose both sigils leave alone, and a quoted `&link` path whose spaces survive capture | `capture-attachment.json`, `capture-comment.json` |
 | The expanded form's Extras tab attaching a draft that commits with the task, and the fixed-width body degrading to the min-size notice below 68 columns | `form-extras-attachments-narrow.json`, `form-extras-attachments-minimum-layout.json` |
 | A compact `;comment;` expanding into a seeded Extras tab, a second comment added there, and task, attachment, and comments undone as one entry | `form-extras-comments-narrow.json` |
 | Outline editing refusing both structural sigils as competing parentage channels | `outline-editor-guard.json` |

@@ -586,6 +586,11 @@ func TestAttachmentSigilLeavesOrdinaryProseLiteral(t *testing.T) {
 		"&10:30 standup",
 		"Escape &nbsp; in the footer",
 		"Ship &",
+		// Quoting widens the span a token may cover; it does not exempt the value
+		// from the lexical test, so a quoted phrase naming nothing attachable is
+		// still returned to the title with its quotes intact.
+		`Ask &"why" before the demo`,
+		"Read &'notes' first",
 	} {
 		parsed := Parse(input, SurfaceCapture)
 		if got := parsed.TokensFor(FieldAttachment); len(got) != 0 {
@@ -611,6 +616,53 @@ func TestAttachmentSigilRecognizesEveryAttachableShape(t *testing.T) {
 	}
 	if parsed.Text != "Fix OAuth" {
 		t.Fatalf("Text = %q, want Fix OAuth", parsed.Text)
+	}
+}
+
+// TestAttachmentSigilSpansAPathWithSpaces pins the shapes a real path arrives
+// in. A file manager copies "~/Library/Application Support/…" quoted or with
+// backslash-escaped spaces, and a bare \S+ run stopped at the first space, which
+// attached half the path and left the other half in the title. Each shape
+// normalizes to the same plain path, so the application layer classifies a
+// quoted paste exactly as it classifies a typed one.
+func TestAttachmentSigilSpansAPathWithSpaces(t *testing.T) {
+	const want = "/Users/me/Application Support/shot 2.png"
+	for _, tc := range []struct {
+		name  string
+		input string
+	}{
+		{"single quoted", `Fix it &'/Users/me/Application Support/shot 2.png'`},
+		{"double quoted", `Fix it &"/Users/me/Application Support/shot 2.png"`},
+		{"escaped spaces", `Fix it &/Users/me/Application\ Support/shot\ 2.png`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			parsed := Parse(tc.input, SurfaceCapture)
+			tokens := parsed.TokensFor(FieldAttachment)
+			if len(tokens) != 1 || tokens[0].Value != want {
+				t.Fatalf("attachment tokens = %+v, want exactly %q", tokens, want)
+			}
+			if parsed.Text != "Fix it" {
+				t.Fatalf("Text = %q, want the whole span out of the title", parsed.Text)
+			}
+		})
+	}
+}
+
+// TestQuotedAttachmentKeepsItsPositionAheadOfTag re-checks registry order over
+// the widened span: a sigil inside a quoted path is part of the path, and only
+// peeling the attachment first can keep it there.
+func TestQuotedAttachmentKeepsItsPositionAheadOfTag(t *testing.T) {
+	parsed := Parse(`Ship it &'/Users/me/Release #4 notes.md' #work`, SurfaceCapture)
+	attachments := parsed.TokensFor(FieldAttachment)
+	if len(attachments) != 1 || attachments[0].Value != "/Users/me/Release #4 notes.md" {
+		t.Fatalf("attachment tokens = %+v, want the quoted path whole", attachments)
+	}
+	tags := parsed.TokensFor(FieldTag)
+	if len(tags) != 1 || tags[0].Value != "work" {
+		t.Fatalf("tag tokens = %+v, want only the tag written outside the quotes", tags)
+	}
+	if parsed.Text != "Ship it" {
+		t.Fatalf("Text = %q, want Ship it", parsed.Text)
 	}
 }
 

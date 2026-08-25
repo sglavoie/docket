@@ -767,9 +767,14 @@ validated before one atomic transaction is committed.
   `http://` or `https://` URL, a `path:line` code reference such as
   `&internal/app/add.go:19`, or a local file path, which is copied into the
   task's attachments in the very same transaction that creates the task, so one
-  undo takes back the task and its bytes together. Anything else stays in the
-  title, so `Plan the R&D offsite`, `Q&A with legal`, and `&10:30 standup` are
-  ordinary prose. Two files on one line whose names would collide in the
+  undo takes back the task and its bytes together. A path holding spaces is
+  written the way a shell takes it — `&'~/notes/Q3 plan.pdf'`, `&"~/notes/Q3
+  plan.pdf"`, or `&~/notes/Q3\ plan.pdf` — and the quoting is stripped before
+  the value is classified, so a path pasted from a file manager lands whole
+  instead of splitting at its first space. Anything else stays in the title, so
+  `Plan the R&D offsite`, `Q&A with legal`, and `&10:30 standup` are ordinary
+  prose, and so is a quoted phrase naming nothing attachable, as in `Ask &"why"
+  before the demo`. Two files on one line whose names would collide in the
   attachments directory are refused by name rather than silently overwritten.
   The sigil is capture-only: the outline buffer and search both reject it and say
   where attachments do belong. Expanding the line into the full form instead

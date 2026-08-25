@@ -252,11 +252,11 @@ Canonical capture sigils are:
 holds them to one set. `&link` is registered before `#tag` because RE2 has no
 lookaround, so peeling the tag first would leave the `&` whitespace-preceded and
 mint a spurious attachment; only `GuideDefinitions` feeds a human. `&link` is
-repeatable, takes a URL, a `path:line` code reference, or a local file, and
-leaves anything else in the title, so `R&D` stays prose. `;comment;` leads parse
-order for the same absent lookaround, which is what keeps a `#auth` inside a
-comment literal. It is repeatable and needs both delimiters, so `Fix a; then b`
-stays prose.
+repeatable, takes a URL, a `path:line` code reference, or a local file whose
+spaces are quoted or backslash-escaped, and leaves anything else in the title,
+so `R&D` stays prose. `;comment;` leads parse order for the same absent
+lookaround, which is what keeps a `#auth` inside a comment literal. It is
+repeatable and needs both delimiters, so `Fix a; then b` stays prose.
 
 Due's last alternative is `[^\s@]\S*` so `@` can never eat `@@`. Deferring
 refuses a terminal task and otherwise claims Backlog.

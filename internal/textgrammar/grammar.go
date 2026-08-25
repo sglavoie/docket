@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // Surface identifies a consumer of the shared inline grammar.
@@ -97,8 +98,12 @@ const (
 // the same token is a command on capture/edit/outline and a predicate on search.
 type definitionSpec struct {
 	Definition
-	forms             []surfaceForm
-	pattern           string
+	forms   []surfaceForm
+	pattern string
+	// normalize reduces the matched group to the value consumers receive, for a
+	// field whose pattern has to admit more shapes than it wants to hand on. Only
+	// the attachment field declares one; a nil normalizer is the identity.
+	normalize         func(string) string
 	validation        tokenValidation
 	searchDescription string
 	searchClearText   map[string]string
@@ -136,15 +141,35 @@ var registry = []definitionSpec{
 	// "Task #work&http://x/y" into a spurious attachment. Peeling & first leaves
 	// that & glued to the tag, where it stays literal title text. The teaching
 	// surfaces read guideOrder instead, so this position never leads the guide.
+	//
+	// A real path holds spaces — "~/Library/Application Support/…" is where a
+	// screenshot tool writes — and a run of non-space characters stops at the
+	// first one, which attached half a path and left the rest in the title. The
+	// value is therefore a single-quoted span, then a double-quoted one, then a
+	// run whose spaces are backslash-escaped, tried in that order. Those
+	// alternatives only widen what one token may span; what a token means is
+	// settled by util.NormalizePastedPathInput, the same normalizer the
+	// Attachments panel runs on a paste, so a quoted path and a typed one
+	// classify identically. An unterminated quote matches no quoted span, falls
+	// through to the last alternative, and stays the prefix it already was.
 	{
 		Definition: Definition{
 			Field: FieldAttachment, Group: "Attachments", Trigger: "&",
+			// The description stays the guide's longest and cannot grow: it sets the
+			// aligned description column every entry is padded to, and one word more
+			// drops the whole syntax guide into its stacked fallback. The quoted
+			// example is what teaches the spaces rule.
 			Description: "Attach a URL, file path, or code reference (repeatable)",
-			Examples:    []string{"&https://example.com/spec.pdf", "&internal/app/add.go:19"},
-			Surfaces:    SurfaceCapture, Cardinality: CardinalityRepeatable,
+			Examples: []string{
+				"&https://example.com/spec.pdf",
+				"&internal/app/add.go:19",
+				"&'~/notes/Q3 plan.pdf'",
+			},
+			Surfaces: SurfaceCapture, Cardinality: CardinalityRepeatable,
 		},
 		forms:      []surfaceForm{{Text: "&link", Surfaces: SurfaceCapture}},
-		pattern:    `(?:^|\s)&(\S+)`,
+		pattern:    `(?:^|\s)&('[^']*'|"(?:\\.|[^"\\])*"|(?:\\ |\S)+)`,
+		normalize:  util.NormalizePastedPathInput,
 		validation: validateAttachment,
 	},
 	{

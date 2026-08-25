@@ -1028,6 +1028,21 @@ test is lexical because `internal/textgrammar` must not import
 `internal/storage`; whether a path resolves is `app.ResolveAttachmentInput`'s
 question, asked once so every surface classifies a paste identically.
 
+How far one `&` token reaches is a second question, separate from what it means.
+A path a file manager copied holds spaces — `~/Library/Application Support/…` is
+where a screenshot tool writes — and a bare `\S+` run stopped at the first one,
+attaching half the path and leaving the rest in the title. The pattern therefore
+tries a single-quoted span, then a double-quoted one, then a run whose spaces are
+backslash-escaped, before that bare run. Widening the span is all those
+alternatives do: `normalize` on the registry entry runs
+`util.NormalizePastedPathInput` — the same normalizer the Attachments panel runs
+on a paste — over whichever alternative matched, and `tokenValue` is the one
+place it runs, so the value a token carries and the value `placementDiagnostics`
+re-validates cannot disagree. The lexical test then reads the plain path, which
+is why quoting never exempts a value from it: `Ask &"why" before the demo` keeps
+its quoted phrase in the title, and an unterminated quote falls through to the
+bare run and stays the prefix it already was.
+
 That sigil is also why the registry now carries two orders. `registry` is parse
 order and `guideOrder` is teach order, projected by `Definitions` and
 `GuideDefinitions` respectively. The attachment entry has to sit ahead of

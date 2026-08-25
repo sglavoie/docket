@@ -88,7 +88,7 @@ func extractTokens(input string, pattern tokenPattern, surface Surface) (string,
 			continue
 		}
 		rebuilt.WriteString(input[last:match[0]])
-		value := input[match[2]:match[3]]
+		value := tokenValue(pattern.spec, input[match[2]:match[3]])
 		if !validTokenValue(pattern.spec, value, surface) {
 			rebuilt.WriteString(input[match[0]:match[1]])
 			last = match[1]
@@ -104,6 +104,16 @@ func extractTokens(input string, pattern tokenPattern, surface Surface) (string,
 	}
 	rebuilt.WriteString(input[last:])
 	return rebuilt.String(), tokens
+}
+
+// tokenValue reduces one matched group to the value that validation and every
+// consumer see. It is the one place a spec's normalizer runs, so the value a
+// token carries and the value a refusal re-validates cannot disagree.
+func tokenValue(spec definitionSpec, raw string) string {
+	if spec.normalize == nil {
+		return raw
+	}
+	return spec.normalize(raw)
 }
 
 func duplicateSingletonDiagnostics(tokens []Token) []Diagnostic {
@@ -192,10 +202,12 @@ func validTokenValue(spec definitionSpec, value string, surface Surface) bool {
 }
 
 // validAttachmentTokenValue decides lexically whether an & token names something
-// attachable. It is deliberately lexical only: this package must not import
-// internal/storage, and whether a path exists is the application layer's
-// question. An unrecognized value is not consumed, the validatePin behavior
-// rather than priority's, because & is ordinary prose ("R&D", "Q&A", "&nbsp;").
+// attachable. It reads the normalized value, so a quoted path is tested as the
+// path it names rather than as its quoting. It is deliberately lexical only:
+// this package must not import internal/storage, and whether a path exists is
+// the application layer's question. An unrecognized value is not consumed, the
+// validatePin behavior rather than priority's, because & is ordinary prose
+// ("R&D", "Q&A", "&nbsp;").
 func validAttachmentTokenValue(value string) bool {
 	if value == "" {
 		return false

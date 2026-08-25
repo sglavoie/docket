@@ -173,6 +173,38 @@ func TestCaptureRefusesAnAttachmentNamingAMissingFile(t *testing.T) {
 	}
 }
 
+// A file whose name holds spaces is an ordinary attachment. The grammar hands
+// the path on whole once a quoted or escaped span is normalized, and a space is
+// not a separator to SafeChildName, so the copy keeps the name the file had.
+func TestCaptureCopiesAFileWhoseNameHoldsSpaces(t *testing.T) {
+	source := filepath.Join(t.TempDir(), "Design Notes v2.pdf")
+	if err := os.WriteFile(source, []byte("x"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	project := newProject("p1", "Alpha")
+	repo := newFakeRepo(project)
+	svc := newTestService(repo)
+
+	result, err := svc.Capture(app.CaptureRequest{
+		ProjectID:   project.ID,
+		Title:       "Read the spec",
+		Attachments: []string{source},
+	})
+	if err != nil {
+		t.Fatalf("Capture: %v", err)
+	}
+	task := project.GetTaskByID(result.TaskID)
+	if task == nil || len(task.Attachments) != 1 {
+		t.Fatalf("captured task = %+v, want exactly one attachment", task)
+	}
+	if got := task.Attachments[0].Filename; got != "Design Notes v2.pdf" {
+		t.Errorf("Filename = %q, want the name the file already had", got)
+	}
+	if got := task.Attachments[0].OriginalPath; got != source {
+		t.Errorf("OriginalPath = %q, want %q", got, source)
+	}
+}
+
 // Two different files whose base names collide would copy over each other in the
 // attachments directory, so the line refuses by name instead.
 func TestCaptureRefusesTwoAttachmentsResolvingToOneFilename(t *testing.T) {
