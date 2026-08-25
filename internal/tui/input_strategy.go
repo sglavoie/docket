@@ -264,7 +264,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationCoreJumpBackward, Keys: []string{"ctrl+o"}, DisplayKey: "Ctrl+O"},
 			{OperationID: operationCoreJumpForward, Keys: []string{"ctrl+i"}, DisplayKey: "Ctrl+I"},
 			{OperationID: operationCoreFocusLatest, Keys: []string{"ctrl+l"}, DisplayKey: "Ctrl+L"},
-			{OperationID: operationCoreGotoTaskProject, Keys: []string{"ctrl+p"}, DisplayKey: "Ctrl+P"},
+			{OperationID: operationCoreSelectPinned, Keys: []string{"ctrl+p"}, DisplayKey: "Ctrl+P"},
 			{OperationID: operationCoreCollapseParent, Keys: []string{"h", "left"}, DisplayKey: "h/←"},
 			{OperationID: operationCoreExpand, Keys: []string{"l", "right"}, DisplayKey: "l/→"},
 			// One lowercase toggle per fold axis, declared together so the family
@@ -374,6 +374,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationCoreGotoBacklog, Sequence: []string{"g", "b"}, DisplayKey: "gb", HintLabel: "backlog"},
 			{OperationID: operationCoreGotoDue, Sequence: []string{"g", "@"}, DisplayKey: "g@", HintLabel: "due"},
 			{OperationID: operationCoreGotoRecent, Sequence: []string{"g", "r"}, DisplayKey: "gr", HintLabel: "recent"},
+			{OperationID: operationCoreGotoTaskProject, Sequence: []string{"g", "p"}, DisplayKey: "gp", HintLabel: "task project"},
 			{OperationID: operationCoreScrollCursorTop, Sequence: []string{"z", "t"}, DisplayKey: "zt", HintLabel: "row to top"},
 			{OperationID: operationCoreScrollCursorMiddle, Sequence: []string{"z", "z"}, DisplayKey: "zz", HintLabel: "row to middle"},
 			{OperationID: operationCoreScrollCursorBottom, Sequence: []string{"z", "b"}, DisplayKey: "zb", HintLabel: "row to bottom"},

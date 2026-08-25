@@ -746,7 +746,7 @@ func TestProductionInputStrategyDefaultsToSimplified(t *testing.T) {
 
 // TestGoToChordResolvesTopJumpAndEveryMode covers the one binding that declares
 // direct keys and a chord sequence together, and keeps the g subtree prefix-free
-// with cursor-top sitting beside the seven mode jumps.
+// with cursor-top and task-project navigation beside the seven mode jumps.
 func TestGoToChordResolvesTopJumpAndEveryMode(t *testing.T) {
 	registry := registeredSimplifiedOperationRegistry(t)
 	ctx := simplifiedOperationContext()
@@ -780,6 +780,16 @@ func TestGoToChordResolvesTopJumpAndEveryMode(t *testing.T) {
 		if binding.OperationID != want[spelling] {
 			t.Errorf("%s resolved to %s, want %s", spelling, binding.OperationID, want[spelling])
 		}
+	}
+	taskContext := ctx
+	taskContext.Entity = EntityContext{ProjectID: "project", TaskID: "task"}
+	binding, _, resolution := registry.InputBindingForSequence(
+		InputStrategySimplified,
+		[]string{"g", "p"},
+		taskContext,
+	)
+	if resolution != ChordTerminal || binding.OperationID != operationCoreGotoTaskProject {
+		t.Errorf("gp resolved to %s (resolution %v), want %s", binding.OperationID, resolution, operationCoreGotoTaskProject)
 	}
 
 	if _, _, resolution := registry.InputBindingForSequence(

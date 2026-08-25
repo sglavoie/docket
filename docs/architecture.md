@@ -299,7 +299,7 @@ offset across the transition and would seat the lead against the viewport edge
 with the section and project headers naming it scrolled off. An empty Recent
 reports the 30-day window and moves nothing.
 
-`Ctrl+P` is the task-row counterpart to `Enter` on a project header: it reaches
+`gp` is the task-row counterpart to `Enter` on a project header: it reaches
 the project from a task instead of the task list from a project. The scope push
 precedes the All switch, because `pushProjectScope` captures the frame `Esc`
 restores and the reverse order would name All as the origin mode. All is forced
@@ -1430,7 +1430,7 @@ active facet excludes then reports `Task is hidden by the active facets` and
 focuses nothing. Focus applies afterward exactly as it does on an ordinary row,
 so a leaf still reports `No children to focus` with the jump already made, and
 the frame it pushes carries the post-landing cursor, which is what makes `Esc`
-unwind onto the result's own row. `Ctrl+P` takes the same exit, clearing search
+unwind onto the result's own row. `gp` takes the same exit, clearing search
 before it reads the origin mode and pushes the project scope. Every other
 operation the projection owns — mode switches, folds, and the reorder keys —
 still refuses.
@@ -1556,19 +1556,29 @@ clipboard actions reject visual selection rather than falling back to the
 cursor. Only a committed Delete clears selection.
 
 The Outliner opens on Active Projects. Applying scope clears navigation and
-selection but preserves the active mode, search, and filters. `P` opens Select
-Project on a live cursor, over active and archived projects, each row carrying
-its task count and its tag chips. Administering a project is a direct key rather
-than a menu row: `Enter` focuses, `a` creates, `e` edits, `*` pins, `#` sets
-tags, and `Ctrl+N` opens project Notes, which leaves the `Space` sheet holding
-the two lifecycle actions and the bulk tag set. The catalog-owned Unfiled ID is
-the protection authority. `/` opens search; `Esc` leaves the search input with
-the query and its matches intact, so a search result set is browsable with the
+selection but preserves the active mode, search, and filters. `Ctrl+P` opens
+the Project Hub in pinned mode, whose base population is pinned active projects:
+parked projects remain available and archived projects do not. `P` opens Select
+Project on a live cursor in all mode, over active and archived projects, each
+row carrying its task count and its tag chips. Administering a project is a
+direct key rather than a menu row: `Enter` focuses, `a` creates, `e` edits,
+`*` pins, `#` sets tags, and `Ctrl+N` opens project Notes, which leaves the
+`Space` sheet holding the two lifecycle actions and the bulk tag set. The
+catalog-owned Unfiled ID is the protection authority. `/` opens search; `Esc`
+leaves the search input with the query and its matches intact, so a search result set is browsable with the
 full browse grammar; `/` reopens search with the previous query still editable.
 `ShouldCaptureEsc` names the unwind rungs in order — the action sheet, the
 query, then the selection — and browse holding none of them is what lets `Esc`
 close Select Project. The selection is a rung because retiring `A` left no other
 way to drop every checkbox at once.
+
+The typed `ManageParams.ProjectHubMode` is part of route identity and is passed
+through every reconstruction into `ProjectHubModel`. Pinned mode filters the
+base population before the query and `Ctrl+T` task-count axis, labels its one
+category Pinned Projects, and uses pinned-specific title and empty/no-match
+copy. A live mutation rebuilds the surface by stable identity; an unpinned or
+archived row therefore leaves both cursor and selection immediately rather than
+surviving as a stale action target.
 
 `ProjectHubInputStrategy` is that grammar, and it is a peer of
 `SimplifiedInputStrategy` rather than a copy: the registry projects one strategy

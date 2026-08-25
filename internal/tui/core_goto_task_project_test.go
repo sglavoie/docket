@@ -68,7 +68,7 @@ func TestGotoTaskProjectScopesToTheCursorTaskAndForcesAll(t *testing.T) {
 	beta := gotoProjectID(t, driver.App())
 	gotoProjectCursorOnTask(t, outliner)
 
-	sortPressKeys(t, driver, "ctrl+p")
+	sortPressKeys(t, driver, "g", "p")
 
 	if outliner.scopedProjectID != beta {
 		t.Fatalf("scoped project = %q, want Client Beta %q", outliner.scopedProjectID, beta)
@@ -101,7 +101,7 @@ func TestGotoTaskProjectEscRestoresTheOriginMode(t *testing.T) {
 	beta := gotoProjectID(t, driver.App())
 	gotoProjectCursorOnTask(t, outliner)
 
-	sortPressKeys(t, driver, "ctrl+p")
+	sortPressKeys(t, driver, "g", "p")
 	if outliner.scopedProjectID != beta || outliner.primaryMode != ModeAll {
 		t.Fatalf(
 			"landing = scope %q mode %q, want %q and %q",
@@ -132,7 +132,7 @@ func TestGotoTaskProjectKeepsTheOriginModeWhenAllOmitsTheTask(t *testing.T) {
 	beta := gotoProjectID(t, driver.App())
 	gotoProjectCursorOnTask(t, outliner)
 
-	sortPressKeys(t, driver, "ctrl+p")
+	sortPressKeys(t, driver, "g", "p")
 
 	if outliner.scopedProjectID != beta {
 		t.Fatalf("scoped project = %q, want Client Beta %q", outliner.scopedProjectID, beta)
@@ -155,11 +155,19 @@ func TestGotoTaskProjectRefusesWithoutASingleTaskCursor(t *testing.T) {
 		outliner := gotoProjectOutliner(t, driver)
 		outliner.cursor = headerTargetProjectHeaderRow(t, outliner)
 
-		key, err := parseUITestKey("ctrl+p")
+		prefix, err := parseUITestKey("g")
 		if err != nil {
-			t.Fatalf("parse ctrl+p: %v", err)
+			t.Fatalf("parse g: %v", err)
 		}
-		handled, cmd := driver.App().handleSimplifiedInputKey(key)
+		handled, cmd := driver.App().handleSimplifiedInputKey(prefix)
+		if !handled || cmd != nil {
+			t.Fatalf("g prefix = handled %v cmd %v, want a pending chord", handled, cmd)
+		}
+		key, err := parseUITestKey("p")
+		if err != nil {
+			t.Fatalf("parse p: %v", err)
+		}
+		handled, cmd = driver.App().handleSimplifiedInputKey(key)
 		if !handled || cmd == nil {
 			t.Fatalf("header press = handled %v cmd %v, want the shared refusal", handled, cmd)
 		}
@@ -180,7 +188,7 @@ func TestGotoTaskProjectRefusesWithoutASingleTaskCursor(t *testing.T) {
 		outliner := gotoProjectOutliner(t, driver)
 		gotoProjectCursorOnTask(t, outliner)
 
-		sortPressKeys(t, driver, "v", "ctrl+p")
+		sortPressKeys(t, driver, "v", "g", "p")
 
 		if outliner.scopedProjectID != "" {
 			t.Fatalf("a visual selection still scoped to %q", outliner.scopedProjectID)
@@ -203,7 +211,7 @@ func TestGotoTaskProjectJumpsFromASearchResult(t *testing.T) {
 	app := driver.App()
 	ctx := app.operationCommandContext()
 	ctx.View = ViewCrossProjectOutliner
-	executeDirectPath(t, app, ctx, []string{"ctrl+p"})
+	executeDirectPath(t, app, ctx, []string{"g", "p"})
 
 	if outliner.hasSearchProjection() {
 		t.Fatal("the jump kept the temporary search projection")

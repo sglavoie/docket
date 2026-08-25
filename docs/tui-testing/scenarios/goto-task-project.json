@@ -7,7 +7,8 @@
     { "type": "key", "label": "jump to the Client Beta group header", "key": "n" },
     { "type": "key", "label": "move onto Client Beta's task", "key": "j" },
 
-    { "type": "key", "label": "open the cursor task's project", "key": "ctrl+p" },
+    { "type": "key", "label": "start the go-to chord", "key": "g" },
+    { "type": "key", "label": "open the cursor task's project", "key": "p" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Project: Client Beta" },
     { "type": "assert", "assert": "contains", "value": "Client Beta · All" },

@@ -1,0 +1,32 @@
+{
+  "name": "project-hub-pinned",
+  "fixture": "multi-project",
+  "size": "100x30",
+  "actions": [
+    { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
+    { "type": "key", "label": "step onto Client Alpha's project header", "key": "j" },
+    { "type": "key", "label": "pin Client Alpha", "key": "*" },
+    { "type": "wait" },
+
+    { "type": "key", "label": "open Select Pinned Project", "key": "ctrl+p" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "assert", "assert": "contains", "value": "Select Pinned Project" },
+    { "type": "assert", "assert": "contains", "value": "Client Alpha" },
+    { "type": "assert", "assert": "not_contains", "value": "Client Beta" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "unpin the only visible project", "key": "*" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "assert", "assert": "contains", "value": "No active projects are pinned." },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "return to the Outliner", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "uppercase P still opens the full Project Hub", "key": "P" },
+    { "type": "assert", "assert": "contains", "value": "Select Project" },
+    { "type": "assert", "assert": "contains", "value": "Client Alpha" },
+    { "type": "assert", "assert": "contains", "value": "Client Beta" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

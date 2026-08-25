@@ -34,9 +34,13 @@ func projectHubApp(t *testing.T) *AppModel {
 	return app
 }
 
-func openProjectHub(t *testing.T, app *AppModel) *ProjectHubModel {
+func openProjectHub(t *testing.T, app *AppModel, modes ...ProjectHubMode) *ProjectHubModel {
 	t.Helper()
-	handled, cmd := app.handleProjectViewMessages(ShowProjectHubMsg{})
+	mode := ProjectHubModeAll
+	if len(modes) > 0 {
+		mode = modes[0]
+	}
+	handled, cmd := app.handleProjectViewMessages(ShowProjectHubMsg{Mode: mode})
 	if !handled {
 		t.Fatal("ShowProjectHubMsg was not handled")
 	}
@@ -183,6 +187,8 @@ func TestProjectHubListsEveryProjectByLifecycle(t *testing.T) {
 	archived.Archived = true
 	archived.Path = t.TempDir()
 	addTestAppProject(app, archived)
+	app.projects["alpha"].Pinned = true
+	setTestAppProjects(app, app.projects["alpha"], app.projects["beta"], app.projects["parked"], app.projects["archived"])
 
 	hub := openProjectHub(t, app)
 	wantCategories := []ListCategory{
@@ -205,6 +211,100 @@ func TestProjectHubListsEveryProjectByLifecycle(t *testing.T) {
 		if _, ok := item.Data.(projectHubEntry); !ok {
 			t.Fatalf("Project Hub row carries %#v, want a project entry", item.Data)
 		}
+	}
+}
+
+func TestPinnedProjectHubListsPinnedActiveAndParkedProjectsOnly(t *testing.T) {
+	app := projectHubApp(t)
+	alpha := app.projects["alpha"]
+	alpha.Pinned = true
+	parked := scopeTestProject("parked", "Parked")
+	parked.Pinned = true
+	parked.Tags = []string{"parked"}
+	parked.Path = t.TempDir()
+	addTestAppProject(app, parked)
+	archived := scopeTestProject("archived", "Archived")
+	archived.Pinned = true
+	archived.Archived = true
+	archived.Path = t.TempDir()
+	addTestAppProject(app, archived)
+
+	hub := openProjectHub(t, app, ProjectHubModePinned)
+	if hub.Mode() != ProjectHubModePinned {
+		t.Fatalf("Hub mode = %v, want pinned", hub.Mode())
+	}
+	if params := app.CurrentRoute().Params().(ManageParams); params.ProjectHubMode != ProjectHubModePinned {
+		t.Fatalf("pinned Hub route params = %+v", params)
+	}
+	wantCategories := []ListCategory{{ID: projectHubCategoryActive, Label: "Pinned Projects"}}
+	if got := hub.surface.Categories(); !reflect.DeepEqual(got, wantCategories) {
+		t.Fatalf("pinned categories = %#v, want %#v", got, wantCategories)
+	}
+	for _, id := range []ListItemID{"project-hub:project:alpha", "project-hub:project:parked"} {
+		if !projectHubHasItem(hub, id) {
+			t.Errorf("pinned Hub omitted %q", id)
+		}
+	}
+	for _, id := range []ListItemID{"project-hub:project:beta", "project-hub:archived:archived"} {
+		if projectHubHasItem(hub, id) {
+			t.Errorf("pinned Hub included %q", id)
+		}
+	}
+	view := hub.View().Content
+	for _, copy := range []string{"Select Pinned Project", "2 pinned active", "Pinned Projects"} {
+		if !strings.Contains(strings.ToLower(view), strings.ToLower(copy)) {
+			t.Errorf("pinned Hub view omitted %q:\n%s", copy, view)
+		}
+	}
+}
+
+func TestPinnedProjectHubSearchAndTaskFilterIntersectPinnedPopulation(t *testing.T) {
+	app := projectHubFilterApp(t)
+	app.projects["beta"].Pinned = true
+	app.projects["empty"].Pinned = true
+	app.projects["alpha"].Pinned = false
+	setTestAppProjects(app, app.projects["alpha"], app.projects["beta"], app.projects["empty"])
+	hub := openProjectHub(t, app, ProjectHubModePinned)
+
+	hub.SetSearchQuery("bet")
+	hub.applyProjectFilter()
+	if got := len(hub.surface.Matches()); got != 2 {
+		t.Fatalf("pinned search matches = %d, want Beta and Beta Empty", got)
+	}
+	hub.cycleProjectHubTaskFilter()
+	matches := hub.surface.Matches()
+	if len(matches) != 1 || matches[0].Item.ID != "project-hub:project:beta" {
+		t.Fatalf("pinned filtered matches = %+v, want Beta alone", matches)
+	}
+	hub.SetSearchQuery("missing")
+	hub.applyProjectFilter()
+	context, ok := hub.surface.EmptyContext()
+	if !ok || context.Kind != ListEmptyNoMatches || context.State.Title != "No pinned projects match this search." {
+		t.Fatalf("pinned no-match context = (%+v, %v)", context, ok)
+	}
+}
+
+func TestPinnedProjectHubRefreshPrunesRemovedCursorAndSelection(t *testing.T) {
+	app := projectHubApp(t)
+	alpha := app.projects["alpha"]
+	alpha.Pinned = true
+	setTestAppProjects(app, app.projects["alpha"], app.projects["beta"])
+	hub := openProjectHub(t, app, ProjectHubModePinned)
+	focusProjectHubItem(t, hub, "project-hub:project:alpha")
+	hub.toggleProjectHubSelection()
+
+	alpha.Pinned = false
+	setTestAppProjects(app, app.projects["alpha"], app.projects["beta"])
+	hub.RefreshProjectHub()
+	if hub.surface.Cursor() != -1 || len(hub.surface.SelectedIDs()) != 0 {
+		t.Fatalf("removed pinned row left cursor=%d selection=%v", hub.surface.Cursor(), hub.surface.SelectedIDs())
+	}
+	context, ok := hub.surface.EmptyContext()
+	if !ok || context.Kind != ListEmptySource || context.State.Title != "No active projects are pinned." {
+		t.Fatalf("last-row empty context = (%+v, %v)", context, ok)
+	}
+	if !strings.Contains(context.State.Detail, "Esc") || !strings.Contains(context.State.Detail, "P") {
+		t.Fatalf("pinned empty detail = %q, want Esc and P routes", context.State.Detail)
 	}
 }
 
@@ -1048,5 +1148,109 @@ func TestShowProjectHubMsgOpensTheHubInBrowse(t *testing.T) {
 	}
 	if _, ok := hub.selectedProjectHubEntry(); !ok {
 		t.Fatal("the Project Hub opened without a live cursor")
+	}
+}
+
+func TestOutlinerProjectHubShortcutsChooseTheirExplicitModes(t *testing.T) {
+	app := projectHubApp(t)
+	ctx := app.operationCommandContext()
+	ctx.View = ViewCrossProjectOutliner
+
+	for _, test := range []struct {
+		name string
+		path []string
+		mode ProjectHubMode
+	}{
+		{name: "Ctrl+P pinned", path: []string{"ctrl+p"}, mode: ProjectHubModePinned},
+		{name: "uppercase P all", path: []string{"P"}, mode: ProjectHubModeAll},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			result := executeDirectPath(t, app, ctx, test.path)
+			message, ok := result.Message.(ShowProjectHubMsg)
+			if !ok || message.Mode != test.mode {
+				t.Fatalf("path %v emitted %#v, want ShowProjectHubMsg mode %v", test.path, result.Message, test.mode)
+			}
+			handled, cmd := app.handleProjectViewMessages(message)
+			if !handled {
+				t.Fatalf("path %v message was not handled", test.path)
+			}
+			if cmd != nil {
+				cmd()
+			}
+			params := app.CurrentRoute().Params().(ManageParams)
+			hub, mounted := app.manageHub.ActiveModuleView().(*ProjectHubModel)
+			mountedMode := ProjectHubMode(255)
+			if mounted {
+				mountedMode = hub.Mode()
+			}
+			if params.ProjectHubMode != test.mode || !mounted || mountedMode != test.mode {
+				t.Fatalf("path %v route/model mode = %v/%v (%T)", test.path, params.ProjectHubMode, mountedMode, app.manageHub.ActiveModuleView())
+			}
+			app.navigation.ResetRoot()
+		})
+	}
+}
+
+func TestCtrlPRemainsOwnedByInlineOutlinerControls(t *testing.T) {
+	app := projectHubApp(t)
+	out := app.crossOutliner
+	ctrlP := syntheticCtrlKey('p')
+
+	out.ActivateSearch()
+	if handled, cmd := app.handleSimplifiedInputKey(ctrlP); handled || cmd != nil {
+		t.Fatalf("active search let Ctrl+P reach the Outliner grammar: handled=%v cmd=%v", handled, cmd)
+	}
+	if app.CurrentRoute().ID() != TaskWorkspace {
+		t.Fatal("Ctrl+P opened the Project Hub while search owned input")
+	}
+	out.ClearSearch()
+
+	out.confirm.Show("test", "Confirm?")
+	if handled, cmd := app.handleSimplifiedInputKey(ctrlP); handled || cmd != nil {
+		t.Fatalf("active confirmation let Ctrl+P reach the Outliner grammar: handled=%v cmd=%v", handled, cmd)
+	}
+	if app.CurrentRoute().ID() != TaskWorkspace {
+		t.Fatal("Ctrl+P opened the Project Hub while confirmation owned input")
+	}
+	out.confirm.Cancel()
+
+	app.operationTextPrompt = newOperationTextPromptModel(
+		OperationExecutionRequest{}, "Name", "", "draft", "Name",
+	)
+	if handled, _ := app.handleGlobalKeyPress(ctrlP); !handled || app.operationTextPrompt == nil {
+		t.Fatalf("text prompt did not retain Ctrl+P: handled=%v prompt=%v", handled, app.operationTextPrompt != nil)
+	}
+	app.operationTextPrompt = nil
+
+	app.operationValuePicker = newSemanticTagPickerForTest(t, []TagInfo{{Name: "urgent", TaskCount: 1}}, true)
+	if handled, _ := app.handleGlobalKeyPress(ctrlP); !handled || app.operationValuePicker == nil {
+		t.Fatalf("value picker did not retain Ctrl+P: handled=%v picker=%v", handled, app.operationValuePicker != nil)
+	}
+	app.operationValuePicker = nil
+
+	descriptor := contextActionTestDescriptor("test.ctrl-p-owner", "Owner")
+	registry, executor := contextActionTestEngine(t, []OperationDescriptor{descriptor}, nil)
+	sheet, err := NewContextActionSheetModel(
+		registry,
+		executor,
+		contextActionTestContext(),
+		[]OperationID{descriptor.ID},
+		ContextActionSheetConfig{Host: ContextActionHostOutliner},
+	)
+	if err != nil {
+		t.Fatalf("NewContextActionSheetModel: %v", err)
+	}
+	app.contextActionSheet = sheet
+	if handled, _ := app.handleGlobalKeyPress(ctrlP); !handled || app.contextActionSheet == nil {
+		t.Fatalf("action sheet did not retain Ctrl+P: handled=%v sheet=%v", handled, app.contextActionSheet != nil)
+	}
+	app.contextActionSheet = nil
+
+	app.operationConfirm.Show(operationConfirmAction, "Confirm?")
+	if handled, _ := app.handleGlobalKeyPress(ctrlP); !handled || !app.operationConfirm.IsActive() {
+		t.Fatalf("operation confirmation did not retain Ctrl+P: handled=%v active=%v", handled, app.operationConfirm.IsActive())
+	}
+	if app.CurrentRoute().ID() != TaskWorkspace {
+		t.Fatal("Ctrl+P opened the Project Hub while an overlay owned input")
 	}
 }

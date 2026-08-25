@@ -38,6 +38,22 @@ func TestTaskComposerHeaderShowsEffectiveRoute(t *testing.T) {
 	}
 }
 
+func TestTaskComposerRetainsCtrlPProjectCycling(t *testing.T) {
+	alpha := &models.Project{ID: "alpha", Name: "Alpha", Slug: "alpha"}
+	beta := &models.Project{ID: "beta", Name: "Beta", Slug: "beta"}
+	composer := NewTaskComposerModel(TaskComposerPreset{
+		Kind:               ComposerGlobal,
+		Project:            alpha,
+		AllProjects:        []*models.Project{alpha, beta},
+		AllowProjectSwitch: true,
+	}, nil)
+
+	composer.Update(syntheticCtrlKey('p'))
+	if composer.project == nil || composer.project.ID != beta.ID {
+		t.Fatalf("composer Ctrl+P project = %#v, want Beta", composer.project)
+	}
+}
+
 func TestTaskComposerDueTodayRoutesCaptureToToday(t *testing.T) {
 	project := &models.Project{ID: "project", Name: "Project", Slug: "project"}
 	composer := NewTaskComposerModel(TaskComposerPreset{

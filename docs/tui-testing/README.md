@@ -128,7 +128,8 @@ s p t                            fold toggles: sections, project groups, subtree
 n/N                              next/previous grouping header, wrapping
 Ctrl+O/Ctrl+I                    older/newer relocated-task positions
 Ctrl+L                           Recent, focused on the newest activity
-Ctrl+P                           the cursor task's project, in All
+Ctrl+P                           Select Pinned Project
+gp                               the cursor task's project, in All
 a/A e/E Ctrl+E O                 capture and edit
 $i $b $n $t $g $w $p $m $d $c    workflow chord
 !0-3 @ # *                       metadata

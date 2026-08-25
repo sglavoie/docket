@@ -181,7 +181,7 @@ does both from any mode in one press: it re-reads activity and puts the cursor o
 the task you touched last, opening a collapsed section or a folded parent only
 when that task would otherwise be hidden.
 
-`Ctrl+P` goes the other way, from a task to the project holding it. It scopes the
+`gp` goes the other way, from a task to the project holding it. It scopes the
 Outliner to the cursor task's project, switches to All so the project's whole
 tree is listed, and leaves the cursor on the task you pressed it from. `Esc`
 unwinds it and returns to the mode, row and scroll position you left. A task All
@@ -192,8 +192,8 @@ were in and says so.
 
 | Area | Keys |
 | --- | --- |
-| Modes | `Tab` / `Shift+Tab` cycle the seven modes; `g` opens the go-to chord: `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `g@` Due, `gr` Recent |
-| Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items, and `h` on a direct child of a focus root steps out of that Focus frame onto the root; `s`, `p`, and `t` are the three bulk fold toggles — every visible section header, every project group header, every task subtree — and each expands its whole set if any part of it is folded and otherwise folds the set; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `H`/`M`/`L` land on the highest, middle, and lowest visible row without scrolling; `z` opens the scroll chord, which does the opposite and moves the window under the cursor: `zt` puts the cursor's row at the top, `zz` centers it, `zb` puts it at the bottom; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `Ctrl+P` opens the cursor task's project in All and keeps the cursor on it; `Enter` zooms in on whatever the cursor names — descendants on a task row, that project on a project sub-header, that section alone on a section header; `Shift+Enter` widens focus one level; `Ctrl+Enter` toggles Peek |
+| Modes | `Tab` / `Shift+Tab` cycle the seven modes; `g` opens the go-to chord: `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `g@` Due, `gr` Recent, `gp` the cursor task's project |
+| Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items, and `h` on a direct child of a focus root steps out of that Focus frame onto the root; `s`, `p`, and `t` are the three bulk fold toggles — every visible section header, every project group header, every task subtree — and each expands its whole set if any part of it is folded and otherwise folds the set; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `H`/`M`/`L` land on the highest, middle, and lowest visible row without scrolling; `z` opens the scroll chord, which does the opposite and moves the window under the cursor: `zt` puts the cursor's row at the top, `zz` centers it, `zb` puts it at the bottom; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `gp` opens the cursor task's project in All and keeps the cursor on it; `Enter` zooms in on whatever the cursor names — descendants on a task row, that project on a project sub-header, that section alone on a section header; `Shift+Enter` widens focus one level; `Ctrl+Enter` toggles Peek |
 | Capture and edit | `a` capture, `A` child, `e` inline task edit, `E` description, `Ctrl+E` external editor, whose title line speaks the same edit grammar as `e`, `O` outline edit the cursor's project |
 | Workflow | `$` opens the workflow chord over the ten destinations the `$` capture sigil names: `$i` Inbox, `$b` Backlog, `$n` toggle Next, `$t` toggle Today, `$g` Doing, `$w` Waiting, `$p` Paused, `$m` Someday, `$d` Done, `$c` Canceled; `$w` then asks for a check-back date |
 | Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date and defer; `#` tags and context; `*` pin — the last two read the cursor, so on a project group header they set that project's tags and toggle its pin |
@@ -202,7 +202,7 @@ were in and says so.
 | Content | `&` opens the cursor task's Attachments panel, `;` its Comments panel — the two capture sigils reaching, as keys, the panels that own add, reorder, unlink, and delete |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
 | Selection | `v` toggles the cursor task; `V` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
-| Global | `P` Select Project, `Ctrl+N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
+| Global | `Ctrl+P` Select Pinned Project, `P` Select Project, `Ctrl+N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
 
 `@` opens one Set Due or Defer picker holding both fields. Its DUE section lists
 Clear, Today, Tomorrow, In one week, and In one month; its DEFER section lists
@@ -435,7 +435,7 @@ Filters are session-only refinements of ordinary mode rows. Slash search is a
 temporary projection over every nonterminal task in the active project scope,
 including deferred work; Esc restores the prior mode, facets, cursor,
 scroll, and folds exactly. Search is also the fastest way to jump anywhere:
-`Enter`, `Shift+Enter`, and `Ctrl+P` on a result leave search on that task
+`Enter`, `Shift+Enter`, and `gp` on a result leave search on that task
 instead of refusing, so the restored projection lands on the row you searched
 for. A mode that cannot list the result falls back to All; a facet that still
 excludes it says `Task is hidden by the active facets` and focuses nothing.
@@ -889,11 +889,17 @@ Parents are project-local and hierarchy depth is capped at six.
 
 ## Scope, projects, and Notes
 
-The Outliner opens on Active Projects, and scope is session-only. `P` opens
-Select Project on a live cursor, browsing active and archived projects. Each row
-carries its open task count beside its total and its tag chips, so a project
-whose tasks are all finished reads `0 open · 2 tasks` instead of passing for one
-with work left. Administering a project is one press:
+The Outliner opens on Active Projects, and scope is session-only. `Ctrl+P`
+opens Select Pinned Project with only pinned non-archived projects, including
+parked ones. It keeps the full Project Hub's search, task-count filter, previews,
+selection, and actions; `Enter` focuses the selected project. With no active
+pins it explains that `Esc` returns to the Outliner, where `P` still opens the
+full Hub.
+
+`P` opens Select Project on a live cursor, browsing active and archived
+projects. Each row carries its open task count beside its total and its tag
+chips, so a project whose tasks are all finished reads `0 open · 2 tasks`
+instead of passing for one with work left. Administering a project is one press:
 `Enter` focuses it in the same Outliner, `a` creates one, `e` edits the one
 under the cursor, `*` toggles its pin, `#` sets its tags, and `Ctrl+N` opens its
 Notes. `Ctrl+T` cycles between every project, only those holding tasks, and only

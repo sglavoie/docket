@@ -152,7 +152,7 @@ func TestProjectScopePopClearsStaleWhenRestoringRecent(t *testing.T) {
 	outliner, _ := primaryRowsOutliner(project)
 	outliner.selectOutlinerMode(ModeRecent)
 
-	// Ctrl+P captures Recent as the base scope before switching the focused
+	// gp captures Recent as the base scope before switching the focused
 	// project to All, where fs is available.
 	outliner.pushProjectScope(project.ID)
 	outliner.selectOutlinerMode(ModeAll)

@@ -187,7 +187,7 @@ the edits beside it.
 
 Entering visual selection closes Peek; while one exists, structural, edit, Peek,
 relation, and clipboard operations must reject rather than fall back to the
-cursor. Only Focus and `Ctrl+P` exit search onto the result. Jump history is
+cursor. Focus and `gp` exit search onto the result. Jump history is
 session-only, scoped to the current projection.
 
 Notes stay location-qualified, exclude archived projects, and do not regain
@@ -201,10 +201,10 @@ key is the only reverse route. Done is `$d` alone and no `d` alias may return.
 
 Root `$`, `z`, and `g` are chord prefixes, not direct keys: `z` never means
 snooze or defer, and cursor-top is `gg` or `Home`. `s`, `p`, and `t` fold the
-section, project, and task axes; `P` is Select Project.
+section, project, and task axes; `P` is Select Project; `Ctrl+P` selects pinned.
 
-`Ctrl+P` forces All rather than inheriting the origin mode, and its scope push
-must precede the mode switch, since the push captures the frame `Esc` restores.
+`gp` forces All, not the origin mode, and its scope push must precede the mode
+switch, since the push captures the frame `Esc` restores.
 
 `>` and `<` are Set Parent and Adopt Children; indent and outdent are `]` and
 `[`, which own no sigil. `*pin` is not a second route to `*`.

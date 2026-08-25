@@ -186,7 +186,7 @@ func TestSectionZoomThawsTheRecencyFreeze(t *testing.T) {
 	}
 }
 
-// TestSectionZoomIsClearedByGotoTaskProject covers Ctrl+P, which pushes a scope
+// TestSectionZoomIsClearedByGotoTaskProject covers gp, which pushes a scope
 // and forces All — two clears the jump must not have to think about.
 func TestSectionZoomIsClearedByGotoTaskProject(t *testing.T) {
 	driver := gotoProjectDriver(t)
@@ -201,10 +201,10 @@ func TestSectionZoomIsClearedByGotoTaskProject(t *testing.T) {
 	}
 	gotoProjectCursorOnTask(t, outliner)
 
-	sortPressKeys(t, driver, "ctrl+p")
+	sortPressKeys(t, driver, "g", "p")
 
 	if outliner.zoom.active() {
-		t.Fatalf("Ctrl+P landed still zoomed to %+v", outliner.zoom)
+		t.Fatalf("gp landed still zoomed to %+v", outliner.zoom)
 	}
 	if outliner.scopedProjectID != beta || outliner.primaryMode != ModeAll {
 		t.Fatalf(

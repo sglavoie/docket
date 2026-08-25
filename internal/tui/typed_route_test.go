@@ -69,6 +69,13 @@ func TestNewRouteValidatesAndCanonicalizesParams(t *testing.T) {
 	if manage != (ManageParams{Module: ManageProjects}) {
 		t.Errorf("irrelevant manage params not canonical: %+v", manage)
 	}
+	pinned := mustRoute(t, SecondaryTool, ManageParams{
+		Module:         ManageProjects,
+		ProjectHubMode: ProjectHubModePinned,
+	}).Params().(ManageParams)
+	if pinned != (ManageParams{Module: ManageProjects, ProjectHubMode: ProjectHubModePinned}) {
+		t.Errorf("pinned Project Hub params not preserved: %+v", pinned)
+	}
 	allNotes := mustRoute(t, SecondaryTool, ManageParams{
 		Module:     ManageNotes,
 		NotesScope: NotesScope{Kind: NotesScopeAll, ProjectID: "irrelevant"},
@@ -101,6 +108,20 @@ func TestNewRouteValidatesAndCanonicalizesParams(t *testing.T) {
 		NotesScope: NotesScope{Kind: NotesScopeKind(99)},
 	}); !errors.Is(err, ErrInvalidRouteParams) {
 		t.Fatalf("invalid Notes scope error = %v", err)
+	}
+	if _, err := NewRoute(SecondaryTool, ManageParams{
+		Module:         ManageProjects,
+		ProjectHubMode: ProjectHubMode(99),
+	}); !errors.Is(err, ErrInvalidRouteParams) {
+		t.Fatalf("invalid Project Hub mode error = %v", err)
+	}
+	canonicalNotes := mustRoute(t, SecondaryTool, ManageParams{
+		Module:         ManageNotes,
+		NotesScope:     AllNotesScope(),
+		ProjectHubMode: ProjectHubModePinned,
+	}).Params().(ManageParams)
+	if canonicalNotes.ProjectHubMode != ProjectHubModeAll {
+		t.Fatalf("Notes retained Project Hub mode: %+v", canonicalNotes)
 	}
 	if _, err := NewRoute(SecondaryTool, TaskWorkspaceParams{}); !errors.Is(err, ErrRouteParamsType) {
 		t.Fatalf("secondary tool with foreign params error = %v", err)

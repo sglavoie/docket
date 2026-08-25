@@ -40,6 +40,7 @@ const (
 	operationCoreJumpForward        OperationID = "tui.core.jump-forward"
 	operationCoreFocusLatest        OperationID = "tui.core.focus-latest"
 	operationCoreGotoTaskProject    OperationID = "tui.core.goto-task-project"
+	operationCoreSelectPinned       OperationID = "tui.core.select-pinned-project"
 	operationCoreCollapseParent     OperationID = "tui.core.collapse-parent"
 	operationCoreExpand             OperationID = "tui.core.expand"
 	operationCoreToggleSections     OperationID = "tui.core.toggle-sections"
@@ -259,6 +260,7 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		peek,
 		core(operationCoreScopeSearch, "Search Scoped Tasks", OperationCategoryFilter, TargetCardinalityNone, OperationRiskReadOnly, "scope-wide search"),
 		core(operationCoreSelectProject, "Select Project", OperationCategoryProject, TargetCardinalityNone, OperationRiskReadOnly, "projects", "switch project"),
+		core(operationCoreSelectPinned, "Select Pinned Project", OperationCategoryProject, TargetCardinalityNone, OperationRiskReadOnly, "pinned projects", "switch pinned project"),
 		core(operationCoreMultiSelect, "Toggle Task Selection", OperationCategoryTask, TargetCardinalityNone, OperationRiskReadOnly, "visual selection"),
 		core(operationCoreRangeSelect, "Select Task Range", OperationCategoryTask, TargetCardinalityNone, OperationRiskReadOnly, "contiguous selection", "range selection"),
 		core(operationCoreSelectAll, "Select All Visible Tasks", OperationCategoryTask, TargetCardinalityNone, OperationRiskReadOnly, "select visible"),
@@ -564,6 +566,8 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		}
 	case operationCoreSelectProject:
 		message = ShowProjectHubMsg{}
+	case operationCoreSelectPinned:
+		message = ShowProjectHubMsg{Mode: ProjectHubModePinned}
 	case operationCoreMultiSelect:
 		if out, ok := m.outlinerPrimary(); ok {
 			out.toggleCursorSelection()

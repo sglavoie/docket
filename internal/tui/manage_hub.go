@@ -132,7 +132,7 @@ func (m *ManageHubModel) Activate(params ManageParams) error {
 		notes.SetOperationSystem(m.deps.OperationRegistry, m.deps.DispatchKey)
 		view = notes
 	case ManageProjects:
-		hub := NewProjectHubModel(m.deps.Runtime)
+		hub := NewProjectHubModel(m.deps.Runtime, params.ProjectHubMode)
 		hub.SetOperationSystem(m.deps.OperationRegistry, m.deps.OperationExecutor, m.deps.DispatchKey)
 		if m.deps.ActiveProjectFocus != nil {
 			hub.SetProjectFocus(m.deps.ActiveProjectFocus())
@@ -170,10 +170,11 @@ func (m *ManageHubModel) projectForNotesScope(params ManageParams) (*models.Proj
 
 func manageModuleCacheKey(params ManageParams) string {
 	return fmt.Sprintf(
-		"%d:%d:%s",
+		"%d:%d:%s:%d",
 		params.Module,
 		params.NotesScope.Kind,
 		params.NotesScope.ProjectID,
+		params.ProjectHubMode,
 	)
 }
 

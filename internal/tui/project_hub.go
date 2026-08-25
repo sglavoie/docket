@@ -13,9 +13,27 @@ import (
 	"github.com/sglavoie/tt/internal/workspace"
 )
 
+// ProjectHubMode identifies the population exposed by the Project Hub. All is
+// the zero value so existing route and message callers retain the full Hub.
+type ProjectHubMode uint8
+
+const (
+	ProjectHubModeAll ProjectHubMode = iota
+	ProjectHubModePinned
+)
+
+// Short aliases keep call sites readable when the surrounding name already
+// says Project Hub.
+const (
+	ProjectHubAll    = ProjectHubModeAll
+	ProjectHubPinned = ProjectHubModePinned
+)
+
 // ShowProjectHubMsg opens the searchable project selection and administration
-// surface.
-type ShowProjectHubMsg struct{}
+// surface in the requested population mode.
+type ShowProjectHubMsg struct {
+	Mode ProjectHubMode
+}
 
 // The operation ID predates the dedicated Project Hub and remains stable for
 // operation-catalog compatibility.
@@ -144,6 +162,7 @@ type projectHubActionTarget struct {
 type ProjectHubModel struct {
 	BaseSearchableView
 	runtime          *config.RuntimeState
+	mode             ProjectHubMode
 	taskCounts       map[string]projectTaskTally
 	surface          *ListSurfaceModel
 	actions          *ContextActionSheetModel
@@ -159,17 +178,23 @@ type ProjectHubModel struct {
 	preview         projectHubPreviewState
 }
 
-func NewProjectHubModel(runtime *config.RuntimeState) *ProjectHubModel {
+func NewProjectHubModel(runtime *config.RuntimeState, modes ...ProjectHubMode) *ProjectHubModel {
 	if runtime == nil {
 		runtime = config.EmptyRuntimeState("")
 	}
-	m := &ProjectHubModel{runtime: runtime}
+	mode := ProjectHubModeAll
+	if len(modes) > 0 {
+		mode = modes[0]
+	}
+	m := &ProjectHubModel{runtime: runtime, mode: mode}
 	m.InitSearchInput("Search projects", 64, 32)
 	m.rebuildProjectSurface("")
 	return m
 }
 
 func (m *ProjectHubModel) Init() tea.Cmd { return nil }
+
+func (m *ProjectHubModel) Mode() ProjectHubMode { return m.mode }
 
 func (m *ProjectHubModel) SetOperationSystem(
 	registry *OperationRegistry,
@@ -415,6 +440,9 @@ func (m *ProjectHubModel) rebuildProjectSurface(prefer ListItemID) {
 // projectHubCategories orders the listing groups: the base task workspace
 // first, then the archived tail.
 func (m *ProjectHubModel) projectHubCategories() []ListCategory {
+	if m.mode == ProjectHubModePinned {
+		return []ListCategory{{ID: projectHubCategoryActive, Label: "Pinned Projects"}}
+	}
 	return []ListCategory{
 		{ID: projectHubCategoryActive, Label: "Active Projects"},
 		{ID: projectHubCategoryArchived, Label: "Archived Projects"},
@@ -435,7 +463,7 @@ func projectPinnedMarker(project *models.Project) string {
 func (m *ProjectHubModel) projectHubItems() []ListItem {
 	items := make([]ListItem, 0, len(m.runtime.AllProjects()))
 	for _, project := range m.runtime.AvailableProjects() {
-		if project == nil || m.projectHubFilterHides(project) {
+		if project == nil || (m.mode == ProjectHubModePinned && !project.Pinned) || m.projectHubFilterHides(project) {
 			continue
 		}
 		label := project.Name
@@ -455,6 +483,9 @@ func (m *ProjectHubModel) projectHubItems() []ListItem {
 			}, projectBulkOperations...),
 			Data: projectHubEntry{Kind: projectHubEntryActive, Project: project},
 		})
+	}
+	if m.mode == ProjectHubModePinned {
+		return items
 	}
 	for _, project := range m.runtime.ArchivedProjects() {
 		if project == nil || m.projectHubFilterHides(project) {
@@ -587,10 +618,22 @@ func (m *ProjectHubModel) refreshProjectHubEmptyStates() {
 }
 
 func (m *ProjectHubModel) projectHubEmptyState() ListEmptyState {
+	if m.mode == ProjectHubModePinned && m.pinnedActiveProjectCount() == 0 {
+		return ListEmptyState{
+			Title:  "No active projects are pinned.",
+			Detail: "Press Esc to return to the Outliner; P opens the full Project Hub.",
+		}
+	}
 	switch m.taskFilter {
 	case projectHubTaskFilterWithTasks:
+		if m.mode == ProjectHubModePinned {
+			return ListEmptyState{Title: "No pinned projects hold tasks.", Detail: m.projectHubFilterAdvice()}
+		}
 		return ListEmptyState{Title: "No projects hold tasks.", Detail: m.projectHubFilterAdvice()}
 	case projectHubTaskFilterWithoutTasks:
+		if m.mode == ProjectHubModePinned {
+			return ListEmptyState{Title: "Every pinned project holds tasks.", Detail: m.projectHubFilterAdvice()}
+		}
 		return ListEmptyState{Title: "Every project holds tasks.", Detail: m.projectHubFilterAdvice()}
 	default:
 		return ListEmptyState{
@@ -603,16 +646,37 @@ func (m *ProjectHubModel) projectHubEmptyState() ListEmptyState {
 // projectHubFilterAdvice names where the next press lands, so a three-state
 // cycle never claims one press returns to the whole list.
 func (m *ProjectHubModel) projectHubFilterAdvice() string {
-	return "Press Ctrl+T to show " + m.taskFilter.next().phrase() + "."
+	return "Press Ctrl+T to show " + m.projectHubNextFilterPhrase() + "."
+}
+
+func (m *ProjectHubModel) projectHubNextFilterPhrase() string {
+	next := m.taskFilter.next()
+	if m.mode != ProjectHubModePinned {
+		return next.phrase()
+	}
+	switch next {
+	case projectHubTaskFilterWithTasks:
+		return "pinned projects that hold tasks"
+	case projectHubTaskFilterWithoutTasks:
+		return "pinned projects without tasks"
+	default:
+		return "every pinned project"
+	}
 }
 
 func (m *ProjectHubModel) projectHubNoMatchState() ListEmptyState {
-	detail := "Press Esc to clear the query and browse every project."
+	title := "No projects match this search."
+	browsePopulation := "every project"
+	if m.mode == ProjectHubModePinned {
+		title = "No pinned projects match this search."
+		browsePopulation = "pinned projects"
+	}
+	detail := "Press Esc to clear the query and browse " + browsePopulation + "."
 	if m.taskFilter != projectHubTaskFilterAll {
-		detail = "Press Esc to clear the query, or Ctrl+T to show " + m.taskFilter.next().phrase() + "."
+		detail = "Press Esc to clear the query, or Ctrl+T to show " + m.projectHubNextFilterPhrase() + "."
 	}
 	return ListEmptyState{
-		Title:  "No projects match this search.",
+		Title:  title,
 		Detail: detail,
 	}
 }
@@ -860,11 +924,16 @@ func (m *ProjectHubModel) projectHubRenderConfig(height int) ListSurfaceRenderCo
 }
 
 func (m *ProjectHubModel) subtitle() string {
-	subtitle := fmt.Sprintf(
-		"%d active · %d archived",
-		len(m.runtime.AvailableProjects()),
-		len(m.runtime.ArchivedProjects()),
-	)
+	subtitle := ""
+	if m.mode == ProjectHubModePinned {
+		subtitle = fmt.Sprintf("%d pinned active", m.pinnedActiveProjectCount())
+	} else {
+		subtitle = fmt.Sprintf(
+			"%d active · %d archived",
+			len(m.runtime.AvailableProjects()),
+			len(m.runtime.ArchivedProjects()),
+		)
+	}
 	// The counts above stay workspace truth; the marker names the narrowing the
 	// list is under rather than restating it as a smaller total.
 	if marker := m.taskFilter.subtitleMarker(); marker != "" {
@@ -876,11 +945,25 @@ func (m *ProjectHubModel) subtitle() string {
 	return subtitle
 }
 
+func (m *ProjectHubModel) pinnedActiveProjectCount() int {
+	count := 0
+	for _, project := range m.runtime.AvailableProjects() {
+		if project != nil && project.Pinned {
+			count++
+		}
+	}
+	return count
+}
+
 // renderProjectHubTitle delegates pulse and context fitting to the shared
 // operational title renderer.
 func (m *ProjectHubModel) renderProjectHubTitle(width int) string {
+	title := "Select Project"
+	if m.mode == ProjectHubModePinned {
+		title = "Select Pinned Project"
+	}
 	return renderFullscreenTitleWithPulse(
-		"Select Project",
+		title,
 		m.subtitle(),
 		m.currentWorkspacePulse(),
 		width,

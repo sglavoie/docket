@@ -100,8 +100,9 @@ func ProjectNotesScope(projectID string) NotesScope {
 }
 
 type ManageParams struct {
-	Module     ManageModule
-	NotesScope NotesScope
+	Module         ManageModule
+	NotesScope     NotesScope
+	ProjectHubMode ProjectHubMode
 }
 
 func (ManageParams) routeParams() {}
@@ -195,7 +196,11 @@ func canonicalRouteParams(id RouteID, params RouteParams) (RouteParams, error) {
 					return nil, err
 				}
 				p.NotesScope = scope
+				p.ProjectHubMode = ProjectHubModeAll
 			} else {
+				if p.ProjectHubMode > ProjectHubModePinned {
+					return nil, invalidParams(id, "unknown project hub mode")
+				}
 				p.NotesScope = NotesScope{}
 			}
 			return p, nil

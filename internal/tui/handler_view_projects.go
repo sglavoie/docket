@@ -4,9 +4,12 @@ import tea "charm.land/bubbletea/v2"
 
 // handleProjectViewMessages handles project tree and outliner view transitions.
 func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
-	switch msg.(type) {
+	switch msg := msg.(type) {
 	case ShowProjectHubMsg:
-		return true, m.activateManageHub(ManageParams{Module: ManageProjects})
+		return true, m.activateManageHub(ManageParams{
+			Module:         ManageProjects,
+			ProjectHubMode: msg.Mode,
+		})
 
 	case launchOutlinerMsg:
 		presentationCmd := m.prepareCrossProjectOutliner()
