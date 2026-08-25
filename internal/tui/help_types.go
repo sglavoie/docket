@@ -7,18 +7,25 @@ import (
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
-// HelpItem represents a single help entry.
+// HelpItem represents a single help entry. Aliases carry the vocabulary a user
+// is likely to type for an operation whose label does not contain it — "defer"
+// for Set Due or Defer — so `?` search can reach a row its label hides. They are
+// matched, never rendered as a column of their own.
 type HelpItem struct {
 	Key         string // e.g., "j/k", "ctrl+O"
 	Description string // e.g., "Move cursor"
 	Category    string // e.g., "Navigation", "Actions"
+	Aliases     []string
 }
 
 // filteredHelpItem pairs a HelpItem with fuzzy match positions for highlighting.
+// matchedAliases names the aliases that earned the match, so the row can say why
+// it survived a query its description does not contain.
 type filteredHelpItem struct {
 	HelpItem
-	keyPositions  []int
-	descPositions []int
+	keyPositions   []int
+	descPositions  []int
+	matchedAliases []string
 }
 
 // HelpProvider is implemented by views that project help directly from their
@@ -53,7 +60,6 @@ type HelpViewModel struct {
 	// case-insensitive retry after the query's smart-case reading matched nothing.
 	searchCaseRelaxed bool
 	width             int
-	sourceView        PresentationID
 	viewName          string
 	ready             bool
 	activeTab         int      // Current tab (category) index

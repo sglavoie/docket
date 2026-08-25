@@ -310,14 +310,28 @@ func (s *Service) DeferByLocator(locator TaskLocator, until *time.Time) (TaskRes
 	return s.deferTask("", locator, until)
 }
 
-// deferralRefusesState is the terminal half of the one deferral policy. The
-// capture and inline-edit grammars route their @@ token through it so a refused
-// deferral is worded the same wherever it is expressed.
-func deferralRefusesState(state models.WorkflowState) error {
+// DeferralRefusesState is the one deferral-eligibility predicate, and it returns
+// "" when the state can be deferred. It is policy rather than an invariant —
+// ApplyStateTransitionAt's doc comment says the model does not enforce policy —
+// so it lives here, and every surface that must refuse a deferral reads it
+// instead of restating the rule. It yields a reason rather than an error because
+// InvalidInputError renders as "app: invalid defer: …", which a picker cannot
+// show; deferralRefusesState wraps it for the callers that do want that error.
+func DeferralRefusesState(state models.WorkflowState) string {
 	if !state.IsTerminal() {
-		return nil
+		return ""
 	}
-	return invalidInput("defer", fmt.Sprintf("cannot defer a %s task", state))
+	return fmt.Sprintf("cannot defer a %s task", state)
+}
+
+// deferralRefusesState is the error-returning form the capture and inline-edit
+// grammars route their @@ token through, so a refused deferral is worded the
+// same wherever it is expressed.
+func deferralRefusesState(state models.WorkflowState) error {
+	if reason := DeferralRefusesState(state); reason != "" {
+		return invalidInput("defer", reason)
+	}
+	return nil
 }
 
 func (s *Service) deferTask(taskID string, locator TaskLocator, until *time.Time) (TaskResult, error) {

@@ -695,8 +695,8 @@ func TestCommentsHelpKeyRaisesTheCommentsGrammar(t *testing.T) {
 	if !ok {
 		t.Fatalf("the Help view is %T, want *HelpViewModel", driver.App().views.Get(ViewHelp))
 	}
-	if help.viewName != "Comments" || help.sourceView != ViewTaskComments {
-		t.Fatalf("help header = %s/%q, want ViewTaskComments/\"Comments\"", help.sourceView, help.viewName)
+	if help.viewName != "Comments" {
+		t.Fatalf("help header = %q, want \"Comments\"", help.viewName)
 	}
 
 	documented := make(map[string]string, len(help.items))

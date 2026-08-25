@@ -54,7 +54,7 @@ func filterOperationDescriptors() []OperationDescriptor {
 		descriptor(operationFilterStates, "Filter by State", ValueProviderFilterStates, "state filter"),
 		descriptor(operationFilterTags, "Filter by Tags", ValueProviderFilterTags, "tag filter"),
 		descriptor(operationFilterReview, "Filter Review", "", "review tag filter"),
-		descriptor(operationFilterDue, "Filter by Due Date", ValueProviderFilterDue, "due filter"),
+		descriptor(operationFilterDue, "Filter by Due or Deferred", ValueProviderFilterDue, "due filter", "deferred", "hidden"),
 		descriptor(operationFilterCompletionAge, "Filter by Completion Age", ValueProviderFilterCompletionAge, "completion age", "cleanup age"),
 		descriptor(operationFilterHierarchy, "Filter by Hierarchy", ValueProviderFilterHierarchy, "hierarchy position", "parent or child"),
 		descriptor(operationFilterStale, "Filter Stale", "", "stale work", "untouched work"),
@@ -345,7 +345,7 @@ func (m *AppModel) newFilterDuePicker(
 	return newOperationValuePickerModel(
 		request,
 		ValueProviderFilterDue,
-		"Filter by Due Date",
+		"Filter by Due or Deferred",
 		"keep matching tasks",
 		ListSource{Items: items},
 		false,

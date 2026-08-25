@@ -270,7 +270,7 @@ func (m *ProjectHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// query, so help is a browse-only press. The core help descriptor answers
 		// only to the Outliner, so raising it through the executor would render the
 		// Outliner grammar; the Hub names its own instead.
-		return m, helpCmd(ViewProjectHub, "Projects", m.GetHelpItems())
+		return m, helpCmd("Projects", m.GetHelpItems())
 	case "u", "ctrl+r":
 		// Below the search branch for the same reason as `?`: u is a literal
 		// character in the query. The core undo descriptors answer only to the

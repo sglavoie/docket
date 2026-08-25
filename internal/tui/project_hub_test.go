@@ -989,8 +989,8 @@ func TestProjectHubHelpKeyRaisesTheHubGrammar(t *testing.T) {
 	if !ok {
 		t.Fatalf("? produced %T, want ShowHelpMsg", cmd())
 	}
-	if help.SourceView != ViewProjectHub || help.ViewName != "Projects" {
-		t.Fatalf("help header = %s/%q, want ViewProjectHub/\"Projects\"", help.SourceView, help.ViewName)
+	if help.ViewName != "Projects" {
+		t.Fatalf("help header = %q, want \"Projects\"", help.ViewName)
 	}
 
 	documented := make(map[string]string, len(help.Items))

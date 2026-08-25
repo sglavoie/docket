@@ -29,15 +29,9 @@ func (m *OutlinerModel) HandledKeys() []string {
 	return m.operationRegistry.HandledKeysForInputStrategy(InputStrategySimplified)
 }
 
-func (m *OutlinerModel) GetHelpItems() []HelpItem {
-	if m.operationRegistry == nil {
-		return nil
-	}
-	return m.operationRegistry.HelpItemsForInputStrategy(
-		InputStrategySimplified,
-		m.operationCommandContext(),
-	)
-}
+// The Outliner has no GetHelpItems of its own: `?` is a core input operation, so
+// AppModel.coreInputHelpItems is the one projection that answers it. A second
+// copy here would be unreachable and would drift.
 
 // ContextualGuidance selects one Outliner-specific profile before falling back
 // to the ranked operation projection for an ordinary task row. Interaction and

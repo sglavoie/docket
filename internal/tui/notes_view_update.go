@@ -111,7 +111,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+r":
 			return m, m.redoNoteMutation()
 		case "?":
-			return m, helpCmd(ViewNotes, "Notes", m.GetHelpItems())
+			return m, helpCmd("Notes", m.GetHelpItems())
 		case "esc":
 			if m.searchApplied != "" {
 				m.clearSearch()

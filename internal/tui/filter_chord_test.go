@@ -629,7 +629,7 @@ func TestFilterDueChordIsOneTerminalPickerBinding(t *testing.T) {
 	}
 	helpDocumentsDueFacet := false
 	for _, item := range registry.HelpItemsForInputStrategy(InputStrategySimplified, ctx) {
-		if item.Key == "f@" && item.Description == "Filter by Due Date" {
+		if item.Key == "f@" && item.Description == "Filter by Due or Deferred" {
 			helpDocumentsDueFacet = true
 			break
 		}

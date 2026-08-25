@@ -115,8 +115,8 @@ func AnyEscStepActive(steps []EscStep) bool {
 	return false
 }
 
-func helpCmd(source PresentationID, name string, items []HelpItem) tea.Cmd {
+func helpCmd(name string, items []HelpItem) tea.Cmd {
 	return func() tea.Msg {
-		return ShowHelpMsg{SourceView: source, ViewName: name, Items: items}
+		return ShowHelpMsg{ViewName: name, Items: items}
 	}
 }

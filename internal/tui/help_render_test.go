@@ -29,7 +29,7 @@ func TestHelpRenderKeepsSetStateChordOnOneLine(t *testing.T) {
 	}
 
 	for _, width := range []int{46, 60, 80, 160} {
-		m := NewHelpViewModel(items, ViewCrossProjectOutliner, "Outliner")
+		m := NewHelpViewModel(items, "Outliner")
 		m.SetSize(width, 40)
 		lines := strings.Split(ansi.Strip(m.renderContent()), "\n")
 

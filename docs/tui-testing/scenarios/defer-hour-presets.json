@@ -8,7 +8,7 @@
     { "type": "key", "label": "step off the project group header onto the first task", "key": "j" },
 
     { "type": "key", "label": "open the one date picker", "key": "@" },
-    { "type": "assert", "assert": "contains", "value": "Set Date: Triage support inbox" },
+    { "type": "assert", "assert": "contains", "value": "Set Due or Defer: Triage support inbox" },
     { "type": "assert", "label": "due leads, because a deadline is the commoner answer", "assert": "contains", "value": "DUE" },
     { "type": "assert", "assert": "contains", "value": "Clear" },
     { "type": "assert", "assert": "no_layout_issues" },

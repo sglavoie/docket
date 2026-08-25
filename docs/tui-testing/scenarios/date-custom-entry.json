@@ -27,7 +27,7 @@
 
     { "type": "key", "label": "leave typed entry for the preset list", "key": "esc" },
     { "type": "assert", "assert": "not_contains", "value": "Set a Specific Date" },
-    { "type": "assert", "assert": "contains", "value": "Set Date: Build login form" },
+    { "type": "assert", "assert": "contains", "value": "Set Due or Defer: Build login form" },
 
     { "type": "key", "label": "re-enter typed entry", "key": "a" },
     { "type": "text", "text": "2027-03-15" },

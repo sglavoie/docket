@@ -343,7 +343,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationFilterPriority, Sequence: []string{"f", "!", "1"}, DisplayKey: "f!0-3", HintLabel: "high", PresetValue: 1, HasPresetValue: true},
 			{OperationID: operationFilterPriority, Sequence: []string{"f", "!", "2"}, DisplayKey: "f!0-3", HintLabel: "medium+", PresetValue: 2, HasPresetValue: true},
 			{OperationID: operationFilterPriority, Sequence: []string{"f", "!", "3"}, DisplayKey: "f!0-3", HintLabel: "low+", PresetValue: 3, HasPresetValue: true},
-			{OperationID: operationFilterDue, Sequence: []string{"f", "@"}, DisplayKey: "f@", HintLabel: "due date"},
+			{OperationID: operationFilterDue, Sequence: []string{"f", "@"}, DisplayKey: "f@", HintLabel: "due/deferred"},
 			{OperationID: operationFilterCompletionAge, Sequence: []string{"f", "c"}, DisplayKey: "fc", HintLabel: "completion age"},
 			{OperationID: operationFilterStates, Sequence: []string{"f", "$"}, DisplayKey: "f$", HintLabel: "states"},
 			{OperationID: operationFilterTags, Sequence: []string{"f", "#"}, DisplayKey: "f#", HintLabel: "tags"},

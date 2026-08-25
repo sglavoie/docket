@@ -4,26 +4,15 @@ import (
 	"github.com/sglavoie/tt/internal/fuzzy"
 )
 
-// buildCategories extracts ordered unique tab labels for the current help mode.
-// Help labels tabs by intent bucket so they match the rendered section headers.
-func (m *HelpViewModel) buildCategories() []string {
-	return m.buildIntentCategories()
-}
-
-// buildIntentCategories returns the intent buckets present in m.items, in the
-// canonical helpIntentOrder. Buckets with no items are skipped.
-func (m *HelpViewModel) buildIntentCategories() []string {
-	present := make(map[string]bool)
+// buildSectionCategories returns the sections present in m.items, ordered by the
+// same rule renderBySectionContent applies, so a tab always names a header that
+// exists and sits where the body puts it. It is the tab bar's only label source.
+func (m *HelpViewModel) buildSectionCategories() []string {
+	categories := make([]string, 0, len(m.items))
 	for _, item := range m.items {
-		present[intentForItem(item, m.sourceView)] = true
+		categories = append(categories, helpSectionForItem(item))
 	}
-	cats := make([]string, 0, len(helpIntentOrder))
-	for _, intent := range helpIntentOrder {
-		if present[intent] {
-			cats = append(cats, intent)
-		}
-	}
-	return cats
+	return helpSectionsForCategories(categories)
 }
 
 // matchTab fuzzy-matches the query against category names and selects the best match.
@@ -65,7 +54,7 @@ func (m *HelpViewModel) filterItems() {
 	if m.activeTab > 0 && m.activeTab <= len(m.categories) {
 		activeLabel := m.categories[m.activeTab-1]
 		source = nil
-		matches := func(item HelpItem) bool { return intentForItem(item, m.sourceView) == activeLabel }
+		matches := func(item HelpItem) bool { return helpSectionForItem(item) == activeLabel }
 		for _, item := range m.items {
 			if matches(item) {
 				source = append(source, item)
@@ -82,6 +71,9 @@ func (m *HelpViewModel) filterItems() {
 		return
 	}
 
+	// Aliases feed matching only. Their positions index into the alias, not into
+	// the rendered key or description, so adding them to a highlight array would
+	// paint the wrong columns.
 	match := func(matcher fuzzy.Matcher) []filteredHelpItem {
 		var filtered []filteredHelpItem
 		for _, item := range source {
@@ -89,11 +81,19 @@ func (m *HelpViewModel) filterItems() {
 			descScore, descPos := matcher.ScoreTermsWithPositions(item.Description, m.searchQuery)
 			catScore, _ := matcher.ScoreTermsWithPositions(item.Category, m.searchQuery)
 
-			if keyScore > 0 || descScore > 0 || catScore > 0 {
+			var matchedAliases []string
+			for _, alias := range item.Aliases {
+				if score, _ := matcher.ScoreTermsWithPositions(alias, m.searchQuery); score > 0 {
+					matchedAliases = append(matchedAliases, alias)
+				}
+			}
+
+			if keyScore > 0 || descScore > 0 || catScore > 0 || len(matchedAliases) > 0 {
 				filtered = append(filtered, filteredHelpItem{
-					HelpItem:      item,
-					keyPositions:  keyPos,
-					descPositions: descPos,
+					HelpItem:       item,
+					keyPositions:   keyPos,
+					descPositions:  descPos,
+					matchedAliases: matchedAliases,
 				})
 			}
 		}

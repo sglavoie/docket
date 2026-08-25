@@ -12,98 +12,107 @@ import (
 // key wider than this wraps mid-token, so every composed spelling must fit.
 const helpKeyColumnWidth = 16
 
-// helpIntentOrder defines the display order of intent buckets in first-level
-// (per-view) help. Buckets with no matching items in the current view are
-// skipped during rendering.
-var helpIntentOrder = []string{
-	"Capture",
-	"Triage",
-	"Plan",
-	"Work",
-	"Route & Schedule",
-	"Resolve",
-	"Refine",
-	"Task",
-	"View Controls",
-	"Navigate",
-	"Jump to View",
-	"Other",
+// helpSectionOrder is the display order of `?` help sections. Its names are the
+// categories the projections actually emit: operationCategoryLabel produces the
+// registry ones, the keymap-projected providers add View, Actions, and Filters,
+// and grammarHelpItems adds the last. A category absent from this list still
+// renders — helpSectionsForCategories appends it in first-seen order — so a new
+// category is never silently swallowed.
+var helpSectionOrder = []string{
+	"Tasks",
+	"Filters",
+	"Sorting",
+	"Discovery",
+	"Modes",
+	"Scope",
+	"Navigation",
+	"Projects",
+	"Notes",
+	"Tags",
+	"View",
+	"Actions",
+	"System",
+	helpGrammarCategory,
 }
 
-// helpCategoryIntent maps raw registry Category names to intent buckets.
-// Categories absent from this map fall through to per-key classification in
-// intentForItem.
-var helpCategoryIntent = map[string]string{
-	"Status":          "Resolve",
-	"Priority":        "Resolve",
-	"Due Date":        "Route & Schedule",
-	"Defer":           "Route & Schedule",
-	"Linked Tasks":    "Refine",
-	"Folds":           "View Controls",
-	"Filters":         "View Controls",
-	"Task Operations": "Task",
-	"Clipboard":       "Other",
-	"Notes":           "Other",
+// helpSectionOther is the catch-all operationCategoryLabel emits for an
+// uncategorized operation. It renders after every named section, so a remainder
+// reads as one rather than as a peer.
+const helpSectionOther = "Other"
+
+// helpAliasSuffix names the aliases a query matched, so a row whose label does
+// not contain the typed word still says why it is here. It is dropped whole
+// rather than truncated when the description column has no room for it: the
+// description is the row's answer and the aliases are its justification, and a
+// clipped justification reads as a clipped answer.
+func helpAliasSuffix(aliases []string, description string, descWidth int) string {
+	if len(aliases) == 0 {
+		return ""
+	}
+	suffix := " · " + strings.Join(aliases, ", ")
+	if lipgloss.Width(description)+lipgloss.Width(suffix) > descWidth {
+		return ""
+	}
+	return suffix
 }
 
-// helpNavigateKeys lists direct keys that always belong in the Navigate
-// intent regardless of Category. Covers list movement, viewport paging, and
-// app-shell controls (esc/quit/explorer toggle).
-var helpNavigateKeys = map[string]bool{
-	"j":         true,
-	"k":         true,
-	"down":      true,
-	"up":        true,
-	"g":         true,
-	"G":         true,
-	"gg":        true,
-	"ctrl+u":    true,
-	"ctrl+d":    true,
-	"pgup":      true,
-	"pgdown":    true,
-	"esc":       true,
-	"ctrl+c":    true,
-	"enter":     true,
-	"backspace": true,
-	"space":     true,
-	"q":         true,
-	"$":         true,
+// helpSectionForItem names the section an item renders under. An item carrying
+// no category is a remainder, not a section of its own.
+func helpSectionForItem(item HelpItem) string {
+	if strings.TrimSpace(item.Category) == "" {
+		return helpSectionOther
+	}
+	return item.Category
 }
 
-// intentForItem classifies a HelpItem into one of helpIntentOrder buckets.
-// Key matches take precedence over Category mapping.
-func intentForItem(item HelpItem, sourceView PresentationID) string {
-	_ = sourceView
-	switch item.Key {
-	case "1", "2", "3", "4", "5":
-		return "Resolve"
-	case "ctrl+w", "ctrl+s":
-		return "Route & Schedule"
+// helpSectionsForCategories orders the distinct sections present in categories:
+// the canonical helpSectionOrder first, then any unlisted category in first-seen
+// order, then Other. The tab bar and the rendered body both read it, so they
+// cannot disagree about which sections exist or where they sit.
+func helpSectionsForCategories(categories []string) []string {
+	known := make(map[string]bool, len(helpSectionOrder))
+	for _, section := range helpSectionOrder {
+		known[section] = true
 	}
-	if helpNavigateKeys[item.Key] {
-		return "Navigate"
+	present := make(map[string]bool, len(categories))
+	var unlisted []string
+	for _, category := range categories {
+		if present[category] {
+			continue
+		}
+		present[category] = true
+		if !known[category] && category != helpSectionOther {
+			unlisted = append(unlisted, category)
+		}
 	}
-	if intent, ok := helpCategoryIntent[item.Category]; ok {
-		return intent
+	sections := make([]string, 0, len(present))
+	for _, section := range helpSectionOrder {
+		if present[section] {
+			sections = append(sections, section)
+		}
 	}
-	switch item.Category {
-	case "Navigation":
-		return "Jump to View"
+	sections = append(sections, unlisted...)
+	if present[helpSectionOther] {
+		sections = append(sections, helpSectionOther)
 	}
-	return "Other"
+	return sections
 }
 
-// renderByIntentContent renders first-level (per-view) help grouped by user
-// intent. Sections appear in helpIntentOrder; empty buckets are skipped.
-func (m *HelpViewModel) renderByIntentContent() string {
+// renderBySectionContent renders first-level (per-view) help grouped by the
+// category its own projection assigned. Bucketing appends in item order, so a
+// section preserves the binding order the strategy declared and the teach order
+// the grammar declared.
+func (m *HelpViewModel) renderBySectionContent() string {
 	if len(m.filteredItems) == 0 {
 		return MutedStyle.Render("No matching help items.")
 	}
 
 	buckets := make(map[string][]filteredHelpItem)
+	categories := make([]string, 0, len(m.filteredItems))
 	for _, item := range m.filteredItems {
-		bucket := intentForItem(item.HelpItem, m.sourceView)
-		buckets[bucket] = append(buckets[bucket], item)
+		section := helpSectionForItem(item.HelpItem)
+		categories = append(categories, section)
+		buckets[section] = append(buckets[section], item)
 	}
 
 	contentWidth := max(m.viewport.Width(), 1)
@@ -131,6 +140,9 @@ func (m *HelpViewModel) renderByIntentContent() string {
 		if len(item.descPositions) > 0 {
 			descLines[0] = HighlightText(descLines[0], item.descPositions, NormalStyle)
 		}
+		if suffix := helpAliasSuffix(item.matchedAliases, item.Description, descWidth); suffix != "" {
+			descLines[0] += MutedStyle.Render(suffix)
+		}
 		var result strings.Builder
 		for i, line := range descLines {
 			if i == 0 {
@@ -147,8 +159,8 @@ func (m *HelpViewModel) renderByIntentContent() string {
 
 	var b strings.Builder
 	first := true
-	for _, intent := range helpIntentOrder {
-		items := buckets[intent]
+	for _, section := range helpSectionsForCategories(categories) {
+		items := buckets[section]
 		if len(items) == 0 {
 			continue
 		}
@@ -156,7 +168,7 @@ func (m *HelpViewModel) renderByIntentContent() string {
 			b.WriteString("\n")
 		}
 		first = false
-		b.WriteString(HelpCategoryStyle.Render(intent))
+		b.WriteString(HelpCategoryStyle.Render(section))
 		b.WriteString("\n")
 		for j := 0; j < len(items); j += 2 {
 			col1 := columnStyle.Render(renderItem(items[j]))
@@ -174,7 +186,7 @@ func (m *HelpViewModel) renderByIntentContent() string {
 }
 
 func (m *HelpViewModel) renderContent() string {
-	return m.renderByIntentContent()
+	return m.renderBySectionContent()
 }
 
 // tabBarLines returns the number of visual lines the tab bar occupies.

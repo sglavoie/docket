@@ -74,6 +74,7 @@ func (registry *OperationRegistry) HelpItemsForInputStrategy(
 			Key:         displayKeysForOperation(strategy, binding.OperationID),
 			Description: descriptor.Label,
 			Category:    operationCategoryLabel(descriptor.Category),
+			Aliases:     descriptor.Aliases,
 		})
 	}
 	return items

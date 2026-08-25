@@ -7,7 +7,7 @@ import (
 )
 
 // NewHelpViewModel creates a new help view model.
-func NewHelpViewModel(items []HelpItem, sourceView PresentationID, viewName string) *HelpViewModel {
+func NewHelpViewModel(items []HelpItem, viewName string) *HelpViewModel {
 	searchInput := textinput.New()
 	searchInput.Placeholder = "Search keybindings..."
 	searchInput.CharLimit = 50
@@ -22,7 +22,6 @@ func NewHelpViewModel(items []HelpItem, sourceView PresentationID, viewName stri
 
 	m := &HelpViewModel{
 		items:          items,
-		sourceView:     sourceView,
 		viewName:       viewName,
 		searchMode:     false,
 		searchInput:    searchInput,
@@ -34,7 +33,7 @@ func NewHelpViewModel(items []HelpItem, sourceView PresentationID, viewName stri
 	for i, item := range items {
 		m.filteredItems[i] = filteredHelpItem{HelpItem: item}
 	}
-	m.categories = m.buildCategories()
+	m.categories = m.buildSectionCategories()
 	return m
 }
 

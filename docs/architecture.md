@@ -691,6 +691,27 @@ Hub, Notes, Comments, and Attachments — the chord, its alternate key, and the
 hidden `end` alias documented once rather than four times or not at all — and
 `TestEntitySurfaceHelpDocumentsBothEndSpellings` holds all four surfaces to it.
 
+A `?` section is the category its own projection assigned, not a second
+classification laid over it. `helpSectionsForCategories`
+(`internal/tui/help_render.go`) is the one ordering rule the body and the tab bar
+both read: the canonical `helpSectionOrder` first, then any category that list
+does not name in first-seen order, then `Other`. A projection that mints a new
+category therefore gets a section for free and can never be silently swallowed.
+
+Two things reach `?` that the registry does not own. `HelpItem.Aliases` carries
+`OperationDescriptor.Aliases` through, so `/` filtering matches vocabulary a
+label hides — `defer` reaches **Set Due or Defer**, `hidden` reaches **Filter by
+Due or Deferred** — and the row appends the aliases that earned it as a muted
+suffix, dropped whole rather than clipped when the description column has no
+room. Aliases feed matching only: their positions index into the alias, not into
+the rendered columns. `grammarHelpItems()` (`internal/tui/help_grammar.go`) then
+adds the **Capture & Edit Grammar** section from
+`textgrammar.GuideDefinitions` over the union of the capture, edit, and search
+surfaces, making the sigil language discoverable outside the composer's own `?`.
+It is the second `GuideDefinitions` consumer and teaches in the same order as the
+first. `AppModel.coreInputHelpItems` appends it, because `?` is a core input
+operation and that function is the Outliner's one help projection.
+
 A value provider is exactly one of `textEntry()` (a separate overlay),
 `tagEntry()` (inline add mode), `dateEntry()` (inline add mode), or a plain list
 such as `ValueProviderParent`.

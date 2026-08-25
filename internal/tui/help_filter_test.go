@@ -11,7 +11,7 @@ func helpSmartCaseModel() *HelpViewModel {
 		{Key: "p", Description: "insert below", Category: "Actions"},
 		{Key: "x", Description: "remove task", Category: "Actions"},
 		{Key: "gg", Description: "Cursor to start", Category: "Navigation"},
-	}, ViewCrossProjectOutliner, "Outliner")
+	}, "Outliner")
 }
 
 func helpFilteredKeys(m *HelpViewModel) []string {
@@ -70,17 +70,17 @@ func TestHelpFilterSmartCaseNarrowsThenFallsBack(t *testing.T) {
 
 func TestHelpTabSearchFallsBackToCaseInsensitiveMatch(t *testing.T) {
 	m := helpSmartCaseModel()
-	navigationTab := slices.Index(m.categories, "Navigate") + 1
+	navigationTab := slices.Index(m.categories, "Navigation") + 1
 	if navigationTab == 0 {
-		t.Fatalf("categories = %v, want a Navigate bucket", m.categories)
+		t.Fatalf("categories = %v, want a Navigation section", m.categories)
 	}
 
-	m.matchTab("Navigate")
+	m.matchTab("Navigation")
 	if m.activeTab != navigationTab {
 		t.Fatalf("exact-case tab = %d, want %d", m.activeTab, navigationTab)
 	}
 
-	m.matchTab("NAVIGATE")
+	m.matchTab("NAVIGATION")
 	if m.activeTab != navigationTab {
 		t.Fatalf("relaxed tab = %d, want the case-insensitive retry to land on %d", m.activeTab, navigationTab)
 	}

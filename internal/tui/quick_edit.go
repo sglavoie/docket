@@ -259,8 +259,8 @@ func (p *quickEditParser) applyDefer() bool {
 	case p.task != nil:
 		state = p.task.State()
 	}
-	if state.IsTerminal() {
-		return p.setError(fmt.Sprintf("cannot defer a %s task", state))
+	if refusal := app.DeferralRefusesState(state); refusal != "" {
+		return p.setError(refusal)
 	}
 	p.result.destination = textgrammar.DestinationBacklog
 	p.result.destinationSet = true

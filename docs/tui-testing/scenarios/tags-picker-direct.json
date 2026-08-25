@@ -73,7 +73,7 @@
 
     { "type": "key", "label": "open a picker with no explainer at all", "key": "f" },
     { "type": "key", "key": "@" },
-    { "type": "assert", "assert": "contains", "value": "Filter by Due Date" },
+    { "type": "assert", "assert": "contains", "value": "Filter by Due or Deferred" },
     { "type": "assert", "label": "a non-tag picker has no semantic explainer", "assert": "not_contains", "value": "colors its title." },
     { "type": "assert", "label": "the row still belongs to the previous action's status message", "assert": "contains", "value": "Set Tags: tags · u undo" },
     { "type": "assert", "assert": "no_layout_issues" }

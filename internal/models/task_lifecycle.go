@@ -170,12 +170,6 @@ func (t *Task) ApplyDeferAt(until, now time.Time) error {
 	return nil
 }
 
-// ClearDefer removes the deferral date from the task.
-func (t *Task) ClearDefer() {
-	t.DeferredUntil = nil
-	t.UpdatedAt = time.Now()
-}
-
 // IsOverdue returns true if the task has a due date in the past and is not complete.
 // Uses day-level comparison (normalizes to midnight local time).
 func (t *Task) IsOverdue() bool {

@@ -38,12 +38,3 @@ func TestIsDeferred_Past(t *testing.T) {
 		t.Error("Task with past DeferredUntil should not be deferred")
 	}
 }
-
-func TestClearDefer(t *testing.T) {
-	future := time.Now().AddDate(0, 0, 7)
-	task := &Task{DeferredUntil: &future}
-	task.ClearDefer()
-	if task.DeferredUntil != nil {
-		t.Error("ClearDefer should set DeferredUntil to nil")
-	}
-}

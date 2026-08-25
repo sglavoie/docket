@@ -283,8 +283,8 @@ func (s *Service) bulkDefer(taskIDs []string, locators []TaskLocator, until *tim
 		}
 	}()
 	for _, ref := range refs {
-		if ref.Task.IsTerminalState() {
-			return BulkResult{}, invalidInput("defer", fmt.Sprintf("cannot defer a %s task", ref.Task.State()))
+		if refusal := deferralRefusesState(ref.Task.State()); refusal != nil {
+			return BulkResult{}, refusal
 		}
 	}
 	now := s.clock.Now()

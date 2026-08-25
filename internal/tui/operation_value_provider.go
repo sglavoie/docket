@@ -907,27 +907,19 @@ func (m *AppModel) taskActionOperationApplicable(id OperationID, context Command
 	return true
 }
 
-func taskStateAllowsDefer(state string) bool {
-	switch models.WorkflowState(state) {
-	case models.StateInbox, models.StateBacklog, models.StateDoing,
-		models.StateWaiting, models.StatePaused, models.StateSomeday:
-		return true
-	default:
-		return false
-	}
-}
-
 // deferRefusalReason disables the whole defer section when any resolved task
 // cannot be deferred. One reason covers the single terminal task and the bulk
 // selection alike, and it leaves the due section reachable on the same rows the
-// old defer-specific applicability check used to hide outright.
+// old defer-specific applicability check used to hide outright. It reads
+// app.DeferralRefusesState so the picker refuses in the same words the mutation
+// would, rather than enumerating the deferrable states a second time.
 func deferRefusalReason(refs []TaskProjectRef) string {
 	for _, ref := range refs {
 		if ref.Task == nil {
 			continue
 		}
-		if !taskStateAllowsDefer(string(ref.Task.State())) {
-			return "terminal tasks cannot be deferred"
+		if refusal := app.DeferralRefusesState(ref.Task.State()); refusal != "" {
+			return refusal
 		}
 	}
 	return ""
@@ -1593,7 +1585,7 @@ func (m *AppModel) newOperationValuePicker(
 		return newOperationValuePickerModel(
 			request,
 			provider,
-			"Set Date",
+			"Set Due or Defer",
 			subtitle,
 			operationDateListSource(deferRefusalReason(refs)),
 			false,

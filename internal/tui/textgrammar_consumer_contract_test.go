@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/lipgloss/v2"
+
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 )
@@ -76,9 +78,10 @@ func TestSyntaxGuideExamplesAndGroupsComeFromCanonicalRegistry(t *testing.T) {
 	for _, group := range q.syntaxGuideGroups() {
 		entries = append(entries, group.entries...)
 	}
-	// Teach order, not parse order: the guide is the one consumer that reads
-	// GuideDefinitions, because the attachment sigil has to be peeled before #tag
-	// and must not lead the guide on that account.
+	// Teach order, not parse order: the composer guide and the `?` grammar
+	// section are the two consumers that read GuideDefinitions, because the
+	// attachment sigil has to be peeled before #tag and must not lead either
+	// teaching surface on that account.
 	definitions := textgrammar.GuideDefinitions(textgrammar.SurfaceCapture)
 	if len(entries) != len(definitions) {
 		t.Fatalf("syntax entries = %d, want %d registry definitions", len(entries), len(definitions))
@@ -99,6 +102,61 @@ func TestSyntaxGuideExamplesAndGroupsComeFromCanonicalRegistry(t *testing.T) {
 				t.Errorf("registry-backed syntax example %q does not parse: %v", input, err)
 			}
 		}
+	}
+}
+
+// TestHelpGrammarSectionComesFromCanonicalRegistry holds the `?` grammar section
+// to the same teach order the composer guide reads, over the union of the three
+// surfaces a sigil can be typed on. It is the second GuideDefinitions consumer,
+// so a new sigil that reaches the composer must reach `?` in the same pass.
+func TestHelpGrammarSectionComesFromCanonicalRegistry(t *testing.T) {
+	surfaces := textgrammar.SurfaceCapture | textgrammar.SurfaceEdit | textgrammar.SurfaceSearch
+	definitions := textgrammar.GuideDefinitions(surfaces)
+	items := grammarHelpItems()
+	if len(items) != len(definitions) {
+		t.Fatalf("grammar help rows = %d, want %d registry definitions", len(items), len(definitions))
+	}
+	for i, definition := range definitions {
+		item := items[i]
+		if got, want := item.Key, strings.Join(definition.Forms, " "); got != want {
+			t.Errorf("%s key = %q, want %q", definition.Field, got, want)
+		}
+		if !strings.HasPrefix(item.Description, definition.Description) {
+			t.Errorf("%s description = %q, want it to lead with %q", definition.Field, item.Description, definition.Description)
+		}
+		for _, clear := range definition.Clears {
+			if !strings.Contains(item.Description, clear.Description) {
+				t.Errorf("%s description = %q, want it to name the clear form %q", definition.Field, item.Description, clear.Description)
+			}
+		}
+		if item.Category != helpGrammarCategory {
+			t.Errorf("%s category = %q, want %q", definition.Field, item.Category, helpGrammarCategory)
+		}
+		// The key column is a fixed cell: a wider spelling wraps mid-token and the
+		// row stops reading as one form.
+		if width := lipgloss.Width(item.Key); width > helpKeyColumnWidth {
+			t.Errorf("%s key %q is %d cells, want at most %d", definition.Field, item.Key, width, helpKeyColumnWidth)
+		}
+		for _, alias := range item.Aliases {
+			if strings.TrimSpace(alias) == "" {
+				t.Errorf("%s carries a blank alias", definition.Field)
+			}
+		}
+	}
+
+	// The deferral sigil is the whole reason the section exists: it has no key of
+	// its own, so `?` is the only place outside the composer that can teach it.
+	deferRow := -1
+	for i, item := range items {
+		if strings.Contains(item.Key, "@@defer") {
+			deferRow = i
+		}
+	}
+	if deferRow < 0 {
+		t.Fatalf("grammar help omits @@defer: %#v", items)
+	}
+	if !slices.Contains(items[deferRow].Aliases, "@@any") || !slices.Contains(items[deferRow].Aliases, "@@none") {
+		t.Errorf("deferral aliases = %v, want the search-only presets", items[deferRow].Aliases)
 	}
 }
 

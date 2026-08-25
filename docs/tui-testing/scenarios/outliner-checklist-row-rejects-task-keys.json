@@ -18,7 +18,7 @@
     { "type": "key", "label": "Set Priority has no item meaning", "key": "!" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task row to use this action" },
 
-    { "type": "key", "label": "Set Date has no item meaning", "key": "@" },
+    { "type": "key", "label": "Set Due or Defer has no item meaning", "key": "@" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "move the cursor to a task row to use this action" },
 

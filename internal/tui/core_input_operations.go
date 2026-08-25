@@ -597,9 +597,8 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		}
 	case operationCoreHelp:
 		message = ShowHelpMsg{
-			SourceView: m.currentView(),
-			ViewName:   "Outliner",
-			Items:      m.coreInputHelpItems(),
+			ViewName: "Outliner",
+			Items:    m.coreInputHelpItems(),
 		}
 	case operationCoreQuit:
 		message = QuitMsg{}
@@ -1024,12 +1023,18 @@ func (m *AppModel) coreToggleTheme() error {
 	return nil
 }
 
+// coreInputHelpItems documents the Outliner from the two grammars a user meets
+// there: the registry's keys and the shared sigil language they type into
+// capture, inline edit, and search. The grammar rows are appended here rather
+// than inside HelpItemsForInputStrategy so that stays a pure registry
+// projection and the grammar section stays Outliner-scoped.
 func (m *AppModel) coreInputHelpItems() []HelpItem {
 	if m.operationRegistry == nil {
 		return nil
 	}
-	return m.operationRegistry.HelpItemsForInputStrategy(
+	items := m.operationRegistry.HelpItemsForInputStrategy(
 		InputStrategySimplified,
 		m.operationCommandContext(),
 	)
+	return append(items, grammarHelpItems()...)
 }

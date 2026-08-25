@@ -145,7 +145,7 @@ func (m *TaskCommentsModel) handleNormalKey(key string) tea.Cmd {
 	// to the Outliner, so raising it through the executor would render the Outliner
 	// grammar; the panel names its own instead.
 	if key == "?" {
-		return helpCmd(ViewTaskComments, "Comments", m.GetHelpItems())
+		return helpCmd("Comments", m.GetHelpItems())
 	}
 	// The core undo descriptors answer only to the Outliner, so the press asks the
 	// shell for the one workspace ledger rather than dispatching. Update has

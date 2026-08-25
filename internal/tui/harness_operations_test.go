@@ -57,9 +57,8 @@ func (m *AppModel) registerHarnessOperations() error {
 		{operationHarnessOutlinerRoot, "outliner root", OperationCategoryNavigation, func() tea.Msg { return m.harnessOpenOutliner(OutlinerOpenOptions{}) }},
 		{operationHarnessReference, "reference", OperationCategorySystem, func() tea.Msg {
 			return ShowHelpMsg{
-				SourceView: m.currentView(),
-				ViewName:   "Outliner",
-				Items:      m.coreInputHelpItems(),
+				ViewName: "Outliner",
+				Items:    m.coreInputHelpItems(),
 			}
 		}},
 		{operationHarnessScope, "choose scope", OperationCategoryScope, func() tea.Msg { return ShowProjectHubMsg{} }},

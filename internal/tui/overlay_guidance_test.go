@@ -31,7 +31,7 @@ func assertSession8Guidance(t *testing.T, state string, spec GuidanceSpec, ok bo
 }
 
 func TestHelpGuidanceTracksBrowseSearchTabAndEmptyStates(t *testing.T) {
-	model := NewHelpViewModel([]HelpItem{{Key: "j", Description: "Move", Category: "Navigate"}}, ViewCrossProjectOutliner, "Outliner")
+	model := NewHelpViewModel([]HelpItem{{Key: "j", Description: "Move", Category: "Navigate"}}, "Outliner")
 	model.SetSize(90, 24)
 
 	spec, ok := model.ContextualGuidance()

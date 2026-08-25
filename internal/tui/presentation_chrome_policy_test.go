@@ -204,7 +204,7 @@ func TestPresentationChromeEligibleFamiliesRenderWorkspacePulse(t *testing.T) {
 			return m.View().Content
 		}},
 		{name: "help", view: func(pulse WorkspacePulse) string {
-			m := NewHelpViewModel(nil, ViewCrossProjectOutliner, "Outliner")
+			m := NewHelpViewModel(nil, "Outliner")
 			m.SetSize(140, 30)
 			m.setWorkspacePulse(pulse)
 			return m.View().Content

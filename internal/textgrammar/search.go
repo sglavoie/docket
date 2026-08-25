@@ -3,6 +3,7 @@ package textgrammar
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -15,6 +16,21 @@ var searchDuePresetNames = []string{"overdue", "today", "week", "none"}
 // understands. "any" and "none" split the population the deferral instant
 // itself cannot express.
 var searchDeferPresetNames = []string{"any", "none"}
+
+// SearchPresetValues returns the relational values only search understands for a
+// field, and nil for a field that has none. It exists so a surface teaching the
+// search vocabulary reads the same list ParseSearch matches against rather than
+// hand-authoring a second copy that can drift.
+func SearchPresetValues(field Field) []string {
+	switch field { //nolint:exhaustive // Only the two relational fields have search-only values.
+	case FieldDue:
+		return slices.Clone(searchDuePresetNames)
+	case FieldDefer:
+		return slices.Clone(searchDeferPresetNames)
+	default:
+		return nil
+	}
+}
 
 // ParseSearch parses one live search-box value on SurfaceSearch and adds the
 // diagnostics only search can raise: the reserved context name and the

@@ -17,7 +17,7 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 		return true, tea.Batch(m.delegateToCurrentView(msg), statusTimeout(5*time.Second))
 
 	case ShowHelpMsg:
-		m.helpView = NewHelpViewModel(msg.Items, msg.SourceView, msg.ViewName)
+		m.helpView = NewHelpViewModel(msg.Items, msg.ViewName)
 		m.showView(ViewHelp, m.helpView)
 		return true, nil
 

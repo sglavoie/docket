@@ -312,7 +312,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				project.Archive()
 				fixture := newSession4LifecycleFixture(t, project)
 				live := fixture.app.projectByID(project.ID)
-				fixture.app.views.Register(ViewHelp, NewHelpViewModel(nil, ViewCrossProjectOutliner, "Help"))
+				fixture.app.views.Register(ViewHelp, NewHelpViewModel(nil, "Help"))
 				setTestPresentationPath(fixture.app, ViewUnknown, ViewCrossProjectOutliner, ViewHelp)
 
 				_, cmd := fixture.app.handleProjectMessages(ProjectRestoredMsg{Project: live})

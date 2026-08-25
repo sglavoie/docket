@@ -640,6 +640,10 @@ func (m *OutlinerModel) renderTaskIndicatorSegments(row outlinerRow) taskIndicat
 			segments.deferred = formatDeferIndicator(task, now)
 		}
 	}
+	// deferCount is deliberately outside that branch. Repeated deferral is its
+	// own behavioral signal, and docs/decisions/behavioral-signals-contracts.md
+	// locks the split: hiding the defer column hides the pending instant and the
+	// wake marker, while the count survives at or above the threshold.
 	segments.deferCount = formatDeferCountIndicator(task)
 	if m.columnConfig.IsVisible(ColChecklist) {
 		segments.checklist = renderChecklistIndicator(task)

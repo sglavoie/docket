@@ -13,7 +13,7 @@
     { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
 
     { "type": "key", "label": "open the date picker over the selection", "key": "@" },
-    { "type": "assert", "assert": "contains", "value": "Set Date" },
+    { "type": "assert", "assert": "contains", "value": "Set Due or Defer" },
     { "type": "key", "label": "step past the five due rows into the defer section", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },

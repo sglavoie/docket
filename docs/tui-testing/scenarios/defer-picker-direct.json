@@ -7,7 +7,7 @@
     { "type": "key", "label": "move the cursor onto the Doing task", "key": "j" },
 
     { "type": "key", "label": "open the one date picker with its direct key", "key": "@" },
-    { "type": "assert", "assert": "contains", "value": "Set Date: Build login form" },
+    { "type": "assert", "assert": "contains", "value": "Set Due or Defer: Build login form" },
     { "type": "assert", "label": "one picker carries both fields as sections", "assert": "contains", "value": "DUE" },
     { "type": "assert", "assert": "contains", "value": "DEFER" },
     { "type": "assert", "assert": "contains", "value": "Clear defer" },
@@ -20,7 +20,7 @@
 
     { "type": "key", "label": "cancel back to the Outliner", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "not_contains", "value": "Set Date" },
+    { "type": "assert", "assert": "not_contains", "value": "Set Due or Defer" },
 
     { "type": "key", "label": "reopen the picker", "key": "@" },
     { "type": "key", "label": "step past the five due rows onto Clear defer", "key": "j" },

@@ -206,11 +206,12 @@ were in and says so.
 | Selection | `v` toggles the cursor task; `V` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
 | Global | `P` Select Project, `Ctrl+N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
 
-`@` opens one Set Date picker holding both fields. Its DUE section lists Clear,
-Today, Tomorrow, In one week, and In one month; its DEFER section lists Clear
-defer, In 1 hour, In 4 hours, In 8 hours, Tomorrow morning, Until tomorrow, For
-one week, and For one month. The row you commit decides which field is written,
-and the cursor opens in the due section, so a due date is one `Enter` away.
+`@` opens one Set Due or Defer picker holding both fields. Its DUE section lists
+Clear, Today, Tomorrow, In one week, and In one month; its DEFER section lists
+Clear defer, In 1 hour, In 4 hours, In 8 hours, Tomorrow morning, Until
+tomorrow, For one week, and For one month. The row you commit decides which
+field is written, and the cursor opens in the due section, so a due date is one
+`Enter` away.
 Tomorrow morning is 09:00 on the local wall clock, on daylight-saving transition
 days too. A preset is highlighted as the current value only when it is
 reproducible from the clock alone, so the three hour rows never highlight. On a
@@ -224,11 +225,18 @@ sits in the defer section, because a deferral is an instant and a due date is a
 calendar day; the due section refuses them by name. Inside the `#` picker the
 same key adds a new tag, or a new context when the cursor sits on a context row.
 
+`?` opens the generated key reference for the surface you are on, sectioned by
+the same categories the operations declare, with a **Capture & Edit Grammar**
+section holding the sigils — `@@defer` among them — that no key spells. `\`
+jumps to a section, `/` filters the rows, and the filter reads vocabulary the
+labels hide: `defer` finds `@` **Set Due or Defer** and `hidden` finds `f@`
+**Filter by Due or Deferred**, each row naming the word that matched it.
+
 The operation descriptors are the single source for dispatch, contextual
-guidance, chord hints, and `?` help. Every key an earlier vocabulary used and
-the sigils replaced is simply unbound, with no compatibility action, and every
-surface's retirements are inventoried here rather than left beside the surface
-that dropped them. The Outliner gave up the old standalone `b`, `c`, `m`, and
+guidance, chord hints, and the key rows of `?` help. Every key an earlier
+vocabulary used and the sigils replaced is simply unbound, with no compatibility
+action, and every surface's retirements are inventoried here rather than left
+beside the surface that dropped them. The Outliner gave up the old standalone `b`, `c`, `m`, and
 `w` actions, the comma state prefix, and `:`, `C`, `R`, and `Ctrl+Esc`. Two
 names came back with new acts rather than as aliases: `t` is the task-subtree
 fold and `P` is Select Project.
@@ -439,7 +447,7 @@ reordering — still asks you to exit search first.
 | `fc` | Pick completed at least 7, 30, or 90 local-calendar days ago, or all valid completion ages; also filters states to Done and Canceled |
 | `f#` | Pick tags and task contexts with AND semantics; each selected value matches either field, and a value used as a context is listed under `CONTEXTS` above `TAGS` |
 | `fr` | Toggle the `review` tag facet |
-| `f@` | Open the due-date facet picker: overdue, today, this week, no due date, or deferred-only |
+| `f@` | Open the Filter by Due or Deferred picker: overdue, today, this week, no due date, or deferred-only |
 | `fh` | Pick one hierarchy position: parent, child, root, or leaf; parent and leaf read open children |
 | `fs` | Toggle open, undeferred work untouched for at least 90 local-calendar days; unavailable in Recent, whose entry clears only Stale and reports `Stale filter cleared: Recent only includes the last 30 days` |
 | `fx` | Clear every facet |

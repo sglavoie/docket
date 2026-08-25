@@ -25,7 +25,7 @@ func taskDirectOperationManifest() []operationManifestEntry {
 		{ID: operationTaskComments, Label: "Comments", Aliases: []string{"add comment"}, Category: taskActionCategoryContent, Risk: OperationRiskMutation, DirectOnly: true},
 		{ID: operationTaskSetState, Label: "Set State", Aliases: []string{"workflow state", "status"}, Provider: ValueProviderState, Category: taskActionCategoryPlan, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operationTaskSetPriority, Label: "Set Priority", Aliases: []string{"importance"}, Provider: ValueProviderPriority, Category: taskActionCategoryPlan, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
-		{ID: operationTaskSetDueDate, Label: "Set Date", Aliases: []string{"deadline", "due date", "defer", "hide until"}, Provider: ValueProviderDate, Category: taskActionCategoryPlan, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
+		{ID: operationTaskSetDueDate, Label: "Set Due or Defer", Aliases: []string{"deadline", "due date", "defer", "hide until"}, Provider: ValueProviderDate, Category: taskActionCategoryPlan, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operationTaskSetTags, Label: "Set Tags & Context", Aliases: []string{"labels", "context"}, Provider: ValueProviderTags, Category: taskActionCategoryOrganize, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operationTaskTogglePin, Label: "Toggle Pin", Aliases: []string{"pin task", "unpin task", "keep on top"}, Category: taskActionCategoryOrganize, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operationCoreEdit, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
