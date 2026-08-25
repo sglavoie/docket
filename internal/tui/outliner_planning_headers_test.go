@@ -14,6 +14,7 @@ func TestPlanningRowsGroupEachProjectUnderOneHeader(t *testing.T) {
 	betaOne := primaryRowsTask("beta-one", models.StateBacklog)
 	alpha := primaryRowsProject("alpha", alphaOne, alphaTwo)
 	beta := primaryRowsProject("beta", betaOne)
+	beta.Pinned = true
 	outliner, runtime := primaryRowsOutliner(alpha, beta)
 	runtime.Planning().SetNext([]config.ProjectTaskLocator{
 		{ProjectID: alpha.ID, TaskID: alphaOne.ID},
@@ -25,9 +26,9 @@ func TestPlanningRowsGroupEachProjectUnderOneHeader(t *testing.T) {
 		t.Run(string(mode), func(t *testing.T) {
 			outliner.selectOutlinerMode(mode)
 			if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{
-				alphaOne.ID, alphaTwo.ID, betaOne.ID,
+				betaOne.ID, alphaOne.ID, alphaTwo.ID,
 			}) {
-				t.Fatalf("Next task order = %v, want stable order within first-seen project groups", got)
+				t.Fatalf("Next task order = %v, want rows grouped under pinned-first project headers", got)
 			}
 
 			var headers []string
@@ -38,8 +39,8 @@ func TestPlanningRowsGroupEachProjectUnderOneHeader(t *testing.T) {
 					counts[row.ProjectID] = row.SectionCount
 				}
 			}
-			if !slices.Equal(headers, []string{alpha.ID, beta.ID}) {
-				t.Fatalf("Next project headers = %v, want one per project in first-seen order", headers)
+			if !slices.Equal(headers, []string{beta.ID, alpha.ID}) {
+				t.Fatalf("Next project headers = %v, want pinned projects first", headers)
 			}
 			if counts[alpha.ID] != 2 || counts[beta.ID] != 1 {
 				t.Fatalf("Next project counts = %v, want alpha=2 and beta=1", counts)
@@ -88,10 +89,11 @@ func TestTodayRowsUseTheSameProjectHeaderContract(t *testing.T) {
 	betaTask := primaryRowsTask("beta-today", models.StateBacklog)
 	alpha := primaryRowsProject("alpha", alphaTask)
 	beta := primaryRowsProject("beta", betaTask)
+	beta.Pinned = true
 	outliner, runtime := primaryRowsOutliner(alpha, beta)
 	runtime.Planning().SetToday([]config.ProjectTaskLocator{
-		{ProjectID: beta.ID, TaskID: betaTask.ID},
 		{ProjectID: alpha.ID, TaskID: alphaTask.ID},
+		{ProjectID: beta.ID, TaskID: betaTask.ID},
 	})
 	outliner.selectOutlinerMode(ModeAll)
 
@@ -102,6 +104,6 @@ func TestTodayRowsUseTheSameProjectHeaderContract(t *testing.T) {
 		}
 	}
 	if !slices.Equal(headers, []string{beta.ID, alpha.ID}) {
-		t.Fatalf("Today project headers = %v, want one per project in first-seen order", headers)
+		t.Fatalf("Today project headers = %v, want pinned projects first", headers)
 	}
 }

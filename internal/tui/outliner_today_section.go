@@ -95,9 +95,10 @@ func planningProjectCollapseKey(projectID string, group models.WorkflowStateGrou
 
 // appendPlanningRows derives subtree rank from the workspace-wide durable order
 // while restoring project context in the unscoped cross-project Outliner. A
-// subtree occupies its earliest member's rank. Projects are ordered by their
-// first appearance, and all of a project's roots are rendered under one header
-// while retaining their relative durable order.
+// subtree occupies its earliest member's rank. Pinned projects are grouped
+// first, then project groups are ordered alphabetically, and all of a
+// project's roots are rendered under one header while retaining their relative
+// durable order.
 func (m *OutlinerModel) appendPlanningRows(rows []outlinerRow, group models.WorkflowStateGroup) {
 	if len(rows) == 0 {
 		return

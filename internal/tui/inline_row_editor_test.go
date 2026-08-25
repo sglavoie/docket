@@ -443,8 +443,8 @@ func TestTaskLineEditRelocationFollowsVisibleResultAndFallsBackAtOrigin(t *testi
 	makeOutliner := func() (*OutlinerModel, *models.Project, *models.Project, *models.Task) {
 		task := &models.Task{ID: "moving", ShortID: 1, Title: "Moving", WorkflowState: models.StateBacklog}
 		neighbor := &models.Task{ID: "neighbor", ShortID: 2, Title: "Neighbor", WorkflowState: models.StateBacklog}
-		source := &models.Project{ID: "source", Slug: "source", Name: "Source", Tasks: []*models.Task{task, neighbor}}
-		destination := &models.Project{ID: "destination", Slug: "destination", Name: "Destination"}
+		source := &models.Project{ID: "alpha-source", Slug: "alpha-source", Name: "Source", Tasks: []*models.Task{task, neighbor}}
+		destination := &models.Project{ID: "zeta-destination", Slug: "zeta-destination", Name: "Destination"}
 		out := NewOutlinerModel(nil, nil, nil)
 		out.loadedProjects = []*models.Project{source, destination}
 		out.crossSnapshotReady = true

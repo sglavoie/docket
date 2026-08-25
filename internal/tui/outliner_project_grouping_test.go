@@ -95,11 +95,27 @@ func TestFlatModesGroupCrossProjectRowsByProject(t *testing.T) {
 			}
 			headers, counts := projectGroupHeaders(outliner)
 			if !slices.Equal(headers, []string{fixture.alpha.ID, fixture.beta.ID}) {
-				t.Fatalf("%s project headers = %v, want one per project in first-seen order",
+				t.Fatalf("%s project headers = %v, want one per project in alphabetical order",
 					mode, headers)
 			}
 			if counts[fixture.alpha.ID] != 2 || counts[fixture.beta.ID] != 1 {
 				t.Fatalf("%s project counts = %v, want alpha=2 and beta=1", mode, counts)
+			}
+		})
+	}
+}
+
+func TestFlatModesPlacePinnedProjectGroupsFirst(t *testing.T) {
+	for _, mode := range flatGroupingModes {
+		t.Run(string(mode), func(t *testing.T) {
+			fixture := newGroupingFixture(t, mode)
+			fixture.beta.Pinned = true
+			outliner, _ := primaryRowsOutliner(fixture.alpha, fixture.beta)
+			outliner.selectOutlinerMode(mode)
+
+			headers, _ := projectGroupHeaders(outliner)
+			if !slices.Equal(headers, []string{fixture.beta.ID, fixture.alpha.ID}) {
+				t.Fatalf("%s project headers = %v, want pinned projects first", mode, headers)
 			}
 		})
 	}
@@ -132,7 +148,7 @@ func TestFlatModeProjectHeadersDisappearInSingleProjectScopes(t *testing.T) {
 	}
 }
 
-func TestDueProjectGroupsFollowDateNotCatalogOrder(t *testing.T) {
+func TestDueProjectGroupsUseAlphabeticalProjectHeaders(t *testing.T) {
 	alphaTask := groupingDueTask("alpha-task", -1)
 	betaTask := groupingDueTask("beta-task", -3)
 	alpha := primaryRowsProject("alpha", alphaTask)
@@ -141,15 +157,15 @@ func TestDueProjectGroupsFollowDateNotCatalogOrder(t *testing.T) {
 	outliner, _ := primaryRowsOutliner(alpha, beta)
 	outliner.selectOutlinerMode(ModeDue)
 
-	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{betaTask.ID, alphaTask.ID}) {
-		t.Fatalf("Due rows = %v, want date order", got)
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{alphaTask.ID, betaTask.ID}) {
+		t.Fatalf("Due rows = %v, want rows grouped by alphabetical project headers", got)
 	}
-	if headers, _ := projectGroupHeaders(outliner); !slices.Equal(headers, []string{beta.ID, alpha.ID}) {
-		t.Fatalf("Due project headers = %v, want date order rather than catalog order", headers)
+	if headers, _ := projectGroupHeaders(outliner); !slices.Equal(headers, []string{alpha.ID, beta.ID}) {
+		t.Fatalf("Due project headers = %v, want alphabetical order", headers)
 	}
 }
 
-func TestRecentProjectGroupOrderFreezesAcrossTriageAndRefreshesOnReentry(t *testing.T) {
+func TestRecentProjectHeadersStayAlphabeticalAcrossTriageAndReentry(t *testing.T) {
 	alphaTask := recentTask("alpha-task", models.StateBacklog, 4)
 	betaTask := recentTask("beta-task", models.StateBacklog, 3)
 	alpha := primaryRowsProject("alpha", alphaTask)
@@ -157,19 +173,19 @@ func TestRecentProjectGroupOrderFreezesAcrossTriageAndRefreshesOnReentry(t *test
 
 	outliner, _ := primaryRowsOutliner(alpha, beta)
 	outliner.selectOutlinerMode(ModeRecent)
-	if headers, _ := projectGroupHeaders(outliner); !slices.Equal(headers, []string{beta.ID, alpha.ID}) {
-		t.Fatalf("Recent project headers = %v, want newest activity first", headers)
+	if headers, _ := projectGroupHeaders(outliner); !slices.Equal(headers, []string{alpha.ID, beta.ID}) {
+		t.Fatalf("Recent project headers = %v, want alphabetical order", headers)
 	}
 
 	alphaTask.UpdatedAt = time.Now()
 	outliner.rebuildRows()
-	if headers, _ := projectGroupHeaders(outliner); !slices.Equal(headers, []string{beta.ID, alpha.ID}) {
-		t.Fatalf("Recent project headers after triage = %v, want the frozen order", headers)
+	if headers, _ := projectGroupHeaders(outliner); !slices.Equal(headers, []string{alpha.ID, beta.ID}) {
+		t.Fatalf("Recent project headers after triage = %v, want the same alphabetical order", headers)
 	}
 
 	outliner.selectOutlinerMode(ModeRecent)
 	if headers, _ := projectGroupHeaders(outliner); !slices.Equal(headers, []string{alpha.ID, beta.ID}) {
-		t.Fatalf("Recent project headers after re-entry = %v, want re-read activity order", headers)
+		t.Fatalf("Recent project headers after re-entry = %v, want alphabetical order", headers)
 	}
 }
 

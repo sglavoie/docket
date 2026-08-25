@@ -293,7 +293,7 @@ func TestPlanningOrderMutationRefreshPreservesQualifiedCursorIdentity(t *testing
 			got = append(got, row.ProjectID+"/"+row.task.ID)
 		}
 	}
-	want := []string{"beta/shared", "alpha/shared"}
+	want := []string{"alpha/shared", "beta/shared"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("refreshed Today rows = %v, want %v", got, want)
 	}

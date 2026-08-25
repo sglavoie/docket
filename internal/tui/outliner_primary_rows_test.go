@@ -366,11 +366,11 @@ func TestPrimaryModeMembershipHierarchyOrderingAndQualifiedRows(t *testing.T) {
 
 	outliner.selectOutlinerMode(ModeNext)
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{
-		betaNext.ID,
 		alphaNext.ID,
 		alphaNextChild.ID,
+		betaNext.ID,
 	}) {
-		t.Fatalf("Next rows = %v, want NextOrder order with hierarchy intact", got)
+		t.Fatalf("Next rows = %v, want pinned-first/alphabetical project grouping with hierarchy intact", got)
 	}
 	for _, row := range outliner.rows {
 		if row.isTaskRow() && row.ProjectID == "" {
@@ -386,7 +386,7 @@ func TestPrimaryModeMembershipHierarchyOrderingAndQualifiedRows(t *testing.T) {
 
 	outliner.expandedNodes[TaskIdentity{ProjectID: alpha.ID, TaskID: alphaNext.ID}] = false
 	outliner.rebuildRows()
-	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{betaNext.ID, alphaNext.ID}) {
+	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{alphaNext.ID, betaNext.ID}) {
 		t.Fatalf("collapsed Next rows = %v, want nested child hidden", got)
 	}
 	if row, ok := findPlanningTaskRow(outliner, alphaNextChild.ID); ok {

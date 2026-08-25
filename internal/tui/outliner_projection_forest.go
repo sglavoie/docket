@@ -1,8 +1,10 @@
 package tui
 
 import (
+	"cmp"
 	"slices"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -116,11 +118,11 @@ type projectRowGroup struct {
 }
 
 // groupSectionRowsByProject splits an ordered section projection into
-// per-project forests. Groups appear in the order the caller's own sort first
-// names each project, so grouping never outranks the order the section exists
-// to provide. No parent/child edge can cross a group boundary because a parent
-// identity is always project-local, so splitting before building the forests is
-// equivalent to building one forest over the whole section.
+// per-project forests. Groups are sorted with pinned projects first, then by
+// their display label alphabetically, so every section keeps one consistent
+// project-header order. No parent/child edge can cross a group boundary because
+// a parent identity is always project-local, so splitting before building the
+// forests is equivalent to building one forest over the whole section.
 func (m *OutlinerModel) groupSectionRowsByProject(
 	rows []outlinerRow,
 	opts sectionForestOptions,
@@ -141,7 +143,54 @@ func (m *OutlinerModel) groupSectionRowsByProject(
 	for index := range groups {
 		groups[index].forest = m.buildSectionRowForestWith(grouped[index], opts)
 	}
+	sort.SliceStable(groups, func(i, j int) bool {
+		return m.compareProjectGroupIDs(groups[i].projectID, groups[j].projectID) < 0
+	})
 	return groups
+}
+
+func (m *OutlinerModel) compareProjectGroupIDs(leftID, rightID string) int {
+	leftProject := m.projectByGroupID(leftID)
+	rightProject := m.projectByGroupID(rightID)
+	leftPinned := leftProject != nil && leftProject.Pinned
+	rightPinned := rightProject != nil && rightProject.Pinned
+	switch {
+	case leftPinned && !rightPinned:
+		return -1
+	case !leftPinned && rightPinned:
+		return 1
+	}
+	if c := cmp.Compare(
+		projectGroupSortLabel(leftProject, leftID),
+		projectGroupSortLabel(rightProject, rightID),
+	); c != 0 {
+		return c
+	}
+	return cmp.Compare(leftID, rightID)
+}
+
+func (m *OutlinerModel) projectByGroupID(projectID string) *models.Project {
+	if m == nil {
+		return nil
+	}
+	if m.project != nil {
+		if projectID == "" || m.project.ID == projectID {
+			return m.project
+		}
+		return nil
+	}
+	return m.crossResolveProject(projectID)
+}
+
+func projectGroupSortLabel(project *models.Project, fallbackID string) string {
+	if project != nil {
+		for _, value := range []string{project.Slug, project.Name, project.ID} {
+			if key := strings.ToLower(strings.TrimSpace(value)); key != "" {
+				return key
+			}
+		}
+	}
+	return strings.ToLower(strings.TrimSpace(fallbackID))
 }
 
 // appendProjectGroupHeader emits one synthetic project sub-header and reports

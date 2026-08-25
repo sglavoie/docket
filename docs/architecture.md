@@ -165,11 +165,10 @@ never a second root.
 
 Project grouping is universal, not per-mode: whenever the Outliner shows more
 than one project, every mode emits a foldable `IsProjectHeader` row per project,
-and project groups appear in the order the mode's own order first names them.
-Grouping never reorders a mode's primary sort. All of them emit those headers
-through the shared `appendProjectGroupHeader` kernel, and each grouping surface
-owns a disjoint `collapsedSections` key namespace, because that map is never
-cleared on a mode change.
+and project groups put pinned projects first and then sort alphabetically. All
+of them emit those headers through the shared `appendProjectGroupHeader`
+kernel, and each grouping surface owns a disjoint `collapsedSections` key
+namespace, because that map is never cleared on a mode change.
 
 That kernel takes the group's tasks rather than a count, because it computes the
 header's own `OverdueCount` and `TodayCount` from them; the Today membership

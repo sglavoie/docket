@@ -144,7 +144,7 @@ one narrow question and show no Pinned section, so their own order stays whole;
 a pinned task there wears a bold `*` left of its context badge and title.
 Pinned tasks appear once in project groups, each promoted child wearing the bare
 `‹` parent marker whose chain Peek names. Groups
-sort by their newest pin. Tasks inside a group start newest-first and `J`/`K`
+put pinned projects first, then sort alphabetically. Tasks inside a group start newest-first and `J`/`K`
 reorder them manually; a pinned subtree ranks by its own root's pin, and `J`/`K`
 never move a task across a project group. `Ctrl+J`/`Ctrl+K` take the same route
 in one press and one undo entry. All, Inbox, and Backlog preserve hierarchy and
@@ -159,12 +159,10 @@ and deferred work stay hidden unless a filter explicitly asks for them.
 Every mode groups its tasks by project when you are looking at more than one
 project. A project group is a foldable `[slug] (count)` header; focus a single
 project and the headers disappear because the header line already names it.
-Project groups appear in the order the mode's own order first names them, so
-grouping never outranks the order the mode exists to provide: Pinned groups sort
-by their newest pin, Due groups by their earliest due date, Recent groups by
-their most recent activity, and All, Inbox, and Backlog groups in project
-catalog order. Tasks inside a group keep hierarchy, the parent marker, and the
-mode's own sort; `J`/`K` never move a task across a project group.
+Project groups put pinned projects first and then sort alphabetically, and that
+header order stays the same across sections and modes. Tasks inside a group keep
+hierarchy, the parent marker, and the mode's own sort; `J`/`K` never move a
+task across a project group.
 
 A project header also names the pressure its group holds, as `overdue 2` and
 `today 3` after the count, so folding the group does not hide what is urgent

@@ -32,7 +32,7 @@ func TestPinnedSectionAppearsAbovePromotingModesAndDeduplicatesQualifiedTasks(t 
 	beta.Name, beta.Slug = "Beta", "beta"
 
 	outliner, _ := primaryRowsOutliner(alpha, beta)
-	outliner.loadedProjects = []*models.Project{beta, alpha} // catalog order resolves equal pin times.
+	outliner.loadedProjects = []*models.Project{beta, alpha}
 
 	for _, mode := range []OutlinerModeID{ModeAll, ModeToday} {
 		t.Run(string(mode), func(t *testing.T) {
@@ -62,7 +62,7 @@ func TestPinnedSectionAppearsAbovePromotingModesAndDeduplicatesQualifiedTasks(t 
 				t.Fatalf("Pinned groups/tasks = %d/%d, want 2/3", len(projectHeaders), len(pinnedTasks))
 			}
 			if got := []string{projectHeaders[0].ProjectID, projectHeaders[1].ProjectID}; !slices.Equal(got, []string{"alpha", "beta"}) {
-				t.Fatalf("Pinned project groups = %v, want newest-pin-first group order", got)
+				t.Fatalf("Pinned project groups = %v, want alphabetical order", got)
 			}
 			if got := []int{projectHeaders[0].SectionCount, projectHeaders[1].SectionCount}; !slices.Equal(got, []int{2, 1}) {
 				t.Fatalf("Pinned project counts = %v, want [2 1]", got)
@@ -234,7 +234,7 @@ func TestPinnedSectionOmitsProjectHeaderInFocusedProjectScope(t *testing.T) {
 	}
 }
 
-func TestPinnedAndDueTiesUseCatalogThenProjectDocumentOrder(t *testing.T) {
+func TestPinnedAndDueTiesUsePinnedProjectThenAlphabeticalOrder(t *testing.T) {
 	now := time.Date(2026, 7, 29, 9, 0, 0, 0, time.UTC)
 	alphaA := primaryRowsTask("alpha-a", models.StateBacklog)
 	alphaB := primaryRowsTask("alpha-b", models.StateBacklog)
@@ -244,7 +244,8 @@ func TestPinnedAndDueTiesUseCatalogThenProjectDocumentOrder(t *testing.T) {
 	}
 	alpha := primaryRowsProject("alpha", alphaA, alphaB)
 	beta := primaryRowsProject("beta", betaA)
-	runtime := testConfigWithProjects(beta, alpha)
+	beta.Pinned = true
+	runtime := testConfigWithProjects(alpha, beta)
 	outliner := NewOutlinerModel(nil, nil, runtime)
 	outliner.loadedProjects = []*models.Project{alpha, beta}
 
@@ -254,7 +255,7 @@ func TestPinnedAndDueTiesUseCatalogThenProjectDocumentOrder(t *testing.T) {
 		"alpha/alpha-a",
 		"alpha/alpha-b",
 	}) {
-		t.Fatalf("Pinned tie order = %v, want catalog then document order", got)
+		t.Fatalf("Pinned tie order = %v, want pinned projects first then alphabetical", got)
 	}
 
 	for _, task := range []*models.Task{alphaA, alphaB, betaA} {
@@ -266,7 +267,7 @@ func TestPinnedAndDueTiesUseCatalogThenProjectDocumentOrder(t *testing.T) {
 		"alpha/alpha-a",
 		"alpha/alpha-b",
 	}) {
-		t.Fatalf("Due tie order = %v, want catalog then document order", got)
+		t.Fatalf("Due tie order = %v, want pinned projects first then alphabetical", got)
 	}
 }
 

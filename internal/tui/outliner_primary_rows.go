@@ -409,7 +409,18 @@ func (m *OutlinerModel) appendStateGroupForests(
 	if m.sectionCollapsed(collapseKey) {
 		return
 	}
-	for _, item := range forests {
+	ordered := slices.Clone(forests)
+	sort.SliceStable(ordered, func(i, j int) bool {
+		leftID, rightID := "", ""
+		if ordered[i].project != nil {
+			leftID = ordered[i].project.ID
+		}
+		if ordered[j].project != nil {
+			rightID = ordered[j].project.ID
+		}
+		return m.compareProjectGroupIDs(leftID, rightID) < 0
+	})
+	for _, item := range ordered {
 		projectID := ""
 		if m.project == nil {
 			projectID = item.project.ID
@@ -467,12 +478,23 @@ func (m *OutlinerModel) sortPrimaryTaskTree(tasks []*models.Task) []*models.Task
 	return sorted
 }
 
-// flattenPrimaryProjectTrees renders one project group per tree. Trees arrive in
-// catalog order and each keeps its own tree-prefix run, so the last root of a
-// group closes with the terminal connector rather than continuing into the next
-// project.
+// flattenPrimaryProjectTrees renders one project group per tree. Pinned
+// projects lead, followed by an alphabetical order, and each group keeps its
+// own tree-prefix run, so the last root of a group closes with the terminal
+// connector rather than continuing into the next project.
 func (m *OutlinerModel) flattenPrimaryProjectTrees(trees []primaryProjectTree, mode OutlinerModeID) {
-	for _, tree := range trees {
+	ordered := slices.Clone(trees)
+	sort.SliceStable(ordered, func(i, j int) bool {
+		leftID, rightID := "", ""
+		if ordered[i].project != nil {
+			leftID = ordered[i].project.ID
+		}
+		if ordered[j].project != nil {
+			rightID = ordered[j].project.ID
+		}
+		return m.compareProjectGroupIDs(leftID, rightID) < 0
+	})
+	for _, tree := range ordered {
 		if tree.project == nil {
 			continue
 		}
