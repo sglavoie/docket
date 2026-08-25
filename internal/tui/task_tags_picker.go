@@ -75,13 +75,15 @@ func taskTagListSource(tags []TagInfo, seedUnused bool) ListSource {
 			}
 		}
 		if seedUnused || inUse {
-			// A workflow row wears the color of the lane it promotes: the same
-			// PurpleStyle renderOutlinerSectionHeaderRow already gives the Review
-			// header, reused rather than minted so the row and the lane it opens
-			// cannot name one tag in two colors. Every promoted tag takes it from
-			// the loop rather than by name, so a registry entry that does not exist
-			// yet still renders colored; a second promoted tag wanting its own lane
-			// color would have to teach both places at once.
+			// A workflow row wears the color of the lane it promotes: the violet
+			// band ViewModeReviewStyle fills the Review header with, as a
+			// foreground here because a list row paints a padded primary column
+			// and a fill would break its gap. The band is shared, not minted, so
+			// the row and the lane it opens cannot name one tag in two colors.
+			// Every promoted tag takes it from the loop rather than by name, so a
+			// registry entry that does not exist yet still renders colored; a
+			// second promoted tag wanting its own lane color would have to teach
+			// both places at once.
 			style := PurpleStyle
 			items = append(items, ListItem{
 				ID:            ListItemID("tag:" + entry.Tag),

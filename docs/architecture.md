@@ -505,7 +505,7 @@ tiers share the `makeDueBadgeStyle` family, which holds the section header's
 contrast contract — a tone-aware fill under a high-contrast foreground — while
 omitting bold, so bold stays the title's selection channel. The fills are
 curated dark/light pairs rather than palette derivations, so a palette override
-cannot mint an unreadable badge. They live in the teal band because the eleven
+cannot mint an unreadable badge. They live in the teal band because the twelve
 `ViewMode` section fills already claim every other hue, and a chip that borrowed
 one read as a section header instead of a date; `TestDueBadgeFillsAvoidSectionBadges`
 holds the two populations apart, and urgency travels on saturation within the

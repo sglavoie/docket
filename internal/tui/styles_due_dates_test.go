@@ -91,6 +91,7 @@ func TestDueBadgeFillsAvoidSectionBadges(t *testing.T) {
 			{"deferred", ViewModeDeferredStyle},
 			{"canceled", ViewModeCanceledStyle},
 			{"all", ViewModeAllStyle},
+			{"review", ViewModeReviewStyle},
 		}
 	}
 

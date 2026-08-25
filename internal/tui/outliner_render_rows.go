@@ -160,7 +160,7 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 		sectionStyle = GetWorkflowStateGroupStyle(row.StateGroup)
 	}
 	if row.PromotedTag == reviewTaskTag {
-		sectionStyle = PurpleStyle
+		sectionStyle = ViewModeReviewStyle
 	}
 	prefix := "@ "
 	if row.IsComputedHeader {

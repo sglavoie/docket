@@ -8,7 +8,7 @@ import "charm.land/lipgloss/v2"
 // palette override cannot mint an unreadable badge.
 //
 // The family lives in the teal band because every section badge is spoken for:
-// the eleven ViewMode fills already claim green, orange, blue, indigo, purple,
+// the twelve ViewMode fills already claim green, orange, blue, indigo, purple,
 // violet, slate, mauve and maroon, and a due chip that borrowed one of those
 // hues read as a section header rather than as a date. Teal sits at least 26°
 // from all of them in both themes, so a due chip is its own object on sight;
