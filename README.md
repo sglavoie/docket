@@ -468,6 +468,7 @@ filter, and a query with no sigils behaves exactly as it did before:
 | `##context` | Match the task context by prefix, a separate axis from tags |
 | `@overdue`, `@today`, `@week`, `@none` | Match the same due buckets `f@` offers |
 | `@2026-03-05` | Match that exact calendar due day |
+| `@+4h` | Match tasks due at or before that rolling window, including already-overdue work |
 | `@@any`, `@@none` | Split the currently deferred population, the way `f@`'s deferred facet does |
 | `@@tomorrow`, `@@+2h` | Match tasks whose wake instant falls on that day |
 | `$state` | Match a lifecycle state exactly |

@@ -158,6 +158,28 @@ func TestHelpGrammarSectionComesFromCanonicalRegistry(t *testing.T) {
 	if !slices.Contains(items[deferRow].Aliases, "@@any") || !slices.Contains(items[deferRow].Aliases, "@@none") {
 		t.Errorf("deferral aliases = %v, want the search-only presets", items[deferRow].Aliases)
 	}
+
+	// The @+Nh due window is search-only, so `?` is its only in-app advertising
+	// surface beside the README. It rides the due row as a searchable alias the
+	// way the deferral presets ride the defer row.
+	dueRow := -1
+	for i, item := range items {
+		if strings.HasPrefix(item.Key, "@date") {
+			dueRow = i
+		}
+	}
+	if dueRow < 0 {
+		t.Fatalf("grammar help omits @date: %#v", items)
+	}
+	if !slices.Contains(items[dueRow].Aliases, "@+4h") {
+		t.Errorf("due aliases = %v, want the search-only @+4h hour window", items[dueRow].Aliases)
+	}
+	if !strings.Contains(items[dueRow].Description, "@+4h") {
+		t.Errorf("due description = %q, want it to visibly show the @+4h search window", items[dueRow].Description)
+	}
+	if !strings.Contains(items[deferRow].Description, "@@any") || !strings.Contains(items[deferRow].Description, "@@none") {
+		t.Errorf("deferral description = %q, want it to visibly show the @@any/@@none search forms", items[deferRow].Description)
+	}
 }
 
 func TestOutlineHeaderFormsComeFromCanonicalRegistry(t *testing.T) {

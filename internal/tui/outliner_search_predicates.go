@@ -9,12 +9,17 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-// searchDuePredicate is either one relational bucket or one exact calendar day.
+// searchDuePredicate is either one relational bucket, one exact calendar day,
+// or a rolling "due within N hours" window (@+Nh). The window is filter-only:
+// hours never become a stored due value, but a search can ask for work coming
+// due inside the next few hours now that a due date can carry a clock time.
 type searchDuePredicate struct {
-	bucket    DueDateFilter
-	day       time.Time
-	hasBucket bool
-	hasDay    bool
+	bucket        DueDateFilter
+	day           time.Time
+	window        time.Time
+	hasBucket     bool
+	hasDay        bool
+	hasHourWindow bool
 }
 
 // searchDeferPredicate is either one population split or one exact day. A
@@ -71,7 +76,7 @@ func (m *OutlinerModel) compileSearchQuery(projects []*models.Project) (string, 
 		case textgrammar.FieldContext:
 			predicates.contexts = append(predicates.contexts, normalizeSearchTagPrefix(token.Value))
 		case textgrammar.FieldDue:
-			predicates.due = compileSearchDue(token.Value)
+			predicates.due = compileSearchDue(token.Value, predicates.now)
 		case textgrammar.FieldDefer:
 			predicates.deferral = compileSearchDefer(token.Value, predicates.now)
 		case textgrammar.FieldDestination:
@@ -125,7 +130,13 @@ func resolveSearchNextIDs(m *OutlinerModel, projects []*models.Project) map[Task
 	return ids
 }
 
-func compileSearchDue(value string) searchDuePredicate {
+func compileSearchDue(value string, now time.Time) searchDuePredicate {
+	if window, matched, err := util.ParseHourWindowAt(value, now); matched {
+		if err != nil {
+			return searchDuePredicate{}
+		}
+		return searchDuePredicate{window: window, hasHourWindow: true}
+	}
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "overdue":
 		return searchDuePredicate{bucket: DueDateOverdue, hasBucket: true}
@@ -246,6 +257,8 @@ func (p *searchPredicates) admitsDue(task *models.Task) bool {
 	switch {
 	case p.due.hasBucket:
 		return passesDueDateFilterAt(task, p.due.bucket, p.now)
+	case p.due.hasHourWindow:
+		return task.DueDate != nil && !task.DueDate.After(p.due.window)
 	case p.due.hasDay:
 		return task.DueDate != nil && util.DaysBetween(p.due.day, *task.DueDate) == 0
 	default:

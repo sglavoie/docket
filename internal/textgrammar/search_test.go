@@ -7,6 +7,25 @@ import (
 	"testing"
 )
 
+func TestParseSearchTokenizesDueHourWindow(t *testing.T) {
+	parsed := ParseSearch("@+4h ship it")
+	if parsed.Text != "ship it" {
+		t.Fatalf("Text = %q, want the free-text remainder only", parsed.Text)
+	}
+	if len(parsed.Tokens) != 1 || parsed.Tokens[0].Field != FieldDue || parsed.Tokens[0].Value != "+4h" {
+		t.Fatalf("tokens = %+v, want a single @+4h due token", parsed.Tokens)
+	}
+	if guidance := SearchGuidance(parsed); guidance != "" {
+		t.Fatalf("SearchGuidance = %q, want a runnable query", guidance)
+	}
+
+	// The hour window needs the leading "+"; a bare "4h" is neither a calendar
+	// day nor the offset form, so "@4h" stays prose.
+	if bare := ParseSearch("@4h soon"); len(bare.Tokens) != 0 || bare.Text != "@4h soon" {
+		t.Errorf("ParseSearch(@4h) = %+v, want the whole input as prose", bare)
+	}
+}
+
 func TestParseSearchSeparatesPredicatesFromFreeText(t *testing.T) {
 	parsed := ParseSearch("  #backend  @today   auth flow  *pin ")
 	if parsed.Text != "auth flow" {

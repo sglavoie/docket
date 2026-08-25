@@ -152,6 +152,23 @@ func ParseDeferInstant(input string) (time.Time, error) {
 	return ParseDeferInstantAt(input, time.Now())
 }
 
+// ParseHourWindowAt parses only the "+Nh" hour-offset form and reports whether
+// the input matched that shape. It is the filter-only counterpart to the
+// defer-only hour offset: search uses it to build a "due within N hours" window
+// while leaving every other value (buckets, calendar days) to fall through to
+// day-granular parsing. The offset bound is the same one ParseDeferInstantAt
+// applies, so "+Nh" means the same span on both surfaces.
+func ParseHourWindowAt(input string, now time.Time) (time.Time, bool, error) {
+	input = normalizeDateInput(input)
+	if !relativeHoursRe.MatchString(input) {
+		return time.Time{}, false, nil
+	}
+	instant, _, err := parseMatchedOffset(relativeHoursRe.FindStringSubmatch(input), input, "hours", func(n int) time.Time {
+		return now.Add(time.Duration(n) * time.Hour)
+	})
+	return instant, true, err
+}
+
 // ParseCalendarDate parses a day-granular date. It is ParseRelativeDate with
 // the hour form refused by name, so a surface that stores a calendar day says
 // why "+4h" is rejected instead of reporting an unrecognized format.

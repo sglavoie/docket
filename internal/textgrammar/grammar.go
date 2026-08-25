@@ -245,7 +245,7 @@ var registry = []definitionSpec{
 		// the only way to set a due time. The hour-offset form (+Nh) is still
 		// refused downstream: hours are defer-only.
 		pattern:           `(?i)(?:^|\s)@((?:next\s+\w+|in\s+\d+\s+\w+|[^\s@]\S*)(?:\s+\d{1,2}:\d{2})?)`,
-		searchDescription: "Match a due bucket, exact due day, or day and hh:mm time",
+		searchDescription: "Match a due bucket, exact due day, day and hh:mm time, or +Nh window",
 	},
 	{
 		Definition: Definition{

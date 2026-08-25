@@ -259,6 +259,32 @@ func TestDaysBetween(t *testing.T) {
 	}
 }
 
+func TestParseHourWindowAt(t *testing.T) {
+	now := time.Date(2026, 8, 14, 15, 30, 0, 0, time.Local)
+
+	got, matched, err := ParseHourWindowAt("+4h", now)
+	if !matched || err != nil {
+		t.Fatalf("ParseHourWindowAt(%q) = matched %v err %v, want a matched window", "+4h", matched, err)
+	}
+	if want := now.Add(4 * time.Hour); !got.Equal(want) {
+		t.Errorf("ParseHourWindowAt(%q) = %v, want %v", "+4h", got, want)
+	}
+
+	if _, matched, _ := ParseHourWindowAt("  +12H  ", now); !matched {
+		t.Error("ParseHourWindowAt did not match the trimmed, upper-case hour form")
+	}
+
+	if _, matched, err := ParseHourWindowAt("+1000001h", now); !matched || err == nil {
+		t.Errorf("ParseHourWindowAt past the bound = matched %v err %v, want matched with a range error", matched, err)
+	}
+
+	for _, nonHour := range []string{"+3m", "+1d", "tomorrow", "overdue", "2026-08-25"} {
+		if _, matched, _ := ParseHourWindowAt(nonHour, now); matched {
+			t.Errorf("ParseHourWindowAt(%q) matched, want the hour form only", nonHour)
+		}
+	}
+}
+
 func TestParseDeferInstantAtAcceptsHourOffsets(t *testing.T) {
 	now := time.Date(2026, 8, 14, 15, 30, 0, 0, time.Local)
 

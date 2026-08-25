@@ -17,6 +17,13 @@ var searchDuePresetNames = []string{"overdue", "today", "week", "none"}
 // itself cannot express.
 var searchDeferPresetNames = []string{"any", "none"}
 
+// searchDueExampleValues are the parametric search-only due forms that no fixed
+// preset name can express. The "+Nh" hour window is illustrated with one
+// concrete value so `?` help can advertise it the way the preset buckets are,
+// without it ever reaching the shared capture Examples where a due date refuses
+// the hour offset.
+var searchDueExampleValues = []string{"+4h"}
+
 // SearchPresetValues returns the relational values only search understands for a
 // field, and nil for a field that has none. It exists so a surface teaching the
 // search vocabulary reads the same list ParseSearch matches against rather than
@@ -27,6 +34,20 @@ func SearchPresetValues(field Field) []string {
 		return slices.Clone(searchDuePresetNames)
 	case FieldDefer:
 		return slices.Clone(searchDeferPresetNames)
+	default:
+		return nil
+	}
+}
+
+// SearchExampleValues returns concrete, search-only example values for a field
+// whose vocabulary includes a parametric form the fixed preset list cannot
+// name. It is the discoverability companion to SearchPresetValues: the "+Nh"
+// due window is search-only, so it is advertised here rather than in the shared
+// capture Examples.
+func SearchExampleValues(field Field) []string {
+	switch field { //nolint:exhaustive // Only the due field carries a parametric search-only form today.
+	case FieldDue:
+		return slices.Clone(searchDueExampleValues)
 	default:
 		return nil
 	}

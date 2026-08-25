@@ -36,6 +36,8 @@
     { "type": "assert", "assert": "contains", "value": "Toggle Theme" },
     { "type": "assert", "label": "the deferral sigil is taught here, not only in the composer", "assert": "contains", "value": "@@defer" },
     { "type": "assert", "assert": "contains", "value": "Clear deferral" },
+    { "type": "assert", "label": "the search-only deferral presence split is visible, not hidden behind an alias", "assert": "contains", "value": "@@any @@none" },
+    { "type": "assert", "label": "the due row shows its search-only forms, including the +Nh hour window", "assert": "contains", "value": "@+4h" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "filter help by a word no label spells", "key": "/" },

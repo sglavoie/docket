@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -241,6 +242,9 @@ func searchValueViable(spec definitionSpec, value string) bool {
 	case FieldDue:
 		if slices.Contains(searchDuePresetNames, strings.ToLower(strings.TrimSpace(value))) {
 			return true
+		}
+		if _, matched, err := util.ParseHourWindowAt(value, time.Now()); matched {
+			return err == nil
 		}
 		_, err := util.ParseCalendarDate(value)
 		return err == nil
