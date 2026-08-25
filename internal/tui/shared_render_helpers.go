@@ -163,6 +163,14 @@ func renderTruncatedTags(tags []string, maxTags, maxTagLen int) string {
 	return result
 }
 
+// pinnedMarker is the one pin vocabulary every surface that lists a pinnable
+// thing shares: the bold `*` the `*` key writes and the `*pin` sigil names. It
+// is a glyph rather than a color because SelectedLine strips styling from the
+// cursor row, so a colored name says nothing about the row the user is on.
+func pinnedMarker() string {
+	return PinnedMarkerStyle.Render("*") + " "
+}
+
 // renderCommentIndicator renders a compact comment count indicator.
 func renderCommentIndicator(task *models.Task) string {
 	if len(task.Comments) == 0 {

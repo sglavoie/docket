@@ -157,8 +157,8 @@ func TestREADMEDocumentsExactTaskMenu(t *testing.T) {
 	requireDocumentationText(t, content, []string{
 		"`Space` contains exactly: 1. Delete",
 		"Comments and Attachments left this menu when they gained `;` and `&`",
-		"Project Actions holds Edit project and Toggle project pin, then Archive project and " +
-			"Delete project under Danger",
+		"Project Actions holds Edit project, then Archive project and Delete project under Danger",
+		"Pinning left this menu when the header gained `*`",
 		"`Enter` and `Ctrl+N` already reach both from that row",
 		"The list filters as soon as printable text is typed",
 		"Delete always asks for confirmation",

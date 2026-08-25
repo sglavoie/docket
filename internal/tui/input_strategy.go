@@ -321,7 +321,11 @@ func SimplifiedInputStrategy() InputStrategy {
 			// two honest labels rather than one that branches on runtime context.
 			{OperationID: operationTaskSetTags, Keys: []string{"#"}, DisplayKey: "#", FooterRank: 4, FooterLabel: "tags/context", SharedKey: true},
 			{OperationID: operationProjectSetTags, Keys: []string{"#"}, DisplayKey: "#", FooterRank: 4, FooterLabel: "project tags", SharedKey: true},
-			{OperationID: operationTaskTogglePin, Keys: []string{"*"}, DisplayKey: "*", FooterRank: 24, FooterLabel: "pin"},
+			// * pins whatever the cursor names, for the same reason # tags it: two
+			// targets and two vocabularies stay two descriptors with two honest
+			// labels rather than one that branches on runtime context.
+			{OperationID: operationTaskTogglePin, Keys: []string{"*"}, DisplayKey: "*", FooterRank: 24, FooterLabel: "pin", SharedKey: true},
+			{OperationID: operationScopePinProject, Keys: []string{"*"}, DisplayKey: "*", FooterRank: 24, FooterLabel: "project pin", SharedKey: true},
 			{OperationID: operationTaskCopyTitle, Keys: []string{"y"}, DisplayKey: "y"},
 			{OperationID: operationTaskCopyDetails, Keys: []string{"Y"}, DisplayKey: "Y"},
 			{OperationID: operationTaskCopyTitleDescription, Keys: []string{"ctrl+y"}, DisplayKey: "Ctrl+Y"},

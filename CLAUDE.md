@@ -86,7 +86,7 @@ enforced by `validateOperationOnePath` over that surface's manifest. The
 task-row `Space` menu is Delete alone, identical to the bulk menu: Delete has no
 direct key and confirms first. The Hub sheet is
 Archive or Unarchive plus bulk tags; Notes and Comments list Delete alone. The
-Outliner project-header sheet is Edit, pin, Archive, Delete, and never Unarchive:
+Outliner project-header sheet is Edit, Archive, Delete, and never Unarchive:
 that header is drawn from the active population.
 
 One key is one act on every entity surface:
@@ -104,10 +104,10 @@ Transient input overlays are exempt: composer, project editor/creator, text
 editor, operation text prompt, tag/date add modes, list picker adapter, and the
 outline error and help viewers. They are modal value entry, not grammars.
 
-`#` and `Space` are the shared keys, the cursor deciding: task or project tags,
-and checklist, project, or task actions. Keep each set distinct so the footer and
-`?` help carry honest labels; never branch one descriptor's target source on
-runtime context.
+`*`, `#`, and `Space` are the shared keys, the cursor deciding: task or project
+pin, task or project tags, and checklist, project, or task actions. Keep each set
+distinct so the footer and `?` help carry honest labels; never branch one
+descriptor's target source on runtime context.
 
 Checklist rules:
 

@@ -55,15 +55,14 @@ func TestProjectActionSheetProjectsTheOutlinerProjectManifest(t *testing.T) {
 	ids := ProjectActionSheetOperationIDs(registry, context)
 	wantIDs := []OperationID{
 		operationScopeRenameProject,
-		operationScopePinProject,
 		operationScopeArchiveProject,
 		operationProjectDelete,
 	}
 	if !slices.Equal(ids, wantIDs) {
-		t.Fatalf("project sheet IDs = %v, want exact four %v", ids, wantIDs)
+		t.Fatalf("project sheet IDs = %v, want exact three %v", ids, wantIDs)
 	}
 	wantLabels := []string{
-		"Edit project", "Toggle project pin", "Archive project", "Delete project",
+		"Edit project", "Archive project", "Delete project",
 	}
 	for index, id := range ids {
 		descriptor, ok := registry.Descriptor(id)
@@ -78,7 +77,6 @@ func TestProjectActionSheetProjectsTheOutlinerProjectManifest(t *testing.T) {
 	// list a user arrows through looking for Edit never puts one under the cursor.
 	for id, want := range map[OperationID]ListCategoryID{
 		operationScopeRenameProject:  outlinerProjectActionCategoryProject,
-		operationScopePinProject:     outlinerProjectActionCategoryProject,
 		operationScopeArchiveProject: outlinerProjectActionCategoryDanger,
 		operationProjectDelete:       outlinerProjectActionCategoryDanger,
 	} {
@@ -87,11 +85,12 @@ func TestProjectActionSheetProjectsTheOutlinerProjectManifest(t *testing.T) {
 			t.Errorf("%s category = %q, want %q", id, got, want)
 		}
 	}
-	// The two direct-only manifest entries carry their own keys — `#` and Space
-	// itself — so listing either would be the second path one-path forbids.
+	// The three direct-only manifest entries carry their own keys — `#`, `*` and
+	// Space itself — so listing any would be the second path one-path forbids.
 	for _, excluded := range []OperationID{
 		operationProjectSetTags,
 		operationProjectActions,
+		operationScopePinProject,
 		operationProjectOpen,
 		operationScopeOpenProjectNote,
 		operationScopeRestoreProject,
@@ -104,8 +103,8 @@ func TestProjectActionSheetProjectsTheOutlinerProjectManifest(t *testing.T) {
 
 // TestProjectActionSheetDropsRowsTheProjectStateForbids proves the sheet reads
 // the live project rather than the metadata the row was built from: archiving
-// the project under the frozen context withdraws pinning and archiving, and
-// leaves delete standing because removal survives archiving by design.
+// the project under the frozen context withdraws archiving itself, and leaves
+// delete standing because removal survives archiving by design.
 func TestProjectActionSheetDropsRowsTheProjectStateForbids(t *testing.T) {
 	app, project, context := projectHeaderCursorApp(t)
 	project.Archived = true
@@ -118,8 +117,8 @@ func TestProjectActionSheetDropsRowsTheProjectStateForbids(t *testing.T) {
 }
 
 // TestProjectActionSheetRefusesTheSystemUnfiledDelete keeps the storage-layer
-// protection visible in the surface that offers the act: Unfiled may be edited
-// and pinned, but the row that would remove it is never drawn. Only the frozen
+// protection visible in the surface that offers the act: Unfiled may be edited,
+// but the row that would remove it is never drawn. Only the frozen
 // project identity is swapped, because that is the single fact the sheet keeps
 // from the row it was raised on.
 func TestProjectActionSheetRefusesTheSystemUnfiledDelete(t *testing.T) {

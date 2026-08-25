@@ -61,7 +61,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 			"the whole inventory: there is no sixth grammar and no unlisted one",
 		"| `SimplifiedInputStrategy` | `taskOperationManifest` + `taskDirectOperationManifest` + " +
 			"`outlinerProjectOperationManifest` | Delete alone on a task row; " +
-			"Edit, pin, Archive, Delete on a project header |",
+			"Edit, Archive, Delete on a project header |",
 		"| `ProjectHubInputStrategy` | `projectOperationManifest` | Archive or Unarchive, bulk tags |",
 		"| `NotesInputStrategy` | `notesOperationManifest` | Delete |",
 		"| `AttachmentsInputStrategy` | `attachmentOperationManifest` | three origin acts, Unlink, Delete |",
@@ -260,9 +260,10 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 			"enforced by `validateOperationOnePath` over that surface's manifest",
 		"The task-row `Space` menu is Delete alone, identical to the bulk menu: Delete has no " +
 			"direct key and confirms first",
-		"The Outliner project-header sheet is Edit, pin, Archive, Delete, and never Unarchive: " +
+		"The Outliner project-header sheet is Edit, Archive, Delete, and never Unarchive: " +
 			"that header is drawn from the active population",
-		"`#` and `Space` are the shared keys, the cursor deciding",
+		"`*`, `#`, and `Space` are the shared keys, the cursor deciding: task or project pin, " +
+			"task or project tags, and checklist, project, or task actions",
 		"`OpDelete` is `os.Remove`, so a project delete enumerates its tree post-order and commits it " +
 			"with the catalog and planning rewrites",
 		"It confirms, names the cascade, and refuses the system Unfiled project",

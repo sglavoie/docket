@@ -248,7 +248,16 @@ func (m *OutlinerModel) renderOutlinerProjectHeaderRow(row outlinerRow, selected
 	gutter := paint.bar(lipgloss.NewStyle(), " ") +
 		gutterPiece(bg, MutedStyle, indicator) +
 		gutterSpace(bg)
+	// The marker leads the badge so a pinned project's `*` sits at the same
+	// column as a pinned task's one row below. It goes on before the pressure
+	// ladder measures, so its two columns are inside that budget and today or
+	// overdue sheds first; the marker itself is never dropped. Unlike the task
+	// row's it is not reserved — a header has no ColumnLayout, so an unpinned
+	// header pays nothing for it.
 	content := badge
+	if project != nil && project.Pinned {
+		content = pinnedMarker() + badge
+	}
 	if row.SectionCount > 0 {
 		content += " " + MutedStyle.Render(fmt.Sprintf("(%d)", row.SectionCount))
 	}
@@ -384,7 +393,7 @@ func (m *OutlinerModel) taskPinnedMarker(row outlinerRow) string {
 	if row.task == nil || !row.task.Pinned || row.IsPinnedSection {
 		return ""
 	}
-	return PinnedMarkerStyle.Render("*") + " "
+	return pinnedMarker()
 }
 
 // buildTaskRowSegments assembles every rendered piece of a task row except the

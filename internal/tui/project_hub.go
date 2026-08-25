@@ -421,6 +421,17 @@ func (m *ProjectHubModel) projectHubCategories() []ListCategory {
 	}
 }
 
+// projectPinnedMarker gives an archived project the marker too: the pin is real
+// state and survives archiving, so the row says so. The act does not follow it —
+// operationScopePinProject requires an active project — which is why the footer
+// hint and the `?` help row disappear on an archived row while the marker stays.
+func projectPinnedMarker(project *models.Project) string {
+	if project == nil || !project.Pinned {
+		return ""
+	}
+	return pinnedMarker()
+}
+
 func (m *ProjectHubModel) projectHubItems() []ListItem {
 	items := make([]ListItem, 0, len(m.runtime.AllProjects()))
 	for _, project := range m.runtime.AvailableProjects() {
@@ -435,6 +446,7 @@ func (m *ProjectHubModel) projectHubItems() []ListItem {
 			ID:            ListItemID(projectHubItemPrefix + project.ID),
 			CategoryID:    projectHubCategoryActive,
 			PrimaryText:   label,
+			PrimaryMarker: projectPinnedMarker(project),
 			SecondaryText: m.projectSecondary(project),
 			Aliases:       []string{project.Name, project.Slug, "active project"},
 			Preview:       m.projectPreview(project, false),
@@ -452,6 +464,7 @@ func (m *ProjectHubModel) projectHubItems() []ListItem {
 			ID:            ListItemID(projectHubArchivedItemPrefix + project.ID),
 			CategoryID:    projectHubCategoryArchived,
 			PrimaryText:   project.Name,
+			PrimaryMarker: projectPinnedMarker(project),
 			SecondaryText: strings.TrimSuffix("archived · "+projectTagChips(project.Tags), " · "),
 			Aliases:       []string{project.Name, project.Slug, "archived project"},
 			Preview:       m.projectPreview(project, true),

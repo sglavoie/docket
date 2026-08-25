@@ -291,7 +291,10 @@ func renderListSurfaceRow(
 		}
 		marker += checkbox
 	}
-	markerWidth := lipgloss.Width(marker)
+	// PrimaryMarker is charged to markerWidth rather than to the primary text, so
+	// LayoutListText budgets around chrome it never sees and the marker survives
+	// the truncation the text takes.
+	markerWidth := lipgloss.Width(marker) + lipgloss.Width(item.PrimaryMarker)
 	secondary := item.SecondaryText
 	if !item.Enabled() {
 		disabled := "disabled"
@@ -316,13 +319,13 @@ func renderListSurfaceRow(
 		if row.Selected {
 			chrome = func(text string) string { return SelectionStyle.Render(text) }
 		}
-		styled := chrome(marker) + item.PrimaryStyle.Render(layout.Primary)
+		styled := chrome(marker) + item.PrimaryMarker + item.PrimaryStyle.Render(layout.Primary)
 		if layout.Secondary != "" {
 			styled += chrome(layout.Gap + layout.Secondary)
 		}
 		return truncateToVisualWidth(styled, width)
 	}
-	line := marker + layout.Text()
+	line := marker + item.PrimaryMarker + layout.Text()
 	if !item.Enabled() {
 		line = MutedStyle.Render(line)
 	}

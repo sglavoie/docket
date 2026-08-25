@@ -12,10 +12,6 @@ var (
 				Foreground(ColorPrimary).
 				Background(ColorBackground)
 
-	PinnedProjectStyle = lipgloss.NewStyle().
-				Foreground(ColorSuccess).
-				Bold(true)
-
 	PinnedNumberStyle = lipgloss.NewStyle().
 				Foreground(ColorWarning).
 				Bold(true)

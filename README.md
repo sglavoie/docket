@@ -198,7 +198,7 @@ were in and says so.
 | Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items, and `h` on a direct child of a focus root steps out of that Focus frame onto the root; `s`, `p`, and `t` are the three bulk fold toggles — every visible section header, every project group header, every task subtree — and each expands its whole set if any part of it is folded and otherwise folds the set; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `H`/`M`/`L` land on the highest, middle, and lowest visible row without scrolling; `z` opens the scroll chord, which does the opposite and moves the window under the cursor: `zt` puts the cursor's row at the top, `zz` centers it, `zb` puts it at the bottom; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `Ctrl+P` opens the cursor task's project in All and keeps the cursor on it; `Enter` zooms in on whatever the cursor names — descendants on a task row, that project on a project sub-header, that section alone on a section header; `Shift+Enter` widens focus one level; `Ctrl+Enter` toggles Peek |
 | Capture and edit | `a` capture, `A` child, `e` inline task edit, `E` description, `Ctrl+E` external editor, whose title line speaks the same edit grammar as `e`, `O` outline edit the cursor's project |
 | Workflow | `$` opens the workflow chord over the ten destinations the `$` capture sigil names: `$i` Inbox, `$b` Backlog, `$n` toggle Next, `$t` toggle Today, `$g` Doing, `$w` Waiting, `$p` Paused, `$m` Someday, `$d` Done, `$c` Canceled; `$w` then asks for a check-back date |
-| Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date and defer; `#` tags and context; `*` pin |
+| Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date and defer; `#` tags and context; `*` pin — the last two read the cursor, so on a project group header they set that project's tags and toggle its pin |
 | Structure | `[` outdent, `]` indent, `>` Set Parent, `<` Adopt Children, `%` Move to Project, `J`/`K` reorder one step, `Ctrl+J`/`Ctrl+K` reorder to the far end of the visible peers |
 | Sorting | `o` opens the sort chord: `o@` due date, `o!` priority, `oc` created, `ou` updated, `ot` title, `ox` clear; repeat a field key to reverse it |
 | Content | `&` opens the cursor task's Attachments panel, `;` its Comments panel — the two capture sigils reaching, as keys, the panels that own add, reorder, unlink, and delete |
@@ -371,10 +371,11 @@ by a key is not also a row, so the single-task sheet is now identical to the
 bulk one.
 
 The same key on a project group header opens a different sheet, because the row
-names a project rather than a task. Project Actions holds Edit project and
-Toggle project pin, then Archive project and Delete project under Danger.
-Opening the project and opening its notes are absent for the reason above:
-`Enter` and `Ctrl+N` already reach both from that row.
+names a project rather than a task. Project Actions holds Edit project, then
+Archive project and Delete project under Danger. Pinning left this menu when the
+header gained `*`, the same rule that took Comments and Attachments out of the
+task menu. Opening the project and opening its notes are absent for the reason
+above: `Enter` and `Ctrl+N` already reach both from that row.
 
 The Attachments panel that `&` opens carries the same split. `Enter` opens
 the attachment under the cursor, `a` adds one, `E` opens it in the external
@@ -678,6 +679,15 @@ before its context badge and title. Rows inside the Pinned lane wear nothing,
 because the section header already says it. The marker is reserved columns like
 the relation mark and is never dropped.
 
+A pinned project wears the same `*`, so one glyph means pinned everywhere: on
+the Outliner project group header, where it sits in the column a pinned task's
+mark occupies one row below, on the Select Project rows, and in the `%` Move to
+Project list. It is never dropped there either — a crowded project header sheds
+its `today` and `overdue` counts first. An archived project keeps the marker,
+because the pin is real state that survives archiving, but `*` itself does not
+work there and the footer stops offering it: the marker shows the state, the key
+hides because the act is unavailable.
+
 `Enter` focuses the cursor task's descendants and `Esc` restores the exact
 parent cursor and scroll position. A leaf reports `No children to focus`. While
 focused, `a` captures a direct child of the focus root rather than a root task
@@ -902,8 +912,8 @@ loaded.` rather than passing for the first. Below the two-pane minimum width the
 pane is gone and the paging keys go quiet with it.
 
 Those acts also reach a project from the Outliner itself: `Space` on a project
-group header opens Project Actions, so editing, pinning, archiving, or deleting
-a project no longer needs a trip through Select Project. Archiving is one-way
+group header opens Project Actions, so editing, archiving, or deleting a project
+no longer needs a trip through Select Project. Archiving is one-way
 from there — an Outliner header is only ever drawn for an active project — so
 Unarchive stays here, where an archived project is visible.
 

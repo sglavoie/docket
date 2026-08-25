@@ -68,6 +68,12 @@ func projectOperationDescriptors() []OperationDescriptor {
 // project when nothing is focused, so a multi-project scope is refused rather
 // than allowed to borrow an unrelated project.
 func projectOperationApplicable(ctx CommandContext) bool {
+	// A section header names a lane, not a project. The scope fallback below would
+	// hand it the sole scoped project, which is how a key meant for a project
+	// header reaches one from a row that never named it.
+	if ctx.Entity.HasSectionHeaderCursor {
+		return false
+	}
 	if currentEntityIdentity(ctx).Kind != EntityKindProject {
 		return false
 	}

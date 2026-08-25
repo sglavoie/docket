@@ -39,10 +39,9 @@ type ListSurfaceOperationPickerItem interface {
 
 // ListSurfaceStyledPickerItem optionally colors an adapted row's primary text.
 // The style is resolved on every adaptation rather than cached on the payload,
-// so a source rebuilt after ApplyTheme wears the current theme's color. An item
-// that is also a pinned PinnablePickerItem would have this style wrap text the
-// pin marker already rendered, so a payload implementing both owes that pair a
-// decision rather than both hooks.
+// so a source rebuilt after ApplyTheme wears the current theme's color. A pinned
+// PinnablePickerItem composes with it cleanly: the pin rides PrimaryMarker,
+// which sits beside the primary text rather than wrapping it.
 type ListSurfaceStyledPickerItem interface {
 	ListSurfacePrimaryStyle() lipgloss.Style
 }
@@ -53,8 +52,9 @@ func ListSourceFromPickerItems[T PickerItem](items []T, showCounts bool) ListSou
 	adapted := make([]ListItem, 0, len(items))
 	for _, item := range items {
 		primary := item.DisplayText()
+		marker := ""
 		if pinnable, ok := any(item).(PinnablePickerItem); ok && pinnable.IsPinned() {
-			primary = PinnedProjectStyle.Render(primary)
+			marker = pinnedMarker()
 		}
 		secondary := ""
 		if showCounts {
@@ -67,6 +67,7 @@ func ListSourceFromPickerItems[T PickerItem](items []T, showCounts bool) ListSou
 		adaptedItem := ListItem{
 			ID:            pickerItemListID(item),
 			PrimaryText:   primary,
+			PrimaryMarker: marker,
 			SecondaryText: secondary,
 			Aliases:       []string{item.FilterText()},
 			Data:          item,

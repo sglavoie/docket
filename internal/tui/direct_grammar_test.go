@@ -255,19 +255,19 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"esc": operationCoreBack, "?": operationCoreHelp, "ctrl+c": operationCoreQuit,
 		"tab": operationCoreNextWorkMode, "shift+tab": operationCorePreviousWorkMode,
 		"@": operationTaskSetDueDate,
-		"*": operationTaskTogglePin,
 		"y": operationTaskCopyTitle, "Y": operationTaskCopyDetails,
 		"ctrl+y": operationTaskCopyTitleDescription,
 	}
 
 	// A shared key is one the cursor disambiguates, and each meaning keeps its own
-	// descriptor so help and the footer can name both honestly. # asks whether the
-	// cursor names a task or a project; Space asks the same question with a third
-	// answer, the checklist row; the rest ask whether it names a checklist item,
-	// and the checklist meaning is listed first because resolution takes the first
-	// applicable binding.
+	// descriptor so help and the footer can name both honestly. # and * both ask
+	// whether the cursor names a task or a project; Space asks the same question
+	// with a third answer, the checklist row; the rest ask whether it names a
+	// checklist item, and the checklist meaning is listed first because resolution
+	// takes the first applicable binding.
 	shared := map[string][]OperationID{
 		"#":      {operationTaskSetTags, operationProjectSetTags},
+		"*":      {operationTaskTogglePin, operationScopePinProject},
 		"e":      {operationChecklistEditItem, operationCoreEdit},
 		"A":      {operationChecklistAddItem, operationTaskNewChild},
 		"x":      {operationChecklistToggleItem, operationChecklistStart},

@@ -564,6 +564,31 @@ Pinned section is built — and a filter-admitted terminal or deferred pinned ro
 inside All or Today all get the mark, while the lane's own rows stay bare
 because the section header above them already states it.
 
+A pinned *project* wears the same glyph, from the same `pinnedMarker()` helper,
+on every surface that lists one: the Outliner project group header, the Select
+Project rows, and the `%` Move to Project picker. One vocabulary, so `*` writes
+what `*pin` names and what every list shows. It is a glyph rather than a color
+because `SelectedLine` strips styling and re-renders, and `renderListSurfaceRow`
+skips `PrimaryStyle` on the cursor row outright — a style-only signal is
+invisible on exactly the row the user is on, while a character survives both.
+On the group header the marker leads the badge, so it lands in the column a
+pinned task's `*` occupies one row below, and it goes on before
+`appendProjectHeaderPressure` measures, so its two columns are inside that
+budget and `today` then `overdue` shed first; the marker itself is never
+dropped. Unlike the task row's it is not *reserved*: a header has no
+`ColumnLayout`, so an unpinned header pays nothing for it. On the list surfaces
+it rides `ListItem.PrimaryMarker`, pre-styled chrome drawn immediately before
+the primary text and charged to `markerWidth` so `LayoutListText`'s budget stays
+honest. Like `PrimaryStyle` it is presentation metadata the behavior model never
+inspects — query and ranking read the plain `PrimaryText` — which is what keeps
+a pinned row findable by its own name. An archived project keeps the marker,
+because the pin is real state that survives archiving, but
+`projectOperationRequirements` keeps `requireActive` on the operation, so the
+`* project pin` footer hint and the `?` help row correctly disappear there: the
+marker shows the state, the key hides because the act is unavailable.
+Select Project's preview pane keeps its `· pinned` line — prose for one project,
+glyph for scanning a list.
+
 The trigger is zero rendered children rather than a rendered-child count: when
 some children are shown the connectors and fold indicator already say "parent",
 and the arithmetic would have to account for
@@ -631,7 +656,7 @@ reads.
 
 | Strategy | Manifest | Menu keeps |
 | --- | --- | --- |
-| `SimplifiedInputStrategy` | `taskOperationManifest` + `taskDirectOperationManifest` + `outlinerProjectOperationManifest` | Delete alone on a task row; Edit, pin, Archive, Delete on a project header |
+| `SimplifiedInputStrategy` | `taskOperationManifest` + `taskDirectOperationManifest` + `outlinerProjectOperationManifest` | Delete alone on a task row; Edit, Archive, Delete on a project header |
 | `ProjectHubInputStrategy` | `projectOperationManifest` | Archive or Unarchive, bulk tags |
 | `NotesInputStrategy` | `notesOperationManifest` | Delete |
 | `AttachmentsInputStrategy` | `attachmentOperationManifest` | three origin acts, Unlink, Delete |
@@ -1749,13 +1774,25 @@ cannot say, but `RunOptions.DisableColor` only reaches `tea.WithEnvironment` and
 no renderer can detect it, so a task tagged only `bug` must still show `#bug`.
 
 `#` is bound to two descriptors, `tui.task.set-tags` and
-`tui.project.set-tags`, marked `SharedKey` on the input strategy. A descriptor
+`tui.project.set-tags`, marked `SharedKey` on the input strategy. `*` pairs
+`tui.task.toggle-pin` with `tui.scope.pin-project` the same way. A descriptor
 carries exactly one `TargetSource` and one `OperationCategory`, so a single
 polymorphic operation would have to branch on runtime context inside
 `defaultOperationTargetSource`. Instead the trie node holds both bindings and
 resolves the first *applicable* one in declaration order, which lets the cursor
 decide the meaning while `?` help and contextual guidance keep two honest labels. A key
 declared twice without `SharedKey` is still a hard registration error.
+
+Both pairs are disjoint because `projectOperationApplicable` refuses a section
+header outright. Without that gate the pair would not be disjoint at all: the
+project arm falls back to `currentProjectID`, which degrades to the sole scoped
+project, so in a single-project scope a lane header — which names no project —
+would answer a project key with the scoped project it never named. The check
+reads the bare `HasSectionHeaderCursor` flag rather than pairing it with an empty
+`ProjectID`, because `OutlinerModel.operationCommandContext()` fills `ProjectID`
+from `m.project` on its fallback arm while `AppModel`'s does not; a `ProjectID`
+clause would make the footer advertise the key where dispatch refuses. Both
+builders set the flag identically from `cursorNamesSectionHeader()`.
 
 The task descriptor is `Set Tags & Context`, because the singleton task context
 is edited in the same overlay. Its rows carry a `context:` ID prefix and a

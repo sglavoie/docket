@@ -1,0 +1,38 @@
+{
+  "name": "outliner-project-pin",
+  "fixture": "multi-project",
+  "size": "100x30",
+  "actions": [
+    { "type": "command", "label": "reset to All over Active Projects", "command": "outliner root" },
+    { "type": "key", "label": "step from the section header onto Client Alpha's project header", "key": "j" },
+    { "type": "assert", "label": "the header footer teaches the key rather than the menu row it replaced", "assert": "contains", "value": "* project pin" },
+    { "type": "assert", "label": "no fixture ships a pinned project, so the marker has to be earned", "assert": "not_contains", "value": "* [client-alpha]" },
+
+    { "type": "key", "label": "the shared key on a project header pins the project", "key": "*" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Pin Project" },
+    { "type": "assert", "label": "the group header wears the same glyph a pinned task does", "assert": "contains", "value": "* [client-alpha]" },
+    { "type": "assert", "label": "an unpinned project beside it stays bare", "assert": "not_contains", "value": "* [client-beta]" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the same key unpins it", "key": "*" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Unpin Project" },
+    { "type": "assert", "assert": "not_contains", "value": "* [client-alpha]" },
+    { "type": "assert", "assert": "contains", "value": "[client-alpha] (1)" },
+
+    { "type": "key", "label": "pin it again to test the marker under pressure", "key": "*" },
+    { "type": "wait" },
+    { "type": "resize", "label": "the narrowest supported terminal", "width": 60, "height": 20 },
+    { "type": "assert", "label": "the header sheds its counts before the marker", "assert": "contains", "value": "* [client-alpha]" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "width": 100, "height": 30 },
+    { "type": "key", "label": "one row down the cursor names a task, so the same key means the task's pin", "key": "j" },
+    { "type": "key", "key": "*" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the task moved into the Pinned lane, which only a task pin builds", "assert": "contains", "value": "@ Pinned  (1)" },
+    { "type": "assert", "label": "and the project's own marker is untouched by it", "assert": "contains", "value": "* [client-alpha]" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

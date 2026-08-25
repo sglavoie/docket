@@ -112,9 +112,15 @@ type ListItem struct {
 	// ordering keep reading the plain PrimaryText, which is what lets a row carry a
 	// color without becoming unfindable or unsortable.
 	PrimaryStyle *lipgloss.Style
-	Preview      ListPreview
-	OperationIDs []OperationID
-	Data         any
+	// PrimaryMarker is pre-styled chrome drawn immediately before the primary
+	// text. Like PrimaryStyle it is presentation metadata the behavior model never
+	// inspects, and for the same reason: query and ranking read the plain
+	// PrimaryText. Unlike PrimaryStyle it survives the cursor row, because
+	// SelectedLine strips styling but not characters.
+	PrimaryMarker string
+	Preview       ListPreview
+	OperationIDs  []OperationID
+	Data          any
 }
 
 // Enabled reports whether the item may be selected or activated.

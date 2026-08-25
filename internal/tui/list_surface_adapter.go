@@ -20,7 +20,9 @@ type PickerItem interface {
 	ItemID() string
 }
 
-// PinnablePickerItem optionally marks an adapted row as pinned.
+// PinnablePickerItem optionally marks an adapted row as pinned. The mark lands
+// on PrimaryMarker rather than on PrimaryText, so the row stays findable by its
+// own plain name and the glyph survives the cursor row SelectedLine strips.
 type PinnablePickerItem interface {
 	IsPinned() bool
 }

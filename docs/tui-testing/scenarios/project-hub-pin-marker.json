@@ -1,0 +1,26 @@
+{
+  "name": "project-hub-pin-marker",
+  "fixture": "multi-project",
+  "size": "100x30",
+  "actions": [
+    { "type": "key", "label": "open Select Project", "key": "P" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "assert", "label": "no fixture ships a pinned project, so the marker has to be earned", "assert": "not_contains", "value": "* Client Alpha" },
+
+    { "type": "key", "label": "the Hub's own pin key, on the row under the cursor", "key": "*" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "ProjectHub" },
+    { "type": "assert", "label": "the row says so, and the cursor arrow proves it is the cursor row saying it", "assert": "contains", "value": "› [ ] * Client Alpha" },
+    { "type": "assert", "label": "the preview keeps naming the same state in prose", "assert": "contains", "value": "· pinned" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "move the cursor off the pinned row", "key": "j" },
+    { "type": "assert", "label": "an ordinary row shows the marker too", "assert": "contains", "value": "* Client Alpha" },
+    { "type": "assert", "assert": "not_contains", "value": "› [ ] * Client Alpha" },
+    { "type": "assert", "label": "and the row beside it stays bare", "assert": "not_contains", "value": "* Client Beta" },
+
+    { "type": "key", "label": "move back onto it", "key": "k" },
+    { "type": "assert", "label": "SelectedLine strips styling but not characters, so the marker survives the cursor row it names — a colored name would have vanished here", "assert": "contains", "value": "› [ ] * Client Alpha" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

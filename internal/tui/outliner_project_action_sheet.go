@@ -33,6 +33,11 @@ var outlinerProjectActionCategories = []ListCategory{
 // menu row on the other. Edit project is the clearest case — `e` on the Hub,
 // menu row here, because the Outliner's `e` already edits a task.
 //
+// The DirectOnly entries stay listed here so validateOperationOnePath can see
+// them, but the sheet skips them: each already has a key on this surface. Pin
+// joined them when the project header gained `*`, the same rule that took
+// Comments and Attachments out of the task menu when they gained `;` and `&`.
+//
 // Three project operations are absent on purpose. Open project already has
 // Enter through operationCoreActivateGroup and Open project notes already has
 // Ctrl+N through operationCoreNotes; listing either would be the second path the
@@ -45,7 +50,7 @@ func outlinerProjectOperationManifest() []operationManifestEntry {
 		{ID: operationProjectSetTags, Label: "Set project tags", Aliases: []string{"project tags"}, Provider: ValueProviderProjectTags, Category: outlinerProjectActionCategoryProject, Risk: OperationRiskMutation, DirectOnly: true},
 		{ID: operationProjectActions, Label: "Project actions", Aliases: []string{"project action sheet"}, Category: outlinerProjectActionCategoryProject, Risk: OperationRiskReadOnly, DirectOnly: true},
 		{ID: operationScopeRenameProject, Label: "Edit project", Aliases: []string{"project settings"}, Category: outlinerProjectActionCategoryProject, Risk: OperationRiskMutation},
-		{ID: operationScopePinProject, Label: "Toggle project pin", Aliases: []string{"pin project", "unpin project"}, Category: outlinerProjectActionCategoryProject, Risk: OperationRiskMutation},
+		{ID: operationScopePinProject, Label: "Toggle project pin", Aliases: []string{"pin project", "unpin project"}, Category: outlinerProjectActionCategoryProject, Risk: OperationRiskMutation, DirectOnly: true},
 		{ID: operationScopeArchiveProject, Label: "Archive project", Category: outlinerProjectActionCategoryDanger, Risk: OperationRiskDestructive},
 		{ID: operationProjectDelete, Label: "Delete project", Aliases: []string{"remove project", "destroy project"}, Category: outlinerProjectActionCategoryDanger, Risk: OperationRiskDestructive},
 	}

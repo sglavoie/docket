@@ -172,12 +172,15 @@ func (m *OutlinerModel) headerGuidance() GuidanceSpec {
 		hints = append(hints, newGuidanceHint("h/Left collapse", 1, false))
 	}
 	if row.IsProjectHeader {
-		// Both sit at rank 2 and the stable sort keeps them in this order, so the
-		// narrowest header footer that carries a project act carries the menu that
-		// reaches every one of them rather than the single key beside it.
+		// All three sit at rank 2 and the stable sort keeps them in this order, so
+		// the narrowest header footer that carries a project act carries the menu
+		// first: it still reaches Edit, Archive and Delete, which no key beside it
+		// does. The two keys that left the menu follow it, each labeled as the
+		// strategy labels it.
 		hints = append(hints,
 			newGuidanceHint("Space actions", 2, false),
 			newGuidanceHint("# project tags", 2, false),
+			newGuidanceHint("* project pin", 2, false),
 		)
 	} else if !zoomed {
 		hints = append(hints, newGuidanceHint("s sections", 2, false))
