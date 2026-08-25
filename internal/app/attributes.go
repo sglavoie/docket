@@ -11,7 +11,7 @@ import (
 // SetDueDate sets or clears a task's calendar due date.
 func (s *Service) SetDueDate(taskID string, due *time.Time) (TaskResult, error) {
 	return s.mutateTask(taskID, "Set Due Date", "", func(ref TaskRef) error {
-		ref.Task.DueDate = cloneCalendarDatePtr(due)
+		ref.Task.DueDate = cloneDueDatePtr(due)
 		ref.Task.UpdatedAt = s.clock.Now()
 		return nil
 	})
@@ -19,7 +19,7 @@ func (s *Service) SetDueDate(taskID string, due *time.Time) (TaskResult, error) 
 
 func (s *Service) SetDueDateByLocator(locator TaskLocator, due *time.Time) (TaskResult, error) {
 	return s.mutateTaskByLocator(locator, "Set Due Date", "", func(ref TaskRef) error {
-		ref.Task.DueDate = cloneCalendarDatePtr(due)
+		ref.Task.DueDate = cloneDueDatePtr(due)
 		ref.Task.UpdatedAt = s.clock.Now()
 		return nil
 	})

@@ -284,7 +284,7 @@ func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, norm
 
 	// Form-originated scheduling/reference/flag metadata. All zero/nil for the CLI.
 	if req.DueDate != nil {
-		task.DueDate = cloneCalendarDatePtr(req.DueDate)
+		task.DueDate = cloneDueDatePtr(req.DueDate)
 	}
 	if req.Pinned {
 		now := s.clock.Now()

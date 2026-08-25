@@ -69,11 +69,11 @@ func (m *Manager) migrateWorkspaceToV13(hooks v13MigrationActivationHooks) error
 			return fmt.Errorf("schema-12 migration did not publish a workspace catalog: %w", err)
 		}
 	}
-	if schema == V13ConfigSchemaVersion {
-		return nil
-	}
-	if schema > V13ConfigSchemaVersion {
-		return fmt.Errorf("workspace schema %d is newer than supported schema %d; upgrade tt", schema, V13ConfigSchemaVersion)
+	if schema >= V13ConfigSchemaVersion {
+		if schema <= CurrentConfigVersion {
+			return nil
+		}
+		return fmt.Errorf("workspace schema %d is newer than supported schema %d; upgrade tt", schema, CurrentConfigVersion)
 	}
 	if schema != V12ConfigSchemaVersion {
 		return fmt.Errorf("workspace schema %d cannot be migrated directly to schema %d", schema, V13ConfigSchemaVersion)

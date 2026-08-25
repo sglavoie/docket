@@ -414,7 +414,7 @@ func prepareTaskLineEdit(snap Snapshot, ref TaskRef, req TaskLineEditRequest) (p
 	prepared := preparedTaskLineEdit{
 		title:              title,
 		dueSet:             req.DueSet,
-		due:                cloneCalendarDatePtr(req.Due),
+		due:                cloneDueDatePtr(req.Due),
 		parentMode:         req.Parent.Mode,
 		destinationProject: ref.Project,
 		action:             action,
@@ -578,8 +578,8 @@ func applyPreparedTaskLineFields(task *models.Task, prepared preparedTaskLineEdi
 		task.Priority = *prepared.priority
 		changed = true
 	}
-	if prepared.dueSet && !calendarDatePtrsEqual(task.DueDate, prepared.due) {
-		task.DueDate = cloneCalendarDatePtr(prepared.due)
+	if prepared.dueSet && !dueDatePtrsEqual(task.DueDate, prepared.due) {
+		task.DueDate = cloneDueDatePtr(prepared.due)
 		changed = true
 	}
 	if prepared.context != nil && task.Context != *prepared.context {
@@ -643,13 +643,11 @@ func instantPtrsEqual(a, b *time.Time) bool {
 	return a.Equal(*b)
 }
 
-func calendarDatePtrsEqual(a, b *time.Time) bool {
+func dueDatePtrsEqual(a, b *time.Time) bool {
 	if a == nil || b == nil {
 		return a == nil && b == nil
 	}
-	ay, am, ad := a.Date()
-	by, bm, bd := b.Date()
-	return ay == by && am == bm && ad == bd
+	return a.Equal(*b)
 }
 
 func (s *Service) applyTaskLineDestination(ref TaskRef, destination *CaptureDestination) ([]PlanningReconcileTarget, bool, error) {

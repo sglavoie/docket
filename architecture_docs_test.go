@@ -20,7 +20,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 	required := []string{
 		"## Contents",
 		"## Runtime layers",
-		"strict schema-12 Markdown",
+		"strict schema-13 Markdown",
 		"## Task model",
 		"| Lifecycle | created, updated, `state_changed`, completed timestamps |",
 		"deferral count (`defer_count`)",
@@ -175,6 +175,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"pre-defer-instant-v11-<UTC>.tar.gz",
 		"pre-context-v12-<UTC>.tar.gz",
 		"pre-defer-count-v13-<UTC>.tar.gz",
+		"pre-due-time-v14-<UTC>.tar.gz",
 		"Repeated deferral starts at `DeferCount >= 3`",
 		"Task.ApplyDeferAt",
 		"backfilling each task's `state_changed` clock from its `updated` timestamp",

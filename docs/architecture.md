@@ -47,10 +47,10 @@ The repository is divided by responsibility:
 - `internal/app` owns use cases, target resolution, atomic multi-project
   mutations, planning reconciliation, and rollback of in-memory state when a
   commit fails.
-- `internal/storage` owns strict schema-12 Markdown, attachments, transactions,
+- `internal/storage` owns strict schema-13 Markdown, attachments, transactions,
   workspace undo/redo, three-way merge, conflicts, and recovery.
 - `internal/config` owns the lean catalog and planning domains, project tags,
-  machine-local theme, workspace selection, and the v4→v5→v6→v7→v8→v9→v10→v11→v12→v13
+  machine-local theme, workspace selection, and the v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14
   migration chain.
 - `internal/tui` owns the single Outliner root, typed subordinate tools and
   overlays, operation descriptors, and the deterministic review harness.
@@ -79,7 +79,8 @@ Schema 12 task Markdown stores generic tasks with these supported fields:
 Task Markdown uses only generic `Task` headings. Tags are derived from live task
 records, not a catalog. Context is an optional task-level label validated like a
 tag; it is unrelated to the retired v4 project-level context folded into
-project tags during schema 7 migration. The due value is a calendar date; the deferral value is
+project tags during schema 7 migration. The due value is a calendar date that
+may carry an optional `due_time` (a canonical `HH:MM`); the deferral value is
 an RFC3339Nano instant, so a deferral can expire later the same day.
 
 `DeferCount` is a lifecycle signal rather than a count of field writes. An
@@ -494,7 +495,8 @@ reparent on a blocked task cannot reset how long it has been blocked. A waiting
 task's due date is its check-back date, so `formatCheckBackIndicator` replaces
 the plain `formatDueDate` segment rather than sitting beside it: rendering both
 would state one fact twice. It compares calendar days through `util.StartOfDay`,
-like `ClassifyDueDate`, because a due date is a day and not an instant, and it is
+like `ClassifyDueDate`, because a check-back reads at day granularity even though
+a due date may now carry a time; it is
 the one indicator that styles an overdue reading (`check +<age>`) as pressure.
 
 Every due reading is a background badge rather than colored text, so a date
@@ -1899,7 +1901,7 @@ The portable workspace rooted at `<data>` is:
 │   └── backups/             # immutable migration rollback pairs
 └── projects/
     └── <safe-slug>/
-        ├── tasks.md         # strict schema-12 generic Task Markdown
+        ├── tasks.md         # strict schema-13 generic Task Markdown
         ├── notes/           # minimal project notes
         └── .attachments/    # task-addressed file binaries
 ```
@@ -1964,7 +1966,7 @@ recreate the directory preflight is about to find absent.
 
 ## Concurrent edits and conflicts
 
-Project revisions hash canonical schema-12 content. A stale writer is compared
+Project revisions hash canonical schema-13 content. A stale writer is compared
 with its base and current remote document. Independent additions and
 non-overlapping field edits can merge; competing edits, delete-versus-edit,
 incompatible hierarchy/order changes, or opaque-block divergence produce a
@@ -1978,15 +1980,16 @@ all side effects are rebuilt together.
 ## Snapshot-first schema migration
 
 Workspace recovery reads the catalog payload schema before ordinary loading.
-Schema 13 proceeds directly. A supported schema-4 split-domain workspace first
+Schema 14 proceeds directly. A supported schema-4 split-domain workspace first
 crosses the schema-5 boundary, a supported schema-5 workspace then enters the
 schema-6 consolidation path, a schema-6 workspace crosses the schema-7
 scope-folding path, a schema-7 workspace crosses the schema-8 tag path, a
 schema-8 workspace crosses the schema-9 state-clock path,
 a schema-9 workspace crosses the schema-10 defer-rename path, a schema-10
-workspace crosses the schema-11 defer-instant path, and a schema-11 workspace
-crosses the schema-12 task-context path before schema 12 finishes on the
-schema-13 defer-count path:
+workspace crosses the schema-11 defer-instant path, a schema-11 workspace
+crosses the schema-12 task-context path, a schema-12 workspace crosses the
+schema-13 defer-count path, and a schema-13 workspace finishes on the
+schema-14 due-time path:
 
 1. Decode the v4 catalog, planning, settings, automation, machine state, task
    Markdown, completed archives, notes, blockers, and legacy indexes with
@@ -2074,8 +2077,15 @@ schema-13 defer-count path:
    activate catalog schema 13 and task Markdown schema 12 across active and
    archived projects, and clear undo/redo history whose retained bytes predate
    the new task-document marker.
+22. Validate every schema-12 project document, then lift it to schema 13 by
+   adding the optional `due_time` field. Existing due dates are calendar-only,
+   so every migrated task keeps its date and receives no `due_time`.
+23. Publish `pre-due-time-v14-<UTC>.tar.gz` plus its audit, atomically
+   activate catalog schema 14 and task Markdown schema 13 across active and
+   archived projects, and clear undo/redo history whose retained bytes carry the
+   schema-12 task-document marker.
 
-Each boundary is idempotent: repeated schema-13 startup neither reconverts data
+Each boundary is idempotent: repeated schema-14 startup neither reconverts data
 nor creates another rollback pair. Corrupt or future input and an existing
 `unfiled` project/directory fail before mutation with concrete rename/move guidance.
 Snapshot artifacts are application-owned and immutable to `tt`. Downgrade or a

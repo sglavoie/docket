@@ -538,7 +538,7 @@ func TestManagerV5MigrationRecoversPreparedActivationBeforeInspection(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !exists || schema != V13ConfigSchemaVersion {
+	if !exists || schema != CurrentConfigVersion {
 		t.Fatalf("recovered catalog schema = %d, exists=%v", schema, exists)
 	}
 	if _, statErr := os.Stat(journal.ManifestPath(manifest.ID)); !errors.Is(statErr, os.ErrNotExist) {

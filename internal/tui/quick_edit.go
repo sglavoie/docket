@@ -222,7 +222,7 @@ func (p *quickEditParser) applyDueDate() bool {
 		p.result.dueDateClear = true
 		return false
 	}
-	date, err := ParseDate(token.Value)
+	date, err := ParseDueDateValue(token.Value)
 	if err != nil {
 		return p.setError(fmt.Sprintf("invalid date: %s", token.Value))
 	}

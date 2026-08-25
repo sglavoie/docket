@@ -247,7 +247,11 @@ func quickEditOptionalMetadata(task *models.Task, now time.Time) []string {
 		if task.IsInState(models.StateWaiting) {
 			prefix = "check "
 		}
-		parts = append(parts, prefix+task.DueDate.Format("Jan 2"))
+		label := task.DueDate.Format("Jan 2")
+		if clock := formatDueClock(task); clock != "" {
+			label += " " + clock
+		}
+		parts = append(parts, prefix+label)
 	}
 	if task.DeferredUntil != nil {
 		parts = append(parts, "defer "+formatDeferDate(*task.DeferredUntil, now))

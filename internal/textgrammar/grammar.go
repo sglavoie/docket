@@ -231,7 +231,7 @@ var registry = []definitionSpec{
 				"today", "tomorrow", "+1d", "+3d", "+1w", "+2w", "+1m",
 				"monday", "friday", "next monday", "next friday", "in 3 days", "in 1 week", "in 2 weeks",
 			},
-			Examples: []string{"@tomorrow", "@friday", "@+3d", "@next monday"},
+			Examples: []string{"@tomorrow", "@friday", "@+3d", "@next monday", "@tomorrow 15:30", "@2026-08-25 09:00"},
 			Surfaces: allSurfaces, Cardinality: CardinalitySingleton,
 			Clears: []ClearOperation{{Value: clearValue, Description: "Clear due date", Surfaces: SurfaceEdit}},
 		},
@@ -239,10 +239,13 @@ var registry = []definitionSpec{
 			{Text: "@date", Surfaces: allSurfaces},
 			{Text: "@0", Surfaces: SurfaceEdit},
 		},
-		// The last alternative refuses a leading @ so @@ can never be consumed here,
-		// whatever order the registry is walked in. No legal due value starts with @.
-		pattern:           `(?i)(?:^|\s)@(next\s+\w+|in\s+\d+\s+\w+|[^\s@]\S*)`,
-		searchDescription: "Match a due bucket or exact due day",
+		// The date token refuses a leading @ (so @@ can never be consumed here,
+		// whatever order the registry is walked in — no legal due value starts
+		// with @) and may carry an optional trailing hh:mm clock time, which is
+		// the only way to set a due time. The hour-offset form (+Nh) is still
+		// refused downstream: hours are defer-only.
+		pattern:           `(?i)(?:^|\s)@((?:next\s+\w+|in\s+\d+\s+\w+|[^\s@]\S*)(?:\s+\d{1,2}:\d{2})?)`,
+		searchDescription: "Match a due bucket, exact due day, or day and hh:mm time",
 	},
 	{
 		Definition: Definition{

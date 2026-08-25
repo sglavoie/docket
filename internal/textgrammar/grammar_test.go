@@ -812,3 +812,29 @@ func TestSearchRefusesTheAttachmentSigilByName(t *testing.T) {
 		t.Fatalf("guidance = %q, want an ordinary query to run", got)
 	}
 }
+
+func TestDueCapturesOptionalClockSuffix(t *testing.T) {
+	timed := Parse("Ship it @friday 15:30", SurfaceCapture)
+	dueTokens := timed.TokensFor(FieldDue)
+	if len(dueTokens) != 1 || dueTokens[0].Value != "friday 15:30" {
+		t.Fatalf("@friday 15:30 due tokens = %+v, want one value \"friday 15:30\"", dueTokens)
+	}
+	if timed.Text != "Ship it" {
+		t.Errorf("timed due Text = %q, want \"Ship it\"", timed.Text)
+	}
+
+	prose := Parse("Ship it @friday 3 apples", SurfaceCapture)
+	proseTokens := prose.TokensFor(FieldDue)
+	if len(proseTokens) != 1 || proseTokens[0].Value != "friday" {
+		t.Fatalf("@friday 3 apples due tokens = %+v, want one value \"friday\"", proseTokens)
+	}
+	if prose.Text != "Ship it 3 apples" {
+		t.Errorf("prose due Text = %q, want \"Ship it 3 apples\"", prose.Text)
+	}
+
+	iso := Parse("Ship it @2026-08-25 09:00", SurfaceCapture)
+	isoTokens := iso.TokensFor(FieldDue)
+	if len(isoTokens) != 1 || isoTokens[0].Value != "2026-08-25 09:00" {
+		t.Fatalf("@2026-08-25 09:00 due tokens = %+v, want one value \"2026-08-25 09:00\"", isoTokens)
+	}
+}

@@ -166,7 +166,7 @@ func outlineDumpLine(task *models.Task, depth int) string {
 		segments = append(segments, fmt.Sprintf("%s%d", priorityDefinition.Trigger, task.Priority))
 	}
 	if task.DueDate != nil {
-		segments = append(segments, dueDefinition.Trigger+task.DueDate.Format("2006-01-02"))
+		segments = append(segments, dueDefinition.Trigger+dueGrammarValue(task))
 	}
 	for _, tag := range task.Tags {
 		segments = append(segments, tagDefinition.Trigger+tag)

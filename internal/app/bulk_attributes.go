@@ -176,7 +176,7 @@ func (s *Service) bulkSetDueDateAndPlanToday(taskIDs []string, locators []TaskLo
 	}
 	targets := make([]PlanningReconcileTarget, 0, len(refs))
 	for _, ref := range refs {
-		ref.Task.DueDate = cloneCalendarDatePtr(&due)
+		ref.Task.DueDate = cloneDueDatePtr(&due)
 		ref.Task.UpdatedAt = now
 		target, _, mutationErr := ApplyPlanningActionToTask(
 			ref.Task, ref.Project.ID, PlanningAddToday, now,
@@ -216,7 +216,7 @@ func (s *Service) bulkSetDueDateAndPlanToday(taskIDs []string, locators []TaskLo
 
 func (s *Service) bulkSetDueDate(taskIDs []string, locators []TaskLocator, due time.Time) (BulkResult, error) {
 	return s.bulkAttribute(taskIDs, locators, "Set Due Date", "due date", nil, func(t *models.Task) {
-		t.DueDate = cloneCalendarDatePtr(&due)
+		t.DueDate = cloneDueDatePtr(&due)
 		t.UpdatedAt = s.clock.Now()
 	})
 }

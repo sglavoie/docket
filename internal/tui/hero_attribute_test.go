@@ -5,12 +5,13 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func TestPickHeroAttribute(t *testing.T) {
-	pastDue := time.Now().Add(-48 * time.Hour)
-	futureDue := time.Now().Add(48 * time.Hour)
-	today := time.Now()
+	pastDue := util.StartOfDay(time.Now().Add(-48 * time.Hour))
+	futureDue := util.StartOfDay(time.Now().Add(48 * time.Hour))
+	today := util.StartOfDay(time.Now())
 
 	tests := []struct {
 		name    string

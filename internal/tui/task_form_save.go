@@ -2,6 +2,7 @@ package tui
 
 import (
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -60,9 +61,16 @@ func (m *TaskFormModel) parseDraftDueDate() error {
 		m.draft.dueDate = nil
 		return nil
 	}
-	date, err := util.ParseRelativeDateWithConfig(value, "sun")
+	datePart, hour, minute, hasTime, err := util.ExtractDueClockSuffix(value)
 	if err != nil {
 		return err
+	}
+	date, err := util.ParseRelativeDateWithConfig(datePart, "sun")
+	if err != nil {
+		return err
+	}
+	if hasTime {
+		date = time.Date(date.Year(), date.Month(), date.Day(), hour, minute, 0, 0, date.Location())
 	}
 	m.draft.dueDate = &date
 	return nil

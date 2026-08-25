@@ -170,13 +170,31 @@ func (t *Task) ApplyDeferAt(until, now time.Time) error {
 	return nil
 }
 
+// DueHasTime reports whether the task's due date carries a meaningful
+// time-of-day. A date-only due date is normalized to local midnight, so a
+// non-midnight clock is the signal that the user set an explicit hh:mm time.
+// The single practical consequence is that "due at exactly 00:00" is treated
+// as a date-only due date; every other clock time is an instant-precise due.
+func (t *Task) DueHasTime() bool {
+	if t.DueDate == nil {
+		return false
+	}
+	return !t.DueDate.Equal(util.StartOfDay(*t.DueDate))
+}
+
 // IsOverdue returns true if the task has a due date in the past and is not complete.
-// Uses day-level comparison (normalizes to midnight local time).
+// A date-only due date (no explicit time) is compared at day granularity
+// (normalized to midnight local time), so it is overdue only once the whole day
+// has passed. A timed due date is compared at its exact instant, so a task due
+// today at 09:00 is overdue from 10:00.
 func (t *Task) IsOverdue() bool {
 	if t.DueDate == nil || t.IsTerminalState() {
 		return false
 	}
 	now := time.Now()
+	if t.DueHasTime() {
+		return t.DueDate.Before(now)
+	}
 	today := util.StartOfDay(now)
 	dueDay := util.StartOfDay(*t.DueDate)
 	return dueDay.Before(today)

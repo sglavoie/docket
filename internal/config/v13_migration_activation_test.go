@@ -315,8 +315,8 @@ func TestManagerV13MigrationRecoversPreparedActivationOnStartup(t *testing.T) {
 		t.Fatalf("recover prepared schema-13 activation on startup: %v", err)
 	}
 	schema, exists, err := workspaceCatalogPayloadSchema(root)
-	if err != nil || !exists || schema != V13ConfigSchemaVersion {
-		t.Fatalf("recovered catalog schema = %d exists=%v err=%v, want %d", schema, exists, err, V13ConfigSchemaVersion)
+	if err != nil || !exists || schema < V13ConfigSchemaVersion {
+		t.Fatalf("recovered catalog schema = %d exists=%v err=%v, want >= %d", schema, exists, err, V13ConfigSchemaVersion)
 	}
 	if _, statErr := os.Stat(journal.ManifestPath(manifest.ID)); !errors.Is(statErr, os.ErrNotExist) {
 		t.Fatalf("recovered activation manifest still exists: %v", statErr)

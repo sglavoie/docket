@@ -186,7 +186,11 @@ func buildExportBadge(task *models.Task) string {
 		parts = append(parts, fmt.Sprintf("!%d", task.Priority))
 	}
 	if task.DueDate != nil {
-		parts = append(parts, "due "+task.DueDate.Format("2006-01-02"))
+		if task.DueHasTime() {
+			parts = append(parts, "due "+task.DueDate.Format("2006-01-02 15:04"))
+		} else {
+			parts = append(parts, "due "+task.DueDate.Format("2006-01-02"))
+		}
 	}
 	if task.DeferredUntil != nil {
 		// The deferral is a durable instant, but this export stays day-only so the

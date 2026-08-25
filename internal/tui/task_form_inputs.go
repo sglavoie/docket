@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"charm.land/bubbles/v2/textinput"
+
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // initTitleInput creates and configures the title textarea with an optional initial value.
@@ -33,7 +35,7 @@ func (m *TaskFormModel) focusTitleInput() {
 // initDueInput creates and configures the due date textinput with an optional initial value.
 func (m *TaskFormModel) initDueInput(value string) {
 	m.dueTextInput = textinput.New()
-	m.dueTextInput.Placeholder = "tomorrow, +3d, fri, 2026-01-15"
+	m.dueTextInput.Placeholder = "tomorrow, +3d, fri 15:30, 2026-01-15 09:00"
 	m.dueTextInput.CharLimit = 40
 	m.dueTextInput.SetWidth(40)
 	applyThemedTextInput(&m.dueTextInput)
@@ -109,10 +111,15 @@ func (m *TaskFormModel) initCommentItemInput(value string) {
 	}
 }
 
-// formatDateInput formats a date for text inputs.
+// formatDateInput formats a due date for text inputs, appending the hh:mm clock
+// when the due date carries an explicit (non-midnight) time so the edit field
+// round-trips a timed due date.
 func formatDateInput(value *time.Time) string {
 	if value == nil {
 		return ""
+	}
+	if !value.Equal(util.StartOfDay(*value)) {
+		return value.Format("2006-01-02 15:04")
 	}
 	return value.Format("2006-01-02")
 }

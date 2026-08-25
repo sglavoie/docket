@@ -120,8 +120,8 @@ func assertSameProjectTaskLineEdit(
 	if task.Title != "After" || task.Priority != models.PriorityHigh {
 		t.Fatalf("content patch not applied: title=%q priority=%d", task.Title, task.Priority)
 	}
-	if task.DueDate == nil || task.DueDate.Hour() != 0 || task.DueDate.Day() != 14 {
-		t.Fatalf("due date = %v, want normalized 2026-08-14", task.DueDate)
+	if task.DueDate == nil || task.DueDate.Hour() != 17 || task.DueDate.Minute() != 30 || task.DueDate.Day() != 14 {
+		t.Fatalf("due date = %v, want timed 2026-08-14 17:30", task.DueDate)
 	}
 	if !slices.Equal(task.Tags, []string{"keep", "added"}) {
 		t.Fatalf("tags = %v, want [keep added]", task.Tags)

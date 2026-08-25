@@ -48,10 +48,10 @@ inbox, backlog, doing, waiting, paused, someday, done, canceled
 
 Review is not a lifecycle state and has no key of its own: `review` promotes an
 All-mode lane. Retired fields/states: migration DTOs/audits only. Task Markdown schema
-12 uses generic `Task` headings, project-local ShortID, retained fields, and
-optional single-valued task `Context`. `DueDate` is a
-calendar date; `DeferredUntil` is an RFC3339Nano instant that can expire later
-the same day.
+13 uses generic `Task` headings, project-local ShortID, retained fields, and
+optional single-valued task `Context`. `DueDate` is a calendar date with
+optional `due_time`; `DeferredUntil` is an RFC3339Nano instant that can expire
+later the same day.
 
 `StateChangedAt` is the state clock and `UpdatedAt` is the touch time. Only the
 lifecycle transitions in `internal/models/task_lifecycle.go` write the clock,
@@ -328,8 +328,8 @@ dark/light theme. Workspace paths derive below approved roots; preserve
 symlink-aware containment, checked revisions, deterministic locks, and recovery
 manifests.
 
-Schema-13 catalogs hold schema-12 task Markdown.
-Migration v4→v5→v6→v7→v8→v9→v10→v11→v12→v13 validates each candidate first,
+Schema-14 catalogs hold schema-13 task Markdown.
+Migration v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14 validates each candidate first,
 publishes an immutable archive/audit pair, then atomically activates the next
 schema and removes retired storage. Nothing may publish partial output before a
 snapshot boundary. v4/v5/v6/v11 decoders are migration-only: runtime code
@@ -370,4 +370,4 @@ Guessable addresses are omitted; do not restore them.
 | Defer, waiting, check-back, drop ladder | Peek and multi-select | Row indicators |
 | Registry, executor, providers, chaining | Task actions | One operation grammar |
 | Filters, search, jumps, Focus, Peek, selection, `Ctrl+T` | Filters and search; Peek and multi-select | Search, filters, and Peek; Selection and subordinate tools |
-| Storage layout, migration chain | Schema 13 storage and migration | Persistence layout; Snapshot-first schema migration |
+| Storage layout, migration chain | Schema 14 storage and migration | Persistence layout; Snapshot-first schema migration |

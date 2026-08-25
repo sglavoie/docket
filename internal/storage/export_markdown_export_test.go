@@ -230,7 +230,7 @@ func TestWriteProjectMarkdownCleanIncludesSchema6TaskRecordsAndAttachmentReferen
 	project := newProject("Export", active, terminal)
 	got := WriteProjectMarkdownClean(project)
 	for _, want := range []string{
-		"## Task: (#1) Active task [due 2026-07-29]",
+		"## Task: (#1) Active task [due 2026-07-29 15:30]",
 		"- [x] First",
 		"- [ ] Second",
 		"- A retained comment",
@@ -242,8 +242,5 @@ func TestWriteProjectMarkdownCleanIncludesSchema6TaskRecordsAndAttachmentReferen
 		if !strings.Contains(got, want) {
 			t.Errorf("export missing %q:\n%s", want, got)
 		}
-	}
-	if strings.Contains(got, "15:30") {
-		t.Fatalf("date-only v5 due value regained a retired due time:\n%s", got)
 	}
 }

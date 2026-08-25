@@ -218,7 +218,10 @@ and the due rows stay reachable beside them.
 
 Inside the `@` picker, `a` opens a typed-date input for any date the relative
 presets do not cover: `2026-01-15`, `tomorrow`, `+3d`, `+1w`, `fri`, `next mon`,
-or `dec 15`. `+4h` and the other `+Nh` hour offsets parse only when the cursor
+or `dec 15`. The due input also accepts an optional trailing `HH:MM` clock time
+(`fri 15:30`, `2026-01-15 09:00`) to set an explicit time-of-day; a task with a
+time compares at that instant, so it is overdue once the time passes rather than
+at day's end. `+4h` and the other `+Nh` hour offsets parse only when the cursor
 sits in the defer section, because a deferral is an instant and a due date is a
 calendar day; the due section refuses them by name. Inside the `#` picker the
 same key adds a new tag, or a new context when the cursor sits on a context row.
@@ -1024,7 +1027,7 @@ tt conflict resolve <id> --use remote
 tt conflict resolve <id> --use file --file merged.md
 ```
 
-## Schema 13 storage and migration
+## Schema 14 storage and migration
 
 The live portable layout is deliberately small:
 
@@ -1044,15 +1047,19 @@ The live portable layout is deliberately small:
     └── .attachments/
 ```
 
-Project task files use strict schema-12 Markdown and generic `Task` headings.
+Project task files use strict schema-13 Markdown and generic `Task` headings.
 `workspace.json` contains the lean project catalog, project tags, and the
 protected Unfiled ID. `planning.json` contains Today and
 Next ordering only.
 Each task may carry an optional non-negative `defer_count`; zero is omitted.
+Each task may also carry an optional `due_time`, a canonical `HH:MM` wall-clock
+in 00:00–23:59 that pairs with the calendar `due` date; midnight is reserved for
+date-only due dates, so a date-only task omits it.
 Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the
 dark/light theme choice.
 
-Startup migrates supported schema-12 workspaces to schema 13, supported schema-6
+Startup migrates supported schema-13 workspaces to schema 14, supported
+schema-12 workspaces to schema 13, supported schema-6
 through schema-11 workspaces through the intermediate boundaries, and supported
 schema-4/5 workspaces through the whole chain. Each step validates the complete
 candidate before mutation and publishes its own immutable rollback archive and
@@ -1063,7 +1070,8 @@ for v6→v7, `pre-tag-v8-<UTC>.tar.gz` for v7→v8,
 `pre-defer-rename-v10-<UTC>.tar.gz` for v9→v10, and
 `pre-defer-instant-v11-<UTC>.tar.gz` for v10→v11, and
 `pre-context-v12-<UTC>.tar.gz` for v11→v12, and
-`pre-defer-count-v13-<UTC>.tar.gz` for v12→v13. The schema-6 conversion preserves
+`pre-defer-count-v13-<UTC>.tar.gz` for v12→v13, and
+`pre-due-time-v14-<UTC>.tar.gz` for v13→v14. The schema-6 conversion preserves
 notes and attachment bytes,
 converts retained decision text into comments, repairs planning references,
 renames the protected project to Unfiled, and deliberately resets the
@@ -1098,6 +1106,12 @@ Schema 13 upgrades task Markdown to schema 12 by adding the optional
 `defer_count` field. Existing tasks begin at zero, represented by the field's
 absence, and undo/redo history is cleared because its retained Markdown predates
 the new schema marker.
+Schema 14 upgrades task Markdown to schema 13 by adding the optional `due_time`
+field, a canonical `HH:MM` wall-clock that gives a due date an explicit
+time-of-day. Existing due dates are calendar-only, so every migrated task keeps
+its date and receives no `due_time`; the rewrite preserves their meaning.
+Undo/redo history is cleared because its retained Markdown carries the schema-12
+marker that the schema-13 reader rejects.
 
 Invalid or future-schema input aborts without changing workspace data. An
 existing `unfiled` project or directory also aborts before snapshot publication
@@ -1106,8 +1120,8 @@ loading, and repeated startup is idempotent.
 
 There is no down-migration. An older `tt` refuses a migrated workspace as newer
 than its supported schema, and no build converts a workspace back. Recovery is
-manual: extract the matching archive — `pre-context-v12-<UTC>.tar.gz` for the
-schema-12 boundary or `pre-defer-count-v13-<UTC>.tar.gz` for schema 13 — into a
+manual: extract the matching archive — `pre-defer-count-v13-<UTC>.tar.gz` for the
+schema-13 boundary or `pre-due-time-v14-<UTC>.tar.gz` for schema 14 — into a
 separate directory and open that copy with a compatible build. Migration
 snapshots themselves are never modified.
 

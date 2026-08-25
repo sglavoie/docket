@@ -498,7 +498,7 @@ func (s *Service) buildPreparedCapturedTask(project *models.Project, prepared pr
 		task.RemoveTag(tag)
 	}
 	if req.Due != nil {
-		task.DueDate = cloneCalendarDatePtr(req.Due)
+		task.DueDate = cloneDueDatePtr(req.Due)
 	}
 	if req.Pinned {
 		task.ApplyPinned(true, now)

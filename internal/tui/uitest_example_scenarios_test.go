@@ -17,6 +17,7 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"capture-grammar.json",
 		"capture-attachment.json",
 		"capture-comment.json",
+		"capture-due-time.json",
 		"capture-child-adoption.json",
 		"capture-pin.json",
 		"capture-project-header-destination.json",

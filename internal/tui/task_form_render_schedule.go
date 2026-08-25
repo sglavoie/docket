@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"time"
+
+	"github.com/sglavoie/tt/internal/util"
 )
 
 // formScheduleLabelWidth is the fixed label column width for all Schedule-tab rows.
@@ -36,6 +38,9 @@ func (m *TaskFormModel) renderScheduleTab() string {
 func scheduleDueDateDisplay(d *time.Time) string {
 	if d == nil {
 		return MutedStyle.Render("(none)")
+	}
+	if !d.Equal(util.StartOfDay(*d)) {
+		return d.Format("2006-01-02 15:04")
 	}
 	return d.Format("2006-01-02")
 }

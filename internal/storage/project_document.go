@@ -12,7 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage/format"
 )
 
-// ProjectDocument is the strict live schema-12 storage representation of tasks.md.
+// ProjectDocument is the strict live schema-13 storage representation of tasks.md.
 type ProjectDocument struct {
 	ProjectName   string
 	Tasks         []*models.Task
@@ -21,15 +21,15 @@ type ProjectDocument struct {
 }
 
 func ParseProjectDocument(content string) (*ProjectDocument, error) {
-	v12, err := ParseV12ProjectDocument(strings.TrimPrefix(content, "\uFEFF"))
+	v13, err := ParseV13ProjectDocument(strings.TrimPrefix(content, "\uFEFF"))
 	if err != nil {
 		return nil, err
 	}
-	tasks, err := modelsFromV12ProjectDocument(v12, time.Local)
+	tasks, err := modelsFromV13ProjectDocument(v13, time.Local)
 	if err != nil {
 		return nil, err
 	}
-	doc := &ProjectDocument{ProjectName: v12.ProjectName, Tasks: tasks, SchemaVersion: SchemaVersionV12}
+	doc := &ProjectDocument{ProjectName: v13.ProjectName, Tasks: tasks, SchemaVersion: SchemaVersionV13}
 	doc.Revision = doc.ComputeRevision()
 	return doc, nil
 }
@@ -40,7 +40,7 @@ func (d *ProjectDocument) ComputeRevision() string {
 }
 
 func (d *ProjectDocument) canonicalContent() string {
-	content, err := d.writeV12()
+	content, err := d.writeV13()
 	if err != nil {
 		return ""
 	}
@@ -48,22 +48,22 @@ func (d *ProjectDocument) canonicalContent() string {
 }
 
 func (d *ProjectDocument) WriteCurrent() (string, error) {
-	if d.SchemaVersion != SchemaVersionV12 {
+	if d.SchemaVersion != SchemaVersionV13 {
 		return "", fmt.Errorf("unsupported project schema %d", d.SchemaVersion)
 	}
-	return d.writeV12()
+	return d.writeV13()
 }
 
-func (d *ProjectDocument) writeV12() (string, error) {
-	v12, err := v12ProjectDocumentFromModel(&models.Project{Name: d.ProjectName, Tasks: d.Tasks})
+func (d *ProjectDocument) writeV13() (string, error) {
+	v13, err := v13ProjectDocumentFromModel(&models.Project{Name: d.ProjectName, Tasks: d.Tasks})
 	if err != nil {
 		return "", err
 	}
-	return WriteV12ProjectDocument(v12)
+	return WriteV13ProjectDocument(v13)
 }
 
 func ToProjectDocument(project *models.Project) *ProjectDocument {
-	doc := &ProjectDocument{ProjectName: project.Name, Tasks: project.Tasks, SchemaVersion: SchemaVersionV12}
+	doc := &ProjectDocument{ProjectName: project.Name, Tasks: project.Tasks, SchemaVersion: SchemaVersionV13}
 	doc.Revision = doc.ComputeRevision()
 	return doc
 }
@@ -88,7 +88,7 @@ func CanonicalProjectDocument(project *models.Project, base *ProjectDocument) (*
 func LoadProjectDocument(project *models.Project) (*ProjectDocument, error) {
 	content, err := os.ReadFile(tasksFilePath(project.Path))
 	if os.IsNotExist(err) {
-		doc := &ProjectDocument{ProjectName: project.Name, Tasks: []*models.Task{}, SchemaVersion: SchemaVersionV12}
+		doc := &ProjectDocument{ProjectName: project.Name, Tasks: []*models.Task{}, SchemaVersion: SchemaVersionV13}
 		doc.Revision = doc.ComputeRevision()
 		return doc, nil
 	}
@@ -98,10 +98,11 @@ func LoadProjectDocument(project *models.Project) (*ProjectDocument, error) {
 	return ParseProjectDocument(string(content))
 }
 
-// modelsFromV12ProjectDocument builds live tasks from a schema-12 document.
+// modelsFromV13ProjectDocument builds live tasks from a schema-13 document.
 // location resolves the bare due date only: the deferral value carries its own
-// offset and is read as the instant it names.
-func modelsFromV12ProjectDocument(document V12ProjectDocument, location *time.Location) ([]*models.Task, error) {
+// offset and is read as the instant it names. A due_time, when present, sets the
+// due date's clock so models.Task.DueHasTime reports a timed due date.
+func modelsFromV13ProjectDocument(document V13ProjectDocument, location *time.Location) ([]*models.Task, error) {
 	if location == nil {
 		location = time.Local
 	}
@@ -109,7 +110,7 @@ func modelsFromV12ProjectDocument(document V12ProjectDocument, location *time.Lo
 	for _, record := range document.Tasks {
 		state, ok := models.ParseWorkflowState(record.State)
 		if !ok {
-			return nil, fmt.Errorf("v12 task %q has invalid live workflow state %q", record.ID, record.State)
+			return nil, fmt.Errorf("v13 task %q has invalid live workflow state %q", record.ID, record.State)
 		}
 		task := &models.Task{
 			ID: record.ID, ShortID: record.ShortID, Title: record.Title,
@@ -127,15 +128,15 @@ func modelsFromV12ProjectDocument(document V12ProjectDocument, location *time.Lo
 		}
 		var err error
 		if record.DueDate != "" {
-			task.DueDate, err = parseProjectDocumentDate(record.DueDate, location)
+			task.DueDate, err = parseProjectDocumentDueDate(record.DueDate, record.DueTime, location)
 			if err != nil {
-				return nil, fmt.Errorf("v12 task %q due date: %w", record.ID, err)
+				return nil, fmt.Errorf("v13 task %q due date: %w", record.ID, err)
 			}
 		}
 		if record.SnoozedUntil != "" {
 			task.DeferredUntil, err = parseProjectDocumentInstant(record.SnoozedUntil)
 			if err != nil {
-				return nil, fmt.Errorf("v12 task %q deferral instant: %w", record.ID, err)
+				return nil, fmt.Errorf("v13 task %q deferral instant: %w", record.ID, err)
 			}
 		}
 		for _, attachment := range record.Attachments {
@@ -160,39 +161,39 @@ func modelsFromV12ProjectDocument(document V12ProjectDocument, location *time.Lo
 	return tasks, nil
 }
 
-func v12ProjectDocumentFromModel(project *models.Project) (V12ProjectDocument, error) {
+func v13ProjectDocumentFromModel(project *models.Project) (V13ProjectDocument, error) {
 	if project == nil {
-		return V12ProjectDocument{}, fmt.Errorf("project is required")
+		return V13ProjectDocument{}, fmt.Errorf("project is required")
 	}
-	document := V12ProjectDocument{ProjectName: project.Name}
+	document := V13ProjectDocument{ProjectName: project.Name}
 	if len(project.Tasks) > 0 {
-		document.Tasks = make([]format.V12TaskRecord, 0, len(project.Tasks))
+		document.Tasks = make([]format.V13TaskRecord, 0, len(project.Tasks))
 	}
 	for _, task := range project.Tasks {
-		record, err := v12TaskRecordFromModel(task)
+		record, err := v13TaskRecordFromModel(task)
 		if err != nil {
-			return V12ProjectDocument{}, err
+			return V13ProjectDocument{}, err
 		}
 		document.Tasks = append(document.Tasks, record)
 	}
-	if err := ValidateV12ProjectDocument(document); err != nil {
-		return V12ProjectDocument{}, err
+	if err := ValidateV13ProjectDocument(document); err != nil {
+		return V13ProjectDocument{}, err
 	}
 	return document, nil
 }
 
-func v12TaskRecordFromModel(task *models.Task) (format.V12TaskRecord, error) {
+func v13TaskRecordFromModel(task *models.Task) (format.V13TaskRecord, error) {
 	if task == nil {
-		return format.V12TaskRecord{}, fmt.Errorf("schema-12 writer cannot persist a nil task")
+		return format.V13TaskRecord{}, fmt.Errorf("schema-13 writer cannot persist a nil task")
 	}
 	if !task.State().IsValid() {
-		return format.V12TaskRecord{}, fmt.Errorf("schema-12 writer refuses invalid lifecycle %q on task %q", task.State(), task.ID)
+		return format.V13TaskRecord{}, fmt.Errorf("schema-13 writer refuses invalid lifecycle %q on task %q", task.State(), task.ID)
 	}
 	if err := models.ValidatePriority(task.Priority, true); err != nil {
-		return format.V12TaskRecord{}, fmt.Errorf("schema-12 writer refuses task %q priority: %w", task.ID, err)
+		return format.V13TaskRecord{}, fmt.Errorf("schema-13 writer refuses task %q priority: %w", task.ID, err)
 	}
 	if task.StateChangedAt.IsZero() {
-		return format.V12TaskRecord{}, fmt.Errorf("schema-12 writer refuses task %q without a state clock", task.ID)
+		return format.V13TaskRecord{}, fmt.Errorf("schema-13 writer refuses task %q without a state clock", task.ID)
 	}
 	record := format.V6TaskRecord{
 		ID: task.ID, ShortID: task.ShortID, Title: task.Title, Description: task.Description,
@@ -204,8 +205,12 @@ func v12TaskRecordFromModel(task *models.Task) (format.V12TaskRecord, error) {
 	if task.ParentID != nil {
 		record.ParentID = *task.ParentID
 	}
+	dueTime := ""
 	if task.DueDate != nil {
 		record.DueDate = task.DueDate.Format("2006-01-02")
+		if task.DueHasTime() {
+			dueTime = task.DueDate.Format("15:04")
+		}
 	}
 	if task.DeferredUntil != nil {
 		record.SnoozedUntil = task.DeferredUntil.Format(time.RFC3339Nano)
@@ -236,17 +241,20 @@ func v12TaskRecordFromModel(task *models.Task) (format.V12TaskRecord, error) {
 		}
 		record.Comments = append(record.Comments, format.V6TaskComment{Text: comment.Text, CreatedAt: comment.CreatedAt})
 	}
-	v12 := format.V12TaskRecord{
-		V11TaskRecord: format.V11TaskRecord{
-			V10TaskRecord: format.V10TaskRecord{V6TaskRecord: record, StateChangedAt: task.StateChangedAt},
-			Context:       task.Context,
+	v13 := format.V13TaskRecord{
+		V12TaskRecord: format.V12TaskRecord{
+			V11TaskRecord: format.V11TaskRecord{
+				V10TaskRecord: format.V10TaskRecord{V6TaskRecord: record, StateChangedAt: task.StateChangedAt},
+				Context:       task.Context,
+			},
+			DeferCount: task.DeferCount,
 		},
-		DeferCount: task.DeferCount,
+		DueTime: dueTime,
 	}
-	if err := format.ValidateV12TaskRecord(v12); err != nil {
-		return format.V12TaskRecord{}, err
+	if err := format.ValidateV13TaskRecord(v13); err != nil {
+		return format.V13TaskRecord{}, err
 	}
-	return v12, nil
+	return v13, nil
 }
 
 func parseProjectDocumentDate(value string, location *time.Location) (*time.Time, error) {
@@ -255,6 +263,25 @@ func parseProjectDocumentDate(value string, location *time.Location) (*time.Time
 		return nil, err
 	}
 	return &parsed, nil
+}
+
+// parseProjectDocumentDueDate resolves the date-only "due" field, then folds in
+// an optional "due_time" (HH:MM) so a timed due date carries its clock. A due
+// date with no due_time stays at local midnight, which is the date-only signal.
+func parseProjectDocumentDueDate(dateValue, timeValue string, location *time.Location) (*time.Time, error) {
+	day, err := parseProjectDocumentDate(dateValue, location)
+	if err != nil {
+		return nil, err
+	}
+	if timeValue == "" {
+		return day, nil
+	}
+	clock, err := time.ParseInLocation("15:04", timeValue, location)
+	if err != nil {
+		return nil, fmt.Errorf("due time %q: %w", timeValue, err)
+	}
+	due := time.Date(day.Year(), day.Month(), day.Day(), clock.Hour(), clock.Minute(), 0, 0, location)
+	return &due, nil
 }
 
 // parseProjectDocumentInstant reads a durable deferral value. The stored string

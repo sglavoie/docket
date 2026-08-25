@@ -97,13 +97,15 @@ func cloneInstantPtr(t *time.Time) *time.Time {
 	return &value
 }
 
-// cloneCalendarDatePtr returns the local calendar date represented by t with
-// its clock component removed.
-func cloneCalendarDatePtr(t *time.Time) *time.Time {
+// cloneDueDatePtr returns a copy of the due-date pointer t, preserving its
+// clock component. A date-only due date arrives here already normalized to
+// local midnight; a timed due date keeps its hh:mm so models.Task.DueHasTime
+// can derive from the clock. It replaces the earlier date-only clone now that a
+// due date may carry an explicit time.
+func cloneDueDatePtr(t *time.Time) *time.Time {
 	if t == nil {
 		return nil
 	}
-	year, month, day := t.Date()
-	value := time.Date(year, month, day, 0, 0, 0, 0, t.Location())
+	value := *t
 	return &value
 }

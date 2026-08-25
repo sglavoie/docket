@@ -121,6 +121,12 @@ func formatDueDate(task *models.Task) string {
 		return ""
 	}
 	dateStr, style := ClassifyDueDate(task.DueDate)
+	if clock := formatDueClock(task); clock != "" {
+		dateStr += " " + clock
+		if task.IsOverdue() {
+			style = OverdueStyle
+		}
+	}
 	return style.Render(icons.Get("date") + " " + dateStr)
 }
 

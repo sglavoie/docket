@@ -339,3 +339,46 @@ func TestHourOffsetsStayOutOfTheCalendarDayParsers(t *testing.T) {
 		t.Errorf("ParseCalendarDate(%q) = %v, want %v", "+3d", got, want)
 	}
 }
+
+func TestParseDueDateOptionalClockSuffix(t *testing.T) {
+	base := StartOfDay(time.Now()).AddDate(0, 0, 1)
+
+	dateOnly, hasTime, err := ParseDueDate("tomorrow")
+	if err != nil {
+		t.Fatalf("ParseDueDate(%q) error = %v", "tomorrow", err)
+	}
+	if hasTime {
+		t.Errorf("ParseDueDate(%q) reported a clock time", "tomorrow")
+	}
+	if !dateOnly.Equal(base) {
+		t.Errorf("ParseDueDate(%q) = %v, want %v", "tomorrow", dateOnly, base)
+	}
+
+	timed, hasTime, err := ParseDueDate("tomorrow 15:30")
+	if err != nil {
+		t.Fatalf("ParseDueDate(%q) error = %v", "tomorrow 15:30", err)
+	}
+	if !hasTime {
+		t.Errorf("ParseDueDate(%q) did not report a clock time", "tomorrow 15:30")
+	}
+	wantTimed := time.Date(base.Year(), base.Month(), base.Day(), 15, 30, 0, 0, base.Location())
+	if !timed.Equal(wantTimed) {
+		t.Errorf("ParseDueDate(%q) = %v, want %v", "tomorrow 15:30", timed, wantTimed)
+	}
+
+	if _, hasTime, err := ParseDueDate("2026-08-25 00:00"); err != nil || hasTime {
+		t.Errorf("ParseDueDate(%q) hasTime=%v err=%v, want date-only (midnight collapses)", "2026-08-25 00:00", hasTime, err)
+	}
+
+	if _, _, err := ParseDueDate("tomorrow 24:00"); err == nil {
+		t.Fatal("ParseDueDate accepted an out-of-range clock time")
+	}
+
+	if _, _, err := ParseDueDate("+4h"); err == nil {
+		t.Fatal("ParseDueDate accepted an hour offset; hours are defer-only")
+	}
+
+	if got, _, err := ParseDueDate("2026-08-25 3 apples"); err == nil {
+		t.Errorf("ParseDueDate(%q) = %v, want an error (trailing prose is not a clock)", "2026-08-25 3 apples", got)
+	}
+}

@@ -198,7 +198,7 @@ func (p *quickCaptureParser) normalizeTagTokens() {
 
 func (p *quickCaptureParser) parseDueTokens(tokens []textgrammar.Token) {
 	if len(tokens) > 0 {
-		p.parseDueToken(tokens[0], ParseDate)
+		p.parseDueToken(tokens[0], ParseDueDateValue)
 	}
 }
 

@@ -145,9 +145,13 @@ func passesCompletionAgeFilterAt(task *models.Task, filter CompletionAgeFilter, 
 func passesDueDateFilterAt(task *models.Task, filter DueDateFilter, now time.Time) bool {
 	switch filter {
 	case DueDateOverdue:
-		return task.DueDate != nil &&
-			!task.IsTerminalState() &&
-			util.DaysBetween(now, *task.DueDate) < 0
+		if task.DueDate == nil || task.IsTerminalState() {
+			return false
+		}
+		if task.DueHasTime() {
+			return task.DueDate.Before(now)
+		}
+		return util.DaysBetween(now, *task.DueDate) < 0
 	case DueDateToday:
 		return task.DueDate != nil && util.DaysBetween(now, *task.DueDate) == 0
 	case DueDateThisWeek:

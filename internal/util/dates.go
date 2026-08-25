@@ -163,6 +163,56 @@ func ParseCalendarDate(input string) (time.Time, error) {
 	return ParseRelativeDate(input)
 }
 
+// clockTimeRe matches an explicit hh:mm clock time (00:00–23:59 is enforced by
+// ParseDueDate, not the pattern, so the caller can name an out-of-range value).
+var clockTimeRe = regexp.MustCompile(`^([0-9]{1,2}):([0-9]{2})$`)
+
+// ParseDueDate parses a due-date value that may carry an optional trailing
+// clock time (hh:mm), for example "tomorrow 15:30" or "2026-08-25 09:00". It
+// returns the resolved local time and whether an explicit time was present. The
+// date portion is parsed with ParseCalendarDate, so the hour-offset form (+Nh)
+// is still refused: hours are defer-only. A value without a trailing hh:mm
+// resolves to local midnight with hasTime false. An explicit 00:00 collapses to
+// a date-only due date because a midnight clock is the date-only signal.
+func ParseDueDate(input string) (time.Time, bool, error) {
+	datePart, hour, minute, hasTime, err := ExtractDueClockSuffix(input)
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	day, err := ParseCalendarDate(datePart)
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	if !hasTime {
+		return day, false, nil
+	}
+	due := time.Date(day.Year(), day.Month(), day.Day(), hour, minute, 0, 0, day.Location())
+	return due, true, nil
+}
+
+// ExtractDueClockSuffix splits an optional trailing hh:mm clock time off a due
+// value, returning the remaining date text plus the parsed hour and minute. The
+// hasTime result is false for a missing suffix and for an explicit 00:00, since
+// a midnight clock is the date-only signal. An out-of-range hh:mm is an error so
+// the caller can name it.
+func ExtractDueClockSuffix(input string) (string, int, int, bool, error) {
+	trimmed := strings.TrimSpace(input)
+	fields := strings.Fields(trimmed)
+	if len(fields) < 2 {
+		return trimmed, 0, 0, false, nil
+	}
+	match := clockTimeRe.FindStringSubmatch(fields[len(fields)-1])
+	if match == nil {
+		return trimmed, 0, 0, false, nil
+	}
+	hour, _ := strconv.Atoi(match[1])
+	minute, _ := strconv.Atoi(match[2])
+	if hour > 23 || minute > 59 {
+		return "", 0, 0, false, fmt.Errorf("invalid due time %q: hh:mm must be 00:00-23:59", fields[len(fields)-1])
+	}
+	return strings.Join(fields[:len(fields)-1], " "), hour, minute, hour != 0 || minute != 0, nil
+}
+
 var errHoursAreDeferOnly = errors.New("hours are defer-only; a due date is a calendar day — try +1d")
 
 func normalizeDateInput(input string) string {

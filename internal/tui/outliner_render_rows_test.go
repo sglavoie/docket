@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 func TestDeferIndicatorSeparatesPendingFromWoken(t *testing.T) {
@@ -514,7 +515,7 @@ func TestIndicatorDropLadderOrder(t *testing.T) {
 
 func TestBehavioralSignalsRowReconcilesWidthsAndOverflow(t *testing.T) {
 	now := time.Now()
-	due := now.AddDate(0, 0, -4)
+	due := util.StartOfDay(now.AddDate(0, 0, -4))
 	title := "Investigate intermittent timeout when syncing the customer portal release archive"
 	task := &models.Task{
 		ID:             "combined-signals",
@@ -569,7 +570,7 @@ func TestBehavioralSignalsRowReconcilesWidthsAndOverflow(t *testing.T) {
 
 func TestDoingRowRendersAgeAndDueDateAtSixtyColumns(t *testing.T) {
 	now := time.Now()
-	due := now.AddDate(0, 0, 4)
+	due := util.StartOfDay(now.AddDate(0, 0, 4))
 	task := &models.Task{
 		ID:             "active",
 		Title:          "Ship the migration safely",
@@ -635,7 +636,7 @@ func TestCheckBackIndicatorCountsTowardChasing(t *testing.T) {
 
 func TestWaitingRowReplacesThePlainDueDateWithTheCheckBack(t *testing.T) {
 	now := time.Now()
-	due := now.AddDate(0, 0, 4)
+	due := util.StartOfDay(now.AddDate(0, 0, 4))
 	task := &models.Task{
 		ID:             "blocked",
 		Title:          "Blocked on vendor",
@@ -660,7 +661,7 @@ func TestWaitingRowReplacesThePlainDueDateWithTheCheckBack(t *testing.T) {
 
 func TestNarrowRowShedsIndicatorsBeforeTheTitle(t *testing.T) {
 	now := time.Now()
-	due := now.AddDate(0, 0, 4)
+	due := util.StartOfDay(now.AddDate(0, 0, 4))
 	task := &models.Task{
 		ID:             "loaded",
 		Title:          "Blocked on vendor",

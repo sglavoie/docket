@@ -300,7 +300,7 @@ func (s *Service) applyOutlinePlan(project *models.Project, base *storage.Projec
 		item.task.Priority = item.priority
 		item.task.Tags = append([]string{}, item.tags...)
 		item.task.Context = item.context
-		item.task.DueDate = cloneCalendarDatePtr(item.line.Due)
+		item.task.DueDate = cloneDueDatePtr(item.line.Due)
 		item.task.ApplyPinned(item.line.Pinned, now)
 	}
 	return s.applyOutlineDestinations(project, base, prepared, now)
