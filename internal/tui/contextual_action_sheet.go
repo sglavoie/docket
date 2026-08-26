@@ -21,6 +21,7 @@ const (
 	ContextActionHostNotes       ContextActionSheetHost = "notes"
 	ContextActionHostAttachments ContextActionSheetHost = "attachments"
 	ContextActionHostComments    ContextActionSheetHost = "comments"
+	ContextActionHostLensPicker  ContextActionSheetHost = "lens-picker"
 )
 
 // ContextActionSheetCompletion is the lifecycle applied after an action

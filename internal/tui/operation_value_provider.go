@@ -2162,6 +2162,13 @@ func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 	case ContextActionSheetClosedMsg:
 		m.contextActionSheet = nil
 		return true, nil
+	case NamedLensPickerClosedMsg:
+		m.lensPicker = nil
+		return true, nil
+	case NamedLensPickerResultMsg:
+		return true, m.applyNamedLensPickerResult(typed)
+	case NamedLensActionsRequestMsg:
+		return true, m.openNamedLensActions(typed)
 	case OperationConfirmationRequestMsg:
 		m.showOperationConfirmation(typed)
 		return true, nil
@@ -2207,11 +2214,24 @@ func (m *AppModel) applyContextActionSheetResult(msg ContextActionSheetResultMsg
 func (m *AppModel) resumeContextActionRequest(request OperationExecutionRequest) tea.Cmd {
 	sheet := m.contextActionSheet
 	if sheet == nil {
+		// The lens picker is the one surface an operation can be raised from
+		// without a sheet between, so it owns the resumed outcome the same way:
+		// a refusal stays on the list, and only completion tears it down.
+		if picker := m.lensPicker; picker != nil {
+			result, dismissed := picker.Execute(request)
+			if dismissed {
+				m.closeNamedLensOverlays()
+			}
+			return m.applyNamedLensPickerResult(NamedLensPickerResultMsg{Result: result})
+		}
 		return m.executeOperationOverlayRequest(request)
 	}
 	result, dismissed := sheet.Execute(request)
 	if dismissed {
 		m.contextActionSheet = nil
+		// The sheet was opened over the picker, which stays mounted: the row it
+		// acted on may have been renamed, rewritten, or removed underneath.
+		m.refreshNamedLensPicker()
 	}
 	return m.applyContextActionSheetResult(ContextActionSheetResultMsg{
 		Result: result,

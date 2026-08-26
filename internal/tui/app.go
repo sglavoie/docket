@@ -216,6 +216,11 @@ type AppModel struct {
 	operationValuePicker *OperationValuePickerModel
 	operationTextPrompt  *OperationTextPromptModel
 
+	// The named-lens picker sits below that flow rather than inside it: it is
+	// the surface an action sheet is opened *from*, so it stays mounted beneath
+	// the sheet, prompt, and confirmation a lens action nests above it.
+	lensPicker *NamedLensPickerModel
+
 	// A destructive contextual action prompts here and keeps its frozen request
 	// so cancellation returns to the sheet with nothing executed.
 	operationConfirm        ConfirmDialog

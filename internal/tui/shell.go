@@ -121,7 +121,8 @@ func (o OverlayManager) HasActiveTextInput() bool {
 	m := o.app
 	return m.operationValuePicker != nil ||
 		m.operationTextPrompt != nil ||
-		m.contextActionSheet != nil
+		m.contextActionSheet != nil ||
+		m.lensPicker != nil
 }
 
 // Active reports whether any transient overlay is currently shown.
@@ -130,7 +131,8 @@ func (o OverlayManager) Active() bool {
 	return m.navigation.Overlays.Active() ||
 		m.contextActionSheet != nil ||
 		m.operationValuePicker != nil ||
-		m.operationTextPrompt != nil
+		m.operationTextPrompt != nil ||
+		m.lensPicker != nil
 }
 
 // ClearAll dismisses every transient overlay. Called when navigation collapses
@@ -141,6 +143,7 @@ func (o OverlayManager) ClearAll() {
 	m.contextActionSheet = nil
 	m.operationValuePicker = nil
 	m.operationTextPrompt = nil
+	m.lensPicker = nil
 	m.operationConfirm.Cancel()
 	m.pendingOperationRequest = OperationExecutionRequest{}
 }

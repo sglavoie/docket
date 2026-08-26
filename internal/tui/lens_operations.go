@@ -77,7 +77,14 @@ func lensOperationDescriptors() []OperationDescriptor {
 		// Replace and Delete overwrite or drop a saved record with no undo entry
 		// behind them, so both carry destructive risk and fall through to the
 		// executor's own confirmation gate rather than prompting for themselves.
-		lens(operationLensReplace, "Replace lens", "Overwrite this lens with the current view", OperationRiskDestructive),
+		lens(
+			operationLensReplace,
+			// Named for the source rather than the target, because the sheet row
+			// sits under the lens's own name: what needs saying is which view wins.
+			"Replace from current view",
+			"Overwrite this lens with the current view",
+			OperationRiskDestructive,
+		),
 		lens(operationLensDelete, "Delete lens", "Delete this saved lens", OperationRiskDestructive),
 	}
 }
