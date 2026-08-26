@@ -349,13 +349,6 @@ func (s lensState) fingerprint() string {
 	}, "\x1f")
 }
 
-// equal reports whether two states name the same projection. It reads the
-// fingerprint rather than comparing fields, so equality and the modified marker
-// can never disagree about what counts as a change.
-func (s lensState) equal(other lensState) bool {
-	return s.fingerprint() == other.fingerprint()
-}
-
 func lensWorkflowStateTokens(states models.WorkflowStateSet) []string {
 	values := states.Values()
 	if len(values) == 0 {

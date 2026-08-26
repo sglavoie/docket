@@ -7,7 +7,7 @@ import (
 )
 
 // The shell side of the named-lens picker. The picker itself knows only the
-// registry, the executor, and its own rows; everything that reads live state or
+// executor and its own rows; everything that reads live state or
 // mounts another overlay lives here, so the picker stays a projection and the
 // AppModel stays the one place overlays are created and torn down.
 
@@ -42,7 +42,6 @@ func (m *AppModel) openNamedLensPicker() tea.Cmd {
 		return nil
 	}
 	picker, err := NewNamedLensPickerModel(
-		m.operationRegistry,
 		m.operationExecutor,
 		m.currentView(),
 		m.namedLensPickerSnapshot(),

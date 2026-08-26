@@ -12,9 +12,9 @@ import (
 )
 
 // Applying a named lens is one atomic, reversible act. The frame below is what
-// makes it reversible: it holds the definition that was installed, the
-// fingerprint the modified marker compares against, and the single restoration
-// point Esc returns to. Switching lenses replaces the definition and keeps that
+// makes it reversible: it holds the identity that was installed, the fingerprint
+// the modified marker compares against, and the single restoration
+// point Esc returns to. Switching lenses replaces the identity and keeps that
 // restoration point, so one Esc always lands on the view the user actually left
 // rather than on an intermediate lens they passed through.
 
@@ -23,10 +23,10 @@ type activeLensFrame struct {
 	lensID string
 	name   string
 
-	// saved is the definition as installed, and savedFingerprint is its canonical
-	// rendering. The marker compares fingerprints rather than states so map
-	// iteration order can never report an unchanged lens as modified.
-	saved            lensState
+	// savedFingerprint is the canonical rendering of the definition as installed.
+	// The marker compares fingerprints rather than states so map iteration order
+	// can never report an unchanged lens as modified, and the fingerprint alone is
+	// what a comparison ever needs: the record itself lives in machine state.
 	savedFingerprint string
 
 	// origin is the view the first activation replaced. A switch carries it
@@ -61,17 +61,6 @@ type lensProjectsLoadedMsg struct {
 // hasActiveLens reports whether a lens owns the current projection.
 func (m *OutlinerModel) hasActiveLens() bool {
 	return m != nil && m.activeLens != nil
-}
-
-// activeLensDefinition renders the live lens as the definition it was installed
-// from, under its own identity. It is what Rename and Replace read: the saved
-// record, never the live view, which the modified marker may already have
-// diverged from.
-func (m *OutlinerModel) activeLensDefinition() (config.NamedLens, bool) {
-	if m == nil || m.activeLens == nil {
-		return config.NamedLens{}, false
-	}
-	return m.activeLens.saved.namedLens(m.activeLens.lensID, m.activeLens.name), true
 }
 
 // ApplyNamedLens installs a saved projection, or refuses without touching the
@@ -232,7 +221,6 @@ func (m *OutlinerModel) publishLens(lens config.NamedLens, state lensState, proj
 	m.activeLens = &activeLensFrame{
 		lensID:           lens.ID,
 		name:             lens.Name,
-		saved:            state,
 		savedFingerprint: state.fingerprint(),
 		origin:           origin,
 	}

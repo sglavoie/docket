@@ -564,7 +564,9 @@ left. Lenses never stack.
 While a lens is active `/` edits the lens's own narrowing query instead of
 opening a scope-wide search, and the title row reads `Lens query:` while you
 type. `Enter` keeps what was typed, `Esc` puts back the query the edit opened
-on. The two queries never stack: an ordinary search cannot survive underneath a
+on. A lens query marks the titles it matched exactly as a search does, since
+those are the rows it narrowed to.
+The two queries never stack: an ordinary search cannot survive underneath a
 lens, so applying or saving one from accepted search results installs the
 projection and leaves the search behind — and the same `Esc` that dismisses the
 lens hands that search back with the rest of the view. A lens does not touch

@@ -622,23 +622,31 @@ func TestStartupAndGlobalResetRetainNoLensFrame(t *testing.T) {
 	}
 }
 
-func TestActiveLensDefinitionRendersTheSavedRecord(t *testing.T) {
+// The frame holds the installed identity and fingerprint, never the live view:
+// diverging an axis moves the capture and leaves the frame exactly where the
+// application put it, which is the whole of how the modified marker is decided.
+func TestTheActiveFrameKeepsTheInstalledIdentityAndFingerprint(t *testing.T) {
 	outliner := lensLifecycleOutliner()
 	saved := waitingLens(lensTestID(1), "Waiting", "needle")
 	applyLensOrFatal(t, outliner, saved)
 
-	// Diverging the live view must not move the saved record.
+	installed := outliner.activeLens.savedFingerprint
+	if outliner.lensModified() {
+		t.Fatal("a freshly applied lens reported itself modified")
+	}
+
+	// Diverging the live view must not move the installed fingerprint.
 	outliner.filter.Priority = int(models.PriorityHigh)
 
-	definition, ok := outliner.activeLensDefinition()
-	if !ok {
-		t.Fatal("expected a definition for the active lens")
+	if outliner.activeLens.lensID != saved.ID || outliner.activeLens.name != saved.Name {
+		t.Fatalf("frame identity = %q/%q, want %q/%q",
+			outliner.activeLens.lensID, outliner.activeLens.name, saved.ID, saved.Name)
 	}
-	if definition.ID != saved.ID || definition.Name != saved.Name {
-		t.Fatalf("definition identity = %q/%q, want %q/%q", definition.ID, definition.Name, saved.ID, saved.Name)
+	if outliner.activeLens.savedFingerprint != installed {
+		t.Fatal("the installed fingerprint absorbed a live edit")
 	}
-	if definition.Tasks.Priority != 0 {
-		t.Fatalf("the saved record absorbed a live edit: priority %d", definition.Tasks.Priority)
+	if !outliner.lensModified() {
+		t.Fatal("a diverged view did not report itself modified")
 	}
 }
 

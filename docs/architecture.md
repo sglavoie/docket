@@ -1583,8 +1583,10 @@ population, and the lens's project facets stay recorded but inert until it is
 left. A lens therefore never writes scope.
 
 `activeLensFrame` is the one live lens; there is never a stack. It holds the
-installed definition, the fingerprint the modified marker compares the live view
-against, and the single restoration point `Esc` returns to. `lensRestorationPoint`
+installed identity, the fingerprint the modified marker compares the live view
+against, and the single restoration point `Esc` returns to. The fingerprint is
+the whole of what a comparison needs, so the frame keeps no second copy of the
+record: the definition itself lives in machine state. `lensRestorationPoint`
 reuses the original capture whenever a lens is already live, so switching lenses
 replaces the definition while keeping the baseline: one `Esc` lands on the view
 the user actually left rather than on an intermediate lens. The Esc cascade
@@ -1597,7 +1599,11 @@ Under an active lens `/` calls `beginLensQueryEdit` and the shared search input
 holds the lens's narrowing query instead of a scope-wide search: `Enter` commits
 it, `Esc` restores `lensQueryEditOrigin`, and `buildOutlinerSearchIndicator`
 reads the lens compilation rather than the search one for its badges, because
-those are the rows on screen.
+those are the rows on screen. `renderTaskTitle` reads the same compilation for
+the same reason: `titleHighlightQuery` returns the search remainder and its case
+mode when a search owns the projection and the lens remainder and
+`lensCaseSensitive()` when a lens does, so a marked title always names the query
+the visible rows were actually narrowed by.
 
 `\` reaches the picker through the ordinary core operation
 `tui.core.named-lenses`, bound directly in `SimplifiedInputStrategy` with no

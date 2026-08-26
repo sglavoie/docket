@@ -331,7 +331,6 @@ func (m *AppModel) replaceLensOperation(lens config.NamedLens) OperationHandlerR
 		return OperationHandlerResult{Err: err}
 	}
 	if out.activeLens != nil && out.activeLens.lensID == replacement.ID {
-		out.activeLens.saved = state
 		out.activeLens.savedFingerprint = state.fingerprint()
 	}
 	return OperationHandlerResult{Status: "Replaced lens: " + replacement.Name}

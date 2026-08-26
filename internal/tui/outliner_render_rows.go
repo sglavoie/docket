@@ -831,15 +831,29 @@ func renderTaskPrefix(prefix, foldIndicator string, bg color.Color) (string, str
 func (m *OutlinerModel) renderTaskTitle(task *models.Task, titleStyle lipgloss.Style, rowWidth int, segments taskRowSegments) string {
 	availableWidth := segments.titleWidth(rowWidth)
 	title := truncateToVisualWidth(task.Title, availableWidth)
-	query := m.searchTextQuery()
+	query, caseSensitive := m.titleHighlightQuery()
 	if query == "" {
 		return titleStyle.Render(title)
 	}
-	positions := searchSubstringPositions(title, query, m.searchCaseSensitive())
+	positions := searchSubstringPositions(title, query, caseSensitive)
 	if len(positions) == 0 {
 		return titleStyle.Render(title)
 	}
 	return HighlightText(title, positions, titleStyle)
+}
+
+// titleHighlightQuery names the free text the visible rows were narrowed by,
+// with the case mode they were actually produced under. Ordinary search and a
+// lens narrowing are the same act to a title: whichever one owns the current
+// projection is what a highlight must read, so the two can never disagree.
+func (m *OutlinerModel) titleHighlightQuery() (string, bool) {
+	if query := m.searchTextQuery(); query != "" {
+		return query, m.searchCaseSensitive()
+	}
+	if !m.hasActiveLens() {
+		return "", false
+	}
+	return m.lensTextQuery(), m.lensCaseSensitive()
 }
 
 func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, pinMarker, contextSegment, tagSegment, indicators, relationMarker, matchCue string) int {

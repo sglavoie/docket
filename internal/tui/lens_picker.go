@@ -79,7 +79,6 @@ type NamedLensPickerSnapshot struct {
 // NamedLensPickerModel is the searchable projection of the saved lenses.
 type NamedLensPickerModel struct {
 	surface  *ListSurfaceModel
-	registry *OperationRegistry
 	executor *OperationExecutor
 	// view is frozen at construction: the picker floats over the route that
 	// opened it, and its own presence must not change the context it builds.
@@ -93,17 +92,18 @@ type NamedLensPickerModel struct {
 }
 
 // NewNamedLensPickerModel builds the picker over one machine-state snapshot.
+// The executor is the whole of its authority: it owns the registry the picker
+// would otherwise hold a second reference to, so the picker names only the seam
+// it actually dispatches through.
 func NewNamedLensPickerModel(
-	registry *OperationRegistry,
 	executor *OperationExecutor,
 	view PresentationID,
 	snapshot NamedLensPickerSnapshot,
 ) (*NamedLensPickerModel, error) {
-	if registry == nil {
-		return nil, fmt.Errorf("the lens picker requires an operation registry")
+	if executor == nil {
+		return nil, fmt.Errorf("the lens picker requires an operation executor")
 	}
 	model := &NamedLensPickerModel{
-		registry: registry,
 		executor: executor,
 		view:     view,
 	}

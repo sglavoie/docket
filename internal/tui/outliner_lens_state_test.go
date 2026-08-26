@@ -12,6 +12,16 @@ import (
 // carry for NamedLens.Validate to accept it.
 const lensRoundTripID = "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c01"
 
+// equal reports whether two states name the same projection. It reads the
+// fingerprint rather than comparing fields, because the fingerprint is what
+// production compares: lensModified and the replace re-base both hold the live
+// state against a stored fingerprint string, never against another lensState.
+// That is why this convenience lives with the assertions instead of beside
+// fingerprint itself.
+func (s lensState) equal(other lensState) bool {
+	return s.fingerprint() == other.fingerprint()
+}
+
 func lensRoundTripBase(t *testing.T) lensState {
 	t.Helper()
 	states, err := models.NewWorkflowStateSet(models.StateWaiting, models.StateDoing)
