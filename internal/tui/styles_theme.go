@@ -65,6 +65,7 @@ func rebuildStyles() {
 	rebuildMiscStyles()
 	rebuildPriorityTitleStyles()
 	rebuildTagChipColors()
+	rebuildLensAccentStyles()
 }
 
 // ApplyTheme rebuilds every active style from one maintained built-in theme.
@@ -280,6 +281,18 @@ func makeDueBadgeStyle(darkHex, lightHex string) lipgloss.Style {
 		Background(lipgloss.Color(bgStr)).
 		Foreground(lipgloss.Color(fgStr)).
 		Padding(0, 1)
+}
+
+// makeLensAccentStyle creates a foreground-only accent in the tone the active
+// theme calls readable. It is the counterpart of makeViewModeStyle and
+// makeDueBadgeStyle for text that carries no chip: a lens name is ordinary list
+// text, so an accent may color it and may change nothing else about it.
+func makeLensAccentStyle(darkHex, lightHex string) lipgloss.Style {
+	hex := darkHex
+	if activeThemeName == "light" {
+		hex = lightHex
+	}
+	return lipgloss.NewStyle().Foreground(lipgloss.Color(hex))
 }
 
 // makeColorStyle creates a style with just a foreground color.
