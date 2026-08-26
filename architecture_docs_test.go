@@ -126,7 +126,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"Group order never changes",
 		"### Named lenses",
 		"persisted as `config.NamedLens` in the\nmachine domain beside the theme",
-		"`captureLensState` reads `m.lensQuery` and not\n`SearchQuery()`",
+		"`captureLensState` reads the query axis through\n`capturedLensQuery`",
 		"its binding carries `DelegateTransaction`",
 		"`OperationHistory` drops the entry, so `u`\nnever takes a lens back",
 		"a TUI effect is published only after\nthe commit returns nil",

@@ -24,6 +24,23 @@
     { "type": "assert", "assert": "contains", "value": "Search: \"login\"" },
     { "type": "assert", "assert": "contains", "value": "Build login form" },
     { "type": "assert", "assert": "not_contains", "value": "Launch platform" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "saving from those results keeps the query the rows came from", "key": "\\" },
+    { "type": "key", "key": "enter" },
+    { "type": "text", "text": "Login work" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Lens: Login work" },
+    { "type": "assert", "label": "the lens narrows by the accepted query it captured", "assert": "contains", "value": "Lens query: \"login\"" },
+    { "type": "assert", "assert": "contains", "value": "Build login form" },
+    { "type": "assert", "assert": "not_contains", "value": "Search: \"login\"" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "and Esc still hands the search back", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Lens:" },
+    { "type": "assert", "assert": "contains", "value": "Search: \"login\"" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

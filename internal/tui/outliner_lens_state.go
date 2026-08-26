@@ -154,11 +154,26 @@ func (m *OutlinerModel) captureLensState() lensState {
 	}
 	return lensState{
 		mode:          m.primaryMode,
-		query:         m.lensQuery,
+		query:         m.capturedLensQuery(),
 		filter:        copyFilterState(m.filter),
 		projectFilter: m.projectFilter.clone(),
 		sort:          m.treeSort,
 	}
+}
+
+// capturedLensQuery is the accepted query the current view is narrowed by,
+// whichever facility owns it. Under a lens that is the lens's own narrowing
+// query. Outside one an accepted ordinary-search projection owns the visible
+// rows, so saving records the query that produced them rather than an empty
+// axis; a search input still open has accepted nothing and is not captured.
+// Only the query axis crosses over: the projection itself still cannot survive
+// underneath a lens, and publishLens drops it in favor of the baseline that
+// hands it back on the way out.
+func (m *OutlinerModel) capturedLensQuery() string {
+	if !m.hasActiveLens() && m.hasSearchProjection() && !m.IsSearchMode() {
+		return m.SearchQuery()
+	}
+	return m.lensQuery
 }
 
 // lensTreeOrderPrev is the synthetic mode a lens is applied "out of". A lens

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -342,6 +343,75 @@ func TestLensDeleteRemovesTheDefinitionAndRestoresTheBaseline(t *testing.T) {
 	}
 	if out.primaryMode != ModeInbox {
 		t.Fatalf("restored mode = %v, want the pre-lens %v", out.primaryMode, ModeInbox)
+	}
+}
+
+// Saving from accepted ordinary-search results must carry the query the visible
+// rows were produced by. The projection itself is still replaced — a search
+// cannot survive underneath a lens — but the query axis is the user's, and a
+// lens saved with an empty one would reopen a view they never saw.
+func TestLensCreateCapturesAcceptedSearchQuery(t *testing.T) {
+	model := lensOperationApp(t)
+	out := model.crossOutliner
+
+	out.SetSearchQuery("needle")
+	if !out.hasSearchProjection() || out.IsSearchMode() {
+		t.Fatal("expected an accepted ordinary-search projection with no open input")
+	}
+	searchRows := slices.Clone(searchVisibleTaskIDs(out))
+	if len(searchRows) == 0 {
+		t.Fatal("expected the accepted search to hold results")
+	}
+
+	if result := executeLens(model, operationLensCreate, EntityIdentity{}, "From search", false); result.Err != nil {
+		t.Fatalf("create lens: %v", result.Err)
+	}
+
+	saved := lensNamed(t, model, "From search")
+	if saved.Query != "needle" {
+		t.Fatalf("captured query = %q, want the accepted search query %q", saved.Query, "needle")
+	}
+	if !out.hasActiveLens() || out.lensQuery != "needle" {
+		t.Fatalf("applied lens query = %q with lens=%v", out.lensQuery, out.hasActiveLens())
+	}
+	if out.hasSearchProjection() {
+		t.Fatal("a lens must not leave an ordinary search projection underneath it")
+	}
+	if out.lensModified() {
+		t.Fatal("a lens saved from the current view starts unmodified")
+	}
+	narrowed := searchVisibleTaskIDs(out)
+	if len(narrowed) == 0 {
+		t.Fatal("expected the saved query to narrow the lens projection")
+	}
+	for _, id := range narrowed {
+		if !slices.Contains(searchRows, id) {
+			t.Fatalf("lens row %q was not one of the accepted search results %v", id, searchRows)
+		}
+	}
+
+	// One Esc hands the pre-lens frame back exactly, search included.
+	if !RunEscCascade(out.escSteps()) {
+		t.Fatal("expected the Esc cascade to consume the active lens")
+	}
+	if out.hasActiveLens() || out.lensQuery != "" {
+		t.Fatalf("Esc left lens=%v query=%q", out.hasActiveLens(), out.lensQuery)
+	}
+	if !out.hasSearchProjection() || out.SearchQuery() != "needle" {
+		t.Fatalf("restored search projection=%v query=%q", out.hasSearchProjection(), out.SearchQuery())
+	}
+	if got := searchVisibleTaskIDs(out); !slices.Equal(got, searchRows) {
+		t.Fatalf("restored rows = %v, want the accepted search rows %v", got, searchRows)
+	}
+
+	// Replace reads the same axis, so overwriting a saved lens from accepted
+	// results records the query rather than dropping it.
+	starter := lensNamed(t, model, config.StarterNamedLenses()[0].Name)
+	if result := executeLens(model, operationLensReplace, LensEntity(starter.ID), "", true); result.Err != nil {
+		t.Fatalf("replace lens: %v", result.Err)
+	}
+	if replaced := lensNamed(t, model, starter.Name); replaced.Query != "needle" {
+		t.Fatalf("replaced query = %q, want the accepted search query %q", replaced.Query, "needle")
 	}
 }
 

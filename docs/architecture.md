@@ -1558,10 +1558,12 @@ would falsely report `od is not a sort action`.
 
 A named lens is one durable Outliner projection — mode, its own narrowing query,
 both filter families, and the sort axis — persisted as `config.NamedLens` in the
-machine domain beside the theme. `captureLensState` reads `m.lensQuery` and not
-`SearchQuery()`, which is the same ruling `publishLens` enforces from the other
-side: an ordinary search projection cannot survive underneath a lens, so
-`clearSearchProjectionWithoutRestore` drops it and the baseline hands it back on
+machine domain beside the theme. `captureLensState` reads the query axis through
+`capturedLensQuery`, which is `m.lensQuery` under a lens and the accepted
+`SearchQuery()` when an ordinary search projection owns the visible rows and its
+input is closed. Only that axis crosses over: the projection itself cannot
+survive underneath a lens, so `publishLens` calls
+`clearSearchProjectionWithoutRestore` and the baseline hands the search back on
 the way out. Nothing about it is synced and nothing about it
 is a workspace entity, which decides the rest of the design: a lens mutation
 opens no workspace transaction, its binding carries `DelegateTransaction`, and

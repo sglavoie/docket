@@ -569,7 +569,10 @@ those are the rows it narrowed to.
 The two queries never stack: an ordinary search cannot survive underneath a
 lens, so applying or saving one from accepted search results installs the
 projection and leaves the search behind — and the same `Esc` that dismisses the
-lens hands that search back with the rest of the view. A lens does not touch
+lens hands that search back with the rest of the view. Saving keeps the query
+itself, though: a lens saved or replaced from accepted search results records
+the query those rows came from as its own narrowing query, so reopening it
+narrows the saved mode and facets by it. A lens does not touch
 project scope either: applying one inside a single-project scope leaves that
 scope alone, and the lens's project facets stay inert until you leave it.
 
