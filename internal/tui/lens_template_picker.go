@@ -55,7 +55,7 @@ func lensTemplateListSource(machine *config.MachineState) ListSource {
 	items := make([]ListItem, 0, len(templates))
 	for _, template := range templates {
 		summary := namedLensSummary(template)
-		items = append(items, ListItem{
+		item := ListItem{
 			ID:            lensTemplateItemID(template.ID),
 			PrimaryText:   template.Name,
 			SecondaryText: summary,
@@ -67,7 +67,18 @@ func lensTemplateListSource(machine *config.MachineState) ListSource {
 			// from the catalog, so a row can never commit a projection the catalog
 			// has since changed.
 			Data: template.ID,
-		})
+		}
+		// The accent is asked of the catalog definition here, exactly as the
+		// saved-lens picker asks it of its own record, so a template previews the
+		// color it will wear once added and no identity check is needed to make the
+		// two surfaces agree. It rides PrimaryStyle beside the payload rather than
+		// touching it, and an unavailable row still renders muted: the renderer
+		// already drops a disabled row's color, because a template that cannot be
+		// added must not advertise one it cannot deliver.
+		if style, ok := namedLensPrimaryStyle(template); ok {
+			item.PrimaryStyle = &style
+		}
+		items = append(items, item)
 	}
 	return ListSource{Items: items}
 }
