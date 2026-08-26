@@ -220,7 +220,7 @@ func namedLensPickerItem(lens config.NamedLens, snapshot NamedLensPickerSnapshot
 		}
 		marker = MutedStyle.Render(label) + " "
 	}
-	return ListItem{
+	item := ListItem{
 		ID:            lensPickerItemID(lens.ID),
 		PrimaryText:   lens.Name,
 		PrimaryMarker: marker,
@@ -228,6 +228,15 @@ func namedLensPickerItem(lens config.NamedLens, snapshot NamedLensPickerSnapshot
 		OperationIDs:  append([]OperationID{operationLensApply}, namedLensActionSheetOperations...),
 		Data:          lens,
 	}
+	// The accent is read from the definition every time a row is built, which is
+	// why it belongs here rather than beside any one caller: initial
+	// construction, a query change, and Refresh after rename, replace, create, or
+	// delete all rebuild through items(). A neutral definition sets no style at
+	// all, leaving the row the list's ordinary text.
+	if style, ok := namedLensPrimaryStyle(lens); ok {
+		item.PrimaryStyle = &style
+	}
+	return item
 }
 
 func lensPickerItemID(id string) ListItemID {
