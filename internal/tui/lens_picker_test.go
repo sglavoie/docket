@@ -974,7 +974,7 @@ func TestLensPickerColorSurvivesRenameAndFollowsReplacement(t *testing.T) {
 		t.Fatal("the replace minted a new identity")
 	}
 	if got, was := namedLensSemanticRole(replaced), namedLensSemanticRole(before); got == was {
-		t.Fatalf("the replacement kept role %+v, so recomputation is unobservable", got)
+		t.Fatalf("the replacement kept role %s, so recomputation is unobservable", roleText(got))
 	}
 	assertLensRowStyle(t, lensPickerItemNamed(t, model, "Blocked"), replaced)
 }

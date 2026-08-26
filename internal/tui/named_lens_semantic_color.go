@@ -47,38 +47,9 @@ const (
 	namedLensRoleMode
 )
 
-// String names the kind for test failures and debugging only. Nothing reads a
-// role back out of its spelling.
-func (k namedLensRoleKind) String() string {
-	switch k {
-	case namedLensRoleNone:
-		return "none"
-	case namedLensRoleOverdue:
-		return "overdue"
-	case namedLensRoleWaiting:
-		return "waiting"
-	case namedLensRoleDueToday:
-		return "due-today"
-	case namedLensRolePriority:
-		return "priority"
-	case namedLensRoleDue:
-		return "due"
-	case namedLensRoleDeferred:
-		return "deferred"
-	case namedLensRoleReview:
-		return "review"
-	case namedLensRoleCompleted:
-		return "completed"
-	case namedLensRoleWorkflowGroup:
-		return "workflow-group"
-	case namedLensRoleWarning:
-		return "warning"
-	case namedLensRoleMode:
-		return "mode"
-	default:
-		return "unknown"
-	}
-}
+// A kind is never spelled in production: no build path reads a role back out of
+// its name, so the naming used by failure messages lives with the tests that
+// print it (`roleText`) rather than here.
 
 // namedLensRole is one resolved semantic identity. The three payload fields are
 // meaningful only for the kind that names them; every other kind leaves them

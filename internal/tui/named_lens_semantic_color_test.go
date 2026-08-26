@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"testing"
 
 	"charm.land/lipgloss/v2"
@@ -39,6 +40,65 @@ func groupRole(group models.WorkflowStateGroup) namedLensRole {
 
 func modeRole(mode OutlinerModeID) namedLensRole {
 	return namedLensRole{Kind: namedLensRoleMode, Mode: mode}
+}
+
+// roleKindText spells one kind for a failure message. It is the only place a
+// role is named, and it is deliberately test-only: production never reads a role
+// back out of its spelling, so a name living beside the resolver would be code
+// no build path reaches.
+func roleKindText(kind namedLensRoleKind) string {
+	switch kind {
+	case namedLensRoleNone:
+		return "none"
+	case namedLensRoleOverdue:
+		return "overdue"
+	case namedLensRoleWaiting:
+		return "waiting"
+	case namedLensRoleDueToday:
+		return "due-today"
+	case namedLensRolePriority:
+		return "priority"
+	case namedLensRoleDue:
+		return "due"
+	case namedLensRoleDeferred:
+		return "deferred"
+	case namedLensRoleReview:
+		return "review"
+	case namedLensRoleCompleted:
+		return "completed"
+	case namedLensRoleWorkflowGroup:
+		return "workflow-group"
+	case namedLensRoleWarning:
+		return "warning"
+	case namedLensRoleMode:
+		return "mode"
+	}
+	return fmt.Sprintf("kind(%d)", int(kind))
+}
+
+// roleText renders a whole role, naming the kind and appending only the payload
+// fields that kind gives meaning to.
+func roleText(role namedLensRole) string {
+	text := roleKindText(role.Kind)
+	switch role.Kind {
+	case namedLensRolePriority:
+		text += fmt.Sprintf("(%d)", role.Priority)
+	case namedLensRoleWorkflowGroup:
+		text += fmt.Sprintf("(%s)", role.Group)
+	case namedLensRoleMode:
+		text += fmt.Sprintf("(%s)", role.Mode)
+	case namedLensRoleNone,
+		namedLensRoleOverdue,
+		namedLensRoleWaiting,
+		namedLensRoleDueToday,
+		namedLensRoleDue,
+		namedLensRoleDeferred,
+		namedLensRoleReview,
+		namedLensRoleCompleted,
+		namedLensRoleWarning:
+		// Every other kind leaves the payload fields zero and says nothing more.
+	}
+	return text
 }
 
 func TestNamedLensSemanticRole(t *testing.T) {
@@ -426,7 +486,7 @@ func TestNamedLensSemanticRole(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := namedLensSemanticRole(tc.lens); got != tc.want {
-				t.Errorf("role = %+v, want %+v", got, tc.want)
+				t.Errorf("role = %s, want %s", roleText(got), roleText(tc.want))
 			}
 		})
 	}
@@ -455,7 +515,7 @@ func TestNamedLensSemanticRole(t *testing.T) {
 				continue
 			}
 			if got := namedLensSemanticRole(lens); got != expected {
-				t.Errorf("%q role = %+v, want %+v", lens.Name, got, expected)
+				t.Errorf("%q role = %s, want %s", lens.Name, roleText(got), roleText(expected))
 			}
 		}
 	})
@@ -468,13 +528,13 @@ func TestNamedLensSemanticRole(t *testing.T) {
 		renamed.Name = "My Own Work"
 		renamed.ID = namedLensFixtureID
 		if got := namedLensSemanticRole(renamed); got != want {
-			t.Errorf("renamed foreign-ID twin role = %+v, want %+v", got, want)
+			t.Errorf("renamed foreign-ID twin role = %s, want %s", roleText(got), roleText(want))
 		}
 
 		handBuilt := namedLensStatesFixture(string(models.StateDoing))
 		handBuilt.Sort = original.Sort
 		if got := namedLensSemanticRole(handBuilt); got != want {
-			t.Errorf("hand-built twin role = %+v, want %+v", got, want)
+			t.Errorf("hand-built twin role = %s, want %s", roleText(got), roleText(want))
 		}
 	})
 
@@ -488,10 +548,10 @@ func TestNamedLensSemanticRole(t *testing.T) {
 		}
 		gotBefore, gotAfter := namedLensSemanticRole(before), namedLensSemanticRole(after)
 		if gotBefore == gotAfter {
-			t.Fatalf("edited definition kept role %+v", gotAfter)
+			t.Fatalf("edited definition kept role %s", roleText(gotAfter))
 		}
 		if gotAfter != (namedLensRole{Kind: namedLensRoleWaiting}) {
-			t.Errorf("edited role = %+v, want waiting", gotAfter)
+			t.Errorf("edited role = %s, want waiting", roleText(gotAfter))
 		}
 	})
 }
