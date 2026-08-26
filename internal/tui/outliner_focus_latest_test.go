@@ -26,7 +26,13 @@ func TestFocusLatestActivityLandsOnTheNewestTaskNotTheFirstRow(t *testing.T) {
 	parent := primaryRowsTask("parent", models.StateBacklog)
 	child := primaryRowsTask("child", models.StateBacklog)
 	child.ParentID = &parent.ID
-	parent.UpdatedAt = time.Now().Add(-2 * time.Hour)
+	// Anchor both timestamps to today's calendar day instead of subtracting a
+	// fixed span from now: within two hours of local midnight that span dropped
+	// the parent into yesterday's Recent lane and split the nesting.
+	now := time.Now()
+	startOfToday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	parent.UpdatedAt = startOfToday
+	child.UpdatedAt = startOfToday.Add(time.Minute)
 	project := primaryRowsProject("alpha", parent, child)
 	outliner, _ := primaryRowsOutliner(project)
 
