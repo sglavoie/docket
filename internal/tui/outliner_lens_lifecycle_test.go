@@ -546,9 +546,12 @@ func TestScopedLensPopulationProvenanceTracksOrdinaryReloads(t *testing.T) {
 // workspace plus one parked project the base workspace never admits, then adopts
 // that parked project as an explicit focus exactly as the lazy focus load does:
 // the scope is pushed by the load result and the exception that keeps the
-// project in the snapshot is recorded there. It returns the app, its Outliner,
-// and the population a later load under a parked-admitting filter returns.
-func parkedFocusLensApp(t *testing.T) (*AppModel, *OutlinerModel, []*models.Project) {
+// project in the snapshot is recorded there. Extra projects join the catalog
+// without joining the base workspace or the returned population, which is what
+// lets a caller keep a second focusable project reachable. It returns the app,
+// its Outliner, and the population a later load under a parked-admitting filter
+// returns.
+func parkedFocusLensApp(t *testing.T, extra ...*models.Project) (*AppModel, *OutlinerModel, []*models.Project) {
 	t.Helper()
 	alpha := primaryRowsProject("alpha", primaryRowsTask("alpha-waiting", models.StateWaiting))
 	beta := primaryRowsProject("beta", primaryRowsTask("beta-waiting", models.StateWaiting))
@@ -556,7 +559,7 @@ func parkedFocusLensApp(t *testing.T) (*AppModel, *OutlinerModel, []*models.Proj
 	parked.Tags = []string{models.ParkedProjectTag}
 
 	app := lensOperationApp(t)
-	outliner := scopeTestOutliner(alpha, beta, parked)
+	outliner := scopeTestOutliner(append([]*models.Project{alpha, beta, parked}, extra...)...)
 	// The base task workspace holds no parked project; only the focus below
 	// admits it.
 	outliner.loadedProjects = []*models.Project{alpha, beta}
@@ -696,6 +699,80 @@ func TestParkedScopedLensExitShedsAProjectItsFacetsReject(t *testing.T) {
 	}
 	if outliner.parkedFocusReloadPending {
 		t.Fatal("shedding a rejected project armed a reload the population already answered")
+	}
+}
+
+// TestParkedScopedLensExitDoesNotLeakPendingFocus pins the other parked project
+// a lens-backed exit can be asked about: one whose focus request is still in
+// flight when the scope is cleared. That request is superseded by the exit, so it
+// must not choose the focus the exit's own read carries — otherwise its project
+// is appended to the population as an exception the settlement never evaluates,
+// and a project the live facets reject survives the exit.
+func TestParkedScopedLensExitDoesNotLeakPendingFocus(t *testing.T) {
+	interloper := primaryRowsProject("interloper", primaryRowsTask("interloper-waiting", models.StateWaiting))
+	interloper.Tags = []string{models.ParkedProjectTag}
+	app, outliner, _ := parkedFocusLensApp(t, interloper)
+
+	lens := waitingLens(lensTestID(3), "Untagged", "")
+	// Untagged admits alpha and beta and rejects both parked projects.
+	lens.Projects.Untagged = true
+	applyLensOrFatal(t, outliner, lens)
+	frame := outliner.activeLens
+	if !frame.projectFacetsAwaitingLoad {
+		t.Fatal("the scoped application recorded no owed population load")
+	}
+
+	// A second parked project is requested from the surface while the first is
+	// still the scope, so its load is in flight when the exit starts.
+	if cmd := outliner.beginParkedProjectFocus(interloper.ID); cmd == nil {
+		t.Fatal("the second parked focus started no load")
+	}
+	if outliner.pendingParkedFocusID != interloper.ID {
+		t.Fatalf("pending parked focus = %q, want the requested %q", outliner.pendingParkedFocusID, interloper.ID)
+	}
+
+	if handled, cmd := app.applyProjectScope(ApplyProjectScopeMsg{Clear: true}); !handled || cmd == nil {
+		t.Fatal("clearing a parked scope under a project-filtering lens started no population load")
+	}
+	pending := outliner.pendingLens
+	if pending == nil {
+		t.Fatal("the exit armed no pending application")
+	}
+	if outliner.pendingParkedFocusID != "" {
+		t.Fatalf("the exit left the superseded focus request %q in flight", outliner.pendingParkedFocusID)
+	}
+
+	// The selection the exit's read performs, minus the disk load the fixture has
+	// no projects on disk for: the focus the model asked for is what decides
+	// whether the interloper is appended to this population at all.
+	population := selectCrossScopeProjects(outliner.runtime, CrossScopeOpts{
+		ActiveOnly:     true,
+		FocusProjectID: outliner.focusRequestForLoad(),
+		ProjectFilter:  pending.state.projectFilter,
+	})
+	app.Update(lensProjectsLoadedMsg{projects: population, generation: pending.generation})
+
+	if outliner.isProjectScoped() {
+		t.Fatal("the settled exit left the scope in place")
+	}
+	if ids := loadedProjectIDs(outliner); !slices.Equal(ids, []string{"alpha", "beta"}) {
+		t.Fatalf("population = %v, want the projects the lens facets select", ids)
+	}
+	if ids := taskRowProjectIDs(outliner); slices.Contains(ids, interloper.ID) {
+		t.Fatalf("rows = %v, want no project the superseded request appended", ids)
+	}
+	if outliner.parkedFocusProjectID != "" || outliner.pendingParkedFocusID != "" {
+		t.Fatalf("focus fields after the exit: adopted=%q pending=%q, want both cleared",
+			outliner.parkedFocusProjectID, outliner.pendingParkedFocusID)
+	}
+	if outliner.parkedFocusReloadPending {
+		t.Fatal("the exit armed a corrective reload no handler on this route claims")
+	}
+	if !outliner.hasActiveLens() || outliner.activeLens != frame {
+		t.Fatal("the exit disturbed the active lens")
+	}
+	if outliner.activeLens.projectFacetsAwaitingLoad {
+		t.Fatal("the landed exit left the population still owed")
 	}
 }
 

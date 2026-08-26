@@ -201,6 +201,13 @@ func (m *OutlinerModel) beginLensScopeExit() (tea.Cmd, bool) {
 	if m.activeLens == nil || !m.activeLens.projectFacetsAwaitingLoad {
 		return nil, false
 	}
+	// Leaving the scope supersedes any parked focus still being requested: that
+	// request would otherwise win focusRequestForLoad and have its project
+	// appended to this population as an exception, while the settlement below only
+	// ever evaluates the adopted one. Cancelling it here, before the read selects
+	// its focus, is what keeps the population the exit installs exactly the one
+	// the live facets chose.
+	m.cancelParkedProjectFocus()
 	// The live state is what the facets are, marker and all: this application
 	// publishes a population, never a definition, so it must read the filter the
 	// user can currently see rather than the one the record was saved with.
