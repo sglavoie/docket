@@ -555,7 +555,7 @@ func TestLensPickerGuidanceNamesTheActUnderTheCursor(t *testing.T) {
 	model := lensPickerApp(t)
 	footerOf := func() string {
 		t.Helper()
-		guidance, _ := model.lensPicker.guidanceSpec()
+		guidance := model.lensPicker.guidanceSpec()
 		return ansi.Strip(renderGuidanceText(guidance, 200))
 	}
 

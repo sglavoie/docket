@@ -172,6 +172,9 @@ func namedLensRoleStyle(role namedLensRole) (lipgloss.Style, bool) {
 		if group, ok := outlinerModeStateGroup(role.Mode); ok {
 			return workflowStateGroupAccentStyle(group)
 		}
+	case namedLensRoleNone:
+		// A definition with no recognized role keeps the list's ordinary text,
+		// which is what the shared no-style return below already says.
 	}
 	return lipgloss.Style{}, false
 }

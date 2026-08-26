@@ -204,7 +204,7 @@ func (m *OutlinerModel) beginLensScopeExit() (tea.Cmd, bool) {
 	// Leaving the scope supersedes any parked focus still being requested: that
 	// request would otherwise win focusRequestForLoad and have its project
 	// appended to this population as an exception, while the settlement below only
-	// ever evaluates the adopted one. Cancelling it here, before the read selects
+	// ever evaluates the adopted one. Canceling it here, before the read selects
 	// its focus, is what keeps the population the exit installs exactly the one
 	// the live facets chose.
 	m.cancelParkedProjectFocus()

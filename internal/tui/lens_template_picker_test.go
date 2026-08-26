@@ -482,7 +482,7 @@ func TestLensTemplateGalleryAndSavedPickerAgreeOnIdenticalDefinitions(t *testing
 	model := lensOperationApp(t)
 	// Saving every template under its own identity puts the same nine
 	// definitions on both surfaces at once.
-	setMachineLenses(t, model, config.NamedLensList(config.BuiltinNamedLensTemplates()))
+	setMachineLenses(t, model, config.BuiltinNamedLensTemplates())
 	if cmd := model.openNamedLensPicker(); cmd != nil {
 		drainLensPickerCmd(t, model, cmd)
 	}

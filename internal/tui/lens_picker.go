@@ -437,7 +437,7 @@ func (model *NamedLensPickerModel) activateCursor() (tea.Cmd, bool, tea.Msg) {
 	if !ok {
 		return nil, false, nil
 	}
-	if action, ok := lensPickerActionOperation(item.ID); ok {
+	if action, isAction := lensPickerActionOperation(item.ID); isAction {
 		result, dismissed := model.Execute(model.request(action, EntityIdentity{}))
 		return nil, dismissed, NamedLensPickerResultMsg{Result: result}
 	}
@@ -540,7 +540,7 @@ func (model *NamedLensPickerModel) renderWithin(width, height int) string {
 	}
 
 	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Named Lenses")
-	guidance, _ := model.guidanceSpec()
+	guidance := model.guidanceSpec()
 	return renderOverlayBox(
 		content,
 		innerWidth,
@@ -564,9 +564,11 @@ func (model *NamedLensPickerModel) stateLine() string {
 	}
 }
 
-func (model *NamedLensPickerModel) guidanceSpec() (GuidanceSpec, bool) {
+// guidanceSpec returns the footer spec alone: this picker always draws a footer,
+// so there is no "no guidance" case for a caller to branch on.
+func (model *NamedLensPickerModel) guidanceSpec() GuidanceSpec {
 	if model == nil || model.surface == nil {
-		return GuidanceSpec{}, false
+		return GuidanceSpec{}
 	}
 	searching := model.searching
 	onLens := func() bool {
@@ -606,7 +608,8 @@ func (model *NamedLensPickerModel) guidanceSpec() (GuidanceSpec, bool) {
 		keymap.Bind("esc", "Unwind the lens picker", "Navigation",
 			keymap.WithFooter(2, escapeLabel, true), keymap.WithFooterKey("Esc")),
 	}}
-	return listSurfaceGuidanceSpec(model.surface.GuidanceState(searching), km, nil)
+	spec, _ := listSurfaceGuidanceSpec(model.surface.GuidanceState(searching), km, nil)
+	return spec
 }
 
 // namedLensSummary renders one saved definition as a single compact line: the

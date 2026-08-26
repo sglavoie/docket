@@ -654,10 +654,11 @@ func TestAFailedLensCommitChangesNeitherMachineStateNorTheActiveLens(t *testing.
 
 // executeLensValue is the typed-value form of executeLens: the template picker
 // hands back an ID, and the malformed-payload cases need to deliver something
-// that is not a string at all.
-func executeLensValue(model *AppModel, id OperationID, value any) OperationExecutionResult {
+// that is not a string at all. Add built-in view is the one operation that takes
+// a value here, so it is named once rather than passed by every caller.
+func executeLensValue(model *AppModel, value any) OperationExecutionResult {
 	return model.operationExecutor.Execute(OperationExecutionRequest{
-		ID:       id,
+		ID:       operationLensAddTemplate,
 		Context:  lensOperationContext(EntityIdentity{}),
 		Value:    value,
 		HasValue: true,
@@ -738,7 +739,7 @@ func TestLensAddTemplatePersistsTheCatalogDefinitionAndAppliesIt(t *testing.T) {
 	template := addableTemplate(t, model)
 	before := len(machineLenses(t, model))
 
-	result := executeLensValue(model, operationLensAddTemplate, template.ID)
+	result := executeLensValue(model, template.ID)
 	if result.Err != nil {
 		t.Fatalf("add built-in view %q: %v", template.Name, result.Err)
 	}
@@ -799,7 +800,7 @@ func TestLensAddTemplateRejectsMalformedAndUnknownPayloads(t *testing.T) {
 		{"a name instead of an ID", template.Name, "unknown built-in view"},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			result := executeLensValue(model, operationLensAddTemplate, testCase.value)
+			result := executeLensValue(model, testCase.value)
 			if result.Err == nil || !strings.Contains(result.Err.Error(), testCase.want) {
 				t.Fatalf("add with %s = %v, want an error naming %q", testCase.name, result.Err, testCase.want)
 			}
@@ -821,12 +822,12 @@ func TestLensAddTemplateRefusesATemplateTheLatestSnapshotAlreadyHolds(t *testing
 	model := lensOperationApp(t)
 	template := addableTemplate(t, model)
 
-	if result := executeLensValue(model, operationLensAddTemplate, template.ID); result.Err != nil {
+	if result := executeLensValue(model, template.ID); result.Err != nil {
 		t.Fatalf("add built-in view: %v", result.Err)
 	}
 	added := len(machineLenses(t, model))
 
-	result := executeLensValue(model, operationLensAddTemplate, template.ID)
+	result := executeLensValue(model, template.ID)
 	if result.Err == nil || !strings.Contains(result.Err.Error(), "already added as") {
 		t.Fatalf("re-adding a template = %v, want an already-added refusal", result.Err)
 	}
@@ -836,7 +837,7 @@ func TestLensAddTemplateRefusesATemplateTheLatestSnapshotAlreadyHolds(t *testing
 	); renamed.Err != nil {
 		t.Fatalf("rename the added template: %v", renamed.Err)
 	}
-	result = executeLensValue(model, operationLensAddTemplate, template.ID)
+	result = executeLensValue(model, template.ID)
 	if result.Err == nil || !strings.Contains(result.Err.Error(), `already added as "Renamed by hand"`) {
 		t.Fatalf("re-adding a renamed template = %v, want a refusal naming its current name", result.Err)
 	}
@@ -851,7 +852,7 @@ func TestLensAddTemplateRefusesATemplateTheLatestSnapshotAlreadyHolds(t *testing
 	); deleted.Err != nil {
 		t.Fatalf("delete the added template: %v", deleted.Err)
 	}
-	if result := executeLensValue(model, operationLensAddTemplate, template.ID); result.Err != nil {
+	if result := executeLensValue(model, template.ID); result.Err != nil {
 		t.Fatalf("re-adding a deleted template = %v, want success", result.Err)
 	}
 }
@@ -869,7 +870,7 @@ func TestLensAddTemplateRefusesANameAnotherLensAlreadyAnswersTo(t *testing.T) {
 	}
 	before := len(machineLenses(t, model))
 
-	result := executeLensValue(model, operationLensAddTemplate, template.ID)
+	result := executeLensValue(model, template.ID)
 	if result.Err == nil || !strings.Contains(result.Err.Error(), "already exists") {
 		t.Fatalf("adding a name-colliding template = %v, want a name-collision refusal", result.Err)
 	}
@@ -888,7 +889,7 @@ func TestLensAddTemplateReportsTheIDCollisionAheadOfTheNameCollision(t *testing.
 	model := lensOperationApp(t)
 	template := addableTemplate(t, model)
 
-	if result := executeLensValue(model, operationLensAddTemplate, template.ID); result.Err != nil {
+	if result := executeLensValue(model, template.ID); result.Err != nil {
 		t.Fatalf("add built-in view: %v", result.Err)
 	}
 	if renamed := executeLens(
@@ -903,7 +904,7 @@ func TestLensAddTemplateReportsTheIDCollisionAheadOfTheNameCollision(t *testing.
 		t.Fatalf("create the name-colliding lens: %v", created.Err)
 	}
 
-	result := executeLensValue(model, operationLensAddTemplate, template.ID)
+	result := executeLensValue(model, template.ID)
 	if result.Err == nil || !strings.Contains(result.Err.Error(), "already added as") {
 		t.Fatalf("both collisions = %v, want the already-added refusal", result.Err)
 	}
@@ -931,7 +932,7 @@ func TestAFailedAddTemplateCommitAppliesNothing(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chmod(home, 0o700) })
 
 	before := model.runtime.Machine()
-	result := executeLensValue(model, operationLensAddTemplate, template.ID)
+	result := executeLensValue(model, template.ID)
 	if result.Err == nil {
 		t.Skip("the runtime root stayed writable; the failure path is untested here")
 	}
@@ -954,7 +955,7 @@ func TestLensAddTemplateRefusesWithoutAnOutlinerAndWritesNothing(t *testing.T) {
 	before := len(machineLenses(t, model))
 	model.crossOutliner = nil
 
-	result := executeLensValue(model, operationLensAddTemplate, template.ID)
+	result := executeLensValue(model, template.ID)
 	if result.Err == nil || !strings.Contains(result.Err.Error(), "Outliner is unavailable") {
 		t.Fatalf("add with no Outliner = %v, want an unavailable-Outliner refusal", result.Err)
 	}

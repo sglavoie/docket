@@ -62,7 +62,7 @@ func settleLensPopulationLoad(t *testing.T, outliner *OutlinerModel, sources ...
 // settles whatever it started, so the model is quiescent when the caller asserts.
 func addTemplateAndSettle(t *testing.T, model *AppModel, template config.NamedLens) {
 	t.Helper()
-	result := executeLensValue(model, operationLensAddTemplate, template.ID)
+	result := executeLensValue(model, template.ID)
 	if result.Err != nil {
 		t.Fatalf("add built-in view %q: %v", template.Name, result.Err)
 	}
@@ -277,7 +277,7 @@ func templateRowReason(t *testing.T, model *AppModel, id string) string {
 // a user-created record: it renames, it is replaced by the current view, and it
 // deletes. The only thing the catalog keeps is the stable ID, which is what the
 // gallery reads to say a template is already added however far its record has
-// since travelled from the definition it started as.
+// since traveled from the definition it started as.
 func TestAnAddedTemplateIsAnOrdinaryRecordAcrossRenameReplaceAndDelete(t *testing.T) {
 	model := lensOperationApp(t)
 	out := model.crossOutliner
@@ -557,7 +557,7 @@ func TestParkedWorkCommitsBeforeItsPopulationLoads(t *testing.T) {
 	model, out, population := parkedTemplateApp(t)
 	template := parkedWorkTemplate(t)
 
-	result := executeLensValue(model, operationLensAddTemplate, template.ID)
+	result := executeLensValue(model, template.ID)
 	if result.Err != nil {
 		t.Fatalf("add Parked Work: %v", result.Err)
 	}
@@ -613,7 +613,7 @@ func TestParkedWorkLoadFailuresKeepTheirExistingGuarantees(t *testing.T) {
 		template := parkedWorkTemplate(t)
 		baseline := loadedProjectIDs(out)
 
-		if result := executeLensValue(model, operationLensAddTemplate, template.ID); result.Err != nil {
+		if result := executeLensValue(model, template.ID); result.Err != nil {
 			t.Fatalf("add Parked Work: %v", result.Err)
 		}
 		cmd, published := out.handleLensProjectsLoaded(lensProjectsLoadedMsg{
@@ -648,7 +648,7 @@ func TestParkedWorkLoadFailuresKeepTheirExistingGuarantees(t *testing.T) {
 		model, out, _ := parkedTemplateApp(t)
 		template := parkedWorkTemplate(t)
 
-		if result := executeLensValue(model, operationLensAddTemplate, template.ID); result.Err != nil {
+		if result := executeLensValue(model, template.ID); result.Err != nil {
 			t.Fatalf("add Parked Work: %v", result.Err)
 		}
 		cmd, published := out.handleLensProjectsLoaded(lensProjectsLoadedMsg{
@@ -687,7 +687,7 @@ func TestParkedWorkFacetsStayInertUnderScopeAndSelectOnExit(t *testing.T) {
 	template := parkedWorkTemplate(t)
 	out.pushProjectScope("alpha")
 
-	if result := executeLensValue(model, operationLensAddTemplate, template.ID); result.Err != nil {
+	if result := executeLensValue(model, template.ID); result.Err != nil {
 		t.Fatalf("add Parked Work under a scope: %v", result.Err)
 	}
 	if out.pendingLens != nil {
