@@ -416,6 +416,62 @@ func TestSearchAutocompleteProjectsComeFromTheLoadedScope(t *testing.T) {
 	}
 }
 
+// TestSearchAutocompleteProjectsRankTypedPartial proves the partial is what
+// brings the intended project into the bounded dropdown. The scope holds more
+// projects than the pane has rows, so catalog order alone leaves the target
+// unreachable; typing either half of its identity must rank it first without the
+// scope growing by a single project.
+func TestSearchAutocompleteProjectsRankTypedPartial(t *testing.T) {
+	slugs := []string{"alpha", "bravo", "charlie", "delta", "echo", "foxtrot", "zulu"}
+	projects := make([]*models.Project, 0, len(slugs))
+	for _, slug := range slugs {
+		projects = append(projects, primaryRowsProject(slug, searchACTask("t-"+slug, nil, "")))
+	}
+	target := projects[len(projects)-1]
+	target.Name = "Quarterly Roadmap"
+	outliner := searchACOutliner(projects...)
+
+	// Without a partial the pane still offers the whole loaded scope in catalog
+	// order, and the target sits past the last row the dropdown can draw.
+	typeSearchAC(outliner, "%")
+	if got := searchACValues(outliner); !slices.Equal(got, slugs) {
+		t.Fatalf("unfiltered project values = %v, want the loaded scope %v", got, slugs)
+	}
+	if got := slices.Index(searchACValues(outliner), target.Slug); got < outlinerSearchSuggestionLimit {
+		t.Fatalf("target index without a partial = %d, want it outside the %d-row pane",
+			got, outlinerSearchSuggestionLimit)
+	}
+
+	// The accepted value ranks it, and every nonmatch is gone rather than pushed
+	// down past the pane.
+	typeSearchAC(outliner, "%zul")
+	got := searchACValues(outliner)
+	if !slices.Equal(got, []string{target.Slug}) {
+		t.Fatalf("slug-filtered project values = %v, want only %q", got, target.Slug)
+	}
+
+	// So does the human-readable name, which the accepted value never contains.
+	typeSearchAC(outliner, "%roadmap")
+	got = searchACValues(outliner)
+	if !slices.Equal(got, []string{target.Slug}) {
+		t.Fatalf("name-filtered project values = %v, want only %q", got, target.Slug)
+	}
+	if displays := searchACDisplays(outliner); len(displays) != 1 ||
+		displays[0] != "%"+target.Slug+" "+target.Name {
+		t.Fatalf("name-filtered project displays = %v, want the slug and name row", displays)
+	}
+
+	// Ranking never reaches for a project the query in front of it could not
+	// match: dropping the target from the loaded scope drops it from the offer.
+	outliner.loadedProjects = projects[:len(projects)-1]
+	outliner.crossForceRebuild = true
+	outliner.crossProjectRebuildRows()
+	typeSearchAC(outliner, "%roadmap")
+	if got := searchACValues(outliner); len(got) != 0 {
+		t.Fatalf("project values outside the loaded scope = %v, want none", got)
+	}
+}
+
 // TestSearchAutocompleteRanksDynamicValuesStably checks both halves of the
 // ordering rule: the fuzzy score decides, and an exact tie keeps the order the
 // candidates were encountered in so the list does not shuffle under the cursor.

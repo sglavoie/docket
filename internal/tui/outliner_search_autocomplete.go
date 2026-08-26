@@ -163,7 +163,7 @@ func (m *OutlinerModel) searchAutocompleteSuggestions(
 	case textgrammar.FieldPinned:
 		return searchPinSuggestions(definition, partial)
 	case textgrammar.FieldProject:
-		return m.searchProjectSuggestions(definition)
+		return m.searchProjectSuggestions(definition, partial)
 	default:
 		return nil
 	}
@@ -297,16 +297,27 @@ func searchPinSuggestions(definition textgrammar.Definition, partial string) []A
 
 // searchProjectSuggestions offers the projects already loaded in the current
 // search scope and nothing else: completion must never load a wider catalog than
-// the query it is completing can match against. The scope is small enough that
-// every project is listed, so the partial is left to the dropdown's own
-// navigation rather than filtering the scope away.
-func (m *OutlinerModel) searchProjectSuggestions(definition textgrammar.Definition) []ACSuggestion {
+// the query it is completing can match against. Within that scope the partial
+// ranks the same way every other dynamic value does, over both the accepted
+// value and the human-readable name, so a project the dropdown's five rows would
+// otherwise hide is reachable by typing either one.
+func (m *OutlinerModel) searchProjectSuggestions(
+	definition textgrammar.Definition,
+	partial string,
+) []ACSuggestion {
 	projects := m.projectsInCatalogOrder(m.workModeScopeProjects())
-	result := make([]ACSuggestion, 0, len(projects))
+	loaded := make([]*models.Project, 0, len(projects))
 	for _, project := range projects {
 		if project == nil {
 			continue
 		}
+		loaded = append(loaded, project)
+	}
+	ranked := searchRankByFuzzyScore(loaded, partial, func(project *models.Project) []string {
+		return []string{project.Slug, project.Name}
+	})
+	result := make([]ACSuggestion, 0, len(ranked))
+	for _, project := range ranked {
 		result = append(result, ACSuggestion{
 			Display: definition.Trigger + project.Slug + " " + project.Name,
 			Value:   project.Slug,
@@ -319,21 +330,43 @@ func (m *OutlinerModel) searchProjectSuggestions(definition textgrammar.Definiti
 // keeps source order for ties, so an empty partial — which scores every value
 // identically — offers a list that does not reshuffle between keystrokes.
 func searchDynamicSuggestions(definition textgrammar.Definition, values []string, partial string) []ACSuggestion {
-	type candidate struct {
-		value string
-		score int
+	ranked := searchRankByFuzzyScore(values, partial, func(value string) []string {
+		return []string{value}
+	})
+	result := make([]ACSuggestion, 0, len(ranked))
+	for _, value := range ranked {
+		result = append(result, ACSuggestion{Display: definition.Trigger + value, Value: value})
 	}
-	items := make([]candidate, 0, len(values))
-	for _, value := range values {
-		score := fuzzy.Score(value, partial)
-		if partial == "" || score > 0 {
-			items = append(items, candidate{value: value, score: score})
+	return result
+}
+
+// searchRankByFuzzyScore is the one ranking rule the dynamic suggestion sources
+// share: a nonmatching candidate is removed, the rest are ordered by the shared
+// fuzzy score, and equal scores keep the order the candidates were collected in.
+// A candidate offering several match texts is scored by its best one, so the
+// text that found it decides nothing but whether it survives.
+func searchRankByFuzzyScore[T any](candidates []T, partial string, texts func(T) []string) []T {
+	type scored struct {
+		candidate T
+		score     int
+	}
+	items := make([]scored, 0, len(candidates))
+	for _, candidate := range candidates {
+		best := 0
+		for _, text := range texts(candidate) {
+			if score := fuzzy.Score(text, partial); score > best {
+				best = score
+			}
 		}
+		if partial != "" && best == 0 {
+			continue
+		}
+		items = append(items, scored{candidate: candidate, score: best})
 	}
 	sort.SliceStable(items, func(i, j int) bool { return items[i].score > items[j].score })
-	result := make([]ACSuggestion, 0, len(items))
+	result := make([]T, 0, len(items))
 	for _, item := range items {
-		result = append(result, ACSuggestion{Display: definition.Trigger + item.value, Value: item.value})
+		result = append(result, item.candidate)
 	}
 	return result
 }
