@@ -546,14 +546,23 @@ func (p *PlanningState) RemoveProjectReferences(id, slug string) bool {
 	return todayChanged || nextChanged
 }
 
-// MachineState contains the only machine-local value retained by schema 6.
+// MachineState contains the machine-local values retained by schema 6: the
+// dark/light theme and the named Outliner lens definitions. Lenses are
+// deliberately machine-local, so they never enter the synced workspace domains
+// or the workspace undo ledger.
 type MachineState struct {
 	Theme string `json:"theme"`
+	// NamedLenses carries no omitempty: an explicit empty array is the durable
+	// record of "every lens was deleted", and omitting the key instead would
+	// reseed the starters on the next load.
+	NamedLenses NamedLensList `json:"named_lenses"`
 }
 
-// NewMachineState returns the default built-in theme selection.
+// NewMachineState returns the default built-in theme selection and the starter
+// lens records. A load decodes into this seeded value, so an omitted
+// named_lenses key keeps the starters while an explicit [] overwrites them.
 func NewMachineState() *MachineState {
-	return &MachineState{Theme: "dark"}
+	return &MachineState{Theme: "dark", NamedLenses: StarterNamedLenses()}
 }
 
 // Validate reports problems with machine-local preferences.
@@ -561,7 +570,41 @@ func (m *MachineState) Validate() error {
 	if m.Theme != "" && m.Theme != "dark" && m.Theme != "light" {
 		return fmt.Errorf("machine: theme %q must be dark or light", m.Theme)
 	}
+	return m.NamedLenses.Validate()
+}
+
+// NamedLensByID returns the definition with the given id, or nil.
+func (m *MachineState) NamedLensByID(id string) *NamedLens {
+	if m == nil {
+		return nil
+	}
+	for i := range m.NamedLenses {
+		if m.NamedLenses[i].ID == id {
+			return &m.NamedLenses[i]
+		}
+	}
 	return nil
+}
+
+// RemoveNamedLens drops the definition with the given id and reports whether
+// anything changed. Removing the last one leaves an empty, non-nil list so the
+// deletion persists as [] rather than reseeding the starters.
+func (m *MachineState) RemoveNamedLens(id string) bool {
+	if m == nil {
+		return false
+	}
+	kept := make(NamedLensList, 0, len(m.NamedLenses))
+	for _, lens := range m.NamedLenses {
+		if lens.ID == id {
+			continue
+		}
+		kept = append(kept, lens)
+	}
+	if len(kept) == len(m.NamedLenses) {
+		return false
+	}
+	m.NamedLenses = kept
+	return true
 }
 
 // refMatches reports whether a stored project reference targets the identified

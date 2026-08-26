@@ -165,8 +165,12 @@ func (m *AppModel) commitRuntimeDomainsWithUndo(
 	return result, nil
 }
 
-// cloneMachineState returns a defensive copy of the lean machine snapshot.
+// cloneMachineState returns a deep copy of the machine snapshot. The lens
+// definitions carry nested state, tag, and project-tag slices, so a shallow
+// copy would let an edit to the clone rewrite the runtime snapshot before the
+// commit that is supposed to publish it.
 func cloneMachineState(m *config.MachineState) *config.MachineState {
 	cp := *m
+	cp.NamedLenses = m.NamedLenses.Clone()
 	return &cp
 }
