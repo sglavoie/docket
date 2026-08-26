@@ -85,18 +85,40 @@ const (
 // default, so loading must read it back as that default rather than as garbage.
 const lensTokenDefaultSentinel = ""
 
-// Fixed identities for the three starter records. They are frozen so a seeded
-// workspace and a reseeded one name the same lenses, and so a user edit lands
-// on the record it opened.
+// Fixed identities for the built-in template catalog. They are frozen so a
+// seeded workspace and a reseeded one name the same lenses, so a user edit
+// lands on the record it opened, and so a gallery can tell an already-added
+// template from a fresh one by stable ID alone. The first three are also the
+// records seeded automatically; the rest are added on demand.
 const (
 	lensWaitingStarterName  = "Waiting"
 	lensHighPriorityStarter = "High Priority"
 	lensStaleStarterName    = "Stale"
+	lensOverdueTemplateName = "Overdue"
+	lensActiveWorkTmplName  = "Active Work"
+	lensReviewQueueTmplName = "Review Queue"
+	lensDeferredTmplName    = "Deferred"
+	lensCleanup90dTmplName  = "Cleanup 90d"
+	lensParkedWorkTmplName  = "Parked Work"
 
 	lensWaitingStarterID    = "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c01"
 	lensHighPriorityStartID = "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c02"
 	lensStaleStarterID      = "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c03"
+	lensOverdueTemplateID   = "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c04"
+	lensActiveWorkTmplID    = "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c05"
+	lensReviewQueueTmplID   = "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c06"
+	lensDeferredTmplID      = "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c07"
+	lensCleanup90dTmplID    = "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c08"
+	lensParkedWorkTmplID    = "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c09"
 )
+
+// starterNamedLensCount is how many leading catalog entries a never-seeded
+// machine state receives. The catalog grew past the starters; automatic seeding
+// deliberately did not.
+const starterNamedLensCount = 3
+
+// lensReviewQueueTag is the task tag the Review Queue template selects on.
+const lensReviewQueueTag = "review"
 
 // LensTaskFilters is the persisted form of the Outliner's shared task facets.
 // StatesSet and CompletionAgeSet are retained explicitly because each
@@ -178,18 +200,18 @@ func (l NamedLensList) MarshalJSON() ([]byte, error) {
 	return json.Marshal([]NamedLens(l))
 }
 
-// StarterNamedLenses returns the three ordinary starter records seeded into a
-// machine state that has never persisted a lens list. They are editable and
-// removable like any other lens; nothing downstream may treat them as special.
-func StarterNamedLenses() NamedLensList {
-	waitingStates := []string{string(models.StateWaiting)}
+// builtinNamedLensDefinitions is the single source of truth for every built-in
+// template, in catalog order. It builds the whole list from literals on each
+// call, so every returned lens and every nested slice is already detached from
+// any earlier caller's copy; the exported wrappers below inherit that.
+func builtinNamedLensDefinitions() NamedLensList {
 	return NamedLensList{
 		{
 			ID:   lensWaitingStarterID,
 			Name: lensWaitingStarterName,
 			Mode: LensModeAll,
 			Tasks: LensTaskFilters{
-				States:    waitingStates,
+				States:    []string{string(models.StateWaiting)},
 				StatesSet: true,
 			},
 			Sort: LensSort{Field: LensSortDefault, Ascending: true},
@@ -212,7 +234,82 @@ func StarterNamedLenses() NamedLensList {
 			},
 			Sort: LensSort{Field: LensSortUpdated, Ascending: true},
 		},
+		{
+			ID:   lensOverdueTemplateID,
+			Name: lensOverdueTemplateName,
+			Mode: LensModeDue,
+			Tasks: LensTaskFilters{
+				DueDate: LensDueOverdue,
+			},
+			Sort: LensSort{Field: LensSortDefault, Ascending: true},
+		},
+		{
+			ID:   lensActiveWorkTmplID,
+			Name: lensActiveWorkTmplName,
+			Mode: LensModeAll,
+			Tasks: LensTaskFilters{
+				States:    []string{string(models.StateDoing)},
+				StatesSet: true,
+			},
+			Sort: LensSort{Field: LensSortPriority, Ascending: true},
+		},
+		{
+			ID:   lensReviewQueueTmplID,
+			Name: lensReviewQueueTmplName,
+			Mode: LensModeAll,
+			Tasks: LensTaskFilters{
+				Tags: []string{lensReviewQueueTag},
+			},
+			Sort: LensSort{Field: LensSortUpdated, Ascending: true},
+		},
+		{
+			ID:   lensDeferredTmplID,
+			Name: lensDeferredTmplName,
+			Mode: LensModeAll,
+			Tasks: LensTaskFilters{
+				Deferred: true,
+			},
+			Sort: LensSort{Field: LensSortUpdated, Ascending: true},
+		},
+		{
+			ID:   lensCleanup90dTmplID,
+			Name: lensCleanup90dTmplName,
+			Mode: LensModeAll,
+			Tasks: LensTaskFilters{
+				States:           []string{string(models.StateDone), string(models.StateCanceled)},
+				StatesSet:        true,
+				CompletionAge:    LensCompletionAge90Days,
+				CompletionAgeSet: true,
+			},
+			Sort: LensSort{Field: LensSortUpdated, Ascending: true},
+		},
+		{
+			ID:   lensParkedWorkTmplID,
+			Name: lensParkedWorkTmplName,
+			Mode: LensModeAll,
+			Projects: LensProjectFilters{
+				ParkedMode: LensPopulationOnly,
+			},
+			Sort: LensSort{Field: LensSortDefault, Ascending: true},
+		},
 	}
+}
+
+// BuiltinNamedLensTemplates returns the whole built-in catalog in catalog
+// order, fully detached on every call. A template is only a definition: adding
+// one persists an ordinary lens, and nothing downstream may treat the result as
+// special.
+func BuiltinNamedLensTemplates() NamedLensList {
+	return builtinNamedLensDefinitions()
+}
+
+// StarterNamedLenses returns the three ordinary starter records seeded into a
+// machine state that has never persisted a lens list. They are the first three
+// catalog templates and nothing more: the remaining six are added on demand and
+// never seeded. They are editable and removable like any other lens.
+func StarterNamedLenses() NamedLensList {
+	catalog := builtinNamedLensDefinitions()
+	return append(NamedLensList(nil), catalog[:starterNamedLensCount]...)
 }
 
 // Clone returns a deep, independently mutable copy of the list. Every nested

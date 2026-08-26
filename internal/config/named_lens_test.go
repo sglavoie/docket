@@ -102,6 +102,161 @@ func TestStarterLensIDsAreCanonicalUUIDs(t *testing.T) {
 	}
 }
 
+// TestBuiltinNamedLensTemplatesExactCatalog pins every field of every template.
+// These definitions are durable product identities, not defaults: a changed ID
+// orphans an added lens and a changed facet silently redefines a saved view, so
+// each is asserted exactly rather than spot-checked.
+func TestBuiltinNamedLensTemplatesExactCatalog(t *testing.T) {
+	want := []NamedLens{
+		{
+			ID:    "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c01",
+			Name:  "Waiting",
+			Mode:  LensModeAll,
+			Tasks: LensTaskFilters{States: []string{"waiting"}, StatesSet: true},
+			Sort:  LensSort{Field: LensSortDefault, Ascending: true},
+		},
+		{
+			ID:    "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c02",
+			Name:  "High Priority",
+			Mode:  LensModeAll,
+			Tasks: LensTaskFilters{Priority: models.PriorityHigh},
+			Sort:  LensSort{Field: LensSortPriority, Ascending: true},
+		},
+		{
+			ID:    "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c03",
+			Name:  "Stale",
+			Mode:  LensModeAll,
+			Tasks: LensTaskFilters{Stale: true},
+			Sort:  LensSort{Field: LensSortUpdated, Ascending: true},
+		},
+		{
+			ID:    "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c04",
+			Name:  "Overdue",
+			Mode:  LensModeDue,
+			Tasks: LensTaskFilters{DueDate: LensDueOverdue},
+			Sort:  LensSort{Field: LensSortDefault, Ascending: true},
+		},
+		{
+			ID:    "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c05",
+			Name:  "Active Work",
+			Mode:  LensModeAll,
+			Tasks: LensTaskFilters{States: []string{"doing"}, StatesSet: true},
+			Sort:  LensSort{Field: LensSortPriority, Ascending: true},
+		},
+		{
+			ID:    "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c06",
+			Name:  "Review Queue",
+			Mode:  LensModeAll,
+			Tasks: LensTaskFilters{Tags: []string{"review"}},
+			Sort:  LensSort{Field: LensSortUpdated, Ascending: true},
+		},
+		{
+			ID:    "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c07",
+			Name:  "Deferred",
+			Mode:  LensModeAll,
+			Tasks: LensTaskFilters{Deferred: true},
+			Sort:  LensSort{Field: LensSortUpdated, Ascending: true},
+		},
+		{
+			ID:   "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c08",
+			Name: "Cleanup 90d",
+			Mode: LensModeAll,
+			Tasks: LensTaskFilters{
+				States:           []string{"done", "canceled"},
+				StatesSet:        true,
+				CompletionAge:    LensCompletionAge90Days,
+				CompletionAgeSet: true,
+			},
+			Sort: LensSort{Field: LensSortUpdated, Ascending: true},
+		},
+		{
+			ID:       "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c09",
+			Name:     "Parked Work",
+			Mode:     LensModeAll,
+			Projects: LensProjectFilters{ParkedMode: LensPopulationOnly},
+			Sort:     LensSort{Field: LensSortDefault, Ascending: true},
+		},
+	}
+
+	got := BuiltinNamedLensTemplates()
+	if len(got) != len(want) {
+		t.Fatalf("template count = %d, want %d", len(got), len(want))
+	}
+	for i, wantLens := range want {
+		t.Run(wantLens.Name, func(t *testing.T) {
+			gotJSON, wantJSON := mustJSON(t, got[i]), mustJSON(t, wantLens)
+			if gotJSON != wantJSON {
+				t.Fatalf("template %d:\n got %s\nwant %s", i, gotJSON, wantJSON)
+			}
+			// Empty query is part of the contract and omitempty hides it.
+			if got[i].Query != "" {
+				t.Errorf("template %q query = %q, want empty", wantLens.Name, got[i].Query)
+			}
+		})
+	}
+}
+
+func TestBuiltinNamedLensTemplatesValidateAsACollection(t *testing.T) {
+	// Collection validation is what proves the frozen IDs stay canonical and
+	// distinct and that no two template names fold together.
+	if err := BuiltinNamedLensTemplates().Validate(); err != nil {
+		t.Fatalf("built-in template catalog should validate: %v", err)
+	}
+	if err := StarterNamedLenses().Validate(); err != nil {
+		t.Fatalf("starter catalog should validate: %v", err)
+	}
+}
+
+func TestStarterNamedLensesArePrefixOfTemplates(t *testing.T) {
+	templates := BuiltinNamedLensTemplates()
+	starters := StarterNamedLenses()
+	if len(starters) != 3 {
+		t.Fatalf("starter count = %d, want 3; automatic seeding must not grow with the catalog", len(starters))
+	}
+	if got, want := mustJSON(t, starters), mustJSON(t, templates[:3]); got != want {
+		t.Fatalf("starters diverged from the first three templates:\n got %s\nwant %s", got, want)
+	}
+}
+
+func TestBuiltinNamedLensTemplatesDetachOnEveryCall(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		call func() NamedLensList
+	}{
+		{"templates", BuiltinNamedLensTemplates},
+		{"starters", StarterNamedLenses},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			baseline := mustJSON(t, tc.call())
+
+			mutated := tc.call()
+			mutated[0].Name = "Mutated"
+			mutated[0].Tasks.States[0] = "mutated-state"
+			mutated[0].Tasks.StatesSet = false
+			if grown := append(mutated, validLens()); len(grown) != len(mutated)+1 {
+				t.Fatalf("append length = %d, want %d", len(grown), len(mutated)+1)
+			}
+
+			if got := mustJSON(t, tc.call()); got != baseline {
+				t.Fatalf("mutating a returned catalog leaked into a later call:\n got %s\nwant %s", got, baseline)
+			}
+		})
+	}
+}
+
+// A template that shares a backing array with the catalog would let a starter
+// append overwrite template four, which callers never observe directly.
+func TestStarterNamedLensesAppendCannotReachRemainingTemplates(t *testing.T) {
+	starters := StarterNamedLenses()
+	starters = append(starters, validLens())
+	if got := BuiltinNamedLensTemplates()[3].Name; got != "Overdue" {
+		t.Fatalf("appending to the starters overwrote template 4: %q", got)
+	}
+	if len(starters) != 4 {
+		t.Fatalf("starter length after append = %d, want 4", len(starters))
+	}
+}
+
 func TestValidateNamedLensID(t *testing.T) {
 	cases := map[string]bool{
 		"9f8b8e42-7c3a-4d61-8f2a-1b0c9d7e5a01":   true,
@@ -314,7 +469,9 @@ func TestMachineStateLensJSONOmissionSemantics(t *testing.T) {
 		wantErr bool
 		wantLen int
 	}{
-		{name: "omitted seeds starters", payload: `{"theme":"light"}`, wantLen: len(StarterNamedLenses())},
+		// Three, literally: the catalog has nine templates and an omitted key
+		// must still seed only the three starters.
+		{name: "omitted seeds exactly three starters", payload: `{"theme":"light"}`, wantLen: 3},
 		{name: "explicit empty stays empty", payload: `{"theme":"light","named_lenses":[]}`, wantLen: 0},
 		{name: "null is invalid", payload: `{"theme":"light","named_lenses":null}`, wantErr: true},
 		{name: "unknown nested field is invalid", payload: `{"theme":"light","named_lenses":[{"id":"9f8b8e42-7c3a-4d61-8f2a-1b0c9d7e5a01","name":"X","mode":"all","nope":1}]}`, wantErr: true},
@@ -430,7 +587,7 @@ func TestDomainFileStoreMachineLensLoadSemantics(t *testing.T) {
 		wantErr bool
 		wantLen int
 	}{
-		{name: "legacy payload without the key seeds starters", payload: `{"theme":"light"}`, wantLen: len(StarterNamedLenses())},
+		{name: "legacy payload without the key seeds exactly three starters", payload: `{"theme":"light"}`, wantLen: 3},
 		{name: "explicit empty stays empty", payload: `{"theme":"light","named_lenses":[]}`, wantLen: 0},
 		{name: "null is rejected", payload: `{"theme":"light","named_lenses":null}`, wantErr: true},
 	}
