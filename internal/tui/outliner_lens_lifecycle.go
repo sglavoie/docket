@@ -157,6 +157,22 @@ func (m *OutlinerModel) loadedPopulationFingerprint() string {
 	return projectFilterFingerprint(&m.projectFilter)
 }
 
+// recordLoadedPopulation is where a landed population tells the live lens what
+// it is. Every successful load names the filter it was actually read under, so
+// the frame stops carrying a provenance the population moved away from: an
+// ordinary reload that happens to answer the lens's own facets pays the owed
+// load, and one that answers a different filter leaves the debt exactly where it
+// was. A debt is never stranded by the recomputation below, because the only way
+// the live filter can move is a route that reloads, and that reload settles this
+// again when it lands.
+func (m *OutlinerModel) recordLoadedPopulation(fingerprint string) {
+	if m == nil || m.activeLens == nil {
+		return
+	}
+	m.activeLens.loadedPopulationFingerprint = fingerprint
+	m.activeLens.projectFacetsAwaitingLoad = fingerprint != projectFilterFingerprint(&m.projectFilter)
+}
+
 // beginLensProjectLoad starts a load against the candidate filter without
 // writing it to the model.
 func (m *OutlinerModel) beginLensProjectLoad(lens config.NamedLens, state lensState) tea.Cmd {
@@ -258,7 +274,7 @@ func (m *OutlinerModel) handleLensProjectsLoaded(msg lensProjectsLoadedMsg) (tea
 	}
 
 	if pending.scopeExitFrom != "" {
-		if !m.finishLensScopeExit(pending.scopeExitFrom, msg.projects) {
+		if !m.finishLensScopeExit(pending, msg.projects) {
 			return nil, false
 		}
 	} else {
@@ -284,8 +300,8 @@ func (m *OutlinerModel) handleLensProjectsLoaded(msg lensProjectsLoadedMsg) (tea
 // fingerprint, and the pre-lens restoration point all belong to the application
 // that installed it and none of them is being replaced here. It reports whether
 // the exit was still the one to take.
-func (m *OutlinerModel) finishLensScopeExit(from string, projects []*models.Project) bool {
-	if m.scopedProjectID != from {
+func (m *OutlinerModel) finishLensScopeExit(pending *pendingLensApplication, projects []*models.Project) bool {
+	if m.scopedProjectID != pending.scopeExitFrom {
 		// The scope moved while the read ran. Replacing one project scope with
 		// another keeps the facets inert, so the population loaded here is dropped
 		// and the exit is left to whichever scope the user is in now.
@@ -300,12 +316,11 @@ func (m *OutlinerModel) finishLensScopeExit(from string, projects []*models.Proj
 	projects = m.settleParkedFocusAgainstPopulation(projects)
 	m.loadedProjects = projects
 	m.crossSnapshotReady = true
-	if m.activeLens != nil {
-		m.activeLens.projectFacetsAwaitingLoad = false
-		// The population just read answers to the live filter, which is the one the
-		// exit loaded against, so the frame's provenance is that filter again.
-		m.activeLens.loadedPopulationFingerprint = projectFilterFingerprint(&m.projectFilter)
-	}
+	// The provenance is the filter this exit read under, not the one the model
+	// holds now: the two are the same on every route that reaches here, and
+	// recording the read's own filter is what keeps that an observation rather
+	// than an assumption.
+	m.recordLoadedPopulation(projectFilterFingerprint(&pending.state.projectFilter))
 	m.pruneSelectionsOutsideLoadedProjects()
 	if !m.clearProjectScope() {
 		// Defensive: the scope owns the rebuild, so there is one to do only when it

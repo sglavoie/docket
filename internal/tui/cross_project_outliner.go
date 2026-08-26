@@ -28,6 +28,15 @@ type crossProjectsLoadedMsg struct {
 	// where it is and exists so the handler can re-decide whether the exception
 	// that admits the project is still required.
 	retainedFocusProjectID string
+
+	// loadedProjectFilter is the fingerprint of the project filter this read was
+	// actually issued under. It travels with the result because the live filter is
+	// not always the one the population answers to: a lens applied under a project
+	// scope writes its facets without loading, so a reload started before it lands
+	// afterwards carrying the older population. The provenance has to be the
+	// filter the read used, never the one the model happens to hold when it
+	// arrives.
+	loadedProjectFilter string
 }
 
 // crossSpinnerDelay is how long an initial load runs before it animates a
@@ -95,9 +104,10 @@ func (m *OutlinerModel) loadCrossProjectsCmd() tea.Cmd {
 			ProjectFilter:  projectFilter,
 		})
 		msg := crossProjectsLoadedMsg{
-			projects:    loaded,
-			failedLoads: failed,
-			generation:  gen,
+			projects:            loaded,
+			failedLoads:         failed,
+			generation:          gen,
+			loadedProjectFilter: projectFilterFingerprint(&projectFilter),
 		}
 		if adopting {
 			msg.focusProjectID = focus
@@ -204,6 +214,7 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	m.crossSpinnerVisible = false
 	m.loadedProjects = msg.projects
 	m.crossSnapshotReady = true
+	m.recordLoadedPopulation(msg.loadedProjectFilter)
 	m.pruneSelectionsOutsideLoadedProjects()
 	m.crossForceRebuild = true
 	m.crossProjectRebuildRows()

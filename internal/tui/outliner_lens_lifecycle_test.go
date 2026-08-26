@@ -412,6 +412,136 @@ func TestScopedEquivalentLensSwitchRetainsDeferredPopulationLoad(t *testing.T) {
 	}
 }
 
+// TestScopedLensPopulationProvenanceTracksOrdinaryReloads pins the provenance of
+// the live population to the reloads that actually replace it. A lens applied
+// under a project scope records project facets it cannot load, and an ordinary
+// reload beside it publishes a population under whatever filter it read. If the
+// frame keeps naming the filter the scoped application merely found, a later lens
+// whose facets happen to equal that abandoned filter clears a debt nothing paid,
+// and the explicit scope exit then shows a population the live lens never
+// selected.
+func TestScopedLensPopulationProvenanceTracksOrdinaryReloads(t *testing.T) {
+	app := lensOperationApp(t)
+	outliner := app.crossOutliner
+	base := slices.Clone(outliner.loadedProjects)
+	baseline := loadedProjectIDs(outliner)
+
+	parked := primaryRowsProject("parked", primaryRowsTask("parked-waiting", models.StateWaiting))
+	parked.Tags = []string{models.ParkedProjectTag}
+
+	outliner.pushProjectScope("alpha")
+	parkedLens := waitingLens(lensTestID(1), "Parked", "")
+	parkedLens.Projects.ParkedMode = config.LensPopulationInclude
+	applyLensOrFatal(t, outliner, parkedLens)
+	frame := outliner.activeLens
+	if !frame.projectFacetsAwaitingLoad {
+		t.Fatal("the scoped application recorded no owed population load")
+	}
+	origin := frame.origin
+
+	// A reload issued before the application lands afterwards carrying the
+	// population the pre-lens filter selects. It is not the one the facets ask
+	// for, so the debt is untouched and the frame now names that filter.
+	outliner.crossLoadGen++
+	outliner.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
+		projects:            base,
+		generation:          outliner.crossLoadGen,
+		loadedProjectFilter: projectFilterFingerprint(&ProjectFilterState{}),
+	})
+	if !outliner.activeLens.projectFacetsAwaitingLoad {
+		t.Fatal("a reload under the pre-lens filter paid the owed population load")
+	}
+
+	// The next reload reads under the live filter, which is the lens's own facets.
+	// The command names that filter itself: the model it lands against may have
+	// moved, so the read has to carry its own provenance.
+	outliner.crossLoadGen++
+	result, ok := outliner.loadCrossProjectsCmd()().(crossProjectsLoadedMsg)
+	if !ok {
+		t.Fatal("the reload command produced no cross-projects result")
+	}
+	if result.loadedProjectFilter != projectFilterFingerprint(&outliner.projectFilter) {
+		t.Fatalf("reload provenance = %q, want the project filter it read under %q",
+			result.loadedProjectFilter, projectFilterFingerprint(&outliner.projectFilter))
+	}
+	result.projects = append(slices.Clone(base), parked)
+	result.failedLoads = nil
+	outliner.handleCrossProjectsLoaded(result)
+	if outliner.activeLens.projectFacetsAwaitingLoad {
+		t.Fatal("a reload under the lens's own facets left the population still owed")
+	}
+	if ids := loadedProjectIDs(outliner); !slices.Equal(ids, append(slices.Clone(baseline), "parked")) {
+		t.Fatalf("reloaded population = %v, want the parked-admitting one the live filter selects", ids)
+	}
+
+	// Switching to a lens whose facets equal the filter the scoped application
+	// found is the stale-provenance case. The population in hand is the parked
+	// one, so the base population this lens selects is owed a load.
+	plain := waitingLens(lensTestID(2), "Plain", "")
+	applyLensOrFatal(t, outliner, plain)
+	if outliner.pendingLens != nil {
+		t.Fatal("switching lenses under a project scope loaded a population")
+	}
+	if !outliner.activeLens.projectFacetsAwaitingLoad {
+		t.Fatal("the switch cleared a population debt against a stale fingerprint")
+	}
+
+	handled, cmd := app.applyProjectScope(ApplyProjectScopeMsg{Clear: true})
+	if !handled {
+		t.Fatal("the Project Hub clear-scope route was not handled")
+	}
+	if cmd == nil || outliner.pendingLens == nil {
+		t.Fatal("the explicit exit skipped the population the live lens facets select")
+	}
+
+	// A wholly failed read is transactional: same scope, same population, and the
+	// facets still owed a load.
+	if _, published := outliner.handleLensProjectsLoaded(lensProjectsLoadedMsg{
+		failedLoads: []projectLoadFailure{{ProjectID: "alpha", Detail: "failed to load project alpha: boom"}},
+		generation:  outliner.pendingLens.generation,
+	}); published {
+		t.Fatal("a wholly failed load published a scope exit")
+	}
+	if outliner.scopedProjectID != "alpha" || !outliner.activeLens.projectFacetsAwaitingLoad {
+		t.Fatal("a wholly failed load did not leave the scope and the owed load as they were")
+	}
+	if ids := loadedProjectIDs(outliner); !slices.Equal(ids, append(slices.Clone(baseline), "parked")) {
+		t.Fatalf("population after a failed load = %v, want the untouched parked-admitting one", ids)
+	}
+
+	if _, cmd = app.applyProjectScope(ApplyProjectScopeMsg{Clear: true}); cmd == nil {
+		t.Fatal("the retried exit started no load")
+	}
+	if _, published := outliner.handleLensProjectsLoaded(lensProjectsLoadedMsg{
+		projects:   base,
+		generation: outliner.pendingLens.generation,
+	}); !published {
+		t.Fatal("the landed exit published nothing")
+	}
+	if outliner.isProjectScoped() {
+		t.Fatal("the landed exit left the scope in place")
+	}
+	if outliner.activeLens.projectFacetsAwaitingLoad {
+		t.Fatal("the landed exit left the population still owed")
+	}
+	if ids := loadedProjectIDs(outliner); !slices.Equal(ids, baseline) {
+		t.Fatalf("unscoped population = %v, want the %v the live lens selects", ids, baseline)
+	}
+	if outliner.activeLens.origin.presentation.mode != origin.presentation.mode {
+		t.Fatal("the repaired provenance replaced the original pre-lens restoration frame")
+	}
+
+	if !RunEscCascade(outliner.escSteps()) {
+		t.Fatal("expected Esc to consume the lens")
+	}
+	if outliner.scopedProjectID != "alpha" {
+		t.Fatalf("restored scope = %q, want the pre-lens alpha", outliner.scopedProjectID)
+	}
+	if ids := loadedProjectIDs(outliner); !slices.Equal(ids, baseline) {
+		t.Fatalf("restored population = %v, want the pre-lens %v", ids, baseline)
+	}
+}
+
 // parkedFocusLensApp builds an AppModel whose Outliner holds a two-project base
 // workspace plus one parked project the base workspace never admits, then adopts
 // that parked project as an explicit focus exactly as the lazy focus load does:
