@@ -18,11 +18,18 @@ func (m *AppModel) applyProjectScope(msg ApplyProjectScopeMsg) (bool, tea.Cmd) {
 	}
 	returnToOutliner := m.currentView() == ViewProjectHub
 	if msg.Clear {
-		m.crossOutliner.clearProjectScope()
-		if returnToOutliner {
-			return true, m.returnToOutlinerAfterProjectScope()
+		// A lens applied under this scope recorded project facets it could not act
+		// on, because the scope had already fixed the population. Leaving the scope
+		// is when they decide it, so the exit rides that load instead of dropping
+		// the scope onto the population it replaced.
+		activation, deferred := m.crossOutliner.beginLensScopeExit()
+		if !deferred {
+			m.crossOutliner.clearProjectScope()
 		}
-		return true, nil
+		if returnToOutliner {
+			return true, tea.Batch(activation, m.returnToOutlinerAfterProjectScope())
+		}
+		return true, activation
 	}
 	if !m.crossOutliner.projectIsLoaded(msg.ProjectID) {
 		// A parked project keeps its tasks on disk but contributes nothing to the

@@ -37,6 +37,14 @@ type activeLensFrame struct {
 	// published yet, or zero. It exists so restoration can invalidate work still
 	// in flight instead of letting it land on a view that already moved on.
 	pendingGeneration int
+
+	// projectFacetsAwaitingLoad marks a lens published without loading the
+	// population its project facets select, which is what a scoped application
+	// does: the scope had already fixed the population to one project. Project
+	// facets are population selectors rather than row predicates, so those facets
+	// are recorded and inert, and this is what tells the explicit scope exit that
+	// it owes them a load before any unscoped row is shown.
+	projectFacetsAwaitingLoad bool
 }
 
 // pendingLensApplication is a lens whose project population is still loading.
@@ -52,6 +60,13 @@ type pendingLensApplication struct {
 	// left, so navigating, searching, or filtering while the projects read must
 	// not rewrite the baseline the application is going to install.
 	origin outlinerViewSnapshot
+
+	// scopeExitFrom names the project scope an explicit exit is leaving. When it
+	// is set this application installs no lens: the one it belongs to is already
+	// live, and only its inert project facets are being honored, so the result
+	// publishes the population and drops that scope in one step. An empty string
+	// is an ordinary application that publishes a lens.
+	scopeExitFrom string
 }
 
 // lensProjectsLoadedMsg carries the result of a load started for one lens
@@ -122,32 +137,61 @@ func (m *OutlinerModel) lensProjectLoadRequired(state lensState) bool {
 }
 
 // beginLensProjectLoad starts a load against the candidate filter without
-// writing it to the model. The generation bump is what makes the load safe to
-// abandon: a later reload, a later lens, or a restoration all supersede it, and
-// a superseded result publishes nothing.
+// writing it to the model.
 func (m *OutlinerModel) beginLensProjectLoad(lens config.NamedLens, state lensState) tea.Cmd {
 	// The baseline is frozen here, before a byte is read: the restoration point
 	// belongs to the view the application replaced, and nothing the user does
 	// while the load runs may move it.
 	origin := m.lensRestorationPoint()
+	return m.startLensProjectLoad(&pendingLensApplication{
+		lens:   lens,
+		state:  state,
+		origin: origin,
+	})
+}
+
+// beginLensScopeExit defers an explicit scope exit behind the load the live
+// lens's project facets finally decide. A lens applied under a project scope
+// recorded those facets without loading, because the scope had already fixed the
+// population to one project; leaving that scope is the moment they select a
+// population, so the exit waits on the projects it asked for rather than
+// showing unscoped rows built from the population the scope replaced. It reports
+// whether it took the exit; false leaves the ordinary immediate clear in place.
+func (m *OutlinerModel) beginLensScopeExit() (tea.Cmd, bool) {
+	if m == nil || m.project != nil || !m.isProjectScoped() {
+		return nil, false
+	}
+	if m.activeLens == nil || !m.activeLens.projectFacetsAwaitingLoad {
+		return nil, false
+	}
+	// The live state is what the facets are, marker and all: this application
+	// publishes a population, never a definition, so it must read the filter the
+	// user can currently see rather than the one the record was saved with.
+	return m.startLensProjectLoad(&pendingLensApplication{
+		state:         m.captureLensState(),
+		origin:        m.lensRestorationPoint(),
+		scopeExitFrom: m.scopedProjectID,
+	}), true
+}
+
+// startLensProjectLoad arms one application and returns its read. The generation
+// bump is what makes the load safe to abandon: a later reload, a later lens, or a
+// restoration all supersede it, and a superseded result publishes nothing.
+func (m *OutlinerModel) startLensProjectLoad(pending *pendingLensApplication) tea.Cmd {
 	m.discardPendingLensApplication()
 	m.crossLoadGen++
 	m.crossLoading = true
-	m.pendingLens = &pendingLensApplication{
-		generation: m.crossLoadGen,
-		lens:       lens,
-		state:      state,
-		origin:     origin,
-	}
+	pending.generation = m.crossLoadGen
+	m.pendingLens = pending
 	if m.activeLens != nil {
-		m.activeLens.pendingGeneration = m.pendingLens.generation
+		m.activeLens.pendingGeneration = pending.generation
 	}
 
-	generation := m.pendingLens.generation
+	generation := pending.generation
 	runtime := m.runtime
 	service := m.projectService
 	focus := m.focusRequestForLoad()
-	projectFilter := state.projectFilter.clone()
+	projectFilter := pending.state.projectFilter.clone()
 	return func() tea.Msg {
 		_, loaded, failed := LoadCrossScopeTasks(runtime, service, CrossScopeOpts{
 			ActiveOnly:     true,
@@ -192,7 +236,13 @@ func (m *OutlinerModel) handleLensProjectsLoaded(msg lensProjectsLoadedMsg) (tea
 		return func() tea.Msg { return ErrorMsg{Err: errors.New(detail)} }, false
 	}
 
-	m.publishLens(pending.lens, pending.state, msg.projects, pending.origin)
+	if pending.scopeExitFrom != "" {
+		if !m.finishLensScopeExit(pending.scopeExitFrom, msg.projects) {
+			return nil, false
+		}
+	} else {
+		m.publishLens(pending.lens, pending.state, msg.projects, pending.origin)
+	}
 	if len(msg.failedLoads) == 0 {
 		return nil, true
 	}
@@ -207,6 +257,35 @@ func (m *OutlinerModel) handleLensProjectsLoaded(msg lensProjectsLoadedMsg) (tea
 	return func() tea.Msg { return InfoStatusMsg(warning) }, true
 }
 
+// finishLensScopeExit installs the population the live lens's project facets
+// select and drops the scope in the same step. The frame is deliberately left
+// alone: the lens is the one already applied, so its identity, its saved
+// fingerprint, and the pre-lens restoration point all belong to the application
+// that installed it and none of them is being replaced here. It reports whether
+// the exit was still the one to take.
+func (m *OutlinerModel) finishLensScopeExit(from string, projects []*models.Project) bool {
+	if m.scopedProjectID != from {
+		// The scope moved while the read ran. Replacing one project scope with
+		// another keeps the facets inert, so the population loaded here is dropped
+		// and the exit is left to whichever scope the user is in now.
+		return false
+	}
+	m.loadedProjects = projects
+	m.crossSnapshotReady = true
+	if m.activeLens != nil {
+		m.activeLens.projectFacetsAwaitingLoad = false
+	}
+	m.pruneSelectionsOutsideLoadedProjects()
+	if !m.clearProjectScope() {
+		// Defensive: the scope owns the rebuild, so there is one to do only when it
+		// declined to restore anything.
+		m.crossForceRebuild = true
+		m.crossProjectRebuildRows()
+		m.clampCursor()
+	}
+	return true
+}
+
 // publishLens is the only place a lens becomes live. Nil projects mean the
 // population is unchanged and the snapshot in hand stands. The origin is
 // supplied rather than captured here: an asynchronous application froze its
@@ -217,6 +296,14 @@ func (m *OutlinerModel) publishLens(lens config.NamedLens, state lensState, proj
 	// asynchronous path already cleared itself before calling in.
 	m.discardPendingLensApplication()
 	anchor := m.captureModeCursor()
+
+	// Publishing without projects leaves the population exactly as it was, so
+	// project facets that select a different one are recorded and inert. That is
+	// what a scoped application does, and the frame below remembers it so the
+	// explicit scope exit can honor them.
+	candidate := state.projectFilter
+	facetsAwaitingLoad := projects == nil &&
+		projectFilterFingerprint(&candidate) != projectFilterFingerprint(&m.projectFilter)
 
 	// A lens replaces the projection, so an ordinary search projection cannot
 	// survive underneath it. The baseline above already holds search's own
@@ -236,10 +323,11 @@ func (m *OutlinerModel) publishLens(lens config.NamedLens, state lensState, proj
 	}
 
 	m.activeLens = &activeLensFrame{
-		lensID:           lens.ID,
-		name:             lens.Name,
-		savedFingerprint: state.fingerprint(),
-		origin:           origin,
+		lensID:                    lens.ID,
+		name:                      lens.Name,
+		savedFingerprint:          state.fingerprint(),
+		origin:                    origin,
+		projectFacetsAwaitingLoad: facetsAwaitingLoad,
 	}
 	m.crossForceRebuild = true
 	m.rebuildRows()

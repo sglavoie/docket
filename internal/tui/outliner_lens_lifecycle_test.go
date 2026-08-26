@@ -197,6 +197,111 @@ func TestApplyNamedLensUnderScopeRecordsProjectFacetsInert(t *testing.T) {
 	}
 }
 
+// TestScopedLensActivatesProjectFacetsOnExplicitScopeExit walks the Project Hub
+// clear-scope route while a project-filtering lens stays active. Project facets
+// are population selectors rather than row predicates, so the facets a scoped
+// application could only record must select the population the moment the model
+// becomes unscoped — and not one moment earlier, since replacing one project
+// scope with another leaves them just as inert as applying under one did.
+func TestScopedLensActivatesProjectFacetsOnExplicitScopeExit(t *testing.T) {
+	app := lensOperationApp(t)
+	outliner := app.crossOutliner
+	baseline := loadedProjectIDs(outliner)
+	outliner.SetSearchQuery("needle")
+	outliner.pushProjectScope("alpha")
+
+	lens := waitingLens(lensTestID(1), "Waiting", "")
+	lens.Projects.ParkedMode = config.LensPopulationOnly
+	applyLensOrFatal(t, outliner, lens)
+	if outliner.pendingLens != nil {
+		t.Fatal("a scoped application must record its facets without loading")
+	}
+	frame := outliner.activeLens
+	savedFingerprint := frame.savedFingerprint
+
+	// Replacing one project scope with another is not becoming unscoped.
+	outliner.pushProjectScope("beta")
+	if outliner.pendingLens != nil {
+		t.Fatal("replacing a project scope activated the lens project facets")
+	}
+	if ids := loadedProjectIDs(outliner); !slices.Equal(ids, baseline) {
+		t.Fatalf("population after a scope replacement = %v, want the untouched %v", ids, baseline)
+	}
+
+	handled, cmd := app.applyProjectScope(ApplyProjectScopeMsg{Clear: true})
+	if !handled {
+		t.Fatal("the Project Hub clear-scope route was not handled")
+	}
+	if cmd == nil || outliner.pendingLens == nil {
+		t.Fatal("clearing the scope under a project-filtering lens must load the population it selects")
+	}
+	if outliner.scopedProjectID != "beta" {
+		t.Fatal("the scope was dropped onto the population it replaced instead of the one the lens selects")
+	}
+
+	// A wholly failed read leaves the transition where it was: same scope, same
+	// population, same lens, and the facets still owed a load.
+	if _, published := outliner.handleLensProjectsLoaded(lensProjectsLoadedMsg{
+		failedLoads: []projectLoadFailure{{ProjectID: "gamma", Detail: "failed to load project gamma: boom"}},
+		generation:  outliner.pendingLens.generation,
+	}); published {
+		t.Fatal("a wholly failed load published a scope exit")
+	}
+	if outliner.scopedProjectID != "beta" || !outliner.hasActiveLens() {
+		t.Fatal("a wholly failed load did not leave the scope and the lens as they were")
+	}
+	if ids := loadedProjectIDs(outliner); !slices.Equal(ids, baseline) {
+		t.Fatalf("population after a failed load = %v, want the untouched %v", ids, baseline)
+	}
+
+	if _, cmd = app.applyProjectScope(ApplyProjectScopeMsg{Clear: true}); cmd == nil {
+		t.Fatal("the retried exit started no load")
+	}
+	loaded := []*models.Project{primaryRowsProject("gamma", primaryRowsTask("gamma-waiting", models.StateWaiting))}
+	if _, published := outliner.handleLensProjectsLoaded(lensProjectsLoadedMsg{
+		projects:   loaded,
+		generation: outliner.pendingLens.generation,
+	}); !published {
+		t.Fatal("the landed exit published nothing")
+	}
+	if outliner.isProjectScoped() {
+		t.Fatal("the landed exit left the scope in place")
+	}
+	if ids := loadedProjectIDs(outliner); !slices.Equal(ids, []string{"gamma"}) {
+		t.Fatalf("unscoped population = %v, want the [gamma] the lens facets select", ids)
+	}
+	if ids := taskRowProjectIDs(outliner); !slices.Equal(ids, []string{"gamma"}) {
+		t.Fatalf("unscoped rows = %v, want the [gamma] the lens facets select", ids)
+	}
+
+	// The exit publishes a population, never a definition: the live lens keeps its
+	// identity, its saved fingerprint, and the pre-lens restoration point.
+	if !outliner.hasActiveLens() || outliner.activeLens.name != "Waiting" {
+		t.Fatal("the exit disturbed the active lens")
+	}
+	if outliner.activeLens.savedFingerprint != savedFingerprint {
+		t.Fatal("the exit rewrote the saved definition the modified marker compares against")
+	}
+	if outliner.lensModified() {
+		t.Fatal("the exit marked the lens modified")
+	}
+	if outliner.activeLens != frame {
+		t.Fatal("the exit replaced the original pre-lens restoration frame")
+	}
+	if !RunEscCascade(outliner.escSteps()) {
+		t.Fatal("expected Esc to consume the lens")
+	}
+	if outliner.scopedProjectID != "alpha" {
+		t.Fatalf("restored scope = %q, want the pre-lens alpha", outliner.scopedProjectID)
+	}
+	if !outliner.hasSearchProjection() {
+		t.Fatal("restoration dropped the pre-lens search projection")
+	}
+	if ids := loadedProjectIDs(outliner); !slices.Equal(ids, baseline) {
+		t.Fatalf("restored population = %v, want the pre-lens %v", ids, baseline)
+	}
+}
+
 func TestSwitchingLensesRetainsTheOriginalBaseline(t *testing.T) {
 	outliner := lensLifecycleOutliner()
 	outliner.selectOutlinerMode(ModeInbox)

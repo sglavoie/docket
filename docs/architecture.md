@@ -1589,7 +1589,16 @@ clear `pendingLens`, the loading flag, and the spinner, so a late result finds
 nothing to publish into and leaves no half-armed chrome behind. Under a
 single-project scope no load is required at all: the scope already fixed the
 population, and the lens's project facets stay recorded but inert until it is
-left. A lens therefore never writes scope.
+left. A lens therefore never writes scope. Project facets are population
+selectors rather than row predicates, so `activeLensFrame` remembers that a
+publication left them owed a load, and the explicit clear-scope route pays it:
+`beginLensScopeExit` arms an application that carries no definition, and
+`finishLensScopeExit` installs the population and drops the scope together. The
+scope stands while that read runs, so replacing one project scope with another
+keeps the facets inert and a wholly failed read leaves scope, population, and
+lens exactly as they were. The frame itself is never rewritten by that exit: the
+identity, the saved fingerprint, and the pre-lens restoration point all belong to
+the application that installed the lens.
 
 `activeLensFrame` is the one live lens; there is never a stack. It holds the
 installed identity, the fingerprint the modified marker compares the live view

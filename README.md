@@ -575,6 +575,10 @@ the query those rows came from as its own narrowing query, so reopening it
 narrows the saved mode and facets by it. A lens does not touch
 project scope either: applying one inside a single-project scope leaves that
 scope alone, and the lens's project facets stay inert until you leave it.
+Swapping one project scope for another keeps them inert; explicitly clearing the
+scope is what finally hands them the population, and the scope stands until the
+projects they select have loaded, so a read that fails leaves you exactly where
+you were.
 
 A workspace that has never saved a lens is seeded with three ordinary starters —
 `Waiting`, `High Priority`, and `Stale`. Nothing treats them as special: rename,
