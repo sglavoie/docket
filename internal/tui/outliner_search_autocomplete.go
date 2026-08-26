@@ -402,9 +402,14 @@ func (m *OutlinerModel) searchCandidateContextNames() []string {
 }
 
 // handleSearchAutocompleteKey claims only the keys an open dropdown owns.
-// Everything else falls through on purpose: Enter still reaches the ordinary
-// result landing, and every printable key — j and k among them — still types
-// into the query, so completion never makes a letter unreachable.
+// Everything else falls through on purpose, Enter above all: it still reaches the
+// ordinary result landing rather than becoming a second acceptance.
+//
+// The two axes are deliberately split. Up/Down and Ctrl+N/P move the suggestion
+// cursor, and j/k move the result cursor behind the pane, so the query can be
+// completed and the results walked without either one borrowing the other's keys.
+// j and k are ordinary characters, so this claim lasts exactly as long as the
+// pane does: one Esc closes it and gives both letters back to the query.
 func (m *OutlinerModel) handleSearchAutocompleteKey(key string) bool {
 	if m == nil || !m.searchAutocomplete.active() {
 		return false
@@ -420,9 +425,28 @@ func (m *OutlinerModel) handleSearchAutocompleteKey(key string) bool {
 		return true
 	case "up", "ctrl+p", "down", "ctrl+n":
 		return m.searchAutocomplete.ac.HandleKey(key, nil)
+	case "j", "k":
+		m.moveSearchResultCursor(key)
+		return true
 	default:
 		return false
 	}
+}
+
+// moveSearchResultCursor steps the result cursor under an open suggestion pane.
+// It reuses the shared list navigation and the Outliner's own non-navigable-row
+// skip, so a group header is stepped over here exactly as it is outside search,
+// and it touches neither the query nor the suggestion cursor. j and k move one
+// row, which is the one navigation case handleListNavigation arms no flash for,
+// so there is no command to lose on the way back through the key handler.
+func (m *OutlinerModel) moveSearchResultCursor(key string) {
+	previous := m.cursor
+	handled, _ := handleListNavigation(key, &m.cursor, len(m.rows), m.contentHeight(), &m.cursorFlash)
+	if !handled {
+		return
+	}
+	m.crossSkipNonNavigableRows(previous, nil)
+	m.updateRangeSelection()
 }
 
 // acceptSearchSuggestion replaces the token under the caret and preserves
@@ -474,7 +498,7 @@ func (m *OutlinerModel) searchAutocompleteGuidance() GuidanceSpec {
 	return GuidanceSpec{
 		Hints: append(
 			requiredGuidanceHints("Tab accept", "Esc close suggestions"),
-			optionalGuidanceHints(10, "↑/↓ or Ctrl+N/P select", "Enter apply search")...,
+			optionalGuidanceHints(10, "↑/↓ or Ctrl+N/P select", "j/k results", "Enter apply search")...,
 		),
 		Rows: 2,
 	}

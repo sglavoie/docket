@@ -538,9 +538,16 @@ func TestSearchAutocompleteKeysClaimOnlyTheDropdownControls(t *testing.T) {
 	if outliner.handleSearchAutocompleteKey("enter") {
 		t.Error("the pane claimed Enter, which must stay the result-landing key")
 	}
-	// j and k are ordinary characters inside a query. Claiming them would make
-	// them untypeable, so they fall through to the input's own handling.
+	// j and k belong to the results while the pane covers them, and to the query
+	// again the moment it closes.
 	for _, key := range []string{"j", "k"} {
+		if !outliner.handleSearchAutocompleteKey(key) {
+			t.Errorf("the open pane did not claim %q for result navigation", key)
+		}
+	}
+	// Every other printable key still types, so completion makes no letter
+	// permanently unreachable.
+	for _, key := range []string{"a", "z", "1"} {
 		if outliner.handleSearchAutocompleteKey(key) {
 			t.Errorf("the pane claimed %q, which must stay typable in a query", key)
 		}
@@ -556,6 +563,77 @@ func TestSearchAutocompleteKeysClaimOnlyTheDropdownControls(t *testing.T) {
 	// A closed pane claims nothing at all.
 	if outliner.handleSearchAutocompleteKey("tab") {
 		t.Error("a closed pane claimed Tab")
+	}
+}
+
+// TestSearchAutocompleteJKNavigateResultsWhilePaneOpen is the two-axis contract:
+// while the pane covers the results, the arrow family walks the suggestions and
+// j/k walk the results underneath them, and neither axis disturbs the other or
+// the query. It drives real key presses so the whole path — the pane's claim, the
+// shared list navigation, and the search input it must not reach — is exercised.
+func TestSearchAutocompleteJKNavigateResultsWhilePaneOpen(t *testing.T) {
+	tasks := []*models.Task{
+		searchACTask("task-one", []string{"alpha"}, ""),
+		searchACTask("task-two", []string{"beta"}, ""),
+		searchACTask("task-three", []string{"gamma"}, ""),
+	}
+	outliner := searchACOutliner(primaryRowsProject("alpha", tasks...))
+	for _, key := range []string{"t", "a", "s", "k", "-", " ", "#"} {
+		outliner.handleKeyMsg(syntheticKeyStr(key))
+	}
+	if !outliner.searchAutocomplete.active() {
+		t.Fatal("the tag sigil opened no pane for j/k to navigate under")
+	}
+	if got, want := outliner.SearchInputValue(), "task- #"; got != want {
+		t.Fatalf("query = %q, want %q", got, want)
+	}
+	if len(outliner.rows) < 3 {
+		t.Fatalf("search projection produced %d rows, want the three matching tasks", len(outliner.rows))
+	}
+
+	// The suggestion cursor is moved off its first row first, so a j that leaked
+	// into the dropdown would be visible as a suggestion move rather than hidden
+	// behind an already-clamped cursor.
+	outliner.handleKeyMsg(syntheticKeyStr("down"))
+	suggestionCursor := outliner.searchAutocomplete.ac.Cursor
+	if suggestionCursor != 1 {
+		t.Fatalf("suggestion cursor = %d, want 1 after one Down", suggestionCursor)
+	}
+	resultCursor := outliner.cursor
+
+	outliner.handleKeyMsg(syntheticKeyStr("j"))
+	if got, want := outliner.cursor, resultCursor+1; got != want {
+		t.Errorf("j left the result cursor at %d, want %d", got, want)
+	}
+	outliner.handleKeyMsg(syntheticKeyStr("j"))
+	if got, want := outliner.cursor, resultCursor+2; got != want {
+		t.Errorf("a second j left the result cursor at %d, want %d", got, want)
+	}
+	outliner.handleKeyMsg(syntheticKeyStr("k"))
+	if got, want := outliner.cursor, resultCursor+1; got != want {
+		t.Errorf("k left the result cursor at %d, want %d", got, want)
+	}
+
+	// Neither letter typed, and neither moved the suggestion the pane is offering.
+	if got, want := outliner.SearchInputValue(), "task- #"; got != want {
+		t.Errorf("query after j/k = %q, want it untouched at %q", got, want)
+	}
+	if got := outliner.searchAutocomplete.ac.Cursor; got != suggestionCursor {
+		t.Errorf("j/k moved the suggestion cursor to %d, want it left at %d", got, suggestionCursor)
+	}
+	if !outliner.searchAutocomplete.active() {
+		t.Error("result navigation closed the pane it was supposed to navigate under")
+	}
+
+	// Closing the pane gives both letters back to the query, which is what keeps
+	// the claim honest: no character is permanently unreachable.
+	outliner.handleKeyMsg(syntheticKeyStr("esc"))
+	if outliner.searchAutocomplete.active() {
+		t.Fatal("Esc left the pane open")
+	}
+	outliner.handleKeyMsg(syntheticKeyStr("j"))
+	if got, want := outliner.SearchInputValue(), "task- #j"; got != want {
+		t.Errorf("query after j with the pane closed = %q, want %q", got, want)
 	}
 }
 

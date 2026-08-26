@@ -816,7 +816,7 @@ func (m *AppModel) coreMoveCursor(key string) tea.Cmd {
 	if !handled {
 		return nil
 	}
-	_, cmd = out.crossSkipNonNavigableRows(previous, cmd)
+	cmd = out.crossSkipNonNavigableRows(previous, cmd)
 	out.updateRangeSelection()
 	return cmd
 }

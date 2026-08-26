@@ -461,12 +461,14 @@ func (m *OutlinerModel) moveCursorToIdentity(identity TaskIdentity) bool {
 	return false
 }
 
-func (m *OutlinerModel) crossSkipNonNavigableRows(
-	previous int,
-	cmd tea.Cmd,
-) (tea.Model, tea.Cmd) {
+// crossSkipNonNavigableRows walks the cursor off a header or other unselectable
+// row in the direction the move was already going, falling back to the other
+// direction at an edge. It passes cmd straight through so a caller can thread a
+// navigation command across the skip; no caller has ever needed the model back,
+// so it is not returned.
+func (m *OutlinerModel) crossSkipNonNavigableRows(previous int, cmd tea.Cmd) tea.Cmd {
 	if len(m.rows) == 0 {
-		return m, cmd
+		return cmd
 	}
 	if m.cursor < previous {
 		for m.cursor > 0 && !m.rows[m.cursor].isNavigable() {
@@ -487,7 +489,7 @@ func (m *OutlinerModel) crossSkipNonNavigableRows(
 			}
 		}
 	}
-	return m, cmd
+	return cmd
 }
 
 // nearestNavigableInWindow returns the navigable row nearest target, searching
