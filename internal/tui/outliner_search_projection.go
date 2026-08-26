@@ -86,20 +86,8 @@ func (m *OutlinerModel) beginSearchProjection() {
 	if m == nil || m.searchProjection != nil {
 		return
 	}
-	snapshot := &outlinerSearchSnapshot{
-		mode:               m.primaryMode,
-		filter:             copyFilterState(m.filter),
-		sort:               m.sort,
-		treeSort:           m.treeSort,
-		expandedNodes:      copyBoolMap(m.expandedNodes),
-		expandedChecklists: copyBoolMap(m.expandedChecklists),
-		collapsedSections:  copyBoolMap(m.collapsedSections),
-		focusStack:         append([]FocusEntry(nil), m.focusStack...),
-		crossFocusStack:    append([]CrossProjectFocusEntry(nil), m.crossFocusStack...),
-		zoom:               m.zoom,
-		cursor:             m.captureModeCursor(),
-	}
-	m.searchProjection = snapshot
+	snapshot := m.capturePresentationSnapshot()
+	m.searchProjection = &snapshot
 	// Search results bypass the section emitters the zoom gates, so a zoom left
 	// live here would be state no projection reads. Suspending it keeps the model
 	// honest for the Esc cascade and the fingerprints.
@@ -110,8 +98,13 @@ func (m *OutlinerModel) beginSearchProjection() {
 
 // ActivateSearch starts or resumes the one temporary search projection. A
 // second slash edits the existing query without replacing its restoration
-// snapshot.
+// snapshot. Under an active lens the same key edits that lens's narrowing query
+// instead: the lens already owns the projection, and replacing it with a
+// scope-wide result set is the one thing the key must not do there.
 func (m *OutlinerModel) ActivateSearch() tea.Cmd {
+	if m.hasActiveLens() && !m.hasSearchProjection() {
+		return m.beginLensQueryEdit()
+	}
 	m.beginSearchProjection()
 	return m.BaseSearchableView.ActivateSearch()
 }
@@ -142,16 +135,7 @@ func (m *OutlinerModel) ClearSearch() {
 	m.searchProjection = nil
 	m.resetSearchCompilation()
 	m.BaseSearchableView.ClearSearch()
-	m.primaryMode = snapshot.mode
-	m.filter = copyFilterState(snapshot.filter)
-	m.sort = snapshot.sort
-	m.treeSort = snapshot.treeSort
-	m.expandedNodes = copyBoolMap(snapshot.expandedNodes)
-	m.expandedChecklists = copyBoolMap(snapshot.expandedChecklists)
-	m.collapsedSections = copyBoolMap(snapshot.collapsedSections)
-	m.focusStack = append([]FocusEntry(nil), snapshot.focusStack...)
-	m.crossFocusStack = append([]CrossProjectFocusEntry(nil), snapshot.crossFocusStack...)
-	m.zoom = snapshot.zoom
+	m.restorePresentationSnapshot(*snapshot)
 	m.crossForceRebuild = true
 	m.rebuildRows()
 	m.restoreSearchCursor(snapshot.cursor)

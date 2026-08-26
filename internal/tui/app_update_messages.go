@@ -76,6 +76,17 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 			return true, tea.Batch(cmd, returnCmd)
 		}
 		return true, cmd
+	case lensProjectsLoadedMsg:
+		// A lens application publishes a whole population or none of it, so the
+		// shell cache is adopted only once the lens actually went live.
+		if m.crossOutliner == nil {
+			return true, nil
+		}
+		cmd, published := m.crossOutliner.handleLensProjectsLoaded(msg)
+		if published {
+			m.adoptCrossProjectSnapshot(m.crossOutliner.loadedProjects)
+		}
+		return true, cmd
 	case outlinerOriginRecordedMsg:
 		if msg.TransactionID == "" || msg.TransactionID != m.statusTransactionID || m.statusUndoCb == nil || !time.Now().Before(m.statusExpiresAt) {
 			return true, nil

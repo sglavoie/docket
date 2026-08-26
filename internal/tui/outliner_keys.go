@@ -9,6 +9,13 @@ import (
 func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
+	// A lens query edit owns the input outright: it carries no suggestion pane and
+	// no projection, so it must be read before the ordinary search cascade below
+	// mistakes it for one.
+	if m.editingLensQuery() {
+		return m.handleLensQueryKey(msg)
+	}
+
 	// An open suggestion pane claims Tab, Esc, and the four navigation keys before
 	// the search cascade below sees them, which is what makes the first Esc close
 	// the pane and the next one clear or restore the search.

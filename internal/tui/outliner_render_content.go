@@ -96,6 +96,12 @@ func (m *OutlinerModel) outlinerFocusContext() string {
 func (m *OutlinerModel) buildOutlinerSearchIndicator(width int) string {
 	var indicator string
 	switch {
+	case m.editingLensQuery():
+		// The lens badge reads the lens compilation rather than the search one,
+		// because those are the rows on screen.
+		return m.appendLensQueryBadge(MutedStyle.Render("Lens query: ")+m.SearchInputView(), width)
+	case m.hasActiveLens() && m.lensQuery != "":
+		return m.appendLensQueryBadge(MutedStyle.Render(fmt.Sprintf("Lens query: %q", m.lensQuery)), width)
 	case m.IsSearchMode():
 		indicator = MutedStyle.Render("Search: ") + m.SearchInputView()
 	case m.SearchQuery() != "":
@@ -107,6 +113,19 @@ func (m *OutlinerModel) buildOutlinerSearchIndicator(width int) string {
 		return appendSearchBadge(indicator, " "+guidance, width)
 	}
 	if !m.searchCaseRelaxed {
+		return indicator
+	}
+	return appendSearchBadge(indicator, " (case ignored)", width)
+}
+
+// appendLensQueryBadge gives the lens query the badges ordinary search already
+// uses, read off the lens compilation: a refused sigil wins over the case badge
+// there for the same reason it does in search.
+func (m *OutlinerModel) appendLensQueryBadge(indicator string, width int) string {
+	if guidance := m.lensGuidanceText(); guidance != "" {
+		return appendSearchBadge(indicator, " "+guidance, width)
+	}
+	if !m.lensNarrowRelaxed {
 		return indicator
 	}
 	return appendSearchBadge(indicator, " (case ignored)", width)
@@ -149,6 +168,11 @@ func (m *OutlinerModel) buildOutlinerInteractionContext(width int) []string {
 	context := make([]string, 0, 5)
 	if m.multiSelectMode {
 		context = append(context, SelectionCountStyle.Render(fmt.Sprintf("MULTI-SELECT: %d selected", m.SelectedCount())))
+	}
+	// The lens names the whole context the segments after it describe, so it is
+	// read first and its marker states whether they still match what was saved.
+	if lens := m.activeLensLabel(); lens != "" {
+		context = append(context, MutedStyle.Render(lens))
 	}
 	if search := m.buildOutlinerSearchIndicator(width); search != "" {
 		context = append(context, search)

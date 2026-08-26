@@ -131,6 +131,20 @@ type OutlinerModel struct {
 	lensRemainder     string
 	lensNarrowRelaxed bool
 
+	// activeLens is the one live named lens, and pendingLens an application whose
+	// project population is still loading. There is never a stack of either: a
+	// switch replaces the definition and keeps the original restoration point, so
+	// one Esc always returns to the view the user actually left. Neither survives
+	// a restart or a global reset.
+	activeLens  *activeLensFrame
+	pendingLens *pendingLensApplication
+
+	// lensQueryEditing points the shared search input at the lens's narrowing
+	// query instead of the ordinary search query, and lensQueryEditOrigin is the
+	// query Esc restores when that edit is abandoned.
+	lensQueryEditing    bool
+	lensQueryEditOrigin string
+
 	// searchAutocomplete is the slash-search suggestion pane. It holds no cached
 	// vocabulary: every refresh reprojects the grammar and rereads the live
 	// candidates, so a mutation or a scope change cannot leave a stale value
@@ -319,6 +333,9 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.handleViewDidAppear()
 	case crossProjectsLoadedMsg:
 		return m, m.handleCrossProjectsLoaded(msg)
+	case lensProjectsLoadedMsg:
+		cmd, _ := m.handleLensProjectsLoaded(msg)
+		return m, cmd
 	case crossSpinnerDelayMsg:
 		if m.crossLoading && !m.hasCrossProjectSnapshot() {
 			m.crossSpinnerVisible = true

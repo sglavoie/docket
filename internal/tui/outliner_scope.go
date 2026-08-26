@@ -299,6 +299,10 @@ func (m *OutlinerModel) resetToGlobalAll() {
 		m.multiSelectMode = false
 	}
 	m.clearSearchProjectionWithoutRestore()
+	// The reset is replacing the whole projection, so the lens is dropped rather
+	// than restored: restoring its baseline would reinstate the narrowing this
+	// key exists to clear.
+	m.clearActiveLensWithoutRestore()
 	m.cursor = 0
 	m.resetViewScrollOffset()
 	m.selectOutlinerMode(ModeAll)
