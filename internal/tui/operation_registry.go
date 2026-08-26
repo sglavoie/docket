@@ -85,6 +85,11 @@ const (
 	// item under the cursor rather than a note's own name.
 	ValueProviderChecklistItem ValueProviderID = "checklist-item"
 
+	// ValueProviderLensName is the typed name of one saved lens. It is separate
+	// from the note title because it prefills the lens under the cursor on a
+	// rename and stays blank when the current view is being saved as a new lens.
+	ValueProviderLensName ValueProviderID = "lens-name"
+
 	// ValueProviderParent lists the tasks the cursor task may hang under. It is a
 	// plain list: the vocabulary is the project's own open tasks, so there is
 	// nothing to mint and no inline entry mode.
@@ -132,7 +137,8 @@ const (
 func (id ValueProviderID) textEntry() bool {
 	return id == ValueProviderNoteTitle ||
 		id == ValueProviderTagName ||
-		id == ValueProviderChecklistItem
+		id == ValueProviderChecklistItem ||
+		id == ValueProviderLensName
 }
 
 // tagEntry reports whether the picker offers "a" to mint a tag the vocabulary

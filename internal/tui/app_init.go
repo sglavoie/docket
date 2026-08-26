@@ -142,6 +142,7 @@ func (app *AppModel) registerOperationCatalog() error {
 		{"attachment", app.registerAttachmentOperations},
 		{"comment", app.registerCommentOperations},
 		{"checklist row", app.registerChecklistRowOperations},
+		{"lens", app.registerLensOperations},
 	}
 	for _, registration := range registrations {
 		if err := registration.register(); err != nil {

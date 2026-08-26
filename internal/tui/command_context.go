@@ -30,9 +30,14 @@ const (
 	// CapabilityCommentsPanel limits the Comments grammar's operations to the
 	// mounted panel whose cursor names the comment they act on.
 	CapabilityCommentsPanel Capability = "surface:comments-panel"
-	CapabilityAppScope      Capability = "scope:app"
-	CapabilityProjectScope  Capability = "scope:project"
-	CapabilityTaskScope     Capability = "scope:task"
+	// CapabilityLensPicker limits the named-lens lifecycle operations to the
+	// mounted lens picker whose cursor names the saved lens they act on. Create
+	// carries it too, because the picker is also the only surface that offers
+	// saving the current view.
+	CapabilityLensPicker   Capability = "surface:lens-picker"
+	CapabilityAppScope     Capability = "scope:app"
+	CapabilityProjectScope Capability = "scope:project"
+	CapabilityTaskScope    Capability = "scope:task"
 )
 
 // capabilityFamilies are the prefixes reserved for capabilities generated per
@@ -57,6 +62,7 @@ func validCapability(capability Capability) bool {
 		CapabilityNotesManager,
 		CapabilityAttachmentsPanel,
 		CapabilityCommentsPanel,
+		CapabilityLensPicker,
 		CapabilityAppScope,
 		CapabilityProjectScope,
 		CapabilityTaskScope:

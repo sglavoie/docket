@@ -134,6 +134,19 @@ func (m *AppModel) newOperationTextPrompt(
 			current = m.checklistItemTextForContext(request.Context)
 		}
 		return newOperationTextPromptModel(request, label, current, current, "checklist item"), nil
+	case ValueProviderLensName:
+		// Saving the current view mints a new record, so only a rename has a
+		// current value. The request's own operation decides which, because the
+		// cursor names a lens in both cases.
+		current := ""
+		if request.ID == operationLensRename {
+			lens, err := m.resolveLensTarget(identity)
+			if err != nil {
+				return nil, err
+			}
+			current = lens.Name
+		}
+		return newOperationTextPromptModel(request, label, current, current, "lens name"), nil
 	default:
 		return nil, fmt.Errorf("unknown operation text value provider %q", provider)
 	}

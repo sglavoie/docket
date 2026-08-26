@@ -21,6 +21,7 @@ const (
 	EntityKindMode      OperationEntityKind = "mode"
 	EntityKindTool      OperationEntityKind = "tool"
 	EntityKindOperation OperationEntityKind = "operation"
+	EntityKindLens      OperationEntityKind = "lens"
 )
 
 // OperationEntityScope distinguishes an entity the whole workspace owns from
@@ -46,8 +47,19 @@ type EntityIdentity struct {
 	ProjectID string
 	TaskID    string
 	// Name is a note filename, a normalized tag, or the stable catalog ID of a
-	// scope, mode, tool, or operation.
+	// scope, mode, tool, operation, or named lens.
 	Name string
+}
+
+// LensEntity returns the identity of one saved named lens. The lens UUID is the
+// stable pointer-free handle: a lens list rebuild or a machine-state reload
+// never invalidates it, and a UUID the machine snapshot no longer carries is
+// what a handler reports as a stale target.
+func LensEntity(id string) EntityIdentity {
+	return normalizeEntityIdentity(EntityIdentity{
+		Kind: EntityKindLens,
+		Name: id,
+	})
 }
 
 // TaskEntity returns the project-qualified identity of one task.
@@ -132,7 +144,8 @@ func (id EntityIdentity) Valid() bool {
 	case EntityKindScope,
 		EntityKindMode,
 		EntityKindTool,
-		EntityKindOperation:
+		EntityKindOperation,
+		EntityKindLens:
 		return id.Scope == EntityScopeUnset && id.ProjectID == "" &&
 			id.TaskID == "" && id.Name != ""
 	default:
