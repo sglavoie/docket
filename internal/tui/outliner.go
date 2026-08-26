@@ -121,6 +121,16 @@ type OutlinerModel struct {
 	searchRemainder string
 	searchGate      *searchPredicates
 
+	// lensQuery is the accepted narrowing query of the saved projection the view
+	// is showing, and lensGate, lensRemainder, and lensNarrowRelaxed are its
+	// compiled form. It is deliberately not the slash-search query: a lens query
+	// narrows its own saved mode, facets, and sort, while ordinary search
+	// replaces the whole projection and stays scope-wide.
+	lensQuery         string
+	lensGate          *searchPredicates
+	lensRemainder     string
+	lensNarrowRelaxed bool
+
 	// searchAutocomplete is the slash-search suggestion pane. It holds no cached
 	// vocabulary: every refresh reprojects the grammar and rereads the live
 	// candidates, so a mutation or a scope change cannot leave a stale value

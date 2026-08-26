@@ -53,10 +53,13 @@ type searchPredicates struct {
 	guidance       string
 }
 
-// compileSearchQuery splits the live query into the sigil gate and the free-text
-// remainder that keeps today's fuzzy ranking.
-func (m *OutlinerModel) compileSearchQuery(projects []*models.Project) (string, *searchPredicates) {
-	parsed := textgrammar.ParseSearch(strings.TrimSpace(m.SearchQuery()))
+// compileSearchQuery splits one query into the sigil gate and the free-text
+// remainder that keeps today's fuzzy ranking. The query arrives explicitly
+// rather than being read off the search input, because a lens narrows with its
+// own saved query and must compile it through this same grammar: one parser,
+// one predicate set, one remainder.
+func (m *OutlinerModel) compileSearchQuery(query string, projects []*models.Project) (string, *searchPredicates) {
+	parsed := textgrammar.ParseSearch(strings.TrimSpace(query))
 	predicates := &searchPredicates{now: time.Now()}
 	if guidance := textgrammar.SearchGuidance(parsed); guidance != "" {
 		predicates.guidance = guidance

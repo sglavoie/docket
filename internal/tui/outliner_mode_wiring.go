@@ -80,6 +80,12 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 
 	projects := m.projectsInCatalogOrder(m.workModeScopeProjects())
 	input := m.buildModeCandidateInput(mode.ID, projects)
+	// A lens query is one more facet over this mode's own projection, so it is
+	// composed into the shared task predicate before any section is built. Every
+	// section emitter, the pinned promotion, and the project grouping then narrow
+	// together, and the mode's saved order is untouched.
+	narrowing := m.compileLensNarrowing(projects)
+	input.TaskFilter = m.constrainModeFilterToLens(input.TaskFilter, narrowing)
 	var pinned pinnedSectionBuild
 	if mode.ShowsPinned {
 		pinned = m.buildPinnedSection(input)
@@ -98,6 +104,7 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 		return
 	}
 	m.separatePinnedSection(pinnedBoundary)
+	m.attributeLensMatches(narrowing)
 	m.expandChecklistRows()
 	m.pruneInvisibleSelections()
 	m.clampCursor()

@@ -263,7 +263,7 @@ func (m *OutlinerModel) buildSearchProjectionRows() {
 	projects := m.projectsInCatalogOrder(m.workModeScopeProjects())
 	candidates := m.searchFocusCandidates(projects)
 
-	query, predicates := m.compileSearchQuery(projects)
+	query, predicates := m.compileSearchQuery(m.SearchQuery(), projects)
 	m.searchRemainder = query
 	m.searchGate = predicates
 

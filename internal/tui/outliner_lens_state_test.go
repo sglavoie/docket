@@ -1,0 +1,304 @@
+package tui
+
+import (
+	"slices"
+	"testing"
+
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
+)
+
+// lensRoundTripID is a canonical UUID, which is what a stored definition must
+// carry for NamedLens.Validate to accept it.
+const lensRoundTripID = "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c01"
+
+func lensRoundTripBase(t *testing.T) lensState {
+	t.Helper()
+	states, err := models.NewWorkflowStateSet(models.StateWaiting, models.StateDoing)
+	if err != nil {
+		t.Fatalf("NewWorkflowStateSet: %v", err)
+	}
+	base := lensState{
+		mode:          ModeAll,
+		query:         "#api ship",
+		filter:        NewFilterState(),
+		projectFilter: newProjectFilterState(),
+		sort:          NewSortState(),
+	}
+	base.filter.setStateFilter(states, true)
+	base.filter.Priority = models.PriorityHigh
+	base.filter.Tags = map[string]bool{"zeta": true, "api": true}
+	base.filter.setCompletionAgeFilter(CompletionAge30Days)
+	base.filter.Stale = true
+	base.filter.Deferred = true
+	base.filter.Pinned = true
+	base.projectFilter.Tags = map[string]bool{"client": true}
+	base.projectFilter.Untagged = true
+	base.projectFilter.ParkedMode = projectPopulationInclude
+	base.projectFilter.ArchivedMode = projectPopulationOnly
+	base.sort = SortState{Field: SortByPriority, Ascending: false}
+	return base
+}
+
+func TestLensStateRoundTripsEveryModeFacetPopulationAndSortAxis(t *testing.T) {
+	base := lensRoundTripBase(t)
+
+	variants := map[string]func(*lensState){}
+	for _, mode := range OutlinerModeCatalog() {
+		variants["mode:"+string(mode.ID)] = func(s *lensState) { s.mode = mode.ID }
+	}
+	for _, due := range []DueDateFilter{DueDateAll, DueDateOverdue, DueDateToday, DueDateThisWeek, DueDateNone} {
+		variants["due:"+lensDueAxis.token(due)] = func(s *lensState) { s.filter.DueDate = due }
+	}
+	for _, hierarchy := range []HierarchyFilter{
+		HierarchyAll, HierarchyParent, HierarchyChild, HierarchyRoot, HierarchyLeaf,
+	} {
+		variants["hierarchy:"+lensHierarchyAxis.token(hierarchy)] = func(s *lensState) { s.filter.Hierarchy = hierarchy }
+	}
+	for _, age := range []CompletionAgeFilter{
+		CompletionAgeAll, CompletionAge7Days, CompletionAge30Days, CompletionAge90Days,
+	} {
+		variants["age:"+lensCompletionAgeAxis.token(age)] = func(s *lensState) { s.filter.setCompletionAgeFilter(age) }
+	}
+	for _, population := range []projectPopulationMode{
+		projectPopulationExclude, projectPopulationInclude, projectPopulationOnly,
+	} {
+		variants["parked:"+lensPopulationAxis.token(population)] = func(s *lensState) {
+			s.projectFilter.ParkedMode = population
+		}
+		variants["archived:"+lensPopulationAxis.token(population)] = func(s *lensState) {
+			s.projectFilter.ArchivedMode = population
+		}
+	}
+	for _, field := range []SortField{
+		SortByDefault, SortByPriority, SortByDueDate, SortByCreatedAt, SortByStatus, SortByUpdatedAt, SortByTitle,
+	} {
+		for _, ascending := range []bool{true, false} {
+			name := "sort:" + lensSortAxis.token(field)
+			if !ascending {
+				name += ":desc"
+			}
+			variants[name] = func(s *lensState) { s.sort = SortState{Field: field, Ascending: ascending} }
+		}
+	}
+	// The two activation flags are axes of their own: an absent predicate and an
+	// active one that admits everything must not collapse into the same record.
+	variants["states:absent"] = func(s *lensState) { s.filter.setStateFilter(models.WorkflowStateSet{}, false) }
+	variants["states:empty-active"] = func(s *lensState) { s.filter.setStateFilter(models.WorkflowStateSet{}, true) }
+	variants["age:inactive"] = func(s *lensState) {
+		s.filter.CompletionAge = CompletionAge90Days
+		s.filter.completionAgeSet = false
+	}
+
+	for name, mutate := range variants {
+		t.Run(name, func(t *testing.T) {
+			want := base
+			want.filter = copyFilterState(base.filter)
+			want.projectFilter = base.projectFilter.clone()
+			mutate(&want)
+
+			stored := want.namedLens(lensRoundTripID, "Round Trip")
+			if err := stored.Validate(); err != nil {
+				t.Fatalf("stored definition invalid: %v", err)
+			}
+			got, err := lensStateFromNamedLens(stored)
+			if err != nil {
+				t.Fatalf("lensStateFromNamedLens: %v", err)
+			}
+			if !got.equal(want) {
+				t.Fatalf("round trip = %q, want %q", got.fingerprint(), want.fingerprint())
+			}
+		})
+	}
+}
+
+func TestLensStateDecodesOmittedTokensAsAxisDefaultsAndRefusesUnknownSpellings(t *testing.T) {
+	stored := config.NamedLens{
+		ID:   lensRoundTripID,
+		Name: "Defaults",
+		Mode: config.LensModeInbox,
+	}
+	got, err := lensStateFromNamedLens(stored)
+	if err != nil {
+		t.Fatalf("lensStateFromNamedLens: %v", err)
+	}
+	want := lensState{
+		mode:          ModeInbox,
+		filter:        NewFilterState(),
+		projectFilter: newProjectFilterState(),
+		sort:          SortState{Field: SortByDefault},
+	}
+	if !got.equal(want) {
+		t.Fatalf("omitted tokens decoded to %q, want axis defaults %q", got.fingerprint(), want.fingerprint())
+	}
+
+	for name, mutate := range map[string]func(*config.NamedLens){
+		"mode":     func(l *config.NamedLens) { l.Mode = "" },
+		"due":      func(l *config.NamedLens) { l.Tasks.DueDate = "someday" },
+		"age":      func(l *config.NamedLens) { l.Tasks.CompletionAge = "14d" },
+		"sort":     func(l *config.NamedLens) { l.Sort.Field = "manual" },
+		"archived": func(l *config.NamedLens) { l.Projects.ArchivedMode = "always" },
+	} {
+		t.Run("malformed/"+name, func(t *testing.T) {
+			broken := stored
+			mutate(&broken)
+			if _, err := lensStateFromNamedLens(broken); err == nil {
+				t.Fatalf("malformed %s token was accepted", name)
+			}
+		})
+	}
+}
+
+func TestLensStateFingerprintIsDeterministicAcrossMapIterationOrder(t *testing.T) {
+	first := lensRoundTripBase(t)
+	second := lensRoundTripBase(t)
+	second.filter.Tags = map[string]bool{}
+	for _, tag := range []string{"zeta", "api"} {
+		second.filter.Tags[tag] = true
+	}
+	// An unselected key is not part of the projection and must not reach the
+	// fingerprint through the map it happens to sit in.
+	second.filter.Tags["dropped"] = false
+
+	states, err := models.NewWorkflowStateSet(models.StateDoing, models.StateWaiting)
+	if err != nil {
+		t.Fatalf("NewWorkflowStateSet: %v", err)
+	}
+	second.filter.setStateFilter(states, true)
+
+	for range 20 {
+		if first.fingerprint() != second.fingerprint() {
+			t.Fatalf("fingerprints differ across iteration order:\n%q\n%q",
+				first.fingerprint(), second.fingerprint())
+		}
+	}
+	if !first.equal(second) {
+		t.Fatal("equal disagreed with identical fingerprints")
+	}
+
+	modified := first
+	modified.filter = copyFilterState(first.filter)
+	modified.filter.Tags["extra"] = true
+	if modified.equal(first) {
+		t.Fatal("an added tag facet did not change the fingerprint")
+	}
+
+	stored := first.namedLens(lensRoundTripID, "Sorted")
+	if !slices.Equal(stored.Tasks.Tags, []string{"api", "zeta"}) {
+		t.Fatalf("stored task tags = %v, want sorted", stored.Tasks.Tags)
+	}
+	if !slices.Equal(stored.Tasks.States, []string{string(models.StateDoing), string(models.StateWaiting)}) {
+		t.Fatalf("stored states = %v, want canonical lifecycle order", stored.Tasks.States)
+	}
+}
+
+func TestLensStateStarterRecordsConvertAndRoundTrip(t *testing.T) {
+	for _, starter := range config.StarterNamedLenses() {
+		t.Run(starter.Name, func(t *testing.T) {
+			state, err := lensStateFromNamedLens(starter)
+			if err != nil {
+				t.Fatalf("lensStateFromNamedLens(%q): %v", starter.Name, err)
+			}
+			again, err := lensStateFromNamedLens(state.namedLens(starter.ID, starter.Name))
+			if err != nil {
+				t.Fatalf("re-encoded starter refused: %v", err)
+			}
+			if !again.equal(state) {
+				t.Fatalf("starter %q did not survive re-encoding", starter.Name)
+			}
+		})
+	}
+
+	waiting, err := lensStateFromNamedLens(config.StarterNamedLenses()[0])
+	if err != nil {
+		t.Fatalf("lensStateFromNamedLens: %v", err)
+	}
+	if !waiting.filter.hasStateFilter() || !waiting.filter.States.Contains(models.StateWaiting) {
+		t.Fatalf("Waiting starter lost its state facet: %+v", waiting.filter.States.Values())
+	}
+}
+
+func TestCaptureLensStateReadsRememberedTreeSortAndDetachesCollections(t *testing.T) {
+	outliner := scopeTestOutliner(primaryRowsProject("alpha"))
+	outliner.primaryMode = ModeDue
+	outliner.setLensQuery("  ship it  ")
+	outliner.filter.Tags = map[string]bool{"api": true}
+	outliner.projectFilter.Tags = map[string]bool{"client": true}
+	// Due owns its order, so the active sort is default while the user's manual
+	// choice survives in treeSort. The lens owns the remembered one.
+	outliner.sort = NewSortState()
+	outliner.treeSort = SortState{Field: SortByTitle, Ascending: false}
+
+	captured := outliner.captureLensState()
+	if captured.mode != ModeDue || captured.query != "ship it" {
+		t.Fatalf("captured mode/query = %s/%q", captured.mode, captured.query)
+	}
+	if captured.sort != (SortState{Field: SortByTitle, Ascending: false}) {
+		t.Fatalf("captured sort = %+v, want the remembered tree sort", captured.sort)
+	}
+
+	outliner.filter.Tags["late"] = true
+	outliner.projectFilter.Tags["late"] = true
+	if captured.filter.Tags["late"] || captured.projectFilter.Tags["late"] {
+		t.Fatal("a later facet edit reached into the captured definition")
+	}
+}
+
+func TestApplyLensStateInstallsManualSortAndRemembersItInFixedOrderModes(t *testing.T) {
+	saved := SortState{Field: SortByUpdatedAt, Ascending: false}
+	for _, mode := range OutlinerModeCatalog() {
+		t.Run(string(mode.ID), func(t *testing.T) {
+			outliner := scopeTestOutliner(primaryRowsProject("alpha"))
+			outliner.sort = SortState{Field: SortByTitle, Ascending: true}
+			outliner.treeSort = SortState{Field: SortByTitle, Ascending: true}
+
+			state := lensState{
+				mode:          mode.ID,
+				filter:        NewFilterState(),
+				projectFilter: newProjectFilterState(),
+				sort:          saved,
+			}
+			if !outliner.applyLensState(state) {
+				t.Fatal("applyLensState refused a catalog mode")
+			}
+			if outliner.primaryMode != mode.ID {
+				t.Fatalf("mode = %s, want %s", outliner.primaryMode, mode.ID)
+			}
+			if outliner.treeSort != saved {
+				t.Fatalf("treeSort = %+v, want the saved manual sort %+v", outliner.treeSort, saved)
+			}
+			wantActive := saved
+			if mode.FixedOrder() {
+				wantActive = NewSortState()
+			}
+			if outliner.sort != wantActive {
+				t.Fatalf("%s active sort = %+v, want %+v", mode.ID, outliner.sort, wantActive)
+			}
+		})
+	}
+
+	outliner := scopeTestOutliner(primaryRowsProject("alpha"))
+	if outliner.applyLensState(lensState{mode: OutlinerModeID("archive")}) {
+		t.Fatal("applyLensState accepted a mode outside the catalog")
+	}
+	if outliner.primaryMode != ModeAll {
+		t.Fatalf("a refused lens changed the mode to %s", outliner.primaryMode)
+	}
+}
+
+func TestApplyLensStateDetachesFilterCollectionsFromTheDefinition(t *testing.T) {
+	outliner := scopeTestOutliner(primaryRowsProject("alpha"))
+	state := lensRoundTripBase(t)
+	if !outliner.applyLensState(state) {
+		t.Fatal("applyLensState refused the definition")
+	}
+	if !outliner.captureLensState().equal(state) {
+		t.Fatalf("captured %q after applying %q", outliner.captureLensState().fingerprint(), state.fingerprint())
+	}
+
+	outliner.filter.Tags["live"] = true
+	outliner.projectFilter.Tags["live"] = true
+	if state.filter.Tags["live"] || state.projectFilter.Tags["live"] {
+		t.Fatal("a live facet edit mutated the applied definition")
+	}
+}
