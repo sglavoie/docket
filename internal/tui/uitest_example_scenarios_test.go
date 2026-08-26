@@ -79,6 +79,9 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"theme-toggle.json",
 		"in-app-help.json",
 		"project-hub-task-preview.json",
+		"project-hub-metadata-search.json",
+		"outliner-rich-search-autocomplete.json",
+		"notes-responsive-preview.json",
 	}
 	for _, name := range required {
 		if _, err := os.Stat(filepath.Join(exampleScenariosDir, name)); err != nil {

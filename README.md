@@ -453,7 +453,13 @@ reordering — still asks you to exit search first.
 | `fh` | Pick one hierarchy position: parent, child, root, or leaf; parent and leaf read open children |
 | `fs` | Toggle open, undeferred work untouched for at least 90 local-calendar days; unavailable in Recent, whose entry clears only Stale and reports `Stale filter cleared: Recent only includes the last 30 days` |
 | `fx` | Clear every facet |
-| `/` | Ranked title, description, tag, and project search over every scoped nonterminal task, gated by any capture sigils the query carries |
+| `/` | Ranked title, description, checklist, comment, tag, context, attachment, and project search over every scoped nonterminal task, gated by any capture sigils the query carries |
+
+Results rank title matches first, then each other field in turn, and a result
+whose title does not carry the match says where it came from with a muted
+`· description`, `· checklist`, `· comment`, `· tag`, `· context`,
+`· attachment`, `· project`, or `· details` note. That note is the first thing a
+narrow row drops, so the title stays readable.
 
 The search box speaks the capture and edit grammar. Sigil tokens are lifted out
 of the query and become an AND gate over the candidate set; whatever text is
@@ -906,6 +912,14 @@ Notes. `Ctrl+T` cycles between every project, only those holding tasks, and only
 those holding none. The catalog ID, not a display name, protects the system
 Unfiled project.
 
+`/` searches a project by anything the project itself says: its name, its slug,
+its description, and each of its tags spelled either way, so `#billing` finds
+what the row's own chip reads and `billing` finds it too. It never searches the
+work inside a project — a task title, description, tag, context, or comment is
+the Outliner's `/`, not this one — so a row appearing here always names the
+words you typed. The pinned Hub and the archived tail answer the same
+vocabulary.
+
 On a terminal wide enough for two panes, the right one belongs to the project
 under the cursor. It opens with the project's name and a single muted line —
 `Active · 4 open · 4 tasks · slug tt`, with ` · pinned` appended only when the
@@ -1006,8 +1020,23 @@ copied path says which collection it came from without a word of context.
 confirms before deleting; deletion has no direct key. Notes has no multi-select,
 so that sheet always acts on the one note under the cursor. Notes support
 open/edit, create, rename, move, copy, delete, undo, and redo. Note tags, task
-links, pins, bulk actions, previews, and archived-project ownership remain
-excluded.
+links, pins, bulk actions, and archived-project ownership remain excluded.
+
+At 72 columns and wider, Notes shows the selected note beside the list in the
+same split every other list surface uses: its title, owner, and modification
+time above the note's rendered Markdown. Narrower terminals render the list
+alone. A note with no body says so, and a note whose frontmatter failed to parse
+shows the reason as a warning rather than a rendering of text nothing can
+trust. `Ctrl+F` and `Ctrl+B` page that body with a row of overlap, and exact
+`↑`/`↓` counts name what is above and below; both presses work while you are
+still typing a search, and are offered only when the pane is actually on
+screen. A search that matched the body opens the pane around its first match
+with one line of context above it, under the same case reading the result list
+used; a title-only match, no query at all, and a match the rendered text cannot
+be located in all open at the top. The pane is reading only: it follows the
+cursor, re-anchors whenever the note, its bytes, the query, the scope, or the
+layout changes, holds your manual paging while none of those move, and remembers
+nothing between launches.
 
 `T` toggles exactly two maintained machine-local themes: dark and light.
 

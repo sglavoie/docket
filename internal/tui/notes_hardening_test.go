@@ -441,6 +441,10 @@ func TestNotesHelpDocumentsTheWorkspaceManager(t *testing.T) {
 		{Key: "Space", Description: "Note actions", Category: "Notes"},
 		{Key: "j", Description: "Move cursor down", Category: "Navigation"},
 		{Key: "k", Description: "Move cursor up", Category: "Navigation"},
+		// The preview pane is on screen at 80 columns with a note under the cursor,
+		// so its paging row is gated in; Ctrl+B is hidden because the one row names
+		// both presses.
+		{Key: "Ctrl+F/B", Description: "Page note preview", Category: "Navigation"},
 		{Key: "gg/Home", Description: "Jump to first note", Category: "Navigation"},
 		{Key: "G/End", Description: "Jump to last note", Category: "Navigation"},
 		{Key: "u", Description: "Undo workspace change", Category: "Actions"},

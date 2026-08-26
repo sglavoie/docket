@@ -343,6 +343,38 @@ func renderListContinuation(direction string, count, width int) string {
 	return MutedStyle.Render(truncateToVisualWidth(label, width))
 }
 
+// listPreviewScrollWindow places the visible slice inside height rows, reserving
+// a row for each continuation it ends up needing. Reserving shrinks the
+// capacity, which can reveal a continuation that was not needed before, so it
+// converges instead of subtracting once — the same accounting
+// sizeListSurfaceViewport does, for the same reason. It sits beside
+// renderListContinuation because every pane that draws those rows must budget
+// for them identically; the Project Hub task pane and the Notes body pane are
+// both callers.
+func listPreviewScrollWindow(total, offset, height int) (start, count int, above, below bool) {
+	if total <= 0 || height <= 0 {
+		return 0, 0, false, false
+	}
+	capacity := height
+	for {
+		start = max(0, min(offset, total-capacity))
+		above = start > 0
+		below = start+capacity < total
+		reserved := 0
+		if above {
+			reserved++
+		}
+		if below {
+			reserved++
+		}
+		next := max(height-reserved, 1)
+		if next == capacity {
+			return start, min(capacity, total-start), above, below
+		}
+		capacity = next
+	}
+}
+
 func renderListSurfacePreview(
 	preview ListPreview,
 	width, height int,

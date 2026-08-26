@@ -91,6 +91,11 @@ type NotesViewModel struct {
 	scrollOffset int
 	cursorFlash  bool
 
+	// preview is the wide-layout body pane's line cache and scroll position. It
+	// is keyed on the note, its revision, and the pane width, so cursor moves,
+	// reloads, and resizes reopen it at the top by construction.
+	preview notesPreviewState
+
 	// pendingTopChord holds the first g of gg. The shell's chord state serves the
 	// Outliner only, so the manager keeps its own one-key prefix.
 	pendingTopChord bool
@@ -570,6 +575,11 @@ func (m *NotesViewModel) SetSize(width, height int) {
 		m.locationPicker.SetSize(width, height)
 	}
 	m.resetScrollOffset()
+	// A resize can change the pane width, the row budget, or whether the preview
+	// exists at all, and every one of those makes a manual offset describe lines
+	// the reader can no longer see. Dropping the cache reopens at the top, which
+	// is the only position that is correct under all three.
+	m.preview.invalidate()
 }
 
 func (m *NotesViewModel) GetConfirmDialog() *ConfirmDialog {

@@ -121,6 +121,13 @@ type OutlinerModel struct {
 	searchRemainder string
 	searchGate      *searchPredicates
 
+	// searchAutocomplete is the slash-search suggestion pane. It holds no cached
+	// vocabulary: every refresh reprojects the grammar and rereads the live
+	// candidates, so a mutation or a scope change cannot leave a stale value
+	// behind. The zero value is inert, which keeps struct-literal test models
+	// working without a constructor.
+	searchAutocomplete outlinerSearchAutocomplete
+
 	// nextDeferWake is the soonest instant a pending deferral in scope lapses,
 	// and zero means none is pending. It is a refresh clock read by the periodic
 	// tick; what a row shows stays isComputedOpenWork's decision.

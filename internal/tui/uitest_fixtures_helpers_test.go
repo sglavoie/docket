@@ -85,6 +85,17 @@ const (
 	projectMixFinishedName = "Mix Finished Cleanup"
 	projectMixParkedName   = "Mix Parked Migration"
 	projectMixArchivedName = "Mix Retired Pilot"
+
+	// Each project also carries a one-line description and a descriptive tag
+	// whose words appear nowhere else in the fixture — not in another project's
+	// metadata and not in any task — so a Select Project search by description or
+	// tag can only be answered by the metadata aliases, and a search by task
+	// wording can only be answered by a leak.
+	projectMixActiveDescription   = "Coordinate the storefront launch calendar."
+	projectMixEmptyDescription    = "Sketch the charter before anyone commits."
+	projectMixFinishedDescription = "Retire the legacy warehouse scripts."
+	projectMixParkedDescription   = "Resume the database cutover when staffing returns."
+	projectMixArchivedDescription = "Shelved the kiosk trial after the field study."
 )
 
 // builtinFixtures maps each fixture name to the builder that populates its
@@ -507,7 +518,7 @@ func buildRichFixture(w *uitestWorkspace) error {
 		CreatedAt:  time.Date(2025, time.January, 3, 9, 0, 0, 0, time.UTC),
 		ModifiedAt: time.Date(2025, time.January, 3, 10, 0, 0, 0, time.UTC),
 		Filename:   "2025-01-03-090000-rich-project-delivery-plan.md",
-		Body:       "Track the authentication milestone and release readiness.\n",
+		Body:       richProjectNoteBody(),
 	}
 	w.noteSeeds = append(w.noteSeeds,
 		fixtureNoteSeed{dir: storage.GlobalNotesDir(w.DataDir), note: globalNote},
@@ -515,6 +526,33 @@ func buildRichFixture(w *uitestWorkspace) error {
 	)
 	w.setCurrentProject(project.ID)
 	return nil
+}
+
+// richProjectNoteBody is the one note body long enough to page and to anchor
+// against. Its first line is unchanged from the single-line body it grew out of,
+// so every committed Notes search scenario still matches and counts exactly what
+// it did before. Below it sit Markdown headings (which the pane renders rather
+// than shows), forty numbered rows (so a page turn is observable), and one
+// deliberately rare word — kestrel — far enough down that a body match can only
+// be on screen because the preview anchored on it.
+func richProjectNoteBody() string {
+	lines := []string{
+		"Track the authentication milestone and release readiness.",
+		"",
+		"## Delivery checkpoints",
+		"",
+	}
+	for i := 1; i <= 40; i++ {
+		lines = append(lines, fmt.Sprintf("- Checkpoint %02d confirms the staged rollout gate.", i))
+	}
+	lines = append(lines,
+		"",
+		"## Rollback rehearsal",
+		"",
+		"The rehearsal runs on the Friday before launch with the kestrel runbook as its fallback.",
+		"",
+	)
+	return strings.Join(lines, "\n")
 }
 
 // buildBusyFixture creates a dense mix of urgent, scheduled, waiting,
@@ -727,23 +765,37 @@ func buildParkedFixture(w *uitestWorkspace) error {
 // finished project is where "holds tasks" and "holds open work" disagree.
 func buildProjectMixFixture(w *uitestWorkspace) error {
 	active, err := w.addProject(projectMixActiveName, func(p *models.Project) {
+		p.Description = projectMixActiveDescription
+		p.Tags = []string{"commerce"}
+		// The one pinned project is also the alphabetically first one, so
+		// pinned-first ordering leaves the active listing in exactly the order it
+		// had before the pin — and Ctrl+P still reaches a non-empty pinned Hub.
+		p.Pinned = true
+
 		rollout := newFixtureTask(p, "Mix rollout plan")
 		rollout.ApplyWorkflowState(models.StateBacklog)
 	})
 	if err != nil {
 		return err
 	}
-	if _, err = w.addProject(projectMixEmptyName, nil); err != nil {
+	if _, err = w.addProject(projectMixEmptyName, func(p *models.Project) {
+		p.Description = projectMixEmptyDescription
+		p.Tags = []string{"charter"}
+	}); err != nil {
 		return err
 	}
 	if _, err = w.addProject(projectMixFinishedName, func(p *models.Project) {
+		p.Description = projectMixFinishedDescription
+		p.Tags = []string{"housekeeping"}
+
 		markDone(newFixtureTask(p, "Mix cleanup sweep"))
 		markDone(newFixtureTask(p, "Mix cleanup follow-up"))
 	}); err != nil {
 		return err
 	}
 	if _, err = w.addProject(projectMixParkedName, func(p *models.Project) {
-		p.Tags = []string{models.ParkedProjectTag}
+		p.Description = projectMixParkedDescription
+		p.Tags = []string{models.ParkedProjectTag, "vendor"}
 
 		migration := newFixtureTask(p, "Mix migration audit")
 		migration.ApplyWorkflowState(models.StateBacklog)
@@ -753,6 +805,8 @@ func buildProjectMixFixture(w *uitestWorkspace) error {
 	// Archiving happens inside the mutator because catalog.UpsertProject runs
 	// after it, so the flag is what the catalog records.
 	if _, err = w.addProject(projectMixArchivedName, func(p *models.Project) {
+		p.Description = projectMixArchivedDescription
+		p.Tags = []string{"kiosk"}
 		p.Archive()
 	}); err != nil {
 		return err

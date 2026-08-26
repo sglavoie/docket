@@ -11,6 +11,7 @@
     { "type": "assert", "label": "the double sigil is not a due query, so nothing is refused", "assert": "not_contains", "value": "invalid due" },
     { "type": "assert", "assert": "no_layout_issues" },
 
+    { "type": "key", "label": "close the suggestions the settled sigil still offers", "key": "esc" },
     { "type": "key", "label": "clear the query", "key": "esc" },
     { "type": "key", "key": "/" },
     { "type": "text", "label": "a bare instant matches the wake day", "text": "@@tomorrow" },
@@ -18,6 +19,7 @@
     { "type": "assert", "label": "a deferral five days out is a different day", "assert": "not_contains", "value": "Alpha still hidden" },
     { "type": "assert", "assert": "no_layout_issues" },
 
+    { "type": "key", "label": "close the suggestions the settled sigil still offers", "key": "esc" },
     { "type": "key", "label": "clear the query", "key": "esc" },
     { "type": "key", "key": "/" },
     { "type": "text", "label": "the absence form is its complement", "text": "@@none" },
@@ -26,6 +28,7 @@
     { "type": "assert", "assert": "not_contains", "value": "Alpha still hidden" },
     { "type": "assert", "assert": "no_layout_issues" },
 
+    { "type": "key", "label": "close the suggestions the settled sigil still offers", "key": "esc" },
     { "type": "key", "label": "clear the query", "key": "esc" },
     { "type": "key", "key": "/" },
     { "type": "text", "label": "the single sigil still owns the due day beside it", "text": "@overdue" },
@@ -34,6 +37,7 @@
     { "type": "assert", "assert": "not_contains", "value": "Alpha waking at nine" },
     { "type": "assert", "assert": "no_layout_issues" },
 
+    { "type": "key", "label": "close the suggestions the settled sigil still offers", "key": "esc" },
     { "type": "key", "label": "restore the ordinary projection", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "no_layout_issues" }

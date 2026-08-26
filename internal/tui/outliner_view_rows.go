@@ -38,6 +38,7 @@ type outlinerRow struct {
 	IsChecklistItem    bool                      // True for one expanded checklist item beneath its owner task row
 	ChecklistIndex     int                       // Position of the item inside the owner task's checklist
 	ChecklistDone      bool                      // Ticked state of the item this row names
+	MatchSource        outlinerMatchSource       // Field that produced this search hit; matchSourceNone on every ordinary row
 }
 
 // isTaskRow reports whether the row carries a task payload (i.e. it is not a

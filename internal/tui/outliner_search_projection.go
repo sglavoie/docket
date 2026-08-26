@@ -31,11 +31,46 @@ type outlinerSearchSnapshot struct {
 	cursor             modeCursorAnchor
 }
 
+// outlinerMatchSource names the field that produced a search hit. It is
+// transient presentation attribution carried on the projected row only: no
+// persisted task or project field records it, and an ordinary (non-search) row
+// keeps the zero value, which means "no cue".
+type outlinerMatchSource int
+
+const (
+	matchSourceNone outlinerMatchSource = iota
+	matchSourceTitle
+	matchSourceDescription
+	matchSourceChecklist
+	matchSourceComment
+	matchSourceTag
+	matchSourceContext
+	matchSourceAttachment
+	matchSourceProject
+	matchSourceDetails
+)
+
+// The deterministic free-text tiers. Rank is the primary sort key, so a lower
+// tier can never be outranked by a higher one regardless of fuzzy score, and
+// searchFieldRankDetails is evaluated only after every single-field tier fails.
+const (
+	searchFieldRankTitle = iota
+	searchFieldRankDescription
+	searchFieldRankChecklist
+	searchFieldRankComment
+	// Tags and context share one rank; the source retains which axis won.
+	searchFieldRankTagContext
+	searchFieldRankAttachment
+	searchFieldRankProject
+	searchFieldRankDetails
+)
+
 type outlinerSearchMatch struct {
 	task        *models.Task
 	project     *models.Project
 	fieldRank   int
 	fuzzyScore  int
+	source      outlinerMatchSource
 	sourceIndex int
 }
 
@@ -99,6 +134,7 @@ func (m *OutlinerModel) SetSearchQuery(query string) {
 // mutating data, focus falls back to the nearest surviving task row.
 func (m *OutlinerModel) ClearSearch() {
 	if m == nil || m.searchProjection == nil {
+		m.searchAutocomplete.clear()
 		m.BaseSearchableView.ClearSearch()
 		return
 	}
@@ -193,6 +229,9 @@ func (m *OutlinerModel) clearSearchProjectionWithoutRestore() {
 }
 
 func (m *OutlinerModel) resetSearchCompilation() {
+	// Suggestions describe the query being compiled, so they die with it: both
+	// clear paths route here, and neither can leave a pane open over no search.
+	m.searchAutocomplete.clear()
 	m.searchCaseRelaxed = false
 	m.searchRemainder = ""
 	m.searchGate = nil
@@ -237,11 +276,15 @@ func (m *OutlinerModel) buildSearchProjectionRows() {
 	}
 
 	for _, match := range matches {
-		m.rows = append(m.rows, m.outlinerRowFromModeRow(OutlinerModeRow{
+		row := m.outlinerRowFromModeRow(OutlinerModeRow{
 			Task:       match.task,
 			Project:    match.project,
 			Breadcrumb: taskAncestorBreadcrumb(match.task),
-		}))
+		})
+		// Attribution is recomputed by this rebuild alongside membership, so a
+		// mutation that moves a hit from one field to another moves its cue too.
+		row.MatchSource = match.source
+		m.rows = append(m.rows, row)
 	}
 }
 
@@ -298,11 +341,11 @@ func searchProjectionMatchesWithin(
 				sourceIndex++
 				continue
 			}
-			fieldRank, score, ok := scoreSearchProjectionTask(task, project, query, matcher)
+			fieldRank, score, source, ok := scoreSearchProjectionTask(task, project, query, matcher)
 			if ok {
 				matches = append(matches, outlinerSearchMatch{
 					task: task, project: project, fieldRank: fieldRank,
-					fuzzyScore: score, sourceIndex: sourceIndex,
+					fuzzyScore: score, source: source, sourceIndex: sourceIndex,
 				})
 			}
 			sourceIndex++
@@ -320,30 +363,122 @@ func searchProjectionMatchesWithin(
 	return matches
 }
 
+// scoreSearchProjectionTask ranks one task against the free-text remainder in
+// the declared field tiers. Each tier is scored on its own text, so a hit is
+// attributable to exactly one source; only the last tier, details, scores the
+// concatenation, and it exists solely for multi-term queries whose terms are
+// satisfied across fields. Because rank sorts before score, a details hit can
+// never outrank a single-field one.
 func scoreSearchProjectionTask(
 	task *models.Task,
 	project *models.Project,
 	query string,
 	matcher fuzzy.Matcher,
-) (int, int, bool) {
+) (int, int, outlinerMatchSource, bool) {
 	if query == "" {
-		return 0, 1, true
+		return searchFieldRankTitle, 1, matchSourceNone, true
 	}
+
+	checklistText := searchChecklistText(task)
+	commentText := searchCommentText(task)
+	tagText := strings.Join(task.Tags, " ")
+	attachmentText := searchAttachmentText(task)
+	projectText := searchProjectText(task, project)
+
 	if score := matcher.ScoreTerms(task.Title, query); score > 0 {
-		return 0, score, true
+		return searchFieldRankTitle, score, matchSourceTitle, true
 	}
-	secondary := strings.Join([]string{
+	if score := matcher.ScoreTerms(task.Description, query); score > 0 {
+		return searchFieldRankDescription, score, matchSourceDescription, true
+	}
+	if score := matcher.ScoreTerms(checklistText, query); score > 0 {
+		return searchFieldRankChecklist, score, matchSourceChecklist, true
+	}
+	if score := matcher.ScoreTerms(commentText, query); score > 0 {
+		return searchFieldRankComment, score, matchSourceComment, true
+	}
+	// Tags and context share a rank, so the better score wins and an exact tie
+	// falls to the declared field order: tags precede context.
+	tagScore := matcher.ScoreTerms(tagText, query)
+	contextScore := matcher.ScoreTerms(task.Context, query)
+	if tagScore > 0 || contextScore > 0 {
+		if tagScore >= contextScore {
+			return searchFieldRankTagContext, tagScore, matchSourceTag, true
+		}
+		return searchFieldRankTagContext, contextScore, matchSourceContext, true
+	}
+	if score := matcher.ScoreTerms(attachmentText, query); score > 0 {
+		return searchFieldRankAttachment, score, matchSourceAttachment, true
+	}
+	if score := matcher.ScoreTerms(projectText, query); score > 0 {
+		return searchFieldRankProject, score, matchSourceProject, true
+	}
+
+	details := strings.Join([]string{
+		task.Title,
 		task.Description,
-		strings.Join(task.Tags, " "),
+		checklistText,
+		commentText,
+		tagText,
+		task.Context,
+		attachmentText,
+		projectText,
+	}, " ")
+	if score := matcher.ScoreTerms(details, query); score > 0 {
+		return searchFieldRankDetails, score, matchSourceDetails, true
+	}
+	return searchFieldRankTitle, 0, matchSourceNone, false
+}
+
+// searchChecklistText is the item text alone: completion state is presentation,
+// never a term a text query can match or miss on.
+func searchChecklistText(task *models.Task) string {
+	if len(task.Checklist) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(task.Checklist))
+	for _, item := range task.Checklist {
+		parts = append(parts, item.Text)
+	}
+	return strings.Join(parts, " ")
+}
+
+func searchCommentText(task *models.Task) string {
+	if len(task.Comments) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(task.Comments))
+	for _, comment := range task.Comments {
+		if comment != nil {
+			parts = append(parts, comment.Text)
+		}
+	}
+	return strings.Join(parts, " ")
+}
+
+// searchAttachmentText covers both the displayed name (filename for files, the
+// full URL for links) and the original path a code reference or local file was
+// captured from.
+func searchAttachmentText(task *models.Task) string {
+	if len(task.Attachments) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, 2*len(task.Attachments))
+	for _, attachment := range task.Attachments {
+		parts = append(parts, attachment.Filename, attachment.OriginalPath)
+	}
+	return strings.Join(parts, " ")
+}
+
+// searchProjectText carries the owning project's metadata plus the qualified
+// task reference, which is the fuzzy counterpart of the exact project#ID path.
+func searchProjectText(task *models.Task, project *models.Project) string {
+	return strings.Join([]string{
 		project.Name,
 		project.Slug,
 		project.Description,
 		fmt.Sprintf("%s#%d", project.Slug, task.ShortID),
 	}, " ")
-	if score := matcher.ScoreTerms(secondary, query); score > 0 {
-		return 1, score, true
-	}
-	return 0, 0, false
 }
 
 func parseProjectShortIDQuery(query string) (string, int, bool) {
@@ -386,9 +521,12 @@ func exactProjectShortIDMatchesWithin(
 				continue
 			}
 			if predicates.admits(task, project) {
+				// The qualified reference lives in the project tier, so an
+				// exact hit is attributed there while keeping the exact
+				// path's top rank.
 				return []outlinerSearchMatch{{
-					task: task, project: project, fieldRank: 0,
-					fuzzyScore: 1, sourceIndex: sourceIndex,
+					task: task, project: project, fieldRank: searchFieldRankTitle,
+					fuzzyScore: 1, source: matchSourceProject, sourceIndex: sourceIndex,
 				}}
 			}
 		}

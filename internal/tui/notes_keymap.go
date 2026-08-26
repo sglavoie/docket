@@ -20,6 +20,16 @@ func (m *NotesViewModel) buildKeyMap() *keymap.KeyMap {
 		keymap.Bind("down", "Move cursor down", "Navigation", keymap.AsHidden()),
 		keymap.Bind("up", "Move cursor up", "Navigation", keymap.AsHidden()),
 
+		// Unranked, like the end and ledger rows below: the footer may only
+		// advertise keys the strategy binds, and the preview pane is a rendering of
+		// the row the cursor is already on rather than an operation over it. The
+		// row is spelled as the whole path, like gg/Home below, so one entry names
+		// both presses; Ctrl+B binds the same act and stays hidden. The gate follows
+		// the pane, so a narrow terminal documents neither press.
+		keymap.Bind("ctrl+f", "Page note preview", "Navigation",
+			keymap.WithGate(m.notesPreviewVisible), keymap.WithHelpKey("Ctrl+F/B")),
+		keymap.Bind("ctrl+b", "Page note preview up", "Navigation", keymap.AsHidden()),
+
 		// The manager reaches both ends through the strategy's core bindings, whose
 		// descriptors answer only to the Outliner, so these two unranked rows are
 		// the only place its own `?` help can name them. Each is spelled as the

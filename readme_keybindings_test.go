@@ -255,7 +255,20 @@ func TestREADMEDocumentsWorkspaceWideNotesManager(t *testing.T) {
 			"deletion has no direct key",
 		"Notes has no multi-select, so that sheet always acts on the one note under the cursor",
 		"Notes support open/edit, create, rename, move, copy, delete, undo, and redo",
-		"Note tags, task links, pins, bulk actions, previews, and archived-project ownership remain excluded",
+		"Note tags, task links, pins, bulk actions, and archived-project ownership remain excluded",
+		"At 72 columns and wider, Notes shows the selected note beside the list",
+		"its title, owner, and modification time above the note's rendered Markdown",
+		"Narrower terminals render the list alone",
+		"a note whose frontmatter failed to parse shows the reason as a warning",
+		"`Ctrl+F` and `Ctrl+B` page that body with a row of overlap",
+		"both presses work while you are still typing a search, and are offered only " +
+			"when the pane is actually on screen",
+		"A search that matched the body opens the pane around its first match with one " +
+			"line of context above it, under the same case reading the result list used",
+		"a title-only match, no query at all, and a match the rendered text cannot be " +
+			"located in all open at the top",
+		"re-anchors whenever the note, its bytes, the query, the scope, or the layout " +
+			"changes, holds your manual paging while none of those move",
 		"All Notes retired `s`, `r`, `m`, `n`, and `x` for `/`, `e`, `%`, `a`, and the `Space` sheet, " +
 			"and freed `v` rather than reassigning it, because Notes has no selection for it to toggle; " +
 			"all six are silent there",

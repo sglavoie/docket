@@ -50,6 +50,10 @@ func (m *OutlinerModel) ContextualGuidance() (GuidanceSpec, bool) {
 			hints = append(hints, optionalGuidanceHints(10, quickEditGrammarGuidance()...)...)
 		}
 		return GuidanceSpec{Hints: hints, Rows: 2}, true
+	case m.IsSearchMode() && m.searchAutocomplete.active():
+		// Only while the pane is open: an Esc here closes suggestions rather than
+		// the search, and saying so is the whole point of the swap.
+		return m.searchAutocompleteGuidance(), true
 	case m.IsSearchMode():
 		return GuidanceSpec{Hints: requiredGuidanceHints("Enter apply search", "Esc clear search"), Rows: 2}, true
 	case len(m.rows) == 0:

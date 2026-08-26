@@ -36,9 +36,11 @@ func (m *NotesViewModel) ContextualGuidance() (GuidanceSpec, bool) {
 		if len(m.visibleRows) == 0 {
 			supplemental = "no matches"
 		}
+		hints := append(requiredGuidanceHints("Enter apply search", "Esc cancel edit"),
+			optionalGuidanceHints(10, "Ctrl+J/K navigate")...)
+		hints = append(hints, m.previewPagingGuidance(11)...)
 		return GuidanceSpec{
-			Hints: append(requiredGuidanceHints("Enter apply search", "Esc cancel edit"),
-				optionalGuidanceHints(10, "Ctrl+J/K navigate")...),
+			Hints:        hints,
 			Supplemental: supplemental,
 			Rows:         2,
 		}, true
@@ -56,8 +58,23 @@ func (m *NotesViewModel) ContextualGuidance() (GuidanceSpec, bool) {
 		spec.Hints = append(requiredGuidanceHints("Esc clear search"), spec.Hints...)
 		spec.Supplemental = fmt.Sprintf("search: %s", query)
 	}
+	spec.Hints = append(spec.Hints, m.previewPagingGuidance(12)...)
 	spec.Supplemental = joinGuidanceContext(spec.Supplemental, m.currentLocationGuidance())
 	return spec, true
+}
+
+// previewPagingGuidance advertises Ctrl+F/B only when the shared geometry says a
+// preview pane is on screen and the cursor is on a note it can draw. It is never
+// required and ranks below every key in the keymap, so it is the first hint a
+// narrow footer sheds and it can never displace search apply/cancel or the Esc
+// recovery those states owe the reader. The keymap entry stays unranked because
+// the footer may only rank keys the Notes strategy binds; this is the same gate,
+// spelled where a conditional hint belongs.
+func (m *NotesViewModel) previewPagingGuidance(priority int) []GuidanceHint {
+	if !m.notesPreviewVisible() {
+		return nil
+	}
+	return optionalGuidanceHints(priority, "Ctrl+F/B preview")
 }
 
 func (m *NotesViewModel) emptyGuidance() (GuidanceSpec, bool) {

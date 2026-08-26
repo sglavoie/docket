@@ -30,6 +30,10 @@ const (
 	acModeDefer              // Completing a @@defer
 	acModeAttachment         // Completing an &link
 	acModeComment            // Completing a ;comment;
+	// acModeRemoveTag completes a -#tag. It is reached only from the search
+	// surface: capture does not carry the field at all, and quick edit peels the
+	// two-character trigger itself so it can reuse the tag mode's candidate list.
+	acModeRemoveTag
 )
 
 // acVisibleCount is the number of suggestions visible at once (scrollable window size)
@@ -161,6 +165,8 @@ func autocompleteModeForField(field textgrammar.Field) int {
 	switch field {
 	case textgrammar.FieldTag:
 		return acModeTag
+	case textgrammar.FieldRemoveTag:
+		return acModeRemoveTag
 	case textgrammar.FieldContext:
 		return acModeContext
 	case textgrammar.FieldParent:

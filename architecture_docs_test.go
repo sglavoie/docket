@@ -152,7 +152,19 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"delegates its confirmation back to the manager that owns the row, which is why Notes gains a sheet without gaining a selection",
 		"`validateNotesOperationOnePath` holds them to the same direct-or-menu rule",
 		"Malformed notes remain available for raw editing and deletion",
-		"Note tags, task links, pins, bulk actions, previews, and archived owners remain outside the product",
+		"Note tags, task links, pins, bulk actions, and archived owners remain outside the product",
+		"`renderNotesContent` asks `listSurfacePreviewGeometry` for the split",
+		"the list renderer is handed the resolved pane width instead of reading the terminal's",
+		"keyed on note identity, the Notes scope, the active query with the case mode that produced the visible rows, the revision, and that width together",
+		"while the whole key holds, the offset is the reader's and ordinary re-renders leave it alone",
+		"`notesPreviewAnchor` decides where a rebuilt cache opens",
+		"only if no term is found that way does a per-line fuzzy pass run",
+		"they are claimed ahead of the search text input while a query is being edited",
+		"The render owns the tail clamp",
+		"`listPreviewScrollWindow` converges on a window that reserves a row for each " +
+			"`renderListContinuation` it needs",
+		"consecutive pages overlap by one line rather than drifting apart",
+		"renders that reason as a warning and never as Markdown",
 		"## Persistence layout",
 		"workspace.json",
 		"planning.json",
@@ -235,10 +247,11 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// project sheet, the enumerated project delete, the restore lock scope, the
 	// cursor row's gutter/content seam, Select Project's preview pane owning a
 	// second scroll, the parse-order/teach-order registry split that the
-	// attachment sigil forced, and the paired-delimiter comment sigil that leads
-	// parse order are the seven that raised it from 16200 — and never to absorb
-	// explanation.
-	const budget = 18600
+	// attachment sigil forced, the paired-delimiter comment sigil that leads
+	// parse order, and the Notes preview pane — a second read-only scroll whose
+	// cache key and anchor rule nothing else states — are the eight that raised
+	// it from 16200 — and never to absorb explanation.
+	const budget = 19100
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

@@ -110,7 +110,7 @@ func TestTaskContextSegmentIsReservedAndBudgeted(t *testing.T) {
 	if segments.titleWidth(60) != 60-outlinerNonTitleWidth(
 		segments.cursorPrefix, segments.checkbox, segments.prefixStr, segments.foldIndicator,
 		segments.statusIcon, segments.prioritySegment, segments.pinMarker, segments.contextSegment,
-		segments.tagSegment, segments.indicators, segments.relationMarker,
+		segments.tagSegment, segments.indicators, segments.relationMarker, segments.matchCue,
 	) {
 		t.Fatal("context segment drifted between titleWidth and outlinerNonTitleWidth")
 	}

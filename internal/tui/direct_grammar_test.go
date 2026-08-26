@@ -512,7 +512,8 @@ func TestNotesDirectGrammarMatchesTheWorkspaceManager(t *testing.T) {
 	// help names as gg/Home and G/End; the help spelling is display only, so
 	// HandledKeys still reports the keys the keymap actually carries.
 	want := []string{
-		"j", "k", "down", "up", "home", "G", "enter", "a", "e", "%", "/", "p", "space", "u", "ctrl+r", "y", "Y",
+		"j", "k", "down", "up", "ctrl+f", "ctrl+b", "home", "G",
+		"enter", "a", "e", "%", "/", "p", "space", "u", "ctrl+r", "y", "Y",
 	}
 	if got := view.HandledKeys(); !slices.Equal(got, want) {
 		t.Fatalf("Notes direct keys = %v, want %v", got, want)

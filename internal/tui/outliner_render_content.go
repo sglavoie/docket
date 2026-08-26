@@ -24,7 +24,16 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	var b strings.Builder
 	m.writeOutlinerHeader(&b, width)
 
+	// Render the pane once and measure what came back: RenderDropdownWithLimit
+	// decides for itself how much of its budget goes to overflow hints, so a
+	// predicted height and a drawn one would drift apart.
+	dropdown := m.renderSearchAutocompleteDropdown(width)
+
 	extraFooter := m.statusStripHeight(width)
+	if dropdown != "" {
+		b.WriteString(dropdown + "\n")
+		extraFooter += lipgloss.Height(dropdown)
+	}
 	if m.quickEdit.IsActive() {
 		extraFooter += m.quickEditExtraLineCount()
 		if spec, ok := m.ContextualGuidance(); ok {
@@ -185,6 +194,11 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int) string {
 	var b strings.Builder
 	b.WriteString(m.buildOutlinerTitleLine(width))
 	b.WriteString("\n")
+	// A query that matches nothing yet is exactly when suggestions are worth the
+	// most, so the empty state carries the pane too.
+	if dropdown := m.renderSearchAutocompleteDropdown(width); dropdown != "" {
+		b.WriteString(dropdown + "\n")
+	}
 	b.WriteString(MutedStyle.Render(m.outlinerEmptyMessage()))
 	return b.String()
 }

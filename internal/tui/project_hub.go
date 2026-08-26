@@ -22,13 +22,6 @@ const (
 	ProjectHubModePinned
 )
 
-// Short aliases keep call sites readable when the surrounding name already
-// says Project Hub.
-const (
-	ProjectHubAll    = ProjectHubModeAll
-	ProjectHubPinned = ProjectHubModePinned
-)
-
 // ShowProjectHubMsg opens the searchable project selection and administration
 // surface in the requested population mode.
 type ShowProjectHubMsg struct {
@@ -460,6 +453,32 @@ func projectPinnedMarker(project *models.Project) string {
 	return pinnedMarker()
 }
 
+// projectHubAliases is the one alias vocabulary every Hub row is indexed under,
+// so the active, archived, and pinned populations answer the same query the same
+// way. Beyond the name, the slug, and the lifecycle phrase, it carries the
+// project's own description and every normalized project tag twice: bare and
+// `#`-prefixed, because the chips the row shows are written `#parked` and a
+// query that copies what it reads must match.
+//
+// It carries nothing a task owns. Select Project chooses a project, and a task
+// title, description, tag, context, or comment matching a project row would
+// promise the row holds work it does not name; the Outliner's `/` is where task
+// content is searched.
+func projectHubAliases(project *models.Project, lifecycle string) []string {
+	aliases := make([]string, 0, 4+2*len(project.Tags))
+	aliases = append(aliases, project.Name, project.Slug, lifecycle)
+	if description := strings.Join(strings.Fields(project.Description), " "); description != "" {
+		aliases = append(aliases, description)
+	}
+	for _, tag := range project.Tags {
+		if tag = strings.TrimSpace(tag); tag == "" {
+			continue
+		}
+		aliases = append(aliases, tag, "#"+tag)
+	}
+	return aliases
+}
+
 func (m *ProjectHubModel) projectHubItems() []ListItem {
 	items := make([]ListItem, 0, len(m.runtime.AllProjects()))
 	for _, project := range m.runtime.AvailableProjects() {
@@ -476,7 +495,7 @@ func (m *ProjectHubModel) projectHubItems() []ListItem {
 			PrimaryText:   label,
 			PrimaryMarker: projectPinnedMarker(project),
 			SecondaryText: m.projectSecondary(project),
-			Aliases:       []string{project.Name, project.Slug, "active project"},
+			Aliases:       projectHubAliases(project, "active project"),
 			Preview:       m.projectPreview(project, false),
 			OperationIDs: append([]OperationID{
 				operationScopeArchiveProject,
@@ -497,7 +516,7 @@ func (m *ProjectHubModel) projectHubItems() []ListItem {
 			PrimaryText:   project.Name,
 			PrimaryMarker: projectPinnedMarker(project),
 			SecondaryText: strings.TrimSuffix("archived · "+projectTagChips(project.Tags), " · "),
-			Aliases:       []string{project.Name, project.Slug, "archived project"},
+			Aliases:       projectHubAliases(project, "archived project"),
 			Preview:       m.projectPreview(project, true),
 			OperationIDs: []OperationID{
 				operationScopeRestoreProject,
@@ -924,7 +943,7 @@ func (m *ProjectHubModel) projectHubRenderConfig(height int) ListSurfaceRenderCo
 }
 
 func (m *ProjectHubModel) subtitle() string {
-	subtitle := ""
+	var subtitle string
 	if m.mode == ProjectHubModePinned {
 		subtitle = fmt.Sprintf("%d pinned active", m.pinnedActiveProjectCount())
 	} else {

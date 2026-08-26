@@ -75,7 +75,7 @@ func (m *ProjectHubModel) renderProjectPreviewTasks(width, height int) []string 
 		return []string{MutedStyle.Render(truncateToVisualWidth("No tasks.", width))}
 	}
 
-	start, count, above, below := projectPreviewWindow(len(m.preview.rows), m.preview.offset, height)
+	start, count, above, below := listPreviewScrollWindow(len(m.preview.rows), m.preview.offset, height)
 	m.preview.offset = start
 	// A page is the row budget less both continuation rows, not the rows this
 	// frame happened to show. The visible count changes by one as continuations
@@ -171,35 +171,6 @@ func projectPreviewTaskRows(projectID string, tasks []*models.Task) []outlinerRo
 	}
 	walk(roots, nil)
 	return rows
-}
-
-// projectPreviewWindow places the visible slice inside height rows, reserving a
-// row for each continuation it ends up needing. Reserving shrinks the capacity,
-// which can reveal a continuation that was not needed before, so it converges
-// instead of subtracting once — the same accounting the list pane's viewport
-// does, for the same reason.
-func projectPreviewWindow(total, offset, height int) (start, count int, above, below bool) {
-	if total <= 0 || height <= 0 {
-		return 0, 0, false, false
-	}
-	capacity := height
-	for {
-		start = max(0, min(offset, total-capacity))
-		above = start > 0
-		below = start+capacity < total
-		reserved := 0
-		if above {
-			reserved++
-		}
-		if below {
-			reserved++
-		}
-		next := max(height-reserved, 1)
-		if next == capacity {
-			return start, min(capacity, total-start), above, below
-		}
-		capacity = next
-	}
 }
 
 // pageProjectPreview moves the pane a full page, vim's Ctrl+F and Ctrl+B. Only

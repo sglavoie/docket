@@ -69,6 +69,16 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "esc":
 				m.cancelSearchEdit()
 				return m, nil
+			// Paging is claimed ahead of the text input, so refining a query and
+			// reading the note it lands on are the same interaction. Neither press
+			// accepts or cancels the draft, and neither reaches the input as a
+			// control character.
+			case "ctrl+f":
+				m.pageNotesPreview(1)
+				return m, nil
+			case "ctrl+b":
+				m.pageNotesPreview(-1)
+				return m, nil
 			case "up", "ctrl+k", "down", "ctrl+j":
 				navKey := key
 				switch key {
@@ -102,6 +112,10 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.pendingTopChord = true
 		case "home":
 			m.moveCursorToTop()
+		case "ctrl+f":
+			m.pageNotesPreview(1)
+		case "ctrl+b":
+			m.pageNotesPreview(-1)
 		case "enter", "a", "e", "%", "/", "p", "y", "Y":
 			return m, m.dispatchNotesKey(key)
 		case " ", "space":

@@ -50,7 +50,7 @@ func (m *NotesViewModel) View() tea.View {
 	headerBlock := strings.Join(header, "\n")
 	footerBlock := strings.Join(footer, "\n")
 	contentHeight := fullscreenContentHeightForBlocks(height, headerBlock, footerBlock)
-	content := fitBlockHeight(m.renderListPaneHeight(contentHeight), contentHeight)
+	content := fitBlockHeight(m.renderNotesContent(width, contentHeight), contentHeight)
 	return tea.NewView(lipgloss.JoinVertical(
 		lipgloss.Left,
 		headerBlock,
@@ -59,7 +59,34 @@ func (m *NotesViewModel) View() tea.View {
 	))
 }
 
-func (m *NotesViewModel) renderListPaneHeight(listHeight int) string {
+// renderNotesContent chooses between the shared two-pane layout and the list
+// alone. The split comes from listSurfacePreviewGeometry rather than a Notes
+// copy of the 72-column rule, so this surface widens and narrows exactly when
+// every other list surface does. An empty list, a workspace error, or an open
+// picker has no note to preview, so those states keep the full width the way the
+// compact list renderer does.
+func (m *NotesViewModel) renderNotesContent(width, height int) string {
+	listWidth, previewWidth := m.notesPreviewGeometry(width)
+	row := m.notesPreviewRow()
+	if previewWidth <= 0 || row == nil {
+		return m.renderListPane(width, height)
+	}
+	listPane := strings.TrimRight(m.renderListPane(listWidth, height), "\n")
+	previewPane := renderListSurfacePreview(
+		notesPreviewHeader(row),
+		previewWidth,
+		height,
+		m.renderNotesPreviewBody,
+	)
+	return joinListSurfacePanes(listPane, previewPane, listWidth, previewWidth)
+}
+
+// renderListPane draws the note rows inside the pane width it is given. The
+// width is a parameter rather than m.Width() because the same rows are drawn
+// into the narrow list column of the wide layout, where every column budget
+// below — the owner scope, the body-match indicator, and the title — must be
+// charged against the pane rather than the terminal.
+func (m *NotesViewModel) renderListPane(width, listHeight int) string {
 	if m.snapshotError != nil {
 		return renderEmptyState("Notes are unavailable.", "Resolve the workspace error and reopen Notes.") + "\n"
 	}
@@ -84,7 +111,7 @@ func (m *NotesViewModel) renderListPaneHeight(listHeight int) string {
 	var b strings.Builder
 	listHeight = max(listHeight, 1)
 	start, end := persistentIndexWindow(m.cursor, len(m.visibleRows), listHeight, &m.scrollOffset)
-	width := max(m.Width(), 1)
+	width = max(width, 1)
 	scopeWidth := min(24, max(width/3, 6))
 	for i := start; i < end; i++ {
 		row := m.visibleRows[i]

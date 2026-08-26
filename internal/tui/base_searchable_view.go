@@ -94,6 +94,18 @@ func (v *BaseSearchableView) SetSearchInputValue(value string) {
 	v.searchInput.SetValue(value)
 }
 
+// SearchInputCursor returns the caret's rune index inside the search input.
+// Cursor-aware completion needs it so a suggestion accepted mid-query replaces
+// only the token under the caret.
+func (v *BaseSearchableView) SearchInputCursor() int {
+	return v.searchInput.Position()
+}
+
+// SetSearchInputCursor moves the caret to a rune index, clamped by the input.
+func (v *BaseSearchableView) SetSearchInputCursor(position int) {
+	v.searchInput.SetCursor(position)
+}
+
 // SearchInputView returns the rendered search input for display.
 func (v *BaseSearchableView) SearchInputView() string {
 	return v.searchInput.View()

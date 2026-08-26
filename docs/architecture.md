@@ -535,6 +535,17 @@ Waiting age, due date, and Doing age; check-back goes last because it is the one
 indicator naming work that has gone quiet on someone else's desk. A new
 indicator gets a position in that list, not an append.
 
+The search match cue sits above that ladder rather than in it. A projected row
+whose hit came from a field the title cannot show carries one muted
+`· description`, `· checklist`, `· comment`, `· tag`, `· context`,
+`· attachment`, `· project`, or `· details` segment, mapped from
+`outlinerRow.MatchSource` by `matchSourceLabels`; a title hit and every ordinary
+row carry none. It is a `taskRowSegments` field, so `titleWidth` charges it once
+like any other segment, and it is the first thing a crowded row sheds — before
+the tag chips and before every `indicatorDropLadder` entry — because an
+explanation is worth nothing beside an unreadable title, and because shedding it
+first leaves a non-search row's degradation exactly as it was.
+
 The relation marker is not in that ladder and never drops.
 `taskRelationMarker` writes both directions of the hidden-family relation into
 one `taskRowSegments` field, so `titleWidth` subtracts its columns before the
@@ -1598,6 +1609,26 @@ value, leaving the executor's central value-provider step free to open the tag
 prompt. `ListSurfaceModel.ActionState()` intersects operation IDs across the
 selection, so an archived row in it offers no bulk action at all.
 
+`projectHubAliases` is the one alias vocabulary every Hub row is built from, so
+the active, archived, and pinned populations answer a query identically: the
+name, the slug, the lifecycle phrase (`active project` or `archived project`),
+the whitespace-collapsed description when it has one, and every normalized
+project tag twice — bare and `#`-prefixed, because the chip the row draws is
+written `#parked` and a query that copies what it reads must match. A blank
+description is skipped rather than joined in, which would leave a stray
+separator in the haystack `listItemScore` scores against. Because
+`listItemScore` already folds `Aliases` into that haystack beside `PrimaryText`
+and `SecondaryText`, widening the vocabulary needed no ranking change:
+`sortListMatches` still orders by score with `sourceIndex` as the stable
+tie-break, so pinned-first listing order survives a search.
+
+Nothing a task owns enters that vocabulary. Select Project chooses a project,
+and a task title, description, tag, context, or comment matching a project row
+would promise the row holds work it does not name; the Outliner's `/` is where
+task content is searched, and
+`TestProjectHubSearchNeverMatchesTaskContent` puts every task-owned channel to
+both Hub modes to hold the boundary.
+
 `Ctrl+T` is the surface's other axis: `projectHubTaskFilter` cycles the list
 through every project, only the projects holding at least one task, and only the
 projects holding none, in both Hub modes, so the key works while the search input
@@ -1891,9 +1922,50 @@ all refresh the affected canonical collections through the workspace ledger;
 move commits its destination write and revision-checked source delete as one
 artifact transaction. Malformed notes remain available for raw editing and
 deletion but cannot be renamed or moved until repaired. Search and scope are
-session-only. Note tags, task links, pins, bulk actions, previews, and archived
+session-only. Note tags, task links, pins, bulk actions, and archived
 owners remain outside the product. Editor resolution is
 `TT_EDITOR`, then `VISUAL`, then `EDITOR`.
+
+The body preview is one more consumer of the shared list-surface layout rather
+than a second responsive grammar. `renderNotesContent` asks
+`listSurfacePreviewGeometry` for the split, so the pane appears at exactly the
+72 columns every list surface widens at and the list renderer is handed the
+resolved pane width instead of reading the terminal's. The header goes through
+`renderListSurfacePreview` — title, owner label, and modification time — and its
+`PreviewBody` hook draws the note body; `joinListSurfacePanes` joins the two.
+An empty list, a workspace error, or an open location picker has no note to
+preview and keeps the full-width list.
+
+`notesPreviewState` caches the body rendered through `renderMarkdown` at the
+pane width, keyed on note identity, the Notes scope, the active query with the
+case mode that produced the visible rows, the revision, and that width together.
+The revision is `RawRevision` when the note carries one and a digest of the body
+otherwise, so an in-memory edit that never reached disk still moves the key. Any
+one component moving re-renders and re-anchors, which is what makes cursor
+moves, reloads, edits, query changes, and scope changes invalidate by
+construction; while the whole key holds, the offset is the reader's and ordinary
+re-renders leave it alone. `SetSize` drops the cache outright, since a resize can
+change the pane width, the row budget, or whether the pane exists at all.
+
+`notesPreviewAnchor` decides where a rebuilt cache opens. Search scores the raw
+body, so a hit is located again against the rendered, wrapped, ANSI-stripped
+lines: every term is tried for a literal occurrence first, and only if no term
+is found that way does a per-line fuzzy pass run, so an incidental subsequence
+near the top can never overrule a literal hit further down. The earliest line
+found wins and the anchor spends one row above it on context. A title-only
+match, an empty query, and a region the rendered text cannot express all yield
+the top. `Ctrl+F`/`Ctrl+B` move the offset by the page size the render recorded
+and apply only the lower bound; they are claimed ahead of the search text input
+while a query is being edited, so refining a query and reading the note it lands
+on are one interaction, and the keys neither accept the draft nor reach the
+input. The render owns the
+tail clamp, because only it knows how many rows the header left:
+`listPreviewScrollWindow` converges on a window that reserves a row for each
+`renderListContinuation` it needs, the same accounting the Project Hub task pane
+does through the same helper. A page is the budget less both continuation rows,
+so consecutive pages overlap by one line rather than drifting apart. A note
+whose `ParseError` is set renders that reason as a warning and never as
+Markdown, since only its filename is reliable.
 
 ## Persistence layout
 

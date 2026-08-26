@@ -326,14 +326,14 @@ type taskRowSegments struct {
 	cursorPrefix, checkbox, prefixStr, foldIndicator string
 	statusIcon, prioritySegment, pinMarker           string
 	contextSegment, tagSegment                       string
-	indicators, relationMarker                       string
+	indicators, relationMarker, matchCue             string
 }
 
 func (s taskRowSegments) titleWidth(rowWidth int) int {
 	return max(rowWidth-outlinerNonTitleWidth(
 		s.cursorPrefix, s.checkbox, s.prefixStr, s.foldIndicator,
 		s.statusIcon, s.prioritySegment, s.pinMarker, s.contextSegment,
-		s.tagSegment, s.indicators, s.relationMarker,
+		s.tagSegment, s.indicators, s.relationMarker, s.matchCue,
 	), 1)
 }
 
@@ -349,13 +349,14 @@ func (s taskRowSegments) gutter() string {
 // colors under the cursor. The space after the badge is the one outlinerNonTitleWidth
 // counts.
 func (s taskRowSegments) content(title string) string {
-	return fmt.Sprintf("%s %s%s%s%s%s%s%s",
+	return fmt.Sprintf("%s %s%s%s%s%s%s%s%s",
 		s.statusIcon,
 		s.prioritySegment,
 		s.pinMarker,
 		s.contextSegment,
 		title,
 		s.relationMarker,
+		s.matchCue,
 		s.tagSegment,
 		s.indicators,
 	)
@@ -394,6 +395,33 @@ func (m *OutlinerModel) taskPinnedMarker(row outlinerRow) string {
 		return ""
 	}
 	return pinnedMarker()
+}
+
+// matchSourceLabels is the one presentation vocabulary for search attribution:
+// each source the projection can report maps to exactly one word. A title hit is
+// absent deliberately — the highlighted title is already the explanation — as is
+// matchSourceNone, which every ordinary row carries.
+var matchSourceLabels = map[outlinerMatchSource]string{
+	matchSourceDescription: "description",
+	matchSourceChecklist:   "checklist",
+	matchSourceComment:     "comment",
+	matchSourceTag:         "tag",
+	matchSourceContext:     "context",
+	matchSourceAttachment:  "attachment",
+	matchSourceProject:     "project",
+	matchSourceDetails:     "details",
+}
+
+// taskMatchSourceCue explains why a row whose title shows no match is in the
+// results. It is one segment so ANSI-aware measurement charges it once, and it
+// is muted so it reads as an annotation rather than competing with the semantic
+// title color beside it.
+func taskMatchSourceCue(row outlinerRow) string {
+	label, ok := matchSourceLabels[row.MatchSource]
+	if !ok {
+		return ""
+	}
+	return MutedStyle.Render("  · " + label)
 }
 
 // buildTaskRowSegments assembles every rendered piece of a task row except the
@@ -451,12 +479,20 @@ func (m *OutlinerModel) buildTaskRowSegments(row outlinerRow, rowWidth int, colL
 		tagSegment:      tagSegment,
 		indicators:      indicatorSegments.render(),
 		relationMarker:  m.taskRelationMarker(row),
+		matchCue:        taskMatchSourceCue(row),
 	}
 
 	// Preserve a readable title before secondary metadata on narrow/deep rows.
 	// Queue membership, multi-select state, tree position, and workflow state
 	// remain; lower-priority badges are progressively removed as space tightens.
 	titleTarget := min(8, max(rowWidth/4, 4))
+	// The match cue goes first: it explains a result the title itself cannot
+	// show, which is worth nothing once that title is unreadable. It is also the
+	// only segment a row wears solely because a search is live, so shedding it
+	// leaves an ordinary row's degradation exactly as it was.
+	if segments.titleWidth(rowWidth) < titleTarget {
+		segments.matchCue = ""
+	}
 	if segments.titleWidth(rowWidth) < titleTarget {
 		segments.tagSegment = ""
 	}
@@ -806,14 +842,14 @@ func (m *OutlinerModel) renderTaskTitle(task *models.Task, titleStyle lipgloss.S
 	return HighlightText(title, positions, titleStyle)
 }
 
-func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, pinMarker, contextSegment, tagSegment, indicators, relationMarker string) int {
+func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, statusIcon, prioritySegment, pinMarker, contextSegment, tagSegment, indicators, relationMarker, matchCue string) int {
 	return lipgloss.Width(cursorPrefix) + lipgloss.Width(checkbox) +
 		lipgloss.Width(prefixStr) + lipgloss.Width(foldIndicator) +
 		lipgloss.Width(statusIcon) + 1 +
 		lipgloss.Width(prioritySegment) + lipgloss.Width(pinMarker) +
 		lipgloss.Width(contextSegment) +
 		lipgloss.Width(tagSegment) + lipgloss.Width(indicators) +
-		lipgloss.Width(relationMarker)
+		lipgloss.Width(relationMarker) + lipgloss.Width(matchCue)
 }
 
 // taskRowTint names the row-level background a task earns from its own state. It
