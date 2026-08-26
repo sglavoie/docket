@@ -4,7 +4,8 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "label": "open the picker", "key": "\\" },
-    { "type": "key", "label": "the saved rows are alphabetical below Save", "key": "j" },
+    { "type": "key", "label": "the saved rows are alphabetical below both action rows", "key": "j" },
+    { "type": "key", "key": "j" },
     { "type": "key", "label": "apply High Priority", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "Lens: High Priority" },

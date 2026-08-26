@@ -11,6 +11,7 @@
     { "type": "assert", "assert": "contains", "value": "Sort: created" },
 
     { "type": "key", "label": "a lens replaces the mode and the sort at once", "key": "\\" },
+    { "type": "key", "label": "two moves clear the Save and Add rows", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },
@@ -39,6 +40,7 @@
     { "type": "key", "key": "\\" },
     { "type": "assert", "assert": "contains", "value": "Named Lenses" },
     { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },

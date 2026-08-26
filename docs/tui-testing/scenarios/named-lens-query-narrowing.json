@@ -11,6 +11,7 @@
     { "type": "assert", "assert": "not_contains", "value": "Search:" },
 
     { "type": "key", "label": "apply a lens", "key": "\\" },
+    { "type": "key", "label": "two moves clear the Save and Add rows", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },

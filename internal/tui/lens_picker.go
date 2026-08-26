@@ -19,25 +19,36 @@ import (
 // from. It is a transient overlay rather than a routed view: it adds no
 // PresentationID, owns no navigation frame, and dies with the overlay stack.
 //
-// Two rules shape everything below. The Save row is not part of the filtered
-// population, so a query that matches no saved lens still leaves saving the
-// current view one Enter away; that is why this model filters the saved lenses
-// itself and hands the surface an already-narrowed item list instead of setting
-// the surface's own query. And every mutation goes back through the shared
-// registry/executor pipeline, so the picker itself never writes machine state:
-// Enter raises a request, the action sheet raises a request, and the nested
-// prompt and confirmation belong to the executor exactly as they do everywhere
-// else.
+// Two rules shape everything below. Neither action row — Save current view or
+// Add built-in view — is part of the filtered population, so a query that
+// matches no saved lens still leaves both acts one Enter away; that is why this
+// model filters the saved lenses itself and hands the surface an
+// already-narrowed item list instead of setting the surface's own query. And
+// every mutation goes back through the shared registry/executor pipeline, so the
+// picker itself never writes machine state: Enter raises a request, the action
+// sheet raises a request, and the nested prompt, gallery, and confirmation
+// belong to the executor exactly as they do everywhere else.
 
 const (
-	lensPickerItemPrefix              = "lens-picker:"
-	lensPickerCreateItemID ListItemID = lensPickerItemPrefix + "create"
-	lensPickerLensPrefix              = lensPickerItemPrefix + "lens:"
+	lensPickerItemPrefix                   = "lens-picker:"
+	lensPickerCreateItemID      ListItemID = lensPickerItemPrefix + "create"
+	lensPickerAddTemplateItemID ListItemID = lensPickerItemPrefix + "add-template"
+	lensPickerLensPrefix                   = lensPickerItemPrefix + "lens:"
 )
 
-// lensPickerCreateLabel is the first row on every opening of the picker,
-// including an empty one.
-const lensPickerCreateLabel = "Save current view…"
+// lensPickerCreateLabel and lensPickerAddTemplateLabel head every opening of the
+// picker, including an empty one, in this order: saving what is on screen is the
+// act the picker was opened from, and browsing the catalog is the fallback for a
+// workspace that has nothing worth saving yet.
+const (
+	lensPickerCreateLabel           = "Save current view…"
+	lensPickerAddTemplateLabel      = "Add built-in view…"
+	lensPickerAddTemplateSecondary  = "Browse ready-made views"
+	lensPickerCreateSpaceNotice     = "Press Enter to save the current view"
+	lensPickerAddTemplateSpaceHint  = "Press Enter to browse built-in views"
+	lensPickerCreateEnterLabel      = "save view"
+	lensPickerAddTemplateEnterLabel = "browse built-ins"
+)
 
 // namedLensActionSheetOperations is the Space menu over one saved lens: the
 // three management acts, in the order the product contract names them. Apply is
@@ -156,18 +167,14 @@ func sortedNamedLenses(lenses config.NamedLensList) config.NamedLensList {
 	return sorted
 }
 
-// items renders the Save row plus every saved lens the query admits. Filtering
-// happens here rather than on the surface so the Save row is exempt from it and
-// the saved rows keep their alphabetical order instead of a relevance order.
+// items renders both action rows plus every saved lens the query admits.
+// Filtering happens here rather than on the surface so the two action rows are
+// exempt from it and the saved rows keep their alphabetical order instead of a
+// relevance order.
 func (model *NamedLensPickerModel) items() []ListItem {
-	items := make([]ListItem, 0, len(model.sorted)+1)
-	items = append(items, ListItem{
-		ID:            lensPickerCreateItemID,
-		PrimaryText:   lensPickerCreateLabel,
-		Aliases:       []string{"save", "new lens", "create lens"},
-		SecondaryText: model.snapshot.CurrentSummary,
-		OperationIDs:  []OperationID{operationLensCreate},
-	})
+	actions := lensPickerActionRows(model.snapshot)
+	items := make([]ListItem, 0, len(model.sorted)+len(actions))
+	items = append(items, actions...)
 	listed := 0
 	for _, lens := range model.sorted {
 		if !namedLensMatchesQuery(lens, model.query) {
@@ -178,6 +185,30 @@ func (model *NamedLensPickerModel) items() []ListItem {
 	}
 	model.listed = listed
 	return items
+}
+
+// lensPickerActionRows is the query-exempt head of the list, in display order.
+// Both rows carry no Data, which is what CurrentLens reads to tell an action row
+// from a saved one; their identity travels as the stable ListItemID instead.
+func lensPickerActionRows(snapshot NamedLensPickerSnapshot) []ListItem {
+	return []ListItem{
+		{
+			ID:            lensPickerCreateItemID,
+			PrimaryText:   lensPickerCreateLabel,
+			Aliases:       []string{"save", "new lens", "create lens"},
+			SecondaryText: snapshot.CurrentSummary,
+			OperationIDs:  []OperationID{operationLensCreate},
+		},
+		{
+			ID:          lensPickerAddTemplateItemID,
+			PrimaryText: lensPickerAddTemplateLabel,
+			// The aliases are the words someone reaches for before they know what
+			// this product calls a lens, so the row answers to all three.
+			Aliases:       []string{"template", "preset", "built-in view"},
+			SecondaryText: lensPickerAddTemplateSecondary,
+			OperationIDs:  []OperationID{operationLensAddTemplate},
+		},
+	}
 }
 
 func namedLensPickerItem(lens config.NamedLens, snapshot NamedLensPickerSnapshot) ListItem {
@@ -243,6 +274,17 @@ func (model *NamedLensPickerModel) CurrentLens() (config.NamedLens, bool) {
 	}
 	lens, ok := item.Data.(config.NamedLens)
 	return lens, ok
+}
+
+// cursorIs reports whether one stable row owns the cursor. Only the two
+// query-exempt action rows are ever asked, since a saved lens is identified by
+// its record through CurrentLens instead.
+func (model *NamedLensPickerModel) cursorIs(id ListItemID) bool {
+	if model == nil || model.surface == nil {
+		return false
+	}
+	item, ok := model.surface.CurrentItem()
+	return ok && item.ID == id
 }
 
 // Notice returns the retained failure text, which stays on the picker so a
@@ -377,15 +419,17 @@ func (model *NamedLensPickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool
 	return nil, false, nil
 }
 
-// activateCursor is Enter: Save opens the name prompt through the executor's own
-// value step, and a lens row applies and closes.
+// activateCursor is Enter: Save opens the name prompt and Add built-in view
+// opens the gallery, both through the executor's own value step, and a lens row
+// applies and closes. Neither action row names a target, because the record each
+// one writes does not exist yet.
 func (model *NamedLensPickerModel) activateCursor() (tea.Cmd, bool, tea.Msg) {
 	item, ok := model.surface.CurrentItem()
 	if !ok {
 		return nil, false, nil
 	}
-	if item.ID == lensPickerCreateItemID {
-		result, dismissed := model.Execute(model.request(operationLensCreate, EntityIdentity{}))
+	if action, ok := lensPickerActionOperation(item.ID); ok {
+		result, dismissed := model.Execute(model.request(action, EntityIdentity{}))
 		return nil, dismissed, NamedLensPickerResultMsg{Result: result}
 	}
 	lens, ok := item.Data.(config.NamedLens)
@@ -397,6 +441,20 @@ func (model *NamedLensPickerModel) activateCursor() (tea.Cmd, bool, tea.Msg) {
 	return nil, dismissed, NamedLensPickerResultMsg{Result: result}
 }
 
+// lensPickerActionOperation maps one query-exempt row onto the operation Enter
+// dispatches from it. A saved-lens row answers false, which is what keeps the
+// two act rows and the population rows on separate dispatch paths.
+func lensPickerActionOperation(id ListItemID) (OperationID, bool) {
+	switch id {
+	case lensPickerCreateItemID:
+		return operationLensCreate, true
+	case lensPickerAddTemplateItemID:
+		return operationLensAddTemplate, true
+	default:
+		return "", false
+	}
+}
+
 // openActionsForCursor is Space: the management sheet nests above the picker
 // rather than replacing it, so canceling anything inside it lands back here.
 func (model *NamedLensPickerModel) openActionsForCursor() (tea.Cmd, bool, tea.Msg) {
@@ -406,9 +464,14 @@ func (model *NamedLensPickerModel) openActionsForCursor() (tea.Cmd, bool, tea.Ms
 	}
 	lens, ok := item.Data.(config.NamedLens)
 	if !ok {
-		// The Save row writes a record that does not exist yet, so it names no
-		// target and has nothing to rename, replace, or delete.
-		model.notice = "Press Enter to save the current view"
+		// Each action row writes a record that does not exist yet, so neither names
+		// a target and neither has anything to rename, replace, or delete. The
+		// notice names that row's own act rather than a shared refusal, so Space is
+		// still a hint about where Enter goes.
+		model.notice = lensPickerCreateSpaceNotice
+		if item.ID == lensPickerAddTemplateItemID {
+			model.notice = lensPickerAddTemplateSpaceHint
+		}
 		return nil, false, StatusMsg(model.notice)
 	}
 	model.notice = ""
@@ -478,13 +541,13 @@ func (model *NamedLensPickerModel) renderWithin(width, height int) string {
 	)
 }
 
-// stateLine names an empty population or a query that matched none of it. The
-// Save row is always listed, so the surface itself is never empty and cannot
+// stateLine names an empty population or a query that matched none of it. Both
+// action rows are always listed, so the surface itself is never empty and cannot
 // carry this copy on the list's behalf.
 func (model *NamedLensPickerModel) stateLine() string {
 	switch {
 	case len(model.sorted) == 0:
-		return "No saved lenses yet — Enter saves the current view."
+		return "No saved lenses yet — save this view or add a built-in."
 	case model.listed == 0:
 		return "No matching lenses — Esc clears the search."
 	default:
@@ -501,12 +564,16 @@ func (model *NamedLensPickerModel) guidanceSpec() (GuidanceSpec, bool) {
 		_, ok := model.CurrentLens()
 		return ok
 	}
+	// Browse-mode Enter is row-specific: the two action rows do different things
+	// and the footer would lie if it named only one of them.
 	enterLabel := "apply"
 	switch {
 	case searching:
 		enterLabel = "apply search"
-	case !onLens():
-		enterLabel = "save view"
+	case model.cursorIs(lensPickerCreateItemID):
+		enterLabel = lensPickerCreateEnterLabel
+	case model.cursorIs(lensPickerAddTemplateItemID):
+		enterLabel = lensPickerAddTemplateEnterLabel
 	}
 	escapeLabel := "close"
 	if searching {

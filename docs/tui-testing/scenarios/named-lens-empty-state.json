@@ -7,7 +7,8 @@
     { "type": "assert", "assert": "contains", "value": "Named Lenses" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "apply a lens", "key": "j" },
+    { "type": "key", "label": "apply a lens from below the two action rows", "key": "j" },
+    { "type": "key", "key": "j" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "Lens: High Priority" },

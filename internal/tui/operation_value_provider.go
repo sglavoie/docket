@@ -2225,7 +2225,10 @@ func (m *AppModel) resumeContextActionRequest(request OperationExecutionRequest)
 	if sheet == nil {
 		// The lens picker is the one surface an operation can be raised from
 		// without a sheet between, so it owns the resumed outcome the same way:
-		// a refusal stays on the list, and only completion tears it down.
+		// a refusal stays on the list, and only completion tears it down. Both of
+		// its value-taking action rows resume here — the name prompt behind Save
+		// and the template gallery behind Add built-in view — so a refused add is
+		// retained on the picker exactly as a refused save is.
 		if picker := m.lensPicker; picker != nil {
 			result, dismissed := picker.Execute(request)
 			if dismissed {

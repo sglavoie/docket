@@ -11,7 +11,8 @@
     { "type": "assert", "assert": "not_contains", "value": "Launch platform" },
 
     { "type": "key", "label": "the key is admitted on accepted results, not only in browse", "key": "\\" },
-    { "type": "key", "label": "and the sorted rows sit below the Save row as always", "key": "j" },
+    { "type": "key", "label": "and the sorted rows sit below both action rows as always", "key": "j" },
+    { "type": "key", "key": "j" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "Lens: High Priority" },

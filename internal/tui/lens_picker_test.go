@@ -135,15 +135,33 @@ func selectLensRow(t *testing.T, model *AppModel, name string) config.NamedLens 
 
 // --- population and ordering ------------------------------------------------
 
-func TestLensPickerListsSaveFirstThenLensesAlphabetically(t *testing.T) {
+func TestLensPickerListsBothActionRowsFirstThenLensesAlphabetically(t *testing.T) {
 	model := lensPickerApp(t)
 
-	want := []string{lensPickerCreateLabel, "High Priority", "Stale", "Waiting"}
+	want := []string{
+		lensPickerCreateLabel, lensPickerAddTemplateLabel,
+		"High Priority", "Stale", "Waiting",
+	}
 	if got := lensPickerRowTitles(t, model); !slices.Equal(got, want) {
 		t.Fatalf("picker rows = %v, want %v", got, want)
 	}
 	if got := lensPickerCursorTitle(t, model); got != lensPickerCreateLabel {
 		t.Errorf("opening cursor = %q, want the save row", got)
+	}
+	items := model.lensPicker.surface.Items()
+	if got := items[1].ID; got != lensPickerAddTemplateItemID {
+		t.Errorf("second row ID = %q, want %q", got, lensPickerAddTemplateItemID)
+	}
+	if got := items[1].SecondaryText; got != lensPickerAddTemplateSecondary {
+		t.Errorf("add row secondary = %q, want %q", got, lensPickerAddTemplateSecondary)
+	}
+	for _, alias := range []string{"template", "preset", "built-in view"} {
+		if !containsString(items[1].Aliases, alias) {
+			t.Errorf("add row aliases = %v, want %q among them", items[1].Aliases, alias)
+		}
+	}
+	if got := items[1].OperationIDs; len(got) != 1 || got[0] != operationLensAddTemplate {
+		t.Errorf("add row operations = %v, want just %q", got, operationLensAddTemplate)
 	}
 }
 
@@ -171,12 +189,14 @@ func TestLensPickerOpensOnTheActiveLensAndMarksIt(t *testing.T) {
 func TestLensPickerNavigationKeysMoveTheCursor(t *testing.T) {
 	model := lensPickerApp(t)
 
+	// One move down reaches the second action row, not the first saved lens:
+	// both fixed rows sit above the population.
 	pressLens(t, model, "j")
-	if got := lensPickerCursorTitle(t, model); got != "High Priority" {
+	if got := lensPickerCursorTitle(t, model); got != lensPickerAddTemplateLabel {
 		t.Fatalf("after j cursor = %q", got)
 	}
 	pressLens(t, model, "down")
-	if got := lensPickerCursorTitle(t, model); got != "Stale" {
+	if got := lensPickerCursorTitle(t, model); got != "High Priority" {
 		t.Fatalf("after down cursor = %q", got)
 	}
 	pressLens(t, model, "k", "up")
@@ -203,19 +223,20 @@ func TestLensPickerNavigationKeysMoveTheCursor(t *testing.T) {
 
 // --- search cascade ---------------------------------------------------------
 
-func TestLensPickerSearchNarrowsLensesAndKeepsSaveAvailable(t *testing.T) {
+func TestLensPickerSearchNarrowsLensesAndKeepsBothActionRowsAvailable(t *testing.T) {
 	model := lensPickerApp(t)
 
 	pressLens(t, model, "/")
 	typeLens(t, model, "stal")
-	want := []string{lensPickerCreateLabel, "Stale"}
+	want := []string{lensPickerCreateLabel, lensPickerAddTemplateLabel, "Stale"}
 	if got := lensPickerRowTitles(t, model); !slices.Equal(got, want) {
 		t.Fatalf("filtered rows = %v, want %v", got, want)
 	}
 
 	typeLens(t, model, "zzz")
-	if got := lensPickerRowTitles(t, model); !slices.Equal(got, []string{lensPickerCreateLabel}) {
-		t.Fatalf("no-match rows = %v, want the save row alone", got)
+	actions := []string{lensPickerCreateLabel, lensPickerAddTemplateLabel}
+	if got := lensPickerRowTitles(t, model); !slices.Equal(got, actions) {
+		t.Fatalf("no-match rows = %v, want the two action rows alone", got)
 	}
 	if state := model.lensPicker.stateLine(); !strings.Contains(state, "No matching lenses") {
 		t.Errorf("no-match state line = %q", state)
@@ -360,6 +381,210 @@ func TestLensPickerCreateFailureStaysOnThePickerWithTheReason(t *testing.T) {
 	}
 }
 
+// --- add built-in view ------------------------------------------------------
+
+// selectGalleryRow parks the gallery cursor on one template by its stable ID, so
+// a test names its target without depending on the alphabetical position it
+// happens to occupy.
+func selectGalleryRow(t *testing.T, model *AppModel, id string) {
+	t.Helper()
+	if model.operationValuePicker == nil {
+		t.Fatal("no gallery is mounted")
+	}
+	if !model.operationValuePicker.surface.SetCursorToID(lensTemplateItemID(id)) {
+		t.Fatalf("the gallery has no row for template %s", id)
+	}
+}
+
+// openAddTemplateGalleryFromPicker walks the real nesting: the main picker's
+// second action row raises the value step, and the gallery opens above it.
+func openAddTemplateGalleryFromPicker(t *testing.T, model *AppModel) {
+	t.Helper()
+	if !model.lensPicker.surface.SetCursorToID(lensPickerAddTemplateItemID) {
+		t.Fatal("the picker has no Add built-in view row")
+	}
+	pressLens(t, model, "enter")
+	if model.operationValuePicker == nil {
+		t.Fatal("Enter on the add row raised no gallery")
+	}
+	if model.lensPicker == nil {
+		t.Fatal("the main picker must stay mounted beneath the gallery")
+	}
+}
+
+func TestLensPickerEnterOnTheAddRowOpensTheGalleryOverThePicker(t *testing.T) {
+	model := lensPickerApp(t)
+
+	// One j from the opening cursor is the whole route to it.
+	pressLens(t, model, "j")
+	if got := lensPickerCursorTitle(t, model); got != lensPickerAddTemplateLabel {
+		t.Fatalf("cursor = %q, want the add row", got)
+	}
+	pressLens(t, model, "enter")
+
+	if model.operationValuePicker == nil {
+		t.Fatal("Enter on the add row raised no gallery")
+	}
+	if got := model.operationValuePicker.provider; got != ValueProviderLensTemplate {
+		t.Errorf("gallery provider = %q, want %q", got, ValueProviderLensTemplate)
+	}
+	if model.lensPicker == nil {
+		t.Error("the main picker must stay mounted beneath the gallery")
+	}
+	if model.contextActionSheet != nil {
+		t.Error("the add row opened a management sheet it names no target for")
+	}
+	if got := len(machineLenses(t, model)); got != len(config.StarterNamedLenses()) {
+		t.Errorf("opening the gallery wrote %d lenses", got)
+	}
+}
+
+func TestLensPickerAddTemplateCancelReturnsToTheMainPicker(t *testing.T) {
+	model := lensPickerApp(t)
+	openAddTemplateGalleryFromPicker(t, model)
+
+	pressLens(t, model, "esc")
+
+	if model.operationValuePicker != nil {
+		t.Error("Esc left the gallery mounted")
+	}
+	if model.lensPicker == nil {
+		t.Fatal("canceling the gallery closed the picker beneath it")
+	}
+	if got := lensPickerCursorTitle(t, model); got != lensPickerAddTemplateLabel {
+		t.Errorf("cursor = %q, want the row the gallery was opened from", got)
+	}
+	if got := len(machineLenses(t, model)); got != len(config.StarterNamedLenses()) {
+		t.Errorf("canceling wrote %d lenses", got)
+	}
+	if model.crossOutliner.hasActiveLens() {
+		t.Error("canceling the gallery applied a lens")
+	}
+	// The main picker is live again, so the same row still reaches the gallery.
+	pressLens(t, model, "enter")
+	if model.operationValuePicker == nil {
+		t.Fatal("reopening the gallery from the retained picker failed")
+	}
+}
+
+func TestLensPickerAddTemplateClosesEveryOverlayAndLeavesTheAddedLensActive(t *testing.T) {
+	model := lensPickerApp(t)
+	template := addableTemplate(t, model)
+	openAddTemplateGalleryFromPicker(t, model)
+	selectGalleryRow(t, model, template.ID)
+
+	pressLens(t, model, "enter")
+
+	if model.lensPicker != nil || model.contextActionSheet != nil ||
+		model.operationValuePicker != nil || model.operationTextPrompt != nil {
+		t.Error("adding a built-in view left a lens overlay mounted")
+	}
+	if model.Overlays().Active() {
+		t.Error("adding a built-in view left the overlay manager active")
+	}
+	saved := lensNamed(t, model, template.Name)
+	if saved.ID != template.ID {
+		t.Errorf("the added record has ID %s, want the catalog's %s", saved.ID, template.ID)
+	}
+	if !model.crossOutliner.hasActiveLens() ||
+		model.crossOutliner.activeLens.lensID != template.ID {
+		t.Error("the added built-in view is not the active lens")
+	}
+}
+
+func TestLensPickerAddTemplateFailureStaysOnThePickerWithTheReason(t *testing.T) {
+	model := lensPickerApp(t)
+	template := addableTemplate(t, model)
+	openAddTemplateGalleryFromPicker(t, model)
+	selectGalleryRow(t, model, template.ID)
+	// The gallery drew the row available; the machine changes underneath it, so
+	// only the commit-time recheck can refuse. That is the whole point of checking
+	// twice.
+	stranger := template.Clone()
+	stranger.ID = lensTemplateForeignID
+	setMachineLenses(t, model, append(machineLenses(t, model).Clone(), stranger))
+
+	pressLens(t, model, "enter")
+
+	if model.operationValuePicker != nil {
+		t.Error("a refused add left the gallery mounted")
+	}
+	if model.lensPicker == nil {
+		t.Fatal("a refused add closed the main picker")
+	}
+	if notice := model.lensPicker.Notice(); !strings.Contains(notice, "already exists") {
+		t.Errorf("picker notice = %q, want the duplicate-name reason", notice)
+	}
+	if got := lensNamed(t, model, template.Name); got.ID != lensTemplateForeignID {
+		t.Error("a refused add wrote the template record anyway")
+	}
+	if model.crossOutliner.hasActiveLens() {
+		t.Error("a refused add applied a lens")
+	}
+	// The reason is retained on the surface that raised it, so the same row is
+	// still one Enter away from a corrected retry.
+	pressLens(t, model, "enter")
+	if model.operationValuePicker == nil {
+		t.Fatal("retrying the add raised no gallery")
+	}
+}
+
+func TestLensPickerSpaceOnTheAddRowExplainsItself(t *testing.T) {
+	model := lensPickerApp(t)
+	pressLens(t, model, "j")
+
+	pressLens(t, model, "space")
+
+	if model.contextActionSheet != nil {
+		t.Error("the add row named a management target it does not have")
+	}
+	if model.lensPicker == nil {
+		t.Fatal("Space on the add row closed the picker")
+	}
+	if got := model.lensPicker.Notice(); got != lensPickerAddTemplateSpaceHint {
+		t.Errorf("add-row notice = %q, want %q", got, lensPickerAddTemplateSpaceHint)
+	}
+	// The Save row keeps its own wording rather than inheriting the neighbour's.
+	pressLens(t, model, "k", "space")
+	if got := model.lensPicker.Notice(); got != lensPickerCreateSpaceNotice {
+		t.Errorf("save-row notice = %q, want %q", got, lensPickerCreateSpaceNotice)
+	}
+}
+
+func TestLensPickerGuidanceNamesTheActUnderTheCursor(t *testing.T) {
+	model := lensPickerApp(t)
+	footerOf := func() string {
+		t.Helper()
+		guidance, _ := model.lensPicker.guidanceSpec()
+		return ansi.Strip(renderGuidanceText(guidance, 200))
+	}
+
+	if got := footerOf(); !strings.Contains(got, lensPickerCreateEnterLabel) {
+		t.Errorf("save-row guidance = %q, want %q", got, lensPickerCreateEnterLabel)
+	}
+	pressLens(t, model, "j")
+	if got := footerOf(); !strings.Contains(got, lensPickerAddTemplateEnterLabel) {
+		t.Errorf("add-row guidance = %q, want %q", got, lensPickerAddTemplateEnterLabel)
+	}
+	pressLens(t, model, "j")
+	got := footerOf()
+	if !strings.Contains(got, "apply") {
+		t.Errorf("lens-row guidance = %q, want apply", got)
+	}
+	if strings.Contains(got, lensPickerAddTemplateEnterLabel) {
+		t.Errorf("lens-row guidance = %q, still names the add row's act", got)
+	}
+	// Space is a management key only on a saved lens, so it is advertised there
+	// and nowhere else.
+	if !strings.Contains(got, "manage") {
+		t.Errorf("lens-row guidance = %q, want the management hint", got)
+	}
+	pressLens(t, model, "k", "k")
+	if got := footerOf(); strings.Contains(got, "manage") {
+		t.Errorf("save-row guidance = %q, advertises a sheet it cannot open", got)
+	}
+}
+
 // --- management sheet -------------------------------------------------------
 
 func TestLensPickerSpaceOpensManagementActionsOverThePicker(t *testing.T) {
@@ -436,7 +661,10 @@ func TestLensRenameReturnsToThePickerWithTheSameLensSelected(t *testing.T) {
 	if model.lensPicker == nil {
 		t.Fatal("a completed rename closed the picker")
 	}
-	want := []string{lensPickerCreateLabel, "Blocked", "High Priority", "Stale"}
+	want := []string{
+		lensPickerCreateLabel, lensPickerAddTemplateLabel,
+		"Blocked", "High Priority", "Stale",
+	}
 	if got := lensPickerRowTitles(t, model); !slices.Equal(got, want) {
 		t.Fatalf("rows after rename = %v, want %v", got, want)
 	}
@@ -566,7 +794,10 @@ func TestLensDeleteReturnsToTheNearestSurvivingRow(t *testing.T) {
 	if model.lensPicker == nil {
 		t.Fatal("a completed delete closed the picker")
 	}
-	want := []string{lensPickerCreateLabel, "High Priority", "Waiting"}
+	want := []string{
+		lensPickerCreateLabel, lensPickerAddTemplateLabel,
+		"High Priority", "Waiting",
+	}
 	if got := lensPickerRowTitles(t, model); !slices.Equal(got, want) {
 		t.Fatalf("rows after delete = %v, want %v", got, want)
 	}
@@ -663,6 +894,9 @@ func TestLensPickerRendersEmptyNoMatchAndOversizedRows(t *testing.T) {
 	}
 	if !strings.Contains(empty, "Save current view") {
 		t.Errorf("empty render dropped the save row:\n%s", empty)
+	}
+	if !strings.Contains(empty, "Add built-in view") {
+		t.Errorf("empty render dropped the add row:\n%s", empty)
 	}
 }
 

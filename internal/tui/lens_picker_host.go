@@ -98,8 +98,9 @@ func (m *AppModel) openNamedLensActions(msg NamedLensActionsRequestMsg) tea.Cmd 
 
 // applyNamedLensPickerResult applies one execution the picker raised itself.
 // A failure is already retained on the picker, a pending value or confirmation
-// opens above it, and a completion refreshes the list — except for Apply and
-// Create, whose whole point is the view behind the overlays.
+// opens above it, and a completion refreshes the list — except for Apply,
+// Create, and Add built-in view, whose whole point is the view behind the
+// overlays and which have already torn the stack down by the time this runs.
 func (m *AppModel) applyNamedLensPickerResult(msg NamedLensPickerResultMsg) tea.Cmd {
 	switch {
 	case msg.Result.Err != nil:
@@ -114,9 +115,12 @@ func (m *AppModel) applyNamedLensPickerResult(msg NamedLensPickerResultMsg) tea.
 	return operationResultCmd(msg.Result)
 }
 
-// closeNamedLensOverlays tears the whole lens stack down at once. Create is the
-// one action that finishes on the view rather than in the list, so it leaves
-// nothing above the newly active lens.
+// closeNamedLensOverlays tears the whole lens stack down at once. Create and Add
+// built-in view are the two actions that finish on the view rather than in the
+// list — each saves a record and immediately applies it — so both leave nothing
+// above the newly active lens. Their nested step differs (a name prompt versus
+// the template gallery) but the teardown does not, because clearing the value
+// step covers either one.
 func (m *AppModel) closeNamedLensOverlays() {
 	if m == nil {
 		return

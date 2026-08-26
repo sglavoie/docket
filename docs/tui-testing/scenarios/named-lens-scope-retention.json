@@ -11,6 +11,7 @@
     { "type": "assert", "assert": "contains", "value": "Client Beta · All" },
 
     { "type": "key", "label": "a lens applies inside the scope rather than replacing it", "key": "\\" },
+    { "type": "key", "label": "two moves clear the Save and Add rows", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },
