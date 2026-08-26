@@ -26,7 +26,7 @@ services and revision-checked storage boundaries.
   - [Sorting axis](#sorting-axis) — manual-order exemption, group order,
     fixed-order modes
   - [Named lenses](#named-lenses) — machine-local domain, commit before publish,
-    the single restoration point, lens query editing
+    the single restoration point, lens query editing, the built-in view catalog
   - [Selection and subordinate tools](#selection-and-subordinate-tools) —
     visual selection, Select Project, `Ctrl+T` axis
   - [Project tags](#project-tags) — the three axes, registries, park
@@ -1634,6 +1634,66 @@ the text prompt, value picker, action sheet, and lens picker first, and
 surface-local and unaffected. `resetToGlobalAll` calls
 `clearActiveLensWithoutRestore`, which is why definitions survive a restart and
 no active lens does.
+
+#### The built-in view catalog
+
+`config.BuiltinNamedLensTemplates()` is the frozen nine-template catalog and
+`config.StarterNamedLenses()` its first three; both are built from
+`builtinNamedLensDefinitions()` on every call, so detachment is by construction
+rather than by a `Clone` pass and an append can never reach a template the caller
+was not handed. Only the starters are seeded: `NewMachineState()` calls
+`StarterNamedLenses()`, and widening the catalog therefore widens what can be
+added rather than what a fresh machine already holds. A template's identity is
+its frozen UUID under the `6f1a0c4e-…` prefix, never its display order or its
+mutable name, and the catalog is returned in declaration order — the gallery, not
+`config`, sorts.
+
+Adding one is the ordinary operation `tui.lens.add-template`: Filter category,
+`OperationTargetGlobal` at `TargetCardinalityNone`, `CapabilityLensPicker`, and
+`ValueProviderLensTemplate` with no `Applicability`. It resolves no target, so it
+binds through `zeroTargetLensHandler` rather than through the single-target
+branch, and an unmapped zero-target descriptor fails registration loudly instead
+of silently asking for a cursor task. `resolveBuiltinLensTemplate` is the one
+value reader: it requires a `string`, matches it against the catalog by exact ID,
+and rejects a `config.NamedLens` payload as malformed, so the definition that is
+committed is always the catalog's own rather than whatever a stale row carried.
+
+`ValueProviderLensTemplate` is deliberately absent from `textEntry()`, which is
+what routes it to a picker; its case in `newOperationValuePicker` returns before
+`operationTaskRefs`, so the gallery opens with no entity under the cursor.
+`lensTemplateListSource` is the whole of it: alphabetical rows whose `Aliases`
+carry both the name and the `namedLensSummary`, so search finds a template by the
+facets it sets, and whose payload is the stable ID alone.
+`lensTemplateDisabledReason` asks the stable ID first and the case-insensitive
+name second — reusing `namedLensNameTaken` rather than minting a second
+uniqueness rule — so a renamed or replaced template stays unavailable while a
+same-name stranger under a foreign ID reports the weaker collision. A disabled
+row refuses through the shared seam: `selectedValue()` returns
+`ErrListItemDisabled` wrapping the reason and `handleKey` turns it into a
+`StatusMsg` without dismissing the overlay.
+
+Availability is decided twice on purpose: once against the snapshot the gallery
+renders and again inside `executeLensAddTemplateOperation` against the snapshot
+the commit sees, because the machine can move between the two. The handler keeps
+the section's commit-before-publish ordering — it requires the Outliner before it
+writes, commits the record, and only then calls `ApplyNamedLens` — so a refusal
+writes nothing and a failed commit applies nothing. Its refusals lead with the
+template name because the status strip is where they land alone; the gallery's
+row reasons sit under the name they describe and are worded from the template's
+side instead. Nothing here is a workspace entity, so the add records no undo
+entry either.
+
+The nesting needs no routing of its own. `lensPickerActionRows` builds both
+query-exempt rows and `lensPickerActionOperation` dispatches them, so a saved-lens
+row falls through to `operationLensApply` exactly as before; row identity travels
+as the stable `lens-picker:add-template` rather than as `Data`, which keeps
+`CurrentLens` the single "is this a saved lens" test. Overlay key precedence is
+`operationTextPrompt` → `operationValuePicker` → `contextActionSheet` →
+`lensPicker`, so the gallery owns every key while it is open, and
+`resumeContextActionRequest` already hands a resumed no-sheet request back to the
+lens picker: a completed add therefore closes both overlays, a refusal is retained
+on the main picker, and `OperationValueCanceledMsg` clears only the value step,
+which is what returns `Esc` to the picker beneath.
 
 ### Selection and subordinate tools
 

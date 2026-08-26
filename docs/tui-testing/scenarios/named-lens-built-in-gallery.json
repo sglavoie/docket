@@ -1,0 +1,56 @@
+{
+  "name": "named-lens-built-in-gallery",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open the named-lens picker", "key": "\\" },
+    { "type": "key", "label": "the second action row browses the catalog", "key": "down" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "label": "the gallery nests above the picker", "assert": "contains", "value": "Add Built-in View" },
+    { "type": "assert", "assert": "contains", "value": "Choose a lens template" },
+    { "type": "assert", "label": "the catalog is alphabetical and wider than the seeded set", "assert": "contains", "value": "Active Work" },
+    { "type": "assert", "assert": "contains", "value": "Overdue" },
+    { "type": "assert", "assert": "contains", "value": "Parked Work" },
+    { "type": "assert", "label": "the three automatic starters are already added, so they are disabled", "assert": "contains", "value": "Already added as" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "search the catalog by name", "key": "/" },
+    { "type": "text", "text": "overdue" },
+    { "type": "assert", "assert": "contains", "value": "Overdue" },
+    { "type": "assert", "label": "the search narrows the gallery to the match", "assert": "not_contains", "value": "Active Work" },
+    { "type": "assert", "assert": "not_contains", "value": "Parked Work" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "leave the search on the row it found", "key": "enter" },
+
+    { "type": "key", "label": "adding commits the record and applies it in one act", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Added built-in view: Overdue" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the added template is the live lens", "assert": "contains", "value": "Lens: Overdue" },
+    { "type": "assert", "label": "and both overlays closed behind it", "assert": "not_contains", "value": "Add Built-in View" },
+    { "type": "assert", "assert": "not_contains", "value": "Save current view" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "reopen the picker on the lens it installed", "key": "\\" },
+    { "type": "assert", "label": "the added template is an ordinary saved lens now", "assert": "contains", "value": "Overdue" },
+    { "type": "key", "label": "climb back to the action rows", "key": "home" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Add Built-in View" },
+    { "type": "assert", "label": "the template it added is unavailable under its stable ID", "assert": "contains", "value": "Already added as \"Overdue\"" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "the gallery still fits the narrowest supported terminal", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "Add Built-in View" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "width": 100, "height": 35 },
+
+    { "type": "key", "label": "Esc leaves the gallery for the picker that opened it", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Add Built-in View" },
+    { "type": "assert", "assert": "contains", "value": "Save current view" },
+    { "type": "key", "label": "and the next Esc closes the picker without changing the view", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "Lens: Overdue" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

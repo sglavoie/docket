@@ -542,11 +542,14 @@ Outliner projection: the mode, its own narrowing query, both filter families,
 and the sort axis. Applying one writes every axis it names at once, so a lens is
 a view you return to rather than a filter you rebuild.
 
+The list opens on two action rows — `Save current view` and, directly beneath
+it, `Add built-in view` — followed by every saved lens in alphabetical order.
+
 | Keys | Effect inside the picker |
 | --- | --- |
-| `Enter` | Apply the lens under the cursor, or, on the leading `Save current view` row, name and save what you are looking at |
-| `Space` | Open the management sheet for the lens under the cursor: Rename, Replace from current view, Delete |
-| `/` | Narrow the saved list by name; `Esc` clears the typed query, then leaves the search, then closes the picker |
+| `Enter` | Apply the lens under the cursor; on `Save current view`, name and save what you are looking at; on `Add built-in view`, open the built-in gallery |
+| `Space` | Open the management sheet for the lens under the cursor: Rename, Replace from current view, Delete. On either action row it says which key that row answers to instead |
+| `/` | Narrow the saved list by name; both action rows stay put while the saved rows filter. `Esc` clears the typed query, then leaves the search, then closes the picker |
 | `Esc` | Close the picker without changing the view |
 
 Applying, saving, renaming, replacing, and deleting are all machine-local
@@ -584,6 +587,40 @@ A workspace that has never saved a lens is seeded with three ordinary starters �
 `Waiting`, `High Priority`, and `Stale`. Nothing treats them as special: rename,
 replace, and delete reach them like any other record, and deleting every lens is
 durable rather than a request to reseed.
+
+Those three starters are the only ones seeded for you, but they are three of a
+catalog of nine. `Add built-in view` opens `Add Built-in View`, the gallery of
+all nine, in alphabetical order with the projection each one installs:
+
+| Built-in view | Projection |
+| --- | --- |
+| `Active Work` | All · states: doing · sort: priority ↑ |
+| `Cleanup 90d` | All · states: done,canceled · done: 90d · sort: updated ↑ |
+| `Deferred` | All · deferred · sort: updated ↑ |
+| `High Priority` | All · !1 · sort: priority ↑ |
+| `Overdue` | Due · due: overdue |
+| `Parked Work` | All · parked: only |
+| `Review Queue` | All · #review · sort: updated ↑ |
+| `Stale` | All · stale · sort: updated ↑ |
+| `Waiting` | All · states: waiting |
+
+`/` searches the gallery by name and by that projection, so `doing` finds
+`Active Work` and `canceled` finds `Cleanup 90d`. `Enter` adds the template
+under the cursor and applies it in one act: the record is written first, the
+view follows, both overlays close, and the strip reads
+`Added built-in view: <name>`. A write that fails leaves the gallery for the
+picker it opened over, keeps the reason on screen, and changes neither the saved
+list nor the view. `Esc` leaves the gallery for that picker too.
+
+What the gallery adds is an ordinary saved lens from that moment on: rename,
+replace, and delete reach it exactly as they reach a lens you saved yourself.
+Each template carries a stable identity of its own, and that identity — not its
+name — is what the gallery reads to decide whether you already have it. A
+template you added is greyed as `Already added as "<current name>"`, and stays
+greyed under whatever you have since renamed or replaced it with; a template
+whose name some unrelated lens of yours already answers to is greyed as
+`A lens named "<name>" already exists`. Deleting an added template hands it back
+to the gallery.
 
 Definitions live in machine-local state and survive a restart. No active lens
 does: every launch opens Active Projects, All, exactly as it would have without
@@ -1146,7 +1183,9 @@ Each task may also carry an optional `due_time`, a canonical `HH:MM` wall-clock
 in 00:00–23:59 that pairs with the calendar `due` date; midnight is reserved for
 date-only due dates, so a date-only task omits it.
 Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the
-dark/light theme choice and the saved named-lens definitions. An empty lens list
+dark/light theme choice and the saved named-lens definitions — the three seeded
+starters, anything you saved yourself, and anything you added from the built-in
+gallery, which are all one list. An empty lens list
 persists as `[]` and is honored, so deleting every lens is durable rather than a
 request to reseed the starters. No active lens is recorded there: a restart
 restores the definitions and nothing else.
