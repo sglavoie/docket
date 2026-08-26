@@ -45,6 +45,16 @@ type activeLensFrame struct {
 	// are recorded and inert, and this is what tells the explicit scope exit that
 	// it owes them a load before any unscoped row is shown.
 	projectFacetsAwaitingLoad bool
+
+	// loadedPopulationFingerprint names the project filter the live population was
+	// actually read under, which is the provenance an owed load has to be decided
+	// against. Equality between consecutive lens filters cannot decide it: a
+	// scoped application writes its filter without reading a population, so the
+	// next equivalent lens compares equal to a filter no population belongs to
+	// and would clear a debt nothing has paid. It is meaningful only while
+	// projectFacetsAwaitingLoad is set; a published population is its own
+	// provenance.
+	loadedPopulationFingerprint string
 }
 
 // pendingLensApplication is a lens whose project population is still loading.
@@ -133,7 +143,18 @@ func (m *OutlinerModel) lensProjectLoadRequired(state lensState) bool {
 		return false
 	}
 	candidate := state.projectFilter
-	return projectFilterFingerprint(&candidate) != projectFilterFingerprint(&m.projectFilter)
+	return projectFilterFingerprint(&candidate) != m.loadedPopulationFingerprint()
+}
+
+// loadedPopulationFingerprint names the project filter the live population was
+// read under. It is the live filter unless a lens is still owed a load, in which
+// case the live filter is one the population never answered to and the frame
+// holds the real provenance.
+func (m *OutlinerModel) loadedPopulationFingerprint() string {
+	if m.activeLens != nil && m.activeLens.projectFacetsAwaitingLoad {
+		return m.activeLens.loadedPopulationFingerprint
+	}
+	return projectFilterFingerprint(&m.projectFilter)
 }
 
 // beginLensProjectLoad starts a load against the candidate filter without
@@ -274,6 +295,9 @@ func (m *OutlinerModel) finishLensScopeExit(from string, projects []*models.Proj
 	m.crossSnapshotReady = true
 	if m.activeLens != nil {
 		m.activeLens.projectFacetsAwaitingLoad = false
+		// The population just read answers to the live filter, which is the one the
+		// exit loaded against, so the frame's provenance is that filter again.
+		m.activeLens.loadedPopulationFingerprint = projectFilterFingerprint(&m.projectFilter)
 	}
 	m.pruneSelectionsOutsideLoadedProjects()
 	if !m.clearProjectScope() {
@@ -300,10 +324,17 @@ func (m *OutlinerModel) publishLens(lens config.NamedLens, state lensState, proj
 	// Publishing without projects leaves the population exactly as it was, so
 	// project facets that select a different one are recorded and inert. That is
 	// what a scoped application does, and the frame below remembers it so the
-	// explicit scope exit can honor them.
+	// explicit scope exit can honor them. The comparison is against the filter
+	// the live population was actually read under, never against one a previous
+	// scoped application merely wrote: an equivalent lens replacing an owed one
+	// leaves that debt exactly where it was.
 	candidate := state.projectFilter
+	population := m.loadedPopulationFingerprint()
 	facetsAwaitingLoad := projects == nil &&
-		projectFilterFingerprint(&candidate) != projectFilterFingerprint(&m.projectFilter)
+		projectFilterFingerprint(&candidate) != population
+	if !facetsAwaitingLoad {
+		population = projectFilterFingerprint(&candidate)
+	}
 
 	// A lens replaces the projection, so an ordinary search projection cannot
 	// survive underneath it. The baseline above already holds search's own
@@ -323,11 +354,12 @@ func (m *OutlinerModel) publishLens(lens config.NamedLens, state lensState, proj
 	}
 
 	m.activeLens = &activeLensFrame{
-		lensID:                    lens.ID,
-		name:                      lens.Name,
-		savedFingerprint:          state.fingerprint(),
-		origin:                    origin,
-		projectFacetsAwaitingLoad: facetsAwaitingLoad,
+		lensID:                      lens.ID,
+		name:                        lens.Name,
+		savedFingerprint:            state.fingerprint(),
+		origin:                      origin,
+		projectFacetsAwaitingLoad:   facetsAwaitingLoad,
+		loadedPopulationFingerprint: population,
 	}
 	m.crossForceRebuild = true
 	m.rebuildRows()
