@@ -1541,6 +1541,10 @@ func (m *AppModel) newOperationValuePicker(
 		// A project tag edit resolves a project, not a task, so it must open from
 		// a project header where no task ref exists.
 		return m.newProjectTagsPicker(request)
+	case ValueProviderLensTemplate:
+		// The built-in view catalog is global, so the gallery opens from the lens
+		// picker where there is no task under the cursor at all.
+		return m.newLensTemplatePicker(request)
 	default:
 	}
 	refs, err := m.operationTaskRefs(request.Context)

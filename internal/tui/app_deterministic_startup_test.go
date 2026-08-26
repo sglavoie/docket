@@ -80,8 +80,11 @@ func TestLaunchResetsEveryPresentationAxisAndRelaunchPreservesOnlyTheme(t *testi
 }
 
 // deterministicStartupLensID is the one saved lens this test writes beside the
-// three starters. It is fixed so the reloaded process names the same record.
-const deterministicStartupLensID = "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c09"
+// three starters. It is fixed so the reloaded process names the same record, and
+// it deliberately sits outside the frozen `6f1a0c4e-…` built-in catalog prefix:
+// a saved record wearing a template's stable ID would read as that template
+// already added, which is a different claim than the one this test makes.
+const deterministicStartupLensID = "4b7d2c19-8e35-4f60-9a11-7c2e5d840b3f"
 
 // assertPersistedLensDefinitions is the other half of the launch contract: the
 // saved records survive, and nothing about the frame the user left does.
