@@ -1965,7 +1965,11 @@ tail clamp, because only it knows how many rows the header left:
 does through the same helper. A page is the budget less both continuation rows,
 so consecutive pages overlap by one line rather than drifting apart. A note
 whose `ParseError` is set renders that reason as a warning and never as
-Markdown, since only its filename is reliable.
+Markdown, since only its filename is reliable. That warning is not a body, so
+paging is gated on `notesPreviewPageable` rather than on `notesPreviewVisible`:
+the pane can be on screen with nothing a page could move, and the narrower
+predicate is what the keys, the `?` help row, and the footer hint all read, so
+an unparsed note advertises no control and cannot have its offset written.
 
 ## Persistence layout
 

@@ -1029,8 +1029,8 @@ alone. A note with no body says so, and a note whose frontmatter failed to parse
 shows the reason as a warning rather than a rendering of text nothing can
 trust. `Ctrl+F` and `Ctrl+B` page that body with a row of overlap, and exact
 `↑`/`↓` counts name what is above and below; both presses work while you are
-still typing a search, and are offered only when the pane is actually on
-screen. A search that matched the body opens the pane around its first match
+still typing a search, and are offered only where they would move something,
+never on an unparsed note's warning and never when the pane is off screen. A search that matched the body opens the pane around its first match
 with one line of context above it, under the same case reading the result list
 used; a title-only match, no query at all, and a match the rendered text cannot
 be located in all open at the top. The pane is reading only: it follows the

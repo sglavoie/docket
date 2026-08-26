@@ -63,15 +63,16 @@ func (m *NotesViewModel) ContextualGuidance() (GuidanceSpec, bool) {
 	return spec, true
 }
 
-// previewPagingGuidance advertises Ctrl+F/B only when the shared geometry says a
-// preview pane is on screen and the cursor is on a note it can draw. It is never
-// required and ranks below every key in the keymap, so it is the first hint a
-// narrow footer sheds and it can never displace search apply/cancel or the Esc
-// recovery those states owe the reader. The keymap entry stays unranked because
-// the footer may only rank keys the Notes strategy binds; this is the same gate,
-// spelled where a conditional hint belongs.
+// previewPagingGuidance advertises Ctrl+F/B only where the press would actually
+// move something: the pane is on screen and the note under the cursor draws a
+// scrollable body rather than a parse warning. It is never required and ranks
+// below every key in the keymap, so it is the first hint a narrow footer sheds
+// and it can never displace search apply/cancel or the Esc recovery those states
+// owe the reader. The keymap entry stays unranked because the footer may only
+// rank keys the Notes strategy binds; this is the same gate, spelled where a
+// conditional hint belongs.
 func (m *NotesViewModel) previewPagingGuidance(priority int) []GuidanceHint {
-	if !m.notesPreviewVisible() {
+	if !m.notesPreviewPageable() {
 		return nil
 	}
 	return optionalGuidanceHints(priority, "Ctrl+F/B preview")

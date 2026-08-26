@@ -135,7 +135,7 @@ A preview pane splits through `listSurfacePreviewGeometry` and paints through
 `renderListSurfacePreview`, never a per-surface copy of either. The render owns
 the tail clamp; `Ctrl+F`/`Ctrl+B` page it, never `Ctrl+D`/`Ctrl+U`, which stay
 the list cursor's, and they are claimed ahead of a search input and advertised
-only where the pane exists. Select Project's header is a name, one meta line,
+only where a body can page. Select Project's header is a name, one meta line,
 and a description capped at `listSurfacePreviewBodyLines`, declares no `Fields`,
 and paints the project's tasks with `renderOutlinerTaskRow` from the
 tally-retained tree over a cache `rebuildProjectSurface` invalidates.

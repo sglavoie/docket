@@ -490,6 +490,121 @@ func TestNotesPreviewPagingRefusesWhereNoPaneExists(t *testing.T) {
 	}
 }
 
+// TestNotesPreviewPagingGuidanceRejectsParseErrors covers the state the pane's
+// geometry admits but its body cannot honor: a note whose frontmatter failed to
+// parse draws a fixed warning, so Ctrl+F/B would move nothing and neither the
+// footer, `?` help, nor the paging state may pretend otherwise. The pageable
+// predicate is what separates it from mere pane visibility, so the same fixture
+// asserts a parseable neighbor keeps both controls.
+func TestNotesPreviewPagingGuidanceRejectsParseErrors(t *testing.T) {
+	view := notesPreviewFixture(t, &models.Note{
+		Title: "Long note", Filename: "long.md", Body: longNoteBody(60),
+		ModifiedAt: time.Unix(2_000, 0), RawRevision: "rev-long",
+	}, &models.Note{
+		Filename: "broken.md", ParseError: "yaml: line 2: bad mapping",
+		ModifiedAt: time.Unix(1_000, 0), RawRevision: "rev-broken",
+	})
+	view.SetSize(100, 24)
+
+	advertises := func(t *testing.T, state string) bool {
+		t.Helper()
+		spec, ok := view.ContextualGuidance()
+		if !ok {
+			t.Fatalf("Notes guidance is unavailable during %s", state)
+		}
+		return strings.Contains(guidanceEntryText(spec), "Ctrl+F/B preview")
+	}
+	helpAdvertises := func() bool {
+		for _, item := range view.GetHelpItems() {
+			if item.Key == "Ctrl+F/B" {
+				return true
+			}
+		}
+		return false
+	}
+	// searchEdit runs one assertion inside a live search draft, since the two
+	// guidance specs are built by separate branches and only one of them is
+	// reachable at a time.
+	searchEdit := func(t *testing.T, state string, assert func(t *testing.T, state string)) {
+		t.Helper()
+		_, _ = view.Update(syntheticKey('/'))
+		if !view.searchEditing {
+			t.Fatalf("/ did not open the search draft for %s", state)
+		}
+		assert(t, state)
+		_, _ = view.Update(syntheticSpecialKey(tea.KeyEsc))
+	}
+
+	// The parseable neighbor is the control: both routes advertise the keys.
+	notesScreen(t, view)
+	if !advertises(t, "browse on a parseable note") {
+		t.Fatal("browse guidance omitted the paging hint on a pageable note")
+	}
+	if !helpAdvertises() {
+		t.Fatal("Notes help omitted preview paging on a pageable note")
+	}
+	searchEdit(t, "search editing on a parseable note", func(t *testing.T, state string) {
+		if !advertises(t, state) {
+			t.Fatalf("%s omitted the paging hint", state)
+		}
+	})
+
+	view.cursor = 1
+	if view.visibleRows[view.cursor].Note.Filename != "broken.md" {
+		t.Fatalf("cursor row = %q, want broken.md", view.visibleRows[view.cursor].Note.Filename)
+	}
+	notesScreen(t, view)
+	if view.notesPreviewPageable() {
+		t.Fatal("a parse-error row reported a pageable preview")
+	}
+	if !view.notesPreviewVisible() {
+		t.Fatal("a parse-error row draws a pane, so visibility must stay true and only pageability change")
+	}
+	if advertises(t, "browse on a parse-error note") {
+		t.Fatal("browse guidance advertised paging a warning that cannot scroll")
+	}
+	if helpAdvertises() {
+		t.Fatal("Notes help advertised paging a warning that cannot scroll")
+	}
+	searchEdit(t, "search editing on a parse-error note", func(t *testing.T, state string) {
+		if advertises(t, state) {
+			t.Fatalf("%s advertised paging a warning that cannot scroll", state)
+		}
+		_, _ = view.Update(tea.KeyPressMsg{Code: 'f', Mod: tea.ModCtrl})
+		if view.preview.offset != 0 || view.preview.pageSize != 0 {
+			t.Fatalf("Ctrl+F during %s mutated paging state: %#v", state, view.preview)
+		}
+		if view.searchInput.Value() != "" {
+			t.Fatalf("a refused paging key reached the text input during %s: %q", state, view.searchInput.Value())
+		}
+	})
+
+	// Browse presses are refused the same way, and the render leaves the warning
+	// at the top with no page to spend.
+	for _, code := range []rune{'f', 'b'} {
+		_, _ = view.Update(tea.KeyPressMsg{Code: code, Mod: tea.ModCtrl})
+		notesScreen(t, view)
+		if view.preview.offset != 0 || view.preview.pageSize != 0 || len(view.preview.lines) != 0 {
+			t.Fatalf("Ctrl+%c on a parse-error row mutated paging state: %#v", code, view.preview)
+		}
+	}
+
+	// Returning to the parseable note restores both controls and a working page.
+	view.cursor = 0
+	notesScreen(t, view)
+	if !advertises(t, "browse back on the parseable note") {
+		t.Fatal("browse guidance did not restore the paging hint")
+	}
+	if !helpAdvertises() {
+		t.Fatal("Notes help did not restore preview paging")
+	}
+	_, _ = view.Update(tea.KeyPressMsg{Code: 'f', Mod: tea.ModCtrl})
+	notesScreen(t, view)
+	if view.preview.offset == 0 {
+		t.Fatal("Ctrl+F on the restored pageable note did not page")
+	}
+}
+
 func TestNotesPreviewPagingIsAdvertisedOnlyWhereItIsActionable(t *testing.T) {
 	view := notesPreviewFixture(t, &models.Note{
 		Title: "Long note", Filename: "long.md", Body: longNoteBody(60),

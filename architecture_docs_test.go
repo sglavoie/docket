@@ -165,6 +165,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 			"`renderListContinuation` it needs",
 		"consecutive pages overlap by one line rather than drifting apart",
 		"renders that reason as a warning and never as Markdown",
+		"paging is gated on `notesPreviewPageable` rather than on `notesPreviewVisible`",
 		"## Persistence layout",
 		"workspace.json",
 		"planning.json",

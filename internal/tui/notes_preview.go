@@ -233,10 +233,10 @@ func (m *NotesViewModel) notesPreviewBodyMatched(row *LocatedNoteRow) bool {
 	return m.searchMatches[row.Identity()].bodyMatched
 }
 
-// notesPreviewVisible gates the Ctrl+F/B keys and their footer hint on the pane
-// actually being on screen. It is deliberately not a "has more than one page"
-// test: the pane's height is settled during the render this footer is part of,
-// so a page count here would be one frame stale.
+// notesPreviewVisible answers whether the pane is on screen at all: the shared
+// geometry leaves room for it and the cursor is on a note it can draw. It is the
+// pane-existence authority alone; what may be paged is notesPreviewPageable's
+// question, since a drawn pane is not necessarily a scrollable one.
 func (m *NotesViewModel) notesPreviewVisible() bool {
 	if _, previewWidth := m.notesPreviewGeometry(m.Width()); previewWidth <= 0 {
 		return false
@@ -244,12 +244,28 @@ func (m *NotesViewModel) notesPreviewVisible() bool {
 	return m.notesPreviewRow() != nil
 }
 
+// notesPreviewPageable is the paging predicate, and it is deliberately narrower
+// than notesPreviewVisible: a pane can be on screen and still have nothing a
+// page could move. A parse-error note draws a fixed warning instead of a body —
+// the render zeroes its offset and leaves it no page size — so Ctrl+F/B is a
+// no-op there and must not be offered or allowed to write paging state. It stays
+// a body-content test rather than a page-count test for the reason
+// notesPreviewVisible gives: the pane's height is settled during the render this
+// gate is part of, so a count here would be one frame stale.
+func (m *NotesViewModel) notesPreviewPageable() bool {
+	if !m.notesPreviewVisible() {
+		return false
+	}
+	row := m.notesPreviewRow()
+	return row != nil && row.Note.ParseError == ""
+}
+
 // pageNotesPreview moves the pane a full page, vim's Ctrl+F and Ctrl+B. Only the
 // lower bound is applied here: the upper one needs the pane's row capacity,
 // which the render pass owns, so an offset past the tail is corrected there
 // rather than guessed at from a stale page size.
 func (m *NotesViewModel) pageNotesPreview(direction int) {
-	if direction == 0 || !m.notesPreviewVisible() {
+	if direction == 0 || !m.notesPreviewPageable() {
 		return
 	}
 	m.preview.offset = max(m.preview.offset+direction*max(m.preview.pageSize, 1), 0)

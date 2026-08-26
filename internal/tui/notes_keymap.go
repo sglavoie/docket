@@ -24,10 +24,11 @@ func (m *NotesViewModel) buildKeyMap() *keymap.KeyMap {
 		// advertise keys the strategy binds, and the preview pane is a rendering of
 		// the row the cursor is already on rather than an operation over it. The
 		// row is spelled as the whole path, like gg/Home below, so one entry names
-		// both presses; Ctrl+B binds the same act and stays hidden. The gate follows
-		// the pane, so a narrow terminal documents neither press.
+		// both presses; Ctrl+B binds the same act and stays hidden. The gate is the
+		// paging predicate, not mere pane visibility, so a narrow terminal and a
+		// parse-error note each document neither press.
 		keymap.Bind("ctrl+f", "Page note preview", "Navigation",
-			keymap.WithGate(m.notesPreviewVisible), keymap.WithHelpKey("Ctrl+F/B")),
+			keymap.WithGate(m.notesPreviewPageable), keymap.WithHelpKey("Ctrl+F/B")),
 		keymap.Bind("ctrl+b", "Page note preview up", "Navigation", keymap.AsHidden()),
 
 		// The manager reaches both ends through the strategy's core bindings, whose
