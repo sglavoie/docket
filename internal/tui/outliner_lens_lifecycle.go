@@ -46,6 +46,12 @@ type pendingLensApplication struct {
 	generation int
 	lens       config.NamedLens
 	state      lensState
+
+	// origin is the restoration point frozen when the load started, not when it
+	// landed. An asynchronous application owes Esc the view the user actually
+	// left, so navigating, searching, or filtering while the projects read must
+	// not rewrite the baseline the application is going to install.
+	origin outlinerViewSnapshot
 }
 
 // lensProjectsLoadedMsg carries the result of a load started for one lens
@@ -84,7 +90,7 @@ func (m *OutlinerModel) ApplyNamedLens(lens config.NamedLens) (tea.Cmd, error) {
 	if m.lensProjectLoadRequired(state) {
 		return m.beginLensProjectLoad(lens, state), nil
 	}
-	m.publishLens(lens, state, nil)
+	m.publishLens(lens, state, nil, m.lensRestorationPoint())
 	return nil, nil
 }
 
@@ -120,12 +126,18 @@ func (m *OutlinerModel) lensProjectLoadRequired(state lensState) bool {
 // abandon: a later reload, a later lens, or a restoration all supersede it, and
 // a superseded result publishes nothing.
 func (m *OutlinerModel) beginLensProjectLoad(lens config.NamedLens, state lensState) tea.Cmd {
+	// The baseline is frozen here, before a byte is read: the restoration point
+	// belongs to the view the application replaced, and nothing the user does
+	// while the load runs may move it.
+	origin := m.lensRestorationPoint()
+	m.discardPendingLensApplication()
 	m.crossLoadGen++
 	m.crossLoading = true
 	m.pendingLens = &pendingLensApplication{
 		generation: m.crossLoadGen,
 		lens:       lens,
 		state:      state,
+		origin:     origin,
 	}
 	if m.activeLens != nil {
 		m.activeLens.pendingGeneration = m.pendingLens.generation
@@ -155,22 +167,22 @@ func (m *OutlinerModel) beginLensProjectLoad(lens config.NamedLens, state lensSt
 // snapshot it caches has actually been replaced.
 func (m *OutlinerModel) handleLensProjectsLoaded(msg lensProjectsLoadedMsg) (tea.Cmd, bool) {
 	pending := m.pendingLens
-	if pending == nil || msg.generation != pending.generation || msg.generation != m.crossLoadGen {
-		// Stale or superseded. Nothing was published, so there is nothing to undo
-		// and the view the user is looking at is already the right one.
+	if pending == nil || msg.generation != pending.generation {
+		// The result belongs to an application that is no longer the pending one,
+		// so whatever is pending now owns the loading state and must keep it.
+		// Nothing was published, and the view the user is looking at is already
+		// the right one.
 		return nil, false
 	}
-	if m.activeLens != nil && m.activeLens.pendingGeneration != msg.generation {
-		// A switch whose frame no longer awaits this generation was replaced or
-		// dismissed while the load ran; its result publishes nothing.
+	if msg.generation != m.crossLoadGen || (m.activeLens != nil && m.activeLens.pendingGeneration != msg.generation) {
+		// This application was superseded or dismissed while its load ran. It
+		// publishes nothing, but it is still the one holding the loading state, so
+		// settle that here rather than leaving the model armed for a result that
+		// has already arrived.
+		m.settlePendingLensApplication()
 		return nil, false
 	}
-	m.pendingLens = nil
-	m.crossLoading = false
-	m.crossSpinnerVisible = false
-	if m.activeLens != nil {
-		m.activeLens.pendingGeneration = 0
-	}
+	m.settlePendingLensApplication()
 
 	if len(msg.projects) == 0 && len(msg.failedLoads) > 0 {
 		// Every project the lens asked for failed to read. Publishing here would
@@ -180,7 +192,7 @@ func (m *OutlinerModel) handleLensProjectsLoaded(msg lensProjectsLoadedMsg) (tea
 		return func() tea.Msg { return ErrorMsg{Err: errors.New(detail)} }, false
 	}
 
-	m.publishLens(pending.lens, pending.state, msg.projects)
+	m.publishLens(pending.lens, pending.state, msg.projects, pending.origin)
 	if len(msg.failedLoads) == 0 {
 		return nil, true
 	}
@@ -196,9 +208,14 @@ func (m *OutlinerModel) handleLensProjectsLoaded(msg lensProjectsLoadedMsg) (tea
 }
 
 // publishLens is the only place a lens becomes live. Nil projects mean the
-// population is unchanged and the snapshot in hand stands.
-func (m *OutlinerModel) publishLens(lens config.NamedLens, state lensState, projects []*models.Project) {
-	origin := m.lensRestorationPoint()
+// population is unchanged and the snapshot in hand stands. The origin is
+// supplied rather than captured here: an asynchronous application froze its
+// baseline before its I/O started, and this must install that one.
+func (m *OutlinerModel) publishLens(lens config.NamedLens, state lensState, projects []*models.Project, origin outlinerViewSnapshot) {
+	// A lens that publishes without I/O supersedes one that is still loading. The
+	// pending application can never publish behind it, so it is settled here; the
+	// asynchronous path already cleared itself before calling in.
+	m.discardPendingLensApplication()
 	anchor := m.captureModeCursor()
 
 	// A lens replaces the projection, so an ordinary search projection cannot
@@ -261,8 +278,18 @@ func (m *OutlinerModel) discardPendingLensApplication() {
 	if m == nil || m.pendingLens == nil {
 		return
 	}
-	m.pendingLens = nil
 	m.crossLoadGen++
+	m.settlePendingLensApplication()
+}
+
+// settlePendingLensApplication clears the state one application armed without
+// bumping the generation. It is what a result that has already come back needs:
+// there is nothing left in flight to invalidate, only loading state to put down.
+func (m *OutlinerModel) settlePendingLensApplication() {
+	if m == nil || m.pendingLens == nil {
+		return
+	}
+	m.pendingLens = nil
 	m.crossLoading = false
 	m.crossSpinnerVisible = false
 	if m.activeLens != nil {

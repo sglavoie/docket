@@ -520,6 +520,115 @@ func TestLensProjectLoadPublishesPartialResultWithWarning(t *testing.T) {
 	}
 }
 
+// TestLensProjectLoadCapturesBaselineBeforeIO pins the restoration point to the
+// moment the application started rather than the moment its projects landed.
+// Everything the user does while the load runs is a view they are passing
+// through, not the view the lens replaced.
+func TestLensProjectLoadCapturesBaselineBeforeIO(t *testing.T) {
+	outliner := lensLifecycleOutliner()
+	outliner.selectOutlinerMode(ModeInbox)
+	outliner.collapsedSections["baseline-fold"] = true
+	baselineProjects := slices.Clone(outliner.loadedProjects)
+
+	lens := waitingLens(lensTestID(1), "Parked", "")
+	lens.Projects.ParkedMode = config.LensPopulationOnly
+	if cmd := applyLensOrFatal(t, outliner, lens); cmd == nil {
+		t.Fatal("a project-population change must start a load")
+	}
+	if got := outliner.pendingLens.origin.presentation.mode; got != ModeInbox {
+		t.Fatalf("frozen baseline mode = %v, want %v", got, ModeInbox)
+	}
+
+	// The user keeps navigating and searching while the projects read. None of it
+	// may rewrite the baseline the application already froze.
+	outliner.selectOutlinerMode(ModeBacklog)
+	delete(outliner.collapsedSections, "baseline-fold")
+	outliner.SetSearchQuery("needle")
+
+	if _, published := outliner.handleLensProjectsLoaded(lensProjectsLoadedMsg{
+		projects: []*models.Project{
+			primaryRowsProject("gamma", primaryRowsTask("gamma-task", models.StateWaiting)),
+		},
+		generation: outliner.pendingLens.generation,
+	}); !published {
+		t.Fatal("the matching generation did not publish")
+	}
+
+	if !RunEscCascade(outliner.escSteps()) {
+		t.Fatal("expected the Esc cascade to consume the active lens")
+	}
+	if outliner.hasActiveLens() {
+		t.Fatal("Esc left the lens active")
+	}
+	if outliner.primaryMode != ModeInbox {
+		t.Fatalf("restored mode = %v, want the pre-load %v", outliner.primaryMode, ModeInbox)
+	}
+	if !outliner.collapsedSections["baseline-fold"] {
+		t.Fatal("restoration lost the fold the baseline held before the load")
+	}
+	if outliner.hasSearchProjection() {
+		t.Fatal("restoration installed a search projection the frozen baseline never held")
+	}
+	if !slices.Equal(outliner.loadedProjects, baselineProjects) {
+		t.Fatal("restoration did not return the pre-load population")
+	}
+}
+
+// TestLensProjectLoadSupersededBySynchronousLensClearsPendingState covers the
+// one supersession that changes nothing about the generation counter: a lens
+// that needs no I/O publishes immediately, and the application still loading
+// behind it must be settled rather than left holding the loading state.
+func TestLensProjectLoadSupersededBySynchronousLensClearsPendingState(t *testing.T) {
+	outliner := lensLifecycleOutliner()
+	outliner.selectOutlinerMode(ModeInbox)
+	baselineProjects := slices.Clone(outliner.loadedProjects)
+
+	async := waitingLens(lensTestID(1), "Parked", "")
+	async.Projects.ParkedMode = config.LensPopulationOnly
+	if cmd := applyLensOrFatal(t, outliner, async); cmd == nil {
+		t.Fatal("a project-population change must start a load")
+	}
+	stale := outliner.pendingLens.generation
+	// The 200ms delay has elapsed, so the spinner is on screen when the
+	// synchronous lens supersedes the load.
+	outliner.crossSpinnerVisible = true
+
+	if cmd := applyLensOrFatal(t, outliner, waitingLens(lensTestID(2), "Waiting", "")); cmd != nil {
+		t.Fatal("an unchanged population must not start a load")
+	}
+	if outliner.pendingLens != nil {
+		t.Fatal("a synchronous lens left an application pending")
+	}
+	if outliner.crossLoading || outliner.crossSpinnerVisible {
+		t.Fatal("a synchronous lens left the loading state armed")
+	}
+	if outliner.activeLens.pendingGeneration != 0 {
+		t.Fatal("the published frame still awaits a superseded generation")
+	}
+
+	if _, published := outliner.handleLensProjectsLoaded(lensProjectsLoadedMsg{
+		projects: []*models.Project{primaryRowsProject("gamma")}, generation: stale,
+	}); published {
+		t.Fatal("the superseded request published")
+	}
+	if outliner.activeLens == nil || outliner.activeLens.name != "Waiting" {
+		t.Fatal("the late result replaced the lens that superseded it")
+	}
+	if outliner.pendingLens != nil || outliner.crossLoading || outliner.crossSpinnerVisible {
+		t.Fatal("the late result left pending or loading state armed")
+	}
+
+	if !RunEscCascade(outliner.escSteps()) {
+		t.Fatal("expected the Esc cascade to consume the active lens")
+	}
+	if outliner.primaryMode != ModeInbox {
+		t.Fatalf("restored mode = %v, want the pre-lens %v", outliner.primaryMode, ModeInbox)
+	}
+	if !slices.Equal(outliner.loadedProjects, baselineProjects) {
+		t.Fatal("a superseded load leaked its population into the restored view")
+	}
+}
+
 func TestRestoringTheBaselineDiscardsAnUnpublishedApplication(t *testing.T) {
 	outliner := lensLifecycleOutliner()
 	applyLensOrFatal(t, outliner, waitingLens(lensTestID(1), "Waiting", ""))

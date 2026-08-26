@@ -43,7 +43,7 @@ func TestLaunchResetsEveryPresentationAxisAndRelaunchPreservesOnlyTheme(t *testi
 	saved := config.StarterNamedLenses()[0]
 	saved.ID = deterministicStartupLensID
 	saved.Name = "Persisted Lens"
-	outliner.publishLens(saved, outliner.captureLensState(), nil)
+	outliner.publishLens(saved, outliner.captureLensState(), nil, outliner.lensRestorationPoint())
 	if !outliner.hasActiveLens() {
 		t.Fatal("seeding failed to install an active lens")
 	}

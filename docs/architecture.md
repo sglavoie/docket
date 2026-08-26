@@ -1579,7 +1579,14 @@ before it writes a single axis, so a refusal is indistinguishable from never
 having asked. When the lens changes which projects load, `beginLensProjectLoad`
 carries the candidate filter with the load instead of writing it to the model and
 bumps a generation counter; `handleLensProjectsLoaded` publishes only when its
-own generation comes back, so a superseded load installs nothing. Under a
+own generation comes back, so a superseded load installs nothing. That start is
+also where the restoration point is frozen: the pending application carries the
+baseline captured before the read, so navigating, searching, or filtering while
+the projects load cannot rewrite the view one `Esc` later returns to. Anything
+that supersedes the application settles it rather than leaving it armed — a
+synchronous lens, an ordinary reload, a cancelled refresh, and a restoration all
+clear `pendingLens`, the loading flag, and the spinner, so a late result finds
+nothing to publish into and leaves no half-armed chrome behind. Under a
 single-project scope no load is required at all: the scope already fixed the
 population, and the lens's project facets stay recorded but inert until it is
 left. A lens therefore never writes scope.

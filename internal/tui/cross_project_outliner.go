@@ -62,6 +62,11 @@ func (m *OutlinerModel) startCrossProjectLoad() tea.Cmd {
 	if !m.hasCrossProjectSnapshot() {
 		m.crossSpinner = NewSpinner()
 	}
+	// An ordinary reload reads the live project filter, which is not the candidate
+	// filter a pending lens application is waiting on. That application can never
+	// publish behind this load, so it is abandoned here rather than left to have
+	// its result arrive against a model that has moved on.
+	m.discardPendingLensApplication()
 	m.crossLoading = true
 	m.crossLoadGen++
 	return tea.Batch(
@@ -536,6 +541,9 @@ func (m *OutlinerModel) cancelCrossProjectLoad() {
 	if m == nil || m.project != nil {
 		return
 	}
+	// An abandoned refresh takes any pending lens application with it: both are
+	// waiting on the same in-flight read.
+	m.discardPendingLensApplication()
 	if m.crossLoading {
 		m.crossLoadGen++
 	}
