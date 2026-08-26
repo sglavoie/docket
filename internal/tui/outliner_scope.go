@@ -162,6 +162,50 @@ func (m *OutlinerModel) settleParkedFocusException(projectID string) {
 	}
 }
 
+// projectFacetsAdmitProject reports whether the live project facets select the
+// project on their own. It is the choice selectCrossScopeProjects makes minus
+// the focus exception a load also carries, which is what lets a caller tell a
+// project the facets asked for from one only the focus request appended.
+func (m *OutlinerModel) projectFacetsAdmitProject(projectID string) bool {
+	if m == nil || m.runtime == nil || projectID == "" {
+		return false
+	}
+	if !hasActiveProjectFilters(&m.projectFilter) {
+		// No facet is active, so the load selected the base task workspace.
+		return m.baseWorkspaceAdmitsProject(projectID)
+	}
+	return projectFilterAdmits(m.runtime.GetProject(projectID), m.projectFilter)
+}
+
+// settleParkedFocusAgainstPopulation retires the parked-focus exception against
+// a population the project facets themselves just selected, and returns the
+// population that survives it. The exception exists to hold a focused project
+// inside a snapshot the base workspace would not admit; a population read under
+// the live project filter answers that question itself, so the project stays
+// exactly when those facets admit it and is dropped only when the focus request
+// alone appended it. Shedding it the way leaving a focus does would delete a
+// project the facets explicitly selected and arm a corrective reload, and no
+// handler on this route ever claims one.
+func (m *OutlinerModel) settleParkedFocusAgainstPopulation(projects []*models.Project) []*models.Project {
+	focused := m.parkedFocusProjectID
+	m.pendingParkedFocusID = ""
+	m.parkedFocusProjectID = ""
+	// The population in hand was read under the live filter, so it already is
+	// whatever an owed reload would have gone back for.
+	m.parkedFocusReloadPending = false
+	if focused == "" || m.projectFacetsAdmitProject(focused) {
+		return projects
+	}
+	retained := make([]*models.Project, 0, len(projects))
+	for _, project := range projects {
+		if project != nil && project.ID == focused {
+			continue
+		}
+		retained = append(retained, project)
+	}
+	return retained
+}
+
 // dropParkedProjectFocus sheds an explicitly focused parked project from the
 // live snapshot. Removing it here rather than waiting for the reload is what
 // keeps the return to base free of a visible parked task tree, and it lets the

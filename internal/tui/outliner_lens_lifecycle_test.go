@@ -412,6 +412,163 @@ func TestScopedEquivalentLensSwitchRetainsDeferredPopulationLoad(t *testing.T) {
 	}
 }
 
+// parkedFocusLensApp builds an AppModel whose Outliner holds a two-project base
+// workspace plus one parked project the base workspace never admits, then adopts
+// that parked project as an explicit focus exactly as the lazy focus load does:
+// the scope is pushed by the load result and the exception that keeps the
+// project in the snapshot is recorded there. It returns the app, its Outliner,
+// and the population a later load under a parked-admitting filter returns.
+func parkedFocusLensApp(t *testing.T) (*AppModel, *OutlinerModel, []*models.Project) {
+	t.Helper()
+	alpha := primaryRowsProject("alpha", primaryRowsTask("alpha-waiting", models.StateWaiting))
+	beta := primaryRowsProject("beta", primaryRowsTask("beta-waiting", models.StateWaiting))
+	parked := primaryRowsProject("parked", primaryRowsTask("parked-waiting", models.StateWaiting))
+	parked.Tags = []string{models.ParkedProjectTag}
+
+	app := lensOperationApp(t)
+	outliner := scopeTestOutliner(alpha, beta, parked)
+	// The base task workspace holds no parked project; only the focus below
+	// admits it.
+	outliner.loadedProjects = []*models.Project{alpha, beta}
+	outliner.crossForceRebuild = true
+	outliner.crossProjectRebuildRows()
+	app.crossOutliner = outliner
+	outliner.SetSize(app.width, app.height-2)
+	app.views.Register(ViewCrossProjectOutliner, outliner)
+
+	everything := []*models.Project{alpha, beta, parked}
+	outliner.beginParkedProjectFocus(parked.ID)
+	outliner.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
+		projects:       everything,
+		generation:     outliner.crossLoadGen,
+		focusProjectID: parked.ID,
+	})
+	if outliner.scopedProjectID != parked.ID || outliner.parkedFocusProjectID != parked.ID {
+		t.Fatalf("parked focus did not settle: scope=%q exception=%q",
+			outliner.scopedProjectID, outliner.parkedFocusProjectID)
+	}
+	return app, outliner, everything
+}
+
+// TestParkedScopedLensExitKeepsSelectedPopulation pins the deferred exit from a
+// parked-project scope. The exit's load and the navigation return are batched,
+// and a batch has no result order, so the exit has to settle the same way
+// whichever arrives first. The parked-focus exception belongs to the base
+// workspace the scope replaced, never to the population the lens's own project
+// facets just selected: a lens that admits the parked project must keep it, one
+// that does not must shed it, and neither may leave a corrective reload armed
+// that nothing on this route ever claims.
+func TestParkedScopedLensExitKeepsSelectedPopulation(t *testing.T) {
+	orderings := []struct {
+		name    string
+		settle  func(app *AppModel, result lensProjectsLoadedMsg)
+		loading bool
+	}{
+		{
+			name: "navigation return first",
+			settle: func(app *AppModel, result lensProjectsLoadedMsg) {
+				app.Update(ViewDidAppearMsg{})
+				app.Update(result)
+			},
+		},
+		{
+			name: "lens load first",
+			settle: func(app *AppModel, result lensProjectsLoadedMsg) {
+				app.Update(result)
+				app.Update(ViewDidAppearMsg{})
+			},
+			// The return finds the exit already settled, so it starts the ordinary
+			// eager reload it always does on becoming visible.
+			loading: true,
+		},
+	}
+
+	for _, ordering := range orderings {
+		t.Run(ordering.name, func(t *testing.T) {
+			app, outliner, everything := parkedFocusLensApp(t)
+
+			lens := waitingLens(lensTestID(1), "Waiting", "")
+			lens.Projects.ParkedMode = config.LensPopulationInclude
+			applyLensOrFatal(t, outliner, lens)
+			if outliner.pendingLens != nil {
+				t.Fatal("a scoped application must record its facets without loading")
+			}
+			frame := outliner.activeLens
+			if !frame.projectFacetsAwaitingLoad {
+				t.Fatal("the scoped application recorded no owed population load")
+			}
+
+			if handled, cmd := app.applyProjectScope(ApplyProjectScopeMsg{Clear: true}); !handled || cmd == nil {
+				t.Fatal("clearing a parked scope under a project-filtering lens started no population load")
+			}
+			if outliner.pendingLens == nil {
+				t.Fatal("the exit armed no pending application")
+			}
+			ordering.settle(app, lensProjectsLoadedMsg{
+				projects:   everything,
+				generation: outliner.pendingLens.generation,
+			})
+
+			if outliner.isProjectScoped() {
+				t.Fatal("the settled exit left the scope in place")
+			}
+			if ids := loadedProjectIDs(outliner); !slices.Equal(ids, []string{"alpha", "beta", "parked"}) {
+				t.Fatalf("population = %v, want every project the lens facets select", ids)
+			}
+			if ids := taskRowProjectIDs(outliner); !slices.Contains(ids, "parked") {
+				t.Fatalf("rows = %v, want the parked project the lens admits", ids)
+			}
+			if outliner.parkedFocusReloadPending {
+				t.Fatal("the exit armed a corrective reload no handler on this route claims")
+			}
+			if outliner.parkedFocusProjectID != "" {
+				t.Fatal("a project the facets select is population, not a focus exception")
+			}
+			if outliner.crossLoading != ordering.loading {
+				t.Fatalf("crossLoading = %t, want %t", outliner.crossLoading, ordering.loading)
+			}
+			if !outliner.hasActiveLens() || outliner.activeLens != frame {
+				t.Fatal("the exit disturbed the active lens")
+			}
+			if outliner.activeLens.projectFacetsAwaitingLoad {
+				t.Fatal("the landed exit left the population still owed")
+			}
+		})
+	}
+}
+
+// TestParkedScopedLensExitShedsAProjectItsFacetsReject is the other half of the
+// same settlement: the exit's load carries the focus request, so the population
+// it returns holds the parked project whether or not the facets asked for it.
+// One the facets reject leaves with the scope, and still owes no reload.
+func TestParkedScopedLensExitShedsAProjectItsFacetsReject(t *testing.T) {
+	app, outliner, everything := parkedFocusLensApp(t)
+
+	lens := waitingLens(lensTestID(2), "Untagged", "")
+	// Untagged alone is an active project facet that admits alpha and beta and
+	// rejects the parked project, which carries the parked tag.
+	lens.Projects.Untagged = true
+	applyLensOrFatal(t, outliner, lens)
+
+	if handled, cmd := app.applyProjectScope(ApplyProjectScopeMsg{Clear: true}); !handled || cmd == nil {
+		t.Fatal("clearing a parked scope under a project-filtering lens started no population load")
+	}
+	app.Update(lensProjectsLoadedMsg{
+		projects:   everything,
+		generation: outliner.pendingLens.generation,
+	})
+
+	if outliner.isProjectScoped() {
+		t.Fatal("the settled exit left the scope in place")
+	}
+	if ids := loadedProjectIDs(outliner); !slices.Equal(ids, []string{"alpha", "beta"}) {
+		t.Fatalf("population = %v, want the projects the lens facets select", ids)
+	}
+	if outliner.parkedFocusReloadPending {
+		t.Fatal("shedding a rejected project armed a reload the population already answered")
+	}
+}
+
 func TestSwitchingLensesRetainsTheOriginalBaseline(t *testing.T) {
 	outliner := lensLifecycleOutliner()
 	outliner.selectOutlinerMode(ModeInbox)

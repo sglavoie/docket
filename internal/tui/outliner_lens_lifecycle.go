@@ -291,6 +291,13 @@ func (m *OutlinerModel) finishLensScopeExit(from string, projects []*models.Proj
 		// and the exit is left to whichever scope the user is in now.
 		return false
 	}
+	// A parked focus is an exception to the base workspace, and this population is
+	// not that workspace: it was read under the lens's own project filter. Settling
+	// the exception here is what keeps the scope drop below from shedding a parked
+	// project the facets selected, and what leaves nothing owed either way — the
+	// step that made this route's correctness depend on which of the exit's two
+	// messages the runtime happened to deliver first.
+	projects = m.settleParkedFocusAgainstPopulation(projects)
 	m.loadedProjects = projects
 	m.crossSnapshotReady = true
 	if m.activeLens != nil {
