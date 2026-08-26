@@ -1,0 +1,31 @@
+{
+  "name": "named-lens-apply-starters",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open the picker", "key": "\\" },
+    { "type": "key", "label": "the saved rows are alphabetical below Save", "key": "j" },
+    { "type": "key", "label": "apply High Priority", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Lens: High Priority" },
+    { "type": "assert", "label": "the picker closed onto the view it installed", "assert": "not_contains", "value": "Save current view" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "switch straight to Stale", "key": "\\" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Lens: Stale" },
+    { "type": "assert", "assert": "not_contains", "value": "Lens: High Priority" },
+    { "type": "key", "label": "switch straight to Waiting", "key": "\\" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Lens: Waiting" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "one Esc leaves the whole chain, not the lens before it", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Lens:" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

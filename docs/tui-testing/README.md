@@ -139,7 +139,7 @@ y Y Ctrl+Y                       clipboard
 v V Ctrl+A Space                 selection and actions
 Enter Shift+Enter Ctrl+Enter     Focus, widen focus, and Peek
 x                                tick the checklist item under the cursor
-P Ctrl+N T / ? u Ctrl+R Esc Ctrl+C   global
+P \ Ctrl+N T / ? u Ctrl+R Esc Ctrl+C  global
 f!0-3 f$ fc f# fr f@ fh fs fx    filters
 F# Fp FP Fa FA Fx                project population filters
 o@ o! oc ou ot ox                sort axis
@@ -218,6 +218,7 @@ The committed suite exercises the product contracts directly:
 | Outline editing refusing both structural sigils as competing parentage channels | `outline-editor-guard.json` |
 | Full-width cursor-following Peek | `outliner-peek-wide-layout.json`, `outliner-peek-narrow-layout.json` |
 | Search projection and exact restoration | `visible-search-minimum-layout.json`, `search-restoration.json` |
+| Named lenses: the `\` picker, the three starters, save/rename/replace/delete, lens-query narrowing, exact Escape restoration, retained scope, and the literal backslash inside text input | `named-lens-picker-open.json`, `named-lens-apply-starters.json`, `named-lens-save-and-manage.json`, `named-lens-query-narrowing.json`, `named-lens-escape-restoration.json`, `named-lens-scope-retention.json`, `named-lens-from-search-results.json`, `named-lens-empty-state.json`, `named-lens-literal-backslash.json` |
 | Toggle and range selection with bulk intersection | `outliner-toggle-selection.json`, `outliner-range-selection.json`, `outliner-multiselect-*.json`, `outliner-bulk-action-intersection.json` |
 | Project header cursor, folding, and task-key refusal | `outliner-project-header-fold.json`, `outliner-project-header-rejects-task-keys.json` |
 | Project tags on the shared `#` key, with parked confirm and recovery | `project-tags-picker.json`, `project-park-confirm-and-recover.json` |

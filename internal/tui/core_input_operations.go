@@ -60,6 +60,7 @@ const (
 	operationCoreMultiSelect        OperationID = "tui.core.multi-select"
 	operationCoreRangeSelect        OperationID = "tui.core.range-select"
 	operationCoreSelectAll          OperationID = "tui.core.select-all"
+	operationCoreNamedLenses        OperationID = "tui.core.named-lenses"
 	operationCoreNotes              OperationID = "tui.core.notes"
 	operationCoreToggleTheme        OperationID = "tui.core.toggle-theme"
 	operationCoreUndo               OperationID = "tui.core.undo"
@@ -264,6 +265,19 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreMultiSelect, "Toggle Task Selection", OperationCategoryTask, TargetCardinalityNone, OperationRiskReadOnly, "visual selection"),
 		core(operationCoreRangeSelect, "Select Task Range", OperationCategoryTask, TargetCardinalityNone, OperationRiskReadOnly, "contiguous selection", "range selection"),
 		core(operationCoreSelectAll, "Select All Visible Tasks", OperationCategoryTask, TargetCardinalityNone, OperationRiskReadOnly, "select visible"),
+		// A lens is a saved projection over the mode, query, filter, and sort axes,
+		// so the key that opens the list groups with the facets that decide the same
+		// axes rather than with a surface of its own.
+		core(
+			operationCoreNamedLenses,
+			"Named Lenses",
+			OperationCategoryFilter,
+			TargetCardinalityNone,
+			OperationRiskReadOnly,
+			"lenses",
+			"saved views",
+			"save current view",
+		),
 		core(operationCoreNotes, "Notes", OperationCategoryNote, TargetCardinalityNone, OperationRiskReadOnly, "scratch notes"),
 		core(operationCoreToggleTheme, "Toggle Theme", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "dark theme", "light theme"),
 		core(operationCoreUndo, "Undo", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation),
@@ -581,6 +595,10 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 			out.selectAllVisible()
 			out.updateVisualSelectionStatus()
 		}
+	case operationCoreNamedLenses:
+		// The picker is a shell overlay rather than a route, so opening it mounts
+		// the model here and returns whatever command that mount raised.
+		message = commandMessage(m.openNamedLensPicker())
 	case operationCoreNotes:
 		message = ShowNotesManagerMsg{Scope: m.coreNotesScope()}
 	case operationCoreToggleTheme:

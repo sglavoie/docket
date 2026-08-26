@@ -1,0 +1,31 @@
+{
+  "name": "named-lens-picker-open",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "label": "the Outliner opens without a lens", "assert": "not_contains", "value": "Lens:" },
+    { "type": "key", "label": "open the named-lens picker", "key": "\\" },
+    { "type": "assert", "assert": "contains", "value": "Named Lenses" },
+    { "type": "assert", "label": "saving the current view leads the list", "assert": "contains", "value": "Save current view" },
+    { "type": "assert", "label": "the three starter lenses are seeded", "assert": "contains", "value": "Waiting" },
+    { "type": "assert", "assert": "contains", "value": "High Priority" },
+    { "type": "assert", "assert": "contains", "value": "Stale" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "the picker still fits the narrowest supported terminal", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "Named Lenses" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "the Save row names no target, so Space explains itself", "key": " " },
+    { "type": "assert", "assert": "contains", "value": "Press Enter to save the current view" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "on a real lens the same key opens the management sheet", "key": "down" },
+    { "type": "key", "key": " " },
+    { "type": "assert", "assert": "contains", "value": "Rename" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "leave the sheet", "key": "esc" },
+    { "type": "resize", "width": 100, "height": 35 },
+    { "type": "key", "label": "close the picker", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Named Lenses" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

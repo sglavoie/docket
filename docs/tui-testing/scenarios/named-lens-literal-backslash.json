@@ -1,0 +1,48 @@
+{
+  "name": "named-lens-literal-backslash",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "label": "the key spends no room in the compact footer", "assert": "not_contains", "value": "\\ lenses" },
+    { "type": "key", "label": "it is taught where the rest of the grammar is taught", "key": "?" },
+    { "type": "key", "label": "the reference keeps its own meaning for the key", "key": "\\" },
+    { "type": "assert", "label": "so the picker does not open over Help", "assert": "not_contains", "value": "Save current view" },
+    { "type": "assert", "assert": "view", "value": "Help" },
+    { "type": "key", "label": "filter the reference down to it", "key": "/" },
+    { "type": "text", "text": "lens" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Named Lenses" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "drop the filter", "key": "esc" },
+    { "type": "key", "label": "close the reference", "key": "?" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+
+    { "type": "key", "label": "capture owns the keyboard while it is open", "key": "a" },
+    { "type": "text", "text": "Escape C:\\path in a title" },
+    { "type": "assert", "label": "the backslash is a literal character, not a picker", "assert": "contains", "value": "C:\\path in a title" },
+    { "type": "assert", "assert": "not_contains", "value": "Save current view" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+    { "type": "key", "label": "discard the draft", "key": "y" },
+
+    { "type": "key", "label": "so does search", "key": "/" },
+    { "type": "text", "text": "a\\b" },
+    { "type": "assert", "assert": "contains", "value": "a\\b" },
+    { "type": "assert", "assert": "not_contains", "value": "Named Lenses" },
+    { "type": "key", "key": "esc" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "move onto a task row", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "and so does an inline edit", "key": "e" },
+    { "type": "text", "text": " \\raw" },
+    { "type": "assert", "assert": "contains", "value": "\\raw" },
+    { "type": "assert", "assert": "not_contains", "value": "Named Lenses" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "on a browsing row the same key opens the list", "key": "\\" },
+    { "type": "assert", "assert": "contains", "value": "Named Lenses" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

@@ -18,6 +18,7 @@ const (
 	outlinerEmptyProjectFiltered
 	outlinerEmptySearch
 	outlinerEmptySearchInvalid
+	outlinerEmptyLens
 	outlinerEmptyFocus
 	outlinerEmptySection
 )
@@ -50,6 +51,15 @@ func (m *OutlinerModel) ContextualGuidance() (GuidanceSpec, bool) {
 			hints = append(hints, optionalGuidanceHints(10, quickEditGrammarGuidance()...)...)
 		}
 		return GuidanceSpec{Hints: hints, Rows: 2}, true
+	case m.editingLensQuery():
+		// The shared input is holding the lens's narrowing query, not an ordinary
+		// search: Enter keeps what was typed and Esc puts back the query the edit
+		// opened on, neither of which is what the search wording promises.
+		return GuidanceSpec{
+			Hints: append(requiredGuidanceHints("Enter narrow lens", "Esc cancel edit"),
+				optionalGuidanceHints(10, "lens query narrows this lens only")...),
+			Rows: 2,
+		}, true
 	case m.IsSearchMode() && m.searchAutocomplete.active():
 		// Only while the pane is open: an Esc here closes suggestions rather than
 		// the search, and saying so is the whole point of the swap.
@@ -76,6 +86,16 @@ func (m *OutlinerModel) ContextualGuidance() (GuidanceSpec, bool) {
 		return GuidanceSpec{
 			Hints: append(requiredGuidanceHints("Esc clear search"),
 				optionalGuidanceHints(10, "/ edit search", "a capture", "P projects", "? help")...),
+			Rows: 1,
+		}, true
+	case m.hasActiveLens():
+		// One press leaves the whole saved projection, so it is the required hint
+		// here exactly as clearing search is above. `/` is named beside it because
+		// under a lens that key edits the lens's narrowing query rather than
+		// opening a scope-wide search, which nothing else on screen says.
+		return GuidanceSpec{
+			Hints: append(requiredGuidanceHints("Esc restore lens"),
+				optionalGuidanceHints(10, `/ lens query`, `\ lenses`, "a capture", "? help")...),
 			Rows: 1,
 		}, true
 	case m.cursorNamesHeader():
@@ -210,6 +230,8 @@ func (m *OutlinerModel) emptyGuidance() GuidanceSpec {
 		required = "Fx clear project filters"
 	case outlinerEmptySearch, outlinerEmptySearchInvalid:
 		required = "Esc clear search"
+	case outlinerEmptyLens:
+		required = "Esc restore lens"
 	case outlinerEmptyFocus, outlinerEmptySection:
 		required = "Esc return"
 	default:
@@ -235,6 +257,13 @@ func (m *OutlinerModel) classifyEmptyCause() outlinerEmptyCause {
 			return outlinerEmptyProjectFiltered
 		}
 		return outlinerEmptyNoProjects
+	}
+	// A lens owns the mode, both filter families, the sort, and its narrowing
+	// query all at once, so naming any one of them would send the user to a key
+	// that cannot widen the list. It outranks zoom and focus for the same reason
+	// the Esc cascade unwinds it first.
+	if m.hasActiveLens() {
+		return outlinerEmptyLens
 	}
 	// A zoom outranks the filter and focus causes below it: whatever else
 	// narrowed the list, Esc is the press that widens it back, and naming a

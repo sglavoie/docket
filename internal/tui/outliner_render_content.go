@@ -237,6 +237,8 @@ func (m *OutlinerModel) outlinerEmptyMessage() string {
 		return fmt.Sprintf("No tasks match search %q. Press Esc to clear.", m.SearchQuery())
 	case outlinerEmptySearchInvalid:
 		return fmt.Sprintf("%s. Press Esc to clear.", m.searchGate.guidanceText())
+	case outlinerEmptyLens:
+		return "No tasks match this lens. Press Esc to restore the view it replaced."
 	case outlinerEmptyFiltered:
 		return EmptyStateFiltered
 	case outlinerEmptyFocus:

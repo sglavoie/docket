@@ -25,6 +25,8 @@ services and revision-checked storage boundaries.
     populations, `H`/`M`/`L` and `zt`/`zz`/`zb`, Focus and `Esc`, Peek budget
   - [Sorting axis](#sorting-axis) — manual-order exemption, group order,
     fixed-order modes
+  - [Named lenses](#named-lenses) — machine-local domain, commit before publish,
+    the single restoration point, lens query editing
   - [Selection and subordinate tools](#selection-and-subordinate-tools) —
     visual selection, Select Project, `Ctrl+T` axis
   - [Project tags](#project-tags) — the three axes, registries, park
@@ -1552,6 +1554,63 @@ Inbox, or Backlog. The descriptors stay applicable in those modes on purpose: an
 inapplicable terminal collapses the whole `o` prefix to `ChordNoMatch`, which
 would falsely report `od is not a sort action`.
 
+### Named lenses
+
+A named lens is one durable Outliner projection — mode, its own narrowing query,
+both filter families, and the sort axis — persisted as `config.NamedLens` in the
+machine domain beside the theme. `captureLensState` reads `m.lensQuery` and not
+`SearchQuery()`, which is the same ruling `publishLens` enforces from the other
+side: an ordinary search projection cannot survive underneath a lens, so
+`clearSearchProjectionWithoutRestore` drops it and the baseline hands it back on
+the way out. Nothing about it is synced and nothing about it
+is a workspace entity, which decides the rest of the design: a lens mutation
+opens no workspace transaction, its binding carries `DelegateTransaction`, and
+because no transaction is recorded `OperationHistory` drops the entry, so `u`
+never takes a lens back. `commitNamedLensMutation` clones the machine snapshot,
+mutates the clone, validates it, and only then commits, so an invalid list is
+never the one in hand.
+
+Ordering is the other half of the contract: a TUI effect is published only after
+the commit returns nil. `ApplyNamedLens` decides every refusal — a malformed
+definition, an unknown mode, a query the grammar recognizes and cannot honor —
+before it writes a single axis, so a refusal is indistinguishable from never
+having asked. When the lens changes which projects load, `beginLensProjectLoad`
+carries the candidate filter with the load instead of writing it to the model and
+bumps a generation counter; `handleLensProjectsLoaded` publishes only when its
+own generation comes back, so a superseded load installs nothing. Under a
+single-project scope no load is required at all: the scope already fixed the
+population, and the lens's project facets stay recorded but inert until it is
+left. A lens therefore never writes scope.
+
+`activeLensFrame` is the one live lens; there is never a stack. It holds the
+installed definition, the fingerprint the modified marker compares the live view
+against, and the single restoration point `Esc` returns to. `lensRestorationPoint`
+reuses the original capture whenever a lens is already live, so switching lenses
+replaces the definition while keeping the baseline: one `Esc` lands on the view
+the user actually left rather than on an intermediate lens. The Esc cascade
+unwinds the lens after search and before the focus stack, and
+`classifyEmptyCause` orders the empty state the same way — a lens owns the mode,
+both filter families, the sort, and its narrowing query at once, so naming any
+one of them would send the user to a key that cannot widen the list.
+
+Under an active lens `/` calls `beginLensQueryEdit` and the shared search input
+holds the lens's narrowing query instead of a scope-wide search: `Enter` commits
+it, `Esc` restores `lensQueryEditOrigin`, and `buildOutlinerSearchIndicator`
+reads the lens compilation rather than the search one for its badges, because
+those are the rows on screen.
+
+`\` reaches the picker through the ordinary core operation
+`tui.core.named-lenses`, bound directly in `SimplifiedInputStrategy` with no
+`FooterRank`: `?` teaches it and the compact footer stays as quiet as it is
+today. It is admitted from browse and from accepted ordinary-search results, and
+it never fires while a text control owns input — `handleGlobalKeyPress` routes
+the text prompt, value picker, action sheet, and lens picker first, and
+`handleSimplifiedInputKey` declines under `simplifiedInlineControlOwnsInput`, so
+`\` stays a literal character everywhere text is being typed. Help's own `\` is
+surface-local and unaffected. `resetToGlobalAll` calls
+`clearActiveLensWithoutRestore`, which is why definitions survive a restart and
+no active lens does.
+
 ### Selection and subordinate tools
 
 Visual selection stores project-qualified task identities independently of
@@ -2004,7 +2063,8 @@ Portable configuration has only two synced domains:
   Unfiled ID.
 - `planning.json`: project-qualified Today and Next ordering.
 
-Machine state contains only the dark/light theme selection:
+Machine state contains only the dark/light theme selection and the saved
+named-lens definitions:
 
 ```text
 ~/.tt/runtime/<workspace-id>/machine.json

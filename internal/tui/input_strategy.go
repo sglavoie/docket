@@ -306,6 +306,10 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationCoreRangeSelect, Keys: []string{"V"}, DisplayKey: "V"},
 			{OperationID: operationCoreSelectAll, Keys: []string{"ctrl+a"}, DisplayKey: "Ctrl+A"},
 			{OperationID: operationCoreSelectProject, Keys: []string{"P"}, DisplayKey: "P", FooterRank: 18, FooterLabel: "projects"},
+			// Named Lenses carries no FooterRank on purpose: it is a discoverable
+			// entry point rather than a daily-loop act, so `?` teaches it and the
+			// compact footer stays as quiet as it is today.
+			{OperationID: operationCoreNamedLenses, Keys: []string{"\\"}, DisplayKey: `\`},
 			{OperationID: operationCoreNotes, Keys: []string{"ctrl+n"}, DisplayKey: "Ctrl+N"},
 			{OperationID: operationCoreToggleTheme, Keys: []string{"T"}, DisplayKey: "T", FooterRank: 22, FooterLabel: "theme"},
 			{OperationID: operationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},

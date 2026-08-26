@@ -202,7 +202,7 @@ were in and says so.
 | Content | `&` opens the cursor task's Attachments panel, `;` its Comments panel — the two capture sigils reaching, as keys, the panels that own add, reorder, unlink, and delete |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
 | Selection | `v` toggles the cursor task; `V` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
-| Global | `Ctrl+P` Select Pinned Project, `P` Select Project, `Ctrl+N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
+| Global | `Ctrl+P` Select Pinned Project, `P` Select Project, `\` Named Lenses, `Ctrl+N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
 
 `@` opens one Set Due or Defer picker holding both fields. Its DUE section lists
 Clear, Today, Tomorrow, In one week, and In one month; its DEFER section lists
@@ -534,6 +534,51 @@ should land first.
 Pressing a chord prefix shows its valid continuations in the guidance region. `Esc`
 cancels that unfinished chord, and a second key the chord does not offer says so
 instead of doing nothing.
+
+### Named lenses
+
+`\` opens Named Lenses, the saved-projection list. A lens holds one whole
+Outliner projection: the mode, its own narrowing query, both filter families,
+and the sort axis. Applying one writes every axis it names at once, so a lens is
+a view you return to rather than a filter you rebuild.
+
+| Keys | Effect inside the picker |
+| --- | --- |
+| `Enter` | Apply the lens under the cursor, or, on the leading `Save current view` row, name and save what you are looking at |
+| `Space` | Open the management sheet for the lens under the cursor: Rename, Replace from current view, Delete |
+| `/` | Narrow the saved list by name; `Esc` clears the typed query, then leaves the search, then closes the picker |
+| `Esc` | Close the picker without changing the view |
+
+Applying, saving, renaming, replacing, and deleting are all machine-local
+writes, so none of them records an undo entry and `u` never takes a lens back. A
+write that fails changes nothing: the list, the view, and the saved records stay
+exactly as they were, and the picker keeps the failure on screen.
+
+An active lens names itself in the title row as `Lens: <name>`, and gains a `*`
+as soon as the live view stops matching what was saved — a mode change, a
+filter, a sort, or an edited query. `Esc` restores the exact view the lens
+replaced, not an intermediate one: switching straight from one lens to another
+keeps the original restoration point, so a single `Esc` still lands where you
+left. Lenses never stack.
+
+While a lens is active `/` edits the lens's own narrowing query instead of
+opening a scope-wide search, and the title row reads `Lens query:` while you
+type. `Enter` keeps what was typed, `Esc` puts back the query the edit opened
+on. The two queries never stack: an ordinary search cannot survive underneath a
+lens, so applying or saving one from accepted search results installs the
+projection and leaves the search behind — and the same `Esc` that dismisses the
+lens hands that search back with the rest of the view. A lens does not touch
+project scope either: applying one inside a single-project scope leaves that
+scope alone, and the lens's project facets stay inert until you leave it.
+
+A workspace that has never saved a lens is seeded with three ordinary starters —
+`Waiting`, `High Priority`, and `Stale`. Nothing treats them as special: rename,
+replace, and delete reach them like any other record, and deleting every lens is
+durable rather than a request to reseed.
+
+Definitions live in machine-local state and survive a restart. No active lens
+does: every launch opens Active Projects, All, exactly as it would have without
+one.
 
 ### Sorting
 
@@ -1092,7 +1137,10 @@ Each task may also carry an optional `due_time`, a canonical `HH:MM` wall-clock
 in 00:00–23:59 that pairs with the calendar `due` date; midnight is reserved for
 date-only due dates, so a date-only task omits it.
 Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the
-dark/light theme choice.
+dark/light theme choice and the saved named-lens definitions. An empty lens list
+persists as `[]` and is honored, so deleting every lens is durable rather than a
+request to reseed the starters. No active lens is recorded there: a restart
+restores the definitions and nothing else.
 
 Startup migrates supported schema-13 workspaces to schema 14, supported
 schema-12 workspaces to schema 13, supported schema-6

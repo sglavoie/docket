@@ -1,0 +1,29 @@
+{
+  "name": "named-lens-from-search-results",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "run an ordinary search and accept it", "key": "/" },
+    { "type": "text", "text": "login" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Search: \"login\"" },
+    { "type": "assert", "assert": "contains", "value": "Build login form" },
+    { "type": "assert", "assert": "not_contains", "value": "Launch platform" },
+
+    { "type": "key", "label": "the key is admitted on accepted results, not only in browse", "key": "\\" },
+    { "type": "key", "label": "and the sorted rows sit below the Save row as always", "key": "j" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Lens: High Priority" },
+    { "type": "assert", "label": "a scope-wide search cannot survive underneath a lens", "assert": "not_contains", "value": "Search: \"login\"" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "one Esc hands the whole pre-lens view back, search included", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Lens:" },
+    { "type": "assert", "assert": "contains", "value": "Search: \"login\"" },
+    { "type": "assert", "assert": "contains", "value": "Build login form" },
+    { "type": "assert", "assert": "not_contains", "value": "Launch platform" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "name": "named-lens-query-narrowing",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "without a lens, / is an ordinary scope-wide search", "key": "/" },
+    { "type": "text", "text": "login" },
+    { "type": "assert", "assert": "contains", "value": "Search: > login" },
+    { "type": "key", "key": "esc" },
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Search:" },
+
+    { "type": "key", "label": "apply a lens", "key": "\\" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Lens: High Priority" },
+
+    { "type": "key", "label": "under a lens the same key edits the lens's own query", "key": "/" },
+    { "type": "text", "text": "redirect" },
+    { "type": "assert", "assert": "contains", "value": "Lens query: > redirect" },
+    { "type": "assert", "label": "it is the lens query, not a search", "assert": "not_contains", "value": "Search: > redirect" },
+    { "type": "assert", "assert": "contains", "value": "Enter narrow lens" },
+    { "type": "assert", "assert": "contains", "value": "Esc cancel edit" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "Esc puts back the query the edit opened on", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Lens query:" },
+    { "type": "assert", "assert": "contains", "value": "Lens: High Priority" },
+
+    { "type": "key", "label": "narrow the lens for real", "key": "/" },
+    { "type": "text", "text": "redirect" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the committed query joins the lens chrome", "assert": "contains", "value": "Lens query: \"redirect\"" },
+    { "type": "assert", "label": "narrowing the lens diverges it from what was saved", "assert": "contains", "value": "Lens: High Priority*" },
+    { "type": "assert", "assert": "contains", "value": "Fix redirect loop after logout" },
+    { "type": "assert", "assert": "not_contains", "value": "Launch platform" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "one Esc leaves the lens and its query together", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Lens" },
+    { "type": "assert", "assert": "contains", "value": "Launch platform" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

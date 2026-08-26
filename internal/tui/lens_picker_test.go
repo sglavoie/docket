@@ -465,7 +465,7 @@ func TestLensRenameCancelReturnsToTheActionSheet(t *testing.T) {
 	if model.lensPicker == nil {
 		t.Error("canceling the rename closed the picker")
 	}
-	if _, err := lensNamedOrErr(model, "Waiting"); err != nil {
+	if err := lensNamedErr(model, "Waiting"); err != nil {
 		t.Errorf("canceling the rename changed the record: %v", err)
 	}
 }
@@ -487,7 +487,7 @@ func TestLensRenameFailureStaysOnTheActionSheet(t *testing.T) {
 	if notice := model.contextActionSheet.notice; !strings.Contains(notice, "already exists") {
 		t.Errorf("sheet notice = %q, want the duplicate-name reason", notice)
 	}
-	if _, err := lensNamedOrErr(model, "Waiting"); err != nil {
+	if err := lensNamedErr(model, "Waiting"); err != nil {
 		t.Errorf("a refused rename changed the record: %v", err)
 	}
 }
@@ -781,15 +781,17 @@ func TestNamedLensSummaryOmitsTheDefaultSort(t *testing.T) {
 
 // --- helpers ----------------------------------------------------------------
 
-func lensNamedOrErr(model *AppModel, name string) (config.NamedLens, error) {
+// lensNamedErr reports whether one saved lens exists by name. Only presence is
+// ever asserted, so the record itself is deliberately not returned.
+func lensNamedErr(model *AppModel, name string) error {
 	machine := model.runtime.Machine()
 	if machine == nil {
-		return config.NamedLens{}, errors.New("machine-local state is unavailable")
+		return errors.New("machine-local state is unavailable")
 	}
 	for _, lens := range machine.NamedLenses {
 		if lens.Name == name {
-			return lens, nil
+			return nil
 		}
 	}
-	return config.NamedLens{}, fmt.Errorf("no saved lens named %q", name)
+	return fmt.Errorf("no saved lens named %q", name)
 }

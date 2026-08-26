@@ -1,0 +1,30 @@
+{
+  "name": "named-lens-empty-state",
+  "fixture": "rich",
+  "size": "60x20",
+  "actions": [
+    { "type": "key", "label": "open the picker at the narrowest supported width", "key": "\\" },
+    { "type": "assert", "assert": "contains", "value": "Named Lenses" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "apply a lens", "key": "j" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Lens: High Priority" },
+
+    { "type": "key", "label": "narrow it past every row it held", "key": "/" },
+    { "type": "text", "text": "zzzznothing" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the empty state names the lens rather than any one axis it owns", "assert": "contains", "value": "No tasks match this lens." },
+    { "type": "assert", "assert": "contains", "value": "Esc restore lens" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "and that Esc does exactly what it said", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "No tasks match this lens." },
+    { "type": "assert", "assert": "not_contains", "value": "Lens:" },
+    { "type": "assert", "assert": "contains", "value": "Build login form" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "name": "named-lens-escape-restoration",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "build a view worth coming back to", "key": "g" },
+    { "type": "key", "key": "b" },
+    { "type": "key", "key": "o" },
+    { "type": "key", "key": "c" },
+    { "type": "assert", "assert": "contains", "value": "Backlog" },
+    { "type": "assert", "assert": "contains", "value": "Sort: created" },
+
+    { "type": "key", "label": "a lens replaces the mode and the sort at once", "key": "\\" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Lens: High Priority" },
+    { "type": "assert", "assert": "contains", "value": "Sort: priority" },
+    { "type": "assert", "assert": "not_contains", "value": "Sort: created" },
+
+    { "type": "key", "label": "pass through two more lenses", "key": "\\" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "key", "key": "\\" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Lens: Waiting" },
+
+    { "type": "key", "label": "one Esc restores the view the first lens replaced, not an intermediate one", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Lens:" },
+    { "type": "assert", "assert": "contains", "value": "Sort: created" },
+    { "type": "assert", "assert": "contains", "value": "Backlog" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "the whole chain still fits the narrowest supported terminal", "width": 60, "height": 20 },
+    { "type": "key", "key": "\\" },
+    { "type": "assert", "assert": "contains", "value": "Named Lenses" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Lens: High Priority" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Sort: created" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

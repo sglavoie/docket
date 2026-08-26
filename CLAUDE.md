@@ -330,8 +330,8 @@ projects/<slug>/notes/
 projects/<slug>/.attachments/
 ```
 
-Machine-local `~/.tt/runtime/<workspace-id>/machine.json` holds only the
-dark/light theme. Workspace paths derive below approved roots; preserve
+Machine-local `~/.tt/runtime/<workspace-id>/machine.json` holds the dark/light
+theme and named lenses. Workspace paths derive below approved roots; preserve
 symlink-aware containment, checked revisions, deterministic locks, and recovery
 manifests.
 

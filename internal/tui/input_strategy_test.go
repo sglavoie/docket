@@ -172,6 +172,42 @@ func TestSimplifiedInputStrategyUsesVisibleSearchAndFinalNavigation(t *testing.T
 	}
 }
 
+// TestSimplifiedNamedLensesIsTaughtByHelpAndNotByTheFooter pins the one axis the
+// binding chooses deliberately: `\` is a discoverable entry point, so `?` names
+// it while the compact footer stays exactly as quiet as it was.
+func TestSimplifiedNamedLensesIsTaughtByHelpAndNotByTheFooter(t *testing.T) {
+	registry := registeredSimplifiedOperationRegistry(t)
+	ctx := simplifiedOperationContext()
+
+	binding, _, ok := registry.InputBindingForKey(InputStrategySimplified, `\`, ctx)
+	if !ok {
+		t.Fatal(`\ did not resolve on the Outliner`)
+	}
+	if binding.OperationID != operationCoreNamedLenses {
+		t.Fatalf(`\ resolved to %s, want %s`, binding.OperationID, operationCoreNamedLenses)
+	}
+	if binding.FooterRank != 0 || binding.FooterLabel != "" {
+		t.Errorf("named lenses declares footer rank %d label %q, want neither", binding.FooterRank, binding.FooterLabel)
+	}
+
+	taught := false
+	for _, item := range registry.HelpItemsForInputStrategy(InputStrategySimplified, ctx) {
+		if item.Key == `\` && item.Description == "Named Lenses" {
+			taught = true
+		}
+	}
+	if !taught {
+		t.Error(`generated help omits \ Named Lenses`)
+	}
+
+	footer := guidanceHintsText(registry.GuidanceHintsForInputStrategy(
+		InputStrategySimplified, ctx,
+	))
+	if strings.Contains(footer, `\`) {
+		t.Errorf("footer %q advertises the named-lens key", footer)
+	}
+}
+
 func TestSimplifiedCtrlEOpensCursorTaskInExternalEditor(t *testing.T) {
 	app := newUITestApp()
 	first := &models.Task{

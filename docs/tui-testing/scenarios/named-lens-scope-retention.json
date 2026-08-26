@@ -1,0 +1,34 @@
+{
+  "name": "named-lens-scope-retention",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "jump to the Client Beta group header", "key": "n" },
+    { "type": "key", "key": "n" },
+    { "type": "key", "label": "move onto Client Beta's task", "key": "j" },
+    { "type": "key", "label": "scope to that project", "key": "g" },
+    { "type": "key", "key": "p" },
+    { "type": "assert", "assert": "contains", "value": "Client Beta · All" },
+
+    { "type": "key", "label": "a lens applies inside the scope rather than replacing it", "key": "\\" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the scope is still the one the user chose", "assert": "contains", "value": "Client Beta" },
+    { "type": "assert", "assert": "contains", "value": "Lens: High Priority" },
+    { "type": "assert", "label": "the lens brought no other project's work in", "assert": "not_contains", "value": "Alpha migration kickoff" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "Esc unwinds the lens first and leaves the scope alone", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Lens:" },
+    { "type": "assert", "assert": "contains", "value": "Client Beta · All" },
+    { "type": "assert", "assert": "contains", "value": "Beta rollout checklist" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the next Esc is the scope's, exactly as it is without a lens", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

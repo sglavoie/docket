@@ -37,10 +37,22 @@ func TestLaunchResetsEveryPresentationAxisAndRelaunchPreservesOnlyTheme(t *testi
 	app.currentProject = projects[0]
 	pushTestPresentationOverlay(app, ViewHelp)
 
+	// A lens is machine-local like the theme, but only its definitions are
+	// durable: the frame the user was browsing under is in-session state exactly
+	// like the axes above it.
+	saved := config.StarterNamedLenses()[0]
+	saved.ID = deterministicStartupLensID
+	saved.Name = "Persisted Lens"
+	outliner.publishLens(saved, outliner.captureLensState(), nil)
+	if !outliner.hasActiveLens() {
+		t.Fatal("seeding failed to install an active lens")
+	}
+
 	machine := app.runtime.Machine()
 	machine.Theme = "light"
+	machine.NamedLenses = append(config.StarterNamedLenses(), saved)
 	if err := app.runtime.CommitMachine(machine); err != nil {
-		t.Fatalf("persist theme: %v", err)
+		t.Fatalf("persist theme and lenses: %v", err)
 	}
 
 	driver.dispatch(launchOutlinerMsg{})
@@ -48,6 +60,7 @@ func TestLaunchResetsEveryPresentationAxisAndRelaunchPreservesOnlyTheme(t *testi
 	if got := app.runtime.Machine().Theme; got != "light" {
 		t.Fatalf("theme after launch reset = %q, want light", got)
 	}
+	assertPersistedLensDefinitions(t, app)
 
 	reloaded, err := config.LoadRuntimeState(workspace.DataDir)
 	if err != nil {
@@ -62,6 +75,33 @@ func TestLaunchResetsEveryPresentationAxisAndRelaunchPreservesOnlyTheme(t *testi
 	assertCleanLaunchRoot(t, relaunched)
 	if got := relaunched.runtime.Machine().Theme; got != "light" {
 		t.Fatalf("theme after process relaunch = %q, want light", got)
+	}
+	assertPersistedLensDefinitions(t, relaunched)
+}
+
+// deterministicStartupLensID is the one saved lens this test writes beside the
+// three starters. It is fixed so the reloaded process names the same record.
+const deterministicStartupLensID = "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c09"
+
+// assertPersistedLensDefinitions is the other half of the launch contract: the
+// saved records survive, and nothing about the frame the user left does.
+func assertPersistedLensDefinitions(t *testing.T, app *AppModel) {
+	t.Helper()
+	lenses := app.runtime.Machine().NamedLenses
+	if len(lenses) != len(config.StarterNamedLenses())+1 {
+		t.Fatalf("launch kept %d lens definitions, want the three starters plus one saved", len(lenses))
+	}
+	found := false
+	for _, lens := range lenses {
+		if lens.ID == deterministicStartupLensID {
+			found = true
+			if lens.Name != "Persisted Lens" {
+				t.Fatalf("saved lens name = %q, want Persisted Lens", lens.Name)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("launch dropped the saved lens %s", deterministicStartupLensID)
 	}
 }
 
@@ -88,6 +128,9 @@ func assertCleanLaunchRoot(t *testing.T, app *AppModel) {
 	}
 	if outliner.cursor != 0 || outliner.IsMultiSelectActive() || outliner.SelectedCount() != 0 {
 		t.Fatalf("launch retained cursor/selection: cursor=%d active=%v selected=%d", outliner.cursor, outliner.IsMultiSelectActive(), outliner.SelectedCount())
+	}
+	if outliner.hasActiveLens() || outliner.lensQuery != "" || outliner.editingLensQuery() {
+		t.Fatalf("launch retained lens state: active=%v query=%q editing=%v", outliner.hasActiveLens(), outliner.lensQuery, outliner.editingLensQuery())
 	}
 	if len(outliner.collapsedSections) != 0 || len(outliner.expandedNodes) != 0 || len(outliner.focusStack) != 0 || len(outliner.crossFocusStack) != 0 {
 		t.Fatalf("launch retained folds/focus: sections=%v nodes=%v focus=%v crossFocus=%v", outliner.collapsedSections, outliner.expandedNodes, outliner.focusStack, outliner.crossFocusStack)

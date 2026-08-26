@@ -289,6 +289,9 @@ func TestNamedLensListCloneDetachesFromSnapshot(t *testing.T) {
 	clone[0].Name = "Renamed"
 	clone[0].Tasks.States[0] = string(models.StateDone)
 	clone = append(clone, validLens())
+	if len(clone) != 4 {
+		t.Fatalf("clone length after append = %d, want 4", len(clone))
+	}
 
 	if snapshot.NamedLenses[0].Name != "Waiting" {
 		t.Error("clone aliases the lens name")
@@ -408,7 +411,7 @@ func TestDomainFileStoreMachineLensRoundTrip(t *testing.T) {
 
 	// Deleting every lens is durable: reload must not reseed the starters.
 	reloaded.NamedLenses = NamedLensList{}
-	if err := s.SaveMachine(reloaded); err != nil {
+	if err = s.SaveMachine(reloaded); err != nil {
 		t.Fatalf("SaveMachine emptied: %v", err)
 	}
 	emptied, err := NewDomainFileStore(s.DataDir()).LoadMachine()
