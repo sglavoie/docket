@@ -957,6 +957,15 @@ func (m *AppModel) taskStructureAllowsOperation(id OperationID, entity EntityCon
 		return true
 	}
 }
+
+// pendingPickedValueProvider registers a picked provider with the executor
+// without supplying a value, so the shell constructs the provider's ListSurface
+// picker from the frozen request instead. It is the picker counterpart of
+// pendingTextValueProvider.
+func pendingPickedValueProvider(OperationInvocation) OperationValueProviderResult {
+	return OperationValueProviderResult{}
+}
+
 func (m *AppModel) registerTaskActionOperations() error {
 	if m.operationRegistry == nil || m.operationExecutor == nil {
 		return fmt.Errorf("operation registry and executor are required")
@@ -972,11 +981,7 @@ func (m *AppModel) registerTaskActionOperations() error {
 		ValueProviderChild,
 		ValueProviderProject,
 	} {
-		if err := executor.RegisterValueProvider(provider, func(OperationInvocation) OperationValueProviderResult {
-			// Returning no immediate value asks the shell to construct the
-			// provider's ListSurface picker from the frozen task identity.
-			return OperationValueProviderResult{}
-		}); err != nil {
+		if err := executor.RegisterValueProvider(provider, pendingPickedValueProvider); err != nil {
 			return err
 		}
 	}

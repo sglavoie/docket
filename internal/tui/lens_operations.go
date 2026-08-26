@@ -25,16 +25,18 @@ import (
 // leaves both the cached machine snapshot and the Outliner exactly as they
 // were, so a refusal is indistinguishable from never having asked.
 const (
-	operationLensApply   OperationID = "tui.lens.apply"
-	operationLensCreate  OperationID = "tui.lens.create"
-	operationLensRename  OperationID = "tui.lens.rename"
-	operationLensReplace OperationID = "tui.lens.replace"
-	operationLensDelete  OperationID = "tui.lens.delete"
+	operationLensApply       OperationID = "tui.lens.apply"
+	operationLensCreate      OperationID = "tui.lens.create"
+	operationLensAddTemplate OperationID = "tui.lens.add-template"
+	operationLensRename      OperationID = "tui.lens.rename"
+	operationLensReplace     OperationID = "tui.lens.replace"
+	operationLensDelete      OperationID = "tui.lens.delete"
 )
 
 // lensOperationDescriptors is the authoritative catalog of named-lens
-// operations. Four of them target one saved lens by its UUID; Create alone
-// resolves no target, because the record it writes does not exist yet.
+// operations. Four of them target one saved lens by its UUID; Create and Add
+// built-in view resolve no target, because the record each writes does not
+// exist yet.
 func lensOperationDescriptors() []OperationDescriptor {
 	lens := func(
 		id OperationID,
@@ -69,6 +71,20 @@ func lensOperationDescriptors() []OperationDescriptor {
 			RequiredCapabilities: NewCapabilitySet(CapabilityLensPicker),
 			Risk:                 OperationRiskMutation,
 			ValueProviderID:      ValueProviderLensName,
+		},
+		{
+			// Adding a template writes an ordinary lens under the catalog's own
+			// stable UUID, so it resolves no target either: the value is which
+			// template, not which saved record.
+			ID:                   operationLensAddTemplate,
+			Label:                "Add built-in view",
+			Description:          "Add one of the built-in views as a saved lens",
+			Category:             OperationCategoryFilter,
+			TargetSource:         OperationTargetGlobal,
+			TargetCardinality:    TargetCardinalityNone,
+			RequiredCapabilities: NewCapabilitySet(CapabilityLensPicker),
+			Risk:                 OperationRiskMutation,
+			ValueProviderID:      ValueProviderLensTemplate,
 		},
 		withValueProvider(
 			lens(operationLensRename, "Rename lens", "Give this lens a new name", OperationRiskMutation),
@@ -106,6 +122,15 @@ func (m *AppModel) registerLensOperations() error {
 	); err != nil {
 		return err
 	}
+	if err := m.operationExecutor.RegisterValueProvider(
+		ValueProviderLensTemplate,
+		// Returning no immediate value asks the shell to open the built-in view
+		// gallery. Registering it here is also what makes the executor's own value
+		// gate reachable: an add with no template selected stops before the handler.
+		pendingPickedValueProvider,
+	); err != nil {
+		return err
+	}
 	for _, descriptor := range lensOperationDescriptors() {
 		binding := OperationBinding{
 			RequiredCapabilities: NewCapabilitySet(CapabilityLensPicker),
@@ -115,7 +140,14 @@ func (m *AppModel) registerLensOperations() error {
 			DelegateTransaction: true,
 		}
 		if descriptor.TargetCardinality == TargetCardinalityNone {
-			binding.Handler = m.executeLensCreateOperation
+			handler := m.zeroTargetLensHandler(descriptor.ID)
+			if handler == nil {
+				return fmt.Errorf(
+					"lens operation %s resolves no target and has no target-free handler",
+					descriptor.ID,
+				)
+			}
+			binding.Handler = handler
 		} else {
 			binding.SingleHandler = m.executeLensOperation
 		}
@@ -124,6 +156,23 @@ func (m *AppModel) registerLensOperations() error {
 		}
 	}
 	return nil
+}
+
+// zeroTargetLensHandler names the handler for a lens operation that resolves no
+// target. Saving the current view and adding a built-in view both write a record
+// that does not exist yet, but they write different records from different
+// values, so each dispatches to its own handler rather than sharing one branch.
+// An unmapped zero-target descriptor fails registration instead of borrowing a
+// neighbor's handler.
+func (m *AppModel) zeroTargetLensHandler(id OperationID) OperationHandler {
+	switch id {
+	case operationLensCreate:
+		return m.executeLensCreateOperation
+	case operationLensAddTemplate:
+		return m.executeLensAddTemplateOperation
+	default:
+		return nil
+	}
 }
 
 // resolveLensTarget reloads the definition the identity names from the latest
@@ -272,6 +321,71 @@ func (m *AppModel) executeLensCreateOperation(invocation OperationInvocation) Op
 		}
 	}
 	return lensCommandResult(cmd, "Saved lens: "+lens.Name)
+}
+
+// resolveBuiltinLensTemplate reads the selected template out of the invocation
+// and reloads it from the catalog. The value is a template ID and nothing else:
+// a definition captured by the UI could be stale or edited, so only the ID is
+// trusted and the record written is the catalog's own fresh copy.
+func resolveBuiltinLensTemplate(invocation OperationInvocation) (config.NamedLens, error) {
+	if !invocation.HasValue {
+		return config.NamedLens{}, errors.New("no built-in view was selected")
+	}
+	id, ok := invocation.Value.(string)
+	if !ok {
+		return config.NamedLens{}, fmt.Errorf(
+			"a built-in view selection must name a template ID, got %T",
+			invocation.Value,
+		)
+	}
+	for _, template := range config.BuiltinNamedLensTemplates() {
+		if template.ID == id {
+			return template, nil
+		}
+	}
+	return config.NamedLens{}, fmt.Errorf("unknown built-in view %q", id)
+}
+
+// executeLensAddTemplateOperation persists one catalog template as an ordinary
+// lens and applies it, in that order and under the same rules as Create: the
+// commit is what publishes the record, and the application afterwards is what
+// keeps an existing restoration baseline. Availability is rechecked here against
+// the latest machine snapshot, because the gallery decided it against the one it
+// was rendered from.
+func (m *AppModel) executeLensAddTemplateOperation(invocation OperationInvocation) OperationHandlerResult {
+	out := m.crossOutliner
+	if out == nil {
+		return OperationHandlerResult{Err: errors.New("the Outliner is unavailable")}
+	}
+	template, err := resolveBuiltinLensTemplate(invocation)
+	if err != nil {
+		return OperationHandlerResult{Err: err}
+	}
+	if err = template.Validate(); err != nil {
+		return OperationHandlerResult{Err: err}
+	}
+	if err = m.commitNamedLensMutation(func(machine *config.MachineState) error {
+		// The stable ID answers first: a template already added is already added
+		// whatever it has since been renamed to, and saying so by its current name
+		// is the more useful refusal.
+		if existing := machine.NamedLensByID(template.ID); existing != nil {
+			return fmt.Errorf("%q is already added as %q", template.Name, existing.Name)
+		}
+		if namedLensNameTaken(machine.NamedLenses, template.Name, template.ID) {
+			return fmt.Errorf("a lens named %q already exists", template.Name)
+		}
+		machine.NamedLenses = append(machine.NamedLenses, template)
+		return nil
+	}); err != nil {
+		return OperationHandlerResult{Err: err}
+	}
+	cmd, err := out.ApplyNamedLens(template)
+	if err != nil {
+		return OperationHandlerResult{
+			Err: fmt.Errorf("added built-in view %q but could not apply it: %w", template.Name, err),
+		}
+	}
+	return lensCommandResult(cmd, "Added built-in view: "+template.Name)
 }
 
 // renameLensOperation changes the label alone. The projection is untouched, so

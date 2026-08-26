@@ -90,6 +90,11 @@ const (
 	// rename and stays blank when the current view is being saved as a new lens.
 	ValueProviderLensName ValueProviderID = "lens-name"
 
+	// ValueProviderLensTemplate names one built-in view from the catalog. It is a
+	// picked provider rather than a typed one: the vocabulary is closed, and the
+	// value is the template's stable ID, never a definition the gallery captured.
+	ValueProviderLensTemplate ValueProviderID = "lens-template"
+
 	// ValueProviderParent lists the tasks the cursor task may hang under. It is a
 	// plain list: the vocabulary is the project's own open tasks, so there is
 	// nothing to mint and no inline entry mode.
