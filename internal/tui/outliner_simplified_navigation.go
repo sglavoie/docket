@@ -115,6 +115,11 @@ func (m *OutlinerModel) expandAtCursor() bool {
 // the projection holds no header at all, which is what lets the caller say so
 // instead of leaving the key silent. A projection with exactly one header parks
 // the cursor there.
+//
+// n and N are user cursor navigation like j and k, so they void a pending
+// relocation capture on the same terms: a wrap that leaves and returns to the
+// settled row is numerically invisible to the reload guard, and parking on the
+// only header moves nothing and voids nothing.
 func (m *OutlinerModel) moveCursorToAdjacentHeader(delta int) (tea.Cmd, bool) {
 	if m == nil || len(m.rows) == 0 {
 		return nil, false
@@ -127,6 +132,7 @@ func (m *OutlinerModel) moveCursorToAdjacentHeader(delta int) (tea.Cmd, bool) {
 		}
 		m.cursor = index
 		m.updateRangeSelection()
+		m.voidRelocationCaptureAfterNavigation(previous)
 		return flashIfJumped(previous, m.cursor, &m.cursorFlash), true
 	}
 	return nil, false

@@ -209,6 +209,66 @@ func TestInboxAsyncCursorMoveAwayAndBackBeforeReloadVoidsAdvance(t *testing.T) {
 	}
 }
 
+// TestInboxAsyncHeaderJumpAwayAndBackBeforeReloadVoidsAdvance is the same hole
+// reached through the other navigation family. A last-task-of-project departure
+// settles the cursor on the following project header, so n and N are the keys
+// that move from there — and n wrapping to the other header and N returning
+// lands the cursor back on the settled index without changing the projection
+// fingerprint. Only voiding at the header jump itself keeps the accepted reload
+// from applying the successor advance over the header the user chose.
+func TestInboxAsyncHeaderJumpAwayAndBackBeforeReloadVoidsAdvance(t *testing.T) {
+	alphaOne := newBulkPickerTestTask(t, 1, "alpha one")
+	alphaTwo := newBulkPickerTestTask(t, 2, "alpha two")
+	betaOne := newBulkPickerTestTask(t, 1, "beta one")
+	betaTwo := newBulkPickerTestTask(t, 2, "beta two")
+	async := newInboxAsyncEnv(t,
+		[]*models.Task{alphaOne, alphaTwo},
+		[]*models.Task{betaOne, betaTwo})
+
+	inboxCursorTo(t, async.outliner, alphaTwo.ID)
+	saveCmd := async.commitState(t, models.StateDone)
+	pending := async.outliner.relocationHistory.pending
+	if pending == nil {
+		t.Fatal("committed async state update did not survive its own refresh")
+	}
+	settled := pending.SettledCursor
+	if async.outliner.cursor != settled {
+		t.Fatalf("cursor = %d, want the settled cursor %d", async.outliner.cursor, settled)
+	}
+	if settled < 0 || settled >= len(async.outliner.rows) || !async.outliner.rows[settled].isHeaderRow() {
+		t.Fatalf("the fixture did not settle the cursor on a project header at row %d", settled)
+	}
+
+	// n then N while the disk refresh is still in flight: the header jump wraps to
+	// the other project header and back onto the settled one.
+	if _, moved := async.outliner.moveCursorToAdjacentHeader(1); !moved {
+		t.Fatal("n found no header to jump to")
+	}
+	if async.outliner.cursor == settled {
+		t.Fatal("the fixture did not actually move the cursor off the settled header")
+	}
+	if _, moved := async.outliner.moveCursorToAdjacentHeader(-1); !moved {
+		t.Fatal("N found no header to jump back to")
+	}
+	if async.outliner.cursor != settled {
+		t.Fatalf("cursor = %d after jumping back, want the settled cursor %d", async.outliner.cursor, settled)
+	}
+	returnedHeader := async.outliner.rows[settled].effectiveCollapseKey()
+
+	async.applyReload(t, saveCmd)
+
+	if async.outliner.relocationHistory.pending != nil {
+		t.Fatal("a header jump away and back left the relocation capture armed")
+	}
+	if async.outliner.cursor < 0 || async.outliner.cursor >= len(async.outliner.rows) {
+		t.Fatalf("cursor = %d is outside the reloaded projection", async.outliner.cursor)
+	}
+	row := async.outliner.rows[async.outliner.cursor]
+	if !row.isHeaderRow() || row.effectiveCollapseKey() != returnedHeader {
+		t.Fatalf("cursor row = %+v, want the project header the user returned to %q", row, returnedHeader)
+	}
+}
+
 // TestInboxAsyncCursorMoveBeforeTheReloadVoidsTheAdvance is the guard's other
 // half: a genuine keypress between the commit and the disk reload must not be
 // mistaken for the rebuild displacement the mutation caused.
