@@ -49,6 +49,7 @@ against the drain budget.
 | `workflow` | A compact lifecycle spread for state and planning operations. |
 | `narrow` | Long titles and tags for minimum-width rendering. |
 | `multi-project` | Several distinctly named projects, each holding one backlog task. |
+| `inbox-triage` | The only fixture whose Inbox spans two project groups, the second holding a nested Inbox parent whose child is promoted when the parent is triaged away. |
 | `release` | A large Unicode catalog for viewport and resize stress. |
 | `parked` | One project in the base task workspace and one tagged `parked`. |
 | `project-mix` | An active project with a task, an active project with none, an active project whose two tasks are both finished, a parked project with a task, and an archived project with none. |
@@ -192,6 +193,7 @@ The committed suite exercises the product contracts directly:
 | --- | --- |
 | Fresh install and protected-Unfiled routing | `fresh-install-default.json`, `fresh-install-capture.json`, `capture-grammar.json` |
 | Inbox triage through the unified `$` state/planning chord | `daily-loop.json`, `state-chord.json`, `workflow-chord-destinations.json` |
+| The Inbox-only cursor advance: crossing a project group header, landing on a promoted child, and holding still under undo | `inbox-triage-advance-across-project-groups.json`, `inbox-triage-advance-promotes-children.json`, `inbox-triage-undo-does-not-advance.json` |
 | Six modes and navigation aliases | `mode-catalog.json`, `navigate-outliner.json`, `outliner-navigation-aliases.json` |
 | Header-to-header jumps, wrapping, and the headerless refusal | `outliner-header-jump.json` |
 | Priority, workflow, deferred, and clear filters | `filter-chord-priority.json`, `filter-chord-states.json`, `filter-chord-clear.json` |

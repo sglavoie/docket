@@ -1,0 +1,28 @@
+{
+  "name": "inbox-triage-advance-promotes-children",
+  "fixture": "inbox-triage",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open the go-to chord", "key": "g" },
+    { "type": "key", "label": "jump straight to Inbox", "key": "i" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Inbox" },
+    { "type": "key", "label": "step off the first project group header", "key": "j" },
+    { "type": "key", "label": "past the first group's last task", "key": "j" },
+    { "type": "key", "label": "onto the second project group header", "key": "j" },
+    { "type": "key", "label": "onto the nested Inbox parent", "key": "j" },
+    { "type": "assert", "label": "the child is still nested under the parent", "assert": "contains", "value": "Beta intake parent awaiting triage" },
+    { "type": "key", "label": "open workflow actions", "key": "$" },
+    { "type": "key", "label": "triage the nested parent to Backlog", "key": "b" },
+    { "type": "assert", "label": "the status names the departing parent", "assert": "status_contains", "value": "Move to Backlog: Beta intake parent awaiting triage · u undo" },
+    { "type": "assert", "label": "the surviving child was promoted into the parent's place", "assert": "contains", "value": "[triage-beta] (2)" },
+    { "type": "key", "label": "peek at whatever the advance landed on", "key": "ctrl+enter" },
+    { "type": "assert", "label": "Peek names the promoted child, not the trailing remainder", "assert": "contains", "value": "Parent: Beta intake parent awaiting triage" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "widest committed size", "width": 160, "height": 55 },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "narrow at the minimum height", "width": 72, "height": 20 },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "the 60x20 minimum", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

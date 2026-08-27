@@ -1,0 +1,29 @@
+{
+  "name": "inbox-triage-undo-does-not-advance",
+  "fixture": "inbox-triage",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open the go-to chord", "key": "g" },
+    { "type": "key", "label": "jump straight to Inbox", "key": "i" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Inbox" },
+    { "type": "key", "label": "step off the project group header onto the first task", "key": "j" },
+    { "type": "key", "label": "open workflow actions", "key": "$" },
+    { "type": "key", "label": "triage the first task to Backlog", "key": "b" },
+    { "type": "assert", "assert": "status_contains", "value": "Move to Backlog: Alpha intake ready for triage · u undo" },
+    { "type": "key", "label": "peek at the row the advance landed on", "key": "ctrl+enter" },
+    { "type": "assert", "label": "the triage advanced onto the successor", "assert": "contains", "value": "Detail line belonging to the successor intake." },
+    { "type": "key", "label": "undo the triage", "key": "u" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the task is back in the Inbox", "assert": "contains", "value": "[triage-alpha] (2)" },
+    { "type": "assert", "label": "the workspace pulse counts the restored intake", "assert": "contains", "value": "inbox 5" },
+    { "type": "assert", "label": "undo armed no relocation, so the cursor is still on the successor", "assert": "contains", "value": "Detail line belonging to the successor intake." },
+    { "type": "assert", "label": "the cursor did not step back onto the restored task", "assert": "not_contains", "value": "Detail line belonging to the departing intake." },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "widest committed size", "width": 160, "height": 55 },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "narrow at the minimum height", "width": 72, "height": 20 },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "the 60x20 minimum", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

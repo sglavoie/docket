@@ -39,6 +39,15 @@ The Outliner is the only primary task presentation:
 Together, these operations form one capture, triage, plan, execute, and
 complete loop.
 
+Inbox is the one mode that hands the cursor along. When a triage act takes the
+row out of Inbox, the cursor lands on the next task in the sweep rather than
+on whatever the row index happens to hold, so it crosses a project group header
+instead of stopping on it and lands on a child promoted into its departing
+parent's place. Every other mode leaves the cursor where it was, because you
+read those modes as much as you empty them. The advance is not a relocation
+jump: a departure records nothing for `Ctrl+O`, and undo restores the task
+without moving the cursor back to it.
+
 ## Presentation grammar
 
 Every full-screen presentation keeps one operational title row. Its left side

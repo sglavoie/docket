@@ -166,6 +166,20 @@ The seven modes are All, Today, Inbox, Next, Backlog, Due, and Recent.
 straight to one of them. A project focus is a scope frame in the same Outliner,
 never a second root.
 
+Inbox alone advances the cursor when a mutation removes the row under it. The
+mode catalog carries that as `AdvancesOnDeparture`, read through
+`SupportsCursorAdvance()`, so the gate is a catalog fact rather than an inline
+mode test. The successor is the one `captureOutlinerRelocation` already recorded
+as the origin's `Following` — the first task row after the cursor that is not
+itself a mutation target — so the advance reads the projection the user is
+looking at, crosses a project group header instead of stopping on it, and lands
+on a child promoted into its departing parent's place. `advanceAfterDeparture`
+writes `m.cursor` and nothing else: `computeOutlinerViewport` remains the single
+window authority and no flash is emitted, since the user's own keypress caused
+the move. A departure records no jump entry, so `Ctrl+O` gains nothing from it,
+and the undo path arms no capture at all, so restoring a task never moves the
+cursor.
+
 Project grouping is universal, not per-mode: whenever the Outliner shows more
 than one project, every mode emits a foldable `IsProjectHeader` row per project,
 and project groups put pinned projects first and then sort alphabetically. All

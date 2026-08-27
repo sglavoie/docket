@@ -41,6 +41,7 @@ const (
 	FixtureWorkflow     = "workflow"
 	FixtureNarrow       = "narrow"
 	FixtureMultiProject = "multi-project"
+	FixtureInboxTriage  = "inbox-triage"
 	FixtureRelease      = "release"
 	FixtureParked       = "parked"
 	FixtureProjectMix   = "project-mix"
@@ -66,6 +67,22 @@ const (
 const (
 	signalsFixtureProjectName = "Signal Delivery Coordination Track"
 	signalsFixtureOtherName   = "Signal Beta"
+)
+
+// Inbox-triage fixture identities. The advance scenarios assert on these exact
+// titles, and no title may be a substring of another so a `contains` check can
+// only be answered by the row it names.
+const (
+	inboxTriageAlphaName         = "Triage Alpha"
+	inboxTriageBetaName          = "Triage Beta"
+	inboxTriageAlphaLeadTitle    = "Alpha intake ready for triage"
+	inboxTriageAlphaFinalTitle   = "Alpha intake closing the group"
+	inboxTriageBetaParentTitle   = "Beta intake parent awaiting triage"
+	inboxTriageBetaChildTitle    = "Beta intake child promoted on departure"
+	inboxTriageBetaTrailingTitle = "Beta intake trailing remainder"
+
+	inboxTriageAlphaLeadDetail  = "Detail line belonging to the departing intake."
+	inboxTriageAlphaFinalDetail = "Detail line belonging to the successor intake."
 )
 
 // Parked fixture identities. Scenarios assert on these strings, and
@@ -109,6 +126,7 @@ var builtinFixtures = map[string]func(*uitestWorkspace) error{
 	FixtureWorkflow:     buildWorkflowFixture,
 	FixtureNarrow:       buildNarrowFixture,
 	FixtureMultiProject: buildMultiProjectFixture,
+	FixtureInboxTriage:  buildInboxTriageFixture,
 	FixtureRelease:      buildReleaseFixture,
 	FixtureParked:       buildParkedFixture,
 	FixtureProjectMix:   buildProjectMixFixture,
@@ -722,6 +740,53 @@ func buildMultiProjectFixture(w *uitestWorkspace) error {
 		}
 	}
 	w.setCurrentProject(first.ID)
+	return nil
+}
+
+// buildInboxTriageFixture is the only fixture whose Inbox spans more than one
+// project group, which is the single row shape where the Inbox cursor advance
+// is observable: the last task of a non-final group has to hand the cursor to
+// the first task of the next one. The `busy` fixture keeps its whole Inbox in
+// one project and every other multi-project fixture carries backlog work only,
+// so neither can express the crossing. Its second group also holds the nested
+// Inbox parent whose surviving child is promoted into its place when the parent
+// is triaged away.
+//
+// It is deliberately its own fixture rather than an extension of
+// `multi-project`, whose four projects are read by twenty-one committed
+// scenarios that would all see a changed row population.
+func buildInboxTriageFixture(w *uitestWorkspace) error {
+	// Alphabetical project names fix the group order, since project groups sort
+	// pinned-first and then by name and nothing here is pinned.
+	alpha, err := w.addProject(inboxTriageAlphaName, func(p *models.Project) {
+		// The first group's two tasks are the only rows Peek can tell apart by
+		// content alone, so each carries a description no other row repeats. That
+		// is how the undo scenario proves which row the cursor is on.
+		lead := newFixtureTask(p, inboxTriageAlphaLeadTitle)
+		lead.ApplyWorkflowState(models.StateInbox)
+		lead.Description = inboxTriageAlphaLeadDetail
+
+		final := newFixtureTask(p, inboxTriageAlphaFinalTitle)
+		final.ApplyWorkflowState(models.StateInbox)
+		final.Description = inboxTriageAlphaFinalDetail
+	})
+	if err != nil {
+		return err
+	}
+	if _, err = w.addProject(inboxTriageBetaName, func(p *models.Project) {
+		parent := newFixtureTask(p, inboxTriageBetaParentTitle)
+		parent.ApplyWorkflowState(models.StateInbox)
+
+		child := newFixtureTask(p, inboxTriageBetaChildTitle)
+		child.ApplyWorkflowState(models.StateInbox)
+		child.ParentID = &parent.ID
+
+		trailing := newFixtureTask(p, inboxTriageBetaTrailingTitle)
+		trailing.ApplyWorkflowState(models.StateInbox)
+	}); err != nil {
+		return err
+	}
+	w.setCurrentProject(alpha.ID)
 	return nil
 }
 
