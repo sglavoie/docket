@@ -312,10 +312,36 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 	if len(m.loadedProjects) == 0 {
 		m.pruneInvisibleSelections()
 		m.clampCursor()
+		m.reseatNoteCursorAfterRebuild()
 		return
 	}
 
 	m.buildCanonicalModeRows()
+	m.reseatNoteCursorAfterRebuild()
+}
+
+// reseatNoteCursorAfterRebuild consumes the note identity an accepted
+// note-index refresh captured and puts the cursor back on that note in the
+// rebuilt rows. It runs after the row pipeline has already clamped, so a note
+// that left the refreshed projection keeps that deterministic numeric landing
+// rather than being moved again. The viewport is untouched either way:
+// computeOutlinerViewport is the single window authority and follows the cursor
+// on the next render.
+//
+// A memoized no-op rebuild returns before this point, which is what keeps the
+// capture alive until the rebuild the force flag guarantees actually runs.
+func (m *OutlinerModel) reseatNoteCursorAfterRebuild() {
+	identity := m.noteCursorReseat
+	m.noteCursorReseat = NoteRowIdentity{}
+	if identity.Filename == "" {
+		return
+	}
+	for index, row := range m.rows {
+		if row.IsNoteRow && row.NoteRow == identity {
+			m.cursor = index
+			return
+		}
+	}
 }
 
 func (m *OutlinerModel) crossProjectRowsFingerprint() string {

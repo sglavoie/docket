@@ -159,6 +159,14 @@ type OutlinerModel struct {
 	// read; it only reads whatever the shell last retained.
 	noteSearchIndex func() []LocatedNoteRow
 
+	// noteCursorReseat is the note the cursor rested on when an accepted
+	// note-index refresh forced a rebuild. The refresh lands asynchronously and
+	// re-ranks the notes tier, so the numeric cursor alone would silently name a
+	// different result on the next frame. It is captured with the force flag and
+	// consumed by the one rebuild that flag guarantees; a rebuild that finds the
+	// note gone leaves the ordinary clamp in place.
+	noteCursorReseat NoteRowIdentity
+
 	// searchNoteMatches is what the notes tier's rows are rendered from, keyed the
 	// way the Notes manager keys its own match map. It lives beside the rows
 	// rather than on them because a note row's render payload is wide — the note

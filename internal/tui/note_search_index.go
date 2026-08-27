@@ -170,9 +170,16 @@ func (m *AppModel) handleNoteSearchIndexLoaded(msg noteSearchIndexLoadedMsg) {
 // the notes tier the superseded index produced. Only an accepted result reaches
 // here, so a stale generation or a failed read still leaves the displayed
 // projection exactly as it was.
+//
+// The cursor's own note identity is captured alongside the flag: the rebuild
+// re-ranks the tier, so a refreshed or newly matching note can move a still
+// present result and the retained numeric row would then name a different one.
 func (m *AppModel) invalidateOutlinerForNoteSearchIndex() {
 	if m == nil || m.crossOutliner == nil {
 		return
+	}
+	if identity, onNote := m.crossOutliner.cursorNoteIdentity(); onNote {
+		m.crossOutliner.noteCursorReseat = identity
 	}
 	m.crossOutliner.crossForceRebuild = true
 }

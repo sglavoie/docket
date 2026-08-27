@@ -339,6 +339,111 @@ func TestNoteSearchIndexRefreshRebuildsOpenProjection(t *testing.T) {
 	}
 }
 
+// A refresh re-ranks the notes tier, so the row the cursor rested on can move.
+// The rebuild must re-seat the cursor by the note's own identity: keeping the
+// numeric row would silently select whichever result took its place.
+func TestNoteSearchIndexRefreshPreservesCursorIdentity(t *testing.T) {
+	task := primaryRowsTask("task", models.StateBacklog)
+	task.Title = "Unrelated"
+	alpha := primaryRowsProject("alpha", task)
+	global := app.GlobalNoteLocation()
+
+	// One title for all three, so the tier's score ties and its filename
+	// tiebreak is what decides order. Inserting "widget-a.md" then pushes every
+	// already-visible match down exactly one row.
+	rows := []LocatedNoteRow{
+		noteIndexRow(global, "Global", "Widget notes", "widget-b.md"),
+		noteIndexRow(global, "Global", "Widget notes", "widget-c.md"),
+	}
+	outliner := scopeTestOutliner(alpha)
+	model := &AppModel{crossOutliner: outliner, noteIndexGeneration: 2, noteIndexRows: rows}
+	outliner.setNoteSearchIndex(model.noteSearchIndexRows)
+
+	outliner.SetSearchQuery("widget")
+	if got := countNoteRows(outliner); got != 2 {
+		t.Fatalf("projection = %d note rows, want both matching notes", got)
+	}
+	selected := NoteRowIdentity{Location: global, Filename: "widget-c.md"}
+	index, ok := noteRowIndex(outliner, selected)
+	if !ok {
+		t.Fatalf("note rows = %+v, want the selected note on screen", noteRowIdentities(outliner))
+	}
+	outliner.cursor = index
+
+	// A stale generation and a failed read change neither the rows nor the
+	// cursor, so nothing is re-seated on a refresh that was never accepted.
+	model.handleNoteSearchIndexLoaded(noteSearchIndexLoadedMsg{generation: 1, rows: nil})
+	model.handleNoteSearchIndexLoaded(noteSearchIndexLoadedMsg{generation: 2, err: errors.New("read failed")})
+	outliner.crossProjectRebuildRows()
+	if countNoteRows(outliner) != 2 || outliner.cursor != index {
+		t.Fatalf("cursor = %d over %d note rows, want an unaccepted refresh to change nothing",
+			outliner.cursor, countNoteRows(outliner))
+	}
+
+	inserted := []LocatedNoteRow{
+		noteIndexRow(global, "Global", "Widget notes", "widget-a.md"),
+		rows[0],
+		rows[1],
+	}
+	model.handleNoteSearchIndexLoaded(noteSearchIndexLoadedMsg{generation: 2, rows: inserted})
+	outliner.crossProjectRebuildRows()
+
+	if got := countNoteRows(outliner); got != 3 {
+		t.Fatalf("projection = %d note rows after the refresh, want the inserted match visible", got)
+	}
+	moved, ok := noteRowIndex(outliner, selected)
+	if !ok {
+		t.Fatalf("note rows = %+v, want the selected note still present", noteRowIdentities(outliner))
+	}
+	if moved == index {
+		t.Fatalf("the inserted match did not move row %d, so the test proves nothing", index)
+	}
+	if outliner.cursor != moved {
+		t.Fatalf("cursor = %d, want %d: the selected note must keep focus across the refresh",
+			outliner.cursor, moved)
+	}
+	if identity, onNote := outliner.cursorNoteIdentity(); !onNote || identity != selected {
+		t.Fatalf("cursor note = %+v (note row: %v), want %+v", identity, onNote, selected)
+	}
+
+	// The selected note leaving the index falls back to a valid navigable row
+	// rather than an out-of-range cursor, and the render still owns the window.
+	scrollOffset := outliner.viewScrollOffset
+	model.handleNoteSearchIndexLoaded(noteSearchIndexLoadedMsg{generation: 2, rows: inserted[:1]})
+	outliner.crossProjectRebuildRows()
+	if countNoteRows(outliner) != 1 {
+		t.Fatalf("projection = %d note rows, want only the surviving match", countNoteRows(outliner))
+	}
+	if outliner.cursor < 0 || outliner.cursor >= len(outliner.rows) ||
+		!outliner.rows[outliner.cursor].isNavigable() {
+		t.Fatalf("cursor = %d over %d rows, want a valid navigable landing row",
+			outliner.cursor, len(outliner.rows))
+	}
+	if outliner.viewScrollOffset != scrollOffset {
+		t.Fatalf("viewScrollOffset = %d, want the rebuild to leave the window to the render",
+			outliner.viewScrollOffset)
+	}
+}
+
+func noteRowIdentities(outliner *OutlinerModel) []NoteRowIdentity {
+	var identities []NoteRowIdentity
+	for _, row := range outliner.rows {
+		if row.IsNoteRow {
+			identities = append(identities, row.NoteRow)
+		}
+	}
+	return identities
+}
+
+func noteRowIndex(outliner *OutlinerModel, identity NoteRowIdentity) (int, bool) {
+	for index, row := range outliner.rows {
+		if row.IsNoteRow && row.NoteRow == identity {
+			return index, true
+		}
+	}
+	return 0, false
+}
+
 func countNoteRows(outliner *OutlinerModel) int {
 	notes := 0
 	for _, row := range outliner.rows {
