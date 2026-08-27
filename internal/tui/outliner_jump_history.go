@@ -157,11 +157,18 @@ func (m *OutlinerModel) finishOutlinerRelocation(capture *outlinerRelocationCapt
 	if capture.Projection != m.relocationHistory.projection {
 		return nil, false
 	}
+	// A departure is checked before the forceFollow guard so the synchronous and
+	// asynchronous callers reach the same advance. The task is gone from this
+	// projection, so there is nothing to follow and no origin worth recording.
+	destination, visible := m.rowIndexForTask(capture.Task)
+	if !visible {
+		m.advanceAfterDeparture(capture)
+		return nil, false
+	}
 	if !forceFollow && m.currentTaskIdentity() != capture.Task {
 		return nil, false
 	}
-	destination, ok := m.rowIndexForTask(capture.Task)
-	if !ok || destination == capture.Origin.RowIndex {
+	if destination == capture.Origin.RowIndex {
 		return nil, false
 	}
 	oldCursor := m.cursor
@@ -169,6 +176,28 @@ func (m *OutlinerModel) finishOutlinerRelocation(capture *outlinerRelocationCapt
 	m.pushJumpBack(capture.Origin)
 	m.relocationHistory.forward = nil
 	return flashIfJumped(oldCursor, destination, &m.cursorFlash), true
+}
+
+// advanceAfterDeparture carries the cursor onto the successor the relocation
+// capture already recorded, for the modes whose catalog entry asks for it. It
+// writes m.cursor and nothing else: computeOutlinerViewport remains the single
+// window authority, so no viewScrollOffset write belongs here. No projection
+// check is needed either — every caller sits behind finishOutlinerRelocation's
+// projection guard, which already covers mode, scope, search, filters, sort,
+// zoom, collapsed sections, folds, and focus. No flash is emitted: the user's own
+// keypress caused the move and the next row to triage is under the cursor.
+func (m *OutlinerModel) advanceAfterDeparture(capture *outlinerRelocationCapture) {
+	if m == nil || capture == nil {
+		return
+	}
+	if !m.activeOutlinerModeEntry().SupportsCursorAdvance() {
+		return
+	}
+	successor, ok := m.rowIndexForTask(capture.Origin.Following)
+	if !ok {
+		return
+	}
+	m.cursor = successor
 }
 
 // finishTaskLineEditRelocation resolves the final project-qualified identity

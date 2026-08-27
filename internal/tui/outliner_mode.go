@@ -59,13 +59,30 @@ const (
 // section. Only the modes a user reads to decide what to work on carry it;
 // Inbox, Next, Backlog, Due, and Recent each answer one narrow question already,
 // so a promoted group there only splits the answer the mode was opened for.
+//
+// AdvancesOnDeparture marks the modes whose cursor follows the sweep when the
+// row under it leaves the mode. It is a property of the mode, not a user
+// setting: Inbox is the only mode that exists to be emptied, so the next row to
+// triage is always the one the departing row was in front of. A mode a user
+// reads to decide what to work on — All, Today, Due — must never move the cursor
+// under an act aimed at one row, because the row the user is looking at is the
+// answer they opened the mode for, and a mode that slides underneath a keypress
+// makes the next keypress land somewhere unread.
 type OutlinerMode struct {
-	ID            OutlinerModeID
-	Label         string
-	OrderPolicy   OutlinerOrderPolicy
-	ReorderPolicy OutlinerReorderPolicy
-	RowStrategy   OutlinerRowStrategy
-	ShowsPinned   bool
+	ID                  OutlinerModeID
+	Label               string
+	OrderPolicy         OutlinerOrderPolicy
+	ReorderPolicy       OutlinerReorderPolicy
+	RowStrategy         OutlinerRowStrategy
+	ShowsPinned         bool
+	AdvancesOnDeparture bool
+}
+
+// SupportsCursorAdvance reports whether a task leaving this mode should carry
+// the cursor to its recorded successor rather than leave it on the row index the
+// departure vacated.
+func (mode OutlinerMode) SupportsCursorAdvance() bool {
+	return mode.AdvancesOnDeparture
 }
 
 // SupportsManualSort reports whether the user's manual sort applies. Only
@@ -84,7 +101,7 @@ func (mode OutlinerMode) FixedOrder() bool {
 var outlinerModes = []OutlinerMode{
 	{ID: ModeAll, Label: "All", OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyAll, ShowsPinned: true},
 	{ID: ModeToday, Label: "Today", OrderPolicy: OrderPolicyTodayOrder, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyToday, ShowsPinned: true},
-	{ID: ModeInbox, Label: "Inbox", OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyInbox},
+	{ID: ModeInbox, Label: "Inbox", OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyInbox, AdvancesOnDeparture: true},
 	{ID: ModeNext, Label: "Next", OrderPolicy: OrderPolicyNextOrder, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyNext},
 	{ID: ModeBacklog, Label: "Backlog", OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyBacklog},
 	{ID: ModeDue, Label: "Due", OrderPolicy: OrderPolicyDueDate, ReorderPolicy: ReorderPolicyNone, RowStrategy: RowStrategyDue},
