@@ -159,6 +159,22 @@ func (m *AppModel) handleNoteSearchIndexLoaded(msg noteSearchIndexLoadedMsg) {
 		return
 	}
 	m.noteIndexRows = msg.rows
+	m.invalidateOutlinerForNoteSearchIndex()
+}
+
+// invalidateOutlinerForNoteSearchIndex forces the authoritative Outliner to
+// rebuild after an accepted index result. The note index is read through an
+// injected accessor rather than held in the Outliner, so it is invisible to
+// crossProjectRowsFingerprint: without this the memoization guard would
+// short-circuit the next render and an already-open search would keep showing
+// the notes tier the superseded index produced. Only an accepted result reaches
+// here, so a stale generation or a failed read still leaves the displayed
+// projection exactly as it was.
+func (m *AppModel) invalidateOutlinerForNoteSearchIndex() {
+	if m == nil || m.crossOutliner == nil {
+		return
+	}
+	m.crossOutliner.crossForceRebuild = true
 }
 
 // noteSearchIndexRows is the accessor the Outliner is injected with. It is a

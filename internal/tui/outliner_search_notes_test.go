@@ -289,6 +289,66 @@ func TestNoteSearchIndexKeepsItsRowsAgainstStaleAndFailedReads(t *testing.T) {
 	}
 }
 
+// A refresh that lands while a search is already open must reach the screen on
+// the next frame. The index is read through an injected accessor, so it is
+// invisible to the rebuild fingerprint: the accepted result has to invalidate
+// the projection itself or the memoized rows would keep the superseded tier.
+func TestNoteSearchIndexRefreshRebuildsOpenProjection(t *testing.T) {
+	task := primaryRowsTask("task", models.StateBacklog)
+	task.Title = "Unrelated"
+	alpha := primaryRowsProject("alpha", task)
+	outliner := scopeTestOutliner(alpha)
+	model := &AppModel{crossOutliner: outliner, noteIndexGeneration: 4}
+	outliner.setNoteSearchIndex(model.noteSearchIndexRows)
+
+	// The search opens against an index that has nothing to say about it, which
+	// is exactly the state a first launch is in while the read is still running.
+	outliner.SetSearchQuery("widget")
+	if !outliner.hasSearchProjection() {
+		t.Fatalf("SetSearchQuery left no open search projection")
+	}
+	if got := countNoteRows(outliner); got != 0 {
+		t.Fatalf("projection = %d note rows before the index landed, want none", got)
+	}
+
+	refreshed := []LocatedNoteRow{
+		noteIndexRow(app.GlobalNoteLocation(), "Global", "Widget rollout", "widget.md"),
+	}
+	model.handleNoteSearchIndexLoaded(noteSearchIndexLoadedMsg{generation: 4, rows: refreshed})
+
+	// The next frame, and no user action in between.
+	outliner.crossProjectRebuildRows()
+	if got := countNoteRows(outliner); got != 1 {
+		t.Fatalf("projection = %d note rows after the refresh, want the refreshed note visible", got)
+	}
+
+	// A stale generation and a failed read leave the displayed projection alone
+	// rather than replacing it with a superseded or empty answer.
+	superseded := []LocatedNoteRow{
+		noteIndexRow(app.GlobalNoteLocation(), "Global", "Nothing here", "other.md"),
+	}
+	model.handleNoteSearchIndexLoaded(noteSearchIndexLoadedMsg{generation: 3, rows: superseded})
+	outliner.crossProjectRebuildRows()
+	if got := countNoteRows(outliner); got != 1 {
+		t.Fatalf("projection = %d note rows after a stale read, want the displayed note retained", got)
+	}
+	model.handleNoteSearchIndexLoaded(noteSearchIndexLoadedMsg{generation: 4, err: errors.New("read failed")})
+	outliner.crossProjectRebuildRows()
+	if got := countNoteRows(outliner); got != 1 {
+		t.Fatalf("projection = %d note rows after a failed read, want the displayed note retained", got)
+	}
+}
+
+func countNoteRows(outliner *OutlinerModel) int {
+	notes := 0
+	for _, row := range outliner.rows {
+		if row.IsNoteRow {
+			notes++
+		}
+	}
+	return notes
+}
+
 // An availability message lands after every committed task mutation, so the
 // index reloads only when the owner catalog actually moved.
 func TestNoteSearchIndexReloadsOnlyForAnOwnerCatalogChange(t *testing.T) {
