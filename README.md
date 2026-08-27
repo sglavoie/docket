@@ -557,6 +557,7 @@ it, `Add built-in view` — followed by every saved lens in alphabetical order.
 | Keys | Effect inside the picker |
 | --- | --- |
 | `Enter` | Apply the lens under the cursor; on `Save current view`, name and save what you are looking at; on `Add built-in view`, open the built-in gallery |
+| `1`–`9` | Apply the Nth saved lens shown, exactly as `Enter` on that row would; the digit is drawn in a column ahead of the row it names. Both action rows are unnumbered, and a narrowed list renumbers from one, so a digit always counts the saved rows on screen. A tenth saved lens carries no digit |
 | `Space` | Open the management sheet for the lens under the cursor: Rename, Replace from current view, Delete. On either action row it says which key that row answers to instead |
 | `/` | Narrow the saved list by name; both action rows stay put while the saved rows filter. `Esc` clears the typed query, then leaves the search, then closes the picker |
 | `Esc` | Close the picker without changing the view |

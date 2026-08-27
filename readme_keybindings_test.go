@@ -115,6 +115,8 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 			"`Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit",
 		"### Named lenses",
 		"`\\` opens Named Lenses, the saved-projection list",
+		"`1`–`9` | Apply the Nth saved lens shown, exactly as `Enter` on that row would",
+		"Both action rows are unnumbered, and a narrowed list renumbers from one",
 		"the mode, its own narrowing query, both filter families,\nand the sort axis",
 		"an ordinary search cannot survive underneath a\nlens",
 		"none of them records an undo entry and `u` never takes a lens back",
