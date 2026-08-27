@@ -289,6 +289,19 @@ rather than `Space`: the row you press it on becomes the only checked context,
 and the leading `No context` row clears the field the way `##0` does. Tags and
 context apply together, in one transaction that undoes in one step.
 
+Over a visual selection those checkboxes are tri-state, because the tasks need
+not agree. A tag row is checked when every selected task carries it, `[-]` when
+only some do, and empty when none do; applying adds every row you checked,
+removes every row you unchecked, and leaves every `[-]` row exactly as it is, so
+a tag only part of the selection carries survives an edit to the tags beside it.
+`Space` on a mixed row checks it for the whole selection: a mixed row can be
+left but not re-entered, and canceling the overlay is how you restore an
+untouched set. The `CONTEXTS` rows read `[-]` the same way, marking a context
+only some of the selection already holds, and they write nothing unless you pick
+one; picking `No context` clears the field across the whole selection the way
+`##0` does. A context named `0` is refused, because that name is what clears the
+field.
+
 `[` and `]` move the cursor task one step along the tree it is already in: `[`
 outdents it to its parent's level, `]` nests it under the peer above. They are
 the two structural keys that answer no sigil, because a relative nudge has no

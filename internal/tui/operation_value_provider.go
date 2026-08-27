@@ -1332,15 +1332,6 @@ func (m *AppModel) executeSingleTaskOperation(
 			return cmdResult(m.secondaryFeatures.TaskItem.Defer(identity, cloneOperationDate(value.Date)))
 		}
 		return cmdResult(m.secondaryFeatures.TaskItem.SetDueDate(identity, cloneOperationDate(value.Date)))
-	case operationTaskSetTags:
-		tags, ok := invocation.Value.([]string)
-		if !ok {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid tag value")}
-		}
-		return cmdResult(m.secondaryFeatures.Bulk.SetTagsLocators(
-			[]app.TaskLocator{identity.Locator()},
-			tags,
-		))
 	case operationTaskSetParent:
 		value, ok := invocation.Value.(OperationParentValue)
 		if !ok {
@@ -1483,12 +1474,6 @@ func (m *AppModel) executeBulkTaskValueOperation(
 			locators,
 			*cloneOperationDate(value.Date),
 		))
-	case operationTaskSetTags:
-		tags, ok := invocation.Value.([]string)
-		if !ok {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid tag value")}
-		}
-		return cmdResult(m.secondaryFeatures.Bulk.SetTagsLocators(locators, tags))
 	default:
 		return OperationHandlerResult{
 			Err: fmt.Errorf("operation %s is not available for %d selected tasks", invocation.Descriptor.ID, count),

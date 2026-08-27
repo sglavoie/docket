@@ -218,6 +218,13 @@ func TestREADMEDocumentsFiltersPeekAndBulkSemantics(t *testing.T) {
 		"`V` starts a fresh inclusive range at the cursor",
 		"`Ctrl+A` replaces the selection with all visible task rows",
 		"Successful Delete clears selection; other successes, cancellations, and failures preserve it",
+		"A tag row is checked when every selected task carries it, `[-]` when only some do, and empty when none do",
+		"applying adds every row you checked, removes every row you unchecked, and leaves every `[-]` row exactly as it is",
+		"a mixed row can be left but not re-entered, and canceling the overlay is how you restore an untouched set",
+		"The `CONTEXTS` rows read `[-]` the same way",
+		"they write nothing unless you pick one",
+		"picking `No context` clears the field across the whole selection the way `##0` does",
+		"A context named `0` is refused",
 	})
 }
 

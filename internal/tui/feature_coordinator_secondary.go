@@ -51,7 +51,13 @@ type BulkMutator interface {
 	// until is nil.
 	BulkDefer(taskIDs []string, until *time.Time) (app.BulkResult, error)
 	BulkDeferByLocators(locators []app.TaskLocator, until *time.Time) (app.BulkResult, error)
-	// BulkSetTags replaces the tag set on every selected task with tags.
+	// BulkSetTags replaces the tag set on every selected task with tags. The
+	// locator variant has no coordinator method: `#` is a value operation, and
+	// applicationTaskOperationRequest claims operationTaskSetTags before either
+	// the single-task or the bulk value dispatch is reached, so the whole tags
+	// path — patch payload and singleton context alike — commits through
+	// TaskItem.ExecuteOperation. Do not reintroduce a BulkCoordinator wrapper
+	// here; it would be unreachable.
 	BulkSetTags(taskIDs []string, tags []string) (app.BulkResult, error)
 	BulkSetTagsByLocators(locators []app.TaskLocator, tags []string) (app.BulkResult, error)
 	// ApplyPlanningBulk applies Today, Next, or Backlog semantics to the whole
@@ -436,16 +442,6 @@ func (c BulkCoordinator) DeferLocators(locators []app.TaskLocator, until *time.T
 func (c BulkCoordinator) SetTags(taskIDs []string, tags []string) tea.Cmd {
 	return runBatch("Bulk Set Tags", func() ([]string, string, string, error) {
 		res, err := c.bulk.BulkSetTags(taskIDs, tags)
-		if err != nil {
-			return nil, "", "", err
-		}
-		return res.TouchedProjectIDs, fmt.Sprintf("Tagged %d task(s)", len(res.Tasks)), res.TransactionID, nil
-	})
-}
-
-func (c BulkCoordinator) SetTagsLocators(locators []app.TaskLocator, tags []string) tea.Cmd {
-	return runBatch("Bulk Set Tags", func() ([]string, string, string, error) {
-		res, err := c.bulk.BulkSetTagsByLocators(locators, tags)
 		if err != nil {
 			return nil, "", "", err
 		}

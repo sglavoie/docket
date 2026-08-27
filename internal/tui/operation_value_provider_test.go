@@ -317,6 +317,81 @@ func TestBulkTagPickerRepresentsAllSomeNoneAndEmitsPatch(t *testing.T) {
 	}
 }
 
+// TestBulkContextRowsReadIndeterminateAndWriteOnlyWhenPicked pins the CONTEXTS
+// half of the tri-state picker the README describes: a context only part of the
+// selection holds renders `[-]`, a disagreeing selection writes nothing until a
+// row is picked, `No context` clears the field across the whole selection the
+// way `##0` does, and the literal `0` name stays refused.
+func TestBulkContextRowsReadIndeterminateAndWriteOnlyWhenPicked(t *testing.T) {
+	first := newBulkPickerTestTask(t, 1, "first")
+	first.Context = "home"
+	second := newBulkPickerTestTask(t, 1, "second")
+	second.Context = "office"
+	env := newAppBulkPickerEnv(t, []*models.Task{first}, []*models.Task{second})
+	model := env.appModel()
+	context := PresentationCommandContext(ViewCrossProjectOutliner)
+	context.Capabilities.Add(CapabilitySimplifiedInput)
+	context.Selection.Visual = true
+	for index, task := range []*models.Task{first, second} {
+		project := env.projects[index]
+		context.Selection.Tasks = append(context.Selection.Tasks, taskIdentityFor(task, project))
+		context.Selection.Entities = append(context.Selection.Entities, taskOperationEntity(task, project))
+	}
+	context.Entity = context.Selection.Entities[0]
+	picker, err := model.newOperationValuePicker(
+		OperationExecutionRequest{ID: operationTaskSetTags, Context: context},
+		ValueProviderTags,
+	)
+	if err != nil {
+		t.Fatalf("newOperationValuePicker: %v", err)
+	}
+
+	indeterminate := map[ListItemID]bool{}
+	for _, item := range picker.surface.Items() {
+		indeterminate[item.ID] = item.Indeterminate
+	}
+	if !indeterminate[taskContextRowID("home")] || !indeterminate[taskContextRowID("office")] {
+		t.Fatalf("context membership = %v, want both disagreed contexts indeterminate", indeterminate)
+	}
+	if picker.contextInitial != "" {
+		t.Fatalf("contextInitial = %q, want no agreed context", picker.contextInitial)
+	}
+
+	value, err := picker.selectedValue()
+	if err != nil {
+		t.Fatalf("selectedValue: %v", err)
+	}
+	patch, ok := value.(OperationTagsValue)
+	if !ok {
+		t.Fatalf("tag value = %T, want OperationTagsValue", value)
+	}
+	if patch.ContextSet {
+		t.Fatalf("untouched disagreeing contexts wrote %+v, want no context write", patch)
+	}
+
+	if refusal := picker.addOrSelectContext("0"); refusal == nil {
+		t.Fatal("minting a literal 0 context was accepted")
+	}
+
+	if !picker.surface.SetCursorToID(taskContextClearRowID) {
+		t.Fatal("the No context row is missing")
+	}
+	if selectErr := picker.selectContextUnderCursor(); selectErr != nil {
+		t.Fatalf("select No context: %v", selectErr)
+	}
+	value, err = picker.selectedValue()
+	if err != nil {
+		t.Fatalf("selectedValue after clear: %v", err)
+	}
+	patch, ok = value.(OperationTagsValue)
+	if !ok {
+		t.Fatalf("tag value = %T, want OperationTagsValue", value)
+	}
+	if !patch.ContextSet || patch.Context != "" {
+		t.Fatalf("No context patch = %+v, want ContextSet with an empty context", patch)
+	}
+}
+
 func TestFrozenBulkTagPatchPreservesSelectionAcrossCursorMoveAndRebuild(t *testing.T) {
 	first := newBulkPickerTestTask(t, 1, "first", "common", "first-only")
 	second := newBulkPickerTestTask(t, 1, "second", "common", "second-only")
