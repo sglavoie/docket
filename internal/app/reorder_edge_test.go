@@ -30,8 +30,8 @@ func TestReorderSiblingOrderLeavesUnnamedSiblingInPlace(t *testing.T) {
 	svc := newTestService(newFakeRepo(project))
 
 	moved := app.TaskLocator{ProjectID: project.ID, TaskID: "b"}
-	if _, err := svc.ReorderSiblingOrderByLocator(moved, locatorsFor(project.ID, "d", "b")); err != nil {
-		t.Fatalf("ReorderSiblingOrderByLocator: %v", err)
+	if _, err := svc.ReorderSiblingOrder(moved, locatorsFor(project.ID, "d", "b")); err != nil {
+		t.Fatalf("ReorderSiblingOrder: %v", err)
 	}
 	assertTaskIDs(t, project.Tasks, "a", "d", "c", "b")
 }
@@ -46,7 +46,7 @@ func TestReorderSiblingOrderRejectsNonSiblings(t *testing.T) {
 	svc := newTestService(newFakeRepo(project))
 
 	moved := app.TaskLocator{ProjectID: project.ID, TaskID: "child"}
-	_, err := svc.ReorderSiblingOrderByLocator(moved, locatorsFor(project.ID, "child", "root"))
+	_, err := svc.ReorderSiblingOrder(moved, locatorsFor(project.ID, "child", "root"))
 	if !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput", err)
 	}
@@ -60,7 +60,7 @@ func TestReorderSiblingOrderRejectsRepeatedTask(t *testing.T) {
 	svc := newTestService(newFakeRepo(project))
 
 	moved := app.TaskLocator{ProjectID: project.ID, TaskID: "a"}
-	_, err := svc.ReorderSiblingOrderByLocator(moved, locatorsFor(project.ID, "a", "a"))
+	_, err := svc.ReorderSiblingOrder(moved, locatorsFor(project.ID, "a", "a"))
 	if !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput", err)
 	}
@@ -76,7 +76,7 @@ func TestReorderSiblingOrderRejectsAnOrderWithoutTheMovedTask(t *testing.T) {
 	svc := newTestService(newFakeRepo(project))
 
 	moved := app.TaskLocator{ProjectID: project.ID, TaskID: "a"}
-	_, err := svc.ReorderSiblingOrderByLocator(moved, locatorsFor(project.ID, "c", "b"))
+	_, err := svc.ReorderSiblingOrder(moved, locatorsFor(project.ID, "c", "b"))
 	if !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput", err)
 	}
@@ -115,8 +115,8 @@ func TestReorderPinnedOrderRedistributesTheChainsOwnTimestamps(t *testing.T) {
 	svc := newTestService(newFakeRepo(project))
 
 	moved := app.TaskLocator{ProjectID: project.ID, TaskID: "a"}
-	if _, err := svc.ReorderPinnedTasksOrderByLocator(moved, locatorsFor(project.ID, "b", "c", "a")); err != nil {
-		t.Fatalf("ReorderPinnedTasksOrderByLocator: %v", err)
+	if _, err := svc.ReorderPinnedTasksOrder(moved, locatorsFor(project.ID, "b", "c", "a")); err != nil {
+		t.Fatalf("ReorderPinnedTasksOrder: %v", err)
 	}
 	if got, want := pinOrder(a, b, c), []string{"b", "c", "a"}; !equalStrings(got, want) {
 		t.Fatalf("pin order = %v, want %v", got, want)
@@ -135,8 +135,8 @@ func TestReorderPinnedOrderBreaksTiesStrictly(t *testing.T) {
 	svc := newTestService(newFakeRepo(project))
 
 	moved := app.TaskLocator{ProjectID: project.ID, TaskID: "c"}
-	if _, err := svc.ReorderPinnedTasksOrderByLocator(moved, locatorsFor(project.ID, "c", "b", "a")); err != nil {
-		t.Fatalf("ReorderPinnedTasksOrderByLocator: %v", err)
+	if _, err := svc.ReorderPinnedTasksOrder(moved, locatorsFor(project.ID, "c", "b", "a")); err != nil {
+		t.Fatalf("ReorderPinnedTasksOrder: %v", err)
 	}
 	if !c.PinnedAt.After(*b.PinnedAt) || !b.PinnedAt.After(*a.PinnedAt) {
 		t.Fatalf("tied pins did not become strictly decreasing: %v %v %v", c.PinnedAt, b.PinnedAt, a.PinnedAt)
@@ -151,7 +151,7 @@ func TestReorderPinnedOrderRejectsUnpinnedTask(t *testing.T) {
 	svc := newTestService(newFakeRepo(project))
 
 	moved := app.TaskLocator{ProjectID: project.ID, TaskID: "b"}
-	_, err := svc.ReorderPinnedTasksOrderByLocator(moved, locatorsFor(project.ID, "b", "a"))
+	_, err := svc.ReorderPinnedTasksOrder(moved, locatorsFor(project.ID, "b", "a"))
 	if !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput", err)
 	}
@@ -169,15 +169,15 @@ func TestMoveChecklistItemSplicesRatherThanSwaps(t *testing.T) {
 	svc := newTestService(newFakeRepo(project))
 	locator := app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}
 
-	if _, err := svc.MoveChecklistItemByLocator(locator, 0, 3); err != nil {
-		t.Fatalf("MoveChecklistItemByLocator: %v", err)
+	if _, err := svc.MoveChecklistItem(locator, 0, 3); err != nil {
+		t.Fatalf("MoveChecklistItem: %v", err)
 	}
 	if got, want := checklistTexts(task), []string{"two", "three", "four", "one"}; !equalStrings(got, want) {
 		t.Fatalf("checklist = %v, want %v", got, want)
 	}
 
-	if _, err := svc.MoveChecklistItemByLocator(locator, 3, 0); err != nil {
-		t.Fatalf("MoveChecklistItemByLocator back to top: %v", err)
+	if _, err := svc.MoveChecklistItem(locator, 3, 0); err != nil {
+		t.Fatalf("MoveChecklistItem back to top: %v", err)
 	}
 	if got, want := checklistTexts(task), []string{"one", "two", "three", "four"}; !equalStrings(got, want) {
 		t.Fatalf("checklist = %v, want %v", got, want)
@@ -190,7 +190,7 @@ func TestMoveChecklistItemRejectsOutOfRangeIndex(t *testing.T) {
 	project := newProject("proj-a", "Alpha", task)
 	svc := newTestService(newFakeRepo(project))
 
-	_, err := svc.MoveChecklistItemByLocator(app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}, 0, 5)
+	_, err := svc.MoveChecklistItem(app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}, 0, 5)
 	if !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput", err)
 	}

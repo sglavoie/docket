@@ -68,7 +68,7 @@ func TestSetPriorityZeroSurvivesReloadFromDisk(t *testing.T) {
 	svc := newUnsetPriorityService(t, dataDir, project)
 	task := project.Tasks[0]
 
-	if _, err := svc.SetPriority(task.ID, models.PriorityUnset); err != nil {
+	if _, err := svc.SetPriority(app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}, models.PriorityUnset); err != nil {
 		t.Fatalf("SetPriority(unset): %v", err)
 	}
 	assertReloadedPriority(t, project, task.ID)
@@ -80,8 +80,8 @@ func TestBulkSetPriorityZeroSurvivesReloadFromDisk(t *testing.T) {
 	beta := prioritizedProject(t, dataDir, "beta", models.PriorityMax, "Triage support inbox")
 	svc := newUnsetPriorityService(t, dataDir, alpha, beta)
 
-	ids := []string{alpha.Tasks[0].ID, alpha.Tasks[1].ID, beta.Tasks[0].ID}
-	res, err := svc.BulkSetPriority(ids, models.PriorityUnset)
+	locators := append(locatorsFor(alpha.ID, alpha.Tasks[0].ID, alpha.Tasks[1].ID), locatorsFor(beta.ID, beta.Tasks[0].ID)...)
+	res, err := svc.BulkSetPriority(locators, models.PriorityUnset)
 	if err != nil {
 		t.Fatalf("BulkSetPriority(unset): %v", err)
 	}

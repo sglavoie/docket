@@ -269,10 +269,12 @@ func (w *uitestWorkspace) launch(width, height int) (*UITestDriver, error) {
 	// cross-project cache is populated before the scenario observes the screen —
 	// mirroring the real app rather than a cold, unrendered root.
 	driver := NewUITestDriver(app, width, height)
+	driver.relaunch = w.relaunchApp
 	if app.startupMessage != nil {
 		driver.dispatch(app.startupMessage)
 		driver.drain()
 	}
+	driver.bootNoteSearchIndex()
 	if w.currentProjectID != "" {
 		for _, project := range app.crossOutliner.loadedProjects {
 			if project != nil && project.ID == w.currentProjectID {
@@ -285,6 +287,24 @@ func (w *uitestWorkspace) launch(width, height int) (*UITestDriver, error) {
 		}
 	}
 	return driver, nil
+}
+
+// relaunchApp rebuilds the app the way relaunching `tt` against this workspace
+// does: the runtime is re-read from disk, so the in-memory machine fixture
+// launch preserved is deliberately not carried over. Whatever the session
+// committed — the theme, the saved lenses, the active-lens pointer — is exactly
+// what the new app sees, and whatever it only held in memory is gone.
+func (w *uitestWorkspace) relaunchApp() (*AppModel, error) {
+	runtime, err := config.LoadRuntimeState(w.DataDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to reload workspace for restart: %w", err)
+	}
+	w.Runtime = runtime
+	app, err := NewAppModel(runtime, w.Manager)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize app model after restart: %w", err)
+	}
+	return app, nil
 }
 
 func (w *uitestWorkspace) persistNoteSeeds() error {
@@ -1027,8 +1047,19 @@ func markDone(t *models.Task) {
 	t.CompletedAt = &now
 }
 
-// setDue sets a due date relative to now.
+// setDue sets a due date relative to now, on the whole minute the grammar
+// would have produced. util.ParseDueDate builds a timed due with zero seconds
+// and treats a midnight clock as the date-only signal, so a raw time.Now()
+// offset is a value no user can enter: its seconds render away and the
+// schema-13 codec refuses the "00:00" that is left, which broke every fixture
+// build during the one minute a day the offset landed on midnight.
 func setDue(t *models.Task, offset time.Duration) {
-	due := time.Now().Add(offset)
+	due := fixtureDueInstant(time.Now(), offset)
 	t.DueDate = &due
+}
+
+// fixtureDueInstant is setDue's clock arithmetic, split out so a test can drive
+// it from a base instant the wall clock only visits for one minute a day.
+func fixtureDueInstant(base time.Time, offset time.Duration) time.Time {
+	return base.Add(offset).Truncate(time.Minute)
 }

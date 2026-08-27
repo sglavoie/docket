@@ -43,7 +43,6 @@ func cloneSnapshot(source Snapshot) (Snapshot, error) {
 			}
 			clone.Tasks = append(clone.Tasks, &copyTask)
 		}
-		clone.Warnings = append([]string(nil), project.Warnings...)
 		clone.BuildTaskTree()
 		clones = append(clones, &clone)
 		revisions[clone.ID] = source.Revision(clone.ID)

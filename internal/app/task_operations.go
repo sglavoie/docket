@@ -132,11 +132,11 @@ func (s *Service) ExecuteTaskOperation(req TaskOperationRequest) (TaskOperationR
 		if err := validateOperationTargets(req.Targets); err != nil {
 			return TaskOperationResult{}, err
 		}
-		result, err := s.BulkTransitionByLocators(req.Targets, req.State)
+		result, err := s.BulkTransition(req.Targets, req.State)
 		return bulkTaskOperationResult(result, err)
 
 	case TaskOperationSetPriority:
-		result, err := s.BulkSetPriorityByLocators(req.Targets, req.Priority)
+		result, err := s.BulkSetPriority(req.Targets, req.Priority)
 		return bulkTaskOperationResult(result, err)
 
 	case TaskOperationSetDueDate:
@@ -145,16 +145,16 @@ func (s *Service) ExecuteTaskOperation(req TaskOperationRequest) (TaskOperationR
 			err    error
 		)
 		if req.Date == nil {
-			result, err = s.BulkClearDueDateByLocators(req.Targets)
+			result, err = s.BulkClearDueDate(req.Targets)
 		} else if req.PlanForToday {
-			result, err = s.BulkSetDueDateAndPlanTodayByLocators(req.Targets, *req.Date)
+			result, err = s.BulkSetDueDateAndPlanToday(req.Targets, *req.Date)
 		} else {
-			result, err = s.BulkSetDueDateByLocators(req.Targets, *req.Date)
+			result, err = s.BulkSetDueDate(req.Targets, *req.Date)
 		}
 		return bulkTaskOperationResult(result, err)
 
 	case TaskOperationSetDefer:
-		result, err := s.BulkDeferByLocators(req.Targets, req.Date)
+		result, err := s.BulkDefer(req.Targets, req.Date)
 		return bulkTaskOperationResult(result, err)
 
 	case TaskOperationSetTags:
@@ -166,16 +166,16 @@ func (s *Service) ExecuteTaskOperation(req TaskOperationRequest) (TaskOperationR
 		if req.TagPatch {
 			result, err = s.bulkPatchTags(req.Targets, req.TagsToAdd, req.TagsToRemove, edit)
 		} else {
-			result, err = s.bulkSetTags(nil, req.Targets, req.Tags, edit)
+			result, err = s.bulkSetTags(req.Targets, req.Tags, edit)
 		}
 		return bulkTaskOperationResult(result, err)
 
 	case TaskOperationToggleTag:
-		result, err := s.BulkToggleTagByLocators(req.Targets, req.Tag)
+		result, err := s.BulkToggleTag(req.Targets, req.Tag)
 		return bulkTaskOperationResult(result, err)
 
 	case TaskOperationSetPinned:
-		result, err := s.BulkSetPinnedByLocators(req.Targets, req.Pinned)
+		result, err := s.BulkSetPinned(req.Targets, req.Pinned)
 		return bulkTaskOperationResult(result, err)
 
 	default:

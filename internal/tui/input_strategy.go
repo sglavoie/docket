@@ -292,13 +292,15 @@ func SimplifiedInputStrategy() InputStrategy {
 			// attachment or a comment on a capture line opens that panel on a row.
 			{OperationID: operationTaskAttachments, Keys: []string{"&"}, DisplayKey: "&", FooterRank: 14, FooterLabel: "attachments"},
 			{OperationID: operationTaskComments, Keys: []string{";"}, DisplayKey: ";", FooterRank: 15, FooterLabel: "comments"},
-			// Enter zooms in on whatever the cursor names. The three acts carry
-			// different targets and different vocabularies, so they stay three
-			// descriptors with three honest labels rather than one that branches on
-			// runtime context.
+			// Enter zooms in on whatever the cursor names. The four acts carry
+			// different targets and different vocabularies, so they stay four
+			// descriptors with four honest labels rather than one that branches on
+			// runtime context. Open Note is the one that leaves the Outliner: a
+			// search result the query answered with a note is read where notes live.
 			{OperationID: operationCoreFocusSubtree, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 9, FooterLabel: "focus", SharedKey: true},
 			{OperationID: operationCoreZoomSection, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 9, FooterLabel: "zoom", SharedKey: true},
 			{OperationID: operationCoreActivateGroup, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 9, FooterLabel: "open", SharedKey: true},
+			{OperationID: operationCoreOpenNote, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 9, FooterLabel: "open note", SharedKey: true},
 			{OperationID: operationCoreFocusParent, Keys: []string{"shift+enter"}, DisplayKey: "Shift+Enter"},
 			{OperationID: operationCorePeek, Keys: []string{"ctrl+enter"}, DisplayKey: "Ctrl+Enter", FooterRank: 10, FooterLabel: "peek"},
 			{OperationID: operationCoreScopeSearch, Keys: []string{"/"}, DisplayKey: "/", FooterRank: 10, FooterLabel: "search"},
@@ -352,9 +354,12 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationFilterPriority, Sequence: []string{"f", "!", "2"}, DisplayKey: "f!0-3", HintLabel: "medium+", PresetValue: 2, HasPresetValue: true},
 			{OperationID: operationFilterPriority, Sequence: []string{"f", "!", "3"}, DisplayKey: "f!0-3", HintLabel: "low+", PresetValue: 3, HasPresetValue: true},
 			{OperationID: operationFilterDue, Sequence: []string{"f", "@"}, DisplayKey: "f@", HintLabel: "due/deferred"},
-			{OperationID: operationFilterCompletionAge, Sequence: []string{"f", "c"}, DisplayKey: "fc", HintLabel: "completion age"},
+			{OperationID: operationFilterCompletionAge, Sequence: []string{"f", "a"}, DisplayKey: "fa", HintLabel: "completion age"},
 			{OperationID: operationFilterStates, Sequence: []string{"f", "$"}, DisplayKey: "f$", HintLabel: "states"},
 			{OperationID: operationFilterTags, Sequence: []string{"f", "#"}, DisplayKey: "f#", HintLabel: "tags"},
+			// Context is declared immediately after tags so the which-key row
+			// reads tags then contexts, which is the order the two sigils teach.
+			{OperationID: operationFilterContexts, Sequence: []string{"f", "c"}, DisplayKey: "fc", HintLabel: "contexts"},
 			{OperationID: operationFilterReview, Sequence: []string{"f", "r"}, DisplayKey: "fr", HintLabel: "review"},
 			{OperationID: operationFilterHierarchy, Sequence: []string{"f", "h"}, DisplayKey: "fh", HintLabel: "hierarchy"},
 			{OperationID: operationFilterStale, Sequence: []string{"f", "s"}, DisplayKey: "fs", HintLabel: "stale"},

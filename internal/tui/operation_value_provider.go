@@ -1025,7 +1025,10 @@ func (id ValueProviderID) acceptsPresetValue(value any) bool {
 	case ValueProviderFilterCompletionAge:
 		_, ok := value.(CompletionAgeFilter)
 		return ok
-	case ValueProviderFilterStates, ValueProviderFilterTags, ValueProviderFilterProjectTags:
+	case ValueProviderFilterStates,
+		ValueProviderFilterTags,
+		ValueProviderFilterContexts,
+		ValueProviderFilterProjectTags:
 		_, ok := value.([]string)
 		return ok
 	case ValueProviderProjectTagDestination, ValueProviderProject:
@@ -1512,6 +1515,8 @@ func (m *AppModel) newOperationValuePicker(
 		return m.newFilterStatesPicker(request)
 	case ValueProviderFilterTags:
 		return m.newFilterTagsPicker(request)
+	case ValueProviderFilterContexts:
+		return m.newFilterContextsPicker(request)
 	case ValueProviderFilterDue:
 		return m.newFilterDuePicker(request)
 	case ValueProviderFilterCompletionAge:
@@ -1642,7 +1647,7 @@ func (m *AppModel) newOperationValuePicker(
 		// The context rows lead the CONTEXTS section, ahead of the tag rows the
 		// source recategorized there by context usage.
 		source.Items = append(
-			taskContextListItems(collectContextNames(projects)), source.Items...,
+			taskContextListItems(collectContextNamesForProjects(projects)), source.Items...,
 		)
 		picker, err := newOperationValuePickerModel(
 			request, provider, "Set Tags & Context", subtitle, source, true, nil,
@@ -1761,24 +1766,6 @@ func taskTagMembership(refs []TaskProjectRef) map[string]operationTagMembership 
 		}
 	}
 	return membership
-}
-
-// collectContextNames unions the context vocabulary of every project a target
-// lives in, so a cross-project selection offers every name it could already
-// carry.
-func collectContextNames(projects []*models.Project) []string {
-	seen := make(map[string]bool)
-	for _, project := range projects {
-		for _, name := range CollectContextNamesForProject(project) {
-			seen[name] = true
-		}
-	}
-	names := make([]string, 0, len(seen))
-	for name := range seen {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	return names
 }
 
 // taskContextMembership reports the context row every target already agrees on

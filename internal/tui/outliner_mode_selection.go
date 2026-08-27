@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -262,21 +261,17 @@ func (m *OutlinerModel) workModeScopeProjects() []*models.Project {
 	return m.scopeProjects()
 }
 
-func (m *OutlinerModel) workModeFilterPredicateAt(now time.Time) func(*models.Task) bool {
+// searchTextPredicate is the free-text half of the work-mode gate, and only
+// that half. It is deliberately separate from facetPredicateAt: a search
+// projection has already ranked its rows fuzzily, so re-applying this substring
+// gate there would discard hits the ranked list earned.
+func (m *OutlinerModel) searchTextPredicate() func(*models.Task) bool {
 	query := m.searchTextQuery()
 	caseSensitive := m.searchCaseSensitive()
-	hasCommon := hasActiveCommonFilters(&m.filter.CommonFilterState)
-
 	return func(t *models.Task) bool {
 		if t == nil {
 			return false
 		}
-		if query != "" && !TaskMatchesSearch(t, query, caseSensitive) {
-			return false
-		}
-		if hasCommon && !passesCommonFiltersAt(t, &m.filter.CommonFilterState, now) {
-			return false
-		}
-		return true
+		return query == "" || TaskMatchesSearch(t, query, caseSensitive)
 	}
 }

@@ -51,6 +51,12 @@ type searchPredicates struct {
 	nextIDs        map[TaskIdentity]bool
 	now            time.Time
 	guidance       string
+	// sigils records that the query carried at least one sigil token. It is
+	// read off the parse rather than off the compiled conjuncts so that a
+	// destination or pin sigil, which compiles into a field rather than into a
+	// slice, counts the same as a tag. A sigil the parser refuses outright
+	// never reaches this flag; that query is already invalid().
+	sigils bool
 }
 
 // compileSearchQuery splits one query into the sigil gate and the free-text
@@ -60,7 +66,7 @@ type searchPredicates struct {
 // one predicate set, one remainder.
 func (m *OutlinerModel) compileSearchQuery(query string, projects []*models.Project) (string, *searchPredicates) {
 	parsed := textgrammar.ParseSearch(strings.TrimSpace(query))
-	predicates := &searchPredicates{now: time.Now()}
+	predicates := &searchPredicates{now: time.Now(), sigils: len(parsed.Tokens) > 0}
 	if guidance := textgrammar.SearchGuidance(parsed); guidance != "" {
 		predicates.guidance = guidance
 		return parsed.Text, predicates
@@ -180,6 +186,16 @@ func normalizeSearchTagPrefix(value string) string {
 
 func (p *searchPredicates) invalid() bool {
 	return p != nil && p.guidance != ""
+}
+
+// hasAnySigil reports whether the query carried a sigil at all. Sigils compile
+// to an AND gate applied before scoring, and a note satisfies no conjunct of
+// that gate — it has no priority, no state, no tags, no due date. So a query
+// carrying one excludes the notes tier whole rather than exempting notes from
+// the gate, which is the one move that would break the invariant every other
+// search consumer relies on.
+func (p *searchPredicates) hasAnySigil() bool {
+	return p != nil && p.sigils
 }
 
 func (p *searchPredicates) guidanceText() string {
@@ -302,9 +318,9 @@ func (p *searchPredicates) admitsDestination(task *models.Task, project *models.
 	}
 }
 
-// taskCarriesTagPrefix matches over normalized tag names only. The f# facet's
-// taskMatchesTagFacet deliberately conflates tags and contexts; search keeps the
-// two axes apart because it offers a separate sigil for each.
+// taskCarriesTagPrefix matches over normalized tag names only. Search keeps the
+// tag and context axes apart because it offers a separate sigil for each, and
+// so does the filter grammar now that contexts answer to fc rather than f#.
 func taskCarriesTagPrefix(task *models.Task, prefix string) bool {
 	for _, raw := range task.Tags {
 		tag, err := models.NormalizeTaskTag(raw)

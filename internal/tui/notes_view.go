@@ -160,17 +160,27 @@ func (m *NotesViewModel) initSearchInput() {
 	applyThemedTextInput(&m.searchInput)
 }
 
-// setOwnerProjects rebuilds the owner catalog. Archival is the only reason a
-// supplied project is refused: a parked owner keeps its notes reachable, so the
-// parked tag is deliberately not consulted here.
+// setOwnerProjects rebuilds the owner catalog.
 func (m *NotesViewModel) setOwnerProjects(projects []*models.Project) {
+	m.owners, m.ownerProjects = noteOwnerCatalog(m.notesDir, projects)
+}
+
+// noteOwnerCatalog resolves the note owners a workspace-wide read covers:
+// Global plus every supplied project, in the supplied order. Archival is the
+// only reason a project is refused — a parked owner keeps its notes reachable,
+// so the parked tag is deliberately not consulted here. The Notes manager and
+// the Outliner's search-tier note index both admit owners through this one
+// function, so neither can drift from the other's exclusion rule.
+func noteOwnerCatalog(
+	notesDir string,
+	projects []*models.Project,
+) (map[app.NoteLocation]noteManagerOwner, []*models.Project) {
 	seen := make(map[string]bool, len(projects))
-	m.ownerProjects = make([]*models.Project, 0, len(projects))
-	m.owners = make(map[app.NoteLocation]noteManagerOwner, len(projects)+1)
-	global := app.GlobalNoteLocation()
-	m.owners[global] = noteManagerOwner{
+	owned := make([]*models.Project, 0, len(projects))
+	owners := make(map[app.NoteLocation]noteManagerOwner, len(projects)+1)
+	owners[app.GlobalNoteLocation()] = noteManagerOwner{
 		Label:     "Global",
-		Directory: m.notesDir,
+		Directory: notesDir,
 	}
 	for _, project := range projects {
 		if project == nil || project.Archived ||
@@ -178,18 +188,19 @@ func (m *NotesViewModel) setOwnerProjects(projects []*models.Project) {
 			continue
 		}
 		seen[project.ID] = true
-		m.ownerProjects = append(m.ownerProjects, project)
+		owned = append(owned, project)
 		location := app.ProjectNoteLocation(project.ID)
 		label := strings.TrimSpace(project.Name)
 		if label == "" {
 			label = project.ID
 		}
-		m.owners[location] = noteManagerOwner{
+		owners[location] = noteManagerOwner{
 			Label:     label,
 			Directory: storage.NotesDir(project),
 			Project:   project,
 		}
 	}
+	return owners, owned
 }
 
 // RefreshWorkspace replaces the owner catalog from the latest availability

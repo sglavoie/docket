@@ -10,10 +10,7 @@ import (
 
 // StateRequest asks to move a task to a target workflow state.
 type StateRequest struct {
-	// TaskID identifies the task to transition when it is workspace-unique.
-	TaskID string
-	// Locator is the project-qualified alternative to TaskID. The two fields are
-	// mutually exclusive.
+	// Locator is the project-qualified task to transition.
 	Locator TaskLocator
 	// Target is the destination workflow state.
 	Target models.WorkflowState
@@ -34,7 +31,7 @@ func (s *Service) Transition(req StateRequest) (TaskResult, error) {
 	if !target.IsValid() {
 		return TaskResult{}, invalidInput("state", fmt.Sprintf("%q is not a valid workflow state", target))
 	}
-	ref, snap, revision, err := s.loadTaskSelection(req.TaskID, req.Locator)
+	ref, snap, revision, err := s.loadTaskSelection("", req.Locator)
 	if err != nil {
 		return TaskResult{}, err
 	}
@@ -87,17 +84,6 @@ func (s *Service) transitionPlanningArtifacts(ref TaskRef, builder PlanningArtif
 		}
 	}
 	return artifacts, nil
-}
-
-// Complete is the completion convenience over Transition: it moves a task to the
-// terminal done state. It is refused when the task is already terminal.
-func (s *Service) Complete(taskID string) (TaskResult, error) {
-	return s.Transition(StateRequest{TaskID: taskID, Target: models.StateDone})
-}
-
-// CompleteByLocator completes one explicitly project-qualified task.
-func (s *Service) CompleteByLocator(locator TaskLocator) (TaskResult, error) {
-	return s.Transition(StateRequest{Locator: locator, Target: models.StateDone})
 }
 
 // validateLifecycleTransition is the one application-layer lifecycle policy.

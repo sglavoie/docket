@@ -15,7 +15,7 @@ func TestChecklistCommitFailureRestoresTask(t *testing.T) {
 	repo.commitErr = errors.New("commit failed")
 	svc := newTestService(repo)
 
-	if _, err := svc.ToggleChecklistItem("t1", 0); err == nil {
+	if _, err := svc.ToggleChecklistItem(repo.loc("t1"), 0); err == nil {
 		t.Fatal("ToggleChecklistItem unexpectedly succeeded")
 	}
 	if task.Checklist[0].Done {
@@ -28,10 +28,10 @@ func TestChecklistLifecycle(t *testing.T) {
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
 	svc := newTestService(repo)
 
-	if _, err := svc.AddChecklistItem("t1", "  first  "); err != nil {
+	if _, err := svc.AddChecklistItem(repo.loc("t1"), "  first  "); err != nil {
 		t.Fatalf("AddChecklistItem: %v", err)
 	}
-	_, err := svc.AddChecklistItem("t1", "second")
+	_, err := svc.AddChecklistItem(repo.loc("t1"), "second")
 	if err != nil {
 		t.Fatalf("AddChecklistItem: %v", err)
 	}
@@ -42,7 +42,7 @@ func TestChecklistLifecycle(t *testing.T) {
 		t.Fatalf("checklist = %+v, want trimmed first item", task.Checklist)
 	}
 
-	_, err = svc.ToggleChecklistItem("t1", 0)
+	_, err = svc.ToggleChecklistItem(repo.loc("t1"), 0)
 	if err != nil {
 		t.Fatalf("ToggleChecklistItem: %v", err)
 	}
@@ -50,21 +50,21 @@ func TestChecklistLifecycle(t *testing.T) {
 		t.Fatal("item 0 should be done after toggle")
 	}
 
-	if _, editErr := svc.EditChecklistItem("t1", 0, "first edited"); editErr != nil {
+	if _, editErr := svc.EditChecklistItem(repo.loc("t1"), 0, "first edited"); editErr != nil {
 		t.Fatalf("EditChecklistItem: %v", editErr)
 	}
 	if task.Checklist[0].Text != "first edited" || !task.Checklist[0].Done {
 		t.Fatalf("item 0 = %+v, want edited text with done preserved", task.Checklist[0])
 	}
 
-	if _, reorderErr := svc.ReorderChecklistItem("t1", 0, 1); reorderErr != nil {
+	if _, reorderErr := svc.ReorderChecklistItem(repo.loc("t1"), 0, 1); reorderErr != nil {
 		t.Fatalf("ReorderChecklistItem: %v", reorderErr)
 	}
 	if task.Checklist[0].Text != "second" || task.Checklist[1].Text != "first edited" {
 		t.Fatalf("checklist after reorder = %+v, want swapped", task.Checklist)
 	}
 
-	_, err = svc.RemoveChecklistItem("t1", 0)
+	_, err = svc.RemoveChecklistItem(repo.loc("t1"), 0)
 	if err != nil {
 		t.Fatalf("RemoveChecklistItem: %v", err)
 	}
@@ -79,13 +79,13 @@ func TestChecklistValidation(t *testing.T) {
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
 	svc := newTestService(repo)
 
-	if _, err := svc.AddChecklistItem("t1", "   "); !errors.Is(err, app.ErrInvalidInput) {
+	if _, err := svc.AddChecklistItem(repo.loc("t1"), "   "); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("empty text err = %v, want ErrInvalidInput", err)
 	}
-	if _, err := svc.ToggleChecklistItem("t1", 1); !errors.Is(err, app.ErrInvalidInput) {
+	if _, err := svc.ToggleChecklistItem(repo.loc("t1"), 1); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("out-of-range toggle err = %v, want ErrInvalidInput", err)
 	}
-	if _, err := svc.ReorderChecklistItem("t1", 0, 2); !errors.Is(err, app.ErrInvalidInput) {
+	if _, err := svc.ReorderChecklistItem(repo.loc("t1"), 0, 2); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("out-of-range reorder err = %v, want ErrInvalidInput", err)
 	}
 	if len(repo.commits) != 0 {
@@ -104,7 +104,7 @@ func TestReorderAttachmentSwaps(t *testing.T) {
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
 	svc := newTestService(repo)
 
-	if _, err := svc.ReorderAttachment("t1", 0, 1); err != nil {
+	if _, err := svc.ReorderAttachment(app.TaskLocator{ProjectID: "p1", TaskID: "t1"}, 0, 1); err != nil {
 		t.Fatalf("ReorderAttachment: %v", err)
 	}
 	if task.Attachments[0].Filename != "b.txt" || task.Attachments[1].Filename != "a.txt" {
@@ -114,7 +114,7 @@ func TestReorderAttachmentSwaps(t *testing.T) {
 		t.Fatalf("lastCommit = %+v ok=%v, want Reorder Attachments", cs, ok)
 	}
 
-	if _, err := svc.ReorderAttachment("t1", 0, 5); !errors.Is(err, app.ErrInvalidInput) {
+	if _, err := svc.ReorderAttachment(app.TaskLocator{ProjectID: "p1", TaskID: "t1"}, 0, 5); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("out-of-range reorder err = %v, want ErrInvalidInput", err)
 	}
 }

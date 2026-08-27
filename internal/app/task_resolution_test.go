@@ -59,22 +59,17 @@ func TestSnapshotLookupTaskIDDistinguishesMissingUniqueAndAmbiguous(t *testing.T
 	}
 }
 
-func TestDirectMutationRejectsAmbiguousIDAndLocatorTargetsOneProject(t *testing.T) {
+// TestDirectMutationLocatorTargetsOneProject proves the locator form reaches
+// exactly the named project when two projects hold the same task ID. There is no
+// bare-ID counterpart to reject any more: every direct mutation is
+// project-qualified, so the duplicate is unreachable by construction.
+func TestDirectMutationLocatorTargetsOneProject(t *testing.T) {
 	alphaTask, betaTask, repo, service := duplicateTaskFixture()
-	alphaPriority, betaPriority := alphaTask.Priority, betaTask.Priority
+	alphaPriority := alphaTask.Priority
 
-	_, err := service.SetPriority("shared", 1)
-	requireAmbiguousTaskID(t, err)
-	if len(repo.commits) != 0 {
-		t.Fatalf("ambiguous mutation committed %d transactions", len(repo.commits))
-	}
-	if alphaTask.Priority != alphaPriority || betaTask.Priority != betaPriority {
-		t.Fatalf("ambiguous mutation changed priorities: alpha=%d beta=%d", alphaTask.Priority, betaTask.Priority)
-	}
-
-	_, err = service.SetPriorityByLocator(app.TaskLocator{ProjectID: "beta", TaskID: "shared"}, 1)
+	_, err := service.SetPriority(app.TaskLocator{ProjectID: "beta", TaskID: "shared"}, 1)
 	if err != nil {
-		t.Fatalf("SetPriorityByLocator: %v", err)
+		t.Fatalf("SetPriority: %v", err)
 	}
 	if len(repo.commits) != 1 || len(repo.commits[0]) != 1 || repo.commits[0][0].Project.ID != "beta" {
 		t.Fatalf("locator commit = %#v", repo.commits)
@@ -87,7 +82,9 @@ func TestDirectMutationRejectsAmbiguousIDAndLocatorTargetsOneProject(t *testing.
 func TestDeleteRejectsAmbiguousIDAndLocatorDeletesOneProject(t *testing.T) {
 	alphaTask, betaTask, repo, service := duplicateTaskFixture()
 
-	_, err := service.Delete(app.DeleteRequest{TaskID: "shared", Confirm: true})
+	// BulkDelete still accepts bare task IDs, so it is where the duplicate ID is
+	// still refused; the single-task Delete is locator-only.
+	_, err := service.BulkDelete(app.BulkDeleteRequest{TaskIDs: []string{"shared"}, Confirm: true})
 	requireAmbiguousTaskID(t, err)
 	if len(repo.commits) != 0 || repo.projects[0].GetTaskByID(alphaTask.ID) == nil || repo.projects[1].GetTaskByID(betaTask.ID) == nil {
 		t.Fatal("ambiguous delete mutated a project or committed")
@@ -120,18 +117,26 @@ func TestTwoTaskMutationResolvesBothTargetsBeforeMutation(t *testing.T) {
 	otherSharedTime := uniqueTime.Add(2 * time.Hour)
 	unique.PinnedAt, sharedA.PinnedAt, sharedB.PinnedAt = &uniqueTime, &otherSharedTime, &sharedTime
 
-	_, err := service.ReorderPinnedTasks("unique", "shared")
-	requireAmbiguousTaskID(t, err)
+	// The SECOND target is resolved before either task is mutated: naming a task
+	// that does not exist in its project leaves the first target's timestamp
+	// untouched and commits nothing.
+	_, err := service.ReorderPinnedTasks(
+		app.TaskLocator{ProjectID: "alpha", TaskID: "unique"},
+		app.TaskLocator{ProjectID: "beta", TaskID: "absent"},
+	)
+	if !errors.Is(err, app.ErrTaskNotFound) {
+		t.Fatalf("error = %v, want ErrTaskNotFound", err)
+	}
 	if len(repo.commits) != 0 || !unique.PinnedAt.Equal(uniqueTime) || !sharedB.PinnedAt.Equal(sharedTime) {
-		t.Fatal("ambiguous two-task mutation changed timestamps or committed")
+		t.Fatal("unresolvable two-task mutation changed timestamps or committed")
 	}
 
-	_, err = service.ReorderPinnedTasksByLocator(
+	_, err = service.ReorderPinnedTasks(
 		app.TaskLocator{ProjectID: "alpha", TaskID: "unique"},
 		app.TaskLocator{ProjectID: "beta", TaskID: "shared"},
 	)
 	if err != nil {
-		t.Fatalf("ReorderPinnedTasksByLocator: %v", err)
+		t.Fatalf("ReorderPinnedTasks: %v", err)
 	}
 	if !unique.PinnedAt.Equal(sharedTime) || !sharedB.PinnedAt.Equal(uniqueTime) || !sharedA.PinnedAt.Equal(otherSharedTime) {
 		t.Fatalf("locator reorder timestamps: unique=%v sharedA=%v sharedB=%v", unique.PinnedAt, sharedA.PinnedAt, sharedB.PinnedAt)
@@ -150,8 +155,8 @@ func TestTaskRequestTargetValidationFailsBeforeMutation(t *testing.T) {
 		want error
 	}{
 		{
-			name: "conflicting fields",
-			req:  app.StateRequest{TaskID: "task", Locator: app.TaskLocator{ProjectID: "alpha", TaskID: "task"}, Target: models.StateBacklog},
+			name: "empty locator",
+			req:  app.StateRequest{Target: models.StateBacklog},
 			want: app.ErrInvalidInput,
 		},
 		{
@@ -161,7 +166,7 @@ func TestTaskRequestTargetValidationFailsBeforeMutation(t *testing.T) {
 		},
 		{
 			name: "missing task",
-			req:  app.StateRequest{TaskID: "missing", Target: models.StateBacklog},
+			req:  app.StateRequest{Locator: app.TaskLocator{ProjectID: "alpha", TaskID: "missing"}, Target: models.StateBacklog},
 			want: app.ErrTaskNotFound,
 		},
 	}

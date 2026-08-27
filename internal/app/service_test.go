@@ -164,7 +164,7 @@ func TestEditUpdatesTitleAndDescription(t *testing.T) {
 
 	newTitle := "new title"
 	newDesc := "a body"
-	res, err := svc.Edit(app.EditRequest{TaskID: "t1", Title: &newTitle, Description: &newDesc})
+	res, err := svc.Edit(app.EditRequest{Locator: repo.loc("t1"), Title: &newTitle, Description: &newDesc})
 	if err != nil {
 		t.Fatalf("Edit: %v", err)
 	}
@@ -185,7 +185,7 @@ func TestEditRejectsInvalidTitle(t *testing.T) {
 	svc := newTestService(repo)
 
 	bad := "## heading"
-	_, err := svc.Edit(app.EditRequest{TaskID: "t1", Title: &bad})
+	_, err := svc.Edit(app.EditRequest{Locator: repo.loc("t1"), Title: &bad})
 	if !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput", err)
 	}
@@ -198,7 +198,7 @@ func TestTransitionMovesThroughNonterminalStates(t *testing.T) {
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	_, err := svc.Transition(app.StateRequest{TaskID: "t1", Target: models.StateDoing})
+	_, err := svc.Transition(app.StateRequest{Locator: repo.loc("t1"), Target: models.StateDoing})
 	if err != nil {
 		t.Fatalf("Transition: %v", err)
 	}
@@ -226,7 +226,7 @@ func TestTransitionAppliesEveryStateWithInjectedClock(t *testing.T) {
 			repo := newFakeRepo(project)
 			svc := newTestService(repo)
 
-			_, err := svc.Transition(app.StateRequest{TaskID: task.ID, Target: target})
+			_, err := svc.Transition(app.StateRequest{Locator: repo.loc(task.ID), Target: target})
 			if err != nil {
 				t.Fatalf("Transition(%q): %v", target, err)
 			}
@@ -257,7 +257,7 @@ func TestTransitionRejectsInvalidStateWithoutMutation(t *testing.T) {
 	svc := newTestService(repo)
 	before := task.State()
 
-	_, err := svc.Transition(app.StateRequest{TaskID: task.ID, Target: models.WorkflowState("todo")})
+	_, err := svc.Transition(app.StateRequest{Locator: repo.loc(task.ID), Target: models.WorkflowState("todo")})
 	if !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("Transition invalid state error = %v, want ErrInvalidInput", err)
 	}
@@ -271,10 +271,10 @@ func TestTransitionRejectedFromTerminalState(t *testing.T) {
 	repo := newFakeRepo(newProject("proj-1", "Alpha", task))
 	svc := newTestService(repo)
 
-	if _, err := svc.Complete("t1"); err != nil {
+	if _, err := svc.Transition(app.StateRequest{Locator: repo.loc("t1"), Target: models.StateDone}); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
-	_, err := svc.Transition(app.StateRequest{TaskID: "t1", Target: models.StateDoing})
+	_, err := svc.Transition(app.StateRequest{Locator: repo.loc("t1"), Target: models.StateDoing})
 	if !errors.Is(err, app.ErrInvalidTransition) {
 		t.Fatalf("err = %v, want ErrInvalidTransition", err)
 	}
@@ -289,10 +289,10 @@ func TestReopenFromTerminalReturnsToInbox(t *testing.T) {
 	repo := newFakeRepo(newProject("proj-1", "Alpha", task))
 	svc := newTestService(repo)
 
-	if _, err := svc.Complete("t1"); err != nil {
+	if _, err := svc.Transition(app.StateRequest{Locator: repo.loc("t1"), Target: models.StateDone}); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
-	_, err := svc.Transition(app.StateRequest{TaskID: "t1", Target: models.StateInbox})
+	_, err := svc.Transition(app.StateRequest{Locator: repo.loc("t1"), Target: models.StateInbox})
 	if err != nil {
 		t.Fatalf("reopen: %v", err)
 	}
@@ -309,20 +309,20 @@ func TestSetPriorityValidatesRange(t *testing.T) {
 	repo := newFakeRepo(newProject("proj-1", "Alpha", task))
 	svc := newTestService(repo)
 
-	if _, err := svc.SetPriority("t1", 99); !errors.Is(err, app.ErrInvalidInput) {
+	if _, err := svc.SetPriority(repo.loc("t1"), 99); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput", err)
 	}
-	if _, err := svc.SetPriority("t1", -1); !errors.Is(err, app.ErrInvalidInput) {
+	if _, err := svc.SetPriority(repo.loc("t1"), -1); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput", err)
 	}
-	if _, err := svc.SetPriority("t1", 1); err != nil {
+	if _, err := svc.SetPriority(repo.loc("t1"), 1); err != nil {
 		t.Fatalf("SetPriority(1): %v", err)
 	}
 	if task.Priority != 1 {
 		t.Errorf("priority = %d, want 1", task.Priority)
 	}
 	// Zero is the unset value, not an out-of-range priority, so it clears.
-	if _, err := svc.SetPriority("t1", 0); err != nil {
+	if _, err := svc.SetPriority(repo.loc("t1"), 0); err != nil {
 		t.Fatalf("SetPriority(0): %v", err)
 	}
 	if task.Priority != 0 {
@@ -336,13 +336,13 @@ func TestSetDueDateSetsAndClears(t *testing.T) {
 	svc := newTestService(repo)
 
 	due := time.Date(2026, 8, 1, 9, 0, 0, 0, time.UTC)
-	if _, err := svc.SetDueDate("t1", &due); err != nil {
+	if _, err := svc.SetDueDate(repo.loc("t1"), &due); err != nil {
 		t.Fatalf("SetDueDate: %v", err)
 	}
 	if task.DueDate == nil || task.DueDate.Format("2006-01-02") != due.Format("2006-01-02") {
 		t.Fatalf("due=%v, want date %s", task.DueDate, due.Format("2006-01-02"))
 	}
-	if _, err := svc.SetDueDate("t1", nil); err != nil {
+	if _, err := svc.SetDueDate(repo.loc("t1"), nil); err != nil {
 		t.Fatalf("clear SetDueDate: %v", err)
 	}
 	if task.DueDate != nil {
@@ -350,33 +350,33 @@ func TestSetDueDateSetsAndClears(t *testing.T) {
 	}
 }
 
-func TestAddAndRemoveTag(t *testing.T) {
+func TestToggleTagAddsAndRemoves(t *testing.T) {
 	task := newTask("t1", 1, "task")
 	repo := newFakeRepo(newProject("proj-1", "Alpha", task))
 	svc := newTestService(repo)
 
-	if _, err := svc.AddTag("t1", "#backend"); err != nil {
-		t.Fatalf("AddTag: %v", err)
+	if _, err := svc.BulkToggleTag([]app.TaskLocator{repo.loc("t1")}, "#backend"); err != nil {
+		t.Fatalf("toggle on: %v", err)
 	}
 	if !task.HasTag("backend") {
 		t.Errorf("tags = %v, want backend", task.Tags)
 	}
-	if _, err := svc.RemoveTag("t1", "backend"); err != nil {
-		t.Fatalf("RemoveTag: %v", err)
+	if _, err := svc.BulkToggleTag([]app.TaskLocator{repo.loc("t1")}, "backend"); err != nil {
+		t.Fatalf("toggle off: %v", err)
 	}
 	if task.HasTag("backend") {
 		t.Errorf("tags = %v, want backend removed", task.Tags)
 	}
 }
 
-func TestAddTagAllowsIndependentSemanticTags(t *testing.T) {
+func TestToggleTagAllowsIndependentSemanticTags(t *testing.T) {
 	task := newTask("t1", 1, "task")
 	task.Tags = []string{"idea", "keep"}
 	repo := newFakeRepo(newProject("proj-1", "Alpha", task))
 	svc := newTestService(repo)
 
-	if _, err := svc.AddTag("t1", "bug"); err != nil {
-		t.Fatalf("AddTag: %v", err)
+	if _, err := svc.BulkToggleTag([]app.TaskLocator{repo.loc("t1")}, "bug"); err != nil {
+		t.Fatalf("toggle on: %v", err)
 	}
 	if !slices.Equal(task.Tags, []string{"idea", "keep", "bug"}) || len(repo.commits) != 1 {
 		t.Fatalf("independent add tags=%v commits=%d", task.Tags, len(repo.commits))
@@ -388,13 +388,13 @@ func TestSetPinnedTogglesPin(t *testing.T) {
 	repo := newFakeRepo(newProject("proj-1", "Alpha", task))
 	svc := newTestService(repo)
 
-	if _, err := svc.SetPinned("t1", true); err != nil {
+	if _, err := svc.SetPinned(repo.loc("t1"), true); err != nil {
 		t.Fatalf("pin: %v", err)
 	}
 	if !task.Pinned {
 		t.Error("task not pinned")
 	}
-	if _, err := svc.SetPinned("t1", false); err != nil {
+	if _, err := svc.SetPinned(repo.loc("t1"), false); err != nil {
 		t.Fatalf("unpin: %v", err)
 	}
 	if task.Pinned {
@@ -408,7 +408,7 @@ func TestDeferAndClear(t *testing.T) {
 	svc := newTestService(repo)
 
 	until := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
-	if _, err := svc.Defer("t1", &until); err != nil {
+	if _, err := svc.Defer(repo.loc("t1"), &until); err != nil {
 		t.Fatalf("Defer: %v", err)
 	}
 	if task.DeferredUntil == nil || !task.DeferredUntil.Equal(until) {
@@ -417,7 +417,7 @@ func TestDeferAndClear(t *testing.T) {
 	if task.DeferCount != 1 {
 		t.Fatalf("DeferCount = %d, want 1", task.DeferCount)
 	}
-	if _, err := svc.Defer("t1", nil); err != nil {
+	if _, err := svc.Defer(repo.loc("t1"), nil); err != nil {
 		t.Fatalf("clear Defer: %v", err)
 	}
 	if task.DeferredUntil != nil {
@@ -461,13 +461,13 @@ func TestDeferRejectsCompletedAndBacklogsDoing(t *testing.T) {
 	repo := newFakeRepo(newProject("proj-1", "Alpha", done, inProgress))
 	svc := newTestService(repo)
 
-	if _, err := svc.Defer("t1", &until); !errors.Is(err, app.ErrInvalidInput) {
+	if _, err := svc.Defer(repo.loc("t1"), &until); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("deferral done: err = %v, want ErrInvalidInput", err)
 	}
 	if done.DeferredUntil != nil {
 		t.Error("completed task should not be deferred")
 	}
-	if _, err := svc.Defer("t2", &until); err != nil {
+	if _, err := svc.Defer(repo.loc("t2"), &until); err != nil {
 		t.Fatalf("deferral Doing: %v", err)
 	}
 	if inProgress.State() != models.StateBacklog || inProgress.DeferredUntil == nil {
@@ -479,7 +479,7 @@ func TestMutationTaskNotFound(t *testing.T) {
 	repo := newFakeRepo(newProject("proj-1", "Alpha"))
 	svc := newTestService(repo)
 
-	if _, err := svc.SetPriority("ghost", 2); !errors.Is(err, app.ErrTaskNotFound) {
+	if _, err := svc.SetPriority(app.TaskLocator{ProjectID: "proj-1", TaskID: "ghost"}, 2); !errors.Is(err, app.ErrTaskNotFound) {
 		t.Fatalf("err = %v, want ErrTaskNotFound", err)
 	}
 }
@@ -496,7 +496,7 @@ func TestOptimisticConcurrencyConflictSurfacesStaleRevision(t *testing.T) {
 		repo.revisions[project.ID] = "diverged-revision"
 	}
 
-	_, err := svc.SetPriority("t1", 2)
+	_, err := svc.SetPriority(repo.loc("t1"), 2)
 	if !errors.Is(err, storage.ErrStaleRevision) {
 		t.Fatalf("err = %v, want storage.ErrStaleRevision", err)
 	}
@@ -510,8 +510,8 @@ func TestCommitCarriesCapturedExpectedRevision(t *testing.T) {
 	capturedBase := repo.documents[project.ID]
 	svc := newTestService(repo)
 
-	if _, err := svc.AddTag("t1", "focus"); err != nil {
-		t.Fatalf("AddTag: %v", err)
+	if _, err := svc.BulkToggleTag([]app.TaskLocator{repo.loc("t1")}, "focus"); err != nil {
+		t.Fatalf("toggle on: %v", err)
 	}
 	cs, ok := repo.lastCommit()
 	if !ok {

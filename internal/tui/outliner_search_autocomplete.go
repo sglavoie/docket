@@ -372,15 +372,16 @@ func searchRankByFuzzyScore[T any](candidates []T, partial string, texts func(T)
 }
 
 // searchAutocompleteCandidateTasks returns exactly the tasks search itself can
-// inspect: the loaded scope, narrowed to the Focus boundary whenever one is
-// active. Completion reads the same authority the projection does, so it can
-// never offer a tag no result in this Focus carries.
+// inspect: the loaded scope, narrowed to the same candidate boundary the
+// projection is built from — the Focus branch and the active facets. Completion
+// reads the same authority, so it can never offer a value no admissible result
+// carries.
 func (m *OutlinerModel) searchAutocompleteCandidateTasks() []*models.Task {
 	if m == nil {
 		return nil
 	}
 	projects := m.projectsInCatalogOrder(m.workModeScopeProjects())
-	bounded := m.searchFocusCandidates(projects)
+	bounded := m.searchCandidateBoundary(projects)
 	tasks := make([]*models.Task, 0)
 	for _, project := range projects {
 		if project == nil {

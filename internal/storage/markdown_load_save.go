@@ -10,22 +10,17 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-// LoadProject loads tasks from a project's tasks.md file.
+// LoadProject loads tasks from a project's tasks.md file. Malformed hierarchy
+// data does not survive as a repaired tree: ParseProjectDocument rejects a
+// missing project-local parent, a parent cycle, and a depth overflow before the
+// tree is built, so a corrupt file is a load failure rather than a silent
+// in-memory rewrite.
 func LoadProject(project *models.Project) error {
-	_, err := LoadProjectWithWarnings(project)
-	return err
-}
-
-// LoadProjectWithWarnings loads tasks from a project's tasks.md file and returns any warnings.
-func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error) {
 	if _, ok := DefaultRepository.(*FileSystemRepository); !ok {
 		if err := DefaultRepository.Load(project); err != nil {
-			return nil, err
+			return err
 		}
-		if err := auditLoadedProject(project); err != nil {
-			return nil, err
-		}
-		return &ProjectLoadResult{}, nil
+		return auditLoadedProject(project)
 	}
 
 	content, err := os.ReadFile(tasksFilePath(project.Path))
@@ -33,13 +28,9 @@ func LoadProjectWithWarnings(project *models.Project) (*ProjectLoadResult, error
 		return loadMissingProject(project)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to read tasks file: %w", err)
+		return fmt.Errorf("failed to read tasks file: %w", err)
 	}
-	result, err := loadProjectContent(project, content)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
+	return loadProjectContent(project, content)
 }
 
 // LoadProjectForRewrite loads the exact tasks.md bytes that a caller is about to
@@ -71,7 +62,7 @@ func LoadProjectForRewrite(project *models.Project) (*string, error) {
 
 	content, err := os.ReadFile(tasksFilePath(project.Path))
 	if os.IsNotExist(err) {
-		if _, loadErr := loadMissingProject(project); loadErr != nil {
+		if loadErr := loadMissingProject(project); loadErr != nil {
 			return nil, loadErr
 		}
 		expected := ""
@@ -80,44 +71,25 @@ func LoadProjectForRewrite(project *models.Project) (*string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read tasks file for rewrite: %w", err)
 	}
-	// Full-file lifecycle rewrites must retain every parsed cross-project
-	// reference until the caller deliberately rewrites it. Ordinary loads may
-	// prune a legacy slug whose project directory is gone, but that validation
-	// cannot resolve stable project-ID qualifiers from filesystem paths and would
-	// otherwise hide them from identity-based rename/delete cleanup.
-	if _, err := loadProjectContentForRewrite(project, content); err != nil {
+	if err := loadProjectContent(project, content); err != nil {
 		return nil, err
 	}
 	expected := RawArtifactRevision(content)
 	return &expected, nil
 }
 
-func loadProjectContentForRewrite(project *models.Project, content []byte) (*ProjectLoadResult, error) {
-	return loadProjectContentWithCrossRefValidation(project, content, false)
-}
-
-func loadMissingProject(project *models.Project) (*ProjectLoadResult, error) {
+// loadMissingProject treats an absent tasks file as a successful load of an
+// empty project.
+func loadMissingProject(project *models.Project) error {
 	project.Tasks = []*models.Task{}
 	project.NextShortID = 1
-	if auditErr := auditLoadedProject(project); auditErr != nil {
-		return nil, auditErr
-	}
-	// A missing tasks file is a successful load of an empty project; return a
-	// non-nil (empty) migration audit so callers can rely on it being present
-	// whenever the load succeeds.
-	absentRevision := ""
-	_ = absentRevision
-	return &ProjectLoadResult{}, nil
+	return auditLoadedProject(project)
 }
 
-func loadProjectContent(project *models.Project, content []byte) (*ProjectLoadResult, error) {
-	return loadProjectContentWithCrossRefValidation(project, content, true)
-}
-
-func loadProjectContentWithCrossRefValidation(project *models.Project, content []byte, _ bool) (*ProjectLoadResult, error) {
+func loadProjectContent(project *models.Project, content []byte) error {
 	document, err := ParseProjectDocument(string(content))
 	if err != nil {
-		return nil, fmt.Errorf("%w: schema-v6 task document required: %w", tterrors.ErrParseError, err)
+		return fmt.Errorf("%w: schema-v6 task document required: %w", tterrors.ErrParseError, err)
 	}
 	project.Tasks = document.Tasks
 	maxShortID := 0
@@ -128,10 +100,7 @@ func loadProjectContentWithCrossRefValidation(project *models.Project, content [
 	}
 	project.NextShortID = maxShortID + 1
 	project.BuildTaskTree()
-	if err := auditLoadedProject(project); err != nil {
-		return nil, err
-	}
-	return &ProjectLoadResult{}, nil
+	return auditLoadedProject(project)
 }
 
 func auditLoadedProject(project *models.Project) error {

@@ -3,11 +3,12 @@
 // date, priority, tag, pin, deferral, park, completion) that validate input,
 // apply domain rules through the models package, and emit exactly one storage
 // ChangeSet committed through the repository boundary. It imports neither Cobra
-// nor Bubble Tea. The CLI and TUI adapters drive these use cases and translate
-// the presentation-neutral results and typed errors into their own output. Every
-// dependency the layer needs — the mutation repository,
-// a clock, and an ID generator — is an injected interface so the use cases are
-// deterministic and testable against an in-memory repository.
+// nor Bubble Tea. The TUI is the only adapter driving these use cases; it
+// translates the presentation-neutral results and typed errors into its own
+// output. The Cobra commands hold only the launcher and maintenance paths and
+// never reach this layer. Every dependency the layer needs — the mutation
+// repository, a clock, and an ID generator — is an injected interface so the
+// use cases are deterministic and testable against an in-memory repository.
 package app
 
 import (

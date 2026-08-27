@@ -282,8 +282,12 @@ func TestScopedLensActivatesProjectFacetsOnExplicitScopeExit(t *testing.T) {
 	if outliner.activeLens.savedFingerprint != savedFingerprint {
 		t.Fatal("the exit rewrote the saved definition the modified marker compares against")
 	}
-	if outliner.lensModified() {
-		t.Fatal("the exit marked the lens modified")
+	// Scope is a lens-owned axis, so leaving one under a live lens is a genuine
+	// divergence and the marker says so. That is the axis moving rather than the
+	// definition: the saved fingerprint asserted just above is untouched, and
+	// replacing the lens from the current view is what would adopt the new scope.
+	if !outliner.lensModified() {
+		t.Fatal("leaving a project scope under a live lens must mark it modified")
 	}
 	if outliner.activeLens != frame {
 		t.Fatal("the exit replaced the original pre-lens restoration frame")

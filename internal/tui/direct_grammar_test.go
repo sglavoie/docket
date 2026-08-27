@@ -277,7 +277,10 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"K":      {operationChecklistMoveUp, operationCoreReorderUp},
 		"ctrl+j": {operationChecklistMoveBottom, operationCoreReorderBottom},
 		"ctrl+k": {operationChecklistMoveTop, operationCoreReorderTop},
-		"enter":  {operationCoreFocusSubtree, operationCoreZoomSection, operationCoreActivateGroup},
+		"enter": {
+			operationCoreFocusSubtree, operationCoreZoomSection,
+			operationCoreActivateGroup, operationCoreOpenNote,
+		},
 	}
 
 	owners := make(map[string][]OperationID)
@@ -467,6 +470,13 @@ func TestReviewHasNoDirectKey(t *testing.T) {
 // chord spelled like the field it narrows. A filter over a sigil-carrying field
 // answers to that sigil, and the mnemonic initials those chords used to take are
 // gone rather than kept as aliases.
+//
+// The context facet is the one stated exception. Its sigil is ##, and f## is
+// structurally impossible: (*inputChordNode).insert builds a prefix-free trie
+// and f# is already terminal on the tag facet, so a second # could never be
+// reached. Context therefore takes the letter fc — which is also the key the f#
+// picker already bound to jump to its CONTEXTS section — and completion age,
+// whose field carries no sigil at all, moved to fa to make room.
 func TestFilterAndSortSecondKeysUseSigilsWhereOneExists(t *testing.T) {
 	registry := registeredSimplifiedOperationRegistry(t)
 	ctx := simplifiedOperationContext()
@@ -504,6 +514,32 @@ func TestFilterAndSortSecondKeysUseSigilsWhereOneExists(t *testing.T) {
 				)
 			}
 		})
+	}
+
+	// The stated exception, asserted rather than only described: fc is terminal
+	// and it is the context facet that owns it, not the completion age that used
+	// to. fa is checked alongside it so the two cannot silently swap back.
+	for _, testCase := range []struct {
+		sequence []string
+		want     OperationID
+	}{
+		{sequence: []string{"f", "c"}, want: operationFilterContexts},
+		{sequence: []string{"f", "a"}, want: operationFilterCompletionAge},
+	} {
+		binding, _, resolution := registry.InputBindingForSequence(
+			InputStrategySimplified,
+			testCase.sequence,
+			ctx,
+		)
+		if resolution != ChordTerminal || binding.OperationID != testCase.want {
+			t.Fatalf(
+				"%s = %s (%v), want %s terminal",
+				strings.Join(testCase.sequence, ""),
+				binding.OperationID,
+				resolution,
+				testCase.want,
+			)
+		}
 	}
 }
 

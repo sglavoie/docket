@@ -6,22 +6,13 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// BulkTransition moves workspace-unique task IDs to target in one transaction.
-func (s *Service) BulkTransition(taskIDs []string, target models.WorkflowState) (BulkResult, error) {
-	return s.bulkTransition(taskIDs, nil, target)
-}
-
-// BulkTransitionByLocators moves project-qualified tasks to target in one
+// BulkTransition moves project-qualified tasks to target in one
 // transaction.
-func (s *Service) BulkTransitionByLocators(locators []TaskLocator, target models.WorkflowState) (BulkResult, error) {
-	return s.bulkTransition(nil, locators, target)
-}
-
-func (s *Service) bulkTransition(taskIDs []string, locators []TaskLocator, target models.WorkflowState) (BulkResult, error) {
+func (s *Service) BulkTransition(locators []TaskLocator, target models.WorkflowState) (BulkResult, error) {
 	if !target.IsValid() {
 		return BulkResult{}, invalidInput("state", fmt.Sprintf("%q is not a valid workflow state", target))
 	}
-	if len(taskIDs) == 0 && len(locators) == 0 {
+	if len(locators) == 0 {
 		return BulkResult{}, invalidInput("tasks", "at least one task id is required")
 	}
 
@@ -29,7 +20,7 @@ func (s *Service) bulkTransition(taskIDs []string, locators []TaskLocator, targe
 	if err != nil {
 		return BulkResult{}, err
 	}
-	refs, err := resolveRequestedTasks(snap, taskIDs, locators)
+	refs, err := resolveRequestedTasks(snap, nil, locators)
 	if err != nil {
 		return BulkResult{}, err
 	}

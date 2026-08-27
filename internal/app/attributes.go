@@ -9,26 +9,18 @@ import (
 )
 
 // SetDueDate sets or clears a task's calendar due date.
-func (s *Service) SetDueDate(taskID string, due *time.Time) (TaskResult, error) {
-	return s.mutateTask(taskID, "Set Due Date", "", func(ref TaskRef) error {
+func (s *Service) SetDueDate(locator TaskLocator, due *time.Time) (TaskResult, error) {
+	return s.mutateTask(locator, "Set Due Date", "", func(ref TaskRef) error {
 		ref.Task.DueDate = cloneDueDatePtr(due)
 		ref.Task.UpdatedAt = s.clock.Now()
 		return nil
 	})
 }
 
-func (s *Service) SetDueDateByLocator(locator TaskLocator, due *time.Time) (TaskResult, error) {
-	return s.mutateTaskByLocator(locator, "Set Due Date", "", func(ref TaskRef) error {
-		ref.Task.DueDate = cloneDueDatePtr(due)
-		ref.Task.UpdatedAt = s.clock.Now()
-		return nil
-	})
-}
-
-// SetDueDateAndPlanTodayByLocator is the single-task form of the atomic
+// SetDueDateAndPlanToday is the single-task form of the atomic
 // due-today planning mutation.
-func (s *Service) SetDueDateAndPlanTodayByLocator(locator TaskLocator, due time.Time) (TaskResult, error) {
-	result, err := s.BulkSetDueDateAndPlanTodayByLocators([]TaskLocator{locator}, due)
+func (s *Service) SetDueDateAndPlanToday(locator TaskLocator, due time.Time) (TaskResult, error) {
+	result, err := s.BulkSetDueDateAndPlanToday([]TaskLocator{locator}, due)
 	if err != nil {
 		return TaskResult{}, err
 	}
@@ -38,106 +30,26 @@ func (s *Service) SetDueDateAndPlanTodayByLocator(locator TaskLocator, due time.
 	return result.Tasks[0], nil
 }
 
-// SetPriority sets a task's priority. The value must be within the valid
-// 1..PriorityMax range, or zero to clear it.
-func (s *Service) SetPriority(taskID string, priority int) (TaskResult, error) {
-	return s.mutateTask(taskID, "Set Priority", "", func(ref TaskRef) error {
+// SetPriority sets a task's priority. The value must be within the
+// valid 1..PriorityMax range, or zero to clear it.
+func (s *Service) SetPriority(locator TaskLocator, priority int) (TaskResult, error) {
+	return s.mutateTask(locator, "Set Priority", "", func(ref TaskRef) error {
 		if err := models.ValidatePriority(priority, true); err != nil {
 			return invalidInput("priority", err.Error())
 		}
 		ref.Task.Priority = priority
 		ref.Task.UpdatedAt = s.clock.Now()
-		return nil
-	})
-}
-
-func (s *Service) SetPriorityByLocator(locator TaskLocator, priority int) (TaskResult, error) {
-	return s.mutateTaskByLocator(locator, "Set Priority", "", func(ref TaskRef) error {
-		if err := models.ValidatePriority(priority, true); err != nil {
-			return invalidInput("priority", err.Error())
-		}
-		ref.Task.Priority = priority
-		ref.Task.UpdatedAt = s.clock.Now()
-		return nil
-	})
-}
-
-// AddTag adds a normalized tag to a task. A malformed tag is rejected with
-// ErrInvalidInput rather than silently dropped.
-func (s *Service) AddTag(taskID, tag string) (TaskResult, error) {
-	return s.mutateTask(taskID, "Add Tag", tag, func(ref TaskRef) error {
-		normalized, err := models.NormalizeTaskTag(tag)
-		if err != nil {
-			return invalidInput("tag", err.Error())
-		}
-		if _, err := models.NormalizeTaskTags(append(append([]string{}, ref.Task.Tags...), normalized)); err != nil {
-			return invalidInput("tag", err.Error())
-		}
-		ref.Task.AddTag(normalized)
-		return nil
-	})
-}
-
-func (s *Service) AddTagByLocator(locator TaskLocator, tag string) (TaskResult, error) {
-	return s.mutateTaskByLocator(locator, "Add Tag", tag, func(ref TaskRef) error {
-		normalized, err := models.NormalizeTaskTag(tag)
-		if err != nil {
-			return invalidInput("tag", err.Error())
-		}
-		if _, err := models.NormalizeTaskTags(append(append([]string{}, ref.Task.Tags...), normalized)); err != nil {
-			return invalidInput("tag", err.Error())
-		}
-		ref.Task.AddTag(normalized)
-		return nil
-	})
-}
-
-// RemoveTag removes a tag from a task. Removing a tag the task does not carry is
-// a no-op that still commits the (unchanged) project.
-func (s *Service) RemoveTag(taskID, tag string) (TaskResult, error) {
-	return s.mutateTask(taskID, "Remove Tag", tag, func(ref TaskRef) error {
-		normalized, err := models.NormalizeTaskTag(tag)
-		if err != nil {
-			return invalidInput("tag", err.Error())
-		}
-		ref.Task.RemoveTag(normalized)
-		return nil
-	})
-}
-
-func (s *Service) RemoveTagByLocator(locator TaskLocator, tag string) (TaskResult, error) {
-	return s.mutateTaskByLocator(locator, "Remove Tag", tag, func(ref TaskRef) error {
-		normalized, err := models.NormalizeTaskTag(tag)
-		if err != nil {
-			return invalidInput("tag", err.Error())
-		}
-		ref.Task.RemoveTag(normalized)
 		return nil
 	})
 }
 
 // SetPinned pins or unpins a task.
-func (s *Service) SetPinned(taskID string, pinned bool) (TaskResult, error) {
+func (s *Service) SetPinned(locator TaskLocator, pinned bool) (TaskResult, error) {
 	action := "Unpin Task"
 	if pinned {
 		action = "Pin Task"
 	}
-	return s.mutateTask(taskID, action, "", func(ref TaskRef) error {
-		if pinned {
-			ref.Task.Pin()
-		} else {
-			ref.Task.Unpin()
-		}
-		return nil
-	})
-}
-
-func (s *Service) SetPinnedByLocator(locator TaskLocator, pinned bool) (TaskResult, error) {
-	action := "Unpin Task"
-	if pinned {
-		action = "Pin Task"
-	}
-	return s.mutateTaskByLocator(locator, action, "", func(ref TaskRef) error {
+	return s.mutateTask(locator, action, "", func(ref TaskRef) error {
 		if pinned {
 			ref.Task.Pin()
 		} else {
@@ -155,26 +67,19 @@ type PinnedReorderResult struct {
 	TransactionID string
 }
 
-// ReorderPinnedTasks swaps the PinnedAt timestamps of two pinned tasks so their
-// relative order in a PinnedAt-sorted list flips, committing every touched
-// project as ONE transaction. Both tasks must resolve and both must be pinned;
-// when their timestamps are identical the second is nudged one second forward so
-// the swap produces a strict ordering instead of a no-op. A same-project pair
-// commits once; a cross-project pair commits both projects atomically.
-func (s *Service) ReorderPinnedTasks(taskAID, taskBID string) (PinnedReorderResult, error) {
-	return s.reorderPinnedTasks(taskAID, TaskLocator{}, taskBID, TaskLocator{})
-}
-
-func (s *Service) ReorderPinnedTasksByLocator(taskA, taskB TaskLocator) (PinnedReorderResult, error) {
-	return s.reorderPinnedTasks("", taskA, "", taskB)
-}
-
-func (s *Service) reorderPinnedTasks(taskAID string, taskA TaskLocator, taskBID string, taskB TaskLocator) (PinnedReorderResult, error) {
-	refA, snap, revA, err := s.loadTaskSelection(taskAID, taskA)
+// ReorderPinnedTasks swaps the PinnedAt timestamps of two pinned tasks
+// so their relative order in a PinnedAt-sorted list flips, committing every
+// touched project as ONE transaction. Both tasks must resolve and both must be
+// pinned; when their timestamps are identical the second is nudged one second
+// forward so the swap produces a strict ordering instead of a no-op. A
+// same-project pair commits once; a cross-project pair commits both projects
+// atomically.
+func (s *Service) ReorderPinnedTasks(taskA, taskB TaskLocator) (PinnedReorderResult, error) {
+	refA, snap, revA, err := s.loadTaskSelection("", taskA)
 	if err != nil {
 		return PinnedReorderResult{}, err
 	}
-	refB, err := resolveTaskSelection(snap, taskBID, taskB)
+	refB, err := resolveTaskSelection(snap, "", taskB)
 	if err != nil {
 		return PinnedReorderResult{}, err
 	}
@@ -216,7 +121,7 @@ func (s *Service) reorderPinnedTasks(taskAID string, taskA TaskLocator, taskBID 
 	}, nil
 }
 
-// ReorderPinnedTasksOrderByLocator rewrites the pin order of an explicitly named
+// ReorderPinnedTasksOrder rewrites the pin order of an explicitly named
 // chain of pinned tasks so they display in the given top-to-bottom order, as ONE
 // transaction over every project the chain touches. Only the chain's own PinnedAt
 // values are redistributed, which is what stops a rotated pin from crossing a pin
@@ -224,7 +129,7 @@ func (s *Service) reorderPinnedTasks(taskAID string, taskA TaskLocator, taskBID 
 // second upward, the same rule and direction the two-task seam applies. moved
 // names the task the request is about, which the order alone cannot say, and the
 // transaction is recorded against it.
-func (s *Service) ReorderPinnedTasksOrderByLocator(moved TaskLocator, order []TaskLocator) (PinnedReorderResult, error) {
+func (s *Service) ReorderPinnedTasksOrder(moved TaskLocator, order []TaskLocator) (PinnedReorderResult, error) {
 	if len(order) < 2 {
 		return PinnedReorderResult{}, invalidInput("pin", "reordering needs at least two pinned tasks")
 	}
@@ -299,15 +204,12 @@ func (s *Service) ReorderPinnedTasksOrderByLocator(moved TaskLocator, order []Ta
 	}, nil
 }
 
-// Defer hides a task until the given date, or clears the deferral when until is
-// nil. Deferring a nonterminal task moves it to Backlog and removes it from both
-// planning horizons in the same transaction. Terminal tasks cannot be deferred.
-func (s *Service) Defer(taskID string, until *time.Time) (TaskResult, error) {
-	return s.deferTask(taskID, TaskLocator{}, until)
-}
-
-func (s *Service) DeferByLocator(locator TaskLocator, until *time.Time) (TaskResult, error) {
-	return s.deferTask("", locator, until)
+// Defer hides a task until the given date, or clears the deferral when
+// until is nil. Deferring a nonterminal task moves it to Backlog and removes it
+// from both planning horizons in the same transaction. Terminal tasks cannot be
+// deferred.
+func (s *Service) Defer(locator TaskLocator, until *time.Time) (TaskResult, error) {
+	return s.deferTask(locator, until)
 }
 
 // DeferralRefusesState is the one deferral-eligibility predicate, and it returns
@@ -334,8 +236,8 @@ func deferralRefusesState(state models.WorkflowState) error {
 	return nil
 }
 
-func (s *Service) deferTask(taskID string, locator TaskLocator, until *time.Time) (TaskResult, error) {
-	ref, snap, revision, err := s.loadTaskSelection(taskID, locator)
+func (s *Service) deferTask(locator TaskLocator, until *time.Time) (TaskResult, error) {
+	ref, snap, revision, err := s.loadTaskSelection("", locator)
 	if err != nil {
 		return TaskResult{}, err
 	}

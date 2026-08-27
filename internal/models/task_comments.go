@@ -38,11 +38,3 @@ func (t *Task) RemoveComment(index int) bool {
 	t.UpdatedAt = time.Now()
 	return true
 }
-
-// ClearComments removes all comments from the task.
-func (t *Task) ClearComments() {
-	if len(t.Comments) > 0 {
-		t.Comments = []*Comment{}
-		t.UpdatedAt = time.Now()
-	}
-}

@@ -132,13 +132,20 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"a TUI effect is published only after\nthe commit returns nil",
 		"before it writes a single axis",
 		"`handleLensProjectsLoaded` publishes only when its\nown generation comes back",
-		"A lens therefore never writes scope",
+		"Scope is the one axis\na lens may decline to own",
+		"A lens that owns a scope therefore installs it *before* the load decision",
+		"`lensModified` carves\nscope out of \"navigating\"",
+		"`persistActiveLens`",
 		"`activeLensFrame` is the one live lens; there is never a stack",
 		"switching lenses\nreplaces the definition while keeping the baseline",
 		"Under an active lens `/` calls `beginLensQueryEdit`",
 		"bound directly in `SimplifiedInputStrategy` with no\n`FooterRank`",
 		"`\\` stays a literal character everywhere text is being typed",
 		"`resetToGlobalAll` calls\n`clearActiveLensWithoutRestore`",
+		"`NewAppModel` reads `Machine().ActiveNamedLens()` into\n`pendingLaunchLens` before any message is dispatched",
+		"drained in\nthe `crossProjectsLoadedMsg` arm",
+		"`restorePendingLaunchLens`\ntakes the value exactly once",
+		"`ActiveNamedLens()` validates the record it finds for shape alone and never\nreferentially",
 		"`v` toggles the cursor task, so a selection can name rows that are not adjacent",
 		"`V` starts a fresh inclusive task-row range",
 		"`Ctrl+A` replaces the selection with every visible task row",
@@ -264,10 +271,14 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// cursor row's gutter/content seam, Select Project's preview pane owning a
 	// second scroll, the parse-order/teach-order registry split that the
 	// attachment sigil forced, the paired-delimiter comment sigil that leads
-	// parse order, and the Notes preview pane — a second read-only scroll whose
-	// cache key and anchor rule nothing else states — are the eight that raised
-	// it from 16200 — and never to absorb explanation.
-	const budget = 19100
+	// parse order, the Notes preview pane — a second read-only scroll whose
+	// cache key and anchor rule nothing else states — the named lens a launch
+	// reopens, which is the one thing layered over the clean-root reset and so
+	// cannot be stated by the launch invariant it qualifies, and the search's
+	// notes tier, whose read-only admission rule belongs to neither the Notes
+	// surface nor the search grammar alone, are the ten that raised it from
+	// 16200 — and never to absorb explanation.
+	const budget = 20600
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

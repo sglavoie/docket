@@ -91,12 +91,19 @@ assertions, and trailing JSON are rejected before execution.
 | `resize` | `width`, `height` | Resize the simulated terminal. |
 | `wait` | none | Let time pass: drain pending asynchronous work and advance the virtual clock so due timers fire. |
 | `command` | `command` | Invoke a stable harness or production operation ID. |
+| `restart` | none | Rebuild the app from durable state alone, the way relaunching `tt` does. |
 | `assert` | `assert`, optional `value` | Check a fresh normalized observation. |
 
 An optional `label` describes user intent and is repeated in failure output.
 Prefer public keys for acceptance behavior. A `command` action is appropriate
 only for deterministic setup or for a deep link deliberately absent from the
 public grammar.
+
+A `restart` action re-reads the workspace from disk and constructs a new app over
+it, keeping only the terminal size and the virtual clock. Nothing a session held
+in memory survives, so anything asserted after a restart is an assertion about
+what was actually persisted. Use it for the launch contracts: what a relaunch
+reopens with, and what it deliberately does not.
 
 Accepted key names include printable public keys plus:
 
@@ -221,6 +228,7 @@ The committed suite exercises the product contracts directly:
 | Full-width cursor-following Peek | `outliner-peek-wide-layout.json`, `outliner-peek-narrow-layout.json` |
 | Search projection and exact restoration | `visible-search-minimum-layout.json`, `search-restoration.json` |
 | Named lenses: the `\` picker, its two action rows at the narrowest width, the three starters, the `1`-`9` quick-apply ordinals and their precedence under a typed digit, save/rename/replace/delete, lens-query narrowing, exact Escape restoration, retained scope, and the literal backslash inside text input | `named-lens-picker-open.json`, `named-lens-apply-starters.json`, `named-lens-ordinal-apply.json`, `named-lens-save-and-manage.json`, `named-lens-query-narrowing.json`, `named-lens-escape-restoration.json`, `named-lens-scope-retention.json`, `named-lens-from-search-results.json`, `named-lens-empty-state.json`, `named-lens-literal-backslash.json` |
+| The active lens surviving a relaunch: its saved axes reapplied over the clean launch view, a scoped lens reopening in its project, the first Esc landing where a lens-free launch would have, and a pointer that no longer resolves failing closed in silence | `named-lens-escape-restoration.json`, `named-lens-scoped-restart.json`, `named-lens-restart-dangling.json` |
 | The built-in view gallery end to end: opened from `Add built-in view`, the seeded starters disabled, search, add-and-apply closing both overlays, and the added template disabled by stable ID on reopening | `named-lens-built-in-gallery.json` |
 | Toggle and range selection with bulk intersection | `outliner-toggle-selection.json`, `outliner-range-selection.json`, `outliner-multiselect-*.json`, `outliner-bulk-action-intersection.json` |
 | Project header cursor, folding, and task-key refusal | `outliner-project-header-fold.json`, `outliner-project-header-rejects-task-keys.json` |
@@ -228,8 +236,9 @@ The committed suite exercises the product contracts directly:
 | Project picker multi-select and bulk tag actions | `project-hub-bulk-tag-selection.json` |
 | Select Project's compact preview header and the task pane it fills, paged with `Ctrl+F`/`Ctrl+B` and dropped by the compact fallback | `project-hub-task-preview.json` plus `project_hub_preview_tasks_test.go` |
 | Cleanup plus workspace undo/redo | `cleanup-undo-redo.json` |
-| Semantic task tag split, seeded in `#` and usage-derived in `f#` | `semantic-task-tags-split.json`, `tags-picker-direct.json` |
+| Semantic task tag split, seeded in `#` and usage-derived in `f#`, which narrows tags alone | `semantic-task-tags-split.json`, `tags-picker-direct.json` |
 | Context radio inside `#`, its inline mint, and one undo over a simultaneous tag and context change | `tags-picker-context-radio.json`, `tags-picker-context-mint.json` |
+| Task contexts as their own `fc` facet: OR across names, the `No context` row naming the gap, and `f#` staying tag-only beside it | `filter-context-facet.json`, `task-context-tag-facet.json` |
 | Planning membership outranking the Review lane, so `$n` moves one row | `review-lane-planning-precedence.json` |
 | Stale lane visibility and folding, `fs` outside All, and narrow layout | `stale-lane-and-filter.json` |
 | Semantic colors in both themes | `theme-toggle.json` plus `semantic_tag_title_style_test.go` |

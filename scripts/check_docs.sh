@@ -2,4 +2,4 @@
 
 set -eu
 
-go test -count=1 . -run 'TestREADME|TestArchitecture'
+go test -count=1 . -run 'TestREADME|TestArchitecture|TestBaseline'

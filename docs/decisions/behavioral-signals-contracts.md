@@ -52,17 +52,22 @@ The lowercase row-refinement chord is `fs` ("filter stale"). Inspection of
 `filterOperationDescriptors` in `internal/tui/filter_operations.go` and
 `(*HelpViewModel).filterItems` in `internal/tui/help_filter.go` confirms that
 filter descriptors and the help view do not maintain a second key table: help
-fuzzy-filters the registry projection. The current complete lowercase `f`
-keyspace is bound by `SimplifiedInputStrategy` in
-`internal/tui/input_strategy.go`:
+fuzzy-filters the registry projection. The lowercase `f` keyspace this decision
+was taken against is bound by `SimplifiedInputStrategy` in
+`internal/tui/input_strategy.go`. The rows below carry their present keys: the
+locked decision here is that Stale's key is `fs`, and this table is only the
+evidence that `fs` was free, so a later renumber inside it leaves the decision
+untouched. Task contexts subsequently took `fc` as an axis of their own, moving
+completion age to `fa` and leaving `f#` to tags alone.
 
 | Chord | Meaning |
 | --- | --- |
 | `f!0`, `f!1`, `f!2`, `f!3` | priority threshold: clear, high, medium+, low+ |
 | `f@` | due date |
-| `fc` | completion age |
+| `fa` | completion age |
 | `f$` | workflow states |
-| `f#` | tags and task context |
+| `f#` | tags |
+| `fc` | task contexts |
 | `fr` | Review tag |
 | `fh` | hierarchy position |
 | `fx` | clear all task filters |

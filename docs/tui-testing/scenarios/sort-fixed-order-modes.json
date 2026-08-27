@@ -34,6 +34,28 @@
     { "type": "key", "key": "x" },
     { "type": "assert", "assert": "status_contains", "value": "Sort cleared" },
     { "type": "assert", "assert": "not_contains", "value": "Sort: " },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "back to a fixed-order mode", "key": "g" },
+    { "type": "key", "key": "t" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Today" },
+    { "type": "key", "label": "search out of it", "key": "/" },
+    { "type": "text", "text": "triage" },
+    { "type": "key", "label": "accept the query so the chord reaches the projection", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Search: \"triage\"" },
+    { "type": "assert", "assert": "contains", "value": "Triage support inbox" },
+
+    { "type": "key", "label": "a search projection owns no mode order, so the sort installs", "key": "o" },
+    { "type": "key", "key": "@" },
+    { "type": "assert", "assert": "status_contains", "value": "Sorting by due date" },
+    { "type": "assert", "label": "and it is shown, not merely recorded", "assert": "contains", "value": "Sort: due date ↑" },
+    { "type": "assert", "assert": "not_contains", "value": "Today owns its order" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "Esc hands the fixed-order mode back unsorted", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Today" },
+    { "type": "assert", "assert": "not_contains", "value": "Search:" },
+    { "type": "assert", "assert": "not_contains", "value": "Sort: " },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

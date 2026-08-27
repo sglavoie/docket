@@ -152,7 +152,11 @@ func (m *OutlinerModel) outlinerScopeLabel() string {
 func (m *OutlinerModel) buildOutlinerFilterContext() string {
 	sortField := m.sort.Field
 	sortAscending := m.sort.Ascending
-	if m.activeOutlinerModeEntry().FixedOrder() {
+	// A fixed-order mode owns its ordering, so a sort recorded there is not on
+	// screen and must not be advertised. Under a search projection the mode
+	// underneath is irrelevant — the sort is live over the ranked rows — so
+	// zeroing the segment there would silently hide it.
+	if m.activeOutlinerModeEntry().FixedOrder() && !m.hasSearchProjection() {
 		sortField = SortByDefault
 		sortAscending = false
 	}
@@ -235,6 +239,10 @@ func (m *OutlinerModel) outlinerEmptyMessage() string {
 		return "No projects match project filters. Press Fx to clear project filters."
 	case outlinerEmptySearch:
 		return fmt.Sprintf("No tasks match search %q. Press Esc to clear.", m.SearchQuery())
+	case outlinerEmptySearchFiltered:
+		return fmt.Sprintf(
+			"No tasks match search %q under the active filters. Press fx to clear filters or Esc to clear the search.",
+			m.SearchQuery())
 	case outlinerEmptySearchInvalid:
 		return fmt.Sprintf("%s. Press Esc to clear.", m.searchGate.guidanceText())
 	case outlinerEmptyLens:

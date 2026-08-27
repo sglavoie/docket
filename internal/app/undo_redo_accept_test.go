@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -26,6 +27,19 @@ type storageRepo struct {
 
 func newStorageRepo(svc *storage.CommitService, projects ...*models.Project) *storageRepo {
 	return &storageRepo{svc: svc, projects: projects, revisions: make(map[string]string)}
+}
+
+// loc returns the project-qualified locator for taskID, mirroring fakeRepo.loc
+// so an acceptance test names its target the same way a unit test does.
+func (r *storageRepo) loc(taskID string) app.TaskLocator {
+	for _, p := range r.projects {
+		for _, t := range p.Tasks {
+			if t.ID == taskID {
+				return app.TaskLocator{ProjectID: p.ID, TaskID: taskID}
+			}
+		}
+	}
+	panic(fmt.Sprintf("harness: no seeded project owns task %q", taskID))
 }
 
 // seed writes the initial project state to disk so tasks.md exists and each
@@ -99,7 +113,7 @@ func TestDeleteUndoRedoAcceptance(t *testing.T) {
 	repo.seed(t)
 
 	appSvc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
-	_, err := appSvc.Delete(app.DeleteRequest{TaskID: task.ID, Confirm: true})
+	_, err := appSvc.Delete(app.DeleteRequest{Locator: repo.loc(task.ID), Confirm: true})
 	if err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
@@ -147,7 +161,7 @@ func TestDeleteConfigArtifactUndoRedoAcceptance(t *testing.T) {
 	appSvc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 	after := []byte(`{"focus_queue":[]}`)
 	art := storage.ArtifactChange{Path: configPath, Data: after}
-	if _, err := appSvc.Delete(app.DeleteRequest{TaskID: task.ID, Confirm: true}, art); err != nil {
+	if _, err := appSvc.Delete(app.DeleteRequest{Locator: repo.loc(task.ID), Confirm: true}, art); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
 	if got := readFileContent(t, configPath); got != string(after) {
@@ -189,7 +203,7 @@ func TestDeleteRollsBackWhenArtifactEscapesRoot(t *testing.T) {
 
 	appSvc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
 	escape := storage.ArtifactChange{Path: filepath.Join(t.TempDir(), "outside.json"), Data: []byte("x")}
-	if _, err := appSvc.Delete(app.DeleteRequest{TaskID: task.ID, Confirm: true}, escape); err == nil {
+	if _, err := appSvc.Delete(app.DeleteRequest{Locator: repo.loc(task.ID), Confirm: true}, escape); err == nil {
 		t.Fatal("expected delete to fail when an artifact escapes the approved root")
 	}
 

@@ -37,7 +37,7 @@ func TestReparentUnderValidParent(t *testing.T) {
 	svc := newTestService(repo)
 
 	parentID := "epic1"
-	if _, err := svc.Reparent("t1", &parentID); err != nil {
+	if _, err := svc.Reparent(repo.loc("t1"), &parentID); err != nil {
 		t.Fatalf("Reparent: %v", err)
 	}
 	if task.ParentID == nil || *task.ParentID != "epic1" {
@@ -57,7 +57,7 @@ func TestReparentToRootClearsParent(t *testing.T) {
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
 
-	if _, err := svc.Reparent("t1", nil); err != nil {
+	if _, err := svc.Reparent(repo.loc("t1"), nil); err != nil {
 		t.Fatalf("Reparent to root: %v", err)
 	}
 	if task.ParentID != nil {
@@ -73,7 +73,7 @@ func TestReparentUsesLeanHierarchyWithoutTypeRestrictions(t *testing.T) {
 	svc := newTestService(repo)
 
 	parentID := "leaf1"
-	if _, err := svc.Reparent("t1", &parentID); err != nil {
+	if _, err := svc.Reparent(repo.loc("t1"), &parentID); err != nil {
 		t.Fatalf("Reparent under generic task: %v", err)
 	}
 	if task.ParentID == nil || *task.ParentID != leaf.ID {
@@ -94,7 +94,7 @@ func TestReparentRejectsCycle(t *testing.T) {
 	svc := newTestService(repo)
 
 	// Making epic a child of its own descendant would create a cycle.
-	if _, err := svc.Reparent("epic1", &[]string{"story1"}[0]); !errors.Is(err, app.ErrInvalidInput) {
+	if _, err := svc.Reparent(repo.loc("epic1"), &[]string{"story1"}[0]); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput (cycle)", err)
 	}
 }
@@ -105,7 +105,7 @@ func TestReparentUnknownParent(t *testing.T) {
 	svc := newTestService(repo)
 
 	ghost := "no-such-parent"
-	if _, err := svc.Reparent("t1", &ghost); !errors.Is(err, app.ErrTaskNotFound) {
+	if _, err := svc.Reparent(repo.loc("t1"), &ghost); !errors.Is(err, app.ErrTaskNotFound) {
 		t.Fatalf("err = %v, want ErrTaskNotFound", err)
 	}
 }
@@ -128,7 +128,7 @@ func TestReparentRejectsSubtreeThatWouldExceedDepth(t *testing.T) {
 	service := newTestService(repo)
 
 	parentID := chain[len(chain)-1].ID
-	if _, err := service.Reparent("moved", &parentID); !errors.Is(err, app.ErrInvalidInput) {
+	if _, err := service.Reparent(repo.loc("moved"), &parentID); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("Reparent error = %v, want ErrInvalidInput", err)
 	}
 	if moved.ParentID != nil {
@@ -146,7 +146,7 @@ func TestMoveTaskUpReordersSiblings(t *testing.T) {
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
 
-	if _, err := svc.MoveTaskUp("t2"); err != nil {
+	if _, err := svc.MoveTaskUp(repo.loc("t2")); err != nil {
 		t.Fatalf("MoveTaskUp: %v", err)
 	}
 	if projA.Tasks[0].ID != "t2" || projA.Tasks[1].ID != "t1" {
@@ -164,7 +164,7 @@ func TestMoveTaskUpAtTopRejected(t *testing.T) {
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
 
-	if _, err := svc.MoveTaskUp("t1"); !errors.Is(err, app.ErrInvalidInput) {
+	if _, err := svc.MoveTaskUp(repo.loc("t1")); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput", err)
 	}
 	if len(repo.commits) != 0 {
@@ -179,7 +179,7 @@ func TestMoveTaskDownReordersSiblings(t *testing.T) {
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
 
-	if _, err := svc.MoveTaskDown("t1"); err != nil {
+	if _, err := svc.MoveTaskDown(repo.loc("t1")); err != nil {
 		t.Fatalf("MoveTaskDown: %v", err)
 	}
 	if projA.Tasks[0].ID != "t2" || projA.Tasks[1].ID != "t1" {
@@ -194,7 +194,7 @@ func TestMoveTaskDownAtBottomRejected(t *testing.T) {
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
 
-	if _, err := svc.MoveTaskDown("t2"); !errors.Is(err, app.ErrInvalidInput) {
+	if _, err := svc.MoveTaskDown(repo.loc("t2")); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput", err)
 	}
 	if len(repo.commits) != 0 {
@@ -217,7 +217,7 @@ func TestReorderSiblingTasksUsesExplicitVisibleTarget(t *testing.T) {
 	repo := newFakeRepo(project)
 	service := newTestService(repo)
 
-	if _, err := service.ReorderSiblingTasks("a1", "a2"); err != nil {
+	if _, err := service.ReorderSiblingTasks(repo.loc("a1"), repo.loc("a2")); err != nil {
 		t.Fatalf("ReorderSiblingTasks: %v", err)
 	}
 	assertTaskIDs(t, project.GetSiblings(a1), "a2", "a1")
@@ -238,7 +238,7 @@ func TestReorderSiblingTasksRejectsDifferentParents(t *testing.T) {
 	repo := newFakeRepo(project)
 	service := newTestService(repo)
 
-	if _, err := service.ReorderSiblingTasks("a1", "b1"); !errors.Is(err, app.ErrInvalidInput) {
+	if _, err := service.ReorderSiblingTasks(repo.loc("a1"), repo.loc("b1")); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("ReorderSiblingTasks error = %v, want ErrInvalidInput", err)
 	}
 	assertTaskIDs(t, project.GetSiblings(a1), "a1")
@@ -256,7 +256,7 @@ func TestHierarchyReorderRollsBackSharedSnapshotOnCommitFailure(t *testing.T) {
 	repo.commitErr = errors.New("commit boom")
 	service := newTestService(repo)
 
-	if _, err := service.MoveTaskDown("t1"); err == nil {
+	if _, err := service.MoveTaskDown(repo.loc("t1")); err == nil {
 		t.Fatal("expected commit error")
 	}
 	assertTaskIDs(t, project.Tasks, "t1", "t2")
@@ -272,7 +272,7 @@ func TestIndentNestsUnderTaskAbove(t *testing.T) {
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
 
-	if _, err := svc.IndentTask("t1"); err != nil {
+	if _, err := svc.IndentTask(repo.loc("t1")); err != nil {
 		t.Fatalf("IndentTask: %v", err)
 	}
 	if task.ParentID == nil || *task.ParentID != "epic1" {
@@ -286,7 +286,7 @@ func TestIndentRejectedWhenNoTaskAbove(t *testing.T) {
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
 
-	if _, err := svc.IndentTask("t1"); !errors.Is(err, app.ErrInvalidInput) {
+	if _, err := svc.IndentTask(repo.loc("t1")); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput", err)
 	}
 	if len(repo.commits) != 0 {
@@ -303,7 +303,7 @@ func TestOutdentMovesToParentLevel(t *testing.T) {
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
 
-	if _, err := svc.OutdentTask("story1"); err != nil {
+	if _, err := svc.OutdentTask(repo.loc("story1")); err != nil {
 		t.Fatalf("OutdentTask: %v", err)
 	}
 	if story.ParentID != nil {
@@ -317,7 +317,7 @@ func TestOutdentRejectedAtRoot(t *testing.T) {
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
 
-	if _, err := svc.OutdentTask("t1"); !errors.Is(err, app.ErrInvalidInput) {
+	if _, err := svc.OutdentTask(repo.loc("t1")); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput", err)
 	}
 }

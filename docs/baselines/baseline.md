@@ -3,26 +3,28 @@
 Point-in-time record of the repository state at the start of the `tt` safety,
 architecture, and product consolidation program. Later sessions compare against
 these numbers to prove the migration neither loses test coverage nor silently
-grows the direct-mutation surface. Regenerate the machine-checked pieces with the
-commands below; the counts here are a human-readable snapshot, not a hard gate.
+grows the direct-mutation surface.
 
-Recorded on: session 1 (Baseline and regression harness). Every count below was
-last re-measured on 2026-08-20 by rerunning the command in its own `Reproduce`
-cell; a stale number here is a documentation bug, not a coverage regression.
+Only the slow-moving, load-bearing numbers are recorded here, and
+`TestBaselineDocumentMatchesMeasuredGates` in `baseline_docs_test.go` holds each
+of them to what the repository actually measures. Fast-churning counts — test
+functions, test files, package count, suite wall time — are deliberately absent:
+gating them would force a documentation edit on nearly every commit. Regenerate
+them on demand by running `just ci`, or measure one directly:
+
+```sh
+grep -rn '^func Test' . --include='*_test.go' | wc -l   # test functions
+find . -name '*_test.go' -not -path './.git/*' | wc -l  # test files
+go list ./... | wc -l                                   # packages
+/usr/bin/time -p go test -count=1 ./...                 # uncached wall time
+```
 
 ## Test suite
 
-| Metric                    | Value | Reproduce |
-| ------------------------- | ----- | --------- |
-| Test functions (`func Test…`) | 2579 | `grep -rn '^func Test' . --include='*_test.go' \| wc -l` |
-| Test files                | 492   | `find . -name '*_test.go' -not -path './.git/*' \| wc -l` |
-| Packages                  | 23    | `go list ./... \| wc -l` |
-| Full suite (nonflaky)     | pass  | `go test -count=1 ./...` — run twice to confirm no flakes |
-
-The full suite is the primary regression gate. Session 1's completion contract
-runs `go test -count=2 ./internal/external/...`, `go test -count=1 ./...`, and
-`go vet ./...`; milestone gates additionally run `go test -race ./...` and
-`golangci-lint run`.
+The full suite is the primary regression gate: `go test -count=1 ./...` must
+pass, and `just ci` runs `./scripts/ci.sh`, which is the authoritative gate
+(race tests with coverage, documentation checks, lint, `go mod tidy -diff`, dead
+code, and build).
 
 ## Daily-loop simplification phase gates
 
@@ -32,34 +34,42 @@ gates:
 
 | Gate | Command |
 | --- | --- |
-| Acceptance-fixture inner loop | `go test ./internal/testutil ./internal/config ./cmd ./internal/tui -run TestDailyLoop && go test ./internal/storage -run TestLegacyWorkspaceFixture` |
+| Acceptance-fixture inner loop | `go test ./internal/config -run TestDailyLoop` |
 | Every session | `go test ./...` |
-| Public cutover milestones | `go test -race ./...` and `go vet ./...` |
+| Public cutover milestones | `./scripts/ci.sh` |
 
-The uncached baseline command `/usr/bin/time -p go test -count=1 ./...` passed
-in **173.21 seconds wall time** (`user 23.04s`, `sys 31.79s`) from the repository
-root, measured on 2026-08-20 after `go clean -testcache`. Later measurements
-should use the same uncached command so Go's test cache does not hide a duration
-regression.
+`TestDailyLoop…` lives only in `internal/config/daily_loop_baseline_test.go`;
+naming other packages in that selector matches nothing.
 
 ## TUI scenarios
 
 | Metric                   | Value | Reproduce |
 | ------------------------ | ----- | --------- |
-| Committed TUI scenarios  | 143   | `find docs/tui-testing/scenarios -name '*.json' \| wc -l` |
+| Committed TUI scenarios  | 191   | `find docs/tui-testing/scenarios -name '*.json' \| wc -l` |
 
 Scenario fixtures live in `docs/tui-testing/scenarios/*.json` and are replayed by
 the committed TUI scenario tests.
 
 ## Coverage
 
-| Metric              | Value | Reproduce |
-| ------------------- | ----- | --------- |
-| CI coverage floor   | 23%   | `cat .coverage-threshold` |
+| Metric                          | Value | Reproduce |
+| ------------------------------- | ----- | --------- |
+| Repository-wide coverage floor  | 50%   | `cat .coverage-threshold` |
 
-CI enforces the floor via `go test -race -coverprofile=coverage.out ./...`
-followed by the threshold check in `.github/workflows/ci.yml`. The floor must not
-regress across the program.
+Four packages carry a higher per-package floor, listed in `.coverage-packages`:
+
+| Package | Floor |
+| --- | --- |
+| `github.com/sglavoie/tt/internal/app/` | 80% |
+| `github.com/sglavoie/tt/internal/config/` | 74% |
+| `github.com/sglavoie/tt/internal/storage/format/` | 80% |
+| `github.com/sglavoie/tt/internal/transaction/` | 80% |
+
+`scripts/ci.sh` collects the profile with
+`go test -race -count=1 -timeout=20m -coverprofile=coverage.out ./...` and then
+enforces both floors through `./scripts/check_coverage.sh coverage.out`. The
+GitHub workflow only invokes `./scripts/ci.sh`; it holds no threshold logic of
+its own. Neither floor may regress across the program.
 
 ## Task Markdown schema (historical pre-migration baseline)
 
@@ -69,15 +79,16 @@ metadata comment per task carrying `id, status, priority, tags, section, stage,
 active`, dates, `depends`, and related fields. `status`, `section`, `stage`, and
 `active` are legacy signals. Status, section, and stage now derive a single
 `WorkflowState`; the legacy `active` key is parsed and discarded. A sanitized
-capture of this schema lives in
-`internal/storage/testdata/legacy_workspace/` and is pinned by
-`TestLegacyWorkspaceFixtureParsesLegacyFields`.
+capture of this schema lives in `internal/storage/testdata/legacy_workspace/`.
+That fixture is currently orphaned: no Go code reads it, and the
+`TestLegacyWorkspaceFixtureParsesLegacyFields` test once named here does not
+exist. Whether to delete the fixture directory is still open.
 
 ## Direct-mutation surface
 
 | Metric                                       | Value | Reproduce |
 | -------------------------------------------- | ----- | --------- |
-| Direct storage mutation callsites (cmd/, tui/) | 94  | `UPDATE_MUTATION_BASELINE=1 go test ./internal/storage/ -run TestMutationCallsiteInventoryBaseline` |
+| Direct storage mutation callsites (cmd/, tui/) | 2   | `UPDATE_MUTATION_BASELINE=1 go test ./internal/storage/ -run TestMutationCallsiteInventoryBaseline` |
 
 The full, sorted inventory is committed at
 `internal/storage/testdata/mutation_callsites_baseline.txt` and enforced by

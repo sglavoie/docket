@@ -22,9 +22,6 @@ const (
 	FilePermissions = util.FilePermissions
 )
 
-// ProjectLoadResult contains the result of loading a project, including any warnings.
-type ProjectLoadResult struct{}
-
 func tasksFilePath(projectPath string) string {
 	return filepath.Join(projectPath, tasksFileName)
 }

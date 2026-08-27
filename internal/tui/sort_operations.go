@@ -59,10 +59,6 @@ func (m *AppModel) registerSortOperations() error {
 		return fmt.Errorf("operation registry and executor are required")
 	}
 	for _, descriptor := range sortAxisOperationDescriptors() {
-		descriptor.Applicability = func(ctx CommandContext) bool {
-			return coreOutlinerApplicability(ctx) &&
-				(m.crossOutliner == nil || !m.crossOutliner.hasSearchProjection())
-		}
 		if err := m.registerOperation(descriptor, OperationBinding{
 			RequiredCapabilities:     NewCapabilitySet(CapabilitySimplifiedInput),
 			Applicability:            descriptor.Applicability,
@@ -84,9 +80,6 @@ func (m *AppModel) executeSortOperation(invocation OperationInvocation) Operatio
 	if out == nil {
 		return OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
 	}
-	if out.hasSearchProjection() {
-		return OperationHandlerResult{Status: "Exit search before changing the sort"}
-	}
 	field, known := sortFieldOperations[invocation.Descriptor.ID]
 	if !known {
 		return OperationHandlerResult{Err: fmt.Errorf("unknown sort operation %s", invocation.Descriptor.ID)}
@@ -101,9 +94,11 @@ func (m *AppModel) executeSortOperation(invocation OperationInvocation) Operatio
 	}
 
 	// A fixed-order mode owns its ordering, so the key records the choice on the
-	// durable tree sort and the mode transition installs it on return.
+	// durable tree sort and the mode transition installs it on return. A search
+	// projection is flat and owns no mode order at all, so the mode underneath it
+	// is irrelevant there and the sort installs directly.
 	mode := out.activeOutlinerModeEntry()
-	if mode.FixedOrder() {
+	if mode.FixedOrder() && !out.hasSearchProjection() {
 		out.treeSort.Toggle(field)
 		return OperationHandlerResult{Status: fmt.Sprintf(
 			"%s owns its order · sort applies in All, Inbox, Backlog", mode.Label)}

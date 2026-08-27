@@ -556,6 +556,11 @@ type MachineState struct {
 	// record of "every lens was deleted", and omitting the key instead would
 	// reseed the starters on the next load.
 	NamedLenses NamedLensList `json:"named_lenses"`
+	// ActiveLensID names the lens the Outliner reopens with, or is empty when
+	// no lens is live. It is a soft pointer: nothing here checks that it names
+	// a lens that exists, so a hand-edited machine file with a dangling id
+	// still loads and simply reopens with no lens.
+	ActiveLensID string `json:"active_lens_id,omitempty"`
 }
 
 // NewMachineState returns the default built-in theme selection and the starter
@@ -565,12 +570,29 @@ func NewMachineState() *MachineState {
 	return &MachineState{Theme: "dark", NamedLenses: StarterNamedLenses()}
 }
 
-// Validate reports problems with machine-local preferences.
+// Validate reports problems with machine-local preferences. The active lens
+// pointer is checked for shape alone: referential integrity is deliberately not
+// a load-time rule, so one stale id can never refuse the whole machine file.
 func (m *MachineState) Validate() error {
 	if m.Theme != "" && m.Theme != "dark" && m.Theme != "light" {
 		return fmt.Errorf("machine: theme %q must be dark or light", m.Theme)
 	}
+	if m.ActiveLensID != "" {
+		if err := ValidateNamedLensID(m.ActiveLensID); err != nil {
+			return fmt.Errorf("machine: active lens: %w", err)
+		}
+	}
 	return m.NamedLenses.Validate()
+}
+
+// ActiveNamedLens returns the live lens definition, or nil when no lens is
+// active and when the pointer dangles. A dangling id reads as "no lens", which
+// is what keeps a hand-edited machine file usable.
+func (m *MachineState) ActiveNamedLens() *NamedLens {
+	if m == nil || m.ActiveLensID == "" {
+		return nil
+	}
+	return m.NamedLensByID(m.ActiveLensID)
 }
 
 // NamedLensByID returns the definition with the given id, or nil.
@@ -588,7 +610,9 @@ func (m *MachineState) NamedLensByID(id string) *NamedLens {
 
 // RemoveNamedLens drops the definition with the given id and reports whether
 // anything changed. Removing the last one leaves an empty, non-nil list so the
-// deletion persists as [] rather than reseeding the starters.
+// deletion persists as [] rather than reseeding the starters. It is also the
+// single place deletion consistency is enforced: deleting the live lens clears
+// the active pointer in the same call, so no caller can leave one dangling.
 func (m *MachineState) RemoveNamedLens(id string) bool {
 	if m == nil {
 		return false
@@ -604,6 +628,9 @@ func (m *MachineState) RemoveNamedLens(id string) bool {
 		return false
 	}
 	m.NamedLenses = kept
+	if m.ActiveLensID == id {
+		m.ActiveLensID = ""
+	}
 	return true
 }
 

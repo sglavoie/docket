@@ -839,7 +839,7 @@ parent `>0` names. Each candidate row carries `invalidQuickEditParent` as its
 parent that would breach `models.MaxNestingDepth` are visible refusals in the
 list rather than errors behind `Enter` — the same three sentences the `>parent`
 sigil produces, read from the same function. The chosen value reaches
-`TaskItemCoordinator.Reparent`, which is the existing `Service.ReparentByLocator`
+`TaskItemCoordinator.Reparent`, which is the existing `Service.Reparent`
 path, so `>` adds a key and a picker but no second reparent route. Indent and
 outdent moved to `]` and `[` to free the sigil; they remain one-step tree moves,
 not a parent choice.
@@ -1316,8 +1316,13 @@ and the write it authorized.
 Slash search temporarily replaces mode rows with every scoped nonterminal task,
 including deferred work. It ranks title matches before description, tag, and
 project metadata matches, then by fuzzy score and stable project/task order;
-`project#shortID` is an exact qualifier. Mode and facet changes are unavailable
-during search. Esc restores the prior mode, facets, cursor, scroll, and folds.
+`project#shortID` is an exact qualifier. Mode changes, folds, and reordering are
+unavailable during search; the task facets and the sort axis are not, because
+they are a predicate and a comparator over whatever rows exist. A facet composes
+into `searchCandidateBoundary` as an AND gate applied before scoring, exactly
+like a sigil, and a sort reorders within a relevance tier only. Population
+filters (`F*`) still refuse, since applying one needs a reload rather than a
+rebuild. Esc restores the prior mode, facets, sort, cursor, scroll, and folds.
 
 The query is not a single fuzzy string. `compileSearchQuery` parses it against
 `textgrammar.SurfaceSearch` — the fourth surface of the same registry, beside
@@ -1347,19 +1352,22 @@ slash search, Notes, and the help `/` and `\` searches. Autocomplete, pickers,
 the action sheet, and the Project Hub stay case-insensitive because tag and
 context values are normalized lowercase, and `project#shortID` stays `EqualFold`
 because it is an exact ID lookup rather than a text search.
-Ordinary filter facets compose as priority threshold, OR states, AND tag/context
-values, due bucket, completion age, hierarchy position, Stale, and deferred-only and
-remain session-only. The deferred-only facet is a fifth row on the `f@` picker
+Ordinary filter facets compose as priority threshold, OR states, AND tag values,
+OR context values, due bucket, completion age, hierarchy position, Stale, and
+deferred-only and remain session-only. The deferred-only facet is a fifth row on the `f@` picker
 rather than a chord of its own, because a deferral is a scheduling instant like
 a due date; the picker is single-select, so choosing the deferred row clears the
 due bucket and choosing a due bucket clears the deferred flag.
-The `f#` vocabulary is the union of task tags and task contexts; each selected
-value matches either field while different selected values still compose with
-AND. `BuildTagFacetList` stamps `TagInfo.ContextCount` on the values the context
-axis contributed, which routes them into the picker's `CONTEXTS` section without
-splitting the `tag:<name>` ID namespace: a value carried on both axes stays one
-row with the summed count, and the promoted workflow and semantic sections keep
-precedence over it. Completion
+The `f#` vocabulary is task tags alone, from `BuildProjectsTagList`. Contexts are
+their own axis on `fc`, whose `CommonFilterState.Contexts` names compose with OR
+because a task carries at most one, and whose `NoContext` bool admits the tasks
+carrying none; the two share one picker and therefore one entry in the clear
+count, the way the project picker's tags and its `Untagged` row do. That bool is
+state while `noContextFilterKey` is only the token the picker's value channel
+carries. `BuildTagFacetList` stays as the one context census both pickers read:
+it stamps `TagInfo.ContextCount` on the values the context axis contributed,
+which feeds the `fc` counts and, through `collectContextNamesForProjects`, the
+`##name` radio rows the `#` editor lists under `CONTEXTS`. Completion
 age uses local calendar days, requires a valid `CompletedAt`, and installs the
 Done/Canceled state predicate alongside the age so the matches are visible; that
 predicate belongs to the one cleanup facet in the clear count. The `fh`
@@ -1570,9 +1578,15 @@ would falsely report `od is not a sort action`.
 
 ### Named lenses
 
-A named lens is one durable Outliner projection — mode, its own narrowing query,
-both filter families, and the sort axis — persisted as `config.NamedLens` in the
-machine domain beside the theme. `captureLensState` reads the query axis through
+A named lens is one durable Outliner projection — mode, project scope, its own
+narrowing query, both filter families, and the sort axis — persisted as
+`config.NamedLens` in the machine domain beside the theme. Scope is the one axis
+a lens may decline to own: an empty `NamedLens.Scope` means the definition leaves
+the view's scope exactly as it found it, which is deliberately not a way to force
+the global population. `capturedLensScope` decides what a save records — never
+the single-project Outliner, which is a scope no lens installs, and never a
+parked focus, which is an exception to the base workspace rather than a scope the
+base Outliner can be asked for. `captureLensState` reads the query axis through
 `capturedLensQuery`, which is `m.lensQuery` under a lens and the accepted
 `SearchQuery()` when an ordinary search projection owns the visible rows and its
 input is closed. Only that axis crosses over: the projection itself cannot
@@ -1587,23 +1601,38 @@ mutates the clone, validates it, and only then commits, so an invalid list is
 never the one in hand.
 
 Ordering is the other half of the contract: a TUI effect is published only after
-the commit returns nil. `ApplyNamedLens` decides every refusal — a malformed
-definition, an unknown mode, a query the grammar recognizes and cannot honor —
-before it writes a single axis, so a refusal is indistinguishable from never
-having asked. When the lens changes which projects load, `beginLensProjectLoad`
+the commit returns nil. The active-lens pointer is its one documented exception,
+below. `ApplyNamedLens` decides every refusal — a malformed
+definition, an unknown mode, a query the grammar recognizes and cannot honor, a
+scope the base workspace does not admit — before it writes a single axis, so a
+refusal is indistinguishable from never having asked. `lensScopeRefusal` tests
+membership in `TaskWorkspaceProjects()` alone, which is already non-archived and
+unparked, so one test answers all three cases; `GetProject` is read only to word
+the message as archived, parked, or no longer existing, never to widen
+admission. Parked therefore fails closed, with `parkedFocusProjectID` and
+`settleParkedFocusException` the named seam a later revision would reopen it
+through. When the lens changes which projects load, `beginLensProjectLoad`
 carries the candidate filter with the load instead of writing it to the model and
 bumps a generation counter; `handleLensProjectsLoaded` publishes only when its
 own generation comes back, so a superseded load installs nothing. That start is
 also where the restoration point is frozen: the pending application carries the
 baseline captured before the read, so navigating, searching, or filtering while
-the projects load cannot rewrite the view one `Esc` later returns to. Anything
+the projects load cannot rewrite the view one `Esc` later returns to. That
+baseline is taken in `ApplyNamedLens` before the scope push, not after it, so
+one `Esc` hands back the scope the user was in rather than the one the lens
+entered. Anything
 that supersedes the application settles it rather than leaving it armed — a
 synchronous lens, an ordinary reload, a cancelled refresh, and a restoration all
 clear `pendingLens`, the loading flag, and the spinner, so a late result finds
 nothing to publish into and leaves no half-armed chrome behind. Under a
 single-project scope no load is required at all: the scope already fixed the
 population, and the lens's project facets stay recorded but inert until it is
-left. A lens therefore never writes scope. Project facets are population
+left. A lens that owns a scope therefore installs it *before* the load decision,
+through `pushProjectScope` rather than by assigning the field, which is what
+keeps the whole inert-facet mechanism untouched: `lensProjectLoadRequired` is
+false under a scope, so a scoped lens reads no population at all and the other
+order would start a load the scope immediately invalidates. Project facets are
+population
 selectors rather than row predicates, so `activeLensFrame` remembers that a
 publication left them owed a load, and the explicit clear-scope route pays it:
 `beginLensScopeExit` arms an application that carries no definition, and
@@ -1618,7 +1647,14 @@ the application that installed the lens.
 installed identity, the fingerprint the modified marker compares the live view
 against, and the single restoration point `Esc` returns to. The fingerprint is
 the whole of what a comparison needs, so the frame keeps no second copy of the
-record: the definition itself lives in machine state. `lensRestorationPoint`
+record: the definition itself lives in machine state. That fingerprint is taken
+from the definition with its scope axis replaced by the scope the view is
+actually in, because an unowned axis cannot be diverged from — which is also
+what makes a later scope push or pop a real divergence. `lensModified` carves
+scope out of "navigating" for exactly that reason: moving the cursor, folding,
+selecting, and opening Peek all leave an unmodified lens unmodified, while
+entering or leaving a project scope marks it, and `Replace from current view` is
+what adopts the scope the user moved to. `lensRestorationPoint`
 reuses the original capture whenever a lens is already live, so switching lenses
 replaces the definition while keeping the baseline: one `Esc` lands on the view
 the user actually left rather than on an intermediate lens. The Esc cascade
@@ -1646,8 +1682,44 @@ the text prompt, value picker, action sheet, and lens picker first, and
 `handleSimplifiedInputKey` declines under `simplifiedInlineControlOwnsInput`, so
 `\` stays a literal character everywhere text is being typed. Help's own `\` is
 surface-local and unaffected. `resetToGlobalAll` calls
-`clearActiveLensWithoutRestore`, which is why definitions survive a restart and
-no active lens does.
+`clearActiveLensWithoutRestore`, so no lens frame survives the launch reset and
+none survives an `Esc` to the root either.
+
+A launch nonetheless reopens the lens the pointer named, and the order is what
+makes that safe. `NewAppModel` reads `Machine().ActiveNamedLens()` into
+`pendingLaunchLens` before any message is dispatched, precisely because the
+launch reset it is about to run clears that pointer; holding the value is what
+lets the reset stay ignorant of a case it should not know. The lens is drained in
+the `crossProjectsLoadedMsg` arm of `handleGlobalLifecycleMessage`, after the
+population has been adopted, because a lens names a project scope and project
+facets that cannot be validated against a population that has not landed yet; a
+superseded generation adopts nothing and so drains nothing. `restorePendingLaunchLens`
+takes the value exactly once and forgets it either way, then applies it through
+the ordinary `ApplyNamedLens`, so every refusal already documented above decides
+a launch too. A refusal is silent: the pointer is a hint the user last expressed
+on this machine, not a record they are owed an error about. Because the reset
+completed first, `lensRestorationPoint` captures the canonical Active Projects /
+All view, and the first `Esc` lands exactly where a lens-free launch would have
+started — with no new baseline machinery, since `outlinerViewSnapshot` already
+carries `scopedProjectID` and `scopeStack`.
+
+`MachineState.ActiveLensID` is the machine-local pointer at whichever lens is
+live. `publishLens` writes it and `restoreLensBaseline` and
+`clearActiveLensWithoutRestore` clear it, all three through the nil-safe
+`persistActiveLens` seam the shell injects in `wireOutlinerOperationExecutor`;
+`commitActiveLensPointer` is the `AppModel` side, built on
+`commitNamedLensMutation` so it inherits the same clone→validate→commit path and
+the `DataDir() == ""` in-memory fallback. Writing it from `publishLens` rather
+than from `ApplyNamedLens` is what keeps it honest: an asynchronous application
+superseded by a later generation publishes nothing, and persisting at the ask
+would have named a lens the user never saw. It is also the one lens write not
+ordered ahead of its TUI effect, because it records a resume hint rather than an
+act — the projection is already installed, so a failed commit degrades to a
+status warning instead of aborting an application that succeeded. An unchanged
+pointer is skipped, so an ordinary `Esc` or global reset rewrites no bytes.
+`ActiveNamedLens()` validates the record it finds for shape alone and never
+referentially, so a pointer naming a lens another machine deleted loads without
+error and is refused later, at the one place every other refusal is decided.
 
 #### The built-in view catalog
 
@@ -1948,8 +2020,10 @@ rule seen twice: a row wears the color of the strongest thing its tag does, and
 its chip color only when it changes no other color. So a `WORKFLOW` row takes
 the lane's `PurpleStyle`, a `SEMANTIC` row `semanticTaskTitleStyle`, and a
 behavioral project row its badge role, while the descriptive rows of both `#`
-editors and of `f#`, the tag rows the task pickers' `CONTEXTS` section collects
-by context usage, the minted row an inline add mode produces, and the facet rows
+editors and of `f#`, the tag rows the `#` picker's `CONTEXTS` section collects
+by context usage — `f#` reads a census with no context counts in it, so that
+section never appears there — the minted row an inline add mode produces, and
+the facet rows
 of `F#` fall back to `tagChipStyle`. One tag can therefore wear two colors
 across surfaces — `#bug` is title red under `SEMANTIC` and its own slot color in
 Peek — so a document or test expecting a semantic picker row and its chip to

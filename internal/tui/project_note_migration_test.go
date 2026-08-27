@@ -178,7 +178,7 @@ func TestProjectMalformedNoteDelete(t *testing.T) {
 		env.view.pendingDelete = env.view.visibleRows[index].Identity()
 
 		result := runProjectNoteMutation(t, func() any { return env.view.performDelete()() })
-		if len(result.Result.Results) != 1 || result.Result.Results[0].Note.ParseError == "" {
+		if len(result.Result.Results) != 1 || result.Result.Results[0].Filename != "malformed-single.md" {
 			t.Fatalf("single malformed delete result = %+v", result.Result)
 		}
 		env.shell.handleNotesMessages(result)
@@ -214,8 +214,8 @@ func TestProjectNoteEditorResultCommitsTempContentAndRejectsMalformedOutput(t *t
 	}
 	result := runProjectNoteMutation(t, func() any { return cmd() })
 	env.shell.handleNotesMessages(result)
-	committed := result.Result.Results[0].Note
-	if committed == nil || committed.Title != "Edited" || committed.Body != "edited body" {
+	committed := env.note(t, result.Result.Results[0].Filename)
+	if committed.Title != "Edited" || committed.Body != "edited body" {
 		t.Fatalf("committed editor note = %#v", committed)
 	}
 	if _, statErr := os.Stat(filepath.Join(storage.NotesDir(env.project), original.Filename)); !os.IsNotExist(statErr) {

@@ -301,7 +301,7 @@ func TestStateMovesPreservePlanningExclusivity(t *testing.T) {
 		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateBacklog)
 		m.seedDiskNextOrder(t, task.ID, m.currentProject.ID)
 
-		if _, err := m.appService.Transition(app.StateRequest{TaskID: task.ID, Target: models.StateWaiting}); err != nil {
+		if _, err := m.appService.Transition(app.StateRequest{Locator: app.TaskLocator{ProjectID: m.currentProject.ID, TaskID: task.ID}, Target: models.StateWaiting}); err != nil {
 			t.Fatalf("Transition: %v", err)
 		}
 		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateWaiting {

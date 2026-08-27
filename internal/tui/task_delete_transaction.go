@@ -50,7 +50,7 @@ func deleteSelectionCounts(context CommandContext, targetCount int) SelectionCou
 // delete one or more task subtrees. Any task surface emits it instead of
 // running its own delete flow: the shell
 // canonicalizes the roots, prompts for confirmation, and — only after the user
-// confirms — executes ONE atomic BulkCoordinator.Delete transaction that folds
+// confirms — executes ONE atomic BulkCoordinator.DeleteLocators transaction that folds
 // the durable planning-ref cleanup into the same commit. Refs carry each root
 // task with its owning project so heterogeneous cross-project selections delete
 // together.
@@ -291,11 +291,11 @@ func (m *AppModel) handleTaskDeleteConfirmKey(key string) (bool, tea.Cmd) {
 }
 
 // confirmTaskDelete executes the canonical deletion transaction for the pending
-// roots. It runs ONE BulkCoordinator.Delete for both single- and multi-root
+// roots. It runs ONE BulkCoordinator.DeleteLocators for both single- and multi-root
 // deletion; the application service expands each subtree and folds canonical
 // Today/Next cleanup into the checked project transaction. The
 // returned command is decorated so the committed batch clears the requested
-// selection IDs after the commit (finalizeBatchResult passes a TransactionError
+// selection IDs after the commit (finalizeLocatedDeleteBatchResult passes a TransactionError
 // through untouched, leaving state intact on failure). An artifact-build error
 // aborts before any mutation and preserves the pending selection's task data.
 func (m *AppModel) confirmTaskDelete() tea.Cmd {

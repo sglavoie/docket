@@ -121,21 +121,28 @@ func TestWorkspaceNoteProjectAndGlobalCRUD(t *testing.T) {
 			if createErr != nil {
 				t.Fatalf("CreateNote: %v", createErr)
 			}
-			if created.Note == note || created.Note.RawRevision == "" {
-				t.Fatalf("CreateNote result did not return an isolated revision-bearing note: %+v", created)
+			// The request note is the caller's own object: the create must leave it
+			// untouched and persist a revision-bearing copy instead.
+			if note.RawRevision != "" {
+				t.Fatalf("CreateNote wrote back into the caller's note: %+v", note)
 			}
 
 			loaded := noteByFilename(t, svc, tc.location, created.Filename)
+			if loaded.RawRevision == "" {
+				t.Fatalf("CreateNote did not persist a revision-bearing note: %+v", loaded)
+			}
+			createdRevision := loaded.RawRevision
 			loaded.Body = "v2"
 			updated, updateErr := svc.UpdateNote(app.NoteUpdateRequest{Location: tc.location, Note: loaded})
 			if updateErr != nil {
 				t.Fatalf("UpdateNote: %v", updateErr)
 			}
-			if updated.Note.RawRevision == loaded.RawRevision || updated.Note.Body != "v2" {
-				t.Fatalf("UpdateNote result = %+v", updated)
+			reloaded := noteByFilename(t, svc, tc.location, updated.Filename)
+			if reloaded.RawRevision == createdRevision || reloaded.Body != "v2" {
+				t.Fatalf("UpdateNote result = %+v, reloaded = %+v", updated, reloaded)
 			}
 
-			renamed, renameErr := svc.RenameNote(app.NoteRenameRequest{Location: tc.location, Note: updated.Note, NewTitle: tc.name + " renamed"})
+			renamed, renameErr := svc.RenameNote(app.NoteRenameRequest{Location: tc.location, Note: reloaded, NewTitle: tc.name + " renamed"})
 			if renameErr != nil {
 				t.Fatalf("RenameNote: %v", renameErr)
 			}
@@ -146,7 +153,8 @@ func TestWorkspaceNoteProjectAndGlobalCRUD(t *testing.T) {
 				t.Fatalf("old filename still exists after rename: %v", statErr)
 			}
 
-			if _, deleteErr := svc.RemoveNote(app.NoteDeleteRequest{Location: tc.location, Note: renamed.Note}); deleteErr != nil {
+			renamedNote := noteByFilename(t, svc, tc.location, renamed.Filename)
+			if _, deleteErr := svc.RemoveNote(app.NoteDeleteRequest{Location: tc.location, Note: renamedNote}); deleteErr != nil {
 				t.Fatalf("RemoveNote: %v", deleteErr)
 			}
 			if notes, listErr := svc.NotesAt(tc.location); listErr != nil || len(notes) != 0 {
@@ -212,7 +220,7 @@ func TestWorkspaceMalformedNoteDeleteProjectAndGlobal(t *testing.T) {
 			if err != nil {
 				t.Fatalf("RemoveNote: %v", err)
 			}
-			if result.Note == nil || result.Note.ParseError == "" || result.Filename != tc.filename {
+			if result.Filename != tc.filename {
 				t.Fatalf("RemoveNote result = %+v", result)
 			}
 			if _, err := os.Stat(path); !os.IsNotExist(err) {
@@ -307,7 +315,7 @@ func TestWorkspaceMalformedNoteDeleteBatchIsAtomicOnStaleRevision(t *testing.T) 
 	writeMalformedNoteForTest(t, malformedPath, newerMalformed)
 
 	_, err = svc.ApplyNoteBatch(app.NoteBatchRequest{Operations: []app.NoteMutationRequest{
-		{Kind: app.NoteDelete, Location: location, Note: valid.Note},
+		{Kind: app.NoteDelete, Location: location, Note: noteByFilename(t, svc, location, valid.Filename)},
 		{Kind: app.NoteDelete, Location: location, Note: staleMalformed},
 	}})
 	if !errors.Is(err, storage.ErrStaleArtifact) {
@@ -376,7 +384,9 @@ func TestWorkspaceNoteMovesBetweenAllLocationsAndUndoRedo(t *testing.T) {
 			}
 			baselineUndo := noteUndoCount(t, dataDir)
 
-			moved, err := svc.MoveNote(app.NoteMoveRequest{Source: source, Destination: destination, Note: created.Note})
+			createdNote := noteByFilename(t, svc, source, created.Filename)
+			createdBody := createdNote.Body
+			moved, err := svc.MoveNote(app.NoteMoveRequest{Source: source, Destination: destination, Note: createdNote})
 			if err != nil {
 				t.Fatalf("MoveNote: %v", err)
 			}
@@ -386,14 +396,12 @@ func TestWorkspaceNoteMovesBetweenAllLocationsAndUndoRedo(t *testing.T) {
 			if moved.Filename != created.Filename || moved.Title != created.Title {
 				t.Fatalf("MoveNote filename/title result = %+v", moved)
 			}
-			if moved.Note == nil || moved.Note.Body != created.Note.Body || !moved.Note.CreatedAt.Equal(createdAt) || !moved.Note.ModifiedAt.Equal(modifiedAt) {
-				t.Fatalf("MoveNote changed note content or timestamps: %+v", moved.Note)
-			}
 			if _, statErr := os.Stat(notePath(source, created.Filename)); !os.IsNotExist(statErr) {
 				t.Fatalf("move source still exists: %v", statErr)
 			}
-			if got := noteByFilename(t, svc, destination, moved.Filename); got.Body != created.Note.Body || got.RawRevision != moved.Note.RawRevision {
-				t.Fatalf("moved destination = %+v, result = %+v", got, moved)
+			movedNote := noteByFilename(t, svc, destination, moved.Filename)
+			if movedNote.Body != createdBody || !movedNote.CreatedAt.Equal(createdAt) || !movedNote.ModifiedAt.Equal(modifiedAt) {
+				t.Fatalf("MoveNote changed note content or timestamps: %+v", movedNote)
 			}
 			if got := noteUndoCount(t, dataDir); got != baselineUndo+1 {
 				t.Fatalf("undo count = %d, want %d", got, baselineUndo+1)
@@ -419,7 +427,7 @@ func TestWorkspaceNoteMovesBetweenAllLocationsAndUndoRedo(t *testing.T) {
 			if _, statErr := os.Stat(notePath(destination, moved.Filename)); !os.IsNotExist(statErr) {
 				t.Fatalf("undo left destination behind: %v", statErr)
 			}
-			if restored := noteByFilename(t, svc, source, created.Filename); restored.Body != created.Note.Body {
+			if restored := noteByFilename(t, svc, source, created.Filename); restored.Body != createdBody {
 				t.Fatalf("undo restored source = %+v", restored)
 			}
 
@@ -429,7 +437,7 @@ func TestWorkspaceNoteMovesBetweenAllLocationsAndUndoRedo(t *testing.T) {
 			if _, statErr := os.Stat(notePath(source, created.Filename)); !os.IsNotExist(statErr) {
 				t.Fatalf("redo left source behind: %v", statErr)
 			}
-			if redone := noteByFilename(t, svc, destination, moved.Filename); redone.Body != created.Note.Body {
+			if redone := noteByFilename(t, svc, destination, moved.Filename); redone.Body != createdBody {
 				t.Fatalf("redo restored destination = %+v", redone)
 			}
 		})
@@ -458,7 +466,7 @@ func TestWorkspaceNoteMoveRetriesDestinationCollision(t *testing.T) {
 	}
 	baselineUndo := noteUndoCount(t, dataDir)
 
-	moved, err := svc.MoveNote(app.NoteMoveRequest{Source: global, Destination: destination, Note: source.Note})
+	moved, err := svc.MoveNote(app.NoteMoveRequest{Source: global, Destination: destination, Note: noteByFilename(t, svc, global, source.Filename)})
 	if err != nil {
 		t.Fatalf("MoveNote: %v", err)
 	}
@@ -493,7 +501,7 @@ func TestWorkspaceNoteMoveRejectsSameLocationWithoutUndoEntry(t *testing.T) {
 	}
 	baselineUndo := noteUndoCount(t, dataDir)
 
-	_, err = svc.MoveNote(app.NoteMoveRequest{Source: location, Destination: location, Note: created.Note})
+	_, err = svc.MoveNote(app.NoteMoveRequest{Source: location, Destination: location, Note: noteByFilename(t, svc, location, created.Filename)})
 	var invalid *app.InvalidInputError
 	if !errors.Is(err, app.ErrInvalidInput) || !errors.As(err, &invalid) || invalid.Field != "note destination" {
 		t.Fatalf("MoveNote error = %T %v, want note destination InvalidInputError", err, err)
@@ -522,7 +530,7 @@ func TestWorkspaceNoteMoveIsAtomicOnConcurrentSourceEdit(t *testing.T) {
 		t.Fatal(err)
 	}
 	baselineUndo := noteUndoCount(t, dataDir)
-	stale := created.Note
+	stale := noteByFilename(t, svc, global, created.Filename)
 	concurrent := *stale
 	concurrent.Body = "concurrent"
 	content, err := storage.RenderNoteContent(&concurrent)
@@ -648,12 +656,12 @@ func TestWorkspaceNoteBatchIsAllOrNoneOnStaleSource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	projectUpdate := cloneNoteForTest(projectCreated.Note)
+	projectUpdate := cloneNoteForTest(noteByFilename(t, svc, projectLocation, projectCreated.Filename))
 	projectUpdate.Body = "batch project"
-	globalUpdate := cloneNoteForTest(globalCreated.Note)
+	globalUpdate := cloneNoteForTest(noteByFilename(t, svc, globalLocation, globalCreated.Filename))
 	globalUpdate.Body = "batch global"
 
-	concurrent := cloneNoteForTest(globalCreated.Note)
+	concurrent := cloneNoteForTest(noteByFilename(t, svc, globalLocation, globalCreated.Filename))
 	concurrent.Body = "concurrent global"
 	concurrentBytes, err := storage.RenderNoteContent(concurrent)
 	if err != nil {
@@ -743,7 +751,7 @@ func TestWorkspaceNoteEveryProjectMutationCarriesLocationGuard(t *testing.T) {
 				if createErr != nil {
 					t.Fatal(createErr)
 				}
-				note = created.Note
+				note = noteByFilename(t, baseService, projectLocation, created.Filename)
 				if operation == "project-to-global" {
 					sourcePath = notePathForTest(dataDir, project, projectLocation, created.Filename)
 					destinationPath = notePathForTest(dataDir, project, globalLocation, created.Filename)
@@ -753,7 +761,7 @@ func TestWorkspaceNoteEveryProjectMutationCarriesLocationGuard(t *testing.T) {
 				if createErr != nil {
 					t.Fatal(createErr)
 				}
-				note = created.Note
+				note = noteByFilename(t, baseService, globalLocation, created.Filename)
 				sourcePath = notePathForTest(dataDir, project, globalLocation, created.Filename)
 				destinationPath = notePathForTest(dataDir, project, projectLocation, created.Filename)
 			}
@@ -862,7 +870,7 @@ func TestWorkspaceNoteMoveChecksBothProjectLocations(t *testing.T) {
 			}
 			svc := app.NewServiceWithArtifacts(repo, nil, nil, port)
 
-			_, err = svc.MoveNote(app.NoteMoveRequest{Source: source, Destination: destination, Note: created.Note})
+			_, err = svc.MoveNote(app.NoteMoveRequest{Source: source, Destination: destination, Note: noteByFilename(t, baseService, source, created.Filename)})
 			var conflict *app.ProjectLocationConflictError
 			if !errors.Is(err, storage.ErrStaleArtifact) || !errors.As(err, &conflict) || conflict.ProjectID != archivedID || conflict.Reason != "archived" {
 				t.Fatalf("MoveNote error = %T %v, want archived conflict for %s", err, err, archivedID)
@@ -909,7 +917,7 @@ func TestWorkspaceNoteMoveRejectsMissingAndMovedCatalogLocations(t *testing.T) {
 				},
 			}
 			svc := app.NewServiceWithArtifacts(repo, nil, nil, port)
-			_, err = svc.MoveNote(app.NoteMoveRequest{Source: source, Destination: destination, Note: created.Note})
+			_, err = svc.MoveNote(app.NoteMoveRequest{Source: source, Destination: destination, Note: noteByFilename(t, baseService, source, created.Filename)})
 			var conflict *app.ProjectLocationConflictError
 			if !errors.As(err, &conflict) || conflict.Reason != state || !errors.Is(err, storage.ErrStaleArtifact) {
 				t.Fatalf("MoveNote error = %T %v, want %s ProjectLocationConflictError", err, err, state)
@@ -942,9 +950,9 @@ func TestWorkspaceNoteBatchChecksEveryTouchedProjectLocation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	alphaUpdate := cloneNoteForTest(alphaNote.Note)
+	alphaUpdate := cloneNoteForTest(noteByFilename(t, baseService, alphaLocation, alphaNote.Filename))
 	alphaUpdate.Body = "after"
-	betaUpdate := cloneNoteForTest(betaNote.Note)
+	betaUpdate := cloneNoteForTest(noteByFilename(t, baseService, betaLocation, betaNote.Filename))
 	betaUpdate.Body = "after"
 	baselineUndo := noteUndoCount(t, dataDir)
 	port := &guardedNotePort{
@@ -1062,7 +1070,7 @@ func TestWorkspaceNoteMoveCatalogRaceDoesNotRecreateStaleProjectDirectory(t *tes
 		},
 	}
 	svc := app.NewServiceWithArtifacts(repo, nil, nil, app.NewStorageWorkspaceNotePort(dataDir))
-	_, err = svc.MoveNote(app.NoteMoveRequest{Source: globalLocation, Destination: projectLocation, Note: created.Note})
+	_, err = svc.MoveNote(app.NoteMoveRequest{Source: globalLocation, Destination: projectLocation, Note: noteByFilename(t, baseService, globalLocation, created.Filename)})
 	if !errors.Is(err, storage.ErrStaleArtifact) {
 		t.Fatalf("MoveNote error = %v, want ErrStaleArtifact", err)
 	}
@@ -1093,7 +1101,7 @@ func TestWorkspaceNoteStaleProjectDirectoryIsNotRecreated(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				note = created.Note
+				note = noteByFilename(t, baseService, projectLocation, created.Filename)
 			}
 			baselineUndo := noteUndoCount(t, dataDir)
 			port := &guardedNotePort{

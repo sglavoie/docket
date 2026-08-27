@@ -726,8 +726,11 @@ func TestParkedWorkFacetsStayInertUnderScopeAndSelectOnExit(t *testing.T) {
 	if out.activeLens != frame {
 		t.Fatal("the exit replaced the frame the scoped application installed")
 	}
-	if out.lensModified() {
-		t.Fatal("the exit marked the lens modified")
+	// Scope is lens-owned, so dropping the one the template was applied under is a
+	// divergence the marker reports. The definition itself is untouched: the frame
+	// above is the same one, saved fingerprint and all.
+	if !out.lensModified() {
+		t.Fatal("leaving a project scope under a live lens must mark it modified")
 	}
 }
 
@@ -831,16 +834,16 @@ func TestOverdueTemplateUsesDueModeFixedOrdering(t *testing.T) {
 
 // TestReviewQueueTemplateIntersectsItsTagFacet pins Review Queue to the tag
 // semantics the facet has everywhere else: selected tags are ANDed, so adding one
-// narrows rather than broadens. The single tag the template ships with matches
-// either tag vocabulary, which is the facet's own rule and not a template
-// exception.
+// narrows rather than broadens. The facet reads tags alone, so a task whose
+// context spells review is not in the queue; contexts are the fc axis, and that
+// is the facet's own rule rather than a template exception.
 func TestReviewQueueTemplateIntersectsItsTagFacet(t *testing.T) {
 	outliner := lensSemanticsOutliner()
 	applyLensOrFatal(t, outliner, lensTemplateByName(t, "Review Queue"))
 
-	want := []string{"review-context", "review-tagged", "review-urgent"}
+	want := []string{"review-tagged", "review-urgent"}
 	if got := sortedVisibleTaskIDs(outliner); !slices.Equal(got, want) {
-		t.Fatalf("rows = %v, want every task carrying the review vocabulary %v", got, want)
+		t.Fatalf("rows = %v, want every task carrying the review tag %v", got, want)
 	}
 
 	// A second tag intersects with the first rather than joining it.

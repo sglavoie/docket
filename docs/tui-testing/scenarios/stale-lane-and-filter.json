@@ -32,6 +32,29 @@
     { "type": "resize", "label": "keep the applied Stale facet healthy at minimum width", "width": 60, "height": 20 },
     { "type": "assert", "assert": "contains", "value": "Revisit dormant" },
     { "type": "assert", "assert": "not_contains", "value": "Draft current launch note" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "width": 100, "height": 35 },
+    { "type": "key", "label": "clear every facet before leaving Backlog", "key": "f" },
+    { "type": "key", "key": "x" },
+    { "type": "key", "label": "go to Recent, where Stale has no key", "key": "g" },
+    { "type": "key", "key": "r" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Recent" },
+    { "type": "key", "label": "search out of Recent", "key": "/" },
+    { "type": "text", "text": "launch" },
+    { "type": "key", "label": "accept the query so the chord reaches the projection", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Search: \"launch\"" },
+    { "type": "assert", "label": "the projection ignores the mode's own membership", "assert": "contains", "value": "Revisit dormant launch checklist" },
+    { "type": "key", "label": "but fs stays unavailable: the mode underneath is still Recent", "key": "f" },
+    { "type": "key", "key": "s" },
+    { "type": "assert", "assert": "status_contains", "value": "fs is not a filter action" },
+    { "type": "assert", "assert": "not_contains", "value": "Filtering Stale" },
+    { "type": "assert", "assert": "contains", "value": "Search: \"launch\"" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "restore Recent exactly", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Recent" },
+    { "type": "assert", "assert": "not_contains", "value": "Search:" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

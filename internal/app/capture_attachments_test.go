@@ -64,7 +64,7 @@ func TestCaptureURLMatchesAttachURLStorage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Capture: %v", err)
 	}
-	if _, err := svc.AttachURL(plain.TaskID, link); err != nil {
+	if _, err := svc.AttachURL(repo.loc(plain.TaskID), link); err != nil {
 		t.Fatalf("AttachURL: %v", err)
 	}
 

@@ -16,7 +16,7 @@ func TestDeleteRequiresExplicitConfirmation(t *testing.T) {
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	_, err := svc.Delete(app.DeleteRequest{TaskID: "t1"})
+	_, err := svc.Delete(app.DeleteRequest{Locator: repo.loc("t1")})
 	if !errors.Is(err, app.ErrDestructiveConfirmationRequired) {
 		t.Fatalf("err = %v, want ErrDestructiveConfirmationRequired", err)
 	}
@@ -37,7 +37,7 @@ func TestDeleteRemovesSubtreeInOneChangeSet(t *testing.T) {
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	_, err := svc.Delete(app.DeleteRequest{TaskID: "p", Confirm: true})
+	_, err := svc.Delete(app.DeleteRequest{Locator: repo.loc("p"), Confirm: true})
 	if err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestDeleteFoldsDurableArtifactIntoTransaction(t *testing.T) {
 	cfgPath := filepath.Join(t.TempDir(), "config.json")
 	art := storage.ArtifactChange{Path: cfgPath, Data: []byte(`{"focus_queue":[]}`)}
 
-	if _, err := svc.Delete(app.DeleteRequest{TaskID: "t1", Confirm: true}, art); err != nil {
+	if _, err := svc.Delete(app.DeleteRequest{Locator: repo.loc("t1"), Confirm: true}, art); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
 
@@ -117,7 +117,7 @@ func TestDeleteUnknownTask(t *testing.T) {
 	repo := newFakeRepo(newProject("proj-1", "Alpha"))
 	svc := newTestService(repo)
 
-	_, err := svc.Delete(app.DeleteRequest{TaskID: "ghost", Confirm: true})
+	_, err := svc.Delete(app.DeleteRequest{Locator: app.TaskLocator{ProjectID: "proj-1", TaskID: "ghost"}, Confirm: true})
 	if !errors.Is(err, app.ErrTaskNotFound) {
 		t.Fatalf("err = %v, want ErrTaskNotFound", err)
 	}
@@ -219,7 +219,7 @@ func TestBulkTransitionAcrossProjectsIsOneTransaction(t *testing.T) {
 	repo := newFakeRepo(pa, pb)
 	svc := newTestService(repo)
 
-	res, err := svc.BulkTransition([]string{"a", "b"}, models.StateDoing)
+	res, err := svc.BulkTransition([]app.TaskLocator{repo.loc("a"), repo.loc("b")}, models.StateDoing)
 	if err != nil {
 		t.Fatalf("BulkTransition: %v", err)
 	}
@@ -263,7 +263,7 @@ func TestBulkTransitionUndoActionReflectsResolvedTargetCardinality(t *testing.T)
 			repo := newFakeRepo(project)
 			svc := newTestService(repo)
 
-			result, err := svc.BulkTransition(testCase.taskIDs, models.StateDoing)
+			result, err := svc.BulkTransition(repoLocators(repo, testCase.taskIDs), models.StateDoing)
 			if err != nil {
 				t.Fatalf("BulkTransition: %v", err)
 			}
@@ -291,7 +291,7 @@ func TestBulkTransitionAbortsWholeBatchOnInvalidTransition(t *testing.T) {
 
 	// Completing a task is fine, but transitioning a terminal task to in_progress
 	// is forbidden — the whole batch must abort before any commit.
-	_, err := svc.BulkTransition([]string{"a", "done"}, models.StateDoing)
+	_, err := svc.BulkTransition([]app.TaskLocator{repo.loc("a"), repo.loc("done")}, models.StateDoing)
 	if !errors.Is(err, app.ErrInvalidTransition) {
 		t.Fatalf("err = %v, want ErrInvalidTransition", err)
 	}
@@ -308,7 +308,7 @@ func TestBulkTransitionRejectsUnknownTask(t *testing.T) {
 	repo := newFakeRepo(newProject("proj-1", "Alpha", a))
 	svc := newTestService(repo)
 
-	_, err := svc.BulkTransition([]string{"a", "ghost"}, models.StateBacklog)
+	_, err := svc.BulkTransition([]app.TaskLocator{repo.loc("a"), {ProjectID: "proj-1", TaskID: "ghost"}}, models.StateBacklog)
 	if !errors.Is(err, app.ErrTaskNotFound) {
 		t.Fatalf("err = %v, want ErrTaskNotFound", err)
 	}

@@ -73,6 +73,7 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"outliner-space-action-catalog.json",
 		"outline-editor-guard.json",
 		"search-restoration.json",
+		"search-compose-filters.json",
 		"outliner-search-sigils.json",
 		"outliner-search-sigil-guidance.json",
 		"state-chord.json",

@@ -32,15 +32,15 @@ import (
 // aborts the whole batch before any mutation persists — the batch is
 // all-or-nothing, matching the atomic guarantee every other bulk use case gives.
 // A nil validate skips the pre-check; a nil mutate is a programming error.
-func (s *Service) bulkAttribute(taskIDs []string, locators []TaskLocator, undoAction, undoContext string, validate func(TaskRef) error, mutate func(*models.Task)) (BulkResult, error) {
-	if len(taskIDs) == 0 && len(locators) == 0 {
+func (s *Service) bulkAttribute(locators []TaskLocator, undoAction, undoContext string, validate func(TaskRef) error, mutate func(*models.Task)) (BulkResult, error) {
+	if len(locators) == 0 {
 		return BulkResult{}, invalidInput("tasks", "at least one task id is required")
 	}
 	snap, err := s.repo.Snapshot()
 	if err != nil {
 		return BulkResult{}, err
 	}
-	refs, err := resolveRequestedTasks(snap, taskIDs, locators)
+	refs, err := resolveRequestedTasks(snap, nil, locators)
 	if err != nil {
 		return BulkResult{}, err
 	}
@@ -94,51 +94,33 @@ func (s *Service) bulkAttribute(taskIDs []string, locators []TaskLocator, undoAc
 // touched project as ONE transaction. The priority is validated once up front —
 // it is uniform across the batch — so an out-of-range value aborts before any
 // snapshot is mutated. Tasks may span projects.
-func (s *Service) BulkSetPriority(taskIDs []string, priority int) (BulkResult, error) {
-	return s.bulkSetPriority(taskIDs, nil, priority)
-}
-
-func (s *Service) BulkSetPriorityByLocators(locators []TaskLocator, priority int) (BulkResult, error) {
-	return s.bulkSetPriority(nil, locators, priority)
-}
-
-func (s *Service) bulkSetPriority(taskIDs []string, locators []TaskLocator, priority int) (BulkResult, error) {
+func (s *Service) BulkSetPriority(locators []TaskLocator, priority int) (BulkResult, error) {
 	if err := models.ValidatePriority(priority, true); err != nil {
 		return BulkResult{}, invalidInput("priority", err.Error())
 	}
-	return s.bulkAttribute(taskIDs, locators, "Set Priority", fmt.Sprintf("priority %d", priority), nil, func(t *models.Task) {
+	return s.bulkAttribute(locators, "Set Priority", fmt.Sprintf("priority %d", priority), nil, func(t *models.Task) {
 		t.Priority = priority
 		t.UpdatedAt = s.clock.Now()
 	})
 }
 
-// BulkSetDueDate sets one calendar due date on every selected task, committing
-// every touched project as ONE transaction. Use BulkClearDueDate to remove a
-// due date. Tasks may span projects.
-func (s *Service) BulkSetDueDate(taskIDs []string, due time.Time) (BulkResult, error) {
-	return s.bulkSetDueDate(taskIDs, nil, due)
+// BulkSetDueDate sets one calendar due date on every selected task,
+// committing every touched project as ONE transaction. Use
+// BulkClearDueDate to remove a due date. Tasks may span projects.
+func (s *Service) BulkSetDueDate(locators []TaskLocator, due time.Time) (BulkResult, error) {
+	return s.bulkSetDueDate(locators, due)
 }
 
-func (s *Service) BulkSetDueDateByLocators(locators []TaskLocator, due time.Time) (BulkResult, error) {
-	return s.bulkSetDueDate(nil, locators, due)
-}
-
-// BulkSetDueDateAndPlanTodayByLocators sets one due date and adds every target
+// BulkSetDueDateAndPlanToday sets one due date and adds every target
 // to Today in the same transaction. It is the application boundary used by
 // interactive adapters whose "due today" gesture also carries explicit planning
 // intent; the ordinary due-date methods remain attribute-only.
-func (s *Service) BulkSetDueDateAndPlanTodayByLocators(locators []TaskLocator, due time.Time) (BulkResult, error) {
-	return s.bulkSetDueDateAndPlanToday(nil, locators, due)
+func (s *Service) BulkSetDueDateAndPlanToday(locators []TaskLocator, due time.Time) (BulkResult, error) {
+	return s.bulkSetDueDateAndPlanToday(locators, due)
 }
 
-// BulkSetDueDateAndPlanToday is the workspace-unique-ID form of
-// BulkSetDueDateAndPlanTodayByLocators.
-func (s *Service) BulkSetDueDateAndPlanToday(taskIDs []string, due time.Time) (BulkResult, error) {
-	return s.bulkSetDueDateAndPlanToday(taskIDs, nil, due)
-}
-
-func (s *Service) bulkSetDueDateAndPlanToday(taskIDs []string, locators []TaskLocator, due time.Time) (BulkResult, error) {
-	if len(taskIDs) == 0 && len(locators) == 0 {
+func (s *Service) bulkSetDueDateAndPlanToday(locators []TaskLocator, due time.Time) (BulkResult, error) {
+	if len(locators) == 0 {
 		return BulkResult{}, invalidInput("tasks", "at least one task id is required")
 	}
 	builder := s.defaultedPlanningArtifacts(nil)
@@ -149,7 +131,7 @@ func (s *Service) bulkSetDueDateAndPlanToday(taskIDs []string, locators []TaskLo
 	if err != nil {
 		return BulkResult{}, err
 	}
-	refs, err := resolveRequestedTasks(snap, taskIDs, locators)
+	refs, err := resolveRequestedTasks(snap, nil, locators)
 	if err != nil {
 		return BulkResult{}, err
 	}
@@ -214,8 +196,8 @@ func (s *Service) bulkSetDueDateAndPlanToday(taskIDs []string, locators []TaskLo
 	return result, nil
 }
 
-func (s *Service) bulkSetDueDate(taskIDs []string, locators []TaskLocator, due time.Time) (BulkResult, error) {
-	return s.bulkAttribute(taskIDs, locators, "Set Due Date", "due date", nil, func(t *models.Task) {
+func (s *Service) bulkSetDueDate(locators []TaskLocator, due time.Time) (BulkResult, error) {
+	return s.bulkAttribute(locators, "Set Due Date", "due date", nil, func(t *models.Task) {
 		t.DueDate = cloneDueDatePtr(&due)
 		t.UpdatedAt = s.clock.Now()
 	})
@@ -226,16 +208,8 @@ func (s *Service) bulkSetDueDate(taskIDs []string, locators []TaskLocator, due t
 // task that has no due date is a no-op that still commits the (unchanged)
 // project, matching the idempotent single-task attribute mutations. Tasks may
 // span projects.
-func (s *Service) BulkClearDueDate(taskIDs []string) (BulkResult, error) {
-	return s.bulkClearDueDate(taskIDs, nil)
-}
-
-func (s *Service) BulkClearDueDateByLocators(locators []TaskLocator) (BulkResult, error) {
-	return s.bulkClearDueDate(nil, locators)
-}
-
-func (s *Service) bulkClearDueDate(taskIDs []string, locators []TaskLocator) (BulkResult, error) {
-	return s.bulkAttribute(taskIDs, locators, "Clear Due Date", "due date", nil, func(t *models.Task) {
+func (s *Service) BulkClearDueDate(locators []TaskLocator) (BulkResult, error) {
+	return s.bulkAttribute(locators, "Clear Due Date", "due date", nil, func(t *models.Task) {
 		t.DueDate = nil
 		t.UpdatedAt = s.clock.Now()
 	})
@@ -245,29 +219,21 @@ func (s *Service) bulkClearDueDate(taskIDs []string, locators []TaskLocator) (Bu
 // deferral when until is nil. Deferring moves each nonterminal task to Backlog and
 // removes it from Today and Next atomically with the task writes. A terminal
 // task rejects the complete batch. Clearing preserves lifecycle and planning.
-func (s *Service) BulkDefer(taskIDs []string, until *time.Time) (BulkResult, error) {
-	return s.bulkDefer(taskIDs, nil, until)
-}
-
-func (s *Service) BulkDeferByLocators(locators []TaskLocator, until *time.Time) (BulkResult, error) {
-	return s.bulkDefer(nil, locators, until)
-}
-
-func (s *Service) bulkDefer(taskIDs []string, locators []TaskLocator, until *time.Time) (BulkResult, error) {
+func (s *Service) BulkDefer(locators []TaskLocator, until *time.Time) (BulkResult, error) {
 	if until == nil {
-		return s.bulkAttribute(taskIDs, locators, "Defer Tasks", "clear", nil, func(t *models.Task) {
+		return s.bulkAttribute(locators, "Defer Tasks", "clear", nil, func(t *models.Task) {
 			t.DeferredUntil = nil
 			t.UpdatedAt = s.clock.Now()
 		})
 	}
-	if len(taskIDs) == 0 && len(locators) == 0 {
+	if len(locators) == 0 {
 		return BulkResult{}, invalidInput("tasks", "at least one task id is required")
 	}
 	snap, err := s.repo.Snapshot()
 	if err != nil {
 		return BulkResult{}, err
 	}
-	refs, err := resolveRequestedTasks(snap, taskIDs, locators)
+	refs, err := resolveRequestedTasks(snap, nil, locators)
 	if err != nil {
 		return BulkResult{}, err
 	}
@@ -330,19 +296,6 @@ func (s *Service) bulkDefer(taskIDs []string, locators []TaskLocator, until *tim
 	return result, nil
 }
 
-// BulkSetTags replaces the tag set on every selected task with tags, committing
-// every touched project as ONE transaction. The tags are normalized, validated,
-// and de-duplicated once up front — they are uniform across the batch — so a
-// malformed tag aborts before any snapshot is mutated. An empty tags slice clears
-// every task's tags. Tasks may span projects.
-func (s *Service) BulkSetTags(taskIDs []string, tags []string) (BulkResult, error) {
-	return s.bulkSetTags(taskIDs, nil, tags, taskContextEdit{})
-}
-
-func (s *Service) BulkSetTagsByLocators(locators []TaskLocator, tags []string) (BulkResult, error) {
-	return s.bulkSetTags(nil, locators, tags, taskContextEdit{})
-}
-
 // taskContextEdit is an optional singleton-context write carried by a tag
 // mutation. Riding the same mutate closure keeps a simultaneous tag and context
 // change inside one transaction and one undo entry.
@@ -368,8 +321,12 @@ func (edit taskContextEdit) apply(t *models.Task) {
 	}
 }
 
+// bulkSetTags replaces the tag set on every selected task with tags, committing
+// every touched project as ONE transaction. The tags are normalized, validated,
+// and de-duplicated once up front — they are uniform across the batch — so a
+// malformed tag aborts before any snapshot is mutated. An empty tags slice clears
+// every task's tags. Tasks may span projects.
 func (s *Service) bulkSetTags(
-	taskIDs []string,
 	locators []TaskLocator,
 	tags []string,
 	context taskContextEdit,
@@ -382,26 +339,18 @@ func (s *Service) bulkSetTags(
 	if err != nil {
 		return BulkResult{}, err
 	}
-	return s.bulkAttribute(taskIDs, locators, "Set Tags", "tags", nil, func(t *models.Task) {
+	return s.bulkAttribute(locators, "Set Tags", "tags", nil, func(t *models.Task) {
 		t.Tags = append([]string{}, normalized...)
 		contextEdit.apply(t)
 		t.UpdatedAt = s.clock.Now()
 	})
 }
 
-// BulkPatchTagsByLocators applies a tri-state tag edit to every selected task.
-// Tags in add are made present everywhere, tags in remove are made absent
-// everywhere, and all other memberships are preserved independently. The two
-// sets are validated before any task is touched and every project commits in
-// the same transaction.
-func (s *Service) BulkPatchTagsByLocators(
-	locators []TaskLocator,
-	add []string,
-	remove []string,
-) (BulkResult, error) {
-	return s.bulkPatchTags(locators, add, remove, taskContextEdit{})
-}
-
+// bulkPatchTags applies a tri-state tag edit to every selected task. Tags in
+// add are made present everywhere, tags in remove are made absent everywhere,
+// and all other memberships are preserved independently. The two sets are
+// validated before any task is touched and every project commits in the same
+// transaction.
 func (s *Service) bulkPatchTags(
 	locators []TaskLocator,
 	add []string,
@@ -449,19 +398,19 @@ func (s *Service) bulkPatchTags(
 		}
 		return nil
 	}
-	return s.bulkAttribute(nil, locators, "Set Tags", "tags", validate, func(t *models.Task) {
+	return s.bulkAttribute(locators, "Set Tags", "tags", validate, func(t *models.Task) {
 		t.Tags, _ = patchedTags(t.Tags)
 		contextEdit.apply(t)
 		t.UpdatedAt = s.clock.Now()
 	})
 }
 
-// BulkToggleTagByLocators applies one all-or-none toggle to a frozen target
+// BulkToggleTag applies one all-or-none toggle to a frozen target
 // set. If every task already carries tag, it is removed everywhere; otherwise
 // it is added everywhere. The membership decision and mutation share the same
 // repository snapshot, so concurrent presentation state cannot split a bulk
 // toggle into mixed results.
-func (s *Service) BulkToggleTagByLocators(locators []TaskLocator, tag string) (BulkResult, error) {
+func (s *Service) BulkToggleTag(locators []TaskLocator, tag string) (BulkResult, error) {
 	normalized := models.NormalizeTag(tag)
 	if err := models.ValidateTag(normalized); err != nil {
 		return BulkResult{}, invalidInput("tag", err.Error())
@@ -538,24 +487,16 @@ func normalizeBulkTags(tags []string) ([]string, error) {
 	return normalized, nil
 }
 
-// BulkSetPinned pins or unpins every selected task, committing every touched
-// project as one transaction. Each newly pinned task receives the same operation
-// timestamp; unpinning clears both the flag and ordering timestamp.
-func (s *Service) BulkSetPinned(taskIDs []string, pinned bool) (BulkResult, error) {
-	return s.bulkSetPinned(taskIDs, nil, pinned)
-}
-
-func (s *Service) BulkSetPinnedByLocators(locators []TaskLocator, pinned bool) (BulkResult, error) {
-	return s.bulkSetPinned(nil, locators, pinned)
-}
-
-func (s *Service) bulkSetPinned(taskIDs []string, locators []TaskLocator, pinned bool) (BulkResult, error) {
+// BulkSetPinned pins or unpins every selected task, committing every
+// touched project as one transaction. Each newly pinned task receives the same
+// operation timestamp; unpinning clears both the flag and ordering timestamp.
+func (s *Service) BulkSetPinned(locators []TaskLocator, pinned bool) (BulkResult, error) {
 	now := s.clock.Now()
 	action := "Unpin Tasks"
 	if pinned {
 		action = "Pin Tasks"
 	}
-	return s.bulkAttribute(taskIDs, locators, action, "pin", nil, func(t *models.Task) {
+	return s.bulkAttribute(locators, action, "pin", nil, func(t *models.Task) {
 		t.Pinned = pinned
 		if pinned {
 			pinnedAt := now

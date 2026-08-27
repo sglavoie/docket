@@ -1,15 +1,44 @@
-# Outliner-only schema-6 contract and historical baseline
+# Historical acceptance record: the outliner-only simplification
 
-This file began as the Session 1 acceptance record for the outliner-only
-simplification and now records the final schema-6 surface alongside that
-historical starting point. The destination inventories are machine-readable through
-`testutil.OutlinerV5TargetContract`; the current-state inventory is preserved by
-`testutil.OutlinerV5CurrentBaseline`. Neither fixture configures production, so
-recording the destination does not change current behavior.
+This file is history, not contract. It was the Session 1 acceptance record for
+the outliner-only simplification and captured the schema-6 surface as it stood
+at commit `549400c3`. The live product has moved past it: there are seven modes,
+not six; the task `Space` menu is Delete alone; the machine domain also holds
+`NamedLenses`; and the global key list below is stale. For the current
+contract read [`CLAUDE.md`](../../CLAUDE.md), [`README.md`](../../README.md),
+and [`docs/architecture.md`](../architecture.md).
 
-Baseline commit: `549400c3`.
+Two earlier fixture names in this document,
+`testutil.OutlinerV5TargetContract` and `testutil.OutlinerV5CurrentBaseline`,
+never existed in the repository; nothing here is machine-readable.
 
-## Target contract
+## Permanent removal contract (still binding)
+
+This is the one section that still governs. Nothing it names may return:
+
+The removal contract covers alternate primary views and duplicate commands;
+mode picker, command palette, Finder, and recent destinations; AI and Ask;
+workflow automation, templates, and scoring; reviews, analytics, metrics,
+roadmap, alerts, notifications, onboarding, and activity history; related links,
+standalone blockers, park/dim, status icons, and tag catalogs; archived-task
+storage; project trash/delete/purge, Sandbox, and Internal projects; Settings
+TUI and custom theme editing; rich note metadata; retired task metadata; and all
+non-maintenance CLI commands.
+
+Three further non-goals, rescued from the retired lean-search/notes restoration
+plan when that file was deleted, bind alongside it:
+
+- No universal Finder or workspace-wide search overlay returns; `/`, `P`, and
+  Notes remain separate discovery surfaces.
+- Search autocomplete stays Outliner-only; Project Hub and Notes remain
+  ordinary fuzzy text searches.
+- Project Hub aliases never include task titles, task descriptions, task tags,
+  task comments, or task content.
+
+## Historical schema-6 target contract (superseded)
+
+Baseline commit: `549400c3`. Everything below this line records what was
+accepted then, not what is true now.
 
 The Outliner is the only primary presentation. Every run begins in All Projects
 and All with no restored navigation, filters, search, or selection. Search and
@@ -17,9 +46,9 @@ filters survive mode and scope changes only for the current run. Frequent
 actions have one direct binding, occasional task actions live only under
 `Space`, and help plus footer hints derive from the same operation descriptors.
 
-### Retained inventories
+### Retained inventories as recorded then
 
-| Inventory | Exact schema-6 contents |
+| Inventory | Schema-6 contents as accepted |
 | --- | --- |
 | Modes and Tab cycle | All → Inbox → Today → Next → Backlog → Due |
 | States | Inbox, Backlog, Doing, Waiting, Paused, Someday, Done, Canceled |
@@ -28,7 +57,7 @@ actions have one direct binding, occasional task actions live only under
 | Public CLI | `tt`, `doctor`, `conflict`, `workspace`, `completion`, `project export`, help, `--version` |
 | Global flags | `--data-dir`, `--no-color` |
 
-The direct interaction grammar is:
+The direct interaction grammar as recorded then was:
 
 | Area | Keys |
 | --- | --- |
@@ -42,25 +71,16 @@ The direct interaction grammar is:
 | Selection and task menu | `v`, `Ctrl+A`, `Space`; `V` is unbound |
 | Global | `c`, `C`, `N`, `T`, `/`, `?`, `u`, `Ctrl+R`, `Esc`, `Ctrl+C` |
 
-Filters use `fp0`, `fp1`–`fp3`, `fs`, `fc`, `ft`, `fd`, `fz`, and `fx`.
-Quick capture accepts `!1-3`, `#tag`, `@date`, `$destination`, `%project`,
-`>parent`, and the repeatable `<child`. Destinations are Inbox, Backlog, Today,
-Next, Doing, Waiting, Paused, Someday, Done, and Canceled. `#tag` creates valid
+Filters used `fp0`, `fp1`–`fp3`, `fs`, `fc`, `ft`, `fd`, `fz`, and `fx`.
+Quick capture accepted `!1-3`, `#tag`, `@date`, `$destination`, `%project`,
+`>parent`, and the repeatable `<child`. Destinations were Inbox, Backlog, Today,
+Next, Doing, Waiting, Paused, Someday, Done, and Canceled. `#tag` created valid
 tags on the fly. Retired type and recurrence sigils, priorities 4–5, `$ready`,
-and `$in_progress` are recognized errors with concise replacement guidance.
+and `$in_progress` were recognized errors with concise replacement guidance.
 
-The removal contract covers alternate primary views and duplicate commands;
-mode picker, command palette, Finder, and recent destinations; AI and Ask;
-workflow automation, templates, and scoring; reviews, analytics, metrics,
-roadmap, alerts, notifications, onboarding, and activity history; related links,
-standalone blockers, park/dim, status icons, and tag catalogs; archived-task
-storage; project trash/delete/purge, Sandbox, and Internal projects; Settings
-TUI and custom theme editing; rich note metadata; retired task metadata; and all
-non-maintenance CLI commands.
+## Pre-simplification starting point (historical observations)
 
-## Current-state baseline
-
-These facts characterize the starting point. They are historical observations,
+These facts characterized the starting point. They are historical observations,
 not gates that later sessions must preserve.
 
 | Area | Commit `549400c3` behavior |
@@ -70,7 +90,3 @@ not gates that later sessions must preserve.
 | Navigation | The cross-project Outliner is already the sole root, but startup reapplies machine `StartupRoute` state, including mode, search, and filters. `Ctrl+Esc` performs a broad reset. |
 | Storage | Five configuration domains are `workspace`, `planning`, `settings`, `automation`, and `machine`. Active project Markdown coexists with completed archives and indexes, notes, attachments, transaction manifests, undo ledgers, and conflict bundles. |
 | CLI | The top-level command tree still exposes `add`, `ask`, `attach`, `attachment`, `attachments`, `blocker`, `completion`, `conflict`, `context`, `dash`, `doctor`, `epic`, `focus`, `help`, `note`, `project`, `redo`, `roadmap`, `sandbox`, `score`, `search`, `select`, `tag`, `task`, `template`, `theme`, `undo`, `workflow`, and `workspace`. |
-
-The historical table remains a record of the pre-simplification acceptance
-surface. The schema-6 target above is the live contract; the old observations
-below remain labeled history rather than compatibility guidance.

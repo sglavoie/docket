@@ -112,11 +112,51 @@ func (m *OutlinerModel) ApplyNamedLens(lens config.NamedLens) (tea.Cmd, error) {
 	if err := m.validateLensQuery(state.query); err != nil {
 		return nil, err
 	}
-	if m.lensProjectLoadRequired(state) {
-		return m.beginLensProjectLoad(lens, state), nil
+	if err := m.lensScopeRefusal(lens.Name, state.scopeProjectID); err != nil {
+		return nil, err
 	}
-	m.publishLens(lens, state, nil, m.lensRestorationPoint())
+
+	// The baseline is the view this application replaces, so it is taken before
+	// the scope push below moves it: one Esc owes the user the scope they were in,
+	// not the one the lens just entered.
+	origin := m.lensRestorationPoint()
+	// The scope goes in before the load decision, never after it. Under a
+	// single-project scope lensProjectLoadRequired is false, so a scoped lens
+	// reads no population at all and its project facets are recorded inert for the
+	// explicit scope exit to honor. Pushing afterwards would start a load the
+	// scope immediately invalidates.
+	if state.scopeProjectID != "" {
+		m.pushProjectScope(state.scopeProjectID)
+	}
+	if m.lensProjectLoadRequired(state) {
+		return m.beginLensProjectLoad(lens, state, origin), nil
+	}
+	m.publishLens(lens, state, nil, origin)
 	return nil, nil
+}
+
+// lensScopeRefusal decides whether the lens's scope can be entered at all,
+// before a single axis is written. TaskWorkspaceProjects() is the one population
+// the base Outliner scopes into and it is already non-archived and unparked, so
+// that single membership test answers all three refusals; the catalog is read
+// only to word the message and never to widen admission. Parked therefore fails
+// closed in v1 — parkedFocusProjectID and settleParkedFocusException are the
+// seam a later revision would reopen it through.
+func (m *OutlinerModel) lensScopeRefusal(name, projectID string) error {
+	if projectID == "" || m.baseWorkspaceAdmitsProject(projectID) {
+		return nil
+	}
+	if m.runtime != nil {
+		if project := m.runtime.GetProject(projectID); project != nil {
+			switch {
+			case project.Archived:
+				return fmt.Errorf("lens %q opens in %q, which is archived", name, project.Name)
+			case models.ProjectTagsParked(project.Tags):
+				return fmt.Errorf("lens %q opens in %q, which is parked", name, project.Name)
+			}
+		}
+	}
+	return fmt.Errorf("lens %q opens in a project that no longer exists", name)
 }
 
 // validateLensQuery compiles the narrowing query the way the projection will,
@@ -174,12 +214,15 @@ func (m *OutlinerModel) recordLoadedPopulation(fingerprint string) {
 }
 
 // beginLensProjectLoad starts a load against the candidate filter without
-// writing it to the model.
-func (m *OutlinerModel) beginLensProjectLoad(lens config.NamedLens, state lensState) tea.Cmd {
-	// The baseline is frozen here, before a byte is read: the restoration point
-	// belongs to the view the application replaced, and nothing the user does
-	// while the load runs may move it.
-	origin := m.lensRestorationPoint()
+// writing it to the model. The baseline arrives already frozen, taken before a
+// byte was read and before any scope was entered: the restoration point belongs
+// to the view the application replaced, and nothing the user does while the load
+// runs may move it.
+func (m *OutlinerModel) beginLensProjectLoad(
+	lens config.NamedLens,
+	state lensState,
+	origin outlinerViewSnapshot,
+) tea.Cmd {
 	return m.startLensProjectLoad(&pendingLensApplication{
 		lens:   lens,
 		state:  state,
@@ -375,17 +418,26 @@ func (m *OutlinerModel) publishLens(lens config.NamedLens, state lensState, proj
 		m.loadedProjects = projects
 		m.crossSnapshotReady = true
 	}
-	// Scope, focus, folds, selection, and Peek are the view the user is in, not
-	// the lens: applyLensState writes only the lens-owned axes.
+	// Focus, folds, selection, and Peek are the view the user is in, not the lens:
+	// applyLensState writes only the lens-owned axes, scope among them.
 	m.applyLensState(state)
 	if projects != nil {
 		m.pruneSelectionsOutsideLoadedProjects()
 	}
 
+	// The baseline the modified marker compares against takes the scope the view
+	// is actually in rather than the one the record named. They are the same
+	// whenever the lens owns the axis; when it does not, an unowned axis cannot be
+	// diverged from, so the live scope is what a later push or pop is measured
+	// against — and that push or pop is exactly what should mark the lens
+	// modified.
+	saved := state
+	saved.scopeProjectID = m.capturedLensScope()
+
 	m.activeLens = &activeLensFrame{
 		lensID:                      lens.ID,
 		name:                        lens.Name,
-		savedFingerprint:            state.fingerprint(),
+		savedFingerprint:            saved.fingerprint(),
 		origin:                      origin,
 		projectFacetsAwaitingLoad:   facetsAwaitingLoad,
 		loadedPopulationFingerprint: population,
@@ -393,6 +445,24 @@ func (m *OutlinerModel) publishLens(lens config.NamedLens, state lensState, proj
 	m.crossForceRebuild = true
 	m.rebuildRows()
 	m.restoreSearchCursor(anchor)
+	// This is the one place a lens becomes live, so it is the only honest place to
+	// record which one to reopen with. Persisting from the application instead
+	// would let a superseded asynchronous attempt name a lens the user never saw.
+	m.noteActiveLens(lens.ID)
+}
+
+// noteActiveLens records the resume hint for the lens that just became live, or
+// clears it when passed the empty string. The pointer is machine-local and is a
+// hint rather than a record: the projection the user asked for is already
+// installed, so a failed commit is reported and nothing else. The seam is
+// injected by the shell and a model without one simply remembers nothing.
+func (m *OutlinerModel) noteActiveLens(id string) {
+	if m == nil || m.persistActiveLens == nil {
+		return
+	}
+	if err := m.persistActiveLens(id); err != nil {
+		m.setTransientStatus("Could not remember the active lens: " + err.Error())
+	}
 }
 
 // lensRestorationPoint returns the baseline the next Esc restores: the original
@@ -417,6 +487,7 @@ func (m *OutlinerModel) restoreLensBaseline() {
 	m.endLensQueryEdit()
 	m.discardPendingLensApplication()
 	m.restoreOutlinerViewSnapshot(frame.origin)
+	m.noteActiveLens("")
 }
 
 // discardPendingLensApplication abandons an unpublished application. The
@@ -457,12 +528,16 @@ func (m *OutlinerModel) clearActiveLensWithoutRestore() {
 	m.discardPendingLensApplication()
 	m.endLensQueryEdit()
 	m.setLensQuery("")
+	m.noteActiveLens("")
 }
 
 // lensModified reports whether the live view has diverged from the definition
 // that was installed. Only the lens-owned axes are compared, so moving the
-// cursor, folding a section, selecting rows, opening Peek, and navigating all
-// leave an unmodified lens unmodified.
+// cursor, folding a section, selecting rows, and opening Peek all leave an
+// unmodified lens unmodified. Scope is the one carve-out from "navigating": it
+// is a lens-owned axis, so entering or leaving a project scope under a live lens
+// does mark it modified, and replacing the lens from the current view is what
+// adopts the scope the user moved to.
 func (m *OutlinerModel) lensModified() bool {
 	if m == nil || m.activeLens == nil {
 		return false

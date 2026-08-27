@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
@@ -48,6 +49,9 @@ const (
 	matchSourceAttachment
 	matchSourceProject
 	matchSourceDetails
+	// matchSourceNote attributes a row to the notes tier rather than to a field
+	// of a task. It is the one source whose row carries no task at all.
+	matchSourceNote
 )
 
 // The deterministic free-text tiers. Rank is the primary sort key, so a lower
@@ -63,6 +67,10 @@ const (
 	searchFieldRankAttachment
 	searchFieldRankProject
 	searchFieldRankDetails
+	// Notes are the last tier: a task the query names is what the Outliner is
+	// for, so no note may outrank one however strongly it scored. It is also the
+	// only tier whose rows carry no task.
+	searchFieldRankNote
 )
 
 type outlinerSearchMatch struct {
@@ -219,6 +227,9 @@ func (m *OutlinerModel) resetSearchCompilation() {
 	m.searchCaseRelaxed = false
 	m.searchRemainder = ""
 	m.searchGate = nil
+	// The retained note payloads outlive the rows that named them otherwise, and
+	// they hold every matched note's body.
+	m.searchNoteMatches = nil
 }
 
 // searchTextQuery is the free-text remainder every consumer of the query must
@@ -245,20 +256,57 @@ func (m *OutlinerModel) searchCaseSensitive() bool {
 
 func (m *OutlinerModel) buildSearchProjectionRows() {
 	projects := m.projectsInCatalogOrder(m.workModeScopeProjects())
-	candidates := m.searchFocusCandidates(projects)
+	candidates := m.searchCandidateBoundary(projects)
 
 	query, predicates := m.compileSearchQuery(m.SearchQuery(), projects)
+	// An explicit terminal state facet already decides that completed work is on
+	// screen, and the boundary above has applied it, so the gate must not exclude
+	// it a second time — the same move compileLensNarrowing makes, narrower.
+	if predicates != nil && m.hasExplicitTerminalFilter() {
+		predicates.admitsTerminal = true
+	}
 	m.searchRemainder = query
 	m.searchGate = predicates
+
+	// The one place the notes tier is admitted or refused. A sigil compiles to an
+	// AND gate applied before scoring and a note satisfies no conjunct of it, so
+	// the tier is absent whole rather than exempted per conjunct. Deciding once
+	// here rather than inside the scorer is what makes the case-relaxed retry
+	// below behave identically for free: both passes read the same decision.
+	notesAdmitted := !predicates.invalid() && !predicates.hasAnySigil()
 
 	m.searchCaseRelaxed = false
 	matcher := fuzzy.SmartCase(query)
 	matches := searchProjectionMatchesWithin(projects, query, candidates, matcher, predicates)
-	if len(matches) == 0 && matcher.CaseSensitive() {
-		matches = searchProjectionMatchesWithin(projects, query, candidates, fuzzy.NewMatcher(false), predicates)
-		m.searchCaseRelaxed = len(matches) > 0
+	notes := m.scoreNoteSearchTier(query, matcher, notesAdmitted)
+	// One query, one case reading: relaxation is decided over the whole result
+	// set, so a query that relaxes relaxes for tasks and notes together.
+	if len(matches) == 0 && len(notes) == 0 && matcher.CaseSensitive() {
+		relaxed := fuzzy.NewMatcher(false)
+		matches = searchProjectionMatchesWithin(projects, query, candidates, relaxed, predicates)
+		notes = m.scoreNoteSearchTier(query, relaxed, notesAdmitted)
+		m.searchCaseRelaxed = len(matches) > 0 || len(notes) > 0
 	}
+	m.sortSearchMatchesWithinTier(matches)
 
+	// The task matches arrive ordered by rank, so the notes tier is seated at the
+	// first task match its own rank no longer outranks. Reading
+	// searchFieldRankNote here rather than appending blind keeps that constant the
+	// one statement of where the tier sits, so moving it up the ladder later moves
+	// the rows with it.
+	boundary := len(matches)
+	for index, match := range matches {
+		if match.fieldRank >= searchFieldRankNote {
+			boundary = index
+			break
+		}
+	}
+	m.appendSearchTaskRows(matches[:boundary])
+	m.appendSearchNoteRows(notes)
+	m.appendSearchTaskRows(matches[boundary:])
+}
+
+func (m *OutlinerModel) appendSearchTaskRows(matches []outlinerSearchMatch) {
 	for _, match := range matches {
 		row := m.outlinerRowFromModeRow(OutlinerModeRow{
 			Task:       match.task,
@@ -272,19 +320,86 @@ func (m *OutlinerModel) buildSearchProjectionRows() {
 	}
 }
 
-// searchFocusCandidates returns an authoritative per-project candidate set only
-// while task Focus is active. Search intentionally ignores the current mode,
-// facets, sort, and folds, but it must never escape the descendants-only branch
-// the user entered.
-func (m *OutlinerModel) searchFocusCandidates(projects []*models.Project) map[string][]*models.Task {
-	if m == nil || (len(m.focusStack) == 0 && len(m.crossFocusStack) == 0) {
+// appendSearchNoteRows emits the notes tier and retains what rendering it needs.
+// The row carries the note's workspace identity alone, exactly as the Notes
+// manager keys its own match map, so the wide payload a render reads — the note,
+// its owner label, and the title positions that ranked it — stays off a struct
+// every projection copies per row. The map is replaced on every rebuild, so it
+// can never describe a result set that is no longer on screen.
+func (m *OutlinerModel) appendSearchNoteRows(notes []outlinerSearchNoteMatch) {
+	m.searchNoteMatches = nil
+	if len(notes) == 0 {
+		return
+	}
+	m.searchNoteMatches = make(map[NoteRowIdentity]outlinerSearchNoteMatch, len(notes))
+	for _, note := range notes {
+		identity := note.row.Identity()
+		m.searchNoteMatches[identity] = note
+		m.rows = append(m.rows, outlinerRow{
+			IsNoteRow:   true,
+			NoteRow:     identity,
+			MatchSource: matchSourceNote,
+		})
+	}
+}
+
+// sortSearchMatchesWithinTier reorders a resolved result set by the active sort
+// axis without ever crossing a relevance tier. In a search projection the tier
+// is the group, and a sort reorders tasks within their group only, so no
+// `· description` hit can float above a title hit. It runs here rather than
+// inside searchProjectionMatchesWithin so the lens call site keeps the saved
+// order the lens itself installs.
+func (m *OutlinerModel) sortSearchMatchesWithinTier(matches []outlinerSearchMatch) {
+	if m == nil || m.sort.Field == SortByDefault || len(matches) < 2 {
+		return
+	}
+	field, ascending := m.sort.Field, m.sort.Ascending
+	sort.SliceStable(matches, func(i, j int) bool {
+		if matches[i].fieldRank != matches[j].fieldRank {
+			return matches[i].fieldRank < matches[j].fieldRank
+		}
+		return ApplySortDirection(CompareTasks(matches[i].task, matches[j].task, field), ascending)
+	})
+}
+
+// searchCandidateBoundary returns an authoritative per-project candidate set
+// whenever something other than the query itself bounds the result. Two things
+// do: task Focus, whose descendants-only branch search must never escape, and
+// the active common facets, which are an AND gate applied before scoring
+// exactly like the sigils. Search still ignores the current mode, sort, and
+// folds. With neither in force the nil return keeps the scope-wide behavior.
+//
+// The facets compose through this channel rather than inside
+// searchProjectionMatchesWithin because the lens path calls that function with
+// its own facets already applied, and checking them there would apply them twice.
+func (m *OutlinerModel) searchCandidateBoundary(projects []*models.Project) map[string][]*models.Task {
+	if m == nil {
 		return nil
 	}
+	focused := len(m.focusStack) > 0 || len(m.crossFocusStack) > 0
+	faceted := hasActiveCommonFilters(&m.filter.CommonFilterState)
+	if !focused && !faceted {
+		return nil
+	}
+	// buildCanonicalModeRows populates the open-child census above the search
+	// branch, so the hierarchy half of the facet gate reads a live count here.
+	facets := m.facetPredicateAt(time.Now())
 	candidates := make(map[string][]*models.Task, len(projects))
 	for _, project := range projects {
-		if project != nil {
-			candidates[project.ID] = flattenTaskPointers(m.primaryModeRoots(project))
+		if project == nil {
+			continue
 		}
+		tasks := project.Tasks
+		if focused {
+			tasks = flattenTaskPointers(m.primaryModeRoots(project))
+		}
+		admitted := make([]*models.Task, 0, len(tasks))
+		for _, task := range tasks {
+			if task != nil && facets(task, project) {
+				admitted = append(admitted, task)
+			}
+		}
+		candidates[project.ID] = admitted
 	}
 	return candidates
 }

@@ -13,10 +13,7 @@ import (
 // Destructive requests must set Confirm to signal explicit intent; a request
 // without it is rejected before any mutation with ErrDestructiveConfirmationRequired.
 type DeleteRequest struct {
-	// TaskID identifies the subtree root when it is workspace-unique.
-	TaskID string
-	// Locator is the project-qualified alternative to TaskID. The two fields are
-	// mutually exclusive.
+	// Locator is the project-qualified subtree root.
 	Locator TaskLocator
 	// Confirm records explicit destructive intent. A false value aborts the delete
 	// before any task is removed or any commit is attempted.
@@ -38,7 +35,7 @@ type DeleteResult struct {
 // it; machine-local recent visits remain adapter-owned. The request must carry
 // explicit destructive intent; an unconfirmed request never mutates anything.
 func (s *Service) Delete(req DeleteRequest, artifacts ...storage.ArtifactChange) (DeleteResult, error) {
-	ref, snap, _, err := s.loadTaskSelection(req.TaskID, req.Locator)
+	ref, snap, _, err := s.loadTaskSelection("", req.Locator)
 	if err != nil {
 		return DeleteResult{}, err
 	}

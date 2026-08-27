@@ -12,17 +12,33 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
+// noContextFilterKey is the pseudo-entry the context picker offers for tasks
+// carrying no context at all. The empty context is legal, so without it a
+// context filter could never name the tasks the vocabulary does not cover. It
+// travels in the picker's value channel only; the state is the NoContext bool.
+const noContextFilterKey = "\x00nocontext"
+
 // CommonFilterState contains filter fields shared across views.
 type CommonFilterState struct {
-	States        models.WorkflowStateSet // filter by one or more canonical workflow states
-	Priority      int                     // 0=all, N>0 keeps tasks whose effective priority is <= N
-	Tags          map[string]bool         // filter by tag names (AND logic)
-	DueDate       DueDateFilter           // filter by due date
-	CompletionAge CompletionAgeFilter     // local-calendar age threshold for completed tasks
-	Hierarchy     HierarchyFilter         // filter by hierarchy position
-	Stale         bool                    // only show open work untouched for at least 90 local days
-	Deferred      bool                    // only show currently deferred tasks
-	Pinned        bool                    // only show pinned tasks
+	States   models.WorkflowStateSet // filter by one or more canonical workflow states
+	Priority int                     // 0=all, N>0 keeps tasks whose effective priority is <= N
+	Tags     map[string]bool         // filter by tag names (AND logic)
+
+	// Contexts filters by task context name. The names compose with OR, unlike
+	// the AND semantics of the tag filter, because a task carries at most one
+	// context and an AND over two names could never match anything.
+	Contexts map[string]bool
+
+	// NoContext admits tasks whose optional context field is unset. It composes
+	// with Contexts by OR, so the facet can name both a vocabulary and its gap.
+	NoContext bool
+
+	DueDate       DueDateFilter       // filter by due date
+	CompletionAge CompletionAgeFilter // local-calendar age threshold for completed tasks
+	Hierarchy     HierarchyFilter     // filter by hierarchy position
+	Stale         bool                // only show open work untouched for at least 90 local days
+	Deferred      bool                // only show currently deferred tasks
+	Pinned        bool                // only show pinned tasks
 
 	// statesSet distinguishes no state predicate from an explicit empty
 	// match-nothing set produced by intersecting contradictory legacy filters.
@@ -39,6 +55,7 @@ func copyCommonFilterState(src *CommonFilterState) *CommonFilterState {
 		Priority:         src.Priority,
 		DueDate:          src.DueDate,
 		CompletionAge:    src.CompletionAge,
+		NoContext:        src.NoContext,
 		Hierarchy:        src.Hierarchy,
 		Stale:            src.Stale,
 		Deferred:         src.Deferred,
@@ -49,6 +66,10 @@ func copyCommonFilterState(src *CommonFilterState) *CommonFilterState {
 	if len(src.Tags) > 0 {
 		dst.Tags = make(map[string]bool, len(src.Tags))
 		maps.Copy(dst.Tags, src.Tags)
+	}
+	if len(src.Contexts) > 0 {
+		dst.Contexts = make(map[string]bool, len(src.Contexts))
+		maps.Copy(dst.Contexts, src.Contexts)
 	}
 	return dst
 }
@@ -113,10 +134,13 @@ func passesCommonFiltersAt(
 	}
 	if len(f.Tags) > 0 {
 		for tag := range f.Tags {
-			if !taskMatchesTagFacet(task, tag) {
+			if !task.HasTag(tag) {
 				return false
 			}
 		}
+	}
+	if !passesContextFilter(task, f) {
+		return false
 	}
 	if !passesDueDateFilterAt(task, f.DueDate, now) {
 		return false
@@ -124,10 +148,22 @@ func passesCommonFiltersAt(
 	return true
 }
 
-// taskMatchesTagFacet keeps the task model's tag and context axes distinct
-// while letting the existing filter facet match either vocabulary.
-func taskMatchesTagFacet(task *models.Task, value string) bool {
-	return task != nil && (task.HasTag(value) || task.HasContext(value))
+// passesContextFilter applies the context facet. Its names compose with OR
+// because a task carries at most one context, so the no-context pseudo-entry is
+// simply one more admitted alternative rather than a second facet.
+func passesContextFilter(task *models.Task, f *CommonFilterState) bool {
+	if len(f.Contexts) == 0 && !f.NoContext {
+		return true
+	}
+	if f.NoContext && task.Context == "" {
+		return true
+	}
+	for name := range f.Contexts {
+		if task.HasContext(name) {
+			return true
+		}
+	}
+	return false
 }
 
 func passesCompletionAgeFilterAt(task *models.Task, filter CompletionAgeFilter, now time.Time) bool {
@@ -173,6 +209,8 @@ func hasActiveCommonFilters(f *CommonFilterState) bool {
 		f.hasCompletionAgeFilter() ||
 		f.Priority != 0 ||
 		len(f.Tags) > 0 ||
+		len(f.Contexts) > 0 ||
+		f.NoContext ||
 		f.DueDate != DueDateAll ||
 		f.Hierarchy != HierarchyAll ||
 		f.Stale ||
@@ -198,6 +236,12 @@ func commonFilterFacetCount(f *CommonFilterState) int {
 		count++
 	}
 	if len(f.Tags) > 0 {
+		count++
+	}
+	// Context names and the no-context pseudo-entry share one picker and
+	// therefore count once, the same way the project picker's descriptive tags
+	// and its Untagged row do.
+	if len(f.Contexts) > 0 || f.NoContext {
 		count++
 	}
 	if f.DueDate != DueDateAll {
@@ -232,6 +276,8 @@ func clearCommonFilters(f *CommonFilterState) {
 	f.statesSet = false
 	f.Priority = 0
 	f.Tags = make(map[string]bool)
+	f.Contexts = make(map[string]bool)
+	f.NoContext = false
 	f.DueDate = DueDateAll
 	f.CompletionAge = CompletionAgeAll
 	f.completionAgeSet = false
@@ -278,6 +324,7 @@ func commonFilterParts(f *CommonFilterState) []string {
 		}
 		parts = append(parts, strings.Join(tagNames, " "))
 	}
+	parts = append(parts, contextFilterParts(f)...)
 	switch f.DueDate {
 	case DueDateOverdue:
 		parts = append(parts, "due:overdue")
@@ -330,6 +377,56 @@ func CollectContextNamesForProject(project *models.Project) []string {
 	return slices.Sorted(result)
 }
 
+// contextFilterParts renders the context facet as chrome chips. The names wear
+// the ## sigil they answer to on the capture, edit, and search surfaces, so a
+// chip cannot be read as the # tag facet above it.
+func contextFilterParts(f *CommonFilterState) []string {
+	var parts []string
+	if len(f.Contexts) > 0 {
+		names := make([]string, 0, len(f.Contexts))
+		for name := range f.Contexts {
+			names = append(names, "##"+name)
+		}
+		sort.Strings(names)
+		parts = append(parts, strings.Join(names, " "))
+	}
+	if f.NoContext {
+		parts = append(parts, "context:none")
+	}
+	return parts
+}
+
+// collectContextNamesForProjects returns the sorted context vocabulary in use
+// across a set of projects. It reads the same BuildTagFacetList census the fc
+// picker takes its counts from, so the names a picker offers and the counts
+// beside them can never come from two different passes over the tasks.
+func collectContextNamesForProjects(projects []*models.Project) []string {
+	names := make([]string, 0)
+	for _, info := range BuildTagFacetList(projects, false) {
+		if info.ContextCount > 0 {
+			names = append(names, info.Name)
+		}
+	}
+	return names
+}
+
+// applyContextFilterValue replaces the context facets from one picker result.
+// The no-context pseudo-entry travels in the same list of names so the picker
+// needs no second value channel, mirroring the project picker's untagged row.
+func applyContextFilterValue(f *CommonFilterState, names []string) {
+	contexts := make(map[string]bool, len(names))
+	noContext := false
+	for _, name := range names {
+		if name == noContextFilterKey {
+			noContext = true
+			continue
+		}
+		contexts[name] = true
+	}
+	f.Contexts = contexts
+	f.NoContext = noContext
+}
+
 func tagNamesFromInfos(infos []TagInfo) []string {
 	tags := make([]string, len(infos))
 	for i, info := range infos {
@@ -363,7 +460,8 @@ func renderFilterBadge(parts []string) string {
 // newFilterState returns an initialized CommonFilterState with allocated maps.
 func newFilterState() CommonFilterState {
 	return CommonFilterState{
-		Tags:  make(map[string]bool),
-		Stale: false,
+		Tags:     make(map[string]bool),
+		Contexts: make(map[string]bool),
+		Stale:    false,
 	}
 }

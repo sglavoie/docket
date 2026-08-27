@@ -139,7 +139,7 @@ func TestTUIStateTransitionsPreservePlanningExclusivity(t *testing.T) {
 		env := newPlanningReconcileEnv(t)
 		env.seedToday(t)
 
-		if _, err := env.service.Transition(app.StateRequest{TaskID: env.taskID, Target: models.StateWaiting}); err != nil {
+		if _, err := env.service.Transition(app.StateRequest{Locator: app.TaskLocator{ProjectID: env.project.ID, TaskID: env.taskID}, Target: models.StateWaiting}); err != nil {
 			t.Fatalf("Transition: %v", err)
 		}
 
@@ -154,7 +154,11 @@ func TestTUIStateTransitionsPreservePlanningExclusivity(t *testing.T) {
 		env.seedToday(t)
 
 		coords := newSecondaryCoordinators(env.service)
-		cmd := coords.Bulk.Transition([]string{env.taskID}, models.StateWaiting)
+		cmd := coords.Bulk.TransitionLocators(
+			[]app.TaskLocator{{ProjectID: env.project.ID, TaskID: env.taskID}},
+			models.StateWaiting,
+			nil,
+		)
 		assertNotTransactionError(t, cmd())
 
 		planning := env.reloadPlanning(t)
@@ -167,7 +171,7 @@ func TestTUIStateTransitionsPreservePlanningExclusivity(t *testing.T) {
 		env := newPlanningReconcileEnv(t)
 		env.seedNextOrder(t)
 
-		if _, err := env.service.Transition(app.StateRequest{TaskID: env.taskID, Target: models.StateDoing}); err != nil {
+		if _, err := env.service.Transition(app.StateRequest{Locator: app.TaskLocator{ProjectID: env.project.ID, TaskID: env.taskID}, Target: models.StateDoing}); err != nil {
 			t.Fatalf("Transition: %v", err)
 		}
 
@@ -238,7 +242,7 @@ func TestPlanningToggleUndoOrderingAndDurability(t *testing.T) {
 		assertQueueKeyFlow(t, app, task.ID, true)
 
 		// A newer, unrelated workspace-ledger mutation (transaction #2).
-		if _, err := app.appService.SetPriority(task.ID, newPriority); err != nil {
+		if _, err := app.appService.SetPriority(taskIdentityFor(task, app.currentProject).Locator(), newPriority); err != nil {
 			t.Fatalf("newer mutation (set priority): %v", err)
 		}
 		app.reloadProjectByID(app.currentProject.ID)

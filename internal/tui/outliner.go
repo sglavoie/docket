@@ -139,11 +139,32 @@ type OutlinerModel struct {
 	activeLens  *activeLensFrame
 	pendingLens *pendingLensApplication
 
+	// persistActiveLens records which lens the Outliner should reopen with, or
+	// clears that pointer when passed the empty string. The shell injects it, so
+	// the Outliner never learns where machine-local state is committed; a nil seam
+	// is inert and simply remembers nothing.
+	persistActiveLens func(id string) error
+
 	// lensQueryEditing points the shared search input at the lens's narrowing
 	// query instead of the ordinary search query, and lensQueryEditOrigin is the
 	// query Esc restores when that edit is abandoned.
 	lensQueryEditing    bool
 	lensQueryEditOrigin string
+
+	// noteSearchIndex is the shell-injected accessor over the workspace-wide note
+	// index the search tier ranks. A nil accessor means the tier is simply
+	// absent, which is what a struct-literal test model and the Project Hub's
+	// preview painter both get: that preview is a task preview, and notes are
+	// not tasks. The Outliner never learns where notes live or when they are
+	// read; it only reads whatever the shell last retained.
+	noteSearchIndex func() []LocatedNoteRow
+
+	// searchNoteMatches is what the notes tier's rows are rendered from, keyed the
+	// way the Notes manager keys its own match map. It lives beside the rows
+	// rather than on them because a note row's render payload is wide — the note
+	// itself, its owner label, and the positions that ranked its title — and
+	// outlinerRow is copied for every row of every rebuild.
+	searchNoteMatches map[NoteRowIdentity]outlinerSearchNoteMatch
 
 	// searchAutocomplete is the slash-search suggestion pane. It holds no cached
 	// vocabulary: every refresh reprojects the grammar and rereads the live

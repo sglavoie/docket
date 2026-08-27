@@ -47,6 +47,7 @@ var projectPopulationInventory = map[string]string{
 	"internal/tui/handler_task_content.go:availableProjects":         "external-editor %project resolution matches inline edit",
 	"internal/tui/handler_view_notes.go:availableProjects":           "Notes owner refresh when reopening the manager",
 	"internal/tui/manage_hub.go:AvailableProjects":                   "Notes owners and project-note command scope",
+	"internal/tui/note_search_index.go:availableProjects":            "the Outliner note search index covers the same owners the Notes manager does, so a parked project's notes stay searchable",
 	"internal/tui/workspace_pulse.go:TaskWorkspaceProjects":          "workspace pulse counting is a task projection",
 	"internal/tui/operation_target_context.go:taskWorkspaceProjects": "operation command scope IDs follow the context scope",
 	"internal/tui/operation_value_provider.go:AvailableProjects":     "Move to Project destinations match %project, so a parked project stays reachable",

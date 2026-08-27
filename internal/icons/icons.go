@@ -1,9 +1,7 @@
 package icons
 
 var registry = map[string]string{
-	"overdue": "‼", "due_today": "⧖", "inbox": "⊳", "notes": "¶",
-	"pinned": "⌃", "date": "⊡", "tag": "#", "settings": "⚙",
-	"folder": "⌂", "search": "⌕", "archive": "⊟", "edit": "✎",
+	"date":         "⊡",
 	"status.inbox": "□", "status.backlog": "□", "status.doing": "▶",
 	"status.waiting": "⊘", "status.paused": "‖", "status.someday": "¿",
 	"status.done": "✓", "status.canceled": "✕",
@@ -11,8 +9,7 @@ var registry = map[string]string{
 	"comment": "▪", "attachment": "⊕", "github_issue": "GH",
 	"checklist":        "☑",
 	"checkbox.checked": "☑", "checkbox.unchecked": "☐",
-	"warning": "⚠", "star": "★", "streak": "↯", "success": "✓",
-	"error": "✕", "close": "✕",
+	"warning": "⚠", "success": "✓", "error": "✕",
 }
 
 func Get(key string) string { return registry[key] }

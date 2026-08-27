@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -92,15 +93,112 @@ func TestBuildTagFacetListUnionsTagsAndContexts(t *testing.T) {
 	}
 }
 
-func TestTaskMatchesTagFacetMatchesEitherAxis(t *testing.T) {
-	task := &models.Task{Tags: []string{"bug"}, Context: "platform"}
-	for _, value := range []string{"bug", "platform"} {
-		if !taskMatchesTagFacet(task, value) {
-			t.Errorf("taskMatchesTagFacet(%q) = false, want true", value)
+// TestTagAndContextFacetsAreDistinctAxes pins the de-conflation: the tag facet
+// reads Tags alone and the context facet reads Context alone, so a value carried
+// on one axis can never be filtered out by a facet naming the other. Contexts
+// compose with OR, because a task carries at most one.
+func TestTagAndContextFacetsAreDistinctAxes(t *testing.T) {
+	now := time.Now()
+	tagged := &models.Task{Tags: []string{"bug"}}
+	contextual := &models.Task{Context: "platform"}
+	bare := &models.Task{}
+
+	tagFacet := newFilterState()
+	tagFacet.Tags = map[string]bool{"platform": true}
+	for _, testCase := range []struct {
+		name string
+		task *models.Task
+		want bool
+	}{
+		{name: "tag", task: tagged, want: false},
+		{name: "context", task: contextual, want: false},
+	} {
+		if got := passesCommonFiltersAt(testCase.task, &tagFacet, now); got != testCase.want {
+			t.Errorf("tag facet #platform admits the %s task = %v, want %v", testCase.name, got, testCase.want)
 		}
 	}
-	if taskMatchesTagFacet(task, "other") {
-		t.Error("taskMatchesTagFacet(other) = true, want false")
+
+	contextFacet := newFilterState()
+	contextFacet.Contexts = map[string]bool{"bug": true, "platform": true}
+	if passesCommonFiltersAt(tagged, &contextFacet, now) {
+		t.Error("context facet ##bug admits a task carrying bug as a tag")
+	}
+	if !passesCommonFiltersAt(contextual, &contextFacet, now) {
+		t.Error("context facet does not admit ##platform under OR semantics")
+	}
+
+	noContext := newFilterState()
+	noContext.NoContext = true
+	if !passesCommonFiltersAt(bare, &noContext, now) {
+		t.Error("no-context facet rejects a task with no context")
+	}
+	if passesCommonFiltersAt(contextual, &noContext, now) {
+		t.Error("no-context facet admits a task carrying a context")
+	}
+}
+
+// TestContextFacetCountsAsOneClearableFacet keeps the names and the no-context
+// row on the one picker they share, the way the project picker's descriptive
+// tags and its Untagged row share theirs.
+func TestContextFacetCountsAsOneClearableFacet(t *testing.T) {
+	filter := newFilterState()
+	filter.Contexts = map[string]bool{"errand": true, "office": true}
+	filter.NoContext = true
+	if !hasActiveCommonFilters(&filter) {
+		t.Fatal("hasActiveCommonFilters() = false with an active context facet")
+	}
+	if got := commonFilterFacetCount(&filter); got != 1 {
+		t.Fatalf("commonFilterFacetCount() = %d, want 1", got)
+	}
+	want := []string{"##errand ##office", "context:none"}
+	if got := commonFilterParts(&filter); !reflect.DeepEqual(got, want) {
+		t.Fatalf("commonFilterParts() = %v, want %v", got, want)
+	}
+	clearCommonFilters(&filter)
+	if hasActiveCommonFilters(&filter) {
+		t.Fatal("clearCommonFilters() left the context facet active")
+	}
+}
+
+// TestApplyContextFilterValueSplitsTheNoContextToken keeps the pseudo-entry in
+// the picker's value channel and the state in the bool field.
+func TestApplyContextFilterValueSplitsTheNoContextToken(t *testing.T) {
+	filter := newFilterState()
+	applyContextFilterValue(&filter, []string{"errand", noContextFilterKey})
+	if !filter.NoContext {
+		t.Error("applyContextFilterValue did not set NoContext")
+	}
+	if filter.Contexts[noContextFilterKey] {
+		t.Error("applyContextFilterValue kept the pseudo-entry as a context name")
+	}
+	if !filter.Contexts["errand"] {
+		t.Error("applyContextFilterValue dropped the errand context")
+	}
+	applyContextFilterValue(&filter, nil)
+	if filter.NoContext || len(filter.Contexts) > 0 {
+		t.Error("an empty picker result did not clear the context facet")
+	}
+}
+
+func TestCollectContextNamesForProjectsReadsTheFacetCensus(t *testing.T) {
+	alpha := &models.Project{
+		ID: "alpha",
+		Tasks: []*models.Task{
+			{Context: "office", Tags: []string{"errand"}},
+			{Context: "errand"},
+		},
+	}
+	beta := &models.Project{
+		ID:    "beta",
+		Tasks: []*models.Task{{Context: "office"}, {Tags: []string{"desk"}}},
+	}
+	got := collectContextNamesForProjects([]*models.Project{alpha, beta, alpha})
+	want := []string{"errand", "office"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("collectContextNamesForProjects() = %v, want %v", got, want)
+	}
+	if got := countTasksWithoutContext([]*models.Project{alpha, beta, alpha}); got != 1 {
+		t.Fatalf("countTasksWithoutContext() = %d, want 1", got)
 	}
 }
 

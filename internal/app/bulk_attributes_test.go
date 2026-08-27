@@ -17,7 +17,7 @@ func TestBulkSetPrioritySetsAllAndCommitsOnce(t *testing.T) {
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
 
-	res, err := svc.BulkSetPriority([]string{"t1", "t2"}, 2)
+	res, err := svc.BulkSetPriority([]app.TaskLocator{repo.loc("t1"), repo.loc("t2")}, 2)
 	if err != nil {
 		t.Fatalf("BulkSetPriority: %v", err)
 	}
@@ -35,7 +35,7 @@ func TestBulkSetPrioritySetsAllAndCommitsOnce(t *testing.T) {
 	}
 
 	// Zero is the unset value, not an out-of-range priority, so it clears in bulk too.
-	if _, err = svc.BulkSetPriority([]string{"t1", "t2"}, 0); err != nil {
+	if _, err = svc.BulkSetPriority([]app.TaskLocator{repo.loc("t1"), repo.loc("t2")}, 0); err != nil {
 		t.Fatalf("BulkSetPriority(0): %v", err)
 	}
 	if t1.Priority != 0 || t2.Priority != 0 {
@@ -49,11 +49,11 @@ func TestBulkSetPriorityRejectsInvalidPriority(t *testing.T) {
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
 
-	_, err := svc.BulkSetPriority([]string{"t1"}, 99)
+	_, err := svc.BulkSetPriority([]app.TaskLocator{repo.loc("t1")}, 99)
 	if !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput", err)
 	}
-	if _, err = svc.BulkSetPriority([]string{"t1"}, -1); !errors.Is(err, app.ErrInvalidInput) {
+	if _, err = svc.BulkSetPriority([]app.TaskLocator{repo.loc("t1")}, -1); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput", err)
 	}
 	if len(repo.commits) != 0 {
@@ -72,7 +72,7 @@ func TestBulkSetPriorityAcrossProjectsCommitsOneTransaction(t *testing.T) {
 	repo := newFakeRepo(projA, projB)
 	svc := newTestService(repo)
 
-	res, err := svc.BulkSetPriority([]string{"t1", "t2"}, 3)
+	res, err := svc.BulkSetPriority([]app.TaskLocator{repo.loc("t1"), repo.loc("t2")}, 3)
 	if err != nil {
 		t.Fatalf("BulkSetPriority: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestBulkSetDueDateSetsDue(t *testing.T) {
 	svc := newTestService(repo)
 
 	due := time.Date(2026, 8, 1, 9, 30, 0, 0, time.UTC)
-	if _, err := svc.BulkSetDueDate([]string{"t1", "t2"}, due); err != nil {
+	if _, err := svc.BulkSetDueDate([]app.TaskLocator{repo.loc("t1"), repo.loc("t2")}, due); err != nil {
 		t.Fatalf("BulkSetDueDate: %v", err)
 	}
 	for _, task := range []*models.Task{t1, t2} {
@@ -122,7 +122,7 @@ func TestBulkClearDueDateClearsAndIsNoOpWhenAbsent(t *testing.T) {
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
 
-	res, err := svc.BulkClearDueDate([]string{"t1", "t2"})
+	res, err := svc.BulkClearDueDate([]app.TaskLocator{repo.loc("t1"), repo.loc("t2")})
 	if err != nil {
 		t.Fatalf("BulkClearDueDate: %v", err)
 	}
@@ -147,7 +147,7 @@ func TestBulkDeferSetsDeferOnAll(t *testing.T) {
 	svc := newTestService(repo)
 
 	until := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
-	if _, err := svc.BulkDefer([]string{"t1", "t2"}, &until); err != nil {
+	if _, err := svc.BulkDefer([]app.TaskLocator{repo.loc("t1"), repo.loc("t2")}, &until); err != nil {
 		t.Fatalf("BulkDefer: %v", err)
 	}
 	for _, task := range []*models.Task{t1, t2} {
@@ -172,7 +172,7 @@ func TestBulkDeferRejectsTerminalOrInProgress(t *testing.T) {
 	svc := newTestService(repo)
 
 	until := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
-	_, err := svc.BulkDefer([]string{"t1", "t2"}, &until)
+	_, err := svc.BulkDefer([]app.TaskLocator{repo.loc("t1"), repo.loc("t2")}, &until)
 	if !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput (terminal task cannot be deferred)", err)
 	}
@@ -192,7 +192,7 @@ func TestBulkDeferClearClearsDefer(t *testing.T) {
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
 
-	if _, err := svc.BulkDefer([]string{"t1"}, nil); err != nil {
+	if _, err := svc.BulkDefer([]app.TaskLocator{repo.loc("t1")}, nil); err != nil {
 		t.Fatalf("BulkDefer clear: %v", err)
 	}
 	if t1.DeferredUntil != nil {
@@ -208,7 +208,7 @@ func TestBulkSetTagsReplacesTagSet(t *testing.T) {
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
 
-	if _, err := svc.BulkSetTags([]string{"t1", "t2"}, []string{"#backend", "urgent", "backend"}); err != nil {
+	if _, err := svc.ExecuteTaskOperation(app.TaskOperationRequest{Operation: app.TaskOperationSetTags, Targets: []app.TaskLocator{repo.loc("t1"), repo.loc("t2")}, Tags: []string{"#backend", "urgent", "backend"}}); err != nil {
 		t.Fatalf("BulkSetTags: %v", err)
 	}
 	// "#backend" normalizes to "backend"; the duplicate "backend" is dropped.
@@ -237,7 +237,7 @@ func TestBulkSetTagsEmptyClearsTags(t *testing.T) {
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
 
-	if _, err := svc.BulkSetTags([]string{"t1"}, nil); err != nil {
+	if _, err := svc.ExecuteTaskOperation(app.TaskOperationRequest{Operation: app.TaskOperationSetTags, Targets: []app.TaskLocator{repo.loc("t1")}, Tags: nil}); err != nil {
 		t.Fatalf("BulkSetTags empty: %v", err)
 	}
 	if len(t1.Tags) != 0 {
@@ -251,7 +251,7 @@ func TestBulkSetTagsRejectsInvalidTag(t *testing.T) {
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
 
-	_, err := svc.BulkSetTags([]string{"t1"}, []string{"ok", "!!!"})
+	_, err := svc.ExecuteTaskOperation(app.TaskOperationRequest{Operation: app.TaskOperationSetTags, Targets: []app.TaskLocator{repo.loc("t1")}, Tags: []string{"ok", "!!!"}})
 	if !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput (tag has no ASCII alphanumeric)", err)
 	}
@@ -266,7 +266,7 @@ func TestBulkSetTagsAllowsIndependentSemanticTags(t *testing.T) {
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	_, err := svc.BulkSetTags([]string{task.ID}, []string{"bug", "idea"})
+	_, err := svc.ExecuteTaskOperation(app.TaskOperationRequest{Operation: app.TaskOperationSetTags, Targets: []app.TaskLocator{repo.loc(task.ID)}, Tags: []string{"bug", "idea"}})
 	if err != nil {
 		t.Fatalf("BulkSetTags: %v", err)
 	}
@@ -285,16 +285,18 @@ func TestBulkPatchTagsPreservesSomeMembershipAndCommitsOnce(t *testing.T) {
 	repo := newFakeRepo(projA, projB)
 	svc := newTestService(repo)
 
-	_, err := svc.BulkPatchTagsByLocators(
-		[]app.TaskLocator{
+	_, err := svc.ExecuteTaskOperation(app.TaskOperationRequest{
+		Operation: app.TaskOperationSetTags,
+		Targets: []app.TaskLocator{
 			{ProjectID: projA.ID, TaskID: t1.ID},
 			{ProjectID: projB.ID, TaskID: t2.ID},
 		},
-		[]string{"first-only"},
-		[]string{"common"},
-	)
+		TagPatch:     true,
+		TagsToAdd:    []string{"first-only"},
+		TagsToRemove: []string{"common"},
+	})
 	if err != nil {
-		t.Fatalf("BulkPatchTagsByLocators: %v", err)
+		t.Fatalf("patch tags: %v", err)
 	}
 	if got := t1.Tags; !slices.Equal(got, []string{"first-only"}) {
 		t.Fatalf("first tags = %v, want [first-only]", got)
@@ -382,11 +384,13 @@ func TestBulkPatchTagsRejectsConflictingPatchBeforeMutation(t *testing.T) {
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	_, err := svc.BulkPatchTagsByLocators(
-		[]app.TaskLocator{{ProjectID: project.ID, TaskID: task.ID}},
-		[]string{"same"},
-		[]string{"same"},
-	)
+	_, err := svc.ExecuteTaskOperation(app.TaskOperationRequest{
+		Operation:    app.TaskOperationSetTags,
+		Targets:      []app.TaskLocator{{ProjectID: project.ID, TaskID: task.ID}},
+		TagPatch:     true,
+		TagsToAdd:    []string{"same"},
+		TagsToRemove: []string{"same"},
+	})
 	if !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("error = %v, want ErrInvalidInput", err)
 	}
@@ -402,13 +406,14 @@ func TestBulkPatchTagsAddsSemanticTagAlongsideExisting(t *testing.T) {
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	_, err := svc.BulkPatchTagsByLocators(
-		[]app.TaskLocator{{ProjectID: project.ID, TaskID: task.ID}},
-		[]string{"bug"},
-		nil,
-	)
+	_, err := svc.ExecuteTaskOperation(app.TaskOperationRequest{
+		Operation: app.TaskOperationSetTags,
+		Targets:   []app.TaskLocator{{ProjectID: project.ID, TaskID: task.ID}},
+		TagPatch:  true,
+		TagsToAdd: []string{"bug"},
+	})
 	if err != nil {
-		t.Fatalf("BulkPatchTagsByLocators: %v", err)
+		t.Fatalf("patch tags: %v", err)
 	}
 	if !slices.Equal(task.Tags, []string{"idea", "keep", "bug"}) || len(repo.commits) != 1 {
 		t.Fatalf("patched tags=%v commits=%d", task.Tags, len(repo.commits))
@@ -424,16 +429,18 @@ func TestBulkPatchTagsExplicitlyRemovesAndAddsIndependentSemanticTags(t *testing
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	_, err := svc.BulkPatchTagsByLocators(
-		[]app.TaskLocator{
+	_, err := svc.ExecuteTaskOperation(app.TaskOperationRequest{
+		Operation: app.TaskOperationSetTags,
+		Targets: []app.TaskLocator{
 			{ProjectID: project.ID, TaskID: bug.ID},
 			{ProjectID: project.ID, TaskID: idea.ID},
 		},
-		[]string{"story"},
-		[]string{"bug", "idea"},
-	)
+		TagPatch:     true,
+		TagsToAdd:    []string{"story"},
+		TagsToRemove: []string{"bug", "idea"},
+	})
 	if err != nil {
-		t.Fatalf("BulkPatchTagsByLocators: %v", err)
+		t.Fatalf("patch tags: %v", err)
 	}
 	for _, task := range []*models.Task{bug, idea} {
 		if !slices.Equal(task.Tags, []string{"keep", "story"}) {
@@ -454,13 +461,13 @@ func TestBulkToggleTagUsesAllOrNoneMembershipAndOneCommit(t *testing.T) {
 		{ProjectID: project.ID, TaskID: second.ID},
 	}
 
-	if _, err := svc.BulkToggleTagByLocators(locators, "Review"); err != nil {
+	if _, err := svc.BulkToggleTag(locators, "Review"); err != nil {
 		t.Fatalf("add review: %v", err)
 	}
 	if !first.HasTag("review") || !second.HasTag("review") || len(repo.commits) != 1 {
 		t.Fatalf("first=%v second=%v commits=%d, want both reviewed in one commit", first.Tags, second.Tags, len(repo.commits))
 	}
-	if _, err := svc.BulkToggleTagByLocators(locators, "#review"); err != nil {
+	if _, err := svc.BulkToggleTag(locators, "#review"); err != nil {
 		t.Fatalf("remove review: %v", err)
 	}
 	if first.HasTag("review") || second.HasTag("review") || len(repo.commits) != 2 {
@@ -490,7 +497,7 @@ func TestBulkAttributeUnresolvedTaskAborts(t *testing.T) {
 	repo := newFakeRepo(projA)
 	svc := newTestService(repo)
 
-	_, err := svc.BulkSetPriority([]string{"t1", "missing"}, 2)
+	_, err := svc.BulkSetPriority([]app.TaskLocator{repo.loc("t1"), {ProjectID: "proj-a", TaskID: "missing"}}, 2)
 	if !errors.Is(err, app.ErrTaskNotFound) {
 		t.Fatalf("err = %v, want ErrTaskNotFound", err)
 	}

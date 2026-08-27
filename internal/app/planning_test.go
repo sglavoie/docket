@@ -154,7 +154,7 @@ func TestDeferCommitsLifecycleAndPlanningTogether(t *testing.T) {
 	svc := newTestService(repo).WithPlanningArtifacts(memoryPlanningBuilder(planning))
 	until := time.Date(2026, 8, 3, 0, 0, 0, 0, time.UTC)
 
-	if _, err := svc.DeferByLocator(app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}, &until); err != nil {
+	if _, err := svc.Defer(app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}, &until); err != nil {
 		t.Fatal(err)
 	}
 	if task.State() != models.StateBacklog || task.DeferredUntil == nil || !task.DeferredUntil.Equal(until) {
@@ -184,7 +184,7 @@ func TestDeleteOwnsSubtreePlanningCleanupAndRollback(t *testing.T) {
 		planning.SetNext([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: child.ID}})
 		svc := newTestService(repo).WithPlanningArtifacts(memoryPlanningBuilder(planning))
 
-		if _, err := svc.Delete(app.DeleteRequest{TaskID: parent.ID, Confirm: true}); err != nil {
+		if _, err := svc.Delete(app.DeleteRequest{Locator: repo.loc(parent.ID), Confirm: true}); err != nil {
 			t.Fatal(err)
 		}
 		if got := planning.GetToday(); !reflect.DeepEqual(got, []config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: kept.ID}}) {
@@ -209,7 +209,7 @@ func TestDeleteOwnsSubtreePlanningCleanupAndRollback(t *testing.T) {
 			return nil, wantErr
 		})
 
-		_, err := svc.Delete(app.DeleteRequest{TaskID: parent.ID, Confirm: true})
+		_, err := svc.Delete(app.DeleteRequest{Locator: repo.loc(parent.ID), Confirm: true})
 		if !errors.Is(err, wantErr) {
 			t.Fatalf("Delete error = %v, want %v", err, wantErr)
 		}
@@ -227,7 +227,7 @@ func TestDeleteOwnsSubtreePlanningCleanupAndRollback(t *testing.T) {
 		repo.commitErr = errors.New("commit failed")
 		svc := newTestService(repo)
 
-		if _, err := svc.Delete(app.DeleteRequest{TaskID: parent.ID, Confirm: true}); err == nil {
+		if _, err := svc.Delete(app.DeleteRequest{Locator: repo.loc(parent.ID), Confirm: true}); err == nil {
 			t.Fatal("Delete unexpectedly succeeded")
 		}
 		if project.GetTaskByID(parent.ID) == nil || project.GetTaskByID(child.ID) == nil || len(repo.commits) != 0 {

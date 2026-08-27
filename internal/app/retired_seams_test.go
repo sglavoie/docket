@@ -53,7 +53,7 @@ func TestCompleteFinishesOnlySelectedTask(t *testing.T) {
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	if _, err := svc.Complete(task.ID); err != nil {
+	if _, err := svc.Transition(app.StateRequest{Locator: repo.loc(task.ID), Target: models.StateDone}); err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
 	if task.State() != models.StateDone {
@@ -88,8 +88,8 @@ func assertOrder(t *testing.T, p *models.Project, want ...string) {
 	}
 }
 
-// TestMoveTaskToTopBubblesToFront proves MoveTaskToTop moves a task to the top of
-// its siblings across multiple positions.
+// TestMoveTaskToTopBubblesToFront proves MoveTaskToTop moves a task to
+// the top of its siblings across multiple positions.
 func TestMoveTaskToTopBubblesToFront(t *testing.T) {
 	a := newTask("a", 1, "A")
 	b := newTask("b", 2, "B")
@@ -98,14 +98,14 @@ func TestMoveTaskToTopBubblesToFront(t *testing.T) {
 	repo := newFakeRepo(proj)
 	svc := newTestService(repo)
 
-	if _, err := svc.MoveTaskToTop("c"); err != nil {
+	if _, err := svc.MoveTaskToTop(app.TaskLocator{ProjectID: proj.ID, TaskID: "c"}); err != nil {
 		t.Fatalf("MoveTaskToTop: %v", err)
 	}
 	assertOrder(t, proj, "c", "a", "b")
 }
 
-// TestMoveTaskToBottomBubblesToEnd proves MoveTaskToBottom moves a task to the
-// bottom of its siblings across multiple positions.
+// TestMoveTaskToBottomBubblesToEnd proves MoveTaskToBottom moves a task
+// to the bottom of its siblings across multiple positions.
 func TestMoveTaskToBottomBubblesToEnd(t *testing.T) {
 	a := newTask("a", 1, "A")
 	b := newTask("b", 2, "B")
@@ -114,7 +114,7 @@ func TestMoveTaskToBottomBubblesToEnd(t *testing.T) {
 	repo := newFakeRepo(proj)
 	svc := newTestService(repo)
 
-	if _, err := svc.MoveTaskToBottom("a"); err != nil {
+	if _, err := svc.MoveTaskToBottom(app.TaskLocator{ProjectID: proj.ID, TaskID: "a"}); err != nil {
 		t.Fatalf("MoveTaskToBottom: %v", err)
 	}
 	assertOrder(t, proj, "b", "c", "a")
@@ -129,7 +129,7 @@ func TestMoveTaskToTopAlreadyAtTopIsIdempotent(t *testing.T) {
 	repo := newFakeRepo(proj)
 	svc := newTestService(repo)
 
-	if _, err := svc.MoveTaskToTop("a"); err != nil {
+	if _, err := svc.MoveTaskToTop(app.TaskLocator{ProjectID: proj.ID, TaskID: "a"}); err != nil {
 		t.Fatalf("MoveTaskToTop (already at top): %v", err)
 	}
 	assertOrder(t, proj, "a", "b")
@@ -148,7 +148,7 @@ func TestMoveTaskToTopStopsAtCompletionBoundary(t *testing.T) {
 	repo := newFakeRepo(proj)
 	svc := newTestService(repo)
 
-	if _, err := svc.MoveTaskToTop("b"); err != nil {
+	if _, err := svc.MoveTaskToTop(app.TaskLocator{ProjectID: proj.ID, TaskID: "b"}); err != nil {
 		t.Fatalf("MoveTaskToTop: %v", err)
 	}
 	// b (completed) cannot cross above a (uncompleted): order stays a, b.

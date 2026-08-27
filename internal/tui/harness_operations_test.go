@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/config"
 )
 
 const CapabilityHarness Capability = "surface:test-harness"
@@ -25,7 +27,15 @@ const (
 	operationHarnessOutlineDelete   OperationID = "tui.harness.outline-delete-confirm"
 	operationHarnessEditorSigils    OperationID = "tui.harness.external-editor-sigils"
 	operationHarnessEditorRefusal   OperationID = "tui.harness.external-editor-refusal"
+	operationHarnessDanglingLens    OperationID = "tui.harness.dangling-active-lens"
 )
+
+// harnessDanglingLensID is a canonical UUID that names no saved lens. It stands
+// for the record another machine deleted while this one still points at it: the
+// pointer is shape-valid and unresolvable, which is the one state no public key
+// on this machine can produce, because deleting a lens here clears the pointer
+// in the same commit.
+const harnessDanglingLensID = "3f4c2a91-7d58-4b0e-9c16-2ae5d81f6b34"
 
 // Canned external-editor titles. A scenario command carries no arguments, so
 // each title the harness can return needs its own operation.
@@ -120,6 +130,18 @@ func (m *AppModel) registerHarnessOperations() error {
 		}},
 		{operationHarnessEditorRefusal, "external editor refusal", OperationCategorySystem, func() tea.Msg {
 			return m.harnessTaskContentEdited(harnessEditorRefusedTitle, true)
+		}},
+		{operationHarnessDanglingLens, "dangling active lens", OperationCategorySystem, func() tea.Msg {
+			// The saved definitions are left alone: what is being staged is a
+			// pointer that outlived its record, which is what the next launch has
+			// to fail closed on.
+			if err := m.commitNamedLensMutation(func(machine *config.MachineState) error {
+				machine.ActiveLensID = harnessDanglingLensID
+				return nil
+			}); err != nil {
+				return ErrorMsg{Err: err}
+			}
+			return nil
 		}},
 	}
 

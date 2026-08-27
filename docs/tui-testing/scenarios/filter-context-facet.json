@@ -1,0 +1,41 @@
+{
+  "name": "filter-context-facet",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "open the context facet on its own chord", "key": "f" },
+    { "type": "key", "key": "c" },
+    { "type": "assert", "assert": "contains", "value": "Filter by Context" },
+    { "type": "assert", "label": "the gap leads, because the unset context field is legal", "assert": "contains", "value": "No context  7 tasks" },
+    { "type": "assert", "label": "the vocabulary follows it", "assert": "contains", "value": "[ ] ##platform  1 task" },
+    { "type": "key", "label": "name the tasks the vocabulary cannot cover", "key": "space" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "status_contains", "value": "Filtering context: context:none" },
+    { "type": "assert", "label": "the gap is its own chip, not a tag chip", "assert": "contains", "value": "context:none" },
+    { "type": "assert", "label": "a task carrying a context is excluded", "assert": "not_contains", "value": "Add password validation" },
+    { "type": "assert", "label": "a task carrying none is admitted", "assert": "contains", "value": "Fix redirect loop after logout" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "reopen the facet seeded from what is active", "key": "f" },
+    { "type": "key", "key": "c" },
+    { "type": "assert", "assert": "contains", "value": "[x] No context" },
+    { "type": "key", "label": "swap the gap for the vocabulary", "key": "space" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "space" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "status_contains", "value": "Filtering context: ##platform" },
+    { "type": "assert", "assert": "contains", "value": "##platform" },
+    { "type": "assert", "assert": "contains", "value": "Add password validation" },
+    { "type": "assert", "assert": "not_contains", "value": "Fix redirect loop after logout" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "fx clears the context facet with every other one", "key": "f" },
+    { "type": "key", "key": "x" },
+    { "type": "assert", "assert": "status_contains", "value": "Filters cleared" },
+    { "type": "assert", "assert": "not_contains", "value": "##platform" },
+    { "type": "assert", "assert": "contains", "value": "Add password validation" },
+    { "type": "assert", "assert": "contains", "value": "Fix redirect loop after logout" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

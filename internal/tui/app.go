@@ -95,8 +95,26 @@ type AppModel struct {
 	// navigation stack.
 	navigation     NavigationState
 	startupMessage tea.Msg
-	width          int
-	height         int
+
+	// pendingLaunchLens is the lens the machine-local active-lens pointer named
+	// when this session was constructed, held here because the launch reset
+	// clears that pointer before any message can read it. It is drained exactly
+	// once, after the launch population lands, and forgotten either way.
+	pendingLaunchLens *config.NamedLens
+
+	// noteIndexRows is the workspace-wide note snapshot the Outliner's search
+	// tier ranks. It is shell-owned because NotesAtLocations reads disk and the
+	// tier is scored on every keystroke: the read happens once per invalidation,
+	// asynchronously, and the Outliner only ever reads the retained result.
+	// noteIndexGeneration discards a superseded read, and noteIndexOwners is the
+	// owner-catalog fingerprint that decides whether an availability change owes
+	// a reload at all.
+	noteIndexRows       []LocatedNoteRow
+	noteIndexGeneration int
+	noteIndexOwners     string
+
+	width  int
+	height int
 
 	// View registry for centralized view management
 	views *ViewRegistry
@@ -198,7 +216,7 @@ type AppModel struct {
 	// Pending shell-owned task deletion confirmation. The canonical
 	// TaskDeleteRequestedMsg path stores the de-duplicated root refs plus the
 	// originating presentation here, prompts through taskDeleteConfirm, and only
-	// executes the atomic BulkCoordinator.Delete transaction on confirmation.
+	// executes the atomic BulkCoordinator.DeleteLocators transaction on confirmation.
 	pendingTaskDelete taskDeletePending
 	taskDeleteConfirm ConfirmDialog
 

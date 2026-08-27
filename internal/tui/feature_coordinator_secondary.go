@@ -27,41 +27,36 @@ import (
 // with the same use-case semantics. Splitting the ports per feature keeps a
 // bulk-only view from depending on attachment methods it never calls.
 
-// BulkMutator is the narrow port the bulk-operation overlays depend on.
+// BulkMutator is the narrow port the bulk-operation overlays depend on. Every
+// method is project-qualified: the workspace-unique task-ID forms are gone, so a
+// bulk overlay cannot fall back to workspace iteration order.
 type BulkMutator interface {
-	// BulkTransition moves every task to the target workflow state, aborting the
-	// whole batch on the first invalid transition.
-	BulkTransition(taskIDs []string, target models.WorkflowState) (app.BulkResult, error)
-	BulkTransitionByLocators(locators []app.TaskLocator, target models.WorkflowState) (app.BulkResult, error)
+	// BulkTransition moves every task to the target workflow state,
+	// aborting the whole batch on the first invalid transition.
+	BulkTransition(locators []app.TaskLocator, target models.WorkflowState) (app.BulkResult, error)
 	// BulkDelete permanently removes every requested subtree, folding any durable
 	// artifact and cross-project reference cleanup into the same transaction.
 	BulkDelete(req app.BulkDeleteRequest, artifacts ...storage.ArtifactChange) (app.BulkDeleteResult, error)
 	// BulkSetPriority sets one priority on every selected task.
-	BulkSetPriority(taskIDs []string, priority int) (app.BulkResult, error)
-	BulkSetPriorityByLocators(locators []app.TaskLocator, priority int) (app.BulkResult, error)
-	// BulkSetDueDate sets one due date on every selected task.
-	BulkSetDueDate(taskIDs []string, due time.Time) (app.BulkResult, error)
-	BulkSetDueDateByLocators(locators []app.TaskLocator, due time.Time) (app.BulkResult, error)
-	BulkSetDueDateAndPlanToday(taskIDs []string, due time.Time) (app.BulkResult, error)
-	BulkSetDueDateAndPlanTodayByLocators(locators []app.TaskLocator, due time.Time) (app.BulkResult, error)
+	BulkSetPriority(locators []app.TaskLocator, priority int) (app.BulkResult, error)
+	// BulkSetDueDate sets one due date on every selected task, and the
+	// PlanToday twin folds Today planning into the same transaction.
+	BulkSetDueDate(locators []app.TaskLocator, due time.Time) (app.BulkResult, error)
+	BulkSetDueDateAndPlanToday(locators []app.TaskLocator, due time.Time) (app.BulkResult, error)
 	// BulkClearDueDate removes the due date from every selected task.
-	BulkClearDueDate(taskIDs []string) (app.BulkResult, error)
-	BulkClearDueDateByLocators(locators []app.TaskLocator) (app.BulkResult, error)
-	// BulkDefer hides every selected task until until, or clears the deferral when
-	// until is nil.
-	BulkDefer(taskIDs []string, until *time.Time) (app.BulkResult, error)
-	BulkDeferByLocators(locators []app.TaskLocator, until *time.Time) (app.BulkResult, error)
-	// BulkSetTags replaces the tag set on every selected task with tags. The
-	// locator variant has no coordinator method: `#` is a value operation, and
+	BulkClearDueDate(locators []app.TaskLocator) (app.BulkResult, error)
+	// BulkDefer hides every selected task until until, or clears the
+	// deferral when until is nil.
+	BulkDefer(locators []app.TaskLocator, until *time.Time) (app.BulkResult, error)
+	// ApplyPlanningBulk applies Today, Next, or Backlog semantics to the whole
+	// qualified selection in one task-and-planning transaction.
+	//
+	// Setting tags has no port method at all: `#` is a value operation, and
 	// applicationTaskOperationRequest claims operationTaskSetTags before either
 	// the single-task or the bulk value dispatch is reached, so the whole tags
 	// path — patch payload and singleton context alike — commits through
 	// TaskItem.ExecuteOperation. Do not reintroduce a BulkCoordinator wrapper
 	// here; it would be unreachable.
-	BulkSetTags(taskIDs []string, tags []string) (app.BulkResult, error)
-	BulkSetTagsByLocators(locators []app.TaskLocator, tags []string) (app.BulkResult, error)
-	// ApplyPlanningBulk applies Today, Next, or Backlog semantics to the whole
-	// qualified selection in one task-and-planning transaction.
 	ApplyPlanningBulk(req app.PlanningBulkRequest) (app.BulkResult, error)
 }
 
@@ -75,22 +70,22 @@ type TaskItemMutator interface {
 	// one or many project-qualified targets.
 	ExecuteTaskOperation(req app.TaskOperationRequest) (app.TaskOperationResult, error)
 	// MoveTaskToTop moves one task to the top of its model-order siblings.
-	MoveTaskToTopByLocator(locator app.TaskLocator) (app.TaskResult, error)
+	MoveTaskToTop(locator app.TaskLocator) (app.TaskResult, error)
 	// MoveTaskToBottom moves one task to the bottom of its model-order siblings.
-	MoveTaskToBottomByLocator(locator app.TaskLocator) (app.TaskResult, error)
+	MoveTaskToBottom(locator app.TaskLocator) (app.TaskResult, error)
 	// MoveTaskUp swaps one task with its previous model-order sibling.
-	MoveTaskUpByLocator(locator app.TaskLocator) (app.TaskResult, error)
+	MoveTaskUp(locator app.TaskLocator) (app.TaskResult, error)
 	// MoveTaskDown swaps one task with its next model-order sibling.
-	MoveTaskDownByLocator(locator app.TaskLocator) (app.TaskResult, error)
+	MoveTaskDown(locator app.TaskLocator) (app.TaskResult, error)
 	// ReorderSiblingTasks swaps two explicit same-project same-parent tasks.
-	ReorderSiblingTasksByLocator(task, target app.TaskLocator) (app.TaskResult, error)
+	ReorderSiblingTasks(task, target app.TaskLocator) (app.TaskResult, error)
 	// ReorderSiblingOrder permutes an explicit same-project same-parent set into
 	// the given top-to-bottom order.
-	ReorderSiblingOrderByLocator(moved app.TaskLocator, order []app.TaskLocator) (app.TaskResult, error)
+	ReorderSiblingOrder(moved app.TaskLocator, order []app.TaskLocator) (app.TaskResult, error)
 	// IndentTask nests one task under the task visually/model above it.
-	IndentTaskByLocator(locator app.TaskLocator) (app.TaskResult, error)
+	IndentTask(locator app.TaskLocator) (app.TaskResult, error)
 	// OutdentTask moves one task to become a sibling of its current parent.
-	OutdentTaskByLocator(locator app.TaskLocator) (app.TaskResult, error)
+	OutdentTask(locator app.TaskLocator) (app.TaskResult, error)
 	// Transition moves one task to a target workflow state.
 	Transition(req app.StateRequest) (app.TaskResult, error)
 	// Edit applies content changes to one task.
@@ -101,22 +96,22 @@ type TaskItemMutator interface {
 	// Capture creates a new task in a project and commits it as one ChangeSet.
 	Capture(req app.CaptureRequest) (app.TaskResult, error)
 	// SetPriority sets one task's Unset/High/Medium/Low priority.
-	SetPriorityByLocator(locator app.TaskLocator, priority int) (app.TaskResult, error)
+	SetPriority(locator app.TaskLocator, priority int) (app.TaskResult, error)
 	// SetDueDate sets or clears (nil due) one task's due date.
-	SetDueDateByLocator(locator app.TaskLocator, due *time.Time) (app.TaskResult, error)
-	SetDueDateAndPlanTodayByLocator(locator app.TaskLocator, due time.Time) (app.TaskResult, error)
+	SetDueDate(locator app.TaskLocator, due *time.Time) (app.TaskResult, error)
+	SetDueDateAndPlanToday(locator app.TaskLocator, due time.Time) (app.TaskResult, error)
 	// Defer hides one task until the given date, or clears the deferral when nil.
-	DeferByLocator(locator app.TaskLocator, until *time.Time) (app.TaskResult, error)
+	Defer(locator app.TaskLocator, until *time.Time) (app.TaskResult, error)
 	// SetPinned pins or unpins one task.
-	SetPinnedByLocator(locator app.TaskLocator, pinned bool) (app.TaskResult, error)
+	SetPinned(locator app.TaskLocator, pinned bool) (app.TaskResult, error)
 	// ReorderPinnedTasks swaps two pinned tasks' PinnedAt ordering as one
 	// (possibly cross-project) transaction.
-	ReorderPinnedTasksByLocator(taskA, taskB app.TaskLocator) (app.PinnedReorderResult, error)
+	ReorderPinnedTasks(taskA, taskB app.TaskLocator) (app.PinnedReorderResult, error)
 	// ReorderPinnedTasksOrder rewrites a whole pinned chain's PinnedAt ordering
 	// into the given top-to-bottom order as one transaction.
-	ReorderPinnedTasksOrderByLocator(moved app.TaskLocator, order []app.TaskLocator) (app.PinnedReorderResult, error)
+	ReorderPinnedTasksOrder(moved app.TaskLocator, order []app.TaskLocator) (app.PinnedReorderResult, error)
 	// Reparent changes one task's parent within its owning project.
-	ReparentByLocator(locator app.TaskLocator, newParentID *string) (app.TaskResult, error)
+	Reparent(locator app.TaskLocator, newParentID *string) (app.TaskResult, error)
 	// Delete permanently removes one task's subtree, folding any caller-supplied
 	// durable planning-ref artifacts into the same transaction.
 	Delete(req app.DeleteRequest, artifacts ...storage.ArtifactChange) (app.DeleteResult, error)
@@ -129,11 +124,11 @@ type TaskItemMutator interface {
 // attachment and removal ride their byte-copy/delete side effects on the same
 // journaled ChangeSet as the metadata write.
 type AttachmentMutator interface {
-	AttachURLByLocator(locator app.TaskLocator, url string) (app.TaskResult, error)
-	AttachCodeReferenceByLocator(locator app.TaskLocator, path string, line int) (app.TaskResult, error)
-	AttachFileByLocator(locator app.TaskLocator, sourcePath string) (app.AttachFileResult, error)
-	RemoveAttachmentByLocator(locator app.TaskLocator, index int, deleteFile bool) (app.RemoveAttachmentResult, error)
-	ReorderAttachmentByLocator(locator app.TaskLocator, from, to int) (app.TaskResult, error)
+	AttachURL(locator app.TaskLocator, url string) (app.TaskResult, error)
+	AttachCodeReference(locator app.TaskLocator, path string, line int) (app.TaskResult, error)
+	AttachFile(locator app.TaskLocator, sourcePath string) (app.AttachFileResult, error)
+	RemoveAttachment(locator app.TaskLocator, index int, deleteFile bool) (app.RemoveAttachmentResult, error)
+	ReorderAttachment(locator app.TaskLocator, from, to int) (app.TaskResult, error)
 }
 
 // SubviewMutator is the narrow port the task subview panels (comments and
@@ -141,15 +136,15 @@ type AttachmentMutator interface {
 // re-validates the item index against a fresh snapshot, so a stale panel index
 // surfaces as an error instead of silently targeting the wrong item.
 type SubviewMutator interface {
-	AddCommentByLocator(locator app.TaskLocator, text string) (app.CommentResult, error)
-	EditCommentByLocator(locator app.TaskLocator, index int, text string) (app.CommentResult, error)
-	RemoveCommentByLocator(locator app.TaskLocator, index int) (app.CommentResult, error)
-	AddChecklistItemByLocator(locator app.TaskLocator, text string) (app.ChecklistResult, error)
-	EditChecklistItemByLocator(locator app.TaskLocator, index int, text string) (app.ChecklistResult, error)
-	RemoveChecklistItemByLocator(locator app.TaskLocator, index int) (app.ChecklistResult, error)
-	ToggleChecklistItemByLocator(locator app.TaskLocator, index int) (app.ChecklistResult, error)
-	ReorderChecklistItemByLocator(locator app.TaskLocator, from, to int) (app.ChecklistResult, error)
-	MoveChecklistItemByLocator(locator app.TaskLocator, from, to int) (app.ChecklistResult, error)
+	AddComment(locator app.TaskLocator, text string) (app.CommentResult, error)
+	EditComment(locator app.TaskLocator, index int, text string) (app.CommentResult, error)
+	RemoveComment(locator app.TaskLocator, index int) (app.CommentResult, error)
+	AddChecklistItem(locator app.TaskLocator, text string) (app.ChecklistResult, error)
+	EditChecklistItem(locator app.TaskLocator, index int, text string) (app.ChecklistResult, error)
+	RemoveChecklistItem(locator app.TaskLocator, index int) (app.ChecklistResult, error)
+	ToggleChecklistItem(locator app.TaskLocator, index int) (app.ChecklistResult, error)
+	ReorderChecklistItem(locator app.TaskLocator, from, to int) (app.ChecklistResult, error)
+	MoveChecklistItem(locator app.TaskLocator, from, to int) (app.ChecklistResult, error)
 }
 
 // Compile-time assurance that the production services satisfy every secondary
@@ -181,25 +176,6 @@ type BatchTransactionResultMsg struct {
 	ClearSelectionTaskLocators []app.TaskLocator
 	// RemovedTaskIDs lists every task UUID a bulk delete removed (roots plus
 	// descendants). Nil for non-delete mutations.
-}
-
-// finalizeBatchResult applies an optional summary override. Selection clearing
-// is reserved for the explicit delete-only located helper below.
-func finalizeBatchResult(cmd tea.Cmd, summaryOverride string) tea.Cmd {
-	if cmd == nil {
-		return nil
-	}
-	return func() tea.Msg {
-		msg := cmd()
-		batch, ok := msg.(BatchTransactionResultMsg)
-		if !ok {
-			return msg
-		}
-		if summaryOverride != "" {
-			batch.Summary = summaryOverride
-		}
-		return batch
-	}
 }
 
 // finalizeLocatedDeleteBatchResult clears exactly the project-qualified delete
@@ -266,21 +242,10 @@ type BulkCoordinator struct {
 	bulk BulkMutator
 }
 
-// Transition moves every selected task to the target state as one transaction.
-func (c BulkCoordinator) Transition(taskIDs []string, target models.WorkflowState) tea.Cmd {
-	return runBatch("Bulk Transition", func() ([]string, string, string, error) {
-		res, err := c.bulk.BulkTransition(taskIDs, target)
-		if err != nil {
-			return nil, "", "", err
-		}
-		return res.TouchedProjectIDs, fmt.Sprintf("Moved %d task(s) to %s", len(res.Tasks), models.WorkflowStateGroupForState(target).Label()), res.TransactionID, nil
-	})
-}
-
 // TransitionLocators moves a project-qualified selection as one transaction.
 func (c BulkCoordinator) TransitionLocators(locators []app.TaskLocator, target models.WorkflowState, summary func(changed int) string) tea.Cmd {
 	return func() tea.Msg {
-		res, err := c.bulk.BulkTransitionByLocators(locators, target)
+		res, err := c.bulk.BulkTransition(locators, target)
 		if err != nil {
 			return TransactionErrorMsg{Err: err}
 		}
@@ -297,20 +262,14 @@ func (c BulkCoordinator) TransitionLocators(locators []app.TaskLocator, target m
 	}
 }
 
-// Delete permanently removes every selected subtree as one transaction. The caller
-// must have already confirmed the destructive intent; Confirm is set here so the
-// application layer accepts the batch. Any artifacts (e.g. a config store with the
-// removed tasks' durable planning refs cleaned) ride the same transaction. The
-// result carries every removed task UUID for the shared transaction result.
-func (c BulkCoordinator) Delete(taskIDs []string, artifacts ...storage.ArtifactChange) tea.Cmd {
-	return c.delete(app.BulkDeleteRequest{TaskIDs: taskIDs, Confirm: true}, artifacts...)
-}
-
+// DeleteLocators permanently removes every selected subtree as one transaction.
+// The caller must have already confirmed the destructive intent; Confirm is set
+// here so the application layer accepts the batch. Any artifacts (e.g. a config
+// store with the removed tasks' durable planning refs cleaned) ride the same
+// transaction. The result carries every removed task UUID for the shared
+// transaction result.
 func (c BulkCoordinator) DeleteLocators(locators []app.TaskLocator, artifacts ...storage.ArtifactChange) tea.Cmd {
-	return c.delete(app.BulkDeleteRequest{TaskLocators: locators, Confirm: true}, artifacts...)
-}
-
-func (c BulkCoordinator) delete(req app.BulkDeleteRequest, artifacts ...storage.ArtifactChange) tea.Cmd {
+	req := app.BulkDeleteRequest{TaskLocators: locators, Confirm: true}
 	return func() tea.Msg {
 		res, err := c.bulk.BulkDelete(req, artifacts...)
 		if err != nil {
@@ -331,41 +290,11 @@ func (c BulkCoordinator) delete(req app.BulkDeleteRequest, artifacts ...storage.
 
 func (c BulkCoordinator) SetPriorityLocators(locators []app.TaskLocator, priority int) tea.Cmd {
 	return runBatch("Bulk Set Priority", func() ([]string, string, string, error) {
-		res, err := c.bulk.BulkSetPriorityByLocators(locators, priority)
+		res, err := c.bulk.BulkSetPriority(locators, priority)
 		if err != nil {
 			return nil, "", "", err
 		}
 		return res.TouchedProjectIDs, fmt.Sprintf("Set priority on %d task(s)", len(res.Tasks)), res.TransactionID, nil
-	})
-}
-
-// SetPriority sets one priority on every selected task as one transaction.
-func (c BulkCoordinator) SetPriority(taskIDs []string, priority int) tea.Cmd {
-	return runBatch("Bulk Set Priority", func() ([]string, string, string, error) {
-		res, err := c.bulk.BulkSetPriority(taskIDs, priority)
-		if err != nil {
-			return nil, "", "", err
-		}
-		return res.TouchedProjectIDs, fmt.Sprintf("Set priority on %d task(s)", len(res.Tasks)), res.TransactionID, nil
-	})
-}
-
-// SetDueDate sets one due date on every selected task as one transaction.
-func (c BulkCoordinator) SetDueDate(taskIDs []string, due time.Time) tea.Cmd {
-	return runBatch("Bulk Set Due Date", func() ([]string, string, string, error) {
-		var (
-			res app.BulkResult
-			err error
-		)
-		if dueDateIsToday(&due) {
-			res, err = c.bulk.BulkSetDueDateAndPlanToday(taskIDs, due)
-		} else {
-			res, err = c.bulk.BulkSetDueDate(taskIDs, due)
-		}
-		if err != nil {
-			return nil, "", "", err
-		}
-		return res.TouchedProjectIDs, fmt.Sprintf("Set due date on %d task(s)", len(res.Tasks)), res.TransactionID, nil
 	})
 }
 
@@ -376,9 +305,9 @@ func (c BulkCoordinator) SetDueDateLocators(locators []app.TaskLocator, due time
 			err error
 		)
 		if dueDateIsToday(&due) {
-			res, err = c.bulk.BulkSetDueDateAndPlanTodayByLocators(locators, due)
+			res, err = c.bulk.BulkSetDueDateAndPlanToday(locators, due)
 		} else {
-			res, err = c.bulk.BulkSetDueDateByLocators(locators, due)
+			res, err = c.bulk.BulkSetDueDate(locators, due)
 		}
 		if err != nil {
 			return nil, "", "", err
@@ -387,46 +316,19 @@ func (c BulkCoordinator) SetDueDateLocators(locators []app.TaskLocator, due time
 	})
 }
 
-// ClearDueDate removes the due date from every selected task as one transaction.
-func (c BulkCoordinator) ClearDueDate(taskIDs []string) tea.Cmd {
-	return runBatch("Bulk Clear Due Date", func() ([]string, string, string, error) {
-		res, err := c.bulk.BulkClearDueDate(taskIDs)
-		if err != nil {
-			return nil, "", "", err
-		}
-		return res.TouchedProjectIDs, fmt.Sprintf("Cleared due date on %d task(s)", len(res.Tasks)), res.TransactionID, nil
-	})
-}
-
 func (c BulkCoordinator) ClearDueDateLocators(locators []app.TaskLocator) tea.Cmd {
 	return runBatch("Bulk Clear Due Date", func() ([]string, string, string, error) {
-		res, err := c.bulk.BulkClearDueDateByLocators(locators)
+		res, err := c.bulk.BulkClearDueDate(locators)
 		if err != nil {
 			return nil, "", "", err
 		}
 		return res.TouchedProjectIDs, fmt.Sprintf("Cleared due date on %d task(s)", len(res.Tasks)), res.TransactionID, nil
-	})
-}
-
-// Defer hides every selected task until until, or clears the deferral when until
-// is nil, as one transaction.
-func (c BulkCoordinator) Defer(taskIDs []string, until *time.Time) tea.Cmd {
-	return runBatch("Bulk Defer", func() ([]string, string, string, error) {
-		res, err := c.bulk.BulkDefer(taskIDs, until)
-		if err != nil {
-			return nil, "", "", err
-		}
-		verb := "Deferred"
-		if until == nil {
-			verb = "Cleared defer on"
-		}
-		return res.TouchedProjectIDs, fmt.Sprintf("%s %d task(s)", verb, len(res.Tasks)), res.TransactionID, nil
 	})
 }
 
 func (c BulkCoordinator) DeferLocators(locators []app.TaskLocator, until *time.Time) tea.Cmd {
 	return runBatch("Bulk Defer", func() ([]string, string, string, error) {
-		res, err := c.bulk.BulkDeferByLocators(locators, until)
+		res, err := c.bulk.BulkDefer(locators, until)
 		if err != nil {
 			return nil, "", "", err
 		}
@@ -435,17 +337,6 @@ func (c BulkCoordinator) DeferLocators(locators []app.TaskLocator, until *time.T
 			verb = "Cleared defer on"
 		}
 		return res.TouchedProjectIDs, fmt.Sprintf("%s %d task(s)", verb, len(res.Tasks)), res.TransactionID, nil
-	})
-}
-
-// SetTags replaces the tag set on every selected task as one transaction.
-func (c BulkCoordinator) SetTags(taskIDs []string, tags []string) tea.Cmd {
-	return runBatch("Bulk Set Tags", func() ([]string, string, string, error) {
-		res, err := c.bulk.BulkSetTags(taskIDs, tags)
-		if err != nil {
-			return nil, "", "", err
-		}
-		return res.TouchedProjectIDs, fmt.Sprintf("Tagged %d task(s)", len(res.Tasks)), res.TransactionID, nil
 	})
 }
 
@@ -518,7 +409,7 @@ func (c TaskItemCoordinator) ExecuteOperation(req app.TaskOperationRequest, acti
 // reloaded through the shared batch path.
 func (c TaskItemCoordinator) MoveToTop(task TaskIdentity) tea.Cmd {
 	return runBatch("Move to Top", func() ([]string, string, string, error) {
-		res, err := c.task.MoveTaskToTopByLocator(task.Locator())
+		res, err := c.task.MoveTaskToTop(task.Locator())
 		if err != nil {
 			return nil, "", "", err
 		}
@@ -530,7 +421,7 @@ func (c TaskItemCoordinator) MoveToTop(task TaskIdentity) tea.Cmd {
 // transaction (see MoveToTop).
 func (c TaskItemCoordinator) MoveToBottom(task TaskIdentity) tea.Cmd {
 	return runBatch("Move to Bottom", func() ([]string, string, string, error) {
-		res, err := c.task.MoveTaskToBottomByLocator(task.Locator())
+		res, err := c.task.MoveTaskToBottom(task.Locator())
 		if err != nil {
 			return nil, "", "", err
 		}
@@ -542,7 +433,7 @@ func (c TaskItemCoordinator) MoveToBottom(task TaskIdentity) tea.Cmd {
 // project-scoped transaction (see MoveToTop for the reload path).
 func (c TaskItemCoordinator) MoveUp(task TaskIdentity) tea.Cmd {
 	return runBatch("Move Up", func() ([]string, string, string, error) {
-		res, err := c.task.MoveTaskUpByLocator(task.Locator())
+		res, err := c.task.MoveTaskUp(task.Locator())
 		if err != nil {
 			return nil, "", "", err
 		}
@@ -554,7 +445,7 @@ func (c TaskItemCoordinator) MoveUp(task TaskIdentity) tea.Cmd {
 // transaction.
 func (c TaskItemCoordinator) MoveDown(task TaskIdentity) tea.Cmd {
 	return runBatch("Move Down", func() ([]string, string, string, error) {
-		res, err := c.task.MoveTaskDownByLocator(task.Locator())
+		res, err := c.task.MoveTaskDown(task.Locator())
 		if err != nil {
 			return nil, "", "", err
 		}
@@ -567,7 +458,7 @@ func (c TaskItemCoordinator) MoveDown(task TaskIdentity) tea.Cmd {
 // and collapsed Outliner projections preserve hidden siblings' relative order.
 func (c TaskItemCoordinator) ReorderSiblings(task, target TaskIdentity) tea.Cmd {
 	return runBatch("Reorder Siblings", func() ([]string, string, string, error) {
-		res, err := c.task.ReorderSiblingTasksByLocator(task.Locator(), target.Locator())
+		res, err := c.task.ReorderSiblingTasks(task.Locator(), target.Locator())
 		if err != nil {
 			return nil, "", "", err
 		}
@@ -581,7 +472,7 @@ func (c TaskItemCoordinator) ReorderSiblings(task, target TaskIdentity) tea.Cmd 
 // siblings between them keep their durable slots.
 func (c TaskItemCoordinator) ReorderSiblingOrder(moved TaskIdentity, order []TaskIdentity, edge string) tea.Cmd {
 	return runBatch("Reorder Siblings", func() ([]string, string, string, error) {
-		res, err := c.task.ReorderSiblingOrderByLocator(moved.Locator(), taskIdentityLocators(order))
+		res, err := c.task.ReorderSiblingOrder(moved.Locator(), taskIdentityLocators(order))
 		if err != nil {
 			return nil, "", "", err
 		}
@@ -593,7 +484,7 @@ func (c TaskItemCoordinator) ReorderSiblingOrder(moved TaskIdentity, order []Tas
 // top-to-bottom display order as one transaction, which may span projects.
 func (c TaskItemCoordinator) ReorderPinnedOrder(moved TaskIdentity, order []TaskIdentity, edge string) tea.Cmd {
 	return runBatch("Reorder Pinned", func() ([]string, string, string, error) {
-		res, err := c.task.ReorderPinnedTasksOrderByLocator(moved.Locator(), taskIdentityLocators(order))
+		res, err := c.task.ReorderPinnedTasksOrder(moved.Locator(), taskIdentityLocators(order))
 		if err != nil {
 			return nil, "", "", err
 		}
@@ -614,7 +505,7 @@ func taskIdentityLocators(order []TaskIdentity) []app.TaskLocator {
 // order is PinnedAt-descending and equal timestamps resolve in its favor.
 func (c TaskItemCoordinator) ReorderPinned(task, target TaskIdentity) tea.Cmd {
 	return runBatch("Reorder Pinned", func() ([]string, string, string, error) {
-		res, err := c.task.ReorderPinnedTasksByLocator(task.Locator(), target.Locator())
+		res, err := c.task.ReorderPinnedTasks(task.Locator(), target.Locator())
 		if err != nil {
 			return nil, "", "", err
 		}
@@ -626,7 +517,7 @@ func (c TaskItemCoordinator) ReorderPinned(task, target TaskIdentity) tea.Cmd {
 // transaction.
 func (c TaskItemCoordinator) Indent(task TaskIdentity) tea.Cmd {
 	return runBatch("Indent", func() ([]string, string, string, error) {
-		res, err := c.task.IndentTaskByLocator(task.Locator())
+		res, err := c.task.IndentTask(task.Locator())
 		if err != nil {
 			return nil, "", "", err
 		}
@@ -638,7 +529,7 @@ func (c TaskItemCoordinator) Indent(task TaskIdentity) tea.Cmd {
 // transaction.
 func (c TaskItemCoordinator) Outdent(task TaskIdentity) tea.Cmd {
 	return runBatch("Outdent", func() ([]string, string, string, error) {
-		res, err := c.task.OutdentTaskByLocator(task.Locator())
+		res, err := c.task.OutdentTask(task.Locator())
 		if err != nil {
 			return nil, "", "", err
 		}
@@ -665,7 +556,6 @@ func (c TaskItemCoordinator) Transition(task TaskIdentity, target models.Workflo
 
 // Edit applies content/form changes to one task as one transaction.
 func (c TaskItemCoordinator) Edit(task TaskIdentity, req app.EditRequest) tea.Cmd {
-	req.TaskID = ""
 	req.Locator = task.Locator()
 	return runTask("Edit Task", func() (app.TaskResult, error) {
 		return c.task.Edit(req)
@@ -703,7 +593,7 @@ func (c TaskItemCoordinator) Capture(req app.CaptureRequest) tea.Cmd {
 // SetPriority sets one task's priority as one transaction.
 func (c TaskItemCoordinator) SetPriority(task TaskIdentity, priority int) tea.Cmd {
 	return runTask("Set Priority", func() (app.TaskResult, error) {
-		return c.task.SetPriorityByLocator(task.Locator(), priority)
+		return c.task.SetPriority(task.Locator(), priority)
 	})
 }
 
@@ -716,9 +606,9 @@ func (c TaskItemCoordinator) SetDueDate(task TaskIdentity, due *time.Time) tea.C
 		)
 		planningChanged := dueDateIsToday(due)
 		if planningChanged {
-			res, err = c.task.SetDueDateAndPlanTodayByLocator(task.Locator(), *due)
+			res, err = c.task.SetDueDateAndPlanToday(task.Locator(), *due)
 		} else {
-			res, err = c.task.SetDueDateByLocator(task.Locator(), due)
+			res, err = c.task.SetDueDate(task.Locator(), due)
 		}
 		if err != nil {
 			return TransactionErrorMsg{Err: err}
@@ -733,27 +623,27 @@ func (c TaskItemCoordinator) SetDueDate(task TaskIdentity, due *time.Time) tea.C
 // one transaction.
 func (c TaskItemCoordinator) Defer(task TaskIdentity, until *time.Time) tea.Cmd {
 	return runTask("Defer", func() (app.TaskResult, error) {
-		return c.task.DeferByLocator(task.Locator(), until)
+		return c.task.Defer(task.Locator(), until)
 	})
 }
 
 // SetPinned pins or unpins one task as one transaction.
 func (c TaskItemCoordinator) SetPinned(task TaskIdentity, pinned bool) tea.Cmd {
 	return runTask("Toggle Pin", func() (app.TaskResult, error) {
-		return c.task.SetPinnedByLocator(task.Locator(), pinned)
+		return c.task.SetPinned(task.Locator(), pinned)
 	})
 }
 
 // Reparent changes one task's parent within its owning project as one transaction.
 func (c TaskItemCoordinator) Reparent(task TaskIdentity, newParentID *string) tea.Cmd {
 	return runTask("Reparent Task", func() (app.TaskResult, error) {
-		return c.task.ReparentByLocator(task.Locator(), newParentID)
+		return c.task.Reparent(task.Locator(), newParentID)
 	})
 }
 
 // DeleteTask permanently removes one task's subtree as one transaction, folding
 // the caller-supplied durable planning-ref artifacts into it. The result carries
-// every removed task UUID (mirroring BulkCoordinator.Delete).
+// every removed task UUID (mirroring BulkCoordinator.DeleteLocators).
 func (c TaskItemCoordinator) DeleteTask(task TaskIdentity, artifacts []storage.ArtifactChange, summary func(app.DeleteResult) string) tea.Cmd {
 	return func() tea.Msg {
 		res, err := c.task.Delete(app.DeleteRequest{Locator: task.Locator(), Confirm: true}, artifacts...)
@@ -806,21 +696,21 @@ type AttachmentCoordinator struct {
 // AttachURL records a URL attachment on a task.
 func (c AttachmentCoordinator) AttachURL(task TaskIdentity, url string) tea.Cmd {
 	return runTask("Attach URL", func() (app.TaskResult, error) {
-		return c.attach.AttachURLByLocator(task.Locator(), url)
+		return c.attach.AttachURL(task.Locator(), url)
 	})
 }
 
 // AttachCodeReference records a file:line code reference on a task.
 func (c AttachmentCoordinator) AttachCodeReference(task TaskIdentity, path string, line int) tea.Cmd {
 	return runTask("Attach Code Ref", func() (app.TaskResult, error) {
-		return c.attach.AttachCodeReferenceByLocator(task.Locator(), path, line)
+		return c.attach.AttachCodeReference(task.Locator(), path, line)
 	})
 }
 
 // AttachFile ingests an external file into a task's attachments as one transaction.
 func (c AttachmentCoordinator) AttachFile(task TaskIdentity, sourcePath string) tea.Cmd {
 	return runTask("Attach File", func() (app.TaskResult, error) {
-		res, err := c.attach.AttachFileByLocator(task.Locator(), sourcePath)
+		res, err := c.attach.AttachFile(task.Locator(), sourcePath)
 		return res.Task, err
 	})
 }
@@ -828,7 +718,7 @@ func (c AttachmentCoordinator) AttachFile(task TaskIdentity, sourcePath string) 
 // RemoveAttachment drops an attachment (and optionally its bytes) as one transaction.
 func (c AttachmentCoordinator) RemoveAttachment(task TaskIdentity, index int, deleteFile bool) tea.Cmd {
 	return runTask("Remove Attachment", func() (app.TaskResult, error) {
-		res, err := c.attach.RemoveAttachmentByLocator(task.Locator(), index, deleteFile)
+		res, err := c.attach.RemoveAttachment(task.Locator(), index, deleteFile)
 		return res.Task, err
 	})
 }
@@ -836,7 +726,7 @@ func (c AttachmentCoordinator) RemoveAttachment(task TaskIdentity, index int, de
 // Reorder swaps two attachments' positions as one transaction.
 func (c AttachmentCoordinator) Reorder(task TaskIdentity, from, to int) tea.Cmd {
 	return runTask("Reorder Attachments", func() (app.TaskResult, error) {
-		return c.attach.ReorderAttachmentByLocator(task.Locator(), from, to)
+		return c.attach.ReorderAttachment(task.Locator(), from, to)
 	})
 }
 
@@ -852,7 +742,7 @@ type SubviewCoordinator struct {
 // AddComment appends a comment to a task.
 func (c SubviewCoordinator) AddComment(task TaskIdentity, text string) tea.Cmd {
 	return runTask("Add Comment", func() (app.TaskResult, error) {
-		res, err := c.sub.AddCommentByLocator(task.Locator(), text)
+		res, err := c.sub.AddComment(task.Locator(), text)
 		return res.Task, err
 	})
 }
@@ -860,7 +750,7 @@ func (c SubviewCoordinator) AddComment(task TaskIdentity, text string) tea.Cmd {
 // EditComment replaces a comment's text, preserving its timestamp.
 func (c SubviewCoordinator) EditComment(task TaskIdentity, index int, text string) tea.Cmd {
 	return runTask("Edit Comment", func() (app.TaskResult, error) {
-		res, err := c.sub.EditCommentByLocator(task.Locator(), index, text)
+		res, err := c.sub.EditComment(task.Locator(), index, text)
 		return res.Task, err
 	})
 }
@@ -868,7 +758,7 @@ func (c SubviewCoordinator) EditComment(task TaskIdentity, index int, text strin
 // RemoveComment removes the comment at index.
 func (c SubviewCoordinator) RemoveComment(task TaskIdentity, index int) tea.Cmd {
 	return runTask("Remove Comment", func() (app.TaskResult, error) {
-		res, err := c.sub.RemoveCommentByLocator(task.Locator(), index)
+		res, err := c.sub.RemoveComment(task.Locator(), index)
 		return res.Task, err
 	})
 }
@@ -876,7 +766,7 @@ func (c SubviewCoordinator) RemoveComment(task TaskIdentity, index int) tea.Cmd 
 // AddChecklistItem appends a checklist item to a task.
 func (c SubviewCoordinator) AddChecklistItem(task TaskIdentity, text string) tea.Cmd {
 	return runTask("Add Checklist Item", func() (app.TaskResult, error) {
-		res, err := c.sub.AddChecklistItemByLocator(task.Locator(), text)
+		res, err := c.sub.AddChecklistItem(task.Locator(), text)
 		return res.Task, err
 	})
 }
@@ -884,7 +774,7 @@ func (c SubviewCoordinator) AddChecklistItem(task TaskIdentity, text string) tea
 // EditChecklistItem replaces a checklist item's text, preserving done state.
 func (c SubviewCoordinator) EditChecklistItem(task TaskIdentity, index int, text string) tea.Cmd {
 	return runTask("Edit Checklist Item", func() (app.TaskResult, error) {
-		res, err := c.sub.EditChecklistItemByLocator(task.Locator(), index, text)
+		res, err := c.sub.EditChecklistItem(task.Locator(), index, text)
 		return res.Task, err
 	})
 }
@@ -892,7 +782,7 @@ func (c SubviewCoordinator) EditChecklistItem(task TaskIdentity, index int, text
 // RemoveChecklistItem removes the checklist item at index.
 func (c SubviewCoordinator) RemoveChecklistItem(task TaskIdentity, index int) tea.Cmd {
 	return runTask("Remove Checklist Item", func() (app.TaskResult, error) {
-		res, err := c.sub.RemoveChecklistItemByLocator(task.Locator(), index)
+		res, err := c.sub.RemoveChecklistItem(task.Locator(), index)
 		return res.Task, err
 	})
 }
@@ -900,7 +790,7 @@ func (c SubviewCoordinator) RemoveChecklistItem(task TaskIdentity, index int) te
 // ToggleChecklistItem flips a checklist item's done state.
 func (c SubviewCoordinator) ToggleChecklistItem(task TaskIdentity, index int) tea.Cmd {
 	return runTask("Toggle Checklist Item", func() (app.TaskResult, error) {
-		res, err := c.sub.ToggleChecklistItemByLocator(task.Locator(), index)
+		res, err := c.sub.ToggleChecklistItem(task.Locator(), index)
 		return res.Task, err
 	})
 }
@@ -908,7 +798,7 @@ func (c SubviewCoordinator) ToggleChecklistItem(task TaskIdentity, index int) te
 // ReorderChecklistItem swaps the checklist items at from and to.
 func (c SubviewCoordinator) ReorderChecklistItem(task TaskIdentity, from, to int) tea.Cmd {
 	return runTask("Reorder Checklist", func() (app.TaskResult, error) {
-		res, err := c.sub.ReorderChecklistItemByLocator(task.Locator(), from, to)
+		res, err := c.sub.ReorderChecklistItem(task.Locator(), from, to)
 		return res.Task, err
 	})
 }
@@ -917,7 +807,7 @@ func (c SubviewCoordinator) ReorderChecklistItem(task TaskIdentity, from, to int
 // to, so an edge move is one transaction rather than one per adjacent swap.
 func (c SubviewCoordinator) MoveChecklistItem(task TaskIdentity, from, to int) tea.Cmd {
 	return runTask("Move Checklist Item", func() (app.TaskResult, error) {
-		res, err := c.sub.MoveChecklistItemByLocator(task.Locator(), from, to)
+		res, err := c.sub.MoveChecklistItem(task.Locator(), from, to)
 		return res.Task, err
 	})
 }

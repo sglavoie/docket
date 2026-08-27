@@ -14,6 +14,10 @@ type TagSelectorModel struct {
 	*ListSurfaceAdapter[TagInfo]
 	TagAdder
 	task *models.Task
+	// identity qualifies task with its owning project so the done message can
+	// name one application-layer target. It is the zero value for the composer,
+	// which opens the selector before any task exists.
+	identity TaskIdentity
 }
 
 // ShowTagSelectorMsg is sent to open the tag selector.
@@ -25,7 +29,10 @@ type ShowTagSelectorMsg struct {
 
 // TagSelectorDoneMsg is sent when the tag selector is done.
 type TagSelectorDoneMsg struct {
-	Task         *models.Task
+	Task *models.Task
+	// Identity is Task's project-qualified key, so the shell commits the tag
+	// edit without re-deriving the owning project from the task alone.
+	Identity     TaskIdentity
 	SelectedTags []string
 	Canceled     bool
 }
@@ -58,6 +65,7 @@ func NewTagSelectorModel(task *models.Task, project *models.Project, currentTags
 		ListSurfaceAdapter: picker,
 		TagAdder:           NewTagAdder(),
 		task:               task,
+		identity:           taskIdentityFor(task, project),
 	}
 }
 
@@ -97,6 +105,7 @@ func (m *TagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return TagSelectorDoneMsg{
 					Task:     m.task,
+					Identity: m.identity,
 					Canceled: true,
 				}
 			}
@@ -113,6 +122,7 @@ func (m *TagSelectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return TagSelectorDoneMsg{
 					Task:         m.task,
+					Identity:     m.identity,
 					SelectedTags: selectedTags,
 					Canceled:     false,
 				}

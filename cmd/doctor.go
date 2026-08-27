@@ -72,8 +72,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	// Load every retained project, including archived projects, so terminal work
 	// and hierarchy integrity remain visible.
 	for _, project := range everyProject {
-		_, loadErr := storage.LoadProjectWithWarnings(project)
-		if loadErr != nil {
+		if loadErr := storage.LoadProject(project); loadErr != nil {
 			results.loadFailures = append(results.loadFailures, doctorIssue{
 				project: project.Name,
 				detail:  loadErr.Error(),

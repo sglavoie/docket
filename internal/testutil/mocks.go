@@ -47,7 +47,6 @@ func cloneProject(project *models.Project) *models.Project {
 	projectCopy := *project
 	projectCopy.ArchivedAt = clonePointer(project.ArchivedAt)
 	projectCopy.PinnedAt = clonePointer(project.PinnedAt)
-	projectCopy.Warnings = append([]string{}, project.Warnings...)
 
 	projectCopy.Tasks = make([]*models.Task, len(project.Tasks))
 	for i, task := range project.Tasks {

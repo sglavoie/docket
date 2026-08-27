@@ -19,12 +19,12 @@ func TestBulkSetDueDateAndPlanTodayCommitsOnePlanningTransaction(t *testing.T) {
 	svc := newTestService(repo).WithPlanningArtifacts(memoryPlanningBuilder(planning))
 	due := time.Date(2026, time.July, 10, 18, 30, 0, 0, time.UTC)
 
-	result, err := svc.BulkSetDueDateAndPlanTodayByLocators([]app.TaskLocator{{
+	result, err := svc.BulkSetDueDateAndPlanToday([]app.TaskLocator{{
 		ProjectID: project.ID,
 		TaskID:    task.ID,
 	}}, due)
 	if err != nil {
-		t.Fatalf("BulkSetDueDateAndPlanTodayByLocators: %v", err)
+		t.Fatalf("BulkSetDueDateAndPlanToday: %v", err)
 	}
 	if len(result.Tasks) != 1 || len(repo.commits) != 1 || len(repo.commits[0]) != 1 {
 		t.Fatalf("result/commits = %+v / %+v, want one task in one transaction", result, repo.commits)

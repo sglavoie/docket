@@ -123,12 +123,16 @@ const lensReviewQueueTag = "review"
 // LensTaskFilters is the persisted form of the Outliner's shared task facets.
 // StatesSet and CompletionAgeSet are retained explicitly because each
 // distinguishes an absent predicate from an active one that happens to admit
-// everything.
+// everything. Contexts and NoContext are the task-context facet, an axis of its
+// own rather than a second spelling of Tags: NoContext names the tasks the
+// vocabulary cannot cover, so it needs no activation flag beside it.
 type LensTaskFilters struct {
 	States           []string `json:"states,omitempty"`
 	StatesSet        bool     `json:"states_set,omitempty"`
 	Priority         int      `json:"priority,omitempty"`
 	Tags             []string `json:"tags,omitempty"`
+	Contexts         []string `json:"contexts,omitempty"`
+	NoContext        bool     `json:"no_context,omitempty"`
 	DueDate          string   `json:"due_date,omitempty"`
 	CompletionAge    string   `json:"completion_age,omitempty"`
 	CompletionAgeSet bool     `json:"completion_age_set,omitempty"`
@@ -155,9 +159,15 @@ type LensSort struct {
 // NamedLens is one durable Outliner projection: identity, mode, accepted query,
 // both filter families, and the manual sort it restores.
 type NamedLens struct {
-	ID       string             `json:"id"`
-	Name     string             `json:"name"`
-	Mode     string             `json:"mode"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Mode string `json:"mode"`
+	// Scope is the project the lens reopens into, named by project ID. An
+	// empty Scope means the lens does not own the scope axis and leaves the
+	// current view's scope alone; it is deliberately not a way to force the
+	// global population, which v1 cannot express. omitempty keeps a machine
+	// file written before the axis existed byte-identical.
+	Scope    string             `json:"scope,omitempty"`
 	Query    string             `json:"query,omitempty"`
 	Tasks    LensTaskFilters    `json:"tasks"`
 	Projects LensProjectFilters `json:"projects"`
@@ -330,6 +340,7 @@ func (n NamedLens) Clone() NamedLens {
 	cp := n
 	cp.Tasks.States = slices.Clone(n.Tasks.States)
 	cp.Tasks.Tags = slices.Clone(n.Tasks.Tags)
+	cp.Tasks.Contexts = slices.Clone(n.Tasks.Contexts)
 	cp.Projects.Tags = slices.Clone(n.Projects.Tags)
 	return cp
 }
@@ -353,21 +364,31 @@ func NormalizeNamedLensName(raw string) (string, error) {
 	return name, nil
 }
 
-// ValidateNamedLensID accepts only the canonical lowercase hyphenated UUID
+// validateCanonicalUUID accepts only the canonical lowercase hyphenated UUID
 // form. The urn: and braced spellings uuid.Parse tolerates are rejected so one
-// identity has exactly one persisted rendering.
+// identity has exactly one persisted rendering. label names the field being
+// checked so the caller does not have to rewrap the error. It is shared by
+// every persisted UUID reference in this layer: a lens identity and the project
+// ID a lens scope names are minted the same way (uuid.New().String()), so they
+// are held to the same spelling.
+func validateCanonicalUUID(label, id string) error {
+	parsed, err := uuid.Parse(id)
+	if err != nil {
+		return fmt.Errorf("%s %q is not a UUID: %w", label, id, err)
+	}
+	if parsed.String() != id {
+		return fmt.Errorf("%s %q is not in canonical UUID form", label, id)
+	}
+	return nil
+}
+
+// ValidateNamedLensID accepts only the canonical UUID form and, unlike a lens
+// scope, refuses the empty string: a lens must have an identity.
 func ValidateNamedLensID(id string) error {
 	if id == "" {
 		return fmt.Errorf("lens id cannot be empty")
 	}
-	parsed, err := uuid.Parse(id)
-	if err != nil {
-		return fmt.Errorf("lens id %q is not a UUID: %w", id, err)
-	}
-	if parsed.String() != id {
-		return fmt.Errorf("lens id %q is not in canonical UUID form", id)
-	}
-	return nil
+	return validateCanonicalUUID("lens id", id)
 }
 
 // Validate reports problems with one lens definition. Token axes accept the
@@ -386,6 +407,14 @@ func (n NamedLens) Validate() error {
 	}
 	if !validLensToken(n.Mode, lensModeTokens(), false) {
 		return fmt.Errorf("lens %q mode %q is not a known Outliner mode", n.Name, n.Mode)
+	}
+	// An empty scope is the unowned axis, not a malformed reference. A named
+	// one is checked for shape only: whether that project still exists is a
+	// question for the runtime, never for loading a machine file.
+	if n.Scope != "" {
+		if err := validateCanonicalUUID(fmt.Sprintf("lens %q scope project id", n.Name), n.Scope); err != nil {
+			return err
+		}
 	}
 	if err := n.Tasks.validate(n.Name); err != nil {
 		return err
@@ -422,6 +451,22 @@ func (f LensTaskFilters) validate(lensName string) error {
 			return fmt.Errorf("lens %q repeats task tag %q", lensName, tag)
 		}
 		seenTag[tag] = true
+	}
+	seenContext := make(map[string]bool, len(f.Contexts))
+	for _, context := range f.Contexts {
+		// ValidateTaskContext admits the empty string because an unset task
+		// field is legal; a persisted facet name is not that gap. The gap is
+		// NoContext, so an empty name here is malformed rather than redundant.
+		if context == "" {
+			return fmt.Errorf("lens %q names an empty task context; use no_context for the unset field", lensName)
+		}
+		if err := models.ValidateTaskContext(context); err != nil {
+			return fmt.Errorf("lens %q task context: %w", lensName, err)
+		}
+		if seenContext[context] {
+			return fmt.Errorf("lens %q repeats task context %q", lensName, context)
+		}
+		seenContext[context] = true
 	}
 	if !validLensToken(f.DueDate, lensDueTokens(), true) {
 		return fmt.Errorf("lens %q due bucket %q is not a known value", lensName, f.DueDate)

@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"errors"
+	"fmt"
 	"sort"
 	"time"
 
@@ -32,6 +34,12 @@ type UITestDriver struct {
 	// falls back to defaultDrainTimeout.
 	drainTimeout time.Duration
 
+	// relaunch rebuilds an AppModel from the owning workspace's durable state
+	// alone, which is what the "restart" action drives. It is nil for a driver
+	// wrapping an AppModel nobody owns the workspace of, and such a driver
+	// refuses to restart rather than silently doing something weaker.
+	relaunch func() (*AppModel, error)
+
 	// now is this driver's virtual clock and timers the ticks waiting on it. A
 	// "wait" action advances the clock rather than sleeping; see
 	// uitest_clock_helpers_test.go.
@@ -57,6 +65,52 @@ func NewUITestDriver(app *AppModel, width, height int) *UITestDriver {
 	d := &UITestDriver{app: app, now: time.Now()}
 	d.Resize(width, height)
 	return d
+}
+
+// Restart replaces the app with one built from durable state alone, keeping the
+// terminal size and the virtual clock. Nothing else survives: the runtime state
+// is re-read from disk, so a scenario asserting after a restart is asserting on
+// what was actually persisted rather than on what a live session remembered.
+// The launch message is dispatched and drained the way the first launch is, so
+// the screen the next action observes is a settled root.
+func (d *UITestDriver) Restart() error {
+	if d.relaunch == nil {
+		return errors.New("restart needs a workspace-owned driver")
+	}
+	width, height := d.app.width, d.app.height
+	app, err := d.relaunch()
+	if err != nil {
+		return err
+	}
+	if _, registered := app.operationRegistry.Descriptor(operationHarnessNewProject); !registered {
+		if err := app.registerHarnessOperations(); err != nil {
+			return fmt.Errorf("register TUI test operations: %w", err)
+		}
+	}
+	d.app = app
+	d.pendingCmd = nil
+	d.pendingFutures = nil
+	d.Resize(width, height)
+	if app.startupMessage != nil {
+		d.dispatch(app.startupMessage)
+		d.drain()
+	}
+	d.bootNoteSearchIndex()
+	return nil
+}
+
+// bootNoteSearchIndex runs the one launch command the driver does not get from
+// the startup message: AppModel.Init also starts the workspace-wide note read
+// the search's notes tier ranks against, and without it a scenario would search
+// a permanently empty index. The periodic-save tick Init raises beside it is
+// deliberately left out — the driver owns its own virtual clock.
+func (d *UITestDriver) bootNoteSearchIndex() {
+	cmd := d.app.requestNoteSearchIndexLoad()
+	if cmd == nil {
+		return
+	}
+	d.pendingCmd = cmd
+	d.drain()
 }
 
 // App returns the underlying AppModel for direct inspection.

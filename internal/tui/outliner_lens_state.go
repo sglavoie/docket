@@ -16,12 +16,19 @@ import (
 // them and the durable config tokens, so no other TUI code reads a persisted
 // spelling and no config code learns a TUI enum.
 
-// lensState is the complete set of lens-owned Outliner axes. Everything absent
-// here belongs to the view the user is in rather than to the lens: scope, folds,
-// focus, zoom, selection, cursor, and viewport are all deliberately excluded.
+// lensState is the complete set of lens-owned Outliner axes. Scope is one of
+// them, but it is the one axis a lens may decline to own: an empty
+// scopeProjectID means the definition leaves the view's scope exactly as it
+// found it, which is deliberately not the same as forcing the global
+// population. Everything absent here belongs to the view the user is in rather
+// than to the lens: folds, focus, zoom, selection, cursor, and viewport are all
+// deliberately excluded.
 type lensState struct {
-	mode  OutlinerModeID
-	query string
+	mode OutlinerModeID
+	// scopeProjectID is the single project the lens reopens into, or empty when
+	// the lens does not own the scope axis.
+	scopeProjectID string
+	query          string
 	// filter carries the explicit activation flags along with the facet values,
 	// because an active predicate that admits everything is not the same as an
 	// absent one and only the flag can tell them apart.
@@ -153,12 +160,28 @@ func (m *OutlinerModel) captureLensState() lensState {
 		return lensState{}
 	}
 	return lensState{
-		mode:          m.primaryMode,
-		query:         m.capturedLensQuery(),
-		filter:        copyFilterState(m.filter),
-		projectFilter: m.projectFilter.clone(),
-		sort:          m.treeSort,
+		mode:           m.primaryMode,
+		scopeProjectID: m.capturedLensScope(),
+		query:          m.capturedLensQuery(),
+		filter:         copyFilterState(m.filter),
+		projectFilter:  m.projectFilter.clone(),
+		sort:           m.treeSort,
 	}
+}
+
+// capturedLensScope is the project scope a lens saved here can reopen into. The
+// single-project Outliner is a scope no lens installs, and a parked focus is an
+// exception to the base workspace rather than a scope the base Outliner can be
+// asked for, so both are captured as no scope at all rather than as one every
+// later application would have to refuse.
+func (m *OutlinerModel) capturedLensScope() string {
+	if m == nil || m.project != nil {
+		return ""
+	}
+	if !m.baseWorkspaceAdmitsProject(m.scopedProjectID) {
+		return ""
+	}
+	return m.scopedProjectID
 }
 
 // capturedLensQuery is the accepted query the current view is narrowed by,
@@ -184,12 +207,20 @@ func (m *OutlinerModel) capturedLensQuery() string {
 var lensTreeOrderPrev = OutlinerMode{OrderPolicy: OrderPolicyTree}
 
 // applyLensState installs a saved projection, reporting whether it named a
-// catalog mode. Only the lens-owned axes are written; scope, folds, focus,
-// selection, and cursor belong to the view the user is in.
+// catalog mode. Only the lens-owned axes are written; folds, focus, zoom,
+// selection, and cursor belong to the view the user is in. The scope is written
+// through pushProjectScope rather than by assigning the field, so the frame one
+// Esc pops to is captured by the same helper every other scope push uses; a lens
+// that names no scope leaves the current one alone. The push comes first,
+// before a lens-owned axis is written, so the frame it captures holds the view
+// the user was in rather than the projection being installed over it.
 func (m *OutlinerModel) applyLensState(state lensState) bool {
 	mode, ok := OutlinerModeByID(state.mode)
 	if m == nil || !ok {
 		return false
+	}
+	if state.scopeProjectID != "" {
+		m.pushProjectScope(state.scopeProjectID)
 	}
 	m.primaryMode = state.mode
 	m.filter = copyFilterState(state.filter)
@@ -213,15 +244,20 @@ func (m *OutlinerModel) applyLensState(state lensState) bool {
 // Comparison therefore belongs to fingerprint, never to two DTOs.
 func (s lensState) namedLens(id, name string) config.NamedLens {
 	return config.NamedLens{
-		ID:    id,
-		Name:  name,
-		Mode:  lensModeAxis.token(s.mode),
+		ID:   id,
+		Name: name,
+		Mode: lensModeAxis.token(s.mode),
+		// Scope has no token table: it is a project ID, and the empty string is
+		// the unowned axis rather than a default the decoder has to name.
+		Scope: s.scopeProjectID,
 		Query: s.query,
 		Tasks: config.LensTaskFilters{
 			States:           lensWorkflowStateTokens(s.filter.States),
 			StatesSet:        s.filter.hasStateFilter(),
 			Priority:         s.filter.Priority,
 			Tags:             lensSortedTagNames(s.filter.Tags),
+			Contexts:         lensSortedTagNames(s.filter.Contexts),
+			NoContext:        s.filter.NoContext,
 			DueDate:          lensDueAxis.token(s.filter.DueDate),
 			CompletionAge:    lensCompletionAgeAxis.token(s.filter.CompletionAge),
 			CompletionAgeSet: s.filter.hasCompletionAgeFilter(),
@@ -269,11 +305,15 @@ func lensStateFromNamedLens(lens config.NamedLens) (lensState, error) {
 		return lensState{}, err
 	}
 	return lensState{
-		mode:          mode,
-		query:         lens.Query,
-		filter:        filter,
-		projectFilter: projectFilter,
-		sort:          SortState{Field: sortField, Ascending: lens.Sort.Ascending},
+		mode: mode,
+		// The scope is carried verbatim: Validate already held it to the canonical
+		// UUID spelling, and whether that project can still be entered is a runtime
+		// question ApplyNamedLens answers, never a decoding one.
+		scopeProjectID: lens.Scope,
+		query:          lens.Query,
+		filter:         filter,
+		projectFilter:  projectFilter,
+		sort:           SortState{Field: sortField, Ascending: lens.Sort.Ascending},
 	}, nil
 }
 
@@ -290,6 +330,8 @@ func lensFilterState(tasks config.LensTaskFilters) (FilterState, error) {
 	filter.setStateFilter(set, tasks.StatesSet)
 	filter.Priority = tasks.Priority
 	filter.Tags = lensTagSet(tasks.Tags)
+	filter.Contexts = lensTagSet(tasks.Contexts)
+	filter.NoContext = tasks.NoContext
 
 	due, err := lensDueAxis.value(tasks.DueDate)
 	if err != nil {
@@ -338,16 +380,21 @@ func lensProjectFilterState(projects config.LensProjectFilters) (ProjectFilterSt
 
 // fingerprint is the canonical rendering of one state. Every collection is
 // emitted in a fixed order — workflow states in canonical lifecycle order, tags
-// sorted — so map iteration can never make an unchanged lens read as modified.
+// and contexts sorted — so map iteration can never make an unchanged lens read
+// as modified. Every axis namedLens writes must appear here: an omitted one is
+// silently unwatched, so an edit to it leaves the lens reading as unmodified.
 func (s lensState) fingerprint() string {
 	lens := s.namedLens("", "")
 	return strings.Join([]string{
 		lens.Mode,
+		lens.Scope,
 		lens.Query,
 		strings.Join(lens.Tasks.States, ","),
 		strconv.FormatBool(lens.Tasks.StatesSet),
 		strconv.Itoa(lens.Tasks.Priority),
 		strings.Join(lens.Tasks.Tags, ","),
+		strings.Join(lens.Tasks.Contexts, ","),
+		strconv.FormatBool(lens.Tasks.NoContext),
 		lens.Tasks.DueDate,
 		lens.Tasks.CompletionAge,
 		strconv.FormatBool(lens.Tasks.CompletionAgeSet),

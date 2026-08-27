@@ -21,6 +21,10 @@ const (
 	UITestActionWait UITestActionType = "wait"
 	// UITestActionCommand runs a registered command by ID (implemented later).
 	UITestActionCommand UITestActionType = "command"
+	// UITestActionRestart rebuilds the app from durable state alone, the way
+	// quitting and relaunching `tt` does. Nothing held in memory survives it, so
+	// anything the app reopens with must have been persisted.
+	UITestActionRestart UITestActionType = "restart"
 	// UITestActionAssert checks an observation invariant (implemented later).
 	UITestActionAssert UITestActionType = "assert"
 )

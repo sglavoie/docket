@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"charm.land/lipgloss/v2"
@@ -13,6 +14,7 @@ const (
 	operationFilterPriority      OperationID = "tui.filter.priority"
 	operationFilterStates        OperationID = "tui.filter.states"
 	operationFilterTags          OperationID = "tui.filter.tags"
+	operationFilterContexts      OperationID = "tui.filter.contexts"
 	operationFilterReview        OperationID = "tui.filter.review"
 	operationFilterDue           OperationID = "tui.filter.due"
 	operationFilterCompletionAge OperationID = "tui.filter.completion-age"
@@ -53,6 +55,7 @@ func filterOperationDescriptors() []OperationDescriptor {
 		descriptor(operationFilterPriority, "Filter by Priority", ValueProviderFilterPriority, "priority threshold"),
 		descriptor(operationFilterStates, "Filter by State", ValueProviderFilterStates, "state filter"),
 		descriptor(operationFilterTags, "Filter by Tags", ValueProviderFilterTags, "tag filter"),
+		descriptor(operationFilterContexts, "Filter by Context", ValueProviderFilterContexts, "context filter"),
 		descriptor(operationFilterReview, "Filter Review", "", "review tag filter"),
 		descriptor(operationFilterDue, "Filter by Due or Deferred", ValueProviderFilterDue, "due filter", "deferred", "hidden"),
 		descriptor(operationFilterCompletionAge, "Filter by Completion Age", ValueProviderFilterCompletionAge, "completion age", "cleanup age"),
@@ -79,6 +82,7 @@ func (m *AppModel) registerFilterOperations() error {
 	for _, provider := range []ValueProviderID{
 		ValueProviderFilterStates,
 		ValueProviderFilterTags,
+		ValueProviderFilterContexts,
 		ValueProviderFilterDue,
 		ValueProviderFilterCompletionAge,
 		ValueProviderFilterHierarchy,
@@ -93,12 +97,23 @@ func (m *AppModel) registerFilterOperations() error {
 			return err
 		}
 	}
-	register := func(descriptors []OperationDescriptor, handler OperationHandler) error {
+	// One closure body serves both families, so the search clause must be a
+	// parameter rather than a deletion: row facets (f*) now compose with a search
+	// projection, while population facets (F*) still refuse. Sharing one body
+	// with the clause dropped would advertise an F* key its handler declines.
+	register := func(
+		descriptors []OperationDescriptor,
+		handler OperationHandler,
+		refusesSearchProjection bool,
+	) error {
 		for _, descriptor := range descriptors {
 			stale := descriptor.ID == operationFilterStale
 			descriptor.Applicability = func(ctx CommandContext) bool {
-				if !coreOutlinerApplicability(ctx) ||
-					(m.crossOutliner != nil && m.crossOutliner.hasSearchProjection()) {
+				if !coreOutlinerApplicability(ctx) {
+					return false
+				}
+				if refusesSearchProjection &&
+					m.crossOutliner != nil && m.crossOutliner.hasSearchProjection() {
 					return false
 				}
 				return !stale || m.crossOutliner == nil ||
@@ -119,10 +134,13 @@ func (m *AppModel) registerFilterOperations() error {
 		}
 		return nil
 	}
-	if err := register(filterOperationDescriptors(), m.executeFilterOperation); err != nil {
+	if err := register(filterOperationDescriptors(), m.executeFilterOperation, false); err != nil {
 		return err
 	}
-	return register(projectFilterOperationDescriptors(), m.executeProjectFilterOperation)
+	// A population facet decides which projects load at all, so applying one needs
+	// a reload rather than a rebuild, and projectFilterReloadCmd lands the cursor
+	// at the top of a freshly loaded scope. That is why F* keeps refusing.
+	return register(projectFilterOperationDescriptors(), m.executeProjectFilterOperation, true)
 }
 
 //nolint:gocyclo // The facet handler keeps every filter mutation in one auditable switch.
@@ -130,9 +148,6 @@ func (m *AppModel) executeFilterOperation(invocation OperationInvocation) Operat
 	out := m.crossOutliner
 	if out == nil {
 		return OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
-	}
-	if out.hasSearchProjection() {
-		return OperationHandlerResult{Status: "Exit search before changing filters"}
 	}
 	filter := &out.filter.CommonFilterState
 
@@ -217,6 +232,17 @@ func (m *AppModel) executeFilterOperation(invocation OperationInvocation) Operat
 		status = fmt.Sprintf("Filtering %d tag(s)", len(names))
 		if len(names) == 0 {
 			status = "Tag filter cleared"
+		}
+	case operationFilterContexts:
+		names, ok := invocation.Value.([]string)
+		if !ok {
+			return OperationHandlerResult{Err: fmt.Errorf("invalid context filter value")}
+		}
+		applyContextFilterValue(filter, names)
+		parts := contextFilterParts(filter)
+		status = "Context filter cleared"
+		if len(parts) > 0 {
+			status = "Filtering context: " + strings.Join(parts, " ")
 		}
 	case operationFilterReview:
 		if filter.Tags == nil {
@@ -535,8 +561,13 @@ func prospectiveOutlinerStateCounts(
 
 	// A matching descendant can retain a non-matching ancestor as hierarchy
 	// context. Count only rows that satisfy the prospective predicate themselves.
+	// The facet half alone. Under a search projection the isolated copy carries
+	// searchProjection != nil, so its rebuild yields fuzzy-scored rows that the
+	// full work-mode predicate would then substring-gate with searchRemainder,
+	// undercounting; facetPredicateAt is correct in both branches and applies the
+	// facets exactly once.
 	now := time.Now()
-	matches := projection.workModeTaskFilterAt(now)
+	matches := projection.facetPredicateAt(now)
 	seen := make(map[TaskIdentity]struct{})
 	for _, row := range projection.rows {
 		if !row.isTaskRow() || row.task == nil {
@@ -571,16 +602,14 @@ func renderProspectiveFilterCount(count int) string {
 	return fmt.Sprintf("⋅ %d", count)
 }
 
-// newFilterTagsPicker is the f# multi-select picker over the active scope's
-// tag-and-context vocabulary, seeded from the active tag filter facet.
+// newFilterTagsPicker is the f# multi-select picker over the active scope's tag
+// vocabulary, seeded from the active tag filter facet. Contexts are a separate
+// axis on fc, so the census here reads tags alone and the picker's CONTEXTS
+// section drops out with them.
 func (m *AppModel) newFilterTagsPicker(
 	request OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
-	projects := m.taskWorkspaceProjects()
-	if m.crossOutliner != nil && len(m.crossOutliner.loadedProjects) > 0 {
-		projects = m.crossOutliner.workModeScopeProjects()
-	}
-	tagList := BuildTagFacetList(projects, false)
+	tagList := BuildProjectsTagList(m.filterScopeProjects(), false)
 	source := taskTagListSource(tagList, false)
 	selected := []ListItemID(nil)
 	if m.crossOutliner != nil {
@@ -597,4 +626,83 @@ func (m *AppModel) newFilterTagsPicker(
 		true,
 		selected,
 	)
+}
+
+// filterScopeProjects is the population a row facet's vocabulary is drawn from:
+// the loaded scope once there is one, and the whole task workspace before the
+// first load.
+func (m *AppModel) filterScopeProjects() []*models.Project {
+	if m.crossOutliner != nil && len(m.crossOutliner.loadedProjects) > 0 {
+		return m.crossOutliner.workModeScopeProjects()
+	}
+	return m.taskWorkspaceProjects()
+}
+
+// newFilterContextsPicker is the fc multi-select picker over the active scope's
+// context vocabulary, seeded from the active context filter facet. The rows
+// compose with OR because a task carries at most one context, and the leading
+// taskCountLabel is the census wording both context rows carry.
+func taskCountLabel(count int) string {
+	return fmt.Sprintf("%d %s", count, pluralize(count, "task", "tasks"))
+}
+
+// no-context row names the tasks the vocabulary does not cover.
+func (m *AppModel) newFilterContextsPicker(
+	request OperationExecutionRequest,
+) (*OperationValuePickerModel, error) {
+	projects := m.filterScopeProjects()
+	facets := BuildTagFacetList(projects, false)
+	items := make([]ListItem, 0, len(facets)+1)
+	items = append(items, ListItem{
+		ID:            ListItemID("filter-context:" + noContextFilterKey),
+		PrimaryText:   "No context",
+		SecondaryText: taskCountLabel(countTasksWithoutContext(projects)),
+		Aliases:       []string{"no context", "none", "##0"},
+		Data:          noContextFilterKey,
+	})
+	for _, facet := range facets {
+		if facet.ContextCount == 0 {
+			continue
+		}
+		items = append(items, ListItem{
+			ID:            ListItemID("filter-context:" + facet.Name),
+			PrimaryText:   "##" + facet.Name,
+			SecondaryText: taskCountLabel(facet.ContextCount),
+			Aliases:       []string{facet.Name, "##" + facet.Name},
+			Data:          facet.Name,
+		})
+	}
+	selected := []ListItemID(nil)
+	if m.crossOutliner != nil {
+		filter := &m.crossOutliner.filter.CommonFilterState
+		if filter.NoContext {
+			selected = append(selected, ListItemID("filter-context:"+noContextFilterKey))
+		}
+		for name := range filter.Contexts {
+			selected = append(selected, ListItemID("filter-context:"+name))
+		}
+	}
+	return newOperationValuePickerModel(
+		request,
+		ValueProviderFilterContexts,
+		"Filter by Context",
+		"keep matching tasks",
+		ListSource{Items: items},
+		true,
+		selected,
+	)
+}
+
+// countTasksWithoutContext counts the gap the no-context row names, over the
+// same population BuildTagFacetList reads for the rows beside it.
+func countTasksWithoutContext(projects []*models.Project) int {
+	count := 0
+	for _, project := range uniqueProjects(projects) {
+		for _, task := range project.Tasks {
+			if task != nil && task.Context == "" {
+				count++
+			}
+		}
+	}
+	return count
 }

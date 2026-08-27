@@ -13,15 +13,6 @@ type NoteCollectionResult struct {
 	Err      error
 }
 
-// ProjectTags returns a project's derived tag vocabulary from the snapshot.
-func (s *Service) ProjectTags(projectID string) ([]string, error) {
-	project, _, err := s.resolveProject(projectID)
-	if err != nil {
-		return nil, err
-	}
-	return project.AllTags(), nil
-}
-
 // Notes returns a project's notes through the workspace-aware note port.
 func (s *Service) Notes(projectID string) ([]*models.Note, error) {
 	return s.NotesAt(ProjectNoteLocation(projectID))

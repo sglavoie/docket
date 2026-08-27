@@ -52,6 +52,7 @@ func (m *AppModel) operationCommandContext() CommandContext {
 	// to be filled here too or Enter never reaches the zoom the footer offers.
 	ctx.Entity.HasSectionHeaderCursor = m.cursorNamesSectionHeader()
 	ctx.Entity.HasProjectHeaderCursor = header != nil
+	_, ctx.Entity.HasNoteCursor = m.cursorNoteIdentity()
 
 	if selected, ok := m.activeView().(operationSelectionProvider); ok {
 		ctx.Selection.Tasks = selected.SelectedTaskIdentities()
@@ -139,6 +140,7 @@ func (m *OutlinerModel) operationCommandContext() CommandContext {
 	// Archived guard, which only the fallback fills.
 	ctx.Entity.HasSectionHeaderCursor = m.cursorNamesSectionHeader()
 	ctx.Entity.HasProjectHeaderCursor = header != nil
+	_, ctx.Entity.HasNoteCursor = m.cursorNoteIdentity()
 	ctx.Selection.Tasks = m.SelectedTaskIdentities()
 	ctx.Selection.Visual = m.IsMultiSelectActive()
 	counts := m.selectionCounts()

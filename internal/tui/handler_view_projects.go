@@ -38,6 +38,10 @@ func (m *AppModel) prepareCrossProjectOutliner() tea.Cmd {
 		m.crossOutliner = NewOutlinerModel(nil, m.configManager, m.runtime)
 		m.crossOutliner.SetSize(m.width, m.height-2)
 		m.wireSecondaryCoordinators(m.crossOutliner)
+		// The one live Outliner is the one surface that ranks notes. Every other
+		// construction site leaves the accessor nil, so the tier is simply absent
+		// there — correct for a test model and for the Hub's task preview.
+		m.crossOutliner.setNoteSearchIndex(m.noteSearchIndexRows)
 		m.views.Register(ViewCrossProjectOutliner, m.crossOutliner)
 		return m.crossOutliner.Init()
 	}

@@ -25,26 +25,26 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 
 	attributeCases := []struct {
 		name   string
-		mutate func(svc *app.Service, taskID string) error
+		mutate func(svc *app.Service, locator app.TaskLocator) error
 	}{
 		{
 			name: "edit",
-			mutate: func(svc *app.Service, taskID string) error {
-				_, err := svc.Edit(app.EditRequest{TaskID: taskID, Title: &newTitle})
+			mutate: func(svc *app.Service, locator app.TaskLocator) error {
+				_, err := svc.Edit(app.EditRequest{Locator: locator, Title: &newTitle})
 				return err
 			},
 		},
 		{
 			name: "priority",
-			mutate: func(svc *app.Service, taskID string) error {
-				_, err := svc.SetPriority(taskID, 2)
+			mutate: func(svc *app.Service, locator app.TaskLocator) error {
+				_, err := svc.SetPriority(locator, 2)
 				return err
 			},
 		},
 		{
 			name: "completion",
-			mutate: func(svc *app.Service, taskID string) error {
-				_, err := svc.Complete(taskID)
+			mutate: func(svc *app.Service, locator app.TaskLocator) error {
+				_, err := svc.Transition(app.StateRequest{Locator: locator, Target: models.StateDone})
 				return err
 			},
 		},
@@ -59,7 +59,7 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 			mutator := newLedgerUndoApp(t, dataDir, project, task.ID, true)
 			before := readTasksFile(t, project)
 
-			if err := tc.mutate(mutator.appService, task.ID); err != nil {
+			if err := tc.mutate(mutator.appService, app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}); err != nil {
 				t.Fatalf("application mutation: %v", err)
 			}
 			after := readTasksFile(t, project)
@@ -99,7 +99,7 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 		}
 		before := readTasksFile(t, project)
 
-		if _, err := mutator.appService.Transition(app.StateRequest{TaskID: task.ID, Target: models.StateWaiting}); err != nil {
+		if _, err := mutator.appService.Transition(app.StateRequest{Locator: app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}, Target: models.StateWaiting}); err != nil {
 			t.Fatalf("planning-aware transition: %v", err)
 		}
 		if planningTaskInToday(t, mutator.configManager, project.ID, task.ID) {

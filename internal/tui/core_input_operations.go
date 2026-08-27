@@ -54,6 +54,7 @@ const (
 	operationCoreFocusParent        OperationID = "tui.core.focus-parent"
 	operationCoreActivateGroup      OperationID = "tui.core.activate-group"
 	operationCoreZoomSection        OperationID = "tui.core.zoom-section"
+	operationCoreOpenNote           OperationID = "tui.core.open-note"
 	operationCorePeek               OperationID = "tui.core.peek"
 	operationCoreScopeSearch        OperationID = "tui.core.scope-search"
 	operationCoreSelectProject      OperationID = "tui.core.select-project"
@@ -197,7 +198,27 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 			!ctx.Selection.Visual &&
 			!ctx.Entity.HasChecklistCursor &&
 			!ctx.Entity.HasSectionHeaderCursor &&
+			!ctx.Entity.HasNoteCursor &&
 			!currentTaskIdentity(ctx).Valid()
+	}
+	// The notes tier's rows name nothing the entity grammar resolves, so a note
+	// row reads as an empty entity and would otherwise land on Open Project. It
+	// is the fourth Enter act rather than a branch inside one of the other three,
+	// for the same reason those three are three: it carries its own target and
+	// its own vocabulary, and the footer owes the row an honest label.
+	openNote := core(
+		operationCoreOpenNote,
+		"Open Note",
+		OperationCategoryNote,
+		TargetCardinalityNone,
+		OperationRiskReadOnly,
+		"open note",
+		"note in results",
+	)
+	openNote.Applicability = func(ctx CommandContext) bool {
+		return coreOutlinerApplicability(ctx) &&
+			!ctx.Selection.Visual &&
+			ctx.Entity.HasNoteCursor
 	}
 	// The outline editor restructures a whole project tree, so it names no task
 	// target and refuses a visual selection: the buffer's scope is the project the
@@ -258,6 +279,7 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		gotoTaskProject,
 		zoomSection,
 		activateGroup,
+		openNote,
 		peek,
 		core(operationCoreScopeSearch, "Search Scoped Tasks", OperationCategoryFilter, TargetCardinalityNone, OperationRiskReadOnly, "scope-wide search"),
 		core(operationCoreSelectProject, "Select Project", OperationCategoryProject, TargetCardinalityNone, OperationRiskReadOnly, "projects", "switch project"),
@@ -569,6 +591,15 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 	case operationCoreActivateGroup:
 		if out, ok := m.outlinerPrimary(); ok {
 			out.activateGroupAtCursor()
+		}
+	case operationCoreOpenNote:
+		// All Notes rather than the Outliner's own scope: the manager has to hold
+		// the note the row named whatever the search was scoped to, and Focus is
+		// what positions the cursor on it once it is there.
+		if out, ok := m.outlinerPrimary(); ok {
+			if identity, onNote := out.cursorNoteIdentity(); onNote {
+				message = ShowNotesManagerMsg{Scope: AllNotesScope(), Focus: identity}
+			}
 		}
 	case operationCorePeek:
 		if out, ok := m.outlinerPrimary(); ok {

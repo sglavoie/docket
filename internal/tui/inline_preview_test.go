@@ -358,7 +358,7 @@ func TestInlinePeekShowsAttachmentNames(t *testing.T) {
 	}
 
 	plain := ansi.Strip(strings.Join(inlinePeekLines(inlinePeekOptions{Task: task, Width: 80}), "\n"))
-	for _, want := range []string{"Attachments: design-spec.pdf · acme/roadmap#123 · +1 more"} {
+	for _, want := range []string{"Attachments: design-spec.pdf · GH acme/roadmap#123 · +1 more"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("Peek missing %q:\n%s", want, plain)
 		}

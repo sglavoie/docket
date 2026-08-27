@@ -49,6 +49,27 @@
     { "type": "key", "key": "esc" },
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "Sort: created" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "width": 100, "height": 35 },
+    { "type": "key", "label": "the lens that is live at quit is the one a relaunch reopens", "key": "\\" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Lens: High Priority" },
+
+    { "type": "restart", "label": "quit and relaunch against durable state alone" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Lens: High Priority" },
+    { "type": "assert", "assert": "contains", "value": "Sort: priority" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the first Esc after a restored lens lands on the launch view, not on the Backlog view the lens was applied over yesterday", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Lens:" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "assert", "assert": "not_contains", "value": "Sort: created" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

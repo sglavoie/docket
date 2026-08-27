@@ -63,13 +63,3 @@ func TestRemoveCommentNilsBackingArrayTail(t *testing.T) {
 		t.Fatal("out-of-range removal succeeded")
 	}
 }
-
-func TestClearComments(t *testing.T) {
-	task := &Task{}
-	task.AddComment("first")
-	task.AddComment("second")
-	task.ClearComments()
-	if len(task.Comments) != 0 {
-		t.Fatalf("comments after clear = %d, want 0", len(task.Comments))
-	}
-}

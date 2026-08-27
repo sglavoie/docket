@@ -14,7 +14,7 @@ func TestAddCommentAppendsAndCommits(t *testing.T) {
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
 	svc := newTestService(repo)
 
-	res, err := svc.AddComment("t1", "  root cause found  ")
+	res, err := svc.AddComment(repo.loc("t1"), "  root cause found  ")
 	if err != nil {
 		t.Fatalf("AddComment: %v", err)
 	}
@@ -34,7 +34,7 @@ func TestAddCommentRejectsEmptyText(t *testing.T) {
 	repo := newFakeRepo(newProject("p1", "Alpha", newTask("t1", 1, "Task")))
 	svc := newTestService(repo)
 
-	_, err := svc.AddComment("t1", "   ")
+	_, err := svc.AddComment(repo.loc("t1"), "   ")
 	if !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("err = %v, want ErrInvalidInput", err)
 	}
@@ -50,7 +50,7 @@ func TestEditCommentPreservesTimestamp(t *testing.T) {
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
 	svc := newTestService(repo)
 
-	_, err := svc.EditComment("t1", 0, "new text")
+	_, err := svc.EditComment(repo.loc("t1"), 0, "new text")
 	if err != nil {
 		t.Fatalf("EditComment: %v", err)
 	}
@@ -58,19 +58,19 @@ func TestEditCommentPreservesTimestamp(t *testing.T) {
 		t.Fatalf("comment = %+v, want new text with preserved timestamp", task.Comments[0])
 	}
 
-	if _, err := svc.EditComment("t1", 5, "text"); !errors.Is(err, app.ErrInvalidInput) {
+	if _, err := svc.EditComment(repo.loc("t1"), 5, "text"); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("out-of-range err = %v, want ErrInvalidInput", err)
 	}
 }
 
-func TestRemoveAndClearComments(t *testing.T) {
+func TestRemoveComments(t *testing.T) {
 	task := newTask("t1", 1, "Commented")
 	created := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	task.Comments = []*models.Comment{{Text: "first", CreatedAt: created}, {Text: "second", CreatedAt: created}, {Text: "third", CreatedAt: created}}
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
 	svc := newTestService(repo)
 
-	_, err := svc.RemoveComment("t1", 0)
+	_, err := svc.RemoveComment(repo.loc("t1"), 0)
 	if err != nil {
 		t.Fatalf("RemoveComment: %v", err)
 	}
@@ -78,16 +78,8 @@ func TestRemoveAndClearComments(t *testing.T) {
 		t.Fatalf("after remove: comments=%+v", task.Comments)
 	}
 
-	if _, rangeErr := svc.RemoveComment("t1", 9); !errors.Is(rangeErr, app.ErrInvalidInput) {
+	if _, rangeErr := svc.RemoveComment(repo.loc("t1"), 9); !errors.Is(rangeErr, app.ErrInvalidInput) {
 		t.Fatalf("out-of-range err = %v, want ErrInvalidInput", rangeErr)
-	}
-
-	_, err = svc.ClearComments("t1")
-	if err != nil {
-		t.Fatalf("ClearComments: %v", err)
-	}
-	if len(task.Comments) != 0 {
-		t.Fatalf("after clear: comments=%+v", task.Comments)
 	}
 }
 
@@ -98,7 +90,7 @@ func TestCommentCommitFailureRestoresTask(t *testing.T) {
 	repo.commitErr = errors.New("commit failed")
 	svc := newTestService(repo)
 
-	if _, err := svc.AddComment("t1", "transient"); err == nil {
+	if _, err := svc.AddComment(repo.loc("t1"), "transient"); err == nil {
 		t.Fatal("AddComment unexpectedly succeeded")
 	}
 	if len(task.Comments) != 1 || task.Comments[0].Text != "original" {

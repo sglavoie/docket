@@ -15,7 +15,7 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-func TestScopeWideSearchIgnoresModeFacetsAndFoldsButHonorsScope(t *testing.T) {
+func TestScopeWideSearchIgnoresModeAndFoldsButHonorsScopeAndFacets(t *testing.T) {
 	now := time.Now()
 	tomorrow := now.Add(24 * time.Hour)
 	parent := primaryRowsTask("parent", models.StateBacklog)
@@ -43,7 +43,6 @@ func TestScopeWideSearchIgnoresModeFacetsAndFoldsButHonorsScope(t *testing.T) {
 	outliner := scopeTestOutliner(alpha, beta)
 	outliner.pushProjectScope(alpha.ID)
 	outliner.selectOutlinerMode(ModeBacklog)
-	outliner.filter.Priority = models.PriorityHigh
 	outliner.expandedNodes[TaskIdentity{ProjectID: alpha.ID, TaskID: parent.ID}] = false
 	outliner.SetSearchQuery("needle")
 
@@ -58,6 +57,17 @@ func TestScopeWideSearchIgnoresModeFacetsAndFoldsButHonorsScope(t *testing.T) {
 	}
 	if outliner.rows[2].Breadcrumb != "Ordinary parent ›" {
 		t.Fatalf("child breadcrumb = %q, want preserved ancestor context", outliner.rows[2].Breadcrumb)
+	}
+
+	// A facet is an AND gate applied before scoring, so it narrows the same ranked
+	// list without disturbing its order. Only the low-priority task clears the
+	// threshold: an unset priority is effectively below Low.
+	outliner.filter.Priority = models.PriorityLow
+	outliner.crossForceRebuild = true
+	outliner.crossProjectRebuildRows()
+	if got := qualifiedVisibleTaskIDs(outliner); !slices.Equal(got,
+		[]TaskIdentity{{ProjectID: alpha.ID, TaskID: inbox.ID}}) {
+		t.Fatalf("search under the priority facet = %v, want only the low-priority hit", got)
 	}
 }
 
@@ -123,9 +133,11 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 		Descriptor: OperationDescriptor{ID: operationFilterPriority},
 		Value:      models.PriorityHigh,
 	})
-	if filterResult.Status != "Exit search before changing filters" ||
-		outliner.filter.Priority != wantFilter.Priority {
-		t.Fatalf("filter changed during search: result=%+v priority=%d",
+	// The facet applies to the live projection rather than refusing, and Esc
+	// still restores the snapshot taken at entry — including this edit.
+	if filterResult.Status != "Filtering High priority" ||
+		outliner.filter.Priority != models.PriorityHigh {
+		t.Fatalf("filter refused during search: result=%+v priority=%d",
 			filterResult, outliner.filter.Priority)
 	}
 	outliner.filter.Tags = map[string]bool{"changed": true}
@@ -139,6 +151,7 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 	_, _ = outliner.handleKeyMsg(syntheticSpecialKey(tea.KeyEsc))
 
 	if outliner.primaryMode != ModeInbox ||
+		outliner.filter.Priority != wantFilter.Priority ||
 		!maps.Equal(outliner.filter.Tags, wantFilter.Tags) ||
 		!maps.Equal(outliner.collapsedSections, wantCollapsed) ||
 		!maps.Equal(outliner.expandedNodes, wantExpanded) ||

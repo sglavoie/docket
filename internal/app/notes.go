@@ -286,7 +286,6 @@ type NoteResult struct {
 	ProjectID     string // compatibility convenience; mirrors Location.ProjectID
 	Filename      string
 	Title         string
-	Note          *models.Note
 	TransactionID string
 }
 
@@ -332,45 +331,6 @@ func (s *Service) singleNoteMutation(req NoteBatchRequest) (NoteResult, error) {
 		single.TransactionID = result.TransactionID
 	}
 	return single, nil
-}
-
-// SaveNote is the project-scoped compatibility wrapper. A note with no observed
-// RawRevision is a create; a loaded note is an update. New callers should prefer
-// the explicit request methods above.
-func (s *Service) SaveNote(projectID string, note *models.Note) (NoteResult, error) {
-	location := ProjectNoteLocation(projectID)
-	var (
-		result NoteResult
-		err    error
-	)
-	if note != nil && note.RawRevision != "" {
-		result, err = s.UpdateNote(NoteUpdateRequest{Location: location, Note: note})
-	} else {
-		result, err = s.CreateNote(NoteCreateRequest{Location: location, Note: note})
-	}
-	if err == nil && note != nil && result.Note != nil {
-		*note = *cloneNote(result.Note)
-	}
-	return result, err
-}
-
-// DeleteNote is the project-scoped compatibility wrapper. It first loads the
-// source revision through the note port, then issues the typed delete.
-func (s *Service) DeleteNote(projectID, filename string) (NoteResult, error) {
-	if strings.TrimSpace(filename) == "" {
-		return NoteResult{}, invalidInput("note", "filename is required")
-	}
-	location := ProjectNoteLocation(projectID)
-	notes, err := s.NotesAt(location)
-	if err != nil {
-		return NoteResult{}, err
-	}
-	for _, note := range notes {
-		if note.Filename == filename {
-			return s.RemoveNote(NoteDeleteRequest{Location: location, Note: note})
-		}
-	}
-	return NoteResult{}, fmt.Errorf("app: note not found: %s", filename)
 }
 
 const maxNoteCollisionAttempts = 1000
@@ -590,7 +550,6 @@ func (s *Service) buildNoteArtifacts(snap Snapshot, operations []preparedNoteOpe
 			}
 			change.ExpectedRevision = stringPointer("")
 			note.RawRevision = storage.RawArtifactRevision(change.Data)
-			result.Note = note
 			artifacts = append(artifacts, preparedNoteArtifact{change: change, operation: i, destination: true})
 		case NoteUpdate:
 			change, encErr := s.notes.EncodeNoteSave(op.source, sourceProject, note)
@@ -599,7 +558,6 @@ func (s *Service) buildNoteArtifacts(snap Snapshot, operations []preparedNoteOpe
 			}
 			change.ExpectedRevision = stringPointer(op.note.RawRevision)
 			note.RawRevision = storage.RawArtifactRevision(change.Data)
-			result.Note = note
 			artifacts = append(artifacts, preparedNoteArtifact{change: change, operation: i})
 		case NoteRename, NoteMove:
 			write, encErr := s.notes.EncodeNoteSave(op.destination, destinationProject, note)
@@ -613,7 +571,6 @@ func (s *Service) buildNoteArtifacts(snap Snapshot, operations []preparedNoteOpe
 			}
 			remove.ExpectedRevision = stringPointer(op.note.RawRevision)
 			note.RawRevision = storage.RawArtifactRevision(write.Data)
-			result.Note = note
 			artifacts = append(artifacts,
 				preparedNoteArtifact{change: write, operation: i, destination: true},
 				preparedNoteArtifact{change: remove, operation: i},
@@ -627,7 +584,6 @@ func (s *Service) buildNoteArtifacts(snap Snapshot, operations []preparedNoteOpe
 			result.Location = op.source
 			result.ProjectID = op.source.ProjectID
 			result.Filename = op.previousFilename
-			result.Note = cloneNote(op.note)
 			artifacts = append(artifacts, preparedNoteArtifact{change: remove, operation: i})
 		}
 		results[i] = result

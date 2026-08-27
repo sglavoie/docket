@@ -127,6 +127,13 @@ const (
 	ValueProviderFilterCompletionAge ValueProviderID = "filter-completion-age"
 	ValueProviderFilterHierarchy     ValueProviderID = "filter-hierarchy"
 
+	// ValueProviderFilterContexts feeds the context facet: a distinct axis from
+	// ValueProviderFilterTags, whose vocabulary it may share spellings with but
+	// whose question it does not ask. A task carries any number of tags and at
+	// most one context, so this facet composes with OR where tags compose with
+	// AND, and it offers a no-context row tags have no equivalent of.
+	ValueProviderFilterContexts ValueProviderID = "filter-contexts"
+
 	// ValueProviderFilterProjectTags feeds the population facet: a different
 	// vocabulary from ValueProviderFilterTags, and a different question. It picks
 	// which projects load rather than which of a loaded project's rows show.

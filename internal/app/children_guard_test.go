@@ -29,7 +29,7 @@ func TestTransitionCompleteBlockedByIncompleteChild(t *testing.T) {
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	_, err := svc.Complete("p")
+	_, err := svc.Transition(app.StateRequest{Locator: repo.loc("p"), Target: models.StateDone})
 	if !errors.Is(err, app.ErrParentHasIncompleteChildren) {
 		t.Fatalf("err = %v, want ErrParentHasIncompleteChildren", err)
 	}
@@ -50,7 +50,7 @@ func TestTransitionCancelBlockedByIncompleteChild(t *testing.T) {
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	_, err := svc.Transition(app.StateRequest{TaskID: "p", Target: models.StateCanceled})
+	_, err := svc.Transition(app.StateRequest{Locator: repo.loc("p"), Target: models.StateCanceled})
 	if !errors.Is(err, app.ErrParentHasIncompleteChildren) {
 		t.Fatalf("err = %v, want ErrParentHasIncompleteChildren", err)
 	}
@@ -64,7 +64,7 @@ func TestTransitionCompleteAllowedWhenChildrenComplete(t *testing.T) {
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	_, err := svc.Complete("p")
+	_, err := svc.Transition(app.StateRequest{Locator: repo.loc("p"), Target: models.StateDone})
 	if err != nil {
 		t.Fatalf("Complete: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestTransitionNonterminalNotGatedByChildren(t *testing.T) {
 
 	// Moving a parent with incomplete children to a nonterminal state is allowed;
 	// only completion and cancellation are gated.
-	if _, err := svc.Transition(app.StateRequest{TaskID: "p", Target: models.StateDoing}); err != nil {
+	if _, err := svc.Transition(app.StateRequest{Locator: repo.loc("p"), Target: models.StateDoing}); err != nil {
 		t.Fatalf("nonterminal transition should not be gated: %v", err)
 	}
 }
@@ -90,7 +90,7 @@ func TestBulkTransitionCompleteBlockedByIncompleteChild(t *testing.T) {
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	_, err := svc.BulkTransition([]string{"p"}, models.StateDone)
+	_, err := svc.BulkTransition([]app.TaskLocator{repo.loc("p")}, models.StateDone)
 	if !errors.Is(err, app.ErrParentHasIncompleteChildren) {
 		t.Fatalf("err = %v, want ErrParentHasIncompleteChildren", err)
 	}

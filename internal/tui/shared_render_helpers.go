@@ -8,6 +8,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -187,8 +188,11 @@ func renderAttachmentIndicator(task *models.Task) string {
 	return MutedStyle.Render(fmt.Sprintf("%s %d", IconAttachment(), task.AttachmentCount()))
 }
 
+// formatGitHubIssueRef renders the compact owner/repo#number form. It carries
+// the github_issue marker because the compact form is otherwise
+// indistinguishable from a plain URL attachment in the same list.
 func formatGitHubIssueRef(ref models.GitHubIssueRef) string {
-	return fmt.Sprintf("%s/%s#%d", ref.Owner, ref.Repo, ref.Number)
+	return fmt.Sprintf("%s %s/%s#%d", icons.Get("github_issue"), ref.Owner, ref.Repo, ref.Number)
 }
 
 func gitHubIssueAttachmentRef(att models.Attachment) (models.GitHubIssueRef, bool) {

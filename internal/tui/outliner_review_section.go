@@ -25,7 +25,7 @@ func (m *OutlinerModel) buildReviewSection(
 		task, project := candidate.row.Task, candidate.row.Project
 		identity := taskIdentityFor(task, project)
 		if task == nil || project == nil || task.IsTerminalState() || task.IsDeferredAt(input.now()) ||
-			!taskMatchesTagFacet(task, reviewTaskTag) ||
+			!task.HasTag(reviewTaskTag) ||
 			pinned[identity] || today[identity] || next[identity] {
 			continue
 		}

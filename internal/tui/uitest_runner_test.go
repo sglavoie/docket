@@ -135,6 +135,8 @@ func (d *UITestDriver) runAction(a UITestAction) error {
 		// status expiring, a flash running out — come due on the virtual clock.
 		d.Wait(defaultWaitTimeout)
 		d.advanceClock(defaultWaitTimeout)
+	case UITestActionRestart:
+		return d.Restart()
 	case UITestActionAssert:
 		return d.runAssert(a)
 	case UITestActionCommand:

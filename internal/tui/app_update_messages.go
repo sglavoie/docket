@@ -67,15 +67,35 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 		if m.crossOutliner == nil {
 			return true, nil
 		}
-		if msg.generation == m.crossOutliner.crossLoadGen {
+		adopted := msg.generation == m.crossOutliner.crossLoadGen
+		if adopted {
 			m.adoptCrossProjectSnapshot(msg.projects)
 		}
 		wantedFocus := msg.focusProjectID
 		cmd := m.crossOutliner.handleCrossProjectsLoaded(msg)
-		if returnCmd := m.finishParkedProjectFocus(wantedFocus); returnCmd != nil {
-			return true, tea.Batch(cmd, returnCmd)
+		// The launch lens is drained here rather than in the launch handler
+		// because a lens names a project scope and a set of project facets, and
+		// neither can be validated against a population that has not been adopted
+		// yet. Draining after the adoption above is what lets a lens naming a
+		// deleted project be refused instead of installed over an empty view.
+		// A superseded result adopts nothing, so it drains nothing either: the
+		// load that is still on its way is the one that owns the launch.
+		var lensCmd tea.Cmd
+		if adopted {
+			lensCmd = m.restorePendingLaunchLens()
 		}
-		return true, cmd
+		returnCmd := m.finishParkedProjectFocus(wantedFocus)
+		// This is the message that publishes a new project population, so it is
+		// where the note index learns that an owner appeared, was renamed, was
+		// archived, or went away. The refresh is a no-op unless the catalog moved.
+		var noteCmd tea.Cmd
+		if adopted {
+			noteCmd = m.refreshNoteSearchIndexOwners()
+		}
+		if lensCmd == nil && returnCmd == nil && noteCmd == nil {
+			return true, cmd
+		}
+		return true, tea.Batch(cmd, returnCmd, lensCmd, noteCmd)
 	case lensProjectsLoadedMsg:
 		// A lens application publishes a whole population or none of it, so the
 		// shell cache is adopted only once the lens actually went live.
@@ -87,6 +107,9 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 			m.adoptCrossProjectSnapshot(m.crossOutliner.loadedProjects)
 		}
 		return true, cmd
+	case noteSearchIndexLoadedMsg:
+		m.handleNoteSearchIndexLoaded(msg)
+		return true, nil
 	case outlinerOriginRecordedMsg:
 		if msg.TransactionID == "" || msg.TransactionID != m.statusTransactionID || m.statusUndoCb == nil || !time.Now().Before(m.statusExpiresAt) {
 			return true, nil

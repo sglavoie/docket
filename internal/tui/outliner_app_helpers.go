@@ -27,6 +27,15 @@ func (m *AppModel) cursorNamesSectionHeader() bool {
 	return false
 }
 
+// cursorNoteIdentity returns the note the Outliner cursor names, so the shell's
+// command context reads the same row kind the Outliner's own does.
+func (m *AppModel) cursorNoteIdentity() (NoteRowIdentity, bool) {
+	if out := m.activeOutliner(); out != nil {
+		return out.cursorNoteIdentity()
+	}
+	return NoteRowIdentity{}, false
+}
+
 // cursorChecklistItem returns the checklist item the Outliner cursor names.
 func (m *AppModel) cursorChecklistItem() (checklistCursor, bool) {
 	if out := m.activeOutliner(); out != nil {

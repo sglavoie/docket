@@ -163,6 +163,12 @@ type EntityContext struct {
 	// the scope on every row, section headers included, so an operation that acts
 	// on the project as a whole reads this flag instead.
 	HasProjectHeaderCursor bool
+	// HasNoteCursor reports that the cursor rests on a row of the search
+	// projection's notes tier. A note is not an entity the operation grammar
+	// resolves — it carries no project or task ID — so an empty entity is the
+	// only thing it would otherwise look like, and Open Note could not tell
+	// itself apart from Open Project.
+	HasNoteCursor bool
 }
 
 // CommandContext is the complete input to capability-based command

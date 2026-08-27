@@ -25,6 +25,15 @@
     { "type": "assert", "assert": "contains", "value": "due:none" },
     { "type": "assert", "assert": "no_layout_issues" },
 
+    { "type": "key", "label": "stack the context facet on top of both", "key": "f" },
+    { "type": "key", "key": "c" },
+    { "type": "assert", "assert": "contains", "value": "Filter by Context" },
+    { "type": "key", "label": "the gap row is a live predicate like any other", "key": "space" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "status_contains", "value": "Filtering context: context:none" },
+    { "type": "assert", "assert": "contains", "value": "context:none" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
     { "type": "key", "label": "abandon a half-typed filter chord", "key": "f" },
     { "type": "key", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
@@ -36,6 +45,7 @@
     { "type": "assert", "assert": "status_contains", "value": "Filters cleared" },
     { "type": "assert", "assert": "not_contains", "value": "priority:Medium+" },
     { "type": "assert", "assert": "not_contains", "value": "due:none" },
+    { "type": "assert", "assert": "not_contains", "value": "context:none" },
     { "type": "assert", "assert": "contains", "value": "User authentication" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

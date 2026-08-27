@@ -33,27 +33,27 @@ type fakeReorder struct {
 	to   int
 }
 
-func (f *fakeAttachmentMutator) AttachURLByLocator(locator app.TaskLocator, url string) (app.TaskResult, error) {
+func (f *fakeAttachmentMutator) AttachURL(locator app.TaskLocator, url string) (app.TaskResult, error) {
 	f.urls = append(f.urls, url)
 	return app.TaskResult{TaskID: locator.TaskID, ProjectID: locator.ProjectID}, nil
 }
 
-func (f *fakeAttachmentMutator) AttachCodeReferenceByLocator(locator app.TaskLocator, path string, line int) (app.TaskResult, error) {
+func (f *fakeAttachmentMutator) AttachCodeReference(locator app.TaskLocator, path string, line int) (app.TaskResult, error) {
 	f.codeRefs = append(f.codeRefs, path)
 	return app.TaskResult{TaskID: locator.TaskID, ProjectID: locator.ProjectID}, nil
 }
 
-func (f *fakeAttachmentMutator) AttachFileByLocator(locator app.TaskLocator, sourcePath string) (app.AttachFileResult, error) {
+func (f *fakeAttachmentMutator) AttachFile(locator app.TaskLocator, sourcePath string) (app.AttachFileResult, error) {
 	f.files = append(f.files, sourcePath)
 	return app.AttachFileResult{Task: app.TaskResult{TaskID: locator.TaskID, ProjectID: locator.ProjectID}}, nil
 }
 
-func (f *fakeAttachmentMutator) RemoveAttachmentByLocator(locator app.TaskLocator, index int, deleteFile bool) (app.RemoveAttachmentResult, error) {
+func (f *fakeAttachmentMutator) RemoveAttachment(locator app.TaskLocator, index int, deleteFile bool) (app.RemoveAttachmentResult, error) {
 	f.removals = append(f.removals, fakeRemoval{index: index, deleteFile: deleteFile})
 	return app.RemoveAttachmentResult{Task: app.TaskResult{TaskID: locator.TaskID, ProjectID: locator.ProjectID}}, nil
 }
 
-func (f *fakeAttachmentMutator) ReorderAttachmentByLocator(locator app.TaskLocator, from, to int) (app.TaskResult, error) {
+func (f *fakeAttachmentMutator) ReorderAttachment(locator app.TaskLocator, from, to int) (app.TaskResult, error) {
 	f.reorders = append(f.reorders, fakeReorder{from: from, to: to})
 	return app.TaskResult{TaskID: locator.TaskID, ProjectID: locator.ProjectID}, nil
 }

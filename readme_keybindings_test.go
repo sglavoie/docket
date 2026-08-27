@@ -8,15 +8,23 @@ import (
 	"testing"
 )
 
-func readREADMEForContractTest(t *testing.T) string {
+// repositoryRootDir resolves the repository root from this source file rather
+// than the working directory, so a contract test keeps reading the same
+// documents after a t.Chdir or a subtest that moves cwd.
+func repositoryRootDir(t *testing.T) string {
 	t.Helper()
 
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("failed to resolve caller path")
 	}
+	return filepath.Dir(file)
+}
 
-	path := filepath.Join(filepath.Dir(file), "README.md")
+func readREADMEForContractTest(t *testing.T) string {
+	t.Helper()
+
+	path := filepath.Join(repositoryRootDir(t), "README.md")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read %s: %v", path, err)
@@ -123,9 +131,14 @@ func TestREADMEDocumentsOneOutlinerGrammar(t *testing.T) {
 		"gains a `*`\nas soon as the live view stops matching what was saved",
 		"switching straight from one lens to another\nkeeps the original restoration point",
 		"While a lens is active `/` edits the lens's own narrowing query",
-		"A lens does not touch project scope",
+		"A lens owns project scope too, and saving is what decides whether it does",
+		"refuses by name instead of opening\nsomewhere else",
+		"Entering or leaving a project scope while a lens is live marks it\nmodified",
 		"`Waiting`, `High Priority`, and `Stale`",
-		"Definitions live in machine-local state and survive a restart. No active lens\ndoes",
+		"Definitions live in machine-local state and survive a restart, and so does the lens you " +
+			"had open",
+		"reapplies that lens's saved axes on top of it",
+		"it lands on the Active Projects, All view a lens-free launch would have shown",
 		"`n`/`N` jump to the next/previous section or project header, wrapping at either end",
 		"the old standalone `b`, `c`, `m`, and `w` actions, the comma state prefix, and " +
 			"`:`, `C`, `R`, and `Ctrl+Esc`",
@@ -190,8 +203,18 @@ func TestREADMEDocumentsFiltersPeekAndBulkSemantics(t *testing.T) {
 	requireDocumentationText(t, content, []string{
 		"`f!0`, `f!1`–`f!3`",
 		"Unset never matches",
+		// Search composition: the facets and the sort axis compose with a live
+		// projection, F* still refuses, and Esc restores the pre-search pair.
+		"the row facets and the sort axis compose with a live search",
+		"`f*` applies as an AND gate before scoring exactly like a query sigil",
+		"`o*` reorders within a relevance tier only",
+		"The population facets (`F*`) still refuse",
+		"mode switches, folds, and reordering still ask you to exit search first",
+		"Esc restores the pre-search facets and sort wholesale",
 		"`f$` | Pick workflow states with OR semantics",
-		"`f#` | Pick tags and task contexts with AND semantics; each selected value matches either field",
+		"`f#` | Pick tags with AND semantics; the task context is a separate axis on `fc`",
+		"`fc` | Pick task contexts with OR semantics, since a task carries at most one",
+		"`fa` | Pick completed at least 7, 30, or 90 local-calendar days ago",
 		"`fr` | Toggle the `review` tag facet",
 		"`f@` | Open the Filter by Due or Deferred picker: overdue, today, this week, no due date, or deferred-only",
 		"`fh` | Pick one hierarchy position: parent, child, root, or leaf; parent and leaf read open children",
@@ -366,8 +389,9 @@ func TestREADMEWorkspaceAndMigrationContractStaysCurrent(t *testing.T) {
 		"schema-13 Markdown and generic `Task` headings",
 		"Each task may carry an optional non-negative `defer_count`; zero is omitted",
 		"Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the dark/light theme " +
-			"choice and the saved named-lens definitions",
-		"No active lens is recorded there: a restart restores the definitions and nothing else",
+			"choice, the saved named-lens definitions, and a pointer to the lens that was last open",
+		"The active-lens pointer is a hint rather than a record: it is checked for shape alone when " +
+			"the file loads",
 		"pre-simplification-v5-<UTC>.tar.gz",
 		"pre-consolidation-v6-<UTC>",
 		"pre-scope-v7-<UTC>.tar.gz",

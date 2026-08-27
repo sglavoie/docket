@@ -1,10 +1,12 @@
 package tui
 
 import (
+	"fmt"
 	"os"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
@@ -414,4 +416,43 @@ func mustReadFile(t *testing.T, path string) string {
 		t.Fatalf("read %q: %v", path, err)
 	}
 	return string(data)
+}
+
+// TestFixtureDueInstantSurvivesTheMidnightMinute pins the wall-clock hazard that
+// broke every busy-fixture build for one minute a day: a raw time.Now() offset
+// carries seconds the schema-13 codec renders away, and the "00:00" left behind
+// is the date-only signal it refuses to spell as a due_time. Truncating to the
+// minute is what the grammar produces, so midnight becomes an honest date-only
+// due instead of an unrepresentable timed one.
+func TestFixtureDueInstantSurvivesTheMidnightMinute(t *testing.T) {
+	// The offsets buildBusyFixture and the release fixture hand setDue.
+	offsets := []time.Duration{-3 * 24 * time.Hour, -2 * 24 * time.Hour, -24 * time.Hour, 12 * time.Hour}
+	// A base 22.5s past noon sends the +12h offset into the midnight minute,
+	// which is the instant the failing run happened to occupy.
+	base := time.Date(2026, 8, 27, 12, 0, 22, 500_000_000, time.Local)
+
+	ws, err := newUITestWorkspace()
+	if err != nil {
+		t.Fatalf("newUITestWorkspace: %v", err)
+	}
+	t.Cleanup(func() { _ = ws.Cleanup() })
+
+	for _, offset := range offsets {
+		due := fixtureDueInstant(base, offset)
+		if due.Second() != 0 || due.Nanosecond() != 0 {
+			t.Errorf("fixtureDueInstant(base, %v) = %v, want a whole minute", offset, due)
+		}
+		project, err := ws.addProject(fmt.Sprintf("Due %v", offset), func(p *models.Project) {
+			task := newFixtureTask(p, "Timed due")
+			task.ApplyWorkflowState(models.StateBacklog)
+			task.DueDate = &due
+		})
+		if err != nil {
+			t.Fatalf("addProject with due %v (offset %v): %v", due, offset, err)
+		}
+		reloaded := &models.Project{ID: project.ID, Name: project.Name, Slug: project.Slug, Path: project.Path}
+		if err := storage.LoadProject(reloaded); err != nil {
+			t.Fatalf("LoadProject after due %v: %v", due, err)
+		}
+	}
 }

@@ -17,6 +17,7 @@ const (
 	outlinerEmptyFiltered
 	outlinerEmptyProjectFiltered
 	outlinerEmptySearch
+	outlinerEmptySearchFiltered
 	outlinerEmptySearchInvalid
 	outlinerEmptyLens
 	outlinerEmptyFocus
@@ -215,7 +216,8 @@ func (m *OutlinerModel) headerGuidance() GuidanceSpec {
 
 func (m *OutlinerModel) emptyGuidance() GuidanceSpec {
 	var required string
-	switch m.classifyEmptyCause() {
+	cause := m.classifyEmptyCause()
+	switch cause {
 	case outlinerEmptyNoProjects:
 		required = "P projects"
 	case outlinerEmptyMode:
@@ -230,6 +232,10 @@ func (m *OutlinerModel) emptyGuidance() GuidanceSpec {
 		required = "Fx clear project filters"
 	case outlinerEmptySearch, outlinerEmptySearchInvalid:
 		required = "Esc clear search"
+	case outlinerEmptySearchFiltered:
+		// The query is what the user is holding, so widening the facets is the act
+		// that keeps it; leaving search is named beside it rather than in its place.
+		required = "fx clear filters"
 	case outlinerEmptyLens:
 		required = "Esc restore lens"
 	case outlinerEmptyFocus, outlinerEmptySection:
@@ -241,6 +247,9 @@ func (m *OutlinerModel) emptyGuidance() GuidanceSpec {
 	if strings.HasPrefix(required, "P ") {
 		optional = []string{"? help"}
 	}
+	if cause == outlinerEmptySearchFiltered {
+		optional = append([]string{"Esc clear search"}, optional...)
+	}
 	hints := append(requiredGuidanceHints(required), optionalGuidanceHints(10, optional...)...)
 	return GuidanceSpec{Hints: hints, Rows: 1}
 }
@@ -249,6 +258,12 @@ func (m *OutlinerModel) classifyEmptyCause() outlinerEmptyCause {
 	if m.hasSearchProjection() && m.SearchQuery() != "" {
 		if m.searchGate.invalid() {
 			return outlinerEmptySearchInvalid
+		}
+		// Facets are an AND gate applied before scoring, so the plain search
+		// message would claim the query matched nothing when a facet is what hid
+		// the result. Naming both exits is the difference.
+		if hasActiveCommonFilters(&m.filter.CommonFilterState) {
+			return outlinerEmptySearchFiltered
 		}
 		return outlinerEmptySearch
 	}
@@ -302,12 +317,22 @@ func (m *OutlinerModel) decoratePendingChordHint(path []string, hint ChordHint) 
 			if filter.hasStateFilter() {
 				hint.Label = fmt.Sprintf("states:%d", len(filter.States.Values()))
 			}
-		case "c":
+		case "a":
 			if filter.hasCompletionAgeFilter() {
 				hint.Label = "completed:all"
 				if days := filter.CompletionAge.days(); days > 0 {
 					hint.Label = fmt.Sprintf("completed:%dd+", days)
 				}
+			}
+		case "c":
+			// The no-context row is one more admitted alternative, so it counts
+			// alongside the names rather than as a facet of its own.
+			count := len(filter.Contexts)
+			if filter.NoContext {
+				count++
+			}
+			if count > 0 {
+				hint.Label = fmt.Sprintf("contexts:%d", count)
 			}
 		case "@":
 			switch {

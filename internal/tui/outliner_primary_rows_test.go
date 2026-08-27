@@ -92,6 +92,10 @@ func TestPrimaryAllUsesCanonicalGroupsAndDeduplicatesToday(t *testing.T) {
 	}
 }
 
+// TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership pins the
+// Review lane to the review tag alone. Context is its own axis, so a task whose
+// context happens to spell review stays in its lifecycle group: the lane reads
+// HasTag, never the context field.
 func TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership(t *testing.T) {
 	reviewed := primaryRowsTask("reviewed", models.StateBacklog)
 	reviewed.AddTag(reviewTaskTag)
@@ -122,7 +126,7 @@ func TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership(t *testing.
 		pinned      bool
 	}{
 		{id: reviewed.ID, want: "Review lane", promotedTag: reviewTaskTag},
-		{id: contextReviewed.ID, want: "Review lane", promotedTag: reviewTaskTag},
+		{id: contextReviewed.ID, want: "unpromoted backlog row"},
 		{id: reviewedToday.ID, want: "Today precedence", today: true},
 		{id: reviewedNext.ID, want: "Next precedence", next: true},
 		{id: pinned.ID, want: "Pinned precedence", pinned: true},
@@ -150,8 +154,8 @@ func TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership(t *testing.
 	if doingIndex < 0 || reviewIndex <= doingIndex {
 		t.Fatalf("Doing index=%d Review index=%d, want Review after Doing", doingIndex, reviewIndex)
 	}
-	if reviewCount != 2 {
-		t.Fatalf("Review section count = %d, want 2 unplanned review tasks", reviewCount)
+	if reviewCount != 1 {
+		t.Fatalf("Review section count = %d, want the one unplanned review-tagged task", reviewCount)
 	}
 	if reviewed.State() != models.StateBacklog || !reviewed.HasTag(reviewTaskTag) {
 		t.Fatalf("Review projection mutated durable task: state=%s tags=%v", reviewed.State(), reviewed.Tags)

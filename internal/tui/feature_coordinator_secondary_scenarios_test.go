@@ -1,11 +1,13 @@
 package tui
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -21,6 +23,16 @@ func newSecondaryEnv(t *testing.T, slug string, tasks ...*models.Task) (*scenari
 	t.Helper()
 	env := newScenarioEnv(t, slug, tasks...)
 	return env, newSecondaryCoordinators(env.svc)
+}
+
+// envLocators qualifies the named seed tasks with the environment's project, so
+// a scenario names bulk targets the same way the Outliner does.
+func envLocators(env *scenarioEnv, tasks ...*models.Task) []app.TaskLocator {
+	locators := make([]app.TaskLocator, 0, len(tasks))
+	for _, task := range tasks {
+		locators = append(locators, taskIdentityFor(task, env.project).Locator())
+	}
+	return locators
 }
 
 // runBatchResult executes a coordinator command and asserts it produced a
@@ -70,7 +82,9 @@ func TestBulkTransitionScenario(t *testing.T) {
 	b := seedTask(t, 2, "Second", models.StateBacklog)
 	env, features := newSecondaryEnv(t, "bulk", a, b)
 
-	msg := runBatchResult(t, features.Bulk.Transition([]string{a.ID, b.ID}, models.StateDoing))
+	msg := runBatchResult(t, features.Bulk.TransitionLocators(envLocators(env, a, b), models.StateDoing, func(changed int) string {
+		return fmt.Sprintf("Moved %d task(s)", changed)
+	}))
 	if len(msg.TouchedProjectIDs) != 1 || msg.TouchedProjectIDs[0] != env.project.ID {
 		t.Fatalf("touched projects = %v, want [%s]", msg.TouchedProjectIDs, env.project.ID)
 	}
@@ -102,7 +116,7 @@ func TestBulkDeleteScenario(t *testing.T) {
 	b := seedTask(t, 2, "Doomed B", models.StateBacklog)
 	env, features := newSecondaryEnv(t, "bulkdel", a, b)
 
-	msg := runBatchResult(t, features.Bulk.Delete([]string{a.ID, b.ID}))
+	msg := runBatchResult(t, features.Bulk.DeleteLocators(envLocators(env, a, b)))
 	if len(msg.TouchedProjectIDs) == 0 {
 		t.Fatal("bulk delete touched no projects")
 	}
@@ -129,7 +143,7 @@ func TestBulkSetPriorityScenario(t *testing.T) {
 	b.Priority = 3
 	env, features := newSecondaryEnv(t, "bulk-priority", a, b)
 
-	msg := runBatchResult(t, features.Bulk.SetPriority([]string{a.ID, b.ID}, 1))
+	msg := runBatchResult(t, features.Bulk.SetPriorityLocators(envLocators(env, a, b), 1))
 	if len(msg.TouchedProjectIDs) != 1 || msg.TouchedProjectIDs[0] != env.project.ID {
 		t.Fatalf("touched projects = %v, want [%s]", msg.TouchedProjectIDs, env.project.ID)
 	}
@@ -159,7 +173,7 @@ func TestBulkDueDateScenario(t *testing.T) {
 	env, features := newSecondaryEnv(t, "bulk-due", a, b)
 
 	due := time.Date(2026, 8, 1, 0, 0, 0, 0, time.Local)
-	runBatchResult(t, features.Bulk.SetDueDate([]string{a.ID, b.ID}, due))
+	runBatchResult(t, features.Bulk.SetDueDateLocators(envLocators(env, a, b), due))
 
 	reloaded := env.reload(t)
 	for _, id := range []string{a.ID, b.ID} {
@@ -168,7 +182,7 @@ func TestBulkDueDateScenario(t *testing.T) {
 		}
 	}
 
-	runBatchResult(t, features.Bulk.ClearDueDate([]string{a.ID, b.ID}))
+	runBatchResult(t, features.Bulk.ClearDueDateLocators(envLocators(env, a, b)))
 	reloaded = env.reload(t)
 	for _, id := range []string{a.ID, b.ID} {
 		if got := reloaded.GetTaskByID(id); got == nil || got.DueDate != nil {
@@ -195,7 +209,7 @@ func TestBulkDeferScenario(t *testing.T) {
 	env, features := newSecondaryEnv(t, "bulk-defer", a, b)
 
 	until := time.Date(2026, 8, 10, 0, 0, 0, 0, time.Local)
-	runBatchResult(t, features.Bulk.Defer([]string{a.ID, b.ID}, &until))
+	runBatchResult(t, features.Bulk.DeferLocators(envLocators(env, a, b), &until))
 
 	reloaded := env.reload(t)
 	for _, id := range []string{a.ID, b.ID} {
@@ -204,7 +218,7 @@ func TestBulkDeferScenario(t *testing.T) {
 		}
 	}
 
-	runBatchResult(t, features.Bulk.Defer([]string{a.ID, b.ID}, nil))
+	runBatchResult(t, features.Bulk.DeferLocators(envLocators(env, a, b), nil))
 	reloaded = env.reload(t)
 	for _, id := range []string{a.ID, b.ID} {
 		if got := reloaded.GetTaskByID(id); got == nil || got.DeferredUntil != nil {
@@ -221,16 +235,21 @@ func TestBulkDeferScenario(t *testing.T) {
 	}
 }
 
-// TestBulkSetTagsScenario covers the transactional bulk tags overlay: replacing
-// the tag set on two tasks commits one batch, the reloaded project shows the new
-// tags, and undo restores the originals.
+// TestBulkSetTagsScenario covers the transactional bulk tags overlay, which has
+// no BulkCoordinator method and commits through TaskItem.ExecuteOperation:
+// replacing the tag set on two tasks commits one batch, the reloaded project
+// shows the new tags, and undo restores the originals.
 func TestBulkSetTagsScenario(t *testing.T) {
 	a := seedTask(t, 1, "First", models.StateBacklog)
 	b := seedTask(t, 2, "Second", models.StateBacklog)
 	a.AddTag("old")
 	env, features := newSecondaryEnv(t, "bulk-tags", a, b)
 
-	runBatchResult(t, features.Bulk.SetTags([]string{a.ID, b.ID}, []string{"backend", "urgent"}))
+	runBatchResult(t, features.TaskItem.ExecuteOperation(app.TaskOperationRequest{
+		Operation: app.TaskOperationSetTags,
+		Targets:   envLocators(env, a, b),
+		Tags:      []string{"backend", "urgent"},
+	}, "Set Tags", ""))
 
 	reloaded := env.reload(t)
 	for _, id := range []string{a.ID, b.ID} {

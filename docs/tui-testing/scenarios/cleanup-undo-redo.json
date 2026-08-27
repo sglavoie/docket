@@ -4,7 +4,7 @@
   "size": "100x35",
   "actions": [
     { "type": "key", "label": "open completion-age facets", "key": "f" },
-    { "type": "key", "key": "c" },
+    { "type": "key", "key": "a" },
     { "type": "key", "label": "move from All ages to 30+ days", "key": "down" },
     { "type": "key", "key": "down" },
     { "type": "key", "label": "apply the age facet", "key": "enter" },

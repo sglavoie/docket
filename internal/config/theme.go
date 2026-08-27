@@ -1,48 +1,51 @@
 package config
 
 // Theme groups palette colors together with background and cursor overrides for
-// a single named theme (dark or light). Empty strings mean "use ANSI default".
+// a single named theme (dark or light). Both themes are compiled in and there is
+// no override channel: nothing unmarshals a theme from disk, and `T` toggles
+// between the two built-ins. Empty strings mean "use ANSI default".
 type Theme struct {
-	Palette         PaletteColors `json:"palette,omitzero"`
-	BackgroundColor string        `json:"background_color,omitempty"`
-	CursorColor     string        `json:"cursor_color,omitempty"`
-	CursorTextColor string        `json:"cursor_text_color,omitempty"`
+	Palette         PaletteColors
+	BackgroundColor string
+	CursorColor     string
+	CursorTextColor string
 }
 
-// PaletteColors holds user-configurable TUI palette overrides.
-// Empty strings mean "use ANSI default".
+// PaletteColors holds the per-role TUI colors of a compiled-in theme. There is
+// no override channel; the values are only ever set by the built-in dark and
+// light palettes. Empty strings mean "use ANSI default".
 type PaletteColors struct {
-	NormalText          string `json:"normal_text,omitempty"`
-	Muted               string `json:"muted,omitempty"`
-	Dimmed              string `json:"dimmed,omitempty"`
-	DimmedBg            string `json:"dimmed_bg,omitempty"`
-	DimmedFg            string `json:"dimmed_fg,omitempty"`
-	Primary             string `json:"primary,omitempty"`
-	Secondary           string `json:"secondary,omitempty"`
-	Accent              string `json:"accent,omitempty"`
-	Success             string `json:"success,omitempty"`
-	Warning             string `json:"warning,omitempty"`
-	Error               string `json:"error,omitempty"`
-	Border              string `json:"border,omitempty"`
-	Priority1Title      string `json:"priority1_title,omitempty"`
-	Priority2Title      string `json:"priority2_title,omitempty"`
-	Priority3Title      string `json:"priority3_title,omitempty"`
-	TaskContext         string `json:"task_context,omitempty"`
-	TaskContextDeferred string `json:"task_context_deferred,omitempty"`
+	NormalText          string
+	Muted               string
+	Dimmed              string
+	DimmedBg            string
+	DimmedFg            string
+	Primary             string
+	Secondary           string
+	Accent              string
+	Success             string
+	Warning             string
+	Error               string
+	Border              string
+	Priority1Title      string
+	Priority2Title      string
+	Priority3Title      string
+	TaskContext         string
+	TaskContextDeferred string
 
-	SemanticBugTitle             string `json:"semantic_bug_title,omitempty"`
-	SemanticEpicTitle            string `json:"semantic_epic_title,omitempty"`
-	SemanticStoryTitle           string `json:"semantic_story_title,omitempty"`
-	SemanticFeatureTitle         string `json:"semantic_feature_title,omitempty"`
-	SemanticIdeaTitle            string `json:"semantic_idea_title,omitempty"`
-	SemanticBugSelectedTitle     string `json:"semantic_bug_selected_title,omitempty"`
-	SemanticEpicSelectedTitle    string `json:"semantic_epic_selected_title,omitempty"`
-	SemanticStorySelectedTitle   string `json:"semantic_story_selected_title,omitempty"`
-	SemanticFeatureSelectedTitle string `json:"semantic_feature_selected_title,omitempty"`
-	SemanticIdeaSelectedTitle    string `json:"semantic_idea_selected_title,omitempty"`
-	SemanticBugDeferredTitle     string `json:"semantic_bug_deferred_title,omitempty"`
-	SemanticEpicDeferredTitle    string `json:"semantic_epic_deferred_title,omitempty"`
-	SemanticStoryDeferredTitle   string `json:"semantic_story_deferred_title,omitempty"`
-	SemanticFeatureDeferredTitle string `json:"semantic_feature_deferred_title,omitempty"`
-	SemanticIdeaDeferredTitle    string `json:"semantic_idea_deferred_title,omitempty"`
+	SemanticBugTitle             string
+	SemanticEpicTitle            string
+	SemanticStoryTitle           string
+	SemanticFeatureTitle         string
+	SemanticIdeaTitle            string
+	SemanticBugSelectedTitle     string
+	SemanticEpicSelectedTitle    string
+	SemanticStorySelectedTitle   string
+	SemanticFeatureSelectedTitle string
+	SemanticIdeaSelectedTitle    string
+	SemanticBugDeferredTitle     string
+	SemanticEpicDeferredTitle    string
+	SemanticStoryDeferredTitle   string
+	SemanticFeatureDeferredTitle string
+	SemanticIdeaDeferredTitle    string
 }

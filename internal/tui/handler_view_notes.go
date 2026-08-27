@@ -19,7 +19,10 @@ import (
 func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case ProjectNoteMutationResultMsg:
-		return true, m.reconcileNoteResult(msg)
+		// A committed note transaction is the primary invalidation: the index
+		// holds parsed note bodies, so a create, edit, rename, move, or delete
+		// makes it stale immediately.
+		return true, tea.Batch(m.reconcileNoteResult(msg), m.requestNoteSearchIndexLoad())
 
 	case ProjectNoteMutationErrorMsg:
 		location := normalizedNoteLocation(msg.Location, msg.ProjectID)
@@ -47,6 +50,9 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 			m.err = fmt.Errorf("%s completed, refresh failed: %w", ledgerRestoreLabel(msg.Redo), refreshErr)
 			cmds = append(cmds, statusTimeout(5*time.Second))
 		}
+		// A ledger restore rewrites note bytes without emitting a mutation
+		// result, so it owes the index its own reload.
+		cmds = append(cmds, m.requestNoteSearchIndexLoad())
 		return true, tea.Batch(cmds...)
 
 	case ProjectNoteLedgerErrorMsg:

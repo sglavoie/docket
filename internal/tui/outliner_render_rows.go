@@ -50,6 +50,8 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 			rowBuilder.WriteString(m.renderOutlinerProjectHeaderRow(row, selected, viewport.rowWidth, i))
 		case row.IsChecklistItem:
 			rowBuilder.WriteString(m.renderOutlinerChecklistRow(row, selected, viewport.rowWidth, i))
+		case row.IsNoteRow:
+			rowBuilder.WriteString(m.renderOutlinerNoteRow(row, selected, viewport.rowWidth, i, colLayout))
 		case selected && m.isQuickEditRow(row):
 			rowBuilder.WriteString(m.renderOutlinerQuickEditRow(row, viewport.rowWidth))
 		default:
@@ -319,6 +321,81 @@ func (m *OutlinerModel) renderOutlinerChecklistRow(row outlinerRow, selected boo
 	return ZebraLine(truncateToVisualWidth(gutter+content, rowWidth), rowWidth, rowIndex)
 }
 
+// noteRowGlyph marks a note in a mixed result list. It is a literal here rather
+// than an icons registry key for the same reason the section header's `@` is: it
+// names a row kind this renderer draws, not an entity the rest of the product
+// has to spell the same way.
+const noteRowGlyph = "≡"
+
+// renderOutlinerNoteRow draws one row of the search projection's notes tier. It
+// keeps the task row's rhythm — the same cursor bar, the same badge columns, the
+// same muted match cue in the same place — without borrowing task furniture: a
+// note has no state, priority, or due date, so those columns carry the note
+// glyph and blanks rather than a plausible-looking badge. Holding the columns
+// open is what keeps the notes block's titles on the column the task matches
+// above it use.
+func (m *OutlinerModel) renderOutlinerNoteRow(
+	row outlinerRow,
+	selected bool,
+	rowWidth, rowIndex int,
+	colLayout *ColumnLayout,
+) string {
+	entry := m.searchNoteMatches[row.NoteRow]
+	paint := m.cursorPaintFor(selected)
+	bg := paint.gutterBg()
+	gutter := paint.bar(lipgloss.NewStyle(), RenderCursorPrefix())
+	if m.multiSelectMode {
+		// A note is not selectable, so the checkbox column is held open rather than
+		// drawn: an empty box beside the task boxes would advertise a membership
+		// every selection operation refuses.
+		gutter += gutterPiece(bg, lipgloss.NewStyle(), "   ") + gutterSpace(bg)
+	}
+
+	glyph := MutedStyle.Render(noteRowGlyph)
+	if colLayout != nil && colLayout.HasStatus {
+		glyph = PadBadge(glyph, colLayout.StatusWidth)
+	}
+	priorityColumn := ""
+	if colLayout != nil && colLayout.HasPriority {
+		priorityColumn = strings.Repeat(" ", colLayout.PriorityWidth+1)
+	}
+	owner := ""
+	if entry.row.OwnerLabel != "" {
+		owner = "  " + MutedStyle.Render("["+entry.row.OwnerLabel+"]")
+	}
+	cue := taskMatchSourceCue(row)
+
+	// The space after the glyph is the one the task row spends after its state
+	// badge, so both blocks start their content at the same column.
+	titleWidth := func() int {
+		return max(rowWidth-lipgloss.Width(gutter)-lipgloss.Width(glyph)-1-
+			lipgloss.Width(priorityColumn)-lipgloss.Width(owner)-lipgloss.Width(cue), 1)
+	}
+	// The note row sheds the same two things in the same order the task row does,
+	// under the same title target: the match cue first, because it explains a
+	// result whose title has become unreadable, and the owner label second. Both
+	// are dropped rather than truncated — the whole line is clamped to rowWidth at
+	// the end, and a cue cut mid-word would read as a different word.
+	titleTarget := min(8, max(rowWidth/4, 4))
+	if titleWidth() < titleTarget {
+		cue = ""
+	}
+	if titleWidth() < titleTarget {
+		owner = ""
+	}
+	title := ""
+	if entry.row.Note != nil {
+		title = truncateToVisualWidth(entry.row.Note.Title, titleWidth())
+	}
+	content := glyph + " " + priorityColumn +
+		HighlightText(title, entry.match.titlePositions, NormalStyle) + owner + cue
+
+	if selected {
+		return outlinerCursorRow(gutter, content, rowWidth, paint)
+	}
+	return ZebraLine(truncateToVisualWidth(gutter+content, rowWidth), rowWidth, rowIndex)
+}
+
 // taskRowSegments holds every rendered piece of a task row except the title, so
 // the render path and the viewport measurement path derive the title budget from
 // one formula instead of two that can drift apart.
@@ -410,6 +487,7 @@ var matchSourceLabels = map[outlinerMatchSource]string{
 	matchSourceAttachment:  "attachment",
 	matchSourceProject:     "project",
 	matchSourceDetails:     "details",
+	matchSourceNote:        "note",
 }
 
 // taskMatchSourceCue explains why a row whose title shows no match is in the

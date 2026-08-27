@@ -87,7 +87,14 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	// Launch is deliberately not reconstructed from machine-local navigation
 	// state. The first message performs an explicit clean-root reset so every run
 	// begins in the same Active Projects / All Outliner regardless of stale v4
-	// StartupRoute, CurrentRoute, project-route, search, or selection data.
+	// StartupRoute, CurrentRoute, project-route, search, or selection data. A
+	// named lens is the one thing layered on top of that clean start, and it is
+	// not navigation: it is a saved set of projection axes the user named and
+	// asked to reopen with. The pointer is read here, before any handler runs,
+	// because the reset itself clears it — reading it now and draining it after
+	// the population lands is what makes the order race-free without teaching the
+	// reset about a case it should not know.
+	app.pendingLaunchLens = runtime.Machine().ActiveNamedLens()
 	app.startupMessage = launchOutlinerMsg{}
 	if changed, reconcileErr := app.appService.ReconcilePlanning(); reconcileErr != nil {
 		logging.Warn("failed to reconcile startup planning state: %v", reconcileErr)
@@ -339,6 +346,12 @@ func (m *AppModel) Init() tea.Cmd {
 		cmds = append(cmds, func() tea.Msg {
 			return msg
 		})
+	}
+	// The note index is loaded off the launch path rather than in NewAppModel:
+	// nothing renders it before the first frame, and a synchronous read of every
+	// note collection would sit in front of that frame.
+	if noteCmd := m.requestNoteSearchIndexLoad(); noteCmd != nil {
+		cmds = append(cmds, noteCmd)
 	}
 	return tea.Batch(cmds...)
 }

@@ -69,9 +69,19 @@ and only when the state actually changes. A task reaching
 
 ## TUI invariants
 
-The AppModel owns exactly one scope-aware Outliner, and every launch starts
-Active Projects, All, with no restored navigation, search, filters, or
-selection.
+The AppModel owns exactly one scope-aware Outliner. Every launch starts Active
+Projects, All, with no restored navigation or selection — unless a named lens was
+active, in which case that lens's saved axes (mode, query, filters, sort, and
+project scope) are reapplied on top of that clean start. Navigation, folds,
+cursor, and selection are still never restored, and the first Esc after a
+restored lens lands on the same Active Projects, All view a lens-free launch
+would have shown. An active-lens pointer that no longer resolves fails closed to
+no lens, silently.
+
+A lens may own project scope. An empty scope means the lens does not own that
+axis and leaves the current view's scope alone; it never means "force global". A
+lens whose scoped project is missing, archived, or parked is refused whole,
+before any axis is written.
 
 `OperationRegistry` is the descriptor authority, `OperationExecutor` the single
 invocation pipeline, and each surface's `InputStrategy` the source of its direct
@@ -93,7 +103,7 @@ One key is one act on every entity surface:
 
 | Keys | Act |
 | --- | --- |
-| `Enter` `a` `e` `E`/`Ctrl+E` | zoom in · create · edit · body/external |
+| `Enter` `a` `e` `E`/`Ctrl+E` | zoom in · open note · create · edit · body/external |
 | `/` `v` `Ctrl+A` `P` `%` | search · select · select all · scope · reown |
 | `y`/`Y` `J`/`K` `*` `#` | copy · reorder · pin · tags |
 | `&` `;` | attachments · comments |
@@ -199,6 +209,13 @@ case mode, revision, and pane width all hold. A rebuilt cache opens one line
 above a locatable body match and otherwise at the top. A `ParseError` note
 renders a warning, never Markdown, and never scrolls. `T` toggles only
 dark/light.
+
+Notes are also reachable from the Outliner `/` search as the lowest tier, below
+Details. That tier is read-only discovery: it respects the current project
+scope, still excludes archived projects, and is omitted entirely whenever the
+query carries a sigil, because sigils compile to an AND gate no note can
+satisfy. Enter on a note row leaves the Outliner for the Notes surface; it does
+not give notes tags, links, or bulk actions.
 
 ## Key bindings
 
@@ -331,7 +348,10 @@ projects/<slug>/.attachments/
 ```
 
 Machine-local `~/.tt/runtime/<workspace-id>/machine.json` holds the dark/light
-theme and named lenses. Workspace paths derive below approved roots; preserve
+theme, the named lenses, and the active-lens pointer, which is validated for
+shape alone and never referentially. Lenses stay machine-local: a lens mutation
+opens no workspace transaction and records no undo ledger entry, so `u` never
+takes a lens back. Workspace paths derive below approved roots; preserve
 symlink-aware containment, checked revisions, deterministic locks, and recovery
 manifests.
 

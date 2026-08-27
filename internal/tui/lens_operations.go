@@ -24,6 +24,12 @@ import (
 // baseline — is published only after the commit returns nil. A failed commit
 // leaves both the cached machine snapshot and the Outliner exactly as they
 // were, so a refusal is indistinguishable from never having asked.
+//
+// The active-lens pointer is the one documented exception, and it is one
+// precisely because it records nothing: it is a hint about which lens to reopen
+// with, written by publishLens after the projection is already live, so it has
+// no act to be ordered ahead of. Create, replace, rename, and delete all still
+// commit first.
 const (
 	operationLensApply       OperationID = "tui.lens.apply"
 	operationLensCreate      OperationID = "tui.lens.create"
@@ -229,6 +235,55 @@ func (m *AppModel) commitNamedLensMutation(mutate func(*config.MachineState) err
 	return m.runtime.CommitMachine(machine)
 }
 
+// commitActiveLensPointer records which lens the Outliner should reopen with, or
+// clears the pointer when passed the empty string. It is the one lens write that
+// is not ordered before its TUI effect, because it records a resume hint rather
+// than a lens: publishLens has already installed the projection by the time this
+// runs, and a failed commit costs the user nothing but the hint. Writing an
+// unchanged pointer is skipped so an ordinary Esc or global reset does not
+// rewrite identical bytes on every press.
+func (m *AppModel) commitActiveLensPointer(id string) error {
+	if m == nil || m.runtime == nil {
+		return nil
+	}
+	machine := m.runtime.Machine()
+	if machine == nil || machine.ActiveLensID == id {
+		return nil
+	}
+	return m.commitNamedLensMutation(func(machine *config.MachineState) error {
+		machine.ActiveLensID = id
+		return nil
+	})
+}
+
+// restorePendingLaunchLens applies the lens the machine-local pointer named when
+// this session was constructed, exactly once, and forgets it either way. It runs
+// after the clean-root reset has already completed, which is the whole design:
+// the lens is layered on top of the canonical launch view rather than replacing
+// it, so lensRestorationPoint captures that view and the first Esc lands exactly
+// where a lens-free launch would have started.
+//
+// A lens that no longer applies — a mode the build no longer knows, a query the
+// grammar cannot honor, a scope naming a project that was deleted, archived, or
+// parked elsewhere — fails closed to no lens, silently. The pointer is a hint the
+// user last expressed on this machine, not a record they are owed an error about,
+// and the reset already cleared it, so the next launch simply does not ask again.
+func (m *AppModel) restorePendingLaunchLens() tea.Cmd {
+	if m == nil || m.pendingLaunchLens == nil {
+		return nil
+	}
+	lens := *m.pendingLaunchLens
+	m.pendingLaunchLens = nil
+	if m.crossOutliner == nil {
+		return nil
+	}
+	cmd, err := m.crossOutliner.ApplyNamedLens(lens)
+	if err != nil {
+		return nil
+	}
+	return cmd
+}
+
 // namedLensNameTaken reports whether another record already answers to the
 // name. Uniqueness is case-insensitive, matching NamedLensList.Validate; this
 // check exists to name the offending lens rather than to add a second rule.
@@ -271,8 +326,11 @@ func (m *AppModel) executeLensOperation(
 	}
 }
 
-// applyLensOperation installs a saved projection. It writes nothing durable, so
-// there is no commit to order against: ApplyNamedLens decides every refusal
+// applyLensOperation installs a saved projection. The only durable byte it
+// writes is the machine-local active-lens pointer, and that one is written from
+// publishLens rather than ordered ahead of the application here: it is a resume
+// hint, not a record of the act, so a failed pointer commit degrades to a status
+// warning and the projection stands. ApplyNamedLens still decides every refusal
 // before it touches an axis.
 func (m *AppModel) applyLensOperation(lens config.NamedLens) OperationHandlerResult {
 	out := m.crossOutliner

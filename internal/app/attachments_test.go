@@ -15,7 +15,7 @@ func TestAttachURLRecordsMetadataOnly(t *testing.T) {
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
 	svc := newTestService(repo)
 
-	if _, err := svc.AttachURL(task.ID, "https://example.com/x"); err != nil {
+	if _, err := svc.AttachURL(repo.loc(task.ID), "https://example.com/x"); err != nil {
 		t.Fatalf("AttachURL: %v", err)
 	}
 	if len(task.Attachments) != 1 || !task.Attachments[0].IsURL {
@@ -39,7 +39,7 @@ func TestAttachURLRejectsReservedDelimiter(t *testing.T) {
 	svc := newTestService(repo)
 
 	// A URL carrying the reserved ";" attachment delimiter is rejected by the model.
-	if _, err := svc.AttachURL(task.ID, "https://example.com/a;b"); err == nil {
+	if _, err := svc.AttachURL(repo.loc(task.ID), "https://example.com/a;b"); err == nil {
 		t.Fatal("expected AttachURL to reject a reserved delimiter")
 	}
 	if len(repo.commits) != 0 {
@@ -52,7 +52,7 @@ func TestAttachURLRejectsNonWebOrRelativeValues(t *testing.T) {
 		task := newTask("t1", 1, "Task")
 		repo := newFakeRepo(newProject("p1", "Alpha", task))
 		svc := newTestService(repo)
-		if _, err := svc.AttachURL(task.ID, value); !errors.Is(err, app.ErrInvalidInput) {
+		if _, err := svc.AttachURL(repo.loc(task.ID), value); !errors.Is(err, app.ErrInvalidInput) {
 			t.Errorf("AttachURL(%q) error = %v, want ErrInvalidInput", value, err)
 		}
 		if len(repo.commits) != 0 {
@@ -66,7 +66,7 @@ func TestAttachCodeReferenceRecordsMetadataOnly(t *testing.T) {
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
 	svc := newTestService(repo)
 
-	if _, err := svc.AttachCodeReference(task.ID, "src/main.go", 42); err != nil {
+	if _, err := svc.AttachCodeReference(repo.loc(task.ID), "src/main.go", 42); err != nil {
 		t.Fatalf("AttachCodeReference: %v", err)
 	}
 	if len(task.Attachments) != 1 || !task.Attachments[0].IsCodeRef || task.Attachments[0].LineNumber != 42 {
@@ -82,7 +82,7 @@ func TestAttachCodeReferenceRejectsBadLine(t *testing.T) {
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
 	svc := newTestService(repo)
 
-	if _, err := svc.AttachCodeReference(task.ID, "src/main.go", 0); err == nil {
+	if _, err := svc.AttachCodeReference(repo.loc(task.ID), "src/main.go", 0); err == nil {
 		t.Fatal("expected AttachCodeReference to reject a non-positive line")
 	}
 	if len(repo.commits) != 0 {
@@ -96,7 +96,7 @@ func TestAttachFileEmitsCopyOp(t *testing.T) {
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	_, err := svc.AttachFile(task.ID, "/external/dir/report.pdf")
+	_, err := svc.AttachFile(repo.loc(task.ID), "/external/dir/report.pdf")
 	if err != nil {
 		t.Fatalf("AttachFile: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestAttachFileMissingSourceRejected(t *testing.T) {
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
 	svc := newTestService(repo)
 
-	if _, err := svc.AttachFile(task.ID, ""); !errors.Is(err, app.ErrInvalidInput) {
+	if _, err := svc.AttachFile(repo.loc(task.ID), ""); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("AttachFile(empty) error = %v, want ErrInvalidInput", err)
 	}
 	if len(repo.commits) != 0 {
@@ -140,7 +140,7 @@ func TestAttachFileRejectsUnsafeDestinationNameBeforeMutation(t *testing.T) {
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
 	svc := newTestService(repo)
 
-	if _, err := svc.AttachFile(task.ID, ".."); !errors.Is(err, app.ErrInvalidInput) {
+	if _, err := svc.AttachFile(repo.loc(task.ID), ".."); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("AttachFile(..) error = %v, want ErrInvalidInput", err)
 	}
 	if len(task.Attachments) != 0 || len(repo.commits) != 0 {
@@ -155,7 +155,7 @@ func TestAttachFileReservedFilenameRejectedBeforeCommit(t *testing.T) {
 
 	// A source basename containing the reserved ";" delimiter fails metadata
 	// validation, which must abort BEFORE any copy op is committed — no orphan.
-	if _, err := svc.AttachFile(task.ID, "/external/bad;name.txt"); err == nil {
+	if _, err := svc.AttachFile(repo.loc(task.ID), "/external/bad;name.txt"); err == nil {
 		t.Fatal("expected AttachFile to reject a reserved filename")
 	}
 	if len(repo.commits) != 0 {
@@ -178,7 +178,7 @@ func TestRemoveAttachmentFileEmitsDeleteOp(t *testing.T) {
 	repo := newFakeRepo(project)
 	svc := newTestService(repo)
 
-	_, err := svc.RemoveAttachment(task.ID, 1, true)
+	_, err := svc.RemoveAttachment(repo.loc(task.ID), 1, true)
 	if err != nil {
 		t.Fatalf("RemoveAttachment: %v", err)
 	}
@@ -203,7 +203,7 @@ func TestRemoveURLAttachmentCarriesNoFileOp(t *testing.T) {
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
 	svc := newTestService(repo)
 
-	_, err := svc.RemoveAttachment(task.ID, 0, true)
+	_, err := svc.RemoveAttachment(repo.loc(task.ID), 0, true)
 	if err != nil {
 		t.Fatalf("RemoveAttachment: %v", err)
 	}
@@ -220,7 +220,7 @@ func TestRemoveAttachmentKeepFileCarriesNoFileOp(t *testing.T) {
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
 	svc := newTestService(repo)
 
-	_, err := svc.RemoveAttachment(task.ID, 0, false)
+	_, err := svc.RemoveAttachment(repo.loc(task.ID), 0, false)
 	if err != nil {
 		t.Fatalf("RemoveAttachment: %v", err)
 	}
@@ -234,7 +234,7 @@ func TestRemoveAttachmentIndexOutOfRange(t *testing.T) {
 	repo := newFakeRepo(newProject("p1", "Alpha", task))
 	svc := newTestService(repo)
 
-	if _, err := svc.RemoveAttachment(task.ID, 0, true); !errors.Is(err, app.ErrInvalidInput) {
+	if _, err := svc.RemoveAttachment(repo.loc(task.ID), 0, true); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("RemoveAttachment(out of range) error = %v, want ErrInvalidInput", err)
 	}
 	if len(repo.commits) != 0 {
@@ -252,7 +252,7 @@ func TestRemoveAttachmentCommitErrorSurfaces(t *testing.T) {
 	repo.commitErr = sentinel
 	svc := newTestService(repo)
 
-	if _, err := svc.RemoveAttachment(task.ID, 0, true); !errors.Is(err, sentinel) {
+	if _, err := svc.RemoveAttachment(repo.loc(task.ID), 0, true); !errors.Is(err, sentinel) {
 		t.Fatalf("RemoveAttachment error = %v, want injected failure", err)
 	}
 	if len(task.Attachments) != 1 || task.Attachments[0].Filename != "gone.txt" {
@@ -266,7 +266,7 @@ func TestAttachFileCommitErrorRestoresMetadata(t *testing.T) {
 	repo.commitErr = errors.New("commit failed")
 	svc := newTestService(repo)
 
-	if _, err := svc.AttachFile(task.ID, "/external/report.pdf"); err == nil {
+	if _, err := svc.AttachFile(repo.loc(task.ID), "/external/report.pdf"); err == nil {
 		t.Fatal("AttachFile unexpectedly succeeded")
 	}
 	if len(task.Attachments) != 0 {
@@ -295,7 +295,7 @@ func TestAttachFileUndoRedoAcceptance(t *testing.T) {
 	repo.seed(t)
 
 	appSvc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
-	_, err := appSvc.AttachFile(task.ID, src)
+	_, err := appSvc.AttachFile(repo.loc(task.ID), src)
 	if err != nil {
 		t.Fatalf("AttachFile: %v", err)
 	}
@@ -353,7 +353,7 @@ func TestRemoveAttachmentUndoRedoAcceptance(t *testing.T) {
 	repo.revisions[project.ID] = doc.Revision
 
 	appSvc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
-	if _, err := appSvc.RemoveAttachment(task.ID, 0, true); err != nil {
+	if _, err := appSvc.RemoveAttachment(repo.loc(task.ID), 0, true); err != nil {
 		t.Fatalf("RemoveAttachment: %v", err)
 	}
 	requireAbsentFile(t, gonePath)

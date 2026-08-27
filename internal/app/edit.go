@@ -12,10 +12,7 @@ import (
 // field is applied only when non-nil, so a caller changes just the fields it
 // sets and leaves the rest untouched.
 type EditRequest struct {
-	// TaskID identifies the task to edit when it is workspace-unique.
-	TaskID string
-	// Locator is the project-qualified alternative to TaskID. The two fields are
-	// mutually exclusive.
+	// Locator is the project-qualified task to edit.
 	Locator TaskLocator
 	// Title, when non-nil, replaces the task title (validated).
 	Title *string
@@ -27,7 +24,7 @@ type EditRequest struct {
 // request that changes nothing is still valid and re-commits the project
 // unchanged; validation of a non-nil title runs before any mutation.
 func (s *Service) Edit(req EditRequest) (TaskResult, error) {
-	ref, snap, revision, err := s.loadTaskSelection(req.TaskID, req.Locator)
+	ref, snap, revision, err := s.loadTaskSelection("", req.Locator)
 	if err != nil {
 		return TaskResult{}, err
 	}

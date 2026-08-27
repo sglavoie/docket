@@ -40,15 +40,16 @@ func TestArtifactsContract(t *testing.T) {
 func runArtifactContract(t *testing.T, svc *app.Service, projectID string) {
 	t.Helper()
 
-	// Save a note as a transaction artifact, then read it back through the query.
+	// Create a note as a transaction artifact, then read it back through the query.
 	ts := time.Date(2026, 7, 10, 9, 0, 0, 0, time.UTC)
+	location := app.ProjectNoteLocation(projectID)
 	note := &models.Note{Title: "Design", Filename: "design.md", Body: "hello world", CreatedAt: ts, ModifiedAt: ts}
-	saveRes, err := svc.SaveNote(projectID, note)
+	saveRes, err := svc.CreateNote(app.NoteCreateRequest{Location: location, Note: note})
 	if err != nil {
-		t.Fatalf("SaveNote: %v", err)
+		t.Fatalf("CreateNote: %v", err)
 	}
 	if saveRes.Filename != "design.md" {
-		t.Fatalf("SaveNote filename = %q, want design.md", saveRes.Filename)
+		t.Fatalf("CreateNote filename = %q, want design.md", saveRes.Filename)
 	}
 	notes, err := svc.Notes(projectID)
 	if err != nil {
@@ -62,8 +63,8 @@ func runArtifactContract(t *testing.T, svc *app.Service, projectID string) {
 	}
 
 	// Delete the note; the query then reports none.
-	if _, deleteErr := svc.DeleteNote(projectID, "design.md"); deleteErr != nil {
-		t.Fatalf("DeleteNote: %v", deleteErr)
+	if _, deleteErr := svc.RemoveNote(app.NoteDeleteRequest{Location: location, Note: notes[0]}); deleteErr != nil {
+		t.Fatalf("RemoveNote: %v", deleteErr)
 	}
 	notes, err = svc.Notes(projectID)
 	if err != nil {
@@ -71,10 +72,6 @@ func runArtifactContract(t *testing.T, svc *app.Service, projectID string) {
 	}
 	if len(notes) != 0 {
 		t.Fatalf("Notes after delete len = %d, want 0", len(notes))
-	}
-
-	if _, err := svc.ProjectTags(projectID); err != nil {
-		t.Fatalf("ProjectTags: %v", err)
 	}
 }
 
@@ -86,17 +83,17 @@ func TestArtifactsValidation(t *testing.T) {
 	port := repo.artifactPort()
 	svc := app.NewServiceWithArtifacts(repo, fixedClock{t: time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)}, &seqIDs{}, port)
 
-	if _, err := svc.SaveNote(project.ID, &models.Note{Title: "  "}); !errors.Is(err, app.ErrInvalidInput) {
-		t.Fatalf("SaveNote blank title err = %v, want ErrInvalidInput", err)
+	if _, err := svc.CreateNote(app.NoteCreateRequest{Location: app.ProjectNoteLocation(project.ID), Note: &models.Note{Title: "  "}}); !errors.Is(err, app.ErrInvalidInput) {
+		t.Fatalf("CreateNote blank title err = %v, want ErrInvalidInput", err)
 	}
 	if _, err := svc.CreateNote(app.NoteCreateRequest{Location: app.GlobalNoteLocation(), Note: &models.Note{Title: "  "}}); !errors.Is(err, app.ErrInvalidInput) {
 		t.Fatalf("CreateNote blank global title err = %v, want ErrInvalidInput", err)
 	}
-	if _, err := svc.SaveNote("missing", &models.Note{Title: "x", Filename: "x.md"}); !errors.Is(err, app.ErrProjectNotFound) {
-		t.Fatalf("SaveNote unknown project err = %v, want ErrProjectNotFound", err)
+	if _, err := svc.CreateNote(app.NoteCreateRequest{Location: app.ProjectNoteLocation("missing"), Note: &models.Note{Title: "x", Filename: "x.md"}}); !errors.Is(err, app.ErrProjectNotFound) {
+		t.Fatalf("CreateNote unknown project err = %v, want ErrProjectNotFound", err)
 	}
-	if _, err := svc.DeleteNote(project.ID, ""); !errors.Is(err, app.ErrInvalidInput) {
-		t.Fatalf("DeleteNote blank filename err = %v, want ErrInvalidInput", err)
+	if _, err := svc.RemoveNote(app.NoteDeleteRequest{Location: app.ProjectNoteLocation(project.ID), Note: &models.Note{Filename: ""}}); !errors.Is(err, app.ErrInvalidInput) {
+		t.Fatalf("RemoveNote blank filename err = %v, want ErrInvalidInput", err)
 	}
 	if len(repo.commits) != 0 || len(repo.artifactCommits) != 0 {
 		t.Fatalf("a rejected request committed %d changesets and %d artifact transactions, want 0", len(repo.commits), len(repo.artifactCommits))

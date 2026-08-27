@@ -302,6 +302,31 @@ func (s *seqIDs) NewID() string {
 	return fmt.Sprintf("gen-task-%d", s.n)
 }
 
+// loc returns the project-qualified locator for taskID by finding the seeded
+// project that owns it, so a test names a mutation target the way the Outliner
+// does rather than relying on a workspace-unique task ID. An unknown ID panics:
+// it is a broken fixture, not a runtime condition under test.
+func (r *fakeRepo) loc(taskID string) app.TaskLocator {
+	for _, p := range r.projects {
+		for _, t := range p.Tasks {
+			if t.ID == taskID {
+				return app.TaskLocator{ProjectID: p.ID, TaskID: taskID}
+			}
+		}
+	}
+	panic(fmt.Sprintf("harness: no seeded project owns task %q", taskID))
+}
+
+// repoLocators maps a slice of task IDs onto project-qualified locators through
+// the seeded fixture, so a table-driven bulk test keeps naming targets by ID.
+func repoLocators(r *fakeRepo, taskIDs []string) []app.TaskLocator {
+	locators := make([]app.TaskLocator, 0, len(taskIDs))
+	for _, id := range taskIDs {
+		locators = append(locators, r.loc(id))
+	}
+	return locators
+}
+
 // newTestService wires a Service over the fake repo with a fixed clock and
 // deterministic ID generator.
 func newTestService(repo *fakeRepo) *app.Service {

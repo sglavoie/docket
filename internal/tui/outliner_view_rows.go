@@ -39,25 +39,33 @@ type outlinerRow struct {
 	ChecklistIndex     int                       // Position of the item inside the owner task's checklist
 	ChecklistDone      bool                      // Ticked state of the item this row names
 	MatchSource        outlinerMatchSource       // Field that produced this search hit; matchSourceNone on every ordinary row
+	IsNoteRow          bool                      // True for one note from the search projection's notes tier
+	NoteRow            NoteRowIdentity           // Workspace identity of the note an IsNoteRow row names
 }
 
 // isTaskRow reports whether the row carries a task payload (i.e. it is not a
-// section header, project sub-header, separator, or checklist item). Use this
-// in place of the historical `!IsSectionHeader && !IsSeparator` pattern so that
-// newly introduced row kinds (e.g. project sub-headers) are consistently
+// section header, project sub-header, separator, checklist item, or note). Use
+// this in place of the historical `!IsSectionHeader && !IsSeparator` pattern so
+// that newly introduced row kinds (e.g. project sub-headers) are consistently
 // excluded from task-only logic. A checklist row carries its owner task pointer
 // for rendering, so excluding it here is what stops every task operation from
-// silently falling through to that owner.
+// silently falling through to that owner. A note row carries no task at all, so
+// excluding it here is what makes every task-only guard refuse it by row kind
+// rather than by a nil check the guard may not have.
 func (r outlinerRow) isTaskRow() bool {
-	return !r.IsSectionHeader && !r.IsProjectHeader && !r.IsSeparator && !r.IsChecklistItem
+	return !r.IsSectionHeader && !r.IsProjectHeader && !r.IsSeparator &&
+		!r.IsChecklistItem && !r.IsNoteRow
 }
 
 // isNavigable reports whether the cursor is allowed to rest on this row.
-// Section headers, project sub-headers, and task rows are all navigable, and
-// h/l fold the group a header names. Only separators (purely decorative) are
-// skipped by cursor movement and rebuild/clamp paths. A header cursor names no
-// task, so every task operation refuses it rather than falling back to a row
-// the user is not pointing at.
+// Section headers, project sub-headers, note rows, and task rows are all
+// navigable, and h/l fold the group a header names. Only separators (purely
+// decorative) are skipped by cursor movement and rebuild/clamp paths. A note
+// row is the first kind that is navigable while not being a task row: the
+// cursor must reach a search result to open it, and every task operation must
+// still refuse it. A header cursor names no task either, so every task
+// operation refuses it rather than falling back to a row the user is not
+// pointing at.
 func (r outlinerRow) isNavigable() bool {
 	return !r.IsSeparator
 }
@@ -105,6 +113,21 @@ func (m *OutlinerModel) cursorNamesSectionHeader() bool {
 		return false
 	}
 	return m.rows[m.cursor].IsSectionHeader
+}
+
+// cursorNoteIdentity names the note the cursor rests on, and is the second read
+// of the cursor's row kind both command contexts share. A note row carries no
+// project or task, so this identity is the only thing an operation acting on it
+// can resolve a target from.
+func (m *OutlinerModel) cursorNoteIdentity() (NoteRowIdentity, bool) {
+	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
+		return NoteRowIdentity{}, false
+	}
+	row := m.rows[m.cursor]
+	if !row.IsNoteRow || row.NoteRow.Filename == "" {
+		return NoteRowIdentity{}, false
+	}
+	return row.NoteRow, true
 }
 
 // isZoomedSectionRow names the header of the section the projection is zoomed

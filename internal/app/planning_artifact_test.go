@@ -129,7 +129,7 @@ func TestUnrelatedMutationPreservesWaitingTaskInToday(t *testing.T) {
 	svc := newTestService(repo).WithPlanningArtifacts(memoryPlanningBuilder(planning))
 
 	title := "edited"
-	if _, err := svc.Edit(app.EditRequest{TaskID: unrelated.ID, Title: &title}); err != nil {
+	if _, err := svc.Edit(app.EditRequest{Locator: repo.loc(unrelated.ID), Title: &title}); err != nil {
 		t.Fatalf("Edit unrelated task: %v", err)
 	}
 

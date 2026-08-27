@@ -109,15 +109,16 @@ recognizably itself in dark and light.
 
 A row inside `#`, `f#`, or `F#` is an offer rather than a label, so it shows you
 the color it is about to paint. Most of those rows paint nothing else and simply
-wear their own chip: the descriptive tag rows, and the tag rows that `CONTEXTS`
-collects because the same value is also in use as a context. A tag that does
+wear their own chip: the descriptive tag rows, and the tag rows that `#` collects
+under `CONTEXTS` because the same value is also in use as a context. A tag that does
 something louder shows that instead — a row under `SEMANTIC` wears the title
 color it applies, `review` under `WORKFLOW` wears its lane's purple, and a
 `parked` project row wears the warning badge it hangs on the project. So the
 same tag can read as one color in a picker and another as a chip; when they
 disagree, the picker is naming the effect. Two rows stay plain on purpose: the
 `##name` radio rows in `#`, which set a field rather than name a tag, and `F#`'s
-`Untagged` row, which names the projects carrying no tag at all. A Select
+`Untagged` row, which names the projects carrying no tag at all. `fc`'s rows are
+plain for the same reason: a context is a field, not a chip. A Select
 Project row is the one place a tag is named without its color, because its tags
 share the one secondary line that carries the counts beside them.
 
@@ -455,21 +456,28 @@ that buffer again unchanged abandons the edit and reports the refusal.
 
 Filters are session-only refinements of ordinary mode rows. Slash search is a
 temporary projection over every nonterminal task in the active project scope,
-including deferred work; Esc restores the prior mode, facets, cursor,
+including deferred work; Esc restores the prior mode, facets, sort, cursor,
 scroll, and folds exactly. Search is also the fastest way to jump anywhere:
 `Enter`, `Shift+Enter`, and `gp` on a result leave search on that task
 instead of refusing, so the restored projection lands on the row you searched
 for. A mode that cannot list the result falls back to All; a facet that still
 excludes it says `Task is hidden by the active facets` and focuses nothing.
-Every other operation the projection owns — mode switches, folds, and
-reordering — still asks you to exit search first.
+Find then narrow: the row facets and the sort axis compose with a live
+search, so `f*` applies as an AND gate before scoring exactly like a query
+sigil, and `o*` reorders within a relevance tier only — a description hit never
+floats above a title hit. The population facets (`F*`) still refuse, since
+admitting a project needs a reload rather than a rebuild, and mode switches,
+folds, and reordering still ask you to exit search first. Esc restores the
+pre-search facets and sort wholesale, so a narrowing typed inside the
+projection leaves with it.
 
 | Keys | Effect |
 | --- | --- |
 | `f!0`, `f!1`–`f!3` | Clear priority filtering or keep High, Medium-or-higher, or Low-or-higher assigned priorities; Unset never matches |
 | `f$` | Pick workflow states with OR semantics, including terminal states |
-| `fc` | Pick completed at least 7, 30, or 90 local-calendar days ago, or all valid completion ages; also filters states to Done and Canceled |
-| `f#` | Pick tags and task contexts with AND semantics; each selected value matches either field, and a value used as a context is listed under `CONTEXTS` above `TAGS` |
+| `fa` | Pick completed at least 7, 30, or 90 local-calendar days ago, or all valid completion ages; also filters states to Done and Canceled |
+| `f#` | Pick tags with AND semantics; the task context is a separate axis on `fc` |
+| `fc` | Pick task contexts with OR semantics, since a task carries at most one; the leading `No context` row admits the tasks carrying none |
 | `fr` | Toggle the `review` tag facet |
 | `f@` | Open the Filter by Due or Deferred picker: overdue, today, this week, no due date, or deferred-only |
 | `fh` | Pick one hierarchy position: parent, child, root, or leaf; parent and leaf read open children |
@@ -598,8 +606,20 @@ projection and leaves the search behind — and the same `Esc` that dismisses th
 lens hands that search back with the rest of the view. Saving keeps the query
 itself, though: a lens saved or replaced from accepted search results records
 the query those rows came from as its own narrowing query, so reopening it
-narrows the saved mode and facets by it. A lens does not touch
-project scope either: applying one inside a single-project scope leaves that
+narrows the saved mode and facets by it.
+
+A lens owns project scope too, and saving is what decides whether it does.
+Saving or replacing a lens from inside a single-project scope records that
+project, so reopening the lens returns to it. One saved from the unscoped
+Outliner records no scope at all, and no scope means the lens leaves yours
+alone rather than forcing you back to every project. A lens whose project has
+since been archived, parked, or deleted refuses by name instead of opening
+somewhere else, and refusing costs you nothing: the view you were in is
+untouched. Entering or leaving a project scope while a lens is live marks it
+modified (`*`), the same way changing its mode or a facet does — `Replace from
+current view` is what adopts the scope you moved to.
+
+Applying a lens that names no scope inside a single-project scope leaves that
 scope alone, and the lens's project facets stay inert until you leave it.
 Swapping one project scope for another keeps them inert; explicitly clearing the
 scope is what finally hands them the population, and the scope stands until the
@@ -645,9 +665,16 @@ whose name some unrelated lens of yours already answers to is greyed as
 `A lens named "<name>" already exists`. Deleting an added template hands it back
 to the gallery.
 
-Definitions live in machine-local state and survive a restart. No active lens
-does: every launch opens Active Projects, All, exactly as it would have without
-one.
+Definitions live in machine-local state and survive a restart, and so does the
+lens you had open. A launch still builds the same clean Active Projects, All
+view it always did — no navigation, folds, cursor, or selection come back — and
+then reapplies that lens's saved axes on top of it: its mode, its narrowing
+query, both filter families, its sort, and its project scope. Its `Esc` is the
+one you would expect: it lands on the Active Projects, All view a lens-free
+launch would have shown, so a lens you no longer want costs one key. Dismissing
+it is durable too, and a lens the pointer names but that can no longer be opened
+— deleted on another machine, or scoped to a project since archived, parked, or
+deleted — is quietly dropped, and the launch is the ordinary one.
 
 ### Sorting
 
@@ -678,7 +705,7 @@ date, an activity clock — so a sort key there records your choice and reports
 that the mode keeps its own order. The recorded order installs itself as soon as
 you return to All, Inbox, or Backlog.
 
-For intentional cleanup, use `fc` to choose an age — it filters states to Done
+For intentional cleanup, use `fa` to choose an age — it filters states to Done
 and Canceled for you — then `Ctrl+A` to select the visible matches, and
 `Space` → Delete. Use `f$` afterwards to narrow to Done or Canceled alone.
 The confirmation freezes root, descendant, visible/hidden, and attachment counts;
@@ -983,14 +1010,13 @@ always offers all five with a one-line summary each, whether or not any task
 carries them, while `f#` Filter by Tags stays usage-derived and lists only the
 ones in use.
 
-`f#` also gives task contexts their own `CONTEXTS` section above `TAGS`; a value
-carried as both a tag and a context is one row there, with the combined count,
-because the facet matches either field. In both tag pickers `w`, `s`, `c`, and
-`t` jump the cursor to the first `WORKFLOW`, `SEMANTIC`, `CONTEXTS`, and `TAGS`
-row, and a hint line inside the overlay names the sections that picker actually
-has. The two pickers mean different things by `CONTEXTS`: in `f#` those rows are
-facet values to match, while in `#` they are the `##name` radio rows that write
-the field, listed above the tag rows the section also collects.
+Task contexts are their own filter axis on `fc`, so `f#` narrows tags alone and
+carries no `CONTEXTS` section at all. In both tag pickers `w`, `s`, `c`, and `t`
+jump the cursor to the first `WORKFLOW`, `SEMANTIC`, `CONTEXTS`, and `TAGS` row,
+and a hint line inside the overlay names the sections that picker actually has —
+which is what drops `c` from the `f#` hint. `CONTEXTS` therefore means one thing
+only: in `#` those are the `##name` radio rows that write the field, listed above
+the tag rows the section also collects.
 
 ## Workflow and hierarchy
 
@@ -1206,12 +1232,14 @@ Each task may also carry an optional `due_time`, a canonical `HH:MM` wall-clock
 in 00:00–23:59 that pairs with the calendar `due` date; midnight is reserved for
 date-only due dates, so a date-only task omits it.
 Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the
-dark/light theme choice and the saved named-lens definitions — the three seeded
-starters, anything you saved yourself, and anything you added from the built-in
-gallery, which are all one list. An empty lens list
+dark/light theme choice, the saved named-lens definitions, and a pointer to the
+lens that was last open — the three seeded starters, anything you saved
+yourself, and anything you added from the built-in gallery, which are all one
+list. An empty lens list
 persists as `[]` and is honored, so deleting every lens is durable rather than a
-request to reseed the starters. No active lens is recorded there: a restart
-restores the definitions and nothing else.
+request to reseed the starters. The active-lens pointer is a hint rather than a
+record: it is checked for shape alone when the file loads, so one naming a lens
+that is no longer there costs you a stale hint and never a failed launch.
 
 Startup migrates supported schema-13 workspaces to schema 14, supported
 schema-12 workspaces to schema 13, supported schema-6

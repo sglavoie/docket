@@ -20,8 +20,8 @@ func TestGitHubIssueAttachmentLabels(t *testing.T) {
 	if got := model.attachmentTypeLabel(issueAttachment); got != "GITHUB ISSUE" {
 		t.Fatalf("GitHub issue attachment label = %q, want GITHUB ISSUE", got)
 	}
-	if got := model.attachmentDisplayName(issueAttachment); got != "acme/roadmap#123" {
-		t.Fatalf("GitHub issue attachment display name = %q, want compact issue ref", got)
+	if got := model.attachmentDisplayName(issueAttachment); got != "GH acme/roadmap#123" {
+		t.Fatalf("GitHub issue attachment display name = %q, want the marked compact issue ref", got)
 	}
 	if got := model.attachmentTypeLabel(plainURL); got != "URL " {
 		t.Fatalf("plain URL label = %q, want URL", got)
