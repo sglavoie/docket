@@ -253,6 +253,29 @@ func TestOutlinerAsyncRelocationCaptureOnlyArmsOnSuccessfulCurrentTarget(t *test
 	if outliner3.relocationHistory.pending != nil || len(outliner3.relocationHistory.back) != 0 {
 		t.Fatal("accepted reload recorded relocation after the cursor left its target")
 	}
+
+	outliner4, tasks4 := jumpHistoryFixture("before", "target", "after")
+	outliner4.cursor = 1
+	capture4 := outliner4.captureOutlinerRelocation([]TaskIdentity{target})
+	outliner4.armOutlinerRelocation(capture4)
+	// The committed mutation's own refresh took the target off the projection and
+	// left the cursor where it fell. That displacement is the mutation's doing, so
+	// the capture must survive to the reload that follows it.
+	setJumpHistoryRows(outliner4, tasks4, "before", "after")
+	outliner4.cursor = 1
+	outliner4.settleRelocationCursor()
+	outliner4.discardDisplacedRelocationCapture()
+	if outliner4.relocationHistory.pending == nil {
+		t.Fatal("a settled capture was discarded by the rebuild displacement it caused")
+	}
+	if got := outliner4.relocationHistory.pending.SettledCursor; got != 1 {
+		t.Fatalf("settled cursor = %d, want 1", got)
+	}
+	outliner4.cursor = 0 // A genuine j after the settle still voids it.
+	outliner4.discardDisplacedRelocationCapture()
+	if outliner4.relocationHistory.pending != nil {
+		t.Fatal("a cursor move after the settle left the capture armed")
+	}
 }
 
 func TestCtrlOAndCtrlIDispatchThroughTheSimplifiedOperationPipeline(t *testing.T) {

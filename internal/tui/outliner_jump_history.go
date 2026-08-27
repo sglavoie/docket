@@ -24,11 +24,22 @@ type outlinerJumpPosition struct {
 
 // outlinerRelocationCapture travels with a mutation until its committed rows
 // are visible. Failed commands never surface the capture to the refresh path.
+//
+// Settled and SettledCursor exist to tell "the rebuild displaced me" apart from
+// "the user pressed j". The committed mutation's own in-memory refresh rebuilds
+// rows before the disk reload lands, so a departing task is already gone from
+// the projection and the cursor no longer identifies the capture's target. That
+// displacement is the mutation's own doing and must not void the capture, while
+// a genuine keypress in the same window must. SettledCursor records the cursor
+// exactly as that refresh left it, so the reload guard can accept an untouched
+// cursor and still discard a moved one.
 type outlinerRelocationCapture struct {
 	Task          TaskIdentity
 	Origin        outlinerJumpPosition
 	Projection    string
 	TransactionID string
+	Settled       bool
+	SettledCursor int
 }
 
 // outlinerOriginRecordedMsg reports that a committed relocation actually added
@@ -129,6 +140,46 @@ func (m *OutlinerModel) armOutlinerRelocation(capture *outlinerRelocationCapture
 	}
 	copy := *capture
 	m.relocationHistory.pending = &copy
+}
+
+// settleRelocationCursor stamps a pending capture with the cursor the committed
+// mutation's own refresh just produced. It is called once, immediately after
+// that refresh, so any later difference is a cursor move the user made.
+func (m *OutlinerModel) settleRelocationCursor() {
+	if m == nil {
+		return
+	}
+	pending := m.relocationHistory.pending
+	if pending == nil {
+		return
+	}
+	pending.Settled = true
+	pending.SettledCursor = m.cursor
+}
+
+// discardDisplacedRelocationCapture drops a pending capture the user has walked
+// away from. A user may keep navigating while the committed mutation's disk
+// refresh is in flight, and that later snapshot must not steal focus. Two
+// cursors are acceptable: the capture's own task, still followed, and the cursor
+// exactly as settleRelocationCursor recorded it, which is where the mutation's
+// own rebuild left it when the target departed the projection. Anything else is
+// a keypress. Callers must run this before rebuilding rows, so the comparison
+// reads the cursor that refresh produced rather than a reload artifact.
+func (m *OutlinerModel) discardDisplacedRelocationCapture() {
+	if m == nil {
+		return
+	}
+	pending := m.relocationHistory.pending
+	if pending == nil {
+		return
+	}
+	if m.currentTaskIdentity() == pending.Task {
+		return
+	}
+	if pending.Settled && m.cursor == pending.SettledCursor {
+		return
+	}
+	m.relocationHistory.pending = nil
 }
 
 func (m *OutlinerModel) finishPendingOutlinerRelocation() tea.Cmd {

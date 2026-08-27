@@ -181,6 +181,9 @@ func (m *AppModel) handleTransactionResult(msg TransactionResultMsg) tea.Cmd {
 		m.rebuildPlanningFromRuntime()
 	}
 	m.refreshLoadedTaskWorkspace()
+	if m.crossOutliner != nil {
+		m.crossOutliner.settleRelocationCursor()
+	}
 	saveCmd := m.handleSaveComplete(SaveCompleteMsg{})
 	feedbackCmd := m.setRecoveryFeedback(msg.SuccessMessage(), msg.Result.TransactionID, false)
 	return tea.Batch(saveCmd, feedbackCmd)
@@ -199,6 +202,9 @@ func (m *AppModel) handleBatchTransactionResult(msg BatchTransactionResultMsg) t
 		m.crossOutliner.armOutlinerRelocation(msg.outlinerRelocation)
 	}
 	m.refreshLoadedTaskWorkspace()
+	if m.crossOutliner != nil {
+		m.crossOutliner.settleRelocationCursor()
+	}
 	// Clear multiselect state only now that the batch has committed, so a rejected
 	// batch (TransactionErrorMsg, which never reaches this handler) leaves the
 	// selection intact for the user to retry.

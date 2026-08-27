@@ -204,12 +204,7 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	}
 	fallbackCursor := m.cursor
 	fallbackScrollOffset := m.viewScrollOffset
-	// A user may keep navigating while the committed mutation's disk refresh is
-	// in flight. Do not turn that later snapshot into a relocation jump unless
-	// they are still following the task that caused it.
-	if pending := m.relocationHistory.pending; pending != nil && m.currentTaskIdentity() != pending.Task {
-		m.relocationHistory.pending = nil
-	}
+	m.discardDisplacedRelocationCapture()
 	m.crossLoading = false
 	m.crossSpinnerVisible = false
 	m.loadedProjects = msg.projects
