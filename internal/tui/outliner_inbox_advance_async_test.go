@@ -160,6 +160,55 @@ func TestInboxAsyncBulkSweepLandsPastTheWholeSelection(t *testing.T) {
 	}
 }
 
+// TestInboxAsyncCursorMoveAwayAndBackBeforeReloadVoidsAdvance closes the hole a
+// purely numeric reload guard leaves open: the user navigates away from the
+// settled cursor and back onto it before the disk reload lands. The cursor index
+// is then identical to the one the mutation's own refresh produced, so nothing
+// at reload time can tell the two apart — the navigation itself has to void the
+// capture as it happens. Both moves travel the real coreMoveCursor path, which
+// is the only thing that distinguishes this from the one-way case below.
+func TestInboxAsyncCursorMoveAwayAndBackBeforeReloadVoidsAdvance(t *testing.T) {
+	alphaOne := newBulkPickerTestTask(t, 1, "alpha one")
+	alphaTwo := newBulkPickerTestTask(t, 2, "alpha two")
+	betaOne := newBulkPickerTestTask(t, 1, "beta one")
+	betaTwo := newBulkPickerTestTask(t, 2, "beta two")
+	async := newInboxAsyncEnv(t,
+		[]*models.Task{alphaOne, alphaTwo},
+		[]*models.Task{betaOne, betaTwo})
+
+	inboxCursorTo(t, async.outliner, alphaTwo.ID)
+	saveCmd := async.commitState(t, models.StateDone)
+	pending := async.outliner.relocationHistory.pending
+	if pending == nil {
+		t.Fatal("committed async state update did not survive its own refresh")
+	}
+	settled := pending.SettledCursor
+	if async.outliner.cursor != settled {
+		t.Fatalf("cursor = %d, want the settled cursor %d", async.outliner.cursor, settled)
+	}
+
+	// j then k while the disk refresh is still in flight: the cursor ends up back
+	// on the settled row, so only the navigation itself can void the capture.
+	async.model.coreMoveCursor("j")
+	if async.outliner.cursor == settled {
+		t.Fatal("the fixture did not actually move the cursor off the settled row")
+	}
+	async.model.coreMoveCursor("k")
+	if async.outliner.cursor != settled {
+		t.Fatalf("cursor = %d after moving back, want the settled cursor %d", async.outliner.cursor, settled)
+	}
+	returned := async.outliner.currentTaskIdentity()
+
+	async.applyReload(t, saveCmd)
+
+	if async.outliner.relocationHistory.pending != nil {
+		t.Fatal("a cursor move away and back left the relocation capture armed")
+	}
+	if got := async.outliner.currentTaskIdentity(); got != returned {
+		t.Fatalf("cursor task = %+v, want the row the user returned to %+v", got, returned)
+	}
+}
+
 // TestInboxAsyncCursorMoveBeforeTheReloadVoidsTheAdvance is the guard's other
 // half: a genuine keypress between the commit and the disk reload must not be
 // mistaken for the rebuild displacement the mutation caused.

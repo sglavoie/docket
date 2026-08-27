@@ -836,6 +836,7 @@ func (m *AppModel) coreMoveCursor(key string) tea.Cmd {
 	}
 	cmd = out.crossSkipNonNavigableRows(previous, cmd)
 	out.updateRangeSelection()
+	out.voidRelocationCaptureAfterNavigation(previous)
 	return cmd
 }
 
@@ -878,6 +879,7 @@ func (m *AppModel) coreMoveCursorScreen(position screenJumpPosition) OperationHa
 	out.cursor = landing
 	cmd := flashIfJumped(previous, out.cursor, &out.cursorFlash)
 	out.updateRangeSelection()
+	out.voidRelocationCaptureAfterNavigation(previous)
 	return OperationHandlerResult{Message: commandMessage(cmd)}
 }
 

@@ -157,6 +157,24 @@ func (m *OutlinerModel) settleRelocationCursor() {
 	pending.SettledCursor = m.cursor
 }
 
+// voidRelocationCaptureAfterNavigation drops a pending capture the moment the
+// user moves the cursor themselves. discardDisplacedRelocationCapture can only
+// compare numbers when the reload lands, and a cursor that leaves SettledCursor
+// and returns to it is numerically indistinguishable from one that never moved,
+// so the accepted reload would re-arm an advance the user already voided.
+// Recording the navigation as it happens is what tells the two apart. Callers
+// pass the cursor from before their own move: a refused or boundary-flashed
+// navigation moved nothing and voids nothing.
+func (m *OutlinerModel) voidRelocationCaptureAfterNavigation(previous int) {
+	if m == nil || m.relocationHistory.pending == nil {
+		return
+	}
+	if m.cursor == previous {
+		return
+	}
+	m.relocationHistory.pending = nil
+}
+
 // discardDisplacedRelocationCapture drops a pending capture the user has walked
 // away from. A user may keep navigating while the committed mutation's disk
 // refresh is in flight, and that later snapshot must not steal focus. Two
@@ -164,7 +182,9 @@ func (m *OutlinerModel) settleRelocationCursor() {
 // exactly as settleRelocationCursor recorded it, which is where the mutation's
 // own rebuild left it when the target departed the projection. Anything else is
 // a keypress. Callers must run this before rebuilding rows, so the comparison
-// reads the cursor that refresh produced rather than a reload artifact.
+// reads the cursor that refresh produced rather than a reload artifact. A user
+// keypress that lands back on SettledCursor is not visible here at all; that
+// case is voided as it happens by voidRelocationCaptureAfterNavigation.
 func (m *OutlinerModel) discardDisplacedRelocationCapture() {
 	if m == nil {
 		return
@@ -388,6 +408,7 @@ func (m *OutlinerModel) moveToJumpPosition(position outlinerJumpPosition, index 
 	oldCursor := m.cursor
 	m.cursor = index
 	m.viewScrollOffset = position.ScrollOffset
+	m.voidRelocationCaptureAfterNavigation(oldCursor)
 	return flashIfJumped(oldCursor, index, &m.cursorFlash)
 }
 
