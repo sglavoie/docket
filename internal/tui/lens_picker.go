@@ -50,6 +50,20 @@ const (
 	lensPickerAddTemplateEnterLabel = "browse built-ins"
 )
 
+// The quick-apply ordinals number the listed saved lenses, one digit each, so
+// `\` then a digit is the whole route to a lens. Nine is the ceiling because
+// there is no tenth digit key, and the number column is a fixed two columns on
+// every row — numbered or not — so the variable-width active-lens dot behind it
+// cannot bend it.
+const (
+	lensPickerMaxOrdinal         = 9
+	lensPickerOrdinalMarkerWidth = 2
+	// The refusal for an empty population is a constant rather than a format,
+	// because "0 lenses are numbered" would be arithmetic where the picker
+	// already has an empty-state line saying what to do instead.
+	lensPickerOrdinalEmptyRefusal = "No lenses are listed to number"
+)
+
 // namedLensActionSheetOperations is the Space menu over one saved lens: the
 // three management acts, in the order the product contract names them. Apply is
 // absent because Enter already is it, which is the one-path rule the entity
@@ -93,10 +107,15 @@ type NamedLensPickerModel struct {
 	executor *OperationExecutor
 	// view is frozen at construction: the picker floats over the route that
 	// opened it, and its own presence must not change the context it builds.
-	view      PresentationID
-	snapshot  NamedLensPickerSnapshot
-	sorted    config.NamedLensList
-	listed    int
+	view     PresentationID
+	snapshot NamedLensPickerSnapshot
+	sorted   config.NamedLensList
+	listed   int
+	// ordinals is the quick-apply assignment, saved lens IDs in listed order and
+	// capped at nine. It is rebuilt by items() in the same pass that counts
+	// listed, which is what keeps a printed digit and the row under it from ever
+	// naming different lenses.
+	ordinals  []string
 	query     string
 	searching bool
 	notice    string
@@ -171,37 +190,64 @@ func sortedNamedLenses(lenses config.NamedLensList) config.NamedLensList {
 // Filtering happens here rather than on the surface so the two action rows are
 // exempt from it and the saved rows keep their alphabetical order instead of a
 // relevance order.
+//
+// Ordinals are assigned here too, in this one pass, and therefore follow the
+// filtered visible list: the digit is printed on the row, so numbering the
+// unfiltered population would put digits on screen that apply lenses nobody can
+// see. Unfiltered numbering stays one Esc away.
 func (model *NamedLensPickerModel) items() []ListItem {
 	actions := lensPickerActionRows(model.snapshot)
 	items := make([]ListItem, 0, len(model.sorted)+len(actions))
 	items = append(items, actions...)
 	listed := 0
+	model.ordinals = model.ordinals[:0]
 	for _, lens := range model.sorted {
 		if !namedLensMatchesQuery(lens, model.query) {
 			continue
 		}
 		listed++
-		items = append(items, namedLensPickerItem(lens, model.snapshot))
+		ordinal := 0
+		if len(model.ordinals) < lensPickerMaxOrdinal {
+			model.ordinals = append(model.ordinals, lens.ID)
+			ordinal = len(model.ordinals)
+		}
+		items = append(items, namedLensPickerItem(lens, model.snapshot, ordinal))
 	}
 	model.listed = listed
 	return items
 }
 
+// lensPickerOrdinalMarker draws the quick-apply digit, or the blank slot of the
+// same width that says this row has none. It leads PrimaryMarker on every row,
+// so the number column stays put behind an action row, a tenth saved lens, and
+// either spelling of the active-lens dot alike.
+func lensPickerOrdinalMarker(ordinal int) string {
+	if ordinal < 1 || ordinal > lensPickerMaxOrdinal {
+		return strings.Repeat(" ", lensPickerOrdinalMarkerWidth)
+	}
+	return MutedStyle.Render(strconv.Itoa(ordinal)) + " "
+}
+
 // lensPickerActionRows is the query-exempt head of the list, in display order.
 // Both rows carry no Data, which is what CurrentLens reads to tell an action row
 // from a saved one; their identity travels as the stable ListItemID instead.
+// Both carry the blank ordinal slot: it shares the one text column with the
+// numbered rows below, and the empty slot is the statement that an act nobody
+// repeats is not worth a digit.
 func lensPickerActionRows(snapshot NamedLensPickerSnapshot) []ListItem {
 	return []ListItem{
 		{
 			ID:            lensPickerCreateItemID,
 			PrimaryText:   lensPickerCreateLabel,
+			PrimaryMarker: lensPickerOrdinalMarker(0),
 			Aliases:       []string{"save", "new lens", "create lens"},
 			SecondaryText: snapshot.CurrentSummary,
 			OperationIDs:  []OperationID{operationLensCreate},
 		},
 		{
-			ID:          lensPickerAddTemplateItemID,
-			PrimaryText: lensPickerAddTemplateLabel,
+			ID:            lensPickerAddTemplateItemID,
+			PrimaryText:   lensPickerAddTemplateLabel,
+			PrimaryMarker: lensPickerOrdinalMarker(0),
 			// The aliases are the words someone reaches for before they know what
 			// this product calls a lens, so the row answers to all three.
 			Aliases:       []string{"template", "preset", "built-in view"},
@@ -211,14 +257,18 @@ func lensPickerActionRows(snapshot NamedLensPickerSnapshot) []ListItem {
 	}
 }
 
-func namedLensPickerItem(lens config.NamedLens, snapshot NamedLensPickerSnapshot) ListItem {
-	marker := ""
+func namedLensPickerItem(
+	lens config.NamedLens,
+	snapshot NamedLensPickerSnapshot,
+	ordinal int,
+) ListItem {
+	marker := lensPickerOrdinalMarker(ordinal)
 	if lens.ID == snapshot.ActiveID {
 		label := "●"
 		if snapshot.Modified {
 			label = "●*"
 		}
-		marker = MutedStyle.Render(label) + " "
+		marker += MutedStyle.Render(label) + " "
 	}
 	item := ListItem{
 		ID:            lensPickerItemID(lens.ID),
@@ -424,8 +474,47 @@ func (model *NamedLensPickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool
 		return model.activateCursor()
 	case "space":
 		return model.openActionsForCursor()
+	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
+		// Spelled out rather than reached through a default arm: a default would
+		// silently swallow every key this switch has not learned yet, and the search
+		// branch above already claims digits as ordinary characters while typing.
+		return model.applyOrdinal(int(key[0] - '0'))
 	}
 	return nil, false, nil
+}
+
+// applyOrdinal is the quick-apply digit. It moves the cursor onto the row it
+// names before dispatching, so a refused apply leaves the picker on the row that
+// raised the reason, exactly as Enter would have. Out of range refuses in the
+// action rows' own vocabulary and moves nothing.
+func (model *NamedLensPickerModel) applyOrdinal(ordinal int) (tea.Cmd, bool, tea.Msg) {
+	if model == nil || model.surface == nil {
+		return nil, false, nil
+	}
+	if ordinal < 1 || ordinal > len(model.ordinals) {
+		model.notice = lensPickerOrdinalRefusal(len(model.ordinals))
+		return nil, false, StatusMsg(model.notice)
+	}
+	if !model.SelectLens(model.ordinals[ordinal-1]) {
+		model.notice = lensPickerOrdinalRefusal(len(model.ordinals))
+		return nil, false, StatusMsg(model.notice)
+	}
+	return model.activateCursor()
+}
+
+// lensPickerOrdinalRefusal names the numbering that actually exists, so the
+// refusal doubles as the legend for the next press. It counts what is numbered
+// rather than what is listed, which is the honest wording once a tenth saved
+// lens is on screen carrying no digit.
+func lensPickerOrdinalRefusal(numbered int) string {
+	switch {
+	case numbered <= 0:
+		return lensPickerOrdinalEmptyRefusal
+	case numbered == 1:
+		return "Only 1 lens is numbered — press 1"
+	default:
+		return fmt.Sprintf("Only %d lenses are numbered — press 1-%d", numbered, numbered)
+	}
 }
 
 // activateCursor is Enter: Save opens the name prompt and Add built-in view
@@ -599,6 +688,9 @@ func (model *NamedLensPickerModel) guidanceSpec() GuidanceSpec {
 			keymap.WithFooter(10, "navigate", false), keymap.WithFooterKey("j/k or ↑/↓")),
 		keymap.Bind("enter", "Apply the current row", "Actions",
 			keymap.WithFooter(1, enterLabel, true), keymap.WithFooterKey("Enter")),
+		keymap.Bind("1", "Apply the numbered lens", "Actions",
+			keymap.WithGate(func() bool { return !searching && model.listed > 0 }),
+			keymap.WithFooter(4, "apply by number", false), keymap.WithFooterKey("1-9")),
 		keymap.Bind("space", "Open lens actions", "Actions",
 			keymap.WithGate(func() bool { return !searching && onLens() }),
 			keymap.WithFooter(3, "manage", false), keymap.WithFooterKey("Space")),
