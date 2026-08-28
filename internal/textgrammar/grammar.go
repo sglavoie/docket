@@ -192,9 +192,11 @@ var registry = []definitionSpec{
 			Examples:    []string{"-~1", "-~project-slug:1"},
 			// Capture carries the field only so it can be refused by name. It
 			// declares no capture form, so the guide never advertises it there.
-			Surfaces: SurfaceCapture | SurfaceEdit, Cardinality: CardinalityRepeatable,
+			// Search carries it nowhere at all: a dependency predicate is direct and
+			// positive, and ParseSearch refuses -~ by name in placementDiagnostics.
+			Surfaces: SurfaceCapture | SurfaceEdit | SurfaceOutline, Cardinality: CardinalityRepeatable,
 		},
-		forms:      []surfaceForm{{Text: "-~task", Surfaces: SurfaceEdit}},
+		forms:      []surfaceForm{{Text: "-~task", Surfaces: SurfaceEdit | SurfaceOutline}},
 		pattern:    `(?:^|\s)-~(\S+)`,
 		validation: validateAny,
 	},
@@ -203,15 +205,18 @@ var registry = []definitionSpec{
 			Field: FieldDependency, Group: "Dependencies", Trigger: "~",
 			Description: "Depend on another task (repeatable)",
 			Examples:    []string{"~1", "~project-slug:1"},
-			Surfaces:    SurfaceCapture | SurfaceEdit, Cardinality: CardinalityRepeatable,
-			Clears: []ClearOperation{{Value: clearValue, Description: "Clear dependencies", Surfaces: SurfaceEdit}},
+			Surfaces:    allSurfaces, Cardinality: CardinalityRepeatable,
+			// Clearing belongs to the two surfaces that hold a stored set. Search has
+			// nothing to clear, so ~0 is guidance there rather than a form.
+			Clears: []ClearOperation{{Value: clearValue, Description: "Clear dependencies", Surfaces: SurfaceEdit | SurfaceOutline}},
 		},
 		forms: []surfaceForm{
-			{Text: "~task", Surfaces: SurfaceCapture | SurfaceEdit},
-			{Text: "~0", Surfaces: SurfaceEdit},
+			{Text: "~task", Surfaces: allSurfaces},
+			{Text: "~0", Surfaces: SurfaceEdit | SurfaceOutline},
 		},
-		pattern:    `(?:^|\s)~(\S+)`,
-		validation: validateAny,
+		pattern:           `(?:^|\s)~(\S+)`,
+		validation:        validateAny,
+		searchDescription: "Match a direct dependency",
 	},
 	{
 		Definition: Definition{

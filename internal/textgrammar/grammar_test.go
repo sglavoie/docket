@@ -235,6 +235,7 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 			want: map[Field][]string{
 				FieldPriority: {"!1-3"}, FieldTag: {"#tag"}, FieldContext: {"##context"}, FieldDue: {"@date"},
 				FieldDestination: {"$destination"}, FieldPinned: {"*pin"},
+				FieldDependency: {"~task", "~0"}, FieldRemoveDependency: {"-~task"},
 			},
 		},
 		{
@@ -243,7 +244,7 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 				FieldPriority: {"!1-3"}, FieldTag: {"#tag"}, FieldRemoveTag: {"-#tag"},
 				FieldContext: {"##context"}, FieldDue: {"@date"}, FieldDefer: {"@@defer"},
 				FieldDestination: {"$destination"}, FieldPinned: {"*pin", "*unpin"},
-				FieldProject: {"%project"},
+				FieldProject: {"%project"}, FieldDependency: {"~task"},
 			},
 		},
 	}

@@ -12,7 +12,7 @@ func TestOutlineDumpEmitsThePinSigilAfterTheDestination(t *testing.T) {
 	pinnedAt := time.Date(2026, 3, 4, 5, 6, 7, 0, time.UTC)
 	project.Tasks[0].PinnedAt = &pinnedAt
 
-	buffer, _, err := dumpOutlineBuffer(project, "All", time.Now())
+	buffer, _, err := dumpOutlineBuffer(project, nil, "All", time.Now())
 	if err != nil {
 		t.Fatalf("dump: %v", err)
 	}
@@ -29,11 +29,11 @@ func TestOutlineRoundTripCarriesPinnedOnAndOff(t *testing.T) {
 	project := outlineTestProject(t)
 	project.Tasks[0].Pinned = true
 
-	buffer, _, err := dumpOutlineBuffer(project, "All", time.Now())
+	buffer, _, err := dumpOutlineBuffer(project, nil, "All", time.Now())
 	if err != nil {
 		t.Fatalf("dump: %v", err)
 	}
-	lines, problems := parseOutlineBuffer(buffer, project)
+	lines, problems := parseOutlineBuffer(buffer, project, nil)
 	if len(problems) > 0 {
 		t.Fatalf("unedited buffer was rejected: %v", problems)
 	}
@@ -50,7 +50,7 @@ func TestOutlineRoundTripCarriesPinnedOnAndOff(t *testing.T) {
 	if unpinned == buffer {
 		t.Fatal("buffer carried no pin segment to remove")
 	}
-	lines, problems = parseOutlineBuffer(unpinned, project)
+	lines, problems = parseOutlineBuffer(unpinned, project, nil)
 	if len(problems) > 0 {
 		t.Fatalf("edited buffer was rejected: %v", problems)
 	}
@@ -63,7 +63,7 @@ func TestOutlineParseAcceptsAnAddedPinSigil(t *testing.T) {
 	project := outlineTestProject(t)
 	buffer := "Sweep dead flags $inbox *pin  [[tt:71f0b3d5]]"
 
-	lines, problems := parseOutlineBuffer(buffer, project)
+	lines, problems := parseOutlineBuffer(buffer, project, nil)
 	if len(problems) > 0 {
 		t.Fatalf("buffer was rejected: %v", problems)
 	}
@@ -82,7 +82,7 @@ func TestOutlineParseRefusesUnpin(t *testing.T) {
 	project := outlineTestProject(t)
 	buffer := "Sweep dead flags $inbox *unpin  [[tt:71f0b3d5]]"
 
-	lines, problems := parseOutlineBuffer(buffer, project)
+	lines, problems := parseOutlineBuffer(buffer, project, nil)
 	if len(lines) != 0 {
 		t.Fatalf("lines = %+v, want the line refused", lines)
 	}

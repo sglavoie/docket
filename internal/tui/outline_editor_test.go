@@ -53,7 +53,7 @@ func TestOutlineDumpRendersIndentedParentageAndMarkers(t *testing.T) {
 	project.Tasks[1].Tags = []string{"backend"}
 
 	now := time.Date(2026, 8, 10, 14, 2, 0, 0, time.UTC)
-	buffer, _, err := dumpOutlineBuffer(project, "Backlog", now)
+	buffer, _, err := dumpOutlineBuffer(project, nil, "Backlog", now)
 	if err != nil {
 		t.Fatalf("dump: %v", err)
 	}
@@ -77,12 +77,12 @@ func TestOutlineDumpRendersIndentedParentageAndMarkers(t *testing.T) {
 func TestOutlineDumpIsDeterministic(t *testing.T) {
 	project := outlineTestProject(t)
 	now := time.Date(2026, 8, 10, 14, 2, 0, 0, time.UTC)
-	first, _, err := dumpOutlineBuffer(project, "All", now)
+	first, _, err := dumpOutlineBuffer(project, nil, "All", now)
 	if err != nil {
 		t.Fatalf("dump: %v", err)
 	}
 	for range 5 {
-		again, _, err := dumpOutlineBuffer(project, "All", now)
+		again, _, err := dumpOutlineBuffer(project, nil, "All", now)
 		if err != nil {
 			t.Fatalf("dump: %v", err)
 		}
@@ -100,7 +100,7 @@ func TestOutlineDumpRefusesCollidingMarkers(t *testing.T) {
 	}
 	project.Tasks = append(project.Tasks, clash)
 
-	if _, _, err := dumpOutlineBuffer(project, "All", time.Now()); err == nil {
+	if _, _, err := dumpOutlineBuffer(project, nil, "All", time.Now()); err == nil {
 		t.Fatal("dump accepted a project whose short markers collide")
 	} else if !strings.Contains(err.Error(), "share the marker") {
 		t.Fatalf("collision refusal reads %q", err.Error())
@@ -121,11 +121,11 @@ func TestOutlineRoundTripOfAnUneditedBufferIsFaithful(t *testing.T) {
 	due := time.Date(2026, 9, 1, 0, 0, 0, 0, time.Local)
 	project.Tasks[0].DueDate = &due
 
-	buffer, _, err := dumpOutlineBuffer(project, "All", time.Now())
+	buffer, _, err := dumpOutlineBuffer(project, nil, "All", time.Now())
 	if err != nil {
 		t.Fatalf("dump: %v", err)
 	}
-	lines, problems := parseOutlineBuffer(buffer, project)
+	lines, problems := parseOutlineBuffer(buffer, project, nil)
 	if len(problems) > 0 {
 		t.Fatalf("unedited buffer was rejected: %v", problems)
 	}
@@ -171,7 +171,7 @@ func TestOutlineParseBuildsPlanLinesForNewAndEditedTasks(t *testing.T) {
 		"Sweep dead flags  [[tt:71f0b3d5]]",
 	}, "\n")
 
-	lines, problems := parseOutlineBuffer(buffer, project)
+	lines, problems := parseOutlineBuffer(buffer, project, nil)
 	if len(problems) > 0 {
 		t.Fatalf("buffer was rejected: %v", problems)
 	}
@@ -269,7 +269,7 @@ func TestOutlineParseRejectsEveryOutlinePhaseError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			lines, problems := parseOutlineBuffer(tt.buffer, project)
+			lines, problems := parseOutlineBuffer(tt.buffer, project, nil)
 			if lines != nil {
 				t.Fatalf("a rejected buffer produced %d plan lines", len(lines))
 			}
@@ -332,7 +332,7 @@ func TestOutlineParseRejectsEveryLinePhaseError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			lines, problems := parseOutlineBuffer(tt.buffer, project)
+			lines, problems := parseOutlineBuffer(tt.buffer, project, nil)
 			if lines != nil {
 				t.Fatalf("a rejected buffer produced %d plan lines", len(lines))
 			}
@@ -356,7 +356,7 @@ func TestOutlineParseRejectsEveryLinePhaseError(t *testing.T) {
 // the whitespace-delimited sigil: a comparison inside a title is not a <child.
 func TestOutlineAcceptsEmbeddedComparisonText(t *testing.T) {
 	project := outlineTestProject(t)
-	lines, problems := parseOutlineBuffer("Keep a<b under 5 ms  [[tt:4f2a9c11]]", project)
+	lines, problems := parseOutlineBuffer("Keep a<b under 5 ms  [[tt:4f2a9c11]]", project, nil)
 	if len(problems) > 0 {
 		t.Fatalf("buffer was rejected: %v", problems)
 	}
@@ -374,7 +374,7 @@ func TestOutlineParseCollectsEveryProblemInOnePass(t *testing.T) {
 		"Sweep dead flags again  [[tt:71f0b3d5]]",
 	}, "\n")
 
-	lines, problems := parseOutlineBuffer(buffer, project)
+	lines, problems := parseOutlineBuffer(buffer, project, nil)
 	if lines != nil {
 		t.Fatalf("a rejected buffer produced %d plan lines", len(lines))
 	}
@@ -499,7 +499,7 @@ func TestOutlineDumpScopeExcludesAnOrphanedTask(t *testing.T) {
 	orphan.ParentID = &missing
 	project.Tasks = append(project.Tasks, orphan)
 
-	buffer, scope, err := dumpOutlineBuffer(project, "All", time.Now())
+	buffer, scope, err := dumpOutlineBuffer(project, nil, "All", time.Now())
 	if err != nil {
 		t.Fatalf("dump: %v", err)
 	}
@@ -515,7 +515,7 @@ func TestOutlineDumpScopeExcludesAnOrphanedTask(t *testing.T) {
 		t.Fatalf("dump printed an unreachable task:\n%s", buffer)
 	}
 
-	lines, problems := parseOutlineBuffer(buffer, project)
+	lines, problems := parseOutlineBuffer(buffer, project, nil)
 	if len(problems) > 0 {
 		t.Fatalf("unedited buffer was rejected: %v", problems)
 	}
@@ -689,7 +689,7 @@ func TestOutlineEditedCarriesTheDumpRevisionAndKeepsTheBufferWhenItIsStale(t *te
 	model := driver.App()
 
 	project := outlineTestProject(t)
-	buffer, scope, err := dumpOutlineBuffer(project, "Backlog", time.Now())
+	buffer, scope, err := dumpOutlineBuffer(project, nil, "Backlog", time.Now())
 	if err != nil {
 		t.Fatalf("dump: %v", err)
 	}
@@ -938,7 +938,7 @@ func outlineConfirmFixture(t *testing.T) (*AppModel, *models.Project, string, []
 	t.Cleanup(func() { _ = workspace.Cleanup() })
 
 	project := outlineTestProject(t)
-	buffer, scope, err := dumpOutlineBuffer(project, "All", time.Now())
+	buffer, scope, err := dumpOutlineBuffer(project, nil, "All", time.Now())
 	if err != nil {
 		t.Fatalf("dump: %v", err)
 	}

@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -42,6 +44,7 @@ type searchPredicates struct {
 	contexts       []string
 	due            searchDuePredicate
 	deferral       searchDeferPredicate
+	dependencies   []models.TaskReference
 	destination    textgrammar.Destination
 	hasDestination bool
 	pinned         int // 0 none, +1 *pin, -1 *unpin
@@ -97,9 +100,87 @@ func (m *OutlinerModel) compileSearchQuery(query string, projects []*models.Proj
 			}
 		case textgrammar.FieldProject:
 			predicates.projectPrefix = strings.ToLower(strings.TrimSpace(token.Value))
+		case textgrammar.FieldDependency:
+			predicates.addDependency(token.Value, projects)
 		}
 	}
 	return parsed.Text, predicates
+}
+
+// addDependency compiles one ~target predicate into the exact stored locator a
+// task's own outgoing set must contain. The search is direct: it never walks the
+// graph past that one hop, so a task depending on something that depends on the
+// target does not match, and there is no negative form to invert it with.
+//
+// An unresolvable or ambiguous target becomes guidance rather than a predicate
+// that quietly matches nothing, because "no results" and "I could not tell which
+// task you meant" are different answers.
+func (p *searchPredicates) addDependency(value string, projects []*models.Project) {
+	if p.guidance != "" {
+		return
+	}
+	reference, guidance := compileSearchDependency(value, projects)
+	if guidance != "" {
+		p.guidance = guidance
+		return
+	}
+	if slices.Contains(p.dependencies, reference) {
+		return
+	}
+	p.dependencies = append(p.dependencies, reference)
+}
+
+// compileSearchDependency resolves one search target to a durable locator.
+//
+// A qualified alias resolves against the loaded population the way it does on
+// every other surface. A bare alias is read in the scope project when the search
+// is scoped to one, and otherwise has to name exactly one task across the loaded
+// projects: picking a project on the user's behalf would answer a question they
+// did not ask, so ambiguity is reported instead.
+func compileSearchDependency(value string, projects []*models.Project) (models.TaskReference, string) {
+	value = strings.TrimSpace(value)
+	definition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceSearch, textgrammar.FieldDependency)
+	trigger := definition.Trigger
+	if _, _, qualified := strings.Cut(value, models.TaskReferenceSeparator); qualified || len(projects) == 1 {
+		var effective *models.Project
+		if len(projects) == 1 {
+			effective = projects[0]
+		}
+		ref, err := resolveDependencyReference(value, effective, projects)
+		if err != nil {
+			return models.TaskReference{}, err.Error()
+		}
+		if ref.locator.TaskID == "" {
+			return models.TaskReference{}, dependencyNotFoundMessage(trigger, value)
+		}
+		return ref.locator.Reference(), ""
+	}
+
+	var matches []capturedDependencyRef
+	for _, project := range projects {
+		task, err := resolveStructuralReference(value, project, dependencyRelationship)
+		if err != nil {
+			return models.TaskReference{}, err.Error()
+		}
+		if task == nil {
+			continue
+		}
+		matches = append(matches, dependencyRefFor(project, task))
+	}
+	switch len(matches) {
+	case 0:
+		return models.TaskReference{}, dependencyNotFoundMessage(trigger, value)
+	case 1:
+		return matches[0].locator.Reference(), ""
+	}
+	labels := make([]string, len(matches))
+	for i, match := range matches {
+		labels[i] = match.label()
+	}
+	return models.TaskReference{}, fmt.Sprintf(
+		"dependency %q matches %s; qualify it as %sproject-slug:short-id",
+		value, strings.Join(labels, ", "), trigger,
+	)
 }
 
 func (p *searchPredicates) setDestination(value string, projects []*models.Project, m *OutlinerModel) {
@@ -239,6 +320,9 @@ func (p *searchPredicates) admits(task *models.Task, project *models.Project) bo
 	if !p.admitsTags(task) || !p.admitsContext(task) || !p.admitsDue(task) || !p.admitsDeferral(task) {
 		return false
 	}
+	if !p.admitsDependencies(task) {
+		return false
+	}
 	return p.admitsDestination(task, project)
 }
 
@@ -250,6 +334,17 @@ func (p *searchPredicates) admitsTags(task *models.Task) bool {
 	}
 	for _, prefix := range p.excludedTags {
 		if taskCarriesTagPrefix(task, prefix) {
+			return false
+		}
+	}
+	return true
+}
+
+// admitsDependencies requires the task's stored set to contain every requested
+// target. Repeated predicates AND, matching every other repeatable sigil.
+func (p *searchPredicates) admitsDependencies(task *models.Task) bool {
+	for _, reference := range p.dependencies {
+		if !slices.Contains(task.Dependencies, reference) {
 			return false
 		}
 	}

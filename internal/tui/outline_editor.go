@@ -85,7 +85,10 @@ func (m *AppModel) outlineEditorRequest() (*models.Project, string, string) {
 // a task that no longer exists is neither a root nor anyone's child, so it never
 // reaches the buffer — and a scope built from project.Tasks would let a line the
 // user never saw be deleted by a line they never removed.
-func dumpOutlineBuffer(project *models.Project, modeLabel string, now time.Time) (string, []string, error) {
+// projects is the loaded workspace population the dumped dependencies are
+// addressed against. It is passed in rather than re-read here so the aliases the
+// buffer prints and the ones the returned buffer resolves come from one view.
+func dumpOutlineBuffer(project *models.Project, projects []*models.Project, modeLabel string, now time.Time) (string, []string, error) {
 	if project == nil {
 		return "", nil, fmt.Errorf("no project to outline")
 	}
@@ -111,7 +114,7 @@ func dumpOutlineBuffer(project *models.Project, modeLabel string, now time.Time)
 	dumped := make([]string, 0, len(project.Tasks))
 	var walk func(task *models.Task, depth int)
 	walk = func(task *models.Task, depth int) {
-		builder.WriteString(outlineDumpLine(task, depth))
+		builder.WriteString(outlineDumpLine(task, depth, project, projects))
 		builder.WriteString("\n")
 		dumped = append(dumped, task.ID)
 		for _, child := range children[task.ID] {
@@ -154,7 +157,7 @@ func outlineGrammarForms() string {
 // outlineDumpLine renders one task as its complete current value, so an omitted
 // sigil on the way back in is a deliberate clear rather than an absent
 // instruction.
-func outlineDumpLine(task *models.Task, depth int) string {
+func outlineDumpLine(task *models.Task, depth int, scope *models.Project, projects []*models.Project) string {
 	segments := []string{task.Title}
 	priorityDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldPriority)
 	dueDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldDue)
@@ -162,6 +165,7 @@ func outlineDumpLine(task *models.Task, depth int) string {
 	contextDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldContext)
 	destinationDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldDestination)
 	pinnedDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldPinned)
+	dependencyDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldDependency)
 	if task.Priority != models.PriorityUnset {
 		segments = append(segments, fmt.Sprintf("%s%d", priorityDefinition.Trigger, task.Priority))
 	}
@@ -174,6 +178,12 @@ func outlineDumpLine(task *models.Task, depth int) string {
 	if task.Context != "" {
 		segments = append(segments, contextDefinition.Trigger+task.Context)
 	}
+	// Every stored reference is printed, closed and unloaded targets included.
+	// The line is a complete declaration, so a reference the dump withheld would
+	// be silently deleted by a user who never saw it.
+	for _, reference := range task.Dependencies {
+		segments = append(segments, dependencyDefinition.Trigger+outlineDependencyAlias(reference, scope, projects))
+	}
 	// The lifecycle state is dumped, but Today and Next membership is not: an
 	// omitted $today cannot remove a membership (the application layer preserves
 	// planning on omission), so printing one would promise a symmetry the buffer
@@ -185,6 +195,25 @@ func outlineDumpLine(task *models.Task, depth int) string {
 
 	line := strings.Repeat(" ", depth*outlineIndentWidth) + strings.Join(segments, " ")
 	return line + "  " + outlineMarkerPrefix + outlineMarkerFor(task.ID) + outlineMarkerSuffix
+}
+
+// outlineDependencyAlias renders one stored reference as the token the buffer
+// prints. A target in the dumped project reads as a bare short ID, a target in
+// another loaded project as its slug-qualified short ID, and anything this
+// workspace cannot address falls back to the durable project-id:task-id locator
+// — which is exactly the form the parser accepts back unchanged, so a reference
+// whose target is archived or deleted survives the round trip.
+func outlineDependencyAlias(reference models.TaskReference, scope *models.Project, projects []*models.Project) string {
+	target := scope
+	if target == nil || target.ID != reference.ProjectID {
+		target = projectByStableID(reference.ProjectID, projects)
+	}
+	if target != nil {
+		if task := target.GetTaskByID(reference.TaskID); task != nil {
+			return dependencyAlias(target, task, scope)
+		}
+	}
+	return reference.Locator()
 }
 
 // assertOutlineMarkersUnique refuses to open the editor over a buffer whose
@@ -217,11 +246,37 @@ func (m *AppModel) outlineDumpSource(projectID, modeLabel string) (*models.Proje
 	if err != nil {
 		return nil, "", "", nil, err
 	}
-	buffer, scopeTaskIDs, err := dumpOutlineBuffer(project, modeLabel, time.Now())
+	buffer, scopeTaskIDs, err := dumpOutlineBuffer(project, m.outlineDependencyProjects(project), modeLabel, time.Now())
 	if err != nil {
 		return nil, "", "", nil, err
 	}
 	return project, revision, buffer, scopeTaskIDs, nil
+}
+
+// outlineDependencyProjects is the population a dumped or parsed dependency is
+// addressed against: the same non-archived list the inline edit surface resolves
+// against, with the scope project substituted for the shell's copy of it.
+//
+// The substitution matters because the outline round trip loads its project from
+// its own snapshot. Without it the buffer would resolve a same-project reference
+// against a second, older tree, and a task the dump printed could fail to
+// resolve on the way back in.
+func (m *AppModel) outlineDependencyProjects(scope *models.Project) []*models.Project {
+	available := m.availableProjects()
+	projects := make([]*models.Project, 0, len(available)+1)
+	replaced := false
+	for _, project := range available {
+		if scope != nil && project != nil && project.ID == scope.ID {
+			projects = append(projects, scope)
+			replaced = true
+			continue
+		}
+		projects = append(projects, project)
+	}
+	if scope != nil && !replaced {
+		projects = append(projects, scope)
+	}
+	return projects
 }
 
 // handleOpenOutlineEditor dumps the project and hands the terminal to $EDITOR.
@@ -280,7 +335,7 @@ func (m *AppModel) handleOutlineEdited(msg OutlineEditedMsg) tea.Cmd {
 		return errorCmd("no project to outline")
 	}
 
-	lines, lineErrors := parseOutlineBuffer(msg.Buffer, msg.Project)
+	lines, lineErrors := parseOutlineBuffer(msg.Buffer, msg.Project, m.outlineDependencyProjects(msg.Project))
 	if len(lineErrors) > 0 {
 		m.showView(ViewOutlineErrors, NewOutlineErrorsViewModel(msg.Project.Name, msg.Path, lineErrors))
 		return nil

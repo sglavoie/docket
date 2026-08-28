@@ -279,6 +279,12 @@ func TestSearchAutocompleteOwnsNoParallelTriggerOrValueRegistry(t *testing.T) {
 func TestSearchAutocompleteCardinalityFollowsTheGrammarDefinition(t *testing.T) {
 	task := searchACTask("t1", []string{"infra", "docs"}, "office")
 	second := searchACTask("t2", []string{"api"}, "home")
+	// The dependency vocabulary is built from stored references, so the fixture has
+	// to carry some. Short IDs are set because the offered alias is one, and the
+	// reciprocal pair keeps two distinct targets in the vocabulary.
+	task.ShortID, second.ShortID = 1, 2
+	task.Dependencies = []models.TaskReference{{ProjectID: "alpha", TaskID: second.ID}}
+	second.Dependencies = []models.TaskReference{{ProjectID: "alpha", TaskID: task.ID}}
 	outliner := searchACOutliner(primaryRowsProject("alpha", task, second))
 
 	for _, definition := range textgrammar.Definitions(textgrammar.SurfaceSearch) {

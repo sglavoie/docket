@@ -37,6 +37,12 @@ type OutlinePlanLine struct {
 	// Pinned replaces the task's pinned state outright. The dump is always
 	// complete, so an omitted *pin is an unpin rather than an absent instruction.
 	Pinned bool
+	// Dependencies replace the task's soft-reference set outright, in buffer order.
+	// The dump prints every stored reference, so a locator the buffer no longer
+	// carries is a removal; nil is the empty set rather than "no instruction". The
+	// adapter has already folded -~task and ~0 into this one list, because a
+	// declarative line describes a final state rather than a patch.
+	Dependencies []TaskLocator
 	// Destination is the typed lifecycle/planning destination. Empty preserves an
 	// existing task's state and defaults a new task the way capture does.
 	Destination CaptureDestination
@@ -175,18 +181,34 @@ func (s *Service) ApplyOutlinePlan(req OutlinePlanRequest) (OutlinePlanResult, e
 		task.UpdatedAt = s.clock.Now()
 	}
 
+	// A task the buffer removed has incoming references with nowhere left to point,
+	// so every catalog document naming one is repaired inside this same
+	// transaction. The pass runs after the touch-time loop above: re-addressing
+	// someone else's stored locator is maintenance, not an edit the buffer made,
+	// and it must not move a task to the top of Recent or into the change count.
+	pass, err := s.outlineReferenceMaintenance(snap, project, removedLocators)
+	if err != nil {
+		return OutlinePlanResult{}, err
+	}
+	defer func() {
+		if !committed {
+			pass.restore()
+		}
+	}()
+
 	artifacts, err := planningArtifactsForTargets(targets, removedLocators, s.defaultedPlanningArtifacts(req.PlanningArtifacts))
 	if err != nil {
 		return OutlinePlanResult{}, err
 	}
 	summary := outlinePlanSummary(len(created)+len(updated), len(deleted))
-	outcome, err := s.commitProjects([]projectCommit{{
+	commits := append([]projectCommit{{
 		project:          project,
 		expectedRevision: snap.Revision(project.ID),
 		base:             base,
 		artifacts:        artifacts,
 		attachmentOps:    attachmentOps,
-	}}, "Apply Outline", summary)
+	}}, pass.commits...)
+	outcome, err := s.commitProjects(commits, "Apply Outline", summary)
 	if err != nil {
 		return OutlinePlanResult{}, err
 	}
@@ -205,13 +227,14 @@ func (s *Service) ApplyOutlinePlan(req OutlinePlanRequest) (OutlinePlanResult, e
 // on. A nil task means the line creates one; it is materialized only after the
 // rollback guard is installed, because minting a short ID mutates the project.
 type preparedOutlineLine struct {
-	line     OutlinePlanLine
-	position int
-	title    string
-	priority int
-	tags     []string
-	context  string
-	task     *models.Task
+	line         OutlinePlanLine
+	position     int
+	title        string
+	priority     int
+	tags         []string
+	context      string
+	dependencies []models.TaskReference
+	task         *models.Task
 }
 
 func (p preparedOutlineLine) creates() bool { return p.line.TaskID == "" }
@@ -269,6 +292,11 @@ func prepareOutlineLine(snap Snapshot, project *models.Project, line OutlinePlan
 	}
 	item := preparedOutlineLine{line: line, title: title, priority: line.Priority, tags: tags, context: context}
 	if line.TaskID == "" {
+		dependencies, err := resolveOutlineDependencies(snap, project, nil, line.Dependencies)
+		if err != nil {
+			return preparedOutlineLine{}, err
+		}
+		item.dependencies = dependencies
 		return item, nil
 	}
 	task := project.GetTaskByID(line.TaskID)
@@ -279,7 +307,49 @@ func prepareOutlineLine(snap Snapshot, project *models.Project, line OutlinePlan
 		return preparedOutlineLine{}, fmt.Errorf("%w: %s", ErrTaskNotFound, line.TaskID)
 	}
 	item.task = task
+	dependencies, err := resolveOutlineDependencies(snap, project, task, line.Dependencies)
+	if err != nil {
+		return preparedOutlineLine{}, err
+	}
+	item.dependencies = dependencies
 	return item, nil
+}
+
+// resolveOutlineDependencies turns one line's final locator list into the set the
+// task should store. A locator the task already carries round-trips verbatim,
+// because the dump prints closed and unloaded targets too and re-reading the
+// buffer unchanged must never be a refusal. Anything the line newly introduces
+// goes through the ordinary addition rule, so the buffer cannot mint a reference
+// to a target the user could not have picked from a list.
+func resolveOutlineDependencies(snap Snapshot, project *models.Project, task *models.Task, locators []TaskLocator) ([]models.TaskReference, error) {
+	if len(locators) == 0 {
+		return nil, nil
+	}
+	var existing []models.TaskReference
+	self := TaskLocator{}
+	if task != nil {
+		existing = task.Dependencies
+		self = TaskLocator{ProjectID: project.ID, TaskID: task.ID}
+	}
+	resolver := newReferenceResolver(snap, self)
+	resolved := make([]models.TaskReference, 0, len(locators))
+	for _, raw := range locators {
+		locator, err := normalizeDependencyLocator(raw)
+		if err != nil {
+			return nil, err
+		}
+		reference := locator.Reference()
+		if !slices.Contains(existing, reference) {
+			if reference, err = resolver.resolveAddition(locator); err != nil {
+				return nil, err
+			}
+		}
+		if slices.Contains(resolved, reference) {
+			continue
+		}
+		resolved = append(resolved, reference)
+	}
+	return models.CloneTaskReferences(resolved), nil
 }
 
 // applyOutlinePlan mutates the scope project in memory. Parentage and sibling
@@ -301,6 +371,7 @@ func (s *Service) applyOutlinePlan(project *models.Project, base *storage.Projec
 		item.task.Tags = append([]string{}, item.tags...)
 		item.task.Context = item.context
 		item.task.DueDate = cloneDueDatePtr(item.line.Due)
+		item.task.Dependencies = models.CloneTaskReferences(item.dependencies)
 		item.task.ApplyPinned(item.line.Pinned, now)
 	}
 	return s.applyOutlineDestinations(project, base, prepared, now)
@@ -547,6 +618,7 @@ func outlineTaskChanged(base, task *models.Task, baseRank, rank int) bool {
 		base.Pinned != task.Pinned ||
 		baseRank != rank ||
 		!slices.Equal(base.Tags, task.Tags) ||
+		!models.TaskReferencesEqual(base.Dependencies, task.Dependencies) ||
 		!sameOptionalID(base.ParentID, task.ParentID) ||
 		!sameOptionalDate(base.DueDate, task.DueDate)
 }
@@ -644,6 +716,21 @@ func removeOutlineTasks(project *models.Project, deleted []*models.Task) ([]stor
 	}
 	project.Tasks = filterOutTasks(project.Tasks, removed)
 	return ops, locators
+}
+
+// outlineReferenceMaintenance repairs the incoming references of the tasks one
+// buffer deleted. The scope project is named as already committing, so it is
+// rewritten in place rather than gaining a second changeset for the document the
+// plan is already writing.
+func (s *Service) outlineReferenceMaintenance(snap Snapshot, project *models.Project, removed []TaskLocator) (referenceMaintenancePass, error) {
+	if len(removed) == 0 {
+		return referenceMaintenancePass{}, nil
+	}
+	maintenance := TaskReferenceMaintenance{RemovedTasks: make(map[models.TaskReference]bool, len(removed))}
+	for _, locator := range removed {
+		maintenance.RemovedTasks[locator.Reference()] = true
+	}
+	return s.maintainTaskReferences(snap, maintenance, map[string]bool{project.ID: true})
 }
 
 func outlineTaskResults(project *models.Project, tasks []*models.Task, revision, transactionID string) []TaskResult {

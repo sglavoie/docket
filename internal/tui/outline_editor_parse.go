@@ -51,9 +51,12 @@ type outlineBufferLine struct {
 // An empty result is not an error here. Since absence deletes, a buffer holding
 // no lines is a request to empty the project, and only the caller knows the
 // scope that request would remove.
-func parseOutlineBuffer(buffer string, project *models.Project) ([]app.OutlinePlanLine, []lineError) {
+// projects is the loaded population a ~task reference is addressed against; the
+// scope project alone would leave a dumped cross-project dependency unresolvable
+// on the way back in.
+func parseOutlineBuffer(buffer string, project *models.Project, projects []*models.Project) ([]app.OutlinePlanLine, []lineError) {
 	structural, errs := parseOutlineStructure(buffer, project)
-	lines, lineErrs := parseOutlineBodies(structural, project)
+	lines, lineErrs := parseOutlineBodies(structural, project, projects)
 	errs = append(errs, lineErrs...)
 	sort.SliceStable(errs, func(i, j int) bool { return errs[i].line < errs[j].line })
 	if len(errs) > 0 {
@@ -147,7 +150,7 @@ func parseOutlineStructure(buffer string, project *models.Project) ([]outlineBuf
 // parseOutlineBodies is the line phase. The body left after the marker strip is
 // parsed through the shared outline surface. Structural capture tokens receive
 // explicit guidance because the buffer owns project and parent placement.
-func parseOutlineBodies(structural []outlineBufferLine, project *models.Project) ([]app.OutlinePlanLine, []lineError) {
+func parseOutlineBodies(structural []outlineBufferLine, project *models.Project, projects []*models.Project) ([]app.OutlinePlanLine, []lineError) {
 	var (
 		lines []app.OutlinePlanLine
 		errs  []lineError
@@ -207,7 +210,7 @@ func parseOutlineBodies(structural []outlineBufferLine, project *models.Project)
 			continue
 		}
 
-		parsed, err := parseQuickCaptureSurface(item.body, project, nil, true, textgrammar.SurfaceOutline)
+		parsed, err := parseQuickCaptureSurface(item.body, project, projects, true, textgrammar.SurfaceOutline)
 		if err != nil {
 			errs = append(errs, lineError{line: item.sourceLine, message: err.Error()})
 			continue
@@ -226,6 +229,9 @@ func parseOutlineBodies(structural []outlineBufferLine, project *models.Project)
 			Context:    parsed.context,
 			Due:        parsed.dueDate,
 			Pinned:     parsed.pinned,
+			// The parser has already folded -~task and ~0 in, so this is the final
+			// set the line declares rather than a patch over the stored one.
+			Dependencies: dependencyLocators(parsed.dependencies),
 		}
 		if parsed.destinationSet {
 			line.Destination = parsed.destination

@@ -250,7 +250,7 @@ func (p *quickCaptureParser) parseDeferTokens(tokens []textgrammar.Token) {
 // a real, still-open task the workspace loaded; nothing about the new task's
 // readiness or ordering follows from it.
 func (p *quickCaptureParser) parseDependencyTokens(add, remove []textgrammar.Token) {
-	definition, ok := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDependency)
+	definition, ok := textgrammar.DefinitionFor(p.surface, textgrammar.FieldDependency)
 	if !ok {
 		p.failf("dependency grammar is unavailable")
 		return
@@ -258,6 +258,10 @@ func (p *quickCaptureParser) parseDependencyTokens(add, remove []textgrammar.Tok
 	// The removal form is read from the edit surface because capture tokenizes it
 	// without teaching it, so capture advertises no definition to name it with.
 	removeDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceEdit, textgrammar.FieldRemoveDependency)
+	if p.surface == textgrammar.SurfaceOutline {
+		p.parseOutlineDependencyTokens(add, remove, definition, removeDefinition)
+		return
+	}
 	if len(remove) > 0 {
 		p.failf("%stask is not available when capturing; a new task has no dependencies to remove", removeDefinition.Trigger)
 		return
@@ -288,6 +292,72 @@ func (p *quickCaptureParser) parseDependencyTokens(add, remove []textgrammar.Tok
 		}
 		p.result.dependencies = appendDependencyRef(p.result.dependencies, ref)
 	}
+}
+
+// parseOutlineDependencyTokens reads the outline buffer's declarative dependency
+// set. The line is a complete statement, so the positive tokens are the final
+// set: deleting a dumped ~task is what removes that dependency, -~task subtracts
+// from the same line's positives for anyone who would rather strike a reference
+// than delete it, and ~0 states the empty set.
+//
+// Nothing here judges whether a target is closed or loaded. The dump prints
+// terminal and unavailable references so they can round-trip, and only the
+// application layer knows which locators the task already stored — so it, not
+// this parser, decides that an existing reference may stay while a newly typed
+// one must name a loaded open task.
+func (p *quickCaptureParser) parseOutlineDependencyTokens(add, remove []textgrammar.Token, definition, removeDefinition textgrammar.Definition) {
+	clears := 0
+	for _, token := range add {
+		if token.Value == dependencyClearValue {
+			clears++
+		}
+	}
+	if clears > 0 {
+		if clears != len(add) || len(remove) > 0 {
+			p.failf("%s%s is the empty set and cannot be combined with adding or removing dependencies", definition.Trigger, dependencyClearValue)
+		}
+		return
+	}
+
+	removed := make([]app.TaskLocator, 0, len(remove))
+	for _, token := range remove {
+		if token.Value == dependencyClearValue {
+			p.failf("%s%s is not a clear form; use %s%s to clear every dependency", removeDefinition.Trigger, token.Value, definition.Trigger, dependencyClearValue)
+			return
+		}
+		ref, ok := p.resolveOutlineDependency(token, removeDefinition.Trigger)
+		if !ok {
+			return
+		}
+		removed = append(removed, ref.locator)
+	}
+	for _, token := range add {
+		ref, ok := p.resolveOutlineDependency(token, definition.Trigger)
+		if !ok {
+			return
+		}
+		if slices.Contains(removed, ref.locator) {
+			continue
+		}
+		p.result.dependencies = appendDependencyRef(p.result.dependencies, ref)
+	}
+}
+
+// resolveOutlineDependency addresses one outline token. A locator the workspace
+// cannot resolve is still accepted when it is well-shaped, which is what lets the
+// project-id:task-id fallback the dump printed for an unavailable target come
+// back in unchanged.
+func (p *quickCaptureParser) resolveOutlineDependency(token textgrammar.Token, trigger string) (capturedDependencyRef, bool) {
+	ref, err := resolveDependencyReference(token.Value, p.project, p.allProjects)
+	if err != nil {
+		p.failf("%s", err)
+		return capturedDependencyRef{}, false
+	}
+	if ref.locator.TaskID == "" {
+		p.failf("%s", dependencyNotFoundMessage(trigger, token.Value))
+		return capturedDependencyRef{}, false
+	}
+	return ref, true
 }
 
 func (p *quickCaptureParser) parseProjectTokens(tokens []textgrammar.Token) {

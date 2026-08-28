@@ -88,6 +88,16 @@ func searchDiagnostics(result Result) []Diagnostic {
 					Message: fmt.Sprintf("%s%s clears a context and matches nothing", token.Form, clearValue),
 				})
 			}
+		case FieldDependency:
+			// ~0 is a real form on edit and outline, where a stored set exists to
+			// empty. Search holds no set, so the value is named rather than silently
+			// compiled into a locator that could never match.
+			if token.Value == clearValue {
+				diagnostics = append(diagnostics, Diagnostic{
+					Field:   FieldDependency,
+					Message: fmt.Sprintf("%s%s clears dependencies with e or the outline buffer; search has no set to clear", token.Form, clearValue),
+				})
+			}
 		}
 	}
 	return append(diagnostics, placementDiagnostics(result.Text)...)
@@ -107,6 +117,10 @@ var refusedSearchFields = []refusedSearchField{
 	{FieldChild, "placement is set with e"},
 	{FieldAttachment, "attachments are added at capture or in the task's Attachments panel"},
 	{FieldComment, "comments are added at capture or in the task's Comments panel"},
+	// A dependency predicate is direct and positive by design: there is no
+	// traversal and no negative form, so -~ is named here rather than left to read
+	// as a filter search silently never applied.
+	{FieldRemoveDependency, "a dependency search is positive; dependencies are removed with e or the outline buffer"},
 }
 
 // placementDiagnostics re-scans the remainder with each refused field's own

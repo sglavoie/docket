@@ -6,6 +6,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
@@ -164,9 +165,74 @@ func (m *OutlinerModel) searchAutocompleteSuggestions(
 		return searchPinSuggestions(definition, partial)
 	case textgrammar.FieldProject:
 		return m.searchProjectSuggestions(definition, partial)
+	case textgrammar.FieldDependency:
+		return m.searchDependencySuggestions(definition, partial)
 	default:
 		return nil
 	}
+}
+
+// searchDependencySuggestions offers exactly the targets the candidate population
+// already depends on, in first-referenced order.
+//
+// The vocabulary is built from stored references rather than from the tasks a
+// dependency could name, because that is the set this predicate can match: an
+// open task nobody depends on would complete into a query with no results.
+// Terminal and unloaded targets are included for the same reason — a stored
+// reference is matchable however closed or unreachable its target has become,
+// and an unresolvable one still completes to the durable locator the gate
+// compares.
+func (m *OutlinerModel) searchDependencySuggestions(
+	definition textgrammar.Definition,
+	partial string,
+) []ACSuggestion {
+	return dependencySuggestions(
+		m.searchDependencyCandidates(),
+		partial,
+		m.searchDependencyEffectiveProject(),
+		definition.Trigger,
+		max(m.width-25, 10),
+	)
+}
+
+// searchDependencyCandidates collects the distinct targets the live candidates
+// reference. Resolution runs over the whole loaded population rather than the
+// search scope, so a scoped query still names a cross-project target by its
+// qualified alias instead of falling back to a bare locator.
+func (m *OutlinerModel) searchDependencyCandidates() []dependencyCandidate {
+	projects := m.loadedProjects
+	seen := make(map[app.TaskLocator]bool)
+	candidates := make([]dependencyCandidate, 0)
+	for _, task := range m.searchAutocompleteCandidateTasks() {
+		if task == nil {
+			continue
+		}
+		for _, reference := range task.Dependencies {
+			locator := app.LocatorForReference(reference)
+			if seen[locator] {
+				continue
+			}
+			seen[locator] = true
+			candidate := dependencyCandidate{locator: locator}
+			if project := projectByStableID(reference.ProjectID, projects); project != nil {
+				candidate.project = project
+				candidate.task = project.GetTaskByID(reference.TaskID)
+			}
+			candidates = append(candidates, candidate)
+		}
+	}
+	return candidates
+}
+
+// searchDependencyEffectiveProject is the project a completed alias may stay
+// compact in: the scope project when the search is scoped to exactly one, and
+// nothing otherwise, which is what makes a global query complete to qualified
+// aliases the global gate can resolve unambiguously.
+func (m *OutlinerModel) searchDependencyEffectiveProject() *models.Project {
+	if scope := m.workModeScopeProjects(); len(scope) == 1 {
+		return scope[0]
+	}
+	return nil
 }
 
 // searchDueVocabulary is the relational bucket set plus the one parametric form
