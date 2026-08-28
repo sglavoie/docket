@@ -497,3 +497,40 @@ func TestQuickEditComponent_CanonicalStatePreservedInOriginal(t *testing.T) {
 		t.Errorf("expected original.state=%q, got %q", models.StateWaiting, comp.GetOriginal().state)
 	}
 }
+
+// A quick-edit snapshot is taken from the repository-owned task and then
+// mutated as the user types, so it must not keep the source's dependency
+// backing array. Writing an element or appending within the clone's capacity
+// would otherwise reach back into stored state that no edit has committed.
+func TestQuickEditSnapshotDetachesDependencies(t *testing.T) {
+	task := &models.Task{
+		ID:            "task-1",
+		Title:         "Snapshot source",
+		WorkflowState: models.StateBacklog,
+		Dependencies: []models.TaskReference{
+			{ProjectID: "home-project", TaskID: "home-2"},
+			{ProjectID: "home-project", TaskID: "home-3"},
+		},
+	}
+	original := models.CloneTaskReferences(task.Dependencies)
+
+	snapshot := quickEditSnapshot(task)
+	if snapshot == nil {
+		t.Fatal("quickEditSnapshot returned nil")
+	}
+	if !models.TaskReferencesEqual(snapshot.preview.Dependencies, original) {
+		t.Fatalf("snapshot dependencies = %v, want %v", snapshot.preview.Dependencies, original)
+	}
+	if len(snapshot.preview.Dependencies) > 0 &&
+		&snapshot.preview.Dependencies[0] == &task.Dependencies[0] {
+		t.Fatal("snapshot shares the source dependency backing array")
+	}
+
+	snapshot.preview.Dependencies[0] = models.TaskReference{ProjectID: "other", TaskID: "9"}
+	snapshot.preview.Dependencies = append(snapshot.preview.Dependencies[:1],
+		models.TaskReference{ProjectID: "other", TaskID: "10"})
+	if !models.TaskReferencesEqual(task.Dependencies, original) {
+		t.Fatalf("source dependencies mutated through the snapshot: %v, want %v",
+			task.Dependencies, original)
+	}
+}

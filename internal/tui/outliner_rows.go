@@ -2,6 +2,17 @@ package tui
 
 import "github.com/sglavoie/tt/internal/models"
 
+// cloneTaskDetachingDependencies shallow-copies a task and detaches its
+// dependency list. A bare `*task` keeps the reference slice's backing array,
+// so a projection or snapshot clone would alias repository-owned or view-owned
+// state and a later element write or in-capacity append would reach the source
+// task. Every clone that outlives the read it was made for goes through here.
+func cloneTaskDetachingDependencies(task *models.Task) models.Task {
+	clone := *task
+	clone.Dependencies = models.CloneTaskReferences(task.Dependencies)
+	return clone
+}
+
 // validateCrossFocusStack keeps only the contiguous prefix that still describes
 // one real ancestry branch in one owning project. Existence alone is not
 // sufficient: an inline edit can reparent a nested Focus root while leaving its
@@ -149,7 +160,7 @@ func filterTaskTreeKeepingAncestors(tasks []*models.Task, predicate func(*models
 		}
 		filteredChildren := filterTaskTreeKeepingAncestors(task.Children, predicate)
 		if predicate(task) || len(filteredChildren) > 0 {
-			clone := *task
+			clone := cloneTaskDetachingDependencies(task)
 			clone.Children = filteredChildren
 			result = append(result, &clone)
 		}

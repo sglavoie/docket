@@ -523,3 +523,114 @@ func TestPrimaryAllFocusedProjectOmitsRedundantProjectHeaders(t *testing.T) {
 		t.Fatal("base scope did not restore cross-project sub-headers")
 	}
 }
+
+// projectionDependencySource builds a two-level tree whose every task stores
+// soft references, so a projection that shallow-copies a task without
+// detaching Dependencies is observable as a shared backing array.
+func projectionDependencySource() (roots []*models.Task, stored map[string][]models.TaskReference) {
+	child := primaryRowsTask("child", models.StateBacklog)
+	child.Dependencies = []models.TaskReference{
+		{ProjectID: "proj", TaskID: "dep-a"},
+		{ProjectID: "proj", TaskID: "dep-b"},
+	}
+	parent := primaryRowsTask("parent", models.StateBacklog)
+	parent.Dependencies = []models.TaskReference{
+		{ProjectID: "proj", TaskID: "dep-c"},
+		{ProjectID: "proj", TaskID: "dep-d"},
+	}
+	parent.Children = []*models.Task{child}
+	stored = map[string][]models.TaskReference{
+		"parent": models.CloneTaskReferences(parent.Dependencies),
+		"child":  models.CloneTaskReferences(child.Dependencies),
+	}
+	return []*models.Task{parent}, stored
+}
+
+func flattenProjectedTasks(tasks []*models.Task) []*models.Task {
+	var flat []*models.Task
+	for _, task := range tasks {
+		if task == nil {
+			continue
+		}
+		flat = append(flat, task)
+		flat = append(flat, flattenProjectedTasks(task.Children)...)
+	}
+	return flat
+}
+
+// The tree projections hand their clones to renderers and to further
+// projections, so a clone that keeps the source's dependency backing array
+// lets a later element write or in-capacity append reach repository-owned
+// state. Every projection must detach the list.
+func TestTaskProjectionCopiesDetachDependencies(t *testing.T) {
+	suppressed := map[TaskIdentity]bool{{ProjectID: "proj", TaskID: "absent"}: true}
+
+	cases := []struct {
+		name    string
+		project func([]*models.Task) []*models.Task
+	}{
+		{"filterTaskTreeKeepingAncestors", func(roots []*models.Task) []*models.Task {
+			return filterTaskTreeKeepingAncestors(roots, func(*models.Task) bool { return true })
+		}},
+		{"removePlanningRowsFromTree", func(roots []*models.Task) []*models.Task {
+			return removePlanningRowsFromTree(roots, "proj", suppressed)
+		}},
+		{"excludeTaskTreePromotingChildren", func(roots []*models.Task) []*models.Task {
+			return excludeTaskTreePromotingChildren(roots, func(*models.Task) bool { return false })
+		}},
+		{"removeProjectedRowsFromTree", func(roots []*models.Task) []*models.Task {
+			return removeProjectedRowsFromTree(roots, "proj", suppressed)
+		}},
+		{"sortPrimaryTaskTree", func(roots []*models.Task) []*models.Task {
+			outliner, _ := primaryRowsOutliner()
+			outliner.sort = SortState{Field: SortByTitle, Ascending: true}
+			return outliner.sortPrimaryTaskTree(roots)
+		}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			roots, stored := projectionDependencySource()
+			sources := flattenProjectedTasks(roots)
+
+			isSource := make(map[*models.Task]bool, len(sources))
+			for _, source := range sources {
+				isSource[source] = true
+			}
+
+			projected := flattenProjectedTasks(tc.project(roots))
+			if len(projected) == 0 {
+				t.Fatal("projection dropped every task")
+			}
+			mutated := 0
+			for _, clone := range projected {
+				if isSource[clone] {
+					// A projection may pass a task through untouched
+					// (sortPrimaryTaskTree keeps leaves); only copies
+					// carry the detachment obligation.
+					continue
+				}
+				want := stored[clone.ID]
+				if !models.TaskReferencesEqual(clone.Dependencies, want) {
+					t.Fatalf("%s dependencies = %v, want %v", clone.ID, clone.Dependencies, want)
+				}
+				if len(clone.Dependencies) == 0 {
+					continue
+				}
+				clone.Dependencies[0] = models.TaskReference{ProjectID: "proj", TaskID: "overwritten"}
+				clone.Dependencies = append(clone.Dependencies[:1],
+					models.TaskReference{ProjectID: "proj", TaskID: "appended"})
+				mutated++
+			}
+			if mutated == 0 {
+				t.Fatal("no projected clone carried dependencies to mutate")
+			}
+			for _, source := range sources {
+				if !models.TaskReferencesEqual(source.Dependencies, stored[source.ID]) {
+					t.Fatalf("source %s mutated through its projection: %v, want %v",
+						source.ID, source.Dependencies, stored[source.ID])
+				}
+			}
+		})
+	}
+}

@@ -308,7 +308,7 @@ func removeProjectedRowsFromTree(
 			result = append(result, children...)
 			continue
 		}
-		clone := *task
+		clone := cloneTaskDetachingDependencies(task)
 		clone.Children = children
 		result = append(result, &clone)
 	}
@@ -451,7 +451,7 @@ func excludeTaskTreePromotingChildren(
 			result = append(result, children...)
 			continue
 		}
-		clone := *task
+		clone := cloneTaskDetachingDependencies(task)
 		clone.Children = children
 		result = append(result, &clone)
 	}
@@ -471,7 +471,7 @@ func (m *OutlinerModel) sortPrimaryTaskTree(tasks []*models.Task) []*models.Task
 		if len(task.Children) == 0 {
 			continue
 		}
-		clone := *task
+		clone := cloneTaskDetachingDependencies(task)
 		clone.Children = m.sortPrimaryTaskTree(task.Children)
 		sorted[i] = &clone
 	}

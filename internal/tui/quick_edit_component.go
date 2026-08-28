@@ -189,7 +189,7 @@ func quickEditSnapshot(task *models.Task) *quickEditResult {
 	if task == nil {
 		return nil
 	}
-	preview := *task
+	preview := cloneTaskDetachingDependencies(task)
 	preview.Tags = append([]string(nil), task.Tags...)
 	return &quickEditResult{
 		title:    task.Title,
