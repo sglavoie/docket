@@ -277,6 +277,7 @@ func TestGuideDocumentsStorageAndMigration(t *testing.T) {
 		"Schema 15 upgrades task Markdown to schema 14 by adding the optional `depends`",
 		"durable `state_changed` clock, backfilled from `updated`",
 		"There is no down-migration",
+		"keep your own copy of the workspace directory before a version jump",
 		"schema-4/5 workspaces through the whole chain",
 		"folds the retired per-project grouping fields",
 		"existing `unfiled` project or directory also aborts before snapshot publication",

@@ -124,6 +124,11 @@ schema-14 boundary or `pre-dependencies-v15-<UTC>.tar.gz` for schema 15 — into
 separate directory and open that copy with a compatible build. Migration
 snapshots themselves are never modified.
 
+Because migration is one-way, keep your own copy of the workspace directory
+before a version jump. The published archive is a migration record rather than a
+backup you are meant to rely on, and a copy you made yourself is the only thing
+that lets you go back to the build you were running.
+
 Run `tt doctor` for read-only integrity checks or `tt doctor --fix` for
 explicitly supported repairs.
 

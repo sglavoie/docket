@@ -221,7 +221,11 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"prepared activation journal",
 		"## Workspace location and cloud consent",
 		"## Maintenance CLI and platform support",
-		"macOS and Linux",
+		"There are no release artifacts",
+		"developed and used daily on macOS",
+		"Windows is not supported",
+		"`resolveBuildInfo` reads `debug.ReadBuildInfo` when the compiled-in version is still " +
+			"the `dev` placeholder",
 	}
 	for _, needle := range required {
 		if !strings.Contains(content, strings.Join(strings.Fields(needle), " ")) {
@@ -239,6 +243,8 @@ func TestArchitectureDocumentationRejectsRetiredLiveProduct(t *testing.T) {
 		"Task Type",
 		"Inspector",
 		"live schema 4",
+		"Current release builds target",
+		"not a supported release target",
 		"task mutation CLI",
 		"Ctrl+Esc reset",
 		"focused project's notes",
@@ -280,8 +286,12 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// preserve-by-default patch and count-what-is-stored indicator are rules no
 	// behavior or mechanism document can state for the surfaces that must obey
 	// them, are the eleven that raised it from 16200 — and never to absorb
-	// explanation.
-	const budget = 21600
+	// explanation. The last raise is the one exception and is not an invariant at
+	// all: publishing the repository made this file readable by strangers, so it
+	// opens with a paragraph saying what it is and pointing at docs/guide/ for
+	// behavior. That framing is bounded and one-time; the budget still polices
+	// every rule below it.
+	const budget = 21900
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -291,6 +301,8 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 	content := normalizedDocumentation(t, "CLAUDE.md")
 	for _, required := range []string{
+		"This file is the invariant contract the implementation and its tests are held to",
+		"if you want to know how `tt` behaves, read [`docs/guide/`](docs/guide/README.md) instead",
 		"Contributor rules only: invariants, forbidden patterns, forwarding addresses",
 		"[`docs/decisions/behavioral-signals-contracts.md`](docs/decisions/behavioral-signals-contracts.md) " +
 			"is the locked behavioral-signal authority",

@@ -1,5 +1,10 @@
 # CLAUDE.md
 
+This file is the invariant contract the implementation and its tests are held
+to, written for whoever is changing the code — human or agent — and terse on
+purpose. It states rules, not explanations: if you want to know how `tt`
+behaves, read [`docs/guide/`](docs/guide/README.md) instead.
+
 Contributor rules only: invariants, forbidden patterns, forwarding addresses.
 Behavior: [`docs/guide/`](docs/guide/README.md). Mechanism: [`docs/architecture.md`](docs/architecture.md).
 [`docs/decisions/behavioral-signals-contracts.md`](docs/decisions/behavioral-signals-contracts.md)

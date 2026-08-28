@@ -69,14 +69,53 @@ Pinned, Today, Doing, Review, Stale, Inbox, Next, Paused, Backlog, Waiting, Some
 ## Install and start
 
 ```bash
+go install github.com/sglavoie/tt@latest
+tt
+```
+
+That needs Go 1.25.13 or newer and `$(go env GOPATH)/bin` — usually `~/go/bin` —
+on your `PATH`. The floor is the first Go release without a known vulnerability
+`tt` actually reaches; a newer toolchain is fetched automatically unless you
+have pinned `GOTOOLCHAIN=local`. To build from a clone instead:
+
+```bash
 go build -o tt .
 ./tt
 ```
 
-Move the binary into your `PATH` if desired. A new workspace starts locally in
-`~/.tt/`. Use `--data-dir`, `TT_DATA_DIR`, or `tt workspace move` to select a
-different location. Moving into iCloud Drive or another synced directory is an
-explicit choice; an existing selected iCloud workspace is preserved.
+There are no prebuilt binaries and no package-manager recipes; `go install` is
+the whole distribution story.
+
+A new workspace starts locally in `~/.tt/`. Use `--data-dir`, `TT_DATA_DIR`, or
+`tt workspace move` to select a different location. Moving into iCloud Drive or
+another synced directory is an explicit choice; an existing selected iCloud
+workspace is preserved.
+
+## Platform support
+
+`tt` is developed and used daily on macOS. The full test suite also runs on
+Linux in CI on every push, so Linux is exercised but not daily-driven. Windows
+is not supported.
+
+## Your data
+
+There is no telemetry, no analysis service, no account, and no network call
+anywhere in the program. Everything `tt` knows lives under `~/.tt/` — a JSON
+catalog plus one readable Markdown file per project — on a machine you control.
+You can read, grep, edit, and back the whole thing up with ordinary tools.
+
+## Before you upgrade
+
+Migration is snapshot-first and one-way. Opening a workspace with a newer `tt`
+publishes an immutable archive of the old bytes and then activates the new
+schema; there is no down-migration, and an older build refuses a migrated
+workspace rather than converting it back.
+
+So before a version jump, keep your own copy of `~/.tt/`. If anything looks
+wrong afterwards, run `tt doctor` for read-only integrity and
+migration-snapshot diagnostics, and `tt doctor --fix` for the explicitly
+supported repairs. [`docs/guide/storage.md`](docs/guide/storage.md) documents
+the archive names and the manual recovery path.
 
 Every run starts in Active Projects, All mode, with no restored search, filters,
 selection, or navigation. Active Projects is the base task workspace: every
@@ -174,3 +213,7 @@ The scenario script replays the committed final-product TUI workflows plus the
 snapshot-first migration and interrupted-activation recovery scenarios. It
 re-selects tests `just test` and `just ci` already run, for a faster loop while
 authoring one.
+
+## License
+
+MIT — see [`LICENSE`](LICENSE).

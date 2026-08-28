@@ -2577,9 +2577,17 @@ what happened to be loaded, and freezing them into a document would state as
 durable something that is not. Global flags
 are `--data-dir` and `--no-color`. It has no task mutation or undo/redo command.
 
-Current release builds target macOS and Linux on `amd64` and `arm64`. Windows is
-not a supported release target. Core use does not require external AI services
-or provider integrations.
+There are no release artifacts. Distribution is `go install
+github.com/sglavoie/tt@latest` alone: no prebuilt binaries, no package-manager
+recipes, and no cross-compilation matrix, so the module's own `go` directive is
+the only platform gate the toolchain enforces. `tt` is developed and used daily
+on macOS; the full suite also runs on Linux in CI on every push, so Linux is
+exercised but not daily-driven; Windows is not supported. Because no ldflags
+reach a `go install` build, `resolveBuildInfo` reads `debug.ReadBuildInfo` when
+the compiled-in version is still the `dev` placeholder, taking the module
+version and, for a source-checkout build, the `vcs.revision` and `vcs.time`
+stamps. The justfile's ldflags still win whenever they are set. Core use does
+not require external AI services or provider integrations.
 
 ## Verification
 
