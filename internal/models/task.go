@@ -56,6 +56,11 @@ type Task struct {
 	Attachments    []Attachment    `json:"attachments,omitempty"`
 	DeferredUntil  *time.Time      `json:"deferred_until,omitempty"` // Task hidden until this date
 	Checklist      []ChecklistItem `json:"checklist,omitempty"`      // Checklist items for subtasks
+	// Dependencies is the ordered, deduplicated list of tasks this one depends
+	// on. It is informational only: nothing blocks, reorders, or ranks on it.
+	// Each entry is a durable project-qualified locator, so a cross-project
+	// target stays resolvable and a rename never rewrites an entry.
+	Dependencies []TaskReference `json:"dependencies,omitempty"`
 
 	// Computed fields (not persisted)
 	Children []*Task  `json:"-"`

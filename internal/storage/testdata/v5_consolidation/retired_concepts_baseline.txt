@@ -2,7 +2,7 @@
 # Columns: concept, production path, identifier, AST occurrence count.
 # Regenerate after reviewing ownership changes with:
 #   UPDATE_RETIRED_CONCEPT_BASELINE=1 go test ./internal/storage -run TestRetiredConceptInventoryBaseline
-# Total rows: 70
+# Total rows: 87
 custom-context	internal/config/legacy_v4_domains.go	CustomContexts	2
 custom-context	internal/config/legacy_v4_domains_convert.go	CustomContexts	8
 custom-context	internal/config/pre_consolidation_v6_snapshot.go	customContexts	3
@@ -42,10 +42,27 @@ decision	internal/storage/v5_archive_reintegration.go	V5TaskDecision	1
 dependency	internal/config/pre_consolidation_v6_snapshot.go	dependencyCount	3
 dependency	internal/config/runtime.go	NewRuntimeDependencies	2
 dependency	internal/config/runtime.go	RuntimeDependencies	11
+dependency	internal/config/v15_migration_activation.go	createPreDependenciesV15Snapshot	2
+dependency	internal/config/v15_migration_activation.go	v15DependenciesAuditReport	2
+dependency	internal/models/task.go	Dependencies	1
 dependency	internal/storage/format/legacy_v4_task_convert.go	DependsOn	2
+dependency	internal/storage/format/v14_task_codec.go	Dependencies	5
+dependency	internal/storage/format/v14_task_codec.go	V14TaskDependency	9
+dependency	internal/storage/format/v14_task_codec.go	decodeV14Dependencies	2
+dependency	internal/storage/format/v14_task_codec.go	dependencies	11
+dependency	internal/storage/format/v14_task_codec.go	dependency	11
+dependency	internal/storage/format/v14_task_codec.go	encodeV14Dependencies	2
+dependency	internal/storage/format/v14_task_codec.go	encodeV14Dependency	3
+dependency	internal/storage/format/v14_task_codec.go	v14DependencyComponentSeparator	4
+dependency	internal/storage/format/v14_task_codec.go	v14DependencyEntrySeparator	3
+dependency	internal/storage/format/v14_task_codec.go	validateV14Dependencies	3
 dependency	internal/storage/format/v5_task_codec.go	DependsOn	4
 dependency	internal/storage/format/v6_task_convert.go	DependsOn	1
 dependency	internal/storage/format/v6_task_convert.go	dependency	2
+dependency	internal/storage/project_document.go	Dependencies	6
+dependency	internal/storage/project_document.go	V14TaskDependency	1
+dependency	internal/storage/project_document.go	dependency	6
+dependency	internal/storage/project_merge.go	Dependencies	4
 dependency	internal/storage/v5_archive_reintegration.go	DependsOn	9
 dependency	internal/storage/v5_archive_reintegration.go	canonicalV5DependencyReference	3
 dependency	internal/storage/v5_archive_reintegration.go	dependencies	4

@@ -236,9 +236,13 @@ func TestManagerV14MigrationRecoversPreparedActivationOnStartup(t *testing.T) {
 	if err := manager.RecoverWorkspace(); err != nil {
 		t.Fatalf("recover prepared schema-14 activation on startup: %v", err)
 	}
+	// Startup rolls the prepared manifest forward and then continues the chain,
+	// so the catalog lands on the newest supported schema. The single published
+	// snapshot pair asserted below is what proves the v14 boundary ran once and
+	// was never re-entered.
 	schema, exists, err := workspaceCatalogPayloadSchema(root)
-	if err != nil || !exists || schema != V14ConfigSchemaVersion {
-		t.Fatalf("recovered catalog schema = %d exists=%v err=%v, want %d", schema, exists, err, V14ConfigSchemaVersion)
+	if err != nil || !exists || schema != CurrentConfigVersion {
+		t.Fatalf("recovered catalog schema = %d exists=%v err=%v, want %d", schema, exists, err, CurrentConfigVersion)
 	}
 	if _, statErr := os.Stat(journal.ManifestPath(manifest.ID)); !errors.Is(statErr, os.ErrNotExist) {
 		t.Fatalf("recovered activation manifest still exists: %v", statErr)

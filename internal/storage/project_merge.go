@@ -150,7 +150,7 @@ func MergeProjectDocuments(base, local, current *ProjectDocument) (*ProjectMerge
 	merged := &ProjectDocument{
 		ProjectName:   name,
 		Tasks:         orderTasks(mergedTasks, orderedIDs),
-		SchemaVersion: SchemaVersionV13,
+		SchemaVersion: SchemaVersionV14,
 	}
 
 	// Re-run audits and state invariants on the merged model. A merge that is
@@ -258,6 +258,12 @@ func mergeTaskFields(base, local, current *models.Task) (*models.Task, []MergeCo
 			mv.Field(f.index).Set(cv.Field(f.index))
 		}
 	}
+
+	// Adopting a field copies its slice header, so the dependency list the merge
+	// just took from one side still points at that side's backing array. Detach
+	// it for the same reason cloneTask does: the merged document becomes live
+	// state, and a later dependency edit must not reach back into an input.
+	merged.Dependencies = models.CloneTaskReferences(merged.Dependencies)
 
 	// UpdatedAt describes the newest accepted mutation rather than an
 	// independently editable value. Taking the latest value is deterministic,
@@ -526,8 +532,14 @@ func tasksEqual(a, b *models.Task) bool {
 // fields share backing storage with the source; the merged document is a
 // read-only result (session 20 does not write), so this aliasing is safe and
 // avoids an expensive deep copy of every task.
+//
+// Dependencies is the one exception. The merge adopts a whole field from one
+// side and the resolved document later flows into a live project, so an aliased
+// locator slice would let a subsequent dependency edit reach back into the base
+// or current document the merge read from.
 func cloneTask(src *models.Task) *models.Task {
 	copied := *src
+	copied.Dependencies = models.CloneTaskReferences(src.Dependencies)
 	return &copied
 }
 
