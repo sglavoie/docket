@@ -442,21 +442,22 @@ func TestDoingAgeIndicatorReadsTheStateClock(t *testing.T) {
 
 func TestTaskIndicatorSegmentsRenderDoingInOrder(t *testing.T) {
 	segments := taskIndicatorSegments{
-		deferCount:  "deferCount",
-		recency:     "recency",
-		waiting:     "waiting",
-		doing:       "doing",
-		check:       "check",
-		due:         "due",
-		deferred:    "deferred",
-		checklist:   "checklist",
-		comments:    "comments",
-		attachments: "attachments",
+		deferCount:   "deferCount",
+		recency:      "recency",
+		waiting:      "waiting",
+		doing:        "doing",
+		check:        "check",
+		due:          "due",
+		deferred:     "deferred",
+		checklist:    "checklist",
+		comments:     "comments",
+		attachments:  "attachments",
+		dependencies: "dependencies",
 	}
 	plain := ansi.Strip(segments.render())
 	previous := -1
 	for _, part := range []string{
-		"recency", "waiting", "doing", "check", "due", "deferred", "deferCount", "checklist", "comments", "attachments",
+		"recency", "waiting", "doing", "check", "due", "deferred", "deferCount", "checklist", "comments", "attachments", "dependencies",
 	} {
 		index := strings.Index(plain, part)
 		if index <= previous {
@@ -468,20 +469,21 @@ func TestTaskIndicatorSegmentsRenderDoingInOrder(t *testing.T) {
 
 func TestIndicatorDropLadderOrder(t *testing.T) {
 	segments := taskIndicatorSegments{
-		deferCount:  "deferCount",
-		recency:     "recency",
-		waiting:     "waiting",
-		doing:       "doing",
-		check:       "check",
-		due:         "due",
-		deferred:    "deferred",
-		checklist:   "checklist",
-		comments:    "comments",
-		attachments: "attachments",
+		deferCount:   "deferCount",
+		recency:      "recency",
+		waiting:      "waiting",
+		doing:        "doing",
+		check:        "check",
+		due:          "due",
+		deferred:     "deferred",
+		checklist:    "checklist",
+		comments:     "comments",
+		attachments:  "attachments",
+		dependencies: "dependencies",
 	}
 	want := segments
-	if got := len(indicatorDropLadder); got != 10 {
-		t.Fatalf("indicator drop ladder has %d entries, want 10", got)
+	if got := len(indicatorDropLadder); got != 11 {
+		t.Fatalf("indicator drop ladder has %d entries, want 11", got)
 	}
 	for index, drop := range indicatorDropLadder {
 		switch index {
@@ -494,16 +496,18 @@ func TestIndicatorDropLadderOrder(t *testing.T) {
 		case 3:
 			want.attachments = ""
 		case 4:
-			want.recency = ""
+			want.dependencies = ""
 		case 5:
-			want.deferred = ""
+			want.recency = ""
 		case 6:
-			want.waiting = ""
+			want.deferred = ""
 		case 7:
-			want.due = ""
+			want.waiting = ""
 		case 8:
-			want.doing = ""
+			want.due = ""
 		case 9:
+			want.doing = ""
+		case 10:
 			want.check = ""
 		}
 		drop(&segments)

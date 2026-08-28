@@ -26,7 +26,7 @@ Bubble Tea is the product; Cobra holds only the launcher and maintenance
 commands.
 
 Layer ownership is strict: `internal/models` pure invariants, `internal/app` use
-cases and mutation policy, `internal/storage` schema-12 Markdown, transactions,
+cases and mutation policy, `internal/storage` schema-14 Markdown, transactions,
 conflicts and undo, `internal/config` the catalog/planning domains
 and migration, `internal/tui` the sole Outliner root and operation
 registry/executor, `internal/textgrammar` the capture/edit sigils. Keep a
@@ -48,8 +48,9 @@ inbox, backlog, doing, waiting, paused, someday, done, canceled
 
 Review is not a lifecycle state and has no key of its own: `review` promotes an
 All-mode lane. Retired fields/states: migration DTOs/audits only. Task Markdown schema
-13 uses generic `Task` headings, project-local ShortID, retained fields, and
-optional single-valued task `Context`. `DueDate` is a calendar date with
+14 uses generic `Task` headings, project-local ShortID, retained fields,
+optional single-valued task `Context`, and an optional `depends` list of
+outgoing soft task references. `DueDate` is a calendar date with
 optional `due_time`; `DeferredUntil` is an RFC3339Nano instant that can expire
 later the same day.
 
@@ -180,10 +181,16 @@ Row and Peek budget:
 
 - `inlinePeekLines` owns a drop order, not a set; place new lines deliberately.
   Peek holds no checklist line; only title continuation and parent raise its cap.
+  Its read-only `Dependencies`/`Dependents` lines sit above tags and are the only
+  place a reference target is named; an unresolvable one degrades to its stored
+  locator, never dropped. `project export` shares that fallback and writes no
+  dependents.
 - `visualWidthOverflow` must subtract the same ellipsis column as
   `truncateToVisualWidth`, or a character is duplicated or lost.
 - `indicatorDropLadder` is a list: a new indicator gets a position, not an
-  append; the relation marker, the task context segment, and the pin marker stay
+  append. The trailing `~N` counts stored locators regardless of target state or
+  availability, degrades with the content counts, and is gated by no column.
+  The relation marker, the task context segment, and the pin marker stay
   out of it — `taskRowSegments` reserves all three at every width, and Peek
   names full values. `taskRelationMarker` is one segment both ways.
   `taskPinnedMarker` reads `task.Pinned && !row.IsPinnedSection`, not
@@ -269,7 +276,7 @@ archiving preserves tags. Both filter at read time.
 Canonical capture sigils are:
 
 ```text
-!1-3 #tag ##context @date @@defer $destination *pin %project >parent <child &link ;comment;
+!1-3 #tag ##context @date @@defer $destination *pin %project >parent <child ~task &link ;comment;
 ```
 
 `registry` is parse order and `guideOrder` teach order; `validateGuideOrder`
@@ -291,7 +298,7 @@ clears the context, so `"0"` is permanently reserved as a context name, unlike
 legal `!0`, `@0`, and `>0`.
 
 `$destination` accepts the eight live states plus Today and Next. `^type`,
-`~recurrence`, priorities 4–5, `$ready`, and `$in_progress` stay recognized
+priorities 4–5, `$ready`, and `$in_progress` stay recognized
 errors with replacement guidance; `priority:`, `due:`, `state:`, and `proj:`
 stay unimplemented. Multiline capture validates every nonblank line before
 committing one transaction.
@@ -313,6 +320,13 @@ committing one transaction.
 - Children resolve only in the effective project, so `<child` never crosses a
   project boundary.
 - A terminal destination refuses an open adopted child on both surfaces.
+- `~task` is the one repeatable reference crossing a project boundary, and it is
+  soft: readiness, ordering, ranking, and completion never read it, and
+  dependents are computed. `-~task` and `~0` are edit and outline only.
+  `DependencyPatch`'s zero value is no intent, so a save that never mentions a
+  reference preserves the set, which is what keeps the external-editor round trip
+  and the create-only expanded form from erasing it. Both parse before `#tag`,
+  `-~` before `~`.
 - `>parent`, `<child`, `@@defer`, `&link`, and `;comment;` are errors in the
   outline buffer: indentation is parentage there, and the buffer holds no
   deferral, attachment, or comment. Expanded mode carries both: `&link` and
@@ -323,7 +337,8 @@ committing one transaction.
 
 Slash search is the fourth surface of the same registry, not a parallel query
 language. Its sigil set is the capture set minus `>parent`, `<child`, `&link`,
-and `;comment;`, which refuse by name. Sigils compile to an AND gate applied before scoring, and the
+and `;comment;`, which refuse by name, plus `~task`, whose predicate is direct
+and positive: `~0` and `-~task` refuse by name there too. Sigils compile to an AND gate applied before scoring, and the
 case-relaxed retry re-runs that same gate.
 Only a recognized value the grammar cannot honor blocks a query.
 
@@ -355,8 +370,8 @@ takes a lens back. Workspace paths derive below approved roots; preserve
 symlink-aware containment, checked revisions, deterministic locks, and recovery
 manifests.
 
-Schema-14 catalogs hold schema-13 task Markdown.
-Migration v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14 validates each candidate first,
+Schema-15 catalogs hold schema-14 task Markdown.
+Migration v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15 validates each candidate first,
 publishes an immutable archive/audit pair, then atomically activates the next
 schema and removes retired storage. Nothing may publish partial output before a
 snapshot boundary. v4/v5/v6/v11 decoders are migration-only: runtime code
@@ -397,4 +412,4 @@ Guessable addresses are omitted; do not restore them.
 | Defer, waiting, check-back, drop ladder | Peek and multi-select | Row indicators |
 | Registry, executor, providers, chaining | Task actions | One operation grammar |
 | Filters, search, jumps, Focus, Peek, selection, `Ctrl+T` | Filters and search; Peek and multi-select | Search, filters, and Peek; Selection and subordinate tools |
-| Storage layout, migration chain | Schema 14 storage and migration | Persistence layout; Snapshot-first schema migration |
+| Storage layout, migration chain | Schema 15 storage and migration | Persistence layout; Snapshot-first schema migration |

@@ -29,6 +29,7 @@ import (
 //
 // A caller added, moved, or retired must be classified here deliberately.
 var projectPopulationInventory = map[string]string{
+	"cmd/project_export.go:AvailableProjects":                        "export dependency labels resolve against every non-archived project, and the archived ones are appended beside them because an exported document may name work that has since been archived",
 	"internal/tui/app_init.go:taskWorkspaceProjects":                 "startup Today/Next hydration is a task projection",
 	"internal/tui/app_manage_hub.go:availableProjects":               "Notes owner refresh after a workspace lifecycle change",
 	"internal/tui/app_pinned_tasks_data.go:taskWorkspaceProjects":    "pinned task collection is a task projection",

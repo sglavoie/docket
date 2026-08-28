@@ -52,7 +52,12 @@ func runProjectExport(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("refusing project export destination: %w", guardErr)
 	}
 
-	destPath, err := ExportProjectMarkdown(project, dest)
+	// Archived projects join the label population deliberately. An export is a
+	// document rather than a live view, so naming a reference that points into
+	// archived work is strictly better than emitting its bare locator; nothing
+	// here loads an archived project for any other purpose.
+	related := append(workspace.Runtime.AvailableProjects(), workspace.Runtime.ArchivedProjects()...)
+	destPath, err := ExportProjectMarkdown(project, dest, related...)
 	if err != nil {
 		return err
 	}
@@ -65,6 +70,7 @@ func runProjectExport(cmd *cobra.Command, args []string) error {
 // callers resolve default export locations through config.Manager.ExportPath)
 // and returns the final absolute path.
 // LoadProject is called on p to ensure tasks are populated before exporting.
-func ExportProjectMarkdown(p *models.Project, destPath string) (string, error) {
-	return storage.ExportProjectMarkdown(p, destPath)
+// related supplies display labels for outgoing task references that leave p.
+func ExportProjectMarkdown(p *models.Project, destPath string, related ...*models.Project) (string, error) {
+	return storage.ExportProjectMarkdown(p, destPath, related...)
 }

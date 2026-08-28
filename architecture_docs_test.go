@@ -20,7 +20,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 	required := []string{
 		"## Contents",
 		"## Runtime layers",
-		"strict schema-13 Markdown",
+		"strict schema-14 Markdown",
 		"## Task model",
 		"| Lifecycle | created, updated, `state_changed`, completed timestamps |",
 		"deferral count (`defer_count`)",
@@ -276,9 +276,12 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// reopens, which is the one thing layered over the clean-root reset and so
 	// cannot be stated by the launch invariant it qualifies, and the search's
 	// notes tier, whose read-only admission rule belongs to neither the Notes
-	// surface nor the search grammar alone, are the ten that raised it from
-	// 16200 — and never to absorb explanation.
-	const budget = 20600
+	// surface nor the search grammar alone, and the soft task reference, whose
+	// preserve-by-default patch and count-what-is-stored indicator are rules no
+	// behavior or mechanism document can state for the surfaces that must obey
+	// them, are the eleven that raised it from 16200 — and never to absorb
+	// explanation.
+	const budget = 21600
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -326,7 +329,14 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`inlinePeekLines` owns a drop order, not a set",
 		"`visualWidthOverflow` must subtract the same ellipsis column as `truncateToVisualWidth`",
 		"`indicatorDropLadder` is a list: a new indicator gets a position, not an append",
-		"the relation marker, the task context segment, and the pin marker stay out of it",
+		"The trailing `~N` counts stored locators regardless of target state or availability, " +
+			"degrades with the content counts, and is gated by no column",
+		"Its read-only `Dependencies`/`Dependents` lines sit above tags",
+		"`project export` shares that fallback and writes no dependents",
+		"`~task` is the one repeatable reference crossing a project boundary",
+		"`DependencyPatch`'s zero value is no intent, so a save that never mentions a reference " +
+			"preserves the set",
+		"The relation marker, the task context segment, and the pin marker stay out of it",
 		"`taskRowSegments` reserves all three at every width",
 		"`taskRelationMarker` is one segment both ways",
 		"The four-step pulse ladder drops done, inbox, overdue, then today",
@@ -350,7 +360,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`parked` is the one behavioral project tag",
 		"Keep the two populations named apart: `Runtime.TaskWorkspaceProjects()` is non-archived and not " +
 			"parked and is the only one the base Outliner reads",
-		"!1-3 #tag ##context @date @@defer $destination *pin %project >parent <child &link ;comment;",
+		"!1-3 #tag ##context @date @@defer $destination *pin %project >parent <child ~task &link ;comment;",
 		"`registry` is parse order and `guideOrder` teach order",
 		"Due's last alternative is `[^\\s@]\\S*` so `@` can never eat `@@`",
 		"`*unpin` belongs to edit and search",

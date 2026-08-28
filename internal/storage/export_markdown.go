@@ -15,7 +15,13 @@ const maxHeadingLevel = 6
 // destPath must be non-empty; callers resolve default export locations through
 // config.Manager.ExportPath. LoadProject is called first to ensure tasks are
 // populated. Returns the final absolute path written.
-func ExportProjectMarkdown(p *models.Project, destPath string) (string, error) {
+//
+// related are the other workspace projects an outgoing task reference may point
+// into, supplied so a cross-project dependency can be named rather than left as
+// a bare locator. They are loaded on a best effort: a project that cannot be
+// read is skipped rather than failing the export, because its only contribution
+// is a display label and the locator fallback already carries the whole value.
+func ExportProjectMarkdown(p *models.Project, destPath string, related ...*models.Project) (string, error) {
 	if err := LoadProject(p); err != nil {
 		return "", fmt.Errorf("load project: %w", err)
 	}
@@ -24,7 +30,18 @@ func ExportProjectMarkdown(p *models.Project, destPath string) (string, error) {
 		return "", fmt.Errorf("export destination path is required")
 	}
 
-	data := WriteProjectMarkdownClean(p)
+	loaded := make([]*models.Project, 0, len(related))
+	for _, project := range related {
+		if project == nil || project.ID == p.ID {
+			continue
+		}
+		if err := LoadProject(project); err != nil {
+			continue
+		}
+		loaded = append(loaded, project)
+	}
+
+	data := WriteProjectMarkdownClean(p, loaded...)
 
 	notes, err := ListNotes(p)
 	if err != nil {
@@ -43,21 +60,62 @@ func ExportProjectMarkdown(p *models.Project, destPath string) (string, error) {
 // project. Unlike canonical task storage, it omits HTML metadata comments while
 // retaining the user-facing schema-6 task fields. Each task heading
 // includes an inline badge and is prefixed with its short ID for traceability.
-func WriteProjectMarkdownClean(p *models.Project) string {
+//
+// related supplies the display labels for outgoing references that leave p. Only
+// outgoing references are exported: dependents are computed rather than stored,
+// so writing them into a document would turn a derived view into metadata that
+// goes stale the moment another project changes.
+func WriteProjectMarkdownClean(p *models.Project, related ...*models.Project) string {
 	var builder strings.Builder
 
 	fmt.Fprintf(&builder, "# Project: %s\n", p.Name)
 
+	labels := newExportReferenceLabeller(p, related)
 	hierarchy := indexTaskHierarchy(p.Tasks)
 	visited := make(map[string]bool, len(p.Tasks))
 	for _, task := range hierarchy.roots {
 		builder.WriteString("\n")
-		writeTaskClean(&builder, task, hierarchy.children, 2, visited)
+		writeTaskClean(&builder, task, hierarchy.children, 2, visited, labels)
 	}
 
-	appendOrphanedTasksClean(&builder, p.Tasks, hierarchy.children, visited)
+	appendOrphanedTasksClean(&builder, p.Tasks, hierarchy.children, visited, labels)
 
 	return builder.String()
+}
+
+// exportReferenceLabeller renders one outgoing reference for a clean export. It
+// resolves against the exported project plus whichever other projects the caller
+// supplied, and falls back to the durable locator for anything else, so no
+// reference is ever dropped from the document for want of a label.
+type exportReferenceLabeller struct {
+	projects []*models.Project
+}
+
+func newExportReferenceLabeller(p *models.Project, related []*models.Project) exportReferenceLabeller {
+	projects := make([]*models.Project, 0, len(related)+1)
+	if p != nil {
+		projects = append(projects, p)
+	}
+	for _, project := range related {
+		if project != nil && (p == nil || project.ID != p.ID) {
+			projects = append(projects, project)
+		}
+	}
+	return exportReferenceLabeller{projects: projects}
+}
+
+func (l exportReferenceLabeller) label(reference models.TaskReference) string {
+	for _, project := range l.projects {
+		if project.ID != reference.ProjectID {
+			continue
+		}
+		task := project.GetTaskByID(reference.TaskID)
+		if task == nil {
+			break
+		}
+		return fmt.Sprintf("%s (#%d) %s", project.Name, task.ShortID, task.Title)
+	}
+	return reference.Locator()
 }
 
 // writeNotesSectionClean renders the trailing Notes section for a clean
@@ -93,7 +151,7 @@ func writeNotesSectionClean(notes []*models.Note) string {
 	return b.String()
 }
 
-func writeTaskClean(builder *strings.Builder, task *models.Task, children map[string][]*models.Task, level int, visited map[string]bool) {
+func writeTaskClean(builder *strings.Builder, task *models.Task, children map[string][]*models.Task, level int, visited map[string]bool, labels exportReferenceLabeller) {
 	if visited[task.ID] {
 		return
 	}
@@ -167,9 +225,16 @@ func writeTaskClean(builder *strings.Builder, task *models.Task, children map[st
 		}
 	}
 
+	if len(task.Dependencies) > 0 {
+		builder.WriteString("\n**Dependencies:**\n")
+		for _, reference := range task.Dependencies {
+			fmt.Fprintf(builder, "- %s\n", labels.label(reference))
+		}
+	}
+
 	for _, child := range children[task.ID] {
 		builder.WriteString("\n")
-		writeTaskClean(builder, child, children, level+1, visited)
+		writeTaskClean(builder, child, children, level+1, visited, labels)
 	}
 }
 
@@ -208,7 +273,7 @@ func buildExportBadge(task *models.Task) string {
 // appendOrphanedTasksClean appends tasks whose parent was not visited (orphans).
 // Unlike appendOrphanedTasks, this does not log warnings since the output is
 // user-facing markdown.
-func appendOrphanedTasksClean(builder *strings.Builder, tasks []*models.Task, children map[string][]*models.Task, visited map[string]bool) {
+func appendOrphanedTasksClean(builder *strings.Builder, tasks []*models.Task, children map[string][]*models.Task, visited map[string]bool, labels exportReferenceLabeller) {
 	for _, task := range tasks {
 		if task == nil {
 			continue
@@ -217,6 +282,6 @@ func appendOrphanedTasksClean(builder *strings.Builder, tasks []*models.Task, ch
 			continue
 		}
 		builder.WriteString("\n")
-		writeTaskClean(builder, task, children, 2, visited)
+		writeTaskClean(builder, task, children, 2, visited, labels)
 	}
 }

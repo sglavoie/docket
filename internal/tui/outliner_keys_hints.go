@@ -128,13 +128,24 @@ func quickEditGrammarGuidance() []string {
 		textgrammar.FieldParent:      "parent",
 		textgrammar.FieldChild:       "adopt",
 	}
-	entries := make([]string, 0, len(labels))
-	for _, definition := range textgrammar.Definitions(textgrammar.SurfaceEdit) {
-		label, ok := labels[definition.Field]
-		if !ok || len(definition.Forms) == 0 {
-			continue
+	// The reference forms are named for the same reason the tag pair is: the
+	// sigil is the only route to a stored set no key opens. They are appended
+	// rather than labelled in place because parse order puts the tilde first,
+	// and a two-row footer that led with the newest sigil would drop the
+	// structural ones every surface above it already advertises.
+	trailing := map[textgrammar.Field]string{
+		textgrammar.FieldDependency:       "depends on",
+		textgrammar.FieldRemoveDependency: "drop dependency",
+	}
+	entries := make([]string, 0, len(labels)+len(trailing))
+	for _, source := range []map[textgrammar.Field]string{labels, trailing} {
+		for _, definition := range textgrammar.Definitions(textgrammar.SurfaceEdit) {
+			label, ok := source[definition.Field]
+			if !ok || len(definition.Forms) == 0 {
+				continue
+			}
+			entries = append(entries, strings.Join(definition.Forms, "/")+" "+label)
 		}
-		entries = append(entries, strings.Join(definition.Forms, "/")+" "+label)
 	}
 	return entries
 }

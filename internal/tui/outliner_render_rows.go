@@ -692,6 +692,12 @@ type taskIndicatorSegments struct {
 	checklist   string
 	comments    string
 	attachments string
+	// dependencies is the trailing `~N` count of outgoing soft references. It is
+	// a count of what the task stores, not a reading of what those targets are:
+	// a reference to closed, deleted, or unloaded work counts exactly like a
+	// reference to open work, because nothing about the subject changes either
+	// way. Peek is where the targets themselves are named.
+	dependencies string
 }
 
 func (segments taskIndicatorSegments) render() string {
@@ -706,6 +712,7 @@ func (segments taskIndicatorSegments) render() string {
 		segments.checklist,
 		segments.comments,
 		segments.attachments,
+		segments.dependencies,
 	)
 	if rendered == "" {
 		return ""
@@ -722,6 +729,12 @@ var indicatorDropLadder = []func(*taskIndicatorSegments){
 	func(segments *taskIndicatorSegments) { segments.checklist = "" },
 	func(segments *taskIndicatorSegments) { segments.comments = "" },
 	func(segments *taskIndicatorSegments) { segments.attachments = "" },
+	// The reference count sheds with the other optional content counts and after
+	// them, because Peek is the only surface that names the targets at all while
+	// checklist rows, the Comments panel, and the Attachments panel each restate
+	// their own. It stays ahead of every operational signal below: a reference
+	// changes nothing about when the task is due or how long it has been waiting.
+	func(segments *taskIndicatorSegments) { segments.dependencies = "" },
 	func(segments *taskIndicatorSegments) { segments.recency = "" },
 	func(segments *taskIndicatorSegments) { segments.deferred = "" },
 	func(segments *taskIndicatorSegments) { segments.waiting = "" },
@@ -777,7 +790,22 @@ func (m *OutlinerModel) renderTaskIndicatorSegments(row outlinerRow) taskIndicat
 	if m.columnConfig.IsVisible(ColAttachments) {
 		segments.attachments = renderAttachmentIndicator(task)
 	}
+	// Deliberately ungated by a column: a reference count is not a column the
+	// user can hide, and naming one would put a dependency back in the column
+	// vocabulary the retired hard-dependency panels owned.
+	segments.dependencies = renderDependencyIndicator(task)
 	return segments
+}
+
+// renderDependencyIndicator renders the trailing `~N` outgoing-reference count.
+// It counts every stored locator regardless of what that locator resolves to,
+// so the number a row shows is exactly the number of tokens the edit grammar
+// would round-trip, and it is independent of the task's own workflow state.
+func renderDependencyIndicator(task *models.Task) string {
+	if task == nil || len(task.Dependencies) == 0 {
+		return ""
+	}
+	return MutedStyle.Render(fmt.Sprintf("~%d", len(task.Dependencies)))
 }
 
 // formatWaitingAgeIndicator reads the state clock rather than UpdatedAt, so

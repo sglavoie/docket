@@ -13,7 +13,17 @@ import (
 	"testing"
 )
 
-func TestDependencyAndBlockedPresentationVocabularyIsRetired(t *testing.T) {
+// TestDependencyIsolationPresentationVocabulary is the negative half of the
+// presentation contract. The identifier map fences out the retired
+// dependency-management panels, selectors, viewers, styles, filters, and
+// operations; the vocabulary sweep goes further and rejects the words "blocked"
+// and "blocker" anywhere in internal/tui production code — filename, identifier,
+// or string literal — so no surface can *render* a reference as if it blocked
+// even while calling it something else.
+//
+// TestDependencyIsolationPresentationIsStateIndependent below is the positive
+// half: the row count and the Peek detail read the stored list and nothing else.
+func TestDependencyIsolationPresentationVocabulary(t *testing.T) {
 	_, testFile, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("locate dependency retirement audit")

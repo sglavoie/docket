@@ -12,7 +12,17 @@ import (
 	"testing"
 )
 
-func TestDependencyRetirementBackendInventory(t *testing.T) {
+// TestDependencyIsolationBackendInventory is the negative half of the soft
+// reference contract. Soft references are a live product concept, so the fence
+// no longer sweeps the word "dependency"; what it still forbids is every
+// identifier a *hard* dependency needed — blocking, cycle and DAG validation,
+// completion refusal, transitive walks, ranking, and the old workspace-wide
+// reference pruners that silently rewrote a user's set.
+//
+// The positive half lives in TestDependencyIsolationLeavesLifecycleUntouched
+// below and in internal/app/dependencies_test.go: together they say a reference
+// is stored, presented, and searched, and does nothing else.
+func TestDependencyIsolationBackendInventory(t *testing.T) {
 	_, testFile, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("locate dependency retirement audit")

@@ -31,7 +31,6 @@ type capturedDependencyRef struct {
 	shortID     int
 	title       string
 	projectName string
-	projectSlug string
 	terminal    bool
 	resolved    bool
 }
@@ -115,7 +114,6 @@ func dependencyRefFor(project *models.Project, task *models.Task) capturedDepend
 	if project != nil {
 		ref.locator.ProjectID = project.ID
 		ref.projectName = project.Name
-		ref.projectSlug = project.Slug
 	}
 	return ref
 }

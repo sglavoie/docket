@@ -69,21 +69,6 @@ func (r TaskReference) Locator() string {
 	return r.ProjectID + TaskReferenceSeparator + r.TaskID
 }
 
-// ParseTaskReference reads one canonical locator. It refuses a missing or extra
-// separator so a malformed value can never be silently reinterpreted as a
-// different task.
-func ParseTaskReference(locator string) (TaskReference, error) {
-	projectID, taskID, found := strings.Cut(locator, TaskReferenceSeparator)
-	if !found {
-		return TaskReference{}, fmt.Errorf("task reference %q is missing the %q separator", locator, TaskReferenceSeparator)
-	}
-	reference := TaskReference{ProjectID: projectID, TaskID: taskID}
-	if err := reference.Validate(); err != nil {
-		return TaskReference{}, fmt.Errorf("task reference %q: %w", locator, err)
-	}
-	return reference, nil
-}
-
 // CloneTaskReferences returns a detached copy of a reference list. An empty
 // input yields nil rather than an empty slice, so an absent dependency list has
 // exactly one in-memory shape and reflective field comparison (the project
@@ -95,45 +80,6 @@ func CloneTaskReferences(references []TaskReference) []TaskReference {
 	cloned := make([]TaskReference, len(references))
 	copy(cloned, references)
 	return cloned
-}
-
-// DedupeTaskReferences drops repeated locators while preserving the order in
-// which each one was first seen. Insertion order is the stored order, so the
-// first occurrence wins and a later duplicate never moves an entry.
-func DedupeTaskReferences(references []TaskReference) []TaskReference {
-	if len(references) == 0 {
-		return nil
-	}
-	seen := make(map[TaskReference]bool, len(references))
-	deduped := make([]TaskReference, 0, len(references))
-	for _, reference := range references {
-		if seen[reference] {
-			continue
-		}
-		seen[reference] = true
-		deduped = append(deduped, reference)
-	}
-	if len(deduped) == 0 {
-		return nil
-	}
-	return deduped
-}
-
-// ValidateTaskReferences validates every locator in a list and refuses a
-// duplicate. Self-reference and target existence are workspace-aware questions
-// the application layer answers; a single list cannot see either.
-func ValidateTaskReferences(references []TaskReference) error {
-	seen := make(map[TaskReference]bool, len(references))
-	for index, reference := range references {
-		if err := reference.Validate(); err != nil {
-			return fmt.Errorf("dependency %d: %w", index, err)
-		}
-		if seen[reference] {
-			return fmt.Errorf("dependency %d: duplicate task reference %q", index, reference.Locator())
-		}
-		seen[reference] = true
-	}
-	return nil
 }
 
 // TaskReferencesEqual reports whether two lists carry the same locators in the

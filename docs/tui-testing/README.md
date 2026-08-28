@@ -219,6 +219,7 @@ The committed suite exercises the product contracts directly:
 | Inline edit validation, autocomplete, atomic cross-project relocation, resize, undo, and redo | `outliner-inline-edit-transaction.json`, `recovery-origin-guidance.json` |
 | Capture/edit/outline grammar parity and registry-owned static forms | `capture-grammar.json`, `textgrammar_consumer_contract_test.go`, `quick_edit_test.go`, `outline_editor_test.go` |
 | Repeatable `<child` adoption, alias dedupe, additive children, and undo/redo on both surfaces | `capture-child-adoption.json`, `outliner-inline-edit-child-adoption.json` |
+| Cross-project `~task` capture and its completion, the `~N` count and both Peek reference directions, the direct dependency search with its `-~task`, `~0`, and unresolvable refusals, inline `-~task` and `~0` under undo and redo, and the locator an unavailable target falls back to | `capture-dependency-cross-project.json`, `search-dependency-direct.json`, `outliner-inline-edit-dependency-undo.json`, `outliner-dependency-unavailable-fallback.json` |
 | Relation marker in both directions, reserved across a resize | `outliner-parent-marker.json`, `capture-child-adoption.json` |
 | `*pin` at capture and the edit-only `*unpin` clear | `capture-pin.json` |
 | `&link` and `;comment;` committing with the task they create, the prose both sigils leave alone, and a quoted `&link` path whose spaces survive capture | `capture-attachment.json`, `capture-comment.json` |

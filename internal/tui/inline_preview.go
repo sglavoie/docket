@@ -22,18 +22,27 @@ type inlinePeekOptions struct {
 	Width         int
 	TitleOverflow string
 	Breadcrumb    string
+	// Dependencies and Dependents are the two read-only reference details. They
+	// arrive resolved because Peek is a pure renderer and neither direction can
+	// be read off the task alone: an outgoing entry needs the target project to
+	// name it, and an incoming one exists nowhere but in the other tasks.
+	Dependencies []dependencyDetail
+	Dependents   []dependencyDetail
 }
 
 func (m *OutlinerModel) inlinePeekLinesForRow(row outlinerRow, indent string, rowWidth int, colLayout *ColumnLayout) []string {
 	if m == nil || !row.isTaskRow() {
 		return nil
 	}
+	projects := m.dependencyDetailProjects()
 	return inlinePeekLines(inlinePeekOptions{
 		Task:          row.task,
 		Indent:        indent,
 		Width:         rowWidth,
 		TitleOverflow: m.taskRowTitleOverflow(row, rowWidth, colLayout),
 		Breadcrumb:    row.Breadcrumb,
+		Dependencies:  outgoingDependencyDetails(row.task, projects),
+		Dependents:    incomingDependencyDetails(m.rowIdentity(row), projects),
 	})
 }
 
@@ -79,6 +88,18 @@ func inlinePeekLines(opts inlinePeekOptions) []string {
 
 	if comments := inlinePeekCommentsLine(opts.Task, available); comments != "" {
 		lines = append(lines, opts.Indent+MutedStyle.Render(comments))
+	}
+
+	// The two reference lines sit above tags because Peek is the only surface
+	// that names a reference at all: the row carries a bare `~N`, and there is no
+	// panel behind it the way `;` and `&` stand behind comments and attachments.
+	// Tags are already on the row, so they are the cheaper line to lose here.
+	if dependencies := inlinePeekReferenceLine("Dependencies", opts.Dependencies, available); dependencies != "" {
+		lines = append(lines, opts.Indent+MutedStyle.Render(dependencies))
+	}
+
+	if dependents := inlinePeekReferenceLine("Dependents", opts.Dependents, available); dependents != "" {
+		lines = append(lines, opts.Indent+MutedStyle.Render(dependents))
 	}
 
 	if tags := inlinePeekTagsLine(opts.Task, available); tags != "" {
@@ -193,6 +214,28 @@ func inlinePeekAttachmentsLine(task *models.Task, width int) string {
 		return ""
 	}
 	return truncateIntentional("Attachments: "+strings.Join(parts, " · "), width, "…")
+}
+
+// inlinePeekReferenceLine renders one read-only reference section. It names the
+// first few entries and counts the rest the way the attachments line does, so a
+// task with many references costs one line rather than many. The list is
+// read-only and non-navigable: there is no cursor in it and no key acts on an
+// entry, because a reference is information about other work, not a way to
+// reach it.
+func inlinePeekReferenceLine(label string, details []dependencyDetail, width int) string {
+	if len(details) == 0 || width <= 0 {
+		return ""
+	}
+	const maxDetails = 2
+	parts := make([]string, 0, min(len(details), maxDetails+1))
+	for i, detail := range details {
+		if i >= maxDetails {
+			parts = append(parts, fmt.Sprintf("+%d more", len(details)-maxDetails))
+			break
+		}
+		parts = append(parts, detail.String())
+	}
+	return truncateIntentional(label+": "+strings.Join(parts, " · "), width, "…")
 }
 
 func inlinePeekCommentsLine(task *models.Task, width int) string {

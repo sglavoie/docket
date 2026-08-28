@@ -394,34 +394,6 @@ func TestDependenciesDoNotAffectLifecycle(t *testing.T) {
 	assertDependencies(t, remote)
 }
 
-func TestTaskDependentsIndexesIncomingReferences(t *testing.T) {
-	repo, svc, source, sibling, remote := dependencyFixture()
-
-	if _, err := svc.AddTaskDependencies(repo.loc(source.ID), []app.TaskLocator{repo.loc(remote.ID)}); err != nil {
-		t.Fatalf("source: %v", err)
-	}
-	if _, err := svc.AddTaskDependencies(repo.loc(sibling.ID), []app.TaskLocator{repo.loc(remote.ID)}); err != nil {
-		t.Fatalf("sibling: %v", err)
-	}
-
-	snap, err := repo.Snapshot()
-	if err != nil {
-		t.Fatalf("Snapshot: %v", err)
-	}
-	index := app.TaskDependents(snap)
-	target := models.TaskReference{ProjectID: "proj-b", TaskID: "remote"}
-	want := []models.TaskReference{
-		{ProjectID: "proj-a", TaskID: "source"},
-		{ProjectID: "proj-a", TaskID: "sibling"},
-	}
-	if !reflect.DeepEqual(index[target], want) {
-		t.Fatalf("dependents = %v, want %v", index[target], want)
-	}
-	if len(index) != 1 {
-		t.Fatalf("index holds %d targets, want 1", len(index))
-	}
-}
-
 // TestSoftDependenciesIntroduceNoWorkflowAPI locks the shape of the restored
 // concept: references are data, so no readiness predicate, blocked state, or
 // graph API may appear alongside them.

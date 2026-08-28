@@ -230,39 +230,6 @@ func (r referenceResolver) resolveDependencyPatch(existing []models.TaskReferenc
 	return models.CloneTaskReferences(next), nil
 }
 
-// TaskDependents indexes the incoming references of every loaded task: the key
-// is a referenced task and the value is every task naming it, in project and
-// task order. It is a read-only presentation lookup — dependents are computed,
-// never stored — and it deliberately sees only the projects the snapshot loaded,
-// so an archived project is not opened merely to decorate a detail pane.
-func TaskDependents(snap Snapshot) map[models.TaskReference][]models.TaskReference {
-	if snap == nil {
-		return nil
-	}
-	index := make(map[models.TaskReference][]models.TaskReference)
-	for _, project := range snap.Projects() {
-		if project == nil {
-			continue
-		}
-		for _, task := range project.Tasks {
-			if task == nil || task.ID == "" || len(task.Dependencies) == 0 {
-				continue
-			}
-			source := models.TaskReference{ProjectID: project.ID, TaskID: task.ID}
-			for _, target := range task.Dependencies {
-				if slices.Contains(index[target], source) {
-					continue
-				}
-				index[target] = append(index[target], source)
-			}
-		}
-	}
-	if len(index) == 0 {
-		return nil
-	}
-	return index
-}
-
 // AddTaskDependencies records one or more soft references on a task. The
 // references are informational: nothing about the subject's readiness, order, or
 // eligibility to complete changes because it gained one.

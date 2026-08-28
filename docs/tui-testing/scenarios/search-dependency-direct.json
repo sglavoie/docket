@@ -1,0 +1,54 @@
+{
+  "name": "search-dependency-direct",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "move below the first section header", "key": "j" },
+    { "type": "key", "label": "select the Client Alpha task", "key": "j" },
+    { "type": "key", "label": "edit the selected row", "key": "e" },
+    { "type": "assert", "assert": "contains", "value": "EDIT TASK" },
+    { "type": "text", "label": "reference a task in another project", "text": " ~client-beta:1" },
+    { "type": "key", "label": "accept the highlighted candidate", "key": "tab" },
+    { "type": "key", "label": "commit the edit", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "~1" },
+
+    { "type": "key", "label": "search for the tasks that depend on that target", "key": "/" },
+    { "type": "text", "text": "~client-beta:1" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "label": "the gate admits the referring task", "assert": "contains", "value": "Alpha migration kickoff" },
+    { "type": "assert", "label": "and not the target itself, which depends on nothing", "assert": "not_contains", "value": "Beta rollout checklist" },
+    { "type": "assert", "assert": "not_contains", "value": "Renew passport" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "restore the ordinary projection", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "Renew passport" },
+
+    { "type": "key", "label": "a target nothing references gates everything out", "key": "/" },
+    { "type": "text", "text": "~home-errands:1" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "No tasks match search \"~home-errands:1\"" },
+    { "type": "assert", "assert": "not_contains", "value": "Renew passport" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "the predicate is positive only", "key": "/" },
+    { "type": "text", "text": "-~client-beta:1" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "label": "the refusal names the surfaces that do remove a reference", "assert": "contains", "value": "-~task is not a search predicate; a dependency search is positive" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "and a query holds no set to clear", "key": "/" },
+    { "type": "text", "text": "~0" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "~0 clears dependencies with e or the outline buffer; search has no set to clear" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "key", "label": "an unresolvable target is refused rather than silently matching nothing", "key": "/" },
+    { "type": "text", "text": "~nosuchtask" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "dependency not found" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

@@ -342,13 +342,20 @@ than where a task lives.
 `$EDITOR`, and applies the whole tree when you save and quit. Indentation is
 parentage: two spaces per level, up to the usual depth of six. Every line
 otherwise speaks the ordinary capture grammar, so `!2`, `#tag`, `##context`, `@friday`,
-`$backlog`, and `*pin` all work, while `>parent` and `<child` are rejected
+`$backlog`, `*pin`, and `~task` all work, while `>parent` and `<child` are rejected
 because the indentation already said it, `@@defer` is rejected because the
 buffer carries no deferral at all, and `&link` and `;comment;` are rejected
 because attaching and commenting are creation-time acts the buffer could only
 duplicate. The dump prints the values a task
 currently holds, so a pinned task arrives carrying `*pin` and deleting that
-token unpins it; there is no `*unpin` here.
+token unpins it; there is no `*unpin` here. Dependencies dump the same way, as
+one `~` token each in the shortest form that still addresses the target: a bare
+short ID inside the dumped project, a slug-qualified `~radar:7` in another
+loaded one, and the durable `~project-id:task-id` locator when this workspace
+cannot address it at all, which is what carries a reference to archived or
+deleted work through the round trip untouched. Every stored reference is
+printed, so deleting a token is how you remove one — the line you save is the
+complete set.
 
 ```text
 # Sonar
@@ -438,7 +445,10 @@ a mistyped prefix costs one press rather than the act the next key names.
 Press `e` to edit the selected task in place. Append `%project` to move its
 subtree, `>parent` to reparent it, `>0` to move it to the project root, or
 `<child` once per task you want to adopt; these structural changes commit
-atomically with title and metadata edits. `Ctrl+E` opens the same task in an
+atomically with title and metadata edits. `~task` adds a soft dependency here
+too, `-~task` removes one, and `~0` clears them all; a line mentioning none of
+the three leaves the stored set exactly as it was, which is what keeps an
+external-editor title edit from quietly dropping references it never displayed. `Ctrl+E` opens the same task in an
 external editor and reads its title line with the same grammar, so the title,
 its sigils, and the body below commit as one transaction and one undo step. The
 edit surface is also the only one that accepts `*unpin`: capture has nothing to
@@ -510,6 +520,7 @@ filter, and a query with no sigils behaves exactly as it did before:
 | `$state` | Match a lifecycle state exactly |
 | `$today`, `$next` | Match membership in the durable planning list |
 | `*pin`, `*unpin` | Match pinned or unpinned tasks |
+| `~task` | Match tasks that depend directly on that target; repeatable, combined with AND |
 | `%project` | Narrow the search to matching projects within the active scope |
 
 Search still hides terminal work, so `$done` and `$canceled` are the two tokens
@@ -521,7 +532,8 @@ project the current scope or Focus excluded.
 Only a token the grammar recognizes but cannot honor blocks the query: an
 out-of-range priority such as `!9`, a retired destination such as `$ready`, the
 reserved `##0`, the structural `>parent` and `<child` sigils that belong to the
-edit grammar alone, an `&link` naming something genuinely attachable, which
+edit grammar alone, a `~0` or `-~task` that would edit a stored set search does
+not hold, a `~task` naming nothing the loaded population depends on, an `&link` naming something genuinely attachable, which
 belongs to capture and to the task's Attachments panel, and a paired
 `;comment;`, which belongs to capture and to the task's Comments panel. Those
 refuse by name in
@@ -799,11 +811,18 @@ of a still-pending deferral does not add to the count; deferring the task again
 after it woke does. This supporting count drops before every other row indicator
 under width pressure, while Peek keeps the same token on its existing dates line.
 
+A task holding soft dependencies ends its indicators with `~N`, counting the
+references it stores. It is a count of what the task says, not a reading of what
+those tasks are doing: a reference to finished, deleted, or unloaded work counts
+exactly like a reference to open work, because nothing about this task changes
+either way. Peek is where the targets themselves are named.
+
 A row that cannot fit every indicator sheds them in a fixed order rather than
 squeezing the title: the repeated-deferral count goes first, then checklist,
 comment, and attachment counts because the checklist rows and Peek still carry
-them, then the recency and defer markers, then the waiting age, due date, and
-Doing age; the check-back date goes last.
+them, then the dependency count because Peek still names it, then the recency
+and defer markers, then the waiting age, due date, and Doing age; the check-back
+date goes last.
 
 A task shown under a section it did not root — a child promoted into Doing,
 Today, Pinned, or a tag facet — ends its title with a bare `‹`, which says only
@@ -865,7 +884,14 @@ entry once more, focusing the cursor task's parent.
 follows navigation and shows at most five lines of additive detail: up to three
 lines of description, a dates line reading
 `created 12d · updated 2d · due 2026-08-14 · woke 1d · deferred ×3` with empty fields omitted,
-attachment names, comment counts, and tags. Checklist items are not among them,
+attachment names, comment counts, a `Dependencies:` line, a `Dependents:` line,
+and tags. The two reference lines are read-only and carry no key of their own:
+`Dependencies` names what this task stores, in the order it stores it, and
+`Dependents` is computed from the projects currently loaded, so it names the
+tasks that point back. Each entry reads as its project, short ID, title, and
+state; a reference whose project is not loaded keeps its stored
+`project-id:task-id` locator and reads `(unavailable)` rather than being dropped,
+and past the first two entries the line ends `+N more`. Checklist items are not among them,
 because they are already rows of their own beneath the task. A promoted row's
 ancestor chain is named there in full, root-first, as
 `Parent: Launch platform › User authentication`; it and a clipped title's
@@ -891,7 +917,7 @@ One nonblank line creates one task. Multiple lines are fully parsed and
 validated before one atomic transaction is committed.
 
 ```text
-!1-3  #tag  ##context  @date  @@defer  $destination  *pin  %project  >parent  <child  &link  ;comment;
+!1-3  #tag  ##context  @date  @@defer  $destination  *pin  %project  >parent  <child  ~task  &link  ;comment;
 ```
 
 - `!1` through `!3` set High, Medium, or Low priority.
@@ -922,6 +948,15 @@ validated before one atomic transaction is committed.
 - `<child` adopts a task that already exists, and may be repeated. `>parent`
   stays singleton because a task has one parent, while a task can gain many
   children at once.
+- `~task` records a soft dependency on another task and may be repeated. Unlike
+  `>parent` and `<child` it crosses project boundaries, so it takes either a
+  bare reference resolved in the effective project (`~1`, `~Login`) or a
+  project-qualified one (`~project-slug:1`). The reference is informational: it
+  is stored, shown, and searchable, and nothing about the task's readiness,
+  ordering, or eligibility to complete follows from it, so a task with an open
+  dependency still starts and still completes. The edit surfaces add `-~task`,
+  which removes one reference, and `~0`, which clears them all; capture accepts
+  neither, because a task being created has no set to subtract from.
 - `&link` attaches something to the new task and may be repeated. It takes an
   `http://` or `https://` URL, a `path:line` code reference such as
   `&internal/app/add.go:19`, or a local file path, which is copied into the
@@ -982,9 +1017,12 @@ the first occurrence, so `<2 <Login` adopts task 2 once. A task cannot be both
 `>parent` and `<child` of the same line, and across a multiline capture two
 lines cannot adopt the same task; both are reported before anything is written.
 
-`^type`, `~recurrence`, priorities `!4`–`!5`, `$ready`, and `$in_progress` are
-rejected with replacement guidance. Other aliases such as `priority:`, `due:`,
-`state:`, and `proj:` are literal title text, not task attributes. Root capture
+`^type`, priorities `!4`–`!5`, `$ready`, and `$in_progress` are
+rejected with replacement guidance. The tilde no longer names recurrence, which
+stays retired: `~weekly` is now an ordinary dependency reference, so it is
+refused as a task that cannot be found rather than as a retired sigil. Other
+aliases such as `priority:`, `due:`, `state:`, and `proj:` are literal title
+text, not task attributes. Root capture
 defaults to Inbox. A new child defaults to Backlog under its selected parent.
 
 `a` at base scope captures into Unfiled: a task cursor never lends capture its
@@ -1203,7 +1241,7 @@ tt conflict resolve <id> --use remote
 tt conflict resolve <id> --use file --file merged.md
 ```
 
-## Schema 14 storage and migration
+## Schema 15 storage and migration
 
 The live portable layout is deliberately small:
 
@@ -1223,7 +1261,7 @@ The live portable layout is deliberately small:
     └── .attachments/
 ```
 
-Project task files use strict schema-13 Markdown and generic `Task` headings.
+Project task files use strict schema-14 Markdown and generic `Task` headings.
 `workspace.json` contains the lean project catalog, project tags, and the
 protected Unfiled ID. `planning.json` contains Today and
 Next ordering only.
@@ -1231,6 +1269,10 @@ Each task may carry an optional non-negative `defer_count`; zero is omitted.
 Each task may also carry an optional `due_time`, a canonical `HH:MM` wall-clock
 in 00:00–23:59 that pairs with the calendar `due` date; midnight is reserved for
 date-only due dates, so a date-only task omits it.
+Each task may finally carry an optional `depends` list of soft references to
+other tasks, each a `project-id:task-id` pair; an empty list is omitted. A
+reference is durable and one-directional: only the referring task stores it, so
+the dependents you see are computed at read time and never written down.
 Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the
 dark/light theme choice, the saved named-lens definitions, and a pointer to the
 lens that was last open — the three seeded starters, anything you saved
@@ -1241,9 +1283,10 @@ request to reseed the starters. The active-lens pointer is a hint rather than a
 record: it is checked for shape alone when the file loads, so one naming a lens
 that is no longer there costs you a stale hint and never a failed launch.
 
-Startup migrates supported schema-13 workspaces to schema 14, supported
-schema-12 workspaces to schema 13, supported schema-6
-through schema-11 workspaces through the intermediate boundaries, and supported
+Startup migrates supported schema-14 workspaces to schema 15, supported
+schema-13 workspaces to schema 14, supported schema-12 workspaces to schema 13,
+supported schema-6 through schema-11 workspaces through the intermediate
+boundaries, and supported
 schema-4/5 workspaces through the whole chain. Each step validates the complete
 candidate before mutation and publishes its own immutable rollback archive and
 audit first: `pre-simplification-v5-<UTC>.tar.gz` for v4→v5,
@@ -1254,7 +1297,8 @@ for v6→v7, `pre-tag-v8-<UTC>.tar.gz` for v7→v8,
 `pre-defer-instant-v11-<UTC>.tar.gz` for v10→v11, and
 `pre-context-v12-<UTC>.tar.gz` for v11→v12, and
 `pre-defer-count-v13-<UTC>.tar.gz` for v12→v13, and
-`pre-due-time-v14-<UTC>.tar.gz` for v13→v14. The schema-6 conversion preserves
+`pre-due-time-v14-<UTC>.tar.gz` for v13→v14, and
+`pre-dependencies-v15-<UTC>.tar.gz` for v14→v15. The schema-6 conversion preserves
 notes and attachment bytes,
 converts retained decision text into comments, repairs planning references,
 renames the protected project to Unfiled, and deliberately resets the
@@ -1295,6 +1339,12 @@ time-of-day. Existing due dates are calendar-only, so every migrated task keeps
 its date and receives no `due_time`; the rewrite preserves their meaning.
 Undo/redo history is cleared because its retained Markdown carries the schema-12
 marker that the schema-13 reader rejects.
+Schema 15 upgrades task Markdown to schema 14 by adding the optional `depends`
+list of soft task references. No retired field carried dependency data into this
+boundary, so every migrated task starts with an empty list — an omitted key —
+and the rewrite preserves their meaning. Undo/redo history is cleared because
+its retained Markdown carries the schema-13 marker that the schema-14 reader
+rejects.
 
 Invalid or future-schema input aborts without changing workspace data. An
 existing `unfiled` project or directory also aborts before snapshot publication
@@ -1303,8 +1353,8 @@ loading, and repeated startup is idempotent.
 
 There is no down-migration. An older `tt` refuses a migrated workspace as newer
 than its supported schema, and no build converts a workspace back. Recovery is
-manual: extract the matching archive — `pre-defer-count-v13-<UTC>.tar.gz` for the
-schema-13 boundary or `pre-due-time-v14-<UTC>.tar.gz` for schema 14 — into a
+manual: extract the matching archive — `pre-due-time-v14-<UTC>.tar.gz` for the
+schema-14 boundary or `pre-dependencies-v15-<UTC>.tar.gz` for schema 15 — into a
 separate directory and open that copy with a compatible build. Migration
 snapshots themselves are never modified.
 

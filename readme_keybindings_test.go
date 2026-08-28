@@ -254,7 +254,7 @@ func TestREADMEDocumentsFiltersPeekAndBulkSemantics(t *testing.T) {
 func TestREADMEDocumentsFinalCaptureAndWorkflowContracts(t *testing.T) {
 	content := readREADMEForContractTest(t)
 	requireDocumentationText(t, content, []string{
-		"!1-3 #tag ##context @date @@defer $destination *pin %project >parent <child",
+		"!1-3 #tag ##context @date @@defer $destination *pin %project >parent <child ~task &link ;comment;",
 		"`@@defer` hides the task until an instant rather than a day",
 		"`*pin` pins the task, exactly as the `*` key does on an existing row",
 		"The edit surface is also the only one that accepts `*unpin`",
@@ -265,7 +265,10 @@ func TestREADMEDocumentsFinalCaptureAndWorkflowContracts(t *testing.T) {
 		"There is no clear form: `<0` is an ordinary reference that resolves to nothing",
 		"Aliases that name the same task collapse to one adoption, keeping the first occurrence",
 		"two lines cannot adopt the same task",
-		"`^type`, `~recurrence`, priorities `!4`–`!5`, `$ready`, and `$in_progress`",
+		"`^type`, priorities `!4`–`!5`, `$ready`, and `$in_progress`",
+		"The tilde no longer names recurrence, which stays retired",
+		"`~task` records a soft dependency on another task and may be repeated",
+		"The edit surfaces add `-~task`, which removes one reference, and `~0`, which clears them all",
 		"`#tag` creates and sets a lowercase ASCII kebab tag on the fly",
 		"`inbox`, `backlog`, `today`, `next`, `doing`, `waiting`, `paused`, `someday`, `done`, or `canceled`",
 		"A new child defaults to Backlog",
@@ -386,7 +389,8 @@ func TestREADMEWorkspaceAndMigrationContractStaysCurrent(t *testing.T) {
 	requireDocumentationText(t, content, []string{
 		"workspace.json",
 		"planning.json",
-		"schema-13 Markdown and generic `Task` headings",
+		"schema-14 Markdown and generic `Task` headings",
+		"Each task may finally carry an optional `depends` list of soft references",
 		"Each task may carry an optional non-negative `defer_count`; zero is omitted",
 		"Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the dark/light theme " +
 			"choice, the saved named-lens definitions, and a pointer to the lens that was last open",
@@ -402,8 +406,10 @@ func TestREADMEWorkspaceAndMigrationContractStaysCurrent(t *testing.T) {
 		"pre-context-v12-<UTC>.tar.gz",
 		"pre-defer-count-v13-<UTC>.tar.gz",
 		"pre-due-time-v14-<UTC>.tar.gz",
+		"pre-dependencies-v15-<UTC>.tar.gz",
 		"Schema 13 upgrades task Markdown to schema 12",
 		"Schema 14 upgrades task Markdown to schema 13 by adding the optional `due_time`",
+		"Schema 15 upgrades task Markdown to schema 14 by adding the optional `depends`",
 		"durable `state_changed` clock, backfilled from `updated`",
 		"There is no down-migration",
 		"schema-4/5 workspaces through the whole chain",

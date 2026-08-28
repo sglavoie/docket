@@ -49,10 +49,10 @@ The repository is divided by responsibility:
 - `internal/app` owns use cases, target resolution, atomic multi-project
   mutations, planning reconciliation, and rollback of in-memory state when a
   commit fails.
-- `internal/storage` owns strict schema-13 Markdown, attachments, transactions,
+- `internal/storage` owns strict schema-14 Markdown, attachments, transactions,
   workspace undo/redo, three-way merge, conflicts, and recovery.
 - `internal/config` owns the lean catalog and planning domains, project tags,
-  machine-local theme, workspace selection, and the v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14
+  machine-local theme, workspace selection, and the v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15
   migration chain.
 - `internal/tui` owns the single Outliner root, typed subordinate tools and
   overlays, operation descriptors, and the deterministic review harness.
@@ -66,7 +66,7 @@ not reproduce these checks with independent saves.
 
 ## Task model
 
-Schema 12 task Markdown stores generic tasks with these supported fields:
+Schema 14 task Markdown stores generic tasks with these supported fields:
 
 | Group | Fields |
 | --- | --- |
@@ -75,6 +75,7 @@ Schema 12 task Markdown stores generic tasks with these supported fields:
 | Workflow | Inbox, Backlog, Doing, Waiting, Paused, Someday, Done, Canceled |
 | Planning metadata | priority, due date, deferral instant (`deferred`), deferral count (`defer_count`), pin, pin timestamp |
 | Organization | project-local parent, single-valued task context, and tags |
+| Relations | outgoing soft task references (`depends`) |
 | Rich records | checklist, comments, attachments |
 | Lifecycle | created, updated, `state_changed`, completed timestamps |
 
@@ -84,6 +85,16 @@ tag; it is unrelated to the retired v4 project-level context folded into
 project tags during schema 7 migration. The due value is a calendar date that
 may carry an optional `due_time` (a canonical `HH:MM`); the deferral value is
 an RFC3339Nano instant, so a deferral can expire later the same day.
+
+A soft task reference is a stored `project-id:task-id` pair on the referring
+task and nothing else. It is one-directional and effect-free: no lifecycle
+transition, ordering rule, ranking, or completion check reads it, so a task with
+an open reference starts and completes exactly as one without. Dependents are
+therefore derived at read time from the loaded population rather than stored,
+which keeps the relation single-writer and lets one undo entry cover it. Nothing
+prunes a reference whose target closed, moved projects, or was deleted; the
+reference maintenance that runs on a move or a delete rewrites or drops it
+deliberately, and every other path preserves the stored bytes.
 
 `DeferCount` is a lifecycle signal rather than a count of field writes. An
 initial deferral increments it, changing the instant of a still-pending deferral
@@ -544,10 +555,23 @@ segment as `deferred ×N`; Peek appends the identical token to
 The row segment is the first `indicatorDropLadder` entry and therefore yields
 before every operational date or age signal under width pressure.
 
+A task holding soft references renders a trailing `~N` from
+`renderDependencyIndicator`, which counts `len(task.Dependencies)` and reads
+nothing else. It is deliberately ungated by a `ColumnConfig` column: naming one
+would put a dependency back in the column vocabulary the retired
+hard-dependency panels owned, and the count is not a fact a user hides. The
+count is over stored locators rather than resolvable ones, so a reference to
+terminal, deleted, or unloaded work counts exactly like a reference to open
+work — the row states what the task says, not what its targets are doing — and
+the same number is what the edit grammar round-trips.
+
 `indicatorDropLadder` is the row's drop order, and it is a list rather than a set
-because ten segments cannot all fit at minimum width. Counts go first, since
-the row's own badges and Peek still carry them, followed by recency, defer,
-Waiting age, due date, and Doing age; check-back goes last because it is the one
+because eleven segments cannot all fit at minimum width. Counts go first, since
+the row's own badges and Peek still carry them; the reference count follows them
+for the same reason and stays ahead of every operational signal, because a
+reference changes nothing about when the task is due or how long it has been
+waiting. Recency, defer, Waiting age, due date, and Doing age follow;
+check-back goes last because it is the one
 indicator naming work that has gone quiet on someone else's desk. A new
 indicator gets a position in that list, not an append.
 
@@ -1219,6 +1243,41 @@ destination names: an already-terminal task that adopts an open child is reopene
 to Doing. Inline edit refuses a child locator outside the destination project
 with `invalid child: child must belong to the effective project`.
 
+`~task` is the soft-reference sigil, and it is the one repeatable reference that
+crosses a project boundary: `resolveDependencyReference` accepts a bare alias,
+resolved in the effective project like `>parent` and `<child`, or a
+`project-slug:alias` pair resolved against the loaded population. It is peeled
+before `FieldTag` for the attachment entry's reason — `#([\w][\w.:-]*)` stops at
+the tilde in `Task #work~foo`, and peeling the tag first would leave a
+whitespace-preceded `~` that minted a reference out of prose — and
+`FieldRemoveDependency` (`-~`) is peeled before it so the two-rune trigger comes
+off whole rather than depending on the leading-boundary rule alone.
+
+The three forms divide by surface because they divide by what a surface holds.
+Capture takes `~task` only: a task being created has no stored set, so `-~task`
+and `~0` are refused there by name. Inline edit and the outline buffer take all
+three. Search takes `~task` alone and compiles it into `admitsDependencies`, an
+AND gate over the stored list; `~0` and `-~task` are named in `placementDiagnostics`
+and `refusedSearchFields` rather than compiled into a locator that could never
+match, because a dependency predicate is direct and positive — there is no
+traversal and no negative form.
+
+`DependencyPatch` is what carries the intent into `Service.EditTaskLine`, and
+its zero value means *no intent* rather than an empty set: `prepared.dependenciesSet`
+gates the write, so a save that never mentioned a reference preserves the stored
+list byte for byte. That rule is what makes every other save path safe — the
+external editor returns a title and a body and nothing else, and the expanded
+task form is create-only and gains no reference control — so neither can erase a
+set it never displayed. The outline buffer is the exception that proves the rule:
+it dumps every stored reference, so its absence *is* an intent there, and
+`TestOutlineDependencyRoundTripSurvivesUnchanged` pins the round trip.
+
+`outlineDependencyAlias` picks the shortest form that still addresses the
+target — bare short ID inside the dumped project, slug-qualified in another
+loaded one, durable `project-id:task-id` otherwise — and the parser accepts the
+locator form back unchanged, which is how a reference to archived or deleted
+work survives a round trip the workspace cannot resolve.
+
 `Ctrl+E` is the second surface that speaks the edit grammar. Its buffer's `# `
 heading is a title line, so `handleTaskContentEdited` routes it through the same
 `parseQuickEdit` and `taskLineEditRequest` the inline editor uses, then rides the
@@ -1510,9 +1569,25 @@ The five-line cap is a hard budget for the additive lines, because
 already-tight one. `inlinePeekLines` therefore owns a drop order, not a set: the
 description spends up to `inlinePeekDescriptionRows` (3) lines because it is what
 actually truncates, `inlinePeekDatesLine` is appended directly after it, then
-attachment names, comment counts, and tags, and the tail cut sheds from the end.
+attachment names, comment counts, the two reference lines, and tags, and the
+tail cut sheds from the end.
 A new Peek line takes a deliberate position in that order, or the cap silently
 starts eating something else.
+
+The reference lines sit above tags because Peek is the only surface that names a
+reference at all — the row carries a bare `~N` and there is no panel behind it
+the way `;` and `&` stand behind comments and attachments — while tag chips are
+already on the row and are therefore the cheaper line to lose.
+`inlinePeekReferenceLine` renders `Dependencies` from the task's stored list in
+stored order and `Dependents` from `incomingDependencyDetails`, which scans the
+loaded projects for tasks referring back. Both arrive resolved:
+`dependencyDetailFor` names a loaded target as project, `#ShortID`, title, and
+state, and `dependencyDetailUnresolved` falls back to the stored
+`project-id:task-id` locator marked `(unavailable)`, so a reference into an
+unloaded or archived project is degraded rather than dropped. The line names the
+first two entries and ends `+N more`. Both are read-only: they carry no key, no
+selection, and no mutation, and the expanded task form is create-only, so no
+surface edits a reference except the grammar.
 
 Two blocks sit outside that budget, both because the row deliberately elided them
 and Peek is the surface whose job is to show what the row had no width for.
@@ -2298,7 +2373,7 @@ all side effects are rebuilt together.
 ## Snapshot-first schema migration
 
 Workspace recovery reads the catalog payload schema before ordinary loading.
-Schema 14 proceeds directly. A supported schema-4 split-domain workspace first
+Schema 15 proceeds directly. A supported schema-4 split-domain workspace first
 crosses the schema-5 boundary, a supported schema-5 workspace then enters the
 schema-6 consolidation path, a schema-6 workspace crosses the schema-7
 scope-folding path, a schema-7 workspace crosses the schema-8 tag path, a
@@ -2306,8 +2381,9 @@ schema-8 workspace crosses the schema-9 state-clock path,
 a schema-9 workspace crosses the schema-10 defer-rename path, a schema-10
 workspace crosses the schema-11 defer-instant path, a schema-11 workspace
 crosses the schema-12 task-context path, a schema-12 workspace crosses the
-schema-13 defer-count path, and a schema-13 workspace finishes on the
-schema-14 due-time path:
+schema-13 defer-count path, a schema-13 workspace crosses the schema-14
+due-time path, and a schema-14 workspace finishes on the schema-15
+soft-dependency path:
 
 1. Decode the v4 catalog, planning, settings, automation, machine state, task
    Markdown, completed archives, notes, blockers, and legacy indexes with
@@ -2402,8 +2478,16 @@ schema-14 due-time path:
    activate catalog schema 14 and task Markdown schema 13 across active and
    archived projects, and clear undo/redo history whose retained bytes carry the
    schema-12 task-document marker.
+24. Validate every schema-13 project document, then lift it to schema 14 by
+   adding the optional `depends` list of soft task references. No retired field
+   carries dependency data across this boundary, so every migrated task begins
+   with an empty list, whose canonical representation omits the key.
+25. Publish `pre-dependencies-v15-<UTC>.tar.gz` plus its audit, atomically
+   activate catalog schema 15 and task Markdown schema 14 across active and
+   archived projects, and clear undo/redo history whose retained bytes carry the
+   schema-13 task-document marker.
 
-Each boundary is idempotent: repeated schema-14 startup neither reconverts data
+Each boundary is idempotent: repeated schema-15 startup neither reconverts data
 nor creates another rollback pair. Corrupt or future input and an existing
 `unfiled` project/directory fail before mutation with concrete rename/move guidance.
 Snapshot artifacts are application-owned and immutable to `tt`. Downgrade or a
@@ -2450,7 +2534,16 @@ portable domains, and migration snapshots are not.
 ## Maintenance CLI and platform support
 
 The public CLI contains the TUI launcher, `doctor`, `conflict`, `workspace`,
-`completion`, and `project export`, plus help and version output. Global flags
+`completion`, and `project export`, plus help and version output.
+`project export` writes a task's outgoing references as a `**Dependencies:**`
+list, labelled through `exportReferenceLabeller`: a resolvable target reads as
+project, `(#ShortID)`, and title, and anything else keeps its durable
+`project-id:task-id` locator, so an export degrades rather than drops. Its label
+population is every non-archived project plus the archived ones, because an
+exported document is not a live view and naming archived work beats emitting a
+bare locator. Computed dependents are never exported: they are an artifact of
+what happened to be loaded, and freezing them into a document would state as
+durable something that is not. Global flags
 are `--data-dir` and `--no-color`. It has no task mutation or undo/redo command.
 
 Current release builds target macOS and Linux on `amd64` and `arm64`. Windows is

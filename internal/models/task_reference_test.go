@@ -6,35 +6,32 @@ import (
 	"testing"
 )
 
-func TestTaskReferenceLocatorRoundTrips(t *testing.T) {
+func TestTaskReferenceLocatorIsTheDurableSpelling(t *testing.T) {
 	reference := TaskReference{ProjectID: "project-alpha", TaskID: "task-42"}
-	locator := reference.Locator()
-	if locator != "project-alpha:task-42" {
+	if locator := reference.Locator(); locator != "project-alpha:task-42" {
 		t.Fatalf("Locator() = %q, want %q", locator, "project-alpha:task-42")
 	}
-	parsed, err := ParseTaskReference(locator)
-	if err != nil {
-		t.Fatalf("ParseTaskReference: %v", err)
-	}
-	if !parsed.Equal(reference) {
-		t.Fatalf("round trip = %+v, want %+v", parsed, reference)
+	if err := reference.Validate(); err != nil {
+		t.Fatalf("a well-formed reference was refused: %v", err)
 	}
 }
 
-func TestParseTaskReferenceRefusesMalformedLocators(t *testing.T) {
-	for _, locator := range []string{
-		"",                     // nothing at all
-		"project-alpha",        // no separator
-		":task-42",             // empty project id
-		"project-alpha:",       // empty task id
-		"a:b:c",                // extra separator lands inside the task id
-		"project alpha:task-1", // whitespace inside a component
-		"project;alpha:task-1", // the durable list delimiter
-		"project,alpha:task-1", // the metadata pair delimiter
-		"project-->:task-1",    // would close the metadata comment
+// The reserved runes are the ones that would make a persisted record
+// unparseable rather than merely unusual: the metadata pair separator, the
+// dependency list separator, the locator separator itself, and the sequence that
+// would close the metadata comment the list rides inside.
+func TestTaskReferenceValidationRefusesUnpersistableComponents(t *testing.T) {
+	for _, pair := range [][2]string{
+		{"", "task-42"},             // empty project id
+		{"project-alpha", ""},       // empty task id
+		{"project-alpha", "a:b"},    // the locator separator
+		{"project alpha", "task-1"}, // whitespace inside a component
+		{"project;alpha", "task-1"}, // the durable list delimiter
+		{"project,alpha", "task-1"}, // the metadata pair delimiter
+		{"project-->", "task-1"},    // would close the metadata comment
 	} {
-		if _, err := ParseTaskReference(locator); err == nil {
-			t.Fatalf("ParseTaskReference(%q) succeeded, want refusal", locator)
+		if err := ValidateTaskReference(pair[0], pair[1]); err == nil {
+			t.Fatalf("ValidateTaskReference(%q, %q) succeeded, want refusal", pair[0], pair[1])
 		}
 	}
 }
@@ -67,41 +64,6 @@ func TestCloneTaskReferencesDetachesBackingArray(t *testing.T) {
 	}
 	if CloneTaskReferences(nil) != nil || CloneTaskReferences([]TaskReference{}) != nil {
 		t.Fatal("an empty list must clone to nil so absence has one shape")
-	}
-}
-
-func TestDedupeTaskReferencesKeepsFirstOccurrenceOrder(t *testing.T) {
-	deduped := DedupeTaskReferences([]TaskReference{
-		{ProjectID: "p", TaskID: "b"},
-		{ProjectID: "p", TaskID: "a"},
-		{ProjectID: "p", TaskID: "b"},
-		{ProjectID: "q", TaskID: "a"},
-		{ProjectID: "p", TaskID: "a"},
-	})
-	want := []TaskReference{
-		{ProjectID: "p", TaskID: "b"},
-		{ProjectID: "p", TaskID: "a"},
-		{ProjectID: "q", TaskID: "a"},
-	}
-	if !TaskReferencesEqual(deduped, want) {
-		t.Fatalf("dedupe = %+v, want %+v", deduped, want)
-	}
-	if DedupeTaskReferences(nil) != nil {
-		t.Fatal("an empty list must dedupe to nil")
-	}
-}
-
-func TestValidateTaskReferencesRefusesDuplicatesAndBadComponents(t *testing.T) {
-	duplicate := []TaskReference{{ProjectID: "p", TaskID: "a"}, {ProjectID: "p", TaskID: "a"}}
-	err := ValidateTaskReferences(duplicate)
-	if err == nil || !strings.Contains(err.Error(), "duplicate") {
-		t.Fatalf("duplicate validation = %v, want a duplicate refusal", err)
-	}
-	if err := ValidateTaskReferences([]TaskReference{{ProjectID: "", TaskID: "a"}}); err == nil {
-		t.Fatal("an empty project id was accepted")
-	}
-	if err := ValidateTaskReferences(nil); err != nil {
-		t.Fatalf("an absent list must validate: %v", err)
 	}
 }
 
