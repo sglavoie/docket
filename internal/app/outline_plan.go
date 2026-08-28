@@ -292,9 +292,9 @@ func prepareOutlineLine(snap Snapshot, project *models.Project, line OutlinePlan
 	}
 	item := preparedOutlineLine{line: line, title: title, priority: line.Priority, tags: tags, context: context}
 	if line.TaskID == "" {
-		dependencies, err := resolveOutlineDependencies(snap, project, nil, line.Dependencies)
-		if err != nil {
-			return preparedOutlineLine{}, err
+		dependencies, depErr := resolveOutlineDependencies(snap, project, nil, line.Dependencies)
+		if depErr != nil {
+			return preparedOutlineLine{}, depErr
 		}
 		item.dependencies = dependencies
 		return item, nil

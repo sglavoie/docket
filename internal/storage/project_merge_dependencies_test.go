@@ -19,8 +19,10 @@ func TestMergeableTaskFieldsIncludesDependencies(t *testing.T) {
 	t.Fatal("merge field inventory does not include dependencies")
 }
 
-func mergeDependencyTask(id, title string, dependencies ...models.TaskReference) *models.Task {
-	task := mergeTestTask(id, title)
+// mergeDependencyTask builds the one task every merge case here edits, so its
+// identity is fixed: the contract under test is the dependency slice alone.
+func mergeDependencyTask(dependencies ...models.TaskReference) *models.Task {
+	task := mergeTestTask("t1", "Task")
 	task.Dependencies = models.CloneTaskReferences(dependencies)
 	return task
 }
@@ -29,9 +31,9 @@ func mergeDependencyTask(id, title string, dependencies ...models.TaskReference)
 // the list, the other did not, so the change lands without a conflict.
 func TestMergeAdoptsAOneSidedDependencyEdit(t *testing.T) {
 	added := models.TaskReference{ProjectID: "p", TaskID: "target"}
-	base := mergeTestDoc("Deps", mergeDependencyTask("t1", "Task"))
-	local := mergeTestDoc("Deps", mergeDependencyTask("t1", "Task", added))
-	current := mergeTestDoc("Deps", mergeDependencyTask("t1", "Task"))
+	base := mergeTestDoc("Deps", mergeDependencyTask())
+	local := mergeTestDoc("Deps", mergeDependencyTask(added))
+	current := mergeTestDoc("Deps", mergeDependencyTask())
 
 	result, err := MergeProjectDocuments(base, local, current)
 	if err != nil {
@@ -49,9 +51,9 @@ func TestMergeAdoptsAOneSidedDependencyEdit(t *testing.T) {
 // reported as divergence.
 func TestMergeCoalescesIdenticalDependencyEdits(t *testing.T) {
 	added := models.TaskReference{ProjectID: "p", TaskID: "target"}
-	base := mergeTestDoc("Deps", mergeDependencyTask("t1", "Task"))
-	local := mergeTestDoc("Deps", mergeDependencyTask("t1", "Task", added))
-	current := mergeTestDoc("Deps", mergeDependencyTask("t1", "Task", added))
+	base := mergeTestDoc("Deps", mergeDependencyTask())
+	local := mergeTestDoc("Deps", mergeDependencyTask(added))
+	current := mergeTestDoc("Deps", mergeDependencyTask(added))
 
 	result, err := MergeProjectDocuments(base, local, current)
 	if err != nil {
@@ -69,9 +71,9 @@ func TestMergeCoalescesIdenticalDependencyEdits(t *testing.T) {
 // contract: the dependency list is one field, so two divergent edits conflict as
 // a whole rather than being element-wise unioned.
 func TestMergeReportsDivergentDependencyListsAsAWholeFieldConflict(t *testing.T) {
-	base := mergeTestDoc("Deps", mergeDependencyTask("t1", "Task"))
-	local := mergeTestDoc("Deps", mergeDependencyTask("t1", "Task", models.TaskReference{ProjectID: "p", TaskID: "left"}))
-	current := mergeTestDoc("Deps", mergeDependencyTask("t1", "Task", models.TaskReference{ProjectID: "p", TaskID: "right"}))
+	base := mergeTestDoc("Deps", mergeDependencyTask())
+	local := mergeTestDoc("Deps", mergeDependencyTask(models.TaskReference{ProjectID: "p", TaskID: "left"}))
+	current := mergeTestDoc("Deps", mergeDependencyTask(models.TaskReference{ProjectID: "p", TaskID: "right"}))
 
 	result, err := MergeProjectDocuments(base, local, current)
 	if err != nil {
@@ -100,9 +102,9 @@ func TestMergeReportsDivergentDependencyListsAsAWholeFieldConflict(t *testing.T)
 // input documents.
 func TestMergedDependenciesDetachFromTheirSource(t *testing.T) {
 	added := models.TaskReference{ProjectID: "p", TaskID: "target"}
-	base := mergeTestDoc("Deps", mergeDependencyTask("t1", "Task"))
-	local := mergeTestDoc("Deps", mergeDependencyTask("t1", "Task", added))
-	current := mergeTestDoc("Deps", mergeDependencyTask("t1", "Task"))
+	base := mergeTestDoc("Deps", mergeDependencyTask())
+	local := mergeTestDoc("Deps", mergeDependencyTask(added))
+	current := mergeTestDoc("Deps", mergeDependencyTask())
 
 	result, err := MergeProjectDocuments(base, local, current)
 	if err != nil {
@@ -122,9 +124,9 @@ func TestConflictStorageRoundTripsDependencies(t *testing.T) {
 	store := newConflictStore(t)
 	added := models.TaskReference{ProjectID: "p", TaskID: "target"}
 
-	base := mergeTestDoc("Deps", mergeDependencyTask("t1", "Task"))
-	local := mergeTestDoc("Deps", mergeDependencyTask("t1", "Task", added))
-	remote := mergeTestDoc("Deps", mergeDependencyTask("t1", "Task", models.TaskReference{ProjectID: "p", TaskID: "other"}))
+	base := mergeTestDoc("Deps", mergeDependencyTask())
+	local := mergeTestDoc("Deps", mergeDependencyTask(added))
+	remote := mergeTestDoc("Deps", mergeDependencyTask(models.TaskReference{ProjectID: "p", TaskID: "other"}))
 	conflicts := []MergeConflict{{Kind: MergeConflictFieldEdit, Field: "dependencies"}}
 
 	project := &models.Project{ID: "p1", Name: "Deps", Slug: "deps", Path: "/tmp/projects/deps"}

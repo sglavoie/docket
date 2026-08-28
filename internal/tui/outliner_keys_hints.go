@@ -130,7 +130,7 @@ func quickEditGrammarGuidance() []string {
 	}
 	// The reference forms are named for the same reason the tag pair is: the
 	// sigil is the only route to a stored set no key opens. They are appended
-	// rather than labelled in place because parse order puts the tilde first,
+	// rather than labeled in place because parse order puts the tilde first,
 	// and a two-row footer that led with the newest sigil would drop the
 	// structural ones every surface above it already advertises.
 	trailing := map[textgrammar.Field]string{

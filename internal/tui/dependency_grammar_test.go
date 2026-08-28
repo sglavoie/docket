@@ -93,6 +93,8 @@ func TestDependencyTokensAreParsedBeforeTagRewrites(t *testing.T) {
 		switch definition.Field {
 		case textgrammar.FieldRemoveDependency, textgrammar.FieldDependency, textgrammar.FieldTag:
 			fields = append(fields, definition.Field)
+		default:
+			// Only the three fields whose relative order matters here are collected.
 		}
 	}
 	want := []textgrammar.Field{textgrammar.FieldRemoveDependency, textgrammar.FieldDependency, textgrammar.FieldTag}

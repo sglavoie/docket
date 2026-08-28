@@ -23,7 +23,10 @@ func dependencyLocators(task *models.Task) []string {
 func assertDependencies(t *testing.T, task *models.Task, want ...string) {
 	t.Helper()
 	got := dependencyLocators(task)
-	if !reflect.DeepEqual(got, want) && !(len(got) == 0 && len(want) == 0) {
+	if len(got) == 0 && len(want) == 0 {
+		return
+	}
+	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("dependencies = %v, want %v", got, want)
 	}
 }

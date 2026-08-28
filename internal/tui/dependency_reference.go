@@ -88,10 +88,10 @@ func resolveDependencyReference(ref string, effective *models.Project, allProjec
 	}
 	// Shape-only fallback. Validation is the domain's, so a locator this parser
 	// accepts is exactly one storage would.
-	if models.ValidateTaskReference(head, tail) != nil {
-		return capturedDependencyRef{}, nil
+	if models.ValidateTaskReference(head, tail) == nil {
+		return capturedDependencyRef{locator: app.TaskLocator{ProjectID: head, TaskID: tail}}, nil
 	}
-	return capturedDependencyRef{locator: app.TaskLocator{ProjectID: head, TaskID: tail}}, nil
+	return capturedDependencyRef{}, nil
 }
 
 func projectByStableID(id string, allProjects []*models.Project) *models.Project {
