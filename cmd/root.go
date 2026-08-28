@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 
 	"github.com/spf13/cobra"
 
@@ -25,6 +26,49 @@ var (
 	BuildTime = ""
 )
 
+// devVersion is the compiled-in placeholder that means no ldflags were passed,
+// and moduleDevVersion is what the toolchain records for a module built outside
+// a released version. Neither is worth reporting when build info can do better.
+const (
+	devVersion       = "dev"
+	moduleDevVersion = "(devel)"
+)
+
+// readBuildInfo is the debug.ReadBuildInfo seam the version tests replace.
+var readBuildInfo = debug.ReadBuildInfo
+
+// resolveBuildInfo reports the version, commit, and build time to display.
+// The ldflags the justfile passes always win, so `just build` output is
+// unchanged; when they are absent — which is every `go install` — the module
+// build info the toolchain embeds supplies the module version and, for a build
+// from a source checkout, the VCS revision and timestamp.
+func resolveBuildInfo() (version, commit, buildTime string) {
+	version, commit, buildTime = Version, GitCommit, BuildTime
+	if version != devVersion {
+		return version, commit, buildTime
+	}
+	info, ok := readBuildInfo()
+	if !ok {
+		return version, commit, buildTime
+	}
+	if moduleVersion := info.Main.Version; moduleVersion != "" && moduleVersion != moduleDevVersion {
+		version = moduleVersion
+	}
+	for _, setting := range info.Settings {
+		switch setting.Key {
+		case "vcs.revision":
+			if commit == "" {
+				commit = setting.Value
+			}
+		case "vcs.time":
+			if buildTime == "" {
+				buildTime = setting.Value
+			}
+		}
+	}
+	return version, commit, buildTime
+}
+
 var rootCmd = &cobra.Command{
 	Use:   "tt",
 	Short: "An Outliner-first terminal task manager",
@@ -34,9 +78,11 @@ Run tt without a command to open the interactive Outliner. The command-line
 surface is intentionally limited to workspace maintenance, diagnostics,
 conflict recovery, project export, and shell completion.
 
-Startup validates schema-6 data before loading and migrates supported schema-4
-or schema-5 workspaces through immutable snapshot-first boundaries. Run
-'tt doctor' for read-only integrity and migration-snapshot diagnostics.
+Startup validates schema-15 catalogs and schema-14 task Markdown before loading,
+and migrates any supported older workspace forward through the whole chain of
+immutable snapshot-first boundaries. Migration is one-way, so keep a copy of
+your workspace before a version jump. Run 'tt doctor' for read-only integrity
+and migration-snapshot diagnostics.
 
 Examples:
   tt
@@ -125,14 +171,16 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	tui.AppVersion = Version
+	version, _, _ := resolveBuildInfo()
+	tui.AppVersion = version
 	return tui.RunApp(workspace.Runtime, workspace.Manager, tui.RunOptions{DisableColor: noColor})
 }
 
 func printVersion() {
-	if GitCommit == "" && BuildTime == "" {
-		fmt.Printf("tt version %s\n", Version)
+	version, commit, buildTime := resolveBuildInfo()
+	if commit == "" && buildTime == "" {
+		fmt.Printf("tt version %s\n", version)
 		return
 	}
-	fmt.Printf("tt version %s (commit: %s, built: %s)\n", Version, GitCommit, BuildTime)
+	fmt.Printf("tt version %s (commit: %s, built: %s)\n", version, commit, buildTime)
 }

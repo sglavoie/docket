@@ -251,6 +251,71 @@ func TestRetiredFocusStackZoomVocabulary(t *testing.T) {
 	}
 }
 
+// TestCurrentProductDocsExcludeRetiredSchemaVocabularyInCLIHelp audits the
+// Cobra `Long` and `Short` strings, which are the first product text a new user
+// reads and the one body of user-facing prose no documentation test covered.
+// The rule is mechanical: a hyphenated schema version named in help output must
+// be a live one — schema-15 catalogs or the schema-14 task Markdown they hold.
+// Retired versions still belong in diagnostic output such as doctor's pre-v6
+// snapshot note, which describes a historical boundary rather than the current
+// format, so the scan is deliberately narrowed to help fields.
+func TestCurrentProductDocsExcludeRetiredSchemaVocabularyInCLIHelp(t *testing.T) {
+	liveSchemaVersions := map[string]bool{"14": true, "15": true}
+	schemaVersionPattern := regexp.MustCompile(`(?i)schema[- ]([0-9]+)`)
+	helpFields := map[string]bool{"Long": true, "Short": true, "Example": true}
+
+	var scanned int
+	fileSet := token.NewFileSet()
+	err := filepath.WalkDir("cmd", func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() || filepath.Ext(path) != ".go" || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		relative := filepath.ToSlash(path)
+		file, parseErr := parser.ParseFile(fileSet, path, nil, 0)
+		if parseErr != nil {
+			return parseErr
+		}
+		ast.Inspect(file, func(node ast.Node) bool {
+			pair, ok := node.(*ast.KeyValueExpr)
+			if !ok {
+				return true
+			}
+			key, ok := pair.Key.(*ast.Ident)
+			if !ok || !helpFields[key.Name] {
+				return true
+			}
+			literal, ok := pair.Value.(*ast.BasicLit)
+			if !ok || literal.Kind != token.STRING {
+				return true
+			}
+			value, unquoteErr := strconv.Unquote(literal.Value)
+			if unquoteErr != nil {
+				return true
+			}
+			scanned++
+			for _, match := range schemaVersionPattern.FindAllStringSubmatch(value, -1) {
+				if !liveSchemaVersions[match[1]] {
+					t.Errorf(
+						"%s:%d: command help field %s names retired schema vocabulary %q",
+						relative, fileSet.Position(literal.Pos()).Line, key.Name, match[0],
+					)
+				}
+			}
+			return true
+		})
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if scanned == 0 {
+		t.Fatal("scanned no command help strings; the audit is not reaching cmd/")
+	}
+}
+
 func TestCurrentProductDocsExcludeRetiredConcepts(t *testing.T) {
 	paths := []string{"README.md", "CLAUDE.md", "docs/architecture.md", "docs/tui-testing/README.md"}
 	for _, source := range []struct {

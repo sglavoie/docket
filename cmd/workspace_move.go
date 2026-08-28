@@ -47,7 +47,7 @@ func runWorkspaceMove(_ *cobra.Command, args []string) error {
 		fmt.Println("Aborted.")
 		return nil
 	}
-	// Moving is a live schema-6 operation. Activate or bootstrap the source
+	// Moving is a live current-schema operation. Activate or bootstrap the source
 	// workspace before inventory so no legacy live config is copied forward.
 	if _, loadErr := manager.LoadOrCreateDomains(); loadErr != nil {
 		return fmt.Errorf("prepare source workspace for move: %w", loadErr)
