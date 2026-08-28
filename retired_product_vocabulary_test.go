@@ -258,6 +258,7 @@ func TestCurrentProductDocsExcludeRetiredConcepts(t *testing.T) {
 		extension string
 	}{
 		{root: "docs/decisions", extension: ".md"},
+		{root: "docs/guide", extension: ".md"},
 		{root: "docs/tui-testing/scenarios", extension: ".json"},
 	} {
 		err := filepath.WalkDir(source.root, func(path string, entry fs.DirEntry, walkErr error) error {

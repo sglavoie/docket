@@ -1,0 +1,270 @@
+# Filters, search, lenses, and sorting
+
+The three session-only axes over an Outliner projection — which rows a mode
+holds, which projects load, and the order they are read in — plus the saved
+projections that write all of them at once.
+
+## Filters and search
+
+Filters are session-only refinements of ordinary mode rows. Slash search is a
+temporary projection over every nonterminal task in the active project scope,
+including deferred work; Esc restores the prior mode, facets, sort, cursor,
+scroll, and folds exactly. Search is also the fastest way to jump anywhere:
+`Enter`, `Shift+Enter`, and `gp` on a result leave search on that task
+instead of refusing, so the restored projection lands on the row you searched
+for. A mode that cannot list the result falls back to All; a facet that still
+excludes it says `Task is hidden by the active facets` and focuses nothing.
+Find then narrow: the row facets and the sort axis compose with a live
+search, so `f*` applies as an AND gate before scoring exactly like a query
+sigil, and `o*` reorders within a relevance tier only — a description hit never
+floats above a title hit. The population facets (`F*`) still refuse, since
+admitting a project needs a reload rather than a rebuild, and mode switches,
+folds, and reordering still ask you to exit search first. Esc restores the
+pre-search facets and sort wholesale, so a narrowing typed inside the
+projection leaves with it.
+
+| Keys | Effect |
+| --- | --- |
+| `f!0`, `f!1`–`f!3` | Clear priority filtering or keep High, Medium-or-higher, or Low-or-higher assigned priorities; Unset never matches |
+| `f$` | Pick workflow states with OR semantics, including terminal states |
+| `fa` | Pick completed at least 7, 30, or 90 local-calendar days ago, or all valid completion ages; also filters states to Done and Canceled |
+| `f#` | Pick tags with AND semantics; the task context is a separate axis on `fc` |
+| `fc` | Pick task contexts with OR semantics, since a task carries at most one; the leading `No context` row admits the tasks carrying none |
+| `fr` | Toggle the `review` tag facet |
+| `f@` | Open the Filter by Due or Deferred picker: overdue, today, this week, no due date, or deferred-only |
+| `fh` | Pick one hierarchy position: parent, child, root, or leaf; parent and leaf read open children |
+| `fs` | Toggle open, undeferred work untouched for at least 90 local-calendar days; unavailable in Recent, whose entry clears only Stale and reports `Stale filter cleared: Recent only includes the last 30 days` |
+| `fx` | Clear every facet |
+| `/` | Ranked title, description, checklist, comment, tag, context, attachment, and project search over every scoped nonterminal task, gated by any capture sigils the query carries |
+
+Results rank title matches first, then each other field in turn, and a result
+whose title does not carry the match says where it came from with a muted
+`· description`, `· checklist`, `· comment`, `· tag`, `· context`,
+`· attachment`, `· project`, or `· details` note. That note is the first thing a
+narrow row drops, so the title stays readable.
+
+The search box speaks the capture and edit grammar. Sigil tokens are lifted out
+of the query and become an AND gate over the candidate set; whatever text is
+left keeps the ordinary fuzzy ranking. A query made only of sigils is a pure
+filter, and a query with no sigils behaves exactly as it did before:
+
+| Token | Effect |
+| --- | --- |
+| `!1`–`!3` | Match that priority exactly, unlike `f!`'s threshold; Unset never matches |
+| `#tag` | Match a tag by normalized-name prefix; repeatable, combined with AND |
+| `-#tag` | Exclude every task carrying a tag with that prefix |
+| `##context` | Match the task context by prefix, a separate axis from tags |
+| `@overdue`, `@today`, `@week`, `@none` | Match the same due buckets `f@` offers |
+| `@2026-03-05` | Match that exact calendar due day |
+| `@+4h` | Match tasks due at or before that rolling window, including already-overdue work |
+| `@@any`, `@@none` | Split the currently deferred population, the way `f@`'s deferred facet does |
+| `@@tomorrow`, `@@+2h` | Match tasks whose wake instant falls on that day |
+| `$state` | Match a lifecycle state exactly |
+| `$today`, `$next` | Match membership in the durable planning list |
+| `*pin`, `*unpin` | Match pinned or unpinned tasks |
+| `~task` | Match tasks that depend directly on that target; repeatable, combined with AND |
+| `%project` | Narrow the search to matching projects within the active scope |
+
+Search still hides terminal work, so `$done` and `$canceled` are the two tokens
+that relax the rule and reveal it. `$today` and `$next` read planning
+membership rather than a state, so a planned task also answers `$backlog`.
+`%project` can only narrow the scope that is already loaded; it never reaches a
+project the current scope or Focus excluded.
+
+Only a token the grammar recognizes but cannot honor blocks the query: an
+out-of-range priority such as `!9`, a retired destination such as `$ready`, the
+reserved `##0`, the structural `>parent` and `<child` sigils that belong to the
+edit grammar alone, a `~0` or `-~task` that would edit a stored set search does
+not hold, a `~task` naming nothing the loaded population depends on, an `&link` naming something genuinely attachable, which
+belongs to capture and to the task's Attachments panel, and a paired
+`;comment;`, which belongs to capture and to the task's Comments panel. Those
+refuse by name in
+the search chrome and list nothing. Everything else stays prose, so `find @sarah`, `!important`, and
+`$100` search for the words you typed.
+
+Search reads case as a narrowing signal, applied to the free text after the
+sigils are lifted out. An all-lowercase query matches any casing; a query
+carrying an uppercase letter matches case-sensitively, so `API` finds `API` and
+not `capitalize`. When a case-sensitive query matches nothing, the search
+retries case-insensitively and marks the result `(case ignored)`; the retry
+relaxes case alone and never widens the sigil gate. The rule covers the
+Outliner's `/`, Notes search, and both help searches; the `project#42`
+shorthand, autocomplete, and pickers stay case-insensitive.
+
+The lowercase `f` chord refines the rows a projection already holds. Uppercase
+`F` decides which projects load at all, so each of its facets reloads:
+
+| Keys | Effect |
+| --- | --- |
+| `F#` | Pick project tags with AND semantics, plus an `Untagged` entry for projects carrying none |
+| `Fp` | Add parked projects to the population |
+| `FP` | Isolate the parked projects |
+| `Fa` | Add archived projects to the population |
+| `FA` | Isolate the archived projects |
+| `Fx` | Clear every project filter |
+
+Each population axis has three states — excluded, included, isolated — and the
+key that selects a state also clears it when pressed again. The two axes compose
+with AND, so `FP` with `FA` names the projects that are both archived and
+parked.
+
+`Fp`, `FP`, and selecting `parked` inside `F#` are the same switch, so they can
+never disagree about which population is loaded. Inside `F#`, `v` toggles a tag
+and `Space` over a tag row offers Rename everywhere, Remove everywhere, Park all
+members, and Unpark all members across every project carrying it, as one undo
+entry. Removing a tag that is a project's only tag asks where those projects
+should land first.
+
+Pressing a chord prefix shows its valid continuations in the guidance region. `Esc`
+cancels that unfinished chord, and a second key the chord does not offer says so
+instead of doing nothing.
+
+
+### Named lenses
+
+`\` opens Named Lenses, the saved-projection list. A lens holds one whole
+Outliner projection: the mode, its own narrowing query, both filter families,
+and the sort axis. Applying one writes every axis it names at once, so a lens is
+a view you return to rather than a filter you rebuild.
+
+The list opens on two action rows — `Save current view` and, directly beneath
+it, `Add built-in view` — followed by every saved lens in alphabetical order.
+
+| Keys | Effect inside the picker |
+| --- | --- |
+| `Enter` | Apply the lens under the cursor; on `Save current view`, name and save what you are looking at; on `Add built-in view`, open the built-in gallery |
+| `1`–`9` | Apply the Nth saved lens shown, exactly as `Enter` on that row would; the digit is drawn in a column ahead of the row it names. Both action rows are unnumbered, and a narrowed list renumbers from one, so a digit always counts the saved rows on screen. A tenth saved lens carries no digit |
+| `Space` | Open the management sheet for the lens under the cursor: Rename, Replace from current view, Delete. On either action row it says which key that row answers to instead |
+| `/` | Narrow the saved list by name; both action rows stay put while the saved rows filter. `Esc` clears the typed query, then leaves the search, then closes the picker |
+| `Esc` | Close the picker without changing the view |
+
+Applying, saving, renaming, replacing, and deleting are all machine-local
+writes, so none of them records an undo entry and `u` never takes a lens back. A
+write that fails changes nothing: the list, the view, and the saved records stay
+exactly as they were, and the picker keeps the failure on screen.
+
+An active lens names itself in the title row as `Lens: <name>`, and gains a `*`
+as soon as the live view stops matching what was saved — a mode change, a
+filter, a sort, or an edited query. `Esc` restores the exact view the lens
+replaced, not an intermediate one: switching straight from one lens to another
+keeps the original restoration point, so a single `Esc` still lands where you
+left. Lenses never stack.
+
+While a lens is active `/` edits the lens's own narrowing query instead of
+opening a scope-wide search, and the title row reads `Lens query:` while you
+type. `Enter` keeps what was typed, `Esc` puts back the query the edit opened
+on. A lens query marks the titles it matched exactly as a search does, since
+those are the rows it narrowed to.
+The two queries never stack: an ordinary search cannot survive underneath a
+lens, so applying or saving one from accepted search results installs the
+projection and leaves the search behind — and the same `Esc` that dismisses the
+lens hands that search back with the rest of the view. Saving keeps the query
+itself, though: a lens saved or replaced from accepted search results records
+the query those rows came from as its own narrowing query, so reopening it
+narrows the saved mode and facets by it.
+
+A lens owns project scope too, and saving is what decides whether it does.
+Saving or replacing a lens from inside a single-project scope records that
+project, so reopening the lens returns to it. One saved from the unscoped
+Outliner records no scope at all, and no scope means the lens leaves yours
+alone rather than forcing you back to every project. A lens whose project has
+since been archived, parked, or deleted refuses by name instead of opening
+somewhere else, and refusing costs you nothing: the view you were in is
+untouched. Entering or leaving a project scope while a lens is live marks it
+modified (`*`), the same way changing its mode or a facet does — `Replace from
+current view` is what adopts the scope you moved to.
+
+Applying a lens that names no scope inside a single-project scope leaves that
+scope alone, and the lens's project facets stay inert until you leave it.
+Swapping one project scope for another keeps them inert; explicitly clearing the
+scope is what finally hands them the population, and the scope stands until the
+projects they select have loaded, so a read that fails leaves you exactly where
+you were.
+
+A workspace that has never saved a lens is seeded with three ordinary starters —
+`Waiting`, `High Priority`, and `Stale`. Nothing treats them as special: rename,
+replace, and delete reach them like any other record, and deleting every lens is
+durable rather than a request to reseed.
+
+Those three starters are the only ones seeded for you, but they are three of a
+catalog of nine. `Add built-in view` opens `Add Built-in View`, the gallery of
+all nine, in alphabetical order with the projection each one installs:
+
+| Built-in view | Projection |
+| --- | --- |
+| `Active Work` | All · states: doing · sort: priority ↑ |
+| `Cleanup 90d` | All · states: done,canceled · done: 90d · sort: updated ↑ |
+| `Deferred` | All · deferred · sort: updated ↑ |
+| `High Priority` | All · !1 · sort: priority ↑ |
+| `Overdue` | Due · due: overdue |
+| `Parked Work` | All · parked: only |
+| `Review Queue` | All · #review · sort: updated ↑ |
+| `Stale` | All · stale · sort: updated ↑ |
+| `Waiting` | All · states: waiting |
+
+`/` searches the gallery by name and by that projection, so `doing` finds
+`Active Work` and `canceled` finds `Cleanup 90d`. `Enter` adds the template
+under the cursor and applies it in one act: the record is written first, the
+view follows, both overlays close, and the strip reads
+`Added built-in view: <name>`. A write that fails leaves the gallery for the
+picker it opened over, keeps the reason on screen, and changes neither the saved
+list nor the view. `Esc` leaves the gallery for that picker too.
+
+What the gallery adds is an ordinary saved lens from that moment on: rename,
+replace, and delete reach it exactly as they reach a lens you saved yourself.
+Each template carries a stable identity of its own, and that identity — not its
+name — is what the gallery reads to decide whether you already have it. A
+template you added is greyed as `Already added as "<current name>"`, and stays
+greyed under whatever you have since renamed or replaced it with; a template
+whose name some unrelated lens of yours already answers to is greyed as
+`A lens named "<name>" already exists`. Deleting an added template hands it back
+to the gallery.
+
+Definitions live in machine-local state and survive a restart, and so does the
+lens you had open. A launch still builds the same clean Active Projects, All
+view it always did — no navigation, folds, cursor, or selection come back — and
+then reapplies that lens's saved axes on top of it: its mode, its narrowing
+query, both filter families, its sort, and its project scope. Its `Esc` is the
+one you would expect: it lands on the Active Projects, All view a lens-free
+launch would have shown, so a lens you no longer want costs one key. Dismissing
+it is durable too, and a lens the pointer names but that can no longer be opened
+— deleted on another machine, or scoped to a project since archived, parked, or
+deleted — is quietly dropped, and the launch is the ordinary one.
+
+
+## Sorting
+
+
+Lowercase `f` decides which rows a projection holds and uppercase `F` decides
+which projects load, so the third axis, `o`, decides the order those rows are
+read in:
+
+| Keys | Effect |
+| --- | --- |
+| `o@` | Order by due date |
+| `o!` | Order by priority |
+| `oc` | Order by creation date |
+| `ou` | Order by last touch |
+| `ot` | Order alphabetically by title |
+| `ox` | Clear the sort and restore the mode's own order |
+
+A field key installs its order ascending, and pressing the same key again
+reverses it, so there is no separate reverse key. The active order joins the
+title row as a `Sort: <field> ↑` badge.
+
+Sorting is a session-only refinement, like a filter. It orders tasks inside the
+group they already belong to, so it never changes which project group comes
+first and never touches an order you built by hand: Pinned, Today, and Next keep
+their manual sequence whatever the axis says.
+
+Today, Next, Due, and Recent each own their order — a plan you arranged, a due
+date, an activity clock — so a sort key there records your choice and reports
+that the mode keeps its own order. The recorded order installs itself as soon as
+you return to All, Inbox, or Backlog.
+
+For intentional cleanup, use `fa` to choose an age — it filters states to Done
+and Canceled for you — then `Ctrl+A` to select the visible matches, and
+`Space` → Delete. Use `f$` afterwards to narrow to Done or Canceled alone.
+The confirmation freezes root, descendant, visible/hidden, and attachment counts;
+the entire deletion is one undoable transaction.
+

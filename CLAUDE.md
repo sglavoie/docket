@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 Contributor rules only: invariants, forbidden patterns, forwarding addresses.
-Behavior: [`README.md`](README.md). Mechanism: [`docs/architecture.md`](docs/architecture.md).
+Behavior: [`docs/guide/`](docs/guide/README.md). Mechanism: [`docs/architecture.md`](docs/architecture.md).
 [`docs/decisions/behavioral-signals-contracts.md`](docs/decisions/behavioral-signals-contracts.md)
 is the locked behavioral-signal authority.
 
@@ -304,9 +304,9 @@ errors with replacement guidance; `priority:`, `due:`, `state:`, and `proj:`
 stay unimplemented. Multiline capture validates every nonblank line before
 committing one transaction.
 
-- Project moves and reparenting belong only to the edit grammar (`%project`,
-  `>parent`, `>0`, `<child`), applied as one `ApplyParentAssignments` batch so
-  cycles and depth are measured on the graph the edit produces.
+- Reparenting is edit-only (`>parent`, `>0`, `<child`), applied as one
+  `ApplyParentAssignments` batch so cycles and depth are measured on the graph
+  the edit produces. `%project` also routes on capture.
 - Inline `e` and the `Ctrl+E` title share `parseQuickEdit`, which reads that
   title only when it changed. A refusal reopens the buffer; saving it unchanged
   abandons the edit.
@@ -406,11 +406,11 @@ rules live in
 
 Guessable addresses are omitted; do not restore them.
 
-| Topic | `README.md` § | `docs/architecture.md` § |
+| Topic | `docs/guide/` | `docs/architecture.md` § |
 | --- | --- | --- |
-| Modes, key table, grouping, checklist, Recent | Outliner grammar; Inline checklist rows | TUI architecture |
-| Pinned, Review, title fitter, guidance, status strip, footer flash | Presentation grammar | Presentation chrome; Status flash |
-| Defer, waiting, check-back, drop ladder | Peek and multi-select | Row indicators |
-| Registry, executor, providers, chaining | Task actions | One operation grammar |
-| Filters, search, jumps, Focus, Peek, selection, `Ctrl+T` | Filters and search; Peek and multi-select | Search, filters, and Peek; Selection and subordinate tools |
-| Storage layout, migration chain | Schema 15 storage and migration | Persistence layout; Snapshot-first schema migration |
+| Modes, key table, grouping, checklist, Recent | `outliner.md` | TUI architecture |
+| Pinned, Review, title fitter, guidance, status strip, footer flash | `outliner.md` | Presentation chrome; Status flash |
+| Defer, waiting, check-back, drop ladder | `outliner.md` | Row indicators |
+| Registry, executor, providers, chaining | `outliner.md` | One operation grammar |
+| Filters, search, jumps, Focus, Peek, selection, `Ctrl+T` | `search-and-lenses.md`; `outliner.md` | Search, filters, and Peek; Selection and subordinate tools |
+| Storage layout, migration chain | `storage.md` | Persistence layout; Snapshot-first schema migration |

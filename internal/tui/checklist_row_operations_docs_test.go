@@ -15,8 +15,8 @@ import (
 // any level, so a neighboring or nested section can never lend this one a key
 // or a label it did not print itself.
 var checklistDocumentationSections = map[string]string{
-	"README.md":            "### Inline checklist rows",
-	"docs/architecture.md": "## TUI architecture",
+	"docs/guide/outliner.md": "### Inline checklist rows",
+	"docs/architecture.md":   "## TUI architecture",
 }
 
 func readRepositoryDocument(t *testing.T, relative string) string {
