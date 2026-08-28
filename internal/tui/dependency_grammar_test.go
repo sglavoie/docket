@@ -346,6 +346,75 @@ func TestQuickEditDependencyPreviewShowsTheResultingSet(t *testing.T) {
 	}
 }
 
+// TestQuickEditAddExistingTerminalOrUnavailableIsNoOp holds the inline editor to
+// the same existing-versus-new distinction the application layer applies. A
+// stored reference survives its target closing or its project leaving the loaded
+// set, so naming it again with ~ must parse, preview as the unchanged set, and
+// reach commit as a request the resolver also treats as a no-op. Only a target
+// the task does not already store is measured against the addition rules.
+func TestQuickEditAddExistingTerminalOrUnavailableIsNoOp(t *testing.T) {
+	home, routed := dependencyWorkspace()
+	projects := []*models.Project{home, routed}
+	task := home.Tasks[0]
+	stored := []models.TaskReference{
+		{ProjectID: "home-project", TaskID: "home-3"},
+		{ProjectID: "gone-project", TaskID: "gone-9"},
+	}
+	task.Dependencies = models.CloneTaskReferences(stored)
+
+	accepted := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"stored target that has since closed", "Edited task ~3", "home-project:home-3"},
+		{"stored target whose project is no longer loaded", "Edited task ~gone-project:gone-9", "gone-project:gone-9"},
+	}
+	for _, tt := range accepted {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := parseQuickEdit(tt.input, task, home, projects)
+			if err != nil {
+				t.Fatalf("parseQuickEdit(%q): %v", tt.input, err)
+			}
+			patch := result.dependencyPatch()
+			if got := dependencyLocatorStrings(patch.Add); !slices.Equal(got, []string{tt.want}) {
+				t.Errorf("add = %v, want %v", got, []string{tt.want})
+			}
+			if len(patch.Remove) != 0 || patch.Clear {
+				t.Errorf("patch = %+v, want additions alone", patch)
+			}
+			preview := make([]string, len(result.preview.Dependencies))
+			for i, reference := range result.preview.Dependencies {
+				preview[i] = reference.Locator()
+			}
+			if !slices.Equal(preview, []string{"home-project:home-3", "gone-project:gone-9"}) {
+				t.Errorf("preview = %v, want the stored set unchanged", preview)
+			}
+		})
+	}
+
+	// A target the task does not already store is still judged as a new addition.
+	bare := home.Tasks[3]
+	bare.Dependencies = nil
+	refused := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"new terminal target", "Shipping receipts ~3", "cannot depend on"},
+		{"new unavailable target", "Shipping receipts ~gone-project:gone-8", `dependency not found: "gone-project:gone-8"`},
+	}
+	for _, tt := range refused {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := parseQuickEdit(tt.input, bare, home, projects); err == nil {
+				t.Fatalf("parseQuickEdit(%q) accepted the line", tt.input)
+			} else if !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("error = %q, want it to contain %q", err, tt.want)
+			}
+		})
+	}
+}
+
 func TestCaptureDependencyPreviewNamesEveryReference(t *testing.T) {
 	home, routed := dependencyWorkspace()
 	q := draftedCaptureInput(t, "New work ~2 ~routed:1", home, []*models.Project{home, routed}, false)

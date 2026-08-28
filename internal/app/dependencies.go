@@ -140,16 +140,34 @@ func (r referenceResolver) resolveAddition(raw TaskLocator) (models.TaskReferenc
 	}
 }
 
+// resolveKnownOrNewAddition is the existing-versus-new distinction every
+// addition goes through. A locator the task already stores round-trips on shape
+// alone: the workspace deliberately preserves a reference after its target
+// closes or its project stops being loaded, so re-submitting one must stay the
+// no-op it was the moment before the target changed. Anything the request newly
+// introduces goes through the ordinary addition rule, which is what keeps a
+// genuinely new terminal or unavailable target invalid.
+func (r referenceResolver) resolveKnownOrNewAddition(existing []models.TaskReference, raw TaskLocator) (models.TaskReference, error) {
+	locator, err := normalizeDependencyLocator(raw)
+	if err != nil {
+		return models.TaskReference{}, err
+	}
+	if reference := locator.Reference(); slices.Contains(existing, reference) {
+		return reference, nil
+	}
+	return r.resolveAddition(locator)
+}
+
 // resolveDependencyAdditions validates every addition and collapses repeated
 // locators to their first occurrence, which is the order the set is stored in.
 // A later duplicate never moves an entry.
-func (r referenceResolver) resolveDependencyAdditions(locators []TaskLocator) ([]models.TaskReference, error) {
+func (r referenceResolver) resolveDependencyAdditions(existing []models.TaskReference, locators []TaskLocator) ([]models.TaskReference, error) {
 	if len(locators) == 0 {
 		return nil, nil
 	}
 	resolved := make([]models.TaskReference, 0, len(locators))
 	for _, locator := range locators {
-		reference, err := r.resolveAddition(locator)
+		reference, err := r.resolveKnownOrNewAddition(existing, locator)
 		if err != nil {
 			return nil, err
 		}
@@ -189,7 +207,8 @@ func resolveDependencyRemovals(locators []TaskLocator) ([]models.TaskReference, 
 // before anything is mutated, so a patch with one bad target leaves the task
 // exactly as it was. An addition already present, a removal naming nothing, and
 // a clear over an empty set all resolve to the existing set, which is what makes
-// them semantic no-ops rather than errors.
+// them semantic no-ops rather than errors — including when the already-present
+// target has since become terminal or unavailable.
 func (r referenceResolver) resolveDependencyPatch(existing []models.TaskReference, patch DependencyPatch) ([]models.TaskReference, error) {
 	if patch.Clear && (len(patch.Add) > 0 || len(patch.Remove) > 0) {
 		return nil, invalidInput("dependency", "clearing dependencies cannot be combined with adding or removing them")
@@ -197,7 +216,7 @@ func (r referenceResolver) resolveDependencyPatch(existing []models.TaskReferenc
 	if patch.Clear {
 		return nil, nil
 	}
-	additions, err := r.resolveDependencyAdditions(patch.Add)
+	additions, err := r.resolveDependencyAdditions(existing, patch.Add)
 	if err != nil {
 		return nil, err
 	}

@@ -334,15 +334,9 @@ func resolveOutlineDependencies(snap Snapshot, project *models.Project, task *mo
 	resolver := newReferenceResolver(snap, self)
 	resolved := make([]models.TaskReference, 0, len(locators))
 	for _, raw := range locators {
-		locator, err := normalizeDependencyLocator(raw)
+		reference, err := resolver.resolveKnownOrNewAddition(existing, raw)
 		if err != nil {
 			return nil, err
-		}
-		reference := locator.Reference()
-		if !slices.Contains(existing, reference) {
-			if reference, err = resolver.resolveAddition(locator); err != nil {
-				return nil, err
-			}
 		}
 		if slices.Contains(resolved, reference) {
 			continue

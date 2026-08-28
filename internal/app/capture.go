@@ -440,9 +440,10 @@ func (s *Service) prepareCapturedTask(snap Snapshot, project *models.Project, re
 		return preparedCapture{}, err
 	}
 
-	// A captured task has no identity yet, so no locator can name it: the resolver
-	// is built with an empty self and every dependency is an ordinary addition.
-	dependencies, err := newReferenceResolver(snap, TaskLocator{}).resolveDependencyAdditions(req.Dependencies)
+	// A captured task has no identity yet, so no locator can name it and it stores
+	// nothing yet: the resolver is built with an empty self over an empty existing
+	// set, and every dependency is an ordinary addition.
+	dependencies, err := newReferenceResolver(snap, TaskLocator{}).resolveDependencyAdditions(nil, req.Dependencies)
 	if err != nil {
 		return preparedCapture{}, err
 	}

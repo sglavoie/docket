@@ -471,17 +471,33 @@ func (p *quickEditParser) applyDependencyToken(token textgrammar.Token, trigger 
 		return !p.setError("a task cannot depend on itself")
 	}
 	if addition {
-		if !ref.resolved {
-			return !p.setError(dependencyNotFoundMessage(trigger, token.Value))
-		}
-		if ref.terminal {
-			return !p.setError(fmt.Sprintf("cannot depend on %s: it is already closed", ref.label()))
+		// A locator the task already stores round-trips on shape alone, matching the
+		// application layer's existing-versus-new distinction: the workspace keeps a
+		// reference after its target closes or its project stops being loaded, so
+		// naming it again must stay the no-op it was a moment before.
+		if !p.storesDependency(ref.locator) {
+			if !ref.resolved {
+				return !p.setError(dependencyNotFoundMessage(trigger, token.Value))
+			}
+			if ref.terminal {
+				return !p.setError(fmt.Sprintf("cannot depend on %s: it is already closed", ref.label()))
+			}
 		}
 		p.result.dependencyAdds = appendDependencyRef(p.result.dependencyAdds, ref)
 		return true
 	}
 	p.result.dependencyRemovals = appendDependencyRef(p.result.dependencyRemovals, ref)
 	return true
+}
+
+// storesDependency reports whether the edited task already carries this exact
+// locator. It is the parser's half of the existing-versus-new rule, so a line
+// the preview accepted is one the commit accepts for the same reason.
+func (p *quickEditParser) storesDependency(locator app.TaskLocator) bool {
+	if p.task == nil {
+		return false
+	}
+	return slices.Contains(p.task.Dependencies, locator.Reference())
 }
 
 // dependencyPatch projects the parsed halves into the application contract.

@@ -54,7 +54,7 @@ dependency	internal/app/dependencies.go	dependencyTargetSelf	4
 dependency	internal/app/dependencies.go	dependencyTargetState	3
 dependency	internal/app/dependencies.go	dependencyTargetTerminal	3
 dependency	internal/app/dependencies.go	dependencyTargetUnavailable	3
-dependency	internal/app/dependencies.go	normalizeDependencyLocator	3
+dependency	internal/app/dependencies.go	normalizeDependencyLocator	4
 dependency	internal/app/dependencies.go	patchTaskDependencies	4
 dependency	internal/app/dependencies.go	resolveDependencyAdditions	2
 dependency	internal/app/dependencies.go	resolveDependencyPatch	2
@@ -62,7 +62,6 @@ dependency	internal/app/dependencies.go	resolveDependencyRemovals	2
 dependency	internal/app/dependency_maintenance.go	Dependencies	3
 dependency	internal/app/outline_plan.go	Dependencies	7
 dependency	internal/app/outline_plan.go	dependencies	8
-dependency	internal/app/outline_plan.go	normalizeDependencyLocator	1
 dependency	internal/app/outline_plan.go	resolveOutlineDependencies	3
 dependency	internal/app/task_line_edit.go	Dependencies	6
 dependency	internal/app/task_line_edit.go	DependencyPatch	1
@@ -205,7 +204,7 @@ dependency	internal/tui/quick_capture_parser_fields.go	parseDependencyTokens	2
 dependency	internal/tui/quick_capture_parser_fields.go	parseOutlineDependencyTokens	2
 dependency	internal/tui/quick_capture_parser_fields.go	resolveDependencyReference	2
 dependency	internal/tui/quick_capture_parser_fields.go	resolveOutlineDependency	3
-dependency	internal/tui/quick_edit.go	Dependencies	3
+dependency	internal/tui/quick_edit.go	Dependencies	4
 dependency	internal/tui/quick_edit.go	DependencyPatch	2
 dependency	internal/tui/quick_edit.go	FieldDependency	2
 dependency	internal/tui/quick_edit.go	FieldRemoveDependency	2
@@ -222,6 +221,7 @@ dependency	internal/tui/quick_edit.go	dependencyNotFoundMessage	2
 dependency	internal/tui/quick_edit.go	dependencyPatch	1
 dependency	internal/tui/quick_edit.go	dependencyRemovals	6
 dependency	internal/tui/quick_edit.go	resolveDependencyReference	1
+dependency	internal/tui/quick_edit.go	storesDependency	2
 dependency	internal/tui/quick_edit_component.go	Dependencies	1
 dependency	internal/tui/quick_edit_component.go	FieldDependency	1
 dependency	internal/tui/quick_edit_component.go	FieldRemoveDependency	1

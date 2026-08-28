@@ -161,6 +161,89 @@ func TestEditTaskLineAddsRemovesAndClearsDependencies(t *testing.T) {
 	assertDependencies(t, source)
 }
 
+// TestEditTaskLineAddExistingTerminalOrUnavailableIsNoOp pins the
+// existing-versus-new distinction on the patch resolver. Additions are the only
+// direction that asks the workspace anything, but a reference the workspace
+// deliberately preserved must stay idempotent once its target closes or its
+// project stops being loaded: re-submitting a stored locator is the same request
+// it was the moment before the target changed, so it may neither reorder the set
+// nor advance the touch time nor become an error. Only a genuinely new target is
+// measured against the eligibility rules.
+func TestEditTaskLineAddExistingTerminalOrUnavailableIsNoOp(t *testing.T) {
+	stamp := time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC)
+
+	t.Run("stored target that has since closed", func(t *testing.T) {
+		repo, svc, source, sibling, remote := dependencyFixture()
+		if _, err := svc.AddTaskDependencies(repo.loc(source.ID), []app.TaskLocator{repo.loc(sibling.ID)}); err != nil {
+			t.Fatalf("seed dependency: %v", err)
+		}
+		sibling.Complete()
+		source.UpdatedAt = stamp
+
+		result, err := svc.EditTaskLine(app.TaskLineEditRequest{
+			Source:       repo.loc(source.ID),
+			Title:        source.Title,
+			Dependencies: app.DependencyPatch{Add: []app.TaskLocator{repo.loc(sibling.ID)}},
+		})
+		if err != nil {
+			t.Fatalf("re-adding a stored closed target: %v", err)
+		}
+		if result.Changed {
+			t.Fatal("re-adding a stored closed target reported a change")
+		}
+		assertDependencies(t, source, "proj-a:sibling")
+		if !source.UpdatedAt.Equal(stamp) {
+			t.Fatalf("UpdatedAt = %v, want %v", source.UpdatedAt, stamp)
+		}
+
+		// The same closed task is still refused as a first-time addition elsewhere.
+		if _, err := svc.EditTaskLine(app.TaskLineEditRequest{
+			Source:       repo.loc(remote.ID),
+			Title:        remote.Title,
+			Dependencies: app.DependencyPatch{Add: []app.TaskLocator{repo.loc(sibling.ID)}},
+		}); !errors.Is(err, app.ErrInvalidInput) {
+			t.Fatalf("new closed target error = %v, want ErrInvalidInput", err)
+		}
+		assertDependencies(t, remote)
+	})
+
+	t.Run("stored target whose project is no longer loaded", func(t *testing.T) {
+		source := newTask("source", 1, "Source")
+		source.Dependencies = []models.TaskReference{{ProjectID: "proj-b", TaskID: "remote"}}
+		source.UpdatedAt = stamp
+		alpha := newProject("proj-a", "Alpha", source)
+		beta := newProject("proj-b", "Beta", newTask("remote", 1, "Remote"), newTask("stranger", 2, "Stranger"))
+		repo := newFakeRepo(alpha).withUnloaded(beta)
+		svc := newTestService(repo)
+
+		result, err := svc.EditTaskLine(app.TaskLineEditRequest{
+			Source:       repo.loc(source.ID),
+			Title:        source.Title,
+			Dependencies: app.DependencyPatch{Add: []app.TaskLocator{{ProjectID: "proj-b", TaskID: "remote"}}},
+		})
+		if err != nil {
+			t.Fatalf("re-adding a stored unavailable target: %v", err)
+		}
+		if result.Changed {
+			t.Fatal("re-adding a stored unavailable target reported a change")
+		}
+		assertDependencies(t, source, "proj-b:remote")
+		if !source.UpdatedAt.Equal(stamp) {
+			t.Fatalf("UpdatedAt = %v, want %v", source.UpdatedAt, stamp)
+		}
+
+		// A different task in that same unloaded project is still an ordinary refusal.
+		if _, err := svc.EditTaskLine(app.TaskLineEditRequest{
+			Source:       repo.loc(source.ID),
+			Title:        source.Title,
+			Dependencies: app.DependencyPatch{Add: []app.TaskLocator{{ProjectID: "proj-b", TaskID: "stranger"}}},
+		}); !errors.Is(err, app.ErrInvalidInput) {
+			t.Fatalf("new unavailable target error = %v, want ErrInvalidInput", err)
+		}
+		assertDependencies(t, source, "proj-b:remote")
+	})
+}
+
 func TestEditTaskLineDependencyNoOpsLeaveTheTouchTimeAlone(t *testing.T) {
 	repo, svc, source, sibling, _ := dependencyFixture()
 
