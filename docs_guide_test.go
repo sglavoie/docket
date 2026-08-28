@@ -11,6 +11,15 @@ import (
 // reader would open separately. The exceptions are deliberate: the retired-key
 // inventory and the four anchored headings are asserted per file, because their
 // placement is itself the claim.
+//
+// What is asserted is narrower than what the README asserted about itself. A
+// phrase stays when it pins a key, chord, sigil, or command literal; a heading
+// anchor or an ordered catalog; a number or threshold; a path or filename; or
+// vocabulary that must not return. A phrase pinning only the wording of an
+// explanatory sentence whose behavior a literal above already pins is gone. The
+// consequence is stated rather than discovered: guide prose may now be reworded
+// without a test noticing, and only a product/document disagreement over a
+// literal, a catalog, or a retired name still fails.
 
 func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 	content := readGuideCorpus(t)
@@ -21,18 +30,8 @@ func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 		"`$w` Waiting, `$p` Paused, `$m` Someday, `$d` Done, `$c` Canceled",
 		"`!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date and defer; `#` tags and context; `*` pin",
 		"`[` outdent, `]` indent, `>` Set Parent, `<` Adopt Children, `%` Move to Project",
-		"`>` opens Set Parent, the picker form of the `>parent` edit sigil",
 		"a leading `No parent (project root)` row that does what `>0` does",
-		"is still listed, disabled and carrying the reason",
-		"Set Parent never crosses a project boundary",
-		"`<` opens Adopt Children, the picker form of the `<child` edit sigil",
-		"because it has no clearing form, the list is strictly additive",
-		"Tasks the cursor task already parents are absent from the list, so unchecking can never mean detaching",
-		"`%` opens Move to Project, the picker form of the `%project` edit sigil",
 		"the destination mints its own `#N` numbers for every task it receives",
-		"skips the one the task already lives in, since a move to it is not a move",
-		"drawn from every non-archived project rather than the ones the Outliner shows",
-		"`P` remains Select Project, which changes what you are looking at rather than where a task lives",
 		"`&` opens the cursor task's Attachments panel, `;` its Comments panel — the two capture " +
 			"sigils reaching, as keys, the panels that own add, reorder, unlink, and delete",
 		"`y` title, `Y` description, `Ctrl+Y` both",
@@ -43,15 +42,11 @@ func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 		"`s`, `p`, and `t` are the three bulk fold toggles — every visible section header, " +
 			"every project group header, every task subtree — and each expands its whole set if " +
 			"any part of it is folded and otherwise folds the set",
-		"`Ctrl+R` reach the same workspace ledger they reach everywhere else",
 		"Outliner, Select Project, Notes, and the Comments and Attachments panels all answer " +
 			"both keys against that one ledger",
 		"No surface offers the `u undo` a recovery toast advertises and then consumes the key in silence",
-		"`u` and `Ctrl+R` reach the same workspace ledger here too",
 		"both it and `u` stay literal characters while a comment is being typed",
-		"They are the two structural keys that answer no sigil",
 		"`@` opens one Set Due or Defer picker holding both fields",
-		"On a terminal task the defer rows are disabled and say so rather than disappearing",
 		"`a` creates and selects a new tag",
 		"the `CONTEXTS` section is a radio group answering `#`",
 		"the leading `No context` row clears the field the way `##0` does",
@@ -72,13 +67,9 @@ func TestGuideDocumentsExactTaskMenu(t *testing.T) {
 		"Project Actions holds Edit project, then Archive project and Delete project under Danger",
 		"Pinning left this menu when the header gained `*`",
 		"`Enter` and `Ctrl+N` already reach both from that row",
-		"The list filters as soon as printable text is typed",
 		"Delete always asks for confirmation",
-		"The checklist is absent because it is edited on its own rows",
 		"1. Reveal original 2. Open original 3. Open attachments folder 4. Unlink 5. Delete",
-		"removing an attachment is now a deliberate menu row rather than a single press",
 		"Its own `Space` sheet holds Delete alone, which confirms and has no direct key",
-		"a comment leaves the list only through a deliberate menu row",
 		"Append `%project` to move its subtree, `>parent` to reparent it, `>0` to move it to the project root, or `<child` once per task you want to adopt",
 	})
 }
@@ -86,7 +77,6 @@ func TestGuideDocumentsExactTaskMenu(t *testing.T) {
 func TestGuideDocumentsPeekAndBulkSemantics(t *testing.T) {
 	content := readGuideCorpus(t)
 	requireDocumentationText(t, content, []string{
-		"The Outliner uses the full terminal width at every supported size",
 		"The bold `[context]` segment is reserved like the relation marker",
 		"a row whose open children are all placed somewhere else ends with `›N`",
 		"`Enter` focuses the cursor task's descendants",
@@ -99,9 +89,7 @@ func TestGuideDocumentsPeekAndBulkSemantics(t *testing.T) {
 		"Successful Delete clears selection; other successes, cancellations, and failures preserve it",
 		"A tag row is checked when every selected task carries it, `[-]` when only some do, and empty when none do",
 		"applying adds every row you checked, removes every row you unchecked, and leaves every `[-]` row exactly as it is",
-		"a mixed row can be left but not re-entered, and canceling the overlay is how you restore an untouched set",
 		"The `CONTEXTS` rows read `[-]` the same way",
-		"they write nothing unless you pick one",
 		"picking `No context` clears the field across the whole selection the way `##0` does",
 		"A context named `0` is refused",
 	})
@@ -112,13 +100,11 @@ func TestGuideDocumentsFiltersAndSearch(t *testing.T) {
 	requireDocumentationText(t, content, []string{
 		"`f!0`, `f!1`–`f!3`",
 		"Unset never matches",
-		// Search composition: the facets and the sort axis compose with a live
-		// projection, F* still refuses, and Esc restores the pre-search pair.
-		"the row facets and the sort axis compose with a live search",
+		// Search composition: the row facets gate a live projection, the sort axis
+		// works inside it, F* still refuses, and Esc restores the pre-search pair.
 		"`f*` applies as an AND gate before scoring exactly like a query sigil",
 		"`o*` reorders within a relevance tier only",
 		"The population facets (`F*`) still refuse",
-		"mode switches, folds, and reordering still ask you to exit search first",
 		"Esc restores the pre-search facets and sort wholesale",
 		"`f$` | Pick workflow states with OR semantics",
 		"`f#` | Pick tags with AND semantics; the task context is a separate axis on `fc`",
@@ -138,7 +124,6 @@ func TestGuideDocumentsFiltersAndSearch(t *testing.T) {
 		"Each population axis has three states — excluded, included, isolated",
 		"`Fp`, `FP`, and selecting `parked` inside `F#` are the same switch",
 		"`Space` over a tag row offers Rename everywhere, Remove everywhere, Park all members, and Unpark all members",
-		"a second key the chord does not offer says so instead of doing nothing",
 	})
 }
 
@@ -148,19 +133,14 @@ func TestGuideDocumentsNamedLenses(t *testing.T) {
 		"### Named lenses",
 		"`\\` opens Named Lenses, the saved-projection list",
 		"`1`–`9` | Apply the Nth saved lens shown, exactly as `Enter` on that row would",
-		"Both action rows are unnumbered, and a narrowed list renumbers from one",
 		"the mode, its own narrowing query, both filter families,\nand the sort axis",
-		"an ordinary search cannot survive underneath a\nlens",
 		"none of them records an undo entry and `u` never takes a lens back",
 		"gains a `*`\nas soon as the live view stops matching what was saved",
 		"switching straight from one lens to another\nkeeps the original restoration point",
 		"While a lens is active `/` edits the lens's own narrowing query",
 		"A lens owns project scope too, and saving is what decides whether it does",
-		"refuses by name instead of opening\nsomewhere else",
 		"Entering or leaving a project scope while a lens is live marks it\nmodified",
 		"`Waiting`, `High Priority`, and `Stale`",
-		"Definitions live in machine-local state and survive a restart, and so does the lens you " +
-			"had open",
 		"reapplies that lens's saved axes on top of it",
 		"it lands on the Active Projects, All view a lens-free launch would have shown",
 	})
@@ -175,11 +155,8 @@ func TestGuideDocumentsCaptureAndWorkflowContracts(t *testing.T) {
 		"The edit surface is also the only one that accepts `*unpin`",
 		"a pinned task arrives carrying `*pin` and deleting that token unpins it",
 		"`<child` adopts a task that already exists, and may be repeated",
-		"both resolve in the effective project",
-		"Adoption is additive",
 		"There is no clear form: `<0` is an ordinary reference that resolves to nothing",
 		"Aliases that name the same task collapse to one adoption, keeping the first occurrence",
-		"two lines cannot adopt the same task",
 		"`^type`, priorities `!4`–`!5`, `$ready`, and `$in_progress`",
 		"The tilde no longer names recurrence, which stays retired",
 		"`~task` records a soft dependency on another task and may be repeated",
@@ -188,7 +165,6 @@ func TestGuideDocumentsCaptureAndWorkflowContracts(t *testing.T) {
 		"`inbox`, `backlog`, `today`, `next`, `doing`, `waiting`, `paused`, `someday`, `done`, or `canceled`",
 		"A new child defaults to Backlog",
 		"Exact case-insensitive `bug`, `question`, `epic`, `story`, `feature`, and `idea`",
-		"add no prefix or marker icon",
 		"Today and Next are mutually exclusive",
 		"Waiting is an explicit lifecycle state",
 		"hierarchy depth is capped at six",
@@ -218,12 +194,9 @@ func TestGuideDocumentsProjectsNotesAndTags(t *testing.T) {
 		"`/` opens project search and `Esc` leaves the query for the matches it found",
 		"`v` selects the project under the cursor and `Ctrl+A` selects every project matching the current search",
 		"`Space` offers Archive on an active project and Unarchive on an archived one",
-		"the two lifecycle actions no direct key reaches",
 		"`Esc` unwinds one rung at a time: the action sheet, then the query, then the selection, " +
 			"then the surface itself",
 		"`Space` on a project group header opens Project Actions",
-		"Archiving is one-way from there — an Outliner header is only ever drawn for an active project — " +
-			"so Unarchive stays here, where an archived project is visible",
 		"Deleting a project is the one act with no second chance, and it asks first, naming the cascade " +
 			"by name: the project's tasks, its notes, and its attachments all go",
 		"The removal and the catalog and planning rewrites beside it are one transaction, so `u` brings " +
@@ -231,7 +204,6 @@ func TestGuideDocumentsProjectsNotesAndTags(t *testing.T) {
 		"The system Unfiled project cannot be deleted, and an archived project still can be",
 		// Project tags.
 		"### Project tags",
-		"A project carries any number of tags",
 		"tag a project `parked` and it leaves the base Outliner entirely",
 		"Today and Next entries are kept exactly as they were",
 		"still accepts `%project` during capture and inline editing",
@@ -245,17 +217,13 @@ func TestGuideDocumentsProjectsNotesAndTags(t *testing.T) {
 		"`p` opens a searchable All, Global, or single-project scope picker",
 		"`/` applies a persistent title/body search",
 		"`%` moves the selected note to another such owner as one atomic workspace transaction",
-		"`y` and `Y` copy that note's title and its full file path, and because a global note and " +
-			"a project note live in different directories the copied path says which collection it " +
-			"came from without a word of context",
+		"`y` and `Y` copy that note's title and its full file path",
 		"`Space` opens the note action sheet, which holds Delete alone and confirms before deleting; " +
 			"deletion has no direct key",
 		"Notes has no multi-select, so that sheet always acts on the one note under the cursor",
 		"Notes support open/edit, create, rename, move, copy, delete, undo, and redo",
 		"Note tags, task links, pins, bulk actions, and archived-project ownership remain excluded",
 		"At 72 columns and wider, Notes shows the selected note beside the list",
-		"its title, owner, and modification time above the note's rendered Markdown",
-		"Narrower terminals render the list alone",
 		"a note whose frontmatter failed to parse shows the reason as a warning",
 		"`Ctrl+F` and `Ctrl+B` page that body with a row of overlap",
 		"both presses work while you are still typing a search, and are offered only " +
