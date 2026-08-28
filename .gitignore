@@ -3,4 +3,11 @@ coverage.out
 /coverage*.out
 tt
 .tasks.md.lock
+
+# Editor and tooling state, kept out of a fresh clone rather than out of one
+# machine's global ignore file.
+.vscode/
 .claude/
+.codegraph/
+.spec/
+.venv/
