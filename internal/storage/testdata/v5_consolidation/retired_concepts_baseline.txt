@@ -2,7 +2,7 @@
 # Columns: concept, production path, identifier, AST occurrence count.
 # Regenerate after reviewing ownership changes with:
 #   UPDATE_RETIRED_CONCEPT_BASELINE=1 go test ./internal/storage -run TestRetiredConceptInventoryBaseline
-# Total rows: 251
+# Total rows: 265
 custom-context	internal/config/legacy_v4_domains.go	CustomContexts	2
 custom-context	internal/config/legacy_v4_domains_convert.go	CustomContexts	8
 custom-context	internal/config/pre_consolidation_v6_snapshot.go	customContexts	3
@@ -114,15 +114,23 @@ dependency	internal/tui/dependency_autocomplete.go	dependencyRemovalCandidates	1
 dependency	internal/tui/dependency_autocomplete.go	dependencySuggestions	1
 dependency	internal/tui/dependency_autocomplete.go	draftedDependencyLocators	1
 dependency	internal/tui/dependency_autocomplete.go	resolveDependencyReference	1
-dependency	internal/tui/dependency_detail.go	Dependencies	5
-dependency	internal/tui/dependency_detail.go	dependencyDetail	13
+dependency	internal/tui/dependency_detail.go	Dependencies	6
+dependency	internal/tui/dependency_detail.go	DependencyIndicatorOutstandingStyle	1
+dependency	internal/tui/dependency_detail.go	DependencyIndicatorSettledStyle	1
+dependency	internal/tui/dependency_detail.go	dependencyDetail	12
 dependency	internal/tui/dependency_detail.go	dependencyDetailFor	3
 dependency	internal/tui/dependency_detail.go	dependencyDetailProjects	1
 dependency	internal/tui/dependency_detail.go	dependencyDetailUnavailable	2
 dependency	internal/tui/dependency_detail.go	dependencyDetailUnresolved	2
+dependency	internal/tui/dependency_detail.go	dependencyOutlook	5
+dependency	internal/tui/dependency_detail.go	dependencyOutlookFor	1
+dependency	internal/tui/dependency_detail.go	dependencyOutlookOutstanding	3
+dependency	internal/tui/dependency_detail.go	dependencyOutlookSettled	4
+dependency	internal/tui/dependency_detail.go	dependencyOutlookUnreadable	3
 dependency	internal/tui/dependency_detail.go	incomingDependencyDetails	1
 dependency	internal/tui/dependency_detail.go	lookupDependencyTarget	2
 dependency	internal/tui/dependency_detail.go	outgoingDependencyDetails	1
+dependency	internal/tui/dependency_detail.go	resolveDependencyTarget	3
 dependency	internal/tui/dependency_reference.go	appendDependencyRef	1
 dependency	internal/tui/dependency_reference.go	capturedDependencyRef	14
 dependency	internal/tui/dependency_reference.go	dependencyAlias	1
@@ -159,6 +167,8 @@ dependency	internal/tui/outliner_primary_rows.go	cloneTaskDetachingDependencies	
 dependency	internal/tui/outliner_quick_edit_view.go	Dependencies	2
 dependency	internal/tui/outliner_render_rows.go	Dependencies	2
 dependency	internal/tui/outliner_render_rows.go	dependencies	4
+dependency	internal/tui/outliner_render_rows.go	dependencyDetailProjects	1
+dependency	internal/tui/outliner_render_rows.go	dependencyOutlookFor	1
 dependency	internal/tui/outliner_render_rows.go	renderDependencyIndicator	2
 dependency	internal/tui/outliner_rows.go	Dependencies	2
 dependency	internal/tui/outliner_rows.go	cloneTaskDetachingDependencies	2
@@ -237,6 +247,10 @@ dependency	internal/tui/quick_edit_component.go	dependencyReferences	2
 dependency	internal/tui/quick_edit_component.go	dependencyRemovalCandidates	1
 dependency	internal/tui/quick_edit_component.go	dependencySuggestions	4
 dependency	internal/tui/quick_edit_component.go	draftedDependencyLocators	1
+dependency	internal/tui/styles_misc.go	DependencyIndicatorOutstandingStyle	1
+dependency	internal/tui/styles_misc.go	DependencyIndicatorSettledStyle	1
+dependency	internal/tui/styles_theme_rebuild.go	DependencyIndicatorOutstandingStyle	1
+dependency	internal/tui/styles_theme_rebuild.go	DependencyIndicatorSettledStyle	1
 dependency	internal/tui/task_composer.go	Dependencies	1
 dependency	internal/tui/task_composer.go	dependencyLocators	1
 recurrence	internal/config/pre_consolidation_v6_snapshot.go	recurrenceCount	3

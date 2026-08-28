@@ -190,6 +190,7 @@ Row and Peek budget:
 - `indicatorDropLadder` is a list: a new indicator gets a position, not an
   append. The trailing `~N` counts stored locators regardless of target state or
   availability, degrades with the content counts, and is gated by no column.
+  Only its color reads them: amber outstanding, green settled, muted unreadable.
   The relation marker, the task context segment, and the pin marker stay
   out of it — `taskRowSegments` reserves all three at every width, and Peek
   names full values. `taskRelationMarker` is one segment both ways.

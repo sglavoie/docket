@@ -29,14 +29,17 @@ func dependencyPresentationFixture(t *testing.T) (*models.Project, *models.Proje
 
 // TestDependencyIsolationPresentationIsStateIndependent is the positive half of
 // the presentation isolation contract. A soft reference changes nothing about
-// how the subject is drawn beyond adding a count and a detail line, and neither
-// of those varies with what the reference points at: the count is over stored
-// locators, not over open ones.
+// how the subject is drawn beyond adding a count and a detail line, and the
+// count does not vary with what the reference points at: it is over stored
+// locators, not over open ones. Only the indicator's color reads the targets,
+// which is why every assertion here is over ansi.Strip output;
+// TestDependencyIndicatorColorReadsTargetOutlook below owns the color.
 func TestDependencyIsolationPresentationIsStateIndependent(t *testing.T) {
 	alpha, beta := dependencyPresentationFixture(t)
 	source := alpha.GetTaskByID("source")
+	population := []*models.Project{alpha, beta}
 
-	base := ansi.Strip(renderDependencyIndicator(source))
+	base := ansi.Strip(renderDependencyIndicator(source, population))
 	if base != "~2" {
 		t.Fatalf("indicator = %q, want ~2", base)
 	}
@@ -62,13 +65,64 @@ func TestDependencyIsolationPresentationIsStateIndependent(t *testing.T) {
 		t.Fatalf("row differs beyond the reference count:\nwith:    %q\nwithout: %q", withRefs, withoutRefs)
 	}
 
-	// Close one target and leave the subject itself terminal. A blocking model
-	// would have to change the count for at least one of these; a soft one cannot
-	// change it for any, and the second locator was never resolved to begin with.
+	// Close one target and leave the subject itself terminal. A hard-dependency
+	// model would have to change the count for at least one of these; a soft one
+	// cannot change it for any, however the color reads afterwards.
 	beta.GetTaskByID("remote").WorkflowState = models.StateDone
 	source.WorkflowState = models.StateDone
-	if got := ansi.Strip(renderDependencyIndicator(source)); got != base {
+	if got := ansi.Strip(renderDependencyIndicator(source, population)); got != base {
 		t.Fatalf("indicator = %q after the target closed and the subject completed, want %q", got, base)
+	}
+}
+
+// TestDependencyIndicatorColorReadsTargetOutlook pins the one thing the row says
+// about its targets. The count is fixed at `~2` in all three cases; the color
+// carries the aggregate reading, and the unreadable tier stays muted rather than
+// green because a view that did not load a project cannot claim its task is
+// finished.
+func TestDependencyIndicatorColorReadsTargetOutlook(t *testing.T) {
+	alpha, beta := dependencyPresentationFixture(t)
+	source := alpha.GetTaskByID("source")
+	sibling := alpha.GetTaskByID("sibling")
+	remote := beta.GetTaskByID("remote")
+
+	// Both targets open: one outstanding reference is enough.
+	got := renderDependencyIndicator(source, []*models.Project{alpha, beta})
+	if want := DependencyIndicatorOutstandingStyle.Render("~2"); got != want {
+		t.Fatalf("open targets rendered %q, want %q", got, want)
+	}
+
+	// Close the same-project target only. An outstanding target outranks a settled
+	// one, so the row still says there is something left to wait on.
+	sibling.WorkflowState = models.StateDone
+	got = renderDependencyIndicator(source, []*models.Project{alpha, beta})
+	if want := DependencyIndicatorOutstandingStyle.Render("~2"); got != want {
+		t.Fatalf("one open target rendered %q, want %q", got, want)
+	}
+
+	// Every target terminal.
+	remote.WorkflowState = models.StateDone
+	got = renderDependencyIndicator(source, []*models.Project{alpha, beta})
+	if want := DependencyIndicatorSettledStyle.Render("~2"); got != want {
+		t.Fatalf("settled targets rendered %q, want %q", got, want)
+	}
+
+	// Beta unloaded, Alpha's target done: nothing outstanding is readable, but the
+	// second locator points somewhere this view cannot read.
+	got = renderDependencyIndicator(source, []*models.Project{alpha})
+	if want := MutedStyle.Render("~2"); got != want {
+		t.Fatalf("unreadable target rendered %q, want %q", got, want)
+	}
+	if stripped := ansi.Strip(got); stripped != "~2" {
+		t.Fatalf("count = %q across every outlook, want ~2", stripped)
+	}
+
+	// A loaded project whose task is gone is settled, not unreadable: the view did
+	// read that project and found nothing outstanding in it.
+	alpha.Tasks = []*models.Task{source}
+	got = renderDependencyIndicator(source, []*models.Project{alpha, beta})
+	if want := DependencyIndicatorSettledStyle.Render("~2"); got != want {
+		t.Fatalf("absent target rendered %q, want %q", got, want)
 	}
 }
 

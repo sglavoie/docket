@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"slices"
 
+	"charm.land/lipgloss/v2"
+
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -51,19 +53,89 @@ func dependencyDetailUnresolved(reference models.TaskReference) dependencyDetail
 	return dependencyDetail{label: reference.Locator(), state: dependencyDetailUnavailable}
 }
 
-// lookupDependencyTarget resolves one locator against a loaded population.
-func lookupDependencyTarget(reference models.TaskReference, projects []*models.Project) (dependencyDetail, bool) {
+// resolveDependencyTarget scans a loaded population for one locator. The third
+// return says whether the locator's project was loaded at all, which is what
+// separates a target that is gone from one this view simply cannot read. Both
+// the detail rows and the row indicator go through here, so the two surfaces
+// never disagree about what a reference resolves to.
+func resolveDependencyTarget(reference models.TaskReference, projects []*models.Project) (*models.Project, *models.Task, bool) {
 	for _, project := range projects {
 		if project == nil || project.ID != reference.ProjectID {
 			continue
 		}
-		task := project.GetTaskByID(reference.TaskID)
-		if task == nil {
-			return dependencyDetail{}, false
-		}
-		return dependencyDetailFor(project, task), true
+		return project, project.GetTaskByID(reference.TaskID), true
 	}
-	return dependencyDetail{}, false
+	return nil, nil, false
+}
+
+// lookupDependencyTarget resolves one locator against a loaded population. A
+// loaded project whose task is absent reports the same failure as an unloaded
+// one, because the detail pane says `unavailable` for both: it can establish
+// only that it cannot read the target.
+func lookupDependencyTarget(reference models.TaskReference, projects []*models.Project) (dependencyDetail, bool) {
+	project, task, _ := resolveDependencyTarget(reference, projects)
+	if task == nil {
+		return dependencyDetail{}, false
+	}
+	return dependencyDetailFor(project, task), true
+}
+
+// dependencyOutlook is the one aggregate reading of what a task's stored
+// references point at. It decides a color and nothing else: no reference is
+// added, dropped, or counted differently because of it, and no ordering,
+// readiness, or completion rule reads it.
+type dependencyOutlook int
+
+const (
+	// dependencyOutlookSettled means every reference resolves to a terminal task,
+	// or to a task no longer present in a project this view did load.
+	dependencyOutlookSettled dependencyOutlook = iota
+	// dependencyOutlookUnreadable means nothing is outstanding, but at least one
+	// locator points into a project this view did not load. It stays distinct
+	// from settled for the same reason dependencyDetailUnavailable is not
+	// "missing": calling it settled would assert a fact the view cannot read.
+	dependencyOutlookUnreadable
+	// dependencyOutlookOutstanding means at least one resolvable target is still
+	// nonterminal.
+	dependencyOutlookOutstanding
+)
+
+// dependencyOutlookFor reads what a task's stored references point at.
+// Precedence is deliberate: one outstanding target outranks any number of
+// unreadable ones, because a row that has something left to wait on should say
+// so rather than hide behind what it could not resolve.
+func dependencyOutlookFor(task *models.Task, projects []*models.Project) dependencyOutlook {
+	if task == nil {
+		return dependencyOutlookSettled
+	}
+	outlook := dependencyOutlookSettled
+	for _, reference := range task.Dependencies {
+		var reading dependencyOutlook
+		switch _, target, loaded := resolveDependencyTarget(reference, projects); {
+		case !loaded:
+			reading = dependencyOutlookUnreadable
+		case target == nil, target.IsTerminalState():
+			reading = dependencyOutlookSettled
+		default:
+			reading = dependencyOutlookOutstanding
+		}
+		if reading > outlook {
+			outlook = reading
+		}
+	}
+	return outlook
+}
+
+// style resolves the outlook to the indicator's foreground.
+func (outlook dependencyOutlook) style() lipgloss.Style {
+	switch outlook {
+	case dependencyOutlookOutstanding:
+		return DependencyIndicatorOutstandingStyle
+	case dependencyOutlookUnreadable:
+		return MutedStyle
+	default:
+		return DependencyIndicatorSettledStyle
+	}
 }
 
 // outgoingDependencyDetails describes every stored reference in stored order.

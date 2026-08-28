@@ -812,10 +812,18 @@ after it woke does. This supporting count drops before every other row indicator
 under width pressure, while Peek keeps the same token on its existing dates line.
 
 A task holding soft dependencies ends its indicators with `~N`, counting the
-references it stores. It is a count of what the task says, not a reading of what
-those tasks are doing: a reference to finished, deleted, or unloaded work counts
-exactly like a reference to open work, because nothing about this task changes
-either way. Peek is where the targets themselves are named.
+references it stores. The number is a count of what the task says, not a reading
+of what those tasks are doing: a reference to finished, deleted, or unloaded work
+counts exactly like a reference to open work, because nothing about this task
+changes either way.
+
+The color is the one thing the row says about the targets. Amber means at least
+one referenced task is still open. Green means everything it points at is
+finished — or is no longer in the workspace at all. Muted means nothing readable
+is outstanding, but at least one reference points into a project this view did
+not load, such as an archived or parked one; the row stays muted rather than
+green there because it cannot see whether that work is done, and saying green
+would claim otherwise. Peek is still where the targets themselves are named.
 
 A row that cannot fit every indicator sheds them in a fixed order rather than
 squeezing the title: the repeated-deferral count goes first, then checklist,

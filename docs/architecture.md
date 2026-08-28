@@ -556,14 +556,41 @@ The row segment is the first `indicatorDropLadder` entry and therefore yields
 before every operational date or age signal under width pressure.
 
 A task holding soft references renders a trailing `~N` from
-`renderDependencyIndicator`, which counts `len(task.Dependencies)` and reads
-nothing else. It is deliberately ungated by a `ColumnConfig` column: naming one
-would put a dependency back in the column vocabulary the retired
-hard-dependency panels owned, and the count is not a fact a user hides. The
-count is over stored locators rather than resolvable ones, so a reference to
+`renderDependencyIndicator`. It is deliberately ungated by a `ColumnConfig`
+column: naming one would put a dependency back in the column vocabulary the
+retired hard-dependency panels owned, and the count is not a fact a user hides.
+The count is over stored locators rather than resolvable ones, so a reference to
 terminal, deleted, or unloaded work counts exactly like a reference to open
-work — the row states what the task says, not what its targets are doing — and
-the same number is what the edit grammar round-trips.
+work, and the same number is what the edit grammar round-trips.
+
+The count and the color are two different readings, and only the color looks at
+the targets. `dependencyOutlookFor` aggregates the stored list into one of three
+tiers over the population `dependencyDetailProjects` returns — the same one Peek
+resolves its detail lines against, so the row and Peek can never disagree — and
+`dependencyOutlook.style()` maps the tier to a foreground:
+
+| Tier | Reading | Style |
+| --- | --- | --- |
+| `dependencyOutlookOutstanding` | at least one resolvable target is nonterminal | `DependencyIndicatorOutstandingStyle` |
+| `dependencyOutlookSettled` | every reference resolves to a terminal task, or to a task absent from a project this view did load | `DependencyIndicatorSettledStyle` |
+| `dependencyOutlookUnreadable` | nothing outstanding, but a locator points into a project this view did not load | `MutedStyle` |
+
+Precedence runs outstanding over unreadable over settled: a row with something
+left to wait on says so rather than hiding behind what it could not resolve. The
+unreadable tier stays muted rather than green for the same reason
+`dependencyDetailUnavailable` says `unavailable` and not `missing` — painting an
+unloaded project's task as finished would assert a fact the view cannot read.
+The two named styles exist so retuning a due-date or status color never silently
+repaints a reference count, and both are rebuilt in `rebuildTaskStyles`.
+
+`renderDependencyIndicator` builds no locator index. A row with no references
+returns immediately, and one that has them pays the same short linear scan Peek
+already pays for the cursor row; a memo would additionally risk a stale color
+when a target in another project changes state without a row rebuild. If
+profiling ever demands one, the seam is `crossProjectRebuildRows` behind its
+existing fingerprint guard. `quickEditOptionalMetadata` builds its own unstyled
+`~N`: that is a grammar echo of the edit buffer, not a row indicator, and it is
+deliberately left uncolored.
 
 `indicatorDropLadder` is the row's drop order, and it is a list rather than a set
 because eleven segments cannot all fit at minimum width. Counts go first, since
@@ -1575,9 +1602,10 @@ A new Peek line takes a deliberate position in that order, or the cap silently
 starts eating something else.
 
 The reference lines sit above tags because Peek is the only surface that names a
-reference at all — the row carries a bare `~N` and there is no panel behind it
-the way `;` and `&` stand behind comments and attachments — while tag chips are
-already on the row and are therefore the cheaper line to lose.
+reference at all — the row carries a `~N` whose color says only whether anything
+is still outstanding, and there is no panel behind it the way `;` and `&` stand
+behind comments and attachments — while tag chips are already on the row and are
+therefore the cheaper line to lose.
 `inlinePeekReferenceLine` renders `Dependencies` from the task's stored list in
 stored order and `Dependents` from `incomingDependencyDetails`, which scans the
 loaded projects for tasks referring back. Both arrive resolved:
