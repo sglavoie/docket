@@ -346,7 +346,7 @@ func TestProjectHubCountsOpenTasksBesideTotal(t *testing.T) {
 	}
 }
 
-func TestProjectHubKeepsAllFinishedProjectUnderTaskFilter(t *testing.T) {
+func TestProjectHubHidesAllFinishedProjectUnderTheOpenTaskFilter(t *testing.T) {
 	app := projectHubDiskApp(t)
 	finished := projectHubDiskProject(app, "finished", "Finished")
 	writeProjectHubTasks(t, finished, 2)
@@ -359,19 +359,19 @@ func TestProjectHubKeepsAllFinishedProjectUnderTaskFilter(t *testing.T) {
 	}
 
 	hub.Update(syntheticCtrlKey('t'))
-	if hub.taskFilter != projectHubTaskFilterWithTasks {
-		t.Fatalf("Ctrl+T left filter=%v, want projects holding tasks", hub.taskFilter)
+	if hub.taskFilter != projectHubTaskFilterWithOpenTasks {
+		t.Fatalf("Ctrl+T left filter=%v, want projects holding open tasks", hub.taskFilter)
 	}
-	if !projectHubHasItem(hub, "project-hub:project:finished") {
-		t.Error("the with-tasks filter hid a project whose every task is finished")
+	if projectHubHasItem(hub, "project-hub:project:finished") {
+		t.Error("the with-open-tasks filter listed a project whose every task is finished")
 	}
 
 	hub.Update(syntheticCtrlKey('t'))
-	if hub.taskFilter != projectHubTaskFilterWithoutTasks {
-		t.Fatalf("second Ctrl+T left filter=%v, want projects without tasks", hub.taskFilter)
+	if hub.taskFilter != projectHubTaskFilterWithoutOpenTasks {
+		t.Fatalf("second Ctrl+T left filter=%v, want projects without open tasks", hub.taskFilter)
 	}
-	if projectHubHasItem(hub, "project-hub:project:finished") {
-		t.Error("the without-tasks filter listed a project whose every task is finished")
+	if !projectHubHasItem(hub, "project-hub:project:finished") {
+		t.Error("the without-open-tasks filter hid a project whose every task is finished")
 	}
 }
 
@@ -745,25 +745,25 @@ func TestProjectHubTaskFilterCyclesThreeStates(t *testing.T) {
 		t.Fatal("a shell handler claimed Ctrl+T before the Project Hub")
 	}
 	app.delegateToCurrentView(syntheticCtrlKey('t'))
-	if hub.taskFilter != projectHubTaskFilterWithTasks {
-		t.Fatalf("first Ctrl+T left filter=%v, want with tasks", hub.taskFilter)
+	if hub.taskFilter != projectHubTaskFilterWithOpenTasks {
+		t.Fatalf("first Ctrl+T left filter=%v, want with open tasks", hub.taskFilter)
 	}
 	if projectHubHasItem(hub, "project-hub:project:empty") {
-		t.Fatal("the with-tasks filter still lists a project holding no tasks")
+		t.Fatal("the with-open-tasks filter still lists a project holding no open tasks")
 	}
 	if !projectHubHasItem(hub, "project-hub:project:alpha") {
-		t.Fatal("the with-tasks filter dropped a project holding tasks")
+		t.Fatal("the with-open-tasks filter dropped a project holding open tasks")
 	}
 
 	hub.Update(syntheticCtrlKey('t'))
-	if hub.taskFilter != projectHubTaskFilterWithoutTasks {
-		t.Fatalf("second Ctrl+T left filter=%v, want without tasks", hub.taskFilter)
+	if hub.taskFilter != projectHubTaskFilterWithoutOpenTasks {
+		t.Fatalf("second Ctrl+T left filter=%v, want without open tasks", hub.taskFilter)
 	}
 	if !projectHubHasItem(hub, "project-hub:project:empty") {
-		t.Fatal("the without-tasks filter dropped a project holding no tasks")
+		t.Fatal("the without-open-tasks filter dropped a project holding no open tasks")
 	}
 	if projectHubHasItem(hub, "project-hub:project:alpha") {
-		t.Fatal("the without-tasks filter still lists a project holding tasks")
+		t.Fatal("the without-open-tasks filter still lists a project holding open tasks")
 	}
 
 	hub.Update(syntheticCtrlKey('t'))
@@ -777,7 +777,7 @@ func TestProjectHubTaskFilterCyclesThreeStates(t *testing.T) {
 	}
 }
 
-func TestProjectHubTaskFilterKeepsParkedAndArchivedProjectsWithTasks(t *testing.T) {
+func TestProjectHubTaskFilterKeepsParkedAndArchivedProjectsWithOpenTasks(t *testing.T) {
 	app := projectHubDiskApp(t)
 	parked := projectHubDiskProject(app, "parked", "Parked")
 	parked.Tags = []string{"parked"}
@@ -797,10 +797,10 @@ func TestProjectHubTaskFilterKeepsParkedAndArchivedProjectsWithTasks(t *testing.
 	hub := openProjectHub(t, app)
 	hub.Update(syntheticCtrlKey('t'))
 	if !projectHubHasItem(hub, "project-hub:project:parked") {
-		t.Error("filter hid a parked project holding tasks")
+		t.Error("filter hid a parked project holding open tasks")
 	}
 	if !projectHubHasItem(hub, "project-hub:archived:archived") {
-		t.Error("filter hid an archived project holding tasks")
+		t.Error("filter hid an archived project holding open tasks")
 	}
 	if projectHubHasItem(hub, "project-hub:archived:stale") {
 		t.Error("filter left an empty archived project listed")
@@ -808,10 +808,10 @@ func TestProjectHubTaskFilterKeepsParkedAndArchivedProjectsWithTasks(t *testing.
 
 	hub.Update(syntheticCtrlKey('t'))
 	if projectHubHasItem(hub, "project-hub:project:parked") {
-		t.Error("the without-tasks filter left a parked project holding tasks listed")
+		t.Error("the without-open-tasks filter left a parked project holding open tasks listed")
 	}
 	if !projectHubHasItem(hub, "project-hub:archived:stale") {
-		t.Error("the without-tasks filter hid an empty archived project")
+		t.Error("the without-open-tasks filter hid an empty archived project")
 	}
 }
 
@@ -876,7 +876,7 @@ func TestProjectHubTaskFilterTogglesUnderActiveSearch(t *testing.T) {
 	if !ok || context.Kind != ListEmptyNoMatches {
 		t.Fatalf("no-match context = (%+v, %v)", context, ok)
 	}
-	if want := "Press Esc to clear the query, or Ctrl+T to show projects without tasks."; context.State.Detail != want {
+	if want := "Press Esc to clear the query, or Ctrl+T to show projects without open tasks."; context.State.Detail != want {
 		t.Fatalf("no-match detail = %q, want %q", context.State.Detail, want)
 	}
 }
@@ -943,14 +943,14 @@ func TestProjectHubTaskFilterEmptyCopyNamesTheToggle(t *testing.T) {
 	if !ok || context.Kind != ListEmptySource {
 		t.Fatalf("empty context = (%+v, %v), want the source-empty kind", context, ok)
 	}
-	if context.State.Title != "No projects hold tasks." ||
-		context.State.Detail != "Press Ctrl+T to show projects without tasks." {
+	if context.State.Title != "No projects hold open tasks." ||
+		context.State.Detail != "Press Ctrl+T to show projects without open tasks." {
 		t.Fatalf("filtered empty copy = %+v, want the filter-specific copy", context.State)
 	}
 
 	hub.Update(syntheticCtrlKey('t'))
 	if _, ok := hub.surface.EmptyContext(); ok {
-		t.Fatal("the without-tasks filter left the Hub empty")
+		t.Fatal("the without-open-tasks filter left the Hub empty")
 	}
 }
 
@@ -959,15 +959,15 @@ func TestProjectHubTaskFilterEmptyCopyNamesTheFullList(t *testing.T) {
 	hub.Update(syntheticCtrlKey('t'))
 	hub.Update(syntheticCtrlKey('t'))
 	if got := hub.surface.Items(); len(got) != 0 {
-		t.Fatalf("without-tasks items = %d, want every project hidden", len(got))
+		t.Fatalf("without-open-tasks items = %d, want every project hidden", len(got))
 	}
 	context, ok := hub.surface.EmptyContext()
 	if !ok || context.Kind != ListEmptySource {
 		t.Fatalf("empty context = (%+v, %v), want the source-empty kind", context, ok)
 	}
-	if context.State.Title != "Every project holds tasks." ||
+	if context.State.Title != "Every project holds open tasks." ||
 		context.State.Detail != "Press Ctrl+T to show every project." {
-		t.Fatalf("without-tasks empty copy = %+v, want the way back to the full list", context.State)
+		t.Fatalf("without-open-tasks empty copy = %+v, want the way back to the full list", context.State)
 	}
 }
 
@@ -992,7 +992,7 @@ func TestProjectHubSubtitleNamesTheTaskFilter(t *testing.T) {
 	hub := openProjectHub(t, projectHubFilterApp(t))
 
 	counts := hub.subtitle()
-	if strings.Contains(counts, "with tasks") {
+	if strings.Contains(counts, "with open tasks") {
 		t.Fatalf("unfiltered subtitle = %q, want no filter marker", counts)
 	}
 
@@ -1004,15 +1004,15 @@ func TestProjectHubSubtitleNamesTheTaskFilter(t *testing.T) {
 	}
 	// The leading counts are asserted verbatim from the unfiltered read, so a
 	// subtitle reporting filtered totals rather than workspace totals fails here.
-	if want := counts + " · with tasks · 1 selected"; hub.subtitle() != want {
+	if want := counts + " · with open tasks · 1 selected"; hub.subtitle() != want {
 		t.Fatalf("filtered subtitle = %q, want %q", hub.subtitle(), want)
 	}
 
 	// The next press hides the selected project, so the selection it names is
 	// dropped with it and only the marker is left to change.
 	hub.Update(syntheticCtrlKey('t'))
-	if want := counts + " · without tasks"; hub.subtitle() != want {
-		t.Fatalf("without-tasks subtitle = %q, want %q", hub.subtitle(), want)
+	if want := counts + " · without open tasks"; hub.subtitle() != want {
+		t.Fatalf("without-open-tasks subtitle = %q, want %q", hub.subtitle(), want)
 	}
 
 	hub.Update(syntheticCtrlKey('t'))
@@ -1030,7 +1030,7 @@ func TestProjectHubTaskFilterHintSurvivesTheEmptiedList(t *testing.T) {
 	hub := openProjectHub(t, app)
 
 	spec, ok := hub.ContextualGuidance()
-	if help := guidanceEntryText(spec); !ok || !strings.Contains(help, "Ctrl+T with tasks") {
+	if help := guidanceEntryText(spec); !ok || !strings.Contains(help, "Ctrl+T with open tasks") {
 		t.Fatalf("browse guidance omits the filter hint: %q", help)
 	}
 
@@ -1040,7 +1040,7 @@ func TestProjectHubTaskFilterHintSurvivesTheEmptiedList(t *testing.T) {
 	}
 	spec, ok = hub.ContextualGuidance()
 	help := guidanceEntryText(spec)
-	if !ok || !strings.Contains(help, "Ctrl+T without tasks") {
+	if !ok || !strings.Contains(help, "Ctrl+T without open tasks") {
 		t.Fatalf("emptied guidance omits the next state: %q", help)
 	}
 	if strings.Contains(help, "/ search") {
@@ -1050,7 +1050,7 @@ func TestProjectHubTaskFilterHintSurvivesTheEmptiedList(t *testing.T) {
 	hub.Update(syntheticCtrlKey('t'))
 	spec, ok = hub.ContextualGuidance()
 	if help := guidanceEntryText(spec); !ok || !strings.Contains(help, "Ctrl+T all projects") {
-		t.Fatalf("without-tasks guidance omits the way back: %q", help)
+		t.Fatalf("without-open-tasks guidance omits the way back: %q", help)
 	}
 }
 
@@ -1062,7 +1062,7 @@ func TestProjectHubHelpNamesTheTaskFilterOnce(t *testing.T) {
 			continue
 		}
 		found++
-		if item.Description != "Cycle every project, only those holding tasks, only those holding none" ||
+		if item.Description != "Cycle every project, only those holding open tasks, only those holding none open" ||
 			item.Category != "Discovery" {
 			t.Fatalf("Ctrl+T help item = %+v", item)
 		}

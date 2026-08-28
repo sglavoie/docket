@@ -76,7 +76,7 @@ func (m *ProjectHubModel) projectHubGuidanceKeyMap(state ListGuidanceState) *key
 			keymap.WithGate(browseList), keymap.WithHelpKey("G/End")),
 		// Deliberately ungated: the filter can empty the list itself and is then
 		// the only way back. The label names the result, not the state.
-		keymap.Bind("ctrl+t", "Cycle every project, only those holding tasks, only those holding none", "Filters",
+		keymap.Bind("ctrl+t", "Cycle every project, only those holding open tasks, only those holding none open", "Filters",
 			keymap.WithFooter(13, filterFooterLabel, false),
 			keymap.WithFooterKey("Ctrl+T")),
 		keymap.Bind("esc", "Browse the current matches", "Navigation",

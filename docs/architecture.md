@@ -1889,7 +1889,7 @@ way to drop every checkbox at once.
 
 The typed `ManageParams.ProjectHubMode` is part of route identity and is passed
 through every reconstruction into `ProjectHubModel`. Pinned mode filters the
-base population before the query and `Ctrl+T` task-count axis, labels its one
+base population before the query and `Ctrl+T` open-task axis, labels its one
 category Pinned Projects, and uses pinned-specific title and empty/no-match
 copy. A live mutation rebuilds the surface by stable identity; an unpinned or
 archived row therefore leaves both cursor and selection immediately rather than
@@ -1934,18 +1934,21 @@ task content is searched, and
 both Hub modes to hold the boundary.
 
 `Ctrl+T` is the surface's other axis: `projectHubTaskFilter` cycles the list
-through every project, only the projects holding at least one task, and only the
-projects holding none, in both Hub modes, so the key works while the search input
-owns keys and while browsing matches. The two narrowings are one cycling axis
-rather than two toggles because they are mutually exclusive readings of the same
-count. The filter runs at item-build time, so `ListSurfaceModel.Reload` prunes
-hidden rows from the selection and rebuilds matches against the retained query.
-Its data is `ProjectHubModel.taskCounts`, a per-project tally of the open tasks
-beside the total that covers every cataloged project — available, parked, and
-archived — rather than only the base task workspace, so `tasks not loaded`
-leaves the Hub in the ordinary case. Both narrowings read that tally's total,
-and the total is the number the row prints beside its open count, so the filter
-and the row still cannot disagree. A project whose count is unknown stays
+through every project, only the projects holding at least one open task, and only
+the projects holding none open, in both Hub modes, so the key works while the
+search input owns keys and while browsing matches. The two narrowings are one
+cycling axis rather than two toggles because they are mutually exclusive readings
+of the same count. The filter runs at item-build time, so
+`ListSurfaceModel.Reload` prunes hidden rows from the selection and rebuilds
+matches against the retained query. Its data is `ProjectHubModel.taskCounts`, a
+per-project tally of the open tasks beside the total that covers every cataloged
+project — available, parked, and archived — rather than only the base task
+workspace, so `tasks not loaded` leaves the Hub in the ordinary case. Both
+narrowings read that tally's open count, which is the number the row prints first
+in `N open · N tasks`, so the filter and the row cannot disagree; a known-empty
+project prints the bare `0 tasks` and holds no open work, so it lands in
+`without open tasks` beside a project whose every task is finished. A project
+whose count is unknown stays
 visible in all three states: `projectHubFilterHides` returns early on an absent
 count, so neither narrowing may claim a project it could not read.
 

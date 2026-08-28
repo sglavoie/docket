@@ -842,12 +842,14 @@ func buildParkedFixture(w *uitestWorkspace) error {
 	return nil
 }
 
-// buildProjectMixFixture holds the five project shapes the Select Project task
-// filter distinguishes: active with a task, active with none, active whose
-// tasks are all finished, parked with a task, and archived with none. It is the
-// only fixture carrying an archived project, the only one where "holds tasks"
-// and "reaches the base task workspace" disagree in both directions, and the
-// finished project is where "holds tasks" and "holds open work" disagree.
+// buildProjectMixFixture holds the five project shapes the Select Project
+// open-task filter distinguishes: active with an open task, active with none,
+// active whose tasks are all finished, parked with an open task, and archived
+// with none. It is the only fixture carrying an archived project and the only
+// one where "holds open tasks" and "reaches the base task workspace" disagree in
+// both directions; the finished project is what the two narrowings separate,
+// since it holds tasks and no open work, so `with open tasks` hides it and
+// `without open tasks` lists it beside the two known-empty projects.
 func buildProjectMixFixture(w *uitestWorkspace) error {
 	active, err := w.addProject(projectMixActiveName, func(p *models.Project) {
 		p.Description = projectMixActiveDescription

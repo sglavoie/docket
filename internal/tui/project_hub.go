@@ -60,25 +60,25 @@ const (
 )
 
 // projectHubTaskFilter is the Ctrl+T axis: every project, only the projects
-// known to hold tasks, or only the projects known to hold none. It is one
-// cycling axis rather than two independent toggles because the two narrowings
-// are mutually exclusive readings of the same count.
+// known to hold open tasks, or only the projects known to hold none open. It is
+// one cycling axis rather than two independent toggles because the two
+// narrowings are mutually exclusive readings of the same count.
 type projectHubTaskFilter uint8
 
 const (
 	projectHubTaskFilterAll projectHubTaskFilter = iota
-	projectHubTaskFilterWithTasks
-	projectHubTaskFilterWithoutTasks
+	projectHubTaskFilterWithOpenTasks
+	projectHubTaskFilterWithoutOpenTasks
 )
 
 func (f projectHubTaskFilter) next() projectHubTaskFilter {
 	switch f {
-	case projectHubTaskFilterWithTasks:
-		return projectHubTaskFilterWithoutTasks
-	case projectHubTaskFilterWithoutTasks:
+	case projectHubTaskFilterWithOpenTasks:
+		return projectHubTaskFilterWithoutOpenTasks
+	case projectHubTaskFilterWithoutOpenTasks:
 		return projectHubTaskFilterAll
 	default:
-		return projectHubTaskFilterWithTasks
+		return projectHubTaskFilterWithOpenTasks
 	}
 }
 
@@ -86,10 +86,10 @@ func (f projectHubTaskFilter) next() projectHubTaskFilter {
 // press produces rather than as the state the axis currently holds.
 func (f projectHubTaskFilter) shortLabel() string {
 	switch f {
-	case projectHubTaskFilterWithTasks:
-		return "with tasks"
-	case projectHubTaskFilterWithoutTasks:
-		return "without tasks"
+	case projectHubTaskFilterWithOpenTasks:
+		return "with open tasks"
+	case projectHubTaskFilterWithoutOpenTasks:
+		return "without open tasks"
 	default:
 		return "all projects"
 	}
@@ -99,10 +99,10 @@ func (f projectHubTaskFilter) shortLabel() string {
 // where the next press lands.
 func (f projectHubTaskFilter) phrase() string {
 	switch f {
-	case projectHubTaskFilterWithTasks:
-		return "projects that hold tasks"
-	case projectHubTaskFilterWithoutTasks:
-		return "projects without tasks"
+	case projectHubTaskFilterWithOpenTasks:
+		return "projects that hold open tasks"
+	case projectHubTaskFilterWithoutOpenTasks:
+		return "projects without open tasks"
 	default:
 		return "every project"
 	}
@@ -537,10 +537,10 @@ func (m *ProjectHubModel) projectHubFilterHides(project *models.Project) bool {
 		return false
 	}
 	switch m.taskFilter {
-	case projectHubTaskFilterWithTasks:
-		return tally.Total == 0
-	case projectHubTaskFilterWithoutTasks:
-		return tally.Total > 0
+	case projectHubTaskFilterWithOpenTasks:
+		return tally.Open == 0
+	case projectHubTaskFilterWithoutOpenTasks:
+		return tally.Open > 0
 	default:
 		return false
 	}
@@ -644,16 +644,16 @@ func (m *ProjectHubModel) projectHubEmptyState() ListEmptyState {
 		}
 	}
 	switch m.taskFilter {
-	case projectHubTaskFilterWithTasks:
+	case projectHubTaskFilterWithOpenTasks:
 		if m.mode == ProjectHubModePinned {
-			return ListEmptyState{Title: "No pinned projects hold tasks.", Detail: m.projectHubFilterAdvice()}
+			return ListEmptyState{Title: "No pinned projects hold open tasks.", Detail: m.projectHubFilterAdvice()}
 		}
-		return ListEmptyState{Title: "No projects hold tasks.", Detail: m.projectHubFilterAdvice()}
-	case projectHubTaskFilterWithoutTasks:
+		return ListEmptyState{Title: "No projects hold open tasks.", Detail: m.projectHubFilterAdvice()}
+	case projectHubTaskFilterWithoutOpenTasks:
 		if m.mode == ProjectHubModePinned {
-			return ListEmptyState{Title: "Every pinned project holds tasks.", Detail: m.projectHubFilterAdvice()}
+			return ListEmptyState{Title: "Every pinned project holds open tasks.", Detail: m.projectHubFilterAdvice()}
 		}
-		return ListEmptyState{Title: "Every project holds tasks.", Detail: m.projectHubFilterAdvice()}
+		return ListEmptyState{Title: "Every project holds open tasks.", Detail: m.projectHubFilterAdvice()}
 	default:
 		return ListEmptyState{
 			Title:  "No projects are available.",
@@ -674,10 +674,10 @@ func (m *ProjectHubModel) projectHubNextFilterPhrase() string {
 		return next.phrase()
 	}
 	switch next {
-	case projectHubTaskFilterWithTasks:
-		return "pinned projects that hold tasks"
-	case projectHubTaskFilterWithoutTasks:
-		return "pinned projects without tasks"
+	case projectHubTaskFilterWithOpenTasks:
+		return "pinned projects that hold open tasks"
+	case projectHubTaskFilterWithoutOpenTasks:
+		return "pinned projects without open tasks"
 	default:
 		return "every pinned project"
 	}
@@ -1100,7 +1100,7 @@ func projectHubOperationDescriptors() []OperationDescriptor {
 		needsRow(surface(operationProjectHubToggleSelection, "Select project", OperationCategoryProject, OperationRiskReadOnly, "toggle project selection")),
 		needsRow(surface(operationProjectHubSelectAll, "Select every matching project", OperationCategoryProject, OperationRiskReadOnly, "select all projects")),
 		needsRow(surface(operationProjectHubActions, "Project actions", OperationCategoryProject, OperationRiskReadOnly, "project action sheet")),
-		surface(operationProjectHubTaskFilter, "Cycle every project, only those holding tasks, only those holding none", OperationCategoryFilter, OperationRiskReadOnly, "projects holding tasks", "projects holding no tasks"),
+		surface(operationProjectHubTaskFilter, "Cycle every project, only those holding open tasks, only those holding none open", OperationCategoryFilter, OperationRiskReadOnly, "projects holding open tasks", "projects holding no open tasks"),
 		needsRow(surface(operationProjectHubPreviewPageDown, "Page project tasks down", OperationCategoryNavigation, OperationRiskReadOnly, "scroll project preview down")),
 		needsRow(surface(operationProjectHubPreviewPageUp, "Page project tasks up", OperationCategoryNavigation, OperationRiskReadOnly, "scroll project preview up")),
 	}

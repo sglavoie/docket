@@ -1075,7 +1075,7 @@ Parents are project-local and hierarchy depth is capped at six.
 
 The Outliner opens on Active Projects, and scope is session-only. `Ctrl+P`
 opens Select Pinned Project with only pinned non-archived projects, including
-parked ones. It keeps the full Project Hub's search, task-count filter, previews,
+parked ones. It keeps the full Project Hub's search, open-task filter, previews,
 selection, and actions; `Enter` focuses the selected project. With no active
 pins it explains that `Esc` returns to the Outliner, where `P` still opens the
 full Hub.
@@ -1086,9 +1086,9 @@ chips, so a project whose tasks are all finished reads `0 open · 2 tasks`
 instead of passing for one with work left. Administering a project is one press:
 `Enter` focuses it in the same Outliner, `a` creates one, `e` edits the one
 under the cursor, `*` toggles its pin, `#` sets its tags, and `Ctrl+N` opens its
-Notes. `Ctrl+T` cycles between every project, only those holding tasks, and only
-those holding none. The catalog ID, not a display name, protects the system
-Unfiled project.
+Notes. `Ctrl+T` cycles between every project, only those holding open tasks, and
+only those holding none open. The catalog ID, not a display name, protects the
+system Unfiled project.
 
 `/` searches a project by anything the project itself says: its name, its slug,
 its description, and each of its tags spelled either way, so `#billing` finds

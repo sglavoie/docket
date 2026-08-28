@@ -342,7 +342,7 @@ func TestREADMEDocumentsSelectProjectGrammar(t *testing.T) {
 			"are all finished reads `0 open · 2 tasks` instead of passing for one with work left",
 		"`Enter` focuses it in the same Outliner, `a` creates one, `e` edits the one under the cursor, " +
 			"`*` toggles its pin, `#` sets its tags, and `Ctrl+N` opens its Notes",
-		"`Ctrl+T` cycles between every project, only those holding tasks, and only those holding none",
+		"`Ctrl+T` cycles between every project, only those holding open tasks, and only those holding none open",
 		"`/` opens project search and `Esc` leaves the query for the matches it found",
 		"`v` selects the project under the cursor and `Ctrl+A` selects every project matching the current search",
 		"`Space` offers Archive on an active project and Unarchive on an archived one",
