@@ -63,7 +63,13 @@ type TaskLineEditRequest struct {
 	DestinationProjectID string
 	Parent               TaskLineParentPatch
 	Children             []TaskLocator
-	PlanningArtifacts    PlanningArtifactBuilder
+	// Dependencies patches the task's soft references. Its zero value expresses no
+	// intent, so an edit that never mentioned one leaves the stored set alone.
+	// Additions are judged against the effective destination project, which is what
+	// makes a line that moves the task and depends on its own new address a
+	// self-reference.
+	Dependencies      DependencyPatch
+	PlanningArtifacts PlanningArtifactBuilder
 
 	// Action names the edit in the undo ledger. A caller that reaches this
 	// request through a narrower surface than the inline editor sets it so the
@@ -102,6 +108,11 @@ type preparedTaskLineEdit struct {
 	children           []*models.Task
 	destinationProject *models.Project
 	action             string
+	// dependencies is the complete post-patch reference set, resolved before any
+	// mutation. dependenciesSet distinguishes "store this set" from "the request
+	// said nothing about dependencies".
+	dependencies    []models.TaskReference
+	dependenciesSet bool
 }
 
 // EditTaskLine applies every inline-text patch as one application transaction.
@@ -481,6 +492,16 @@ func prepareTaskLineEdit(snap Snapshot, ref TaskRef, req TaskLineEditRequest) (p
 	}
 	prepared.children = children
 
+	if !req.Dependencies.IsZero() {
+		resolver := newReferenceResolver(snap, TaskLocator{ProjectID: effectiveProjectID, TaskID: ref.Task.ID})
+		dependencies, depErr := resolver.resolveDependencyPatch(ref.Task.Dependencies, req.Dependencies)
+		if depErr != nil {
+			return preparedTaskLineEdit{}, depErr
+		}
+		prepared.dependencies = dependencies
+		prepared.dependenciesSet = true
+	}
+
 	if req.Destination != nil {
 		destination, ok := ParseCaptureDestination(string(*req.Destination))
 		if !ok {
@@ -591,6 +612,13 @@ func applyPreparedTaskLineFields(task *models.Task, prepared preparedTaskLineEdi
 		changed = true
 	}
 	if prepared.pinned != nil && task.ApplyPinned(*prepared.pinned, now) {
+		changed = true
+	}
+	// A patch that resolves to the set already stored — adding what is there,
+	// removing what is not, clearing nothing — leaves the field and the touch time
+	// alone, so it reaches the caller as an unchanged result.
+	if prepared.dependenciesSet && !models.TaskReferencesEqual(task.Dependencies, prepared.dependencies) {
+		task.Dependencies = models.CloneTaskReferences(prepared.dependencies)
 		changed = true
 	}
 	if changed {

@@ -88,6 +88,11 @@ type CaptureRequest struct {
 	// same rule an interactively added comment goes through and lands on the new
 	// task inside the ChangeSet that creates it.
 	Comments []string
+	// Dependencies are the soft references the new task starts with, in the order
+	// they were expressed. Each must name a loaded, nonterminal task; repeated
+	// locators collapse to their first occurrence. They are informational only and
+	// never affect the destination, ordering, or completion of the new task.
+	Dependencies []TaskLocator
 }
 
 // Capture creates a new task in the target project and commits it as one
@@ -115,7 +120,7 @@ func (s *Service) Capture(req CaptureRequest) (TaskResult, error) {
 		}
 	}()
 
-	prepared, err := s.prepareCapturedTask(project, req)
+	prepared, err := s.prepareCapturedTask(snap, project, req)
 	if err != nil {
 		return TaskResult{}, err
 	}
@@ -181,7 +186,7 @@ func (s *Service) CaptureMany(reqs []CaptureRequest) ([]TaskResult, error) {
 		if project == nil {
 			return nil, captureRequestError(req, i, fmt.Errorf("%w: %s", ErrProjectNotFound, req.ProjectID))
 		}
-		prepared, prepareErr := s.prepareCapturedTask(project, req)
+		prepared, prepareErr := s.prepareCapturedTask(snap, project, req)
 		if prepareErr != nil {
 			return nil, captureRequestError(req, i, prepareErr)
 		}
@@ -361,20 +366,21 @@ func planningArtifactsForTargets(targets []PlanningReconcileTarget, remove []Tas
 // preparedCapture contains every normalized value needed to construct a task.
 // Preparing a request never consumes an ID or mutates the target project.
 type preparedCapture struct {
-	req         CaptureRequest
-	title       string
-	priority    int
-	tags        []string
-	context     string
-	removeTags  []string
-	parent      *models.Task
-	children    []*models.Task
-	destination captureDestinationEffect
-	attachments []ResolvedAttachmentInput
-	comments    []string
+	req          CaptureRequest
+	title        string
+	priority     int
+	tags         []string
+	context      string
+	removeTags   []string
+	parent       *models.Task
+	children     []*models.Task
+	destination  captureDestinationEffect
+	attachments  []ResolvedAttachmentInput
+	comments     []string
+	dependencies []models.TaskReference
 }
 
-func (s *Service) prepareCapturedTask(project *models.Project, req CaptureRequest) (preparedCapture, error) {
+func (s *Service) prepareCapturedTask(snap Snapshot, project *models.Project, req CaptureRequest) (preparedCapture, error) {
 	title := strings.TrimSpace(req.Title)
 	if err := models.ValidateTaskTitle(title); err != nil {
 		return preparedCapture{}, invalidInput("title", err.Error())
@@ -434,18 +440,26 @@ func (s *Service) prepareCapturedTask(project *models.Project, req CaptureReques
 		return preparedCapture{}, err
 	}
 
+	// A captured task has no identity yet, so no locator can name it: the resolver
+	// is built with an empty self and every dependency is an ordinary addition.
+	dependencies, err := newReferenceResolver(snap, TaskLocator{}).resolveDependencyAdditions(req.Dependencies)
+	if err != nil {
+		return preparedCapture{}, err
+	}
+
 	return preparedCapture{
-		req:         req,
-		title:       title,
-		priority:    priority,
-		tags:        normalizedTags,
-		context:     context,
-		removeTags:  removeTags,
-		parent:      parent,
-		children:    children,
-		destination: destination,
-		attachments: attachments,
-		comments:    comments,
+		req:          req,
+		title:        title,
+		priority:     priority,
+		tags:         normalizedTags,
+		context:      context,
+		removeTags:   removeTags,
+		parent:       parent,
+		children:     children,
+		destination:  destination,
+		attachments:  attachments,
+		comments:     comments,
+		dependencies: dependencies,
 	}, nil
 }
 
@@ -491,6 +505,7 @@ func (s *Service) buildPreparedCapturedTask(project *models.Project, prepared pr
 	task.Priority = prepared.priority
 	task.Context = prepared.context
 	task.Description = req.Description
+	task.Dependencies = models.CloneTaskReferences(prepared.dependencies)
 	for _, tag := range prepared.tags {
 		task.AddTag(tag)
 	}
