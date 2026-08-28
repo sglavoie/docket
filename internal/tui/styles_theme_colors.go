@@ -18,21 +18,24 @@ const (
 	defaultColorTaskContext         = "#73daca"
 	defaultColorTaskContextDeferred = "#4f948f"
 
-	defaultColorSemanticBugTitle             = "#ff4f58"
-	defaultColorSemanticEpicTitle            = "#e17bff"
-	defaultColorSemanticStoryTitle           = "#3fc5ff"
-	defaultColorSemanticFeatureTitle         = "#35d67f"
-	defaultColorSemanticIdeaTitle            = "#ffd23f"
-	defaultColorSemanticBugSelectedTitle     = "#ff9ea3"
-	defaultColorSemanticEpicSelectedTitle    = "#eeb6ff"
-	defaultColorSemanticStorySelectedTitle   = "#95dfff"
-	defaultColorSemanticFeatureSelectedTitle = "#90e8b9"
-	defaultColorSemanticIdeaSelectedTitle    = "#ffe695"
-	defaultColorSemanticBugDeferredTitle     = "#c47074"
-	defaultColorSemanticEpicDeferredTitle    = "#b16fc4"
-	defaultColorSemanticStoryDeferredTitle   = "#4891b0"
-	defaultColorSemanticFeatureDeferredTitle = "#549572"
-	defaultColorSemanticIdeaDeferredTitle    = "#9c8740"
+	defaultColorSemanticBugTitle              = "#ff4f58"
+	defaultColorSemanticQuestionTitle         = "#f57a00"
+	defaultColorSemanticEpicTitle             = "#e17bff"
+	defaultColorSemanticStoryTitle            = "#3fc5ff"
+	defaultColorSemanticFeatureTitle          = "#35d67f"
+	defaultColorSemanticIdeaTitle             = "#ffd23f"
+	defaultColorSemanticBugSelectedTitle      = "#ff9ea3"
+	defaultColorSemanticQuestionSelectedTitle = "#ffa366"
+	defaultColorSemanticEpicSelectedTitle     = "#eeb6ff"
+	defaultColorSemanticStorySelectedTitle    = "#95dfff"
+	defaultColorSemanticFeatureSelectedTitle  = "#90e8b9"
+	defaultColorSemanticIdeaSelectedTitle     = "#ffe695"
+	defaultColorSemanticBugDeferredTitle      = "#c47074"
+	defaultColorSemanticQuestionDeferredTitle = "#d66e29"
+	defaultColorSemanticEpicDeferredTitle     = "#b16fc4"
+	defaultColorSemanticStoryDeferredTitle    = "#4891b0"
+	defaultColorSemanticFeatureDeferredTitle  = "#549572"
+	defaultColorSemanticIdeaDeferredTitle     = "#9c8740"
 )
 
 // Priority title foreground colors, user-overridable via PaletteColors.
@@ -43,21 +46,24 @@ var (
 	ColorTaskContext         = lipgloss.Color(defaultColorTaskContext)
 	ColorTaskContextDeferred = lipgloss.Color(defaultColorTaskContextDeferred)
 
-	ColorSemanticBugTitle             = lipgloss.Color(defaultColorSemanticBugTitle)
-	ColorSemanticEpicTitle            = lipgloss.Color(defaultColorSemanticEpicTitle)
-	ColorSemanticStoryTitle           = lipgloss.Color(defaultColorSemanticStoryTitle)
-	ColorSemanticFeatureTitle         = lipgloss.Color(defaultColorSemanticFeatureTitle)
-	ColorSemanticIdeaTitle            = lipgloss.Color(defaultColorSemanticIdeaTitle)
-	ColorSemanticBugSelectedTitle     = lipgloss.Color(defaultColorSemanticBugSelectedTitle)
-	ColorSemanticEpicSelectedTitle    = lipgloss.Color(defaultColorSemanticEpicSelectedTitle)
-	ColorSemanticStorySelectedTitle   = lipgloss.Color(defaultColorSemanticStorySelectedTitle)
-	ColorSemanticFeatureSelectedTitle = lipgloss.Color(defaultColorSemanticFeatureSelectedTitle)
-	ColorSemanticIdeaSelectedTitle    = lipgloss.Color(defaultColorSemanticIdeaSelectedTitle)
-	ColorSemanticBugDeferredTitle     = lipgloss.Color(defaultColorSemanticBugDeferredTitle)
-	ColorSemanticEpicDeferredTitle    = lipgloss.Color(defaultColorSemanticEpicDeferredTitle)
-	ColorSemanticStoryDeferredTitle   = lipgloss.Color(defaultColorSemanticStoryDeferredTitle)
-	ColorSemanticFeatureDeferredTitle = lipgloss.Color(defaultColorSemanticFeatureDeferredTitle)
-	ColorSemanticIdeaDeferredTitle    = lipgloss.Color(defaultColorSemanticIdeaDeferredTitle)
+	ColorSemanticBugTitle              = lipgloss.Color(defaultColorSemanticBugTitle)
+	ColorSemanticQuestionTitle         = lipgloss.Color(defaultColorSemanticQuestionTitle)
+	ColorSemanticEpicTitle             = lipgloss.Color(defaultColorSemanticEpicTitle)
+	ColorSemanticStoryTitle            = lipgloss.Color(defaultColorSemanticStoryTitle)
+	ColorSemanticFeatureTitle          = lipgloss.Color(defaultColorSemanticFeatureTitle)
+	ColorSemanticIdeaTitle             = lipgloss.Color(defaultColorSemanticIdeaTitle)
+	ColorSemanticBugSelectedTitle      = lipgloss.Color(defaultColorSemanticBugSelectedTitle)
+	ColorSemanticQuestionSelectedTitle = lipgloss.Color(defaultColorSemanticQuestionSelectedTitle)
+	ColorSemanticEpicSelectedTitle     = lipgloss.Color(defaultColorSemanticEpicSelectedTitle)
+	ColorSemanticStorySelectedTitle    = lipgloss.Color(defaultColorSemanticStorySelectedTitle)
+	ColorSemanticFeatureSelectedTitle  = lipgloss.Color(defaultColorSemanticFeatureSelectedTitle)
+	ColorSemanticIdeaSelectedTitle     = lipgloss.Color(defaultColorSemanticIdeaSelectedTitle)
+	ColorSemanticBugDeferredTitle      = lipgloss.Color(defaultColorSemanticBugDeferredTitle)
+	ColorSemanticQuestionDeferredTitle = lipgloss.Color(defaultColorSemanticQuestionDeferredTitle)
+	ColorSemanticEpicDeferredTitle     = lipgloss.Color(defaultColorSemanticEpicDeferredTitle)
+	ColorSemanticStoryDeferredTitle    = lipgloss.Color(defaultColorSemanticStoryDeferredTitle)
+	ColorSemanticFeatureDeferredTitle  = lipgloss.Color(defaultColorSemanticFeatureDeferredTitle)
+	ColorSemanticIdeaDeferredTitle     = lipgloss.Color(defaultColorSemanticIdeaDeferredTitle)
 )
 
 // tagChipColors is the active theme's tag chip ramp, indexed by slot. The slot
@@ -180,16 +186,19 @@ func rebuildPalette(p config.PaletteColors) {
 	ColorTaskContextDeferred = fallback(p.TaskContextDeferred, d.TaskContextDeferred)
 
 	ColorSemanticBugTitle = fallback(p.SemanticBugTitle, d.SemanticBugTitle)
+	ColorSemanticQuestionTitle = fallback(p.SemanticQuestionTitle, d.SemanticQuestionTitle)
 	ColorSemanticEpicTitle = fallback(p.SemanticEpicTitle, d.SemanticEpicTitle)
 	ColorSemanticStoryTitle = fallback(p.SemanticStoryTitle, d.SemanticStoryTitle)
 	ColorSemanticFeatureTitle = fallback(p.SemanticFeatureTitle, d.SemanticFeatureTitle)
 	ColorSemanticIdeaTitle = fallback(p.SemanticIdeaTitle, d.SemanticIdeaTitle)
 	ColorSemanticBugSelectedTitle = fallback(p.SemanticBugSelectedTitle, d.SemanticBugSelectedTitle)
+	ColorSemanticQuestionSelectedTitle = fallback(p.SemanticQuestionSelectedTitle, d.SemanticQuestionSelectedTitle)
 	ColorSemanticEpicSelectedTitle = fallback(p.SemanticEpicSelectedTitle, d.SemanticEpicSelectedTitle)
 	ColorSemanticStorySelectedTitle = fallback(p.SemanticStorySelectedTitle, d.SemanticStorySelectedTitle)
 	ColorSemanticFeatureSelectedTitle = fallback(p.SemanticFeatureSelectedTitle, d.SemanticFeatureSelectedTitle)
 	ColorSemanticIdeaSelectedTitle = fallback(p.SemanticIdeaSelectedTitle, d.SemanticIdeaSelectedTitle)
 	ColorSemanticBugDeferredTitle = fallback(p.SemanticBugDeferredTitle, d.SemanticBugDeferredTitle)
+	ColorSemanticQuestionDeferredTitle = fallback(p.SemanticQuestionDeferredTitle, d.SemanticQuestionDeferredTitle)
 	ColorSemanticEpicDeferredTitle = fallback(p.SemanticEpicDeferredTitle, d.SemanticEpicDeferredTitle)
 	ColorSemanticStoryDeferredTitle = fallback(p.SemanticStoryDeferredTitle, d.SemanticStoryDeferredTitle)
 	ColorSemanticFeatureDeferredTitle = fallback(p.SemanticFeatureDeferredTitle, d.SemanticFeatureDeferredTitle)

@@ -11,6 +11,7 @@ func TestSemanticTaskTagsStayInPrecedenceOrder(t *testing.T) {
 		name string
 	}{
 		{SemanticTaskTagBug, "bug"},
+		{SemanticTaskTagQuestion, "question"},
 		{SemanticTaskTagEpic, "epic"},
 		{SemanticTaskTagStory, "story"},
 		{SemanticTaskTagFeature, "feature"},
@@ -31,11 +32,12 @@ func TestSemanticTaskTagsStayInPrecedenceOrder(t *testing.T) {
 		}
 	}
 	wantRows := map[string]string{
-		"bug":     "A defect to fix. Highest precedence.",
-		"epic":    "A large body of related work.",
-		"story":   "A user-facing slice of work.",
-		"feature": "New capability to build.",
-		"idea":    "An unrefined thought. Lowest precedence.",
+		"bug":      "A defect to fix. Highest precedence.",
+		"question": "An open question to investigate.",
+		"epic":     "A large body of related work.",
+		"story":    "A user-facing slice of work.",
+		"feature":  "New capability to build.",
+		"idea":     "An unrefined thought. Lowest precedence.",
 	}
 	for _, entry := range SemanticTaskTags {
 		if got := entry.RowSummary; got != wantRows[entry.Name] {
@@ -54,8 +56,11 @@ func TestSemanticTaskTagForTagsAppliesPrecedenceRegardlessOfSliceOrder(t *testin
 		{name: "bug then idea", tags: []string{"bug", "idea"}, want: SemanticTaskTagBug},
 		{name: "story then epic", tags: []string{"story", "epic"}, want: SemanticTaskTagEpic},
 		{name: "epic then story", tags: []string{"epic", "story"}, want: SemanticTaskTagEpic},
-		{name: "ascending", tags: []string{"idea", "feature", "story", "epic", "bug"}, want: SemanticTaskTagBug},
-		{name: "descending", tags: []string{"bug", "epic", "story", "feature", "idea"}, want: SemanticTaskTagBug},
+		{name: "question then epic", tags: []string{"question", "epic"}, want: SemanticTaskTagQuestion},
+		{name: "epic then question", tags: []string{"epic", "question"}, want: SemanticTaskTagQuestion},
+		{name: "bug outranks question", tags: []string{"question", "bug"}, want: SemanticTaskTagBug},
+		{name: "ascending", tags: []string{"idea", "feature", "story", "epic", "question", "bug"}, want: SemanticTaskTagBug},
+		{name: "descending", tags: []string{"bug", "question", "epic", "story", "feature", "idea"}, want: SemanticTaskTagBug},
 		{name: "ordinary tags interleaved", tags: []string{"urgent", "feature", "backend", "story"}, want: SemanticTaskTagStory},
 		{name: "lowest alone", tags: []string{"chore", "idea"}, want: SemanticTaskTagIdea},
 	}
@@ -97,13 +102,15 @@ func TestSemanticTaskTagForTagsIgnoresOrdinaryTags(t *testing.T) {
 
 func TestSemanticTaskTagByNameMatchesExactlyAndCaseInsensitively(t *testing.T) {
 	matches := map[string]SemanticTaskTagRole{
-		"bug":     SemanticTaskTagBug,
-		"BUG":     SemanticTaskTagBug,
-		"Bug":     SemanticTaskTagBug,
-		"EPIC":    SemanticTaskTagEpic,
-		"Story":   SemanticTaskTagStory,
-		"FeAtUrE": SemanticTaskTagFeature,
-		"iDeA":    SemanticTaskTagIdea,
+		"bug":      SemanticTaskTagBug,
+		"BUG":      SemanticTaskTagBug,
+		"Bug":      SemanticTaskTagBug,
+		"question": SemanticTaskTagQuestion,
+		"QuEsTiOn": SemanticTaskTagQuestion,
+		"EPIC":     SemanticTaskTagEpic,
+		"Story":    SemanticTaskTagStory,
+		"FeAtUrE":  SemanticTaskTagFeature,
+		"iDeA":     SemanticTaskTagIdea,
 	}
 	for tag, want := range matches {
 		entry, ok := SemanticTaskTagByName(tag)

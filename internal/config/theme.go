@@ -33,19 +33,22 @@ type PaletteColors struct {
 	TaskContext         string
 	TaskContextDeferred string
 
-	SemanticBugTitle             string
-	SemanticEpicTitle            string
-	SemanticStoryTitle           string
-	SemanticFeatureTitle         string
-	SemanticIdeaTitle            string
-	SemanticBugSelectedTitle     string
-	SemanticEpicSelectedTitle    string
-	SemanticStorySelectedTitle   string
-	SemanticFeatureSelectedTitle string
-	SemanticIdeaSelectedTitle    string
-	SemanticBugDeferredTitle     string
-	SemanticEpicDeferredTitle    string
-	SemanticStoryDeferredTitle   string
-	SemanticFeatureDeferredTitle string
-	SemanticIdeaDeferredTitle    string
+	SemanticBugTitle              string
+	SemanticQuestionTitle         string
+	SemanticEpicTitle             string
+	SemanticStoryTitle            string
+	SemanticFeatureTitle          string
+	SemanticIdeaTitle             string
+	SemanticBugSelectedTitle      string
+	SemanticQuestionSelectedTitle string
+	SemanticEpicSelectedTitle     string
+	SemanticStorySelectedTitle    string
+	SemanticFeatureSelectedTitle  string
+	SemanticIdeaSelectedTitle     string
+	SemanticBugDeferredTitle      string
+	SemanticQuestionDeferredTitle string
+	SemanticEpicDeferredTitle     string
+	SemanticStoryDeferredTitle    string
+	SemanticFeatureDeferredTitle  string
+	SemanticIdeaDeferredTitle     string
 }

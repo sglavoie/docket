@@ -37,7 +37,7 @@ func TestTaskTagListSourceSeedsEverySemanticTagInPrecedenceOrder(t *testing.T) {
 	source := taskTagListSource([]TagInfo{{Name: "urgent", TaskCount: 3}}, true)
 
 	assertRowIDs(t, taskTagRowIDs(source.Items, taskTagSemanticCategory), []string{
-		"tag:bug", "tag:epic", "tag:story", "tag:feature", "tag:idea",
+		"tag:bug", "tag:question", "tag:epic", "tag:story", "tag:feature", "tag:idea",
 	})
 	assertRowIDs(t, taskTagRowIDs(source.Items, tagDescriptiveCategory), []string{"tag:urgent"})
 
@@ -125,7 +125,7 @@ func TestTaskTagListSourceMintsNoDuplicateIDsWhenSeeding(t *testing.T) {
 	}
 	// Idea is in use under another spelling, so idea is still seeded.
 	assertRowIDs(t, taskTagRowIDs(source.Items, taskTagSemanticCategory), []string{
-		"tag:bug", "tag:epic", "tag:story", "tag:feature", "tag:Idea", "tag:idea",
+		"tag:bug", "tag:question", "tag:epic", "tag:story", "tag:feature", "tag:Idea", "tag:idea",
 	})
 }
 
@@ -305,7 +305,7 @@ func TestSemanticTaskTagExplainerNamesThePrecedenceForTaskTagProvidersOnly(t *te
 	for _, provider := range []ValueProviderID{ValueProviderTags, ValueProviderFilterTags} {
 		explainer := semanticTaskTagExplainer(provider, 120)
 		plain := ansi.Strip(explainer)
-		if !strings.Contains(plain, "semantic  bug › epic › story › feature › idea —") {
+		if !strings.Contains(plain, "semantic  bug › question › epic › story › feature › idea —") {
 			t.Fatalf("provider %q explainer = %q, want the precedence chain", provider, plain)
 		}
 		if !strings.HasSuffix(plain, "colors its title.") {
@@ -325,7 +325,7 @@ func TestSemanticTaskTagExplainerNamesThePrecedenceForTaskTagProvidersOnly(t *te
 }
 
 func TestSemanticTaskTagExplainerWrapsCompleteTextAtNarrowWidths(t *testing.T) {
-	want := "semantic bug › epic › story › feature › idea " + semanticTaskTagExplainerSummary
+	want := "semantic bug › question › epic › story › feature › idea " + semanticTaskTagExplainerSummary
 	for _, width := range []int{12, 30, 42, 44, 60} {
 		plain := ansi.Strip(semanticTaskTagExplainer(ValueProviderTags, width))
 		for _, line := range strings.Split(plain, "\n") {
@@ -346,7 +346,10 @@ func TestSemanticTagPickerReservesHeightForWrappedExplainer(t *testing.T) {
 		t.Fatalf("picker height = %d, want <= %d", got, minTerminalHeight)
 	}
 	plain := ansi.Strip(rendered)
-	if got := strings.Join(strings.Fields(plain), " "); !strings.Contains(got, "semantic bug › epic › story › feature ›") ||
+	// The explainer needs three lines at this width, so the border columns sit
+	// between its own words: drop them before checking the text survived.
+	unboxed := strings.ReplaceAll(plain, "│", " ")
+	if got := strings.Join(strings.Fields(unboxed), " "); !strings.Contains(got, "semantic bug › question › epic › story › feature › idea") ||
 		!strings.Contains(got, "highest one a task carries") ||
 		!strings.Contains(got, "colors its title.") {
 		t.Fatalf("picker dropped wrapped explainer:\n%s", plain)
@@ -534,7 +537,7 @@ func TestOperationTagPickerKeepsThePrecedenceOrderAfterAddingATag(t *testing.T) 
 	}
 	items := picker.surface.Items()
 	assertRowIDs(t, taskTagRowIDs(items, taskTagSemanticCategory), []string{
-		"tag:bug", "tag:epic", "tag:story", "tag:feature", "tag:idea",
+		"tag:bug", "tag:question", "tag:epic", "tag:story", "tag:feature", "tag:idea",
 	})
 	assertRowIDs(t, taskTagRowIDs(items, tagDescriptiveCategory), []string{"tag:alpha", "tag:zeta"})
 
@@ -543,7 +546,7 @@ func TestOperationTagPickerKeepsThePrecedenceOrderAfterAddingATag(t *testing.T) 
 	}
 	items = picker.surface.Items()
 	assertRowIDs(t, taskTagRowIDs(items, taskTagSemanticCategory), []string{
-		"tag:bug", "tag:Bug", "tag:epic", "tag:story", "tag:feature", "tag:idea",
+		"tag:bug", "tag:Bug", "tag:question", "tag:epic", "tag:story", "tag:feature", "tag:idea",
 	})
 	// Every semantic row must precede every descriptive one or the list surface
 	// repeats both headers.

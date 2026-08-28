@@ -272,7 +272,7 @@ func TestREADMEDocumentsFinalCaptureAndWorkflowContracts(t *testing.T) {
 		"`#tag` creates and sets a lowercase ASCII kebab tag on the fly",
 		"`inbox`, `backlog`, `today`, `next`, `doing`, `waiting`, `paused`, `someday`, `done`, or `canceled`",
 		"A new child defaults to Backlog",
-		"Exact case-insensitive `bug`, `epic`, `story`, `feature`, and `idea` tags",
+		"Exact case-insensitive `bug`, `question`, `epic`, `story`, `feature`, and `idea`",
 		"add no prefix or marker icon",
 		"Today and Next are mutually exclusive",
 		"Waiting is an explicit lifecycle state",

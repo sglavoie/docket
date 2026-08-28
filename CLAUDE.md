@@ -257,7 +257,7 @@ the same normalization so an unmintable persisted set fails closed.
 
 `models.BehavioralProjectTags` and `models.SemanticTaskTags` are effect-free
 metadata. Parking stays hardcoded in `TaskWorkspaceProjects()`; precedence
-`bug` > `epic` > `story` > `feature` > `idea` only colors titles.
+`bug` > `question` > `epic` > `story` > `feature` > `idea` only colors titles.
 
 `tagChipStyle` is the single tag color authority under those titles, on the
 ≤65% ramp tier, and `orderedTaskTags` the single chip order; a slot is a

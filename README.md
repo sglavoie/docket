@@ -126,9 +126,9 @@ Read a chip color as a mnemonic, not a legend. It tells you `#billing` is
 reliably that one color; it never tells you what that color means. Six chip
 colors cover an unlimited tag vocabulary, so two unrelated tags will sometimes
 share one, and nothing in `tt` ever decides anything from a chip color. The
-colors that do carry meaning stay louder than the chips: a `bug`, `epic`,
-`story`, `feature`, or `idea` tag colors the whole title, and a chip never
-overrides the title beside it.
+colors that do carry meaning stay louder than the chips: a `bug`, `question`,
+`epic`, `story`, `feature`, or `idea` tag colors the whole title, and a chip
+never overrides the title beside it.
 
 A row shows at most two chips, and it chooses them instead of showing the first
 two you typed: descriptive tags come first in alphabetical order, then the
@@ -1040,13 +1040,13 @@ under the cursor. A focus root already at the nesting cap degrades to plain
 capture into its project, `Capture → Rich Project`, rather than refusing. `A` is
 unchanged and still means a child of the cursor task, one level deeper.
 
-Exact case-insensitive `bug`, `epic`, `story`, `feature`, and `idea` tags color
-task titles in that precedence order. Namespaced values such as `type:bug` and
-partial matches remain ordinary tags and add no prefix or marker icon. Both tag
-pickers group those five under a `SEMANTIC` section above the rest: `#` Set Tags
-always offers all five with a one-line summary each, whether or not any task
-carries them, while `f#` Filter by Tags stays usage-derived and lists only the
-ones in use.
+Exact case-insensitive `bug`, `question`, `epic`, `story`, `feature`, and `idea`
+tags color task titles in that precedence order. Namespaced values such as
+`type:bug` and partial matches remain ordinary tags and add no prefix or marker
+icon. Both tag pickers group those six under a `SEMANTIC` section above the rest:
+`#` Set Tags always offers all six with a one-line summary each, whether or not
+any task carries them, while `f#` Filter by Tags stays usage-derived and lists
+only the ones in use.
 
 Task contexts are their own filter axis on `fc`, so `f#` narrows tags alone and
 carries no `CONTEXTS` section at all. In both tag pickers `w`, `s`, `c`, and `t`

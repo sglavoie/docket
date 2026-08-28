@@ -2047,12 +2047,12 @@ project from the base task workspace — while a *semantic* task tag only render
 coloring the title and touching no filter, sort, or workflow rule. The shapes
 differ for the same reason: `BehavioralProjectTags` is a map keyed by tag name
 because its entries are independent, and `SemanticTaskTags` is an ordered slice
-because the `bug` > `epic` > `story` > `feature` > `idea` precedence is part of
-what it publishes. `models.SemanticTaskTagForTags` resolves that precedence, and
+because the `bug` > `question` > `epic` > `story` > `feature` > `idea` precedence
+is part of what it publishes. `models.SemanticTaskTagForTags` resolves that precedence, and
 the `#` and `f#` pickers read the slice order to build their `SEMANTIC` section.
 Those rows and the explainer line beneath them resolve one color through
 `semanticTaskTitleStyle`, so the section previews the effect it describes.
-Their seeding is asymmetric on purpose: `#` offers all five whether or not any
+Their seeding is asymmetric on purpose: `#` offers all six whether or not any
 task carries them, because offering an unused tag is how it gets discovered,
 while `f#` stays usage-derived, because a filter row nothing carries can only
 empty the projection. The retained `internal/tui/tag_selector.go` path reached
@@ -2066,7 +2066,7 @@ explainer use the complete `Summary`.
 
 `tagChipStyle` (`internal/tui/styles_helpers.go`) is the single tag color
 authority, and it generalizes that "one lookup, so the surface previews the
-effect" rule to every tag rather than the five semantic ones. It hashes
+effect" rule to every tag rather than the six semantic ones. It hashes
 `models.NormalizeTag(tag)` onto a slot of `tagChipColors`, which
 `rebuildTagChipColors` re-resolves from `config.DefaultTagChipRamp(variant)` on
 every `ApplyTheme`. The slot index, not a resolved hex, is therefore the durable
@@ -2074,7 +2074,7 @@ unit of tag identity: `T` re-colors every chip and slot `i` stays the same color
 family in both themes, so toggling never reshuffles which tag wears which hue.
 The ramp is the explicit tier below the semantic titles — six slots at ≤65%
 saturation, gated in `internal/config/theme_defaults_test.go` for perceptual
-distance from each other, from the nine title colors, and from both alert row
+distance from each other, from the ten title colors, and from both alert row
 backgrounds — which keeps a chip subordinate to the title beside it by
 construction rather than by convention.
 

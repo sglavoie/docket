@@ -70,6 +70,8 @@ func semanticTaskTitleStyle(
 			return style
 		case models.SemanticTaskTagBug:
 			foreground = ColorSemanticBugSelectedTitle
+		case models.SemanticTaskTagQuestion:
+			foreground = ColorSemanticQuestionSelectedTitle
 		case models.SemanticTaskTagEpic:
 			foreground = ColorSemanticEpicSelectedTitle
 		case models.SemanticTaskTagStory:
@@ -86,6 +88,8 @@ func semanticTaskTitleStyle(
 			return style
 		case models.SemanticTaskTagBug:
 			foreground = ColorSemanticBugDeferredTitle
+		case models.SemanticTaskTagQuestion:
+			foreground = ColorSemanticQuestionDeferredTitle
 		case models.SemanticTaskTagEpic:
 			foreground = ColorSemanticEpicDeferredTitle
 		case models.SemanticTaskTagStory:
@@ -101,6 +105,8 @@ func semanticTaskTitleStyle(
 			return style
 		case models.SemanticTaskTagBug:
 			foreground = ColorSemanticBugTitle
+		case models.SemanticTaskTagQuestion:
+			foreground = ColorSemanticQuestionTitle
 		case models.SemanticTaskTagEpic:
 			foreground = ColorSemanticEpicTitle
 		case models.SemanticTaskTagStory:

@@ -27,21 +27,24 @@ func DefaultLightTheme() Theme {
 			TaskContext:         "#0f766e",
 			TaskContextDeferred: "#5f8782",
 
-			SemanticBugTitle:             "#cc2222",
-			SemanticEpicTitle:            "#9d1fb8",
-			SemanticStoryTitle:           "#0b6ba8",
-			SemanticFeatureTitle:         "#067a3f",
-			SemanticIdeaTitle:            "#8f6b00",
-			SemanticBugSelectedTitle:     "#8f1818",
-			SemanticEpicSelectedTitle:    "#6e1681",
-			SemanticStorySelectedTitle:   "#084b76",
-			SemanticFeatureSelectedTitle: "#04552c",
-			SemanticIdeaSelectedTitle:    "#644b00",
-			SemanticBugDeferredTitle:     "#b06c6c",
-			SemanticEpicDeferredTitle:    "#a26aaf",
-			SemanticStoryDeferredTitle:   "#4d84a7",
-			SemanticFeatureDeferredTitle: "#3f8d66",
-			SemanticIdeaDeferredTitle:    "#927d3c",
+			SemanticBugTitle:              "#cc2222",
+			SemanticQuestionTitle:         "#c25a00",
+			SemanticEpicTitle:             "#9d1fb8",
+			SemanticStoryTitle:            "#0b6ba8",
+			SemanticFeatureTitle:          "#067a3f",
+			SemanticIdeaTitle:             "#8f6b00",
+			SemanticBugSelectedTitle:      "#8f1818",
+			SemanticQuestionSelectedTitle: "#5d3228",
+			SemanticEpicSelectedTitle:     "#6e1681",
+			SemanticStorySelectedTitle:    "#084b76",
+			SemanticFeatureSelectedTitle:  "#04552c",
+			SemanticIdeaSelectedTitle:     "#644b00",
+			SemanticBugDeferredTitle:      "#b06c6c",
+			SemanticQuestionDeferredTitle: "#c76c38",
+			SemanticEpicDeferredTitle:     "#a26aaf",
+			SemanticStoryDeferredTitle:    "#4d84a7",
+			SemanticFeatureDeferredTitle:  "#3f8d66",
+			SemanticIdeaDeferredTitle:     "#927d3c",
 		},
 	}
 }
@@ -50,8 +53,11 @@ func DefaultLightTheme() Theme {
 // maintained palette roles. Inspired by Tokyo Night with controlled saturation
 // (≤65%) and a contrast lift for primary readable text against #1a1b26. The
 // semantic title family is the deliberate exception: it runs at full chroma and
-// spreads its five hues apart, because only a tagged task wears one and telling
-// them apart at a glance is the whole point of the color. The tag chip ramp
+// spreads its six hues apart, because only a tagged task wears one and telling
+// them apart at a glance is the whole point of the color. The question orange
+// sits between the bug red and the idea amber, so its selected and deferred
+// tiers run hotter than their siblings — that extra chroma is what holds them
+// clear of both neighbors. The tag chip ramp
 // (DefaultTagChipRamp) is the explicit tier below it: chips hold to the ≤65%
 // rule, so a chip stays subordinate to a title by construction rather than by
 // convention.
@@ -79,21 +85,24 @@ func DefaultDarkTheme() Theme {
 			TaskContext:         "#73daca",
 			TaskContextDeferred: "#4f948f",
 
-			SemanticBugTitle:             "#ff4f58",
-			SemanticEpicTitle:            "#e17bff",
-			SemanticStoryTitle:           "#3fc5ff",
-			SemanticFeatureTitle:         "#35d67f",
-			SemanticIdeaTitle:            "#ffd23f",
-			SemanticBugSelectedTitle:     "#ff9ea3",
-			SemanticEpicSelectedTitle:    "#eeb6ff",
-			SemanticStorySelectedTitle:   "#95dfff",
-			SemanticFeatureSelectedTitle: "#90e8b9",
-			SemanticIdeaSelectedTitle:    "#ffe695",
-			SemanticBugDeferredTitle:     "#c47074",
-			SemanticEpicDeferredTitle:    "#b16fc4",
-			SemanticStoryDeferredTitle:   "#4891b0",
-			SemanticFeatureDeferredTitle: "#549572",
-			SemanticIdeaDeferredTitle:    "#9c8740",
+			SemanticBugTitle:              "#ff4f58",
+			SemanticQuestionTitle:         "#f57a00",
+			SemanticEpicTitle:             "#e17bff",
+			SemanticStoryTitle:            "#3fc5ff",
+			SemanticFeatureTitle:          "#35d67f",
+			SemanticIdeaTitle:             "#ffd23f",
+			SemanticBugSelectedTitle:      "#ff9ea3",
+			SemanticQuestionSelectedTitle: "#ffa366",
+			SemanticEpicSelectedTitle:     "#eeb6ff",
+			SemanticStorySelectedTitle:    "#95dfff",
+			SemanticFeatureSelectedTitle:  "#90e8b9",
+			SemanticIdeaSelectedTitle:     "#ffe695",
+			SemanticBugDeferredTitle:      "#c47074",
+			SemanticQuestionDeferredTitle: "#d66e29",
+			SemanticEpicDeferredTitle:     "#b16fc4",
+			SemanticStoryDeferredTitle:    "#4891b0",
+			SemanticFeatureDeferredTitle:  "#549572",
+			SemanticIdeaDeferredTitle:     "#9c8740",
 		},
 	}
 }

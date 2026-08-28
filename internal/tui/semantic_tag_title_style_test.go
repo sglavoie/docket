@@ -20,11 +20,13 @@ func TestSemanticTagTitleStylesUseExactCaseInsensitivePrecedence(t *testing.T) {
 		want color.Color
 	}{
 		{name: "bug", tags: []string{"BUG"}, want: lipgloss.Color(defaultColorSemanticBugTitle)},
+		{name: "question", tags: []string{"QuEsTiOn"}, want: lipgloss.Color(defaultColorSemanticQuestionTitle)},
 		{name: "epic", tags: []string{"EPIC"}, want: lipgloss.Color(defaultColorSemanticEpicTitle)},
 		{name: "story", tags: []string{"Story"}, want: lipgloss.Color(defaultColorSemanticStoryTitle)},
 		{name: "feature", tags: []string{"Feature"}, want: lipgloss.Color(defaultColorSemanticFeatureTitle)},
 		{name: "idea", tags: []string{"iDeA"}, want: lipgloss.Color(defaultColorSemanticIdeaTitle)},
-		{name: "bug precedence", tags: []string{"idea", "feature", "story", "epic", "bug"}, want: lipgloss.Color(defaultColorSemanticBugTitle)},
+		{name: "bug precedence", tags: []string{"idea", "feature", "story", "epic", "question", "bug"}, want: lipgloss.Color(defaultColorSemanticBugTitle)},
+		{name: "question precedence", tags: []string{"idea", "feature", "story", "epic", "question"}, want: lipgloss.Color(defaultColorSemanticQuestionTitle)},
 		{name: "epic precedence", tags: []string{"idea", "feature", "story", "epic"}, want: lipgloss.Color(defaultColorSemanticEpicTitle)},
 		{name: "story precedence", tags: []string{"idea", "feature", "story"}, want: lipgloss.Color(defaultColorSemanticStoryTitle)},
 		{name: "feature precedence", tags: []string{"idea", "feature"}, want: lipgloss.Color(defaultColorSemanticFeatureTitle)},
@@ -87,6 +89,7 @@ func TestSemanticTagTitleStylesCoverThemeSelectedAndDeferredVariants(t *testing.
 			deferred string
 		}{
 			{tag: "bug", base: "#ff4f58", selected: "#ff9ea3", deferred: "#c47074"},
+			{tag: "question", base: "#f57a00", selected: "#ffa366", deferred: "#d66e29"},
 			{tag: "epic", base: "#e17bff", selected: "#eeb6ff", deferred: "#b16fc4"},
 			{tag: "story", base: "#3fc5ff", selected: "#95dfff", deferred: "#4891b0"},
 			{tag: "feature", base: "#35d67f", selected: "#90e8b9", deferred: "#549572"},
@@ -99,6 +102,7 @@ func TestSemanticTagTitleStylesCoverThemeSelectedAndDeferredVariants(t *testing.
 			deferred string
 		}{
 			{tag: "bug", base: "#cc2222", selected: "#8f1818", deferred: "#b06c6c"},
+			{tag: "question", base: "#c25a00", selected: "#5d3228", deferred: "#c76c38"},
 			{tag: "epic", base: "#9d1fb8", selected: "#6e1681", deferred: "#a26aaf"},
 			{tag: "story", base: "#0b6ba8", selected: "#084b76", deferred: "#4d84a7"},
 			{tag: "feature", base: "#067a3f", selected: "#04552c", deferred: "#3f8d66"},

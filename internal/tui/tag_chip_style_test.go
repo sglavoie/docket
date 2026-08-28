@@ -20,6 +20,7 @@ import (
 // TestTagChipSlotCollapsesSpellingsOfOneTag.
 var tagChipGoldenSlots = map[string]int{
 	"bug":      1,
+	"question": 3,
 	"epic":     2,
 	"story":    0,
 	"feature":  5,

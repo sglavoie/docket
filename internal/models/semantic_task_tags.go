@@ -10,6 +10,7 @@ type SemanticTaskTagRole uint8
 const (
 	SemanticTaskTagNone SemanticTaskTagRole = iota
 	SemanticTaskTagBug
+	SemanticTaskTagQuestion
 	SemanticTaskTagEpic
 	SemanticTaskTagStory
 	SemanticTaskTagFeature
@@ -35,13 +36,20 @@ type SemanticTaskTag struct {
 // SemanticTaskTags is the single source for every surface that explains a
 // semantic task tag: the tag picker sections and their explainers. Unlike
 // BehavioralProjectTags it is an ordered slice rather than a map, because the
-// bug > epic > story > feature > idea precedence is part of what it publishes.
+// bug > question > epic > story > feature > idea precedence is part of what it
+// publishes.
 var SemanticTaskTags = []SemanticTaskTag{
 	{
 		Role:       SemanticTaskTagBug,
 		Name:       "bug",
 		RowSummary: "A defect to fix. Highest precedence.",
 		Summary:    "A defect to fix. Highest precedence: it colors the title over any other semantic tag.",
+	},
+	{
+		Role:       SemanticTaskTagQuestion,
+		Name:       "question",
+		RowSummary: "An open question to investigate.",
+		Summary:    "An open question to investigate before the work can proceed. It outranks every kind but bug.",
 	},
 	{
 		Role:       SemanticTaskTagEpic,
