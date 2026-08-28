@@ -26,9 +26,6 @@ func TestRecurrenceVocabularyIsConfinedToMigrationAndRejectedInput(t *testing.T)
 		"internal/storage/format/v5_task_codec.go":          "schema-5 migration codec",
 		"internal/storage/format/v6_task_convert.go":        "schema-5 to schema-6 migration",
 		"internal/storage/v5_archive_reintegration.go":      "schema-5 migration reintegration",
-		"internal/textgrammar/grammar.go":                   "retired-input token recognition",
-		"internal/textgrammar/parser.go":                    "retired-input token dispatch",
-		"internal/tui/quick_capture_parser_fields.go":       "rejected-input guidance",
 	}
 
 	fset := token.NewFileSet()

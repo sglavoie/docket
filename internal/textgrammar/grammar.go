@@ -28,21 +28,26 @@ const allSurfaces = SurfaceCapture | SurfaceEdit | SurfaceOutline | SurfaceSearc
 type Field string
 
 const (
-	FieldPriority    Field = "priority"
-	FieldTag         Field = "tag"
-	FieldRemoveTag   Field = "remove_tag"
-	FieldContext     Field = "context"
-	FieldDue         Field = "due"
-	FieldDefer       Field = "defer"
-	FieldRecurrence  Field = "recurrence"
-	FieldTaskType    Field = "type"
-	FieldParent      Field = "parent"
-	FieldChild       Field = "child"
-	FieldProject     Field = "project"
-	FieldDestination Field = "destination"
-	FieldPinned      Field = "pinned"
-	FieldAttachment  Field = "attachment"
-	FieldComment     Field = "comment"
+	FieldPriority  Field = "priority"
+	FieldTag       Field = "tag"
+	FieldRemoveTag Field = "remove_tag"
+	FieldContext   Field = "context"
+	FieldDue       Field = "due"
+	FieldDefer     Field = "defer"
+	FieldTaskType  Field = "type"
+	FieldParent    Field = "parent"
+	FieldChild     Field = "child"
+	// FieldDependency and FieldRemoveDependency reclaim the tilde that retired
+	// recurrence used to own. A dependency is a soft, informational reference:
+	// the grammar records it and nothing about the subject's readiness, ordering,
+	// or eligibility to complete follows from it.
+	FieldDependency       Field = "dependency"
+	FieldRemoveDependency Field = "remove_dependency"
+	FieldProject          Field = "project"
+	FieldDestination      Field = "destination"
+	FieldPinned           Field = "pinned"
+	FieldAttachment       Field = "attachment"
+	FieldComment          Field = "comment"
 )
 
 // Cardinality describes whether a field may occur once or many times in one
@@ -171,6 +176,42 @@ var registry = []definitionSpec{
 		pattern:    `(?:^|\s)&('[^']*'|"(?:\\.|[^"\\])*"|(?:\\ |\S)+)`,
 		normalize:  util.NormalizePastedPathInput,
 		validation: validateAttachment,
+	},
+	// Both dependency sigils are parsed BEFORE #tag, for the reason attachment is:
+	// RE2 has no lookaround, so #([\w][\w.:-]*) stops at the tilde in
+	// "Task #work~foo" and the rewrite that removes the tag would leave the ~
+	// whitespace-preceded, minting a dependency out of ordinary prose. Peeling the
+	// tilde first leaves it glued to the tag, where it stays literal title text.
+	// Removal is parsed before addition so the two-rune trigger is peeled whole;
+	// the leading-whitespace boundary already keeps ~ out of "-~12", but the order
+	// is what makes that independent of the boundary rule.
+	{
+		Definition: Definition{
+			Field: FieldRemoveDependency, Group: "Dependencies", Trigger: "-~",
+			Description: "Remove a dependency (repeatable)",
+			Examples:    []string{"-~1", "-~project-slug:1"},
+			// Capture carries the field only so it can be refused by name. It
+			// declares no capture form, so the guide never advertises it there.
+			Surfaces: SurfaceCapture | SurfaceEdit, Cardinality: CardinalityRepeatable,
+		},
+		forms:      []surfaceForm{{Text: "-~task", Surfaces: SurfaceEdit}},
+		pattern:    `(?:^|\s)-~(\S+)`,
+		validation: validateAny,
+	},
+	{
+		Definition: Definition{
+			Field: FieldDependency, Group: "Dependencies", Trigger: "~",
+			Description: "Depend on another task (repeatable)",
+			Examples:    []string{"~1", "~project-slug:1"},
+			Surfaces:    SurfaceCapture | SurfaceEdit, Cardinality: CardinalityRepeatable,
+			Clears: []ClearOperation{{Value: clearValue, Description: "Clear dependencies", Surfaces: SurfaceEdit}},
+		},
+		forms: []surfaceForm{
+			{Text: "~task", Surfaces: SurfaceCapture | SurfaceEdit},
+			{Text: "~0", Surfaces: SurfaceEdit},
+		},
+		pattern:    `(?:^|\s)~(\S+)`,
+		validation: validateAny,
 	},
 	{
 		Definition: Definition{
@@ -348,15 +389,6 @@ var registry = []definitionSpec{
 		forms:   []surfaceForm{{Text: "^type", Surfaces: SurfaceCapture}},
 		pattern: `(?:^|\s)\^(\S+)`,
 	},
-	{
-		Definition: Definition{
-			Field: FieldRecurrence, Group: "Legacy", Trigger: "~", Description: "Retired recurrence",
-			Examples: []string{"~weekly"}, Legacy: true, Surfaces: SurfaceCapture,
-			Cardinality: CardinalitySingleton,
-		},
-		forms:   []surfaceForm{{Text: "~recurrence", Surfaces: SurfaceCapture}},
-		pattern: `(?:^|\s)~(\S+)`,
-	},
 }
 
 // guideOrder is teach order, which is a different concern from the parse order
@@ -378,26 +410,36 @@ var guideOrder = []Field{
 	FieldProject,
 	FieldParent,
 	FieldChild,
+	FieldDependency,
+	FieldRemoveDependency,
 	FieldAttachment,
 	FieldComment,
 	FieldTaskType,
-	FieldRecurrence,
 }
 
 // Definitions returns defensive copies of the canonical definitions available
 // on a surface, in parse order.
+//
+// A field the parser recognizes on a surface but declares no form for there is
+// deliberately absent: recognition without a form is how a token is refused by
+// name instead of folding into the title, and advertising a formless entry would
+// teach a syntax the surface does not accept. `-~task` is the one such entry
+// today — capture tokenizes it only to say removal is not a capture operation.
 func Definitions(surface Surface) []Definition {
 	result := make([]Definition, 0, len(registry))
 	for _, spec := range registry {
 		if spec.Legacy || spec.Surfaces&surface == 0 {
 			continue
 		}
+		forms := formsForSurface(spec.forms, surface)
+		if len(forms) == 0 {
+			continue
+		}
 		def := spec.Definition
 		if surface == SurfaceSearch {
 			def.Description = spec.searchDescription
 		}
-		def.Forms = formsForSurface(spec.forms, surface)
-		def.Forms = slices.Clone(def.Forms)
+		def.Forms = slices.Clone(forms)
 		def.Values = slices.Clone(def.Values)
 		def.RetiredValues = slices.Clone(def.RetiredValues)
 		def.Examples = slices.Clone(def.Examples)

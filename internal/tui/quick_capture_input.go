@@ -34,6 +34,11 @@ const (
 	// surface: capture does not carry the field at all, and quick edit peels the
 	// two-character trigger itself so it can reuse the tag mode's candidate list.
 	acModeRemoveTag
+	// acModeDependency completes a ~task and acModeRemoveDependency a -~task.
+	// Only the edit surface reaches the removal mode: capture has no stored set to
+	// subtract from, and it peels the two-character trigger itself.
+	acModeDependency
+	acModeRemoveDependency
 )
 
 // acVisibleCount is the number of suggestions visible at once (scrollable window size)
@@ -65,6 +70,7 @@ type quickCaptureResult struct {
 	destination       app.CaptureDestination
 	destinationSet    bool
 	pinned            bool
+	dependencies      []capturedDependencyRef
 	attachments       []string
 	comments          []string
 	targetProjectID   *string // Target project ID for cross-project capture
@@ -82,6 +88,12 @@ func (r *quickCaptureResult) childIDs() []string {
 		ids[i] = child.id
 	}
 	return ids
+}
+
+// dependencyLocators projects the resolved references into the locators a
+// CaptureRequest carries, in reference order.
+func (r *quickCaptureResult) dependencyLocators() []app.TaskLocator {
+	return dependencyLocators(r.dependencies)
 }
 
 // quickCaptureInput encapsulates the compact Task Composer's autocomplete,
@@ -185,6 +197,10 @@ func autocompleteModeForField(field textgrammar.Field) int {
 		return acModeProject
 	case textgrammar.FieldPinned:
 		return acModePin
+	case textgrammar.FieldDependency:
+		return acModeDependency
+	case textgrammar.FieldRemoveDependency:
+		return acModeRemoveDependency
 	case textgrammar.FieldAttachment:
 		// An attachment value is a pasted URL or path, so there is nothing to
 		// suggest. The mode exists because quickCaptureTriggers drops a field
@@ -408,6 +424,8 @@ func (q *quickCaptureInput) refreshAutocomplete() {
 		items = q.getProjectSuggestions(partial)
 	case acModePin:
 		items = q.getPinSuggestions(partial)
+	case acModeDependency:
+		items = q.getDependencySuggestions(partial, parsedLine)
 	}
 	q.ac.UpdateSuggestions(mode, pos, items)
 }
@@ -602,6 +620,18 @@ func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 			childChunks[i] = fmt.Sprintf("%s%d %s", childDefinition.Trigger, child.shortID, child.title)
 		}
 		groups = append(groups, previewGroup{label: "Children", chunks: childChunks})
+	}
+
+	// Depends follows Children because both name other tasks, and it states one
+	// chunk per reference for the same reason: the parser already deduped aliases
+	// in first-reference order, so the group is also the count.
+	if len(q.preview.dependencies) > 0 {
+		dependencyDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDependency)
+		dependencyChunks := make([]string, len(q.preview.dependencies))
+		for i, ref := range q.preview.dependencies {
+			dependencyChunks[i] = dependencyDefinition.Trigger + ref.label()
+		}
+		groups = append(groups, previewGroup{label: "Depends", chunks: dependencyChunks})
 	}
 
 	var scheduleChunks []string

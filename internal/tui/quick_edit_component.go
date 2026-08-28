@@ -11,6 +11,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
@@ -365,6 +366,8 @@ func (q *QuickEditComponent) suggestions(mode, triggerPos int, partial string, p
 		draft := quickEditDraftWithoutToken(q.input.Value(), triggerPos)
 		children, _ := quickEditChildCandidates(draft, q.task, q.project, q.projects)
 		return quickEditStructuralSuggestions(children, partial, textgrammar.FieldChild)
+	case acModeDependency, acModeRemoveDependency:
+		return q.dependencySuggestions(mode, triggerPos, partial)
 	case acModeProject:
 		return quickEditProjectSuggestions(q.projects, partial)
 	case acModePriority, acModeDate, acModeDestination, acModePin:
@@ -372,6 +375,55 @@ func (q *QuickEditComponent) suggestions(mode, triggerPos int, partial string, p
 	default:
 		return nil
 	}
+}
+
+// dependencySuggestions offers open tasks from every loaded project for a ~task
+// addition, and exactly the references the task already carries for a -~task
+// removal. The two candidate sets are deliberately disjoint in kind: an addition
+// asks the workspace for something still open, while a removal must reach the
+// closed, moved, and unloaded targets an addition would refuse.
+func (q *QuickEditComponent) dependencySuggestions(mode, triggerPos int, partial string) []ACSuggestion {
+	field := textgrammar.FieldDependency
+	if mode == acModeRemoveDependency {
+		field = textgrammar.FieldRemoveDependency
+	}
+	definition, ok := textgrammar.DefinitionFor(textgrammar.SurfaceEdit, field)
+	if !ok {
+		return nil
+	}
+	effective := q.effectiveProject()
+	// The token under the cursor is removed before the draft is read, so an
+	// in-progress alias cannot withhold the very task it is naming.
+	draft := textgrammar.Parse(quickEditDraftWithoutToken(q.input.Value(), triggerPos), textgrammar.SurfaceEdit)
+	used := draftedDependencyLocators(draft, field, effective, q.projects)
+
+	sourceID := ""
+	if q.task != nil {
+		sourceID = q.task.ID
+	}
+	if mode == acModeRemoveDependency {
+		candidates := dependencyRemovalCandidates(q.task, q.projects, used)
+		return dependencySuggestions(candidates, partial, effective, definition.Trigger, q.input.Width()-25)
+	}
+	// An addition never re-offers a reference the task already stores, for the
+	// same reason it never re-offers one the draft already names.
+	for _, reference := range q.dependencyReferences() {
+		if used == nil {
+			used = map[app.TaskLocator]bool{}
+		}
+		used[app.LocatorForReference(reference)] = true
+	}
+	candidates := dependencyAdditionCandidates(q.projects, sourceID, used)
+	items := quickEditClearSuggestions(field, partial)
+	return append(items, dependencySuggestions(candidates, partial, effective, definition.Trigger, q.input.Width()-25)...)
+}
+
+// dependencyReferences reads the stored set the draft starts from.
+func (q *QuickEditComponent) dependencyReferences() []models.TaskReference {
+	if q.task == nil {
+		return nil
+	}
+	return q.task.Dependencies
 }
 
 func (q *QuickEditComponent) effectiveProject() *models.Project {
@@ -407,6 +459,12 @@ func detectQuickEditTrigger(input string, triggers []ACTrigger) (mode, pos int, 
 	tokenStart := strings.LastIndexAny(input, " \n\t") + 1
 	if tokenStart < len(input) && strings.HasPrefix(input[tokenStart:], "-#") {
 		return acModeTag, tokenStart, input[tokenStart+2:], "-#", true
+	}
+	// -~ is peeled here for the same reason -# is: DetectTrigger takes the longest
+	// registered trigger, and quickEditTriggers carries single-rune triggers only,
+	// so a two-rune removal form would otherwise complete as its own base sigil.
+	if tokenStart < len(input) && strings.HasPrefix(input[tokenStart:], "-~") {
+		return acModeRemoveDependency, tokenStart, input[tokenStart+2:], "-~", false
 	}
 	mode, pos, partial = DetectTrigger(input, triggers)
 	if mode == acModeNone {

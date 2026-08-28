@@ -71,7 +71,12 @@ func TestStaticAutocompleteValuesComeFromCanonicalRegistry(t *testing.T) {
 
 func TestSyntaxGuideExamplesAndGroupsComeFromCanonicalRegistry(t *testing.T) {
 	project := quickCaptureTestProject()
-	routed := &models.Project{ID: "routed", Name: "Routed", Slug: "project-slug"}
+	// The routed project carries a task because the dependency examples teach the
+	// qualified alias, which is only resolvable when the named project has one.
+	routed := &models.Project{
+		ID: "routed", Name: "Routed", Slug: "project-slug",
+		Tasks: []*models.Task{{ID: "routed-1", ShortID: 1, Title: "Routed work"}},
+	}
 	q := &quickCaptureInput{width: 120}
 
 	var entries []syntaxGuideEntry

@@ -47,11 +47,10 @@ func TestParseQuickCaptureEmbeddedTokenLiterals(t *testing.T) {
 			wantPriority: 0,
 		},
 		{
-			name:         "embedded tilde should not trigger recurrence",
+			name:         "embedded tilde should not trigger a dependency",
 			input:        "Path to~daily file",
 			wantTitle:    "Path to~daily file",
 			wantPriority: 0,
-			wantHasRecur: false,
 		},
 		{
 			name:         "embedded caret remains title text",

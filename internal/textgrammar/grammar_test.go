@@ -12,14 +12,14 @@ import (
 
 func TestParseUsesSharedSurfaceGrammar(t *testing.T) {
 	parsed := Parse(
-		"Build API ^bug !1 #backend @tomorrow ~weekly >1 <2 %core $backlog",
+		"Build API ^bug !1 #backend @tomorrow ~12 >1 <2 %core $backlog",
 		SurfaceCapture,
 	)
 	if parsed.Text != "Build API" {
 		t.Fatalf("Text = %q, want Build API", parsed.Text)
 	}
 	for _, field := range []Field{
-		FieldTaskType, FieldPriority, FieldTag, FieldDue, FieldRecurrence, FieldParent,
+		FieldTaskType, FieldPriority, FieldTag, FieldDue, FieldDependency, FieldParent,
 		FieldChild, FieldProject, FieldDestination,
 	} {
 		if len(parsed.TokensFor(field)) == 0 {
@@ -28,7 +28,7 @@ func TestParseUsesSharedSurfaceGrammar(t *testing.T) {
 	}
 }
 
-func TestSharedParserAdvertisesExactlyTwelveCaptureSigils(t *testing.T) {
+func TestSharedParserAdvertisesExactlyThirteenCaptureSigils(t *testing.T) {
 	parsed := Parse(
 		"Keep type:bug priority:1 pri:2 tag:backend due:tomorrow recur:weekly project:core proj:core p:core parent:1 child:1 children:1 state:ready has:due no:tag is:pinned",
 		SurfaceCapture|SurfaceEdit,
@@ -41,13 +41,13 @@ func TestSharedParserAdvertisesExactlyTwelveCaptureSigils(t *testing.T) {
 	}
 
 	defs := Definitions(SurfaceCapture)
-	if len(defs) != 12 {
-		t.Fatalf("capture definitions = %d, want 12: %+v", len(defs), defs)
+	if len(defs) != 13 {
+		t.Fatalf("capture definitions = %d, want 13: %+v", len(defs), defs)
 	}
 	// Parse order, not teach order: ;comment; leads because nothing else may peel
 	// a sigil out of a comment's span, and &link sits ahead of #tag because the
 	// tag pattern would otherwise hand it a whitespace-preceded &.
-	wantForms := []string{";comment;", "&link", "!1-3", "#tag", "##context", "@date", "@@defer", "$destination", "*pin", "%project", ">parent", "<child"}
+	wantForms := []string{";comment;", "&link", "~task", "!1-3", "#tag", "##context", "@date", "@@defer", "$destination", "*pin", "%project", ">parent", "<child"}
 	gotForms := make([]string, len(defs))
 	for i, def := range defs {
 		if len(def.Forms) != 1 {
@@ -214,6 +214,7 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 				FieldDestination: {"$destination"}, FieldPinned: {"*pin"},
 				FieldProject: {"%project"}, FieldParent: {">parent"},
 				FieldChild: {"<child"}, FieldAttachment: {"&link"}, FieldComment: {";comment;"},
+				FieldDependency: {"~task"},
 			},
 		},
 		{
@@ -225,7 +226,8 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 				FieldDefer:   {"@@defer", "@@0"}, FieldDestination: {"$destination"},
 				FieldPinned:  {"*pin", "*unpin"},
 				FieldProject: {"%project"}, FieldParent: {">parent", ">0"},
-				FieldChild: {"<child"},
+				FieldChild:      {"<child"},
+				FieldDependency: {"~task", "~0"}, FieldRemoveDependency: {"-~task"},
 			},
 		},
 		{
@@ -479,11 +481,15 @@ func TestRegistryInvariantsAndDestinationCoverage(t *testing.T) {
 
 func TestDefinitionsReturnDefensiveCopies(t *testing.T) {
 	defs := Definitions(SurfaceEdit)
-	defs[0].Forms[0] = "mutated"
-	defs[0].Values[0] = "mutated"
-	defs[0].RetiredValues[0] = "mutated"
-	defs[0].Examples[0] = "mutated"
-	defs[0].Clears[0].Value = "mutated"
+	index := slices.IndexFunc(defs, func(def Definition) bool { return def.Field == FieldPriority })
+	if index < 0 {
+		t.Fatal("edit definitions are missing priority")
+	}
+	defs[index].Forms[0] = "mutated"
+	defs[index].Values[0] = "mutated"
+	defs[index].RetiredValues[0] = "mutated"
+	defs[index].Examples[0] = "mutated"
+	defs[index].Clears[0].Value = "mutated"
 
 	fresh, ok := DefinitionFor(SurfaceEdit, FieldPriority)
 	if !ok || fresh.Forms[0] != "!1-3" || fresh.Values[0] != "1" || fresh.RetiredValues[0] != "4" || fresh.Examples[0] != "!1" || fresh.Clears[0].Value != "0" {

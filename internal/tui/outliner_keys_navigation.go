@@ -86,6 +86,9 @@ func taskLineEditRequest(source TaskIdentity, result *quickEditResult) app.TaskL
 			}
 		}
 	}
+	// A dependency locator is fully qualified at parse time and is independent of
+	// where the edited task lands, so a cross-project move carries it unchanged.
+	req.Dependencies = result.dependencyPatch()
 	// Children resolve in the effective project, which is the destination
 	// whenever the edit also crosses a boundary.
 	for _, child := range result.children {

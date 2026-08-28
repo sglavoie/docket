@@ -18,7 +18,6 @@ type quickCaptureParseTestCase struct {
 	wantHasDueDate  bool
 	wantParentID    *string
 	wantSection     string
-	wantHasRecur    bool
 	wantDestination app.CaptureDestination
 	wantState       models.WorkflowState
 	wantStatus      models.WorkflowState

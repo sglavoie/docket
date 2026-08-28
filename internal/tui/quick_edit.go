@@ -59,6 +59,16 @@ type quickEditResult struct {
 	// there is no clear form, so nil and empty say the same thing.
 	children []*models.Task
 
+	// dependencyAdds and dependencyRemovals are the additive and subtractive
+	// halves of the soft-reference patch, in first-occurrence order.
+	// dependencyClear replaces the whole stored set with nothing and cannot be
+	// combined with either, exactly as app.DependencyPatch requires. All three
+	// empty means the edit never mentioned a dependency, which preserves the
+	// stored set.
+	dependencyAdds     []capturedDependencyRef
+	dependencyRemovals []capturedDependencyRef
+	dependencyClear    bool
+
 	// preview is a detached task value reflecting every accepted root patch.
 	// Descendants and workspace collections are deliberately never rewritten.
 	preview models.Task
@@ -109,7 +119,7 @@ func parseQuickEditShared(input string, task *models.Task, project *models.Proje
 		return parser.result, parser.errMsg
 	}
 	parser.applyPin()
-	if parser.applyProject() || parser.applyParent() || parser.applyChildren() {
+	if parser.applyProject() || parser.applyParent() || parser.applyChildren() || parser.applyDependencies() {
 		return parser.result, parser.errMsg
 	}
 	return parser.finish()
@@ -387,6 +397,100 @@ func (p *quickEditParser) applyChildren() bool {
 		return p.setError(reason)
 	}
 	return false
+}
+
+// applyDependencies reads the ~task, -~task, and ~0 halves of the soft-reference
+// patch. It runs after applyProject so a bare alias resolves in the project the
+// edit ends in, and it refuses exactly what the application layer refuses, at the
+// same wording, so a line the preview accepted is never rejected on commit.
+//
+// A removal is validated for shape alone: a stored reference whose target has
+// since closed, moved out of view, or been deleted must stay removable, which is
+// why only additions ask the workspace anything.
+func (p *quickEditParser) applyDependencies() bool {
+	definition, ok := textgrammar.DefinitionFor(textgrammar.SurfaceEdit, textgrammar.FieldDependency)
+	if !ok {
+		return p.setError("dependency grammar is unavailable")
+	}
+	removeDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceEdit, textgrammar.FieldRemoveDependency)
+	additions := p.parsed.TokensFor(textgrammar.FieldDependency)
+	removals := p.parsed.TokensFor(textgrammar.FieldRemoveDependency)
+	if len(additions) == 0 && len(removals) == 0 {
+		return false
+	}
+
+	clears := 0
+	for _, token := range additions {
+		if token.Value == dependencyClearValue {
+			clears++
+		}
+	}
+	if clears > 0 {
+		p.result.dependencyClear = true
+		if clears != len(additions) || len(removals) > 0 {
+			return p.setError("clearing dependencies cannot be combined with adding or removing them")
+		}
+		return false
+	}
+
+	for _, token := range removals {
+		if !p.applyDependencyToken(token, removeDefinition.Trigger, false) {
+			return true
+		}
+	}
+	for _, token := range additions {
+		if !p.applyDependencyToken(token, definition.Trigger, true) {
+			return true
+		}
+	}
+	for _, addition := range p.result.dependencyAdds {
+		if slices.ContainsFunc(p.result.dependencyRemovals, func(removal capturedDependencyRef) bool {
+			return removal.locator == addition.locator
+		}) {
+			return p.setError(fmt.Sprintf("conflicting dependency patch: %s%s and %s%s", definition.Trigger, addition.label(), removeDefinition.Trigger, addition.label()))
+		}
+	}
+	return false
+}
+
+// applyDependencyToken resolves one reference and files it on the matching half
+// of the patch. It reports false when the parse must stop, matching the loop
+// convention every other repeatable field uses.
+func (p *quickEditParser) applyDependencyToken(token textgrammar.Token, trigger string, addition bool) bool {
+	if token.Value == dependencyClearValue && !addition {
+		return !p.setError(fmt.Sprintf("%s%s is not a clear form; use ~%s to clear every dependency", trigger, token.Value, dependencyClearValue))
+	}
+	ref, err := resolveDependencyReference(token.Value, p.effectiveProject, p.allProjects)
+	if err != nil {
+		return !p.setError(err.Error())
+	}
+	if ref.locator.TaskID == "" {
+		return !p.setError(dependencyNotFoundMessage(trigger, token.Value))
+	}
+	if p.task != nil && ref.locator.TaskID == p.task.ID {
+		return !p.setError("a task cannot depend on itself")
+	}
+	if addition {
+		if !ref.resolved {
+			return !p.setError(dependencyNotFoundMessage(trigger, token.Value))
+		}
+		if ref.terminal {
+			return !p.setError(fmt.Sprintf("cannot depend on %s: it is already closed", ref.label()))
+		}
+		p.result.dependencyAdds = appendDependencyRef(p.result.dependencyAdds, ref)
+		return true
+	}
+	p.result.dependencyRemovals = appendDependencyRef(p.result.dependencyRemovals, ref)
+	return true
+}
+
+// dependencyPatch projects the parsed halves into the application contract.
+func (r *quickEditResult) dependencyPatch() app.DependencyPatch {
+	return app.DependencyPatch{
+		Add:    dependencyLocators(r.dependencyAdds),
+		Remove: dependencyLocators(r.dependencyRemovals),
+		Clear:  r.dependencyClear,
+	}
 }
 
 func (p *quickEditParser) finish() (*quickEditResult, string) {
@@ -812,6 +916,7 @@ func buildQuickEditPreview(result *quickEditResult, task *models.Task, project *
 	preview.Comments = slices.Clone(task.Comments)
 	preview.Attachments = slices.Clone(task.Attachments)
 	preview.Checklist = slices.Clone(task.Checklist)
+	preview.Dependencies = applyQuickEditPreviewDependencies(result, task)
 	preview.Title = result.title
 	if result.prioritySet {
 		preview.Priority = result.priority
@@ -915,6 +1020,35 @@ func applyQuickEditPreviewLifecycle(result *quickEditResult, task *models.Task, 
 		return fmt.Errorf("%s", reason)
 	}
 	return preview.ApplyStateTransition(result.state)
+}
+
+// applyQuickEditPreviewDependencies overlays the soft-reference patch on the
+// stored set with the same rules resolveDependencyPatch applies at commit:
+// removals drop first, additions append in first-occurrence order, and a clear
+// replaces everything with nothing. Keeping the two in step is what stops the
+// preview from promising a set the commit would not produce.
+func applyQuickEditPreviewDependencies(result *quickEditResult, task *models.Task) []models.TaskReference {
+	if result.dependencyClear {
+		return nil
+	}
+	next := make([]models.TaskReference, 0, len(task.Dependencies)+len(result.dependencyAdds))
+	for _, existing := range task.Dependencies {
+		if slices.ContainsFunc(result.dependencyRemovals, func(removal capturedDependencyRef) bool {
+			return removal.locator.Reference() == existing
+		}) {
+			continue
+		}
+		if !slices.Contains(next, existing) {
+			next = append(next, existing)
+		}
+	}
+	for _, addition := range result.dependencyAdds {
+		reference := addition.locator.Reference()
+		if !slices.Contains(next, reference) {
+			next = append(next, reference)
+		}
+	}
+	return models.CloneTaskReferences(next)
 }
 
 func hasIncompleteDirectChildren(task *models.Task, project *models.Project) bool {

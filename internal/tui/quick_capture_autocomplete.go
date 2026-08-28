@@ -220,6 +220,35 @@ func (q *quickCaptureInput) structuralSuggestions(partial string, candidates []*
 	return suggestions
 }
 
+// getDependencySuggestions offers every open task the workspace loaded, not just
+// the drafted line's project: a dependency is the one capture reference that may
+// cross a project boundary, so withholding other projects would hide exactly
+// what the qualified alias exists for. Capture has no stored set, so there is
+// nothing to remove and no ~0 row.
+func (q *quickCaptureInput) getDependencySuggestions(partial string, parsedLine textgrammar.Result) []ACSuggestion {
+	definition, ok := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDependency)
+	if !ok {
+		return nil
+	}
+	effective := q.effectiveProject(parsedLine)
+	used := draftedDependencyLocators(parsedLine, textgrammar.FieldDependency, effective, q.allProjects)
+	candidates := dependencyAdditionCandidates(q.dependencyProjects(), "", used)
+	return dependencySuggestions(candidates, partial, effective, definition.Trigger, q.width-25)
+}
+
+// dependencyProjects is the loaded, non-archived population a dependency
+// completion searches. It falls back to the composer's own project so a host
+// launched without a project list still completes locally.
+func (q *quickCaptureInput) dependencyProjects() []*models.Project {
+	if len(q.projectCache) > 0 {
+		return q.projectCache
+	}
+	if q.project != nil {
+		return []*models.Project{q.project}
+	}
+	return nil
+}
+
 // getProjectSuggestions returns matching projects for the partial query.
 func (q *quickCaptureInput) getProjectSuggestions(partial string) []ACSuggestion {
 	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldProject)

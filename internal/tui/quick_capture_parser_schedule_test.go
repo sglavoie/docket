@@ -71,47 +71,38 @@ func TestParseQuickCaptureScheduleAndPlacement(t *testing.T) {
 			wantPriority:   0,
 			wantHasDueDate: true,
 		},
+		// The tilde now belongs to dependencies, so the retired recurrence
+		// vocabulary is no longer special-cased: each of these values is simply a
+		// task reference the project cannot resolve.
 		{
-			name:        "recurrence daily retired",
+			name:        "former daily recurrence is an unresolved reference",
 			input:       "Standup ~daily",
 			wantErr:     true,
-			errContains: "use @date",
+			errContains: "dependency not found",
 		},
 		{
-			name:        "recurrence weekly retired",
+			name:        "former weekly recurrence is an unresolved reference",
 			input:       "Review ~weekly",
 			wantErr:     true,
-			errContains: "use @date",
+			errContains: "dependency not found",
 		},
 		{
-			name:        "recurrence monthly retired",
-			input:       "Monthly report ~monthly",
-			wantErr:     true,
-			errContains: "use @date",
-		},
-		{
-			name:        "recurrence biweekly retired",
-			input:       "Payroll ~biweekly",
-			wantErr:     true,
-			errContains: "use @date",
-		},
-		{
-			name:        "recurrence Nd format retired",
+			name:        "former Nd recurrence is an unresolved reference",
 			input:       "Check plants ~3d",
 			wantErr:     true,
-			errContains: "use @date",
+			errContains: "dependency not found",
 		},
 		{
-			name:        "recurrence Nw format retired",
+			name:        "former Nw recurrence is an unresolved reference",
 			input:       "Team sync ~2w",
 			wantErr:     true,
-			errContains: "use @date",
+			errContains: "dependency not found",
 		},
 		{
-			name:        "recurrence with due date retired",
+			name:        "an unresolved reference beside a due date still refuses",
 			input:       "Standup @tomorrow ~daily",
 			wantErr:     true,
-			errContains: "use @date",
+			errContains: "dependency not found",
 		},
 		{
 			name:         "state assignment",

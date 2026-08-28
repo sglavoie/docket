@@ -39,11 +39,16 @@ func (p *quickCaptureParser) applySharedTokens(parsed textgrammar.Result) {
 	if p.err != nil {
 		return
 	}
-	p.parseRetiredRecurrenceTokens(parsed.TokensFor(textgrammar.FieldRecurrence))
+	p.parseProjectTokens(parsed.TokensFor(textgrammar.FieldProject))
 	if p.err != nil {
 		return
 	}
-	p.parseProjectTokens(parsed.TokensFor(textgrammar.FieldProject))
+	// Dependencies resolve after the route because a bare alias is read in the
+	// effective project, which %project is what settles.
+	p.parseDependencyTokens(
+		parsed.TokensFor(textgrammar.FieldDependency),
+		parsed.TokensFor(textgrammar.FieldRemoveDependency),
+	)
 	if p.err != nil {
 		return
 	}
@@ -236,10 +241,52 @@ func (p *quickCaptureParser) parseDeferTokens(tokens []textgrammar.Token) {
 	}
 }
 
-func (p *quickCaptureParser) parseRetiredRecurrenceTokens(tokens []textgrammar.Token) {
-	for _, token := range tokens {
-		p.failf("recurrence ~%s was removed (use @date for a due date)", token.Value)
+// parseDependencyTokens collects every ~task reference in input order. Removal
+// and clearing reach this parser on purpose: capture tokenizes both so the
+// refusal can name the operation instead of letting -~12 or ~0 fold into the
+// title, and a task that does not exist yet has nothing to remove or clear.
+//
+// A dependency is a soft reference, so an addition asks only that the target be
+// a real, still-open task the workspace loaded; nothing about the new task's
+// readiness or ordering follows from it.
+func (p *quickCaptureParser) parseDependencyTokens(add, remove []textgrammar.Token) {
+	definition, ok := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDependency)
+	if !ok {
+		p.failf("dependency grammar is unavailable")
 		return
+	}
+	// The removal form is read from the edit surface because capture tokenizes it
+	// without teaching it, so capture advertises no definition to name it with.
+	removeDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceEdit, textgrammar.FieldRemoveDependency)
+	if len(remove) > 0 {
+		p.failf("%stask is not available when capturing; a new task has no dependencies to remove", removeDefinition.Trigger)
+		return
+	}
+	for _, token := range add {
+		if token.Value == dependencyClearValue {
+			p.failf("%s%s is not available when capturing; a new task starts without dependencies", definition.Trigger, token.Value)
+			return
+		}
+		ref, err := resolveDependencyReference(token.Value, p.project, p.allProjects)
+		if err != nil {
+			if p.failf("%s", err) {
+				return
+			}
+			continue
+		}
+		if !ref.resolved {
+			if p.failf("%s", dependencyNotFoundMessage(definition.Trigger, token.Value)) {
+				return
+			}
+			continue
+		}
+		if ref.terminal {
+			if p.failf("cannot depend on %s: it is already closed", ref.label()) {
+				return
+			}
+			continue
+		}
+		p.result.dependencies = appendDependencyRef(p.result.dependencies, ref)
 	}
 }
 

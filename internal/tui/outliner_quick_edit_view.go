@@ -233,7 +233,10 @@ func quickEditWorkflowLabel(row outlinerRow, task *models.Task, preview *quickEd
 
 // quickEditOptionalMetadata is ordered from strongest to weakest. Appending
 // until the first width miss yields the required reverse degradation ladder:
-// tags, pin, deferral, due/check-back, then priority disappear as width shrinks.
+// dependencies, tags, pin, deferral, due/check-back, then priority disappear as
+// width shrinks. The dependency count leads because it is the one line whose
+// full value is never here anyway: it is a count, and the references themselves
+// are read elsewhere.
 func quickEditOptionalMetadata(task *models.Task, now time.Time) []string {
 	if task == nil {
 		return nil
@@ -265,6 +268,9 @@ func quickEditOptionalMetadata(task *models.Task, now time.Time) []string {
 			tags = append(tags, "#"+tag)
 		}
 		parts = append(parts, strings.Join(tags, " "))
+	}
+	if len(task.Dependencies) > 0 {
+		parts = append(parts, fmt.Sprintf("~%d", len(task.Dependencies)))
 	}
 	return parts
 }

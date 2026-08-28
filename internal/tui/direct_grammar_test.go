@@ -348,6 +348,10 @@ var grammarSigilRoutes = map[string]sigilKeyRoute{
 	";": sigilRootKey,
 	// Two runes are not one key event, and the # picker already unchecks a tag.
 	"-#": sigilPickerOnly,
+	// Dependencies are authored in the capture and edit grammars alone for now;
+	// the row-level route belongs to the session that gives them a picker.
+	"~":  sigilPickerOnly,
+	"-~": sigilPickerOnly,
 	// The trie is prefix-free, so ## and @@ cannot be chords under keys # and @
 	// that already resolve. Both live as modes inside the picker their first
 	// character opens: ## is the context radio, @@ the defer section.
@@ -426,7 +430,7 @@ func TestSigilKeysMatchTextGrammarSigils(t *testing.T) {
 
 	// A retired sigil is recognized only to produce a migration error, so it must
 	// never reach the advertised set the keymap answers to.
-	for _, field := range []textgrammar.Field{textgrammar.FieldTaskType, textgrammar.FieldRecurrence} {
+	for _, field := range []textgrammar.Field{textgrammar.FieldTaskType} {
 		if definition, ok := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, field); ok {
 			t.Errorf("retired field %s is advertised as %q", field, definition.Trigger)
 		}

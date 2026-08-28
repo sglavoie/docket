@@ -28,10 +28,10 @@ func TestParseQuickCaptureErrors(t *testing.T) {
 			errContains: "parent not found",
 		},
 		{
-			name:        "retired recurrence",
+			name:        "dependency reference not found",
 			input:       "Task ~weekly",
 			wantErr:     true,
-			errContains: "recurrence ~weekly was removed",
+			errContains: "dependency not found",
 		},
 		{
 			name:        "invalid destination",

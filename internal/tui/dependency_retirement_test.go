@@ -27,10 +27,10 @@ func TestDependencyAndBlockedPresentationVocabularyIsRetired(t *testing.T) {
 		"internal/storage/legacy_v4_blocker.go":             true,
 		"internal/storage/v5_archive_reintegration.go":      true,
 	}
-	allowedTUITechnicalIdentifiers := map[string]bool{
-		"ManageHubDependencies": true,
-		"RuntimeDependencies":   true,
-	}
+	// Soft task references are a live product concept again, so the TUI may name
+	// dependencies; what stays retired is hard blocking. The inventory below is
+	// therefore the fence for the retired panels, selectors, styles, and
+	// operations, and the vocabulary sweep narrows to blocking alone.
 	retiredIdentifiers := map[string]bool{
 		"AddDependency":                true,
 		"Block":                        true,
@@ -97,7 +97,7 @@ func TestDependencyAndBlockedPresentationVocabularyIsRetired(t *testing.T) {
 		}
 		relativePath = filepath.ToSlash(relativePath)
 		isTUIProduction := strings.HasPrefix(relativePath, "internal/tui/")
-		if isTUIProduction && containsRetiredTaskRelationshipVocabulary(relativePath) {
+		if isTUIProduction && containsRetiredBlockingVocabulary(relativePath) {
 			violations = append(violations, relativePath+": production filename")
 		}
 
@@ -113,9 +113,7 @@ func TestDependencyAndBlockedPresentationVocabularyIsRetired(t *testing.T) {
 					violations = append(violations, relativePath+":"+strconv.Itoa(position.Line)+": "+node.Name)
 					return true
 				}
-				if isTUIProduction &&
-					containsRetiredTaskRelationshipVocabulary(node.Name) &&
-					!allowedTUITechnicalIdentifiers[node.Name] {
+				if isTUIProduction && containsRetiredBlockingVocabulary(node.Name) {
 					position := fset.Position(node.Pos())
 					violations = append(violations, relativePath+":"+strconv.Itoa(position.Line)+": "+node.Name)
 				}
@@ -127,7 +125,7 @@ func TestDependencyAndBlockedPresentationVocabularyIsRetired(t *testing.T) {
 				if unquoteErr != nil {
 					value = node.Value
 				}
-				if containsRetiredTaskRelationshipVocabulary(value) {
+				if containsRetiredBlockingVocabulary(value) {
 					position := fset.Position(node.Pos())
 					violations = append(violations, relativePath+":"+strconv.Itoa(position.Line)+": "+value)
 				}
@@ -141,13 +139,14 @@ func TestDependencyAndBlockedPresentationVocabularyIsRetired(t *testing.T) {
 	}
 	if len(violations) > 0 {
 		sort.Strings(violations)
-		t.Fatalf("dependency or Blocked presentation vocabulary returned outside migration code:\n%s", strings.Join(violations, "\n"))
+		t.Fatalf("retired dependency panels or blocking vocabulary returned outside migration code:\n%s", strings.Join(violations, "\n"))
 	}
 }
 
-func containsRetiredTaskRelationshipVocabulary(value string) bool {
+// containsRetiredBlockingVocabulary matches the words a hard dependency needed
+// and a soft one cannot have: nothing in the product blocks on a reference, so
+// no filename, identifier, or string in the TUI may say that it does.
+func containsRetiredBlockingVocabulary(value string) bool {
 	lower := strings.ToLower(value)
-	return strings.Contains(lower, "dependenc") ||
-		strings.Contains(lower, "blocked") ||
-		strings.Contains(lower, "blocker")
+	return strings.Contains(lower, "blocked") || strings.Contains(lower, "blocker")
 }
