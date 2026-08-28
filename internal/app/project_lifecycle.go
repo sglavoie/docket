@@ -186,9 +186,19 @@ func (s *Service) DeleteProjectResult(req DeleteProjectRequest) (string, error) 
 	if err != nil {
 		return "", err
 	}
+	// Every address under the deleted project stops existing, so the catalog
+	// documents that referenced one are rewritten inside this same transaction
+	// rather than left to dangle until a later doctor run.
+	referenceWrites, err := s.referenceArtifactsForRemovedProject(req.Project.ID)
+	if err != nil {
+		return "", err
+	}
+	artifacts := make([]storage.ArtifactChange, 0, len(referenceWrites)+len(req.Config))
+	artifacts = append(artifacts, referenceWrites...)
+	artifacts = append(artifacts, req.Config...)
 	return s.CommitProjectMutationResult(storage.OpsCommitRequest{
 		Ops:         ops,
-		Artifacts:   req.Config,
+		Artifacts:   artifacts,
 		ProjectIDs:  []string{req.Project.ID},
 		UndoAction:  "Delete Project",
 		UndoContext: req.Project.Name,

@@ -138,6 +138,83 @@ func (r *tuiAppRepository) Commit(changesets ...storage.ChangeSet) ([]*storage.C
 	return results, nil
 }
 
+// ReferenceDocuments implements app.ReferenceDocumentSource: it enumerates every
+// cataloged project, archived ones included, so a move or delete can repair the
+// soft task references held anywhere in the workspace. It deliberately does NOT
+// go through Snapshot — widening reference maintenance to the whole catalog must
+// never widen the population a picker, a move destination, or a task projection
+// can name, which is exactly why AvailableProjects still filters archived
+// projects there.
+//
+// A project whose document cannot be read fails the whole enumeration. Snapshot
+// may skip an unloadable project with a warning because a mutation elsewhere is
+// still correct without it; reference maintenance may not, because a document
+// nobody could inspect is a document whose stale locators nobody could repair.
+func (r *tuiAppRepository) ReferenceDocuments() ([]app.ReferenceDocument, error) {
+	projects, err := r.deps.AllProjects(r.dataDir)
+	if err != nil {
+		return nil, err
+	}
+	documents := make([]app.ReferenceDocument, 0, len(projects))
+	for _, p := range projects {
+		if p == nil {
+			continue
+		}
+		if err := storage.LoadProject(p); err != nil {
+			return nil, fmt.Errorf("load project %s for reference maintenance: %w", p.Name, err)
+		}
+		doc, rawRevision, err := tuiProjectReferenceDocument(p)
+		if err != nil {
+			return nil, fmt.Errorf("read project %s for reference maintenance: %w", p.Name, err)
+		}
+		documents = append(documents, app.ReferenceDocument{
+			Project:     p,
+			Base:        doc,
+			Revision:    doc.Revision,
+			RawRevision: rawRevision,
+			TasksPath:   storage.TasksFilePath(p.Path),
+		})
+	}
+	return documents, nil
+}
+
+// tuiProjectReferenceDocument returns a project's retained document together
+// with the raw byte revision of its tasks.md. Both are needed because the two
+// commit boundaries that carry a reference rewrite check different things: a
+// ChangeSet compares the canonical document revision, an ArtifactChange the raw
+// file hash. A project with no tasks.md yet reports an empty raw revision, which
+// is the "must be absent" precondition — and such a project owns no references
+// to rewrite anyway.
+func tuiProjectReferenceDocument(p *models.Project) (*storage.ProjectDocument, string, error) {
+	if _, ok := storage.DefaultRepository.(*storage.FileSystemRepository); !ok {
+		doc, err := storage.CanonicalProjectDocument(p, nil)
+		if err != nil {
+			return nil, "", err
+		}
+		content, err := doc.WriteCurrent()
+		if err != nil {
+			return nil, "", err
+		}
+		return doc, storage.RawArtifactRevision([]byte(content)), nil
+	}
+	content, err := os.ReadFile(storage.TasksFilePath(p.Path))
+	if os.IsNotExist(err) {
+		doc, docErr := storage.LoadProjectDocument(p)
+		if docErr != nil {
+			return nil, "", docErr
+		}
+		return doc, "", nil
+	}
+	if err != nil {
+		return nil, "", err
+	}
+	doc, err := storage.ParseProjectDocument(string(content))
+	if err != nil {
+		return nil, "", err
+	}
+	return doc, storage.RawArtifactRevision(content), nil
+}
+
 // CommitArtifactTransaction implements app.ArtifactCommitter for note-only
 // mutations. The real workspace path journals note bytes and the matching
 // workspace-ledger record as one transaction; test-double repositories fail

@@ -37,6 +37,63 @@ type fakeRepo struct {
 	// project ChangeSets; these commits must never rewrite tasks.md.
 	artifactCommits         []storage.ArtifactCommitRequest
 	validateChangeArtifacts bool
+	// unloaded holds cataloged projects Snapshot deliberately omits — archived
+	// ones in production. They are invisible to every mutation read model and
+	// visible only through ReferenceDocuments, which is exactly the split the real
+	// TUI repository draws between AvailableProjects and AllProjects.
+	unloaded []*models.Project
+	// referenceErr fails the reference-document enumeration, standing in for a
+	// catalog project whose tasks.md cannot be read.
+	referenceErr error
+	// referenceDocumentCalls counts enumerations, so a mutation with nothing to
+	// maintain can be shown never to open the wider catalog at all.
+	referenceDocumentCalls int
+}
+
+// withUnloaded seeds cataloged projects outside the snapshot population. They
+// still get a document and a revision, so a commit that reaches one is held to
+// the same optimistic-concurrency contract as any other project.
+func (r *fakeRepo) withUnloaded(projects ...*models.Project) *fakeRepo {
+	for _, p := range projects {
+		doc := documentOf(p, nil)
+		r.documents[p.ID] = doc
+		r.revisions[p.ID] = doc.Revision
+		r.unloaded = append(r.unloaded, p)
+	}
+	return r
+}
+
+// ReferenceDocuments implements app.ReferenceDocumentSource over the whole
+// seeded catalog, snapshot population included, mirroring the production adapter
+// that enumerates AllProjects rather than the mutation read model.
+func (r *fakeRepo) ReferenceDocuments() ([]app.ReferenceDocument, error) {
+	r.referenceDocumentCalls++
+	if r.referenceErr != nil {
+		return nil, r.referenceErr
+	}
+	all := append(append([]*models.Project(nil), r.projects...), r.unloaded...)
+	documents := make([]app.ReferenceDocument, 0, len(all))
+	for _, p := range all {
+		if p == nil {
+			continue
+		}
+		doc := r.documents[p.ID]
+		if doc == nil {
+			doc = documentOf(p, nil)
+		}
+		content, err := doc.WriteCurrent()
+		if err != nil {
+			return nil, err
+		}
+		documents = append(documents, app.ReferenceDocument{
+			Project:     p,
+			Base:        doc,
+			Revision:    r.revisions[p.ID],
+			RawRevision: storage.RawArtifactRevision([]byte(content)),
+			TasksPath:   storage.TasksFilePath(p.Path),
+		})
+	}
+	return documents, nil
 }
 
 func (r *fakeRepo) CommitArtifactTransaction(request storage.ArtifactCommitRequest) (string, error) {

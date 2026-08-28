@@ -240,31 +240,53 @@ func (s *Service) deleteTasks(snap Snapshot, roots []TaskRef, undoContext string
 		p.Tasks = filterOutTasks(p.Tasks, removed)
 	}
 
+	// A deleted task's incoming references have nowhere left to point, so every
+	// catalog document that named one is repaired inside this same transaction.
+	// The pass runs after the subtrees are gone, so the removed tasks' own
+	// outgoing references leave with them rather than being rewritten first.
+	maintenance := TaskReferenceMaintenance{RemovedTasks: make(map[models.TaskReference]bool)}
+	committing := make(map[string]bool, len(srcOrder))
+	for pid, removed := range removalByProject {
+		committing[pid] = true
+		for id := range removed {
+			maintenance.RemovedTasks[models.TaskReference{ProjectID: pid, TaskID: id}] = true
+		}
+	}
+	pass, err := s.maintainTaskReferences(snap, maintenance, committing)
+	if err != nil {
+		return nil, "", err
+	}
+	defer func() {
+		if !committed {
+			pass.restore()
+		}
+	}()
+
 	// Build one changeset per source project, carrying its attachment operations.
 	// The caller's durable artifacts (e.g. a config store with the removed tasks'
 	// planning refs cleaned) ride the first source project's changeset so they
 	// commit atomically with the removal.
 	var changesets []storage.ChangeSet
 	var touchedOrder []string
-	appendCS := func(p *models.Project, ops []storage.AttachmentOp, arts []storage.ArtifactChange) {
-		applyPostMutationHooks(p)
-		changesets = append(changesets, storage.ChangeSet{
-			Project:          p,
-			ExpectedRevision: snap.Revision(p.ID),
-			Base:             snap.Document(p.ID),
-			Artifacts:        arts,
-			AttachmentOps:    ops,
-			UndoAction:       "Delete Task",
-			UndoContext:      undoContext,
-		})
-		touchedOrder = append(touchedOrder, p.ID)
+	appendCS := func(c projectCommit) {
+		changesets = append(changesets, changeSetFor(c, "Delete Task", undoContext))
+		touchedOrder = append(touchedOrder, c.project.ID)
 	}
 	for i, pid := range srcOrder {
 		var arts []storage.ArtifactChange
 		if i == 0 {
 			arts = artifacts
 		}
-		appendCS(srcProjects[pid], attachByProject[pid], arts)
+		appendCS(projectCommit{
+			project:          srcProjects[pid],
+			expectedRevision: snap.Revision(pid),
+			base:             snap.Document(pid),
+			artifacts:        arts,
+			attachmentOps:    attachByProject[pid],
+		})
+	}
+	for _, c := range pass.commits {
+		appendCS(c)
 	}
 	results, err := s.repo.Commit(changesets...)
 	if err != nil {

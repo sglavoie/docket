@@ -2,7 +2,7 @@
 # Columns: concept, production path, identifier, AST occurrence count.
 # Regenerate after reviewing ownership changes with:
 #   UPDATE_RETIRED_CONCEPT_BASELINE=1 go test ./internal/storage -run TestRetiredConceptInventoryBaseline
-# Total rows: 87
+# Total rows: 113
 custom-context	internal/config/legacy_v4_domains.go	CustomContexts	2
 custom-context	internal/config/legacy_v4_domains_convert.go	CustomContexts	8
 custom-context	internal/config/pre_consolidation_v6_snapshot.go	customContexts	3
@@ -39,6 +39,32 @@ decision	internal/storage/format/v6_task_convert.go	decision	5
 decision	internal/storage/format/v6_task_convert.go	decisions	4
 decision	internal/storage/v5_archive_reintegration.go	Decisions	2
 decision	internal/storage/v5_archive_reintegration.go	V5TaskDecision	1
+dependency	cmd/doctor.go	Dependencies	3
+dependency	internal/app/capture.go	Dependencies	3
+dependency	internal/app/capture.go	dependencies	5
+dependency	internal/app/capture.go	resolveDependencyAdditions	1
+dependency	internal/app/dependencies.go	AddTaskDependencies	1
+dependency	internal/app/dependencies.go	ClearTaskDependencies	1
+dependency	internal/app/dependencies.go	Dependencies	5
+dependency	internal/app/dependencies.go	DependencyPatch	7
+dependency	internal/app/dependencies.go	RemoveTaskDependencies	1
+dependency	internal/app/dependencies.go	dependencyTargetMissing	2
+dependency	internal/app/dependencies.go	dependencyTargetOpen	3
+dependency	internal/app/dependencies.go	dependencyTargetSelf	4
+dependency	internal/app/dependencies.go	dependencyTargetState	3
+dependency	internal/app/dependencies.go	dependencyTargetTerminal	3
+dependency	internal/app/dependencies.go	dependencyTargetUnavailable	3
+dependency	internal/app/dependencies.go	normalizeDependencyLocator	3
+dependency	internal/app/dependencies.go	patchTaskDependencies	4
+dependency	internal/app/dependencies.go	resolveDependencyAdditions	2
+dependency	internal/app/dependencies.go	resolveDependencyPatch	2
+dependency	internal/app/dependencies.go	resolveDependencyRemovals	2
+dependency	internal/app/dependency_maintenance.go	Dependencies	3
+dependency	internal/app/task_line_edit.go	Dependencies	6
+dependency	internal/app/task_line_edit.go	DependencyPatch	1
+dependency	internal/app/task_line_edit.go	dependencies	6
+dependency	internal/app/task_line_edit.go	dependenciesSet	3
+dependency	internal/app/task_line_edit.go	resolveDependencyPatch	1
 dependency	internal/config/pre_consolidation_v6_snapshot.go	dependencyCount	3
 dependency	internal/config/runtime.go	NewRuntimeDependencies	2
 dependency	internal/config/runtime.go	RuntimeDependencies	11

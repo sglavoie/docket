@@ -205,6 +205,32 @@ type projectCommit struct {
 	// attachmentOps are attachment file side effects (move/copy/delete) committed
 	// in the same transaction as the project write.
 	attachmentOps []storage.AttachmentOp
+	// referencesOnly marks a project this transaction rewrites solely to maintain
+	// soft task references after someone else's move or delete. The post-mutation
+	// hooks are deliberately skipped for it: a project nobody edited must not have
+	// its parent completion reconciled or its root order rewritten as a side
+	// effect of a mutation that only re-addressed a locator it happened to hold.
+	referencesOnly bool
+}
+
+// changeSetFor renders one project commit as the ChangeSet the repository
+// receives, running the post-mutation hooks for every project the mutation
+// actually edited. It is the single place that translation happens, so a
+// reference-only project keeps the same exemption whichever commit path carries
+// it.
+func changeSetFor(c projectCommit, undoAction, undoContext string) storage.ChangeSet {
+	if !c.referencesOnly {
+		applyPostMutationHooks(c.project)
+	}
+	return storage.ChangeSet{
+		Project:          c.project,
+		ExpectedRevision: c.expectedRevision,
+		Base:             c.base,
+		Artifacts:        c.artifacts,
+		AttachmentOps:    c.attachmentOps,
+		UndoAction:       undoAction,
+		UndoContext:      undoContext,
+	}
 }
 
 // groupedCommitOutcome retains the storage result for each changeset.
@@ -220,16 +246,7 @@ type groupedCommitOutcome struct {
 func (s *Service) commitProjects(commits []projectCommit, undoAction, undoContext string) (groupedCommitOutcome, error) {
 	changesets := make([]storage.ChangeSet, len(commits))
 	for i, c := range commits {
-		applyPostMutationHooks(c.project)
-		changesets[i] = storage.ChangeSet{
-			Project:          c.project,
-			ExpectedRevision: c.expectedRevision,
-			Base:             c.base,
-			Artifacts:        c.artifacts,
-			AttachmentOps:    c.attachmentOps,
-			UndoAction:       undoAction,
-			UndoContext:      undoContext,
-		}
+		changesets[i] = changeSetFor(c, undoAction, undoContext)
 	}
 	results, err := s.repo.Commit(changesets...)
 	if err != nil {

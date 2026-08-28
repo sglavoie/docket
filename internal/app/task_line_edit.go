@@ -310,6 +310,31 @@ func (s *Service) editTaskLineAcrossProjects(snap Snapshot, sourceRef TaskRef, p
 		return TaskLineEditResult{}, err
 	}
 
+	// Every moved task keeps its identity and changes address, so each incoming
+	// reference across the whole catalog is re-pointed in this same transaction.
+	// References the moved subtree holds among itself are re-pointed by the same
+	// map; references it holds elsewhere are untouched.
+	maintenance := TaskReferenceMaintenance{Moved: make(map[models.TaskReference]models.TaskReference, len(move.MovedTasks))}
+	for _, moved := range move.MovedTasks {
+		if moved == nil || moved.ID == "" {
+			continue
+		}
+		maintenance.Moved[models.TaskReference{ProjectID: sourceRef.Project.ID, TaskID: moved.ID}] =
+			models.TaskReference{ProjectID: destination.ID, TaskID: moved.ID}
+	}
+	pass, err := s.maintainTaskReferences(snap, maintenance, map[string]bool{
+		sourceRef.Project.ID: true,
+		destination.ID:       true,
+	})
+	if err != nil {
+		return TaskLineEditResult{}, err
+	}
+	defer func() {
+		if !committed {
+			pass.restore()
+		}
+	}()
+
 	commits := []projectCommit{
 		{
 			project:          sourceRef.Project,
@@ -324,6 +349,7 @@ func (s *Service) editTaskLineAcrossProjects(snap Snapshot, sourceRef TaskRef, p
 			base:             snap.Document(destination.ID),
 		},
 	}
+	commits = append(commits, pass.commits...)
 	outcome, err := s.commitProjects(
 		commits,
 		prepared.action,

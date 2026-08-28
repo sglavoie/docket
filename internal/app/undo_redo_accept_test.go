@@ -23,10 +23,47 @@ type storageRepo struct {
 	svc       *storage.CommitService
 	projects  []*models.Project
 	revisions map[string]string
+	// hidden names cataloged projects Snapshot omits — the archived population in
+	// production. They stay on disk and stay visible to ReferenceDocuments, which
+	// is the split that lets reference maintenance reach a document no mutation
+	// read model can name.
+	hidden map[string]bool
 }
 
 func newStorageRepo(svc *storage.CommitService, projects ...*models.Project) *storageRepo {
-	return &storageRepo{svc: svc, projects: projects, revisions: make(map[string]string)}
+	return &storageRepo{svc: svc, projects: projects, revisions: make(map[string]string), hidden: make(map[string]bool)}
+}
+
+// hideProject drops a seeded project out of the snapshot population without
+// removing it from the catalog.
+func (r *storageRepo) hideProject(projectID string) {
+	r.hidden[projectID] = true
+}
+
+// ReferenceDocuments implements app.ReferenceDocumentSource over every seeded
+// project, hidden ones included, reading each document from disk so a rewrite
+// commits against the revision the file actually carries.
+func (r *storageRepo) ReferenceDocuments() ([]app.ReferenceDocument, error) {
+	documents := make([]app.ReferenceDocument, 0, len(r.projects))
+	for _, project := range r.projects {
+		doc, err := storage.LoadProjectDocument(project)
+		if err != nil {
+			return nil, err
+		}
+		path := storage.TasksFilePath(project.Path)
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		documents = append(documents, app.ReferenceDocument{
+			Project:     project,
+			Base:        doc,
+			Revision:    doc.Revision,
+			RawRevision: storage.RawArtifactRevision(content),
+			TasksPath:   path,
+		})
+	}
+	return documents, nil
 }
 
 // loc returns the project-qualified locator for taskID, mirroring fakeRepo.loc
@@ -62,15 +99,20 @@ func (r *storageRepo) seed(t *testing.T) {
 func (r *storageRepo) Snapshot() (app.Snapshot, error) {
 	revs := make(map[string]string, len(r.revisions))
 	docs := make(map[string]*storage.ProjectDocument, len(r.projects))
+	visible := make([]*models.Project, 0, len(r.projects))
 	for _, project := range r.projects {
+		if r.hidden[project.ID] {
+			continue
+		}
 		doc, err := storage.LoadProjectDocument(project)
 		if err != nil {
 			return nil, err
 		}
 		docs[project.ID] = doc
 		revs[project.ID] = doc.Revision
+		visible = append(visible, project)
 	}
-	return app.NewSnapshot(r.projects, revs, docs), nil
+	return app.NewSnapshot(visible, revs, docs), nil
 }
 
 func (r *storageRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.CommitResult, error) {
