@@ -1357,7 +1357,7 @@ func (m *AppModel) executeSingleTaskOperation(
 			return OperationHandlerResult{Err: fmt.Errorf("invalid project value")}
 		}
 		return cmdResult(m.moveTaskToProjectCmd(
-			identity,
+			[]TaskIdentity{identity},
 			projectID,
 			m.captureOutlinerRelocationForTargets(invocation.Targets),
 		))
@@ -1403,11 +1403,32 @@ func (m *AppModel) adoptChildrenCmd(
 	return m.secondaryFeatures.TaskItem.EditTaskLine(req, relocation)
 }
 
-// moveTaskToProjectCmd routes the picked project through the same task-line edit
-// the `%project` sigil uses, so the subtree moves under one transaction that
-// reassigns destination ShortIDs and reconciles planning membership. The title is
-// carried verbatim so the edit never reads as a rename.
+// moveTaskToProjectCmd relocates one or many selected subtrees into the picked
+// project. Cardinality chooses the transaction, not the meaning: one target
+// routes through the same task-line edit the `%project` sigil uses, so a
+// selection-free `%` is byte-for-byte the move it always was, while a visual
+// selection routes through the batch service that commits every source project,
+// the destination, and the references that had to follow as one transaction with
+// one undo entry. Either way the title is carried verbatim so the edit never
+// reads as a rename, and the destination ShortIDs are reissued by the same
+// model primitive.
 func (m *AppModel) moveTaskToProjectCmd(
+	identities []TaskIdentity,
+	projectID string,
+	relocation *outlinerRelocationCapture,
+) tea.Cmd {
+	if len(identities) == 0 {
+		return func() tea.Msg {
+			return TransactionErrorMsg{Err: fmt.Errorf("select at least one task")}
+		}
+	}
+	if len(identities) == 1 {
+		return m.moveOneTaskToProjectCmd(identities[0], projectID, relocation)
+	}
+	return m.moveTaskSelectionToProjectCmd(identities, projectID, relocation)
+}
+
+func (m *AppModel) moveOneTaskToProjectCmd(
 	identity TaskIdentity,
 	projectID string,
 	relocation *outlinerRelocationCapture,
@@ -1428,14 +1449,53 @@ func (m *AppModel) moveTaskToProjectCmd(
 	return m.secondaryFeatures.TaskItem.EditTaskLine(req, relocation)
 }
 
+// moveTaskSelectionToProjectCmd commits a whole visual selection as one batch.
+// The committed result clears the selection, because every locator in it names
+// the project the task just left: unlike the other bulk operations, which leave
+// their targets addressable and therefore chainable, a move invalidates the very
+// identities the selection is made of.
+func (m *AppModel) moveTaskSelectionToProjectCmd(
+	identities []TaskIdentity,
+	projectID string,
+	relocation *outlinerRelocationCapture,
+) tea.Cmd {
+	locators := make([]app.TaskLocator, 0, len(identities))
+	for _, identity := range identities {
+		if !identity.Valid() {
+			return func() tea.Msg {
+				return TransactionErrorMsg{Err: fmt.Errorf("selected task is no longer available")}
+			}
+		}
+		locators = append(locators, identity.Locator())
+	}
+	destination := m.moveDestinationName(projectID)
+	m.appService.WithPlanningArtifacts(shellStructuralPlanningArtifactBuilder(m.runtime, m.configManager))
+	cmd := m.secondaryFeatures.Bulk.MoveToProjectLocators(locators, projectID, func(moved int) string {
+		return fmt.Sprintf("Moved %d task(s) to %s", moved, destination)
+	})
+	return finalizeStaleSelectionBatchResult(withOutlinerRelocationCapture(cmd, relocation), locators)
+}
+
+// moveDestinationName names the destination the way the picker row did, and
+// degrades to the raw ID rather than dropping the destination from the status
+// sentence entirely.
+func (m *AppModel) moveDestinationName(projectID string) string {
+	if project := m.projectByID(projectID); project != nil && project.Name != "" {
+		return project.Name
+	}
+	return projectID
+}
+
 func (m *AppModel) executeBulkTaskValueOperation(
 	invocation OperationInvocation,
 ) OperationHandlerResult {
+	identities := make([]TaskIdentity, 0, len(invocation.Targets.Targets))
 	locators := make([]app.TaskLocator, 0, len(invocation.Targets.Targets))
 	for _, target := range invocation.Targets.Targets {
 		if !target.Task.Valid() {
 			return OperationHandlerResult{Err: fmt.Errorf("operation %s resolved an invalid task", invocation.Descriptor.ID)}
 		}
+		identities = append(identities, target.Task)
 		locators = append(locators, target.Task.Locator())
 	}
 	cmdResult := func(cmd tea.Cmd) OperationHandlerResult {
@@ -1476,6 +1536,16 @@ func (m *AppModel) executeBulkTaskValueOperation(
 		return cmdResult(m.secondaryFeatures.Bulk.SetDueDateLocators(
 			locators,
 			*cloneOperationDate(value.Date),
+		))
+	case operationTaskMoveToProject:
+		projectID, ok := invocation.Value.(string)
+		if !ok || strings.TrimSpace(projectID) == "" {
+			return OperationHandlerResult{Err: fmt.Errorf("invalid project value")}
+		}
+		return cmdResult(m.moveTaskToProjectCmd(
+			identities,
+			projectID,
+			m.captureOutlinerRelocationForTargets(invocation.Targets),
 		))
 	default:
 		return OperationHandlerResult{
@@ -1633,7 +1703,7 @@ func (m *AppModel) newOperationValuePicker(
 			provider,
 			"Move to Project",
 			subtitle,
-			operationProjectListSource(m.runtime.AvailableProjects(), refs[0].Project.ID),
+			operationProjectListSource(m.runtime.AvailableProjects(), commonTaskProjectID(refs)),
 			false,
 			nil,
 		)
@@ -1706,6 +1776,26 @@ func (m *AppModel) operationTaskRefs(context CommandContext) ([]TaskProjectRef, 
 		return nil, fmt.Errorf("select a task")
 	}
 	return refs, nil
+}
+
+// commonTaskProjectID names the one project every selected task already lives
+// in, and returns "" when the selection spans more than one. It is what the Move
+// to Project picker withholds: for a single-source selection the current project
+// is the one destination that could change nothing, while for a selection
+// spanning M sources every project is a real destination for the tasks that are
+// not already there — withholding the first ref's project would hide a
+// legitimate one on the accident of enumeration order.
+func commonTaskProjectID(refs []TaskProjectRef) string {
+	if len(refs) == 0 || refs[0].Project == nil {
+		return ""
+	}
+	projectID := refs[0].Project.ID
+	for _, ref := range refs[1:] {
+		if ref.Project == nil || ref.Project.ID != projectID {
+			return ""
+		}
+	}
+	return projectID
 }
 
 func commonTaskPriority(refs []TaskProjectRef) (int, bool) {

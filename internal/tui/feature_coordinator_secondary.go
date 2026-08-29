@@ -48,6 +48,11 @@ type BulkMutator interface {
 	// BulkDefer hides every selected task until until, or clears the
 	// deferral when until is nil.
 	BulkDefer(locators []app.TaskLocator, until *time.Time) (app.BulkResult, error)
+	// BulkMoveToProject relocates every selected subtree into one destination
+	// project, folding the source projects, the destination, the planning
+	// requalification, the attachment bytes, and every soft reference that had to
+	// follow into one transaction.
+	BulkMoveToProject(locators []app.TaskLocator, destProjectID string) (app.BulkResult, error)
 	// ApplyPlanningBulk applies Today, Next, or Backlog semantics to the whole
 	// qualified selection in one task-and-planning transaction.
 	//
@@ -168,20 +173,24 @@ type BatchTransactionResultMsg struct {
 	// outlinerRelocation is an internal navigation capture attached only to a
 	// successful state/planning/metadata mutation.
 	outlinerRelocation *outlinerRelocationCapture
-	// ClearSelectionTaskIDs are delete-only compatibility identifiers whose
-	// multiselect state the shell clears once deletion commits.
+	// ClearSelectionTaskIDs are compatibility identifiers whose multiselect state
+	// the shell clears once the batch commits.
 	ClearSelectionTaskIDs []string
-	// ClearSelectionTaskLocators is the authoritative delete-only selection clear
-	// set for cross-project identities where task IDs may collide.
+	// ClearSelectionTaskLocators is the authoritative selection clear set for
+	// cross-project identities where task IDs may collide. Only a batch that
+	// invalidates the locators it was given sets it: a delete removes them, and a
+	// cross-project move leaves every one of them naming a project the task no
+	// longer lives in.
 	ClearSelectionTaskLocators []app.TaskLocator
 	// RemovedTaskIDs lists every task UUID a bulk delete removed (roots plus
 	// descendants). Nil for non-delete mutations.
 }
 
-// finalizeLocatedDeleteBatchResult clears exactly the project-qualified delete
-// roots after a committed delete. Canceled and failed deletes never produce a
-// successful batch and therefore leave selection intact.
-func finalizeLocatedDeleteBatchResult(cmd tea.Cmd, locators []app.TaskLocator) tea.Cmd {
+// finalizeStaleSelectionBatchResult clears exactly the project-qualified
+// locators a committed batch invalidated — the roots a delete removed, or the
+// source addresses a cross-project move emptied. Canceled and failed batches
+// never produce a successful result and therefore leave selection intact.
+func finalizeStaleSelectionBatchResult(cmd tea.Cmd, locators []app.TaskLocator) tea.Cmd {
 	if cmd == nil {
 		return nil
 	}
@@ -337,6 +346,31 @@ func (c BulkCoordinator) DeferLocators(locators []app.TaskLocator, until *time.T
 			verb = "Cleared defer on"
 		}
 		return res.TouchedProjectIDs, fmt.Sprintf("%s %d task(s)", verb, len(res.Tasks)), res.TransactionID, nil
+	})
+}
+
+// MoveToProjectLocators relocates every selected subtree into one destination
+// project as one transaction with one undo entry. summary receives the number
+// of subtrees the batch actually moved, which is the selection collapsed to its
+// maximal subtrees: a selected descendant of a selected ancestor travelled
+// inside that ancestor and is not counted twice. The count is therefore
+// independent of how many source projects the selection spanned, so one status
+// sentence reads correctly for N tasks across M sources.
+func (c BulkCoordinator) MoveToProjectLocators(
+	locators []app.TaskLocator,
+	destProjectID string,
+	summary func(moved int) string,
+) tea.Cmd {
+	return runBatch("Move to Project", func() ([]string, string, string, error) {
+		res, err := c.bulk.BulkMoveToProject(locators, destProjectID)
+		if err != nil {
+			return nil, "", "", err
+		}
+		text := ""
+		if summary != nil {
+			text = summary(len(res.Tasks))
+		}
+		return res.TouchedProjectIDs, text, res.TransactionID, nil
 	})
 }
 

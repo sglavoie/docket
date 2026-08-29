@@ -295,7 +295,7 @@ func (m *AppModel) handleTaskDeleteConfirmKey(key string) (bool, tea.Cmd) {
 // deletion; the application service expands each subtree and folds canonical
 // Today/Next cleanup into the checked project transaction. The
 // returned command is decorated so the committed batch clears the requested
-// selection IDs after the commit (finalizeLocatedDeleteBatchResult passes a TransactionError
+// selection IDs after the commit (finalizeStaleSelectionBatchResult passes a TransactionError
 // through untouched, leaving state intact on failure). An artifact-build error
 // aborts before any mutation and preserves the pending selection's task data.
 func (m *AppModel) confirmTaskDelete() tea.Cmd {
@@ -312,7 +312,7 @@ func (m *AppModel) confirmTaskDelete() tea.Cmd {
 	if len(selected) == 0 {
 		selected = roots
 	}
-	return finalizeLocatedDeleteBatchResult(cmd, taskLocatorsFromTaskRefs(selected))
+	return finalizeStaleSelectionBatchResult(cmd, taskLocatorsFromTaskRefs(selected))
 }
 
 // clearPendingTaskDelete discards the pending roots and dismisses the confirm
