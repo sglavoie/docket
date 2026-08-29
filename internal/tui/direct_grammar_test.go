@@ -328,9 +328,9 @@ const (
 )
 
 // grammarSigilRoutes pairs every advertised text-grammar trigger with the route
-// the Outliner gives it. The ten keyed sigils are the correspondence itself:
+// the Outliner gives it. The eleven keyed sigils are the correspondence itself:
 // the character that writes a field in a capture line is the key that edits it
-// on a row. The three picker-only triggers are named rather than omitted so a
+// on a row. The four picker-only triggers are named rather than omitted so a
 // new sigil forces a deliberate decision instead of silently passing, and a
 // renamed one breaks the keymap loudly.
 var grammarSigilRoutes = map[string]sigilKeyRoute{

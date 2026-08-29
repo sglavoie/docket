@@ -149,7 +149,7 @@ and the rare.
 | `a` `A` `e` `E` `Ctrl+E` | capture · child · inline edit · description · external editor |
 | `$` | the workflow chord: `$i` `$b` `$n` `$t` `$g` `$w` `$p` `$m` `$d` `$c` |
 | `!` `@` `#` `*` | priority · due and defer · tags and context · pin |
-| `[` `]` `>` `<` `%` | outdent · indent · set parent · adopt children · move project |
+| `[` `]` `>` `<` `%` `~` | outdent · indent · set parent · adopt children · move project · dependencies |
 | `J`/`K` `Ctrl+J`/`Ctrl+K` | reorder one step · reorder to the far end |
 | `/` `f` `F` `o` | search · row facets · which projects load · sort |
 | `P` `Ctrl+P` `\` | project scope · pinned projects · named lenses |

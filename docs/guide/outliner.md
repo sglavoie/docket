@@ -192,7 +192,7 @@ were in and says so.
 | Capture and edit | `a` capture, `A` child, `e` inline task edit, `E` description, `Ctrl+E` external editor, whose title line speaks the same edit grammar as `e`, `O` outline edit the cursor's project |
 | Workflow | `$` opens the workflow chord over the ten destinations the `$` capture sigil names: `$i` Inbox, `$b` Backlog, `$n` toggle Next, `$t` toggle Today, `$g` Doing, `$w` Waiting, `$p` Paused, `$m` Someday, `$d` Done, `$c` Canceled; `$w` then asks for a check-back date |
 | Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date and defer; `#` tags and context; `*` pin — the last two read the cursor, so on a project group header they set that project's tags and toggle its pin |
-| Structure | `[` outdent, `]` indent, `>` Set Parent, `<` Adopt Children, `%` Move to Project, `J`/`K` reorder one step, `Ctrl+J`/`Ctrl+K` reorder to the far end of the visible peers |
+| Structure | `[` outdent, `]` indent, `>` Set Parent, `<` Adopt Children, `%` Move to Project, `~` Set Dependencies, `J`/`K` reorder one step, `Ctrl+J`/`Ctrl+K` reorder to the far end of the visible peers |
 | Sorting | `o` opens the sort chord: `o@` due date, `o!` priority, `oc` created, `ou` updated, `ot` title, `ox` clear; repeat a field key to reverse it |
 | Content | `&` opens the cursor task's Attachments panel, `;` its Comments panel — the two capture sigils reaching, as keys, the panels that own add, reorder, unlink, and delete |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
@@ -302,6 +302,25 @@ that ancestor's subtree, so the count the status strip reports
 (`Move to Project: 3 task(s) → client-alpha`) is subtrees moved, not rows
 ticked. A committed move clears the selection, because every address it held
 names the project the tasks just left.
+
+`~` opens Set Dependencies, the picker form of the `~task` edit sigil, and edits
+the soft references the cursor task stores. It is multi-select and, unlike Adopt
+Children, it arrives with the stored set already checked: the edit sigil owns
+both `-~task` and `~0`, so unchecking a row has a meaning to carry. `Space`
+toggles a row, and `Enter` commits checking as adding and unchecking as removing
+— both halves in one transaction that undoes in one step. Closing the picker
+having changed nothing commits nothing and reports `Dependencies unchanged`.
+
+The list is two halves. Every reference the task already stores gets a row,
+whatever state its target is in and even when the target cannot be read from
+here — a reference into a project the Outliner has not loaded keeps its stored
+`project-id:task-id` locator and reads `unavailable`, and it stays checkable, so
+a stranded reference can always be dropped. The other half is every open task in
+every loaded project except the cursor task itself, grouped under its project's
+name, which is the whole population an addition may name. References cross
+project boundaries, so that grouping is what keeps a filtered list unambiguous.
+Dependents are never listed: they are computed from what other tasks store, and
+no key edits them.
 
 
 ### Task actions
@@ -552,10 +571,11 @@ follows navigation and shows at most five lines of additive detail: up to three
 lines of description, a dates line reading
 `created 12d · updated 2d · due 2026-08-14 · woke 1d · deferred ×3` with empty fields omitted,
 attachment names, comment counts, a `Dependencies:` line, a `Dependents:` line,
-and tags. The two reference lines are read-only and carry no key of their own:
-`Dependencies` names what this task stores, in the order it stores it, and
+and tags. Both reference lines are read-only wherever Peek is open.
+`Dependencies` names what this task stores, in the order it stores it; that
+outgoing set is edited from the row itself with `~`, never from inside Peek.
 `Dependents` is computed from the projects currently loaded, so it names the
-tasks that point back. Each entry reads as its project, short ID, title, and
+tasks that point back and no key edits it at all. Each entry reads as its project, short ID, title, and
 state; a reference whose project is not loaded keeps its stored
 `project-id:task-id` locator and reads `(unavailable)` rather than being dropped,
 and past the first two entries the line ends `+N more`. Checklist items are not among them,

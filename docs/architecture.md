@@ -972,6 +972,49 @@ Project` for the ledger. `P` keeps Select Project: that operation changes the
 projection, not a task's owner, so the two carry separate keys, labels, and
 footer entries.
 
+`~` is the fourth of the set and the only one that preselects. It opens
+`ValueProviderTaskReference`, a multi-select plain list built by
+`operationTaskReferenceListSource`, and `storedTaskReferenceIDs` arrives as the
+preselection: exactly the references the task stores, in stored order. That
+asymmetry with Adopt Children is a grammar fact rather than a taste. `FieldChild`
+declares no `Clears`, so an unchecked child row could not be read as a detach and
+the `<` picker is built so that no selection state can ask for one; `~` declares
+both `~0` and `-~task`, so unchecking a preselected row already has a spelling in
+the text grammar and means removal. The same fact is what makes the row identity
+`taskReferenceRowID` — the durable `project-id:task-id` locator behind a
+`reference:` prefix — load-bearing: a stored reference and the candidate row
+offering that same target collapse to one row, which is what lets the checked set
+be a diff instead of two lists.
+
+The population is two halves and the stored half is never filtered. Every stored
+reference gets an enabled row, terminal and unreadable targets included, because
+a set editable only by hand is how a reference gets silently stranded; a target
+the picker cannot read keeps its locator as its `PrimaryText` and carries
+`dependencyDetailUnavailable`, the same word Peek uses. The second half is
+`dependencyAdditionCandidates` — every open task in every loaded non-archived
+project, minus the source and minus the stored half — which is exactly the
+population an addition may name, so the picker needs no inline add-by-locator
+mode. Rows group into one category per project in `dependencyDetailProjects()`
+order, because a reference crosses project boundaries and a filtered list has to
+stay qualified.
+
+`taskReferencePatch` diffs the checked locators against what the task stores at
+execute time, read fresh from the workspace rather than from the source captured
+when the picker opened, so a reference the picker never displayed is still
+measured and never silently dropped. `Clear` stays false even when nothing is
+checked: the application layer refuses `Clear` beside `Add` or `Remove`, and
+removing every stored reference says the same thing. Add and Remove cannot
+overlap by construction, so that refusal is unreachable from this surface. The
+patch becomes `TaskLineEditRequest.Dependencies` on one request with the title
+carried verbatim and the parent left on `TaskLineParentPreserve`, so both halves
+of the diff resolve against one snapshot and land in one transaction with one
+undo entry, with `Action` set to `Set Dependencies` for the ledger; the paired
+add and remove services would be two transactions of each, neither seeing the
+other's half. A patch empty on both sides issues no command at all and reports
+`Dependencies unchanged`, because an empty transaction would still write a ledger
+entry `u` could take back. Dependents are computed from what other tasks store,
+so they are never listed and never editable — `~` is outgoing only.
+
 Pin's key is its sigil: `*` on an existing row does what `*pin` does in the
 capture, inline-edit, and outline grammars. That is not a direct-only/menu-only
 violation, because that rule governs which task operations reach the `Space`
@@ -979,18 +1022,20 @@ menu, not whether an attribute is also expressible in the text grammar: `!`, `@`
 `#`, and the `$` chord are the sigils that say the same things.
 
 Every keyed capture sigil binds the character it is written with: `!` and `$` as
-chord prefixes, `#`, `@`, `*`, `%`, `>`, `<`, `&`, and `;` as root keys. The
+chord prefixes, `#`, `@`, `*`, `%`, `>`, `<`, `~`, `&`, and `;` as root keys. The
 last two are the only pair that opens a panel rather than a picker, because the
 panel already owns add, reorder, unlink, and delete.
 `TestSigilKeysMatchTextGrammarSigils` walks the `textgrammar` triggers against
 the strategy's own bindings, so renaming a sigil breaks the keymap loudly rather
-than silently splitting the two vocabularies. Three triggers deliberately have no
+than silently splitting the two vocabularies. Four triggers deliberately have no
 key of their own. `##` and `@@` cannot be chords under `#` and `@`, because the
 chord trie is prefix-free and both first characters already resolve; each is
 instead a mode inside the picker its first character opens — `##` the context
 radio group inside Set Tags & Context, `@@` the defer section of the one date
 picker. `-#` is a search-only exclusion form, and two runes are not one key
-event, so the `#` picker expresses it by unchecking a tag. Indent and outdent are
+event, so the `#` picker expresses it by unchecking a tag. `-~` is that same
+case one sigil over: it is an edit-surface removal form, and unchecking a
+preselected row in the `~` picker is how one key event says it. Indent and outdent are
 the reverse case: `]` and `[` are keys that answer no sigil, because a relative
 one-step move has no capture form to name.
 
@@ -1322,7 +1367,10 @@ three. Search takes `~task` alone and compiles it into `admitsDependencies`, an
 AND gate over the stored list; `~0` and `-~task` are named in `placementDiagnostics`
 and `refusedSearchFields` rather than compiled into a locator that could never
 match, because a dependency predicate is direct and positive — there is no
-traversal and no negative form.
+traversal and no negative form. The `~` row picker is the fourth surface and it
+holds a stored set, so it speaks all three forms without spelling any of them:
+checking an unstored row is `~task`, unchecking a stored one is `-~task`, and
+unchecking every one of them is what `~0` says.
 
 `DependencyPatch` is what carries the intent into `Service.EditTaskLine`, and
 its zero value means *no intent* rather than an empty set: `prepared.dependenciesSet`

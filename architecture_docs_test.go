@@ -106,6 +106,9 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"`<child` is the one repeatable structural sigil",
 		"Adoption is additive and reaches only the effective project",
 		"which is what makes `<0` an ordinary unresolvable reference rather than a detach",
+		"`~` is the fourth of the set and the only one that preselects",
+		"both halves of the diff resolve against one snapshot and land in one transaction " +
+			"with one undo entry",
 		"It carries no checklist line",
 		"`inlinePeekLines` therefore owns a drop order, not a set",
 		"The Outliner remains full-width at every supported terminal size",

@@ -29,7 +29,8 @@ func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 		"`$i` Inbox, `$b` Backlog, `$n` toggle Next, `$t` toggle Today, `$g` Doing",
 		"`$w` Waiting, `$p` Paused, `$m` Someday, `$d` Done, `$c` Canceled",
 		"`!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date and defer; `#` tags and context; `*` pin",
-		"`[` outdent, `]` indent, `>` Set Parent, `<` Adopt Children, `%` Move to Project",
+		"`[` outdent, `]` indent, `>` Set Parent, `<` Adopt Children, `%` Move to Project, " +
+			"`~` Set Dependencies",
 		"a leading `No parent (project root)` row that does what `>0` does",
 		"the destination mints its own `#N` numbers for every task it receives",
 		"`&` opens the cursor task's Attachments panel, `;` its Comments panel — the two capture " +
@@ -50,6 +51,9 @@ func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 		"`a` creates and selects a new tag",
 		"the `CONTEXTS` section is a radio group answering `#`",
 		"the leading `No context` row clears the field the way `##0` does",
+		"`~` opens Set Dependencies, the picker form of the `~task` edit sigil",
+		"unlike Adopt Children, it arrives with the stored set already checked",
+		"Dependents are never listed",
 	})
 	rejectDocumentationText(t, content, []string{
 		"`z` snooze",
@@ -161,6 +165,8 @@ func TestGuideDocumentsCaptureAndWorkflowContracts(t *testing.T) {
 		"The tilde no longer names recurrence, which stays retired",
 		"`~task` records a soft dependency on another task and may be repeated",
 		"The edit surfaces add `-~task`, which removes one reference, and `~0`, which clears them all",
+		"On an existing row the `~` key opens Set Dependencies over the same set, " +
+			"with the stored references already checked",
 		"`#tag` creates and sets a lowercase ASCII kebab tag on the fly",
 		"`inbox`, `backlog`, `today`, `next`, `doing`, `waiting`, `paused`, `someday`, `done`, or `canceled`",
 		"A new child defaults to Backlog",
