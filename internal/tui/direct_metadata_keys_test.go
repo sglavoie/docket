@@ -113,7 +113,13 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 		}
 	}
 
-	// The two unpresetable operations keep the existing pickers.
+	// The two unpresetable metadata keys keep the existing pickers. This file is
+	// scoped to the metadata grammar — `!`, `$`, `@`, `#` — which is why the
+	// relationship keys `>`, `<`, and `~` are absent rather than forgotten: each
+	// opens a picker proved in its own file, `~` in
+	// operation_task_reference_picker_test.go. Adding a relationship key here
+	// would make the table a second, partial copy of the direct-grammar audit
+	// direct_grammar_test.go already owns exhaustively.
 	for _, picker := range []struct {
 		key      string
 		want     OperationID
@@ -212,6 +218,9 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 		}
 	})
 
+	// The metadata keys that open a picker, for the same reason as the table
+	// above: `>`, `<`, and `~` are relationship keys and prove their live
+	// dispatch in their own files.
 	for _, picker := range []struct {
 		key      rune
 		provider ValueProviderID

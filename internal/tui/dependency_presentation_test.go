@@ -197,6 +197,71 @@ func TestInlinePeekNamesBothReferenceDirections(t *testing.T) {
 	}
 }
 
+// TestUnavailableReferenceWordingIsSharedByEverySurface ties the three places a
+// reference whose target this view cannot read is described to one fact. The
+// picker is an editing surface and the other two are read-only, so nothing in
+// the type system stops them drifting apart; what stops it is that all three
+// read dependencyDetailUnavailable and the same durable locator, and this test
+// is where that is checked rather than assumed.
+//
+// The row indicator carries no wording of its own — its whole statement is a
+// color — so its share of the contract is that it reads the same reference as
+// unreadable rather than settled, which is asserted here beside the words.
+func TestUnavailableReferenceWordingIsSharedByEverySurface(t *testing.T) {
+	alpha, _ := dependencyPresentationFixture(t)
+	source := alpha.GetTaskByID("source")
+	// Beta is deliberately left out of the population: proj-b:remote is then a
+	// reference this view cannot read, which is the only case that produces the
+	// wording under test.
+	population := []*models.Project{alpha}
+	unreadable := models.TaskReference{ProjectID: "proj-b", TaskID: "remote"}
+
+	detail := dependencyDetailUnresolved(unreadable)
+	if detail.state != dependencyDetailUnavailable {
+		t.Fatalf("detail state = %q, want %q", detail.state, dependencyDetailUnavailable)
+	}
+
+	item := ListItem{}
+	for _, candidate := range operationTaskReferenceListSource(source, population).Items {
+		if candidate.ID == ListItemID("reference:"+unreadable.Locator()) {
+			item = candidate
+			break
+		}
+	}
+	if item.ID == "" {
+		t.Fatal("the picker dropped the unreadable reference instead of listing it")
+	}
+	if item.PrimaryText != detail.label {
+		t.Errorf("picker label = %q, detail label = %q", item.PrimaryText, detail.label)
+	}
+	if item.SecondaryText != detail.state {
+		t.Errorf("picker status = %q, detail status = %q", item.SecondaryText, detail.state)
+	}
+	if got := item.PrimaryText + " (" + item.SecondaryText + ")"; got != detail.String() {
+		t.Errorf("picker row reads %q, detail row reads %q", got, detail.String())
+	}
+
+	// Peek paints that same detail through outgoingDependencyDetails, so the
+	// rendered line must carry the picker's words verbatim.
+	outliner := scopeTestOutliner(alpha)
+	row, ok := findPlanningTaskRow(outliner, "source")
+	if !ok {
+		t.Fatal("fixture produced no row for the referring task")
+	}
+	peek := ansi.Strip(strings.Join(outliner.inlinePeekLinesForRow(row, "  ", 200, nil), "\n"))
+	if !strings.Contains(peek, detail.String()) {
+		t.Fatalf("Peek does not carry %q:\n%s", detail.String(), peek)
+	}
+
+	// And the indicator agrees about the underlying fact rather than claiming the
+	// reference is settled. The same-project target is closed first so the
+	// unreadable one is the only thing left for the outlook to read.
+	alpha.GetTaskByID("sibling").WorkflowState = models.StateDone
+	if got := dependencyOutlookFor(source, population); got != dependencyOutlookUnreadable {
+		t.Errorf("outlook = %v, want the unreadable tier", got)
+	}
+}
+
 func TestInlinePeekReferenceLineCountsTheOverflow(t *testing.T) {
 	details := []dependencyDetail{
 		{label: "Alpha #1 One", state: "doing"},
