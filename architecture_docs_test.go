@@ -291,7 +291,24 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// opens with a paragraph saying what it is and pointing at docs/guide/ for
 	// behavior. That framing is bounded and one-time; the budget still polices
 	// every rule below it.
-	const budget = 21900
+	//
+	// This raise is taken once, before the work rather than after it, because
+	// three queued features each need contract text and would otherwise race for
+	// the same headroom — the first to land would take it and the next two would
+	// each argue their own raise. It is earmarked for exactly three additions and
+	// nothing else. The bulk move to another project: its destination project
+	// must be committed even when it holds none of the selection, which is the
+	// rule that separates it from every other bulk attribute and binds every
+	// surface offering it. The machine-local adoption and merge of named lenses:
+	// the migration chain is guarded by the synced catalog version while lenses
+	// live outside every migration snapshot, so this step is keyed off
+	// machine-local state and runs after the schema is already current — a
+	// sequencing rule the persistence layout cannot state for it. And the
+	// conflict signal: the status strip carries it and a read-only overlay
+	// browses it, because the workspace pulse ladder is closed and there is no
+	// sixth grammar, so both placements are rules stated against standing
+	// refusals. Spending it on anything else is a new raise, argued on its own.
+	const budget = 22900
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
