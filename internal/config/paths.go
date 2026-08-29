@@ -83,6 +83,15 @@ func PlanningStatePath(dataDir string) string {
 	return filepath.Join(InternalDir(dataDir), "planning.json")
 }
 
+// LensDefinitionsPath returns the synced lenses.json path for a data dir. Lens
+// definitions are portable content: they name projects by workspace-scoped ID
+// and nothing else, so they travel with the workspace rather than staying on
+// the machine that authored them. Which lens is open, and the theme, remain
+// machine-local.
+func LensDefinitionsPath(dataDir string) string {
+	return filepath.Join(InternalDir(dataDir), "lenses.json")
+}
+
 // SettingsPath returns the retired v4 settings.json path for migration and
 // doctor inspection. Live runtime code does not load this domain.
 func SettingsPath(dataDir string) string {

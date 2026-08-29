@@ -40,13 +40,14 @@ var ErrWorkspaceIDMismatch = errors.New("config: workspace ID mismatch")
 // synced workspace catalog established the workspace identity.
 var ErrWorkspaceIDRequired = errors.New("config: workspace ID is required")
 
-// domainKind identifies one of the three runtime configuration domains.
+// domainKind identifies one of the runtime configuration domains.
 type domainKind int
 
 const (
 	domainCatalog domainKind = iota
 	domainPlanning
 	domainMachine
+	domainLenses
 )
 
 // name returns the stable kind label written into each artifact's envelope so a
@@ -59,6 +60,8 @@ func (k domainKind) name() string {
 		return "planning"
 	case domainMachine:
 		return "machine"
+	case domainLenses:
+		return "lenses"
 	default:
 		return "unknown"
 	}
@@ -181,6 +184,8 @@ func (s *DomainFileStore) pathFor(kind domainKind) (string, error) {
 		return WorkspaceCatalogPath(s.dataDir), nil
 	case domainPlanning:
 		return PlanningStatePath(s.dataDir), nil
+	case domainLenses:
+		return LensDefinitionsPath(s.dataDir), nil
 	case domainMachine:
 		workspaceID, err := s.validatedWorkspaceID()
 		if err != nil {
@@ -279,6 +284,11 @@ func encodeDomainEnvelope(kind domainKind, workspaceID string, payload any) ([]b
 	if machine, ok := payload.(*MachineState); ok {
 		if err := machine.Validate(); err != nil {
 			return nil, fmt.Errorf("invalid machine state: %w", err)
+		}
+	}
+	if lenses, ok := payload.(*WorkspaceLensDefinitions); ok {
+		if err := lenses.Validate(); err != nil {
+			return nil, fmt.Errorf("invalid workspace lens definitions: %w", err)
 		}
 	}
 	return marshalDomainEnvelope(kind, workspaceID, payload)
@@ -514,13 +524,50 @@ func (s *DomainFileStore) SavePlanningChecked(planning *PlanningState, rev strin
 	return s.save(domainPlanning, planning, rev)
 }
 
+// LoadLensDefinitionsChecked loads the portable lens definitions and their
+// revision. A workspace with no lenses.json yields the undefined collection and
+// an empty revision, which is what makes the machine-local set the fallback
+// rather than an error.
+func (s *DomainFileStore) LoadLensDefinitionsChecked() (*WorkspaceLensDefinitions, string, error) {
+	out := NewWorkspaceLensDefinitions()
+	rev, err := s.load(domainLenses, out)
+	if err != nil {
+		return nil, "", err
+	}
+	if err := out.Validate(); err != nil {
+		return nil, rev, fmt.Errorf("invalid workspace lens definitions: %w", err)
+	}
+	return out, rev, nil
+}
+
+// SaveLensDefinitionsChecked saves the portable lens definitions with an
+// optimistic concurrency check. An undefined collection is refused rather than
+// written: the file's whole meaning is "this workspace owns the definitions", so
+// persisting a nil list would publish "every lens was deleted" by accident.
+func (s *DomainFileStore) SaveLensDefinitionsChecked(lenses *WorkspaceLensDefinitions, rev string) error {
+	if lenses == nil {
+		return fmt.Errorf("config: nil workspace lens definitions")
+	}
+	if !lenses.Defined() {
+		return fmt.Errorf("config: workspace lens definitions are undefined; nothing to publish")
+	}
+	if err := s.bindWorkspaceIDFromCatalog(); err != nil {
+		return err
+	}
+	return s.save(domainLenses, lenses, rev)
+}
+
 // LoadMachine implements MachineStore.
 func (s *DomainFileStore) LoadMachine() (*MachineState, error) {
 	m, _, err := s.LoadMachineChecked()
 	return m, err
 }
 
-// LoadMachineChecked loads machine state and its revision.
+// LoadMachineChecked loads machine state and its revision. Lens definitions are
+// dual-sourced here, at the one seam every reader already passes through: a
+// workspace that defines its own set wins, and one that does not leaves the
+// machine-local set exactly as it was loaded. The revision returned is
+// machine.json's alone, because that is the file a checked machine save writes.
 func (s *DomainFileStore) LoadMachineChecked() (*MachineState, string, error) {
 	if err := s.bindWorkspaceIDFromCatalog(); err != nil {
 		return nil, "", err
@@ -529,6 +576,13 @@ func (s *DomainFileStore) LoadMachineChecked() (*MachineState, string, error) {
 	rev, err := s.load(domainMachine, out)
 	if err != nil {
 		return nil, "", err
+	}
+	lenses, _, err := s.LoadLensDefinitionsChecked()
+	if err != nil {
+		return nil, "", err
+	}
+	if lenses.Defined() {
+		out.NamedLenses = lenses.Lenses.Clone()
 	}
 	return out, rev, nil
 }

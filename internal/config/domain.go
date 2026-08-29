@@ -547,9 +547,11 @@ func (p *PlanningState) RemoveProjectReferences(id, slug string) bool {
 }
 
 // MachineState contains the machine-local values retained by schema 6: the
-// dark/light theme and the named Outliner lens definitions. Lenses are
-// deliberately machine-local, so they never enter the synced workspace domains
-// or the workspace undo ledger.
+// dark/light theme, the named Outliner lens definitions, and the pointer to the
+// live one. Lens definitions also have a portable home
+// (WorkspaceLensDefinitions); the copy here is the fallback a workspace that
+// defines none of its own still reads. Neither home enters a workspace
+// transaction or the undo ledger.
 type MachineState struct {
 	Theme string `json:"theme"`
 	// NamedLenses carries no omitempty: an explicit empty array is the durable
@@ -582,7 +584,10 @@ func (m *MachineState) Validate() error {
 			return fmt.Errorf("machine: active lens: %w", err)
 		}
 	}
-	return m.NamedLenses.Validate()
+	if err := m.NamedLenses.Validate(); err != nil {
+		return fmt.Errorf("machine: %w", err)
+	}
+	return nil
 }
 
 // ActiveNamedLens returns the live lens definition, or nil when no lens is

@@ -608,7 +608,8 @@ func TestNilNamedLensListMarshalsAsEmptyArray(t *testing.T) {
 }
 
 func TestNamedLensesStayOutOfSyncedDomains(t *testing.T) {
-	// Lens definitions are machine-local: neither synced domain may carry them.
+	// Lens definitions own their home, machine-local or workspace-side: neither
+	// the catalog nor the planning domain may carry them.
 	catalog := NewWorkspaceCatalog()
 	catalog.WorkspaceID = testWorkspaceID
 	planning := NewPlanningState()

@@ -508,21 +508,23 @@ func (s LensSort) validate(lensName string) error {
 }
 
 // Validate reports problems with the whole collection, including the identity
-// and name uniqueness rules a single definition cannot see.
+// and name uniqueness rules a single definition cannot see. The messages name no
+// home: the collection is persisted both machine-locally and workspace-side, and
+// each home's own Validate supplies the prefix.
 func (l NamedLensList) Validate() error {
 	seenID := make(map[string]bool, len(l))
 	seenName := make(map[string]bool, len(l))
 	for i, lens := range l {
 		if err := lens.Validate(); err != nil {
-			return fmt.Errorf("machine: named lens %d: %w", i, err)
+			return fmt.Errorf("named lens %d: %w", i, err)
 		}
 		if seenID[lens.ID] {
-			return fmt.Errorf("machine: named lens %d repeats id %q", i, lens.ID)
+			return fmt.Errorf("named lens %d repeats id %q", i, lens.ID)
 		}
 		seenID[lens.ID] = true
 		folded := strings.ToLower(lens.Name)
 		if seenName[folded] {
-			return fmt.Errorf("machine: named lens %d repeats name %q", i, lens.Name)
+			return fmt.Errorf("named lens %d repeats name %q", i, lens.Name)
 		}
 		seenName[folded] = true
 	}
