@@ -47,12 +47,19 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	return b.String()
 }
 
-// statusStripBody builds the focus notice and status message the shell pins
-// above the footer. It is pure: the height reservation and the strip itself
-// must measure the same string.
+// statusStripBody builds the outstanding-conflict indicator, the focus notice,
+// and the status message the shell pins above the footer. It is pure: the height
+// reservation and the strip itself must measure the same string.
+//
+// The indicator leads because it is the one durable line here — it stands until
+// the CLI resolves the last bundle, while the two below it come and go — so a
+// transient line arriving never shifts it to another row.
 func (m *OutlinerModel) statusStripBody(width int) string {
 	width = max(width, 1)
-	lines := make([]string, 0, 2)
+	lines := make([]string, 0, 3)
+	if indicator := m.conflictIndicator(); indicator != "" {
+		lines = append(lines, PreviewWarningStyle.Width(width).Render(indicator))
+	}
 	if m.focusNotice != "" {
 		lines = append(lines, PreviewWarningStyle.Width(width).Render(m.focusNotice))
 	}

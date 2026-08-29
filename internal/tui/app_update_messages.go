@@ -133,6 +133,10 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 		} else if !m.completionActivity.IsCurrentLocalDay(msg.at) {
 			m.refreshWorkspacePulseAcrossLocalDay(msg.at)
 		}
+		// Conflict bundles are written by another process on another machine, so
+		// no local mutation can announce one; the periodic tick is what makes the
+		// indicator appear, and what clears it once the CLI resolves the last one.
+		m.refreshOutstandingConflicts()
 		return true, tickCmd(periodicSaveInterval, func(at time.Time) tea.Msg {
 			return periodicSaveMsg{at: at}
 		})

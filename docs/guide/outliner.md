@@ -46,6 +46,13 @@ mode change, so a message naming a mode can never misreport the one you switched
 to. A live visual selection is the exception: its summary stays for as long as
 the selection does.
 
+The strip carries one line that is not feedback at all: while the workspace
+holds unresolved merge conflicts, an indicator counting them leads the strip and
+names `tt conflict list`. It is workspace state rather than a message, so it
+neither expires nor clears on a mode change; it leads the transient lines so
+they cannot shift it, and it disappears only once the last bundle is resolved.
+See [`storage.md`](storage.md) for what a bundle is and how to resolve one.
+
 After a commit, recovery feedback advertises `u undo` only when the newest
 workspace-ledger entry is that exact transaction. A task relocation adds
 `Ctrl+O origin` only after its origin was recorded; `Ctrl+I` returns to the

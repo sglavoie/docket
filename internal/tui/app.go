@@ -142,6 +142,12 @@ type AppModel struct {
 	// other operational title state, then injected into the Outliner before paint.
 	// Keeping the snapshot out of View avoids render-time filesystem reads.
 	completionActivity app.CompletionActivity
+	// outstandingConflicts is how many bundles `.tt/conflicts/` holds. It is
+	// deliberately not part of WorkspacePulse: that ladder is a closed ordinal and
+	// ComputeWorkspacePulse has no seam for filesystem-derived state. The status
+	// strip carries this instead, off the same 60s tick, and the count is cached
+	// here so no render reads the directory.
+	outstandingConflicts int
 
 	lastToggleUndoKind toggleUndoKind
 	lastToggleRedoKind toggleUndoKind

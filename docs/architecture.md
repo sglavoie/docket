@@ -376,12 +376,30 @@ divider, so the strip is the top of the status bar rather than the end of the
 view. Growing the status bar is what pins it: `AppModel.View` sizes and pads
 content against the bar's measured height, so the strip sits directly above the
 footer with no blank padding, at any guidance height, and is never the line
-`clipContentHeight` eats. The Outliner is the one provider. Its focus notice and
-its own status message are the strip's two lines, `statusStripHeight` reserves
-the divider plus their wrapped height from `computeOutlinerViewport`'s row
-budget, and `ViewStatusStrip` consumes the one-shot focus notice — safe because
+`clipContentHeight` eats. The Outliner is the one provider. The
+outstanding-conflict indicator, its focus notice, and its own status message are
+the strip's three lines, `statusStripHeight` reserves the divider plus their
+wrapped height from `computeOutlinerViewport`'s row budget, and
+`ViewStatusStrip` consumes the one-shot focus notice — safe because
 `AppModel.View` renders the view before the status bar, so the reservation and
 the strip see one frame's inputs.
+
+The outstanding-conflict indicator leads the strip because it is the one durable
+line there: it stands until the CLI resolves the last bundle, while the two
+below it come and go, so a transient line arriving never moves it to another
+row. It is not part of `WorkspacePulse` — `workspacePulseLevel` is a contiguous
+ordinal ladder and `ComputeWorkspacePulse` takes no filesystem-derived input, so
+the ladder has no rung for it. The shell owns the count:
+`AppModel.refreshOutstandingConflicts` calls `ConflictStore.List` at launch and
+on the existing 60s `periodicSaveMsg` tick, caches the length on
+`outstandingConflicts`, and injects `outstandingConflictCount` into every
+Outliner through `wireOutlinerOperationExecutor`, so no render reads the
+directory and no new timer is armed. The store is read directly rather than
+through an `internal/app` port, following the TUI's existing direct
+`storage.LoadProject` reads: counting bundles validates, mutates, and commits
+nothing, so there is no application-layer policy for a port to hold. A nil
+accessor is inert, which is what keeps the Hub's preview painter and
+struct-literal test models indicator-free. Resolution stays in the CLI.
 
 The Outliner cursor row is drawn by `outlinerCursorRow`, not by `SelectedLine`.
 Every Outliner row renderer splits itself at one seam: a leading structural

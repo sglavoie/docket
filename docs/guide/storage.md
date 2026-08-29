@@ -26,6 +26,13 @@ tt conflict resolve <id> --use remote
 tt conflict resolve <id> --use file --file merged.md
 ```
 
+A recorded bundle no longer waits to be discovered. While the TUI is open, the
+status strip above the footer carries a state indicator counting the workspace's
+unresolved merge conflicts and naming the command that reviews them. It is
+recounted at launch and once a minute, so a conflict another machine recorded
+while you were working appears on its own, and the line disappears once the last
+bundle is resolved. Resolving stays in the CLI.
+
 
 ## Schema 16 storage and migration
 

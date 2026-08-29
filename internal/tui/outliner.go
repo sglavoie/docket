@@ -151,6 +151,12 @@ type OutlinerModel struct {
 	lensQueryEditing    bool
 	lensQueryEditOrigin string
 
+	// outstandingConflicts is the shell-injected count of recorded merge-conflict
+	// bundles the status strip reports. A nil accessor is inert, so a
+	// struct-literal test model and the Hub's preview painter simply carry no
+	// indicator; the Outliner never learns where conflicts are stored.
+	outstandingConflicts func() int
+
 	// noteSearchIndex is the shell-injected accessor over the workspace-wide note
 	// index the search tier ranks. A nil accessor means the tier is simply
 	// absent, which is what a struct-literal test model and the Project Hub's
