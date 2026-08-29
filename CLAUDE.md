@@ -363,6 +363,7 @@ Portable live state consists of:
 ```text
 .tt/workspace.json
 .tt/planning.json
+.tt/lenses.json
 .tt/global-notes/
 .tt/transactions/
 .tt/undo/
@@ -374,10 +375,13 @@ projects/<slug>/.attachments/
 ```
 
 Machine-local `~/.tt/runtime/<workspace-id>/machine.json` holds the dark/light
-theme, the named lenses, and the active-lens pointer, which is validated for
-shape alone and never referentially. Lenses stay machine-local: a lens mutation
-opens no workspace transaction and records no undo ledger entry, so `u` never
-takes a lens back. Workspace paths derive below approved roots; preserve
+theme and the active-lens pointer, which is validated for shape alone and never
+referentially. Only those two stay machine-local: lens definitions are portable,
+in `.tt/lenses.json`. A machine joins that home once, through an adoption merge
+keyed off machine-local state and run after the schema is already current, never
+inside the migration chain the synced catalog version guards. A lens mutation
+still opens no workspace transaction and records no undo ledger entry, so `u`
+never takes a lens back. Workspace paths derive below approved roots; preserve
 symlink-aware containment, checked revisions, deterministic locks, and recovery
 manifests.
 

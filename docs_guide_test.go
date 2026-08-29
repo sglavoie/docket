@@ -257,8 +257,9 @@ func TestGuideDocumentsStorageAndMigration(t *testing.T) {
 		"schema-14 Markdown and generic `Task` headings",
 		"Each task may finally carry an optional `depends` list of soft references",
 		"Each task may carry an optional non-negative `defer_count`; zero is omitted",
+		"`lenses.json` contains your saved named-lens definitions",
 		"Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the dark/light theme " +
-			"choice, the saved named-lens definitions, and a pointer to the lens that was last open",
+			"choice and a pointer to the lens that was last open",
 		"The active-lens pointer is a hint rather than a record: it is checked for shape alone when " +
 			"the file loads",
 		"pre-simplification-v5-<UTC>.tar.gz",
@@ -272,9 +273,11 @@ func TestGuideDocumentsStorageAndMigration(t *testing.T) {
 		"pre-defer-count-v13-<UTC>.tar.gz",
 		"pre-due-time-v14-<UTC>.tar.gz",
 		"pre-dependencies-v15-<UTC>.tar.gz",
+		"pre-portable-lenses-v16-<UTC>.tar.gz",
 		"Schema 13 upgrades task Markdown to schema 12",
 		"Schema 14 upgrades task Markdown to schema 13 by adding the optional `due_time`",
 		"Schema 15 upgrades task Markdown to schema 14 by adding the optional `depends`",
+		"Schema 16 leaves task Markdown at schema 14",
 		"durable `state_changed` clock, backfilled from `updated`",
 		"There is no down-migration",
 		"keep your own copy of the workspace directory before a version jump",

@@ -92,6 +92,7 @@ assertions, and trailing JSON are rejected before execution.
 | `wait` | none | Let time pass: drain pending asynchronous work and advance the virtual clock so due timers fire. |
 | `command` | `command` | Invoke a stable harness or production operation ID. |
 | `restart` | none | Rebuild the app from durable state alone, the way relaunching `tt` does. |
+| `switch_machine` | none | Move machine-local state to an empty home, then restart, the way opening the same synced workspace on a second machine does. |
 | `assert` | `assert`, optional `value` | Check a fresh normalized observation. |
 
 An optional `label` describes user intent and is repeated in failure output.
@@ -104,6 +105,13 @@ it, keeping only the terminal size and the virtual clock. Nothing a session held
 in memory survives, so anything asserted after a restart is an assertion about
 what was actually persisted. Use it for the launch contracts: what a relaunch
 reopens with, and what it deliberately does not.
+
+A `switch_machine` action is a restart onto a second machine. Machine identity is
+the home directory, so the action moves `$HOME` to an empty one and relaunches
+against the same workspace directory: the new app finds no theme, no active-lens
+pointer, and no machine-local lens copy, and whatever a scenario still sees is
+what the portable workspace carried. Use it for the multi-machine contracts,
+where the question is which half of the state travelled.
 
 Accepted key names include printable public keys plus:
 
@@ -230,6 +238,7 @@ The committed suite exercises the product contracts directly:
 | Search projection and exact restoration | `visible-search-minimum-layout.json`, `search-restoration.json` |
 | Named lenses: the `\` picker, its two action rows at the narrowest width, the three starters, the `1`-`9` quick-apply ordinals and their precedence under a typed digit, save/rename/replace/delete, lens-query narrowing, exact Escape restoration, retained scope, and the literal backslash inside text input | `named-lens-picker-open.json`, `named-lens-apply-starters.json`, `named-lens-ordinal-apply.json`, `named-lens-save-and-manage.json`, `named-lens-query-narrowing.json`, `named-lens-escape-restoration.json`, `named-lens-scope-retention.json`, `named-lens-from-search-results.json`, `named-lens-empty-state.json`, `named-lens-literal-backslash.json` |
 | The active lens surviving a relaunch: its saved axes reapplied over the clean launch view, a scoped lens reopening in its project, the first Esc landing where a lens-free launch would have, and a pointer that no longer resolves failing closed in silence | `named-lens-escape-restoration.json`, `named-lens-scoped-restart.json`, `named-lens-restart-dangling.json` |
+| A lens definition surviving a machine switch: the workspace carries it to a machine that has never seen it, that machine applies its whole projection, the active-lens pointer stays behind, and a third machine reseeds no starter over the workspace set | `named-lens-machine-switch.json` |
 | The built-in view gallery end to end: opened from `Add built-in view`, the seeded starters disabled, search, add-and-apply closing both overlays, and the added template disabled by stable ID on reopening | `named-lens-built-in-gallery.json` |
 | Toggle and range selection with bulk intersection | `outliner-toggle-selection.json`, `outliner-range-selection.json`, `outliner-multiselect-*.json`, `outliner-bulk-action-intersection.json` |
 | One `%` carrying a whole selection into one destination, under one undo entry, at the default and minimum widths | `outliner-move-to-project-bulk-undo.json`, `outliner-move-to-project-bulk-narrow-layout.json` |

@@ -166,6 +166,14 @@ type uitestWorkspace struct {
 	// before the app launches. Scenarios then observe them as pre-existing
 	// workspace content rather than as user mutations available to undo.
 	noteSeeds []fixtureNoteSeed
+	// homeBeforeSwitch is the $HOME this workspace found, recorded the first
+	// time switchMachineHome moves it and put back by Cleanup. Machine identity
+	// is exactly the home directory, so a switch is process-wide and has to be
+	// undone for the tests that follow.
+	homeBeforeSwitch string
+	// machineSeq numbers the machine homes handed out by switchMachineHome, so
+	// each switch lands on a directory no earlier machine ever wrote to.
+	machineSeq int
 }
 
 type fixtureNoteSeed struct {
@@ -179,7 +187,34 @@ func (w *uitestWorkspace) Cleanup() error {
 	if w == nil || w.Root == "" {
 		return nil
 	}
+	if w.homeBeforeSwitch != "" {
+		// A scenario that switched machines moved $HOME for the whole process.
+		// Put it back before the temp tree the switch pointed into is removed,
+		// so the next test resolves machine-local state where TestMain put it.
+		_ = os.Setenv("HOME", w.homeBeforeSwitch)
+		w.homeBeforeSwitch = ""
+	}
 	return os.RemoveAll(w.Root)
+}
+
+// switchMachineHome points machine-local state at a fresh, empty home inside
+// this workspace's temp tree. Machine identity is the home directory —
+// machine.json lives at <$HOME>/.tt/runtime/<workspace-id>/machine.json — so
+// moving it is what makes the same synced workspace look like it was opened on
+// a machine that has never seen it. The synced directory is not touched.
+func (w *uitestWorkspace) switchMachineHome() error {
+	if w.homeBeforeSwitch == "" {
+		w.homeBeforeSwitch = os.Getenv("HOME")
+	}
+	w.machineSeq++
+	home := filepath.Join(w.Root, fmt.Sprintf("machine-%d", w.machineSeq))
+	if err := os.MkdirAll(home, 0o755); err != nil {
+		return fmt.Errorf("failed to create machine home: %w", err)
+	}
+	if err := os.Setenv("HOME", home); err != nil {
+		return fmt.Errorf("failed to switch machine home: %w", err)
+	}
+	return nil
 }
 
 // newUITestWorkspace creates an empty isolated workspace: a temp root with a
@@ -247,6 +282,9 @@ func (w *uitestWorkspace) launch(width, height int) (*UITestDriver, error) {
 	if err := w.persistSyncedDomains(); err != nil {
 		return nil, fmt.Errorf("failed to write workspace domains: %w", err)
 	}
+	if err := w.adoptPortableLenses(); err != nil {
+		return nil, err
+	}
 	// Reload the synced files so RuntimeState holds the revisions just written;
 	// bootstrap commits must compare against those baselines. Preserve the
 	// intentionally in-memory machine fixture. A newly minted fixture identity
@@ -256,6 +294,11 @@ func (w *uitestWorkspace) launch(width, height int) (*UITestDriver, error) {
 	if err := w.Runtime.Reload(); err != nil {
 		return nil, fmt.Errorf("failed to reload workspace domains: %w", err)
 	}
+	// Adoption is the one thing that wrote machine state before the app ran, so
+	// its two fields are carried across the preserved fixture values rather than
+	// dropped. Without the marker a lens write would publish nowhere portable.
+	machine.LensHomeAdopted = w.Runtime.Machine().LensHomeAdopted
+	machine.NamedLenses = w.Runtime.Machine().NamedLenses.Clone()
 	w.Runtime.SetMachineInMemory(machine)
 	if err := w.persistNoteSeeds(); err != nil {
 		return nil, err
@@ -270,6 +313,7 @@ func (w *uitestWorkspace) launch(width, height int) (*UITestDriver, error) {
 	// mirroring the real app rather than a cold, unrendered root.
 	driver := NewUITestDriver(app, width, height)
 	driver.relaunch = w.relaunchApp
+	driver.moveToFreshMachine = w.switchMachineHome
 	if app.startupMessage != nil {
 		driver.dispatch(app.startupMessage)
 		driver.drain()
@@ -295,6 +339,9 @@ func (w *uitestWorkspace) launch(width, height int) (*UITestDriver, error) {
 // committed — the theme, the saved lenses, the active-lens pointer — is exactly
 // what the new app sees, and whatever it only held in memory is gone.
 func (w *uitestWorkspace) relaunchApp() (*AppModel, error) {
+	if err := w.adoptPortableLenses(); err != nil {
+		return nil, err
+	}
 	runtime, err := config.LoadRuntimeState(w.DataDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to reload workspace for restart: %w", err)
@@ -305,6 +352,18 @@ func (w *uitestWorkspace) relaunchApp() (*AppModel, error) {
 		return nil, fmt.Errorf("failed to initialize app model after restart: %w", err)
 	}
 	return app, nil
+}
+
+// adoptPortableLenses runs the one-time-per-machine merge a real launch runs
+// between loading the domains and handing them to the TUI. It is a no-op once
+// this machine's marker is set, and it is what publishes `.tt/lenses.json`, so
+// a fixture workspace keeps its lens definitions where a synced workspace keeps
+// them rather than where an unadopted machine would.
+func (w *uitestWorkspace) adoptPortableLenses() error {
+	if err := w.Manager.AdoptPortableLenses(); err != nil {
+		return fmt.Errorf("failed to adopt portable lenses: %w", err)
+	}
+	return nil
 }
 
 func (w *uitestWorkspace) persistNoteSeeds() error {

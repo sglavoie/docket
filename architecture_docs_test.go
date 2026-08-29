@@ -125,7 +125,10 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"Manual order is never touched",
 		"Group order never changes",
 		"### Named lenses",
-		"persisted as `config.NamedLens` in the\nmachine domain beside the theme",
+		"persisted as `config.NamedLens` in the portable `lenses.json` domain, while the theme and the\n" +
+			"active-lens pointer stay machine-local",
+		"`Manager.AdoptPortableLenses` is the one-time-per-machine step",
+		"`MergeNamedLenses` never deletes",
 		"`captureLensState` reads the query axis through\n`capturedLensQuery`",
 		"its binding carries `DelegateTransaction`",
 		"`OperationHistory` drops the entry, so `u`\nnever takes a lens back",

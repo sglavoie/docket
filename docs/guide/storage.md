@@ -27,7 +27,7 @@ tt conflict resolve <id> --use file --file merged.md
 ```
 
 
-## Schema 15 storage and migration
+## Schema 16 storage and migration
 
 The live portable layout is deliberately small:
 
@@ -36,6 +36,7 @@ The live portable layout is deliberately small:
 ├── .tt/
 │   ├── workspace.json
 │   ├── planning.json
+│   ├── lenses.json
 │   ├── global-notes/
 │   ├── transactions/
 │   ├── undo/
@@ -59,15 +60,29 @@ Each task may finally carry an optional `depends` list of soft references to
 other tasks, each a `project-id:task-id` pair; an empty list is omitted. A
 reference is durable and one-directional: only the referring task stores it, so
 the dependents you see are computed at read time and never written down.
+
+`lenses.json` contains your saved named-lens definitions — the three seeded
+starters, anything you saved yourself, and anything you added from the built-in
+gallery, which are all one list. It travels with the workspace, so a lens you
+save on one machine is a lens every machine that opens that workspace has. An
+empty lens list persists as `[]` and is honored, which is what makes deletion
+durable, on every machine rather than on the one you deleted from.
+
 Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the
-dark/light theme choice, the saved named-lens definitions, and a pointer to the
-lens that was last open — the three seeded starters, anything you saved
-yourself, and anything you added from the built-in gallery, which are all one
-list. An empty lens list
-persists as `[]` and is honored, which is what makes deletion durable.
-The active-lens pointer is a hint rather than a
+dark/light theme choice and a pointer to the lens that was last open. Both are
+answers about this machine rather than about the workspace, which is why they
+stay behind while the definitions travel: a second machine opens on its own
+theme and on no lens at all. The active-lens pointer is a hint rather than a
 record: it is checked for shape alone when the file loads, so one naming a lens
 that is no longer there costs you a stale hint and never a failed launch.
+
+The first time a machine opens a workspace that has reached schema 16, it joins
+the shared list: whatever lenses that machine had saved for itself are merged
+in, and nothing is dropped. A lens only one side had survives, and one name held
+by two different definitions yields both — as `Name` and `Name (2)` — because
+the two lists carry no clock between them and neither can be called the newer.
+The merge runs once per machine, so a duplicate you tidy up afterwards stays
+tidied.
 
 Startup migrates supported schema-15 workspaces to schema 16, supported
 schema-14 workspaces to schema 15, supported
@@ -84,8 +99,9 @@ for v6→v7, `pre-tag-v8-<UTC>.tar.gz` for v7→v8,
 `pre-defer-instant-v11-<UTC>.tar.gz` for v10→v11,
 `pre-context-v12-<UTC>.tar.gz` for v11→v12,
 `pre-defer-count-v13-<UTC>.tar.gz` for v12→v13,
-`pre-due-time-v14-<UTC>.tar.gz` for v13→v14, and
-`pre-dependencies-v15-<UTC>.tar.gz` for v14→v15.
+`pre-due-time-v14-<UTC>.tar.gz` for v13→v14,
+`pre-dependencies-v15-<UTC>.tar.gz` for v14→v15, and
+`pre-portable-lenses-v16-<UTC>.tar.gz` for v15→v16.
 
 The two structural conversions state themselves. The schema-6 conversion
 preserves notes and attachment bytes, converts retained decision text into

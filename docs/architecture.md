@@ -25,7 +25,7 @@ services and revision-checked storage boundaries.
     populations, `H`/`M`/`L` and `zt`/`zz`/`zb`, Focus and `Esc`, Peek budget
   - [Sorting axis](#sorting-axis) — manual-order exemption, group order,
     fixed-order modes
-  - [Named lenses](#named-lenses) — machine-local domain, commit before publish,
+  - [Named lenses](#named-lenses) — portable domain, commit before publish,
     the single restoration point, lens query editing, the built-in view catalog
   - [Selection and subordinate tools](#selection-and-subordinate-tools) —
     visual selection, Select Project, `Ctrl+T` axis
@@ -52,7 +52,7 @@ The repository is divided by responsibility:
 - `internal/storage` owns strict schema-14 Markdown, attachments, transactions,
   workspace undo/redo, three-way merge, conflicts, and recovery.
 - `internal/config` owns the lean catalog and planning domains, project tags,
-  machine-local theme, workspace selection, and the v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15
+  machine-local theme, workspace selection, and the v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15→v16
   migration chain.
 - `internal/tui` owns the single Outliner root, typed subordinate tools and
   overlays, operation descriptors, and the deterministic review harness.
@@ -1683,7 +1683,8 @@ would falsely report `od is not a sort action`.
 
 A named lens is one durable Outliner projection — mode, project scope, its own
 narrowing query, both filter families, and the sort axis — persisted as
-`config.NamedLens` in the machine domain beside the theme. Scope is the one axis
+`config.NamedLens` in the portable `lenses.json` domain, while the theme and the
+active-lens pointer stay machine-local. Scope is the one axis
 a lens may decline to own: an empty `NamedLens.Scope` means the definition leaves
 the view's scope exactly as it found it, which is deliberately not a way to force
 the global population. `capturedLensScope` decides what a save records — never
@@ -1695,8 +1696,9 @@ base Outliner can be asked for. `captureLensState` reads the query axis through
 input is closed. Only that axis crosses over: the projection itself cannot
 survive underneath a lens, so `publishLens` calls
 `clearSearchProjectionWithoutRestore` and the baseline hands the search back on
-the way out. Nothing about it is synced and nothing about it
+the way out. The definitions travel with the workspace but no lens
 is a workspace entity, which decides the rest of the design: a lens mutation
+goes through `CommitLensDefinitions` and so
 opens no workspace transaction, its binding carries `DelegateTransaction`, and
 because no transaction is recorded `OperationHistory` drops the entry, so `u`
 never takes a lens back. `commitNamedLensMutation` clones the machine snapshot,
@@ -1750,7 +1752,7 @@ the application that installed the lens.
 installed identity, the fingerprint the modified marker compares the live view
 against, and the single restoration point `Esc` returns to. The fingerprint is
 the whole of what a comparison needs, so the frame keeps no second copy of the
-record: the definition itself lives in machine state. That fingerprint is taken
+record: the definition itself lives in the lens domain. That fingerprint is taken
 from the definition with its scope axis replaced by the scope the view is
 actually in, because an unowned axis cannot be diverged from — which is also
 what makes a later scope push or pop a real divergence. `lensModified` carves
@@ -2334,21 +2336,58 @@ lowercase ASCII slugs. Absolute paths are not catalog data. Every mutation path
 is checked against approved roots with symlink-aware containment before locks,
 staging files, or destination directories are created.
 
-Portable configuration has only two synced domains:
+Portable configuration has three domain files:
 
 - `workspace.json`: workspace identity, lean active/archived project catalog,
   automatic color slots, each project's normalized tag set, and the protected
   Unfiled ID.
 - `planning.json`: project-qualified Today and Next ordering.
+- `lenses.json`: the named-lens definitions. It is a `domainKind` of its own and
+  deliberately outside `syncedDomainKinds`, whose membership decides whether a
+  workspace reads as bootstrapped: a workspace with no lens home is complete, not
+  partial. `WorkspaceLensDefinitions` distinguishes three states rather than two —
+  a nil list is "this workspace defines no lenses" and falls back to the machine
+  copy, a non-nil empty list is the durable "every lens was deleted", and
+  `SaveLensDefinitionsChecked` refuses an undefined collection so the first can
+  never be published as the second.
 
-Machine state contains only the dark/light theme selection and the saved
-named-lens definitions:
+Machine state contains only the dark/light theme selection and the active-lens
+pointer:
 
 ```text
 ~/.tt/runtime/<workspace-id>/machine.json
 ```
 
 The workspace ID prevents unrelated workspaces from sharing machine state.
+`MachineState.NamedLenses` survives as the tolerated legacy input the strict
+decoder still accepts and as the fallback an unadopted binary reads;
+`DomainFileStore.applyPortableLensDefinitions` is the one seam that decides
+precedence, and it is applied on both load paths — `LoadMachineChecked` and
+`loadDomainBundleWithRevisions` — because the frontends reach the bundle through
+the second. `DomainCoordinator.CommitMachine` mirrors it through
+`publishOwnedLensDefinitions`, which forwards the lens half to
+`CommitLensDefinitions` when `lenses.json` exists or this machine has adopted,
+and writes the machine copy beside it either way.
+
+`Manager.AdoptPortableLenses` is the one-time-per-machine step that joins a
+machine to that home. It cannot live in the migration chain, which the synced
+catalog version guards: the first machine to reach v16 advances that marker for
+every machine sharing the data directory, so a second machine's migration is a
+no-op and its lenses would be lost unread. Adoption is therefore keyed off
+machine-local `MachineState.LensHomeAdopted` and runs from
+`Manager.RecoverWorkspace` after the chain, outside it; `LoadOrCreateDomains`
+stamps the marker onto a fresh bundle before `createDomainBundle` instead, so a
+brand-new workspace publishes its home in the single machine write bootstrap
+already makes. `MergeNamedLenses` never deletes: it dedupes by id, keeps both
+halves of an id collision whose definitions differ under a derived UUIDv5
+identity — which is what makes re-merging idempotent — and renames an incoming
+record whose name is taken, because `NamedLensList.Validate` enforces case-folded
+name uniqueness as well as id uniqueness. `LoadPersistedMachineLenses` decodes
+into a zero `MachineState` rather than a seeded one, so an omitted `named_lenses`
+key contributes nothing and a machine joining later cannot reseed starters into a
+workspace whose owner deleted every lens; the founding machine, where neither
+home holds a record, is the one exception and hands the workspace the set it
+already shows.
 Logs and process locks are also machine-local. A fixed machine-local active
 workspace pointer may select a non-default data directory before the portable
 catalog is loaded.

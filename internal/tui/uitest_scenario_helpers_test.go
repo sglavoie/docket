@@ -154,7 +154,7 @@ func (a UITestAction) validate() error {
 		if a.Width <= 0 || a.Height <= 0 {
 			return fmt.Errorf("resize needs positive width and height, got %dx%d", a.Width, a.Height)
 		}
-	case UITestActionWait, UITestActionRestart:
+	case UITestActionWait, UITestActionRestart, UITestActionSwitchMachine:
 		// Nothing to validate.
 	case UITestActionCommand:
 		if strings.TrimSpace(a.Command) == "" {

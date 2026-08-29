@@ -25,6 +25,11 @@ const (
 	// quitting and relaunching `tt` does. Nothing held in memory survives it, so
 	// anything the app reopens with must have been persisted.
 	UITestActionRestart UITestActionType = "restart"
+	// UITestActionSwitchMachine points machine-local state at a fresh, empty
+	// home and then restarts against the same workspace directory, which is what
+	// opening a synced workspace on a second machine looks like. Only what the
+	// portable workspace carries survives it.
+	UITestActionSwitchMachine UITestActionType = "switch_machine"
 	// UITestActionAssert checks an observation invariant (implemented later).
 	UITestActionAssert UITestActionType = "assert"
 )

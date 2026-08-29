@@ -40,6 +40,11 @@ type UITestDriver struct {
 	// refuses to restart rather than silently doing something weaker.
 	relaunch func() (*AppModel, error)
 
+	// moveToFreshMachine repoints machine-local state at an empty home, which
+	// the "switch_machine" action drives before relaunching. It is nil for a
+	// driver wrapping an AppModel nobody owns the workspace of.
+	moveToFreshMachine func() error
+
 	// now is this driver's virtual clock and timers the ticks waiting on it. A
 	// "wait" action advances the clock rather than sleeping; see
 	// uitest_clock_helpers_test.go.
@@ -97,6 +102,22 @@ func (d *UITestDriver) Restart() error {
 	}
 	d.bootNoteSearchIndex()
 	return nil
+}
+
+// SwitchMachine gives the workspace a second machine and relaunches on it. The
+// synced directory is untouched; only the machine-local home moves, to an empty
+// one, so the new app starts with no theme, no active-lens pointer, and no
+// machine-local lens copy. Whatever the scenario then still sees is what the
+// portable workspace carried, which is the only thing a real second machine
+// would have received.
+func (d *UITestDriver) SwitchMachine() error {
+	if d.moveToFreshMachine == nil {
+		return errors.New("switch_machine needs a workspace-owned driver")
+	}
+	if err := d.moveToFreshMachine(); err != nil {
+		return err
+	}
+	return d.Restart()
 }
 
 // bootNoteSearchIndex runs the one launch command the driver does not get from

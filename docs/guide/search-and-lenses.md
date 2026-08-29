@@ -138,10 +138,11 @@ it, `Add built-in view` — followed by every saved lens in alphabetical order.
 | `/` | Narrow the saved list by name; both action rows stay put while the saved rows filter. `Esc` clears the typed query, then leaves the search, then closes the picker |
 | `Esc` | Close the picker without changing the view |
 
-Applying, saving, renaming, replacing, and deleting are all machine-local
-writes, so none of them records an undo entry and `u` never takes a lens back. A
-write that fails changes nothing: the list, the view, and the saved records stay
-exactly as they were, and the picker keeps the failure on screen.
+Applying, saving, renaming, replacing, and deleting write the lens list alone,
+outside the workspace history, so none of them records an undo entry and `u`
+never takes a lens back. A write that fails changes nothing: the list, the view,
+and the saved records stay exactly as they were, and the picker keeps the
+failure on screen.
 
 An active lens names itself in the title row as `Lens: <name>`, and gains a `*`
 as soon as the live view stops matching what was saved — a mode change, a
@@ -220,7 +221,7 @@ whose name some unrelated lens of yours already answers to is greyed as
 `A lens named "<name>" already exists`. Deleting an added template hands it back
 to the gallery.
 
-Definitions live in machine-local state and survive a restart, and so does the
+Definitions live in the workspace and survive a restart, and so does the
 lens you had open. A launch still builds the same clean Active Projects, All
 view it always did — no navigation, folds, cursor, or selection come back — and
 then reapplies that lens's saved axes on top of it: its mode, its narrowing
@@ -230,6 +231,15 @@ launch would have shown, so a lens you no longer want costs one key. Dismissing
 it is durable too, and a lens the pointer names but that can no longer be opened
 — deleted on another machine, or scoped to a project since archived, parked, or
 deleted — is quietly dropped, and the launch is the ordinary one.
+
+Because the definitions live in the workspace, a lens you save on one machine is
+a lens waiting for you on the next one, with its whole projection intact. The
+lens you had open is the half that stays behind: it is a note about where you
+were on that machine, so a second machine opens on the clean Active Projects,
+All view and on whichever lens you last left open there. The first time a
+machine opens a workspace it merges any lenses it had saved for itself into the
+shared list without dropping either side, so nothing you built on either machine
+is lost — see [Storage, undo, and migration](storage.md).
 
 
 ## Sorting

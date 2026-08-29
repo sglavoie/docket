@@ -137,6 +137,8 @@ func (d *UITestDriver) runAction(a UITestAction) error {
 		d.advanceClock(defaultWaitTimeout)
 	case UITestActionRestart:
 		return d.Restart()
+	case UITestActionSwitchMachine:
+		return d.SwitchMachine()
 	case UITestActionAssert:
 		return d.runAssert(a)
 	case UITestActionCommand:
