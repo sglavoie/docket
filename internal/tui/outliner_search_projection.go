@@ -114,6 +114,9 @@ func (m *OutlinerModel) ActivateSearch() tea.Cmd {
 		return m.beginLensQueryEdit()
 	}
 	m.beginSearchProjection()
+	// Every open starts a fresh walk: the ring survives the input closing, the
+	// position in it does not, so the first Up always names the newest query.
+	m.searchHistory.resetRecall()
 	return m.BaseSearchableView.ActivateSearch()
 }
 

@@ -91,6 +91,17 @@ relaxes case alone and never widens the sigil gate. The rule covers the
 Outliner's `/`, Notes search, and both help searches; the `project#42`
 shorthand, autocomplete, and pickers stay case-insensitive.
 
+The input remembers the queries you submitted. Inside the `/` box, `↑` walks
+back through them newest first and `↓` walks forward again, ending on whatever
+you had half-typed when the walk started, so reaching for an earlier query never
+costs the one in your hands. Each distinct query is held once however often you
+submit it, only a submitted query joins the ring — one abandoned with `Esc` does
+not — and typing ends the walk, so the next `↑` starts from the newest again.
+The ring is session-only and written nowhere: it survives closing and reopening
+the input, and a relaunch starts empty. A query worth keeping is a lens. While
+the suggestion pane is open it owns `↑` and `↓` for its own cursor; one `Esc`
+closes it and gives both keys back to the walk.
+
 The lowercase `f` chord refines the rows a projection already holds. Uppercase
 `F` decides which projects load at all, so each of its facets reloads:
 

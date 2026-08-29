@@ -66,7 +66,13 @@ func (m *OutlinerModel) ContextualGuidance() (GuidanceSpec, bool) {
 		// the search, and saying so is the whole point of the swap.
 		return m.searchAutocompleteGuidance(), true
 	case m.IsSearchMode():
-		return GuidanceSpec{Hints: requiredGuidanceHints("Enter apply search", "Esc clear search"), Rows: 2}, true
+		hints := requiredGuidanceHints("Enter apply search", "Esc clear search")
+		if m.hasSearchHistory() {
+			// Only once something has been submitted: an empty ring would advertise
+			// a walk that does nothing on its first press.
+			hints = append(hints, optionalGuidanceHints(10, "↑/↓ recall query")...)
+		}
+		return GuidanceSpec{Hints: hints, Rows: 2}, true
 	case len(m.rows) == 0:
 		return m.emptyGuidance(), true
 	case m.multiSelectMode:

@@ -23,6 +23,14 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	// Up and Down walk the session's submitted queries, below the pane's claim
+	// above so an open pane keeps them for its own cursor. The walk is confined to
+	// the input: no root key is bound for it, and the shell routes every key here
+	// while search mode owns the input.
+	if m.recallSearchHistory(key) {
+		return m, nil
+	}
+
 	// Handle search mode input first
 	if m.IsSearchMode() && key == "esc" {
 		if m.IsRangeSelectionActive() {
@@ -33,7 +41,16 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.ClearSearch()
 		return m, nil
 	}
+	// Submitting is what retains a query, so an abandoned one never joins the
+	// ring. This runs before HandleSearchMode consumes the key, which is the only
+	// place the submitted text is still readable as input rather than as a query.
+	if m.IsSearchMode() && key == "enter" {
+		m.recordSearchHistoryEntry(m.SearchInputValue())
+	}
 	if model, cmd, handled := m.HandleSearchMode(msg, m, func() {
+		// Typing ends the walk, so the next Up starts from the newest query again
+		// rather than from wherever the abandoned walk had reached.
+		m.searchHistory.resetRecall()
 		rebuildOutlinerPreservingCursor(m)
 	}); handled {
 		// Recompute unconditionally rather than on value change alone: a bare caret

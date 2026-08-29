@@ -187,6 +187,14 @@ type OutlinerModel struct {
 	// working without a constructor.
 	searchAutocomplete outlinerSearchAutocomplete
 
+	// searchHistory is the session-only ring of submitted slash queries, walked
+	// with Up and Down inside the input. It is never persisted, exactly like jump
+	// history, and unlike jump history it is not scoped to a projection: a query
+	// is worth recalling in whatever mode or scope the user reaches for it next,
+	// and it names tasks rather than row positions, so no rebuild can invalidate
+	// it. The zero value is inert.
+	searchHistory outlinerSearchHistory
+
 	// nextDeferWake is the soonest instant a pending deferral in scope lapses,
 	// and zero means none is pending. It is a refresh clock read by the periodic
 	// tick; what a row shows stays isComputedOpenWork's decision.
