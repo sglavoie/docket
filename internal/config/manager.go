@@ -175,6 +175,9 @@ func (m *Manager) RecoverWorkspace() error {
 		if err := m.MigrateWorkspaceToV15(); err != nil {
 			return fmt.Errorf("failed to activate workspace schema v15: %w", err)
 		}
+		if err := m.MigrateWorkspaceToV16(); err != nil {
+			return fmt.Errorf("failed to activate workspace schema v16: %w", err)
+		}
 	}
 	return nil
 }

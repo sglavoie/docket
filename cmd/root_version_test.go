@@ -122,8 +122,8 @@ func TestPrintVersionRendersResolvedValues(t *testing.T) {
 // reads from drifting behind the migration chain again.
 func TestRootLongDescriptionNamesTheCurrentSchema(t *testing.T) {
 	long := rootCmd.Long
-	if !strings.Contains(long, "schema-15") {
-		t.Errorf("root Long description does not name schema-15:\n%s", long)
+	if !strings.Contains(long, "schema-16") {
+		t.Errorf("root Long description does not name schema-16:\n%s", long)
 	}
 	for _, retired := range []string{"schema-6", "schema-5", "schema 6", "schema 5"} {
 		if strings.Contains(long, retired) {

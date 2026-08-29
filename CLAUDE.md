@@ -381,8 +381,9 @@ takes a lens back. Workspace paths derive below approved roots; preserve
 symlink-aware containment, checked revisions, deterministic locks, and recovery
 manifests.
 
-Schema-15 catalogs hold schema-14 task Markdown.
-Migration v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15 validates each candidate first,
+Schema-16 catalogs hold schema-14 task Markdown. That pairing is descriptive,
+never derived: v16 advanced no task grammar, so it rewrote no `tasks.md`.
+Migration v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15→v16 validates each candidate first,
 publishes an immutable archive/audit pair, then atomically activates the next
 schema and removes retired storage. Nothing may publish partial output before a
 snapshot boundary. v4/v5/v6/v11 decoders are migration-only: runtime code

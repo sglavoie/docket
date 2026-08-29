@@ -274,9 +274,13 @@ func TestManagerV15MigrationRecoversPreparedActivationOnStartup(t *testing.T) {
 	if err := manager.RecoverWorkspace(); err != nil {
 		t.Fatalf("recover prepared schema-15 activation on startup: %v", err)
 	}
+	// Startup rolls the prepared manifest forward and then continues the chain,
+	// so the catalog lands on the newest supported schema. The single published
+	// snapshot pair asserted below is what proves the v15 boundary ran once and
+	// was never re-entered.
 	schema, exists, err := workspaceCatalogPayloadSchema(root)
-	if err != nil || !exists || schema != V15ConfigSchemaVersion {
-		t.Fatalf("recovered catalog schema = %d exists=%v err=%v, want %d", schema, exists, err, V15ConfigSchemaVersion)
+	if err != nil || !exists || schema != CurrentConfigVersion {
+		t.Fatalf("recovered catalog schema = %d exists=%v err=%v, want %d", schema, exists, err, CurrentConfigVersion)
 	}
 	if _, statErr := os.Stat(journal.ManifestPath(manifest.ID)); !errors.Is(statErr, os.ErrNotExist) {
 		t.Fatalf("recovered activation manifest still exists: %v", statErr)
@@ -345,7 +349,10 @@ func TestManagerV15MigrationRefusesANewerWorkspace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	newer := bytes.Replace(source, []byte("\"schema_version\": 15"), []byte("\"schema_version\": 16"), 1)
+	// The marker must land past CurrentConfigVersion, not merely past schema 15:
+	// the guard now refuses on what this build supports, so an intermediate
+	// schema the chain can still reach is not a newer workspace.
+	newer := bytes.Replace(source, []byte("\"schema_version\": 15"), []byte("\"schema_version\": 17"), 1)
 	if bytes.Equal(newer, source) {
 		t.Fatalf("catalog does not carry the expected schema marker:\n%s", source)
 	}

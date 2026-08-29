@@ -2404,7 +2404,7 @@ all side effects are rebuilt together.
 ## Snapshot-first schema migration
 
 Workspace recovery reads the catalog payload schema before ordinary loading.
-Schema 15 proceeds directly. A supported schema-4 split-domain workspace first
+Schema 16 proceeds directly. A supported schema-4 split-domain workspace first
 crosses the schema-5 boundary, a supported schema-5 workspace then enters the
 schema-6 consolidation path, a schema-6 workspace crosses the schema-7
 scope-folding path, a schema-7 workspace crosses the schema-8 tag path, a
@@ -2413,8 +2413,8 @@ a schema-9 workspace crosses the schema-10 defer-rename path, a schema-10
 workspace crosses the schema-11 defer-instant path, a schema-11 workspace
 crosses the schema-12 task-context path, a schema-12 workspace crosses the
 schema-13 defer-count path, a schema-13 workspace crosses the schema-14
-due-time path, and a schema-14 workspace finishes on the schema-15
-soft-dependency path:
+due-time path, a schema-14 workspace crosses the schema-15 soft-dependency
+path, and a schema-15 workspace finishes on the schema-16 portable-lens path:
 
 1. Decode the v4 catalog, planning, settings, automation, machine state, task
    Markdown, completed archives, notes, blockers, and legacy indexes with
@@ -2517,8 +2517,16 @@ soft-dependency path:
    activate catalog schema 15 and task Markdown schema 14 across active and
    archived projects, and clear undo/redo history whose retained bytes carry the
    schema-13 task-document marker.
+26. Validate every schema-14 project document and lift none of them. Schema 16
+   moves named lens definitions into the workspace, which changes no task
+   grammar, so this is the one boundary whose source scan exists purely to
+   refuse a workspace this build cannot read.
+27. Publish `pre-portable-lenses-v16-<UTC>.tar.gz` plus its audit, atomically
+   activate catalog schema 16 over unchanged schema-14 task Markdown, and clear
+   undo/redo history, whose entries snapshot `.tt/workspace.json` beside task
+   Markdown and would otherwise walk the catalog back across the boundary.
 
-Each boundary is idempotent: repeated schema-15 startup neither reconverts data
+Each boundary is idempotent: repeated schema-16 startup neither reconverts data
 nor creates another rollback pair. Corrupt or future input and an existing
 `unfiled` project/directory fail before mutation with concrete rename/move guidance.
 Snapshot artifacts are application-owned and immutable to `tt`. Downgrade or a

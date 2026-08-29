@@ -69,7 +69,8 @@ The active-lens pointer is a hint rather than a
 record: it is checked for shape alone when the file loads, so one naming a lens
 that is no longer there costs you a stale hint and never a failed launch.
 
-Startup migrates supported schema-14 workspaces to schema 15, supported
+Startup migrates supported schema-15 workspaces to schema 16, supported
+schema-14 workspaces to schema 15, supported
 schema-13 workspaces to schema 14, supported schema-12 workspaces to schema 13,
 supported schema-6 through schema-11 workspaces through the intermediate
 boundaries, and supported
@@ -111,6 +112,7 @@ already say.
 | Schema 13 upgrades task Markdown to schema 12 by adding the optional `defer_count` field | Zero is the field's absence, so every existing task begins there |
 | Schema 14 upgrades task Markdown to schema 13 by adding the optional `due_time` field | A canonical `HH:MM` wall-clock giving a due date an explicit time-of-day. Existing due dates are calendar-only, so every migrated task keeps its date and receives no `due_time` |
 | Schema 15 upgrades task Markdown to schema 14 by adding the optional `depends` list of soft task references | No retired field carried dependency data into this boundary, so every migrated task starts with an empty list — an omitted key |
+| Schema 16 leaves task Markdown at schema 14 | It is the one boundary that upgrades no task grammar: it marks the workspace as the home of named lens definitions, so the catalog is the only file it rewrites. Every project document is still read and validated first, so an unreadable workspace is refused rather than half-migrated |
 
 Invalid or future-schema input aborts without changing workspace data. An
 existing `unfiled` project or directory also aborts before snapshot publication
@@ -120,7 +122,8 @@ loading, and repeated startup is idempotent.
 There is no down-migration. An older `tt` refuses a migrated workspace as newer
 than its supported schema, and no build converts a workspace back. Recovery is
 manual: extract the matching archive — `pre-due-time-v14-<UTC>.tar.gz` for the
-schema-14 boundary or `pre-dependencies-v15-<UTC>.tar.gz` for schema 15 — into a
+schema-14 boundary, `pre-dependencies-v15-<UTC>.tar.gz` for schema 15, or
+`pre-portable-lenses-v16-<UTC>.tar.gz` for schema 16 — into a
 separate directory and open that copy with a compatible build. Migration
 snapshots themselves are never modified.
 
