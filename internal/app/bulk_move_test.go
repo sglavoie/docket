@@ -32,9 +32,12 @@ func projectTaskIDs(project *models.Project) []string {
 
 // requireOneTransaction proves the whole batch shares one commit call, one undo
 // action, and one undo context — which is what makes it one undo entry — and
-// returns that call's changesets in commit order.
-func requireOneTransaction(t *testing.T, repo *fakeRepo, wantAction string) []storage.ChangeSet {
+// returns that call's changesets in commit order. Every batch this file drives
+// is a Move to Project, so the expected action is fixed here rather than
+// repeated at each call site.
+func requireOneTransaction(t *testing.T, repo *fakeRepo) []storage.ChangeSet {
 	t.Helper()
+	const wantAction = "Move to Project"
 	if len(repo.commits) != 1 {
 		t.Fatalf("commit calls = %d, want exactly one transaction", len(repo.commits))
 	}
@@ -94,7 +97,7 @@ func TestBulkMoveToProjectCollapsesOverlappingSelection(t *testing.T) {
 	if len(result.Tasks) != 1 || result.Tasks[0].TaskID != root.ID || result.Tasks[0].ProjectID != destination.ID {
 		t.Fatalf("result tasks = %+v, want one entry for the collapsed root at its new address", result.Tasks)
 	}
-	requireOneTransaction(t, repo, "Move to Project")
+	requireOneTransaction(t, repo)
 }
 
 // TestBulkMoveToProjectMovesEverySourceInOneTransaction covers the N-sources
@@ -144,7 +147,7 @@ func TestBulkMoveToProjectMovesEverySourceInOneTransaction(t *testing.T) {
 		}
 	}
 
-	batch := requireOneTransaction(t, repo, "Move to Project")
+	batch := requireOneTransaction(t, repo)
 	if len(batch) != 3 {
 		t.Fatalf("changesets = %d, want two sources plus the explicit destination commit", len(batch))
 	}
@@ -185,7 +188,7 @@ func TestBulkMoveToProjectCarriesAttachmentMovesPerSource(t *testing.T) {
 		t.Fatalf("BulkMoveToProject: %v", err)
 	}
 
-	batch := requireOneTransaction(t, repo, "Move to Project")
+	batch := requireOneTransaction(t, repo)
 	wantOps := map[string]int{"source-a": 2, "source-b": 1, "destination": 0}
 	for _, cs := range batch {
 		if got := len(cs.AttachmentOps); got != wantOps[cs.Project.ID] {
@@ -230,7 +233,7 @@ func TestBulkMoveToProjectRequalifiesTodayAndNext(t *testing.T) {
 		t.Fatalf("Next = %+v, want the moved task requalified onto the destination", got)
 	}
 
-	batch := requireOneTransaction(t, repo, "Move to Project")
+	batch := requireOneTransaction(t, repo)
 	if len(batch[0].Artifacts) != 1 {
 		t.Fatalf("first changeset artifacts = %d, want the one planning rewrite riding the batch", len(batch[0].Artifacts))
 	}
@@ -263,7 +266,7 @@ func TestBulkMoveToProjectRewritesReferencesFromArchivedHolder(t *testing.T) {
 		referenceTo("destination", "a-target"),
 		referenceTo("destination", "b-target"),
 	)
-	batch := requireOneTransaction(t, repo, "Move to Project")
+	batch := requireOneTransaction(t, repo)
 	seen := 0
 	for _, cs := range batch {
 		if cs.Project.ID == archived.ID {
@@ -313,7 +316,7 @@ func TestBulkMoveToProjectAcceptsMaximalDepthSubtrees(t *testing.T) {
 	if deepest == nil || deepest.Level != models.MaxNestingDepth {
 		t.Fatalf("deepest moved task = %+v, want it intact at the cap", deepest)
 	}
-	requireOneTransaction(t, repo, "Move to Project")
+	requireOneTransaction(t, repo)
 }
 
 // TestBulkMoveToProjectRollsBackWholeBatchOnCommitFailure proves the
@@ -421,7 +424,7 @@ func TestBulkMoveToProjectTreatsAlreadyHomeTasksAsNoOps(t *testing.T) {
 	if len(result.Tasks) != 2 {
 		t.Fatalf("result tasks = %+v, want one entry per selected root", result.Tasks)
 	}
-	batch := requireOneTransaction(t, repo, "Move to Project")
+	batch := requireOneTransaction(t, repo)
 	if len(batch) != 2 {
 		t.Fatalf("changesets = %d, want the one source plus the destination", len(batch))
 	}
@@ -450,7 +453,7 @@ func TestBulkMoveToProjectAllHomeSelectionCommitsUnchanged(t *testing.T) {
 	if !equalIDs(result.TouchedProjectIDs, []string{"destination"}) {
 		t.Fatalf("TouchedProjectIDs = %v, want only the destination", result.TouchedProjectIDs)
 	}
-	requireOneTransaction(t, repo, "Move to Project")
+	requireOneTransaction(t, repo)
 }
 
 // TestBulkMoveToProjectRejectsMalformedRequests keeps the batch's refusals

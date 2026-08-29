@@ -93,7 +93,7 @@ func (s *Service) BulkMoveToProject(locators []TaskLocator, destProjectID string
 	if err != nil {
 		return BulkResult{}, err
 	}
-	if err := validateBulkMoveDepth(destination, delta.movedRoots); err != nil {
+	if err = validateBulkMoveDepth(destination, delta.movedRoots); err != nil {
 		return BulkResult{}, err
 	}
 
@@ -177,7 +177,7 @@ func orderTasksByProjectPosition(project *models.Project, tasks []*models.Task) 
 }
 
 // bulkMoveDelta is the accumulated application-owned effect of every subtree
-// move in the batch: the roots that actually travelled, the planning
+// move in the batch: the roots that actually traveled, the planning
 // requalifications and attachment relocations they imply, and the complete
 // old-to-new locator map one reference pass needs.
 type bulkMoveDelta struct {

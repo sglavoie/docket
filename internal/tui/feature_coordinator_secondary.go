@@ -352,7 +352,7 @@ func (c BulkCoordinator) DeferLocators(locators []app.TaskLocator, until *time.T
 // MoveToProjectLocators relocates every selected subtree into one destination
 // project as one transaction with one undo entry. summary receives the number
 // of subtrees the batch actually moved, which is the selection collapsed to its
-// maximal subtrees: a selected descendant of a selected ancestor travelled
+// maximal subtrees: a selected descendant of a selected ancestor traveled
 // inside that ancestor and is not counted twice. The count is therefore
 // independent of how many source projects the selection spanned, so one status
 // sentence reads correctly for N tasks across M sources.
