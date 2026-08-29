@@ -228,6 +228,9 @@ The committed suite exercises the product contracts directly:
 | Capture/edit/outline grammar parity and registry-owned static forms | `capture-grammar.json`, `textgrammar_consumer_contract_test.go`, `quick_edit_test.go`, `outline_editor_test.go` |
 | Repeatable `<child` adoption, alias dedupe, additive children, and undo/redo on both surfaces | `capture-child-adoption.json`, `outliner-inline-edit-child-adoption.json` |
 | Cross-project `~task` capture and its completion, the `~N` count and both Peek reference directions, the direct dependency search with its `-~task`, `~0`, and unresolvable refusals, inline `-~task` and `~0` under undo and redo, and the locator an unavailable target falls back to | `capture-dependency-cross-project.json`, `search-dependency-direct.json`, `outliner-inline-edit-dependency-undo.json`, `outliner-dependency-unavailable-fallback.json` |
+| The row-level `~` picker: the stored set preselected, per-project categories qualifying a row without repeating the name, the source task owning no row, and one commit carrying an addition and a removal together | `outliner-task-reference-picker.json` |
+| A stored reference the view cannot read staying an enabled checked row that says only `unavailable`, droppable from the picker, and `~` refusing a visual selection rather than falling back to the cursor | `outliner-task-reference-unavailable-row.json` |
+| One `u` taking back both halves of a reference edit, proving the picker commits one ledger entry | `outliner-task-reference-undo.json` |
 | Relation marker in both directions, reserved across a resize | `outliner-parent-marker.json`, `capture-child-adoption.json` |
 | `*pin` at capture and the edit-only `*unpin` clear | `capture-pin.json` |
 | `&link` and `;comment;` committing with the task they create, the prose both sigils leave alone, and a quoted `&link` path whose spaces survive capture | `capture-attachment.json`, `capture-comment.json` |

@@ -1,0 +1,43 @@
+{
+  "name": "outliner-task-reference-undo",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "move below the first section header", "key": "j" },
+    { "type": "key", "label": "select the Client Alpha task", "key": "j" },
+    { "type": "key", "key": "e" },
+    { "type": "text", "label": "store one reference the typed way", "text": " ~client-beta:1" },
+    { "type": "key", "key": "tab" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+
+    { "type": "key", "label": "open the picker on the row", "key": "~" },
+    { "type": "key", "label": "drop the stored reference", "key": "space" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "label": "and name a different one in the same pass", "key": "space" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "label": "one ledger entry names the reference edit, not the request that carried it", "assert": "status_contains", "value": "Set Dependencies: #1 Alpha migration kickoff" },
+    { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff ~1" },
+    { "type": "key", "key": "ctrl+enter" },
+    { "type": "assert", "assert": "contains", "value": "Dependencies: Home Errands #1 Renew passport (backlog)" },
+    { "type": "assert", "label": "the removal half landed too", "assert": "count_contains", "value": "Beta rollout checklist", "count": 1 },
+    { "type": "key", "label": "close Peek", "key": "ctrl+enter" },
+
+    { "type": "key", "label": "one undo takes back both halves, because they were one transaction", "key": "u" },
+    { "type": "assert", "assert": "status_contains", "value": "Undid: Set Dependencies: #1 Alpha migration kickoff" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff ~1" },
+    { "type": "key", "key": "ctrl+enter" },
+    { "type": "assert", "label": "the removed reference is back", "assert": "contains", "value": "Dependencies: Client Beta #1 Beta rollout checklist (backlog)" },
+    { "type": "assert", "label": "and the added one is gone, in the same step", "assert": "count_contains", "value": "Renew passport", "count": 1 },
+    { "type": "key", "key": "ctrl+enter" },
+
+    { "type": "key", "label": "redo replays the same transaction", "key": "ctrl+r" },
+    { "type": "wait" },
+    { "type": "key", "key": "ctrl+enter" },
+    { "type": "assert", "assert": "contains", "value": "Dependencies: Home Errands #1 Renew passport (backlog)" },
+    { "type": "assert", "assert": "count_contains", "value": "Beta rollout checklist", "count": 1 },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}
