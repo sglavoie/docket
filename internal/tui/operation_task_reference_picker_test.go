@@ -115,14 +115,19 @@ func referenceIDsFor(locators ...string) []ListItemID {
 	return ids
 }
 
-// pickerCheckedOrder mirrors what the picker actually hands the handler:
-// selectedValue() sorts the checked payloads, so the order a user ticked rows in
-// is never what taskReferencePatch walks. Tests build their checked sets through
-// here so a diff assertion can never accidentally depend on check order.
-func pickerCheckedOrder(locators ...string) []string {
-	checked := append([]string(nil), locators...)
-	sort.Strings(checked)
-	return checked
+// referencePickerCommit replays the whole commit path in one call: the picker
+// emits the difference between the set it preselected from `opened` and its
+// final checked set, and the command merges that difference into whatever
+// `current` stores at execute time. Passing the same task twice is the ordinary
+// case, where nothing moved underneath the overlay; passing two different tasks
+// is the concurrent one.
+//
+// The checked payloads are sorted first because selectedValue() sorts them, so
+// no assertion here can accidentally depend on the order rows were ticked in.
+func referencePickerCommit(opened, current *models.Task, checked ...string) app.DependencyPatch {
+	sorted := append([]string(nil), checked...)
+	sort.Strings(sorted)
+	return taskReferencePatch(current, taskReferenceSelection(storedTaskReferenceBaseline(opened), sorted))
 }
 
 // TestReferencePickerListsTheStoredHalfFirstAndNeverFiltersIt is the assembly
@@ -340,7 +345,7 @@ func TestReferencePickerDiffsTheCheckedSetAgainstWhatIsStored(t *testing.T) {
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			subject, _ := referenceSuiteWorkspace(t)
-			patch := taskReferencePatch(subject, pickerCheckedOrder(testCase.checked...))
+			patch := referencePickerCommit(subject, subject, testCase.checked...)
 			if got := dependencyLocatorStrings(patch.Add); !slices.Equal(got, testCase.wantAdd) {
 				t.Errorf("add = %v, want %v", got, testCase.wantAdd)
 			}
@@ -366,10 +371,10 @@ func TestReferencePickerRecheckingAStoredTargetIsANoOp(t *testing.T) {
 	subject, _ := referenceSuiteWorkspace(t)
 	for _, locator := range []string{"home:closed", "gone:gone-1", "attic:relic"} {
 		t.Run(locator, func(t *testing.T) {
-			checked := pickerCheckedOrder(
+			patch := referencePickerCommit(
+				subject, subject,
 				"remote:target", "home:closed", "home:ghost", "gone:gone-1", "attic:relic",
 			)
-			patch := taskReferencePatch(subject, checked)
 			if !patch.IsZero() {
 				t.Fatalf("re-checking %s produced %+v, want no intent at all", locator, patch)
 			}
@@ -378,9 +383,164 @@ func TestReferencePickerRecheckingAStoredTargetIsANoOp(t *testing.T) {
 
 	// A duplicate payload collapses rather than adding twice, which is the same
 	// rule the parser applies to two aliases naming one task.
-	patch := taskReferencePatch(subject, []string{"home:sibling", "home:sibling"})
+	patch := referencePickerCommit(
+		subject, subject,
+		"remote:target", "home:closed", "home:ghost", "gone:gone-1", "attic:relic",
+		"home:sibling", "home:sibling",
+	)
 	if got := dependencyLocatorStrings(patch.Add); !slices.Equal(got, []string{"home:sibling"}) {
 		t.Errorf("add = %v, want one entry per target", got)
+	}
+}
+
+// concurrentReferencePickerFixture is one task storing two references, with a
+// third target beside them to check and a same-project task the picker never
+// preselects. Two stored rows is the minimum that can show a concurrent change
+// landing on one of them while the user edits the other.
+func concurrentReferencePickerFixture(t *testing.T) (*AppModel, *models.Task, *models.Project) {
+	t.Helper()
+	model := newUITestApp()
+	remote := &models.Project{ID: "remote", Name: "Remote", Slug: "remote", Tasks: []*models.Task{
+		{ID: "target", ShortID: 1, Title: "Ship the API", WorkflowState: models.StateBacklog},
+		{ID: "legacy", ShortID: 2, Title: "Retire the shim", WorkflowState: models.StateBacklog},
+		{ID: "other", ShortID: 3, Title: "Write the guide", WorkflowState: models.StateBacklog},
+	}}
+	home := republishedReferenceHome(t, "remote:target", "remote:legacy")
+	for _, project := range []*models.Project{home, remote} {
+		project.BuildTaskTree()
+	}
+	setTestAppProjects(model, home, remote)
+	model.crossOutliner.loadedProjects = []*models.Project{home, remote}
+	subject := home.GetTaskByID("subject")
+	model.crossOutliner.rows = []outlinerRow{{task: subject, ProjectID: home.ID}}
+	return model, subject, home
+}
+
+// republishedReferenceHome builds the home project as a freshly loaded snapshot
+// would carry it, with the subject's stored references set to exactly the given
+// locators. Adopting one of these is what a cross-project load does to the shell
+// cache, and it is deliberately a whole new task tree: adoptCrossProjectSnapshot
+// overwrites the cached project in place, so nothing the picker captured earlier
+// is updated by it.
+func republishedReferenceHome(t *testing.T, locators ...string) *models.Project {
+	t.Helper()
+	references := make([]models.TaskReference, 0, len(locators))
+	for _, raw := range locators {
+		locator, ok := taskReferenceLocator(raw)
+		if !ok {
+			t.Fatalf("%q is not a locator the picker could ever carry", raw)
+		}
+		references = append(references, locator.Reference())
+	}
+	home := &models.Project{ID: "home", Name: "Home", Slug: "home", Tasks: []*models.Task{
+		{
+			ID: "subject", ShortID: 1, Title: "Cut the release",
+			WorkflowState: models.StateBacklog, Dependencies: references,
+		},
+		{ID: "chore", ShortID: 2, Title: "Update the changelog", WorkflowState: models.StateBacklog},
+	}}
+	home.BuildTaskTree()
+	return home
+}
+
+// TestReferencePickerPreservesConcurrentReferenceChanges is the merge contract.
+// The picker overlay is not modal against the workspace: an accepted
+// cross-project load republishes task trees through adoptCrossProjectSnapshot
+// while `~` is still open, and setTaskReferencesCmd then resolves the task again
+// against that newer state. A commit that spelled the whole checked set would
+// read every reference the user never touched as an assertion — dropping one the
+// load added and resurrecting one it removed — so the picker emits only what the
+// user changed and the command merges that into the fresh state.
+func TestReferencePickerPreservesConcurrentReferenceChanges(t *testing.T) {
+	for _, testCase := range []struct {
+		name       string
+		republish  []string
+		wantAdd    []string
+		wantRemove []string
+	}{
+		{
+			// `home:chore` arrives while the overlay is up. It was never on a row the
+			// user could uncheck, so the commit must not spell it as a removal.
+			name:       "a reference added under the picker survives the commit",
+			republish:  []string{"remote:target", "remote:legacy", "home:chore"},
+			wantAdd:    []string{"remote:other"},
+			wantRemove: []string{"remote:legacy"},
+		},
+		{
+			// `remote:target` leaves while the overlay is up. It is still checked
+			// because the user never touched it, so the commit must not read that
+			// stale check as an addition and put it back.
+			name:       "a reference removed under the picker stays removed",
+			republish:  []string{"remote:legacy"},
+			wantAdd:    []string{"remote:other"},
+			wantRemove: []string{"remote:legacy"},
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			model, subject, home := concurrentReferencePickerFixture(t)
+			identity := taskIdentityFor(subject, home)
+
+			_, cmd := model.handleGlobalKeyPress(tea.KeyPressMsg{Code: '~', Text: "~"})
+			if cmd != nil {
+				model.handleOperationOverlayMessage(cmd())
+			}
+			picker := model.operationValuePicker
+			if picker == nil || picker.provider != ValueProviderTaskReference {
+				t.Fatalf("~ did not open the reference picker: %#v", picker)
+			}
+
+			// The user's whole edit: check `remote:other`, uncheck `remote:legacy`,
+			// leave `remote:target` exactly as the picker preselected it.
+			checked := referenceIDsFor("remote:target", "remote:other")
+			if err := picker.surface.SetSelectedIDs(checked); err != nil {
+				t.Fatalf("the picker refused the edited checked set: %v", err)
+			}
+
+			// Only now does the load land, after the picker was built and edited and
+			// before Enter — the window the whole contract is about.
+			model.adoptCrossProjectSnapshot([]*models.Project{republishedReferenceHome(t, testCase.republish...)})
+			fresh, project := model.taskAndProjectForIdentity(identity)
+			if fresh == nil || project == nil {
+				t.Fatal("the republished snapshot left the task unresolvable")
+			}
+			gotStored := make([]string, 0, len(fresh.Dependencies))
+			for _, reference := range fresh.Dependencies {
+				gotStored = append(gotStored, reference.Locator())
+			}
+			if !slices.Equal(gotStored, testCase.republish) {
+				t.Fatalf("the fresh task stores %v, want the republished %v", gotStored, testCase.republish)
+			}
+
+			_, done, msg := picker.handleKey(syntheticSpecialKey(tea.KeyEnter))
+			if !done {
+				t.Fatal("Enter did not close the picker")
+			}
+			selected, ok := msg.(OperationValueSelectedMsg)
+			if !ok {
+				t.Fatalf("Enter emitted %T, want a value selection", msg)
+			}
+			value, ok := selected.Value.(OperationTaskReferenceValue)
+			if !ok {
+				t.Fatalf("the picker emitted %T, want the reference difference", selected.Value)
+			}
+			if !slices.Equal(value.Add, []string{"remote:other"}) {
+				t.Errorf("emitted add = %v, want the one row the user checked", value.Add)
+			}
+			if !slices.Equal(value.Remove, []string{"remote:legacy"}) {
+				t.Errorf("emitted remove = %v, want the one row the user unchecked", value.Remove)
+			}
+
+			patch := taskReferencePatch(fresh, value)
+			if got := dependencyLocatorStrings(patch.Add); !slices.Equal(got, testCase.wantAdd) {
+				t.Errorf("add = %v, want %v", got, testCase.wantAdd)
+			}
+			if got := dependencyLocatorStrings(patch.Remove); !slices.Equal(got, testCase.wantRemove) {
+				t.Errorf("remove = %v, want %v", got, testCase.wantRemove)
+			}
+			if patch.Clear {
+				t.Error("the picker set Clear; it only ever spells a removal")
+			}
+		})
 	}
 }
 
@@ -492,7 +652,13 @@ func TestReferencePickerCommitsNothingWhenTheCheckedSetIsUnchanged(t *testing.T)
 	model, subject, home, remote := referencePickerFixture(t)
 
 	stored := app.TaskLocator{ProjectID: remote.ID, TaskID: "target"}
-	cmd := model.setTaskReferencesCmd(taskIdentityFor(subject, home), []string{stored.Reference().Locator()})
+	value := taskReferenceSelection(
+		storedTaskReferenceBaseline(subject), []string{stored.Reference().Locator()},
+	)
+	if value.Add != nil || value.Remove != nil {
+		t.Fatalf("leaving the preselection alone emitted %+v, want no intent at all", value)
+	}
+	cmd := model.setTaskReferencesCmd(taskIdentityFor(subject, home), value)
 	if cmd == nil {
 		t.Fatal("an unchanged reference set produced no command at all")
 	}

@@ -998,13 +998,25 @@ mode. Rows group into one category per project in `dependencyDetailProjects()`
 order, because a reference crosses project boundaries and a filtered list has to
 stay qualified.
 
-`taskReferencePatch` diffs the checked locators against what the task stores at
-execute time, read fresh from the workspace rather than from the source captured
-when the picker opened, so a reference the picker never displayed is still
-measured and never silently dropped. `Clear` stays false even when nothing is
-checked: the application layer refuses `Clear` beside `Add` or `Remove`, and
-removing every stored reference says the same thing. Add and Remove cannot
-overlap by construction, so that refusal is unreachable from this surface. The
+The commit is a difference rather than a set, and that is the one thing about
+this picker that is not obvious. The overlay is not modal against the workspace:
+an accepted cross-project load republishes task trees through
+`adoptCrossProjectSnapshot` while `~` is still open, so the stored set the picker
+preselected can be stale by the time Enter arrives. `selectedValue` therefore
+emits `OperationTaskReferenceValue` — the rows checked that
+`storedTaskReferenceBaseline` had not preselected as `Add`, the preselected rows
+unchecked as `Remove` — and says nothing at all about a reference the user never
+touched. `taskReferencePatch` then merges that intent into what the task stores
+at execute time, read fresh from the workspace: an addition already present is
+dropped and a removal with no target is dropped, so each half is idempotent
+against the fresh state. A reference that appeared under the open picker is
+therefore not spelled as a removal, and one that vanished under it is not spelled
+as an addition — emitting the whole checked set would have done both.
+
+`Clear` stays false even when nothing is checked: the application layer refuses
+`Clear` beside `Add` or `Remove`, and removing every stored reference says the
+same thing. Add and Remove cannot overlap by construction, so that refusal is
+unreachable from this surface. The
 patch becomes `TaskLineEditRequest.Dependencies` on one request with the title
 carried verbatim and the parent left on `TaskLineParentPreserve`, so both halves
 of the diff resolve against one snapshot and land in one transaction with one
@@ -1012,7 +1024,8 @@ undo entry, with `Action` set to `Set Dependencies` for the ledger; the paired
 add and remove services would be two transactions of each, neither seeing the
 other's half. A patch empty on both sides issues no command at all and reports
 `Dependencies unchanged`, because an empty transaction would still write a ledger
-entry `u` could take back. Dependents are computed from what other tasks store,
+entry `u` could take back — which now also covers a picker whose every edit the
+fresh state already reflects. Dependents are computed from what other tasks store,
 so they are never listed and never editable — `~` is outgoing only.
 
 Pin's key is its sigil: `*` on an existing row does what `*pin` does in the

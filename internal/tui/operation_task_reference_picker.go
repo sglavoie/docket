@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/sglavoie/tt/internal/app"
@@ -16,6 +17,22 @@ func taskReferenceRowID(locator app.TaskLocator) ListItemID {
 	return ListItemID("reference:" + locator.Reference().Locator())
 }
 
+// storedTaskReferenceBaseline is the reference set as it stood the moment the
+// picker opened, in stored order. The picker keeps it so its commit can be the
+// difference between two sets rather than one absolute set: a row the user never
+// touched belongs to neither half of the emitted value and therefore cannot
+// contradict a change that landed elsewhere while the overlay was up.
+func storedTaskReferenceBaseline(task *models.Task) []app.TaskLocator {
+	if task == nil {
+		return nil
+	}
+	baseline := make([]app.TaskLocator, 0, len(task.Dependencies))
+	for _, reference := range task.Dependencies {
+		baseline = append(baseline, app.LocatorForReference(reference))
+	}
+	return baseline
+}
+
 // storedTaskReferenceIDs is the preselection: exactly the references the task
 // stores, in stored order. Preselecting is legal here and not on the `<child`
 // picker because of a grammar fact rather than taste — `~` declares both `~0`
@@ -25,9 +42,10 @@ func storedTaskReferenceIDs(task *models.Task) []ListItemID {
 	if task == nil {
 		return nil
 	}
-	ids := make([]ListItemID, 0, len(task.Dependencies))
-	for _, reference := range task.Dependencies {
-		ids = append(ids, taskReferenceRowID(app.LocatorForReference(reference)))
+	baseline := storedTaskReferenceBaseline(task)
+	ids := make([]ListItemID, 0, len(baseline))
+	for _, locator := range baseline {
+		ids = append(ids, taskReferenceRowID(locator))
 	}
 	return ids
 }
@@ -104,16 +122,71 @@ func operationTaskReferenceListSource(task *models.Task, projects []*models.Proj
 	return ListSource{Items: items, Categories: categories}
 }
 
-// taskReferencePatch diffs the checked locators against what the task stores
-// right now. The stored side is read fresh at execute time rather than from a
-// selection captured when the picker opened, so a reference the picker never
-// knew about is still measured and never silently dropped.
+// taskReferenceSelection is what the picker emits on Enter: the rows the user
+// actually checked and unchecked, measured against the baseline the picker
+// preselected, and never the whole checked set. A full checked set would be an
+// assertion about every reference at once, including the ones the user never
+// looked at, and the overlay is not modal against the workspace — an accepted
+// cross-project load republishes task trees through adoptCrossProjectSnapshot
+// while `~` is still open. Emitting a difference is what keeps such a change out
+// of the commit instead of silently reverting it.
+//
+// Add is sorted so the emitted value never depends on the order rows were
+// ticked in; Remove stays in stored order, which is the order the picker listed
+// the baseline in.
+func taskReferenceSelection(baseline []app.TaskLocator, checked []string) OperationTaskReferenceValue {
+	initial := make(map[string]bool, len(baseline))
+	for _, locator := range baseline {
+		initial[locator.Reference().Locator()] = true
+	}
+
+	value := OperationTaskReferenceValue{}
+	seen := make(map[string]bool, len(checked))
+	for _, raw := range checked {
+		locator, ok := taskReferenceLocator(raw)
+		if !ok {
+			continue
+		}
+		canonical := locator.Reference().Locator()
+		if seen[canonical] {
+			continue
+		}
+		seen[canonical] = true
+		if initial[canonical] {
+			continue
+		}
+		value.Add = append(value.Add, canonical)
+	}
+	sort.Strings(value.Add)
+	for _, locator := range baseline {
+		canonical := locator.Reference().Locator()
+		if seen[canonical] {
+			continue
+		}
+		value.Remove = append(value.Remove, canonical)
+	}
+	return value
+}
+
+// taskReferencePatch merges the picker's selection into what the task stores at
+// execute time. The stored side is read fresh from the workspace rather than
+// from the snapshot the picker opened over, and the selection is an intent
+// rather than a set, so the two compose instead of fighting: an addition the
+// user did not make is never spelled as a removal, and a removal the user did
+// not make is never spelled as an addition. A reference that appeared or
+// vanished while the overlay was up is therefore left exactly as the fresh state
+// has it.
+//
+// Each half is also idempotent against that fresh state. Checking a row the task
+// already stores contributes nothing, and unchecking one it no longer stores
+// contributes nothing, so the resolver never has to judge an addition that is
+// already present or a removal with no target.
 //
 // Clear stays false even when nothing is checked: the application layer refuses
 // Clear beside Add or Remove, and removing every stored reference says exactly
 // the same thing. Add and Remove cannot overlap by construction, so the
 // "cannot add and remove" refusal is unreachable from this surface.
-func taskReferencePatch(task *models.Task, chosen []string) app.DependencyPatch {
+func taskReferencePatch(task *models.Task, value OperationTaskReferenceValue) app.DependencyPatch {
 	if task == nil {
 		return app.DependencyPatch{}
 	}
@@ -123,27 +196,31 @@ func taskReferencePatch(task *models.Task, chosen []string) app.DependencyPatch 
 	}
 
 	patch := app.DependencyPatch{}
-	checked := make(map[string]bool, len(chosen))
-	for _, value := range chosen {
-		locator, ok := taskReferenceLocator(value)
+	added := make(map[string]bool, len(value.Add))
+	for _, raw := range value.Add {
+		locator, ok := taskReferenceLocator(raw)
 		if !ok {
 			continue
 		}
 		canonical := locator.Reference().Locator()
-		if checked[canonical] {
+		if added[canonical] || stored[canonical] {
 			continue
 		}
-		checked[canonical] = true
-		if stored[canonical] {
-			continue
-		}
+		added[canonical] = true
 		patch.Add = append(patch.Add, locator)
 	}
-	for _, reference := range task.Dependencies {
-		if checked[reference.Locator()] {
+	removed := make(map[string]bool, len(value.Remove))
+	for _, raw := range value.Remove {
+		locator, ok := taskReferenceLocator(raw)
+		if !ok {
 			continue
 		}
-		patch.Remove = append(patch.Remove, app.LocatorForReference(reference))
+		canonical := locator.Reference().Locator()
+		if removed[canonical] || !stored[canonical] {
+			continue
+		}
+		removed[canonical] = true
+		patch.Remove = append(patch.Remove, locator)
 	}
 	return patch
 }

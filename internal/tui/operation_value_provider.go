@@ -71,6 +71,16 @@ type OperationTagsValue struct {
 	Context    string
 }
 
+// OperationTaskReferenceValue is the soft-reference edit emitted by the `~`
+// picker. It is a difference rather than the final checked set: Add names the
+// rows the user checked that the picker had not preselected, Remove the
+// preselected rows the user unchecked, and a reference in neither half is one
+// the user never touched and the commit must leave alone.
+type OperationTaskReferenceValue struct {
+	Add    []string
+	Remove []string
+}
+
 type operationTagMembership uint8
 
 const (
@@ -111,6 +121,11 @@ type OperationValuePickerModel struct {
 	// contextInitial is the context row every target already agreed on. An empty
 	// ID means the targets disagreed, so any chosen row is a change.
 	contextInitial ListItemID
+	// referenceInitial is the soft-reference set the `~` picker preselected, in
+	// stored order. The commit is the difference against it rather than the
+	// checked set itself, so a reference republished while the overlay was open
+	// is neither dropped nor resurrected.
+	referenceInitial []app.TaskLocator
 }
 
 func newOperationValuePickerModel(
@@ -631,6 +646,13 @@ func (model *OperationValuePickerModel) selectedValue() (any, error) {
 			values = append(values, value)
 		}
 		sort.Strings(values)
+		// The reference picker emits what changed rather than what is checked. It
+		// is the one multi-select whose population it does not own: an accepted
+		// cross-project load can republish the task's stored set while the overlay
+		// is up, and only a difference can leave that republished change standing.
+		if model.provider == ValueProviderTaskReference {
+			return taskReferenceSelection(model.referenceInitial, values), nil
+		}
 		return values, nil
 	}
 	item, ok := model.surface.CurrentItem()
@@ -1363,11 +1385,11 @@ func (m *AppModel) executeSingleTaskOperation(
 	case operationTaskReferences:
 		// No relocation capture: a reference edit records a soft link and moves no
 		// row, so there is no destination for the outliner to follow.
-		locators, ok := invocation.Value.([]string)
+		value, ok := invocation.Value.(OperationTaskReferenceValue)
 		if !ok {
 			return OperationHandlerResult{Err: fmt.Errorf("invalid dependency value")}
 		}
-		return cmdResult(m.setTaskReferencesCmd(identity, locators))
+		return cmdResult(m.setTaskReferencesCmd(identity, value))
 	case operationTaskMoveToProject:
 		projectID, ok := invocation.Value.(string)
 		if !ok || strings.TrimSpace(projectID) == "" {
@@ -1420,23 +1442,29 @@ func (m *AppModel) adoptChildrenCmd(
 	return m.secondaryFeatures.TaskItem.EditTaskLine(req, relocation)
 }
 
-// setTaskReferencesCmd routes the picker's checked set through the same
-// task-line edit the `~task` sigil uses, so both halves of the diff are resolved
-// against one snapshot and land in one transaction with one undo entry. The
-// paired add and remove services would be two of each, and neither would see the
-// other's half of the request.
+// setTaskReferencesCmd routes the picker's selection through the same task-line
+// edit the `~task` sigil uses, so both halves of the diff are resolved against
+// one snapshot and land in one transaction with one undo entry. The paired add
+// and remove services would be two of each, and neither would see the other's
+// half of the request.
+//
+// The task is resolved again here rather than carried from the picker, and the
+// selection is merged into that fresh state rather than replacing it, so a
+// reference republished by a cross-project load while the overlay was open is
+// left standing.
 //
 // A patch with nothing on either side issues no command at all: an empty
 // transaction would still write a ledger entry `u` could take back, and a
-// picker closed unchanged is not something to undo.
-func (m *AppModel) setTaskReferencesCmd(identity TaskIdentity, locators []string) tea.Cmd {
+// picker closed unchanged — or one whose every edit the fresh state already
+// reflects — is not something to undo.
+func (m *AppModel) setTaskReferencesCmd(identity TaskIdentity, value OperationTaskReferenceValue) tea.Cmd {
 	task, project := m.taskAndProjectForIdentity(identity)
 	if task == nil || project == nil {
 		return func() tea.Msg {
 			return TaskLineEditFailedMsg{Source: identity, Err: fmt.Errorf("selected task is no longer available")}
 		}
 	}
-	patch := taskReferencePatch(task, locators)
+	patch := taskReferencePatch(task, value)
 	if patch.IsZero() {
 		return func() tea.Msg { return InfoStatusMsg("Dependencies unchanged") }
 	}
@@ -1755,7 +1783,7 @@ func (m *AppModel) newOperationValuePicker(
 		// The population is the one Peek and `~` autocomplete already read, not
 		// AvailableProjects, whose task trees are not loaded — so the keyboard and
 		// the typed routes can never disagree about what is addressable.
-		return newOperationValuePickerModel(
+		picker, err := newOperationValuePickerModel(
 			request,
 			provider,
 			"Set Dependencies",
@@ -1764,6 +1792,14 @@ func (m *AppModel) newOperationValuePicker(
 			true,
 			storedTaskReferenceIDs(refs[0].Task),
 		)
+		if err != nil {
+			return nil, err
+		}
+		// The preselection is also the baseline the commit diffs against, so it is
+		// recorded rather than merely displayed: the overlay outlives the snapshot
+		// it was built from, and the difference is what survives that.
+		picker.referenceInitial = storedTaskReferenceBaseline(refs[0].Task)
+		return picker, nil
 	case ValueProviderProject:
 		return newOperationValuePickerModel(
 			request,

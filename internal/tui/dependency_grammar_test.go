@@ -476,7 +476,7 @@ func TestReferencePickerAgreesWithTheQuickEditRouteOnThePatchHalves(t *testing.T
 				t.Fatalf("parseQuickEdit(%q): %v", testCase.input, err)
 			}
 			typed := result.dependencyPatch()
-			picked := taskReferencePatch(task, pickerCheckedOrder(testCase.checked...))
+			picked := referencePickerCommit(task, task, testCase.checked...)
 
 			typedAdd := slices.Sorted(slices.Values(dependencyLocatorStrings(typed.Add)))
 			pickedAdd := slices.Sorted(slices.Values(dependencyLocatorStrings(picked.Add)))
@@ -518,9 +518,9 @@ func TestReferencePickerAndQuickEditDifferOnlyInSpelling(t *testing.T) {
 	if want := []string{"routed-project:routed-1", "home-project:home-2"}; !slices.Equal(typedAdd, want) {
 		t.Errorf("typed add = %v, want token order %v", typedAdd, want)
 	}
-	pickedAdd := dependencyLocatorStrings(taskReferencePatch(task, pickerCheckedOrder(
+	pickedAdd := dependencyLocatorStrings(referencePickerCommit(task, task,
 		"home-project:home-3", "routed-project:routed-1", "home-project:home-2",
-	)).Add)
+	).Add)
 	if want := []string{"home-project:home-2", "routed-project:routed-1"}; !slices.Equal(pickedAdd, want) {
 		t.Errorf("picked add = %v, want sorted locator order %v", pickedAdd, want)
 	}
@@ -540,7 +540,7 @@ func TestReferencePickerAndQuickEditDifferOnlyInSpelling(t *testing.T) {
 	if !typedClear.Clear || len(typedClear.Remove) != 0 {
 		t.Fatalf("~0 = %+v, want a bare clear", typedClear)
 	}
-	emptied := taskReferencePatch(task, nil)
+	emptied := referencePickerCommit(task, task)
 	if emptied.Clear {
 		t.Fatalf("an empty checked set = %+v, want a removal rather than a clear", emptied)
 	}
