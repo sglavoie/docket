@@ -178,6 +178,13 @@ func (m *Manager) RecoverWorkspace() error {
 		if err := m.MigrateWorkspaceToV16(); err != nil {
 			return fmt.Errorf("failed to activate workspace schema v16: %w", err)
 		}
+		// Adoption is deliberately outside the chain above: it is keyed off
+		// machine-local state rather than the synced catalog schema, so it runs
+		// once per machine after the schema is already current instead of once
+		// per workspace at the boundary.
+		if err := m.AdoptPortableLenses(); err != nil {
+			return fmt.Errorf("failed to adopt portable lens definitions: %w", err)
+		}
 	}
 	return nil
 }
@@ -224,6 +231,11 @@ func (m *Manager) LoadOrCreateDomains() (*Domains, error) {
 	}
 
 	domains := NewDomains()
+	// A workspace minted at the current schema is born adopted: it never passes
+	// through RecoverWorkspace's migration block, and stamping the marker here
+	// rather than adopting afterwards keeps the bootstrap to a single
+	// machine.json write, so a fresh workspace leaves no .bak sidecar behind.
+	domains.Machine.LensHomeAdopted = true
 	unfiledArtifact, err := prepareFreshSystemUnfiled(dataDir, domains.Catalog)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare protected system Unfiled: %w", err)
@@ -233,6 +245,16 @@ func (m *Manager) LoadOrCreateDomains() (*Domains, error) {
 			return m.loadAfterBootstrapRace(err)
 		}
 		return nil, fmt.Errorf("failed to create split configuration domains: %w", err)
+	}
+	// The portable lens home is published beside the machine file the bundle
+	// just wrote, so a workspace has one from its first launch instead of
+	// acquiring it on the next. It stays outside the synced bootstrap
+	// transaction for the same reason a lens mutation stays outside every
+	// workspace transaction.
+	if err := m.DomainCoordinator().CommitLensDefinitions(&WorkspaceLensDefinitions{
+		Lenses: DefinedLensList(domains.Machine.NamedLenses),
+	}); err != nil {
+		return nil, fmt.Errorf("failed to publish portable lens definitions after synced bootstrap: %w", err)
 	}
 	return domains, nil
 }

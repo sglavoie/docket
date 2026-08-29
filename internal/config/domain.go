@@ -563,6 +563,12 @@ type MachineState struct {
 	// a lens that exists, so a hand-edited machine file with a dangling id
 	// still loads and simply reopens with no lens.
 	ActiveLensID string `json:"active_lens_id,omitempty"`
+	// LensHomeAdopted records that this machine has already merged its lens set
+	// into the workspace's portable home. The marker has to be machine-local:
+	// the catalog schema is the synced artifact, so it can say the workspace has
+	// a lens home but never whether *this* machine has joined it. See
+	// Manager.AdoptPortableLenses.
+	LensHomeAdopted bool `json:"lenses_adopted,omitempty"`
 }
 
 // NewMachineState returns the default built-in theme selection and the starter

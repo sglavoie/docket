@@ -577,14 +577,48 @@ func (s *DomainFileStore) LoadMachineChecked() (*MachineState, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	lenses, _, err := s.LoadLensDefinitionsChecked()
-	if err != nil {
+	if err := s.applyPortableLensDefinitions(out); err != nil {
 		return nil, "", err
 	}
-	if lenses.Defined() {
-		out.NamedLenses = lenses.Lenses.Clone()
-	}
 	return out, rev, nil
+}
+
+// applyPortableLensDefinitions is the lens read precedence, factored out because
+// machine state has two readers: this store's checked load and the bundle load
+// in loadDomainBundleWithRevisions, which decodes machine.json directly. Both
+// must apply the same rule or the definitions would be portable on one path and
+// machine-local on the other.
+//
+// A workspace that defines its own collection wins; one that does not leaves the
+// machine-local set exactly as it was decoded. Theme and ActiveLensID are never
+// touched: they are the two halves that stay machine-local.
+func (s *DomainFileStore) applyPortableLensDefinitions(machine *MachineState) error {
+	lenses, _, err := s.LoadLensDefinitionsChecked()
+	if err != nil {
+		return err
+	}
+	if lenses.Defined() {
+		machine.NamedLenses = lenses.Lenses.Clone()
+	}
+	return nil
+}
+
+// LoadPersistedMachineLenses returns the lens list machine.json actually holds,
+// distinguishing an omitted named_lenses key (nil) from an explicitly persisted
+// one (non-nil, possibly empty). It decodes into a zero MachineState rather than
+// NewMachineState's seeded value, which is the only way to tell "this machine
+// never recorded a lens set" from "this machine recorded exactly the starters".
+// Adoption needs that split: it is what keeps a machine joining a workspace
+// whose owner deleted every lens from reseeding the starters into it.
+func (s *DomainFileStore) LoadPersistedMachineLenses() (NamedLensList, error) {
+	if err := s.bindWorkspaceIDFromCatalog(); err != nil {
+		return nil, err
+	}
+	var persisted MachineState
+	if _, err := s.load(domainMachine, &persisted); err != nil {
+		return nil, err
+	}
+	return persisted.NamedLenses, nil
 }
 
 // SaveMachine implements MachineStore (last-writer-wins).

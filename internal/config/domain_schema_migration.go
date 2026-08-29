@@ -34,6 +34,12 @@ func loadDomainBundleWithRevisions(store *DomainFileStore) (*Domains, map[domain
 		if _, err := store.load(domainMachine, machine); err != nil {
 			return nil, nil, err
 		}
+		// The bundle decodes machine.json directly rather than through
+		// LoadMachineChecked, so it has to apply the portable lens precedence
+		// itself. This is the load every frontend actually reads.
+		if err := store.applyPortableLensDefinitions(machine); err != nil {
+			return nil, nil, err
+		}
 	}
 
 	domains := &Domains{Catalog: catalog, Planning: planning, Machine: machine}

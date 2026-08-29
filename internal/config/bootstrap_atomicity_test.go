@@ -299,12 +299,20 @@ func TestManagerLoadOrCreateDomains_MachineFailureLeavesCompleteSyncedWorkspace(
 	if reloaded.Machine == nil {
 		t.Fatal("reloaded domains omitted default machine state")
 	}
+	// The reload does write machine.json, but only through lens adoption: a
+	// workspace at schema 16 whose machine has no adoption marker merges its
+	// lens set into the portable home and records the marker, which is
+	// machine-local state and therefore machine.json. Nothing else about the
+	// failed bootstrap is repaired implicitly.
 	machinePath, err := MachineStatePath(catalog.WorkspaceID)
 	if err != nil {
 		t.Fatalf("MachineStatePath: %v", err)
 	}
-	if _, statErr := os.Stat(machinePath); !errors.Is(statErr, os.ErrNotExist) {
-		t.Fatalf("machine.json should remain absent after defaulted reload, stat error = %v", statErr)
+	if _, statErr := os.Stat(machinePath); statErr != nil {
+		t.Fatalf("lens adoption should have recorded its marker in machine.json: %v", statErr)
+	}
+	if !reloaded.Machine.LensHomeAdopted {
+		t.Fatal("reloaded machine state should carry the lens adoption marker")
 	}
 }
 

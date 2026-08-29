@@ -110,7 +110,7 @@ func (c *DomainCoordinator) CommitMachine(machine *MachineState) error {
 	if err := adoptWorkspaceID(c.store); err != nil {
 		return err
 	}
-	if err := c.publishOwnedLensDefinitions(machine.NamedLenses); err != nil {
+	if err := c.publishOwnedLensDefinitions(machine); err != nil {
 		return err
 	}
 	return commitChecked(
@@ -138,22 +138,27 @@ func (c *DomainCoordinator) CommitLensDefinitions(lenses *WorkspaceLensDefinitio
 }
 
 // publishOwnedLensDefinitions forwards the lens half of a machine commit to the
-// portable home, and only when that home already owns the collection. Ownership
-// is decided by the file's existence, which mirrors the read precedence in
-// LoadMachineChecked: until a workspace publishes lenses.json, a lens write is
-// exactly the machine-local write it has always been, and once it does, both the
-// read and the write follow the definitions to the workspace. The machine copy
-// is still written beside it, so a binary that has not adopted the portable home
-// keeps reading a current fallback.
-func (c *DomainCoordinator) publishOwnedLensDefinitions(lenses NamedLensList) error {
+// portable home, and only when that home owns the collection. Ownership is the
+// file's existence or this machine's adoption marker, whichever is true first.
+//
+// Existence mirrors the read precedence in LoadMachineChecked: until a workspace
+// publishes lenses.json, a lens write is exactly the machine-local write it has
+// always been, and once it does, both the read and the write follow the
+// definitions to the workspace. The marker is what carries the very first
+// publication, since the file an adopting machine is about to create cannot
+// already exist; afterwards it is also the reason a hand-deleted lenses.json is
+// recreated by the next lens write rather than silently reverting an adopted
+// machine to machine-local definitions. The machine copy is still written
+// beside it, so a binary that has not adopted keeps reading a current fallback.
+func (c *DomainCoordinator) publishOwnedLensDefinitions(machine *MachineState) error {
 	_, rev, err := c.store.LoadLensDefinitionsChecked()
 	if err != nil {
 		return err
 	}
-	if rev == "" {
+	if rev == "" && !machine.LensHomeAdopted {
 		return nil
 	}
-	return c.CommitLensDefinitions(&WorkspaceLensDefinitions{Lenses: DefinedLensList(lenses)})
+	return c.CommitLensDefinitions(&WorkspaceLensDefinitions{Lenses: DefinedLensList(machine.NamedLenses)})
 }
 
 // CommitCatalog persists only the workspace-catalog domain for this manager's
