@@ -286,6 +286,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationTaskIndent, Keys: []string{"]"}, DisplayKey: "]"},
 			{OperationID: operationTaskSetParent, Keys: []string{">"}, DisplayKey: ">"},
 			{OperationID: operationTaskAdoptChildren, Keys: []string{"<"}, DisplayKey: "<"},
+			{OperationID: operationTaskReferences, Keys: []string{"~"}, DisplayKey: "~", FooterRank: 16, FooterLabel: "dependencies"},
 			{OperationID: operationTaskMoveToProject, Keys: []string{"%"}, DisplayKey: "%"},
 			// The two capture sigils that carry task content keep the same
 			// correspondence the other keyed sigils do: the character that writes an

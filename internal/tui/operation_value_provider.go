@@ -35,6 +35,14 @@ const (
 	// same cross-project edit path the sigil does rather than adding a second
 	// relocation route.
 	operationTaskMoveToProject OperationID = "tui.task.move-to-project"
+
+	// operationTaskReferences is the `~task` sigil's key. It is a separate
+	// operation from every other relationship above because the sigil it answers
+	// is unlike theirs on three counts: it is repeatable, so no single-valued
+	// replace can express it; it crosses a project boundary, so the candidate
+	// population is not one project's tree; and it is soft, so nothing about
+	// readiness, ordering, ranking, or completion may read what it records.
+	operationTaskReferences OperationID = "tui.task.references"
 )
 
 // OperationParentValue is the picker-neutral reparent payload. A nil ParentID
@@ -980,6 +988,7 @@ func (m *AppModel) registerTaskActionOperations() error {
 		ValueProviderParent,
 		ValueProviderChild,
 		ValueProviderProject,
+		ValueProviderTaskReference,
 	} {
 		if err := executor.RegisterValueProvider(provider, pendingPickedValueProvider); err != nil {
 			return err
@@ -1351,6 +1360,14 @@ func (m *AppModel) executeSingleTaskOperation(
 			children,
 			m.captureOutlinerRelocationForTargets(invocation.Targets),
 		))
+	case operationTaskReferences:
+		// No relocation capture: a reference edit records a soft link and moves no
+		// row, so there is no destination for the outliner to follow.
+		locators, ok := invocation.Value.([]string)
+		if !ok {
+			return OperationHandlerResult{Err: fmt.Errorf("invalid dependency value")}
+		}
+		return cmdResult(m.setTaskReferencesCmd(identity, locators))
 	case operationTaskMoveToProject:
 		projectID, ok := invocation.Value.(string)
 		if !ok || strings.TrimSpace(projectID) == "" {
@@ -1401,6 +1418,38 @@ func (m *AppModel) adoptChildrenCmd(
 		})
 	}
 	return m.secondaryFeatures.TaskItem.EditTaskLine(req, relocation)
+}
+
+// setTaskReferencesCmd routes the picker's checked set through the same
+// task-line edit the `~task` sigil uses, so both halves of the diff are resolved
+// against one snapshot and land in one transaction with one undo entry. The
+// paired add and remove services would be two of each, and neither would see the
+// other's half of the request.
+//
+// A patch with nothing on either side issues no command at all: an empty
+// transaction would still write a ledger entry `u` could take back, and a
+// picker closed unchanged is not something to undo.
+func (m *AppModel) setTaskReferencesCmd(identity TaskIdentity, locators []string) tea.Cmd {
+	task, project := m.taskAndProjectForIdentity(identity)
+	if task == nil || project == nil {
+		return func() tea.Msg {
+			return TaskLineEditFailedMsg{Source: identity, Err: fmt.Errorf("selected task is no longer available")}
+		}
+	}
+	patch := taskReferencePatch(task, locators)
+	if patch.IsZero() {
+		return func() tea.Msg { return InfoStatusMsg("Dependencies unchanged") }
+	}
+	req := app.TaskLineEditRequest{
+		Source:               identity.Locator(),
+		Title:                task.Title,
+		DestinationProjectID: identity.ProjectID,
+		Parent:               app.TaskLineParentPatch{Mode: app.TaskLineParentPreserve},
+		Dependencies:         patch,
+		Action:               "Set Dependencies",
+		PlanningArtifacts:    shellPlanningReconcileArtifactBuilder(m.runtime, m.configManager),
+	}
+	return m.secondaryFeatures.TaskItem.EditTaskLine(req, nil)
 }
 
 // moveTaskToProjectCmd relocates one or many selected subtrees into the picked
@@ -1696,6 +1745,24 @@ func (m *AppModel) newOperationValuePicker(
 			operationChildListSource(refs[0].Task, refs[0].Project),
 			true,
 			nil,
+		)
+	case ValueProviderTaskReference:
+		// The stored set is preselected where the adoption picker above preselects
+		// nothing, and the asymmetry is a grammar fact rather than a preference:
+		// `~` declares both `~0` and `-~task`, so unchecking a row is a removal the
+		// sigil has a form for, while `<child` declares no Clears at all.
+		//
+		// The population is the one Peek and `~` autocomplete already read, not
+		// AvailableProjects, whose task trees are not loaded — so the keyboard and
+		// the typed routes can never disagree about what is addressable.
+		return newOperationValuePickerModel(
+			request,
+			provider,
+			"Set Dependencies",
+			subtitle,
+			operationTaskReferenceListSource(refs[0].Task, m.crossOutliner.dependencyDetailProjects()),
+			true,
+			storedTaskReferenceIDs(refs[0].Task),
 		)
 	case ValueProviderProject:
 		return newOperationValuePickerModel(

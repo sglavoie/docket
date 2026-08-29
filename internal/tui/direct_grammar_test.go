@@ -241,6 +241,7 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"[": operationTaskOutdent, "]": operationTaskIndent,
 		">":           operationTaskSetParent,
 		"<":           operationTaskAdoptChildren,
+		"~":           operationTaskReferences,
 		"%":           operationTaskMoveToProject,
 		"&":           operationTaskAttachments,
 		";":           operationTaskComments,
@@ -348,9 +349,12 @@ var grammarSigilRoutes = map[string]sigilKeyRoute{
 	";": sigilRootKey,
 	// Two runes are not one key event, and the # picker already unchecks a tag.
 	"-#": sigilPickerOnly,
-	// Dependencies are authored in the capture and edit grammars alone for now;
-	// the row-level route belongs to the session that gives them a picker.
-	"~":  sigilPickerOnly,
+	// The reference sigil opens a picker over the tasks the cursor task may name,
+	// with its stored set preselected, so the character that writes a reference at
+	// capture time is the key that edits the set on a row.
+	"~": sigilRootKey,
+	// Two runes are not one key event, and unchecking a preselected row in that
+	// picker already carries the removal `-~` spells.
 	"-~": sigilPickerOnly,
 	// The trie is prefix-free, so ## and @@ cannot be chords under keys # and @
 	// that already resolve. Both live as modes inside the picker their first
@@ -663,7 +667,7 @@ func TestDirectTaskGrammarRemainsDocumentedWithoutACursorTarget(t *testing.T) {
 	for _, item := range items {
 		keys[item.Key] = true
 	}
-	for _, key := range []string{"A", "@", "#", "*", "[", "]", ">", "<", "&", ";", "y", "Y", "Ctrl+Y"} {
+	for _, key := range []string{"A", "@", "#", "*", "[", "]", ">", "<", "~", "&", ";", "y", "Y", "Ctrl+Y"} {
 		if !keys[key] {
 			t.Errorf("target-free help omits documented direct key %q", key)
 		}

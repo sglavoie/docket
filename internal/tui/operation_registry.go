@@ -106,6 +106,13 @@ const (
 	// so no selection state can express a detach.
 	ValueProviderChild ValueProviderID = "child"
 
+	// ValueProviderTaskReference lists the tasks the cursor task may name as soft
+	// references. It is multi-select like ValueProviderChild but preselected where
+	// that one is empty: `~` declares both `~0` and `-~task`, so unchecking a
+	// stored row is a removal the grammar has a form for. Its population crosses
+	// project boundaries, which no other relationship provider does.
+	ValueProviderTaskReference ValueProviderID = "task-reference"
+
 	// ValueProviderProject lists the projects the cursor task may move to. Its
 	// population is AvailableProjects rather than the Outliner's own, so a parked
 	// project stays a reachable destination, and the task's current project is
