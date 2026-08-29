@@ -232,6 +232,7 @@ The committed suite exercises the product contracts directly:
 | The active lens surviving a relaunch: its saved axes reapplied over the clean launch view, a scoped lens reopening in its project, the first Esc landing where a lens-free launch would have, and a pointer that no longer resolves failing closed in silence | `named-lens-escape-restoration.json`, `named-lens-scoped-restart.json`, `named-lens-restart-dangling.json` |
 | The built-in view gallery end to end: opened from `Add built-in view`, the seeded starters disabled, search, add-and-apply closing both overlays, and the added template disabled by stable ID on reopening | `named-lens-built-in-gallery.json` |
 | Toggle and range selection with bulk intersection | `outliner-toggle-selection.json`, `outliner-range-selection.json`, `outliner-multiselect-*.json`, `outliner-bulk-action-intersection.json` |
+| One `%` carrying a whole selection into one destination, under one undo entry, at the default and minimum widths | `outliner-move-to-project-bulk-undo.json`, `outliner-move-to-project-bulk-narrow-layout.json` |
 | Project header cursor, folding, and task-key refusal | `outliner-project-header-fold.json`, `outliner-project-header-rejects-task-keys.json` |
 | Project tags on the shared `#` key, with parked confirm and recovery | `project-tags-picker.json`, `project-park-confirm-and-recover.json` |
 | Project picker multi-select and bulk tag actions | `project-hub-bulk-tag-selection.json` |

@@ -71,6 +71,8 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"outliner-move-to-project-subtree.json",
 		"outliner-move-to-project-undo.json",
 		"outliner-move-to-project-parked.json",
+		"outliner-move-to-project-bulk-undo.json",
+		"outliner-move-to-project-bulk-narrow-layout.json",
 		"outliner-indent-outdent-brackets.json",
 		"outliner-project-header-actions.json",
 		"outliner-project-delete-undo.json",

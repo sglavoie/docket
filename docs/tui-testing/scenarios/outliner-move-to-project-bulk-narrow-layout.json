@@ -1,0 +1,51 @@
+{
+  "name": "outliner-move-to-project-bulk-narrow-layout",
+  "fixture": "multi-project",
+  "size": "60x20",
+  "actions": [
+    { "type": "resize", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+
+    { "type": "key", "label": "capture the first Unfiled task", "key": "a" },
+    { "type": "text", "text": "Sort the desk drawer" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+
+    { "type": "key", "label": "capture the second", "key": "a" },
+    { "type": "text", "text": "Book the dentist" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+
+    { "type": "key", "label": "capture the third", "key": "a" },
+    { "type": "text", "text": "Draft the quarterly note" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+
+    { "type": "key", "label": "Inbox mode holds the three captures alone", "key": "g" },
+    { "type": "key", "key": "i" },
+    { "type": "key", "label": "start from the project header", "key": "home" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "select the newest capture", "key": "v" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "label": "select a second", "key": "v" },
+    { "type": "assert", "assert": "contains", "value": "MULTI-SELECT: 2 selected" },
+    { "type": "assert", "label": "the selection strip fits the minimum width", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "open Move to Project over the selection", "key": "%" },
+    { "type": "assert", "assert": "contains", "value": "Move to Project: 2 selected task(s)" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "choose Client Alpha", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Move to Project: 2 task(s) → client-alpha" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "one undo takes the whole batch back", "key": "u" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "[unfiled] (3)" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "resize", "label": "the same act renders at the wider narrow band", "width": 72, "height": 20 },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

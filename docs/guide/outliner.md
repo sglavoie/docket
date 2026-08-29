@@ -271,6 +271,18 @@ so a parked project is still a destination — the task simply follows it out of
 view. `P` remains Select Project, which changes what you are looking at rather
 than where a task lives.
 
+Over a visual selection the same `%` moves every selected subtree into one
+destination, in one transaction with one undo entry, however many projects the
+selection spanned. The picker names the selection rather than a title
+(`Move to Project: 3 selected task(s)`) and withholds a project only when the
+whole selection already lives in it, since for a selection spanning several
+projects every project is a real destination for the tasks not already there.
+A task selected together with one of its own ancestors moves once, as part of
+that ancestor's subtree, so the count the status strip reports
+(`Move to Project: 3 task(s) → client-alpha`) is subtrees moved, not rows
+ticked. A committed move clears the selection, because every address it held
+names the project the tasks just left.
+
 
 ### Task actions
 
@@ -533,8 +545,9 @@ ancestor chain is named there in full, root-first, as
 continuation are the two blocks that raise the five-line cap rather than spend
 it. `Esc` closes Peek before unwinding Outliner navigation.
 
-State, Today/Next, priority, due, tags, defer, and pin actions apply atomically
-to the complete project-qualified selection, including hidden members. `v`
+State, Today/Next, priority, due, tags, defer, pin, and Move to Project actions
+apply atomically to the complete project-qualified selection, including hidden
+members. `v`
 toggles the cursor task in or out of the selection, so a selection can name rows
 that are not adjacent; movement never changes what `v` picked. `V` starts a
 fresh inclusive range at the cursor; movement recalculates it over task rows

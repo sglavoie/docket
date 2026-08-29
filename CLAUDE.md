@@ -43,6 +43,11 @@ effect through one checked repository transaction. Do not recreate cross-project
 behavior with independent `SaveProject` calls. Direct storage writes are limited
 to audited maintenance, migration, restore, and transaction infrastructure.
 
+A bulk move commits the destination project even when it held none of the
+selection, so its `tasks.md` is written. Cardinality alone chooses the
+transaction: one target keeps the single task-line edit, two or more take the
+batch, and neither changes what the move means.
+
 ## Task and planning invariants
 
 The lifecycle states are:
