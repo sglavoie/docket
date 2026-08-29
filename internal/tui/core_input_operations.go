@@ -62,6 +62,7 @@ const (
 	operationCoreRangeSelect        OperationID = "tui.core.range-select"
 	operationCoreSelectAll          OperationID = "tui.core.select-all"
 	operationCoreNamedLenses        OperationID = "tui.core.named-lenses"
+	operationCoreConflicts          OperationID = "tui.core.conflicts"
 	operationCoreNotes              OperationID = "tui.core.notes"
 	operationCoreToggleTheme        OperationID = "tui.core.toggle-theme"
 	operationCoreUndo               OperationID = "tui.core.undo"
@@ -299,6 +300,19 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 			"lenses",
 			"saved views",
 			"save current view",
+		),
+		// The browser reads the same directory the status strip counts, so the key
+		// that opens it is the strip's line made actionable rather than a surface of
+		// its own. It stays read-only: resolving is `tt conflict resolve`.
+		core(
+			operationCoreConflicts,
+			"Merge Conflicts",
+			OperationCategorySystem,
+			TargetCardinalityNone,
+			OperationRiskReadOnly,
+			"conflicts",
+			"merge conflicts",
+			"unresolved conflicts",
 		),
 		core(operationCoreNotes, "Notes", OperationCategoryNote, TargetCardinalityNone, OperationRiskReadOnly, "scratch notes"),
 		core(operationCoreToggleTheme, "Toggle Theme", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "dark theme", "light theme"),
@@ -630,6 +644,10 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		// The picker is a shell overlay rather than a route, so opening it mounts
 		// the model here and returns whatever command that mount raised.
 		message = commandMessage(m.openNamedLensPicker())
+	case operationCoreConflicts:
+		// Like the picker the browser is a shell overlay rather than a route, and
+		// the mount itself decides whether there is anything to show.
+		message = m.openConflictBrowser()
 	case operationCoreNotes:
 		message = ShowNotesManagerMsg{Scope: m.coreNotesScope()}
 	case operationCoreToggleTheme:

@@ -37,6 +37,7 @@ var headerTargetAudit = map[OperationID]string{
 	"tui.core.backlog":                "reject",
 	"tui.core.capture":                "target-free",
 	"tui.core.collapse-parent":        "target-free",
+	"tui.core.conflicts":              "target-free",
 	"tui.core.cursor-bottom":          "target-free",
 	"tui.core.cursor-down":            "target-free",
 	"tui.core.cursor-page-down":       "target-free",

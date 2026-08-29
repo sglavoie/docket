@@ -1,0 +1,27 @@
+{
+  "name": "conflict-browser-narrow-layout",
+  "fixture": "rich",
+  "size": "60x20",
+  "actions": [
+    { "type": "command", "label": "record a bundle to browse", "command": "record merge conflict" },
+    { "type": "key", "label": "go to conflicts at the narrowest supported width", "key": "g" },
+    { "type": "key", "key": "c" },
+    { "type": "assert", "assert": "contains", "value": "Merge Conflicts" },
+    { "type": "assert", "label": "the read-only header survives minimum width", "assert": "contains", "value": "Read-only" },
+    { "type": "assert", "assert": "contains", "value": "Rich Project" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "inspect the bundle", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Revisions: base" },
+    { "type": "assert", "label": "the closing command sits below the first window", "assert": "not_contains", "value": "Clear with: tt conflict resolve" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "scroll the pane to its end", "key": "G" },
+    { "type": "assert", "assert": "contains", "value": "Clear with: tt conflict resolve" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "Esc leaves the pane for the list", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "Read-only" },
+    { "type": "key", "label": "and the next Esc leaves the overlay", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Merge Conflicts" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

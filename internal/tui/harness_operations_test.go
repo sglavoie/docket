@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/storage"
 )
 
 const CapabilityHarness Capability = "surface:test-harness"
@@ -28,6 +29,20 @@ const (
 	operationHarnessEditorSigils    OperationID = "tui.harness.external-editor-sigils"
 	operationHarnessEditorRefusal   OperationID = "tui.harness.external-editor-refusal"
 	operationHarnessDanglingLens    OperationID = "tui.harness.dangling-active-lens"
+	operationHarnessRecordConflict  OperationID = "tui.harness.record-conflict"
+)
+
+// The canned conflict bundle. A conflict is recorded only when a project changes
+// underneath a mutation, which no scenario action can stage, so the harness
+// writes one directly. Its project identity is fixed rather than read off the
+// fixture: the browser is read-only and never resolves the project, so the
+// record is self-describing, and fixed values are what let a scenario assert on
+// the row it draws.
+const (
+	harnessConflictProjectName = "Rich Project"
+	harnessConflictProjectSlug = "rich-project"
+	harnessConflictAction      = "update task"
+	harnessConflictTaskTitle   = "Ship the release notes"
 )
 
 // harnessDanglingLensID is a canonical UUID that names no saved lens. It stands
@@ -143,6 +158,16 @@ func (m *AppModel) registerHarnessOperations() error {
 			}
 			return nil
 		}},
+		{operationHarnessRecordConflict, "record merge conflict", OperationCategorySystem, func() tea.Msg {
+			if err := m.harnessRecordConflict(); err != nil {
+				return ErrorMsg{Err: err}
+			}
+			// The strip counts the same directory this just wrote to, so the count
+			// is refreshed here rather than waiting for the 60s tick a scenario
+			// never reaches.
+			m.refreshOutstandingConflicts()
+			return nil
+		}},
 	}
 
 	for _, spec := range specs {
@@ -170,6 +195,49 @@ func (m *AppModel) registerHarnessOperations() error {
 		}
 	}
 	return nil
+}
+
+// harnessRecordConflict writes one conflict bundle into the workspace's store.
+// The three documents carry the project name and no tasks: the browser reads the
+// record alone, but Load parses all three, so a bundle written with nil documents
+// would be a shape the merge path never produces.
+func (m *AppModel) harnessRecordConflict() error {
+	store := m.conflictStore()
+	if store == nil {
+		return fmt.Errorf("recording a conflict needs a workspace")
+	}
+	side := func() *storage.ProjectDocument {
+		return &storage.ProjectDocument{
+			ProjectName:   harnessConflictProjectName,
+			SchemaVersion: storage.SchemaVersionV14,
+		}
+	}
+	retryRequired := true
+	_, err := store.Save(storage.ConflictRecord{
+		ProjectName:            harnessConflictProjectName,
+		ProjectSlug:            harnessConflictProjectSlug,
+		Action:                 harnessConflictAction,
+		BaseRevision:           "b0b0b0b0b0b0b0b0",
+		LocalRevision:          "1oca11oca11oca11",
+		RemoteRevision:         "5e3e5e3e5e3e5e3e",
+		RequiresOperationRetry: &retryRequired,
+		Conflicts: []storage.MergeConflict{
+			{
+				Kind:      storage.MergeConflictFieldEdit,
+				TaskTitle: harnessConflictTaskTitle,
+				Field:     "title",
+				Base:      "Draft the release notes",
+				Local:     "Ship the release notes",
+				Current:   "Publish the release notes",
+			},
+			{
+				Kind:      storage.MergeConflictHierarchy,
+				TaskTitle: harnessConflictTaskTitle,
+				Detail:    "both sides reparented this task",
+			},
+		},
+	}, side(), side(), side())
+	return err
 }
 
 // harnessOutlineProblems is one rejected buffer's worth of problems, holding

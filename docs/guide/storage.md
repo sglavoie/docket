@@ -31,7 +31,9 @@ status strip above the footer carries a state indicator counting the workspace's
 unresolved merge conflicts and naming the command that reviews them. It is
 recounted at launch and once a minute, so a conflict another machine recorded
 while you were working appears on its own, and the line disappears once the last
-bundle is resolved. Resolving stays in the CLI.
+bundle is resolved. `gc` opens a read-only overlay over the same store, listing
+the recorded bundles and showing one in the form `tt conflict show` prints; see
+[`outliner.md`](outliner.md). Resolving stays in the CLI.
 
 
 ## Schema 16 storage and migration

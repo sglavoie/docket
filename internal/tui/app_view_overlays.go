@@ -67,6 +67,9 @@ func (m *AppModel) dimmedOverlayRenderers() []widthRenderer {
 	if m.operationTextPrompt != nil {
 		out = append(out, m.operationTextPrompt)
 	}
+	if m.conflictBrowser != nil {
+		out = append(out, m.conflictBrowser)
+	}
 	return out
 }
 

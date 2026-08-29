@@ -246,6 +246,7 @@ The committed suite exercises the product contracts directly:
 | Project tags on the shared `#` key, with parked confirm and recovery | `project-tags-picker.json`, `project-park-confirm-and-recover.json` |
 | Project picker multi-select and bulk tag actions | `project-hub-bulk-tag-selection.json` |
 | Select Project's compact preview header and the task pane it fills, paged with `Ctrl+F`/`Ctrl+B` and dropped by the compact fallback | `project-hub-task-preview.json` plus `project_hub_preview_tasks_test.go` |
+| The read-only conflict browser on `gc`: the refusal with nothing recorded, the strip's count, the list, the inspected record, `Esc` unwinding one level at a time, and the detail pane scrolling to its closing command at the narrowest width | `conflict-browser-open.json`, `conflict-browser-narrow-layout.json` |
 | Cleanup plus workspace undo/redo | `cleanup-undo-redo.json` |
 | Semantic task tag split, seeded in `#` and usage-derived in `f#`, which narrows tags alone | `semantic-task-tags-split.json`, `tags-picker-direct.json` |
 | Context radio inside `#`, its inline mint, and one undo over a simultaneous tag and context change | `tags-picker-context-radio.json`, `tags-picker-context-mint.json` |

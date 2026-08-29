@@ -2240,6 +2240,9 @@ func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 		return true, m.applyNamedLensPickerResult(typed)
 	case NamedLensActionsRequestMsg:
 		return true, m.openNamedLensActions(typed)
+	case ConflictBrowserClosedMsg:
+		m.conflictBrowser = nil
+		return true, nil
 	case OperationConfirmationRequestMsg:
 		m.showOperationConfirmation(typed)
 		return true, nil

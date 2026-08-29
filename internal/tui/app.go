@@ -245,6 +245,11 @@ type AppModel struct {
 	// the sheet, prompt, and confirmation a lens action nests above it.
 	lensPicker *NamedLensPickerModel
 
+	// The conflict browser sits beside the picker rather than inside that flow:
+	// it registers no operations, so nothing ever nests above it, and Esc is the
+	// whole of its lifecycle.
+	conflictBrowser *ConflictBrowserModel
+
 	// A destructive contextual action prompts here and keeps its frozen request
 	// so cancellation returns to the sheet with nothing executed.
 	operationConfirm        ConfirmDialog

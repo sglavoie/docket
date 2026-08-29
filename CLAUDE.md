@@ -170,7 +170,8 @@ Notice and status render only in the shell-pinned strip, whose height
 transient except the multi-select summary. An outstanding-conflict count leads
 that strip, refreshed at launch and on the 60s tick, read straight from
 `ConflictStore` with no `internal/app` port; the pulse ladder stays closed to it
-and resolving stays in the CLI.
+and resolving stays in the CLI. `gc` browses those bundles read-only, as an
+overlay with no `PresentationID`, `InputStrategy`, or manifest entry.
 
 Only status text arms footer flash; cleared text and other chrome do not. Arming
 stays in the one deferred closure in `AppModel.Update`. Feed divider appearance

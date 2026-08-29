@@ -401,6 +401,23 @@ nothing, so there is no application-layer policy for a port to hold. A nil
 accessor is inert, which is what keeps the Hub's preview painter and
 struct-literal test models indicator-free. Resolution stays in the CLI.
 
+`ConflictBrowserModel` is that count's read-only companion, and it is an overlay
+on the lens picker's template rather than a surface: a `ListSurfaceModel` inside
+`renderOverlayBox`, one `AppModel` field, one arm in `handleActiveKeyOverlay`,
+one in `dimmedOverlayRenderers`, and one `ConflictBrowserClosedMsg` case in
+`handleOperationOverlayMessage`. It declares no `PresentationID`, no
+`InputStrategy`, and no manifest entry, so `surfaceOperationGates()` still lists
+five strategies and `validateOperationOnePath` — which iterates manifests — has
+nothing new to check. `gc` opens it through the existing go-to chord on
+`SimplifiedInputStrategy`, which is why root `c` stays retired. The host port is
+`AppModel.openConflictBrowser`: it reads `ConflictStore.List` through the same
+direct-store access the indicator uses, settles `outstandingConflicts` from that
+read, and refuses with a status rather than mounting an empty box. Inspecting a
+row calls `ConflictStore.Load` instead of reusing the listed record, so a bundle
+the CLI resolved in another terminal refuses instead of painting a record that is
+gone. The overlay registers no operations, has no `Space` sheet, and calls no
+mutating store method: resolution stays in `tt conflict resolve`.
+
 The Outliner cursor row is drawn by `outlinerCursorRow`, not by `SelectedLine`.
 Every Outliner row renderer splits itself at one seam: a leading structural
 gutter and the content that follows it. For a task row the gutter is

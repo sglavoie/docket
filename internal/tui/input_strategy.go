@@ -384,6 +384,10 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationCoreGotoDue, Sequence: []string{"g", "@"}, DisplayKey: "g@", HintLabel: "due"},
 			{OperationID: operationCoreGotoRecent, Sequence: []string{"g", "r"}, DisplayKey: "gr", HintLabel: "recent"},
 			{OperationID: operationCoreGotoTaskProject, Sequence: []string{"g", "p"}, DisplayKey: "gp", HintLabel: "task project"},
+			// Conflicts joins the go-to chord rather than claiming a root key: `c` is
+			// retired at the root, and what the strip already names as workspace state
+			// is something the user goes to look at.
+			{OperationID: operationCoreConflicts, Sequence: []string{"g", "c"}, DisplayKey: "gc", HintLabel: "conflicts"},
 			{OperationID: operationCoreScrollCursorTop, Sequence: []string{"z", "t"}, DisplayKey: "zt", HintLabel: "row to top"},
 			{OperationID: operationCoreScrollCursorMiddle, Sequence: []string{"z", "z"}, DisplayKey: "zz", HintLabel: "row to middle"},
 			{OperationID: operationCoreScrollCursorBottom, Sequence: []string{"z", "b"}, DisplayKey: "zb", HintLabel: "row to bottom"},

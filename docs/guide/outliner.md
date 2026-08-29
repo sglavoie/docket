@@ -53,6 +53,19 @@ neither expires nor clears on a mode change; it leads the transient lines so
 they cannot shift it, and it disappears only once the last bundle is resolved.
 See [`storage.md`](storage.md) for what a bundle is and how to resolve one.
 
+`gc` answers the question that indicator raises. It opens a read-only overlay
+listing every recorded bundle newest first — its short id, the project, how many
+conflicts it holds, the action that hit it, and when it was recorded. `Enter`
+inspects one, showing exactly what `tt conflict show` prints: the revisions on
+each side, whether the original operation still has to be retried, and every
+conflicting field with its base, local, and remote values. The pane scrolls with
+the ordinary list keys, `Esc` steps back to the list, and a second `Esc` closes
+the overlay. Nothing here resolves anything: the browser reads the store and the
+record it inspects is reread at the moment you open it, so a bundle another
+terminal resolved in the meantime refuses rather than painting a stale record.
+Resolving stays in `tt conflict resolve`. With no unresolved conflicts, `gc`
+says so in the strip instead of opening an empty overlay.
+
 After a commit, recovery feedback advertises `u undo` only when the newest
 workspace-ledger entry is that exact transaction. A task relocation adds
 `Ctrl+O origin` only after its origin was recorded; `Ctrl+I` returns to the
@@ -174,7 +187,7 @@ were in and says so.
 
 | Area | Keys |
 | --- | --- |
-| Modes | `Tab` / `Shift+Tab` cycle the seven modes; `g` opens the go-to chord: `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `g@` Due, `gr` Recent, `gp` the cursor task's project |
+| Modes | `Tab` / `Shift+Tab` cycle the seven modes; `g` opens the go-to chord: `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `g@` Due, `gr` Recent, `gp` the cursor task's project, `gc` the read-only merge-conflict browser |
 | Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items, and `h` on a direct child of a focus root steps out of that Focus frame onto the root; `s`, `p`, and `t` are the three bulk fold toggles — every visible section header, every project group header, every task subtree — and each expands its whole set if any part of it is folded and otherwise folds the set; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `H`/`M`/`L` land on the highest, middle, and lowest visible row without scrolling; `z` opens the scroll chord, which does the opposite and moves the window under the cursor: `zt` puts the cursor's row at the top, `zz` centers it, `zb` puts it at the bottom; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `gp` opens the cursor task's project in All and keeps the cursor on it; `Enter` zooms in on whatever the cursor names — descendants on a task row, that project on a project sub-header, that section alone on a section header; `Shift+Enter` widens focus one level; `Ctrl+Enter` toggles Peek |
 | Capture and edit | `a` capture, `A` child, `e` inline task edit, `E` description, `Ctrl+E` external editor, whose title line speaks the same edit grammar as `e`, `O` outline edit the cursor's project |
 | Workflow | `$` opens the workflow chord over the ten destinations the `$` capture sigil names: `$i` Inbox, `$b` Backlog, `$n` toggle Next, `$t` toggle Today, `$g` Doing, `$w` Waiting, `$p` Paused, `$m` Someday, `$d` Done, `$c` Canceled; `$w` then asks for a check-back date |

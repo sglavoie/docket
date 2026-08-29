@@ -196,5 +196,15 @@ func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		}
 		return true, cmd
 	}
+	if m.conflictBrowser != nil {
+		// Nothing ever opens above the browser, so its position among the arms is
+		// free; it is last because it is the only overlay that cannot be reached
+		// from any of the others.
+		dismiss, cmd := dispatchOverlayKey(m.conflictBrowser, msg)
+		if dismiss {
+			m.conflictBrowser = nil
+		}
+		return true, cmd
+	}
 	return false, nil
 }
