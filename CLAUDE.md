@@ -117,7 +117,7 @@ One key is one act on every entity surface:
 | `Enter` `a` `e` `E`/`Ctrl+E` | zoom in · open note · create · edit · body/external |
 | `/` `v` `Ctrl+A` `P` `%` | search · select · select all · scope · reown |
 | `y`/`Y` `J`/`K` `*` `#` | copy · reorder · pin · tags |
-| `&` `;` | attachments · comments |
+| `&` `;` `~` | attachments · comments · dependencies |
 | `u`/`Ctrl+R` `gg`/`G` `Esc` `?` | undo/redo · ends · unwind · help |
 | `Space` | menu: destructive and rare operations only |
 
@@ -328,7 +328,8 @@ committing one transaction.
   the `*pin` token is what unpins in the outline buffer.
 - `FieldChild` declares no `Clears`, which makes `<0` an ordinary unresolvable
   reference rather than a detach and the `<` picker additive: unchecking never
-  detaches. A task leaves its parent through `>parent` or `>0` and nowhere else.
+  detaches. `~` declares both `~0` and `-~task`, so its picker removes. A task
+  leaves its parent through `>parent` or `>0` and nowhere else.
 - Aliases naming one task ID collapse to the first occurrence, in the parser and
   again in the application layer; both must stay so or preview and commit
   disagree about order.
