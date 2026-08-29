@@ -2,60 +2,6 @@ package models
 
 import "testing"
 
-func TestTaskProgress(t *testing.T) {
-	parent, err := NewGenericTask("parent", 1, "Parent Epic")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Leaf task returns 0 or 100
-	if parent.GetProgress() != 0 {
-		t.Errorf("expected 0 progress for incomplete leaf, got %f", parent.GetProgress())
-	}
-
-	parent.Complete()
-	if parent.GetProgress() != 100 {
-		t.Errorf("expected 100 progress for complete leaf, got %f", parent.GetProgress())
-	}
-	if err = parent.ApplyStateTransition(StateInbox); err != nil {
-		t.Fatal(err)
-	}
-
-	// Add children
-	child1, err := NewGenericTask("child1", 2, "Child 1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	child2, err := NewGenericTask("child2", 3, "Child 2")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if err := parent.AddChild(child1); err != nil {
-		t.Fatal(err)
-	}
-	if err := parent.AddChild(child2); err != nil {
-		t.Fatal(err)
-	}
-
-	// 0% complete
-	if parent.GetProgress() != 0 {
-		t.Errorf("expected 0 progress with no complete children, got %f", parent.GetProgress())
-	}
-
-	// 50% complete
-	child1.Complete()
-	if parent.GetProgress() != 50 {
-		t.Errorf("expected 50 progress with 1/2 complete, got %f", parent.GetProgress())
-	}
-
-	// 100% complete
-	child2.Complete()
-	if parent.GetProgress() != 100 {
-		t.Errorf("expected 100 progress with 2/2 complete, got %f", parent.GetProgress())
-	}
-}
-
 func TestTaskCountChildren(t *testing.T) {
 	epic, err := NewGenericTask("epic", 1, "Epic")
 	if err != nil {

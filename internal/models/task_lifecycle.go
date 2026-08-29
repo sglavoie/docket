@@ -200,25 +200,6 @@ func (t *Task) IsOverdue() bool {
 	return dueDay.Before(today)
 }
 
-// IsDueSoon returns true if the task has a due date within the specified number
-// of days (inclusive) and is not overdue or complete.
-// Uses day-level comparison (normalizes to midnight local time).
-func (t *Task) IsDueSoon(days int) bool {
-	if t.DueDate == nil || t.IsTerminalState() {
-		return false
-	}
-	now := time.Now()
-	today := util.StartOfDay(now)
-	dueDay := util.StartOfDay(*t.DueDate)
-	// Not overdue
-	if dueDay.Before(today) {
-		return false
-	}
-	// Within N days (including today)
-	threshold := today.AddDate(0, 0, days)
-	return !dueDay.After(threshold)
-}
-
 // IsDueToday returns true if the task has a due date that falls on today.
 // Does not check completion status — callers can combine with IsComplete() if needed.
 // Uses day-level comparison (normalizes to midnight local time).
@@ -230,19 +211,4 @@ func (t *Task) IsDueToday() bool {
 	today := util.StartOfDay(now)
 	dueDay := util.StartOfDay(*t.DueDate)
 	return dueDay.Equal(today)
-}
-
-// IsDueThisWeek returns true if the task has a due date within the next 7 days
-// (including today, excluding exactly 7 days from now).
-// Does not check completion status — callers can combine with IsComplete() if needed.
-// Uses day-level comparison (normalizes to midnight local time).
-func (t *Task) IsDueThisWeek() bool {
-	if t.DueDate == nil {
-		return false
-	}
-	now := time.Now()
-	today := util.StartOfDay(now)
-	weekEnd := today.AddDate(0, 0, 7)
-	dueDay := util.StartOfDay(*t.DueDate)
-	return !dueDay.Before(today) && dueDay.Before(weekEnd)
 }

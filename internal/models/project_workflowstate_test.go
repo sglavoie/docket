@@ -25,9 +25,8 @@ func TestProjectStateQueriesUseExactCanonicalState(t *testing.T) {
 	if got := project.GetTasksByState(StateDoing); !reflect.DeepEqual(got, []*Task{doing}) {
 		t.Fatalf("doing tasks = %#v, want only doing task", got)
 	}
-	counts := project.CountTasksByState()
-	if counts[StateBacklog] != 1 || counts[StateDoing] != 1 || counts[StateWaiting] != 1 {
-		t.Fatalf("state counts = %#v", counts)
+	if got := project.GetTasksByState(StateWaiting); !reflect.DeepEqual(got, []*Task{next}) {
+		t.Fatalf("waiting tasks = %#v, want only waiting task", got)
 	}
 }
 

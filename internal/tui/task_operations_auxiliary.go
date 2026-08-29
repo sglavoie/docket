@@ -12,23 +12,17 @@ const (
 	operationTaskCopyTitle            OperationID = "tui.task.copy-title"
 	operationTaskCopyDetails          OperationID = "tui.task.copy-details"
 	operationTaskCopyTitleDescription OperationID = "tui.task.copy-title-description"
-	operationTaskPin                  OperationID = "tui.task.pin"
-	operationTaskUnpin                OperationID = "tui.task.unpin"
 	operationTaskTogglePin            OperationID = "tui.task.toggle-pin"
 	operationTaskNewChild             OperationID = "tui.task.new-child"
 )
 
-// taskAuxiliaryAllowsOperation gates the paired auxiliary actions and the child
-// creators on live task state that the frozen EntityContext does not carry, so
-// the two halves of pin are never offered together and a child is never offered
-// under a task that cannot hold one. A target that no longer
-// resolves stays applicable so the handler reports the single authoritative
-// "no longer available" error instead of the row vanishing.
+// taskAuxiliaryAllowsOperation gates the child creator on live task state that
+// the frozen EntityContext does not carry, so a child is never offered under a
+// task that cannot hold one. A target that no longer resolves stays applicable
+// so the handler reports the single authoritative "no longer available" error
+// instead of the row vanishing.
 func (m *AppModel) taskAuxiliaryAllowsOperation(id OperationID, entity EntityContext) bool {
-	switch id {
-	case operationTaskPin, operationTaskUnpin,
-		operationTaskNewChild:
-	default:
+	if id != operationTaskNewChild {
 		return true
 	}
 	task, _ := m.taskAndProjectForIdentity(TaskIdentity{
@@ -38,16 +32,7 @@ func (m *AppModel) taskAuxiliaryAllowsOperation(id OperationID, entity EntityCon
 	if task == nil {
 		return true
 	}
-	switch id {
-	case operationTaskPin:
-		return !task.Pinned
-	case operationTaskUnpin:
-		return task.Pinned
-	case operationTaskNewChild:
-		return taskAcceptsDeeperChild(task)
-	default:
-		return true
-	}
+	return taskAcceptsDeeperChild(task)
 }
 
 // taskAcceptsDeeperChild reports whether a child nested under the task would
@@ -73,7 +58,6 @@ func (m *AppModel) executeAuxiliaryTaskOperation(
 	message := func(msg any) OperationHandlerResult {
 		return OperationHandlerResult{Message: msg}
 	}
-	coordinator := m.secondaryFeatures.TaskItem
 
 	//nolint:exhaustive // Only auxiliary task operations reach this switch.
 	switch invocation.Descriptor.ID {
@@ -87,10 +71,6 @@ func (m *AppModel) executeAuxiliaryTaskOperation(
 		return message(CopyTaskDetailsMsg{Task: task})
 	case operationTaskCopyTitleDescription:
 		return message(CopyTaskTitleAndDescMsg{Task: task})
-	case operationTaskPin:
-		return message(OperationCommandResultMsg{Cmd: coordinator.SetPinned(identity, true)})
-	case operationTaskUnpin:
-		return message(OperationCommandResultMsg{Cmd: coordinator.SetPinned(identity, false)})
 	case operationTaskNewChild:
 		return message(CreateTaskMsg{ParentTask: task, Project: project})
 	default:

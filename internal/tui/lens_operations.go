@@ -11,13 +11,15 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 )
 
-// Named lenses are machine-local: they live in the machine domain beside the
-// theme, not in the synced workspace. That is the whole shape of this file.
-// Every mutation here clones the machine snapshot, validates the clone, and
-// commits it through RuntimeState, which means no workspace transaction is
-// opened and no undo entry is recorded. A handler therefore returns neither an
-// Undo nor a Redo callback, and OperationHistory.record drops the entry on its
-// own.
+// Named lens definitions are portable: they live in the synced
+// .tt/lenses.json, and only the active-lens pointer stays machine-local. This
+// file still edits them through the machine domain, because that domain carries
+// the in-memory collection and its commit publishes the portable home behind
+// it. That is the whole shape of this file. Every mutation here clones the
+// machine snapshot, validates the clone, and commits it through RuntimeState,
+// which means no workspace transaction is opened and no undo entry is recorded.
+// A handler therefore returns neither an Undo nor a Redo callback, and
+// OperationHistory.record drops the entry on its own.
 //
 // The ordering rule is the other half: a TUI effect — applying a lens,
 // relabeling the active one, clearing its modified marker, restoring its

@@ -13,10 +13,11 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// Named lenses are machine-local, workspace-scoped Outliner projections. The
-// config layer owns their durable shape so the TUI never persists its own
-// integer enums: every axis below is a stable string token whose spelling is
-// the durable identity of that choice.
+// Named lenses are portable, workspace-scoped Outliner projections: their
+// definitions live in the synced .tt/lenses.json, and only the active-lens
+// pointer stays machine-local. The config layer owns their durable shape so the
+// TUI never persists its own integer enums: every axis below is a stable string
+// token whose spelling is the durable identity of that choice.
 
 // MaxNamedLensNameRunes bounds a lens name at the same 200-rune boundary the
 // TUI text prompt already enforces, so a name that can be typed is a name that

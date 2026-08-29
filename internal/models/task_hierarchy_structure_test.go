@@ -16,12 +16,9 @@ func TestTaskHierarchy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Test IsRoot and IsLeaf
+	// Test IsRoot
 	if !epic.IsRoot() {
 		t.Error("epic should be root")
-	}
-	if !epic.IsLeaf() {
-		t.Error("epic should be leaf initially")
 	}
 
 	// Add child
@@ -33,9 +30,6 @@ func TestTaskHierarchy(t *testing.T) {
 	}
 	if story.IsRoot() {
 		t.Error("story should not be root")
-	}
-	if epic.IsLeaf() {
-		t.Error("epic should not be leaf after adding child")
 	}
 	if story.Level != 1 {
 		t.Errorf("story level should be 1, got %d", story.Level)

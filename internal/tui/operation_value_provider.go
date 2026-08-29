@@ -1304,17 +1304,6 @@ func applicationTaskOperationRequest(
 		return request, "Set Tags",
 			fmt.Sprintf("Set Tags · Tagged %d task(s)", count), true, nil
 
-	case operationTaskPin, operationTaskUnpin:
-		request.Operation = app.TaskOperationSetPinned
-		request.Pinned = invocation.Descriptor.ID == operationTaskPin
-		action := "Unpin Task"
-		verb := "Unpinned"
-		if request.Pinned {
-			action = "Pin Task"
-			verb = "Pinned"
-		}
-		return request, action, fmt.Sprintf("%s %d task(s)", verb, count), true, nil
-
 	case operationTaskCopyTitle:
 		request.Operation = app.TaskOperationCopyTitle
 		return request, "Copy Title", "", true, nil

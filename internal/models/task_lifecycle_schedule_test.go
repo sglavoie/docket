@@ -143,27 +143,3 @@ func TestIsOverdue(t *testing.T) {
 		t.Error("expected not overdue when task is complete")
 	}
 }
-
-func TestIsDueSoon(t *testing.T) {
-	task := newLifecycleTestTask(t, "t1", 1)
-
-	if task.IsDueSoon(7) {
-		t.Error("expected not due soon when no due date")
-	}
-
-	future := time.Now().AddDate(0, 0, 3)
-	task.DueDate = &future
-	if !task.IsDueSoon(7) {
-		t.Error("expected due soon within 7 days")
-	}
-	if task.IsDueSoon(1) {
-		t.Error("expected not due soon within 1 day when due in 3 days")
-	}
-
-	past := time.Now().AddDate(0, 0, -1)
-	task.DueDate = &past
-	if task.IsDueSoon(7) {
-		t.Error("expected not due soon when overdue")
-	}
-
-}

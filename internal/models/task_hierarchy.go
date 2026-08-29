@@ -4,39 +4,9 @@ import (
 	"fmt"
 )
 
-// IsLeaf returns true if this task has no children.
-func (t *Task) IsLeaf() bool {
-	return len(t.Children) == 0
-}
-
 // IsRoot returns true if this task has no parent.
 func (t *Task) IsRoot() bool {
 	return t.ParentID == nil
-}
-
-// GetProgress returns the completion percentage based on children.
-// For leaf tasks, returns 100 if complete, 0 otherwise.
-// For parent tasks, returns percentage of completed children.
-func (t *Task) GetProgress() float64 {
-	if len(t.Children) == 0 {
-		if t.IsComplete() {
-			return 100.0
-		}
-		return 0.0
-	}
-
-	total := 0
-	completed := 0
-	for _, child := range t.Children {
-		total++
-		if child.IsComplete() {
-			completed++
-		}
-	}
-	if total == 0 {
-		return 0.0
-	}
-	return float64(completed) / float64(total) * 100.0
 }
 
 // IncompleteChildren returns the direct children that are not in a terminal
@@ -76,12 +46,6 @@ func (t *Task) CountCompletedChildren() int {
 		count += child.CountCompletedChildren()
 	}
 	return count
-}
-
-// HasProgressChildren returns true if the task has children.
-// Used to determine whether to display progress indicators.
-func (t *Task) HasProgressChildren() bool {
-	return len(t.Children) > 0
 }
 
 // AddChild adds a task as a child, setting the parent reference.
