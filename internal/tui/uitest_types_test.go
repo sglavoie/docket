@@ -25,10 +25,11 @@ const (
 	// quitting and relaunching `tt` does. Nothing held in memory survives it, so
 	// anything the app reopens with must have been persisted.
 	UITestActionRestart UITestActionType = "restart"
-	// UITestActionSwitchMachine points machine-local state at a fresh, empty
+	// UITestActionSwitchMachine points machine-local state at another machine's
 	// home and then restarts against the same workspace directory, which is what
 	// opening a synced workspace on a second machine looks like. Only what the
-	// portable workspace carries survives it.
+	// portable workspace carries survives it. The optional Machine field names
+	// which machine; without it the switch always lands somewhere new.
 	UITestActionSwitchMachine UITestActionType = "switch_machine"
 	// UITestActionAssert checks an observation invariant (implemented later).
 	UITestActionAssert UITestActionType = "assert"
@@ -47,6 +48,14 @@ type UITestAction struct {
 	Text   string `json:"text,omitempty"`
 	Width  int    `json:"width,omitempty"`
 	Height int    `json:"height,omitempty"`
+
+	// Machine names the machine identity UITestActionSwitchMachine moves to. It
+	// is optional: an omitted name keeps the historical behaviour of landing on a
+	// home no machine has ever used. A name is durable within the scenario, so
+	// switching back to one returns to that machine's own machine-local state
+	// rather than to an empty home — which is the only way to express "machine A,
+	// then machine B, then back to A".
+	Machine string `json:"machine,omitempty"`
 
 	// Command is the registered command name for UITestActionCommand. It is
 	// matched case-insensitively against the current view's command set

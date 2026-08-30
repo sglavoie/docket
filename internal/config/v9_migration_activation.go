@@ -57,7 +57,7 @@ func (m *Manager) migrateWorkspaceToV9(hooks v9MigrationActivationHooks) error {
 		}
 		return err
 	}
-	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, LocalDataRoot()})
+	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, m.localDataRoot()})
 	if _, recoverErr := commit.RecoverWorkspace(); recoverErr != nil {
 		return fmt.Errorf("recover workspace before schema-9 activation: %w", recoverErr)
 	}

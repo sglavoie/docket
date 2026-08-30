@@ -110,17 +110,34 @@ func validateWorkspaceID(workspaceID string) error {
 type DomainFileStore struct {
 	dataDir     string
 	workspaceID string
+	// machineHome names the machine identity this store resolves machine.json
+	// beneath. The empty string is the default and means this process's own
+	// home, so nothing but an explicitly named machine leaves $HOME. It is the
+	// only field a second machine over the same data directory differs in.
+	machineHome string
 }
 
 // NewDomainFileStore roots a store at a data directory with no known workspace
 // ID; the ID is adopted from the first artifact read, or minted via
-// EnsureWorkspaceID.
+// EnsureWorkspaceID. Machine-local state resolves beneath this process's home.
 func NewDomainFileStore(dataDir string) *DomainFileStore {
-	return &DomainFileStore{dataDir: filepath.Clean(dataDir)}
+	return NewDomainFileStoreOnMachine(dataDir, "")
+}
+
+// NewDomainFileStoreOnMachine roots a store at a data directory and resolves its
+// machine-local artifact beneath a named machine home. Two stores over one data
+// directory with distinct homes are two machines sharing one workspace, and
+// because neither reads $HOME they may be driven concurrently.
+func NewDomainFileStoreOnMachine(dataDir, machineHome string) *DomainFileStore {
+	return &DomainFileStore{dataDir: filepath.Clean(dataDir), machineHome: machineHome}
 }
 
 // DataDir returns the store's workspace data directory.
 func (s *DomainFileStore) DataDir() string { return s.dataDir }
+
+// MachineHome returns the machine identity this store resolves machine.json
+// beneath, or the empty string when it follows this process's home.
+func (s *DomainFileStore) MachineHome() string { return s.machineHome }
 
 // WorkspaceID returns the workspace ID the store stamps into artifacts. It may
 // be empty until an artifact is read or EnsureWorkspaceID is called.
@@ -191,7 +208,7 @@ func (s *DomainFileStore) pathFor(kind domainKind) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return MachineStatePath(workspaceID)
+		return machineStatePathOn(s.machineHome, workspaceID)
 	default:
 		return filepath.Join(InternalDir(s.dataDir), kind.name()+".json"), nil
 	}
@@ -359,24 +376,37 @@ func (s *DomainFileStore) recoverEnvelopeFromBackup(path string, primaryErr erro
 // verified inside the lock and a mismatch (including a vanished file) returns
 // ErrStaleObject without writing.
 func (s *DomainFileStore) save(kind domainKind, payload any, expectedRev string) error {
+	_, err := s.saveObserved(kind, payload, expectedRev, false)
+	return err
+}
+
+// saveObserved is save with the two additions a session-baseline commit needs.
+// When baselineObserved is true an empty expectedRev stops meaning "skip the
+// check" and starts meaning "the caller observed no artifact", which is a
+// require-absent contract: a file that appeared since that observation returns
+// ErrStaleObject instead of being overwritten. It also returns the revision of
+// the bytes it wrote, so the caller can advance its baseline without re-reading
+// the file or re-deriving the encoding.
+func (s *DomainFileStore) saveObserved(kind domainKind, payload any, expectedRev string, baselineObserved bool) (string, error) {
 	if catalog, ok := payload.(*WorkspaceCatalog); ok {
 		if _, err := s.bindCatalogPayload(catalog); err != nil {
-			return err
+			return "", err
 		}
 	} else if _, err := s.validatedWorkspaceID(); err != nil {
-		return err
+		return "", err
 	}
 
 	path, err := s.pathFor(kind)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if err := os.MkdirAll(filepath.Dir(path), DirPermissions); err != nil {
-		return fmt.Errorf("failed to create config directory: %w", err)
+		return "", fmt.Errorf("failed to create config directory: %w", err)
 	}
 
+	written := ""
 	lockPath := path + ".lock"
-	return util.WithFileLock(lockPath, true, func() error {
+	err = util.WithFileLock(lockPath, true, func() error {
 		// Workspace identity is immutable even for last-writer-wins saves. Check
 		// the current envelope while holding the same lock as the write so a
 		// concurrent catalog create cannot be replaced with another identity.
@@ -393,10 +423,14 @@ func (s *DomainFileStore) save(kind domainKind, payload any, expectedRev string)
 			return fmt.Errorf("failed to read %s for workspace identity check: %w", filepath.Base(path), currentErr)
 		}
 
-		if expectedRev != "" {
+		if expectedRev != "" || baselineObserved {
 			switch {
 			case errors.Is(currentErr, os.ErrNotExist):
-				return ErrStaleObject
+				// An observed-absent baseline is satisfied by a still-absent file;
+				// every other caller reaching here expected a revision and finds none.
+				if expectedRev != "" {
+					return ErrStaleObject
+				}
 			case currentErr != nil:
 				return fmt.Errorf("failed to re-read %s for concurrency check: %w", filepath.Base(path), currentErr)
 			default:
@@ -415,8 +449,13 @@ func (s *DomainFileStore) save(kind domainKind, payload any, expectedRev string)
 		if err := util.AtomicWriteFile(path, out, FilePermissions); err != nil {
 			return fmt.Errorf("failed to write %s: %w", filepath.Base(path), err)
 		}
+		written = revisionOf(out)
 		return nil
 	})
+	if err != nil {
+		return "", err
+	}
+	return written, nil
 }
 
 // backupDomainArtifact best-effort copies an existing artifact to its .bak
@@ -483,13 +522,20 @@ func (s *DomainFileStore) SaveCatalog(catalog *WorkspaceCatalog) error {
 // SaveCatalogChecked saves the catalog, failing with ErrStaleObject when the
 // on-disk revision no longer matches rev.
 func (s *DomainFileStore) SaveCatalogChecked(catalog *WorkspaceCatalog, rev string) error {
+	_, err := s.saveCatalogObserved(catalog, rev, false)
+	return err
+}
+
+// saveCatalogObserved is SaveCatalogChecked against a baseline the caller
+// observed, returning the revision it wrote.
+func (s *DomainFileStore) saveCatalogObserved(catalog *WorkspaceCatalog, rev string, baselineObserved bool) (string, error) {
 	if catalog == nil {
-		return fmt.Errorf("config: nil workspace catalog")
+		return "", fmt.Errorf("config: nil workspace catalog")
 	}
 	if err := catalog.Validate(); err != nil {
-		return fmt.Errorf("invalid workspace catalog: %w", err)
+		return "", fmt.Errorf("invalid workspace catalog: %w", err)
 	}
-	return s.save(domainCatalog, catalog, rev)
+	return s.saveObserved(domainCatalog, catalog, rev, baselineObserved)
 }
 
 // LoadPlanning implements PlanningStore.
@@ -515,13 +561,20 @@ func (s *DomainFileStore) SavePlanning(planning *PlanningState) error {
 
 // SavePlanningChecked saves planning state with an optimistic concurrency check.
 func (s *DomainFileStore) SavePlanningChecked(planning *PlanningState, rev string) error {
+	_, err := s.savePlanningObserved(planning, rev, false)
+	return err
+}
+
+// savePlanningObserved is SavePlanningChecked against a baseline the caller
+// observed, returning the revision it wrote.
+func (s *DomainFileStore) savePlanningObserved(planning *PlanningState, rev string, baselineObserved bool) (string, error) {
 	if planning == nil {
-		return fmt.Errorf("config: nil planning state")
+		return "", fmt.Errorf("config: nil planning state")
 	}
 	if err := s.bindWorkspaceIDFromCatalog(); err != nil {
-		return err
+		return "", err
 	}
-	return s.save(domainPlanning, planning, rev)
+	return s.saveObserved(domainPlanning, planning, rev, baselineObserved)
 }
 
 // LoadLensDefinitionsChecked loads the portable lens definitions and their
@@ -545,16 +598,23 @@ func (s *DomainFileStore) LoadLensDefinitionsChecked() (*WorkspaceLensDefinition
 // written: the file's whole meaning is "this workspace owns the definitions", so
 // persisting a nil list would publish "every lens was deleted" by accident.
 func (s *DomainFileStore) SaveLensDefinitionsChecked(lenses *WorkspaceLensDefinitions, rev string) error {
+	_, err := s.saveLensDefinitionsObserved(lenses, rev, false)
+	return err
+}
+
+// saveLensDefinitionsObserved is SaveLensDefinitionsChecked against a baseline
+// the caller observed, returning the revision it wrote.
+func (s *DomainFileStore) saveLensDefinitionsObserved(lenses *WorkspaceLensDefinitions, rev string, baselineObserved bool) (string, error) {
 	if lenses == nil {
-		return fmt.Errorf("config: nil workspace lens definitions")
+		return "", fmt.Errorf("config: nil workspace lens definitions")
 	}
 	if !lenses.Defined() {
-		return fmt.Errorf("config: workspace lens definitions are undefined; nothing to publish")
+		return "", fmt.Errorf("config: workspace lens definitions are undefined; nothing to publish")
 	}
 	if err := s.bindWorkspaceIDFromCatalog(); err != nil {
-		return err
+		return "", err
 	}
-	return s.save(domainLenses, lenses, rev)
+	return s.saveObserved(domainLenses, lenses, rev, baselineObserved)
 }
 
 // LoadMachine implements MachineStore.
@@ -577,7 +637,7 @@ func (s *DomainFileStore) LoadMachineChecked() (*MachineState, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	if err := s.applyPortableLensDefinitions(out); err != nil {
+	if _, err := s.applyPortableLensDefinitions(out); err != nil {
 		return nil, "", err
 	}
 	return out, rev, nil
@@ -592,15 +652,20 @@ func (s *DomainFileStore) LoadMachineChecked() (*MachineState, string, error) {
 // A workspace that defines its own collection wins; one that does not leaves the
 // machine-local set exactly as it was decoded. Theme and ActiveLensID are never
 // touched: they are the two halves that stay machine-local.
-func (s *DomainFileStore) applyPortableLensDefinitions(machine *MachineState) error {
-	lenses, _, err := s.LoadLensDefinitionsChecked()
+//
+// The lens revision observed is returned even when the workspace defines no
+// collection, because "absent when I looked" is itself the baseline a later
+// checked lens save must be validated against: it is what turns a create into a
+// require-absent contract rather than a blind overwrite.
+func (s *DomainFileStore) applyPortableLensDefinitions(machine *MachineState) (string, error) {
+	lenses, rev, err := s.LoadLensDefinitionsChecked()
 	if err != nil {
-		return err
+		return "", err
 	}
 	if lenses.Defined() {
 		machine.NamedLenses = lenses.Lenses.Clone()
 	}
-	return nil
+	return rev, nil
 }
 
 // LoadPersistedMachineLenses returns the lens list machine.json actually holds,
@@ -628,13 +693,20 @@ func (s *DomainFileStore) SaveMachine(machine *MachineState) error {
 
 // SaveMachineChecked saves machine state with an optimistic concurrency check.
 func (s *DomainFileStore) SaveMachineChecked(machine *MachineState, rev string) error {
+	_, err := s.saveMachineObserved(machine, rev, false)
+	return err
+}
+
+// saveMachineObserved is SaveMachineChecked against a baseline the caller
+// observed, returning the revision it wrote.
+func (s *DomainFileStore) saveMachineObserved(machine *MachineState, rev string, baselineObserved bool) (string, error) {
 	if machine == nil {
-		return fmt.Errorf("config: nil machine state")
+		return "", fmt.Errorf("config: nil machine state")
 	}
 	if err := s.bindWorkspaceIDFromCatalog(); err != nil {
-		return err
+		return "", err
 	}
-	return s.save(domainMachine, machine, rev)
+	return s.saveObserved(domainMachine, machine, rev, baselineObserved)
 }
 
 // Compile-time checks that the file store satisfies every domain store

@@ -28,23 +28,32 @@ import (
 // so the CLI and the long-lived TUI shell drive the same domain-scoped machinery
 // without rebuilding or saving config.Config.
 
-// commitChecked performs a revision-checked domain save. It reads the current
-// on-disk revision, writes under that expectation, and retries a bounded number
-// of times when a concurrent writer advances the file between the load and the
-// locked write (ErrStaleObject). A non-stale error (or exhausted retries) is
-// returned to the caller.
-func commitChecked(loadRev func() (string, error), save func(rev string) error) error {
-	var err error
-	for attempt := 0; attempt < 3; attempt++ {
-		var rev string
-		if rev, err = loadRev(); err != nil {
-			return err
-		}
-		if err = save(rev); !errors.Is(err, ErrStaleObject) {
-			return err
-		}
+// commitBaselined performs a revision-checked domain save against the revision
+// this session observed, then advances that baseline to the bytes it wrote.
+//
+// The expectation deliberately comes from the session, not from a fresh read
+// taken at write time. Re-reading the revision per attempt only defeats a writer
+// racing this exact call; it cannot see a writer that landed between this
+// session's load and its commit, so re-reading and retrying is precisely how a
+// remote write gets silently overwritten. Checking against what the session
+// loaded turns that lost update into ErrStaleObject, which the caller may then
+// refuse or reconcile. A coordinator that never loaded the domain observes it
+// here instead, which is the same-call check the old loop opened with.
+func (c *DomainCoordinator) commitBaselined(
+	kind domainKind,
+	loadRev func() (string, error),
+	save func(rev string) (string, error),
+) error {
+	rev, err := c.baselineFor(kind, loadRev)
+	if err != nil {
+		return err
 	}
-	return err
+	written, err := save(rev)
+	if err != nil {
+		return err
+	}
+	c.recordBaseline(kind, written)
+	return nil
 }
 
 // adoptWorkspaceID reads the on-disk catalog so checked non-catalog commits are
@@ -78,9 +87,10 @@ func (c *DomainCoordinator) CommitCatalog(catalog *WorkspaceCatalog) error {
 	if _, err := c.store.bindCatalogPayload(catalog); err != nil {
 		return err
 	}
-	return commitChecked(
+	return c.commitBaselined(
+		domainCatalog,
 		func() (string, error) { _, rev, err := c.store.LoadCatalogChecked(); return rev, err },
-		func(rev string) error { return c.store.SaveCatalogChecked(catalog, rev) },
+		func(rev string) (string, error) { return c.store.saveCatalogObserved(catalog, rev, true) },
 	)
 }
 
@@ -94,9 +104,10 @@ func (c *DomainCoordinator) CommitPlanning(planning *PlanningState) error {
 	if err := adoptWorkspaceID(c.store); err != nil {
 		return err
 	}
-	return commitChecked(
+	return c.commitBaselined(
+		domainPlanning,
 		func() (string, error) { _, rev, err := c.store.LoadPlanningChecked(); return rev, err },
-		func(rev string) error { return c.store.SavePlanningChecked(planning, rev) },
+		func(rev string) (string, error) { return c.store.savePlanningObserved(planning, rev, true) },
 	)
 }
 
@@ -113,10 +124,18 @@ func (c *DomainCoordinator) CommitMachine(machine *MachineState) error {
 	if err := c.publishOwnedLensDefinitions(machine); err != nil {
 		return err
 	}
-	return commitChecked(
-		func() (string, error) { _, rev, err := c.store.LoadMachineChecked(); return rev, err },
-		func(rev string) error { return c.store.SaveMachineChecked(machine, rev) },
-	)
+	// machine.json is the one domain with no session baseline, deliberately: it is
+	// machine-local, so the only writer that can race this one is another process
+	// on this same machine, and there is no remote update to lose. The revision is
+	// therefore observed here and never retained, which keeps a long-lived shell
+	// from refusing its own theme or active-lens write against a baseline taken
+	// many mutations ago.
+	_, rev, err := c.store.LoadMachineChecked()
+	if err != nil {
+		return err
+	}
+	_, err = c.store.saveMachineObserved(machine, rev, true)
+	return err
 }
 
 // CommitLensDefinitions persists only the portable lens-definition domain under
@@ -124,18 +143,66 @@ func (c *DomainCoordinator) CommitMachine(machine *MachineState) error {
 // are written through: it opens no workspace transaction and records no undo
 // ledger entry, which is what keeps a lens mutation out of `u` now that the
 // definitions live in the synced workspace set rather than machine.json.
+// A stale baseline here is reconciled rather than refused, which is the one
+// place this package's write policy differs per domain. A lens mutation opens no
+// workspace transaction and records no undo ledger entry, so a refusal would be
+// unrecoverable from the user's side: there is nothing to replay. Merging is
+// also already this domain's defined reconciliation — MergeNamedLenses is the
+// order-stable, idempotent join adoption uses — so honouring it on a conflicting
+// write adds no second policy. The cost is that a two-way merge cannot express a
+// deletion: a lens deleted here while another machine writes the same file comes
+// back, because the merge cannot tell "deleted by me" from "added by them".
 func (c *DomainCoordinator) CommitLensDefinitions(lenses *WorkspaceLensDefinitions) error {
+	_, err := c.commitLensDefinitions(lenses)
+	return err
+}
+
+// commitLensDefinitions is CommitLensDefinitions returning the collection that
+// actually reached disk, which differs from the caller's when a concurrent write
+// was merged in. The machine commit needs that list so machine.json and
+// lenses.json do not disagree about the workspace's lenses.
+func (c *DomainCoordinator) commitLensDefinitions(lenses *WorkspaceLensDefinitions) (NamedLensList, error) {
 	if lenses == nil {
-		return fmt.Errorf("workspace lens definitions are required")
+		return nil, fmt.Errorf("workspace lens definitions are required")
 	}
 	if err := adoptWorkspaceID(c.store); err != nil {
-		return err
+		return nil, err
 	}
-	return commitChecked(
-		func() (string, error) { _, rev, err := c.store.LoadLensDefinitionsChecked(); return rev, err },
-		func(rev string) error { return c.store.SaveLensDefinitionsChecked(lenses, rev) },
-	)
+	rev, err := c.baselineFor(domainLenses, func() (string, error) {
+		_, r, loadErr := c.store.LoadLensDefinitionsChecked()
+		return r, loadErr
+	})
+	if err != nil {
+		return nil, err
+	}
+	// An undefined collection is still refused by the store on the first attempt,
+	// so a merge can never be reached with a nil list standing for "delete all".
+	published := lenses.Lenses
+	for attempt := 0; attempt < lensCommitMergeAttempts; attempt++ {
+		written, saveErr := c.store.saveLensDefinitionsObserved(&WorkspaceLensDefinitions{Lenses: published}, rev, true)
+		if saveErr == nil {
+			c.recordBaseline(domainLenses, written)
+			return published, nil
+		}
+		if !errors.Is(saveErr, ErrStaleObject) {
+			return nil, saveErr
+		}
+		remote, remoteRev, loadErr := c.store.LoadLensDefinitionsChecked()
+		if loadErr != nil {
+			return nil, loadErr
+		}
+		// The on-disk collection is the merge base so its order leads and stays
+		// stable across machines; this session's list is the incoming side.
+		published = MergeNamedLenses(remote.Lenses, published)
+		rev = remoteRev
+	}
+	return nil, fmt.Errorf("%w: workspace lens definitions changed on disk during %d merge attempts", ErrStaleObject, lensCommitMergeAttempts)
 }
+
+// lensCommitMergeAttempts bounds the merge-and-retry loop. Each pass reconciles
+// against a strictly newer on-disk revision, so exhausting it means the file is
+// being rewritten continuously and refusing is the honest outcome.
+const lensCommitMergeAttempts = 3
 
 // publishOwnedLensDefinitions forwards the lens half of a machine commit to the
 // portable home, and only when that home owns the collection. Ownership is the
@@ -158,7 +225,16 @@ func (c *DomainCoordinator) publishOwnedLensDefinitions(machine *MachineState) e
 	if rev == "" && !machine.LensHomeAdopted {
 		return nil
 	}
-	return c.CommitLensDefinitions(&WorkspaceLensDefinitions{Lenses: DefinedLensList(machine.NamedLenses)})
+	published, err := c.commitLensDefinitions(&WorkspaceLensDefinitions{Lenses: DefinedLensList(machine.NamedLenses)})
+	if err != nil {
+		return err
+	}
+	// The machine copy has to carry whatever the merge published, or the fallback
+	// written beside lenses.json would claim a collection the workspace no longer
+	// holds, and this session would go on editing a list the merge already
+	// superseded.
+	machine.NamedLenses = published
+	return nil
 }
 
 // CommitCatalog persists only the workspace-catalog domain for this manager's

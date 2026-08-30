@@ -154,8 +154,15 @@ func (a UITestAction) validate() error {
 		if a.Width <= 0 || a.Height <= 0 {
 			return fmt.Errorf("resize needs positive width and height, got %dx%d", a.Width, a.Height)
 		}
-	case UITestActionWait, UITestActionRestart, UITestActionSwitchMachine:
+	case UITestActionWait, UITestActionRestart:
 		// Nothing to validate.
+	case UITestActionSwitchMachine:
+		// The machine name is optional, but a name of only whitespace is an
+		// authoring slip that would silently read as "no name" and land on a fresh
+		// home instead of the machine the scenario meant.
+		if a.Machine != "" && strings.TrimSpace(a.Machine) == "" {
+			return errors.New("switch_machine machine name is blank")
+		}
 	case UITestActionCommand:
 		if strings.TrimSpace(a.Command) == "" {
 			return errors.New("command action has empty command")

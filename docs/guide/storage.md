@@ -93,6 +93,19 @@ the two lists carry no clock between them and neither can be called the newer.
 The merge runs once per machine, so a duplicate you tidy up afterwards stays
 tidied.
 
+After that, a lens write checks the shared list against the version your session
+opened. When another machine has written it since — the usual cause is a sync
+service delivering that machine's copy while yours was open — the two lists are
+merged by the same rule adoption uses, and the merged list is what is saved. You
+keep your change and the other machine keeps theirs; neither write is lost and
+neither is refused. The cost is that a merge cannot tell a lens you deleted from
+a lens the other machine added: if you delete one while another machine writes
+the same file, the deletion does not take and the lens comes back. Delete it
+again once both machines have seen the same list and it stays gone. The other
+two synced files, `workspace.json` and `planning.json`, do not merge — a change
+that lands under one of those is refused and reported, because there is no
+order-independent way to combine two project catalogs.
+
 Startup migrates supported schema-15 workspaces to schema 16, supported
 schema-14 workspaces to schema 15, supported
 schema-13 workspaces to schema 14, supported schema-12 workspaces to schema 13,

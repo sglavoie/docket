@@ -10,7 +10,7 @@ func loadDomainBundleWithRevisions(store *DomainFileStore) (*Domains, map[domain
 		return nil, nil, fmt.Errorf("configuration domain store is required")
 	}
 
-	revisions := make(map[domainKind]string, len(syncedDomainKinds))
+	revisions := make(map[domainKind]string, len(syncedDomainKinds)+1)
 	catalog := NewWorkspaceCatalog()
 	catalogRevision, err := store.load(domainCatalog, catalog)
 	if err != nil {
@@ -36,10 +36,15 @@ func loadDomainBundleWithRevisions(store *DomainFileStore) (*Domains, map[domain
 		}
 		// The bundle decodes machine.json directly rather than through
 		// LoadMachineChecked, so it has to apply the portable lens precedence
-		// itself. This is the load every frontend actually reads.
-		if err := store.applyPortableLensDefinitions(machine); err != nil {
+		// itself. This is the load every frontend actually reads, which is why
+		// the lens revision it observed is carried out as a baseline: a later
+		// lens commit is checked against what this load saw, not against
+		// whatever landed in between.
+		lensRevision, err := store.applyPortableLensDefinitions(machine)
+		if err != nil {
 			return nil, nil, err
 		}
+		revisions[domainLenses] = lensRevision
 	}
 
 	domains := &Domains{Catalog: catalog, Planning: planning, Machine: machine}

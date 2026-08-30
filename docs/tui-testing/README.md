@@ -92,7 +92,7 @@ assertions, and trailing JSON are rejected before execution.
 | `wait` | none | Let time pass: drain pending asynchronous work and advance the virtual clock so due timers fire. |
 | `command` | `command` | Invoke a stable harness or production operation ID. |
 | `restart` | none | Rebuild the app from durable state alone, the way relaunching `tt` does. |
-| `switch_machine` | none | Move machine-local state to an empty home, then restart, the way opening the same synced workspace on a second machine does. |
+| `switch_machine` | optional `machine` | Move machine-local state to another machine's home, then restart, the way opening the same synced workspace on a second machine does. Without `machine` the home is always one no machine has used. |
 | `assert` | `assert`, optional `value` | Check a fresh normalized observation. |
 
 An optional `label` describes user intent and is repeated in failure output.
@@ -107,11 +107,20 @@ what was actually persisted. Use it for the launch contracts: what a relaunch
 reopens with, and what it deliberately does not.
 
 A `switch_machine` action is a restart onto a second machine. Machine identity is
-the home directory, so the action moves `$HOME` to an empty one and relaunches
-against the same workspace directory: the new app finds no theme, no active-lens
-pointer, and no machine-local lens copy, and whatever a scenario still sees is
-what the portable workspace carried. Use it for the multi-machine contracts,
-where the question is which half of the state travelled.
+the home directory, so the action moves `$HOME` and relaunches against the same
+workspace directory. Omit `machine` and the home is an empty one: the new app
+finds no theme, no active-lens pointer, and no machine-local lens copy, and
+whatever a scenario still sees is what the portable workspace carried. Use that
+for the multi-machine contracts, where the question is which half of the state
+travelled.
+
+Give `machine` a name and the action addresses a durable machine instead. The
+first switch to a name mints that machine's home; every later switch to the same
+name returns to it, with whatever that machine committed still in place. This is
+the only way to write "machine A, then machine B, then back to A" — an unnamed
+switch always lands somewhere new, so a round trip would look like a third
+machine that has never seen the workspace. A name is scoped to the scenario, is
+free-form, and is only ever compared for equality.
 
 Accepted key names include printable public keys plus:
 

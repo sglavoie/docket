@@ -48,6 +48,7 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"sort-project-group-order.json",
 		"named-lens-ordinal-apply.json",
 		"named-lens-machine-switch.json",
+		"named-lens-machine-round-trip.json",
 		"defer-wake-marker.json",
 		"project-header-pressure.json",
 		"project-header-pressure-narrow.json",

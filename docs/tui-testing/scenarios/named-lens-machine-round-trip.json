@@ -1,0 +1,45 @@
+{
+  "name": "named-lens-machine-round-trip",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "narrow the view before saving it", "key": "g" },
+    { "type": "key", "key": "b" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Backlog" },
+
+    { "type": "key", "label": "save that projection as a lens", "key": "\\" },
+    { "type": "key", "label": "Enter on the Save row asks for a name", "key": "enter" },
+    { "type": "text", "text": "Desk Backlog" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Lens: Desk Backlog" },
+
+    { "type": "key", "label": "leave the lens so the pointer is the only thing dropped", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Lens:" },
+
+    { "type": "switch_machine", "label": "the laptop opens the same workspace", "machine": "laptop" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+
+    { "type": "key", "label": "the laptop applies the travelled lens", "key": "\\" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Desk Backlog" },
+    { "type": "key", "key": "1" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Lens: Desk Backlog" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "switch_machine", "label": "the desktop never pointed at that lens", "machine": "desktop" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the active-lens pointer stayed on the laptop", "assert": "not_contains", "value": "Lens:" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+
+    { "type": "switch_machine", "label": "back to the laptop, which is not a new machine", "machine": "laptop" },
+    { "type": "wait" },
+    { "type": "assert", "label": "a named machine returns to its own machine-local state", "assert": "contains", "value": "Lens: Desk Backlog" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · Backlog" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

@@ -25,32 +25,77 @@ type DomainCoordinator struct {
 	// contract so a create cannot silently clobber a file another writer produced
 	// in the meantime.
 	revs map[domainKind]string
+	// observed distinguishes "loaded, and the artifact was absent" from "never
+	// loaded", which revs alone cannot express because both read as the empty
+	// string. Only an observed baseline may be used as a commit's expected
+	// revision; an unobserved domain has to read the current revision first, or a
+	// coordinator that never loaded would emit a require-absent contract against
+	// a file that has existed all along.
+	observed map[domainKind]bool
+}
+
+// recordBaseline sets the optimistic-concurrency baseline for one domain and
+// marks it observed. Every writer of revs goes through here so the two maps
+// cannot drift apart.
+func (c *DomainCoordinator) recordBaseline(kind domainKind, rev string) {
+	c.revs[kind] = rev
+	c.observed[kind] = true
+}
+
+// baselineFor returns the revision a commit of this domain must be checked
+// against. A session that already observed the domain is checked against what
+// it observed, which is what refuses a write that landed after this session's
+// load; a coordinator that never loaded observes the current revision now and
+// is checked against that, which is same-call CAS and still refuses a writer
+// racing this one.
+func (c *DomainCoordinator) baselineFor(kind domainKind, loadRev func() (string, error)) (string, error) {
+	if c.observed[kind] {
+		return c.revs[kind], nil
+	}
+	rev, err := loadRev()
+	if err != nil {
+		return "", err
+	}
+	c.recordBaseline(kind, rev)
+	return rev, nil
 }
 
 // NewDomainCoordinator roots a coordinator at a workspace data directory. Its
-// baseline revisions are empty until Load populates them.
+// baseline revisions are empty until Load populates them. Machine-local state
+// resolves beneath this process's home.
 func NewDomainCoordinator(dataDir string) *DomainCoordinator {
+	return newDomainCoordinatorOnMachine(dataDir, "")
+}
+
+// newDomainCoordinatorOnMachine roots a coordinator at a workspace data
+// directory whose machine-local artifact resolves beneath a named machine home.
+func newDomainCoordinatorOnMachine(dataDir, machineHome string) *DomainCoordinator {
 	return &DomainCoordinator{
-		store: NewDomainFileStore(dataDir),
-		revs:  make(map[domainKind]string, len(syncedDomainKinds)),
+		store:    NewDomainFileStoreOnMachine(dataDir, machineHome),
+		revs:     make(map[domainKind]string, len(allDomainKinds)),
+		observed: make(map[domainKind]bool, len(allDomainKinds)),
 	}
 }
 
 // DomainCoordinator returns a coordinator rooted at this manager's workspace data
-// directory, sharing the same synced-domain layout Load and Save use.
+// directory, sharing the same synced-domain layout Load and Save use, and
+// resolving machine-local state beneath this manager's machine home.
 func (m *Manager) DomainCoordinator() *DomainCoordinator {
-	return NewDomainCoordinator(m.workspaceDataDir())
+	return newDomainCoordinatorOnMachine(m.workspaceDataDir(), m.machineHome)
 }
 
-// LoadDomains reads every explicit domain and records each synced domain's raw
+// LoadDomains reads every explicit domain and records each loaded domain's raw
 // revision as the optimistic-concurrency baseline for later checked artifacts.
+// Every kind the bundle reported is recorded, not just the synced pair, because
+// the lens definitions are loaded on this path too and their baseline is what
+// keeps a later lens commit from overwriting another machine's write.
 func (c *DomainCoordinator) LoadDomains() (*Domains, error) {
 	domains, revisions, err := loadDomainBundleWithRevisions(c.store)
 	if err != nil {
 		return nil, err
 	}
-	for _, kind := range syncedDomainKinds {
-		c.revs[kind] = revisions[kind]
+	for kind, rev := range revisions {
+		c.recordBaseline(kind, rev)
 	}
 
 	return domains, nil
@@ -72,8 +117,8 @@ func (c *DomainCoordinator) SyncRevisionBaseline() error {
 	if err != nil {
 		return err
 	}
-	c.revs[domainCatalog] = catalogRev
-	c.revs[domainPlanning] = planningRev
+	c.recordBaseline(domainCatalog, catalogRev)
+	c.recordBaseline(domainPlanning, planningRev)
 	return nil
 }
 
@@ -134,7 +179,7 @@ func (c *DomainCoordinator) LoadPlanning() (*PlanningState, error) {
 	if err != nil {
 		return nil, err
 	}
-	c.revs[domainPlanning] = rev
+	c.recordBaseline(domainPlanning, rev)
 	return planning, nil
 }
 
@@ -152,7 +197,7 @@ func (c *DomainCoordinator) LoadCatalog() (*WorkspaceCatalog, error) {
 			return nil, err
 		}
 	}
-	c.revs[domainCatalog] = rev
+	c.recordBaseline(domainCatalog, rev)
 	return catalog, nil
 }
 
@@ -221,7 +266,7 @@ func (c *DomainCoordinator) AdoptArtifacts(arts []DomainArtifact) {
 	}
 	for _, art := range arts {
 		if kind, ok := byPath[art.Path]; ok {
-			c.revs[kind] = revisionOf(art.Data)
+			c.recordBaseline(kind, revisionOf(art.Data))
 		}
 	}
 }

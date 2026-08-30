@@ -107,7 +107,7 @@ func (m *Manager) migrateWorkspaceToV5(hooks v5MigrationActivationHooks) error {
 		return v5MigrationAfterSnapshotError(snapshot, compareErr)
 	}
 
-	roots := []string{dataDir, LocalDataRoot()}
+	roots := []string{dataDir, m.localDataRoot()}
 	commit := storage.NewCommitService(TransactionsDir(dataDir), roots)
 	err = commit.CommitPlannedOpsWithArtifacts(func() ([]transaction.Op, []storage.ArtifactChange, error) {
 		currentInventory, inventoryErr := inventoryPreSimplificationV5(dataDir, false)

@@ -40,10 +40,12 @@ type UITestDriver struct {
 	// refuses to restart rather than silently doing something weaker.
 	relaunch func() (*AppModel, error)
 
-	// moveToFreshMachine repoints machine-local state at an empty home, which
-	// the "switch_machine" action drives before relaunching. It is nil for a
+	// moveToFreshMachine repoints machine-local state at another machine's home,
+	// which the "switch_machine" action drives before relaunching. An empty name
+	// asks for a home no machine has used; a name asks for that machine's own
+	// home, minted on first use and returned to afterwards. It is nil for a
 	// driver wrapping an AppModel nobody owns the workspace of.
-	moveToFreshMachine func() error
+	moveToFreshMachine func(machine string) error
 
 	// now is this driver's virtual clock and timers the ticks waiting on it. A
 	// "wait" action advances the clock rather than sleeping; see
@@ -104,17 +106,20 @@ func (d *UITestDriver) Restart() error {
 	return nil
 }
 
-// SwitchMachine gives the workspace a second machine and relaunches on it. The
-// synced directory is untouched; only the machine-local home moves, to an empty
-// one, so the new app starts with no theme, no active-lens pointer, and no
-// machine-local lens copy. Whatever the scenario then still sees is what the
-// portable workspace carried, which is the only thing a real second machine
-// would have received.
-func (d *UITestDriver) SwitchMachine() error {
+// SwitchMachine moves the workspace onto another machine and relaunches on it.
+// The synced directory is untouched; only the machine-local home moves.
+//
+// An unnamed switch lands on an empty home, so the new app starts with no theme,
+// no active-lens pointer, and no machine-local lens copy: whatever the scenario
+// then still sees is what the portable workspace carried, which is the only
+// thing a real second machine would have received. A named switch addresses a
+// durable machine instead — returning to a name lands back on that machine's own
+// state, which is what makes a round trip between two machines expressible.
+func (d *UITestDriver) SwitchMachine(machine string) error {
 	if d.moveToFreshMachine == nil {
 		return errors.New("switch_machine needs a workspace-owned driver")
 	}
-	if err := d.moveToFreshMachine(); err != nil {
+	if err := d.moveToFreshMachine(machine); err != nil {
 		return err
 	}
 	return d.Restart()

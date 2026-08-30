@@ -134,10 +134,17 @@ func ConflictsDir(dataDir string) string {
 // isolated beneath ~/.tt/runtime/<workspace-id>. The ID must be a canonical
 // UUID before it is used as a path component.
 func MachineStatePath(workspaceID string) (string, error) {
+	return machineStatePathOn("", workspaceID)
+}
+
+// machineStatePathOn is MachineStatePath resolved against an explicit machine
+// home. It is the one path a second machine identity actually moves, which is
+// why the injectable home stops here rather than reaching every path helper.
+func machineStatePathOn(machineHome, workspaceID string) (string, error) {
 	if err := validateWorkspaceID(workspaceID); err != nil {
 		return "", err
 	}
-	return filepath.Join(LocalDataRoot(), runtimeDirName, workspaceID, machineStateFileName), nil
+	return filepath.Join(localDataRootOn(machineHome), runtimeDirName, workspaceID, machineStateFileName), nil
 }
 
 // legacyMachineStatePaths returns the two locations used before machine state
@@ -145,9 +152,15 @@ func MachineStatePath(workspaceID string) (string, error) {
 // current data directory wins; the historical default-local path is consulted
 // only when that path is absent. Duplicate paths are removed for ~/.tt itself.
 func legacyMachineStatePaths(dataDir string) []string {
+	return legacyMachineStatePathsOn("", dataDir)
+}
+
+// legacyMachineStatePathsOn is legacyMachineStatePaths resolved against an
+// explicit machine home.
+func legacyMachineStatePathsOn(machineHome, dataDir string) []string {
 	candidates := []string{
-		filepath.Join(LocalRuntimeDirForDataDir(dataDir), machineStateFileName),
-		filepath.Join(LocalDataRoot(), machineStateFileName),
+		filepath.Join(localRuntimeDirForDataDirOn(machineHome, dataDir), machineStateFileName),
+		filepath.Join(localDataRootOn(machineHome), machineStateFileName),
 	}
 	paths := make([]string, 0, len(candidates))
 	seen := make(map[string]struct{}, len(candidates))
@@ -235,11 +248,32 @@ func resolveHomeDir() (string, bool) {
 	return home, true
 }
 
+// resolveMachineHome is the injectable machine-identity seam over
+// resolveHomeDir. Machine identity is exactly the home directory — machine.json
+// lives at <home>/.tt/runtime/<workspace-id>/machine.json — so naming a home is
+// how a caller says "resolve this as a different machine". The empty string is
+// the default and means this process's own $HOME, which keeps every existing
+// caller on the environment; only a caller that explicitly carries a machine
+// home departs from it. That is what lets two managers with distinct homes run
+// concurrently over one data directory, which process-global $HOME cannot
+// express.
+func resolveMachineHome(machineHome string) (string, bool) {
+	if machineHome != "" {
+		return machineHome, true
+	}
+	return resolveHomeDir()
+}
+
 // LocalDataRoot returns the local (non-synced) default data directory, ~/.tt.
 // When the home directory cannot be determined it falls back to a relative
 // ".tt" so callers still receive a usable path.
 func LocalDataRoot() string {
-	home, ok := resolveHomeDir()
+	return localDataRootOn("")
+}
+
+// localDataRootOn is LocalDataRoot resolved against an explicit machine home.
+func localDataRootOn(machineHome string) string {
+	home, ok := resolveMachineHome(machineHome)
 	if !ok {
 		return dataDirName
 	}
@@ -250,7 +284,12 @@ func LocalDataRoot() string {
 // iCloud Drive is available on this machine. Availability is determined by the
 // presence of the iCloud Drive container directory under the home directory.
 func iCloudDataRoot() (string, bool) {
-	home, ok := resolveHomeDir()
+	return iCloudDataRootOn("")
+}
+
+// iCloudDataRootOn is iCloudDataRoot resolved against an explicit machine home.
+func iCloudDataRootOn(machineHome string) (string, bool) {
+	home, ok := resolveMachineHome(machineHome)
 	if !ok {
 		return "", false
 	}
@@ -289,7 +328,14 @@ func hasSplitDomainMarker(dataDir string) bool {
 // install into iCloud has been removed; relocating a workspace to (or from)
 // iCloud is now an explicit action — see MoveWorkspace and `tt workspace move`.
 func ActiveDefaultDataDir() string {
-	if root, ok := iCloudDataRoot(); ok {
+	return activeDefaultDataDirOn("")
+}
+
+// activeDefaultDataDirOn is ActiveDefaultDataDir resolved against an explicit
+// machine home, so a named machine selects its own default workspace rather
+// than the process home's.
+func activeDefaultDataDirOn(machineHome string) string {
+	if root, ok := iCloudDataRootOn(machineHome); ok {
 		if hasSplitDomainMarker(root) {
 			return root
 		}
@@ -297,13 +343,19 @@ func ActiveDefaultDataDir() string {
 			return root
 		}
 	}
-	return LocalDataRoot()
+	return localDataRootOn(machineHome)
 }
 
 // DefaultConfigPath returns the config file path inside the active default data
 // directory.
 func DefaultConfigPath() string {
-	return filepath.Join(ActiveDefaultDataDir(), configFileName)
+	return defaultConfigPathOn("")
+}
+
+// defaultConfigPathOn is DefaultConfigPath resolved against an explicit machine
+// home.
+func defaultConfigPathOn(machineHome string) string {
+	return filepath.Join(activeDefaultDataDirOn(machineHome), configFileName)
 }
 
 // DisplayPath abbreviates the user's home-directory prefix to "~" for
@@ -332,7 +384,14 @@ func DisplayPath(path string) string {
 // the path is keyed by a short hash of the cleaned data-directory path so
 // distinct data directories get isolated runtime state.
 func LocalRuntimeDirForDataDir(dataDir string) string {
-	local := LocalDataRoot()
+	return localRuntimeDirForDataDirOn("", dataDir)
+}
+
+// localRuntimeDirForDataDirOn is LocalRuntimeDirForDataDir resolved against an
+// explicit machine home, so a named machine keeps its own logs and PID lock
+// even while it shares the data directory with another machine.
+func localRuntimeDirForDataDirOn(machineHome, dataDir string) string {
+	local := localDataRootOn(machineHome)
 	cleanData := filepath.Clean(dataDir)
 	if cleanData == filepath.Clean(local) {
 		return local

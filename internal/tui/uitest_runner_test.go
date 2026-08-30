@@ -138,7 +138,7 @@ func (d *UITestDriver) runAction(a UITestAction) error {
 	case UITestActionRestart:
 		return d.Restart()
 	case UITestActionSwitchMachine:
-		return d.SwitchMachine()
+		return d.SwitchMachine(a.Machine)
 	case UITestActionAssert:
 		return d.runAssert(a)
 	case UITestActionCommand:

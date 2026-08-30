@@ -65,26 +65,53 @@ const (
 type Manager struct {
 	configPath      string
 	fromDefaultPath bool
+	// machineHome names the machine identity this manager resolves machine-local
+	// state beneath. Empty means this process's own home, which is what every
+	// production caller uses; only a caller that explicitly names a home departs
+	// from $HOME.
+	machineHome string
 }
 
 // NewManager creates a workspace configuration manager. The path identifies
 // the workspace root for compatibility with the existing --config resolver;
 // durable configuration lives in the split domain files under that root.
+// Machine-local state resolves beneath this process's home.
 func NewManager(customPath string) *Manager {
+	return NewManagerOnMachine(customPath, "")
+}
+
+// NewManagerOnMachine creates a workspace configuration manager that resolves
+// machine-local state beneath a named machine home instead of $HOME. Two
+// managers over one data directory with distinct homes are two machines sharing
+// one workspace; because neither reads the environment, they may be driven
+// concurrently, which a process-global $HOME cannot express.
+func NewManagerOnMachine(customPath, machineHome string) *Manager {
 	if customPath != "" {
-		return &Manager{configPath: customPath}
+		return &Manager{configPath: customPath, machineHome: machineHome}
 	}
-	return &Manager{configPath: DefaultConfigPath(), fromDefaultPath: true}
+	return &Manager{configPath: defaultConfigPathOn(machineHome), fromDefaultPath: true, machineHome: machineHome}
 }
 
 func (m *Manager) CreatedFromDefaultPath() bool { return m.fromDefaultPath }
+
+// MachineHome returns the machine identity this manager resolves machine-local
+// state beneath, or the empty string when it follows this process's home.
+func (m *Manager) MachineHome() string { return m.machineHome }
 
 func (m *Manager) workspaceDataDir() string {
 	return WorkspaceRootFromConfigPath(m.configPath)
 }
 
+// localDataRoot is this manager's machine-local ~/.tt root. Every approved
+// commit root and runtime path must come through here rather than the package
+// LocalDataRoot(), or a named machine would write its transactions beneath the
+// process home instead of its own.
+func (m *Manager) localDataRoot() string {
+	return localDataRootOn(m.machineHome)
+}
+
 func (m *Manager) domainStore() *DomainFileStore {
-	return NewDomainFileStore(m.workspaceDataDir())
+	return NewDomainFileStoreOnMachine(m.workspaceDataDir(), m.machineHome)
 }
 
 var allDomainKinds = []domainKind{domainCatalog, domainPlanning, domainMachine}
@@ -154,7 +181,7 @@ func (m *Manager) RecoverWorkspace() error {
 		return err
 	}
 	dataDir := m.workspaceDataDir()
-	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, LocalDataRoot()})
+	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, m.localDataRoot()})
 	if _, err := commit.RecoverWorkspace(); err != nil {
 		return fmt.Errorf("failed to recover workspace before loading split configuration domains: %w", err)
 	}

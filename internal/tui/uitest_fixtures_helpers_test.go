@@ -171,9 +171,15 @@ type uitestWorkspace struct {
 	// is exactly the home directory, so a switch is process-wide and has to be
 	// undone for the tests that follow.
 	homeBeforeSwitch string
-	// machineSeq numbers the machine homes handed out by switchMachineHome, so
-	// each switch lands on a directory no earlier machine ever wrote to.
+	// machineSeq numbers the anonymous machine homes handed out by
+	// switchMachineHome, so each unnamed switch lands on a directory no earlier
+	// machine ever wrote to.
 	machineSeq int
+	// machineHomes maps a scenario's machine name to the home it was given, so a
+	// named switch returns to that machine's own state instead of a fresh one.
+	// Without it "A, then B, then back to A" is unexpressible: every switch would
+	// look like a machine that has never seen this workspace.
+	machineHomes map[string]string
 }
 
 type fixtureNoteSeed struct {
@@ -197,17 +203,38 @@ func (w *uitestWorkspace) Cleanup() error {
 	return os.RemoveAll(w.Root)
 }
 
-// switchMachineHome points machine-local state at a fresh, empty home inside
-// this workspace's temp tree. Machine identity is the home directory —
-// machine.json lives at <$HOME>/.tt/runtime/<workspace-id>/machine.json — so
-// moving it is what makes the same synced workspace look like it was opened on
-// a machine that has never seen it. The synced directory is not touched.
-func (w *uitestWorkspace) switchMachineHome() error {
+// switchMachineHome points machine-local state at a home inside this
+// workspace's temp tree. Machine identity is the home directory — machine.json
+// lives at <$HOME>/.tt/runtime/<workspace-id>/machine.json — so moving it is
+// what makes the same synced workspace look like it was opened elsewhere. The
+// synced directory is not touched.
+//
+// An empty name is the historical behaviour: a fresh, numbered home no earlier
+// machine wrote to, which is the "opened on a machine that has never seen this
+// workspace" case. A name is a durable machine identity within this workspace:
+// the first switch to it mints a home, every later switch returns to that same
+// home with whatever that machine committed still in it.
+func (w *uitestWorkspace) switchMachineHome(machine string) error {
 	if w.homeBeforeSwitch == "" {
 		w.homeBeforeSwitch = os.Getenv("HOME")
 	}
-	w.machineSeq++
-	home := filepath.Join(w.Root, fmt.Sprintf("machine-%d", w.machineSeq))
+	machine = strings.TrimSpace(machine)
+	home := ""
+	switch {
+	case machine == "":
+		w.machineSeq++
+		home = filepath.Join(w.Root, fmt.Sprintf("machine-%d", w.machineSeq))
+	default:
+		if existing, ok := w.machineHomes[machine]; ok {
+			home = existing
+			break
+		}
+		if w.machineHomes == nil {
+			w.machineHomes = make(map[string]string)
+		}
+		home = filepath.Join(w.Root, "machine-"+machineHomeSlug(machine))
+		w.machineHomes[machine] = home
+	}
 	if err := os.MkdirAll(home, 0o755); err != nil {
 		return fmt.Errorf("failed to create machine home: %w", err)
 	}
@@ -215,6 +242,50 @@ func (w *uitestWorkspace) switchMachineHome() error {
 		return fmt.Errorf("failed to switch machine home: %w", err)
 	}
 	return nil
+}
+
+// machineHomeSlug reduces a scenario's machine name to a directory-safe token so
+// the home a failure names is recognizable rather than a bare counter.
+func machineHomeSlug(machine string) string {
+	var b strings.Builder
+	for _, r := range machine {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+		case r >= 'A' && r <= 'Z':
+			b.WriteRune(r - 'A' + 'a')
+		default:
+			b.WriteRune('-')
+		}
+	}
+	return b.String()
+}
+
+// secondMachineDriver opens this same synced workspace as a different machine
+// and returns a driver over it. It is the two-machine counterpart to launch:
+// the data directory is untouched, only machine identity moves, so whatever the
+// first machine committed to the synced files is exactly what this one reads.
+//
+// The returned driver replaces the caller's: uitestWorkspace holds one Runtime,
+// and this repoints it at the new machine's load. Switch back by name to return
+// to the first machine.
+func (w *uitestWorkspace) secondMachineDriver(machine string, width, height int) (*UITestDriver, error) {
+	if err := w.switchMachineHome(machine); err != nil {
+		return nil, err
+	}
+	app, err := w.relaunchApp()
+	if err != nil {
+		return nil, fmt.Errorf("failed to open workspace as machine %q: %w", machine, err)
+	}
+	driver := NewUITestDriver(app, width, height)
+	driver.relaunch = w.relaunchApp
+	driver.moveToFreshMachine = w.switchMachineHome
+	if app.startupMessage != nil {
+		driver.dispatch(app.startupMessage)
+		driver.drain()
+	}
+	driver.bootNoteSearchIndex()
+	return driver, nil
 }
 
 // newUITestWorkspace creates an empty isolated workspace: a temp root with a

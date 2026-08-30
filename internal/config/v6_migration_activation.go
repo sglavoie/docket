@@ -45,7 +45,7 @@ func (m *Manager) migrateWorkspaceToV6(hooks v6MigrationActivationHooks) error {
 	// A prior activation may have reached the durable prepare barrier before the
 	// process stopped. Recover it before inspecting the catalog: a partially
 	// applied schema boundary is roll-forward state, never a fresh candidate.
-	roots := []string{dataDir, LocalDataRoot()}
+	roots := []string{dataDir, m.localDataRoot()}
 	commit := storage.NewCommitService(TransactionsDir(dataDir), roots)
 	if _, err := commit.RecoverWorkspace(); err != nil {
 		return fmt.Errorf("recover workspace before schema-6 activation: %w", err)
