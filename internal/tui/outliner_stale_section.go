@@ -4,11 +4,9 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 const (
-	staleTaskThresholdDays            = 90
 	staleSectionCollapseKey           = "_promoted:stale"
 	staleProjectSectionCollapsePrefix = "_promoted_project:stale:"
 )
@@ -19,19 +17,14 @@ type staleSectionBuild struct {
 	projected map[TaskIdentity]bool
 }
 
-// taskIsStale reports whether ordinary open work has gone untouched for at
-// least staleTaskThresholdDays local calendar days. UpdatedAt is the touch
-// clock; StateChangedAt intentionally does not participate.
+// taskIsStale is the Stale lane's reading of staleness, which is the ?stale
+// predicate's reading: models owns the answer, and the lane only decides where
+// a stale row is drawn.
 func taskIsStale(task *models.Task, now time.Time) bool {
 	if now.IsZero() {
 		now = time.Now()
 	}
-	if task == nil || task.IsTerminalState() || task.IsDeferredAt(now) {
-		return false
-	}
-	today := util.StartOfDay(now)
-	updated := util.StartOfDay(task.UpdatedAt.In(now.Location()))
-	return util.DaysBetween(updated, today) >= staleTaskThresholdDays
+	return models.QueryTaskIsStale(task, now)
 }
 
 // buildStaleSection promotes old untouched work into the sparse All-mode Stale

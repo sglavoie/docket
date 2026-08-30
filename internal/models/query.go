@@ -261,6 +261,16 @@ func QueryFieldJoin(field QueryField) (QueryJoin, error) {
 	return spec.join, nil
 }
 
+// QueryFieldRequiresReload reports whether a field names a project population
+// that has to be loaded before any task of it can be evaluated. It is the one
+// predicate the reload obligation is computed from: a clause carries the answer
+// on QueryClause.RequiresReload, and a caller holding only a field — a facet key
+// deciding whether applying it rebuilds rows or reloads projects — asks here.
+func QueryFieldRequiresReload(field QueryField) bool {
+	spec, ok := querySpecFor(field)
+	return ok && spec.reload
+}
+
 // NewQueryClause validates one clause and fills in its derived reload
 // obligation. A field cannot be handed an operator it does not declare, and a
 // value the operator cannot carry is refused here rather than silently ignored

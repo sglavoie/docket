@@ -19,7 +19,7 @@
     { "type": "key", "label": "a live facet cannot rescue a refused sigil", "key": "f" },
     { "type": "key", "key": "!" },
     { "type": "key", "key": "1" },
-    { "type": "assert", "assert": "contains", "value": "priority:High+" },
+    { "type": "assert", "assert": "contains", "value": "!1+" },
     { "type": "assert", "assert": "contains", "value": "Launch platform" },
     { "type": "key", "key": "/" },
     { "type": "text", "text": "!9" },
@@ -28,7 +28,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "close the suggestions the settled sigil still offers", "key": "esc" },
     { "type": "key", "label": "restore the faceted projection the search opened on", "key": "esc" },
-    { "type": "assert", "assert": "contains", "value": "priority:High+" },
+    { "type": "assert", "assert": "contains", "value": "!1+" },
     { "type": "assert", "assert": "contains", "value": "Launch platform" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

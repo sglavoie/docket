@@ -150,7 +150,7 @@ func TestContextFacetCountsAsOneClearableFacet(t *testing.T) {
 	if got := commonFilterFacetCount(&filter); got != 1 {
 		t.Fatalf("commonFilterFacetCount() = %d, want 1", got)
 	}
-	want := []string{"##errand ##office", "context:none"}
+	want := []string{"##errand", "##office", "##0"}
 	if got := commonFilterParts(&filter); !reflect.DeepEqual(got, want) {
 		t.Fatalf("commonFilterParts() = %v, want %v", got, want)
 	}
@@ -160,23 +160,23 @@ func TestContextFacetCountsAsOneClearableFacet(t *testing.T) {
 	}
 }
 
-// TestApplyContextFilterValueSplitsTheNoContextToken keeps the pseudo-entry in
-// the picker's value channel and the state in the bool field.
-func TestApplyContextFilterValueSplitsTheNoContextToken(t *testing.T) {
-	filter := newFilterState()
-	applyContextFilterValue(&filter, []string{"errand", noContextFilterKey})
+// TestContextFilterClausesSplitTheNoContextToken keeps the pseudo-entry in the
+// picker's value channel and the none operator, so the facet still needs no
+// second value channel now that it writes clauses.
+func TestContextFilterClausesSplitTheNoContextToken(t *testing.T) {
+	clauses := contextFilterClauses([]string{"errand", noContextFilterKey})
+	filter := commonFilterStateFromQuery(models.Query{Clauses: clauses})
 	if !filter.NoContext {
-		t.Error("applyContextFilterValue did not set NoContext")
+		t.Error("the no-context pseudo-entry did not set NoContext")
 	}
 	if filter.Contexts[noContextFilterKey] {
-		t.Error("applyContextFilterValue kept the pseudo-entry as a context name")
+		t.Error("the no-context pseudo-entry survived as a context name")
 	}
 	if !filter.Contexts["errand"] {
-		t.Error("applyContextFilterValue dropped the errand context")
+		t.Error("the errand context was dropped")
 	}
-	applyContextFilterValue(&filter, nil)
-	if filter.NoContext || len(filter.Contexts) > 0 {
-		t.Error("an empty picker result did not clear the context facet")
+	if got := len(contextFilterClauses(nil)); got != 0 {
+		t.Errorf("an empty picker result minted %d clause(s), want 0", got)
 	}
 }
 

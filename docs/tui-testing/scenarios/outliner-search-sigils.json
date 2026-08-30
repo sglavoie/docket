@@ -45,7 +45,7 @@
     { "type": "key", "label": "add a facet the sigil's own match cannot clear", "key": "f" },
     { "type": "key", "key": "!" },
     { "type": "key", "key": "1" },
-    { "type": "assert", "assert": "contains", "value": "priority:High+" },
+    { "type": "assert", "assert": "contains", "value": "!1+" },
     { "type": "assert", "label": "both gates AND together before scoring", "assert": "not_contains", "value": "Add password validation" },
     { "type": "assert", "assert": "not_contains", "value": "Launch platform" },
     { "type": "assert", "assert": "no_layout_issues" },

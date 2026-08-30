@@ -72,7 +72,7 @@ func Parse(input string, surface Surface) Result {
 		result.Tokens = append(result.Tokens, tokens...)
 	}
 	result.Text = NormalizeText(remaining)
-	result.Diagnostics = duplicateSingletonDiagnostics(result.Tokens)
+	result.Diagnostics = duplicateSingletonDiagnostics(result.Tokens, surface)
 	return result
 }
 
@@ -117,13 +117,20 @@ func tokenValue(spec definitionSpec, raw string) string {
 	return spec.normalize(raw)
 }
 
-func duplicateSingletonDiagnostics(tokens []Token) []Diagnostic {
+// duplicateSingletonDiagnostics reports a repeated singleton as a conflict on
+// the surfaces that write a value, where two names really cannot both be
+// stored. Search selects rows instead of writing anything, so a repeated
+// context there is a union rather than a conflict and is left alone.
+func duplicateSingletonDiagnostics(tokens []Token, surface Surface) []Diagnostic {
 	first := make(map[Field]Token)
 	diagnosed := make(map[Field]bool)
 	var result []Diagnostic
 	for _, token := range tokens {
 		spec, ok := registrySpecFor(token.Field)
 		if !ok || spec.Cardinality != CardinalitySingleton {
+			continue
+		}
+		if surface == SurfaceSearch && token.Field == FieldContext {
 			continue
 		}
 		previous, exists := first[token.Field]

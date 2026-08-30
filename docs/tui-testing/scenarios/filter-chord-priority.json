@@ -20,7 +20,7 @@
     { "type": "key", "label": "keep only High-priority tasks", "key": "1" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Filtering High priority" },
-    { "type": "assert", "label": "the threshold badge joins the title row", "assert": "contains", "value": "priority:High+" },
+    { "type": "assert", "label": "the threshold badge joins the title row", "assert": "contains", "value": "!1+" },
     { "type": "assert", "assert": "contains", "value": "Launch platform" },
     { "type": "assert", "assert": "contains", "value": "Fix redirect loop after logout" },
     { "type": "assert", "label": "the priority-2 story is filtered out", "assert": "not_contains", "value": "User authentication" },
@@ -30,7 +30,7 @@
     { "type": "key", "key": "!" },
     { "type": "key", "key": "0" },
     { "type": "assert", "assert": "status_contains", "value": "Priority filter cleared" },
-    { "type": "assert", "assert": "not_contains", "value": "priority:High+" },
+    { "type": "assert", "assert": "not_contains", "value": "!1+" },
     { "type": "assert", "assert": "contains", "value": "User authentication" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

@@ -208,7 +208,8 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 		{name: "filters", configure: func(m *OutlinerModel) {
 			m.filter = NewFilterState()
 			m.filter.Priority = 1
-		}, wantNarrow: []string{"Filters:"}, wantWide: []string{"Filters:", "priority:High+"}},
+			m.adoptFilterCarriers()
+		}, wantNarrow: []string{"Filters:"}, wantWide: []string{"Filters:", "!1+"}},
 		{name: "multiselect", configure: func(m *OutlinerModel) {
 			m.multiSelectMode = true
 			m.selectedTaskIdentities = map[TaskIdentity]bool{{ProjectID: project.ID, TaskID: task.ID}: true}
@@ -219,6 +220,7 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 			m.SetSearchQuery("needle")
 			m.filter = NewFilterState()
 			m.filter.Priority = 1
+			m.adoptFilterCarriers()
 			m.crossFocusStack = []CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: task.ID}}
 		}, wantNarrow: []string{"MULTI-SELECT"}, wantWide: []string{"MULTI-SELECT: 1 selected", "Search: \"needle\"", "Filters:", "Focus: [Alpha] › Launch"}},
 	}

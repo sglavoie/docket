@@ -413,6 +413,7 @@ func TestOutlinerPlanningOrderJKFilteredAndScoped(t *testing.T) {
 		tasks[0].Tags = []string{"keep"}
 		tasks[2].Tags = []string{"keep"}
 		cross.filter.Tags = map[string]bool{"keep": true}
+		cross.adoptFilterCarriers()
 		enterCrossMode(cross, ModeNext)
 
 		if got := visibleTaskIDs(cross); len(got) != 2 {
@@ -445,6 +446,7 @@ func TestOutlinerPlanningOrderJKFilteredAndScoped(t *testing.T) {
 		tasks[0].Tags = []string{"keep"}
 		tasks[2].Tags = []string{"keep"}
 		cross.filter.Tags = map[string]bool{"keep": true}
+		cross.adoptFilterCarriers()
 		enterCrossMode(cross, ModeToday)
 
 		if got := visibleTaskIDs(cross); len(got) != 2 {
@@ -503,6 +505,7 @@ func TestOutlinerPlanningOrderJKFilteredAndScoped(t *testing.T) {
 		)
 		tasks[0].Tags = []string{"keep"}
 		cross.filter.Tags = map[string]bool{"keep": true}
+		cross.adoptFilterCarriers()
 		enterCrossMode(cross, ModeNext)
 
 		if got := visibleTaskIDs(cross); len(got) != 1 {
@@ -532,6 +535,7 @@ func TestHierarchicalReorderSwapsAdjacentVisibleQualifiedSiblings(t *testing.T) 
 	tasks[0].Tags = []string{"keep"}
 	tasks[2].Tags = []string{"keep"}
 	cross.filter.Tags = map[string]bool{"keep": true}
+	cross.adoptFilterCarriers()
 	enterCrossMode(cross, ModeBacklog)
 	if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
 		t.Fatal("cursor did not land on keep-one")

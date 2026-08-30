@@ -73,12 +73,16 @@ type OutlinerModel struct {
 	sort     SortState // Active render sort; default while a fixed-order mode owns ordering.
 	treeSort SortState // Durable user sort restored whenever a tree-order mode is active.
 
-	filter FilterState // Unified common facet state.
+	// filterQuery is the one narrowing predicate the f and F facets author. Both
+	// carriers below are caches derived from it by setFilterQuery, so nothing
+	// downstream can hold a facet the query does not know about.
+	filterQuery models.Query
 
-	// projectFilter is the population facet the F chord owns. It decides which
-	// projects load at all, so it lives beside the row filter rather than inside
-	// it: clearing one must not clear the other, and a change here needs a reload
-	// rather than a rebuild.
+	filter FilterState // Row facet cache derived from filterQuery.
+
+	// projectFilter is the population facet cache the F chord's clauses derive.
+	// It stays a separate value from the row filter because clearing one must not
+	// clear the other, and a change here needs a reload rather than a rebuild.
 	projectFilter ProjectFilterState
 
 	expandedNodes     map[TaskIdentity]bool // Project-qualified fold state: true=expanded (default all expanded)

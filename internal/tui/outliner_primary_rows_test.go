@@ -177,7 +177,7 @@ func TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership(t *testing.
 }
 
 func TestPrimaryAllStaleLanePrecedenceAndOrder(t *testing.T) {
-	old := time.Now().AddDate(0, 0, -(staleTaskThresholdDays + 10))
+	old := time.Now().AddDate(0, 0, -(models.StaleTaskThresholdDays + 10))
 	staleTask := func(id string, state models.WorkflowState) *models.Task {
 		task := primaryRowsTask(id, state)
 		task.UpdatedAt = old
@@ -246,12 +246,12 @@ func TestBuildStaleSectionUsesUpdatedCalendarDayAndVisibilityGuards(t *testing.T
 		task.UpdatedAt = updated
 		return task
 	}
-	day90 := now.AddDate(0, 0, -staleTaskThresholdDays)
+	day90 := now.AddDate(0, 0, -models.StaleTaskThresholdDays)
 	boundary := taskAt("boundary", time.Date(
 		day90.Year(), day90.Month(), day90.Day(), 23, 59, 0, 0, location,
 	))
 	boundary.StateChangedAt = now
-	day89 := now.AddDate(0, 0, -(staleTaskThresholdDays - 1))
+	day89 := now.AddDate(0, 0, -(models.StaleTaskThresholdDays - 1))
 	fresh := taskAt("fresh", util.StartOfDay(day89))
 	fresh.StateChangedAt = now.AddDate(0, 0, -200)
 	terminal := taskAt("terminal", boundary.UpdatedAt)
@@ -312,6 +312,7 @@ func TestPrimaryAllExplicitFiltersOverrideTerminalAndDeferredDefaults(t *testing
 	outliner.selectOutlinerMode(ModeAll)
 
 	outliner.filter.setStateFilter(testWorkflowStateSet(models.StateDone, models.StateCanceled), true)
+	outliner.adoptFilterCarriers()
 	outliner.rebuildRows()
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{"done", "canceled"}) {
 		t.Fatalf("terminal-filter rows = %v, want done/canceled", got)
@@ -328,6 +329,7 @@ func TestPrimaryAllExplicitFiltersOverrideTerminalAndDeferredDefaults(t *testing
 
 	clearCommonFilters(&outliner.filter.CommonFilterState)
 	outliner.filter.Deferred = true
+	outliner.adoptFilterCarriers()
 	outliner.rebuildRows()
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{"deferred"}) {
 		t.Fatalf("deferred-filter rows = %v, want explicit deferred Today task", got)

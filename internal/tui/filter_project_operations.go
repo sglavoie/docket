@@ -34,53 +34,73 @@ func projectFilterOperationDescriptors() []OperationDescriptor {
 	}
 }
 
-// executeProjectFilterOperation applies one population facet and reloads. A row
-// facet can rebuild in place, but a project this facet admits or drops was never
-// in the snapshot at all, so the change only becomes visible after a load.
+// executeProjectFilterOperation applies one population facet. A row facet can
+// rebuild in place, but a project this facet admits or drops was never in the
+// snapshot at all, so applyFilterClauseEdit reloads instead — an obligation it
+// reads off the population fields themselves.
 func (m *AppModel) executeProjectFilterOperation(invocation OperationInvocation) OperationHandlerResult {
 	out := m.crossOutliner
 	if out == nil {
 		return OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
 	}
-	if out.hasSearchProjection() {
-		return OperationHandlerResult{Status: "Exit search before changing filters"}
+	edit, err := out.populationFilterClauseEdit(invocation)
+	if err != nil {
+		return OperationHandlerResult{Err: err}
 	}
-	filter := &out.projectFilter
+	return m.applyFilterClauseEdit(invocation.Descriptor.ID, edit)
+}
 
-	var status string
+// populationFilterClauseEdit is one clause constructor per population facet.
+// Each toggle reads the axis the derived cache currently holds and spells the
+// mode the key selects, so Fp, FP, and the F# picker's parked row cannot leave
+// the population claiming different things.
+func (m *OutlinerModel) populationFilterClauseEdit(
+	invocation OperationInvocation,
+) (filterClauseEdit, error) {
 	switch invocation.Descriptor.ID {
 	case operationFilterProjectTags:
 		names, ok := invocation.Value.([]string)
 		if !ok {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid project tag filter value")}
+			return filterClauseEdit{}, fmt.Errorf("invalid project tag filter value")
 		}
-		applyProjectTagFilterValue(filter, names)
-		status = projectTagFilterStatus(filter)
+		next := m.projectFilter.clone()
+		applyProjectTagFilterValue(&next, names)
+		clauses := append(projectTagClauses(&next),
+			populationClauses(models.QueryFieldParked, next.ParkedMode)...)
+		return filterClauseEdit{clauses: clauses, status: projectTagFilterStatus(&next)}, nil
 	case operationFilterShowParked:
-		// Fp, FP, and the F# picker's parked row all write this one field, so the
-		// routes cannot leave the population claiming different things.
-		filter.ParkedMode = toggleProjectPopulation(filter.ParkedMode, projectPopulationInclude)
-		status = projectPopulationStatus(filter.ParkedMode, "Parked")
+		return m.populationToggleEdit(models.QueryFieldParked, m.projectFilter.ParkedMode,
+			projectPopulationInclude, "Parked"), nil
 	case operationFilterOnlyParked:
-		filter.ParkedMode = toggleProjectPopulation(filter.ParkedMode, projectPopulationOnly)
-		status = projectPopulationStatus(filter.ParkedMode, "Parked")
+		return m.populationToggleEdit(models.QueryFieldParked, m.projectFilter.ParkedMode,
+			projectPopulationOnly, "Parked"), nil
 	case operationFilterIncludeArchived:
-		filter.ArchivedMode = toggleProjectPopulation(filter.ArchivedMode, projectPopulationInclude)
-		status = projectPopulationStatus(filter.ArchivedMode, "Archived")
+		return m.populationToggleEdit(models.QueryFieldArchived, m.projectFilter.ArchivedMode,
+			projectPopulationInclude, "Archived"), nil
 	case operationFilterOnlyArchived:
-		filter.ArchivedMode = toggleProjectPopulation(filter.ArchivedMode, projectPopulationOnly)
-		status = projectPopulationStatus(filter.ArchivedMode, "Archived")
+		return m.populationToggleEdit(models.QueryFieldArchived, m.projectFilter.ArchivedMode,
+			projectPopulationOnly, "Archived"), nil
 	case operationFilterProjectClear:
-		if !hasActiveProjectFilters(filter) {
-			return OperationHandlerResult{Status: "No project filters are active"}
+		if !hasActiveProjectFilters(&m.projectFilter) {
+			return filterClauseEdit{declined: true, status: "No project filters are active"}, nil
 		}
-		clearProjectFilters(filter)
-		status = "Project filters cleared"
+		return filterClauseEdit{status: "Project filters cleared"}, nil
 	default:
-		return OperationHandlerResult{Err: fmt.Errorf("unknown project filter operation %s", invocation.Descriptor.ID)}
+		return filterClauseEdit{}, fmt.Errorf(
+			"unknown project filter operation %s", invocation.Descriptor.ID)
 	}
+}
 
-	return OperationHandlerResult{Message: OperationCommandResultMsg{Cmd: m.projectFilterReloadCmd(status)}}
+func (m *OutlinerModel) populationToggleEdit(
+	field models.QueryField,
+	current, target projectPopulationMode,
+	name string,
+) filterClauseEdit {
+	mode := toggleProjectPopulation(current, target)
+	return filterClauseEdit{
+		clauses: populationClauses(field, mode),
+		status:  projectPopulationStatus(mode, name),
+	}
 }
 
 // projectPopulationStatus names the population one axis now loads rather than

@@ -55,6 +55,7 @@ func TestFilterFacetsComposeInCanonicalProjection(t *testing.T) {
 	outliner.filter.Tags = map[string]bool{"alpha": true, "beta": true}
 	outliner.filter.DueDate = DueDateToday
 	outliner.filter.Deferred = true
+	outliner.adoptFilterCarriers()
 	outliner.rebuildRows()
 
 	visible := visibleOutlinerTaskIDs(outliner)
@@ -98,6 +99,7 @@ func TestTagFacetDropsNonmatchingAncestorAcrossWorkflowSections(t *testing.T) {
 	project := primaryRowsProject("life-trail", parent, child)
 	outliner := scopeTestOutliner(project)
 	outliner.filter.Tags = map[string]bool{"bug": true}
+	outliner.adoptFilterCarriers()
 	outliner.rebuildRows()
 
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{child.ID}) {
@@ -135,6 +137,7 @@ func TestHierarchicalModesPromoteMatchingChildPastFacetMismatch(t *testing.T) {
 			outliner := scopeTestOutliner(project)
 			outliner.selectOutlinerMode(tc.mode)
 			outliner.filter.Tags = map[string]bool{"bug": true}
+			outliner.adoptFilterCarriers()
 			outliner.rebuildRows()
 
 			if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{child.ID}) {
@@ -161,6 +164,7 @@ func TestPromotedFacetBreadcrumbStopsAtFocusBoundary(t *testing.T) {
 	outliner.selectOutlinerMode(ModeBacklog)
 	outliner.crossFocusStack = []CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: focusRoot.ID}}
 	outliner.filter.Tags = map[string]bool{"bug": true}
+	outliner.adoptFilterCarriers()
 	outliner.rebuildRows()
 
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{match.ID}) {
@@ -191,6 +195,7 @@ func TestBacklogContextRowsMustSatisfyEveryActiveFacet(t *testing.T) {
 			outliner.selectOutlinerMode(ModeBacklog)
 			outliner.filter.Tags = map[string]bool{"bug": true}
 			outliner.filter.Priority = 1
+			outliner.adoptFilterCarriers()
 			outliner.rebuildRows()
 
 			if got := visibleTaskIDs(outliner); !slices.Equal(got, tc.want) {
@@ -224,6 +229,7 @@ func TestExplicitTerminalStateFacetOverridesDefaultVisibility(t *testing.T) {
 		t.Fatal(err)
 	}
 	outliner.filter.setStateFilter(states, true)
+	outliner.adoptFilterCarriers()
 	outliner.rebuildRows()
 
 	visible := visibleOutlinerTaskIDs(outliner)
@@ -263,8 +269,8 @@ func TestCompletionAgeFacetUsesLocalCalendarDaysAndRejectsInvalidTimestamps(t *t
 	if passesCommonFiltersAt(missing, &filter, now) {
 		t.Fatal("all ages should still exclude a missing CompletedAt")
 	}
-	if got := commonFilterParts(&filter); len(got) != 1 || got[0] != "completed:all" {
-		t.Fatalf("completion-age badge = %v, want completed:all", got)
+	if got := commonFilterParts(&filter); len(got) != 1 || got[0] != "?completed" {
+		t.Fatalf("completion-age badge = %v, want ?completed", got)
 	}
 }
 
@@ -320,6 +326,7 @@ func TestCompletionCleanupProjectionRequiresExplicitTerminalStateChoice(t *testi
 	project := primaryRowsProject("cleanup", doneOld, doneRecent, canceledOld, invalidDone, ready)
 	outliner := scopeTestOutliner(project)
 	outliner.filter.setCompletionAgeFilter(CompletionAge30Days)
+	outliner.adoptFilterCarriers()
 	outliner.rebuildRows()
 
 	if visible := visibleOutlinerTaskIDs(outliner); len(visible) != 0 {
@@ -330,6 +337,7 @@ func TestCompletionCleanupProjectionRequiresExplicitTerminalStateChoice(t *testi
 		t.Fatal(err)
 	}
 	outliner.filter.setStateFilter(doneOnly, true)
+	outliner.adoptFilterCarriers()
 	outliner.rebuildRows()
 	if visible := visibleOutlinerTaskIDs(outliner); !visible[doneOld.ID] || len(visible) != 1 {
 		t.Fatalf("Done + 30-day cleanup projection = %v, want only old Done", visible)
@@ -339,6 +347,7 @@ func TestCompletionCleanupProjectionRequiresExplicitTerminalStateChoice(t *testi
 		t.Fatal(err)
 	}
 	outliner.filter.setStateFilter(both, true)
+	outliner.adoptFilterCarriers()
 	outliner.rebuildRows()
 	visible := visibleOutlinerTaskIDs(outliner)
 	if !visible[doneOld.ID] || !visible[canceledOld.ID] || len(visible) != 2 {
@@ -361,6 +370,7 @@ func TestFilterFacetsPersistAcrossModeAndProjectScopeChanges(t *testing.T) {
 	outliner.filter.DueDate = DueDateNone
 	outliner.filter.setCompletionAgeFilter(CompletionAge30Days)
 	outliner.filter.Deferred = true
+	outliner.adoptFilterCarriers()
 
 	outliner.selectOutlinerMode(ModeDue)
 	if outliner.filter.Priority != 2 || !outliner.filter.Deferred {
@@ -383,6 +393,7 @@ func TestFilterFacetsPersistAcrossModeAndProjectScopeChanges(t *testing.T) {
 	// pop back to the base scope.
 	outliner.filter.Priority = models.PriorityMedium
 	outliner.filter.Tags = map[string]bool{"beta": true}
+	outliner.adoptFilterCarriers()
 	outliner.pushProjectScope(beta.ID)
 	if outliner.filter.Priority != models.PriorityMedium || !outliner.filter.Tags["beta"] {
 		t.Fatalf("project focus replacement reset facets: %+v", outliner.filter.CommonFilterState)
@@ -406,6 +417,7 @@ func TestFilterFacetsAreExcludedFromPersistedRouteState(t *testing.T) {
 	outliner.filter.Priority = 2
 	outliner.filter.Tags = map[string]bool{"live": true}
 	outliner.filter.setCompletionAgeFilter(CompletionAge7Days)
+	outliner.adoptFilterCarriers()
 
 	legacyStates, err := models.NewWorkflowStateSet(models.StateWaiting)
 	if err != nil {

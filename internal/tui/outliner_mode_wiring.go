@@ -348,18 +348,20 @@ func (m *OutlinerModel) resolveTodayOrder(projects []*models.Project) []Planning
 	return order
 }
 
-// facetPredicateAt is the one definition of the facet gate: the common filters
-// plus the hierarchy axis, evaluated at a single instant. Two consumers read
-// it. The work-mode filter ANDs the free-text half in front of it, and the
-// search projection composes it into the candidate boundary before scoring —
-// which is why the facets live here rather than inside workModeTaskFilterAt.
+// facetPredicateAt is the one definition of the facet gate: the row half of the
+// filter query answered by models.Query.Admits, ANDed with the hierarchy axis,
+// evaluated at a single instant. Two consumers read it. The work-mode filter
+// ANDs the free-text half in front of it, and the search projection composes it
+// into the candidate boundary before scoring — which is why the facets live here
+// rather than inside workModeTaskFilterAt.
 func (m *OutlinerModel) facetPredicateAt(now time.Time) func(*models.Task, *models.Project) bool {
-	hasCommon := hasActiveCommonFilters(&m.filter.CommonFilterState)
+	query := m.rowPredicateQuery()
+	narrows := len(query.Clauses) > 0
 	return func(t *models.Task, project *models.Project) bool {
 		if t == nil {
 			return false
 		}
-		if hasCommon && !passesCommonFiltersAt(t, &m.filter.CommonFilterState, now) {
+		if narrows && !query.Admits(t, m.filterQueryProject(project), now) {
 			return false
 		}
 		return m.passesHierarchyFilter(t, project)

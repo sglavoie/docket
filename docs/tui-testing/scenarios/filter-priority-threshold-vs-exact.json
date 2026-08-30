@@ -1,0 +1,31 @@
+{
+  "name": "filter-priority-threshold-vs-exact",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "the chord writes a threshold", "key": "f" },
+    { "type": "key", "key": "!" },
+    { "type": "key", "key": "2" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "the chip is the query the chord wrote, spelled as a threshold", "assert": "contains", "value": "!2+" },
+    { "type": "assert", "label": "the more urgent task is inside a threshold", "assert": "contains", "value": "Launch platform" },
+    { "type": "assert", "assert": "contains", "value": "User authentication" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "clear it before typing the exact form", "key": "f" },
+    { "type": "key", "key": "x" },
+    { "type": "assert", "assert": "not_contains", "value": "!2+" },
+
+    { "type": "key", "label": "the typed sigil without the suffix is exact", "key": "/" },
+    { "type": "text", "text": "!2" },
+    { "type": "assert", "assert": "contains", "value": "User authentication" },
+    { "type": "assert", "label": "priority 1 is not priority 2", "assert": "not_contains", "value": "Launch platform" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the suffix is what widens it into the chord's reading", "key": "backspace" },
+    { "type": "text", "text": "2+" },
+    { "type": "assert", "assert": "contains", "value": "User authentication" },
+    { "type": "assert", "assert": "contains", "value": "Launch platform" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

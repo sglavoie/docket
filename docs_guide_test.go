@@ -105,11 +105,20 @@ func TestGuideDocumentsFiltersAndSearch(t *testing.T) {
 		"`f!0`, `f!1`–`f!3`",
 		"Unset never matches",
 		// Search composition: the row facets gate a live projection, the sort axis
-		// works inside it, F* still refuses, and Esc restores the pre-search pair.
+		// works inside it, F* drops out of reach, and Esc restores the pre-search
+		// pair.
 		"`f*` applies as an AND gate before scoring exactly like a query sigil",
 		"`o*` reorders within a relevance tier only",
-		"The population facets (`F*`) still refuse",
+		"The population facets (`F*`) drop out while the",
 		"Esc restores the pre-search facets and sort wholesale",
+		// One narrowing, one spelling: the chip is the query, the chord's
+		// threshold is written out, repeats of a single-valued field union, and
+		// project selection is one axis the population facets are not part of.
+		"the title row shows what you narrowed by in the sigil spelling you would have typed",
+		"`f!2` means\n`!2+`, medium-or-higher, and typing `!2` alone matches medium exactly",
+		"Repeated `##context` names union",
+		"`%slug` inside a query, and the scope a lens saves all answer the",
+		"which projects exist to be looked at at all, archived and parked included",
 		"`f$` | Pick workflow states with OR semantics",
 		"`f#` | Pick tags with AND semantics; the task context is a separate axis on `fc`",
 		"`fc` | Pick task contexts with OR semantics, since a task carries at most one",

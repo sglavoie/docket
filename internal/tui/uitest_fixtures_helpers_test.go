@@ -1098,7 +1098,7 @@ func buildSignalsFixture(w *uitestWorkspace) error {
 // be exercised without shifting cursor-sensitive scenarios on other fixtures.
 func buildStaleFixture(w *uitestWorkspace) error {
 	project, err := w.addProject("Dormant Delivery", func(p *models.Project) {
-		old := time.Now().AddDate(0, 0, -(staleTaskThresholdDays + 10))
+		old := time.Now().AddDate(0, 0, -(models.StaleTaskThresholdDays + 10))
 		for _, title := range []string{
 			"Revisit dormant launch checklist",
 			"Renew untouched vendor briefing",

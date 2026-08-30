@@ -119,6 +119,7 @@ func TestOutlinerEmptyStatesAdvertiseCausalRecovery(t *testing.T) {
 				out.loadedProjects = []*models.Project{project}
 				out.primaryMode = ModeAll
 				out.filter.Priority = models.PriorityHigh
+				out.adoptFilterCarriers()
 				out.rows = nil
 			},
 			wantMessage: EmptyStateFiltered,

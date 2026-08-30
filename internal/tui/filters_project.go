@@ -124,13 +124,6 @@ func projectFilterFacetCount(f *ProjectFilterState) int {
 	return count
 }
 
-func clearProjectFilters(f *ProjectFilterState) {
-	f.Tags = make(map[string]bool)
-	f.Untagged = false
-	f.ParkedMode = projectPopulationExclude
-	f.ArchivedMode = projectPopulationExclude
-}
-
 // projectFilterAdmits applies the facets to one candidate project. Both
 // lifecycle axes are enforced here, so the candidate populations only decide
 // presentation order and how much is loaded, never what is admitted.
@@ -159,31 +152,12 @@ func projectFilterAdmits(project *models.Project, f ProjectFilterState) bool {
 	return false
 }
 
-// projectFilterParts renders the active facets as scope chrome chips. An
-// included population reads as an addition to the base scope name; an isolated
-// one reads as a replacement, because the base name no longer describes it.
+// projectFilterParts renders the active facets as scope chrome chips. The chips
+// are the population clauses' own canonical sigil text: an included population
+// reads as an addition to the base scope name, an isolated one as a replacement,
+// because the base name no longer describes it.
 func projectFilterParts(f *ProjectFilterState) []string {
-	var parts []string
-	for _, tag := range f.restrictionTags() {
-		parts = append(parts, "#"+tag)
-	}
-	if f.Untagged {
-		parts = append(parts, "untagged")
-	}
-	parts = append(parts, projectPopulationPart(f.ParkedMode, "parked")...)
-	parts = append(parts, projectPopulationPart(f.ArchivedMode, "archived")...)
-	return parts
-}
-
-func projectPopulationPart(mode projectPopulationMode, name string) []string {
-	switch mode {
-	case projectPopulationOnly:
-		return []string{name + ":only"}
-	case projectPopulationInclude:
-		return []string{"+" + name}
-	default:
-		return nil
-	}
+	return filterClauseParts(projectFilterClauses(f))
 }
 
 // projectFilterSelection returns the picker row IDs the current facets select,

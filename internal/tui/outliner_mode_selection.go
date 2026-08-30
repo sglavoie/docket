@@ -27,7 +27,7 @@ func (m *OutlinerModel) clearStaleForRecentMode() {
 	if m.primaryMode != ModeRecent || !m.filter.Stale {
 		return
 	}
-	m.filter.Stale = false
+	m.replaceFilterClauses([]models.QueryField{models.QueryFieldStale}, nil)
 	m.setTransientStatus(recentStaleFilterClearedStatus)
 }
 

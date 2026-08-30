@@ -92,7 +92,7 @@ func TestProjectFilterPartsNamePopulationModes(t *testing.T) {
 	filter.ArchivedMode = projectPopulationOnly
 
 	got := projectFilterParts(&filter)
-	want := []string{"+parked", "archived:only"}
+	want := []string{"+parked", "+archived:only"}
 	if !slices.Equal(got, want) {
 		t.Errorf("projectFilterParts() = %v, want %v", got, want)
 	}

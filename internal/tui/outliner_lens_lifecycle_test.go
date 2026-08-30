@@ -865,6 +865,7 @@ func TestLensModifiedTracksOwnedAxesOnly(t *testing.T) {
 	}
 
 	outliner.filter.Priority = int(models.PriorityHigh)
+	outliner.adoptFilterCarriers()
 	if !outliner.lensModified() {
 		t.Fatal("a facet change must mark the lens modified")
 	}
@@ -873,6 +874,7 @@ func TestLensModifiedTracksOwnedAxesOnly(t *testing.T) {
 	}
 
 	outliner.filter.Priority = 0
+	outliner.adoptFilterCarriers()
 	if outliner.lensModified() {
 		t.Fatal("reverting the facet must clear the marker")
 	}
@@ -904,6 +906,7 @@ func TestOrdinaryFiltersAndSortRemainEditableUnderALensQuery(t *testing.T) {
 	applyLensOrFatal(t, outliner, waitingLens(lensTestID(1), "Waiting", "needle"))
 
 	outliner.filter.Priority = int(models.PriorityHigh)
+	outliner.adoptFilterCarriers()
 	outliner.treeSort = SortState{Field: SortByTitle, Ascending: true}
 	outliner.sort = outliner.treeSort
 	outliner.crossForceRebuild = true
@@ -1329,6 +1332,7 @@ func TestTheActiveFrameKeepsTheInstalledIdentityAndFingerprint(t *testing.T) {
 
 	// Diverging the live view must not move the installed fingerprint.
 	outliner.filter.Priority = int(models.PriorityHigh)
+	outliner.adoptFilterCarriers()
 
 	if outliner.activeLens.lensID != saved.ID || outliner.activeLens.name != saved.Name {
 		t.Fatalf("frame identity = %q/%q, want %q/%q",

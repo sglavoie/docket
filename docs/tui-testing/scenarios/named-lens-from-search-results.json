@@ -50,7 +50,7 @@
     { "type": "key", "key": "down" },
     { "type": "key", "key": "enter" },
     { "type": "assert", "assert": "status_contains", "value": "Filtering hierarchy: root" },
-    { "type": "assert", "assert": "contains", "value": "hierarchy:root" },
+    { "type": "assert", "assert": "contains", "value": "-?child" },
     { "type": "assert", "label": "the facet gates the ranked rows", "assert": "not_contains", "value": "Build login form" },
     { "type": "assert", "label": "and leaves the ones it admits", "assert": "contains", "value": "Explore social login" },
     { "type": "assert", "assert": "contains", "value": "Search: \"login\"" },
@@ -62,7 +62,7 @@
     { "type": "wait" },
     { "type": "assert", "assert": "contains", "value": "Lens: Narrowed login" },
     { "type": "assert", "label": "the round trip keeps the query", "assert": "contains", "value": "Lens query: \"login\"" },
-    { "type": "assert", "label": "and the narrowing typed inside the search", "assert": "contains", "value": "hierarchy:root" },
+    { "type": "assert", "label": "and the narrowing typed inside the search", "assert": "contains", "value": "-?child" },
     { "type": "assert", "label": "so the lens reproduces the find it was saved from", "assert": "contains", "value": "Explore social login" },
     { "type": "assert", "assert": "not_contains", "value": "Build login form" },
     { "type": "assert", "assert": "not_contains", "value": "Search: \"login\"" },
@@ -72,7 +72,7 @@
     { "type": "wait" },
     { "type": "assert", "assert": "not_contains", "value": "Lens:" },
     { "type": "assert", "assert": "contains", "value": "Search: \"login\"" },
-    { "type": "assert", "assert": "contains", "value": "hierarchy:root" },
+    { "type": "assert", "assert": "contains", "value": "-?child" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

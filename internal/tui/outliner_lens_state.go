@@ -225,6 +225,9 @@ func (m *OutlinerModel) applyLensState(state lensState) bool {
 	m.primaryMode = state.mode
 	m.filter = copyFilterState(state.filter)
 	m.projectFilter = state.projectFilter.clone()
+	// A lens definition is still carrier-shaped, so its facets enter through the
+	// one inverse lift and the narrowing predicate is rebuilt from them.
+	m.adoptFilterCarriers()
 	m.setLensQuery(state.query)
 
 	next := ApplyOutlinerModeTransition(

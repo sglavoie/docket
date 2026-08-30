@@ -848,6 +848,7 @@ func TestReviewQueueTemplateIntersectsItsTagFacet(t *testing.T) {
 
 	// A second tag intersects with the first rather than joining it.
 	outliner.filter.Tags["urgent"] = true
+	outliner.adoptFilterCarriers()
 	outliner.crossForceRebuild = true
 	outliner.crossProjectRebuildRows()
 	if got := sortedVisibleTaskIDs(outliner); !slices.Equal(got, []string{"review-urgent"}) {

@@ -7,7 +7,7 @@
     { "type": "key", "key": "!" },
     { "type": "key", "key": "2" },
     { "type": "assert", "assert": "status_contains", "value": "Filtering Medium priority or higher" },
-    { "type": "assert", "assert": "contains", "value": "priority:Medium+" },
+    { "type": "assert", "assert": "contains", "value": "!2+" },
 
     { "type": "key", "label": "stack a due facet on top", "key": "f" },
     { "type": "key", "key": "@" },
@@ -21,8 +21,8 @@
     { "type": "key", "key": "down" },
     { "type": "key", "key": "enter" },
     { "type": "assert", "assert": "status_contains", "value": "Filtering due: none" },
-    { "type": "assert", "label": "both facets stay in the badge", "assert": "contains", "value": "priority:Medium+" },
-    { "type": "assert", "assert": "contains", "value": "due:none" },
+    { "type": "assert", "label": "both facets stay in the badge", "assert": "contains", "value": "!2+" },
+    { "type": "assert", "assert": "contains", "value": "@0" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "stack the context facet on top of both", "key": "f" },
@@ -30,22 +30,22 @@
     { "type": "assert", "assert": "contains", "value": "Filter by Context" },
     { "type": "key", "label": "the gap row is a live predicate like any other", "key": "space" },
     { "type": "key", "key": "enter" },
-    { "type": "assert", "assert": "status_contains", "value": "Filtering context: context:none" },
-    { "type": "assert", "assert": "contains", "value": "context:none" },
+    { "type": "assert", "assert": "status_contains", "value": "Filtering context: ##0" },
+    { "type": "assert", "assert": "contains", "value": "##0" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "abandon a half-typed filter chord", "key": "f" },
     { "type": "key", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "contains", "value": "due:none" },
+    { "type": "assert", "assert": "contains", "value": "@0" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "clear everything at once", "key": "f" },
     { "type": "key", "key": "x" },
     { "type": "assert", "assert": "status_contains", "value": "Filters cleared" },
-    { "type": "assert", "assert": "not_contains", "value": "priority:Medium+" },
-    { "type": "assert", "assert": "not_contains", "value": "due:none" },
-    { "type": "assert", "assert": "not_contains", "value": "context:none" },
+    { "type": "assert", "assert": "not_contains", "value": "!2+" },
+    { "type": "assert", "assert": "not_contains", "value": "@0" },
+    { "type": "assert", "assert": "not_contains", "value": "##0" },
     { "type": "assert", "assert": "contains", "value": "User authentication" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

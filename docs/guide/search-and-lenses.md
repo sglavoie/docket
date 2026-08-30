@@ -17,8 +17,9 @@ excludes it says `Task is hidden by the active facets` and focuses nothing.
 Find then narrow: the row facets and the sort axis compose with a live
 search, so `f*` applies as an AND gate before scoring exactly like a query
 sigil, and `o*` reorders within a relevance tier only — a description hit never
-floats above a title hit. The population facets (`F*`) still refuse, since
-admitting a project needs a reload rather than a rebuild, and mode switches,
+floats above a title hit. The population facets (`F*`) drop out while the
+projection stands, since admitting a project needs a reload rather than a
+rebuild, and mode switches,
 folds, and reordering still ask you to exit search first. Esc restores the
 pre-search facets and sort wholesale, so a narrowing typed inside the
 projection leaves with it.
@@ -36,6 +37,23 @@ projection leaves with it.
 | `fs` | Toggle open, undeferred work untouched for at least 90 local-calendar days; unavailable in Recent, whose entry clears only Stale and reports `Stale filter cleared: Recent only includes the last 30 days` |
 | `fx` | Clear every facet |
 | `/` | Ranked title, description, checklist, comment, tag, context, attachment, and project search over every scoped nonterminal task, gated by any capture sigils the query carries |
+
+A chord and a typed query are two ways of writing the same narrowing, so the
+title row shows what you narrowed by in the sigil spelling you would have typed:
+`Filters: !2+ #focus @today` rather than a vocabulary of its own. A facet you
+set with `f` and the same narrowing typed into `/` read identically, which is
+also what a saved lens holds.
+
+`f!` writes a threshold and the typed sigil does not: `f!2` means
+`!2+`, medium-or-higher, and typing `!2` alone matches medium exactly. The `+`
+suffix is the whole difference, and it is spelled out in the chip so the chord's
+reading is never implied.
+
+Repeated `##context` names union. A task carries at most one context, so
+intersecting two names could only ever match nothing; `##home ##errand` is the
+work in either place, and repeating the name is not reported as a conflict the
+way it is while you are writing a task. Tags are multi-valued and keep
+intersecting, so `#a #b` still means both.
 
 Results rank title matches first, then each other field in turn, and a result
 whose title does not carry the match says where it came from with a muted
@@ -150,6 +168,16 @@ Each population axis has three states — excluded, included, isolated — and t
 key that selects a state also clears it when pressed again. The two axes compose
 with AND, so `FP` with `FA` names the projects that are both archived and
 parked.
+
+Choosing a project and choosing a population are two different questions. `gp`
+on a row, `%slug` inside a query, and the scope a lens saves all answer the
+first one — which projects this view is over — and they write the same axis, so
+they can never point at different sets. `F` answers the second one: which
+projects exist to be looked at at all, archived and parked included. That is why
+the `F` facets are not available while a search projection is on screen; a
+projection is built over the rows that are loaded, and a facet that changes
+which rows load cannot compose into it. Leave the search and the facet is there
+again.
 
 `Fp`, `FP`, and selecting `parked` inside `F#` are the same switch, so they can
 never disagree about which population is loaded. Inside `F#`, `v` toggles a tag

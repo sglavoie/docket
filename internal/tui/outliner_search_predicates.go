@@ -564,8 +564,19 @@ func (p *searchPredicates) admitsContext(task *models.Task) bool {
 		// positive query refuses it.
 		return len(p.contexts) == 0
 	}
-	for _, prefix := range p.contexts {
-		if !strings.HasPrefix(context, prefix) {
+	// Repeated contexts union. A task carries at most one context, so an
+	// intersection of two names could never admit anything; the join law reads
+	// cardinality, and a single-valued field joins with OR. This is the same
+	// reading fc has always had, now spelled the same way in both places.
+	if len(p.contexts) > 0 {
+		matched := false
+		for _, prefix := range p.contexts {
+			if strings.HasPrefix(context, prefix) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
 			return false
 		}
 	}
@@ -595,7 +606,7 @@ func (p *searchPredicates) admitsDue(task *models.Task) bool {
 func matchesSearchDue(task *models.Task, predicate searchDuePredicate, now time.Time) bool {
 	switch {
 	case predicate.hasBucket:
-		return passesDueDateFilterAt(task, predicate.bucket, now)
+		return dueBucketAdmits(task, predicate.bucket, now)
 	case predicate.hasHourWindow:
 		return task.DueDate != nil && !task.DueDate.After(predicate.window)
 	case predicate.hasDay:

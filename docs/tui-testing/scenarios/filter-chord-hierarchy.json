@@ -18,7 +18,7 @@
     { "type": "key", "label": "keep only tasks with open children", "key": "enter" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Filtering hierarchy: parent" },
-    { "type": "assert", "label": "the hierarchy badge joins the title row", "assert": "contains", "value": "hierarchy:parent" },
+    { "type": "assert", "label": "the hierarchy badge joins the title row", "assert": "contains", "value": "?parent" },
     { "type": "assert", "label": "a task with open children stays", "assert": "contains", "value": "User authentication" },
     { "type": "assert", "label": "a childless task drops", "assert": "not_contains", "value": "Fix redirect loop after logout" },
     { "type": "assert", "assert": "no_layout_issues" },
@@ -27,13 +27,13 @@
     { "type": "key", "key": "h" },
     { "type": "key", "key": "esc" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
-    { "type": "assert", "assert": "contains", "value": "hierarchy:parent" },
+    { "type": "assert", "assert": "contains", "value": "?parent" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "clear every facet with fx", "key": "f" },
     { "type": "key", "key": "x" },
     { "type": "assert", "assert": "status_contains", "value": "Filters cleared" },
-    { "type": "assert", "assert": "not_contains", "value": "hierarchy:parent" },
+    { "type": "assert", "assert": "not_contains", "value": "?parent" },
     { "type": "assert", "assert": "contains", "value": "Fix redirect loop after logout" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

@@ -18,7 +18,7 @@
     { "type": "key", "label": "keep only High-priority tasks", "key": "1" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "status_contains", "value": "Filtering High priority" },
-    { "type": "assert", "assert": "contains", "value": "priority:High+" },
+    { "type": "assert", "assert": "contains", "value": "!1+" },
     { "type": "assert", "assert": "not_contains", "value": "User authentication" },
     { "type": "assert", "assert": "no_layout_issues" },
 

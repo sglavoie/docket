@@ -336,6 +336,7 @@ func TestCaptureLensStateReadsRememberedTreeSortAndDetachesCollections(t *testin
 	outliner.setLensQuery("  ship it  ")
 	outliner.filter.Tags = map[string]bool{"api": true}
 	outliner.projectFilter.Tags = map[string]bool{"client": true}
+	outliner.adoptFilterCarriers()
 	// Due owns its order, so the active sort is default while the user's manual
 	// choice survives in treeSort. The lens owns the remembered one.
 	outliner.sort = NewSortState()

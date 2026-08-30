@@ -76,15 +76,20 @@ func (m *OutlinerModel) revealTask(task *models.Task) {
 
 	m.focusStack = nil
 	m.clearSectionZoom()
-	m.filter = NewFilterState()
 	m.clearSearchProjectionWithoutRestore()
+	// The row facets are replaced wholesale by what the target needs to be
+	// visible: the reveal writes clauses like any other facet, so the carriers,
+	// the chips, and the predicate follow it.
+	clauses := make([]models.QueryClause, 0, 2)
 	if task.IsTerminalState() {
-		states, _ := models.NewWorkflowStateSet(task.State())
-		m.filter.setStateFilter(states, true)
+		clauses = appendFilterClause(clauses, models.QueryFieldState,
+			models.QueryOperatorIs, task.State().String())
 	}
 	if task.IsDeferred() {
-		m.filter.Deferred = true
+		clauses = appendFilterClause(clauses, models.QueryFieldDeferred,
+			models.QueryOperatorPresent, "")
 	}
+	m.replaceFilterClauses(filterQueryTaskFields(), clauses)
 	m.selectOutlinerMode(ModeAll)
 	for i, row := range m.rows {
 		if row.task != nil && row.task.ID == task.ID {

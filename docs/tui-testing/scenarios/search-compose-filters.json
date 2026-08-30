@@ -22,7 +22,7 @@
     { "type": "key", "key": "1" },
     { "type": "assert", "assert": "status_contains", "value": "Filtering High priority" },
     { "type": "assert", "label": "both composed segments are on the title at once", "assert": "contains", "value": "Search: \"login\"" },
-    { "type": "assert", "assert": "contains", "value": "priority:High+" },
+    { "type": "assert", "assert": "contains", "value": "!1+" },
     { "type": "assert", "assert": "contains", "value": "Sort:" },
     { "type": "assert", "label": "the facet is an AND gate over the query", "assert": "not_contains", "value": "Build login form" },
     { "type": "assert", "assert": "not_contains", "value": "Explore social login" },
@@ -36,7 +36,7 @@
 
     { "type": "key", "label": "Esc restores the pre-search facets and sort wholesale", "key": "esc" },
     { "type": "assert", "assert": "not_contains", "value": "Search:" },
-    { "type": "assert", "assert": "not_contains", "value": "priority:High+" },
+    { "type": "assert", "assert": "not_contains", "value": "!1+" },
     { "type": "assert", "assert": "not_contains", "value": "Sort:" },
     { "type": "assert", "assert": "contains", "value": "Build login form" },
     { "type": "assert", "assert": "contains", "value": "Triage support inbox" },

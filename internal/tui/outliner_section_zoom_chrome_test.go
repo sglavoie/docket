@@ -34,6 +34,7 @@ func TestZoomEmptiedUnderAFilterKeepsTheSectionCause(t *testing.T) {
 	zoomIntoSection(t, out, models.StateGroupBacklog.Label())
 
 	out.filter.Tags = map[string]bool{"missing": true}
+	out.adoptFilterCarriers()
 	out.crossForceRebuild = true
 	out.rebuildRows()
 	out.clampCursor()
@@ -114,6 +115,7 @@ func TestZoomTitleNamesTheSectionAndLosesItFirstAtNarrowWidth(t *testing.T) {
 	app := zoomChromeApp(t)
 	out := app.crossOutliner
 	out.filter.Priority = models.PriorityHigh
+	out.adoptFilterCarriers()
 	out.crossForceRebuild = true
 	out.rebuildRows()
 	zoomIntoSection(t, out, models.StateGroupBacklog.Label())
@@ -133,7 +135,7 @@ func TestZoomTitleNamesTheSectionAndLosesItFirstAtNarrowWidth(t *testing.T) {
 
 	// The Context region is joined before it is fitted, so the trailing Section
 	// segment is cut rather than dropped: the filter segment ahead of it survives.
-	const narrow = 56
+	const narrow = 42
 	title := out.buildOutlinerTitleLine(narrow)
 	if lipgloss.Width(title) > narrow {
 		t.Fatalf("narrow title rendered %d cells: %q", lipgloss.Width(title), ansi.Strip(title))

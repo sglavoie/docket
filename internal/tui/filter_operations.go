@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -97,17 +98,14 @@ func (m *AppModel) registerFilterOperations() error {
 			return err
 		}
 	}
-	// One closure body serves both families, so the search clause must be a
-	// parameter rather than a deletion: row facets (f*) now compose with a search
-	// projection, while population facets (F*) still refuse. Sharing one body
-	// with the clause dropped would advertise an F* key its handler declines.
-	register := func(
-		descriptors []OperationDescriptor,
-		handler OperationHandler,
-		refusesSearchProjection bool,
-	) error {
+	// One closure body serves both families. Which of them refuses a search
+	// projection is not declared here: it is read off the clause fields the
+	// operation writes, so a key is advertised exactly when its handler will
+	// accept it.
+	register := func(descriptors []OperationDescriptor, handler OperationHandler) error {
 		for _, descriptor := range descriptors {
 			stale := descriptor.ID == operationFilterStale
+			refusesSearchProjection := filterOperationRequiresReload(descriptor.ID)
 			descriptor.Applicability = func(ctx CommandContext) bool {
 				if !coreOutlinerApplicability(ctx) {
 					return false
@@ -134,144 +132,290 @@ func (m *AppModel) registerFilterOperations() error {
 		}
 		return nil
 	}
-	if err := register(filterOperationDescriptors(), m.executeFilterOperation, false); err != nil {
+	if err := register(filterOperationDescriptors(), m.executeFilterOperation); err != nil {
 		return err
 	}
-	// A population facet decides which projects load at all, so applying one needs
-	// a reload rather than a rebuild, and projectFilterReloadCmd lands the cursor
-	// at the top of a freshly loaded scope. That is why F* keeps refusing.
-	return register(projectFilterOperationDescriptors(), m.executeProjectFilterOperation, true)
+	return register(projectFilterOperationDescriptors(), m.executeProjectFilterOperation)
 }
 
-//nolint:gocyclo // The facet handler keeps every filter mutation in one auditable switch.
+// filterOperationFields names the clause fields one facet owns. A facet writes
+// these fields outright and nothing else, so applying it can neither preserve a
+// value it just replaced nor disturb a facet beside it.
+func filterOperationFields(id OperationID) []models.QueryField {
+	switch id {
+	case operationFilterPriority:
+		return []models.QueryField{models.QueryFieldPriority}
+	case operationFilterStates:
+		return []models.QueryField{models.QueryFieldState}
+	case operationFilterTags, operationFilterReview:
+		return []models.QueryField{models.QueryFieldTag}
+	case operationFilterContexts:
+		return []models.QueryField{models.QueryFieldContext}
+	case operationFilterDue:
+		// The due picker's deferred row and its four bucket rows are one facet:
+		// choosing either clears the other, which is only true if both fields
+		// belong to the same operation.
+		return []models.QueryField{models.QueryFieldDue, models.QueryFieldDeferred}
+	case operationFilterCompletionAge:
+		// The cleanup facet installs the terminal-state predicate itself, which is
+		// why commonFilterFacetCount reads the pair as one clearable facet.
+		return []models.QueryField{models.QueryFieldCompleted, models.QueryFieldState}
+	case operationFilterHierarchy:
+		return filterQueryHierarchyFields
+	case operationFilterStale:
+		return []models.QueryField{models.QueryFieldStale}
+	case operationFilterClear:
+		return filterQueryTaskFields()
+	case operationFilterProjectTags:
+		// The F# picker carries the parked row in the same list of names, so the
+		// tag restriction and the parked axis move together.
+		return []models.QueryField{models.QueryFieldProjectTag, models.QueryFieldParked}
+	case operationFilterShowParked, operationFilterOnlyParked:
+		return []models.QueryField{models.QueryFieldParked}
+	case operationFilterIncludeArchived, operationFilterOnlyArchived:
+		return []models.QueryField{models.QueryFieldArchived}
+	case operationFilterProjectClear:
+		return filterQueryPopulationFields
+	default:
+		return nil
+	}
+}
+
+// filterOperationRequiresReload reports whether applying a facet reloads the
+// population rather than rebuilding the rows. It is computed from the fields the
+// operation writes rather than declared beside its handler, so a facet cannot be
+// registered claiming one obligation and implemented honoring another.
+func filterOperationRequiresReload(id OperationID) bool {
+	for _, field := range filterOperationFields(id) {
+		if models.QueryFieldRequiresReload(field) {
+			return true
+		}
+	}
+	return false
+}
+
+// filterClauseEdit is what one facet constructor produces: the clauses its own
+// fields now carry, and the status the surface reports. Narrowing nothing is an
+// empty clause list, not a separate clearing verb.
+type filterClauseEdit struct {
+	clauses []models.QueryClause
+	status  string
+	// declined reports a facet that changed nothing and only has something to
+	// say, such as a clear with nothing to clear.
+	declined bool
+}
+
+// applyFilterClauseEdit is the one path every facet mutation takes. It writes the
+// operation's fields into the Outliner's single filter query and lets both
+// carriers be re-derived from the result, so a picker, a chip, a count, and the
+// row predicate cannot disagree about what is filtered.
+//
+// A population facet decides which projects load at all, so applying one needs a
+// reload rather than a rebuild, and projectFilterReloadCmd lands the cursor at
+// the top of a freshly loaded scope. That same obligation is why it refuses under
+// a search projection: the projection is scored over the snapshot the reload
+// replaces.
+func (m *AppModel) applyFilterClauseEdit(id OperationID, edit filterClauseEdit) OperationHandlerResult {
+	out := m.crossOutliner
+	if out == nil {
+		return OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
+	}
+	reload := filterOperationRequiresReload(id)
+	if reload && out.hasSearchProjection() {
+		return OperationHandlerResult{Status: "Exit search before changing filters"}
+	}
+	if edit.declined {
+		return OperationHandlerResult{Status: edit.status}
+	}
+	out.replaceFilterClauses(filterOperationFields(id), edit.clauses)
+	if reload {
+		return OperationHandlerResult{
+			Message: OperationCommandResultMsg{Cmd: m.projectFilterReloadCmd(edit.status)},
+		}
+	}
+	out.crossForceRebuild = true
+	rebuildOutlinerPreservingCursor(out)
+	return OperationHandlerResult{Status: edit.status}
+}
+
 func (m *AppModel) executeFilterOperation(invocation OperationInvocation) OperationHandlerResult {
 	out := m.crossOutliner
 	if out == nil {
 		return OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
 	}
-	filter := &out.filter.CommonFilterState
+	edit, err := out.rowFilterClauseEdit(invocation)
+	if err != nil {
+		return OperationHandlerResult{Err: err}
+	}
+	return m.applyFilterClauseEdit(invocation.Descriptor.ID, edit)
+}
 
-	var status string
+// rowFilterClauseEdit is one clause constructor per row facet. Each reads the
+// picker's value and spells what its fields now say; none of them mutates
+// anything, so the whole f chord has exactly one writer.
+//
+//nolint:gocyclo // One constructor per facet, kept together so the set is auditable.
+func (m *OutlinerModel) rowFilterClauseEdit(invocation OperationInvocation) (filterClauseEdit, error) {
 	switch invocation.Descriptor.ID {
 	case operationFilterPriority:
 		threshold, ok := invocation.Value.(int)
 		if !ok || threshold < 0 || threshold > models.PriorityMax {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid priority threshold")}
+			return filterClauseEdit{}, fmt.Errorf("invalid priority threshold")
 		}
-		filter.Priority = threshold
 		if threshold == 0 {
-			status = "Priority filter cleared"
-		} else {
-			status = "Filtering " + priorityThresholdLabel(threshold)
+			return filterClauseEdit{status: "Priority filter cleared"}, nil
 		}
+		return filterClauseEdit{
+			clauses: filterClauseList(models.QueryFieldPriority,
+				models.QueryOperatorAtLeast, strconv.Itoa(threshold)),
+			status: "Filtering " + priorityThresholdLabel(threshold),
+		}, nil
 	case operationFilterDue:
 		if _, deferred := invocation.Value.(filterDeferredOnly); deferred {
-			filter.DueDate = DueDateAll
-			filter.Deferred = true
-			status = "Filtering deferred tasks"
-			break
+			return filterClauseEdit{
+				clauses: filterClauseList(models.QueryFieldDeferred, models.QueryOperatorPresent, ""),
+				status:  "Filtering deferred tasks",
+			}, nil
 		}
 		due, ok := invocation.Value.(DueDateFilter)
 		if !ok {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid due-date filter value")}
+			return filterClauseEdit{}, fmt.Errorf("invalid due-date filter value")
 		}
-		filter.DueDate = due
-		filter.Deferred = false
-		status = "Filtering due: " + dueDateFilterLabel(due)
+		return filterClauseEdit{
+			clauses: dueFilterClauses(due),
+			status:  "Filtering due: " + dueDateFilterLabel(due),
+		}, nil
 	case operationFilterCompletionAge:
 		age, ok := invocation.Value.(CompletionAgeFilter)
 		if !ok || age < CompletionAgeAll || age > CompletionAge90Days {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid completion-age filter value")}
+			return filterClauseEdit{}, fmt.Errorf("invalid completion-age filter value")
 		}
-		completedStates, err := models.NewWorkflowStateSet(models.StateDone, models.StateCanceled)
-		if err != nil {
-			return OperationHandlerResult{Err: fmt.Errorf("build completed state filter: %w", err)}
-		}
-		filter.setStateFilter(completedStates, true)
-		filter.setCompletionAgeFilter(age)
-		status = "Filtering completed: " + completionAgeFilterLabel(age)
+		return filterClauseEdit{
+			clauses: completionAgeClauses(age),
+			status:  "Filtering completed: " + completionAgeFilterLabel(age),
+		}, nil
 	case operationFilterHierarchy:
 		hierarchy, ok := invocation.Value.(HierarchyFilter)
 		if !ok || hierarchy < HierarchyParent || hierarchy > HierarchyLeaf {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid hierarchy filter value")}
+			return filterClauseEdit{}, fmt.Errorf("invalid hierarchy filter value")
 		}
-		filter.Hierarchy = hierarchy
-		status = "Filtering hierarchy: " + hierarchyFilterLabel(hierarchy)
+		return filterClauseEdit{
+			clauses: hierarchyFilterClauses(hierarchy),
+			status:  "Filtering hierarchy: " + hierarchyFilterLabel(hierarchy),
+		}, nil
 	case operationFilterStates:
 		names, ok := invocation.Value.([]string)
 		if !ok {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid state filter value")}
+			return filterClauseEdit{}, fmt.Errorf("invalid state filter value")
 		}
-		states := make([]models.WorkflowState, 0, len(names))
+		clauses := make([]models.QueryClause, 0, len(names))
 		for _, name := range names {
-			state := models.WorkflowState(name)
-			if !state.IsValid() {
-				return OperationHandlerResult{Err: fmt.Errorf("invalid workflow state %q", name)}
+			if !models.WorkflowState(name).IsValid() {
+				return filterClauseEdit{}, fmt.Errorf("invalid workflow state %q", name)
 			}
-			states = append(states, state)
+			clauses = appendFilterClause(clauses, models.QueryFieldState,
+				models.QueryOperatorIs, name)
 		}
-		set, err := models.NewWorkflowStateSet(states...)
-		if err != nil {
-			return OperationHandlerResult{Err: err}
-		}
-		filter.setStateFilter(set, len(states) > 0)
-		status = fmt.Sprintf("Filtering %d state(s)", len(states))
-		if len(states) == 0 {
+		status := fmt.Sprintf("Filtering %d state(s)", len(names))
+		if len(names) == 0 {
 			status = "State filter cleared"
 		}
+		return filterClauseEdit{clauses: clauses, status: status}, nil
 	case operationFilterTags:
 		names, ok := invocation.Value.([]string)
 		if !ok {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid tag filter value")}
+			return filterClauseEdit{}, fmt.Errorf("invalid tag filter value")
 		}
-		tags := make(map[string]bool, len(names))
+		clauses := make([]models.QueryClause, 0, len(names))
 		for _, name := range names {
-			tags[name] = true
+			clauses = appendFilterClause(clauses, models.QueryFieldTag,
+				models.QueryOperatorIs, name)
 		}
-		filter.Tags = tags
-		status = fmt.Sprintf("Filtering %d tag(s)", len(names))
+		status := fmt.Sprintf("Filtering %d tag(s)", len(names))
 		if len(names) == 0 {
 			status = "Tag filter cleared"
 		}
+		return filterClauseEdit{clauses: clauses, status: status}, nil
 	case operationFilterContexts:
 		names, ok := invocation.Value.([]string)
 		if !ok {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid context filter value")}
+			return filterClauseEdit{}, fmt.Errorf("invalid context filter value")
 		}
-		applyContextFilterValue(filter, names)
-		parts := contextFilterParts(filter)
-		status = "Context filter cleared"
-		if len(parts) > 0 {
-			status = "Filtering context: " + strings.Join(parts, " ")
+		clauses := contextFilterClauses(names)
+		status := "Context filter cleared"
+		if len(clauses) > 0 {
+			status = "Filtering context: " + strings.Join(filterClauseParts(clauses), " ")
 		}
+		return filterClauseEdit{clauses: clauses, status: status}, nil
 	case operationFilterReview:
-		if filter.Tags == nil {
-			filter.Tags = make(map[string]bool)
-		}
-		if filter.Tags[reviewTaskTag] {
-			delete(filter.Tags, reviewTaskTag)
-			status = "Review filter cleared"
-		} else {
-			filter.Tags[reviewTaskTag] = true
-			status = "Filtering Review"
-		}
+		return m.reviewFilterClauseEdit(), nil
 	case operationFilterStale:
-		filter.Stale = !filter.Stale
-		if filter.Stale {
-			status = "Filtering Stale"
-		} else {
-			status = "Stale filter cleared"
+		if m.filter.Stale {
+			return filterClauseEdit{status: "Stale filter cleared"}, nil
 		}
+		return filterClauseEdit{
+			clauses: filterClauseList(models.QueryFieldStale, models.QueryOperatorPresent, ""),
+			status:  "Filtering Stale",
+		}, nil
 	case operationFilterClear:
-		clearCommonFilters(filter)
-		status = "Filters cleared"
+		return filterClauseEdit{status: "Filters cleared"}, nil
 	default:
-		return OperationHandlerResult{Err: fmt.Errorf("unknown filter operation %s", invocation.Descriptor.ID)}
+		return filterClauseEdit{}, fmt.Errorf("unknown filter operation %s", invocation.Descriptor.ID)
 	}
+}
 
-	out.crossForceRebuild = true
-	rebuildOutlinerPreservingCursor(out)
-	return OperationHandlerResult{Status: status}
+// completionAgeClauses spells the cleanup facet. It carries the terminal-state
+// predicate itself, because a completion age asked of open work would name a
+// population that cannot answer it.
+func completionAgeClauses(age CompletionAgeFilter) []models.QueryClause {
+	clauses := filterClauseList(models.QueryFieldState,
+		models.QueryOperatorIs, string(models.StateDone))
+	clauses = appendFilterClause(clauses, models.QueryFieldState,
+		models.QueryOperatorIs, string(models.StateCanceled))
+	if days := age.days(); days > 0 {
+		return appendFilterClause(clauses, models.QueryFieldCompleted,
+			models.QueryOperatorAtLeast, fmt.Sprintf("%dd", days))
+	}
+	return appendFilterClause(clauses, models.QueryFieldCompleted,
+		models.QueryOperatorPresent, "")
+}
+
+// contextFilterClauses spells one context picker result. The no-context
+// pseudo-entry travels in the same list of names and becomes the none operator,
+// so the facet needs no second value channel.
+func contextFilterClauses(names []string) []models.QueryClause {
+	clauses := make([]models.QueryClause, 0, len(names))
+	for _, name := range names {
+		if name == noContextFilterKey {
+			clauses = appendFilterClause(clauses, models.QueryFieldContext,
+				models.QueryOperatorNone, "")
+			continue
+		}
+		clauses = appendFilterClause(clauses, models.QueryFieldContext,
+			models.QueryOperatorIs, name)
+	}
+	return clauses
+}
+
+// reviewFilterClauseEdit toggles the review tag inside the tag facet, leaving
+// every other tag the picker chose in place.
+func (m *OutlinerModel) reviewFilterClauseEdit() filterClauseEdit {
+	current := queryClausesForField(m.filterQuery, models.QueryFieldTag)
+	kept := make([]models.QueryClause, 0, len(current)+1)
+	found := false
+	for _, clause := range current {
+		if clause.Value == reviewTaskTag {
+			found = true
+			continue
+		}
+		kept = append(kept, clause)
+	}
+	if found {
+		return filterClauseEdit{clauses: kept, status: "Review filter cleared"}
+	}
+	kept = appendFilterClause(kept, models.QueryFieldTag,
+		models.QueryOperatorIs, reviewTaskTag)
+	return filterClauseEdit{clauses: kept, status: "Filtering Review"}
 }
 
 func priorityThresholdLabel(threshold int) string {
@@ -522,13 +666,14 @@ func (m *AppModel) prospectiveStateFilterCounts() map[models.WorkflowState]int {
 		return counts
 	}
 
-	filter := copyCommonFilterState(&m.crossOutliner.filter.CommonFilterState)
-	states, err := models.NewWorkflowStateSet(models.AllWorkflowStates()...)
-	if err != nil {
-		return counts
+	clauses := make([]models.QueryClause, 0, len(models.AllWorkflowStates()))
+	for _, state := range models.AllWorkflowStates() {
+		clauses = appendFilterClause(clauses, models.QueryFieldState,
+			models.QueryOperatorIs, state.String())
 	}
-	filter.setStateFilter(states, true)
-	return prospectiveOutlinerStateCounts(m.crossOutliner, filter)
+	query := queryWithFields(m.crossOutliner.filterQuery,
+		[]models.QueryField{models.QueryFieldState}, clauses)
+	return prospectiveOutlinerStateCounts(m.crossOutliner, query)
 }
 
 // prospectiveOutlinerStateCounts runs the canonical row projection on an
@@ -537,15 +682,18 @@ func (m *AppModel) prospectiveStateFilterCounts() map[models.WorkflowState]int {
 // pipeline preserves all actual scope and visibility rules.
 func prospectiveOutlinerStateCounts(
 	outliner *OutlinerModel,
-	filter *CommonFilterState,
+	query models.Query,
 ) map[models.WorkflowState]int {
 	counts := make(map[models.WorkflowState]int, len(models.AllWorkflowStates()))
-	if outliner == nil || filter == nil {
+	if outliner == nil {
 		return counts
 	}
 
 	projection := *outliner
-	projection.filter.CommonFilterState = *copyCommonFilterState(filter)
+	// The copy takes the prospective narrowing through the one writer, so its
+	// carriers are derived from the query the count is asked about rather than
+	// the one the Outliner is still showing.
+	projection.setFilterQuery(query)
 	projection.rows = nil
 	projection.OpenAtTask = nil
 	projection.expandedNodes = make(map[TaskIdentity]bool)

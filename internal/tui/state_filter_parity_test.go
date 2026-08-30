@@ -83,13 +83,18 @@ func TestStateFilter_MatchesAnySelectedStateAndExplicitEmptyMatchesNone(t *testi
 		}
 	}
 
+	// An explicitly empty state set narrows nothing. The facets are clauses now,
+	// and the query has no match-nothing term to spell one with: an empty set
+	// mints no state clause, so the axis is simply absent from the predicate. No
+	// key can author this carrier — the states picker deactivates the facet on an
+	// empty result — so the only way to reach it is to write the field directly.
 	filter.setStateFilter(models.WorkflowStateSet{}, true)
 	if !hasActiveCommonFilters(&filter) {
-		t.Fatal("explicit empty state set must remain an active match-nothing filter")
+		t.Fatal("explicit empty state set must remain an active facet for the chrome")
 	}
 	for _, task := range project.Tasks {
-		if passesCommonFilters(task, &filter) {
-			t.Errorf("explicit empty state set unexpectedly matched task %q", task.ID)
+		if !passesCommonFilters(task, &filter) {
+			t.Errorf("explicit empty state set narrowed away task %q", task.ID)
 		}
 	}
 }
@@ -104,9 +109,10 @@ func TestStateFilter_ActiveClearAndBadge(t *testing.T) {
 		t.Fatal("State filter should count as an active common filter")
 	}
 
+	// One state is one clause, so the badge carries one $state chip per member.
 	parts := commonFilterParts(&filter)
-	if !containsString(parts, "state:backlog,doing") {
-		t.Errorf("commonFilterParts()=%v, want canonical multi-state chip", parts)
+	if !containsString(parts, "$backlog") || !containsString(parts, "$doing") {
+		t.Errorf("commonFilterParts()=%v, want a chip per selected state", parts)
 	}
 	clearCommonFilters(&filter)
 	if filter.hasStateFilter() {

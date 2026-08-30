@@ -312,6 +312,7 @@ func TestTUIStateMachine_OutlinerSelectionSurvivesVisibilityRebuilds(t *testing.
 		}
 
 		outliner.filter.setStateFilter(testWorkflowStateSet(models.StateBacklog), true)
+		outliner.adoptFilterCarriers()
 		outliner.rebuildRows()
 
 		if !outliner.multiSelectMode || outliner.SelectedCount() != 2 {
@@ -333,6 +334,7 @@ func TestTUIStateMachine_OutlinerSelectionSurvivesVisibilityRebuilds(t *testing.
 		}
 
 		outliner.filter.setStateFilter(testWorkflowStateSet(models.StateBacklog), true)
+		outliner.adoptFilterCarriers()
 		outliner.crossForceRebuild = true
 		outliner.crossProjectRebuildRows()
 

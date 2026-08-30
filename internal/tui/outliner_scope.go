@@ -335,7 +335,7 @@ func (m *OutlinerModel) resetToGlobalAll() {
 	m.expandedNodes = make(map[TaskIdentity]bool)
 	m.expandedChecklists = make(map[TaskIdentity]bool)
 	m.sectionToggleRestore = nil
-	clearCommonFilters(&m.filter.CommonFilterState)
+	m.replaceFilterClauses(filterQueryTaskFields(), nil)
 	m.sort.Reset()
 	m.treeSort.Reset()
 	if m.multiSelectMode {

@@ -115,6 +115,7 @@ func TestEnteringRecentClearsOnlyStaleFacet(t *testing.T) {
 			outliner.filter.Stale = true
 			outliner.projectFilter.Tags = map[string]bool{"client": true}
 			outliner.projectFilter.ParkedMode = projectPopulationInclude
+			outliner.adoptFilterCarriers()
 
 			test.enter(outliner)
 

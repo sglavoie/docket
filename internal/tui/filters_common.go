@@ -1,15 +1,11 @@
 package tui
 
 import (
-	"fmt"
 	"maps"
 	"slices"
-	"sort"
 	"strings"
-	"time"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/util"
 )
 
 // noContextFilterKey is the pseudo-entry the context picker offers for tasks
@@ -100,108 +96,16 @@ func (f *CommonFilterState) setCompletionAgeFilter(filter CompletionAgeFilter) {
 	f.completionAgeSet = true
 }
 
-// passesCommonFiltersAt checks whether a task passes the shared filter facets
-// at one fixed instant. Workflow-state filtering is explicit and derives only
-// from the task's canonical lifecycle state.
+// The row predicate this cache stands for is models.Query.Admits, reached
+// through OutlinerModel.rowPredicateQuery. There is no second evaluation of the
+// facets here: a task is admitted by the clauses the cache was derived from, so
+// a facet, a chip, and a saved lens cannot disagree about what a filter means.
 //
-// The hierarchy facet is deliberately absent: it needs the scope's
-// open-direct-child census, and the task arriving here can be a promotion-pass
-// clone whose Children were rewritten. Evaluating it here would make "parent"
-// mean one thing in All and another in a flat mode. It lives in
-// passesHierarchyFilter instead.
-func passesCommonFiltersAt(
-	task *models.Task,
-	f *CommonFilterState,
-	now time.Time,
-) bool {
-	if f.hasStateFilter() && !f.States.Contains(task.State()) {
-		return false
-	}
-	if f.hasCompletionAgeFilter() && !passesCompletionAgeFilterAt(task, f.CompletionAge, now) {
-		return false
-	}
-	if f.Priority > 0 && models.EffectivePriority(task.Priority) > f.Priority {
-		return false
-	}
-	if f.Stale && !taskIsStale(task, now) {
-		return false
-	}
-	if f.Deferred && !task.IsDeferredAt(now) {
-		return false
-	}
-	if f.Pinned && !task.Pinned {
-		return false
-	}
-	if len(f.Tags) > 0 {
-		for tag := range f.Tags {
-			if !task.HasTag(tag) {
-				return false
-			}
-		}
-	}
-	if !passesContextFilter(task, f) {
-		return false
-	}
-	if !passesDueDateFilterAt(task, f.DueDate, now) {
-		return false
-	}
-	return true
-}
-
-// passesContextFilter applies the context facet. Its names compose with OR
-// because a task carries at most one context, so the no-context pseudo-entry is
-// simply one more admitted alternative rather than a second facet.
-func passesContextFilter(task *models.Task, f *CommonFilterState) bool {
-	if len(f.Contexts) == 0 && !f.NoContext {
-		return true
-	}
-	if f.NoContext && task.Context == "" {
-		return true
-	}
-	for name := range f.Contexts {
-		if task.HasContext(name) {
-			return true
-		}
-	}
-	return false
-}
-
-func passesCompletionAgeFilterAt(task *models.Task, filter CompletionAgeFilter, now time.Time) bool {
-	if task.CompletedAt == nil || task.CompletedAt.IsZero() {
-		return false
-	}
-	threshold := filter.days()
-	if threshold == 0 {
-		return true
-	}
-	completedLocal := task.CompletedAt.In(now.Location())
-	return util.DaysBetween(completedLocal, now) >= threshold
-}
-
-func passesDueDateFilterAt(task *models.Task, filter DueDateFilter, now time.Time) bool {
-	switch filter {
-	case DueDateOverdue:
-		if task.DueDate == nil || task.IsTerminalState() {
-			return false
-		}
-		if task.DueHasTime() {
-			return task.DueDate.Before(now)
-		}
-		return util.DaysBetween(now, *task.DueDate) < 0
-	case DueDateToday:
-		return task.DueDate != nil && util.DaysBetween(now, *task.DueDate) == 0
-	case DueDateThisWeek:
-		if task.DueDate == nil {
-			return false
-		}
-		days := util.DaysBetween(now, *task.DueDate)
-		return days >= 0 && days < 7
-	case DueDateNone:
-		return task.DueDate == nil
-	default:
-		return true
-	}
-}
+// The hierarchy facet is the one axis Admits does not answer for the Outliner:
+// it needs the scope's open-direct-child census, and the task arriving at the
+// predicate can be a promotion-pass clone whose Children were rewritten.
+// Evaluating it against the handed-over tree would make "parent" mean one thing
+// in All and another in a flat mode, so passesHierarchyFilter answers it.
 
 // hasActiveCommonFilters returns true if any common filter is non-default.
 func hasActiveCommonFilters(f *CommonFilterState) bool {
@@ -270,85 +174,11 @@ func completionAgeOwnsTerminalStates(f *CommonFilterState) bool {
 	return err == nil && f.States.Equal(terminal)
 }
 
-// clearCommonFilters resets all common filters to defaults.
-func clearCommonFilters(f *CommonFilterState) {
-	f.States = models.WorkflowStateSet{}
-	f.statesSet = false
-	f.Priority = 0
-	f.Tags = make(map[string]bool)
-	f.Contexts = make(map[string]bool)
-	f.NoContext = false
-	f.DueDate = DueDateAll
-	f.CompletionAge = CompletionAgeAll
-	f.completionAgeSet = false
-	f.Hierarchy = HierarchyAll
-	f.Stale = false
-	f.Deferred = false
-	f.Pinned = false
-}
-
-// commonFilterParts returns the list of active filter description strings.
+// commonFilterParts returns the active row facets as chrome chips. The chips are
+// the clauses' own canonical sigil text, so what the badge shows is spelled the
+// way the same narrowing is typed into search and saved into a lens.
 func commonFilterParts(f *CommonFilterState) []string {
-	var parts []string
-
-	if f.Priority > 0 {
-		parts = append(parts, "priority:"+models.PriorityName(f.Priority)+"+")
-	}
-	if f.hasStateFilter() {
-		states := f.States.Values()
-		stateNames := make([]string, len(states))
-		for i, state := range states {
-			stateNames[i] = string(state)
-		}
-		value := "none"
-		if len(stateNames) > 0 {
-			value = strings.Join(stateNames, ",")
-		}
-		parts = append(parts, "state:"+value)
-	}
-	if f.hasCompletionAgeFilter() {
-		if days := f.CompletionAge.days(); days > 0 {
-			parts = append(parts, fmt.Sprintf("completed:%dd+", days))
-		} else {
-			parts = append(parts, "completed:all")
-		}
-	}
-	if len(f.Tags) > 0 {
-		tagNames := make([]string, 0, len(f.Tags))
-		for tag := range f.Tags {
-			tagNames = append(tagNames, tag)
-		}
-		sort.Strings(tagNames)
-		for i, tag := range tagNames {
-			tagNames[i] = "#" + tag
-		}
-		parts = append(parts, strings.Join(tagNames, " "))
-	}
-	parts = append(parts, contextFilterParts(f)...)
-	switch f.DueDate {
-	case DueDateOverdue:
-		parts = append(parts, "due:overdue")
-	case DueDateToday:
-		parts = append(parts, "due:today")
-	case DueDateThisWeek:
-		parts = append(parts, "due:week")
-	case DueDateNone:
-		parts = append(parts, "due:none")
-	default:
-	}
-	if f.Hierarchy != HierarchyAll {
-		parts = append(parts, "hierarchy:"+hierarchyFilterLabel(f.Hierarchy))
-	}
-	if f.Stale {
-		parts = append(parts, "stale")
-	}
-	if f.Deferred {
-		parts = append(parts, "deferred")
-	}
-	if f.Pinned {
-		parts = append(parts, "pinned")
-	}
-	return parts
+	return filterClauseParts(commonFilterClauses(f))
 }
 
 // CollectTagNamesForProject returns sorted unique tag names from the project's
@@ -377,25 +207,6 @@ func CollectContextNamesForProject(project *models.Project) []string {
 	return slices.Sorted(result)
 }
 
-// contextFilterParts renders the context facet as chrome chips. The names wear
-// the ## sigil they answer to on the capture, edit, and search surfaces, so a
-// chip cannot be read as the # tag facet above it.
-func contextFilterParts(f *CommonFilterState) []string {
-	var parts []string
-	if len(f.Contexts) > 0 {
-		names := make([]string, 0, len(f.Contexts))
-		for name := range f.Contexts {
-			names = append(names, "##"+name)
-		}
-		sort.Strings(names)
-		parts = append(parts, strings.Join(names, " "))
-	}
-	if f.NoContext {
-		parts = append(parts, "context:none")
-	}
-	return parts
-}
-
 // collectContextNamesForProjects returns the sorted context vocabulary in use
 // across a set of projects. It reads the same BuildTagFacetList census the fc
 // picker takes its counts from, so the names a picker offers and the counts
@@ -408,23 +219,6 @@ func collectContextNamesForProjects(projects []*models.Project) []string {
 		}
 	}
 	return names
-}
-
-// applyContextFilterValue replaces the context facets from one picker result.
-// The no-context pseudo-entry travels in the same list of names so the picker
-// needs no second value channel, mirroring the project picker's untagged row.
-func applyContextFilterValue(f *CommonFilterState, names []string) {
-	contexts := make(map[string]bool, len(names))
-	noContext := false
-	for _, name := range names {
-		if name == noContextFilterKey {
-			noContext = true
-			continue
-		}
-		contexts[name] = true
-	}
-	f.Contexts = contexts
-	f.NoContext = noContext
 }
 
 func tagNamesFromInfos(infos []TagInfo) []string {

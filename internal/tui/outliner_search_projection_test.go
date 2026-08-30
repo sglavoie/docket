@@ -63,6 +63,7 @@ func TestScopeWideSearchIgnoresModeAndFoldsButHonorsScopeAndFacets(t *testing.T)
 	// list without disturbing its order. Only the low-priority task clears the
 	// threshold: an unset priority is effectively below Low.
 	outliner.filter.Priority = models.PriorityLow
+	outliner.adoptFilterCarriers()
 	outliner.crossForceRebuild = true
 	outliner.crossProjectRebuildRows()
 	if got := qualifiedVisibleTaskIDs(outliner); !slices.Equal(got,
@@ -116,6 +117,7 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 	outliner := scopeTestOutliner(project)
 	outliner.selectOutlinerMode(ModeInbox)
 	outliner.filter.Tags = map[string]bool{"saved": true}
+	outliner.adoptFilterCarriers()
 	outliner.collapsedSections = map[string]bool{"saved-section": true}
 	outliner.expandedNodes = map[TaskIdentity]bool{{ProjectID: project.ID, TaskID: first.ID}: false}
 	outliner.crossForceRebuild = true
@@ -141,6 +143,7 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 			filterResult, outliner.filter.Priority)
 	}
 	outliner.filter.Tags = map[string]bool{"changed": true}
+	outliner.adoptFilterCarriers()
 	outliner.collapsedSections["changed-section"] = true
 	outliner.expandedNodes[TaskIdentity{ProjectID: project.ID, TaskID: third.ID}] = false
 	if _, _ = outliner.selectOutlinerMode(ModeDue); outliner.primaryMode != ModeInbox {

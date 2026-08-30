@@ -181,7 +181,7 @@ func TestStaleFilterChordTogglesTouchAgeFacet(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	filter := &app.crossOutliner.filter.CommonFilterState
 	now := time.Now()
-	app.crossOutliner.loadedProjects[0].Tasks[0].UpdatedAt = now.AddDate(0, 0, -staleTaskThresholdDays)
+	app.crossOutliner.loadedProjects[0].Tasks[0].UpdatedAt = now.AddDate(0, 0, -models.StaleTaskThresholdDays)
 	for _, task := range app.crossOutliner.loadedProjects[0].Tasks[1:] {
 		task.UpdatedAt = now
 	}
@@ -194,8 +194,8 @@ func TestStaleFilterChordTogglesTouchAgeFacet(t *testing.T) {
 	if visible := visibleOutlinerTaskIDs(app.crossOutliner); !maps.Equal(visible, map[string]bool{"critical": true}) {
 		t.Fatalf("Stale filter visible = %v, want only critical", visible)
 	}
-	if got := commonFilterParts(filter); !slices.Equal(got, []string{"stale"}) {
-		t.Fatalf("Stale badge parts = %v, want stale", got)
+	if got := commonFilterParts(filter); !slices.Equal(got, []string{"?stale"}) {
+		t.Fatalf("Stale badge parts = %v, want ?stale", got)
 	}
 
 	pressFilterChord(t, app, "fs")
@@ -295,6 +295,7 @@ func TestFilteredEmptyStateAdvertisesWorkingClearChord(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	out := app.crossOutliner
 	out.filter.Tags = map[string]bool{"missing": true}
+	out.adoptFilterCarriers()
 	out.crossForceRebuild = true
 	out.rebuildRows()
 
@@ -397,6 +398,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 	t.Run("f@ due date", func(t *testing.T) {
 		app := newFilterChordTestApp(t)
 		app.crossOutliner.filter.DueDate = DueDateThisWeek
+		app.crossOutliner.adoptFilterCarriers()
 
 		cmd := pressFilterChord(t, app, "f@")
 		if cmd == nil {
@@ -434,6 +436,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 			t.Fatal(err)
 		}
 		app.crossOutliner.filter.setStateFilter(set, true)
+		app.crossOutliner.adoptFilterCarriers()
 
 		cmd := pressFilterChord(t, app, "f$")
 		if cmd == nil {
@@ -452,6 +455,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 	t.Run("fa completion age", func(t *testing.T) {
 		app := newFilterChordTestApp(t)
 		app.crossOutliner.filter.setCompletionAgeFilter(CompletionAge30Days)
+		app.crossOutliner.adoptFilterCarriers()
 
 		cmd := pressFilterChord(t, app, "fa")
 		if cmd == nil {
@@ -484,6 +488,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 	t.Run("f# tags", func(t *testing.T) {
 		app := newFilterChordTestApp(t)
 		app.crossOutliner.filter.Tags = map[string]bool{"deep": true}
+		app.crossOutliner.adoptFilterCarriers()
 
 		cmd := pressFilterChord(t, app, "f#")
 		if cmd == nil {
@@ -532,11 +537,13 @@ func TestFilterStatePickerShowsProspectiveCountsFromOtherActiveFilters(t *testin
 	outliner.loadedProjects = []*models.Project{project}
 	outliner.filter.Priority = 2
 	outliner.filter.Tags = map[string]bool{"focus": true}
+	outliner.adoptFilterCarriers()
 	selectedStates, err := models.NewWorkflowStateSet(models.StateWaiting)
 	if err != nil {
 		t.Fatal(err)
 	}
 	outliner.filter.setStateFilter(selectedStates, true)
+	outliner.adoptFilterCarriers()
 	outliner.crossForceRebuild = true
 	outliner.rebuildRows()
 
@@ -780,7 +787,8 @@ func TestFilterCompletionAgeChordSelectsTerminalLifecycleStates(t *testing.T) {
 	if !filter.States.Equal(wantStates) {
 		t.Errorf("fa lifecycle states = %v, want Done and Canceled", filter.States.Values())
 	}
-	if got := commonFilterParts(filter); !slices.Equal(got, []string{"state:done,canceled", "completed:90d+"}) {
+	wantParts := []string{"$canceled", "$done", "?completed:90d"}
+	if got := commonFilterParts(filter); !slices.Equal(got, wantParts) {
 		t.Errorf("fa badge parts = %v, want terminal states and completion age", got)
 	}
 
@@ -992,7 +1000,7 @@ func TestFilterContextOperationAppliesOrSemanticsAcrossNamesAndTheGap(t *testing
 	if gap.Err != nil {
 		t.Fatalf("no-context filter error: %v", gap.Err)
 	}
-	if gap.Status != "Filtering context: context:none" {
+	if gap.Status != "Filtering context: ##0" {
 		t.Errorf("Status = %q, want the gap chip", gap.Status)
 	}
 	if len(filter.Contexts) != 0 || !filter.NoContext {
@@ -1150,7 +1158,7 @@ func TestHierarchyFilterBadgeCountAndClear(t *testing.T) {
 	if result.Err != nil {
 		t.Fatalf("hierarchy filter error: %v", result.Err)
 	}
-	if got := commonFilterParts(filter); !slices.Equal(got, []string{"hierarchy:leaf"}) {
+	if got := commonFilterParts(filter); !slices.Equal(got, []string{"?leaf"}) {
 		t.Errorf("badge parts = %v, want the hierarchy facet alone", got)
 	}
 	if got := commonFilterFacetCount(filter); got != 1 {
@@ -1221,10 +1229,10 @@ func TestPriorityThresholdSemantics(t *testing.T) {
 	filter := newFilterState()
 	filter.Priority = 3
 	badge := commonFilterParts(&filter)
-	if len(badge) != 1 || badge[0] != "priority:Low+" {
-		t.Errorf("badge parts = %v, want [priority:Low+]", badge)
+	if len(badge) != 1 || badge[0] != "!3+" {
+		t.Errorf("badge parts = %v, want [!3+]", badge)
 	}
-	if described := fmt.Sprint(badge); !strings.Contains(described, "priority:Low+") {
+	if described := fmt.Sprint(badge); !strings.Contains(described, "!3+") {
 		t.Errorf("badge %q should describe the threshold", described)
 	}
 }

@@ -1,0 +1,39 @@
+{
+  "name": "project-selection-one-axis",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "the typed sigil selects a project", "key": "/" },
+    { "type": "text", "text": "%client-beta" },
+    { "type": "key", "label": "leave the input while the projection stands", "key": "enter" },
+    { "type": "assert", "assert": "contains", "value": "Beta rollout checklist" },
+    { "type": "assert", "assert": "not_contains", "value": "Alpha migration kickoff" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the population facets answer which projects load, so they are unreachable inside a projection", "key": "F" },
+    { "type": "assert", "assert": "not_contains", "value": "include parked" },
+    { "type": "key", "key": "p" },
+    { "type": "assert", "label": "the projection is untouched by the key the population axis owns", "assert": "contains", "value": "Beta rollout checklist" },
+    { "type": "assert", "assert": "not_contains", "value": "Alpha migration kickoff" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "leave the projection", "key": "esc" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
+
+    { "type": "key", "label": "the scope push is the same selection by another spelling", "key": "n" },
+    { "type": "key", "key": "n" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "g" },
+    { "type": "key", "key": "p" },
+    { "type": "assert", "assert": "contains", "value": "Client Beta · All" },
+    { "type": "assert", "assert": "contains", "value": "Beta rollout checklist" },
+    { "type": "assert", "assert": "not_contains", "value": "Alpha migration kickoff" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the scope is a frame, so Esc gives the whole workspace back", "key": "esc" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

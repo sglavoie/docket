@@ -52,6 +52,10 @@ func (m *OutlinerModel) restorePresentationSnapshot(snapshot outlinerSearchSnaps
 	m.focusStack = slices.Clone(snapshot.focusStack)
 	m.crossFocusStack = slices.Clone(snapshot.crossFocusStack)
 	m.zoom = snapshot.zoom
+	// A captured frame is still carrier-shaped, so the restored facets enter
+	// through the one inverse lift and the narrowing predicate is rebuilt from
+	// them rather than left holding the frame that was replaced.
+	m.adoptFilterCarriers()
 }
 
 // outlinerViewSnapshot is the complete restoration point one lens application
@@ -133,6 +137,7 @@ func (m *OutlinerModel) captureOutlinerViewSnapshot() outlinerViewSnapshot {
 func (m *OutlinerModel) restoreOutlinerViewSnapshot(snapshot outlinerViewSnapshot) {
 	m.restorePresentationSnapshot(snapshot.presentation)
 	m.projectFilter = snapshot.projectFilter.clone()
+	m.adoptFilterCarriers()
 	m.loadedProjects = slices.Clone(snapshot.loadedProjects)
 	m.crossSnapshotReady = snapshot.crossSnapshotReady
 	m.parkedFocusProjectID = snapshot.parkedFocusProjectID

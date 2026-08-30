@@ -329,6 +329,7 @@ func TestCollapseOrMoveToParentReachesTheRowlessFocusRoot(t *testing.T) {
 			if test.promoteTag {
 				grandchild.Tags = []string{"promote"}
 				out.filter.Tags = map[string]bool{"promote": true}
+				out.adoptFilterCarriers()
 				out.rebuildRows()
 			}
 			if !out.moveCursorToIdentity(identity("grandchild")) {
@@ -640,12 +641,14 @@ func TestFocusConstrainsModesFiltersSortFoldsAndSearch(t *testing.T) {
 	insideNested.Tags = []string{"focus-match"}
 	outsideBacklog.Tags = []string{"focus-match"}
 	out.filter.Tags = map[string]bool{"focus-match": true}
+	out.adoptFilterCarriers()
 	out.rebuildRows()
 	if got := visibleOutlinerTaskIDs(out); len(got) != 1 || !got[insideNested.ID] {
 		t.Fatalf("focused tag facet rows = %v, want only %s", got, insideNested.ID)
 	}
 
 	out.filter = NewFilterState()
+	out.adoptFilterCarriers()
 	out.sort = SortState{Field: SortByTitle, Ascending: true}
 	out.treeSort = out.sort
 	out.rebuildRows()

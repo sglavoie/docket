@@ -1,0 +1,34 @@
+{
+  "name": "search-context-repeats-union",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "mint a second context beside the fixture's own", "key": "a" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "text", "text": "Book the venue ##errand" },
+    { "type": "key", "key": "enter" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "wait" },
+
+    { "type": "key", "label": "a task carries one context, so two names union", "key": "/" },
+    { "type": "text", "text": "##platform ##errand" },
+    { "type": "assert", "label": "the context segment is the witness, since the undo hint names the capture", "assert": "contains", "value": "[platform]" },
+    { "type": "assert", "assert": "contains", "value": "[errand]" },
+    { "type": "assert", "label": "the repeat is a union, not a conflict to report", "assert": "not_contains", "value": "duplicate context" },
+    { "type": "assert", "label": "a task carrying neither stays out", "assert": "not_contains", "value": "Triage support inbox" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "one name alone still selects only its own", "key": "backspace" },
+    { "type": "key", "key": "backspace" },
+    { "type": "key", "key": "backspace" },
+    { "type": "key", "key": "backspace" },
+    { "type": "key", "key": "backspace" },
+    { "type": "key", "key": "backspace" },
+    { "type": "key", "key": "backspace" },
+    { "type": "key", "key": "backspace" },
+    { "type": "key", "key": "backspace" },
+    { "type": "assert", "assert": "contains", "value": "[platform]" },
+    { "type": "assert", "assert": "not_contains", "value": "[errand]" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

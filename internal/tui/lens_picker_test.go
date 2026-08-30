@@ -1068,6 +1068,7 @@ func TestLensReplaceConfirmedReturnsToTheRefreshedPicker(t *testing.T) {
 	// Give the live view a facet the saved definition does not carry, so the
 	// replacement is observable.
 	model.crossOutliner.filter.Pinned = true
+	model.crossOutliner.adoptFilterCarriers()
 	pressLens(t, model, "space")
 	pressLens(t, model, "j")
 	pressLens(t, model, "enter")
@@ -1277,6 +1278,7 @@ func TestLensPickerColorSurvivesRenameAndFollowsReplacement(t *testing.T) {
 	// Replacing under the same UUID writes a new definition, which is exactly what
 	// the row must recompute from.
 	model.crossOutliner.filter.Pinned = true
+	model.crossOutliner.adoptFilterCarriers()
 	pressLens(t, model, "space")
 	pressLens(t, model, "j")
 	pressLens(t, model, "enter")

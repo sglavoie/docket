@@ -255,6 +255,7 @@ func TestOrdinarySearchIgnoresTheModeAndTheLensQueryButHonorsFacets(t *testing.T
 	outliner.ApplyOpenOptions(OutlinerOpenOptions{Mode: ModeInbox, SetMode: true})
 	outliner.setLensQuery("%beta")
 	outliner.filter.Pinned = true
+	outliner.adoptFilterCarriers()
 	outliner.crossForceRebuild = true
 	outliner.crossProjectRebuildRows()
 	if got := searchVisibleTaskIDs(outliner); len(got) != 0 {
@@ -264,6 +265,7 @@ func TestOrdinarySearchIgnoresTheModeAndTheLensQueryButHonorsFacets(t *testing.T
 	// The facet is an AND gate over search too, so it is cleared before the query
 	// that must still escape the mode and the lens.
 	outliner.filter.Pinned = false
+	outliner.adoptFilterCarriers()
 	outliner.SetSearchQuery("needle")
 	got := searchVisibleTaskIDs(outliner)
 	for _, id := range []string{"child", "described", "beta-task"} {
@@ -281,12 +283,14 @@ func TestOrdinarySearchIgnoresTheModeAndTheLensQueryButHonorsFacets(t *testing.T
 	// Re-arming the facet while the projection is live gates the same result set:
 	// no fixture task is pinned, so the AND leaves nothing.
 	outliner.filter.Pinned = true
+	outliner.adoptFilterCarriers()
 	outliner.crossForceRebuild = true
 	outliner.crossProjectRebuildRows()
 	if got := searchVisibleTaskIDs(outliner); len(got) != 0 {
 		t.Fatalf("search under the pinned facet = %v, want the facet to gate the ranked result set", got)
 	}
 	outliner.filter.Pinned = false
+	outliner.adoptFilterCarriers()
 
 	outliner.ClearSearch()
 	if got := searchVisibleTaskIDs(outliner); len(got) != 0 {
