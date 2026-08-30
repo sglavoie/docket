@@ -134,8 +134,7 @@ func (c *DomainCoordinator) CommitMachine(machine *MachineState) error {
 	if err != nil {
 		return err
 	}
-	_, err = c.store.saveMachineObserved(machine, rev, true)
-	return err
+	return c.store.saveMachineObserved(machine, rev, true)
 }
 
 // CommitLensDefinitions persists only the portable lens-definition domain under
@@ -148,7 +147,7 @@ func (c *DomainCoordinator) CommitMachine(machine *MachineState) error {
 // workspace transaction and records no undo ledger entry, so a refusal would be
 // unrecoverable from the user's side: there is nothing to replay. Merging is
 // also already this domain's defined reconciliation — MergeNamedLenses is the
-// order-stable, idempotent join adoption uses — so honouring it on a conflicting
+// order-stable, idempotent join adoption uses — so honoring it on a conflicting
 // write adds no second policy. The cost is that a two-way merge cannot express a
 // deletion: a lens deleted here while another machine writes the same file comes
 // back, because the merge cannot tell "deleted by me" from "added by them".

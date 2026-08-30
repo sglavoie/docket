@@ -237,24 +237,24 @@ func TestCommitCatalogRefusesStaleSessionBaseline(t *testing.T) {
 		t.Fatal("bootstrap should have cataloged the system Unfiled project")
 	}
 	domainsB.Catalog.Projects[0].Description = "written by machine B"
-	if err := coordB.CommitCatalog(domainsB.Catalog); err != nil {
-		t.Fatalf("machine B catalog commit: %v", err)
+	if commitErr := coordB.CommitCatalog(domainsB.Catalog); commitErr != nil {
+		t.Fatalf("machine B catalog commit: %v", commitErr)
 	}
 	// Planning has to actually change: an identical rewrite hashes to the same
 	// revision, so it is not a concurrent update at all and A would be right to
 	// accept it.
 	domainsB.Planning.Today = []ProjectTaskLocator{{ProjectID: domainsB.Catalog.Projects[0].ID, TaskID: "b-task"}}
-	if err := coordB.CommitPlanning(domainsB.Planning); err != nil {
-		t.Fatalf("machine B planning commit: %v", err)
+	if commitErr := coordB.CommitPlanning(domainsB.Planning); commitErr != nil {
+		t.Fatalf("machine B planning commit: %v", commitErr)
 	}
 
 	domainsA.Catalog.Projects[0].Description = "written by machine A"
 	domainsA.Planning.Today = []ProjectTaskLocator{{ProjectID: domainsA.Catalog.Projects[0].ID, TaskID: "a-task"}}
-	if err := coordA.CommitCatalog(domainsA.Catalog); !errors.Is(err, ErrStaleObject) {
-		t.Fatalf("machine A catalog commit = %v, want ErrStaleObject", err)
+	if staleErr := coordA.CommitCatalog(domainsA.Catalog); !errors.Is(staleErr, ErrStaleObject) {
+		t.Fatalf("machine A catalog commit = %v, want ErrStaleObject", staleErr)
 	}
-	if err := coordA.CommitPlanning(domainsA.Planning); !errors.Is(err, ErrStaleObject) {
-		t.Fatalf("machine A planning commit = %v, want ErrStaleObject", err)
+	if staleErr := coordA.CommitPlanning(domainsA.Planning); !errors.Is(staleErr, ErrStaleObject) {
+		t.Fatalf("machine A planning commit = %v, want ErrStaleObject", staleErr)
 	}
 
 	// The refusal has to be a refusal, not a partial write.

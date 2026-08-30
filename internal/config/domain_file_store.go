@@ -371,16 +371,11 @@ func (s *DomainFileStore) recoverEnvelopeFromBackup(path string, primaryErr erro
 	return env, backupData, nil
 }
 
-// save writes an artifact atomically under a per-file lock with a backup and
-// private permissions. When expectedRev is non-empty the on-disk revision is
-// verified inside the lock and a mismatch (including a vanished file) returns
-// ErrStaleObject without writing.
-func (s *DomainFileStore) save(kind domainKind, payload any, expectedRev string) error {
-	_, err := s.saveObserved(kind, payload, expectedRev, false)
-	return err
-}
-
-// saveObserved is save with the two additions a session-baseline commit needs.
+// saveObserved writes an artifact atomically under a per-file lock with a
+// backup and private permissions. When expectedRev is non-empty the on-disk
+// revision is verified inside the lock and a mismatch (including a vanished
+// file) returns ErrStaleObject without writing.
+//
 // When baselineObserved is true an empty expectedRev stops meaning "skip the
 // check" and starts meaning "the caller observed no artifact", which is a
 // require-absent contract: a file that appeared since that observation returns
@@ -400,8 +395,8 @@ func (s *DomainFileStore) saveObserved(kind domainKind, payload any, expectedRev
 	if err != nil {
 		return "", err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), DirPermissions); err != nil {
-		return "", fmt.Errorf("failed to create config directory: %w", err)
+	if mkErr := os.MkdirAll(filepath.Dir(path), DirPermissions); mkErr != nil {
+		return "", fmt.Errorf("failed to create config directory: %w", mkErr)
 	}
 
 	written := ""
@@ -442,12 +437,12 @@ func (s *DomainFileStore) saveObserved(kind domainKind, payload any, expectedRev
 
 		backupDomainArtifact(path)
 
-		out, err := encodeDomainEnvelope(kind, s.workspaceID, payload)
-		if err != nil {
-			return err
+		out, encErr := encodeDomainEnvelope(kind, s.workspaceID, payload)
+		if encErr != nil {
+			return encErr
 		}
-		if err := util.AtomicWriteFile(path, out, FilePermissions); err != nil {
-			return fmt.Errorf("failed to write %s: %w", filepath.Base(path), err)
+		if writeErr := util.AtomicWriteFile(path, out, FilePermissions); writeErr != nil {
+			return fmt.Errorf("failed to write %s: %w", filepath.Base(path), writeErr)
 		}
 		written = revisionOf(out)
 		return nil
@@ -693,20 +688,21 @@ func (s *DomainFileStore) SaveMachine(machine *MachineState) error {
 
 // SaveMachineChecked saves machine state with an optimistic concurrency check.
 func (s *DomainFileStore) SaveMachineChecked(machine *MachineState, rev string) error {
-	_, err := s.saveMachineObserved(machine, rev, false)
-	return err
+	return s.saveMachineObserved(machine, rev, false)
 }
 
 // saveMachineObserved is SaveMachineChecked against a baseline the caller
-// observed, returning the revision it wrote.
-func (s *DomainFileStore) saveMachineObserved(machine *MachineState, rev string, baselineObserved bool) (string, error) {
+// observed. Machine-local state has no remote writer, so unlike the synced
+// domains no caller retains the revision it wrote.
+func (s *DomainFileStore) saveMachineObserved(machine *MachineState, rev string, baselineObserved bool) error {
 	if machine == nil {
-		return "", fmt.Errorf("config: nil machine state")
+		return fmt.Errorf("config: nil machine state")
 	}
 	if err := s.bindWorkspaceIDFromCatalog(); err != nil {
-		return "", err
+		return err
 	}
-	return s.saveObserved(domainMachine, machine, rev, baselineObserved)
+	_, err := s.saveObserved(domainMachine, machine, rev, baselineObserved)
+	return err
 }
 
 // Compile-time checks that the file store satisfies every domain store

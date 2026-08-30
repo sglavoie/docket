@@ -72,7 +72,7 @@ func TestSecondMachineDriverReadsTheSyncedWorkspace(t *testing.T) {
 	if !strings.Contains(screen, "Active Projects") {
 		t.Fatalf("second machine did not open on the synced workspace:\n%s", screen)
 	}
-	// The synced catalog travelled; only the machine-local home moved.
+	// The synced catalog traveled; only the machine-local home moved.
 	if got := workspace.machineHomes["laptop"]; !strings.HasPrefix(got, workspace.Root) {
 		t.Fatalf("laptop home = %q, want it inside the workspace temp root %q", got, workspace.Root)
 	}
@@ -82,7 +82,7 @@ func TestSecondMachineDriverReadsTheSyncedWorkspace(t *testing.T) {
 }
 
 // TestSyncSnapshotAndApplyCarryTheWorkspace covers the copy helpers a sync
-// service is modelled with: a captured tree replayed into an empty directory has
+// service is modeled with: a captured tree replayed into an empty directory has
 // to be the same workspace, and a partially-transferred one has to be the same
 // workspace minus exactly the transaction files that never arrived.
 func TestSyncSnapshotAndApplyCarryTheWorkspace(t *testing.T) {
@@ -104,8 +104,8 @@ func TestSyncSnapshotAndApplyCarryTheWorkspace(t *testing.T) {
 	}
 
 	destination := t.TempDir()
-	if err := syncApply(destination, full); err != nil {
-		t.Fatalf("apply snapshot: %v", err)
+	if applyErr := syncApply(destination, full); applyErr != nil {
+		t.Fatalf("apply snapshot: %v", applyErr)
 	}
 	replayed, err := syncSnapshot(destination)
 	if err != nil {

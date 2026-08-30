@@ -209,7 +209,7 @@ func (w *uitestWorkspace) Cleanup() error {
 // what makes the same synced workspace look like it was opened elsewhere. The
 // synced directory is not touched.
 //
-// An empty name is the historical behaviour: a fresh, numbered home no earlier
+// An empty name is the historical behavior: a fresh, numbered home no earlier
 // machine wrote to, which is the "opened on a machine that has never seen this
 // workspace" case. A name is a durable machine identity within this workspace:
 // the first switch to it mints a home, every later switch returns to that same
@@ -219,16 +219,14 @@ func (w *uitestWorkspace) switchMachineHome(machine string) error {
 		w.homeBeforeSwitch = os.Getenv("HOME")
 	}
 	machine = strings.TrimSpace(machine)
-	home := ""
-	switch {
+	var home string
+	switch existing, named := w.machineHomes[machine]; {
 	case machine == "":
 		w.machineSeq++
 		home = filepath.Join(w.Root, fmt.Sprintf("machine-%d", w.machineSeq))
+	case named:
+		home = existing
 	default:
-		if existing, ok := w.machineHomes[machine]; ok {
-			home = existing
-			break
-		}
 		if w.machineHomes == nil {
 			w.machineHomes = make(map[string]string)
 		}

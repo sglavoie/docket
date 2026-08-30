@@ -50,7 +50,7 @@ type UITestAction struct {
 	Height int    `json:"height,omitempty"`
 
 	// Machine names the machine identity UITestActionSwitchMachine moves to. It
-	// is optional: an omitted name keeps the historical behaviour of landing on a
+	// is optional: an omitted name keeps the historical behavior of landing on a
 	// home no machine has ever used. A name is durable within the scenario, so
 	// switching back to one returns to that machine's own machine-local state
 	// rather than to an empty home — which is the only way to express "machine A,
