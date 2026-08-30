@@ -319,21 +319,16 @@ func hasSplitDomainMarker(dataDir string) bool {
 	return false
 }
 
-// ActiveDefaultDataDir returns the data directory tt uses by default when the
-// user has made no explicit workspace selection.
+// activeDefaultDataDirOn returns the data directory tt uses by default when the
+// user has made no explicit workspace selection, resolved against an explicit
+// machine home so a named machine selects its own default workspace rather than
+// the process home's. The empty machine home is exactly the process home.
 //
 // New installations are local-first: the local ~/.tt root is used unless an
 // iCloud Drive workspace already exists (an existing active iCloud install), in
 // which case that workspace is preserved. Automatic migration of a local
 // install into iCloud has been removed; relocating a workspace to (or from)
 // iCloud is now an explicit action — see MoveWorkspace and `tt workspace move`.
-func ActiveDefaultDataDir() string {
-	return activeDefaultDataDirOn("")
-}
-
-// activeDefaultDataDirOn is ActiveDefaultDataDir resolved against an explicit
-// machine home, so a named machine selects its own default workspace rather
-// than the process home's.
 func activeDefaultDataDirOn(machineHome string) string {
 	if root, ok := iCloudDataRootOn(machineHome); ok {
 		if hasSplitDomainMarker(root) {
@@ -346,14 +341,8 @@ func activeDefaultDataDirOn(machineHome string) string {
 	return localDataRootOn(machineHome)
 }
 
-// DefaultConfigPath returns the config file path inside the active default data
-// directory.
-func DefaultConfigPath() string {
-	return defaultConfigPathOn("")
-}
-
-// defaultConfigPathOn is DefaultConfigPath resolved against an explicit machine
-// home.
+// defaultConfigPathOn returns the config file path inside the active default
+// data directory of an explicit machine home.
 func defaultConfigPathOn(machineHome string) string {
 	return filepath.Join(activeDefaultDataDirOn(machineHome), configFileName)
 }

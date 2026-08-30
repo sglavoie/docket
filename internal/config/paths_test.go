@@ -17,7 +17,7 @@ func makeICloudDrive(t *testing.T, home string) {
 	}
 }
 
-func TestActiveDefaultDataDir_ICloudPresentButNoWorkspaceStaysLocal(t *testing.T) {
+func TestActiveDefaultDataDirOn_ICloudPresentButNoWorkspaceStaysLocal(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	makeICloudDrive(t, home)
@@ -25,12 +25,12 @@ func TestActiveDefaultDataDir_ICloudPresentButNoWorkspaceStaysLocal(t *testing.T
 	// iCloud Drive is available but holds no tt workspace: local-first wins and
 	// no automatic iCloud selection occurs.
 	want := filepath.Join(home, dataDirName)
-	if got := ActiveDefaultDataDir(); got != want {
-		t.Fatalf("ActiveDefaultDataDir() = %q, want local root %q", got, want)
+	if got := activeDefaultDataDirOn(""); got != want {
+		t.Fatalf("activeDefaultDataDirOn(\"\") = %q, want local root %q", got, want)
 	}
 }
 
-func TestActiveDefaultDataDir_ExistingICloudWorkspacePreserved(t *testing.T) {
+func TestActiveDefaultDataDirOn_ExistingICloudWorkspacePreserved(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	makeICloudDrive(t, home)
@@ -44,15 +44,15 @@ func TestActiveDefaultDataDir_ExistingICloudWorkspacePreserved(t *testing.T) {
 	}
 
 	// An existing iCloud workspace (its config already present) stays selected.
-	if got := ActiveDefaultDataDir(); got != icloudRoot {
-		t.Fatalf("ActiveDefaultDataDir() = %q, want existing iCloud root %q", got, icloudRoot)
+	if got := activeDefaultDataDirOn(""); got != icloudRoot {
+		t.Fatalf("activeDefaultDataDirOn(\"\") = %q, want existing iCloud root %q", got, icloudRoot)
 	}
-	if got := DefaultConfigPath(); got != filepath.Join(icloudRoot, configFileName) {
-		t.Fatalf("DefaultConfigPath() = %q, want %q", got, filepath.Join(icloudRoot, configFileName))
+	if got := defaultConfigPathOn(""); got != filepath.Join(icloudRoot, configFileName) {
+		t.Fatalf("defaultConfigPathOn(\"\") = %q, want %q", got, filepath.Join(icloudRoot, configFileName))
 	}
 }
 
-func TestActiveDefaultDataDir_ExistingICloudSplitWorkspacePreserved(t *testing.T) {
+func TestActiveDefaultDataDirOn_ExistingICloudSplitWorkspacePreserved(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		markers []func(string) string
@@ -98,32 +98,32 @@ func TestActiveDefaultDataDir_ExistingICloudSplitWorkspacePreserved(t *testing.T
 			if _, err := os.Stat(ConfigPathForDataDir(icloudRoot)); !errors.Is(err, os.ErrNotExist) {
 				t.Fatalf("iCloud aggregate config should be absent, stat error = %v", err)
 			}
-			if got := ActiveDefaultDataDir(); got != icloudRoot {
-				t.Fatalf("ActiveDefaultDataDir() = %q, want split iCloud root %q", got, icloudRoot)
+			if got := activeDefaultDataDirOn(""); got != icloudRoot {
+				t.Fatalf("activeDefaultDataDirOn(\"\") = %q, want split iCloud root %q", got, icloudRoot)
 			}
 		})
 	}
 }
 
-func TestActiveDefaultDataDir_ICloudAbsent(t *testing.T) {
+func TestActiveDefaultDataDirOn_ICloudAbsent(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	// No iCloud drive dir created.
 
 	want := filepath.Join(home, dataDirName)
-	if got := ActiveDefaultDataDir(); got != want {
-		t.Fatalf("ActiveDefaultDataDir() = %q, want local root %q", got, want)
+	if got := activeDefaultDataDirOn(""); got != want {
+		t.Fatalf("activeDefaultDataDirOn(\"\") = %q, want local root %q", got, want)
 	}
 }
 
-func TestActiveDefaultDataDir_HomeFailureFallback(t *testing.T) {
+func TestActiveDefaultDataDirOn_HomeFailureFallback(t *testing.T) {
 	t.Setenv("HOME", "")
 
 	if got := LocalDataRoot(); got != dataDirName {
 		t.Fatalf("LocalDataRoot() with no home = %q, want %q", got, dataDirName)
 	}
-	if got := ActiveDefaultDataDir(); got != dataDirName {
-		t.Fatalf("ActiveDefaultDataDir() with no home = %q, want %q", got, dataDirName)
+	if got := activeDefaultDataDirOn(""); got != dataDirName {
+		t.Fatalf("activeDefaultDataDirOn(\"\") with no home = %q, want %q", got, dataDirName)
 	}
 	if _, ok := iCloudDataRoot(); ok {
 		t.Fatal("iCloudDataRoot() should report unavailable when home is unknown")
@@ -150,8 +150,8 @@ func TestNewManager_DefaultPathFlagged(t *testing.T) {
 	if !m.CreatedFromDefaultPath() {
 		t.Fatal("default-path manager should be flagged as created from default path")
 	}
-	if got := m.GetConfigPath(); got != DefaultConfigPath() {
-		t.Fatalf("GetConfigPath() = %q, want default %q", got, DefaultConfigPath())
+	if got := m.GetConfigPath(); got != defaultConfigPathOn("") {
+		t.Fatalf("GetConfigPath() = %q, want default %q", got, defaultConfigPathOn(""))
 	}
 }
 
