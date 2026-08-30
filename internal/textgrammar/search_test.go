@@ -139,3 +139,124 @@ func TestParseSearchProjectAndTagAxesStaySeparate(t *testing.T) {
 		t.Fatalf("ParseSearch(alpha#7) = %+v, want the exact project qualifier left intact", qualifier)
 	}
 }
+
+// TestParseSearchTokenizesEveryNegation walks the negation set in one pass: each
+// spelling must peel whole, land on its own field, and leave the free text
+// alone. The two-and three-rune triggers are the point — -@@ must not be read as
+// -@ with an @ value, and -## must not be read as -# with a #-prefixed tag.
+func TestParseSearchTokenizesEveryNegation(t *testing.T) {
+	tests := []struct {
+		input string
+		field Field
+		want  string
+	}{
+		{"-!2 ship", FieldRemovePriority, "2"},
+		{"-#backend ship", FieldRemoveTag, "backend"},
+		{"-##client ship", FieldRemoveContext, "client"},
+		{"-@today ship", FieldRemoveDue, "today"},
+		{"-@@tomorrow ship", FieldRemoveDefer, "tomorrow"},
+		{"-$done ship", FieldRemoveDestination, "done"},
+		{"-*pin ship", FieldRemovePinned, "pin"},
+		{"-%core ship", FieldRemoveProject, "core"},
+		{"-~7 ship", FieldRemoveDependency, "7"},
+		{"-?stale ship", FieldRemoveDerived, "stale"},
+	}
+	for _, tt := range tests {
+		t.Run(string(tt.field), func(t *testing.T) {
+			parsed := ParseSearch(tt.input)
+			if parsed.Text != "ship" {
+				t.Errorf("Text = %q, want the free-text remainder only", parsed.Text)
+			}
+			tokens := parsed.TokensFor(tt.field)
+			if len(tokens) != 1 || tokens[0].Value != tt.want {
+				t.Fatalf("tokens = %+v, want one %s token valued %q", parsed.Tokens, tt.field, tt.want)
+			}
+			if guidance := SearchGuidance(parsed); guidance != "" {
+				t.Errorf("SearchGuidance = %q, want a runnable query", guidance)
+			}
+		})
+	}
+}
+
+// TestNegationsReachNoOtherSurface is the surface half of the same contract: a
+// negation that subtracts from a result set must not become a mutation a task
+// can carry. The two that do subtract from a task, -# and -~, are the exception
+// and are named here rather than skipped by a rule.
+func TestNegationsReachNoOtherSurface(t *testing.T) {
+	mutating := map[Field]bool{FieldRemoveTag: true, FieldRemoveDependency: true}
+	for _, spec := range registry {
+		if spec.negates == "" || mutating[spec.Field] {
+			continue
+		}
+		if spec.Surfaces != SurfaceSearch {
+			t.Errorf("%s reaches %v, want SurfaceSearch alone", spec.Field, spec.Surfaces)
+		}
+		if tokens := Parse(spec.Trigger+"1", SurfaceCapture).TokensFor(spec.Field); len(tokens) != 0 {
+			t.Errorf("%s tokenized while capturing: %+v", spec.Field, tokens)
+		}
+	}
+}
+
+// TestParseSearchDerivedValuesAreTheClosedSet holds ? to the canonical property
+// list and to the one qualifier that exists. A name outside the set is left as
+// prose, the way !important is: the sigil consumes only what it can answer, so
+// the values that do block a query are the recognized ones it cannot honor.
+func TestParseSearchDerivedValuesAreTheClosedSet(t *testing.T) {
+	for _, name := range derivedNames {
+		parsed := ParseSearch("?" + name)
+		tokens := parsed.TokensFor(FieldDerived)
+		if len(tokens) != 1 || tokens[0].Value != name {
+			t.Errorf("?%s tokens = %+v, want one derived token", name, parsed.Tokens)
+		}
+		if guidance := SearchGuidance(parsed); guidance != "" {
+			t.Errorf("?%s guidance = %q, want a runnable query", name, guidance)
+		}
+	}
+
+	if parsed := ParseSearch("?completed:90d"); SearchGuidance(parsed) != "" {
+		t.Errorf("?completed:90d guidance = %q, want a runnable query", SearchGuidance(parsed))
+	}
+	if prose := ParseSearch("?nonsense"); len(prose.Tokens) != 0 || prose.Text != "?nonsense" {
+		t.Errorf("ParseSearch(?nonsense) = %+v, want the whole input as prose", prose)
+	}
+	for input, want := range map[string]string{
+		"?stale:90d":       "?stale takes no value",
+		"?completed:90":    "invalid completion age",
+		"?completed:0d":    "invalid completion age",
+		"-?completed:ever": "invalid completion age",
+	} {
+		if guidance := SearchGuidance(ParseSearch(input)); !strings.Contains(guidance, want) {
+			t.Errorf("%s guidance = %q, want it to mention %q", input, guidance, want)
+		}
+	}
+}
+
+// TestParseSearchPriorityThresholdIsSearchOnly holds the "+" suffix to the one
+// surface that can widen a match. Capture and edit assign a priority, and "and
+// above" is not a value a task can carry.
+func TestParseSearchPriorityThresholdIsSearchOnly(t *testing.T) {
+	parsed := ParseSearch("!2+ ship")
+	tokens := parsed.TokensFor(FieldPriority)
+	if len(tokens) != 1 || tokens[0].Value != "2+" {
+		t.Fatalf("tokens = %+v, want one !2+ priority token", parsed.Tokens)
+	}
+	if guidance := SearchGuidance(parsed); guidance != "" {
+		t.Fatalf("SearchGuidance = %q, want a runnable query", guidance)
+	}
+
+	if admitted, ok := ParseSearchPriority("2+"); !ok || !reflect.DeepEqual(admitted, []int{1, 2}) {
+		t.Errorf("ParseSearchPriority(2+) = %v %v, want [1 2]", admitted, ok)
+	}
+	if admitted, ok := ParseSearchPriority("2"); !ok || !reflect.DeepEqual(admitted, []int{2}) {
+		t.Errorf("ParseSearchPriority(2) = %v %v, want [2]", admitted, ok)
+	}
+	if _, ok := ParseSearchPriority("9+"); ok {
+		t.Error("ParseSearchPriority(9+) succeeded; the threshold does not widen the legal range")
+	}
+
+	// Capture keeps the strict reading: a priority is assigned, so "2+" is not a
+	// value it can honor, and the token is raised rather than silently accepted.
+	if _, ok := ParsePriority("2+", false); ok {
+		t.Error("ParsePriority(2+) succeeded; the threshold belongs to search alone")
+	}
+}

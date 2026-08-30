@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"unicode/utf8"
@@ -148,28 +149,42 @@ func (m *OutlinerModel) searchAutocompleteSuggestions(
 	definition textgrammar.Definition,
 	partial string,
 ) []ACSuggestion {
+	// A negation is completed from its twin's vocabulary, so each pair shares one
+	// arm: -@ offers the due buckets @ offers, and the only difference is the
+	// trigger each suggestion is displayed and accepted with, which comes from the
+	// definition the caller already resolved.
 	switch definition.Field { //nolint:exhaustive // Only the fields SurfaceSearch admits can reach a trigger here.
-	case textgrammar.FieldPriority:
+	case textgrammar.FieldPriority, textgrammar.FieldRemovePriority:
 		return searchPrioritySuggestions(definition, partial)
 	case textgrammar.FieldTag, textgrammar.FieldRemoveTag:
 		return searchDynamicSuggestions(definition, m.searchCandidateTagNames(), partial)
-	case textgrammar.FieldContext:
+	case textgrammar.FieldContext, textgrammar.FieldRemoveContext:
 		return searchDynamicSuggestions(definition, m.searchCandidateContextNames(), partial)
-	case textgrammar.FieldDue:
+	case textgrammar.FieldDue, textgrammar.FieldRemoveDue:
 		return searchStaticSuggestions(definition, searchDueVocabulary(definition), partial)
-	case textgrammar.FieldDefer:
+	case textgrammar.FieldDefer, textgrammar.FieldRemoveDefer:
 		return searchStaticSuggestions(definition, searchDeferVocabulary(definition), partial)
-	case textgrammar.FieldDestination:
+	case textgrammar.FieldDestination, textgrammar.FieldRemoveDestination:
 		return searchDestinationSuggestions(definition, partial)
-	case textgrammar.FieldPinned:
+	case textgrammar.FieldPinned, textgrammar.FieldRemovePinned:
 		return searchPinSuggestions(definition, partial)
-	case textgrammar.FieldProject:
+	case textgrammar.FieldProject, textgrammar.FieldRemoveProject:
 		return m.searchProjectSuggestions(definition, partial)
-	case textgrammar.FieldDependency:
+	case textgrammar.FieldDependency, textgrammar.FieldRemoveDependency:
 		return m.searchDependencySuggestions(definition, partial)
+	case textgrammar.FieldDerived, textgrammar.FieldRemoveDerived:
+		return searchStaticSuggestions(definition, searchDerivedVocabulary(definition), partial)
 	default:
 		return nil
 	}
+}
+
+// searchDerivedVocabulary is the closed set of computed properties plus the one
+// parametric form the fixed names cannot express: ?completed carries an optional
+// day threshold, which is advertised through the definition's own examples rather
+// than a second list maintained here.
+func searchDerivedVocabulary(definition textgrammar.Definition) []string {
+	return appendUnprefixedValues(slices.Clone(definition.Values), definition, definition.Examples)
 }
 
 // searchDependencySuggestions offers exactly the targets the candidate population

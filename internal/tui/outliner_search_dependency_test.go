@@ -151,12 +151,13 @@ func TestSearchDependencyGuidance(t *testing.T) {
 			want:  "search has no set to clear",
 		},
 		{
-			// A dependency predicate is positive by design; the negative form is an
-			// edit, not a filter.
-			name:  "negative form is refused",
-			query: "-~1",
-			scope: global,
-			want:  "a dependency search is positive",
+			// The negation reads the same locator its positive twin does, so an
+			// ambiguous alias is reported the same way rather than resolved by a
+			// second, laxer path.
+			name:    "negative form resolves like its twin",
+			query:   "-~1",
+			scope:   global,
+			wantAll: []string{"matches", "ALPHA #1 Local", "BETA #1 Remote", "~project-slug:short-id"},
 		},
 	}
 	for _, tt := range cases {
@@ -165,8 +166,8 @@ func TestSearchDependencyGuidance(t *testing.T) {
 			if predicates.guidance == "" {
 				t.Fatalf("query %q compiled silently: %+v", tt.query, predicates.dependencies)
 			}
-			if len(predicates.dependencies) != 0 {
-				t.Errorf("guided query still compiled %v", predicates.dependencies)
+			if len(predicates.dependencies) != 0 || len(predicates.excludedDeps) != 0 {
+				t.Errorf("guided query still compiled %v %v", predicates.dependencies, predicates.excludedDeps)
 			}
 			wants := tt.wantAll
 			if tt.want != "" {

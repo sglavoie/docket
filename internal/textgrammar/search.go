@@ -24,12 +24,17 @@ var searchDeferPresetNames = []string{"any", "none"}
 // the hour offset.
 var searchDueExampleValues = []string{"+4h"}
 
+// searchPriorityExampleValues illustrates the threshold suffix the fixed value
+// list cannot name. Values holds 1, 2, and 3 because those are the priorities a
+// task can carry; "and above" is a question, so it is advertised here.
+var searchPriorityExampleValues = []string{"2+"}
+
 // SearchPresetValues returns the relational values only search understands for a
 // field, and nil for a field that has none. It exists so a surface teaching the
 // search vocabulary reads the same list ParseSearch matches against rather than
 // hand-authoring a second copy that can drift.
 func SearchPresetValues(field Field) []string {
-	switch field { //nolint:exhaustive // Only the two relational fields have search-only values.
+	switch negatedField(field) { //nolint:exhaustive // Only the two relational fields have search-only values.
 	case FieldDue:
 		return slices.Clone(searchDuePresetNames)
 	case FieldDefer:
@@ -45,9 +50,11 @@ func SearchPresetValues(field Field) []string {
 // due window is search-only, so it is advertised here rather than in the shared
 // capture Examples.
 func SearchExampleValues(field Field) []string {
-	switch field { //nolint:exhaustive // Only the due field carries a parametric search-only form today.
+	switch negatedField(field) { //nolint:exhaustive // Only the two parametric search-only forms are advertised here.
 	case FieldDue:
 		return slices.Clone(searchDueExampleValues)
+	case FieldPriority:
+		return slices.Clone(searchPriorityExampleValues)
 	default:
 		return nil
 	}
@@ -63,28 +70,36 @@ func ParseSearch(input string) Result {
 	return result
 }
 
+// searchDiagnostics names every token search recognized but cannot honor. It
+// switches on the negated field rather than the token's own, because a negation
+// carries no vocabulary of its own: -$ready is wrong for exactly the reason
+// $ready is, and one arm should say so. The reported field stays the token's, so
+// a consumer can still tell which spelling raised the message, and the message
+// itself interpolates token.Form.
 func searchDiagnostics(result Result) []Diagnostic {
 	var diagnostics []Diagnostic
 	for _, token := range result.Tokens {
-		switch token.Field { //nolint:exhaustive // Only the fields whose values can be recognized and wrong raise a diagnostic.
+		switch negatedField(token.Field) { //nolint:exhaustive // Only the fields whose values can be recognized and wrong raise a diagnostic.
 		case FieldPriority:
-			if _, ok := ParsePriority(token.Value, false); !ok {
+			// The threshold reader, not ParsePriority, decides here: !2+ is a legal
+			// search and would otherwise be refused as an invalid priority.
+			if _, ok := ParseSearchPriority(token.Value); !ok {
 				diagnostics = append(diagnostics, Diagnostic{
-					Field:   FieldPriority,
+					Field:   token.Field,
 					Message: InvalidPriorityError(token.Value).Error(),
 				})
 			}
 		case FieldDestination:
 			if _, ok := ParseDestination(token.Value); !ok {
 				diagnostics = append(diagnostics, Diagnostic{
-					Field:   FieldDestination,
+					Field:   token.Field,
 					Message: InvalidDestinationError(token.Value).Error(),
 				})
 			}
 		case FieldContext:
 			if token.Value == clearValue {
 				diagnostics = append(diagnostics, Diagnostic{
-					Field:   FieldContext,
+					Field:   token.Field,
 					Message: fmt.Sprintf("%s%s clears a context and matches nothing", token.Form, clearValue),
 				})
 			}
@@ -94,8 +109,15 @@ func searchDiagnostics(result Result) []Diagnostic {
 			// compiled into a locator that could never match.
 			if token.Value == clearValue {
 				diagnostics = append(diagnostics, Diagnostic{
-					Field:   FieldDependency,
+					Field:   token.Field,
 					Message: fmt.Sprintf("%s%s clears dependencies with e or the outline buffer; search has no set to clear", token.Form, clearValue),
+				})
+			}
+		case FieldDerived:
+			if _, err := ParseDerived(token.Value); err != nil {
+				diagnostics = append(diagnostics, Diagnostic{
+					Field:   token.Field,
+					Message: err.Error(),
 				})
 			}
 		}
@@ -117,10 +139,6 @@ var refusedSearchFields = []refusedSearchField{
 	{FieldChild, "placement is set with e"},
 	{FieldAttachment, "attachments are added at capture or in the task's Attachments panel"},
 	{FieldComment, "comments are added at capture or in the task's Comments panel"},
-	// A dependency predicate is direct and positive by design: there is no
-	// traversal and no negative form, so -~ is named here rather than left to read
-	// as a filter search silently never applied.
-	{FieldRemoveDependency, "a dependency search is positive; dependencies are removed with e or the outline buffer"},
 }
 
 // placementDiagnostics re-scans the remainder with each refused field's own

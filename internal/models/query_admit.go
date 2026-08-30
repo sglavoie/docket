@@ -260,18 +260,15 @@ func queryDayMatches(stored time.Time, value string, now time.Time) bool {
 // usable completion timestamp is excluded even when the clause sets no age
 // bound, so a malformed record can never reach a cleanup view.
 func queryCompletedMatches(task *Task, clause QueryClause, now time.Time) bool {
-	if task.CompletedAt == nil || task.CompletedAt.IsZero() {
-		return false
-	}
 	if clause.Operator != QueryOperatorAtLeast {
-		return true
+		return taskCompletedAtLeastDaysAgo(task, 0, now)
 	}
 	digits, _ := strings.CutSuffix(clause.Value, "d")
 	threshold, err := strconv.Atoi(digits)
 	if err != nil {
 		return false
 	}
-	return util.DaysBetween(task.CompletedAt.In(now.Location()), now) >= threshold
+	return taskCompletedAtLeastDaysAgo(task, threshold, now)
 }
 
 // queryOpenChildCount counts the open direct children the task carries as it was

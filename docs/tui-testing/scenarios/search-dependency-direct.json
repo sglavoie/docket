@@ -31,10 +31,12 @@
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "key": "esc" },
 
-    { "type": "key", "label": "the predicate is positive only", "key": "/" },
+    { "type": "key", "label": "the negation subtracts what the positive selected", "key": "/" },
     { "type": "text", "text": "-~client-beta:1" },
     { "type": "key", "key": "enter" },
-    { "type": "assert", "label": "the refusal names the surfaces that do remove a reference", "assert": "contains", "value": "-~task is not a search predicate; a dependency search is positive" },
+    { "type": "assert", "label": "the referring task is the only row removed; the undo status still names it", "assert": "not_contains", "value": "□ Alpha migration kickoff" },
+    { "type": "assert", "assert": "contains", "value": "Beta rollout checklist" },
+    { "type": "assert", "assert": "contains", "value": "Renew passport" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "key": "esc" },
 

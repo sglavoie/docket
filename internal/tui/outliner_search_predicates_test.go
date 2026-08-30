@@ -126,7 +126,7 @@ func TestSearchPredicatesAreNilSafeAndOpen(t *testing.T) {
 }
 
 func TestSearchPriorityGateIsEqualityRatherThanThreshold(t *testing.T) {
-	predicates := &searchPredicates{priority: models.PriorityMedium, now: time.Now()}
+	predicates := &searchPredicates{priorities: []int{models.PriorityMedium}, now: time.Now()}
 	project := &models.Project{ID: "alpha", Slug: "alpha"}
 	for priority, want := range map[int]bool{
 		models.PriorityHigh:   false,
@@ -138,5 +138,154 @@ func TestSearchPriorityGateIsEqualityRatherThanThreshold(t *testing.T) {
 		if got := predicates.admits(task, project); got != want {
 			t.Errorf("priority %d admitted = %v, want %v", priority, got, want)
 		}
+	}
+}
+
+// TestSearchPriorityThresholdWidensOnlyWhereTheSuffixIsTyped holds the split the
+// threshold was added for: !N is still equality, and only !N+ opens the more
+// urgent priorities, which are the smaller numbers.
+func TestSearchPriorityThresholdWidensOnlyWhereTheSuffixIsTyped(t *testing.T) {
+	project := &models.Project{ID: "alpha", Slug: "alpha"}
+	tests := []struct {
+		query string
+		want  map[int]bool
+	}{
+		{"!2", map[int]bool{models.PriorityHigh: false, models.PriorityMedium: true, models.PriorityLow: false}},
+		{"!2+", map[int]bool{models.PriorityHigh: true, models.PriorityMedium: true, models.PriorityLow: false}},
+		{"-!2+", map[int]bool{models.PriorityHigh: false, models.PriorityMedium: false, models.PriorityLow: true}},
+		{"-!1", map[int]bool{models.PriorityHigh: false, models.PriorityMedium: true, models.PriorityLow: true}},
+	}
+	for _, tt := range tests {
+		outliner := scopeTestOutliner(project)
+		_, gate := outliner.compileSearchQuery(tt.query, []*models.Project{project})
+		if gate.invalid() {
+			t.Fatalf("%s produced guidance %q", tt.query, gate.guidanceText())
+		}
+		for priority, want := range tt.want {
+			task := &models.Task{ID: "task", WorkflowState: models.StateBacklog, Priority: priority}
+			if got := gate.admits(task, project); got != want {
+				t.Errorf("%s admitted priority %d = %v, want %v", tt.query, priority, got, want)
+			}
+		}
+	}
+}
+
+// TestSearchNegationsSubtractWhatTheirTwinsSelect walks the negation set through
+// the compiled gate. Each one must remove exactly the population its positive
+// twin would have kept, and leave an unrelated task alone: a negation narrows,
+// it never re-scopes.
+func TestSearchNegationsSubtractWhatTheirTwinsSelect(t *testing.T) {
+	now := time.Now()
+	due := now
+	marked := &models.Task{
+		ID: "marked", ShortID: 1, Title: "Marked",
+		WorkflowState: models.StateDoing, Priority: models.PriorityHigh,
+		Tags: []string{"backend"}, Context: "client", Pinned: true, DueDate: &due,
+	}
+	plain := &models.Task{ID: "plain", ShortID: 2, Title: "Plain", WorkflowState: models.StateBacklog}
+	project := &models.Project{ID: "alpha", Slug: "alpha", Name: "Alpha", Tasks: []*models.Task{marked, plain}}
+	outliner := scopeTestOutliner(project)
+
+	for _, query := range []string{"-!1", "-#backend", "-##client", "-@today", "-$doing", "-*pin"} {
+		_, gate := outliner.compileSearchQuery(query, []*models.Project{project})
+		if gate.invalid() {
+			t.Fatalf("%s produced guidance %q", query, gate.guidanceText())
+		}
+		if gate.admits(marked, project) {
+			t.Errorf("%s admitted the task it names", query)
+		}
+		if !gate.admits(plain, project) {
+			t.Errorf("%s excluded a task it says nothing about", query)
+		}
+	}
+
+	// The project negation is the one axis that answers about the project rather
+	// than the task, so it is checked where it applies.
+	_, scoped := outliner.compileSearchQuery("-%alpha", []*models.Project{project})
+	if scoped.invalid() {
+		t.Fatalf("-%%alpha produced guidance %q", scoped.guidanceText())
+	}
+	if scoped.admitsProject(project) {
+		t.Error("-%alpha admitted the project it names")
+	}
+}
+
+// TestSearchDerivedPredicatesAnswerComputedQuestions covers the ? set end to end
+// through the same gate a query runs on. The two reference predicates are
+// structural on purpose: one reads the task's own outgoing list and the other
+// the incoming census, and neither looks at the other end's state.
+func TestSearchDerivedPredicatesAnswerComputedQuestions(t *testing.T) {
+	now := time.Now()
+	old := now.AddDate(0, 0, -200)
+	completedLongAgo := now.AddDate(0, 0, -120)
+	later := now.Add(48 * time.Hour)
+
+	stale := &models.Task{ID: "stale", ShortID: 1, Title: "Stale", WorkflowState: models.StateBacklog, UpdatedAt: old}
+	child := &models.Task{ID: "child", ShortID: 2, Title: "Child", WorkflowState: models.StateBacklog, UpdatedAt: now}
+	parent := &models.Task{
+		ID: "parent", ShortID: 3, Title: "Parent", WorkflowState: models.StateBacklog,
+		UpdatedAt: now, Children: []*models.Task{child},
+	}
+	deferred := &models.Task{
+		ID: "deferred", ShortID: 4, Title: "Deferred", WorkflowState: models.StateBacklog,
+		UpdatedAt: now, DeferredUntil: &later,
+	}
+	finished := &models.Task{
+		ID: "finished", ShortID: 5, Title: "Finished", WorkflowState: models.StateDone,
+		UpdatedAt: completedLongAgo, CompletedAt: &completedLongAgo,
+	}
+	target := &models.Task{ID: "target", ShortID: 6, Title: "Target", WorkflowState: models.StateBacklog, UpdatedAt: now}
+	referrer := &models.Task{
+		ID: "referrer", ShortID: 7, Title: "Referrer", WorkflowState: models.StateBacklog, UpdatedAt: now,
+		Dependencies: []models.TaskReference{{ProjectID: "alpha", TaskID: "target"}},
+	}
+	project := &models.Project{
+		ID: "alpha", Slug: "alpha", Name: "Alpha",
+		Tasks: []*models.Task{stale, parent, child, deferred, finished, target, referrer},
+	}
+	outliner := scopeTestOutliner(project)
+
+	cases := []struct {
+		query string
+		want  *models.Task
+	}{
+		{"?stale", stale},
+		{"?deferred", deferred},
+		{"?parent", parent},
+		{"?completed:90d", finished},
+		{"?blocked", referrer},
+		{"?blocking", target},
+	}
+	for _, tc := range cases {
+		_, gate := outliner.compileSearchQuery(tc.query, []*models.Project{project})
+		if gate.invalid() {
+			t.Fatalf("%s produced guidance %q", tc.query, gate.guidanceText())
+		}
+		for _, task := range project.Tasks {
+			want := task == tc.want
+			if got := gate.admits(task, project); got != want {
+				t.Errorf("%s admitted %s = %v, want %v", tc.query, task.ID, got, want)
+			}
+		}
+	}
+
+	// Leaf is the complement of parent over the same census, so it is checked as
+	// a set rather than as a single row.
+	_, leaves := outliner.compileSearchQuery("?leaf", []*models.Project{project})
+	if leaves.admits(parent, project) {
+		t.Error("?leaf admitted a task with an open child")
+	}
+	if !leaves.admits(child, project) || !leaves.admits(stale, project) {
+		t.Error("?leaf excluded a task with no open child")
+	}
+
+	// The completion question opens the terminal population; its negation asks
+	// about live work and deliberately does not.
+	_, notCompleted := outliner.compileSearchQuery("-?completed", []*models.Project{project})
+	if notCompleted.allowsTerminal() {
+		t.Error("-?completed opened the terminal population")
+	}
+	if notCompleted.admits(finished, project) {
+		t.Error("-?completed admitted a completed task")
 	}
 }

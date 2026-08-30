@@ -169,9 +169,12 @@ func validTokenValue(spec definitionSpec, value string, surface Surface) bool {
 			return false
 		}
 		// Search tokenizes any numeric priority so !9 can be diagnosed, and
-		// leaves !important as prose.
+		// leaves !important as prose. The threshold suffix is read here rather
+		// than in the pattern because it is one surface's vocabulary, and the
+		// pattern is every surface's shape: !2+ must stay prose on capture, where
+		// there is no widened priority to assign.
 		if surface == SurfaceSearch {
-			return isAllDigits(value)
+			return isAllDigits(strings.TrimSuffix(value, searchPriorityThresholdSuffix))
 		}
 		// Clear operations are enabled only on their exact surface. A combined
 		// surface retains capture's stricter grammar.
@@ -197,6 +200,8 @@ func validTokenValue(spec definitionSpec, value string, surface Surface) bool {
 		})
 	case validateAttachment:
 		return validAttachmentTokenValue(value)
+	case validateDerived:
+		return validDerivedTokenValue(value)
 	default:
 		return false
 	}
@@ -233,7 +238,7 @@ func validAttachmentTokenValue(value string) bool {
 // so an unresolvable value stays in the text rather than becoming a gate that
 // matches nothing.
 func searchValueViable(spec definitionSpec, value string) bool {
-	switch spec.Field {
+	switch searchPredicateField(spec) {
 	case FieldDestination:
 		if _, ok := ParseDestination(value); ok {
 			return true
@@ -259,6 +264,28 @@ func searchValueViable(spec definitionSpec, value string) bool {
 	default:
 		return true
 	}
+}
+
+// searchPredicateField resolves the field whose search vocabulary decides a
+// token. A negation subtracts exactly what its twin adds, so the two share one
+// vocabulary, one viability test, and one diagnostic: -@friday and @friday can
+// never disagree about what a Friday is, because only one of them knows.
+func searchPredicateField(spec definitionSpec) Field {
+	if spec.negates != "" {
+		return spec.negates
+	}
+	return spec.Field
+}
+
+// negatedField resolves a field to the positive field it subtracts, or to
+// itself. It reads the registry rather than a second table so a negation added
+// there is understood here without a matching edit.
+func negatedField(field Field) Field {
+	spec, ok := registrySpecFor(field)
+	if !ok {
+		return field
+	}
+	return searchPredicateField(spec)
 }
 
 func isAllDigits(value string) bool {

@@ -46,8 +46,11 @@ func TestSharedParserAdvertisesExactlyThirteenCaptureSigils(t *testing.T) {
 	}
 	// Parse order, not teach order: ;comment; leads because nothing else may peel
 	// a sigil out of a comment's span, and &link sits ahead of #tag because the
-	// tag pattern would otherwise hand it a whitespace-preceded &.
-	wantForms := []string{";comment;", "&link", "~task", "!1-3", "#tag", "##context", "@date", "@@defer", "$destination", "*pin", "%project", ">parent", "<child"}
+	// tag pattern would otherwise hand it a whitespace-preceded &. Context now
+	// precedes tag and defer precedes due, because each search-only negation is
+	// registered immediately before its positive twin and the longer trigger
+	// first, and -##/##/-#/# is the only layout that satisfies both.
+	wantForms := []string{";comment;", "&link", "~task", "!1-3", "##context", "#tag", "@@defer", "@date", "$destination", "*pin", "%project", ">parent", "<child"}
 	gotForms := make([]string, len(defs))
 	for i, def := range defs {
 		if len(def.Forms) != 1 {
@@ -241,10 +244,16 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 		{
 			name: "search", surface: SurfaceSearch,
 			want: map[Field][]string{
-				FieldPriority: {"!1-3"}, FieldTag: {"#tag"}, FieldRemoveTag: {"-#tag"},
-				FieldContext: {"##context"}, FieldDue: {"@date"}, FieldDefer: {"@@defer"},
-				FieldDestination: {"$destination"}, FieldPinned: {"*pin", "*unpin"},
-				FieldProject: {"%project"}, FieldDependency: {"~task"},
+				FieldPriority: {"!1-3"}, FieldRemovePriority: {"-!1-3"},
+				FieldTag: {"#tag"}, FieldRemoveTag: {"-#tag"},
+				FieldContext: {"##context"}, FieldRemoveContext: {"-##context"},
+				FieldDue: {"@date"}, FieldRemoveDue: {"-@date"},
+				FieldDefer: {"@@defer"}, FieldRemoveDefer: {"-@@defer"},
+				FieldDestination: {"$destination"}, FieldRemoveDestination: {"-$destination"},
+				FieldPinned: {"*pin", "*unpin"}, FieldRemovePinned: {"-*pin"},
+				FieldProject: {"%project"}, FieldRemoveProject: {"-%project"},
+				FieldDependency: {"~task"}, FieldRemoveDependency: {"-~task"},
+				FieldDerived: {"?derived"}, FieldRemoveDerived: {"-?derived"},
 			},
 		},
 	}
@@ -327,17 +336,73 @@ func TestRegistryClearSemanticsAreSurfaceSpecific(t *testing.T) {
 
 func TestSearchDefinitionsDescribePredicatesRatherThanMutations(t *testing.T) {
 	for _, def := range Definitions(SurfaceSearch) {
+		if def.Description == "" {
+			t.Errorf("search %s has no description", def.Field)
+			continue
+		}
+		// A search-only field has no mutation reading to differ from: it says its
+		// one sentence once, and Definitions hands that sentence to every surface
+		// it can reach. Only a field that also mutates must read differently here.
 		mutation, ok := DefinitionFor(SurfaceEdit, def.Field)
 		if !ok {
-			t.Fatalf("search field %s is missing from edit", def.Field)
+			continue
 		}
-		if def.Description == "" || def.Description == mutation.Description {
+		if def.Description == mutation.Description {
 			t.Errorf("search %s description = %q, want predicate wording", def.Field, def.Description)
 		}
 	}
 	pinned, ok := DefinitionFor(SurfaceSearch, FieldPinned)
 	if !ok || len(pinned.Clears) != 1 || pinned.Clears[0].Description != "Match unpinned tasks" {
 		t.Fatalf("search pin clears = %+v, want the unpin predicate wording", pinned.Clears)
+	}
+}
+
+// TestSearchOnlyNegationsReachNoMutationSurface holds the line the uniform
+// negation was built on: `-` means "take away" everywhere, but only the two
+// fields that hold a stored set can take anything away from a task. The other
+// seven are questions, and a question that reached edit would be a silent no-op
+// on save.
+func TestSearchOnlyNegationsReachNoMutationSurface(t *testing.T) {
+	searchOnly := []Field{
+		FieldRemovePriority, FieldRemoveContext, FieldRemoveDue, FieldRemoveDefer,
+		FieldRemoveDestination, FieldRemovePinned, FieldRemoveProject,
+		FieldDerived, FieldRemoveDerived,
+	}
+	for _, field := range searchOnly {
+		for _, surface := range []Surface{SurfaceCapture, SurfaceEdit, SurfaceOutline} {
+			if _, ok := DefinitionFor(surface, field); ok {
+				t.Errorf("%s is advertised on mutation surface %d", field, surface)
+			}
+		}
+		if _, ok := DefinitionFor(SurfaceSearch, field); !ok {
+			t.Errorf("%s is missing from search", field)
+		}
+	}
+}
+
+// TestEveryNegationSubtractsItsTwinsVocabulary asserts that a negation resolves
+// to its positive twin rather than owning a second, drift-prone copy of the
+// values, presets, and examples that twin advertises.
+func TestEveryNegationSubtractsItsTwinsVocabulary(t *testing.T) {
+	for _, spec := range registry {
+		if spec.negates == "" {
+			continue
+		}
+		twin, ok := registrySpecFor(spec.negates)
+		if !ok {
+			t.Fatalf("%s negates unknown field %s", spec.Field, spec.negates)
+		}
+		if !reflect.DeepEqual(SearchPresetValues(spec.Field), SearchPresetValues(twin.Field)) {
+			t.Errorf("%s presets = %v, want its twin's %v",
+				spec.Field, SearchPresetValues(spec.Field), SearchPresetValues(twin.Field))
+		}
+		if !reflect.DeepEqual(SearchExampleValues(spec.Field), SearchExampleValues(twin.Field)) {
+			t.Errorf("%s search examples = %v, want its twin's %v",
+				spec.Field, SearchExampleValues(spec.Field), SearchExampleValues(twin.Field))
+		}
+		if len(spec.Values) != 0 && !reflect.DeepEqual(spec.Values, twin.Values) {
+			t.Errorf("%s values = %v, want its twin's %v", spec.Field, spec.Values, twin.Values)
+		}
 	}
 }
 

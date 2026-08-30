@@ -325,6 +325,12 @@ const (
 	sigilRootKey sigilKeyRoute = iota
 	sigilChordPrefix
 	sigilPickerOnly
+	// sigilSearchOnly is a trigger that exists nowhere but the search box. It has
+	// no keyboard route at all, and unlike a picker-only sigil the keymap is free
+	// to bind the same character to an unrelated act: a query is typed into an
+	// input, where root keys do not resolve. ? is exactly that — it asks for help
+	// on a row and names a computed property in a query.
+	sigilSearchOnly
 )
 
 // grammarSigilRoutes pairs every advertised text-grammar trigger with the route
@@ -361,6 +367,20 @@ var grammarSigilRoutes = map[string]sigilKeyRoute{
 	// character opens: ## is the context radio, @@ the defer section.
 	"##": sigilPickerOnly,
 	"@@": sigilPickerOnly,
+	// The remaining negations subtract from a result set rather than from a task,
+	// so they exist only where a result set does. Their positive twins keep the
+	// keyboard route; there is no row act for "not this priority".
+	"-!":  sigilSearchOnly,
+	"-##": sigilSearchOnly,
+	"-@":  sigilSearchOnly,
+	"-@@": sigilSearchOnly,
+	"-$":  sigilSearchOnly,
+	"-*":  sigilSearchOnly,
+	"-%":  sigilSearchOnly,
+	// A derived property is computed from the task rather than stored on it, so
+	// there is nothing for a key to write and both spellings stay in the query.
+	"?":  sigilSearchOnly,
+	"-?": sigilSearchOnly,
 }
 
 func TestSigilKeysMatchTextGrammarSigils(t *testing.T) {
@@ -419,6 +439,14 @@ func TestSigilKeysMatchTextGrammarSigils(t *testing.T) {
 				if isRoot || isPrefix {
 					t.Errorf(
 						"sigil %q (%s) is documented as picker-only but the keymap binds it",
+						trigger,
+						definition.Field,
+					)
+				}
+			case sigilSearchOnly:
+				if definition.Surfaces&^textgrammar.SurfaceSearch != 0 {
+					t.Errorf(
+						"sigil %q (%s) is documented as search-only but reaches a mutation surface",
 						trigger,
 						definition.Field,
 					)

@@ -39,6 +39,23 @@ const (
 	// subtract from, and it peels the two-character trigger itself.
 	acModeDependency
 	acModeRemoveDependency
+	// The remaining negations are search-only, so none of them is ever reached
+	// while capturing or editing. Each still needs a mode of its own because the
+	// field-to-mode projection has to stay one-to-one for a trigger to be resolved
+	// back to the definition it came from; the suggestions themselves come from the
+	// positive twin's vocabulary.
+	acModeRemovePriority
+	acModeRemoveContext
+	acModeRemoveDue
+	acModeRemoveDefer
+	acModeRemoveDestination
+	acModeRemovePin
+	acModeRemoveProject
+	// acModeDerived completes a ?predicate and acModeRemoveDerived a -?predicate.
+	// Both are search-only: a derived value is computed from the task rather than
+	// stored on it, so there is nothing for capture or edit to write.
+	acModeDerived
+	acModeRemoveDerived
 )
 
 // acVisibleCount is the number of suggestions visible at once (scrollable window size)
@@ -201,6 +218,24 @@ func autocompleteModeForField(field textgrammar.Field) int {
 		return acModeDependency
 	case textgrammar.FieldRemoveDependency:
 		return acModeRemoveDependency
+	case textgrammar.FieldRemovePriority:
+		return acModeRemovePriority
+	case textgrammar.FieldRemoveContext:
+		return acModeRemoveContext
+	case textgrammar.FieldRemoveDue:
+		return acModeRemoveDue
+	case textgrammar.FieldRemoveDefer:
+		return acModeRemoveDefer
+	case textgrammar.FieldRemoveDestination:
+		return acModeRemoveDestination
+	case textgrammar.FieldRemovePinned:
+		return acModeRemovePin
+	case textgrammar.FieldRemoveProject:
+		return acModeRemoveProject
+	case textgrammar.FieldDerived:
+		return acModeDerived
+	case textgrammar.FieldRemoveDerived:
+		return acModeRemoveDerived
 	case textgrammar.FieldAttachment:
 		// An attachment value is a pasted URL or path, so there is nothing to
 		// suggest. The mode exists because quickCaptureTriggers drops a field

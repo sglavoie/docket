@@ -314,7 +314,24 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// browses it, because the workspace pulse ladder is closed and there is no
 	// sixth grammar, so both placements are rules stated against standing
 	// refusals. Spending it on anything else is a new raise, argued on its own.
-	const budget = 22900
+	//
+	// That earmark is spent, so this is the new raise, argued on its own and for
+	// one feature: the search grammar's uniform negation. Three rules come with
+	// it and none can be stated anywhere else. `-` now means removal on every
+	// surface, which is a claim about the whole registry rather than about any
+	// one sigil, and the ten spellings it covers only stay coherent if the
+	// registration order and the twin-resolved vocabulary are contract rather
+	// than convention — a reviewer adding an eleventh has nowhere else to read
+	// that the negation must sit immediately before its twin, longest trigger
+	// first, and must own no values of its own. `?` opens a second kind of
+	// predicate, one computed rather than stored, and its rule is a layering
+	// refusal: the names and the answers live in `internal/models` because
+	// `internal/tui` production code may not name `blocked`, so the contract
+	// that already bans the word has to say where the word does belong. `!N+`
+	// is one line and rides along because it is the same claim about where
+	// acceptance lives. The prose that explains any of it stayed in
+	// docs/architecture.md; what landed here is the rule set alone, in bullets.
+	const budget = 24100
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

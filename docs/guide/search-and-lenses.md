@@ -51,8 +51,8 @@ filter, and a query with no sigils behaves exactly as it did before:
 | Token | Effect |
 | --- | --- |
 | `!1`–`!3` | Match that priority exactly, unlike `f!`'s threshold; Unset never matches |
+| `!2+` | Match that priority and every more urgent one, the way `f!`'s threshold reads |
 | `#tag` | Match a tag by normalized-name prefix; repeatable, combined with AND |
-| `-#tag` | Exclude every task carrying a tag with that prefix |
 | `##context` | Match the task context by prefix, a separate axis from tags |
 | `@overdue`, `@today`, `@week`, `@none` | Match the same due buckets `f@` offers |
 | `@2026-03-05` | Match that exact calendar due day |
@@ -64,6 +64,8 @@ filter, and a query with no sigils behaves exactly as it did before:
 | `*pin`, `*unpin` | Match pinned or unpinned tasks |
 | `~task` | Match tasks that depend directly on that target; repeatable, combined with AND |
 | `%project` | Narrow the search to matching projects within the active scope |
+| `?property` | Match a property computed from the workspace rather than stored on the task |
+| `-token` | Remove whatever the same token without the `-` would have matched |
 
 Search still hides terminal work, so `$done` and `$canceled` are the two tokens
 that relax the rule and reveal it. `$today` and `$next` read planning
@@ -71,11 +73,41 @@ membership rather than a state, so a planned task also answers `$backlog`.
 `%project` can only narrow the scope that is already loaded; it never reaches a
 project the current scope or Focus excluded.
 
+A leading `-` always means *remove*, and what it removes from is whatever you
+are working on. While you are writing a task, `-#tag` takes a tag off it. In the
+search box there is no task to edit, so the same `-` takes rows out of the
+result: `-!1`, `-#tag`, `-##context`, `-@today`, `-@@tomorrow`, `-$doing`,
+`-*pin`, `-%project`, `-~task`, and `-?stale` each subtract exactly what the
+token without the `-` would have selected. That is the whole rule — every
+negation accepts the same values, offers the same completions, and reports the
+same problems as its positive twin, so there is nothing extra to learn. Several
+negations narrow together, and they compose with the positive tokens in the same
+AND gate: `#backend -$waiting` is the backend work you are not waiting on.
+
+`?` asks a question the workspace answers rather than matching something stored
+on the task:
+
+| Token | Matches |
+| --- | --- |
+| `?stale` | Open, undeferred work untouched for at least 90 days, the same population `fs` toggles |
+| `?deferred` | Tasks whose wake instant has not arrived |
+| `?leaf` | Tasks with no open direct child |
+| `?parent` | Tasks with at least one open direct child |
+| `?completed:90d` | Tasks finished at least that many days ago; like `$done`, this one reveals terminal work |
+| `?blocked` | Tasks that reference another task |
+| `?blocking` | Tasks another task references |
+
+`?blocked` and `?blocking` report that a reference exists, in one direction or
+the other. They say nothing about whether the other task is finished, because a
+reference is a note to yourself and never decides what is ready. `?completed`
+takes the `:Nd` age and the other six take no value at all.
+
 Only a token the grammar recognizes but cannot honor blocks the query: an
 out-of-range priority such as `!9`, a retired destination such as `$ready`, the
 reserved `##0`, the structural `>parent` and `<child` sigils that belong to the
-edit grammar alone, a `~0` or `-~task` that would edit a stored set search does
-not hold, a `~task` naming nothing the loaded population depends on, an `&link` naming something genuinely attachable, which
+edit grammar alone, a `~0` that would clear a stored set search does
+not hold, a `~task` naming nothing the loaded population depends on, a `?stale:90d`
+or `?completed:0d` whose qualifier the property cannot take, an `&link` naming something genuinely attachable, which
 belongs to capture and to the task's Attachments panel, and a paired
 `;comment;`, which belongs to capture and to the task's Comments panel. Those
 refuse by name in

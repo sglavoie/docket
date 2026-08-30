@@ -49,7 +49,10 @@ validated before one atomic transaction is committed.
   ordering, or eligibility to complete follows from it, so a task with an open
   dependency still starts and still completes. The edit surfaces add `-~task`,
   which removes one reference, and `~0`, which clears them all; capture accepts
-  neither, because a task being created has no set to subtract from. On an
+  neither, because a task being created has no set to subtract from. Search
+  takes `-~task` too, where removing means dropping those tasks from the result
+  rather than editing anything, and refuses `~0` for the same reason capture
+  does. On an
   existing row the `~` key opens Set Dependencies over the same set, with the
   stored references already checked: checking one adds it and unchecking one
   removes it, exactly as `~task` and `-~task` do in text.

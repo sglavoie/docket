@@ -151,9 +151,11 @@ func TestHelpGrammarSectionComesFromCanonicalRegistry(t *testing.T) {
 
 	// The deferral sigil is the whole reason the section exists: it has no key of
 	// its own, so `?` is the only place outside the composer that can teach it.
+	// The row is found by prefix rather than by substring: -@@defer is a row of its
+	// own now, and its key contains the positive form's spelling.
 	deferRow := -1
 	for i, item := range items {
-		if strings.Contains(item.Key, "@@defer") {
+		if strings.HasPrefix(item.Key, "@@defer") {
 			deferRow = i
 		}
 	}

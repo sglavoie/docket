@@ -338,7 +338,8 @@ committing one transaction.
 - A terminal destination refuses an open adopted child on both surfaces.
 - `~task` is the one repeatable reference crossing a project boundary, and it is
   soft: readiness, ordering, ranking, and completion never read it, and
-  dependents are computed. `-~task` and `~0` are edit and outline only.
+  dependents are computed. `~0` is edit and outline only; `-~task` also searches,
+  where it subtracts the tasks the positive form selects.
   `DependencyPatch`'s zero value is no intent, so a save that never mentions a
   reference preserves the set, which is what keeps the external-editor round trip
   and the create-only expanded form from erasing it. Both parse before `#tag`,
@@ -353,10 +354,27 @@ committing one transaction.
 
 Slash search is the fourth surface of the same registry, not a parallel query
 language. Its sigil set is the capture set minus `>parent`, `<child`, `&link`,
-and `;comment;`, which refuse by name, plus `~task`, whose predicate is direct
-and positive: `~0` and `-~task` refuse by name there too. Sigils compile to an AND gate applied before scoring, and the
+and `;comment;`, which refuse by name, plus `~task`, whose `~0` refuses by name
+there too. Sigils compile to an AND gate applied before scoring, and the
 case-relaxed retry re-runs that same gate.
 Only a recognized value the grammar cannot honor blocks a query.
+
+- `-` is the one negation: on a mutation surface it removes a value from the
+  task, in search it removes matches from the result. Search reads `-!`, `-#`,
+  `-##`, `-@`, `-@@`, `-$`, `-*`, `-%`, `-~`, `-?`; only `-#` and `-~` mutate. A
+  negation owns no vocabulary — values, viability, diagnostics, presets, and
+  completion resolve through its twin — and negatives join as an AND-of-nots at
+  any cardinality. `-*` declares no clear, so `-*unpin` stays prose. Each
+  registers immediately before its twin, longer trigger first;
+  `validateTriggerPrefixOrder` and `validateNegationPlacement` hold both.
+- `?` is search-only over a closed computed set — `stale`, `deferred`, `leaf`,
+  `parent`, `completed`, `blocked`, `blocking` — that no task stores.
+  `internal/models` owns the names and the answers, the grammar only the
+  spelling; `internal/tui` production code may not name them. `?completed` takes
+  an optional `:Nd` and alone opens the terminal population; `?blocked` and
+  `?blocking` are structural reference facts, never readiness verdicts.
+- `!N+` is that priority and above, accepted in `validatePriority` rather than
+  the pattern and read only by `ParseSearchPriority`.
 
 When changing the grammar, update parser definitions, completion, syntax guide,
 scenarios, and parity tests together.

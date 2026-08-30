@@ -1475,14 +1475,18 @@ off whole rather than depending on the leading-boundary rule alone.
 The three forms divide by surface because they divide by what a surface holds.
 Capture takes `~task` only: a task being created has no stored set, so `-~task`
 and `~0` are refused there by name. Inline edit and the outline buffer take all
-three. Search takes `~task` alone and compiles it into `admitsDependencies`, an
-AND gate over the stored list; `~0` and `-~task` are named in `placementDiagnostics`
-and `refusedSearchFields` rather than compiled into a locator that could never
-match, because a dependency predicate is direct and positive — there is no
-traversal and no negative form. The `~` row picker is the fourth surface and it
-holds a stored set, so it speaks all three forms without spelling any of them:
-checking an unstored row is `~task`, unchecking a stored one is `-~task`, and
-unchecking every one of them is what `~0` says.
+three. Search takes `~task` and `-~task` and compiles them into
+`admitsDependencies`, an AND gate over the stored list and an AND of nots beside
+it: the negation resolves its locator through the same
+`resolveDependencyReference` its positive twin uses, so an ambiguous or unknown
+alias is reported identically, and the resolved target then subtracts the tasks
+the positive form would have selected. `~0` is still named in
+`placementDiagnostics` and `refusedSearchFields` rather than compiled into a
+locator that could never match, because a query holds no stored set to clear. The
+`~` row picker is the fourth surface and it holds a stored set, so it speaks all
+three forms without spelling any of them: checking an unstored row is `~task`,
+unchecking a stored one is `-~task`, and unchecking every one of them is what
+`~0` says.
 
 `DependencyPatch` is what carries the intent into `Service.EditTaskLine`, and
 its zero value means *no intent* rather than an empty set: `prepared.dependenciesSet`
@@ -1617,6 +1621,53 @@ locator sets read from the durable plan rather than to a workflow state, which
 is why a planned task also answers `$backlog`. A recognized-but-unhonorable
 token compiles to an invalid gate that matches nothing and carries the
 registry's own error text into the search chrome and the empty-state message.
+
+`-` is the one negation operator, and what it removes from is whatever the
+surface holds. On a mutation surface it removes a value from the task, which is
+what `-#tag` and `-~task` have always meant; on Search it removes the tasks the
+positive twin selects, so ten spellings — `-!`, `-#`, `-##`, `-@`, `-@@`, `-$`,
+`-*`, `-%`, `-~`, `-?` — read as one rule rather than ten. Each negation is its
+own registry entry carrying its own `Field`, and each declares `negates` naming
+the twin it subtracts, which is what lets one projection serve both: values,
+viability, diagnostics, presets, examples, and autocomplete all resolve through
+`negatedField`, so no negation owns a second vocabulary that could drift from
+the positive's. `-*` deliberately declares no `Clears`, so `-*unpin` stays prose
+rather than becoming a double negative. Registration order is load-bearing for
+RE2's missing lookaround the same way `&` and `;` are — each negation sits
+immediately before its positive twin and the longer trigger comes first, so `-@@`
+peels whole rather than reading as `-@` with an `@` value — and
+`validateTriggerPrefixOrder` and `validateNegationPlacement` hold the registry to
+that at init rather than leaving it to review. The compiled gate joins negations
+as an AND of nots at any cardinality, beside the positive AND gate and applied in
+the same pass.
+
+`?` is the derived-property trigger and it is search-only, because a derived
+property is computed from the workspace rather than stored on a task: there is
+nothing for a mutation surface to write. Its value set is closed —
+`stale`, `deferred`, `leaf`, `parent`, `completed`, `blocked`, `blocking` —
+and the names and the answers both live in `internal/models`
+(`models.DerivedProperty`, `models.DerivedProperties`, `models.TaskMatchesDerived`),
+which the grammar spells and the TUI calls without naming. That layering is not
+incidental: `TestDependencyIsolationPresentationVocabulary` bans the strings
+`blocked` and `blocker` from `internal/tui` production code, so the property has
+to be named where the invariant lives. `?completed:Nd` is the one qualifier, and
+it opens the terminal population the way `$done` does, through
+`models.DerivedOpensTerminalPopulation`; the census two of the properties need —
+open direct children for `?leaf`/`?parent`, incoming references for `?blocking` —
+is built once per query and only when `models.DerivedNeedsChildCensus` or
+`models.DerivedNeedsDependentCensus` asks for it. `?blocked` and `?blocking` are
+structural questions about whether a reference exists in either direction, never
+readiness verdicts: a soft reference decides no ordering, ranking, or completion,
+so neither property reads the other end's state. A `?` value outside the set is
+left as prose, the way `!important` is; a recognized value the grammar cannot
+honor — `?stale:90d`, `?completed:0d` — raises guidance and blocks the query.
+
+`!N+` reads "N and above, where above is more urgent". The pattern is unchanged:
+acceptance lives in `validatePriority`, which admits the `+` suffix on the search
+surface alone, because capture and edit assign a priority and "and above" is not
+a value a task can carry. `ParseSearchPriority` is the only reader of the suffix
+and expands it into the admitted set, so the threshold never leaks into a stored
+field.
 
 Case is a narrowing signal rather than a syntax. `fuzzy.Matcher` carries one
 case-sensitivity bit, `fuzzy.CaseSensitiveQuery` is the single detection rule

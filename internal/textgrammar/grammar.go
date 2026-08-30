@@ -48,6 +48,24 @@ const (
 	FieldPinned           Field = "pinned"
 	FieldAttachment       Field = "attachment"
 	FieldComment          Field = "comment"
+	// The remaining negations are search-only. `-` is the one negation operator
+	// in the grammar: on a mutation surface it takes a value away from the task,
+	// and on search it takes the rows carrying that value away from the result
+	// set. FieldRemoveTag and FieldRemoveDependency already carry both readings;
+	// these seven carry only the second, because there is nothing to subtract
+	// from a task that does not hold a set.
+	FieldRemovePriority    Field = "remove_priority"
+	FieldRemoveContext     Field = "remove_context"
+	FieldRemoveDue         Field = "remove_due"
+	FieldRemoveDefer       Field = "remove_defer"
+	FieldRemoveDestination Field = "remove_destination"
+	FieldRemovePinned      Field = "remove_pinned"
+	FieldRemoveProject     Field = "remove_project"
+	// FieldDerived is the computed-predicate family. Its whole meaning is
+	// "derived, never assigned", which is why it can only ever reach search: no
+	// capture or edit surface may set a value the workspace computes.
+	FieldDerived       Field = "derived"
+	FieldRemoveDerived Field = "remove_derived"
 )
 
 // Cardinality describes whether a field may occur once or many times in one
@@ -97,6 +115,7 @@ const (
 	validateTag
 	validatePin
 	validateAttachment
+	validateDerived
 )
 
 // definitionSpec adds the search wording beside the mutation wording because
@@ -108,8 +127,14 @@ type definitionSpec struct {
 	// normalize reduces the matched group to the value consumers receive, for a
 	// field whose pattern has to admit more shapes than it wants to hand on. Only
 	// the attachment field declares one; a nil normalizer is the identity.
-	normalize         func(string) string
-	validation        tokenValidation
+	normalize  func(string) string
+	validation tokenValidation
+	// negates names the positive field this entry subtracts. A negation owns no
+	// vocabulary of its own: its values, its viability test, and its diagnostics
+	// all resolve through the twin, which is what keeps "-@friday" and "@friday"
+	// from ever disagreeing about what a Friday is. validateNegationPlacement
+	// additionally holds the pair adjacent in parse order.
+	negates           Field
 	searchDescription string
 	searchClearText   map[string]string
 }
@@ -117,7 +142,35 @@ type definitionSpec struct {
 var priorityNames = []string{"1", "2", "3"}
 var retiredPriorityNames = []string{"4", "5"}
 
+var dueValueNames = []string{
+	"today", "tomorrow", "+1d", "+3d", "+1w", "+2w", "+1m",
+	"monday", "friday", "next monday", "next friday", "in 3 days", "in 1 week", "in 2 weeks",
+}
+
+var deferValueNames = []string{
+	"+2h", "+8h", "tomorrow", "+1d", "+3d", "+1w", "monday", "friday",
+}
+
 const clearValue = "0"
+
+// derivedNames is the closed set ?value accepts, spelled out of the canonical
+// property list rather than copied: every one of them is a question about a task
+// that the task itself does not store, so the answers are invariants and live in
+// internal/models. The grammar owns only the spelling. They are search-only for
+// the same reason — there is no assignment that could make a task a leaf.
+var derivedNames = derivedPropertyNames()
+
+func derivedPropertyNames() []string {
+	names := make([]string, 0, len(models.DerivedProperties))
+	for _, property := range models.DerivedProperties {
+		names = append(names, string(property))
+	}
+	return names
+}
+
+// derivedAgeSuffix marks the day count only ?completed carries. The qualifier is
+// optional: bare ?completed asks whether a completion instant exists at all.
+const derivedAgeSuffix = "d"
 
 var registry = []definitionSpec{
 	// Comment is parsed FIRST, ahead of every other field including attachment,
@@ -192,13 +245,15 @@ var registry = []definitionSpec{
 			Examples:    []string{"-~1", "-~project-slug:1"},
 			// Capture carries the field only so it can be refused by name. It
 			// declares no capture form, so the guide never advertises it there.
-			// Search carries it nowhere at all: a dependency predicate is direct and
-			// positive, and ParseSearch refuses -~ by name in placementDiagnostics.
-			Surfaces: SurfaceCapture | SurfaceEdit | SurfaceOutline, Cardinality: CardinalityRepeatable,
+			Surfaces: allSurfaces, Cardinality: CardinalityRepeatable,
 		},
-		forms:      []surfaceForm{{Text: "-~task", Surfaces: SurfaceEdit | SurfaceOutline}},
-		pattern:    `(?:^|\s)-~(\S+)`,
-		validation: validateAny,
+		forms: []surfaceForm{
+			{Text: "-~task", Surfaces: SurfaceEdit | SurfaceOutline | SurfaceSearch},
+		},
+		pattern:           `(?:^|\s)-~(\S+)`,
+		validation:        validateAny,
+		negates:           FieldDependency,
+		searchDescription: "Exclude a direct dependency",
 	},
 	{
 		Definition: Definition{
@@ -220,6 +275,18 @@ var registry = []definitionSpec{
 	},
 	{
 		Definition: Definition{
+			Field: FieldRemovePriority, Group: "Priority & Tags", Trigger: "-!",
+			Values: priorityNames, RetiredValues: retiredPriorityNames,
+			Examples: []string{"-!1", "-!3+"}, Surfaces: SurfaceSearch,
+			Cardinality: CardinalityRepeatable,
+		},
+		forms:   []surfaceForm{{Text: "-!1-3", Surfaces: SurfaceSearch}},
+		pattern: `(?:^|\s)-!([^\s]+)`, validation: validatePriority,
+		negates:           FieldPriority,
+		searchDescription: "Exclude a priority or threshold",
+	},
+	{
+		Definition: Definition{
 			Field: FieldPriority, Group: "Priority & Tags", Trigger: "!",
 			Description: "Set priority", Values: priorityNames, RetiredValues: retiredPriorityNames,
 			Examples: []string{"!1", "!2", "!3"}, Surfaces: allSurfaces,
@@ -231,29 +298,22 @@ var registry = []definitionSpec{
 			{Text: "!0", Surfaces: SurfaceEdit},
 		},
 		pattern: `(?:^|\s)!([^\s]+)`, validation: validatePriority,
-		searchDescription: "Match priority exactly",
+		// The threshold is accepted in validatePriority rather than in the pattern:
+		// the capture group already spans "2+", and moving the "+" into the regexp
+		// would make one surface's vocabulary a property of the shape every surface
+		// is peeled with. Only search reads the suffix.
+		searchDescription: "Match a priority, or !N+ for that priority and above",
 	},
 	{
 		Definition: Definition{
-			Field: FieldTag, Group: "Priority & Tags", Trigger: "#",
-			Description: "Add tag", Examples: []string{"#backend", "#bug", "#source:github"},
-			Surfaces: allSurfaces, Cardinality: CardinalityRepeatable,
+			Field: FieldRemoveContext, Group: "Context", Trigger: "-##",
+			Examples: []string{"-##frontend", "-##client-acme"},
+			Surfaces: SurfaceSearch, Cardinality: CardinalityRepeatable,
 		},
-		forms:             []surfaceForm{{Text: "#tag", Surfaces: allSurfaces}},
-		pattern:           `(?:^|\s)#([\w][\w.:-]*)`,
-		validation:        validateTag,
-		searchDescription: "Match a tag prefix",
-	},
-	{
-		Definition: Definition{
-			Field: FieldRemoveTag, Group: "Priority & Tags", Trigger: "-#",
-			Description: "Remove tag", Examples: []string{"-#old", "-#source:github"},
-			Surfaces: SurfaceEdit | SurfaceSearch, Cardinality: CardinalityRepeatable,
-		},
-		forms:             []surfaceForm{{Text: "-#tag", Surfaces: SurfaceEdit | SurfaceSearch}},
-		pattern:           `(?:^|\s)-#([\w][\w.:-]*)`,
-		validation:        validateTag,
-		searchDescription: "Exclude a tag prefix",
+		forms:   []surfaceForm{{Text: "-##context", Surfaces: SurfaceSearch}},
+		pattern: `(?:^|\s)-##([\w][\w.:-]*)`, validation: validateTag,
+		negates:           FieldContext,
+		searchDescription: "Exclude a context prefix",
 	},
 	{
 		Definition: Definition{
@@ -271,14 +331,75 @@ var registry = []definitionSpec{
 	},
 	{
 		Definition: Definition{
+			Field: FieldRemoveTag, Group: "Priority & Tags", Trigger: "-#",
+			Description: "Remove tag", Examples: []string{"-#old", "-#source:github"},
+			Surfaces: SurfaceEdit | SurfaceSearch, Cardinality: CardinalityRepeatable,
+		},
+		forms:             []surfaceForm{{Text: "-#tag", Surfaces: SurfaceEdit | SurfaceSearch}},
+		pattern:           `(?:^|\s)-#([\w][\w.:-]*)`,
+		validation:        validateTag,
+		negates:           FieldTag,
+		searchDescription: "Exclude a tag prefix",
+	},
+	{
+		Definition: Definition{
+			Field: FieldTag, Group: "Priority & Tags", Trigger: "#",
+			Description: "Add tag", Examples: []string{"#backend", "#bug", "#source:github"},
+			Surfaces: allSurfaces, Cardinality: CardinalityRepeatable,
+		},
+		forms:             []surfaceForm{{Text: "#tag", Surfaces: allSurfaces}},
+		pattern:           `(?:^|\s)#([\w][\w.:-]*)`,
+		validation:        validateTag,
+		searchDescription: "Match a tag prefix",
+	},
+	{
+		Definition: Definition{
+			Field: FieldRemoveDefer, Group: "Schedule", Trigger: "-@@",
+			Values:   deferValueNames,
+			Examples: []string{"-@@tomorrow", "-@@+3d"},
+			Surfaces: SurfaceSearch, Cardinality: CardinalityRepeatable,
+		},
+		forms:             []surfaceForm{{Text: "-@@defer", Surfaces: SurfaceSearch}},
+		pattern:           `(?i)(?:^|\s)-@@(next\s+\w+|in\s+\d+\s+\w+|\S+)`,
+		negates:           FieldDefer,
+		searchDescription: "Exclude tasks deferred until that day",
+	},
+	{
+		Definition: Definition{
+			Field: FieldDefer, Group: "Schedule", Trigger: "@@",
+			Description: "Defer task until a later instant",
+			Values:      deferValueNames,
+			Examples:    []string{"@@+2h", "@@tomorrow", "@@+3d"},
+			Surfaces:    SurfaceCapture | SurfaceEdit | SurfaceSearch,
+			Cardinality: CardinalitySingleton,
+			Clears:      []ClearOperation{{Value: clearValue, Description: "Clear deferral", Surfaces: SurfaceEdit}},
+		},
+		forms: []surfaceForm{
+			{Text: "@@defer", Surfaces: SurfaceCapture | SurfaceEdit | SurfaceSearch},
+			{Text: "@@0", Surfaces: SurfaceEdit},
+		},
+		pattern:           `(?i)(?:^|\s)@@(next\s+\w+|in\s+\d+\s+\w+|\S+)`,
+		searchDescription: "Match tasks deferred until that day",
+	},
+	{
+		Definition: Definition{
+			Field: FieldRemoveDue, Group: "Schedule", Trigger: "-@",
+			Values:   dueValueNames,
+			Examples: []string{"-@today", "-@friday", "-@+3d"},
+			Surfaces: SurfaceSearch, Cardinality: CardinalityRepeatable,
+		},
+		forms:             []surfaceForm{{Text: "-@date", Surfaces: SurfaceSearch}},
+		pattern:           `(?i)(?:^|\s)-@((?:next\s+\w+|in\s+\d+\s+\w+|[^\s@]\S*)(?:\s+\d{1,2}:\d{2})?)`,
+		negates:           FieldDue,
+		searchDescription: "Exclude a due bucket, day, or +Nh window",
+	},
+	{
+		Definition: Definition{
 			Field: FieldDue, Group: "Schedule", Trigger: "@",
 			Description: "Set due date",
-			Values: []string{
-				"today", "tomorrow", "+1d", "+3d", "+1w", "+2w", "+1m",
-				"monday", "friday", "next monday", "next friday", "in 3 days", "in 1 week", "in 2 weeks",
-			},
-			Examples: []string{"@tomorrow", "@friday", "@+3d", "@next monday", "@tomorrow 15:30", "@2026-08-25 09:00"},
-			Surfaces: allSurfaces, Cardinality: CardinalitySingleton,
+			Values:      dueValueNames,
+			Examples:    []string{"@tomorrow", "@friday", "@+3d", "@next monday", "@tomorrow 15:30", "@2026-08-25 09:00"},
+			Surfaces:    allSurfaces, Cardinality: CardinalitySingleton,
 			Clears: []ClearOperation{{Value: clearValue, Description: "Clear due date", Surfaces: SurfaceEdit}},
 		},
 		forms: []surfaceForm{
@@ -295,22 +416,15 @@ var registry = []definitionSpec{
 	},
 	{
 		Definition: Definition{
-			Field: FieldDefer, Group: "Schedule", Trigger: "@@",
-			Description: "Defer task until a later instant",
-			Values: []string{
-				"+2h", "+8h", "tomorrow", "+1d", "+3d", "+1w", "monday", "friday",
-			},
-			Examples:    []string{"@@+2h", "@@tomorrow", "@@+3d"},
-			Surfaces:    SurfaceCapture | SurfaceEdit | SurfaceSearch,
-			Cardinality: CardinalitySingleton,
-			Clears:      []ClearOperation{{Value: clearValue, Description: "Clear deferral", Surfaces: SurfaceEdit}},
+			Field: FieldRemoveDestination, Group: "Destination", Trigger: "-$",
+			Values:   destinationNames,
+			Examples: prefixed(destinationNames, "-$"), Surfaces: SurfaceSearch,
+			Cardinality: CardinalityRepeatable,
 		},
-		forms: []surfaceForm{
-			{Text: "@@defer", Surfaces: SurfaceCapture | SurfaceEdit | SurfaceSearch},
-			{Text: "@@0", Surfaces: SurfaceEdit},
-		},
-		pattern:           `(?i)(?:^|\s)@@(next\s+\w+|in\s+\d+\s+\w+|\S+)`,
-		searchDescription: "Match tasks deferred until that day",
+		forms:             []surfaceForm{{Text: "-$destination", Surfaces: SurfaceSearch}},
+		pattern:           `(?:^|\s)-\$(\w+)`,
+		negates:           FieldDestination,
+		searchDescription: "Exclude a lifecycle state or planning list",
 	},
 	{
 		Definition: Definition{
@@ -322,6 +436,23 @@ var registry = []definitionSpec{
 		forms:             []surfaceForm{{Text: "$destination", Surfaces: allSurfaces}},
 		pattern:           `(?:^|\s)\$(\w+)`,
 		searchDescription: "Match a lifecycle state or planning list",
+	},
+	// The pin negation declares no Clears, and that absence is what keeps the
+	// grammar to one negation operator: validatePin admits this spec's Values plus
+	// its own clear values, so -* accepts "pin" alone and "-*unpin" stays prose
+	// rather than minting a second, doubly negative spelling of "pinned".
+	// "*unpin" survives as an input spelling of the same predicate.
+	{
+		Definition: Definition{
+			Field: FieldRemovePinned, Group: "Pinning", Trigger: "-*",
+			Values:   []string{"pin"},
+			Examples: []string{"-*pin"}, Surfaces: SurfaceSearch,
+			Cardinality: CardinalityRepeatable,
+		},
+		forms:   []surfaceForm{{Text: "-*pin", Surfaces: SurfaceSearch}},
+		pattern: `(?:^|\s)-\*(\S+)`, validation: validatePin,
+		negates:           FieldPinned,
+		searchDescription: "Match unpinned tasks",
 	},
 	// Pin advertises only the set value. Definitions does not filter Values by
 	// surface, so listing the clear value there would offer it while capturing,
@@ -347,6 +478,17 @@ var registry = []definitionSpec{
 	},
 	{
 		Definition: Definition{
+			Field: FieldRemoveProject, Group: "Project Routing", Trigger: "-%",
+			Examples: []string{"-%project-slug"},
+			Surfaces: SurfaceSearch, Cardinality: CardinalityRepeatable,
+		},
+		forms:             []surfaceForm{{Text: "-%project", Surfaces: SurfaceSearch}},
+		pattern:           `(?:^|\s)-%(\S+)`,
+		negates:           FieldProject,
+		searchDescription: "Drop matching scope projects",
+	},
+	{
+		Definition: Definition{
 			Field: FieldProject, Group: "Project Routing", Trigger: "%",
 			Description: "Move to project", Examples: []string{"%project-slug"},
 			Surfaces: SurfaceCapture | SurfaceEdit | SurfaceSearch, Cardinality: CardinalitySingleton,
@@ -354,6 +496,29 @@ var registry = []definitionSpec{
 		forms:             []surfaceForm{{Text: "%project", Surfaces: SurfaceCapture | SurfaceEdit | SurfaceSearch}},
 		pattern:           `(?:^|\s)%(\S+)`,
 		searchDescription: "Narrow to matching scope projects",
+	},
+	{
+		Definition: Definition{
+			Field: FieldRemoveDerived, Group: "Derived", Trigger: "-?",
+			Values:   derivedNames,
+			Examples: []string{"-?stale", "-?blocked", "-?completed:90d"},
+			Surfaces: SurfaceSearch, Cardinality: CardinalityRepeatable,
+		},
+		forms:   []surfaceForm{{Text: "-?derived", Surfaces: SurfaceSearch}},
+		pattern: `(?:^|\s)-\?(\S+)`, validation: validateDerived,
+		negates:           FieldDerived,
+		searchDescription: "Exclude a computed property",
+	},
+	{
+		Definition: Definition{
+			Field: FieldDerived, Group: "Derived", Trigger: "?",
+			Values:   derivedNames,
+			Examples: []string{"?stale", "?leaf", "?blocking", "?completed:90d"},
+			Surfaces: SurfaceSearch, Cardinality: CardinalityRepeatable,
+		},
+		forms:   []surfaceForm{{Text: "?derived", Surfaces: SurfaceSearch}},
+		pattern: `(?:^|\s)\?(\S+)`, validation: validateDerived,
+		searchDescription: "Match a computed property the task does not store",
 	},
 	{
 		Definition: Definition{
@@ -403,16 +568,30 @@ var registry = []definitionSpec{
 // The two held one list until the attachment sigil needed to be parsed ahead of
 // #tag without leading the syntax guide. validateGuideOrder keeps them the same
 // set, so a field added to one and forgotten in the other fails at init.
+// Teach order pairs every negation immediately after the value it subtracts,
+// which is the opposite of the adjacency parse order needs: a reader meets the
+// thing before the removal of it, while the tokenizer must peel the longer
+// trigger first. The two lists disagreeing here is the split working, not a
+// drift — validateGuideOrder holds them to one set and nothing more.
 var guideOrder = []Field{
 	FieldPriority,
+	FieldRemovePriority,
 	FieldTag,
 	FieldRemoveTag,
 	FieldContext,
+	FieldRemoveContext,
 	FieldDue,
+	FieldRemoveDue,
 	FieldDefer,
+	FieldRemoveDefer,
 	FieldDestination,
+	FieldRemoveDestination,
 	FieldPinned,
+	FieldRemovePinned,
 	FieldProject,
+	FieldRemoveProject,
+	FieldDerived,
+	FieldRemoveDerived,
 	FieldParent,
 	FieldChild,
 	FieldDependency,
@@ -441,7 +620,11 @@ func Definitions(surface Surface) []Definition {
 			continue
 		}
 		def := spec.Definition
-		if surface == SurfaceSearch {
+		// A search-only entry states its meaning once, in searchDescription: it has
+		// no mutation reading to describe, so it leaves Description empty in the
+		// registry rather than carrying the same sentence twice. Every other entry
+		// swaps in the predicate wording on search alone.
+		if surface == SurfaceSearch || def.Description == "" {
 			def.Description = spec.searchDescription
 		}
 		def.Forms = slices.Clone(forms)
@@ -539,7 +722,64 @@ func validateRegistry() error {
 	if err := validateGuideOrder(); err != nil {
 		return err
 	}
+	if err := validateTriggerPrefixOrder(); err != nil {
+		return err
+	}
+	if err := validateNegationPlacement(); err != nil {
+		return err
+	}
 	return validateDestinationDefinition()
+}
+
+// validateTriggerPrefixOrder asserts that whenever one trigger is a prefix of
+// another, the longer one is peeled first. RE2 has no lookaround, so a shorter
+// trigger registered ahead of the trigger that extends it would swallow the
+// first characters of every token the longer one owns. The registry has always
+// depended on this — ## ahead of #, @@ ahead of @ — through comments and a
+// hand-held order; the uniform negations doubled the number of prefix pairs, so
+// it is checked instead.
+func validateTriggerPrefixOrder() error {
+	for i, spec := range registry {
+		for _, later := range registry[i+1:] {
+			if strings.HasPrefix(later.Trigger, spec.Trigger) {
+				return fmt.Errorf(
+					"grammar trigger %q is parsed before %q, which extends it",
+					spec.Trigger, later.Trigger,
+				)
+			}
+		}
+	}
+	return nil
+}
+
+// validateNegationPlacement asserts that a negation names a real twin, sits
+// immediately before it in parse order, and reaches no surface the twin does
+// not. Adjacency is what makes "-" one operator rather than a family of
+// coincidences: the pair is peeled together, so no third pattern can slip
+// between a value and its removal and consume half of one.
+func validateNegationPlacement() error {
+	for i, spec := range registry {
+		if spec.negates == "" {
+			continue
+		}
+		if spec.negates == spec.Field {
+			return fmt.Errorf("grammar field %s negates itself", spec.Field)
+		}
+		if i+1 >= len(registry) || registry[i+1].Field != spec.negates {
+			return fmt.Errorf(
+				"grammar field %s must be registered immediately before %s, the field it negates",
+				spec.Field, spec.negates,
+			)
+		}
+		twin := registry[i+1]
+		if spec.Surfaces&^twin.Surfaces != 0 {
+			return fmt.Errorf(
+				"grammar field %s reaches a surface %s does not",
+				spec.Field, twin.Field,
+			)
+		}
+	}
+	return nil
 }
 
 // validateGuideOrder asserts parse order and teach order hold identical sets.
@@ -638,13 +878,21 @@ func validateDefinitionClears(spec definitionSpec) error {
 
 // validateDefinitionDescriptions keeps the search projection from advertising a
 // mutation sentence: a field reaching search must carry predicate wording, and
-// so must every clear value that reaches it.
+// so must every clear value that reaches it. A search-only field states its
+// meaning in searchDescription alone, so it is the one shape allowed — and
+// required — to leave the mutation sentence empty.
 func validateDefinitionDescriptions(spec definitionSpec) error {
 	if spec.Surfaces&SurfaceSearch != 0 && !spec.Legacy && spec.searchDescription == "" {
 		return fmt.Errorf("grammar field %s has no search description", spec.Field)
 	}
 	if spec.Surfaces&SurfaceSearch == 0 && spec.searchDescription != "" {
 		return fmt.Errorf("grammar field %s declares a search description off the search surface", spec.Field)
+	}
+	if spec.Surfaces&^SurfaceSearch != 0 && spec.Description == "" {
+		return fmt.Errorf("grammar field %s has no mutation description", spec.Field)
+	}
+	if spec.Surfaces == SurfaceSearch && spec.Description != "" {
+		return fmt.Errorf("grammar field %s is search-only and must describe itself once, in its search description", spec.Field)
 	}
 	for value, text := range spec.searchClearText {
 		if text == "" {
@@ -748,6 +996,29 @@ func ParsePriority(value string, allowRange bool) ([]int, bool) {
 		return nil, false
 	}
 	return []int{priority}, true
+}
+
+// searchPriorityThresholdSuffix widens a priority predicate to everything at
+// least that urgent. It is search-only for the obvious reason: a threshold is a
+// question, and there is no widened value to assign to a task.
+const searchPriorityThresholdSuffix = "+"
+
+// ParseSearchPriority resolves one search-surface priority token into the
+// priorities it admits. A bare !N admits that priority alone; !N+ admits N and
+// everything more urgent, which is every smaller number, because !1 is the most
+// urgent. It is the one reader of the "+" suffix, so the gate that filters and
+// the diagnostic that refuses cannot disagree about whether !2+ is a legal query.
+func ParseSearchPriority(value string) ([]int, bool) {
+	body, threshold := strings.CutSuffix(strings.TrimSpace(value), searchPriorityThresholdSuffix)
+	priorities, ok := ParsePriority(body, false)
+	if !ok || !threshold {
+		return priorities, ok
+	}
+	admitted := make([]int, 0, priorities[0])
+	for priority := 1; priority <= priorities[0]; priority++ {
+		admitted = append(admitted, priority)
+	}
+	return admitted, true
 }
 
 // InvalidPriorityError formats capture guidance from the canonical values.

@@ -2,7 +2,7 @@
 # Columns: concept, production path, identifier, AST occurrence count.
 # Regenerate after reviewing ownership changes with:
 #   UPDATE_RETIRED_CONCEPT_BASELINE=1 go test ./internal/storage -run TestRetiredConceptInventoryBaseline
-# Total rows: 278
+# Total rows: 282
 custom-context	internal/config/legacy_v4_domains.go	CustomContexts	2
 custom-context	internal/config/legacy_v4_domains_convert.go	CustomContexts	8
 custom-context	internal/config/pre_consolidation_v6_snapshot.go	customContexts	3
@@ -73,6 +73,7 @@ dependency	internal/config/runtime.go	NewRuntimeDependencies	2
 dependency	internal/config/runtime.go	RuntimeDependencies	11
 dependency	internal/config/v15_migration_activation.go	createPreDependenciesV15Snapshot	2
 dependency	internal/config/v15_migration_activation.go	v15DependenciesAuditReport	2
+dependency	internal/models/derived_property.go	Dependencies	1
 dependency	internal/models/query.go	QueryFieldDependency	2
 dependency	internal/models/query_admit.go	Dependencies	1
 dependency	internal/models/query_admit.go	QueryFieldDependency	1
@@ -103,10 +104,9 @@ dependency	internal/storage/v5_archive_reintegration.go	canonicalV5DependencyRef
 dependency	internal/storage/v5_archive_reintegration.go	dependencies	4
 dependency	internal/storage/v5_archive_reintegration.go	dependencyID	9
 dependency	internal/storage/v5_archive_reintegration.go	dependencyRef	9
-dependency	internal/textgrammar/grammar.go	FieldDependency	3
+dependency	internal/textgrammar/grammar.go	FieldDependency	4
 dependency	internal/textgrammar/grammar.go	FieldRemoveDependency	3
-dependency	internal/textgrammar/search.go	FieldDependency	2
-dependency	internal/textgrammar/search.go	FieldRemoveDependency	1
+dependency	internal/textgrammar/search.go	FieldDependency	1
 dependency	internal/tui/app_init.go	RuntimeDependencies	2
 dependency	internal/tui/app_manage_hub.go	ManageHubDependencies	1
 dependency	internal/tui/dependency_autocomplete.go	Dependencies	2
@@ -187,18 +187,22 @@ dependency	internal/tui/outliner_rows.go	Dependencies	2
 dependency	internal/tui/outliner_rows.go	cloneTaskDetachingDependencies	2
 dependency	internal/tui/outliner_search_autocomplete.go	Dependencies	1
 dependency	internal/tui/outliner_search_autocomplete.go	FieldDependency	1
+dependency	internal/tui/outliner_search_autocomplete.go	FieldRemoveDependency	1
 dependency	internal/tui/outliner_search_autocomplete.go	dependencyCandidate	3
 dependency	internal/tui/outliner_search_autocomplete.go	dependencySuggestions	1
 dependency	internal/tui/outliner_search_autocomplete.go	searchDependencyCandidates	2
 dependency	internal/tui/outliner_search_autocomplete.go	searchDependencyEffectiveProject	2
 dependency	internal/tui/outliner_search_autocomplete.go	searchDependencySuggestions	2
-dependency	internal/tui/outliner_search_predicates.go	Dependencies	1
+dependency	internal/tui/outliner_search_predicates.go	Dependencies	3
 dependency	internal/tui/outliner_search_predicates.go	FieldDependency	2
-dependency	internal/tui/outliner_search_predicates.go	addDependency	2
+dependency	internal/tui/outliner_search_predicates.go	FieldRemoveDependency	1
+dependency	internal/tui/outliner_search_predicates.go	addDependency	3
 dependency	internal/tui/outliner_search_predicates.go	admitsDependencies	2
 dependency	internal/tui/outliner_search_predicates.go	capturedDependencyRef	1
+dependency	internal/tui/outliner_search_predicates.go	collectDependencyTargets	2
 dependency	internal/tui/outliner_search_predicates.go	compileSearchDependency	2
-dependency	internal/tui/outliner_search_predicates.go	dependencies	5
+dependency	internal/tui/outliner_search_predicates.go	dependedOn	3
+dependency	internal/tui/outliner_search_predicates.go	dependencies	3
 dependency	internal/tui/outliner_search_predicates.go	dependencyNotFoundMessage	2
 dependency	internal/tui/outliner_search_predicates.go	dependencyRefFor	1
 dependency	internal/tui/outliner_search_predicates.go	dependencyRelationship	1
