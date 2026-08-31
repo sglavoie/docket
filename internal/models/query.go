@@ -23,6 +23,13 @@ import (
 // clause here. Adding one means giving the evaluator a resolution context, not
 // widening Admits; see QueryFieldOrder for how the vocabulary extends.
 //
+// Two families are spelled as clauses anyway, so the axis has one vocabulary a
+// picker, a chip, a saved lens, and a typed query all share: the population
+// fields, which QueryFieldRequiresReload marks, and the census fields, which
+// QueryFieldRequiresCensus marks. Neither is answered here by pretending to
+// knowledge Admits does not have — the holder of the population lifts them out
+// and answers them against its own census.
+//
 // The zero Query narrows nothing: it admits every task in every project it is
 // handed. The base workspace population (non-archived, not parked) is decided by
 // the caller that loads projects, never by an implied clause.
@@ -136,6 +143,18 @@ const (
 	QueryFieldChild QueryField = "child"
 	// QueryFieldLeaf matches tasks with no open direct child.
 	QueryFieldLeaf QueryField = "leaf"
+	// QueryFieldBlocked matches tasks holding at least one outgoing soft
+	// reference. It is a structural fact about what the task stores and never a
+	// readiness verdict: a soft reference gates nothing, so a blocked task is
+	// perfectly workable.
+	QueryFieldBlocked QueryField = "blocked"
+	// QueryFieldBlocking matches tasks at least one other task names. Dependents
+	// are computed over a population rather than stored on a task, so this is the
+	// one clause field (task, project, now) cannot decide; the holder of the
+	// population's reference index lifts it out and answers it there, exactly as
+	// the hierarchy fields are lifted out and answered against the open-child
+	// census.
+	QueryFieldBlocking QueryField = "blocking"
 	// QueryFieldProjectTag is the project population's descriptive tag axis. It
 	// unions like a single-valued field because a project is admitted by
 	// belonging to any named tag, and its None reading names the projects the
@@ -217,6 +236,8 @@ var queryFieldSpecs = []queryFieldSpec{
 	{QueryFieldParent, QueryJoinOR, []QueryOperator{QueryOperatorPresent}, false},
 	{QueryFieldChild, QueryJoinOR, []QueryOperator{QueryOperatorPresent}, false},
 	{QueryFieldLeaf, QueryJoinOR, []QueryOperator{QueryOperatorPresent}, false},
+	{QueryFieldBlocked, QueryJoinOR, []QueryOperator{QueryOperatorPresent}, false},
+	{QueryFieldBlocking, QueryJoinOR, []QueryOperator{QueryOperatorPresent}, false},
 	{QueryFieldProjectTag, QueryJoinOR, []QueryOperator{QueryOperatorIs, QueryOperatorNone}, true},
 	{QueryFieldParked, QueryJoinOR, []QueryOperator{QueryOperatorIs}, true},
 	{QueryFieldArchived, QueryJoinOR, []QueryOperator{QueryOperatorIs}, true},
@@ -269,6 +290,26 @@ func QueryFieldJoin(field QueryField) (QueryJoin, error) {
 func QueryFieldRequiresReload(field QueryField) bool {
 	spec, ok := querySpecFor(field)
 	return ok && spec.reload
+}
+
+// QueryFieldRequiresCensus reports whether a field names a task's place in a
+// population rather than an attribute of the task itself. Admits answers such a
+// clause from whatever the task alone can support, which for the hierarchy
+// fields is the stored Children a filter pipeline may have rewritten and for
+// blocking is nothing at all. A caller holding the population's census must
+// therefore lift these fields out of the row predicate and answer them itself.
+//
+// It is a list rather than a spec column because it is a statement about the
+// callers, not about the vocabulary: the same clause is decidable inside the
+// Outliner, which holds an open-child census and a reference index, and
+// undecidable outside it.
+func QueryFieldRequiresCensus(field QueryField) bool {
+	switch field {
+	case QueryFieldParent, QueryFieldChild, QueryFieldLeaf, QueryFieldBlocked, QueryFieldBlocking:
+		return true
+	default:
+		return false
+	}
 }
 
 // NewQueryClause validates one clause and fills in its derived reload

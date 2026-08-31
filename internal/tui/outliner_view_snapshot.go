@@ -140,7 +140,7 @@ func (m *OutlinerModel) restoreOutlinerViewSnapshot(snapshot outlinerViewSnapsho
 	m.restorePresentationSnapshot(snapshot.presentation)
 	m.projectFilter = snapshot.projectFilter.clone()
 	m.adoptFilterCarriers()
-	m.loadedProjects = slices.Clone(snapshot.loadedProjects)
+	m.setLoadedProjects(slices.Clone(snapshot.loadedProjects))
 	m.crossSnapshotReady = snapshot.crossSnapshotReady
 	m.parkedFocusProjectID = snapshot.parkedFocusProjectID
 	m.scopedProjectID = snapshot.scopedProjectID

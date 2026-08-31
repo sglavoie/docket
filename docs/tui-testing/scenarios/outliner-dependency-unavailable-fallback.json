@@ -10,9 +10,9 @@
     { "type": "key", "key": "tab" },
     { "type": "key", "key": "enter" },
     { "type": "wait" },
-    { "type": "assert", "assert": "contains", "value": "~1" },
+    { "type": "assert", "assert": "contains", "value": "~0/1" },
     { "type": "key", "key": "ctrl+enter" },
-    { "type": "assert", "assert": "contains", "value": "Dependencies: Client Beta #1 Beta rollout checklist (backlog)" },
+    { "type": "assert", "assert": "contains", "value": "Dependencies 0/1: Client Beta #1 Beta rollout checklist (backlog)" },
     { "type": "key", "key": "ctrl+enter" },
 
     { "type": "key", "label": "step onto the referenced project's header", "key": "j" },
@@ -28,7 +28,7 @@
     { "type": "key", "key": "home" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
-    { "type": "assert", "label": "the count is over stored locators, not over reachable ones", "assert": "contains", "value": "~1" },
+    { "type": "assert", "label": "the denominator is over stored locators, not over reachable ones, and the trailing ? says one cannot be read", "assert": "contains", "value": "~0/1?" },
     { "type": "resize", "label": "wide enough for a locator no name shortens", "width": 140, "height": 35 },
     { "type": "key", "key": "ctrl+enter" },
     { "type": "assert", "label": "the entry keeps its durable locator and says only that it is unavailable", "assert": "contains", "value": "(unavailable)" },
@@ -37,7 +37,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "key", "label": "close Peek", "key": "ctrl+enter" },
     { "type": "resize", "label": "and the count is the last thing narrowing costs", "width": 60, "height": 20 },
-    { "type": "assert", "assert": "contains", "value": "~1" },
+    { "type": "assert", "assert": "contains", "value": "~0/1?" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "width": 100, "height": 35 },
 
@@ -47,7 +47,7 @@
     { "type": "key", "key": "j" },
     { "type": "key", "key": "j" },
     { "type": "key", "key": "ctrl+enter" },
-    { "type": "assert", "assert": "contains", "value": "Dependencies: Client Beta #1 Beta rollout checklist (backlog)" },
+    { "type": "assert", "assert": "contains", "value": "Dependencies 0/1: Client Beta #1 Beta rollout checklist (backlog)" },
     { "type": "assert", "assert": "not_contains", "value": "(unavailable)" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]

@@ -9,8 +9,8 @@ var (
 	// The two soft-reference indicator colors are named rather than borrowed from
 	// SuccessStyle or DueThisWeekStyle, so retuning a due-date or status color
 	// never silently repaints a reference count. The third tier is MutedStyle.
-	DependencyIndicatorSettledStyle     = lipgloss.NewStyle().Foreground(ColorSuccess)
-	DependencyIndicatorOutstandingStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+	DependencyIndicatorSettledStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
+	DependencyIndicatorBlockedStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 
 	PreviewWarningStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 

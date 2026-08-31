@@ -212,9 +212,11 @@ Row and Peek budget:
 - `visualWidthOverflow` must subtract the same ellipsis column as
   `truncateToVisualWidth`, or a character is duplicated or lost.
 - `indicatorDropLadder` is a list: a new indicator gets a position, not an
-  append. The trailing `~N` counts stored locators regardless of target state or
-  availability, degrades with the content counts, and is gated by no column.
-  Only its color reads them: amber outstanding, green settled, muted unreadable.
+  append. The trailing `~S/N` counts stored locators in `N` regardless of target
+  state or availability, degrades with the content counts, and is gated by no
+  column. Only `S`, the `?` suffix, and the color read the targets, one hop and
+  never transitively: amber blocked, green settled, muted unreadable. Peek's two
+  lines repeat those numbers and add no line.
   The relation marker, the task context segment, and the pin marker stay
   out of it — `taskRowSegments` reserves all three at every width, and Peek
   names full values. `taskRelationMarker` is one segment both ways.
@@ -259,7 +261,7 @@ Root `$`, `z`, and `g` are chord prefixes, not direct keys: `z` never means
 snooze or defer, and cursor-top is `gg` or `Home`. `s`, `p`, and `t` fold the
 section, project, and task axes; `P` is Select Project; `Ctrl+P` selects pinned;
 `Q` is the query readout. A facet carrying a sigil answers to that sigil, so
-pinned is `f*` and the letter `fp` stays retired. A picker row is the canonical
+pinned is `f*`, references are `f~`, and the letter `fp` stays retired. A picker row is the canonical
 token it writes — the `f@` five are `@overdue`, `@today`, `@week`, `@0`,
 `?deferred` — and `acceptsPresetValue` refuses a binding naming any other
 spelling, so a picker mints no vocabulary of its own.
@@ -355,8 +357,11 @@ committing one transaction.
   soft: readiness, ordering, ranking, and completion never read it, and
   dependents are computed. `~0` is edit and outline only; `-~task` also searches,
   where it subtracts the tasks the positive form selects.
-  `DependencyPatch`'s zero value is no intent, so a save that never mentions a
-  reference preserves the set, which is what keeps the external-editor round trip
+  The `~` picker is tri-state, so it takes a selection: a row nobody agreed on is
+  emitted by neither half, and an addition naming a task inside the selection
+  refuses by name. `f~` is answered beside `passesHierarchyFilter`, never in the
+  row predicate. `DependencyPatch`'s zero value is no intent, so a save that
+  never mentions a reference preserves the set, which is what keeps the external-editor round trip
   and the create-only expanded form from erasing it. Both parse before `#tag`,
   `-~` before `~`.
 - `>parent`, `<child`, `@@defer`, `&link`, and `;comment;` are errors in the
@@ -385,9 +390,11 @@ Only a recognized value the grammar cannot honor blocks a query.
 - `?` is search-only over a closed computed set — `stale`, `deferred`, `leaf`,
   `parent`, `completed`, `blocked`, `blocking` — that no task stores.
   `internal/models` owns the names and the answers, the grammar only the
-  spelling; `internal/tui` production code may not name them. `?completed` takes
+  spelling; `internal/tui` production code may not name `blocker` and may never
+  render `blocked` bare. `?completed` takes
   an optional `:Nd` and alone opens the terminal population; `?blocked` and
-  `?blocking` are structural reference facts, never readiness verdicts.
+  `?blocking` are structural reference facts, never readiness verdicts, and both
+  are one hop.
 - `!N+` is that priority and above, accepted in `validatePriority` rather than
   the pattern and read only by `ParseSearchPriority`.
 

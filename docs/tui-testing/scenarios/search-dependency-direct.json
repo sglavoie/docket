@@ -11,7 +11,7 @@
     { "type": "key", "label": "accept the highlighted candidate", "key": "tab" },
     { "type": "key", "label": "commit the edit", "key": "enter" },
     { "type": "wait" },
-    { "type": "assert", "assert": "contains", "value": "~1" },
+    { "type": "assert", "assert": "contains", "value": "~0/1" },
 
     { "type": "key", "label": "search for the tasks that depend on that target", "key": "/" },
     { "type": "text", "text": "~client-beta:1" },

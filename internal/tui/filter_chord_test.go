@@ -1201,8 +1201,8 @@ func TestFilterOperationsStayChordOnly(t *testing.T) {
 	registry := app.GetOperationRegistry()
 
 	descriptors := filterOperationDescriptors()
-	if len(descriptors) != 11 {
-		t.Fatalf("filter family declares %d operations, want 11", len(descriptors))
+	if len(descriptors) != 12 {
+		t.Fatalf("filter family declares %d operations, want 12", len(descriptors))
 	}
 	for _, declared := range descriptors {
 		_, ok := registry.Descriptor(declared.ID)

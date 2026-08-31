@@ -28,6 +28,7 @@ const (
 	TaskOperationSetTags              TaskOperation = "set_tags"
 	TaskOperationToggleTag            TaskOperation = "toggle_tag"
 	TaskOperationSetPinned            TaskOperation = "set_pinned"
+	TaskOperationSetDependencies      TaskOperation = "set_dependencies"
 )
 
 // TaskOperationRequest carries one operation and its value. Targets are always
@@ -59,6 +60,11 @@ type TaskOperationRequest struct {
 	Context    string
 	Tag        string
 	Pinned     bool
+	// Dependencies carries the soft-reference intent of SetDependencies. Its zero
+	// value expresses nothing, so a request that never mentions a reference
+	// preserves every target's stored set — the same preserve-by-default rule the
+	// edit surfaces obey, applied to a selection of any size.
+	Dependencies DependencyPatch
 }
 
 // TaskClipboardProjection is application-owned clipboard text. The application
@@ -176,6 +182,10 @@ func (s *Service) ExecuteTaskOperation(req TaskOperationRequest) (TaskOperationR
 
 	case TaskOperationSetPinned:
 		result, err := s.BulkSetPinned(req.Targets, req.Pinned)
+		return bulkTaskOperationResult(result, err)
+
+	case TaskOperationSetDependencies:
+		result, err := s.bulkPatchDependencies(req.Targets, req.Dependencies)
 		return bulkTaskOperationResult(result, err)
 
 	default:

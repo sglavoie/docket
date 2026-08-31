@@ -54,7 +54,7 @@ func rebuildTaskStyles() {
 	PriorityWaitingHeaderStyle = lipgloss.NewStyle().Foreground(ColorMuted).Italic(true).MarginTop(1)
 	DueThisWeekStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	DependencyIndicatorSettledStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
-	DependencyIndicatorOutstandingStyle = lipgloss.NewStyle().Foreground(ColorWarning)
+	DependencyIndicatorBlockedStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	PreviewWarningStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 }
 

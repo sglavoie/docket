@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 )
@@ -214,6 +215,12 @@ type OutlinerModel struct {
 	// authoritative project trees rather than from a row's own task, whose
 	// Children the filter pipeline may have rewritten.
 	openChildCounts map[TaskIdentity]int
+
+	// dependencyIndexCache is the row-rebuild pass's reading of the soft
+	// reference graph over the loaded population. It is a cache and never
+	// authored state: dependencyIndex builds it on demand and
+	// invalidateDependencyIndex drops it whenever that population is replaced.
+	dependencyIndexCache *app.DependencyIndex
 
 	// Column visibility config (loaded from project view state)
 	columnConfig *ColumnConfig

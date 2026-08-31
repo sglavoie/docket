@@ -368,6 +368,9 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationFilterContexts, Sequence: []string{"f", "c"}, DisplayKey: "fc", HintLabel: "contexts"},
 			{OperationID: operationFilterReview, Sequence: []string{"f", "r"}, DisplayKey: "fr", HintLabel: "review"},
 			{OperationID: operationFilterHierarchy, Sequence: []string{"f", "h"}, DisplayKey: "fh", HintLabel: "hierarchy"},
+			// A facet carrying a sigil answers to that sigil, so the reference axis
+			// is f~ and no letter is bound to it.
+			{OperationID: operationFilterDependency, Sequence: []string{"f", "~"}, DisplayKey: "f~", HintLabel: "?blocked/?blocking"},
 			{OperationID: operationFilterStale, Sequence: []string{"f", "s"}, DisplayKey: "fs", HintLabel: "stale"},
 			// Pinned answers to its own sigil like every other sigil-carrying facet:
 			// *pin is what the clause spells, so f* is what narrows by it. The letter

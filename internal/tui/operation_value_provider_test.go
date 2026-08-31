@@ -161,10 +161,10 @@ func TestOperationTagPickerValidatesInputAndEscapesBackToPicker(t *testing.T) {
 
 func TestBulkOperationTagPickerCreatesAndPromotesTagsAsAddPatch(t *testing.T) {
 	picker := newOperationTagPickerForTest(t, "partial")
-	if err := picker.configureTagMembership(map[ListItemID]operationTagMembership{
-		"tag:partial": operationTagSome,
+	if err := picker.configureValueMembership(map[ListItemID]operationValueMembership{
+		"tag:partial": operationValueSome,
 	}); err != nil {
-		t.Fatalf("configureTagMembership: %v", err)
+		t.Fatalf("configureValueMembership: %v", err)
 	}
 
 	for _, input := range []string{" #partial ", "fresh"} {
@@ -194,12 +194,12 @@ func TestBulkOperationTagPickerCreatesAndPromotesTagsAsAddPatch(t *testing.T) {
 
 func TestBulkOperationTagPickerKeepsSemanticTagsIndependent(t *testing.T) {
 	picker := newOperationTagPickerForTest(t, "bug", "idea", "keep")
-	if err := picker.configureTagMembership(map[ListItemID]operationTagMembership{
-		"tag:bug":  operationTagSome,
-		"tag:idea": operationTagNone,
-		"tag:keep": operationTagAll,
+	if err := picker.configureValueMembership(map[ListItemID]operationValueMembership{
+		"tag:bug":  operationValueSome,
+		"tag:idea": operationValueNone,
+		"tag:keep": operationValueAll,
 	}); err != nil {
-		t.Fatalf("configureTagMembership: %v", err)
+		t.Fatalf("configureValueMembership: %v", err)
 	}
 	if !picker.surface.SetCursorToID("tag:idea") {
 		t.Fatal("idea tag is missing")
@@ -219,7 +219,7 @@ func TestBulkOperationTagPickerKeepsSemanticTagsIndependent(t *testing.T) {
 	if !reflect.DeepEqual(patch.Add, []string{"idea"}) || len(patch.Remove) != 0 {
 		t.Fatalf("tag patch = %+v, want add idea without implicit removals", patch)
 	}
-	if picker.tagCurrent["tag:keep"] != operationTagAll {
+	if picker.membershipCurrent["tag:keep"] != operationValueAll {
 		t.Fatal("ordinary tag selection changed while adding a semantic tag")
 	}
 }

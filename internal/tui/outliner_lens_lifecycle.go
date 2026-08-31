@@ -364,7 +364,7 @@ func (m *OutlinerModel) finishLensScopeExit(pending *pendingLensApplication, pro
 	// step that made this route's correctness depend on which of the exit's two
 	// messages the runtime happened to deliver first.
 	projects = m.settleParkedFocusAgainstPopulation(projects)
-	m.loadedProjects = projects
+	m.setLoadedProjects(projects)
 	m.crossSnapshotReady = true
 	// The provenance is the filter this exit read under, not the one the model
 	// holds now: the two are the same on every route that reaches here, and
@@ -415,7 +415,7 @@ func (m *OutlinerModel) publishLens(lens config.NamedLens, state lensState, proj
 	m.endLensQueryEdit()
 
 	if projects != nil {
-		m.loadedProjects = projects
+		m.setLoadedProjects(projects)
 		m.crossSnapshotReady = true
 	}
 	// Focus, folds, selection, and Peek are the view the user is in, not the lens:

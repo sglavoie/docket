@@ -104,6 +104,15 @@ func newExportReferenceLabeller(p *models.Project, related []*models.Project) ex
 	return exportReferenceLabeller{projects: projects}
 }
 
+// label names one reference and says what state it is in, which is the same
+// `(state)` form Peek uses: a reader of an exported document is as entitled to
+// know whether a reference is still open as a reader of the Outliner is, and
+// spelling it the same way means the two never have to be reconciled.
+//
+// The trailing state is the whole of what an export says about a reference.
+// There is deliberately no dependents list here and no transitive walk: an
+// export is one project's document, so both would assert facts about work the
+// document does not contain.
 func (l exportReferenceLabeller) label(reference models.TaskReference) string {
 	for _, project := range l.projects {
 		if project.ID != reference.ProjectID {
@@ -113,7 +122,7 @@ func (l exportReferenceLabeller) label(reference models.TaskReference) string {
 		if task == nil {
 			break
 		}
-		return fmt.Sprintf("%s (#%d) %s", project.Name, task.ShortID, task.Title)
+		return fmt.Sprintf("%s (#%d) %s (%s)", project.Name, task.ShortID, task.Title, task.State())
 	}
 	return reference.Locator()
 }

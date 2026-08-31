@@ -6,8 +6,17 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
+
+// dependencyTestIndex builds the reference index the render path reads. A test
+// builds it explicitly for the same reason the model caches one: the index is
+// the population's reading of the graph, so naming the population is naming the
+// answer.
+func dependencyTestIndex(projects ...*models.Project) *app.DependencyIndex {
+	return app.NewDependencyIndex(projects)
+}
 
 // dependencyPresentationFixture seeds a referenced project and a referring one
 // so both directions of the detail, and the unavailable fallback, have a real
@@ -29,19 +38,17 @@ func dependencyPresentationFixture(t *testing.T) (*models.Project, *models.Proje
 
 // TestDependencyIsolationPresentationIsStateIndependent is the positive half of
 // the presentation isolation contract. A soft reference changes nothing about
-// how the subject is drawn beyond adding a count and a detail line, and the
-// count does not vary with what the reference points at: it is over stored
-// locators, not over open ones. Only the indicator's color reads the targets,
-// which is why every assertion here is over ansi.Strip output;
-// TestDependencyIndicatorColorReadsTargetOutlook below owns the color.
+// how the subject is drawn beyond one count segment and a detail line, and the
+// denominator of that count never varies with what the references point at: it
+// is over stored locators, whatever state they reach.
 func TestDependencyIsolationPresentationIsStateIndependent(t *testing.T) {
 	alpha, beta := dependencyPresentationFixture(t)
 	source := alpha.GetTaskByID("source")
-	population := []*models.Project{alpha, beta}
+	population := dependencyTestIndex(alpha, beta)
 
 	base := ansi.Strip(renderDependencyIndicator(source, population))
-	if base != "~2" {
-		t.Fatalf("indicator = %q, want ~2", base)
+	if base != "~0/2" {
+		t.Fatalf("indicator = %q, want ~0/2", base)
 	}
 
 	// The subject's own state badge, priority, and title styling are decided
@@ -57,70 +64,72 @@ func TestDependencyIsolationPresentationIsStateIndependent(t *testing.T) {
 	row.task.Dependencies = nil
 	withoutRefs := ansi.Strip(outliner.renderOutlinerTaskRow(row, false, 120, 120, 0, nil))
 	row.task.Dependencies = stored
-	if !strings.Contains(withRefs, "~2") {
+	if !strings.Contains(withRefs, "~0/2") {
 		t.Fatalf("row omitted the reference count: %q", withRefs)
 	}
-	stripped := strings.Join(strings.Fields(strings.ReplaceAll(withRefs, "~2", "")), " ")
+	stripped := strings.Join(strings.Fields(strings.ReplaceAll(withRefs, "~0/2", "")), " ")
 	if stripped != strings.Join(strings.Fields(withoutRefs), " ") {
 		t.Fatalf("row differs beyond the reference count:\nwith:    %q\nwithout: %q", withRefs, withoutRefs)
 	}
 
-	// Close one target and leave the subject itself terminal. A hard-dependency
-	// model would have to change the count for at least one of these; a soft one
-	// cannot change it for any, however the color reads afterwards.
+	// Close one target and leave the subject itself terminal. The settled half
+	// moves, because that is what the enriched count is for; the denominator does
+	// not, because a hard-dependency model is the only one that would drop a
+	// reference on the way to done.
 	beta.GetTaskByID("remote").WorkflowState = models.StateDone
 	source.WorkflowState = models.StateDone
-	if got := ansi.Strip(renderDependencyIndicator(source, population)); got != base {
-		t.Fatalf("indicator = %q after the target closed and the subject completed, want %q", got, base)
+	got := ansi.Strip(renderDependencyIndicator(source, dependencyTestIndex(alpha, beta)))
+	if got != "~1/2" {
+		t.Fatalf("indicator = %q after the target closed and the subject completed, want ~1/2", got)
 	}
 }
 
 // TestDependencyIndicatorColorReadsTargetOutlook pins the one thing the row says
-// about its targets. The count is fixed at `~2` in all three cases; the color
-// carries the aggregate reading, and the unreadable tier stays muted rather than
-// green because a view that did not load a project cannot claim its task is
-// finished.
+// about its targets. The denominator is fixed at 2 in every case; the settled
+// half and the color carry the aggregate reading, and the unreadable tier stays
+// muted rather than green because a view that did not load a project cannot
+// claim its task is finished.
 func TestDependencyIndicatorColorReadsTargetOutlook(t *testing.T) {
 	alpha, beta := dependencyPresentationFixture(t)
 	source := alpha.GetTaskByID("source")
 	sibling := alpha.GetTaskByID("sibling")
 	remote := beta.GetTaskByID("remote")
 
-	// Both targets open: one outstanding reference is enough.
-	got := renderDependencyIndicator(source, []*models.Project{alpha, beta})
-	if want := DependencyIndicatorOutstandingStyle.Render("~2"); got != want {
+	// Both targets open: one blocked reference is enough.
+	got := renderDependencyIndicator(source, dependencyTestIndex(alpha, beta))
+	if want := DependencyIndicatorBlockedStyle.Render("~0/2"); got != want {
 		t.Fatalf("open targets rendered %q, want %q", got, want)
 	}
 
-	// Close the same-project target only. An outstanding target outranks a settled
-	// one, so the row still says there is something left to wait on.
+	// Close the same-project target only. A blocked target outranks a settled one,
+	// so the row still says there is something left to wait on, and the settled
+	// half moves to say how much of the wait is already over.
 	sibling.WorkflowState = models.StateDone
-	got = renderDependencyIndicator(source, []*models.Project{alpha, beta})
-	if want := DependencyIndicatorOutstandingStyle.Render("~2"); got != want {
+	got = renderDependencyIndicator(source, dependencyTestIndex(alpha, beta))
+	if want := DependencyIndicatorBlockedStyle.Render("~1/2"); got != want {
 		t.Fatalf("one open target rendered %q, want %q", got, want)
 	}
 
-	// Every target terminal.
+	// Every target terminal. A fully settled census says its total alone: `S/N`
+	// exists to name a remainder, and there is none.
 	remote.WorkflowState = models.StateDone
-	got = renderDependencyIndicator(source, []*models.Project{alpha, beta})
+	got = renderDependencyIndicator(source, dependencyTestIndex(alpha, beta))
 	if want := DependencyIndicatorSettledStyle.Render("~2"); got != want {
 		t.Fatalf("settled targets rendered %q, want %q", got, want)
 	}
 
-	// Beta unloaded, Alpha's target done: nothing outstanding is readable, but the
-	// second locator points somewhere this view cannot read.
-	got = renderDependencyIndicator(source, []*models.Project{alpha})
-	if want := MutedStyle.Render("~2"); got != want {
+	// Beta unloaded, Alpha's target done: nothing blocked is readable, but the
+	// second locator points somewhere this view cannot read, which the trailing
+	// `?` says and the muted tier colors.
+	got = renderDependencyIndicator(source, dependencyTestIndex(alpha))
+	if want := MutedStyle.Render("~1/2?"); got != want {
 		t.Fatalf("unreadable target rendered %q, want %q", got, want)
-	}
-	if stripped := ansi.Strip(got); stripped != "~2" {
-		t.Fatalf("count = %q across every outlook, want ~2", stripped)
 	}
 
 	// A loaded project whose task is gone is settled, not unreadable: the view did
-	// read that project and found nothing outstanding in it.
+	// read that project and found nothing blocked in it.
 	alpha.Tasks = []*models.Task{source}
-	got = renderDependencyIndicator(source, []*models.Project{alpha, beta})
+	got = renderDependencyIndicator(source, dependencyTestIndex(alpha, beta))
 	if want := DependencyIndicatorSettledStyle.Render("~2"); got != want {
 		t.Fatalf("absent target rendered %q, want %q", got, want)
 	}
@@ -130,7 +139,7 @@ func TestOutgoingDependencyDetailsNameLoadedTargetsAndFallBackToLocators(t *test
 	alpha, beta := dependencyPresentationFixture(t)
 	source := alpha.GetTaskByID("source")
 
-	details := outgoingDependencyDetails(source, []*models.Project{alpha, beta})
+	details := outgoingDependencyDetails(source, dependencyTestIndex(alpha, beta))
 	if len(details) != 2 {
 		t.Fatalf("details = %#v, want two entries in stored order", details)
 	}
@@ -144,7 +153,7 @@ func TestOutgoingDependencyDetailsNameLoadedTargetsAndFallBackToLocators(t *test
 	// With Beta unloaded the second entry keeps its durable locator rather than
 	// disappearing, and says only that it is unavailable — not that it is missing,
 	// which is a fact this view cannot establish.
-	fallback := outgoingDependencyDetails(source, []*models.Project{alpha})
+	fallback := outgoingDependencyDetails(source, dependencyTestIndex(alpha))
 	if len(fallback) != 2 {
 		t.Fatalf("fallback dropped an entry: %#v", fallback)
 	}
@@ -156,7 +165,7 @@ func TestOutgoingDependencyDetailsNameLoadedTargetsAndFallBackToLocators(t *test
 func TestIncomingDependencyDetailsAreComputedFromLoadedProjectsOnly(t *testing.T) {
 	alpha, beta := dependencyPresentationFixture(t)
 
-	dependents := incomingDependencyDetails(TaskIdentity{ProjectID: "proj-b", TaskID: "remote"}, []*models.Project{alpha, beta})
+	dependents := incomingDependencyDetails(TaskIdentity{ProjectID: "proj-b", TaskID: "remote"}, dependencyTestIndex(alpha, beta))
 	if len(dependents) != 1 || dependents[0].String() != "Alpha #1 Wire the importer (doing)" {
 		t.Fatalf("dependents = %#v, want the referring task named", dependents)
 	}
@@ -164,7 +173,7 @@ func TestIncomingDependencyDetailsAreComputedFromLoadedProjectsOnly(t *testing.T
 	// Drop the referring project from the population and the incoming view is
 	// empty rather than wrong: dependents are derived, and a derivation over a
 	// smaller population is honestly smaller.
-	if got := incomingDependencyDetails(TaskIdentity{ProjectID: "proj-b", TaskID: "remote"}, []*models.Project{beta}); len(got) != 0 {
+	if got := incomingDependencyDetails(TaskIdentity{ProjectID: "proj-b", TaskID: "remote"}, dependencyTestIndex(beta)); len(got) != 0 {
 		t.Fatalf("dependents = %#v over an unloaded referrer, want none", got)
 	}
 }
@@ -178,7 +187,7 @@ func TestInlinePeekNamesBothReferenceDirections(t *testing.T) {
 		t.Fatal("fixture produced no row for the referring task")
 	}
 	lines := strings.Join(outliner.inlinePeekLinesForRow(row, "  ", 200, nil), "\n")
-	if !strings.Contains(ansi.Strip(lines), "Dependencies: Alpha #2 Agree the schema (backlog) · Beta #1 Publish the contract (waiting)") {
+	if !strings.Contains(ansi.Strip(lines), "Dependencies 0/2: Alpha #2 Agree the schema (backlog) · Beta #1 Publish the contract (waiting)") {
 		t.Fatalf("Peek did not name the outgoing references:\n%s", ansi.Strip(lines))
 	}
 
@@ -187,12 +196,12 @@ func TestInlinePeekNamesBothReferenceDirections(t *testing.T) {
 		t.Fatal("fixture produced no row for the referenced task")
 	}
 	targetLines := ansi.Strip(strings.Join(outliner.inlinePeekLinesForRow(target, "  ", 200, nil), "\n"))
-	if !strings.Contains(targetLines, "Dependents: Alpha #1 Wire the importer (doing)") {
+	if !strings.Contains(targetLines, "Dependents 1: Alpha #1 Wire the importer (doing)") {
 		t.Fatalf("Peek did not name the incoming references:\n%s", targetLines)
 	}
 	// The referenced task stores nothing, so it carries no Dependencies line and
 	// no `~N` count of its own.
-	if strings.Contains(targetLines, "Dependencies:") {
+	if strings.Contains(targetLines, "Dependencies ") {
 		t.Fatalf("a task with no stored references grew a Dependencies line:\n%s", targetLines)
 	}
 }
@@ -222,7 +231,7 @@ func TestUnavailableReferenceWordingIsSharedByEverySurface(t *testing.T) {
 	}
 
 	item := ListItem{}
-	for _, candidate := range operationTaskReferenceListSource(source, population).Items {
+	for _, candidate := range operationTaskReferenceListSource([]*models.Task{source}, population).Items {
 		if candidate.ID == ListItemID("reference:"+unreadable.Locator()) {
 			item = candidate
 			break
@@ -257,7 +266,7 @@ func TestUnavailableReferenceWordingIsSharedByEverySurface(t *testing.T) {
 	// reference is settled. The same-project target is closed first so the
 	// unreadable one is the only thing left for the outlook to read.
 	alpha.GetTaskByID("sibling").WorkflowState = models.StateDone
-	if got := dependencyOutlookFor(source, population); got != dependencyOutlookUnreadable {
+	if got := dependencyCensusFor(source, dependencyTestIndex(alpha)).outlook(); got != dependencyOutlookUnreadable {
 		t.Errorf("outlook = %v, want the unreadable tier", got)
 	}
 }

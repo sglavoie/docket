@@ -33,6 +33,8 @@ func TestQueryClauseStringRendersEveryFieldsToken(t *testing.T) {
 		{"?parent", QueryFieldParent, QueryOperatorPresent, ""},
 		{"?child", QueryFieldChild, QueryOperatorPresent, ""},
 		{"?leaf", QueryFieldLeaf, QueryOperatorPresent, ""},
+		{"?blocked", QueryFieldBlocked, QueryOperatorPresent, ""},
+		{"?blocking", QueryFieldBlocking, QueryOperatorPresent, ""},
 		{"+#infra", QueryFieldProjectTag, QueryOperatorIs, "infra"},
 		{"+#0", QueryFieldProjectTag, QueryOperatorNone, ""},
 		{"+parked", QueryFieldParked, QueryOperatorIs, QueryPopulationInclude},
@@ -67,7 +69,7 @@ func TestQueryStringRoundTripsThroughParseQuery(t *testing.T) {
 		"",
 		`"login form" !1+ #auth #ui -#wip ##home @overdue $doing *pin ?stale`,
 		"~project-beta:task-7 !0 ##0 @0 +#0",
-		"@+6h @@2026-09-01 ?completed:90d ?parent -?child ?leaf",
+		"@+6h @@2026-09-01 ?completed:90d ?parent -?child ?leaf ?blocked -?blocking",
 		"+parked +archived:only +#infra",
 	}
 	for _, input := range inputs {
@@ -114,7 +116,7 @@ func TestParseQueryRefusesWhatStringNeverEmits(t *testing.T) {
 	}{
 		{"unknown sigil", "&https://example.com"},
 		{"unterminated quote", `"login`},
-		{"unknown derived token", "?blocked"},
+		{"unknown derived token", "?orphan"},
 		{"derived token carrying a value", "?stale:90"},
 		{"unknown population token", "+unfiled"},
 		{"unknown state", "$review"},

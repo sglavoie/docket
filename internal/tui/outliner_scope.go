@@ -230,7 +230,7 @@ func (m *OutlinerModel) dropParkedProjectFocus() {
 		}
 		retained = append(retained, project)
 	}
-	m.loadedProjects = retained
+	m.setLoadedProjects(retained)
 	m.pruneSelectionsOutsideLoadedProjects()
 	m.crossForceRebuild = true
 	m.crossProjectRebuildRows()

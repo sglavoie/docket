@@ -371,7 +371,7 @@ func (m *OutlinerModel) facetPredicateAt(now time.Time) func(*models.Task, *mode
 		if narrows && !query.Admits(t, m.filterQueryProject(project), now) {
 			return false
 		}
-		return m.passesHierarchyFilter(t, project)
+		return m.passesHierarchyFilter(t, project) && m.passesDependencyFilter(t, project)
 	}
 }
 
@@ -393,6 +393,34 @@ func (m *OutlinerModel) passesHierarchyFilter(task *models.Task, project *models
 		return m.openChildCountFor(task, project) > 0
 	case HierarchyLeaf:
 		return m.openChildCountFor(task, project) == 0
+	default:
+		return true
+	}
+}
+
+// passesDependencyFilter evaluates the f~ facet. It sits beside the hierarchy
+// axis rather than inside the row predicate for the same reason: blocking is a
+// fact about which other tasks name this one, and the reference index that knows
+// it is the Outliner's, not the clause evaluator's. Blocked travels with it so
+// one facet is answered in one place.
+//
+// Both readings are one hop and never transitive, and neither is a readiness
+// verdict: a soft reference gates nothing, so this narrows what is on screen and
+// changes no order, no rank, and no state.
+func (m *OutlinerModel) passesDependencyFilter(task *models.Task, project *models.Project) bool {
+	if m == nil || m.filter.Dependency == DependencyFilterAll {
+		return true
+	}
+	if task == nil {
+		return false
+	}
+	switch m.filter.Dependency {
+	case DependencyFilterBlocked:
+		return len(task.Dependencies) > 0
+	case DependencyFilterBlocking:
+		identity := taskIdentityFor(task, m.filterQueryProject(project))
+		subject := models.TaskReference{ProjectID: identity.ProjectID, TaskID: identity.TaskID}
+		return len(m.dependencyIndex().Incoming(subject)) > 0
 	default:
 		return true
 	}

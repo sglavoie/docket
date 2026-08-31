@@ -216,6 +216,10 @@ func commonFilterReadoutRows(f *CommonFilterState) []queryReadoutRow {
 		rows = append(rows, clauseReadoutRow("filter",
 			filterQueryHierarchyFields, hierarchyFilterClauses(f.Hierarchy), ""))
 	}
+	if f.Dependency != DependencyFilterAll {
+		rows = append(rows, clauseReadoutRow("filter",
+			filterQueryDependencyFields, dependencyFilterClauses(f.Dependency), ""))
+	}
 	if f.Stale {
 		rows = append(rows, clauseReadoutRow("filter",
 			[]models.QueryField{models.QueryFieldStale},

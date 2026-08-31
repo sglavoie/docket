@@ -133,6 +133,10 @@ func (m *OutlinerModel) rebuildRows() {
 	// re-enters this block indefinitely.
 	m.OpenAtTask = nil
 	m.rows = m.rows[:0]
+	// The single-project path has no memoization guard, so the index is dropped
+	// on every pass through it, matching what the cross-project guard does when
+	// it decides a pass is real.
+	m.invalidateDependencyIndex()
 
 	m.validateFocusStack()
 

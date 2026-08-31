@@ -33,6 +33,29 @@ import (
 // all-or-nothing, matching the atomic guarantee every other bulk use case gives.
 // A nil validate skips the pre-check; a nil mutate is a programming error.
 func (s *Service) bulkAttribute(locators []TaskLocator, undoAction, undoContext string, validate func(TaskRef) error, mutate func(*models.Task)) (BulkResult, error) {
+	return s.bulkAttributeOverSnapshot(locators, undoAction, undoContext, func(_ Snapshot, refs []TaskRef) (func(TaskRef), error) {
+		if validate != nil {
+			for _, r := range refs {
+				if validationErr := validate(r); validationErr != nil {
+					return nil, validationErr
+				}
+			}
+		}
+		return func(r TaskRef) { mutate(r.Task) }, nil
+	})
+}
+
+// bulkAttributeOverSnapshot is bulkAttribute for the mutations whose validation
+// asks the workspace a question rather than the value one. plan runs once, after
+// the targets resolve and before any task is touched, against the very snapshot
+// the commit will write, and returns the per-target mutation. A refusal from
+// plan aborts the whole batch with nothing persisted, so every target is judged
+// on one coherent view of the workspace.
+func (s *Service) bulkAttributeOverSnapshot(
+	locators []TaskLocator,
+	undoAction, undoContext string,
+	plan func(Snapshot, []TaskRef) (func(TaskRef), error),
+) (BulkResult, error) {
 	if len(locators) == 0 {
 		return BulkResult{}, invalidInput("tasks", "at least one task id is required")
 	}
@@ -55,15 +78,12 @@ func (s *Service) bulkAttribute(locators []TaskLocator, undoAction, undoContext 
 			restoreSnapshotProjects(snap, before)
 		}
 	}()
-	if validate != nil {
-		for _, r := range refs {
-			if validationErr := validate(r); validationErr != nil {
-				return BulkResult{}, validationErr
-			}
-		}
+	mutate, err := plan(snap, refs)
+	if err != nil {
+		return BulkResult{}, err
 	}
 	for _, r := range refs {
-		mutate(r.Task)
+		mutate(r)
 	}
 
 	commits, idx := distinctProjectCommits(refs, snap)

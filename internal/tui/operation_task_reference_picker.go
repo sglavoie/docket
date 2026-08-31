@@ -17,11 +17,19 @@ func taskReferenceRowID(locator app.TaskLocator) ListItemID {
 	return ListItemID("reference:" + locator.Reference().Locator())
 }
 
-// storedTaskReferenceBaseline is the reference set as it stood the moment the
-// picker opened, in stored order. The picker keeps it so its commit can be the
-// difference between two sets rather than one absolute set: a row the user never
-// touched belongs to neither half of the emitted value and therefore cannot
-// contradict a change that landed elsewhere while the overlay was up.
+// taskReferenceRowLocator is the inverse of taskReferenceRowID. Row identity is
+// the durable locator behind a prefix rather than an index into a population, so
+// reading a row back asks nothing of the list the row came from.
+func taskReferenceRowLocator(id ListItemID) (app.TaskLocator, bool) {
+	value, prefixed := strings.CutPrefix(string(id), "reference:")
+	if !prefixed {
+		return app.TaskLocator{}, false
+	}
+	return taskReferenceLocator(value)
+}
+
+// storedTaskReferenceBaseline is the reference set one task stored the moment
+// the picker opened, in stored order.
 func storedTaskReferenceBaseline(task *models.Task) []app.TaskLocator {
 	if task == nil {
 		return nil
@@ -33,21 +41,40 @@ func storedTaskReferenceBaseline(task *models.Task) []app.TaskLocator {
 	return baseline
 }
 
-// storedTaskReferenceIDs is the preselection: exactly the references the task
-// stores, in stored order. Preselecting is legal here and not on the `<child`
-// picker because of a grammar fact rather than taste — `~` declares both `~0`
-// and `-~task`, so unchecking a row means removal, while FieldChild declares no
-// Clears and unchecking a child could mean nothing at all.
-func storedTaskReferenceIDs(task *models.Task) []ListItemID {
-	if task == nil {
-		return nil
+// taskReferenceMembership is the preselection: All for a reference every
+// selected task stores, Some for one only part of the selection stores, and no
+// entry at all for a row nobody stores — which the picker fills in as None.
+// Preselecting is legal here and not on the `<child` picker because of a grammar
+// fact rather than taste: `~` declares both `~0` and `-~task`, so unchecking a
+// row means removal, while FieldChild declares no Clears and unchecking a child
+// could mean nothing at all.
+//
+// Three states rather than two is what lets one picker edit N tasks carrying N
+// different stored sets. The documented objection to bulk here — that N tasks
+// carry N different baselines — is true of a replacement picker and false of
+// this one: an untouched row stays Some and is emitted by neither half, so the
+// tasks that disagree about it keep disagreeing.
+func taskReferenceMembership(tasks []*models.Task) map[ListItemID]operationValueMembership {
+	counts := make(map[ListItemID]int)
+	selected := 0
+	for _, task := range tasks {
+		if task == nil {
+			continue
+		}
+		selected++
+		for _, locator := range storedTaskReferenceBaseline(task) {
+			counts[taskReferenceRowID(locator)]++
+		}
 	}
-	baseline := storedTaskReferenceBaseline(task)
-	ids := make([]ListItemID, 0, len(baseline))
-	for _, locator := range baseline {
-		ids = append(ids, taskReferenceRowID(locator))
+	membership := make(map[ListItemID]operationValueMembership, len(counts))
+	for id, count := range counts {
+		if count >= selected {
+			membership[id] = operationValueAll
+			continue
+		}
+		membership[id] = operationValueSome
 	}
-	return ids
+	return membership
 }
 
 // operationTaskReferenceListSource is the population `~` opens over. It is two
@@ -58,21 +85,38 @@ func storedTaskReferenceIDs(task *models.Task) []ListItemID {
 // admitting those rows costs nothing.
 //
 // The second half is every open task in every loaded non-archived project, minus
-// the source and minus the first half — exactly the population an addition is
+// the selection and minus the first half — exactly the population an addition is
 // allowed to name, which is why the picker needs no inline add-by-locator mode.
+// Over a selection the two halves are the union across it: the stored half lists
+// every reference anybody carries, in the order the selection carries them, and
+// the addition half withholds every selected task, since naming one is a
+// relationship inside the selection the application layer refuses by name.
 //
 // Rows group into one category per project, so a filtered list stays
 // project-qualified without the label having to repeat the project name.
-func operationTaskReferenceListSource(task *models.Task, projects []*models.Project) ListSource {
-	if task == nil {
+func operationTaskReferenceListSource(tasks []*models.Task, projects []*models.Project) ListSource {
+	stored := make(map[app.TaskLocator]bool)
+	subjects := make(map[string]bool, len(tasks))
+	candidates := make([]dependencyCandidate, 0, len(tasks))
+	for _, task := range tasks {
+		if task == nil {
+			continue
+		}
+		subjects[task.ID] = true
+		for _, reference := range task.Dependencies {
+			stored[app.LocatorForReference(reference)] = true
+		}
+		candidates = append(candidates, dependencyRemovalCandidates(task, projects, nil)...)
+	}
+	if len(subjects) == 0 {
 		return ListSource{}
 	}
-	stored := make(map[app.TaskLocator]bool, len(task.Dependencies))
-	for _, reference := range task.Dependencies {
-		stored[app.LocatorForReference(reference)] = true
+	for _, candidate := range dependencyAdditionCandidates(projects, "", stored) {
+		if candidate.task != nil && subjects[candidate.task.ID] {
+			continue
+		}
+		candidates = append(candidates, candidate)
 	}
-	candidates := dependencyRemovalCandidates(task, projects, nil)
-	candidates = append(candidates, dependencyAdditionCandidates(projects, task.ID, stored)...)
 
 	items := make([]ListItem, 0, len(candidates))
 	seen := make(map[ListItemID]bool, len(candidates))
@@ -122,50 +166,57 @@ func operationTaskReferenceListSource(task *models.Task, projects []*models.Proj
 	return ListSource{Items: items, Categories: categories}
 }
 
-// taskReferenceSelection is what the picker emits on Enter: the rows the user
-// actually checked and unchecked, measured against the baseline the picker
-// preselected, and never the whole checked set. A full checked set would be an
-// assertion about every reference at once, including the ones the user never
-// looked at, and the overlay is not modal against the workspace — an accepted
-// cross-project load republishes task trees through adoptCrossProjectSnapshot
-// while `~` is still open. Emitting a difference is what keeps such a change out
-// of the commit instead of silently reverting it.
+// taskReferenceSelection is what the picker emits on Enter: the rows whose
+// membership the user actually moved, and never the whole checked set. A full
+// checked set would be an assertion about every reference at once, including the
+// ones the user never looked at, and the overlay is not modal against the
+// workspace — an accepted cross-project load republishes task trees through
+// adoptCrossProjectSnapshot while `~` is still open. Emitting a difference is
+// what keeps such a change out of the commit instead of silently reverting it,
+// and over a selection it is also what leaves a row nobody agreed on alone.
 //
-// Add is sorted so the emitted value never depends on the order rows were
-// ticked in; Remove stays in stored order, which is the order the picker listed
-// the baseline in.
-func taskReferenceSelection(baseline []app.TaskLocator, checked []string) OperationTaskReferenceValue {
-	initial := make(map[string]bool, len(baseline))
-	for _, locator := range baseline {
-		initial[locator.Reference().Locator()] = true
-	}
-
+// Both halves are sorted, so the emitted value never depends on the order rows
+// were ticked in or on map iteration.
+func taskReferenceSelection(initial, current map[ListItemID]operationValueMembership) OperationTaskReferenceValue {
 	value := OperationTaskReferenceValue{}
-	seen := make(map[string]bool, len(checked))
-	for _, raw := range checked {
-		locator, ok := taskReferenceLocator(raw)
+	for id, state := range current {
+		locator, ok := taskReferenceRowLocator(id)
 		if !ok {
 			continue
 		}
 		canonical := locator.Reference().Locator()
-		if seen[canonical] {
-			continue
+		was := initial[id]
+		switch {
+		case state == operationValueAll && was != operationValueAll:
+			value.Add = append(value.Add, canonical)
+		case state == operationValueNone && was != operationValueNone:
+			value.Remove = append(value.Remove, canonical)
 		}
-		seen[canonical] = true
-		if initial[canonical] {
-			continue
-		}
-		value.Add = append(value.Add, canonical)
 	}
 	sort.Strings(value.Add)
-	for _, locator := range baseline {
-		canonical := locator.Reference().Locator()
-		if seen[canonical] {
-			continue
-		}
-		value.Remove = append(value.Remove, canonical)
-	}
+	sort.Strings(value.Remove)
 	return value
+}
+
+// taskReferenceBulkPatch is the selection turned into a patch for a batch, where
+// no single stored set exists to merge against. Every checked row becomes an
+// addition and every unchecked one a removal, and the application layer supplies
+// the idempotence the single-task path gets from merging: an addition a target
+// already stores round-trips through the known-addition rule, and a removal
+// naming nothing it stores is a no-op.
+func taskReferenceBulkPatch(value OperationTaskReferenceValue) app.DependencyPatch {
+	patch := app.DependencyPatch{}
+	for _, raw := range value.Add {
+		if locator, ok := taskReferenceLocator(raw); ok {
+			patch.Add = append(patch.Add, locator)
+		}
+	}
+	for _, raw := range value.Remove {
+		if locator, ok := taskReferenceLocator(raw); ok {
+			patch.Remove = append(patch.Remove, locator)
+		}
+	}
+	return patch
 }
 
 // taskReferencePatch merges the picker's selection into what the task stores at

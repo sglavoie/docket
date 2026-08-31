@@ -41,21 +41,6 @@ func LocatorForReference(reference models.TaskReference) TaskLocator {
 	return TaskLocator{ProjectID: reference.ProjectID, TaskID: reference.TaskID}
 }
 
-// dependencyTargetState is what a dependency locator resolves to inside one
-// snapshot. The four failure shapes are kept apart because they are different
-// facts about the workspace, not different wordings of one: a target in an
-// unloaded project may well exist, a missing one does not, a terminal one exists
-// and is simply closed, and a self-reference is the task itself.
-type dependencyTargetState uint8
-
-const (
-	dependencyTargetOpen dependencyTargetState = iota
-	dependencyTargetTerminal
-	dependencyTargetMissing
-	dependencyTargetUnavailable
-	dependencyTargetSelf
-)
-
 // referenceResolver answers the workspace-shaped questions a dependency patch
 // asks, against exactly one revision-consistent snapshot. Resolving every
 // locator through a single snapshot is what makes a multi-target patch judged
@@ -83,25 +68,27 @@ func newReferenceResolver(snap Snapshot, self TaskLocator) referenceResolver {
 // classify reports what one locator resolves to. It never mutates and never
 // walks the dependency graph: cycles and reciprocal references are legal, so
 // there is nothing beyond the direct target to look at.
-func (r referenceResolver) classify(locator TaskLocator) (models.TaskReference, dependencyTargetState) {
+//
+// Only the self-reference test is the patch's own: a subject task is a fact
+// about the mutation being validated, not about the workspace. Everything past
+// it is DependencyTargetStateFor, the one classifier every reader shares, so a
+// patch and a rendered row can never disagree about what a locator points at.
+func (r referenceResolver) classify(locator TaskLocator) (models.TaskReference, DependencyTargetState) {
 	reference := locator.Reference()
 	if r.selfTaskID != "" && locator.TaskID == r.selfTaskID {
-		return reference, dependencyTargetSelf
+		return reference, DependencyTargetSelf
 	}
 	if r.self.Valid() && locator == r.self {
-		return reference, dependencyTargetSelf
+		return reference, DependencyTargetSelf
 	}
-	if r.snap == nil || r.snap.ProjectByID(locator.ProjectID) == nil {
-		return reference, dependencyTargetUnavailable
+	var target *models.Task
+	loaded := r.snap != nil && r.snap.ProjectByID(locator.ProjectID) != nil
+	if loaded {
+		if ref, ok := r.snap.LookupLocator(locator); ok {
+			target = ref.Task
+		}
 	}
-	ref, ok := r.snap.LookupLocator(locator)
-	if !ok {
-		return reference, dependencyTargetMissing
-	}
-	if ref.Task.IsTerminalState() {
-		return reference, dependencyTargetTerminal
-	}
-	return reference, dependencyTargetOpen
+	return reference, DependencyTargetStateFor(loaded, target)
 }
 
 // normalizeDependencyLocator trims both components and refuses a shape that
@@ -127,13 +114,13 @@ func (r referenceResolver) resolveAddition(raw TaskLocator) (models.TaskReferenc
 	}
 	reference, state := r.classify(locator)
 	switch state {
-	case dependencyTargetOpen:
+	case DependencyTargetOpen:
 		return reference, nil
-	case dependencyTargetSelf:
+	case DependencyTargetSelf:
 		return models.TaskReference{}, invalidInput("dependency", "a task cannot depend on itself")
-	case dependencyTargetTerminal:
+	case DependencyTargetTerminal:
 		return models.TaskReference{}, invalidInput("dependency", fmt.Sprintf("dependency target %q is already closed", reference.Locator()))
-	case dependencyTargetUnavailable:
+	case DependencyTargetUnavailable:
 		return models.TaskReference{}, invalidInput("dependency", fmt.Sprintf("dependency target %q is not available", reference.Locator()))
 	default:
 		return models.TaskReference{}, invalidInput("dependency", fmt.Sprintf("dependency target %q does not exist", reference.Locator()))
@@ -266,6 +253,73 @@ func (s *Service) RemoveTaskDependencies(locator TaskLocator, targets []TaskLoca
 // ClearTaskDependencies drops every reference the task carries.
 func (s *Service) ClearTaskDependencies(locator TaskLocator) (TaskResult, error) {
 	return s.patchTaskDependencies(locator, DependencyPatch{Clear: true}, "Clear Dependencies")
+}
+
+// bulkPatchDependencies applies one tri-state reference edit to every selected
+// task. Locators in Add are made present everywhere, locators in Remove are made
+// absent everywhere, and every other stored reference is preserved
+// independently on each target — which is what lets one picker edit N tasks
+// carrying N different baselines without a replacement set flattening them.
+//
+// Each target resolves its own patch through its own resolver, so the
+// self-reference test stays that task's, but all of them read the one snapshot
+// the commit writes. A refusal on any target aborts the batch before a single
+// task is touched.
+func (s *Service) bulkPatchDependencies(locators []TaskLocator, patch DependencyPatch) (BulkResult, error) {
+	return s.bulkAttributeOverSnapshot(locators, "Set Dependencies", "dependencies", func(snap Snapshot, refs []TaskRef) (func(TaskRef), error) {
+		if err := refuseSelectedDependencyTargets(refs, patch.Add); err != nil {
+			return nil, err
+		}
+		resolved := make(map[string][]models.TaskReference, len(refs))
+		for _, ref := range refs {
+			resolver := newReferenceResolver(snap, TaskLocator{ProjectID: ref.Project.ID, TaskID: ref.Task.ID})
+			next, err := resolver.resolveDependencyPatch(ref.Task.Dependencies, patch)
+			if err != nil {
+				return nil, err
+			}
+			resolved[ref.Task.ID] = next
+		}
+		now := s.clock.Now()
+		return func(ref TaskRef) {
+			next := resolved[ref.Task.ID]
+			// A target the patch left alone still commits, but its touch time must
+			// not move: UpdatedAt answers "when did this task last change".
+			if models.TaskReferencesEqual(ref.Task.Dependencies, next) {
+				return
+			}
+			ref.Task.Dependencies = next
+			ref.Task.UpdatedAt = now
+		}, nil
+	})
+}
+
+// refuseSelectedDependencyTargets rejects an addition naming a task inside the
+// selection, by name. One target of the batch would be recording a reference to
+// another, which is a relationship between two selected tasks rather than the
+// one relationship the gesture asked for; the picker cannot express which
+// direction was meant, so neither is guessed. The subject's own self-reference
+// is refused a second time downstream, in wording that names it as the subject.
+func refuseSelectedDependencyTargets(refs []TaskRef, additions []TaskLocator) error {
+	if len(additions) < 1 || len(refs) < 2 {
+		return nil
+	}
+	selected := make(map[string]TaskRef, len(refs))
+	for _, ref := range refs {
+		selected[ref.Task.ID] = ref
+	}
+	for _, raw := range additions {
+		locator, err := normalizeDependencyLocator(raw)
+		if err != nil {
+			return err
+		}
+		ref, ok := selected[locator.TaskID]
+		if !ok {
+			continue
+		}
+		return invalidInput("dependency", fmt.Sprintf(
+			"#%d %s is in the selection", ref.Task.ShortID, ref.Task.Title))
+	}
+	return nil
 }
 
 // patchTaskDependencies is the single locator-based dependency mutation. It

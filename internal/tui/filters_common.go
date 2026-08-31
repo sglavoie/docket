@@ -32,6 +32,7 @@ type CommonFilterState struct {
 	DueDate       DueDateFilter       // filter by due date
 	CompletionAge CompletionAgeFilter // local-calendar age threshold for completed tasks
 	Hierarchy     HierarchyFilter     // filter by hierarchy position
+	Dependency    DependencyFilter    // filter by soft-reference position
 	Stale         bool                // only show open work untouched for at least 90 local days
 	Deferred      bool                // only show currently deferred tasks
 	Pinned        bool                // only show pinned tasks
@@ -53,6 +54,7 @@ func copyCommonFilterState(src *CommonFilterState) *CommonFilterState {
 		CompletionAge:    src.CompletionAge,
 		NoContext:        src.NoContext,
 		Hierarchy:        src.Hierarchy,
+		Dependency:       src.Dependency,
 		Stale:            src.Stale,
 		Deferred:         src.Deferred,
 		Pinned:           src.Pinned,
@@ -101,11 +103,14 @@ func (f *CommonFilterState) setCompletionAgeFilter(filter CompletionAgeFilter) {
 // facets here: a task is admitted by the clauses the cache was derived from, so
 // a facet, a chip, and a saved lens cannot disagree about what a filter means.
 //
-// The hierarchy facet is the one axis Admits does not answer for the Outliner:
-// it needs the scope's open-direct-child census, and the task arriving at the
-// predicate can be a promotion-pass clone whose Children were rewritten.
-// Evaluating it against the handed-over tree would make "parent" mean one thing
-// in All and another in a flat mode, so passesHierarchyFilter answers it.
+// The hierarchy and dependency facets are the two axes Admits does not answer
+// for the Outliner. Hierarchy needs the scope's open-direct-child census, and
+// the task arriving at the predicate can be a promotion-pass clone whose
+// Children were rewritten; evaluating it against the handed-over tree would make
+// "parent" mean one thing in All and another in a flat mode. Dependency needs
+// the loaded population's reference index, because dependents are computed
+// rather than stored. passesHierarchyFilter and passesDependencyFilter answer
+// them.
 
 // hasActiveCommonFilters returns true if any common filter is non-default.
 func hasActiveCommonFilters(f *CommonFilterState) bool {
@@ -117,6 +122,7 @@ func hasActiveCommonFilters(f *CommonFilterState) bool {
 		f.NoContext ||
 		f.DueDate != DueDateAll ||
 		f.Hierarchy != HierarchyAll ||
+		f.Dependency != DependencyFilterAll ||
 		f.Stale ||
 		f.Deferred ||
 		f.Pinned
@@ -152,6 +158,9 @@ func commonFilterFacetCount(f *CommonFilterState) int {
 		count++
 	}
 	if f.Hierarchy != HierarchyAll {
+		count++
+	}
+	if f.Dependency != DependencyFilterAll {
 		count++
 	}
 	if f.Stale {

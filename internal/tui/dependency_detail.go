@@ -2,10 +2,10 @@ package tui
 
 import (
 	"fmt"
-	"slices"
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 )
 
@@ -53,27 +53,15 @@ func dependencyDetailUnresolved(reference models.TaskReference) dependencyDetail
 	return dependencyDetail{label: reference.Locator(), state: dependencyDetailUnavailable}
 }
 
-// resolveDependencyTarget scans a loaded population for one locator. The third
-// return says whether the locator's project was loaded at all, which is what
-// separates a target that is gone from one this view simply cannot read. Both
-// the detail rows and the row indicator go through here, so the two surfaces
-// never disagree about what a reference resolves to.
-func resolveDependencyTarget(reference models.TaskReference, projects []*models.Project) (*models.Project, *models.Task, bool) {
-	for _, project := range projects {
-		if project == nil || project.ID != reference.ProjectID {
-			continue
-		}
-		return project, project.GetTaskByID(reference.TaskID), true
-	}
-	return nil, nil, false
-}
-
-// lookupDependencyTarget resolves one locator against a loaded population. A
-// loaded project whose task is absent reports the same failure as an unloaded
-// one, because the detail pane says `unavailable` for both: it can establish
-// only that it cannot read the target.
-func lookupDependencyTarget(reference models.TaskReference, projects []*models.Project) (dependencyDetail, bool) {
-	project, task, _ := resolveDependencyTarget(reference, projects)
+// lookupDependencyTarget resolves one locator through the index. A loaded
+// project whose task is absent reports the same failure as an unloaded one,
+// because the detail pane says `unavailable` for both: it can establish only
+// that it cannot read the target.
+func lookupDependencyTarget(
+	reference models.TaskReference,
+	index *app.DependencyIndex,
+) (dependencyDetail, bool) {
+	project, task, _ := index.Lookup(reference)
 	if task == nil {
 		return dependencyDetail{}, false
 	}
@@ -90,47 +78,84 @@ const (
 	// dependencyOutlookSettled means every reference resolves to a terminal task,
 	// or to a task no longer present in a project this view did load.
 	dependencyOutlookSettled dependencyOutlook = iota
-	// dependencyOutlookUnreadable means nothing is outstanding, but at least one
+	// dependencyOutlookUnreadable means nothing is blocked, but at least one
 	// locator points into a project this view did not load. It stays distinct
 	// from settled for the same reason dependencyDetailUnavailable is not
 	// "missing": calling it settled would assert a fact the view cannot read.
 	dependencyOutlookUnreadable
-	// dependencyOutlookOutstanding means at least one resolvable target is still
+	// dependencyOutlookBlocked means at least one resolvable target is still
 	// nonterminal.
-	dependencyOutlookOutstanding
+	dependencyOutlookBlocked
 )
 
-// dependencyOutlookFor reads what a task's stored references point at.
-// Precedence is deliberate: one outstanding target outranks any number of
-// unreadable ones, because a row that has something left to wait on should say
-// so rather than hide behind what it could not resolve.
-func dependencyOutlookFor(task *models.Task, projects []*models.Project) dependencyOutlook {
+// dependencyCensus is one task's outgoing references reduced to the numbers
+// every surface shows. The row paints `~S/N` from it and Peek's Dependencies
+// line repeats the same pair, so the two can never report different arithmetic
+// over the same population.
+//
+// total is the stored-locator count and nothing else: a reference is counted
+// whatever its target's state or availability, which is what keeps the number a
+// fact about the task rather than a fact about what the view could read.
+type dependencyCensus struct {
+	total      int
+	settled    int
+	blocked    int
+	unreadable int
+}
+
+// dependencyCensusFor reads what a task's stored references point at, in one
+// pass over the index.
+func dependencyCensusFor(task *models.Task, index *app.DependencyIndex) dependencyCensus {
+	census := dependencyCensus{}
 	if task == nil {
+		return census
+	}
+	census.total = len(task.Dependencies)
+	for _, reference := range task.Dependencies {
+		switch index.Status(reference) {
+		case app.DependencyTargetUnavailable:
+			census.unreadable++
+		case app.DependencyTargetOpen:
+			census.blocked++
+		default:
+			// Terminal and missing are both settled: a target this view did load
+			// and can no longer find has nothing left to wait on either.
+			census.settled++
+		}
+	}
+	return census
+}
+
+// outlook resolves the census to its color. Precedence is deliberate: one
+// blocked target outranks any number of unreadable ones, because a row that has
+// something left to wait on should say so rather than hide behind what it could
+// not resolve.
+func (c dependencyCensus) outlook() dependencyOutlook {
+	switch {
+	case c.blocked > 0:
+		return dependencyOutlookBlocked
+	case c.unreadable > 0:
+		return dependencyOutlookUnreadable
+	default:
 		return dependencyOutlookSettled
 	}
-	outlook := dependencyOutlookSettled
-	for _, reference := range task.Dependencies {
-		var reading dependencyOutlook
-		switch _, target, loaded := resolveDependencyTarget(reference, projects); {
-		case !loaded:
-			reading = dependencyOutlookUnreadable
-		case target == nil, target.IsTerminalState():
-			reading = dependencyOutlookSettled
-		default:
-			reading = dependencyOutlookOutstanding
-		}
-		if reading > outlook {
-			outlook = reading
-		}
+}
+
+// counts renders the pair both surfaces show. A wholly settled set is written as
+// the bare total rather than `N/N`, because a fraction whose halves agree says
+// only that nothing is left, and the shorter form says it in fewer columns.
+func (c dependencyCensus) counts() string {
+	if c.settled == c.total {
+		return fmt.Sprintf("%d", c.total)
 	}
-	return outlook
+	return fmt.Sprintf("%d/%d", c.settled, c.total)
 }
 
 // style resolves the outlook to the indicator's foreground.
 func (outlook dependencyOutlook) style() lipgloss.Style {
 	switch outlook {
-	case dependencyOutlookOutstanding:
-		return DependencyIndicatorOutstandingStyle
+	case dependencyOutlookBlocked:
+		return DependencyIndicatorBlockedStyle
 	case dependencyOutlookUnreadable:
 		return MutedStyle
 	default:
@@ -140,14 +165,15 @@ func (outlook dependencyOutlook) style() lipgloss.Style {
 
 // outgoingDependencyDetails describes every stored reference in stored order.
 // Every reference produces an entry: the list is what the task holds, so an
-// entry is never dropped because its target could not be read.
-func outgoingDependencyDetails(task *models.Task, projects []*models.Project) []dependencyDetail {
+// entry is never dropped because its target could not be read, and the order is
+// the one `-~task` and `~0` round-trip against.
+func outgoingDependencyDetails(task *models.Task, index *app.DependencyIndex) []dependencyDetail {
 	if task == nil || len(task.Dependencies) == 0 {
 		return nil
 	}
 	details := make([]dependencyDetail, 0, len(task.Dependencies))
 	for _, reference := range task.Dependencies {
-		if detail, ok := lookupDependencyTarget(reference, projects); ok {
+		if detail, ok := lookupDependencyTarget(reference, index); ok {
 			details = append(details, detail)
 			continue
 		}
@@ -156,36 +182,32 @@ func outgoingDependencyDetails(task *models.Task, projects []*models.Project) []
 	return details
 }
 
-// incomingDependencyDetails computes the tasks naming this one, walking only the
-// projects this view loaded. Dependents are never stored, so this list is the
-// whole of what the product knows about them and it is honestly partial: a task
-// in an archived or unloaded project may name the subject without appearing
-// here, and no archived project is opened merely to decorate a detail pane.
-func incomingDependencyDetails(identity TaskIdentity, projects []*models.Project) []dependencyDetail {
+// incomingDependencyDetails lists the tasks naming this one, reading only the
+// population the index was built over. Dependents are never stored, so this list
+// is the whole of what the product knows about them and it is honestly partial:
+// a task in an archived or unloaded project may name the subject without
+// appearing here, and no archived project is opened merely to decorate a detail
+// pane.
+func incomingDependencyDetails(identity TaskIdentity, index *app.DependencyIndex) []dependencyDetail {
 	if identity.ProjectID == "" || identity.TaskID == "" {
 		return nil
 	}
 	subject := models.TaskReference{ProjectID: identity.ProjectID, TaskID: identity.TaskID}
-	var details []dependencyDetail
-	for _, project := range projects {
-		if project == nil {
-			continue
-		}
-		for _, task := range project.Tasks {
-			if task == nil || len(task.Dependencies) == 0 {
-				continue
-			}
-			if !slices.Contains(task.Dependencies, subject) {
-				continue
-			}
-			details = append(details, dependencyDetailFor(project, task))
+	incoming := index.Incoming(subject)
+	if len(incoming) == 0 {
+		return nil
+	}
+	details := make([]dependencyDetail, 0, len(incoming))
+	for _, reference := range incoming {
+		if detail, ok := lookupDependencyTarget(reference, index); ok {
+			details = append(details, detail)
 		}
 	}
 	return details
 }
 
-// dependencyDetailProjects is the population both detail directions read. It is
-// the loaded set rather than the scoped one: a project scope narrows what the
+// dependencyDetailProjects is the population the index is built over. It is the
+// loaded set rather than the scoped one: a project scope narrows what the
 // Outliner shows, not what it has in memory, and a reference into a loaded but
 // unscoped project is knowable.
 func (m *OutlinerModel) dependencyDetailProjects() []*models.Project {
@@ -199,4 +221,42 @@ func (m *OutlinerModel) dependencyDetailProjects() []*models.Project {
 		return []*models.Project{m.project}
 	}
 	return nil
+}
+
+// dependencyIndex is the one reading of the reference graph a render pass uses.
+// It is built lazily over dependencyDetailProjects and held until that
+// population is replaced, which is what turns the old per-reference-per-row
+// linear scan into a pair of map lookups.
+//
+// Invalidation is by replacement, never by patching: invalidateDependencyIndex
+// drops it wherever the loaded population changes or a mutation sets the
+// cross-project force flag, and the next reader rebuilds it.
+func (m *OutlinerModel) dependencyIndex() *app.DependencyIndex {
+	if m == nil {
+		return nil
+	}
+	if m.dependencyIndexCache == nil {
+		m.dependencyIndexCache = app.NewDependencyIndex(m.dependencyDetailProjects())
+	}
+	return m.dependencyIndexCache
+}
+
+// invalidateDependencyIndex drops the cached reading.
+func (m *OutlinerModel) invalidateDependencyIndex() {
+	if m == nil {
+		return
+	}
+	m.dependencyIndexCache = nil
+}
+
+// setLoadedProjects installs a new loaded population. It exists so replacing
+// that population and dropping the reading derived from it are one act: a
+// caller that assigned the slice directly would leave an index describing
+// projects the Outliner no longer holds until the next rebuild pass.
+func (m *OutlinerModel) setLoadedProjects(projects []*models.Project) {
+	if m == nil {
+		return
+	}
+	m.loadedProjects = projects
+	m.invalidateDependencyIndex()
 }

@@ -207,7 +207,7 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	m.discardDisplacedRelocationCapture()
 	m.crossLoading = false
 	m.crossSpinnerVisible = false
-	m.loadedProjects = msg.projects
+	m.setLoadedProjects(msg.projects)
 	m.crossSnapshotReady = true
 	m.recordLoadedPopulation(msg.loadedProjectFilter)
 	m.pruneSelectionsOutsideLoadedProjects()
@@ -303,6 +303,11 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 	m.crossLastFocusDepth = currentFocusDepth
 	m.crossLastTaskCount = taskCount
 	m.crossForceRebuild = false
+	// The reference index is a reading of the population this pass is about to
+	// walk, so it is dropped here and nowhere else on this path: every force
+	// flag and every fresh load reaches this line, and a pass the guard
+	// short-circuited changed nothing the index could have gone stale against.
+	m.invalidateDependencyIndex()
 
 	m.rows = m.rows[:0]
 	m.validateCrossFocusStack()

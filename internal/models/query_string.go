@@ -62,7 +62,8 @@ func (c QueryClause) token() string {
 			return "?" + string(QueryFieldCompleted) + ":" + c.Value
 		}
 		return "?" + string(QueryFieldCompleted)
-	case QueryFieldStale, QueryFieldDeferred, QueryFieldParent, QueryFieldChild, QueryFieldLeaf:
+	case QueryFieldStale, QueryFieldDeferred, QueryFieldParent, QueryFieldChild, QueryFieldLeaf,
+		QueryFieldBlocked, QueryFieldBlocking:
 		return "?" + string(c.Field)
 	case QueryFieldProjectTag:
 		if c.Operator == QueryOperatorNone {
@@ -231,7 +232,8 @@ func splitDerivedQueryToken(body string) (QueryField, QueryOperator, string, err
 	name, value, qualified := strings.Cut(body, ":")
 	field := QueryField(name)
 	switch field {
-	case QueryFieldStale, QueryFieldDeferred, QueryFieldParent, QueryFieldChild, QueryFieldLeaf:
+	case QueryFieldStale, QueryFieldDeferred, QueryFieldParent, QueryFieldChild, QueryFieldLeaf,
+		QueryFieldBlocked, QueryFieldBlocking:
 		if qualified {
 			return "", "", "", fmt.Errorf("derived query token ?%s takes no value", name)
 		}

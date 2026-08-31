@@ -115,9 +115,25 @@ func referenceIDsFor(locators ...string) []ListItemID {
 	return ids
 }
 
+// referenceMembershipAfter is the membership a picker holds once the user has
+// left exactly `checked` ticked: every row the tasks opened with, moved to All
+// where it was checked and None where it was not.
+func referenceMembershipAfter(
+	initial map[ListItemID]operationValueMembership, checked []string,
+) map[ListItemID]operationValueMembership {
+	current := make(map[ListItemID]operationValueMembership, len(initial)+len(checked))
+	for id := range initial {
+		current[id] = operationValueNone
+	}
+	for _, locator := range checked {
+		current[ListItemID("reference:"+locator)] = operationValueAll
+	}
+	return current
+}
+
 // referencePickerCommit replays the whole commit path in one call: the picker
-// emits the difference between the set it preselected from `opened` and its
-// final checked set, and the command merges that difference into whatever
+// emits the difference between the membership it preselected from `opened` and
+// its final checked set, and the command merges that difference into whatever
 // `current` stores at execute time. Passing the same task twice is the ordinary
 // case, where nothing moved underneath the overlay; passing two different tasks
 // is the concurrent one.
@@ -127,7 +143,10 @@ func referenceIDsFor(locators ...string) []ListItemID {
 func referencePickerCommit(opened, current *models.Task, checked ...string) app.DependencyPatch {
 	sorted := append([]string(nil), checked...)
 	sort.Strings(sorted)
-	return taskReferencePatch(current, taskReferenceSelection(storedTaskReferenceBaseline(opened), sorted))
+	initial := taskReferenceMembership([]*models.Task{opened})
+	return taskReferencePatch(current, taskReferenceSelection(
+		initial, referenceMembershipAfter(initial, sorted),
+	))
 }
 
 // TestReferencePickerListsTheStoredHalfFirstAndNeverFiltersIt is the assembly
@@ -136,7 +155,7 @@ func referencePickerCommit(opened, current *models.Task, checked ...string) app.
 // addition is allowed to name.
 func TestReferencePickerListsTheStoredHalfFirstAndNeverFiltersIt(t *testing.T) {
 	subject, projects := referenceSuiteWorkspace(t)
-	source := operationTaskReferenceListSource(subject, projects)
+	source := operationTaskReferenceListSource([]*models.Task{subject}, projects)
 
 	stored := referenceIDsFor(
 		"remote:target",
@@ -170,9 +189,8 @@ func TestReferencePickerListsTheStoredHalfFirstAndNeverFiltersIt(t *testing.T) {
 // no stored row was quietly disabled.
 func TestReferencePickerKeepsUnreachableStoredTargetsEnabled(t *testing.T) {
 	subject, projects := referenceSuiteWorkspace(t)
-	source := operationTaskReferenceListSource(subject, projects)
+	source := operationTaskReferenceListSource([]*models.Task{subject}, projects)
 
-	preselected := storedTaskReferenceIDs(subject)
 	want := referenceIDsFor(
 		"remote:target",
 		"home:closed",
@@ -180,8 +198,16 @@ func TestReferencePickerKeepsUnreachableStoredTargetsEnabled(t *testing.T) {
 		"gone:gone-1",
 		"attic:relic",
 	)
-	if !slices.Equal(preselected, want) {
-		t.Fatalf("preselection = %v, want every stored reference in stored order", preselected)
+	membership := taskReferenceMembership([]*models.Task{subject})
+	preselected := make([]ListItemID, 0, len(membership))
+	for _, id := range want {
+		if membership[id] != operationValueAll {
+			t.Fatalf("stored reference %s is not preselected; membership = %v", id, membership)
+		}
+		preselected = append(preselected, id)
+	}
+	if len(membership) != len(want) {
+		t.Fatalf("preselection = %v, want every stored reference and nothing else", membership)
 	}
 	for _, id := range preselected {
 		index := slices.IndexFunc(source.Items, func(item ListItem) bool { return item.ID == id })
@@ -215,7 +241,7 @@ func TestReferencePickerKeepsUnreachableStoredTargetsEnabled(t *testing.T) {
 // detail pane already use, over the durable locator storage holds.
 func TestReferencePickerUnavailableRowKeepsItsLocator(t *testing.T) {
 	subject, projects := referenceSuiteWorkspace(t)
-	source := operationTaskReferenceListSource(subject, projects)
+	source := operationTaskReferenceListSource([]*models.Task{subject}, projects)
 
 	// `home:ghost` is a loaded project with no such task and `gone:gone-1` is a
 	// project this view never loaded. The picker cannot tell them apart and must
@@ -246,7 +272,7 @@ func TestReferencePickerUnavailableRowKeepsItsLocator(t *testing.T) {
 // that finds a target when typed finds the same target when picked.
 func TestReferencePickerQualifiesCrossProjectRows(t *testing.T) {
 	subject, projects := referenceSuiteWorkspace(t)
-	source := operationTaskReferenceListSource(subject, projects)
+	source := operationTaskReferenceListSource([]*models.Task{subject}, projects)
 
 	home, remote, attic := projects[0], projects[1], projects[2]
 	for _, testCase := range []struct {
@@ -301,11 +327,12 @@ func TestReferencePickerQualifiesCrossProjectRows(t *testing.T) {
 }
 
 // TestReferencePickerDiffsTheCheckedSetAgainstWhatIsStored walks every shape the
-// commit can take. Add order follows the checked payloads, which selectedValue
-// has already sorted; Remove order is stored order, because the removal half is
-// read off the task rather than off the list.
+// commit can take. Both halves are sorted, because both are read off a
+// membership map rather than off an ordered list, and a patch is a set on either
+// side.
 func TestReferencePickerDiffsTheCheckedSetAgainstWhatIsStored(t *testing.T) {
 	everyStored := []string{"remote:target", "home:closed", "home:ghost", "gone:gone-1", "attic:relic"}
+	sortedStored := []string{"attic:relic", "gone:gone-1", "home:closed", "home:ghost", "remote:target"}
 
 	for _, testCase := range []struct {
 		name       string
@@ -325,7 +352,7 @@ func TestReferencePickerDiffsTheCheckedSetAgainstWhatIsStored(t *testing.T) {
 		{
 			name:       "remove only",
 			checked:    []string{"remote:target", "home:ghost"},
-			wantRemove: []string{"home:closed", "gone:gone-1", "attic:relic"},
+			wantRemove: []string{"attic:relic", "gone:gone-1", "home:closed"},
 		},
 		{
 			name:       "add and remove in one commit",
@@ -340,7 +367,7 @@ func TestReferencePickerDiffsTheCheckedSetAgainstWhatIsStored(t *testing.T) {
 			// says the same thing.
 			name:       "everything unchecked",
 			checked:    nil,
-			wantRemove: everyStored,
+			wantRemove: sortedStored,
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -490,10 +517,16 @@ func TestReferencePickerPreservesConcurrentReferenceChanges(t *testing.T) {
 			}
 
 			// The user's whole edit: check `remote:other`, uncheck `remote:legacy`,
-			// leave `remote:target` exactly as the picker preselected it.
-			checked := referenceIDsFor("remote:target", "remote:other")
-			if err := picker.surface.SetSelectedIDs(checked); err != nil {
-				t.Fatalf("the picker refused the edited checked set: %v", err)
+			// leave `remote:target` exactly as the picker preselected it. Both moves
+			// go through the toggle the keyboard uses, because membership rather than
+			// the checked set is what the commit is a difference against.
+			for _, id := range referenceIDsFor("remote:other", "remote:legacy") {
+				if !picker.surface.SetCursorToID(id) {
+					t.Fatalf("the picker has no row for %s", id)
+				}
+				if err := picker.toggleCurrentMultiValue(); err != nil {
+					t.Fatalf("toggling %s: %v", id, err)
+				}
 			}
 
 			// Only now does the load land, after the picker was built and edited and
@@ -544,10 +577,11 @@ func TestReferencePickerPreservesConcurrentReferenceChanges(t *testing.T) {
 	}
 }
 
-// TestReferencePickerRefusesOffATaskRow keeps `~` inside the task grammar. A
-// project header names no task, and a visual selection carries N tasks with N
-// different stored sets that one checked list could not diff against, so both
-// have to refuse rather than fall back to whatever the cursor happens to be on.
+// TestReferencePickerRefusesOffATaskRow keeps `~` inside the task grammar: a
+// project header names no task, so it refuses rather than falling back to
+// whatever the cursor happens to be on. A visual selection is the other case and
+// no longer a refusal — it edits every selected task, which
+// TestReferencePickerEditsAWholeSelectionTriState holds.
 func TestReferencePickerRefusesOffATaskRow(t *testing.T) {
 	descriptorFor := func(t *testing.T, model *AppModel) OperationDescriptor {
 		t.Helper()
@@ -586,7 +620,7 @@ func TestReferencePickerRefusesOffATaskRow(t *testing.T) {
 		}
 	})
 
-	t.Run("a visual selection refuses instead of falling back to the cursor", func(t *testing.T) {
+	t.Run("a visual selection is the selection, never the cursor", func(t *testing.T) {
 		model, subject, home, _ := referencePickerFixture(t)
 		model.crossOutliner.ReplaceSelection([]TaskIdentity{taskIdentityFor(subject, home)})
 
@@ -594,18 +628,98 @@ func TestReferencePickerRefusesOffATaskRow(t *testing.T) {
 		if !ctx.Selection.Visual {
 			t.Fatal("the fixture did not enter a visual selection")
 		}
-		if descriptorFor(t, model).Applicable(ctx) {
-			t.Error("~ stayed applicable under a visual selection")
+		if !descriptorFor(t, model).Applicable(ctx) {
+			t.Fatal("~ stopped applying under a visual selection")
 		}
-
-		_, cmd := model.handleGlobalKeyPress(tea.KeyPressMsg{Code: '~', Text: "~"})
-		if cmd != nil {
-			model.handleOperationOverlayMessage(cmd())
+		targets, err := (OperationTargetResolver{}).Resolve(descriptorFor(t, model), ctx)
+		if err != nil {
+			t.Fatalf("~ resolved no target under a visual selection: %v", err)
 		}
-		if model.operationValuePicker != nil {
-			t.Fatal("~ opened a picker under a visual selection")
+		if len(targets.Targets) != 1 || targets.Targets[0].Task.TaskID != subject.ID {
+			t.Fatalf("targets = %+v, want the selected task alone", targets.Targets)
 		}
 	})
+}
+
+// TestReferencePickerEditsAWholeSelectionTriState is the bulk contract. The
+// documented objection to bulk here — N tasks carrying N different stored sets —
+// is an objection to a replacement picker, so the answer is the tri-state one
+// tags already use: a reference everybody stores opens checked, one only part of
+// the selection stores opens indeterminate and belongs to neither half of the
+// emitted patch, and a selected task is never offered as a target of another.
+func TestReferencePickerEditsAWholeSelectionTriState(t *testing.T) {
+	model, subject, home, remote := referencePickerFixture(t)
+	second := &models.Task{
+		ID: "second", ShortID: 2, Title: "Draft the notes", WorkflowState: models.StateBacklog,
+		Dependencies: []models.TaskReference{
+			{ProjectID: remote.ID, TaskID: "target"},
+			{ProjectID: remote.ID, TaskID: "other"},
+		},
+	}
+	home.Tasks = append(home.Tasks, second)
+	home.BuildTaskTree()
+	setTestAppProjects(model, home, remote)
+	model.crossOutliner.loadedProjects = []*models.Project{home, remote}
+	model.crossOutliner.rows = []outlinerRow{
+		{task: subject, ProjectID: home.ID},
+		{task: second, ProjectID: home.ID},
+	}
+	model.crossOutliner.ReplaceSelection([]TaskIdentity{
+		taskIdentityFor(subject, home), taskIdentityFor(second, home),
+	})
+
+	_, cmd := model.handleGlobalKeyPress(tea.KeyPressMsg{Code: '~', Text: "~"})
+	if cmd != nil {
+		model.handleOperationOverlayMessage(cmd())
+	}
+	picker := model.operationValuePicker
+	if picker == nil || picker.provider != ValueProviderTaskReference {
+		t.Fatalf("~ did not open the reference picker over a selection: %#v", picker)
+	}
+
+	shared := taskReferenceRowID(app.TaskLocator{ProjectID: remote.ID, TaskID: "target"})
+	partial := taskReferenceRowID(app.TaskLocator{ProjectID: remote.ID, TaskID: "other"})
+	if got := picker.membershipInitial[shared]; got != operationValueAll {
+		t.Errorf("the reference both tasks store opened at %v, want checked", got)
+	}
+	if got := picker.membershipInitial[partial]; got != operationValueSome {
+		t.Errorf("the reference one task stores opened at %v, want indeterminate", got)
+	}
+	for _, item := range picker.surface.Items() {
+		if item.ID == partial && !item.Indeterminate {
+			t.Error("the row only part of the selection stores is not drawn indeterminate")
+		}
+		if locator, ok := taskReferenceRowLocator(item.ID); ok && locator.TaskID == second.ID {
+			t.Errorf("the picker offered %s, a task inside the selection", item.ID)
+		}
+	}
+
+	// Touching nothing but the shared row leaves the row the tasks disagree about
+	// out of both halves, which is what keeps them disagreeing.
+	if !picker.surface.SetCursorToID(shared) {
+		t.Fatalf("the picker has no row for %s", shared)
+	}
+	if err := picker.toggleCurrentMultiValue(); err != nil {
+		t.Fatalf("toggling the shared row: %v", err)
+	}
+	value, err := picker.selectedValue()
+	if err != nil {
+		t.Fatalf("selectedValue: %v", err)
+	}
+	selection, ok := value.(OperationTaskReferenceValue)
+	if !ok {
+		t.Fatalf("the picker emitted %T, want a reference difference", value)
+	}
+	if len(selection.Add) != 0 {
+		t.Errorf("Add = %v, want nothing added", selection.Add)
+	}
+	if !slices.Equal(selection.Remove, []string{"remote:target"}) {
+		t.Errorf("Remove = %v, want the unchecked shared reference alone", selection.Remove)
+	}
+	patch := taskReferenceBulkPatch(selection)
+	if len(patch.Add) != 0 || len(patch.Remove) != 1 || patch.Clear {
+		t.Fatalf("bulk patch = %+v, want one removal and nothing else", patch)
+	}
 }
 
 // TestReferencePickerOpensOnTildeWithTheStoredSetChecked is the session's
@@ -652,8 +766,9 @@ func TestReferencePickerCommitsNothingWhenTheCheckedSetIsUnchanged(t *testing.T)
 	model, subject, home, remote := referencePickerFixture(t)
 
 	stored := app.TaskLocator{ProjectID: remote.ID, TaskID: "target"}
+	initial := taskReferenceMembership([]*models.Task{subject})
 	value := taskReferenceSelection(
-		storedTaskReferenceBaseline(subject), []string{stored.Reference().Locator()},
+		initial, referenceMembershipAfter(initial, []string{stored.Reference().Locator()}),
 	)
 	if value.Add != nil || value.Remove != nil {
 		t.Fatalf("leaving the preselection alone emitted %+v, want no intent at all", value)

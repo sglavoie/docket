@@ -133,6 +133,7 @@ const (
 	ValueProviderFilterDue           ValueProviderID = "filter-due"
 	ValueProviderFilterCompletionAge ValueProviderID = "filter-completion-age"
 	ValueProviderFilterHierarchy     ValueProviderID = "filter-hierarchy"
+	ValueProviderFilterDependency    ValueProviderID = "filter-dependency"
 
 	// ValueProviderFilterContexts feeds the context facet: a distinct axis from
 	// ValueProviderFilterTags, whose vocabulary it may share spellings with but

@@ -8,6 +8,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -692,13 +693,13 @@ type taskIndicatorSegments struct {
 	checklist   string
 	comments    string
 	attachments string
-	// dependencies is the trailing `~N` count of outgoing soft references. The
-	// number is a count of what the task stores, not a reading of what those
-	// targets are: a reference to closed, deleted, or unloaded work counts
-	// exactly like a reference to open work, because nothing about the subject
-	// changes either way. Only its color reads the targets, as one aggregate
-	// signal of whether anything is still outstanding; Peek remains the one
-	// place the targets themselves are named.
+	// dependencies is the trailing `~S/N` reading of outgoing soft references.
+	// N is a count of what the task stores, not a reading of what those targets
+	// are: a reference to closed, deleted, or unloaded work counts exactly like a
+	// reference to open work, because nothing about the subject changes either
+	// way. S and the color are the aggregate reading of the targets themselves,
+	// one hop and never further; Peek remains the one place those targets are
+	// named.
 	dependencies string
 }
 
@@ -795,29 +796,36 @@ func (m *OutlinerModel) renderTaskIndicatorSegments(row outlinerRow) taskIndicat
 	// Deliberately ungated by a column: a reference count is not a column the
 	// user can hide, and naming one would put a dependency back in the column
 	// vocabulary the retired hard-dependency panels owned.
-	segments.dependencies = renderDependencyIndicator(task, m.dependencyDetailProjects())
+	segments.dependencies = renderDependencyIndicator(task, m.dependencyIndex())
 	return segments
 }
 
-// renderDependencyIndicator renders the trailing `~N` outgoing-reference count.
-// The count is over every stored locator regardless of what that locator
-// resolves to, so the number a row shows is exactly the number of tokens the
-// edit grammar would round-trip, and it is independent of the task's own
-// workflow state. The color is the one aggregate reading of the targets, from
-// dependencyOutlookFor over the same population Peek resolves its detail lines
-// against, so the row and Peek can never disagree. Nothing here adds or drops a
-// reference.
+// renderDependencyIndicator renders the trailing outgoing-reference count as
+// `~S/N`: N is every stored locator regardless of what it resolves to, so the
+// number a row shows is exactly the number of tokens the edit grammar would
+// round-trip and is independent of the task's own workflow state, and S is how
+// many of them are settled. A wholly settled set collapses to the bare `~N`,
+// and a trailing `?` says at least one locator points into a project this view
+// did not load, so the shape now carries what only the color used to. The color
+// is the census's own outlook, over the same index Peek resolves its detail
+// lines against, so the row and Peek can never disagree. Nothing here adds or
+// drops a reference.
 //
-// There is deliberately no locator index behind this: a row with no references
-// returns for free, and one that has them pays the same short linear scan Peek
-// already pays for the cursor row. A memo would also risk a stale color when a
-// target in another project changes state without a row rebuild.
-func renderDependencyIndicator(task *models.Task, projects []*models.Project) string {
+// The index behind this is built once per row-rebuild pass rather than per
+// reference per row per frame, which is strictly cheaper than the linear scan it
+// replaced. It cannot go stale under a target's state change: changing a
+// target's state is a mutation, and a mutation sets the force-rebuild flag that
+// drops the index.
+func renderDependencyIndicator(task *models.Task, index *app.DependencyIndex) string {
 	if task == nil || len(task.Dependencies) == 0 {
 		return ""
 	}
-	count := fmt.Sprintf("~%d", len(task.Dependencies))
-	return dependencyOutlookFor(task, projects).style().Render(count)
+	census := dependencyCensusFor(task, index)
+	count := "~" + census.counts()
+	if census.unreadable > 0 {
+		count += "?"
+	}
+	return census.outlook().style().Render(count)
 }
 
 // formatWaitingAgeIndicator reads the state clock rather than UpdatedAt, so

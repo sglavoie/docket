@@ -21,11 +21,15 @@ import (
 //   - the population half decides which projects load at all, which is why its
 //     fields carry the reload obligation models.QueryFieldRequiresReload reports.
 //
-// The hierarchy fields sit in neither: they are spelled as clauses so the axis
-// has one vocabulary, but they are answered by passesHierarchyFilter against the
-// scope's open-direct-child census rather than by Admits against the Children a
-// promotion pass may have rewritten. Evaluating them here would make "parent"
-// mean one thing in All and another in a flat mode.
+// The census fields sit in neither: they are spelled as clauses so each axis has
+// one vocabulary, but each is answered against a census this Outliner holds and
+// Admits does not. The hierarchy fields go to passesHierarchyFilter against the
+// scope's open-direct-child count rather than to Admits against the Children a
+// promotion pass may have rewritten, since evaluating them there would make
+// "parent" mean one thing in All and another in a flat mode. The dependency
+// fields go to passesDependencyFilter against the loaded population's reference
+// index, since dependents are computed rather than stored and no reading of one
+// task can find them.
 
 // filterQueryRowFields are the clause fields the f chord owns and Admits
 // answers.
@@ -49,6 +53,30 @@ var filterQueryHierarchyFields = []models.QueryField{
 	models.QueryFieldLeaf,
 }
 
+// filterQueryDependencyFields are the clause fields the f~ facet owns. They are
+// lifted out of the Admits half for the same reason the hierarchy fields are:
+// blocking is a fact about which other tasks name this one, which no reading of
+// this one can establish, and its twin travels with it so one facet is answered
+// in one place.
+var filterQueryDependencyFields = []models.QueryField{
+	models.QueryFieldBlocked,
+	models.QueryFieldBlocking,
+}
+
+// filterQueryCensusFields is every field models.QueryFieldRequiresCensus marks,
+// in canonical order. It is derived rather than listed so a field added to the
+// census family cannot silently stay in the Admits half, where it would be
+// answered by a predicate that does not hold the population.
+func filterQueryCensusFields() []models.QueryField {
+	fields := make([]models.QueryField, 0, len(filterQueryHierarchyFields)+len(filterQueryDependencyFields))
+	for _, field := range models.QueryFieldOrder() {
+		if models.QueryFieldRequiresCensus(field) {
+			fields = append(fields, field)
+		}
+	}
+	return fields
+}
+
 // filterQueryPopulationFields are the clause fields the F chord owns. Every one
 // of them reports true from models.QueryFieldRequiresReload.
 var filterQueryPopulationFields = []models.QueryField{
@@ -58,10 +86,10 @@ var filterQueryPopulationFields = []models.QueryField{
 }
 
 // filterQueryTaskFields is everything the f chord's Clear Filters drops: the row
-// half plus the hierarchy axis, and never the population half, because clearing
+// half plus the census fields, and never the population half, because clearing
 // one family must not clear the other.
 func filterQueryTaskFields() []models.QueryField {
-	return append(slices.Clone(filterQueryRowFields), filterQueryHierarchyFields...)
+	return append(slices.Clone(filterQueryRowFields), filterQueryCensusFields()...)
 }
 
 // emptyFilterQueryProject stands in for a row whose project could not be
@@ -184,6 +212,7 @@ func commonFilterClauses(f *CommonFilterState) []models.QueryClause {
 	}
 	clauses = append(clauses, dueFilterClauses(f.DueDate)...)
 	clauses = append(clauses, hierarchyFilterClauses(f.Hierarchy)...)
+	clauses = append(clauses, dependencyFilterClauses(f.Dependency)...)
 	if f.Stale {
 		clauses = appendFilterClause(clauses, models.QueryFieldStale,
 			models.QueryOperatorPresent, "")
@@ -243,6 +272,18 @@ func hierarchyFilterClauses(hierarchy HierarchyFilter) []models.QueryClause {
 			return []models.QueryClause{clause}
 		}
 		return nil
+	default:
+		return nil
+	}
+}
+
+// dependencyFilterClauses spells one reference position.
+func dependencyFilterClauses(dependency DependencyFilter) []models.QueryClause {
+	switch dependency {
+	case DependencyFilterBlocked:
+		return filterClauseList(models.QueryFieldBlocked, models.QueryOperatorPresent, "")
+	case DependencyFilterBlocking:
+		return filterClauseList(models.QueryFieldBlocking, models.QueryOperatorPresent, "")
 	default:
 		return nil
 	}
@@ -337,6 +378,10 @@ func commonFilterStateFromQuery(query models.Query) CommonFilterState {
 			filter.Hierarchy = HierarchyParent
 		case models.QueryFieldLeaf:
 			filter.Hierarchy = HierarchyLeaf
+		case models.QueryFieldBlocked:
+			filter.Dependency = DependencyFilterBlocked
+		case models.QueryFieldBlocking:
+			filter.Dependency = DependencyFilterBlocking
 		case models.QueryFieldChild:
 			filter.Hierarchy = HierarchyChild
 			if clause.Polarity == models.QueryPolarityNegative {
@@ -456,13 +501,14 @@ func (m *OutlinerModel) adoptFilterCarriers() {
 
 // rowPredicateQuery is the half of the filter query models.Query.Admits answers.
 // The population half is lifted out because a project this Outliner never loaded
-// cannot be judged from a row, and the hierarchy half because its census lives
-// in passesHierarchyFilter.
+// cannot be judged from a row, and the census half because its two censuses —
+// the scope's open-direct-child count and the loaded population's reference
+// index — live in passesHierarchyFilter and passesDependencyFilter.
 func (m *OutlinerModel) rowPredicateQuery() models.Query {
 	if m == nil {
 		return models.Query{}
 	}
-	fields := append(slices.Clone(filterQueryPopulationFields), filterQueryHierarchyFields...)
+	fields := append(slices.Clone(filterQueryPopulationFields), filterQueryCensusFields()...)
 	return queryWithoutFields(m.filterQuery, fields...)
 }
 

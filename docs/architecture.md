@@ -98,6 +98,22 @@ prunes a reference whose target closed, moved projects, or was deleted; the
 reference maintenance that runs on a move or a delete rewrites or drops it
 deliberately, and every other path preserves the stored bytes.
 
+`app.DependencyIndex` is the one reading of that relation, built by
+`NewDependencyIndex` over a population of loaded projects. It is pure and
+immutable: forward and reverse maps plus a locator table, so `Status` classifies
+one reference, `Lookup` names its target, and `Incoming` answers the dependents
+question that no reading of a single task can. `Status` returns the exported
+`app.DependencyTargetState`, which is the same classification
+`referenceResolver.classify` applies on the write side — one classifier, so the
+picker, the row, Peek, search, and the resolver cannot disagree about what
+`unavailable` means. Every reading is one hop. A transitive closure would assert
+reachability through projects the caller never loaded, would smear one unreadable
+locator across a whole path, and would report "everything reaches everything" for
+any task inside a legal cycle. Cycles are legal, because a soft reference gates
+nothing; `Cycles()` exists so `doctor` can name them as an informational census
+over the widest population there is — every retained project, archived
+included — since no row can show a ring that no row can see.
+
 `DeferCount` is a lifecycle signal rather than a count of field writes. An
 initial deferral increments it, changing the instant of a still-pending deferral
 does not, and deferring again after the prior instant lapsed increments it. Wake
@@ -726,42 +742,57 @@ segment as `deferred ×N`; Peek appends the identical token to
 The row segment is the first `indicatorDropLadder` entry and therefore yields
 before every operational date or age signal under width pressure.
 
-A task holding soft references renders a trailing `~N` from
+A task holding soft references renders a trailing `~S/N` from
 `renderDependencyIndicator`. It is deliberately ungated by a `ColumnConfig`
 column: naming one would put a dependency back in the column vocabulary the
 retired hard-dependency panels owned, and the count is not a fact a user hides.
-The count is over stored locators rather than resolvable ones, so a reference to
+`N` is over stored locators rather than resolvable ones, so a reference to
 terminal, deleted, or unloaded work counts exactly like a reference to open
 work, and the same number is what the edit grammar round-trips.
 
-The count and the color are two different readings, and only the color looks at
-the targets. `dependencyOutlookFor` aggregates the stored list into one of three
-tiers over the population `dependencyDetailProjects` returns — the same one Peek
-resolves its detail lines against, so the row and Peek can never disagree — and
-`dependencyOutlook.style()` maps the tier to a foreground:
+`S` and the color are the reading of the targets, and `dependencyCensusFor`
+computes both in one pass so they can never disagree. It sorts every stored
+locator into `settled`, `blocked`, and `unreadable` over `app.DependencyIndex`,
+whose population is what `dependencyDetailProjects` returns — the same one Peek
+resolves its detail lines against, so the row and Peek report the same
+arithmetic. The census is strictly one hop: a target's own references are never
+walked, because a transitive reading would assert reachability through projects
+the view never loaded, would smear one unreadable locator over a whole path, and
+would answer "everything reaches everything" inside a legal cycle.
+
+`dependencyCensus.counts()` writes `S/N`, or the bare `N` when the two agree,
+and `renderDependencyIndicator` appends `?` when `unreadable > 0`, which is what
+carries under `--no-color` the one thing the muted tier used to say alone.
+`dependencyCensus.outlook()` reduces the same numbers to a tier and
+`dependencyOutlook.style()` maps it to a foreground:
 
 | Tier | Reading | Style |
 | --- | --- | --- |
-| `dependencyOutlookOutstanding` | at least one resolvable target is nonterminal | `DependencyIndicatorOutstandingStyle` |
+| `dependencyOutlookBlocked` | at least one resolvable target is nonterminal | `DependencyIndicatorBlockedStyle` |
 | `dependencyOutlookSettled` | every reference resolves to a terminal task, or to a task absent from a project this view did load | `DependencyIndicatorSettledStyle` |
-| `dependencyOutlookUnreadable` | nothing outstanding, but a locator points into a project this view did not load | `MutedStyle` |
+| `dependencyOutlookUnreadable` | nothing readable is blocked, but a locator points into a project this view did not load | `MutedStyle` |
 
-Precedence runs outstanding over unreadable over settled: a row with something
+Precedence runs blocked over unreadable over settled: a row with something
 left to wait on says so rather than hiding behind what it could not resolve. The
 unreadable tier stays muted rather than green for the same reason
 `dependencyDetailUnavailable` says `unavailable` and not `missing` — painting an
 unloaded project's task as finished would assert a fact the view cannot read.
 The two named styles exist so retuning a due-date or status color never silently
-repaints a reference count, and both are rebuilt in `rebuildTaskStyles`.
+repaints a reference count, and both are rebuilt in `rebuildTaskStyles`. Neither
+`blocked` nor `blocking` is ever rendered bare: the row shows numbers, and the
+chrome that names the words spells them `?blocked` and `?blocking`, so a reader
+cannot mistake either for the Waiting lifecycle state.
 
-`renderDependencyIndicator` builds no locator index. A row with no references
-returns immediately, and one that has them pays the same short linear scan Peek
-already pays for the cursor row; a memo would additionally risk a stale color
-when a target in another project changes state without a row rebuild. If
-profiling ever demands one, the seam is `crossProjectRebuildRows` behind its
-existing fingerprint guard. `quickEditOptionalMetadata` builds its own unstyled
-`~N`: that is a grammar echo of the edit buffer, not a row indicator, and it is
-deliberately left uncolored.
+The index is built once per row-rebuild pass, not once per reference per row per
+frame, which is strictly cheaper than the linear scan it replaced.
+`OutlinerModel.dependencyIndex` builds it lazily over `dependencyDetailProjects`
+and holds it until `invalidateDependencyIndex` drops it, which `setLoadedProjects`
+and the `crossForceRebuild` path both do. Invalidation is by replacement, never
+by patching. The older note here argued a memo would risk a stale color when a
+target in another project changed state without a row rebuild; it cannot, because
+changing a target's state is a mutation and a mutation sets that force flag.
+`quickEditOptionalMetadata` builds its own unstyled `~N`: that is a grammar echo
+of the edit buffer, not a row indicator, and it is deliberately left uncolored.
 
 `indicatorDropLadder` is the row's drop order, and it is a list rather than a set
 because eleven segments cannot all fit at minimum width. Counts go first, since
@@ -1110,8 +1141,10 @@ footer entries.
 
 `~` is the fourth of the set and the only one that preselects. It opens
 `ValueProviderTaskReference`, a multi-select plain list built by
-`operationTaskReferenceListSource`, and `storedTaskReferenceIDs` arrives as the
-preselection: exactly the references the task stores, in stored order. That
+`operationTaskReferenceListSource`, and `taskReferenceMembership` arrives as the
+preselection: `operationValueAll` for a reference every target stores,
+`operationValueSome` for one only part of them stores, and `operationValueNone`
+for the rest. That
 asymmetry with Adopt Children is a grammar fact rather than a taste. `FieldChild`
 declares no `Clears`, so an unchecked child row could not be read as a detach and
 the `<` picker is built so that no selection state can ask for one; `~` declares
@@ -1134,6 +1167,13 @@ mode. Rows group into one category per project in `dependencyDetailProjects()`
 order, because a reference crosses project boundaries and a filtered list has to
 stay qualified.
 
+Over a selection both halves are the union across it: the stored half lists every
+reference anybody carries, and the addition half withholds every selected task,
+because naming one would be a relationship inside the selection whose direction
+the gesture cannot state. That is the operation's one refusal — `bulkPatchDependencies`
+names the offending task (`#7 Ship the API` is in the selection) and commits
+nothing.
+
 The commit is a difference rather than a set, and that is the one thing about
 this picker that is not obvious. The overlay is not modal against the workspace:
 an accepted cross-project load republishes task trees through
@@ -1152,7 +1192,25 @@ as an addition — emitting the whole checked set would have done both.
 `Clear` stays false even when nothing is checked: the application layer refuses
 `Clear` beside `Add` or `Remove`, and removing every stored reference says the
 same thing. Add and Remove cannot overlap by construction, so that refusal is
-unreachable from this surface. The
+unreachable from this surface.
+
+The tri-state membership is what lets one picker be `Bulk`. The standing
+objection — N tasks carry N different stored sets, so a checked list would assert
+one of them over all of them — is an objection to a *replacement* picker, and
+`TagPatch`/`operationValueMembership` already answered it for tags. A row nobody
+moved keeps its `Some` reading and is emitted by neither half, so the tasks that
+disagree keep disagreeing; only a row driven all the way to `All` or `None`
+becomes an addition or a removal. Cardinality then chooses the transaction and
+not the meaning, exactly as `%` does: `applicationTaskOperationRequest` returns
+unhandled below two targets so a selection-free `~` stays byte-for-byte the
+task-line edit it always was, and two or more take
+`app.TaskOperationSetDependencies` with `taskReferenceBulkPatch` as its
+`DependencyPatch`. `bulkPatchDependencies` runs on `bulkAttributeOverSnapshot`,
+which resolves the targets, plans once against the very snapshot the commit will
+write, and only then mutates: each target gets its own `referenceResolver`, so a
+self-reference and an unresolvable locator are judged per task while every one of
+them reads one revision-consistent view. A target the patch leaves unchanged
+commits without moving its `UpdatedAt`. The
 patch becomes `TaskLineEditRequest.Dependencies` on one request with the title
 carried verbatim and the parent left on `TaskLineParentPreserve`, so both halves
 of the diff resolve against one snapshot and land in one transaction with one
@@ -1702,9 +1760,12 @@ nothing for a mutation surface to write. Its value set is closed —
 and the names and the answers both live in `internal/models`
 (`models.DerivedProperty`, `models.DerivedProperties`, `models.TaskMatchesDerived`),
 which the grammar spells and the TUI calls without naming. That layering is not
-incidental: `TestDependencyIsolationPresentationVocabulary` bans the strings
-`blocked` and `blocker` from `internal/tui` production code, so the property has
-to be named where the invariant lives. `?completed:Nd` is the one qualifier, and
+incidental: `TestDependencyIsolationPresentationVocabulary` bans the string
+`blocker` from `internal/tui` production code and bans a literal reading exactly
+`blocked`, so the property has to be named where the invariant lives and the
+chrome that names it has to spell the sigil. The same test asserts the live
+vocabulary — `blocked`, `blocking`, `settled`, `unreadable` — is actually present,
+so a later rename cannot quietly empty the set the retirement sweep guards. `?completed:Nd` is the one qualifier, and
 it opens the terminal population the way `$done` does, through
 `models.DerivedOpensTerminalPopulation`; the census two of the properties need —
 open direct children for `?leaf`/`?parent`, incoming references for `?blocking` —
@@ -1739,13 +1800,13 @@ the action sheet, and the Project Hub stay case-insensitive because tag and
 context values are normalized lowercase, and `project#shortID` stays `EqualFold`
 because it is an exact ID lookup rather than a text search.
 Ordinary filter facets compose as priority threshold, OR states, AND tag values,
-OR context values, due bucket, completion age, hierarchy position, Stale, and
-deferred-only and remain session-only. The deferred-only facet is a fifth row on the `f@` picker
+OR context values, due bucket, completion age, hierarchy position, reference
+position, Stale, and deferred-only and remain session-only. The deferred-only facet is a fifth row on the `f@` picker
 rather than a chord of its own, because a deferral is a scheduling instant like
 a due date; the picker is single-select, so choosing the deferred row clears the
 due bucket and choosing a due bucket clears the deferred flag. Those five rows
 are `dueFilterShortcuts`, and a shortcut is the canonical token it writes:
-`dueFilterShortcut.token()` is `filterClauseParts` over the clauses the row
+`filterShortcut.token()` is `filterClauseParts` over the clauses the row
 installs, so the row label, the which-key hint, the operation's preset value, and
 the status all read `@overdue`, `@today`, `@week`, `@0`, or `?deferred`. The
 picker keeps no private spelling of its own — `acceptsPresetValue` rejects a
@@ -1770,7 +1831,19 @@ hierarchy facet is split across two sources: parent and leaf read the same
 open-direct-child census the `›N` marker reads, so the facet and the marker
 cannot disagree, while child and root read the stored `ParentID`, which survives
 the All-mode promotion clone. Parents are project-local, so the per-project
-census is complete. `doctor` reports malformed lifecycle timestamps.
+census is complete. The `f~` reference facet is the second such split and the
+larger one: `?blocked` is a fact the task itself carries, so it reads
+`len(task.Dependencies)`, while `?blocking` is a fact about which *other* tasks
+name this one, which no reading of this task can establish. Both are therefore
+lifted out of the row predicate and answered by `passesDependencyFilter` beside
+`passesHierarchyFilter`, against the loaded population's `app.DependencyIndex` —
+the same carve-out and the same reason. `models.QueryFieldRequiresCensus` marks
+both families, and `filterQueryCensusFields` derives the lifted set from that
+mark rather than listing it, so a field added to the family cannot silently stay
+in the `Admits` half. The two rows are `dependencyFilterShortcuts`, canonical
+tokens exactly as the `f@` five are, and the facet is single-select: choosing one
+direction clears the other. Neither reading is transitive and neither is a
+readiness verdict. `doctor` reports malformed lifecycle timestamps.
 
 Population facets are a separate chord because they answer a different question.
 The lowercase `f` facets refine the rows a projection already holds and rebuild
@@ -1911,13 +1984,16 @@ A new Peek line takes a deliberate position in that order, or the cap silently
 starts eating something else.
 
 The reference lines sit above tags because Peek is the only surface that names a
-reference at all — the row carries a `~N` whose color says only whether anything
-is still outstanding, and there is no panel behind it the way `;` and `&` stand
-behind comments and attachments — while tag chips are already on the row and are
-therefore the cheaper line to lose.
-`inlinePeekReferenceLine` renders `Dependencies` from the task's stored list in
-stored order and `Dependents` from `incomingDependencyDetails`, which scans the
-loaded projects for tasks referring back. Both arrive resolved:
+reference at all — the row carries `~S/N`, and there is no panel behind it the
+way `;` and `&` stand behind comments and attachments — while tag chips are
+already on the row and are therefore the cheaper line to lose.
+`inlinePeekReferenceLine` renders `Dependencies S/N` from the task's stored list
+in stored order, carrying the row's own census through `inlinePeekOptions` rather
+than recounting it, and `Dependents N` from `incomingDependencyDetails`, which
+reads the same index's reverse map for tasks referring back. Each label carries
+its count so a set the two-entry cap elided still reports its size; the outgoing
+label takes no trailing `?`, because every entry below names its own state in
+full. Neither line is new and the cap is unchanged. Both arrive resolved:
 `dependencyDetailFor` names a loaded target as project, `#ShortID`, title, and
 state, and `dependencyDetailUnresolved` falls back to the stored
 `project-id:task-id` locator marked `(unavailable)`, so a reference into an
@@ -2922,10 +2998,18 @@ portable domains, and migration snapshots are not.
 
 The public CLI contains the TUI launcher, `doctor`, `conflict`, `workspace`,
 `completion`, and `project export`, plus help and version output.
+`doctor` adds one informational census of its own: `checkDependencyCycles`
+prints each ring of soft references as `reference cycle: a -> b -> a`. It is
+never an issue and never a fix target, because a ring deadlocks nothing a soft
+reference could gate; it is reported only because one hop is all a row shows.
 `project export` writes a task's outgoing references as a `**Dependencies:**`
 list, labelled through `exportReferenceLabeller`: a resolvable target reads as
-project, `(#ShortID)`, and title, and anything else keeps its durable
-`project-id:task-id` locator, so an export degrades rather than drops. Its label
+project, `(#ShortID)`, title, and `(state)` — the same parenthesized form Peek
+uses, so the two never have to be reconciled — and anything else keeps its
+durable `project-id:task-id` locator, so an export degrades rather than drops.
+The state is the whole of what an export says about a target: there is no
+transitive walk behind it, because a document holding one project cannot assert
+facts about work it does not contain. Its label
 population is every non-archived project plus the archived ones, because an
 exported document is not a live view and naming archived work beats emitting a
 bare locator. Computed dependents are never exported: they are an artifact of

@@ -112,6 +112,15 @@ func queryClauseMatches(clause QueryClause, task *Task, project *Project, now ti
 		return task.ParentID != nil
 	case QueryFieldLeaf:
 		return queryOpenChildCount(task) == 0
+	case QueryFieldBlocked:
+		return len(task.Dependencies) > 0
+	case QueryFieldBlocking:
+		// Dependents live in other tasks, so no reading of this one can decide
+		// them. The refusal is deliberate rather than a gap: a caller holding the
+		// population's reference index lifts this field out before it ever gets
+		// here, and a stray clause that reached this far names a fact the
+		// predicate has no way to establish.
+		return false
 	case QueryFieldProjectTag:
 		if clause.Operator == QueryOperatorNone {
 			return len(project.Tags) == 0

@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
@@ -44,6 +46,7 @@ type doctorResults struct {
 	invalidCompletionTimestamps []doctorIssue
 	brokenTaskRefs              []doctorIssue
 	unavailableTaskRefs         []doctorIssue
+	dependencyCycles            []doctorIssue
 	emptyProjects               []doctorIssue
 }
 
@@ -92,6 +95,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	checkBrokenParentRefs(loadedProjects, results)
 	checkCompletionTimestamps(loadedProjects, results)
 	checkTaskReferences(everyProject, loadedProjects, results)
+	checkDependencyCycles(loadedProjects, results)
 
 	if fix {
 		fixIssues(loadedProjects)
@@ -111,7 +115,8 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("found %d issue(s)", results.totalIssues())
 	}
 
-	if len(results.emptyProjects) > 0 || len(results.workspaceNotes) > 0 || len(results.unavailableTaskRefs) > 0 {
+	if len(results.emptyProjects) > 0 || len(results.workspaceNotes) > 0 ||
+		len(results.unavailableTaskRefs) > 0 || len(results.dependencyCycles) > 0 {
 		fmt.Println("\nAll checks passed (with informational notes above).")
 	} else {
 		fmt.Println("\nAll checks passed.")
@@ -523,6 +528,39 @@ func taskReferenceDefect(
 	return ""
 }
 
+// checkDependencyCycles reports rings of soft references as an informational
+// census, never an issue. A ring is legal: a soft reference gates nothing, so
+// readiness, ordering, ranking and completion cannot deadlock on one, and
+// refusing it would hand a reference an authority the grammar denies it. Naming
+// it is still worth doing, because no single row can show one — a row names one
+// hop, never a transitive walk — so a ring drawn by accident is otherwise
+// invisible.
+//
+// The population is the widest one this run holds: every retained project,
+// archived included, already loaded above.
+func checkDependencyCycles(loadedProjects []*models.Project, results *doctorResults) {
+	names := make(map[string]string, len(loadedProjects))
+	for _, project := range loadedProjects {
+		if project != nil {
+			names[project.ID] = project.Name
+		}
+	}
+	for _, cycle := range app.NewDependencyIndex(loadedProjects).Cycles() {
+		locators := cycle.Locators()
+		if len(locators) == 0 {
+			continue
+		}
+		project := names[cycle[0].ProjectID]
+		if project == "" {
+			project = cycle[0].ProjectID
+		}
+		results.dependencyCycles = append(results.dependencyCycles, doctorIssue{
+			project: project,
+			detail:  "reference cycle: " + strings.Join(append(locators, locators[0]), " -> "),
+		})
+	}
+}
+
 func buildTaskMapPresence(project *models.Project) map[string]bool {
 	present := make(map[string]bool, len(project.Tasks))
 	for _, task := range project.Tasks {
@@ -612,6 +650,7 @@ func printResults(results *doctorResults) {
 	printSection("Invalid completion timestamps", results.invalidCompletionTimestamps)
 	printSection("Broken task references", results.brokenTaskRefs)
 	printInfoSection("Unavailable task references", results.unavailableTaskRefs)
+	printInfoSection("Task reference cycles", results.dependencyCycles)
 	printInfoSection("Empty projects", results.emptyProjects)
 }
 

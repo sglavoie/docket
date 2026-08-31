@@ -50,6 +50,7 @@ name; nothing else does, in either presentation.
 | `fr` | Toggle the `review` tag facet |
 | `f@` | Open the Filter by Due or Deferred picker: five shortcut rows writing `@overdue`, `@today`, `@week`, `@0`, and `?deferred`, each labeled with the token it writes |
 | `fh` | Pick one hierarchy position: parent, child, root, or leaf; parent and leaf read open children |
+| `f~` | Pick one soft-reference position: `?blocked` names other work, `?blocking` is named by other work; each row is labeled with the token it writes |
 | `fs` | Toggle open, undeferred work untouched for at least 90 local-calendar days; unavailable in Recent, whose entry clears only Stale and reports `Stale filter cleared: Recent only includes the last 30 days` |
 | `f*` | Toggle the pinned facet, the same `*pin` a typed query spells |
 | `fx` | Clear every facet |
@@ -133,9 +134,11 @@ on the task:
 | `?blocking` | Tasks another task references |
 
 `?blocked` and `?blocking` report that a reference exists, in one direction or
-the other. They say nothing about whether the other task is finished, because a
-reference is a note to yourself and never decides what is ready. `?completed`
-takes the `:Nd` age and the other six take no value at all.
+the other, one hop and never further down a chain. They say nothing about
+whether the other task is finished, because a reference is a note to yourself and
+never decides what is ready; they are also the two rows `f~` offers, so the
+picker and a typed query narrow by the same words. `?completed` takes the `:Nd`
+age and the other six take no value at all.
 
 Only a token the grammar recognizes but cannot honor blocks the query: an
 out-of-range priority such as `!9`, a retired destination such as `$ready`, the

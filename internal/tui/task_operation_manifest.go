@@ -36,11 +36,12 @@ func taskDirectOperationManifest() []operationManifestEntry {
 		{ID: operationTaskCopyDetails, Label: "Copy Description", Aliases: []string{"yank description", "clipboard description"}, Category: taskActionCategoryContent, Risk: OperationRiskReadOnly, DirectOnly: true},
 		{ID: operationTaskSetParent, Label: "Set Parent", Aliases: []string{"reparent", "move under", "detach from parent"}, Provider: ValueProviderParent, Category: taskActionCategoryRelationships, Risk: OperationRiskMutation, DirectOnly: true},
 		{ID: operationTaskAdoptChildren, Label: "Adopt Children", Aliases: []string{"adopt", "add children", "nest tasks under this one"}, Provider: ValueProviderChild, Category: taskActionCategoryRelationships, Risk: OperationRiskMutation, DirectOnly: true},
-		// No Bulk, so this stays TargetCardinalityOne, and that is a refusal on
-		// merit rather than an omission: the preselection is a per-task stored set,
-		// so N tasks carry N different initial states and one checked list could not
-		// diff against them.
-		{ID: operationTaskReferences, Label: "Set Dependencies", Aliases: []string{"depends on", "references", "link tasks", "soft reference"}, Provider: ValueProviderTaskReference, Category: taskActionCategoryRelationships, Risk: OperationRiskMutation, DirectOnly: true},
+		// Bulk, because the preselection is tri-state rather than a checked list:
+		// N tasks carrying N different stored sets is an objection to a replacement
+		// picker, not to this one, and the tags editor already answers it the same
+		// way. A row nobody agreed on stays indeterminate and is emitted by neither
+		// half of the patch, so the tasks that disagree keep disagreeing.
+		{ID: operationTaskReferences, Label: "Set Dependencies", Aliases: []string{"depends on", "references", "link tasks", "soft reference"}, Provider: ValueProviderTaskReference, Category: taskActionCategoryRelationships, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operationTaskMoveToProject, Label: "Move to Project", Aliases: []string{"move project", "change project", "relocate task"}, Provider: ValueProviderProject, Category: taskActionCategoryRelationships, Risk: OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operationTaskIndent, Label: "Indent", Aliases: []string{"nest under previous task"}, Category: taskActionCategoryRelationships, Risk: OperationRiskMutation, DirectOnly: true},
 		{ID: operationTaskOutdent, Label: "Outdent", Aliases: []string{"move to parent level"}, Category: taskActionCategoryRelationships, Risk: OperationRiskMutation, DirectOnly: true},

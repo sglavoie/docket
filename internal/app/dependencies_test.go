@@ -3,6 +3,7 @@ package app_test
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -498,6 +499,92 @@ func TestSoftDependenciesIntroduceNoWorkflowAPI(t *testing.T) {
 	}
 	if _, ok := reflect.TypeOf(models.Task{}).FieldByName("Dependents"); ok {
 		t.Error("task stores Dependents; it must be computed from loaded projects")
+	}
+}
+
+// TestBulkSetDependenciesPatchesEachTargetIndependently is the tri-state bulk
+// contract at the application boundary: an addition lands on every target, a
+// removal is taken only where it was stored, and a reference the patch never
+// names survives on whichever targets happen to carry it. That last one is why
+// the bulk path is a patch rather than a replacement — N tasks carry N different
+// stored sets, and only a patch can leave them disagreeing.
+func TestBulkSetDependenciesPatchesEachTargetIndependently(t *testing.T) {
+	source := newTask("source", 1, "Source")
+	sibling := newTask("sibling", 2, "Sibling")
+	remote := newTask("remote", 1, "Remote")
+	extra := newTask("extra", 2, "Extra")
+	other := newTask("other", 3, "Other")
+	repo := newFakeRepo(
+		newProject("proj-a", "Alpha", source, sibling),
+		newProject("proj-b", "Beta", remote, extra, other),
+	)
+	svc := newTestService(repo)
+	if _, err := svc.AddTaskDependencies(repo.loc(source.ID), []app.TaskLocator{repo.loc(remote.ID), repo.loc(other.ID)}); err != nil {
+		t.Fatalf("seed the disagreement: %v", err)
+	}
+
+	if _, err := svc.ExecuteTaskOperation(app.TaskOperationRequest{
+		Operation: app.TaskOperationSetDependencies,
+		Targets:   []app.TaskLocator{repo.loc(source.ID), repo.loc(sibling.ID)},
+		Dependencies: app.DependencyPatch{
+			Add:    []app.TaskLocator{repo.loc(extra.ID)},
+			Remove: []app.TaskLocator{repo.loc(remote.ID)},
+		},
+	}); err != nil {
+		t.Fatalf("ExecuteTaskOperation: %v", err)
+	}
+
+	// `other` is named by neither half, so it stays where it was and nowhere else;
+	// `sibling` never stored the removal, so taking it is the same no-op the
+	// single-task path gives it.
+	assertDependencies(t, findTask(t, repo, "proj-a", source.ID), "proj-b:other", "proj-b:extra")
+	assertDependencies(t, findTask(t, repo, "proj-a", sibling.ID), "proj-b:extra")
+}
+
+// TestBulkSetDependenciesRefusesATargetInsideTheSelection names the refusal. One
+// selected task depending on another is a relationship inside the selection, and
+// the gesture cannot say which direction was meant, so neither is guessed and
+// nothing commits.
+func TestBulkSetDependenciesRefusesATargetInsideTheSelection(t *testing.T) {
+	repo, svc, source, sibling, remote := dependencyFixture()
+
+	_, err := svc.ExecuteTaskOperation(app.TaskOperationRequest{
+		Operation:    app.TaskOperationSetDependencies,
+		Targets:      []app.TaskLocator{repo.loc(source.ID), repo.loc(sibling.ID)},
+		Dependencies: app.DependencyPatch{Add: []app.TaskLocator{repo.loc(remote.ID), repo.loc(sibling.ID)}},
+	})
+	if err == nil {
+		t.Fatal("a bulk addition naming a selected task committed")
+	}
+	if got := err.Error(); !strings.Contains(got, "#2 Sibling") {
+		t.Errorf("refusal = %q, want the selected task named", got)
+	}
+	assertDependencies(t, findTask(t, repo, "proj-a", source.ID))
+	assertDependencies(t, findTask(t, repo, "proj-a", sibling.ID))
+}
+
+// TestBulkSetDependenciesLeavesUntouchedTargetsAlone holds the touch time. A
+// target the patch changed nothing on still commits, matching the other
+// idempotent bulk mutations, but UpdatedAt answers "when did this task last
+// change" and must not move for a request that changed nothing.
+func TestBulkSetDependenciesLeavesUntouchedTargetsAlone(t *testing.T) {
+	repo, svc, source, sibling, remote := dependencyFixture()
+	if _, err := svc.AddTaskDependencies(repo.loc(sibling.ID), []app.TaskLocator{repo.loc(remote.ID)}); err != nil {
+		t.Fatalf("seed the stored reference: %v", err)
+	}
+	untouched := findTask(t, repo, "proj-a", sibling.ID).UpdatedAt
+
+	if _, err := svc.ExecuteTaskOperation(app.TaskOperationRequest{
+		Operation:    app.TaskOperationSetDependencies,
+		Targets:      []app.TaskLocator{repo.loc(source.ID), repo.loc(sibling.ID)},
+		Dependencies: app.DependencyPatch{Add: []app.TaskLocator{repo.loc(remote.ID)}},
+	}); err != nil {
+		t.Fatalf("ExecuteTaskOperation: %v", err)
+	}
+	assertDependencies(t, findTask(t, repo, "proj-a", source.ID), "proj-b:remote")
+	assertDependencies(t, findTask(t, repo, "proj-a", sibling.ID), "proj-b:remote")
+	if got := findTask(t, repo, "proj-a", sibling.ID).UpdatedAt; !got.Equal(untouched) {
+		t.Errorf("an unchanged target moved its touch time to %v, want %v", got, untouched)
 	}
 }
 

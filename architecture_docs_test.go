@@ -352,7 +352,23 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// picker minting a private spelling beside the grammar. The prose is in
 	// docs/architecture.md and docs/guide/search-and-lenses.md; the rules alone
 	// landed here.
-	const budget = 25200
+	//
+	// That raise is spent as well, so this is the next one, argued on its own and
+	// for one feature: the soft reference read as a signal. Its rules are the kind
+	// only this file can hold, because each one is a refusal binding several
+	// surfaces at once. The reference reading is one hop and never transitive, a
+	// ban that has to be stated where the row, Peek, the facet, search, and the
+	// doctor census can all read it — no one of them owns it, and a closure would
+	// look locally reasonable in any of them. `blocked` is live vocabulary now but
+	// may never be rendered bare, which amends a rule already in this file rather
+	// than adding a document elsewhere. And the `~` picker is tri-state, which is
+	// what lets one picker take a selection: the row nobody agreed on is emitted
+	// by neither half, and an addition naming a task inside the selection refuses
+	// by name — a rule about what a gesture may not mean, not about how it is
+	// implemented. The row shape, the facet's carve-out from the row predicate,
+	// and the drop-ladder position ride along as the same claim. The prose is in
+	// docs/architecture.md and the two guides.
+	const budget = 25700
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -402,8 +418,9 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`inlinePeekLines` owns a drop order, not a set",
 		"`visualWidthOverflow` must subtract the same ellipsis column as `truncateToVisualWidth`",
 		"`indicatorDropLadder` is a list: a new indicator gets a position, not an append",
-		"The trailing `~N` counts stored locators regardless of target state or availability, " +
-			"degrades with the content counts, and is gated by no column",
+		"The trailing `~S/N` counts stored locators in `N` regardless of target",
+		"amber blocked, green settled, muted unreadable",
+		"an addition naming a task inside the selection",
 		"Its read-only `Dependencies`/`Dependents` lines sit above tags",
 		"`project export` shares that fallback and writes no dependents",
 		"`~task` is the one repeatable reference crossing a project boundary",

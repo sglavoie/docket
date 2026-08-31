@@ -81,12 +81,12 @@ type OperationTaskReferenceValue struct {
 	Remove []string
 }
 
-type operationTagMembership uint8
+type operationValueMembership uint8
 
 const (
-	operationTagNone operationTagMembership = iota
-	operationTagSome
-	operationTagAll
+	operationValueNone operationValueMembership = iota
+	operationValueSome
+	operationValueAll
 )
 
 // OperationValueSelectedMsg resumes a pending operation with the chosen value.
@@ -101,17 +101,22 @@ type OperationValueCanceledMsg struct{}
 
 // OperationValuePickerModel is the shared ListSurface value-picker control.
 type OperationValuePickerModel struct {
-	surface    *ListSurfaceModel
-	request    OperationExecutionRequest
-	provider   ValueProviderID
-	title      string
-	subtitle   string
-	multi      bool
-	searching  bool
-	tagInitial map[ListItemID]operationTagMembership
-	tagCurrent map[ListItemID]operationTagMembership
-	tagAdder   TagAdder
-	dateAdder  DateAdder
+	surface   *ListSurfaceModel
+	request   OperationExecutionRequest
+	provider  ValueProviderID
+	title     string
+	subtitle  string
+	multi     bool
+	searching bool
+	// membershipInitial and membershipCurrent are the tri-state editor's two
+	// halves: what the selection agreed on when the picker opened, and what it
+	// says now. Both the tag picker and the reference picker read them, because
+	// both edit a per-task set over a selection and both must emit a difference
+	// rather than a replacement.
+	membershipInitial map[ListItemID]operationValueMembership
+	membershipCurrent map[ListItemID]operationValueMembership
+	tagAdder          TagAdder
+	dateAdder         DateAdder
 	// dateDeferred records which section the inline date mode was opened from,
 	// so the typed value writes the same field the row under the cursor names.
 	dateDeferred bool
@@ -121,11 +126,6 @@ type OperationValuePickerModel struct {
 	// contextInitial is the context row every target already agreed on. An empty
 	// ID means the targets disagreed, so any chosen row is a change.
 	contextInitial ListItemID
-	// referenceInitial is the soft-reference set the `~` picker preselected, in
-	// stored order. The commit is the difference against it rather than the
-	// checked set itself, so a reference republished while the overlay was open
-	// is neither dropped nor resurrected.
-	referenceInitial []app.TaskLocator
 }
 
 func newOperationValuePickerModel(
@@ -410,16 +410,16 @@ func (model *OperationValuePickerModel) selectContextUnderCursor() error {
 	if err := model.surface.SetSelectedIDs(selected); err != nil {
 		return err
 	}
-	if model.tagCurrent == nil {
+	if model.membershipCurrent == nil {
 		return nil
 	}
-	for id := range model.tagCurrent {
+	for id := range model.membershipCurrent {
 		if isTaskContextRowID(id) {
-			model.tagCurrent[id] = operationTagNone
+			model.membershipCurrent[id] = operationValueNone
 		}
 	}
-	model.tagCurrent[item.ID] = operationTagAll
-	return model.syncTagMembershipRows()
+	model.membershipCurrent[item.ID] = operationValueAll
+	return model.syncValueMembershipRows()
 }
 
 // selectedContextRow returns the chosen context row, if any. The clear row
@@ -460,9 +460,9 @@ func (model *OperationValuePickerModel) addOrSelectContext(raw string) error {
 		if err := model.surface.SetItems(items); err != nil {
 			return err
 		}
-		if model.tagCurrent != nil {
-			model.tagInitial[id] = operationTagNone
-			model.tagCurrent[id] = operationTagNone
+		if model.membershipCurrent != nil {
+			model.membershipInitial[id] = operationValueNone
+			model.membershipCurrent[id] = operationValueNone
 		}
 	}
 	if !model.surface.SetCursorToID(id) {
@@ -515,16 +515,16 @@ func (model *OperationValuePickerModel) addOrSelectTag(tag string) error {
 	if err := model.surface.SetItems(items); err != nil {
 		return err
 	}
-	if model.tagInitial != nil {
-		model.tagInitial[id] = operationTagNone
-		model.tagCurrent[id] = operationTagAll
+	if model.membershipInitial != nil {
+		model.membershipInitial[id] = operationValueNone
+		model.membershipCurrent[id] = operationValueAll
 	}
 	return model.selectTagForAll(id)
 }
 
 func (model *OperationValuePickerModel) selectTagForAll(id ListItemID) error {
-	if model.tagCurrent != nil {
-		model.tagCurrent[id] = operationTagAll
+	if model.membershipCurrent != nil {
+		model.membershipCurrent[id] = operationValueAll
 	}
 	if !model.surface.IsSelected(id) {
 		selected := model.surface.SelectedIDs()
@@ -533,8 +533,8 @@ func (model *OperationValuePickerModel) selectTagForAll(id ListItemID) error {
 			return err
 		}
 	}
-	if model.tagCurrent != nil {
-		if err := model.syncTagMembershipRows(); err != nil {
+	if model.membershipCurrent != nil {
+		if err := model.syncValueMembershipRows(); err != nil {
 			return err
 		}
 	}
@@ -545,7 +545,10 @@ func (model *OperationValuePickerModel) selectTagForAll(id ListItemID) error {
 }
 
 func (model *OperationValuePickerModel) toggleCurrentMultiValue() error {
-	if model.provider != ValueProviderTags || len(model.tagCurrent) == 0 {
+	// Membership presence, not provider identity, decides the toggle: every
+	// tri-state editor moves a row to All or None on Space, and a picker with no
+	// membership is an ordinary checked set.
+	if len(model.membershipCurrent) == 0 {
 		_, err := model.surface.ToggleCurrentSelection()
 		return err
 	}
@@ -556,70 +559,75 @@ func (model *OperationValuePickerModel) toggleCurrentMultiValue() error {
 	if _, isContext := taskContextRowName(item); isContext {
 		return fmt.Errorf("a task holds one context: press # to set it")
 	}
-	state := model.tagCurrent[item.ID]
-	if state == operationTagAll {
+	state := model.membershipCurrent[item.ID]
+	if state == operationValueAll {
 		if _, err := model.surface.ToggleCurrentSelection(); err != nil {
 			return err
 		}
-		model.tagCurrent[item.ID] = operationTagNone
+		model.membershipCurrent[item.ID] = operationValueNone
 	} else {
 		if !model.surface.IsSelected(item.ID) {
 			if _, err := model.surface.ToggleCurrentSelection(); err != nil {
 				return err
 			}
 		}
-		model.tagCurrent[item.ID] = operationTagAll
+		model.membershipCurrent[item.ID] = operationValueAll
 	}
-	return model.syncTagMembershipRows()
+	return model.syncValueMembershipRows()
 }
 
-func (model *OperationValuePickerModel) configureTagMembership(
-	membership map[ListItemID]operationTagMembership,
+func (model *OperationValuePickerModel) configureValueMembership(
+	membership map[ListItemID]operationValueMembership,
 ) error {
 	if model == nil || model.surface == nil {
 		return nil
 	}
-	model.tagInitial = make(map[ListItemID]operationTagMembership, len(membership))
-	model.tagCurrent = make(map[ListItemID]operationTagMembership, len(membership))
-	selected := make([]ListItemID, 0, len(membership))
+	model.membershipInitial = make(map[ListItemID]operationValueMembership, len(membership))
+	model.membershipCurrent = make(map[ListItemID]operationValueMembership, len(membership))
 	for id, state := range membership {
-		model.tagInitial[id] = state
-		model.tagCurrent[id] = state
-		if state == operationTagAll {
-			selected = append(selected, id)
+		model.membershipInitial[id] = state
+		model.membershipCurrent[id] = state
+	}
+	// The checked set is built in row order rather than map order, so the
+	// preselection a picker opens with is the order the list already reads in.
+	items := model.surface.Items()
+	selected := make([]ListItemID, 0, len(membership))
+	for _, item := range items {
+		if membership[item.ID] == operationValueAll {
+			selected = append(selected, item.ID)
 		}
 	}
 	if err := model.surface.SetSelectedIDs(selected); err != nil {
 		return err
 	}
-	return model.syncTagMembershipRows()
+	return model.syncValueMembershipRows()
 }
 
-func (model *OperationValuePickerModel) syncTagMembershipRows() error {
+func (model *OperationValuePickerModel) syncValueMembershipRows() error {
 	items := model.surface.Items()
 	for index := range items {
-		items[index].Indeterminate = model.tagCurrent[items[index].ID] == operationTagSome
+		items[index].Indeterminate = model.membershipCurrent[items[index].ID] == operationValueSome
 	}
 	return model.surface.SetItems(items)
 }
 
 func (model *OperationValuePickerModel) selectedValue() (any, error) {
-	if model.provider == ValueProviderTags && len(model.tagCurrent) > 0 {
+	if model.provider == ValueProviderTags && len(model.membershipCurrent) > 0 {
 		value := OperationTagsValue{}
 		for _, item := range model.surface.Items() {
 			if _, isContext := taskContextRowName(item); isContext {
 				continue
 			}
-			initial := model.tagInitial[item.ID]
-			current := model.tagCurrent[item.ID]
+			initial := model.membershipInitial[item.ID]
+			current := model.membershipCurrent[item.ID]
 			switch {
-			case current == operationTagAll && initial != operationTagAll:
+			case current == operationValueAll && initial != operationValueAll:
 				tag, ok := item.Data.(string)
 				if !ok {
 					return nil, fmt.Errorf("selected value %s has invalid payload", item.ID)
 				}
 				value.Add = append(value.Add, tag)
-			case current == operationTagNone && initial != operationTagNone:
+			case current == operationValueNone && initial != operationValueNone:
 				tag, ok := item.Data.(string)
 				if !ok {
 					return nil, fmt.Errorf("selected value %s has invalid payload", item.ID)
@@ -635,6 +643,14 @@ func (model *OperationValuePickerModel) selectedValue() (any, error) {
 		}
 		return value, nil
 	}
+	// The reference picker emits what changed rather than what is checked. It is
+	// the one multi-select whose population it does not own: an accepted
+	// cross-project load can republish a stored set while the overlay is up, and
+	// only a difference can leave that republished change standing — which is the
+	// same reason a selection's untouched row must stay untouched.
+	if model.provider == ValueProviderTaskReference && len(model.membershipCurrent) > 0 {
+		return taskReferenceSelection(model.membershipInitial, model.membershipCurrent), nil
+	}
 	if model.multi {
 		items := model.surface.SelectedItems()
 		values := make([]string, 0, len(items))
@@ -646,13 +662,6 @@ func (model *OperationValuePickerModel) selectedValue() (any, error) {
 			values = append(values, value)
 		}
 		sort.Strings(values)
-		// The reference picker emits what changed rather than what is checked. It
-		// is the one multi-select whose population it does not own: an accepted
-		// cross-project load can republish the task's stored set while the overlay
-		// is up, and only a difference can leave that republished change standing.
-		if model.provider == ValueProviderTaskReference {
-			return taskReferenceSelection(model.referenceInitial, values), nil
-		}
 		return values, nil
 	}
 	item, ok := model.surface.CurrentItem()
@@ -1056,6 +1065,15 @@ func (id ValueProviderID) acceptsPresetValue(value any) bool {
 		}
 		_, known := dueFilterShortcutForToken(token)
 		return known
+	case ValueProviderFilterDependency:
+		// The f~ rows are their own canonical tokens too, so the same registration
+		// check keeps a binding from naming a spelling no row offers.
+		token, ok := value.(string)
+		if !ok {
+			return false
+		}
+		_, known := dependencyFilterShortcutForToken(token)
+		return known
 	case ValueProviderFilterCompletionAge:
 		_, ok := value.(CompletionAgeFilter)
 		return ok
@@ -1306,6 +1324,23 @@ func applicationTaskOperationRequest(
 		}
 		return request, "Set Tags",
 			fmt.Sprintf("Set Tags · Tagged %d task(s)", count), true, nil
+
+	case operationTaskReferences:
+		// Cardinality chooses the transaction, not the meaning, exactly as it does
+		// for a move: one target is left to the task-line edit the `~task` sigil
+		// writes, so a selection-free `~` stays byte-for-byte the edit it always
+		// was, and only two or more take the batch.
+		if count < 2 {
+			return app.TaskOperationRequest{}, "", "", false, nil
+		}
+		value, ok := invocation.Value.(OperationTaskReferenceValue)
+		if !ok {
+			return request, "", "", true, fmt.Errorf("invalid dependency value")
+		}
+		request.Operation = app.TaskOperationSetDependencies
+		request.Dependencies = taskReferenceBulkPatch(value)
+		return request, "Set Dependencies",
+			fmt.Sprintf("Set Dependencies · Updated %d task(s)", count), true, nil
 
 	case operationTaskCopyTitle:
 		request.Operation = app.TaskOperationCopyTitle
@@ -1662,6 +1697,8 @@ func (m *AppModel) newOperationValuePicker(
 		return m.newFilterCompletionAgePicker(request)
 	case ValueProviderFilterHierarchy:
 		return m.newFilterHierarchyPicker(request)
+	case ValueProviderFilterDependency:
+		return m.newFilterDependencyPicker(request)
 	case ValueProviderFilterProjectTags:
 		return m.newFilterProjectTagsPicker(request)
 	case ValueProviderProjectTagDestination:
@@ -1775,22 +1812,36 @@ func (m *AppModel) newOperationValuePicker(
 		// The population is the one Peek and `~` autocomplete already read, not
 		// AvailableProjects, whose task trees are not loaded — so the keyboard and
 		// the typed routes can never disagree about what is addressable.
+		tasks := make([]*models.Task, 0, len(refs))
+		for _, ref := range refs {
+			tasks = append(tasks, ref.Task)
+		}
+		source := operationTaskReferenceListSource(tasks, m.crossOutliner.dependencyDetailProjects())
 		picker, err := newOperationValuePickerModel(
-			request,
-			provider,
-			"Set Dependencies",
-			subtitle,
-			operationTaskReferenceListSource(refs[0].Task, m.crossOutliner.dependencyDetailProjects()),
-			true,
-			storedTaskReferenceIDs(refs[0].Task),
+			request, provider, "Set Dependencies", subtitle, source, true, nil,
 		)
 		if err != nil {
 			return nil, err
 		}
-		// The preselection is also the baseline the commit diffs against, so it is
-		// recorded rather than merely displayed: the overlay outlives the snapshot
-		// it was built from, and the difference is what survives that.
-		picker.referenceInitial = storedTaskReferenceBaseline(refs[0].Task)
+		// Membership is configured at every cardinality, so the picker always emits
+		// a difference rather than a set. For one task the two describe the same
+		// edit; for a selection only the difference can leave a row the tasks
+		// disagree about alone. The preselection is therefore the baseline the
+		// commit diffs against rather than something merely displayed: the overlay
+		// outlives the snapshot it was built from, and the difference is what
+		// survives that.
+		byID := make(map[ListItemID]operationValueMembership, len(source.Items))
+		for _, item := range source.Items {
+			byID[item.ID] = operationValueNone
+		}
+		for id, state := range taskReferenceMembership(tasks) {
+			if _, ok := byID[id]; ok {
+				byID[id] = state
+			}
+		}
+		if err := picker.configureValueMembership(byID); err != nil {
+			return nil, err
+		}
 		return picker, nil
 	case ValueProviderProject:
 		return newOperationValuePickerModel(
@@ -1823,9 +1874,9 @@ func (m *AppModel) newOperationValuePicker(
 		// Membership is configured at every cardinality, so the picker always
 		// emits the patch payload the context field rides on. For one task the
 		// patch and a replacement describe the same edit.
-		byID := make(map[ListItemID]operationTagMembership, len(source.Items))
+		byID := make(map[ListItemID]operationValueMembership, len(source.Items))
 		for _, item := range source.Items {
-			byID[item.ID] = operationTagNone
+			byID[item.ID] = operationValueNone
 		}
 		for tag, state := range taskTagMembership(refs) {
 			id := ListItemID("tag:" + tag)
@@ -1840,7 +1891,7 @@ func (m *AppModel) newOperationValuePicker(
 			}
 		}
 		picker.contextInitial = contextInitial
-		if err := picker.configureTagMembership(byID); err != nil {
+		if err := picker.configureValueMembership(byID); err != nil {
 			return nil, err
 		}
 		return picker, nil
@@ -1932,7 +1983,7 @@ func sameOperationDate(left, right *time.Time) bool {
 	return left.Equal(*right)
 }
 
-func taskTagMembership(refs []TaskProjectRef) map[string]operationTagMembership {
+func taskTagMembership(refs []TaskProjectRef) map[string]operationValueMembership {
 	counts := make(map[string]int)
 	for _, ref := range refs {
 		if ref.Task == nil {
@@ -1942,12 +1993,12 @@ func taskTagMembership(refs []TaskProjectRef) map[string]operationTagMembership 
 			counts[tag]++
 		}
 	}
-	membership := make(map[string]operationTagMembership, len(counts))
+	membership := make(map[string]operationValueMembership, len(counts))
 	for tag, count := range counts {
 		if count == len(refs) {
-			membership[tag] = operationTagAll
+			membership[tag] = operationValueAll
 		} else if count > 0 {
-			membership[tag] = operationTagSome
+			membership[tag] = operationValueSome
 		}
 	}
 	return membership
@@ -1956,7 +2007,7 @@ func taskTagMembership(refs []TaskProjectRef) map[string]operationTagMembership 
 // taskContextMembership reports the context row every target already agrees on
 // and the per-row state the checkboxes render. Disagreement leaves the agreed
 // row empty, so any chosen row reads as a change.
-func taskContextMembership(refs []TaskProjectRef) (ListItemID, map[ListItemID]operationTagMembership) {
+func taskContextMembership(refs []TaskProjectRef) (ListItemID, map[ListItemID]operationValueMembership) {
 	counts := make(map[string]int)
 	for _, ref := range refs {
 		if ref.Task == nil {
@@ -1964,16 +2015,16 @@ func taskContextMembership(refs []TaskProjectRef) (ListItemID, map[ListItemID]op
 		}
 		counts[ref.Task.Context]++
 	}
-	states := make(map[ListItemID]operationTagMembership, len(counts))
+	states := make(map[ListItemID]operationValueMembership, len(counts))
 	agreed := ListItemID("")
 	for name, count := range counts {
 		id := taskContextRowID(name)
 		if count == len(refs) {
-			states[id] = operationTagAll
+			states[id] = operationValueAll
 			agreed = id
 			continue
 		}
-		states[id] = operationTagSome
+		states[id] = operationValueSome
 	}
 	return agreed, states
 }

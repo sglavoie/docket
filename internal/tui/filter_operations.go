@@ -20,17 +20,19 @@ const (
 	operationFilterDue           OperationID = "tui.filter.due"
 	operationFilterCompletionAge OperationID = "tui.filter.completion-age"
 	operationFilterHierarchy     OperationID = "tui.filter.hierarchy"
+	operationFilterDependency    OperationID = "tui.filter.dependency"
 	operationFilterStale         OperationID = "tui.filter.stale"
 	operationFilterPinned        OperationID = "tui.filter.pinned"
 	operationFilterClear         OperationID = "tui.filter.clear"
 )
 
-// dueFilterShortcut is one f@ row. The row is a shortcut for a due token, not a
-// vocabulary of its own: its value is the canonical clause text the same
-// narrowing is typed with, and the clauses beside it are what that text means.
-// Keeping both here is what lets the picker seed itself by comparing canonical
-// spellings rather than by matching a private enum against the filter cache.
-type dueFilterShortcut struct {
+// filterShortcut is one preset row of a facet whose vocabulary is closed: the
+// f@ five and the f~ pair. The row is a shortcut for a token, not a vocabulary
+// of its own: its value is the canonical clause text the same narrowing is typed
+// with, and the clauses beside it are what that text means. Keeping both here is
+// what lets a picker seed itself by comparing canonical spellings rather than by
+// matching a private enum against the filter cache.
+type filterShortcut struct {
 	id        string
 	label     string
 	secondary string
@@ -40,7 +42,7 @@ type dueFilterShortcut struct {
 // token is the canonical spelling the row writes, and the value the picker hands
 // back. Two rows can never collide on it: each names a different field or a
 // different bucket.
-func (shortcut dueFilterShortcut) token() string {
+func (shortcut filterShortcut) token() string {
 	return strings.Join(filterClauseParts(shortcut.clauses), " ")
 }
 
@@ -48,8 +50,8 @@ func (shortcut dueFilterShortcut) token() string {
 // Deferral is a scheduling instant like a due date, so it is a row here rather
 // than a chord of its own, and it writes the deferred field the other four
 // leave alone.
-func dueFilterShortcuts() []dueFilterShortcut {
-	return []dueFilterShortcut{
+func dueFilterShortcuts() []filterShortcut {
+	return []filterShortcut{
 		{id: "overdue", label: "Overdue", secondary: "before today",
 			clauses: dueFilterClauses(DueDateOverdue)},
 		{id: "today", label: "Today", secondary: "due today",
@@ -65,13 +67,42 @@ func dueFilterShortcuts() []dueFilterShortcut {
 
 // dueFilterShortcutForToken resolves the value one row handed back. An unknown
 // token is a caller that did not come from the row set.
-func dueFilterShortcutForToken(token string) (dueFilterShortcut, bool) {
+func dueFilterShortcutForToken(token string) (filterShortcut, bool) {
 	for _, shortcut := range dueFilterShortcuts() {
 		if shortcut.token() == token {
 			return shortcut, true
 		}
 	}
-	return dueFilterShortcut{}, false
+	return filterShortcut{}, false
+}
+
+// dependencyFilterShortcuts is the f~ row set: the two directions of a soft
+// reference. Each row is the canonical token it writes, exactly as the f@ rows
+// are, so the picker mints no spelling the grammar does not already carry and a
+// row typed into search means the same thing it means here.
+//
+// Neither row is a readiness verdict. The first names other work and the second
+// is named by other work; a soft reference gates nothing, so both are structural
+// facts and neither reorders, ranks, or delays anything. Each row is labeled
+// with its sigil-qualified token rather than the bare word, which is what keeps
+// it from reading as the lifecycle state a reader already knows.
+func dependencyFilterShortcuts() []filterShortcut {
+	return []filterShortcut{
+		{id: "?blocked", label: "?blocked", secondary: "names other work",
+			clauses: filterClauseList(models.QueryFieldBlocked, models.QueryOperatorPresent, "")},
+		{id: "?blocking", label: "?blocking", secondary: "named by other work",
+			clauses: filterClauseList(models.QueryFieldBlocking, models.QueryOperatorPresent, "")},
+	}
+}
+
+// dependencyFilterShortcutForToken resolves the value one f~ row handed back.
+func dependencyFilterShortcutForToken(token string) (filterShortcut, bool) {
+	for _, shortcut := range dependencyFilterShortcuts() {
+		if shortcut.token() == token {
+			return shortcut, true
+		}
+	}
+	return filterShortcut{}, false
 }
 
 // filterOperationDescriptor is the shape every facet shares: no target, no
@@ -106,6 +137,7 @@ func filterOperationDescriptors() []OperationDescriptor {
 		descriptor(operationFilterDue, "Filter by Due or Deferred", ValueProviderFilterDue, "due filter", "deferred", "hidden"),
 		descriptor(operationFilterCompletionAge, "Filter by Completion Age", ValueProviderFilterCompletionAge, "completion age", "cleanup age"),
 		descriptor(operationFilterHierarchy, "Filter by Hierarchy", ValueProviderFilterHierarchy, "hierarchy position", "parent or child"),
+		descriptor(operationFilterDependency, "Filter by Dependency", ValueProviderFilterDependency, "?blocked", "?blocking", "references"),
 		descriptor(operationFilterStale, "Filter Stale", "", "stale work", "untouched work"),
 		// The pinned axis has been in the row cache and in the canonical query all
 		// along; only the key was missing, so this is a binding for an existing
@@ -136,6 +168,7 @@ func (m *AppModel) registerFilterOperations() error {
 		ValueProviderFilterDue,
 		ValueProviderFilterCompletionAge,
 		ValueProviderFilterHierarchy,
+		ValueProviderFilterDependency,
 		ValueProviderFilterProjectTags,
 	} {
 		if err := m.operationExecutor.RegisterValueProvider(provider,
@@ -211,6 +244,10 @@ func filterOperationFields(id OperationID) []models.QueryField {
 		return []models.QueryField{models.QueryFieldCompleted, models.QueryFieldState}
 	case operationFilterHierarchy:
 		return filterQueryHierarchyFields
+	case operationFilterDependency:
+		// Both directions are one facet: choosing either clears the other, the
+		// same way the due picker's buckets and its deferred row do.
+		return filterQueryDependencyFields
 	case operationFilterStale:
 		return []models.QueryField{models.QueryFieldStale}
 	case operationFilterPinned:
@@ -351,6 +388,19 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation OperationInvocation) (fil
 		return filterClauseEdit{
 			clauses: hierarchyFilterClauses(hierarchy),
 			status:  "Filtering hierarchy: " + hierarchyFilterLabel(hierarchy),
+		}, nil
+	case operationFilterDependency:
+		token, ok := invocation.Value.(string)
+		if !ok {
+			return filterClauseEdit{}, fmt.Errorf("invalid dependency filter value")
+		}
+		shortcut, known := dependencyFilterShortcutForToken(token)
+		if !known {
+			return filterClauseEdit{}, fmt.Errorf("unknown dependency filter %q", token)
+		}
+		return filterClauseEdit{
+			clauses: shortcut.clauses,
+			status:  "Filtering " + token,
 		}, nil
 	case operationFilterStates:
 		names, ok := invocation.Value.([]string)
@@ -547,6 +597,48 @@ func (m *AppModel) newFilterDuePicker(
 		request,
 		ValueProviderFilterDue,
 		"Filter by Due or Deferred",
+		"keep matching tasks",
+		ListSource{Items: items},
+		false,
+		selected,
+	)
+}
+
+// newFilterDependencyPicker is the f~ single-select picker over the two
+// reference directions, seeded from the active facet when one is set. It is
+// built the same way the f@ picker is, from rows that are their own canonical
+// tokens.
+func (m *AppModel) newFilterDependencyPicker(
+	request OperationExecutionRequest,
+) (*OperationValuePickerModel, error) {
+	shortcuts := dependencyFilterShortcuts()
+	items := make([]ListItem, 0, len(shortcuts))
+	byToken := make(map[string]ListItemID, len(shortcuts))
+	for _, shortcut := range shortcuts {
+		id := ListItemID("filter-dependency:" + shortcut.id)
+		token := shortcut.token()
+		byToken[token] = id
+		items = append(items, ListItem{
+			ID:            id,
+			PrimaryText:   shortcut.label,
+			SecondaryText: token + " · " + shortcut.secondary,
+			Aliases:       []string{shortcut.id, shortcut.label, shortcut.secondary, token},
+			Data:          token,
+		})
+	}
+	selected := []ListItemID(nil)
+	if m.crossOutliner != nil {
+		active := queryClausesForField(m.crossOutliner.filterQuery, models.QueryFieldBlocked)
+		active = append(active,
+			queryClausesForField(m.crossOutliner.filterQuery, models.QueryFieldBlocking)...)
+		if id, ok := byToken[strings.Join(filterClauseParts(active), " ")]; ok {
+			selected = []ListItemID{id}
+		}
+	}
+	return newOperationValuePickerModel(
+		request,
+		ValueProviderFilterDependency,
+		"Filter by Dependency",
 		"keep matching tasks",
 		ListSource{Items: items},
 		false,

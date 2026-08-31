@@ -317,12 +317,21 @@ toggles a row, and `Enter` commits checking as adding and unchecking as removing
 — both halves in one transaction that undoes in one step. Closing the picker
 having changed nothing commits nothing and reports `Dependencies unchanged`.
 
+Over a visual selection it edits every selected task at once, the way the tags
+editor does. A row every selected task stores arrives checked, one only some of
+them store arrives in a third state that is neither, and leaving that row alone
+is what keeps the tasks that disagree disagreeing: only the rows you actually
+move are applied, checking one as an addition everywhere and unchecking one as a
+removal everywhere. No selected task is offered as a row, because naming one
+would be a reference inside the selection, and adding one by any other route
+refuses by name.
+
 The list is two halves. Every reference the task already stores gets a row,
 whatever state its target is in and even when the target cannot be read from
 here — a reference into a project the Outliner has not loaded keeps its stored
 `project-id:task-id` locator and reads `unavailable`, and it stays checkable, so
 a stranded reference can always be dropped. The other half is every open task in
-every loaded project except the cursor task itself, grouped under its project's
+every loaded project except the tasks being edited, grouped under its project's
 name, which is the whole population an addition may name. References cross
 project boundaries, so that grouping is what keeps a filtered list unambiguous.
 Dependents are never listed: they are computed from what other tasks store, and
@@ -498,19 +507,25 @@ of a still-pending deferral does not add to the count; deferring the task again
 after it woke does. This supporting count drops before every other row indicator
 under width pressure, while Peek keeps the same token on its existing dates line.
 
-A task holding soft dependencies ends its indicators with `~N`, counting the
-references it stores. The number is a count of what the task says, not a reading
-of what those tasks are doing: a reference to finished, deleted, or unloaded work
-counts exactly like a reference to open work, because nothing about this task
-changes either way.
+A task holding soft dependencies ends its indicators with `~S/N`: `N` counts the
+references it stores and `S` how many of them are settled. `N` is a count of what
+the task says, so a reference to finished, deleted, or unloaded work counts
+exactly like a reference to open work. `S` is the reading of what those targets
+are doing, and it counts a finished task and a task no longer in a loaded project
+alike, since neither has anything left to wait on. A set where the two agree
+reads as the bare `~N` instead, because a fraction whose halves match says only
+that nothing is left, and a trailing `?` says at least one of the references
+points into a project this view did not load. Both readings stop at one hop: a
+target's own references are its business, and following them would report on
+projects this view may never have loaded.
 
-The color is the one thing the row says about the targets. Amber means at least
-one referenced task is still open. Green means everything it points at is
-finished — or is no longer in the workspace at all. Muted means nothing readable
-is outstanding, but at least one reference points into a project this view did
-not load, such as an archived or parked one; the row stays muted rather than
-green there because it cannot see whether that work is done, and saying green
-would claim otherwise. Peek is still where the targets themselves are named.
+The color says which kind of remainder the fraction has. Amber means at least one
+referenced task is still open. Green means everything it points at is finished —
+or is no longer in the workspace at all. Muted means nothing readable is left,
+but at least one reference points into a project this view did not load, such as
+an archived or parked one; the row stays muted rather than green there because it
+cannot see whether that work is done, and saying green would claim otherwise.
+Peek is still where the targets themselves are named.
 
 A row that cannot fit every indicator sheds them in a fixed order rather than
 squeezing the title: the repeated-deferral count goes first, then checklist,
@@ -581,12 +596,14 @@ entry once more, focusing the cursor task's parent.
 follows navigation and shows at most five lines of additive detail: up to three
 lines of description, a dates line reading
 `created 12d · updated 2d · due 2026-08-14 · woke 1d · deferred ×3` with empty fields omitted,
-attachment names, comment counts, a `Dependencies:` line, a `Dependents:` line,
-and tags. Both reference lines are read-only wherever Peek is open.
-`Dependencies` names what this task stores, in the order it stores it; that
-outgoing set is edited from the row itself with `~`, never from inside Peek.
-`Dependents` is computed from the projects currently loaded, so it names the
-tasks that point back and no key edits it at all. Each entry reads as its project, short ID, title, and
+attachment names, comment counts, a `Dependencies 1/3:` line, a `Dependents 2:`
+line, and tags. Both reference lines are read-only wherever Peek is open, and
+both carry their own count, so a set the entry cap elided still reports its whole
+size. `Dependencies` names what this task stores, in the order it stores it, and
+its fraction is the row's very numbers; that outgoing set is edited from the row
+itself with `~`, never from inside Peek. `Dependents` is computed from the
+projects currently loaded, so its count is of the tasks that point back from
+there and no key edits it at all. Each entry reads as its project, short ID, title, and
 state; a reference whose project is not loaded keeps its stored
 `project-id:task-id` locator and reads `(unavailable)` rather than being dropped,
 and past the first two entries the line ends `+N more`. Checklist items are not among them,

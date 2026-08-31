@@ -28,21 +28,26 @@ type inlinePeekOptions struct {
 	// name it, and an incoming one exists nowhere but in the other tasks.
 	Dependencies []dependencyDetail
 	Dependents   []dependencyDetail
+	// DependencyCensus is the same reading the row's `~S/N` painted, carried in
+	// so Peek's Dependencies label repeats those numbers rather than recounting
+	// them against a population of its own.
+	DependencyCensus dependencyCensus
 }
 
 func (m *OutlinerModel) inlinePeekLinesForRow(row outlinerRow, indent string, rowWidth int, colLayout *ColumnLayout) []string {
 	if m == nil || !row.isTaskRow() {
 		return nil
 	}
-	projects := m.dependencyDetailProjects()
+	index := m.dependencyIndex()
 	return inlinePeekLines(inlinePeekOptions{
-		Task:          row.task,
-		Indent:        indent,
-		Width:         rowWidth,
-		TitleOverflow: m.taskRowTitleOverflow(row, rowWidth, colLayout),
-		Breadcrumb:    row.Breadcrumb,
-		Dependencies:  outgoingDependencyDetails(row.task, projects),
-		Dependents:    incomingDependencyDetails(m.rowIdentity(row), projects),
+		Task:             row.task,
+		Indent:           indent,
+		Width:            rowWidth,
+		TitleOverflow:    m.taskRowTitleOverflow(row, rowWidth, colLayout),
+		Breadcrumb:       row.Breadcrumb,
+		Dependencies:     outgoingDependencyDetails(row.task, index),
+		Dependents:       incomingDependencyDetails(m.rowIdentity(row), index),
+		DependencyCensus: dependencyCensusFor(row.task, index),
 	})
 }
 
@@ -91,14 +96,21 @@ func inlinePeekLines(opts inlinePeekOptions) []string {
 	}
 
 	// The two reference lines sit above tags because Peek is the only surface
-	// that names a reference at all: the row carries a bare `~N`, and there is no
+	// that names a reference at all: the row carries `~S/N`, and there is no
 	// panel behind it the way `;` and `&` stand behind comments and attachments.
 	// Tags are already on the row, so they are the cheaper line to lose here.
-	if dependencies := inlinePeekReferenceLine("Dependencies", opts.Dependencies, available); dependencies != "" {
+	// Each label carries its own count — the outgoing one the row's very numbers
+	// — so a reader sees the whole size of a set the entry cap may have elided.
+	// No `?` follows the fraction here: every entry below names its own state in
+	// full, so the row's shorthand for "something could not be read" would be
+	// repeating what the list already says.
+	dependencyLabel := "Dependencies " + opts.DependencyCensus.counts()
+	if dependencies := inlinePeekReferenceLine(dependencyLabel, opts.Dependencies, available); dependencies != "" {
 		lines = append(lines, opts.Indent+MutedStyle.Render(dependencies))
 	}
 
-	if dependents := inlinePeekReferenceLine("Dependents", opts.Dependents, available); dependents != "" {
+	dependentLabel := fmt.Sprintf("Dependents %d", len(opts.Dependents))
+	if dependents := inlinePeekReferenceLine(dependentLabel, opts.Dependents, available); dependents != "" {
 		lines = append(lines, opts.Indent+MutedStyle.Render(dependents))
 	}
 

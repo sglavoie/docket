@@ -89,6 +89,19 @@ const (
 	HierarchyLeaf                          // tasks with no open direct child
 )
 
+// DependencyFilter represents the soft-reference-position filter options. Both
+// axes are structural and neither is a readiness verdict: a soft reference gates
+// nothing, so a blocked task is perfectly workable. Blocking reads the loaded
+// population's reference index, because dependents are computed rather than
+// stored on the task.
+type DependencyFilter int
+
+const (
+	DependencyFilterAll      DependencyFilter = iota // show all tasks
+	DependencyFilterBlocked                          // tasks naming at least one other task
+	DependencyFilterBlocking                         // tasks at least one other task names
+)
+
 // CompletionAgeFilter represents the local-calendar age threshold selected by
 // the completion-cleanup facet. CompletionAgeAll removes the age bound while
 // the facet remains active, so malformed records without a valid CompletedAt
