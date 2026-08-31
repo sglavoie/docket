@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"charm.land/lipgloss/v2"
@@ -27,11 +28,18 @@ func namedLensFixture(mutate func(*config.NamedLens)) config.NamedLens {
 	return lens
 }
 
+// namedLensQueryFixture spells a narrowing as the saved query string, which is
+// the only place the resolver reads a facet from.
+func namedLensQueryFixture(query string) config.NamedLens {
+	return namedLensFixture(func(lens *config.NamedLens) { lens.Query = query })
+}
+
 func namedLensStatesFixture(states ...string) config.NamedLens {
-	return namedLensFixture(func(lens *config.NamedLens) {
-		lens.Tasks.States = states
-		lens.Tasks.StatesSet = true
-	})
+	tokens := make([]string, 0, len(states))
+	for _, state := range states {
+		tokens = append(tokens, "$"+state)
+	}
+	return namedLensQueryFixture(strings.Join(tokens, " "))
 }
 
 func groupRole(group models.WorkflowStateGroup) namedLensRole {
@@ -110,17 +118,14 @@ func TestNamedLensSemanticRole(t *testing.T) {
 		// Rung 1: overdue outranks every other signal a definition can carry.
 		{
 			name: "overdue due bucket",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.DueDate = config.LensDueOverdue }),
+			lens: namedLensQueryFixture("@overdue"),
 			want: namedLensRole{Kind: namedLensRoleOverdue},
 		},
 		{
 			name: "overdue outranks waiting priority and mode",
 			lens: namedLensFixture(func(l *config.NamedLens) {
 				l.Mode = config.LensModeDue
-				l.Tasks.DueDate = config.LensDueOverdue
-				l.Tasks.States = []string{string(models.StateWaiting)}
-				l.Tasks.StatesSet = true
-				l.Tasks.Priority = models.PriorityHigh
+				l.Query = fmt.Sprintf("@overdue $%s !%d", models.StateWaiting, models.PriorityHigh)
 			}),
 			want: namedLensRole{Kind: namedLensRoleOverdue},
 		},
@@ -133,20 +138,13 @@ func TestNamedLensSemanticRole(t *testing.T) {
 		},
 		{
 			name: "waiting outranks priority 1",
-			lens: namedLensFixture(func(l *config.NamedLens) {
-				l.Tasks.States = []string{string(models.StateWaiting)}
-				l.Tasks.StatesSet = true
-				l.Tasks.Priority = models.PriorityHigh
-			}),
+			lens: namedLensQueryFixture(
+				fmt.Sprintf("$%s !%d", models.StateWaiting, models.PriorityHigh)),
 			want: namedLensRole{Kind: namedLensRoleWaiting},
 		},
 		{
 			name: "waiting outranks due today",
-			lens: namedLensFixture(func(l *config.NamedLens) {
-				l.Tasks.States = []string{string(models.StateWaiting)}
-				l.Tasks.StatesSet = true
-				l.Tasks.DueDate = config.LensDueToday
-			}),
+			lens: namedLensQueryFixture(fmt.Sprintf("$%s @today", models.StateWaiting)),
 			want: namedLensRole{Kind: namedLensRoleWaiting},
 		},
 		{
@@ -158,119 +156,115 @@ func TestNamedLensSemanticRole(t *testing.T) {
 		// Rung 3 and 4/5: the due window, then the priority ladder.
 		{
 			name: "due today",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.DueDate = config.LensDueToday }),
+			lens: namedLensQueryFixture("@today"),
 			want: namedLensRole{Kind: namedLensRoleDueToday},
 		},
 		{
 			name: "due today outranks priority",
-			lens: namedLensFixture(func(l *config.NamedLens) {
-				l.Tasks.DueDate = config.LensDueToday
-				l.Tasks.Priority = models.PriorityHigh
-			}),
+			lens: namedLensQueryFixture(fmt.Sprintf("@today !%d", models.PriorityHigh)),
 			want: namedLensRole{Kind: namedLensRoleDueToday},
 		},
 		{
 			name: "priority 1",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.Priority = models.PriorityHigh }),
+			lens: namedLensQueryFixture(fmt.Sprintf("!%d", models.PriorityHigh)),
 			want: namedLensRole{Kind: namedLensRolePriority, Priority: models.PriorityHigh},
 		},
 		{
 			name: "priority 2",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.Priority = models.PriorityMedium }),
+			lens: namedLensQueryFixture(fmt.Sprintf("!%d", models.PriorityMedium)),
 			want: namedLensRole{Kind: namedLensRolePriority, Priority: models.PriorityMedium},
 		},
 		{
 			name: "priority 3",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.Priority = models.PriorityLow }),
+			lens: namedLensQueryFixture(fmt.Sprintf("!%d", models.PriorityLow)),
 			want: namedLensRole{Kind: namedLensRolePriority, Priority: models.PriorityLow},
 		},
 		{
 			name: "priority outranks the deferred filter",
-			lens: namedLensFixture(func(l *config.NamedLens) {
-				l.Tasks.Priority = models.PriorityLow
-				l.Tasks.Deferred = true
-			}),
+			lens: namedLensQueryFixture(fmt.Sprintf("!%d ?deferred", models.PriorityLow)),
 			want: namedLensRole{Kind: namedLensRolePriority, Priority: models.PriorityLow},
 		},
 		{
-			name: "unset priority is not a signal",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.Priority = models.PriorityUnset }),
+			// "!0" selects tasks carrying no priority, which is the absence of the
+			// number the ladder colors by rather than a number of its own.
+			name: "the no-priority clause is not a signal",
+			lens: namedLensQueryFixture("!0"),
 			want: namedLensRole{Kind: namedLensRoleNone},
 		},
 		{
-			name: "out-of-range priority is not a signal",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.Priority = 5 }),
+			// A priority outside the live range is not canonical vocabulary, so it
+			// never becomes a clause and the ladder sees no priority at all.
+			name: "an out-of-range priority is not a clause",
+			lens: namedLensQueryFixture("!5"),
+			want: namedLensRole{Kind: namedLensRoleNone},
+		},
+		{
+			name: "a negated priority is not a signal",
+			lens: namedLensQueryFixture(fmt.Sprintf("-!%d", models.PriorityHigh)),
 			want: namedLensRole{Kind: namedLensRoleNone},
 		},
 
 		// Rung 6: the remaining active window, and the two buckets excluded from it.
 		{
 			name: "due this week",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.DueDate = config.LensDueWeek }),
+			lens: namedLensQueryFixture("@week"),
 			want: namedLensRole{Kind: namedLensRoleDue},
 		},
 		{
-			name: "due all is not an accent",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.DueDate = config.LensDueAll }),
+			name: "an exact calendar day is not an urgency accent",
+			lens: namedLensQueryFixture("@2026-01-05"),
 			want: namedLensRole{Kind: namedLensRoleNone},
 		},
 		{
-			name: "due none is not an accent",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.DueDate = config.LensDueNone }),
+			name: "the no-due clause is not an accent",
+			lens: namedLensQueryFixture("@0"),
 			want: namedLensRole{Kind: namedLensRoleNone},
 		},
 
 		// Rungs 7 to 9.
 		{
 			name: "deferred filter",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.Deferred = true }),
+			lens: namedLensQueryFixture("?deferred"),
 			want: namedLensRole{Kind: namedLensRoleDeferred},
 		},
 		{
 			name: "deferred outranks the review flag",
-			lens: namedLensFixture(func(l *config.NamedLens) {
-				l.Tasks.Deferred = true
-				l.Tasks.Review = true
-			}),
+			lens: namedLensQueryFixture("?deferred =review"),
 			want: namedLensRole{Kind: namedLensRoleDeferred},
 		},
 		{
 			name: "stored review flag",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.Review = true }),
+			lens: namedLensQueryFixture("=review"),
 			want: namedLensRole{Kind: namedLensRoleReview},
 		},
 		{
 			name: "a review tag name is now ordinary vocabulary",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.Tags = []string{"review"} }),
+			lens: namedLensQueryFixture("#review"),
 			want: namedLensRole{Kind: namedLensRoleNone},
 		},
 		{
 			name: "review flag beside a descriptive tag",
-			lens: namedLensFixture(func(l *config.NamedLens) {
-				l.Tasks.Review = true
-				l.Tasks.Tags = []string{"ops"}
-			}),
+			lens: namedLensQueryFixture("=review #ops"),
 			want: namedLensRole{Kind: namedLensRoleReview},
 		},
 		{
-			name: "descriptive tags alone assign no color",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.Tags = []string{"ops", "infra"} }),
+			name: "a negated review flag assigns no color",
+			lens: namedLensQueryFixture("-=review"),
 			want: namedLensRole{Kind: namedLensRoleNone},
 		},
 		{
-			name: "completion age filter",
-			lens: namedLensFixture(func(l *config.NamedLens) {
-				l.Tasks.CompletionAge = config.LensCompletionAge30Days
-				l.Tasks.CompletionAgeSet = true
-			}),
+			name: "descriptive tags alone assign no color",
+			lens: namedLensQueryFixture("#ops #infra"),
+			want: namedLensRole{Kind: namedLensRoleNone},
+		},
+		{
+			name: "completion age threshold",
+			lens: namedLensQueryFixture("?completed:30d"),
 			want: namedLensRole{Kind: namedLensRoleCompleted},
 		},
 		{
-			name: "completion age all is still an active facet",
-			lens: namedLensFixture(func(l *config.NamedLens) {
-				l.Tasks.CompletionAge = config.LensCompletionAgeAll
-				l.Tasks.CompletionAgeSet = true
-			}),
+			name: "the bare completed facet is still an active facet",
+			lens: namedLensQueryFixture("?completed"),
 			want: namedLensRole{Kind: namedLensRoleCompleted},
 		},
 		{
@@ -324,55 +318,52 @@ func TestNamedLensSemanticRole(t *testing.T) {
 			name: "conflicting state groups fall through to the mode",
 			lens: namedLensFixture(func(l *config.NamedLens) {
 				l.Mode = config.LensModeInbox
-				l.Tasks.States = []string{string(models.StateInbox), string(models.StateDoing)}
-				l.Tasks.StatesSet = true
+				l.Query = fmt.Sprintf("$%s $%s", models.StateInbox, models.StateDoing)
 			}),
 			want: modeRole(ModeInbox),
 		},
 		{
-			name: "an active but empty state predicate is not a group",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.StatesSet = true }),
+			// A negated state selects the complement of the group it names, so it is
+			// deliberately not that group's color.
+			name: "a negated state is not a group",
+			lens: namedLensQueryFixture(fmt.Sprintf("-$%s", models.StateDoing)),
 			want: namedLensRole{Kind: namedLensRoleNone},
 		},
 
 		// Rungs 11 and 12: population and staleness both read as a warning.
 		{
 			name: "parked-only population",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Projects.ParkedMode = config.LensPopulationOnly }),
+			lens: namedLensQueryFixture("+parked:only"),
 			want: namedLensRole{Kind: namedLensRoleWarning},
 		},
 		{
 			name: "parked-included population",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Projects.ParkedMode = config.LensPopulationInclude }),
+			lens: namedLensQueryFixture("+parked"),
 			want: namedLensRole{Kind: namedLensRoleWarning},
 		},
 		{
-			name: "parked-excluded population is the default",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Projects.ParkedMode = config.LensPopulationExclude }),
+			name: "a negated parked population is not a warning",
+			lens: namedLensQueryFixture("-+parked"),
 			want: namedLensRole{Kind: namedLensRoleNone},
 		},
 		{
 			name: "archived-only population",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Projects.ArchivedMode = config.LensPopulationOnly }),
+			lens: namedLensQueryFixture("+archived:only"),
 			want: namedLensRole{Kind: namedLensRoleWarning},
 		},
 		{
 			name: "pinned population",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.Pinned = true }),
+			lens: namedLensQueryFixture("*pin"),
 			want: namedLensRole{Kind: namedLensRoleWarning},
 		},
 		{
 			name: "stale filter",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.Stale = true }),
+			lens: namedLensQueryFixture("?stale"),
 			want: namedLensRole{Kind: namedLensRoleWarning},
 		},
 		{
 			name: "a state group outranks the stale filter",
-			lens: namedLensFixture(func(l *config.NamedLens) {
-				l.Tasks.States = []string{string(models.StateDoing)}
-				l.Tasks.StatesSet = true
-				l.Tasks.Stale = true
-			}),
+			lens: namedLensQueryFixture(fmt.Sprintf("$%s ?stale", models.StateDoing)),
 			want: groupRole(models.StateGroupDoing),
 		},
 
@@ -416,28 +407,25 @@ func TestNamedLensSemanticRole(t *testing.T) {
 			name: "stale outranks the mode it opens in",
 			lens: namedLensFixture(func(l *config.NamedLens) {
 				l.Mode = config.LensModeRecent
-				l.Tasks.Stale = true
+				l.Query = "?stale"
 			}),
 			want: namedLensRole{Kind: namedLensRoleWarning},
 		},
 
 		// Facets that must never assign a color on their own.
 		{
-			name: "a query alone assigns no color",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Query = "invoice" }),
+			name: "unparseable query prose assigns no color",
+			lens: namedLensQueryFixture("invoice"),
 			want: namedLensRole{Kind: namedLensRoleNone},
 		},
 		{
 			name: "a hierarchy filter alone assigns no color",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.Hierarchy = config.LensHierarchyLeaf }),
+			lens: namedLensQueryFixture("?leaf"),
 			want: namedLensRole{Kind: namedLensRoleNone},
 		},
 		{
 			name: "project tags and untagged assign no color",
-			lens: namedLensFixture(func(l *config.NamedLens) {
-				l.Projects.Tags = []string{"client"}
-				l.Projects.Untagged = true
-			}),
+			lens: namedLensQueryFixture("+#client +#0"),
 			want: namedLensRole{Kind: namedLensRoleNone},
 		},
 		{
@@ -455,18 +443,20 @@ func TestNamedLensSemanticRole(t *testing.T) {
 			want: namedLensRole{Kind: namedLensRoleNone},
 		},
 		{
-			name: "an unknown state disqualifies the whole set",
+			// The unknown token never becomes a clause, so the recognized state
+			// beside it is the whole set and still colors the row.
+			name: "an unknown state leaves the recognized one standing",
 			lens: namedLensStatesFixture(string(models.StateDoing), "almost-done"),
-			want: namedLensRole{Kind: namedLensRoleNone},
+			want: groupRole(models.StateGroupDoing),
 		},
 		{
 			name: "unknown due token",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.DueDate = "fortnight" }),
+			lens: namedLensQueryFixture("@fortnight"),
 			want: namedLensRole{Kind: namedLensRoleNone},
 		},
 		{
 			name: "unknown population token",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Projects.ParkedMode = "maybe" }),
+			lens: namedLensQueryFixture("+parked:maybe"),
 			want: namedLensRole{Kind: namedLensRoleNone},
 		},
 		{
@@ -480,8 +470,8 @@ func TestNamedLensSemanticRole(t *testing.T) {
 			want: namedLensRole{Kind: namedLensRoleNone},
 		},
 		{
-			name: "nil facet slices",
-			lens: config.NamedLens{ID: namedLensFixtureID, Name: "Nil", Mode: config.LensModeAll},
+			name: "an empty query",
+			lens: config.NamedLens{ID: namedLensFixtureID, Name: "Empty", Mode: config.LensModeAll},
 			want: namedLensRole{Kind: namedLensRoleNone},
 		},
 	}
@@ -544,7 +534,7 @@ func TestNamedLensSemanticRole(t *testing.T) {
 	t.Run("definition changes under one identity", func(t *testing.T) {
 		before := namedLensStatesFixture(string(models.StateDoing))
 		after := before.Clone()
-		after.Tasks.States = []string{string(models.StateWaiting)}
+		after.Query = "$" + string(models.StateWaiting)
 
 		if before.ID != after.ID || before.Name != after.Name {
 			t.Fatalf("fixtures must share one identity")
@@ -568,22 +558,22 @@ func TestNamedLensPrimaryStyle(t *testing.T) {
 		name string
 		lens config.NamedLens
 	}{
-		{"overdue", namedLensFixture(func(l *config.NamedLens) { l.Tasks.DueDate = config.LensDueOverdue })},
+		{"overdue", namedLensQueryFixture("@overdue")},
 		{"waiting", namedLensStatesFixture(string(models.StateWaiting))},
-		{"due today", namedLensFixture(func(l *config.NamedLens) { l.Tasks.DueDate = config.LensDueToday })},
-		{"priority 1", namedLensFixture(func(l *config.NamedLens) { l.Tasks.Priority = models.PriorityHigh })},
-		{"priority 2", namedLensFixture(func(l *config.NamedLens) { l.Tasks.Priority = models.PriorityMedium })},
-		{"priority 3", namedLensFixture(func(l *config.NamedLens) { l.Tasks.Priority = models.PriorityLow })},
-		{"due week", namedLensFixture(func(l *config.NamedLens) { l.Tasks.DueDate = config.LensDueWeek })},
-		{"deferred", namedLensFixture(func(l *config.NamedLens) { l.Tasks.Deferred = true })},
-		{"review", namedLensFixture(func(l *config.NamedLens) { l.Tasks.Review = true })},
+		{"due today", namedLensQueryFixture("@today")},
+		{"priority 1", namedLensQueryFixture(fmt.Sprintf("!%d", models.PriorityHigh))},
+		{"priority 2", namedLensQueryFixture(fmt.Sprintf("!%d", models.PriorityMedium))},
+		{"priority 3", namedLensQueryFixture(fmt.Sprintf("!%d", models.PriorityLow))},
+		{"due week", namedLensQueryFixture("@week")},
+		{"deferred", namedLensQueryFixture("?deferred")},
+		{"review", namedLensQueryFixture("=review")},
 		{"completed", namedLensStatesFixture(string(models.StateDone), string(models.StateCanceled))},
 		{"inbox group", namedLensStatesFixture(string(models.StateInbox))},
 		{"doing group", namedLensStatesFixture(string(models.StateDoing))},
 		{"backlog group", namedLensStatesFixture(string(models.StateBacklog))},
 		{"paused group", namedLensStatesFixture(string(models.StatePaused))},
 		{"someday group", namedLensStatesFixture(string(models.StateSomeday))},
-		{"warning", namedLensFixture(func(l *config.NamedLens) { l.Tasks.Stale = true })},
+		{"warning", namedLensQueryFixture("?stale")},
 		{"today mode", namedLensFixture(func(l *config.NamedLens) { l.Mode = config.LensModeToday })},
 		{"recent mode", namedLensFixture(func(l *config.NamedLens) { l.Mode = config.LensModeRecent })},
 	}
@@ -594,7 +584,7 @@ func TestNamedLensPrimaryStyle(t *testing.T) {
 	}{
 		{"zero value", config.NamedLens{}},
 		{"all mode only", namedLensFixture(nil)},
-		{"descriptive tags", namedLensFixture(func(l *config.NamedLens) { l.Tasks.Tags = []string{"ops"} })},
+		{"descriptive tags", namedLensQueryFixture("#ops")},
 		{"unknown mode", namedLensFixture(func(l *config.NamedLens) { l.Mode = "dashboard" })},
 		{"unknown state", namedLensStatesFixture("almost-done")},
 	}
@@ -624,7 +614,7 @@ func TestNamedLensPrimaryStyle(t *testing.T) {
 	}
 
 	t.Run("accents follow the theme", func(t *testing.T) {
-		lens := namedLensFixture(func(l *config.NamedLens) { l.Tasks.DueDate = config.LensDueOverdue })
+		lens := namedLensQueryFixture("@overdue")
 
 		ApplyTheme(ThemeConfig{Name: "dark"})
 		dark, ok := namedLensPrimaryStyle(lens)
@@ -694,9 +684,8 @@ func TestNamedLensPrimaryStyle(t *testing.T) {
 		rebuildPalette(config.PaletteColors{Priority1Title: "#123456"})
 		rebuildPriorityTitleStyles()
 
-		style, ok := namedLensPrimaryStyle(namedLensFixture(func(l *config.NamedLens) {
-			l.Tasks.Priority = models.PriorityHigh
-		}))
+		style, ok := namedLensPrimaryStyle(
+			namedLensQueryFixture(fmt.Sprintf("!%d", models.PriorityHigh)))
 		if !ok {
 			t.Fatalf("priority definition resolved no style")
 		}

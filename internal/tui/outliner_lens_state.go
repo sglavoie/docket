@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -10,11 +9,17 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// A named lens is a saved Outliner projection: the mode it opens, the query it
-// narrows with, both filter families, and the manual sort it restores. This file
-// owns the TUI-side representation of those axes and the only conversion between
-// them and the durable config tokens, so no other TUI code reads a persisted
-// spelling and no config code learns a TUI enum.
+// A named lens is a saved Outliner projection: the mode it opens, the narrowing
+// it applies, the project scope it may own, and the manual sort it restores.
+// This file owns the TUI-side representation of those axes and the only
+// conversion between them and the durable config tokens, so no other TUI code
+// reads a persisted spelling and no config code learns a TUI enum.
+//
+// The narrowing persists as one string holding both halves of it: the canonical
+// clauses models.Query owns, and whatever richer spelling the user-facing
+// grammar accepts and that vocabulary does not. models.JoinQueryString and
+// models.PartitionQueryString are the only split, so a facet chosen from a
+// picker and the same narrowing typed into slash search save as the same bytes.
 
 // lensState is the complete set of lens-owned Outliner axes. Scope is one of
 // them, but it is the one axis a lens may decline to own: an empty
@@ -28,16 +33,24 @@ type lensState struct {
 	// scopeProjectID is the single project the lens reopens into, or empty when
 	// the lens does not own the scope axis.
 	scopeProjectID string
-	query          string
-	// filter carries the explicit activation flags along with the facet values,
-	// because an active predicate that admits everything is not the same as an
-	// absent one and only the flag can tell them apart.
-	filter        FilterState
-	projectFilter ProjectFilterState
+	// facets is the canonical half of the narrowing: the one predicate the
+	// Outliner holds, carried verbatim rather than lifted through the filter
+	// carriers, which cannot express a clause's polarity or the dependency axis.
+	facets models.Query
+	// query is the remainder the canonical vocabulary cannot spell, which the
+	// textgrammar surfaces own.
+	query string
 	// sort is the remembered treeSort rather than the active render sort: a
 	// fixed-order mode leaves the active sort at its default while the user's
 	// manual choice survives in treeSort, and that choice is what the lens owns.
 	sort SortState
+}
+
+// projectFilterState is the population cache the lens's canonical facets
+// select. Load routing compares filters rather than queries, so the derivation
+// lives here once instead of at each comparison.
+func (s lensState) projectFilterState() ProjectFilterState {
+	return projectFilterStateFromQuery(s.facets)
 }
 
 // lensAxis maps one TUI enum onto its durable token set. The table is the single
@@ -100,60 +113,15 @@ var lensSortAxis = lensAxis[SortField]{
 		SortByPriority:  config.LensSortPriority,
 		SortByDueDate:   config.LensSortDue,
 		SortByCreatedAt: config.LensSortCreated,
-		SortByStatus:    config.LensSortStatus,
 		SortByUpdatedAt: config.LensSortUpdated,
 		SortByTitle:     config.LensSortTitle,
 	},
 	fallback: SortByDefault,
 }
 
-var lensDueAxis = lensAxis[DueDateFilter]{
-	name: "due bucket",
-	tokens: map[DueDateFilter]string{
-		DueDateAll:      config.LensDueAll,
-		DueDateOverdue:  config.LensDueOverdue,
-		DueDateToday:    config.LensDueToday,
-		DueDateThisWeek: config.LensDueWeek,
-		DueDateNone:     config.LensDueNone,
-	},
-	fallback: DueDateAll,
-}
-
-var lensHierarchyAxis = lensAxis[HierarchyFilter]{
-	name: "hierarchy",
-	tokens: map[HierarchyFilter]string{
-		HierarchyAll:    config.LensHierarchyAll,
-		HierarchyParent: config.LensHierarchyParent,
-		HierarchyChild:  config.LensHierarchyChild,
-		HierarchyRoot:   config.LensHierarchyRoot,
-		HierarchyLeaf:   config.LensHierarchyLeaf,
-	},
-	fallback: HierarchyAll,
-}
-
-var lensCompletionAgeAxis = lensAxis[CompletionAgeFilter]{
-	name: "completion age",
-	tokens: map[CompletionAgeFilter]string{
-		CompletionAgeAll:    config.LensCompletionAgeAll,
-		CompletionAge7Days:  config.LensCompletionAge7Days,
-		CompletionAge30Days: config.LensCompletionAge30Days,
-		CompletionAge90Days: config.LensCompletionAge90Days,
-	},
-	fallback: CompletionAgeAll,
-}
-
-var lensPopulationAxis = lensAxis[projectPopulationMode]{
-	name: "population",
-	tokens: map[projectPopulationMode]string{
-		projectPopulationExclude: config.LensPopulationExclude,
-		projectPopulationInclude: config.LensPopulationInclude,
-		projectPopulationOnly:    config.LensPopulationOnly,
-	},
-	fallback: projectPopulationExclude,
-}
-
 // captureLensState reads every lens-owned axis off the live Outliner. The
-// collections are detached so a later facet edit cannot reach back into a
+// canonical query is re-canonicalized rather than aliased, which allocates a
+// clause slice of its own, so a later facet edit cannot reach back into a
 // captured definition.
 func (m *OutlinerModel) captureLensState() lensState {
 	if m == nil {
@@ -162,9 +130,8 @@ func (m *OutlinerModel) captureLensState() lensState {
 	return lensState{
 		mode:           m.primaryMode,
 		scopeProjectID: m.capturedLensScope(),
+		facets:         m.filterQuery.Canonical(),
 		query:          m.capturedLensQuery(),
-		filter:         copyFilterState(m.filter),
-		projectFilter:  m.projectFilter.clone(),
 		sort:           m.treeSort,
 	}
 }
@@ -223,11 +190,9 @@ func (m *OutlinerModel) applyLensState(state lensState) bool {
 		m.pushProjectScope(state.scopeProjectID)
 	}
 	m.primaryMode = state.mode
-	m.filter = copyFilterState(state.filter)
-	m.projectFilter = state.projectFilter.clone()
-	// A lens definition is still carrier-shaped, so its facets enter through the
-	// one inverse lift and the narrowing predicate is rebuilt from them.
-	m.adoptFilterCarriers()
+	// The definition already holds the canonical predicate, so it is installed
+	// directly and both carrier caches are re-derived from it.
+	m.setFilterQuery(state.facets)
 	m.setLensQuery(state.query)
 
 	next := ApplyOutlinerModeTransition(
@@ -253,28 +218,7 @@ func (s lensState) namedLens(id, name string) config.NamedLens {
 		// Scope has no token table: it is a project ID, and the empty string is
 		// the unowned axis rather than a default the decoder has to name.
 		Scope: s.scopeProjectID,
-		Query: s.query,
-		Tasks: config.LensTaskFilters{
-			States:           lensWorkflowStateTokens(s.filter.States),
-			StatesSet:        s.filter.hasStateFilter(),
-			Priority:         s.filter.Priority,
-			Tags:             lensSortedTagNames(s.filter.Tags),
-			Contexts:         lensSortedTagNames(s.filter.Contexts),
-			NoContext:        s.filter.NoContext,
-			DueDate:          lensDueAxis.token(s.filter.DueDate),
-			CompletionAge:    lensCompletionAgeAxis.token(s.filter.CompletionAge),
-			CompletionAgeSet: s.filter.hasCompletionAgeFilter(),
-			Hierarchy:        lensHierarchyAxis.token(s.filter.Hierarchy),
-			Stale:            s.filter.Stale,
-			Deferred:         s.filter.Deferred,
-			Pinned:           s.filter.Pinned,
-		},
-		Projects: config.LensProjectFilters{
-			Tags:         lensSortedTagNames(s.projectFilter.Tags),
-			Untagged:     s.projectFilter.Untagged,
-			ParkedMode:   lensPopulationAxis.token(s.projectFilter.ParkedMode),
-			ArchivedMode: lensPopulationAxis.token(s.projectFilter.ArchivedMode),
-		},
+		Query: models.JoinQueryString(s.facets, s.query),
 		Sort: config.LensSort{
 			Field:     lensSortAxis.token(s.sort.Field),
 			Ascending: s.sort.Ascending,
@@ -295,157 +239,37 @@ func lensStateFromNamedLens(lens config.NamedLens) (lensState, error) {
 	if err != nil {
 		return lensState{}, err
 	}
-	filter, err := lensFilterState(lens.Tasks)
-	if err != nil {
-		return lensState{}, err
-	}
-	projectFilter, err := lensProjectFilterState(lens.Projects)
-	if err != nil {
-		return lensState{}, err
-	}
 	sortField, err := lensSortAxis.value(lens.Sort.Field)
 	if err != nil {
 		return lensState{}, err
 	}
+	facets, remainder := models.PartitionQueryString(lens.Query)
 	return lensState{
 		mode: mode,
 		// The scope is carried verbatim: Validate already held it to the canonical
 		// UUID spelling, and whether that project can still be entered is a runtime
 		// question ApplyNamedLens answers, never a decoding one.
 		scopeProjectID: lens.Scope,
-		query:          lens.Query,
-		filter:         filter,
-		projectFilter:  projectFilter,
+		facets:         facets,
+		query:          remainder,
 		sort:           SortState{Field: sortField, Ascending: lens.Sort.Ascending},
 	}, nil
 }
 
-func lensFilterState(tasks config.LensTaskFilters) (FilterState, error) {
-	filter := NewFilterState()
-	states := make([]models.WorkflowState, 0, len(tasks.States))
-	for _, raw := range tasks.States {
-		states = append(states, models.WorkflowState(raw))
-	}
-	set, err := models.NewWorkflowStateSet(states...)
-	if err != nil {
-		return FilterState{}, err
-	}
-	filter.setStateFilter(set, tasks.StatesSet)
-	filter.Priority = tasks.Priority
-	filter.Tags = lensTagSet(tasks.Tags)
-	filter.Contexts = lensTagSet(tasks.Contexts)
-	filter.NoContext = tasks.NoContext
-
-	due, err := lensDueAxis.value(tasks.DueDate)
-	if err != nil {
-		return FilterState{}, err
-	}
-	filter.DueDate = due
-
-	age, err := lensCompletionAgeAxis.value(tasks.CompletionAge)
-	if err != nil {
-		return FilterState{}, err
-	}
-	// The threshold is restored either way; only the activation flag decides
-	// whether the cleanup facet is a live predicate.
-	filter.CompletionAge = age
-	if tasks.CompletionAgeSet {
-		filter.setCompletionAgeFilter(age)
-	}
-
-	hierarchy, err := lensHierarchyAxis.value(tasks.Hierarchy)
-	if err != nil {
-		return FilterState{}, err
-	}
-	filter.Hierarchy = hierarchy
-	filter.Stale = tasks.Stale
-	filter.Deferred = tasks.Deferred
-	filter.Pinned = tasks.Pinned
-	filter.Review = tasks.Review
-	return filter, nil
-}
-
-func lensProjectFilterState(projects config.LensProjectFilters) (ProjectFilterState, error) {
-	filter := newProjectFilterState()
-	filter.Tags = lensTagSet(projects.Tags)
-	filter.Untagged = projects.Untagged
-	parked, err := lensPopulationAxis.value(projects.ParkedMode)
-	if err != nil {
-		return ProjectFilterState{}, err
-	}
-	archived, err := lensPopulationAxis.value(projects.ArchivedMode)
-	if err != nil {
-		return ProjectFilterState{}, err
-	}
-	filter.ParkedMode = parked
-	filter.ArchivedMode = archived
-	return filter, nil
-}
-
-// fingerprint is the canonical rendering of one state. Every collection is
-// emitted in a fixed order — workflow states in canonical lifecycle order, tags
-// and contexts sorted — so map iteration can never make an unchanged lens read
-// as modified. Every axis namedLens writes must appear here: an omitted one is
-// silently unwatched, so an edit to it leaves the lens reading as unmodified.
+// fingerprint is the canonical rendering of one state. It renders the durable
+// definition and joins its axes, so the comparison is over exactly the bytes a
+// save would write: the query string is already canonical on the clause half
+// and verbatim on the remainder, which is what keeps map iteration out of it and
+// makes an unchanged lens read as unchanged. Every axis namedLens writes must
+// appear here — an omitted one is silently unwatched, so an edit to it leaves
+// the lens reading as unmodified.
 func (s lensState) fingerprint() string {
 	lens := s.namedLens("", "")
 	return strings.Join([]string{
 		lens.Mode,
 		lens.Scope,
 		lens.Query,
-		strings.Join(lens.Tasks.States, ","),
-		strconv.FormatBool(lens.Tasks.StatesSet),
-		strconv.Itoa(lens.Tasks.Priority),
-		strings.Join(lens.Tasks.Tags, ","),
-		strings.Join(lens.Tasks.Contexts, ","),
-		strconv.FormatBool(lens.Tasks.NoContext),
-		lens.Tasks.DueDate,
-		lens.Tasks.CompletionAge,
-		strconv.FormatBool(lens.Tasks.CompletionAgeSet),
-		lens.Tasks.Hierarchy,
-		strconv.FormatBool(lens.Tasks.Stale),
-		strconv.FormatBool(lens.Tasks.Deferred),
-		strconv.FormatBool(lens.Tasks.Pinned),
-		strconv.FormatBool(lens.Tasks.Review),
-		strings.Join(lens.Projects.Tags, ","),
-		strconv.FormatBool(lens.Projects.Untagged),
-		lens.Projects.ParkedMode,
-		lens.Projects.ArchivedMode,
 		lens.Sort.Field,
 		strconv.FormatBool(lens.Sort.Ascending),
 	}, "\x1f")
-}
-
-func lensWorkflowStateTokens(states models.WorkflowStateSet) []string {
-	values := states.Values()
-	if len(values) == 0 {
-		return nil
-	}
-	tokens := make([]string, len(values))
-	for i, state := range values {
-		tokens[i] = string(state)
-	}
-	return tokens
-}
-
-func lensSortedTagNames(tags map[string]bool) []string {
-	names := make([]string, 0, len(tags))
-	for name, selected := range tags {
-		if selected {
-			names = append(names, name)
-		}
-	}
-	if len(names) == 0 {
-		return nil
-	}
-	slices.Sort(names)
-	return names
-}
-
-func lensTagSet(names []string) map[string]bool {
-	tags := make(map[string]bool, len(names))
-	for _, name := range names {
-		tags[name] = true
-	}
-	return tags
 }

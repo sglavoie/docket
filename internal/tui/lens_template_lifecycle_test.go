@@ -36,7 +36,7 @@ func settleLensPopulationLoad(t *testing.T, outliner *OutlinerModel, sources ...
 	selected := selectCrossScopeProjects(outliner.runtime, CrossScopeOpts{
 		ActiveOnly:     true,
 		FocusProjectID: outliner.focusRequestForLoad(),
-		ProjectFilter:  pending.state.projectFilter,
+		ProjectFilter:  pending.state.projectFilterState(),
 	})
 	byID := make(map[string]*models.Project, len(sources))
 	for _, source := range sources {
@@ -304,7 +304,7 @@ func TestAnAddedTemplateIsAnOrdinaryRecordAcrossRenameReplaceAndDelete(t *testin
 	if renamed.Name != "Due, mine" {
 		t.Fatalf("renamed record = %q, want the new name", renamed.Name)
 	}
-	if renamed.Mode != template.Mode || !reflect.DeepEqual(renamed.Tasks, template.Tasks) {
+	if renamed.Mode != template.Mode || renamed.Query != template.Query {
 		t.Fatal("the rename rewrote the projection it was only supposed to relabel")
 	}
 	if reason := templateRowReason(t, model, template.ID); reason != `Already added as "Due, mine"` {
@@ -328,7 +328,7 @@ func TestAnAddedTemplateIsAnOrdinaryRecordAcrossRenameReplaceAndDelete(t *testin
 	if replaced.Name != "Due, mine" {
 		t.Fatalf("replace renamed the record to %q", replaced.Name)
 	}
-	if replaced.Mode == template.Mode && reflect.DeepEqual(replaced.Tasks, template.Tasks) {
+	if replaced.Mode == template.Mode && replaced.Query == template.Query {
 		t.Fatal("the replace did not overwrite the definition with the current view")
 	}
 	if reason := templateRowReason(t, model, template.ID); reason != `Already added as "Due, mine"` {

@@ -149,7 +149,7 @@ func TestGuideDocumentsNamedLenses(t *testing.T) {
 		"### Named lenses",
 		"`\\` opens Named Lenses, the saved-projection list",
 		"`1`–`9` | Apply the Nth saved lens shown, exactly as `Enter` on that row would",
-		"the mode, its own narrowing query, both filter families,\nand the sort axis",
+		"the mode, the whole narrowing it applies — every task and\nproject facet, written as one query — and the sort axis",
 		"none of them records an undo entry and `u` never takes a lens back",
 		"gains a `*`\nas soon as the live view stops matching what was saved",
 		"switching straight from one lens to another\nkeeps the original restoration point",

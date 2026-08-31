@@ -56,7 +56,8 @@ func lensOperationDescriptors() []OperationDescriptor {
 			ID:          id,
 			Label:       label,
 			Description: description,
-			// A lens is a saved projection: mode, query, and both filter families.
+			// A lens is a saved projection: mode, scope, sort, and one query holding
+			// every facet it narrows by.
 			// It groups with the facets that decide the same axes rather than with
 			// an entity family, because it owns no domain entity of its own.
 			Category:             OperationCategoryFilter,

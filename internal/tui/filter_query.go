@@ -171,10 +171,11 @@ func appendFilterClause(
 }
 
 // commonFilterClauses lifts the row cache back into clauses. It is the inverse
-// of commonFilterStateFromQuery and exists for the two inputs that are still
-// carrier-shaped: a persisted lens definition and a captured view snapshot.
-// Session 9 rebases the lens onto the canonical string and this direction goes
-// with it.
+// of commonFilterStateFromQuery and exists for the one input that is still
+// carrier-shaped: a captured view snapshot, which restores the carriers it froze
+// and must put the predicate back beside them. A persisted lens no longer needs
+// it — that definition holds the canonical query itself — and this direction
+// goes away with the snapshot's carriers rather than gaining a second caller.
 func commonFilterClauses(f *CommonFilterState) []models.QueryClause {
 	if f == nil {
 		return nil
@@ -496,9 +497,11 @@ func (m *OutlinerModel) replaceFilterClauses(
 }
 
 // adoptFilterCarriers lifts carrier-shaped state that entered from outside the
-// facet keys — a persisted lens definition, a restored view snapshot — into the
-// query, then re-derives so the caches and the predicate agree again. It is the
-// seam session 9 removes when the lens starts persisting the canonical string.
+// facet keys into the query, then re-derives so the caches and the predicate
+// agree again. The restored view snapshot is its one remaining caller: it freezes
+// and restores the carriers, so the predicate is rebuilt from them on the way
+// back in. A lens does not come through here, because a lens definition carries
+// the canonical query and enters through setFilterQuery directly.
 func (m *OutlinerModel) adoptFilterCarriers() {
 	if m == nil {
 		return

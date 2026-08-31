@@ -182,7 +182,7 @@ func (m *OutlinerModel) lensProjectLoadRequired(state lensState) bool {
 	if m == nil || m.project != nil || m.isProjectScoped() {
 		return false
 	}
-	candidate := state.projectFilter
+	candidate := state.projectFilterState()
 	return projectFilterFingerprint(&candidate) != m.loadedPopulationFingerprint()
 }
 
@@ -278,7 +278,7 @@ func (m *OutlinerModel) startLensProjectLoad(pending *pendingLensApplication) te
 	runtime := m.runtime
 	service := m.projectService
 	focus := m.focusRequestForLoad()
-	projectFilter := pending.state.projectFilter.clone()
+	projectFilter := pending.state.projectFilterState()
 	return func() tea.Msg {
 		_, loaded, failed := LoadCrossScopeTasks(runtime, service, CrossScopeOpts{
 			ActiveOnly:     true,
@@ -370,7 +370,8 @@ func (m *OutlinerModel) finishLensScopeExit(pending *pendingLensApplication, pro
 	// holds now: the two are the same on every route that reaches here, and
 	// recording the read's own filter is what keeps that an observation rather
 	// than an assumption.
-	m.recordLoadedPopulation(projectFilterFingerprint(&pending.state.projectFilter))
+	readFilter := pending.state.projectFilterState()
+	m.recordLoadedPopulation(projectFilterFingerprint(&readFilter))
 	m.pruneSelectionsOutsideLoadedProjects()
 	if !m.clearProjectScope() {
 		// Defensive: the scope owns the rebuild, so there is one to do only when it
@@ -400,7 +401,7 @@ func (m *OutlinerModel) publishLens(lens config.NamedLens, state lensState, proj
 	// the live population was actually read under, never against one a previous
 	// scoped application merely wrote: an equivalent lens replacing an owed one
 	// leaves that debt exactly where it was.
-	candidate := state.projectFilter
+	candidate := state.projectFilterState()
 	population := m.loadedPopulationFingerprint()
 	facetsAwaitingLoad := projects == nil &&
 		projectFilterFingerprint(&candidate) != population

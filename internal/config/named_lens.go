@@ -24,6 +24,14 @@ import (
 // can be stored.
 const MaxNamedLensNameRunes = 200
 
+// MaxNamedLensQueryRunes bounds the one persisted narrowing string. The query is
+// now the whole predicate — every facet a lens once spelled in a struct field is
+// a token in it — so it has no natural length and a hand-edited or synced file
+// could otherwise carry an unbounded blob into every load. The bound sits far
+// above any query the pickers can mint and is enforced on load, which is what
+// makes it durable rather than advisory.
+const MaxNamedLensQueryRunes = 2000
+
 // Outliner mode tokens. These mirror tui.OutlinerModeID by value, deliberately
 // duplicated rather than imported: config cannot depend on the TUI, and the
 // persisted spelling must survive any TUI refactor.
@@ -37,49 +45,15 @@ const (
 	LensModeRecent  = "recent"
 )
 
-// Project population tokens for the parked and archived axes.
-const (
-	LensPopulationExclude = "exclude"
-	LensPopulationInclude = "include"
-	LensPopulationOnly    = "only"
-)
-
-// Manual sort field tokens.
+// Manual sort field tokens. Sorting by lifecycle state retired with the
+// carriers; v16_named_lens.go rewrites a persisted lens that still names it.
 const (
 	LensSortDefault  = "default"
 	LensSortPriority = "priority"
 	LensSortDue      = "due"
 	LensSortCreated  = "created"
-	LensSortStatus   = "status"
 	LensSortUpdated  = "updated"
 	LensSortTitle    = "title"
-)
-
-// Due-bucket tokens.
-const (
-	LensDueAll     = "all"
-	LensDueOverdue = "overdue"
-	LensDueToday   = "today"
-	LensDueWeek    = "week"
-	LensDueNone    = "none"
-)
-
-// Hierarchy-position tokens.
-const (
-	LensHierarchyAll    = "all"
-	LensHierarchyParent = "parent"
-	LensHierarchyChild  = "child"
-	LensHierarchyRoot   = "root"
-	LensHierarchyLeaf   = "leaf"
-)
-
-// Completion-age tokens. The activation flag lives beside them because the
-// "all" threshold is an active cleanup facet, not an absent one.
-const (
-	LensCompletionAgeAll    = "all"
-	LensCompletionAge7Days  = "7d"
-	LensCompletionAge30Days = "30d"
-	LensCompletionAge90Days = "90d"
 )
 
 // lensTokenDefaultSentinel is what omitempty writes for an axis left at its
@@ -118,48 +92,22 @@ const (
 // deliberately did not.
 const starterNamedLensCount = 3
 
-// LensTaskFilters is the persisted form of the Outliner's shared task facets.
-// StatesSet and CompletionAgeSet are retained explicitly because each
-// distinguishes an absent predicate from an active one that happens to admit
-// everything. Contexts and NoContext are the task-context facet, an axis of its
-// own rather than a second spelling of Tags: NoContext names the tasks the
-// vocabulary cannot cover, so it needs no activation flag beside it.
-type LensTaskFilters struct {
-	States           []string `json:"states,omitempty"`
-	StatesSet        bool     `json:"states_set,omitempty"`
-	Priority         int      `json:"priority,omitempty"`
-	Tags             []string `json:"tags,omitempty"`
-	Contexts         []string `json:"contexts,omitempty"`
-	NoContext        bool     `json:"no_context,omitempty"`
-	DueDate          string   `json:"due_date,omitempty"`
-	CompletionAge    string   `json:"completion_age,omitempty"`
-	CompletionAgeSet bool     `json:"completion_age_set,omitempty"`
-	Hierarchy        string   `json:"hierarchy,omitempty"`
-	Stale            bool     `json:"stale,omitempty"`
-	Deferred         bool     `json:"deferred,omitempty"`
-	Pinned           bool     `json:"pinned,omitempty"`
-	// Review selects tasks carrying the stored review flag. It is a boolean here
-	// for the same reason it is one on the task: review is an axis beside the
-	// pin, not a tag name a lens could spell three ways.
-	Review bool `json:"review,omitempty"`
-}
-
-// LensProjectFilters is the persisted form of the Outliner's population facet.
-type LensProjectFilters struct {
-	Tags         []string `json:"tags,omitempty"`
-	Untagged     bool     `json:"untagged,omitempty"`
-	ParkedMode   string   `json:"parked,omitempty"`
-	ArchivedMode string   `json:"archived,omitempty"`
-}
-
 // LensSort is the persisted manual sort axis.
 type LensSort struct {
 	Field     string `json:"field,omitempty"`
 	Ascending bool   `json:"ascending"`
 }
 
-// NamedLens is one durable Outliner projection: identity, mode, accepted query,
-// both filter families, and the manual sort it restores.
+// NamedLens is one durable Outliner projection on exactly six axes: identity,
+// name, mode, scope, query, and sort.
+//
+// Query is the whole narrowing predicate. Schema 16 split it between a free-text
+// query and two filter carriers, one struct field per facet, which made the same
+// narrowing expressible two ways and left the durable meaning of a lens spread
+// across twenty-odd fields no reader could compare. Schema 17 collapsed them:
+// the canonical clause string internal/models renders and parses carries the
+// facets, and whatever richer spelling the user-facing grammar owns follows it
+// verbatim in the same string.
 type NamedLens struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
@@ -169,11 +117,67 @@ type NamedLens struct {
 	// current view's scope alone; it is deliberately not a way to force the
 	// global population, which v1 cannot express. omitempty keeps a machine
 	// file written before the axis existed byte-identical.
-	Scope    string             `json:"scope,omitempty"`
-	Query    string             `json:"query,omitempty"`
-	Tasks    LensTaskFilters    `json:"tasks"`
-	Projects LensProjectFilters `json:"projects"`
-	Sort     LensSort           `json:"sort"`
+	Scope string   `json:"scope,omitempty"`
+	Query string   `json:"query,omitempty"`
+	Sort  LensSort `json:"sort"`
+}
+
+// namedLensPayload is the decoding shape: the six live axes plus the two retired
+// carriers, so a record persisted before schema 17 is lifted rather than
+// refused. It exists because NamedLens carries its own codec and therefore
+// cannot inherit the enclosing decoder's unknown-field strictness; the strict
+// decode happens here instead, against the union of both shapes.
+type namedLensPayload struct {
+	ID       string                 `json:"id"`
+	Name     string                 `json:"name"`
+	Mode     string                 `json:"mode"`
+	Scope    string                 `json:"scope,omitempty"`
+	Query    string                 `json:"query,omitempty"`
+	Sort     LensSort               `json:"sort"`
+	Tasks    *v16LensTaskFilters    `json:"tasks,omitempty"`
+	Projects *v16LensProjectFilters `json:"projects,omitempty"`
+}
+
+// UnmarshalJSON decodes one lens, lifting a schema-16 record onto the canonical
+// query as it reads it.
+//
+// The lift is here rather than in the migration alone because the two homes
+// upgrade at different times: the portable .tt/lenses.json is rewritten by the
+// guarded v17 transaction, while a machine-local named_lenses list written by an
+// older build is only rewritten the next time that machine commits its own
+// state. Refusing the old shape would make such a machine unable to load at all,
+// so it is translated on the way in and self-heals on the next write.
+func (n *NamedLens) UnmarshalJSON(data []byte) error {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	var payload namedLensPayload
+	if err := decoder.Decode(&payload); err != nil {
+		return err
+	}
+	lens := NamedLens{
+		ID:    payload.ID,
+		Name:  payload.Name,
+		Mode:  payload.Mode,
+		Scope: payload.Scope,
+		Query: payload.Query,
+		Sort:  LensSort{Field: v16LensSortField(payload.Sort.Field), Ascending: payload.Sort.Ascending},
+	}
+	if payload.Tasks != nil || payload.Projects != nil {
+		carriers := v16NamedLensCarriers{}
+		if payload.Tasks != nil {
+			carriers.tasks = *payload.Tasks
+		}
+		if payload.Projects != nil {
+			carriers.projects = *payload.Projects
+		}
+		query, err := carriers.canonicalQuery(payload.Query)
+		if err != nil {
+			return fmt.Errorf("lens %q: %w", payload.Name, err)
+		}
+		lens.Query = query
+	}
+	*n = lens
+	return nil
 }
 
 // NamedLensList is the persisted collection. It carries its own JSON codec for
@@ -216,93 +220,74 @@ func (l NamedLensList) MarshalJSON() ([]byte, error) {
 // template, in catalog order. It builds the whole list from literals on each
 // call, so every returned lens and every nested slice is already detached from
 // any earlier caller's copy; the exported wrappers below inherit that.
+// Every template is written as the canonical query string its facets render to,
+// in canonical field order, so the built-in catalog and a user lens saved from
+// the same view are byte-identical records.
 func builtinNamedLensDefinitions() NamedLensList {
 	return NamedLensList{
 		{
-			ID:   lensWaitingStarterID,
-			Name: lensWaitingStarterName,
-			Mode: LensModeAll,
-			Tasks: LensTaskFilters{
-				States:    []string{string(models.StateWaiting)},
-				StatesSet: true,
-			},
-			Sort: LensSort{Field: LensSortDefault, Ascending: true},
+			ID:    lensWaitingStarterID,
+			Name:  lensWaitingStarterName,
+			Mode:  LensModeAll,
+			Query: "$" + string(models.StateWaiting),
+			Sort:  LensSort{Field: LensSortDefault, Ascending: true},
 		},
 		{
-			ID:   lensHighPriorityStartID,
-			Name: lensHighPriorityStarter,
-			Mode: LensModeAll,
-			Tasks: LensTaskFilters{
-				Priority: models.PriorityHigh,
-			},
-			Sort: LensSort{Field: LensSortPriority, Ascending: true},
+			ID:    lensHighPriorityStartID,
+			Name:  lensHighPriorityStarter,
+			Mode:  LensModeAll,
+			Query: fmt.Sprintf("!%d+", models.PriorityHigh),
+			Sort:  LensSort{Field: LensSortPriority, Ascending: true},
 		},
 		{
-			ID:   lensStaleStarterID,
-			Name: lensStaleStarterName,
-			Mode: LensModeAll,
-			Tasks: LensTaskFilters{
-				Stale: true,
-			},
-			Sort: LensSort{Field: LensSortUpdated, Ascending: true},
+			ID:    lensStaleStarterID,
+			Name:  lensStaleStarterName,
+			Mode:  LensModeAll,
+			Query: "?stale",
+			Sort:  LensSort{Field: LensSortUpdated, Ascending: true},
 		},
 		{
-			ID:   lensOverdueTemplateID,
-			Name: lensOverdueTemplateName,
-			Mode: LensModeDue,
-			Tasks: LensTaskFilters{
-				DueDate: LensDueOverdue,
-			},
-			Sort: LensSort{Field: LensSortDefault, Ascending: true},
+			ID:    lensOverdueTemplateID,
+			Name:  lensOverdueTemplateName,
+			Mode:  LensModeDue,
+			Query: "@" + models.QueryDueOverdue,
+			Sort:  LensSort{Field: LensSortDefault, Ascending: true},
 		},
 		{
-			ID:   lensActiveWorkTmplID,
-			Name: lensActiveWorkTmplName,
-			Mode: LensModeAll,
-			Tasks: LensTaskFilters{
-				States:    []string{string(models.StateDoing)},
-				StatesSet: true,
-			},
-			Sort: LensSort{Field: LensSortPriority, Ascending: true},
+			ID:    lensActiveWorkTmplID,
+			Name:  lensActiveWorkTmplName,
+			Mode:  LensModeAll,
+			Query: "$" + string(models.StateDoing),
+			Sort:  LensSort{Field: LensSortPriority, Ascending: true},
 		},
 		{
-			ID:   lensReviewQueueTmplID,
-			Name: lensReviewQueueTmplName,
-			Mode: LensModeAll,
-			Tasks: LensTaskFilters{
-				Review: true,
-			},
-			Sort: LensSort{Field: LensSortUpdated, Ascending: true},
+			ID:    lensReviewQueueTmplID,
+			Name:  lensReviewQueueTmplName,
+			Mode:  LensModeAll,
+			Query: "=review",
+			Sort:  LensSort{Field: LensSortUpdated, Ascending: true},
 		},
 		{
-			ID:   lensDeferredTmplID,
-			Name: lensDeferredTmplName,
-			Mode: LensModeAll,
-			Tasks: LensTaskFilters{
-				Deferred: true,
-			},
-			Sort: LensSort{Field: LensSortUpdated, Ascending: true},
+			ID:    lensDeferredTmplID,
+			Name:  lensDeferredTmplName,
+			Mode:  LensModeAll,
+			Query: "?deferred",
+			Sort:  LensSort{Field: LensSortUpdated, Ascending: true},
 		},
 		{
 			ID:   lensCleanup90dTmplID,
 			Name: lensCleanup90dTmplName,
 			Mode: LensModeAll,
-			Tasks: LensTaskFilters{
-				States:           []string{string(models.StateDone), string(models.StateCanceled)},
-				StatesSet:        true,
-				CompletionAge:    LensCompletionAge90Days,
-				CompletionAgeSet: true,
-			},
-			Sort: LensSort{Field: LensSortUpdated, Ascending: true},
+			// Canonical order sorts one field's values, so canceled precedes done.
+			Query: fmt.Sprintf("$%s $%s ?completed:90d", models.StateCanceled, models.StateDone),
+			Sort:  LensSort{Field: LensSortUpdated, Ascending: true},
 		},
 		{
-			ID:   lensParkedWorkTmplID,
-			Name: lensParkedWorkTmplName,
-			Mode: LensModeAll,
-			Projects: LensProjectFilters{
-				ParkedMode: LensPopulationOnly,
-			},
-			Sort: LensSort{Field: LensSortDefault, Ascending: true},
+			ID:    lensParkedWorkTmplID,
+			Name:  lensParkedWorkTmplName,
+			Mode:  LensModeAll,
+			Query: "+" + string(models.QueryFieldParked) + ":" + models.QueryPopulationOnly,
+			Sort:  LensSort{Field: LensSortDefault, Ascending: true},
 		},
 	}
 }
@@ -337,14 +322,11 @@ func (l NamedLensList) Clone() NamedLensList {
 	return out
 }
 
-// Clone returns a deep copy of one lens.
+// Clone returns a copy of one lens. Every axis is a value, so the copy is
+// already independent; the method stays because the list clone reads better for
+// it and because a caller should not have to know that.
 func (n NamedLens) Clone() NamedLens {
-	cp := n
-	cp.Tasks.States = slices.Clone(n.Tasks.States)
-	cp.Tasks.Tags = slices.Clone(n.Tasks.Tags)
-	cp.Tasks.Contexts = slices.Clone(n.Tasks.Contexts)
-	cp.Projects.Tags = slices.Clone(n.Projects.Tags)
-	return cp
+	return n
 }
 
 // NormalizeNamedLensName trims a raw name and enforces the durable name rules:
@@ -418,86 +400,30 @@ func (n NamedLens) Validate() error {
 			return err
 		}
 	}
-	if err := n.Tasks.validate(n.Name); err != nil {
-		return err
-	}
-	if err := n.Projects.validate(n.Name); err != nil {
+	if err := validateNamedLensQuery(n.Name, n.Query); err != nil {
 		return err
 	}
 	return n.Sort.validate(n.Name)
 }
 
-func (f LensTaskFilters) validate(lensName string) error {
-	seenState := make(map[string]bool, len(f.States))
-	for _, raw := range f.States {
-		state := models.WorkflowState(raw)
-		if !state.IsValid() {
-			return fmt.Errorf("lens %q references unknown workflow state %q", lensName, raw)
-		}
-		if seenState[raw] {
-			return fmt.Errorf("lens %q repeats workflow state %q", lensName, raw)
-		}
-		seenState[raw] = true
+// validateNamedLensQuery holds the one narrowing string to the durable bound and
+// nothing else. The query is deliberately not parsed here: this layer persists
+// the string, the grammar that compiles it lives above, and an unreadable one
+// keeps the ordinary invalid-query guidance at projection time rather than making
+// a whole workspace file unloadable. What must hold on load is the length, since
+// only a bound checked here is a bound at all, and the absence of a control
+// character, since a lens query is one line.
+func validateNamedLensQuery(lensName, query string) error {
+	if utf8.RuneCountInString(query) > MaxNamedLensQueryRunes {
+		return fmt.Errorf(
+			"lens %q query exceeds maximum length of %d characters",
+			lensName, MaxNamedLensQueryRunes,
+		)
 	}
-	if f.Priority != models.PriorityUnset {
-		if err := models.ValidatePriority(f.Priority, false); err != nil {
-			return fmt.Errorf("lens %q priority: %w", lensName, err)
+	for _, r := range query {
+		if r == '\n' || r == '\r' || unicode.IsControl(r) {
+			return fmt.Errorf("lens %q query contains a control character", lensName)
 		}
-	}
-	seenTag := make(map[string]bool, len(f.Tags))
-	for _, tag := range f.Tags {
-		if err := models.ValidateTag(tag); err != nil {
-			return fmt.Errorf("lens %q task tag: %w", lensName, err)
-		}
-		if seenTag[tag] {
-			return fmt.Errorf("lens %q repeats task tag %q", lensName, tag)
-		}
-		seenTag[tag] = true
-	}
-	seenContext := make(map[string]bool, len(f.Contexts))
-	for _, context := range f.Contexts {
-		// ValidateTaskContext admits the empty string because an unset task
-		// field is legal; a persisted facet name is not that gap. The gap is
-		// NoContext, so an empty name here is malformed rather than redundant.
-		if context == "" {
-			return fmt.Errorf("lens %q names an empty task context; use no_context for the unset field", lensName)
-		}
-		if err := models.ValidateTaskContext(context); err != nil {
-			return fmt.Errorf("lens %q task context: %w", lensName, err)
-		}
-		if seenContext[context] {
-			return fmt.Errorf("lens %q repeats task context %q", lensName, context)
-		}
-		seenContext[context] = true
-	}
-	if !validLensToken(f.DueDate, lensDueTokens(), true) {
-		return fmt.Errorf("lens %q due bucket %q is not a known value", lensName, f.DueDate)
-	}
-	if !validLensToken(f.CompletionAge, lensCompletionAgeTokens(), true) {
-		return fmt.Errorf("lens %q completion age %q is not a known value", lensName, f.CompletionAge)
-	}
-	if !validLensToken(f.Hierarchy, lensHierarchyTokens(), true) {
-		return fmt.Errorf("lens %q hierarchy %q is not a known value", lensName, f.Hierarchy)
-	}
-	return nil
-}
-
-func (f LensProjectFilters) validate(lensName string) error {
-	seen := make(map[string]bool, len(f.Tags))
-	for _, tag := range f.Tags {
-		if err := models.ValidateTag(tag); err != nil {
-			return fmt.Errorf("lens %q project tag: %w", lensName, err)
-		}
-		if seen[tag] {
-			return fmt.Errorf("lens %q repeats project tag %q", lensName, tag)
-		}
-		seen[tag] = true
-	}
-	if !validLensToken(f.ParkedMode, lensPopulationTokens(), true) {
-		return fmt.Errorf("lens %q parked population %q is not a known value", lensName, f.ParkedMode)
-	}
-	if !validLensToken(f.ArchivedMode, lensPopulationTokens(), true) {
-		return fmt.Errorf("lens %q archived population %q is not a known value", lensName, f.ArchivedMode)
 	}
 	return nil
 }
@@ -546,22 +472,6 @@ func lensModeTokens() []string {
 	return []string{LensModeAll, LensModeInbox, LensModeToday, LensModeNext, LensModeBacklog, LensModeDue, LensModeRecent}
 }
 
-func lensPopulationTokens() []string {
-	return []string{LensPopulationExclude, LensPopulationInclude, LensPopulationOnly}
-}
-
 func lensSortTokens() []string {
-	return []string{LensSortDefault, LensSortPriority, LensSortDue, LensSortCreated, LensSortStatus, LensSortUpdated, LensSortTitle}
-}
-
-func lensDueTokens() []string {
-	return []string{LensDueAll, LensDueOverdue, LensDueToday, LensDueWeek, LensDueNone}
-}
-
-func lensHierarchyTokens() []string {
-	return []string{LensHierarchyAll, LensHierarchyParent, LensHierarchyChild, LensHierarchyRoot, LensHierarchyLeaf}
-}
-
-func lensCompletionAgeTokens() []string {
-	return []string{LensCompletionAgeAll, LensCompletionAge7Days, LensCompletionAge30Days, LensCompletionAge90Days}
+	return []string{LensSortDefault, LensSortPriority, LensSortDue, LensSortCreated, LensSortUpdated, LensSortTitle}
 }

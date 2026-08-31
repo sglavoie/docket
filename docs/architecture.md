@@ -2077,10 +2077,19 @@ would falsely report `od is not a sort action`.
 
 ### Named lenses
 
-A named lens is one durable Outliner projection — mode, project scope, its own
-narrowing query, both filter families, and the sort axis — persisted as
+A named lens is one durable Outliner projection on exactly six axes — identity,
+name, mode, project scope, one narrowing query, and the sort axis — persisted as
 `config.NamedLens` in the portable `lenses.json` domain, while the theme and the
-active-lens pointer stay machine-local. Scope is the one axis
+active-lens pointer stay machine-local. The query is the whole narrowing:
+`models.JoinQueryString` writes the canonical clause string the facets render to
+and the richer spelling the user-facing grammar owns as one value, and
+`models.PartitionQueryString` splits it back, so a facet chosen from a picker and
+the same narrowing typed into slash search save as the same bytes. Schema 16
+spread that predicate across a free-text query and two filter carriers, one
+struct field per facet, which made the same narrowing expressible two ways;
+schema 17 collapsed them, `MaxNamedLensQueryRunes` bounds the one remaining
+string on load, and `internal/config/v16_named_lens.go` is the only code that
+still knows the carriers. Scope is the one axis
 a lens may decline to own: an empty `NamedLens.Scope` means the definition leaves
 the view's scope exactly as it found it, which is deliberately not a way to force
 the global population. `capturedLensScope` decides what a save records — never
@@ -2161,7 +2170,7 @@ replaces the definition while keeping the baseline: one `Esc` lands on the view
 the user actually left rather than on an intermediate lens. The Esc cascade
 unwinds the lens after search and before the focus stack, and
 `classifyEmptyCause` orders the empty state the same way — a lens owns the mode,
-both filter families, the sort, and its narrowing query at once, so naming any
+the whole narrowing, the sort, and the scope at once, so naming any
 one of them would send the user to a key that cannot widen the list.
 
 Under an active lens `/` calls `beginLensQueryEdit` and the shared search input
@@ -2993,8 +3002,25 @@ schema-16 workspace finishes on the schema-17 stored-review path:
    round-trips byte-identical, the key being omitted when the flag is off.
 29. Publish `pre-stored-review-v17-<UTC>.tar.gz` plus its audit, atomically
    activate catalog schema 17 and task Markdown schema 15 across active and
-   archived projects, and clear undo/redo history whose retained bytes carry the
-   schema-14 task-document marker.
+   archived projects, rewrite the portable `.tt/lenses.json` collection onto the
+   canonical query shape, and clear undo/redo history whose retained bytes carry
+   the schema-14 task-document marker.
+
+`planV17LensDefinitions` is why the lens rewrite is part of that boundary rather
+than cleanup after it. Schema 15 removes the review tag from every task as it
+sets the stored flag, so a lens that narrowed by that tag would silently stop
+selecting the rows it was saved for. The collection is decoded as strictly as the
+runtime store decodes it, lifted through `NamedLens.UnmarshalJSON` — which is the
+one translation both lens homes share — and staged with the revision its source
+bytes carried, so it publishes or fails together with the catalog and every task
+document. `rewriteV16ReviewTagQuery` covers the second spelling: a saved
+free-text `#review` term becomes `=review`, and `-#review` becomes `-=review`,
+while every other token passes through untouched. A carrier value this build
+cannot translate refuses the whole migration instead of being dropped, because
+dropping a facet would widen a lens to select rows it never selected. A workspace
+with no `lenses.json` stages nothing: the machine-local collection it falls back
+to is lifted on every load and rewritten on that machine's next commit, which is
+the only upgrade path a file this transaction does not own can have.
 
 Each boundary is idempotent: repeated schema-17 startup neither reconverts data
 nor creates another rollback pair. Corrupt or future input and an existing

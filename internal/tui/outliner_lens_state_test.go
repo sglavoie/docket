@@ -1,7 +1,7 @@
 package tui
 
 import (
-	"slices"
+	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/config"
@@ -27,34 +27,37 @@ func (s lensState) equal(other lensState) bool {
 	return s.fingerprint() == other.fingerprint()
 }
 
+// lensRoundTripFacets is a narrowing touching every kind of canonical clause a
+// lens can hold: a value-carrying facet, a repeated one, the reserved unset
+// token, a derived predicate, a negation, a population selector, and the
+// dependency axis the retired filter carriers could not persist at all.
+const lensRoundTripFacets = "!1 #api #zeta ##deep ##errand @week $waiting $doing " +
+	"*pin =review ?stale ?deferred ?completed:30d -?leaf +#client +#0 +parked +archived:only"
+
 func lensRoundTripBase(t *testing.T) lensState {
 	t.Helper()
-	states, err := models.NewWorkflowStateSet(models.StateWaiting, models.StateDoing)
+	facets, err := models.ParseQuery(lensRoundTripFacets)
 	if err != nil {
-		t.Fatalf("NewWorkflowStateSet: %v", err)
+		t.Fatalf("ParseQuery: %v", err)
 	}
-	base := lensState{
+	return lensState{
 		mode:           ModeAll,
 		scopeProjectID: lensRoundTripScopeID,
+		facets:         facets,
 		query:          "#api ship",
-		filter:         NewFilterState(),
-		projectFilter:  newProjectFilterState(),
-		sort:           NewSortState(),
+		sort:           SortState{Field: SortByPriority, Ascending: false},
 	}
-	base.filter.setStateFilter(states, true)
-	base.filter.Priority = models.PriorityHigh
-	base.filter.Tags = map[string]bool{"zeta": true, "api": true}
-	base.filter.Contexts = map[string]bool{"errand": true, "deep": true}
-	base.filter.setCompletionAgeFilter(CompletionAge30Days)
-	base.filter.Stale = true
-	base.filter.Deferred = true
-	base.filter.Pinned = true
-	base.projectFilter.Tags = map[string]bool{"client": true}
-	base.projectFilter.Untagged = true
-	base.projectFilter.ParkedMode = projectPopulationInclude
-	base.projectFilter.ArchivedMode = projectPopulationOnly
-	base.sort = SortState{Field: SortByPriority, Ascending: false}
-	return base
+}
+
+// lensStateWithFacets replaces the canonical half of one state's narrowing.
+func lensStateWithFacets(t *testing.T, state lensState, query string) lensState {
+	t.Helper()
+	facets, err := models.ParseQuery(query)
+	if err != nil {
+		t.Fatalf("ParseQuery(%q): %v", query, err)
+	}
+	state.facets = facets
+	return state
 }
 
 func TestLensStateRoundTripsEveryModeFacetPopulationAndSortAxis(t *testing.T) {
@@ -64,31 +67,21 @@ func TestLensStateRoundTripsEveryModeFacetPopulationAndSortAxis(t *testing.T) {
 	for _, mode := range OutlinerModeCatalog() {
 		variants["mode:"+string(mode.ID)] = func(s *lensState) { s.mode = mode.ID }
 	}
-	for _, due := range []DueDateFilter{DueDateAll, DueDateOverdue, DueDateToday, DueDateThisWeek, DueDateNone} {
-		variants["due:"+lensDueAxis.token(due)] = func(s *lensState) { s.filter.DueDate = due }
-	}
-	for _, hierarchy := range []HierarchyFilter{
-		HierarchyAll, HierarchyParent, HierarchyChild, HierarchyRoot, HierarchyLeaf,
+	// Every canonical field a lens may narrow on, one variant each, so an axis
+	// that cannot survive the durable string fails here rather than silently
+	// widening a restored lens.
+	for _, facets := range []string{
+		"", `"needle"`, "!2", "!0", "#api", "#api*", "##deep", "##0",
+		"@overdue", "@today", "@week", "@2026-01-05", "@+3h", "@0", "@@2026-01-05",
+		"$backlog", "$done $canceled", "*pin", "=review", "?stale", "?deferred",
+		"?completed", "?completed:7d", "?parent", "?child", "?leaf", "?blocked", "?blocking",
+		"-#api", "-!2", "-$doing", "-*pin", "-=review", "-?stale",
+		"+#client", "+#0", "+parked", "+parked:only", "+archived", "+archived:only",
 	} {
-		variants["hierarchy:"+lensHierarchyAxis.token(hierarchy)] = func(s *lensState) { s.filter.Hierarchy = hierarchy }
-	}
-	for _, age := range []CompletionAgeFilter{
-		CompletionAgeAll, CompletionAge7Days, CompletionAge30Days, CompletionAge90Days,
-	} {
-		variants["age:"+lensCompletionAgeAxis.token(age)] = func(s *lensState) { s.filter.setCompletionAgeFilter(age) }
-	}
-	for _, population := range []projectPopulationMode{
-		projectPopulationExclude, projectPopulationInclude, projectPopulationOnly,
-	} {
-		variants["parked:"+lensPopulationAxis.token(population)] = func(s *lensState) {
-			s.projectFilter.ParkedMode = population
-		}
-		variants["archived:"+lensPopulationAxis.token(population)] = func(s *lensState) {
-			s.projectFilter.ArchivedMode = population
-		}
+		variants["facets:"+facets] = func(s *lensState) { *s = lensStateWithFacets(t, *s, facets) }
 	}
 	for _, field := range []SortField{
-		SortByDefault, SortByPriority, SortByDueDate, SortByCreatedAt, SortByStatus, SortByUpdatedAt, SortByTitle,
+		SortByDefault, SortByPriority, SortByDueDate, SortByCreatedAt, SortByUpdatedAt, SortByTitle,
 	} {
 		for _, ascending := range []bool{true, false} {
 			name := "sort:" + lensSortAxis.token(field)
@@ -98,26 +91,13 @@ func TestLensStateRoundTripsEveryModeFacetPopulationAndSortAxis(t *testing.T) {
 			variants[name] = func(s *lensState) { s.sort = SortState{Field: field, Ascending: ascending} }
 		}
 	}
-	// The two activation flags are axes of their own: an absent predicate and an
-	// active one that admits everything must not collapse into the same record.
-	variants["states:absent"] = func(s *lensState) { s.filter.setStateFilter(models.WorkflowStateSet{}, false) }
-	variants["states:empty-active"] = func(s *lensState) { s.filter.setStateFilter(models.WorkflowStateSet{}, true) }
-	variants["age:inactive"] = func(s *lensState) {
-		s.filter.CompletionAge = CompletionAge90Days
-		s.filter.completionAgeSet = false
+	// The remainder is the half the canonical vocabulary cannot spell. It round
+	// trips verbatim, including the case where it is the whole narrowing.
+	variants["query:absent"] = func(s *lensState) { s.query = "" }
+	variants["query:only"] = func(s *lensState) {
+		*s = lensStateWithFacets(t, *s, "")
+		s.query = "ship it"
 	}
-	// The context facet needs no activation flag: its two halves are a
-	// vocabulary and the gap beside it, and each is independently absent or
-	// present, so all four combinations must round trip distinctly.
-	variants["contexts:absent"] = func(s *lensState) {
-		s.filter.Contexts = map[string]bool{}
-		s.filter.NoContext = false
-	}
-	variants["contexts:gap-only"] = func(s *lensState) {
-		s.filter.Contexts = map[string]bool{}
-		s.filter.NoContext = true
-	}
-	variants["contexts:names-and-gap"] = func(s *lensState) { s.filter.NoContext = true }
 	// The unowned scope is a distinct record from a named one, and the empty
 	// string is its only spelling, so it round trips as absence rather than as a
 	// default token some axis table supplies.
@@ -126,8 +106,6 @@ func TestLensStateRoundTripsEveryModeFacetPopulationAndSortAxis(t *testing.T) {
 	for name, mutate := range variants {
 		t.Run(name, func(t *testing.T) {
 			want := base
-			want.filter = copyFilterState(base.filter)
-			want.projectFilter = base.projectFilter.clone()
 			mutate(&want)
 
 			stored := want.namedLens(lensRoundTripID, "Round Trip")
@@ -155,23 +133,16 @@ func TestLensStateDecodesOmittedTokensAsAxisDefaultsAndRefusesUnknownSpellings(t
 	if err != nil {
 		t.Fatalf("lensStateFromNamedLens: %v", err)
 	}
-	want := lensState{
-		mode:          ModeInbox,
-		filter:        NewFilterState(),
-		projectFilter: newProjectFilterState(),
-		sort:          SortState{Field: SortByDefault},
-	}
+	want := lensState{mode: ModeInbox, sort: SortState{Field: SortByDefault}}
 	if !got.equal(want) {
 		t.Fatalf("omitted tokens decoded to %q, want axis defaults %q", got.fingerprint(), want.fingerprint())
 	}
 
 	for name, mutate := range map[string]func(*config.NamedLens){
 		"mode":     func(l *config.NamedLens) { l.Mode = "" },
-		"due":      func(l *config.NamedLens) { l.Tasks.DueDate = "someday" },
-		"age":      func(l *config.NamedLens) { l.Tasks.CompletionAge = "14d" },
-		"context":  func(l *config.NamedLens) { l.Tasks.Contexts = []string{"Not A Context"} },
 		"sort":     func(l *config.NamedLens) { l.Sort.Field = "manual" },
-		"archived": func(l *config.NamedLens) { l.Projects.ArchivedMode = "always" },
+		"scope":    func(l *config.NamedLens) { l.Scope = "Alpha" },
+		"oversize": func(l *config.NamedLens) { l.Query = strings.Repeat("a", config.MaxNamedLensQueryRunes+1) },
 	} {
 		t.Run("malformed/"+name, func(t *testing.T) {
 			broken := stored
@@ -181,48 +152,53 @@ func TestLensStateDecodesOmittedTokensAsAxisDefaultsAndRefusesUnknownSpellings(t
 			}
 		})
 	}
+
+	// A narrowing token the canonical vocabulary cannot spell is not malformed:
+	// it is the remainder the textgrammar surfaces own, and it decodes rather
+	// than refusing, because compiling it belongs to projection time.
+	t.Run("unparseable narrowing decodes as the remainder", func(t *testing.T) {
+		carried := stored
+		carried.Query = "@someday needle"
+		state, err := lensStateFromNamedLens(carried)
+		if err != nil {
+			t.Fatalf("lensStateFromNamedLens: %v", err)
+		}
+		if state.query != "@someday needle" {
+			t.Fatalf("remainder = %q, want the verbatim narrowing", state.query)
+		}
+		if !state.facets.IsEmpty() {
+			t.Fatalf("unparseable tokens became clauses: %q", state.facets.String())
+		}
+	})
 }
 
-func TestLensStateFingerprintIsDeterministicAcrossMapIterationOrder(t *testing.T) {
-	first := lensRoundTripBase(t)
-	second := lensRoundTripBase(t)
-	second.filter.Tags = map[string]bool{}
-	for _, tag := range []string{"zeta", "api"} {
-		second.filter.Tags[tag] = true
-	}
-	// An unselected key is not part of the projection and must not reach the
-	// fingerprint through the map it happens to sit in.
-	second.filter.Tags["dropped"] = false
+// The canonical half is rendered in canonical order, so the same narrowing
+// spelled in two orders is one record: nothing about the order a facet was
+// chosen in can make an unchanged saved lens read as modified.
+func TestLensStateFingerprintIsIndependentOfFacetSpellingOrder(t *testing.T) {
+	first := lensStateWithFacets(t, lensRoundTripBase(t), "#zeta #api $waiting !1")
+	second := lensStateWithFacets(t, lensRoundTripBase(t), "!1 $waiting #api #zeta")
 
-	states, err := models.NewWorkflowStateSet(models.StateDoing, models.StateWaiting)
-	if err != nil {
-		t.Fatalf("NewWorkflowStateSet: %v", err)
-	}
-	second.filter.setStateFilter(states, true)
-
-	for range 20 {
-		if first.fingerprint() != second.fingerprint() {
-			t.Fatalf("fingerprints differ across iteration order:\n%q\n%q",
-				first.fingerprint(), second.fingerprint())
-		}
+	if first.fingerprint() != second.fingerprint() {
+		t.Fatalf("fingerprints differ by spelling order:\n%q\n%q",
+			first.fingerprint(), second.fingerprint())
 	}
 	if !first.equal(second) {
 		t.Fatal("equal disagreed with identical fingerprints")
 	}
 
-	modified := first
-	modified.filter = copyFilterState(first.filter)
-	modified.filter.Tags["extra"] = true
-	if modified.equal(first) {
-		t.Fatal("an added tag facet did not change the fingerprint")
+	// A canonical token typed into the remainder is lifted into the clause half
+	// on the way out, so the two halves cannot disagree about where a facet is
+	// and a freshly applied lens cannot read as modified.
+	split := lensStateWithFacets(t, lensRoundTripBase(t), "#api $waiting")
+	split.query = "!1 #zeta ship"
+	if split.fingerprint() != first.fingerprint() {
+		t.Fatalf("a facet in the remainder changed the record:\n%q\n%q",
+			split.fingerprint(), first.fingerprint())
 	}
 
-	stored := first.namedLens(lensRoundTripID, "Sorted")
-	if !slices.Equal(stored.Tasks.Tags, []string{"api", "zeta"}) {
-		t.Fatalf("stored task tags = %v, want sorted", stored.Tasks.Tags)
-	}
-	if !slices.Equal(stored.Tasks.States, []string{string(models.StateDoing), string(models.StateWaiting)}) {
-		t.Fatalf("stored states = %v, want canonical lifecycle order", stored.Tasks.States)
+	if lensStateWithFacets(t, first, "#api $waiting !1").equal(first) {
+		t.Fatal("dropping a tag facet did not change the fingerprint")
 	}
 }
 
@@ -239,23 +215,13 @@ func TestLensStateFingerprintWatchesEveryLensOwnedAxis(t *testing.T) {
 		"scope":         func(s *lensState) { s.scopeProjectID = lensRoundTripID },
 		"scope dropped": func(s *lensState) { s.scopeProjectID = "" },
 		"query":         func(s *lensState) { s.query = "something else" },
-		"states":        func(s *lensState) { s.filter.setStateFilter(models.WorkflowStateSet{}, true) },
-		"states set":    func(s *lensState) { s.filter.setStateFilter(models.WorkflowStateSet{}, false) },
-		"priority":      func(s *lensState) { s.filter.Priority = models.PriorityLow },
-		"tags":          func(s *lensState) { s.filter.Tags["extra"] = true },
-		"contexts":      func(s *lensState) { s.filter.Contexts["extra"] = true },
-		"no context":    func(s *lensState) { s.filter.NoContext = !s.filter.NoContext },
-		"due":           func(s *lensState) { s.filter.DueDate = DueDateOverdue },
-		"age":           func(s *lensState) { s.filter.setCompletionAgeFilter(CompletionAge7Days) },
-		"age set":       func(s *lensState) { s.filter.completionAgeSet = !s.filter.completionAgeSet },
-		"hierarchy":     func(s *lensState) { s.filter.Hierarchy = HierarchyLeaf },
-		"stale":         func(s *lensState) { s.filter.Stale = !s.filter.Stale },
-		"deferred":      func(s *lensState) { s.filter.Deferred = !s.filter.Deferred },
-		"pinned":        func(s *lensState) { s.filter.Pinned = !s.filter.Pinned },
-		"project tags":  func(s *lensState) { s.projectFilter.Tags["extra"] = true },
-		"untagged":      func(s *lensState) { s.projectFilter.Untagged = !s.projectFilter.Untagged },
-		"parked":        func(s *lensState) { s.projectFilter.ParkedMode = projectPopulationExclude },
-		"archived":      func(s *lensState) { s.projectFilter.ArchivedMode = projectPopulationInclude },
+		"query dropped": func(s *lensState) { s.query = "" },
+		"facet added":   func(s *lensState) { *s = lensStateWithFacets(t, *s, lensRoundTripFacets+" ?parent") },
+		"facet dropped": func(s *lensState) { *s = lensStateWithFacets(t, *s, "!1") },
+		"facet value":   func(s *lensState) { *s = lensStateWithFacets(t, *s, "!2") },
+		"facet polarity": func(s *lensState) {
+			*s = lensStateWithFacets(t, *s, strings.Replace(lensRoundTripFacets, "#api", "-#api", 1))
+		},
 		"sort field":    func(s *lensState) { s.sort.Field = SortByTitle },
 		"sort ordering": func(s *lensState) { s.sort.Ascending = !s.sort.Ascending },
 	}
@@ -264,8 +230,6 @@ func TestLensStateFingerprintWatchesEveryLensOwnedAxis(t *testing.T) {
 	for name, mutate := range mutations {
 		t.Run(name, func(t *testing.T) {
 			edited := base
-			edited.filter = copyFilterState(base.filter)
-			edited.projectFilter = base.projectFilter.clone()
 			mutate(&edited)
 			if edited.fingerprint() == base.fingerprint() {
 				t.Fatalf("editing %s left the lens reading as unmodified: %q", name, base.fingerprint())
@@ -274,33 +238,26 @@ func TestLensStateFingerprintWatchesEveryLensOwnedAxis(t *testing.T) {
 	}
 }
 
-// The context facet's names are emitted sorted, beside the tags they are not,
-// so map iteration order can never make an unchanged context lens read as
-// modified and a context can never be mistaken for a tag in the record.
-func TestLensStateStoresContextsSortedAndApartFromTags(t *testing.T) {
-	state := lensRoundTripBase(t)
-	state.filter.NoContext = true
-	stored := state.namedLens(lensRoundTripID, "Contexts")
+// The two halves of the durable string stay apart in the record: canonical
+// clauses first, in canonical order, and the remainder verbatim behind them.
+func TestLensStateStoresCanonicalClausesAheadOfTheRemainder(t *testing.T) {
+	state := lensStateWithFacets(t, lensRoundTripBase(t), "#zeta #api ##deep")
+	state.query = "ship it"
+	stored := state.namedLens(lensRoundTripID, "Halves")
 
-	if !slices.Equal(stored.Tasks.Contexts, []string{"deep", "errand"}) {
-		t.Fatalf("stored contexts = %v, want sorted", stored.Tasks.Contexts)
-	}
-	if !slices.Equal(stored.Tasks.Tags, []string{"api", "zeta"}) {
-		t.Fatalf("the context facet leaked into the tag facet: %v", stored.Tasks.Tags)
-	}
-	if !stored.Tasks.NoContext {
-		t.Fatal("the no-context half was not persisted")
+	if want := "#api #zeta ##deep ship it"; stored.Query != want {
+		t.Fatalf("stored query = %q, want %q", stored.Query, want)
 	}
 
 	got, err := lensStateFromNamedLens(stored)
 	if err != nil {
 		t.Fatalf("lensStateFromNamedLens: %v", err)
 	}
-	if !got.filter.Contexts["deep"] || !got.filter.Contexts["errand"] || !got.filter.NoContext {
-		t.Fatalf("context facet did not restore: %+v noContext=%v", got.filter.Contexts, got.filter.NoContext)
+	if want := "#api #zeta ##deep"; got.facets.String() != want {
+		t.Fatalf("restored facets = %q, want %q", got.facets.String(), want)
 	}
-	if got.filter.Contexts["api"] {
-		t.Fatal("a tag was restored as a context")
+	if got.query != "ship it" {
+		t.Fatalf("restored remainder = %q, want the verbatim prose", got.query)
 	}
 }
 
@@ -325,8 +282,11 @@ func TestLensStateStarterRecordsConvertAndRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("lensStateFromNamedLens: %v", err)
 	}
-	if !waiting.filter.hasStateFilter() || !waiting.filter.States.Contains(models.StateWaiting) {
-		t.Fatalf("Waiting starter lost its state facet: %+v", waiting.filter.States.Values())
+	if waiting.facets.IsEmpty() {
+		t.Fatal("Waiting starter carries no facets at all")
+	}
+	if !strings.Contains(waiting.facets.String(), "$"+string(models.StateWaiting)) {
+		t.Fatalf("Waiting starter lost its state facet: %q", waiting.facets.String())
 	}
 }
 
@@ -349,11 +309,16 @@ func TestCaptureLensStateReadsRememberedTreeSortAndDetachesCollections(t *testin
 	if captured.sort != (SortState{Field: SortByTitle, Ascending: false}) {
 		t.Fatalf("captured sort = %+v, want the remembered tree sort", captured.sort)
 	}
+	if want := "#api +#client"; captured.facets.String() != want {
+		t.Fatalf("captured facets = %q, want %q", captured.facets.String(), want)
+	}
 
+	before := captured.facets.String()
 	outliner.filter.Tags["late"] = true
 	outliner.projectFilter.Tags["late"] = true
-	if captured.filter.Tags["late"] || captured.projectFilter.Tags["late"] {
-		t.Fatal("a later facet edit reached into the captured definition")
+	outliner.adoptFilterCarriers()
+	if captured.facets.String() != before {
+		t.Fatalf("a later facet edit reached into the captured definition: %q", captured.facets.String())
 	}
 }
 
@@ -365,12 +330,7 @@ func TestApplyLensStateInstallsManualSortAndRemembersItInFixedOrderModes(t *test
 			outliner.sort = SortState{Field: SortByTitle, Ascending: true}
 			outliner.treeSort = SortState{Field: SortByTitle, Ascending: true}
 
-			state := lensState{
-				mode:          mode.ID,
-				filter:        NewFilterState(),
-				projectFilter: newProjectFilterState(),
-				sort:          saved,
-			}
+			state := lensState{mode: mode.ID, sort: saved}
 			if !outliner.applyLensState(state) {
 				t.Fatal("applyLensState refused a catalog mode")
 			}
@@ -416,9 +376,11 @@ func TestApplyLensStateDetachesFilterCollectionsFromTheDefinition(t *testing.T) 
 		t.Fatalf("captured %q after applying %q", outliner.captureLensState().fingerprint(), state.fingerprint())
 	}
 
+	before := state.facets.String()
 	outliner.filter.Tags["live"] = true
 	outliner.projectFilter.Tags["live"] = true
-	if state.filter.Tags["live"] || state.projectFilter.Tags["live"] {
-		t.Fatal("a live facet edit mutated the applied definition")
+	outliner.adoptFilterCarriers()
+	if state.facets.String() != before {
+		t.Fatalf("a live facet edit mutated the applied definition: %q", state.facets.String())
 	}
 }

@@ -224,7 +224,6 @@ func TestLensTemplateGalleryKeepsAReplacedTemplateUnavailable(t *testing.T) {
 	// A replace overwrites the projection under the same identity, which is
 	// exactly what the stable-ID rule is there to keep unavailable.
 	replaced.Query = "invoice"
-	replaced.Tasks.Stale = false
 	setMachineLenses(t, model, config.NamedLensList{replaced})
 
 	picker := openLensTemplateGallery(t, model)
@@ -401,7 +400,6 @@ func TestLensTemplateGalleryKeepsStyleOnUnavailableRows(t *testing.T) {
 	stale := lensTemplateByName(t, "Stale")
 	replaced := stale.Clone()
 	replaced.Query = "invoice"
-	replaced.Tasks.Stale = false
 
 	model := lensOperationApp(t)
 	setMachineLenses(t, model, config.NamedLensList{renamed, stranger, replaced})

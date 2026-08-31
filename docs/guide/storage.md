@@ -92,7 +92,9 @@ starters, anything you saved yourself, and anything you added from the built-in
 gallery, which are all one list. It travels with the workspace, so a lens you
 save on one machine is a lens every machine that opens that workspace has. An
 empty lens list persists as `[]` and is honored, which is what makes deletion
-durable, on every machine rather than on the one you deleted from.
+durable, on every machine rather than on the one you deleted from. Each record
+names its mode, its project scope, its sort, and one query holding every facet
+it narrows by, so what a lens selects is one line you can read.
 
 Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the
 dark/light theme choice and a pointer to the lens that was last open. Both are
@@ -170,7 +172,7 @@ already say.
 | Schema 14 upgrades task Markdown to schema 13 by adding the optional `due_time` field | A canonical `HH:MM` wall-clock giving a due date an explicit time-of-day. Existing due dates are calendar-only, so every migrated task keeps its date and receives no `due_time` |
 | Schema 15 upgrades task Markdown to schema 14 by adding the optional `depends` list of soft task references | No retired field carried dependency data into this boundary, so every migrated task starts with an empty list — an omitted key |
 | Schema 16 leaves task Markdown at schema 14 | It is the one boundary that upgrades no task grammar: it marks the workspace as the home of named lens definitions, so the catalog is the only file it rewrites. Every project document is still read and validated first, so an unreadable workspace is refused rather than half-migrated |
-| Schema 17 upgrades task Markdown to schema 15 by moving review off the tag list and onto a stored `review` flag | A task carrying the `review` tag before the migration carries `review: true` after it, and that tag is removed as it is lifted, so the workspace never holds two answers to one question. Every other tag is preserved in place, and a task that was not up for review is written back unchanged, because the key is omitted when the flag is off |
+| Schema 17 upgrades task Markdown to schema 15 by moving review off the tag list and onto a stored `review` flag | A task carrying the `review` tag before the migration carries `review: true` after it, and that tag is removed as it is lifted, so the workspace never holds two answers to one question. Every other tag is preserved in place, and a task that was not up for review is written back unchanged, because the key is omitted when the flag is off. Your saved lenses are rewritten in the same step and by the same rule: each one becomes a single query, and a lens that narrowed by the `review` tag narrows by review itself, so it still selects the rows you saved it for |
 
 Invalid or future-schema input aborts without changing workspace data. An
 existing `unfiled` project or directory also aborts before snapshot publication

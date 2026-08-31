@@ -2,9 +2,9 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 
@@ -12,36 +12,25 @@ import (
 )
 
 // validLens returns a definition that passes validation, so each test can make
-// exactly one thing wrong.
+// exactly one thing wrong. Its query names every facet family the canonical
+// vocabulary carries, which is what the schema-16 carriers used to spell in
+// struct fields.
 func validLens() NamedLens {
 	return NamedLens{
-		ID:   "9f8b8e42-7c3a-4d61-8f2a-1b0c9d7e5a01",
-		Name: "Review Queue",
-		Mode: LensModeAll,
-		Tasks: LensTaskFilters{
-			States:           []string{string(models.StateWaiting)},
-			StatesSet:        true,
-			Priority:         models.PriorityMedium,
-			Tags:             []string{"deep-work"},
-			Contexts:         []string{"errand"},
-			NoContext:        true,
-			DueDate:          LensDueWeek,
-			CompletionAge:    LensCompletionAge30Days,
-			CompletionAgeSet: true,
-			Hierarchy:        LensHierarchyRoot,
-			Stale:            true,
-			Deferred:         true,
-			Pinned:           true,
-		},
-		Projects: LensProjectFilters{
-			Tags:         []string{"client"},
-			Untagged:     true,
-			ParkedMode:   LensPopulationInclude,
-			ArchivedMode: LensPopulationOnly,
-		},
-		Sort: LensSort{Field: LensSortUpdated, Ascending: true},
+		ID:    "9f8b8e42-7c3a-4d61-8f2a-1b0c9d7e5a01",
+		Name:  "Review Queue",
+		Mode:  LensModeAll,
+		Query: validLensQuery,
+		Sort:  LensSort{Field: LensSortUpdated, Ascending: true},
 	}
 }
+
+// validLensQuery is that fixture's narrowing, already in canonical order: a
+// priority threshold, a tag, a context and the context gap, a due bucket, a
+// state, the pin, the stale and deferred facets, a completion window, the
+// root position spelled as a negated child clause, and both population axes.
+const validLensQuery = "!2+ #deep-work ##errand ##0 @week $waiting *pin " +
+	"?stale ?deferred ?completed:30d -?child +#client +#0 +parked +archived:only"
 
 func TestNewMachineStateSeedsStarterLenses(t *testing.T) {
 	m := NewMachineState()
@@ -66,8 +55,7 @@ func TestNewMachineStateSeedsStarterLenses(t *testing.T) {
 	if waiting == nil {
 		t.Fatal("Waiting starter missing")
 	}
-	if waiting.Mode != LensModeAll || !waiting.Tasks.StatesSet ||
-		len(waiting.Tasks.States) != 1 || waiting.Tasks.States[0] != string(models.StateWaiting) {
+	if waiting.Mode != LensModeAll || waiting.Query != "$"+string(models.StateWaiting) {
 		t.Fatalf("Waiting starter = %+v, want All mode with the waiting state", waiting)
 	}
 	if waiting.Sort.Field != LensSortDefault || !waiting.Sort.Ascending {
@@ -78,7 +66,7 @@ func TestNewMachineStateSeedsStarterLenses(t *testing.T) {
 	if high == nil {
 		t.Fatal("High Priority starter missing")
 	}
-	if high.Mode != LensModeAll || high.Tasks.Priority != models.PriorityHigh {
+	if high.Mode != LensModeAll || high.Query != fmt.Sprintf("!%d+", models.PriorityHigh) {
 		t.Fatalf("High Priority starter = %+v, want All mode at the High threshold", high)
 	}
 	if high.Sort.Field != LensSortPriority || !high.Sort.Ascending {
@@ -89,7 +77,7 @@ func TestNewMachineStateSeedsStarterLenses(t *testing.T) {
 	if stale == nil {
 		t.Fatal("Stale starter missing")
 	}
-	if stale.Mode != LensModeAll || !stale.Tasks.Stale {
+	if stale.Mode != LensModeAll || stale.Query != "?stale" {
 		t.Fatalf("Stale starter = %+v, want All mode with the stale facet", stale)
 	}
 	if stale.Sort.Field != LensSortUpdated || !stale.Sort.Ascending {
@@ -115,69 +103,64 @@ func TestBuiltinNamedLensTemplatesExactCatalog(t *testing.T) {
 			ID:    "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c01",
 			Name:  "Waiting",
 			Mode:  LensModeAll,
-			Tasks: LensTaskFilters{States: []string{"waiting"}, StatesSet: true},
+			Query: "$waiting",
 			Sort:  LensSort{Field: LensSortDefault, Ascending: true},
 		},
 		{
 			ID:    "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c02",
 			Name:  "High Priority",
 			Mode:  LensModeAll,
-			Tasks: LensTaskFilters{Priority: models.PriorityHigh},
+			Query: "!1+",
 			Sort:  LensSort{Field: LensSortPriority, Ascending: true},
 		},
 		{
 			ID:    "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c03",
 			Name:  "Stale",
 			Mode:  LensModeAll,
-			Tasks: LensTaskFilters{Stale: true},
+			Query: "?stale",
 			Sort:  LensSort{Field: LensSortUpdated, Ascending: true},
 		},
 		{
 			ID:    "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c04",
 			Name:  "Overdue",
 			Mode:  LensModeDue,
-			Tasks: LensTaskFilters{DueDate: LensDueOverdue},
+			Query: "@overdue",
 			Sort:  LensSort{Field: LensSortDefault, Ascending: true},
 		},
 		{
 			ID:    "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c05",
 			Name:  "Active Work",
 			Mode:  LensModeAll,
-			Tasks: LensTaskFilters{States: []string{"doing"}, StatesSet: true},
+			Query: "$doing",
 			Sort:  LensSort{Field: LensSortPriority, Ascending: true},
 		},
 		{
 			ID:    "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c06",
 			Name:  "Review Queue",
 			Mode:  LensModeAll,
-			Tasks: LensTaskFilters{Review: true},
+			Query: "=review",
 			Sort:  LensSort{Field: LensSortUpdated, Ascending: true},
 		},
 		{
 			ID:    "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c07",
 			Name:  "Deferred",
 			Mode:  LensModeAll,
-			Tasks: LensTaskFilters{Deferred: true},
+			Query: "?deferred",
 			Sort:  LensSort{Field: LensSortUpdated, Ascending: true},
 		},
 		{
-			ID:   "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c08",
-			Name: "Cleanup 90d",
-			Mode: LensModeAll,
-			Tasks: LensTaskFilters{
-				States:           []string{"done", "canceled"},
-				StatesSet:        true,
-				CompletionAge:    LensCompletionAge90Days,
-				CompletionAgeSet: true,
-			},
-			Sort: LensSort{Field: LensSortUpdated, Ascending: true},
+			ID:    "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c08",
+			Name:  "Cleanup 90d",
+			Mode:  LensModeAll,
+			Query: "$canceled $done ?completed:90d",
+			Sort:  LensSort{Field: LensSortUpdated, Ascending: true},
 		},
 		{
-			ID:       "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c09",
-			Name:     "Parked Work",
-			Mode:     LensModeAll,
-			Projects: LensProjectFilters{ParkedMode: LensPopulationOnly},
-			Sort:     LensSort{Field: LensSortDefault, Ascending: true},
+			ID:    "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c09",
+			Name:  "Parked Work",
+			Mode:  LensModeAll,
+			Query: "+parked:only",
+			Sort:  LensSort{Field: LensSortDefault, Ascending: true},
 		},
 	}
 
@@ -191,11 +174,24 @@ func TestBuiltinNamedLensTemplatesExactCatalog(t *testing.T) {
 			if gotJSON != wantJSON {
 				t.Fatalf("template %d:\n got %s\nwant %s", i, gotJSON, wantJSON)
 			}
-			// Empty query is part of the contract and omitempty hides it.
-			if got[i].Query != "" {
-				t.Errorf("template %q query = %q, want empty", wantLens.Name, got[i].Query)
-			}
 		})
+	}
+}
+
+// A built-in query is a durable string, so it must already be exactly what
+// models.Query.String renders: a template whose literal is merely equivalent to
+// the canonical spelling would compare unequal to the same lens saved from the
+// view it describes.
+func TestBuiltinNamedLensTemplateQueriesAreCanonical(t *testing.T) {
+	for _, lens := range BuiltinNamedLensTemplates() {
+		parsed, err := models.ParseQuery(lens.Query)
+		if err != nil {
+			t.Errorf("template %q query %q does not parse: %v", lens.Name, lens.Query, err)
+			continue
+		}
+		if rendered := parsed.String(); rendered != lens.Query {
+			t.Errorf("template %q query = %q, want canonical %q", lens.Name, lens.Query, rendered)
+		}
 	}
 }
 
@@ -234,8 +230,7 @@ func TestBuiltinNamedLensTemplatesDetachOnEveryCall(t *testing.T) {
 
 			mutated := tc.call()
 			mutated[0].Name = "Mutated"
-			mutated[0].Tasks.States[0] = "mutated-state"
-			mutated[0].Tasks.StatesSet = false
+			mutated[0].Query = "$mutated-state"
 			if grown := append(mutated, validLens()); len(grown) != len(mutated)+1 {
 				t.Fatalf("append length = %d, want %d", len(grown), len(mutated)+1)
 			}
@@ -308,22 +303,11 @@ func TestNamedLensValidateRejectsMalformedTokens(t *testing.T) {
 	}{
 		{"mode", func(l *NamedLens) { l.Mode = "everything" }},
 		{"empty mode", func(l *NamedLens) { l.Mode = "" }},
-		{"due bucket", func(l *NamedLens) { l.Tasks.DueDate = "fortnight" }},
-		{"completion age", func(l *NamedLens) { l.Tasks.CompletionAge = "14d" }},
-		{"hierarchy", func(l *NamedLens) { l.Tasks.Hierarchy = "sibling" }},
 		{"sort field", func(l *NamedLens) { l.Sort.Field = "color" }},
-		{"parked population", func(l *NamedLens) { l.Projects.ParkedMode = "maybe" }},
-		{"archived population", func(l *NamedLens) { l.Projects.ArchivedMode = "maybe" }},
-		{"workflow state", func(l *NamedLens) { l.Tasks.States = []string{"ready"} }},
-		{"repeated workflow state", func(l *NamedLens) { l.Tasks.States = []string{"doing", "doing"} }},
-		{"priority", func(l *NamedLens) { l.Tasks.Priority = 4 }},
-		{"task tag case", func(l *NamedLens) { l.Tasks.Tags = []string{"DeepWork"} }},
-		{"repeated task tag", func(l *NamedLens) { l.Tasks.Tags = []string{"deep-work", "deep-work"} }},
-		{"task context case", func(l *NamedLens) { l.Tasks.Contexts = []string{"Errand"} }},
-		{"repeated task context", func(l *NamedLens) { l.Tasks.Contexts = []string{"errand", "errand"} }},
-		{"empty task context", func(l *NamedLens) { l.Tasks.Contexts = []string{""} }},
-		{"project tag case", func(l *NamedLens) { l.Projects.Tags = []string{"Client"} }},
-		{"repeated project tag", func(l *NamedLens) { l.Projects.Tags = []string{"client", "client"} }},
+		{"retired status sort field", func(l *NamedLens) { l.Sort.Field = "status" }},
+		{"overlong query", func(l *NamedLens) { l.Query = strings.Repeat("x", MaxNamedLensQueryRunes+1) }},
+		{"query newline", func(l *NamedLens) { l.Query = "#one\n#two" }},
+		{"query control character", func(l *NamedLens) { l.Query = "#one\a" }},
 		{"untrimmed name", func(l *NamedLens) { l.Name = " Review Queue" }},
 		{"id", func(l *NamedLens) { l.ID = "lens-1" }},
 	}
@@ -360,11 +344,28 @@ func TestNamedLensValidateAcceptsOmittedTokenDefaults(t *testing.T) {
 func TestNamedLensValidateAcceptsCanonicalUnusedTags(t *testing.T) {
 	// A canonical tag no task carries is valid; it simply matches nothing.
 	lens := validLens()
-	lens.Tasks.Tags = []string{"nobody-uses-this"}
-	lens.Tasks.Contexts = []string{"nobody-is-here"}
-	lens.Projects.Tags = []string{"nor-this-one"}
+	lens.Query = "#nobody-uses-this ##nobody-is-here +#nor-this-one"
 	if err := lens.Validate(); err != nil {
 		t.Fatalf("canonical unused tags should validate: %v", err)
+	}
+}
+
+// Validation bounds the query and refuses a control character in it; it
+// deliberately does not parse it. A query the vocabulary cannot read keeps the
+// ordinary invalid-query guidance at projection time instead of making a whole
+// workspace file unloadable.
+func TestNamedLensValidateDoesNotParseTheQuery(t *testing.T) {
+	for _, query := range []string{
+		"unparseable-prose",
+		"@+3h",
+		"$today",
+		strings.Repeat("x", MaxNamedLensQueryRunes),
+	} {
+		lens := validLens()
+		lens.Query = query
+		if err := lens.Validate(); err != nil {
+			t.Errorf("query %q should validate: %v", query, err)
+		}
 	}
 }
 
@@ -373,63 +374,165 @@ func TestNamedLensValidateAcceptsCanonicalUnusedTags(t *testing.T) {
 // require the other to be present.
 func TestNamedLensValidateAcceptsEitherHalfOfTheContextFacet(t *testing.T) {
 	gapOnly := validLens()
-	gapOnly.Tasks.Contexts = nil
-	gapOnly.Tasks.NoContext = true
+	gapOnly.Query = "##0"
 	if err := gapOnly.Validate(); err != nil {
-		t.Fatalf("no_context alone should validate: %v", err)
+		t.Fatalf("the context gap alone should validate: %v", err)
 	}
 
 	namesOnly := validLens()
-	namesOnly.Tasks.Contexts = []string{"errand", "deep"}
-	namesOnly.Tasks.NoContext = false
+	namesOnly.Query = "##deep ##errand"
 	if err := namesOnly.Validate(); err != nil {
 		t.Fatalf("context names alone should validate: %v", err)
 	}
 }
 
-// A saved context facet must survive the machine payload unchanged. omitempty
-// drops both halves when the facet is absent, and an absent facet is what an
-// older record carries, so it must decode as "no context filter" rather than as
-// a malformed one.
-func TestNamedLensContextFacetJSONRoundTripAndOmission(t *testing.T) {
+// A saved query must survive the machine payload unchanged. omitempty drops it
+// when the lens narrows nothing, and an absent query is what a record naming no
+// narrowing carries, so it must decode as "no query" rather than as a malformed
+// one.
+func TestNamedLensQueryJSONRoundTripAndOmission(t *testing.T) {
 	lens := validLens()
 	data, err := json.Marshal(lens)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	if !strings.Contains(string(data), `"contexts":["errand"]`) {
-		t.Fatalf("contexts missing from payload: %s", data)
-	}
-	if !strings.Contains(string(data), `"no_context":true`) {
-		t.Fatalf("no_context missing from payload: %s", data)
+	if !strings.Contains(string(data), `"query":"`+validLensQuery+`"`) {
+		t.Fatalf("query missing from payload: %s", data)
 	}
 	var decoded NamedLens
 	if err = json.Unmarshal(data, &decoded); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if !slices.Equal(decoded.Tasks.Contexts, []string{"errand"}) || !decoded.Tasks.NoContext {
-		t.Fatalf("context facet did not round trip: %+v", decoded.Tasks)
+	if decoded.Query != validLensQuery {
+		t.Fatalf("query round trip = %q, want %q", decoded.Query, validLensQuery)
 	}
 
 	absent := validLens()
-	absent.Tasks.Contexts = nil
-	absent.Tasks.NoContext = false
+	absent.Query = ""
 	bare, err := json.Marshal(absent)
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	if strings.Contains(string(bare), "contexts") || strings.Contains(string(bare), "no_context") {
-		t.Fatalf("an absent context facet should be omitted entirely: %s", bare)
+	if strings.Contains(string(bare), "query") {
+		t.Fatalf("an absent query should be omitted entirely: %s", bare)
 	}
 	var reread NamedLens
 	if err := json.Unmarshal(bare, &reread); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if len(reread.Tasks.Contexts) != 0 || reread.Tasks.NoContext {
-		t.Fatalf("omitted context facet decoded as active: %+v", reread.Tasks)
+	if reread.Query != "" {
+		t.Fatalf("omitted query decoded as %q", reread.Query)
 	}
 	if err := reread.Validate(); err != nil {
-		t.Fatalf("a record predating the context facet must still validate: %v", err)
+		t.Fatalf("a record naming no narrowing must still validate: %v", err)
+	}
+}
+
+// A schema-16 record is lifted rather than refused: the two lens homes upgrade
+// at different times, so a machine-local list an older build wrote must still
+// load. Every carrier facet becomes its canonical clause, and the saved review
+// tag becomes the stored review predicate.
+func TestNamedLensUnmarshalLiftsSchema16Carriers(t *testing.T) {
+	cases := []struct {
+		name    string
+		payload string
+		want    string
+	}{
+		{
+			name:    "review tag becomes the review predicate",
+			payload: `{"id":"9f8b8e42-7c3a-4d61-8f2a-1b0c9d7e5a01","name":"X","mode":"all","tasks":{"tags":["review"]}}`,
+			want:    "=review",
+		},
+		{
+			name:    "review search term becomes the review predicate",
+			payload: `{"id":"9f8b8e42-7c3a-4d61-8f2a-1b0c9d7e5a01","name":"X","mode":"all","query":"#review","tasks":{"stale":true}}`,
+			// The lifted term joins the clause half, so canonical field order puts
+			// review ahead of stale rather than leaving it where it was typed.
+			want: "=review ?stale",
+		},
+		{
+			name:    "negated review search term keeps its polarity",
+			payload: `{"id":"9f8b8e42-7c3a-4d61-8f2a-1b0c9d7e5a01","name":"X","mode":"all","query":"-#review","tasks":{}}`,
+			want:    "-=review",
+		},
+		{
+			name:    "stored review flag becomes the review predicate",
+			payload: `{"id":"9f8b8e42-7c3a-4d61-8f2a-1b0c9d7e5a01","name":"X","mode":"all","tasks":{"review":true}}`,
+			want:    "=review",
+		},
+		{
+			name: "every carrier family lifts in canonical order",
+			payload: `{"id":"9f8b8e42-7c3a-4d61-8f2a-1b0c9d7e5a01","name":"X","mode":"all",` +
+				`"tasks":{"states":["waiting"],"states_set":true,"priority":2,"tags":["deep-work"],` +
+				`"contexts":["errand"],"no_context":true,"due_date":"week","completion_age":"30d",` +
+				`"completion_age_set":true,"hierarchy":"root","stale":true,"deferred":true,"pinned":true},` +
+				`"projects":{"tags":["client"],"untagged":true,"parked":"include","archived":"only"}}`,
+			want: validLensQuery,
+		},
+		{
+			name: "prose the canonical vocabulary cannot spell follows the clauses",
+			payload: `{"id":"9f8b8e42-7c3a-4d61-8f2a-1b0c9d7e5a01","name":"X","mode":"all",` +
+				`"query":"needle %alpha","tasks":{"pinned":true}}`,
+			want: "*pin needle %alpha",
+		},
+		{
+			name:    "the retired status sort field becomes the default",
+			payload: `{"id":"9f8b8e42-7c3a-4d61-8f2a-1b0c9d7e5a01","name":"X","mode":"all","sort":{"field":"status"}}`,
+			want:    "",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var decoded NamedLens
+			if err := json.Unmarshal([]byte(tc.payload), &decoded); err != nil {
+				t.Fatalf("unmarshal: %v", err)
+			}
+			if decoded.Query != tc.want {
+				t.Fatalf("lifted query = %q, want %q", decoded.Query, tc.want)
+			}
+			if err := decoded.Validate(); err != nil {
+				t.Fatalf("a lifted record must validate: %v", err)
+			}
+			// The carriers are gone from the live shape, so a re-encode drops them
+			// and the record self-heals the next time this machine writes it.
+			if data := mustJSON(t, decoded); strings.Contains(data, `"tasks"`) ||
+				strings.Contains(data, `"projects"`) {
+				t.Fatalf("a lifted record re-encoded a carrier: %s", data)
+			}
+		})
+	}
+
+	// The retired sort token is rewritten rather than refused, and only there:
+	// an unknown one is still malformed.
+	var status NamedLens
+	if err := json.Unmarshal([]byte(
+		`{"id":"9f8b8e42-7c3a-4d61-8f2a-1b0c9d7e5a01","name":"X","mode":"all","sort":{"field":"status"}}`,
+	), &status); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if status.Sort.Field != LensSortDefault {
+		t.Fatalf("status sort field = %q, want %q", status.Sort.Field, LensSortDefault)
+	}
+}
+
+// An unmintable carrier value is refused rather than dropped: a lens whose
+// narrowing this build cannot express must fail loudly instead of silently
+// selecting different rows.
+func TestNamedLensUnmarshalRefusesUnmintableCarrierValues(t *testing.T) {
+	for _, payload := range []string{
+		`{"id":"9f8b8e42-7c3a-4d61-8f2a-1b0c9d7e5a01","name":"X","mode":"all","tasks":{"states":["ready"],"states_set":true}}`,
+		`{"id":"9f8b8e42-7c3a-4d61-8f2a-1b0c9d7e5a01","name":"X","mode":"all","tasks":{"priority":4}}`,
+		`{"id":"9f8b8e42-7c3a-4d61-8f2a-1b0c9d7e5a01","name":"X","mode":"all","tasks":{"due_date":"fortnight"}}`,
+		`{"id":"9f8b8e42-7c3a-4d61-8f2a-1b0c9d7e5a01","name":"X","mode":"all","tasks":{"hierarchy":"sibling"}}`,
+		`{"id":"9f8b8e42-7c3a-4d61-8f2a-1b0c9d7e5a01","name":"X","mode":"all","tasks":{"completion_age":"14d","completion_age_set":true}}`,
+		`{"id":"9f8b8e42-7c3a-4d61-8f2a-1b0c9d7e5a01","name":"X","mode":"all","tasks":{"tags":["Deep-Work"]}}`,
+		`{"id":"9f8b8e42-7c3a-4d61-8f2a-1b0c9d7e5a01","name":"X","mode":"all","projects":{"parked":"maybe"}}`,
+		`{"id":"9f8b8e42-7c3a-4d61-8f2a-1b0c9d7e5a01","name":"X","mode":"all","projects":{"archived":"maybe"}}`,
+	} {
+		var decoded NamedLens
+		if err := json.Unmarshal([]byte(payload), &decoded); err == nil {
+			t.Errorf("payload %s should be refused", payload)
+		}
 	}
 }
 
@@ -493,24 +596,19 @@ func TestMachineStateRemoveNamedLens(t *testing.T) {
 	}
 }
 
-func TestNamedLensCloneDetachesNestedSlices(t *testing.T) {
+// Every axis is a value now, so a clone is independent by construction. The test
+// stays because that is the guarantee callers rely on, not because a slice is
+// being detached.
+func TestNamedLensCloneCopiesEveryAxis(t *testing.T) {
 	original := validLens()
 	clone := original.Clone()
-	clone.Tasks.States[0] = string(models.StateDone)
-	clone.Tasks.Tags[0] = "mutated"
-	clone.Tasks.Contexts[0] = "mutated"
-	clone.Projects.Tags[0] = "mutated"
-	if original.Tasks.States[0] != string(models.StateWaiting) {
-		t.Error("clone aliases the states slice")
-	}
-	if original.Tasks.Tags[0] != "deep-work" {
-		t.Error("clone aliases the task tag slice")
-	}
-	if original.Tasks.Contexts[0] != "errand" {
-		t.Error("clone aliases the task context slice")
-	}
-	if original.Projects.Tags[0] != "client" {
-		t.Error("clone aliases the project tag slice")
+	clone.Name = "Mutated"
+	clone.Query = "$done"
+	clone.Scope = lensScopeProjectID
+	clone.Sort.Field = LensSortTitle
+	if original.Name != "Review Queue" || original.Query != validLensQuery ||
+		original.Scope != "" || original.Sort.Field != LensSortUpdated {
+		t.Fatalf("mutating a clone reached the original: %+v", original)
 	}
 }
 
@@ -518,7 +616,7 @@ func TestNamedLensListCloneDetachesFromSnapshot(t *testing.T) {
 	snapshot := NewMachineState()
 	clone := snapshot.NamedLenses.Clone()
 	clone[0].Name = "Renamed"
-	clone[0].Tasks.States[0] = string(models.StateDone)
+	clone[0].Query = "$done"
 	clone = append(clone, validLens())
 	if len(clone) != 4 {
 		t.Fatalf("clone length after append = %d, want 4", len(clone))
@@ -527,8 +625,8 @@ func TestNamedLensListCloneDetachesFromSnapshot(t *testing.T) {
 	if snapshot.NamedLenses[0].Name != "Waiting" {
 		t.Error("clone aliases the lens name")
 	}
-	if snapshot.NamedLenses[0].Tasks.States[0] != string(models.StateWaiting) {
-		t.Error("clone aliases a nested state slice")
+	if snapshot.NamedLenses[0].Query != "$"+string(models.StateWaiting) {
+		t.Error("clone aliases the query axis")
 	}
 	if len(snapshot.NamedLenses) != 3 {
 		t.Errorf("appending to the clone changed the snapshot: %d lenses", len(snapshot.NamedLenses))
@@ -715,7 +813,7 @@ func TestSaveMachineRejectsInvalidLens(t *testing.T) {
 	s := newIsolatedStore(t)
 	machine := NewMachineState()
 	broken := validLens()
-	broken.Tasks.Hierarchy = "sibling"
+	broken.Query = strings.Repeat("x", MaxNamedLensQueryRunes+1)
 	machine.NamedLenses = append(machine.NamedLenses, broken)
 	if err := s.SaveMachine(machine); err == nil {
 		t.Fatal("saving a machine state with a malformed lens should fail")

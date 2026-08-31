@@ -171,22 +171,6 @@ func TestManagerSnapshotFirstV17MigrationLiftsReviewAndClearsHistory(t *testing.
 	}
 }
 
-// lensTemplateNarrows reports whether a definition carries any predicate at all,
-// across every axis a lens can own besides mode.
-func lensTemplateNarrows(lens NamedLens) bool {
-	tasks := lens.Tasks
-	if len(tasks.States) > 0 || tasks.StatesSet || tasks.Priority != 0 ||
-		len(tasks.Tags) > 0 || len(tasks.Contexts) > 0 || tasks.NoContext ||
-		tasks.DueDate != "" || tasks.CompletionAge != "" || tasks.CompletionAgeSet ||
-		tasks.Hierarchy != "" || tasks.Stale || tasks.Deferred || tasks.Pinned ||
-		tasks.Review {
-		return true
-	}
-	projects := lens.Projects
-	return len(projects.Tags) > 0 || projects.Untagged ||
-		projects.ParkedMode != "" || projects.ArchivedMode != ""
-}
-
 func containsString(values []string, want string) bool {
 	for _, value := range values {
 		if value == want {
@@ -370,7 +354,9 @@ func TestV17MigrationLeavesEveryBuiltinLensNonEmpty(t *testing.T) {
 			if lens.Mode == "" {
 				t.Fatal("built-in template names no mode")
 			}
-			if lens.Query == "" && !lensTemplateNarrows(lens) {
+			// The query is the whole predicate now, so a built-in that narrows
+			// nothing is a built-in with an empty one.
+			if lens.Query == "" {
 				t.Fatal("built-in template narrows nothing")
 			}
 		})

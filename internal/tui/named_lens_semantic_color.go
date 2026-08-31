@@ -2,6 +2,7 @@ package tui
 
 import (
 	"slices"
+	"strconv"
 
 	"charm.land/lipgloss/v2"
 
@@ -23,10 +24,17 @@ import (
 // number. A state set spanning two groups picks no group at all rather than an
 // arbitrary member's color, and falls through to whatever the next rung sees.
 //
-// Unknown tokens are not errors here. A lens carrying a state, mode, due bucket,
-// or population spelling this build does not know simply fails every rung that
-// would have read it, and a definition that reaches the bottom of the ladder is
-// neutral: uncolored ordinary text, never an invented color.
+// Unknown tokens are not errors here. A lens carrying a mode spelling this build
+// does not know simply fails the rung that would have read it, and a narrowing
+// token the canonical vocabulary refuses never becomes a clause at all: it stays
+// in the query's verbatim remainder, which the ladder does not read. A definition
+// that reaches the bottom is neutral: uncolored ordinary text, never an invented
+// color.
+//
+// The ladder reads the canonical half of the saved query and only its positive
+// clauses. A negated clause selects the complement of what it names, so coloring
+// by it would give "not overdue" the overdue accent; a lens whose narrowing is
+// entirely negative reaches the bottom of the ladder instead.
 
 // namedLensRoleKind is the semantic identity of a lens definition, in the
 // precedence order the ladder resolves.
@@ -64,26 +72,29 @@ type namedLensRole struct {
 // namedLensSemanticRole classifies one lens definition. It is pure: no theme, no
 // runtime, no identity, and no allocation the caller can observe.
 func namedLensSemanticRole(lens config.NamedLens) namedLensRole {
-	tasks := lens.Tasks
-	states, statesKnown := namedLensStates(tasks.States)
-	grouped := statesKnown && len(states) > 0
+	facets, _ := models.PartitionQueryString(lens.Query)
+	states := namedLensStates(namedLensClauseValues(facets, models.QueryFieldState))
+	grouped := len(states) > 0
+	due, _ := namedLensClauseValue(facets, models.QueryFieldDue)
+	priority := namedLensPriority(facets)
 
 	switch {
-	case tasks.DueDate == config.LensDueOverdue:
+	case due == models.QueryDueOverdue:
 		return namedLensRole{Kind: namedLensRoleOverdue}
 	case grouped && slices.Contains(states, models.StateWaiting):
 		return namedLensRole{Kind: namedLensRoleWaiting}
-	case tasks.DueDate == config.LensDueToday:
+	case due == models.QueryDueToday:
 		return namedLensRole{Kind: namedLensRoleDueToday}
-	case models.ValidatePriority(tasks.Priority, false) == nil:
-		return namedLensRole{Kind: namedLensRolePriority, Priority: tasks.Priority}
-	case namedLensDueBucketAccented(tasks.DueDate):
+	case models.ValidatePriority(priority, false) == nil:
+		return namedLensRole{Kind: namedLensRolePriority, Priority: priority}
+	case namedLensDueBucketAccented(due):
 		return namedLensRole{Kind: namedLensRoleDue}
-	case tasks.Deferred:
+	case namedLensHasClause(facets, models.QueryFieldDeferred):
 		return namedLensRole{Kind: namedLensRoleDeferred}
-	case tasks.Review:
+	case namedLensHasClause(facets, models.QueryFieldReview):
 		return namedLensRole{Kind: namedLensRoleReview}
-	case tasks.CompletionAgeSet || (grouped && namedLensStatesAllTerminal(states)):
+	case namedLensHasClause(facets, models.QueryFieldCompleted) ||
+		(grouped && namedLensStatesAllTerminal(states)):
 		return namedLensRole{Kind: namedLensRoleCompleted}
 	}
 
@@ -93,10 +104,10 @@ func namedLensSemanticRole(lens config.NamedLens) namedLensRole {
 		}
 	}
 
-	if tasks.Pinned ||
-		namedLensPopulationAccented(lens.Projects.ParkedMode) ||
-		namedLensPopulationAccented(lens.Projects.ArchivedMode) ||
-		tasks.Stale {
+	if namedLensHasClause(facets, models.QueryFieldPinned) ||
+		namedLensHasClause(facets, models.QueryFieldParked) ||
+		namedLensHasClause(facets, models.QueryFieldArchived) ||
+		namedLensHasClause(facets, models.QueryFieldStale) {
 		return namedLensRole{Kind: namedLensRoleWarning}
 	}
 
@@ -105,6 +116,56 @@ func namedLensSemanticRole(lens config.NamedLens) namedLensRole {
 	}
 
 	return namedLensRole{Kind: namedLensRoleNone}
+}
+
+// namedLensHasClause reports whether the query names one field positively.
+func namedLensHasClause(query models.Query, field models.QueryField) bool {
+	for _, clause := range query.Clauses {
+		if clause.Field == field && clause.Polarity == models.QueryPolarityPositive {
+			return true
+		}
+	}
+	return false
+}
+
+// namedLensClauseValue reads the first positive value of one field. The ladder's
+// value-carrying rungs are single-valued axes, so a field named twice is read by
+// its canonically first clause rather than by an arbitrary one.
+func namedLensClauseValue(query models.Query, field models.QueryField) (string, bool) {
+	for _, clause := range query.Canonical().Clauses {
+		if clause.Field == field && clause.Polarity == models.QueryPolarityPositive {
+			return clause.Value, true
+		}
+	}
+	return "", false
+}
+
+// namedLensClauseValues reads every positive value of one field, in canonical
+// order.
+func namedLensClauseValues(query models.Query, field models.QueryField) []string {
+	values := make([]string, 0, 4)
+	for _, clause := range query.Canonical().Clauses {
+		if clause.Field == field && clause.Polarity == models.QueryPolarityPositive {
+			values = append(values, clause.Value)
+		}
+	}
+	return values
+}
+
+// namedLensPriority reads the priority threshold, or zero when the lens names
+// none. A value the canonical vocabulary carried but this build cannot read as a
+// number is zero too, which fails the priority rung the same way an absent one
+// does.
+func namedLensPriority(query models.Query) int {
+	value, ok := namedLensClauseValue(query, models.QueryFieldPriority)
+	if !ok {
+		return 0
+	}
+	priority, err := strconv.Atoi(value)
+	if err != nil {
+		return 0
+	}
+	return priority
 }
 
 // namedLensPrimaryStyle is the one entry point a picker calls. It returns a
@@ -161,19 +222,16 @@ func namedLensPriorityAccentStyle(priority int) (lipgloss.Style, bool) {
 	return lipgloss.NewStyle().Foreground(foreground), true
 }
 
-// namedLensStates parses the persisted state tokens. A single unrecognized
-// spelling disqualifies the whole set: a lens selecting states this build cannot
-// read is not a lens whose states we may color by.
-func namedLensStates(tokens []string) ([]models.WorkflowState, bool) {
+// namedLensStates reads the persisted state tokens. A spelling this build cannot
+// recognize never reaches here: models.NewQueryClause refuses it, so the token
+// stays in the query's unparseable remainder and the lens simply names no state
+// rather than naming one we would have to decline to color by.
+func namedLensStates(tokens []string) []models.WorkflowState {
 	states := make([]models.WorkflowState, 0, len(tokens))
 	for _, token := range tokens {
-		state, ok := models.ParseWorkflowState(token)
-		if !ok {
-			return nil, false
-		}
-		states = append(states, state)
+		states = append(states, models.WorkflowState(token))
 	}
-	return states, true
+	return states
 }
 
 func namedLensStatesAllTerminal(states []models.WorkflowState) bool {
@@ -207,15 +265,8 @@ func namedLensSingleStateGroup(states []models.WorkflowState) (models.WorkflowSt
 
 // namedLensDueBucketAccented reports whether a due bucket names an active date
 // window worth an accent. Overdue and today have already been answered above;
-// `all` and `none` select by the presence of a date rather than by its urgency,
-// and an absent bucket is not a filter at all.
+// a due clause selecting by the presence or absence of a date rather than by its
+// urgency is not urgency, and an absent bucket is not a filter at all.
 func namedLensDueBucketAccented(bucket string) bool {
-	return bucket == config.LensDueWeek
-}
-
-// namedLensPopulationAccented reports whether a population axis has been moved
-// off its default. Excluding parked or archived projects is what the Outliner
-// already does, so only admitting them is a signal.
-func namedLensPopulationAccented(mode string) bool {
-	return mode == config.LensPopulationInclude || mode == config.LensPopulationOnly
+	return bucket == models.QueryDueWeek
 }

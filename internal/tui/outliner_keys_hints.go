@@ -295,9 +295,9 @@ func (m *OutlinerModel) classifyEmptyCause() outlinerEmptyCause {
 		}
 		return outlinerEmptyNoProjects
 	}
-	// A lens owns the mode, both filter families, the sort, and its narrowing
-	// query all at once, so naming any one of them would send the user to a key
-	// that cannot widen the list. It outranks zoom and focus for the same reason
+	// A lens owns the mode, the whole narrowing, the sort, and the scope all at
+	// once, so naming any one of them would send the user to a key that cannot
+	// widen the list. It outranks zoom and focus for the same reason
 	// the Esc cascade unwinds it first.
 	if m.hasActiveLens() {
 		return outlinerEmptyLens

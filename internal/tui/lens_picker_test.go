@@ -1057,8 +1057,8 @@ func TestLensReplaceConfirmCancelReturnsToTheActionSheet(t *testing.T) {
 	if model.lensPicker == nil {
 		t.Error("canceling the confirmation closed the picker")
 	}
-	if saved := lensNamed(t, model, "Waiting"); !saved.Tasks.StatesSet {
-		t.Error("a canceled replace overwrote the saved definition")
+	if saved := lensNamed(t, model, "Waiting"); saved.Query != "$waiting" {
+		t.Errorf("a canceled replace overwrote the saved definition: %q", saved.Query)
 	}
 }
 
@@ -1087,8 +1087,8 @@ func TestLensReplaceConfirmedReturnsToTheRefreshedPicker(t *testing.T) {
 	if saved.ID != target.ID {
 		t.Error("the replace minted a new identity")
 	}
-	if !saved.Tasks.Pinned {
-		t.Error("the replacement did not capture the live view")
+	if !strings.Contains(saved.Query, "*pin") {
+		t.Errorf("the replacement did not capture the live view: %q", saved.Query)
 	}
 }
 
@@ -1311,7 +1311,7 @@ func TestLensPickerColorFollowsTheDefinitionNotTheBuiltinOrigin(t *testing.T) {
 		ID:    "22222222-2222-4222-8222-222222222222",
 		Name:  "Blocked Work",
 		Mode:  config.LensModeAll,
-		Tasks: config.LensTaskFilters{States: []string{string(models.StateWaiting)}, StatesSet: true},
+		Query: "$" + string(models.StateWaiting),
 		Sort:  config.LensSort{Field: config.LensSortDefault},
 	}
 	if err := model.lensPicker.Refresh(NamedLensPickerSnapshot{
@@ -1378,7 +1378,7 @@ func TestLensPickerRendersEmptyNoMatchAndOversizedRows(t *testing.T) {
 		ID:    "11111111-1111-4111-8111-111111111111",
 		Name:  long,
 		Mode:  config.LensModeAll,
-		Tasks: config.LensTaskFilters{Stale: true, Deferred: true, Pinned: true},
+		Query: "*pin ?stale ?deferred",
 		Sort:  config.LensSort{Field: config.LensSortDefault},
 	}
 	if _, ok := namedLensPrimaryStyle(oversized); !ok {
@@ -1495,38 +1495,28 @@ func TestLensPickerCountsAsAnActiveOverlayAndOwnsTextInput(t *testing.T) {
 
 func TestNamedLensSummaryNamesOnlyTheAxesTheLensSets(t *testing.T) {
 	summary := namedLensSummary(config.NamedLens{
-		Mode:  config.LensModeAll,
-		Query: "#auth",
-		Tasks: config.LensTaskFilters{
-			States:           []string{string(models.StateWaiting)},
-			StatesSet:        true,
-			Priority:         models.PriorityHigh,
-			Tags:             []string{"api"},
-			DueDate:          config.LensDueAll,
-			Hierarchy:        config.LensHierarchyAll,
-			Stale:            true,
-			CompletionAgeSet: true,
-			CompletionAge:    config.LensCompletionAgeAll,
-		},
-		Projects: config.LensProjectFilters{
-			Tags:         []string{"platform"},
-			ParkedMode:   config.LensPopulationInclude,
-			ArchivedMode: config.LensPopulationExclude,
-		},
+		Mode: config.LensModeAll,
+		Query: fmt.Sprintf("!%d #api $%s ?stale ?completed +#platform +parked freetext",
+			models.PriorityHigh, models.StateWaiting),
 		Sort: config.LensSort{Field: config.LensSortPriority, Ascending: true},
 	})
 
+	// Every clause the query names is spelled by the shared chip renderer, so the
+	// summary carries the sigils rather than a second vocabulary of its own. The
+	// unparseable tail follows them behind a single "/" marker.
 	for _, want := range []string{
-		"/#auth", "states: waiting", "!1", "#api", "done: ", "stale",
-		"%platform", "parked: " + config.LensPopulationInclude, "sort: ",
+		"!1", "#api", "$waiting", "?stale", "?completed", "+#platform", "+parked",
+		"/freetext", "sort: ",
 	} {
 		if !strings.Contains(summary, want) {
 			t.Errorf("summary %q is missing %q", summary, want)
 		}
 	}
-	for _, unwanted := range []string{"due:", "tree:", "archived:", "deferred", "pinned", "%untagged"} {
+	// An axis the query never names contributes nothing, so no defaulted facet
+	// can appear.
+	for _, unwanted := range []string{"@", "?deferred", "*pin", "+archived", "##"} {
 		if strings.Contains(summary, unwanted) {
-			t.Errorf("summary %q names the defaulted axis %q", summary, unwanted)
+			t.Errorf("summary %q names an axis the query left out: %q", summary, unwanted)
 		}
 	}
 }

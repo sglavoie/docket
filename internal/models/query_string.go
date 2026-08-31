@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -121,6 +122,54 @@ func ParseQuery(input string) (Query, error) {
 		clauses = append(clauses, clause)
 	}
 	return Query{Clauses: clauses}.Canonical(), nil
+}
+
+// PartitionQueryString reads every canonical clause it can out of a mixed input
+// and returns the verbatim remainder beside them. It is what lets one durable
+// string carry both halves of a saved narrowing: the canonical clauses this
+// package owns, and whatever richer spelling the user-facing grammar in
+// internal/textgrammar accepts and this vocabulary does not.
+//
+// The rule is the parser itself, not a list: a whitespace-separated token
+// ParseQuery accepts becomes a clause, and every other token stays in the
+// remainder in input order. Nothing is dropped and nothing is guessed at, so a
+// remainder handed back to the grammar that produced it reads exactly as it was
+// written. An input whose quoting does not close is entirely remainder, because
+// no token boundary in it can be trusted.
+func PartitionQueryString(input string) (Query, string) {
+	tokens, err := tokenizeQuery(input)
+	if err != nil {
+		return Query{}, strings.TrimSpace(input)
+	}
+	clauses := make([]QueryClause, 0, len(tokens))
+	remainder := make([]string, 0, len(tokens))
+	for _, token := range tokens {
+		clause, parseErr := parseQueryToken(token)
+		if parseErr != nil {
+			remainder = append(remainder, token)
+			continue
+		}
+		clauses = append(clauses, clause)
+	}
+	return Query{Clauses: clauses}.Canonical(), strings.Join(remainder, " ")
+}
+
+// JoinQueryString renders one durable string from canonical clauses and a
+// remainder: the canonical clause string first, the remainder verbatim after it.
+//
+// It is idempotent by construction. The remainder is partitioned again before
+// anything is rendered, so a canonical token sitting in it is lifted into the
+// clause half exactly once and a value that has already been through here comes
+// back byte-identical. Without that lift, encoding a string this function
+// produced would move a token between the halves and make an unchanged saved
+// query read as modified.
+func JoinQueryString(query Query, remainder string) string {
+	lifted, tail := PartitionQueryString(remainder)
+	merged := query
+	// Canonical, which String applies, is what drops a clause the two halves
+	// both named.
+	merged.Clauses = append(slices.Clone(query.Clauses), lifted.Clauses...)
+	return strings.TrimSpace(strings.TrimSpace(merged.String()) + " " + tail)
 }
 
 // tokenizeQuery splits on whitespace outside a double-quoted span, so the one

@@ -431,7 +431,8 @@ projects/<slug>/.attachments/
 Machine-local `~/.tt/runtime/<workspace-id>/machine.json` holds the dark/light
 theme and the active-lens pointer, which is validated for shape alone and never
 referentially. Only those two stay machine-local: lens definitions are portable,
-in `.tt/lenses.json`. A machine joins that home once, through an adoption merge
+in `.tt/lenses.json`, six axes over one bounded canonical query and no filter
+carrier. A machine joins that home once, through an adoption merge
 keyed off machine-local state and run after the schema is already current, never
 inside the migration chain the synced catalog version guards. A lens mutation
 still opens no workspace transaction and records no undo ledger entry, so `u`

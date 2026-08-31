@@ -1,6 +1,8 @@
 package config
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -170,6 +172,13 @@ func buildV17MigrationPlan(dataDir string) (v17MigrationPlan, error) {
 			Path: path, Data: []byte(published), Mode: FilePermissions, ExpectedRevision: &revision,
 		})
 	}
+	lensArtifact, err := planV17LensDefinitions(dataDir, catalog.WorkspaceID)
+	if err != nil {
+		return v17MigrationPlan{}, err
+	}
+	if lensArtifact != nil {
+		plan.artifacts = append(plan.artifacts, *lensArtifact)
+	}
 	catalog.SchemaVersion = V17ConfigSchemaVersion
 	if validationErr := catalog.validateAtSchema(V17ConfigSchemaVersion); validationErr != nil {
 		return v17MigrationPlan{}, fmt.Errorf("validate schema-17 catalog: %w", validationErr)
@@ -191,6 +200,87 @@ func buildV17MigrationPlan(dataDir string) (v17MigrationPlan, error) {
 		return v17MigrationPlan{}, err
 	}
 	return plan, nil
+}
+
+// planV17LensDefinitions stages the rewritten portable lens collection, or
+// reports that the workspace has none.
+//
+// Schema 15 removes the review tag from every task as it sets the stored flag,
+// so a lens that narrowed by that tag would silently stop selecting the rows it
+// was saved for. Rewriting the collection is therefore part of the same
+// boundary, not cleanup after it: the definitions are lifted onto the canonical
+// six-axis shape, review-tag narrowing becomes the stored review predicate, and
+// the result is staged with the revision the source bytes carried so it publishes
+// or fails together with the catalog and every task document.
+//
+// A workspace with no lenses.json stages nothing. That is not a gap: the
+// machine-local collection such a workspace falls back to is lifted by
+// NamedLens.UnmarshalJSON on every load and rewritten on that machine's next
+// commit, which is the only upgrade path a file this transaction does not own can
+// have.
+func planV17LensDefinitions(dataDir, workspaceID string) (*storage.ArtifactChange, error) {
+	path := LensDefinitionsPath(dataDir)
+	source, err := os.ReadFile(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read portable lens definitions %s: %w", path, err)
+	}
+	lenses, err := readV17SourceLensDefinitions(path, source, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	if validateErr := lenses.Validate(); validateErr != nil {
+		return nil, fmt.Errorf("validate migrated lens definitions %s: %w", path, validateErr)
+	}
+	published, err := encodeDomainEnvelope(domainLenses, workspaceID, lenses)
+	if err != nil {
+		return nil, fmt.Errorf("encode migrated lens definitions %s: %w", path, err)
+	}
+	revision := storage.RawArtifactRevision(source)
+	return &storage.ArtifactChange{
+		Path: path, Data: published, Mode: FilePermissions, ExpectedRevision: &revision,
+	}, nil
+}
+
+// readV17SourceLensDefinitions decodes the source collection as strictly as the
+// runtime store does, so a lenses.json this build cannot read refuses the whole
+// migration instead of being republished as something else. The carrier lift
+// happens inside NamedLens.UnmarshalJSON, which is the one translation both homes
+// share.
+func readV17SourceLensDefinitions(path string, source []byte, workspaceID string) (*WorkspaceLensDefinitions, error) {
+	decoder := json.NewDecoder(bytes.NewReader(source))
+	decoder.DisallowUnknownFields()
+	var envelope domainEnvelope
+	if err := decoder.Decode(&envelope); err != nil {
+		return nil, fmt.Errorf("decode lens definitions envelope %s: %w", path, err)
+	}
+	if err := requireJSONEOF(decoder); err != nil {
+		return nil, fmt.Errorf("decode lens definitions envelope %s: %w", path, err)
+	}
+	if envelope.SchemaVersion != CurrentDomainSchemaVersion || envelope.Kind != domainLenses.name() {
+		return nil, fmt.Errorf("lens definitions envelope %s has invalid schema or kind", path)
+	}
+	if envelope.WorkspaceID != workspaceID {
+		return nil, fmt.Errorf(
+			"lens definitions envelope %s names workspace %q; the catalog names %q",
+			path, envelope.WorkspaceID, workspaceID,
+		)
+	}
+	lenses := NewWorkspaceLensDefinitions()
+	if len(envelope.Data) == 0 {
+		return lenses, nil
+	}
+	payload := json.NewDecoder(bytes.NewReader(envelope.Data))
+	payload.DisallowUnknownFields()
+	if err := payload.Decode(lenses); err != nil {
+		return nil, fmt.Errorf("decode lens definitions payload %s: %w", path, err)
+	}
+	if err := requireJSONEOF(payload); err != nil {
+		return nil, fmt.Errorf("decode lens definitions payload %s: %w", path, err)
+	}
+	return lenses, nil
 }
 
 func createPreStoredReviewV17Snapshot(dataDir string) (v17RollbackSnapshot, error) {

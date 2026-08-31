@@ -127,9 +127,13 @@ func truncateLensNameRunes(name string, limit int) string {
 // marker is set. It is the step that makes the schema-16 marker true: until a
 // machine adopts, nothing in production creates lenses.json.
 //
-// Adoption is refused before schema 16 and on an uninitialized workspace, so a
+// Adoption is refused before schema 17 and on an uninitialized workspace, so a
 // workspace still on an older catalog cannot acquire a lens home ahead of the
-// boundary that announces one.
+// boundary that announces one. The floor is 17 rather than 16 because a lens
+// definition is canonical only from 17 on: adopting at 16 would merge this
+// machine's legacy-shaped records into a portable file the v17 migration has
+// already planned, and the merge would land either behind that plan's revision
+// check or ahead of the rewrite that makes the records canonical.
 //
 // The merge is committed through CommitMachine alone: setting the marker before
 // the commit is what makes publishOwnedLensDefinitions publish the portable
@@ -141,7 +145,7 @@ func (m *Manager) AdoptPortableLenses() error {
 	if err != nil {
 		return err
 	}
-	if catalogRev == "" || catalog == nil || catalog.SchemaVersion < V16ConfigSchemaVersion {
+	if catalogRev == "" || catalog == nil || catalog.SchemaVersion < V17ConfigSchemaVersion {
 		return nil
 	}
 	machine, _, err := store.LoadMachineChecked()

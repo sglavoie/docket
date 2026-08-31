@@ -37,8 +37,9 @@ func useMachine(t *testing.T, home string) {
 }
 
 // stageWorkspaceBeforeAdoption mints a workspace and then rewinds it to the
-// state a real one is in when this feature ships: the catalog is at schema 16,
-// but no machine has published the portable home yet. Bootstrap adopts on the
+// state a real one is in when this feature ships: the catalog is current, past
+// the schema-17 adoption floor, but no machine has published the portable home
+// yet. Bootstrap adopts on the
 // way in, so the file it published has to be removed again.
 func stageWorkspaceBeforeAdoption(t *testing.T) (string, *Manager) {
 	t.Helper()

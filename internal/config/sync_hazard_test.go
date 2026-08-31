@@ -186,7 +186,7 @@ func randomMachineLensSets(random *rand.Rand) []NamedLensList {
 		adoptionLens(adoptionLensBetaID, "Beta", "#beta"),
 		adoptionLens(adoptionLensGammaID, "Gamma", "#gamma"),
 	}
-	pool[4].Tasks = LensTaskFilters{Pinned: true}
+	pool[4].Query = "*pin"
 
 	count := 2 + random.Intn(4)
 	machines := make([]NamedLensList, 0, count)

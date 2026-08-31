@@ -12,6 +12,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/fuzzy"
+	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
@@ -706,17 +707,20 @@ func (model *NamedLensPickerModel) guidanceSpec() GuidanceSpec {
 }
 
 // namedLensSummary renders one saved definition as a single compact line: the
-// mode it opens, the query it narrows with, the facets it actually sets, and the
-// manual sort it restores. Facets left at their default are omitted, because a
-// summary that names every axis names nothing.
+// mode it opens, the canonical clauses it narrows with, whatever prose the
+// canonical vocabulary cannot spell, and the manual sort it restores. An axis
+// left at its default contributes nothing, because a summary that names every
+// axis names nothing.
 func namedLensSummary(lens config.NamedLens) string {
 	parts := make([]string, 0, 12)
 	parts = append(parts, namedLensModeLabel(lens.Mode))
-	if query := strings.TrimSpace(lens.Query); query != "" {
-		parts = append(parts, "/"+query)
+	facets, remainder := models.PartitionQueryString(lens.Query)
+	// The clauses are rendered by the shared chip renderer, so a saved lens and
+	// the live filter chips spell the same narrowing with the same characters.
+	parts = append(parts, filterClauseParts(facets.Clauses)...)
+	if prose := strings.TrimSpace(remainder); prose != "" {
+		parts = append(parts, "/"+prose)
 	}
-	parts = append(parts, namedLensTaskFacets(lens.Tasks)...)
-	parts = append(parts, namedLensProjectFacets(lens.Projects)...)
 	if sorted := namedLensSortLabel(lens.Sort); sorted != "" {
 		parts = append(parts, sorted)
 	}
@@ -734,68 +738,6 @@ func namedLensModeLabel(token string) string {
 		return mode.Label
 	}
 	return token
-}
-
-func namedLensTaskFacets(tasks config.LensTaskFilters) []string {
-	facets := make([]string, 0, 10)
-	if tasks.StatesSet {
-		// An explicit state filter that admits nothing is a real predicate, so it
-		// is named rather than dropped as an absent axis would be.
-		states := "none"
-		if len(tasks.States) > 0 {
-			states = strings.Join(tasks.States, ",")
-		}
-		facets = append(facets, "states: "+states)
-	}
-	if tasks.Priority > 0 {
-		facets = append(facets, "!"+strconv.Itoa(tasks.Priority))
-	}
-	for _, tag := range tasks.Tags {
-		facets = append(facets, "#"+tag)
-	}
-	if tasks.DueDate != "" && tasks.DueDate != config.LensDueAll {
-		facets = append(facets, "due: "+tasks.DueDate)
-	}
-	if tasks.CompletionAgeSet {
-		age := tasks.CompletionAge
-		if age == "" {
-			age = config.LensCompletionAgeAll
-		}
-		facets = append(facets, "done: "+age)
-	}
-	if tasks.Hierarchy != "" && tasks.Hierarchy != config.LensHierarchyAll {
-		facets = append(facets, "tree: "+tasks.Hierarchy)
-	}
-	if tasks.Stale {
-		facets = append(facets, "stale")
-	}
-	if tasks.Deferred {
-		facets = append(facets, "deferred")
-	}
-	if tasks.Pinned {
-		facets = append(facets, "pinned")
-	}
-	if tasks.Review {
-		facets = append(facets, "review")
-	}
-	return facets
-}
-
-func namedLensProjectFacets(projects config.LensProjectFilters) []string {
-	facets := make([]string, 0, len(projects.Tags)+3)
-	for _, tag := range projects.Tags {
-		facets = append(facets, "%"+tag)
-	}
-	if projects.Untagged {
-		facets = append(facets, "%untagged")
-	}
-	if mode := projects.ParkedMode; mode != "" && mode != config.LensPopulationExclude {
-		facets = append(facets, "parked: "+mode)
-	}
-	if mode := projects.ArchivedMode; mode != "" && mode != config.LensPopulationExclude {
-		facets = append(facets, "archived: "+mode)
-	}
-	return facets
 }
 
 func namedLensSortLabel(sorted config.LensSort) string {

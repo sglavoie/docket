@@ -259,9 +259,10 @@ there and for the same reason.
 ### Named lenses
 
 `\` opens Named Lenses, the saved-projection list. A lens holds one whole
-Outliner projection: the mode, its own narrowing query, both filter families,
-and the sort axis. Applying one writes every axis it names at once, so a lens is
-a view you return to rather than a filter you rebuild.
+Outliner projection: the mode, the whole narrowing it applies — every task and
+project facet, written as one query — and the sort axis. Applying one writes
+every axis it names at once, so a lens is a view you return to rather than a
+filter you rebuild.
 
 The list opens on two action rows — `Save current view` and, directly beneath
 it, `Add built-in view` — followed by every saved lens in alphabetical order.
@@ -361,7 +362,7 @@ Definitions live in the workspace and survive a restart, and so does the
 lens you had open. A launch still builds the same clean Active Projects, All
 view it always did — no navigation, folds, cursor, or selection come back — and
 then reapplies that lens's saved axes on top of it: its mode, its narrowing
-query, both filter families, its sort, and its project scope. Its `Esc` is the
+query with every facet that query names, its sort, and its project scope. Its `Esc` is the
 one you would expect: it lands on the Active Projects, All view a lens-free
 launch would have shown, so a lens you no longer want costs one key. Dismissing
 it is durable too, and a lens the pointer names but that can no longer be opened

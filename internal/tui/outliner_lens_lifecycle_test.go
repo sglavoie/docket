@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"slices"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -35,19 +36,25 @@ func lensLifecycleOutliner() *OutlinerModel {
 // waitingLens is the starter-shaped definition the lifecycle tests apply: a
 // named mode, a real facet, and a narrowing query.
 func waitingLens(id, name, query string) config.NamedLens {
-	state := lensState{
-		mode:          ModeAll,
-		query:         query,
-		filter:        NewFilterState(),
-		projectFilter: newProjectFilterState(),
-		sort:          NewSortState(),
-	}
-	states, err := models.NewWorkflowStateSet(models.StateWaiting)
+	facets, err := models.ParseQuery("$" + string(models.StateWaiting))
 	if err != nil {
 		panic(err)
 	}
-	state.filter.setStateFilter(states, true)
+	state := lensState{
+		mode:   ModeAll,
+		facets: facets,
+		query:  query,
+		sort:   NewSortState(),
+	}
 	return state.namedLens(id, name)
+}
+
+// lensWithFacet adds one canonical token to a saved definition's narrowing. A
+// lens carries one query string rather than a filter struct, so a fixture names
+// an extra facet by spelling it rather than by writing a field.
+func lensWithFacet(lens config.NamedLens, token string) config.NamedLens {
+	lens.Query = strings.TrimSpace(lens.Query + " " + token)
+	return lens
 }
 
 // lensTestID mints the canonical lowercase hyphenated UUID form the config
@@ -183,7 +190,7 @@ func TestApplyNamedLensUnderScopeRecordsProjectFacetsInert(t *testing.T) {
 	outliner.pushProjectScope("alpha")
 
 	lens := waitingLens(lensTestID(1), "Waiting", "")
-	lens.Projects.ParkedMode = config.LensPopulationInclude
+	lens = lensWithFacet(lens, "+parked")
 	applyLensOrFatal(t, outliner, lens)
 
 	if outliner.projectFilter.ParkedMode != projectPopulationInclude {
@@ -211,7 +218,7 @@ func TestScopedLensActivatesProjectFacetsOnExplicitScopeExit(t *testing.T) {
 	outliner.pushProjectScope("alpha")
 
 	lens := waitingLens(lensTestID(1), "Waiting", "")
-	lens.Projects.ParkedMode = config.LensPopulationOnly
+	lens = lensWithFacet(lens, "+parked:only")
 	applyLensOrFatal(t, outliner, lens)
 	if outliner.pendingLens != nil {
 		t.Fatal("a scoped application must record its facets without loading")
@@ -320,7 +327,7 @@ func TestScopedEquivalentLensSwitchRetainsDeferredPopulationLoad(t *testing.T) {
 	outliner.pushProjectScope("alpha")
 
 	first := waitingLens(lensTestID(1), "Waiting", "")
-	first.Projects.ParkedMode = config.LensPopulationOnly
+	first = lensWithFacet(first, "+parked:only")
 	applyLensOrFatal(t, outliner, first)
 	if outliner.pendingLens != nil {
 		t.Fatal("a scoped application must record its facets without loading")
@@ -344,7 +351,7 @@ func TestScopedEquivalentLensSwitchRetainsDeferredPopulationLoad(t *testing.T) {
 	// Switching to a different lens carrying identical project facets is the same
 	// case: a new identity, the same unpaid population debt.
 	second := waitingLens(lensTestID(2), "Held", "")
-	second.Projects.ParkedMode = config.LensPopulationOnly
+	second = lensWithFacet(second, "+parked:only")
 	applyLensOrFatal(t, outliner, second)
 	if outliner.pendingLens != nil {
 		t.Fatal("switching lenses under a project scope loaded a population")
@@ -435,7 +442,7 @@ func TestScopedLensPopulationProvenanceTracksOrdinaryReloads(t *testing.T) {
 
 	outliner.pushProjectScope("alpha")
 	parkedLens := waitingLens(lensTestID(1), "Parked", "")
-	parkedLens.Projects.ParkedMode = config.LensPopulationInclude
+	parkedLens = lensWithFacet(parkedLens, "+parked")
 	applyLensOrFatal(t, outliner, parkedLens)
 	frame := outliner.activeLens
 	if !frame.projectFacetsAwaitingLoad {
@@ -625,7 +632,7 @@ func TestParkedScopedLensExitKeepsSelectedPopulation(t *testing.T) {
 			app, outliner, everything := parkedFocusLensApp(t)
 
 			lens := waitingLens(lensTestID(1), "Waiting", "")
-			lens.Projects.ParkedMode = config.LensPopulationInclude
+			lens = lensWithFacet(lens, "+parked")
 			applyLensOrFatal(t, outliner, lens)
 			if outliner.pendingLens != nil {
 				t.Fatal("a scoped application must record its facets without loading")
@@ -681,10 +688,9 @@ func TestParkedScopedLensExitKeepsSelectedPopulation(t *testing.T) {
 func TestParkedScopedLensExitShedsAProjectItsFacetsReject(t *testing.T) {
 	app, outliner, everything := parkedFocusLensApp(t)
 
-	lens := waitingLens(lensTestID(2), "Untagged", "")
-	// Untagged alone is an active project facet that admits alpha and beta and
-	// rejects the parked project, which carries the parked tag.
-	lens.Projects.Untagged = true
+	// An untagged-projects facet alone admits alpha and beta and rejects the
+	// parked project, which carries the parked tag.
+	lens := lensWithFacet(waitingLens(lensTestID(2), "Untagged", ""), "+#0")
 	applyLensOrFatal(t, outliner, lens)
 
 	if handled, cmd := app.applyProjectScope(ApplyProjectScopeMsg{Clear: true}); !handled || cmd == nil {
@@ -717,9 +723,9 @@ func TestParkedScopedLensExitDoesNotLeakPendingFocus(t *testing.T) {
 	interloper.Tags = []string{models.ParkedProjectTag}
 	app, outliner, _ := parkedFocusLensApp(t, interloper)
 
-	lens := waitingLens(lensTestID(3), "Untagged", "")
-	// Untagged admits alpha and beta and rejects both parked projects.
-	lens.Projects.Untagged = true
+	// An untagged-projects facet admits alpha and beta and rejects both parked
+	// projects.
+	lens := lensWithFacet(waitingLens(lensTestID(3), "Untagged", ""), "+#0")
 	applyLensOrFatal(t, outliner, lens)
 	frame := outliner.activeLens
 	if !frame.projectFacetsAwaitingLoad {
@@ -752,7 +758,7 @@ func TestParkedScopedLensExitDoesNotLeakPendingFocus(t *testing.T) {
 	population := selectCrossScopeProjects(outliner.runtime, CrossScopeOpts{
 		ActiveOnly:     true,
 		FocusProjectID: outliner.focusRequestForLoad(),
-		ProjectFilter:  pending.state.projectFilter,
+		ProjectFilter:  pending.state.projectFilterState(),
 	})
 	app.Update(lensProjectsLoadedMsg{projects: population, generation: pending.generation})
 
@@ -888,7 +894,10 @@ func TestLensModifiedTracksModeQuerySortAndProjectFacets(t *testing.T) {
 		{"mode", func(o *OutlinerModel) { o.selectOutlinerMode(ModeInbox) }},
 		{"query", func(o *OutlinerModel) { o.setLensQuery("other") }},
 		{"sort", func(o *OutlinerModel) { o.treeSort = SortState{Field: SortByTitle, Ascending: true} }},
-		{"project facets", func(o *OutlinerModel) { o.projectFilter.Untagged = true }},
+		{"project facets", func(o *OutlinerModel) {
+			o.projectFilter.Untagged = true
+			o.adoptFilterCarriers()
+		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			outliner := lensLifecycleOutliner()
@@ -933,9 +942,9 @@ func TestApplyNamedLensRefusesInvalidDefinitionsWithoutTouchingTheView(t *testin
 			lens.Mode = "nonsense"
 			return lens
 		}},
-		{"unknown facet token", func() config.NamedLens {
+		{"query past the durable bound", func() config.NamedLens {
 			lens := waitingLens(lensTestID(1), "Waiting", "")
-			lens.Tasks.DueDate = "sometime"
+			lens.Query = strings.Repeat("a", config.MaxNamedLensQueryRunes+1)
 			return lens
 		}},
 		{"unhonorable query", func() config.NamedLens {
@@ -972,7 +981,7 @@ func TestLensProjectLoadPublishesOnlyOnTheMatchingGeneration(t *testing.T) {
 	baseline := slices.Clone(outliner.loadedProjects)
 
 	lens := waitingLens(lensTestID(1), "Waiting", "")
-	lens.Projects.ParkedMode = config.LensPopulationOnly
+	lens = lensWithFacet(lens, "+parked:only")
 	cmd := applyLensOrFatal(t, outliner, lens)
 	if cmd == nil {
 		t.Fatal("a project-population change must start a load")
@@ -1020,12 +1029,12 @@ func TestLensProjectLoadIsSupersededByALaterRequest(t *testing.T) {
 	outliner := lensLifecycleOutliner()
 
 	first := waitingLens(lensTestID(1), "Waiting", "")
-	first.Projects.ParkedMode = config.LensPopulationOnly
+	first = lensWithFacet(first, "+parked:only")
 	applyLensOrFatal(t, outliner, first)
 	stale := outliner.pendingLens.generation
 
 	second := waitingLens(lensTestID(2), "Included", "")
-	second.Projects.ParkedMode = config.LensPopulationInclude
+	second = lensWithFacet(second, "+parked")
 	applyLensOrFatal(t, outliner, second)
 	live := outliner.pendingLens.generation
 	if live == stale {
@@ -1053,7 +1062,7 @@ func TestLensProjectLoadAbortsWhenNothingLoaded(t *testing.T) {
 	baseline := slices.Clone(outliner.loadedProjects)
 
 	lens := waitingLens(lensTestID(1), "Waiting", "")
-	lens.Projects.ParkedMode = config.LensPopulationOnly
+	lens = lensWithFacet(lens, "+parked:only")
 	applyLensOrFatal(t, outliner, lens)
 
 	cmd, published := outliner.handleLensProjectsLoaded(lensProjectsLoadedMsg{
@@ -1084,7 +1093,7 @@ func TestLensProjectLoadPublishesPartialResultWithWarning(t *testing.T) {
 	outliner := lensLifecycleOutliner()
 
 	lens := waitingLens(lensTestID(1), "Waiting", "")
-	lens.Projects.ParkedMode = config.LensPopulationOnly
+	lens = lensWithFacet(lens, "+parked:only")
 	applyLensOrFatal(t, outliner, lens)
 
 	cmd, published := outliner.handleLensProjectsLoaded(lensProjectsLoadedMsg{
@@ -1117,7 +1126,7 @@ func TestLensProjectLoadCapturesBaselineBeforeIO(t *testing.T) {
 	baselineProjects := slices.Clone(outliner.loadedProjects)
 
 	lens := waitingLens(lensTestID(1), "Parked", "")
-	lens.Projects.ParkedMode = config.LensPopulationOnly
+	lens = lensWithFacet(lens, "+parked:only")
 	if cmd := applyLensOrFatal(t, outliner, lens); cmd == nil {
 		t.Fatal("a project-population change must start a load")
 	}
@@ -1170,7 +1179,7 @@ func TestLensProjectLoadSupersededBySynchronousLensClearsPendingState(t *testing
 	baselineProjects := slices.Clone(outliner.loadedProjects)
 
 	async := waitingLens(lensTestID(1), "Parked", "")
-	async.Projects.ParkedMode = config.LensPopulationOnly
+	async = lensWithFacet(async, "+parked:only")
 	if cmd := applyLensOrFatal(t, outliner, async); cmd == nil {
 		t.Fatal("a project-population change must start a load")
 	}
@@ -1220,7 +1229,7 @@ func TestRestoringTheBaselineDiscardsAnUnpublishedApplication(t *testing.T) {
 	applyLensOrFatal(t, outliner, waitingLens(lensTestID(1), "Waiting", ""))
 
 	switchTo := waitingLens(lensTestID(2), "Included", "")
-	switchTo.Projects.ParkedMode = config.LensPopulationInclude
+	switchTo = lensWithFacet(switchTo, "+parked")
 	applyLensOrFatal(t, outliner, switchTo)
 	generation := outliner.pendingLens.generation
 
