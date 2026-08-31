@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,15 +13,18 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/transaction"
 )
 
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
 	Short: "Check workspace data for integrity issues",
 	Long: `Validate the retained workspace domains, protected Unfiled project,
-migration snapshots, project files, task identities, and hierarchy
-references. Diagnostics are read-only unless --fix is explicitly supplied;
-immutable migration snapshots are never changed.`,
+named lenses, transaction journal and quarantine, conflict bundles, lock
+files, migration snapshots, planning membership, attachments, checklist and
+comment structure, state clocks, project files, task identities, and
+hierarchy references. Diagnostics are read-only unless --fix is explicitly
+supplied; immutable migration snapshots are never changed.`,
 	Args: cobra.NoArgs,
 	RunE: runDoctor,
 }
@@ -38,6 +42,21 @@ type doctorIssue struct {
 type doctorResults struct {
 	workspaceIssues             []doctorIssue
 	workspaceNotes              []doctorIssue
+	lensIssues                  []doctorIssue
+	lensNotes                   []doctorIssue
+	transactionIssues           []doctorIssue
+	transactionNotes            []doctorIssue
+	conflictIssues              []doctorIssue
+	conflictNotes               []doctorIssue
+	lockIssues                  []doctorIssue
+	lockNotes                   []doctorIssue
+	planningIssues              []doctorIssue
+	unavailablePlanningRefs     []doctorIssue
+	attachmentIssues            []doctorIssue
+	attachmentNotes             []doctorIssue
+	structureIssues             []doctorIssue
+	stateClockIssues            []doctorIssue
+	clockSkewNotes              []doctorIssue
 	loadFailures                []doctorIssue
 	duplicateIDs                []doctorIssue
 	duplicateShortIDs           []doctorIssue
@@ -52,13 +71,28 @@ type doctorResults struct {
 
 func (r *doctorResults) totalIssues() int {
 	return len(r.workspaceIssues) + len(r.loadFailures) +
+		len(r.lensIssues) + len(r.transactionIssues) +
+		len(r.conflictIssues) + len(r.lockIssues) +
+		len(r.planningIssues) + len(r.attachmentIssues) +
+		len(r.structureIssues) + len(r.stateClockIssues) +
 		len(r.duplicateIDs) + len(r.duplicateShortIDs) +
 		len(r.missingTaskFiles) + len(r.brokenParentRefs) +
 		len(r.invalidCompletionTimestamps) + len(r.brokenTaskRefs)
 }
 
 func (r *doctorResults) fixableIssues() int {
-	return len(r.duplicateShortIDs) + len(r.brokenParentRefs)
+	return len(r.duplicateShortIDs) + len(r.brokenParentRefs) + len(r.planningIssues)
+}
+
+// informationalNotes reports whether anything was printed that is worth a human
+// glance without being an integrity failure, so a clean run can say so honestly.
+func (r *doctorResults) informationalNotes() int {
+	return len(r.emptyProjects) + len(r.workspaceNotes) +
+		len(r.lensNotes) + len(r.transactionNotes) +
+		len(r.conflictNotes) + len(r.lockNotes) +
+		len(r.unavailablePlanningRefs) + len(r.attachmentNotes) +
+		len(r.clockSkewNotes) + len(r.unavailableTaskRefs) +
+		len(r.dependencyCycles)
 }
 
 func runDoctor(cmd *cobra.Command, _ []string) error {
@@ -66,6 +100,16 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 
 	workspace, err := LoadCLIWorkspace()
 	if err != nil {
+		// A quarantine refuses every workspace mutation, and loading the workspace
+		// runs recovery, so the one bucket that most needs to be read is also the one
+		// that stops the workspace from opening. Print the recovery step here rather
+		// than let the diagnostic be unreachable exactly when it matters.
+		if errors.Is(err, transaction.ErrRecoveryQuarantine) {
+			dataDir := config.WorkspaceRootFromConfigPath(resolveConfigPath())
+			fmt.Fprintf(os.Stderr, "\n%s\n", quarantineRecoveryStep(
+				transaction.QuarantineDirFor(config.TransactionsDir(dataDir)),
+			))
+		}
 		return err
 	}
 
@@ -88,6 +132,14 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		loadedProjects = append(loadedProjects, project)
 	}
 
+	// The four synced-state buckets that need loaded tasks continue the order
+	// checkWorkspaceHealth started: planning membership, then attachments, then
+	// checklist and comment structure, then the state clocks.
+	planning := checkPlanningMembership(workspace.Runtime, loadedProjects, results)
+	checkOrphanedAttachments(loadedProjects, results)
+	checkChecklistAndComments(loadedProjects, results)
+	checkStateClocks(loadedProjects, results)
+
 	checkMissingTaskFiles(everyProject, results)
 	checkEmptyProjects(loadedProjects, results)
 	checkDuplicateIDs(loadedProjects, results)
@@ -99,6 +151,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 
 	if fix {
 		fixIssues(loadedProjects)
+		fixPlanningMembership(workspace.Runtime, planning)
 	}
 
 	printResults(results)
@@ -115,8 +168,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("found %d issue(s)", results.totalIssues())
 	}
 
-	if len(results.emptyProjects) > 0 || len(results.workspaceNotes) > 0 ||
-		len(results.unavailableTaskRefs) > 0 || len(results.dependencyCycles) > 0 {
+	if results.informationalNotes() > 0 {
 		fmt.Println("\nAll checks passed (with informational notes above).")
 	} else {
 		fmt.Println("\nAll checks passed.")
@@ -165,6 +217,16 @@ func checkWorkspaceHealth(workspace *CLIWorkspace, results *doctorResults) {
 	checkRetainedDomainArtifacts(runtime.DataDir(), schema, results)
 	checkProtectedUnfiled(catalog, results)
 	checkWorkspaceUndoLedger(runtime.DataDir(), results)
+	// The synced-state buckets run in one fixed order: the portable lens home,
+	// the transaction journal and its quarantine, conflict bundles, lock files,
+	// and last the migration snapshots. Each one reads a different durable
+	// artifact of the same synced tree, and the order is the order a human should
+	// read the report in — what refuses a view, what refuses a mutation, what
+	// needs resolving, what is merely present, then the rollback history.
+	checkLensDefinitions(runtime, schema, results)
+	checkTransactionJournal(runtime, results)
+	checkConflictBundles(runtime, results)
+	checkLockFiles(runtime, runtime.AllProjects(), results)
 	checkMigrationSnapshots(runtime.DataDir(), schema, results)
 }
 
@@ -354,6 +416,43 @@ func checkMigrationSnapshots(dataDir string, schema int, results *doctorResults)
 		})
 	} else if schema >= config.V7ConfigSchemaVersion {
 		results.workspaceNotes = append(results.workspaceNotes, doctorIssue{project: "Migration", detail: "clean schema-7 workspace; no pre-v7 snapshot recorded"})
+	}
+	checkLaterMigrationSnapshots(dataDir, results)
+}
+
+// checkLaterMigrationSnapshots covers every boundary from schema 8 on. The v5,
+// v6, and v7 checks above each validate a structural conversion's own artifacts,
+// but from v8 the contract is uniform — an archive and its audit report, published
+// as a pair — so one generic scan covers all ten and advances with the chain
+// instead of freezing at the schema it was written for.
+//
+// A boundary that published nothing is silent rather than noted: a workspace
+// created at the current schema crossed none of them, and ten "no snapshot"
+// lines would bury the findings that matter.
+func checkLaterMigrationSnapshots(dataDir string, results *doctorResults) {
+	inspections, err := config.InspectMigrationSnapshots(dataDir)
+	if err != nil {
+		results.workspaceIssues = append(results.workspaceIssues, doctorIssue{project: "Migration", detail: err.Error()})
+		return
+	}
+	for _, inspection := range inspections {
+		for _, issue := range inspection.Issues {
+			results.workspaceIssues = append(results.workspaceIssues, doctorIssue{project: "Migration", detail: issue})
+		}
+		if !inspection.HasArtifacts {
+			continue
+		}
+		results.workspaceNotes = append(results.workspaceNotes, doctorIssue{
+			project: "Migration",
+			detail: fmt.Sprintf(
+				"%s recorded",
+				Pluralize(
+					len(inspection.Pairs),
+					fmt.Sprintf("pre-v%d snapshot pair", inspection.Schema),
+					fmt.Sprintf("pre-v%d snapshot pairs", inspection.Schema),
+				),
+			),
+		})
 	}
 }
 
@@ -642,6 +741,21 @@ func buildTaskMap(project *models.Project) map[string]*models.Task {
 func printResults(results *doctorResults) {
 	printInfoSection("Workspace status", results.workspaceNotes)
 	printSection("Workspace integrity issues", results.workspaceIssues)
+	printSection("Lens issues", results.lensIssues)
+	printInfoSection("Lens status", results.lensNotes)
+	printSection("Transaction issues", results.transactionIssues)
+	printInfoSection("Transaction status", results.transactionNotes)
+	printSection("Conflict issues", results.conflictIssues)
+	printInfoSection("Outstanding conflicts", results.conflictNotes)
+	printSection("Lock file issues", results.lockIssues)
+	printInfoSection("Lock files", results.lockNotes)
+	printSection("Planning membership issues", results.planningIssues)
+	printInfoSection("Unavailable planning references", results.unavailablePlanningRefs)
+	printSection("Attachment issues", results.attachmentIssues)
+	printInfoSection("Orphaned attachments", results.attachmentNotes)
+	printSection("Checklist and comment issues", results.structureIssues)
+	printSection("State clock issues", results.stateClockIssues)
+	printInfoSection("Clock skew", results.clockSkewNotes)
 	printSection("Project load failures", results.loadFailures)
 	printSection("Missing task files", results.missingTaskFiles)
 	printSection("Duplicate task IDs", results.duplicateIDs)

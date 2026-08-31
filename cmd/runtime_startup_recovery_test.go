@@ -58,7 +58,7 @@ func prepareCLIStartupRecovery(t *testing.T, state transaction.State) (string, s
 		t.Fatalf("startup recovery ops = %d, want 2", len(ops))
 	}
 
-	journal := transaction.NewJournal(config.TransactionsDir(dataDir), []string{dataDir})
+	journal := transaction.NewJournal(config.TransactionsDir(dataDir), []string{dataDir}, "")
 	manifest, err := journal.Prepare(ops)
 	if err != nil {
 		t.Fatalf("Prepare: %v", err)

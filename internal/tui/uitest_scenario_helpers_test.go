@@ -154,7 +154,11 @@ func (a UITestAction) validate() error {
 		if a.Width <= 0 || a.Height <= 0 {
 			return fmt.Errorf("resize needs positive width and height, got %dx%d", a.Width, a.Height)
 		}
-	case UITestActionWait, UITestActionRestart:
+	case UITestActionWait:
+		if _, err := a.waitDuration(); err != nil {
+			return err
+		}
+	case UITestActionRestart:
 		// Nothing to validate.
 	case UITestActionSwitchMachine:
 		// The machine name is optional, but a name of only whitespace is an
@@ -183,6 +187,24 @@ func (a UITestAction) validate() error {
 		return fmt.Errorf("unknown action type %q", a.Type)
 	}
 	return nil
+}
+
+// waitDuration returns how far a wait action advances the virtual clock. An
+// omitted duration keeps the short default every existing scenario relies on, and
+// a non-positive one is an authoring slip rather than a way to spend no time:
+// a wait that advances nothing is a no-op the author did not intend.
+func (a UITestAction) waitDuration() (time.Duration, error) {
+	if strings.TrimSpace(a.Duration) == "" {
+		return defaultWaitTimeout, nil
+	}
+	span, err := time.ParseDuration(a.Duration)
+	if err != nil {
+		return 0, fmt.Errorf("wait duration %q: %w", a.Duration, err)
+	}
+	if span <= 0 {
+		return 0, fmt.Errorf("wait duration %q must be positive", a.Duration)
+	}
+	return span, nil
 }
 
 // ResolveSize returns the scenario's initial terminal size, falling back to the

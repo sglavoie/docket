@@ -53,7 +53,7 @@ func (m *Manager) migrateWorkspaceToV14(hooks v14MigrationActivationHooks) error
 		}
 		return err
 	}
-	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, m.localDataRoot()})
+	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, m.localDataRoot()}).OnMachine(m.machineID())
 	if _, recoverErr := commit.RecoverWorkspace(); recoverErr != nil {
 		return fmt.Errorf("recover workspace before schema-14 activation: %w", recoverErr)
 	}
@@ -192,14 +192,14 @@ func createPreDueTimeV14Snapshot(dataDir string) (v14RollbackSnapshot, error) {
 		return v14RollbackSnapshot{}, err
 	}
 	createdAt := time.Now().UTC().Truncate(time.Second)
-	stem := "pre-due-time-v14-" + createdAt.Format(preScopeV7Timestamp)
+	stem := preDueTimeV14SnapshotPrefix + createdAt.Format(preScopeV7Timestamp)
 	archivePath := filepath.Join(PreScopeV7BackupsDir(dataDir), stem+preScopeV7ArchiveSuffix)
 	auditPath := filepath.Join(PreScopeV7BackupsDir(dataDir), stem+preScopeV7AuditSuffix)
 	if precheckErr := precheckPreScopeV7Targets(archivePath, auditPath); precheckErr != nil {
 		return v14RollbackSnapshot{}, precheckErr
 	}
 	audit := []byte(v14DueTimeAuditReport(createdAt, len(inventory.files)))
-	archive, err := buildWorkspaceSnapshotArchive(inventory.files, audit, "pre-due-time-v14-audit.md")
+	archive, err := buildWorkspaceSnapshotArchive(inventory.files, audit, preDueTimeV14SnapshotPrefix+"audit.md")
 	if err != nil {
 		return v14RollbackSnapshot{}, err
 	}

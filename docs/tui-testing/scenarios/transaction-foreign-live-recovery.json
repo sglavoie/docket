@@ -1,0 +1,34 @@
+{
+  "name": "transaction-foreign-live-recovery",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "command", "label": "the other machine is mid-commit and its manifest travelled here first", "command": "stage foreign live transaction" },
+    { "type": "wait" },
+
+    { "type": "restart", "label": "launching runs recovery over the synced transaction directory" },
+    { "type": "wait" },
+    { "type": "assert", "label": "another machine's live transaction is left alone, not rolled anywhere", "assert": "not_contains", "value": "quarantine" },
+    { "type": "assert", "assert": "not_contains", "value": "unresolved merge conflict" },
+    { "type": "assert", "label": "so this machine opens on an ordinary root", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "assert", "assert": "contains", "value": "Launch platform" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "and mutating still works: recovery blocked nothing", "key": "j" },
+    { "type": "key", "key": "*" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Pin" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the undo ledger recorded that commit like any other", "key": "u" },
+    { "type": "assert", "assert": "status_contains", "value": "Undid" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "restart", "label": "a second launch reaches the same verdict, since nothing consumed the manifest" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "quarantine" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

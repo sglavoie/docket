@@ -1,0 +1,36 @@
+{
+  "name": "conflict-strip-tick-refresh",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "label": "a clean workspace carries no count", "assert": "not_contains", "value": "unresolved merge conflict" },
+
+    { "type": "command", "label": "another machine's sync copied a bundle into the workspace", "command": "record merge conflict off tick" },
+    { "type": "wait" },
+    { "type": "assert", "label": "no local mutation announced it, so this app has not looked yet", "assert": "not_contains", "value": "unresolved merge conflict" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "wait", "duration": "61s", "label": "the 60s periodic tick is what recounts the directory" },
+    { "type": "assert", "label": "the count leads the strip once the tick fires", "assert": "contains", "value": "1 unresolved merge conflict" },
+    { "type": "assert", "assert": "contains", "value": "tt conflict" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "gc browses the bundles the count named", "key": "g" },
+    { "type": "key", "key": "c" },
+    { "type": "assert", "assert": "contains", "value": "Merge Conflicts" },
+    { "type": "assert", "label": "the browser says up front that resolving stays in the CLI", "assert": "contains", "value": "Read-only" },
+    { "type": "assert", "assert": "contains", "value": "tt conflict resolve" },
+    { "type": "assert", "label": "an overlay with no PresentationID leaves the route where it was", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "Esc unwinds the overlay rather than resolving anything", "key": "esc" },
+    { "type": "assert", "assert": "not_contains", "value": "Merge Conflicts" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "label": "browsing resolved nothing, so the count stands", "assert": "contains", "value": "1 unresolved merge conflict" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "wait", "duration": "61s", "label": "a later tick recounts the same directory" },
+    { "type": "assert", "label": "the count is read from disk every time, not remembered once", "assert": "contains", "value": "1 unresolved merge conflict" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

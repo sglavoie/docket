@@ -54,7 +54,7 @@ func (m *Manager) migrateWorkspaceToV15(hooks v15MigrationActivationHooks) error
 		}
 		return err
 	}
-	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, m.localDataRoot()})
+	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, m.localDataRoot()}).OnMachine(m.machineID())
 	if _, recoverErr := commit.RecoverWorkspace(); recoverErr != nil {
 		return fmt.Errorf("recover workspace before schema-15 activation: %w", recoverErr)
 	}
@@ -193,14 +193,14 @@ func createPreDependenciesV15Snapshot(dataDir string) (v15RollbackSnapshot, erro
 		return v15RollbackSnapshot{}, err
 	}
 	createdAt := time.Now().UTC().Truncate(time.Second)
-	stem := "pre-dependencies-v15-" + createdAt.Format(preScopeV7Timestamp)
+	stem := preDependenciesV15SnapshotPrefix + createdAt.Format(preScopeV7Timestamp)
 	archivePath := filepath.Join(PreScopeV7BackupsDir(dataDir), stem+preScopeV7ArchiveSuffix)
 	auditPath := filepath.Join(PreScopeV7BackupsDir(dataDir), stem+preScopeV7AuditSuffix)
 	if precheckErr := precheckPreScopeV7Targets(archivePath, auditPath); precheckErr != nil {
 		return v15RollbackSnapshot{}, precheckErr
 	}
 	audit := []byte(v15DependenciesAuditReport(createdAt, len(inventory.files)))
-	archive, err := buildWorkspaceSnapshotArchive(inventory.files, audit, "pre-dependencies-v15-audit.md")
+	archive, err := buildWorkspaceSnapshotArchive(inventory.files, audit, preDependenciesV15SnapshotPrefix+"audit.md")
 	if err != nil {
 		return v15RollbackSnapshot{}, err
 	}

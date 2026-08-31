@@ -252,7 +252,7 @@ func prepareProjectLedgerCrashFixture(t *testing.T) projectLedgerCrashFixture {
 	}
 	ledger := NewWorkspaceLedger(filepath.Join(dataDir, ".tt", "undo"), []string{dataDir})
 	service := NewCommitServiceWithLedger(transactionsDir, []string{dataDir}, ledger)
-	journal := transaction.NewJournal(transactionsDir, []string{dataDir})
+	journal := transaction.NewJournal(transactionsDir, []string{dataDir}, "")
 	manifest, ledgerPlan, err := service.prepareTransaction(journal, userOps, &LedgerRecord{
 		Action:     "change both projects",
 		ProjectIDs: []string{ledgerProjectID(alpha), ledgerProjectID(beta)},
@@ -327,7 +327,7 @@ func recoverAndAssertProjectLedgerState(t *testing.T, fixture projectLedgerCrash
 	t.Helper()
 	report, err := transaction.NewJournal(
 		filepath.Join(fixture.dataDir, ".tt", "transactions"),
-		[]string{fixture.dataDir},
+		[]string{fixture.dataDir}, "",
 	).Recover()
 	if err != nil {
 		t.Fatalf("Recover: %v", err)

@@ -45,6 +45,12 @@ type Journal struct {
 	dir   string
 	roots []string
 
+	// machineID is the identity stamped onto every manifest this journal writes
+	// and compared against when recovery decides whether a live transaction is
+	// this machine's to finish. It is never empty: the constructors resolve the
+	// running process's identity for callers that do not inject one.
+	machineID string
+
 	// Injectable seams so tests can drive deterministic ids/timestamps and
 	// simulate failures at every prepare, fsync, rename, manifest-update, and
 	// cleanup boundary. writeFile covers staging and manifest updates; rename
@@ -63,7 +69,15 @@ type Journal struct {
 // operations whose targets resolve inside one of roots. Both dir and roots are
 // cleaned; empty roots are dropped. A journal with no usable roots rejects every
 // operation, failing closed.
-func NewJournal(dir string, roots []string) *Journal {
+//
+// machineID is the identity that owns the transactions this journal prepares. An
+// empty machineID resolves the running process's identity, which is what every
+// ordinary caller wants; naming one explicitly is what lets a single process act
+// as two machines, so a test and the cross-machine gate can drive two journals
+// over one synced tree with each owning its own transactions. There is one
+// constructor rather than a default-owner convenience wrapper because ownership
+// is not an optional detail of a transaction inside a synced workspace.
+func NewJournal(dir string, roots []string, machineID string) *Journal {
 	cleanRoots := make([]string, 0, len(roots))
 	for _, r := range roots {
 		if r != "" {
@@ -73,6 +87,7 @@ func NewJournal(dir string, roots []string) *Journal {
 	return &Journal{
 		dir:       filepath.Clean(dir),
 		roots:     cleanRoots,
+		machineID: resolveMachineID(machineID),
 		now:       time.Now,
 		newID:     func() string { return uuid.New().String() },
 		writeFile: util.AtomicWriteFile,
@@ -343,8 +358,16 @@ func (j *Journal) stageBytes(stagePath string, data []byte, mode os.FileMode) er
 	return nil
 }
 
-// writeManifest atomically persists a manifest to its durable path.
+// writeManifest atomically persists a manifest to its durable path, stamping
+// this journal's machine identity and a fresh heartbeat as it goes. Stamping
+// belongs here because this is the only manifest writer, and a journal only ever
+// writes a manifest it is entitled to drive: its own, or one whose previous owner
+// left it stale long enough for recovery to adopt it. Adoption is therefore
+// recorded rather than silent — the manifest names its new owner from the moment
+// it is touched.
 func (j *Journal) writeManifest(m *Manifest) error {
+	m.Machine = j.machineID
+	m.Heartbeat = j.now().UTC().Format(time.RFC3339Nano)
 	if err := j.mkdirAll(j.dir, util.DirPermissions); err != nil {
 		return fmt.Errorf("creating transactions directory: %w", err)
 	}

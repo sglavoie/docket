@@ -102,7 +102,7 @@ func (d *UITestDriver) Restart() error {
 		d.dispatch(app.startupMessage)
 		d.drain()
 	}
-	d.bootNoteSearchIndex()
+	d.bootLaunchCommands()
 	return nil
 }
 
@@ -125,17 +125,25 @@ func (d *UITestDriver) SwitchMachine(machine string) error {
 	return d.Restart()
 }
 
-// bootNoteSearchIndex runs the one launch command the driver does not get from
-// the startup message: AppModel.Init also starts the workspace-wide note read
-// the search's notes tier ranks against, and without it a scenario would search
-// a permanently empty index. The periodic-save tick Init raises beside it is
-// deliberately left out — the driver owns its own virtual clock.
-func (d *UITestDriver) bootNoteSearchIndex() {
-	cmd := d.app.requestNoteSearchIndexLoad()
-	if cmd == nil {
-		return
+// bootLaunchCommands runs the launch commands the driver does not get from the
+// startup message. AppModel.Init raises two beside it, and both matter here:
+//
+//   - the workspace-wide note read the search's notes tier ranks against, without
+//     which a scenario would search a permanently empty index; and
+//   - the periodic-save tick, which is the cadence the shell refreshes workspace
+//     state on. It is armed against the driver's virtual clock rather than real
+//     time, so it costs a scenario nothing until a wait action names a span long
+//     enough to reach it — and naming that span is the only way a scenario can
+//     observe something only the tick does, such as the outstanding-conflict
+//     count another machine's sync wrote.
+func (d *UITestDriver) bootLaunchCommands() {
+	if cmd := d.app.requestNoteSearchIndexLoad(); cmd != nil {
+		d.pendingCmd = cmd
+		d.drain()
 	}
-	d.pendingCmd = cmd
+	d.pendingCmd = tickCmd(periodicSaveInterval, func(at time.Time) tea.Msg {
+		return periodicSaveMsg{at: at}
+	})
 	d.drain()
 }
 

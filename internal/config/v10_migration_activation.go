@@ -57,7 +57,7 @@ func (m *Manager) migrateWorkspaceToV10(hooks v10MigrationActivationHooks) error
 		}
 		return err
 	}
-	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, m.localDataRoot()})
+	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, m.localDataRoot()}).OnMachine(m.machineID())
 	if _, recoverErr := commit.RecoverWorkspace(); recoverErr != nil {
 		return fmt.Errorf("recover workspace before schema-10 activation: %w", recoverErr)
 	}
@@ -200,7 +200,7 @@ func createPreDeferRenameV10Snapshot(dataDir string, renames []v10DeferRenameAud
 		return v10RollbackSnapshot{}, err
 	}
 	createdAt := time.Now().UTC().Truncate(time.Second)
-	stem := "pre-defer-rename-v10-" + createdAt.Format(preScopeV7Timestamp)
+	stem := preDeferRenameV10SnapshotPrefix + createdAt.Format(preScopeV7Timestamp)
 	archivePath := filepath.Join(PreScopeV7BackupsDir(dataDir), stem+preScopeV7ArchiveSuffix)
 	auditPath := filepath.Join(PreScopeV7BackupsDir(dataDir), stem+preScopeV7AuditSuffix)
 	if precheckErr := precheckPreScopeV7Targets(archivePath, auditPath); precheckErr != nil {
@@ -231,7 +231,7 @@ func createPreDeferRenameV10Snapshot(dataDir string, renames []v10DeferRenameAud
 		fmt.Fprintf(&report, "| `%s` | %d |\n", entry.ProjectID, entry.Tasks)
 	}
 	audit := []byte(report.String())
-	archive, err := buildWorkspaceSnapshotArchive(inventory.files, audit, "pre-defer-rename-v10-audit.md")
+	archive, err := buildWorkspaceSnapshotArchive(inventory.files, audit, preDeferRenameV10SnapshotPrefix+"audit.md")
 	if err != nil {
 		return v10RollbackSnapshot{}, err
 	}

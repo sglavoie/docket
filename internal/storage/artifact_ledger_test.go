@@ -214,7 +214,7 @@ func TestCommitArtifactTransaction_RecoveryPrecedesCapture(t *testing.T) {
 	service, ledger, dataDir := newArtifactLedgerTestService(t)
 	recoveredPath := filepath.Join(dataDir, "notes", "recovered.md")
 	requestPath := filepath.Join(dataDir, "notes", "request.md")
-	journal := transaction.NewJournal(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir})
+	journal := transaction.NewJournal(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, "")
 	if _, err := journal.Prepare([]transaction.Op{{
 		Kind: transaction.OpWrite, Target: recoveredPath, Data: []byte("recovered"), Mode: FilePermissions,
 	}}); err != nil {
@@ -263,7 +263,7 @@ func TestCommitArtifactTransaction_PreparedJournalRecoversArtifactsAndLedger(t *
 	}
 	ops := []transaction.Op{{Kind: transaction.OpWrite, Target: path, Data: after, Mode: FilePermissions}}
 	ops = append(ops, plan.ops...)
-	journal := transaction.NewJournal(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir})
+	journal := transaction.NewJournal(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, "")
 	if _, err := journal.PrepareWithID(txnID, ops); err != nil {
 		t.Fatalf("PrepareWithID: %v", err)
 	}
@@ -272,7 +272,7 @@ func TestCommitArtifactTransaction_PreparedJournalRecoversArtifactsAndLedger(t *
 		t.Fatalf("prepared ledger visible before recovery: ok=%v err=%v", ok, err)
 	}
 
-	report, err := transaction.NewJournal(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}).Recover()
+	report, err := transaction.NewJournal(filepath.Join(dataDir, ".tt", "transactions"), []string{dataDir}, "").Recover()
 	if err != nil {
 		t.Fatalf("Recover: %v", err)
 	}

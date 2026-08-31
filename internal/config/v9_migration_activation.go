@@ -57,7 +57,7 @@ func (m *Manager) migrateWorkspaceToV9(hooks v9MigrationActivationHooks) error {
 		}
 		return err
 	}
-	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, m.localDataRoot()})
+	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, m.localDataRoot()}).OnMachine(m.machineID())
 	if _, recoverErr := commit.RecoverWorkspace(); recoverErr != nil {
 		return fmt.Errorf("recover workspace before schema-9 activation: %w", recoverErr)
 	}
@@ -194,7 +194,7 @@ func createPreStateClockV9Snapshot(dataDir string, backfills []v9StateClockAudit
 		return v9RollbackSnapshot{}, err
 	}
 	createdAt := time.Now().UTC().Truncate(time.Second)
-	stem := "pre-state-clock-v9-" + createdAt.Format(preScopeV7Timestamp)
+	stem := preStateClockV9SnapshotPrefix + createdAt.Format(preScopeV7Timestamp)
 	archivePath := filepath.Join(PreScopeV7BackupsDir(dataDir), stem+preScopeV7ArchiveSuffix)
 	auditPath := filepath.Join(PreScopeV7BackupsDir(dataDir), stem+preScopeV7AuditSuffix)
 	if precheckErr := precheckPreScopeV7Targets(archivePath, auditPath); precheckErr != nil {
@@ -219,7 +219,7 @@ func createPreStateClockV9Snapshot(dataDir string, backfills []v9StateClockAudit
 		fmt.Fprintf(&report, "| `%s` | %d |\n", entry.ProjectID, entry.Tasks)
 	}
 	audit := []byte(report.String())
-	archive, err := buildWorkspaceSnapshotArchive(inventory.files, audit, "pre-state-clock-v9-audit.md")
+	archive, err := buildWorkspaceSnapshotArchive(inventory.files, audit, preStateClockV9SnapshotPrefix+"audit.md")
 	if err != nil {
 		return v9RollbackSnapshot{}, err
 	}

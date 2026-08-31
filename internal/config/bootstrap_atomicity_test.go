@@ -184,7 +184,7 @@ func TestManagerLoadOrCreateDomains_RecoversInterruptedBootstrapBeforeClassifica
 		t.Run(name, func(t *testing.T) {
 			t.Setenv("HOME", t.TempDir())
 			dataDir := filepath.Join(t.TempDir(), "workspace")
-			journal := transaction.NewJournal(TransactionsDir(dataDir), []string{dataDir})
+			journal := transaction.NewJournal(TransactionsDir(dataDir), []string{dataDir}, "")
 			manifest, err := journal.Prepare(defaultBootstrapOps(t, dataDir, workspaceID))
 			if err != nil {
 				t.Fatalf("prepare bootstrap journal: %v", err)

@@ -227,7 +227,7 @@ func TestManagerV14MigrationRecoversPreparedActivationOnStartup(t *testing.T) {
 		})
 	}
 	ops = append(ops, plan.cleanup...)
-	journal := transaction.NewJournal(TransactionsDir(root), []string{root, LocalDataRoot()})
+	journal := transaction.NewJournal(TransactionsDir(root), []string{root, LocalDataRoot()}, "")
 	manifest, err := journal.Prepare(ops)
 	if err != nil {
 		t.Fatalf("prepare interrupted activation: %v", err)

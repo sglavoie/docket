@@ -38,6 +38,12 @@ a `wait` action advances that clock. Schedule a new timer through `tea.Tick`
 directly and a scenario pays its real duration, which is both slow and a race
 against the drain budget.
 
+The 60s periodic tick is armed on that virtual clock at launch, so a scenario
+reaches it by naming a span (`{ "type": "wait", "duration": "61s" }`) rather than
+by waiting. That is the only way to observe something only the tick does — the
+outstanding-conflict count, which no local mutation can announce because another
+machine's sync wrote the bundle.
+
 ## Fixtures
 
 | Fixture | Purpose |
@@ -89,7 +95,7 @@ assertions, and trailing JSON are rejected before execution.
 | `key` | `key` | Send one parsed key press. |
 | `text` | `text` | Type literal runes into the active input. |
 | `resize` | `width`, `height` | Resize the simulated terminal. |
-| `wait` | none | Let time pass: drain pending asynchronous work and advance the virtual clock so due timers fire. |
+| `wait` | optional `duration` | Let time pass: drain pending asynchronous work and advance the virtual clock so due timers fire. `duration` is Go duration syntax (`"90s"`, `"2m"`) and moves the clock only, since the drain budget bounds real work; omit it for the short default. |
 | `command` | `command` | Invoke a stable harness or production operation ID. |
 | `restart` | none | Rebuild the app from durable state alone, the way relaunching `tt` does. |
 | `switch_machine` | optional `machine` | Move machine-local state to another machine's home, then restart, the way opening the same synced workspace on a second machine does. Without `machine` the home is always one no machine has used. |

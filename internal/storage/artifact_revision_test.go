@@ -313,7 +313,7 @@ func TestCommitArtifacts_RecoversAfterInterruption(t *testing.T) {
 	catalog := filepath.Join(dataDir, ".tt", "workspace.json")
 	planning := filepath.Join(dataDir, ".tt", "planning.json")
 
-	journal := transaction.NewJournal(txnDir, []string{dataDir})
+	journal := transaction.NewJournal(txnDir, []string{dataDir}, "")
 	if _, err := journal.Prepare([]transaction.Op{
 		{Kind: transaction.OpWrite, Target: catalog, Data: []byte(`{"projects":["p"]}`), Mode: FilePermissions},
 		{Kind: transaction.OpWrite, Target: planning, Data: []byte(`{"queue":["q"]}`), Mode: FilePermissions},
@@ -322,7 +322,7 @@ func TestCommitArtifacts_RecoversAfterInterruption(t *testing.T) {
 	}
 
 	// Simulate a crash: manifest prepared, never committed. A fresh journal recovers.
-	report, err := transaction.NewJournal(txnDir, []string{dataDir}).Recover()
+	report, err := transaction.NewJournal(txnDir, []string{dataDir}, "").Recover()
 	if err != nil {
 		t.Fatalf("Recover: %v", err)
 	}

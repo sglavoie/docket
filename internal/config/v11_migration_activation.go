@@ -58,7 +58,7 @@ func (m *Manager) migrateWorkspaceToV11(hooks v11MigrationActivationHooks) error
 		}
 		return err
 	}
-	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, m.localDataRoot()})
+	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, m.localDataRoot()}).OnMachine(m.machineID())
 	if _, recoverErr := commit.RecoverWorkspace(); recoverErr != nil {
 		return fmt.Errorf("recover workspace before schema-11 activation: %w", recoverErr)
 	}
@@ -204,7 +204,7 @@ func createPreDeferInstantV11Snapshot(dataDir string, conversions []v11DeferInst
 		return v11RollbackSnapshot{}, err
 	}
 	createdAt := time.Now().UTC().Truncate(time.Second)
-	stem := "pre-defer-instant-v11-" + createdAt.Format(preScopeV7Timestamp)
+	stem := preDeferInstantV11SnapshotPrefix + createdAt.Format(preScopeV7Timestamp)
 	archivePath := filepath.Join(PreScopeV7BackupsDir(dataDir), stem+preScopeV7ArchiveSuffix)
 	auditPath := filepath.Join(PreScopeV7BackupsDir(dataDir), stem+preScopeV7AuditSuffix)
 	if precheckErr := precheckPreScopeV7Targets(archivePath, auditPath); precheckErr != nil {
@@ -219,7 +219,7 @@ func createPreDeferInstantV11Snapshot(dataDir string, conversions []v11DeferInst
 		}
 	}
 	audit := []byte(v11DeferInstantAuditReport(createdAt, len(inventory.files), total, projects, conversions))
-	archive, err := buildWorkspaceSnapshotArchive(inventory.files, audit, "pre-defer-instant-v11-audit.md")
+	archive, err := buildWorkspaceSnapshotArchive(inventory.files, audit, preDeferInstantV11SnapshotPrefix+"audit.md")
 	if err != nil {
 		return v11RollbackSnapshot{}, err
 	}

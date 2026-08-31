@@ -282,7 +282,7 @@ func (w *uitestWorkspace) secondMachineDriver(machine string, width, height int)
 		driver.dispatch(app.startupMessage)
 		driver.drain()
 	}
-	driver.bootNoteSearchIndex()
+	driver.bootLaunchCommands()
 	return driver, nil
 }
 
@@ -387,7 +387,7 @@ func (w *uitestWorkspace) launch(width, height int) (*UITestDriver, error) {
 		driver.dispatch(app.startupMessage)
 		driver.drain()
 	}
-	driver.bootNoteSearchIndex()
+	driver.bootLaunchCommands()
 	if w.currentProjectID != "" {
 		for _, project := range app.crossOutliner.loadedProjects {
 			if project != nil && project.ID == w.currentProjectID {

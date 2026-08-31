@@ -285,14 +285,14 @@ func TestArtifactBackupPreparedManifestRecoversBackupAndPrimaryTogether(t *testi
 		t.Fatalf("backup op = %#v, want v1 at 0600", ops[0])
 	}
 
-	journal := transaction.NewJournal(filepath.Join(root, ".tt", "transactions"), []string{root})
+	journal := transaction.NewJournal(filepath.Join(root, ".tt", "transactions"), []string{root}, "")
 	if _, prepareErr := journal.Prepare(ops); prepareErr != nil {
 		t.Fatalf("Prepare: %v", prepareErr)
 	}
 	assertArtifactBytes(t, primary, []byte("v1"))
 	requireAbsent(t, backup)
 
-	report, err := transaction.NewJournal(filepath.Join(root, ".tt", "transactions"), []string{root}).Recover()
+	report, err := transaction.NewJournal(filepath.Join(root, ".tt", "transactions"), []string{root}, "").Recover()
 	if err != nil {
 		t.Fatalf("Recover: %v", err)
 	}

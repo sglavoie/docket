@@ -133,8 +133,14 @@ func (d *UITestDriver) runAction(a UITestAction) error {
 		// A scenario waits to let time pass, which is two things: async work
 		// lands, and the timers the next assertion is waiting on — a transient
 		// status expiring, a flash running out — come due on the virtual clock.
+		// Only the clock honors an overridden span: the drain budget bounds real
+		// work, so lengthening it would make a scenario slower rather than later.
+		span, err := a.waitDuration()
+		if err != nil {
+			return err
+		}
 		d.Wait(defaultWaitTimeout)
-		d.advanceClock(defaultWaitTimeout)
+		d.advanceClock(span)
 	case UITestActionRestart:
 		return d.Restart()
 	case UITestActionSwitchMachine:

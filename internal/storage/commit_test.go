@@ -792,7 +792,7 @@ func TestCommitService_AttachmentMoveRecoversWithMetadata(t *testing.T) {
 	dstContent := mustWriteV5Project(t, dst)
 
 	txnDir := filepath.Join(dataDir, ".tt", "transactions")
-	journal := transaction.NewJournal(txnDir, []string{dataDir})
+	journal := transaction.NewJournal(txnDir, []string{dataDir}, "")
 	if _, err := journal.Prepare([]transaction.Op{
 		{Kind: transaction.OpWrite, Target: tasksFilePath(src.Path), Data: []byte(srcContent), Mode: FilePermissions},
 		{Kind: transaction.OpWrite, Target: tasksFilePath(dst.Path), Data: []byte(dstContent), Mode: FilePermissions},
@@ -803,7 +803,7 @@ func TestCommitService_AttachmentMoveRecoversWithMetadata(t *testing.T) {
 
 	// Simulate a crash: the manifest is prepared but never committed. A fresh
 	// journal (as a later process would construct) recovers it.
-	report, err := transaction.NewJournal(txnDir, []string{dataDir}).Recover()
+	report, err := transaction.NewJournal(txnDir, []string{dataDir}, "").Recover()
 	if err != nil {
 		t.Fatalf("Recover: %v", err)
 	}

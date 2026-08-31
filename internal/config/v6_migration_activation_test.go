@@ -244,7 +244,7 @@ func TestManagerV6MigrationRecoversPreparedActivationBeforeInspection(t *testing
 	ops = append(ops, plan.cleanupOps...)
 	journal := transaction.NewJournal(
 		TransactionsDir(options.DataDir),
-		[]string{options.DataDir, LocalDataRoot()},
+		[]string{options.DataDir, LocalDataRoot()}, "",
 	)
 	manifest, err := journal.Prepare(ops)
 	if err != nil {

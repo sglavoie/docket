@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/transaction"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -110,6 +111,14 @@ func (m *Manager) localDataRoot() string {
 	return localDataRootOn(m.machineHome)
 }
 
+// machineID is the transaction-ownership identity of the machine this manager
+// speaks for. Every commit service the manager builds is bound to it, so a
+// manager named after another machine's home stamps that machine onto the
+// manifests it writes and does not claim the real machine's live transactions.
+func (m *Manager) machineID() string {
+	return transaction.MachineIDForHome(m.machineHome)
+}
+
 func (m *Manager) domainStore() *DomainFileStore {
 	return NewDomainFileStoreOnMachine(m.workspaceDataDir(), m.machineHome)
 }
@@ -181,7 +190,7 @@ func (m *Manager) RecoverWorkspace() error {
 		return err
 	}
 	dataDir := m.workspaceDataDir()
-	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, m.localDataRoot()})
+	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, m.localDataRoot()}).OnMachine(m.machineID())
 	if _, err := commit.RecoverWorkspace(); err != nil {
 		return fmt.Errorf("failed to recover workspace before loading split configuration domains: %w", err)
 	}
@@ -249,7 +258,7 @@ func (m *Manager) LoadOrCreateDomains() (*Domains, error) {
 	if err := m.RecoverWorkspace(); err != nil {
 		return nil, err
 	}
-	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir})
+	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir}).OnMachine(m.machineID())
 
 	store := m.domainStore()
 	state, partialErr := m.classifyDomainState(store)

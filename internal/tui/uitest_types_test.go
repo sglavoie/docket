@@ -49,6 +49,14 @@ type UITestAction struct {
 	Width  int    `json:"width,omitempty"`
 	Height int    `json:"height,omitempty"`
 
+	// Duration optionally overrides how far UITestActionWait advances the virtual
+	// clock, in Go duration syntax ("90s", "2m"). The default is short on purpose
+	// — a wait is usually there to let a status expire — but some timers are
+	// minutes out, and the outstanding-conflict count on the 60s periodic tick is
+	// one of them. Naming the span is the only way a scenario can reach it, since
+	// stacking thirty default waits would assert the same thing far less legibly.
+	Duration string `json:"duration,omitempty"`
+
 	// Machine names the machine identity UITestActionSwitchMachine moves to. It
 	// is optional: an omitted name keeps the historical behavior of landing on a
 	// home no machine has ever used. A name is durable within the scenario, so

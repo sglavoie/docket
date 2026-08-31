@@ -83,6 +83,10 @@ ci:
 tui-scenarios:
     ./scripts/run_tui_scenarios.sh
 
+# Run the two-machine hazard gate (outside `just ci`; see TT_OLD_BINARY_REF)
+cross-machine:
+    ./scripts/cross_machine_gate.sh
+
 # Run code quality checks (deadcode, vet, fmt, goimports, staticcheck)
 check:
     @echo "Running code quality checks..."

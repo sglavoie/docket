@@ -26,6 +26,21 @@ tt conflict resolve <id> --use remote
 tt conflict resolve <id> --use file --file merged.md
 ```
 
+Startup can also meet a transaction that is not interrupted work but another
+machine's live commit, arriving mid-flight from a sync service. Each transaction
+records the machine driving it and keeps a heartbeat while it runs, so this
+machine recognizes one that is not its own, leaves it entirely alone, and opens
+the workspace normally. Nothing is rolled back and nothing is blocked: the
+machine that started it is the one that finishes it. Each transaction skipped
+that way is written to the log with its owner and heartbeat, so an edit that
+exists on the other machine and has not landed here yet has a recorded reason;
+`tt doctor` names the same transactions while they are still live. If that machine never does —
+it crashed, or you stopped syncing it — the heartbeat goes stale within ten
+minutes and the transaction becomes ordinary interrupted work the next launch
+recovers. That window is the only clock difference between machines `tt`
+tolerates, which is why the runbook below asks you not to run `tt` on two
+machines at the same time rather than describing it as a supported way to work.
+
 A recorded bundle no longer waits to be discovered. While the TUI is open, the
 status strip above the footer carries a state indicator counting the workspace's
 unresolved merge conflicts and naming the command that reviews them. It is
@@ -178,4 +193,103 @@ that lets you go back to the build you were running.
 
 Run `tt doctor` for read-only integrity checks or `tt doctor --fix` for
 explicitly supported repairs.
+
+## Running one workspace on more than one machine
+
+A `tt` workspace is an ordinary directory, so putting it on iCloud Drive,
+Dropbox, Syncthing, or any other file sync service works. What follows is what
+the design assumes of that service. None of it can be verified in CI: a sync
+client's eviction, conflict-copy, and versioning behavior lives in a daemon on a
+real machine talking to a real account, and reproducing it would mean shipping a
+test that depends on a third-party service being logged in. The two-machine
+behavior that *can* be checked mechanically is checked, and this section is the
+rest.
+
+**Sync the whole data directory, and exclude nothing inside it.** Every path in
+the layout above is live state, including the ones that look like scratch space:
+
+| Directory | Excluding it costs you |
+| --- | --- |
+| `.tt/workspace.json`, `.tt/planning.json` | The project catalog and Today/Next ordering. Without them the other machine sees an empty or partial workspace |
+| `.tt/lenses.json` | Your saved lenses on the machines that did not write them |
+| `.tt/global-notes/`, `projects/<slug>/notes/` | Note bodies, silently. The catalog still names the collection |
+| `projects/<slug>/tasks.md` | The tasks themselves |
+| `projects/<slug>/.attachments/` | Attachment bytes, while the tasks keep pointing at them. A leading dot makes this the one most likely to be skipped by a rule you did not write for `tt` |
+| `.tt/transactions/` | A commit that was interrupted on the other machine can no longer be finished or cleaned up, which is the one exclusion that can leave a half-written file behind |
+| `.tt/undo/` | Undo history, which is per-workspace rather than per-machine |
+| `.tt/conflicts/` | Recorded conflict bundles, so the machine that has to resolve one may not be the machine that can see it |
+| `.tt/backups/` | The migration archives, which are the only route back to an older build |
+
+**Do not run `tt` on two machines at the same time.** The safeguards are real —
+revision checks refuse a stale write, lens lists merge instead of overwriting,
+and another machine's live commit is left for its owner to finish — but they are
+there to survive an overlap, not to make one a way of working. Sync services
+deliver files whenever they get to them, so two open sessions see each other's
+writes at unpredictable moments; the ten-minute heartbeat window above is the
+only clock difference between machines the design accounts for. Quit on one
+machine, let the sync settle, then open on the other.
+
+**A `.conflicted copy` file is your sync client's, not `tt`'s.** When two
+machines write `tasks.md` or `lenses.json` before either has seen the other's
+version, the sync client may keep both, leaving something like
+`tasks (Case Conflict).md`, `tasks.md.sync-conflict-20250831-…`, or
+`lenses (conflicted copy).json` beside the original. `tt` never writes those
+names and never reads them. Its own conflict record is a bundle under
+`.tt/conflicts/`, which is what `tt conflict list` shows and the status strip
+counts. So:
+
+- A file with a client-invented suffix is a copy you resolve yourself. Compare
+  it with the original, keep the content you want under the original name, and
+  delete the copy. `tt doctor` will not touch it.
+- A bundle in `.tt/conflicts/` is resolved with `tt conflict resolve`.
+
+Provider-specific notes:
+
+- **iCloud Drive** may evict a file's contents while leaving its name in place,
+  which reads to `tt` as an unreadable file rather than a missing one. Turn off
+  "Optimize Mac Storage" for the workspace, or open the directory in Finder and
+  download it before launching. Attachments and notes are the usual victims,
+  because they are the largest and the least recently touched.
+- **Dropbox** creates conflicted copies as described above, and its Selective
+  Sync is the exclusion trap the table warns about: a folder you excluded on one
+  machine still exists on the service, so the workspace looks intact from the
+  other machine and incomplete from this one.
+- **Syncthing** keeps its own file versions under a `.stversions` directory. That
+  is a Syncthing archive, not `tt` state; restoring from it means copying a file
+  back over the original by hand. Syncthing also does not synchronize clocks, and
+  a machine whose clock is well behind the others will write timestamps that read
+  as older than they are — which is what the state clock, the check-back
+  interval, and the Stale lane are all measured against.
+
+**After a sync problem, run `tt doctor`.** Its checks are ordered so the ones
+that block anything else come first: saved lenses, the transaction journal and
+anything sitting in quarantine, recorded conflict bundles, stale lock files left
+behind by a session that never exited, and the migration archives. Then the
+per-project checks, of which one is the expected cross-machine skew: Today and
+Next membership disagreeing with a task's own state, because two machines can
+write the planning file and the task file in either order. That one is fixable,
+so `tt doctor --fix` repairs it.
+
+A quarantined transaction is the one state that stops the workspace outright,
+because a manifest `tt` cannot safely finish or undo must not be worked around.
+Mutations are refused until it is cleared, and there is no CLI command that
+clears it — the recovery step is manual and deliberately so:
+
+1. Quit `tt` on every machine and let the sync settle.
+2. Run `tt doctor`. It names each quarantined transaction, where its manifest
+   sits and what state it stopped in, the machine that wrote it, whether the
+   manifest is readable, and the recovery step itself — the same sentence a
+   blocked startup prints, so the two never disagree.
+3. Back up the whole data directory before touching anything.
+4. Inspect the manifests under `.tt/transactions/quarantine/`. If a file one of
+   them names has wrong contents, restore that file from `.tt/backups` first.
+5. Move the quarantine directory aside — `.tt/transactions/quarantine.bak` is
+   enough — which unblocks mutations. This abandons those transactions; the work
+   they carried is lost, which is why the backup comes first.
+6. Run `tt doctor` again. It should report no quarantine, and mutations work
+   again.
+
+If the same transaction quarantines repeatedly, the cause is usually a partial
+sync: the manifest arrived and its staged bytes did not. Wait for the sync to
+complete on the machine that wrote it before clearing anything.
 

@@ -520,7 +520,7 @@ func TestManagerV5MigrationRecoversPreparedActivationBeforeInspection(t *testing
 	ops = append(ops, plan.cleanupOps...)
 	journal := transaction.NewJournal(
 		TransactionsDir(root),
-		[]string{root, LocalDataRoot()},
+		[]string{root, LocalDataRoot()}, "",
 	)
 	manifest, err := journal.Prepare(ops)
 	if err != nil {

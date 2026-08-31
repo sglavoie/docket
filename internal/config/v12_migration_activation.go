@@ -52,7 +52,7 @@ func (m *Manager) migrateWorkspaceToV12(hooks v12MigrationActivationHooks) error
 		}
 		return err
 	}
-	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, m.localDataRoot()})
+	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, m.localDataRoot()}).OnMachine(m.machineID())
 	if _, recoverErr := commit.RecoverWorkspace(); recoverErr != nil {
 		return fmt.Errorf("recover workspace before schema-12 activation: %w", recoverErr)
 	}
@@ -191,14 +191,14 @@ func createPreContextV12Snapshot(dataDir string) (v12RollbackSnapshot, error) {
 		return v12RollbackSnapshot{}, err
 	}
 	createdAt := time.Now().UTC().Truncate(time.Second)
-	stem := "pre-context-v12-" + createdAt.Format(preScopeV7Timestamp)
+	stem := preContextV12SnapshotPrefix + createdAt.Format(preScopeV7Timestamp)
 	archivePath := filepath.Join(PreScopeV7BackupsDir(dataDir), stem+preScopeV7ArchiveSuffix)
 	auditPath := filepath.Join(PreScopeV7BackupsDir(dataDir), stem+preScopeV7AuditSuffix)
 	if precheckErr := precheckPreScopeV7Targets(archivePath, auditPath); precheckErr != nil {
 		return v12RollbackSnapshot{}, precheckErr
 	}
 	audit := []byte(v12ContextAuditReport(createdAt, len(inventory.files)))
-	archive, err := buildWorkspaceSnapshotArchive(inventory.files, audit, "pre-context-v12-audit.md")
+	archive, err := buildWorkspaceSnapshotArchive(inventory.files, audit, preContextV12SnapshotPrefix+"audit.md")
 	if err != nil {
 		return v12RollbackSnapshot{}, err
 	}

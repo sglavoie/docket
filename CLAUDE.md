@@ -21,9 +21,12 @@ just tidy
 ./scripts/check_docs.sh
 ./scripts/run_tui_scenarios.sh
 just ci
+just cross-machine
 ```
 
-Go accepts packages, not files, as test targets.
+Go accepts packages, not files, as test targets. `just cross-machine` stays
+outside `just ci`: it forks two processes under different `HOME`s and builds a
+tagged older binary, which one in-process test cannot do.
 
 ## Architecture
 
@@ -450,6 +453,12 @@ Undo/redo is one 50-entry workspace ledger over task, project, note, and
 attachment transactions. A successful forward mutation clears redo; failure
 records nothing. Restore locks outermost directories only; a nested lock
 recreates the directory the entry removed.
+
+`.tt/transactions/` is portable, so recovery reads a manifest's `Machine` and
+`Heartbeat`: another machine's live transaction inside `ForeignTransactionGrace`
+is left untouched, never rolled either way and never quarantined. Machine
+identity is recomputed per call, never cached, so a `HOME` switch is a different
+machine. Neither field advances the journal schema.
 
 `OpDelete` is `os.Remove`, so a project delete enumerates its tree post-order and
 commits it with the catalog and planning rewrites. It confirms, names the

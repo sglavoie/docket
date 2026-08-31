@@ -20,8 +20,8 @@ func TestWithWorkspaceCommitLocksRecoversEveryJournalBeforeCallback(t *testing.T
 
 	targetA := filepath.Join(rootA, "recovered.txt")
 	targetB := filepath.Join(rootB, "recovered.txt")
-	journalA := transaction.NewJournal(filepath.Join(rootA, ".tt", "transactions"), []string{rootA})
-	journalB := transaction.NewJournal(filepath.Join(rootB, ".tt", "transactions"), []string{rootB})
+	journalA := transaction.NewJournal(filepath.Join(rootA, ".tt", "transactions"), []string{rootA}, "")
+	journalB := transaction.NewJournal(filepath.Join(rootB, ".tt", "transactions"), []string{rootB}, "")
 	manifestA, err := journalA.Prepare([]transaction.Op{{Kind: transaction.OpWrite, Target: targetA, Data: []byte("a")}})
 	if err != nil {
 		t.Fatalf("prepare journal A: %v", err)

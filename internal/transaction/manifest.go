@@ -118,12 +118,27 @@ func (op FileOp) validate() error {
 
 // Manifest is the durable, versioned record of a transaction's intended file
 // operations and current lifecycle state.
+//
+// Machine and Heartbeat record ownership rather than intent: which machine
+// prepared the transaction and when that machine last touched the manifest. They
+// are optional and additive — an absent Machine is an unowned transaction, which
+// is what a manifest written by a build that predates ownership looks like, and
+// recovery treats it exactly as it always did. That is why they carry no schema
+// bump: an older binary ignores both keys and behaves as it did before, instead
+// of quarantining every in-flight transaction a newer binary wrote.
 type Manifest struct {
-	SchemaVersion int      `json:"schema_version"`
-	ID            string   `json:"id"`
-	State         State    `json:"state"`
-	CreatedAt     string   `json:"created_at"`
-	Ops           []FileOp `json:"ops"`
+	SchemaVersion int    `json:"schema_version"`
+	ID            string `json:"id"`
+	State         State  `json:"state"`
+	CreatedAt     string `json:"created_at"`
+	// Machine is the identity of the machine that owns this transaction. See
+	// MachineIDForHome for what an identity is.
+	Machine string `json:"machine,omitempty"`
+	// Heartbeat is the RFC3339Nano UTC instant the owning machine last wrote this
+	// manifest. It is refreshed on every state advance, so a transaction another
+	// machine is actively driving is distinguishable from one it abandoned.
+	Heartbeat string   `json:"heartbeat,omitempty"`
+	Ops       []FileOp `json:"ops"`
 }
 
 // Validate reports whether a manifest is structurally sound and its schema

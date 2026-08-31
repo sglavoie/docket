@@ -80,7 +80,7 @@ func TestLedgerRestoreCrashRecoveryConvergesAtEveryOperation(t *testing.T) {
 				applyLedgerRestoreOpPrefix(t, fixture.manifest, prefix)
 			}
 
-			report, err := transaction.NewJournal(fixture.transactionsDir, []string{fixture.root}).Recover()
+			report, err := transaction.NewJournal(fixture.transactionsDir, []string{fixture.root}, "").Recover()
 			if err != nil {
 				t.Fatalf("Recover: %v", err)
 			}
@@ -265,7 +265,7 @@ func prepareLedgerRestoreCrashFixture(t *testing.T) ledgerRestoreCrashFixture {
 	if !ok {
 		t.Fatal("restore crash fixture has no undo entry")
 	}
-	journal := transaction.NewJournal(transactionsDir, []string{root})
+	journal := transaction.NewJournal(transactionsDir, []string{root}, "")
 	manifest, err := ledger.prepareRestoreTransaction(journal, lf, entry, idx, false)
 	if err != nil {
 		t.Fatalf("prepare restore transaction: %v", err)

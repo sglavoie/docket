@@ -552,12 +552,12 @@ func convertV6ProjectCandidate(
 	}
 	targetDocument = parsed
 	return V6ProjectDocumentCandidate{
-			ProjectID: targetProject.ID, SourcePath: sourcePath, Path: targetPath,
-			SourceExists: found, Document: targetDocument,
-		}, V6WorkspaceArtifactCandidate{
-			SourcePath: sourcePath, Path: targetPath, Kind: "project",
-			ProjectID: targetProject.ID, SourceExists: found, Data: []byte(content),
-		}, convertedTasks, taskAudit, nil
+		ProjectID: targetProject.ID, SourcePath: sourcePath, Path: targetPath,
+		SourceExists: found, Document: targetDocument,
+	}, V6WorkspaceArtifactCandidate{
+		SourcePath: sourcePath, Path: targetPath, Kind: "project",
+		ProjectID: targetProject.ID, SourceExists: found, Data: []byte(content),
+	}, convertedTasks, taskAudit, nil
 }
 
 func validateV6SourceProjectDir(path string, archived bool) error {

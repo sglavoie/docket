@@ -276,7 +276,7 @@ func TestRenameRecoveryConvergesAtEveryCommitBoundary(t *testing.T) {
 				t.Fatal("Commit unexpectedly crossed injected crash boundary")
 			}
 
-			restarted := NewJournal(filepath.Join(root, ".tt", "transactions"), []string{root})
+			restarted := NewJournal(filepath.Join(root, ".tt", "transactions"), []string{root}, "")
 			report, err := restarted.Recover()
 			if err != nil {
 				t.Fatalf("Recover: %v", err)

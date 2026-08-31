@@ -56,7 +56,7 @@ func (m *Manager) migrateWorkspaceToV17(hooks v17MigrationActivationHooks) error
 		}
 		return err
 	}
-	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, m.localDataRoot()})
+	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, m.localDataRoot()}).OnMachine(m.machineID())
 	if _, recoverErr := commit.RecoverWorkspace(); recoverErr != nil {
 		return fmt.Errorf("recover workspace before schema-17 activation: %w", recoverErr)
 	}
@@ -199,14 +199,14 @@ func createPreStoredReviewV17Snapshot(dataDir string) (v17RollbackSnapshot, erro
 		return v17RollbackSnapshot{}, err
 	}
 	createdAt := time.Now().UTC().Truncate(time.Second)
-	stem := "pre-stored-review-v17-" + createdAt.Format(preScopeV7Timestamp)
+	stem := preStoredReviewV17SnapshotPrefix + createdAt.Format(preScopeV7Timestamp)
 	archivePath := filepath.Join(PreScopeV7BackupsDir(dataDir), stem+preScopeV7ArchiveSuffix)
 	auditPath := filepath.Join(PreScopeV7BackupsDir(dataDir), stem+preScopeV7AuditSuffix)
 	if precheckErr := precheckPreScopeV7Targets(archivePath, auditPath); precheckErr != nil {
 		return v17RollbackSnapshot{}, precheckErr
 	}
 	audit := []byte(v17StoredReviewAuditReport(createdAt, len(inventory.files)))
-	archive, err := buildWorkspaceSnapshotArchive(inventory.files, audit, "pre-stored-review-v17-audit.md")
+	archive, err := buildWorkspaceSnapshotArchive(inventory.files, audit, preStoredReviewV17SnapshotPrefix+"audit.md")
 	if err != nil {
 		return v17RollbackSnapshot{}, err
 	}

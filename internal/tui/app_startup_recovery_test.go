@@ -60,7 +60,7 @@ func prepareTUIStartupRecovery(t *testing.T, state transaction.State) (*config.R
 		t.Fatalf("startup recovery ops = %d, want 2", len(ops))
 	}
 
-	journal := transaction.NewJournal(config.TransactionsDir(dataDir), []string{dataDir})
+	journal := transaction.NewJournal(config.TransactionsDir(dataDir), []string{dataDir}, "")
 	manifest, err := journal.Prepare(ops)
 	if err != nil {
 		t.Fatalf("Prepare: %v", err)

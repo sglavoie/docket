@@ -1,13 +1,19 @@
 package tui
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/tt/internal/util"
 )
 
 const CapabilityHarness Capability = "surface:test-harness"
@@ -30,6 +36,8 @@ const (
 	operationHarnessEditorRefusal   OperationID = "tui.harness.external-editor-refusal"
 	operationHarnessDanglingLens    OperationID = "tui.harness.dangling-active-lens"
 	operationHarnessRecordConflict  OperationID = "tui.harness.record-conflict"
+	operationHarnessConflictOffTick OperationID = "tui.harness.record-conflict-off-tick"
+	operationHarnessForeignTxn      OperationID = "tui.harness.foreign-live-transaction"
 )
 
 // The canned conflict bundle. A conflict is recorded only when a project changes
@@ -163,9 +171,25 @@ func (m *AppModel) registerHarnessOperations() error {
 				return ErrorMsg{Err: err}
 			}
 			// The strip counts the same directory this just wrote to, so the count
-			// is refreshed here rather than waiting for the 60s tick a scenario
-			// never reaches.
+			// is refreshed here rather than waiting for the 60s tick. Scenarios
+			// asserting the tick itself use the off-tick twin below.
 			m.refreshOutstandingConflicts()
+			return nil
+		}},
+		{operationHarnessConflictOffTick, "record merge conflict off tick", OperationCategorySystem, func() tea.Msg {
+			// Same bundle, no refresh. This is what another machine writing a
+			// bundle into the synced directory looks like from here: the file is
+			// there and this app has not looked yet, so only the periodic tick can
+			// make the count appear.
+			if err := m.harnessRecordConflict(); err != nil {
+				return ErrorMsg{Err: err}
+			}
+			return nil
+		}},
+		{operationHarnessForeignTxn, "stage foreign live transaction", OperationCategorySystem, func() tea.Msg {
+			if err := m.harnessStageForeignTransaction(); err != nil {
+				return ErrorMsg{Err: err}
+			}
 			return nil
 		}},
 	}
@@ -195,6 +219,55 @@ func (m *AppModel) registerHarnessOperations() error {
 		}
 	}
 	return nil
+}
+
+// harnessForeignMachineID is the owner recorded on the staged foreign
+// transaction. Any identity this machine cannot compute for itself will do; a
+// fixed one keeps the staged manifest reproducible.
+const harnessForeignMachineID = "f0e1d2c3b4a59687"
+
+// harnessStageForeignTransaction writes a prepared transaction manifest owned by
+// another machine, with a heartbeat fresh enough to vouch for it.
+//
+// This is the state a synced workspace reaches whenever the sync client copies a
+// manifest across while its owner is still mid-commit, and no public key can
+// produce it: the local app never writes another machine's identity. The manifest
+// is written directly for the same reason the conflict bundle is.
+//
+// Its single operation names a file inside the workspace and a staged path that
+// does not exist. That combination is deliberate: while the heartbeat is fresh
+// recovery must not look at the operation at all, so an unreachable staged path
+// is what proves the transaction was left alone rather than rolled forward.
+func (m *AppModel) harnessStageForeignTransaction() error {
+	if m == nil || m.runtime == nil {
+		return fmt.Errorf("staging a transaction needs a workspace")
+	}
+	dir := config.TransactionsDir(m.runtime.DataDir())
+	if err := os.MkdirAll(dir, util.DirPermissions); err != nil {
+		return fmt.Errorf("creating transactions directory: %w", err)
+	}
+	id := "harness-foreign-transaction"
+	now := time.Now().UTC()
+	manifest := transaction.Manifest{
+		SchemaVersion: transaction.SchemaVersion,
+		ID:            id,
+		State:         transaction.StatePrepared,
+		CreatedAt:     now.Format(time.RFC3339Nano),
+		Machine:       harnessForeignMachineID,
+		Heartbeat:     now.Format(time.RFC3339Nano),
+		Ops: []transaction.FileOp{{
+			Kind:   transaction.OpWrite,
+			Target: filepath.Join(m.runtime.DataDir(), "projects", "rich-project", "tasks.md"),
+			Staged: filepath.Join(dir, id+".staged"),
+			Hash:   strings.Repeat("0", 64),
+			Mode:   util.FilePermissions,
+		}},
+	}
+	data, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encoding manifest: %w", err)
+	}
+	return os.WriteFile(filepath.Join(dir, id+".json"), data, util.FilePermissions)
 }
 
 // harnessRecordConflict writes one conflict bundle into the workspace's store.

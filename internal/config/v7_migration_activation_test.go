@@ -329,7 +329,7 @@ func TestManagerV7MigrationRecoversPreparedActivationBeforeInspection(t *testing
 		})
 	}
 	ops = append(ops, plan.cleanupOps...)
-	journal := transaction.NewJournal(TransactionsDir(options.DataDir), []string{options.DataDir, LocalDataRoot()})
+	journal := transaction.NewJournal(TransactionsDir(options.DataDir), []string{options.DataDir, LocalDataRoot()}, "")
 	manifest, err := journal.Prepare(ops)
 	if err != nil {
 		t.Fatalf("prepare interrupted activation: %v", err)

@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -46,9 +47,28 @@ type RecoveryReport struct {
 	// SweptOrphans holds the absolute paths of orphan staging files removed —
 	// staged bytes left by a crash before any manifest referenced them.
 	SweptOrphans []string
+	// ForeignLive holds live transactions another machine is still driving, which
+	// this pass deliberately left alone. They are reported rather than recovered
+	// and they do not block: the workspace this machine opens is complete, and the
+	// owning machine will finish or a later pass will adopt the transaction once
+	// its heartbeat goes stale.
+	ForeignLive []ForeignTransaction
 	// Quarantined holds every manifest recovery refused to act on, including any
 	// quarantined by an earlier pass and still awaiting resolution.
 	Quarantined []QuarantineEntry
+}
+
+// ForeignTransaction describes an in-flight transaction owned by a different
+// machine whose heartbeat is still fresh. Recovery neither applies nor discards
+// it, because both would race the machine that is mid-commit: applying it can
+// interleave renames with the owner's own, and discarding it destroys staged
+// bytes the owner is about to consume.
+type ForeignTransaction struct {
+	ID        string
+	Path      string
+	State     State
+	Machine   string
+	Heartbeat string
 }
 
 // Blocked reports whether recovery quarantined any manifest. While true, the
@@ -113,6 +133,10 @@ func (j *Journal) Recover() (*RecoveryReport, error) {
 			j.quarantine(report, me.id, me.path, fmt.Sprintf("manifest could not be loaded: %v", me.loadErr))
 			continue
 		}
+		if foreign, ok := j.foreignLive(me.manifest, me.path); ok {
+			report.ForeignLive = append(report.ForeignLive, foreign)
+			continue
+		}
 		if err := j.recoverManifest(report, me.manifest, me.path); err != nil {
 			j.quarantine(report, me.id, me.path, err.Error())
 		}
@@ -174,6 +198,68 @@ func (j *Journal) loadExistingQuarantine(report *RecoveryReport, protected map[s
 		})
 	}
 	return nil
+}
+
+// ForeignTransactionGrace is how long a live transaction's heartbeat vouches for
+// its owning machine. Within the grace period the owner is presumed to be mid
+// commit and the transaction is left alone; past it the transaction is treated as
+// abandoned and adopted by whichever machine recovers next, which is what keeps a
+// machine that dies mid-commit from wedging the workspace for the other one.
+//
+// The window is generous on purpose. A heartbeat is refreshed only when the
+// manifest changes state, so a large commit legitimately goes quiet for as long
+// as its file operations take, and a synced tree adds the sync service's own
+// propagation delay on top. Waiting too long only postpones an interrupted
+// transaction's completion; adopting too early corrupts a live one.
+const ForeignTransactionGrace = 10 * time.Minute
+
+// foreignLive reports whether a manifest belongs to another machine that is
+// still driving it, and must therefore be reported instead of recovered.
+//
+// A manifest with no recorded owner is not foreign: that is what a build
+// predating transaction ownership wrote, and refusing to recover it would strand
+// exactly the transactions this machine is responsible for. A committed manifest
+// is never foreign either — reclaiming its staged bytes is idempotent and safe
+// from any machine, and leaving it would strand those bytes on whichever machine
+// happens to open the workspace next.
+func (j *Journal) foreignLive(m *Manifest, path string) (ForeignTransaction, bool) {
+	if m.Machine == "" || m.Machine == j.machineID {
+		return ForeignTransaction{}, false
+	}
+	switch m.State {
+	case StatePreparing, StatePrepared, StateCommitting:
+	default:
+		return ForeignTransaction{}, false
+	}
+	if !j.heartbeatFresh(m.Heartbeat) {
+		return ForeignTransaction{}, false
+	}
+	return ForeignTransaction{
+		ID:        m.ID,
+		Path:      path,
+		State:     m.State,
+		Machine:   m.Machine,
+		Heartbeat: m.Heartbeat,
+	}, true
+}
+
+// heartbeatFresh reports whether a heartbeat still vouches for a live owner. A
+// missing or unparseable heartbeat cannot, so it reads as stale and the
+// transaction becomes adoptable — the same answer an owner-less manifest gets.
+//
+// A heartbeat stamped in the future, which two machines with skewed clocks
+// inside one synced workspace produce routinely, yields a negative age and so
+// reads as fresh. That is the safe direction: it defers to the other machine
+// rather than adopting a transaction it may still be applying.
+func (j *Journal) heartbeatFresh(heartbeat string) bool {
+	if heartbeat == "" {
+		return false
+	}
+	beat, err := time.Parse(time.RFC3339Nano, heartbeat)
+	if err != nil {
+		return false
+	}
+	return j.now().UTC().Sub(beat) < ForeignTransactionGrace
 }
 
 // recoverManifest acts on a single loadable manifest according to its state. It

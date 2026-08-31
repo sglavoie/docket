@@ -2805,6 +2805,30 @@ operation; migration publication includes the machine-state root as well as the
 portable workspace. A quarantined or malformed journal blocks startup rather
 than allowing a partial view.
 
+Because `.tt/transactions/` is portable, recovery can meet a journal that is not
+an interrupted transaction at all but another machine's live one, delivered
+mid-commit by a sync service. A manifest therefore records who wrote it and when
+it was last touched: `Manifest.Machine` is the first `machineIDLength` hex
+characters of `sha256(hostname + "\x00" + filepath.Clean(home))`, and
+`Manifest.Heartbeat` is refreshed as the transaction proceeds. Both are
+`omitempty` and neither advances the journal schema, so a manifest written by a
+build that predates them reads as unowned and recovers exactly as it always did.
+The identity is recomputed per call rather than cached, which is what makes a
+`HOME` switch genuinely a different machine and keeps the harness and the
+two-process gate honest.
+
+`Journal.foreignLive` is the resulting refusal: a manifest naming another machine
+whose heartbeat is fresher than `ForeignTransactionGrace` is left untouched —
+neither rolled forward, nor rolled back, nor quarantined — and reported as
+`RecoveryReport.ForeignLive`. It does not block, because the owner is still
+working and will finish it; the alternative is one machine rolling back a commit
+another machine is mid-way through publishing. Once the heartbeat goes stale the
+transaction is ordinary interrupted work again and recovers on the next launch,
+so a machine that dies mid-commit strands nothing permanently. The grace window
+is the only clock skew this design tolerates, which is why the runbook in
+[`guide/storage.md`](guide/storage.md) says not to run `tt` on two machines at
+once rather than treating that as a supported mode.
+
 The ledger retains at most 50 transactions across undo and redo. `u` and
 `Ctrl+R` restore complete artifact images, including project moves, planning,
 notes, and attachment topology. Every successful forward mutation clears redo.

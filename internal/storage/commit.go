@@ -354,6 +354,34 @@ type CommitService struct {
 	// store and aborts the whole commit. A nil store disables merging, so a stale
 	// revision aborts with a RevisionConflictError exactly as before.
 	conflicts *ConflictStore
+	// machineID is the identity stamped onto the transaction manifests this
+	// service prepares, and the one recovery compares against when deciding
+	// whether an in-flight transaction is this machine's to finish. An empty value
+	// means the running process's own machine, which is what every production
+	// caller wants; OnMachine exists for the callers that hold an explicit machine
+	// home, so two machines sharing a synced workspace never claim each other's
+	// live transactions.
+	machineID string
+}
+
+// OnMachine binds this service to an explicit machine identity and returns the
+// same service for fluent construction. An empty machineID leaves the default in
+// place: the machine the process is running on.
+func (s *CommitService) OnMachine(machineID string) *CommitService {
+	s.machineID = machineID
+	if s.ledger != nil {
+		// The ledger's standalone record and restore paths open their own journals,
+		// so they need the same owner as the service that attached the ledger.
+		s.ledger.machineID = machineID
+	}
+	return s
+}
+
+// journal returns a transaction journal owned by this service's machine. Every
+// commit and recovery path goes through it, so there is exactly one place a
+// journal's ownership is decided.
+func (s *CommitService) journal() *transaction.Journal {
+	return transaction.NewJournal(s.transactionsDir, s.roots, s.machineID)
 }
 
 // NewCommitService returns a CommitService that journals transactions under
@@ -404,7 +432,7 @@ func (s *CommitService) RecoverWorkspace() (*transaction.RecoveryReport, error) 
 	var report *transaction.RecoveryReport
 	err := s.withWorkspaceCommitLock(func() error {
 		var recoverErr error
-		report, recoverErr = s.recoverLocked(transaction.NewJournal(s.transactionsDir, s.roots))
+		report, recoverErr = s.recoverLocked(s.journal())
 		return recoverErr
 	})
 	return report, err
@@ -475,7 +503,7 @@ func (s *CommitService) CommitMulti(changesets []ChangeSet) ([]*CommitResult, er
 	// withWorkspaceCommitLock for why the per-project locks alone are insufficient.
 	var results []*CommitResult
 	if err := s.withWorkspaceCommitLock(func() error {
-		journal := transaction.NewJournal(s.transactionsDir, s.roots)
+		journal := s.journal()
 		if _, recoverErr := s.recoverLocked(journal); recoverErr != nil {
 			return recoverErr
 		}
@@ -578,7 +606,7 @@ func (s *CommitService) CommitPlannedOpsWithArtifacts(
 	}
 
 	return s.withWorkspaceCommitLock(func() error {
-		journal := transaction.NewJournal(s.transactionsDir, s.roots)
+		journal := s.journal()
 		if _, recoverErr := s.recoverLocked(journal); recoverErr != nil {
 			return recoverErr
 		}
@@ -650,7 +678,7 @@ func (s *CommitService) commitOps(request OpsCommitRequest, recordUndo bool) (st
 	}
 	var txnID string
 	commitErr := s.withWorkspaceCommitLock(func() error {
-		journal := transaction.NewJournal(s.transactionsDir, s.roots)
+		journal := s.journal()
 		if _, recoverErr := s.recoverLocked(journal); recoverErr != nil {
 			return recoverErr
 		}
@@ -760,7 +788,7 @@ func (s *CommitService) CommitPlannedArtifacts(plan func() ([]ArtifactChange, er
 
 	var txnID string
 	commitErr := s.withWorkspaceCommitLock(func() error {
-		journal := transaction.NewJournal(s.transactionsDir, s.roots)
+		journal := s.journal()
 		if _, recoverErr := s.recoverLocked(journal); recoverErr != nil {
 			return recoverErr
 		}
@@ -909,7 +937,7 @@ func (s *CommitService) commitArtifacts(request ArtifactCommitRequest, recordUnd
 	artifactLocks = lockPathsNotHeldBy(artifactLocks, preconditionLocks)
 	var txnID string
 	commitErr := s.withWorkspaceCommitLock(func() error {
-		journal := transaction.NewJournal(s.transactionsDir, s.roots)
+		journal := s.journal()
 		if _, recoverErr := s.recoverLocked(journal); recoverErr != nil {
 			return recoverErr
 		}
@@ -1323,9 +1351,9 @@ func createArtifactLockDirectories(lockPaths []string) error {
 	return nil
 }
 
-// workspaceCommitLockName is the single workspace-level lock file that serializes
+// WorkspaceCommitLockName is the single workspace-level lock file that serializes
 // the entire commit pipeline for a workspace.
-const workspaceCommitLockName = "commit.lock"
+const WorkspaceCommitLockName = "commit.lock"
 
 type workspaceCommitLockTarget struct {
 	identity string
@@ -1386,7 +1414,7 @@ func withWorkspaceCommitLocks(services []*CommitService, recover bool, fn func()
 			return fmt.Errorf("creating transactions directory %s: %w", service.transactionsDir, err)
 		}
 		targets = append(targets, workspaceCommitLockTarget{
-			identity: artifactPathIdentity(filepath.Join(service.transactionsDir, workspaceCommitLockName)),
+			identity: artifactPathIdentity(filepath.Join(service.transactionsDir, WorkspaceCommitLockName)),
 			service:  service,
 		})
 	}
@@ -1408,7 +1436,7 @@ func withWorkspaceCommitLocks(services []*CommitService, recover bool, fn func()
 	return acquireLocksInOrder(orderedLocks, func() error {
 		if recover {
 			for _, service := range distinctJournals {
-				journal := transaction.NewJournal(service.transactionsDir, service.roots)
+				journal := service.journal()
 				if _, err := service.recoverLocked(journal); err != nil {
 					return err
 				}
@@ -1425,6 +1453,17 @@ func (s *CommitService) recoverLocked(journal *transaction.Journal) (*transactio
 	report, err := journal.Recover()
 	if err != nil {
 		return report, fmt.Errorf("transaction recovery failed: %w", err)
+	}
+	// A transaction another machine is still driving is skipped rather than
+	// recovered, which means this pass deliberately left durable state unfinished.
+	// That is correct and it is not an error, but it is the one recovery outcome a
+	// user cannot see anywhere else: their edit exists on the other machine and has
+	// not landed here yet. Log it so the reason is on record when they ask.
+	for _, foreign := range report.ForeignLive {
+		logging.Warn(
+			"left transaction %s (%s) alone: owned by machine %s, heartbeat %s, manifest %s",
+			foreign.ID, foreign.State, foreign.Machine, foreign.Heartbeat, foreign.Path,
+		)
 	}
 	if report.Blocked() {
 		return report, fmt.Errorf("%w: %w", ErrCommitBlocked, report.Err())

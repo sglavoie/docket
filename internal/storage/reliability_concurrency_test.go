@@ -232,7 +232,7 @@ func TestReliability_CommitDrivesCrashRecoveryRollForward(t *testing.T) {
 	betaTasks := tasksFilePath(betaPath)
 	stranded := reliabilityProject(t, dataDir, "beta", reliabilityTask(t, 1, "recovered work"))
 	strandedContent := mustWriteV5Project(t, stranded)
-	journal := transaction.NewJournal(transactionsDir, []string{dataDir})
+	journal := transaction.NewJournal(transactionsDir, []string{dataDir}, "")
 	if _, err := journal.Prepare([]transaction.Op{{
 		Kind:   transaction.OpWrite,
 		Target: betaTasks,

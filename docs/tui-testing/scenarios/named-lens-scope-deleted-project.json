@@ -1,0 +1,60 @@
+{
+  "name": "named-lens-scope-deleted-project",
+  "fixture": "multi-project",
+  "size": "100x35",
+  "actions": [
+    { "type": "switch_machine", "label": "the laptop is where the scoped lens is authored", "machine": "laptop" },
+    { "type": "wait" },
+
+    { "type": "key", "label": "step onto the Client Beta group header", "key": "n" },
+    { "type": "key", "key": "n" },
+    { "type": "key", "label": "move onto Client Beta's task", "key": "j" },
+    { "type": "key", "label": "scope to that project", "key": "g" },
+    { "type": "key", "key": "p" },
+    { "type": "assert", "assert": "contains", "value": "Client Beta · All" },
+
+    { "type": "key", "label": "save the scoped view, which leaves it the active lens", "key": "\\" },
+    { "type": "key", "key": "enter" },
+    { "type": "text", "text": "Beta Desk" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Lens: Beta Desk" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "switch_machine", "label": "the desktop deletes the project that lens opens in", "machine": "desktop" },
+    { "type": "wait" },
+    { "type": "key", "key": "n" },
+    { "type": "key", "key": "n" },
+    { "type": "key", "label": "the project sheet is the only route to Delete", "key": "space" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "down" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "Delete Client Beta and everything it owns?" },
+    { "type": "key", "key": "y" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "[client-beta]" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "switch_machine", "label": "the laptop returns to a pointer whose project is gone", "machine": "laptop" },
+    { "type": "wait" },
+    { "type": "assert", "label": "a lens naming a deleted project fails closed the same way a deleted lens does", "assert": "not_contains", "value": "Lens:" },
+    { "type": "assert", "assert": "not_contains", "value": "Client Beta · All" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "assert", "assert": "contains", "value": "Alpha migration kickoff" },
+    { "type": "assert", "label": "and silently, since the pointer is a hint rather than a record", "assert": "not_contains", "value": "no longer exists" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the definition survived the project it named", "key": "\\" },
+    { "type": "assert", "assert": "contains", "value": "Beta Desk" },
+
+    { "type": "key", "label": "asking for it on purpose is owed the reason", "key": "j" },
+    { "type": "key", "key": "j" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "contains", "value": "lens \"Beta Desk\" opens in a project that no longer exists" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

@@ -384,7 +384,19 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// onto the flag — and that pairing sentence already lived here because nothing
 	// else states which task grammar a catalog version implies. The prose is in
 	// docs/architecture.md and the guides; the rules alone landed here.
-	const budget = 26200
+	// That raise is spent too. This one buys two rules the cross-machine story
+	// cannot state anywhere else. The first is a forbidden pattern with teeth:
+	// `.tt/transactions/` is portable, so a reviewer touching recovery has to know
+	// that another machine's live manifest is left alone rather than rolled either
+	// way — the plausible reading, "an unfinished transaction is interrupted work",
+	// is the one that makes one machine roll back a commit another is publishing.
+	// The second is that `just cross-machine` is deliberately outside `just ci`,
+	// which is a rule about the gate rather than about the code, and a contributor
+	// who does not know it will either delete the recipe as dead or wire it into CI
+	// where it forks processes and checks out tags. Both are invariants; neither is
+	// derivable from the tests, because the tests that could state them are the
+	// two-process ones no in-process suite runs.
+	const budget = 26700
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

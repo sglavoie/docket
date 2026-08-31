@@ -181,6 +181,11 @@ type WorkspaceLedger struct {
 	transactionsDir string
 	roots           []string
 	now             func() time.Time
+	// machineID owns the transactions the ledger's own standalone record and
+	// restore paths prepare. It is bound by CommitService.OnMachine alongside
+	// transactionsDir, so an undo runs as the same machine as the commit it
+	// reverses. Empty means the running process's machine.
+	machineID string
 }
 
 // WorkspaceLedgerValidation summarizes a successful read-only validation.
@@ -532,9 +537,9 @@ func (l *WorkspaceLedger) prepareRecord(rec LedgerRecord) (*preparedLedgerRecord
 // the standalone path uses the workspace commit lock and journal so it cannot
 // race a commit or restore.
 func (l *WorkspaceLedger) Record(rec LedgerRecord) error {
-	service := NewCommitService(l.transactionsDir, l.roots)
+	service := NewCommitService(l.transactionsDir, l.roots).OnMachine(l.machineID)
 	return service.withWorkspaceCommitLock(func() error {
-		journal := transaction.NewJournal(l.transactionsDir, l.roots)
+		journal := service.journal()
 		if _, err := service.recoverLocked(journal); err != nil {
 			return err
 		}
@@ -693,10 +698,10 @@ func (l *WorkspaceLedger) RedoWithEntry(scope LedgerScope) (LedgerEntry, string,
 // after-images. The consumed entry moves to the opposite stack so the operation
 // is itself reversible, matching the linear Vim-style contract.
 func (l *WorkspaceLedger) restore(scope LedgerScope, redo bool) (LedgerEntry, string, error) {
-	service := NewCommitService(l.transactionsDir, l.roots)
+	service := NewCommitService(l.transactionsDir, l.roots).OnMachine(l.machineID)
 	var restored LedgerEntry
 	err := service.withWorkspaceCommitLock(func() error {
-		journal := transaction.NewJournal(l.transactionsDir, l.roots)
+		journal := service.journal()
 		if _, recoverErr := service.recoverLocked(journal); recoverErr != nil {
 			return recoverErr
 		}

@@ -47,7 +47,7 @@ func (m *Manager) MigrateWorkspaceToV8() error {
 		}
 		return err
 	}
-	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, m.localDataRoot()})
+	commit := storage.NewCommitService(TransactionsDir(dataDir), []string{dataDir, m.localDataRoot()}).OnMachine(m.machineID())
 	if _, recoverErr := commit.RecoverWorkspace(); recoverErr != nil {
 		return fmt.Errorf("recover workspace before schema-8 activation: %w", recoverErr)
 	}
@@ -271,7 +271,7 @@ func createPreTagV8Snapshot(dataDir string, tagChanges []v8TagAuditEntry) (strin
 		return "", "", err
 	}
 	createdAt := time.Now().UTC().Truncate(time.Second)
-	stem := "pre-tag-v8-" + createdAt.Format(preScopeV7Timestamp)
+	stem := preTagV8SnapshotPrefix + createdAt.Format(preScopeV7Timestamp)
 	archivePath := filepath.Join(PreScopeV7BackupsDir(dataDir), stem+preScopeV7ArchiveSuffix)
 	auditPath := filepath.Join(PreScopeV7BackupsDir(dataDir), stem+preScopeV7AuditSuffix)
 	if precheckErr := precheckPreScopeV7Targets(archivePath, auditPath); precheckErr != nil {
@@ -287,7 +287,7 @@ func createPreTagV8Snapshot(dataDir string, tagChanges []v8TagAuditEntry) (strin
 		fmt.Fprintf(&report, "| `%s` | `%s` | `%s` | `%s` | %t |\n", entry.ProjectID, entry.TaskID, entry.From, entry.To, entry.Collision)
 	}
 	audit := []byte(report.String())
-	archive, err := buildWorkspaceSnapshotArchive(inventory.files, audit, "pre-tag-v8-audit.md")
+	archive, err := buildWorkspaceSnapshotArchive(inventory.files, audit, preTagV8SnapshotPrefix+"audit.md")
 	if err != nil {
 		return "", "", err
 	}
