@@ -7,20 +7,32 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// A lens query narrows the projection its own mode, facets, scope, and sort
-// already produced. That is the whole difference from ordinary slash search,
-// which replaces the projection with a scope-wide relevance-ordered result set:
-// here the saved order stands, the rows are a subset of what the mode was
-// already showing, and the query only decides which of them survive.
+// A narrowing query narrows the projection its own mode, facets, scope, and sort
+// already produced: the order stands, the rows are a subset of what the mode was
+// already showing, and the query only decides which of them survive. Both
+// carriers that hold free text compile through here — a lens's saved query and
+// the slash-search input — because a query is a clause, not a mode. The flat
+// ranked list is a presentation of the same rows and is reached by toggling it,
+// never by typing.
 
-// lensNarrowing is one compiled lens query. retained is what the projection may
-// still admit — every match plus the ancestors that give a match its hierarchy
-// context — and matched is the attribution source for the actual hits alone, so
-// a retained ancestor carries no cue it did not earn.
-type lensNarrowing struct {
+// queryNarrowing is one compiled narrowing query. retained is what the
+// projection may still admit — every match plus the ancestors that give a match
+// its hierarchy context — and matched is the attribution source for the actual
+// hits alone, so a retained ancestor carries no cue it did not earn.
+type queryNarrowing struct {
 	active   bool
 	retained map[TaskIdentity]bool
 	matched  map[TaskIdentity]outlinerMatchSource
+}
+
+// narrowingCompilation is everything compiling one narrowing query produced. The
+// carrier that asked for it records the remainder, gate, and case mode where its
+// own chrome reads them; the narrowing itself is what the projection consumes.
+type narrowingCompilation struct {
+	narrowing queryNarrowing
+	remainder string
+	gate      *searchPredicates
+	relaxed   bool
 }
 
 // setLensQuery installs the narrowing query and discards the compilation of the
@@ -64,45 +76,58 @@ func (m *OutlinerModel) lensCaseSensitive() bool {
 	return fuzzy.CaseSensitiveQuery(m.lensTextQuery())
 }
 
-// compileLensNarrowing parses the lens query through the shared search grammar
-// and resolves the identities the projection may keep. It records the compiled
-// gate, remainder, and case mode on the model so chrome reads exactly what the
-// rows were built from.
-func (m *OutlinerModel) compileLensNarrowing(projects []*models.Project) lensNarrowing {
+// compileActiveNarrowing compiles whichever narrowing query the view holds and
+// records the compilation where that carrier's chrome reads it. A lens owns the
+// query while one is active, because slash search under a lens edits the lens's
+// query rather than opening a projection of its own; otherwise the search input
+// owns it. At most one is ever live, which is why one gate answers for both.
+func (m *OutlinerModel) compileActiveNarrowing(projects []*models.Project) queryNarrowing {
 	if m == nil {
-		return lensNarrowing{}
+		return queryNarrowing{}
 	}
-	m.lensGate = nil
-	m.lensRemainder = ""
-	m.lensNarrowRelaxed = false
-	if m.lensQuery == "" {
-		return lensNarrowing{}
+	if m.hasActiveLens() {
+		compiled := m.compileNarrowingQuery(m.lensQuery, projects)
+		m.lensRemainder, m.lensGate, m.lensNarrowRelaxed = compiled.remainder, compiled.gate, compiled.relaxed
+		return compiled.narrowing
+	}
+	query := ""
+	if m.hasSearchProjection() {
+		query = m.SearchQuery()
+	}
+	compiled := m.compileNarrowingQuery(query, projects)
+	m.searchRemainder, m.searchGate, m.searchCaseRelaxed = compiled.remainder, compiled.gate, compiled.relaxed
+	return compiled.narrowing
+}
+
+// compileNarrowingQuery parses one query through the shared search grammar and
+// resolves the identities the projection may keep. An empty query compiles to an
+// inactive narrowing rather than to a gate that admits everything, so a view with
+// no query does no scoring work at all.
+func (m *OutlinerModel) compileNarrowingQuery(query string, projects []*models.Project) narrowingCompilation {
+	if m == nil || strings.TrimSpace(query) == "" {
+		return narrowingCompilation{}
 	}
 
-	remainder, predicates := m.compileSearchQuery(m.lensQuery, projects)
-	// The saved mode and facets already decide whether terminal work is on
-	// screen, so the gate must not exclude it a second time: a lens saved over
-	// completed work would otherwise narrow to nothing.
-	predicates.admitsTerminal = true
-	m.lensRemainder = remainder
-	m.lensGate = predicates
-
-	narrowing := lensNarrowing{
-		active:   true,
-		retained: make(map[TaskIdentity]bool),
-		matched:  make(map[TaskIdentity]outlinerMatchSource),
+	remainder, predicates := m.compileSearchQuery(query, projects)
+	compiled := narrowingCompilation{
+		remainder: remainder,
+		gate:      predicates,
+		narrowing: queryNarrowing{
+			active:   true,
+			retained: make(map[TaskIdentity]bool),
+			matched:  make(map[TaskIdentity]outlinerMatchSource),
+		},
 	}
 	if predicates.invalid() {
-		// The guidance stands and nothing is admitted, which is what ordinary
-		// search does with the same query.
-		return narrowing
+		// The guidance stands and nothing is admitted.
+		return compiled
 	}
 
 	matcher := fuzzy.SmartCase(remainder)
 	matches := searchProjectionMatchesWithin(projects, remainder, nil, matcher, predicates)
 	if len(matches) == 0 && matcher.CaseSensitive() {
 		matches = searchProjectionMatchesWithin(projects, remainder, nil, fuzzy.NewMatcher(false), predicates)
-		m.lensNarrowRelaxed = len(matches) > 0
+		compiled.relaxed = len(matches) > 0
 	}
 
 	for _, match := range matches {
@@ -110,14 +135,14 @@ func (m *OutlinerModel) compileLensNarrowing(projects []*models.Project) lensNar
 		if !identity.Valid() {
 			continue
 		}
-		narrowing.matched[identity] = match.source
-		narrowing.retained[identity] = true
-		retainLensAncestors(narrowing.retained, match.task, match.project)
+		compiled.narrowing.matched[identity] = match.source
+		compiled.narrowing.retained[identity] = true
+		retainNarrowingAncestors(compiled.narrowing.retained, match.task, match.project)
 	}
-	return narrowing
+	return compiled
 }
 
-// retainLensAncestors admits the canonical ancestry of one match. It follows
+// retainNarrowingAncestors admits the canonical ancestry of one match. It follows
 // stored ParentID links through the authoritative project rather than a row's
 // own Children, which the filter pipeline may have rewritten.
 func retainLensAncestors(retained map[TaskIdentity]bool, task *models.Task, project *models.Project) {

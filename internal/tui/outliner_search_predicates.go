@@ -84,9 +84,13 @@ type searchPredicates struct {
 	derived            []textgrammar.DerivedPredicate
 	excludedDerived    []textgrammar.DerivedPredicate
 	derivedContext     searchDerivedContext
-	admitsTerminal     bool
-	now                time.Time
-	guidance           string
+	// admitsTerminal and admitsDeferred are the two population answers, decided
+	// once by compileSearchQuery from the one query-says-so rule and never
+	// patched afterwards by the carrier that compiled the query.
+	admitsTerminal bool
+	admitsDeferred bool
+	now            time.Time
+	guidance       string
 	// sigils records that the query carried at least one sigil token. It is
 	// read off the parse rather than off the compiled conjuncts so that a
 	// destination or pin sigil, which compiles into a field rather than into a
@@ -100,6 +104,12 @@ type searchPredicates struct {
 // rather than being read off the search input, because a lens narrows with its
 // own saved query and must compile it through this same grammar: one parser,
 // one predicate set, one remainder.
+//
+// Terminal and deferred admission are settled here and nowhere else. The sigils
+// answer for themselves as they compile, the facets are read off the canonical
+// filter query, and the two halves are ORed once: a population is on screen when
+// the query says so, whichever carrier spelled it. No caller may reopen a
+// population by writing to the compiled gate afterwards.
 func (m *OutlinerModel) compileSearchQuery(query string, projects []*models.Project) (string, *searchPredicates) {
 	parsed := textgrammar.ParseSearch(strings.TrimSpace(query))
 	predicates := &searchPredicates{now: time.Now(), sigils: len(parsed.Tokens) > 0}
@@ -112,6 +122,11 @@ func (m *OutlinerModel) compileSearchQuery(query string, projects []*models.Proj
 		predicates.applyToken(token, projects, m)
 	}
 	predicates.compileDerivedContext(projects)
+	if m != nil {
+		facets := m.filterQuery
+		predicates.admitsTerminal = predicates.admitsTerminal || facets.OpensTerminalPopulation()
+		predicates.admitsDeferred = predicates.admitsDeferred || facets.OpensDeferredPopulation()
+	}
 	return parsed.Text, predicates
 }
 
@@ -145,6 +160,10 @@ func (p *searchPredicates) applyToken(token textgrammar.Token, projects []*model
 		p.excludedDue = append(p.excludedDue, compileSearchDue(token.Value, p.now))
 	case textgrammar.FieldDefer:
 		p.deferral = compileSearchDefer(token.Value, p.now)
+		// @@any and @@day ask about work the base population hides behind a live
+		// deferral, so they open it the way $done opens the terminal one. @@none
+		// is a question about work already on screen and opens nothing.
+		p.admitsDeferred = p.deferral.presence > 0 || p.deferral.hasDay
 	case textgrammar.FieldRemoveDefer:
 		p.excludedDeferral = append(p.excludedDeferral, compileSearchDefer(token.Value, p.now))
 	case textgrammar.FieldDestination:
@@ -184,11 +203,13 @@ func (p *searchPredicates) addDerived(value string, into *[]textgrammar.DerivedP
 	if err != nil {
 		return
 	}
-	if models.DerivedOpensTerminalPopulation(predicate.Name) && into == &p.derived {
+	if into == &p.derived {
 		// A completion question is asking about finished work, so it opens the
-		// terminal population the way $done does. The negation deliberately does
-		// not: "not completed recently" is a question about live work.
-		p.admitsTerminal = true
+		// terminal population the way $done does, and a deferral question opens
+		// the deferred one. The negations deliberately do not: "not completed
+		// recently" is a question about live work.
+		p.admitsTerminal = p.admitsTerminal || models.DerivedOpensTerminalPopulation(predicate.Name)
+		p.admitsDeferred = p.admitsDeferred || models.DerivedOpensDeferredPopulation(predicate.Name)
 	}
 	*into = append(*into, predicate)
 }
@@ -323,7 +344,7 @@ func (p *searchPredicates) setDestination(value string, projects []*models.Proje
 	// Only a positive destination opens the terminal population. -$done is a
 	// question about live work and must not drag every completed task into the
 	// candidate set just to reject it.
-	p.admitsTerminal = compiled.destination.WorkflowState().IsTerminal()
+	p.admitsTerminal = p.admitsTerminal || compiled.destination.WorkflowState().IsTerminal()
 }
 
 // compileSearchDestination resolves one destination and, for the two planning
@@ -453,6 +474,10 @@ func (p *searchPredicates) allowsTerminal() bool {
 	return p != nil && p.admitsTerminal
 }
 
+func (p *searchPredicates) allowsDeferred() bool {
+	return p != nil && p.admitsDeferred
+}
+
 // admitsProject applies the one axis whose subject is the project rather than
 // the row. A negated scope drops the whole project, which is what makes
 // "%client -%client-archive" a narrowing rather than a per-row filter.
@@ -477,6 +502,24 @@ func (p *searchPredicates) admitsProject(project *models.Project) bool {
 func projectCarriesPrefix(project *models.Project, prefix string) bool {
 	return strings.HasPrefix(strings.ToLower(project.Slug), prefix) ||
 		strings.HasPrefix(strings.ToLower(project.Name), prefix)
+}
+
+// admitsPopulation is the population half of the gate, kept apart from the
+// narrowing half because it answers a different question: terminal and deferred
+// work sit outside the base population every projection loads, and only a query
+// naming them puts them back. Terminal is read first, so terminal work that also
+// carries a live deferral is decided by the state it ended in.
+func (p *searchPredicates) admitsPopulation(task *models.Task) bool {
+	if p == nil || task == nil {
+		return p == nil
+	}
+	if task.IsTerminalState() {
+		return p.admitsTerminal
+	}
+	if task.IsDeferredAt(p.now) {
+		return p.admitsDeferred
+	}
+	return true
 }
 
 func (p *searchPredicates) admits(task *models.Task, project *models.Project) bool {

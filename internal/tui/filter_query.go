@@ -466,6 +466,42 @@ func (m *OutlinerModel) rowPredicateQuery() models.Query {
 	return queryWithoutFields(m.filterQuery, fields...)
 }
 
+// admitsTerminalPopulation is the one terminal-admission rule. Every surface
+// that used to hold a rule of its own reads it instead: terminal work is on
+// screen when the active query names it, and nothing else puts it there. The
+// facet half is answered by the canonical filter query and the sigil half by the
+// compiled narrowing gate, because "$done" typed into a search and Done chosen
+// from the fs picker are the same clause said twice.
+//
+// Recent is the one projection that does not ask. It reports what happened, so
+// it owns terminal and deferred membership outright rather than waiting for a
+// query to open them.
+func (m *OutlinerModel) admitsTerminalPopulation() bool {
+	return m != nil &&
+		(m.filterQuery.OpensTerminalPopulation() || m.activeNarrowingGate().allowsTerminal())
+}
+
+// admitsDeferredPopulation is that same rule read on the deferral axis.
+func (m *OutlinerModel) admitsDeferredPopulation() bool {
+	return m != nil &&
+		(m.filterQuery.OpensDeferredPopulation() || m.activeNarrowingGate().allowsDeferred())
+}
+
+// activeNarrowingGate is the compiled query the current projection was built
+// from: a lens's saved query when a lens owns the view, otherwise the search
+// input's. Exactly one can be live, because slash search under a lens edits that
+// lens's query rather than opening a projection of its own. A nil gate is a view
+// with no narrowing query at all, and every reader here tolerates one.
+func (m *OutlinerModel) activeNarrowingGate() *searchPredicates {
+	if m == nil {
+		return nil
+	}
+	if m.hasActiveLens() {
+		return m.lensGate
+	}
+	return m.searchGate
+}
+
 // filterQueryProject resolves the project a row is read inside, falling back to
 // the single-project Outliner's own project the way rowIdentity does.
 func (m *OutlinerModel) filterQueryProject(project *models.Project) *models.Project {

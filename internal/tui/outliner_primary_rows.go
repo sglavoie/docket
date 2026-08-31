@@ -132,7 +132,7 @@ func (m *OutlinerModel) buildAllPrimaryRows(
 			continue
 		}
 		roots := m.primaryModeRoots(project)
-		roots = excludeTaskTreePromotingChildren(roots, m.primaryDefaultExclusion(ModeAll, input.Now))
+		roots = excludeTaskTreePromotingChildren(roots, m.primaryDefaultExclusion(input.Now))
 		roots = filterTaskTreePromotingChildren(roots, func(task *models.Task) bool {
 			return input.TaskFilter == nil || input.TaskFilter(task, project)
 		})
@@ -235,7 +235,7 @@ func (m *OutlinerModel) buildPrimaryProjectTrees(
 			continue
 		}
 		roots := m.primaryModeRoots(project)
-		hardExclude := m.primaryDefaultExclusion(mode, input.Now)
+		hardExclude := m.primaryDefaultExclusion(input.Now)
 		if mode == ModeBacklog {
 			defaultExclude := hardExclude
 			hardExclude = func(task *models.Task) bool {
@@ -344,12 +344,16 @@ func (m *OutlinerModel) primaryModeRoots(project *models.Project) []*models.Task
 	return nil
 }
 
-func (m *OutlinerModel) primaryDefaultExclusion(mode OutlinerModeID, now time.Time) func(*models.Task) bool {
+// primaryDefaultExclusion drops the two populations a projection does not load
+// unless the query asks for them. It takes no mode: the rule is the query's, and
+// a mode that would never show terminal work excludes it through its own
+// membership rather than by narrowing this one.
+func (m *OutlinerModel) primaryDefaultExclusion(now time.Time) func(*models.Task) bool {
 	if now.IsZero() {
 		now = time.Now()
 	}
-	includeDeferred := m.hasExplicitDeferredFilter()
-	includeTerminal := mode == ModeAll && m.hasExplicitTerminalFilter()
+	includeDeferred := m.admitsDeferredPopulation()
+	includeTerminal := m.admitsTerminalPopulation()
 	return func(task *models.Task) bool {
 		if task == nil || !task.State().IsValid() {
 			return true
@@ -361,24 +365,9 @@ func (m *OutlinerModel) primaryDefaultExclusion(mode OutlinerModeID, now time.Ti
 	}
 }
 
-func (m *OutlinerModel) hasExplicitDeferredFilter() bool {
-	return m.filter.Deferred
-}
-
-func (m *OutlinerModel) hasExplicitTerminalFilter() bool {
-	if m.filter.hasStateFilter() {
-		for _, state := range m.filter.States.Values() {
-			if state.IsTerminal() {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 func (m *OutlinerModel) allPrimaryGroupOrder() []models.WorkflowStateGroup {
 	order := models.AllModeWorkflowStateGroups()
-	if m.hasExplicitTerminalFilter() {
+	if m.admitsTerminalPopulation() {
 		order = append(order, models.StateGroupDone, models.StateGroupCanceled)
 	}
 	return order

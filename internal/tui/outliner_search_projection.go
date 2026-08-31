@@ -262,12 +262,6 @@ func (m *OutlinerModel) buildSearchProjectionRows() {
 	candidates := m.searchCandidateBoundary(projects)
 
 	query, predicates := m.compileSearchQuery(m.SearchQuery(), projects)
-	// An explicit terminal state facet already decides that completed work is on
-	// screen, and the boundary above has applied it, so the gate must not exclude
-	// it a second time — the same move compileLensNarrowing makes, narrower.
-	if predicates != nil && m.hasExplicitTerminalFilter() {
-		predicates.admitsTerminal = true
-	}
 	m.searchRemainder = query
 	m.searchGate = predicates
 
@@ -435,7 +429,7 @@ func searchProjectionMatchesWithin(
 			tasks = bounded
 		}
 		for _, task := range tasks {
-			if task == nil || (!predicates.allowsTerminal() && task.IsTerminalState()) {
+			if task == nil || !predicates.admitsPopulation(task) {
 				sourceIndex++
 				continue
 			}
@@ -619,7 +613,7 @@ func exactProjectShortIDMatchesWithin(
 			if task == nil || task.ShortID != shortID {
 				continue
 			}
-			if !predicates.allowsTerminal() && task.IsTerminalState() {
+			if !predicates.admitsPopulation(task) {
 				continue
 			}
 			if predicates.admits(task, project) {

@@ -354,6 +354,42 @@ func (q Query) RequiresReload() bool {
 	})
 }
 
+// OpensTerminalPopulation reports whether the query itself asks for terminal
+// work. It is the one rule terminal admission is decided by, so every carrier
+// that used to hold a rule of its own asks here instead: done and canceled tasks
+// sit outside the base population a view loads, and only a query naming them —
+// a positive terminal state clause, or a positive completion-age clause — brings
+// them back.
+//
+// Polarity is what makes this a population question rather than a narrowing one.
+// A negative clause subtracts from a population that is already open; it never
+// opens one, so it is not read here.
+func (q Query) OpensTerminalPopulation() bool {
+	return slices.ContainsFunc(q.Clauses, func(clause QueryClause) bool {
+		if clause.Polarity != QueryPolarityPositive {
+			return false
+		}
+		switch clause.Field {
+		case QueryFieldState:
+			return WorkflowState(clause.Value).IsTerminal()
+		case QueryFieldCompleted:
+			return true
+		default:
+			return false
+		}
+	})
+}
+
+// OpensDeferredPopulation is the same rule read on the deferral axis: work whose
+// deferral has not yet expired is outside the base population until a positive
+// deferred or defer-day clause names it.
+func (q Query) OpensDeferredPopulation() bool {
+	return slices.ContainsFunc(q.Clauses, func(clause QueryClause) bool {
+		return clause.Polarity == QueryPolarityPositive &&
+			(clause.Field == QueryFieldDeferred || clause.Field == QueryFieldDefer)
+	})
+}
+
 // Canonical returns an equivalent query whose clauses are deduplicated, given
 // their derived reload obligation, and sorted into canonical order: by field in
 // QueryFieldOrder, then positives before negatives, then by operator rank, then

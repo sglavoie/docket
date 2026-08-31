@@ -107,6 +107,14 @@ func DerivedOpensTerminalPopulation(property DerivedProperty) bool {
 	return property == DerivedCompleted
 }
 
+// DerivedOpensDeferredPopulation names the one property whose positive form asks
+// about work the base population hides behind a live deferral. It is the same
+// rule DerivedOpensTerminalPopulation states, read on the other axis, and the
+// negation is again a question about work already on screen.
+func DerivedOpensDeferredPopulation(property DerivedProperty) bool {
+	return property == DerivedDeferred
+}
+
 // taskCompletedAtLeastDaysAgo keeps the live cleanup facet's shape: a task with
 // no usable completion timestamp is excluded even when no age bound is set, so a
 // malformed record can never answer a completion question.
