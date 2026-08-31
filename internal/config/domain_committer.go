@@ -192,8 +192,15 @@ func (c *DomainCoordinator) commitLensDefinitions(lenses *WorkspaceLensDefinitio
 			return nil, loadErr
 		}
 		// The on-disk collection is the merge base so its order leads and stays
-		// stable across machines; this session's list is the incoming side.
-		published = MergeNamedLenses(remote.Lenses, published)
+		// stable across machines; this session's list is the incoming side. A
+		// merge that cannot identify every contribution refuses here rather than
+		// publishing a collection one definition short: reconciliation exists to
+		// keep both writes, so losing one would defeat it.
+		reconciled, mergeErr := MergeNamedLenses(remote.Lenses, published)
+		if mergeErr != nil {
+			return nil, mergeErr
+		}
+		published = reconciled
 		rev = remoteRev
 	}
 	return nil, fmt.Errorf("%w: workspace lens definitions changed on disk during %d merge attempts", ErrStaleObject, lensCommitMergeAttempts)

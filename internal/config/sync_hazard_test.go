@@ -2,6 +2,8 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -324,12 +326,12 @@ func TestLensMergeObeysTheJoinLaws(t *testing.T) {
 		machines := randomMachineLensSets(rand.New(rand.NewSource(seed)))
 		for i, left := range machines {
 			for j, right := range machines {
-				forward := MergeNamedLenses(left, right)
-				reverse := MergeNamedLenses(right, left)
+				forward := mergedLenses(t, left, right)
+				reverse := mergedLenses(t, right, left)
 				if a, b := canonicalLensRecords(t, forward), canonicalLensRecords(t, reverse); a != b {
 					t.Fatalf("seed %d: merge(%d,%d) is not commutative\n forward %s\n reverse %s", seed, i, j, a, b)
 				}
-				if again := MergeNamedLenses(forward, right); canonicalLensRecords(t, again) != canonicalLensRecords(t, forward) {
+				if again := mergedLenses(t, forward, right); canonicalLensRecords(t, again) != canonicalLensRecords(t, forward) {
 					t.Fatalf(
 						"seed %d: merging %d into merge(%d,%d) again changed it\n once %s\ntwice %s",
 						seed, j, i, j, canonicalLensRecords(t, forward), canonicalLensRecords(t, again),
@@ -339,8 +341,8 @@ func TestLensMergeObeysTheJoinLaws(t *testing.T) {
 					t.Fatalf("seed %d: merge(%d,%d) is invalid: %v", seed, i, j, err)
 				}
 				for k, third := range machines {
-					leftFirst := MergeNamedLenses(MergeNamedLenses(left, right), third)
-					rightFirst := MergeNamedLenses(left, MergeNamedLenses(right, third))
+					leftFirst := mergedLenses(t, mergedLenses(t, left, right), third)
+					rightFirst := mergedLenses(t, left, mergedLenses(t, right, third))
 					if a, b := canonicalLensRecords(t, leftFirst), canonicalLensRecords(t, rightFirst); a != b {
 						t.Fatalf(
 							"seed %d: merge over (%d,%d,%d) is not associative\n left-first %s\nright-first %s",
@@ -353,6 +355,112 @@ func TestLensMergeObeysTheJoinLaws(t *testing.T) {
 	}
 }
 
+// TestLensMergeIdentityExhaustionNeverDropsADefinition is the adversarial half
+// of the union contract: a collection nobody would write by accident, but which
+// each side is individually allowed to hold, must not be able to make the merge
+// lose a definition.
+//
+// The set preoccupies every identity one contribution can settle on — the id it
+// carries plus each salted derivation — and one identity past them, the one an
+// unchecked final derivation would claim blindly. Claiming it would put two
+// different cores under one resolved id, and collapsing would then fold them
+// into a single record: a silent deletion, unrecoverable because the lens domain
+// records no undo entry.
+//
+// Both halves of the contract are checked. With every candidate occupied the
+// merge refuses whole and publishes nothing; with the last candidate freed it
+// settles the contribution there and every contributed definition survives, so
+// the bound is spent rather than merely respected.
+func TestLensMergeIdentityExhaustionNeverDropsADefinition(t *testing.T) {
+	// A near-maximal id, so every derived candidate sorts before it and its
+	// occupier is therefore resolved — and its claim recorded — first. The
+	// assertion below holds the fixture to that, since a merge the occupiers do
+	// not reach ahead of the victim is not adversarial at all.
+	const collidingID = "ffffffff-ffff-4fff-8fff-ffffffffffff"
+	victim := adoptionLens(collidingID, "Victim", "#zzz-victim")
+	victimCore := lensCoreKey(victim)
+
+	candidates := lensIdentityCandidates(collidingID, victimCore)
+	// The identity the unchecked final derivation used to claim without asking.
+	// The merge no longer offers it, but occupying it is what makes an unchecked
+	// claim lossy rather than merely surprising.
+	unchecked := disambiguatedLensID(collidingID, victimCore, lensIdentitySaltAttempts)
+
+	occupied := append(append([]string(nil), candidates...), unchecked)
+	occupiers := make(NamedLensList, 0, len(occupied))
+	for i, id := range occupied {
+		if i > 0 && id >= collidingID {
+			t.Fatalf("candidate %d (%q) does not sort before %q, so it is claimed too late to starve the victim", i, id, collidingID)
+		}
+		// Every occupier's core sorts before the victim's, which is what puts
+		// its claim in place first: resolution walks contributions by
+		// contributed id and then by core, never by arrival side.
+		occupiers = append(occupiers, adoptionLens(id, fmt.Sprintf("Occupier %d", i), fmt.Sprintf("#aaa-%02d", i)))
+	}
+	contributed := NamedLensList{victim}
+	// Neither side is malformed on its own: the hazard is the join, so a refusal
+	// here cannot be blamed on an invalid contribution.
+	if err := occupiers.Validate(); err != nil {
+		t.Fatalf("the occupying collection must be individually valid: %v", err)
+	}
+	if err := contributed.Validate(); err != nil {
+		t.Fatalf("the contributed collection must be individually valid: %v", err)
+	}
+
+	for _, order := range []struct {
+		name           string
+		base, incoming NamedLensList
+	}{
+		{"occupiers first", occupiers, contributed},
+		{"contribution first", contributed, occupiers},
+	} {
+		merged, err := MergeNamedLenses(order.base, order.incoming)
+		if !errors.Is(err, ErrLensIdentityExhausted) {
+			t.Fatalf("%s: merge error = %v, want ErrLensIdentityExhausted", order.name, err)
+		}
+		if merged != nil {
+			t.Fatalf("%s: a refused merge must publish nothing, got %d records", order.name, len(merged))
+		}
+	}
+
+	// Free the last candidate alone. The victim now has exactly one identity
+	// left, the final derivation, and taking it proves that derivation is
+	// checked and claimed rather than skipped.
+	last := len(candidates) - 1
+	freed := append(append(NamedLensList(nil), occupiers[:last]...), occupiers[last+1:]...)
+	merged, err := MergeNamedLenses(freed, contributed)
+	if err != nil {
+		t.Fatalf("one free candidate is enough to identify every contribution: %v", err)
+	}
+	if err := merged.Validate(); err != nil {
+		t.Fatalf("the merged collection is invalid: %v", err)
+	}
+	if want := len(freed) + len(contributed); len(merged) != want {
+		t.Fatalf("merged record count = %d, want %d", len(merged), want)
+	}
+	wanted := definitionKeySet(freed, contributed)
+	got := definitionKeySet(merged)
+	for key := range wanted {
+		if !got[key] {
+			t.Fatalf("definition %s was lost by the merge", key)
+		}
+	}
+	for key := range got {
+		if !wanted[key] {
+			t.Fatalf("definition %s was invented by the merge", key)
+		}
+	}
+	settled := ""
+	for _, lens := range merged {
+		if lens.Query == victim.Query {
+			settled = lens.ID
+		}
+	}
+	if settled != candidates[last] {
+		t.Fatalf("the contribution settled on %q, want the last candidate %q", settled, candidates[last])
+	}
+}
+
 // TestLensAdoptionIDsAreOrderIndependent is the narrow witness the convergence
 // property rests on: one id carrying two definitions resolves the same way from
 // either side, because the definition that keeps the plain id is chosen by
@@ -362,8 +470,8 @@ func TestLensAdoptionIDsAreOrderIndependent(t *testing.T) {
 	left := NamedLensList{adoptionLens(adoptionLensAlphaID, "Shared", "#a")}
 	right := NamedLensList{adoptionLens(adoptionLensAlphaID, "Shared", "#b")}
 
-	forward := MergeNamedLenses(left, right)
-	reverse := MergeNamedLenses(right, left)
+	forward := mergedLenses(t, left, right)
+	reverse := mergedLenses(t, right, left)
 
 	if len(forward) != 2 || len(reverse) != 2 {
 		t.Fatalf("both orders should keep both definitions, got %d and %d records", len(forward), len(reverse))

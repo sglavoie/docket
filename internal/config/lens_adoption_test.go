@@ -28,6 +28,19 @@ func adoptionLens(id, name, query string) NamedLens {
 	}
 }
 
+// mergedLenses is MergeNamedLenses for the tests that expect it to succeed. The
+// merge refuses only when a contributed id exhausts every candidate identity, a
+// shape only the exhaustion test builds, so everywhere else a refusal is the
+// failure itself rather than a case to branch on.
+func mergedLenses(t *testing.T, base, incoming NamedLensList) NamedLensList {
+	t.Helper()
+	merged, err := MergeNamedLenses(base, incoming)
+	if err != nil {
+		t.Fatalf("merge refused a collection it can identify: %v", err)
+	}
+	return merged
+}
+
 // useMachine repoints LocalDataRoot at one simulated machine. t.Setenv restores
 // the previous value in LIFO order, so switching between machines inside one
 // test is safe and the environment is whole again when the test ends.
@@ -365,9 +378,9 @@ func TestAdoptedMachinePublishesLaterLensWritesToThePortableHome(t *testing.T) {
 func TestMergeNamedLensesNeverDropsAOneSidedLens(t *testing.T) {
 	base := NamedLensList{adoptionLens(adoptionLensAlphaID, "Alpha", "#alpha")}
 	incoming := NamedLensList{adoptionLens(adoptionLensBetaID, "Beta", "#beta")}
-	merged := MergeNamedLenses(base, incoming)
+	merged := mergedLenses(t, base, incoming)
 	requireLensNames(t, merged, "Alpha", "Beta")
-	if got := MergeNamedLenses(incoming, base); strings.Join(lensNames(got), "|") != "Beta|Alpha" {
+	if got := mergedLenses(t, incoming, base); strings.Join(lensNames(got), "|") != "Beta|Alpha" {
 		t.Fatalf("base order should lead, got %v", lensNames(got))
 	}
 	if len(base) != 1 || len(incoming) != 1 {
@@ -377,7 +390,7 @@ func TestMergeNamedLensesNeverDropsAOneSidedLens(t *testing.T) {
 
 func TestMergeNamedLensesDedupesAnIdenticalRecord(t *testing.T) {
 	lens := adoptionLens(adoptionLensAlphaID, "Alpha", "#alpha")
-	merged := MergeNamedLenses(NamedLensList{lens}, NamedLensList{lens})
+	merged := mergedLenses(t, NamedLensList{lens}, NamedLensList{lens})
 	requireLensNames(t, merged, "Alpha")
 	if merged[0].ID != adoptionLensAlphaID {
 		t.Fatalf("identity changed on a plain dedupe: %q", merged[0].ID)
@@ -387,7 +400,7 @@ func TestMergeNamedLensesDedupesAnIdenticalRecord(t *testing.T) {
 func TestMergeNamedLensesRenamesADistinctLensThatSharesAName(t *testing.T) {
 	base := NamedLensList{adoptionLens(adoptionLensAlphaID, "Alpha", "#alpha")}
 	incoming := NamedLensList{adoptionLens(adoptionLensBetaID, "alpha", "#beta")}
-	merged := MergeNamedLenses(base, incoming)
+	merged := mergedLenses(t, base, incoming)
 	requireLensNames(t, merged, "Alpha", "alpha (2)")
 	if err := merged.Validate(); err != nil {
 		t.Fatalf("name uniqueness is case-folded, so the merge must resolve it: %v", err)
@@ -401,7 +414,7 @@ func TestMergeNamedLensesBoundsADisambiguatedName(t *testing.T) {
 	long := strings.Repeat("n", MaxNamedLensNameRunes)
 	base := NamedLensList{adoptionLens(adoptionLensAlphaID, long, "#alpha")}
 	incoming := NamedLensList{adoptionLens(adoptionLensBetaID, long, "#beta")}
-	merged := MergeNamedLenses(base, incoming)
+	merged := mergedLenses(t, base, incoming)
 	if err := merged.Validate(); err != nil {
 		t.Fatalf("a disambiguated name must stay within the durable bound: %v", err)
 	}
@@ -413,8 +426,8 @@ func TestMergeNamedLensesBoundsADisambiguatedName(t *testing.T) {
 func TestMergeNamedLensesIsStableAcrossRepeatedMerges(t *testing.T) {
 	base := NamedLensList{adoptionLens(adoptionLensSharedID, "Shared", "#from-a")}
 	incoming := NamedLensList{adoptionLens(adoptionLensSharedID, "Shared", "#from-b")}
-	once := MergeNamedLenses(base, incoming)
-	twice := MergeNamedLenses(once, incoming)
+	once := mergedLenses(t, base, incoming)
+	twice := mergedLenses(t, once, incoming)
 	if mustJSON(t, once) != mustJSON(t, twice) {
 		t.Fatalf("re-merging changed the collection:\n once %s\ntwice %s", mustJSON(t, once), mustJSON(t, twice))
 	}

@@ -119,7 +119,11 @@ opened. When another machine has written it since — the usual cause is a sync
 service delivering that machine's copy while yours was open — the two lists are
 merged by the same rule adoption uses, and the merged list is what is saved. You
 keep your change and the other machine keeps theirs; neither write is lost and
-neither is refused. Merging the same pair of lists again adds nothing, so a sync
+neither is refused. The one exception is a list hand-built to collide: if a
+single lens id has been made to carry more different definitions than the merge
+has identities to hand out, the merge refuses the whole list rather than saving
+it one definition short. Nothing on disk changes, and no list a `tt` session
+wrote can reach that shape. Merging the same pair of lists again adds nothing, so a sync
 service delivering the same copy twice cannot leave you with duplicates. If the
 merge has to give one of your lenses a new identity — that happens only when two
 different definitions arrive under one — the lens you had open follows it, so the
