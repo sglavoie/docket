@@ -221,6 +221,11 @@ type OutlinerModel struct {
 	// Peek mode follows the cursor and shows additive task detail inline.
 	peekMode bool
 
+	// queryReadoutExpanded opens the narrowing stack in the status strip. It is
+	// the readout's whole state: the rows themselves are read off the live axes
+	// each frame, so there is nothing here that can go stale.
+	queryReadoutExpanded bool
+
 	// OpenAtTask, when set, positions the cursor on the given task the first
 	// time rebuildRows produces a non-empty row list. Cleared after first use.
 	OpenAtTask *models.Task

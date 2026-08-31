@@ -53,6 +53,12 @@ neither expires nor clears on a mode change; it leads the transient lines so
 they cannot shift it, and it disappears only once the last bundle is resolved.
 See [`storage.md`](storage.md) for what a bundle is and how to resolve one.
 
+The strip is also where `Q` expands the narrowing readout: one numbered row per
+narrowing the view is under, with the conflict indicator keeping the lead above
+it. It grows the strip rather than floating over the list, so the rows it pushes
+off are rows the strip was already entitled to.
+[`search-and-lenses.md`](search-and-lenses.md) has the readout and its peels.
+
 `gc` answers the question that indicator raises. It opens a read-only overlay
 listing every recorded bundle newest first — its short id, the project, how many
 conflicts it holds, the action that hit it, and when it was recorded. `Enter`
@@ -197,7 +203,7 @@ were in and says so.
 | Content | `&` opens the cursor task's Attachments panel, `;` its Comments panel — the two capture sigils reaching, as keys, the panels that own add, reorder, unlink, and delete |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
 | Selection | `v` toggles the cursor task; `V` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
-| Global | `Ctrl+P` Select Pinned Project, `P` Select Project, `\` Named Lenses, `Ctrl+N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
+| Global | `Ctrl+P` Select Pinned Project, `P` Select Project, `Q` the narrowing readout, `\` Named Lenses, `Ctrl+N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
 
 `@` opens one Set Due or Defer picker holding both fields. Its DUE section lists
 Clear, Today, Tomorrow, In one week, and In one month; its DEFER section lists

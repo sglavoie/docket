@@ -27,13 +27,13 @@ facet that still excludes it says `Task is hidden by the active facets` and
 focuses nothing.
 
 Find then narrow: the row facets and the sort axis compose with a query either
-way, so `f*` applies as an AND gate before scoring exactly like a query sigil.
-Under the flat list `o*` reorders within a relevance tier only — a description
-hit never floats above a title hit — and it is the one place a fixed-order mode's
-order can be replaced, since the flat list is not that mode's order. The
-population facets (`F*`) are the only thing the flat list takes away, since
-admitting a project needs a reload rather than a rebuild; a query that is merely
-narrowing leaves them alone.
+way, so any `f` facet applies as an AND gate before scoring exactly like a query
+sigil. Under the flat list an `o` sort reorders within a relevance tier only — a
+description hit never floats above a title hit — and it is the one place a
+fixed-order mode's order can be replaced, since the flat list is not that mode's
+order. The population facets, the `F` family, are the only thing the flat list
+takes away, since admitting a project needs a reload rather than a rebuild; a
+query that is merely narrowing leaves them alone.
 
 Done, canceled, and deferred work is admitted when the query says so and never
 otherwise. `$done`, `$canceled`, `?completed`, `fa`, and the deferred forms
@@ -48,9 +48,10 @@ name; nothing else does, in either presentation.
 | `f#` | Pick tags with AND semantics; the task context is a separate axis on `fc` |
 | `fc` | Pick task contexts with OR semantics, since a task carries at most one; the leading `No context` row admits the tasks carrying none |
 | `fr` | Toggle the `review` tag facet |
-| `f@` | Open the Filter by Due or Deferred picker: overdue, today, this week, no due date, or deferred-only |
+| `f@` | Open the Filter by Due or Deferred picker: five shortcut rows writing `@overdue`, `@today`, `@week`, `@0`, and `?deferred`, each labeled with the token it writes |
 | `fh` | Pick one hierarchy position: parent, child, root, or leaf; parent and leaf read open children |
 | `fs` | Toggle open, undeferred work untouched for at least 90 local-calendar days; unavailable in Recent, whose entry clears only Stale and reports `Stale filter cleared: Recent only includes the last 30 days` |
+| `f*` | Toggle the pinned facet, the same `*pin` a typed query spells |
 | `fx` | Clear every facet |
 | `/` | Narrow the mode by title, description, checklist, comment, tag, context, attachment, and project, gated by any capture sigils the query carries; `or` reads the same query as one flat ranked list |
 
@@ -208,6 +209,47 @@ should land first.
 Pressing a chord prefix shows its valid continuations in the guidance region. `Esc`
 cancels that unfinished chord, and a second key the chord does not offer says so
 instead of doing nothing.
+
+### Reading and peeling the narrowing
+
+Narrowings stack, and after a few of them the title row is a summary rather than
+an inventory. `Q` expands that summary into the status strip under the heading
+`Narrowing this view`: one numbered row per narrowing you can take away on its
+own, read off the live view every time it is drawn. When nothing is narrowing the
+view it says so — `nothing: every axis is at its default` — rather than showing an
+empty list.
+
+The rows are ordered the way the title reads, widest context first: the lens, the
+project scope, the mode, the query, then the facets. A facet row is spelled in
+the same sigil tokens the chip above it carries, so `2 filter !3+` and
+`3 filter *pin` are the query you would have typed. A population row is labeled
+`population` and marked `(reload)`, because taking it away changes which projects
+load rather than which rows survive. Nothing is inferred: a mode narrows by
+membership rather than by a clause, so its row names the mode and says
+`(peels to All)` instead of spelling clauses the mode never declared.
+
+| Keys | Effect while the readout is open |
+| --- | --- |
+| `1`–`9` | Peel that row alone, leaving every other narrowing standing; a digit past the stack reports `Nothing to peel there` and writes nothing |
+| `x` | Peel every row, from the top down, until the view is at its defaults |
+| `s` | Save the narrowing as a named lens, the same Create the lens picker runs |
+| `Q`, `Esc` | Put the readout down; any other key closes it rather than acting behind it |
+
+Peeling is the ordinary key's own act, so it can never reach a state you could
+not have typed: peeling the lens row leaves the lens the way `Esc` does,
+restoring the view it opened over rather than stripping one clause out of the
+middle of it, and peeling the mode row returns All. Peeling is idempotent at
+zero — with nothing left to peel, the digits and `x` report that and change
+nothing. Peel-all can report a higher count than the rows you were looking at,
+since leaving a search restores the projection it was typed over and that can put
+a mode row back for the loop to peel in turn.
+
+A stack deeper than nine rows keeps the digits as its vocabulary and names the
+remainder on a line of its own — `N more narrowing(s) below the peel digits; peel
+one to reach them` — rather than dropping rows the readout cannot offer a key
+for. Under the flat ranked list, peeling a population row refuses with
+`Exit search before changing filters`, the same refusal the `F` family gives
+there and for the same reason.
 
 
 ### Named lenses

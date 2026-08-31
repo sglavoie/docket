@@ -356,8 +356,9 @@ func (model *NamedLensPickerModel) Notice() string {
 }
 
 // commandContext freezes the capability and the row identity one request acts
-// under. CapabilityLensPicker is granted only here, which is what keeps the five
-// lens operations unreachable from every other surface.
+// under. CapabilityLensPicker is granted here and, for Create alone, by
+// AppModel.saveViewAsLens; every operation that needs a record under the cursor
+// is reachable only through this one, because nothing else supplies the entity.
 func (model *NamedLensPickerModel) commandContext(entity EntityIdentity) CommandContext {
 	ctx := PresentationCommandContext(model.view)
 	ctx.Capabilities.Add(CapabilityLensPicker)

@@ -54,6 +54,35 @@ func (m *AppModel) openNamedLensPicker() tea.Cmd {
 	return nil
 }
 
+// saveViewAsLens runs Create over the live view without the picker in front of
+// it. The query readout raises it, and the whole of the difference from the
+// picker's own Save row is where the request comes from: the same descriptor,
+// the same executor, and the same name prompt answer it.
+//
+// CapabilityLensPicker is granted for this one request. The picker is still the
+// only surface that grants it for a cursor row, so the four lens operations that
+// need a record under the cursor stay unreachable from here — Create is the one
+// that names no record, which is why it is the one the readout can ask for.
+func (m *AppModel) saveViewAsLens() tea.Cmd {
+	if m == nil || m.operationExecutor == nil {
+		return nil
+	}
+	ctx := PresentationCommandContext(m.currentView())
+	ctx.Capabilities.Add(CapabilityLensPicker)
+	result := m.operationExecutor.Execute(OperationExecutionRequest{
+		ID:      operationLensCreate,
+		Context: ctx,
+	})
+	if result.ValueRequired != nil {
+		return m.openOperationValueStep(*result.ValueRequired)
+	}
+	if result.Err != nil {
+		m.err = result.Err
+		return statusTimeout(5 * time.Second)
+	}
+	return operationResultCmd(result)
+}
+
 // refreshNamedLensPicker re-reads the population after a mutation. The surface
 // retains its cursor by row ID, so this alone satisfies the whole retention
 // contract: rename and replace keep the lens selected through any alphabetical

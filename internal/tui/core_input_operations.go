@@ -63,6 +63,7 @@ const (
 	operationCoreSelectAll          OperationID = "tui.core.select-all"
 	operationCoreNamedLenses        OperationID = "tui.core.named-lenses"
 	operationCoreConflicts          OperationID = "tui.core.conflicts"
+	operationCoreQueryReadout       OperationID = "tui.core.query-readout"
 	operationCoreNotes              OperationID = "tui.core.notes"
 	operationCoreToggleTheme        OperationID = "tui.core.toggle-theme"
 	operationCoreUndo               OperationID = "tui.core.undo"
@@ -313,6 +314,21 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 			"conflicts",
 			"merge conflicts",
 			"unresolved conflicts",
+		),
+		// The readout expands what the operational title already names, so it is
+		// registered once here and its key, its `?` entry, and its footer label are
+		// all projections of this one descriptor. The peel digits inside it are the
+		// gated keymap of a modal sub-state, not a second grammar: they exist only
+		// while the stack is open and the footer says so for as long as they do.
+		core(
+			operationCoreQueryReadout,
+			"Query Readout",
+			OperationCategoryFilter,
+			TargetCardinalityNone,
+			OperationRiskReadOnly,
+			"narrowing",
+			"what is filtered",
+			"peel filters",
 		),
 		core(operationCoreNotes, "Notes", OperationCategoryNote, TargetCardinalityNone, OperationRiskReadOnly, "scratch notes"),
 		core(operationCoreToggleTheme, "Toggle Theme", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "dark theme", "light theme"),
@@ -648,6 +664,10 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		// Like the picker the browser is a shell overlay rather than a route, and
 		// the mount itself decides whether there is anything to show.
 		message = m.openConflictBrowser()
+	case operationCoreQueryReadout:
+		if out, ok := m.outlinerPrimary(); ok {
+			out.toggleQueryReadout()
+		}
 	case operationCoreNotes:
 		message = ShowNotesManagerMsg{Scope: m.coreNotesScope()}
 	case operationCoreToggleTheme:

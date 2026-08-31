@@ -21,13 +21,58 @@ const (
 	operationFilterCompletionAge OperationID = "tui.filter.completion-age"
 	operationFilterHierarchy     OperationID = "tui.filter.hierarchy"
 	operationFilterStale         OperationID = "tui.filter.stale"
+	operationFilterPinned        OperationID = "tui.filter.pinned"
 	operationFilterClear         OperationID = "tui.filter.clear"
 )
 
-// filterDeferredOnly is the value the due picker's deferred row carries. It is
-// its own type because that row writes CommonFilterState.Deferred rather than
-// the DueDate facet the other four rows write.
-type filterDeferredOnly struct{}
+// dueFilterShortcut is one f@ row. The row is a shortcut for a due token, not a
+// vocabulary of its own: its value is the canonical clause text the same
+// narrowing is typed with, and the clauses beside it are what that text means.
+// Keeping both here is what lets the picker seed itself by comparing canonical
+// spellings rather than by matching a private enum against the filter cache.
+type dueFilterShortcut struct {
+	id        string
+	label     string
+	secondary string
+	clauses   []models.QueryClause
+}
+
+// token is the canonical spelling the row writes, and the value the picker hands
+// back. Two rows can never collide on it: each names a different field or a
+// different bucket.
+func (shortcut dueFilterShortcut) token() string {
+	return strings.Join(filterClauseParts(shortcut.clauses), " ")
+}
+
+// dueFilterShortcuts is the f@ row set: the four due buckets plus deferral.
+// Deferral is a scheduling instant like a due date, so it is a row here rather
+// than a chord of its own, and it writes the deferred field the other four
+// leave alone.
+func dueFilterShortcuts() []dueFilterShortcut {
+	return []dueFilterShortcut{
+		{id: "overdue", label: "Overdue", secondary: "before today",
+			clauses: dueFilterClauses(DueDateOverdue)},
+		{id: "today", label: "Today", secondary: "due today",
+			clauses: dueFilterClauses(DueDateToday)},
+		{id: "week", label: "This week", secondary: "within seven days",
+			clauses: dueFilterClauses(DueDateThisWeek)},
+		{id: "none", label: "No due date", secondary: "unscheduled tasks",
+			clauses: dueFilterClauses(DueDateNone)},
+		{id: "deferred", label: "Deferred only", secondary: "waking later",
+			clauses: filterClauseList(models.QueryFieldDeferred, models.QueryOperatorPresent, "")},
+	}
+}
+
+// dueFilterShortcutForToken resolves the value one row handed back. An unknown
+// token is a caller that did not come from the row set.
+func dueFilterShortcutForToken(token string) (dueFilterShortcut, bool) {
+	for _, shortcut := range dueFilterShortcuts() {
+		if shortcut.token() == token {
+			return shortcut, true
+		}
+	}
+	return dueFilterShortcut{}, false
+}
 
 // filterOperationDescriptor is the shape every facet shares: no target, no
 // transaction, and applicability decided by the Outliner alone.
@@ -62,6 +107,10 @@ func filterOperationDescriptors() []OperationDescriptor {
 		descriptor(operationFilterCompletionAge, "Filter by Completion Age", ValueProviderFilterCompletionAge, "completion age", "cleanup age"),
 		descriptor(operationFilterHierarchy, "Filter by Hierarchy", ValueProviderFilterHierarchy, "hierarchy position", "parent or child"),
 		descriptor(operationFilterStale, "Filter Stale", "", "stale work", "untouched work"),
+		// The pinned axis has been in the row cache and in the canonical query all
+		// along; only the key was missing, so this is a binding for an existing
+		// facet rather than a new one.
+		descriptor(operationFilterPinned, "Filter Pinned", "", "pinned work", "pinned tasks"),
 		descriptor(operationFilterClear, "Clear Filters", "", "reset filters"),
 	}
 }
@@ -164,6 +213,8 @@ func filterOperationFields(id OperationID) []models.QueryField {
 		return filterQueryHierarchyFields
 	case operationFilterStale:
 		return []models.QueryField{models.QueryFieldStale}
+	case operationFilterPinned:
+		return []models.QueryField{models.QueryFieldPinned}
 	case operationFilterClear:
 		return filterQueryTaskFields()
 	case operationFilterProjectTags:
@@ -271,19 +322,17 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation OperationInvocation) (fil
 			status: "Filtering " + priorityThresholdLabel(threshold),
 		}, nil
 	case operationFilterDue:
-		if _, deferred := invocation.Value.(filterDeferredOnly); deferred {
-			return filterClauseEdit{
-				clauses: filterClauseList(models.QueryFieldDeferred, models.QueryOperatorPresent, ""),
-				status:  "Filtering deferred tasks",
-			}, nil
-		}
-		due, ok := invocation.Value.(DueDateFilter)
+		token, ok := invocation.Value.(string)
 		if !ok {
 			return filterClauseEdit{}, fmt.Errorf("invalid due-date filter value")
 		}
+		shortcut, known := dueFilterShortcutForToken(token)
+		if !known {
+			return filterClauseEdit{}, fmt.Errorf("unknown due filter %q", token)
+		}
 		return filterClauseEdit{
-			clauses: dueFilterClauses(due),
-			status:  "Filtering due: " + dueDateFilterLabel(due),
+			clauses: shortcut.clauses,
+			status:  "Filtering " + token,
 		}, nil
 	case operationFilterCompletionAge:
 		age, ok := invocation.Value.(CompletionAgeFilter)
@@ -356,6 +405,14 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation OperationInvocation) (fil
 		return filterClauseEdit{
 			clauses: filterClauseList(models.QueryFieldStale, models.QueryOperatorPresent, ""),
 			status:  "Filtering Stale",
+		}, nil
+	case operationFilterPinned:
+		if m.filter.Pinned {
+			return filterClauseEdit{status: "Pinned filter cleared"}, nil
+		}
+		return filterClauseEdit{
+			clauses: filterClauseList(models.QueryFieldPinned, models.QueryOperatorPresent, ""),
+			status:  "Filtering Pinned",
 		}, nil
 	case operationFilterClear:
 		return filterClauseEdit{status: "Filters cleared"}, nil
@@ -431,21 +488,6 @@ func priorityThresholdLabel(threshold int) string {
 	}
 }
 
-func dueDateFilterLabel(filter DueDateFilter) string {
-	switch filter {
-	case DueDateOverdue:
-		return "overdue"
-	case DueDateToday:
-		return "today"
-	case DueDateThisWeek:
-		return "this week"
-	case DueDateNone:
-		return "none"
-	default:
-		return "all"
-	}
-}
-
 func hierarchyFilterLabel(filter HierarchyFilter) string {
 	switch filter {
 	case HierarchyParent:
@@ -468,48 +510,37 @@ func completionAgeFilterLabel(filter CompletionAgeFilter) string {
 	return "all ages"
 }
 
-// newFilterDuePicker is the f@ single-select picker over the four public
-// due-date facets plus the deferred-only facet, seeded from the active facet
-// when one is set. Deferral is a scheduling instant like a due date, so it is a
-// row here rather than a chord of its own.
+// newFilterDuePicker is the f@ single-select picker over the five due-token
+// shortcuts, seeded from the active facet when one is set. Every row shows the
+// token it writes and hands that token back, so the picker holds no vocabulary
+// the grammar does not already carry, and the seeding compares canonical
+// spellings rather than the filter cache's enums.
 func (m *AppModel) newFilterDuePicker(
 	request OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
-	options := []struct {
-		id        string
-		label     string
-		secondary string
-		value     any
-	}{
-		{id: "overdue", label: "Overdue", secondary: "before today", value: DueDateOverdue},
-		{id: "today", label: "Today", secondary: "due today", value: DueDateToday},
-		{id: "week", label: "This week", secondary: "within seven days", value: DueDateThisWeek},
-		{id: "none", label: "No due date", secondary: "unscheduled tasks", value: DueDateNone},
-		{id: "deferred", label: "Deferred only", secondary: "waking later", value: filterDeferredOnly{}},
-	}
-	items := make([]ListItem, 0, len(options))
-	for _, option := range options {
+	shortcuts := dueFilterShortcuts()
+	items := make([]ListItem, 0, len(shortcuts))
+	byToken := make(map[string]ListItemID, len(shortcuts))
+	for _, shortcut := range shortcuts {
+		id := ListItemID("filter-due:" + shortcut.id)
+		token := shortcut.token()
+		byToken[token] = id
 		items = append(items, ListItem{
-			ID:            ListItemID("filter-due:" + option.id),
-			PrimaryText:   option.label,
-			SecondaryText: option.secondary,
-			Aliases:       []string{option.id, option.label, option.secondary},
-			Data:          option.value,
+			ID:            id,
+			PrimaryText:   shortcut.label,
+			SecondaryText: token + " · " + shortcut.secondary,
+			Aliases:       []string{shortcut.id, shortcut.label, shortcut.secondary, token},
+			Data:          token,
 		})
 	}
 	selected := []ListItemID(nil)
 	if m.crossOutliner != nil {
-		switch {
-		case m.crossOutliner.filter.Deferred:
-			selected = []ListItemID{"filter-due:deferred"}
-		case m.crossOutliner.filter.DueDate == DueDateOverdue:
-			selected = []ListItemID{"filter-due:overdue"}
-		case m.crossOutliner.filter.DueDate == DueDateToday:
-			selected = []ListItemID{"filter-due:today"}
-		case m.crossOutliner.filter.DueDate == DueDateThisWeek:
-			selected = []ListItemID{"filter-due:week"}
-		case m.crossOutliner.filter.DueDate == DueDateNone:
-			selected = []ListItemID{"filter-due:none"}
+		active := dueFilterClauses(m.crossOutliner.filter.DueDate)
+		if m.crossOutliner.filter.Deferred {
+			active = filterClauseList(models.QueryFieldDeferred, models.QueryOperatorPresent, "")
+		}
+		if id, ok := byToken[strings.Join(filterClauseParts(active), " ")]; ok {
+			selected = []ListItemID{id}
 		}
 	}
 	return newOperationValuePickerModel(

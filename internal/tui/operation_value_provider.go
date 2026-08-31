@@ -1048,11 +1048,14 @@ func (id ValueProviderID) acceptsPresetValue(value any) bool {
 		_, ok := value.(int)
 		return ok
 	case ValueProviderFilterDue:
-		if _, ok := value.(filterDeferredOnly); ok {
-			return true
+		// A due preset is the token one row writes, so a binding that names a
+		// spelling no row offers is rejected at registration.
+		token, ok := value.(string)
+		if !ok {
+			return false
 		}
-		_, ok := value.(DueDateFilter)
-		return ok
+		_, known := dueFilterShortcutForToken(token)
+		return known
 	case ValueProviderFilterCompletionAge:
 		_, ok := value.(CompletionAgeFilter)
 		return ok
@@ -2332,6 +2335,12 @@ func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 		return true, m.applyNamedLensPickerResult(typed)
 	case NamedLensActionsRequestMsg:
 		return true, m.openNamedLensActions(typed)
+	case SaveViewAsLensRequestMsg:
+		return true, m.saveViewAsLens()
+	case QueryReadoutReloadRequestMsg:
+		// The peel already wrote the population fields; only the reload the facet
+		// owes is left, and it is the shell's because the projects are.
+		return true, m.projectFilterReloadCmd(typed.Status)
 	case ConflictBrowserClosedMsg:
 		m.conflictBrowser = nil
 		return true, nil

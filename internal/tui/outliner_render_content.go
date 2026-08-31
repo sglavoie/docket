@@ -48,15 +48,18 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 }
 
 // statusStripBody builds the outstanding-conflict indicator, the focus notice,
-// and the status message the shell pins above the footer. It is pure: the height
-// reservation and the strip itself must measure the same string.
+// the status message, and the expanded query readout the shell pins above the
+// footer. It is pure: the height reservation and the strip itself must measure
+// the same string.
 //
 // The indicator leads because it is the one durable line here — it stands until
-// the CLI resolves the last bundle, while the two below it come and go — so a
-// transient line arriving never shifts it to another row.
+// the CLI resolves the last bundle, while the lines below it come and go — so a
+// transient line arriving never shifts it to another row. The readout sits last
+// for the same reason from the other end: it is the tallest thing the strip can
+// hold, and growing it must not push the three one-line signals around.
 func (m *OutlinerModel) statusStripBody(width int) string {
 	width = max(width, 1)
-	lines := make([]string, 0, 3)
+	lines := make([]string, 0, 4)
 	if indicator := m.conflictIndicator(); indicator != "" {
 		lines = append(lines, PreviewWarningStyle.Width(width).Render(indicator))
 	}
@@ -65,6 +68,11 @@ func (m *OutlinerModel) statusStripBody(width int) string {
 	}
 	if m.statusMessage != "" {
 		lines = append(lines, MutedStyle.Width(width).Render(m.statusMessage))
+	}
+	// The expanded stack changes this return value rather than painting outside
+	// it, so statusStripHeight reserves the rows it needs from the list.
+	if readout := m.queryReadoutBody(width); readout != "" {
+		lines = append(lines, readout)
 	}
 	return strings.Join(lines, "\n")
 }

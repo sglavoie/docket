@@ -20,7 +20,7 @@
     { "type": "key", "key": "down" },
     { "type": "key", "key": "down" },
     { "type": "key", "key": "enter" },
-    { "type": "assert", "assert": "status_contains", "value": "Filtering due: none" },
+    { "type": "assert", "assert": "status_contains", "value": "Filtering @0" },
     { "type": "assert", "label": "both facets stay in the badge", "assert": "contains", "value": "!2+" },
     { "type": "assert", "assert": "contains", "value": "@0" },
     { "type": "assert", "assert": "no_layout_issues" },

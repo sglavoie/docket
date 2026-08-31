@@ -163,6 +163,7 @@ func (m *OutlinerModel) ShouldCaptureEsc() bool {
 		m.SearchShouldCaptureEsc() ||
 		m.multiSelectMode ||
 		m.quickEdit.IsActive() ||
+		m.queryReadoutExpanded ||
 		AnyEscStepActive(m.escSteps())
 }
 func (m *OutlinerModel) HasTextInput() bool {

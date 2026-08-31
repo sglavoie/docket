@@ -106,11 +106,12 @@ func TestGuideDocumentsFiltersAndSearch(t *testing.T) {
 		"Unset never matches",
 		// Search composition: a query is one more facet over the mode's own rows,
 		// the row facets and the sort axis compose with it either way, the flat
-		// ranked list is the only presentation that takes F* away, and Esc drops
-		// the query and restores what it was typed over.
-		"`f*` applies as an AND gate before scoring exactly like a query sigil",
-		"`o*` reorders within a relevance tier only",
-		"population facets (`F*`) are the only thing the flat list takes away",
+		// ranked list is the only presentation that takes the F family away, and
+		// Esc drops the query and restores what it was typed over. The families
+		// are named rather than globbed, because `f*` is now a literal key.
+		"any `f` facet applies as an AND gate before scoring exactly like a query",
+		"an `o` sort reorders within a relevance tier only",
+		"The population facets, the `F` family, are the only thing the flat list\ntakes away",
 		"Esc drops the query and restores the mode, facets, sort, cursor, scroll,",
 		// One narrowing, one spelling: the chip is the query, the chord's
 		// threshold is written out, repeats of a single-valued field union, and
@@ -125,7 +126,8 @@ func TestGuideDocumentsFiltersAndSearch(t *testing.T) {
 		"`fc` | Pick task contexts with OR semantics, since a task carries at most one",
 		"`fa` | Pick completed at least 7, 30, or 90 local-calendar days ago",
 		"`fr` | Toggle the `review` tag facet",
-		"`f@` | Open the Filter by Due or Deferred picker: overdue, today, this week, no due date, or deferred-only",
+		"`f@` | Open the Filter by Due or Deferred picker: five shortcut rows writing `@overdue`, `@today`, `@week`, `@0`, and `?deferred`, each labeled with the token it writes",
+		"`f*` | Toggle the pinned facet, the same `*pin` a typed query spells",
 		"`fh` | Pick one hierarchy position: parent, child, root, or leaf; parent and leaf read open children",
 		"`fs` | Toggle open, undeferred work untouched for at least 90 local-calendar days",
 		"`fx` | Clear every facet",

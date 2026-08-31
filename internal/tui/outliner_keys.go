@@ -9,6 +9,13 @@ import (
 func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
+	// The expanded query readout owns input outright while it is open: its peel
+	// digits are a gated keymap the footer is advertising, and letting a root key
+	// through underneath would run an act the on-screen footer does not name.
+	if m.queryReadoutExpanded {
+		return m.handleQueryReadoutKey(key)
+	}
+
 	// A lens query edit owns the input outright: it carries no suggestion pane and
 	// no projection, so it must be read before the ordinary search cascade below
 	// mistakes it for one.

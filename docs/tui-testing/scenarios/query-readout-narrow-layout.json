@@ -1,0 +1,36 @@
+{
+  "name": "query-readout-narrow-layout",
+  "fixture": "narrow",
+  "size": "60x20",
+  "actions": [
+    { "type": "key", "label": "narrow the view by priority", "key": "f" },
+    { "type": "key", "key": "!" },
+    { "type": "key", "key": "2" },
+    { "type": "assert", "assert": "contains", "value": "!2+" },
+
+    { "type": "key", "label": "open the narrowing stack", "key": "Q" },
+    { "type": "assert", "assert": "contains", "value": "Narrowing this view" },
+    { "type": "assert", "label": "the row spells the facet the way a typed query would", "assert": "contains", "value": "1 filter !2+" },
+
+    { "type": "wait", "label": "let the applying status clear off the footer" },
+    { "type": "assert", "label": "the footer advertises the digits the stack is gating", "assert": "contains", "value": "peel one" },
+    { "type": "assert", "assert": "contains", "value": "x peel all" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "peel the only narrowing at the smallest committed width", "key": "1" },
+    { "type": "assert", "label": "the peel reports in the strip the stack lives in", "assert": "contains", "value": "Peeled filter: !2+" },
+    { "type": "assert", "assert": "contains", "value": "nothing: every axis is at its default" },
+    { "type": "assert", "label": "and the header chip it named is gone", "assert": "not_contains", "value": "Filters:" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "peeling an empty stack changes nothing", "key": "1" },
+    { "type": "assert", "assert": "contains", "value": "Nothing to peel there" },
+    { "type": "assert", "assert": "contains", "value": "nothing: every axis is at its default" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "Esc puts the stack down", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "not_contains", "value": "Narrowing this view" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

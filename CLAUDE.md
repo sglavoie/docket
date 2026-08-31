@@ -173,6 +173,16 @@ that strip, refreshed at launch and on the 60s tick, read straight from
 and resolving stays in the CLI. `gc` browses those bundles read-only, as an
 overlay with no `PresentationID`, `InputStrategy`, or manifest entry.
 
+`Q` expands the query readout in that strip, below the conflict line, from a pure
+`queryReadoutBody` `statusStripHeight` measures. It names one row per peelable
+axis and nothing it cannot prove: a mode declares no clauses, so it names the
+mode. Facet rows spell `filterClauseParts`. `peelQueryReadoutAxis` is the one
+write and routes each axis through the call its own key uses; a peel needing a
+population reload refuses under `showsRankedList()` and otherwise hands the
+shell `QueryReadoutReloadRequestMsg`, as `s` hands it `SaveViewAsLensRequestMsg`.
+Peel is idempotent at zero, `queryReadoutRowLimit` is the digit set and names its
+overflow, and the open readout is a gated keymap taking no footer rank.
+
 Only status text arms footer flash; cleared text and other chrome do not. Arming
 stays in the one deferred closure in `AppModel.Update`. Feed divider appearance
 to all three `renderFooterChrome` dividers and keep the strip divider outside.
@@ -247,7 +257,12 @@ key is the only reverse route. Done is `$d` alone and no `d` alias may return.
 
 Root `$`, `z`, and `g` are chord prefixes, not direct keys: `z` never means
 snooze or defer, and cursor-top is `gg` or `Home`. `s`, `p`, and `t` fold the
-section, project, and task axes; `P` is Select Project; `Ctrl+P` selects pinned.
+section, project, and task axes; `P` is Select Project; `Ctrl+P` selects pinned;
+`Q` is the query readout. A facet carrying a sigil answers to that sigil, so
+pinned is `f*` and the letter `fp` stays retired. A picker row is the canonical
+token it writes — the `f@` five are `@overdue`, `@today`, `@week`, `@0`,
+`?deferred` — and `acceptsPresetValue` refuses a binding naming any other
+spelling, so a picker mints no vocabulary of its own.
 
 `gp` forces All, not the origin mode, and its scope push must precede the mode
 switch, since the push captures the frame `Esc` restores.

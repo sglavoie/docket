@@ -313,6 +313,11 @@ func SimplifiedInputStrategy() InputStrategy {
 			// entry point rather than a daily-loop act, so `?` teaches it and the
 			// compact footer stays as quiet as it is today.
 			{OperationID: operationCoreNamedLenses, Keys: []string{"\\"}, DisplayKey: `\`},
+			// The readout expands the narrowing the operational title already
+			// summarizes, so it claims a root key of its own rather than joining the
+			// f chord: it reads the lens, the scope, the mode, and the query beside
+			// the facets, and a "filter" prefix would be dishonest about four of them.
+			{OperationID: operationCoreQueryReadout, Keys: []string{"Q"}, DisplayKey: "Q", FooterRank: 27, FooterLabel: "narrowing"},
 			{OperationID: operationCoreNotes, Keys: []string{"ctrl+n"}, DisplayKey: "Ctrl+N"},
 			{OperationID: operationCoreToggleTheme, Keys: []string{"T"}, DisplayKey: "T", FooterRank: 22, FooterLabel: "theme"},
 			{OperationID: operationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},
@@ -364,6 +369,11 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationFilterReview, Sequence: []string{"f", "r"}, DisplayKey: "fr", HintLabel: "review"},
 			{OperationID: operationFilterHierarchy, Sequence: []string{"f", "h"}, DisplayKey: "fh", HintLabel: "hierarchy"},
 			{OperationID: operationFilterStale, Sequence: []string{"f", "s"}, DisplayKey: "fs", HintLabel: "stale"},
+			// Pinned answers to its own sigil like every other sigil-carrying facet:
+			// *pin is what the clause spells, so f* is what narrows by it. The letter
+			// fp stays retired, because it used to mean priority and a letter still
+			// bound would silently apply the wrong facet.
+			{OperationID: operationFilterPinned, Sequence: []string{"f", "*"}, DisplayKey: "f*", HintLabel: "pinned"},
 			{OperationID: operationFilterClear, Sequence: []string{"f", "x"}, DisplayKey: "fx", HintLabel: "clear all"},
 			{OperationID: operationFilterProjectTags, Sequence: []string{"F", "#"}, DisplayKey: "F#", HintLabel: "project tags"},
 			{OperationID: operationFilterShowParked, Sequence: []string{"F", "p"}, DisplayKey: "Fp", HintLabel: "include parked"},

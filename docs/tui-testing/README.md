@@ -164,8 +164,8 @@ y Y Ctrl+Y                       clipboard
 v V Ctrl+A Space                 selection and actions
 Enter Shift+Enter Ctrl+Enter     Focus, widen focus, and Peek
 x                                tick the checklist item under the cursor
-P \ Ctrl+N T / ? u Ctrl+R Esc Ctrl+C  global
-f!0-3 f$ fc f# fr f@ fh fs fx    filters
+P Q \ Ctrl+N T / ? u Ctrl+R Esc Ctrl+C  global
+f!0-3 f$ fc f# fr f@ fh fs f* fx filters
 F# Fp FP Fa FA Fx                project population filters
 o@ o! oc ou ot ox                sort axis
 ```

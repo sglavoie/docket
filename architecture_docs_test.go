@@ -331,7 +331,28 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// is one line and rides along because it is the same claim about where
 	// acceptance lives. The prose that explains any of it stayed in
 	// docs/architecture.md; what landed here is the rule set alone, in bullets.
-	const budget = 24100
+	//
+	// That raise is spent too, so this is the next one, argued on its own and for
+	// one feature: the query readout and the peel. Its rules are refusals about
+	// placement and authority that no other document can hold. The readout is a
+	// fourth line in a strip whose height is reserved from the viewport, so it has
+	// to be pure or the reservation and the paint disagree — a rule about
+	// `statusStripHeight`, not about a readout. It may name only what it can
+	// prove, which is why a mode row names the mode rather than clauses the
+	// catalog never declared, and it is the standing ban on inferred chrome that
+	// makes that a contract rather than a design note. Peeling routes every axis
+	// through the key's own call, so the one thing the model cannot do for itself
+	// — reload the population — is delegated to the shell instead of reimplemented
+	// under the strip, and the ranked-list refusal is the same standing refusal
+	// the `F` chord already answers to. Two grammar rules ride along because they
+	// are the same claim about vocabulary rather than about this feature: a
+	// sigil-carrying facet answers to its sigil, which is what binds pinned to
+	// `f*` and keeps the retired letter `fp` retired, and a picker row is the
+	// canonical token it writes, enforced at registration, which is what stops a
+	// picker minting a private spelling beside the grammar. The prose is in
+	// docs/architecture.md and docs/guide/search-and-lenses.md; the rules alone
+	// landed here.
+	const budget = 25200
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

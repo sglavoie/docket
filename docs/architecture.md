@@ -517,6 +517,41 @@ the CLI resolved in another terminal refuses instead of painting a record that i
 gone. The overlay registers no operations, has no `Space` sheet, and calls no
 mutating store method: resolution stays in `tt conflict resolve`.
 
+The query readout is the strip's fourth line and the expansion of the
+operational title rather than a rival to it. Collapsed it renders nothing, since
+the title already carries the lens, the scope, the query, and the chips;
+`Q` sets `queryReadoutExpanded` and `queryReadoutBody` then lists one row per
+independently peelable narrowing, rebuilt from live state every frame so nothing
+is remembered or inferred. It is pure, which is what lets `statusStripHeight`
+measure exactly the string `statusStripBody` paints, and it sits under the
+conflict indicator, which keeps the lead. `queryReadoutRows` reads the axes in
+the order the title reads them — lens, scope, mode, query, then
+`commonFilterReadoutRows` and `projectFilterReadoutRows` — and a facet row's
+value is `filterClauseParts` output, so a row, a chip, and a typed query spell
+one narrowing with one set of characters. A mode declares no clauses, so its row
+names the mode instead of spelling a gate the catalog never held.
+
+`commonFilterFacetCount`'s split is promoted from a count into the peel unit, so
+the readout cannot invent a facet boundary the facet writes do not have.
+`peelQueryReadoutAxis` is the single write and routes each axis through the call
+its own key uses — `restoreLensBaseline`, `clearProjectScope`,
+`selectOutlinerMode(ModeAll)`, `ClearSearch`, `setLensQuery("")`, or
+`replaceFilterClauses(row.fields, nil)` — so a peel cannot reach a state the
+grammar cannot. It reports whether the peel owes a population reload, which this
+model cannot perform: `queryReadoutRowRequiresReload` asks
+`models.QueryFieldRequiresReload` over the row's own fields, the peel refuses
+under `showsRankedList()` in the same words the `F` chord refuses in, and
+otherwise raises `QueryReadoutReloadRequestMsg` for the shell's
+`projectFilterReloadCmd`. `SaveViewAsLensRequestMsg` is the same delegation for
+`s`, because the name prompt and the lens transaction both live above the
+Outliner. While the readout is open it is a modal sub-state with its own gated
+keymap: `queryReadoutGuidance` supplies the footer, so the readout takes no
+footer rank of its own, and an unlisted key closes it rather than acting behind a
+footer that is not on screen. `queryReadoutRowLimit` is the digit set rather than
+a display budget, so a deeper stack names its remainder instead of dropping it,
+and `queryReadoutPeelAllLimit` bounds the peel-all loop against a future axis
+that fails to clear itself.
+
 The Outliner cursor row is drawn by `outlinerCursorRow`, not by `SelectedLine`.
 Every Outliner row renderer splits itself at one seam: a leading structural
 gutter and the content that follows it. For a task row the gutter is
@@ -1617,8 +1652,8 @@ relevance-ordered list over the whole project scope, with no lanes, no headers,
 and no folds, ranking title matches before description, tag, and project metadata
 matches, then by fuzzy score and stable project/task order; `project#shortID` is
 an exact qualifier. `showsRankedList()` is the one predicate that gates what that
-presentation takes away — the population filters (`F*`), which need a reload
-rather than a rebuild — and what it alone offers: the notes tier, the relevance
+presentation takes away — the population filters, the `F` family, which need a
+reload rather than a rebuild — and what it alone offers: the notes tier, the relevance
 ordering a sort reorders within, an order a fixed-order mode would otherwise keep
 for itself, and the `Enter`/`Shift+Enter`/`gp` exit onto a result. It is reached
 by toggling it, never by typing, and it dies with the query that gave it rows.
@@ -1708,7 +1743,16 @@ OR context values, due bucket, completion age, hierarchy position, Stale, and
 deferred-only and remain session-only. The deferred-only facet is a fifth row on the `f@` picker
 rather than a chord of its own, because a deferral is a scheduling instant like
 a due date; the picker is single-select, so choosing the deferred row clears the
-due bucket and choosing a due bucket clears the deferred flag.
+due bucket and choosing a due bucket clears the deferred flag. Those five rows
+are `dueFilterShortcuts`, and a shortcut is the canonical token it writes:
+`dueFilterShortcut.token()` is `filterClauseParts` over the clauses the row
+installs, so the row label, the which-key hint, the operation's preset value, and
+the status all read `@overdue`, `@today`, `@week`, `@0`, or `?deferred`. The
+picker keeps no private spelling of its own — `acceptsPresetValue` rejects a
+binding naming a token no row offers, which is what makes the token set the
+grammar rather than a parallel vocabulary. The pinned facet answers to `f*`, its
+own sigil; `fp` stays retired, because that letter used to mean priority and a
+letter still bound would apply the wrong facet in silence.
 The `f#` vocabulary is task tags alone, from `BuildProjectsTagList`. Contexts are
 their own axis on `fc`, whose `CommonFilterState.Contexts` names compose with OR
 because a task carries at most one, and whose `NoContext` bool admits the tasks

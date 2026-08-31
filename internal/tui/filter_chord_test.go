@@ -109,7 +109,7 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 	}
 	row := pendingChordHintRowForTest(app)
 	for _, want := range []string{
-		"! priority:high+", "$ states:2", "a completed:90d+", "@ deferred:on",
+		"! priority:high+", "$ states:2", "a completed:90d+", "@ ?deferred",
 		"# tags:2", "c contexts:2", "r review:on", "h hierarchy:parent", "s stale:on",
 		"x clear:7",
 	} {
@@ -122,12 +122,13 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 	}
 
 	// The f@ row now names two mutually exclusive facets, so the due-date branch
-	// needs its own reading once the deferred one is cleared.
+	// needs its own reading once the deferred one is cleared. Both readings are the
+	// token the picker's row writes, not a label of the chord's own.
 	taskFilter.Deferred = false
 	taskFilter.DueDate = DueDateToday
 	row = pendingChordHintRowForTest(app)
-	if !strings.Contains(row, "@ due:today") {
-		t.Errorf("decorated f row %q omits %q", row, "@ due:today")
+	if !strings.Contains(row, "@ @today") {
+		t.Errorf("decorated f row %q omits %q", row, "@ @today")
 	}
 
 	app.pendingChord = []string{"F"}
@@ -365,7 +366,7 @@ func TestFilterDuePickerDeferredRowOwnsTheDeferredFacet(t *testing.T) {
 
 	result := app.executeFilterOperation(OperationInvocation{
 		Descriptor: OperationDescriptor{ID: operationFilterDue},
-		Value:      filterDeferredOnly{},
+		Value:      "?deferred",
 	})
 	if result.Err != nil {
 		t.Fatalf("deferred row error: %v", result.Err)
@@ -379,7 +380,7 @@ func TestFilterDuePickerDeferredRowOwnsTheDeferredFacet(t *testing.T) {
 
 	result = app.executeFilterOperation(OperationInvocation{
 		Descriptor: OperationDescriptor{ID: operationFilterDue},
-		Value:      DueDateOverdue,
+		Value:      "@overdue",
 	})
 	if result.Err != nil {
 		t.Fatalf("overdue row error: %v", result.Err)
@@ -592,12 +593,13 @@ func TestFilterDueChordPickerAppliesEveryPublicFacet(t *testing.T) {
 	tests := []struct {
 		name   string
 		itemID ListItemID
+		token  string
 		want   DueDateFilter
 	}{
-		{name: "overdue", itemID: "filter-due:overdue", want: DueDateOverdue},
-		{name: "today", itemID: "filter-due:today", want: DueDateToday},
-		{name: "this week", itemID: "filter-due:week", want: DueDateThisWeek},
-		{name: "no due date", itemID: "filter-due:none", want: DueDateNone},
+		{name: "overdue", itemID: "filter-due:overdue", token: "@overdue", want: DueDateOverdue},
+		{name: "today", itemID: "filter-due:today", token: "@today", want: DueDateToday},
+		{name: "this week", itemID: "filter-due:week", token: "@week", want: DueDateThisWeek},
+		{name: "no due date", itemID: "filter-due:none", token: "@0", want: DueDateNone},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -612,6 +614,12 @@ func TestFilterDueChordPickerAppliesEveryPublicFacet(t *testing.T) {
 			picker := app.operationValuePicker
 			if picker == nil || !picker.surface.SetCursorToID(test.itemID) {
 				t.Fatalf("due-date picker cannot select %s", test.itemID)
+			}
+			// The row is a shortcut for a token, so what it carries is the canonical
+			// spelling of the narrowing and not a private enum.
+			current, ok := picker.surface.CurrentItem()
+			if !ok || current.Data != test.token {
+				t.Fatalf("row %s carries %#v, want the token %q", test.itemID, current.Data, test.token)
 			}
 			_, dismissed, selected := picker.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 			if !dismissed {
@@ -1193,8 +1201,8 @@ func TestFilterOperationsStayChordOnly(t *testing.T) {
 	registry := app.GetOperationRegistry()
 
 	descriptors := filterOperationDescriptors()
-	if len(descriptors) != 10 {
-		t.Fatalf("filter family declares %d operations, want 10", len(descriptors))
+	if len(descriptors) != 11 {
+		t.Fatalf("filter family declares %d operations, want 11", len(descriptors))
 	}
 	for _, declared := range descriptors {
 		_, ok := registry.Descriptor(declared.ID)

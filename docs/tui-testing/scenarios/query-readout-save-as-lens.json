@@ -1,0 +1,39 @@
+{
+  "name": "query-readout-save-as-lens",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "key", "label": "narrow by a search query", "key": "/" },
+    { "type": "text", "text": "login" },
+    { "type": "key", "key": "enter" },
+
+    { "type": "key", "label": "open the narrowing stack over the results", "key": "Q" },
+    { "type": "assert", "assert": "contains", "value": "Narrowing this view" },
+    { "type": "assert", "assert": "contains", "value": "1 query login" },
+    { "type": "assert", "label": "saving is offered beside the peels", "assert": "contains", "value": "save as lens" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "save the narrowing as a named lens", "key": "s" },
+    { "type": "assert", "label": "the stack closes so the prompt owns the screen", "assert": "not_contains", "value": "Narrowing this view" },
+    { "type": "text", "text": "Login Sweep" },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the same Create the picker runs, without the picker", "assert": "contains", "value": "Lens: Login Sweep" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "the lens is an axis of its own in the stack", "key": "Q" },
+    { "type": "assert", "assert": "contains", "value": "1 lens" },
+    { "type": "assert", "assert": "contains", "value": "Login Sweep  (restores the view it opened on)" },
+    { "type": "assert", "label": "the saved query is the lens's own axis now", "assert": "contains", "value": "2 lens query login" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "peeling the lens leaves it", "key": "1" },
+    { "type": "assert", "assert": "contains", "value": "Peeled lens: Login Sweep" },
+    { "type": "assert", "assert": "not_contains", "value": "Lens: Login Sweep" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

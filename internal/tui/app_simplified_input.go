@@ -185,7 +185,8 @@ func (m *OutlinerModel) simplifiedInlineControlOwnsInput() bool {
 	}
 	if m.IsSearchMode() ||
 		m.quickEdit.IsActive() ||
-		m.confirm.IsActive() {
+		m.confirm.IsActive() ||
+		m.queryReadoutExpanded {
 		return true
 	}
 	return false

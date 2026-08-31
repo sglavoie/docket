@@ -1,0 +1,39 @@
+{
+  "name": "query-readout-stacked-axes",
+  "fixture": "rich",
+  "size": "72x20",
+  "actions": [
+    { "type": "key", "label": "narrow the mode", "key": "g" },
+    { "type": "key", "key": "b" },
+    { "type": "key", "label": "and stack two facets on top of it", "key": "f" },
+    { "type": "key", "key": "!" },
+    { "type": "key", "key": "3" },
+    { "type": "key", "key": "f" },
+    { "type": "key", "key": "*" },
+    { "type": "assert", "label": "the pinned facet answers to its own sigil", "assert": "status_contains", "value": "Filtering Pinned" },
+
+    { "type": "key", "label": "open the narrowing stack", "key": "Q" },
+    { "type": "assert", "assert": "contains", "value": "Narrowing this view" },
+    { "type": "assert", "label": "one row per axis, widest context first", "assert": "contains", "value": "1 mode" },
+    { "type": "assert", "assert": "contains", "value": "2 filter !3+" },
+    { "type": "assert", "assert": "contains", "value": "3 filter *pin" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "peel the middle row alone", "key": "2" },
+    { "type": "assert", "assert": "contains", "value": "Peeled filter: !3+" },
+    { "type": "assert", "label": "the axes above and below it stand", "assert": "contains", "value": "1 mode" },
+    { "type": "assert", "assert": "contains", "value": "2 filter *pin" },
+    { "type": "assert", "label": "and only the pinned chip is left in the header", "assert": "not_contains", "value": "Filters: !3+" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "peel everything that is left", "key": "x" },
+    { "type": "assert", "assert": "contains", "value": "Peeled 2 narrowing(s)" },
+    { "type": "assert", "assert": "contains", "value": "nothing: every axis is at its default" },
+    { "type": "assert", "label": "peel-all returns the unnarrowed mode", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "key": "esc" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

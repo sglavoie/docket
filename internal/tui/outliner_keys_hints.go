@@ -44,6 +44,10 @@ func (m *OutlinerModel) ContextualGuidance() (GuidanceSpec, bool) {
 		return GuidanceSpec{}, false
 	}
 	switch {
+	case m.queryReadoutExpanded:
+		// First because the readout owns input outright: every other profile below
+		// describes keys the stack is currently refusing.
+		return m.queryReadoutGuidance(), true
 	case m.confirm.IsActive():
 		return GuidanceSpec{Hints: requiredGuidanceHints("Y confirm", "N/Esc cancel"), Rows: 2}, true
 	case m.quickEdit.IsActive():
@@ -352,11 +356,14 @@ func (m *OutlinerModel) decoratePendingChordHint(path []string, hint ChordHint) 
 				hint.Label = fmt.Sprintf("contexts:%d", count)
 			}
 		case "@":
-			switch {
-			case filter.Deferred:
-				hint.Label = "deferred:on"
-			case filter.DueDate != DueDateAll:
-				hint.Label = "due:" + dueDateFilterLabel(filter.DueDate)
+			// The label is the token the picker's row writes, so the hint, the chip,
+			// and a typed query name this facet with the same characters.
+			active := dueFilterClauses(filter.DueDate)
+			if filter.Deferred {
+				active = filterClauseList(models.QueryFieldDeferred, models.QueryOperatorPresent, "")
+			}
+			if len(active) > 0 {
+				hint.Label = strings.Join(filterClauseParts(active), " ")
 			}
 		case "#":
 			if len(filter.Tags) > 0 {
