@@ -147,8 +147,9 @@ func (c *DomainCoordinator) CommitMachine(machine *MachineState) error {
 // workspace transaction and records no undo ledger entry, so a refusal would be
 // unrecoverable from the user's side: there is nothing to replay. Merging is
 // also already this domain's defined reconciliation — MergeNamedLenses is the
-// order-stable, idempotent join adoption uses — so honoring it on a conflicting
-// write adds no second policy. The cost is that a two-way merge cannot express a
+// commutative, associative and idempotent join adoption uses, so reconciling the
+// same stale write twice adds nothing — so honoring it on a conflicting write
+// adds no second policy. The cost is that a two-way merge cannot express a
 // deletion: a lens deleted here while another machine writes the same file comes
 // back, because the merge cannot tell "deleted by me" from "added by them".
 func (c *DomainCoordinator) CommitLensDefinitions(lenses *WorkspaceLensDefinitions) error {
@@ -224,10 +225,16 @@ func (c *DomainCoordinator) publishOwnedLensDefinitions(machine *MachineState) e
 	if rev == "" && !machine.LensHomeAdopted {
 		return nil
 	}
-	published, err := c.commitLensDefinitions(&WorkspaceLensDefinitions{Lenses: DefinedLensList(machine.NamedLenses)})
+	contributed := machine.NamedLenses
+	published, err := c.commitLensDefinitions(&WorkspaceLensDefinitions{Lenses: DefinedLensList(contributed)})
 	if err != nil {
 		return err
 	}
+	// A reconciled write can re-identify one of this machine's records, so the
+	// machine-local pointer is followed onto whatever identity the published
+	// collection keeps that definition under. Nothing moves on the ordinary path,
+	// where the write landed without a merge.
+	machine.ActiveLensID = RemapActiveLensID(machine.ActiveLensID, contributed, published)
 	// The machine copy has to carry whatever the merge published, or the fallback
 	// written beside lenses.json would claim a collection the workspace no longer
 	// holds, and this session would go on editing a list the merge already

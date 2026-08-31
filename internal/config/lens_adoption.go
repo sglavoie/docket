@@ -3,6 +3,8 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -30,69 +32,287 @@ import (
 // identity, finds it already present, and adopts nothing a second time.
 var lensAdoptionNamespace = uuid.MustParse("9c8f2b17-5d3e-4a6b-8c21-7f0e4d9b3a55")
 
-// MergeNamedLenses merges an incoming collection into a base one under the
-// adoption rules: dedupe by lens id, keep both sides when one id carries two
-// differing definitions, and never drop a lens that exists on only one side.
-// Base order is preserved and incoming records append in their own order, so the
-// result is a pure function of its inputs.
+// lensIdentitySaltAttempts bounds the derivation loop that hands a colliding
+// definition an identity of its own. The first attempt is the plain contributed
+// id and each further one salts the derivation, so exhausting the bound requires
+// as many distinct UUIDv5 values over distinct seeds to land on identities that
+// are already taken by other content. That is not reachable by accident; the
+// bound exists so a hand-written lenses.json cannot spin the merge forever, and
+// the collection it then produces is refused by NamedLensList.Validate rather
+// than published.
+const lensIdentitySaltAttempts = 8
+
+// MergeNamedLenses joins two lens collections into the one every machine
+// converges on, whatever order the collections arrive in.
 //
-// Name uniqueness is a collection rule (NamedLensList.Validate), so an incoming
-// record whose name is already taken is renamed on the way in, whether or not
-// its identity collided. The result satisfies Validate whenever both inputs do.
+// The join is a set operation, not an arrival-ordered fold: every record on
+// both sides is a contribution, and the result is computed from the union of
+// those contributions alone. That makes it commutative, associative and
+// idempotent over the records it yields — their identities, their names, their
+// definitions and their count — which is what a synced workspace needs, since
+// two machines adopting in opposite orders must reach the same file and a stale
+// write reconciled twice must not grow.
+//
+// Three rules decide the union:
+//
+//   - Identity is the id a record was contributed under together with its core
+//     (mode, scope, query and sort). Two contributions agreeing on both are the
+//     same lens wearing two labels; the label is reconciled, not duplicated.
+//   - When one id carries several cores, the core that sorts first keeps that
+//     id and every other core is re-identified with a UUIDv5 derived from the
+//     contributed id and that core. The derivation reads neither the name nor
+//     the arrival side, so a record already split out re-derives to the identity
+//     it is already stored under and dedupes instead of splitting again.
+//   - Names are then assigned over the resolved identities, records that kept a
+//     contributed identity first and canonical id order within that, each taking
+//     its preferred label when free and the first free " (N)" variant of that
+//     label's base otherwise. NamedLensList.Validate enforces case-folded name
+//     uniqueness, so the collection has to resolve it.
+//
+// Element order is the one axis that still follows arrival: a record occupies
+// the slot of its earliest contribution, so the base collection's order leads
+// and a machine's own lens order survives a merge. Order carries no meaning
+// beyond presentation, and because the workspace file is always the base, the
+// records it already holds keep their places on every machine.
 func MergeNamedLenses(base, incoming NamedLensList) NamedLensList {
-	merged := base.Clone()
-	if merged == nil {
-		merged = NamedLensList{}
-	}
-	positions := make(map[string]int, len(merged)+len(incoming))
-	names := make(map[string]bool, len(merged)+len(incoming))
-	for i, lens := range merged {
-		positions[lens.ID] = i
-		names[strings.ToLower(lens.Name)] = true
-	}
-	for _, lens := range incoming {
-		candidate := lens.Clone()
-		if at, collides := positions[candidate.ID]; collides {
-			if namedLensesIdentical(merged[at], candidate) {
-				continue
-			}
-			candidate.ID = disambiguatedLensID(candidate)
-			if _, adopted := positions[candidate.ID]; adopted {
-				// A previous adoption already split this exact definition out.
-				continue
-			}
-		}
-		candidate.Name = unusedLensName(candidate.Name, names)
-		names[strings.ToLower(candidate.Name)] = true
-		positions[candidate.ID] = len(merged)
-		merged = append(merged, candidate)
+	contributed := contributedLensRecords(base, incoming)
+	resolveLensIdentities(contributed)
+	resolved := collapseLensRecords(contributed)
+	assignLensNames(resolved)
+	sort.SliceStable(resolved, func(i, j int) bool { return resolved[i].order < resolved[j].order })
+	merged := make(NamedLensList, 0, len(resolved))
+	for _, record := range resolved {
+		lens := record.lens
+		lens.ID = record.id
+		lens.Name = record.name
+		merged = append(merged, lens)
 	}
 	return merged
 }
 
-// namedLensesIdentical reports whether two definitions are the same record. It
-// compares the persisted rendering rather than field by field so a lens axis
-// added later cannot silently drop out of the comparison and turn a genuine
-// difference into a dedupe.
-func namedLensesIdentical(a, b NamedLens) bool {
-	left, leftErr := json.Marshal(a)
-	right, rightErr := json.Marshal(b)
-	if leftErr != nil || rightErr != nil {
-		return false
-	}
-	return string(left) == string(right)
+// contributedLensRecord is one definition as it was contributed: the identity it
+// arrived under, its core, and every label the contributing collections gave
+// that pair.
+type contributedLensRecord struct {
+	originID string
+	core     string
+	lens     NamedLens
+	names    []string
+	order    int
+	id       string
 }
 
-// disambiguatedLensID derives the identity the incoming half of an id collision
-// is kept under. It is a UUIDv5 over the definition's own persisted bytes, so it
-// is canonical (ValidateNamedLensID accepts it), stable across runs and
-// machines, and distinct for two definitions that differ in any axis.
-func disambiguatedLensID(lens NamedLens) string {
-	seed, err := json.Marshal(lens)
-	if err != nil {
-		seed = []byte(lens.ID + "\x00" + lens.Name)
+// resolvedLensRecord is one lens of the merged collection: a settled identity,
+// the labels contributed for it, and the labels contributed under that very
+// identity, which are the ones that win when the two disagree.
+type resolvedLensRecord struct {
+	id    string
+	core  string
+	lens  NamedLens
+	names []string
+	own   []string
+	order int
+	name  string
+}
+
+// contributedLensRecords folds both sides into one contribution per (id, core)
+// pair, collecting the labels rather than choosing between them. Position is
+// recorded so the merged collection can keep the earliest contributor's slot.
+func contributedLensRecords(sides ...NamedLensList) []*contributedLensRecord {
+	records := make([]*contributedLensRecord, 0)
+	byPair := make(map[string]*contributedLensRecord)
+	position := 0
+	for _, side := range sides {
+		for _, lens := range side {
+			core := lensCoreKey(lens)
+			pair := lens.ID + "\x00" + core
+			record, seen := byPair[pair]
+			if !seen {
+				record = &contributedLensRecord{
+					originID: lens.ID,
+					core:     core,
+					lens:     lens.Clone(),
+					order:    position,
+				}
+				byPair[pair] = record
+				records = append(records, record)
+			}
+			record.names = append(record.names, lens.Name)
+			position++
+		}
 	}
-	return uuid.NewSHA1(lensAdoptionNamespace, seed).String()
+	return records
+}
+
+// resolveLensIdentities settles the identity of every contribution. It walks the
+// contributions in canonical order — by contributed id, then by core — so the
+// walk is a function of the content rather than of the arrival side: within one
+// contributed id the first core keeps it and each later core derives its own.
+// A derived identity is allowed to land on a contribution that already carries
+// it, which is exactly how a record split out by an earlier merge is recognized
+// rather than split a second time.
+func resolveLensIdentities(records []*contributedLensRecord) {
+	ordered := append([]*contributedLensRecord(nil), records...)
+	sort.Slice(ordered, func(i, j int) bool {
+		if ordered[i].originID != ordered[j].originID {
+			return ordered[i].originID < ordered[j].originID
+		}
+		return ordered[i].core < ordered[j].core
+	})
+	claimed := make(map[string]string, len(ordered))
+	for _, record := range ordered {
+		candidate := record.originID
+		for salt := 1; salt <= lensIdentitySaltAttempts; salt++ {
+			held, taken := claimed[candidate]
+			if !taken || held == record.core {
+				break
+			}
+			candidate = disambiguatedLensID(record.originID, record.core, salt)
+		}
+		claimed[candidate] = record.core
+		record.id = candidate
+	}
+}
+
+// collapseLensRecords turns settled contributions into one record per identity,
+// keeping the earliest slot and remembering which labels arrived under that
+// identity. Contributions can only share an identity when they share a core, so
+// the definition itself is never in question here.
+func collapseLensRecords(records []*contributedLensRecord) []*resolvedLensRecord {
+	byID := make(map[string]*resolvedLensRecord, len(records))
+	resolved := make([]*resolvedLensRecord, 0, len(records))
+	for _, record := range records {
+		existing, seen := byID[record.id]
+		if !seen {
+			existing = &resolvedLensRecord{
+				id:    record.id,
+				core:  record.core,
+				lens:  record.lens,
+				order: record.order,
+			}
+			byID[record.id] = existing
+			resolved = append(resolved, existing)
+		} else if record.order < existing.order {
+			existing.order = record.order
+			existing.lens = record.lens
+		}
+		existing.names = append(existing.names, record.names...)
+		if record.originID == record.id {
+			existing.own = append(existing.own, record.names...)
+		}
+	}
+	return resolved
+}
+
+// assignLensNames gives every resolved record a label, in an order derived from
+// the records themselves: a record that kept an identity it was contributed
+// under is labelled before one that had to derive a new identity, and canonical
+// id order decides within each half. A record takes its preferred label when
+// nothing holds it and otherwise the first free " (N)" variant of that label's
+// base, so a record already carrying a disambiguated label settles back onto it
+// instead of accumulating suffixes.
+func assignLensNames(records []*resolvedLensRecord) {
+	ordered := append([]*resolvedLensRecord(nil), records...)
+	sort.Slice(ordered, func(i, j int) bool {
+		leftDerived, rightDerived := len(ordered[i].own) == 0, len(ordered[j].own) == 0
+		if leftDerived != rightDerived {
+			return rightDerived
+		}
+		return ordered[i].id < ordered[j].id
+	})
+	taken := make(map[string]bool, len(ordered))
+	for _, record := range ordered {
+		preferred := preferredLensName(record)
+		if folded := strings.ToLower(preferred); !taken[folded] {
+			record.name = preferred
+			taken[folded] = true
+			continue
+		}
+		record.name = unusedLensName(baseLensName(preferred), taken)
+		taken[strings.ToLower(record.name)] = true
+	}
+}
+
+// preferredLensName is the label a resolved record asks for. Labels contributed
+// under the record's own identity win over labels a re-identified contribution
+// carried, which is what keeps a settled collection settled: a machine still
+// holding the pre-merge spelling of a record it has since re-identified no
+// longer drags that spelling back. Case-folded order decides between equals, so
+// the choice is a function of the label set and not of arrival.
+func preferredLensName(record *resolvedLensRecord) string {
+	candidates := record.own
+	if len(candidates) == 0 {
+		candidates = record.names
+	}
+	best := candidates[0]
+	for _, name := range candidates[1:] {
+		if lensNameLess(name, best) {
+			best = name
+		}
+	}
+	return best
+}
+
+func lensNameLess(a, b string) bool {
+	foldedA, foldedB := strings.ToLower(a), strings.ToLower(b)
+	if foldedA != foldedB {
+		return foldedA < foldedB
+	}
+	return a < b
+}
+
+// lensCoreKey renders what a lens shows and nothing about how it is labelled or
+// identified: the mode, scope, query and sort axes. It compares the persisted
+// rendering rather than field by field so a lens axis added later joins the
+// comparison automatically instead of silently dropping out of it and turning a
+// genuine difference into a dedupe.
+func lensCoreKey(lens NamedLens) string {
+	core := lens
+	core.ID = ""
+	core.Name = ""
+	encoded, err := json.Marshal(core)
+	if err != nil {
+		// Marshaling a lens cannot fail; a key that hid the failure would
+		// collapse two different definitions into one record.
+		return "unmarshalable\x00" + core.Mode + "\x00" + core.Scope + "\x00" + core.Query
+	}
+	return string(encoded)
+}
+
+// disambiguatedLensID derives the identity a definition is kept under when the
+// id it was contributed under already belongs to a different definition. It is a
+// UUIDv5 over the contributed id and the core alone, so it is canonical
+// (ValidateNamedLensID accepts it), stable across runs and machines, and — since
+// it reads neither the label nor which side the record arrived on — identical
+// whichever machine computes it and however many times it is recomputed.
+func disambiguatedLensID(collidingID, core string, salt int) string {
+	seed := collidingID + "\x00" + core + "\x00" + strconv.Itoa(salt)
+	return uuid.NewSHA1(lensAdoptionNamespace, []byte(seed)).String()
+}
+
+// baseLensName strips a trailing " (N)" disambiguation suffix so a record that
+// already carries one asks for the same series again rather than nesting a
+// second suffix inside the first. A name that does not end in one is its own
+// base, and the suffix is only stripped when something is left in front of it.
+func baseLensName(name string) string {
+	trimmed := strings.TrimSuffix(name, ")")
+	if trimmed == name {
+		return name
+	}
+	open := strings.LastIndex(trimmed, " (")
+	if open <= 0 {
+		return name
+	}
+	digits := trimmed[open+2:]
+	if digits == "" {
+		return name
+	}
+	for _, digit := range digits {
+		if digit < '0' || digit > '9' {
+			return name
+		}
+	}
+	return trimmed[:open]
 }
 
 // unusedLensName returns name, or the first " (N)" variant of it that is not
@@ -120,6 +340,50 @@ func truncateLensNameRunes(name string, limit int) string {
 	}
 	runes := []rune(name)
 	return strings.TrimRight(string(runes[:limit]), " ")
+}
+
+// RemapActiveLensID follows a machine's active-lens pointer across a merge.
+//
+// The pointer is machine-local while the definitions are portable, so a merge
+// that re-identifies a record would otherwise leave the pointer naming whichever
+// definition kept the plain id — silently swapping one lens for another rather
+// than failing closed. Following it is the same derivation the merge used: the
+// pointer's own definition is looked up on the side that carried it, and the
+// merged collection is asked for that definition under the contributed id first
+// and each derived id after.
+//
+// A pointer naming no lens on the contributing side is returned untouched, since
+// there is nothing to follow and the caller's existing fail-closed reading still
+// applies. A pointer whose definition survived nowhere returns empty, which is
+// that same fail-closed reading stated at the merge instead of at the next load.
+func RemapActiveLensID(active string, before, merged NamedLensList) string {
+	if active == "" {
+		return ""
+	}
+	core := ""
+	carried := false
+	for _, lens := range before {
+		if lens.ID == active {
+			core, carried = lensCoreKey(lens), true
+			break
+		}
+	}
+	if !carried {
+		return active
+	}
+	cores := make(map[string]string, len(merged))
+	for _, lens := range merged {
+		cores[lens.ID] = lensCoreKey(lens)
+	}
+	if cores[active] == core {
+		return active
+	}
+	for salt := 1; salt <= lensIdentitySaltAttempts; salt++ {
+		if candidate := disambiguatedLensID(active, core, salt); cores[candidate] == core {
+			return candidate
+		}
+	}
+	return ""
 }
 
 // AdoptPortableLenses runs the one-time-per-machine merge of this machine's lens
@@ -176,6 +440,9 @@ func (m *Manager) AdoptPortableLenses() error {
 	if err := merged.Validate(); err != nil {
 		return fmt.Errorf("lens adoption produced an invalid collection: %w", err)
 	}
+	// The pointer is followed before the machine's own list is replaced, because
+	// the list it names is the one being merged away.
+	machine.ActiveLensID = RemapActiveLensID(machine.ActiveLensID, machine.NamedLenses, merged)
 	machine.NamedLenses = merged
 	machine.LensHomeAdopted = true
 	return m.DomainCoordinator().CommitMachine(machine)

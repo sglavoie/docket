@@ -2783,11 +2783,25 @@ machine-local `MachineState.LensHomeAdopted` and runs from
 `Manager.RecoverWorkspace` after the chain, outside it; `LoadOrCreateDomains`
 stamps the marker onto a fresh bundle before `createDomainBundle` instead, so a
 brand-new workspace publishes its home in the single machine write bootstrap
-already makes. `MergeNamedLenses` never deletes: it dedupes by id, keeps both
-halves of an id collision whose definitions differ under a derived UUIDv5
-identity — which is what makes re-merging idempotent — and renames an incoming
-record whose name is taken, because `NamedLensList.Validate` enforces case-folded
-name uniqueness as well as id uniqueness. `LoadPersistedMachineLenses` decodes
+already makes. `MergeNamedLenses` never deletes, and it is a join over the union
+of both sides rather than a fold in arrival order, so it is commutative,
+associative and idempotent over the records it yields. Identity is the id a
+record was contributed under together with its core — mode, scope, query and
+sort — so two contributions agreeing on both are one lens under two labels; when
+one id carries several cores the core that sorts first keeps it and every other
+one takes a UUIDv5 derived from that id and that core, reading neither the label
+nor the arrival side, which is what lets a record an earlier merge split out
+re-derive to the identity it is already stored under instead of splitting again.
+Names are assigned afterwards over the settled identities, records that kept a
+contributed id first and canonical id order within that, because
+`NamedLensList.Validate` enforces case-folded name uniqueness as well as id
+uniqueness. Element order is the one arrival-bound axis: a record takes the slot
+of its earliest contribution, so the workspace file's order leads and carries no
+meaning beyond presentation. The active-lens pointer is machine-local while the
+definitions are portable, so `RemapActiveLensID` follows it through the same
+derivation on both merge paths — adoption and the stale-write reconciliation in
+`publishOwnedLensDefinitions` — rather than leaving it on an id another
+definition now holds. `LoadPersistedMachineLenses` decodes
 into a zero `MachineState` rather than a seeded one, so an omitted `named_lenses`
 key contributes nothing and a machine joining later cannot reseed starters into a
 workspace whose owner deleted every lens; the founding machine, where neither

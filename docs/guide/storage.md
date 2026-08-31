@@ -109,15 +109,22 @@ the shared list: whatever lenses that machine had saved for itself are merged
 in, and nothing is dropped. A lens only one side had survives, and one name held
 by two different definitions yields both — as `Name` and `Name (2)` — because
 the two lists carry no clock between them and neither can be called the newer.
-The merge runs once per machine, so a duplicate you tidy up afterwards stays
-tidied.
+Which machine joined first does not change the answer: the merge reads only the
+definitions themselves, so three machines joining in any order reach the same
+list, with the same names on the same lenses. The merge runs once per machine, so
+a duplicate you tidy up afterwards stays tidied.
 
 After that, a lens write checks the shared list against the version your session
 opened. When another machine has written it since — the usual cause is a sync
 service delivering that machine's copy while yours was open — the two lists are
 merged by the same rule adoption uses, and the merged list is what is saved. You
 keep your change and the other machine keeps theirs; neither write is lost and
-neither is refused. The cost is that a merge cannot tell a lens you deleted from
+neither is refused. Merging the same pair of lists again adds nothing, so a sync
+service delivering the same copy twice cannot leave you with duplicates. If the
+merge has to give one of your lenses a new identity — that happens only when two
+different definitions arrive under one — the lens you had open follows it, so the
+pointer never quietly lands on somebody else's lens. The cost is that a merge
+cannot tell a lens you deleted from
 a lens the other machine added: if you delete one while another machine writes
 the same file, the deletion does not take and the lens comes back. Delete it
 again once both machines have seen the same list and it stays gone. The other
