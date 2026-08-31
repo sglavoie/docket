@@ -33,19 +33,25 @@ import (
 // identity, finds it already present, and adopts nothing a second time.
 var lensAdoptionNamespace = uuid.MustParse("9c8f2b17-5d3e-4a6b-8c21-7f0e4d9b3a55")
 
-// lensIdentitySaltAttempts bounds the identities one contribution may be
-// offered: the plain contributed id first and a salted derivation for each
-// further attempt. Exhausting the bound requires as many distinct UUIDv5 values
+// lensIdentitySaltAttempts is how many salted derivations back the plain
+// contributed id. Exhausting the bound requires as many distinct UUIDv5 values
 // over distinct seeds to land on identities already taken by other content,
 // which is not reachable by accident; the bound exists so a hand-written
 // lenses.json cannot spin the merge forever.
 //
-// Every candidate is checked before it is claimed, the last derivation included.
-// Claiming an unchecked one would hand a contribution an identity another core
-// already holds, and collapsing then folds two different definitions into one
-// record — a silent deletion the union contract forbids. A set that does reach
-// the bound is refused whole with ErrLensIdentityExhausted instead.
+// Every candidate is checked before it is claimed, the final derivation
+// included, and the bound is spent rather than shortened: salt
+// lensIdentitySaltAttempts is offered like every salt before it. Claiming an
+// unchecked candidate would hand a contribution an identity another core already
+// holds, and collapsing then folds two different definitions into one record — a
+// silent deletion the union contract forbids; withholding a checkable one would
+// refuse a merge an available identity could have settled. A set that occupies
+// every candidate is refused whole with ErrLensIdentityExhausted instead.
 const lensIdentitySaltAttempts = 8
+
+// lensIdentityCandidateCount is how many identities one contribution may settle
+// on in total: the contributed id plus one derivation per salt.
+const lensIdentityCandidateCount = lensIdentitySaltAttempts + 1
 
 // ErrLensIdentityExhausted reports that one contributed id carried more distinct
 // definitions than the bounded derivation can give identities to. It is the
@@ -190,7 +196,7 @@ func resolveLensIdentities(records []*contributedLensRecord) error {
 		if !free {
 			return fmt.Errorf(
 				"%w: lens id %q carries more distinct definitions than %d candidate identities can hold",
-				ErrLensIdentityExhausted, record.originID, lensIdentitySaltAttempts,
+				ErrLensIdentityExhausted, record.originID, lensIdentityCandidateCount,
 			)
 		}
 		claimed[candidate] = record.core
@@ -212,14 +218,17 @@ func freeLensIdentity(record *contributedLensRecord, claimed map[string]string) 
 }
 
 // lensIdentityCandidates lists, in order, every identity a contribution may
-// settle on: the id it was contributed under and one salted derivation per
-// further attempt. The merge and RemapActiveLensID walk this one sequence, so a
-// machine's pointer is followed over exactly the identities the merge can mint —
-// never one it cannot, and never short of one it can.
+// settle on: the id it was contributed under and one salted derivation for each
+// salt through lensIdentitySaltAttempts. The sequence is complete on both ends —
+// the final derivation is a candidate like every earlier one, never a value the
+// merge claims without asking and never one it withholds. The merge and
+// RemapActiveLensID walk this one sequence, so a machine's pointer is followed
+// over exactly the identities the merge can mint — never one it cannot, and
+// never short of one it can.
 func lensIdentityCandidates(originID, core string) []string {
-	candidates := make([]string, 0, lensIdentitySaltAttempts)
+	candidates := make([]string, 0, lensIdentityCandidateCount)
 	candidates = append(candidates, originID)
-	for salt := 1; salt < lensIdentitySaltAttempts; salt++ {
+	for salt := 1; salt <= lensIdentitySaltAttempts; salt++ {
 		candidates = append(candidates, disambiguatedLensID(originID, core, salt))
 	}
 	return candidates

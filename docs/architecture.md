@@ -2793,12 +2793,15 @@ one takes a UUIDv5 derived from that id and that core, reading neither the label
 nor the arrival side, which is what lets a record an earlier merge split out
 re-derive to the identity it is already stored under instead of splitting again.
 `lensIdentityCandidates` is that bounded sequence — the contributed id and one
-salted derivation per further attempt — and every candidate is checked before it
-is claimed, the last included: claiming an unchecked one would settle two cores
-on one id and `collapseLensRecords` would then fold them into a single record,
+salted derivation for every salt through `lensIdentitySaltAttempts` — and it is
+complete on both ends. Every candidate is checked before it is claimed, the
+final derivation included: claiming an unchecked one would settle two cores on
+one id and `collapseLensRecords` would then fold them into a single record,
 which is the silent deletion the union contract forbids and no undo entry could
-take back. A contribution whose every candidate is held by another core returns
-`ErrLensIdentityExhausted` and the merge yields no collection at all, so both
+take back. Equally, no checkable candidate is withheld — trimming the last
+derivation out of the sequence would refuse a merge an available identity could
+have settled. A contribution whose every candidate is held by another core
+returns `ErrLensIdentityExhausted` and the merge yields no collection at all, so both
 adoption and the stale-write reconciliation refuse rather than publish one
 definition short. `RemapActiveLensID` walks the same sequence, so the pointer is
 followed over exactly the identities the merge can mint.
