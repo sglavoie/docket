@@ -19,13 +19,13 @@
     { "type": "key", "label": "the typed sigil without the suffix is exact", "key": "/" },
     { "type": "text", "text": "!2" },
     { "type": "assert", "assert": "contains", "value": "User authentication" },
-    { "type": "assert", "label": "priority 1 is not priority 2", "assert": "not_contains", "value": "Launch platform" },
+    { "type": "assert", "label": "priority 1 is not priority 2, and only the hit's own ancestors come along for context", "assert": "not_contains", "value": "Fix redirect loop after logout" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "the suffix is what widens it into the chord's reading", "key": "backspace" },
     { "type": "text", "text": "2+" },
     { "type": "assert", "assert": "contains", "value": "User authentication" },
-    { "type": "assert", "assert": "contains", "value": "Launch platform" },
+    { "type": "assert", "assert": "contains", "value": "Fix redirect loop after logout" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

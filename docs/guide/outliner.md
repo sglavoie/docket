@@ -193,7 +193,7 @@ were in and says so.
 | Workflow | `$` opens the workflow chord over the ten destinations the `$` capture sigil names: `$i` Inbox, `$b` Backlog, `$n` toggle Next, `$t` toggle Today, `$g` Doing, `$w` Waiting, `$p` Paused, `$m` Someday, `$d` Done, `$c` Canceled; `$w` then asks for a check-back date |
 | Metadata | `!0` clears priority; `!1` High, `!2` Medium, `!3` Low; `@` due date and defer; `#` tags and context; `*` pin — the last two read the cursor, so on a project group header they set that project's tags and toggle its pin |
 | Structure | `[` outdent, `]` indent, `>` Set Parent, `<` Adopt Children, `%` Move to Project, `~` Set Dependencies, `J`/`K` reorder one step, `Ctrl+J`/`Ctrl+K` reorder to the far end of the visible peers |
-| Sorting | `o` opens the sort chord: `o@` due date, `o!` priority, `oc` created, `ou` updated, `ot` title, `ox` clear; repeat a field key to reverse it |
+| Sorting | `o` opens the sort chord: `o@` due date, `o!` priority, `oc` created, `ou` updated, `ot` title, `or` flat ranked list while a query is held, `ox` clear; repeat a field key to reverse it |
 | Content | `&` opens the cursor task's Attachments panel, `;` its Comments panel — the two capture sigils reaching, as keys, the panels that own add, reorder, unlink, and delete |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
 | Selection | `v` toggles the cursor task; `V` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
@@ -458,8 +458,11 @@ and the task is ordinary work.
 
 A row that wakes while the Outliner is open returns on its own within a minute,
 without a key press. The return waits if an overlay, picker, inline row editor,
-visual selection, or search is open, because rebuilding the rows underneath one
-of those would move the ground the user is standing on.
+visual selection, or the flat ranked list is open, because rebuilding the rows
+underneath one of those would move the ground the user is standing on. A query
+that is only narrowing the mode's own lanes is not one of those states: it is
+re-answered on every rebuild, so the woken task is matched against it like any
+other row and returns with them.
 
 A Waiting task reads as `waiting <age>`, measured from the moment it entered
 Waiting rather than from the last time anything touched it, so recording a chase
@@ -527,7 +530,7 @@ Both marks share one segment of fixed columns reserved before the title, so
 they neither eat the title on a wide row nor disappear on a crowded one.
 
 The pin marker reads the same way. A pinned task drawn anywhere but the Pinned
-lane — Inbox, Next, Backlog, Due, Recent, a search projection, or a filter that
+lane — Inbox, Next, Backlog, Due, Recent, the flat ranked list, or a filter that
 admits a terminal or deferred pinned row into All or Today — wears a bold `*`
 before its context badge and title. Rows inside the Pinned lane wear nothing,
 because the section header already says it. The marker is reserved columns like
@@ -545,9 +548,11 @@ hides because the act is unavailable.
 `Enter` focuses the cursor task's descendants and `Esc` restores the exact
 parent cursor and scroll position. A leaf reports `No children to focus`. While
 focused, `a` captures a direct child of the focus root rather than a root task
-elsewhere. Pressed on a search result, `Enter` dismisses search first and lands
-the ordinary projection on that task, so `Esc` unwinds onto its own row; a leaf
-still reports `No children to focus`, with the jump already made.
+elsewhere. Pressed on a result in the flat ranked list, `Enter` dismisses the
+query first and lands the ordinary projection on that task, so `Esc` unwinds onto
+its own row; a leaf still reports `No children to focus`, with the jump already
+made. A query that is only narrowing the mode's own lanes has nothing to leave,
+so `Enter` there is the ordinary zoom.
 `Enter` is that same zoom-in act on the two header rows. On a project sub-header
 it scopes the Outliner to that project. On a section header it narrows the mode
 to that one section: `Enter` on `Next` in All shows the Next lane for every

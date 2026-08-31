@@ -6,23 +6,39 @@ projections that write all of them at once.
 
 ## Filters and search
 
-Filters are session-only refinements of ordinary mode rows. Slash search is a
-temporary projection over every nonterminal task in the active project scope,
-including deferred work; Esc restores the prior mode, facets, sort, cursor,
-scroll, and folds exactly. Search is also the fastest way to jump anywhere:
-`Enter`, `Shift+Enter`, and `gp` on a result leave search on that task
-instead of refusing, so the restored projection lands on the row you searched
-for. A mode that cannot list the result falls back to All; a facet that still
-excludes it says `Task is hidden by the active facets` and focuses nothing.
-Find then narrow: the row facets and the sort axis compose with a live
-search, so `f*` applies as an AND gate before scoring exactly like a query
-sigil, and `o*` reorders within a relevance tier only — a description hit never
-floats above a title hit. The population facets (`F*`) drop out while the
-projection stands, since admitting a project needs a reload rather than a
-rebuild, and mode switches,
-folds, and reordering still ask you to exit search first. Esc restores the
-pre-search facets and sort wholesale, so a narrowing typed inside the
-projection leaves with it.
+Filters are session-only refinements of ordinary mode rows, and a slash query is
+one more of them. Typing a query narrows the mode you are already in: its lanes,
+its grouping, its folds, and its order all keep deciding the rows, and the query
+only decides which of them survive. A hit's ancestors come along so the row you
+found keeps the hierarchy it lives in. Every axis stays live while a query is
+held — change modes, set facets, reorder, fold — because a query is a clause, not
+a mode. Esc drops the query and restores the mode, facets, sort, cursor, scroll,
+and folds the search was typed over, so a narrowing typed inside the search
+leaves with it.
+
+`or` is the other way to read the same query: one flat list in relevance order,
+with no lanes, no headers, and no folds, over the whole project scope rather than
+the mode's own membership. It is a presentation you ask for, never one you land
+in by typing, and it goes away with the query that gave it rows. The flat list is
+where search is also the fastest way to jump anywhere: `Enter`, `Shift+Enter`,
+and `gp` on a result leave it on that task, so the restored projection lands on
+the row you searched for. A mode that cannot list the result falls back to All; a
+facet that still excludes it says `Task is hidden by the active facets` and
+focuses nothing.
+
+Find then narrow: the row facets and the sort axis compose with a query either
+way, so `f*` applies as an AND gate before scoring exactly like a query sigil.
+Under the flat list `o*` reorders within a relevance tier only — a description
+hit never floats above a title hit — and it is the one place a fixed-order mode's
+order can be replaced, since the flat list is not that mode's order. The
+population facets (`F*`) are the only thing the flat list takes away, since
+admitting a project needs a reload rather than a rebuild; a query that is merely
+narrowing leaves them alone.
+
+Done, canceled, and deferred work is admitted when the query says so and never
+otherwise. `$done`, `$canceled`, `?completed`, `fa`, and the deferred forms
+`@@any`, `@@tomorrow`, and `f@`'s deferred row each open the population they
+name; nothing else does, in either presentation.
 
 | Keys | Effect |
 | --- | --- |
@@ -36,7 +52,7 @@ projection leaves with it.
 | `fh` | Pick one hierarchy position: parent, child, root, or leaf; parent and leaf read open children |
 | `fs` | Toggle open, undeferred work untouched for at least 90 local-calendar days; unavailable in Recent, whose entry clears only Stale and reports `Stale filter cleared: Recent only includes the last 30 days` |
 | `fx` | Clear every facet |
-| `/` | Ranked title, description, checklist, comment, tag, context, attachment, and project search over every scoped nonterminal task, gated by any capture sigils the query carries |
+| `/` | Narrow the mode by title, description, checklist, comment, tag, context, attachment, and project, gated by any capture sigils the query carries; `or` reads the same query as one flat ranked list |
 
 A chord and a typed query are two ways of writing the same narrowing, so the
 title row shows what you narrowed by in the sigil spelling you would have typed:
@@ -172,12 +188,15 @@ parked.
 Choosing a project and choosing a population are two different questions. `gp`
 on a row, `%slug` inside a query, and the scope a lens saves all answer the
 first one — which projects this view is over — and they write the same axis, so
-they can never point at different sets. `F` answers the second one: which
-projects exist to be looked at at all, archived and parked included. That is why
-the `F` facets are not available while a search projection is on screen; a
-projection is built over the rows that are loaded, and a facet that changes
-which rows load cannot compose into it. Leave the search and the facet is there
-again.
+they can never point at different sets. Scope is a frame you are standing in
+rather than a clause of a query: a search runs inside the frame it was typed in,
+a lens moves the frame, and the frames stack, so changing scope under a held
+query re-answers that query in the new frame instead of editing it. `F` answers
+the second question: which projects exist to be looked at at all, archived and
+parked included. That is why the `F` facets are not available while the flat
+ranked list is on screen; that list is built over the rows that are loaded, and a
+facet that changes which rows load cannot compose into it. Leave the flat list
+and the facet is there again.
 
 `Fp`, `FP`, and selecting `parked` inside `F#` are the same switch, so they can
 never disagree about which population is loaded. Inside `F#`, `v` toggles a tag
@@ -328,6 +347,7 @@ read in:
 | `ou` | Order by last touch |
 | `ot` | Order alphabetically by title |
 | `ox` | Clear the sort and restore the mode's own order |
+| `or` | Read the held query as one flat relevance-ordered list instead of the mode's own lanes; only offered while a query is held |
 
 A field key installs its order ascending, and pressing the same key again
 reverses it, so there is no separate reverse key. The active order joins the
@@ -341,7 +361,8 @@ their manual sequence whatever the axis says.
 Today, Next, Due, and Recent each own their order — a plan you arranged, a due
 date, an activity clock — so a sort key there records your choice and reports
 that the mode keeps its own order. The recorded order installs itself as soon as
-you return to All, Inbox, or Backlog.
+you return to All, Inbox, or Backlog, and `or`'s flat list takes it immediately,
+since that list is not the mode's order to begin with.
 
 For intentional cleanup, use `fa` to choose an age — it filters states to Done
 and Canceled for you — then `Ctrl+A` to select the visible matches, and

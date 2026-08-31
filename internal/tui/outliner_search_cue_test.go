@@ -87,12 +87,12 @@ func TestSearchCueRendersFromTheLiveProjection(t *testing.T) {
 		return ansi.Strip(outliner.renderOutlinerTaskRow(outliner.rows[0], false, 120, 120, 0, nil))
 	}
 
-	outliner.SetSearchQuery("zeppelin")
+	searchRankedList(outliner, "zeppelin")
 	if plain := render(); !strings.Contains(plain, "· description") {
 		t.Fatalf("description hit did not explain itself: %q", plain)
 	}
 
-	outliner.SetSearchQuery("untitled")
+	searchRankedList(outliner, "untitled")
 	if plain := render(); strings.Contains(plain, "·") {
 		t.Fatalf("title hit wore a cue: %q", plain)
 	}

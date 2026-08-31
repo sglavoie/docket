@@ -502,13 +502,15 @@ func TestFocusFromSearchForcesAllWhenTheRestoredModeHidesTheResult(t *testing.T)
 	}
 }
 
-// searchProjectionCursorOnTitle opens the temporary projection the jump has to
-// leave and lands its cursor on the named result.
+// searchProjectionCursorOnTitle opens the flat ranked list the jump has to leave
+// and lands its cursor on the named result. The ranked list is the presentation
+// the jump exits; a query that only narrows the mode's own lanes leaves the
+// cursor where it already is, which is why the toggle is part of the setup.
 func searchProjectionCursorOnTitle(t *testing.T, out *OutlinerModel, title string) TaskIdentity {
 	t.Helper()
-	out.SetSearchQuery(title)
-	if !out.hasSearchProjection() {
-		t.Fatalf("search %q opened no projection", title)
+	searchRankedList(out, title)
+	if !out.showsRankedList() {
+		t.Fatalf("search %q opened no ranked list", title)
 	}
 	for index, row := range out.rows {
 		if row.isTaskRow() && row.task != nil && row.task.Title == title {

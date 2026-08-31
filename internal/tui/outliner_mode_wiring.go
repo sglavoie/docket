@@ -59,19 +59,22 @@ func (m *OutlinerModel) projectsInCatalogOrder(projects []*models.Project) []*mo
 // mode order are assembled once; the catalog strategy changes only membership
 // and grouping.
 func (m *OutlinerModel) buildCanonicalModeRows() {
-	// Assigned above the search-projection return so both branches leave a live
-	// wake clock and child census behind: a projection the user leaves must not
+	// Assigned above the ranked-list return so both branches leave a live wake
+	// clock and child census behind: a presentation the user leaves must not
 	// resume with a stale one.
 	scope := m.workModeScopeProjects()
 	m.nextDeferWake = earliestDeferWake(scope, time.Now())
 	m.openChildCounts = openChildCounts(scope)
-	if m.hasSearchProjection() {
+	if m.showsRankedList() {
 		m.buildSearchProjectionRows()
 		m.expandChecklistRows()
 		m.pruneInvisibleSelections()
 		m.clampCursor()
 		return
 	}
+	// Only the flat list has a notes tier, so the payloads it retained die with
+	// it rather than outliving the rows that named them.
+	m.searchNoteMatches = nil
 
 	mode, ok := OutlinerModeByID(m.primaryMode)
 	if !ok {
@@ -80,12 +83,13 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 
 	projects := m.projectsInCatalogOrder(m.workModeScopeProjects())
 	input := m.buildModeCandidateInput(mode.ID, projects)
-	// A lens query is one more facet over this mode's own projection, so it is
-	// composed into the shared task predicate before any section is built. Every
-	// section emitter, the pinned promotion, and the project grouping then narrow
-	// together, and the mode's saved order is untouched.
-	narrowing := m.compileLensNarrowing(projects)
-	input.TaskFilter = m.constrainModeFilterToLens(input.TaskFilter, narrowing)
+	// A narrowing query — a lens's saved one or the slash-search input's — is one
+	// more facet over this mode's own projection, so it is composed into the
+	// shared task predicate before any section is built. Every section emitter,
+	// the pinned promotion, and the project grouping then narrow together, and the
+	// mode's saved order is untouched.
+	narrowing := m.compileActiveNarrowing(projects)
+	input.TaskFilter = m.constrainModeFilterToNarrowing(input.TaskFilter, narrowing, projects)
 	var pinned pinnedSectionBuild
 	if mode.ShowsPinned {
 		pinned = m.buildPinnedSection(input)
@@ -104,7 +108,7 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 		return
 	}
 	m.separatePinnedSection(pinnedBoundary)
-	m.attributeLensMatches(narrowing)
+	m.attributeNarrowingMatches(narrowing)
 	m.expandChecklistRows()
 	m.pruneInvisibleSelections()
 	m.clampCursor()
@@ -168,9 +172,11 @@ func (m *OutlinerModel) buildModeCandidateInput(
 	input := m.buildOutlinerModeInput(projects)
 	recent := mode == ModeRecent
 	// Recent reports what happened, so it owns terminal and deferred membership
-	// instead of waiting for an explicit facet to admit them.
-	input.IncludeDeferred = recent || m.hasExplicitDeferredFilter()
-	input.IncludeTerminal = recent || m.hasExplicitTerminalFilter()
+	// outright. Every other mode admits those populations only when the query
+	// says so, and the query is the facets and the sigils together — one rule,
+	// read here through the same two accessors every other consumer reads.
+	input.IncludeDeferred = recent || m.admitsDeferredPopulation()
+	input.IncludeTerminal = recent || m.admitsTerminalPopulation()
 	input.CandidateTasks = make(map[string][]*models.Task, len(projects))
 	for _, project := range projects {
 		if project != nil {
@@ -350,10 +356,11 @@ func (m *OutlinerModel) resolveTodayOrder(projects []*models.Project) []Planning
 
 // facetPredicateAt is the one definition of the facet gate: the row half of the
 // filter query answered by models.Query.Admits, ANDed with the hierarchy axis,
-// evaluated at a single instant. Two consumers read it. The work-mode filter
-// ANDs the free-text half in front of it, and the search projection composes it
-// into the candidate boundary before scoring — which is why the facets live here
-// rather than inside workModeTaskFilterAt.
+// evaluated at a single instant. Two consumers read it. The work-mode filter is
+// it, and the search projection composes it into the candidate boundary before
+// scoring. Free text is deliberately absent: it is one clause answered by one
+// matcher in scoreSearchProjectionTask, reached through compileActiveNarrowing,
+// so no second definition of "matches" exists to disagree with the tiers.
 func (m *OutlinerModel) facetPredicateAt(now time.Time) func(*models.Task, *models.Project) bool {
 	query := m.rowPredicateQuery()
 	narrows := len(query.Clauses) > 0
@@ -369,11 +376,7 @@ func (m *OutlinerModel) facetPredicateAt(now time.Time) func(*models.Task, *mode
 }
 
 func (m *OutlinerModel) workModeTaskFilterAt(now time.Time) func(*models.Task, *models.Project) bool {
-	searchText := m.searchTextPredicate()
-	facets := m.facetPredicateAt(now)
-	return func(t *models.Task, project *models.Project) bool {
-		return searchText(t) && facets(t, project)
-	}
+	return m.facetPredicateAt(now)
 }
 
 // passesHierarchyFilter evaluates the hierarchy facet. The parent and leaf axes

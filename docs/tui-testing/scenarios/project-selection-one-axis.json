@@ -10,7 +10,9 @@
     { "type": "assert", "assert": "not_contains", "value": "Alpha migration kickoff" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "the population facets answer which projects load, so they are unreachable inside a projection", "key": "F" },
+    { "type": "key", "label": "show the same query as the flat ranked list", "key": "o" },
+    { "type": "key", "key": "r" },
+    { "type": "key", "label": "the population facets answer which projects load, so they are unreachable under the flat list", "key": "F" },
     { "type": "assert", "assert": "not_contains", "value": "include parked" },
     { "type": "key", "key": "p" },
     { "type": "assert", "label": "the projection is untouched by the key the population axis owns", "assert": "contains", "value": "Beta rollout checklist" },

@@ -7,6 +7,8 @@
     { "type": "key", "label": "search for the task at the top of a subtree", "key": "/" },
     { "type": "text", "text": "launch platform" },
     { "type": "key", "label": "accept the temporary search projection", "key": "enter" },
+    { "type": "key", "label": "show the query as the flat ranked list", "key": "o" },
+    { "type": "key", "key": "r" },
     { "type": "key", "label": "leave search on the result", "key": "enter" },
     { "type": "key", "label": "unwind the focus onto the result's ordinary row", "key": "esc" },
 

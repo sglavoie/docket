@@ -386,7 +386,7 @@ func (m *AppModel) registerCoreInputOperations() error {
 			inner := descriptor.Applicability
 			descriptor.Applicability = func(ctx CommandContext) bool {
 				return (inner == nil || inner(ctx)) &&
-					(m.crossOutliner == nil || !m.crossOutliner.hasSearchProjection())
+					(m.crossOutliner == nil || !m.crossOutliner.showsRankedList())
 			}
 		}
 		if err := m.registerOperation(descriptor, OperationBinding{

@@ -164,7 +164,7 @@ func TestSearchRelaxesItsCaseUniformlyAcrossTasksAndNotes(t *testing.T) {
 	}
 	outliner := noteTierOutliner(rows, alpha)
 
-	outliner.SetSearchQuery("Widget")
+	searchRankedList(outliner, "Widget")
 	// The notes tier now emits its own rows, so the projection is counted by row
 	// kind: the note is on screen and no task is.
 	tasks, notes := 0, 0
@@ -183,7 +183,7 @@ func TestSearchRelaxesItsCaseUniformlyAcrossTasksAndNotes(t *testing.T) {
 		t.Fatalf("searchCaseRelaxed = false, want the note-only hit to relax the query")
 	}
 
-	outliner.SetSearchQuery("Widget !1")
+	searchRankedList(outliner, "Widget !1")
 	if outliner.searchCaseRelaxed {
 		t.Fatalf("searchCaseRelaxed = true under a sigil, want the notes tier absent whole")
 	}
@@ -303,9 +303,9 @@ func TestNoteSearchIndexRefreshRebuildsOpenProjection(t *testing.T) {
 
 	// The search opens against an index that has nothing to say about it, which
 	// is exactly the state a first launch is in while the read is still running.
-	outliner.SetSearchQuery("widget")
+	searchRankedList(outliner, "widget")
 	if !outliner.hasSearchProjection() {
-		t.Fatalf("SetSearchQuery left no open search projection")
+		t.Fatalf("the query left no open search projection")
 	}
 	if got := countNoteRows(outliner); got != 0 {
 		t.Fatalf("projection = %d note rows before the index landed, want none", got)
@@ -359,7 +359,7 @@ func TestNoteSearchIndexRefreshPreservesCursorIdentity(t *testing.T) {
 	model := &AppModel{crossOutliner: outliner, noteIndexGeneration: 2, noteIndexRows: rows}
 	outliner.setNoteSearchIndex(model.noteSearchIndexRows)
 
-	outliner.SetSearchQuery("widget")
+	searchRankedList(outliner, "widget")
 	if got := countNoteRows(outliner); got != 2 {
 		t.Fatalf("projection = %d note rows, want both matching notes", got)
 	}

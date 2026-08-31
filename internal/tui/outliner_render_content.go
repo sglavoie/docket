@@ -163,7 +163,7 @@ func (m *OutlinerModel) buildOutlinerFilterContext() string {
 	// screen and must not be advertised. Under a search projection the mode
 	// underneath is irrelevant — the sort is live over the ranked rows — so
 	// zeroing the segment there would silently hide it.
-	if m.activeOutlinerModeEntry().FixedOrder() && !m.hasSearchProjection() {
+	if m.activeOutlinerModeEntry().FixedOrder() && !m.showsRankedList() {
 		sortField = SortByDefault
 		sortAscending = false
 	}

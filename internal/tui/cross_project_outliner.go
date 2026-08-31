@@ -350,6 +350,9 @@ func (m *OutlinerModel) crossProjectRowsFingerprint() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "search=%q|", m.SearchQuery())
 	fmt.Fprintf(&b, "search-projection=%t|", m.hasSearchProjection())
+	// The same query yields lanes or one flat list, so the presentation toggle is
+	// a membership input here exactly as the query itself is.
+	fmt.Fprintf(&b, "ranked-list=%t|", m.showsRankedList())
 	// The lens query decides membership without changing any other guard input,
 	// so retyping it must be able to invalidate the memoized rows on its own.
 	fmt.Fprintf(&b, "lens=%q|", m.lensQuery)

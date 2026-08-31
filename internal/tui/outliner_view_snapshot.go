@@ -85,6 +85,7 @@ type outlinerViewSnapshot struct {
 	// carries the snapshot search itself was holding along with its query and
 	// editing state; restoring hands search back its own restoration point.
 	searchProjection  *outlinerSearchSnapshot
+	rankedList        bool
 	searchQuery       string
 	searchInputValue  string
 	searchInputActive bool
@@ -115,6 +116,7 @@ func (m *OutlinerModel) captureOutlinerViewSnapshot() outlinerViewSnapshot {
 		scopedProjectID:      m.scopedProjectID,
 		scopeStack:           slices.Clone(m.scopeStack),
 		searchProjection:     m.searchProjection,
+		rankedList:           m.rankedList,
 		searchQuery:          m.SearchQuery(),
 		searchInputValue:     m.SearchInputValue(),
 		searchInputActive:    m.IsSearchMode(),
@@ -146,6 +148,7 @@ func (m *OutlinerModel) restoreOutlinerViewSnapshot(snapshot outlinerViewSnapsho
 
 	m.setLensQuery(snapshot.lensQuery)
 	m.searchProjection = snapshot.searchProjection
+	m.rankedList = snapshot.rankedList
 	m.resetSearchCompilation()
 	m.BaseSearchableView.SetSearchQuery(snapshot.searchQuery)
 	m.SetSearchInputValue(snapshot.searchInputValue)

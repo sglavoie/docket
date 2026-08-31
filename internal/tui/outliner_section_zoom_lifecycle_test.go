@@ -117,7 +117,7 @@ func TestSectionZoomIsSuspendedForSearchAndRestoredOnClear(t *testing.T) {
 	zoomIntoSection(t, outliner, doingLabel)
 	zoomed := outliner.zoom
 
-	outliner.SetSearchQuery("backlog")
+	searchRankedList(outliner, "backlog")
 	if outliner.zoom.active() {
 		t.Fatalf("search left the zoom %+v live over rows no section gate builds", outliner.zoom)
 	}

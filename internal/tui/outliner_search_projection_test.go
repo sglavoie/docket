@@ -15,7 +15,11 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-func TestScopeWideSearchIgnoresModeAndFoldsButHonorsScopeAndFacets(t *testing.T) {
+// The ranked list is the one presentation that leaves the mode's lanes and the
+// user's folds behind. Scope is not a clause it can leave: the search runs
+// inside the frame it was typed in. Facets still gate it, and the deferred and
+// terminal populations open only when the query says so.
+func TestTheRankedListLeavesModeAndFoldsButHonorsScopeAndFacets(t *testing.T) {
 	now := time.Now()
 	tomorrow := now.Add(24 * time.Hour)
 	parent := primaryRowsTask("parent", models.StateBacklog)
@@ -44,20 +48,28 @@ func TestScopeWideSearchIgnoresModeAndFoldsButHonorsScopeAndFacets(t *testing.T)
 	outliner.pushProjectScope(alpha.ID)
 	outliner.selectOutlinerMode(ModeBacklog)
 	outliner.expandedNodes[TaskIdentity{ProjectID: alpha.ID, TaskID: parent.ID}] = false
-	outliner.SetSearchQuery("needle")
+	searchRankedList(outliner, "needle")
 
 	got := qualifiedVisibleTaskIDs(outliner)
 	want := []TaskIdentity{
-		{ProjectID: alpha.ID, TaskID: deferred.ID},
 		{ProjectID: alpha.ID, TaskID: inbox.ID},
 		{ProjectID: alpha.ID, TaskID: child.ID},
 	}
 	if !slices.Equal(got, want) {
-		t.Fatalf("scope-wide search rows = %v, want ranked scoped nonterminal rows %v", got, want)
+		t.Fatalf("ranked list rows = %v, want the scoped open rows %v", got, want)
 	}
-	if outliner.rows[2].Breadcrumb != "Ordinary parent ›" {
-		t.Fatalf("child breadcrumb = %q, want preserved ancestor context", outliner.rows[2].Breadcrumb)
+	if outliner.rows[1].Breadcrumb != "Ordinary parent ›" {
+		t.Fatalf("child breadcrumb = %q, want preserved ancestor context", outliner.rows[1].Breadcrumb)
 	}
+
+	// The deferred task is reachable from the same list, but only because the
+	// query asked for it. Admission has one rule and the query is it.
+	searchRankedList(outliner, "needle @@any")
+	if got := qualifiedVisibleTaskIDs(outliner); !slices.Equal(got,
+		[]TaskIdentity{{ProjectID: alpha.ID, TaskID: deferred.ID}}) {
+		t.Fatalf("deferred query = %v, want the deferred hit alone", got)
+	}
+	searchRankedList(outliner, "needle")
 
 	// A facet is an AND gate applied before scoring, so it narrows the same ranked
 	// list without disturbing its order. Only the low-priority task clears the
@@ -130,7 +142,7 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 	wantCollapsed := maps.Clone(outliner.collapsedSections)
 	wantExpanded := maps.Clone(outliner.expandedNodes)
 
-	outliner.SetSearchQuery("needle")
+	searchRankedList(outliner, "needle")
 	filterResult := (&AppModel{crossOutliner: outliner}).executeFilterOperation(OperationInvocation{
 		Descriptor: OperationDescriptor{ID: operationFilterPriority},
 		Value:      models.PriorityHigh,
@@ -146,8 +158,11 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 	outliner.adoptFilterCarriers()
 	outliner.collapsedSections["changed-section"] = true
 	outliner.expandedNodes[TaskIdentity{ProjectID: project.ID, TaskID: third.ID}] = false
-	if _, _ = outliner.selectOutlinerMode(ModeDue); outliner.primaryMode != ModeInbox {
-		t.Fatalf("mode changed during search to %s", outliner.primaryMode)
+	// The mode is a live axis under a held query, and it is also part of the
+	// frame the query was typed in, so moving it here is exactly what Esc has to
+	// put back below.
+	if _, _ = outliner.selectOutlinerMode(ModeDue); outliner.primaryMode != ModeDue {
+		t.Fatalf("mode refused to change during search, staying %s", outliner.primaryMode)
 	}
 	outliner.SetSearchActive(true)
 	outliner.SetSearchInputValue("needle")
@@ -171,7 +186,7 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 		t.Fatalf("restored cursor = %v/%v, want alpha/second", selectedProject, task)
 	}
 
-	outliner.SetSearchQuery("needle")
+	searchRankedList(outliner, "needle")
 	project.Tasks = []*models.Task{first, third}
 	project.BuildTaskTree()
 	outliner.ClearSearch()
@@ -187,7 +202,7 @@ func TestScopeWideSearchRefreshesAfterMutationsAndShowsNoMatches(t *testing.T) {
 	appearing.Title = "Initially absent"
 	project := primaryRowsProject("alpha", matching, appearing)
 	outliner := scopeTestOutliner(project)
-	outliner.SetSearchQuery("needle")
+	searchRankedList(outliner, "needle")
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{matching.ID}) {
 		t.Fatalf("initial search = %v", got)
 	}
@@ -222,7 +237,7 @@ func TestScopeWideSearchAppliesSmartCaseAndFallsBackWhenEmpty(t *testing.T) {
 	project := primaryRowsProject("alpha", upper, lower, exact)
 	outliner := scopeTestOutliner(project)
 
-	outliner.SetSearchQuery("api")
+	searchRankedList(outliner, "api")
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{upper.ID, lower.ID}) {
 		t.Fatalf("lowercase search = %v, want both casings", got)
 	}
@@ -230,7 +245,7 @@ func TestScopeWideSearchAppliesSmartCaseAndFallsBackWhenEmpty(t *testing.T) {
 		t.Fatal("lowercase query was treated as case-sensitive")
 	}
 
-	outliner.SetSearchQuery("API")
+	searchRankedList(outliner, "API")
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{upper.ID}) {
 		t.Fatalf("uppercase search = %v, want only the exact-case title", got)
 	}
@@ -239,7 +254,7 @@ func TestScopeWideSearchAppliesSmartCaseAndFallsBackWhenEmpty(t *testing.T) {
 			outliner.searchCaseRelaxed, outliner.searchCaseSensitive())
 	}
 
-	outliner.SetSearchQuery("Docs")
+	searchRankedList(outliner, "Docs")
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{lower.ID}) {
 		t.Fatalf("fallback search = %v, want the case-insensitive retry to match", got)
 	}
@@ -248,7 +263,7 @@ func TestScopeWideSearchAppliesSmartCaseAndFallsBackWhenEmpty(t *testing.T) {
 			outliner.searchCaseRelaxed, outliner.searchCaseSensitive())
 	}
 
-	outliner.SetSearchQuery("Zebra")
+	searchRankedList(outliner, "Zebra")
 	if len(outliner.rows) != 0 {
 		t.Fatalf("unmatchable query kept rows %v", searchVisibleTaskIDs(outliner))
 	}
@@ -256,7 +271,7 @@ func TestScopeWideSearchAppliesSmartCaseAndFallsBackWhenEmpty(t *testing.T) {
 		t.Fatal("an empty insensitive retry still claimed the case was ignored")
 	}
 
-	outliner.SetSearchQuery("Alpha#42")
+	searchRankedList(outliner, "Alpha#42")
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{exact.ID}) {
 		t.Fatalf("capitalized project#id shorthand = %v, want %s", got, exact.ID)
 	}
@@ -339,10 +354,14 @@ func TestSearchSigilsGateTheProjectionAndAndTogether(t *testing.T) {
 		{"predicate and free text", "#backend auth", []string{"beta-task"}},
 		{"two predicates", "!1 @today", []string{"priority-one"}},
 	}
+	// The gate decides membership and nothing else, so the assertions read it
+	// through the flat ranked list, whose order is the one the query itself
+	// produces. The same gate narrows the mode's own lanes to the same set, in
+	// whatever order those lanes already had.
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			outliner := searchGateOutliner()
-			outliner.SetSearchQuery(tt.query)
+			searchRankedList(outliner, tt.query)
 			if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, tt.want) {
 				t.Fatalf("search %q = %v, want %v", tt.query, got, tt.want)
 			}
@@ -352,11 +371,11 @@ func TestSearchSigilsGateTheProjectionAndAndTogether(t *testing.T) {
 
 func TestSearchTerminalTasksNeedAnExplicitTerminalDestination(t *testing.T) {
 	outliner := searchGateOutliner()
-	outliner.SetSearchQuery("auth")
+	searchRankedList(outliner, "auth")
 	if got := searchVisibleTaskIDs(outliner); slices.Contains(got, "finished") {
 		t.Fatalf("plain text search = %v, want the done task excluded", got)
 	}
-	outliner.SetSearchQuery("$done auth")
+	searchRankedList(outliner, "$done auth")
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{"finished"}) {
 		t.Fatalf("$done search = %v, want the done task revealed", got)
 	}
@@ -379,11 +398,11 @@ func TestSearchProjectSigilNarrowsWithinFocusRatherThanEscapingIt(t *testing.T) 
 	outliner := scopeTestOutliner(alpha, beta)
 	outliner.pushFocusFrame(TaskIdentity{ProjectID: alpha.ID, TaskID: parent.ID}, 0, 0)
 
-	outliner.SetSearchQuery("%alpha")
+	searchRankedList(outliner, "%alpha")
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{child.ID}) {
 		t.Fatalf("%%alpha under Focus = %v, want the focused descendant only", got)
 	}
-	outliner.SetSearchQuery("%beta")
+	searchRankedList(outliner, "%beta")
 	if got := searchVisibleTaskIDs(outliner); len(got) != 0 {
 		t.Fatalf("%%beta under Focus = %v, want no escape from the focused branch", got)
 	}
@@ -399,11 +418,11 @@ func TestSearchProjectQualifierSurvivesButProjectSigilIsADifferentQuery(t *testi
 	alpha := primaryRowsProject("alpha", target, other)
 	outliner := scopeTestOutliner(alpha)
 
-	outliner.SetSearchQuery("alpha#7")
+	searchRankedList(outliner, "alpha#7")
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{target.ID}) {
 		t.Fatalf("alpha#7 = %v, want the exact short-ID lookup", got)
 	}
-	outliner.SetSearchQuery("%alpha #7")
+	searchRankedList(outliner, "%alpha #7")
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{other.ID}) {
 		t.Fatalf("%%alpha #7 = %v, want the tag gate", got)
 	}
@@ -427,7 +446,7 @@ func TestSearchRefusesRecognizedAndWrongValuesWithRegistryGuidance(t *testing.T)
 			t.Fatalf("empty cause = %v, want the invalid-search cause", got)
 		}
 	}
-	outliner.SetSearchQuery("!9")
+	searchRankedList(outliner, "!9")
 	want := textgrammar.InvalidPriorityError("9").Error()
 	if got := outliner.searchGate.guidanceText(); got != want {
 		t.Fatalf("!9 guidance = %q, want the registry sentence %q", got, want)
@@ -436,7 +455,7 @@ func TestSearchRefusesRecognizedAndWrongValuesWithRegistryGuidance(t *testing.T)
 
 func TestSearchCaseRelaxationRetryAdmitsTheSameGatedSet(t *testing.T) {
 	outliner := searchGateOutliner()
-	outliner.SetSearchQuery("#backend Auth")
+	searchRankedList(outliner, "#backend Auth")
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{"beta-task"}) {
 		t.Fatalf("relaxed gated search = %v, want the backend-tagged match", got)
 	}
@@ -456,6 +475,16 @@ func qualifiedVisibleTaskIDs(outliner *OutlinerModel) []TaskIdentity {
 		}
 	}
 	return result
+}
+
+// searchRankedList holds a query and shows it as the flat ranked list. The tier,
+// score, and seating assertions are all about that presentation; a query alone
+// narrows the mode's own lanes instead, which the D7 tests cover separately.
+func searchRankedList(outliner *OutlinerModel, query string) {
+	outliner.SetSearchQuery(query)
+	if !outliner.showsRankedList() {
+		outliner.toggleRankedList()
+	}
 }
 
 func searchVisibleTaskIDs(outliner *OutlinerModel) []string {

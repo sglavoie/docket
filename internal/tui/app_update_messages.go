@@ -181,8 +181,10 @@ func (m *AppModel) deferWakeOwedAt(now time.Time) bool {
 // safeToRebuildForWake refuses while a new row would invalidate what the user
 // is already in the middle of: an overlay or value picker holds a pending
 // operation's resolved refs, an inline row editor and a visual selection both
-// name rows the rebuild would renumber, and a search projection is a frozen
-// answer to a query the woken task was never matched against.
+// name rows the rebuild would renumber, and the flat ranked list is a settled
+// order the woken task was never scored against. A query that is merely
+// narrowing the mode's own lanes is not such a state: it is re-answered on
+// every rebuild, so the woken task is matched against it like any other row.
 func (m *AppModel) safeToRebuildForWake() bool {
 	out := m.crossOutliner
 	if out == nil {
@@ -191,7 +193,7 @@ func (m *AppModel) safeToRebuildForWake() bool {
 	return !m.Overlays().Active() &&
 		!out.quickEdit.IsActive() &&
 		!out.IsMultiSelectActive() &&
-		!out.hasSearchProjection()
+		!out.showsRankedList()
 }
 
 // handleTransactionResult routes a committed feature-coordinator mutation back

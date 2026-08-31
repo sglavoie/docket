@@ -208,7 +208,11 @@ func TestDeferWakeIsDeferredWhileTheUserIsMidOperation(t *testing.T) {
 			project := out.loadedProjects[0]
 			out.ReplaceSelection([]TaskIdentity{taskIdentityFor(project.Tasks[0], project)})
 		}},
-		{"search projection", func(app *AppModel) { app.crossOutliner.beginSearchProjection() }},
+		{"ranked list", func(app *AppModel) {
+			out := app.crossOutliner
+			out.beginSearchProjection()
+			out.toggleRankedList()
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -232,6 +236,26 @@ func TestDeferWakeIsDeferredWhileTheUserIsMidOperation(t *testing.T) {
 			}
 		})
 	}
+
+	// A held query on its own is not a pending interaction. It narrows the
+	// mode's own lanes and is re-answered on every rebuild, so the woken task is
+	// matched against it rather than shut out by it.
+	t.Run("held query alone", func(t *testing.T) {
+		app := typedTestApp(t)
+		setTestPresentationPath(app, ViewCrossProjectOutliner)
+		out := app.crossOutliner
+
+		out.beginSearchProjection()
+		out.crossForceRebuild = false
+		out.nextDeferWake = time.Now().Add(-time.Minute)
+
+		if handled, _ := app.handleGlobalSaveMessage(periodicSaveMsg{at: time.Now()}); !handled {
+			t.Fatal("periodicSaveMsg was not handled")
+		}
+		if !out.crossForceRebuild {
+			t.Fatal("a held query refused the wake, freezing an axis a query never owns")
+		}
+	})
 }
 
 func TestNextDeferWakeSurvivesTheSearchProjectionReturn(t *testing.T) {

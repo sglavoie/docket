@@ -107,10 +107,16 @@ type OutlinerModel struct {
 	recencyKeys       map[TaskIdentity]time.Time
 	recencyProjection string
 
-	// searchProjection preserves the ordinary Outliner projection while slash
-	// search temporarily replaces it with every matching nonterminal task in
-	// the active project scope.
+	// searchProjection is the navigation frame a slash search was typed in. It
+	// preserves every presentation axis the search frame may move while it stands,
+	// so leaving the frame returns the user to where the query was typed.
 	searchProjection *outlinerSearchSnapshot
+
+	// rankedList shows the held query's matches as one flat relevance-ordered
+	// list instead of narrowing the mode's own lanes. It is a presentation of the
+	// same query, toggled deliberately, never entered by typing, and it dies with
+	// the query that gave it rows.
+	rankedList bool
 
 	// searchCaseRelaxed records that the last projection rebuild found nothing
 	// under the query's smart-case reading and fell back to a case-insensitive

@@ -13,6 +13,7 @@ const (
 	operationSortUpdatedAt OperationID = "tui.sort.updated"
 	operationSortTitle     OperationID = "tui.sort.title"
 	operationSortClear     OperationID = "tui.sort.clear"
+	operationSortRanked    OperationID = "tui.sort.ranked"
 )
 
 // sortFieldOperations maps each order-axis operation to the field it installs.
@@ -51,6 +52,10 @@ func sortAxisOperationDescriptors() []OperationDescriptor {
 		descriptor(operationSortUpdatedAt, "Sort by Updated", "order by last touch"),
 		descriptor(operationSortTitle, "Sort by Title", "order alphabetically"),
 		descriptor(operationSortClear, "Clear Sort", "restore the mode's own order"),
+		// The flat ranked list is one more ordering of the rows the held query
+		// already selected, not a mode and not a second way to search, which is why
+		// it sits on the order axis rather than on a root key of its own.
+		descriptor(operationSortRanked, "Toggle Ranked List", "flat relevance order"),
 	}
 }
 
@@ -59,6 +64,14 @@ func (m *AppModel) registerSortOperations() error {
 		return fmt.Errorf("operation registry and executor are required")
 	}
 	for _, descriptor := range sortAxisOperationDescriptors() {
+		// Ranking is offered only while a query is held, because with no query
+		// there is nothing to rank; every other order key stands unconditionally.
+		if descriptor.ID == operationSortRanked {
+			descriptor.Applicability = func(ctx CommandContext) bool {
+				return coreOutlinerApplicability(ctx) &&
+					m.crossOutliner != nil && m.crossOutliner.hasSearchProjection()
+			}
+		}
 		if err := m.registerOperation(descriptor, OperationBinding{
 			RequiredCapabilities:     NewCapabilitySet(CapabilitySimplifiedInput),
 			Applicability:            descriptor.Applicability,
@@ -80,6 +93,16 @@ func (m *AppModel) executeSortOperation(invocation OperationInvocation) Operatio
 	if out == nil {
 		return OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
 	}
+	if invocation.Descriptor.ID == operationSortRanked {
+		if !out.toggleRankedList() {
+			return OperationHandlerResult{Status: "Search for something first"}
+		}
+		if out.showsRankedList() {
+			return OperationHandlerResult{Status: "Ranked list · one flat relevance order"}
+		}
+		return OperationHandlerResult{Status: "Ranked list off · results narrow the mode"}
+	}
+
 	field, known := sortFieldOperations[invocation.Descriptor.ID]
 	if !known {
 		return OperationHandlerResult{Err: fmt.Errorf("unknown sort operation %s", invocation.Descriptor.ID)}
@@ -98,7 +121,7 @@ func (m *AppModel) executeSortOperation(invocation OperationInvocation) Operatio
 	// projection is flat and owns no mode order at all, so the mode underneath it
 	// is irrelevant there and the sort installs directly.
 	mode := out.activeOutlinerModeEntry()
-	if mode.FixedOrder() && !out.hasSearchProjection() {
+	if mode.FixedOrder() && !out.showsRankedList() {
 		out.treeSort.Toggle(field)
 		return OperationHandlerResult{Status: fmt.Sprintf(
 			"%s owns its order · sort applies in All, Inbox, Backlog", mode.Label)}

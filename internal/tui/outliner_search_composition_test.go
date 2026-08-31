@@ -79,13 +79,13 @@ func TestSearchFacetsGateCandidatesBeforeScoringAndAndWithTheSigils(t *testing.T
 	}
 }
 
-// TestSearchAdmitsTerminalWorkOnlyUnderAnExplicitTerminalFacet proves the
-// widening in buildSearchProjectionRows is keyed on hasExplicitTerminalFilter
-// and nothing else: `f$done` reveals completed work with no `$done` sigil typed,
-// while a nonterminal state facet leaves the default exclusion in place.
-func TestSearchAdmitsTerminalWorkOnlyUnderAnExplicitTerminalFacet(t *testing.T) {
+// TestSearchAdmitsTerminalWorkOnlyWhenTheQuerySaysSo proves terminal admission
+// is one rule read through one accessor: `f$done` reveals completed work with no
+// `$done` sigil typed because the facets are part of the query, while a
+// nonterminal state facet leaves the default exclusion in place.
+func TestSearchAdmitsTerminalWorkOnlyWhenTheQuerySaysSo(t *testing.T) {
 	outliner := searchGateOutliner()
-	outliner.SetSearchQuery("auth")
+	searchRankedList(outliner, "auth")
 	if got := searchVisibleTaskIDs(outliner); slices.Contains(got, "finished") {
 		t.Fatalf("plain search = %v, want completed work excluded by default", got)
 	}
@@ -95,25 +95,47 @@ func TestSearchAdmitsTerminalWorkOnlyUnderAnExplicitTerminalFacet(t *testing.T) 
 		operationFilterStates, []string{string(models.StateDone)}); status != "Filtering 1 state(s)" {
 		t.Fatalf("f$done status under search = %q, want the applied facet's own sentence", status)
 	}
-	if !outliner.hasExplicitTerminalFilter() {
-		t.Fatal("f$done did not register as an explicit terminal filter")
+	if !outliner.admitsTerminalPopulation() {
+		t.Fatal("f$done did not open the terminal population")
 	}
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{"finished"}) {
 		t.Fatalf("search under f$done = %v, want the completed auth task alone", got)
 	}
 
 	applyFilterForComposition(t, outliner, operationFilterStates, []string{string(models.StateBacklog)})
-	if outliner.hasExplicitTerminalFilter() {
-		t.Fatal("f$backlog registered as an explicit terminal filter")
+	if outliner.admitsTerminalPopulation() {
+		t.Fatal("f$backlog opened the terminal population")
 	}
 	if got := searchVisibleTaskIDs(outliner); slices.Contains(got, "finished") {
 		t.Fatalf("search under f$backlog = %v, want completed work excluded again", got)
 	}
 }
 
+// TestQueryAloneNeverFreezesAnAxis is D7 stated as a test: with a query held,
+// the mode changes, the population facets apply, and the rows stay the mode's
+// own lanes rather than a flat list nobody asked for.
+func TestQueryAloneNeverFreezesAnAxis(t *testing.T) {
+	outliner := searchGateOutliner()
+	outliner.SetSearchQuery("auth")
+	if outliner.showsRankedList() {
+		t.Fatal("typing a query opened the flat ranked list")
+	}
+	if _, _ = outliner.selectOutlinerMode(ModeBacklog); outliner.primaryMode != ModeBacklog {
+		t.Fatalf("mode under a held query = %v, want the mode change to apply", outliner.primaryMode)
+	}
+	if !outliner.hasSearchProjection() {
+		t.Fatal("changing the mode dropped the held query")
+	}
+	if status := applyFilterForComposition(t, outliner,
+		operationFilterStates, []string{string(models.StateBacklog)}); status == "" {
+		t.Fatal("a row facet under a held query produced no status")
+	}
+}
+
 // TestSearchSortReordersWithinRelevanceTiersOnly pins the comparator's bound: a
 // sort is free inside a tier and powerless across tiers, so the highest-priority
-// task in the description tier still ranks below every title hit.
+// task in the description tier still ranks below every title hit. Tiers are the
+// flat ranked list's own ordering, so that is the presentation under test.
 func TestSearchSortReordersWithinRelevanceTiersOnly(t *testing.T) {
 	titleLow := primaryRowsTask("title-low", models.StateBacklog)
 	titleLow.Title = "Needle groundwork"
@@ -129,7 +151,7 @@ func TestSearchSortReordersWithinRelevanceTiersOnly(t *testing.T) {
 
 	outliner := scopeTestOutliner(alpha)
 	app := &AppModel{crossOutliner: outliner}
-	outliner.SetSearchQuery("needle")
+	searchRankedList(outliner, "needle")
 	baseline := searchVisibleTaskIDs(outliner)
 	if !slices.Equal(baseline, []string{"title-low", "title-high", "described"}) {
 		t.Fatalf("unsorted search = %v, want both title hits ranked above the description hit", baseline)
@@ -162,10 +184,11 @@ func TestSearchSortReordersWithinRelevanceTiersOnly(t *testing.T) {
 	}
 }
 
-// TestPopulationFacetsStillRefuseUnderASearchProjection keeps the F* half of the
-// split honest at both ends: the chord stops resolving while a projection is
-// live, and the handler that a stale route could still reach refuses by name.
-func TestPopulationFacetsStillRefuseUnderASearchProjection(t *testing.T) {
+// TestPopulationFacetsRefuseOnlyUnderTheRankedList keeps the F* half of the
+// split honest at both ends: the chord stops resolving while the flat list
+// stands, and the handler that a stale route could still reach refuses by name.
+// A query that is merely narrowing freezes neither, which is D7.
+func TestPopulationFacetsRefuseOnlyUnderTheRankedList(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	ctx := app.operationCommandContext()
 	if _, _, resolution := app.operationRegistry.InputBindingForSequence(
@@ -178,6 +201,13 @@ func TestPopulationFacetsStillRefuseUnderASearchProjection(t *testing.T) {
 	if !app.crossOutliner.hasSearchProjection() {
 		t.Fatal("the search projection did not start")
 	}
+	if _, _, resolution := app.operationRegistry.InputBindingForSequence(
+		InputStrategySimplified, []string{"F", "#"}, app.operationCommandContext(),
+	); resolution != ChordTerminal {
+		t.Fatalf("F# resolution under a narrowing query = %v, want it still live", resolution)
+	}
+
+	app.crossOutliner.toggleRankedList()
 	searchCtx := app.operationCommandContext()
 	if _, _, resolution := app.operationRegistry.InputBindingForSequence(
 		InputStrategySimplified, []string{"F", "#"}, searchCtx,
@@ -204,11 +234,12 @@ func TestPopulationFacetsStillRefuseUnderASearchProjection(t *testing.T) {
 	}
 }
 
-// TestSearchProjectionNeverAppliesLensNarrowing is an assertion over the branch
-// order, not only the rows: buildCanonicalModeRows returns at the search branch
-// above compileLensNarrowing, so a live projection leaves lensGate untouched.
-// Session 9's candidate boundary is therefore not a place to hang lens logic.
-func TestSearchProjectionNeverAppliesLensNarrowing(t *testing.T) {
+// TestOneNarrowingQueryCompilesAtATime is an assertion over the compile path,
+// not only the rows: both carriers reach compileActiveNarrowing, and a lens owns
+// the query while one is active, so exactly one gate is ever written per
+// rebuild. Session 9's candidate boundary is therefore not a place to hang lens
+// logic.
+func TestOneNarrowingQueryCompilesAtATime(t *testing.T) {
 	needle := primaryRowsTask("needle", models.StateBacklog)
 	needle.Title = "Needle groundwork"
 	other := primaryRowsTask("other", models.StateBacklog)
@@ -223,22 +254,27 @@ func TestSearchProjectionNeverAppliesLensNarrowing(t *testing.T) {
 	if outliner.lensGate == nil {
 		t.Fatal("the canonical path did not compile the lens narrowing")
 	}
+	if outliner.searchGate != nil {
+		t.Fatal("the lens rebuild also wrote the search gate")
+	}
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{"needle"}) {
 		t.Fatalf("lens-narrowed rows = %v, want the narrowing applied on the canonical path", got)
 	}
 
-	// Nil it deliberately: only compileLensNarrowing writes this field, so a
-	// still-nil gate after the rebuild proves the search branch returned first.
+	// Without a lens the same call site compiles the search query instead, and
+	// the rows are still the mode's own.
+	outliner.activeLens = nil
 	outliner.lensGate = nil
+	outliner.setLensQuery("")
 	outliner.SetSearchQuery("beta")
-	if !outliner.hasSearchProjection() {
-		t.Fatal("the search projection did not start under a lens")
-	}
 	if outliner.lensGate != nil {
-		t.Fatal("the search branch compiled the lens narrowing")
+		t.Fatal("a lens-free rebuild compiled a lens narrowing")
+	}
+	if outliner.searchGate == nil {
+		t.Fatal("the search query was never compiled")
 	}
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{"other"}) {
-		t.Fatalf("search under a lens = %v, want the query alone deciding membership", got)
+		t.Fatalf("narrowing search = %v, want the query alone deciding membership", got)
 	}
 }
 

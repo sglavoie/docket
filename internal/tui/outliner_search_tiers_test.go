@@ -259,7 +259,7 @@ func TestSearchAttributionRefreshesWithEveryRebuildAndOrdinaryRowsCarryNone(t *t
 		return outliner.rows[0].MatchSource
 	}
 
-	outliner.SetSearchQuery("needle")
+	searchRankedList(outliner, "needle")
 	if got := searchSource(); got != matchSourceTitle {
 		t.Fatalf("initial source = %d, want title", got)
 	}
@@ -280,7 +280,7 @@ func TestSearchAttributionRefreshesWithEveryRebuildAndOrdinaryRowsCarryNone(t *t
 
 	// A sigil-only query leaves no free text to attribute, so the gate admits
 	// rows with the same no-cue source an ordinary projection carries.
-	outliner.SetSearchQuery("*unpin")
+	searchRankedList(outliner, "*unpin")
 	if got := searchSource(); got != matchSourceNone {
 		t.Fatalf("sigil-only source = %d, want none", got)
 	}
@@ -321,7 +321,7 @@ func TestSearchDenseFuzzyFallbackStillReachesTheNewTiers(t *testing.T) {
 		t.Fatalf("case-sensitive source = %d, want comment", match.source)
 	}
 	outliner := scopeTestOutliner(project)
-	outliner.SetSearchQuery("POSTGRES")
+	searchRankedList(outliner, "POSTGRES")
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{task.ID}) {
 		t.Fatalf("relaxed retry = %v, want the comment match", got)
 	}

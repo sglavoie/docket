@@ -4,7 +4,7 @@ package tui
 // selected task. Each frame retains the exact parent cursor and scroll offset,
 // so nested Focus levels unwind without moving the viewport.
 func (m *OutlinerModel) focusSubtreeAtCursor() bool {
-	if m == nil || m.multiSelectMode || m.hasSearchProjection() ||
+	if m == nil || m.multiSelectMode || m.showsRankedList() ||
 		m.cursor < 0 || m.cursor >= len(m.rows) {
 		return false
 	}
@@ -33,7 +33,7 @@ func (m *OutlinerModel) focusSubtreeAtCursor() bool {
 // would push a nested frame back down whenever the cursor sat deeper than a
 // direct child, and the next press would climb out of it again forever.
 func (m *OutlinerModel) focusParentAtCursor() bool {
-	if m == nil || m.multiSelectMode || m.hasSearchProjection() ||
+	if m == nil || m.multiSelectMode || m.showsRankedList() ||
 		m.cursor < 0 || m.cursor >= len(m.rows) {
 		return false
 	}
@@ -177,7 +177,7 @@ func (m *OutlinerModel) popFocusLevel() bool {
 // already zoomed to changes nothing, which keeps the retained viewport the
 // pre-zoom one.
 func (m *OutlinerModel) enterSectionZoom(row outlinerRow) bool {
-	if m == nil || m.multiSelectMode || m.hasSearchProjection() || !row.IsSectionHeader {
+	if m == nil || m.multiSelectMode || m.showsRankedList() || !row.IsSectionHeader {
 		return false
 	}
 	key := row.effectiveCollapseKey()

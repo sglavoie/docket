@@ -175,6 +175,11 @@ func TestDirectKeysHelpAndHandledKeysDeriveFromTheInputStrategy(t *testing.T) {
 	// Task-scoped keys only resolve over a real target, so the audit runs in the
 	// same focused context the user is in when they press them.
 	ctx := taskActionParityContext(t, app)
+	// The ranked-list toggle is a presentation of a query, so it only exists
+	// while one is held. Holding one is the state its key is pressed in; a query
+	// on its own still freezes no other axis, so every other binding is audited
+	// exactly as before.
+	app.crossOutliner.beginSearchProjection()
 
 	strategy, ok := registry.InputStrategy(InputStrategySimplified)
 	if !ok {

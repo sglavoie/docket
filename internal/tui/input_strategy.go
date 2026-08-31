@@ -377,6 +377,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationSortUpdatedAt, Sequence: []string{"o", "u"}, DisplayKey: "ou", HintLabel: "updated"},
 			{OperationID: operationSortTitle, Sequence: []string{"o", "t"}, DisplayKey: "ot", HintLabel: "title"},
 			{OperationID: operationSortClear, Sequence: []string{"o", "x"}, DisplayKey: "ox", HintLabel: "clear sort"},
+			{OperationID: operationSortRanked, Sequence: []string{"o", "r"}, DisplayKey: "or", HintLabel: "ranked list"},
 			{OperationID: operationCoreGotoAll, Sequence: []string{"g", "a"}, DisplayKey: "ga", HintLabel: "all"},
 			{OperationID: operationCoreGotoInbox, Sequence: []string{"g", "i"}, DisplayKey: "gi", HintLabel: "inbox"},
 			{OperationID: operationCoreGotoToday, Sequence: []string{"g", "t"}, DisplayKey: "gt", HintLabel: "today"},

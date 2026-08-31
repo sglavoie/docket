@@ -36,7 +36,7 @@ func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 		"`&` opens the cursor task's Attachments panel, `;` its Comments panel — the two capture " +
 			"sigils reaching, as keys, the panels that own add, reorder, unlink, and delete",
 		"`y` title, `Y` description, `Ctrl+Y` both",
-		"`o` opens the sort chord: `o@` due date, `o!` priority, `oc` created, `ou` updated, `ot` title, `ox` clear; repeat a field key to reverse it",
+		"`o` opens the sort chord: `o@` due date, `o!` priority, `oc` created, `ou` updated, `ot` title, `or` flat ranked list while a query is held, `ox` clear; repeat a field key to reverse it",
 		"`\\` Named Lenses, `Ctrl+N` Notes, `T` theme, `/` search, `?` help, `u` undo, " +
 			"`Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit",
 		"`n`/`N` jump to the next/previous section or project header, wrapping at either end",
@@ -104,13 +104,14 @@ func TestGuideDocumentsFiltersAndSearch(t *testing.T) {
 	requireDocumentationText(t, content, []string{
 		"`f!0`, `f!1`–`f!3`",
 		"Unset never matches",
-		// Search composition: the row facets gate a live projection, the sort axis
-		// works inside it, F* drops out of reach, and Esc restores the pre-search
-		// pair.
+		// Search composition: a query is one more facet over the mode's own rows,
+		// the row facets and the sort axis compose with it either way, the flat
+		// ranked list is the only presentation that takes F* away, and Esc drops
+		// the query and restores what it was typed over.
 		"`f*` applies as an AND gate before scoring exactly like a query sigil",
 		"`o*` reorders within a relevance tier only",
-		"The population facets (`F*`) drop out while the",
-		"Esc restores the pre-search facets and sort wholesale",
+		"population facets (`F*`) are the only thing the flat list takes away",
+		"Esc drops the query and restores the mode, facets, sort, cursor, scroll,",
 		// One narrowing, one spelling: the chip is the query, the chord's
 		// threshold is written out, repeats of a single-valued field union, and
 		// project selection is one axis the population facets are not part of.

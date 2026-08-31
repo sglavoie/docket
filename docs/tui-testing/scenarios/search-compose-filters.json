@@ -10,8 +10,10 @@
     { "type": "assert", "assert": "contains", "value": "Build login form" },
     { "type": "assert", "assert": "contains", "value": "Explore social login" },
     { "type": "assert", "assert": "not_contains", "value": "Triage support inbox" },
+    { "type": "assert", "label": "the query narrows the mode rather than replacing it, so the lanes stand", "assert": "contains", "value": "@ Doing" },
+    { "type": "assert", "assert": "contains", "value": "@ Someday" },
 
-    { "type": "key", "label": "the order axis reorders the ranked rows in place", "key": "o" },
+    { "type": "key", "label": "the order axis reorders the narrowed rows in place", "key": "o" },
     { "type": "key", "key": "@" },
     { "type": "assert", "assert": "status_contains", "value": "Sorting by" },
     { "type": "assert", "assert": "contains", "value": "Sort:" },

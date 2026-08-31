@@ -115,11 +115,10 @@ func (m *OutlinerModel) restoreModeCursor(anchor modeCursorAnchor) {
 // mode. It captures the selected task identity
 // before rebuilding and restores it afterward (see restoreModeCursor) so an
 // eligible task keeps focus and scroll position across the reshape.
+// A held query never refuses a mode change: the query is a clause the new mode
+// narrows with, so the mode keeps its own lanes and grouping and simply shows
+// fewer rows.
 func (m *OutlinerModel) selectOutlinerMode(id OutlinerModeID) (tea.Model, tea.Cmd) {
-	if m.hasSearchProjection() {
-		m.setTransientStatus("Exit search before changing modes")
-		return m, nil
-	}
 	mode, ok := OutlinerModeByID(id)
 	if !ok {
 		return m, nil
@@ -259,19 +258,4 @@ func (m *OutlinerModel) workModeScopeProjects() []*models.Project {
 		return []*models.Project{m.project}
 	}
 	return m.scopeProjects()
-}
-
-// searchTextPredicate is the free-text half of the work-mode gate, and only
-// that half. It is deliberately separate from facetPredicateAt: a search
-// projection has already ranked its rows fuzzily, so re-applying this substring
-// gate there would discard hits the ranked list earned.
-func (m *OutlinerModel) searchTextPredicate() func(*models.Task) bool {
-	query := m.searchTextQuery()
-	caseSensitive := m.searchCaseSensitive()
-	return func(t *models.Task) bool {
-		if t == nil {
-			return false
-		}
-		return query == "" || TaskMatchesSearch(t, query, caseSensitive)
-	}
 }

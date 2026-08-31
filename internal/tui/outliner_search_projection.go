@@ -13,11 +13,13 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// outlinerSearchSnapshot is the complete session-only presentation state that
-// slash search temporarily replaces. Scope is deliberately not captured: the
-// active project/context scope owns the search candidate set and may be changed
-// independently, while mode, facets, folds, zoom, ordering, and viewport are
-// restored.
+// outlinerSearchSnapshot is the navigation frame a slash search was typed in.
+// Scope is deliberately not captured, because scope is a navigation frame rather
+// than a clause of the query: a search runs inside the frame it was typed in, a
+// lens moves the frame, and the frames stack. Changing scope under a held query
+// therefore re-answers that query in the new frame instead of editing it, while
+// mode, facets, folds, zoom, ordering, and viewport are the frame's own axes and
+// are restored when the query is dropped.
 type outlinerSearchSnapshot struct {
 	mode               OutlinerModeID
 	filter             FilterState
@@ -82,8 +84,39 @@ type outlinerSearchMatch struct {
 	sourceIndex int
 }
 
+// hasSearchProjection reports that a slash-search frame is open, which is the
+// same thing as saying the view holds a query. It says nothing about how that
+// query is presented: by default the query narrows the mode's own lanes, and
+// only showsRankedList reports the flat presentation.
 func (m *OutlinerModel) hasSearchProjection() bool {
 	return m != nil && m.searchProjection != nil
+}
+
+// showsRankedList reports that the held query is being presented as one flat
+// relevance-ordered list. It is the single test every consumer that cannot
+// survive a bypassed mode must ask: the ranked list has no lanes, no grouping,
+// no manual order, and no section the zoom or the folds gate, so the operations
+// that reshape those axes refuse here and nowhere else. A query alone never
+// freezes an axis.
+func (m *OutlinerModel) showsRankedList() bool {
+	return m != nil && m.rankedList && m.searchProjection != nil
+}
+
+// toggleRankedList switches the held query between narrowing the mode and the
+// flat ranked list. Entering suspends the section zoom, which gates emitters the
+// flat list does not run; leaving restores nothing else, because every other
+// axis stayed live under both presentations.
+func (m *OutlinerModel) toggleRankedList() bool {
+	if !m.hasSearchProjection() {
+		return false
+	}
+	m.rankedList = !m.rankedList
+	if m.rankedList {
+		m.clearSectionZoom()
+	}
+	m.crossForceRebuild = true
+	rebuildOutlinerPreservingCursor(m)
+	return true
 }
 
 func copyFilterState(src FilterState) FilterState {
@@ -96,10 +129,6 @@ func (m *OutlinerModel) beginSearchProjection() {
 	}
 	snapshot := m.capturePresentationSnapshot()
 	m.searchProjection = &snapshot
-	// Search results bypass the section emitters the zoom gates, so a zoom left
-	// live here would be state no projection reads. Suspending it keeps the model
-	// honest for the Esc cascade and the fingerprints.
-	m.clearSectionZoom()
 	m.crossForceRebuild = true
 	m.rebuildRows()
 }
@@ -144,6 +173,7 @@ func (m *OutlinerModel) ClearSearch() {
 	}
 	snapshot := m.searchProjection
 	m.searchProjection = nil
+	m.rankedList = false
 	m.resetSearchCompilation()
 	m.BaseSearchableView.ClearSearch()
 	m.restorePresentationSnapshot(*snapshot)
@@ -152,13 +182,14 @@ func (m *OutlinerModel) ClearSearch() {
 	m.restoreSearchCursor(snapshot.cursor)
 }
 
-// exitSearchOntoCursorTask dismisses the temporary projection and lands the
-// ordinary one on the result the cursor named, so a jump reached through search
-// is not a dead end. The restored projection can hide the result behind the mode
-// it was searched out of, so a hidden result forces All once before it reports
-// that a facet still excludes it.
+// exitSearchOntoCursorTask dismisses the flat ranked list and lands the ordinary
+// projection on the result the cursor named, so a jump reached through it is not
+// a dead end. The restored projection can hide the result behind the mode it was
+// searched out of, so a hidden result forces All once before it reports that a
+// facet still excludes it. A query that is merely narrowing has nothing to exit:
+// its rows are already the mode's own, so the caller keeps the query.
 func (m *OutlinerModel) exitSearchOntoCursorTask() (string, bool) {
-	if !m.hasSearchProjection() {
+	if !m.showsRankedList() {
 		return "", true
 	}
 	identity := m.currentTaskIdentity()
@@ -219,6 +250,7 @@ func (m *OutlinerModel) clearSearchProjectionWithoutRestore() {
 		return
 	}
 	m.searchProjection = nil
+	m.rankedList = false
 	m.resetSearchCompilation()
 	m.BaseSearchableView.ClearSearch()
 }

@@ -21,9 +21,13 @@
     { "type": "assert", "assert": "contains", "value": "# project tags" },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "the flat search projection holds no header", "key": "/" },
+    { "type": "key", "label": "a query narrows the mode and keeps its headers", "key": "/" },
     { "type": "text", "text": "Alpha" },
     { "type": "key", "key": "enter" },
+    { "type": "assert", "label": "the narrowed mode still emits its own section header", "assert": "contains", "value": "@ Backlog" },
+
+    { "type": "key", "label": "the flat ranked list holds no header", "key": "o" },
+    { "type": "key", "key": "r" },
     { "type": "key", "key": "n" },
     { "type": "assert", "assert": "status_contains", "value": "No sections to jump between" },
     { "type": "assert", "assert": "no_layout_issues" }

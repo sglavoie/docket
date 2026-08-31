@@ -128,7 +128,7 @@ func noteTierFixtureApp(t *testing.T) (*AppModel, NoteRowIdentity) {
 	if outliner == nil {
 		t.Fatal("fixture app has no Outliner")
 	}
-	outliner.SetSearchQuery("launch")
+	searchRankedList(outliner, "launch")
 	for index, row := range outliner.rows {
 		if !row.IsNoteRow {
 			continue

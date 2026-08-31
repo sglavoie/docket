@@ -111,7 +111,7 @@ func (m *AppModel) registerFilterOperations() error {
 					return false
 				}
 				if refusesSearchProjection &&
-					m.crossOutliner != nil && m.crossOutliner.hasSearchProjection() {
+					m.crossOutliner != nil && m.crossOutliner.showsRankedList() {
 					return false
 				}
 				return !stale || m.crossOutliner == nil ||
@@ -221,7 +221,7 @@ func (m *AppModel) applyFilterClauseEdit(id OperationID, edit filterClauseEdit) 
 		return OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
 	}
 	reload := filterOperationRequiresReload(id)
-	if reload && out.hasSearchProjection() {
+	if reload && out.showsRankedList() {
 		return OperationHandlerResult{Status: "Exit search before changing filters"}
 	}
 	if edit.declined {

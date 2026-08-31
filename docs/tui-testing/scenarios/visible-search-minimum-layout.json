@@ -6,6 +6,12 @@
     { "type": "key", "label": "open scope-wide search", "key": "/" },
     { "type": "text", "label": "search scoped tasks", "text": "login" },
     { "type": "assert", "assert": "contains", "value": "Search:" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "both presentations of the one query have to lay out here", "key": "enter" },
+    { "type": "key", "key": "o" },
+    { "type": "key", "key": "r" },
+    { "type": "assert", "assert": "contains", "value": "Search:" },
+    { "type": "assert", "assert": "contains", "value": "Build login form" },
     { "type": "assert", "assert": "no_layout_issues" }
   ]
 }

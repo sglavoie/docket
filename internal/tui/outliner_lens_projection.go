@@ -78,14 +78,16 @@ func (m *OutlinerModel) lensCaseSensitive() bool {
 
 // compileActiveNarrowing compiles whichever narrowing query the view holds and
 // records the compilation where that carrier's chrome reads it. A lens owns the
-// query while one is active, because slash search under a lens edits the lens's
-// query rather than opening a projection of its own; otherwise the search input
-// owns it. At most one is ever live, which is why one gate answers for both.
+// query whenever it holds one, because slash search under a lens edits the
+// lens's query rather than opening a projection of its own; otherwise the search
+// input owns it. At most one is ever non-empty, which is why one gate answers
+// for both, and reading the query rather than the lens pointer is what keeps
+// that true for a carrier seeded outside the lens lifecycle.
 func (m *OutlinerModel) compileActiveNarrowing(projects []*models.Project) queryNarrowing {
 	if m == nil {
 		return queryNarrowing{}
 	}
-	if m.hasActiveLens() {
+	if m.lensQuery != "" {
 		compiled := m.compileNarrowingQuery(m.lensQuery, projects)
 		m.lensRemainder, m.lensGate, m.lensNarrowRelaxed = compiled.remainder, compiled.gate, compiled.relaxed
 		return compiled.narrowing
@@ -145,7 +147,7 @@ func (m *OutlinerModel) compileNarrowingQuery(query string, projects []*models.P
 // retainNarrowingAncestors admits the canonical ancestry of one match. It follows
 // stored ParentID links through the authoritative project rather than a row's
 // own Children, which the filter pipeline may have rewritten.
-func retainLensAncestors(retained map[TaskIdentity]bool, task *models.Task, project *models.Project) {
+func retainNarrowingAncestors(retained map[TaskIdentity]bool, task *models.Task, project *models.Project) {
 	if project == nil {
 		return
 	}
@@ -165,17 +167,28 @@ func retainLensAncestors(retained map[TaskIdentity]bool, task *models.Task, proj
 	}
 }
 
-// constrainModeFilterToLens composes the narrowing over the mode input's own
-// task predicate. Narrowing is applied as one more facet rather than as a
+// constrainModeFilterToNarrowing composes the narrowing over the mode input's
+// own task predicate. Narrowing is applied as one more facet rather than as a
 // separate pass, so mode membership, the saved facets, the section emitters,
 // the project grouping, and the saved order all keep deciding the rows: an
 // emptied section or project group simply stops being emitted.
-func (m *OutlinerModel) constrainModeFilterToLens(
+//
+// An ancestor is retained for the context it gives a match, so it is retained
+// against the matches that actually survive the rest of the gate rather than
+// against every match the query found. A facet that removes the only hit in a
+// branch therefore removes the branch, instead of leaving a parent standing over
+// nothing.
+func (m *OutlinerModel) constrainModeFilterToNarrowing(
 	base func(*models.Task, *models.Project) bool,
-	narrowing lensNarrowing,
+	narrowing queryNarrowing,
+	projects []*models.Project,
 ) func(*models.Task, *models.Project) bool {
 	if !narrowing.active {
 		return base
+	}
+	retained := narrowing.retained
+	if base != nil {
+		retained = retainedUnderBaseFilter(narrowing, base, projects)
 	}
 	return func(task *models.Task, project *models.Project) bool {
 		if base != nil && !base(task, project) {
@@ -184,15 +197,47 @@ func (m *OutlinerModel) constrainModeFilterToLens(
 		if project == nil {
 			project = m.project
 		}
-		return narrowing.retained[taskIdentityFor(task, project)]
+		return retained[taskIdentityFor(task, project)]
 	}
 }
 
-// attributeLensMatches stamps the match cue on the rows that actually matched.
-// Attribution is recomputed with membership on every rebuild, so a mutation that
-// moves a hit from one field to another moves its cue too, and an ancestor
-// retained only for context keeps matchSourceNone.
-func (m *OutlinerModel) attributeLensMatches(narrowing lensNarrowing) {
+// retainedUnderBaseFilter recomputes the retained closure over the matches the
+// base predicate still admits. It walks the authoritative projects rather than
+// the compiled sets because ancestry is a stored fact and only the projects
+// carry it.
+func retainedUnderBaseFilter(
+	narrowing queryNarrowing,
+	base func(*models.Task, *models.Project) bool,
+	projects []*models.Project,
+) map[TaskIdentity]bool {
+	retained := make(map[TaskIdentity]bool, len(narrowing.retained))
+	for _, project := range projects {
+		if project == nil {
+			continue
+		}
+		for _, task := range project.Tasks {
+			identity := taskIdentityFor(task, project)
+			if !identity.Valid() {
+				continue
+			}
+			if _, matched := narrowing.matched[identity]; !matched {
+				continue
+			}
+			if !base(task, project) {
+				continue
+			}
+			retained[identity] = true
+			retainNarrowingAncestors(retained, task, project)
+		}
+	}
+	return retained
+}
+
+// attributeNarrowingMatches stamps the match cue on the rows that actually
+// matched. Attribution is recomputed with membership on every rebuild, so a
+// mutation that moves a hit from one field to another moves its cue too, and an
+// ancestor retained only for context keeps matchSourceNone.
+func (m *OutlinerModel) attributeNarrowingMatches(narrowing queryNarrowing) {
 	if !narrowing.active || len(narrowing.matched) == 0 {
 		return
 	}

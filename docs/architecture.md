@@ -204,7 +204,7 @@ the evaluator a resolution context, never widening `Admits`.
 Free text matches over the task-side corpus: title, description, context, tags,
 checklist items, comments, attachment filenames and paths, and the owning
 project's name and slug. Notes are outside a task and so are outside admission,
-even though the Outliner search surface offers them as its lowest tier.
+even though the Outliner's flat ranked list offers them as its lowest tier.
 
 ### The join law
 
@@ -322,7 +322,7 @@ while Inbox, Backlog, Today, and Next group by project only, so a section-only
 stop set would leave the keys dead in four of the seven modes. That predicate is
 the same one `h`/`l` fold on and the same one the header guidance reads. The
 walk wraps at either end, and a projection holding no header at all — a
-project-scoped view or a search projection — reports so through
+project-scoped view or the flat ranked list — reports so through
 `OperationHandlerResult.Status` rather than leaving the key silent.
 
 There are three fold axes and therefore three bulk keys: `s` for section
@@ -432,9 +432,9 @@ restores and the reverse order would name All as the origin mode. All is forced
 rather than inherited, so the destination lists the project's whole tree instead
 of the origin mode's narrowing; when All does not admit the task — a terminal
 task reached from Recent — the origin mode is reselected and the status says
-why. A live search projection is dismissed from the handler before either step,
-so the jump works from a search result and the frame `Esc` restores is the
-pre-search one.
+why. A held query is dismissed from the handler before either step, whichever
+presentation it was being read in, so the jump works from a search result and the
+frame `Esc` restores is the pre-search one.
 
 ### Presentation chrome
 
@@ -636,8 +636,10 @@ clears it and sets `crossForceRebuild` and nothing else, leaving the render pass
 Bubble Tea runs next as the single rebuild authority and
 `computeOutlinerViewport` as sole owner of `viewScrollOffset`.
 `safeToRebuildForWake` refuses while an overlay, picker, inline row editor,
-visual selection, or search projection is live, because rebuilding underneath
-one of those moves ground the user is standing on. A refusal leaves the clock
+visual selection, or the flat ranked list is live, because rebuilding underneath
+one of those moves ground the user is standing on. A query that is merely
+narrowing is not such a state: it is re-answered on every rebuild, so the woken
+task is matched against it like any other row. A refusal leaves the clock
 standing so the next tick retries; the wake is deferred, never dropped, at a
 cost of at most one tick. A consumed wake also recomputes the workspace pulse at
 the tick's own timestamp, because `ComputeWorkspacePulse` excluded that task
@@ -772,7 +774,7 @@ The pin marker is the third reserved `taskRowSegments` field rather than a
 ladder entry, for the same reason: a pin that disappears at 60 columns is a pin
 the user cannot trust anywhere. `taskPinnedMarker` renders a bold `*` when
 `task.Pinned && !row.IsPinnedSection`. The predicate is the row's lane, not the
-mode's `ShowsPinned` flag, so a search projection — which returns before any
+mode's `ShowsPinned` flag, so the flat ranked list — which returns before any
 Pinned section is built — and a filter-admitted terminal or deferred pinned row
 inside All or Today all get the mark, while the lane's own rows stay bare
 because the section header above them already states it.
@@ -808,7 +810,7 @@ and the arithmetic would have to account for
 `excludeTaskTreePromotingChildren` seating a grandchild in a clone's `Children`.
 For the same reason the count comes from `openChildCounts`, a per-rebuild census
 of the authoritative flat `project.Tasks` assigned in `buildCanonicalModeRows`
-above the search-projection return, and never from `row.task.Children`: All,
+above the flat ranked list's return, and never from `row.task.Children`: All,
 Inbox, and Backlog rows carry filter-pipeline clones with rewritten children
 while flat-mode rows carry authoritative pointers, so reading the row's own task
 would give the marker two meanings depending on the mode.
@@ -1598,16 +1600,33 @@ and the write it authorized.
 
 ### Search, filters, and Peek
 
-Slash search temporarily replaces mode rows with every scoped nonterminal task,
-including deferred work. It ranks title matches before description, tag, and
-project metadata matches, then by fuzzy score and stable project/task order;
-`project#shortID` is an exact qualifier. Mode changes, folds, and reordering are
-unavailable during search; the task facets and the sort axis are not, because
-they are a predicate and a comparator over whatever rows exist. A facet composes
-into `searchCandidateBoundary` as an AND gate applied before scoring, exactly
-like a sigil, and a sort reorders within a relevance tier only. Population
-filters (`F*`) still refuse, since applying one needs a reload rather than a
-rebuild. Esc restores the prior mode, facets, sort, cursor, scroll, and folds.
+A slash query is one more facet over the mode's own projection.
+`compileActiveNarrowing` compiles whichever carrier holds a query — a lens's
+saved one or the search input's — and `constrainModeFilterToNarrowing` composes
+it into the mode input's task predicate, so the section emitters, the pinned
+promotion, the project grouping, and the mode's saved order all keep deciding the
+rows. A match's stored ancestry is retained for context, and it is retained
+against the matches that survive the rest of the gate, so a facet that removes
+the only hit in a branch removes the branch. Every axis stays live under a held
+query: mode changes, folds, facets, and reordering all apply, because a query is
+a clause rather than a mode. Esc drops the query and restores the mode, facets,
+sort, cursor, scroll, and folds the search was typed over.
+
+`or` toggles `rankedList`, the other presentation of that same query: one flat
+relevance-ordered list over the whole project scope, with no lanes, no headers,
+and no folds, ranking title matches before description, tag, and project metadata
+matches, then by fuzzy score and stable project/task order; `project#shortID` is
+an exact qualifier. `showsRankedList()` is the one predicate that gates what that
+presentation takes away — the population filters (`F*`), which need a reload
+rather than a rebuild — and what it alone offers: the notes tier, the relevance
+ordering a sort reorders within, an order a fixed-order mode would otherwise keep
+for itself, and the `Enter`/`Shift+Enter`/`gp` exit onto a result. It is reached
+by toggling it, never by typing, and it dies with the query that gave it rows.
+
+Terminal and deferred admission has one rule in both presentations: the query
+says so. `admitsTerminalPopulation` and `admitsDeferredPopulation` read the
+canonical query and the compiled gate together, and nothing else opens either
+population.
 
 The query is not a single fuzzy string. `compileSearchQuery` parses it against
 `textgrammar.SurfaceSearch` — the fourth surface of the same registry, beside
@@ -1786,8 +1805,8 @@ clears `crossFocusStack`, and the scope frame carries it back on the pop. An
 emptied zoom is left standing, because auto-unwinding would move the world under
 a user who has just completed the last task they were looking at.
 
-Pressed on a search result, `Enter` and `Shift+Enter` exit the temporary
-projection first rather than refusing it, which makes search the fastest way to
+Pressed on a flat ranked list result, `Enter` and `Shift+Enter` exit that
+presentation first rather than refusing it, which makes search the fastest way to
 reach an arbitrary task. `exitSearchOntoCursorTask` reads the result's identity,
 runs the ordinary `ClearSearch` restoration, and lands the restored projection on
 it through `NavigateToTask` or `NavigateToTaskInProject`. The restored projection
@@ -1798,9 +1817,9 @@ focuses nothing. Focus applies afterward exactly as it does on an ordinary row,
 so a leaf still reports `No children to focus` with the jump already made, and
 the frame it pushes carries the post-landing cursor, which is what makes `Esc`
 unwind onto the result's own row. `gp` takes the same exit, clearing search
-before it reads the origin mode and pushes the project scope. Every other
-operation the projection owns — mode switches, folds, and the reorder keys —
-still refuses.
+before it reads the origin mode and pushes the project scope. A query that is
+merely narrowing has nothing to exit: its rows are already the mode's own, so the
+jump keeps the query and the caller falls through to the ordinary row behavior.
 
 `Shift+Enter` widens by exactly one level. Outside Focus it pushes a frame rooted
 at the cursor task's parent. Inside Focus it climbs from the focus root rather
@@ -1825,7 +1844,7 @@ focus root and that row stays silent.
 
 An active inline row editor consumes `Esc` first and cancels the draft. The
 ordinary Outliner `Esc` priority is Peek, live range, frozen selection,
-temporary search projection, one Focus frame, one cross-project Focus frame, the
+the held search query, one Focus frame, one cross-project Focus frame, the
 section zoom, then the existing project/base escape behavior. The zoom narrows
 one mode, so it unwinds after the Focus stacks and before the project scope that
 owns the mode.
@@ -1938,9 +1957,9 @@ the single-project Outliner, which is a scope no lens installs, and never a
 parked focus, which is an exception to the base workspace rather than a scope the
 base Outliner can be asked for. `captureLensState` reads the query axis through
 `capturedLensQuery`, which is `m.lensQuery` under a lens and the accepted
-`SearchQuery()` when an ordinary search projection owns the visible rows and its
-input is closed. Only that axis crosses over: the projection itself cannot
-survive underneath a lens, so `publishLens` calls
+`SearchQuery()` when an ordinary search query is narrowing the visible rows and
+its input is closed. Only that axis crosses over: the search carrier itself
+cannot survive underneath a lens, so `publishLens` calls
 `clearSearchProjectionWithoutRestore` and the baseline hands the search back on
 the way out. The definitions travel with the workspace but no lens
 is a workspace entity, which decides the rest of the design: a lens mutation

@@ -28,7 +28,7 @@ func noteRowProjection(t *testing.T) *OutlinerModel {
 		noteIndexRow(app.ProjectNoteLocation("alpha"), "alpha", "Needle again", "again.md"),
 		noteIndexRow(app.GlobalNoteLocation(), "", "Nothing here", "quiet.md"),
 	}, project)
-	outliner.SetSearchQuery("needle")
+	searchRankedList(outliner, "needle")
 	return outliner
 }
 

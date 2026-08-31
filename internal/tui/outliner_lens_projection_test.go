@@ -122,10 +122,10 @@ func TestLensQueryPreservesSavedOrderRatherThanRelevanceOrder(t *testing.T) {
 		t.Fatalf("lens order %v is not the saved order it narrowed", got)
 	}
 
-	// Ordinary search over the same words ranks a title hit above a body hit,
-	// which is exactly the ordering a lens must not adopt.
+	// The flat ranked list over the same words ranks a title hit above a body
+	// hit, which is exactly the ordering a lens must not adopt.
 	relevance := scopeTestOutliner(outliner.loadedProjects...)
-	relevance.SetSearchQuery("needle")
+	searchRankedList(relevance, "needle")
 	ranked := searchVisibleTaskIDs(relevance)
 	if slices.Equal(ranked, got) {
 		t.Fatalf("lens order %v matched relevance order %v, so the ordering claim proves nothing", got, ranked)
@@ -250,50 +250,69 @@ func TestLensQueryKeepsTheRegistryGuidanceForARefusedValue(t *testing.T) {
 	}
 }
 
-func TestOrdinarySearchIgnoresTheModeAndTheLensQueryButHonorsFacets(t *testing.T) {
+// TestSearchNarrowsTheModeAndTheRankedListLeavesIt is D7 stated over the same
+// fixture the lens tests use: a query narrows the mode it was typed in, keeping
+// that mode's lanes, its grouping, and its ancestor context, while the flat
+// ranked list is what abandons them for relevance order.
+func TestSearchNarrowsTheModeAndTheRankedListLeavesIt(t *testing.T) {
 	outliner := lensProjectionOutliner()
 	outliner.ApplyOpenOptions(OutlinerOpenOptions{Mode: ModeInbox, SetMode: true})
-	outliner.setLensQuery("%beta")
 	outliner.filter.Pinned = true
 	outliner.adoptFilterCarriers()
 	outliner.crossForceRebuild = true
 	outliner.crossProjectRebuildRows()
 	if got := searchVisibleTaskIDs(outliner); len(got) != 0 {
-		t.Fatalf("Inbox under a lens and a pinned facet = %v, want an empty mode projection", got)
+		t.Fatalf("Inbox under a pinned facet = %v, want an empty mode projection", got)
 	}
 
-	// The facet is an AND gate over search too, so it is cleared before the query
-	// that must still escape the mode and the lens.
+	// A query narrows what the mode already showed, so an empty mode stays empty:
+	// the query is a clause, never a way out of the mode.
+	outliner.SetSearchQuery("needle")
+	if got := searchVisibleTaskIDs(outliner); len(got) != 0 {
+		t.Fatalf("a query under an empty mode = %v, want the mode still deciding", got)
+	}
+
+	// The facet is an AND gate over the query too, so it is cleared before the
+	// mode is widened to one that holds the matches.
 	outliner.filter.Pinned = false
 	outliner.adoptFilterCarriers()
-	outliner.SetSearchQuery("needle")
+	outliner.selectOutlinerMode(ModeAll)
 	got := searchVisibleTaskIDs(outliner)
 	for _, id := range []string{"child", "described", "beta-task"} {
 		if !slices.Contains(got, id) {
-			t.Fatalf("scope-wide search = %v, want %s despite the mode, facet, and lens query", got, id)
+			t.Fatalf("narrowed All = %v, want %s admitted by the query", got, id)
 		}
 	}
-	if slices.Contains(got, "parent") {
-		t.Fatalf("scope-wide search = %v, want no lens-style ancestor retention", got)
-	}
-	if got[len(got)-1] != "described" {
-		t.Fatalf("scope-wide search = %v, want relevance ordering with the body hit last", got)
+	if !slices.Contains(got, "parent") {
+		t.Fatalf("narrowed All = %v, want the matching child's ancestor retained as context", got)
 	}
 
-	// Re-arming the facet while the projection is live gates the same result set:
+	// The same query, presented flat, drops the retained ancestor and adopts
+	// relevance order with the body hit last.
+	outliner.toggleRankedList()
+	ranked := searchVisibleTaskIDs(outliner)
+	if slices.Contains(ranked, "parent") {
+		t.Fatalf("ranked list = %v, want no hierarchy context in a flat list", ranked)
+	}
+	if len(ranked) == 0 || ranked[len(ranked)-1] != "described" {
+		t.Fatalf("ranked list = %v, want relevance ordering with the body hit last", ranked)
+	}
+
+	// Re-arming the facet while the flat list stands gates the same result set:
 	// no fixture task is pinned, so the AND leaves nothing.
 	outliner.filter.Pinned = true
 	outliner.adoptFilterCarriers()
 	outliner.crossForceRebuild = true
 	outliner.crossProjectRebuildRows()
 	if got := searchVisibleTaskIDs(outliner); len(got) != 0 {
-		t.Fatalf("search under the pinned facet = %v, want the facet to gate the ranked result set", got)
+		t.Fatalf("ranked list under the pinned facet = %v, want the facet to gate it", got)
 	}
 	outliner.filter.Pinned = false
 	outliner.adoptFilterCarriers()
 
+	// Leaving the frame drops the flat presentation with the query that fed it.
 	outliner.ClearSearch()
-	if got := searchVisibleTaskIDs(outliner); len(got) != 0 {
-		t.Fatalf("after Esc = %v, want the lens-narrowed mode projection restored unchanged", got)
+	if outliner.showsRankedList() {
+		t.Fatal("clearing the query left the flat ranked list standing")
 	}
 }

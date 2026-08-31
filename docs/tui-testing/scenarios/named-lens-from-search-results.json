@@ -8,7 +8,7 @@
     { "type": "key", "key": "enter" },
     { "type": "assert", "assert": "contains", "value": "Search: \"login\"" },
     { "type": "assert", "assert": "contains", "value": "Build login form" },
-    { "type": "assert", "assert": "not_contains", "value": "Launch platform" },
+    { "type": "assert", "label": "a task the query never named stays out, though a hit's ancestors come along", "assert": "not_contains", "value": "Triage support inbox" },
 
     { "type": "key", "label": "the key is admitted on accepted results, not only in browse", "key": "\\" },
     { "type": "key", "label": "and the sorted rows sit below both action rows as always", "key": "j" },
@@ -24,7 +24,7 @@
     { "type": "assert", "assert": "not_contains", "value": "Lens:" },
     { "type": "assert", "assert": "contains", "value": "Search: \"login\"" },
     { "type": "assert", "assert": "contains", "value": "Build login form" },
-    { "type": "assert", "assert": "not_contains", "value": "Launch platform" },
+    { "type": "assert", "label": "a task the query never named stays out, though a hit's ancestors come along", "assert": "not_contains", "value": "Triage support inbox" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "saving from those results keeps the query the rows came from", "key": "\\" },

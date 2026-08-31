@@ -311,7 +311,11 @@ func TestStaleFacetUsesUpdatedLocalCalendarAgeAndBaseVisibility(t *testing.T) {
 	}
 }
 
-func TestCompletionCleanupProjectionRequiresExplicitTerminalStateChoice(t *testing.T) {
+// TestCompletionCleanupProjectionOpensOnTheCompletedClause is D3 read on the
+// completion axis: a positive completed clause is the query saying so, so it
+// opens the terminal population by itself, and adding a state clause narrows
+// what that population shows rather than being what unlocks it.
+func TestCompletionCleanupProjectionOpensOnTheCompletedClause(t *testing.T) {
 	now := time.Now()
 	old := now.AddDate(0, 0, -45)
 	recent := now.AddDate(0, 0, -5)
@@ -329,8 +333,9 @@ func TestCompletionCleanupProjectionRequiresExplicitTerminalStateChoice(t *testi
 	outliner.adoptFilterCarriers()
 	outliner.rebuildRows()
 
-	if visible := visibleOutlinerTaskIDs(outliner); len(visible) != 0 {
-		t.Fatalf("fc without fs exposed cleanup records: %v", visible)
+	visible := visibleOutlinerTaskIDs(outliner)
+	if !visible[doneOld.ID] || !visible[canceledOld.ID] || len(visible) != 2 {
+		t.Fatalf("the completion-age clause alone = %v, want both old terminal records", visible)
 	}
 	doneOnly, err := models.NewWorkflowStateSet(models.StateDone)
 	if err != nil {
@@ -339,7 +344,8 @@ func TestCompletionCleanupProjectionRequiresExplicitTerminalStateChoice(t *testi
 	outliner.filter.setStateFilter(doneOnly, true)
 	outliner.adoptFilterCarriers()
 	outliner.rebuildRows()
-	if visible := visibleOutlinerTaskIDs(outliner); !visible[doneOld.ID] || len(visible) != 1 {
+	visible = visibleOutlinerTaskIDs(outliner)
+	if !visible[doneOld.ID] || len(visible) != 1 {
 		t.Fatalf("Done + 30-day cleanup projection = %v, want only old Done", visible)
 	}
 	both, err := models.NewWorkflowStateSet(models.StateDone, models.StateCanceled)
@@ -349,7 +355,7 @@ func TestCompletionCleanupProjectionRequiresExplicitTerminalStateChoice(t *testi
 	outliner.filter.setStateFilter(both, true)
 	outliner.adoptFilterCarriers()
 	outliner.rebuildRows()
-	visible := visibleOutlinerTaskIDs(outliner)
+	visible = visibleOutlinerTaskIDs(outliner)
 	if !visible[doneOld.ID] || !visible[canceledOld.ID] || len(visible) != 2 {
 		t.Fatalf("Done+Canceled + 30-day cleanup projection = %v, want both old terminal tasks", visible)
 	}

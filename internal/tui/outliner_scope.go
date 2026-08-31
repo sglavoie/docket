@@ -8,9 +8,11 @@ import (
 
 // outlinerScopeFrame captures the outliner state that a project-scope push
 // replaces, so popping the scope restores navigation and presentation axes that
-// remain scope-owned. Task facets are intentionally absent and remain global
-// across mode and scope changes. The sole exception is Stale, which explicit
-// mode selection and frame restoration both clear whenever they activate Recent.
+// remain scope-owned. Scope is this frame and never a clause of a query: a
+// search runs inside the frame it was typed in, a lens moves the frame, and the
+// frames stack. Task facets are intentionally absent and remain global across
+// mode and scope changes. The sole exception is Stale, which explicit mode
+// selection and frame restoration both clear whenever they activate Recent.
 //
 // Fold state is deliberately NOT snapshotted and remains shared across scopes:
 //   - collapsedSections / expandedNodes are keyed by project and section, so a

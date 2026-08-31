@@ -5,7 +5,10 @@
   "actions": [
     { "type": "key", "label": "search for the one task carrying a context", "key": "/" },
     { "type": "text", "text": "password" },
-    { "type": "key", "label": "Enter exits search onto the result", "key": "enter" },
+    { "type": "key", "label": "accept the query", "key": "enter" },
+    { "type": "key", "label": "the flat ranked list is the one a jump leaves", "key": "o" },
+    { "type": "key", "key": "r" },
+    { "type": "key", "label": "Enter exits it onto the result", "key": "enter" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
     { "type": "assert", "assert": "contains", "value": "Add password validation" },
 
