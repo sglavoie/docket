@@ -69,6 +69,10 @@ func taskLineEditRequest(source TaskIdentity, result *quickEditResult) app.TaskL
 		pinned := result.pinned
 		req.Pinned = &pinned
 	}
+	if result.reviewSet {
+		review := result.review
+		req.Review = &review
+	}
 	if result.targetProject != nil {
 		req.DestinationProjectID = result.targetProject.ID
 	}

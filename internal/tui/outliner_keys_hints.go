@@ -134,6 +134,7 @@ func quickEditGrammarGuidance() []string {
 		textgrammar.FieldDefer:       "defer",
 		textgrammar.FieldDestination: "destination",
 		textgrammar.FieldPinned:      "pin",
+		textgrammar.FieldReview:      "review",
 		textgrammar.FieldProject:     "move",
 		textgrammar.FieldParent:      "parent",
 		textgrammar.FieldChild:       "adopt",
@@ -369,8 +370,8 @@ func (m *OutlinerModel) decoratePendingChordHint(path []string, hint ChordHint) 
 			if len(filter.Tags) > 0 {
 				hint.Label = fmt.Sprintf("tags:%d", len(filter.Tags))
 			}
-		case "r":
-			if filter.Tags[reviewTaskTag] {
+		case "=":
+			if filter.Review {
 				hint.Label = "review:on"
 			}
 		case "h":

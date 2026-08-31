@@ -26,6 +26,7 @@ const (
 	acModeDestination        // Completing a $destination
 	acModeProject            // Completing a %project
 	acModePin                // Completing a *pin
+	acModeReview             // Completing a =review
 	acModeContext            // Completing a ##context
 	acModeDefer              // Completing a @@defer
 	acModeAttachment         // Completing an &link
@@ -50,6 +51,7 @@ const (
 	acModeRemoveDefer
 	acModeRemoveDestination
 	acModeRemovePin
+	acModeRemoveReview
 	acModeRemoveProject
 	// acModeDerived completes a ?predicate and acModeRemoveDerived a -?predicate.
 	// Both are search-only: a derived value is computed from the task rather than
@@ -87,6 +89,7 @@ type quickCaptureResult struct {
 	destination       app.CaptureDestination
 	destinationSet    bool
 	pinned            bool
+	review            bool
 	dependencies      []capturedDependencyRef
 	attachments       []string
 	comments          []string
@@ -214,6 +217,8 @@ func autocompleteModeForField(field textgrammar.Field) int {
 		return acModeProject
 	case textgrammar.FieldPinned:
 		return acModePin
+	case textgrammar.FieldReview:
+		return acModeReview
 	case textgrammar.FieldDependency:
 		return acModeDependency
 	case textgrammar.FieldRemoveDependency:
@@ -230,6 +235,8 @@ func autocompleteModeForField(field textgrammar.Field) int {
 		return acModeRemoveDestination
 	case textgrammar.FieldRemovePinned:
 		return acModeRemovePin
+	case textgrammar.FieldRemoveReview:
+		return acModeRemoveReview
 	case textgrammar.FieldRemoveProject:
 		return acModeRemoveProject
 	case textgrammar.FieldDerived:
@@ -459,6 +466,8 @@ func (q *quickCaptureInput) refreshAutocomplete() {
 		items = q.getProjectSuggestions(partial)
 	case acModePin:
 		items = q.getPinSuggestions(partial)
+	case acModeReview:
+		items = q.getReviewSuggestions(partial)
 	case acModeDependency:
 		items = q.getDependencySuggestions(partial, parsedLine)
 	}
@@ -483,6 +492,8 @@ func autocompleteSingletonField(mode int) (textgrammar.Field, bool) {
 		return textgrammar.FieldProject, true
 	case acModePin:
 		return textgrammar.FieldPinned, true
+	case acModeReview:
+		return textgrammar.FieldReview, true
 	default:
 		return "", false
 	}
@@ -619,6 +630,7 @@ func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	tagDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldTag)
 	childDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldChild)
 	pinnedDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldPinned)
+	reviewDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldReview)
 
 	destination := app.CaptureDestinationInbox
 	if q.preview.parentID != nil {
@@ -686,6 +698,9 @@ func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	}
 	if q.preview.pinned {
 		groups = append(groups, previewGroup{label: "Pinned", chunks: []string{pinnedDefinition.Trigger + "pin"}})
+	}
+	if q.preview.review {
+		groups = append(groups, previewGroup{label: "Review", chunks: []string{reviewDefinition.Trigger + "review"}})
 	}
 	// Attachments sit below the metadata groups and one chunk per entry, so the
 	// preview states how many the line would create. Without this group a pasted

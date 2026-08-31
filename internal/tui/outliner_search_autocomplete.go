@@ -166,8 +166,9 @@ func (m *OutlinerModel) searchAutocompleteSuggestions(
 		return searchStaticSuggestions(definition, searchDeferVocabulary(definition), partial)
 	case textgrammar.FieldDestination, textgrammar.FieldRemoveDestination:
 		return searchDestinationSuggestions(definition, partial)
-	case textgrammar.FieldPinned, textgrammar.FieldRemovePinned:
-		return searchPinSuggestions(definition, partial)
+	case textgrammar.FieldPinned, textgrammar.FieldRemovePinned,
+		textgrammar.FieldReview, textgrammar.FieldRemoveReview:
+		return searchBooleanAxisSuggestions(definition, partial)
 	case textgrammar.FieldProject, textgrammar.FieldRemoveProject:
 		return m.searchProjectSuggestions(definition, partial)
 	case textgrammar.FieldDependency, textgrammar.FieldRemoveDependency:
@@ -351,10 +352,10 @@ func searchDestinationDescription(destination textgrammar.Destination) string {
 	return "(" + textgrammar.StateDescription(destination.WorkflowState()) + ")"
 }
 
-// searchPinSuggestions offers both halves of the pin axis. The set value comes
-// from Values and the unset one from the search-surface clear, which is the only
-// place *unpin is declared.
-func searchPinSuggestions(definition textgrammar.Definition, partial string) []ACSuggestion {
+// searchBooleanAxisSuggestions offers both halves of a stored boolean axis. The
+// set value comes from Values and the unset one from the search-surface clear,
+// which is the only place *unpin and =unreview are declared.
+func searchBooleanAxisSuggestions(definition textgrammar.Definition, partial string) []ACSuggestion {
 	partial = strings.ToLower(partial)
 	result := make([]ACSuggestion, 0, len(definition.Values)+len(definition.Clears))
 	for _, value := range definition.Values {

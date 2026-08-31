@@ -62,7 +62,7 @@ var retiredDestinationMessages = map[string]string{
 	"blocked":     "destination $%s was removed (use $waiting)",
 	"standby":     "destination $%s was removed (use $paused)",
 	"hold":        "destination $%s was removed (use $paused)",
-	"review":      "destination $%s is not a state (use #review)",
+	"review":      "destination $%s is not a state (use =review)",
 	"maybe":       "destination $%s was removed (use $someday)",
 	"complete":    "destination $%s was removed (use $done)",
 	"completed":   "destination $%s was removed (use $done)",

@@ -14,7 +14,7 @@ func TestLiveProjectDocumentRoundTripsSchema12Fields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("WriteCurrent: %v", err)
 	}
-	if !strings.Contains(content, schemaMarkerV14) || !strings.Contains(content, "context: platform-api") ||
+	if !strings.Contains(content, schemaMarkerV15) || !strings.Contains(content, "context: platform-api") ||
 		!strings.Contains(content, "defer_count: 3") {
 		t.Fatalf("live document omitted schema-12 fields:\n%s", content)
 	}
@@ -22,7 +22,7 @@ func TestLiveProjectDocumentRoundTripsSchema12Fields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseProjectDocument: %v", err)
 	}
-	if parsed.SchemaVersion != SchemaVersionV14 || len(parsed.Tasks) != 1 ||
+	if parsed.SchemaVersion != SchemaVersionV15 || len(parsed.Tasks) != 1 ||
 		parsed.Tasks[0].Context != "platform-api" || parsed.Tasks[0].DeferCount != 3 {
 		t.Fatalf("parsed live document = %+v", parsed)
 	}

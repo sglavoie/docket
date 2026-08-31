@@ -128,6 +128,10 @@ const (
 	QueryFieldState QueryField = "state"
 	// QueryFieldPinned matches pinned tasks; its negative matches unpinned ones.
 	QueryFieldPinned QueryField = "pinned"
+	// QueryFieldReview matches tasks flagged for review; its negative matches the
+	// rest. Review is a stored boolean beside Pinned, not a lifecycle state and not
+	// a tag, so it is read here the same way Pinned is.
+	QueryFieldReview QueryField = "review"
 	// QueryFieldStale matches open, undeferred work untouched for at least
 	// StaleTaskThresholdDays local calendar days.
 	QueryFieldStale QueryField = "stale"
@@ -230,6 +234,7 @@ var queryFieldSpecs = []queryFieldSpec{
 	{QueryFieldDefer, QueryJoinOR, []QueryOperator{QueryOperatorIs}, false},
 	{QueryFieldState, QueryJoinOR, []QueryOperator{QueryOperatorIs}, false},
 	{QueryFieldPinned, QueryJoinOR, []QueryOperator{QueryOperatorPresent}, false},
+	{QueryFieldReview, QueryJoinOR, []QueryOperator{QueryOperatorPresent}, false},
 	{QueryFieldStale, QueryJoinOR, []QueryOperator{QueryOperatorPresent}, false},
 	{QueryFieldDeferred, QueryJoinOR, []QueryOperator{QueryOperatorPresent}, false},
 	{QueryFieldCompleted, QueryJoinOR, []QueryOperator{QueryOperatorPresent, QueryOperatorAtLeast}, false},

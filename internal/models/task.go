@@ -47,15 +47,19 @@ type Task struct {
 	// StateChangedAt is the state clock: the instant WorkflowState last became
 	// its current value. UpdatedAt cannot answer "in this state since" because
 	// comments, tags, attachments, reparenting, and manual reordering bump it.
-	StateChangedAt time.Time       `json:"state_changed_at"`
-	CompletedAt    *time.Time      `json:"completed_at,omitempty"`
-	DueDate        *time.Time      `json:"due_date,omitempty"`
-	Pinned         bool            `json:"pinned,omitempty"`    // Whether the task is pinned
-	PinnedAt       *time.Time      `json:"pinned_at,omitempty"` // When the task was pinned
-	Comments       []*Comment      `json:"comments,omitempty"`  // Timestamped comments/notes
-	Attachments    []Attachment    `json:"attachments,omitempty"`
-	DeferredUntil  *time.Time      `json:"deferred_until,omitempty"` // Task hidden until this date
-	Checklist      []ChecklistItem `json:"checklist,omitempty"`      // Checklist items for subtasks
+	StateChangedAt time.Time  `json:"state_changed_at"`
+	CompletedAt    *time.Time `json:"completed_at,omitempty"`
+	DueDate        *time.Time `json:"due_date,omitempty"`
+	Pinned         bool       `json:"pinned,omitempty"`    // Whether the task is pinned
+	PinnedAt       *time.Time `json:"pinned_at,omitempty"` // When the task was pinned
+	// Review is the stored review flag. Review is not a lifecycle state and never
+	// competes with one: a task carries its state and, independently, whether it
+	// is waiting on a look. It is its own boolean axis exactly as Pinned is.
+	Review        bool            `json:"review,omitempty"`
+	Comments      []*Comment      `json:"comments,omitempty"` // Timestamped comments/notes
+	Attachments   []Attachment    `json:"attachments,omitempty"`
+	DeferredUntil *time.Time      `json:"deferred_until,omitempty"` // Task hidden until this date
+	Checklist     []ChecklistItem `json:"checklist,omitempty"`      // Checklist items for subtasks
 	// Dependencies is the ordered, deduplicated list of tasks this one depends
 	// on. It is informational only: nothing blocks, reorders, or ranks on it.
 	// Each entry is a durable project-qualified locator, so a cross-project

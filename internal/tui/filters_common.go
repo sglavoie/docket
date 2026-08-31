@@ -36,6 +36,10 @@ type CommonFilterState struct {
 	Stale         bool                // only show open work untouched for at least 90 local days
 	Deferred      bool                // only show currently deferred tasks
 	Pinned        bool                // only show pinned tasks
+	// Review admits only tasks carrying the stored review flag. It is its own
+	// facet rather than a tag name, because review is a boolean beside the pin
+	// and no longer a value the tag vocabulary can mint or misspell.
+	Review bool
 
 	// statesSet distinguishes no state predicate from an explicit empty
 	// match-nothing set produced by intersecting contradictory legacy filters.
@@ -58,6 +62,7 @@ func copyCommonFilterState(src *CommonFilterState) *CommonFilterState {
 		Stale:            src.Stale,
 		Deferred:         src.Deferred,
 		Pinned:           src.Pinned,
+		Review:           src.Review,
 		statesSet:        src.statesSet,
 		completionAgeSet: src.completionAgeSet,
 	}
@@ -125,7 +130,8 @@ func hasActiveCommonFilters(f *CommonFilterState) bool {
 		f.Dependency != DependencyFilterAll ||
 		f.Stale ||
 		f.Deferred ||
-		f.Pinned
+		f.Pinned ||
+		f.Review
 }
 
 // commonFilterFacetCount reports independently clearable task facets. The
@@ -170,6 +176,9 @@ func commonFilterFacetCount(f *CommonFilterState) int {
 		count++
 	}
 	if f.Pinned {
+		count++
+	}
+	if f.Review {
 		count++
 	}
 	return count

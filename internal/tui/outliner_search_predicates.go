@@ -79,6 +79,8 @@ type searchPredicates struct {
 	excludedDests      []searchDestinationPredicate
 	requirePinned      bool
 	refusePinned       bool
+	requireReview      bool
+	refuseReview       bool
 	projectPrefix      string
 	excludedProjects   []string
 	derived            []textgrammar.DerivedPredicate
@@ -180,6 +182,14 @@ func (p *searchPredicates) applyToken(token textgrammar.Token, projects []*model
 		p.refusePinned = true
 	case textgrammar.FieldRemovePinned:
 		p.refusePinned = true
+	case textgrammar.FieldReview:
+		if token.Value == "review" {
+			p.requireReview = true
+			return
+		}
+		p.refuseReview = true
+	case textgrammar.FieldRemoveReview:
+		p.refuseReview = true
 	case textgrammar.FieldProject:
 		p.projectPrefix = strings.ToLower(strings.TrimSpace(token.Value))
 	case textgrammar.FieldRemoveProject:
@@ -529,7 +539,7 @@ func (p *searchPredicates) admits(task *models.Task, project *models.Project) bo
 	if task == nil {
 		return false
 	}
-	if !p.admitsPriority(task) || !p.admitsPinned(task) {
+	if !p.admitsPriority(task) || !p.admitsPinned(task) || !p.admitsReview(task) {
 		return false
 	}
 	if !p.admitsTags(task) || !p.admitsContext(task) || !p.admitsDue(task) || !p.admitsDeferral(task) {
@@ -562,6 +572,15 @@ func (p *searchPredicates) admitsPinned(task *models.Task) bool {
 		return false
 	}
 	return !p.refusePinned || !task.Pinned
+}
+
+// admitsReview answers the review axis the way admitsPinned answers the pin one,
+// contradiction included: =review and -=review in one query admit nothing.
+func (p *searchPredicates) admitsReview(task *models.Task) bool {
+	if p.requireReview && !task.Review {
+		return false
+	}
+	return !p.refuseReview || !task.Review
 }
 
 func (p *searchPredicates) admitsTags(task *models.Task) bool {

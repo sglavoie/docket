@@ -45,8 +45,7 @@
     { "type": "resize", "width": 100, "height": 35 },
     { "type": "assert", "assert": "no_layout_issues" },
 
-    { "type": "key", "label": "move from the seeded Review workflow tag to the highest-precedence semantic tag", "key": "j" },
-    { "type": "key", "label": "toggle the highest-precedence semantic tag", "key": "space" },
+    { "type": "key", "label": "the semantic section leads the picker, so the cursor already rests on bug", "key": "space" },
     { "type": "key", "label": "apply the selection", "key": "enter" },
     { "type": "wait" },
     { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },

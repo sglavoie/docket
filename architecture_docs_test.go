@@ -368,7 +368,23 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// implemented. The row shape, the facet's carve-out from the row predicate,
 	// and the drop-ladder position ride along as the same claim. The prose is in
 	// docs/architecture.md and the two guides.
-	const budget = 25700
+	//
+	// That raise is spent, so this is the next one, argued on its own and for one
+	// feature: review as a stored axis. It is the rare change that rewrites this
+	// file rather than appending to it, because the sentence it replaces was a
+	// contract — review had no key and rode an ordinary tag — and a stale contract
+	// is worse than an absent one. What takes its place is the same shape as the
+	// pin and has to be stated once for four surfaces at a time: `=` writes the
+	// flag on capture, edit, outline, and search, `=unreview` clears it on the two
+	// surfaces that may clear anything, `-=` narrows and owns no vocabulary, and
+	// `f=` is the facet, with `fr` retired the way `fp` was. None of that can live
+	// in a guide, because a guide says what the sigil does rather than what a
+	// reviewer adding the next one may not do. The schema pair moves with it — a
+	// v17 catalog over schema-15 Markdown, and the migration that lifts the tag
+	// onto the flag — and that pairing sentence already lived here because nothing
+	// else states which task grammar a catalog version implies. The prose is in
+	// docs/architecture.md and the guides; the rules alone landed here.
+	const budget = 26200
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -450,14 +466,15 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`parked` is the one behavioral project tag",
 		"Keep the two populations named apart: `Runtime.TaskWorkspaceProjects()` is non-archived and not " +
 			"parked and is the only one the base Outliner reads",
-		"!1-3 #tag ##context @date @@defer $destination *pin %project >parent <child ~task &link ;comment;",
+		"!1-3 #tag ##context @date @@defer $destination *pin =review %project >parent <child ~task &link ;comment;",
 		"`registry` is parse order and `guideOrder` teach order",
 		"Due's last alternative is `[^\\s@]\\S*` so `@` can never eat `@@`",
 		"`*unpin` belongs to edit and search",
 		"Slash search is the fourth surface of the same registry, not a parallel query language",
 		"`FieldChild` declares no `Clears`, which makes `<0` an ordinary unresolvable reference " +
 			"rather than a detach and the `<` picker additive: unchecking never detaches",
-		"Review is not a lifecycle state and has no key of its own",
+		"Review is not a lifecycle state. It is a stored boolean axis beside `Pinned`, " +
+			"written by the sigil `=` and narrowed by the facet `f=`",
 		"`##0` clears it and `@@0` a deferral on the edit surfaces",
 		"Children resolve only in the effective project",
 		"When changing the grammar, update parser definitions, completion, syntax guide, scenarios, and parity tests together",

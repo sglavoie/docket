@@ -146,6 +146,7 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 		ChecklistItems: append([]models.ChecklistItem(nil), m.draft.checklist...),
 		DueDate:        m.draft.dueDate,
 		Pinned:         m.draft.pinned,
+		Review:         m.draft.review,
 		Subtasks:       subReqs,
 		Attachments:    attachmentReqs,
 		Comments:       commentReqs,

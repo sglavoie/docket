@@ -9,8 +9,9 @@ import (
 )
 
 // helpKeyColumnWidth is the fixed cell width of the help key column. A display
-// key wider than this wraps mid-token, so every composed spelling must fit.
-const helpKeyColumnWidth = 16
+// key wider than this wraps mid-token, so every composed spelling must fit. The
+// widest one is the review pair, "=review =unreview".
+const helpKeyColumnWidth = 17
 
 // helpSectionOrder is the display order of `?` help sections. Its names are the
 // categories the projections actually emit: operationCategoryLabel produces the

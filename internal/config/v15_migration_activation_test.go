@@ -352,7 +352,7 @@ func TestManagerV15MigrationRefusesANewerWorkspace(t *testing.T) {
 	// The marker must land past CurrentConfigVersion, not merely past schema 15:
 	// the guard now refuses on what this build supports, so an intermediate
 	// schema the chain can still reach is not a newer workspace.
-	newer := bytes.Replace(source, []byte("\"schema_version\": 15"), []byte("\"schema_version\": 17"), 1)
+	newer := bytes.Replace(source, []byte("\"schema_version\": 15"), []byte("\"schema_version\": 18"), 1)
 	if bytes.Equal(newer, source) {
 		t.Fatalf("catalog does not carry the expected schema marker:\n%s", source)
 	}

@@ -227,26 +227,29 @@ func TestNamedLensSemanticRole(t *testing.T) {
 			want: namedLensRole{Kind: namedLensRoleDeferred},
 		},
 		{
-			name: "deferred outranks the review tag",
+			name: "deferred outranks the review flag",
 			lens: namedLensFixture(func(l *config.NamedLens) {
 				l.Tasks.Deferred = true
-				l.Tasks.Tags = []string{reviewTaskTag}
+				l.Tasks.Review = true
 			}),
 			want: namedLensRole{Kind: namedLensRoleDeferred},
 		},
 		{
-			name: "review task tag",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.Tags = []string{reviewTaskTag} }),
+			name: "stored review flag",
+			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.Review = true }),
 			want: namedLensRole{Kind: namedLensRoleReview},
 		},
 		{
-			name: "review tag matches its normalized spelling",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.Tags = []string{"Review"} }),
-			want: namedLensRole{Kind: namedLensRoleReview},
+			name: "a review tag name is now ordinary vocabulary",
+			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.Tags = []string{"review"} }),
+			want: namedLensRole{Kind: namedLensRoleNone},
 		},
 		{
-			name: "review tag beside a descriptive tag",
-			lens: namedLensFixture(func(l *config.NamedLens) { l.Tasks.Tags = []string{"ops", reviewTaskTag} }),
+			name: "review flag beside a descriptive tag",
+			lens: namedLensFixture(func(l *config.NamedLens) {
+				l.Tasks.Review = true
+				l.Tasks.Tags = []string{"ops"}
+			}),
 			want: namedLensRole{Kind: namedLensRoleReview},
 		},
 		{
@@ -573,7 +576,7 @@ func TestNamedLensPrimaryStyle(t *testing.T) {
 		{"priority 3", namedLensFixture(func(l *config.NamedLens) { l.Tasks.Priority = models.PriorityLow })},
 		{"due week", namedLensFixture(func(l *config.NamedLens) { l.Tasks.DueDate = config.LensDueWeek })},
 		{"deferred", namedLensFixture(func(l *config.NamedLens) { l.Tasks.Deferred = true })},
-		{"review", namedLensFixture(func(l *config.NamedLens) { l.Tasks.Tags = []string{reviewTaskTag} })},
+		{"review", namedLensFixture(func(l *config.NamedLens) { l.Tasks.Review = true })},
 		{"completed", namedLensStatesFixture(string(models.StateDone), string(models.StateCanceled))},
 		{"inbox group", namedLensStatesFixture(string(models.StateInbox))},
 		{"doing group", namedLensStatesFixture(string(models.StateDoing))},

@@ -60,9 +60,12 @@ func TestParseDate(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			// Month arithmetic clamps rather than overflows, so the expectation has
+			// to be AddMonthsClamped: on the 31st, time.AddDate would roll into the
+			// month after the one the parser lands in.
 			name:    "relative +1m",
 			input:   "+1m",
-			want:    today.AddDate(0, 1, 0),
+			want:    util.AddMonthsClamped(today, 1),
 			wantErr: false,
 		},
 		{
@@ -74,7 +77,7 @@ func TestParseDate(t *testing.T) {
 		{
 			name:    "next month keyword",
 			input:   "next month",
-			want:    today.AddDate(0, 1, 0),
+			want:    util.AddMonthsClamped(today, 1),
 			wantErr: false,
 		},
 		{
@@ -104,13 +107,13 @@ func TestParseDate(t *testing.T) {
 		{
 			name:    "in 1 month",
 			input:   "in 1 month",
-			want:    today.AddDate(0, 1, 0),
+			want:    util.AddMonthsClamped(today, 1),
 			wantErr: false,
 		},
 		{
 			name:    "in 3 months plural",
 			input:   "in 3 months",
-			want:    today.AddDate(0, 3, 0),
+			want:    util.AddMonthsClamped(today, 3),
 			wantErr: false,
 		},
 		{

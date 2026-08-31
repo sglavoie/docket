@@ -79,7 +79,7 @@ func TestTaskFormInlinePickersRenderStructuredRequiredGuidance(t *testing.T) {
 	renders := map[string]string{
 		"priority":  newFormPriorityPicker(form.draft.priority).render(formMinWidth, form.draft.priority),
 		"state":     newFormStatePicker(form.draft.state).render(formMinWidth, form.draft.state),
-		"flags":     newFormFlagsPicker(form.draft.pinned).render(formMinWidth),
+		"flags":     newFormFlagsPicker(form.draft.pinned, form.draft.review).render(formMinWidth),
 		"due date":  newFormDueDatePicker(form.draft.dueDate).render(formMinWidth, form.draft.dueDate),
 		"checklist": form.renderChecklistEditOverlay(),
 		"subtask":   form.renderSubtaskEditOverlay(),

@@ -180,17 +180,18 @@ func TestTaskTagListSourceGivesContextValuesTheirOwnSection(t *testing.T) {
 	}
 }
 
+// A semantic tag also carried as a context stays in SEMANTIC rather than
+// migrating to CONTEXTS: the row toggles the tag either way, and the semantic
+// section is the one that colors it. "review" is an ordinary descriptive tag
+// now, so it lands in TAGS beside every other name the vocabulary does not own.
 func TestTaskTagListSourceKeepsAPromotedContextInItsPromotedSection(t *testing.T) {
 	source := taskTagListSource([]TagInfo{
 		{Name: "bug", TaskCount: 1, ContextCount: 1},
 		{Name: "review", TaskCount: 1, ContextCount: 1},
 	}, false)
 
-	assertRowIDs(t, taskTagRowIDs(source.Items, taskTagWorkflowCategory), []string{"tag:review"})
 	assertRowIDs(t, taskTagRowIDs(source.Items, taskTagSemanticCategory), []string{"tag:bug"})
-	if rows := taskTagRowIDs(source.Items, taskContextCategory); len(rows) != 0 {
-		t.Fatalf("context rows = %v, want none", rows)
-	}
+	assertRowIDs(t, taskTagRowIDs(source.Items, taskContextCategory), []string{"tag:review"})
 }
 
 func TestOperationTagPickerJumpsBetweenSections(t *testing.T) {
@@ -208,7 +209,6 @@ func TestOperationTagPickerJumpsBetweenSections(t *testing.T) {
 	}{
 		{"t", "tag:backend"},
 		{"c", "tag:platform"},
-		{"w", "tag:review"},
 	} {
 		if _, dismissed, msg := picker.handleKey(keyPress(jump.key)); dismissed || msg != nil {
 			t.Fatalf("jump %q dismissed = %v, msg = %#v", jump.key, dismissed, msg)
@@ -226,7 +226,7 @@ func TestOperationTagPickerJumpsBetweenSections(t *testing.T) {
 	if status, ok := msg.(StatusMsg); !ok || string(status) != "No SEMANTIC rows" {
 		t.Fatalf("refused jump message = %#v, want the empty-section status", msg)
 	}
-	if item, ok := picker.surface.CurrentItem(); !ok || item.ID != "tag:review" {
+	if item, ok := picker.surface.CurrentItem(); !ok || item.ID != "tag:platform" {
 		t.Fatalf("a refused jump moved the cursor to %v", item.ID)
 	}
 }
@@ -274,8 +274,8 @@ func TestTaskTagCategoryJumpHintNamesOnlyPopulatedSections(t *testing.T) {
 	}
 	seeded := taskTagListSource([]TagInfo{{Name: "backend", TaskCount: 1}}, true)
 	hint = ansi.Strip(taskTagCategoryJumpHint(ValueProviderTags, seeded.Items, 120))
-	if got := strings.Join(strings.Fields(hint), " "); got != "jump w workflow · s semantic · t tags" {
-		t.Fatalf("seeded hint = %q, want the editor's three sections", got)
+	if got := strings.Join(strings.Fields(hint), " "); got != "jump s semantic · t tags" {
+		t.Fatalf("seeded hint = %q, want the editor's two sections", got)
 	}
 	for _, provider := range []ValueProviderID{ValueProviderProjectTags, ValueProviderFilterProjectTags} {
 		if got := taskTagCategoryJumpHint(provider, source.Items, 120); got != "" {
@@ -420,13 +420,12 @@ func TestSemanticTagPickerRowsWearTheTitleColorTheyApply(t *testing.T) {
 			source: taskTagListSource([]TagInfo{
 				{Name: "urgent", TaskCount: 3},
 				{Name: "platform", TaskCount: 1, ContextCount: 1},
-				{Name: reviewTaskTag, TaskCount: 1},
+				{Name: "triage", TaskCount: 1},
 			}, true),
 			rows: map[ListCategoryID]int{
-				taskTagWorkflowCategory: len(promotedTaskTags),
 				taskTagSemanticCategory: len(models.SemanticTaskTags),
 				taskContextCategory:     1,
-				tagDescriptiveCategory:  1,
+				tagDescriptiveCategory:  2,
 			},
 		},
 		{
@@ -485,16 +484,14 @@ func TestSemanticTagPickerRowsWearTheTitleColorTheyApply(t *testing.T) {
 }
 
 // tagPickerRowColor is the one rule for what color a tag picker row wears: the
-// color of the strongest thing the row does. A workflow row paints an All lane,
-// a semantic row paints a task title, a behavioral row paints its own badge, and
-// a row that changes no other color falls back to the chip its tag already wears
-// on the task row. A section with no case here answers false rather than a
-// fallback color, which is what stops a new one from shipping uncolored.
+// color of the strongest thing the row does. A semantic row paints a task title,
+// a behavioral row paints its own badge, and a row that changes no other color
+// falls back to the chip its tag already wears on the task row. A section with
+// no case here answers false rather than a fallback color, which is what stops a
+// new one from shipping uncolored.
 func tagPickerRowColor(t *testing.T, item ListItem) (lipgloss.Style, bool) {
 	t.Helper()
 	switch item.CategoryID {
-	case taskTagWorkflowCategory:
-		return PurpleStyle, true
 	case taskTagSemanticCategory:
 		task := &models.Task{Tags: []string{item.PrimaryText}}
 		return TaskTitleStyleFor(task, TaskTitleStyleOptions{}), true

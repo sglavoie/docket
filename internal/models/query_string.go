@@ -57,6 +57,8 @@ func (c QueryClause) token() string {
 		return "$" + c.Value
 	case QueryFieldPinned:
 		return "*pin"
+	case QueryFieldReview:
+		return "=review"
 	case QueryFieldCompleted:
 		if c.Operator == QueryOperatorAtLeast {
 			return "?" + string(QueryFieldCompleted) + ":" + c.Value
@@ -201,6 +203,8 @@ func splitQueryToken(token string) (QueryField, QueryOperator, string, error) {
 		return QueryFieldState, QueryOperatorIs, strings.TrimPrefix(token, "$"), nil
 	case token == "*pin":
 		return QueryFieldPinned, QueryOperatorPresent, "", nil
+	case token == "=review":
+		return QueryFieldReview, QueryOperatorPresent, "", nil
 	case strings.HasPrefix(token, "?"):
 		return splitDerivedQueryToken(strings.TrimPrefix(token, "?"))
 	case strings.HasPrefix(token, "+#"):

@@ -26,6 +26,7 @@ func TestQueryClauseStringRendersEveryFieldsToken(t *testing.T) {
 		{"@@2026-09-01", QueryFieldDefer, QueryOperatorIs, "2026-09-01"},
 		{"$waiting", QueryFieldState, QueryOperatorIs, string(StateWaiting)},
 		{"*pin", QueryFieldPinned, QueryOperatorPresent, ""},
+		{"=review", QueryFieldReview, QueryOperatorPresent, ""},
 		{"?stale", QueryFieldStale, QueryOperatorPresent, ""},
 		{"?deferred", QueryFieldDeferred, QueryOperatorPresent, ""},
 		{"?completed", QueryFieldCompleted, QueryOperatorPresent, ""},

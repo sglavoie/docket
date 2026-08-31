@@ -31,7 +31,7 @@ Bubble Tea is the product; Cobra holds only the launcher and maintenance
 commands.
 
 Layer ownership is strict: `internal/models` pure invariants, `internal/app` use
-cases and mutation policy, `internal/storage` schema-14 Markdown, transactions,
+cases and mutation policy, `internal/storage` schema-15 Markdown, transactions,
 conflicts and undo, `internal/config` the catalog/planning domains
 and migration, `internal/tui` the sole Outliner root and operation
 registry/executor, `internal/textgrammar` the capture/edit sigils. Keep a
@@ -56,11 +56,12 @@ The lifecycle states are:
 inbox, backlog, doing, waiting, paused, someday, done, canceled
 ```
 
-Review is not a lifecycle state and has no key of its own: `review` promotes an
+Review is not a lifecycle state. It is a stored boolean axis beside `Pinned`,
+written by the sigil `=` and narrowed by the facet `f=`, and it promotes an
 All-mode lane. Retired fields/states: migration DTOs/audits only. Task Markdown schema
-14 uses generic `Task` headings, project-local ShortID, retained fields,
-optional single-valued task `Context`, and an optional `depends` list of
-outgoing soft task references. `DueDate` is a calendar date with
+15 uses generic `Task` headings, project-local ShortID, retained fields, the
+stored `review` flag, optional single-valued task `Context`, and an optional
+`depends` list of outgoing soft task references. `DueDate` is a calendar date with
 optional `due_time`; `DeferredUntil` is an RFC3339Nano instant that can expire
 later the same day.
 
@@ -261,7 +262,8 @@ Root `$`, `z`, and `g` are chord prefixes, not direct keys: `z` never means
 snooze or defer, and cursor-top is `gg` or `Home`. `s`, `p`, and `t` fold the
 section, project, and task axes; `P` is Select Project; `Ctrl+P` selects pinned;
 `Q` is the query readout. A facet carrying a sigil answers to that sigil, so
-pinned is `f*`, references are `f~`, and the letter `fp` stays retired. A picker row is the canonical
+pinned is `f*`, references are `f~`, review is `f=`, and the letters `fp` and
+`fr` stay retired. A picker row is the canonical
 token it writes — the `f@` five are `@overdue`, `@today`, `@week`, `@0`,
 `?deferred` — and `acceptsPresetValue` refuses a binding naming any other
 spelling, so a picker mints no vocabulary of its own.
@@ -308,7 +310,7 @@ archiving preserves tags. Both filter at read time.
 Canonical capture sigils are:
 
 ```text
-!1-3 #tag ##context @date @@defer $destination *pin %project >parent <child ~task &link ;comment;
+!1-3 #tag ##context @date @@defer $destination *pin =review %project >parent <child ~task &link ;comment;
 ```
 
 `registry` is parse order and `guideOrder` teach order; `validateGuideOrder`
@@ -342,7 +344,9 @@ committing one transaction.
   title only when it changed. A refusal reopens the buffer; saving it unchanged
   abandons the edit.
 - `*unpin` belongs to edit and search: capture refuses it by name, and dropping
-  the `*pin` token is what unpins in the outline buffer.
+  the `*pin` token is what unpins in the outline buffer. `=review` mirrors that
+  pair exactly, `=unreview` included, and `$review` stays a refused destination
+  because a destination is a singleton and review coexists with a state.
 - `FieldChild` declares no `Clears`, which makes `<0` an ordinary unresolvable
   reference rather than a detach and the `<` picker additive: unchecking never
   detaches. `~` declares both `~0` and `-~task`, so its picker removes. A task
@@ -381,10 +385,12 @@ Only a recognized value the grammar cannot honor blocks a query.
 
 - `-` is the one negation: on a mutation surface it removes a value from the
   task, in search it removes matches from the result. Search reads `-!`, `-#`,
-  `-##`, `-@`, `-@@`, `-$`, `-*`, `-%`, `-~`, `-?`; only `-#` and `-~` mutate. A
+  `-##`, `-@`, `-@@`, `-$`, `-*`, `-=`, `-%`, `-~`, `-?`; only `-#` and `-~`
+  mutate. A
   negation owns no vocabulary — values, viability, diagnostics, presets, and
   completion resolve through its twin — and negatives join as an AND-of-nots at
-  any cardinality. `-*` declares no clear, so `-*unpin` stays prose. Each
+  any cardinality. `-*` and `-=` declare no clear, so `-*unpin` and `-=unreview`
+  stay prose. Each
   registers immediately before its twin, longer trigger first;
   `validateTriggerPrefixOrder` and `validateNegationPlacement` hold both.
 - `?` is search-only over a closed computed set — `stale`, `deferred`, `leaf`,
@@ -430,9 +436,11 @@ never takes a lens back. Workspace paths derive below approved roots; preserve
 symlink-aware containment, checked revisions, deterministic locks, and recovery
 manifests.
 
-Schema-16 catalogs hold schema-14 task Markdown. That pairing is descriptive,
-never derived: v16 advanced no task grammar, so it rewrote no `tasks.md`.
-Migration v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15→v16 validates each candidate first,
+Schema-17 catalogs hold schema-15 task Markdown. That pairing is descriptive,
+never derived: v16 advanced no task grammar, so it rewrote no `tasks.md`, while
+v17 lifts `review` off the tag list onto the stored flag and so rewrites all of
+them.
+Migration v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15→v16→v17 validates each candidate first,
 publishes an immutable archive/audit pair, then atomically activates the next
 schema and removes retired storage. Nothing may publish partial output before a
 snapshot boundary. v4/v5/v6/v11 decoders are migration-only: runtime code

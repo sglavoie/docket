@@ -68,6 +68,10 @@ func (p *quickCaptureParser) applySharedTokens(parsed textgrammar.Result) {
 	if p.err != nil {
 		return
 	}
+	p.parseReviewTokens(parsed.TokensFor(textgrammar.FieldReview))
+	if p.err != nil {
+		return
+	}
 	p.parseAttachmentTokens(parsed.TokensFor(textgrammar.FieldAttachment))
 	if p.err != nil {
 		return
@@ -153,6 +157,38 @@ func (p *quickCaptureParser) parsePinTokens(tokens []textgrammar.Token) {
 // accepted value stays owned by the definition instead of spelled out here.
 func pinSetValues() []string {
 	definition, ok := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldPinned)
+	if !ok {
+		return nil
+	}
+	return definition.Values
+}
+
+// parseReviewTokens reads the review token, refusing the clear value on the same
+// two surfaces and for the same reasons the pin one does: the outline buffer
+// clears by omission, and a captured task starts unflagged.
+func (p *quickCaptureParser) parseReviewTokens(tokens []textgrammar.Token) {
+	setValues := reviewSetValues()
+	for _, token := range tokens {
+		if slices.Contains(setValues, token.Value) {
+			p.result.review = true
+			continue
+		}
+		if p.surface == textgrammar.SurfaceOutline {
+			if p.failf("omit =review to clear the review flag here") {
+				return
+			}
+			continue
+		}
+		if p.failf("=unreview is not available when capturing; a new task starts unflagged") {
+			return
+		}
+	}
+}
+
+// reviewSetValues is the advertised review vocabulary, read from the registry
+// for the same reason pinSetValues is.
+func reviewSetValues() []string {
+	definition, ok := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldReview)
 	if !ok {
 		return nil
 	}

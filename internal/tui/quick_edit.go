@@ -51,6 +51,9 @@ type quickEditResult struct {
 	pinned    bool
 	pinnedSet bool
 
+	review    bool
+	reviewSet bool
+
 	targetProject *models.Project
 	parentMode    quickEditParentMode
 	parent        *models.Task
@@ -119,6 +122,7 @@ func parseQuickEditShared(input string, task *models.Task, project *models.Proje
 		return parser.result, parser.errMsg
 	}
 	parser.applyPin()
+	parser.applyReview()
 	if parser.applyProject() || parser.applyParent() || parser.applyChildren() || parser.applyDependencies() {
 		return parser.result, parser.errMsg
 	}
@@ -306,6 +310,18 @@ func (p *quickEditParser) applyPin() {
 	}
 	p.result.pinned = slices.Contains(pinSetValues(), tokens[0].Value)
 	p.result.pinnedSet = true
+}
+
+// applyReview reads the one review token this surface tokenizes. Like the pin
+// step, the vocabulary is closed and already validated, so the advertised set
+// value flags the task and the only other possibility is the clear value.
+func (p *quickEditParser) applyReview() {
+	tokens := p.parsed.TokensFor(textgrammar.FieldReview)
+	if len(tokens) == 0 {
+		return
+	}
+	p.result.review = slices.Contains(reviewSetValues(), tokens[0].Value)
+	p.result.reviewSet = true
 }
 
 func (p *quickEditParser) applyProject() bool {
@@ -968,6 +984,9 @@ func buildQuickEditPreview(result *quickEditResult, task *models.Task, project *
 	}
 	if result.pinnedSet {
 		preview.Pinned = result.pinned
+	}
+	if result.reviewSet {
+		preview.Review = result.review
 	}
 	switch result.parentMode {
 	case quickEditParentRoot:

@@ -62,6 +62,9 @@ type AddTaskRequest struct {
 	// Focus Queue membership is independent planning state handled at the
 	// config-aware layer, not a task field set here.
 	Pinned bool
+	// Review carries the form's review flag. Like Pinned it is a stored boolean,
+	// but it records no timestamp because nothing orders by when it was set.
+	Review bool
 	// Attachments are raw &link values in line order, carried through the same
 	// classification and the same ChangeSet as CaptureRequest.Attachments. The CLI
 	// `tt task add` path leaves it nil.
@@ -290,6 +293,9 @@ func (s *Service) buildNormalizedAddTask(snap Snapshot, req AddTaskRequest, norm
 		now := s.clock.Now()
 		task.Pinned = true
 		task.PinnedAt = &now
+	}
+	if req.Review {
+		task.Review = true
 	}
 
 	project.Tasks = append(project.Tasks, task)

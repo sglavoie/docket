@@ -109,6 +109,25 @@ func (q *quickCaptureInput) getPinSuggestions(partial string) []ACSuggestion {
 	return suggestions
 }
 
+// getReviewSuggestions returns the review options for the partial query. It
+// reads the capture definition for the same reason the pin one does: the
+// advertised vocabulary belongs to the registry, not to this list.
+func (q *quickCaptureInput) getReviewSuggestions(partial string) []ACSuggestion {
+	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldReview)
+	suggestions := make([]ACSuggestion, 0, len(def.Values))
+	partialLower := strings.ToLower(partial)
+	for _, value := range def.Values {
+		if partial != "" && !strings.HasPrefix(value, partialLower) {
+			continue
+		}
+		suggestions = append(suggestions, ACSuggestion{
+			Display: def.Trigger + value,
+			Value:   value,
+		})
+	}
+	return suggestions
+}
+
 // getDateSuggestions returns common due date options for the partial query.
 func (q *quickCaptureInput) getDateSuggestions(partial string) []ACSuggestion {
 	var suggestions []ACSuggestion

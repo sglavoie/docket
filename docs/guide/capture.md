@@ -10,13 +10,13 @@ One nonblank line creates one task. Multiple lines are fully parsed and
 validated before one atomic transaction is committed.
 
 ```text
-!1-3  #tag  ##context  @date  @@defer  $destination  *pin  %project  >parent  <child  ~task  &link  ;comment;
+!1-3  #tag  ##context  @date  @@defer  $destination  *pin  =review  %project  >parent  <child  ~task  &link  ;comment;
 ```
 
 - `!1` through `!3` set High, Medium, or Low priority.
 - `#tag` creates and sets a lowercase ASCII kebab tag on the fly. Input is
-  canonicalized (`#Needs / Review` becomes `needs-review`); `#review` feeds the
-  Review lane.
+  canonicalized (`#Needs / Review` becomes `needs-review`). A tag decides
+  nothing about the Review lane; `=review` does.
 - `##context` sets one optional task-level context, normalized by the same rules
   as a tag. It is distinct from the retired v4 project-level context. `##0`
   clears the value on the edit surfaces only; outline editing clears it by
@@ -36,6 +36,11 @@ validated before one atomic transaction is committed.
 - `*pin` pins the task, exactly as the `*` key does on an existing row. Only
   `pin` and `unpin` are recognized, and any other value stays in the title, so
   `Refactor *args handling` keeps its `*args`.
+- `=review` flags the task for the Review lane. It is the same shape as the pin:
+  only `review` and `unreview` are recognized, so `a=b` stays prose, and
+  `=unreview` clears the flag on the edit and search surfaces alone — a new task
+  starts unflagged, so capture refuses it by name. Review has no key of its own;
+  the sigil and the `f=` filter facet are its whole keyboard surface.
 - `%project` overrides scope routing.
 - `>parent` resolves inside the selected project after project routing.
 - `<child` adopts a task that already exists, and may be repeated. `>parent`
@@ -146,8 +151,8 @@ any task carries them, while `f#` Filter by Tags stays usage-derived and lists
 only the ones in use.
 
 Task contexts are their own filter axis on `fc`, so `f#` narrows tags alone and
-carries no `CONTEXTS` section at all. In both tag pickers `w`, `s`, `c`, and `t`
-jump the cursor to the first `WORKFLOW`, `SEMANTIC`, `CONTEXTS`, and `TAGS` row,
+carries no `CONTEXTS` section at all. In both tag pickers `s`, `c`, and `t`
+jump the cursor to the first `SEMANTIC`, `CONTEXTS`, and `TAGS` row,
 and a hint line inside the overlay names the sections that picker actually has —
 which is what drops `c` from the `f#` hint. `CONTEXTS` therefore means one thing
 only: in `#` those are the `##name` radio rows that write the field, listed above
@@ -177,13 +182,14 @@ Parents are project-local and hierarchy depth is capped at six.
 `$EDITOR`, and applies the whole tree when you save and quit. Indentation is
 parentage: two spaces per level, up to the usual depth of six. Every line
 otherwise speaks the ordinary capture grammar, so `!2`, `#tag`, `##context`, `@friday`,
-`$backlog`, `*pin`, and `~task` all work, while `>parent` and `<child` are rejected
+`$backlog`, `*pin`, `=review`, and `~task` all work, while `>parent` and `<child` are rejected
 because the indentation already said it, `@@defer` is rejected because the
 buffer carries no deferral at all, and `&link` and `;comment;` are rejected
 because attaching and commenting are creation-time acts the buffer could only
 duplicate. The dump prints the values a task
 currently holds, so a pinned task arrives carrying `*pin` and deleting that
-token unpins it; there is no `*unpin` here. Dependencies dump the same way, as
+token unpins it; there is no `*unpin` here. `=review` dumps and clears the same
+way, for the same reason. Dependencies dump the same way, as
 one `~` token each in the shortest form that still addresses the target: a bare
 short ID inside the dumped project, a slug-qualified `~radar:7` in another
 loaded one, and the durable `~project-id:task-id` locator when this workspace

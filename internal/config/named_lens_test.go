@@ -150,7 +150,7 @@ func TestBuiltinNamedLensTemplatesExactCatalog(t *testing.T) {
 			ID:    "6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6c06",
 			Name:  "Review Queue",
 			Mode:  LensModeAll,
-			Tasks: LensTaskFilters{Tags: []string{"review"}},
+			Tasks: LensTaskFilters{Review: true},
 			Sort:  LensSort{Field: LensSortUpdated, Ascending: true},
 		},
 		{

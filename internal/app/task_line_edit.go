@@ -42,7 +42,8 @@ type TaskLineParentPatch struct {
 // children are untouched and repeated locators collapse to the first occurrence.
 //
 // Pinned is preserve-on-nil like Priority, and re-declaring the state the task
-// already holds is a no-op that keeps PinnedAt.
+// already holds is a no-op that keeps PinnedAt. Review is preserve-on-nil for
+// the same reason and carries no timestamp of its own.
 //
 // Description is preserve-on-nil too, and carries the body an external-editor
 // round trip returns so title and description land in the same transaction.
@@ -57,6 +58,7 @@ type TaskLineEditRequest struct {
 	Defer                *time.Time
 	Context              *string
 	Pinned               *bool
+	Review               *bool
 	Destination          *CaptureDestination
 	TagsToAdd            []string
 	TagsToRemove         []string
@@ -100,6 +102,7 @@ type preparedTaskLineEdit struct {
 	deferUntil         *time.Time
 	context            *string
 	pinned             *bool
+	review             *bool
 	tags               []string
 	destination        *CaptureDestination
 	parentMode         TaskLineParentMode
@@ -400,6 +403,10 @@ func prepareTaskLineScalars(prepared *preparedTaskLineEdit, req TaskLineEditRequ
 		pinned := *req.Pinned
 		prepared.pinned = &pinned
 	}
+	if req.Review != nil {
+		review := *req.Review
+		prepared.review = &review
+	}
 	if req.Context != nil {
 		context := ""
 		if *req.Context != "" {
@@ -638,6 +645,9 @@ func applyPreparedTaskLineFields(task *models.Task, prepared preparedTaskLineEdi
 		changed = true
 	}
 	if prepared.pinned != nil && task.ApplyPinned(*prepared.pinned, now) {
+		changed = true
+	}
+	if prepared.review != nil && task.ApplyReview(*prepared.review, now) {
 		changed = true
 	}
 	// A patch that resolves to the set already stored — adding what is there,

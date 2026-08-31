@@ -68,7 +68,7 @@ completion age to `fa` and leaving `f#` to tags alone.
 | `f$` | workflow states |
 | `f#` | tags |
 | `fc` | task contexts |
-| `fr` | Review tag |
+| `f=` | Review flag (this row read `fr` when the decision was taken) |
 | `fh` | hierarchy position |
 | `fx` | clear all task filters |
 

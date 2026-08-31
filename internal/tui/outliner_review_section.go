@@ -1,5 +1,10 @@
 package tui
 
+// reviewLaneKey names the Review lane on the synthetic rows that carry it. It
+// is a lane identity, not a tag: review is a stored boolean on the task, and
+// nothing here reads a tag list.
+const reviewLaneKey = "review"
+
 const (
 	reviewSectionCollapseKey           = "_promoted:review"
 	reviewProjectSectionCollapsePrefix = "_promoted_project:review:"
@@ -11,10 +16,10 @@ type reviewSectionBuild struct {
 	projected map[TaskIdentity]bool
 }
 
-// buildReviewSection promotes ordinary open tasks carrying #review into the
-// sparse All-mode Review lane. Pinning and explicit Today/Next membership are
+// buildReviewSection promotes ordinary open tasks carrying the stored review
+// flag into the sparse All-mode Review lane. Pinning and explicit Today/Next membership are
 // stronger claims: a deliberate planning commitment outranks a descriptive tag,
-// so planning a review-tagged task moves its row instead of duplicating it.
+// so planning a flagged task moves its row instead of duplicating it.
 func (m *OutlinerModel) buildReviewSection(
 	input OutlinerModeInput,
 	pinned, today, next map[TaskIdentity]bool,
@@ -25,7 +30,7 @@ func (m *OutlinerModel) buildReviewSection(
 		task, project := candidate.row.Task, candidate.row.Project
 		identity := taskIdentityFor(task, project)
 		if task == nil || project == nil || task.IsTerminalState() || task.IsDeferredAt(input.now()) ||
-			!task.HasTag(reviewTaskTag) ||
+			!task.Review ||
 			pinned[identity] || today[identity] || next[identity] {
 			continue
 		}
@@ -36,7 +41,7 @@ func (m *OutlinerModel) buildReviewSection(
 			continue
 		}
 		row := m.outlinerRowFromModeRow(candidate.row)
-		row.PromotedTag = reviewTaskTag
+		row.PromotedTag = reviewLaneKey
 		row.Breadcrumb = taskAncestorBreadcrumb(task)
 		row.hasVisibleChildren = false
 		result.projected[identity] = true
@@ -56,14 +61,14 @@ func (m *OutlinerModel) appendReviewSection(section reviewSectionBuild) {
 		SectionName:     "Review",
 		SectionCount:    section.count,
 		CollapseKey:     reviewSectionCollapseKey,
-		PromotedTag:     reviewTaskTag,
+		PromotedTag:     reviewLaneKey,
 	})
 	if m.sectionCollapsed(reviewSectionCollapseKey) {
 		return
 	}
 	m.appendProjectGroupedForests(
 		section.groups,
-		outlinerRow{PromotedTag: reviewTaskTag},
+		outlinerRow{PromotedTag: reviewLaneKey},
 		func(projectID string) string {
 			return reviewProjectSectionCollapsePrefix + projectID
 		},

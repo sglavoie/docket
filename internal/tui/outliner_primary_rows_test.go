@@ -93,21 +93,22 @@ func TestPrimaryAllUsesCanonicalGroupsAndDeduplicatesToday(t *testing.T) {
 }
 
 // TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership pins the
-// Review lane to the review tag alone. Context is its own axis, so a task whose
-// context happens to spell review stays in its lifecycle group: the lane reads
-// HasTag, never the context field.
+// Review lane to the stored review flag alone. Every other axis stays its own,
+// so a task whose context or tag list happens to spell review stays in its
+// lifecycle group: the lane reads task.Review and nothing else.
 func TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership(t *testing.T) {
 	reviewed := primaryRowsTask("reviewed", models.StateBacklog)
-	reviewed.AddTag(reviewTaskTag)
+	reviewed.Review = true
 	reviewedToday := primaryRowsTask("reviewed-today", models.StateBacklog)
-	reviewedToday.AddTag(reviewTaskTag)
+	reviewedToday.Review = true
 	reviewedNext := primaryRowsTask("reviewed-next", models.StateBacklog)
-	reviewedNext.AddTag(reviewTaskTag)
+	reviewedNext.Review = true
 	contextReviewed := primaryRowsTask("context-reviewed", models.StateBacklog)
-	contextReviewed.Context = reviewTaskTag
+	contextReviewed.Context = reviewLaneKey
+	contextReviewed.AddTag(reviewLaneKey)
 	doing := primaryRowsTask("doing", models.StateDoing)
 	pinned := primaryRowsTask("pinned-review", models.StateDoing)
-	pinned.AddTag(reviewTaskTag)
+	pinned.Review = true
 	pinned.Pinned = true
 	now := time.Now()
 	pinned.PinnedAt = &now
@@ -125,7 +126,7 @@ func TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership(t *testing.
 		next        bool
 		pinned      bool
 	}{
-		{id: reviewed.ID, want: "Review lane", promotedTag: reviewTaskTag},
+		{id: reviewed.ID, want: "Review lane", promotedTag: reviewLaneKey},
 		{id: contextReviewed.ID, want: "unpromoted backlog row"},
 		{id: reviewedToday.ID, want: "Today precedence", today: true},
 		{id: reviewedNext.ID, want: "Next precedence", next: true},
@@ -146,7 +147,7 @@ func TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership(t *testing.
 		if row.IsSectionHeader && row.StateGroup == models.StateGroupDoing {
 			doingIndex = index
 		}
-		if row.IsSectionHeader && row.PromotedTag == reviewTaskTag {
+		if row.IsSectionHeader && row.PromotedTag == reviewLaneKey {
 			reviewIndex = index
 			reviewCount = row.SectionCount
 		}
@@ -155,13 +156,13 @@ func TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership(t *testing.
 		t.Fatalf("Doing index=%d Review index=%d, want Review after Doing", doingIndex, reviewIndex)
 	}
 	if reviewCount != 1 {
-		t.Fatalf("Review section count = %d, want the one unplanned review-tagged task", reviewCount)
+		t.Fatalf("Review section count = %d, want the one unplanned flagged task", reviewCount)
 	}
-	if reviewed.State() != models.StateBacklog || !reviewed.HasTag(reviewTaskTag) {
-		t.Fatalf("Review projection mutated durable task: state=%s tags=%v", reviewed.State(), reviewed.Tags)
+	if reviewed.State() != models.StateBacklog || !reviewed.Review {
+		t.Fatalf("Review projection mutated durable task: state=%s review=%v", reviewed.State(), reviewed.Review)
 	}
-	if !reviewedToday.HasTag(reviewTaskTag) || !reviewedNext.HasTag(reviewTaskTag) {
-		t.Fatalf("planning precedence stripped the review tag: today=%v next=%v", reviewedToday.Tags, reviewedNext.Tags)
+	if !reviewedToday.Review || !reviewedNext.Review {
+		t.Fatalf("planning precedence cleared the review flag: today=%v next=%v", reviewedToday.Review, reviewedNext.Review)
 	}
 	today := runtime.Planning().GetToday()
 	if len(today) != 1 || today[0].TaskID != reviewedToday.ID {
@@ -171,8 +172,8 @@ func TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership(t *testing.
 	if len(next) != 1 || next[0].TaskID != reviewedNext.ID {
 		t.Fatalf("Next membership = %+v, want only %q", next, reviewedNext.ID)
 	}
-	if contextReviewed.Context != reviewTaskTag || len(contextReviewed.Tags) != 0 {
-		t.Fatalf("Review projection mutated context task: context=%q tags=%v", contextReviewed.Context, contextReviewed.Tags)
+	if contextReviewed.Context != reviewLaneKey || contextReviewed.Review {
+		t.Fatalf("Review projection mutated context task: context=%q review=%v", contextReviewed.Context, contextReviewed.Review)
 	}
 }
 
@@ -190,7 +191,7 @@ func TestPrimaryAllStaleLanePrecedenceAndOrder(t *testing.T) {
 	today := staleTask("today-stale", models.StateBacklog)
 	next := staleTask("next-stale", models.StateBacklog)
 	review := staleTask("review-stale", models.StateBacklog)
-	review.AddTag(reviewTaskTag)
+	review.Review = true
 	review.UpdatedAt = old
 	doing := staleTask("doing-stale", models.StateDoing)
 	stale := staleTask("plain-stale", models.StateBacklog)

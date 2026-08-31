@@ -361,6 +361,7 @@ func lensFilterState(tasks config.LensTaskFilters) (FilterState, error) {
 	filter.Stale = tasks.Stale
 	filter.Deferred = tasks.Deferred
 	filter.Pinned = tasks.Pinned
+	filter.Review = tasks.Review
 	return filter, nil
 }
 
@@ -405,6 +406,7 @@ func (s lensState) fingerprint() string {
 		strconv.FormatBool(lens.Tasks.Stale),
 		strconv.FormatBool(lens.Tasks.Deferred),
 		strconv.FormatBool(lens.Tasks.Pinned),
+		strconv.FormatBool(lens.Tasks.Review),
 		strings.Join(lens.Projects.Tags, ","),
 		strconv.FormatBool(lens.Projects.Untagged),
 		lens.Projects.ParkedMode,

@@ -235,6 +235,11 @@ func commonFilterReadoutRows(f *CommonFilterState) []queryReadoutRow {
 			[]models.QueryField{models.QueryFieldPinned},
 			filterClauseList(models.QueryFieldPinned, models.QueryOperatorPresent, ""), ""))
 	}
+	if f.Review {
+		rows = append(rows, clauseReadoutRow("filter",
+			[]models.QueryField{models.QueryFieldReview},
+			filterClauseList(models.QueryFieldReview, models.QueryOperatorPresent, ""), ""))
+	}
 	return rows
 }
 

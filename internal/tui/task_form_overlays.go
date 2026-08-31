@@ -175,6 +175,7 @@ func (m *TaskFormModel) applyFormOverlayResult(msg tea.Msg) {
 		m.err = nil
 	case TaskFormFlagsPickedMsg:
 		m.draft.pinned = msg.Pinned
+		m.draft.review = msg.Review
 		m.hasChanges = true
 		m.err = nil
 	case TaskFormDueDatePickedMsg:

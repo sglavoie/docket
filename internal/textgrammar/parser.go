@@ -195,7 +195,7 @@ func validTokenValue(spec definitionSpec, value string, surface Surface) bool {
 		return surface == SurfaceEdit && value != ""
 	case validateTag:
 		return validTagTokenValue(value)
-	case validatePin:
+	case validateClosedSet:
 		// The clear value tokenizes on every surface, including the ones that do
 		// not advertise it: the consumer refuses it with a message, where the
 		// tokenizer could only fold the word silently into the title.
@@ -219,7 +219,7 @@ func validTokenValue(spec definitionSpec, value string, surface Surface) bool {
 // path it names rather than as its quoting. It is deliberately lexical only:
 // this package must not import internal/storage, and whether a path exists is
 // the application layer's question. An unrecognized value is not consumed, the
-// validatePin behavior rather than priority's, because & is ordinary prose
+// validateClosedSet behavior rather than priority's, because & is ordinary prose
 // ("R&D", "Q&A", "&nbsp;").
 func validAttachmentTokenValue(value string) bool {
 	if value == "" {

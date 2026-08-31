@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	taskTagWorkflowCategory ListCategoryID = "task-tag:workflow"
 	taskTagSemanticCategory ListCategoryID = "task-tag:semantic"
 	taskContextCategory     ListCategoryID = "task-tag:context"
 
@@ -35,7 +34,6 @@ var taskTagJumpSections = []struct {
 	Label    string
 	Category ListCategoryID
 }{
-	{Key: "w", Label: "workflow", Category: taskTagWorkflowCategory},
 	{Key: "s", Label: "semantic", Category: taskTagSemanticCategory},
 	{Key: "c", Label: "contexts", Category: taskContextCategory},
 	{Key: "t", Label: "tags", Category: tagDescriptiveCategory},
@@ -63,43 +61,12 @@ func semanticTaskTagProvider(provider ValueProviderID) bool {
 // editor wants for discovery and the filter must not do, because a filter row
 // nothing matches can only empty the projection.
 func taskTagListSource(tags []TagInfo, seedUnused bool) ListSource {
-	items := make([]ListItem, 0, len(tags)+len(models.SemanticTaskTags)+len(promotedTaskTags))
+	// The picker offers the semantic vocabulary and the tags in use, and nothing
+	// else. Review used to lead it as a promoted workflow tag; it is a stored
+	// boolean now, reached by =review and f=, so offering it here would mint an
+	// ordinary tag that looks like the lane and drives nothing.
+	items := make([]ListItem, 0, len(tags)+len(models.SemanticTaskTags))
 	promoted := make(map[string]bool, len(tags))
-	for _, entry := range promotedTaskTags {
-		count, inUse := 0, false
-		for _, tag := range tags {
-			if tag.Name == entry.Tag {
-				count, inUse = tag.TaskCount, true
-				promoted[tag.Name] = true
-				break
-			}
-		}
-		if seedUnused || inUse {
-			// A workflow row wears the color of the lane it promotes: the violet
-			// band ViewModeReviewStyle fills the Review header with, as a
-			// foreground here because a list row paints a padded primary column
-			// and a fill would break its gap. The band is shared, not minted, so
-			// the row and the lane it opens cannot name one tag in two colors.
-			// Every promoted tag takes it from the loop rather than by name, so a
-			// registry entry that does not exist yet still renders colored; a
-			// second promoted tag wanting its own lane color would have to teach
-			// both places at once.
-			style := PurpleStyle
-			items = append(items, ListItem{
-				ID:            ListItemID("tag:" + entry.Tag),
-				CategoryID:    taskTagWorkflowCategory,
-				PrimaryText:   entry.Tag,
-				SecondaryText: "workflow lane",
-				Aliases:       []string{entry.Tag, "#" + entry.Tag, entry.Label},
-				PrimaryStyle:  &style,
-				Preview: ListPreview{Title: entry.Label, Fields: []ListPreviewField{
-					{Label: "Tag", Value: "#" + entry.Tag},
-					{Label: "Tasks", Value: strconv.Itoa(count)},
-				}},
-				Data: entry.Tag,
-			})
-		}
-	}
 	for _, entry := range models.SemanticTaskTags {
 		canonicalInUse := false
 		for _, tag := range tags {
@@ -161,7 +128,6 @@ func taskTagListSource(tags []TagInfo, seedUnused bool) ListSource {
 	return ListSource{
 		Items: items,
 		Categories: []ListCategory{
-			{ID: taskTagWorkflowCategory, Label: "Workflow"},
 			{ID: taskTagSemanticCategory, Label: "Semantic"},
 			{ID: taskContextCategory, Label: "Contexts"},
 			{ID: tagDescriptiveCategory, Label: "Tags"},

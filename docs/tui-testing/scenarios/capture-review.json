@@ -1,0 +1,31 @@
+{
+  "name": "capture-review",
+  "fixture": "fresh",
+  "size": "80x24",
+  "actions": [
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "key", "label": "capture into Unfiled", "key": "a" },
+    { "type": "assert", "assert": "view", "value": "TaskComposer" },
+    { "type": "text", "label": "flag the task as it is created", "text": "Flagged task =review " },
+    { "type": "assert", "label": "the preview names the review group", "assert": "contains", "value": "Review" },
+    { "type": "key", "label": "commit the capture", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "view", "value": "CrossProjectOutliner" },
+    { "type": "assert", "assert": "status_contains", "value": "Add Task: #1 Flagged task" },
+    { "type": "assert", "label": "the new task renders in the All-mode Review lane", "assert": "contains", "value": "@ Review  (1)" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "key": "home" },
+    { "type": "key", "label": "past the Review section header", "key": "j" },
+    { "type": "key", "label": "past the project header onto the flagged row", "key": "j" },
+    { "type": "key", "label": "edit the row in place", "key": "e" },
+    { "type": "assert", "assert": "contains", "value": "EDIT TASK" },
+    { "type": "text", "label": "the clear form exists only on the edit surface", "text": " =unreview " },
+    { "type": "key", "key": "enter" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "status_contains", "value": "Edit Task Line: #1 Flagged task" },
+    { "type": "assert", "label": "the Review lane is gone", "assert": "not_contains", "value": "@ Review" },
+    { "type": "assert", "label": "the task itself survived the clear", "assert": "contains", "value": "Flagged task" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

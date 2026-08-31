@@ -133,7 +133,7 @@ func filterOperationDescriptors() []OperationDescriptor {
 		descriptor(operationFilterStates, "Filter by State", ValueProviderFilterStates, "state filter"),
 		descriptor(operationFilterTags, "Filter by Tags", ValueProviderFilterTags, "tag filter"),
 		descriptor(operationFilterContexts, "Filter by Context", ValueProviderFilterContexts, "context filter"),
-		descriptor(operationFilterReview, "Filter Review", "", "review tag filter"),
+		descriptor(operationFilterReview, "Filter Review", "", "review flag filter", "flagged for review"),
 		descriptor(operationFilterDue, "Filter by Due or Deferred", ValueProviderFilterDue, "due filter", "deferred", "hidden"),
 		descriptor(operationFilterCompletionAge, "Filter by Completion Age", ValueProviderFilterCompletionAge, "completion age", "cleanup age"),
 		descriptor(operationFilterHierarchy, "Filter by Hierarchy", ValueProviderFilterHierarchy, "hierarchy position", "parent or child"),
@@ -229,7 +229,7 @@ func filterOperationFields(id OperationID) []models.QueryField {
 		return []models.QueryField{models.QueryFieldPriority}
 	case operationFilterStates:
 		return []models.QueryField{models.QueryFieldState}
-	case operationFilterTags, operationFilterReview:
+	case operationFilterTags:
 		return []models.QueryField{models.QueryFieldTag}
 	case operationFilterContexts:
 		return []models.QueryField{models.QueryFieldContext}
@@ -252,6 +252,8 @@ func filterOperationFields(id OperationID) []models.QueryField {
 		return []models.QueryField{models.QueryFieldStale}
 	case operationFilterPinned:
 		return []models.QueryField{models.QueryFieldPinned}
+	case operationFilterReview:
+		return []models.QueryField{models.QueryFieldReview}
 	case operationFilterClear:
 		return filterQueryTaskFields()
 	case operationFilterProjectTags:
@@ -447,7 +449,13 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation OperationInvocation) (fil
 		}
 		return filterClauseEdit{clauses: clauses, status: status}, nil
 	case operationFilterReview:
-		return m.reviewFilterClauseEdit(), nil
+		if m.filter.Review {
+			return filterClauseEdit{status: "Review filter cleared"}, nil
+		}
+		return filterClauseEdit{
+			clauses: filterClauseList(models.QueryFieldReview, models.QueryOperatorPresent, ""),
+			status:  "Filtering Review",
+		}, nil
 	case operationFilterStale:
 		if m.filter.Stale {
 			return filterClauseEdit{status: "Stale filter cleared"}, nil
@@ -502,27 +510,6 @@ func contextFilterClauses(names []string) []models.QueryClause {
 			models.QueryOperatorIs, name)
 	}
 	return clauses
-}
-
-// reviewFilterClauseEdit toggles the review tag inside the tag facet, leaving
-// every other tag the picker chose in place.
-func (m *OutlinerModel) reviewFilterClauseEdit() filterClauseEdit {
-	current := queryClausesForField(m.filterQuery, models.QueryFieldTag)
-	kept := make([]models.QueryClause, 0, len(current)+1)
-	found := false
-	for _, clause := range current {
-		if clause.Value == reviewTaskTag {
-			found = true
-			continue
-		}
-		kept = append(kept, clause)
-	}
-	if found {
-		return filterClauseEdit{clauses: kept, status: "Review filter cleared"}
-	}
-	kept = appendFilterClause(kept, models.QueryFieldTag,
-		models.QueryOperatorIs, reviewTaskTag)
-	return filterClauseEdit{clauses: kept, status: "Filtering Review"}
 }
 
 func priorityThresholdLabel(threshold int) string {

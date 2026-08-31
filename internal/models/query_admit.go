@@ -100,6 +100,8 @@ func queryClauseMatches(clause QueryClause, task *Task, project *Project, now ti
 		return string(task.State()) == clause.Value
 	case QueryFieldPinned:
 		return task.Pinned
+	case QueryFieldReview:
+		return task.Review
 	case QueryFieldStale:
 		return QueryTaskIsStale(task, now)
 	case QueryFieldDeferred:

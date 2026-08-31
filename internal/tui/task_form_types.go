@@ -39,6 +39,7 @@ type taskFormDraft struct {
 	parentID *string
 	state    models.WorkflowState
 	pinned   bool
+	review   bool
 	tags     []string
 	dueDate  *time.Time
 	dueInput string

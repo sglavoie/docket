@@ -229,6 +229,7 @@ func parseOutlineBodies(structural []outlineBufferLine, project *models.Project,
 			Context:    parsed.context,
 			Due:        parsed.dueDate,
 			Pinned:     parsed.pinned,
+			Review:     parsed.review,
 			// The parser has already folded -~task and ~0 in, so this is the final
 			// set the line declares rather than a patch over the stored one.
 			Dependencies: dependencyLocators(parsed.dependencies),

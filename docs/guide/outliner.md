@@ -104,7 +104,7 @@ the color it is about to paint. Most of those rows paint nothing else and simply
 wear their own chip: the descriptive tag rows, and the tag rows that `#` collects
 under `CONTEXTS` because the same value is also in use as a context. A tag that does
 something louder shows that instead — a row under `SEMANTIC` wears the title
-color it applies, `review` under `WORKFLOW` wears its lane's purple, and a
+color it applies, and a
 `parked` project row wears the warning badge it hangs on the project. So the
 same tag can read as one color in a picker and another as a chip; when they
 disagree, the picker is naming the effect. Two rows stay plain on purpose: the
@@ -150,7 +150,7 @@ newest-first and `J`/`K` reorder them manually; a pinned subtree ranks by its
 own root's pin. `Ctrl+J`/`Ctrl+K` take the same route
 in one press and one undo entry. All, Inbox, and Backlog preserve hierarchy and
 manual sibling order. Today and Next preserve workspace-wide planning order. Review is the sparse set of open tasks
-tagged `review`. That list is draw order, not claim order: a pinned task or one
+you have flagged with `=review`. That list is draw order, not claim order: a pinned task or one
 you have planned into Today or Next claims its row there and never also appears
 under Review. Stale follows Review and collects open, undeferred work whose
 `UpdatedAt` touch time is at least 90 local-calendar days old. Pinned, Today,

@@ -366,7 +366,7 @@ func SimplifiedInputStrategy() InputStrategy {
 			// Context is declared immediately after tags so the which-key row
 			// reads tags then contexts, which is the order the two sigils teach.
 			{OperationID: operationFilterContexts, Sequence: []string{"f", "c"}, DisplayKey: "fc", HintLabel: "contexts"},
-			{OperationID: operationFilterReview, Sequence: []string{"f", "r"}, DisplayKey: "fr", HintLabel: "review"},
+			{OperationID: operationFilterReview, Sequence: []string{"f", "="}, DisplayKey: "f=", HintLabel: "review"},
 			{OperationID: operationFilterHierarchy, Sequence: []string{"f", "h"}, DisplayKey: "fh", HintLabel: "hierarchy"},
 			// A facet carrying a sigil answers to that sigil, so the reference axis
 			// is f~ and no letter is bound to it.

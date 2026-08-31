@@ -365,6 +365,7 @@ func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, bool) {
 			Destination:  destination,
 			Prepend:      true,
 			Pinned:       parsed.pinned,
+			Review:       parsed.review,
 			Attachments:  parsed.attachments,
 			Comments:     parsed.comments,
 			Dependencies: parsed.dependencyLocators(),

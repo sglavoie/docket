@@ -26,8 +26,8 @@ func TestLiveProjectDocumentRoundTripsDependencies(t *testing.T) {
 	if err != nil {
 		t.Fatalf("WriteCurrent: %v", err)
 	}
-	if !strings.Contains(content, schemaMarkerV14) {
-		t.Fatalf("live document is not schema 14:\n%s", content)
+	if !strings.Contains(content, schemaMarkerV15) {
+		t.Fatalf("live document is not schema 15:\n%s", content)
 	}
 	if !strings.Contains(content, "depends: project-beta:task-9;project-alpha:task-1") {
 		t.Fatalf("live document omitted the dependency list:\n%s", content)
@@ -36,8 +36,8 @@ func TestLiveProjectDocumentRoundTripsDependencies(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseProjectDocument: %v", err)
 	}
-	if parsed.SchemaVersion != SchemaVersionV14 {
-		t.Fatalf("parsed schema = %d, want %d", parsed.SchemaVersion, SchemaVersionV14)
+	if parsed.SchemaVersion != SchemaVersionV15 {
+		t.Fatalf("parsed schema = %d, want %d", parsed.SchemaVersion, SchemaVersionV15)
 	}
 	if !models.TaskReferencesEqual(parsed.Tasks[0].Dependencies, doc.Tasks[0].Dependencies) {
 		t.Fatalf("dependencies = %+v, want %+v", parsed.Tasks[0].Dependencies, doc.Tasks[0].Dependencies)
@@ -60,18 +60,18 @@ func TestEmptyDependenciesLeaveLiveBytesUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatalf("render schema 13: %v", err)
 	}
-	if strings.Replace(content, schemaMarkerV14, schemaMarkerV13, 1) != v13 {
-		t.Fatalf("schema-14 bytes differ from schema 13 beyond the marker\nv14: %s\nv13: %s", content, v13)
+	if strings.Replace(content, schemaMarkerV15, schemaMarkerV13, 1) != v13 {
+		t.Fatalf("live bytes differ from schema 13 beyond the marker\nlive: %s\nv13: %s", content, v13)
 	}
 }
 
 func v13ProjectDocumentFromV14Model(t *testing.T, doc *ProjectDocument) (string, error) {
 	t.Helper()
-	lifted, err := v14ProjectDocumentFromModel(&models.Project{Name: doc.ProjectName, Tasks: doc.Tasks})
+	lifted, err := v15ProjectDocumentFromModel(&models.Project{Name: doc.ProjectName, Tasks: doc.Tasks})
 	if err != nil {
 		return "", err
 	}
-	return WriteV13ProjectDocument(v13ProjectDocumentFromV14(lifted))
+	return WriteV13ProjectDocument(v13ProjectDocumentFromV14(v14ProjectDocumentFromV15(lifted)))
 }
 
 func TestV14ProjectDocumentLiftFromV13AddsNoDependencies(t *testing.T) {
@@ -94,7 +94,7 @@ func TestV14ProjectDocumentLiftFromV13AddsNoDependencies(t *testing.T) {
 
 func v13ProjectTestRecord() format.V13TaskRecord {
 	task := mergeTestTask("task-1", "Lifted")
-	record, err := v14TaskRecordFromModel(task)
+	record, err := v15TaskRecordFromModel(task)
 	if err != nil {
 		panic(err)
 	}
@@ -110,9 +110,9 @@ func TestV14ProjectDocumentRejectsForeignSchemaMarker(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	downgraded := strings.Replace(content, schemaMarkerV14, schemaMarkerV13, 1)
+	downgraded := strings.Replace(content, schemaMarkerV15, schemaMarkerV14, 1)
 	if _, err := ParseProjectDocument(downgraded); err == nil ||
-		!strings.Contains(err.Error(), "unsupported v14 task schema 13") {
+		!strings.Contains(err.Error(), "unsupported v15 task schema 14") {
 		t.Fatalf("ParseProjectDocument error = %v, want an unsupported-schema refusal", err)
 	}
 }

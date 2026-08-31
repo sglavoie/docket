@@ -120,6 +120,19 @@ func (t *Task) ApplyPinned(pinned bool, now time.Time) bool {
 	return true
 }
 
+// ApplyReview moves the task to the requested review state and reports whether
+// anything changed. Review carries no timestamp of its own: unlike a pin, whose
+// instant orders the pinned section, nothing reads when a task was flagged, so
+// storing one would be a field no reader could justify.
+func (t *Task) ApplyReview(review bool, now time.Time) bool {
+	if t.Review == review {
+		return false
+	}
+	t.Review = review
+	t.UpdatedAt = now
+	return true
+}
+
 // Unpin removes the pinned status.
 func (t *Task) Unpin() {
 	t.Pinned = false

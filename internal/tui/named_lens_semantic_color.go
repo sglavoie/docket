@@ -81,7 +81,7 @@ func namedLensSemanticRole(lens config.NamedLens) namedLensRole {
 		return namedLensRole{Kind: namedLensRoleDue}
 	case tasks.Deferred:
 		return namedLensRole{Kind: namedLensRoleDeferred}
-	case namedLensSelectsReviewTag(tasks.Tags):
+	case tasks.Review:
 		return namedLensRole{Kind: namedLensRoleReview}
 	case tasks.CompletionAgeSet || (grouped && namedLensStatesAllTerminal(states)):
 		return namedLensRole{Kind: namedLensRoleCompleted}
@@ -218,12 +218,4 @@ func namedLensDueBucketAccented(bucket string) bool {
 // already does, so only admitting them is a signal.
 func namedLensPopulationAccented(mode string) bool {
 	return mode == config.LensPopulationInclude || mode == config.LensPopulationOnly
-}
-
-// namedLensSelectsReviewTag reports whether the lens selects the promoted Review
-// tag, matched on the normalized spelling the tag itself is stored under.
-func namedLensSelectsReviewTag(tags []string) bool {
-	return slices.ContainsFunc(tags, func(tag string) bool {
-		return models.NormalizeTag(tag) == reviewTaskTag
-	})
 }

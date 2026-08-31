@@ -28,7 +28,7 @@ func TestParseUsesSharedSurfaceGrammar(t *testing.T) {
 	}
 }
 
-func TestSharedParserAdvertisesExactlyThirteenCaptureSigils(t *testing.T) {
+func TestSharedParserAdvertisesExactlyFourteenCaptureSigils(t *testing.T) {
 	parsed := Parse(
 		"Keep type:bug priority:1 pri:2 tag:backend due:tomorrow recur:weekly project:core proj:core p:core parent:1 child:1 children:1 state:ready has:due no:tag is:pinned",
 		SurfaceCapture|SurfaceEdit,
@@ -41,8 +41,8 @@ func TestSharedParserAdvertisesExactlyThirteenCaptureSigils(t *testing.T) {
 	}
 
 	defs := Definitions(SurfaceCapture)
-	if len(defs) != 13 {
-		t.Fatalf("capture definitions = %d, want 13: %+v", len(defs), defs)
+	if len(defs) != 14 {
+		t.Fatalf("capture definitions = %d, want 14: %+v", len(defs), defs)
 	}
 	// Parse order, not teach order: ;comment; leads because nothing else may peel
 	// a sigil out of a comment's span, and &link sits ahead of #tag because the
@@ -50,7 +50,7 @@ func TestSharedParserAdvertisesExactlyThirteenCaptureSigils(t *testing.T) {
 	// precedes tag and defer precedes due, because each search-only negation is
 	// registered immediately before its positive twin and the longer trigger
 	// first, and -##/##/-#/# is the only layout that satisfies both.
-	wantForms := []string{";comment;", "&link", "~task", "!1-3", "##context", "#tag", "@@defer", "@date", "$destination", "*pin", "%project", ">parent", "<child"}
+	wantForms := []string{";comment;", "&link", "~task", "!1-3", "##context", "#tag", "@@defer", "@date", "$destination", "*pin", "=review", "%project", ">parent", "<child"}
 	gotForms := make([]string, len(defs))
 	for i, def := range defs {
 		if len(def.Forms) != 1 {
@@ -215,6 +215,7 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 				FieldPriority: {"!1-3"}, FieldTag: {"#tag"}, FieldContext: {"##context"}, FieldDue: {"@date"},
 				FieldDefer:       {"@@defer"},
 				FieldDestination: {"$destination"}, FieldPinned: {"*pin"},
+				FieldReview:  {"=review"},
 				FieldProject: {"%project"}, FieldParent: {">parent"},
 				FieldChild: {"<child"}, FieldAttachment: {"&link"}, FieldComment: {";comment;"},
 				FieldDependency: {"~task"},
@@ -228,6 +229,7 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 				FieldDue:     {"@date", "@0"},
 				FieldDefer:   {"@@defer", "@@0"}, FieldDestination: {"$destination"},
 				FieldPinned:  {"*pin", "*unpin"},
+				FieldReview:  {"=review", "=unreview"},
 				FieldProject: {"%project"}, FieldParent: {">parent", ">0"},
 				FieldChild:      {"<child"},
 				FieldDependency: {"~task", "~0"}, FieldRemoveDependency: {"-~task"},
@@ -238,6 +240,7 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 			want: map[Field][]string{
 				FieldPriority: {"!1-3"}, FieldTag: {"#tag"}, FieldContext: {"##context"}, FieldDue: {"@date"},
 				FieldDestination: {"$destination"}, FieldPinned: {"*pin"},
+				FieldReview:     {"=review"},
 				FieldDependency: {"~task", "~0"}, FieldRemoveDependency: {"-~task"},
 			},
 		},
@@ -251,6 +254,7 @@ func TestRegistryDefinitionsCoverCanonicalSurfaces(t *testing.T) {
 				FieldDefer: {"@@defer"}, FieldRemoveDefer: {"-@@defer"},
 				FieldDestination: {"$destination"}, FieldRemoveDestination: {"-$destination"},
 				FieldPinned: {"*pin", "*unpin"}, FieldRemovePinned: {"-*pin"},
+				FieldReview: {"=review", "=unreview"}, FieldRemoveReview: {"-=review"},
 				FieldProject: {"%project"}, FieldRemoveProject: {"-%project"},
 				FieldDependency: {"~task"}, FieldRemoveDependency: {"-~task"},
 				FieldDerived: {"?derived"}, FieldRemoveDerived: {"-?derived"},
@@ -360,12 +364,12 @@ func TestSearchDefinitionsDescribePredicatesRatherThanMutations(t *testing.T) {
 // TestSearchOnlyNegationsReachNoMutationSurface holds the line the uniform
 // negation was built on: `-` means "take away" everywhere, but only the two
 // fields that hold a stored set can take anything away from a task. The other
-// seven are questions, and a question that reached edit would be a silent no-op
+// eight are questions, and a question that reached edit would be a silent no-op
 // on save.
 func TestSearchOnlyNegationsReachNoMutationSurface(t *testing.T) {
 	searchOnly := []Field{
 		FieldRemovePriority, FieldRemoveContext, FieldRemoveDue, FieldRemoveDefer,
-		FieldRemoveDestination, FieldRemovePinned, FieldRemoveProject,
+		FieldRemoveDestination, FieldRemovePinned, FieldRemoveReview, FieldRemoveProject,
 		FieldDerived, FieldRemoveDerived,
 	}
 	for _, field := range searchOnly {

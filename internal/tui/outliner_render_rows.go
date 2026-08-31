@@ -162,7 +162,7 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 	if row.StateGroup.IsValid() {
 		sectionStyle = GetWorkflowStateGroupStyle(row.StateGroup)
 	}
-	if row.PromotedTag == reviewTaskTag {
+	if row.PromotedTag == reviewLaneKey {
 		sectionStyle = ViewModeReviewStyle
 	}
 	prefix := "@ "
@@ -204,7 +204,7 @@ func rowKeepsManualOrder(row outlinerRow) bool {
 	return row.IsPinnedSection ||
 		row.IsTodaySection ||
 		row.IsNextSection ||
-		row.PromotedTag == reviewTaskTag
+		row.PromotedTag == reviewLaneKey
 }
 
 // appendManualOrderMarker names an exempt section while a sort is active, so a

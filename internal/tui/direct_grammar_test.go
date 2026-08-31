@@ -332,6 +332,12 @@ const (
 	// input, where root keys do not resolve. ? is exactly that — it asks for help
 	// on a row and names a computed property in a query.
 	sigilSearchOnly
+	// sigilFacetOnly is a trigger that writes a field on every mutation surface
+	// but takes no root key. Review is the one: $review is a refused destination
+	// and no key sets the flag, so the only keyboard route the sigil has is the
+	// filter facet spelled with the same character, which narrows rather than
+	// writes.
+	sigilFacetOnly
 )
 
 // grammarSigilRoutes pairs every advertised text-grammar trigger with the route
@@ -377,7 +383,10 @@ var grammarSigilRoutes = map[string]sigilKeyRoute{
 	"-@@": sigilSearchOnly,
 	"-$":  sigilSearchOnly,
 	"-*":  sigilSearchOnly,
-	"-%":  sigilSearchOnly,
+	"-=":  sigilSearchOnly,
+	// The review sigil has no setter key at all; f= is its whole keyboard route.
+	"=":  sigilFacetOnly,
+	"-%": sigilSearchOnly,
 	// A derived property is computed from the task rather than stored on it, so
 	// there is nothing for a key to write and both spellings stay in the query.
 	"?":  sigilSearchOnly,
@@ -444,6 +453,21 @@ func TestSigilKeysMatchTextGrammarSigils(t *testing.T) {
 						definition.Field,
 					)
 				}
+			case sigilFacetOnly:
+				if isRoot || isPrefix {
+					t.Errorf(
+						"sigil %q (%s) is documented as facet-only but the keymap binds it",
+						trigger,
+						definition.Field,
+					)
+				}
+				if _, _, resolution := registeredSimplifiedOperationRegistry(t).InputBindingForSequence(
+					InputStrategySimplified,
+					[]string{"f", trigger},
+					simplifiedOperationContext(),
+				); resolution != ChordTerminal {
+					t.Errorf("facet-only sigil %q has no f%s chord", trigger, trigger)
+				}
 			case sigilSearchOnly:
 				if definition.Surfaces&^textgrammar.SurfaceSearch != 0 {
 					t.Errorf(
@@ -470,10 +494,12 @@ func TestSigilKeysMatchTextGrammarSigils(t *testing.T) {
 	}
 }
 
-// TestReviewHasNoDirectKey holds the one sigil the grammar explicitly rejects.
-// $review is a refused destination, so binding a review setter anywhere would
-// teach a route the parser refuses to honor. Review survives as the ordinary
-// review tag, its promoted All-mode lane, and the fr presentation facet.
+// TestReviewHasNoDirectKey holds the one destination the grammar explicitly
+// rejects. $review is refused because a destination is a singleton and review
+// must coexist with a lifecycle state on one line, so binding a review setter to
+// a root key would teach a route the parser refuses to honor. Review is written
+// through the =review sigil on all four surfaces and narrowed through the f=
+// facet; neither is a root key.
 func TestReviewHasNoDirectKey(t *testing.T) {
 	registry := registeredSimplifiedOperationRegistry(t)
 	if _, exists := registry.Descriptor(OperationID("tui.task.toggle-review")); exists {
@@ -495,11 +521,11 @@ func TestReviewHasNoDirectKey(t *testing.T) {
 	}
 	binding, _, resolution := registry.InputBindingForSequence(
 		InputStrategySimplified,
-		[]string{"f", "r"},
+		[]string{"f", "="},
 		simplifiedOperationContext(),
 	)
 	if resolution != ChordTerminal || binding.OperationID != operationFilterReview {
-		t.Fatalf("fr = %s (%v), want %s terminal", binding.OperationID, resolution, operationFilterReview)
+		t.Fatalf("f= = %s (%v), want %s terminal", binding.OperationID, resolution, operationFilterReview)
 	}
 }
 
@@ -527,11 +553,13 @@ func TestFilterAndSortSecondKeysUseSigilsWhereOneExists(t *testing.T) {
 		{sequence: []string{"f", "$"}, want: ChordTerminal},
 		{sequence: []string{"f", "@"}, want: ChordTerminal},
 		{sequence: []string{"f", "*"}, want: ChordTerminal},
+		{sequence: []string{"f", "="}, want: ChordTerminal},
 		{sequence: []string{"f", "s"}, want: ChordTerminal},
 		{sequence: []string{"F", "#"}, want: ChordTerminal},
 		{sequence: []string{"o", "!"}, want: ChordTerminal},
 		{sequence: []string{"o", "@"}, want: ChordTerminal},
 		{sequence: []string{"f", "p"}, want: ChordNoMatch},
+		{sequence: []string{"f", "r"}, want: ChordNoMatch},
 		{sequence: []string{"f", "t"}, want: ChordNoMatch},
 		{sequence: []string{"f", "d"}, want: ChordNoMatch},
 		{sequence: []string{"o", "p"}, want: ChordNoMatch},

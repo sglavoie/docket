@@ -165,6 +165,7 @@ func outlineDumpLine(task *models.Task, depth int, scope *models.Project, projec
 	contextDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldContext)
 	destinationDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldDestination)
 	pinnedDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldPinned)
+	reviewDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldReview)
 	dependencyDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldDependency)
 	if task.Priority != models.PriorityUnset {
 		segments = append(segments, fmt.Sprintf("%s%d", priorityDefinition.Trigger, task.Priority))
@@ -191,6 +192,9 @@ func outlineDumpLine(task *models.Task, depth int, scope *models.Project, projec
 	segments = append(segments, destinationDefinition.Trigger+string(task.State()))
 	if task.Pinned {
 		segments = append(segments, pinnedDefinition.Trigger+"pin")
+	}
+	if task.Review {
+		segments = append(segments, reviewDefinition.Trigger+"review")
 	}
 
 	line := strings.Repeat(" ", depth*outlineIndentWidth) + strings.Join(segments, " ")

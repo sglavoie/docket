@@ -752,9 +752,9 @@ func daysFromNow(days int) *time.Time {
 }
 
 // lensSemanticsOutliner holds the one population the narrowing templates are read
-// against: dated work either side of today, tasks carrying the review vocabulary
-// in both the tag and the context axis, and terminal work either side of the
-// ninety-day completion threshold.
+// against: dated work either side of today, tasks carrying the stored review flag
+// beside tasks that merely spell the word on the tag and context axes, and
+// terminal work either side of the ninety-day completion threshold.
 func lensSemanticsOutliner() *OutlinerModel {
 	overdueNear := lensSemanticsTask("overdue-near", models.StateBacklog)
 	overdueNear.DueDate = daysFromNow(-1)
@@ -768,12 +768,17 @@ func lensSemanticsOutliner() *OutlinerModel {
 	overdueDone.DueDate = daysFromNow(-4)
 	overdueDone.CompletedAt = daysFromNow(-1)
 
+	reviewFlagged := lensSemanticsTask("review-flagged", models.StateBacklog)
+	reviewFlagged.Review = true
+	// Neither of the next two is in the queue: the flag is its own axis, so a task
+	// that only spells the word as a tag or a context is not flagged.
 	reviewTagged := lensSemanticsTask("review-tagged", models.StateBacklog)
 	reviewTagged.Tags = []string{"review"}
 	reviewContext := lensSemanticsTask("review-context", models.StateBacklog)
 	reviewContext.Context = "review"
 	reviewUrgent := lensSemanticsTask("review-urgent", models.StateBacklog)
-	reviewUrgent.Tags = []string{"review", "urgent"}
+	reviewUrgent.Review = true
+	reviewUrgent.Tags = []string{"urgent"}
 	urgentOnly := lensSemanticsTask("urgent-only", models.StateBacklog)
 	urgentOnly.Tags = []string{"urgent"}
 
@@ -793,7 +798,7 @@ func lensSemanticsOutliner() *OutlinerModel {
 	return scopeTestOutliner(primaryRowsProject(
 		"alpha",
 		overdueNear, overdueFar, dueToday, dueLater, overdueDone,
-		reviewTagged, reviewContext, reviewUrgent, urgentOnly,
+		reviewFlagged, reviewTagged, reviewContext, reviewUrgent, urgentOnly,
 		doneOld, canceledOld, doneRecent, waitingOld,
 	))
 }
@@ -832,27 +837,26 @@ func TestOverdueTemplateUsesDueModeFixedOrdering(t *testing.T) {
 	}
 }
 
-// TestReviewQueueTemplateIntersectsItsTagFacet pins Review Queue to the tag
-// semantics the facet has everywhere else: selected tags are ANDed, so adding one
-// narrows rather than broadens. The facet reads tags alone, so a task whose
-// context spells review is not in the queue; contexts are the fc axis, and that
-// is the facet's own rule rather than a template exception.
-func TestReviewQueueTemplateIntersectsItsTagFacet(t *testing.T) {
+// TestReviewQueueTemplateIntersectsItsOtherFacets pins Review Queue to the
+// stored review flag and to the intersection semantics every facet has: adding
+// a tag narrows rather than broadens. The flag is its own axis, so a task whose
+// tag or context merely spells review is not in the queue.
+func TestReviewQueueTemplateIntersectsItsOtherFacets(t *testing.T) {
 	outliner := lensSemanticsOutliner()
 	applyLensOrFatal(t, outliner, lensTemplateByName(t, "Review Queue"))
 
-	want := []string{"review-tagged", "review-urgent"}
+	want := []string{"review-flagged", "review-urgent"}
 	if got := sortedVisibleTaskIDs(outliner); !slices.Equal(got, want) {
-		t.Fatalf("rows = %v, want every task carrying the review tag %v", got, want)
+		t.Fatalf("rows = %v, want every task carrying the review flag %v", got, want)
 	}
 
-	// A second tag intersects with the first rather than joining it.
+	// A tag intersects with the flag rather than joining it.
 	outliner.filter.Tags["urgent"] = true
 	outliner.adoptFilterCarriers()
 	outliner.crossForceRebuild = true
 	outliner.crossProjectRebuildRows()
 	if got := sortedVisibleTaskIDs(outliner); !slices.Equal(got, []string{"review-urgent"}) {
-		t.Fatalf("rows under two tags = %v, want only the task carrying both", got)
+		t.Fatalf("rows under flag and tag = %v, want only the task carrying both", got)
 	}
 }
 

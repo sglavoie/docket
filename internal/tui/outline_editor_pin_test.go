@@ -46,7 +46,9 @@ func TestOutlineRoundTripCarriesPinnedOnAndOff(t *testing.T) {
 		}
 	}
 
-	unpinned := strings.Replace(buffer, " *pin ", " ", 1)
+	// The sigil legend in the header also spells *pin, so the edit targets the
+	// task line by its destination rather than the first match in the buffer.
+	unpinned := strings.Replace(buffer, "$doing *pin ", "$doing ", 1)
 	if unpinned == buffer {
 		t.Fatal("buffer carried no pin segment to remove")
 	}

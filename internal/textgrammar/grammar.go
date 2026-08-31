@@ -46,13 +46,17 @@ const (
 	FieldProject          Field = "project"
 	FieldDestination      Field = "destination"
 	FieldPinned           Field = "pinned"
-	FieldAttachment       Field = "attachment"
-	FieldComment          Field = "comment"
+	// FieldReview is the stored review flag. Review is not a lifecycle state and
+	// never was one, so it takes a sigil of its own rather than a destination:
+	// a task carries a state and, independently, whether it is up for review.
+	FieldReview     Field = "review"
+	FieldAttachment Field = "attachment"
+	FieldComment    Field = "comment"
 	// The remaining negations are search-only. `-` is the one negation operator
 	// in the grammar: on a mutation surface it takes a value away from the task,
 	// and on search it takes the rows carrying that value away from the result
 	// set. FieldRemoveTag and FieldRemoveDependency already carry both readings;
-	// these seven carry only the second, because there is nothing to subtract
+	// these eight carry only the second, because there is nothing to subtract
 	// from a task that does not hold a set.
 	FieldRemovePriority    Field = "remove_priority"
 	FieldRemoveContext     Field = "remove_context"
@@ -60,6 +64,7 @@ const (
 	FieldRemoveDefer       Field = "remove_defer"
 	FieldRemoveDestination Field = "remove_destination"
 	FieldRemovePinned      Field = "remove_pinned"
+	FieldRemoveReview      Field = "remove_review"
 	FieldRemoveProject     Field = "remove_project"
 	// FieldDerived is the computed-predicate family. Its whole meaning is
 	// "derived, never assigned", which is why it can only ever reach search: no
@@ -113,7 +118,7 @@ const (
 	validateAny tokenValidation = iota
 	validatePriority
 	validateTag
-	validatePin
+	validateClosedSet
 	validateAttachment
 	validateDerived
 )
@@ -438,7 +443,7 @@ var registry = []definitionSpec{
 		searchDescription: "Match a lifecycle state or planning list",
 	},
 	// The pin negation declares no Clears, and that absence is what keeps the
-	// grammar to one negation operator: validatePin admits this spec's Values plus
+	// grammar to one negation operator: validateClosedSet admits this spec's Values plus
 	// its own clear values, so -* accepts "pin" alone and "-*unpin" stays prose
 	// rather than minting a second, doubly negative spelling of "pinned".
 	// "*unpin" survives as an input spelling of the same predicate.
@@ -450,7 +455,7 @@ var registry = []definitionSpec{
 			Cardinality: CardinalityRepeatable,
 		},
 		forms:   []surfaceForm{{Text: "-*pin", Surfaces: SurfaceSearch}},
-		pattern: `(?:^|\s)-\*(\S+)`, validation: validatePin,
+		pattern: `(?:^|\s)-\*(\S+)`, validation: validateClosedSet,
 		negates:           FieldPinned,
 		searchDescription: "Match unpinned tasks",
 	},
@@ -472,9 +477,47 @@ var registry = []definitionSpec{
 			{Text: "*pin", Surfaces: allSurfaces},
 			{Text: "*unpin", Surfaces: SurfaceEdit | SurfaceSearch},
 		},
-		pattern: `(?:^|\s)\*(\S+)`, validation: validatePin,
+		pattern: `(?:^|\s)\*(\S+)`, validation: validateClosedSet,
 		searchDescription: "Match pinned tasks",
 		searchClearText:   map[string]string{"unpin": "Match unpinned tasks"},
+	},
+	// Review mirrors pinning exactly, because it is the same kind of thing: a
+	// stored boolean the user sets and clears, orthogonal to the lifecycle state
+	// the task is in. The negation declares no Clears for the same reason pinning's
+	// does not, so "-=unreview" stays prose instead of minting a double negative.
+	{
+		Definition: Definition{
+			Field: FieldRemoveReview, Group: "Review", Trigger: "-=",
+			Values:   []string{"review"},
+			Examples: []string{"-=review"}, Surfaces: SurfaceSearch,
+			Cardinality: CardinalityRepeatable,
+		},
+		forms:   []surfaceForm{{Text: "-=review", Surfaces: SurfaceSearch}},
+		pattern: `(?:^|\s)-=(\S+)`, validation: validateClosedSet,
+		negates:           FieldReview,
+		searchDescription: "Match tasks not flagged for review",
+	},
+	// Review advertises only the set value, exactly as pinning does: listing the
+	// clear value in Values would offer it while capturing, where it is refused by
+	// name. An unrecognized value is not consumed, because = occurs in ordinary
+	// prose and in code ("a=b", "-=reviewCount").
+	{
+		Definition: Definition{
+			Field: FieldReview, Group: "Review", Trigger: "=",
+			Description: "Flag task for review", Values: []string{"review"},
+			Examples: []string{"=review"}, Surfaces: allSurfaces,
+			Cardinality: CardinalitySingleton,
+			Clears: []ClearOperation{
+				{Value: "unreview", Description: "Clear review flag", Surfaces: SurfaceEdit | SurfaceSearch},
+			},
+		},
+		forms: []surfaceForm{
+			{Text: "=review", Surfaces: allSurfaces},
+			{Text: "=unreview", Surfaces: SurfaceEdit | SurfaceSearch},
+		},
+		pattern: `(?:^|\s)=(\S+)`, validation: validateClosedSet,
+		searchDescription: "Match tasks flagged for review",
+		searchClearText:   map[string]string{"unreview": "Match tasks not flagged for review"},
 	},
 	{
 		Definition: Definition{
@@ -588,6 +631,8 @@ var guideOrder = []Field{
 	FieldRemoveDestination,
 	FieldPinned,
 	FieldRemovePinned,
+	FieldReview,
+	FieldRemoveReview,
 	FieldProject,
 	FieldRemoveProject,
 	FieldDerived,

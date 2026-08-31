@@ -37,6 +37,9 @@ type OutlinePlanLine struct {
 	// Pinned replaces the task's pinned state outright. The dump is always
 	// complete, so an omitted *pin is an unpin rather than an absent instruction.
 	Pinned bool
+	// Review replaces the task's review flag outright, for the same reason: an
+	// omitted =review clears it rather than saying nothing.
+	Review bool
 	// Dependencies replace the task's soft-reference set outright, in buffer order.
 	// The dump prints every stored reference, so a locator the buffer no longer
 	// carries is a removal; nil is the empty set rather than "no instruction". The
@@ -367,6 +370,7 @@ func (s *Service) applyOutlinePlan(project *models.Project, base *storage.Projec
 		item.task.DueDate = cloneDueDatePtr(item.line.Due)
 		item.task.Dependencies = models.CloneTaskReferences(item.dependencies)
 		item.task.ApplyPinned(item.line.Pinned, now)
+		item.task.ApplyReview(item.line.Review, now)
 	}
 	return s.applyOutlineDestinations(project, base, prepared, now)
 }
@@ -610,6 +614,7 @@ func outlineTaskChanged(base, task *models.Task, baseRank, rank int) bool {
 		base.Context != task.Context ||
 		base.State() != task.State() ||
 		base.Pinned != task.Pinned ||
+		base.Review != task.Review ||
 		baseRank != rank ||
 		!slices.Equal(base.Tags, task.Tags) ||
 		!models.TaskReferencesEqual(base.Dependencies, task.Dependencies) ||

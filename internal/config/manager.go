@@ -205,6 +205,9 @@ func (m *Manager) RecoverWorkspace() error {
 		if err := m.MigrateWorkspaceToV16(); err != nil {
 			return fmt.Errorf("failed to activate workspace schema v16: %w", err)
 		}
+		if err := m.MigrateWorkspaceToV17(); err != nil {
+			return fmt.Errorf("failed to activate workspace schema v17: %w", err)
+		}
 		// Adoption is deliberately outside the chain above: it is keyed off
 		// machine-local state rather than the synced catalog schema, so it runs
 		// once per machine after the schema is already current instead of once
@@ -363,7 +366,7 @@ func prepareFreshSystemUnfiled(dataDir string, catalog *WorkspaceCatalog) (stora
 	if repairErr := catalog.RepairSystemUnfiledProject(project); repairErr != nil {
 		return storage.ArtifactChange{}, repairErr
 	}
-	document, err := storage.WriteV14ProjectDocument(storage.V14ProjectDocument{
+	document, err := storage.WriteV15ProjectDocument(storage.V15ProjectDocument{
 		ProjectName: project.Name,
 	})
 	if err != nil {

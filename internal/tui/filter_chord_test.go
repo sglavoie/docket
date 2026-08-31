@@ -24,7 +24,7 @@ func newFilterChordTestApp(t *testing.T) *AppModel {
 		Slug: "project",
 		Tasks: []*models.Task{
 			{ID: "critical", ShortID: 1, Title: "Critical", WorkflowState: models.StateBacklog, Priority: 1},
-			{ID: "medium", ShortID: 2, Title: "Medium", WorkflowState: models.StateBacklog, Priority: 2, Tags: []string{reviewTaskTag}},
+			{ID: "medium", ShortID: 2, Title: "Medium", WorkflowState: models.StateBacklog, Priority: 2, Review: true},
 			{ID: "low", ShortID: 3, Title: "Low", WorkflowState: models.StateWaiting, Priority: 3, Tags: []string{"deep"}},
 		},
 	}
@@ -66,7 +66,7 @@ func TestFilterChordWhichKeyHints(t *testing.T) {
 		"$ states",
 		"# tags",
 		"c contexts",
-		"r review",
+		"= review",
 		"h hierarchy",
 		"s stale",
 		"x clear all",
@@ -91,8 +91,9 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	taskFilter := &app.crossOutliner.filter.CommonFilterState
 	taskFilter.Priority = models.PriorityHigh
-	taskFilter.Tags = map[string]bool{reviewTaskTag: true, "deep": true}
+	taskFilter.Tags = map[string]bool{"triage": true, "deep": true}
 	taskFilter.Deferred = true
+	taskFilter.Review = true
 	taskFilter.Hierarchy = HierarchyParent
 	taskFilter.Stale = true
 	terminal, err := models.NewWorkflowStateSet(models.StateDone, models.StateCanceled)
@@ -110,15 +111,15 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 	row := pendingChordHintRowForTest(app)
 	for _, want := range []string{
 		"! priority:high+", "$ states:2", "a completed:90d+", "@ ?deferred",
-		"# tags:2", "c contexts:2", "r review:on", "h hierarchy:parent", "s stale:on",
-		"x clear:7",
+		"# tags:2", "c contexts:2", "= review:on", "h hierarchy:parent", "s stale:on",
+		"x clear:8",
 	} {
 		if !strings.Contains(row, want) {
 			t.Errorf("decorated f row %q omits %q", row, want)
 		}
 	}
-	if got := app.crossOutliner.ActiveFilterCount(); got != 7 {
-		t.Errorf("task filter count = %d, want 7 independently clearable facets", got)
+	if got := app.crossOutliner.ActiveFilterCount(); got != 8 {
+		t.Errorf("task filter count = %d, want 8 independently clearable facets", got)
 	}
 
 	// The f@ row now names two mutually exclusive facets, so the due-date branch
@@ -157,24 +158,24 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 			t.Errorf("isolated F row %q omits %q", row, want)
 		}
 	}
-	if got := app.crossOutliner.ActiveFilterCount(); got != 10 {
-		t.Errorf("combined filter count = %d, want 10 independent task/project facets", got)
+	if got := app.crossOutliner.ActiveFilterCount(); got != 11 {
+		t.Errorf("combined filter count = %d, want 11 independent task/project facets", got)
 	}
 }
 
-func TestReviewFilterChordTogglesCanonicalTagFacet(t *testing.T) {
+func TestReviewFilterChordTogglesTheStoredReviewFacet(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	filter := &app.crossOutliner.filter.CommonFilterState
-	pressFilterChord(t, app, "fr")
-	if !filter.Tags[reviewTaskTag] {
-		t.Fatalf("fr filter = %v", filter.Tags)
+	pressFilterChord(t, app, "f=")
+	if !filter.Review {
+		t.Fatalf("f= filter = %v", filter.Review)
 	}
 	if visible := visibleOutlinerTaskIDs(app.crossOutliner); !visible["medium"] || visible["critical"] || visible["low"] {
 		t.Fatalf("Review filter visible = %v", visible)
 	}
-	pressFilterChord(t, app, "fr")
-	if filter.Tags[reviewTaskTag] {
-		t.Fatalf("second fr filter = %v", filter.Tags)
+	pressFilterChord(t, app, "f=")
+	if filter.Review {
+		t.Fatalf("second f= filter = %v", filter.Review)
 	}
 }
 
@@ -746,6 +747,7 @@ func TestRetiredFilterAndSortLetterPathsResolveToNoMatch(t *testing.T) {
 
 	for _, retired := range [][]string{
 		{"f", "p"},
+		{"f", "r"},
 		{"f", "t"},
 		{"f", "d"},
 		{"F", "t"},

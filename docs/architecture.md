@@ -54,7 +54,7 @@ The repository is divided by responsibility:
 - `internal/storage` owns strict schema-14 Markdown, attachments, transactions,
   workspace undo/redo, three-way merge, conflicts, and recovery.
 - `internal/config` owns the lean catalog and planning domains, project tags,
-  machine-local theme, workspace selection, and the v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15→v16
+  machine-local theme, workspace selection, and the v4→v5→v6→v7→v8→v9→v10→v11→v12→v13→v14→v15→v16→v17
   migration chain.
 - `internal/tui` owns the single Outliner root, typed subordinate tools and
   overlays, operation descriptors, and the deterministic review harness.
@@ -631,20 +631,24 @@ whole run between the cursor and its group's edge, redistributing only the
 timestamps that run already carries so pins outside it keep their instants.
 It retains the ancestor marker and an
 identity suppression set, so promoted tasks appear only once.
-Review similarly promotes open tasks carrying the ordinary `review` tag, after
+Review similarly promotes open tasks carrying the stored `Review` flag, after
 Doing. Claim order and draw order are different things: the Review lane draws
 after Doing, but claims a row only after Pinned, Today, and Next have taken
-theirs. A deliberate planning commitment outranks a descriptive tag, so `$n` on
-a review-tagged row visibly moves it into Next rather than appearing to copy it.
-The projection does not change lifecycle or planning. The tag itself is set from
-the `#` picker and nowhere else: the lane has no key of its own, because
-`$review` is a rejected destination and a `$r` terminal would contradict the
-parser.
+theirs. A deliberate planning commitment outranks a descriptive flag, so `$n` on
+a flagged row visibly moves it into Next rather than appearing to copy it.
+The projection does not change lifecycle or planning. The flag is a boolean on
+the task beside `Pinned`, written by the `=` sigil on all four grammar surfaces
+and narrowed by the `f=` facet: the lane still has no key of its own, because
+`$review` is a rejected destination — a destination is a singleton and a flagged
+task keeps its lifecycle state — and a `$r` terminal would contradict the
+parser. `ApplyReview` stores no instant of its own, unlike `ApplyPinned`, whose
+`PinnedAt` orders the pinned section; nothing reads when a task was flagged, so
+a timestamp would be a field with no reader.
 
 Stale draws immediately after Review. It promotes open, currently undeferred
 work whose `UpdatedAt` touch time is at least 90 local-calendar days old,
 measured inclusively by local calendar day. Its claim loses to Pinned, Today,
-Next, Review, and Doing, so deliberate planning, descriptive review, and active
+Next, Review, and Doing, so deliberate planning, flagged review, and active
 work stay in their stronger lanes without duplication. The lowercase `fs`
 facet applies that same predicate as a row refinement except in Recent, where it
 is unavailable. Entering Recent with it active clears only Stale and reports
@@ -1234,8 +1238,13 @@ last two are the only pair that opens a panel rather than a picker, because the
 panel already owns add, reorder, unlink, and delete.
 `TestSigilKeysMatchTextGrammarSigils` walks the `textgrammar` triggers against
 the strategy's own bindings, so renaming a sigil breaks the keymap loudly rather
-than silently splitting the two vocabularies. Four triggers deliberately have no
-key of their own. `##` and `@@` cannot be chords under `#` and `@`, because the
+than silently splitting the two vocabularies. Five triggers deliberately have no
+key of their own. `=` is the one whose absence is the point: no key sets the
+review flag and `$review` is a refused destination, so its only keyboard route
+is the `f=` facet, which narrows by the flag rather than writing it. The parity
+test spells that as its own route kind, `sigilFacetOnly`, and asserts the facet
+chord rather than a root key, so a sigil claiming no setter still has to prove
+it is reachable. `##` and `@@` cannot be chords under `#` and `@`, because the
 chord trie is prefix-free and both first characters already resolve; each is
 instead a mode inside the picker its first character opens — `##` the context
 radio group inside Set Tags & Context, `@@` the defer section of the one date
@@ -1648,7 +1657,8 @@ error rather than a competing parentage channel. `FieldChild` is absent from
 an outline title. The buffer is declarative: the dump emits
 current values, so an omitted sigil clears that value. A pinned task's line
 therefore carries `*pin` and deleting that token is what unpins it; `*unpin`
-does not exist here, because omission already says it. A line without a marker
+does not exist here, because omission already says it. `=review` is the same
+shape for the same reason. A line without a marker
 creates a task, and a dumped task whose line disappeared is deleted.
 
 Deletion is the one thing the buffer cannot decide on its own, because a file
@@ -1737,14 +1747,14 @@ registry's own error text into the search chrome and the empty-state message.
 `-` is the one negation operator, and what it removes from is whatever the
 surface holds. On a mutation surface it removes a value from the task, which is
 what `-#tag` and `-~task` have always meant; on Search it removes the tasks the
-positive twin selects, so ten spellings — `-!`, `-#`, `-##`, `-@`, `-@@`, `-$`,
-`-*`, `-%`, `-~`, `-?` — read as one rule rather than ten. Each negation is its
+positive twin selects, so eleven spellings — `-!`, `-#`, `-##`, `-@`, `-@@`,
+`-$`, `-*`, `-=`, `-%`, `-~`, `-?` — read as one rule rather than eleven. Each negation is its
 own registry entry carrying its own `Field`, and each declares `negates` naming
 the twin it subtracts, which is what lets one projection serve both: values,
 viability, diagnostics, presets, examples, and autocomplete all resolve through
 `negatedField`, so no negation owns a second vocabulary that could drift from
-the positive's. `-*` deliberately declares no `Clears`, so `-*unpin` stays prose
-rather than becoming a double negative. Registration order is load-bearing for
+the positive's. `-*` and `-=` deliberately declare no `Clears`, so `-*unpin` and
+`-=unreview` stay prose rather than becoming double negatives. Registration order is load-bearing for
 RE2's missing lookaround the same way `&` and `;` are — each negation sits
 immediately before its positive twin and the longer trigger comes first, so `-@@`
 peels whole rather than reading as `-@` with an `@` value — and
@@ -1813,7 +1823,8 @@ picker keeps no private spelling of its own — `acceptsPresetValue` rejects a
 binding naming a token no row offers, which is what makes the token set the
 grammar rather than a parallel vocabulary. The pinned facet answers to `f*`, its
 own sigil; `fp` stays retired, because that letter used to mean priority and a
-letter still bound would apply the wrong facet in silence.
+letter still bound would apply the wrong facet in silence. The review facet
+answers to `f=` on the same rule, and `fr` is retired the same way.
 The `f#` vocabulary is task tags alone, from `BuildProjectsTagList`. Contexts are
 their own axis on `fc`, whose `CommonFilterState.Contexts` names compose with OR
 because a task carries at most one, and whose `NoContext` bool admits the tasks
@@ -2510,8 +2521,8 @@ initial adaptation and each `ReplaceItems` land one color without either call
 site knowing. A picker row is an offer rather than a label, so it previews the
 color it is about to paint, which makes a colored chip and a colored row one
 rule seen twice: a row wears the color of the strongest thing its tag does, and
-its chip color only when it changes no other color. So a `WORKFLOW` row takes
-the lane's `PurpleStyle`, a `SEMANTIC` row `semanticTaskTitleStyle`, and a
+its chip color only when it changes no other color. So a `SEMANTIC` row takes
+`semanticTaskTitleStyle` and a
 behavioral project row its badge role, while the descriptive rows of both `#`
 editors and of `f#`, the tag rows the `#` picker's `CONTEXTS` section collects
 by context usage — `f#` reads a census with no context counts in it, so that
@@ -2828,7 +2839,7 @@ all side effects are rebuilt together.
 ## Snapshot-first schema migration
 
 Workspace recovery reads the catalog payload schema before ordinary loading.
-Schema 16 proceeds directly. A supported schema-4 split-domain workspace first
+Schema 17 proceeds directly. A supported schema-4 split-domain workspace first
 crosses the schema-5 boundary, a supported schema-5 workspace then enters the
 schema-6 consolidation path, a schema-6 workspace crosses the schema-7
 scope-folding path, a schema-7 workspace crosses the schema-8 tag path, a
@@ -2838,7 +2849,8 @@ workspace crosses the schema-11 defer-instant path, a schema-11 workspace
 crosses the schema-12 task-context path, a schema-12 workspace crosses the
 schema-13 defer-count path, a schema-13 workspace crosses the schema-14
 due-time path, a schema-14 workspace crosses the schema-15 soft-dependency
-path, and a schema-15 workspace finishes on the schema-16 portable-lens path:
+path, a schema-15 workspace crosses the schema-16 portable-lens path, and a
+schema-16 workspace finishes on the schema-17 stored-review path:
 
 1. Decode the v4 catalog, planning, settings, automation, machine state, task
    Markdown, completed archives, notes, blockers, and legacy indexes with
@@ -2949,8 +2961,18 @@ path, and a schema-15 workspace finishes on the schema-16 portable-lens path:
    activate catalog schema 16 over unchanged schema-14 task Markdown, and clear
    undo/redo history, whose entries snapshot `.tt/workspace.json` beside task
    Markdown and would otherwise walk the catalog back across the boundary.
+28. Validate every schema-14 project document, then lift it to schema 15 by
+   moving review off the tag list and onto the stored `review` flag. A task
+   carrying the `review` tag arrives flagged and loses that tag as it is lifted,
+   because a workspace holding both would let the next tag rewrite disagree with
+   the lane; every other tag is preserved in place and an unflagged task
+   round-trips byte-identical, the key being omitted when the flag is off.
+29. Publish `pre-stored-review-v17-<UTC>.tar.gz` plus its audit, atomically
+   activate catalog schema 17 and task Markdown schema 15 across active and
+   archived projects, and clear undo/redo history whose retained bytes carry the
+   schema-14 task-document marker.
 
-Each boundary is idempotent: repeated schema-16 startup neither reconverts data
+Each boundary is idempotent: repeated schema-17 startup neither reconverts data
 nor creates another rollback pair. Corrupt or future input and an existing
 `unfiled` project/directory fail before mutation with concrete rename/move guidance.
 Snapshot artifacts are application-owned and immutable to `tt`. Downgrade or a

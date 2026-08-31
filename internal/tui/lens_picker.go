@@ -737,7 +737,7 @@ func namedLensModeLabel(token string) string {
 }
 
 func namedLensTaskFacets(tasks config.LensTaskFilters) []string {
-	facets := make([]string, 0, 9)
+	facets := make([]string, 0, 10)
 	if tasks.StatesSet {
 		// An explicit state filter that admits nothing is a real predicate, so it
 		// is named rather than dropped as an absent axis would be.
@@ -774,6 +774,9 @@ func namedLensTaskFacets(tasks config.LensTaskFilters) []string {
 	}
 	if tasks.Pinned {
 		facets = append(facets, "pinned")
+	}
+	if tasks.Review {
+		facets = append(facets, "review")
 	}
 	return facets
 }

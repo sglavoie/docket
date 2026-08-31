@@ -80,6 +80,10 @@ type CaptureRequest struct {
 	// Pinned pins the new task; the pinned section still filters terminal tasks,
 	// so a terminal destination pins without rendering a row.
 	Pinned bool
+	// Review flags the new task for review. Review is a stored boolean beside the
+	// pin, not a lifecycle state, so it rides alongside the destination rather
+	// than replacing it.
+	Review bool
 	// Attachments are raw &link values in line order: URLs, code references, or
 	// local file paths. They are classified and validated before the capture
 	// mutates anything, and a file copy rides the task's own ChangeSet.
@@ -518,6 +522,9 @@ func (s *Service) buildPreparedCapturedTask(project *models.Project, prepared pr
 	}
 	if req.Pinned {
 		task.ApplyPinned(true, now)
+	}
+	if req.Review {
+		task.ApplyReview(true, now)
 	}
 	if req.ParentID != nil {
 		parentID := *req.ParentID

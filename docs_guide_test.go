@@ -125,7 +125,7 @@ func TestGuideDocumentsFiltersAndSearch(t *testing.T) {
 		"`f#` | Pick tags with AND semantics; the task context is a separate axis on `fc`",
 		"`fc` | Pick task contexts with OR semantics, since a task carries at most one",
 		"`fa` | Pick completed at least 7, 30, or 90 local-calendar days ago",
-		"`fr` | Toggle the `review` tag facet",
+		"`f=` | Toggle the review facet, the same `=review` a typed query spells",
 		"`f@` | Open the Filter by Due or Deferred picker: five shortcut rows writing `@overdue`, `@today`, `@week`, `@0`, and `?deferred`, each labeled with the token it writes",
 		"`f*` | Toggle the pinned facet, the same `*pin` a typed query spells",
 		"`fh` | Pick one hierarchy position: parent, child, root, or leaf; parent and leaf read open children",
@@ -165,7 +165,7 @@ func TestGuideDocumentsNamedLenses(t *testing.T) {
 func TestGuideDocumentsCaptureAndWorkflowContracts(t *testing.T) {
 	content := readGuideCorpus(t)
 	requireDocumentationText(t, content, []string{
-		"!1-3 #tag ##context @date @@defer $destination *pin %project >parent <child ~task &link ;comment;",
+		"!1-3 #tag ##context @date @@defer $destination *pin =review %project >parent <child ~task &link ;comment;",
 		"`@@defer` hides the task until an instant rather than a day",
 		"`*pin` pins the task, exactly as the `*` key does on an existing row",
 		"The edit surface is also the only one that accepts `*unpin`",
@@ -272,7 +272,7 @@ func TestGuideDocumentsStorageAndMigration(t *testing.T) {
 	requireDocumentationText(t, content, []string{
 		"workspace.json",
 		"planning.json",
-		"schema-14 Markdown and generic `Task` headings",
+		"schema-15 Markdown and generic `Task` headings",
 		"Each task may finally carry an optional `depends` list of soft references",
 		"Each task may carry an optional non-negative `defer_count`; zero is omitted",
 		"`lenses.json` contains your saved named-lens definitions",

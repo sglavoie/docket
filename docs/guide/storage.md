@@ -36,7 +36,7 @@ the recorded bundles and showing one in the form `tt conflict show` prints; see
 [`outliner.md`](outliner.md). Resolving stays in the CLI.
 
 
-## Schema 16 storage and migration
+## Schema 17 storage and migration
 
 The live portable layout is deliberately small:
 
@@ -57,7 +57,7 @@ The live portable layout is deliberately small:
     └── .attachments/
 ```
 
-Project task files use strict schema-14 Markdown and generic `Task` headings.
+Project task files use strict schema-15 Markdown and generic `Task` headings.
 `workspace.json` contains the lean project catalog, project tags, and the
 protected Unfiled ID. `planning.json` contains Today and
 Next ordering only.
@@ -65,6 +65,8 @@ Each task may carry an optional non-negative `defer_count`; zero is omitted.
 Each task may also carry an optional `due_time`, a canonical `HH:MM` wall-clock
 in 00:00–23:59 that pairs with the calendar `due` date; midnight is reserved for
 date-only due dates, so a date-only task omits it.
+Each task may carry an optional `review` flag; false is the flag's absence, so
+an unflagged task omits it.
 Each task may finally carry an optional `depends` list of soft references to
 other tasks, each a `project-id:task-id` pair; an empty list is omitted. A
 reference is durable and one-directional: only the referring task stores it, so
@@ -106,7 +108,8 @@ two synced files, `workspace.json` and `planning.json`, do not merge — a chang
 that lands under one of those is refused and reported, because there is no
 order-independent way to combine two project catalogs.
 
-Startup migrates supported schema-15 workspaces to schema 16, supported
+Startup migrates supported schema-16 workspaces to schema 17, supported
+schema-15 workspaces to schema 16, supported
 schema-14 workspaces to schema 15, supported
 schema-13 workspaces to schema 14, supported schema-12 workspaces to schema 13,
 supported schema-6 through schema-11 workspaces through the intermediate
@@ -123,7 +126,8 @@ for v6→v7, `pre-tag-v8-<UTC>.tar.gz` for v7→v8,
 `pre-defer-count-v13-<UTC>.tar.gz` for v12→v13,
 `pre-due-time-v14-<UTC>.tar.gz` for v13→v14,
 `pre-dependencies-v15-<UTC>.tar.gz` for v14→v15, and
-`pre-portable-lenses-v16-<UTC>.tar.gz` for v15→v16.
+`pre-portable-lenses-v16-<UTC>.tar.gz` for v15→v16, and
+`pre-stored-review-v17-<UTC>.tar.gz` for v16→v17.
 
 The two structural conversions state themselves. The schema-6 conversion
 preserves notes and attachment bytes, converts retained decision text into
@@ -151,6 +155,7 @@ already say.
 | Schema 14 upgrades task Markdown to schema 13 by adding the optional `due_time` field | A canonical `HH:MM` wall-clock giving a due date an explicit time-of-day. Existing due dates are calendar-only, so every migrated task keeps its date and receives no `due_time` |
 | Schema 15 upgrades task Markdown to schema 14 by adding the optional `depends` list of soft task references | No retired field carried dependency data into this boundary, so every migrated task starts with an empty list — an omitted key |
 | Schema 16 leaves task Markdown at schema 14 | It is the one boundary that upgrades no task grammar: it marks the workspace as the home of named lens definitions, so the catalog is the only file it rewrites. Every project document is still read and validated first, so an unreadable workspace is refused rather than half-migrated |
+| Schema 17 upgrades task Markdown to schema 15 by moving review off the tag list and onto a stored `review` flag | A task carrying the `review` tag before the migration carries `review: true` after it, and that tag is removed as it is lifted, so the workspace never holds two answers to one question. Every other tag is preserved in place, and a task that was not up for review is written back unchanged, because the key is omitted when the flag is off |
 
 Invalid or future-schema input aborts without changing workspace data. An
 existing `unfiled` project or directory also aborts before snapshot publication
@@ -160,8 +165,9 @@ loading, and repeated startup is idempotent.
 There is no down-migration. An older `tt` refuses a migrated workspace as newer
 than its supported schema, and no build converts a workspace back. Recovery is
 manual: extract the matching archive — `pre-due-time-v14-<UTC>.tar.gz` for the
-schema-14 boundary, `pre-dependencies-v15-<UTC>.tar.gz` for schema 15, or
-`pre-portable-lenses-v16-<UTC>.tar.gz` for schema 16 — into a
+schema-14 boundary, `pre-dependencies-v15-<UTC>.tar.gz` for schema 15,
+`pre-portable-lenses-v16-<UTC>.tar.gz` for schema 16, or
+`pre-stored-review-v17-<UTC>.tar.gz` for schema 17 — into a
 separate directory and open that copy with a compatible build. Migration
 snapshots themselves are never modified.
 

@@ -40,6 +40,7 @@ var filterQueryRowFields = []models.QueryField{
 	models.QueryFieldDue,
 	models.QueryFieldState,
 	models.QueryFieldPinned,
+	models.QueryFieldReview,
 	models.QueryFieldStale,
 	models.QueryFieldDeferred,
 	models.QueryFieldCompleted,
@@ -225,6 +226,10 @@ func commonFilterClauses(f *CommonFilterState) []models.QueryClause {
 		clauses = appendFilterClause(clauses, models.QueryFieldPinned,
 			models.QueryOperatorPresent, "")
 	}
+	if f.Review {
+		clauses = appendFilterClause(clauses, models.QueryFieldReview,
+			models.QueryOperatorPresent, "")
+	}
 	return clauses
 }
 
@@ -374,6 +379,8 @@ func commonFilterStateFromQuery(query models.Query) CommonFilterState {
 			filter.Deferred = true
 		case models.QueryFieldPinned:
 			filter.Pinned = true
+		case models.QueryFieldReview:
+			filter.Review = true
 		case models.QueryFieldParent:
 			filter.Hierarchy = HierarchyParent
 		case models.QueryFieldLeaf:

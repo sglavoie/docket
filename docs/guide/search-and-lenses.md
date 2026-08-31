@@ -47,7 +47,7 @@ name; nothing else does, in either presentation.
 | `fa` | Pick completed at least 7, 30, or 90 local-calendar days ago, or all valid completion ages; also filters states to Done and Canceled |
 | `f#` | Pick tags with AND semantics; the task context is a separate axis on `fc` |
 | `fc` | Pick task contexts with OR semantics, since a task carries at most one; the leading `No context` row admits the tasks carrying none |
-| `fr` | Toggle the `review` tag facet |
+| `f=` | Toggle the review facet, the same `=review` a typed query spells |
 | `f@` | Open the Filter by Due or Deferred picker: five shortcut rows writing `@overdue`, `@today`, `@week`, `@0`, and `?deferred`, each labeled with the token it writes |
 | `fh` | Pick one hierarchy position: parent, child, root, or leaf; parent and leaf read open children |
 | `f~` | Pick one soft-reference position: `?blocked` names other work, `?blocking` is named by other work; each row is labeled with the token it writes |
@@ -98,6 +98,7 @@ filter, and a query with no sigils behaves exactly as it did before:
 | `$state` | Match a lifecycle state exactly |
 | `$today`, `$next` | Match membership in the durable planning list |
 | `*pin`, `*unpin` | Match pinned or unpinned tasks |
+| `=review`, `=unreview` | Match tasks flagged for review, or the rest |
 | `~task` | Match tasks that depend directly on that target; repeatable, combined with AND |
 | `%project` | Narrow the search to matching projects within the active scope |
 | `?property` | Match a property computed from the workspace rather than stored on the task |
@@ -113,7 +114,7 @@ A leading `-` always means *remove*, and what it removes from is whatever you
 are working on. While you are writing a task, `-#tag` takes a tag off it. In the
 search box there is no task to edit, so the same `-` takes rows out of the
 result: `-!1`, `-#tag`, `-##context`, `-@today`, `-@@tomorrow`, `-$doing`,
-`-*pin`, `-%project`, `-~task`, and `-?stale` each subtract exactly what the
+`-*pin`, `-=review`, `-%project`, `-~task`, and `-?stale` each subtract exactly what the
 token without the `-` would have selected. That is the whole rule — every
 negation accepts the same values, offers the same completions, and reports the
 same problems as its positive twin, so there is nothing extra to learn. Several
@@ -334,7 +335,7 @@ all nine, in alphabetical order with the projection each one installs:
 | `High Priority` | All · !1 · sort: priority ↑ |
 | `Overdue` | Due · due: overdue |
 | `Parked Work` | All · parked: only |
-| `Review Queue` | All · #review · sort: updated ↑ |
+| `Review Queue` | All · review · sort: updated ↑ |
 | `Stale` | All · stale · sort: updated ↑ |
 | `Waiting` | All · states: waiting |
 

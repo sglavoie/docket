@@ -118,9 +118,6 @@ const (
 // deliberately did not.
 const starterNamedLensCount = 3
 
-// lensReviewQueueTag is the task tag the Review Queue template selects on.
-const lensReviewQueueTag = "review"
-
 // LensTaskFilters is the persisted form of the Outliner's shared task facets.
 // StatesSet and CompletionAgeSet are retained explicitly because each
 // distinguishes an absent predicate from an active one that happens to admit
@@ -141,6 +138,10 @@ type LensTaskFilters struct {
 	Stale            bool     `json:"stale,omitempty"`
 	Deferred         bool     `json:"deferred,omitempty"`
 	Pinned           bool     `json:"pinned,omitempty"`
+	// Review selects tasks carrying the stored review flag. It is a boolean here
+	// for the same reason it is one on the task: review is an axis beside the
+	// pin, not a tag name a lens could spell three ways.
+	Review bool `json:"review,omitempty"`
 }
 
 // LensProjectFilters is the persisted form of the Outliner's population facet.
@@ -269,7 +270,7 @@ func builtinNamedLensDefinitions() NamedLensList {
 			Name: lensReviewQueueTmplName,
 			Mode: LensModeAll,
 			Tasks: LensTaskFilters{
-				Tags: []string{lensReviewQueueTag},
+				Review: true,
 			},
 			Sort: LensSort{Field: LensSortUpdated, Ascending: true},
 		},
