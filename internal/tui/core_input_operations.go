@@ -28,9 +28,6 @@ const (
 	operationCoreCursorBottom       OperationID = "tui.core.cursor-bottom"
 	operationCoreCursorPageUp       OperationID = "tui.core.cursor-page-up"
 	operationCoreCursorPageDown     OperationID = "tui.core.cursor-page-down"
-	operationCoreCursorScreenTop    OperationID = "tui.core.cursor-screen-top"
-	operationCoreCursorScreenMiddle OperationID = "tui.core.cursor-screen-middle"
-	operationCoreCursorScreenBottom OperationID = "tui.core.cursor-screen-bottom"
 	operationCoreScrollCursorTop    OperationID = "tui.core.scroll-cursor-top"
 	operationCoreScrollCursorMiddle OperationID = "tui.core.scroll-cursor-middle"
 	operationCoreScrollCursorBottom OperationID = "tui.core.scroll-cursor-bottom"
@@ -253,9 +250,6 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreCursorBottom, "Go to Last Row", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreCursorPageUp, "Half Page Up", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
 		core(operationCoreCursorPageDown, "Half Page Down", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
-		core(operationCoreCursorScreenTop, "Go to Top of Screen", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "screen top", "highest visible row"),
-		core(operationCoreCursorScreenMiddle, "Go to Middle of Screen", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "screen middle", "middle visible row"),
-		core(operationCoreCursorScreenBottom, "Go to Bottom of Screen", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "screen bottom", "lowest visible row"),
 		core(operationCoreScrollCursorTop, "Scroll Cursor to Top of Screen", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "scroll top", "row to top"),
 		core(operationCoreScrollCursorMiddle, "Scroll Cursor to Middle of Screen", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "scroll middle", "row to middle"),
 		core(operationCoreScrollCursorBottom, "Scroll Cursor to Bottom of Screen", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "scroll bottom", "row to bottom"),
@@ -520,12 +514,6 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		message = commandMessage(m.coreMoveCursor("ctrl+u"))
 	case operationCoreCursorPageDown:
 		message = commandMessage(m.coreMoveCursor("ctrl+d"))
-	case operationCoreCursorScreenTop:
-		return m.coreMoveCursorScreen(screenJumpTop)
-	case operationCoreCursorScreenMiddle:
-		return m.coreMoveCursorScreen(screenJumpMiddle)
-	case operationCoreCursorScreenBottom:
-		return m.coreMoveCursorScreen(screenJumpBottom)
 	case operationCoreScrollCursorTop:
 		return m.coreScrollCursorTo(viewScrollAnchorTop)
 	case operationCoreScrollCursorMiddle:
@@ -909,56 +897,11 @@ func (m *AppModel) coreMoveCursor(key string) tea.Cmd {
 	return cmd
 }
 
-// screenJumpPosition names the three screen-relative landings H/M/L ask for.
-type screenJumpPosition int
-
-const (
-	screenJumpTop screenJumpPosition = iota
-	screenJumpMiddle
-	screenJumpBottom
-)
-
-// coreMoveCursorScreen lands the cursor on a position in the window the last
-// render drew. It deliberately bypasses handleListNavigation, which is shared
-// with Notes and knows nothing about a scroll window, and it never touches
-// viewScrollOffset: the landing stays inside the window, so the next render
-// leaves the scroll where it was.
-func (m *AppModel) coreMoveCursorScreen(position screenJumpPosition) OperationHandlerResult {
-	out, ok := m.outlinerPrimary()
-	if !ok || out == nil {
-		return OperationHandlerResult{}
-	}
-	start, end := out.visibleRowWindow()
-	if start >= end {
-		return OperationHandlerResult{Status: "No row to jump to on screen"}
-	}
-	target, preferred := start, 1
-	switch position {
-	case screenJumpMiddle:
-		target = start + windowMiddleIndex(end-start)
-	case screenJumpBottom:
-		target, preferred = end-1, -1
-	case screenJumpTop:
-	}
-	landing, found := out.nearestNavigableInWindow(target, start, end, preferred)
-	if !found {
-		return OperationHandlerResult{Status: "No row to jump to on screen"}
-	}
-	previous := out.cursor
-	out.cursor = landing
-	cmd := flashIfJumped(previous, out.cursor, &out.cursorFlash)
-	out.updateRangeSelection()
-	out.voidRelocationCaptureAfterNavigation(previous)
-	return OperationHandlerResult{Message: commandMessage(cmd)}
-}
-
 // windowMiddleIndex is the offset of the middle row inside a window of the given
-// height. M and zz read the same formula so the two families agree on "middle".
+// height. zz reads it to decide where "middle" is.
 func windowMiddleIndex(height int) int { return (height - 1) / 2 }
 
-// viewScrollAnchor names where in the window zt/zz/zb park the cursor's row. It
-// is the inverse of screenJumpPosition, which names where in the window H/M/L
-// park the cursor itself.
+// viewScrollAnchor names where in the window zt/zz/zb park the cursor's row.
 type viewScrollAnchor int
 
 const (

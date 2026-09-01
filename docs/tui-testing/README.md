@@ -153,7 +153,6 @@ The final public grammar is:
 Tab/Shift+Tab                    All, Today, Inbox, Next, Backlog, Due, Recent
 ga gi gt gn gb g@ gr             go-to chord, one key per mode
 j/k h/l gg/G Ctrl+U/Ctrl+D       navigation
-H/M/L                            cursor to top/middle/bottom of screen
 zt zz zb                         cursor row to top/middle/bottom of screen
 s p t                            fold toggles: sections, project groups, subtrees
 n/N                              next/previous grouping header, wrapping

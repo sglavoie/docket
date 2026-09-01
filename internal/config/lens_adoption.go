@@ -133,7 +133,6 @@ type contributedLensRecord struct {
 // identity, which are the ones that win when the two disagree.
 type resolvedLensRecord struct {
 	id    string
-	core  string
 	lens  NamedLens
 	names []string
 	own   []string
@@ -246,7 +245,6 @@ func collapseLensRecords(records []*contributedLensRecord) []*resolvedLensRecord
 		if !seen {
 			existing = &resolvedLensRecord{
 				id:    record.id,
-				core:  record.core,
 				lens:  record.lens,
 				order: record.order,
 			}

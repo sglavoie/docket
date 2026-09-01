@@ -133,9 +133,9 @@ func TestViewportReservesTheTitleContinuationRows(t *testing.T) {
 	}
 }
 
-// screenJumpApp seats a scrolled window and returns the app, its outliner, and
+// scrollAnchorApp seats a scrolled window and returns the app, its outliner, and
 // the half-open window the render drew.
-func screenJumpApp(t *testing.T) (*AppModel, *OutlinerModel, int, int) {
+func scrollAnchorApp(t *testing.T) (*AppModel, *OutlinerModel, int, int) {
 	t.Helper()
 	app := newUITestApp()
 	out := app.crossOutliner
@@ -150,61 +150,13 @@ func screenJumpApp(t *testing.T) (*AppModel, *OutlinerModel, int, int) {
 	out.computeOutlinerViewport(100, 0)
 	start, end := out.visibleRowWindow()
 	if start == 0 || end-start < 3 {
-		t.Fatalf("window = [%d,%d), want a scrolled window holding three distinct landings", start, end)
+		t.Fatalf("window = [%d,%d), want a scrolled window holding three distinct anchors", start, end)
 	}
 	return app, out, start, end
 }
 
-func TestScreenRelativeJumpsLandInTheDrawnWindowWithoutScrolling(t *testing.T) {
-	app, out, start, end := screenJumpApp(t)
-	offset := out.viewScrollOffset
-
-	for _, tc := range []struct {
-		key  string
-		want int
-	}{
-		{key: "H", want: start},
-		{key: "M", want: start + (end-start-1)/2},
-		{key: "L", want: end - 1},
-	} {
-		out.cursor = start + 1
-		result := executeDirectPath(t, app, app.operationCommandContext(), []string{tc.key})
-		if result.Err != nil {
-			t.Fatalf("%s: %v", tc.key, result.Err)
-		}
-		if out.cursor != tc.want {
-			t.Errorf("%s cursor = %d, want %d", tc.key, out.cursor, tc.want)
-		}
-		if out.viewScrollOffset != offset {
-			t.Errorf("%s scroll offset = %d, want %d unchanged", tc.key, out.viewScrollOffset, offset)
-		}
-	}
-}
-
-func TestScreenRelativeJumpsSkipSeparatorsInsideTheWindow(t *testing.T) {
-	app, out, start, end := screenJumpApp(t)
-	out.rows[start] = outlinerRow{IsSeparator: true}
-	out.rows[end-1] = outlinerRow{IsSeparator: true}
-
-	for _, tc := range []struct {
-		key  string
-		want int
-	}{
-		{key: "H", want: start + 1},
-		{key: "L", want: end - 2},
-	} {
-		out.cursor = start + 2
-		if result := executeDirectPath(t, app, app.operationCommandContext(), []string{tc.key}); result.Err != nil {
-			t.Fatalf("%s: %v", tc.key, result.Err)
-		}
-		if out.cursor != tc.want {
-			t.Errorf("%s cursor = %d, want the nearest navigable row inside the window %d", tc.key, out.cursor, tc.want)
-		}
-	}
-}
-
 func TestScrollAnchorsMoveTheWindowAndLeaveTheCursor(t *testing.T) {
-	app, out, start, end := screenJumpApp(t)
+	app, out, start, end := scrollAnchorApp(t)
 	height := end - start
 	cursor := out.cursor
 
@@ -243,7 +195,7 @@ func TestScrollAnchorsMoveTheWindowAndLeaveTheCursor(t *testing.T) {
 }
 
 func TestScrollAnchorTopClampsAtTheLastRow(t *testing.T) {
-	app, out, start, end := screenJumpApp(t)
+	app, out, start, end := scrollAnchorApp(t)
 	height := end - start
 	out.cursor = len(out.rows) - 1
 	out.computeOutlinerViewport(100, 0)
@@ -260,34 +212,27 @@ func TestScrollAnchorTopClampsAtTheLastRow(t *testing.T) {
 	}
 }
 
-func TestScrollAnchorMiddleAndScreenMiddleAgree(t *testing.T) {
-	app, out, _, _ := screenJumpApp(t)
+func TestScrollAnchorMiddleSettlesOnASecondPress(t *testing.T) {
+	app, out, _, _ := scrollAnchorApp(t)
 	ctx := app.operationCommandContext()
 
-	// zz then M: the window moved under the cursor, so M lands back on it.
 	if result := executeDirectPath(t, app, ctx, []string{"z", "z"}); result.Err != nil {
 		t.Fatalf("zz: %v", result.Err)
 	}
 	out.computeOutlinerViewport(100, 0)
-	cursor, offset := out.cursor, out.viewScrollOffset
-	if result := executeDirectPath(t, app, ctx, []string{"M"}); result.Err != nil {
-		t.Fatalf("M: %v", result.Err)
-	}
-	if out.cursor != cursor {
-		t.Errorf("M after zz moved the cursor to %d, want %d", out.cursor, cursor)
-	}
+	offset := out.viewScrollOffset
 
-	// M then zz: the cursor already sits mid-window, so zz leaves the offset.
+	// The cursor already sits mid-window, so a second zz has nothing to move.
 	if result := executeDirectPath(t, app, ctx, []string{"z", "z"}); result.Err != nil {
 		t.Fatalf("zz: %v", result.Err)
 	}
 	if out.viewScrollOffset != offset {
-		t.Errorf("zz after M moved the offset to %d, want %d", out.viewScrollOffset, offset)
+		t.Errorf("second zz moved the offset to %d, want %d", out.viewScrollOffset, offset)
 	}
 }
 
 func TestScrollAnchorsLeaveAnEmptyWindowAlone(t *testing.T) {
-	app, out, _, _ := screenJumpApp(t)
+	app, out, _, _ := scrollAnchorApp(t)
 	out.rows = nil
 	out.cursor = 0
 	out.viewScrollOffset = 0
@@ -301,24 +246,5 @@ func TestScrollAnchorsLeaveAnEmptyWindowAlone(t *testing.T) {
 	}
 	if out.cursor != 0 || out.viewScrollOffset != 0 {
 		t.Fatalf("cursor = %d offset = %d, want both left at 0", out.cursor, out.viewScrollOffset)
-	}
-}
-
-func TestScreenRelativeJumpsReportAWindowWithNoNavigableRow(t *testing.T) {
-	app, out, start, end := screenJumpApp(t)
-	for i := start; i < end; i++ {
-		out.rows[i] = outlinerRow{IsSeparator: true}
-	}
-	out.cursor = start
-
-	result := executeDirectPath(t, app, app.operationCommandContext(), []string{"M"})
-	if result.Err != nil {
-		t.Fatalf("M: %v", result.Err)
-	}
-	if result.Status != "No row to jump to on screen" {
-		t.Fatalf("status = %q, want the empty-window refusal", result.Status)
-	}
-	if out.cursor != start {
-		t.Fatalf("cursor = %d, want %d left where it was", out.cursor, start)
 	}
 }

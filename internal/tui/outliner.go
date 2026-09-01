@@ -64,7 +64,7 @@ type OutlinerModel struct {
 	zoom            sectionZoom              // Section the projection is narrowed to; zero when none
 
 	rows []outlinerRow // Flattened rows, rebuilt on each render
-	// lastViewport is the window the last render actually drew. H/M/L read it
+	// lastViewport is the window the last render actually drew. zt/zz/zb read it
 	// rather than recomputing the window, which would re-derive it from a
 	// different footer state and move viewScrollOffset.
 	lastViewport outlinerViewport

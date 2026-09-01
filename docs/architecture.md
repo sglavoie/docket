@@ -24,7 +24,7 @@ services and revision-checked storage boundaries.
   - [Outline editor](#outline-editor) — dump scope, markers, declarative
     deletion, validation phases
   - [Search, filters, and Peek](#search-filters-and-peek) — facets, `F`
-    populations, `H`/`M`/`L` and `zt`/`zz`/`zb`, Focus and `Esc`, Peek budget
+    populations, `zt`/`zz`/`zb`, Focus and `Esc`, Peek budget
   - [Sorting axis](#sorting-axis) — manual-order exemption, group order,
     fixed-order modes
   - [Named lenses](#named-lenses) — portable domain, commit before publish,
@@ -1882,20 +1882,14 @@ them enter the drop ladder at narrow widths. Context values use at most 12
 columns in the row and move to Peek in full when longer.
 Outliner rows omit short task IDs.
 
-`H`, `M`, and `L` are the screen-relative jumps, the third kind beside the
-list-relative `gg`/`G` and the half-page `Ctrl+U`/`Ctrl+D`. They read the window
-the last render drew, cached on `lastViewport` by `computeOutlinerViewport`,
-which is the single window authority and the one place a render moves
-`viewScrollOffset`: a key handler that recomputed the window would re-derive it
-from a different footer state and scroll. The landing is the nearest navigable
-row inside that window and never outside it — separators are skipped, headers and
-checklist items are valid landings — so the scroll offset is deliberately left
-untouched and a window holding no navigable row reports rather than moving the
-cursor.
-
-`zt`, `zz`, and `zb` are the inverse family: they move the window under the
-cursor and leave the cursor alone. Both families read that one cached window and
-share `windowMiddleIndex`, so `M` and `zz` can never disagree about "middle". The
+`zt`, `zz`, and `zb` move the window under the cursor and leave the cursor
+alone, the one scroll family beside the list-relative `gg`/`G` and the half-page
+`Ctrl+U`/`Ctrl+D` that move the cursor instead. They read the window the last
+render drew, cached on `lastViewport` by `computeOutlinerViewport`, which is the
+single window authority and the one place a render moves `viewScrollOffset`: a
+key handler that recomputed the window would re-derive it from a different
+footer state and scroll. `zz` reads `windowMiddleIndex` for its notion of
+"middle". The
 chord is the one key press outside `computeOutlinerViewport` that writes
 `viewScrollOffset`, and that is safe because the offset it writes still contains
 the cursor: `adjustPersistentScrollOffset` clamps into range and then moves the

@@ -114,8 +114,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"The Outliner remains full-width at every supported terminal size",
 		"The task context badge is reserved beside the ancestor and pin markers",
 		"`taskPinnedMarker` renders a bold `*` when `task.Pinned && !row.IsPinnedSection`",
-		"`H`, `M`, and `L` are the screen-relative jumps",
-		"`zt`, `zz`, and `zb` are the inverse family",
+		"`zt`, `zz`, and `zb` move the window under the cursor and leave the cursor alone",
 		"The `z` prefix is scroll alone: the bulk fold that once shared it moved to `t`",
 		"`Enter` pushes a project-qualified Focus frame",
 		"`Esc` restores one frame at a time",
@@ -264,6 +263,7 @@ func TestArchitectureDocumentationRejectsRetiredLiveProduct(t *testing.T) {
 		"BoundaryID",
 		"`zM` and `zR` share that prefix",
 		"`S` keeps its own narrower `visibleSectionHeaders()` scan",
+		"the screen-relative jumps",
 	} {
 		if strings.Contains(content, stale) {
 			t.Errorf("architecture documentation contains retired runtime guidance %q", stale)
@@ -464,7 +464,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`fs` is unavailable in Recent; entry clears only Stale: " +
 			"`Stale filter cleared: Recent only includes the last 30 days`",
 		"There is no `$delete` sigil",
-		"The old `b`, `c`, `d`, `m`, `w`, `:`, `C`, `R`, `Ctrl+Esc`, and the " +
+		"The old `b`, `c`, `d`, `m`, `w`, `:`, `C`, `R`, `Ctrl+Esc`, `H`, `L`, and the " +
 			"comma state prefix stay unbound, as does `SortByStatus`",
 		"Done is `$d` alone and no `d` alias may return",
 		"Root `$`, `z`, and `g` are chord prefixes, not direct keys: `z` never means snooze or defer, " +

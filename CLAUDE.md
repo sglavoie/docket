@@ -257,7 +257,7 @@ not give notes tags, links, or bulk actions.
 
 ## Key bindings
 
-The old `b`, `c`, `d`, `m`, `w`, `:`, `C`, `R`, `Ctrl+Esc`, and the
+The old `b`, `c`, `d`, `m`, `w`, `:`, `C`, `R`, `Ctrl+Esc`, `H`, `L`, and the
 comma state prefix stay unbound, as does `SortByStatus`; repeating a sort field
 key is the only reverse route. Done is `$d` alone and no `d` alias may return.
 
