@@ -157,7 +157,13 @@ func (app *AppModel) registerOperationCatalog() error {
 			return fmt.Errorf("register %s operations: %w", registration.name, err)
 		}
 	}
-	return app.registerSurfaceInputStrategies()
+	if err := app.registerSurfaceInputStrategies(); err != nil {
+		return err
+	}
+	// The menu bar is a projection of the catalog above, so it is held to the
+	// catalog here: a menu naming an operation nobody registered fails startup
+	// rather than opening with a row missing.
+	return app.validateMenuBarSpecs()
 }
 
 // registerSurfaceInputStrategies holds every manifested surface to the one-path
