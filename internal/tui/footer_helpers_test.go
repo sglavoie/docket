@@ -245,9 +245,12 @@ func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 	for _, hint := range hints {
 		pairs = append(pairs, guidanceHintText(hint))
 	}
+	// `M menu` sits sixth because revealing the map of this grammar outranks every
+	// act the map lists; the four hints the rendered row is held to below are
+	// ahead of it, so the bar's rank buys its place without costing a required one.
 	wantWorkflow := []string{
 		"$ workflow", "! priority", "@ date", "# tags/context", "Space actions",
-		"v select", "a capture", "Enter focus", "Ctrl+Enter peek", "/ search", "? help",
+		"M menu", "v select", "a capture", "Enter focus", "Ctrl+Enter peek", "/ search", "? help",
 	}
 	if len(pairs) < len(wantWorkflow) || !slices.Equal(pairs[:len(wantWorkflow)], wantWorkflow) {
 		t.Fatalf("ranked footer prefix = %v, want workflow-first task guidance %v", pairs, wantWorkflow)

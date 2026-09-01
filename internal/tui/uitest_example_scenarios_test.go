@@ -101,6 +101,8 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"notes-responsive-preview.json",
 		"conflict-browser-open.json",
 		"conflict-browser-narrow-layout.json",
+		"outliner-menu-bar.json",
+		"outliner-menu-bar-persist.json",
 	}
 	for _, name := range required {
 		if _, err := os.Stat(filepath.Join(exampleScenariosDir, name)); err != nil {

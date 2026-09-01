@@ -127,8 +127,10 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"Manual order is never touched",
 		"Group order never changes",
 		"### Named lenses",
-		"persisted as `config.NamedLens` in the portable `lenses.json` domain, while the theme and the\n" +
-			"active-lens pointer stay machine-local",
+		"persisted as `config.NamedLens` in the portable `lenses.json` domain, while the theme, the\n" +
+			"menu bar's visibility, and the active-lens pointer stay machine-local",
+		"The\nmenu-bar flag carries `omitempty` and `NewMachineState` never seeds it, so the\nomitted key " +
+			"is the default",
 		"`Manager.AdoptPortableLenses` is the one-time-per-machine step",
 		"`MergeNamedLenses` never deletes",
 		"`captureLensState` reads the query axis through\n`capturedLensQuery`",
@@ -396,7 +398,26 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// where it forks processes and checks out tags. Both are invariants; neither is
 	// derivable from the tests, because the tests that could state them are the
 	// two-process ones no in-process suite runs.
-	const budget = 26700
+	// That raise is spent as well. This one buys the menu bar, and it is bought
+	// twice over because the bar breaks two defaults a contributor would otherwise
+	// reach for. The first is where a new chrome flag goes: machine.json's "only
+	// those two" was a closed list, and closing it again at three without saying
+	// why would read as an accident, so the rule now names the test the list is
+	// closed by — chrome follows the terminal you are sitting at — and the
+	// omitempty-and-never-seeded shape that makes an absent key mean the default.
+	// A reviewer who does not have that test will either put the next flag in the
+	// portable workspace, where it follows the user to a terminal that cannot draw
+	// it, or seed it and hand every existing machine a surprise. The second is that
+	// the bar is a view-local gated sub-state rather than a presentation. Every
+	// instinct here says otherwise: it is persistent, it is visible chrome, and it
+	// will grow dropdowns, all of which look like reasons to mint a
+	// `PresentationID` and a manifest entry — and doing so silently changes what
+	// `surfaceOperationGates()` and `validateOperationOnePath` cover. The one-row
+	// cost belongs beside it, because the failure it prevents is the quiet one: a
+	// second subtraction at a call site does not crash, it just draws a row short.
+	// Neither rule is derivable from the code, since the code that would state them
+	// is the code a contributor is about to write.
+	const budget = 27300
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

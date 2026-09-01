@@ -68,11 +68,11 @@ func menuSeparator() menuEntrySpec { return menuEntrySpec{} }
 // entry names a registered operation identifier rather than a string literal,
 // which is what lets the parity test hold the whole bar to the catalog.
 //
-// activeMode is the live radio state of the View menu's mode rows. It is passed
-// in rather than read from a model so the specification stays pure data: a menu
-// row can describe live state, but it cannot reach back into the Outliner to
-// find it.
-func outlinerMenuSpecs(activeMode OutlinerModeID) []menuSpec {
+// activeMode and menuBarVisible are the live states the View menu's rows show.
+// They are passed in rather than read from a model so the specification stays
+// pure data: a menu row can describe live state, but it cannot reach back into
+// the Outliner to find it.
+func outlinerMenuSpecs(activeMode OutlinerModeID, menuBarVisible bool) []menuSpec {
 	return []menuSpec{
 		{
 			ID:    menuIDTask,
@@ -97,7 +97,7 @@ func outlinerMenuSpecs(activeMode OutlinerModeID) []menuSpec {
 		{
 			ID:      menuIDView,
 			Title:   "View",
-			Entries: viewMenuEntries(activeMode),
+			Entries: viewMenuEntries(activeMode, menuBarVisible),
 		},
 		{
 			ID:    menuIDGo,
@@ -160,10 +160,11 @@ func outlinerMenuSpecs(activeMode OutlinerModeID) []menuSpec {
 // seven Tab cycles through, in the order it cycles them, and their wording is
 // the catalog's own.
 //
-// The bar's own visibility toggle is deliberately absent: the operation that
-// owns it is not registered yet, and a spec naming an unregistered operation is
-// a startup error rather than a silently missing row.
-func viewMenuEntries(activeMode OutlinerModeID) []menuEntrySpec {
+// The bar's own visibility toggle is the last row, checked when the bar is
+// drawn. A menu that can hide the surface it is opened from is unusual, but the
+// key that shows the bar is the one thing a user who found the bar by accident
+// cannot read off the bar itself, so it belongs here rather than only in `?`.
+func viewMenuEntries(activeMode OutlinerModeID, menuBarVisible bool) []menuEntrySpec {
 	entries := make([]menuEntrySpec, 0, len(outlinerModes)+13)
 	for _, mode := range outlinerModes {
 		checked := mode.ID == activeMode
@@ -187,6 +188,11 @@ func viewMenuEntries(activeMode OutlinerModeID) []menuEntrySpec {
 		menuEntrySpec{OperationID: operationCoreQueryReadout},
 		menuSeparator(),
 		menuEntrySpec{OperationID: operationCoreToggleTheme, Label: "Theme"},
+		menuEntrySpec{
+			OperationID: operationCoreToggleMenuBar,
+			Label:       "Menu Bar",
+			Checked:     &menuBarVisible,
+		},
 	)
 }
 
@@ -288,7 +294,9 @@ func collapseMenuSeparators(entries []resolvedMenuEntry) []resolvedMenuEntry {
 // validateMenuBarSpecs resolves the bar once against the catalog the app just
 // registered, so a menu naming an operation that was renamed or retired fails
 // at startup rather than opening a menu with a hole in it. The launch view is
-// All with no cursor, which is the state this resolution describes.
+// All with no cursor and a hidden bar, which is the state this resolution
+// describes; a machine whose file says otherwise changes what the rows show,
+// never which rows exist.
 func (m *AppModel) validateMenuBarSpecs() error {
 	strategy, ok := m.operationRegistry.InputStrategy(InputStrategySimplified)
 	if !ok {
@@ -296,7 +304,12 @@ func (m *AppModel) validateMenuBarSpecs() error {
 	}
 	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
 	ctx.Capabilities.Add(CapabilitySimplifiedInput)
-	menus, err := resolveMenuEntries(m.operationRegistry, strategy, ctx, outlinerMenuSpecs(ModeAll))
+	menus, err := resolveMenuEntries(
+		m.operationRegistry,
+		strategy,
+		ctx,
+		outlinerMenuSpecs(ModeAll, false),
+	)
 	if err != nil {
 		return err
 	}

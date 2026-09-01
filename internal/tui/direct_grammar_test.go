@@ -250,6 +250,7 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"P":      operationCoreSelectProject,
 		"\\":     operationCoreNamedLenses,
 		"ctrl+n": operationCoreNotes, "T": operationCoreToggleTheme,
+		"M": operationCoreToggleMenuBar,
 		"Q": operationCoreQueryReadout,
 		"u": operationCoreUndo, "ctrl+r": operationCoreRedo,
 		"esc": operationCoreBack, "?": operationCoreHelp, "ctrl+c": operationCoreQuit,
@@ -314,10 +315,13 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 
 	// g became the go-to chord prefix, so cursor-top answers to gg and Home only,
 	// and d went with the defer picker when @ absorbed both date fields. H, M,
-	// and L went with the screen-relative jumps; the z chord kept the family.
+	// and L went with the screen-relative jumps; the z chord kept the family. M
+	// has since been spent on the menu bar and is asserted in direct above, so
+	// only its two neighbors are still owed silence: either one alone would
+	// advertise half of a jump the z chord already owns.
 	for _, removed := range []string{
 		"b", "c", "d", "g", "z", ",", "m", ":", "C", "R", "ctrl+esc",
-		"H", "M", "L",
+		"H", "L",
 	} {
 		if owners := owners[removed]; len(owners) > 0 {
 			t.Errorf("removed key %q still resolves to %s", removed, owners[0])

@@ -97,12 +97,15 @@ names its mode, its project scope, its sort, and one query holding every facet
 it narrows by, so what a lens selects is one line you can read.
 
 Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the
-dark/light theme choice and a pointer to the lens that was last open. Both are
-answers about this machine rather than about the workspace, which is why they
-stay behind while the definitions travel: a second machine opens on its own
-theme and on no lens at all. The active-lens pointer is a hint rather than a
-record: it is checked for shape alone when the file loads, so one naming a lens
-that is no longer there costs you a stale hint and never a failed launch.
+dark/light theme choice, whether the Outliner draws its menu bar, and a pointer
+to the lens that was last open. All three are answers about this machine rather
+than about the workspace, which is why they stay behind while the definitions
+travel: a second machine opens on its own theme, with no menu bar, and on no
+lens at all. A machine that has never pressed `M` writes no menu-bar key at all,
+and the absent key is what says the bar is hidden. The active-lens pointer is a
+hint rather than a record: it is checked for shape alone when the file loads, so
+one naming a lens that is no longer there costs you a stale hint and never a
+failed launch.
 
 The first time a machine opens a workspace that has reached schema 16, it joins
 the shared list: whatever lenses that machine had saved for itself are merged

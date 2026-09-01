@@ -31,7 +31,7 @@ func resolveOutlinerMenus(t *testing.T, app *AppModel, activeMode OutlinerModeID
 		app.GetOperationRegistry(),
 		strategy,
 		menuBarCommandContext(),
-		outlinerMenuSpecs(activeMode),
+		outlinerMenuSpecs(activeMode, false),
 	)
 	if err != nil {
 		t.Fatalf("resolve menus: %v", err)
@@ -74,7 +74,7 @@ func TestEveryMenuEntryNamesARegisteredOperation(t *testing.T) {
 	registry := parityAuditApp(t).GetOperationRegistry()
 
 	named := 0
-	for _, spec := range outlinerMenuSpecs(ModeAll) {
+	for _, spec := range outlinerMenuSpecs(ModeAll, false) {
 		for index, entry := range spec.Entries {
 			if entry.OperationID == "" {
 				if entry.Label != "" || entry.Checked != nil {
@@ -145,7 +145,7 @@ func TestMenuKeyHintsFollowTheStrategy(t *testing.T) {
 		app.GetOperationRegistry(),
 		strategy,
 		menuBarCommandContext(),
-		outlinerMenuSpecs(ModeAll),
+		outlinerMenuSpecs(ModeAll, false),
 	)
 	if err != nil {
 		t.Fatalf("resolve menus: %v", err)

@@ -64,6 +64,7 @@ const (
 	operationCoreQueryReadout       OperationID = "tui.core.query-readout"
 	operationCoreNotes              OperationID = "tui.core.notes"
 	operationCoreToggleTheme        OperationID = "tui.core.toggle-theme"
+	operationCoreToggleMenuBar      OperationID = "tui.core.toggle-menu-bar"
 	operationCoreUndo               OperationID = "tui.core.undo"
 	operationCoreRedo               OperationID = "tui.core.redo"
 	operationCoreBack               OperationID = "tui.core.back"
@@ -328,6 +329,7 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		),
 		core(operationCoreNotes, "Notes", OperationCategoryNote, TargetCardinalityNone, OperationRiskReadOnly, "scratch notes"),
 		core(operationCoreToggleTheme, "Toggle Theme", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "dark theme", "light theme"),
+		core(operationCoreToggleMenuBar, "Toggle Menu Bar", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "menu bar", "show menus"),
 		core(operationCoreUndo, "Undo", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation),
 		core(operationCoreRedo, "Redo", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation),
 		core(operationCoreBack, "Back", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
@@ -677,6 +679,11 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		message = ShowNotesManagerMsg{Scope: m.coreNotesScope()}
 	case operationCoreToggleTheme:
 		err = m.coreToggleTheme()
+		if err == nil {
+			message = commandMessage(defaultStatusTimeout())
+		}
+	case operationCoreToggleMenuBar:
+		err = m.coreToggleMenuBar()
 		if err == nil {
 			message = commandMessage(defaultStatusTimeout())
 		}
@@ -1098,6 +1105,31 @@ func (m *AppModel) coreToggleTheme() error {
 	}
 	ApplyTheme(NewThemeConfig(m.runtime.Machine()))
 	m.setInfoStatus("Theme: " + machine.Theme)
+	return nil
+}
+
+// coreToggleMenuBar shows and hides the Outliner's menu bar. Visibility is
+// machine-local for the same reason the theme is: chrome follows the terminal
+// you are sitting at rather than the workspace you opened, so a machine that
+// wants the bar keeps it without every other machine inheriting it.
+//
+// Nothing is recomputed here. The bar costs one row of the list, and
+// contentHeight is the one place that subtracts it, so the next render reads
+// the committed flag and every budget follows from that single definition.
+func (m *AppModel) coreToggleMenuBar() error {
+	if m.runtime == nil || m.runtime.Machine() == nil {
+		return fmt.Errorf("machine chrome state is unavailable")
+	}
+	machine := *m.runtime.Machine()
+	machine.MenuBarVisible = !machine.MenuBarVisible
+	if err := m.runtime.CommitMachine(&machine); err != nil {
+		return fmt.Errorf("save menu bar visibility: %w", err)
+	}
+	if machine.MenuBarVisible {
+		m.setInfoStatus("Menu bar shown")
+	} else {
+		m.setInfoStatus("Menu bar hidden")
+	}
 	return nil
 }
 

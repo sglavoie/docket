@@ -22,6 +22,12 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	}
 
 	var b strings.Builder
+	// The bar leads, so the title row and its workspace pulse simply sit one line
+	// down rather than sharing a row with chrome. Its cost is already out of the
+	// budget contentHeight reports, which is why nothing is measured here.
+	if m.menuBarVisible() {
+		b.WriteString(m.renderOutlinerMenuBar(width) + "\n")
+	}
 	m.writeOutlinerHeader(&b, width)
 
 	// Render the pane once and measure what came back: RenderDropdownWithLimit

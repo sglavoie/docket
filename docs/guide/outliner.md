@@ -24,6 +24,24 @@ and the current local day's Done count are shown even at zero whenever the pulse
 region fits; zero Inbox and overdue counts disappear. Narrow terminals drop
 Done, Inbox, overdue, then Today before shortening required interaction context.
 
+`M` puts a menu bar above that title row: a single band reading
+`Task  View  Go  Find  Help`, one label per menu, and nothing else. It is a map
+rather than a control — the labels do not open yet — so what it is for today is
+reading the grammar off the screen instead of out of `?`. `M` again takes it
+away. The bar costs exactly one row of the task list while it is shown, which is
+the whole reason it is off by default and the whole reason it is a key rather
+than a permanent fixture. A terminal too narrow for every label drops whole
+menus from the right — Help first, then Find, then Go — rather than cutting a
+word in half, because a half-word is a lie about what the bar offers while a
+dropped menu is still reachable by the keys its entries carry.
+
+Whether the bar is drawn is remembered for this machine, the way the light or
+dark theme is: it survives quitting and reopening `tt`, and it does not follow
+you to another computer that opens the same workspace. Chrome belongs to the
+terminal you are sitting at. The View menu lists the toggle itself, checked
+while the bar is up, because the key that shows the bar is the one thing you
+cannot read off the bar once you have found it by accident.
+
 Today mode also compares its open load with the workspace's 30-day completion
 pace in the middle region, for example `today 9 · median 3/day (30d)`. A fresh
 workspace with no completion history shows no comparison. Under pressure the
@@ -220,7 +238,7 @@ what you saved.
 | Content | `&` opens the cursor task's Attachments panel, `;` its Comments panel — the two capture sigils reaching, as keys, the panels that own add, reorder, unlink, and delete |
 | Clipboard | `y` title, `Y` description, `Ctrl+Y` both |
 | Selection | `v` toggles the cursor task; `V` starts/freezes an inclusive visible-task range; `Ctrl+A` replaces it with every visible task |
-| Global | `Ctrl+P` Select Pinned Project, `P` Select Project, `Q` the narrowing readout, `\` Named Lenses, `Ctrl+N` Notes, `T` theme, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
+| Global | `Ctrl+P` Select Pinned Project, `P` Select Project, `Q` the narrowing readout, `\` Named Lenses, `Ctrl+N` Notes, `T` theme, `M` menu bar, `/` search, `?` help, `u` undo, `Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit |
 
 `@` opens one Set Due or Defer picker holding both fields. Its DUE section lists
 Clear, Today, Tomorrow, In one week, and In one month; its DEFER section lists

@@ -317,6 +317,10 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationCoreQueryReadout, Keys: []string{"Q"}, DisplayKey: "Q", FooterRank: 27, FooterLabel: "narrowing"},
 			{OperationID: operationCoreNotes, Keys: []string{"ctrl+n"}, DisplayKey: "Ctrl+N"},
 			{OperationID: operationCoreToggleTheme, Keys: []string{"T"}, DisplayKey: "T", FooterRank: 22, FooterLabel: "theme"},
+			// The bar is the one browsable map of this grammar, so its reveal
+			// outranks every act it lists: a user who cannot find anything needs the
+			// hint that shows them everything before they need any single key.
+			{OperationID: operationCoreToggleMenuBar, Keys: []string{"M"}, DisplayKey: "M", FooterRank: 6, FooterLabel: "menu"},
 			{OperationID: operationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},
 			{OperationID: operationCoreRedo, Keys: []string{"ctrl+r"}, DisplayKey: "Ctrl+R"},
 			{OperationID: operationCoreBack, Keys: []string{"esc"}, DisplayKey: "Esc"},

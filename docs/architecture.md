@@ -2097,8 +2097,11 @@ would falsely report `od is not a sort action`.
 
 A named lens is one durable Outliner projection on exactly six axes — identity,
 name, mode, project scope, one narrowing query, and the sort axis — persisted as
-`config.NamedLens` in the portable `lenses.json` domain, while the theme and the
-active-lens pointer stay machine-local. The query is the whole narrowing:
+`config.NamedLens` in the portable `lenses.json` domain, while the theme, the
+menu bar's visibility, and the active-lens pointer stay machine-local. The
+menu-bar flag carries `omitempty` and `NewMachineState` never seeds it, so the
+omitted key is the default and a machine that has never shown the bar writes
+nothing about it. The query is the whole narrowing:
 `models.JoinQueryString` writes the canonical clause string the facets render to
 and the richer spelling the user-facing grammar owns as one value, and
 `models.PartitionQueryString` splits it back, so a facet chosen from a picker and

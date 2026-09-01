@@ -1,0 +1,22 @@
+{
+  "name": "outliner-menu-bar-persist",
+  "fixture": "rich",
+  "size": "100x35",
+  "actions": [
+    { "type": "assert", "assert": "not_contains", "value": "Task  View  Go  Find  Help" },
+    { "type": "key", "label": "M shows the bar and writes the machine-local flag", "key": "M" },
+    { "type": "assert", "assert": "contains", "value": "Task  View  Go  Find  Help" },
+    { "type": "restart", "label": "the choice is chrome, so it follows this terminal across a relaunch" },
+    { "type": "wait" },
+    { "type": "assert", "label": "the bar is drawn again without asking", "assert": "contains", "value": "Task  View  Go  Find  Help" },
+    { "type": "assert", "label": "on a clean Active Projects launch like every other one", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "hiding it persists the same way", "key": "M" },
+    { "type": "assert", "assert": "not_contains", "value": "Task  View  Go  Find  Help" },
+    { "type": "restart" },
+    { "type": "wait" },
+    { "type": "assert", "assert": "not_contains", "value": "Task  View  Go  Find  Help" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

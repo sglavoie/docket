@@ -699,6 +699,37 @@ func TestMachineStateLensJSONRoundTrip(t *testing.T) {
 	}
 }
 
+func TestMachineStateMenuBarVisibleJSONRoundTrip(t *testing.T) {
+	m := NewMachineState()
+	if m.MenuBarVisible {
+		t.Fatal("a fresh machine must open with the menu bar hidden")
+	}
+	m.MenuBarVisible = true
+	data, err := json.Marshal(m)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if !strings.Contains(string(data), `"menu_bar_visible":true`) {
+		t.Fatalf("a shown menu bar missing from payload: %s", data)
+	}
+	reloaded := NewMachineState()
+	if err := json.Unmarshal(data, reloaded); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if !reloaded.MenuBarVisible {
+		t.Fatalf("menu bar visibility did not survive the round trip: %s", data)
+	}
+	if err := reloaded.Validate(); err != nil {
+		t.Fatalf("round-tripped machine state should validate: %v", err)
+	}
+
+	// The field is chrome, not a lens axis: it may not reach into the collection
+	// the round trip above carries beside it.
+	if len(reloaded.NamedLenses) != len(m.NamedLenses) {
+		t.Fatalf("lens count = %d, want %d", len(reloaded.NamedLenses), len(m.NamedLenses))
+	}
+}
+
 func TestNilNamedLensListMarshalsAsEmptyArray(t *testing.T) {
 	// A MachineState assembled without the constructor must never persist null,
 	// which loading would reject.
@@ -1043,6 +1074,30 @@ func TestMachineStateActiveLensJSONOmissionAndRoundTrip(t *testing.T) {
 	}
 	if dangling.ActiveNamedLens() != nil {
 		t.Fatal("a dangling active lens payload must resolve to nil")
+	}
+}
+
+func TestMachineStateMenuBarVisibleJSONOmission(t *testing.T) {
+	// machine.json decodes with DisallowUnknownFields, so the only way a machine
+	// that has never shown the bar stays byte-identical to one built before the
+	// field existed is for the hidden state to write no key at all.
+	bare, err := json.Marshal(NewMachineState())
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if strings.Contains(string(bare), "menu_bar_visible") {
+		t.Fatalf("a hidden menu bar must omit the key entirely: %s", bare)
+	}
+
+	// A load decodes into the seeded value, so "omitted means the default" is a
+	// claim about NewMachineState as much as about the tag: the constructor must
+	// leave this field alone or an older file would reopen with the bar shown.
+	reloaded := NewMachineState()
+	if err := json.Unmarshal([]byte(`{"theme":"light"}`), reloaded); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if reloaded.MenuBarVisible {
+		t.Fatal("an omitted menu_bar_visible key must decode as hidden")
 	}
 }
 

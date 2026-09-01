@@ -37,7 +37,7 @@ func TestGuideDocumentsOutlinerGrammar(t *testing.T) {
 			"sigils reaching, as keys, the panels that own add, reorder, unlink, and delete",
 		"`y` title, `Y` description, `Ctrl+Y` both",
 		"`o` opens the sort chord: `o@` due date, `o!` priority, `oc` created, `ou` updated, `ot` title, `or` flat ranked list while a query is held, `ox` clear; repeat a field key to reverse it",
-		"`\\` Named Lenses, `Ctrl+N` Notes, `T` theme, `/` search, `?` help, `u` undo, " +
+		"`\\` Named Lenses, `Ctrl+N` Notes, `T` theme, `M` menu bar, `/` search, `?` help, `u` undo, " +
 			"`Ctrl+R` redo, `Esc` unwind/clear, `Ctrl+C` quit",
 		"`n`/`N` jump to the next/previous section or project header, wrapping at either end",
 		"`s`, `p`, and `t` are the three bulk fold toggles — every visible section header, " +
@@ -277,7 +277,9 @@ func TestGuideDocumentsStorageAndMigration(t *testing.T) {
 		"Each task may carry an optional non-negative `defer_count`; zero is omitted",
 		"`lenses.json` contains your saved named-lens definitions",
 		"Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the dark/light theme " +
-			"choice and a pointer to the lens that was last open",
+			"choice, whether the Outliner draws its menu bar, and a pointer to the lens that was last open",
+		"A machine that has never pressed `M` writes no menu-bar key at all, and the absent key is what " +
+			"says the bar is hidden",
 		"The active-lens pointer is a hint rather than a record: it is checked for shape alone when " +
 			"the file loads",
 		"pre-simplification-v5-<UTC>.tar.gz",

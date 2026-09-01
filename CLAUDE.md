@@ -177,6 +177,12 @@ that strip, refreshed at launch and on the 60s tick, read straight from
 and resolving stays in the CLI. `gc` browses those bundles read-only, as an
 overlay with no `PresentationID`, `InputStrategy`, or manifest entry.
 
+`M` toggles the Outliner menu bar on the same terms: a view-local gated
+sub-state with no `PresentationID`, overlay, `InputStrategy`, or manifest entry.
+It costs one list row, and `contentHeight` is the one place that subtracts it;
+never measure it again at a call site. The row is exactly `m.width` and drops
+whole labels from the right rather than truncating one.
+
 `Q` expands the query readout in that strip, below the conflict line, from a pure
 `queryReadoutBody` `statusStripHeight` measures. It names one row per peelable
 axis and nothing it cannot prove: a mode declares no clauses, so it names the
@@ -429,8 +435,11 @@ projects/<slug>/.attachments/
 ```
 
 Machine-local `~/.tt/runtime/<workspace-id>/machine.json` holds the dark/light
-theme and the active-lens pointer, which is validated for shape alone and never
-referentially. Only those two stay machine-local: lens definitions are portable,
+theme, the Outliner menu bar's visibility, and the active-lens pointer, which is
+validated for shape alone and never referentially. Chrome follows the terminal,
+so a new chrome flag belongs here, carries `omitempty`, and is never seeded: the
+omitted key is the default. Only those three stay machine-local: lens
+definitions are portable,
 in `.tt/lenses.json`, six axes over one bounded canonical query and no filter
 carrier. A machine joins that home once, through an adoption merge
 keyed off machine-local state and run after the schema is already current, never

@@ -1,0 +1,27 @@
+{
+  "name": "outliner-menu-bar",
+  "fixture": "release",
+  "size": "100x20",
+  "actions": [
+    { "type": "assert", "label": "the bar is hidden until a machine asks for it", "assert": "not_contains", "value": "Task  View  Go  Find  Help" },
+    { "type": "assert", "label": "a list that overflows, so the last drawn row is a witness to the row budget", "assert": "contains", "value": "Release acceptance item 095" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "M shows the bar", "key": "M" },
+    { "type": "assert", "assert": "contains", "value": "Menu bar shown" },
+    { "type": "assert", "label": "labels only: the bar is inert, so no dropdown opens with it", "assert": "contains", "value": "Task  View  Go  Find  Help" },
+    { "type": "assert", "label": "the bar sits above the operational title rather than replacing it", "assert": "contains", "value": "Active Projects · All" },
+    { "type": "assert", "label": "and costs exactly one list row: the last one is gone", "assert": "not_contains", "value": "Release acceptance item 095" },
+    { "type": "assert", "assert": "contains", "value": "Release acceptance item 088" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "label": "the whole bar still fits at the narrowest supported width", "width": 60, "height": 20 },
+    { "type": "assert", "assert": "contains", "value": "Task  View  Go  Find  Help" },
+    { "type": "assert", "assert": "contains", "value": "Active Projects" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "resize", "width": 100, "height": 20 },
+    { "type": "key", "label": "M hides it again and the row comes back", "key": "M" },
+    { "type": "assert", "assert": "contains", "value": "Menu bar hidden" },
+    { "type": "assert", "assert": "not_contains", "value": "Task  View  Go  Find  Help" },
+    { "type": "assert", "assert": "contains", "value": "Release acceptance item 095" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}
