@@ -189,11 +189,28 @@ unwinds it and returns to the mode, row and scroll position you left. A task All
 would not list — a Done task you reached from Recent, say — keeps the mode you
 were in and says so.
 
+The seven modes answer to the digits `1`–`7` as well, in the order `Tab` cycles
+them: `1` All, `2` Today, `3` Inbox, `4` Next, `5` Backlog, `6` Due, `7` Recent.
+A digit is the same act as the `g` chord naming the same mode rather than a
+second one, so `5` and `gb` are two spellings of one jump and `?` help lists
+them together as `gb/5`. They are root keys, so a digit typed into a search
+query, a capture buffer, or an open picker belongs to that surface: inside the
+`Q` readout a digit peels the row it numbers, and inside Named Lenses `1`–`9`
+apply the lens on that row.
+
+`0` leads that row and names no mode. It returns the whole view to the one a
+lens-free launch produces — Active Projects, All, no query, no filters, no sort,
+no focus or zoom, no project scope, and no lens applied — and names the axes it
+had to clear, or says `Already at the launch view` when there was nothing left
+to put down. A lens is only put down, not forgotten: the same lens opens again
+at the next launch, which is what makes `0` a reset of the view rather than of
+what you saved.
+
 ## Outliner grammar
 
 | Area | Keys |
 | --- | --- |
-| Modes | `Tab` / `Shift+Tab` cycle the seven modes; `g` opens the go-to chord: `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `g@` Due, `gr` Recent, `gp` the cursor task's project, `gc` the read-only merge-conflict browser |
+| Modes | `Tab` / `Shift+Tab` cycle the seven modes; `g` opens the go-to chord: `ga` All, `gi` Inbox, `gt` Today, `gn` Next, `gb` Backlog, `g@` Due, `gr` Recent, `gp` the cursor task's project, `gc` the read-only merge-conflict browser; `1`–`7` are the same seven jumps in `Tab`-cycle order — `1` All, `2` Today, `3` Inbox, `4` Next, `5` Backlog, `6` Due, `7` Recent — and `0` resets the view to the launch view |
 | Navigation | `j`/`k` or arrows move; `n`/`N` jump to the next/previous section or project header, wrapping at either end; `h`/`l` or left/right walk one fold ladder over sections, child tasks, and checklist items, and `h` on a direct child of a focus root steps out of that Focus frame onto the root; `s`, `p`, and `t` are the three bulk fold toggles — every visible section header, every project group header, every task subtree — and each expands its whole set if any part of it is folded and otherwise folds the set; `gg`/`Home`, `G`/`End`, `Ctrl+U`/`PgUp`, `Ctrl+D`/`PgDn`; `z` opens the scroll chord, which moves the window under the cursor instead: `zt` puts the cursor's row at the top, `zz` centers it, `zb` puts it at the bottom; `Ctrl+O`/`Ctrl+I` jump backward/forward after a task relocation; `Ctrl+L` enters Recent on the newest activity; `gp` opens the cursor task's project in All and keeps the cursor on it; `Enter` zooms in on whatever the cursor names — descendants on a task row, that project on a project sub-header, that section alone on a section header; `Shift+Enter` widens focus one level; `Ctrl+Enter` toggles Peek |
 | Capture and edit | `a` capture, `A` child, `e` inline task edit, `E` description, `Ctrl+E` external editor, whose title line speaks the same edit grammar as `e`, `O` outline edit the cursor's project |
 | Workflow | `$` opens the workflow chord over the ten destinations the `$` capture sigil names: `$i` Inbox, `$b` Backlog, `$n` toggle Next, `$t` toggle Today, `$g` Doing, `$w` Waiting, `$p` Paused, `$m` Someday, `$d` Done, `$c` Canceled; `$w` then asks for a check-back date |

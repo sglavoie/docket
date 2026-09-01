@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -77,6 +78,7 @@ const (
 	operationCoreGotoBacklog        OperationID = "tui.core.goto-backlog"
 	operationCoreGotoDue            OperationID = "tui.core.goto-due"
 	operationCoreGotoRecent         OperationID = "tui.core.goto-recent"
+	operationCoreResetToLaunchView  OperationID = "tui.core.reset-to-launch-view"
 )
 
 func coreOutlinerApplicability(ctx CommandContext) bool {
@@ -340,6 +342,21 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreGotoBacklog, "Go to Backlog", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly, "backlog mode"),
 		core(operationCoreGotoDue, "Go to Due", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly, "due mode"),
 		core(operationCoreGotoRecent, "Go to Recent", OperationCategoryMode, TargetCardinalityNone, OperationRiskReadOnly, "recent mode", "recent activity"),
+		// The digit that names no mode returns the view to the one a lens-free
+		// launch produces. It is a Mode operation because that is the axis it is
+		// spelled beside — 0 leads the seven — and read-only because every axis it
+		// drops is a view axis: it writes no task, no project, and not even the
+		// machine-local pointer naming which lens to open with.
+		core(
+			operationCoreResetToLaunchView,
+			"Reset to Launch View",
+			OperationCategoryMode,
+			TargetCardinalityNone,
+			OperationRiskReadOnly,
+			"reset view",
+			"launch view",
+			"clear narrowing",
+		),
 	}
 	// A cursor that positively names a project belongs to the project grammar, so
 	// a core operation that consumes a task must not bind there. Without this the
@@ -689,6 +706,8 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		if out, ok := m.outlinerPrimary(); ok {
 			_, _ = out.cycleWorkMode(-1)
 		}
+	case operationCoreResetToLaunchView:
+		return m.coreResetToLaunchView()
 	default:
 		if mode, ok := gotoModeOperations[invocation.Descriptor.ID]; ok {
 			if out, outlinerOK := m.outlinerPrimary(); outlinerOK {
@@ -1041,6 +1060,29 @@ func (m *AppModel) coreRedo() tea.Cmd {
 
 // coreToggleTheme flips exactly between the two maintained machine-local
 // variants and rebuilds every active style immediately.
+// coreResetToLaunchView is 0: the view returns to the one a lens-free launch
+// produces and says which axes it had to put down to get there. It takes the
+// population reload the F-chord facets owe whenever it cleared one of them,
+// through the same command Fx raises, so the projects on screen are the Active
+// Projects the launch view names rather than the wider set a facet had opened.
+func (m *AppModel) coreResetToLaunchView() OperationHandlerResult {
+	out, ok := m.outlinerPrimary()
+	if !ok || out == nil {
+		return OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
+	}
+	cleared, reload := out.resetToLaunchView()
+	if len(cleared) == 0 {
+		return OperationHandlerResult{Status: "Already at the launch view"}
+	}
+	status := "Launch view restored · cleared " + strings.Join(cleared, ", ")
+	if reload {
+		return OperationHandlerResult{
+			Message: OperationCommandResultMsg{Cmd: m.projectFilterReloadCmd(status)},
+		}
+	}
+	return OperationHandlerResult{Status: status}
+}
+
 func (m *AppModel) coreToggleTheme() error {
 	if m.runtime == nil || m.runtime.Machine() == nil {
 		return fmt.Errorf("machine theme is unavailable")

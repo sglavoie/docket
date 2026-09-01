@@ -357,6 +357,71 @@ func (m *OutlinerModel) resetToGlobalAll() {
 	m.clampCursor()
 }
 
+// resetToLaunchView returns the view to the state a lens-free launch produces:
+// Active Projects, All, no query, no filters, no sort, no focus, and no lens
+// applied. Every axis is taken away through the same call its own key uses, the
+// way peelQueryReadoutAxis does, so the reset can never reach a state the
+// ordinary grammar cannot.
+//
+// It reports which axes it found set, so the strip can name what it cleared, and
+// whether the population owes a reload — the one thing this model cannot do for
+// itself. The axes are read before any of them is written, because the unwinding
+// calls restore captured frames that reinstate one another's state.
+//
+// Unlike resetToGlobalAll this is a reset of the view alone: the machine-local
+// active-lens pointer is left untouched, so the lens is put down now and opens
+// again at the next launch.
+func (m *OutlinerModel) resetToLaunchView() ([]string, bool) {
+	if m == nil {
+		return nil, false
+	}
+	cleared := make([]string, 0, 8)
+	note := func(active bool, axis string) bool {
+		if active {
+			cleared = append(cleared, axis)
+		}
+		return active
+	}
+	note(m.hasActiveLens(), "lens")
+	note(m.hasSearchProjection(), "query")
+	note(len(m.focusStack) > 0 || len(m.crossFocusStack) > 0, "focus")
+	note(m.zoom.active(), "zoom")
+	note(m.isProjectScoped(), "scope")
+	note(commonFilterFacetCount(&m.filter.CommonFilterState) > 0, "filters")
+	reload := note(projectFilterFacetCount(&m.projectFilter) > 0, "project filters")
+	note(m.sort.Field != SortByDefault || m.treeSort.Field != SortByDefault, "sort")
+	note(m.primaryMode != ModeAll, "mode")
+	if len(cleared) == 0 {
+		return cleared, false
+	}
+
+	// The lens goes first and goes without its baseline: restoring it would
+	// reinstate the narrowing this key exists to clear.
+	m.forgetActiveLensFrame()
+	// The query goes next, so no ranked projection is left scored over the
+	// population the axes below are about to replace.
+	m.ClearSearch()
+	// Focus and zoom unwind in the Esc cascade's own order. Focus is a stack and
+	// its key pops one level, so it is popped until it is empty.
+	for m.popFocusLevel() {
+	}
+	m.exitSectionZoom()
+	// Scope restores the base frame captured at the first push, and that frame
+	// carries a mode, a sort, and a zoom of its own, so it lands before the axes
+	// below rather than after them.
+	m.clearProjectScope()
+	// The two filter families are cleared separately for the same reason fx and
+	// Fx are two keys: clearing one must never clear the other.
+	m.replaceFilterClauses(filterQueryTaskFields(), nil)
+	m.replaceFilterClauses(filterOperationFields(operationFilterProjectClear), nil)
+	m.sort.Reset()
+	m.treeSort.Reset()
+	// Selecting the mode is the last write and owns the rebuild, so the rows are
+	// built once, over every axis this reset has already put down.
+	m.selectOutlinerMode(ModeAll)
+	return cleared, reload
+}
+
 // reconcileProjectScope keeps the one focus valid after a reload or external
 // mutation. If it vanished, the captured base is restored. Returns ("", false)
 // when no repair was needed.

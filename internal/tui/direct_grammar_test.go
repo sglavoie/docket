@@ -257,6 +257,13 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"@": operationTaskSetDueDate,
 		"y": operationTaskCopyTitle, "Y": operationTaskCopyDetails,
 		"ctrl+y": operationTaskCopyTitleDescription,
+		// The digit row: 0 returns to the launch view and 1-7 are the seven modes
+		// in Tab-cycle order, each a second spelling on the go-to chord's binding.
+		"0": operationCoreResetToLaunchView,
+		"1": operationCoreGotoAll, "2": operationCoreGotoToday,
+		"3": operationCoreGotoInbox, "4": operationCoreGotoNext,
+		"5": operationCoreGotoBacklog, "6": operationCoreGotoDue,
+		"7": operationCoreGotoRecent,
 	}
 
 	// A shared key is one the cursor disambiguates, and each meaning keeps its own

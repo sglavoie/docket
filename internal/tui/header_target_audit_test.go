@@ -81,6 +81,7 @@ var headerTargetAudit = map[OperationID]string{
 	"tui.core.reorder-down":           "project",
 	"tui.core.reorder-top":            "project",
 	"tui.core.reorder-up":             "project",
+	"tui.core.reset-to-launch-view":   "target-free",
 	"tui.core.scope-search":           "target-free",
 	"tui.core.scroll-cursor-bottom":   "target-free",
 	"tui.core.scroll-cursor-middle":   "target-free",

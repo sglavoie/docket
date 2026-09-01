@@ -1075,8 +1075,32 @@ standing.
 
 `g` is a chord prefix, not a direct key: cursor-top is `gg` or `Home`. Its second
 keys jump straight to one mode, so a seventh mode never costs six `Tab` presses.
-That binding is the one place a single operation declares both `Keys` and a
-`Sequence`; prefix-freeness is still fully enforced by the chord trie.
+The digits `1`–`7` are those same seven jumps at their `Tab`-cycle positions, and
+they are a second `Keys` spelling on the go-to bindings rather than seven new
+descriptors: one operation, one handler, and one composed `DisplayKey` such as
+`gb/5`, which `?` help and the footer read as it stands instead of composing a
+second one. `gg`/`Home` and the seven mode jumps are therefore where a single
+binding declares both `Keys` and a `Sequence`; prefix-freeness is still fully
+enforced by the chord trie, which is also what keeps a bare digit clear of the
+`!` and `f!` chords that end in one.
+
+`0` leads that digit row and is a separate operation,
+`tui.core.reset-to-launch-view`, because it names no mode and so cannot be a
+spelling on one of the seven. Its handler composes the axis calls the individual
+keys already use — the lens frame, `ClearSearch`, the focus pops,
+`exitSectionZoom`, `clearProjectScope`, the two filter families, the two sort
+axes, and finally `selectOutlinerMode(ModeAll)`, which owns the single rebuild —
+the way `peelQueryReadoutAxis` does, so the reset can only reach a view the
+ordinary grammar can. It does not reuse `resetToGlobalAll`, for two reasons.
+That reset clears the machine-local active-lens pointer, and `0` must not: the
+lens is put down for this session and opens again at the next launch, which is
+why the pointer write is split out and `forgetActiveLensFrame` drops the frame
+alone. And that reset never touches the `F` family, whose facets decide which
+projects load at all; `0` clears them, so it takes the population reload through
+the same command `Fx` raises. Every axis is read before any of them is written,
+because the unwinding calls restore captured frames that reinstate one another's
+state, and that read is what lets the strip name the axes it cleared or answer
+`Already at the launch view`.
 
 `$`, `z`, `f`, `F`, and `o` are the other root prefixes. `$` is the workflow
 chord, so no lifecycle destination carries a bare root key and `d` is unbound

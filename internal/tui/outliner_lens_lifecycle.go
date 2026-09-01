@@ -525,11 +525,23 @@ func (m *OutlinerModel) clearActiveLensWithoutRestore() {
 	if m == nil {
 		return
 	}
+	m.forgetActiveLensFrame()
+	m.noteActiveLens("")
+}
+
+// forgetActiveLensFrame drops the live frame and the narrowing it installed
+// while leaving the machine-local resume pointer exactly as it was. It is the
+// half of clearActiveLensWithoutRestore that a reset of the view axes alone
+// wants: the lens stops being applied now and still opens at the next launch,
+// which is the difference between putting a projection down and forgetting it.
+func (m *OutlinerModel) forgetActiveLensFrame() {
+	if m == nil {
+		return
+	}
 	m.activeLens = nil
 	m.discardPendingLensApplication()
 	m.endLensQueryEdit()
 	m.setLensQuery("")
-	m.noteActiveLens("")
 }
 
 // lensModified reports whether the live view has diverged from the definition

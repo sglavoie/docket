@@ -152,6 +152,8 @@ The final public grammar is:
 ```text
 Tab/Shift+Tab                    All, Today, Inbox, Next, Backlog, Due, Recent
 ga gi gt gn gb g@ gr             go-to chord, one key per mode
+1 2 3 4 5 6 7                    the same seven modes, in Tab-cycle order
+0                                reset the view to the launch view
 j/k h/l gg/G Ctrl+U/Ctrl+D       navigation
 zt zz zb                         cursor row to top/middle/bottom of screen
 s p t                            fold toggles: sections, project groups, subtrees

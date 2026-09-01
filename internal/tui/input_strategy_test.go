@@ -780,9 +780,12 @@ func TestProductionInputStrategyDefaultsToSimplified(t *testing.T) {
 	}
 }
 
-// TestGoToChordResolvesTopJumpAndEveryMode covers the one binding that declares
+// TestGoToChordResolvesTopJumpAndEveryMode covers the bindings that declare
 // direct keys and a chord sequence together, and keeps the g subtree prefix-free
-// with cursor-top and task-project navigation beside the seven mode jumps.
+// with cursor-top and task-project navigation beside the seven mode jumps. Each
+// mode jump answers to its chord and to its Tab-cycle digit, and both spellings
+// are projected from the one binding, so the composed DisplayKey is asserted
+// here rather than left to the help renderer to discover.
 func TestGoToChordResolvesTopJumpAndEveryMode(t *testing.T) {
 	registry := registeredSimplifiedOperationRegistry(t)
 	ctx := simplifiedOperationContext()
@@ -796,6 +799,17 @@ func TestGoToChordResolvesTopJumpAndEveryMode(t *testing.T) {
 		"gb": {"g", "b"},
 		"g@": {"g", "@"},
 		"gr": {"g", "r"},
+		// The digit aliases resolve to the same seven bindings, so the second
+		// spelling is audited beside the first rather than in a test of its own.
+		"1": {"1"},
+		"2": {"2"},
+		"3": {"3"},
+		"4": {"4"},
+		"5": {"5"},
+		"6": {"6"},
+		"7": {"7"},
+		// 0 is the eighth digit and the one that names no mode.
+		"0": {"0"},
 	}
 	want := map[string]OperationID{
 		"gg": operationCoreCursorTop,
@@ -806,6 +820,14 @@ func TestGoToChordResolvesTopJumpAndEveryMode(t *testing.T) {
 		"gb": operationCoreGotoBacklog,
 		"g@": operationCoreGotoDue,
 		"gr": operationCoreGotoRecent,
+		"1":  operationCoreGotoAll,
+		"2":  operationCoreGotoToday,
+		"3":  operationCoreGotoInbox,
+		"4":  operationCoreGotoNext,
+		"5":  operationCoreGotoBacklog,
+		"6":  operationCoreGotoDue,
+		"7":  operationCoreGotoRecent,
+		"0":  operationCoreResetToLaunchView,
 	}
 	for spelling, path := range paths {
 		binding, _, resolution := registry.InputBindingForSequence(InputStrategySimplified, path, ctx)
@@ -846,6 +868,23 @@ func TestGoToChordResolvesTopJumpAndEveryMode(t *testing.T) {
 		[]string{"g", "q"},
 	); !ok || label != "go to" {
 		t.Errorf("abandoned g chord label = %q (found %v), want %q", label, ok, "go to")
+	}
+
+	// Both spellings reach ? help and the footer for free, because the projection
+	// reads the binding's one DisplayKey rather than composing a second one.
+	for operationID, want := range map[OperationID]string{
+		operationCoreGotoAll:           "ga/1",
+		operationCoreGotoToday:         "gt/2",
+		operationCoreGotoInbox:         "gi/3",
+		operationCoreGotoNext:          "gn/4",
+		operationCoreGotoBacklog:       "gb/5",
+		operationCoreGotoDue:           "g@/6",
+		operationCoreGotoRecent:        "gr/7",
+		operationCoreResetToLaunchView: "0",
+	} {
+		if got := registry.InputShortcutForOperation(InputStrategySimplified, operationID); got != want {
+			t.Errorf("%s display key = %q, want %q", operationID, got, want)
+		}
 	}
 }
 

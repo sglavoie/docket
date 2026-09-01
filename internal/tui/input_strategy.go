@@ -388,13 +388,21 @@ func SimplifiedInputStrategy() InputStrategy {
 			{OperationID: operationSortTitle, Sequence: []string{"o", "t"}, DisplayKey: "ot", HintLabel: "title"},
 			{OperationID: operationSortClear, Sequence: []string{"o", "x"}, DisplayKey: "ox", HintLabel: "clear sort"},
 			{OperationID: operationSortRanked, Sequence: []string{"o", "r"}, DisplayKey: "or", HintLabel: "ranked list"},
-			{OperationID: operationCoreGotoAll, Sequence: []string{"g", "a"}, DisplayKey: "ga", HintLabel: "all"},
-			{OperationID: operationCoreGotoInbox, Sequence: []string{"g", "i"}, DisplayKey: "gi", HintLabel: "inbox"},
-			{OperationID: operationCoreGotoToday, Sequence: []string{"g", "t"}, DisplayKey: "gt", HintLabel: "today"},
-			{OperationID: operationCoreGotoNext, Sequence: []string{"g", "n"}, DisplayKey: "gn", HintLabel: "next"},
-			{OperationID: operationCoreGotoBacklog, Sequence: []string{"g", "b"}, DisplayKey: "gb", HintLabel: "backlog"},
-			{OperationID: operationCoreGotoDue, Sequence: []string{"g", "@"}, DisplayKey: "g@", HintLabel: "due"},
-			{OperationID: operationCoreGotoRecent, Sequence: []string{"g", "r"}, DisplayKey: "gr", HintLabel: "recent"},
+			// 0 leads the digit row and is the only one of the eight that names no
+			// mode: it puts the whole view back where a lens-free launch starts. It
+			// takes no footer rank, because it is the escape hatch a user reaches for
+			// once rather than an act of the daily loop.
+			{OperationID: operationCoreResetToLaunchView, Keys: []string{"0"}, DisplayKey: "0"},
+			// Each mode jump carries both its go-to chord and the digit at its
+			// Tab-cycle position, so the mnemonic route and the cheap one are one
+			// binding with one composed spelling rather than two descriptors.
+			{OperationID: operationCoreGotoAll, Keys: []string{"1"}, Sequence: []string{"g", "a"}, DisplayKey: "ga/1", HintLabel: "all"},
+			{OperationID: operationCoreGotoInbox, Keys: []string{"3"}, Sequence: []string{"g", "i"}, DisplayKey: "gi/3", HintLabel: "inbox"},
+			{OperationID: operationCoreGotoToday, Keys: []string{"2"}, Sequence: []string{"g", "t"}, DisplayKey: "gt/2", HintLabel: "today"},
+			{OperationID: operationCoreGotoNext, Keys: []string{"4"}, Sequence: []string{"g", "n"}, DisplayKey: "gn/4", HintLabel: "next"},
+			{OperationID: operationCoreGotoBacklog, Keys: []string{"5"}, Sequence: []string{"g", "b"}, DisplayKey: "gb/5", HintLabel: "backlog"},
+			{OperationID: operationCoreGotoDue, Keys: []string{"6"}, Sequence: []string{"g", "@"}, DisplayKey: "g@/6", HintLabel: "due"},
+			{OperationID: operationCoreGotoRecent, Keys: []string{"7"}, Sequence: []string{"g", "r"}, DisplayKey: "gr/7", HintLabel: "recent"},
 			{OperationID: operationCoreGotoTaskProject, Sequence: []string{"g", "p"}, DisplayKey: "gp", HintLabel: "task project"},
 			// Conflicts joins the go-to chord rather than claiming a root key: `c` is
 			// retired at the root, and what the strip already names as workspace state
