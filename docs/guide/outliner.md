@@ -51,6 +51,16 @@ Those keys keep working while the menu is up: pressing one the open menu does
 not list closes the menu and does what the key does, so nothing is trapped
 behind a dropdown.
 
+A row with no key beside it has none anywhere, and the menu is the only place it
+exists. The View menu's **Clear All Folds** is the first of those: `s`, `p`, and
+`t` each toggle one fold axis and each reverses, so opening a tree that is folded
+in three different ways takes three presses that may each go the wrong way, while
+this opens all of them once and never folds anything. It says `All folds cleared`
+or `Nothing is folded`, since the dropdown closes over the rows it changed. An
+operation reachable only this way never touches a task or a project — it acts on
+the view or on nothing at all — so the bar can stay off by default without hiding
+anything that edits your work.
+
 Terminals that do not report enhanced keyboard events encode `Ctrl+M` as
 `Enter`, the way they encode `Ctrl+I` as `Tab`. There `M` still shows the bar,
 and `Ctrl+M` over an open menu runs the highlighted entry rather than closing

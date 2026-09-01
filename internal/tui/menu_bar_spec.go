@@ -184,6 +184,11 @@ func viewMenuEntries(activeMode OutlinerModeID, menuBarVisible bool) []menuEntry
 		menuEntrySpec{OperationID: operationSortClear},
 		menuEntrySpec{OperationID: operationSortRanked},
 		menuSeparator(),
+		// Clear All Folds is the bar's whole justification in one row: it is bound
+		// to nothing, so this menu is the only place it exists. A keyless operation
+		// may not be an entity operation — see menu_bar_test.go — and this one is
+		// target-free, acting on the view's fold state alone.
+		menuEntrySpec{OperationID: operationCoreClearFolds},
 		menuEntrySpec{OperationID: operationCorePeek, Label: "Peek"},
 		menuEntrySpec{OperationID: operationCoreQueryReadout},
 		menuSeparator(),

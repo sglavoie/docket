@@ -417,7 +417,22 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// second subtraction at a call site does not crash, it just draws a row short.
 	// Neither rule is derivable from the code, since the code that would state them
 	// is the code a contributor is about to write.
-	const budget = 27300
+	// That raise is spent as well, and this last one is the smallest yet: it buys
+	// the sentence the finished menu bar makes necessary and rewrites a contract
+	// rather than appending to it, which is the one case this file pays for
+	// willingly. "On every surface" was true when the only menu was an entity
+	// action sheet. Once the bar exists it reads as a ban on the bar naming any
+	// operation that has a key, which would empty it — and a contributor obeying a
+	// stale contract does more damage than one with no contract at all, because the
+	// obedience looks like care. So the sentence is narrowed to the sheet it always
+	// meant, the bar is classified as a projection beside `?` help and the footer
+	// ranks, and the one genuinely new rule lands beside it: the bar may make an
+	// operation keyless, but not an entity operation keyless. That last clause is
+	// the only place the boundary is written down. `validateOperationOnePath`
+	// cannot state it — it never sees the bar — and the bar's own specs cannot,
+	// because the defect it prevents is a descriptor that looks locally reasonable
+	// in core_input_operations.go and only becomes wrong when a menu row names it.
+	const budget = 27700
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -438,8 +453,11 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"`StateChangedAt` is the state clock and `UpdatedAt` is the touch time",
 		"A task reaching `WriteV8ProjectDocument` without a clock is rejected, never backfilled",
 		"do not add a parallel key router, palette, or view-specific copy",
-		"An entity operation is direct-only or menu-only, never both, on every surface, " +
-			"enforced by `validateOperationOnePath` over that surface's manifest",
+		"An entity operation is direct-only or menu-only, never both, in that surface's " +
+			"entity action sheet, enforced by `validateOperationOnePath` over its manifest",
+		"The menu bar is not a sheet but a projection of the registry, the class `?` help and " +
+			"the footer ranks belong to, so it names directly-bound operations freely",
+		"a menu-only operation's `TargetSource` is target-free or view-scoped, never a task or project",
 		"The task-row `Space` menu is Delete alone, identical to the bulk menu: Delete has no " +
 			"direct key and confirms first",
 		"The Outliner project-header sheet is Edit, Archive, Delete, and never Unarchive: " +

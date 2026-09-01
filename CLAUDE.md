@@ -106,8 +106,14 @@ key router, palette, or view-specific copy. `surfaceOperationGates()` lists the
 five live strategies. A footer has one source: the strategy's ranks, or the
 gated keymap where modal sub-states narrow a key.
 
-An entity operation is direct-only or menu-only, never both, on every surface,
-enforced by `validateOperationOnePath` over that surface's manifest. The
+An entity operation is direct-only or menu-only, never both, in that surface's
+entity action sheet, enforced by `validateOperationOnePath` over its manifest.
+That scope is the whole rule: the sheet is where a second route to an existing
+key earns nothing. The menu bar is not a sheet but a projection of the registry,
+the class `?` help and the footer ranks belong to, so it names directly-bound
+operations freely. What it may not do is make an entity operation keyless: a
+menu-only operation's `TargetSource` is target-free or view-scoped, never a task
+or project. The
 task-row `Space` menu is Delete alone, identical to the bulk menu: Delete has no
 direct key and confirms first. The Hub sheet is
 Archive or Unarchive plus bulk tags; Notes and Comments list Delete alone. The

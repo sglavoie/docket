@@ -445,6 +445,43 @@ func (m *OutlinerModel) restoreSectionToggleFocus() bool {
 	return true
 }
 
+// clearAllFolds opens everything at once: every task subtree and every section
+// and project-group key, across every namespace collapsedSections holds rather
+// than only the ones this mode happens to draw. It is deliberately one-way,
+// which is what the three toggles cannot be — `s`, `p`, and `t` each reverse, so
+// reaching a fully open tree from a mixed state takes three presses that may
+// each go the wrong way, and no fourth toggle would fix that.
+//
+// It clears the whole map rather than the visible headers because a fold under a
+// fold is invisible by definition, and "all" that stopped at the first closed
+// header would leave a user pressing it twice. The keys are namespaced per
+// grouping surface and survive a mode change, so this is also the one act that
+// ends a fold another mode wrote; that is the point of it rather than a leak.
+//
+// Checklists are outside it for the reason they are outside `t`: they default
+// collapsed, so opening them is a different promise than undoing a fold.
+func (m *OutlinerModel) clearAllFolds() bool {
+	if m == nil {
+		return false
+	}
+	changed := m.setAllTaskFolds(true)
+	for _, collapsed := range m.collapsedSections {
+		if collapsed {
+			changed = true
+			break
+		}
+	}
+	if !changed {
+		return false
+	}
+	m.collapsedSections = make(map[string]bool)
+	m.sectionToggleRestore = nil
+	anchor := m.captureModeCursor()
+	m.rebuildRows()
+	m.restoreModeCursor(anchor)
+	return true
+}
+
 func (m *OutlinerModel) setSectionRowCollapsed(row outlinerRow, collapsed bool) {
 	key := row.effectiveCollapseKey()
 	if m.collapsedSections == nil {

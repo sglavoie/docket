@@ -7,9 +7,22 @@ import (
 
 // The menu bar is a projection of the operation catalog, so these are the
 // parity assertions that keep it one: the bar may only name operations the
-// registry holds, it may never spell a key the strategy owns, and the modes it
-// offers are the modes the catalog declares. A menu that drifts from the
+// registry holds, it may never spell a key the strategy owns, the modes it
+// offers are the modes the catalog declares, and an operation the bar is the
+// only route to is never an entity operation. A menu that drifts from the
 // grammar fails here rather than in front of a user.
+
+// productionInputStrategies is every grammar a key can be pressed in. An
+// operation absent from all five has no key anywhere, which is what "menu-only"
+// means; reading them off surfaceOperationGates would only name the four entity
+// ones plus the Outliner, in a shape built for a different question.
+var productionInputStrategies = []InputStrategyID{
+	InputStrategySimplified,
+	InputStrategyProjectHub,
+	InputStrategyNotes,
+	InputStrategyAttachments,
+	InputStrategyComments,
+}
 
 // menuBarCommandContext is the launch context: the Outliner presentation with
 // the simplified grammar and a cursor that names nothing.
@@ -220,6 +233,133 @@ func TestEveryMenuIsUniquelyIdentifiedAndInhabited(t *testing.T) {
 	for _, id := range []string{menuIDTask, menuIDView, menuIDGo, menuIDFind, menuIDHelp} {
 		if !seen[id] {
 			t.Errorf("menu %s is missing from the bar", id)
+		}
+	}
+}
+
+// The fourth parity rule, and the only one the bar itself creates. A descriptor
+// with no binding in any InputStrategy was always legal — nothing forces a key.
+// What is new is that the bar makes such an operation reachable, which mints a
+// category the grammar has to bound:
+//
+// A menu-only operation may not be an entity operation. Its TargetSource is
+// target-free or view-scoped, never a task or a project.
+//
+// An entity act whose one route is a band that is off by default would be
+// discoverable only by a user who already knew to press `M`, and the entity
+// grammar answers that question elsewhere: the `Space` sheet is where
+// direct-only-or-menu-only earns its keep, which is why
+// validateOperationOnePath and TestTaskOperationsCannotAppearInBothDirectGrammarAndMenu
+// are untouched by this rule and keep governing only that sheet.
+func TestAMenuOnlyOperationIsNeverAnEntityOperation(t *testing.T) {
+	registry := parityAuditApp(t).GetOperationRegistry()
+
+	bound := make(map[OperationID]bool)
+	for _, id := range productionInputStrategies {
+		strategy, ok := registry.InputStrategy(id)
+		if !ok {
+			t.Fatalf("input strategy %s is not registered", id)
+		}
+		for _, binding := range strategy.Bindings {
+			bound[binding.OperationID] = true
+		}
+	}
+
+	menuOnly := make([]OperationID, 0, 1)
+	for _, spec := range outlinerMenuSpecs(ModeAll, false) {
+		for _, entry := range spec.Entries {
+			if entry.OperationID == "" || bound[entry.OperationID] {
+				continue
+			}
+			menuOnly = append(menuOnly, entry.OperationID)
+			descriptor, exists := registry.Descriptor(entry.OperationID)
+			if !exists {
+				t.Errorf("menu %s names unregistered operation %s", spec.ID, entry.OperationID)
+				continue
+			}
+			// Global is target-free and ScopedProjects is the view's own scope; the
+			// four remaining sources all name an entity the cursor supplies.
+			if descriptor.TargetSource != OperationTargetGlobal &&
+				descriptor.TargetSource != OperationTargetScopedProjects {
+				t.Errorf(
+					"menu-only operation %s resolves its target from %q; a keyless operation must be target-free or view-scoped",
+					descriptor.ID,
+					descriptor.TargetSource,
+				)
+			}
+			if descriptor.TargetCardinality != TargetCardinalityNone {
+				t.Errorf(
+					"menu-only operation %s wants %v target(s); a keyless operation carries none",
+					descriptor.ID,
+					descriptor.TargetCardinality,
+				)
+			}
+		}
+	}
+	if len(menuOnly) == 0 {
+		t.Fatal("no operation is reachable only through the menu, so the category is theory rather than a rule")
+	}
+}
+
+// The menu-only category is only worth a rule if something inhabits it, and only
+// worth a menu row if running it from that row actually works. Clearing the folds
+// three separate keys wrote is the proof: no key spells it, the View menu is the
+// only place it exists, and the tree is open afterwards.
+func TestTheKeylessFoldClearIsReachableOnlyFromTheMenu(t *testing.T) {
+	driver, outliner := menuBarDriver(t)
+	registry := driver.App().GetOperationRegistry()
+
+	for _, id := range productionInputStrategies {
+		strategy, ok := registry.InputStrategy(id)
+		if !ok {
+			t.Fatalf("input strategy %s is not registered", id)
+		}
+		for _, binding := range strategy.Bindings {
+			if binding.OperationID == operationCoreClearFolds {
+				t.Fatalf("%s bound the keyless fold clear to %v", id, binding.paths())
+			}
+		}
+	}
+
+	if !outliner.toggleAllSubtrees() {
+		t.Fatal("the rich fixture has no subtree to fold, so the clear proves nothing")
+	}
+	if !outliner.anyTaskFoldCollapsed() {
+		t.Fatal("folding every subtree left nothing folded")
+	}
+	outliner.collapsedSections["_xp:pinned"] = true
+
+	pressMenuBarKey(t, driver, "ctrl+m", "l")
+	view := menuWithID(t, openMenuBarMenusForTest(t, outliner), menuIDView)
+	if !menuHasLabel(view, "Clear All Folds") {
+		t.Fatalf("the View menu does not offer the keyless entry: %+v", view.Entries)
+	}
+	index := -1
+	for position, entry := range view.Entries {
+		if entry.OperationID == operationCoreClearFolds {
+			index = position
+			// A keyless operation spells no key, which is the visible half of the rule.
+			if entry.Key != "" {
+				t.Errorf("the keyless entry hints key %q", entry.Key)
+			}
+		}
+	}
+	if index < 0 {
+		t.Fatal("the keyless entry resolved without its operation ID")
+	}
+
+	outliner.menuBarItemIndex = index
+	pressMenuBarKey(t, driver, "enter")
+
+	if outliner.menuBarOpen {
+		t.Error("running the keyless entry left the menu open")
+	}
+	if driver.App().crossOutliner.anyTaskFoldCollapsed() {
+		t.Error("the menu-only fold clear left a subtree folded")
+	}
+	for key, collapsed := range driver.App().crossOutliner.collapsedSections {
+		if collapsed {
+			t.Errorf("the menu-only fold clear left section %s collapsed", key)
 		}
 	}
 }

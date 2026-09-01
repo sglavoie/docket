@@ -44,6 +44,7 @@ const (
 	operationCoreToggleSections     OperationID = "tui.core.toggle-sections"
 	operationCoreToggleProjectGroup OperationID = "tui.core.toggle-project-groups"
 	operationCoreToggleSubtrees     OperationID = "tui.core.toggle-subtrees"
+	operationCoreClearFolds         OperationID = "tui.core.clear-folds"
 	operationCoreReorderDown        OperationID = "tui.core.reorder-down"
 	operationCoreReorderUp          OperationID = "tui.core.reorder-up"
 	operationCoreReorderBottom      OperationID = "tui.core.reorder-bottom"
@@ -270,6 +271,13 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreToggleSections, "Toggle All Sections", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "fold sections"),
 		core(operationCoreToggleProjectGroup, "Toggle All Project Groups", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "fold project groups"),
 		core(operationCoreToggleSubtrees, "Toggle All Subtrees", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "fold subtrees"),
+		// The first operation in the grammar with no key at all. Opening every axis
+		// at once is what the three toggles cannot spell, since each reverses and
+		// each owns one axis; it is also rare enough that spending a letter on it
+		// would cost more than it returns. The menu bar is what makes a keyless
+		// operation reachable, and this is the category that makes the bar more than
+		// a second way to press a key someone already knows.
+		core(operationCoreClearFolds, "Clear All Folds", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly, "unfold everything", "open all folds"),
 		core(operationCoreReorderDown, "Reorder Down", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
 		core(operationCoreReorderUp, "Reorder Up", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
 		core(operationCoreReorderBottom, "Reorder to Bottom", OperationCategoryNavigation, TargetCardinalityOne, OperationRiskMutation),
@@ -400,6 +408,7 @@ func coreInputOperationRefusesSearchProjection(id OperationID) bool {
 		operationCoreToggleSections,
 		operationCoreToggleProjectGroup,
 		operationCoreToggleSubtrees,
+		operationCoreClearFolds,
 		operationCoreReorderDown,
 		operationCoreReorderUp,
 		operationCoreReorderBottom,
@@ -600,6 +609,17 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 			if !out.toggleAllSubtrees() {
 				return OperationHandlerResult{Status: "No foldable subtrees here"}
 			}
+		}
+	// The one operation reached only from the menu bar reports both ways, unlike
+	// the three toggles beside it: a user who ran it off a menu row watched the
+	// dropdown close over the rows it changed, so a silent no-op would read as the
+	// menu having eaten the press.
+	case operationCoreClearFolds:
+		if out, ok := m.outlinerPrimary(); ok {
+			if !out.clearAllFolds() {
+				return OperationHandlerResult{Status: "Nothing is folded"}
+			}
+			return OperationHandlerResult{Status: "All folds cleared"}
 		}
 	case operationCoreReorderDown:
 		message = commandMessage(m.coreReorder(1))

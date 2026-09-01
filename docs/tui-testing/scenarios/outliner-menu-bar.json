@@ -44,6 +44,7 @@
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "given the room, the whole menu is drawn", "width": 100, "height": 35 },
     { "type": "assert", "assert": "contains", "value": "Query Readout" },
+    { "type": "assert", "label": "the keyless entry is drawn, and the menu is the only place it exists", "assert": "contains", "value": "Clear All Folds" },
     { "type": "assert", "label": "the bar's own visibility reads back off the machine flag", "assert": "contains", "value": "✓ Menu Bar" },
     { "type": "assert", "assert": "no_layout_issues" },
     { "type": "resize", "label": "the dropdown stays on screen at the narrowest supported width", "width": 60, "height": 20 },
