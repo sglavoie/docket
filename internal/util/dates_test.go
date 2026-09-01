@@ -156,7 +156,7 @@ func TestParseNaturalLanguageDates(t *testing.T) {
 
 	nextOccurrence := func(m time.Month, day int) time.Time {
 		candidate := time.Date(today.Year(), m, day, 0, 0, 0, 0, today.Location())
-		if !candidate.After(today) {
+		if candidate.Before(today) {
 			candidate = time.Date(today.Year()+1, m, day, 0, 0, 0, 0, today.Location())
 		}
 		return candidate
