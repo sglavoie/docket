@@ -17,25 +17,24 @@ type outlinerViewport struct {
 // renderOutlinerTreeContent renders the full-width Outliner tree constrained to
 // the given width.
 func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
+	// An open menu hangs off the label it was opened from, so it is drawn before
+	// anything else on the frame — and it is the whole frame. The branch is keyed
+	// on the drawn block rather than on menuBarOpen, because the dropdown returns
+	// nothing for a width or a resolution it cannot draw, and blanking the view
+	// over a menu nobody can see would be the worse failure.
+	if menu := m.renderOutlinerMenuDropdown(width); menu != "" {
+		return m.renderOutlinerMenuFrame(width, menu)
+	}
 	if len(m.rows) == 0 {
 		return m.renderOutlinerEmptyState(width)
 	}
 
 	var b strings.Builder
-	// An open menu hangs off the label it was opened from, so it is drawn — and
-	// measured — before anything below the bar is written. It sizes itself against
-	// its own entries and the rows it can spare, so only the drawn block knows how
-	// tall it turned out, which is why it is rendered once and measured rather
-	// than predicted.
-	menu := m.renderOutlinerMenuDropdown(width)
 	// The bar leads, so the title row and its workspace pulse simply sit one line
 	// down rather than sharing a row with chrome. Its cost is already out of the
 	// budget contentHeight reports, which is why nothing is measured here.
 	if m.menuBarVisible() {
 		b.WriteString(m.renderOutlinerMenuBar(width) + "\n")
-	}
-	if menu != "" {
-		b.WriteString(menu + "\n")
 	}
 	m.writeOutlinerHeader(&b, width)
 
@@ -45,9 +44,6 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	dropdown := m.renderSearchAutocompleteDropdown(width)
 
 	extraFooter := m.statusStripHeight(width)
-	if menu != "" {
-		extraFooter += lipgloss.Height(menu)
-	}
 	if dropdown != "" {
 		b.WriteString(dropdown + "\n")
 		extraFooter += lipgloss.Height(dropdown)
@@ -251,17 +247,33 @@ func (m *OutlinerModel) writeOutlinerHeader(b *strings.Builder, width int) {
 	b.WriteString("\n")
 }
 
+// renderOutlinerMenuFrame is the whole frame while a menu is open: the bar row
+// and the block hanging off the open label, and nothing under them. The list is
+// not shrunk to make room, it is not drawn at all, so opening and closing a menu
+// moves no row on screen — the rows behind a dropdown were unreadable anyway,
+// and a list that shifted twice per menu press was the cost of pretending
+// otherwise.
+//
+// Nothing here calls computeOutlinerViewport, deliberately. It is the single
+// window authority and the only writer of viewScrollOffset, so a frame that
+// draws no rows must leave the window the last one drew exactly as it was: that
+// is the window the close redraws, and the window a key re-emitted through the
+// non-modal arm pages against.
+func (m *OutlinerModel) renderOutlinerMenuFrame(width int, menu string) string {
+	var b strings.Builder
+	b.WriteString(m.renderOutlinerMenuBar(width) + "\n")
+	b.WriteString(menu)
+	return b.String()
+}
+
 func (m *OutlinerModel) renderOutlinerEmptyState(width int) string {
 	var b strings.Builder
-	// The empty state carries the bar and any open menu for the same reason it
-	// carries the suggestion pane: a view with no rows is exactly where a user
-	// reaches for the map of what they can do next.
-	menu := m.renderOutlinerMenuDropdown(width)
+	// The empty state carries the bar for the same reason it carries the
+	// suggestion pane: a view with no rows is exactly where a user reaches for the
+	// map of what they can do next. An open menu never reaches here — it is its
+	// own frame, drawn before the row count is even consulted.
 	if m.menuBarVisible() {
 		b.WriteString(m.renderOutlinerMenuBar(width) + "\n")
-	}
-	if menu != "" {
-		b.WriteString(menu + "\n")
 	}
 	b.WriteString(m.buildOutlinerTitleLine(width))
 	b.WriteString("\n")

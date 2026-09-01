@@ -625,10 +625,20 @@ rather than as a change already on screen.
 The dropdown is drawn inline rather than composited. It is written into the
 content stream immediately under the bar row, left-padded to the open label's
 `StartCol` and clamped by `overlayPopup`'s own arithmetic so the right edge
-stays on screen, and its height is added to `extraFooter` so
-`computeOutlinerViewport` shrinks the list by exactly what the menu covers: the
-rows it hides are rows it paid for, which is the bargain the bar and the status
-strip already make. It reuses `renderOverlayBox` and `RenderCompactListSurface`
+stays on screen — and it is the entire frame. `renderOutlinerTreeContent` branches
+to `renderOutlinerMenuFrame` before it consults the row count, so an open menu
+draws the bar row and the block alone: no operational title, no suggestion pane,
+no rows, and no `computeOutlinerViewport` call at all. The list is not shrunk to
+make room for a menu, which is what stops every row on screen from stepping down
+and back up once per press; skipping the window authority is what leaves
+`viewScrollOffset` and `lastViewport` holding the window the last list frame drew,
+which is both the window the close redraws and the one a key re-emitted through
+the non-modal arm pages against. The branch is keyed on the drawn block rather
+than on `menuBarOpen`, since a dropdown that resolved to nothing must fall back
+to an ordinary frame rather than blank the view. `menuBarDropdownRowBudget` then
+spends what the hidden list freed: `contentHeight` plus the undrawn title row,
+less `statusStripHeight`, because the shell pins that strip and a box claiming
+its rows would be clipped rather than scrolled. It reuses `renderOverlayBox` and `RenderCompactListSurface`
 over a surface rebuilt each frame, sized to its longest entry rather than to a
 fraction of the screen, since a box anchored under one label that claimed three
 fifths of the terminal would read as a modal. The two stored indices are the

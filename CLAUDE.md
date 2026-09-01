@@ -185,9 +185,10 @@ overlay with no `PresentationID`, `InputStrategy`, or manifest entry.
 
 `M` toggles the Outliner menu bar on the same terms: a view-local gated
 sub-state with no `PresentationID`, overlay, `InputStrategy`, or manifest entry.
-It costs one list row, and `contentHeight` is the one place that subtracts it;
-never measure it again at a call site. The row is exactly `m.width` and drops
-whole labels from the right rather than truncating one.
+It costs one list row, subtracted in `contentHeight` alone; never measure it
+again. The row is exactly `m.width` and drops whole labels from the right, never
+truncating one. An open menu is bar and dropdown alone: list hidden, not shrunk,
+window still.
 
 `Q` expands the query readout in that strip, below the conflict line, from a pure
 `queryReadoutBody` `statusStripHeight` measures. It names one row per peelable

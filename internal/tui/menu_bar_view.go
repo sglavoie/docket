@@ -55,10 +55,8 @@ func (m *OutlinerModel) renderOutlinerMenuDropdown(width int) string {
 	m.menuBarItemIndex = cursor
 
 	innerWidth := menuBarDropdownWidth(entries, width)
-	// The box's own rows come off the budget before the list is sized, and two
-	// list rows are held back so a tall menu shrinks itself rather than leaving
-	// the Outliner with nothing under it.
-	maxBoxRows := max(m.contentHeight()-2, menuBarDropdownMinRows+menuBarDropdownListRows)
+	// The box's own rows come off the budget before the list is sized.
+	maxBoxRows := m.menuBarDropdownRowBudget(width)
 	listHeight := max(min(len(entries), maxBoxRows-menuBarDropdownListRows), 1)
 
 	surface, err := newMenuBarDropdownSurface(entries, innerWidth-4)
@@ -74,6 +72,24 @@ func (m *OutlinerModel) renderOutlinerMenuDropdown(width int) string {
 		lipgloss.NewStyle().Foreground(ColorPrimary))
 	box = fitOverlayPopupHeight(box, maxBoxRows)
 	return indentMenuBarDropdown(box, menuBarDropdownStartCol(menus, width, m.menuBarMenuIndex, box), width)
+}
+
+// menuBarDropdownRowBudget is how tall the block may grow. The frame it is drawn
+// on holds the bar row and this box alone, so the budget is everything under the
+// bar: contentHeight subtracts both the bar row and the operational title, and
+// the title is not drawn on this frame, which is the one row added back here.
+//
+// The status strip is subtracted because the shell pins it — AppModel.View sizes
+// and pads content against the status bar's height — so a box that claimed those
+// rows would be clipped from below rather than scrolled, and a menu that says
+// nothing about the entries it dropped is worse than one that scrolls.
+//
+// The floor keeps the shortest drawable box: below it the dropdown says less
+// than the bar above it already does, and at a terminal that short there is
+// nothing better to do than let the frame clip it.
+func (m *OutlinerModel) menuBarDropdownRowBudget(width int) int {
+	available := m.contentHeight() + 1 - m.statusStripHeight(width)
+	return max(available, menuBarDropdownMinRows+menuBarDropdownListRows)
 }
 
 // menuBarDropdownStartCol is the column the block is padded to: the open label's

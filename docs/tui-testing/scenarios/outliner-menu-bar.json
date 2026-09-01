@@ -33,7 +33,8 @@
     { "type": "assert", "label": "an entry carries the key its own accelerator is bound to", "assert": "contains", "value": "Ctrl+E" },
     { "type": "assert", "label": "the open menu's gated keymap owns the footer", "assert": "contains", "value": "Enter run" },
     { "type": "assert", "label": "and names the key that opened it as the key that closes it", "assert": "contains", "value": "Ctrl+M/Esc close" },
-    { "type": "assert", "label": "the dropdown is chrome the list paid for, so rows fell off the bottom", "assert": "not_contains", "value": "Release acceptance item 088" },
+    { "type": "assert", "label": "an open menu is the whole frame: the list is not shrunk, it is not drawn", "assert": "not_contains", "value": "Release acceptance item 088" },
+    { "type": "assert", "label": "and the operational title goes with it, so nothing below the bar shifts", "assert": "not_contains", "value": "Active Projects · All" },
     { "type": "assert", "assert": "no_layout_issues" },
 
     { "type": "key", "label": "l moves along the bar to View", "key": "l" },
@@ -55,6 +56,7 @@
     { "type": "key", "label": "esc puts the menu away and leaves the bar shown", "key": "esc" },
     { "type": "assert", "assert": "not_contains", "value": "Query Readout" },
     { "type": "assert", "assert": "contains", "value": "Task  View  Go  Find  Help" },
+    { "type": "assert", "label": "the title and the same rows come back where they were", "assert": "contains", "value": "Active Projects · All" },
     { "type": "assert", "assert": "contains", "value": "Release acceptance item 088" },
     { "type": "assert", "assert": "no_layout_issues" },
 

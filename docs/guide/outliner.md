@@ -35,9 +35,11 @@ still reachable by the keys its entries carry.
 
 `Ctrl+M` opens the leftmost menu, showing the bar first if it was hidden, so
 reaching a menu is never two presses. The dropdown falls inline under the label
-it belongs to and takes its rows from the task list, the same bargain the bar
-itself makes; a menu too tall for the room scrolls rather than covering the
-view. `h`/`l` or left/right move along the bar, `j`/`k` or up/down move within
+it belongs to, and while it is open the task list is not drawn at all: the bar
+stays on its row, the menu hangs off its label, and everything below is blank
+until you close it. Nothing shifts down and back up per press, and the view you
+return to is the one you left, scrolled where you left it. A menu too tall for
+the terminal scrolls inside its own box. `h`/`l` or left/right move along the bar, `j`/`k` or up/down move within
 the open menu and step over the rules between groups, `Enter` runs the
 highlighted entry and closes the menu, and `Esc` or `Ctrl+M` closes it without
 running anything, leaving the bar exactly as it was.

@@ -155,6 +155,73 @@ func TestViewMenuBarRowCarriesLiveVisibility(t *testing.T) {
 	}
 }
 
+// An open menu is the whole frame: the bar row, the block under its label, and
+// nothing else. The list is not shrunk to make room for a dropdown, it is not
+// drawn, which is what stops every row on screen from stepping down and back up
+// once per menu press. The window the last list frame drew has to survive that
+// untouched, since it is the one the close redraws.
+func TestAnOpenMenuDrawsNoOutlinerAndMovesNoWindow(t *testing.T) {
+	driver, outliner := menuBarDriver(t)
+
+	// Show the bar first: revealing it costs a list row, and this test is about
+	// what opening a menu does on top of a bar that is already up.
+	pressMenuBarKey(t, driver, "M")
+	driver.Render()
+	window := outliner.lastViewport
+	if window.visibleRows <= 1 {
+		t.Fatalf("the baseline window draws %d rows, too few to prove the list was drawn", window.visibleRows)
+	}
+	rowTitle := firstVisibleTaskTitle(t, outliner)
+	if screen := driver.Observe(ObserveOptions{}).PlainScreen; !strings.Contains(screen, rowTitle) {
+		t.Fatalf("the baseline frame does not draw the row it named:\n%s", screen)
+	}
+
+	pressMenuBarKey(t, driver, "ctrl+m")
+	open := driver.Observe(ObserveOptions{}).PlainScreen
+	if !strings.Contains(open, "Capture Child") {
+		t.Fatalf("the dropdown is not drawn:\n%s", open)
+	}
+	if !strings.Contains(open, "Task") || !strings.Contains(open, "Help") {
+		t.Errorf("the bar left the frame the menu hangs off:\n%s", open)
+	}
+	if strings.Contains(open, "Active Projects · All") {
+		t.Errorf("the operational title is still drawn under an open menu:\n%s", open)
+	}
+	if strings.Contains(open, rowTitle) {
+		t.Errorf("the list is still drawn under an open menu:\n%s", open)
+	}
+	if got := outliner.lastViewport; got != window {
+		t.Errorf("opening a menu moved the window from %+v to %+v", window, got)
+	}
+
+	pressMenuBarKey(t, driver, "esc")
+	closed := driver.Observe(ObserveOptions{}).PlainScreen
+	if !strings.Contains(closed, "Active Projects · All") {
+		t.Errorf("the title did not come back:\n%s", closed)
+	}
+	if !strings.Contains(closed, rowTitle) {
+		t.Errorf("the list did not come back:\n%s", closed)
+	}
+	if got := outliner.lastViewport; got != window {
+		t.Errorf("closing the menu redrew window %+v, want the one it left at %+v", got, window)
+	}
+}
+
+// firstVisibleTaskTitle names a row the baseline frame drew, so the assertion
+// that the menu hid the list is made against a row that was demonstrably on
+// screen rather than against the fixture's contents in general.
+func firstVisibleTaskTitle(t *testing.T, outliner *OutlinerModel) string {
+	t.Helper()
+	start, end := outliner.visibleRowWindow()
+	for index := start; index < end; index++ {
+		if row := outliner.rows[index]; row.task != nil {
+			return row.task.Title
+		}
+	}
+	t.Fatal("the visible window holds no task row")
+	return ""
+}
+
 // The whole render-budget claim in one place: showing the bar costs exactly one
 // list row, the bar sits above the operational title rather than replacing it,
 // and the choice survives a relaunch because it lives in machine.json.
