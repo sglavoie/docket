@@ -216,7 +216,7 @@ func namedLensRoleStyle(role namedLensRole) (lipgloss.Style, bool) {
 // style's bold and italic — which belong to a task row — stay behind.
 func namedLensPriorityAccentStyle(priority int) (lipgloss.Style, bool) {
 	foreground := GetTitlePriorityStyle(priority).GetForeground()
-	if _, unset := foreground.(lipgloss.NoColor); unset || foreground == nil {
+	if _, unset := foreground.(lipgloss.NoColor); unset {
 		return lipgloss.Style{}, false
 	}
 	return lipgloss.NewStyle().Foreground(foreground), true
