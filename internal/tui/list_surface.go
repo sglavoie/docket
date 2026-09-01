@@ -823,6 +823,11 @@ func (model *ListSurfaceModel) ExecuteAction(
 	return executor.Execute(request)
 }
 
+// listTextGap is the one separator LayoutListText puts between primary and
+// secondary text. A caller that measures a row before handing it here must
+// charge this same width, so it is named once rather than spelled per site.
+const listTextGap = "  "
+
 // LayoutListText fits primary and secondary text by terminal display cells.
 // Primary text gets preference; secondary text uses at most one third of a
 // constrained row unless the primary leaves spare capacity.
@@ -839,7 +844,7 @@ func LayoutListText(primary, secondary string, width int) ListTextLayout {
 		return layout
 	}
 
-	const gap = "  "
+	const gap = listTextGap
 	gapWidth := lipgloss.Width(gap)
 	if primaryWidth+gapWidth+secondaryWidth <= width {
 		layout.Primary = primary

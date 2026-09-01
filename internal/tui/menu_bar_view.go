@@ -133,12 +133,12 @@ func menuBarDropdownWidth(entries []resolvedMenuEntry, width int) int {
 		if entry.OperationID == "" {
 			continue
 		}
-		// The two-space gap is LayoutListText's own, which is what puts the key
-		// hint right after the label rather than flush right: a menu wide enough
-		// for its longest row is one where nothing is truncated at all.
+		// The gap is LayoutListText's own, charged here because the labels are
+		// padded out to it: the widest row is the column every key hint is then
+		// flushed to, so a menu wide enough for that row truncates nothing.
 		row := marker + lipgloss.Width(entry.Label)
 		if entry.Key != "" {
-			row += 2 + lipgloss.Width(entry.Key)
+			row += lipgloss.Width(listTextGap) + lipgloss.Width(entry.Key)
 		}
 		longest = max(longest, row)
 	}
@@ -184,16 +184,16 @@ func newMenuBarDropdownSurface(entries []resolvedMenuEntry, contentWidth int) (*
 	if checked {
 		blank = strings.Repeat(" ", menuBarDropdownCheckColumn)
 	}
-	ruleWidth := max(contentWidth-menuBarDropdownMarkerWidth(entries), 1)
+	textWidth := max(contentWidth-menuBarDropdownMarkerWidth(entries), 1)
 	items := make([]ListItem, 0, len(entries))
 	for index, entry := range entries {
 		item := ListItem{ID: menuBarDropdownItemID(index), PrimaryMarker: blank}
 		if entry.OperationID == "" {
-			item.PrimaryText = strings.Repeat("─", ruleWidth)
+			item.PrimaryText = strings.Repeat("─", textWidth)
 			items = append(items, item)
 			continue
 		}
-		item.PrimaryText = entry.Label
+		item.PrimaryText = padMenuBarDropdownLabel(entry.Label, entry.Key, textWidth)
 		item.SecondaryText = entry.Key
 		if entry.Checked != nil && *entry.Checked {
 			item.PrimaryMarker = "✓ "
@@ -201,6 +201,26 @@ func newMenuBarDropdownSurface(entries []resolvedMenuEntry, contentWidth int) (*
 		items = append(items, item)
 	}
 	return NewListSurfaceModel(items, nil, ListSurfaceConfig{SelectionMode: ListSelectionSingle})
+}
+
+// padMenuBarDropdownLabel pads a label out so its key hint lands flush against
+// the menu's right edge, the way a desktop menu reads: the eye scans one column
+// of labels and one column of keys instead of a ragged pair. The padding stops
+// short of LayoutListText's own gap, which the layout adds back after it.
+//
+// A row too wide to hold both at this width is left unpadded, so the layout
+// truncates exactly as it did before. Alignment is a courtesy the menu extends
+// when it has the columns to spend; a key pushed off the edge to buy it would
+// cost the one thing the row is there to say.
+func padMenuBarDropdownLabel(label, key string, textWidth int) string {
+	if key == "" {
+		return label
+	}
+	pad := textWidth - lipgloss.Width(label) - lipgloss.Width(listTextGap) - lipgloss.Width(key)
+	if pad <= 0 {
+		return label
+	}
+	return label + strings.Repeat(" ", pad)
 }
 
 // menuBarDropdownItemID names one row by its position in the resolution, which

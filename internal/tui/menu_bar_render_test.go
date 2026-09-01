@@ -222,6 +222,54 @@ func firstVisibleTaskTitle(t *testing.T, outliner *OutlinerModel) string {
 	return ""
 }
 
+// A dropdown reads the way a desktop menu does: labels down the left, key hints
+// flushed to one right column. Rows of very different label widths are what make
+// that claim worth asserting, and the padding it takes is only honest if the
+// hint it pushes right is still whole, so both are checked on the drawn frame.
+func TestMenuDropdownFlushesEveryKeyHintToOneColumn(t *testing.T) {
+	driver, _ := menuBarDriver(t)
+	pressMenuBarKey(t, driver, "M", "ctrl+m")
+	screen := driver.Observe(ObserveOptions{}).PlainScreen
+
+	hints := []struct{ label, key string }{
+		{"Capture", "a"},
+		{"External Editor", "Ctrl+E"},
+		{"Copy Title and Description", "Ctrl+Y"},
+	}
+	column := -1
+	for _, hint := range hints {
+		line := ""
+		for _, candidate := range strings.Split(screen, "\n") {
+			if strings.Contains(candidate, hint.label) {
+				line = candidate
+				break
+			}
+		}
+		if line == "" {
+			t.Fatalf("the open menu draws no %q row:\n%s", hint.label, screen)
+		}
+		// The hint is looked for after the label so a one-character key cannot
+		// match a letter of the label itself.
+		rest := line[strings.Index(line, hint.label)+len(hint.label):]
+		offset := strings.Index(rest, hint.key)
+		if offset < 0 {
+			t.Fatalf("the %q row lost its %q hint: %q", hint.label, hint.key, line)
+		}
+		if offset == 0 {
+			t.Errorf("the %q row runs its hint straight into the label: %q", hint.label, line)
+		}
+		end := lipgloss.Width(line[:len(line)-len(rest)+offset+len(hint.key)])
+		if column < 0 {
+			column = end
+			continue
+		}
+		if end != column {
+			t.Errorf("the %q hint ends at column %d, want the %d every other hint ends at:\n%s",
+				hint.label, end, column, screen)
+		}
+	}
+}
+
 // The whole render-budget claim in one place: showing the bar costs exactly one
 // list row, the bar sits above the operational title rather than replacing it,
 // and the choice survives a relaunch because it lives in machine.json.
