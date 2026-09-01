@@ -50,7 +50,7 @@ func TestFilterFacetsComposeInCanonicalProjection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	outliner.filter.setStateFilter(states, true)
+	outliner.filter.setStateFilter(states)
 	outliner.filter.Priority = 3
 	outliner.filter.Tags = map[string]bool{"alpha": true, "beta": true}
 	outliner.filter.DueDate = DueDateToday
@@ -228,7 +228,7 @@ func TestExplicitTerminalStateFacetOverridesDefaultVisibility(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	outliner.filter.setStateFilter(states, true)
+	outliner.filter.setStateFilter(states)
 	outliner.adoptFilterCarriers()
 	outliner.rebuildRows()
 
@@ -341,7 +341,7 @@ func TestCompletionCleanupProjectionOpensOnTheCompletedClause(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	outliner.filter.setStateFilter(doneOnly, true)
+	outliner.filter.setStateFilter(doneOnly)
 	outliner.adoptFilterCarriers()
 	outliner.rebuildRows()
 	visible = visibleOutlinerTaskIDs(outliner)
@@ -352,7 +352,7 @@ func TestCompletionCleanupProjectionOpensOnTheCompletedClause(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	outliner.filter.setStateFilter(both, true)
+	outliner.filter.setStateFilter(both)
 	outliner.adoptFilterCarriers()
 	outliner.rebuildRows()
 	visible = visibleOutlinerTaskIDs(outliner)
@@ -370,7 +370,7 @@ func TestFilterFacetsPersistAcrossModeAndProjectScopeChanges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	outliner.filter.setStateFilter(states, true)
+	outliner.filter.setStateFilter(states)
 	outliner.filter.Priority = 2
 	outliner.filter.Tags = map[string]bool{"alpha": true}
 	outliner.filter.DueDate = DueDateNone
@@ -419,7 +419,7 @@ func TestFilterFacetsAreExcludedFromPersistedRouteState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	outliner.filter.setStateFilter(liveStates, true)
+	outliner.filter.setStateFilter(liveStates)
 	outliner.filter.Priority = 2
 	outliner.filter.Tags = map[string]bool{"live": true}
 	outliner.filter.setCompletionAgeFilter(CompletionAge7Days)

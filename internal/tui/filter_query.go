@@ -401,7 +401,7 @@ func commonFilterStateFromQuery(query models.Query) CommonFilterState {
 	if len(states) > 0 {
 		set, err := models.NewWorkflowStateSet(states...)
 		if err == nil {
-			filter.setStateFilter(set, true)
+			filter.setStateFilter(set)
 		}
 	}
 	return filter

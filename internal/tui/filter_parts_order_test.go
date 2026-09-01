@@ -40,7 +40,7 @@ func TestCommonFilterParts_TagsDeterministicOrder(t *testing.T) {
 func TestCommonFilterParts_StaleKeepsCanonicalFacetOrder(t *testing.T) {
 	f := newFilterState()
 	f.Priority = models.PriorityMedium
-	f.setStateFilter(testWorkflowStateSet(models.StateBacklog), true)
+	f.setStateFilter(testWorkflowStateSet(models.StateBacklog))
 	f.setCompletionAgeFilter(CompletionAge30Days)
 	f.Tags["focus"] = true
 	f.DueDate = DueDateToday
@@ -86,7 +86,7 @@ func TestOutlinerActiveFilterParts_StatesCanonicalOrder(t *testing.T) {
 		models.StateBacklog,
 		models.StateInbox,
 		models.StateWaiting,
-	), true)
+	))
 	ol.adoptFilterCarriers()
 
 	first := statePartsFromParts(ol.activeFilterParts())

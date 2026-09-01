@@ -89,9 +89,11 @@ func (f *CommonFilterState) hasStateFilter() bool {
 	return f.statesSet || !f.States.IsEmpty()
 }
 
-func (f *CommonFilterState) setStateFilter(states models.WorkflowStateSet, active bool) {
+// setStateFilter always arms the filter, including for an empty set: an explicit
+// empty selection is a state the caller chose, not the absence of one.
+func (f *CommonFilterState) setStateFilter(states models.WorkflowStateSet) {
 	f.States = cloneCommonWorkflowStateSet(states)
-	f.statesSet = active || !states.IsEmpty()
+	f.statesSet = true
 }
 
 func (f *CommonFilterState) hasCompletionAgeFilter() bool {

@@ -610,6 +610,12 @@ func TestNamedLensCloneCopiesEveryAxis(t *testing.T) {
 		original.Scope != "" || original.Sort.Field != LensSortUpdated {
 		t.Fatalf("mutating a clone reached the original: %+v", original)
 	}
+	// Reading the clone back is what proves the writes above landed somewhere. A
+	// clone that silently discarded them would satisfy the assertion on original.
+	if clone.Name != "Mutated" || clone.Query != "$done" ||
+		clone.Scope != lensScopeProjectID || clone.Sort.Field != LensSortTitle {
+		t.Fatalf("the clone did not take the mutations: %+v", clone)
+	}
 }
 
 func TestNamedLensListCloneDetachesFromSnapshot(t *testing.T) {

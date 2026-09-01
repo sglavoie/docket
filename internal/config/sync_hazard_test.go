@@ -542,7 +542,7 @@ func TestLensMergeChecksFinalBoundedDerivationBeforeExhaustion(t *testing.T) {
 // property rests on: one id carrying two definitions resolves the same way from
 // either side, because the definition that keeps the plain id is chosen by
 // content rather than by which side happened to be the base. This test replaces
-// a characterization of the opposite behaviour.
+// a characterization of the opposite behavior.
 func TestLensAdoptionIDsAreOrderIndependent(t *testing.T) {
 	left := NamedLensList{adoptionLens(adoptionLensAlphaID, "Shared", "#a")}
 	right := NamedLensList{adoptionLens(adoptionLensAlphaID, "Shared", "#b")}

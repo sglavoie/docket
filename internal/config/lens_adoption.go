@@ -264,7 +264,7 @@ func collapseLensRecords(records []*contributedLensRecord) []*resolvedLensRecord
 
 // assignLensNames gives every resolved record a label, in an order derived from
 // the records themselves: a record that kept an identity it was contributed
-// under is labelled before one that had to derive a new identity, and canonical
+// under is labeled before one that had to derive a new identity, and canonical
 // id order decides within each half. A record takes its preferred label when
 // nothing holds it and otherwise the first free " (N)" variant of that label's
 // base, so a record already carrying a disambiguated label settles back onto it
@@ -319,7 +319,7 @@ func lensNameLess(a, b string) bool {
 	return a < b
 }
 
-// lensCoreKey renders what a lens shows and nothing about how it is labelled or
+// lensCoreKey renders what a lens shows and nothing about how it is labeled or
 // identified: the mode, scope, query and sort axes. It compares the persisted
 // rendering rather than field by field so a lens axis added later joins the
 // comparison automatically instead of silently dropping out of it and turning a

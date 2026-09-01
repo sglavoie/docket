@@ -100,7 +100,7 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	taskFilter.setStateFilter(terminal, true)
+	taskFilter.setStateFilter(terminal)
 	taskFilter.setCompletionAgeFilter(CompletionAge90Days)
 	taskFilter.Contexts = map[string]bool{"errand": true}
 	taskFilter.NoContext = true
@@ -279,7 +279,7 @@ func TestFilterChordClearResetsEveryFacet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	filter.setStateFilter(set, true)
+	filter.setStateFilter(set)
 
 	result := executeDirectPath(t, app, simplifiedOperationContext(), []string{"f", "x"})
 	if result.Err != nil {
@@ -437,7 +437,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		app.crossOutliner.filter.setStateFilter(set, true)
+		app.crossOutliner.filter.setStateFilter(set)
 		app.crossOutliner.adoptFilterCarriers()
 
 		cmd := pressFilterChord(t, app, "f$")
@@ -544,7 +544,7 @@ func TestFilterStatePickerShowsProspectiveCountsFromOtherActiveFilters(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	outliner.filter.setStateFilter(selectedStates, true)
+	outliner.filter.setStateFilter(selectedStates)
 	outliner.adoptFilterCarriers()
 	outliner.crossForceRebuild = true
 	outliner.rebuildRows()
@@ -766,7 +766,7 @@ func TestFilterCompletionAgeChordSelectsTerminalLifecycleStates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	filter.setStateFilter(states, true)
+	filter.setStateFilter(states)
 
 	cmd := pressFilterChord(t, app, "fa")
 	if cmd == nil {

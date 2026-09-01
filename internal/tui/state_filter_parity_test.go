@@ -58,7 +58,7 @@ func TestStateFilter_SelectsTasksByDerivedState(t *testing.T) {
 		state := state
 		t.Run(state.String(), func(t *testing.T) {
 			filter := newFilterState()
-			filter.setStateFilter(testWorkflowStateSet(state), true)
+			filter.setStateFilter(testWorkflowStateSet(state))
 			for _, task := range project.Tasks {
 				want := task.State() == state
 				got := passesCommonFilters(task, &filter)
@@ -74,7 +74,7 @@ func TestStateFilter_SelectsTasksByDerivedState(t *testing.T) {
 func TestStateFilter_MatchesAnySelectedStateAndExplicitEmptyMatchesNone(t *testing.T) {
 	project := buildWorkflowStateFixture(t)
 	filter := newFilterState()
-	filter.setStateFilter(testWorkflowStateSet(models.StateInbox, models.StateWaiting, models.StateDone), true)
+	filter.setStateFilter(testWorkflowStateSet(models.StateInbox, models.StateWaiting, models.StateDone))
 
 	for _, task := range project.Tasks {
 		want := filter.States.Contains(task.State())
@@ -88,7 +88,7 @@ func TestStateFilter_MatchesAnySelectedStateAndExplicitEmptyMatchesNone(t *testi
 	// mints no state clause, so the axis is simply absent from the predicate. No
 	// key can author this carrier — the states picker deactivates the facet on an
 	// empty result — so the only way to reach it is to write the field directly.
-	filter.setStateFilter(models.WorkflowStateSet{}, true)
+	filter.setStateFilter(models.WorkflowStateSet{})
 	if !hasActiveCommonFilters(&filter) {
 		t.Fatal("explicit empty state set must remain an active facet for the chrome")
 	}
@@ -103,7 +103,7 @@ func TestStateFilter_MatchesAnySelectedStateAndExplicitEmptyMatchesNone(t *testi
 // as active, is reset by clearCommonFilters, and appears in filter badge parts.
 func TestStateFilter_ActiveClearAndBadge(t *testing.T) {
 	filter := newFilterState()
-	filter.setStateFilter(testWorkflowStateSet(models.StateBacklog, models.StateDoing), true)
+	filter.setStateFilter(testWorkflowStateSet(models.StateBacklog, models.StateDoing))
 
 	if !hasActiveCommonFilters(&filter) {
 		t.Fatal("State filter should count as an active common filter")
