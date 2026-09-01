@@ -9,6 +9,15 @@ import (
 func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
+	// An open menu is read first: its navigation keys are a gated keymap the
+	// footer is advertising, and h/j/k/l mean something else entirely to the
+	// cascade below. Unlike the readout it is non-modal — an unrecognized key
+	// closes the menu and is re-emitted so the root grammar runs it — so nothing
+	// below is unreachable while a menu is up, only one update later.
+	if m.menuBarOpen {
+		return m.handleMenuBarKey(msg)
+	}
+
 	// The expanded query readout owns input outright while it is open: its peel
 	// digits are a gated keymap the footer is advertising, and letting a root key
 	// through underneath would run an act the on-screen footer does not name.

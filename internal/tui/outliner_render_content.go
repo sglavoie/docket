@@ -22,11 +22,20 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	}
 
 	var b strings.Builder
+	// An open menu hangs off the label it was opened from, so it is drawn — and
+	// measured — before anything below the bar is written. It sizes itself against
+	// its own entries and the rows it can spare, so only the drawn block knows how
+	// tall it turned out, which is why it is rendered once and measured rather
+	// than predicted.
+	menu := m.renderOutlinerMenuDropdown(width)
 	// The bar leads, so the title row and its workspace pulse simply sit one line
 	// down rather than sharing a row with chrome. Its cost is already out of the
 	// budget contentHeight reports, which is why nothing is measured here.
 	if m.menuBarVisible() {
 		b.WriteString(m.renderOutlinerMenuBar(width) + "\n")
+	}
+	if menu != "" {
+		b.WriteString(menu + "\n")
 	}
 	m.writeOutlinerHeader(&b, width)
 
@@ -36,6 +45,9 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	dropdown := m.renderSearchAutocompleteDropdown(width)
 
 	extraFooter := m.statusStripHeight(width)
+	if menu != "" {
+		extraFooter += lipgloss.Height(menu)
+	}
 	if dropdown != "" {
 		b.WriteString(dropdown + "\n")
 		extraFooter += lipgloss.Height(dropdown)
@@ -241,6 +253,16 @@ func (m *OutlinerModel) writeOutlinerHeader(b *strings.Builder, width int) {
 
 func (m *OutlinerModel) renderOutlinerEmptyState(width int) string {
 	var b strings.Builder
+	// The empty state carries the bar and any open menu for the same reason it
+	// carries the suggestion pane: a view with no rows is exactly where a user
+	// reaches for the map of what they can do next.
+	menu := m.renderOutlinerMenuDropdown(width)
+	if m.menuBarVisible() {
+		b.WriteString(m.renderOutlinerMenuBar(width) + "\n")
+	}
+	if menu != "" {
+		b.WriteString(menu + "\n")
+	}
 	b.WriteString(m.buildOutlinerTitleLine(width))
 	b.WriteString("\n")
 	// A query that matches nothing yet is exactly when suggestions are worth the

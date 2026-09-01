@@ -233,6 +233,16 @@ type OutlinerModel struct {
 	// each frame, so there is nothing here that can go stale.
 	queryReadoutExpanded bool
 
+	// menuBarOpen is the menu bar's dropdown gate, and menuBarMenuIndex and
+	// menuBarItemIndex are where the highlight sits inside it. Like the readout
+	// above, this is the whole of the sub-state: the menus and their entries are
+	// resolved off the live catalog every frame, so the two indices are the only
+	// thing that could go stale and both are re-resolved against that resolution
+	// before they are read.
+	menuBarOpen      bool
+	menuBarMenuIndex int
+	menuBarItemIndex int
+
 	// OpenAtTask, when set, positions the cursor on the given task the first
 	// time rebuildRows produces a non-empty row list. Cleared after first use.
 	OpenAtTask *models.Task

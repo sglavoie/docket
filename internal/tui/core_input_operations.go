@@ -65,6 +65,7 @@ const (
 	operationCoreNotes              OperationID = "tui.core.notes"
 	operationCoreToggleTheme        OperationID = "tui.core.toggle-theme"
 	operationCoreToggleMenuBar      OperationID = "tui.core.toggle-menu-bar"
+	operationCoreOpenMenuBar        OperationID = "tui.core.open-menu-bar"
 	operationCoreUndo               OperationID = "tui.core.undo"
 	operationCoreRedo               OperationID = "tui.core.redo"
 	operationCoreBack               OperationID = "tui.core.back"
@@ -330,6 +331,11 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		core(operationCoreNotes, "Notes", OperationCategoryNote, TargetCardinalityNone, OperationRiskReadOnly, "scratch notes"),
 		core(operationCoreToggleTheme, "Toggle Theme", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "dark theme", "light theme"),
 		core(operationCoreToggleMenuBar, "Toggle Menu Bar", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "menu bar", "show menus"),
+		// Opening is a separate act from showing: the toggle decides whether the
+		// band is drawn at all, this one drops a menu out of it. They are two
+		// descriptors so `?` can name both honestly rather than one label having to
+		// mean "show, or open, depending on what is already true".
+		core(operationCoreOpenMenuBar, "Open Menu", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "open menu bar", "browse menus"),
 		core(operationCoreUndo, "Undo", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation),
 		core(operationCoreRedo, "Redo", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation),
 		core(operationCoreBack, "Back", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
@@ -687,6 +693,8 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		if err == nil {
 			message = commandMessage(defaultStatusTimeout())
 		}
+	case operationCoreOpenMenuBar:
+		err = m.coreOpenMenuBar()
 	case operationCoreUndo:
 		message = commandMessage(m.coreUndo())
 	case operationCoreRedo:
@@ -1130,6 +1138,34 @@ func (m *AppModel) coreToggleMenuBar() error {
 	} else {
 		m.setInfoStatus("Menu bar hidden")
 	}
+	return nil
+}
+
+// coreOpenMenuBar drops the first menu out of the bar, revealing the bar itself
+// first when it is hidden. Revealing rather than refusing is what makes this one
+// key enough to find the whole grammar: a user who has never pressed `M` has no
+// way to know the band exists, so the key that opens a menu has to be able to
+// put one on screen from nothing.
+//
+// The reveal commits the same machine-local flag `M` writes, so a menu opened
+// out of a hidden bar leaves the bar shown afterwards rather than snapping back
+// — the state a user can see is the state that was saved.
+func (m *AppModel) coreOpenMenuBar() error {
+	out, ok := m.outlinerPrimary()
+	if !ok || out == nil {
+		return fmt.Errorf("the menu bar belongs to the Outliner")
+	}
+	if !out.menuBarVisible() {
+		if m.runtime == nil || m.runtime.Machine() == nil {
+			return fmt.Errorf("machine chrome state is unavailable")
+		}
+		machine := *m.runtime.Machine()
+		machine.MenuBarVisible = true
+		if err := m.runtime.CommitMachine(&machine); err != nil {
+			return fmt.Errorf("save menu bar visibility: %w", err)
+		}
+	}
+	out.openMenuBar()
 	return nil
 }
 

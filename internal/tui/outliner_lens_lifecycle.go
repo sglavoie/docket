@@ -483,6 +483,7 @@ func (m *OutlinerModel) restoreLensBaseline() {
 	if m == nil || m.activeLens == nil {
 		return
 	}
+	m.closeMenuBar()
 	frame := m.activeLens
 	m.activeLens = nil
 	m.endLensQueryEdit()

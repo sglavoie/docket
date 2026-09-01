@@ -126,6 +126,10 @@ func (m *OutlinerModel) selectOutlinerMode(id OutlinerModeID) (tea.Model, tea.Cm
 	// A status naming the mode it was raised in would otherwise outlive the
 	// transition and misreport the new mode, up to a tick before it expires.
 	m.clearStatus()
+	// The mode decides which rows exist and which operations apply to them, so a
+	// menu resolved against the old one is describing a view that is about to stop
+	// being on screen.
+	m.closeMenuBar()
 	m.updateVisualSelectionStatus()
 	anchor := m.captureModeCursor()
 	defer m.restoreModeCursor(anchor)

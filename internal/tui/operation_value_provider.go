@@ -2388,6 +2388,10 @@ func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 		return true, m.openNamedLensActions(typed)
 	case SaveViewAsLensRequestMsg:
 		return true, m.saveViewAsLens()
+	case MenuBarActivateMsg:
+		// The menu named an operation and closed; running it is the shell's because
+		// the executor is.
+		return true, m.activateMenuBarEntry(typed.OperationID)
 	case QueryReadoutReloadRequestMsg:
 		// The peel already wrote the population fields; only the reload the facet
 		// owes is left, and it is the shell's because the projects are.

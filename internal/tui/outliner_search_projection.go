@@ -127,6 +127,7 @@ func (m *OutlinerModel) beginSearchProjection() {
 	if m == nil || m.searchProjection != nil {
 		return
 	}
+	m.closeMenuBar()
 	snapshot := m.capturePresentationSnapshot()
 	m.searchProjection = &snapshot
 	m.crossForceRebuild = true
@@ -171,6 +172,7 @@ func (m *OutlinerModel) ClearSearch() {
 		m.BaseSearchableView.ClearSearch()
 		return
 	}
+	m.closeMenuBar()
 	snapshot := m.searchProjection
 	m.searchProjection = nil
 	m.rankedList = false

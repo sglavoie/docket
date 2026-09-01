@@ -168,6 +168,10 @@ func (m *OutlinerModel) ShouldCaptureEsc() bool {
 		m.multiSelectMode ||
 		m.quickEdit.IsActive() ||
 		m.queryReadoutExpanded ||
+		// An open menu is the innermost thing Esc can put down, so it has to claim
+		// the key before the shell's back cascade spends it unwinding a scope the
+		// user cannot even see the rows of.
+		m.menuBarOpen ||
 		AnyEscStepActive(m.escSteps())
 }
 func (m *OutlinerModel) HasTextInput() bool {

@@ -81,10 +81,10 @@ func menuBarLayout(menus []resolvedMenu, width int) []menuLabelBox {
 // column the layout assigned it, so the row a user sees and the offsets a
 // dropdown is padded to come from one computation rather than two.
 //
-// openIdx names the menu whose dropdown is open, or -1 when none is. The bar is
-// inert today and always passes -1; the argument exists because the open label
-// is the only thing on this row that ever changes appearance, and deciding that
-// here keeps the highlight beside the placement it has to line up with.
+// openIdx names the menu whose dropdown is open, or -1 when none is. The open
+// label is the only thing on this row that ever changes appearance, and
+// deciding that here keeps the highlight beside the placement the dropdown
+// under it is padded to.
 func renderMenuBarRow(menus []resolvedMenu, width int, openIdx int) string {
 	boxes := menuBarLayout(menus, width)
 	open := activeTabStyle(menuBarLabelPadding, false)
@@ -155,5 +155,5 @@ func (m *OutlinerModel) resolvedMenuBar() []resolvedMenu {
 // renderOutlinerMenuBar is the one line the Outliner writes above its title when
 // the bar is shown.
 func (m *OutlinerModel) renderOutlinerMenuBar(width int) string {
-	return renderMenuBarRow(m.resolvedMenuBar(), width, -1)
+	return renderMenuBarRow(m.resolvedMenuBar(), width, m.openMenuBarIndex())
 }

@@ -298,6 +298,7 @@ func (m *OutlinerModel) clearProjectScope() bool {
 	if m.scopedProjectID == "" && len(m.scopeStack) == 0 {
 		return false
 	}
+	m.closeMenuBar()
 	_ = m.persistActiveRouteState()
 	if len(m.scopeStack) > 0 {
 		base := m.scopeStack[0]
@@ -324,6 +325,7 @@ func (m *OutlinerModel) clearProjectScope() bool {
 func (m *OutlinerModel) resetToGlobalAll() {
 	m.confirm.Cancel()
 	m.quickEdit.Exit()
+	m.closeMenuBar()
 	m.scopeStack = nil
 	m.scopedProjectID = ""
 	m.dropParkedProjectFocus()

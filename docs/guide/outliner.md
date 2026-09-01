@@ -25,15 +25,36 @@ region fits; zero Inbox and overdue counts disappear. Narrow terminals drop
 Done, Inbox, overdue, then Today before shortening required interaction context.
 
 `M` puts a menu bar above that title row: a single band reading
-`Task  View  Go  Find  Help`, one label per menu, and nothing else. It is a map
-rather than a control — the labels do not open yet — so what it is for today is
-reading the grammar off the screen instead of out of `?`. `M` again takes it
-away. The bar costs exactly one row of the task list while it is shown, which is
-the whole reason it is off by default and the whole reason it is a key rather
-than a permanent fixture. A terminal too narrow for every label drops whole
-menus from the right — Help first, then Find, then Go — rather than cutting a
-word in half, because a half-word is a lie about what the bar offers while a
-dropped menu is still reachable by the keys its entries carry.
+`Task  View  Go  Find  Help`, one label per menu. `M` again takes it away. The
+bar costs exactly one row of the task list while it is shown, which is the whole
+reason it is off by default and the whole reason it is a key rather than a
+permanent fixture. A terminal too narrow for every label drops whole menus from
+the right — Help first, then Find, then Go — rather than cutting a word in half,
+because a half-word is a lie about what the bar offers while a dropped menu is
+still reachable by the keys its entries carry.
+
+`Ctrl+M` opens the leftmost menu, showing the bar first if it was hidden, so
+reaching a menu is never two presses. The dropdown falls inline under the label
+it belongs to and takes its rows from the task list, the same bargain the bar
+itself makes; a menu too tall for the room scrolls rather than covering the
+view. `h`/`l` or left/right move along the bar, `j`/`k` or up/down move within
+the open menu and step over the rules between groups, `Enter` runs the
+highlighted entry and closes the menu, and `Esc` or `Ctrl+M` closes it without
+running anything, leaving the bar exactly as it was.
+
+A menu lists only what the cursor could do right now: an entry that does not
+apply is removed rather than greyed out, so the Task menu is shorter under a
+visual selection than without one. Modes and toggles carry a checkmark — the
+active mode, the bar's own visibility — so a menu reads the state back instead
+of only offering to change it, and every row spells the key it is bound to.
+Those keys keep working while the menu is up: pressing one the open menu does
+not list closes the menu and does what the key does, so nothing is trapped
+behind a dropdown.
+
+Terminals that do not report enhanced keyboard events encode `Ctrl+M` as
+`Enter`, the way they encode `Ctrl+I` as `Tab`. There `M` still shows the bar,
+and `Ctrl+M` over an open menu runs the highlighted entry rather than closing
+it.
 
 Whether the bar is drawn is remembered for this machine, the way the light or
 dark theme is: it survives quitting and reopening `tt`, and it does not follow

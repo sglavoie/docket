@@ -44,6 +44,11 @@ func (m *OutlinerModel) ContextualGuidance() (GuidanceSpec, bool) {
 		return GuidanceSpec{}, false
 	}
 	switch {
+	case m.menuBarOpen:
+		// First for the same reason the readout is first below it: while a menu is
+		// open its own keymap is what the four navigation keys mean, and every
+		// profile after this one would name acts they are not doing right now.
+		return m.menuBarGuidance(), true
 	case m.queryReadoutExpanded:
 		// First because the readout owns input outright: every other profile below
 		// describes keys the stack is currently refusing.

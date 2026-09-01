@@ -568,6 +568,59 @@ a display budget, so a deeper stack names its remainder instead of dropping it,
 and `queryReadoutPeelAllLimit` bounds the peel-all loop against a future axis
 that fails to clear itself.
 
+The menu bar and its open menu are the same kind of thing one level apart. The
+bar is machine-local chrome: `M` writes `MenuBarVisible`, `menuBarRows` charges
+the list exactly one row, and `contentHeight` is the only subtraction, so a bar
+that resolved to no menus at all still owes its row rather than letting the
+reservation and the paint disagree. `resolvedMenuBar` projects
+`outlinerMenuSpecs` against the live catalog every frame and caches nothing,
+which is what lets a menu whose every entry fell away leave the bar entirely,
+and `menuBarLayout` reports where each label landed rather than only what the
+row reads, because a dropdown is padded to a column and `RenderTabBar` returns
+a string alone.
+
+The open menu is the `Q` readout's template applied a second time: `menuBarOpen`
+and two indices on the model, `closeMenuBar` in every projection-replacing
+reset, a first branch in `handleKeyMsg` delegating to `handleMenuBarKey`, a
+claim in `simplifiedInlineControlOwnsInput`, and `menuBarGuidance` as the first
+case of `ContextualGuidance` — which reads its own close key back through
+`InputShortcutForOperation` instead of spelling it, so a rebinding moves the
+footer hint and the close arm together. It mints no `PresentationID`, opens no
+overlay, claims no `InputStrategy`, and takes no manifest entry, so
+`surfaceOperationGates()` still lists five strategies; its keymap is gated, so
+it takes no footer rank. `tui.core.open-menu-bar` is a second operation beside
+the toggle rather than a mode of it, because opening has to reveal a hidden bar
+in the same press: the handler commits the visibility through
+`RuntimeState.CommitMachine` and only then calls `openMenuBar`, which is why one
+key never means "show" once and "open" the next time.
+
+It diverges from the readout in exactly one place, deliberately. The readout
+closes on any unlisted key and swallows it; the menu closes and re-emits the key
+as a message, so the root grammar runs it one update later. The bar is a map of
+the grammar and every row spells its own accelerator, so a key read off a row
+has to work when it is pressed — the menu is non-modal, and nothing below
+`handleMenuBarKey` is unreachable while a menu is up. `Enter` is the one entry
+that dispatches, and it does so by raising `MenuBarActivateMsg` for
+`handleOperationOverlayMessage`, the same delegation `s` makes with
+`SaveViewAsLensRequestMsg`: this model holds no executor, and the menu is
+already closed by the time the operation resolves its target.
+
+The dropdown is drawn inline rather than composited. It is written into the
+content stream immediately under the bar row, left-padded to the open label's
+`StartCol` and clamped by `overlayPopup`'s own arithmetic so the right edge
+stays on screen, and its height is added to `extraFooter` so
+`computeOutlinerViewport` shrinks the list by exactly what the menu covers: the
+rows it hides are rows it paid for, which is the bargain the bar and the status
+strip already make. It reuses `renderOverlayBox` and `RenderCompactListSurface`
+over a surface rebuilt each frame, sized to its longest entry rather than to a
+fraction of the screen, since a box anchored under one label that claimed three
+fifths of the terminal would read as a modal. The two stored indices are the
+only state that can go stale, because everything else is re-resolved every
+frame, so `resolveMenuBarItem` runs during the render as well as in the keymap
+and writes its answer back — a highlight left on a separator, or past the end of
+a menu that lost rows to the cursor moving, lands on the nearest runnable entry
+before either the paint or `Enter` reads it.
+
 The Outliner cursor row is drawn by `outlinerCursorRow`, not by `SelectedLine`.
 Every Outliner row renderer splits itself at one seam: a leading structural
 gutter and the content that follows it. For a task row the gutter is

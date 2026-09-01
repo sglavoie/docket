@@ -321,6 +321,12 @@ func SimplifiedInputStrategy() InputStrategy {
 			// outranks every act it lists: a user who cannot find anything needs the
 			// hint that shows them everything before they need any single key.
 			{OperationID: operationCoreToggleMenuBar, Keys: []string{"M"}, DisplayKey: "M", FooterRank: 6, FooterLabel: "menu"},
+			// Opening carries no FooterRank of its own. The band's own reveal is
+			// already ranked above, and once the band is on screen it is the label
+			// row that advertises what opening does; a second footer hint would spend
+			// a rank restating chrome the user is already looking at. The keys inside
+			// an open menu take none either, per the gated-keymap invariant.
+			{OperationID: operationCoreOpenMenuBar, Keys: []string{"ctrl+m"}, DisplayKey: "Ctrl+M"},
 			{OperationID: operationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},
 			{OperationID: operationCoreRedo, Keys: []string{"ctrl+r"}, DisplayKey: "Ctrl+R"},
 			{OperationID: operationCoreBack, Keys: []string{"esc"}, DisplayKey: "Esc"},
