@@ -1,0 +1,54 @@
+# internal/tui intended package graph (Session 1.6, Phase 0).
+#
+# One row per target sub-package. Columns: package, layer, depends_on.
+# `depends_on` is the complete set of sibling packages that package may import,
+# comma-separated, or `-` for none. It is a whitelist, not a floor: an import
+# absent from the row is a violation even when the target sits lower.
+#
+# This is the graph in context.md made mechanical. `tui_layer_fitness_test.go`
+# reads it and fails on any real import under internal/tui that the table does
+# not allow, so an upward or sideways edge is a red test rather than prose.
+# `scripts/tui_package_assignments.tsv` says which file lands in which package
+# and must agree with the `layer` column here.
+#
+# Layers are advisory to a reader and load-bearing to the table's own audit: a
+# package may only name a dependency in the same layer or below, and the
+# declared graph must be acyclic.
+#
+# Where this table is stricter than context.md, and why:
+#   - `keymap` is absent from context.md's diagram but is a real L0 package with
+#     sixteen production consumers today. It is named explicitly by `chrome`,
+#     `listsurface`, `help`, every L7 surface and the shell, because Go imports
+#     are not transitive: a file that names keymap.Binding needs the edge even
+#     when its package already reaches keymap through chrome.
+#   - context.md writes L7's lower dependencies as `...`. That ellipsis is
+#     spelled out here as the full L0-L6 set; the L7-internal edges
+#     (`projecthub -> notes`, `outliner -> taskform, taskdetail, lens,
+#     projecthub`) are what keep the layer one-directional.
+#   - `conflict` is a sibling of `outliner`, not a dependency of it. `gc`
+#     browses conflict bundles as a shell-owned overlay, so the shell holds
+#     that edge.
+package	layer	depends_on
+presentation	L0	-
+theme	L0	-
+textfit	L0	-
+taskref	L0	-
+status	L0	-
+pulse	L0	-
+keymap	L0	-
+chrome	L1	theme,textfit,pulse,taskref,keymap
+coordinator	L1	taskref,status
+grammar	L2	chrome,theme,textfit,taskref
+query	L2	taskref,grammar
+operation	L3	presentation,chrome,taskref,status,grammar
+route	L4	presentation,chrome,operation
+listsurface	L5	route,operation,chrome,textfit,theme,keymap
+help	L6	listsurface,operation,chrome,grammar,keymap
+notes	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help
+taskdetail	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help
+taskform	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help
+lens	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help
+conflict	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help
+projecthub	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help,notes
+outliner	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help,taskform,taskdetail,lens,projecthub
+tui	L8	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help,notes,taskdetail,taskform,lens,conflict,projecthub,outliner
