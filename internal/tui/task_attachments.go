@@ -16,7 +16,7 @@ type TaskAttachmentsModel struct {
 	project *models.Project
 	// coordinator routes attachment mutations through the application layer
 	// (one atomic ChangeSet each) instead of a direct project save. See
-	// feature_coordinator_secondary.go.
+	// feature_coordinator_subview.go.
 	coordinator AttachmentCoordinator
 
 	// Add mode

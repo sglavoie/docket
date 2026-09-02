@@ -20,12 +20,13 @@ func TestRecurrenceVocabularyIsConfinedToMigrationAndRejectedInput(t *testing.T)
 	}
 	repositoryRoot := filepath.Clean(filepath.Join(filepath.Dir(testFile), "..", ".."))
 	allowedProductionFiles := map[string]string{
-		"internal/config/pre_consolidation_v6_snapshot.go":  "immutable migration audit",
-		"internal/storage/format/legacy_v4_task.go":         "schema-4 migration reader",
-		"internal/storage/format/legacy_v4_task_convert.go": "schema-4 to schema-5 migration",
-		"internal/storage/format/v5_task_codec.go":          "schema-5 migration codec",
-		"internal/storage/format/v6_task_convert.go":        "schema-5 to schema-6 migration",
-		"internal/storage/v5_archive_reintegration.go":      "schema-5 migration reintegration",
+		"internal/config/pre_consolidation_v6_snapshot.go":       "immutable migration audit",
+		"internal/config/pre_consolidation_v6_snapshot_audit.go": "immutable migration audit",
+		"internal/storage/format/legacy_v4_task.go":              "schema-4 migration reader",
+		"internal/storage/format/legacy_v4_task_convert.go":      "schema-4 to schema-5 migration",
+		"internal/storage/format/v5_task_codec.go":               "schema-5 migration codec",
+		"internal/storage/format/v6_task_convert.go":             "schema-5 to schema-6 migration",
+		"internal/storage/v5_archive_reintegration.go":           "schema-5 migration reintegration",
 	}
 
 	fset := token.NewFileSet()

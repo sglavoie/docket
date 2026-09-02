@@ -72,7 +72,7 @@ type AppModel struct {
 	// a narrow host port satisfied by the same application service, so an overlay
 	// routes persistence through one atomic ChangeSet (or config write) instead of
 	// a direct saveProjectSync / configManager.Save call. See
-	// feature_coordinator_secondary.go.
+	// feature_coordinator_secondary.go and its per-coordinator files.
 	secondaryFeatures SecondaryCoordinators
 
 	// manageHub is the sole live Manage destination for scoped collections and

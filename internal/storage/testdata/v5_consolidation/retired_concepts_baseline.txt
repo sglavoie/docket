@@ -2,14 +2,16 @@
 # Columns: concept, production path, identifier, AST occurrence count.
 # Regenerate after reviewing ownership changes with:
 #   UPDATE_RETIRED_CONCEPT_BASELINE=1 go test ./internal/storage -run TestRetiredConceptInventoryBaseline
-# Total rows: 380
+# Total rows: 386
 custom-context	internal/config/legacy_v4_domains.go	CustomContexts	2
 custom-context	internal/config/legacy_v4_domains_convert.go	CustomContexts	8
-custom-context	internal/config/pre_consolidation_v6_snapshot.go	customContexts	3
+custom-context	internal/config/pre_consolidation_v6_snapshot_audit.go	customContexts	3
 custom-context	internal/config/v6_conversion_convert.go	CustomContexts	3
-decision	internal/config/pre_consolidation_v6_snapshot.go	Decisions	1
-decision	internal/config/pre_consolidation_v6_snapshot.go	decisionCount	3
-decision	internal/config/pre_consolidation_v6_snapshot.go	decisions	3
+decision	internal/config/pre_consolidation_v6_snapshot.go	decisions	1
+decision	internal/config/pre_consolidation_v6_snapshot_audit.go	decisionCount	3
+decision	internal/config/pre_consolidation_v6_snapshot_audit.go	decisions	1
+decision	internal/config/pre_consolidation_v6_snapshot_inventory.go	Decisions	1
+decision	internal/config/pre_consolidation_v6_snapshot_inventory.go	decisions	1
 decision	internal/storage/format/decisions.go	decisionHeaderRegex	1
 decision	internal/storage/format/decisions.go	decisionsEndRegex	1
 decision	internal/storage/format/decisions.go	decisionsStartRegex	1
@@ -89,7 +91,7 @@ dependency	internal/app/task_operations.go	DependencyPatch	1
 dependency	internal/app/task_operations.go	TaskOperationSetDependencies	2
 dependency	internal/app/task_operations.go	bulkPatchDependencies	1
 dependency	internal/config/migration_snapshot_inventory.go	preDependenciesV15SnapshotPrefix	2
-dependency	internal/config/pre_consolidation_v6_snapshot.go	dependencyCount	3
+dependency	internal/config/pre_consolidation_v6_snapshot_audit.go	dependencyCount	3
 dependency	internal/config/runtime.go	NewRuntimeDependencies	2
 dependency	internal/config/runtime.go	RuntimeDependencies	11
 dependency	internal/config/v15_migration_activation.go	createPreDependenciesV15Snapshot	2
@@ -181,12 +183,13 @@ dependency	internal/tui/dependency_reference.go	dependencyRefFor	4
 dependency	internal/tui/dependency_reference.go	dependencyRelationship	3
 dependency	internal/tui/dependency_reference.go	resolveDependencyReference	1
 dependency	internal/tui/feature_runtime.go	RuntimeDependencies	3
-dependency	internal/tui/filter_operations.go	ValueProviderFilterDependency	3
-dependency	internal/tui/filter_operations.go	dependencyFilterShortcutForToken	2
-dependency	internal/tui/filter_operations.go	dependencyFilterShortcuts	3
+dependency	internal/tui/filter_operations.go	ValueProviderFilterDependency	2
+dependency	internal/tui/filter_operations.go	dependencyFilterShortcutForToken	1
 dependency	internal/tui/filter_operations.go	filterQueryDependencyFields	1
-dependency	internal/tui/filter_operations.go	newFilterDependencyPicker	1
-dependency	internal/tui/filter_operations.go	operationFilterDependency	4
+dependency	internal/tui/filter_operations.go	operationFilterDependency	3
+dependency	internal/tui/filter_pickers.go	ValueProviderFilterDependency	1
+dependency	internal/tui/filter_pickers.go	dependencyFilterShortcuts	1
+dependency	internal/tui/filter_pickers.go	newFilterDependencyPicker	1
 dependency	internal/tui/filter_query.go	Dependency	3
 dependency	internal/tui/filter_query.go	DependencyFilter	1
 dependency	internal/tui/filter_query.go	DependencyFilterBlocked	2
@@ -194,6 +197,9 @@ dependency	internal/tui/filter_query.go	DependencyFilterBlocking	2
 dependency	internal/tui/filter_query.go	dependency	2
 dependency	internal/tui/filter_query.go	dependencyFilterClauses	2
 dependency	internal/tui/filter_query.go	filterQueryDependencyFields	2
+dependency	internal/tui/filter_shortcuts.go	dependencyFilterShortcutForToken	1
+dependency	internal/tui/filter_shortcuts.go	dependencyFilterShortcuts	2
+dependency	internal/tui/filter_shortcuts.go	operationFilterDependency	1
 dependency	internal/tui/filters_common.go	Dependency	5
 dependency	internal/tui/filters_common.go	DependencyFilter	1
 dependency	internal/tui/filters_common.go	DependencyFilterAll	2
@@ -210,7 +216,7 @@ dependency	internal/tui/inline_preview.go	dependentLabel	2
 dependency	internal/tui/inline_preview.go	dependents	3
 dependency	internal/tui/inline_preview.go	incomingDependencyDetails	1
 dependency	internal/tui/inline_preview.go	outgoingDependencyDetails	1
-dependency	internal/tui/input_strategy.go	operationFilterDependency	1
+dependency	internal/tui/input_strategy_simplified.go	operationFilterDependency	1
 dependency	internal/tui/manage_hub.go	ManageHubDependencies	3
 dependency	internal/tui/menu_bar_spec.go	operationFilterDependency	1
 dependency	internal/tui/operation_registry.go	ValueProviderFilterDependency	1
@@ -368,7 +374,7 @@ dependency	internal/tui/task_composer.go	dependencyLocators	1
 dependency	internal/tui/task_operation_commands.go	Dependencies	1
 dependency	internal/tui/task_operation_execute.go	Dependencies	1
 dependency	internal/tui/task_operation_execute.go	TaskOperationSetDependencies	1
-recurrence	internal/config/pre_consolidation_v6_snapshot.go	recurrenceCount	3
+recurrence	internal/config/pre_consolidation_v6_snapshot_audit.go	recurrenceCount	3
 recurrence	internal/storage/format/legacy_v4_task_convert.go	Recurrence	2
 recurrence	internal/storage/format/legacy_v4_task_convert.go	V5TaskRecurrence	4
 recurrence	internal/storage/format/legacy_v4_task_convert.go	convertLegacyV4Recurrence	2

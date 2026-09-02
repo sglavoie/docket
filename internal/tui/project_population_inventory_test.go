@@ -41,7 +41,7 @@ var projectPopulationInventory = map[string]string{
 	"internal/tui/cross_scope.go:AvailableProjects":                    "unscoped Outliner selection is a task projection",
 	"internal/tui/cross_scope.go:TaskWorkspaceProjects":                "scoped Outliner selection is a task projection",
 	"internal/tui/feature_runtime.go:AvailableProjects":                "mutation snapshots must resolve every non-archived project",
-	"internal/tui/filter_operations.go:taskWorkspaceProjects":          "tag filter facet is derived from a task projection",
+	"internal/tui/filter_pickers.go:taskWorkspaceProjects":             "tag filter facet is derived from a task projection",
 	"internal/tui/filter_project_operations.go:availableProjects":      "the project tag vocabulary must name parked projects so a facet can widen back out",
 	"internal/tui/project_tag_vocabulary.go:availableProjects":         "a tag's editable membership includes its parked projects",
 	"internal/tui/handler_helpers.go:availableProjects":                "planning prune must not drop references owned by a parked project",

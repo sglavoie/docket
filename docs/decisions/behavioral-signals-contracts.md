@@ -79,7 +79,7 @@ unconditional direct-key collisions; like every existing filter descriptor
 created by `filterOperationDescriptor` in `internal/tui/filter_operations.go`,
 the stale descriptor has an empty `DirectKey` and an applicability predicate,
 so it does not claim a static direct key. Chord ownership is instead rejected by
-`(*inputChordNode).insert` in `internal/tui/input_strategy.go`, where `fs` has no
+`(*inputChordNode).insert` in `internal/tui/input_strategy_trie.go`, where `fs` has no
 existing owner. The `validateActiveOperationShortcuts` pass in
 `internal/tui/operation_registry.go` likewise sees no direct-key claim.
 

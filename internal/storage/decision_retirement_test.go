@@ -185,13 +185,15 @@ func TestDecisionRetirementBackendInventory(t *testing.T) {
 	}
 	repositoryRoot := filepath.Clean(filepath.Join(filepath.Dir(testFile), "..", ".."))
 	allowedMigrationFiles := map[string]bool{
-		"internal/config/pre_consolidation_v6_snapshot.go":  true,
-		"internal/storage/format/decisions.go":              true,
-		"internal/storage/format/legacy_v4_task.go":         true,
-		"internal/storage/format/legacy_v4_task_convert.go": true,
-		"internal/storage/format/v5_task_codec.go":          true,
-		"internal/storage/format/v6_task_convert.go":        true,
-		"internal/storage/v5_archive_reintegration.go":      true,
+		"internal/config/pre_consolidation_v6_snapshot.go":           true,
+		"internal/config/pre_consolidation_v6_snapshot_audit.go":     true,
+		"internal/config/pre_consolidation_v6_snapshot_inventory.go": true,
+		"internal/storage/format/decisions.go":                       true,
+		"internal/storage/format/legacy_v4_task.go":                  true,
+		"internal/storage/format/legacy_v4_task_convert.go":          true,
+		"internal/storage/format/v5_task_codec.go":                   true,
+		"internal/storage/format/v6_task_convert.go":                 true,
+		"internal/storage/v5_archive_reintegration.go":               true,
 	}
 	scanRoots := []string{"cmd", "internal/app", "internal/config", "internal/models", "internal/storage", "internal/workspace"}
 

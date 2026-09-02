@@ -1,0 +1,261 @@
+package tui
+
+import (
+	"reflect"
+	"slices"
+	"strings"
+	"testing"
+
+	tea "charm.land/bubbletea/v2"
+)
+
+// TestCommentsPanelWorkspaceUndoRedoRefreshesAndNamesTheLedgerEntry walks the
+// promise the panel used to break. A comment mutation commits through
+// commitProject with an UndoAction and installs a live `u undo` toast, so the
+// panel that made it has to answer both ledger keys itself: the open list
+// rebuilds rather than keeping a reversed row on screen, and the status strip
+// names the transaction that moved rather than restoring in silence.
+func TestCommentsPanelWorkspaceUndoRedoRefreshesAndNamesTheLedgerEntry(t *testing.T) {
+	driver, press, typeText := mountLiveCommentsPanel(t)
+	comments := func() []string {
+		t.Helper()
+		panel := driver.App().activeCommentsPanel()
+		if panel == nil {
+			t.Fatal("the Comments panel left the route")
+		}
+		texts := make([]string, 0, len(panel.task.Comments))
+		for _, comment := range panel.task.Comments {
+			texts = append(texts, comment.Text)
+		}
+		return texts
+	}
+
+	const added = "checked the redirect handler"
+	before := len(comments())
+	press("a")
+	typeText(added)
+	press("ctrl+s")
+	driver.Wait(defaultWaitTimeout)
+	if got := comments(); len(got) != before+1 || got[len(got)-1] != added {
+		t.Fatalf("after the add the panel lists %v, want %q appended", got, added)
+	}
+	if !strings.Contains(driver.App().statusMessage, "u undo") {
+		t.Fatalf("the add left status %q, want the recovery toast that offers u", driver.App().statusMessage)
+	}
+
+	press("u")
+	driver.Wait(defaultWaitTimeout)
+	if driver.App().currentView() != ViewTaskComments {
+		t.Fatalf("u left the panel for %s", driver.App().currentView())
+	}
+	if got := comments(); len(got) != before || slices.Contains(got, added) {
+		t.Fatalf("after u the panel lists %v, want the added comment gone", got)
+	}
+	if got := driver.App().statusMessage; !strings.Contains(got, "Undid: Add Comment") {
+		t.Fatalf("u left status %q, want it to name the restored transaction", got)
+	}
+
+	press("ctrl+r")
+	driver.Wait(defaultWaitTimeout)
+	if driver.App().currentView() != ViewTaskComments {
+		t.Fatalf("Ctrl+R left the panel for %s", driver.App().currentView())
+	}
+	if got := comments(); len(got) != before+1 || !slices.Contains(got, added) {
+		t.Fatalf("after Ctrl+R the panel lists %v, want the comment back", got)
+	}
+	if got := driver.App().statusMessage; !strings.Contains(got, "Redo: Add Comment") {
+		t.Fatalf("Ctrl+R left status %q, want it to name the replayed transaction", got)
+	}
+
+	if !strings.Contains(driver.Render(), added) {
+		t.Fatal("the replayed comment is absent from the rendered list")
+	}
+}
+
+// mountLiveCommentsPanel opens the panel the way a user does, over a workspace
+// whose commits reach the durable ledger. mountCommentsPanel's task is built in
+// memory beside the fixture, so a mutation there records nothing to undo.
+func mountLiveCommentsPanel(t *testing.T) (*UITestDriver, func(string), func(string)) {
+	t.Helper()
+	driver, workspace, err := NewFixtureDriver(FixtureRich, 100, 30)
+	if err != nil {
+		t.Fatalf("NewFixtureDriver: %v", err)
+	}
+	t.Cleanup(func() { _ = workspace.Cleanup() })
+
+	press := func(key string) {
+		t.Helper()
+		if err := driver.SendKey(key); err != nil {
+			t.Fatalf("SendKey(%q): %v", key, err)
+		}
+		driver.drain()
+	}
+	typeText := func(text string) {
+		t.Helper()
+		for _, r := range text {
+			driver.dispatch(tea.KeyPressMsg{Code: r, Text: string(r)})
+			driver.drain()
+		}
+	}
+
+	press("j")
+	press("j")
+	press(";")
+	if driver.App().activeCommentsPanel() == nil {
+		t.Fatalf("the comment sigil key did not open the Comments panel; view = %s", driver.App().currentView())
+	}
+	return driver, press, typeText
+}
+
+// TestCommentsSpaceSheetReachesDelete walks the whole new path for Delete, which
+// is the retirement this session is really about: neither d nor x removes a
+// comment now, so the Space sheet has to, and the confirmation behind it has to
+// still commit the removal.
+func TestCommentsSpaceSheetReachesDelete(t *testing.T) {
+	driver, panel, press := mountCommentsPanel(t)
+
+	press("space")
+	sheet := driver.App().contextActionSheet
+	if sheet == nil {
+		t.Fatal("Space did not open the comment action sheet")
+	}
+	want := []OperationID{operationCommentDelete}
+	if got := sheet.operationIDs(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("comment sheet lists %v, want exactly %v", got, want)
+	}
+
+	press("enter")
+	if driver.App().contextActionSheet != nil {
+		t.Fatal("choosing Delete left the sheet open over the confirmation")
+	}
+	if !panel.confirm.IsActive() || panel.confirm.Action() != "delete" {
+		t.Fatalf("the sheet's Delete row raised confirm %q, want the delete prompt", panel.confirm.Action())
+	}
+
+	press("y")
+	if len(panel.task.Comments) != 1 || panel.task.Comments[0].Text != "second comment" {
+		t.Fatalf("confirming the sheet's Delete left %d comment(s), want the first one removed", len(panel.task.Comments))
+	}
+}
+
+// TestCommentsHelpKeyRaisesTheCommentsGrammar holds `?` to the surface it was
+// pressed on. The core help descriptor hardcodes the Outliner, so dispatching it
+// through the executor would answer a Comments press with the Outliner's
+// grammar; the panel raises its own instead, and the press stays a literal
+// character in every sub-state that owns the key stream.
+func TestCommentsHelpKeyRaisesTheCommentsGrammar(t *testing.T) {
+	driver, panel, sendKey := mountCommentsPanel(t)
+	// Help arrives as a command rather than a synchronous mutation, so every press
+	// drains the way the scenario runner and the live program do.
+	press := func(key string) {
+		t.Helper()
+		sendKey(key)
+		driver.drain()
+	}
+
+	press("?")
+	if got := driver.App().currentView(); got != ViewHelp {
+		t.Fatalf("? left the panel on %v, want the Help view", got)
+	}
+	help, ok := driver.App().views.Get(ViewHelp).(*HelpViewModel)
+	if !ok {
+		t.Fatalf("the Help view is %T, want *HelpViewModel", driver.App().views.Get(ViewHelp))
+	}
+	if help.viewName != "Comments" {
+		t.Fatalf("help header = %q, want \"Comments\"", help.viewName)
+	}
+
+	documented := make(map[string]string, len(help.items))
+	for _, item := range help.items {
+		documented[item.Key] = item.Description
+	}
+	if documented["enter"] != "Expand comment" {
+		t.Fatalf("Comments help describes Enter as %q, want the panel's own grammar: %+v", documented["enter"], help.items)
+	}
+	if documented["space"] != "Comment actions" {
+		t.Fatalf("Comments help omits the Space sheet: %+v", help.items)
+	}
+	// `?` documents itself only because the keymap names it: the core descriptor
+	// is inapplicable off the Outliner, so a registry projection would drop it.
+	if documented["?"] != "Help" {
+		t.Fatalf("Comments help omits ? itself: %+v", help.items)
+	}
+	for _, outlinerOnly := range []string{"tab", "T", "ctrl+p"} {
+		if description, listed := documented[outlinerOnly]; listed {
+			t.Fatalf("Comments help leaked the Outliner key %q (%q)", outlinerOnly, description)
+		}
+	}
+	press("?")
+	if got := driver.App().currentView(); got != ViewTaskComments {
+		t.Fatalf("closing help landed on %v, want the panel it came from", got)
+	}
+
+	// Every sub-state owns its whole key stream, so help is a browse-only press.
+	press("a")
+	press("?")
+	if got := driver.App().currentView(); got != ViewTaskComments {
+		t.Fatalf("? in add mode left the panel for %v", got)
+	}
+	if got := panel.textInput.Value(); got != "?" {
+		t.Fatalf("add-mode buffer after ? = %q, want a literal %q", got, "?")
+	}
+	press("esc")
+	press("y")
+	if panel.addMode {
+		t.Fatal("discarding the add buffer left add mode active")
+	}
+
+	press("e")
+	press("?")
+	if got := driver.App().currentView(); got != ViewTaskComments {
+		t.Fatalf("? in edit mode left the panel for %v", got)
+	}
+	if got := panel.editTextInput.Value(); !strings.Contains(got, "?") {
+		t.Fatalf("edit-mode buffer after ? = %q, want a literal %q in it", got, "?")
+	}
+	press("esc")
+	press("y")
+
+	press("enter")
+	if !panel.expandedView {
+		t.Fatal("Enter did not expand the comment under the cursor")
+	}
+	press("?")
+	if got := driver.App().currentView(); got != ViewTaskComments {
+		t.Fatalf("? in the expanded comment left the panel for %v", got)
+	}
+	press("esc")
+
+	panel.confirm.Show("delete", "Delete comment [0]?")
+	press("?")
+	if got := driver.App().currentView(); got != ViewTaskComments {
+		t.Fatalf("? under the delete confirmation left the panel for %v", got)
+	}
+	if !panel.confirm.IsActive() {
+		t.Fatal("? answered the delete confirmation instead of being ignored")
+	}
+	press("n")
+}
+
+// TestCommentsPanelUnboundKeysAreSilent holds the keys the Comments grammar
+// never declared. They must stay quiet rather than falling through to some other
+// surface's meaning.
+func TestCommentsPanelUnboundKeysAreSilent(t *testing.T) {
+	driver, panel, press := mountCommentsPanel(t)
+
+	for _, key := range []string{"u", "o", "p", "%"} {
+		press(key)
+		if panel.confirm.IsActive() {
+			t.Fatalf("unbound key %q raised confirm %q", key, panel.confirm.Action())
+		}
+		if panel.addMode || panel.editMode || panel.expandedView {
+			t.Fatalf("unbound key %q changed the panel mode", key)
+		}
+		if driver.App().contextActionSheet != nil {
+			t.Fatalf("unbound key %q opened an action sheet", key)
+		}
+		if got := driver.App().currentView(); got != ViewTaskComments {
+			t.Fatalf("unbound key %q left the panel for %v", key, got)
+		}
+	}
+}

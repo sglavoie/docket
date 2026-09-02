@@ -7,7 +7,7 @@ import (
 )
 
 // This file exercises the single-task TaskItemCoordinator
-// (feature_coordinator_secondary.go) end to end through the real transactional
+// (feature_coordinator_task_item.go) end to end through the real transactional
 // storage stack and undo ledger, mirroring the bulk-coordinator scenarios. The
 // coordinator is the additive migration seam for the cross-project single-task
 // raw-save family (session 33.7.3.4.4.1); no production caller routes through it

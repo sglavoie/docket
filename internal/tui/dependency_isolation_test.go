@@ -36,6 +36,7 @@ func TestDependencyIsolationPresentationVocabulary(t *testing.T) {
 	repositoryRoot := filepath.Clean(filepath.Join(filepath.Dir(testFile), "..", ".."))
 	allowedMigrationFiles := map[string]bool{
 		"internal/config/v5_migration_activation.go":        true,
+		"internal/config/v5_migration_plan.go":              true,
 		"internal/storage/format/legacy_v4_task_convert.go": true,
 		"internal/storage/format/v5_task_codec.go":          true,
 		"internal/storage/format/v6_task_convert.go":        true,

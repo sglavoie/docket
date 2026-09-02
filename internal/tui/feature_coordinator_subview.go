@@ -1,0 +1,165 @@
+package tui
+
+import (
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/app"
+)
+
+// AttachmentCoordinator backs the task attachment overlay.
+type AttachmentCoordinator struct {
+	attach AttachmentMutator
+}
+
+// AttachURL records a URL attachment on a task.
+func (c AttachmentCoordinator) AttachURL(task TaskIdentity, url string) tea.Cmd {
+	return runTask("Attach URL", func() (app.TaskResult, error) {
+		return c.attach.AttachURL(task.Locator(), url)
+	})
+}
+
+// AttachCodeReference records a file:line code reference on a task.
+func (c AttachmentCoordinator) AttachCodeReference(task TaskIdentity, path string, line int) tea.Cmd {
+	return runTask("Attach Code Ref", func() (app.TaskResult, error) {
+		return c.attach.AttachCodeReference(task.Locator(), path, line)
+	})
+}
+
+// AttachFile ingests an external file into a task's attachments as one transaction.
+func (c AttachmentCoordinator) AttachFile(task TaskIdentity, sourcePath string) tea.Cmd {
+	return runTask("Attach File", func() (app.TaskResult, error) {
+		res, err := c.attach.AttachFile(task.Locator(), sourcePath)
+		return res.Task, err
+	})
+}
+
+// RemoveAttachment drops an attachment (and optionally its bytes) as one transaction.
+func (c AttachmentCoordinator) RemoveAttachment(task TaskIdentity, index int, deleteFile bool) tea.Cmd {
+	return runTask("Remove Attachment", func() (app.TaskResult, error) {
+		res, err := c.attach.RemoveAttachment(task.Locator(), index, deleteFile)
+		return res.Task, err
+	})
+}
+
+// Reorder swaps two attachments' positions as one transaction.
+func (c AttachmentCoordinator) Reorder(task TaskIdentity, from, to int) tea.Cmd {
+	return runTask("Reorder Attachments", func() (app.TaskResult, error) {
+		return c.attach.ReorderAttachment(task.Locator(), from, to)
+	})
+}
+
+// SubviewCoordinator backs the task subview panels (comments and checklist).
+// Every method resolves to the shared transaction messages; the
+// panels adapt them back to their own message vocabulary with
+// adaptSubviewCommit so their existing toasts and refresh behavior survive the
+// move onto the application layer.
+type SubviewCoordinator struct {
+	sub SubviewMutator
+}
+
+// AddComment appends a comment to a task.
+func (c SubviewCoordinator) AddComment(task TaskIdentity, text string) tea.Cmd {
+	return runTask("Add Comment", func() (app.TaskResult, error) {
+		res, err := c.sub.AddComment(task.Locator(), text)
+		return res.Task, err
+	})
+}
+
+// EditComment replaces a comment's text, preserving its timestamp.
+func (c SubviewCoordinator) EditComment(task TaskIdentity, index int, text string) tea.Cmd {
+	return runTask("Edit Comment", func() (app.TaskResult, error) {
+		res, err := c.sub.EditComment(task.Locator(), index, text)
+		return res.Task, err
+	})
+}
+
+// RemoveComment removes the comment at index.
+func (c SubviewCoordinator) RemoveComment(task TaskIdentity, index int) tea.Cmd {
+	return runTask("Remove Comment", func() (app.TaskResult, error) {
+		res, err := c.sub.RemoveComment(task.Locator(), index)
+		return res.Task, err
+	})
+}
+
+// AddChecklistItem appends a checklist item to a task.
+func (c SubviewCoordinator) AddChecklistItem(task TaskIdentity, text string) tea.Cmd {
+	return runTask("Add Checklist Item", func() (app.TaskResult, error) {
+		res, err := c.sub.AddChecklistItem(task.Locator(), text)
+		return res.Task, err
+	})
+}
+
+// EditChecklistItem replaces a checklist item's text, preserving done state.
+func (c SubviewCoordinator) EditChecklistItem(task TaskIdentity, index int, text string) tea.Cmd {
+	return runTask("Edit Checklist Item", func() (app.TaskResult, error) {
+		res, err := c.sub.EditChecklistItem(task.Locator(), index, text)
+		return res.Task, err
+	})
+}
+
+// RemoveChecklistItem removes the checklist item at index.
+func (c SubviewCoordinator) RemoveChecklistItem(task TaskIdentity, index int) tea.Cmd {
+	return runTask("Remove Checklist Item", func() (app.TaskResult, error) {
+		res, err := c.sub.RemoveChecklistItem(task.Locator(), index)
+		return res.Task, err
+	})
+}
+
+// ToggleChecklistItem flips a checklist item's done state.
+func (c SubviewCoordinator) ToggleChecklistItem(task TaskIdentity, index int) tea.Cmd {
+	return runTask("Toggle Checklist Item", func() (app.TaskResult, error) {
+		res, err := c.sub.ToggleChecklistItem(task.Locator(), index)
+		return res.Task, err
+	})
+}
+
+// ReorderChecklistItem swaps the checklist items at from and to.
+func (c SubviewCoordinator) ReorderChecklistItem(task TaskIdentity, from, to int) tea.Cmd {
+	return runTask("Reorder Checklist", func() (app.TaskResult, error) {
+		res, err := c.sub.ReorderChecklistItem(task.Locator(), from, to)
+		return res.Task, err
+	})
+}
+
+// MoveChecklistItem splices the checklist item at from out and reinserts it at
+// to, so an edge move is one transaction rather than one per adjacent swap.
+func (c SubviewCoordinator) MoveChecklistItem(task TaskIdentity, from, to int) tea.Cmd {
+	return runTask("Move Checklist Item", func() (app.TaskResult, error) {
+		res, err := c.sub.MoveChecklistItem(task.Locator(), from, to)
+		return res.Task, err
+	})
+}
+
+// adaptSubviewCommit runs a coordinator command inline and adapts its outcome
+// back to a view-specific message contract: a TransactionErrorMsg surfaces as
+// the shared ErrorMsg, and a committed transaction resolves to success(), which
+// runs after the commit so it can re-resolve fresh task pointers. This is the
+// single-task analog of the batch transaction adapter — the migrated
+// panels keep their existing message vocabulary (and therefore their toasts and
+// refresh behavior) while the durable write flows through the application layer.
+func adaptSubviewCommit(commit tea.Cmd, success func() tea.Msg) tea.Cmd {
+	return func() tea.Msg {
+		outcome := commit()
+		if msg, ok := outcome.(TransactionErrorMsg); ok {
+			return ErrorMsg(msg)
+		}
+		msg := success()
+		result, ok := outcome.(TransactionResultMsg)
+		if !ok {
+			return msg
+		}
+		switch msg := msg.(type) {
+		case CommentAddedMsg:
+			msg.TransactionID = result.Result.TransactionID
+			return msg
+		case CommentDeletedMsg:
+			msg.TransactionID = result.Result.TransactionID
+			return msg
+		case CommentEditedMsg:
+			msg.TransactionID = result.Result.TransactionID
+			return msg
+		default:
+			return msg
+		}
+	}
+}
