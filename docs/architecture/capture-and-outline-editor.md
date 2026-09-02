@@ -1,0 +1,355 @@
+[← Architecture index](../architecture.md)
+
+### Capture and inline-edit grammar
+
+One parser in `internal/textgrammar` serves capture, inline edit, the external
+editor's title line, and the outline buffer; the surface decides which fields it
+admits. Capture resolves the target
+project first, then the project-local parent, then the project-local children.
+Omitted destinations default roots to Inbox and children to Backlog, and adopting
+children changes neither default, because `normalizeCaptureDestination` reads
+only `ParentID`.
+
+`coreCaptureMessage` resolves the destination from the task Focus root, then the
+scoped project, then `cursorProjectHeaderProject()`, then Unfiled. A Focus root
+that `taskAcceptsDeeperChild` admits opens the child preset built by
+`focusChildComposerPreset`; at the nesting cap only its project survives the
+step. Focus is not the cursor — it is the explicit projection anchor `Enter`
+pushed — so it precedes the header row. The header step is the only place
+capture reads the cursor, and it is safe because the function returns nil on
+every task row: capture still never borrows a task cursor's project. The
+composer names whichever destination it resolved through
+`TaskComposerPreset.HeaderLabel`, set in `captureComposerPreset` and
+`focusChildComposerPreset`, so the three routes are never told apart only by
+where the task landed.
+`A` on a project header row keeps rejecting, since a project has no task to
+parent under.
+
+`##context` is the singleton task-context sigil. It shares tag normalization,
+but projects one optional field rather than a repeatable tag set. Capture and
+outline input reject `##0`; inline edit consumes it as the explicit clear while
+the outline buffer clears context by omitting the token. That permanently
+reserves `"0"` as a context name even though `!0`, `@0`, and `>0` retain their
+ordinary meanings.
+
+`@@defer` is the deferral sigil, and it lives one character away from `@date`.
+Go's RE2 engine has no lookahead, so the separation is structural instead: the
+due pattern's last alternative is `[^\s@]\S*`, which refuses a leading `@` and
+makes `@@` unreachable by the due pattern whatever order the registry is walked
+in. No legal due value starts with `@`, so the tightening costs nothing, and
+`TestDueSigilCannotSwallowTheDeferSigil` and
+`TestDueFormsSurviveTheDeferTightening` pin both halves of that claim.
+
+A deferral is an instant rather than a calendar day, which is why the sigil
+accepts the `+Nh` offsets `util.ParseCalendarDate` refuses by name. It also
+carries a lifecycle effect the other metadata sigils do not: `deferralRefusesState`
+is the terminal half of `deferTask`'s policy, shared by capture and inline edit so
+a refusal is worded the same wherever it is expressed, and a deferral that is
+honored claims Backlog. `composerDeferredDestination` applies that route to both
+the composer's header and its preview, so neither promises a landing place the
+submitted request will not honor. Entering a state clears `DeferredUntil`, so both
+surfaces write the instant *after* the transition — `buildPreparedCapturedTask`
+after `initializeCreatedTask`, and `applyPreparedTaskLineDeferral` after
+`applyTaskLineDestination`. Written alongside the other scalars it would be
+wiped by the Backlog move the deferral itself asked for.
+
+On the search surface `@@any` and `@@none` split the population the deferred
+filter facet splits, reading `IsDeferredAt` rather than the field's presence, so
+a lapsed deferral counts as awake. A value that names an instant is literal
+instead and compares calendar days, which is what makes `@@+2h` and `@@today`
+name the same set. The outline surface declares no defer form at all, and
+`parseOutlineBodies` rejects the token by name for the same reason it rejects
+`%project`, `>parent`, and `<child`: `applyOutlinePlan` has no field to put it in,
+so silently folding it into a title would be the only alternative.
+
+`*pin`'s value set is closed to `pin` and `unpin`, and an unrecognized value is
+not consumed: `Refactor *args handling` keeps `*args` in its title. That is the
+tag rejection behavior rather than priority's, and the asymmetry is deliberate.
+Priority captures `!9` in order to diagnose a typo, because `!` followed by a
+digit is not something a title says by accident; `*` occurs in ordinary prose and
+in code identifiers, so pin would diagnose far more real titles than typos.
+Re-pinning an already-pinned task preserves `PinnedAt`, since that field is the
+pinned section's manual order and every outline apply would otherwise reshuffle
+it.
+
+`&link` is the attachment sigil, and it reuses `*pin`'s rejection behavior for
+the same reason: `&` is ordinary prose. `validAttachmentTokenValue` is a purely
+lexical test — an `http://` or `https://` prefix, a `/` anywhere, or a
+`name:digits` shape whose name half contains a dot — so `R&D`, `Q&A`,
+`&10:30 standup`, and `&nbsp;` are never consumed, while `&main.go:42` is. The
+test is lexical because `internal/textgrammar` must not import
+`internal/storage`; whether a path resolves is `app.ResolveAttachmentInput`'s
+question, asked once so every surface classifies a paste identically.
+
+How far one `&` token reaches is a second question, separate from what it means.
+A path a file manager copied holds spaces — `~/Library/Application Support/…` is
+where a screenshot tool writes — and a bare `\S+` run stopped at the first one,
+attaching half the path and leaving the rest in the title. The pattern therefore
+tries a single-quoted span, then a double-quoted one, then a run whose spaces are
+backslash-escaped, before that bare run. Widening the span is all those
+alternatives do: `normalize` on the registry entry runs
+`util.NormalizePastedPathInput` — the same normalizer the Attachments panel runs
+on a paste — over whichever alternative matched, and `tokenValue` is the one
+place it runs, so the value a token carries and the value `placementDiagnostics`
+re-validates cannot disagree. The lexical test then reads the plain path, which
+is why quoting never exempts a value from it: `Ask &"why" before the demo` keeps
+its quoted phrase in the title, and an unterminated quote falls through to the
+bare run and stays the prefix it already was.
+
+That sigil is also why the registry now carries two orders. `registry` is parse
+order and `guideOrder` is teach order, projected by `Definitions` and
+`GuideDefinitions` respectively. The attachment entry has to sit ahead of
+`FieldTag`, because RE2 has no lookaround: `#([\w][\w.:-]*)` stops at the `&`, and
+`extractTokens` replaces the matched span with a single space, so peeling
+`#work` out of `Task #work&http://x/y` would leave a whitespace-preceded `&` and
+mint an attachment the user never wrote. Peeling `&` first leaves it glued to
+the tag, where it stays literal title text. Parse order is not a curriculum,
+though, so `guideOrder` teaches attachments last, beside their own group, and
+`syntaxGuideGroups` is the one consumer reading that projection.
+`validateGuideOrder` runs at `init()` and asserts the two lists hold identical
+sets, which is what makes the split safe: a field added to one and forgotten in
+the other would otherwise vanish from the guide or gain an unreachable entry.
+
+An `&link` value reaches the application layer as a raw string on
+`CaptureRequest.Attachments` or `AddTaskRequest.Attachments`.
+`resolveCapturedAttachments` classifies the whole line before anything mutates,
+adding the two guards a single paste does not need — `storage.SafeChildName` on
+the destination filename, and a per-line dedupe so two files resolving to one
+name refuse by name instead of overwriting each other. `applyCapturedAttachments`
+then records the metadata and returns the `storage.AttachmentCopy` ops, which
+ride the capturing task's own `ChangeSet` through
+`commitProjectWithSideEffects`. Metadata precedes staging exactly as in
+`attachFile`, so a rejected attachment aborts the capture without writing a byte,
+and one undo entry takes back the task and its attachments together. In
+`CaptureMany` the ops are grouped per project onto each `projectCommit`, and they
+are built after the hierarchy guards run so a rejected batch has staged nothing.
+The sigil is capture-only: `parseOutlineBodies` rejects it beside `%project`,
+`>parent`, `<child`, and `@@defer`, and search names it in `refusedSearchFields`,
+which re-validates the captured value on `SurfaceCapture` first so only a
+genuinely attachable value blocks a query. `expandSingle` no longer refuses it:
+the expanded form's Extras tab is the attachment channel it was missing, so
+`expandRequest` seeds `taskFormDraft.attachments` from `CaptureRequest.Attachments`
+and the two halves of that rule — a refusal only while the value has nowhere to
+land — moved together.
+
+The Extras tab is the fourth `formTabNames` entry and the second dynamic one,
+counting its focusable rows from its two collapsible sections exactly as
+Children does. `a` toggles the Attachments section and `c` the Comments one,
+`Ctrl+L` appends an attachment draft and opens `formOverlayAttachmentEdit` on
+it, `Ctrl+Y` appends a comment draft and opens `formOverlayCommentEdit`, `Enter`
+edits the focused draft or toggles the section its header names, and `Ctrl+D`
+deletes the focused draft. `Ctrl+J`/`Ctrl+K` reorder attachments only: a comment
+carries its own creation timestamp, so its position is chronology rather than an
+ordering the author chooses. Confirming an item overlay with a blank value drops
+the draft, which is the rule `TaskFormChecklistItemEditedMsg` and
+`TaskFormSubtaskEditedMsg` already followed; `discardCanceledNewItem` is the one
+place all four undo a canceled add. `saveCreate` skips blank drafts and passes
+the raw values through as `AddTaskRequest.Attachments` and
+`AddTaskRequest.Comments`, so the form classifies and normalizes nothing and the
+task, its bytes, and its comments commit in one `ChangeSet` under one undo
+entry. Extras is also why `buildKeyMap` became tab-aware: its `Ctrl+D` and
+`Ctrl+J`/`Ctrl+K` mean something different from Schedule's due-date picker and
+Children's reorder rows, and its `c` means something different from Children's
+checklist toggle, so the Schedule, Children, and Extras blocks are each scoped
+to `m.activeTab` wholesale rather than row by row, following the precedent
+`guidanceSpec` set.
+
+`;comment;` sits at parse-order position 0, ahead of the attachment entry, and it
+is there for a stronger version of the same reason. A comment is free prose that
+may legitimately contain any other sigil, and RE2 cannot express "not inside a
+`;…;` span", so the only way `Fix login ;check the #auth flow;` can file one
+comment mentioning `#auth` rather than a comment plus a tag is for the comment
+span to be peeled before every other pattern runs. The pattern
+`(?:^|\s);(\S[^;]*);` carries the rest of the rule: the leading boundary keeps
+`Fix a; then b` literal, the required closing delimiter keeps an unterminated
+`Ship ;note` literal, and `\S[^;]*` makes an empty or blank span unmatchable, so
+`validateAny` never sees a comment the application layer would have to reject.
+Teach order is unaffected — `guideOrder` places `FieldComment` last, after
+`FieldAttachment`, each in its own group.
+
+Comments reach the application layer as raw strings on `CaptureRequest.Comments`
+and `AddTaskRequest.Comments`. `resolveCapturedComments` runs every one through
+the same `normalizeCommentText` an interactively added comment goes through,
+before the snapshot in `buildAddTask` and inside `prepareCapturedTask` on the
+capture path, so a rejected comment aborts with nothing mutated.
+`applyCapturedComments` then calls `Task.AddCommentAt` with the service clock's
+instant. Unlike an attachment it stages no side effect at all: a comment is task
+document content, so it commits with the task write itself and needs no
+`AttachmentOp`, and the single ChangeSet that creates the task already covers it.
+Its refusals mirror the attachment's exactly — `parseOutlineBodies` and
+`refusedSearchFields` — with wording that names the Comments panel, and so does
+the one refusal that lifted: `expandSingle` carries a comment span into the
+expanded form now that `expandRequest` seeds `taskFormDraft.comments` from
+`CaptureRequest.Comments`. With that pair moved together, `expandSingle` is back
+to exactly the three refusals it had before this grammar landed — `ChildIDs`,
+`Pinned`, and `Context` — each still a value the form has no channel for.
+
+`<child` is the one repeatable structural sigil. `>parent` stays
+`CardinalitySingleton` because a task has one parent, while `FieldChild` is
+`CardinalityRepeatable`; that declaration is the entire mechanism, since
+`duplicateSingletonDiagnostics` already skips a non-singleton field. Both sigils
+name a task by exact short ID or unique case-insensitive title prefix through the
+one `resolveStructuralReference` matcher, which differs between them only in the
+relationship word its ambiguity message carries. A task named as both `>parent`
+and `<child` on one line is refused, and across a multiline capture two lines
+claiming the same child are refused before any mutation, with the message naming
+both the failing line and the first claiming one. Aliases resolving to the same
+stable task ID collapse to the first occurrence, in the parser and again in the
+application layer, and both must stay first-occurrence or the preview and the
+commit will disagree about order.
+
+Adoption keeps the flat `p.Tasks` order of every pre-existing task:
+`ApplyParentAssignments` never touches the slice, and
+`ReorderRootTasksByCompletion` is a stable partition that moves a task only when
+its root crosses the completed/uncompleted boundary. That hook deliberately does
+not gather each root's descendants into one contiguous run, because gathering
+resequences tasks the mutation never named — adopting a task that sits before an
+unrelated root would otherwise push it past that root. `FieldChild` declares no
+`Clears`, which is what makes `<0` an ordinary unresolvable reference rather than
+a detach: a task leaves its parent through `>parent` or `>0` and nowhere else.
+`resolveChild` reserves that token before any lookup runs, so a title beginning
+with a zero can never make `<0` succeed on either surface.
+
+The terminal-adoption refusal is one policy stated the same way on both surfaces.
+`captureDestinationChildrenGuard` and `taskLineDestinationChildrenGuard` each run
+after the hierarchy patch lands, so `$done` and `$canceled` are judged against the
+children the mutation produces, and both raise the same `ChildrenBlockedError`
+the ordinary lifecycle guard raises. Reconciliation still owns the one case no
+destination names: an already-terminal task that adopts an open child is reopened
+to Doing. Inline edit refuses a child locator outside the destination project
+with `invalid child: child must belong to the effective project`.
+
+`~task` is the soft-reference sigil, and it is the one repeatable reference that
+crosses a project boundary: `resolveDependencyReference` accepts a bare alias,
+resolved in the effective project like `>parent` and `<child`, or a
+`project-slug:alias` pair resolved against the loaded population. It is peeled
+before `FieldTag` for the attachment entry's reason — `#([\w][\w.:-]*)` stops at
+the tilde in `Task #work~foo`, and peeling the tag first would leave a
+whitespace-preceded `~` that minted a reference out of prose — and
+`FieldRemoveDependency` (`-~`) is peeled before it so the two-rune trigger comes
+off whole rather than depending on the leading-boundary rule alone.
+
+The three forms divide by surface because they divide by what a surface holds.
+Capture takes `~task` only: a task being created has no stored set, so `-~task`
+and `~0` are refused there by name. Inline edit and the outline buffer take all
+three. Search takes `~task` and `-~task` and compiles them into
+`admitsDependencies`, an AND gate over the stored list and an AND of nots beside
+it: the negation resolves its locator through the same
+`resolveDependencyReference` its positive twin uses, so an ambiguous or unknown
+alias is reported identically, and the resolved target then subtracts the tasks
+the positive form would have selected. `~0` is still named in
+`placementDiagnostics` and `refusedSearchFields` rather than compiled into a
+locator that could never match, because a query holds no stored set to clear. The
+`~` row picker is the fourth surface and it holds a stored set, so it speaks all
+three forms without spelling any of them: checking an unstored row is `~task`,
+unchecking a stored one is `-~task`, and unchecking every one of them is what
+`~0` says.
+
+`DependencyPatch` is what carries the intent into `Service.EditTaskLine`, and
+its zero value means *no intent* rather than an empty set: `prepared.dependenciesSet`
+gates the write, so a save that never mentioned a reference preserves the stored
+list byte for byte. That rule is what makes every other save path safe — the
+external editor returns a title and a body and nothing else, and the expanded
+task form is create-only and gains no reference control — so neither can erase a
+set it never displayed. The outline buffer is the exception that proves the rule:
+it dumps every stored reference, so its absence *is* an intent there, and
+`TestOutlineDependencyRoundTripSurvivesUnchanged` pins the round trip.
+
+`outlineDependencyAlias` picks the shortest form that still addresses the
+target — bare short ID inside the dumped project, slug-qualified in another
+loaded one, durable `project-id:task-id` otherwise — and the parser accepts the
+locator form back unchanged, which is how a reference to archived or deleted
+work survives a round trip the workspace cannot resolve.
+
+`Ctrl+E` is the second surface that speaks the edit grammar. Its buffer's `# `
+heading is a title line, so `handleTaskContentEdited` routes it through the same
+`parseQuickEdit` and `taskLineEditRequest` the inline editor uses, then rides the
+edited body on that request's `Description` field. One `Service.EditTaskLine`
+call therefore commits title, sigils, structure, and body as one transaction and
+one undo entry; a second call would record two. The title is compared against the
+one written into the buffer and parsed only when it differs, so a literal sigil
+character the user never touched cannot be consumed. Because the composer batches
+its create-and-open beside a reload, the handler re-resolves the project and task
+by ID before parsing: `parseQuickEdit` compares task pointers by identity, and a
+stale pointer would make the edited task look like a stranger.
+
+A recognized value the grammar cannot honor refuses the whole save. Nothing is
+written, and the handler returns an `EditTaskContentMsg` naming the same buffer
+path, the rejected title, the refusal, and the description the user typed but has
+not committed, which reopens the editor on the file still on disk. The refusal
+is rendered into the buffer's single instruction comment; that comment stays one
+physical line and any `-->` inside a quoted user value is neutralized, since
+`parseTaskContent` consumes only the first comment line and would keep a second
+one as description text. Saving the reopened buffer with the title unchanged is
+the loop guard: it abandons the edit, reports the original refusal, and removes
+the buffer.
+
+### Outline editor
+
+`O` is the one operation that leaves the TUI to collect its input. It dumps the
+cursor's project as an indented buffer, hands it to `$EDITOR` through
+`external.ResolveEditor`/`external.EditorCommand`/`external.CreateTempFileWithContent`,
+and submits the parsed result to the single `ApplyOutlinePlan` use case, which
+resolves one snapshot and commits one checked transaction like every other
+mutation.
+
+The dump is a complete model subtree of one project, not the rendered
+projection: folds and filters are ignored, because indentation in the buffer is
+parentage and a partial dump would reparent whatever it omitted. The same
+reasoning refuses the operation in every mode that is not `OrderPolicyTree` —
+Today, Next, Due, and Recent promote rows across section boundaries — and under
+a visual selection, which names rows rather than a project.
+
+Each dumped task carries a trailing `[[tt:<first 8 hex of task.ID>]]` marker,
+asserted unique at dump time so a collision aborts before the editor opens. The
+outline layer strips that marker before the remainder of the line reaches
+`parseQuickCapture` with `skipProject=true`, which is what keeps one capture
+parser true for the whole product and makes a `>parent` or `<child` sigil an
+error rather than a competing parentage channel. `FieldChild` is absent from
+`SurfaceOutline`, so the rejection is what stops the sigil from surviving inside
+an outline title. The buffer is declarative: the dump emits
+current values, so an omitted sigil clears that value. A pinned task's line
+therefore carries `*pin` and deleting that token is what unpins it; `*unpin`
+does not exist here, because omission already says it. `=review` is the same
+shape for the same reason. A line without a marker
+creates a task, and a dumped task whose line disappeared is deleted.
+
+Deletion is the one thing the buffer cannot decide on its own, because a file
+authored minutes ago cannot present the counts a destructive action has to show.
+The decision therefore moves to the return leg: the adapter reads the removals
+off the project the buffer was dumped from, arms one `ConfirmDialog` naming the
+tasks and the attachments they destroy, and only a confirmation reaches
+`ApplyOutlinePlan`, as `DeleteTaskIDs` plus `ConfirmDeletions`. The use case
+refuses any list that disagrees with the buffer's absences in either direction,
+so what was shown and what is removed are provably the same set. Removal,
+attachment deletion, planning-ref cleanup, and the edits beside them commit as
+one transaction under the `Apply Outline` undo entry; a survivor whose parent
+line vanished is re-parented by its own indentation rather than cascaded away.
+Declining cancels the whole apply and keeps the temp file. Scope is the list of
+IDs the dump walk actually printed, not `project.Tasks`, because a task with a
+dangling `ParentID` is unreachable from any root and so never appears in the
+buffer that would have to speak for it.
+
+Emptiness follows from the same rule rather than being a syntax error: a buffer
+with every line removed deletes every task in the scope, and it is refused only
+when it also removes nothing, which is the truncated-file case. That ruling
+belongs to `handleOutlineEdited` and to `ApplyOutlinePlan`, never to
+`parseOutlineBuffer`, because only the two of them know the scope the emptiness
+is being read against.
+
+Validation runs in two phases, both before any mutation. The outline phase
+checks marker syntax, unknown and duplicate markers, indent multiples and jumps,
+`models.MaxNestingDepth`, and children orphaned by a rejected parent; the line
+phase validates each stripped remainder. Every problem is collected rather than
+reported one at a time, and a rejection renders the line-numbered `lineError`
+list the multiline composer already uses, on its own scrollable
+`OutlineErrorsViewModel` surface because a status bar is one truncated line. The
+temp file is kept on every refusal so the reported line numbers still resolve.
+
+The project revision captured at dump time is re-checked on return. A revision
+that moved aborts without committing and keeps the buffer, because stale user
+intent is not storage-level divergence and the conflict-bundle machinery would
+be answering a different question. That check is also what makes the deletion
+counts safe to present: it is enforced inside `ApplyOutlinePlan` before a single
+title is overwritten, so nothing can change between the prompt the user answered
+and the write it authorized.

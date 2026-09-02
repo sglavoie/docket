@@ -517,11 +517,11 @@ rules live in
 
 Guessable addresses are omitted; do not restore them.
 
-| Topic | `docs/guide/` | `docs/architecture.md` § |
+| Topic | `docs/guide/` | `docs/architecture/` |
 | --- | --- | --- |
-| Modes, key table, grouping, checklist, Recent | `outliner.md` | TUI architecture |
-| Pinned, Review, title fitter, guidance, status strip, footer flash | `outliner.md` | Presentation chrome; Status flash |
-| Defer, waiting, check-back, drop ladder | `outliner.md` | Row indicators |
-| Registry, executor, providers, chaining | `outliner.md` | One operation grammar |
-| Filters, search, jumps, Focus, Peek, selection, `Ctrl+T` | `search-and-lenses.md`; `outliner.md` | Search, filters, and Peek; Selection and subordinate tools |
-| Storage layout, migration chain | `storage.md` | Persistence layout; Snapshot-first schema migration |
+| Modes, key table, grouping, checklist, Recent | `outliner.md` | `tui-architecture` |
+| Pinned, Review, title fitter, guidance, status strip, footer flash | `outliner.md` | `presentation-chrome`; `row-indicators` |
+| Defer, waiting, check-back, drop ladder | `outliner.md` | `row-indicators` |
+| Registry, executor, providers, chaining | `outliner.md` | `operation-grammar` |
+| Filters, search, jumps, Focus, Peek, selection, `Ctrl+T` | `search-and-lenses.md`; `outliner.md` | `search-filters-and-sorting`; `selection-and-project-tags` |
+| Storage layout, migration chain | `storage.md` | `persistence-and-transactions`; `migration` |

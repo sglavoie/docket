@@ -15,8 +15,41 @@ func normalizedDocumentation(t *testing.T, path string) string {
 	return strings.Join(strings.Fields(string(data)), " ")
 }
 
+// architectureDocumentChapters is the architecture corpus in reading order: the
+// index page first, then every chapter it links. The order is declared here
+// rather than derived from the directory listing so a chapter added, removed, or
+// resequenced is a reviewable change rather than a silent one.
+var architectureDocumentChapters = []string{
+	"docs/architecture.md",
+	"docs/architecture/runtime-and-task-model.md",
+	"docs/architecture/canonical-query.md",
+	"docs/architecture/tui-architecture.md",
+	"docs/architecture/presentation-chrome.md",
+	"docs/architecture/row-indicators.md",
+	"docs/architecture/operation-grammar.md",
+	"docs/architecture/capture-and-outline-editor.md",
+	"docs/architecture/search-filters-and-sorting.md",
+	"docs/architecture/named-lenses.md",
+	"docs/architecture/selection-and-project-tags.md",
+	"docs/architecture/persistence-and-transactions.md",
+	"docs/architecture/migration.md",
+	"docs/architecture/workspace-and-maintenance.md",
+}
+
+// normalizedArchitectureDocumentation joins the whole architecture corpus so a
+// contract assertion names the mechanism, not the file the chapter happens to
+// live in.
+func normalizedArchitectureDocumentation(t *testing.T) string {
+	t.Helper()
+	chapters := make([]string, 0, len(architectureDocumentChapters))
+	for _, path := range architectureDocumentChapters {
+		chapters = append(chapters, normalizedDocumentation(t, path))
+	}
+	return strings.Join(chapters, " ")
+}
+
 func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
-	content := normalizedDocumentation(t, "docs/architecture.md")
+	content := normalizedArchitectureDocumentation(t)
 	required := []string{
 		"## Contents",
 		"## Runtime layers",
@@ -242,7 +275,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 }
 
 func TestArchitectureDocumentationRejectsRetiredLiveProduct(t *testing.T) {
-	content := normalizedDocumentation(t, "docs/architecture.md")
+	content := normalizedArchitectureDocumentation(t)
 	for _, stale := range []string{
 		"Review mode",
 		"Finder",

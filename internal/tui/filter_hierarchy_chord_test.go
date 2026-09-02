@@ -1,0 +1,177 @@
+package tui
+
+import (
+	"fmt"
+	"maps"
+	"slices"
+	"strings"
+	"testing"
+
+	"github.com/sglavoie/tt/internal/models"
+)
+
+// newHierarchyFilterTestApp builds one project covering every hierarchy
+// position, including a parent whose only child is done.
+func newHierarchyFilterTestApp(t *testing.T) *AppModel {
+	t.Helper()
+	app := newUITestApp()
+	epicID := "epic"
+	storyID := "story"
+	closedID := "closed-parent"
+	project := &models.Project{
+		ID:   "project",
+		Name: "Project",
+		Slug: "project",
+		Tasks: []*models.Task{
+			{ID: epicID, ShortID: 1, Title: "Epic", WorkflowState: models.StateBacklog},
+			{ID: storyID, ShortID: 2, Title: "Story", WorkflowState: models.StateBacklog, ParentID: &epicID},
+			{ID: "open-leaf", ShortID: 3, Title: "Open leaf", WorkflowState: models.StateBacklog, ParentID: &storyID},
+			{ID: "done-leaf", ShortID: 4, Title: "Done leaf", WorkflowState: models.StateDone, ParentID: &storyID},
+			{ID: closedID, ShortID: 5, Title: "Closed parent", WorkflowState: models.StateBacklog},
+			{ID: "only-done-child", ShortID: 6, Title: "Only done child", WorkflowState: models.StateDone, ParentID: &closedID},
+			{ID: "solo", ShortID: 7, Title: "Solo", WorkflowState: models.StateBacklog},
+		},
+	}
+	project.BuildTaskTree()
+	setTestAppProjects(app, project)
+	app.crossOutliner.loadedProjects = []*models.Project{project}
+	app.crossOutliner.crossForceRebuild = true
+	app.crossOutliner.rebuildRows()
+	return app
+}
+
+func TestHierarchyFilterReadsOpenChildCensus(t *testing.T) {
+	for _, tc := range []struct {
+		value HierarchyFilter
+		want  map[string]bool
+	}{
+		{
+			value: HierarchyParent,
+			want:  map[string]bool{"epic": true, "story": true},
+		},
+		{
+			value: HierarchyChild,
+			want:  map[string]bool{"story": true, "open-leaf": true},
+		},
+		{
+			value: HierarchyRoot,
+			want:  map[string]bool{"epic": true, "closed-parent": true, "solo": true},
+		},
+		{
+			value: HierarchyLeaf,
+			want:  map[string]bool{"open-leaf": true, "closed-parent": true, "solo": true},
+		},
+	} {
+		t.Run(hierarchyFilterLabel(tc.value), func(t *testing.T) {
+			app := newHierarchyFilterTestApp(t)
+			result := app.operationExecutor.Execute(OperationExecutionRequest{
+				ID:       operationFilterHierarchy,
+				Context:  simplifiedOperationContext(),
+				Value:    tc.value,
+				HasValue: true,
+			})
+			if result.Err != nil {
+				t.Fatalf("hierarchy filter error: %v", result.Err)
+			}
+			want := "Filtering hierarchy: " + hierarchyFilterLabel(tc.value)
+			if result.Status != want {
+				t.Errorf("Status = %q, want %q", result.Status, want)
+			}
+			if got := visibleOutlinerTaskIDs(app.crossOutliner); !maps.Equal(got, tc.want) {
+				t.Errorf("visible = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestHierarchyFilterBadgeCountAndClear(t *testing.T) {
+	app := newHierarchyFilterTestApp(t)
+	filter := &app.crossOutliner.filter.CommonFilterState
+
+	result := app.operationExecutor.Execute(OperationExecutionRequest{
+		ID:       operationFilterHierarchy,
+		Context:  simplifiedOperationContext(),
+		Value:    HierarchyLeaf,
+		HasValue: true,
+	})
+	if result.Err != nil {
+		t.Fatalf("hierarchy filter error: %v", result.Err)
+	}
+	if got := commonFilterParts(filter); !slices.Equal(got, []string{"?leaf"}) {
+		t.Errorf("badge parts = %v, want the hierarchy facet alone", got)
+	}
+	if got := commonFilterFacetCount(filter); got != 1 {
+		t.Errorf("facet count = %d, want 1", got)
+	}
+
+	pressFilterChord(t, app, "fx")
+	if filter.Hierarchy != HierarchyAll {
+		t.Errorf("fx left hierarchy = %v, want HierarchyAll", filter.Hierarchy)
+	}
+}
+
+func TestHierarchyFilterRejectsOutOfRangeValues(t *testing.T) {
+	app := newHierarchyFilterTestApp(t)
+	for _, value := range []HierarchyFilter{HierarchyAll, HierarchyLeaf + 1} {
+		result := app.operationExecutor.Execute(OperationExecutionRequest{
+			ID:       operationFilterHierarchy,
+			Context:  simplifiedOperationContext(),
+			Value:    value,
+			HasValue: true,
+		})
+		if result.Err == nil {
+			t.Errorf("hierarchy value %d should be rejected", value)
+		}
+	}
+}
+
+// TestFilterOperationsStayChordOnly locks the direct-grammar contract: the
+// filter family refines the view in place through the f chords.
+func TestFilterOperationsStayChordOnly(t *testing.T) {
+	app := parityAuditApp(t)
+	registry := app.GetOperationRegistry()
+
+	descriptors := filterOperationDescriptors()
+	if len(descriptors) != 12 {
+		t.Fatalf("filter family declares %d operations, want 12", len(descriptors))
+	}
+	for _, declared := range descriptors {
+		_, ok := registry.Descriptor(declared.ID)
+		if !ok {
+			t.Fatalf("filter operation %s is not registered", declared.ID)
+		}
+	}
+}
+
+func TestPriorityThresholdSemantics(t *testing.T) {
+	tasks := map[int]*models.Task{
+		0: {ID: "p0", Title: "Unset", WorkflowState: models.StateBacklog, Priority: 0},
+		1: {ID: "p1", Title: "P1", WorkflowState: models.StateBacklog, Priority: 1},
+		2: {ID: "p2", Title: "P2", WorkflowState: models.StateBacklog, Priority: 2},
+		3: {ID: "p3", Title: "P3", WorkflowState: models.StateBacklog, Priority: 3},
+	}
+	for threshold, want := range map[int]map[int]bool{
+		0: {0: true, 1: true, 2: true, 3: true},
+		1: {0: false, 1: true, 2: false, 3: false},
+		2: {0: false, 1: true, 2: true, 3: false},
+		3: {0: false, 1: true, 2: true, 3: true},
+	} {
+		filter := newFilterState()
+		filter.Priority = threshold
+		for priority, pass := range want {
+			if got := passesCommonFilters(tasks[priority], &filter); got != pass {
+				t.Errorf("threshold %d priority %d = %v, want %v", threshold, priority, got, pass)
+			}
+		}
+	}
+
+	filter := newFilterState()
+	filter.Priority = 3
+	badge := commonFilterParts(&filter)
+	if len(badge) != 1 || badge[0] != "!3+" {
+		t.Errorf("badge parts = %v, want [!3+]", badge)
+	}
+	if described := fmt.Sprint(badge); !strings.Contains(described, "!3+") {
+		t.Errorf("badge %q should describe the threshold", described)
+	}
+}

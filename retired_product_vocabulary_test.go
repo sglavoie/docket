@@ -62,6 +62,7 @@ func TestRetiredProductVocabularyOwnership(t *testing.T) {
 			"internal/config/legacy_v4_domains.go":         true,
 			"internal/config/legacy_v4_domains_convert.go": true,
 			"internal/config/v6_conversion_dry_run.go":     true,
+			"internal/config/v6_conversion_convert.go":     true,
 		},
 		"BoundaryID": {
 			"internal/config/v7_conversion_dry_run.go": true,
@@ -324,6 +325,7 @@ func TestCurrentProductDocsExcludeRetiredConcepts(t *testing.T) {
 		root      string
 		extension string
 	}{
+		{root: "docs/architecture", extension: ".md"},
 		{root: "docs/decisions", extension: ".md"},
 		{root: "docs/guide", extension: ".md"},
 		{root: "docs/tui-testing/scenarios", extension: ".json"},
