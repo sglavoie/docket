@@ -300,8 +300,16 @@ func isTestSupportPackage(pkg *packages.Package) bool {
 	return pkg != nil && strings.HasSuffix(pkg.PkgPath, "/internal/testutil")
 }
 
+// isTUIPackage reports whether pkg is the TUI shell package or any package
+// beneath it. Containment rather than an exact suffix is what keeps a *Msg type
+// audited once it moves from the shell into a TUI sub-package.
+func isTUIPackage(pkg *packages.Package) bool {
+	const root = "/internal/tui"
+	return strings.HasSuffix(pkg.PkgPath, root) || strings.Contains(pkg.PkgPath, root+"/")
+}
+
 func collectMessageDeclarations(pkg *packages.Package, out map[string]*messageUsage) {
-	if pkg == nil || isTestSupportPackage(pkg) || !strings.HasSuffix(pkg.PkgPath, "/internal/tui") {
+	if pkg == nil || isTestSupportPackage(pkg) || !isTUIPackage(pkg) {
 		return
 	}
 	parents := parentMap(pkg.Syntax)
@@ -323,7 +331,7 @@ func collectMessageDeclarations(pkg *packages.Package, out map[string]*messageUs
 }
 
 func collectMessageUsage(pkg *packages.Package, messages map[string]*messageUsage) {
-	if pkg == nil || isTestSupportPackage(pkg) || !strings.HasSuffix(pkg.PkgPath, "/internal/tui") {
+	if pkg == nil || isTestSupportPackage(pkg) || !isTUIPackage(pkg) {
 		return
 	}
 	for _, file := range pkg.Syntax {

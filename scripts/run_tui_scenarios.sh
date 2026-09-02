@@ -8,11 +8,11 @@ if [ "$#" -gt 1 ]; then
 fi
 
 if [ "$#" -eq 1 ]; then
-	TT_TUI_SCENARIO=$1 go test -count=1 ./internal/tui -run '^TestExampleScenariosPass$'
+	TT_TUI_SCENARIO=$1 go test -count=1 ./internal/tui/... -run '^TestExampleScenariosPass$'
 	exit
 fi
 
-go test -count=1 ./internal/tui \
+go test -count=1 ./internal/tui/... \
 	-run '^Test(CommittedScenarioInventoryCoversFinalProduct|ExampleScenariosPass)$'
 
 go test -count=1 ./internal/config \

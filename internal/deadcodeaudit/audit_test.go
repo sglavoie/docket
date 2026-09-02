@@ -97,25 +97,37 @@ var _ = sample.TestSupportValue
 	}
 }
 
+// The fixture declares messages both in the TUI shell package and in a TUI
+// sub-package, because the audit gates on package path: a message moved out of
+// the shell must stay audited rather than silently leaving the corpus.
 func TestRunFindsProductionConsumedMessagesWithoutProductionEmitters(t *testing.T) {
 	root := writeFixtureModule(t, map[string]string{
-		"internal/tui/messages.go": `package tui
+		"internal/tui/status/messages.go": `package status
 
 type OrphanMsg struct{}
 type LiveMsg struct{}
 // deadcodeaudit:external-message emitted by an external adapter.
 type ExternalMsg struct{}
+`,
+		"internal/tui/messages.go": `package tui
+
+import "example.com/auditfixture/internal/tui/status"
+
+type ShellOrphanMsg struct{}
 
 func handle(msg any) {
 	switch msg.(type) {
-	case OrphanMsg, LiveMsg, ExternalMsg:
+	case ShellOrphanMsg, status.OrphanMsg, status.LiveMsg, status.ExternalMsg:
 	}
 }
 
-func emit() any { return LiveMsg{} }
+func emit() any { return status.LiveMsg{} }
 `,
 		"internal/tui/messages_test.go": `package tui
-func emitOnlyInTests() any { return OrphanMsg{} }
+
+import "example.com/auditfixture/internal/tui/status"
+
+func emitOnlyInTests() []any { return []any{ShellOrphanMsg{}, status.OrphanMsg{}} }
 `,
 	})
 
@@ -124,8 +136,10 @@ func emitOnlyInTests() any { return OrphanMsg{} }
 		t.Fatal(err)
 	}
 	got := findingSymbols(findings)
-	if !slices.Contains(got, "OrphanMsg") {
-		t.Fatalf("findings %v missing OrphanMsg", got)
+	for _, want := range []string{"ShellOrphanMsg", "OrphanMsg"} {
+		if !slices.Contains(got, want) {
+			t.Fatalf("findings %v missing %q", got, want)
+		}
 	}
 	for _, exempt := range []string{"LiveMsg", "ExternalMsg"} {
 		if slices.Contains(got, exempt) {

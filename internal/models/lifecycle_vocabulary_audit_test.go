@@ -44,7 +44,6 @@ func TestRuntimeLifecycleVocabularyIsCanonical(t *testing.T) {
 	allowedLegacyTagFiles := map[string]bool{
 		"internal/config/settings_section_colors.go": true,
 		"internal/template/template.go":              true,
-		"internal/tui/uitest_types.go":               true,
 		"internal/workflow/rule.go":                  true,
 	}
 

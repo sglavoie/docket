@@ -58,10 +58,14 @@ func TestRetiredProductVocabularyOwnership(t *testing.T) {
 		"SnoozedUntil":             true,
 	}
 	migrationIdentifierAllowlist := map[string]map[string]bool{
+		// The v5 domain candidate DTOs still carry the retired pointer because
+		// the schema-4 catalog on disk genuinely spells it; the v5 split moved
+		// that boundary across three files without widening it.
 		"SystemInboxProjectID": {
 			"internal/config/legacy_v4_domains.go":         true,
 			"internal/config/legacy_v4_domains_convert.go": true,
-			"internal/config/v6_conversion_dry_run.go":     true,
+			"internal/config/v5_domain_candidates.go":      true,
+			"internal/config/v5_domain_validate.go":        true,
 			"internal/config/v6_conversion_convert.go":     true,
 		},
 		"BoundaryID": {
