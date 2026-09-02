@@ -8,30 +8,6 @@ import (
 )
 
 // =============================================================================
-// Close-View Interface
-// =============================================================================
-
-// popStyle indicates how a close-view message should pop the view stack.
-type popStyle int
-
-const (
-	popOne      popStyle = iota // pop a single view (popView)
-	popToAnchor                 // pop to the nearest anchor (popToAnchorView)
-)
-
-// closeViewMsg is implemented by close messages whose only effect is popping
-// the view stack. The handler in Update checks this interface first, avoiding
-// individual case arms for each Close*Msg type.
-type closeViewMsg interface {
-	closePopStyle() popStyle
-}
-
-// PopViewMsg is embedded in Close*Msg types that need popView().
-type PopViewMsg struct{}
-
-func (PopViewMsg) closePopStyle() popStyle { return popOne }
-
-// =============================================================================
 // Navigation Messages
 // =============================================================================
 
@@ -77,10 +53,6 @@ type ViewStatusClearMsg struct {
 
 // CursorFlashClearMsg clears the cursor flash highlight after a timeout.
 type CursorFlashClearMsg struct{}
-
-// FooterFlashTickMsg advances the footer divider flash one frame. Seq
-// identifies the flash generation so a tick from a superseded flash is ignored.
-type FooterFlashTickMsg struct{ Seq uint64 }
 
 // periodicSaveMsg triggers a periodic save of spatial state (cursor/fold).
 type periodicSaveMsg struct{ at time.Time }
@@ -131,12 +103,5 @@ const CursorFlashDuration = 150 * time.Millisecond
 func cursorFlashTimeout() tea.Cmd {
 	return tickCmd(CursorFlashDuration, func(time.Time) tea.Msg {
 		return CursorFlashClearMsg{}
-	})
-}
-
-// footerFlashTick schedules the next frame of the footer divider flash.
-func footerFlashTick(seq uint64) tea.Cmd {
-	return tickCmd(footerFlashFrameInterval, func(time.Time) tea.Msg {
-		return FooterFlashTickMsg{Seq: seq}
 	})
 }

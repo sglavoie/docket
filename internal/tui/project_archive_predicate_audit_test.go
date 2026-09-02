@@ -43,7 +43,7 @@ var archivePredicateAudit = map[string]string{
 	"internal/tui/outliner_lens_lifecycle.go:lensScopeRefusal":              "lifecycle: admission was already decided by TaskWorkspaceProjects; this only words the refusal as archived",
 	"internal/tui/operation_target.go:entityContextNamesArchivedTask":       "lifecycle: an archived owner refuses every task-changing operation",
 	"internal/tui/task_action_operations.go:taskActionOperationApplicable":  "lifecycle: an archived owner admits read-only operations only",
-	"internal/tui/project_operations.go:projectRequirementUnmet":            "lifecycle: descriptors require an archived or a live project",
+	"internal/tui/project_operations_shell.go:projectRequirementUnmet":      "lifecycle: descriptors require an archived or a live project",
 	"internal/tui/quick_capture_input.go:initCaches":                        "availability: %project completes parked projects",
 	"internal/tui/quick_capture_parser_resolution.go:resolveProject":        "availability: %project resolves parked projects",
 	"internal/tui/task_action_sheet.go:taskActionDisabledReason":            "lifecycle: an archived owner disables writing task actions",
