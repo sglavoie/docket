@@ -1,8 +1,8 @@
 package tui
 
 import (
+	"io/fs"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -14,32 +14,36 @@ import (
 // consistently. See session 4 of the truncation-auditing plan.
 const rawANSITruncateHelperFile = "text_width_helpers.go"
 
-// TestNoRawANSITruncate fails when a non-test .go file other than the approved
-// helper calls ansi.Truncate directly. New render truncation must go through
-// truncateIntentional (dense data) or truncateRequired (layout chrome/help).
+// TestNoRawANSITruncate fails when a non-test .go file anywhere in the
+// internal/tui subtree other than the approved helper calls ansi.Truncate
+// directly. New render truncation must go through truncateIntentional (dense
+// data) or truncateRequired (layout chrome/help). The exemption is by filename
+// so it follows the helper into whichever package eventually owns it, which is
+// only safe while that filename is unique — asserted below.
 func TestNoRawANSITruncate(t *testing.T) {
-	entries, err := os.ReadDir(".")
-	if err != nil {
-		t.Fatalf("read package dir: %v", err)
-	}
-
 	const needle = "ansi.Truncate("
 	var offenders []string
-	for _, entry := range entries {
-		name := entry.Name()
-		if entry.IsDir() || !strings.HasSuffix(name, ".go") {
-			continue
+	helperFiles := 0
+	err := walkTUIProductionSources(t, func(path, relative string, entry fs.DirEntry) error {
+		if entry.Name() == rawANSITruncateHelperFile {
+			helperFiles++
+			return nil
 		}
-		if strings.HasSuffix(name, "_test.go") || name == rawANSITruncateHelperFile {
-			continue
-		}
-		data, err := os.ReadFile(filepath.Clean(name))
-		if err != nil {
-			t.Fatalf("read %s: %v", name, err)
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
 		}
 		if strings.Contains(string(data), needle) {
-			offenders = append(offenders, name)
+			offenders = append(offenders, relative)
 		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("scan production TUI sources: %v", err)
+	}
+	if helperFiles != 1 {
+		t.Errorf("%s exists %d times in internal/tui, want exactly 1: a second copy would silently exempt itself",
+			rawANSITruncateHelperFile, helperFiles)
 	}
 
 	if len(offenders) > 0 {

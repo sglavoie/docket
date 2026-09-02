@@ -10,7 +10,14 @@ import (
 // documented in docs/tui-testing/README.md. This test drives each of them end to
 // end so the examples cannot silently rot: a keybinding rename, a view-name
 // change, or a layout regression that breaks a documented scenario fails here.
-const exampleScenariosDir = "../../docs/tui-testing/scenarios"
+//
+// It resolves from the repository root rather than a fixed relative path, so
+// the corpus is found from whatever package depth this test ends up at. A
+// wrong depth would not fail loudly: the glob would return nothing.
+func exampleScenariosDir(t *testing.T) string {
+	t.Helper()
+	return filepath.Join(tuiRepositoryRoot(t), "docs", "tui-testing", "scenarios")
+}
 
 func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 	required := []string{
@@ -104,8 +111,9 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"outliner-menu-bar.json",
 		"outliner-menu-bar-persist.json",
 	}
+	scenariosDir := exampleScenariosDir(t)
 	for _, name := range required {
-		if _, err := os.Stat(filepath.Join(exampleScenariosDir, name)); err != nil {
+		if _, err := os.Stat(filepath.Join(scenariosDir, name)); err != nil {
 			t.Errorf("required final-product scenario %q: %v", name, err)
 		}
 	}
@@ -127,7 +135,7 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 		"task-detail-narrow-layout.json",
 	}
 	for _, name := range retired {
-		if _, err := os.Stat(filepath.Join(exampleScenariosDir, name)); !os.IsNotExist(err) {
+		if _, err := os.Stat(filepath.Join(scenariosDir, name)); !os.IsNotExist(err) {
 			t.Errorf("retired scenario %q is still committed", name)
 		}
 	}
@@ -138,21 +146,22 @@ func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
 // TT_TUI_SCENARIO to one path while authoring; the default discovers every
 // committed JSON file.
 func TestExampleScenariosPass(t *testing.T) {
+	scenariosDir := exampleScenariosDir(t)
 	var paths []string
 	if selected := os.Getenv("TT_TUI_SCENARIO"); selected != "" {
 		if !filepath.IsAbs(selected) {
-			selected = filepath.Join("../..", selected)
+			selected = filepath.Join(tuiRepositoryRoot(t), selected)
 		}
 		paths = []string{filepath.Clean(selected)}
 	} else {
 		var err error
-		paths, err = filepath.Glob(filepath.Join(exampleScenariosDir, "*.json"))
+		paths, err = filepath.Glob(filepath.Join(scenariosDir, "*.json"))
 		if err != nil {
 			t.Fatalf("glob example scenarios: %v", err)
 		}
 	}
 	if len(paths) == 0 {
-		t.Fatalf("no example scenarios found in %s", exampleScenariosDir)
+		t.Fatalf("no example scenarios found in %s", scenariosDir)
 	}
 
 	for _, path := range paths {

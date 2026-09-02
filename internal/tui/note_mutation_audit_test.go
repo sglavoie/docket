@@ -242,20 +242,11 @@ func noteAuditNode(fset *token.FileSet, node any) string {
 	return strings.Join(strings.Fields(b.String()), " ")
 }
 
+// findNoteAuditRepoRoot resolves the repository root from this package's own
+// source path. Walking up from the working directory would also find it today,
+// but only because the audit and the package it audits are the same directory;
+// tuiRepositoryRoot stays right at any package depth.
 func findNoteAuditRepoRoot(t *testing.T) string {
 	t.Helper()
-	dir, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for {
-		if _, statErr := os.Stat(filepath.Join(dir, "go.mod")); statErr == nil {
-			return dir
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			t.Fatal("could not locate repository root for note mutation audit")
-		}
-		dir = parent
-	}
+	return tuiRepositoryRoot(t)
 }

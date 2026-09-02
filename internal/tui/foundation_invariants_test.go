@@ -5,7 +5,6 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -107,14 +106,9 @@ func TestSoleTUIFoundations(t *testing.T) {
 
 	fset := token.NewFileSet()
 	appOutlinerFields := 0
-	err := filepath.WalkDir(".", func(path string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if entry.IsDir() || filepath.Ext(path) != ".go" || strings.HasSuffix(path, "_test.go") {
-			return nil
-		}
-
+	// The whole internal/tui subtree is one foundation: a retired file or a
+	// second definition of a required type is just as wrong one package down.
+	err := walkTUIProductionSources(t, func(path, relative string, entry fs.DirEntry) error {
 		name := entry.Name()
 		if forbiddenFiles[name] ||
 			strings.Contains(name, "quick_picker") ||
@@ -122,7 +116,7 @@ func TestSoleTUIFoundations(t *testing.T) {
 			strings.HasPrefix(name, "palette_") ||
 			strings.HasPrefix(name, "inbox_") ||
 			strings.HasPrefix(name, "global_inbox_") {
-			t.Errorf("retired TUI foundation file returned: %s", path)
+			t.Errorf("retired TUI foundation file returned: %s", relative)
 		}
 
 		file, parseErr := parser.ParseFile(fset, path, nil, 0)
@@ -133,7 +127,7 @@ func TestSoleTUIFoundations(t *testing.T) {
 			switch node := node.(type) {
 			case *ast.Ident:
 				if forbiddenIdentifiers[node.Name] {
-					t.Errorf("retired TUI foundation identifier %s returned in %s", node.Name, path)
+					t.Errorf("retired TUI foundation identifier %s returned in %s", node.Name, relative)
 				}
 			case *ast.TypeSpec:
 				if _, ok := requiredTypes[node.Name.Name]; ok {

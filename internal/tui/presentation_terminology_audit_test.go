@@ -5,10 +5,9 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
-	"path/filepath"
+	"os"
 	"regexp"
 	"strconv"
-	"strings"
 	"testing"
 )
 
@@ -28,14 +27,14 @@ var retiredPresentationCopy = []struct {
 // Identifiers and comments are intentionally outside this copy-only audit.
 func TestProductionPresentationCopyUsesFinalGrammar(t *testing.T) {
 	fset := token.NewFileSet()
-	err := filepath.WalkDir(".", func(path string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
+	err := walkTUIProductionSources(t, func(path, relative string, _ fs.DirEntry) error {
+		source, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
 		}
-		if entry.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
-			return nil
-		}
-		file, parseErr := parser.ParseFile(fset, path, nil, 0)
+		// Parse under the subtree-relative name so a position still reads as a
+		// path a reader can type, not an absolute one.
+		file, parseErr := parser.ParseFile(fset, relative, source, 0)
 		if parseErr != nil {
 			return parseErr
 		}
