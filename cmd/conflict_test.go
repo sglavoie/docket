@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"errors"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -109,6 +112,84 @@ func TestConflictResolveUseLocal(t *testing.T) {
 	}
 	if doc.Tasks[0].Title != "local title" {
 		t.Fatalf("on-disk title = %q, want local title", doc.Tasks[0].Title)
+	}
+	if records, _ := store.List(); len(records) != 0 {
+		t.Fatalf("expected the conflict to be cleared, %d remain", len(records))
+	}
+}
+
+// retireCLIBundleDocuments rewrites a recorded bundle's documents as schema-2
+// markdown, the state an old bundle reaches on its own: nothing migrates
+// `.tt/conflicts/` when the schema advances.
+func retireCLIBundleDocuments(t *testing.T, store *storage.ConflictStore, id string) {
+	t.Helper()
+	retired := "# Alpha\n\n<!-- tt-schema: 2 -->\n\n## Task: base title\n\n- state: backlog\n"
+	for _, name := range []string{"base.md", "local.md", "remote.md"} {
+		if err := os.WriteFile(filepath.Join(store.Dir(), id, name), []byte(retired), 0o600); err != nil {
+			t.Fatalf("rewriting %s: %v", name, err)
+		}
+	}
+}
+
+// TestConflictShowUnreadableDocuments verifies show still renders a bundle whose
+// documents outlived their schema — the command previously died before printing
+// anything, hiding the record it was the only way to inspect.
+func TestConflictShowUnreadableDocuments(t *testing.T) {
+	store, project := setupConflictTest(t)
+	id := recordCLIConflict(t, store, project)
+	retireCLIBundleDocuments(t, store, id)
+
+	if err := runConflictShow(conflictShowCmd, []string{shortConflictID(id)}); err != nil {
+		t.Fatalf("runConflictShow on an unreadable bundle: %v", err)
+	}
+}
+
+// TestConflictResolveUnreadableLocalGuidance verifies the CLI refusal names the
+// cause and points at the resolutions that still work.
+func TestConflictResolveUnreadableLocalGuidance(t *testing.T) {
+	store, project := setupConflictTest(t)
+	id := recordCLIConflict(t, store, project)
+	retireCLIBundleDocuments(t, store, id)
+
+	conflictResolveUse = "local"
+	conflictResolveFile = ""
+	t.Cleanup(func() { conflictResolveUse = ""; conflictResolveFile = "" })
+
+	err := runConflictResolve(conflictResolveCmd, []string{id})
+	if !errors.Is(err, storage.ErrConflictDocumentUnreadable) {
+		t.Fatalf("err = %v, want ErrConflictDocumentUnreadable", err)
+	}
+	for _, want := range []string{"schema 2", "--use remote", "--use file"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Fatalf("refusal %q missing %q", err.Error(), want)
+		}
+	}
+	if records, _ := store.List(); len(records) != 1 {
+		t.Fatalf("refused resolution must leave the bundle intact, %d remain", len(records))
+	}
+}
+
+// TestConflictResolveUnreadableUseRemote verifies the resolution that reads no
+// stored document clears an ancient bundle, which is what unstrands the row the
+// status strip draws from it.
+func TestConflictResolveUnreadableUseRemote(t *testing.T) {
+	store, project := setupConflictTest(t)
+	id := recordCLIConflict(t, store, project)
+	retireCLIBundleDocuments(t, store, id)
+
+	conflictResolveUse = "remote"
+	conflictResolveFile = ""
+	t.Cleanup(func() { conflictResolveUse = ""; conflictResolveFile = "" })
+
+	if err := runConflictResolve(conflictResolveCmd, []string{id}); err != nil {
+		t.Fatalf("runConflictResolve(remote): %v", err)
+	}
+	doc, err := storage.LoadProjectDocument(project)
+	if err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+	if doc.Tasks[0].Title != "remote title" {
+		t.Fatalf("on-disk title = %q, want the untouched remote title", doc.Tasks[0].Title)
 	}
 	if records, _ := store.List(); len(records) != 0 {
 		t.Fatalf("expected the conflict to be cleared, %d remain", len(records))

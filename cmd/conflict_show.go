@@ -51,8 +51,19 @@ func runConflictShow(_ *cobra.Command, args []string) error {
 	fmt.Printf("  Recorded:  %s\n", rec.CreatedAt.Local().Format("2006-01-02 15:04:05"))
 	fmt.Printf("  Revisions: base %s · local %s · remote %s\n",
 		shortRev(rec.BaseRevision), shortRev(rec.LocalRevision), shortRev(rec.RemoteRevision))
+	// A bundle's documents were rendered at whatever schema was live when it was
+	// recorded, and nothing migrates them. Saying so here is what explains a later
+	// refusal from `--use local`, so the operator learns it from the surface that
+	// exists to explain the bundle rather than from the resolution that fails.
+	if bundle.BaseUnreadable != "" {
+		fmt.Printf("  Base:      unreadable — %s\n", bundle.BaseUnreadable)
+	}
+	if bundle.LocalUnreadable != "" {
+		fmt.Printf("  Local:     unreadable — %s\n", bundle.LocalUnreadable)
+		fmt.Printf("             --use local is unavailable; adopt remote or supply a merged file\n")
+	}
 	if rec.OperationRetryRequired() {
-		fmt.Printf("  Retry:      required — adopt remote to clear this record, then retry the original operation\n")
+		fmt.Printf("  Retry:     required — adopt remote to clear this record, then retry the original operation\n")
 	}
 	fmt.Printf("\n%d conflict(s):\n", len(rec.Conflicts))
 	for i, c := range rec.Conflicts {

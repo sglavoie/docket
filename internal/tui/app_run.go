@@ -20,10 +20,16 @@ var AppVersion = "dev"
 // AppModel options used by tests and dependency injection.
 type RunOptions struct {
 	DisableColor bool
+	// HideAdvisories suppresses every ambient advisory for this run without
+	// touching the machine-local setting. See advisories.go.
+	HideAdvisories bool
 }
 
 // RunApp starts the TUI application.
 func RunApp(runtime *config.RuntimeState, manager *config.Manager, runOpts RunOptions, opts ...AppOption) error {
+	if runOpts.HideAdvisories {
+		opts = append(opts, WithHiddenAdvisories())
+	}
 	if runtime == nil {
 		return fmt.Errorf("runtime state is required")
 	}

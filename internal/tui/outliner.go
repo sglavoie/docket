@@ -168,6 +168,11 @@ type OutlinerModel struct {
 	// indicator; the Outliner never learns where conflicts are stored.
 	outstandingConflicts func() int
 
+	// advisoriesHiddenAccessor is the shell-injected opt-out every ambient
+	// advisory is gated by. A nil accessor reads as showing them; see
+	// advisories.go.
+	advisoriesHiddenAccessor func() bool
+
 	// noteSearchIndex is the shell-injected accessor over the workspace-wide note
 	// index the search tier ranks. A nil accessor means the tier is simply
 	// absent, which is what a struct-literal test model and the Project Hub's

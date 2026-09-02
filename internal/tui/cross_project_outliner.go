@@ -236,19 +236,12 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 		cmds = append(cmds, func() tea.Msg { return InfoStatusMsg(scopeMsg) })
 	}
 
-	if len(msg.failedLoads) == 0 {
-		if len(cmds) == 0 {
-			return nil
-		}
-		return tea.Batch(cmds...)
+	if advisory := m.loadFailureAdvisory(msg.failedLoads); advisory != nil {
+		cmds = append(cmds, advisory)
 	}
-	count := len(msg.failedLoads)
-	noun := "project"
-	if count > 1 {
-		noun = "projects"
+	if len(cmds) == 0 {
+		return nil
 	}
-	warning := fmt.Sprintf("%d %s failed to load: %s", count, noun, msg.failedLoads[0].Detail)
-	cmds = append(cmds, func() tea.Msg { return InfoStatusMsg(warning) })
 	return tea.Batch(cmds...)
 }
 

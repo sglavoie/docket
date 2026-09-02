@@ -1,0 +1,40 @@
+{
+  "name": "advisories-menu-toggle",
+  "fixture": "rich",
+  "size": "100x40",
+  "actions": [
+    { "type": "command", "label": "a bundle another machine synced in is the archetypal advisory", "command": "record merge conflict off tick" },
+    { "type": "wait", "duration": "61s", "label": "the 60s periodic tick is what recounts the directory" },
+    { "type": "assert", "label": "the count leads the strip", "assert": "contains", "value": "1 unresolved merge conflict" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "label": "Ctrl+M opens the bar's first menu", "key": "ctrl+m" },
+    { "type": "key", "label": "l walks along to View, where chrome lives", "key": "l" },
+    { "type": "assert", "label": "the toggle is bound to no key, so this row is its only in-app route", "assert": "contains", "value": "Advisories" },
+    { "type": "assert", "label": "checked means shown, the way Menu Bar's box reads", "assert": "contains", "value": "✓ Advisories" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "label": "put the menu away before running the row", "key": "esc" },
+
+    { "type": "command", "label": "run the keyless row the menu just listed", "command": "Toggle Advisories" },
+    { "type": "assert", "assert": "contains", "value": "Advisories hidden" },
+    { "type": "assert", "label": "the advisory is absent, not dimmed", "assert": "not_contains", "value": "unresolved merge conflict" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "key", "key": "ctrl+m" },
+    { "type": "key", "key": "l" },
+    { "type": "assert", "label": "the box follows the live state", "assert": "not_contains", "value": "✓ Advisories" },
+    { "type": "assert", "assert": "contains", "value": "Advisories" },
+    { "type": "assert", "assert": "no_layout_issues" },
+    { "type": "key", "key": "esc" },
+
+    { "type": "wait", "label": "let the toggle's transient status expire", "duration": "10s" },
+    { "type": "restart", "label": "chrome follows the terminal, so the choice is machine-local and durable" },
+    { "type": "assert", "label": "a relaunch still draws no advisory", "assert": "not_contains", "value": "unresolved merge conflict" },
+    { "type": "assert", "assert": "no_layout_issues" },
+
+    { "type": "command", "label": "toggling back is what a user who hid them by accident does", "command": "Toggle Advisories" },
+    { "type": "assert", "assert": "contains", "value": "Advisories shown" },
+    { "type": "assert", "label": "the bundle was never resolved, so the count comes straight back", "assert": "contains", "value": "1 unresolved merge conflict" },
+    { "type": "assert", "assert": "no_layout_issues" }
+  ]
+}

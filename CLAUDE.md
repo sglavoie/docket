@@ -113,7 +113,8 @@ key earns nothing. The menu bar is not a sheet but a projection of the registry,
 the class `?` help and the footer ranks belong to, so it names directly-bound
 operations freely. What it may not do is make an entity operation keyless: a
 menu-only operation's `TargetSource` is target-free or view-scoped, never a task
-or project. The
+or project. Clear All Folds and Advisories are the two keyless entries; both are
+target-free. The
 task-row `Space` menu is Delete alone, identical to the bulk menu: Delete has no
 direct key and confirms first. The Hub sheet is
 Archive or Unarchive plus bulk tags; Notes and Comments list Delete alone. The
@@ -182,6 +183,14 @@ that strip, refreshed at launch and on the 60s tick, read straight from
 `ConflictStore` with no `internal/app` port; the pulse ladder stays closed to it
 and resolving stays in the CLI. `gc` browses those bundles read-only, as an
 overlay with no `PresentationID`, `InputStrategy`, or manifest entry.
+
+That count is an advisory: ambient workspace state, not an answer to a
+keystroke. The load-failure notice is the only other one. Every advisory routes
+through `advisoryLine` or `advisoryStatus`, which is what makes
+`--no-advisories` and the keyless `Advisories` menu entry general; suppression
+returns an empty line, so the height falls out of the one `statusStripHeight`
+measurement. Never gate a row at its render site. Operation feedback, the query
+readout, and the every-project-failed refusal are not advisories.
 
 `M` toggles the Outliner menu bar on the same terms: a view-local gated
 sub-state with no `PresentationID`, overlay, `InputStrategy`, or manifest entry.
@@ -442,10 +451,11 @@ projects/<slug>/.attachments/
 ```
 
 Machine-local `~/.tt/runtime/<workspace-id>/machine.json` holds the dark/light
-theme, the Outliner menu bar's visibility, and the active-lens pointer, which is
+theme, the Outliner menu bar's visibility, advisory visibility, and the
+active-lens pointer, which is
 validated for shape alone and never referentially. Chrome follows the terminal,
 so a new chrome flag belongs here, carries `omitempty`, and is never seeded: the
-omitted key is the default. Only those three stay machine-local: lens
+omitted key is the default. Only those four stay machine-local: lens
 definitions are portable,
 in `.tt/lenses.json`, six axes over one bounded canonical query and no filter
 carrier. A machine joins that home once, through an adoption merge
@@ -476,6 +486,13 @@ recreates the directory the entry removed.
 is left untouched, never rolled either way and never quarantined. Machine
 identity is recomputed per call, never cached, so a `HOME` switch is a different
 machine. Neither field advances the journal schema.
+
+No migration rewrites `.tt/conflicts/`, so a bundle's documents stay frozen at
+the schema that recorded them: undecodable is allowed, unresolvable is not. A
+parse failure degrades like a missing file, naming a reason on
+`BaseUnreadable`/`LocalUnreadable`, and only `--use local` and a forced re-merge
+refuse, by name, with `ErrConflictDocumentUnreadable`. Metadata, `show`, `--use
+remote`, and `--use file` never depend on a stored document parsing.
 
 `OpDelete` is `os.Remove`, so a project delete enumerates its tree post-order and
 commits it with the catalog and planning rewrites. It confirms, names the

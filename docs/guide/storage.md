@@ -48,7 +48,19 @@ recounted at launch and once a minute, so a conflict another machine recorded
 while you were working appears on its own, and the line disappears once the last
 bundle is resolved. `gc` opens a read-only overlay over the same store, listing
 the recorded bundles and showing one in the form `tt conflict show` prints; see
-[`outliner.md`](outliner.md). Resolving stays in the CLI.
+[`outliner.md`](outliner.md). Resolving stays in the CLI. The count can be hidden
+with `tt --no-advisories` or `View → Advisories`, which changes nothing about the
+bundles themselves.
+
+A bundle stores its three documents as the markdown of the schema that was live
+the day it was recorded, and migrations never rewrite them. So a bundle that
+outlived a schema bump holds documents this version cannot read. It stays
+resolvable: `tt conflict list` and `tt conflict show` still describe it — `show`
+names each document it could not read and why — `--use remote` still adopts what
+is on disk and clears the record, and `--use file` still commits a merge you
+made by hand from the files in the bundle directory. Only `--use local` refuses,
+because the document it would commit is the unreadable one, and it says so by
+naming the schema that wrote it.
 
 
 ## Schema 17 storage and migration
@@ -97,12 +109,14 @@ names its mode, its project scope, its sort, and one query holding every facet
 it narrows by, so what a lens selects is one line you can read.
 
 Machine-local `~/.tt/runtime/<workspace-id>/machine.json` contains only the
-dark/light theme choice, whether the Outliner draws its menu bar, and a pointer
-to the lens that was last open. All three are answers about this machine rather
-than about the workspace, which is why they stay behind while the definitions
-travel: a second machine opens on its own theme, with no menu bar, and on no
-lens at all. A machine that has never pressed `M` writes no menu-bar key at all,
-and the absent key is what says the bar is hidden. The active-lens pointer is a
+dark/light theme choice, whether the Outliner draws its menu bar, whether it
+draws ambient advisories, and a pointer to the lens that was last open. All four
+are answers about this machine rather than about the workspace, which is why they
+stay behind while the definitions travel: a second machine opens on its own
+theme, with no menu bar, showing advisories, and on no lens at all. A machine
+that has never pressed `M` writes no menu-bar key at all, and the absent key is
+what says the bar is hidden; the advisory key works the same way, so its absence
+says advisories are shown. The active-lens pointer is a
 hint rather than a record: it is checked for shape alone when the file loads, so
 one naming a lens that is no longer there costs you a stale hint and never a
 failed launch.

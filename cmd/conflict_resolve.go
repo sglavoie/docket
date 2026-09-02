@@ -28,6 +28,11 @@ changed since the conflict was recorded, your resolution is re-merged against it
 and a fresh conflict is recorded if that re-merge cannot be resolved
 automatically.
 
+A bundle's stored documents were rendered at whatever task schema was live when
+the conflict was recorded, and a schema migration never rewrites them. When the
+current schema can no longer read them, local resolution refuses by name: adopt
+remote to clear the record, or supply your own merged file.
+
 When the conflict came from an aborted multi-artifact transaction, the bundle
 cannot safely replay only its project document. In that case local and file
 resolution fail closed: adopt remote to clear the record, then retry the original
@@ -65,6 +70,9 @@ func runConflictResolve(_ *cobra.Command, args []string) error {
 
 	result, err := storage.ResolveConflict(store, commit, id, resolution, conflictResolveFile)
 	if err != nil {
+		if errors.Is(err, storage.ErrConflictDocumentUnreadable) {
+			return fmt.Errorf("%w\nAdopt the current on-disk state with --use remote to clear this record, or hand-merge with --use file", err)
+		}
 		if errors.Is(err, storage.ErrConflictRetryRequired) {
 			return fmt.Errorf("cannot apply only the project document: adopt remote with --use remote, then retry the original operation: %w", err)
 		}

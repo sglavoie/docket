@@ -67,6 +67,7 @@ const (
 	operationCoreToggleTheme        OperationID = "tui.core.toggle-theme"
 	operationCoreToggleMenuBar      OperationID = "tui.core.toggle-menu-bar"
 	operationCoreOpenMenuBar        OperationID = "tui.core.open-menu-bar"
+	operationCoreToggleAdvisories   OperationID = "tui.core.toggle-advisories"
 	operationCoreUndo               OperationID = "tui.core.undo"
 	operationCoreRedo               OperationID = "tui.core.redo"
 	operationCoreBack               OperationID = "tui.core.back"
@@ -344,6 +345,11 @@ func coreInputOperationDescriptors() []OperationDescriptor {
 		// descriptors so `?` can name both honestly rather than one label having to
 		// mean "show, or open, depending on what is already true".
 		core(operationCoreOpenMenuBar, "Open Menu", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "open menu bar", "browse menus"),
+		// The second operation reached only from the menu bar. It is target-free
+		// like Clear All Folds, which is what lets it stay keyless: it acts on the
+		// session's chrome, never on a task or a project. `--no-advisories` is the
+		// other way in, so nothing here spends a root key on it.
+		core(operationCoreToggleAdvisories, "Toggle Advisories", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation, "conflict count", "hide warnings"),
 		core(operationCoreUndo, "Undo", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation),
 		core(operationCoreRedo, "Redo", OperationCategorySystem, TargetCardinalityNone, OperationRiskMutation),
 		core(operationCoreBack, "Back", OperationCategoryNavigation, TargetCardinalityNone, OperationRiskReadOnly),
@@ -710,6 +716,11 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		}
 	case operationCoreToggleMenuBar:
 		err = m.coreToggleMenuBar()
+		if err == nil {
+			message = commandMessage(defaultStatusTimeout())
+		}
+	case operationCoreToggleAdvisories:
+		err = m.coreToggleAdvisories()
 		if err == nil {
 			message = commandMessage(defaultStatusTimeout())
 		}

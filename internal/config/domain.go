@@ -547,8 +547,9 @@ func (p *PlanningState) RemoveProjectReferences(id, slug string) bool {
 }
 
 // MachineState contains the machine-local values retained by schema 6: the
-// dark/light theme, whether the Outliner draws its menu bar, the named Outliner
-// lens definitions, and the pointer to the live one. Lens definitions also have
+// dark/light theme, whether the Outliner draws its menu bar, whether it carries
+// ambient advisories, the named Outliner lens definitions, and the pointer to
+// the live one. Lens definitions also have
 // a portable home
 // (WorkspaceLensDefinitions); the copy here is the fallback a workspace that
 // defines none of its own still reads. Neither home enters a workspace
@@ -561,6 +562,11 @@ type MachineState struct {
 	// is why it carries omitempty and NewMachineState never seeds it: the bar
 	// starts hidden and a machine that has never pressed M writes no key at all.
 	MenuBarVisible bool `json:"menu_bar_visible,omitempty"`
+	// AdvisoriesHidden records whether the Outliner suppresses ambient advisories
+	// — the outstanding-conflict count and the load-failure notices. It is chrome
+	// on the same terms as MenuBarVisible: machine-local, omitempty, never seeded,
+	// and the omitted key is the default, which is that advisories are shown.
+	AdvisoriesHidden bool `json:"advisories_hidden,omitempty"`
 	// NamedLenses carries no omitempty: an explicit empty array is the durable
 	// record of "every lens was deleted", and omitting the key instead would
 	// reseed the starters on the next load.

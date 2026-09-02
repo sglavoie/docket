@@ -66,6 +66,10 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 // footer. It is pure: the height reservation and the strip itself must measure
 // the same string.
 //
+// The indicator is an ambient advisory, so it is gated by advisoryLine: hiding
+// it drops the row it reserved too, because the reservation measures this same
+// body.
+//
 // The indicator leads because it is the one durable line here — it stands until
 // the CLI resolves the last bundle, while the lines below it come and go — so a
 // transient line arriving never shifts it to another row. The readout sits last
@@ -74,7 +78,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 func (m *OutlinerModel) statusStripBody(width int) string {
 	width = max(width, 1)
 	lines := make([]string, 0, 4)
-	if indicator := m.conflictIndicator(); indicator != "" {
+	if indicator := m.advisoryLine(m.conflictIndicator()); indicator != "" {
 		lines = append(lines, PreviewWarningStyle.Width(width).Render(indicator))
 	}
 	if m.focusNotice != "" {

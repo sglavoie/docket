@@ -15,6 +15,11 @@ import (
 )
 
 var noColor bool
+
+// noAdvisories belongs to the root command alone: it configures the interactive
+// TUI, and no maintenance subcommand renders a status strip.
+var noAdvisories bool
+
 var closeLogging = logging.Close
 
 var dataDir string
@@ -120,6 +125,7 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&dataDir, "data-dir", "", fmt.Sprintf("workspace data directory (env %s; default: %s)", ttenv.DataDirEnvVar, defaultDataDirDisplay))
 	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "disable color output")
+	rootCmd.Flags().BoolVar(&noAdvisories, "no-advisories", false, "hide ambient advisory rows in the TUI (conflict count, load failures)")
 	rootCmd.Flags().Bool("version", false, "show version information")
 }
 
@@ -173,7 +179,10 @@ func runRoot(cmd *cobra.Command, args []string) error {
 
 	version, _, _ := resolveBuildInfo()
 	tui.AppVersion = version
-	return tui.RunApp(workspace.Runtime, workspace.Manager, tui.RunOptions{DisableColor: noColor})
+	return tui.RunApp(workspace.Runtime, workspace.Manager, tui.RunOptions{
+		DisableColor:   noColor,
+		HideAdvisories: noAdvisories,
+	})
 }
 
 func printVersion() {

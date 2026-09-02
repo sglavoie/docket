@@ -141,7 +141,7 @@ func (m *OutlinerModel) resolvedMenuBar() []resolvedMenu {
 		m.operationRegistry,
 		strategy,
 		m.operationCommandContext(),
-		outlinerMenuSpecs(m.primaryMode, m.menuBarVisible()),
+		outlinerMenuSpecs(m.primaryMode, m.menuBarVisible(), !m.advisoriesSuppressed()),
 	)
 	if err != nil {
 		// Startup already refused a spec naming an operation the registry does not

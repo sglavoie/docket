@@ -243,8 +243,9 @@ func (m *AppModel) wireSecondaryCoordinators(view View) {
 
 // wireOutlinerOperationExecutor injects the shell seams an Outliner cannot build
 // for itself: the operation registry it projects keys and help from, the
-// machine-local write that remembers which lens is live, and the workspace
-// conflict count its status strip reports.
+// machine-local write that remembers which lens is live, the workspace conflict
+// count its status strip reports, and whether that strip carries ambient
+// advisories at all.
 func (m *AppModel) wireOutlinerOperationExecutor(outliner *OutlinerModel) {
 	if outliner == nil {
 		return
@@ -252,6 +253,7 @@ func (m *AppModel) wireOutlinerOperationExecutor(outliner *OutlinerModel) {
 	outliner.operationRegistry = m.operationRegistry
 	outliner.persistActiveLens = m.commitActiveLensPointer
 	outliner.setOutstandingConflicts(m.outstandingConflictCount)
+	outliner.setAdvisoriesHidden(m.advisoriesHidden)
 }
 
 func (m *AppModel) showView(viewType PresentationID, view View) {

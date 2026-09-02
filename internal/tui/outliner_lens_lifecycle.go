@@ -330,18 +330,9 @@ func (m *OutlinerModel) handleLensProjectsLoaded(msg lensProjectsLoadedMsg) (tea
 	} else {
 		m.publishLens(pending.lens, pending.state, msg.projects, pending.origin)
 	}
-	if len(msg.failedLoads) == 0 {
-		return nil, true
-	}
 	// A partial load is publishable: the lens holds the projects that read, and
 	// the ones that did not are reported the way every other load reports them.
-	count := len(msg.failedLoads)
-	noun := "project"
-	if count > 1 {
-		noun = "projects"
-	}
-	warning := fmt.Sprintf("%d %s failed to load: %s", count, noun, msg.failedLoads[0].Detail)
-	return func() tea.Msg { return InfoStatusMsg(warning) }, true
+	return m.loadFailureAdvisory(msg.failedLoads), true
 }
 
 // finishLensScopeExit installs the population the live lens's project facets

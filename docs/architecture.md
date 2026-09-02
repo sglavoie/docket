@@ -516,6 +516,31 @@ nothing, so there is no application-layer policy for a port to hold. A nil
 accessor is inert, which is what keeps the Hub's preview painter and
 struct-literal test models indicator-free. Resolution stays in the CLI.
 
+`internal/tui/advisories.go` is the opt-out that count answers to, and it is
+deliberately a category rather than a switch on one line. An advisory is ambient
+workspace state — on screen because of what the workspace holds, not because of a
+key just pressed — and today the category has exactly two members: the conflict
+indicator and the `N projects failed to load` notice both loads emit. Each routes
+through `advisoryLine` (a strip row) or `advisoryStatus` (a status message), and
+that is the whole rule: a later ambient row inherits `--no-advisories` and the
+View menu's toggle by using those helpers, with nothing to edit in the gate
+itself. `advisoryLine` returning the empty string is what makes the row's height
+reservation follow for free, since `statusStripHeight` measures the same body
+`statusStripBody` paints. Suppression is session state on the shell
+(`AppModel.hideAdvisories`, injected as `advisoriesHiddenAccessor` by
+`wireOutlinerOperationExecutor`) rather than a per-render read of the machine
+file, because two inputs decide it: `MachineState.AdvisoriesHidden`, read once in
+`NewAppModel`, and `RunOptions.HideAdvisories`, which `RunApp` turns into
+`WithHiddenAdvisories()` — a flag forcing hidden for one run and writing nothing.
+`operationCoreToggleAdvisories` writes both, mirroring `coreToggleMenuBar`, so
+toggling back after a flagged launch persists "shown": the state a user can see
+is the state that was saved. It is registered with `TargetCardinalityNone` and
+bound to no key at all, which is what lets it be menu-only without becoming an
+entity operation the one-path rule would refuse. Feedback from the user's own
+operations is not an advisory, nor is the query readout, nor the refusal that
+explains a population where every project failed to load — a silent empty screen
+is worse than a line a flag cannot reach.
+
 `ConflictBrowserModel` is that count's read-only companion, and it is an overlay
 on the lens picker's template rather than a surface: a `ListSurfaceModel` inside
 `renderOverlayBox`, one `AppModel` field, one arm in `handleActiveKeyOverlay`,
@@ -2997,6 +3022,22 @@ rechecks the current remote revision. A conflict from an aborted multi-artifact
 transaction may require adopting remote and retrying the original operation so
 all side effects are rebuilt together.
 
+A bundle's three documents are rendered by `WriteCurrent()` at the schema live
+when it was recorded, and no migration rewrites `.tt/conflicts/`, so a bundle
+that outlives a schema bump holds markdown the current parser refuses. That
+makes a stored document undecodable; it must not make the record unresolvable.
+`loadDocumentFile` therefore degrades a parse failure the way it already degrades
+a missing file — nil document, no error — and reports a reason on
+`ConflictBundle.BaseUnreadable` / `LocalUnreadable`, naming the stored schema
+marker when the file carries one. Metadata, `list`, `show`, the `gc` browser,
+`--use remote`, and `--use file` all read nothing from those documents and keep
+working. The two paths that do read one refuse with
+`ErrConflictDocumentUnreadable` and name the reason: `--use local`, and the
+re-merge against a newer remote, which cannot proceed without a base. Adopting
+remote is the only legal resolution for a retry-required bundle, so treating a
+parse failure as fatal for the whole bundle stranded exactly the record that
+needed clearing.
+
 ## Snapshot-first schema migration
 
 Workspace recovery reads the catalog payload schema before ordinary loading.
@@ -3215,7 +3256,10 @@ exported document is not a live view and naming archived work beats emitting a
 bare locator. Computed dependents are never exported: they are an artifact of
 what happened to be loaded, and freezing them into a document would state as
 durable something that is not. Global flags
-are `--data-dir` and `--no-color`. It has no task mutation or undo/redo command.
+are `--data-dir` and `--no-color`; `--no-advisories` is the launcher's own,
+declared on the root command rather than persistently, because it configures a
+TUI session and no maintenance command has ambient rows to hide. It has no task
+mutation or undo/redo command.
 
 There are no release artifacts. Distribution is `go install
 github.com/sglavoie/tt@latest` alone: no prebuilt binaries, no package-manager

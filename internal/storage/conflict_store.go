@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -69,6 +70,16 @@ type ConflictBundle struct {
 	Record ConflictRecord
 	Base   *ProjectDocument
 	Local  *ProjectDocument
+	// BaseUnreadable and LocalUnreadable name why a stored document could not be
+	// parsed at the current schema; empty means readable, or absent. A bundle is
+	// durable state whose documents were rendered at whatever schema was live the
+	// day it was recorded, and nothing migrates `.tt/conflicts/` when the schema
+	// advances. So an old bundle can become undecodable — but it must not become
+	// unresolvable: its metadata still reads, adopting remote still clears it, and
+	// a hand-merged file still commits. Only the resolutions that read a stored
+	// document refuse, and they refuse by name.
+	BaseUnreadable  string
+	LocalUnreadable string
 }
 
 // ConflictStore persists and enumerates conflict bundles under a single durable
@@ -176,21 +187,25 @@ func (s *ConflictStore) Load(id string) (*ConflictBundle, error) {
 		return nil, fmt.Errorf("resolving conflict directory: %w", err)
 	}
 
-	base, err := loadDocumentFile(filepath.Join(dir, conflictBaseFileName))
+	base, baseUnreadable, err := loadDocumentFile(filepath.Join(dir, conflictBaseFileName))
 	if err != nil {
 		return nil, fmt.Errorf("loading base document: %w", err)
 	}
-	local, err := loadDocumentFile(filepath.Join(dir, conflictLocalFileName))
+	local, localUnreadable, err := loadDocumentFile(filepath.Join(dir, conflictLocalFileName))
 	if err != nil {
 		return nil, fmt.Errorf("loading local document: %w", err)
 	}
-	remote, err := loadDocumentFile(filepath.Join(dir, conflictRemoteFileName))
-	if err != nil {
+	if _, _, err = loadDocumentFile(filepath.Join(dir, conflictRemoteFileName)); err != nil {
 		return nil, fmt.Errorf("loading remote document: %w", err)
 	}
-	_ = remote
 
-	return &ConflictBundle{Record: *record, Base: base, Local: local}, nil
+	return &ConflictBundle{
+		Record:          *record,
+		Base:            base,
+		Local:           local,
+		BaseUnreadable:  baseUnreadable,
+		LocalUnreadable: localUnreadable,
+	}, nil
 }
 
 // Delete removes a conflict's whole directory. It is a no-op when the conflict is
@@ -238,13 +253,48 @@ func documentMarkdown(doc *ProjectDocument) (string, error) {
 // loadDocumentFile reads and parses a stored document markdown file back into a
 // ProjectDocument. A missing file yields a nil document rather than an error, so
 // a partially-written bundle degrades instead of blocking resolution entirely.
-func loadDocumentFile(path string) (*ProjectDocument, error) {
+// A document that reads but does not parse degrades the same way, returning the
+// reason instead of an error: the bundle's metadata and its remote resolution
+// owe nothing to a document written at a retired schema.
+func loadDocumentFile(path string) (*ProjectDocument, string, error) {
 	content, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
-		return nil, nil
+		return nil, "", nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return ParseProjectDocument(string(content))
+	document, err := ParseProjectDocument(string(content))
+	if err != nil {
+		return nil, unreadableDocumentReason(string(content), err), nil
+	}
+	return document, "", nil
+}
+
+// unreadableDocumentReason explains a stored document the current parser refuses.
+// The schema marker is the useful half of the answer, so it leads when the file
+// carries one: a bundle recorded before a migration says so in one line, rather
+// than surfacing the parser's internal schema label. Anything else is corruption
+// and keeps the parser's own words.
+func unreadableDocumentReason(content string, parseErr error) string {
+	if match := schemaMarkerRegex.FindStringSubmatch(documentSchemaMarkerLine(content)); match != nil {
+		return fmt.Sprintf(
+			"stored document is schema %s, unreadable at schema %d (recorded before a schema migration)",
+			match[1], SchemaVersionV15,
+		)
+	}
+	return fmt.Sprintf("stored document does not parse: %v", parseErr)
+}
+
+// documentSchemaMarkerLine returns the first line that looks like a schema
+// marker, so the reason above can read a marker out of a document the strict
+// parser already rejected.
+func documentSchemaMarkerLine(content string) string {
+	for _, line := range strings.Split(strings.TrimPrefix(content, "\uFEFF"), "\n") {
+		line = strings.TrimSuffix(line, "\r")
+		if schemaMarkerRegex.MatchString(line) {
+			return line
+		}
+	}
+	return ""
 }

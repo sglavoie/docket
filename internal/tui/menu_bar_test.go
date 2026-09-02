@@ -45,7 +45,7 @@ func resolveOutlinerMenus(t *testing.T, app *AppModel, activeMode OutlinerModeID
 		app.GetOperationRegistry(),
 		strategy,
 		menuBarCommandContext(),
-		outlinerMenuSpecs(activeMode, false),
+		outlinerMenuSpecs(activeMode, false, true),
 	)
 	if err != nil {
 		t.Fatalf("resolve menus: %v", err)
@@ -88,7 +88,7 @@ func TestEveryMenuEntryNamesARegisteredOperation(t *testing.T) {
 	registry := parityAuditApp(t).GetOperationRegistry()
 
 	named := 0
-	for _, spec := range outlinerMenuSpecs(ModeAll, false) {
+	for _, spec := range outlinerMenuSpecs(ModeAll, false, true) {
 		for index, entry := range spec.Entries {
 			if entry.OperationID == "" {
 				if entry.Label != "" || entry.Checked != nil {
@@ -159,7 +159,7 @@ func TestMenuKeyHintsFollowTheStrategy(t *testing.T) {
 		app.GetOperationRegistry(),
 		strategy,
 		menuBarCommandContext(),
-		outlinerMenuSpecs(ModeAll, false),
+		outlinerMenuSpecs(ModeAll, false, true),
 	)
 	if err != nil {
 		t.Fatalf("resolve menus: %v", err)
@@ -266,7 +266,7 @@ func TestAMenuOnlyOperationIsNeverAnEntityOperation(t *testing.T) {
 	}
 
 	menuOnly := make([]OperationID, 0, 1)
-	for _, spec := range outlinerMenuSpecs(ModeAll, false) {
+	for _, spec := range outlinerMenuSpecs(ModeAll, false, true) {
 		for _, entry := range spec.Entries {
 			if entry.OperationID == "" || bound[entry.OperationID] {
 				continue

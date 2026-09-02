@@ -134,7 +134,7 @@ func TestRenderMenuBarRowMarksOnlyTheOpenMenu(t *testing.T) {
 func TestViewMenuBarRowCarriesLiveVisibility(t *testing.T) {
 	for _, visible := range []bool{false, true} {
 		var found bool
-		for _, entry := range viewMenuEntries(ModeAll, visible) {
+		for _, entry := range viewMenuEntries(ModeAll, visible, true) {
 			if entry.OperationID != operationCoreToggleMenuBar {
 				continue
 			}

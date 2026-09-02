@@ -432,7 +432,23 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// cannot state it — it never sees the bar — and the bar's own specs cannot,
 	// because the defect it prevents is a descriptor that looks locally reasonable
 	// in core_input_operations.go and only becomes wrong when a menu row names it.
-	const budget = 27700
+	// That raise is spent as well, and this one buys two rules that are both
+	// categories rather than features, which is the only kind of prose this file
+	// has ever paid for. The first is the advisory gate. A contributor adding the
+	// next ambient row — a sync warning, a quota line — will reach for the strip
+	// directly, and the row will then be unhideable while `--no-advisories`
+	// silently claims to cover it. So the rule names the category, names the two
+	// members, and forbids gating at the render site, because the plausible local
+	// fix (an `if hidden` beside the paint) is exactly what breaks the single
+	// `statusStripHeight` measurement the strip's whole height contract rests on.
+	// The second is conflict-bundle decay: `.tt/conflicts/` is portable and
+	// unmigrated, so a bundle outlives its schema, and the default instinct — a
+	// document that will not parse is a fatal error — is what stranded a real
+	// record where adopting remote was the only legal resolution. "Undecodable is
+	// allowed, unresolvable is not" is a rule about which paths may read a stored
+	// document, and neither the merge code nor the store can state it, since both
+	// are what a contributor is about to change.
+	const budget = 28772
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)

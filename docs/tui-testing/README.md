@@ -282,6 +282,7 @@ The committed suite exercises the product contracts directly:
 | Integrated title, guidance, and terminal-size matrix | `presentation-size-matrix.json` |
 | Workspace-pulse composition and transient-overlay ownership | `workspace-pulse-presentation-grammar.json` |
 | Shell-pinned status strip, its wrap at narrow width, and its clear on a mode change | `outliner-status-strip.json` |
+| The ambient-advisory opt-out: the keyless `View → Advisories` row and its checkbox, the conflict count going absent rather than dim, and the choice surviving a relaunch | `advisories-menu-toggle.json` |
 | Projects, Notes, forms, task tools, Help, and transient overlays | `presentation-size-matrix.json`, `presentation-surfaces.json`, `rich-tools.json` |
 | Correlated undo and relocation-origin feedback | `recovery-origin-guidance.json`, `project-park-confirm-and-recover.json` |
 | Nested Focus, bounded search, Esc priority, modes, filters, reload, and external-change recovery | `outliner-focus-esc-priority.json`, `outliner_focus_test.go`, `filter_facets_projection_test.go` |

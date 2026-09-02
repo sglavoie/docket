@@ -58,7 +58,9 @@ exists. The View menu's **Clear All Folds** is the first of those: `s`, `p`, and
 `t` each toggle one fold axis and each reverses, so opening a tree that is folded
 in three different ways takes three presses that may each go the wrong way, while
 this opens all of them once and never folds anything. It says `All folds cleared`
-or `Nothing is folded`, since the dropdown closes over the rows it changed. An
+or `Nothing is folded`, since the dropdown closes over the rows it changed.
+**Advisories** is the other, ticked while advisories are shown; it is described
+with the status strip below. An
 operation reachable only this way never touches a task or a project — it acts on
 the view or on nothing at all — so the bar can stay off by default without hiding
 anything that edits your work.
@@ -103,6 +105,18 @@ names `tt conflict list`. It is workspace state rather than a message, so it
 neither expires nor clears on a mode change; it leads the transient lines so
 they cannot shift it, and it disappears only once the last bundle is resolved.
 See [`storage.md`](storage.md) for what a bundle is and how to resolve one.
+
+That indicator is an *advisory*: a line the workspace puts on screen because of
+what it holds, not because of a key you pressed. The launch-time
+`N projects failed to load` notice is the other one. Advisories can be turned
+off, together: launch with `tt --no-advisories` for one session, or tick
+`View → Advisories` off to make the choice stick on this machine. A hidden
+advisory is absent rather than dimmed, and the row it occupied goes back to the
+task list. Nothing else goes quiet — feedback from your own operations, the `Q`
+readout, and the message that explains a workspace where *every* project failed
+to load all still speak, because none of them is ambient. The conflicts
+themselves are untouched: hiding the count resolves nothing, and `gc` and
+`tt conflict list` still find every bundle.
 
 The strip is also where `Q` expands the narrowing readout: one numbered row per
 narrowing the view is under, with the conflict indicator keeping the lead above

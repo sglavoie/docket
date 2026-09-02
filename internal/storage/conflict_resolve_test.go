@@ -221,6 +221,92 @@ func TestResolveConflict_UseFileRejectsInvalid(t *testing.T) {
 	}
 }
 
+// retireBundleDocuments rewrites a recorded bundle's three markdown files as
+// schema-2 documents, reproducing a bundle recorded before the migration chain
+// that made the current parser strict. Nothing migrates `.tt/conflicts/`, so this
+// is exactly the state an old bundle reaches on its own.
+func retireBundleDocuments(t *testing.T, env conflictTestEnv, id string) {
+	t.Helper()
+	retired := "# Alpha\n\n<!-- tt-schema: 2 -->\n\n## Task: base title\n\n- state: backlog\n"
+	for _, name := range []string{conflictBaseFileName, conflictLocalFileName, conflictRemoteFileName} {
+		path := filepath.Join(env.store.Dir(), id, name)
+		if err := os.WriteFile(path, []byte(retired), 0o600); err != nil {
+			t.Fatalf("rewriting %s: %v", name, err)
+		}
+	}
+}
+
+// TestConflictStore_LoadDegradesUnreadableDocuments verifies a bundle whose
+// documents outlived their schema still loads: metadata reads, the documents come
+// back nil, and each unreadable one names the schema that wrote it.
+func TestConflictStore_LoadDegradesUnreadableDocuments(t *testing.T) {
+	env := newConflictTestEnv(t)
+	id, _, _ := recordTitleConflict(t, env)
+	retireBundleDocuments(t, env, id)
+
+	bundle, err := env.store.Load(id)
+	if err != nil {
+		t.Fatalf("Load must not fail on an unreadable document: %v", err)
+	}
+	if bundle.Record.ID != id || len(bundle.Record.Conflicts) == 0 {
+		t.Fatalf("metadata lost: %+v", bundle.Record)
+	}
+	if bundle.Base != nil || bundle.Local != nil {
+		t.Fatalf("unreadable documents must degrade to nil, got base=%v local=%v", bundle.Base, bundle.Local)
+	}
+	for label, reason := range map[string]string{"base": bundle.BaseUnreadable, "local": bundle.LocalUnreadable} {
+		if !strings.Contains(reason, "schema 2") {
+			t.Fatalf("%s reason = %q, want it to name schema 2", label, reason)
+		}
+	}
+}
+
+// TestResolveConflict_UnreadableLocalRefusesByName verifies adopting local refuses
+// with ErrConflictDocumentUnreadable naming the schema, and leaves the bundle and
+// the on-disk document alone.
+func TestResolveConflict_UnreadableLocalRefusesByName(t *testing.T) {
+	env := newConflictTestEnv(t)
+	id, _, _ := recordTitleConflict(t, env)
+	retireBundleDocuments(t, env, id)
+
+	_, err := ResolveConflict(env.store, env.svc, id, ResolveUseLocal, "")
+	if !errors.Is(err, ErrConflictDocumentUnreadable) {
+		t.Fatalf("err = %v, want ErrConflictDocumentUnreadable", err)
+	}
+	if !strings.Contains(err.Error(), "schema 2") {
+		t.Fatalf("refusal must name the stored schema: %v", err)
+	}
+	if got := env.onDiskDoc(t); got.Tasks[0].Title != "remote title" {
+		t.Fatalf("refused resolution wrote %q to disk", got.Tasks[0].Title)
+	}
+	if records, _ := env.store.List(); len(records) != 1 {
+		t.Fatalf("refused resolution must leave the bundle intact, %d remain", len(records))
+	}
+}
+
+// TestResolveConflict_UnreadableBundleAdoptsRemote verifies the resolution that
+// reads no stored document still clears an ancient bundle. That path is the only
+// legal one for a retry-required bundle, so blocking it stranded the record.
+func TestResolveConflict_UnreadableBundleAdoptsRemote(t *testing.T) {
+	env := newConflictTestEnv(t)
+	id, _, remote := recordTitleConflict(t, env)
+	retireBundleDocuments(t, env, id)
+
+	res, err := ResolveConflict(env.store, env.svc, id, ResolveUseRemote, "")
+	if err != nil {
+		t.Fatalf("ResolveConflict(remote): %v", err)
+	}
+	if res.Committed {
+		t.Fatal("adopting remote should not commit")
+	}
+	if got := env.onDiskDoc(t); got.Revision != remote.Revision {
+		t.Fatalf("on-disk revision changed to %q, want %q", got.Revision, remote.Revision)
+	}
+	if records, _ := env.store.List(); len(records) != 0 {
+		t.Fatalf("adopting remote should clear the bundle, %d remain", len(records))
+	}
+}
+
 // TestResolveConflict_RemoteAdvancedRemergeClean verifies that when the remote
 // advanced since the conflict was recorded, a local resolution is re-merged
 // against the newer remote and commits when the re-merge is clean.

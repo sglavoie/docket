@@ -41,6 +41,14 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 		todayIDs:          make(map[TaskIdentity]bool),
 	}
 
+	// The machine-local advisory setting is read before the options run, so
+	// WithHiddenAdvisories (the `--no-advisories` flag) can only ever hide: a
+	// per-launch flag suppresses chrome for one run, it never re-enables what the
+	// machine file turned off.
+	if machine := runtime.Machine(); machine != nil {
+		app.hideAdvisories = machine.AdvisoriesHidden
+	}
+
 	// Apply functional options
 	for _, opt := range opts {
 		opt(app)

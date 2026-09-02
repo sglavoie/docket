@@ -68,11 +68,11 @@ func menuSeparator() menuEntrySpec { return menuEntrySpec{} }
 // entry names a registered operation identifier rather than a string literal,
 // which is what lets the parity test hold the whole bar to the catalog.
 //
-// activeMode and menuBarVisible are the live states the View menu's rows show.
-// They are passed in rather than read from a model so the specification stays
-// pure data: a menu row can describe live state, but it cannot reach back into
-// the Outliner to find it.
-func outlinerMenuSpecs(activeMode OutlinerModeID, menuBarVisible bool) []menuSpec {
+// activeMode, menuBarVisible, and advisoriesVisible are the live states the View
+// menu's rows show. They are passed in rather than read from a model so the
+// specification stays pure data: a menu row can describe live state, but it
+// cannot reach back into the Outliner to find it.
+func outlinerMenuSpecs(activeMode OutlinerModeID, menuBarVisible, advisoriesVisible bool) []menuSpec {
 	return []menuSpec{
 		{
 			ID:    menuIDTask,
@@ -97,7 +97,7 @@ func outlinerMenuSpecs(activeMode OutlinerModeID, menuBarVisible bool) []menuSpe
 		{
 			ID:      menuIDView,
 			Title:   "View",
-			Entries: viewMenuEntries(activeMode, menuBarVisible),
+			Entries: viewMenuEntries(activeMode, menuBarVisible, advisoriesVisible),
 		},
 		{
 			ID:    menuIDGo,
@@ -164,7 +164,7 @@ func outlinerMenuSpecs(activeMode OutlinerModeID, menuBarVisible bool) []menuSpe
 // drawn. A menu that can hide the surface it is opened from is unusual, but the
 // key that shows the bar is the one thing a user who found the bar by accident
 // cannot read off the bar itself, so it belongs here rather than only in `?`.
-func viewMenuEntries(activeMode OutlinerModeID, menuBarVisible bool) []menuEntrySpec {
+func viewMenuEntries(activeMode OutlinerModeID, menuBarVisible, advisoriesVisible bool) []menuEntrySpec {
 	entries := make([]menuEntrySpec, 0, len(outlinerModes)+13)
 	for _, mode := range outlinerModes {
 		checked := mode.ID == activeMode
@@ -197,6 +197,16 @@ func viewMenuEntries(activeMode OutlinerModeID, menuBarVisible bool) []menuEntry
 			OperationID: operationCoreToggleMenuBar,
 			Label:       "Menu Bar",
 			Checked:     &menuBarVisible,
+		},
+		// Advisories are chrome the way the bar and the theme are, and this row is
+		// the only way to reach the toggle from inside the app: it is bound to no
+		// key, exactly like Clear All Folds above. Checked means advisories are
+		// shown, so the box reads the same way Menu Bar's does — ticked is the thing
+		// being on screen.
+		menuEntrySpec{
+			OperationID: operationCoreToggleAdvisories,
+			Label:       "Advisories",
+			Checked:     &advisoriesVisible,
 		},
 	)
 }
@@ -313,7 +323,7 @@ func (m *AppModel) validateMenuBarSpecs() error {
 		m.operationRegistry,
 		strategy,
 		ctx,
-		outlinerMenuSpecs(ModeAll, false),
+		outlinerMenuSpecs(ModeAll, false, true),
 	)
 	if err != nil {
 		return err

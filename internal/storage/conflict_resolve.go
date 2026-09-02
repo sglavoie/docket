@@ -40,6 +40,13 @@ var (
 	// must adopt the current remote state to clear the bundle and retry the original
 	// operation so the application can rebuild one complete ChangeSet.
 	ErrConflictRetryRequired = errors.New("storage: conflict belongs to an aborted transaction; adopt remote and retry the original operation")
+	// ErrConflictDocumentUnreadable indicates that the stored document a
+	// resolution needs was written at a schema the current parser refuses, so it
+	// cannot be committed or re-merged. Nothing migrates a bundle's documents when
+	// the schema advances, which is why this is an expected outcome for an old
+	// bundle rather than corruption. The resolutions that read no stored document
+	// — adopting remote, committing a hand-merged file — stay available.
+	ErrConflictDocumentUnreadable = errors.New("storage: stored conflict document cannot be read at the current schema")
 )
 
 // ConflictResolveResult reports the outcome of resolving a persisted conflict.
@@ -192,6 +199,13 @@ func ResolveConflict(store *ConflictStore, commit *CommitService, id string, res
 	// If the remote moved since the conflict was recorded, fold the newer remote
 	// into the chosen resolution via a fresh three-way merge before committing.
 	if remoteAdvanced {
+		// The re-merge is a three-way merge, so it needs the recorded base. A base
+		// the current parser refuses leaves no honest way to fold in the newer
+		// remote, and committing the resolution as-is would silently discard it.
+		if bundle.Base == nil || bundle.BaseUnreadable != "" {
+			return nil, fmt.Errorf("%w: base document of conflict %s is required to re-merge against the newer remote: %s",
+				ErrConflictDocumentUnreadable, id, baseUnreadableDetail(bundle))
+		}
 		remerge, mergeErr := MergeProjectDocuments(bundle.Base, resolved, currentDoc)
 		if mergeErr != nil {
 			return nil, fmt.Errorf("re-merging against newer remote: %w", mergeErr)
@@ -238,6 +252,16 @@ func ResolveConflict(store *ConflictStore, commit *CommitService, id string, res
 	return result, nil
 }
 
+// baseUnreadableDetail names why the base document is unusable. A recorded
+// reason is the interesting case; an absent file is the degenerate one a
+// partially-written bundle produces.
+func baseUnreadableDetail(bundle *ConflictBundle) string {
+	if bundle.BaseUnreadable != "" {
+		return bundle.BaseUnreadable
+	}
+	return "no base document is stored"
+}
+
 // resolvedDocument produces the document a local/file resolution intends to
 // commit. For a file resolution it parses and validates the supplied merged file
 // before returning it, so a malformed or invariant-violating hand-merge is
@@ -245,6 +269,10 @@ func ResolveConflict(store *ConflictStore, commit *CommitService, id string, res
 func resolvedDocument(bundle *ConflictBundle, resolution ConflictResolution, mergedFilePath string) (*ProjectDocument, error) {
 	switch resolution {
 	case ResolveUseLocal:
+		if bundle.LocalUnreadable != "" {
+			return nil, fmt.Errorf("%w: local document of conflict %s: %s",
+				ErrConflictDocumentUnreadable, bundle.Record.ID, bundle.LocalUnreadable)
+		}
 		if bundle.Local == nil {
 			return nil, fmt.Errorf("conflict %s has no stored local document", bundle.Record.ID)
 		}
