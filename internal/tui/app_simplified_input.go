@@ -179,22 +179,3 @@ func (m *AppModel) pendingChordGuidance() (GuidanceSpec, bool) {
 	}
 	return pendingChordGuidanceSpec(strings.Join(m.pendingChord, ""), hints), true
 }
-
-func (m *OutlinerModel) simplifiedInlineControlOwnsInput() bool {
-	if m == nil {
-		return false
-	}
-	if m.IsSearchMode() ||
-		m.quickEdit.IsActive() ||
-		m.confirm.IsActive() ||
-		m.queryReadoutExpanded ||
-		// An open menu claims the key first even though most keys end up running
-		// their root operation anyway: it has to close before the accelerator
-		// fires, or the act would run under a dropdown still covering the rows it
-		// changed. handleMenuBarKey closes and re-emits, so the grammar sees the
-		// same key one update later with nothing owning input.
-		m.menuBarOpen {
-		return true
-	}
-	return false
-}

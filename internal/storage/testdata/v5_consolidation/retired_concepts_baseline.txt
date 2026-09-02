@@ -2,7 +2,7 @@
 # Columns: concept, production path, identifier, AST occurrence count.
 # Regenerate after reviewing ownership changes with:
 #   UPDATE_RETIRED_CONCEPT_BASELINE=1 go test ./internal/storage -run TestRetiredConceptInventoryBaseline
-# Total rows: 430
+# Total rows: 431
 custom-context	internal/config/legacy_v4_domains.go	CustomContexts	2
 custom-context	internal/config/legacy_v4_domains_convert.go	CustomContexts	5
 custom-context	internal/config/pre_consolidation_v6_snapshot_audit.go	customContexts	3
@@ -206,9 +206,10 @@ dependency	internal/tui/dependency_reference.go	dependencyRelationship	3
 dependency	internal/tui/dependency_reference.go	resolveDependencyReference	1
 dependency	internal/tui/feature_runtime.go	RuntimeDependencies	3
 dependency	internal/tui/filter_operations.go	ValueProviderFilterDependency	2
-dependency	internal/tui/filter_operations.go	dependencyFilterShortcutForToken	1
 dependency	internal/tui/filter_operations.go	filterQueryDependencyFields	1
-dependency	internal/tui/filter_operations.go	operationFilterDependency	3
+dependency	internal/tui/filter_operations.go	operationFilterDependency	2
+dependency	internal/tui/filter_operations_outliner.go	dependencyFilterShortcutForToken	1
+dependency	internal/tui/filter_operations_outliner.go	operationFilterDependency	1
 dependency	internal/tui/filter_pickers.go	ValueProviderFilterDependency	1
 dependency	internal/tui/filter_pickers.go	dependencyFilterShortcuts	1
 dependency	internal/tui/filter_pickers.go	newFilterDependencyPicker	1

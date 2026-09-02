@@ -20,20 +20,6 @@ type OperationExecutor struct {
 	history            *OperationHistory
 }
 
-func (m *AppModel) registerOperation(
-	descriptor OperationDescriptor,
-	binding OperationBinding,
-) error {
-	if m == nil || m.operationRegistry == nil || m.operationExecutor == nil {
-		return fmt.Errorf("operation registry and executor are required")
-	}
-	if err := m.operationRegistry.Register(descriptor); err != nil {
-		return err
-	}
-	binding.OperationID = descriptor.ID
-	return m.operationExecutor.Register(binding)
-}
-
 func NewOperationExecutor(registry *OperationRegistry) *OperationExecutor {
 	return &OperationExecutor{
 		registry:       registry,

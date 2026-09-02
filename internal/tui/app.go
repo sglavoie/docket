@@ -128,8 +128,8 @@ type AppModel struct {
 	outstandingConflicts int
 	// hideAdvisories suppresses every ambient advisory for this session: the
 	// conflict count and the load-failure notices alike. See advisories.go for
-	// what counts as one and how the machine-local setting and the
-	// `--no-advisories` flag both feed this value.
+	// what counts as one, and advisories_shell.go for how the machine-local
+	// setting and the `--no-advisories` flag both feed this value.
 	hideAdvisories bool
 
 	lastToggleUndoKind toggleUndoKind

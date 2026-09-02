@@ -30,26 +30,6 @@ const (
 	outlineBufferSuffix = ".md"
 )
 
-// cursorProject resolves the project the Outliner cursor sits inside, whatever
-// row kind it rests on. Task rows and project headers both name their project
-// directly; a scoped Outliner has only one project to name.
-func (m *OutlinerModel) cursorProject() *models.Project {
-	if m == nil {
-		return nil
-	}
-	if m.cursor >= 0 && m.cursor < len(m.rows) {
-		if projectID := m.rows[m.cursor].ProjectID; projectID != "" {
-			if m.project != nil && m.project.ID == projectID {
-				return m.project
-			}
-			if project := m.crossResolveProject(projectID); project != nil {
-				return project
-			}
-		}
-	}
-	return m.project
-}
-
 // outlineEditorRequest resolves what `O` would act on, or the refusal that stops
 // it. An empty refusal with a nil project means there is simply nothing under
 // the cursor to outline.

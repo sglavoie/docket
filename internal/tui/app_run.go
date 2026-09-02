@@ -21,7 +21,7 @@ var AppVersion = "dev"
 type RunOptions struct {
 	DisableColor bool
 	// HideAdvisories suppresses every ambient advisory for this run without
-	// touching the machine-local setting. See advisories.go.
+	// touching the machine-local setting. See advisories_shell.go.
 	HideAdvisories bool
 }
 
