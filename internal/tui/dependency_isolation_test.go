@@ -35,13 +35,16 @@ func TestDependencyIsolationPresentationVocabulary(t *testing.T) {
 	}
 	repositoryRoot := filepath.Clean(filepath.Join(filepath.Dir(testFile), "..", ".."))
 	allowedMigrationFiles := map[string]bool{
-		"internal/config/v5_migration_activation.go":        true,
-		"internal/config/v5_migration_plan.go":              true,
-		"internal/storage/format/legacy_v4_task_convert.go": true,
-		"internal/storage/format/v5_task_codec.go":          true,
-		"internal/storage/format/v6_task_convert.go":        true,
-		"internal/storage/legacy_v4_blocker.go":             true,
-		"internal/storage/v5_archive_reintegration.go":      true,
+		"internal/config/v5_migration_activation.go":           true,
+		"internal/config/v5_migration_plan.go":                 true,
+		"internal/storage/format/legacy_v4_task_convert.go":    true,
+		"internal/storage/format/v5_task_codec.go":             true,
+		"internal/storage/format/v5_task_validate.go":          true,
+		"internal/storage/format/v6_task_convert.go":           true,
+		"internal/storage/legacy_v4_blocker.go":                true,
+		"internal/storage/format/legacy_v4_metadata_decode.go": true,
+		"internal/storage/v5_archive_reintegration.go":         true,
+		"internal/storage/v5_archive_reintegration_refs.go":    true,
 	}
 	// Soft task references are a live product concept again, so the TUI may name
 	// dependencies; what stays retired is hard blocking. The inventory below is

@@ -20,7 +20,7 @@ const (
 )
 
 var rawProjectSaveAllowlist = map[string]string{
-	"cmd/doctor.go:fixIssues:storage.SaveProjectLocked(project)":                                 rawSaveDoctorRepair,
+	"cmd/doctor_tasks.go:fixIssues:storage.SaveProjectLocked(project)":                           rawSaveDoctorRepair,
 	"internal/tui/feature_runtime.go:(*tuiAppRepository).Commit:storage.SaveProject(cs.Project)": rawSaveAppTestRepo,
 }
 

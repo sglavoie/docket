@@ -15,7 +15,7 @@ import (
 // any level, so a neighboring or nested section can never lend this one a key
 // or a label it did not print itself.
 var checklistDocumentationSections = map[string]string{
-	"docs/guide/outliner.md":                "### Inline checklist rows",
+	"docs/guide/outliner-rows.md":           "## Inline checklist rows",
 	"docs/architecture/tui-architecture.md": "## TUI architecture",
 }
 

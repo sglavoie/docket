@@ -160,7 +160,7 @@ and the rare.
 
 `?` is always the honest answer: it is generated from the same operation
 descriptors that dispatch the keys, for whichever surface you are on.
-[`docs/guide/outliner.md`](docs/guide/outliner.md) has the full table.
+[`docs/guide/outliner-keys.md`](docs/guide/outliner-keys.md) has the full table.
 
 ## Maintenance CLI
 
@@ -182,8 +182,9 @@ per-command syntax.
 Behavior lives in [`docs/guide/`](docs/guide/README.md), written to be looked
 things up in rather than read straight through:
 
-- [`docs/guide/outliner.md`](docs/guide/outliner.md) — presentation grammar, the
-  full key table, task actions, row indicators, checklists, Peek, multi-select.
+- [`docs/guide/outliner.md`](docs/guide/outliner.md) — the index to the four
+  Outliner files: the modes, the chrome around the list, the full key table and
+  task actions, and row indicators, checklists, Peek, and multi-select.
 - [`docs/guide/capture.md`](docs/guide/capture.md) — every capture and edit
   sigil, the workflow and hierarchy rules, and the `O` outline buffer.
 - [`docs/guide/search-and-lenses.md`](docs/guide/search-and-lenses.md) — the `f`

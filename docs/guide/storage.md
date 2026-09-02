@@ -48,7 +48,7 @@ recounted at launch and once a minute, so a conflict another machine recorded
 while you were working appears on its own, and the line disappears once the last
 bundle is resolved. `gc` opens a read-only overlay over the same store, listing
 the recorded bundles and showing one in the form `tt conflict show` prints; see
-[`outliner.md`](outliner.md). Resolving stays in the CLI. The count can be hidden
+[`outliner-chrome.md`](outliner-chrome.md). Resolving stays in the CLI. The count can be hidden
 with `tt --no-advisories` or `View → Advisories`, which changes nothing about the
 bundles themselves.
 

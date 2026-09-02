@@ -25,8 +25,12 @@ func TestRecurrenceVocabularyIsConfinedToMigrationAndRejectedInput(t *testing.T)
 		"internal/storage/format/legacy_v4_task.go":              "schema-4 migration reader",
 		"internal/storage/format/legacy_v4_task_convert.go":      "schema-4 to schema-5 migration",
 		"internal/storage/format/v5_task_codec.go":               "schema-5 migration codec",
+		"internal/storage/format/v5_task_fields.go":              "schema-5 migration codec",
+		"internal/storage/format/v5_task_validate.go":            "schema-5 migration codec",
 		"internal/storage/format/v6_task_convert.go":             "schema-5 to schema-6 migration",
+		"internal/storage/format/legacy_v4_metadata_decode.go":   "schema-4 to schema-5 migration",
 		"internal/storage/v5_archive_reintegration.go":           "schema-5 migration reintegration",
+		"internal/storage/v5_archive_reintegration_refs.go":      "schema-5 migration reintegration",
 	}
 
 	fset := token.NewFileSet()

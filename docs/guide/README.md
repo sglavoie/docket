@@ -6,7 +6,11 @@ door. Mechanism lives in [`../architecture.md`](../architecture.md).
 
 | Guide | Covers |
 | --- | --- |
-| [`outliner.md`](outliner.md) | Presentation grammar, the key table, task actions, row indicators, checklists, Peek, and multi-select |
+| [`outliner.md`](outliner.md) | The index to the four Outliner files below |
+| [`outliner-modes.md`](outliner-modes.md) | The seven modes, their order, project grouping, Recent, and the jumps between modes |
+| [`outliner-chrome.md`](outliner-chrome.md) | The title row, menu bar, guidance, status strip and advisories, conflict browser, cursor mark, and tag colors |
+| [`outliner-keys.md`](outliner-keys.md) | The key table, the pickers those keys open, the `Space` action sheets, and the edit surfaces |
+| [`outliner-rows.md`](outliner-rows.md) | Row indicators and their drop order, checklists, Peek, and multi-select |
 | [`capture.md`](capture.md) | Every capture and edit sigil, the workflow and hierarchy rules, and the `O` outline buffer |
 | [`search-and-lenses.md`](search-and-lenses.md) | The `f` row facets, the `F` population facets, slash search, named lenses, and the `o` sort axis |
 | [`projects-and-notes.md`](projects-and-notes.md) | Project scope, Select Project, project tags including `parked`, and All Notes |

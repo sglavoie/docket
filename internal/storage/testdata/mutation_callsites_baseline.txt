@@ -2,5 +2,5 @@
 # Do not edit by hand. Regenerate with:
 #   UPDATE_MUTATION_BASELINE=1 go test ./internal/storage/ -run TestMutationCallsiteInventoryBaseline
 # Total callsites: 2
-cmd/doctor.go:fixIssues:storage.SaveProjectLocked(project)
+cmd/doctor_tasks.go:fixIssues:storage.SaveProjectLocked(project)
 internal/tui/feature_runtime.go:(*tuiAppRepository).Commit:storage.SaveProject(cs.Project)

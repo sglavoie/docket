@@ -519,9 +519,9 @@ Guessable addresses are omitted; do not restore them.
 
 | Topic | `docs/guide/` | `docs/architecture/` |
 | --- | --- | --- |
-| Modes, key table, grouping, checklist, Recent | `outliner.md` | `tui-architecture` |
-| Pinned, Review, title fitter, guidance, status strip, footer flash | `outliner.md` | `presentation-chrome`; `row-indicators` |
-| Defer, waiting, check-back, drop ladder | `outliner.md` | `row-indicators` |
-| Registry, executor, providers, chaining | `outliner.md` | `operation-grammar` |
-| Filters, search, jumps, Focus, Peek, selection, `Ctrl+T` | `search-and-lenses.md`; `outliner.md` | `search-filters-and-sorting`; `selection-and-project-tags` |
+| Modes, grouping, Pinned, Review | `outliner-modes.md` | `tui-architecture` |
+| Title fitter, guidance, status strip, footer flash | `outliner-chrome.md` | `presentation-chrome`; `row-indicators` |
+| Defer, waiting, check-back, drop ladder, checklist | `outliner-rows.md` | `row-indicators` |
+| Keys, registry, executor, providers | `outliner-keys.md` | `operation-grammar` |
+| Filters, search, Focus, Peek, selection, `Ctrl+T` | `search-and-lenses.md`; `outliner-rows.md` | `search-filters-and-sorting`; `selection-and-project-tags` |
 | Storage layout, migration chain | `storage.md` | `persistence-and-transactions`; `migration` |

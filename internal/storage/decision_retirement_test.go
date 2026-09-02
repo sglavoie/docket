@@ -192,8 +192,13 @@ func TestDecisionRetirementBackendInventory(t *testing.T) {
 		"internal/storage/format/legacy_v4_task.go":                  true,
 		"internal/storage/format/legacy_v4_task_convert.go":          true,
 		"internal/storage/format/v5_task_codec.go":                   true,
+		"internal/storage/format/v5_task_body.go":                    true,
+		"internal/storage/format/v5_task_fields.go":                  true,
+		"internal/storage/format/v5_task_validate.go":                true,
 		"internal/storage/format/v6_task_convert.go":                 true,
+		"internal/storage/format/legacy_v4_metadata_decode.go":       true,
 		"internal/storage/v5_archive_reintegration.go":               true,
+		"internal/storage/v5_archive_reintegration_refs.go":          true,
 	}
 	scanRoots := []string{"cmd", "internal/app", "internal/config", "internal/models", "internal/storage", "internal/workspace"}
 

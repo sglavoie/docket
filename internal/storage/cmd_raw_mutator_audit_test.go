@@ -23,7 +23,7 @@ import (
 const cmdSaveInfra = "infra: privileged repair/restore or test-repository adapter path below the app layer"
 
 var cmdLegacySaveAllowlist = map[string]string{
-	"cmd/doctor.go:fixIssues:storage.SaveProjectLocked(project)": cmdSaveInfra,
+	"cmd/doctor_tasks.go:fixIssues:storage.SaveProjectLocked(project)": cmdSaveInfra,
 }
 
 func TestCmdCommandsDoNotUseLegacyProjectSave(t *testing.T) {

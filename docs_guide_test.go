@@ -355,7 +355,7 @@ func TestGuideFilesCarryRequiredHeadings(t *testing.T) {
 		file    string
 		heading string
 	}{
-		{file: "docs/guide/outliner.md", heading: "### Inline checklist rows"},
+		{file: "docs/guide/outliner-rows.md", heading: "## Inline checklist rows"},
 		{file: "docs/guide/search-and-lenses.md", heading: "### Named lenses"},
 		{file: "docs/guide/projects-and-notes.md", heading: "### Project tags"},
 		{file: "docs/guide/projects-and-notes.md", heading: "### All Notes"},
