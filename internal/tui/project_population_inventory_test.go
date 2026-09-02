@@ -6,6 +6,7 @@ import (
 	"go/token"
 	"io/fs"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -153,10 +154,14 @@ func TestProjectPopulationCallersAreClassified(t *testing.T) {
 	}
 }
 
-// repositoryRootForInventory resolves the repository root from this package's
-// own source path. It finds go.mod rather than counting two directories up, so
-// the inventory's repo-relative keys stay correct at any package depth.
+// repositoryRootForInventory resolves the repository root from this file's own
+// source path. It finds go.mod rather than counting two directories up, so the
+// inventory's repo-relative keys stay correct at any package depth.
 func repositoryRootForInventory(t *testing.T) string {
 	t.Helper()
-	return tuiRepositoryRoot(t)
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("locate the project population inventory")
+	}
+	return tuiRepositoryRootFrom(t, thisFile)
 }

@@ -5,6 +5,7 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -104,11 +105,18 @@ func TestSoleTUIFoundations(t *testing.T) {
 		"cross_project_outliner_mutations_status.go": true,
 	}
 
+	// This audit anchors on its own source path, so it keeps auditing the whole
+	// internal/tui subtree from whatever package depth this file ends up at.
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("locate the foundation invariants audit")
+	}
+
 	fset := token.NewFileSet()
 	appOutlinerFields := 0
 	// The whole internal/tui subtree is one foundation: a retired file or a
 	// second definition of a required type is just as wrong one package down.
-	err := walkTUIProductionSources(t, func(path, relative string, entry fs.DirEntry) error {
+	err := walkTUIProductionSourcesFrom(t, thisFile, func(path, relative string, entry fs.DirEntry) error {
 		name := entry.Name()
 		if forbiddenFiles[name] ||
 			strings.Contains(name, "quick_picker") ||

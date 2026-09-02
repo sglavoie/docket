@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"regexp"
+	"runtime"
 	"strconv"
 	"testing"
 )
@@ -26,8 +27,15 @@ var retiredPresentationCopy = []struct {
 // raw key-hint punctuation from returning to user-visible production strings.
 // Identifiers and comments are intentionally outside this copy-only audit.
 func TestProductionPresentationCopyUsesFinalGrammar(t *testing.T) {
+	// Anchored on this file's own source path so the audit covers the whole
+	// internal/tui subtree from whatever package depth it ends up at.
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("locate the presentation terminology audit")
+	}
+
 	fset := token.NewFileSet()
-	err := walkTUIProductionSources(t, func(path, relative string, _ fs.DirEntry) error {
+	err := walkTUIProductionSourcesFrom(t, thisFile, func(path, relative string, _ fs.DirEntry) error {
 		source, readErr := os.ReadFile(path)
 		if readErr != nil {
 			return readErr

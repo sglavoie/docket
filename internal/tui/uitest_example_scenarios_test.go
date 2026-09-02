@@ -3,8 +3,21 @@ package tui
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
+
+// scenarioRepositoryRoot resolves the repository root from this file's own
+// source path, so both the committed corpus and a relative TT_TUI_SCENARIO are
+// found from whatever package depth this test ends up at.
+func scenarioRepositoryRoot(t *testing.T) string {
+	t.Helper()
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("locate the example scenario runner")
+	}
+	return tuiRepositoryRootFrom(t, thisFile)
+}
 
 // exampleScenariosDir is the committed set of agent-facing example scenarios
 // documented in docs/tui-testing/README.md. This test drives each of them end to
@@ -16,7 +29,7 @@ import (
 // wrong depth would not fail loudly: the glob would return nothing.
 func exampleScenariosDir(t *testing.T) string {
 	t.Helper()
-	return filepath.Join(tuiRepositoryRoot(t), "docs", "tui-testing", "scenarios")
+	return filepath.Join(scenarioRepositoryRoot(t), "docs", "tui-testing", "scenarios")
 }
 
 func TestCommittedScenarioInventoryCoversFinalProduct(t *testing.T) {
@@ -150,7 +163,7 @@ func TestExampleScenariosPass(t *testing.T) {
 	var paths []string
 	if selected := os.Getenv("TT_TUI_SCENARIO"); selected != "" {
 		if !filepath.IsAbs(selected) {
-			selected = filepath.Join(tuiRepositoryRoot(t), selected)
+			selected = filepath.Join(scenarioRepositoryRoot(t), selected)
 		}
 		paths = []string{filepath.Clean(selected)}
 	} else {

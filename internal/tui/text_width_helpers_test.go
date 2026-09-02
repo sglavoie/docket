@@ -3,6 +3,7 @@ package tui
 import (
 	"io/fs"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -22,9 +23,16 @@ const rawANSITruncateHelperFile = "text_width_helpers.go"
 // only safe while that filename is unique — asserted below.
 func TestNoRawANSITruncate(t *testing.T) {
 	const needle = "ansi.Truncate("
+	// Anchored on this file's own source path so the scan follows the subtree,
+	// not the working directory, at any package depth.
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("locate the raw ansi.Truncate audit")
+	}
+
 	var offenders []string
 	helperFiles := 0
-	err := walkTUIProductionSources(t, func(path, relative string, entry fs.DirEntry) error {
+	err := walkTUIProductionSourcesFrom(t, thisFile, func(path, relative string, entry fs.DirEntry) error {
 		if entry.Name() == rawANSITruncateHelperFile {
 			helperFiles++
 			return nil
