@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func operationTestDescriptor(id, label string) OperationDescriptor {
@@ -72,7 +74,7 @@ func TestOperationRegistryDetectsPredicateCollisionInActiveContext(t *testing.T)
 		t.Fatalf("Register inbox: %v", err)
 	}
 
-	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
+	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Entity.TaskID = "ready"
 	applicable, err := registry.ForContext(ctx)
 	if err != nil || len(applicable) != 1 || applicable[0].ID != ready.ID {

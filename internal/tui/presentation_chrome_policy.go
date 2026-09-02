@@ -1,5 +1,7 @@
 package tui
 
+import "github.com/sglavoie/tt/internal/tui/presentation"
+
 // presentationChromeKind identifies which layer owns persistent presentation
 // chrome. Full-screen presentations own the workspace pulse and their guidance;
 // transient selectors and pickers own only their local interaction guidance,
@@ -45,32 +47,32 @@ func (p presentationChromePolicy) valid() bool {
 // chromePolicyForPresentation is exhaustive over allPresentations. New
 // PresentationIDs must be classified here and in the policy test before they
 // can silently inherit workspace chrome.
-func chromePolicyForPresentation(view PresentationID) (presentationChromePolicy, bool) {
+func chromePolicyForPresentation(view presentation.PresentationID) (presentationChromePolicy, bool) {
 	var policy presentationChromePolicy
 	switch view {
-	case ViewProjectCreator,
-		ViewProjectEditor,
-		ViewHelp,
-		ViewTaskComments,
-		ViewTextEditor,
-		ViewTaskAttachments,
-		ViewNotes,
-		ViewGlobalNotes,
-		ViewProjectHub:
+	case presentation.ViewProjectCreator,
+		presentation.ViewProjectEditor,
+		presentation.ViewHelp,
+		presentation.ViewTaskComments,
+		presentation.ViewTextEditor,
+		presentation.ViewTaskAttachments,
+		presentation.ViewNotes,
+		presentation.ViewGlobalNotes,
+		presentation.ViewProjectHub:
 		policy = presentationChromePolicy{
 			kind:     presentationChromeFullscreen,
 			guidance: presentationGuidanceSurface,
 		}
-	case ViewCrossProjectOutliner,
-		ViewTaskComposer:
+	case presentation.ViewCrossProjectOutliner,
+		presentation.ViewTaskComposer:
 		policy = presentationChromePolicy{
 			kind:     presentationChromeFullscreen,
 			guidance: presentationGuidanceShell,
 		}
-	case ViewPriorityPicker,
-		ViewParentSelector,
-		ViewTagSelector,
-		ViewOutlineErrors:
+	case presentation.ViewPriorityPicker,
+		presentation.ViewParentSelector,
+		presentation.ViewTagSelector,
+		presentation.ViewOutlineErrors:
 		policy = presentationChromePolicy{
 			kind:     presentationChromeTransient,
 			guidance: presentationGuidanceOverlay,

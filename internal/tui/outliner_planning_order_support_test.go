@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // planningOrderProject seeds one on-disk project with the given StateBacklog tasks
@@ -91,7 +92,7 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 	}
 	cross.SetSize(120, 40)
 	m.crossOutliner = cross
-	m.views.Register(ViewCrossProjectOutliner, cross)
+	m.views.Register(presentation.ViewCrossProjectOutliner, cross)
 	if err := m.registerCoreInputOperations(); err != nil {
 		t.Fatalf("register core operations: %v", err)
 	}

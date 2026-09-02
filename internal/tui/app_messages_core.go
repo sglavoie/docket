@@ -4,6 +4,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // =============================================================================
@@ -70,7 +71,7 @@ func workspaceUndoCmd(redo bool) tea.Cmd {
 // and Seq identify the message generation, so an older tick can never dismiss a
 // newer message or a message belonging to a different view.
 type ViewStatusClearMsg struct {
-	View PresentationID
+	View presentation.PresentationID
 	Seq  uint64
 }
 
@@ -117,7 +118,7 @@ func defaultStatusTimeout() tea.Cmd {
 
 // viewStatusTimeout returns a command that clears one generation of a
 // view-owned status message after the default timeout.
-func viewStatusTimeout(view PresentationID, seq uint64) tea.Cmd {
+func viewStatusTimeout(view presentation.PresentationID, seq uint64) tea.Cmd {
 	return tickCmd(StatusUpdateTimeout, func(time.Time) tea.Msg {
 		return ViewStatusClearMsg{View: view, Seq: seq}
 	})

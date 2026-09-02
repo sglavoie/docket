@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func TestTUISetDueDateTodayMovesTaskToTodayAtomically(t *testing.T) {
@@ -126,7 +127,7 @@ func newPlanningLedgerApp(t *testing.T, state models.WorkflowState) (*AppModel, 
 		today:             []PlanningTask{},
 		todayIDs:          make(map[TaskIdentity]bool),
 	}
-	appModel.showView(ViewCrossProjectOutliner, &invariantQueueView{taskID: task.ID, project: project})
+	appModel.showView(presentation.ViewCrossProjectOutliner, &invariantQueueView{taskID: task.ID, project: project})
 	return appModel, repo, task, dataDir
 }
 

@@ -1,6 +1,9 @@
 package tui
 
-import tea "charm.land/bubbletea/v2"
+import (
+	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
+)
 
 // handleViewSupportMessages handles attachment views.
 func (m *AppModel) handleViewSupportMessages(msg tea.Msg) (bool, tea.Cmd) {
@@ -16,7 +19,7 @@ func (m *AppModel) handleViewSupportMessages(msg tea.Msg) (bool, tea.Cmd) {
 			m.secondaryFeatures.Attachment,
 		)
 		view.SetOperationDispatch(m.dispatchOperationKey)
-		return m.showViewInit(ViewTaskAttachments, view)
+		return m.showViewInit(presentation.ViewTaskAttachments, view)
 	}
 
 	return false, nil

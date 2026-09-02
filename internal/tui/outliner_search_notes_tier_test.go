@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // TestNoteRowDropsItsCueThenItsOwnerAsWidthFalls holds the note row to the task
@@ -147,7 +148,7 @@ func noteTierFixtureApp(t *testing.T) (*AppModel, NoteRowIdentity) {
 func TestOpenNoteIsTheFourthEnterActOnANoteRow(t *testing.T) {
 	model, identity := noteTierFixtureApp(t)
 	ctx := model.operationCommandContext()
-	ctx.View = ViewCrossProjectOutliner
+	ctx.View = presentation.ViewCrossProjectOutliner
 	if !ctx.Entity.HasNoteCursor {
 		t.Fatal("a note-row cursor did not report HasNoteCursor")
 	}
@@ -196,7 +197,7 @@ func TestOpenNoteIsTheFourthEnterActOnANoteRow(t *testing.T) {
 	// from advertising it over the ordinary projection.
 	model.crossOutliner.ClearSearch()
 	plain := model.operationCommandContext()
-	plain.View = ViewCrossProjectOutliner
+	plain.View = presentation.ViewCrossProjectOutliner
 	if plain.Entity.HasNoteCursor {
 		t.Fatal("a cleared search still reported a note cursor")
 	}

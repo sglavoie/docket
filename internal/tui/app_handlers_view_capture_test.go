@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func TestHandleViewMessagesShowTaskComposer(t *testing.T) {
@@ -17,12 +18,12 @@ func TestHandleViewMessagesShowTaskComposer(t *testing.T) {
 	if !handled {
 		t.Error("ShowTaskComposerMsg should be handled")
 	}
-	if app.currentView() != ViewTaskComposer {
+	if app.currentView() != presentation.ViewTaskComposer {
 		t.Errorf("currentView should be TaskComposer after ShowTaskComposerMsg, got %v", app.currentView())
 	}
-	capture, ok := app.views.Get(ViewTaskComposer).(*TaskComposerModel)
+	capture, ok := app.views.Get(presentation.ViewTaskComposer).(*TaskComposerModel)
 	if !ok {
-		t.Fatalf("composer view = %T, want *TaskComposerModel", app.views.Get(ViewTaskComposer))
+		t.Fatalf("composer view = %T, want *TaskComposerModel", app.views.Get(presentation.ViewTaskComposer))
 	}
 	if capture.preset.Project != project {
 		t.Fatalf("quick capture project = %v, want contextual project %v (system Inbox was %v)", capture.preset.Project, project, inbox)
@@ -43,9 +44,9 @@ func TestTaskComposerCaptureDefaultsToSystemUnfiled(t *testing.T) {
 	if !handled {
 		t.Fatal("ShowTaskComposerMsg should be handled")
 	}
-	capture, ok := app.views.Get(ViewTaskComposer).(*TaskComposerModel)
+	capture, ok := app.views.Get(presentation.ViewTaskComposer).(*TaskComposerModel)
 	if !ok {
-		t.Fatalf("composer view = %T, want *TaskComposerModel", app.views.Get(ViewTaskComposer))
+		t.Fatalf("composer view = %T, want *TaskComposerModel", app.views.Get(presentation.ViewTaskComposer))
 	}
 	if capture.preset.Project != inbox {
 		t.Fatalf("quick capture project = %v, want system Inbox %v", capture.preset.Project, inbox)
@@ -70,7 +71,7 @@ func installTestSystemInbox(app *AppModel, projects ...*models.Project) *models.
 
 func TestHandleViewMessagesTextEditorDone(t *testing.T) {
 	app := newTestAppModel()
-	app.pushView(ViewTextEditor)
+	app.pushView(presentation.ViewTextEditor)
 
 	msg := TextEditorDoneMsg{Canceled: true}
 	handled, _ := app.handleViewMessages(msg)
@@ -78,7 +79,7 @@ func TestHandleViewMessagesTextEditorDone(t *testing.T) {
 	if !handled {
 		t.Error("TextEditorDoneMsg should be handled")
 	}
-	if app.currentView() != ViewCrossProjectOutliner {
+	if app.currentView() != presentation.ViewCrossProjectOutliner {
 		t.Errorf("currentView should be Outliner after text editor done, got %v", app.currentView())
 	}
 }

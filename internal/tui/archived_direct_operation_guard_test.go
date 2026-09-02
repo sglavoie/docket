@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // Fa shows archived projects in the ordinary Outliner, so every direct key is
@@ -197,7 +198,7 @@ func TestArchivedTaskRefusesMutatingDirectKeys(t *testing.T) {
 			if after := env.tasksFileBytes(t, env.archived); after != before {
 				t.Fatalf("%s rewrote the archived project's tasks file", testCase.name)
 			}
-			if view := env.driver.App().currentView(); view != ViewCrossProjectOutliner {
+			if view := env.driver.App().currentView(); view != presentation.ViewCrossProjectOutliner {
 				t.Fatalf("%s left the Outliner for %s", testCase.name, view)
 			}
 		})

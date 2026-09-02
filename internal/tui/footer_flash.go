@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 
 	"charm.land/lipgloss/v2"
 )
@@ -81,7 +82,7 @@ type viewStatusOwner interface {
 type footerFlashProbe struct {
 	statusSeq     uint64
 	errText       string
-	view          PresentationID
+	view          presentation.PresentationID
 	viewStatusSeq uint64
 }
 

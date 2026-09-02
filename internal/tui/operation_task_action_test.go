@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // newTaskStructureTestProject lays out one epic with a story child followed by a
@@ -35,7 +36,7 @@ func newTaskStructureTestProject() *models.Project {
 }
 
 func taskOperationTestContext(task *models.Task, project *models.Project) CommandContext {
-	context := PresentationCommandContext(ViewCrossProjectOutliner)
+	context := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	context.Capabilities.Add(CapabilitySimplifiedInput)
 	context.Entity = taskOperationEntity(task, project)
 	return context

@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func TestOutlinerUsesFullWidthAndPeekFollowsCursorAtEveryWidth(t *testing.T) {
@@ -150,7 +151,7 @@ func TestPeekRendersNoContinuationForAVisibleTitle(t *testing.T) {
 
 func TestPeekOperationTogglesAndEscDismissesFirst(t *testing.T) {
 	model := typedTestApp(t)
-	setTestPresentationPath(model, ViewCrossProjectOutliner)
+	setTestPresentationPath(model, presentation.ViewCrossProjectOutliner)
 	outliner := model.crossOutliner
 	outliner.crossForceRebuild = true
 	outliner.crossProjectRebuildRows()

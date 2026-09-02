@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 const taskComposerOverlayKey = "task-composer"
@@ -17,7 +18,7 @@ func (m *AppModel) openTaskComposer(preset TaskComposerPreset) tea.Cmd {
 	composer.SetTaskFormCoordinator(m.features.TaskForm)
 	composer.SetSize(m.width, m.height-2)
 	m.taskComposer = composer
-	m.views.Register(ViewTaskComposer, composer)
+	m.views.Register(presentation.ViewTaskComposer, composer)
 	m.pushTypedOverlay(OverlayComposer, taskComposerOverlayKey)
 	m.setAccentOnView(composer)
 	return composer.Init()

@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // handleProjectMessages handles project-related messages (create, edit, archive, restore).
@@ -17,7 +18,7 @@ import (
 func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case CreateProjectMsg:
-		m.showView(ViewProjectCreator, NewProjectCreatorModel(m.runtime, m.configManager, m.appService))
+		m.showView(presentation.ViewProjectCreator, NewProjectCreatorModel(m.runtime, m.configManager, m.appService))
 		return true, nil
 
 	case ProjectCreatedMsg:
@@ -118,7 +119,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 
 	case EditProjectMsg:
 		if msg.Project != nil {
-			m.showView(ViewProjectEditor, NewProjectEditorModel(
+			m.showView(presentation.ViewProjectEditor, NewProjectEditorModel(
 				msg.Project,
 				m.configManager,
 				m.runtime,

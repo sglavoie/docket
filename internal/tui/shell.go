@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // This file extracts three cohesive shell concerns out of the AppModel
@@ -31,7 +32,7 @@ type ShellContext interface {
 	// the active project/task where the route's scope calls for it.
 	CurrentRoute() Route
 	// CurrentView returns the topmost view type.
-	CurrentView() PresentationID
+	CurrentView() presentation.PresentationID
 	// Size returns the current terminal width and height.
 	Size() (width, height int)
 }
@@ -47,11 +48,11 @@ type ShellState struct{ app *AppModel }
 func (m *AppModel) Shell() ShellState { return ShellState{app: m} }
 
 // CurrentView returns the topmost view type on the stack.
-func (s ShellState) CurrentView() PresentationID { return s.app.currentView() }
+func (s ShellState) CurrentView() presentation.PresentationID { return s.app.currentView() }
 
 // Stack returns renderer identities derived from the current route and overlay
 // stacks (top is the last element).
-func (s ShellState) Stack() []PresentationID { return s.app.presentationPath() }
+func (s ShellState) Stack() []presentation.PresentationID { return s.app.presentationPath() }
 
 // Depth returns the number of rendered route/overlay frames.
 func (s ShellState) Depth() int { return len(s.app.presentationPath()) }
@@ -74,7 +75,7 @@ func (m *AppModel) CurrentRoute() Route {
 }
 
 // CurrentView satisfies ShellContext.
-func (m *AppModel) CurrentView() PresentationID { return m.currentView() }
+func (m *AppModel) CurrentView() presentation.PresentationID { return m.currentView() }
 
 // Size satisfies ShellContext.
 func (m *AppModel) Size() (int, int) { return m.width, m.height }

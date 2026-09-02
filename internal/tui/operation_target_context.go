@@ -2,6 +2,7 @@ package tui
 
 import (
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // operationSelectionProvider exposes stable selected identities without
@@ -116,7 +117,7 @@ func (m *AppModel) operationScopeProjectIDs(cursorProject *models.Project) []str
 }
 
 func (m *OutlinerModel) operationCommandContext() CommandContext {
-	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
+	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Capabilities.Add(CapabilitySimplifiedInput)
 	task, project := m.getTaskRef()
 	header := m.cursorProjectHeaderProject()

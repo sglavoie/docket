@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // Checklist row operation IDs. Each one acts on the item the cursor names,
@@ -97,7 +98,7 @@ func operationRefusedOnChecklistRow(descriptor OperationDescriptor) bool {
 // share e, A, J, K and Space with their task-row counterparts, since shared-key
 // resolution picks the first binding whose descriptor applies.
 func checklistRowOperationApplicable(ctx CommandContext) bool {
-	return ctx.View == ViewCrossProjectOutliner && ctx.Entity.HasChecklistCursor
+	return ctx.View == presentation.ViewCrossProjectOutliner && ctx.Entity.HasChecklistCursor
 }
 
 // checklistRowOperationDescriptors is the authoritative catalog of checklist
@@ -165,7 +166,7 @@ func (m *AppModel) checklistStartOperationDescriptor() OperationDescriptor {
 }
 
 func (m *AppModel) checklistStartApplicable(ctx CommandContext) bool {
-	if ctx.View != ViewCrossProjectOutliner ||
+	if ctx.View != presentation.ViewCrossProjectOutliner ||
 		ctx.Entity.HasChecklistCursor ||
 		ctx.Selection.Visual ||
 		commandContextNamesNonTaskEntity(ctx) {

@@ -4,6 +4,7 @@ import (
 	"image/color"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // GetOperationRegistry returns the authoritative operation catalog.
@@ -14,17 +15,17 @@ func (m *AppModel) GetOperationRegistry() *OperationRegistry {
 // getActiveNotesView returns the currently active NotesViewModel (project or global).
 func (m *AppModel) getActiveNotesView() *NotesViewModel {
 	cv := m.currentView()
-	var viewType PresentationID
+	var viewType presentation.PresentationID
 	switch cv {
-	case ViewNotes:
-		viewType = ViewNotes
-	case ViewGlobalNotes:
-		viewType = ViewGlobalNotes
+	case presentation.ViewNotes:
+		viewType = presentation.ViewNotes
+	case presentation.ViewGlobalNotes:
+		viewType = presentation.ViewGlobalNotes
 	default:
 		// Check if either renderer is present in the derived navigation path.
 		path := m.presentationPath()
 		for i := len(path) - 1; i >= 0; i-- {
-			if path[i] == ViewNotes || path[i] == ViewGlobalNotes {
+			if path[i] == presentation.ViewNotes || path[i] == presentation.ViewGlobalNotes {
 				viewType = path[i]
 				break
 			}
@@ -63,7 +64,7 @@ func (m *AppModel) validateCurrentProject() (handled bool, cmd tea.Cmd) {
 }
 
 // currentView returns the current view type.
-func (m *AppModel) currentView() PresentationID {
+func (m *AppModel) currentView() presentation.PresentationID {
 	return m.currentPresentationView()
 }
 
@@ -71,20 +72,20 @@ func (m *AppModel) currentView() PresentationID {
 // project-level Outliner beneath transient overlays. This is
 // needed by operation handlers that execute while an overlay is current but
 // still need the owning task-workspace renderer.
-func (m *AppModel) baseProjectView() PresentationID {
+func (m *AppModel) baseProjectView() presentation.PresentationID {
 	path := m.presentationPath()
 	for i := len(path) - 1; i >= 0; i-- {
 		switch path[i] {
-		case ViewCrossProjectOutliner:
+		case presentation.ViewCrossProjectOutliner:
 			return path[i]
 		default:
 		}
 	}
-	return ViewCrossProjectOutliner
+	return presentation.ViewCrossProjectOutliner
 }
 
 // pushView installs a renderer on the authoritative route or overlay stack.
-func (m *AppModel) pushView(view PresentationID) {
+func (m *AppModel) pushView(view presentation.PresentationID) {
 	m.installTypedPresentation(view)
 }
 
@@ -104,7 +105,7 @@ func (m *AppModel) popView() tea.Cmd {
 		}
 	}
 	// Notify the cross-project outliner that it has become visible again.
-	if cv == ViewCrossProjectOutliner {
+	if cv == presentation.ViewCrossProjectOutliner {
 		return tea.Batch(func() tea.Msg { return ViewDidAppearMsg{} }, resumeCmd)
 	}
 	return resumeCmd
@@ -256,14 +257,14 @@ func (m *AppModel) wireOutlinerOperationExecutor(outliner *OutlinerModel) {
 	outliner.setAdvisoriesHidden(m.advisoriesHidden)
 }
 
-func (m *AppModel) showView(viewType PresentationID, view View) {
+func (m *AppModel) showView(viewType presentation.PresentationID, view View) {
 	// All views (including full-height ones) are sized to height-2. Register
 	// re-applies the registry's stored height-2, so a full-height SetSize here
 	// would be immediately clobbered anyway; this also matches handleWindowSize.
 	view.SetSize(m.width, m.height-2)
 	m.wireSecondaryCoordinators(view)
 	m.views.Register(viewType, view)
-	if viewType == ViewCrossProjectOutliner {
+	if viewType == presentation.ViewCrossProjectOutliner {
 		if outliner, ok := view.(*OutlinerModel); ok {
 			m.crossOutliner = outliner
 		}
@@ -274,7 +275,7 @@ func (m *AppModel) showView(viewType PresentationID, view View) {
 
 // showViewInit is showView + return true, view.Init(). Used by handlers that
 // create a view, push it, and immediately return its Init command.
-func (m *AppModel) showViewInit(viewType PresentationID, view View) (bool, tea.Cmd) {
+func (m *AppModel) showViewInit(viewType presentation.PresentationID, view View) (bool, tea.Cmd) {
 	m.showView(viewType, view)
 	return true, view.Init()
 }

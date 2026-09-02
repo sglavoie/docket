@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // TestOutlineEditedCarriesTheDumpRevisionAndKeepsTheBufferWhenItIsStale covers
@@ -53,7 +54,7 @@ func TestOutlineEditedCarriesTheDumpRevisionAndKeepsTheBufferWhenItIsStale(t *te
 	if !strings.Contains(model.statusMessage, "/tmp/tt-outline-stale.md") {
 		t.Errorf("status = %q, want the kept buffer named", model.statusMessage)
 	}
-	if model.currentView() == ViewOutlineErrors {
+	if model.currentView() == presentation.ViewOutlineErrors {
 		t.Error("a stale workspace opened the line-error surface")
 	}
 }
@@ -215,7 +216,7 @@ func TestOutlineEditedEmptiedBufferDeletesEveryTask(t *testing.T) {
 		Buffer: "# every line was removed\n\n",
 	})
 
-	if model.currentView() == ViewOutlineErrors {
+	if model.currentView() == presentation.ViewOutlineErrors {
 		t.Fatal("an emptied buffer was still rejected as a syntax error")
 	}
 	if !model.outlineDeleteConfirm.IsActive() {
@@ -254,7 +255,7 @@ func TestOutlineEditedRefusesAnEmptyBufferThatDeletesNothing(t *testing.T) {
 		Buffer:   "# only a comment\n\n",
 	})
 
-	if model.currentView() != ViewOutlineErrors {
+	if model.currentView() != presentation.ViewOutlineErrors {
 		t.Fatalf("view = %v, want the errors surface", model.currentView())
 	}
 	if model.outlineDeleteConfirm.IsActive() {

@@ -4,12 +4,13 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // projectOperationContext mimics a non-Project-Hub host naming one frozen
 // project.
 func projectOperationContext(projectID string) CommandContext {
-	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
+	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.CurrentEntity = ProjectEntity(projectID)
 	return ctx
 }
@@ -145,7 +146,7 @@ func TestOpenProjectNotesRejectsArchivedProject(t *testing.T) {
 }
 
 func TestProjectOperationsRefuseAmbiguousMultiProjectScope(t *testing.T) {
-	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
+	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.ScopeProjectIDs = []string{"alpha", "beta"}
 	if projectOperationApplicable(ctx) {
 		t.Fatal("a multi-project scope must not supply a project operation target")

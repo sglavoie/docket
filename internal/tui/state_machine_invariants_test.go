@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 type invariantQueueView struct {
@@ -43,11 +44,11 @@ func TestTUIStateMachine_OutlinerEscOwnershipIsDeterministic(t *testing.T) {
 	outliner.SelectTaskIdentity(taskIdentityFor(project.Tasks[0], project))
 	outliner.focusStack = []FocusEntry{{TaskID: project.Tasks[0].ID, CursorIndex: 0}}
 	outliner.SetSearchQuery(project.Tasks[0].Title)
-	app.showView(ViewCrossProjectOutliner, outliner)
+	app.showView(presentation.ViewCrossProjectOutliner, outliner)
 	wireInvariantSimplifiedOutliner(t, app, outliner)
 
 	app = sendAppKey(app, syntheticSpecialKey(tea.KeyEsc))
-	if app.currentView() != ViewCrossProjectOutliner {
+	if app.currentView() != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("multi-select esc should stay in outliner, got %v", app.currentView())
 	}
 	if outliner.multiSelectMode {
@@ -61,7 +62,7 @@ func TestTUIStateMachine_OutlinerEscOwnershipIsDeterministic(t *testing.T) {
 	}
 
 	app = sendAppKey(app, syntheticSpecialKey(tea.KeyEsc))
-	if app.currentView() != ViewCrossProjectOutliner {
+	if app.currentView() != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("search esc should stay in outliner, got %v", app.currentView())
 	}
 	if outliner.SearchQuery() != "" {
@@ -72,7 +73,7 @@ func TestTUIStateMachine_OutlinerEscOwnershipIsDeterministic(t *testing.T) {
 	}
 
 	app = sendAppKey(app, syntheticSpecialKey(tea.KeyEsc))
-	if app.currentView() != ViewCrossProjectOutliner {
+	if app.currentView() != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("focus esc should stay in outliner, got %v", app.currentView())
 	}
 	if len(outliner.focusStack) != 0 {
@@ -83,7 +84,7 @@ func TestTUIStateMachine_OutlinerEscOwnershipIsDeterministic(t *testing.T) {
 	}
 
 	app = sendAppKey(app, syntheticSpecialKey(tea.KeyEsc))
-	if app.currentView() != ViewCrossProjectOutliner {
+	if app.currentView() != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("fourth esc at the Outliner root should be a no-op, got %v", app.currentView())
 	}
 }
@@ -252,7 +253,7 @@ func wireInvariantSimplifiedRoot(t *testing.T, app *AppModel) {
 	t.Helper()
 	outliner := NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner = outliner
-	app.views.Register(ViewCrossProjectOutliner, outliner)
+	app.views.Register(presentation.ViewCrossProjectOutliner, outliner)
 	wireInvariantSimplifiedOutliner(t, app, outliner)
 }
 
@@ -261,7 +262,7 @@ func wireInvariantSimplifiedOutliner(t *testing.T, app *AppModel, outliner *Outl
 	app.operationRegistry = NewOperationRegistry()
 	app.operationExecutor = NewOperationExecutor(app.operationRegistry)
 	app.crossOutliner = outliner
-	app.views.Register(ViewCrossProjectOutliner, outliner)
+	app.views.Register(presentation.ViewCrossProjectOutliner, outliner)
 	if err := app.registerCoreInputOperations(); err != nil {
 		t.Fatalf("register core operations: %v", err)
 	}
@@ -406,7 +407,7 @@ func newFocusToggleTestAppState(t *testing.T) (*AppModel, *models.Task) {
 	outliner.rebuildRows()
 	outliner.moveCursorToTask(task.ID)
 	appModel.crossOutliner = outliner
-	appModel.views.Register(ViewCrossProjectOutliner, outliner)
+	appModel.views.Register(presentation.ViewCrossProjectOutliner, outliner)
 	if err := appModel.registerCoreInputOperations(); err != nil {
 		t.Fatalf("register core operations: %v", err)
 	}

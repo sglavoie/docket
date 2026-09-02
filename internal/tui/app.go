@@ -10,28 +10,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// PresentationID represents the different views in the TUI.
-type PresentationID int
-
-const (
-	ViewUnknown PresentationID = iota
-	ViewProjectCreator
-	ViewProjectEditor
-	ViewHelp
-	ViewPriorityPicker
-	ViewParentSelector
-	ViewTagSelector
-	ViewTaskComments
-	ViewTextEditor
-	ViewTaskAttachments
-	ViewNotes
-	ViewGlobalNotes
-	ViewCrossProjectOutliner
-	ViewTaskComposer
-	ViewProjectHub
-	ViewOutlineErrors
-)
-
 // AppModel is the main TUI model.
 type AppModel struct {
 	configManager *config.Manager

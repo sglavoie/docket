@@ -1,6 +1,9 @@
 package tui
 
-import tea "charm.land/bubbletea/v2"
+import (
+	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
+)
 
 // handleScheduleEnter dispatches Enter key events for focused Schedule-tab rows.
 func (m *TaskFormModel) handleScheduleEnter() {
@@ -57,7 +60,7 @@ func (m *TaskFormModel) handleBasicsEnter() tea.Cmd {
 				ValidParents: parents,
 				CurrentID:    m.draft.parentID,
 				AllowNone:    true,
-				Source:       ViewTaskComposer,
+				Source:       presentation.ViewTaskComposer,
 			}
 		}
 

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -144,7 +145,7 @@ func (m *AppModel) openProjectTagVocabularyActions(tag string) tea.Cmd {
 		return errorCmd("no active project carries #%s", tag)
 	}
 	ctx := m.operationCommandContext()
-	ctx.View = ViewCrossProjectOutliner
+	ctx.View = presentation.ViewCrossProjectOutliner
 	ctx.Capabilities.Add(CapabilitySimplifiedInput)
 	ctx.Selection.EntityIdentities = make([]EntityIdentity, 0, len(members))
 	for _, member := range members {

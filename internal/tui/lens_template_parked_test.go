@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // parkedTemplateApp builds the population Parked Work is read against: one active
@@ -31,7 +32,7 @@ func parkedTemplateApp(t *testing.T) (*AppModel, *OutlinerModel, []*models.Proje
 	out.crossProjectRebuildRows()
 	model.crossOutliner = out
 	out.SetSize(model.width, model.height-2)
-	model.views.Register(ViewCrossProjectOutliner, out)
+	model.views.Register(presentation.ViewCrossProjectOutliner, out)
 	return model, out, []*models.Project{alpha, parkedOne, parkedTwo, archived}
 }
 

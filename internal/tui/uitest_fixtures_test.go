@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func TestUITestFixtureNames(t *testing.T) {
@@ -185,7 +186,7 @@ func TestContextualQuickCapturePersistsInOwningProject(t *testing.T) {
 	inboxCount := len(inbox.Tasks)
 
 	driver.dispatch(driver.App().captureComposerMessage(target, driver.App().taskWorkspaceProjects()))
-	if driver.App().currentView() != ViewTaskComposer {
+	if driver.App().currentView() != presentation.ViewTaskComposer {
 		t.Fatalf("current view = %s, want QuickCapture", driver.App().currentView())
 	}
 	const title = "Contextual capture stays with Rich Project"

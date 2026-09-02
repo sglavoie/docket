@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func TestFrozenBulkTagPatchPreservesSelectionAcrossCursorMoveAndRebuild(t *testing.T) {
@@ -28,7 +29,7 @@ func TestFrozenBulkTagPatchPreservesSelectionAcrossCursorMoveAndRebuild(t *testi
 	outliner.SelectTaskIdentity(taskIdentityFor(first, env.projects[0]))
 	outliner.SelectTaskIdentity(taskIdentityFor(second, env.projects[1]))
 	model.crossOutliner = outliner
-	model.views.Register(ViewCrossProjectOutliner, outliner)
+	model.views.Register(presentation.ViewCrossProjectOutliner, outliner)
 
 	context := model.operationCommandContext()
 	outliner.cursor = 1
@@ -96,7 +97,7 @@ func TestBulkTaskValueOperationUsesQualifiedTargetsAndOneUndoEntry(t *testing.T)
 	if err := model.registerTaskActionOperations(); err != nil {
 		t.Fatalf("registerTaskActionOperations: %v", err)
 	}
-	context := PresentationCommandContext(ViewCrossProjectOutliner)
+	context := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	context.Capabilities.Add(CapabilitySimplifiedInput)
 	context.Selection.Visual = true
 	for index, task := range []*models.Task{taskA, taskB} {
@@ -160,7 +161,7 @@ func TestNarrowDescriptionEditorCommitsThroughCommonApplicationOperation(t *test
 		handled, _ := model.handleEditorMessages(ShowTaskTextEditorMsg{
 			Task: task, Project: project, Operation: testCase.operation,
 		})
-		if !handled || model.currentView() != ViewTextEditor {
+		if !handled || model.currentView() != presentation.ViewTextEditor {
 			t.Fatalf("%s did not open the narrow editor", testCase.operation)
 		}
 		handled, cmd := model.handleEditorMessages(TextEditorDoneMsg{Value: testCase.value})

@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func openProjectEditor(
@@ -24,7 +25,7 @@ func openProjectEditor(
 		fixture.app.appService,
 		identityProtected,
 	)
-	fixture.app.showView(ViewProjectEditor, editor)
+	fixture.app.showView(presentation.ViewProjectEditor, editor)
 	return editor
 }
 
@@ -125,7 +126,7 @@ func TestProjectEditorParkCancelLeavesEveryFieldUnchanged(t *testing.T) {
 	if fixture.app.pendingProjectEditorSave != nil {
 		t.Fatal("canceled park left the editor save pending")
 	}
-	if fixture.app.currentView() != ViewProjectEditor {
+	if fixture.app.currentView() != presentation.ViewProjectEditor {
 		t.Fatalf("canceled park left %s open, want the editor", fixture.app.currentView())
 	}
 

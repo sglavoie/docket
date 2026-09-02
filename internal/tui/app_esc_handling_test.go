@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // TestHandleEscKey_PropagatesForModalViews verifies that views implementing
@@ -21,12 +22,12 @@ import (
 func TestHandleEscKey_PropagatesForModalViews(t *testing.T) {
 	alwaysCaptureViews := []struct {
 		name    string
-		viewTyp PresentationID
+		viewTyp presentation.PresentationID
 		view    View
 	}{
 		{
 			name:    "TextEditor",
-			viewTyp: ViewTextEditor,
+			viewTyp: presentation.ViewTextEditor,
 			view:    NewTextEditorModel("title", "some value"),
 		},
 	}
@@ -64,8 +65,8 @@ func TestHandleEscKey_PropagatesForModalViews(t *testing.T) {
 			Kind:    ComposerProject,
 			Project: testutil.NewTestProjectWithTasks("test"),
 		})
-		if app.currentView() != ViewTaskComposer {
-			t.Fatalf("expected current view %v, got %v", ViewTaskComposer, app.currentView())
+		if app.currentView() != presentation.ViewTaskComposer {
+			t.Fatalf("expected current view %v, got %v", presentation.ViewTaskComposer, app.currentView())
 		}
 		if !app.taskComposer.ShouldCaptureEsc() {
 			t.Fatal("TaskComposer.ShouldCaptureEsc() returned false")
@@ -81,9 +82,9 @@ func TestHandleEscKey_PropagatesForModalViews(t *testing.T) {
 // capture, handleEscKey() consumes the key and pops the view.
 func TestHandleEscKey_PopsNonModalViews(t *testing.T) {
 	app := newTestAppModel()
-	app.pushView(ViewHelp)
+	app.pushView(presentation.ViewHelp)
 
-	if app.currentView() != ViewHelp {
+	if app.currentView() != presentation.ViewHelp {
 		t.Fatal("expected ViewHelp to be current")
 	}
 
@@ -91,7 +92,7 @@ func TestHandleEscKey_PopsNonModalViews(t *testing.T) {
 	if !handled {
 		t.Error("handleEscKey() should have consumed esc for a non-modal view")
 	}
-	if app.currentView() != ViewCrossProjectOutliner {
+	if app.currentView() != presentation.ViewCrossProjectOutliner {
 		t.Errorf("expected Outliner root after pop, got %v", app.currentView())
 	}
 }
@@ -105,7 +106,7 @@ func TestHandleEscKey_NopAtOutlinerRoot(t *testing.T) {
 	if handled {
 		t.Error("handleEscKey() at the Outliner root should return handled=false")
 	}
-	if app.currentView() != ViewCrossProjectOutliner {
+	if app.currentView() != presentation.ViewCrossProjectOutliner {
 		t.Errorf("currentView should remain at the Outliner root, got %v", app.currentView())
 	}
 }
@@ -121,8 +122,8 @@ func TestParentSelectorEscClearsQueryBeforeClosing(t *testing.T) {
 	}
 
 	app := newTestAppModel()
-	selector := NewParentSelectorModel([]*models.Task{parentA, parentB}, nil, true, ViewCrossProjectOutliner)
-	app.showView(ViewParentSelector, selector)
+	selector := NewParentSelectorModel([]*models.Task{parentA, parentB}, nil, true, presentation.ViewCrossProjectOutliner)
+	app.showView(presentation.ViewParentSelector, selector)
 	selector.Init()
 
 	app.Update(syntheticKey('b'))
@@ -134,7 +135,7 @@ func TestParentSelectorEscClearsQueryBeforeClosing(t *testing.T) {
 	if cmd != nil {
 		t.Fatal("first esc with a query should clear search, not close the selector")
 	}
-	if app.currentView() != ViewParentSelector {
+	if app.currentView() != presentation.ViewParentSelector {
 		t.Fatalf("expected selector to remain open after first esc, got %v", app.currentView())
 	}
 	if selector.SearchQuery() != "" {
@@ -148,7 +149,7 @@ func TestParentSelectorEscClearsQueryBeforeClosing(t *testing.T) {
 	if cmd != nil {
 		app.Update(cmd())
 	}
-	if app.currentView() != ViewCrossProjectOutliner {
+	if app.currentView() != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("expected selector to close on second esc, got %v", app.currentView())
 	}
 }

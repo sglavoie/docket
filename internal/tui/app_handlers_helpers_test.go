@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // newTestAppModel creates an AppModel for testing with a temp config file.
@@ -60,13 +61,13 @@ func newTestAppModelWithProject() (*AppModel, *models.Project) {
 // setTestPresentationPath installs renderer identities through the same typed
 // route/overlay authority as production. The fallback is only for deliberately
 // partial fixtures that lack the entity data a production route requires.
-func setTestPresentationPath(app *AppModel, views ...PresentationID) {
+func setTestPresentationPath(app *AppModel, views ...presentation.PresentationID) {
 	app.navigation = NewNavigationState()
 	for _, view := range views {
-		if view == ViewUnknown {
+		if view == presentation.ViewUnknown {
 			continue
 		}
-		if view == ViewCrossProjectOutliner {
+		if view == presentation.ViewCrossProjectOutliner {
 			app.navigation.ResetRoot()
 			continue
 		}
@@ -83,7 +84,7 @@ func setTestPresentationPath(app *AppModel, views ...PresentationID) {
 	}
 }
 
-func pushTestPresentationOverlay(app *AppModel, view PresentationID) {
+func pushTestPresentationOverlay(app *AppModel, view presentation.PresentationID) {
 	overlay, err := NewOverlay(OverlayForm, "test:"+view.String())
 	if err != nil {
 		panic(err)

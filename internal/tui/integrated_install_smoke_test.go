@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func TestFreshTemporaryWorkspacesRenderInBothThemes(t *testing.T) {
@@ -31,7 +33,7 @@ func TestFreshTemporaryWorkspacesRenderInBothThemes(t *testing.T) {
 func assertIntegratedSmokeObservation(t *testing.T, driver *UITestDriver, visibleText string) {
 	t.Helper()
 	observation := driver.Observe(ObserveOptions{})
-	if driver.App().currentView() != ViewCrossProjectOutliner {
+	if driver.App().currentView() != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("smoke view = %s, want Outliner", driver.App().currentView())
 	}
 	if !strings.Contains(observation.PlainScreen, visibleText) {

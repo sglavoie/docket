@@ -1,6 +1,10 @@
 package tui
 
-import "image/color"
+import (
+	"image/color"
+
+	"github.com/sglavoie/tt/internal/tui/presentation"
+)
 
 // RouteScope classifies the data owned by the active route or presentation.
 type RouteScope int
@@ -25,11 +29,11 @@ const (
 
 // presentationScope derives command scope directly from the active renderer.
 // Navigation identity is owned exclusively by RouteID and its typed params.
-func presentationScope(view PresentationID) RouteScope {
+func presentationScope(view presentation.PresentationID) RouteScope {
 	switch view {
-	case ViewGlobalNotes, ViewCrossProjectOutliner, ViewProjectHub:
+	case presentation.ViewGlobalNotes, presentation.ViewCrossProjectOutliner, presentation.ViewProjectHub:
 		return ScopeApp
-	case ViewTaskComments, ViewTaskAttachments:
+	case presentation.ViewTaskComments, presentation.ViewTaskAttachments:
 		return ScopeTask
 	default:
 		return ScopeProject
@@ -38,13 +42,13 @@ func presentationScope(view PresentationID) RouteScope {
 
 // presentationAccentCategory assigns a visual accent without introducing a
 // second navigation registry.
-func presentationAccentCategory(view PresentationID) AccentCategory {
+func presentationAccentCategory(view presentation.PresentationID) AccentCategory {
 	switch view {
-	case ViewTaskComposer:
+	case presentation.ViewTaskComposer:
 		return AccentCatCapture
-	case ViewCrossProjectOutliner:
+	case presentation.ViewCrossProjectOutliner:
 		return AccentCatTriage
-	case ViewGlobalNotes, ViewNotes, ViewProjectHub:
+	case presentation.ViewGlobalNotes, presentation.ViewNotes, presentation.ViewProjectHub:
 		return AccentCatSupport
 	default:
 		return AccentCatNone
@@ -68,10 +72,10 @@ func accentColorForCategory(category AccentCategory) color.Color {
 }
 
 // allPresentations returns the contiguous renderer inventory.
-func allPresentations() []PresentationID {
-	presentations := make([]PresentationID, 0, int(ViewOutlineErrors))
-	for presentation := ViewProjectCreator; presentation <= ViewOutlineErrors; presentation++ {
-		presentations = append(presentations, presentation)
+func allPresentations() []presentation.PresentationID {
+	presentations := make([]presentation.PresentationID, 0, int(presentation.ViewOutlineErrors))
+	for id := presentation.ViewProjectCreator; id <= presentation.ViewOutlineErrors; id++ {
+		presentations = append(presentations, id)
 	}
 	return presentations
 }

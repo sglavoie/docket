@@ -1,6 +1,10 @@
 package tui
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/sglavoie/tt/internal/tui/presentation"
+)
 
 // The menu bar is a third projection of the one operation grammar, beside the
 // `?` help and the footer hints. A menu entry names a registered operation and
@@ -317,7 +321,7 @@ func (m *AppModel) validateMenuBarSpecs() error {
 	if !ok {
 		return fmt.Errorf("simplified input strategy is required")
 	}
-	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
+	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Capabilities.Add(CapabilitySimplifiedInput)
 	menus, err := resolveMenuEntries(
 		m.operationRegistry,

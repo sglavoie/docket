@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
@@ -324,9 +325,9 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState, reloadCrossProject 
 		}
 	}
 	if m.views != nil {
-		for _, viewType := range []PresentationID{
-			ViewTaskComments,
-			ViewTaskAttachments,
+		for _, viewType := range []presentation.PresentationID{
+			presentation.ViewTaskComments,
+			presentation.ViewTaskAttachments,
 		} {
 			view := m.views.Get(viewType)
 			refresher, ok := view.(interface{ refreshAfterReload() bool })

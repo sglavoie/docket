@@ -1,6 +1,10 @@
 package tui
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/sglavoie/tt/internal/tui/presentation"
+)
 
 // OverlayKind classifies transient presentations independently from primary
 // route identity and history.
@@ -36,7 +40,7 @@ type Overlay struct {
 	kind            OverlayKind
 	key             string
 	reference       *Route
-	presentation    PresentationID
+	presentation    presentation.PresentationID
 	hasPresentation bool
 }
 
@@ -68,4 +72,6 @@ func (o Overlay) ReferenceRoute() (Route, bool) {
 	return *o.reference, true
 }
 
-func (o Overlay) Presentation() (PresentationID, bool) { return o.presentation, o.hasPresentation }
+func (o Overlay) Presentation() (presentation.PresentationID, bool) {
+	return o.presentation, o.hasPresentation
+}

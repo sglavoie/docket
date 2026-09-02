@@ -6,6 +6,7 @@ import (
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
@@ -168,7 +169,7 @@ func (m *TaskAttachmentsModel) dispatchAttachmentsKey(key string) tea.Cmd {
 // carries no entity identity, so the cursor the handler reads is the only thing
 // that says which item an operation means.
 func (m *TaskAttachmentsModel) attachmentsCommandContext() CommandContext {
-	ctx := PresentationCommandContext(ViewTaskAttachments)
+	ctx := PresentationCommandContext(presentation.ViewTaskAttachments)
 	ctx.Capabilities.Add(CapabilityAttachmentsPanel)
 	return ctx
 }

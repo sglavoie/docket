@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func registeredSimplifiedOperationRegistry(t *testing.T) *OperationRegistry {
@@ -47,7 +48,7 @@ func simplifiedTaskActionDescriptors() []OperationDescriptor {
 }
 
 func simplifiedOperationContext() CommandContext {
-	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
+	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Capabilities.Add(CapabilitySimplifiedInput)
 	return ctx
 }

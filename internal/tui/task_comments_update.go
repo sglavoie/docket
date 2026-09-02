@@ -6,6 +6,7 @@ import (
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -224,7 +225,7 @@ func (m *TaskCommentsModel) dispatchCommentsKey(key string) tea.Cmd {
 // carries no entity identity, so the cursor the handler reads is the only thing
 // that says which one an operation means.
 func (m *TaskCommentsModel) commentsCommandContext() CommandContext {
-	ctx := PresentationCommandContext(ViewTaskComments)
+	ctx := PresentationCommandContext(presentation.ViewTaskComments)
 	ctx.Capabilities.Add(CapabilityCommentsPanel)
 	return ctx
 }

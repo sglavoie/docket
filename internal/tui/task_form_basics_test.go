@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func TestTaskForm_EnterOnPriority_OpensPriorityPicker(t *testing.T) {
@@ -80,7 +81,7 @@ func TestTaskForm_FlagsPicker_EscCancels(t *testing.T) {
 func TestTaskForm_ParentSelectedMsg_UpdatesDraft(t *testing.T) {
 	m := newTestTaskForm()
 	parentID := "some-parent-id"
-	m = sendFormMsg(m, ParentSelectedMsg{ParentID: &parentID, Source: ViewTaskComposer})
+	m = sendFormMsg(m, ParentSelectedMsg{ParentID: &parentID, Source: presentation.ViewTaskComposer})
 	if m.draft.parentID == nil || *m.draft.parentID != parentID {
 		t.Errorf("expected draft.parentID=%q, got %v", parentID, m.draft.parentID)
 	}
@@ -92,7 +93,7 @@ func TestTaskForm_ParentSelectedMsg_UpdatesDraft(t *testing.T) {
 func TestTaskForm_ParentSelectedMsg_WrongSource_NoChange(t *testing.T) {
 	m := newTestTaskForm()
 	parentID := "some-parent-id"
-	m = sendFormMsg(m, ParentSelectedMsg{ParentID: &parentID, Source: ViewUnknown})
+	m = sendFormMsg(m, ParentSelectedMsg{ParentID: &parentID, Source: presentation.ViewUnknown})
 	if m.draft.parentID != nil {
 		t.Error("wrong-source ParentSelectedMsg should not update draft")
 	}

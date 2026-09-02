@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 //nolint:govet // Commit and reload stages intentionally use local error scopes.
@@ -36,7 +37,7 @@ func TestLaunchResetsEveryPresentationAxisAndRelaunchPreservesOnlyTheme(t *testi
 	outliner.multiSelectMode = true
 	outliner.selectedTaskIdentities[TaskIdentity{ProjectID: projects[0].ID, TaskID: "stale"}] = true
 	app.currentProject = projects[0]
-	pushTestPresentationOverlay(app, ViewHelp)
+	pushTestPresentationOverlay(app, presentation.ViewHelp)
 
 	// A lens is machine-local like the theme, but only its definitions are
 	// durable: the frame the user was browsing under is in-session state exactly
@@ -111,7 +112,7 @@ func assertPersistedLensDefinitions(t *testing.T, app *AppModel) {
 
 func assertCleanLaunchRoot(t *testing.T, app *AppModel) {
 	t.Helper()
-	if app.currentView() != ViewCrossProjectOutliner || app.navigation.Primary.Depth() != 1 || app.navigation.Overlays.Active() {
+	if app.currentView() != presentation.ViewCrossProjectOutliner || app.navigation.Primary.Depth() != 1 || app.navigation.Overlays.Active() {
 		t.Fatalf("launch navigation = view %s depth %d overlay %v", app.currentView(), app.navigation.Primary.Depth(), app.navigation.Overlays.Active())
 	}
 	if app.currentProject != nil || len(app.projectStack) != 0 {

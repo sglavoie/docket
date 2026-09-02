@@ -1,6 +1,9 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/app"
+import (
+	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/presentation"
+)
 
 // clearBulkTaskSelectionsForTaskIDs is the compatibility entry point for async
 // results that lack project-qualified locators. It clears identity-keyed state
@@ -34,7 +37,7 @@ func (m *AppModel) clearBulkTaskSelectionsForLocators(locators []app.TaskLocator
 	}
 	clearOutliner(m.crossOutliner)
 	if m.views != nil {
-		if view := m.views.Get(ViewCrossProjectOutliner); view != nil {
+		if view := m.views.Get(presentation.ViewCrossProjectOutliner); view != nil {
 			if outliner, ok := view.(*OutlinerModel); ok {
 				clearOutliner(outliner)
 			}
@@ -51,10 +54,10 @@ func (m *AppModel) clearBulkTaskSelectionsForTaskIDSet(selectedIDs map[string]bo
 		m.crossOutliner.clearMultiSelect()
 	}
 
-	m.clearViewBulkTaskSelectionForRefs(ViewCrossProjectOutliner, selectedIDs)
+	m.clearViewBulkTaskSelectionForRefs(presentation.ViewCrossProjectOutliner, selectedIDs)
 }
 
-func (m *AppModel) clearViewBulkTaskSelectionForRefs(vt PresentationID, selectedIDs map[string]bool) {
+func (m *AppModel) clearViewBulkTaskSelectionForRefs(vt presentation.PresentationID, selectedIDs map[string]bool) {
 	if m.views == nil {
 		return
 	}

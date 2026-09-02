@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func TestProductionInputStrategyDefaultsToSimplified(t *testing.T) {
@@ -192,7 +193,7 @@ func TestRemovedFinderKeyDoesNotEscapeChildRoutes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewAppModel: %v", err)
 	}
-	app.pushView(ViewProjectHub)
+	app.pushView(presentation.ViewProjectHub)
 
 	handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: ':', Text: ":"})
 	if !handled || cmd != nil {

@@ -2,38 +2,39 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // currentPresentationView resolves the renderer selected by the authoritative
 // route and overlay stacks. Overlays without a registered renderer intentionally
 // leave primary dispatch active.
-func (m *AppModel) currentPresentationView() PresentationID {
+func (m *AppModel) currentPresentationView() presentation.PresentationID {
 	path := m.presentationPath()
 	if len(path) > 0 {
 		return path[len(path)-1]
 	}
-	return ViewCrossProjectOutliner
+	return presentation.ViewCrossProjectOutliner
 }
 
-func taskWorkspacePresentation(_ TaskWorkspaceParams) PresentationID {
+func taskWorkspacePresentation(_ TaskWorkspaceParams) presentation.PresentationID {
 	// TaskWorkspace routes are app-scoped only, so the single authoritative cross
 	// Outliner always renders them; project scopes are Outliner scope frames
 	// rather than a second presentation identity.
-	return ViewCrossProjectOutliner
+	return presentation.ViewCrossProjectOutliner
 }
 
 // presentationPath derives renderer-local identities from the live navigation
 // stacks. It deliberately has no synthetic root sentinel.
-func (m *AppModel) presentationPath() []PresentationID {
+func (m *AppModel) presentationPath() []presentation.PresentationID {
 	routes := m.navigation.Primary.Routes()
-	path := make([]PresentationID, 0, len(routes)+m.navigation.Overlays.Depth())
+	path := make([]presentation.PresentationID, 0, len(routes)+m.navigation.Overlays.Depth())
 	for _, route := range routes {
 		if view, ok := m.presentationForRoute(route); ok {
 			path = append(path, view)
 		}
 	}
 	for _, overlay := range m.navigation.Overlays.Overlays() {
-		if view, ok := overlay.Presentation(); ok && view != ViewUnknown {
+		if view, ok := overlay.Presentation(); ok && view != presentation.ViewUnknown {
 			path = append(path, view)
 			continue
 		}
@@ -44,14 +45,14 @@ func (m *AppModel) presentationPath() []PresentationID {
 			}
 		}
 		if overlay.Kind() == OverlayComposer && overlay.Key() == taskComposerOverlayKey && m.taskComposer != nil {
-			path = append(path, ViewTaskComposer)
+			path = append(path, presentation.ViewTaskComposer)
 		}
 	}
 	return path
 }
 
-func (m *AppModel) presentationForRoute(route Route) (PresentationID, bool) {
-	if view, ok := route.Presentation(); ok && view != ViewUnknown {
+func (m *AppModel) presentationForRoute(route Route) (presentation.PresentationID, bool) {
+	if view, ok := route.Presentation(); ok && view != presentation.ViewUnknown {
 		return view, true
 	}
 	switch route.ID() {
@@ -78,9 +79,9 @@ func (m *AppModel) presentationForRoute(route Route) (PresentationID, bool) {
 		}
 		switch params.Kind {
 		case ReferenceHelp:
-			return ViewHelp, true
+			return presentation.ViewHelp, true
 		case ReferenceOutlineErrors:
-			return ViewOutlineErrors, true
+			return presentation.ViewOutlineErrors, true
 		}
 	}
 	return 0, false
@@ -169,8 +170,8 @@ func (m *AppModel) activeView() View {
 
 // installTypedPresentation projects a renderer onto the live typed stacks. It
 // returns false for presentation-only views without a route or overlay class.
-func (m *AppModel) installTypedPresentation(view PresentationID) bool {
-	if view == ViewUnknown {
+func (m *AppModel) installTypedPresentation(view presentation.PresentationID) bool {
+	if view == presentation.ViewUnknown {
 		return false
 	}
 	if overlay, ok, err := overlayForPresentation(view); err == nil && ok {

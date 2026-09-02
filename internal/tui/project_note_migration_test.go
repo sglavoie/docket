@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // CommitArtifactTransaction makes the scenario repository exercise the same
@@ -63,12 +64,12 @@ func newProjectNoteTUIEnv(t *testing.T, titles ...string) *projectNoteTUIEnv {
 	mountNotesManager(t, view)
 	view.SetSize(80, 40)
 	views := NewViewRegistry()
-	views.Register(ViewNotes, view)
+	views.Register(presentation.ViewNotes, view)
 	shell := &AppModel{
 		appService: svc,
 		views:      views,
 	}
-	setTestPresentationPath(shell, ViewNotes)
+	setTestPresentationPath(shell, presentation.ViewNotes)
 	return &projectNoteTUIEnv{dataDir: dataDir, ledger: ledger, svc: svc, project: project, view: view, shell: shell}
 }
 

@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func TestTaskOperationsCannotAppearInBothDirectGrammarAndMenu(t *testing.T) {
@@ -249,7 +250,7 @@ func TestDirectThemeAndQuitOperationsUseTheirDescriptors(t *testing.T) {
 	if reloaded.Machine().Theme != afterTheme {
 		t.Fatalf("persisted machine theme = %q, want %q", reloaded.Machine().Theme, afterTheme)
 	}
-	app.pushView(ViewProjectHub)
+	app.pushView(presentation.ViewProjectHub)
 	handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{
 		Code: 'c',
 		Mod:  tea.ModCtrl,

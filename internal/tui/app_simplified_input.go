@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // handleSimplifiedInputKey resolves one root-level key through the selected
@@ -18,7 +19,7 @@ func (m *AppModel) handleSimplifiedInputKey(msg tea.KeyPressMsg) (bool, tea.Cmd)
 		return false, nil
 	}
 	view := m.currentView()
-	if view != ViewCrossProjectOutliner {
+	if view != presentation.ViewCrossProjectOutliner {
 		m.pendingChord = nil
 		return false, nil
 	}
@@ -141,7 +142,7 @@ func (m *AppModel) executeSimplifiedGlobalKey(key string) (bool, tea.Cmd) {
 		return false, nil
 	}
 	ctx := m.operationCommandContext()
-	ctx.View = ViewCrossProjectOutliner
+	ctx.View = presentation.ViewCrossProjectOutliner
 	ctx.Capabilities.Add(CapabilitySimplifiedInput)
 	binding, _, ok := m.operationRegistry.InputBindingForKey(InputStrategySimplified, key, ctx)
 	if !ok {

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func TestProjectHubEscKeepsFilterThenCloses(t *testing.T) {
@@ -38,7 +39,7 @@ func TestProjectHubEscKeepsFilterThenCloses(t *testing.T) {
 	if hub.HasActiveSearch() || hub.SearchQuery() != "bet" {
 		t.Fatalf("Esc left search active=%v query=%q", hub.HasActiveSearch(), hub.SearchQuery())
 	}
-	if app.CurrentRoute().ID() != SecondaryTool || app.currentView() != ViewProjectHub {
+	if app.CurrentRoute().ID() != SecondaryTool || app.currentView() != presentation.ViewProjectHub {
 		t.Fatalf("first Esc closed Project Hub: %s/%s", app.CurrentRoute().ID(), app.currentView())
 	}
 	if len(hub.surface.Matches()) != 1 {
@@ -189,7 +190,7 @@ func TestProjectHubArchivedEnterKeepsHubOpenWithNotice(t *testing.T) {
 	if cmd != nil {
 		t.Fatalf("archived Enter emitted %#v", cmd())
 	}
-	if !strings.Contains(hub.notice, "unarchived") || app.currentView() != ViewProjectHub {
+	if !strings.Contains(hub.notice, "unarchived") || app.currentView() != presentation.ViewProjectHub {
 		t.Fatalf("archived Enter notice=%q view=%s", hub.notice, app.currentView())
 	}
 }

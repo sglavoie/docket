@@ -2,6 +2,8 @@ package tui
 
 import (
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func TestProjectHubHelpNamesTheTaskFilterOnce(t *testing.T) {
@@ -90,7 +92,7 @@ func TestShowProjectHubMsgOpensTheHubInBrowse(t *testing.T) {
 		cmd()
 	}
 	hub, ok := app.manageHub.ActiveModuleView().(*ProjectHubModel)
-	if app.CurrentRoute().ID() != SecondaryTool || app.currentView() != ViewProjectHub || !ok {
+	if app.CurrentRoute().ID() != SecondaryTool || app.currentView() != presentation.ViewProjectHub || !ok {
 		t.Fatalf("Project Hub landed on %s/%s (%T)", app.CurrentRoute().ID(), app.currentView(), app.manageHub.ActiveModuleView())
 	}
 	if hub.HasActiveSearch() {
@@ -104,7 +106,7 @@ func TestShowProjectHubMsgOpensTheHubInBrowse(t *testing.T) {
 func TestOutlinerProjectHubShortcutsChooseTheirExplicitModes(t *testing.T) {
 	app := projectHubApp(t)
 	ctx := app.operationCommandContext()
-	ctx.View = ViewCrossProjectOutliner
+	ctx.View = presentation.ViewCrossProjectOutliner
 
 	for _, test := range []struct {
 		name string

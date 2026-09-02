@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // TestOutlineEditorRequestRefusesFixedOrderModes is the mode guard. Today, Next,
@@ -60,7 +61,7 @@ func TestOutlineEditorIsInapplicableUnderVisualSelection(t *testing.T) {
 	}
 
 	ctx := app.operationCommandContext()
-	ctx.View = ViewCrossProjectOutliner
+	ctx.View = presentation.ViewCrossProjectOutliner
 	if !descriptor.Applicable(ctx) {
 		t.Fatal("outline edit is inapplicable in the plain Outliner")
 	}

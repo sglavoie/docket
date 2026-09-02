@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // contextActionTestDescriptor is a global, value-free operation so engine tests
@@ -46,7 +47,7 @@ func contextActionTestEngine(
 }
 
 func contextActionTestContext() CommandContext {
-	context := PresentationCommandContext(ViewCrossProjectOutliner)
+	context := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	context.Capabilities.Add(CapabilitySimplifiedInput)
 	return context
 }

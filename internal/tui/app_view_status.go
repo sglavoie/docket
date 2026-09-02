@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/icons"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 const (
@@ -311,7 +312,7 @@ func (m *AppModel) buildBreadcrumb() string {
 
 	// Build a deduplicated renderer path, keeping the LAST occurrence of each
 	// view type (e.g. for stacked project views the deepest project wins).
-	lastIdx := make(map[PresentationID]int)
+	lastIdx := make(map[presentation.PresentationID]int)
 	for i, vt := range path {
 		lastIdx[vt] = i
 	}
@@ -363,7 +364,7 @@ func (m *AppModel) buildBreadcrumb() string {
 }
 
 // breadcrumbLabel returns a short human-readable label for a single view type.
-func (m *AppModel) breadcrumbLabel(vt PresentationID, maxProjectLen int) string {
+func (m *AppModel) breadcrumbLabel(vt presentation.PresentationID, maxProjectLen int) string {
 	path := m.presentationPath()
 	var label string
 	if m.activeManageHub() && len(path) > 0 && vt == path[len(path)-1] {

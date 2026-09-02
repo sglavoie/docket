@@ -6,6 +6,8 @@ import (
 	"image/color"
 	"reflect"
 	"strings"
+
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // RouteID is the stable identity of a primary TUI surface. Modes and entity
@@ -134,7 +136,7 @@ var (
 type Route struct {
 	id              RouteID
 	params          RouteParams
-	presentation    PresentationID
+	presentation    presentation.PresentationID
 	hasPresentation bool
 }
 
@@ -277,7 +279,9 @@ func (r Route) Params() RouteParams { return r.params }
 func (r Route) IsDestination() bool { return r.id.IsDestination() }
 
 // Presentation returns the implementation renderer selected for this route.
-func (r Route) Presentation() (PresentationID, bool) { return r.presentation, r.hasPresentation }
+func (r Route) Presentation() (presentation.PresentationID, bool) {
+	return r.presentation, r.hasPresentation
+}
 
 // Equal compares semantic route identity and canonical parameters. Renderer
 // details do not change route identity.

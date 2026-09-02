@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func TestQuickCaptureInterruptPreservesOutlinerContext(t *testing.T) {
@@ -20,7 +21,7 @@ func TestQuickCaptureInterruptPreservesOutlinerContext(t *testing.T) {
 	beforeCursor := outliner.cursor
 
 	driveUITestKeys(t, driver, "a")
-	assertQuickCaptureOpenOver(t, driver, ViewCrossProjectOutliner, beforeStack)
+	assertQuickCaptureOpenOver(t, driver, presentation.ViewCrossProjectOutliner, beforeStack)
 	if got := driver.App().crossOutliner.cursor; got != beforeCursor {
 		t.Fatalf("outliner cursor while capture is open = %d, want %d", got, beforeCursor)
 	}
@@ -29,7 +30,7 @@ func TestQuickCaptureInterruptPreservesOutlinerContext(t *testing.T) {
 	// and scroll it by line and page. None of this may disturb the parked
 	// outliner beneath capture (cursor or view stack).
 	driveUITestKeys(t, driver, "?", "ctrl+j", "pgdown")
-	assertQuickCaptureOpenOver(t, driver, ViewCrossProjectOutliner, beforeStack)
+	assertQuickCaptureOpenOver(t, driver, presentation.ViewCrossProjectOutliner, beforeStack)
 	if got := driver.App().crossOutliner.cursor; got != beforeCursor {
 		t.Fatalf("outliner cursor after syntax scroll = %d, want %d", got, beforeCursor)
 	}
@@ -38,8 +39,8 @@ func TestQuickCaptureInterruptPreservesOutlinerContext(t *testing.T) {
 
 	driveUITestKeys(t, driver, "esc")
 	after := driver.Observe(ObserveOptions{})
-	if after.CurrentView != ViewCrossProjectOutliner.String() {
-		t.Fatalf("current view after capture dismiss = %q, want %q", after.CurrentView, ViewCrossProjectOutliner.String())
+	if after.CurrentView != presentation.ViewCrossProjectOutliner.String() {
+		t.Fatalf("current view after capture dismiss = %q, want %q", after.CurrentView, presentation.ViewCrossProjectOutliner.String())
 	}
 	if !slices.Equal(after.ViewStack, beforeStack) {
 		t.Fatalf("view stack after capture dismiss = %v, want %v", after.ViewStack, beforeStack)
@@ -73,8 +74,8 @@ func openFixtureOutliner(t *testing.T, driver *UITestDriver, project *models.Pro
 	cross.NavigateToTaskInProject(project.Tasks[0], project)
 	driver.drain()
 	obs := driver.Observe(ObserveOptions{})
-	if obs.CurrentView != ViewCrossProjectOutliner.String() {
-		t.Fatalf("current view = %q, want %q", obs.CurrentView, ViewCrossProjectOutliner.String())
+	if obs.CurrentView != presentation.ViewCrossProjectOutliner.String() {
+		t.Fatalf("current view = %q, want %q", obs.CurrentView, presentation.ViewCrossProjectOutliner.String())
 	}
 	if cross.scopedProjectID != project.ID {
 		t.Fatalf("expected project scope %q after selecting project, got %q", project.ID, cross.scopedProjectID)
@@ -109,15 +110,15 @@ func driveUITestKeys(t *testing.T, driver *UITestDriver, keys ...string) {
 	}
 }
 
-func assertQuickCaptureOpenOver(t *testing.T, driver *UITestDriver, view PresentationID, priorStack []string) {
+func assertQuickCaptureOpenOver(t *testing.T, driver *UITestDriver, view presentation.PresentationID, priorStack []string) {
 	t.Helper()
 	obs := driver.Observe(ObserveOptions{})
 	// Task Composer is a typed overlay, so the derived renderer path adds its
 	// compatibility view above the parked primary route.
-	if obs.CurrentView != ViewTaskComposer.String() {
-		t.Fatalf("current view while capture is open = %q, want %q", obs.CurrentView, ViewTaskComposer.String())
+	if obs.CurrentView != presentation.ViewTaskComposer.String() {
+		t.Fatalf("current view while capture is open = %q, want %q", obs.CurrentView, presentation.ViewTaskComposer.String())
 	}
-	wantPath := append(slices.Clone(priorStack), ViewTaskComposer.String())
+	wantPath := append(slices.Clone(priorStack), presentation.ViewTaskComposer.String())
 	if !slices.Equal(obs.ViewStack, wantPath) {
 		t.Fatalf("renderer path under typed composer = %v, want %v", obs.ViewStack, wantPath)
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // ManageHubModuleSelectedMsg changes the active Manage mode without creating a
@@ -319,7 +320,7 @@ func (m *ManageHubModel) CommandContext() CommandContext {
 		return ctx
 	}
 	return CommandContext{
-		View: ViewProjectHub,
+		View: presentation.ViewProjectHub,
 		Capabilities: NewCapabilitySet(
 			CapabilityCommandDiscovery,
 			CapabilityAppScope,
@@ -347,19 +348,19 @@ func (m *ManageHubModel) ScopeProjectIDs() []string {
 
 // PresentationView exposes the active renderer identity for command discovery.
 // It never becomes a route identity.
-func (m *ManageHubModel) PresentationView() (PresentationID, bool) {
+func (m *ManageHubModel) PresentationView() (presentation.PresentationID, bool) {
 	return manageModulePresentation(m.params)
 }
 
-func manageModulePresentation(params ManageParams) (PresentationID, bool) {
+func manageModulePresentation(params ManageParams) (presentation.PresentationID, bool) {
 	switch params.Module {
 	case ManageNotes:
 		if params.NotesScope.Kind == NotesScopeProject {
-			return ViewNotes, true
+			return presentation.ViewNotes, true
 		}
-		return ViewGlobalNotes, true
+		return presentation.ViewGlobalNotes, true
 	case ManageProjects:
-		return ViewProjectHub, true
+		return presentation.ViewProjectHub, true
 	default:
 		return 0, false
 	}

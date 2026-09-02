@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // The named-lens picker is the one surface the lens lifecycle is reachable
@@ -103,7 +104,7 @@ type NamedLensPickerModel struct {
 	executor *OperationExecutor
 	// view is frozen at construction: the picker floats over the route that
 	// opened it, and its own presence must not change the context it builds.
-	view     PresentationID
+	view     presentation.PresentationID
 	snapshot NamedLensPickerSnapshot
 	sorted   config.NamedLensList
 	listed   int
@@ -123,7 +124,7 @@ type NamedLensPickerModel struct {
 // it actually dispatches through.
 func NewNamedLensPickerModel(
 	executor *OperationExecutor,
-	view PresentationID,
+	view presentation.PresentationID,
 	snapshot NamedLensPickerSnapshot,
 ) (*NamedLensPickerModel, error) {
 	if executor == nil {

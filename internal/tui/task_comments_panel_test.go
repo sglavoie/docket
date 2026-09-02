@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // TestCommentsPanelWorkspaceUndoRedoRefreshesAndNamesTheLedgerEntry walks the
@@ -45,7 +46,7 @@ func TestCommentsPanelWorkspaceUndoRedoRefreshesAndNamesTheLedgerEntry(t *testin
 
 	press("u")
 	driver.Wait(defaultWaitTimeout)
-	if driver.App().currentView() != ViewTaskComments {
+	if driver.App().currentView() != presentation.ViewTaskComments {
 		t.Fatalf("u left the panel for %s", driver.App().currentView())
 	}
 	if got := comments(); len(got) != before || slices.Contains(got, added) {
@@ -57,7 +58,7 @@ func TestCommentsPanelWorkspaceUndoRedoRefreshesAndNamesTheLedgerEntry(t *testin
 
 	press("ctrl+r")
 	driver.Wait(defaultWaitTimeout)
-	if driver.App().currentView() != ViewTaskComments {
+	if driver.App().currentView() != presentation.ViewTaskComments {
 		t.Fatalf("Ctrl+R left the panel for %s", driver.App().currentView())
 	}
 	if got := comments(); len(got) != before+1 || !slices.Contains(got, added) {
@@ -154,12 +155,12 @@ func TestCommentsHelpKeyRaisesTheCommentsGrammar(t *testing.T) {
 	}
 
 	press("?")
-	if got := driver.App().currentView(); got != ViewHelp {
+	if got := driver.App().currentView(); got != presentation.ViewHelp {
 		t.Fatalf("? left the panel on %v, want the Help view", got)
 	}
-	help, ok := driver.App().views.Get(ViewHelp).(*HelpViewModel)
+	help, ok := driver.App().views.Get(presentation.ViewHelp).(*HelpViewModel)
 	if !ok {
-		t.Fatalf("the Help view is %T, want *HelpViewModel", driver.App().views.Get(ViewHelp))
+		t.Fatalf("the Help view is %T, want *HelpViewModel", driver.App().views.Get(presentation.ViewHelp))
 	}
 	if help.viewName != "Comments" {
 		t.Fatalf("help header = %q, want \"Comments\"", help.viewName)
@@ -186,14 +187,14 @@ func TestCommentsHelpKeyRaisesTheCommentsGrammar(t *testing.T) {
 		}
 	}
 	press("?")
-	if got := driver.App().currentView(); got != ViewTaskComments {
+	if got := driver.App().currentView(); got != presentation.ViewTaskComments {
 		t.Fatalf("closing help landed on %v, want the panel it came from", got)
 	}
 
 	// Every sub-state owns its whole key stream, so help is a browse-only press.
 	press("a")
 	press("?")
-	if got := driver.App().currentView(); got != ViewTaskComments {
+	if got := driver.App().currentView(); got != presentation.ViewTaskComments {
 		t.Fatalf("? in add mode left the panel for %v", got)
 	}
 	if got := panel.textInput.Value(); got != "?" {
@@ -207,7 +208,7 @@ func TestCommentsHelpKeyRaisesTheCommentsGrammar(t *testing.T) {
 
 	press("e")
 	press("?")
-	if got := driver.App().currentView(); got != ViewTaskComments {
+	if got := driver.App().currentView(); got != presentation.ViewTaskComments {
 		t.Fatalf("? in edit mode left the panel for %v", got)
 	}
 	if got := panel.editTextInput.Value(); !strings.Contains(got, "?") {
@@ -221,14 +222,14 @@ func TestCommentsHelpKeyRaisesTheCommentsGrammar(t *testing.T) {
 		t.Fatal("Enter did not expand the comment under the cursor")
 	}
 	press("?")
-	if got := driver.App().currentView(); got != ViewTaskComments {
+	if got := driver.App().currentView(); got != presentation.ViewTaskComments {
 		t.Fatalf("? in the expanded comment left the panel for %v", got)
 	}
 	press("esc")
 
 	panel.confirm.Show("delete", "Delete comment [0]?")
 	press("?")
-	if got := driver.App().currentView(); got != ViewTaskComments {
+	if got := driver.App().currentView(); got != presentation.ViewTaskComments {
 		t.Fatalf("? under the delete confirmation left the panel for %v", got)
 	}
 	if !panel.confirm.IsActive() {
@@ -254,7 +255,7 @@ func TestCommentsPanelUnboundKeysAreSilent(t *testing.T) {
 		if driver.App().contextActionSheet != nil {
 			t.Fatalf("unbound key %q opened an action sheet", key)
 		}
-		if got := driver.App().currentView(); got != ViewTaskComments {
+		if got := driver.App().currentView(); got != presentation.ViewTaskComments {
 			t.Fatalf("unbound key %q left the panel for %v", key, got)
 		}
 	}

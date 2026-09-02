@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // typedTestApp wires the same typed route, operation, and Outliner foundations
@@ -23,7 +24,7 @@ func typedTestApp(t *testing.T) *AppModel {
 	model.crossOutliner = NewOutlinerModel(nil, model.configManager, model.runtime)
 	model.crossOutliner.loadedProjects = []*models.Project{project}
 	model.crossOutliner.SetSize(model.width, model.height-2)
-	model.views.Register(ViewCrossProjectOutliner, model.crossOutliner)
+	model.views.Register(presentation.ViewCrossProjectOutliner, model.crossOutliner)
 
 	if err := model.registerCoreInputOperations(); err != nil {
 		t.Fatalf("register core input operations: %v", err)

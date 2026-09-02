@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func newShellTestApp() *AppModel {
@@ -25,7 +26,7 @@ func TestCurrentRouteBinding(t *testing.T) {
 
 	// The Outliner presentation is the app-scoped TaskWorkspace root; project
 	// selection is an Outliner scope frame, not a project-scoped root route.
-	app.pushView(ViewCrossProjectOutliner)
+	app.pushView(presentation.ViewCrossProjectOutliner)
 	r := app.CurrentRoute()
 	workspace, ok := r.Params().(TaskWorkspaceParams)
 	if r.ID() != TaskWorkspace || !ok || workspace.Scope != AppEntityScope() {
@@ -34,7 +35,7 @@ func TestCurrentRouteBinding(t *testing.T) {
 
 	// Global-nav view drops the project.
 	jumpToOutlinerRootForTest(app)
-	app.pushView(ViewCrossProjectOutliner)
+	app.pushView(presentation.ViewCrossProjectOutliner)
 	r = app.CurrentRoute()
 	workspace, ok = r.Params().(TaskWorkspaceParams)
 	if !ok || workspace.Scope != AppEntityScope() {
@@ -59,18 +60,18 @@ func TestShellStateFacade(t *testing.T) {
 	s := app.Shell()
 	// Construction lands on the sole Outliner root, with no synthetic
 	// presentation sentinel beneath it.
-	if s.CurrentView() != ViewCrossProjectOutliner {
+	if s.CurrentView() != presentation.ViewCrossProjectOutliner {
 		t.Errorf("CurrentView = %s, want CrossProjectOutliner", s.CurrentView())
 	}
 	if s.CurrentRoute().ID() != TaskWorkspace {
 		t.Errorf("root route = %s, want TaskWorkspace", s.CurrentRoute().ID())
 	}
-	if s.Depth() != 1 || len(s.Stack()) != 1 || s.Stack()[0] != ViewCrossProjectOutliner {
+	if s.Depth() != 1 || len(s.Stack()) != 1 || s.Stack()[0] != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("root renderer path = %v depth=%d, want sole Outliner renderer", s.Stack(), s.Depth())
 	}
 	// The Outliner presentation replaces the single root in place and stays
 	// app-scoped; project selection is an Outliner scope frame, not a root route.
-	app.pushView(ViewCrossProjectOutliner)
+	app.pushView(presentation.ViewCrossProjectOutliner)
 	if s.CurrentRoute().ID() != TaskWorkspace {
 		t.Errorf("CurrentRoute = %s, want TaskWorkspace", s.CurrentRoute().ID())
 	}

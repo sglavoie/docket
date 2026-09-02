@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // OperationExecutor resolves descriptors, targets, values, risk policy,
@@ -107,7 +108,7 @@ func (executor *OperationExecutor) Register(binding OperationBinding) error {
 	if handlerCount != 1 {
 		return fmt.Errorf("operation %s requires exactly one handler kind", binding.OperationID)
 	}
-	binding.Views = append([]PresentationID(nil), binding.Views...)
+	binding.Views = append([]presentation.PresentationID(nil), binding.Views...)
 	binding.RequiredCapabilities = cloneCapabilitySet(binding.RequiredCapabilities)
 	executor.bindings[binding.OperationID] = append(executor.bindings[binding.OperationID], binding)
 	return nil

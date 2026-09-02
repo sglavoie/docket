@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 type operationTestMsg string
@@ -26,7 +27,7 @@ func (transaction *operationTestTransaction) Rollback() error {
 }
 
 func TestOperationTargetResolverResolvesEveryTargetSourceDeterministically(t *testing.T) {
-	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
+	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Entity = EntityContext{ProjectID: "project-b", TaskID: "task-current"}
 	ctx.Selection.Tasks = []TaskIdentity{
 		{ProjectID: "project-b", TaskID: "task-2"},
@@ -114,7 +115,7 @@ func TestOperationTargetResolverResolvesEveryTargetSourceDeterministically(t *te
 }
 
 func TestOperationTargetResolverSelectedTasksFallsBackToCurrentTask(t *testing.T) {
-	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
+	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Entity = EntityContext{ProjectID: "project", TaskID: "current"}
 	descriptor := OperationDescriptor{
 		ID:                "task.bulk",
@@ -204,7 +205,7 @@ func TestOperationExecutorCentralizesValueConfirmationTransactionStatusAndUndo(t
 		t.Fatalf("Register binding: %v", err)
 	}
 
-	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
+	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Selection.Tasks = []TaskIdentity{
 		{ProjectID: "project-b", TaskID: "task-2"},
 		{ProjectID: "project-a", TaskID: "task-1"},

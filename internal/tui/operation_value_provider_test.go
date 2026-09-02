@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func TestStateValueProviderAcceptsOnlyCanonicalPresets(t *testing.T) {
@@ -257,7 +258,7 @@ func TestBulkTagPickerRepresentsAllSomeNoneAndEmitsPatch(t *testing.T) {
 	other := newBulkPickerTestTask(t, 1, "second", "common", "second-only")
 	env := newAppBulkPickerEnv(t, []*models.Task{common}, []*models.Task{other})
 	model := env.appModel()
-	context := PresentationCommandContext(ViewCrossProjectOutliner)
+	context := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	context.Capabilities.Add(CapabilitySimplifiedInput)
 	context.Selection.Visual = true
 	for index, task := range []*models.Task{common, other} {
@@ -327,7 +328,7 @@ func TestBulkContextRowsReadIndeterminateAndWriteOnlyWhenPicked(t *testing.T) {
 	second.Context = "office"
 	env := newAppBulkPickerEnv(t, []*models.Task{first}, []*models.Task{second})
 	model := env.appModel()
-	context := PresentationCommandContext(ViewCrossProjectOutliner)
+	context := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	context.Capabilities.Add(CapabilitySimplifiedInput)
 	context.Selection.Visual = true
 	for index, task := range []*models.Task{first, second} {

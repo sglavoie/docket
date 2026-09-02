@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func TestParentSelectorUpdate_AllowNoneSelection(t *testing.T) {
@@ -16,7 +17,7 @@ func TestParentSelectorUpdate_AllowNoneSelection(t *testing.T) {
 		t.Fatalf("NewTask: %v", err)
 	}
 
-	m := NewParentSelectorModel([]*models.Task{parent}, nil, true, ViewCrossProjectOutliner)
+	m := NewParentSelectorModel([]*models.Task{parent}, nil, true, presentation.ViewCrossProjectOutliner)
 	m.Init()
 
 	model, _ := m.Update(syntheticCtrlKey('d'))
@@ -62,7 +63,7 @@ func TestParentSelectorView_AllowNoneLabelsNoParent(t *testing.T) {
 		t.Fatalf("NewTask: %v", err)
 	}
 
-	m := NewParentSelectorModel([]*models.Task{parent}, nil, true, ViewCrossProjectOutliner)
+	m := NewParentSelectorModel([]*models.Task{parent}, nil, true, presentation.ViewCrossProjectOutliner)
 	m.SetSize(80, 24)
 
 	view := m.View().Content
@@ -80,7 +81,7 @@ func TestParentSelectorUpdate_CtrlXClearsParent(t *testing.T) {
 		t.Fatalf("NewTask: %v", err)
 	}
 
-	m := NewParentSelectorModel([]*models.Task{parent}, &parent.ID, true, ViewCrossProjectOutliner)
+	m := NewParentSelectorModel([]*models.Task{parent}, &parent.ID, true, presentation.ViewCrossProjectOutliner)
 	m.reparentTask = TaskIdentity{ProjectID: "project-1", TaskID: "task-1"}
 
 	_, cmd := m.Update(syntheticCtrlKey('x'))
@@ -94,8 +95,8 @@ func TestParentSelectorUpdate_CtrlXClearsParent(t *testing.T) {
 	if msg.ParentID != nil {
 		t.Fatalf("expected nil parent from ctrl+x, got %#v", msg.ParentID)
 	}
-	if msg.Source != ViewCrossProjectOutliner {
-		t.Fatalf("expected source %v, got %v", ViewCrossProjectOutliner, msg.Source)
+	if msg.Source != presentation.ViewCrossProjectOutliner {
+		t.Fatalf("expected source %v, got %v", presentation.ViewCrossProjectOutliner, msg.Source)
 	}
 	if msg.ReparentTask != (TaskIdentity{ProjectID: "project-1", TaskID: "task-1"}) {
 		t.Fatalf("expected qualified reparent task, got %#v", msg.ReparentTask)
@@ -108,7 +109,7 @@ func TestParentSelectorUpdate_CtrlXIgnoredWhenNoneDisallowed(t *testing.T) {
 		t.Fatalf("NewTask: %v", err)
 	}
 
-	m := NewParentSelectorModel([]*models.Task{parent}, nil, false, ViewCrossProjectOutliner)
+	m := NewParentSelectorModel([]*models.Task{parent}, nil, false, presentation.ViewCrossProjectOutliner)
 
 	_, cmd := m.Update(syntheticCtrlKey('x'))
 	if cmd != nil {

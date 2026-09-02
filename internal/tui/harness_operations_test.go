@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -134,7 +135,7 @@ func (m *AppModel) registerHarnessOperations() error {
 			// editor round trip, which no harness action can replay: editors are
 			// disabled and the `command` action carries no buffer payload. Scenarios
 			// therefore install it directly with a canned problem list.
-			m.showView(ViewOutlineErrors, NewOutlineErrorsViewModel(
+			m.showView(presentation.ViewOutlineErrors, NewOutlineErrorsViewModel(
 				"Rich Project",
 				harnessOutlineScenarioPath,
 				harnessOutlineProblems(),

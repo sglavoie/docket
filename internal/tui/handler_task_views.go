@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // handleTaskViewMessages handles task-related view opening messages.
@@ -27,5 +28,5 @@ func (m *AppModel) handleShowTaskComments(msg ShowTaskCommentsMsg) (bool, tea.Cm
 		m.secondaryFeatures.Subview,
 	)
 	view.SetOperationDispatch(m.dispatchOperationKey)
-	return m.showViewInit(ViewTaskComments, view)
+	return m.showViewInit(presentation.ViewTaskComments, view)
 }

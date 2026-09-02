@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 type testViewWithMetadata struct{}
@@ -29,7 +30,7 @@ func (v *testViewWithMetadata) SetSize(width, height int) {}
 
 func TestAppViewPreservesSubviewViewMetadata(t *testing.T) {
 	app := newTestAppModel()
-	app.views.Register(ViewCrossProjectOutliner, &testViewWithMetadata{})
+	app.views.Register(presentation.ViewCrossProjectOutliner, &testViewWithMetadata{})
 
 	output := app.View()
 
@@ -87,7 +88,7 @@ func TestAppViewQuickCaptureUsesAppShellFooter(t *testing.T) {
 	if !handled {
 		t.Fatal("ShowTaskComposerMsg should be handled")
 	}
-	if app.currentView() != ViewTaskComposer {
+	if app.currentView() != presentation.ViewTaskComposer {
 		t.Fatalf("currentView should be QuickCapture, got %v", app.currentView())
 	}
 

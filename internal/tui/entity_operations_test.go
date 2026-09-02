@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // entityOperationApp wires the operation registry against a real note-capable
@@ -45,7 +46,7 @@ func entityOperationApp(t *testing.T, titles ...string) (*AppModel, *models.Proj
 }
 
 func executeEntityOperation(app *AppModel, id OperationID, entity EntityIdentity) OperationExecutionResult {
-	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
+	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.CurrentEntity = entity
 	return app.operationExecutor.Execute(OperationExecutionRequest{
 		ID:      id,
@@ -107,7 +108,7 @@ func TestNoteOperationsRejectTargetsOutsideTheirScope(t *testing.T) {
 
 	// currentEntityIdentity degrades to the focused project, so an unguarded note
 	// descriptor would silently borrow it.
-	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
+	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	if noteOperationApplicable(ctx) {
 		t.Fatal("a note operation was offered with only a project in focus")
 	}

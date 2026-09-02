@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func TestOperationExecutionResultStatusDeliveryPrecedence(t *testing.T) {
@@ -107,7 +108,7 @@ func TestOperationExecutorStatusOnlyResultReachesTheMessageSeam(t *testing.T) {
 		t.Fatalf("Register silent binding: %v", err)
 	}
 
-	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
+	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	copied := executor.Execute(OperationExecutionRequest{ID: reporting.ID, Context: ctx})
 	if copied.Err != nil || copied.Message != nil {
 		t.Fatalf("copy result = %#v, want a status-only outcome", copied)
@@ -186,7 +187,7 @@ func TestOperationExecutorMessageAndStatusWithInstalledReporterDeliverOnce(t *te
 		}
 	})
 
-	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
+	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	both := executor.Execute(OperationExecutionRequest{ID: speaking.ID, Context: ctx})
 	if got := both.AsMessage(); got != operationTestMsg("completed") {
 		t.Fatalf("message seam = %#v, want the handler message", got)
@@ -237,7 +238,7 @@ func TestOperationExecutorRollsBackFailedHandler(t *testing.T) {
 
 	result := executor.Execute(OperationExecutionRequest{
 		ID:      descriptor.ID,
-		Context: PresentationCommandContext(ViewUnknown),
+		Context: PresentationCommandContext(presentation.ViewUnknown),
 	})
 	if !errors.Is(result.Err, handlerErr) {
 		t.Fatalf("Execute error = %v, want %v", result.Err, handlerErr)
@@ -282,7 +283,7 @@ func TestOperationExecutorSupportsSingleAndBulkHandlers(t *testing.T) {
 		t.Fatalf("Register bulk: %v", err)
 	}
 
-	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
+	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Entity = EntityContext{ProjectID: "project", TaskID: "current"}
 	ctx.Selection.Tasks = []TaskIdentity{
 		{ProjectID: "project", TaskID: "one"},

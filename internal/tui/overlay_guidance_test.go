@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func session8GuidanceText(spec GuidanceSpec) string {
@@ -207,7 +208,7 @@ func TestTransientSelectorsRenderGuidanceWithoutWorkspacePulse(t *testing.T) {
 		view View
 	}{
 		{name: "tag selector", view: NewTagSelectorModel(task, source, nil)},
-		{name: "parent selector", view: NewParentSelectorModel([]*models.Task{parent}, nil, true, ViewCrossProjectOutliner)},
+		{name: "parent selector", view: NewParentSelectorModel([]*models.Task{parent}, nil, true, presentation.ViewCrossProjectOutliner)},
 	}
 	for _, test := range views {
 		t.Run(test.name, func(t *testing.T) {

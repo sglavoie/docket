@@ -10,10 +10,11 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func taskActionTestContext() CommandContext {
-	context := PresentationCommandContext(ViewCrossProjectOutliner)
+	context := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	context.Capabilities.Add(CapabilitySimplifiedInput)
 	context.Entity = EntityContext{ProjectID: "project", TaskID: "task"}
 	return context
@@ -22,7 +23,7 @@ func taskActionTestContext() CommandContext {
 // bulkTaskActionTestContext freezes a visual selection over live tasks, the same
 // shape openTaskActionSheet builds from the Outliner's selected rows.
 func bulkTaskActionTestContext(project *models.Project, tasks ...*models.Task) CommandContext {
-	context := PresentationCommandContext(ViewCrossProjectOutliner)
+	context := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	context.Capabilities.Add(CapabilitySimplifiedInput)
 	context.Selection.Visual = true
 	context.Selection.Tasks = make([]TaskIdentity, 0, len(tasks))

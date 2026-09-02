@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // ApplyProjectScopeMsg applies a Project Hub or project-header selection to the
@@ -12,11 +13,11 @@ type ApplyProjectScopeMsg struct {
 }
 
 func (m *AppModel) applyProjectScope(msg ApplyProjectScopeMsg) (bool, tea.Cmd) {
-	if m.baseProjectView() != ViewCrossProjectOutliner || m.crossOutliner == nil {
+	if m.baseProjectView() != presentation.ViewCrossProjectOutliner || m.crossOutliner == nil {
 		m.setInfoStatus("Project scope is available from the global Outliner")
 		return true, nil
 	}
-	returnToOutliner := m.currentView() == ViewProjectHub
+	returnToOutliner := m.currentView() == presentation.ViewProjectHub
 	if msg.Clear {
 		// A lens applied under this scope recorded project facets it could not act
 		// on, because the scope had already fixed the population. Leaving the scope
@@ -78,7 +79,7 @@ func (m *AppModel) finishParkedProjectFocus(focusProjectID string) tea.Cmd {
 	if m.crossOutliner.scopedProjectID != focusProjectID {
 		return nil
 	}
-	if m.currentView() != ViewProjectHub {
+	if m.currentView() != presentation.ViewProjectHub {
 		return nil
 	}
 	return m.returnToOutlinerAfterProjectScope()

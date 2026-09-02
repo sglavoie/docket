@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func TestCrossProjectColdLoadAlwaysRendersLoadingFrame(t *testing.T) {
@@ -68,8 +69,8 @@ func newSession2OutlinerApp(t *testing.T, dataDir string, projects ...*models.Pr
 	cross.crossForceRebuild = true
 	cross.crossProjectRebuildRows()
 	app.crossOutliner = cross
-	app.views.Register(ViewCrossProjectOutliner, cross)
-	setTestPresentationPath(app, ViewUnknown, ViewCrossProjectOutliner)
+	app.views.Register(presentation.ViewCrossProjectOutliner, cross)
+	setTestPresentationPath(app, presentation.ViewUnknown, presentation.ViewCrossProjectOutliner)
 	return app, cross
 }
 
@@ -115,7 +116,7 @@ func TestHandleWithRefreshDefersCrossReloadWhileCovered(t *testing.T) {
 	dataDir := t.TempDir()
 	project := newSession2Project(t, dataDir, "covered")
 	app, cross := newSession2OutlinerApp(t, dataDir, project)
-	pushTestPresentationOverlay(app, ViewTaskComments)
+	pushTestPresentationOverlay(app, presentation.ViewTaskComments)
 
 	cmd := app.handleWithRefresh(false, true)
 
@@ -147,8 +148,8 @@ func TestValidateCurrentProjectReturnsReloadCommand(t *testing.T) {
 	if app.currentProject != nil {
 		t.Fatal("stale current project was not cleared")
 	}
-	if app.currentView() != ViewCrossProjectOutliner {
-		t.Fatalf("fallback view = %s, want %s", app.currentView(), ViewCrossProjectOutliner)
+	if app.currentView() != presentation.ViewCrossProjectOutliner {
+		t.Fatalf("fallback view = %s, want %s", app.currentView(), presentation.ViewCrossProjectOutliner)
 	}
 	if !cross.crossLoading {
 		t.Fatal("fallback Outliner reload was not armed")
@@ -168,15 +169,15 @@ func TestBackMsgReturnsAppearanceReloadCommand(t *testing.T) {
 	dataDir := t.TempDir()
 	project := newSession2Project(t, dataDir, "back")
 	app, cross := newSession2OutlinerApp(t, dataDir, project)
-	pushTestPresentationOverlay(app, ViewTaskComments)
+	pushTestPresentationOverlay(app, presentation.ViewTaskComments)
 	generation := cross.crossLoadGen
 
 	_, cmd := app.Update(BackMsg{})
 	if cmd == nil {
 		t.Fatal("BackMsg dropped popView's ViewDidAppearMsg command")
 	}
-	if app.currentView() != ViewCrossProjectOutliner {
-		t.Fatalf("revealed view = %s, want %s", app.currentView(), ViewCrossProjectOutliner)
+	if app.currentView() != presentation.ViewCrossProjectOutliner {
+		t.Fatalf("revealed view = %s, want %s", app.currentView(), presentation.ViewCrossProjectOutliner)
 	}
 
 	runSession2AppCommand(t, app, cmd)
@@ -308,7 +309,7 @@ func TestCoveredCrossProjectLoadCompletionSettlesAuthoritativeOutliner(t *testin
 
 	_ = cross.reloadCrossProjects()
 	generation := cross.crossLoadGen
-	pushTestPresentationOverlay(app, ViewTaskComments)
+	pushTestPresentationOverlay(app, presentation.ViewTaskComments)
 
 	raw := cross.loadCrossProjectsCmd()()
 	loaded, ok := raw.(crossProjectsLoadedMsg)

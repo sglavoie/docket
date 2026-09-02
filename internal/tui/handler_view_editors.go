@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/external"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // handleEditorMessages handles text editor, glow, and external editor messages.
@@ -14,7 +15,7 @@ import (
 func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case ShowTextEditorMsg:
-		return m.showViewInit(ViewTextEditor, NewTextEditorModel(msg.FieldName, msg.CurrentValue))
+		return m.showViewInit(presentation.ViewTextEditor, NewTextEditorModel(msg.FieldName, msg.CurrentValue))
 
 	case ShowTaskTextEditorMsg:
 		if msg.Task == nil || msg.Project == nil {
@@ -37,7 +38,7 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 			Operation: msg.Operation,
 			Original:  currentValue,
 		}
-		return m.showViewInit(ViewTextEditor, NewTextEditorModel(fieldName, currentValue))
+		return m.showViewInit(presentation.ViewTextEditor, NewTextEditorModel(fieldName, currentValue))
 
 	case TextEditorDoneMsg:
 		m.popView()

@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // Notes surface operation IDs. They name what the Notes grammar does to the
@@ -96,11 +97,11 @@ func (m *NotesViewModel) notesCommandContext() CommandContext {
 
 // presentationID names the renderer the current scope selects, matching the
 // hub's own mapping so a Notes-scoped binding resolves under either spelling.
-func (m *NotesViewModel) presentationID() PresentationID {
+func (m *NotesViewModel) presentationID() presentation.PresentationID {
 	if m.scope.Kind == NotesScopeProject {
-		return ViewNotes
+		return presentation.ViewNotes
 	}
-	return ViewGlobalNotes
+	return presentation.ViewGlobalNotes
 }
 
 // noteRowEntity names the note a row carries. A row without a note is not a
@@ -281,7 +282,7 @@ func (m *AppModel) registerNotesSurfaceOperations() error {
 	for _, id := range notesHostedNoteOperations() {
 		if err := m.operationExecutor.Register(OperationBinding{
 			OperationID:              id,
-			Views:                    []PresentationID{ViewNotes, ViewGlobalNotes},
+			Views:                    []presentation.PresentationID{presentation.ViewNotes, presentation.ViewGlobalNotes},
 			RequiredCapabilities:     NewCapabilitySet(CapabilityNotesManager),
 			Handler:                  m.executeNotesSurfaceOperation,
 			DelegateTargetResolution: true,

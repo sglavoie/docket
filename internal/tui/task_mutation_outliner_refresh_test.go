@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // installDistinctOutlinerSnapshot gives the Outliner the immutable workspace
@@ -160,7 +161,7 @@ func TestTaskCreatedRefreshesVisibleOutlinerSnapshot(t *testing.T) {
 		t.Fatalf("save created task: %v", err)
 	}
 
-	model.pushView(ViewTaskComposer)
+	model.pushView(presentation.ViewTaskComposer)
 	result := domainapp.TaskResult{ProjectID: project.ID, TaskID: task.ID}
 	_, cmd := model.Update(TaskCreatedMsg{Result: &result})
 	runSession2AppCommand(t, model, cmd)

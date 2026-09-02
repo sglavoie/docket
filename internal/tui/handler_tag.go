@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // handleTagMessages handles tag-related messages.
@@ -10,7 +11,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 	switch msg := msg.(type) {
 	case ShowTagSelectorMsg:
 		selector := NewTagSelectorModel(msg.Task, msg.Project, msg.CurrentTags)
-		m.showView(ViewTagSelector, selector)
+		m.showView(presentation.ViewTagSelector, selector)
 		return true, nil
 
 	case TagSelectorDoneMsg:
@@ -19,7 +20,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 			return true, nil
 		}
 		// Check if we came from project tree, outliner, or cross-project outliner - apply tags directly
-		if m.currentView() == ViewCrossProjectOutliner && msg.Task != nil {
+		if m.currentView() == presentation.ViewCrossProjectOutliner && msg.Task != nil {
 			return true, m.applyTagsToTask(msg.Identity, msg.Task, msg.SelectedTags)
 		}
 		// Otherwise forward to the current view.

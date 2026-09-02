@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // reconcileNoteLedgerRestore advances every shell cache affected by the exact
@@ -81,7 +82,7 @@ func (m *AppModel) ledgerProjectByID(projectID string) *models.Project {
 		return m.currentProject
 	}
 	if m.views != nil {
-		if view, ok := m.views.Get(ViewNotes).(*NotesViewModel); ok {
+		if view, ok := m.views.Get(presentation.ViewNotes).(*NotesViewModel); ok {
 			if project := view.projectByID(projectID); project != nil {
 				return project
 			}

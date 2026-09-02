@@ -1,6 +1,10 @@
 package tui
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/presentation"
+)
 
 func TestHandleTaskMessagesShowTaskComments(t *testing.T) {
 	app, project := newTestAppModelWithProject()
@@ -12,18 +16,18 @@ func TestHandleTaskMessagesShowTaskComments(t *testing.T) {
 	if !handled {
 		t.Error("ShowTaskCommentsMsg should be handled")
 	}
-	if app.currentView() != ViewTaskComments {
+	if app.currentView() != presentation.ViewTaskComments {
 		t.Errorf("currentView should be TaskComments, got %v", app.currentView())
 	}
 }
 
 func TestHandleTaskMessagesCloseTaskComments(t *testing.T) {
 	app := newTestAppModel()
-	app.pushView(ViewTaskComments)
+	app.pushView(presentation.ViewTaskComments)
 
 	app.Update(CloseTaskCommentsMsg{})
 
-	if app.currentView() != ViewCrossProjectOutliner {
+	if app.currentView() != presentation.ViewCrossProjectOutliner {
 		t.Errorf("currentView should be Outliner after closing comments, got %v", app.currentView())
 	}
 }

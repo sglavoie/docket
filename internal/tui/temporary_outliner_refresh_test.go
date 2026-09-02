@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // openScopedProjectDrilldown drills the global Outliner into a single project
@@ -48,7 +49,7 @@ func openScopedProjectDrilldown(t *testing.T) (*UITestDriver, *models.Project) {
 	cross.NavigateToTaskInProject(targetProject.Tasks[0], targetProject)
 	driver.drain()
 
-	if driver.App().currentView() != ViewCrossProjectOutliner {
+	if driver.App().currentView() != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("current view = %s, want CrossProjectOutliner", driver.App().currentView())
 	}
 	if !cross.isProjectScoped() || cross.scopedProjectID != targetProject.ID {
@@ -66,7 +67,7 @@ func TestScopedDrilldownEscRestoresCrossProjectParent(t *testing.T) {
 	if _, err := driver.ApplyAction(UITestAction{Type: UITestActionKey, Key: "esc"}, ObserveOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	if got := driver.App().currentView(); got != ViewCrossProjectOutliner {
+	if got := driver.App().currentView(); got != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("current view after Esc = %s, want CrossProjectOutliner", got)
 	}
 	if cross.isProjectScoped() {
@@ -129,7 +130,7 @@ func TestScopedPinnedLeafCompletionKeepsProjectOutlinerVisible(t *testing.T) { /
 	if app.err != nil {
 		t.Fatalf("completion raised an internal error: %v", app.err)
 	}
-	if got := app.currentView(); got != ViewCrossProjectOutliner {
+	if got := app.currentView(); got != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("current view = %s, want CrossProjectOutliner", got)
 	}
 	if cross.scopedProjectID != project.ID {

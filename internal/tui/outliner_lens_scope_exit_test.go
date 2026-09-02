@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // TestScopedEquivalentLensSwitchRetainsDeferredPopulationLoad pins the
@@ -272,7 +273,7 @@ func parkedFocusLensApp(t *testing.T, extra ...*models.Project) (*AppModel, *Out
 	outliner.crossProjectRebuildRows()
 	app.crossOutliner = outliner
 	outliner.SetSize(app.width, app.height-2)
-	app.views.Register(ViewCrossProjectOutliner, outliner)
+	app.views.Register(presentation.ViewCrossProjectOutliner, outliner)
 
 	everything := []*models.Project{alpha, beta, parked}
 	outliner.beginParkedProjectFocus(parked.ID)

@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 //nolint:gocyclo // main Update dispatch
@@ -22,7 +23,7 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case ParentSelectedMsg:
-		if msg.Source == ViewTaskComposer {
+		if msg.Source == presentation.ViewTaskComposer {
 			m.draft.parentID = msg.ParentID
 			m.hasChanges = true
 			m.err = nil

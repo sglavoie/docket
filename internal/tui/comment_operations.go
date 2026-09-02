@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // Comment operation IDs. They name what the Comments panel does to the comment
@@ -230,9 +231,9 @@ func (m *AppModel) executeCommentOperation(invocation OperationInvocation) Opera
 // A dispatched key already knows the panel is what it came from, so the lookup
 // keys on the current view rather than searching the whole stack.
 func (m *AppModel) activeCommentsPanel() *TaskCommentsModel {
-	if m == nil || m.views == nil || m.currentView() != ViewTaskComments {
+	if m == nil || m.views == nil || m.currentView() != presentation.ViewTaskComments {
 		return nil
 	}
-	panel, _ := m.views.Get(ViewTaskComments).(*TaskCommentsModel)
+	panel, _ := m.views.Get(presentation.ViewTaskComments).(*TaskCommentsModel)
 	return panel
 }

@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 type panicCustomMsg struct{}
@@ -28,13 +29,13 @@ func (v *panicOnCustomView) View() tea.View { return tea.NewView("") }
 
 func TestUpdatePanicRecoveryRestoresOutlinerRoot(t *testing.T) {
 	app := newTestAppModel()
-	app.views.Register(ViewCrossProjectOutliner, &panicOnCustomView{})
+	app.views.Register(presentation.ViewCrossProjectOutliner, &panicOnCustomView{})
 
 	model, _ := app.Update(panicCustomMsg{})
 	if model == nil {
 		t.Fatal("expected non-nil model after panic recovery")
 	}
-	if path := app.presentationPath(); len(path) != 1 || path[0] != ViewCrossProjectOutliner {
+	if path := app.presentationPath(); len(path) != 1 || path[0] != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("expected navigation to recover at the Outliner root, got %#v", path)
 	}
 	if app.err == nil {
@@ -52,9 +53,9 @@ func TestUpdatePanicRecoveryCancelsPendingCrossProjectRefresh(t *testing.T) {
 	cross.crossForceRebuild = true
 	cross.crossProjectRebuildRows()
 	app.crossOutliner = cross
-	app.views.Register(ViewCrossProjectOutliner, cross)
-	app.views.Register(ViewTaskComments, &panicOnCustomView{})
-	pushTestPresentationOverlay(app, ViewTaskComments)
+	app.views.Register(presentation.ViewCrossProjectOutliner, cross)
+	app.views.Register(presentation.ViewTaskComments, &panicOnCustomView{})
+	pushTestPresentationOverlay(app, presentation.ViewTaskComments)
 
 	_ = cross.reloadCrossProjects()
 	abandonedGeneration := cross.crossLoadGen
@@ -70,7 +71,7 @@ func TestUpdatePanicRecoveryCancelsPendingCrossProjectRefresh(t *testing.T) {
 	if cross.crossLoadGen == abandonedGeneration {
 		t.Fatal("panic recovery did not invalidate the abandoned load generation")
 	}
-	if got := app.currentView(); got != ViewCrossProjectOutliner {
+	if got := app.currentView(); got != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("recovery view = %s, want CrossProjectOutliner", got)
 	}
 	if content := app.View().Content; content == "" || strings.Contains(content, "Unknown view") {

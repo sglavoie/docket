@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // handleTaskParentMessages handles task parent selector messages.
@@ -21,7 +22,7 @@ func (m *AppModel) handleTaskParentMessages(msg tea.Msg) (bool, tea.Cmd) {
 func (m *AppModel) handleOpenParentSelector(msg OpenParentSelectorMsg) (bool, tea.Cmd) {
 	selector := NewParentSelectorModel(msg.ValidParents, msg.CurrentID, msg.AllowNone, msg.Source)
 	selector.reparentTask = msg.ReparentTask
-	_, cmd := m.showViewInit(ViewParentSelector, selector)
+	_, cmd := m.showViewInit(presentation.ViewParentSelector, selector)
 	return true, cmd
 }
 

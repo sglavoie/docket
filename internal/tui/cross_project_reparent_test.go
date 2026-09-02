@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // newReparentTask builds a task with an explicit ID so the reparent tests can
@@ -37,7 +38,7 @@ func TestCrossProjectReparent(t *testing.T) {
 	_, cmd := m.handleCrossProjectReparent(ParentSelectedMsg{
 		ReparentTask: TaskIdentity{ProjectID: env.projects[0].ID, TaskID: "alpha-leaf"},
 		ParentID:     &newParentID,
-		Source:       ViewCrossProjectOutliner,
+		Source:       presentation.ViewCrossProjectOutliner,
 	})
 	runResult(t, cmd)
 
@@ -78,7 +79,7 @@ func TestCrossProjectReparent_GenericTaskParent(t *testing.T) {
 	_, cmd := m.handleCrossProjectReparent(ParentSelectedMsg{
 		ReparentTask: TaskIdentity{ProjectID: env.projects[0].ID, TaskID: "leaf-a"},
 		ParentID:     &parentID,
-		Source:       ViewCrossProjectOutliner,
+		Source:       presentation.ViewCrossProjectOutliner,
 	})
 	runResult(t, cmd)
 
@@ -106,7 +107,7 @@ func TestCrossProjectReparentToRoot(t *testing.T) {
 	_, cmd := m.handleCrossProjectReparent(ParentSelectedMsg{
 		ReparentTask: TaskIdentity{ProjectID: env.projects[0].ID, TaskID: "leaf"},
 		ParentID:     nil,
-		Source:       ViewCrossProjectOutliner,
+		Source:       presentation.ViewCrossProjectOutliner,
 	})
 	runResult(t, cmd)
 

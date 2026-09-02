@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 type globalNoteTUIEnv struct {
@@ -57,12 +58,12 @@ func newGlobalNoteTUIEnv(t *testing.T, titles ...string) *globalNoteTUIEnv {
 	mountNotesManager(t, view)
 	view.SetSize(80, 40)
 	views := NewViewRegistry()
-	views.Register(ViewGlobalNotes, view)
+	views.Register(presentation.ViewGlobalNotes, view)
 	shell := &AppModel{
 		appService: svc,
 		views:      views,
 	}
-	setTestPresentationPath(shell, ViewGlobalNotes)
+	setTestPresentationPath(shell, presentation.ViewGlobalNotes)
 	return &globalNoteTUIEnv{dataDir: dataDir, dir: dir, ledger: ledger, svc: svc, project: project, view: view, shell: shell}
 }
 

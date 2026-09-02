@@ -2,6 +2,8 @@ package tui
 
 import (
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func TestAllNotesOpenPathsUseShellLedger(t *testing.T) {
@@ -14,7 +16,7 @@ func TestAllNotesOpenPathsUseShellLedger(t *testing.T) {
 	shell := driver.App()
 	ledger := shell.deps.historyLedger()
 	project := shell.projectByID(shell.runtime.SystemUnfiledProject().ID)
-	assertLedger := func(name string, view PresentationID) {
+	assertLedger := func(name string, view presentation.PresentationID) {
 		t.Helper()
 		notes, ok := shell.views.Get(view).(*NotesViewModel)
 		if !ok {
@@ -26,9 +28,9 @@ func TestAllNotesOpenPathsUseShellLedger(t *testing.T) {
 	}
 
 	shell.handleNotesMessages(ShowNotesManagerMsg{Scope: ProjectNotesScope(project.ID)})
-	assertLedger("direct project notes", ViewNotes)
+	assertLedger("direct project notes", presentation.ViewNotes)
 	shell.handleNotesMessages(ShowNotesManagerMsg{Scope: GlobalNotesScope()})
-	assertLedger("direct global notes", ViewGlobalNotes)
+	assertLedger("direct global notes", presentation.ViewGlobalNotes)
 
 }
 
@@ -47,9 +49,9 @@ func TestNilShellLedgerMakesHistoryUnavailableWithoutPanic(t *testing.T) {
 	if handled, _ := shell.handleNotesMessages(ShowNotesManagerMsg{Scope: GlobalNotesScope()}); !handled {
 		t.Fatal("ShowNotesManagerMsg was not handled")
 	}
-	notes, ok := shell.views.Get(ViewGlobalNotes).(*NotesViewModel)
+	notes, ok := shell.views.Get(presentation.ViewGlobalNotes).(*NotesViewModel)
 	if !ok {
-		t.Fatalf("global notes view = %T", shell.views.Get(ViewGlobalNotes))
+		t.Fatalf("global notes view = %T", shell.views.Get(presentation.ViewGlobalNotes))
 	}
 	if notes.noteLedger != nil {
 		t.Fatal("isolated nil-ledger composition unexpectedly created history")

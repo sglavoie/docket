@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func jumpHistoryFixture(taskIDs ...string) (*OutlinerModel, map[string]*models.Task) {
@@ -327,7 +328,7 @@ func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) 
 	outliner.crossForceRebuild = true
 	outliner.selectOutlinerMode(ModeAll)
 	model.crossOutliner = outliner
-	model.views.Register(ViewCrossProjectOutliner, outliner)
+	model.views.Register(presentation.ViewCrossProjectOutliner, outliner)
 	model.wireOutlinerOperationExecutor(outliner)
 
 	targetIdentity := taskIdentityFor(target, env.projects[0])

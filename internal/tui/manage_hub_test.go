@@ -9,6 +9,7 @@ import (
 
 	apppkg "github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 type manageHubNotesPort struct {
@@ -136,23 +137,23 @@ func TestManageHubNotesScopeMapsCommandContextAndPresentation(t *testing.T) {
 		scope             NotesScope
 		wantProjectIDs    []string
 		wantStatus        string
-		wantPresentation  PresentationID
+		wantPresentation  presentation.PresentationID
 		wantAppCapability bool
 	}{
 		{
 			name: "all", scope: AllNotesScope(),
 			wantProjectIDs: normalizedProjectIDs([]string{other.ID, project.ID}),
-			wantStatus:     "Notes · All", wantPresentation: ViewGlobalNotes, wantAppCapability: true,
+			wantStatus:     "Notes · All", wantPresentation: presentation.ViewGlobalNotes, wantAppCapability: true,
 		},
 		{
 			name: "global", scope: GlobalNotesScope(),
 			wantProjectIDs: normalizedProjectIDs([]string{other.ID, project.ID}),
-			wantStatus:     "Notes · Global", wantPresentation: ViewGlobalNotes, wantAppCapability: true,
+			wantStatus:     "Notes · Global", wantPresentation: presentation.ViewGlobalNotes, wantAppCapability: true,
 		},
 		{
 			name: "project", scope: ProjectNotesScope(project.ID),
 			wantProjectIDs: []string{project.ID},
-			wantStatus:     "Notes · Project", wantPresentation: ViewNotes,
+			wantStatus:     "Notes · Project", wantPresentation: presentation.ViewNotes,
 		},
 	}
 

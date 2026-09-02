@@ -2,6 +2,8 @@ package tui
 
 import (
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // The menu bar is a projection of the operation catalog, so these are the
@@ -31,7 +33,7 @@ var productionInputStrategies = []InputStrategyID{
 // menuBarCommandContext is the launch context: the Outliner presentation with
 // the simplified grammar and a cursor that names nothing.
 func menuBarCommandContext() CommandContext {
-	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
+	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Capabilities.Add(CapabilitySimplifiedInput)
 	return ctx
 }

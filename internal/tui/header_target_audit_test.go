@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // A project header row is cursorable, so every key in the Outliner grammar is
@@ -350,7 +351,7 @@ func headerTargetCursorContext(t *testing.T) CommandContext {
 		}
 		outliner.cursor = index
 		ctx := app.operationCommandContext()
-		ctx.View = ViewCrossProjectOutliner
+		ctx.View = presentation.ViewCrossProjectOutliner
 		return ctx
 	}
 	t.Fatal("fixture Outliner exposed no project header row")

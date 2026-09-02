@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // TestTUIWorkspaceLedgerUndoRedoForApplicationMutations is the FR-011-001
@@ -202,7 +203,7 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, tas
 	outliner := NewOutlinerModel(project, manager, runtime)
 	outliner.rebuildRows()
 	outliner.moveCursorToTask(taskID)
-	appModel.showView(ViewCrossProjectOutliner, outliner)
+	appModel.showView(presentation.ViewCrossProjectOutliner, outliner)
 	if err := appModel.registerCoreInputOperations(); err != nil {
 		t.Fatalf("register core operations: %v", err)
 	}

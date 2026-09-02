@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // inboxAsyncEnv wires the whole asynchronous mutation chain over a real Inbox
@@ -38,7 +39,7 @@ func newInboxAsyncEnv(t *testing.T, taskGroups ...[]*models.Task) *inboxAsyncEnv
 	outliner.crossForceRebuild = true
 	outliner.selectOutlinerMode(ModeInbox)
 	model.crossOutliner = outliner
-	model.views.Register(ViewCrossProjectOutliner, outliner)
+	model.views.Register(presentation.ViewCrossProjectOutliner, outliner)
 	model.wireOutlinerOperationExecutor(outliner)
 	return &inboxAsyncEnv{env: env, model: model, outliner: outliner}
 }

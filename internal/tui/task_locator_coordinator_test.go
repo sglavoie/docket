@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 const duplicateLocatorTaskID = "duplicate-task-id"
@@ -74,7 +75,7 @@ func TestTaskItemCoordinatorDuplicateIDsUseSelectedProject(t *testing.T) {
 
 		_, cmd := outliner.handleCrossProjectReparent(ParentSelectedMsg{
 			ParentID:     &newParentID,
-			Source:       ViewCrossProjectOutliner,
+			Source:       presentation.ViewCrossProjectOutliner,
 			ReparentTask: taskIdentityFor(beta, env.projects[1]),
 		})
 		res := runResult(t, cmd)

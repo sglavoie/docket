@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // newUITestApp builds a minimal, fully-renderable AppModel (cross-project
@@ -14,8 +16,8 @@ func newUITestApp() *AppModel {
 	app.operationExecutor = NewOperationExecutor(app.operationRegistry)
 	o := NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner = o
-	app.views.Register(ViewCrossProjectOutliner, o)
-	setTestPresentationPath(app, ViewCrossProjectOutliner)
+	app.views.Register(presentation.ViewCrossProjectOutliner, o)
+	setTestPresentationPath(app, presentation.ViewCrossProjectOutliner)
 	if err := app.registerCoreInputOperations(); err != nil {
 		panic(err)
 	}

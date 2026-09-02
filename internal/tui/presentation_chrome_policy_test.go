@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 type staticCompletionActivityReader struct {
@@ -24,11 +25,11 @@ func (r *staticCompletionActivityReader) CompletionActivity() (app.CompletionAct
 }
 
 func TestPresentationChromePolicyClassifiesEveryPresentation(t *testing.T) {
-	transient := map[PresentationID]bool{
-		ViewPriorityPicker: true,
-		ViewParentSelector: true,
-		ViewTagSelector:    true,
-		ViewOutlineErrors:  true,
+	transient := map[presentation.PresentationID]bool{
+		presentation.ViewPriorityPicker: true,
+		presentation.ViewParentSelector: true,
+		presentation.ViewTagSelector:    true,
+		presentation.ViewOutlineErrors:  true,
 	}
 
 	for _, presentation := range allPresentations() {
@@ -50,15 +51,15 @@ func TestPresentationChromePolicyClassifiesEveryPresentation(t *testing.T) {
 		}
 	}
 
-	if _, ok := chromePolicyForPresentation(ViewUnknown); ok {
+	if _, ok := chromePolicyForPresentation(presentation.ViewUnknown); ok {
 		t.Fatal("ViewUnknown must not receive an implicit chrome policy")
 	}
 }
 
 func TestPresentationGuidanceReachabilityNamesShellAndSurfaceOwners(t *testing.T) {
-	wantShell := map[PresentationID]bool{
-		ViewCrossProjectOutliner: true,
-		ViewTaskComposer:         true,
+	wantShell := map[presentation.PresentationID]bool{
+		presentation.ViewCrossProjectOutliner: true,
+		presentation.ViewTaskComposer:         true,
 	}
 	for _, presentation := range allPresentations() {
 		policy, ok := chromePolicyForPresentation(presentation)

@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func gotoProjectDriver(t *testing.T) *UITestDriver {
@@ -210,7 +212,7 @@ func TestGotoTaskProjectJumpsFromASearchResult(t *testing.T) {
 
 	app := driver.App()
 	ctx := app.operationCommandContext()
-	ctx.View = ViewCrossProjectOutliner
+	ctx.View = presentation.ViewCrossProjectOutliner
 	executeDirectPath(t, app, ctx, []string{"g", "p"})
 
 	if outliner.hasSearchProjection() {

@@ -3,6 +3,8 @@ package tui
 import (
 	"fmt"
 	"strings"
+
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // Capability is a declarative feature exposed by the active route or overlay.
@@ -176,7 +178,7 @@ type EntityContext struct {
 // migrated commands may additionally declare RequiredCapabilities and
 // ContextAvailable.
 type CommandContext struct {
-	View         PresentationID
+	View         presentation.PresentationID
 	Capabilities CapabilitySet
 	Selection    SelectionContext
 	Entity       EntityContext
@@ -192,12 +194,12 @@ type CommandContext struct {
 
 // presentationCapability scopes mature renderer commands without affecting
 // typed route identity or history.
-func presentationCapability(view PresentationID) Capability {
+func presentationCapability(view presentation.PresentationID) Capability {
 	return Capability(fmt.Sprintf("presentation:%d", view))
 }
 
 // PresentationCommandContext builds discovery capabilities for one renderer.
-func PresentationCommandContext(view PresentationID) CommandContext {
+func PresentationCommandContext(view presentation.PresentationID) CommandContext {
 	scope := presentationScope(view)
 	capabilities := NewCapabilitySet(CapabilityCommandDiscovery, presentationCapability(view))
 	switch scope {

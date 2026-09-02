@@ -1,4 +1,4 @@
-package tui
+package presentation
 
 var viewTypeNames = map[PresentationID]string{
 	ViewProjectCreator:       "ProjectCreator",

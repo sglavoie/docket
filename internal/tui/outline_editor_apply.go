@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // handleOpenOutlineEditor dumps the project and hands the terminal to $EDITOR.
@@ -73,7 +74,7 @@ func (m *AppModel) handleOutlineEdited(msg OutlineEditedMsg) tea.Cmd {
 
 	lines, lineErrors := parseOutlineBuffer(msg.Buffer, msg.Project, m.outlineDependencyProjects(msg.Project))
 	if len(lineErrors) > 0 {
-		m.showView(ViewOutlineErrors, NewOutlineErrorsViewModel(msg.Project.Name, msg.Path, lineErrors))
+		m.showView(presentation.ViewOutlineErrors, NewOutlineErrorsViewModel(msg.Project.Name, msg.Path, lineErrors))
 		return nil
 	}
 
@@ -90,7 +91,7 @@ func (m *AppModel) handleOutlineEdited(msg OutlineEditedMsg) tea.Cmd {
 	// all; over a scope that held none it deleted nothing, so it is the truncation
 	// accident the parser used to assume.
 	if len(lines) == 0 && len(pending.deletions) == 0 {
-		m.showView(ViewOutlineErrors, NewOutlineErrorsViewModel(msg.Project.Name, msg.Path, []lineError{{line: 1, message: "the buffer holds no tasks"}}))
+		m.showView(presentation.ViewOutlineErrors, NewOutlineErrorsViewModel(msg.Project.Name, msg.Path, []lineError{{line: 1, message: "the buffer holds no tasks"}}))
 		return nil
 	}
 	if len(pending.deletions) == 0 {
@@ -141,7 +142,7 @@ func (m *AppModel) applyOutlineBuffer(pending outlineApplyPending) tea.Cmd {
 		return defaultStatusTimeout()
 	}
 	if err != nil {
-		m.showView(ViewOutlineErrors, NewOutlineErrorsViewModel(pending.project.Name, pending.path, []lineError{outlineApplyError(err)}))
+		m.showView(presentation.ViewOutlineErrors, NewOutlineErrorsViewModel(pending.project.Name, pending.path, []lineError{outlineApplyError(err)}))
 		return nil
 	}
 

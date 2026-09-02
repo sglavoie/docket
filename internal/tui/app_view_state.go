@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // minTerminalWidth is the minimum terminal width required to render the TUI.
@@ -42,7 +43,7 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd { //nolint:gocyclo
 		updated, cmd := m.taskComposer.Update(msg)
 		if composer, ok := updated.(*TaskComposerModel); ok {
 			m.taskComposer = composer
-			m.views.Register(ViewTaskComposer, composer)
+			m.views.Register(presentation.ViewTaskComposer, composer)
 		}
 		return cmd
 	}
@@ -58,12 +59,12 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd { //nolint:gocyclo
 
 	// Keep typed pointers in sync for views that need direct access
 	switch currentView {
-	case ViewHelp:
-		if v := m.views.Get(ViewHelp); v != nil {
+	case presentation.ViewHelp:
+		if v := m.views.Get(presentation.ViewHelp); v != nil {
 			m.helpView = v.(*HelpViewModel)
 		}
-	case ViewCrossProjectOutliner:
-		if v, ok := m.views.Get(ViewCrossProjectOutliner).(*OutlinerModel); ok {
+	case presentation.ViewCrossProjectOutliner:
+		if v, ok := m.views.Get(presentation.ViewCrossProjectOutliner).(*OutlinerModel); ok {
 			m.crossOutliner = v
 		}
 	default:

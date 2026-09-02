@@ -1,11 +1,14 @@
 package tui
 
-import tea "charm.land/bubbletea/v2"
+import (
+	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
+)
 
 // ViewRegistry manages view instances and provides centralized view operations.
 // It supports lazy initialization of views through factories.
 type ViewRegistry struct {
-	views  map[PresentationID]View
+	views  map[presentation.PresentationID]View
 	width  int
 	height int
 }
@@ -13,14 +16,14 @@ type ViewRegistry struct {
 // NewViewRegistry creates a new view registry.
 func NewViewRegistry() *ViewRegistry {
 	return &ViewRegistry{
-		views:  make(map[PresentationID]View),
+		views:  make(map[presentation.PresentationID]View),
 		width:  80,
 		height: 24,
 	}
 }
 
 // Register adds a view instance to the registry.
-func (r *ViewRegistry) Register(vt PresentationID, view View) {
+func (r *ViewRegistry) Register(vt presentation.PresentationID, view View) {
 	r.views[vt] = view
 	if r.width > 0 && r.height > 0 {
 		view.SetSize(r.width, r.height)
@@ -28,18 +31,18 @@ func (r *ViewRegistry) Register(vt PresentationID, view View) {
 }
 
 // Get returns the view for the given type, or nil if not registered.
-func (r *ViewRegistry) Get(vt PresentationID) View {
+func (r *ViewRegistry) Get(vt presentation.PresentationID) View {
 	return r.views[vt]
 }
 
 // Has returns true if a view is registered for the given type.
-func (r *ViewRegistry) Has(vt PresentationID) bool {
+func (r *ViewRegistry) Has(vt presentation.PresentationID) bool {
 	_, ok := r.views[vt]
 	return ok
 }
 
 // Remove removes a view from the registry.
-func (r *ViewRegistry) Remove(vt PresentationID) {
+func (r *ViewRegistry) Remove(vt presentation.PresentationID) {
 	delete(r.views, vt)
 }
 
@@ -54,7 +57,7 @@ func (r *ViewRegistry) SetSize(width, height int) {
 
 // Update delegates the Update call to the specified view type.
 // Returns the tea.Cmd from the view's Update method.
-func (r *ViewRegistry) Update(vt PresentationID, msg tea.Msg) tea.Cmd {
+func (r *ViewRegistry) Update(vt presentation.PresentationID, msg tea.Msg) tea.Cmd {
 	view := r.views[vt]
 	if view == nil {
 		return nil
@@ -69,7 +72,7 @@ func (r *ViewRegistry) Update(vt PresentationID, msg tea.Msg) tea.Cmd {
 }
 
 // View returns the tea.View output for the specified view type.
-func (r *ViewRegistry) View(vt PresentationID) tea.View {
+func (r *ViewRegistry) View(vt presentation.PresentationID) tea.View {
 	view := r.views[vt]
 	if view == nil {
 		return tea.NewView("")
@@ -79,7 +82,7 @@ func (r *ViewRegistry) View(vt PresentationID) tea.View {
 
 // Clear removes all views from the registry.
 func (r *ViewRegistry) Clear() {
-	r.views = make(map[PresentationID]View)
+	r.views = make(map[presentation.PresentationID]View)
 }
 
 // Count returns the number of registered views.
@@ -88,8 +91,8 @@ func (r *ViewRegistry) Count() int {
 }
 
 // Types returns all registered view types.
-func (r *ViewRegistry) Types() []PresentationID {
-	types := make([]PresentationID, 0, len(r.views))
+func (r *ViewRegistry) Types() []presentation.PresentationID {
+	types := make([]presentation.PresentationID, 0, len(r.views))
 	for vt := range r.views {
 		types = append(types, vt)
 	}

@@ -4,10 +4,12 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func foundationTestContext() CommandContext {
-	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
+	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Entity = EntityContext{ProjectID: "project-b", TaskID: "task-current"}
 	ctx.CurrentEntity = TaskEntity("project-b", "task-current")
 	ctx.Selection.Tasks = []TaskIdentity{{ProjectID: "project-a", TaskID: "task-1"}}
@@ -210,7 +212,7 @@ func TestFoundationInvariants(t *testing.T) {
 }
 
 func TestOperationTargetResolverResolvesTypedEntityIdentities(t *testing.T) {
-	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
+	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.CurrentEntity = ProjectNoteEntity("project-a", "design.md")
 	ctx.Selection.EntityIdentities = []EntityIdentity{
 		WorkspaceTagEntity("#review"),
@@ -257,7 +259,7 @@ func TestOperationTargetResolverResolvesTypedEntityIdentities(t *testing.T) {
 }
 
 func TestOperationTargetResolverProjectsTaskSelectionOntoBothSources(t *testing.T) {
-	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
+	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Entity = EntityContext{ProjectID: "project-b", TaskID: "task-current"}
 	ctx.Selection.Tasks = []TaskIdentity{
 		{ProjectID: "project-b", TaskID: "task-2"},
@@ -300,7 +302,7 @@ func TestOperationTargetResolverProjectsTaskSelectionOntoBothSources(t *testing.
 }
 
 func TestOperationTargetResolverRejectsStaleAndEmptyTargets(t *testing.T) {
-	stale := PresentationCommandContext(ViewCrossProjectOutliner)
+	stale := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	stale.CurrentEntity = EntityIdentity{Kind: EntityKindNote, Name: "orphan.md"}
 	stale.Selection.EntityIdentities = []EntityIdentity{{Kind: EntityKindTask, ProjectID: "gone"}}
 
@@ -418,7 +420,7 @@ func TestOperationExecutorPassesTypedIdentitiesToHandlers(t *testing.T) {
 		t.Fatalf("Register binding: %v", err)
 	}
 
-	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
+	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Selection.EntityIdentities = []EntityIdentity{
 		ProjectTagEntity("project-a", "#api"),
 		WorkspaceTagEntity("review"),

@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 const parentSelectorNoParentLabel = "No parent (top-level)"
@@ -50,15 +51,15 @@ func (p ParentPickerItem) ItemID() string {
 // ParentSelectorModel provides fuzzy-find selection of parent tasks.
 type ParentSelectorModel struct {
 	*ListSurfaceAdapter[ParentPickerItem]
-	allItems     []ParentPickerItem // All valid parent candidates
-	allowNone    bool               // Whether "None" is a valid option
-	source       PresentationID     // Which view opened this selector
-	reparentTask TaskIdentity       // When valid, forwarded back in ParentSelectedMsg
+	allItems     []ParentPickerItem          // All valid parent candidates
+	allowNone    bool                        // Whether "None" is a valid option
+	source       presentation.PresentationID // Which view opened this selector
+	reparentTask TaskIdentity                // When valid, forwarded back in ParentSelectedMsg
 	alwaysSearch *alwaysSearchSinglePicker[ParentPickerItem]
 }
 
 // NewParentSelectorModel creates a new parent selector.
-func NewParentSelectorModel(validParents []*models.Task, currentID *string, allowNone bool, source PresentationID) *ParentSelectorModel {
+func NewParentSelectorModel(validParents []*models.Task, currentID *string, allowNone bool, source presentation.PresentationID) *ParentSelectorModel {
 	items := make([]ParentPickerItem, 0, len(validParents)+1)
 	if allowNone {
 		items = append(items, ParentPickerItem{None: true})

@@ -1,6 +1,9 @@
 package tui
 
-import tea "charm.land/bubbletea/v2"
+import (
+	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
+)
 
 // handleProjectViewMessages handles project tree and outliner view transitions.
 func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
@@ -42,7 +45,7 @@ func (m *AppModel) prepareCrossProjectOutliner() tea.Cmd {
 		// construction site leaves the accessor nil, so the tier is simply absent
 		// there — correct for a test model and for the Hub's task preview.
 		m.crossOutliner.setNoteSearchIndex(m.noteSearchIndexRows)
-		m.views.Register(ViewCrossProjectOutliner, m.crossOutliner)
+		m.views.Register(presentation.ViewCrossProjectOutliner, m.crossOutliner)
 		return m.crossOutliner.Init()
 	}
 	return m.crossOutliner.reloadCrossProjects()

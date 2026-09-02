@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 type session4LifecycleFixture struct {
@@ -95,8 +96,8 @@ func attachSession4CrossOutliner(t *testing.T, app *AppModel) *OutlinerModel {
 		runSession2AppCommand(t, app, cmd)
 	}
 	app.crossOutliner = cross
-	app.views.Register(ViewCrossProjectOutliner, cross)
-	setTestPresentationPath(app, ViewUnknown, ViewCrossProjectOutliner)
+	app.views.Register(presentation.ViewCrossProjectOutliner, cross)
+	setTestPresentationPath(app, presentation.ViewUnknown, presentation.ViewCrossProjectOutliner)
 	return cross
 }
 
@@ -192,7 +193,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				fixture := newSession4LifecycleFixture(t)
 				created := newSession4EmptyProject(t, fixture.dataDir, "Created")
 				session4CommitCatalogProject(t, fixture.app, created)
-				fixture.app.showView(ViewProjectCreator, NewProjectCreatorModel(
+				fixture.app.showView(presentation.ViewProjectCreator, NewProjectCreatorModel(
 					fixture.app.runtime,
 					fixture.app.configManager,
 					fixture.app.appService,
@@ -204,7 +205,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				}
 				runSession2AppCommand(t, fixture.app, cmd)
 
-				if fixture.app.currentView() != ViewCrossProjectOutliner {
+				if fixture.app.currentView() != presentation.ViewCrossProjectOutliner {
 					t.Fatalf("create returned to %s, want cross-project Outliner", fixture.app.currentView())
 				}
 				session4LoadedProject(t, fixture.cross, created.ID)
@@ -228,7 +229,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				live.Name = "Renamed Project"
 				live.Description = "office"
 				session4CommitCatalogProject(t, fixture.app, live)
-				fixture.app.showView(ViewProjectEditor, NewProjectEditorModel(
+				fixture.app.showView(presentation.ViewProjectEditor, NewProjectEditorModel(
 					live,
 					fixture.app.configManager,
 					fixture.app.runtime,
@@ -274,7 +275,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				_, cmd := fixture.app.handleProjectMessages(ProjectArchivedMsg{Project: live})
 				runSession2AppCommand(t, fixture.app, cmd)
 
-				if fixture.app.currentView() != ViewCrossProjectOutliner {
+				if fixture.app.currentView() != presentation.ViewCrossProjectOutliner {
 					t.Fatalf("archive popped the clean Outliner root to %s", fixture.app.currentView())
 				}
 				if fixture.cross.scopedProjectID != "" {
@@ -312,8 +313,8 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				project.Archive()
 				fixture := newSession4LifecycleFixture(t, project)
 				live := fixture.app.projectByID(project.ID)
-				fixture.app.views.Register(ViewHelp, NewHelpViewModel(nil, "Help"))
-				setTestPresentationPath(fixture.app, ViewUnknown, ViewCrossProjectOutliner, ViewHelp)
+				fixture.app.views.Register(presentation.ViewHelp, NewHelpViewModel(nil, "Help"))
+				setTestPresentationPath(fixture.app, presentation.ViewUnknown, presentation.ViewCrossProjectOutliner, presentation.ViewHelp)
 
 				_, cmd := fixture.app.handleProjectMessages(ProjectRestoredMsg{Project: live})
 				if fixture.cross.crossLoading {

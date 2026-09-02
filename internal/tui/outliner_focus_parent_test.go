@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func TestCollapseOrMoveToParentReachesTheRowlessFocusRoot(t *testing.T) {
@@ -94,7 +95,7 @@ func TestCollapseOrMoveToParentReachesTheRowlessFocusRoot(t *testing.T) {
 
 func TestFocusParentRefusesATaskWithoutAParent(t *testing.T) {
 	model := typedTestApp(t)
-	setTestPresentationPath(model, ViewCrossProjectOutliner)
+	setTestPresentationPath(model, presentation.ViewCrossProjectOutliner)
 	out := model.crossOutliner
 	out.crossForceRebuild = true
 	out.crossProjectRebuildRows()
@@ -124,7 +125,7 @@ func TestFocusParentRefusesATaskWithoutAParent(t *testing.T) {
 
 func TestFocusLeafFeedbackAndSearchResultJump(t *testing.T) {
 	model := typedTestApp(t)
-	setTestPresentationPath(model, ViewCrossProjectOutliner)
+	setTestPresentationPath(model, presentation.ViewCrossProjectOutliner)
 	out := model.crossOutliner
 	out.crossForceRebuild = true
 	out.crossProjectRebuildRows()
@@ -187,7 +188,7 @@ func TestFocusLeafFeedbackAndSearchResultJump(t *testing.T) {
 
 func TestFocusParentFromSearchResultJumpsToTheParentFrame(t *testing.T) {
 	model := typedTestApp(t)
-	setTestPresentationPath(model, ViewCrossProjectOutliner)
+	setTestPresentationPath(model, presentation.ViewCrossProjectOutliner)
 	out := model.crossOutliner
 	out.crossForceRebuild = true
 	out.crossProjectRebuildRows()
@@ -219,7 +220,7 @@ func TestFocusParentFromSearchResultJumpsToTheParentFrame(t *testing.T) {
 
 func TestFocusFromSearchForcesAllWhenTheRestoredModeHidesTheResult(t *testing.T) {
 	model := typedTestApp(t)
-	setTestPresentationPath(model, ViewCrossProjectOutliner)
+	setTestPresentationPath(model, presentation.ViewCrossProjectOutliner)
 	out := model.crossOutliner
 	out.crossForceRebuild = true
 	out.crossProjectRebuildRows()

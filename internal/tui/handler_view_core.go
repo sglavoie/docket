@@ -4,6 +4,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // handleViewCoreMessages handles generic view navigation, status, and utility messages.
@@ -18,7 +19,7 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 
 	case ShowHelpMsg:
 		m.helpView = NewHelpViewModel(msg.Items, msg.ViewName)
-		m.showView(ViewHelp, m.helpView)
+		m.showView(presentation.ViewHelp, m.helpView)
 		return true, nil
 
 	case StatusClearMsg:

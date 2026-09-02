@@ -7,12 +7,13 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func TestHandleViewMessagesBack(t *testing.T) {
 	app := newTestAppModel()
-	app.pushView(ViewCrossProjectOutliner)
-	app.pushView(ViewTaskComposer)
+	app.pushView(presentation.ViewCrossProjectOutliner)
+	app.pushView(presentation.ViewTaskComposer)
 
 	msg := BackMsg{}
 	handled, _ := app.handleViewMessages(msg)
@@ -20,7 +21,7 @@ func TestHandleViewMessagesBack(t *testing.T) {
 	if !handled {
 		t.Error("BackMsg should be handled")
 	}
-	if app.currentView() != ViewCrossProjectOutliner {
+	if app.currentView() != presentation.ViewCrossProjectOutliner {
 		t.Errorf("currentView should be Outliner after back, got %v", app.currentView())
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // Attachment operation IDs. They name what the Attachments panel does to the
@@ -272,9 +273,9 @@ func (m *AppModel) executeAttachmentOperation(invocation OperationInvocation) Op
 // on. A dispatched key already knows the panel is what it came from, so the
 // lookup keys on the current view rather than searching the whole stack.
 func (m *AppModel) activeAttachmentsPanel() *TaskAttachmentsModel {
-	if m == nil || m.views == nil || m.currentView() != ViewTaskAttachments {
+	if m == nil || m.views == nil || m.currentView() != presentation.ViewTaskAttachments {
 		return nil
 	}
-	panel, _ := m.views.Get(ViewTaskAttachments).(*TaskAttachmentsModel)
+	panel, _ := m.views.Get(presentation.ViewTaskAttachments).(*TaskAttachmentsModel)
 	return panel
 }

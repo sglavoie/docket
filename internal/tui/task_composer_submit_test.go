@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func TestTaskComposerDoubleSubmitCreatesOneTaskAndOneCommit(t *testing.T) {
@@ -300,11 +301,11 @@ func TestDailyTaskEditsUseInlineTitleAndNarrowDescription(t *testing.T) {
 	task := project.Tasks[0]
 	appModel.crossOutliner = NewOutlinerModel(nil, appModel.configManager, appModel.runtime)
 	appModel.crossOutliner.loadedProjects = []*models.Project{project}
-	appModel.views.Register(ViewCrossProjectOutliner, appModel.crossOutliner)
+	appModel.views.Register(presentation.ViewCrossProjectOutliner, appModel.crossOutliner)
 	appModel.navigation.ResetRoot()
 
 	appModel.Update(StartTaskLineEditMsg{Project: project, Task: task})
-	if appModel.currentView() != ViewCrossProjectOutliner || appModel.crossOutliner == nil || !appModel.crossOutliner.quickEdit.IsActive() {
+	if appModel.currentView() != presentation.ViewCrossProjectOutliner || appModel.crossOutliner == nil || !appModel.crossOutliner.quickEdit.IsActive() {
 		t.Fatalf("title edit did not remain in the inline Outliner: view=%v", appModel.currentView())
 	}
 
@@ -312,7 +313,7 @@ func TestDailyTaskEditsUseInlineTitleAndNarrowDescription(t *testing.T) {
 	appModel.Update(ShowTaskTextEditorMsg{
 		Task: task, Project: project, Operation: app.TaskOperationEditDescription,
 	})
-	if appModel.currentView() != ViewTextEditor {
+	if appModel.currentView() != presentation.ViewTextEditor {
 		t.Fatalf("description edit view = %v, want TextEditor", appModel.currentView())
 	}
 	if appModel.activeTaskComposer() || appModel.taskComposer != nil {

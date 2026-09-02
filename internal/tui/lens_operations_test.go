@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // lensOperationApp wires the production lens registrations against the richer
@@ -19,14 +20,14 @@ func lensOperationApp(t *testing.T) *AppModel {
 	}
 	model.crossOutliner = lensLifecycleOutliner()
 	model.crossOutliner.SetSize(model.width, model.height-2)
-	model.views.Register(ViewCrossProjectOutliner, model.crossOutliner)
+	model.views.Register(presentation.ViewCrossProjectOutliner, model.crossOutliner)
 	return model
 }
 
 // lensOperationContext names one saved lens under the picker capability, which
 // is the only context these operations are reachable from.
 func lensOperationContext(entity EntityIdentity) CommandContext {
-	ctx := PresentationCommandContext(ViewCrossProjectOutliner)
+	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Capabilities.Add(CapabilityLensPicker)
 	ctx.CurrentEntity = entity
 	return ctx
@@ -103,7 +104,7 @@ func TestLensOperationsAreReachableOnlyFromTheLensPicker(t *testing.T) {
 		operationLensReplace,
 		operationLensDelete,
 	} {
-		ctx := PresentationCommandContext(ViewCrossProjectOutliner)
+		ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 		ctx.CurrentEntity = entity
 		result := model.operationExecutor.Execute(OperationExecutionRequest{
 			ID:        id,

@@ -1,5 +1,7 @@
 package tui
 
+import "github.com/sglavoie/tt/internal/tui/presentation"
+
 // Stable core operation IDs let the final grammar remain independent of dormant
 // legacy command adapters and their retired shortcuts or prefix chords.
 const (
@@ -75,7 +77,7 @@ const (
 )
 
 func coreOutlinerApplicability(ctx CommandContext) bool {
-	return ctx.View == ViewCrossProjectOutliner
+	return ctx.View == presentation.ViewCrossProjectOutliner
 }
 
 func coreInputOperationDescriptors() []OperationDescriptor {

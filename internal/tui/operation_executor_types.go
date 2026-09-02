@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 var (
@@ -50,7 +51,7 @@ type BulkOperationHandler func(OperationInvocation, []OperationTarget) Operation
 // policy by default.
 type OperationBinding struct {
 	OperationID OperationID
-	Views       []PresentationID
+	Views       []presentation.PresentationID
 
 	RequiredCapabilities CapabilitySet
 	Applicability        OperationApplicability

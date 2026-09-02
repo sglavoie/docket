@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func TestFormatDeferDateLadder(t *testing.T) {
@@ -32,7 +33,7 @@ func TestFormatDeferDateLadder(t *testing.T) {
 
 func TestPeriodicTickWakesOnlyPastTheDeferWake(t *testing.T) {
 	app := typedTestApp(t)
-	setTestPresentationPath(app, ViewCrossProjectOutliner)
+	setTestPresentationPath(app, presentation.ViewCrossProjectOutliner)
 	out := app.crossOutliner
 	tickAt := time.Now()
 
@@ -59,7 +60,7 @@ func TestPeriodicTickWakesOnlyPastTheDeferWake(t *testing.T) {
 
 func TestPeriodicTickRefreshesWorkspacePulseWhenDeferredTaskWakes(t *testing.T) {
 	model := typedTestApp(t)
-	setTestPresentationPath(model, ViewCrossProjectOutliner)
+	setTestPresentationPath(model, presentation.ViewCrossProjectOutliner)
 	out := model.crossOutliner
 	tickAt := time.Date(2040, time.March, 4, 9, 0, 0, 0, time.Local)
 	wake := tickAt.Add(-time.Minute)
@@ -88,7 +89,7 @@ func TestPeriodicTickRefreshesWorkspacePulseWhenDeferredTaskWakes(t *testing.T) 
 		t.Fatalf("pending-deferral pulse = %+v, want %+v", model.workspacePulse, pending)
 	}
 
-	pushTestPresentationOverlay(model, ViewTaskComments)
+	pushTestPresentationOverlay(model, presentation.ViewTaskComments)
 	out.crossForceRebuild = false
 	out.nextDeferWake = wake
 	if handled, _ := model.handleGlobalSaveMessage(periodicSaveMsg{at: tickAt}); !handled {
@@ -101,7 +102,7 @@ func TestPeriodicTickRefreshesWorkspacePulseWhenDeferredTaskWakes(t *testing.T) 
 		t.Fatalf("a refused wake refreshed the pulse to %+v", model.workspacePulse)
 	}
 
-	setTestPresentationPath(model, ViewCrossProjectOutliner)
+	setTestPresentationPath(model, presentation.ViewCrossProjectOutliner)
 	if handled, _ := model.handleGlobalSaveMessage(periodicSaveMsg{at: tickAt}); !handled {
 		t.Fatal("second periodicSaveMsg was not handled")
 	}
@@ -119,7 +120,7 @@ func TestPeriodicTickRefreshesWorkspacePulseWhenDeferredTaskWakes(t *testing.T) 
 
 func TestPeriodicTickAcrossMidnightHoldsActionableCountsUntilTheWakeIsConsumed(t *testing.T) {
 	model := typedTestApp(t)
-	setTestPresentationPath(model, ViewCrossProjectOutliner)
+	setTestPresentationPath(model, presentation.ViewCrossProjectOutliner)
 	out := model.crossOutliner
 	tickAt := time.Date(2040, time.March, 5, 0, 1, 0, 0, time.Local)
 	wake := tickAt.Add(-2 * time.Minute)
@@ -159,7 +160,7 @@ func TestPeriodicTickAcrossMidnightHoldsActionableCountsUntilTheWakeIsConsumed(t
 	}
 	reader.activity = refreshed
 
-	pushTestPresentationOverlay(model, ViewTaskComments)
+	pushTestPresentationOverlay(model, presentation.ViewTaskComments)
 	out.crossForceRebuild = false
 	out.nextDeferWake = wake
 	if handled, _ := model.handleGlobalSaveMessage(periodicSaveMsg{at: tickAt}); !handled {
@@ -176,7 +177,7 @@ func TestPeriodicTickAcrossMidnightHoldsActionableCountsUntilTheWakeIsConsumed(t
 		t.Fatalf("cross-midnight refused-wake pulse = %+v, want %+v", model.workspacePulse, frozen)
 	}
 
-	setTestPresentationPath(model, ViewCrossProjectOutliner)
+	setTestPresentationPath(model, presentation.ViewCrossProjectOutliner)
 	if handled, _ := model.handleGlobalSaveMessage(periodicSaveMsg{at: tickAt}); !handled {
 		t.Fatal("second periodicSaveMsg was not handled")
 	}
@@ -197,7 +198,7 @@ func TestDeferWakeIsDeferredWhileTheUserIsMidOperation(t *testing.T) {
 		name string
 		arm  func(*AppModel)
 	}{
-		{"overlay", func(app *AppModel) { pushTestPresentationOverlay(app, ViewTaskComments) }},
+		{"overlay", func(app *AppModel) { pushTestPresentationOverlay(app, presentation.ViewTaskComments) }},
 		{"value picker", func(app *AppModel) { app.operationValuePicker = &OperationValuePickerModel{} }},
 		{"inline row editor", func(app *AppModel) {
 			out := app.crossOutliner
@@ -217,7 +218,7 @@ func TestDeferWakeIsDeferredWhileTheUserIsMidOperation(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			app := typedTestApp(t)
-			setTestPresentationPath(app, ViewCrossProjectOutliner)
+			setTestPresentationPath(app, presentation.ViewCrossProjectOutliner)
 			out := app.crossOutliner
 
 			tc.arm(app)
@@ -242,7 +243,7 @@ func TestDeferWakeIsDeferredWhileTheUserIsMidOperation(t *testing.T) {
 	// matched against it rather than shut out by it.
 	t.Run("held query alone", func(t *testing.T) {
 		app := typedTestApp(t)
-		setTestPresentationPath(app, ViewCrossProjectOutliner)
+		setTestPresentationPath(app, presentation.ViewCrossProjectOutliner)
 		out := app.crossOutliner
 
 		out.beginSearchProjection()
@@ -260,7 +261,7 @@ func TestDeferWakeIsDeferredWhileTheUserIsMidOperation(t *testing.T) {
 
 func TestNextDeferWakeSurvivesTheSearchProjectionReturn(t *testing.T) {
 	app := typedTestApp(t)
-	setTestPresentationPath(app, ViewCrossProjectOutliner)
+	setTestPresentationPath(app, presentation.ViewCrossProjectOutliner)
 	out := app.crossOutliner
 	project := out.loadedProjects[0]
 

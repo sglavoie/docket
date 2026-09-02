@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func TestInputStrategyRegistrationRejectsCollisionsAndPrefixes(t *testing.T) {
@@ -138,7 +140,7 @@ func TestChordSequencesResolveAndProjectThroughOneStrategy(t *testing.T) {
 	if _, _, resolution := registry.InputBindingForSequence(
 		"chords",
 		[]string{"p"},
-		PresentationCommandContext(ViewProjectHub),
+		PresentationCommandContext(presentation.ViewProjectHub),
 	); resolution != ChordNoMatch {
 		t.Error("an inapplicable chord subtree still accepted its prefix")
 	}

@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // refreshProjectHubEmptyStates keeps the empty copy naming whichever narrowing
@@ -109,7 +110,7 @@ func (m *ProjectHubModel) activateProjectHubCurrent() tea.Cmd {
 }
 
 func (m *ProjectHubModel) projectHubCommandContext(projectID string) CommandContext {
-	ctx := PresentationCommandContext(ViewProjectHub)
+	ctx := PresentationCommandContext(presentation.ViewProjectHub)
 	ctx.Capabilities.Add(CapabilityProjectHub)
 	if projectID != "" {
 		ctx.CurrentEntity = ProjectEntity(projectID)

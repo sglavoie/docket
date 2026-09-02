@@ -1,13 +1,15 @@
 package tui
 
+import "github.com/sglavoie/tt/internal/tui/presentation"
+
 // overlayForPresentation maps only transient renderer identities to the typed
 // overlay stack. Primary and secondary destinations are installed through
 // their typed route activation methods, never inferred from a renderer ID.
-func overlayForPresentation(view PresentationID) (Overlay, bool, error) {
+func overlayForPresentation(view presentation.PresentationID) (Overlay, bool, error) {
 	switch view {
-	case ViewHelp:
+	case presentation.ViewHelp:
 		return referenceOverlayFor(ReferenceHelp)
-	case ViewOutlineErrors:
+	case presentation.ViewOutlineErrors:
 		return referenceOverlayFor(ReferenceOutlineErrors)
 	default:
 	}
@@ -36,13 +38,13 @@ func referenceOverlayFor(kind ReferenceKind) (Overlay, bool, error) {
 	return overlay, true, err
 }
 
-func transientPresentationOverlayKind(view PresentationID) (OverlayKind, bool) {
+func transientPresentationOverlayKind(view presentation.PresentationID) (OverlayKind, bool) {
 	switch view {
-	case ViewProjectCreator, ViewProjectEditor, ViewTextEditor:
+	case presentation.ViewProjectCreator, presentation.ViewProjectEditor, presentation.ViewTextEditor:
 		return OverlayForm, true
-	case ViewTaskComments, ViewTaskAttachments:
+	case presentation.ViewTaskComments, presentation.ViewTaskAttachments:
 		return OverlayTaskTool, true
-	case ViewPriorityPicker, ViewParentSelector, ViewTagSelector:
+	case presentation.ViewPriorityPicker, presentation.ViewParentSelector, presentation.ViewTagSelector:
 		return OverlayPicker, true
 	default:
 		return 0, false
