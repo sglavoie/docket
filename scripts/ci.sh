@@ -28,7 +28,11 @@ go test -race -count=1 -timeout=20m -coverprofile=coverage.out ./...
 ./scripts/check_coverage.sh coverage.out
 
 echo "Running golangci-lint..."
-golangci-lint run
+# golangci-lint otherwise takes a machine-wide lock at $TMPDIR/golangci-lint.lock
+# and exits 3 with "parallel golangci-lint is running" when any other checkout on
+# the same machine happens to be linting. That lock guards this run against
+# nothing it owns, so an unrelated repository must not be able to fail this gate.
+golangci-lint run --allow-parallel-runners
 
 echo "Checking module metadata..."
 go mod tidy -diff
