@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // TitleParams holds optional filter/sort info to display inline on the title line.
@@ -40,7 +41,7 @@ func buildTitleFilterSuffix(params *TitleParams, baseWidth int) string {
 		if !params.SortAscending {
 			direction = "↓"
 		}
-		sortBadge = MutedStyle.Render(fmt.Sprintf("Sort: %s %s", params.SortField, direction))
+		sortBadge = theme.MutedStyle.Render(fmt.Sprintf("Sort: %s %s", params.SortField, direction))
 	}
 
 	// Build full filter badge
@@ -49,7 +50,7 @@ func buildTitleFilterSuffix(params *TitleParams, baseWidth int) string {
 	// Build compact filter badge
 	compactFilterBadge := ""
 	if len(params.FilterParts) > 0 {
-		compactFilterBadge = operationalTitleBadge(FilterBadgeStyle, fmt.Sprintf("[%d filters]", len(params.FilterParts)))
+		compactFilterBadge = operationalTitleBadge(theme.FilterBadgeStyle, fmt.Sprintf("[%d filters]", len(params.FilterParts)))
 	}
 
 	// Try progressively degraded versions

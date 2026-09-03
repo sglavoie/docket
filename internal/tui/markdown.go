@@ -6,6 +6,7 @@ import (
 	"charm.land/glamour/v2"
 	"charm.land/glamour/v2/styles"
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // renderMarkdown renders the given text as styled terminal markdown using glamour.
@@ -14,7 +15,7 @@ import (
 // any remaining over-wide lines (e.g. wide tables) without stripping styling.
 func renderMarkdown(text string, width int) string {
 	style := styles.DarkStyleConfig
-	if activeThemeName == "light" {
+	if theme.ActiveThemeName == "light" {
 		style = styles.LightStyleConfig
 	}
 	noMargin := uint(0)

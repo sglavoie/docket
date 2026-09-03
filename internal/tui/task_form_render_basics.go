@@ -3,6 +3,8 @@ package tui
 import (
 	"fmt"
 	"strings"
+
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // formBasicsLabelWidth is the fixed label column width for all Basics-tab rows.
@@ -24,18 +26,18 @@ func (m *TaskFormModel) renderBasicsTabCollapsed() string {
 	// 0: Title
 	b.WriteString(renderFormLabelWithWidth("Title:", lw, m.focusIndex == 0))
 	b.WriteString("\n")
-	applyThemedTextarea(&m.titleInput)
+	theme.ApplyThemedTextarea(&m.titleInput)
 	b.WriteString(m.titleInput.View())
 	b.WriteString("\n")
 
 	// 1: Priority
 	b.WriteString(renderFormLabelWithWidth("Priority:", lw, m.focusIndex == 1))
 	{
-		icon := GetPriorityStyle(m.draft.priority).Render(PriorityIcon(m.draft.priority))
+		icon := theme.GetPriorityStyle(m.draft.priority).Render(theme.PriorityIcon(m.draft.priority))
 		lbl := formPriorityLabel(m.draft.priority)
 		val := fmt.Sprintf("%s %s", icon, lbl)
 		if m.focusIndex == 1 {
-			b.WriteString(SelectorOptionSelectedStyle.Render(val))
+			b.WriteString(theme.SelectorOptionSelectedStyle.Render(val))
 		} else {
 			b.WriteString(val)
 		}
@@ -43,14 +45,14 @@ func (m *TaskFormModel) renderBasicsTabCollapsed() string {
 	b.WriteString("\n")
 
 	// 2: Expand row
-	expandLabel := MutedStyle.Render("+ more fields")
+	expandLabel := theme.MutedStyle.Render("+ more fields")
 	if m.focusIndex == 2 {
-		expandLabel = SelectorOptionSelectedStyle.Render("+ more fields")
+		expandLabel = theme.SelectorOptionSelectedStyle.Render("+ more fields")
 	}
 	b.WriteString(renderFormLabelWithWidth("", lw, false))
 	b.WriteString(expandLabel)
 	if m.focusIndex == 2 {
-		b.WriteString(HelpStyle.Render("  (Enter to expand)"))
+		b.WriteString(theme.HelpStyle.Render("  (Enter to expand)"))
 	}
 	b.WriteString("\n")
 
@@ -65,7 +67,7 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 	// 0: Title (inline textarea)
 	b.WriteString(renderFormLabelWithWidth("Title:", lw, m.focusIndex == 0))
 	b.WriteString("\n")
-	applyThemedTextarea(&m.titleInput)
+	theme.ApplyThemedTextarea(&m.titleInput)
 	b.WriteString(m.titleInput.View())
 	b.WriteString("\n")
 
@@ -75,11 +77,11 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 		val := m.draft.desc
 		var display string
 		if val == "" {
-			display = MutedStyle.Render("(none)")
+			display = theme.MutedStyle.Render("(none)")
 		} else {
 			preview := truncateToVisualWidth(val, 40)
 			if m.focusIndex == 1 {
-				display = SelectorOptionSelectedStyle.Render(preview)
+				display = theme.SelectorOptionSelectedStyle.Render(preview)
 			} else {
 				display = preview
 			}
@@ -91,11 +93,11 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 	// 2: Priority
 	b.WriteString(renderFormLabelWithWidth("Priority:", lw, m.focusIndex == 2))
 	{
-		icon := GetPriorityStyle(m.draft.priority).Render(PriorityIcon(m.draft.priority))
+		icon := theme.GetPriorityStyle(m.draft.priority).Render(theme.PriorityIcon(m.draft.priority))
 		lbl := formPriorityLabel(m.draft.priority)
 		val := fmt.Sprintf("%s %s", icon, lbl)
 		if m.focusIndex == 2 {
-			b.WriteString(SelectorOptionSelectedStyle.Render(val))
+			b.WriteString(theme.SelectorOptionSelectedStyle.Render(val))
 		} else {
 			b.WriteString(val)
 		}
@@ -110,13 +112,13 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 			if p := formFindTask(m.project.Tasks, *m.draft.parentID); p != nil {
 				val = fmt.Sprintf("#%d %s", p.ShortID, truncateToVisualWidth(p.Title, 40))
 			} else {
-				val = MutedStyle.Render("(not found)")
+				val = theme.MutedStyle.Render("(not found)")
 			}
 		} else {
-			val = MutedStyle.Render("(none)")
+			val = theme.MutedStyle.Render("(none)")
 		}
 		if m.focusIndex == 3 {
-			b.WriteString(SelectorOptionSelectedStyle.Render(val))
+			b.WriteString(theme.SelectorOptionSelectedStyle.Render(val))
 		} else {
 			b.WriteString(val)
 		}
@@ -128,7 +130,7 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 	{
 		val := m.draft.state.String()
 		if m.focusIndex == 4 {
-			b.WriteString(SelectorOptionSelectedStyle.Render(val))
+			b.WriteString(theme.SelectorOptionSelectedStyle.Render(val))
 		} else {
 			b.WriteString(val)
 		}
@@ -145,12 +147,12 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 	{
 		var val string
 		if len(m.draft.tags) == 0 {
-			val = MutedStyle.Render("(none)")
+			val = theme.MutedStyle.Render("(none)")
 		} else {
 			val = strings.Join(m.draft.tags, ", ")
 		}
 		if m.focusIndex == 6 {
-			b.WriteString(SelectorOptionSelectedStyle.Render(val))
+			b.WriteString(theme.SelectorOptionSelectedStyle.Render(val))
 		} else {
 			b.WriteString(val)
 		}
@@ -170,11 +172,11 @@ func renderFormFlagsValue(pinned, review, focused bool) string {
 		parts = append(parts, "Review")
 	}
 	if len(parts) == 0 {
-		return MutedStyle.Render("(none)")
+		return theme.MutedStyle.Render("(none)")
 	}
 	val := strings.Join(parts, "  ")
 	if focused {
-		return SelectorOptionSelectedStyle.Render(val)
+		return theme.SelectorOptionSelectedStyle.Render(val)
 	}
 	return val
 }

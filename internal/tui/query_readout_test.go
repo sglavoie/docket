@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // readoutTestApp builds a workspace with enough narrowable axes that the stack
@@ -43,8 +44,8 @@ func readoutBodyText(out *OutlinerModel, width int) string {
 // clauses because the mode catalog declares none, so naming any would be the
 // readout claiming what it cannot prove.
 func TestQueryReadoutNamesEveryActiveAxisAndNothingElse(t *testing.T) {
-	ApplyTheme(ThemeConfig{Name: ""})
-	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
 	app := readoutTestApp(t)
 	out := app.crossOutliner
@@ -238,8 +239,8 @@ func TestQueryReadoutSaveAsLensRoutesThroughTheShell(t *testing.T) {
 // stack is part of the strip whose height statusStripHeight reserves, and the
 // outstanding-conflict count keeps the lead above it.
 func TestQueryReadoutGrowsTheStatusStripBelowTheConflictLine(t *testing.T) {
-	ApplyTheme(ThemeConfig{Name: ""})
-	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
 	const width = 80
 	app := readoutTestApp(t)

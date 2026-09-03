@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // HighlightText renders text with certain character positions highlighted.
@@ -26,7 +27,7 @@ func HighlightText(text string, positions []int, baseStyle lipgloss.Style) strin
 	for i, r := range runes {
 		char := string(r)
 		if _, highlight := posSet[i]; highlight {
-			result.WriteString(HighlightStyle.Render(char))
+			result.WriteString(theme.HighlightStyle.Render(char))
 		} else {
 			result.WriteString(baseStyle.Render(char))
 		}

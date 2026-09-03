@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // taskRowSegments holds every rendered piece of a task row except the title, so
@@ -73,7 +74,7 @@ func (m *OutlinerModel) taskRelationMarker(row outlinerRow) string {
 	if marker == "" {
 		return ""
 	}
-	return MutedStyle.Render("  " + marker)
+	return theme.MutedStyle.Render("  " + marker)
 }
 
 // taskPinnedMarker names a pin the surrounding rows cannot: the Pinned lane's
@@ -111,7 +112,7 @@ func taskMatchSourceCue(row outlinerRow) string {
 	if !ok {
 		return ""
 	}
-	return MutedStyle.Render("  · " + label)
+	return theme.MutedStyle.Render("  · " + label)
 }
 
 // buildTaskRowSegments assembles every rendered piece of a task row except the
@@ -124,14 +125,14 @@ func (m *OutlinerModel) buildTaskRowSegments(row outlinerRow, rowWidth int, colL
 	foldIndicator := m.renderTaskFoldIndicator(row, bg)
 	statusIcon := m.renderTaskStatusIcon(task)
 	if colLayout != nil && colLayout.HasStatus {
-		statusIcon = PadBadge(statusIcon, colLayout.StatusWidth)
+		statusIcon = theme.PadBadge(statusIcon, colLayout.StatusWidth)
 	}
 	prioritySegment := m.renderTaskPrioritySegment(task, colLayout)
 	contextSegment := ""
 	if task.Context != "" {
 		contextBudget := max(min(rowWidth/5, 12), 6)
 		display := truncateToVisualWidth(task.Context, contextBudget)
-		contextSegment = taskContextBadgeStyle(task).Render("["+display+"]") + " "
+		contextSegment = theme.TaskContextBadgeStyle(task).Render("["+display+"]") + " "
 	}
 	tagSegment := ""
 	if m.columnConfig.IsVisible(ColTags) {
@@ -158,7 +159,7 @@ func (m *OutlinerModel) buildTaskRowSegments(row outlinerRow, rowWidth int, colL
 	prefixStr, foldIndicator := renderTaskPrefix(compactOutlinerTreePrefix(row.prefix, prefixBudget), foldIndicator, bg)
 
 	segments := taskRowSegments{
-		cursorPrefix:    paint.bar(lipgloss.NewStyle(), RenderCursorPrefix()),
+		cursorPrefix:    paint.bar(lipgloss.NewStyle(), theme.RenderCursorPrefix()),
 		checkbox:        m.renderTaskCheckbox(row, bg),
 		prefixStr:       prefixStr,
 		foldIndicator:   foldIndicator,

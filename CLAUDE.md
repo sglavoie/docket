@@ -318,8 +318,8 @@ the same normalization so an unmintable persisted set fails closed.
 metadata. Parking stays hardcoded in `TaskWorkspaceProjects()`; precedence
 `bug` > `question` > `epic` > `story` > `feature` > `idea` only colors titles.
 
-`tagChipStyle` is the single tag color authority under those titles, on the
-≤65% ramp tier, and `orderedTaskTags` the single chip order; a slot is a
+`theme.TagChipStyle` is the single tag color authority under those titles, on
+the ≤65% ramp tier, and `orderedTaskTags` the single chip order; a slot is a
 mnemonic, never a legend, so nothing may read a chip color back.
 
 Keep the two populations named apart: `Runtime.TaskWorkspaceProjects()` is

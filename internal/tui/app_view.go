@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
@@ -36,7 +37,7 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 			Width(m.width).
 			Height(m.height).
 			Align(lipgloss.Center, lipgloss.Center).
-			Foreground(ColorMuted)
+			Foreground(theme.ColorMuted)
 		return tea.NewView(m.applyBackground(style.Render(msg)))
 	}
 

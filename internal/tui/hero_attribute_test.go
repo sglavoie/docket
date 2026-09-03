@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -116,7 +117,7 @@ func TestDemoteBadgeEmpty(t *testing.T) {
 }
 
 func TestDemoteBadgePreservesGlyph(t *testing.T) {
-	original := GetStateBadge(models.StateDone)
+	original := theme.GetStateBadge(models.StateDone)
 	if original == "" {
 		t.Fatal("expected non-empty status badge")
 	}

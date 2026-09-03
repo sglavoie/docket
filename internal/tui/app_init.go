@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // WithPersister sets a custom Persister for the AppModel.
@@ -118,7 +119,7 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 		return nil, err
 	}
 
-	ApplyTheme(NewThemeConfig(runtime.Machine()))
+	theme.ApplyTheme(theme.NewThemeConfig(runtime.Machine()))
 
 	app.refreshWorkspacePulseAt(time.Now())
 	app.refreshOutstandingConflicts()

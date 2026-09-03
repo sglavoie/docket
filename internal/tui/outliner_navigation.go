@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // resolveProjectForRow returns the project that owns the given row.
@@ -47,7 +48,7 @@ func (m *OutlinerModel) navigateToTask(task *models.Task) bool {
 		return false
 	}
 
-	if bucket := taskStateGroupLabel(task); bucket != "" && m.project != nil {
+	if bucket := theme.TaskStateGroupLabel(task); bucket != "" && m.project != nil {
 		delete(m.collapsedSections, bucket)
 	}
 	m.clearSectionZoom()

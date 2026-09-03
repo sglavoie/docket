@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // newFilterDuePicker is the f@ single-select picker over the five due-token
@@ -315,7 +316,7 @@ func prospectiveOutlinerStateCounts(
 func renderProspectiveFilterCount(count int) string {
 	if count == 0 {
 		zero := lipgloss.NewStyle().
-			Foreground(ColorError).
+			Foreground(theme.ColorError).
 			Faint(true).
 			Render("0")
 		return "⋅ " + zero

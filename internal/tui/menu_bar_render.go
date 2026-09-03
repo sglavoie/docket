@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // The bar is a view-local gated sub-state of the Outliner, not a presentation:
@@ -43,8 +44,8 @@ func menuBarGap(width int) string {
 		return ""
 	}
 	s := lipgloss.NewStyle().Width(width)
-	if themeBgColor != "" {
-		s = s.Background(lipgloss.Color(themeBgColor))
+	if theme.ThemeBgColor != "" {
+		s = s.Background(lipgloss.Color(theme.ThemeBgColor))
 	}
 	return s.Render("")
 }

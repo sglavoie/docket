@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // TagAdder provides shared add-tag mode state and logic.
@@ -23,7 +24,7 @@ type TagAdder struct {
 func NewTagAdder() TagAdder {
 	input := textinput.New()
 	input.CharLimit = 50
-	applyThemedTextInput(&input)
+	theme.ApplyThemedTextInput(&input)
 	return TagAdder{AddTagInput: input}
 }
 
@@ -121,7 +122,7 @@ func (a *TagAdder) RenderAddTagMode(width, height int) string {
 	b.WriteString(renderFullscreenTitle("Add New Tag", ""))
 	b.WriteString("\n\n")
 
-	b.WriteString(MutedStyle.Render(fmt.Sprintf(
+	b.WriteString(theme.MutedStyle.Render(fmt.Sprintf(
 		"Enter a tag name (max %d characters)",
 		a.AddTagInput.CharLimit,
 	)))
@@ -130,7 +131,7 @@ func (a *TagAdder) RenderAddTagMode(width, height int) string {
 	b.WriteString("\n\n")
 
 	if a.AddTagError != "" {
-		errorStyle := BoldStyle.Foreground(ColorError)
+		errorStyle := theme.BoldStyle.Foreground(theme.ColorError)
 		b.WriteString(errorStyle.Render(a.AddTagError))
 		b.WriteString("\n")
 	}

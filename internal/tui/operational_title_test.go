@@ -9,14 +9,15 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func TestOperationalTitlePulseFittingOrder(t *testing.T) {
 	pulse := WorkspacePulse{Inbox: 12, Today: 0, Overdue: 4, Done: 6}
 	allMode, _ := OutlinerModeByID(ModeAll)
 	spec := operationalTitleSpec{
-		Surface: TitleStyle.Render("Outliner"),
-		Scope:   TitleStyle.Render(activeProjectsScopeLabel),
+		Surface: theme.TitleStyle.Render("Outliner"),
+		Scope:   theme.TitleStyle.Render(activeProjectsScopeLabel),
 		Mode:    operationalTitleModeSegment(allMode),
 		Pulse:   &pulse,
 	}
@@ -69,7 +70,7 @@ func TestOperationalTitlePreservesInteractionBeforePulse(t *testing.T) {
 		Surface: "Outliner",
 		Scope:   activeProjectsScopeLabel,
 		Mode:    "All",
-		Context: []string{SelectionCountStyle.Render("MULTI-SELECT: 3 selected")},
+		Context: []string{theme.SelectionCountStyle.Render("MULTI-SELECT: 3 selected")},
 		Pace:    &todayPaceReadout{openCount: 8, medianPerDay: 3},
 		Pulse:   &pulse,
 	}, 40)
@@ -297,10 +298,10 @@ func TestOperationalTitleModeSegmentSpelling(t *testing.T) {
 				t.Fatalf("mode chip = %q, want %q", chip, mode.Label)
 			}
 			plain := ansi.Strip(renderOperationalTitle(operationalTitleSpec{
-				Surface: TitleStyle.Render("Outliner"),
-				Scope:   TitleStyle.Render(activeProjectsScopeLabel),
+				Surface: theme.TitleStyle.Render("Outliner"),
+				Scope:   theme.TitleStyle.Render(activeProjectsScopeLabel),
 				Mode:    operationalTitleModeSegment(mode),
-				Context: []string{MutedStyle.Render(context)},
+				Context: []string{theme.MutedStyle.Render(context)},
 			}, 160))
 			want := operationalTitleSeparator + mode.Label + operationalTitleContextGap + context
 			if !strings.Contains(plain, want) {

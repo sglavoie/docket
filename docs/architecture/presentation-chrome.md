@@ -246,7 +246,7 @@ that text's first reset. `trail` is the third question, answered in
 The bar and the trail are derived in `ApplyTheme` from the theme's cursor color
 in opposite directions — the bar away from the terminal's own paper so one column
 is unmissable, the trail toward and past it so the reach never competes with the
-mark — and which of `lightenHex`/`darkenHex` is which flips with the theme. So
+mark — and which of `lightenHex`/`DarkenHex` is which flips with the theme. So
 does the size of each step, because the two directions are not symmetric.
 Darkening preserves chroma, so the light theme's bar is a distinct dark block at
 a moderate factor; lightening washes chroma out, so the dark theme's bar goes to

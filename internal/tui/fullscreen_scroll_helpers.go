@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // RenderScrollbar returns a viewportHeight-line string of ░/█ characters
@@ -35,9 +36,9 @@ func RenderScrollbar(totalItems, viewportHeight, scrollOffset int) string {
 			b.WriteByte('\n')
 		}
 		if i >= thumbTop && i < thumbTop+thumbHeight {
-			b.WriteString(ScrollbarThumbStyle.Render("█"))
+			b.WriteString(theme.ScrollbarThumbStyle.Render("█"))
 		} else {
-			b.WriteString(ScrollbarTrackStyle.Render("░"))
+			b.WriteString(theme.ScrollbarTrackStyle.Render("░"))
 		}
 	}
 	return b.String()

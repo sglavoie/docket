@@ -9,6 +9,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // captureGuidanceSpec selects the controls for the composer's current
@@ -342,17 +343,17 @@ func fitRequiredGuidanceSegments(segments []guidanceSegment, width, rows int) []
 // carries the scan weight. Supplemental state text names no key and stays muted.
 func renderGuidanceSegment(segment guidanceSegment) string {
 	if segment.Verbatim != "" {
-		return HelpStyle.Render(segment.Verbatim)
+		return theme.HelpStyle.Render(segment.Verbatim)
 	}
 	key := strings.TrimSpace(segment.Key)
 	label := strings.TrimSpace(segment.Label)
 	switch {
 	case key == "":
-		return HelpStyle.Render(label)
+		return theme.HelpStyle.Render(label)
 	case label == "":
-		return HelpKeyStyle.Render(key)
+		return theme.HelpKeyStyle.Render(key)
 	}
-	return HelpKeyStyle.Render(key) + HelpStyle.Render(" "+label)
+	return theme.HelpKeyStyle.Render(key) + theme.HelpStyle.Render(" "+label)
 }
 
 // renderGuidanceLines styles the packed guidance one segment at a time. Styling
@@ -365,7 +366,7 @@ func renderGuidanceLines(spec GuidanceSpec, width int) []string {
 	if len(segmentLines) == 0 {
 		return nil
 	}
-	separator := HelpStyle.Render(footerHelpSeparator)
+	separator := theme.HelpStyle.Render(footerHelpSeparator)
 	lines := make([]string, 0, len(segmentLines))
 	for _, segments := range segmentLines {
 		styled := make([]string, 0, len(segments))

@@ -7,6 +7,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/icons"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // ConfirmDialogProvider is implemented by view models that have a confirm dialog.
@@ -102,7 +103,7 @@ func (c *ConfirmDialog) RenderOverlay(width int) string {
 		return ""
 	}
 
-	borderStyle := WarningIconStyle
+	borderStyle := theme.WarningIconStyle
 
 	// Render prompt text inside a bordered box
 	promptText := c.Prompt()
@@ -119,7 +120,7 @@ func (c *ConfirmDialog) RenderOverlay(width int) string {
 			if w := lipgloss.Width(plain); w > maxPlainWidth {
 				maxPlainWidth = w
 			}
-			detailLines = append(detailLines, MutedStyle.Render(plain))
+			detailLines = append(detailLines, theme.MutedStyle.Render(plain))
 		}
 		if d.TotalCount > len(d.Items) {
 			remaining := d.TotalCount - len(d.Items)
@@ -127,21 +128,21 @@ func (c *ConfirmDialog) RenderOverlay(width int) string {
 			if w := lipgloss.Width(plain); w > maxPlainWidth {
 				maxPlainWidth = w
 			}
-			detailLines = append(detailLines, MutedStyle.Render(plain))
+			detailLines = append(detailLines, theme.MutedStyle.Render(plain))
 		}
 		if d.CascadeNote != "" {
 			plain := "  " + icons.Get("warning") + " " + d.CascadeNote
 			if w := lipgloss.Width(plain); w > maxPlainWidth {
 				maxPlainWidth = w
 			}
-			detailLines = append(detailLines, WarningIconStyle.Render(plain))
+			detailLines = append(detailLines, theme.WarningIconStyle.Render(plain))
 		}
 		if d.UndoHint {
 			plain := "  Undo available (u)"
 			if w := lipgloss.Width(plain); w > maxPlainWidth {
 				maxPlainWidth = w
 			}
-			detailLines = append(detailLines, MutedStyle.Render(plain))
+			detailLines = append(detailLines, theme.MutedStyle.Render(plain))
 		}
 	}
 
@@ -152,7 +153,7 @@ func (c *ConfirmDialog) RenderOverlay(width int) string {
 	}
 
 	// Title and footer text (computed early so we can size the box to fit)
-	titleStyle := lipgloss.NewStyle().Foreground(ColorWarning).Bold(true)
+	titleStyle := lipgloss.NewStyle().Foreground(theme.ColorWarning).Bold(true)
 	title := titleStyle.Render("Confirm")
 	footerText := renderGuidanceText(confirmationGuidanceSpec(), max(width-8, 1))
 

@@ -2,6 +2,8 @@ package tui
 
 import (
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // testItem implements PickerItem for testing.
@@ -266,7 +268,7 @@ func TestListSurfaceAdapterRenderInBoxFitsTitleHeaderToWidth(t *testing.T) {
 	})
 	picker.SetSize(60, 20)
 
-	rendered := picker.RenderInBox("Filter by Attribute", MutedStyle.Render("/ search · Enter select · x clear · Esc cancel"), 5)
+	rendered := picker.RenderInBox("Filter by Attribute", theme.MutedStyle.Render("/ search · Enter select · x clear · Esc cancel"), 5)
 	_, issues := normalizeScreen(rendered, 60, 20)
 	for _, issue := range issues {
 		if issue.Kind == "width_overflow" {

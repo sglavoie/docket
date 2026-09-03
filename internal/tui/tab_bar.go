@@ -4,13 +4,14 @@ import (
 	"image/color"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // activeTabStyle returns the standard active tab style: bold, primary-colored,
 // with optional bottom border. Pass an optional accent color to override the
 // primary color for the foreground and border.
 func activeTabStyle(padding int, withBorder bool, accent ...color.Color) lipgloss.Style {
-	fg := ColorPrimary
+	fg := theme.ColorPrimary
 	if len(accent) > 0 && accent[0] != nil {
 		fg = accent[0]
 	}
@@ -23,8 +24,8 @@ func activeTabStyle(padding int, withBorder bool, accent ...color.Color) lipglos
 			BorderStyle(lipgloss.ThickBorder()).
 			BorderForeground(fg)
 	}
-	if themeBgColor != "" {
-		s = s.Background(lipgloss.Color(themeBgColor))
+	if theme.ThemeBgColor != "" {
+		s = s.Background(lipgloss.Color(theme.ThemeBgColor))
 	}
 	return s
 }
@@ -33,15 +34,15 @@ func activeTabStyle(padding int, withBorder bool, accent ...color.Color) lipglos
 // with optional bottom border. Used by tab bar renderers to avoid style duplication.
 func inactiveTabStyle(padding int, withBorder bool) lipgloss.Style {
 	s := lipgloss.NewStyle().
-		Foreground(ColorMuted).
+		Foreground(theme.ColorMuted).
 		Padding(0, padding)
 	if withBorder {
 		s = s.BorderBottom(true).
 			BorderStyle(lipgloss.Border{Bottom: "─"}).
-			BorderForeground(ColorBorder)
+			BorderForeground(theme.ColorBorder)
 	}
-	if themeBgColor != "" {
-		s = s.Background(lipgloss.Color(themeBgColor))
+	if theme.ThemeBgColor != "" {
+		s = s.Background(lipgloss.Color(theme.ThemeBgColor))
 	}
 	return s
 }
@@ -81,7 +82,7 @@ func RenderColoredTabBar(tabs []string, activeIdx int, availableWidth int, paddi
 			// Use custom color for active tab if available
 			if tabColors != nil {
 				if colorName, ok := tabColors[name]; ok && colorName != "" && colorName != "gray" {
-					colorVal := GetSectionColorValue(colorName)
+					colorVal := theme.GetSectionColorValue(colorName)
 					if colorVal != nil {
 						colored := activeTabStyle(padding, fitsSingleLine, accent...).
 							Foreground(colorVal).
@@ -96,7 +97,7 @@ func RenderColoredTabBar(tabs []string, activeIdx int, availableWidth int, paddi
 			// Check for custom color on inactive tabs
 			if tabColors != nil {
 				if colorName, ok := tabColors[name]; ok && colorName != "" && colorName != "gray" {
-					colorVal := GetSectionColorValue(colorName)
+					colorVal := theme.GetSectionColorValue(colorName)
 					if colorVal != nil {
 						colored := inactiveTabStyle(padding, fitsSingleLine).
 							Foreground(colorVal)

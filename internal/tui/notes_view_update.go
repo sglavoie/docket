@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 //nolint:gocyclo // Centralized dispatch keeps Notes interaction and Esc precedence auditable.
@@ -301,7 +302,7 @@ func (m *NotesViewModel) startRename() {
 	ti.CharLimit = 100
 	ti.SetWidth(50)
 	ti.Focus()
-	applyThemedTextInput(&ti)
+	theme.ApplyThemedTextInput(&ti)
 	m.renameInput = ti
 	m.renameTarget = row.Identity()
 	m.renaming = true

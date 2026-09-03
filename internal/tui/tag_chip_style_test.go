@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // tagChipGoldenSlots pins the hash and the ramp length — the two inputs that
@@ -34,14 +35,14 @@ var tagChipGoldenSlots = map[string]int{
 }
 
 func TestTagChipSlotsMatchTheGoldenMap(t *testing.T) {
-	if got := len(tagChipColors); got != len(config.DefaultTagChipRamp("dark")) {
+	if got := len(theme.TagChipColors); got != len(config.DefaultTagChipRamp("dark")) {
 		t.Fatalf("chip ramp = %d slots, want %d", got, len(config.DefaultTagChipRamp("dark")))
 	}
-	if got := len(tagChipColors); got != 6 {
+	if got := len(theme.TagChipColors); got != 6 {
 		t.Fatalf("chip ramp = %d slots; the golden slots below are taken mod 6", got)
 	}
 	for tag, want := range tagChipGoldenSlots {
-		if got := tagChipSlot(tag); got != want {
+		if got := theme.TagChipSlot(tag); got != want {
 			t.Errorf("tag %q now lands on slot %d, want %d: every existing workspace repaints this tag", tag, got, want)
 		}
 	}
@@ -49,29 +50,29 @@ func TestTagChipSlotsMatchTheGoldenMap(t *testing.T) {
 
 func TestTagChipSlotIsDeterministicAcrossCalls(t *testing.T) {
 	for _, tag := range []string{"ux", "billing", "type:authentication", "über-tag"} {
-		first := tagChipSlot(tag)
+		first := theme.TagChipSlot(tag)
 		for range 8 {
-			if got := tagChipSlot(tag); got != first {
+			if got := theme.TagChipSlot(tag); got != first {
 				t.Fatalf("tag %q resolved to slot %d then %d", tag, first, got)
 			}
 		}
-		if got := tagChipStyle(tag).GetForeground(); got != tagChipColors[first] {
-			t.Errorf("tag %q chip foreground = %v, want slot %d color %v", tag, got, first, tagChipColors[first])
+		if got := theme.TagChipStyle(tag).GetForeground(); got != theme.TagChipColors[first] {
+			t.Errorf("tag %q chip foreground = %v, want slot %d color %v", tag, got, first, theme.TagChipColors[first])
 		}
 	}
 }
 
 func TestTagChipSlotCollapsesSpellingsOfOneTag(t *testing.T) {
-	want := tagChipSlot("bug")
+	want := theme.TagChipSlot("bug")
 	for _, spelling := range []string{"Bug", "BUG", "#bug", "#Bug", "  bug  "} {
-		if got := tagChipSlot(spelling); got != want {
+		if got := theme.TagChipSlot(spelling); got != want {
 			t.Errorf("%q resolved to slot %d, want %d — normalization decides the slot", spelling, got, want)
 		}
 	}
 }
 
 func TestTagChipStyleCarriesColorOnly(t *testing.T) {
-	style := tagChipStyle("ux")
+	style := theme.TagChipStyle("ux")
 	if style.GetBold() {
 		t.Error("a tag chip is bold; bold stays the title's selection channel")
 	}
@@ -81,27 +82,27 @@ func TestTagChipStyleCarriesColorOnly(t *testing.T) {
 }
 
 func TestTagChipColorsReResolveAfterApplyTheme(t *testing.T) {
-	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
 	const probe = "ux"
 	resolved := map[string]lipgloss.Style{}
 	slots := map[string]int{}
 
 	for _, variant := range []string{"dark", "light"} {
-		ApplyTheme(ThemeConfig{Name: variant})
+		theme.ApplyTheme(theme.ThemeConfig{Name: variant})
 
 		want := config.DefaultTagChipRamp(variant)
-		if len(tagChipColors) != len(want) {
-			t.Fatalf("%s ramp = %d slots, want %d", variant, len(tagChipColors), len(want))
+		if len(theme.TagChipColors) != len(want) {
+			t.Fatalf("%s ramp = %d slots, want %d", variant, len(theme.TagChipColors), len(want))
 		}
 		for i, hex := range want {
-			if tagChipColors[i] != lipgloss.Color(hex) {
-				t.Errorf("%s slot %d = %v, want %s", variant, i, tagChipColors[i], hex)
+			if theme.TagChipColors[i] != lipgloss.Color(hex) {
+				t.Errorf("%s slot %d = %v, want %s", variant, i, theme.TagChipColors[i], hex)
 			}
 		}
-		slots[variant] = tagChipSlot(probe)
-		resolved[variant] = tagChipStyle(probe)
-		if got, want := resolved[variant].GetForeground(), tagChipColors[slots[variant]]; got != want {
+		slots[variant] = theme.TagChipSlot(probe)
+		resolved[variant] = theme.TagChipStyle(probe)
+		if got, want := resolved[variant].GetForeground(), theme.TagChipColors[slots[variant]]; got != want {
 			t.Errorf("%s: %q chip = %v, want its slot color %v", variant, probe, got, want)
 		}
 	}
@@ -116,20 +117,20 @@ func TestTagChipColorsReResolveAfterApplyTheme(t *testing.T) {
 }
 
 func TestRowAndPeekTagChipsWearOneColor(t *testing.T) {
-	ApplyTheme(ThemeConfig{Name: ""})
-	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
 	// infra and ux hold different slots, so a row that styled the whole join
 	// under one color could not pass this.
 	task := &models.Task{ID: "task", Tags: []string{"infra", "ux"}}
-	if tagChipSlot("infra") == tagChipSlot("ux") {
-		t.Fatalf("fixture tags share slot %d; pick two that differ", tagChipSlot("infra"))
+	if theme.TagChipSlot("infra") == theme.TagChipSlot("ux") {
+		t.Fatalf("fixture tags share slot %d; pick two that differ", theme.TagChipSlot("infra"))
 	}
 	row := renderTruncatedTags(task.Tags, 2, 8)
 	peek := inlinePeekTagsLine(task, 80)
 
 	for _, tag := range task.Tags {
-		chip := tagChipStyle(tag).Render("#" + tag)
+		chip := theme.TagChipStyle(tag).Render("#" + tag)
 		if !strings.Contains(row, chip) {
 			t.Errorf("row %q is missing the %q chip %q", row, tag, chip)
 		}
@@ -140,8 +141,8 @@ func TestRowAndPeekTagChipsWearOneColor(t *testing.T) {
 }
 
 func TestRenderTruncatedTagsClipsTheTextButNotTheColor(t *testing.T) {
-	ApplyTheme(ThemeConfig{Name: ""})
-	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
 	// The full stored tag decides the color and the clip is presentation only, so
 	// a chip cut to the row's eight columns wears the color its untruncated Peek
@@ -158,18 +159,18 @@ func TestRenderTruncatedTagsClipsTheTextButNotTheColor(t *testing.T) {
 		if got := ansi.Strip(rendered); got != tc.want {
 			t.Errorf("chip at %d columns = %q, want %q", tc.maxTagLen, got, tc.want)
 		}
-		if want := tagChipStyle(tag).Render(tc.want); rendered != want {
+		if want := theme.TagChipStyle(tag).Render(tc.want); rendered != want {
 			t.Errorf("chip at %d columns = %q, want the whole tag's color %q", tc.maxTagLen, rendered, want)
 		}
 	}
 }
 
 func TestRenderTruncatedTagsKeepsTheOverflowCountMuted(t *testing.T) {
-	ApplyTheme(ThemeConfig{Name: ""})
-	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
 	rendered := renderTruncatedTags([]string{"billing", "ux", "refactor"}, 2, 8)
-	if want := MutedStyle.Render(" +1"); !strings.HasSuffix(rendered, want) {
+	if want := theme.MutedStyle.Render(" +1"); !strings.HasSuffix(rendered, want) {
 		t.Errorf("overflow suffix of %q is not the muted %q", rendered, want)
 	}
 }
@@ -236,8 +237,8 @@ func TestOrderedTaskTagsIsIndependentOfInsertionOrder(t *testing.T) {
 }
 
 func TestOrderedTaskTagsDeprioritizesSemanticTagsWithoutDroppingThem(t *testing.T) {
-	ApplyTheme(ThemeConfig{Name: ""})
-	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
 	// Deprioritize, never exclude: with nothing else competing, the semantic tag
 	// still reaches the row. Under --no-color the title carries no semantic color
@@ -255,8 +256,8 @@ func TestOrderedTaskTagsDeprioritizesSemanticTagsWithoutDroppingThem(t *testing.
 }
 
 func TestRenderTruncatedTagsOverflowCountSurvivesReordering(t *testing.T) {
-	ApplyTheme(ThemeConfig{Name: ""})
-	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
 	// Reordering moves which tags are visible, never how many exist: every
 	// permutation of one set shows the same +N.
@@ -291,8 +292,8 @@ func TestRenderTruncatedTagsOverflowCountSurvivesReordering(t *testing.T) {
 }
 
 func TestRowAndPeekAgreeOnTagOrder(t *testing.T) {
-	ApplyTheme(ThemeConfig{Name: ""})
-	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
 	// One helper serves both surfaces, so the row's two chips must be the Peek
 	// line's first two — a row is a prefix of Peek, never a different selection.

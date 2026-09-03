@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // The conflict browser is the read-only companion to the status strip's
@@ -384,12 +385,12 @@ func (model *ConflictBrowserModel) renderWithin(width, height int) string {
 
 	header := make([]string, 0, 2)
 	if model.notice != "" {
-		header = append(header, ErrorStatusStyle.Render(
+		header = append(header, theme.ErrorStatusStyle.Render(
 			truncateToVisualWidth(model.notice, contentWidth),
 		))
 	}
 	if !model.inspecting() {
-		header = append(header, MutedStyle.Render(
+		header = append(header, theme.MutedStyle.Render(
 			truncateToVisualWidth(conflictBrowserReadOnlyLine, contentWidth),
 		))
 	}
@@ -409,13 +410,13 @@ func (model *ConflictBrowserModel) renderWithin(width, height int) string {
 		content = strings.Join(header, "\n") + "\n\n" + content
 	}
 
-	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render(conflictBrowserTitle)
+	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render(conflictBrowserTitle)
 	return renderOverlayBox(
 		content,
 		innerWidth,
 		title,
 		renderGuidanceText(model.guidanceSpec(), max(innerWidth-4, 1)),
-		lipgloss.NewStyle().Foreground(ColorPrimary),
+		lipgloss.NewStyle().Foreground(theme.ColorPrimary),
 	)
 }
 

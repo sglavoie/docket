@@ -9,6 +9,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 type composerEffectiveRoute struct {
@@ -113,15 +114,15 @@ func (m *TaskComposerModel) View() tea.View {
 	if m.mode == ComposerExpanded && m.expanded != nil {
 		return m.expanded.View()
 	}
-	applyThemedTextarea(&m.input)
+	theme.ApplyThemedTextarea(&m.input)
 	contentHeight := m.compactContentHeight()
 	project, destination := m.effectiveRouteHeader()
 	var b strings.Builder
 	b.WriteString(renderFullscreenTitleWithPulse("Task Composer", m.preset.label(), m.currentWorkspacePulse(), m.width))
 	b.WriteString("\n\n")
-	b.WriteString(SubtitleStyle.Render("Project: ") + truncateToVisualWidth(project, max(m.width-12, 1)))
+	b.WriteString(theme.SubtitleStyle.Render("Project: ") + truncateToVisualWidth(project, max(m.width-12, 1)))
 	b.WriteString("\n")
-	b.WriteString(SubtitleStyle.Render("Destination: ") + truncateToVisualWidth(destination, max(m.width-16, 1)))
+	b.WriteString(theme.SubtitleStyle.Render("Destination: ") + truncateToVisualWidth(destination, max(m.width-16, 1)))
 	b.WriteString("\n\n")
 	b.WriteString(m.input.View())
 	b.WriteString("\n")
@@ -129,13 +130,13 @@ func (m *TaskComposerModel) View() tea.View {
 
 	var errorsBlock strings.Builder
 	for _, lineErr := range m.errors {
-		errorsBlock.WriteString(ValidationErrorStyle.Render(fmt.Sprintf("Line %d: %s", lineErr.line, lineErr.message)))
+		errorsBlock.WriteString(theme.ValidationErrorStyle.Render(fmt.Sprintf("Line %d: %s", lineErr.line, lineErr.message)))
 		errorsBlock.WriteString("\n")
 	}
 	errors := strings.TrimRight(errorsBlock.String(), "\n")
 	confirm := ""
 	if m.confirmDiscard {
-		confirm = ValidationErrorStyle.Render("Discard input? (y/n)")
+		confirm = theme.ValidationErrorStyle.Render("Discard input? (y/n)")
 	}
 
 	blockRows := func(blocks ...string) int {
@@ -159,7 +160,7 @@ func (m *TaskComposerModel) View() tea.View {
 	remaining := max(contentHeight-prefixRows-blockRows(errors, confirm), 1)
 	preview := ""
 	if count := m.nonblankLineCount(); count > 1 {
-		preview = MutedStyle.Render(fmt.Sprintf("%d tasks · shared attributes apply to every line", count))
+		preview = theme.MutedStyle.Render(fmt.Sprintf("%d tasks · shared attributes apply to every line", count))
 	} else if m.previewErr != "" || m.preview != nil {
 		lowerMin := 0
 		if m.isAutocompleteActive() {

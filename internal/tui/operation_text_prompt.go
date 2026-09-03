@@ -7,6 +7,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // OperationTextPromptModel is the value step for operations whose value is typed
@@ -32,7 +33,7 @@ func newOperationTextPromptModel(
 	input.CharLimit = 200
 	input.SetValue(current)
 	input.Focus()
-	applyThemedTextInput(&input)
+	theme.ApplyThemedTextInput(&input)
 	return &OperationTextPromptModel{
 		request:  request,
 		input:    input,
@@ -79,7 +80,7 @@ func (model *OperationTextPromptModel) render(width int) string {
 
 	var content strings.Builder
 	if model.subtitle != "" {
-		content.WriteString(MutedStyle.Render(
+		content.WriteString(theme.MutedStyle.Render(
 			"Current: " + truncateToVisualWidth(model.subtitle, max(innerWidth-11, 8)),
 		))
 		content.WriteString("\n\n")
@@ -87,18 +88,18 @@ func (model *OperationTextPromptModel) render(width int) string {
 	content.WriteString(model.input.View())
 	if model.notice != "" {
 		content.WriteString("\n\n")
-		content.WriteString(ValidationErrorStyle.Render(model.notice))
+		content.WriteString(theme.ValidationErrorStyle.Render(model.notice))
 	}
 
 	return renderOverlayBox(
 		content.String(),
 		innerWidth,
-		lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render(model.title),
+		lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render(model.title),
 		renderGuidanceText(GuidanceSpec{
 			Hints: requiredGuidanceHints("Enter apply", "Esc back"),
 			Rows:  2,
 		}, max(innerWidth-4, 1)),
-		lipgloss.NewStyle().Foreground(ColorPrimary),
+		lipgloss.NewStyle().Foreground(theme.ColorPrimary),
 	)
 }
 

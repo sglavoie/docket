@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // Form layout thresholds.
@@ -86,7 +87,7 @@ func (m *TaskFormModel) View() tea.View {
 	// ── Error banner ──────────────────────────────────────────────────────────
 	var errBanner string
 	if m.err != nil {
-		errBanner = ValidationErrorStyle.Render(m.err.Error())
+		errBanner = theme.ValidationErrorStyle.Render(m.err.Error())
 	}
 
 	// ── Footer ────────────────────────────────────────────────────────────────
@@ -151,7 +152,7 @@ func clampFormBody(body string, maxRows int) string {
 	if len(lines) <= maxRows {
 		return body
 	}
-	kept := append(lines[:maxRows-1:maxRows-1], MutedStyle.Render("↓ more (resize terminal to view all)"))
+	kept := append(lines[:maxRows-1:maxRows-1], theme.MutedStyle.Render("↓ more (resize terminal to view all)"))
 	return strings.Join(kept, "\n")
 }
 
@@ -166,6 +167,6 @@ func (m *TaskFormModel) renderMinSizeNotice() string {
 		Width(m.width).
 		Height(m.height).
 		Align(lipgloss.Center, lipgloss.Center).
-		Foreground(ColorMuted).
+		Foreground(theme.ColorMuted).
 		Render(msg)
 }

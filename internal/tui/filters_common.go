@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // noContextFilterKey is the pseudo-entry the context picker offers for tasks
@@ -268,7 +269,7 @@ func renderFilterBadge(parts []string) string {
 	if len(parts) == 0 {
 		return ""
 	}
-	return operationalTitleBadge(FilterBadgeStyle, "Filters: "+strings.Join(parts, " "))
+	return operationalTitleBadge(theme.FilterBadgeStyle, "Filters: "+strings.Join(parts, " "))
 }
 
 // newFilterState returns an initialized CommonFilterState with allocated maps.

@@ -1,4 +1,4 @@
-package tui
+package theme
 
 import (
 	"image/color"
@@ -38,8 +38,8 @@ var (
 	ColorCursorBarBg     = lipgloss.Color("#e0e3eb") // derived: lightenHex("#33467c", 0.85)
 	ColorCursorBarFg     = lipgloss.Color("#000000") // the dark theme's own paper
 	ColorFlashBg         = lipgloss.Color("#ffffff") // derived: lightenHex("#33467c", 1.0)
-	ColorSelectedDimBg   = lipgloss.Color("#0b0e19") // derived: darkenHex("#33467c", 0.8)
-	ColorFlashDimBg      = lipgloss.Color("#333333") // derived: darkenHex("#ffffff", 0.8)
+	ColorSelectedDimBg   = lipgloss.Color("#0b0e19") // derived: DarkenHex("#33467c", 0.8)
+	ColorFlashDimBg      = lipgloss.Color("#333333") // derived: DarkenHex("#ffffff", 0.8)
 	ColorLightGray       = lipgloss.Color("#8f98c7")
 	ColorSubtleBorder    = lipgloss.Color("#565f89")
 	ColorPurple          = lipgloss.Color("#bb9af7")
@@ -49,7 +49,7 @@ var (
 	ColorZebraBg         = lipgloss.Color("#16171f")
 	ColorTreeGroupBg     = lipgloss.Color("#141520") // subtle tint for odd top-level groups
 	ColorFirstPlanItemBg = lipgloss.Color("#1e1f2e") // subtle elevated bg for the first today plan item
-	ColorProgressEmpty   = lipgloss.Color("#565f89") // dark-theme default; set by rebuildPalette
+	ColorProgressEmpty   = lipgloss.Color("#565f89") // dark-theme default; set by RebuildPalette
 
 	// View accent colors — one per pipeline stage for spatial orientation.
 	AccentCapture = lipgloss.Color("#f7768e") // coral (Capture stage)
@@ -103,7 +103,7 @@ func GetSectionColorValue(colorName string) color.Color {
 	if colorName == "" {
 		return nil
 	}
-	if activeThemeName == "light" {
+	if ActiveThemeName == "light" {
 		if c, ok := sectionColorLight[colorName]; ok {
 			return c
 		}

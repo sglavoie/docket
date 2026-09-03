@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func newFilterTagPickerForTest(t *testing.T, tags []TagInfo) *OperationValuePickerModel {
@@ -220,7 +221,7 @@ func tagPickerRowColor(t *testing.T, item ListItem) (lipgloss.Style, bool) {
 	switch item.CategoryID {
 	case taskTagSemanticCategory:
 		task := &models.Task{Tags: []string{item.PrimaryText}}
-		return TaskTitleStyleFor(task, TaskTitleStyleOptions{}), true
+		return theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{}), true
 	case projectTagBehavioralCategory:
 		info, ok := models.BehavioralProjectTags[item.PrimaryText]
 		if !ok {
@@ -230,7 +231,7 @@ func tagPickerRowColor(t *testing.T, item ListItem) (lipgloss.Style, bool) {
 	case taskContextCategory, tagDescriptiveCategory:
 		// Both hold tag rows: CONTEXTS merely recategorizes a tag also carried as
 		// a context, and that row still toggles the tag.
-		return tagChipStyle(item.PrimaryText), true
+		return theme.TagChipStyle(item.PrimaryText), true
 	default:
 		return lipgloss.Style{}, false
 	}

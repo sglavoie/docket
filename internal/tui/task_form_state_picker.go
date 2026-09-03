@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // TaskFormStatePickedMsg is emitted from the inline canonical state picker.
@@ -51,8 +52,8 @@ func (p *formStatePicker) handleKey(msg tea.KeyPressMsg) (bool, tea.Msg) {
 
 func (p *formStatePicker) render(width int, current models.WorkflowState) string {
 	states := models.AllWorkflowStates()
-	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
-	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Set State")
+	borderStyle := lipgloss.NewStyle().Foreground(theme.ColorPrimary)
+	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render("Set State")
 	minInnerWidth := lipgloss.Width(title) + 4
 	innerWidth := min(max(max(width*2/5, 36), minInnerWidth), max(width-4, 1))
 	footer := renderGuidanceText(requiredActionGuidanceSpec(
@@ -70,7 +71,7 @@ func (p *formStatePicker) render(width int, current models.WorkflowState) string
 			line += strings.Repeat(" ", innerWidth-4-lineWidth)
 		}
 		if i == p.cursor {
-			line = SelectedStyle.Render(line)
+			line = theme.SelectedStyle.Render(line)
 		}
 		content.WriteString(line)
 		if i < len(states)-1 {

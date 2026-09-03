@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // ListSurfaceLayout is the concrete layout selected by a renderer.
@@ -169,7 +170,7 @@ func renderCompactListSurface(
 	config ListSurfaceRenderConfig,
 ) string {
 	if model == nil {
-		return MutedStyle.Render("List unavailable.")
+		return theme.MutedStyle.Render("List unavailable.")
 	}
 	showContinuations := sizeListSurfaceViewport(model, config.Width, config.Height)
 	content := renderListSurfacePane(model, config.Width, showContinuations)
@@ -257,10 +258,10 @@ func renderListSurfaceEmpty(empty ListEmptyContext, width int) string {
 			title = "No items."
 		}
 	}
-	lines := []string{MutedStyle.Render(truncateToVisualWidth(title, width))}
+	lines := []string{theme.MutedStyle.Render(truncateToVisualWidth(title, width))}
 	if detail != "" {
 		for _, line := range wrapText(detail, max(width, 1)) {
-			lines = append(lines, MutedStyle.Render(truncateToVisualWidth(line, width)))
+			lines = append(lines, theme.MutedStyle.Render(truncateToVisualWidth(line, width)))
 		}
 	}
 	return strings.Join(lines, "\n")
@@ -273,7 +274,7 @@ func renderListSurfaceRow(
 ) string {
 	if row.Kind == ListRowCategory {
 		label := strings.ToUpper(row.Category.Label)
-		return SectionHeaderStyle.Render(truncateToVisualWidth(label, width))
+		return theme.SectionHeaderStyle.Render(truncateToVisualWidth(label, width))
 	}
 
 	item := row.Match.Item
@@ -317,7 +318,7 @@ func renderListSurfaceRow(
 	if item.PrimaryStyle != nil && item.Enabled() && !row.Cursor {
 		chrome := func(text string) string { return text }
 		if row.Selected {
-			chrome = func(text string) string { return SelectionStyle.Render(text) }
+			chrome = func(text string) string { return theme.SelectionStyle.Render(text) }
 		}
 		styled := chrome(marker) + item.PrimaryMarker + item.PrimaryStyle.Render(layout.Primary)
 		if layout.Secondary != "" {
@@ -327,10 +328,10 @@ func renderListSurfaceRow(
 	}
 	line := marker + item.PrimaryMarker + layout.Text()
 	if !item.Enabled() {
-		line = MutedStyle.Render(line)
+		line = theme.MutedStyle.Render(line)
 	}
 	if row.Selected && !row.Cursor {
-		line = SelectionStyle.Render(line)
+		line = theme.SelectionStyle.Render(line)
 	}
 	if row.Cursor {
 		line = SelectedLine(line, width)
@@ -340,7 +341,7 @@ func renderListSurfaceRow(
 
 func renderListContinuation(direction string, count, width int) string {
 	label := fmt.Sprintf("%s %d more", direction, count)
-	return MutedStyle.Render(truncateToVisualWidth(label, width))
+	return theme.MutedStyle.Render(truncateToVisualWidth(label, width))
 }
 
 // listPreviewScrollWindow places the visible slice inside height rows, reserving
@@ -401,10 +402,10 @@ func renderListSurfacePreview(
 	}
 
 	if preview.Title != "" {
-		appendWrapped(preview.Title, ListPreviewHeaderStyle, 0)
+		appendWrapped(preview.Title, theme.ListPreviewHeaderStyle, 0)
 	}
 	if preview.Summary != "" {
-		appendWrapped(preview.Summary, MutedStyle, 0)
+		appendWrapped(preview.Summary, theme.MutedStyle, 0)
 	}
 	for _, field := range preview.Fields {
 		label := strings.TrimSpace(field.Label)
@@ -429,7 +430,7 @@ func renderListSurfacePreview(
 		// still follow it.
 		if capacity := height - len(lines) - 1; capacity > 0 {
 			if rows := body(width, capacity); len(rows) > 0 {
-				appendLine(MutedStyle.Render(strings.Repeat("─", max(width, 1))))
+				appendLine(theme.MutedStyle.Render(strings.Repeat("─", max(width, 1))))
 				for _, row := range rows {
 					appendLine(row)
 				}
@@ -437,7 +438,7 @@ func renderListSurfacePreview(
 		}
 	}
 	if len(lines) == 0 {
-		appendLine(MutedStyle.Render("No preview available."))
+		appendLine(theme.MutedStyle.Render("No preview available."))
 	}
 	if height > 0 && len(lines) > height {
 		lines = lines[:height]
@@ -478,7 +479,7 @@ func listSurfaceHelp(model *ListSurfaceModel, override string) string {
 func appendListSurfaceHelp(content, help string, width int) string {
 	helpLines := wrapText(help, max(width, 1))
 	for index := range helpLines {
-		helpLines[index] = HelpStyle.Render(helpLines[index])
+		helpLines[index] = theme.HelpStyle.Render(helpLines[index])
 	}
 	if content == "" {
 		return strings.Join(helpLines, "\n")

@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func TestTaskOperationsCannotAppearInBothDirectGrammarAndMenu(t *testing.T) {
@@ -214,7 +215,7 @@ func TestDirectThemeAndQuitOperationsUseTheirDescriptors(t *testing.T) {
 	app := driver.App()
 	beforeTheme := app.runtime.Machine().Theme
 	t.Cleanup(func() {
-		ApplyTheme(NewThemeConfig(app.runtime.Machine()))
+		theme.ApplyTheme(theme.NewThemeConfig(app.runtime.Machine()))
 	})
 
 	themeResult := executeDirectPath(

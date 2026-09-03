@@ -198,7 +198,7 @@ because the `bug` > `question` > `epic` > `story` > `feature` > `idea` precedenc
 is part of what it publishes. `models.SemanticTaskTagForTags` resolves that precedence, and
 the `#` and `f#` pickers read the slice order to build their `SEMANTIC` section.
 Those rows and the explainer line beneath them resolve one color through
-`semanticTaskTitleStyle`, so the section previews the effect it describes.
+`theme.SemanticTaskTitleStyle`, so the section previews the effect it describes.
 Their seeding is asymmetric on purpose: `#` offers all six whether or not any
 task carries them, because offering an unused tag is how it gets discovered,
 while `f#` stays usage-derived, because a filter row nothing carries can only
@@ -211,10 +211,10 @@ lists give up viewport rows and scroll when the explainer needs more height.
 Focusable rows use the registry's compact `RowSummary`; previews and the inline
 explainer use the complete `Summary`.
 
-`tagChipStyle` (`internal/tui/styles_helpers.go`) is the single tag color
-authority, and it generalizes that "one lookup, so the surface previews the
+`theme.TagChipStyle` (`internal/tui/theme/styles_helpers.go`) is the single tag
+color authority, and it generalizes that "one lookup, so the surface previews the
 effect" rule to every tag rather than the six semantic ones. It hashes
-`models.NormalizeTag(tag)` onto a slot of `tagChipColors`, which
+`models.NormalizeTag(tag)` onto a slot of `theme.TagChipColors`, which
 `rebuildTagChipColors` re-resolves from `config.DefaultTagChipRamp(variant)` on
 every `ApplyTheme`. The slot index, not a resolved hex, is therefore the durable
 unit of tag identity: `T` re-colors every chip and slot `i` stays the same color
@@ -240,13 +240,13 @@ site knowing. A picker row is an offer rather than a label, so it previews the
 color it is about to paint, which makes a colored chip and a colored row one
 rule seen twice: a row wears the color of the strongest thing its tag does, and
 its chip color only when it changes no other color. So a `SEMANTIC` row takes
-`semanticTaskTitleStyle` and a
+`theme.SemanticTaskTitleStyle` and a
 behavioral project row its badge role, while the descriptive rows of both `#`
 editors and of `f#`, the tag rows the `#` picker's `CONTEXTS` section collects
 by context usage — `f#` reads a census with no context counts in it, so that
 section never appears there — the minted row an inline add mode produces, and
 the facet rows
-of `F#` fall back to `tagChipStyle`. One tag can therefore wear two colors
+of `F#` fall back to `theme.TagChipStyle`. One tag can therefore wear two colors
 across surfaces — `#bug` is title red under `SEMANTIC` and its own slot color in
 Peek — so a document or test expecting a semantic picker row and its chip to
 agree is naming a contract that does not exist. Two rows stay plain

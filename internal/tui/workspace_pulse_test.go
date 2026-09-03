@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 type selectivePulseRepository struct {
@@ -283,14 +284,14 @@ func TestActivityCoordinatorRejectsNilReader(t *testing.T) {
 func TestWorkspacePulseFormattingFollowsFourStepLadder(t *testing.T) {
 	pulse := WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4}
 	full := formatWorkspacePulseComponents(pulse, workspacePulseFull)
-	wantStyled := MutedStyle.Render("workspace: ") +
-		MutedStyle.Render("inbox 3") +
-		MutedStyle.Render(" · ") +
-		MutedStyle.Render("today 2") +
-		MutedStyle.Render(" · ") +
-		PreviewWarningStyle.Render("overdue 1") +
-		MutedStyle.Render(" · ") +
-		MutedStyle.Render("done 4")
+	wantStyled := theme.MutedStyle.Render("workspace: ") +
+		theme.MutedStyle.Render("inbox 3") +
+		theme.MutedStyle.Render(" · ") +
+		theme.MutedStyle.Render("today 2") +
+		theme.MutedStyle.Render(" · ") +
+		theme.PreviewWarningStyle.Render("overdue 1") +
+		theme.MutedStyle.Render(" · ") +
+		theme.MutedStyle.Render("done 4")
 	if full != wantStyled {
 		t.Fatalf("full pulse ANSI styling = %q, want %q", full, wantStyled)
 	}
@@ -316,8 +317,8 @@ func TestWorkspacePulseFormattingFollowsFourStepLadder(t *testing.T) {
 }
 
 func TestWorkspacePulseFullFormKeepsMutedForegroundThroughDone(t *testing.T) {
-	muted := activeForegroundAt(t, MutedStyle.Render("probe"), "probe")
-	warning := activeForegroundAt(t, PreviewWarningStyle.Render("probe"), "probe")
+	muted := activeForegroundAt(t, theme.MutedStyle.Render("probe"), "probe")
+	warning := activeForegroundAt(t, theme.PreviewWarningStyle.Render("probe"), "probe")
 	if muted == "" || warning == "" || muted == warning {
 		t.Fatalf("style probes: muted = %q, warning = %q, want two distinct non-empty foregrounds", muted, warning)
 	}
@@ -341,7 +342,7 @@ func TestWorkspacePulseFullFormKeepsMutedForegroundThroughDone(t *testing.T) {
 	// Wrapping a pre-styled warning segment in an outer muted style leaves the
 	// warning's own reset inside the string, so everything after it renders in the
 	// terminal default. This is the composition the per-component styling replaces.
-	nested := MutedStyle.Render("workspace: inbox 3 · today 2 · " + PreviewWarningStyle.Render("overdue 1") + " · done 4")
+	nested := theme.MutedStyle.Render("workspace: inbox 3 · today 2 · " + theme.PreviewWarningStyle.Render("overdue 1") + " · done 4")
 	if got := activeForegroundAt(t, nested, "done 4"); got != "" {
 		t.Fatalf("nested-reset composition foreground at %q = %q, want the terminal default", "done 4", got)
 	}

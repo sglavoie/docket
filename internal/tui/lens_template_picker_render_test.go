@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func TestLensTemplateGalleryColorsEveryTemplateFromItsDefinition(t *testing.T) {
@@ -165,13 +166,13 @@ func TestLensTemplateGalleryAndSavedPickerAgreeOnIdenticalDefinitions(t *testing
 // Rows are built when a surface opens, so a gallery opened after a theme change
 // must carry that theme's accents rather than the ones the package started on.
 func TestLensTemplateGalleryAccentsFollowTheAppliedTheme(t *testing.T) {
-	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 	overdue := lensTemplateByName(t, "Overdue")
 
 	foregrounds := make(map[string]color.Color, 2)
-	for _, theme := range []string{"dark", "light"} {
-		t.Run(theme, func(t *testing.T) {
-			ApplyTheme(ThemeConfig{Name: theme})
+	for _, themeName := range []string{"dark", "light"} {
+		t.Run(themeName, func(t *testing.T) {
+			theme.ApplyTheme(theme.ThemeConfig{Name: themeName})
 			model := lensOperationApp(t)
 			setMachineLenses(t, model, config.NamedLensList{})
 			picker := openLensTemplateGallery(t, model)
@@ -184,9 +185,9 @@ func TestLensTemplateGalleryAccentsFollowTheAppliedTheme(t *testing.T) {
 			}
 			row := galleryRow(t, picker, overdue.ID)
 			if row.PrimaryStyle == nil {
-				t.Fatalf("%s theme: Overdue carries no style", theme)
+				t.Fatalf("%s theme: Overdue carries no style", themeName)
 			}
-			foregrounds[theme] = row.PrimaryStyle.GetForeground()
+			foregrounds[themeName] = row.PrimaryStyle.GetForeground()
 		})
 	}
 	if foregrounds["dark"] == foregrounds["light"] {

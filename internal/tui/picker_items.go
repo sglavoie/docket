@@ -1,6 +1,9 @@
 package tui
 
-import "charm.land/lipgloss/v2"
+import (
+	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
+)
 
 // TagInfo implements PickerItem for tag selection.
 // FilterText returns the tag name for filtering.
@@ -25,13 +28,13 @@ func (t TagInfo) ItemID() string {
 
 // ListSurfacePrimaryStyle gives an adapted tag row the one chip color its tag
 // wears everywhere else. A tag row names a tag rather than an effect, so it
-// resolves through tagChipStyle even when the tag is semantic: the title color
+// resolves through TagChipStyle even when the tag is semantic: the title color
 // belongs to the `#` picker's SEMANTIC section, which builds its own rows. This
 // hangs off the payload rather than off one call site because the retained tag
 // selector adapts its items again on every ReplaceItems, so a minted row would
 // otherwise come back plain.
 func (t TagInfo) ListSurfacePrimaryStyle() lipgloss.Style {
-	return tagChipStyle(t.Name)
+	return theme.TagChipStyle(t.Name)
 }
 
 // CountDisplayer is implemented by PickerItems that want custom styled count

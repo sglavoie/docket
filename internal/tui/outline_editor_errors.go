@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // The outline editor collects every rejection in one pass, so a buffer that is
@@ -94,7 +95,7 @@ func (m *OutlineErrorsViewModel) View() tea.View {
 	// above it. Here the problems are a list, so that margin would double every
 	// row and make the scroll budget a function of the style instead of the
 	// content.
-	problemStyle := ValidationErrorStyle.UnsetMarginTop()
+	problemStyle := theme.ValidationErrorStyle.UnsetMarginTop()
 	for _, line := range visible {
 		builder.WriteString(problemStyle.Render(truncateToVisualWidth(line, width)))
 		builder.WriteString("\n")
@@ -104,7 +105,7 @@ func (m *OutlineErrorsViewModel) View() tea.View {
 	}
 
 	builder.WriteString("\n")
-	builder.WriteString(MutedStyle.Render(truncateToVisualWidth("Buffer kept at "+m.bufferPath, width)))
+	builder.WriteString(theme.MutedStyle.Render(truncateToVisualWidth("Buffer kept at "+m.bufferPath, width)))
 	builder.WriteString("\n")
 	builder.WriteString(renderGuidance(m.guidance(len(lines), capacity), width))
 

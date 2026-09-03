@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 const (
@@ -168,7 +169,7 @@ func (m *AppModel) renderFooterChrome() string {
 
 	// Show error message if present.
 	if m.err != nil {
-		msg := ErrorStatusStyle.Render(icons.Get("error") + " " + m.err.Error())
+		msg := theme.ErrorStatusStyle.Render(icons.Get("error") + " " + m.err.Error())
 		return renderFooter(renderLeftAlignedMsg(msg))
 	}
 
@@ -182,9 +183,9 @@ func (m *AppModel) renderFooterChrome() string {
 	if m.statusMessage != "" {
 		var msg string
 		if m.statusIsInfo {
-			msg = InfoStatusStyle.Render("· " + m.statusMessage)
+			msg = theme.InfoStatusStyle.Render("· " + m.statusMessage)
 		} else {
-			msg = SuccessStyle.Render(icons.Get("success") + " " + m.statusMessage)
+			msg = theme.SuccessStyle.Render(icons.Get("success") + " " + m.statusMessage)
 		}
 		return renderFooter(renderLeftAlignedMsg(msg))
 	}
@@ -222,11 +223,11 @@ func (m *AppModel) renderFooterChrome() string {
 	help := ""
 	if showHelp {
 		if hint := pipelineNextHint(currentView); hint != "" {
-			help = HelpStyle.Render(hint)
+			help = theme.HelpStyle.Render(hint)
 		} else {
 			help = strings.Join(
 				renderGuidanceLines(escapeGuidanceSpec(), m.width),
-				HelpStyle.Render(footerHelpSeparator),
+				theme.HelpStyle.Render(footerHelpSeparator),
 			)
 		}
 	}
@@ -247,7 +248,7 @@ func (m *AppModel) renderFooterChrome() string {
 				if count == 1 {
 					filterLabel = "filter"
 				}
-				left += " " + FilterBadgeStyle.Render(fmt.Sprintf("%d %s", count, filterLabel))
+				left += " " + theme.FilterBadgeStyle.Render(fmt.Sprintf("%d %s", count, filterLabel))
 			}
 		}
 	}
@@ -259,7 +260,7 @@ func (m *AppModel) renderFooterChrome() string {
 				badge := lipgloss.NewStyle().
 					Bold(true).
 					Background(c).
-					Foreground(ColorBackground).
+					Foreground(theme.ColorBackground).
 					Padding(0, 1).
 					Render(label)
 				left = badge + " " + left
@@ -336,7 +337,7 @@ func (m *AppModel) buildBreadcrumb() string {
 	if len(parts) > 3 {
 		depth := len(parts)
 		abbreviated := "… > " + strings.Join(parts[len(parts)-2:], sep)
-		return abbreviated + " " + MutedStyle.Render(fmt.Sprintf("[%d]", depth))
+		return abbreviated + " " + theme.MutedStyle.Render(fmt.Sprintf("[%d]", depth))
 	}
 
 	crumb := strings.Join(parts, sep)
@@ -353,7 +354,7 @@ func (m *AppModel) buildBreadcrumb() string {
 		prevVT := path[len(path)-2]
 		prevLabel := m.breadcrumbLabel(prevVT, maxProjectLen)
 		if prevLabel != "" {
-			hint := MutedStyle.Render(" ← " + prevLabel)
+			hint := theme.MutedStyle.Render(" ← " + prevLabel)
 			if lipgloss.Width(crumb)+lipgloss.Width(hint) <= maxLen {
 				crumb += hint
 			}

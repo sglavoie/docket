@@ -7,11 +7,12 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func TestOutlinerQueuedPriorityTitlesUsePriorityStyle(t *testing.T) {
-	ApplyTheme(ThemeConfig{Name: ""})
-	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
 	tasks := []*models.Task{
 		newPrimaryRowStyleTask(t, "outliner-p1", 1, "Outliner queued P1", 1),
@@ -46,7 +47,7 @@ func TestOutlinerChromeUsesCompactLeftMargins(t *testing.T) {
 		IsProjectHeader: true,
 		ProjectID:       "roadmap",
 	}, false, 120, 0))
-	if !strings.HasPrefix(project, " "+IconExpanded+" [roadmap]") {
+	if !strings.HasPrefix(project, " "+theme.IconExpanded+" [roadmap]") {
 		t.Fatalf("project header should retain a one-cell margin and fold indicator: %q", project)
 	}
 }
@@ -92,12 +93,12 @@ func findPrimaryRowStyleOutlinerRow(t *testing.T, rows []outlinerRow, taskID str
 func assertPrimaryRowTitleStyle(t *testing.T, line string, task *models.Task) {
 	t.Helper()
 
-	priorityTitle := GetTitlePriorityStyle(task.Priority).Render(task.Title)
+	priorityTitle := theme.GetTitlePriorityStyle(task.Priority).Render(task.Title)
 	if !strings.Contains(line, priorityTitle) {
 		t.Fatalf("expected priority-styled title for %q in:\n%s", task.Title, ansi.Strip(line))
 	}
 
-	activeTitle := ActiveStyle.Render(task.Title)
+	activeTitle := theme.ActiveStyle.Render(task.Title)
 	if activeTitle != priorityTitle && strings.Contains(line, activeTitle) {
 		t.Fatalf("active state should not recolor title %q in:\n%s", task.Title, ansi.Strip(line))
 	}
@@ -107,7 +108,7 @@ func assertPlanningMarkerColumnRemoved(t *testing.T, line string, row outlinerRo
 	t.Helper()
 
 	plain := ansi.Strip(line)
-	wantPrefix := RenderCursorPrefix() + row.prefix + task.State().Icon()
+	wantPrefix := theme.RenderCursorPrefix() + row.prefix + task.State().Icon()
 	if !strings.HasPrefix(plain, wantPrefix) {
 		t.Fatalf("planned task row should place its state badge directly after the tree prefix; got:\n%s", plain)
 	}

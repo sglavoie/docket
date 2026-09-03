@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // truncateAndPad truncates a line to exactly maxWidth visual characters,
@@ -75,8 +76,8 @@ func renderOverlayHalo(frame string) string {
 		frameWidth = max(frameWidth, lipgloss.Width(line))
 	}
 
-	haloCell := OverlayHaloStyle.Render(" ")
-	haloRow := OverlayHaloStyle.Width(frameWidth + 2).Render("")
+	haloCell := theme.OverlayHaloStyle.Render(" ")
+	haloRow := theme.OverlayHaloStyle.Width(frameWidth + 2).Render("")
 	rendered := make([]string, 0, len(lines)+2)
 	rendered = append(rendered, haloRow)
 	for _, line := range lines {

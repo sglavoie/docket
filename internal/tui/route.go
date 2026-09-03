@@ -4,6 +4,7 @@ import (
 	"image/color"
 
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // RouteScope classifies the data owned by the active route or presentation.
@@ -59,23 +60,14 @@ func presentationAccentCategory(view presentation.PresentationID) AccentCategory
 func accentColorForCategory(category AccentCategory) color.Color {
 	switch category {
 	case AccentCatCapture:
-		return AccentCapture
+		return theme.AccentCapture
 	case AccentCatTriage:
-		return AccentTriage
+		return theme.AccentTriage
 	case AccentCatExecute:
-		return AccentExecute
+		return theme.AccentExecute
 	case AccentCatSupport:
-		return AccentSupport
+		return theme.AccentSupport
 	default:
 		return nil
 	}
-}
-
-// allPresentations returns the contiguous renderer inventory.
-func allPresentations() []presentation.PresentationID {
-	presentations := make([]presentation.PresentationID, 0, int(presentation.ViewOutlineErrors))
-	for id := presentation.ViewProjectCreator; id <= presentation.ViewOutlineErrors; id++ {
-		presentations = append(presentations, id)
-	}
-	return presentations
 }

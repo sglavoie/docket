@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // namedLensPickerInnerWidth is the overlay box width the picker claims out of
@@ -32,7 +33,7 @@ func (model *NamedLensPickerModel) renderWithin(width, height int) string {
 
 	header := make([]string, 0, 2)
 	if model.notice != "" {
-		header = append(header, ErrorStatusStyle.Render(
+		header = append(header, theme.ErrorStatusStyle.Render(
 			truncateToVisualWidth(model.notice, contentWidth),
 		))
 	}
@@ -41,10 +42,10 @@ func (model *NamedLensPickerModel) renderWithin(width, height int) string {
 		if model.searching {
 			cursor = "▏"
 		}
-		header = append(header, MutedStyle.Render("Search: "+model.query+cursor))
+		header = append(header, theme.MutedStyle.Render("Search: "+model.query+cursor))
 	}
 	if state := model.stateLine(); state != "" {
-		header = append(header, MutedStyle.Render(truncateToVisualWidth(state, contentWidth)))
+		header = append(header, theme.MutedStyle.Render(truncateToVisualWidth(state, contentWidth)))
 	}
 
 	listHeight := min(max(len(model.surface.Rows()), 4), 14)
@@ -59,14 +60,14 @@ func (model *NamedLensPickerModel) renderWithin(width, height int) string {
 		content = strings.Join(header, "\n") + "\n\n" + content
 	}
 
-	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Named Lenses")
+	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render("Named Lenses")
 	guidance := model.guidanceSpec()
 	return renderOverlayBox(
 		content,
 		innerWidth,
 		title,
 		renderGuidanceText(guidance, max(innerWidth-4, 1)),
-		lipgloss.NewStyle().Foreground(ColorPrimary),
+		lipgloss.NewStyle().Foreground(theme.ColorPrimary),
 	)
 }
 

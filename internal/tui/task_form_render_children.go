@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // renderChildrenTab renders the Children tab: collapsible Checklist and Subtasks sections.
@@ -25,24 +26,24 @@ func (m *TaskFormModel) renderChildrenChecklistSection() string {
 
 	headerFocused := m.activeTab == formTabChildren && m.focusIndex == 0
 	count := len(m.draft.checklist)
-	expandIcon := IconCollapsed
+	expandIcon := theme.IconCollapsed
 	if m.checklistExpanded {
-		expandIcon = IconExpanded
+		expandIcon = theme.IconExpanded
 	}
 	headerLabel := fmt.Sprintf("%s Checklist (%d)", expandIcon, count)
-	sep := MutedStyle.Render(strings.Repeat("─", 3))
+	sep := theme.MutedStyle.Render(strings.Repeat("─", 3))
 
 	if headerFocused {
-		b.WriteString(FieldLabelFocusedStyle.Render(IconCursorRight + " "))
+		b.WriteString(theme.FieldLabelFocusedStyle.Render(theme.IconCursorRight + " "))
 		b.WriteString(sep)
-		b.WriteString(BoldStyle.Render(" " + headerLabel + " "))
-		b.WriteString(MutedStyle.Render(strings.Repeat("─", 16)))
-		b.WriteString(MutedStyle.Render("  c toggle · Ctrl+A add"))
+		b.WriteString(theme.BoldStyle.Render(" " + headerLabel + " "))
+		b.WriteString(theme.MutedStyle.Render(strings.Repeat("─", 16)))
+		b.WriteString(theme.MutedStyle.Render("  c toggle · Ctrl+A add"))
 	} else {
-		b.WriteString(FieldLabelStyle.Render("  "))
+		b.WriteString(theme.FieldLabelStyle.Render("  "))
 		b.WriteString(sep)
-		b.WriteString(BoldStyle.Render(" " + headerLabel + " "))
-		b.WriteString(MutedStyle.Render(strings.Repeat("─", 16)))
+		b.WriteString(theme.BoldStyle.Render(" " + headerLabel + " "))
+		b.WriteString(theme.MutedStyle.Render(strings.Repeat("─", 16)))
 	}
 	b.WriteString("\n")
 
@@ -52,7 +53,7 @@ func (m *TaskFormModel) renderChildrenChecklistSection() string {
 			b.WriteString(m.renderChecklistItemRow(item, itemFocused))
 		}
 		if count == 0 {
-			b.WriteString(MutedStyle.Render("    No checklist items. Press Ctrl+A to add one."))
+			b.WriteString(theme.MutedStyle.Render("    No checklist items. Press Ctrl+A to add one."))
 			b.WriteString("\n")
 		}
 	}
@@ -68,12 +69,12 @@ func (m *TaskFormModel) renderChecklistItemRow(item models.ChecklistItem, focuse
 	}
 	text := item.Text
 	if text == "" {
-		text = MutedStyle.Render("(empty)")
+		text = theme.MutedStyle.Render("(empty)")
 	}
 	line := fmt.Sprintf("%s %s", checkIcon, text)
 	if focused {
-		hint := MutedStyle.Render("  Enter edit · Space check · Ctrl+D delete · Ctrl+J/K move")
-		return FieldLabelFocusedStyle.Render("  "+IconCursorRight+" ") + SelectorOptionSelectedStyle.Render(line) + hint + "\n"
+		hint := theme.MutedStyle.Render("  Enter edit · Space check · Ctrl+D delete · Ctrl+J/K move")
+		return theme.FieldLabelFocusedStyle.Render("  "+theme.IconCursorRight+" ") + theme.SelectorOptionSelectedStyle.Render(line) + hint + "\n"
 	}
 	return "    " + line + "\n"
 }
@@ -87,24 +88,24 @@ func (m *TaskFormModel) renderChildrenSubtasksSection() string {
 	headerIdx := m.childrenSubtasksHeaderIdx()
 	headerFocused := m.activeTab == formTabChildren && m.focusIndex == headerIdx
 	count := len(m.draft.subtasks)
-	expandIcon := IconCollapsed
+	expandIcon := theme.IconCollapsed
 	if m.subtasksExpanded {
-		expandIcon = IconExpanded
+		expandIcon = theme.IconExpanded
 	}
 	headerLabel := fmt.Sprintf("%s Subtasks (%d)", expandIcon, count)
-	sep := MutedStyle.Render(strings.Repeat("─", 3))
+	sep := theme.MutedStyle.Render(strings.Repeat("─", 3))
 
 	if headerFocused {
-		b.WriteString(FieldLabelFocusedStyle.Render(IconCursorRight + " "))
+		b.WriteString(theme.FieldLabelFocusedStyle.Render(theme.IconCursorRight + " "))
 		b.WriteString(sep)
-		b.WriteString(BoldStyle.Render(" " + headerLabel + " "))
-		b.WriteString(MutedStyle.Render(strings.Repeat("─", 16)))
-		b.WriteString(MutedStyle.Render("  S toggle · Ctrl+T add"))
+		b.WriteString(theme.BoldStyle.Render(" " + headerLabel + " "))
+		b.WriteString(theme.MutedStyle.Render(strings.Repeat("─", 16)))
+		b.WriteString(theme.MutedStyle.Render("  S toggle · Ctrl+T add"))
 	} else {
-		b.WriteString(FieldLabelStyle.Render("  "))
+		b.WriteString(theme.FieldLabelStyle.Render("  "))
 		b.WriteString(sep)
-		b.WriteString(BoldStyle.Render(" " + headerLabel + " "))
-		b.WriteString(MutedStyle.Render(strings.Repeat("─", 16)))
+		b.WriteString(theme.BoldStyle.Render(" " + headerLabel + " "))
+		b.WriteString(theme.MutedStyle.Render(strings.Repeat("─", 16)))
 	}
 	b.WriteString("\n")
 
@@ -115,7 +116,7 @@ func (m *TaskFormModel) renderChildrenSubtasksSection() string {
 			b.WriteString(renderSubtaskItemRow(st, itemFocused))
 		}
 		if count == 0 {
-			b.WriteString(MutedStyle.Render("    No subtasks. Press Ctrl+T to add one."))
+			b.WriteString(theme.MutedStyle.Render("    No subtasks. Press Ctrl+T to add one."))
 			b.WriteString("\n")
 		}
 	}
@@ -127,12 +128,12 @@ func (m *TaskFormModel) renderChildrenSubtasksSection() string {
 func renderSubtaskItemRow(st formSubtaskDraft, focused bool) string {
 	title := st.title
 	if title == "" {
-		title = MutedStyle.Render("(empty)")
+		title = theme.MutedStyle.Render("(empty)")
 	}
 	line := title
 	if focused {
-		hint := MutedStyle.Render("  Enter edit · Ctrl+D delete · Ctrl+J/K move")
-		return FieldLabelFocusedStyle.Render("  "+IconCursorRight+" ") + SelectorOptionSelectedStyle.Render(line) + hint + "\n"
+		hint := theme.MutedStyle.Render("  Enter edit · Ctrl+D delete · Ctrl+J/K move")
+		return theme.FieldLabelFocusedStyle.Render("  "+theme.IconCursorRight+" ") + theme.SelectorOptionSelectedStyle.Render(line) + hint + "\n"
 	}
 	return "    " + line + "\n"
 }

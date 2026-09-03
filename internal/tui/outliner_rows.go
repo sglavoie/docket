@@ -1,6 +1,9 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/models"
+import (
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
+)
 
 // cloneTaskDetachingDependencies shallow-copies a task and detaches its
 // dependency list. A bare `*task` keeps the reference slice's backing array,
@@ -150,7 +153,7 @@ func (m *OutlinerModel) rebuildRows() {
 // effectiveDisplaySection returns the task's display section for non-header
 // contexts such as navigation matching and task-form dimming.
 func effectiveDisplaySection(t *models.Task) string {
-	return taskStateGroupLabel(t)
+	return theme.TaskStateGroupLabel(t)
 }
 
 // filterTaskTreeKeepingAncestors returns a copy of the task tree containing

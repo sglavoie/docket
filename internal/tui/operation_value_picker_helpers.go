@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // jumpToTagCategory moves the cursor to the first row of one tag section. It
@@ -154,7 +155,7 @@ func (model *OperationValuePickerModel) addOrSelectTag(tag string) error {
 	// A typed tag lands under TAGS beside rows that already wear their chip, so
 	// it takes the same color here rather than being the one plain row in a
 	// colored section.
-	style := tagChipStyle(tag)
+	style := theme.TagChipStyle(tag)
 	item.PrimaryStyle = &style
 	if model.provider == ValueProviderProjectTags {
 		item.SecondaryText = ""

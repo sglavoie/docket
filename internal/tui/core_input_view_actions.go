@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // coreMoveCursor takes a shared list-navigation key rather than a delta so steps,
@@ -213,7 +214,7 @@ func (m *AppModel) coreToggleTheme() error {
 	if err := m.runtime.CommitMachine(&machine); err != nil {
 		return fmt.Errorf("save theme: %w", err)
 	}
-	ApplyTheme(NewThemeConfig(m.runtime.Machine()))
+	theme.ApplyTheme(theme.NewThemeConfig(m.runtime.Machine()))
 	m.setInfoStatus("Theme: " + machine.Theme)
 	return nil
 }

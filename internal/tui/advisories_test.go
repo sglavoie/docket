@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // TestAdvisoryLineDropsTheStripRowAndItsHeight pins the shape of the opt-out: a
@@ -10,8 +12,8 @@ import (
 // would have taken goes back to the list. Height and body read the same helper,
 // so the reservation follows without a second measurement.
 func TestAdvisoryLineDropsTheStripRowAndItsHeight(t *testing.T) {
-	ApplyTheme(ThemeConfig{Name: ""})
-	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
 	const width = 80
 	m := &OutlinerModel{}

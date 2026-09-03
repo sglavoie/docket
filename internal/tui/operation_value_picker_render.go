@@ -7,6 +7,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // operationValuePickerInnerWidth is the overlay box width the picker claims out
@@ -114,15 +115,15 @@ func (model *OperationValuePickerModel) renderWithin(width, height int) string {
 	innerWidth := operationValuePickerInnerWidth(width)
 	if model.provider.tagEntry() && model.tagAdder.AddTagMode {
 		noun := model.tagAdderNoun()
-		content := MutedStyle.Render(fmt.Sprintf(
+		content := theme.MutedStyle.Render(fmt.Sprintf(
 			"Enter a %s name (max %d characters)",
 			noun,
 			model.tagAdder.AddTagInput.CharLimit,
 		)) + "\n\n" + model.tagAdder.AddTagInput.View()
 		if model.tagAdder.AddTagError != "" {
-			content += "\n\n" + BoldStyle.Foreground(ColorError).Render(model.tagAdder.AddTagError)
+			content += "\n\n" + theme.BoldStyle.Foreground(theme.ColorError).Render(model.tagAdder.AddTagError)
 		}
-		title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render(
+		title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render(
 			"Add New " + strings.ToUpper(noun[:1]) + noun[1:],
 		)
 		guidance, _ := model.guidanceSpec()
@@ -131,23 +132,23 @@ func (model *OperationValuePickerModel) renderWithin(width, height int) string {
 			innerWidth,
 			title,
 			renderGuidanceText(guidance, max(innerWidth-4, 1)),
-			lipgloss.NewStyle().Foreground(ColorPrimary),
+			lipgloss.NewStyle().Foreground(theme.ColorPrimary),
 		)
 	}
 	if model.provider.dateEntry() && model.dateAdder.AddDateMode {
 		content := model.dateAdder.AddDateInput.View() + "\n\n" +
-			MutedStyle.Render(strings.Join(model.dateAdder.dateAdderFormats(), "\n"))
+			theme.MutedStyle.Render(strings.Join(model.dateAdder.dateAdderFormats(), "\n"))
 		if model.dateAdder.AddDateError != "" {
-			content += "\n\n" + BoldStyle.Foreground(ColorError).Render(model.dateAdder.AddDateError)
+			content += "\n\n" + theme.BoldStyle.Foreground(theme.ColorError).Render(model.dateAdder.AddDateError)
 		}
-		title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Set a Specific Date")
+		title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render("Set a Specific Date")
 		guidance, _ := model.guidanceSpec()
 		return renderOverlayBox(
 			content,
 			innerWidth,
 			title,
 			renderGuidanceText(guidance, max(innerWidth-4, 1)),
-			lipgloss.NewStyle().Foreground(ColorPrimary),
+			lipgloss.NewStyle().Foreground(theme.ColorPrimary),
 		)
 	}
 	explainerWidth := operationValuePickerExplainerWidth(width)
@@ -186,7 +187,7 @@ func (model *OperationValuePickerModel) renderWithin(width, height int) string {
 	}
 	content := RenderCompactListSurface(model.surface, innerWidth-4, listHeight)
 	if search != "" {
-		content = MutedStyle.Render(search) + "\n\n" + content
+		content = theme.MutedStyle.Render(search) + "\n\n" + content
 	}
 	if explainerBlock != "" {
 		content += "\n\n" + explainerBlock
@@ -195,13 +196,13 @@ func (model *OperationValuePickerModel) renderWithin(width, height int) string {
 	if model.subtitle != "" {
 		titleText += ": " + truncateToVisualWidth(model.subtitle, max(innerWidth-20, 12))
 	}
-	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render(titleText)
+	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render(titleText)
 	guidance, _ := model.guidanceSpec()
 	return renderOverlayBox(
 		content,
 		innerWidth,
 		title,
 		renderGuidanceText(guidance, max(innerWidth-4, 1)),
-		lipgloss.NewStyle().Foreground(ColorPrimary),
+		lipgloss.NewStyle().Foreground(theme.ColorPrimary),
 	)
 }

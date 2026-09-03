@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 const quickEditSuggestionLimit = 5
@@ -46,7 +47,7 @@ func NewQuickEditComponent() *QuickEditComponent {
 	quickEditInput.Prompt = ""
 	quickEditInput.CharLimit = 200
 	quickEditInput.SetWidth(60)
-	applyThemedTextInput(&quickEditInput)
+	theme.ApplyThemedTextInput(&quickEditInput)
 
 	return &QuickEditComponent{
 		mode:     false,
@@ -127,16 +128,16 @@ func (q *QuickEditComponent) SetInputWidth(width int) {
 // Quick edit deliberately uses a static virtual cursor: the insertion point is
 // an essential affordance here, so it must remain visible between keystrokes.
 func (q *QuickEditComponent) renderSelectedInput() string {
-	styles := ThemedTextInputStyles
+	styles := theme.ThemedTextInputStyles
 	selected := lipgloss.NewStyle().
-		Foreground(ColorSelectedFg).
-		Background(ColorSelectedBg).
+		Foreground(theme.ColorSelectedFg).
+		Background(theme.ColorSelectedBg).
 		Bold(true)
 	styles.Focused.Text = selected
 	styles.Focused.Prompt = selected
 	styles.Focused.Placeholder = selected
 	styles.Focused.Suggestion = selected
-	styles.Cursor.Color = ColorSelectedFg
+	styles.Cursor.Color = theme.ColorSelectedFg
 	styles.Cursor.Blink = false
 	q.input.SetStyles(styles)
 	return q.input.View()

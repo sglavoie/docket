@@ -1,4 +1,4 @@
-package tui
+package theme
 
 import (
 	"charm.land/lipgloss/v2"
@@ -14,7 +14,7 @@ import (
 //
 // Every hue choice lives here alone. A picker that colors a lens asks
 // namedLensPrimaryStyle and never names a color, exactly as a task row asks
-// tagChipStyle and never names a chip.
+// TagChipStyle and never names a chip.
 //
 // Each accent keeps its family's hue and moves only its lightness: on a dark
 // theme a section fill is far too dark to read as text, and on a light theme the
@@ -42,64 +42,64 @@ func newLensAccentReviewStyle() lipgloss.Style   { return makeLensAccentStyle("#
 
 // Named lens accents, repainted by rebuildLensAccentStyles on every theme change.
 var (
-	lensAccentPlanStyle     = newLensAccentPlanStyle()
-	lensAccentWorkStyle     = newLensAccentWorkStyle()
-	lensAccentInboxStyle    = newLensAccentInboxStyle()
-	lensAccentNextStyle     = newLensAccentNextStyle()
-	lensAccentWaitingStyle  = newLensAccentWaitingStyle()
-	lensAccentPausedStyle   = newLensAccentPausedStyle()
-	lensAccentSomedayStyle  = newLensAccentSomedayStyle()
-	lensAccentCompleteStyle = newLensAccentCompleteStyle()
-	lensAccentCanceledStyle = newLensAccentCanceledStyle()
-	lensAccentOverdueStyle  = newLensAccentOverdueStyle()
-	lensAccentDueTodayStyle = newLensAccentDueTodayStyle()
-	lensAccentDueStyle      = newLensAccentDueStyle()
-	lensAccentDeferredStyle = newLensAccentDeferredStyle()
-	lensAccentReviewStyle   = newLensAccentReviewStyle()
+	LensAccentPlanStyle     = newLensAccentPlanStyle()
+	LensAccentWorkStyle     = newLensAccentWorkStyle()
+	LensAccentInboxStyle    = newLensAccentInboxStyle()
+	LensAccentNextStyle     = newLensAccentNextStyle()
+	LensAccentWaitingStyle  = newLensAccentWaitingStyle()
+	LensAccentPausedStyle   = newLensAccentPausedStyle()
+	LensAccentSomedayStyle  = newLensAccentSomedayStyle()
+	LensAccentCompleteStyle = newLensAccentCompleteStyle()
+	LensAccentCanceledStyle = newLensAccentCanceledStyle()
+	LensAccentOverdueStyle  = newLensAccentOverdueStyle()
+	LensAccentDueTodayStyle = newLensAccentDueTodayStyle()
+	LensAccentDueStyle      = newLensAccentDueStyle()
+	LensAccentDeferredStyle = newLensAccentDeferredStyle()
+	LensAccentReviewStyle   = newLensAccentReviewStyle()
 )
 
 func rebuildLensAccentStyles() {
-	lensAccentPlanStyle = newLensAccentPlanStyle()
-	lensAccentWorkStyle = newLensAccentWorkStyle()
-	lensAccentInboxStyle = newLensAccentInboxStyle()
-	lensAccentNextStyle = newLensAccentNextStyle()
-	lensAccentWaitingStyle = newLensAccentWaitingStyle()
-	lensAccentPausedStyle = newLensAccentPausedStyle()
-	lensAccentSomedayStyle = newLensAccentSomedayStyle()
-	lensAccentCompleteStyle = newLensAccentCompleteStyle()
-	lensAccentCanceledStyle = newLensAccentCanceledStyle()
-	lensAccentOverdueStyle = newLensAccentOverdueStyle()
-	lensAccentDueTodayStyle = newLensAccentDueTodayStyle()
-	lensAccentDueStyle = newLensAccentDueStyle()
-	lensAccentDeferredStyle = newLensAccentDeferredStyle()
-	lensAccentReviewStyle = newLensAccentReviewStyle()
+	LensAccentPlanStyle = newLensAccentPlanStyle()
+	LensAccentWorkStyle = newLensAccentWorkStyle()
+	LensAccentInboxStyle = newLensAccentInboxStyle()
+	LensAccentNextStyle = newLensAccentNextStyle()
+	LensAccentWaitingStyle = newLensAccentWaitingStyle()
+	LensAccentPausedStyle = newLensAccentPausedStyle()
+	LensAccentSomedayStyle = newLensAccentSomedayStyle()
+	LensAccentCompleteStyle = newLensAccentCompleteStyle()
+	LensAccentCanceledStyle = newLensAccentCanceledStyle()
+	LensAccentOverdueStyle = newLensAccentOverdueStyle()
+	LensAccentDueTodayStyle = newLensAccentDueTodayStyle()
+	LensAccentDueStyle = newLensAccentDueStyle()
+	LensAccentDeferredStyle = newLensAccentDeferredStyle()
+	LensAccentReviewStyle = newLensAccentReviewStyle()
 }
 
-// workflowStateGroupAccentStyle is the foreground twin of
+// WorkflowStateGroupAccentStyle is the foreground twin of
 // GetWorkflowStateGroupStyle: it answers the same canonical theme role with an
 // accent instead of a fill, so a group never gains a second color vocabulary.
 // A group with no theme role — an unknown token — resolves to no style rather
 // than to an invented one.
-func workflowStateGroupAccentStyle(group models.WorkflowStateGroup) (lipgloss.Style, bool) {
+func WorkflowStateGroupAccentStyle(group models.WorkflowStateGroup) (lipgloss.Style, bool) {
 	switch group.ThemeRole() {
 	case models.StateThemePlan, models.StateThemeBacklog:
-		return lensAccentPlanStyle, true
+		return LensAccentPlanStyle, true
 	case models.StateThemeWork:
-		return lensAccentWorkStyle, true
+		return LensAccentWorkStyle, true
 	case models.StateThemeInbox:
-		return lensAccentInboxStyle, true
+		return LensAccentInboxStyle, true
 	case models.StateThemeNext:
-		return lensAccentNextStyle, true
+		return LensAccentNextStyle, true
 	case models.StateThemeWaiting:
-		return lensAccentWaitingStyle, true
+		return LensAccentWaitingStyle, true
 	case models.StateThemePaused:
-		return lensAccentPausedStyle, true
+		return LensAccentPausedStyle, true
 	case models.StateThemeSomeday:
-		return lensAccentSomedayStyle, true
+		return LensAccentSomedayStyle, true
 	case models.StateThemeComplete:
-		return lensAccentCompleteStyle, true
+		return LensAccentCompleteStyle, true
 	case models.StateThemeCanceled:
-		return lensAccentCanceledStyle, true
+		return LensAccentCanceledStyle, true
 	default:
 		return lipgloss.Style{}, false
 	}

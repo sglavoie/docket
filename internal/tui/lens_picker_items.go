@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/fuzzy"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // items renders both action rows plus every saved lens the query admits.
@@ -47,7 +48,7 @@ func lensPickerOrdinalMarker(ordinal int) string {
 	if ordinal < 1 || ordinal > lensPickerMaxOrdinal {
 		return strings.Repeat(" ", lensPickerOrdinalMarkerWidth)
 	}
-	return MutedStyle.Render(strconv.Itoa(ordinal)) + " "
+	return theme.MutedStyle.Render(strconv.Itoa(ordinal)) + " "
 }
 
 // lensPickerActionRows is the query-exempt head of the list, in display order.
@@ -90,7 +91,7 @@ func namedLensPickerItem(
 		if snapshot.Modified {
 			label = "●*"
 		}
-		marker += MutedStyle.Render(label) + " "
+		marker += theme.MutedStyle.Render(label) + " "
 	}
 	item := ListItem{
 		ID:            lensPickerItemID(lens.ID),

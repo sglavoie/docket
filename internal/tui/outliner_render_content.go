@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 type outlinerViewport struct {
@@ -79,13 +80,13 @@ func (m *OutlinerModel) statusStripBody(width int) string {
 	width = max(width, 1)
 	lines := make([]string, 0, 4)
 	if indicator := m.advisoryLine(m.conflictIndicator()); indicator != "" {
-		lines = append(lines, PreviewWarningStyle.Width(width).Render(indicator))
+		lines = append(lines, theme.PreviewWarningStyle.Width(width).Render(indicator))
 	}
 	if m.focusNotice != "" {
-		lines = append(lines, PreviewWarningStyle.Width(width).Render(m.focusNotice))
+		lines = append(lines, theme.PreviewWarningStyle.Width(width).Render(m.focusNotice))
 	}
 	if m.statusMessage != "" {
-		lines = append(lines, MutedStyle.Width(width).Render(m.statusMessage))
+		lines = append(lines, theme.MutedStyle.Width(width).Render(m.statusMessage))
 	}
 	// The expanded stack changes this return value rather than painting outside
 	// it, so statusStripHeight reserves the rows it needs from the list.
@@ -132,13 +133,13 @@ func (m *OutlinerModel) buildOutlinerSearchIndicator(width int) string {
 	case m.editingLensQuery():
 		// The lens badge reads the lens compilation rather than the search one,
 		// because those are the rows on screen.
-		return m.appendLensQueryBadge(MutedStyle.Render("Lens query: ")+m.SearchInputView(), width)
+		return m.appendLensQueryBadge(theme.MutedStyle.Render("Lens query: ")+m.SearchInputView(), width)
 	case m.hasActiveLens() && m.lensQuery != "":
-		return m.appendLensQueryBadge(MutedStyle.Render(fmt.Sprintf("Lens query: %q", m.lensQuery)), width)
+		return m.appendLensQueryBadge(theme.MutedStyle.Render(fmt.Sprintf("Lens query: %q", m.lensQuery)), width)
 	case m.IsSearchMode():
-		indicator = MutedStyle.Render("Search: ") + m.SearchInputView()
+		indicator = theme.MutedStyle.Render("Search: ") + m.SearchInputView()
 	case m.SearchQuery() != "":
-		indicator = MutedStyle.Render(fmt.Sprintf("Search: \"%s\"", m.SearchQuery()))
+		indicator = theme.MutedStyle.Render(fmt.Sprintf("Search: \"%s\"", m.SearchQuery()))
 	default:
 		return ""
 	}
@@ -165,7 +166,7 @@ func (m *OutlinerModel) appendLensQueryBadge(indicator string, width int) string
 }
 
 func appendSearchBadge(indicator, text string, width int) string {
-	badge := MutedStyle.Render(text)
+	badge := theme.MutedStyle.Render(text)
 	if lipgloss.Width(indicator)+lipgloss.Width(badge) > width {
 		return indicator
 	}
@@ -204,12 +205,12 @@ func (m *OutlinerModel) buildOutlinerFilterContext() string {
 func (m *OutlinerModel) buildOutlinerInteractionContext(width int) []string {
 	context := make([]string, 0, 5)
 	if m.multiSelectMode {
-		context = append(context, SelectionCountStyle.Render(fmt.Sprintf("MULTI-SELECT: %d selected", m.SelectedCount())))
+		context = append(context, theme.SelectionCountStyle.Render(fmt.Sprintf("MULTI-SELECT: %d selected", m.SelectedCount())))
 	}
 	// The lens names the whole context the segments after it describe, so it is
 	// read first and its marker states whether they still match what was saved.
 	if lens := m.activeLensLabel(); lens != "" {
-		context = append(context, MutedStyle.Render(lens))
+		context = append(context, theme.MutedStyle.Render(lens))
 	}
 	if search := m.buildOutlinerSearchIndicator(width); search != "" {
 		context = append(context, search)
@@ -218,12 +219,12 @@ func (m *OutlinerModel) buildOutlinerInteractionContext(width int) []string {
 		context = append(context, filter)
 	}
 	if focus := m.outlinerFocusContext(); focus != "" {
-		context = append(context, MutedStyle.Render(focus))
+		context = append(context, theme.MutedStyle.Render(focus))
 	}
 	// Last, so that the one joined Context region loses the zoom before it loses
 	// a narrowing the user cannot leave with a single Esc.
 	if m.zoom.active() && m.zoom.name != "" {
-		context = append(context, MutedStyle.Render("Section: "+m.zoom.name))
+		context = append(context, theme.MutedStyle.Render("Section: "+m.zoom.name))
 	}
 	return context
 }
@@ -238,7 +239,7 @@ func (m *OutlinerModel) buildOutlinerTitleLine(width int) string {
 		}
 	}
 	return renderOperationalTitle(operationalTitleSpec{
-		Scope:   TitleStyle.Render(m.outlinerScopeLabel()),
+		Scope:   theme.TitleStyle.Render(m.outlinerScopeLabel()),
 		Mode:    operationalTitleModeSegment(m.activeOutlinerModeEntry()),
 		Context: m.buildOutlinerInteractionContext(max(width, 1)),
 		Pace:    pace,
@@ -286,7 +287,7 @@ func (m *OutlinerModel) renderOutlinerEmptyState(width int) string {
 	if dropdown := m.renderSearchAutocompleteDropdown(width); dropdown != "" {
 		b.WriteString(dropdown + "\n")
 	}
-	b.WriteString(MutedStyle.Render(m.outlinerEmptyMessage()))
+	b.WriteString(theme.MutedStyle.Render(m.outlinerEmptyMessage()))
 	return b.String()
 }
 

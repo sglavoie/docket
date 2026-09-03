@@ -5,6 +5,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // DimContent applies DimStyle to every line of content, visually receding it
@@ -12,7 +13,7 @@ import (
 func DimContent(content string) string {
 	lines := strings.Split(content, "\n")
 	for i, line := range lines {
-		lines[i] = DimStyle.Render(line)
+		lines[i] = theme.DimStyle.Render(line)
 	}
 	return strings.Join(lines, "\n")
 }

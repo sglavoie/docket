@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // TestOutlinerMultiSelectStatusFitsHeight guards Bug 3: entering multi-select
@@ -19,8 +20,8 @@ import (
 // renders in the shell-pinned strip, so the tree content plus the strip must
 // still fit the pane height, and no rendered line may exceed the render width.
 func TestOutlinerMultiSelectStatusFitsHeight(t *testing.T) {
-	ApplyTheme(ThemeConfig{Name: ""})
-	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
 	cfg := newTestConfig()
 	// Disable the Next section limit so a full viewport of rows does not emit a

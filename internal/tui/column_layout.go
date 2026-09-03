@@ -6,6 +6,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // ComputeOutlinerColumnLayout computes a ColumnLayout by scanning a slice of
@@ -82,7 +83,7 @@ func ComputeBadgeWidths(tasks []*models.Task, opts BadgeWidthOpts) *ColumnLayout
 		}
 
 		if opts.IncludeStatus {
-			badge := GetStateBadge(task.State())
+			badge := theme.GetStateBadge(task.State())
 			if w := lipgloss.Width(badge); w > 0 {
 				cl.HasStatus = true
 				if w > cl.StatusWidth {
@@ -95,7 +96,7 @@ func ComputeBadgeWidths(tasks []*models.Task, opts BadgeWidthOpts) *ColumnLayout
 			name := opts.ProjectNameFor(task)
 			if name != "" {
 				truncated := truncateToVisualWidth(name, maxProjLen)
-				badge := MutedStyle.Render(fmt.Sprintf("[%s]", truncated))
+				badge := theme.MutedStyle.Render(fmt.Sprintf("[%s]", truncated))
 				if w := lipgloss.Width(badge); w > 0 {
 					if w > cl.ProjectWidth {
 						cl.ProjectWidth = w

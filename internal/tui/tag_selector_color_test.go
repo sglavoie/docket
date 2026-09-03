@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // newTagSelectorForTest seeds the retained selector from a project whose tasks
@@ -40,7 +41,7 @@ func assertTagSelectorRowWearsItsChip(t *testing.T, item ListItem) {
 	if item.PrimaryStyle == nil {
 		t.Fatalf("row %q has no color", item.ID)
 	}
-	want := tagChipStyle(item.PrimaryText).GetForeground()
+	want := theme.TagChipStyle(item.PrimaryText).GetForeground()
 	if got := item.PrimaryStyle.GetForeground(); got != want {
 		t.Fatalf("row %q foreground = %v, want %v", item.ID, got, want)
 	}
@@ -160,13 +161,13 @@ func TestTagSelectorDropsRowColorUnderTheCursorOnly(t *testing.T) {
 	rendered := RenderTagSelectorView(
 		selector.ListSurfaceAdapter, &selector.TagAdder, selector.Config.Title, 80, 24,
 	)
-	if strings.Contains(rendered, tagChipStyle("bug").Render("bug")) {
+	if strings.Contains(rendered, theme.TagChipStyle("bug").Render("bug")) {
 		t.Fatalf("the cursor row still wears its chip color:\n%s", rendered)
 	}
 	if !strings.Contains(ansi.Strip(rendered), "bug") {
 		t.Fatalf("the cursor row lost its text:\n%s", rendered)
 	}
-	if !strings.Contains(rendered, tagChipStyle("ux").Render("ux")) {
+	if !strings.Contains(rendered, theme.TagChipStyle("ux").Render("ux")) {
 		t.Fatalf("a row away from the cursor lost its chip color:\n%s", rendered)
 	}
 }

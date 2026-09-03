@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // A lens name is colored by what the lens selects and by nothing else. Neither
@@ -181,28 +182,28 @@ func namedLensPrimaryStyle(lens config.NamedLens) (lipgloss.Style, bool) {
 func namedLensRoleStyle(role namedLensRole) (lipgloss.Style, bool) {
 	switch role.Kind {
 	case namedLensRoleOverdue:
-		return lensAccentOverdueStyle, true
+		return theme.LensAccentOverdueStyle, true
 	case namedLensRoleWaiting:
-		return workflowStateGroupAccentStyle(models.StateGroupWaiting)
+		return theme.WorkflowStateGroupAccentStyle(models.StateGroupWaiting)
 	case namedLensRoleDueToday:
-		return lensAccentDueTodayStyle, true
+		return theme.LensAccentDueTodayStyle, true
 	case namedLensRolePriority:
 		return namedLensPriorityAccentStyle(role.Priority)
 	case namedLensRoleDue:
-		return lensAccentDueStyle, true
+		return theme.LensAccentDueStyle, true
 	case namedLensRoleDeferred:
-		return lensAccentDeferredStyle, true
+		return theme.LensAccentDeferredStyle, true
 	case namedLensRoleReview:
-		return lensAccentReviewStyle, true
+		return theme.LensAccentReviewStyle, true
 	case namedLensRoleCompleted:
-		return workflowStateGroupAccentStyle(models.StateGroupDone)
+		return theme.WorkflowStateGroupAccentStyle(models.StateGroupDone)
 	case namedLensRoleWorkflowGroup:
-		return workflowStateGroupAccentStyle(role.Group)
+		return theme.WorkflowStateGroupAccentStyle(role.Group)
 	case namedLensRoleWarning:
-		return lipgloss.NewStyle().Foreground(ColorWarning), true
+		return lipgloss.NewStyle().Foreground(theme.ColorWarning), true
 	case namedLensRoleMode:
 		if group, ok := outlinerModeStateGroup(role.Mode); ok {
-			return workflowStateGroupAccentStyle(group)
+			return theme.WorkflowStateGroupAccentStyle(group)
 		}
 	case namedLensRoleNone:
 		// A definition with no recognized role keeps the list's ordinary text,
@@ -215,7 +216,7 @@ func namedLensRoleStyle(role namedLensRole) (lipgloss.Style, bool) {
 // nothing else, so a palette override reaches a lens name while the title
 // style's bold and italic — which belong to a task row — stay behind.
 func namedLensPriorityAccentStyle(priority int) (lipgloss.Style, bool) {
-	foreground := GetTitlePriorityStyle(priority).GetForeground()
+	foreground := theme.GetTitlePriorityStyle(priority).GetForeground()
 	if _, unset := foreground.(lipgloss.NoColor); unset {
 		return lipgloss.Style{}, false
 	}

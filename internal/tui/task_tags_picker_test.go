@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func taskTagRowIDs(items []ListItem, category ListCategoryID) []string {
@@ -267,7 +268,7 @@ func TestTaskTagCategoryJumpHintNamesOnlyPopulatedSections(t *testing.T) {
 		t.Fatalf("hint = %q, want only the populated sections", got)
 	}
 	for _, key := range []string{"c", "t"} {
-		if !strings.Contains(styled, HelpKeyStyle.Render(key)) {
+		if !strings.Contains(styled, theme.HelpKeyStyle.Render(key)) {
 			t.Fatalf("hint key %q does not wear the guidance key color: %q", key, styled)
 		}
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func TestInlinePeekNilAndEmptyTask(t *testing.T) {
@@ -310,10 +311,10 @@ func TestInlinePeekShowsTagsWithinAvailableWidth(t *testing.T) {
 	}
 
 	styled := inlinePeekTagsLine(task, 80)
-	wantStyled := MutedStyle.Render("Tags: ") +
-		tagChipStyle("backend").Render("#backend") + " " +
-		tagChipStyle("security").Render("#security") + " " +
-		tagChipStyle("type:authentication").Render("#type:authentication")
+	wantStyled := theme.MutedStyle.Render("Tags: ") +
+		theme.TagChipStyle("backend").Render("#backend") + " " +
+		theme.TagChipStyle("security").Render("#security") + " " +
+		theme.TagChipStyle("type:authentication").Render("#type:authentication")
 	if styled != wantStyled {
 		t.Fatalf("styled Peek tags = %q, want %q", styled, wantStyled)
 	}

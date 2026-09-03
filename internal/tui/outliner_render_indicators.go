@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -32,20 +33,20 @@ func (m *OutlinerModel) renderTaskFoldIndicator(row outlinerRow, bg color.Color)
 		return ""
 	}
 	if expanded {
-		return gutterPiece(bg, MutedStyle, IconExpanded) + gutterSpace(bg)
+		return gutterPiece(bg, theme.MutedStyle, theme.IconExpanded) + gutterSpace(bg)
 	}
-	return gutterPiece(bg, MutedStyle, IconCollapsed) + gutterSpace(bg)
+	return gutterPiece(bg, theme.MutedStyle, theme.IconCollapsed) + gutterSpace(bg)
 }
 
 func (m *OutlinerModel) renderTaskStatusIcon(task *models.Task) string {
-	return GetStateBadge(task.State())
+	return theme.GetStateBadge(task.State())
 }
 
 // renderTaskTitleStyle resolves an Outliner title's color. It passes no
 // CursorSelected: the cursor is marked by the gutter and the trailing fill, so
 // the title under it keeps the priority or semantic color it earned.
 func (m *OutlinerModel) renderTaskTitleStyle(task *models.Task) lipgloss.Style {
-	return TaskTitleStyleFor(task, TaskTitleStyleOptions{})
+	return theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{})
 }
 
 type taskIndicatorSegments struct {
@@ -204,7 +205,7 @@ func formatWaitingAgeIndicator(task *models.Task, now time.Time) string {
 	if age == "" {
 		return ""
 	}
-	return MutedStyle.Render("waiting") + " " + age
+	return theme.MutedStyle.Render("waiting") + " " + age
 }
 
 // formatDoingAgeIndicator reads the state clock rather than UpdatedAt, so
@@ -217,7 +218,7 @@ func formatDoingAgeIndicator(task *models.Task, now time.Time) string {
 	if age == "" {
 		return ""
 	}
-	return MutedStyle.Render("doing") + " " + age
+	return theme.MutedStyle.Render("doing") + " " + age
 }
 
 // formatCheckBackIndicator renders a waiting task's due date as the countdown to
@@ -232,11 +233,11 @@ func formatCheckBackIndicator(task *models.Task, now time.Time) string {
 	dueDay := util.StartOfDay(*task.DueDate)
 	switch {
 	case dueDay.Before(today):
-		return OverdueStyle.Render("check +" + formatRecencyAge(dueDay, today))
+		return theme.OverdueStyle.Render("check +" + formatRecencyAge(dueDay, today))
 	case dueDay.Equal(today):
-		return DueTodayStyle.Render("check today")
+		return theme.DueTodayStyle.Render("check today")
 	default:
-		return DueDateStyle.Render("check " + formatRecencyAge(today, dueDay))
+		return theme.DueDateStyle.Render("check " + formatRecencyAge(today, dueDay))
 	}
 }
 
@@ -246,12 +247,12 @@ func formatCheckBackIndicator(task *models.Task, now time.Time) string {
 // closes and the task is ordinary work again.
 func formatDeferIndicator(task *models.Task, now time.Time) string {
 	if task.IsDeferredAt(now) {
-		return MutedStyle.Render("defer " + formatDeferDate(*task.DeferredUntil, now))
+		return theme.MutedStyle.Render("defer " + formatDeferDate(*task.DeferredUntil, now))
 	}
 	if !taskWokeRecently(task, now) {
 		return ""
 	}
-	return MutedStyle.Render("woke") + " " + formatRecencyChip(*task.DeferredUntil, now)
+	return theme.MutedStyle.Render("woke") + " " + formatRecencyChip(*task.DeferredUntil, now)
 }
 
 const repeatedDeferralThreshold = 3
@@ -264,7 +265,7 @@ func formatDeferCountIndicator(task *models.Task) string {
 	if !taskHasRepeatedDeferrals(task) {
 		return ""
 	}
-	return MutedStyle.Render(fmt.Sprintf("deferred ×%d", task.DeferCount))
+	return theme.MutedStyle.Render(fmt.Sprintf("deferred ×%d", task.DeferCount))
 }
 
 // taskWokeRecently reports whether a lapsed deferral is still inside the wake
@@ -281,7 +282,7 @@ func taskWokeRecently(task *models.Task, now time.Time) bool {
 func (m *OutlinerModel) renderTaskPrioritySegment(task *models.Task, colLayout *ColumnLayout) string {
 	priorityBadge := renderPriorityBadge(task.Priority)
 	if colLayout != nil && colLayout.HasPriority {
-		return PadBadge(priorityBadge, colLayout.PriorityWidth) + " "
+		return theme.PadBadge(priorityBadge, colLayout.PriorityWidth) + " "
 	}
 	if priorityBadge == "" {
 		return ""
@@ -294,9 +295,9 @@ func (m *OutlinerModel) renderTaskCheckbox(row outlinerRow, bg color.Color) stri
 		return ""
 	}
 	if m.isRowSelected(row) {
-		return gutterPiece(bg, SelectionCheckStyle, "[x]") + gutterSpace(bg)
+		return gutterPiece(bg, theme.SelectionCheckStyle, "[x]") + gutterSpace(bg)
 	}
-	return gutterPiece(bg, MutedStyle, "[ ]") + gutterSpace(bg)
+	return gutterPiece(bg, theme.MutedStyle, "[ ]") + gutterSpace(bg)
 }
 
 func compactOutlinerTreePrefix(prefix string, maxWidth int) string {
@@ -317,7 +318,7 @@ func compactOutlinerTreePrefix(prefix string, maxWidth int) string {
 func renderTaskPrefix(prefix, foldIndicator string, bg color.Color) (string, string) {
 	// A leaf connector already communicates its tree position with ├──/└──.
 	// Do not extend it into the task-content gutter.
-	return gutterPiece(bg, MutedStyle, prefix), foldIndicator
+	return gutterPiece(bg, theme.MutedStyle, prefix), foldIndicator
 }
 
 func (m *OutlinerModel) renderTaskTitle(task *models.Task, titleStyle lipgloss.Style, rowWidth int, segments taskRowSegments) string {
@@ -365,9 +366,9 @@ func outlinerNonTitleWidth(cursorPrefix, checkbox, prefixStr, foldIndicator, sta
 func taskRowTint(task *models.Task) (lipgloss.Style, bool) {
 	switch {
 	case task.IsInState(models.StateWaiting):
-		return WaitingRowStyle, true
+		return theme.WaitingRowStyle, true
 	case task.IsOverdue():
-		return OverdueRowStyle, true
+		return theme.OverdueRowStyle, true
 	default:
 		return lipgloss.Style{}, false
 	}

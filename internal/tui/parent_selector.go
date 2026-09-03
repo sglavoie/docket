@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 const parentSelectorNoParentLabel = "No parent (top-level)"
@@ -192,7 +193,7 @@ func (m *ParentSelectorModel) renderList() string {
 
 	totalItems := len(m.FilteredItems())
 	if totalItems == 0 {
-		return MutedStyle.Render("No matching parents.")
+		return theme.MutedStyle.Render("No matching parents.")
 	}
 
 	scrollOffset := calcScrollOffset(m.CursorIndex(), maxVisible)
@@ -200,7 +201,7 @@ func (m *ParentSelectorModel) renderList() string {
 	for i, item := range m.FilteredItems() {
 		if i >= scrollOffset && i < scrollOffset+maxVisible {
 			if item.None {
-				line := MutedStyle.Render(parentSelectorNoParentLabel)
+				line := theme.MutedStyle.Render(parentSelectorNoParentLabel)
 				if m.CursorIndex() == i {
 					line = SelectedLine(parentSelectorNoParentLabel, m.Width())
 				}
@@ -210,12 +211,12 @@ func (m *ParentSelectorModel) renderList() string {
 			}
 
 			// Short ID
-			shortID := MutedStyle.Render(fmt.Sprintf("#%-4d", item.Task.ShortID))
+			shortID := theme.MutedStyle.Render(fmt.Sprintf("#%-4d", item.Task.ShortID))
 
 			prefix := fmt.Sprintf("  %s ", shortID)
 			maxTitleLen := max(m.Width()-lipgloss.Width(prefix), 1)
 			title := truncateToVisualWidth(item.Task.Title, maxTitleLen)
-			titleRendered := TaskTitleStyleFor(item.Task, TaskTitleStyleOptions{
+			titleRendered := theme.TaskTitleStyleFor(item.Task, theme.TaskTitleStyleOptions{
 				CursorSelected: m.CursorIndex() == i,
 			}).Render(title)
 			line := prefix + titleRendered
@@ -233,7 +234,7 @@ func (m *ParentSelectorModel) renderList() string {
 	if totalItems > maxVisible {
 		remaining := totalItems - scrollOffset - maxVisible
 		if remaining > 0 {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("  ... %d more", remaining)))
+			b.WriteString(theme.MutedStyle.Render(fmt.Sprintf("  ... %d more", remaining)))
 			b.WriteString("\n")
 		}
 	}

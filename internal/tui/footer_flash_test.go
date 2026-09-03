@@ -9,6 +9,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func flashTestApp(t *testing.T) *AppModel {
@@ -197,7 +198,7 @@ func TestFooterDividerAnimationPhases(t *testing.T) {
 	}
 	wantImpact := renderHorizontalDivider(
 		app.width,
-		WithDividerColor(ColorError),
+		WithDividerColor(theme.ColorError),
 		WithDividerGlyph(footerDividerFlashGlyph),
 	)
 	if got := app.renderFooterDivider(app.width); got != wantImpact {
@@ -237,14 +238,14 @@ func TestFooterDividerAnimationPhases(t *testing.T) {
 
 func TestFooterBackgroundFlashFadesBackToTheme(t *testing.T) {
 	app := flashTestApp(t)
-	background := ColorBackground
+	background := theme.ColorBackground
 
 	if got := app.footerFlashBackgroundColor(); !sameColor(got, background) {
 		t.Fatalf("idle background = %v, want theme background %v", got, background)
 	}
 
 	app.footerFlash = footerFlashState{severity: flashError, seq: 1}
-	wantImpact := blendColor(background, ColorError, footerFlashBackgroundMix)
+	wantImpact := blendColor(background, theme.ColorError, footerFlashBackgroundMix)
 	if got := app.footerFlashBackgroundColor(); !sameColor(got, wantImpact) {
 		t.Fatalf("impact background = %v, want %v", got, wantImpact)
 	}
@@ -266,7 +267,7 @@ func TestFooterBackgroundFlashFillsRowsAndSurvivesChildResets(t *testing.T) {
 	app.width = 24
 	app.footerFlash = footerFlashState{severity: flashSuccess, seq: 1}
 
-	content := SuccessStyle.Render("saved") + " plain\n" + HelpStyle.Render("Esc close")
+	content := theme.SuccessStyle.Render("saved") + " plain\n" + theme.HelpStyle.Render("Esc close")
 	got := app.renderFooterContent(content, app.width)
 	lines := strings.Split(got, "\n")
 	if len(lines) != 2 {

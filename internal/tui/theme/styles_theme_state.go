@@ -1,18 +1,18 @@
-package tui
+package theme
 
 import "charm.land/lipgloss/v2"
 
-// activeThemeName holds the current theme name ("light" or "dark"; empty = not set).
-var activeThemeName string
+// ActiveThemeName holds the current theme name ("light" or "dark"; empty = not set).
+var ActiveThemeName string
 
-// themeBgColor holds the current TUI background color (empty = none/terminal default).
-var themeBgColor string
+// ThemeBgColor holds the current TUI background color (empty = none/terminal default).
+var ThemeBgColor string
 
-// colorNormalText tracks whether NormalText palette override is set.
-var colorNormalText string
+// ColorNormalText tracks whether NormalText palette override is set.
+var ColorNormalText string
 
-// zebraEnabled controls whether alternating row backgrounds are rendered.
-var zebraEnabled bool
+// ZebraEnabled controls whether alternating row backgrounds are rendered.
+var ZebraEnabled bool
 
 // ZebraRowStyle is the background style applied to odd-indexed rows when zebra is enabled.
 var ZebraRowStyle = lipgloss.NewStyle().Background(ColorZebraBg)

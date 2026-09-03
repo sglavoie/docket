@@ -4,25 +4,26 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func TestGetSectionColorValueLightTheme(t *testing.T) {
-	activeThemeName = "light"
-	t.Cleanup(func() { activeThemeName = "" })
+	theme.ActiveThemeName = "light"
+	t.Cleanup(func() { theme.ActiveThemeName = "" })
 
 	want := lipgloss.Color("#15803d")
-	got := GetSectionColorValue("green")
+	got := theme.GetSectionColorValue("green")
 	if got != want {
 		t.Errorf("light theme: GetSectionColorValue(\"green\") = %v, want %v", got, want)
 	}
 }
 
 func TestGetSectionColorValueDarkTheme(t *testing.T) {
-	activeThemeName = ""
-	t.Cleanup(func() { activeThemeName = "" })
+	theme.ActiveThemeName = ""
+	t.Cleanup(func() { theme.ActiveThemeName = "" })
 
 	want := lipgloss.Color("#9ece6a")
-	got := GetSectionColorValue("green")
+	got := theme.GetSectionColorValue("green")
 	if got != want {
 		t.Errorf("dark theme: GetSectionColorValue(\"green\") = %v, want %v", got, want)
 	}

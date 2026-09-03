@@ -3,6 +3,7 @@ package tui
 import (
 	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/textinput"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // formFactory is a shared factory instance for resizing form fields.
@@ -59,7 +60,7 @@ func (f *FormFieldFactory) NewTextInput(placeholder string) textinput.Model {
 	ti.Placeholder = placeholder
 	ti.CharLimit = f.DefaultCharLimit
 	ti.SetWidth(f.DefaultWidth)
-	applyThemedTextInput(&ti)
+	theme.ApplyThemedTextInput(&ti)
 	return ti
 }
 

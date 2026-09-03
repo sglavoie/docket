@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // renderExtrasTab renders the Extras tab: the collapsible Attachments and
@@ -26,24 +27,24 @@ func (m *TaskFormModel) renderExtrasAttachmentsSection() string {
 
 	headerFocused := m.activeTab == formTabExtras && m.focusIndex == 0
 	count := len(m.draft.attachments)
-	expandIcon := IconCollapsed
+	expandIcon := theme.IconCollapsed
 	if m.attachmentsExpanded {
-		expandIcon = IconExpanded
+		expandIcon = theme.IconExpanded
 	}
 	headerLabel := fmt.Sprintf("%s Attachments (%d)", expandIcon, count)
-	sep := MutedStyle.Render(strings.Repeat("─", 3))
+	sep := theme.MutedStyle.Render(strings.Repeat("─", 3))
 
 	if headerFocused {
-		b.WriteString(FieldLabelFocusedStyle.Render(IconCursorRight + " "))
+		b.WriteString(theme.FieldLabelFocusedStyle.Render(theme.IconCursorRight + " "))
 		b.WriteString(sep)
-		b.WriteString(BoldStyle.Render(" " + headerLabel + " "))
-		b.WriteString(MutedStyle.Render(strings.Repeat("─", 16)))
-		b.WriteString(MutedStyle.Render("  a toggle · Ctrl+L add"))
+		b.WriteString(theme.BoldStyle.Render(" " + headerLabel + " "))
+		b.WriteString(theme.MutedStyle.Render(strings.Repeat("─", 16)))
+		b.WriteString(theme.MutedStyle.Render("  a toggle · Ctrl+L add"))
 	} else {
-		b.WriteString(FieldLabelStyle.Render("  "))
+		b.WriteString(theme.FieldLabelStyle.Render("  "))
 		b.WriteString(sep)
-		b.WriteString(BoldStyle.Render(" " + headerLabel + " "))
-		b.WriteString(MutedStyle.Render(strings.Repeat("─", 16)))
+		b.WriteString(theme.BoldStyle.Render(" " + headerLabel + " "))
+		b.WriteString(theme.MutedStyle.Render(strings.Repeat("─", 16)))
 	}
 	b.WriteString("\n")
 
@@ -53,7 +54,7 @@ func (m *TaskFormModel) renderExtrasAttachmentsSection() string {
 			b.WriteString(renderAttachmentItemRow(att, itemFocused))
 		}
 		if count == 0 {
-			b.WriteString(MutedStyle.Render("    No attachments. Press Ctrl+L to add one."))
+			b.WriteString(theme.MutedStyle.Render("    No attachments. Press Ctrl+L to add one."))
 			b.WriteString("\n")
 		}
 	}
@@ -70,24 +71,24 @@ func (m *TaskFormModel) renderExtrasCommentsSection() string {
 	headerIdx := m.extrasCommentsHeaderIdx()
 	headerFocused := m.activeTab == formTabExtras && m.focusIndex == headerIdx
 	count := len(m.draft.comments)
-	expandIcon := IconCollapsed
+	expandIcon := theme.IconCollapsed
 	if m.commentsExpanded {
-		expandIcon = IconExpanded
+		expandIcon = theme.IconExpanded
 	}
 	headerLabel := fmt.Sprintf("%s Comments (%d)", expandIcon, count)
-	sep := MutedStyle.Render(strings.Repeat("─", 3))
+	sep := theme.MutedStyle.Render(strings.Repeat("─", 3))
 
 	if headerFocused {
-		b.WriteString(FieldLabelFocusedStyle.Render(IconCursorRight + " "))
+		b.WriteString(theme.FieldLabelFocusedStyle.Render(theme.IconCursorRight + " "))
 		b.WriteString(sep)
-		b.WriteString(BoldStyle.Render(" " + headerLabel + " "))
-		b.WriteString(MutedStyle.Render(strings.Repeat("─", 16)))
-		b.WriteString(MutedStyle.Render("  c toggle · Ctrl+Y add"))
+		b.WriteString(theme.BoldStyle.Render(" " + headerLabel + " "))
+		b.WriteString(theme.MutedStyle.Render(strings.Repeat("─", 16)))
+		b.WriteString(theme.MutedStyle.Render("  c toggle · Ctrl+Y add"))
 	} else {
-		b.WriteString(FieldLabelStyle.Render("  "))
+		b.WriteString(theme.FieldLabelStyle.Render("  "))
 		b.WriteString(sep)
-		b.WriteString(BoldStyle.Render(" " + headerLabel + " "))
-		b.WriteString(MutedStyle.Render(strings.Repeat("─", 16)))
+		b.WriteString(theme.BoldStyle.Render(" " + headerLabel + " "))
+		b.WriteString(theme.MutedStyle.Render(strings.Repeat("─", 16)))
 	}
 	b.WriteString("\n")
 
@@ -97,7 +98,7 @@ func (m *TaskFormModel) renderExtrasCommentsSection() string {
 			b.WriteString(renderCommentItemRow(comment, itemFocused))
 		}
 		if count == 0 {
-			b.WriteString(MutedStyle.Render("    No comments. Press Ctrl+Y to add one."))
+			b.WriteString(theme.MutedStyle.Render("    No comments. Press Ctrl+Y to add one."))
 			b.WriteString("\n")
 		}
 	}
@@ -110,11 +111,11 @@ func (m *TaskFormModel) renderExtrasCommentsSection() string {
 func renderCommentItemRow(comment formCommentDraft, focused bool) string {
 	line := comment.text
 	if line == "" {
-		line = MutedStyle.Render("(empty)")
+		line = theme.MutedStyle.Render("(empty)")
 	}
 	if focused {
-		hint := MutedStyle.Render("  Enter edit · Ctrl+D delete")
-		return FieldLabelFocusedStyle.Render("  "+IconCursorRight+" ") + SelectorOptionSelectedStyle.Render(line) + hint + "\n"
+		hint := theme.MutedStyle.Render("  Enter edit · Ctrl+D delete")
+		return theme.FieldLabelFocusedStyle.Render("  "+theme.IconCursorRight+" ") + theme.SelectorOptionSelectedStyle.Render(line) + hint + "\n"
 	}
 	return "    " + line + "\n"
 }
@@ -123,8 +124,8 @@ func renderCommentItemRow(comment formCommentDraft, focused bool) string {
 // stored verbatim; normalizeCommentText runs in the application layer at save
 // time, on the same path a captured ;comment; takes.
 func (m *TaskFormModel) renderCommentEditOverlay() string {
-	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
-	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Edit Comment")
+	borderStyle := lipgloss.NewStyle().Foreground(theme.ColorPrimary)
+	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render("Edit Comment")
 
 	titleMinInner := lipgloss.Width(title) + 6 - 2
 	maxWidth := min(max(m.width*2/3, 40), m.width-4)
@@ -134,7 +135,7 @@ func (m *TaskFormModel) renderCommentEditOverlay() string {
 	), max(innerWidth-4, 1))
 
 	m.commentItemInput.SetWidth(max(innerWidth-5, 1))
-	applyThemedTextInput(&m.commentItemInput)
+	theme.ApplyThemedTextInput(&m.commentItemInput)
 	content := " " + m.commentItemInput.View()
 
 	return renderOverlayBox(content, innerWidth, title, footerText, borderStyle)
@@ -144,12 +145,12 @@ func (m *TaskFormModel) renderCommentEditOverlay() string {
 func renderAttachmentItemRow(att formAttachmentDraft, focused bool) string {
 	value := att.value
 	if value == "" {
-		value = MutedStyle.Render("(empty)")
+		value = theme.MutedStyle.Render("(empty)")
 	}
 	line := value
 	if focused {
-		hint := MutedStyle.Render("  Enter edit · Ctrl+D delete · Ctrl+J/K move")
-		return FieldLabelFocusedStyle.Render("  "+IconCursorRight+" ") + SelectorOptionSelectedStyle.Render(line) + hint + "\n"
+		hint := theme.MutedStyle.Render("  Enter edit · Ctrl+D delete · Ctrl+J/K move")
+		return theme.FieldLabelFocusedStyle.Render("  "+theme.IconCursorRight+" ") + theme.SelectorOptionSelectedStyle.Render(line) + hint + "\n"
 	}
 	return "    " + line + "\n"
 }
@@ -158,8 +159,8 @@ func renderAttachmentItemRow(att formAttachmentDraft, focused bool) string {
 // value is not classified here: a URL, a path:line code reference, and a local
 // file all read as one line of text until the application layer resolves them.
 func (m *TaskFormModel) renderAttachmentEditOverlay() string {
-	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
-	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Edit Attachment")
+	borderStyle := lipgloss.NewStyle().Foreground(theme.ColorPrimary)
+	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render("Edit Attachment")
 
 	titleMinInner := lipgloss.Width(title) + 6 - 2
 	maxWidth := min(max(m.width*2/3, 40), m.width-4)
@@ -169,7 +170,7 @@ func (m *TaskFormModel) renderAttachmentEditOverlay() string {
 	), max(innerWidth-4, 1))
 
 	m.attachmentItemInput.SetWidth(max(innerWidth-5, 1))
-	applyThemedTextInput(&m.attachmentItemInput)
+	theme.ApplyThemedTextInput(&m.attachmentItemInput)
 	content := " " + m.attachmentItemInput.View()
 
 	return renderOverlayBox(content, innerWidth, title, footerText, borderStyle)

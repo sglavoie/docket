@@ -4,13 +4,14 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func TestWorkflowStateGroupThemeSemanticsCoverEveryGroup(t *testing.T) {
 	groups := append(models.AllModeWorkflowStateGroups(), models.StateGroupDone, models.StateGroupCanceled)
 	for _, group := range groups {
 		label := group.Label()
-		if got := GetWorkflowStateGroupStyle(group).Render(label); got == "" {
+		if got := theme.GetWorkflowStateGroupStyle(group).Render(label); got == "" {
 			t.Errorf("group %q rendered an empty header", group)
 		}
 	}

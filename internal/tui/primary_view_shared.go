@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // This file hosts symbols formerly declared in the project_tree*.go family that
@@ -137,7 +138,7 @@ func formatDueDate(task *models.Task) string {
 	if clock := formatDueClock(task); clock != "" {
 		dateStr += " " + clock
 		if task.IsOverdue() {
-			style = OverdueStyle
+			style = theme.OverdueStyle
 		}
 	}
 	return style.Render(icons.Get("date") + " " + dateStr)
@@ -155,7 +156,7 @@ func formatRecencyChip(key, now time.Time) string {
 	if age == "" {
 		return ""
 	}
-	return MutedStyle.Render(age)
+	return theme.MutedStyle.Render(age)
 }
 
 // formatRecencyAge is the unstyled age token. Peek composes several of them into

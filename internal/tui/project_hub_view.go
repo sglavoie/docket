@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/workspace"
 )
 
@@ -35,7 +36,7 @@ func (m *ProjectHubModel) View() tea.View {
 	if notice := m.notice; notice != "" {
 		content = lipgloss.JoinVertical(
 			lipgloss.Left,
-			MutedStyle.Render(truncateToVisualWidth(notice, width)),
+			theme.MutedStyle.Render(truncateToVisualWidth(notice, width)),
 			content,
 		)
 	}
@@ -117,7 +118,7 @@ func (m *ProjectHubModel) renderSearchBar() string {
 	if m.SearchQuery() == "" {
 		return ""
 	}
-	return "/" + m.SearchQuery() + MutedStyle.Render(fmt.Sprintf("  (%d matches)", len(m.surface.Matches())))
+	return "/" + m.SearchQuery() + theme.MutedStyle.Render(fmt.Sprintf("  (%d matches)", len(m.surface.Matches())))
 }
 
 // HasTextInput reports the action sheet as text input because it owns the Hub's

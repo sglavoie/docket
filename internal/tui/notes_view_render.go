@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func (m *NotesViewModel) View() tea.View {
@@ -26,7 +27,7 @@ func (m *NotesViewModel) View() tea.View {
 	}
 	header := []string{
 		renderFullscreenTitleWithPulse("Notes", subtitle, m.currentWorkspacePulse(), width, m.AccentColor()),
-		MutedStyle.Render(truncateToVisualWidth(m.scopeCountLabel(), width)),
+		theme.MutedStyle.Render(truncateToVisualWidth(m.scopeCountLabel(), width)),
 	}
 	if search := m.renderSearchLine(); search != "" {
 		header = append(header, fitStyledLineToWidth(search, width))
@@ -119,7 +120,7 @@ func (m *NotesViewModel) renderListPane(width, listHeight int) string {
 		match := m.searchMatches[row.Identity()]
 		bodyIndicator := ""
 		if match.bodyMatched {
-			bodyIndicator = "  " + MutedStyle.Render("· body")
+			bodyIndicator = "  " + theme.MutedStyle.Render("· body")
 		}
 		bodyColumns := 0
 		if match.bodyMatched {
@@ -133,15 +134,15 @@ func (m *NotesViewModel) renderListPane(width, listHeight int) string {
 		title := truncateToVisualWidth(row.Note.Title, titleWidth)
 		renderedTitle := title
 		if len(match.titlePositions) > 0 {
-			renderedTitle = HighlightText(title, match.titlePositions, NormalStyle)
+			renderedTitle = HighlightText(title, match.titlePositions, theme.NormalStyle)
 		}
-		line := fmt.Sprintf("%s  %s%s", MutedStyle.Render(owner), renderedTitle, bodyIndicator)
+		line := fmt.Sprintf("%s  %s%s", theme.MutedStyle.Render(owner), renderedTitle, bodyIndicator)
 		if row.Note.ParseError != "" {
-			line = WarningIconStyle.Render("! ") + line
+			line = theme.WarningIconStyle.Render("! ") + line
 		}
 		line = fitStyledLineToWidth(line, width)
 		if i == m.cursor {
-			b.WriteString(PickerSelectedStyle.Render(line))
+			b.WriteString(theme.PickerSelectedStyle.Render(line))
 		} else {
 			b.WriteString(line)
 		}
@@ -154,7 +155,7 @@ func (m *NotesViewModel) renderCollectionErrors() string {
 	width := max(m.Width(), 1)
 	if m.snapshotError != nil {
 		line := truncateToVisualWidth("! Workspace: "+m.snapshotError.Error(), width)
-		return WarningIconStyle.Render(line)
+		return theme.WarningIconStyle.Render(line)
 	}
 	const maxErrorLines = 2
 	var lines []string
@@ -167,7 +168,7 @@ func (m *NotesViewModel) renderCollectionErrors() string {
 			fmt.Sprintf("! %s: %v", failure.OwnerLabel, failure.Err),
 			width,
 		)
-		lines = append(lines, WarningIconStyle.Render(
+		lines = append(lines, theme.WarningIconStyle.Render(
 			line,
 		))
 	}
@@ -177,7 +178,7 @@ func (m *NotesViewModel) renderCollectionErrors() string {
 			remaining,
 			pluralize(remaining, "owner", "owners"),
 		)
-		lines = append(lines, WarningIconStyle.Render(truncateToVisualWidth(summary, width)))
+		lines = append(lines, theme.WarningIconStyle.Render(truncateToVisualWidth(summary, width)))
 	}
 	return strings.Join(lines, "\n")
 }
@@ -228,7 +229,7 @@ func (m *NotesViewModel) renderSearchLine() string {
 		return "Search: " + m.searchInput.View()
 	}
 	if m.searchApplied != "" {
-		return MutedStyle.Render(fmt.Sprintf("Search: %q", m.searchApplied))
+		return theme.MutedStyle.Render(fmt.Sprintf("Search: %q", m.searchApplied))
 	}
 	return ""
 }
@@ -242,9 +243,9 @@ func (m *NotesViewModel) renderStatusBar() string {
 		return ""
 	}
 	if m.statusIsError {
-		return WarningIconStyle.Render(m.statusMessage)
+		return theme.WarningIconStyle.Render(m.statusMessage)
 	}
-	return SuccessStyle.Render(m.statusMessage)
+	return theme.SuccessStyle.Render(m.statusMessage)
 }
 
 // GetHelpItems documents the Notes grammar from the two sources that own it:

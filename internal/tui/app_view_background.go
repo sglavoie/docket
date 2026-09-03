@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // applyBackground fills every line of content with the configured TUI
@@ -22,7 +23,7 @@ import (
 // lipgloss v2 emits \x1b[m (empty-param reset) rather than \x1b[0m, so
 // both forms must be handled.
 func (m *AppModel) applyBackground(content string) string {
-	bg := themeBgColor
+	bg := theme.ThemeBgColor
 	if bg == "" {
 		return content
 	}
@@ -30,7 +31,7 @@ func (m *AppModel) applyBackground(content string) string {
 	if bgEsc == "" {
 		return content
 	}
-	fillEsc := bgEsc + hexToFgEsc(colorNormalText)
+	fillEsc := bgEsc + hexToFgEsc(theme.ColorNormalText)
 
 	lines := strings.Split(content, "\n")
 	for i, line := range lines {

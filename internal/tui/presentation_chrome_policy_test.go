@@ -24,6 +24,17 @@ func (r *staticCompletionActivityReader) CompletionActivity() (app.CompletionAct
 	return r.activity, r.err
 }
 
+// allPresentations returns the contiguous renderer inventory. Only the
+// exhaustiveness tests below walk it: production code always holds a
+// PresentationID it was handed rather than one it enumerated.
+func allPresentations() []presentation.PresentationID {
+	presentations := make([]presentation.PresentationID, 0, int(presentation.ViewOutlineErrors))
+	for id := presentation.ViewProjectCreator; id <= presentation.ViewOutlineErrors; id++ {
+		presentations = append(presentations, id)
+	}
+	return presentations
+}
+
 func TestPresentationChromePolicyClassifiesEveryPresentation(t *testing.T) {
 	transient := map[presentation.PresentationID]bool{
 		presentation.ViewPriorityPicker: true,

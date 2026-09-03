@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 const (
@@ -88,11 +89,11 @@ func inlinePeekLines(opts inlinePeekOptions) []string {
 	}
 
 	if attachments := inlinePeekAttachmentsLine(opts.Task, available); attachments != "" {
-		lines = append(lines, opts.Indent+MutedStyle.Render(attachments))
+		lines = append(lines, opts.Indent+theme.MutedStyle.Render(attachments))
 	}
 
 	if comments := inlinePeekCommentsLine(opts.Task, available); comments != "" {
-		lines = append(lines, opts.Indent+MutedStyle.Render(comments))
+		lines = append(lines, opts.Indent+theme.MutedStyle.Render(comments))
 	}
 
 	// The two reference lines sit above tags because Peek is the only surface
@@ -106,12 +107,12 @@ func inlinePeekLines(opts inlinePeekOptions) []string {
 	// repeating what the list already says.
 	dependencyLabel := "Dependencies " + opts.DependencyCensus.counts()
 	if dependencies := inlinePeekReferenceLine(dependencyLabel, opts.Dependencies, available); dependencies != "" {
-		lines = append(lines, opts.Indent+MutedStyle.Render(dependencies))
+		lines = append(lines, opts.Indent+theme.MutedStyle.Render(dependencies))
 	}
 
 	dependentLabel := fmt.Sprintf("Dependents %d", len(opts.Dependents))
 	if dependents := inlinePeekReferenceLine(dependentLabel, opts.Dependents, available); dependents != "" {
-		lines = append(lines, opts.Indent+MutedStyle.Render(dependents))
+		lines = append(lines, opts.Indent+theme.MutedStyle.Render(dependents))
 	}
 
 	if tags := inlinePeekTagsLine(opts.Task, available); tags != "" {
@@ -119,7 +120,7 @@ func inlinePeekLines(opts inlinePeekOptions) []string {
 	}
 
 	if len(lines) == 0 {
-		lines = append(lines, opts.Indent+MutedStyle.Render("No additional details"))
+		lines = append(lines, opts.Indent+theme.MutedStyle.Render("No additional details"))
 	}
 	maxLines := inlinePeekMaxLines + len(titleLines)
 	if parentLine != "" {
@@ -143,7 +144,7 @@ func inlinePeekParentLine(breadcrumb string, width int) string {
 	if chain == "" {
 		return ""
 	}
-	return truncateIntentional(MutedStyle.Render("Parent: ")+chain, width, "…")
+	return truncateIntentional(theme.MutedStyle.Render("Parent: ")+chain, width, "…")
 }
 
 // inlinePeekTitleLines completes a title the row clipped rather than restating
@@ -164,7 +165,7 @@ func inlinePeekTitleLines(task *models.Task, overflow, indent string, width int)
 		wrapped[len(wrapped)-1] = truncateIntentional(wrapped[len(wrapped)-1]+"…", width, "…")
 	}
 
-	style := TaskTitleStyleFor(task, TaskTitleStyleOptions{})
+	style := theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{})
 	lines := make([]string, 0, len(wrapped))
 	for _, line := range wrapped {
 		lines = append(lines, indent+style.Render(truncateIntentional(line, width, "…")))
@@ -183,7 +184,7 @@ func inlinePeekDatesLine(task *models.Task, now time.Time, width int) string {
 
 	parts := make([]string, 0, 5)
 	field := func(label, value string) {
-		parts = append(parts, HelpStyle.Render(label+" ")+HelpKeyStyle.Render(value))
+		parts = append(parts, theme.HelpStyle.Render(label+" ")+theme.HelpKeyStyle.Render(value))
 	}
 	if age := formatRecencyAge(task.CreatedAt, now); age != "" {
 		field("created", age)
@@ -203,7 +204,7 @@ func inlinePeekDatesLine(task *models.Task, now time.Time, width int) string {
 	if len(parts) == 0 {
 		return ""
 	}
-	return truncateIntentional(strings.Join(parts, HelpStyle.Render(" · ")), width, "…")
+	return truncateIntentional(strings.Join(parts, theme.HelpStyle.Render(" · ")), width, "…")
 }
 
 func inlinePeekAttachmentsLine(task *models.Task, width int) string {
@@ -265,7 +266,7 @@ func inlinePeekTagsLine(task *models.Task, width int) string {
 	chips := make([]string, 0, len(task.Tags))
 	for _, tag := range orderedTaskTags(task.Tags) {
 		if tag = strings.TrimSpace(tag); tag != "" {
-			chips = append(chips, tagChipStyle(tag).Render("#"+tag))
+			chips = append(chips, theme.TagChipStyle(tag).Render("#"+tag))
 		}
 	}
 	showFullContext := lipgloss.Width(task.Context) > 12
@@ -274,12 +275,12 @@ func inlinePeekTagsLine(task *models.Task, width int) string {
 	}
 	parts := make([]string, 0, 2)
 	if showFullContext {
-		parts = append(parts, taskContextBadgeStyle(task).Render("["+task.Context+"]"))
+		parts = append(parts, theme.TaskContextBadgeStyle(task).Render("["+task.Context+"]"))
 	}
 	if len(chips) > 0 {
 		parts = append(parts, strings.Join(chips, " "))
 	}
-	line := MutedStyle.Render("Tags: ") + strings.Join(parts, " ")
+	line := theme.MutedStyle.Render("Tags: ") + strings.Join(parts, " ")
 	return truncateIntentional(line, width, "…")
 }
 
@@ -306,7 +307,7 @@ func inlinePeekDescriptionLines(description, indent string, width int) []string 
 		if i == 0 {
 			prefix = label
 		}
-		lines = append(lines, indent+MutedStyle.Render(
+		lines = append(lines, indent+theme.MutedStyle.Render(
 			truncateIntentional(prefix+line, width, "…"),
 		))
 	}

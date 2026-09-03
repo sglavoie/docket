@@ -1,4 +1,4 @@
-package tui
+package theme
 
 import (
 	"image/color"
@@ -8,7 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 )
 
-const zebraBackgroundDarkenFactor = 0.08
+const ZebraBackgroundDarkenFactor = 0.08
 
 // The cursor row is marked by one bright column at its left edge and a dim fill
 // past its content. Both are derived from the theme's cursor color, in opposite
@@ -51,7 +51,7 @@ func NewThemeConfig(machine *config.MachineState) ThemeConfig {
 }
 
 // rebuildStyles reassigns every style variable using the current palette colors.
-// This must be called after rebuildPalette so styles pick up user overrides.
+// This must be called after RebuildPalette so styles pick up user overrides.
 func rebuildStyles() {
 	rebuildTextStyles()
 	rebuildTaskStyles()
@@ -63,7 +63,7 @@ func rebuildStyles() {
 	rebuildPanelStyles()
 	rebuildCategoryStyles()
 	rebuildMiscStyles()
-	rebuildPriorityTitleStyles()
+	RebuildPriorityTitleStyles()
 	rebuildTagChipColors()
 	rebuildLensAccentStyles()
 }
@@ -74,18 +74,17 @@ func ApplyTheme(tc ThemeConfig) {
 	if tc.Name != "light" {
 		tc.Name = "dark"
 	}
-	activeThemeName = tc.Name
+	ActiveThemeName = tc.Name
 
 	themeDefaults := config.DefaultTheme(tc.Name)
 
 	effectiveBgColor := themeDefaults.BackgroundColor
-	themeBgColor = effectiveBgColor
+	ThemeBgColor = effectiveBgColor
 	ColorBackground = lipgloss.Color(effectiveBgColor)
 
 	rebuildAccentColors()
-	rebuildPalette(themeDefaults.Palette)
+	RebuildPalette(themeDefaults.Palette)
 	rebuildStyles()
-	buildViewAccentMap()
 	ThemedTextInputStyles = themedTextInputStyles()
 	ThemedTextareaStyles = themedTextareaStyles()
 
@@ -95,10 +94,10 @@ func ApplyTheme(tc ThemeConfig) {
 	// Which way "louder" and "quieter" point depends on the paper, so the pair of
 	// directions flips with the theme rather than being fixed to lighter/darker,
 	// and each step's size flips with it.
-	pop, dim := lightenHex, darkenHex
+	pop, dim := lightenHex, DarkenHex
 	barFactor, flashFactor, dimFactor := cursorBarDarkFactor, cursorFlashDarkFactor, cursorTrailDarkFactor
 	if tc.Name == "light" {
-		pop, dim = darkenHex, lightenHex
+		pop, dim = DarkenHex, lightenHex
 		barFactor, flashFactor, dimFactor = cursorBarLightFactor, cursorFlashLightFactor, cursorTrailLightFactor
 	}
 	effectiveBar := pop(effectiveBg, barFactor)
@@ -163,11 +162,11 @@ func ApplyTheme(tc ThemeConfig) {
 		Bold(true).
 		Foreground(ColorSelectedTextFg)
 
-	zebraEnabled = false
+	ZebraEnabled = false
 
 	// Derive zebra background: darken custom bg 8%, or use default ColorZebraBg.
 	if effectiveBgColor != "" {
-		derivedZebra := darkenHex(effectiveBgColor, zebraBackgroundDarkenFactor)
+		derivedZebra := DarkenHex(effectiveBgColor, ZebraBackgroundDarkenFactor)
 		ZebraRowStyle = lipgloss.NewStyle().Background(lipgloss.Color(derivedZebra))
 	} else {
 		ZebraRowStyle = lipgloss.NewStyle().Background(ColorZebraBg)
@@ -175,7 +174,7 @@ func ApplyTheme(tc ThemeConfig) {
 
 	// Derive tree group background: darken custom bg 4%, or use default ColorTreeGroupBg.
 	if effectiveBgColor != "" {
-		derivedGroupBg := darkenHex(effectiveBgColor, 0.04)
+		derivedGroupBg := DarkenHex(effectiveBgColor, 0.04)
 		TreeGroupOddBgStyle = lipgloss.NewStyle().Background(lipgloss.Color(derivedGroupBg))
 	} else {
 		TreeGroupOddBgStyle = lipgloss.NewStyle().Background(ColorTreeGroupBg)
@@ -252,12 +251,12 @@ func makeBadgeStyle(fg, bg string) lipgloss.Style {
 		Background(lipgloss.Color(bg))
 }
 
-// makeViewModeStyle creates a view mode tab style with tone-aware background.
+// MakeViewModeStyle creates a view mode tab style with tone-aware background.
 // dark is used on dark themes; lightHex (a curated hex color) on light themes.
-func makeViewModeStyle(dark, lightHex string) lipgloss.Style {
+func MakeViewModeStyle(dark, lightHex string) lipgloss.Style {
 	bgStr := dark
 	fgStr := "#c0caf5"
-	if activeThemeName == "light" {
+	if ActiveThemeName == "light" {
 		bgStr = lightHex
 		fgStr = "#ffffff"
 	}
@@ -271,10 +270,10 @@ func makeViewModeStyle(dark, lightHex string) lipgloss.Style {
 // makeDueBadgeStyle creates a due-date chip with the section badge's contrast
 // contract: a tone-aware background under a high-contrast foreground. It omits
 // bold deliberately — chips carry no bold, so bold stays the title's selection
-// channel, exactly as tagChipStyle already holds.
+// channel, exactly as TagChipStyle already holds.
 func makeDueBadgeStyle(darkHex, lightHex string) lipgloss.Style {
 	bgStr, fgStr := darkHex, "#c0caf5"
-	if activeThemeName == "light" {
+	if ActiveThemeName == "light" {
 		bgStr, fgStr = lightHex, "#ffffff"
 	}
 	return lipgloss.NewStyle().
@@ -284,12 +283,12 @@ func makeDueBadgeStyle(darkHex, lightHex string) lipgloss.Style {
 }
 
 // makeLensAccentStyle creates a foreground-only accent in the tone the active
-// theme calls readable. It is the counterpart of makeViewModeStyle and
+// theme calls readable. It is the counterpart of MakeViewModeStyle and
 // makeDueBadgeStyle for text that carries no chip: a lens name is ordinary list
 // text, so an accent may color it and may change nothing else about it.
 func makeLensAccentStyle(darkHex, lightHex string) lipgloss.Style {
 	hex := darkHex
-	if activeThemeName == "light" {
+	if ActiveThemeName == "light" {
 		hex = lightHex
 	}
 	return lipgloss.NewStyle().Foreground(lipgloss.Color(hex))

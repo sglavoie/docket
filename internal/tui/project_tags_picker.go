@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 const (
@@ -92,7 +93,7 @@ func (m *AppModel) projectTagListSource(project *models.Project) ListSource {
 		// One ramp serves both namespaces, so #infra on a project reads as the
 		// same color as #infra on a task even though the two tag sets are
 		// otherwise unrelated.
-		style := tagChipStyle(tag)
+		style := theme.TagChipStyle(tag)
 		items = append(items, ListItem{
 			ID:           ListItemID("tag:" + tag),
 			CategoryID:   tagDescriptiveCategory,
@@ -130,7 +131,7 @@ func behavioralProjectTagExplainer(provider ValueProviderID, width int) string {
 	for _, name := range names {
 		info := models.BehavioralProjectTags[name]
 		entry := behavioralProjectTagBadgeStyle(info.BadgeRole).Render(info.Name) +
-			" " + MutedStyle.Render(info.Summary)
+			" " + theme.MutedStyle.Render(info.Summary)
 		lines = append(lines, strings.Join(wrapStyled(entry, width), "\n"))
 	}
 	return strings.Join(lines, "\n")
@@ -142,8 +143,8 @@ func behavioralProjectTagExplainer(provider ValueProviderID, width int) string {
 func behavioralProjectTagBadgeStyle(role string) lipgloss.Style {
 	switch role {
 	case "warning":
-		return lipgloss.NewStyle().Foreground(ColorWarning).Bold(true)
+		return lipgloss.NewStyle().Foreground(theme.ColorWarning).Bold(true)
 	default:
-		return MutedStyle
+		return theme.MutedStyle
 	}
 }

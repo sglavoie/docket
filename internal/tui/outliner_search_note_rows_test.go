@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // noteRowProjection builds the one situation the tier exists for: a sigil-free
@@ -167,7 +168,7 @@ func TestNoteRowRendersWithoutTaskFurniture(t *testing.T) {
 	for _, state := range []models.WorkflowState{
 		models.StateBacklog, models.StateDoing, models.StateInbox,
 	} {
-		if badge := ansi.Strip(GetStateBadge(state)); strings.Contains(plain, strings.TrimSpace(badge)) {
+		if badge := ansi.Strip(theme.GetStateBadge(state)); strings.Contains(plain, strings.TrimSpace(badge)) {
 			t.Fatalf("note row faked the %s state badge:\n%q", state, plain)
 		}
 	}

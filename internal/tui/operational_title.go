@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 const (
@@ -144,7 +145,7 @@ func joinOperationalTitleSegments(parts []string) string {
 			nonEmpty = append(nonEmpty, part)
 		}
 	}
-	return strings.Join(nonEmpty, MutedStyle.Render(operationalTitleSeparator))
+	return strings.Join(nonEmpty, theme.MutedStyle.Render(operationalTitleSeparator))
 }
 
 func joinOperationalTitleRegions(identity, context string) string {
@@ -177,7 +178,7 @@ func operationalPaceVariants(pace todayPaceReadout) []string {
 	}
 	variants := make([]string, 0, len(candidates))
 	for _, candidate := range candidates {
-		variants = append(variants, MutedStyle.Render(candidate))
+		variants = append(variants, theme.MutedStyle.Render(candidate))
 	}
 	return variants
 }

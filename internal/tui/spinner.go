@@ -3,6 +3,7 @@ package tui
 import (
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // SpinnerModel wraps the bubbles spinner for loading states.
@@ -14,7 +15,7 @@ type SpinnerModel struct {
 func NewSpinner() SpinnerModel {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
-	s.Style = WarningIconStyle
+	s.Style = theme.WarningIconStyle
 	return SpinnerModel{
 		spinner: s,
 	}

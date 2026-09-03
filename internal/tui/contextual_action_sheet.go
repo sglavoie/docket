@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // ContextActionSheetHost names the surface that opened one contextual sheet.
@@ -381,10 +382,10 @@ func (model *ContextActionSheetModel) render(width int) string {
 	}
 	header := ""
 	if search != "" {
-		header = MutedStyle.Render(search)
+		header = theme.MutedStyle.Render(search)
 	}
 	if model.notice != "" {
-		notice := ErrorStatusStyle.Render(truncateToVisualWidth(model.notice, max(innerWidth-4, 12)))
+		notice := theme.ErrorStatusStyle.Render(truncateToVisualWidth(model.notice, max(innerWidth-4, 12)))
 		if header == "" {
 			header = notice
 		} else {
@@ -403,10 +404,10 @@ func (model *ContextActionSheetModel) render(width int) string {
 	if model.config.Subtitle != "" {
 		titleText += ": " + truncateToVisualWidth(model.config.Subtitle, max(innerWidth-20, 12))
 	}
-	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render(titleText)
+	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render(titleText)
 	guidance, _ := model.guidanceSpec()
 	footer := renderGuidanceText(guidance, max(innerWidth-4, 1))
-	return renderOverlayBox(content, innerWidth, title, footer, lipgloss.NewStyle().Foreground(ColorPrimary))
+	return renderOverlayBox(content, innerWidth, title, footer, lipgloss.NewStyle().Foreground(theme.ColorPrimary))
 }
 
 func (model *ContextActionSheetModel) guidanceSpec() (GuidanceSpec, bool) {

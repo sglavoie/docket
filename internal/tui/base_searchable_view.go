@@ -3,6 +3,7 @@ package tui
 import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // SearchInputWidth returns a dynamic search input width based on the view width.
@@ -33,7 +34,7 @@ func (v *BaseSearchableView) InitSearchInput(placeholder string, charLimit, widt
 	v.searchInput.Placeholder = placeholder
 	v.searchInput.CharLimit = charLimit
 	v.searchInput.SetWidth(width)
-	applyThemedTextInput(&v.searchInput)
+	theme.ApplyThemedTextInput(&v.searchInput)
 }
 
 // HasActiveSearch returns true if search mode is active.

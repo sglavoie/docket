@@ -1,4 +1,4 @@
-package tui
+package theme
 
 import "charm.land/lipgloss/v2"
 

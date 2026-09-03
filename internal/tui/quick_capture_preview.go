@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // updatePreview updates the live preview state.
@@ -53,7 +54,7 @@ func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 		Priority:      q.preview.priority,
 		Tags:          q.preview.tags,
 	}
-	taskTitle := TaskTitleStyleFor(previewTask, TaskTitleStyleOptions{}).Render(q.preview.title)
+	taskTitle := theme.TaskTitleStyleFor(previewTask, theme.TaskTitleStyleOptions{}).Render(q.preview.title)
 	taskChunks := []string{taskTitle}
 	groups = append(groups, previewGroup{label: "Task", chunks: taskChunks})
 	destinationDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDestination)
@@ -173,7 +174,7 @@ func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 // separator-soup. Only populated groups are shown.
 func (q *quickCaptureInput) renderPreview() string {
 	if q.previewErr != "" {
-		return ValidationErrorStyle.Render(q.previewErr)
+		return theme.ValidationErrorStyle.Render(q.previewErr)
 	}
 	groups, ok := q.previewGroups()
 	if !ok {
@@ -194,7 +195,7 @@ func (q *quickCaptureInput) renderPreview() string {
 // within its height budget without dropping what the parser understood.
 func (q *quickCaptureInput) renderCompactPreview() string {
 	if q.previewErr != "" {
-		return q.clampToRows(ValidationErrorStyle.Render(q.previewErr), 2)
+		return q.clampToRows(theme.ValidationErrorStyle.Render(q.previewErr), 2)
 	}
 	groups, ok := q.previewGroups()
 	if !ok {
@@ -216,13 +217,13 @@ func (q *quickCaptureInput) renderCompactPreview() string {
 func (q *quickCaptureInput) composePreviewBlock(remaining, lowerMin int) (block string, rows, blankAfter int) {
 	renderFull := func() string {
 		if q.err != nil {
-			return ValidationErrorStyle.Render(q.err.Error())
+			return theme.ValidationErrorStyle.Render(q.err.Error())
 		}
 		return q.renderPreview()
 	}
 	renderCompact := func() string {
 		if q.err != nil {
-			return q.clampToRows(ValidationErrorStyle.Render(q.err.Error()), 2)
+			return q.clampToRows(theme.ValidationErrorStyle.Render(q.err.Error()), 2)
 		}
 		return q.renderCompactPreview()
 	}
@@ -278,7 +279,7 @@ func (q *quickCaptureInput) clampToRows(styled string, rows int) string {
 // when width is set so no rendered line exceeds q.width visual columns.
 // Continuation lines are indented to the label column for readability.
 func (q *quickCaptureInput) renderPreviewLine(label, body string) string {
-	prefix := MutedStyle.Render(fmt.Sprintf("%-*s", previewGroupLabelWidth, label))
+	prefix := theme.MutedStyle.Render(fmt.Sprintf("%-*s", previewGroupLabelWidth, label))
 	if q.width <= 0 {
 		return prefix + body
 	}

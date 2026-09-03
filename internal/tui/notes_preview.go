@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // notesPreviewKey is the complete identity of one rendered, anchored preview.
@@ -323,18 +324,18 @@ func (m *NotesViewModel) renderNotesPreviewBody(width, height int) []string {
 		// puts the pane back at the top and leaves no page size for a key press to
 		// spend.
 		m.preview.offset, m.preview.pageSize = 0, 0
-		lines := []string{WarningIconStyle.Render(
+		lines := []string{theme.WarningIconStyle.Render(
 			truncateToVisualWidth("! Note could not be parsed.", width),
 		)}
 		for _, line := range wrapText(note.ParseError, max(width, 1)) {
-			lines = append(lines, MutedStyle.Render(truncateToVisualWidth(line, width)))
+			lines = append(lines, theme.MutedStyle.Render(truncateToVisualWidth(line, width)))
 		}
 		return lines[:min(len(lines), height)]
 	}
 
 	m.preview.sync(key, note.Body, m.notesPreviewBodyMatched(row))
 	if len(m.preview.lines) == 0 {
-		return []string{MutedStyle.Render(truncateToVisualWidth("No body.", width))}
+		return []string{theme.MutedStyle.Render(truncateToVisualWidth("No body.", width))}
 	}
 
 	start, count, above, below := listPreviewScrollWindow(len(m.preview.lines), m.preview.offset, height)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // TaskAttachmentsModel displays and manages attachments for a task.
@@ -43,7 +44,7 @@ func NewTaskAttachmentsModel(task *models.Task, project *models.Project, runtime
 	ti.Placeholder = "Enter file path, URL, or code ref (file:line)..."
 	ti.CharLimit = 500
 	ti.SetWidth(60)
-	applyThemedTextInput(&ti)
+	theme.ApplyThemedTextInput(&ti)
 
 	return &TaskAttachmentsModel{
 		task:        task,

@@ -1,4 +1,4 @@
-package tui
+package theme
 
 import (
 	"fmt"
@@ -54,7 +54,7 @@ type TaskTitleStyleOptions struct {
 	Disabled bool
 }
 
-func semanticTaskTitleStyle(
+func SemanticTaskTitleStyle(
 	role models.SemanticTaskTagRole,
 	priority int,
 	selected bool,
@@ -120,7 +120,7 @@ func semanticTaskTitleStyle(
 	return style.Foreground(foreground)
 }
 
-func taskContextBadgeStyle(task *models.Task) lipgloss.Style {
+func TaskContextBadgeStyle(task *models.Task) lipgloss.Style {
 	style := ContextBadgeStyle
 	if task != nil && task.IsDeferred() {
 		style = style.Foreground(ColorTaskContextDeferred).Faint(true)
@@ -128,7 +128,7 @@ func taskContextBadgeStyle(task *models.Task) lipgloss.Style {
 	return style
 }
 
-// tagChipSlot resolves a tag name to its index in the chip ramp. The normalized
+// TagChipSlot resolves a tag name to its index in the chip ramp. The normalized
 // spelling is what hashes, so Bug and bug are one chip while the stored spelling
 // still reaches the screen. The hash is FNV-1a from the standard library because
 // it is specified rather than merely implemented: a tag keeps its color across
@@ -139,22 +139,22 @@ func taskContextBadgeStyle(task *models.Task) lipgloss.Style {
 // the ones it already had; new tags simply land wherever their name hashes,
 // collisions included. Color is a mnemonic, not a legend: two unrelated tags
 // sharing slot 3 is expected, not a bug.
-func tagChipSlot(tag string) int {
-	if len(tagChipColors) == 0 {
+func TagChipSlot(tag string) int {
+	if len(TagChipColors) == 0 {
 		return 0
 	}
 	h := fnv.New32a()
 	_, _ = h.Write([]byte(models.NormalizeTag(tag)))
-	return int(h.Sum32() % uint32(len(tagChipColors)))
+	return int(h.Sum32() % uint32(len(TagChipColors)))
 }
 
-// tagChipStyle returns the one style every rendered tag chip wears. Foreground
+// TagChipStyle returns the one style every rendered tag chip wears. Foreground
 // only: chips carry no bold, so bold stays the title's selection channel.
-func tagChipStyle(tag string) lipgloss.Style {
-	if len(tagChipColors) == 0 {
+func TagChipStyle(tag string) lipgloss.Style {
+	if len(TagChipColors) == 0 {
 		return TagInlineStyle
 	}
-	return lipgloss.NewStyle().Foreground(tagChipColors[tagChipSlot(tag)])
+	return lipgloss.NewStyle().Foreground(TagChipColors[TagChipSlot(tag)])
 }
 
 // TaskTitleStyleFor returns the canonical style for a rendered task title.
@@ -172,7 +172,7 @@ func TaskTitleStyleFor(task *models.Task, opts TaskTitleStyleOptions) lipgloss.S
 		return CanceledStyle
 	}
 	if entry, ok := models.SemanticTaskTagForTags(task.Tags); ok {
-		return semanticTaskTitleStyle(entry.Role, task.Priority, opts.CursorSelected, task.IsDeferred())
+		return SemanticTaskTitleStyle(entry.Role, task.Priority, opts.CursorSelected, task.IsDeferred())
 	}
 	if opts.CursorSelected {
 		return SelectedTaskTitleStyle

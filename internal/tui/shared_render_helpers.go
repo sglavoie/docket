@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -77,18 +78,18 @@ type SectionHeaderOpts struct {
 // Callers are responsible for applying selection/zebra highlights on the
 // returned strings.
 func renderSectionHeader(opts SectionHeaderOpts) (gutter, content string) {
-	indicator := IconExpanded
+	indicator := theme.IconExpanded
 	if opts.Collapsed {
-		indicator = IconCollapsed
+		indicator = theme.IconCollapsed
 	}
-	gutter = opts.Cursor.bar(MutedStyle, indicator) + gutterSpace(opts.Cursor.gutterBg())
+	gutter = opts.Cursor.bar(theme.MutedStyle, indicator) + gutterSpace(opts.Cursor.gutterBg())
 	namePart := opts.AccentColor.Bold(true).Render(opts.Prefix + opts.Name)
-	content = namePart + " " + MutedStyle.Render(fmt.Sprintf("(%d)", opts.Count))
+	content = namePart + " " + theme.MutedStyle.Render(fmt.Sprintf("(%d)", opts.Count))
 
 	if opts.Width > 0 {
 		visible := lipgloss.Width(gutter) + lipgloss.Width(content)
 		if opts.Width > visible+2 {
-			content += " " + MutedStyle.Render(strings.Repeat("─", opts.Width-visible-1))
+			content += " " + theme.MutedStyle.Render(strings.Repeat("─", opts.Width-visible-1))
 		}
 	}
 	return gutter, content
@@ -113,7 +114,7 @@ func renderSectionHeader(opts SectionHeaderOpts) (gutter, content string) {
 // SemanticTaskTagByName lookup TaskTitleStyleFor consults, so a tag is demoted
 // exactly when the title can speak for it.
 //
-// The sort key is models.NormalizeTag, the same canonical spelling tagChipSlot
+// The sort key is models.NormalizeTag, the same canonical spelling TagChipSlot
 // hashes, so a tag's position and its color agree about what one tag is. The raw
 // spelling breaks a tie, which is what makes the result independent of insertion
 // order rather than merely stable under it.
@@ -140,7 +141,7 @@ func orderedTaskTags(tags []string) []string {
 
 // renderTruncatedTags renders a compact inline tag string with per-tag truncation
 // and overflow count. Shows at most maxTags tags, each truncated to maxTagLen chars.
-// Each tag wears its own chip color from tagChipStyle; the +N overflow stays
+// Each tag wears its own chip color from TagChipStyle; the +N overflow stays
 // muted because it counts tags rather than naming one.
 // Returns an empty string if there are no tags.
 func renderTruncatedTags(tags []string, maxTags, maxTagLen int) string {
@@ -155,11 +156,11 @@ func renderTruncatedTags(tags []string, maxTags, maxTagLen int) string {
 		// The full tag decides the color; truncation is presentation only, so a
 		// clipped chip keeps the color its Peek counterpart shows in full.
 		display := truncateToVisualWidth(tag, maxTagLen)
-		parts = append(parts, tagChipStyle(tag).Render("#"+display))
+		parts = append(parts, theme.TagChipStyle(tag).Render("#"+display))
 	}
 	result := strings.Join(parts, " ")
 	if len(tags) > maxTags {
-		result += MutedStyle.Render(fmt.Sprintf(" +%d", len(tags)-maxTags))
+		result += theme.MutedStyle.Render(fmt.Sprintf(" +%d", len(tags)-maxTags))
 	}
 	return result
 }
@@ -169,7 +170,7 @@ func renderTruncatedTags(tags []string, maxTags, maxTagLen int) string {
 // is a glyph rather than a color because SelectedLine strips styling from the
 // cursor row, so a colored name says nothing about the row the user is on.
 func pinnedMarker() string {
-	return PinnedMarkerStyle.Render("*") + " "
+	return theme.PinnedMarkerStyle.Render("*") + " "
 }
 
 // renderCommentIndicator renders a compact comment count indicator.
@@ -177,7 +178,7 @@ func renderCommentIndicator(task *models.Task) string {
 	if len(task.Comments) == 0 {
 		return ""
 	}
-	return MutedStyle.Render(fmt.Sprintf("%s %d", IconComment(), len(task.Comments)))
+	return theme.MutedStyle.Render(fmt.Sprintf("%s %d", theme.IconComment(), len(task.Comments)))
 }
 
 // renderAttachmentIndicator renders a compact attachment count indicator.
@@ -185,7 +186,7 @@ func renderAttachmentIndicator(task *models.Task) string {
 	if !task.HasAttachments() {
 		return ""
 	}
-	return MutedStyle.Render(fmt.Sprintf("%s %d", IconAttachment(), task.AttachmentCount()))
+	return theme.MutedStyle.Render(fmt.Sprintf("%s %d", theme.IconAttachment(), task.AttachmentCount()))
 }
 
 // formatGitHubIssueRef renders the compact owner/repo#number form. It carries
@@ -224,7 +225,7 @@ func renderChecklistIndicator(task *models.Task) string {
 		return ""
 	}
 	completed, total := checklistCounts(task)
-	return MutedStyle.Render(fmt.Sprintf("%s%d/%d", IconChecklist(), completed, total))
+	return theme.MutedStyle.Render(fmt.Sprintf("%s%d/%d", theme.IconChecklist(), completed, total))
 }
 
 // checklistCounts returns (completed, total) for a task's checklist.

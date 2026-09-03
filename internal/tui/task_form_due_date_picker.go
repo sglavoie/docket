@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -98,7 +99,7 @@ func (p *formDueDatePicker) handleKey(msg tea.KeyPressMsg) (bool, tea.Msg) {
 }
 
 func (p *formDueDatePicker) render(width int, current *time.Time) string {
-	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
+	borderStyle := lipgloss.NewStyle().Foreground(theme.ColorPrimary)
 
 	var titleText string
 	if current != nil {
@@ -106,7 +107,7 @@ func (p *formDueDatePicker) render(width int, current *time.Time) string {
 	} else {
 		titleText = "Set Due Date"
 	}
-	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render(titleText)
+	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render(titleText)
 
 	titleMinInner := lipgloss.Width(title) + 6 - 2
 	maxWidth := min(max(width*2/5, 36), width-4)
@@ -139,7 +140,7 @@ func (p *formDueDatePicker) render(width int, current *time.Time) string {
 	var content strings.Builder
 	for i, e := range formDueDatePresets {
 		isCurrent := i == currentEntryIdx
-		keyHint := MutedStyle.Render(fmt.Sprintf("[%s]", e.key))
+		keyHint := theme.MutedStyle.Render(fmt.Sprintf("[%s]", e.key))
 		currentMark := "  "
 		if isCurrent {
 			currentMark = "● "
@@ -150,7 +151,7 @@ func (p *formDueDatePicker) render(width int, current *time.Time) string {
 			line += strings.Repeat(" ", innerWidth-4-lineWidth)
 		}
 		if i == p.cursor {
-			line = SelectedStyle.Render(line)
+			line = theme.SelectedStyle.Render(line)
 		}
 		content.WriteString(line)
 		if i < len(formDueDatePresets)-1 {

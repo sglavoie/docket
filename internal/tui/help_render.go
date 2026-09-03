@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // helpKeyColumnWidth is the fixed cell width of the help key column. A display
@@ -105,7 +106,7 @@ func helpSectionsForCategories(categories []string) []string {
 // the grammar declared.
 func (m *HelpViewModel) renderBySectionContent() string {
 	if len(m.filteredItems) == 0 {
-		return MutedStyle.Render("No matching help items.")
+		return theme.MutedStyle.Render("No matching help items.")
 	}
 
 	buckets := make(map[string][]filteredHelpItem)
@@ -126,23 +127,23 @@ func (m *HelpViewModel) renderBySectionContent() string {
 	keyStyle := lipgloss.NewStyle().
 		Width(keyWidth).
 		Align(lipgloss.Right).
-		Foreground(ColorSecondary)
+		Foreground(theme.ColorSecondary)
 	columnStyle := lipgloss.NewStyle().Width(columnWidth)
 
 	renderItem := func(item filteredHelpItem) string {
 		var renderedKey string
 		if len(item.keyPositions) > 0 {
-			renderedKey = keyStyle.Render(HighlightText(item.Key, item.keyPositions, TagInlineStyle))
+			renderedKey = keyStyle.Render(HighlightText(item.Key, item.keyPositions, theme.TagInlineStyle))
 		} else {
 			renderedKey = keyStyle.Render(item.Key)
 		}
 		wrappedDesc := wrapDescriptionWithIndent(item.Description, descWidth, keyWidth+2)
 		descLines := strings.Split(wrappedDesc, "\n")
 		if len(item.descPositions) > 0 {
-			descLines[0] = HighlightText(descLines[0], item.descPositions, NormalStyle)
+			descLines[0] = HighlightText(descLines[0], item.descPositions, theme.NormalStyle)
 		}
 		if suffix := helpAliasSuffix(item.matchedAliases, item.Description, descWidth); suffix != "" {
-			descLines[0] += MutedStyle.Render(suffix)
+			descLines[0] += theme.MutedStyle.Render(suffix)
 		}
 		var result strings.Builder
 		for i, line := range descLines {
@@ -169,7 +170,7 @@ func (m *HelpViewModel) renderBySectionContent() string {
 			b.WriteString("\n")
 		}
 		first = false
-		b.WriteString(HelpCategoryStyle.Render(section))
+		b.WriteString(theme.HelpCategoryStyle.Render(section))
 		b.WriteString("\n")
 		for j := 0; j < len(items); j += 2 {
 			col1 := columnStyle.Render(renderItem(items[j]))
@@ -216,26 +217,26 @@ func (m *HelpViewModel) renderHelpHeader(tabBar string) string {
 
 	if m.tabSearchMode {
 		b.WriteString(pad)
-		b.WriteString(SubtitleStyle.Render("Tab: "))
+		b.WriteString(theme.SubtitleStyle.Render("Tab: "))
 		b.WriteString(m.tabSearchInput.View())
 		b.WriteString("\n\n")
 	}
 
 	caseNote := ""
 	if m.searchCaseRelaxed {
-		caseNote = MutedStyle.Render(" (case ignored)")
+		caseNote = theme.MutedStyle.Render(" (case ignored)")
 	}
 
 	if m.searchMode {
 		b.WriteString(pad)
-		b.WriteString(SubtitleStyle.Render("Filter: "))
+		b.WriteString(theme.SubtitleStyle.Render("Filter: "))
 		b.WriteString(m.searchInput.View())
 		b.WriteString(caseNote)
 		b.WriteString("\n\n")
 	} else if m.searchQuery != "" {
 		filterInfo := fmt.Sprintf("Filter: \"%s\"", m.searchQuery)
 		b.WriteString(pad)
-		b.WriteString(HelpFilterActiveStyle.Render(filterInfo))
+		b.WriteString(theme.HelpFilterActiveStyle.Render(filterInfo))
 		b.WriteString(caseNote)
 		b.WriteString("\n\n")
 	}

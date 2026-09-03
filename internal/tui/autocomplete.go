@@ -3,6 +3,8 @@ package tui
 import (
 	"fmt"
 	"strings"
+
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // AutocompleteState manages the shared state for trigger-based autocomplete
@@ -271,7 +273,7 @@ func (ac *AutocompleteState) RenderDropdown(indent string) string {
 func (ac *AutocompleteState) renderDropdownWindow(indent string, showTop, showBottom bool) string {
 	var b strings.Builder
 	if showTop {
-		b.WriteString(MutedStyle.Render(indent + "↑ " + fmt.Sprintf("%d more", ac.ViewportTop)))
+		b.WriteString(theme.MutedStyle.Render(indent + "↑ " + fmt.Sprintf("%d more", ac.ViewportTop)))
 		b.WriteString("\n")
 	}
 
@@ -280,16 +282,16 @@ func (ac *AutocompleteState) renderDropdownWindow(indent string, showTop, showBo
 	for i := ac.ViewportTop; i < visibleEnd; i++ {
 		s := ac.Items[i]
 		if i == ac.Cursor {
-			b.WriteString(SelectedStyle.Render(indent + "> " + s.Display))
+			b.WriteString(theme.SelectedStyle.Render(indent + "> " + s.Display))
 		} else {
-			b.WriteString(MutedStyle.Render(indent + "  " + s.Display))
+			b.WriteString(theme.MutedStyle.Render(indent + "  " + s.Display))
 		}
 		b.WriteString("\n")
 	}
 
 	remaining := len(ac.Items) - visibleEnd
 	if showBottom && remaining > 0 {
-		b.WriteString(MutedStyle.Render(indent + "↓ " + fmt.Sprintf("%d more", remaining)))
+		b.WriteString(theme.MutedStyle.Render(indent + "↓ " + fmt.Sprintf("%d more", remaining)))
 		b.WriteString("\n")
 	}
 

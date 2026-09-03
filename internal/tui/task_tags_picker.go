@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 const (
@@ -109,7 +110,7 @@ func taskTagListSource(tags []TagInfo, seedUnused bool) ListSource {
 		// identity: the row wears exactly what the task row and Peek will render.
 		// The full stored spelling hashes here as it does there, so an 8-column
 		// row chip and this row are one color.
-		style := tagChipStyle(tag.Name)
+		style := theme.TagChipStyle(tag.Name)
 		items = append(items, ListItem{
 			ID:            ListItemID("tag:" + tag.Name),
 			CategoryID:    category,
@@ -228,7 +229,7 @@ func semanticTaskTagItem(name string, entry models.SemanticTaskTag, taskCount in
 	if taskCount > 0 {
 		fields = append(fields, ListPreviewField{Label: "Tasks", Value: strconv.Itoa(taskCount)})
 	}
-	style := semanticTaskTitleStyle(entry.Role, 0, false, false)
+	style := theme.SemanticTaskTitleStyle(entry.Role, 0, false, false)
 	return ListItem{
 		ID:            ListItemID("tag:" + name),
 		CategoryID:    taskTagSemanticCategory,
@@ -244,7 +245,7 @@ func semanticTaskTagItem(name string, entry models.SemanticTaskTag, taskCount in
 // semanticTaskTagExplainer states the precedence the section order applies
 // silently, which is the one thing the SEMANTIC rows above it cannot show. Five
 // restated summaries would swamp the overlay, so it is one line. Its names and
-// those rows resolve one semanticTaskTitleStyle lookup, so the chain here and
+// those rows resolve one SemanticTaskTitleStyle lookup, so the chain here and
 // the section above it can never disagree and a future registry entry cannot
 // render uncolored. The complete block wraps inline when needed.
 func semanticTaskTagExplainer(provider ValueProviderID, width int) string {
@@ -253,12 +254,12 @@ func semanticTaskTagExplainer(provider ValueProviderID, width int) string {
 	}
 	names := make([]string, 0, len(models.SemanticTaskTags))
 	for _, entry := range models.SemanticTaskTags {
-		names = append(names, semanticTaskTitleStyle(entry.Role, 0, false, false).Render(entry.Name))
+		names = append(names, theme.SemanticTaskTitleStyle(entry.Role, 0, false, false).Render(entry.Name))
 	}
-	head := MutedStyle.Render(semanticTaskTagExplainerLabel) + "  " +
-		strings.Join(names, MutedStyle.Render(semanticTaskTagExplainerSeparator))
+	head := theme.MutedStyle.Render(semanticTaskTagExplainerLabel) + "  " +
+		strings.Join(names, theme.MutedStyle.Render(semanticTaskTagExplainerSeparator))
 	return strings.Join(wrapStyled(
-		head+" "+MutedStyle.Render(semanticTaskTagExplainerSummary),
+		head+" "+theme.MutedStyle.Render(semanticTaskTagExplainerSummary),
 		width,
 	), "\n")
 }
@@ -280,15 +281,15 @@ func taskTagCategoryJumpHint(provider ValueProviderID, items []ListItem, width i
 		if populated[section.Category] {
 			// The key wears the footer's key color, so one hint reads the same
 			// whether the reader met it in the footer or in the overlay.
-			hints = append(hints, HelpKeyStyle.Render(section.Key)+MutedStyle.Render(" "+section.Label))
+			hints = append(hints, theme.HelpKeyStyle.Render(section.Key)+theme.MutedStyle.Render(" "+section.Label))
 		}
 	}
 	if len(hints) == 0 {
 		return ""
 	}
 	return strings.Join(wrapStyled(
-		MutedStyle.Render(taskTagJumpHintLabel+"  ")+
-			strings.Join(hints, MutedStyle.Render(taskTagJumpHintSeparator)),
+		theme.MutedStyle.Render(taskTagJumpHintLabel+"  ")+
+			strings.Join(hints, theme.MutedStyle.Render(taskTagJumpHintSeparator)),
 		width,
 	), "\n")
 }

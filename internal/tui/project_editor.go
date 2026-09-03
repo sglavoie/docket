@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // projectEditorField names one editable row. The editor cycles, focuses, routes
@@ -124,7 +125,7 @@ func (m *ProjectEditorModel) SetSize(width, height int) {
 	const descriptionLabelReserve = 12
 
 	m.width = width
-	formFactory.ResizeTextInputWithReserve(&m.nameInput, width, FormLabelWidth)
+	formFactory.ResizeTextInputWithReserve(&m.nameInput, width, theme.FormLabelWidth)
 	formFactory.ResizeTextInputWithReserve(&m.descriptionInput, width, descriptionLabelReserve)
 	formFactory.ResizeTextInputWithReserve(&m.tagsInput, width, descriptionLabelReserve)
 }
@@ -380,7 +381,7 @@ func (m *ProjectEditorModel) View() tea.View {
 
 	// Show slug preview
 	name := strings.TrimSpace(m.nameInput.Value())
-	padding := strings.Repeat(" ", FormLabelWidth)
+	padding := strings.Repeat(" ", theme.FormLabelWidth)
 	if name != "" {
 		slug := models.Slugify(name)
 		slugChanged := slug != models.Slugify(m.originalName)
@@ -415,7 +416,7 @@ func (m *ProjectEditorModel) View() tea.View {
 
 	// Error display
 	if m.err != nil {
-		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
+		b.WriteString(theme.ValidationErrorStyle.Render(m.err.Error()))
 		b.WriteString("\n\n")
 	}
 
@@ -455,7 +456,7 @@ func (m *ProjectEditorModel) guidanceSpec() GuidanceSpec {
 // projectEditorExplainerWidth is the width the Tags explainer is fitted to: the
 // form width left of the label gutter.
 func projectEditorExplainerWidth(width int) int {
-	return width - FormLabelWidth
+	return width - theme.FormLabelWidth
 }
 
 func (m *ProjectEditorModel) HasTextInput() bool     { return true }

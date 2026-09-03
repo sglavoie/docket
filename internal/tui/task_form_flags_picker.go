@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/icons"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // TaskFormFlagsPickedMsg is emitted when the user confirms flag selection.
@@ -59,8 +60,8 @@ func (p *formFlagsPicker) handleKey(msg tea.KeyPressMsg) (bool, tea.Msg) {
 const formFlagsPickerRowCount = 2
 
 func (p *formFlagsPicker) render(width int) string {
-	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
-	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Set Flags")
+	borderStyle := lipgloss.NewStyle().Foreground(theme.ColorPrimary)
+	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render("Set Flags")
 
 	maxWidth := min(max(width*2/5, 40), width-4)
 	innerWidth := min(maxWidth, max(width-4, 1))
@@ -89,7 +90,7 @@ func (p *formFlagsPicker) render(width int) string {
 			line += strings.Repeat(" ", innerWidth-4-lineWidth)
 		}
 		if i == p.cursor {
-			line = SelectedStyle.Render(line)
+			line = theme.SelectedStyle.Render(line)
 		}
 		content.WriteString(line)
 		if i < len(rows)-1 {

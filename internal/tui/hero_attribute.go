@@ -4,6 +4,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // HeroKind identifies which row attribute earns full saturation under the
@@ -73,7 +74,7 @@ func demoteBadge(badge string) string {
 	if badge == "" {
 		return ""
 	}
-	return MutedStyle.Render(ansi.Strip(badge))
+	return theme.MutedStyle.Render(ansi.Strip(badge))
 }
 
 // statusIsHero reports whether the status badge is the hero for a given kind.

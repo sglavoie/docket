@@ -5,6 +5,7 @@ import (
 
 	"charm.land/bubbles/v2/textinput"
 
+	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -38,7 +39,7 @@ func (m *TaskFormModel) initDueInput(value string) {
 	m.dueTextInput.Placeholder = "tomorrow, +3d, fri 15:30, 2026-01-15 09:00"
 	m.dueTextInput.CharLimit = 40
 	m.dueTextInput.SetWidth(40)
-	applyThemedTextInput(&m.dueTextInput)
+	theme.ApplyThemedTextInput(&m.dueTextInput)
 	if value != "" {
 		m.dueTextInput.SetValue(value)
 	}
@@ -65,7 +66,7 @@ func (m *TaskFormModel) initChecklistItemInput(value string) {
 	m.checklistItemInput.Placeholder = "Checklist item text..."
 	m.checklistItemInput.CharLimit = 200
 	m.checklistItemInput.SetWidth(50)
-	applyThemedTextInput(&m.checklistItemInput)
+	theme.ApplyThemedTextInput(&m.checklistItemInput)
 	if value != "" {
 		m.checklistItemInput.SetValue(value)
 	}
@@ -77,7 +78,7 @@ func (m *TaskFormModel) initSubtaskItemInput(value string) {
 	m.subtaskItemInput.Placeholder = "Subtask title..."
 	m.subtaskItemInput.CharLimit = 200
 	m.subtaskItemInput.SetWidth(50)
-	applyThemedTextInput(&m.subtaskItemInput)
+	theme.ApplyThemedTextInput(&m.subtaskItemInput)
 	if value != "" {
 		m.subtaskItemInput.SetValue(value)
 	}
@@ -91,7 +92,7 @@ func (m *TaskFormModel) initAttachmentItemInput(value string) {
 	m.attachmentItemInput.Placeholder = "URL, path:line, or file path..."
 	m.attachmentItemInput.CharLimit = 500
 	m.attachmentItemInput.SetWidth(50)
-	applyThemedTextInput(&m.attachmentItemInput)
+	theme.ApplyThemedTextInput(&m.attachmentItemInput)
 	if value != "" {
 		m.attachmentItemInput.SetValue(value)
 	}
@@ -105,7 +106,7 @@ func (m *TaskFormModel) initCommentItemInput(value string) {
 	m.commentItemInput.Placeholder = "Comment text..."
 	m.commentItemInput.CharLimit = 500
 	m.commentItemInput.SetWidth(50)
-	applyThemedTextInput(&m.commentItemInput)
+	theme.ApplyThemedTextInput(&m.commentItemInput)
 	if value != "" {
 		m.commentItemInput.SetValue(value)
 	}

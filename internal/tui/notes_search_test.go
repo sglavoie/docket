@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func TestNotesSearchBodyMatchingIsCaseInsensitiveAndRequiresEveryTerm(t *testing.T) {
@@ -206,7 +207,7 @@ func TestNotesSearchLiveInputNavigationAndEscTransitions(t *testing.T) {
 			t.Fatalf("accepted search render missing %q:\n%s", want, plain)
 		}
 	}
-	if !strings.Contains(rendered, HighlightStyle.Render("N")) {
+	if !strings.Contains(rendered, theme.HighlightStyle.Render("N")) {
 		t.Fatalf("title match was not highlighted:\n%s", rendered)
 	}
 

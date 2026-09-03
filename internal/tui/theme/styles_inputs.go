@@ -1,4 +1,4 @@
-package tui
+package theme
 
 import (
 	"charm.land/bubbles/v2/textarea"
@@ -18,8 +18,8 @@ var ThemedTextareaStyles textarea.Styles
 // default fg ("7"/none), which becomes near-invisible on a painted light bg.
 func themedTextInputStyles() textinput.Styles {
 	textFg := ColorMuted
-	if colorNormalText != "" {
-		textFg = lipgloss.Color(colorNormalText)
+	if ColorNormalText != "" {
+		textFg = lipgloss.Color(ColorNormalText)
 	}
 	s := textinput.DefaultStyles(true)
 	s.Focused.Text = lipgloss.NewStyle().Foreground(textFg)
@@ -38,8 +38,8 @@ func themedTextInputStyles() textinput.Styles {
 // (CursorLine, Base), which appear as dark strips on a painted light bg.
 func themedTextareaStyles() textarea.Styles {
 	textFg := ColorMuted
-	if colorNormalText != "" {
-		textFg = lipgloss.Color(colorNormalText)
+	if ColorNormalText != "" {
+		textFg = lipgloss.Color(ColorNormalText)
 	}
 	s := textarea.DefaultStyles(true)
 	// Base: fg only — no background so the app bg shows through.
@@ -70,12 +70,12 @@ func themedTextareaStyles() textarea.Styles {
 	return s
 }
 
-// applyThemedTextInput sets the current themed styles on a textinput.Model.
-func applyThemedTextInput(ti *textinput.Model) {
+// ApplyThemedTextInput sets the current themed styles on a textinput.Model.
+func ApplyThemedTextInput(ti *textinput.Model) {
 	ti.SetStyles(ThemedTextInputStyles)
 }
 
-// applyThemedTextarea sets the current themed styles on a textarea.Model.
-func applyThemedTextarea(ta *textarea.Model) {
+// ApplyThemedTextarea sets the current themed styles on a textarea.Model.
+func ApplyThemedTextarea(ta *textarea.Model) {
 	ta.SetStyles(ThemedTextareaStyles)
 }

@@ -1,12 +1,12 @@
-package tui
+package theme
 
 import "charm.land/lipgloss/v2"
 
 func rebuildTextStyles() {
 	NormalStyle = lipgloss.NewStyle()
 	BoldStyle = lipgloss.NewStyle().Bold(true)
-	if colorNormalText != "" {
-		fg := lipgloss.Color(colorNormalText)
+	if ColorNormalText != "" {
+		fg := lipgloss.Color(ColorNormalText)
 		NormalStyle = NormalStyle.Foreground(fg)
 		BoldStyle = BoldStyle.Foreground(fg)
 	}
@@ -37,7 +37,7 @@ func rebuildTaskStyles() {
 	OverdueStyle = newOverdueBadgeStyle()
 	DueSoonStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 
-	if activeThemeName == "light" {
+	if ActiveThemeName == "light" {
 		WaitingRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#fde8e8"))
 		OverdueRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#fef3e2"))
 	} else {
@@ -63,12 +63,12 @@ func rebuildBadgeStyles() {
 	InProgressBadgeStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 	DoneBadgeStyle = lipgloss.NewStyle().Foreground(ColorSuccess)
 	WaitingBadgeStyle = lipgloss.NewStyle().Foreground(ColorError)
-	if activeThemeName == "light" {
+	if ActiveThemeName == "light" {
 		StandbyBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#6d28d9"))
 	} else {
 		StandbyBadgeStyle = lipgloss.NewStyle().Foreground(ColorViewStandby)
 	}
-	if activeThemeName == "light" {
+	if ActiveThemeName == "light" {
 		MaybeBadgeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#6d28d9"))
 	} else {
 		MaybeBadgeStyle = lipgloss.NewStyle().Foreground(ColorViewSomeday)
@@ -79,7 +79,7 @@ func rebuildBadgeStyles() {
 	// readable contrast (~7:1). Dark theme Warning is navy bg color where
 	// black text works well.
 	warningFg := lipgloss.Color("#1a1b26")
-	if activeThemeName == "light" {
+	if ActiveThemeName == "light" {
 		warningFg = lipgloss.Color("15")
 	}
 	ArchivedBadgeStyle = lipgloss.NewStyle().Background(ColorWarning).Foreground(warningFg).Padding(0, 1)
@@ -109,15 +109,15 @@ func rebuildLayoutStyles() {
 
 	// Derive the tab content tint: 1-shade offset from the effective background.
 	bgHex := "#1a1b26"
-	if activeThemeName == "light" {
+	if ActiveThemeName == "light" {
 		bgHex = "#f6f6f0"
 	}
-	if themeBgColor != "" {
-		bgHex = themeBgColor
+	if ThemeBgColor != "" {
+		bgHex = ThemeBgColor
 	}
 	var tabBgHex string
-	if activeThemeName == "light" {
-		tabBgHex = darkenHex(bgHex, 0.03)
+	if ActiveThemeName == "light" {
+		tabBgHex = DarkenHex(bgHex, 0.03)
 	} else {
 		tabBgHex = lightenHex(bgHex, 0.05)
 	}
@@ -151,18 +151,18 @@ func rebuildViewStyles() {
 	HelpCategoryStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorSecondary).MarginTop(1)
 	HelpFilterActiveStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 
-	ViewModeActiveStyle = makeViewModeStyle("#2e4a30", "#15803d")
-	ViewModeWorkStyle = makeViewModeStyle("#4a321e", "#9a3412")
-	ViewModeNextStyle = makeViewModeStyle("#2d3a6a", "#3730a3")
-	ViewModeInboxStyle = makeViewModeStyle("#1e3a5f", "#1d4ed8")
-	ViewModeWaitingStyle = makeViewModeStyle("#5c3a1e", "#92400e")
-	ViewModeSomedayStyle = makeViewModeStyle("#3d2a5c", "#6d28d9")
-	ViewModeCompletedStyle = makeViewModeStyle("#3b3f5c", "#4b5563")
-	ViewModeStandbyStyle = makeViewModeStyle("#4a2e6a", "#7c3aed")
-	ViewModeDeferredStyle = makeViewModeStyle("#4a2e3a", "#7c2d12")
-	ViewModeCanceledStyle = makeViewModeStyle("#4a2430", "#991b1b")
-	ViewModeAllStyle = makeViewModeStyle("#283352", "#0369a1")
-	ViewModeReviewStyle = makeViewModeStyle("#57398c", "#5b21b6")
+	ViewModeActiveStyle = MakeViewModeStyle("#2e4a30", "#15803d")
+	ViewModeWorkStyle = MakeViewModeStyle("#4a321e", "#9a3412")
+	ViewModeNextStyle = MakeViewModeStyle("#2d3a6a", "#3730a3")
+	ViewModeInboxStyle = MakeViewModeStyle("#1e3a5f", "#1d4ed8")
+	ViewModeWaitingStyle = MakeViewModeStyle("#5c3a1e", "#92400e")
+	ViewModeSomedayStyle = MakeViewModeStyle("#3d2a5c", "#6d28d9")
+	ViewModeCompletedStyle = MakeViewModeStyle("#3b3f5c", "#4b5563")
+	ViewModeStandbyStyle = MakeViewModeStyle("#4a2e6a", "#7c3aed")
+	ViewModeDeferredStyle = MakeViewModeStyle("#4a2e3a", "#7c2d12")
+	ViewModeCanceledStyle = MakeViewModeStyle("#4a2430", "#991b1b")
+	ViewModeAllStyle = MakeViewModeStyle("#283352", "#0369a1")
+	ViewModeReviewStyle = MakeViewModeStyle("#57398c", "#5b21b6")
 }
 
 func rebuildSelectionStyles() {
@@ -204,7 +204,7 @@ func rebuildCategoryStyles() {
 	CategoryViewStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
 }
 
-func rebuildPriorityTitleStyles() {
+func RebuildPriorityTitleStyles() {
 	TitlePriority1Style = lipgloss.NewStyle().Foreground(ColorPriority1Title).Bold(true).Italic(true)
 	TitlePriority2Style = lipgloss.NewStyle().Foreground(ColorPriority2Title).Bold(true)
 	TitlePriority3Style = lipgloss.NewStyle().Foreground(ColorPriority3Title)
@@ -215,7 +215,7 @@ func rebuildMiscStyles() {
 	RuleOperatorStyle = makeColorStyle(ColorRuleOperator)
 	RuleHighlightStyle = lipgloss.NewStyle().Foreground(ColorAccent).Bold(true)
 	highlightFg := lipgloss.Color("#1a1b26")
-	if activeThemeName == "light" {
+	if ActiveThemeName == "light" {
 		highlightFg = lipgloss.Color("#ffffff")
 	}
 	HighlightStyle = lipgloss.NewStyle().Background(ColorHighlight).Foreground(highlightFg).Bold(true)

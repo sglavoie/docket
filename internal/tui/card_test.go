@@ -6,12 +6,13 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func TestRenderOverlayBoxCompleteFrameAndHalo(t *testing.T) {
-	originalHaloStyle := OverlayHaloStyle
-	OverlayHaloStyle = lipgloss.NewStyle().Background(lipgloss.Color("#112233"))
-	t.Cleanup(func() { OverlayHaloStyle = originalHaloStyle })
+	originalHaloStyle := theme.OverlayHaloStyle
+	theme.OverlayHaloStyle = lipgloss.NewStyle().Background(lipgloss.Color("#112233"))
+	t.Cleanup(func() { theme.OverlayHaloStyle = originalHaloStyle })
 
 	borderStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#FF0000"))
 	title := borderStyle.Bold(true).Render("Choose")
@@ -47,7 +48,7 @@ func TestRenderOverlayBoxCompleteFrameAndHalo(t *testing.T) {
 		t.Fatalf("help must render inside an uninterrupted bottom border:\n%s", ansi.Strip(rendered))
 	}
 
-	haloCell := OverlayHaloStyle.Render(" ")
+	haloCell := theme.OverlayHaloStyle.Render(" ")
 	if !strings.HasPrefix(lines[1], haloCell) || !strings.HasSuffix(lines[1], haloCell) {
 		t.Fatalf("side halo cells are missing their dim background style: %q", lines[1])
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // ActiveFilterCount returns the number of active filters for the status bar pill.
@@ -55,16 +56,16 @@ func (m *OutlinerModel) renderOutlinerQuickEditRow(row outlinerRow, rowWidth int
 	previewTask := m.quickEditDisplayTask()
 	status := m.renderTaskStatusIcon(previewTask)
 	prefixBudget := max(min(rowWidth/3, 12), 4)
-	prefix := MutedStyle.Render(compactOutlinerTreePrefix(row.prefix, prefixBudget))
+	prefix := theme.MutedStyle.Render(compactOutlinerTreePrefix(row.prefix, prefixBudget))
 	// The quick-edit row is a transient input overlay, not a row grammar: it owns
 	// its own selection paint, so the fold indicator takes no cursor background.
 	fold := m.renderTaskFoldIndicator(row, nil)
-	inputPrefix := RenderCursorPrefix() + prefix + fold + status + " "
+	inputPrefix := theme.RenderCursorPrefix() + prefix + fold + status + " "
 	indentWidth := lipgloss.Width(inputPrefix)
 	// textinput.View() renders Width()+1 cells: the horizontal scroll window plus
 	// the cursor cell after it, so the window must leave that column free.
 	m.quickEdit.SetInputWidth(max(rowWidth-indentWidth-1, 1))
-	selectedPrefix := SelectedStyle.Render(ansi.Strip(inputPrefix))
+	selectedPrefix := theme.SelectedStyle.Render(ansi.Strip(inputPrefix))
 	inputLine := fitStyledLineToWidth(selectedPrefix+m.quickEdit.renderSelectedInput(), rowWidth)
 
 	lines := []string{metadata, inputLine}

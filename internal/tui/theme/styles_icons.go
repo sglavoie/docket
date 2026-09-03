@@ -1,4 +1,4 @@
-package tui
+package theme
 
 import "github.com/sglavoie/tt/internal/icons"
 

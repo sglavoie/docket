@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // renderPinnedTasksBar renders the compact, non-interactive pinned summary.
@@ -15,7 +16,7 @@ func (m *AppModel) renderPinnedTasksBar(width int) string {
 		return ""
 	}
 
-	separatorStr := MutedStyle.Render(" · ")
+	separatorStr := theme.MutedStyle.Render(" · ")
 	separatorWidth := lipgloss.Width(separatorStr)
 	const maxDisplay = 5
 	overflow := 0
@@ -34,7 +35,7 @@ func (m *AppModel) renderPinnedTasksBar(width int) string {
 	entries := make([]string, 0, len(pinned))
 	for _, item := range pinned {
 		titleWidth := max(perEntryWidth, 3)
-		title := TaskTitleStyleFor(item.Task, TaskTitleStyleOptions{}).
+		title := theme.TaskTitleStyleFor(item.Task, theme.TaskTitleStyleOptions{}).
 			Render(truncateToVisualWidth(item.Title, titleWidth))
 		if renderedWidth := lipgloss.Width(title); renderedWidth < titleWidth {
 			title += strings.Repeat(" ", titleWidth-renderedWidth)
@@ -44,7 +45,7 @@ func (m *AppModel) renderPinnedTasksBar(width int) string {
 
 	result := strings.Join(entries, separatorStr)
 	if overflow > 0 {
-		result += MutedStyle.Render(fmt.Sprintf(" +%d", overflow))
+		result += theme.MutedStyle.Render(fmt.Sprintf(" +%d", overflow))
 	}
 	return result
 }

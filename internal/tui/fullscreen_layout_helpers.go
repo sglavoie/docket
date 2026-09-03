@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // fitBlockHeight truncates or pads a rendered block to an exact line count.
@@ -81,7 +82,7 @@ func renderHorizontalDivider(width int, opts ...DividerOption) string {
 	}
 
 	cfg := dividerConfig{
-		color: ColorMuted,
+		color: theme.ColorMuted,
 		glyph: '─',
 	}
 	for _, opt := range opts {
@@ -101,9 +102,9 @@ func renderHorizontalDivider(width int, opts ...DividerOption) string {
 // no visible tasks. msg is rendered in MutedStyle; helpText (if non-empty) is
 // appended below in HelpStyle with a blank-line separator.
 func renderEmptyState(msg string, helpText string) string {
-	s := MutedStyle.Render(msg)
+	s := theme.MutedStyle.Render(msg)
 	if helpText != "" {
-		s += "\n\n" + HelpStyle.Render(helpText)
+		s += "\n\n" + theme.HelpStyle.Render(helpText)
 	}
 	return s
 }

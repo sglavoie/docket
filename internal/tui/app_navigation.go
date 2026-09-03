@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // GetOperationRegistry returns the authoritative operation catalog.
@@ -177,7 +178,7 @@ func (m *AppModel) currentAccentColor() color.Color {
 	if c := m.navigation.Primary.Current().Accent(); c != nil {
 		return c
 	}
-	return ColorPrimary
+	return theme.ColorPrimary
 }
 
 // setAccentOnView injects the accent color for the current view stack top into

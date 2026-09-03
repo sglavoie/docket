@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // This file covers the style a role reaches for: that every role wears one, that
@@ -19,7 +20,7 @@ import (
 func TestNamedLensPrimaryStyle(t *testing.T) {
 	// The theme is global mutable state, so these cases run in sequence and hand
 	// the package back its default dark palette.
-	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
 	styled := []struct {
 		name string
@@ -56,9 +57,9 @@ func TestNamedLensPrimaryStyle(t *testing.T) {
 		{"unknown state", namedLensStatesFixture("almost-done")},
 	}
 
-	for _, theme := range []string{"dark", "light"} {
-		t.Run(theme, func(t *testing.T) {
-			ApplyTheme(ThemeConfig{Name: theme})
+	for _, themeName := range []string{"dark", "light"} {
+		t.Run(themeName, func(t *testing.T) {
+			theme.ApplyTheme(theme.ThemeConfig{Name: themeName})
 
 			for _, tc := range styled {
 				t.Run(tc.name, func(t *testing.T) {
@@ -83,12 +84,12 @@ func TestNamedLensPrimaryStyle(t *testing.T) {
 	t.Run("accents follow the theme", func(t *testing.T) {
 		lens := namedLensQueryFixture("@overdue")
 
-		ApplyTheme(ThemeConfig{Name: "dark"})
+		theme.ApplyTheme(theme.ThemeConfig{Name: "dark"})
 		dark, ok := namedLensPrimaryStyle(lens)
 		if !ok {
 			t.Fatalf("dark theme resolved no style")
 		}
-		ApplyTheme(ThemeConfig{Name: "light"})
+		theme.ApplyTheme(theme.ThemeConfig{Name: "light"})
 		light, ok := namedLensPrimaryStyle(lens)
 		if !ok {
 			t.Fatalf("light theme resolved no style")
@@ -102,24 +103,24 @@ func TestNamedLensPrimaryStyle(t *testing.T) {
 	// badges already do, so the accents themselves — not the definitions that
 	// reach them — are what must read apart.
 	t.Run("accents read apart", func(t *testing.T) {
-		for _, theme := range []string{"dark", "light"} {
-			ApplyTheme(ThemeConfig{Name: theme})
+		for _, themeName := range []string{"dark", "light"} {
+			theme.ApplyTheme(theme.ThemeConfig{Name: themeName})
 
 			accents := map[string]lipgloss.Style{
-				"plan":      lensAccentPlanStyle,
-				"work":      lensAccentWorkStyle,
-				"inbox":     lensAccentInboxStyle,
-				"next":      lensAccentNextStyle,
-				"waiting":   lensAccentWaitingStyle,
-				"paused":    lensAccentPausedStyle,
-				"someday":   lensAccentSomedayStyle,
-				"complete":  lensAccentCompleteStyle,
-				"canceled":  lensAccentCanceledStyle,
-				"overdue":   lensAccentOverdueStyle,
-				"due today": lensAccentDueTodayStyle,
-				"due":       lensAccentDueStyle,
-				"deferred":  lensAccentDeferredStyle,
-				"review":    lensAccentReviewStyle,
+				"plan":      theme.LensAccentPlanStyle,
+				"work":      theme.LensAccentWorkStyle,
+				"inbox":     theme.LensAccentInboxStyle,
+				"next":      theme.LensAccentNextStyle,
+				"waiting":   theme.LensAccentWaitingStyle,
+				"paused":    theme.LensAccentPausedStyle,
+				"someday":   theme.LensAccentSomedayStyle,
+				"complete":  theme.LensAccentCompleteStyle,
+				"canceled":  theme.LensAccentCanceledStyle,
+				"overdue":   theme.LensAccentOverdueStyle,
+				"due today": theme.LensAccentDueTodayStyle,
+				"due":       theme.LensAccentDueStyle,
+				"deferred":  theme.LensAccentDeferredStyle,
+				"review":    theme.LensAccentReviewStyle,
 			}
 
 			seen := make(map[string]string, len(accents))
@@ -127,7 +128,7 @@ func TestNamedLensPrimaryStyle(t *testing.T) {
 				assertForegroundOnlyStyle(t, style)
 				key := lipgloss.NewStyle().Foreground(style.GetForeground()).Render("x")
 				if previous, clash := seen[key]; clash {
-					t.Errorf("%s theme: %s wears the same accent as %s", theme, name, previous)
+					t.Errorf("%s theme: %s wears the same accent as %s", themeName, name, previous)
 					continue
 				}
 				seen[key] = name
@@ -136,10 +137,10 @@ func TestNamedLensPrimaryStyle(t *testing.T) {
 			// An accent that landed exactly on a priority title color would make a
 			// state lens and a priority lens indistinguishable.
 			for _, priority := range []int{models.PriorityHigh, models.PriorityMedium, models.PriorityLow} {
-				title := GetTitlePriorityStyle(priority).GetForeground()
+				title := theme.GetTitlePriorityStyle(priority).GetForeground()
 				for name, style := range accents {
 					if style.GetForeground() == title {
-						t.Errorf("%s theme: %s accent equals the priority %d title color", theme, name, priority)
+						t.Errorf("%s theme: %s accent equals the priority %d title color", themeName, name, priority)
 					}
 				}
 			}
@@ -147,9 +148,9 @@ func TestNamedLensPrimaryStyle(t *testing.T) {
 	})
 
 	t.Run("priority accents follow the palette", func(t *testing.T) {
-		ApplyTheme(ThemeConfig{Name: "dark"})
-		rebuildPalette(config.PaletteColors{Priority1Title: "#123456"})
-		rebuildPriorityTitleStyles()
+		theme.ApplyTheme(theme.ThemeConfig{Name: "dark"})
+		theme.RebuildPalette(config.PaletteColors{Priority1Title: "#123456"})
+		theme.RebuildPriorityTitleStyles()
 
 		style, ok := namedLensPrimaryStyle(
 			namedLensQueryFixture(fmt.Sprintf("!%d", models.PriorityHigh)))

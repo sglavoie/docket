@@ -7,6 +7,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -25,7 +26,7 @@ func FormatTimestampLabeled(label string, t time.Time) string {
 // project_tree_filters.go and due_date_overview_render.go.
 func ClassifyDueDate(dueDate *time.Time) (string, lipgloss.Style) {
 	if dueDate == nil {
-		return "", NormalStyle
+		return "", theme.NormalStyle
 	}
 
 	now := time.Now()
@@ -34,15 +35,15 @@ func ClassifyDueDate(dueDate *time.Time) (string, lipgloss.Style) {
 
 	switch {
 	case dueDay.Before(today):
-		return dueDate.Format("Jan 2"), OverdueStyle
+		return dueDate.Format("Jan 2"), theme.OverdueStyle
 	case dueDay.Equal(today):
-		return "Today", DueTodayStyle
+		return "Today", theme.DueTodayStyle
 	case dueDay.Equal(today.AddDate(0, 0, 1)):
-		return "Tomorrow", DueDateStyle
+		return "Tomorrow", theme.DueDateStyle
 	default:
 		if dueDate.Year() != now.Year() {
-			return dueDate.Format("Jan 2 '06"), DueDateStyle
+			return dueDate.Format("Jan 2 '06"), theme.DueDateStyle
 		}
-		return dueDate.Format("Jan 2"), DueDateStyle
+		return dueDate.Format("Jan 2"), theme.DueDateStyle
 	}
 }

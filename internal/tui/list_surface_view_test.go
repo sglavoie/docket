@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func TestListSurfaceCompactRendererExposesSelectionDisabledStateContinuationAndHelp(
@@ -224,7 +225,7 @@ func TestRetainedListSurfaceDomainAdaptersProvideStableTargets(t *testing.T) {
 }
 
 func TestListSurfaceRowKeepsItemColorWhenCheckedAndDropsItUnderTheCursor(t *testing.T) {
-	style := semanticTaskTitleStyle(models.SemanticTaskTagBug, 0, false, false)
+	style := theme.SemanticTaskTitleStyle(models.SemanticTaskTagBug, 0, false, false)
 	colored := ListItem{ID: "bug", PrimaryText: "bug", SecondaryText: "a defect", PrimaryStyle: &style}
 	plain := colored
 	plain.PrimaryStyle = nil

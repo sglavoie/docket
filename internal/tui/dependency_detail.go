@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // dependencyDetailUnavailable is the status a reference wears when this
@@ -155,11 +156,11 @@ func (c dependencyCensus) counts() string {
 func (outlook dependencyOutlook) style() lipgloss.Style {
 	switch outlook {
 	case dependencyOutlookBlocked:
-		return DependencyIndicatorBlockedStyle
+		return theme.DependencyIndicatorBlockedStyle
 	case dependencyOutlookUnreadable:
-		return MutedStyle
+		return theme.MutedStyle
 	default:
-		return DependencyIndicatorSettledStyle
+		return theme.DependencyIndicatorSettledStyle
 	}
 }
 

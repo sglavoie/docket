@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // backgroundParams returns the SGR parameters lipgloss emits for a background
@@ -30,10 +31,10 @@ func cursorHighlightOutliner(t *testing.T, tasks ...*models.Task) (*OutlinerMode
 	return cursorHighlightOutlinerTheme(t, "dark", tasks...)
 }
 
-func cursorHighlightOutlinerTheme(t *testing.T, theme string, tasks ...*models.Task) (*OutlinerModel, *models.Project) {
+func cursorHighlightOutlinerTheme(t *testing.T, themeName string, tasks ...*models.Task) (*OutlinerModel, *models.Project) {
 	t.Helper()
-	ApplyTheme(ThemeConfig{Name: theme})
-	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+	theme.ApplyTheme(theme.ThemeConfig{Name: themeName})
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
 	project := renderFixtureProject(t, "project", "project", "Project", tasks)
 	return NewOutlinerModel(project, nil, newTestConfig()), project
@@ -57,15 +58,15 @@ func TestCursorTaskRowKeepsEveryColorItEarned(t *testing.T) {
 	line := outliner.renderOutlinerTaskRow(row, true, 80, 80, 0, nil)
 
 	for name, want := range map[string]string{
-		"tag chip":    tagChipStyle("infra").Render("#infra"),
-		"state badge": GetStateBadge(models.StateDoing),
-		"title":       GetTitlePriorityStyle(2).Render(task.Title),
+		"tag chip":    theme.TagChipStyle("infra").Render("#infra"),
+		"state badge": theme.GetStateBadge(models.StateDoing),
+		"title":       theme.GetTitlePriorityStyle(2).Render(task.Title),
 	} {
 		if !strings.Contains(line, want) {
 			t.Fatalf("cursor row lost its %s:\n%q", name, line)
 		}
 	}
-	if strings.Contains(line, SelectedTaskTitleStyle.Render(task.Title)) {
+	if strings.Contains(line, theme.SelectedTaskTitleStyle.Render(task.Title)) {
 		t.Fatalf("cursor row repainted its title with the selection style:\n%q", line)
 	}
 }
@@ -82,7 +83,7 @@ func TestCursorRowKeepsItsSearchMatchHighlight(t *testing.T) {
 	if len(positions) == 0 {
 		t.Fatal("fixture query matched nothing")
 	}
-	want := HighlightText(task.Title, positions, GetTitlePriorityStyle(3))
+	want := HighlightText(task.Title, positions, theme.GetTitlePriorityStyle(3))
 	if !strings.Contains(line, want) {
 		t.Fatalf("cursor row dropped its search-match highlight:\n%q", line)
 	}
@@ -152,7 +153,7 @@ func TestCursorRowContentReachingTheEdgeGainsNoFill(t *testing.T) {
 	if got := lipgloss.Width(line); got != 60 {
 		t.Fatalf("full-width cursor row rendered %d columns", got)
 	}
-	if strings.Contains(line, backgroundParams(t, ColorSelectedDimBg)) {
+	if strings.Contains(line, backgroundParams(t, theme.ColorSelectedDimBg)) {
 		t.Fatalf("a cursor row whose content fills the width still painted a trailing fill:\n%q", line)
 	}
 }
@@ -184,14 +185,14 @@ func cursorRowsByType(outliner *OutlinerModel, project *models.Project, task *mo
 // fill, and never by repainting what sits between them. Both themes are checked
 // because `T` derives the pair from the theme's own paper in opposite directions.
 func TestCursorRowMarksItsBarAndTrail(t *testing.T) {
-	for _, theme := range []string{"dark", "light"} {
-		t.Run(theme, func(t *testing.T) {
+	for _, themeName := range []string{"dark", "light"} {
+		t.Run(themeName, func(t *testing.T) {
 			task := &models.Task{ID: "t1", ShortID: 1, Title: "Ship", WorkflowState: models.StateBacklog}
-			outliner, project := cursorHighlightOutlinerTheme(t, theme, task)
-			barBg := backgroundParams(t, ColorCursorBarBg)
-			trailBg := backgroundParams(t, ColorSelectedDimBg)
+			outliner, project := cursorHighlightOutlinerTheme(t, themeName, task)
+			barBg := backgroundParams(t, theme.ColorCursorBarBg)
+			trailBg := backgroundParams(t, theme.ColorSelectedDimBg)
 			if barBg == trailBg {
-				t.Fatalf("the %s theme derived one color for both cursor regions: %q", theme, barBg)
+				t.Fatalf("the %s theme derived one color for both cursor regions: %q", themeName, barBg)
 			}
 
 			for name, line := range cursorRowsByType(outliner, project, task) {
@@ -213,16 +214,16 @@ func TestCursorRowMarksItsBarAndTrail(t *testing.T) {
 func TestCursorBarIsOneColumn(t *testing.T) {
 	task := &models.Task{ID: "t1", ShortID: 1, Title: "Ship", WorkflowState: models.StateBacklog}
 	outliner, project := cursorHighlightOutliner(t, task)
-	barBg := backgroundParams(t, ColorCursorBarBg)
+	barBg := backgroundParams(t, theme.ColorCursorBarBg)
 	column0 := map[string]string{
-		"task":           RenderCursorPrefix(),
-		"checklist":      RenderCursorPrefix(),
-		"section header": IconExpanded,
+		"task":           theme.RenderCursorPrefix(),
+		"checklist":      theme.RenderCursorPrefix(),
+		"section header": theme.IconExpanded,
 		"project header": " ",
 	}
 
 	for name, line := range cursorRowsByType(outliner, project, task) {
-		bar := CursorBarStyle.Render(column0[name])
+		bar := theme.CursorBarStyle.Render(column0[name])
 		if got := lipgloss.Width(bar); got != 1 {
 			t.Fatalf("%s cursor bar covers %d columns, want 1", name, got)
 		}
@@ -248,9 +249,9 @@ func TestCursorRowLeavesTheRestOfItsGutterOrdinary(t *testing.T) {
 	line := outliner.renderOutlinerTaskRow(row, true, 80, 80, 0, nil)
 
 	for name, want := range map[string]string{
-		"multi-select box":  SelectionCheckStyle.Render("[x]"),
-		"tree connectors":   MutedStyle.Render(prefix),
-		"unpainted spacing": SelectionCheckStyle.Render("[x]") + " " + MutedStyle.Render(prefix),
+		"multi-select box":  theme.SelectionCheckStyle.Render("[x]"),
+		"tree connectors":   theme.MutedStyle.Render(prefix),
+		"unpainted spacing": theme.SelectionCheckStyle.Render("[x]") + " " + theme.MutedStyle.Render(prefix),
 	} {
 		if !strings.Contains(line, want) {
 			t.Fatalf("cursor row repainted its %s:\n%q", name, line)
@@ -275,14 +276,14 @@ func TestCursorRowKeepsItsRowTint(t *testing.T) {
 				ID: "waiting", ShortID: 1, Title: "Blocked on review",
 				WorkflowState: models.StateWaiting, StateChangedAt: time.Now().AddDate(0, 0, -2),
 			},
-			tint: WaitingRowStyle,
+			tint: theme.WaitingRowStyle,
 		},
 		"overdue": {
 			task: &models.Task{
 				ID: "overdue", ShortID: 2, Title: "Past due", DueDate: &overdue,
 				WorkflowState: models.StateBacklog,
 			},
-			tint: OverdueRowStyle,
+			tint: theme.OverdueRowStyle,
 		},
 	}
 
@@ -294,7 +295,7 @@ func TestCursorRowKeepsItsRowTint(t *testing.T) {
 		if !strings.Contains(line, backgroundParams(t, tc.tint.GetBackground())) {
 			t.Fatalf("%s cursor row dropped its row tint:\n%q", name, line)
 		}
-		if !strings.Contains(line, backgroundParams(t, ColorCursorBarBg)) {
+		if !strings.Contains(line, backgroundParams(t, theme.ColorCursorBarBg)) {
 			t.Fatalf("%s cursor row dropped its bar:\n%q", name, line)
 		}
 	}
@@ -312,20 +313,20 @@ func TestCursorFlashWidensTheMark(t *testing.T) {
 
 	line := outliner.renderOutlinerTaskRow(row, true, 80, 80, 0, nil)
 
-	flashBg := backgroundParams(t, ColorFlashBg)
+	flashBg := backgroundParams(t, theme.ColorFlashBg)
 	if got := strings.Count(line, flashBg); got < 2 {
 		t.Fatalf("flashing cursor row painted %d gutter pieces, want the bar and the columns past it:\n%q", got, line)
 	}
-	if !strings.Contains(line, MutedStyle.Background(ColorFlashBg).Render(prefix)) {
+	if !strings.Contains(line, theme.MutedStyle.Background(theme.ColorFlashBg).Render(prefix)) {
 		t.Fatalf("flashing cursor row left its tree connectors unpainted:\n%q", line)
 	}
-	if !strings.Contains(line, backgroundParams(t, ColorFlashDimBg)) {
+	if !strings.Contains(line, backgroundParams(t, theme.ColorFlashDimBg)) {
 		t.Fatalf("flashing cursor row kept the resting trailing fill:\n%q", line)
 	}
-	if strings.Contains(line, backgroundParams(t, ColorCursorBarBg)) {
+	if strings.Contains(line, backgroundParams(t, theme.ColorCursorBarBg)) {
 		t.Fatalf("flashing cursor row painted the resting bar color too:\n%q", line)
 	}
-	if strings.Contains(line, backgroundParams(t, ColorSelectedDimBg)) {
+	if strings.Contains(line, backgroundParams(t, theme.ColorSelectedDimBg)) {
 		t.Fatalf("flashing cursor row painted both trailing fills at once:\n%q", line)
 	}
 }

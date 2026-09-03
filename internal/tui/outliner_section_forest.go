@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // sectionTaskForest is a presentation-only hierarchy containing tasks from one
@@ -20,7 +21,7 @@ type sectionTaskForest struct {
 // both tasks share the same state group; a cross-group child becomes a root in
 // its own group and carries an ancestor breadcrumb when flattened.
 func buildStateGroupTaskForests(tasks []*models.Task) map[models.WorkflowStateGroup]*sectionTaskForest {
-	return buildTaskForestsByStateGroup(tasks, taskStateGroup)
+	return buildTaskForestsByStateGroup(tasks, theme.TaskStateGroup)
 }
 
 func buildTaskForestsByStateGroup(

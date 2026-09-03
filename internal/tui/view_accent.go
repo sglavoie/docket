@@ -6,28 +6,16 @@ import (
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
-// viewAccentMap maps PresentationID to its category accent color.
-// Unmapped views (pickers, editors, selectors) inherit from parent via stack walk.
-var viewAccentMap map[presentation.PresentationID]color.Color
-
-// buildViewAccentMap initializes the accent map. Called from ApplyTheme so that
-// palette overrides are reflected on every theme change. The view→category
-// assignment is independent from route identity; this resolves each
-// presentation's category against the active theme.
-func buildViewAccentMap() {
-	m := make(map[presentation.PresentationID]color.Color)
-	for _, vt := range allPresentations() {
-		if c := accentColorForCategory(presentationAccentCategory(vt)); c != nil {
-			m[vt] = c
-		}
-	}
-	viewAccentMap = m
-}
-
 // ViewAccentColor returns the accent color for a view type, or nil if unmapped.
+// Unmapped views (pickers, editors, selectors) inherit from parent via stack
+// walk, which is what the nil answer feeds.
+//
+// The view→category assignment is independent from route identity, and the
+// category→color resolution reads the active theme's accent vars, so the answer
+// already follows every ApplyTheme without being cached. It used to be a map
+// rebuilt from ApplyTheme; that rebuild was the one call the theme layer made
+// upward into route vocabulary, and the map only ever memoized two switches
+// over a sixteen-value enum.
 func ViewAccentColor(vt presentation.PresentationID) color.Color {
-	if viewAccentMap == nil {
-		return nil
-	}
-	return viewAccentMap[vt]
+	return accentColorForCategory(presentationAccentCategory(vt))
 }

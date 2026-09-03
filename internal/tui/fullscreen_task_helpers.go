@@ -6,6 +6,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // renderFullscreenTitle renders a title line for fullscreen views with optional subtitle.
@@ -30,13 +31,13 @@ func fullscreenTitleStyle(accent ...color.Color) lipgloss.Style {
 	if len(accent) > 0 && accent[0] != nil {
 		return lipgloss.NewStyle().Bold(true).Foreground(accent[0])
 	}
-	return TitleStyle
+	return theme.TitleStyle
 }
 
 func renderFullscreenTitleContent(titleContent, subtitle string) string {
 	t := titleContent
 	if subtitle != "" {
-		t += "  " + MutedStyle.Render(subtitle)
+		t += "  " + theme.MutedStyle.Render(subtitle)
 	}
 	return t
 }
@@ -47,7 +48,7 @@ func renderFullscreenTitleContentWithPulse(titleContent, subtitle string, pulse 
 	}
 	context := ""
 	if subtitle != "" {
-		context = MutedStyle.Render(subtitle)
+		context = theme.MutedStyle.Render(subtitle)
 	}
 	return renderOperationalTitle(operationalTitleSpec{
 		Surface: titleContent,
@@ -61,7 +62,7 @@ func renderTaskScopedFullscreenTitleWithPulse(prefix string, task *models.Task, 
 	if task == nil {
 		return renderFullscreenTitleContentWithPulse(titleStyle.Render(prefix), subtitle, pulse, width)
 	}
-	titleContent := titleStyle.Render(prefix) + TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(task.Title)
+	titleContent := titleStyle.Render(prefix) + theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{}).Render(task.Title)
 	return renderFullscreenTitleContentWithPulse(titleContent, subtitle, pulse, width)
 }
 
@@ -72,5 +73,5 @@ func renderPriorityBadge(priority int) string {
 	if models.ValidatePriority(priority, false) != nil {
 		return ""
 	}
-	return GetPriorityStyle(priority).Render(PriorityIcon(priority))
+	return theme.GetPriorityStyle(priority).Render(theme.PriorityIcon(priority))
 }

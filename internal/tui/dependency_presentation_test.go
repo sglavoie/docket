@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // dependencyTestIndex builds the reference index the render path reads. A test
@@ -97,7 +98,7 @@ func TestDependencyIndicatorColorReadsTargetOutlook(t *testing.T) {
 
 	// Both targets open: one blocked reference is enough.
 	got := renderDependencyIndicator(source, dependencyTestIndex(alpha, beta))
-	if want := DependencyIndicatorBlockedStyle.Render("~0/2"); got != want {
+	if want := theme.DependencyIndicatorBlockedStyle.Render("~0/2"); got != want {
 		t.Fatalf("open targets rendered %q, want %q", got, want)
 	}
 
@@ -106,7 +107,7 @@ func TestDependencyIndicatorColorReadsTargetOutlook(t *testing.T) {
 	// half moves to say how much of the wait is already over.
 	sibling.WorkflowState = models.StateDone
 	got = renderDependencyIndicator(source, dependencyTestIndex(alpha, beta))
-	if want := DependencyIndicatorBlockedStyle.Render("~1/2"); got != want {
+	if want := theme.DependencyIndicatorBlockedStyle.Render("~1/2"); got != want {
 		t.Fatalf("one open target rendered %q, want %q", got, want)
 	}
 
@@ -114,7 +115,7 @@ func TestDependencyIndicatorColorReadsTargetOutlook(t *testing.T) {
 	// exists to name a remainder, and there is none.
 	remote.WorkflowState = models.StateDone
 	got = renderDependencyIndicator(source, dependencyTestIndex(alpha, beta))
-	if want := DependencyIndicatorSettledStyle.Render("~2"); got != want {
+	if want := theme.DependencyIndicatorSettledStyle.Render("~2"); got != want {
 		t.Fatalf("settled targets rendered %q, want %q", got, want)
 	}
 
@@ -122,7 +123,7 @@ func TestDependencyIndicatorColorReadsTargetOutlook(t *testing.T) {
 	// second locator points somewhere this view cannot read, which the trailing
 	// `?` says and the muted tier colors.
 	got = renderDependencyIndicator(source, dependencyTestIndex(alpha))
-	if want := MutedStyle.Render("~1/2?"); got != want {
+	if want := theme.MutedStyle.Render("~1/2?"); got != want {
 		t.Fatalf("unreadable target rendered %q, want %q", got, want)
 	}
 
@@ -130,7 +131,7 @@ func TestDependencyIndicatorColorReadsTargetOutlook(t *testing.T) {
 	// read that project and found nothing blocked in it.
 	alpha.Tasks = []*models.Task{source}
 	got = renderDependencyIndicator(source, dependencyTestIndex(alpha, beta))
-	if want := DependencyIndicatorSettledStyle.Render("~2"); got != want {
+	if want := theme.DependencyIndicatorSettledStyle.Render("~2"); got != want {
 		t.Fatalf("absent target rendered %q, want %q", got, want)
 	}
 }

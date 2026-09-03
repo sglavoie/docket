@@ -5,6 +5,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // TaskCommentsModel displays and manages comments for a task.
@@ -51,14 +52,14 @@ func NewTaskCommentsModel(task *models.Task, project *models.Project) *TaskComme
 	ti.CharLimit = 2000
 	ti.SetHeight(4)
 	ti.ShowLineNumbers = false
-	applyThemedTextarea(&ti)
+	theme.ApplyThemedTextarea(&ti)
 
 	editTi := textarea.New()
 	editTi.Placeholder = "Edit comment text..."
 	editTi.CharLimit = 2000
 	editTi.SetHeight(6)
 	editTi.ShowLineNumbers = false
-	applyThemedTextarea(&editTi)
+	theme.ApplyThemedTextarea(&editTi)
 
 	return &TaskCommentsModel{
 		task:          task,

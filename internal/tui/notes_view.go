@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func (s NotesScope) valid() bool {
@@ -154,7 +155,7 @@ func (m *NotesViewModel) initSearchInput() {
 	m.searchInput.Placeholder = "Search note titles and bodies..."
 	m.searchInput.CharLimit = 200
 	m.searchInput.SetWidth(SearchInputWidth(m.Width()))
-	applyThemedTextInput(&m.searchInput)
+	theme.ApplyThemedTextInput(&m.searchInput)
 }
 
 // setOwnerProjects rebuilds the owner catalog.

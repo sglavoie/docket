@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func TestFilterChordPresetsCarryValuesAndStatuses(t *testing.T) {
@@ -378,7 +379,7 @@ func TestFilterStatePickerShowsProspectiveCountsFromOtherActiveFilters(t *testin
 	}
 
 	waiting := items["state:waiting"].SecondaryText
-	lightRedZero := lipgloss.NewStyle().Foreground(ColorError).Faint(true).Render("0")
+	lightRedZero := lipgloss.NewStyle().Foreground(theme.ColorError).Faint(true).Render("0")
 	if !strings.HasSuffix(waiting, "⋅ "+lightRedZero) {
 		t.Errorf("zero count is not rendered with the prospective zero style: %q", waiting)
 	}

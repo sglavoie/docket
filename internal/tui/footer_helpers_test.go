@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func TestGuidanceRequiredHintsEvictOptionalAndSupplemental(t *testing.T) {
@@ -143,11 +144,11 @@ func TestRenderedGuidanceColorsKeysAndPreservesPlainText(t *testing.T) {
 	}
 	rendered := renderGuidanceText(spec, 60)
 	for _, want := range []string{
-		HelpKeyStyle.Render("Enter"),
-		HelpStyle.Render(" create"),
-		HelpKeyStyle.Render("Esc"),
-		HelpStyle.Render(" cancel"),
-		HelpStyle.Render("50%"),
+		theme.HelpKeyStyle.Render("Enter"),
+		theme.HelpStyle.Render(" create"),
+		theme.HelpKeyStyle.Render("Esc"),
+		theme.HelpStyle.Render(" cancel"),
+		theme.HelpStyle.Render("50%"),
 	} {
 		if !strings.Contains(rendered, want) {
 			t.Fatalf("rendered guidance %q omits styled fragment %q", rendered, want)

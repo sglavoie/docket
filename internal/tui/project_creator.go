@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // ProjectCreatorModel handles creating a new project via TUI.
@@ -46,7 +47,7 @@ func NewProjectCreatorModel(runtime *config.RuntimeState, manager *config.Manage
 // SetSize sets the view dimensions.
 func (m *ProjectCreatorModel) SetSize(width, height int) {
 	m.width = width
-	formFactory.ResizeTextInputWithReserve(&m.nameInput, width, FormLabelWidth)
+	formFactory.ResizeTextInputWithReserve(&m.nameInput, width, theme.FormLabelWidth)
 }
 
 func (m *ProjectCreatorModel) SupportsHelpShortcut() bool { return false }
@@ -221,9 +222,9 @@ func renderProjectSlugPreview(slug string, width int, indent, suffix string) str
 		budget = 1
 	}
 
-	line := indent + MutedStyle.Render(prefix+truncateToVisualWidth(slug, budget))
+	line := indent + theme.MutedStyle.Render(prefix+truncateToVisualWidth(slug, budget))
 	if suffix != "" {
-		line += InProgressStyle.Render(suffix)
+		line += theme.InProgressStyle.Render(suffix)
 	}
 	return line
 }

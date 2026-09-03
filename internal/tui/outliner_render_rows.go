@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
@@ -88,9 +89,9 @@ func (p cursorPaint) bar(style lipgloss.Style, text string) string {
 	case !p.marked:
 		return style.Render(text)
 	case p.flash:
-		return CursorFlashBarStyle.Render(text)
+		return theme.CursorFlashBarStyle.Render(text)
 	default:
-		return CursorBarStyle.Render(text)
+		return theme.CursorBarStyle.Render(text)
 	}
 }
 
@@ -103,16 +104,16 @@ func (p cursorPaint) gutterBg() color.Color {
 	if !p.flash {
 		return nil
 	}
-	return ColorFlashBg
+	return theme.ColorFlashBg
 }
 
 // trail styles the columns past the row's content, dim enough to read as the
 // cursor's reach rather than compete with the bar for the eye.
 func (p cursorPaint) trail() lipgloss.Style {
 	if p.flash {
-		return CursorFlashTrailStyle
+		return theme.CursorFlashTrailStyle
 	}
-	return CursorTrailStyle
+	return theme.CursorTrailStyle
 }
 
 // gutterPiece renders one leading structural glyph in its own style, carrying
@@ -120,7 +121,10 @@ func (p cursorPaint) trail() lipgloss.Style {
 // rather than on the assembled gutter: a style applied over already-styled text
 // ends at that text's own reset, which would leave the rest of the block bare.
 func gutterPiece(bg color.Color, style lipgloss.Style, text string) string {
-	return withOptionalBg(style, bg).Render(text)
+	if bg != nil {
+		style = style.Background(bg)
+	}
+	return style.Render(text)
 }
 
 // gutterSpace paints one of the gutter's structural blank columns, which carry
@@ -155,12 +159,12 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 		displayName = models.StateGroupBacklog.Label()
 	}
 
-	sectionStyle := GetWorkflowStateGroupStyle(models.StateGroupBacklog)
+	sectionStyle := theme.GetWorkflowStateGroupStyle(models.StateGroupBacklog)
 	if row.StateGroup.IsValid() {
-		sectionStyle = GetWorkflowStateGroupStyle(row.StateGroup)
+		sectionStyle = theme.GetWorkflowStateGroupStyle(row.StateGroup)
 	}
 	if row.PromotedTag == reviewLaneKey {
-		sectionStyle = ViewModeReviewStyle
+		sectionStyle = theme.ViewModeReviewStyle
 	}
 	prefix := "@ "
 	if row.IsComputedHeader {
@@ -183,7 +187,7 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 		if project != nil {
 			projectName = project.Name
 		}
-		content += "  " + projectColorStyle(project).Render("["+projectName+"]")
+		content += "  " + theme.ProjectColorStyle(project).Render("["+projectName+"]")
 	}
 	content = appendManualOrderMarker(content, row, m.sort.Field, rowWidth-lipgloss.Width(gutter))
 
@@ -213,7 +217,7 @@ func appendManualOrderMarker(content string, row outlinerRow, field SortField, b
 	if field == SortByDefault || !rowKeepsManualOrder(row) {
 		return content
 	}
-	suffix := MutedStyle.Render("  · manual")
+	suffix := theme.MutedStyle.Render("  · manual")
 	if lipgloss.Width(content)+lipgloss.Width(suffix) > budget {
 		return content
 	}
@@ -236,17 +240,17 @@ func (m *OutlinerModel) renderOutlinerProjectHeaderRow(row outlinerRow, selected
 			projectSlug = project.Name
 		}
 	}
-	badge := projectColorStyle(project).
+	badge := theme.ProjectColorStyle(project).
 		Bold(true).
 		Render("[" + projectSlug + "]")
-	indicator := IconExpanded
+	indicator := theme.IconExpanded
 	if m.isSectionRowCollapsed(row) {
-		indicator = IconCollapsed
+		indicator = theme.IconCollapsed
 	}
 	paint := m.cursorPaintFor(selected)
 	bg := paint.gutterBg()
 	gutter := paint.bar(lipgloss.NewStyle(), " ") +
-		gutterPiece(bg, MutedStyle, indicator) +
+		gutterPiece(bg, theme.MutedStyle, indicator) +
 		gutterSpace(bg)
 	// The marker leads the badge so a pinned project's `*` sits at the same
 	// column as a pinned task's one row below. It goes on before the pressure
@@ -259,7 +263,7 @@ func (m *OutlinerModel) renderOutlinerProjectHeaderRow(row outlinerRow, selected
 		content = pinnedMarker() + badge
 	}
 	if row.SectionCount > 0 {
-		content += " " + MutedStyle.Render(fmt.Sprintf("(%d)", row.SectionCount))
+		content += " " + theme.MutedStyle.Render(fmt.Sprintf("(%d)", row.SectionCount))
 	}
 	content = appendProjectHeaderPressure(content, row, rowWidth-lipgloss.Width(gutter))
 
@@ -280,13 +284,13 @@ func (m *OutlinerModel) renderOutlinerProjectHeaderRow(row outlinerRow, selected
 func appendProjectHeaderPressure(content string, row outlinerRow, budget int) string {
 	var parts []string
 	if row.OverdueCount > 0 {
-		parts = append(parts, PreviewWarningStyle.Render(fmt.Sprintf("! overdue %d", row.OverdueCount)))
+		parts = append(parts, theme.PreviewWarningStyle.Render(fmt.Sprintf("! overdue %d", row.OverdueCount)))
 	}
 	if row.TodayCount > 0 {
-		parts = append(parts, MutedStyle.Render(fmt.Sprintf("◷ today %d", row.TodayCount)))
+		parts = append(parts, theme.MutedStyle.Render(fmt.Sprintf("◷ today %d", row.TodayCount)))
 	}
 	for ; len(parts) > 0; parts = parts[:len(parts)-1] {
-		suffix := "  " + strings.Join(parts, MutedStyle.Render(" · "))
+		suffix := "  " + strings.Join(parts, theme.MutedStyle.Render(" · "))
 		if lipgloss.Width(content)+lipgloss.Width(suffix) <= budget {
 			return content + suffix
 		}
@@ -305,13 +309,13 @@ func (m *OutlinerModel) renderOutlinerChecklistRow(row outlinerRow, selected boo
 	box := "[ ] "
 	if row.ChecklistDone {
 		box = "[x] "
-		text = MutedStyle.Render(text)
+		text = theme.MutedStyle.Render(text)
 	}
 	paint := m.cursorPaintFor(selected)
 	prefixBudget := max(min(rowWidth/3, 12), 4)
-	gutter := paint.bar(lipgloss.NewStyle(), RenderCursorPrefix()) +
-		gutterPiece(paint.gutterBg(), MutedStyle, compactOutlinerTreePrefix(row.prefix, prefixBudget))
-	content := MutedStyle.Render(box) + text
+	gutter := paint.bar(lipgloss.NewStyle(), theme.RenderCursorPrefix()) +
+		gutterPiece(paint.gutterBg(), theme.MutedStyle, compactOutlinerTreePrefix(row.prefix, prefixBudget))
+	content := theme.MutedStyle.Render(box) + text
 
 	if selected {
 		return outlinerCursorRow(gutter, content, rowWidth, paint)
@@ -341,7 +345,7 @@ func (m *OutlinerModel) renderOutlinerNoteRow(
 	entry := m.searchNoteMatches[row.NoteRow]
 	paint := m.cursorPaintFor(selected)
 	bg := paint.gutterBg()
-	gutter := paint.bar(lipgloss.NewStyle(), RenderCursorPrefix())
+	gutter := paint.bar(lipgloss.NewStyle(), theme.RenderCursorPrefix())
 	if m.multiSelectMode {
 		// A note is not selectable, so the checkbox column is held open rather than
 		// drawn: an empty box beside the task boxes would advertise a membership
@@ -349,9 +353,9 @@ func (m *OutlinerModel) renderOutlinerNoteRow(
 		gutter += gutterPiece(bg, lipgloss.NewStyle(), "   ") + gutterSpace(bg)
 	}
 
-	glyph := MutedStyle.Render(noteRowGlyph)
+	glyph := theme.MutedStyle.Render(noteRowGlyph)
 	if colLayout != nil && colLayout.HasStatus {
-		glyph = PadBadge(glyph, colLayout.StatusWidth)
+		glyph = theme.PadBadge(glyph, colLayout.StatusWidth)
 	}
 	priorityColumn := ""
 	if colLayout != nil && colLayout.HasPriority {
@@ -359,7 +363,7 @@ func (m *OutlinerModel) renderOutlinerNoteRow(
 	}
 	owner := ""
 	if entry.row.OwnerLabel != "" {
-		owner = "  " + MutedStyle.Render("["+entry.row.OwnerLabel+"]")
+		owner = "  " + theme.MutedStyle.Render("["+entry.row.OwnerLabel+"]")
 	}
 	cue := taskMatchSourceCue(row)
 
@@ -386,7 +390,7 @@ func (m *OutlinerModel) renderOutlinerNoteRow(
 		title = truncateToVisualWidth(entry.row.Note.Title, titleWidth())
 	}
 	content := glyph + " " + priorityColumn +
-		HighlightText(title, entry.match.titlePositions, NormalStyle) + owner + cue
+		HighlightText(title, entry.match.titlePositions, theme.NormalStyle) + owner + cue
 
 	if selected {
 		return outlinerCursorRow(gutter, content, rowWidth, paint)

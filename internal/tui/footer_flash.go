@@ -8,6 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/theme"
 
 	"charm.land/lipgloss/v2"
 )
@@ -42,13 +43,13 @@ const (
 func (s footerFlashSeverity) color() color.Color {
 	switch s {
 	case flashSuccess:
-		return ColorSuccess
+		return theme.ColorSuccess
 	case flashWarning:
-		return ColorWarning
+		return theme.ColorWarning
 	case flashError:
-		return ColorError
+		return theme.ColorError
 	default:
-		return ColorPrimary
+		return theme.ColorPrimary
 	}
 }
 
@@ -210,7 +211,7 @@ func footerFlashSegmentWidth(width int) int {
 // footer content. It arrives with the divider impact and eases all the way back
 // to the theme background, leaving the moving divider as the dominant cue.
 func (m *AppModel) footerFlashBackgroundColor() color.Color {
-	background := ColorBackground
+	background := theme.ColorBackground
 	if !m.footerFlash.active() {
 		return background
 	}

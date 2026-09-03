@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // How the outstanding-conflict count renders. Counting the bundles it reports
@@ -26,8 +28,8 @@ func TestConflictIndicatorTextRendersNothingBelowOne(t *testing.T) {
 // indicator is a status-strip line, so it appears in the strip body, reserves
 // height through statusStripHeight, and leads the transient lines below it.
 func TestConflictIndicatorRendersInTheStatusStrip(t *testing.T) {
-	ApplyTheme(ThemeConfig{Name: ""})
-	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
 	const width = 80
 	m := &OutlinerModel{}

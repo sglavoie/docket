@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // The dropdown is drawn inline, immediately under the bar row and left-padded to
@@ -69,7 +70,7 @@ func (m *OutlinerModel) renderOutlinerMenuDropdown(width int) string {
 	surface.SetCursorToID(menuBarDropdownItemID(cursor))
 	content := RenderCompactListSurface(surface, innerWidth-4, listHeight)
 	box := renderOverlayBox(content, innerWidth, "", "",
-		lipgloss.NewStyle().Foreground(ColorPrimary))
+		lipgloss.NewStyle().Foreground(theme.ColorPrimary))
 	box = fitOverlayPopupHeight(box, maxBoxRows)
 	return indentMenuBarDropdown(box, menuBarDropdownStartCol(menus, width, m.menuBarMenuIndex, box), width)
 }

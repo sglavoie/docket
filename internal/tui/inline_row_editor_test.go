@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func inlineEditorFixture(t *testing.T) (*OutlinerModel, *models.Project, *models.Task, *models.Task) {
@@ -213,10 +214,10 @@ func TestInlineRowEditorWideNarrowNestedAndErrorRendering(t *testing.T) {
 }
 
 func TestInlineRowEditorKeepsSelectedCursorVisibleAtEveryPositionAndTheme(t *testing.T) {
-	for _, theme := range []string{"dark", "light"} {
-		t.Run(theme, func(t *testing.T) {
-			ApplyTheme(ThemeConfig{Name: theme})
-			t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+	for _, themeName := range []string{"dark", "light"} {
+		t.Run(themeName, func(t *testing.T) {
+			theme.ApplyTheme(theme.ThemeConfig{Name: themeName})
+			t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
 			out, project, _, child := inlineEditorFixture(t)
 			out.quickEdit.EnterWithContext(child, project, []*models.Project{project}, false)
@@ -234,11 +235,11 @@ func TestInlineRowEditorKeepsSelectedCursorVisibleAtEveryPositionAndTheme(t *tes
 				if styles.Cursor.Blink {
 					t.Errorf("cursor at position %d is blinking, want steady", position)
 				}
-				if got := styles.Focused.Text.GetForeground(); got != ColorSelectedFg {
-					t.Errorf("selected input foreground at position %d = %v, want %v", position, got, ColorSelectedFg)
+				if got := styles.Focused.Text.GetForeground(); got != theme.ColorSelectedFg {
+					t.Errorf("selected input foreground at position %d = %v, want %v", position, got, theme.ColorSelectedFg)
 				}
-				if got := styles.Focused.Text.GetBackground(); got != ColorSelectedBg {
-					t.Errorf("selected input background at position %d = %v, want %v", position, got, ColorSelectedBg)
+				if got := styles.Focused.Text.GetBackground(); got != theme.ColorSelectedBg {
+					t.Errorf("selected input background at position %d = %v, want %v", position, got, theme.ColorSelectedBg)
 				}
 			}
 		})

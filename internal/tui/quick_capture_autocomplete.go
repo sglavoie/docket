@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // getTagSuggestions returns matching tags for the partial query.
@@ -230,7 +231,7 @@ func (q *quickCaptureInput) structuralSuggestions(partial string, candidates []*
 		// Truncate title if too long (width-aware).
 		titleLimit := max(q.width-15, 10)
 		title := truncateToVisualWidth(task.Title, titleLimit)
-		titleRendered := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).Render(title)
+		titleRendered := theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{}).Render(title)
 		suggestions = append(suggestions, ACSuggestion{
 			Display: fmt.Sprintf("%s%d %s", displayPrefix, task.ShortID, titleRendered),
 			Value:   strconv.Itoa(task.ShortID),

@@ -401,10 +401,6 @@ dependency	internal/tui/quick_edit_preview.go	capturedDependencyRef	1
 dependency	internal/tui/quick_edit_preview.go	dependencyAdds	2
 dependency	internal/tui/quick_edit_preview.go	dependencyClear	1
 dependency	internal/tui/quick_edit_preview.go	dependencyRemovals	1
-dependency	internal/tui/styles_misc.go	DependencyIndicatorBlockedStyle	1
-dependency	internal/tui/styles_misc.go	DependencyIndicatorSettledStyle	1
-dependency	internal/tui/styles_theme_rebuild.go	DependencyIndicatorBlockedStyle	1
-dependency	internal/tui/styles_theme_rebuild.go	DependencyIndicatorSettledStyle	1
 dependency	internal/tui/task_action_operations.go	ValueProviderFilterDependency	1
 dependency	internal/tui/task_action_operations.go	dependencyFilterShortcutForToken	1
 dependency	internal/tui/task_composer.go	Dependencies	1
@@ -412,6 +408,10 @@ dependency	internal/tui/task_composer.go	dependencyLocators	1
 dependency	internal/tui/task_operation_commands.go	Dependencies	1
 dependency	internal/tui/task_operation_execute.go	Dependencies	1
 dependency	internal/tui/task_operation_execute.go	TaskOperationSetDependencies	1
+dependency	internal/tui/theme/styles_misc.go	DependencyIndicatorBlockedStyle	1
+dependency	internal/tui/theme/styles_misc.go	DependencyIndicatorSettledStyle	1
+dependency	internal/tui/theme/styles_theme_rebuild.go	DependencyIndicatorBlockedStyle	1
+dependency	internal/tui/theme/styles_theme_rebuild.go	DependencyIndicatorSettledStyle	1
 recurrence	internal/config/pre_consolidation_v6_snapshot_audit.go	recurrenceCount	3
 recurrence	internal/storage/format/legacy_v4_metadata_decode.go	V5TaskRecurrence	2
 recurrence	internal/storage/format/legacy_v4_metadata_decode.go	convertLegacyV4Recurrence	1

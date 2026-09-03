@@ -1,4 +1,4 @@
-package tui
+package theme
 
 import (
 	"image/color"
@@ -10,19 +10,19 @@ import (
 )
 
 // ProjectColorPair is a durable project identity color in both shipped themes.
-// Entries in projectColorPalette are indexed by models.Project.ColorSlot - 1.
+// Entries in ProjectColorPalette are indexed by models.Project.ColorSlot - 1.
 type ProjectColorPair struct {
 	Dark  string
 	Light string
 }
 
-// projectColorPalette is frozen persisted-data infrastructure. Never reorder
+// ProjectColorPalette is frozen persisted-data infrastructure. Never reorder
 // entries: ColorSlot values stored in the workspace catalog address this table
 // directly. Changing an existing literal requires an explicit migration.
 //
 // The table was curated once from the deterministic HSL/CIE76 recipe documented
 // in the durable project colors plan. It is not generated at application startup.
-var projectColorPalette = [config.ProjectColorSlotCount]ProjectColorPair{
+var ProjectColorPalette = [config.ProjectColorSlotCount]ProjectColorPair{
 	{Dark: "#e87d7d", Light: "#aa1818"},
 	{Dark: "#56fb56", Light: "#0a760a"},
 	{Dark: "#df56fb", Light: "#8c0da5"},
@@ -73,24 +73,24 @@ var projectColorPalette = [config.ProjectColorSlotCount]ProjectColorPair{
 	{Dark: "#f09e4c", Light: "#9b5208"},
 }
 
-// projectColor resolves the active-theme color for a project's durable slot.
+// ProjectColor resolves the active-theme color for a project's durable slot.
 // Empty theme names intentionally use the dark palette, matching theme defaults.
-func projectColor(project *models.Project) color.Color {
-	if project == nil || project.ColorSlot < 1 || project.ColorSlot > len(projectColorPalette) {
+func ProjectColor(project *models.Project) color.Color {
+	if project == nil || project.ColorSlot < 1 || project.ColorSlot > len(ProjectColorPalette) {
 		return nil
 	}
 
-	pair := projectColorPalette[project.ColorSlot-1]
-	if activeThemeName == "light" {
+	pair := ProjectColorPalette[project.ColorSlot-1]
+	if ActiveThemeName == "light" {
 		return lipgloss.Color(pair.Light)
 	}
 	return lipgloss.Color(pair.Dark)
 }
 
-// projectColorStyle returns the project's foreground style, falling back to
+// ProjectColorStyle returns the project's foreground style, falling back to
 // the existing muted style for nil, unassigned, or invalid projects.
-func projectColorStyle(project *models.Project) lipgloss.Style {
-	if foreground := projectColor(project); foreground != nil {
+func ProjectColorStyle(project *models.Project) lipgloss.Style {
+	if foreground := ProjectColor(project); foreground != nil {
 		return lipgloss.NewStyle().Foreground(foreground)
 	}
 	return MutedStyle

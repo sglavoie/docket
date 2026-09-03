@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 const (
@@ -205,8 +206,8 @@ func TestNotesPreviewAnchorFollowsTheEffectiveQueryAndCaseMode(t *testing.T) {
 // that only exists across a wrap point has no rendered line to open at.
 func TestNotesPreviewAnchorFallsBackToTheTopWhenTheRegionIsUnlocatable(t *testing.T) {
 	lines := []string{
-		WarningIconStyle.Render("alpha"),
-		MutedStyle.Render("beta"),
+		theme.WarningIconStyle.Render("alpha"),
+		theme.MutedStyle.Render("beta"),
 	}
 	if got := notesPreviewAnchor(lines, "gamma", false); got != 0 {
 		t.Fatalf("unlocatable region anchored at %d, want the top", got)

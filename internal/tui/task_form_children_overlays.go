@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // TaskFormChecklistItemEditedMsg is emitted when a checklist item edit is confirmed.
@@ -30,8 +31,8 @@ func (m *TaskFormModel) handleChecklistEditKey(msg tea.KeyPressMsg) (tea.Cmd, bo
 
 // renderChecklistEditOverlay renders the inline checklist item edit overlay.
 func (m *TaskFormModel) renderChecklistEditOverlay() string {
-	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
-	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Edit Checklist Item")
+	borderStyle := lipgloss.NewStyle().Foreground(theme.ColorPrimary)
+	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render("Edit Checklist Item")
 
 	titleMinInner := lipgloss.Width(title) + 6 - 2
 	maxWidth := min(max(m.width*2/3, 40), m.width-4)
@@ -41,7 +42,7 @@ func (m *TaskFormModel) renderChecklistEditOverlay() string {
 	), max(innerWidth-4, 1))
 
 	m.checklistItemInput.SetWidth(max(innerWidth-5, 1))
-	applyThemedTextInput(&m.checklistItemInput)
+	theme.ApplyThemedTextInput(&m.checklistItemInput)
 	content := " " + m.checklistItemInput.View()
 
 	return renderOverlayBox(content, innerWidth, title, footerText, borderStyle)
@@ -75,8 +76,8 @@ func (m *TaskFormModel) handleSubtaskEditKey(msg tea.KeyPressMsg) (tea.Cmd, bool
 
 // renderSubtaskEditOverlay renders the inline subtask title editor.
 func (m *TaskFormModel) renderSubtaskEditOverlay() string {
-	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
-	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Edit Subtask")
+	borderStyle := lipgloss.NewStyle().Foreground(theme.ColorPrimary)
+	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render("Edit Subtask")
 
 	titleMinInner := lipgloss.Width(title) + 6 - 2
 	maxWidth := min(max(m.width*2/3, 40), m.width-4)
@@ -86,7 +87,7 @@ func (m *TaskFormModel) renderSubtaskEditOverlay() string {
 	), max(innerWidth-4, 1))
 
 	m.subtaskItemInput.SetWidth(max(innerWidth-6, 1))
-	applyThemedTextInput(&m.subtaskItemInput)
+	theme.ApplyThemedTextInput(&m.subtaskItemInput)
 
 	return renderOverlayBox(" "+m.subtaskItemInput.View(), innerWidth, title, footerText, borderStyle)
 }

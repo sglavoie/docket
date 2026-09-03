@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // TextEditorModel handles editing a single text field in a popup overlay.
@@ -32,7 +33,7 @@ func NewTextEditorModel(fieldName, currentValue string) *TextEditorModel {
 	ta.ShowLineNumbers = false
 	ta.SetPromptFunc(0, func(info textarea.PromptInfo) string { return "" })
 	ta.Focus()
-	applyThemedTextarea(&ta)
+	theme.ApplyThemedTextarea(&ta)
 
 	return &TextEditorModel{
 		textarea:     ta,
@@ -153,7 +154,7 @@ func (m *TextEditorModel) View() tea.View {
 
 	b.WriteString(renderFullscreenTitleWithPulse(title, "", m.currentWorkspacePulse(), m.width))
 	b.WriteString("\n\n")
-	applyThemedTextarea(&m.textarea)
+	theme.ApplyThemedTextarea(&m.textarea)
 	b.WriteString(m.textarea.View())
 	b.WriteString("\n")
 

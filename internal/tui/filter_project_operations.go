@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // The F chord owns the population facets. They are separate operations from the
@@ -87,7 +88,7 @@ func (m *AppModel) newFilterProjectTagsPicker(
 		// take the same two styles: a chip for a descriptive tag, the badge for a
 		// behavioral one. Otherwise parked would render plain on one project-tag
 		// surface and in warning on the other.
-		style := tagChipStyle(name)
+		style := theme.TagChipStyle(name)
 		item := ListItem{
 			ID:            ListItemID("tag:" + name),
 			CategoryID:    tagDescriptiveCategory,

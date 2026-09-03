@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // Autocomplete mode constants
@@ -155,7 +156,7 @@ func newQuickCaptureInput(project *models.Project, allProjects []*models.Project
 	input.ShowLineNumbers = false
 	input.SetPromptFunc(0, func(info textarea.PromptInfo) string { return "" })
 	input.Focus()
-	applyThemedTextarea(&input)
+	theme.ApplyThemedTextarea(&input)
 
 	triggers := quickCaptureTriggers(skipProject)
 

@@ -21,6 +21,12 @@
 #     mode catalog is vocabulary that operation, route, lens, projecthub and
 #     query all read, so it cannot sit at L7.
 #
+# One row was corrected while its package was being extracted:
+#   - view_accent.go is route, not theme (Session 2.1). It resolves a
+#     PresentationID to an accent category and only then asks theme for a color,
+#     so its whole vocabulary is route's; assigned to theme it was the one file
+#     that made an L0 package call upward into L4.
+#
 # Test files are deliberately absent. They follow the production file they
 # audit, except the uitest harness and the registry-union parity tests, which
 # context.md keeps in the root shell.
@@ -459,7 +465,7 @@ typed_overlay.go	route	L4	assigned
 typed_route.go	route	L4	assigned
 undo_restore_status.go	status	L0	assigned
 view.go	route	L4	assigned
-view_accent.go	theme	L0	assigned
+view_accent.go	route	L4	assigned
 view_helpers.go	chrome	L1	assigned
 workflow_state_helpers.go	theme	L0	assigned
 workspace_ledger.go	tui	L8	assigned

@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // handleTaskCRUDMessages handles task CRUD messages (create, edit, delete).
@@ -138,5 +139,5 @@ func (m *AppModel) createdTaskSectionLabel(task *models.Task, project *models.Pr
 			return models.StateGroupNext.Label()
 		}
 	}
-	return taskStateGroupLabel(task)
+	return theme.TaskStateGroupLabel(task)
 }

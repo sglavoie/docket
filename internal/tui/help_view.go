@@ -4,6 +4,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // NewHelpViewModel creates a new help view model.
@@ -12,13 +13,13 @@ func NewHelpViewModel(items []HelpItem, viewName string) *HelpViewModel {
 	searchInput.Placeholder = "Search keybindings..."
 	searchInput.CharLimit = 50
 	searchInput.SetWidth(30)
-	applyThemedTextInput(&searchInput)
+	theme.ApplyThemedTextInput(&searchInput)
 
 	tabSearchInput := textinput.New()
 	tabSearchInput.Placeholder = "Search tabs..."
 	tabSearchInput.CharLimit = 30
 	tabSearchInput.SetWidth(20)
-	applyThemedTextInput(&tabSearchInput)
+	theme.ApplyThemedTextInput(&tabSearchInput)
 
 	m := &HelpViewModel{
 		items:          items,

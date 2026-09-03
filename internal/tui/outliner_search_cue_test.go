@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -112,20 +113,20 @@ func TestSearchCueRendersFromTheLiveProjection(t *testing.T) {
 // new segment: the cue is content, so the bar and the trailing fill still mark
 // the cursor and the title keeps the color it earned, in both themes.
 func TestSearchCueKeepsCursorPaintAndTitleColor(t *testing.T) {
-	for _, theme := range []string{"dark", "light"} {
-		t.Run(theme, func(t *testing.T) {
+	for _, themeName := range []string{"dark", "light"} {
+		t.Run(themeName, func(t *testing.T) {
 			task := cueTask()
 			task.Priority = 2
-			outliner, project := cursorHighlightOutlinerTheme(t, theme, task)
+			outliner, project := cursorHighlightOutlinerTheme(t, themeName, task)
 			row := outlinerRow{task: task, ProjectID: project.ID, MatchSource: matchSourceComment}
-			cue := MutedStyle.Render("  · comment")
+			cue := theme.MutedStyle.Render("  · comment")
 
 			for _, selected := range []bool{false, true} {
 				line := outliner.renderOutlinerTaskRow(row, selected, 80, 80, 0, nil)
 				if !strings.Contains(line, cue) {
 					t.Fatalf("selected=%v row lost its muted cue:\n%q", selected, line)
 				}
-				if !strings.Contains(line, GetTitlePriorityStyle(2).Render(task.Title)) {
+				if !strings.Contains(line, theme.GetTitlePriorityStyle(2).Render(task.Title)) {
 					t.Fatalf("selected=%v row lost its semantic title color:\n%q", selected, line)
 				}
 				if got := lipgloss.Width(line); got > 80 {
@@ -137,10 +138,10 @@ func TestSearchCueKeepsCursorPaintAndTitleColor(t *testing.T) {
 				if got := lipgloss.Width(line); got != 80 {
 					t.Fatalf("cursor row rendered %d columns, want exactly 80", got)
 				}
-				if !strings.Contains(line, backgroundParams(t, ColorCursorBarBg)) {
+				if !strings.Contains(line, backgroundParams(t, theme.ColorCursorBarBg)) {
 					t.Fatalf("cue row dropped its cursor bar:\n%q", line)
 				}
-				if !strings.Contains(line, backgroundParams(t, ColorSelectedDimBg)) {
+				if !strings.Contains(line, backgroundParams(t, theme.ColorSelectedDimBg)) {
 					t.Fatalf("cue row dropped its trailing fill:\n%q", line)
 				}
 			}

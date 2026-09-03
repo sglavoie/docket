@@ -6,6 +6,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // syntaxGuideTitle is the neutral heading shared by both capture hosts (Quick
@@ -130,9 +131,9 @@ func (q *quickCaptureInput) renderSyntaxGuide() string {
 		descW := lipgloss.Width(e.desc)
 		examplesW := lipgloss.Width(e.examples)
 
-		styledForms := MatchHighlightStyle.Render(e.forms)
-		styledDesc := MutedStyle.Render(e.desc)
-		styledExamples := MutedStyle.Render(e.examples)
+		styledForms := theme.MatchHighlightStyle.Render(e.forms)
+		styledDesc := theme.MutedStyle.Render(e.desc)
+		styledExamples := theme.MutedStyle.Render(e.examples)
 
 		indentStr := strings.Repeat(" ", syntaxEntryIndent)
 		gapStr := strings.Repeat(" ", syntaxColumnGap)
@@ -144,10 +145,10 @@ func (q *quickCaptureInput) renderSyntaxGuide() string {
 		switch {
 		case q.width <= 0:
 			// No width budget: fall back to a simple stacked form.
-			appendWrappedField(syntaxEntryIndent, MatchHighlightStyle, e.forms)
-			appendWrappedField(syntaxFieldIndent, MutedStyle, e.desc)
+			appendWrappedField(syntaxEntryIndent, theme.MatchHighlightStyle, e.forms)
+			appendWrappedField(syntaxFieldIndent, theme.MutedStyle, e.desc)
 			if examplesW > 0 {
-				appendWrappedField(syntaxFieldIndent, MutedStyle, e.examples)
+				appendWrappedField(syntaxFieldIndent, theme.MutedStyle, e.examples)
 			}
 		case examplesW > 0 && fdWidth+syntaxColumnGap+examplesW <= q.width:
 			// Mode 1: aligned single row.
@@ -156,22 +157,22 @@ func (q *quickCaptureInput) renderSyntaxGuide() string {
 			// Mode 2: forms + description on the first row, examples wrapped below.
 			lines = append(lines, formsDescRow)
 			if examplesW > 0 {
-				appendWrappedField(syntaxFieldIndent, MutedStyle, e.examples)
+				appendWrappedField(syntaxFieldIndent, theme.MutedStyle, e.examples)
 			}
 		default:
 			// Mode 3: forms and description cannot coexist; stack every field.
-			appendWrappedField(syntaxEntryIndent, MatchHighlightStyle, e.forms)
-			appendWrappedField(syntaxFieldIndent, MutedStyle, e.desc)
+			appendWrappedField(syntaxEntryIndent, theme.MatchHighlightStyle, e.forms)
+			appendWrappedField(syntaxFieldIndent, theme.MutedStyle, e.desc)
 			if examplesW > 0 {
-				appendWrappedField(syntaxFieldIndent, MutedStyle, e.examples)
+				appendWrappedField(syntaxFieldIndent, theme.MutedStyle, e.examples)
 			}
 		}
 	}
 
-	lines = append(lines, MutedStyle.Render(syntaxGuideTitle))
+	lines = append(lines, theme.MutedStyle.Render(syntaxGuideTitle))
 	for _, g := range groups {
 		lines = append(lines, "")
-		appendWrappedField(0, SectionHeaderStyle, g.name)
+		appendWrappedField(0, theme.SectionHeaderStyle, g.name)
 		for _, e := range g.entries {
 			appendEntry(e)
 		}

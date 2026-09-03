@@ -4,13 +4,14 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func TestSelectedLineStripsAndRestylesContent(t *testing.T) {
-	ApplyTheme(ThemeConfig{})
-	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
+	theme.ApplyTheme(theme.ThemeConfig{})
+	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
-	styled := MutedStyle.Render("prefix") + " " + TitleStyle.Render("My task")
+	styled := theme.MutedStyle.Render("prefix") + " " + theme.TitleStyle.Render("My task")
 	selected := SelectedLine(styled, 80)
 
 	// The output must differ from the styled input.

@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 type helpEntry struct {
@@ -16,8 +17,8 @@ type helpEntry struct {
 func (m *TaskFormModel) renderFormHelpPane(width int) string {
 	entries := m.helpPaneEntries()
 
-	title := MutedStyle.Render(m.helpPaneHeader())
-	sep := MutedStyle.Render(strings.Repeat("─", width))
+	title := theme.MutedStyle.Render(m.helpPaneHeader())
+	sep := theme.MutedStyle.Render(strings.Repeat("─", width))
 
 	var sb strings.Builder
 	sb.WriteString(title)
@@ -34,7 +35,7 @@ func (m *TaskFormModel) renderFormHelpPane(width int) string {
 		sb.WriteString("\n ")
 		pad := maxKeyW - lipgloss.Width(e.key)
 		padded := e.key + strings.Repeat(" ", pad)
-		sb.WriteString(MutedStyle.Render(padded))
+		sb.WriteString(theme.MutedStyle.Render(padded))
 		if e.desc != "" {
 			sb.WriteString("  ")
 			sb.WriteString(e.desc)

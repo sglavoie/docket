@@ -6,6 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func TestOverlayPopupDimmedKeepsCompleteHaloInsideViewport(t *testing.T) {
@@ -16,7 +17,7 @@ func TestOverlayPopupDimmedKeepsCompleteHaloInsideViewport(t *testing.T) {
 	)
 	baseLine := strings.Repeat(".", baseWidth)
 	base := strings.Repeat(baseLine+"\n", baseHeight-1) + baseLine
-	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
+	borderStyle := lipgloss.NewStyle().Foreground(theme.ColorPrimary)
 	popup := renderOverlayBox("body", frameWidth, "Title", "Enter · Esc", borderStyle)
 
 	rendered := OverlayPopupDimmed(base, popup, baseWidth, baseHeight)
@@ -63,7 +64,7 @@ func TestOverlayPopupDimmedFitsTallPopupWithoutClippingFrame(t *testing.T) {
 	baseLine := strings.Repeat(".", baseWidth)
 	base := strings.Repeat(baseLine+"\n", baseHeight-1) + baseLine
 	content := strings.Repeat("row\n", 16) + "last row"
-	borderStyle := lipgloss.NewStyle().Foreground(ColorWarning)
+	borderStyle := lipgloss.NewStyle().Foreground(theme.ColorWarning)
 	popup := renderOverlayBox("body\n"+content, frameWidth, "Confirm", "y · n", borderStyle)
 	if lipgloss.Height(popup) <= baseHeight {
 		t.Fatal("test popup must exceed the viewport height")
@@ -106,14 +107,14 @@ func TestOverlayPopupDimmedPreservesNestedModalFrames(t *testing.T) {
 		30,
 		"Parent actions",
 		"Enter",
-		lipgloss.NewStyle().Foreground(ColorPrimary),
+		lipgloss.NewStyle().Foreground(theme.ColorPrimary),
 	)
 	child := renderOverlayBox(
 		"Proceed?",
 		18,
 		"Confirm",
 		"y · n",
-		lipgloss.NewStyle().Foreground(ColorWarning),
+		lipgloss.NewStyle().Foreground(theme.ColorWarning),
 	)
 
 	withParent := OverlayPopupDimmed(base, parent, baseWidth, baseHeight)

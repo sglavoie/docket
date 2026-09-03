@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // renderWrappingTabBar renders a tab bar that wraps to multiple rows when tabs
@@ -72,10 +73,10 @@ func renderTabFiller(width int) string {
 	s := lipgloss.NewStyle().
 		BorderBottom(true).
 		BorderStyle(lipgloss.Border{Bottom: "─"}).
-		BorderForeground(ColorBorder).
+		BorderForeground(theme.ColorBorder).
 		Width(width)
-	if themeBgColor != "" {
-		s = s.Background(lipgloss.Color(themeBgColor))
+	if theme.ThemeBgColor != "" {
+		s = s.Background(lipgloss.Color(theme.ThemeBgColor))
 	}
 	return s.Render("")
 }

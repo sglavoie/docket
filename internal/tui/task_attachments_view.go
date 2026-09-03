@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func (m *TaskAttachmentsModel) View() tea.View { //nolint:gocyclo
@@ -39,9 +40,9 @@ func (m *TaskAttachmentsModel) View() tea.View { //nolint:gocyclo
 }
 
 func (m *TaskAttachmentsModel) renderAddMode(b *strings.Builder) tea.View {
-	b.WriteString(FieldLabelFocusedStyle.Render("Add Attachment:"))
+	b.WriteString(theme.FieldLabelFocusedStyle.Render("Add Attachment:"))
 	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render("Enter a file path or URL"))
+	b.WriteString(theme.MutedStyle.Render("Enter a file path or URL"))
 	b.WriteString("\n\n")
 	b.WriteString(m.textInput.View())
 	b.WriteString("\n\n")
@@ -52,18 +53,18 @@ func (m *TaskAttachmentsModel) renderAddMode(b *strings.Builder) tea.View {
 
 func (m *TaskAttachmentsModel) renderMessages(b *strings.Builder) {
 	if m.err != nil {
-		b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
+		b.WriteString(theme.ValidationErrorStyle.Render(m.err.Error()))
 		b.WriteString("\n\n")
 	}
 	if m.statusMessage != "" {
-		b.WriteString(MutedStyle.Render(m.statusMessage))
+		b.WriteString(theme.MutedStyle.Render(m.statusMessage))
 		b.WriteString("\n\n")
 	}
 }
 
 func (m *TaskAttachmentsModel) renderAttachmentsList(b *strings.Builder, availableRows int) {
 	if len(m.task.Attachments) == 0 {
-		b.WriteString(MutedStyle.Render("No attachments yet."))
+		b.WriteString(theme.MutedStyle.Render("No attachments yet."))
 		b.WriteString("\n")
 		return
 	}
@@ -81,7 +82,7 @@ func (m *TaskAttachmentsModel) renderAttachmentsList(b *strings.Builder, availab
 	if len(m.task.Attachments) > maxVisible {
 		remaining := len(m.task.Attachments) - scrollOffset - maxVisible
 		if remaining > 0 {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("  ... and %d more (use j/k to scroll)", remaining)))
+			b.WriteString(theme.MutedStyle.Render(fmt.Sprintf("  ... and %d more (use j/k to scroll)", remaining)))
 			b.WriteString("\n")
 		}
 	}
@@ -92,16 +93,16 @@ func (m *TaskAttachmentsModel) renderAttachmentEntry(index int, att models.Attac
 	entry.WriteString("  ")
 
 	if index == m.cursor {
-		entry.WriteString(BoldStyle.Render(fmt.Sprintf("[%d] ", index)))
-		entry.WriteString(FieldLabelFocusedStyle.Render(m.attachmentTypeLabel(att)))
+		entry.WriteString(theme.BoldStyle.Render(fmt.Sprintf("[%d] ", index)))
+		entry.WriteString(theme.FieldLabelFocusedStyle.Render(m.attachmentTypeLabel(att)))
 	} else {
-		entry.WriteString(MutedStyle.Render(fmt.Sprintf("[%d] ", index)))
-		entry.WriteString(MutedStyle.Render(m.attachmentTypeLabel(att)))
+		entry.WriteString(theme.MutedStyle.Render(fmt.Sprintf("[%d] ", index)))
+		entry.WriteString(theme.MutedStyle.Render(m.attachmentTypeLabel(att)))
 	}
 
 	if att.IsCodeRef && !storage.CodeReferenceFileExists(att.OriginalPath) {
 		entry.WriteString(" ")
-		entry.WriteString(WarningIconStyle.Render("!"))
+		entry.WriteString(theme.WarningIconStyle.Render("!"))
 	}
 	entry.WriteString("\n")
 
@@ -112,18 +113,18 @@ func (m *TaskAttachmentsModel) renderAttachmentEntry(index int, att models.Attac
 
 	if !att.IsURL && !att.IsCodeRef {
 		entry.WriteString("      ")
-		entry.WriteString(MutedStyle.Render("from: " + truncateToVisualWidth(att.OriginalPath, maxLen)))
+		entry.WriteString(theme.MutedStyle.Render("from: " + truncateToVisualWidth(att.OriginalPath, maxLen)))
 		entry.WriteString("\n")
 	}
 
 	if att.IsCodeRef && !storage.CodeReferenceFileExists(att.OriginalPath) {
 		entry.WriteString("      ")
-		entry.WriteString(WarningIconStyle.Render("file may not exist"))
+		entry.WriteString(theme.WarningIconStyle.Render("file may not exist"))
 		entry.WriteString("\n")
 	}
 
 	entry.WriteString("      ")
-	entry.WriteString(MutedStyle.Render(m.attachmentMeta(att)))
+	entry.WriteString(theme.MutedStyle.Render(m.attachmentMeta(att)))
 	entry.WriteString("\n")
 
 	return entry.String()

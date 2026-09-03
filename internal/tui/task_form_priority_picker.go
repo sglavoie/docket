@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // TaskFormPriorityPickedMsg is emitted from the inline priority picker.
@@ -68,8 +69,8 @@ func (p *formPriorityPicker) handleKey(msg tea.KeyPressMsg) (bool, tea.Msg) {
 }
 
 func (p *formPriorityPicker) render(width, current int) string {
-	borderStyle := lipgloss.NewStyle().Foreground(ColorPrimary)
-	title := lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true).Render("Set Priority")
+	borderStyle := lipgloss.NewStyle().Foreground(theme.ColorPrimary)
+	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render("Set Priority")
 
 	titleMinInner := lipgloss.Width(title) + 6 - 2
 	maxWidth := min(max(width*2/5, 36), width-4)
@@ -80,20 +81,20 @@ func (p *formPriorityPicker) render(width, current int) string {
 
 	var content strings.Builder
 	for i, e := range formPriorityEntries {
-		icon := GetPriorityStyle(e.priority).Render(PriorityIcon(e.priority))
+		icon := theme.GetPriorityStyle(e.priority).Render(theme.PriorityIcon(e.priority))
 		isCurrent := e.priority == current
 		currentMark := "  "
 		if isCurrent {
 			currentMark = "● "
 		}
-		keyHint := MutedStyle.Render(fmt.Sprintf("[%s]", e.key))
+		keyHint := theme.MutedStyle.Render(fmt.Sprintf("[%s]", e.key))
 		line := fmt.Sprintf(" %s%s %s %s", currentMark, icon, e.label, keyHint)
 		lineWidth := lipgloss.Width(line)
 		if lineWidth < innerWidth-4 {
 			line += strings.Repeat(" ", innerWidth-4-lineWidth)
 		}
 		if i == p.cursor {
-			line = SelectedStyle.Render(line)
+			line = theme.SelectedStyle.Render(line)
 		}
 		content.WriteString(line)
 		if i < len(formPriorityEntries)-1 {

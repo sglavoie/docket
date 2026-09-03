@@ -6,6 +6,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -25,7 +26,7 @@ func NewDateAdder() DateAdder {
 	input := textinput.New()
 	input.CharLimit = 30
 	input.Placeholder = "e.g., 2026-01-15, dec 15, +3d, fri"
-	applyThemedTextInput(&input)
+	theme.ApplyThemedTextInput(&input)
 	return DateAdder{AddDateInput: input}
 }
 
@@ -35,7 +36,7 @@ func NewInstantDateAdder() DateAdder {
 	input := textinput.New()
 	input.CharLimit = 30
 	input.Placeholder = "e.g., +4h, tomorrow, 2026-01-15, fri"
-	applyThemedTextInput(&input)
+	theme.ApplyThemedTextInput(&input)
 	return DateAdder{AddDateInput: input, allowsTime: true}
 }
 

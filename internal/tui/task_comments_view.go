@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func (m *TaskCommentsModel) View() tea.View {
@@ -52,9 +53,9 @@ func (m *TaskCommentsModel) renderExpandedView(b *strings.Builder) tea.View {
 	timestamp := FormatTimestampBracket(comment.CreatedAt)
 	headerLabel := fmt.Sprintf("Comment [%d]", m.cursor)
 
-	b.WriteString(FieldLabelFocusedStyle.Render(headerLabel))
+	b.WriteString(theme.FieldLabelFocusedStyle.Render(headerLabel))
 	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render(timestamp))
+	b.WriteString(theme.MutedStyle.Render(timestamp))
 	b.WriteString("\n\n")
 	b.WriteString(renderMarkdown(comment.Text, max(m.Width()-4, 1)))
 	b.WriteString("\n\n")
@@ -65,18 +66,18 @@ func (m *TaskCommentsModel) renderExpandedView(b *strings.Builder) tea.View {
 
 func (m *TaskCommentsModel) renderEditMode(b *strings.Builder) tea.View {
 	if m.editIndex >= len(m.task.Comments) {
-		b.WriteString(ValidationErrorStyle.Render("Comment was deleted externally."))
+		b.WriteString(theme.ValidationErrorStyle.Render("Comment was deleted externally."))
 		b.WriteString("\n\n")
 		spec, ok := m.guidanceSpec()
 		b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
 		return tea.NewView(b.String())
 	}
 	comment := m.task.Comments[m.editIndex]
-	b.WriteString(FieldLabelFocusedStyle.Render(fmt.Sprintf("Edit Comment [%d]:", m.editIndex)))
+	b.WriteString(theme.FieldLabelFocusedStyle.Render(fmt.Sprintf("Edit Comment [%d]:", m.editIndex)))
 	b.WriteString("\n")
-	b.WriteString(MutedStyle.Render(FormatTimestampLabeled("Created", comment.CreatedAt)))
+	b.WriteString(theme.MutedStyle.Render(FormatTimestampLabeled("Created", comment.CreatedAt)))
 	b.WriteString("\n\n")
-	applyThemedTextarea(&m.editTextInput)
+	theme.ApplyThemedTextarea(&m.editTextInput)
 	b.WriteString(m.editTextInput.View())
 	b.WriteString("\n\n")
 	spec, ok := m.guidanceSpec()
@@ -85,9 +86,9 @@ func (m *TaskCommentsModel) renderEditMode(b *strings.Builder) tea.View {
 }
 
 func (m *TaskCommentsModel) renderAddMode(b *strings.Builder) tea.View {
-	b.WriteString(FieldLabelFocusedStyle.Render("Add Comment:"))
+	b.WriteString(theme.FieldLabelFocusedStyle.Render("Add Comment:"))
 	b.WriteString("\n")
-	applyThemedTextarea(&m.textInput)
+	theme.ApplyThemedTextarea(&m.textInput)
 	b.WriteString(m.textInput.View())
 	b.WriteString("\n\n")
 	spec, ok := m.guidanceSpec()
@@ -96,7 +97,7 @@ func (m *TaskCommentsModel) renderAddMode(b *strings.Builder) tea.View {
 }
 
 func (m *TaskCommentsModel) renderCommentsSummary(b *strings.Builder) {
-	b.WriteString(MutedStyle.Render(fmt.Sprintf("%d comment(s)", len(m.task.Comments))))
+	b.WriteString(theme.MutedStyle.Render(fmt.Sprintf("%d comment(s)", len(m.task.Comments))))
 	b.WriteString("\n\n")
 }
 
@@ -104,13 +105,13 @@ func (m *TaskCommentsModel) renderMessages(b *strings.Builder) {
 	if m.err == nil {
 		return
 	}
-	b.WriteString(ValidationErrorStyle.Render(m.err.Error()))
+	b.WriteString(theme.ValidationErrorStyle.Render(m.err.Error()))
 	b.WriteString("\n\n")
 }
 
 func (m *TaskCommentsModel) renderCommentsList(b *strings.Builder, availableRows int) {
 	if len(m.task.Comments) == 0 {
-		b.WriteString(MutedStyle.Render("No comments yet."))
+		b.WriteString(theme.MutedStyle.Render("No comments yet."))
 		b.WriteString("\n")
 		return
 	}
@@ -129,7 +130,7 @@ func (m *TaskCommentsModel) renderCommentsList(b *strings.Builder, availableRows
 	if len(m.task.Comments) > maxVisible {
 		remaining := len(m.task.Comments) - scrollOffset - maxVisible
 		if remaining > 0 {
-			b.WriteString(MutedStyle.Render(fmt.Sprintf("  ... and %d more (use j/k to scroll)", remaining)))
+			b.WriteString(theme.MutedStyle.Render(fmt.Sprintf("  ... and %d more (use j/k to scroll)", remaining)))
 			b.WriteString("\n")
 		}
 	}
@@ -140,7 +141,7 @@ func (m *TaskCommentsModel) renderStatusMessage(b *strings.Builder) {
 	if m.statusMessage == "" {
 		return
 	}
-	b.WriteString(MutedStyle.Render(m.statusMessage))
+	b.WriteString(theme.MutedStyle.Render(m.statusMessage))
 	b.WriteString("\n")
 }
 
@@ -151,11 +152,11 @@ func (m *TaskCommentsModel) renderCommentEntry(index int, comment *models.Commen
 	timestamp := FormatTimestampBracket(comment.CreatedAt)
 
 	if index == m.cursor {
-		entry.WriteString(BoldStyle.Render(fmt.Sprintf("[%d] ", index)))
-		entry.WriteString(FieldLabelFocusedStyle.Render(timestamp))
+		entry.WriteString(theme.BoldStyle.Render(fmt.Sprintf("[%d] ", index)))
+		entry.WriteString(theme.FieldLabelFocusedStyle.Render(timestamp))
 	} else {
-		entry.WriteString(MutedStyle.Render(fmt.Sprintf("[%d] ", index)))
-		entry.WriteString(MutedStyle.Render(timestamp))
+		entry.WriteString(theme.MutedStyle.Render(fmt.Sprintf("[%d] ", index)))
+		entry.WriteString(theme.MutedStyle.Render(timestamp))
 	}
 	entry.WriteString("\n")
 

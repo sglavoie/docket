@@ -1,4 +1,4 @@
-package tui
+package theme
 
 import (
 	"fmt"
@@ -12,18 +12,18 @@ import (
 
 // Default hex colors for priority title styling (Tokyo Night palette).
 const (
-	defaultColorPriority1Title      = "#f7768e"
-	defaultColorPriority2Title      = "#e0af68"
-	defaultColorPriority3Title      = "#7aa2f7"
+	DefaultColorPriority1Title      = "#f7768e"
+	DefaultColorPriority2Title      = "#e0af68"
+	DefaultColorPriority3Title      = "#7aa2f7"
 	defaultColorTaskContext         = "#73daca"
 	defaultColorTaskContextDeferred = "#4f948f"
 
-	defaultColorSemanticBugTitle              = "#ff4f58"
-	defaultColorSemanticQuestionTitle         = "#f57a00"
-	defaultColorSemanticEpicTitle             = "#e17bff"
-	defaultColorSemanticStoryTitle            = "#3fc5ff"
-	defaultColorSemanticFeatureTitle          = "#35d67f"
-	defaultColorSemanticIdeaTitle             = "#ffd23f"
+	DefaultColorSemanticBugTitle              = "#ff4f58"
+	DefaultColorSemanticQuestionTitle         = "#f57a00"
+	DefaultColorSemanticEpicTitle             = "#e17bff"
+	DefaultColorSemanticStoryTitle            = "#3fc5ff"
+	DefaultColorSemanticFeatureTitle          = "#35d67f"
+	DefaultColorSemanticIdeaTitle             = "#ffd23f"
 	defaultColorSemanticBugSelectedTitle      = "#ff9ea3"
 	defaultColorSemanticQuestionSelectedTitle = "#ffa366"
 	defaultColorSemanticEpicSelectedTitle     = "#eeb6ff"
@@ -40,18 +40,18 @@ const (
 
 // Priority title foreground colors, user-overridable via PaletteColors.
 var (
-	ColorPriority1Title      = lipgloss.Color(defaultColorPriority1Title)
-	ColorPriority2Title      = lipgloss.Color(defaultColorPriority2Title)
-	ColorPriority3Title      = lipgloss.Color(defaultColorPriority3Title)
+	ColorPriority1Title      = lipgloss.Color(DefaultColorPriority1Title)
+	ColorPriority2Title      = lipgloss.Color(DefaultColorPriority2Title)
+	ColorPriority3Title      = lipgloss.Color(DefaultColorPriority3Title)
 	ColorTaskContext         = lipgloss.Color(defaultColorTaskContext)
 	ColorTaskContextDeferred = lipgloss.Color(defaultColorTaskContextDeferred)
 
-	ColorSemanticBugTitle              = lipgloss.Color(defaultColorSemanticBugTitle)
-	ColorSemanticQuestionTitle         = lipgloss.Color(defaultColorSemanticQuestionTitle)
-	ColorSemanticEpicTitle             = lipgloss.Color(defaultColorSemanticEpicTitle)
-	ColorSemanticStoryTitle            = lipgloss.Color(defaultColorSemanticStoryTitle)
-	ColorSemanticFeatureTitle          = lipgloss.Color(defaultColorSemanticFeatureTitle)
-	ColorSemanticIdeaTitle             = lipgloss.Color(defaultColorSemanticIdeaTitle)
+	ColorSemanticBugTitle              = lipgloss.Color(DefaultColorSemanticBugTitle)
+	ColorSemanticQuestionTitle         = lipgloss.Color(DefaultColorSemanticQuestionTitle)
+	ColorSemanticEpicTitle             = lipgloss.Color(DefaultColorSemanticEpicTitle)
+	ColorSemanticStoryTitle            = lipgloss.Color(DefaultColorSemanticStoryTitle)
+	ColorSemanticFeatureTitle          = lipgloss.Color(DefaultColorSemanticFeatureTitle)
+	ColorSemanticIdeaTitle             = lipgloss.Color(DefaultColorSemanticIdeaTitle)
 	ColorSemanticBugSelectedTitle      = lipgloss.Color(defaultColorSemanticBugSelectedTitle)
 	ColorSemanticQuestionSelectedTitle = lipgloss.Color(defaultColorSemanticQuestionSelectedTitle)
 	ColorSemanticEpicSelectedTitle     = lipgloss.Color(defaultColorSemanticEpicSelectedTitle)
@@ -66,12 +66,12 @@ var (
 	ColorSemanticIdeaDeferredTitle     = lipgloss.Color(defaultColorSemanticIdeaDeferredTitle)
 )
 
-// tagChipColors is the active theme's tag chip ramp, indexed by slot. The slot
-// index — not the hex — is what a tag owns: tagChipStyle hashes a tag onto a
+// TagChipColors is the active theme's tag chip ramp, indexed by slot. The slot
+// index — not the hex — is what a tag owns: TagChipStyle hashes a tag onto a
 // slot and reads this slice at render time, so toggling the theme repaints a
 // tag without moving it to a different hue family. Declared dark and rebuilt
 // per theme like every other derived color set.
-var tagChipColors = tagChipRamp("dark")
+var TagChipColors = tagChipRamp("dark")
 
 // tagChipRamp lifts one variant's curated ramp into lipgloss colors. The ramp
 // itself lives in internal/config, where its perceptual distance from the
@@ -87,12 +87,12 @@ func tagChipRamp(variant string) []color.Color {
 
 // rebuildTagChipColors re-resolves the chip ramp for the active theme.
 func rebuildTagChipColors() {
-	tagChipColors = tagChipRamp(activeThemeName)
+	TagChipColors = tagChipRamp(ActiveThemeName)
 }
 
-// darkenHex takes a 6-digit hex color (#rrggbb) and darkens each channel
+// DarkenHex takes a 6-digit hex color (#rrggbb) and darkens each channel
 // toward 0 by factor (0.0 = unchanged, 1.0 = black). Returns #rrggbb.
-func darkenHex(hex string, factor float64) string {
+func DarkenHex(hex string, factor float64) string {
 	if len(hex) != 7 || hex[0] != '#' {
 		return hex
 	}
@@ -128,7 +128,7 @@ func lightenHex(hex string, factor float64) string {
 
 // rebuildAccentColors sets pipeline accent colors appropriate for the active theme.
 func rebuildAccentColors() {
-	if activeThemeName == "light" {
+	if ActiveThemeName == "light" {
 		AccentCapture = lipgloss.Color("#b91c1c")
 		AccentTriage = lipgloss.Color("#0e7490")
 		AccentPlan = lipgloss.Color("#15803d")
@@ -147,10 +147,10 @@ func rebuildAccentColors() {
 	}
 }
 
-// rebuildPalette resets the palette color variables from user overrides.
+// RebuildPalette resets the palette color variables from user overrides.
 // Empty fields fall back to the canonical defaults from config.DefaultTheme.
-func rebuildPalette(p config.PaletteColors) {
-	defaults := config.DefaultTheme(activeThemeName)
+func RebuildPalette(p config.PaletteColors) {
+	defaults := config.DefaultTheme(ActiveThemeName)
 	d := defaults.Palette
 
 	fallback := func(v, def string) color.Color {
@@ -205,12 +205,12 @@ func rebuildPalette(p config.PaletteColors) {
 	ColorSemanticIdeaDeferredTitle = fallback(p.SemanticIdeaDeferredTitle, d.SemanticIdeaDeferredTitle)
 
 	if p.NormalText != "" {
-		colorNormalText = p.NormalText
+		ColorNormalText = p.NormalText
 	} else {
-		colorNormalText = d.NormalText
+		ColorNormalText = d.NormalText
 	}
 
-	if activeThemeName == "light" {
+	if ActiveThemeName == "light" {
 		ColorProgressEmpty = lipgloss.Color(d.Dimmed)
 	} else {
 		ColorProgressEmpty = ColorBorder
