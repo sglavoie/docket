@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -73,7 +74,7 @@ type outlinerViewSnapshot struct {
 	presentation outlinerSearchSnapshot
 
 	// Population: the facets that chose it and the snapshot they chose.
-	projectFilter        ProjectFilterState
+	projectFilter        query.ProjectFilterState
 	loadedProjects       []*models.Project
 	crossSnapshotReady   bool
 	parkedFocusProjectID string
@@ -110,7 +111,7 @@ type outlinerViewSnapshot struct {
 func (m *OutlinerModel) captureOutlinerViewSnapshot() outlinerViewSnapshot {
 	snapshot := outlinerViewSnapshot{
 		presentation:         m.capturePresentationSnapshot(),
-		projectFilter:        m.projectFilter.clone(),
+		projectFilter:        m.projectFilter.Clone(),
 		loadedProjects:       slices.Clone(m.loadedProjects),
 		crossSnapshotReady:   m.crossSnapshotReady,
 		parkedFocusProjectID: m.parkedFocusProjectID,
@@ -139,7 +140,7 @@ func (m *OutlinerModel) captureOutlinerViewSnapshot() outlinerViewSnapshot {
 // fallback ordinary search already uses when data moved underneath it.
 func (m *OutlinerModel) restoreOutlinerViewSnapshot(snapshot outlinerViewSnapshot) {
 	m.restorePresentationSnapshot(snapshot.presentation)
-	m.projectFilter = snapshot.projectFilter.clone()
+	m.projectFilter = snapshot.projectFilter.Clone()
 	m.adoptFilterCarriers()
 	m.setLoadedProjects(slices.Clone(snapshot.loadedProjects))
 	m.crossSnapshotReady = snapshot.crossSnapshotReady

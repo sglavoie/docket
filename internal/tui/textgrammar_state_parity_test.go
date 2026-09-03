@@ -35,11 +35,12 @@ func TestLifecycleDestinationsMapToCanonicalCreationStates(t *testing.T) {
 			outliner := scopeTestOutliner(project)
 			outliner.SetSearchQuery(input)
 			gate := outliner.searchGate
-			if gate == nil || gate.destination == nil || gate.destination.destination.WorkflowState() != state {
-				t.Fatalf("search destination = %+v, want state %q", gate, state)
+			searched, ok := gate.CompiledDestination()
+			if !ok || searched.WorkflowState() != state {
+				t.Fatalf("search destination = %q (set=%v), want state %q", searched, ok, state)
 			}
-			if want := state.IsTerminal(); gate.admitsTerminal != want {
-				t.Fatalf("search $%s admitsTerminal = %v, want %v", state, gate.admitsTerminal, want)
+			if want := state.IsTerminal(); gate.AllowsTerminal() != want {
+				t.Fatalf("search $%s AllowsTerminal = %v, want %v", state, gate.AllowsTerminal(), want)
 			}
 		})
 	}
@@ -51,20 +52,18 @@ func TestSearchPlanningDestinationsAreMembershipRatherThanState(t *testing.T) {
 		outliner := scopeTestOutliner(project)
 		outliner.SetSearchQuery("Task $" + name)
 		gate := outliner.searchGate
-		if gate == nil || gate.destination == nil {
+		destination, ok := gate.CompiledDestination()
+		if !ok {
 			t.Fatalf("$%s produced no destination gate", name)
 		}
-		if gate.destination.destination.WorkflowState() != models.StateBacklog {
-			t.Fatalf("$%s state = %q, want backlog", name, gate.destination.destination.WorkflowState())
+		if destination.WorkflowState() != models.StateBacklog {
+			t.Fatalf("$%s state = %q, want backlog", name, destination.WorkflowState())
 		}
-		if gate.admitsTerminal {
+		if gate.AllowsTerminal() {
 			t.Errorf("$%s relaxed the nonterminal rule", name)
 		}
-		if name == "today" && gate.destination.todayIDs == nil {
-			t.Error("$today did not resolve a planning membership set")
-		}
-		if name == "next" && gate.destination.nextIDs == nil {
-			t.Error("$next did not resolve a planning membership set")
+		if !gate.DestinationResolvedMembership() {
+			t.Errorf("$%s did not resolve a planning membership set", name)
 		}
 	}
 }

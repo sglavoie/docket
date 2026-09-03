@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -62,7 +63,7 @@ func semanticTaskTagProvider(provider ValueProviderID) bool {
 // seedUnused offers every semantic tag even when nothing carries it, which the
 // editor wants for discovery and the filter must not do, because a filter row
 // nothing matches can only empty the projection.
-func taskTagListSource(tags []TagInfo, seedUnused bool) ListSource {
+func taskTagListSource(tags []query.TagInfo, seedUnused bool) ListSource {
 	// The picker offers the semantic vocabulary and the tags in use, and nothing
 	// else. Review used to lead it as a promoted workflow tag; it is a stored
 	// boolean now, reached by =review and f=, so offering it here would mint an
@@ -86,7 +87,7 @@ func taskTagListSource(tags []TagInfo, seedUnused bool) ListSource {
 		}
 	}
 
-	descriptive := make([]TagInfo, 0, len(tags))
+	descriptive := make([]query.TagInfo, 0, len(tags))
 	for _, tag := range tags {
 		if !promoted[tag.Name] {
 			descriptive = append(descriptive, tag)

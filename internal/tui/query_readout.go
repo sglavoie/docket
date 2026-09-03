@@ -12,6 +12,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -145,7 +146,7 @@ func (m *OutlinerModel) queryReadoutRows() []queryReadoutRow {
 }
 
 // clauseReadoutRow builds one facet row from the clauses that facet currently
-// spells. The value is filterClauseParts output, so a readout row, a header
+// spells. The value is FilterClauseParts output, so a readout row, a header
 // chip, and a typed query name the same narrowing with the same characters.
 func clauseReadoutRow(
 	label string,
@@ -156,48 +157,48 @@ func clauseReadoutRow(
 	return queryReadoutRow{
 		axis:   queryReadoutAxisClauses,
 		label:  label,
-		value:  strings.Join(filterClauseParts(clauses), " "),
+		value:  strings.Join(query.FilterClauseParts(clauses), " "),
 		note:   note,
 		fields: fields,
 	}
 }
 
 // commonFilterReadoutRows splits the row cache into one row per independently
-// clearable facet. The split is commonFilterFacetCount's, promoted from a count
+// clearable facet. The split is CommonFilterFacetCount's, promoted from a count
 // into the peel unit rather than invented beside it, which is why the completion
 // age facet carries the terminal-state clauses it installed and the state facet
 // steps aside when it does.
 //
 //nolint:gocyclo // One row per facet, kept together so the set stays auditable.
-func commonFilterReadoutRows(f *CommonFilterState) []queryReadoutRow {
+func commonFilterReadoutRows(f *query.CommonFilterState) []queryReadoutRow {
 	if f == nil {
 		return nil
 	}
 	rows := make([]queryReadoutRow, 0, 10)
-	if f.hasStateFilter() && !completionAgeOwnsTerminalStates(f) {
+	if f.HasStateFilter() && !query.CompletionAgeOwnsTerminalStates(f) {
 		clauses := make([]models.QueryClause, 0, 4)
 		for _, state := range f.States.Values() {
-			clauses = appendFilterClause(clauses, models.QueryFieldState,
+			clauses = query.AppendFilterClause(clauses, models.QueryFieldState,
 				models.QueryOperatorIs, string(state))
 		}
 		rows = append(rows, clauseReadoutRow("filter",
 			[]models.QueryField{models.QueryFieldState}, clauses, ""))
 	}
-	if f.hasCompletionAgeFilter() {
+	if f.HasCompletionAgeFilter() {
 		rows = append(rows, clauseReadoutRow("filter",
 			[]models.QueryField{models.QueryFieldCompleted, models.QueryFieldState},
-			completionAgeClauses(f.CompletionAge), ""))
+			query.CompletionAgeClauses(f.CompletionAge), ""))
 	}
 	if f.Priority > 0 {
 		rows = append(rows, clauseReadoutRow("filter",
 			[]models.QueryField{models.QueryFieldPriority},
-			filterClauseList(models.QueryFieldPriority, models.QueryOperatorAtLeast,
+			query.FilterClauseList(models.QueryFieldPriority, models.QueryOperatorAtLeast,
 				strconv.Itoa(f.Priority)), ""))
 	}
 	if len(f.Tags) > 0 {
 		clauses := make([]models.QueryClause, 0, len(f.Tags))
 		for _, tag := range slices.Sorted(maps.Keys(f.Tags)) {
-			clauses = appendFilterClause(clauses, models.QueryFieldTag,
+			clauses = query.AppendFilterClause(clauses, models.QueryFieldTag,
 				models.QueryOperatorIs, tag)
 		}
 		rows = append(rows, clauseReadoutRow("filter",
@@ -206,43 +207,43 @@ func commonFilterReadoutRows(f *CommonFilterState) []queryReadoutRow {
 	if len(f.Contexts) > 0 || f.NoContext {
 		names := slices.Sorted(maps.Keys(f.Contexts))
 		if f.NoContext {
-			names = append(names, noContextFilterKey)
+			names = append(names, query.NoContextFilterKey)
 		}
 		rows = append(rows, clauseReadoutRow("filter",
 			[]models.QueryField{models.QueryFieldContext},
-			contextFilterClauses(names), ""))
+			query.ContextFilterClauses(names), ""))
 	}
-	if f.DueDate != DueDateAll {
+	if f.DueDate != query.DueDateAll {
 		rows = append(rows, clauseReadoutRow("filter",
-			[]models.QueryField{models.QueryFieldDue}, dueFilterClauses(f.DueDate), ""))
+			[]models.QueryField{models.QueryFieldDue}, query.DueFilterClauses(f.DueDate), ""))
 	}
-	if f.Hierarchy != HierarchyAll {
+	if f.Hierarchy != query.HierarchyAll {
 		rows = append(rows, clauseReadoutRow("filter",
-			filterQueryHierarchyFields, hierarchyFilterClauses(f.Hierarchy), ""))
+			query.FilterQueryHierarchyFields, query.HierarchyFilterClauses(f.Hierarchy), ""))
 	}
-	if f.Dependency != DependencyFilterAll {
+	if f.Dependency != query.DependencyFilterAll {
 		rows = append(rows, clauseReadoutRow("filter",
-			filterQueryDependencyFields, dependencyFilterClauses(f.Dependency), ""))
+			query.FilterQueryDependencyFields, query.DependencyFilterClauses(f.Dependency), ""))
 	}
 	if f.Stale {
 		rows = append(rows, clauseReadoutRow("filter",
 			[]models.QueryField{models.QueryFieldStale},
-			filterClauseList(models.QueryFieldStale, models.QueryOperatorPresent, ""), ""))
+			query.FilterClauseList(models.QueryFieldStale, models.QueryOperatorPresent, ""), ""))
 	}
 	if f.Deferred {
 		rows = append(rows, clauseReadoutRow("filter",
 			[]models.QueryField{models.QueryFieldDeferred},
-			filterClauseList(models.QueryFieldDeferred, models.QueryOperatorPresent, ""), ""))
+			query.FilterClauseList(models.QueryFieldDeferred, models.QueryOperatorPresent, ""), ""))
 	}
 	if f.Pinned {
 		rows = append(rows, clauseReadoutRow("filter",
 			[]models.QueryField{models.QueryFieldPinned},
-			filterClauseList(models.QueryFieldPinned, models.QueryOperatorPresent, ""), ""))
+			query.FilterClauseList(models.QueryFieldPinned, models.QueryOperatorPresent, ""), ""))
 	}
 	if f.Review {
 		rows = append(rows, clauseReadoutRow("filter",
 			[]models.QueryField{models.QueryFieldReview},
-			filterClauseList(models.QueryFieldReview, models.QueryOperatorPresent, ""), ""))
+			query.FilterClauseList(models.QueryFieldReview, models.QueryOperatorPresent, ""), ""))
 	}
 	return rows
 }
@@ -250,20 +251,20 @@ func commonFilterReadoutRows(f *CommonFilterState) []queryReadoutRow {
 // projectFilterReadoutRows does the same for the population half. Each row says
 // "reload" because peeling it reloads the projects rather than rebuilding the
 // rows, which is the one thing a population facet does that a row facet does not.
-func projectFilterReadoutRows(f *ProjectFilterState) []queryReadoutRow {
+func projectFilterReadoutRows(f *query.ProjectFilterState) []queryReadoutRow {
 	if f == nil {
 		return nil
 	}
 	rows := make([]queryReadoutRow, 0, 3)
-	if tags := projectTagClauses(f); len(tags) > 0 {
+	if tags := query.ProjectTagClauses(f); len(tags) > 0 {
 		rows = append(rows, clauseReadoutRow("population",
 			[]models.QueryField{models.QueryFieldProjectTag}, tags, "reload"))
 	}
-	if clauses := populationClauses(models.QueryFieldParked, f.ParkedMode); len(clauses) > 0 {
+	if clauses := query.PopulationClauses(models.QueryFieldParked, f.ParkedMode); len(clauses) > 0 {
 		rows = append(rows, clauseReadoutRow("population",
 			[]models.QueryField{models.QueryFieldParked}, clauses, "reload"))
 	}
-	if clauses := populationClauses(models.QueryFieldArchived, f.ArchivedMode); len(clauses) > 0 {
+	if clauses := query.PopulationClauses(models.QueryFieldArchived, f.ArchivedMode); len(clauses) > 0 {
 		rows = append(rows, clauseReadoutRow("population",
 			[]models.QueryField{models.QueryFieldArchived}, clauses, "reload"))
 	}

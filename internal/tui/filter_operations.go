@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 // filterOperationDescriptor is the shape every facet shares: no target, no
@@ -142,14 +143,14 @@ func filterOperationFields(id OperationID) []models.QueryField {
 		return []models.QueryField{models.QueryFieldDue, models.QueryFieldDeferred}
 	case operationFilterCompletionAge:
 		// The cleanup facet installs the terminal-state predicate itself, which is
-		// why commonFilterFacetCount reads the pair as one clearable facet.
+		// why CommonFilterFacetCount reads the pair as one clearable facet.
 		return []models.QueryField{models.QueryFieldCompleted, models.QueryFieldState}
 	case operationFilterHierarchy:
-		return filterQueryHierarchyFields
+		return query.FilterQueryHierarchyFields
 	case operationFilterDependency:
 		// Both directions are one facet: choosing either clears the other, the
 		// same way the due picker's buckets and its deferred row do.
-		return filterQueryDependencyFields
+		return query.FilterQueryDependencyFields
 	case operationFilterStale:
 		return []models.QueryField{models.QueryFieldStale}
 	case operationFilterPinned:
@@ -157,7 +158,7 @@ func filterOperationFields(id OperationID) []models.QueryField {
 	case operationFilterReview:
 		return []models.QueryField{models.QueryFieldReview}
 	case operationFilterClear:
-		return filterQueryTaskFields()
+		return query.FilterQueryTaskFields()
 	case operationFilterProjectTags:
 		// The F# picker carries the parked row in the same list of names, so the
 		// tag restriction and the parked axis move together.
@@ -167,7 +168,7 @@ func filterOperationFields(id OperationID) []models.QueryField {
 	case operationFilterIncludeArchived, operationFilterOnlyArchived:
 		return []models.QueryField{models.QueryFieldArchived}
 	case operationFilterProjectClear:
-		return filterQueryPopulationFields
+		return query.FilterQueryPopulationFields
 	default:
 		return nil
 	}

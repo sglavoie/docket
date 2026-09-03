@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -81,7 +82,7 @@ func TestCursorRowKeepsItsSearchMatchHighlight(t *testing.T) {
 
 	line := outliner.renderOutlinerTaskRow(row, true, 80, 80, 0, nil)
 
-	positions := searchSubstringPositions(task.Title, "release", false)
+	positions := query.SearchSubstringPositions(task.Title, "release", false)
 	if len(positions) == 0 {
 		t.Fatal("fixture query matched nothing")
 	}

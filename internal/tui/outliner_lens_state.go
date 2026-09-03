@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 // A named lens is a saved Outliner projection: the mode it opens, the narrowing
@@ -44,14 +45,14 @@ type lensState struct {
 	// sort is the remembered treeSort rather than the active render sort: a
 	// fixed-order mode leaves the active sort at its default while the user's
 	// manual choice survives in treeSort, and that choice is what the lens owns.
-	sort SortState
+	sort query.SortState
 }
 
 // projectFilterState is the population cache the lens's canonical facets
 // select. Load routing compares filters rather than queries, so the derivation
 // lives here once instead of at each comparison.
-func (s lensState) projectFilterState() ProjectFilterState {
-	return projectFilterStateFromQuery(s.facets)
+func (s lensState) projectFilterState() query.ProjectFilterState {
+	return query.ProjectFilterStateFromQuery(s.facets)
 }
 
 // lensAxis maps one TUI enum onto its durable token set. The table is the single
@@ -107,17 +108,17 @@ var lensModeAxis = lensAxis[chrome.OutlinerModeID]{
 	requiresToken: true,
 }
 
-var lensSortAxis = lensAxis[SortField]{
+var lensSortAxis = lensAxis[query.SortField]{
 	name: "sort field",
-	tokens: map[SortField]string{
-		SortByDefault:   config.LensSortDefault,
-		SortByPriority:  config.LensSortPriority,
-		SortByDueDate:   config.LensSortDue,
-		SortByCreatedAt: config.LensSortCreated,
-		SortByUpdatedAt: config.LensSortUpdated,
-		SortByTitle:     config.LensSortTitle,
+	tokens: map[query.SortField]string{
+		query.SortByDefault:   config.LensSortDefault,
+		query.SortByPriority:  config.LensSortPriority,
+		query.SortByDueDate:   config.LensSortDue,
+		query.SortByCreatedAt: config.LensSortCreated,
+		query.SortByUpdatedAt: config.LensSortUpdated,
+		query.SortByTitle:     config.LensSortTitle,
 	},
-	fallback: SortByDefault,
+	fallback: query.SortByDefault,
 }
 
 // captureLensState reads every lens-owned axis off the live Outliner. The
@@ -253,7 +254,7 @@ func lensStateFromNamedLens(lens config.NamedLens) (lensState, error) {
 		scopeProjectID: lens.Scope,
 		facets:         facets,
 		query:          remainder,
-		sort:           SortState{Field: sortField, Ascending: lens.Sort.Ascending},
+		sort:           query.SortState{Field: sortField, Ascending: lens.Sort.Ascending},
 	}, nil
 }
 

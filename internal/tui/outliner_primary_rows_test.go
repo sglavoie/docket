@@ -314,7 +314,7 @@ func TestPrimaryAllExplicitFiltersOverrideTerminalAndDeferredDefaults(t *testing
 	runtime.Planning().SetToday([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: deferred.ID}})
 	outliner.selectOutlinerMode(chrome.ModeAll)
 
-	outliner.filter.setStateFilter(testWorkflowStateSet(models.StateDone, models.StateCanceled))
+	outliner.filter.SetStateFilter(testWorkflowStateSet(models.StateDone, models.StateCanceled))
 	outliner.adoptFilterCarriers()
 	outliner.rebuildRows()
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{"done", "canceled"}) {

@@ -10,6 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 func newFilterChordTestApp(t *testing.T) *AppModel {
@@ -91,14 +92,14 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 	taskFilter.Tags = map[string]bool{"triage": true, "deep": true}
 	taskFilter.Deferred = true
 	taskFilter.Review = true
-	taskFilter.Hierarchy = HierarchyParent
+	taskFilter.Hierarchy = query.HierarchyParent
 	taskFilter.Stale = true
 	terminal, err := models.NewWorkflowStateSet(models.StateDone, models.StateCanceled)
 	if err != nil {
 		t.Fatal(err)
 	}
-	taskFilter.setStateFilter(terminal)
-	taskFilter.setCompletionAgeFilter(CompletionAge90Days)
+	taskFilter.SetStateFilter(terminal)
+	taskFilter.SetCompletionAgeFilter(query.CompletionAge90Days)
 	taskFilter.Contexts = map[string]bool{"errand": true}
 	taskFilter.NoContext = true
 
@@ -123,7 +124,7 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 	// needs its own reading once the deferred one is cleared. Both readings are the
 	// token the picker's row writes, not a label of the chord's own.
 	taskFilter.Deferred = false
-	taskFilter.DueDate = DueDateToday
+	taskFilter.DueDate = query.DueDateToday
 	row = pendingChordHintRowForTest(app)
 	if !strings.Contains(row, "@ @today") {
 		t.Errorf("decorated f row %q omits %q", row, "@ @today")
@@ -133,8 +134,8 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 	projectFilter := &app.crossOutliner.projectFilter
 	projectFilter.Tags = map[string]bool{"client": true}
 	projectFilter.Untagged = true
-	projectFilter.ParkedMode = projectPopulationInclude
-	projectFilter.ArchivedMode = projectPopulationInclude
+	projectFilter.ParkedMode = query.ProjectPopulationInclude
+	projectFilter.ArchivedMode = query.ProjectPopulationInclude
 	row = pendingChordHintRowForTest(app)
 	for _, want := range []string{
 		"# project tags:3", "p parked:on", "P only parked",
@@ -145,8 +146,8 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 		}
 	}
 
-	projectFilter.ParkedMode = projectPopulationOnly
-	projectFilter.ArchivedMode = projectPopulationOnly
+	projectFilter.ParkedMode = query.ProjectPopulationOnly
+	projectFilter.ArchivedMode = query.ProjectPopulationOnly
 	row = pendingChordHintRowForTest(app)
 	for _, want := range []string{
 		"p include parked", "P parked:only", "a include archived", "A archived:only",
@@ -193,7 +194,7 @@ func TestStaleFilterChordTogglesTouchAgeFacet(t *testing.T) {
 	if visible := visibleOutlinerTaskIDs(app.crossOutliner); !maps.Equal(visible, map[string]bool{"critical": true}) {
 		t.Fatalf("Stale filter visible = %v, want only critical", visible)
 	}
-	if got := commonFilterParts(filter); !slices.Equal(got, []string{"?stale"}) {
+	if got := query.CommonFilterParts(filter); !slices.Equal(got, []string{"?stale"}) {
 		t.Fatalf("Stale badge parts = %v, want ?stale", got)
 	}
 

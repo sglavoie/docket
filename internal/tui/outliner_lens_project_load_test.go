@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -22,7 +23,7 @@ func TestLensProjectLoadPublishesOnlyOnTheMatchingGeneration(t *testing.T) {
 	if outliner.hasActiveLens() {
 		t.Fatal("nothing may publish before the load lands")
 	}
-	if outliner.projectFilter.ParkedMode == projectPopulationOnly {
+	if outliner.projectFilter.ParkedMode == query.ProjectPopulationOnly {
 		t.Fatal("the candidate filter must not be written to the live model")
 	}
 	if !slices.Equal(outliner.loadedProjects, baseline) {
@@ -50,7 +51,7 @@ func TestLensProjectLoadPublishesOnlyOnTheMatchingGeneration(t *testing.T) {
 	if !outliner.hasActiveLens() {
 		t.Fatal("the matching generation did not install the lens")
 	}
-	if outliner.projectFilter.ParkedMode != projectPopulationOnly {
+	if outliner.projectFilter.ParkedMode != query.ProjectPopulationOnly {
 		t.Fatal("publication did not install the lens project facets")
 	}
 	if ids := loadedProjectIDs(outliner); !slices.Equal(ids, []string{"gamma"}) {

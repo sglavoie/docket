@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -20,28 +21,28 @@ import (
 func (m *AppModel) newFilterDuePicker(
 	request OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
-	shortcuts := dueFilterShortcuts()
+	shortcuts := query.DueFilterShortcuts()
 	items := make([]ListItem, 0, len(shortcuts))
 	byToken := make(map[string]ListItemID, len(shortcuts))
 	for _, shortcut := range shortcuts {
-		id := ListItemID("filter-due:" + shortcut.id)
-		token := shortcut.token()
+		id := ListItemID("filter-due:" + shortcut.ID)
+		token := shortcut.Token()
 		byToken[token] = id
 		items = append(items, ListItem{
 			ID:            id,
-			PrimaryText:   shortcut.label,
-			SecondaryText: token + " · " + shortcut.secondary,
-			Aliases:       []string{shortcut.id, shortcut.label, shortcut.secondary, token},
+			PrimaryText:   shortcut.Label,
+			SecondaryText: token + " · " + shortcut.Secondary,
+			Aliases:       []string{shortcut.ID, shortcut.Label, shortcut.Secondary, token},
 			Data:          token,
 		})
 	}
 	selected := []ListItemID(nil)
 	if m.crossOutliner != nil {
-		active := dueFilterClauses(m.crossOutliner.filter.DueDate)
+		active := query.DueFilterClauses(m.crossOutliner.filter.DueDate)
 		if m.crossOutliner.filter.Deferred {
-			active = filterClauseList(models.QueryFieldDeferred, models.QueryOperatorPresent, "")
+			active = query.FilterClauseList(models.QueryFieldDeferred, models.QueryOperatorPresent, "")
 		}
-		if id, ok := byToken[strings.Join(filterClauseParts(active), " ")]; ok {
+		if id, ok := byToken[strings.Join(query.FilterClauseParts(active), " ")]; ok {
 			selected = []ListItemID{id}
 		}
 	}
@@ -63,27 +64,27 @@ func (m *AppModel) newFilterDuePicker(
 func (m *AppModel) newFilterDependencyPicker(
 	request OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
-	shortcuts := dependencyFilterShortcuts()
+	shortcuts := query.DependencyFilterShortcuts()
 	items := make([]ListItem, 0, len(shortcuts))
 	byToken := make(map[string]ListItemID, len(shortcuts))
 	for _, shortcut := range shortcuts {
-		id := ListItemID("filter-dependency:" + shortcut.id)
-		token := shortcut.token()
+		id := ListItemID("filter-dependency:" + shortcut.ID)
+		token := shortcut.Token()
 		byToken[token] = id
 		items = append(items, ListItem{
 			ID:            id,
-			PrimaryText:   shortcut.label,
-			SecondaryText: token + " · " + shortcut.secondary,
-			Aliases:       []string{shortcut.id, shortcut.label, shortcut.secondary, token},
+			PrimaryText:   shortcut.Label,
+			SecondaryText: token + " · " + shortcut.Secondary,
+			Aliases:       []string{shortcut.ID, shortcut.Label, shortcut.Secondary, token},
 			Data:          token,
 		})
 	}
 	selected := []ListItemID(nil)
 	if m.crossOutliner != nil {
-		active := queryClausesForField(m.crossOutliner.filterQuery, models.QueryFieldBlocked)
+		active := query.ClausesForField(m.crossOutliner.filterQuery, models.QueryFieldBlocked)
 		active = append(active,
-			queryClausesForField(m.crossOutliner.filterQuery, models.QueryFieldBlocking)...)
-		if id, ok := byToken[strings.Join(filterClauseParts(active), " ")]; ok {
+			query.ClausesForField(m.crossOutliner.filterQuery, models.QueryFieldBlocking)...)
+		if id, ok := byToken[strings.Join(query.FilterClauseParts(active), " ")]; ok {
 			selected = []ListItemID{id}
 		}
 	}
@@ -107,12 +108,12 @@ func (m *AppModel) newFilterHierarchyPicker(
 		id        string
 		label     string
 		secondary string
-		value     HierarchyFilter
+		value     query.HierarchyFilter
 	}{
-		{id: "parent", label: "Parent", secondary: "has open children", value: HierarchyParent},
-		{id: "child", label: "Child", secondary: "sits under a parent", value: HierarchyChild},
-		{id: "root", label: "Root", secondary: "has no parent", value: HierarchyRoot},
-		{id: "leaf", label: "Leaf", secondary: "has no open children", value: HierarchyLeaf},
+		{id: "parent", label: "Parent", secondary: "has open children", value: query.HierarchyParent},
+		{id: "child", label: "Child", secondary: "sits under a parent", value: query.HierarchyChild},
+		{id: "root", label: "Root", secondary: "has no parent", value: query.HierarchyRoot},
+		{id: "leaf", label: "Leaf", secondary: "has no open children", value: query.HierarchyLeaf},
 	}
 	items := make([]ListItem, 0, len(options))
 	for _, option := range options {
@@ -127,15 +128,15 @@ func (m *AppModel) newFilterHierarchyPicker(
 	selected := []ListItemID(nil)
 	if m.crossOutliner != nil {
 		switch m.crossOutliner.filter.Hierarchy {
-		case HierarchyAll:
+		case query.HierarchyAll:
 			selected = nil
-		case HierarchyParent:
+		case query.HierarchyParent:
 			selected = []ListItemID{"filter-hierarchy:parent"}
-		case HierarchyChild:
+		case query.HierarchyChild:
 			selected = []ListItemID{"filter-hierarchy:child"}
-		case HierarchyRoot:
+		case query.HierarchyRoot:
 			selected = []ListItemID{"filter-hierarchy:root"}
-		case HierarchyLeaf:
+		case query.HierarchyLeaf:
 			selected = []ListItemID{"filter-hierarchy:leaf"}
 		}
 	}
@@ -159,12 +160,12 @@ func (m *AppModel) newFilterCompletionAgePicker(
 		id        string
 		label     string
 		secondary string
-		value     CompletionAgeFilter
+		value     query.CompletionAgeFilter
 	}{
-		{id: "all", label: "All ages", secondary: "any valid completion date", value: CompletionAgeAll},
-		{id: "7", label: "7+ days", secondary: "completed at least 7 local days ago", value: CompletionAge7Days},
-		{id: "30", label: "30+ days", secondary: "completed at least 30 local days ago", value: CompletionAge30Days},
-		{id: "90", label: "90+ days", secondary: "completed at least 90 local days ago", value: CompletionAge90Days},
+		{id: "all", label: "All ages", secondary: "any valid completion date", value: query.CompletionAgeAll},
+		{id: "7", label: "7+ days", secondary: "completed at least 7 local days ago", value: query.CompletionAge7Days},
+		{id: "30", label: "30+ days", secondary: "completed at least 30 local days ago", value: query.CompletionAge30Days},
+		{id: "90", label: "90+ days", secondary: "completed at least 90 local days ago", value: query.CompletionAge90Days},
 	}
 	items := make([]ListItem, 0, len(options))
 	for _, option := range options {
@@ -177,14 +178,14 @@ func (m *AppModel) newFilterCompletionAgePicker(
 		})
 	}
 	selected := []ListItemID(nil)
-	if m.crossOutliner != nil && m.crossOutliner.filter.hasCompletionAgeFilter() {
+	if m.crossOutliner != nil && m.crossOutliner.filter.HasCompletionAgeFilter() {
 		suffix := "all"
 		switch m.crossOutliner.filter.CompletionAge {
-		case CompletionAge7Days:
+		case query.CompletionAge7Days:
 			suffix = "7"
-		case CompletionAge30Days:
+		case query.CompletionAge30Days:
 			suffix = "30"
-		case CompletionAge90Days:
+		case query.CompletionAge90Days:
 			suffix = "90"
 		default:
 		}
@@ -243,12 +244,12 @@ func (m *AppModel) prospectiveStateFilterCounts() map[models.WorkflowState]int {
 
 	clauses := make([]models.QueryClause, 0, len(models.AllWorkflowStates()))
 	for _, state := range models.AllWorkflowStates() {
-		clauses = appendFilterClause(clauses, models.QueryFieldState,
+		clauses = query.AppendFilterClause(clauses, models.QueryFieldState,
 			models.QueryOperatorIs, state.String())
 	}
-	query := queryWithFields(m.crossOutliner.filterQuery,
+	prospective := query.WithFields(m.crossOutliner.filterQuery,
 		[]models.QueryField{models.QueryFieldState}, clauses)
-	return prospectiveOutlinerStateCounts(m.crossOutliner, query)
+	return prospectiveOutlinerStateCounts(m.crossOutliner, prospective)
 }
 
 // prospectiveOutlinerStateCounts runs the canonical row projection on an
@@ -257,7 +258,7 @@ func (m *AppModel) prospectiveStateFilterCounts() map[models.WorkflowState]int {
 // pipeline preserves all actual scope and visibility rules.
 func prospectiveOutlinerStateCounts(
 	outliner *OutlinerModel,
-	query models.Query,
+	prospective models.Query,
 ) map[models.WorkflowState]int {
 	counts := make(map[models.WorkflowState]int, len(models.AllWorkflowStates()))
 	if outliner == nil {
@@ -268,7 +269,7 @@ func prospectiveOutlinerStateCounts(
 	// The copy takes the prospective narrowing through the one writer, so its
 	// carriers are derived from the query the count is asked about rather than
 	// the one the Outliner is still showing.
-	projection.setFilterQuery(query)
+	projection.setFilterQuery(prospective)
 	projection.rows = nil
 	projection.OpenAtTask = nil
 	projection.expandedNodes = make(map[taskref.TaskIdentity]bool)
@@ -332,7 +333,7 @@ func renderProspectiveFilterCount(count int) string {
 func (m *AppModel) newFilterTagsPicker(
 	request OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
-	tagList := BuildProjectsTagList(m.filterScopeProjects(), false)
+	tagList := query.BuildProjectsTagList(m.filterScopeProjects(), false)
 	source := taskTagListSource(tagList, false)
 	selected := []ListItemID(nil)
 	if m.crossOutliner != nil {
@@ -374,14 +375,14 @@ func (m *AppModel) newFilterContextsPicker(
 	request OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
 	projects := m.filterScopeProjects()
-	facets := BuildTagFacetList(projects, false)
+	facets := query.BuildTagFacetList(projects, false)
 	items := make([]ListItem, 0, len(facets)+1)
 	items = append(items, ListItem{
-		ID:            ListItemID("filter-context:" + noContextFilterKey),
+		ID:            ListItemID("filter-context:" + query.NoContextFilterKey),
 		PrimaryText:   "No context",
-		SecondaryText: taskCountLabel(countTasksWithoutContext(projects)),
+		SecondaryText: taskCountLabel(query.CountTasksWithoutContext(projects)),
 		Aliases:       []string{"no context", "none", "##0"},
-		Data:          noContextFilterKey,
+		Data:          query.NoContextFilterKey,
 	})
 	for _, facet := range facets {
 		if facet.ContextCount == 0 {
@@ -399,7 +400,7 @@ func (m *AppModel) newFilterContextsPicker(
 	if m.crossOutliner != nil {
 		filter := &m.crossOutliner.filter.CommonFilterState
 		if filter.NoContext {
-			selected = append(selected, ListItemID("filter-context:"+noContextFilterKey))
+			selected = append(selected, ListItemID("filter-context:"+query.NoContextFilterKey))
 		}
 		for name := range filter.Contexts {
 			selected = append(selected, ListItemID("filter-context:"+name))
@@ -414,18 +415,4 @@ func (m *AppModel) newFilterContextsPicker(
 		true,
 		selected,
 	)
-}
-
-// countTasksWithoutContext counts the gap the no-context row names, over the
-// same population BuildTagFacetList reads for the rows beside it.
-func countTasksWithoutContext(projects []*models.Project) int {
-	count := 0
-	for _, project := range uniqueProjects(projects) {
-		for _, task := range project.Tasks {
-			if task != nil && task.Context == "" {
-				count++
-			}
-		}
-	}
-	return count
 }

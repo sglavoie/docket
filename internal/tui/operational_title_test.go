@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/pulse"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -50,7 +51,7 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 		}, wantNarrow: []string{"Focus:"}, wantWide: []string{"Focus: [Alpha] › " + task.Title}},
 		{name: "search", configure: func(m *OutlinerModel) { m.SetSearchQuery("needle") }, wantNarrow: []string{"Search:"}, wantWide: []string{"Search: \"needle\""}},
 		{name: "filters", configure: func(m *OutlinerModel) {
-			m.filter = NewFilterState()
+			m.filter = query.NewFilterState()
 			m.filter.Priority = 1
 			m.adoptFilterCarriers()
 		}, wantNarrow: []string{"Filters:"}, wantWide: []string{"Filters:", "!1+"}},
@@ -62,7 +63,7 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 			m.multiSelectMode = true
 			m.selectedTaskIdentities = map[taskref.TaskIdentity]bool{{ProjectID: project.ID, TaskID: task.ID}: true}
 			m.SetSearchQuery("needle")
-			m.filter = NewFilterState()
+			m.filter = query.NewFilterState()
 			m.filter.Priority = 1
 			m.adoptFilterCarriers()
 			m.crossFocusStack = []CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: task.ID}}

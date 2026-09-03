@@ -5,13 +5,14 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/sglavoie/tt/internal/tui/pulse"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // TitleParams holds optional filter/sort info to display inline on the title line.
 type TitleParams struct {
 	FilterParts   []string
-	SortField     SortField
+	SortField     query.SortField
 	SortAscending bool
 	// Width is the room the title line owns, already net of any right-side
 	// reservation the caller makes (such as a counter). 0 = no truncation.
@@ -25,7 +26,7 @@ type TitleParams struct {
 // 3. Just sort
 // 4. Nothing
 func buildTitleFilterSuffix(params *TitleParams, baseWidth int) string {
-	if len(params.FilterParts) == 0 && params.SortField == SortByDefault {
+	if len(params.FilterParts) == 0 && params.SortField == query.SortByDefault {
 		return ""
 	}
 
@@ -37,7 +38,7 @@ func buildTitleFilterSuffix(params *TitleParams, baseWidth int) string {
 
 	// Build sort badge
 	sortBadge := ""
-	if params.SortField != SortByDefault {
+	if params.SortField != query.SortByDefault {
 		direction := "↑"
 		if !params.SortAscending {
 			direction = "↓"
@@ -46,7 +47,7 @@ func buildTitleFilterSuffix(params *TitleParams, baseWidth int) string {
 	}
 
 	// Build full filter badge
-	fullFilterBadge := renderFilterBadge(params.FilterParts)
+	fullFilterBadge := query.RenderFilterBadge(params.FilterParts)
 
 	// Build compact filter badge
 	compactFilterBadge := ""

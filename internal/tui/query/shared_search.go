@@ -1,14 +1,14 @@
-package tui
+package query
 
 import (
 	"strings"
 )
 
-// searchSubstringPositions returns the rune positions of the first substring
+// SearchSubstringPositions returns the rune positions of the first substring
 // match, folding case unless caseSensitive. It answers a render question only —
 // which columns to paint — and never decides membership: what a query matches is
 // stated once, by the tiered matcher in scoreSearchProjectionTask.
-func searchSubstringPositions(text, query string, caseSensitive bool) []int {
+func SearchSubstringPositions(text, query string, caseSensitive bool) []int {
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return nil

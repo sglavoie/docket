@@ -1,4 +1,4 @@
-package tui
+package query
 
 import (
 	"reflect"
@@ -104,7 +104,7 @@ func TestTagAndContextFacetsAreDistinctAxes(t *testing.T) {
 	contextual := &models.Task{Context: "platform"}
 	bare := &models.Task{}
 
-	tagFacet := newFilterState()
+	tagFacet := NewCommonFilterState()
 	tagFacet.Tags = map[string]bool{"platform": true}
 	for _, testCase := range []struct {
 		name string
@@ -119,7 +119,7 @@ func TestTagAndContextFacetsAreDistinctAxes(t *testing.T) {
 		}
 	}
 
-	contextFacet := newFilterState()
+	contextFacet := NewCommonFilterState()
 	contextFacet.Contexts = map[string]bool{"bug": true, "platform": true}
 	if passesCommonFiltersAt(tagged, &contextFacet, now) {
 		t.Error("context facet ##bug admits a task carrying bug as a tag")
@@ -128,7 +128,7 @@ func TestTagAndContextFacetsAreDistinctAxes(t *testing.T) {
 		t.Error("context facet does not admit ##platform under OR semantics")
 	}
 
-	noContext := newFilterState()
+	noContext := NewCommonFilterState()
 	noContext.NoContext = true
 	if !passesCommonFiltersAt(bare, &noContext, now) {
 		t.Error("no-context facet rejects a task with no context")
@@ -142,21 +142,21 @@ func TestTagAndContextFacetsAreDistinctAxes(t *testing.T) {
 // row on the one picker they share, the way the project picker's descriptive
 // tags and its Untagged row share theirs.
 func TestContextFacetCountsAsOneClearableFacet(t *testing.T) {
-	filter := newFilterState()
+	filter := NewCommonFilterState()
 	filter.Contexts = map[string]bool{"errand": true, "office": true}
 	filter.NoContext = true
-	if !hasActiveCommonFilters(&filter) {
-		t.Fatal("hasActiveCommonFilters() = false with an active context facet")
+	if !HasActiveCommonFilters(&filter) {
+		t.Fatal("HasActiveCommonFilters() = false with an active context facet")
 	}
-	if got := commonFilterFacetCount(&filter); got != 1 {
-		t.Fatalf("commonFilterFacetCount() = %d, want 1", got)
+	if got := CommonFilterFacetCount(&filter); got != 1 {
+		t.Fatalf("CommonFilterFacetCount() = %d, want 1", got)
 	}
 	want := []string{"##errand", "##office", "##0"}
-	if got := commonFilterParts(&filter); !reflect.DeepEqual(got, want) {
-		t.Fatalf("commonFilterParts() = %v, want %v", got, want)
+	if got := CommonFilterParts(&filter); !reflect.DeepEqual(got, want) {
+		t.Fatalf("CommonFilterParts() = %v, want %v", got, want)
 	}
 	clearCommonFilters(&filter)
-	if hasActiveCommonFilters(&filter) {
+	if HasActiveCommonFilters(&filter) {
 		t.Fatal("clearCommonFilters() left the context facet active")
 	}
 }
@@ -165,18 +165,18 @@ func TestContextFacetCountsAsOneClearableFacet(t *testing.T) {
 // picker's value channel and the none operator, so the facet still needs no
 // second value channel now that it writes clauses.
 func TestContextFilterClausesSplitTheNoContextToken(t *testing.T) {
-	clauses := contextFilterClauses([]string{"errand", noContextFilterKey})
-	filter := commonFilterStateFromQuery(models.Query{Clauses: clauses})
+	clauses := ContextFilterClauses([]string{"errand", NoContextFilterKey})
+	filter := CommonFilterStateFromQuery(models.Query{Clauses: clauses})
 	if !filter.NoContext {
 		t.Error("the no-context pseudo-entry did not set NoContext")
 	}
-	if filter.Contexts[noContextFilterKey] {
+	if filter.Contexts[NoContextFilterKey] {
 		t.Error("the no-context pseudo-entry survived as a context name")
 	}
 	if !filter.Contexts["errand"] {
 		t.Error("the errand context was dropped")
 	}
-	if got := len(contextFilterClauses(nil)); got != 0 {
+	if got := len(ContextFilterClauses(nil)); got != 0 {
 		t.Errorf("an empty picker result minted %d clause(s), want 0", got)
 	}
 }
@@ -193,13 +193,13 @@ func TestCollectContextNamesForProjectsReadsTheFacetCensus(t *testing.T) {
 		ID:    "beta",
 		Tasks: []*models.Task{{Context: "office"}, {Tags: []string{"desk"}}},
 	}
-	got := collectContextNamesForProjects([]*models.Project{alpha, beta, alpha})
+	got := CollectContextNamesForProjects([]*models.Project{alpha, beta, alpha})
 	want := []string{"errand", "office"}
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("collectContextNamesForProjects() = %v, want %v", got, want)
+		t.Fatalf("CollectContextNamesForProjects() = %v, want %v", got, want)
 	}
-	if got := countTasksWithoutContext([]*models.Project{alpha, beta, alpha}); got != 1 {
-		t.Fatalf("countTasksWithoutContext() = %d, want 1", got)
+	if got := CountTasksWithoutContext([]*models.Project{alpha, beta, alpha}); got != 1 {
+		t.Fatalf("CountTasksWithoutContext() = %d, want 1", got)
 	}
 }
 

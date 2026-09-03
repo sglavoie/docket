@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 // reviewFacetAxes are the three narrowing axes a review-flagged lens used to be
@@ -50,7 +51,7 @@ func reviewFacetCombination(mask int) (name string, query string, present []bool
 // clause. It reads the clause rather than the rendered string so a tag named
 // "review" cannot be mistaken for the flag.
 func lensStateHoldsReview(state lensState) bool {
-	return len(queryClausesForField(state.facets, models.QueryFieldReview)) == 1
+	return len(query.ClausesForField(state.facets, models.QueryFieldReview)) == 1
 }
 
 // Review must survive every hop a lens takes: capture off a live view, the
@@ -239,14 +240,14 @@ func TestCaptureLensStateReadsRememberedTreeSortAndDetachesCollections(t *testin
 	outliner.adoptFilterCarriers()
 	// Due owns its order, so the active sort is default while the user's manual
 	// choice survives in treeSort. The lens owns the remembered one.
-	outliner.sort = NewSortState()
-	outliner.treeSort = SortState{Field: SortByTitle, Ascending: false}
+	outliner.sort = query.NewSortState()
+	outliner.treeSort = query.SortState{Field: query.SortByTitle, Ascending: false}
 
 	captured := outliner.captureLensState()
 	if captured.mode != chrome.ModeDue || captured.query != "ship it" {
 		t.Fatalf("captured mode/query = %s/%q", captured.mode, captured.query)
 	}
-	if captured.sort != (SortState{Field: SortByTitle, Ascending: false}) {
+	if captured.sort != (query.SortState{Field: query.SortByTitle, Ascending: false}) {
 		t.Fatalf("captured sort = %+v, want the remembered tree sort", captured.sort)
 	}
 	if want := "#api +#client"; captured.facets.String() != want {
@@ -263,12 +264,12 @@ func TestCaptureLensStateReadsRememberedTreeSortAndDetachesCollections(t *testin
 }
 
 func TestApplyLensStateInstallsManualSortAndRemembersItInFixedOrderModes(t *testing.T) {
-	saved := SortState{Field: SortByUpdatedAt, Ascending: false}
+	saved := query.SortState{Field: query.SortByUpdatedAt, Ascending: false}
 	for _, mode := range chrome.OutlinerModeCatalog() {
 		t.Run(string(mode.ID), func(t *testing.T) {
 			outliner := scopeTestOutliner(primaryRowsProject("alpha"))
-			outliner.sort = SortState{Field: SortByTitle, Ascending: true}
-			outliner.treeSort = SortState{Field: SortByTitle, Ascending: true}
+			outliner.sort = query.SortState{Field: query.SortByTitle, Ascending: true}
+			outliner.treeSort = query.SortState{Field: query.SortByTitle, Ascending: true}
 
 			state := lensState{mode: mode.ID, sort: saved}
 			if !outliner.applyLensState(state) {
@@ -282,7 +283,7 @@ func TestApplyLensStateInstallsManualSortAndRemembersItInFixedOrderModes(t *test
 			}
 			wantActive := saved
 			if mode.FixedOrder() {
-				wantActive = NewSortState()
+				wantActive = query.NewSortState()
 			}
 			if outliner.sort != wantActive {
 				t.Fatalf("%s active sort = %+v, want %+v", mode.ID, outliner.sort, wantActive)

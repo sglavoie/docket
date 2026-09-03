@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -72,7 +73,7 @@ func TestFilterChordClearResetsEveryFacet(t *testing.T) {
 	filter := &out.filter.CommonFilterState
 
 	filter.Priority = 2
-	filter.DueDate = DueDateToday
+	filter.DueDate = query.DueDateToday
 	filter.Tags = map[string]bool{"deep": true}
 	// Both halves of the context facet, because fx must clear the gap row as
 	// well as the vocabulary: leaving NoContext set would keep a live predicate
@@ -84,7 +85,7 @@ func TestFilterChordClearResetsEveryFacet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	filter.setStateFilter(set)
+	filter.SetStateFilter(set)
 
 	result := executeDirectPath(t, app, simplifiedOperationContext(), []string{"f", "x"})
 	if result.Err != nil {
@@ -93,8 +94,8 @@ func TestFilterChordClearResetsEveryFacet(t *testing.T) {
 	if result.Status != "Filters cleared" {
 		t.Errorf("Status = %q, want %q", result.Status, "Filters cleared")
 	}
-	if hasActiveCommonFilters(filter) {
-		t.Errorf("common filters still active after fx: %v", commonFilterParts(filter))
+	if query.HasActiveCommonFilters(filter) {
+		t.Errorf("common filters still active after fx: %v", query.CommonFilterParts(filter))
 	}
 }
 
@@ -168,7 +169,7 @@ func TestFilterChordPriorityThresholdNarrowsRows(t *testing.T) {
 func TestFilterDuePickerDeferredRowOwnsTheDeferredFacet(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	filter := &app.crossOutliner.filter.CommonFilterState
-	filter.DueDate = DueDateToday
+	filter.DueDate = query.DueDateToday
 
 	result := app.executeFilterOperation(OperationInvocation{
 		Descriptor: OperationDescriptor{ID: operationFilterDue},
@@ -180,7 +181,7 @@ func TestFilterDuePickerDeferredRowOwnsTheDeferredFacet(t *testing.T) {
 	if !filter.Deferred {
 		t.Fatal("the deferred row did not enable the deferred-only facet")
 	}
-	if filter.DueDate != DueDateAll {
+	if filter.DueDate != query.DueDateAll {
 		t.Fatalf("DueDate = %v, want the due-date facet cleared", filter.DueDate)
 	}
 
@@ -196,7 +197,7 @@ func TestFilterDuePickerDeferredRowOwnsTheDeferredFacet(t *testing.T) {
 	}
 
 	pressFilterChord(t, app, "fx")
-	if filter.Deferred || filter.DueDate != DueDateAll {
+	if filter.Deferred || filter.DueDate != query.DueDateAll {
 		t.Fatalf("fx left the f@ facets active: %+v", filter)
 	}
 }
@@ -204,7 +205,7 @@ func TestFilterDuePickerDeferredRowOwnsTheDeferredFacet(t *testing.T) {
 func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 	t.Run("f@ due date", func(t *testing.T) {
 		app := newFilterChordTestApp(t)
-		app.crossOutliner.filter.DueDate = DueDateThisWeek
+		app.crossOutliner.filter.DueDate = query.DueDateThisWeek
 		app.crossOutliner.adoptFilterCarriers()
 
 		cmd := pressFilterChord(t, app, "f@")
@@ -242,7 +243,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		app.crossOutliner.filter.setStateFilter(set)
+		app.crossOutliner.filter.SetStateFilter(set)
 		app.crossOutliner.adoptFilterCarriers()
 
 		cmd := pressFilterChord(t, app, "f$")
@@ -261,7 +262,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 
 	t.Run("fa completion age", func(t *testing.T) {
 		app := newFilterChordTestApp(t)
-		app.crossOutliner.filter.setCompletionAgeFilter(CompletionAge30Days)
+		app.crossOutliner.filter.SetCompletionAgeFilter(query.CompletionAge30Days)
 		app.crossOutliner.adoptFilterCarriers()
 
 		cmd := pressFilterChord(t, app, "fa")
@@ -349,7 +350,7 @@ func TestFilterStatePickerShowsProspectiveCountsFromOtherActiveFilters(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	outliner.filter.setStateFilter(selectedStates)
+	outliner.filter.SetStateFilter(selectedStates)
 	outliner.adoptFilterCarriers()
 	outliner.crossForceRebuild = true
 	outliner.rebuildRows()

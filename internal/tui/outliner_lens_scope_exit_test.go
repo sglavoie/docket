@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -153,7 +154,7 @@ func TestScopedLensPopulationProvenanceTracksOrdinaryReloads(t *testing.T) {
 	outliner.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
 		projects:            base,
 		generation:          outliner.crossLoadGen,
-		loadedProjectFilter: projectFilterFingerprint(&ProjectFilterState{}),
+		loadedProjectFilter: query.ProjectFilterFingerprint(&query.ProjectFilterState{}),
 	})
 	if !outliner.activeLens.projectFacetsAwaitingLoad {
 		t.Fatal("a reload under the pre-lens filter paid the owed population load")
@@ -167,9 +168,9 @@ func TestScopedLensPopulationProvenanceTracksOrdinaryReloads(t *testing.T) {
 	if !ok {
 		t.Fatal("the reload command produced no cross-projects result")
 	}
-	if result.loadedProjectFilter != projectFilterFingerprint(&outliner.projectFilter) {
+	if result.loadedProjectFilter != query.ProjectFilterFingerprint(&outliner.projectFilter) {
 		t.Fatalf("reload provenance = %q, want the project filter it read under %q",
-			result.loadedProjectFilter, projectFilterFingerprint(&outliner.projectFilter))
+			result.loadedProjectFilter, query.ProjectFilterFingerprint(&outliner.projectFilter))
 	}
 	result.projects = append(slices.Clone(base), parked)
 	result.failedLoads = nil

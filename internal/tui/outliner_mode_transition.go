@@ -1,6 +1,9 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/tui/chrome"
+import (
+	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
+)
 
 // OutlinerModeSwitch carries the cross-mode state that must survive a mode
 // change. Project scope, search, common filters, cursor identity,
@@ -12,8 +15,8 @@ import "github.com/sglavoie/tt/internal/tui/chrome"
 // Entering a fixed-order mode deactivates manual sort without destroying
 // TreeSort, so returning to a tree-order mode restores it.
 type OutlinerModeSwitch struct {
-	TreeSort   SortState
-	ActiveSort SortState
+	TreeSort   query.SortState
+	ActiveSort query.SortState
 }
 
 // ApplyOutlinerModeTransition returns the state after switching from prev to
@@ -35,7 +38,7 @@ func ApplyOutlinerModeTransition(state OutlinerModeSwitch, prev, target chrome.O
 	} else {
 		// Fixed-order modes own their ordering: manual sort is inactive, but the
 		// stored tree-mode sort is left intact.
-		next.ActiveSort = NewSortState()
+		next.ActiveSort = query.NewSortState()
 	}
 	return next
 }

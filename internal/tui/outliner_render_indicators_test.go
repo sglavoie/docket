@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 // This file covers one indicator at a time: what each signal spells, which
@@ -25,7 +26,7 @@ func TestDeferIndicatorSeparatesPendingFromWoken(t *testing.T) {
 	}{
 		{"pending", now.AddDate(0, 0, 3), "defer "},
 		{"woken inside the window", now.Add(-30 * time.Hour), "woke "},
-		{"woken past the window", now.Add(-deferWakeWindow - time.Hour), ""},
+		{"woken past the window", now.Add(-query.DeferWakeWindow - time.Hour), ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -37,7 +38,7 @@ func lensLifecycleOutliner() *OutlinerModel {
 
 // waitingLens is the starter-shaped definition the lifecycle tests apply: a
 // named mode, a real facet, and a narrowing query.
-func waitingLens(id, name, query string) config.NamedLens {
+func waitingLens(id, name, narrowing string) config.NamedLens {
 	facets, err := models.ParseQuery("$" + string(models.StateWaiting))
 	if err != nil {
 		panic(err)
@@ -45,8 +46,8 @@ func waitingLens(id, name, query string) config.NamedLens {
 	state := lensState{
 		mode:   chrome.ModeAll,
 		facets: facets,
-		query:  query,
-		sort:   NewSortState(),
+		query:  narrowing,
+		sort:   query.NewSortState(),
 	}
 	return state.namedLens(id, name)
 }
@@ -78,7 +79,7 @@ func applyLensOrFatal(t *testing.T, outliner *OutlinerModel, lens config.NamedLe
 func TestApplyNamedLensInstallsSavedProjectionAndEscRestoresBaseline(t *testing.T) {
 	outliner := lensLifecycleOutliner()
 	outliner.selectOutlinerMode(chrome.ModeInbox)
-	outliner.treeSort = SortState{Field: SortByTitle, Ascending: true}
+	outliner.treeSort = query.SortState{Field: query.SortByTitle, Ascending: true}
 	outliner.collapsedSections["baseline-fold"] = true
 	outliner.peekMode = true
 	outliner.selectedTaskIdentities[taskref.TaskIdentity{ProjectID: "beta", TaskID: "beta-inbox"}] = true
@@ -95,7 +96,7 @@ func TestApplyNamedLensInstallsSavedProjectionAndEscRestoresBaseline(t *testing.
 	if outliner.lensQuery != "needle" {
 		t.Fatalf("lens query = %q, want %q", outliner.lensQuery, "needle")
 	}
-	if !outliner.filter.hasStateFilter() {
+	if !outliner.filter.HasStateFilter() {
 		t.Fatal("expected the lens state facet to be installed")
 	}
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{"waiting", "beta-waiting"}) {
@@ -120,10 +121,10 @@ func TestApplyNamedLensInstallsSavedProjectionAndEscRestoresBaseline(t *testing.
 	if outliner.lensQuery != "" {
 		t.Fatalf("restored lens query = %q, want empty", outliner.lensQuery)
 	}
-	if outliner.filter.hasStateFilter() {
+	if outliner.filter.HasStateFilter() {
 		t.Fatal("restoration kept the lens state facet")
 	}
-	if outliner.treeSort.Field != SortByTitle || !outliner.treeSort.Ascending {
+	if outliner.treeSort.Field != query.SortByTitle || !outliner.treeSort.Ascending {
 		t.Fatalf("restored treeSort = %+v, want title ascending", outliner.treeSort)
 	}
 	if !outliner.collapsedSections["baseline-fold"] {
@@ -195,7 +196,7 @@ func TestApplyNamedLensUnderScopeRecordsProjectFacetsInert(t *testing.T) {
 	lens = lensWithFacet(lens, "+parked")
 	applyLensOrFatal(t, outliner, lens)
 
-	if outliner.projectFilter.ParkedMode != projectPopulationInclude {
+	if outliner.projectFilter.ParkedMode != query.ProjectPopulationInclude {
 		t.Fatal("the scoped application did not record the lens project facets")
 	}
 	if outliner.pendingLens != nil {

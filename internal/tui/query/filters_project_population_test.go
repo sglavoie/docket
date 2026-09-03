@@ -1,4 +1,4 @@
-package tui
+package query
 
 import (
 	"slices"
@@ -15,16 +15,16 @@ func TestProjectFilterAdmitsAcrossPopulationModes(t *testing.T) {
 
 	modes := []struct {
 		name string
-		mode projectPopulationMode
+		mode ProjectPopulationMode
 	}{
-		{"exclude", projectPopulationExclude},
-		{"include", projectPopulationInclude},
-		{"only", projectPopulationOnly},
+		{"exclude", ProjectPopulationExclude},
+		{"include", ProjectPopulationInclude},
+		{"only", ProjectPopulationOnly},
 	}
 
 	for _, parkedMode := range modes {
 		for _, archivedMode := range modes {
-			filter := newProjectFilterState()
+			filter := NewProjectFilterState()
 			filter.ParkedMode = parkedMode.mode
 			filter.ArchivedMode = archivedMode.mode
 
@@ -32,7 +32,7 @@ func TestProjectFilterAdmitsAcrossPopulationModes(t *testing.T) {
 				isParked := models.ProjectTagsParked(candidate.Tags)
 				want := projectPopulationAdmits(parkedMode.mode, isParked) &&
 					projectPopulationAdmits(archivedMode.mode, candidate.Archived)
-				if got := projectFilterAdmits(candidate, filter); got != want {
+				if got := ProjectFilterAdmits(candidate, filter); got != want {
 					t.Errorf("parked=%s archived=%s admits %s = %v, want %v",
 						parkedMode.name, archivedMode.name, candidate.Name, got, want)
 				}
@@ -47,21 +47,21 @@ func TestProjectFilterAdmitsAcrossPopulationModes(t *testing.T) {
 func TestProjectTagFilterValuePreservesIsolatedParkedPopulation(t *testing.T) {
 	cases := []struct {
 		name    string
-		initial projectPopulationMode
+		initial ProjectPopulationMode
 		names   []string
-		want    projectPopulationMode
+		want    ProjectPopulationMode
 	}{
-		{"checked row keeps only", projectPopulationOnly, []string{models.ParkedProjectTag}, projectPopulationOnly},
-		{"checked row widens exclude", projectPopulationExclude, []string{models.ParkedProjectTag}, projectPopulationInclude},
-		{"checked row keeps include", projectPopulationInclude, []string{models.ParkedProjectTag}, projectPopulationInclude},
-		{"unchecked row clears only", projectPopulationOnly, []string{"client"}, projectPopulationExclude},
-		{"unchecked row clears include", projectPopulationInclude, nil, projectPopulationExclude},
+		{"checked row keeps only", ProjectPopulationOnly, []string{models.ParkedProjectTag}, ProjectPopulationOnly},
+		{"checked row widens exclude", ProjectPopulationExclude, []string{models.ParkedProjectTag}, ProjectPopulationInclude},
+		{"checked row keeps include", ProjectPopulationInclude, []string{models.ParkedProjectTag}, ProjectPopulationInclude},
+		{"unchecked row clears only", ProjectPopulationOnly, []string{"client"}, ProjectPopulationExclude},
+		{"unchecked row clears include", ProjectPopulationInclude, nil, ProjectPopulationExclude},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			filter := newProjectFilterState()
+			filter := NewProjectFilterState()
 			filter.ParkedMode = testCase.initial
-			applyProjectTagFilterValue(&filter, testCase.names)
+			ApplyProjectTagFilterValue(&filter, testCase.names)
 			if filter.ParkedMode != testCase.want {
 				t.Errorf("ParkedMode = %v, want %v", filter.ParkedMode, testCase.want)
 			}
@@ -73,13 +73,13 @@ func TestProjectTagFilterValuePreservesIsolatedParkedPopulation(t *testing.T) {
 }
 
 func TestProjectFilterSelectionRoundTripsThroughThePicker(t *testing.T) {
-	filter := newProjectFilterState()
+	filter := NewProjectFilterState()
 	filter.Tags = map[string]bool{"client": true}
 	filter.Untagged = true
-	filter.ParkedMode = projectPopulationOnly
+	filter.ParkedMode = ProjectPopulationOnly
 
-	selection := projectFilterSelection(&filter)
-	for _, want := range []ListItemID{"tag:client", "tag:" + models.ParkedProjectTag, "tag:" + untaggedProjectFilterKey} {
+	selection := ProjectFilterSelection(&filter)
+	for _, want := range []string{"tag:client", "tag:" + models.ParkedProjectTag, "tag:" + UntaggedProjectFilterKey} {
 		if !slices.Contains(selection, want) {
 			t.Errorf("selection %v omits %q", selection, want)
 		}
@@ -87,16 +87,16 @@ func TestProjectFilterSelectionRoundTripsThroughThePicker(t *testing.T) {
 }
 
 func TestProjectFilterPartsNamePopulationModes(t *testing.T) {
-	filter := newProjectFilterState()
-	filter.ParkedMode = projectPopulationInclude
-	filter.ArchivedMode = projectPopulationOnly
+	filter := NewProjectFilterState()
+	filter.ParkedMode = ProjectPopulationInclude
+	filter.ArchivedMode = ProjectPopulationOnly
 
-	got := projectFilterParts(&filter)
+	got := ProjectFilterParts(&filter)
 	want := []string{"+parked", "+archived:only"}
 	if !slices.Equal(got, want) {
-		t.Errorf("projectFilterParts() = %v, want %v", got, want)
+		t.Errorf("ProjectFilterParts() = %v, want %v", got, want)
 	}
-	if count := projectFilterFacetCount(&filter); count != 2 {
+	if count := ProjectFilterFacetCount(&filter); count != 2 {
 		t.Errorf("facet count = %d, want one facet per active axis", count)
 	}
 }

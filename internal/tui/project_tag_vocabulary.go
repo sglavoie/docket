@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
 
 	tea "charm.land/bubbletea/v2"
@@ -285,7 +286,7 @@ func (m *AppModel) newProjectTagDestinationPicker(
 // could rename or remove.
 func projectTagVocabularySelectableTag(item ListItem) (string, bool) {
 	tag, ok := item.Data.(string)
-	if !ok || tag == "" || tag == untaggedProjectFilterKey {
+	if !ok || tag == "" || tag == query.UntaggedProjectFilterKey {
 		return "", false
 	}
 	return strings.ToLower(tag), true

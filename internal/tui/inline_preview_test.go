@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -81,7 +82,7 @@ func TestInlinePeekDatesLineOmitsEmptyFields(t *testing.T) {
 	due := time.Date(2026, time.August, 14, 0, 0, 0, 0, time.UTC)
 	woke := now.Add(-24 * time.Hour)
 	pending := now.Add(24 * time.Hour)
-	stale := now.Add(-deferWakeWindow - time.Hour)
+	stale := now.Add(-query.DeferWakeWindow - time.Hour)
 
 	cases := []struct {
 		name string

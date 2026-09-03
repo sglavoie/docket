@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 // rowFilterClauseEdit is one clause constructor per row facet. Each reads the
@@ -25,7 +26,7 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation OperationInvocation) (fil
 			return filterClauseEdit{status: "Priority filter cleared"}, nil
 		}
 		return filterClauseEdit{
-			clauses: filterClauseList(models.QueryFieldPriority,
+			clauses: query.FilterClauseList(models.QueryFieldPriority,
 				models.QueryOperatorAtLeast, strconv.Itoa(threshold)),
 			status: "Filtering " + priorityThresholdLabel(threshold),
 		}, nil
@@ -34,30 +35,30 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation OperationInvocation) (fil
 		if !ok {
 			return filterClauseEdit{}, fmt.Errorf("invalid due-date filter value")
 		}
-		shortcut, known := dueFilterShortcutForToken(token)
+		shortcut, known := query.DueFilterShortcutForToken(token)
 		if !known {
 			return filterClauseEdit{}, fmt.Errorf("unknown due filter %q", token)
 		}
 		return filterClauseEdit{
-			clauses: shortcut.clauses,
+			clauses: shortcut.Clauses,
 			status:  "Filtering " + token,
 		}, nil
 	case operationFilterCompletionAge:
-		age, ok := invocation.Value.(CompletionAgeFilter)
-		if !ok || age < CompletionAgeAll || age > CompletionAge90Days {
+		age, ok := invocation.Value.(query.CompletionAgeFilter)
+		if !ok || age < query.CompletionAgeAll || age > query.CompletionAge90Days {
 			return filterClauseEdit{}, fmt.Errorf("invalid completion-age filter value")
 		}
 		return filterClauseEdit{
-			clauses: completionAgeClauses(age),
+			clauses: query.CompletionAgeClauses(age),
 			status:  "Filtering completed: " + completionAgeFilterLabel(age),
 		}, nil
 	case operationFilterHierarchy:
-		hierarchy, ok := invocation.Value.(HierarchyFilter)
-		if !ok || hierarchy < HierarchyParent || hierarchy > HierarchyLeaf {
+		hierarchy, ok := invocation.Value.(query.HierarchyFilter)
+		if !ok || hierarchy < query.HierarchyParent || hierarchy > query.HierarchyLeaf {
 			return filterClauseEdit{}, fmt.Errorf("invalid hierarchy filter value")
 		}
 		return filterClauseEdit{
-			clauses: hierarchyFilterClauses(hierarchy),
+			clauses: query.HierarchyFilterClauses(hierarchy),
 			status:  "Filtering hierarchy: " + hierarchyFilterLabel(hierarchy),
 		}, nil
 	case operationFilterDependency:
@@ -65,12 +66,12 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation OperationInvocation) (fil
 		if !ok {
 			return filterClauseEdit{}, fmt.Errorf("invalid dependency filter value")
 		}
-		shortcut, known := dependencyFilterShortcutForToken(token)
+		shortcut, known := query.DependencyFilterShortcutForToken(token)
 		if !known {
 			return filterClauseEdit{}, fmt.Errorf("unknown dependency filter %q", token)
 		}
 		return filterClauseEdit{
-			clauses: shortcut.clauses,
+			clauses: shortcut.Clauses,
 			status:  "Filtering " + token,
 		}, nil
 	case operationFilterStates:
@@ -83,7 +84,7 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation OperationInvocation) (fil
 			if !models.WorkflowState(name).IsValid() {
 				return filterClauseEdit{}, fmt.Errorf("invalid workflow state %q", name)
 			}
-			clauses = appendFilterClause(clauses, models.QueryFieldState,
+			clauses = query.AppendFilterClause(clauses, models.QueryFieldState,
 				models.QueryOperatorIs, name)
 		}
 		status := fmt.Sprintf("Filtering %d state(s)", len(names))
@@ -98,7 +99,7 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation OperationInvocation) (fil
 		}
 		clauses := make([]models.QueryClause, 0, len(names))
 		for _, name := range names {
-			clauses = appendFilterClause(clauses, models.QueryFieldTag,
+			clauses = query.AppendFilterClause(clauses, models.QueryFieldTag,
 				models.QueryOperatorIs, name)
 		}
 		status := fmt.Sprintf("Filtering %d tag(s)", len(names))
@@ -111,10 +112,10 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation OperationInvocation) (fil
 		if !ok {
 			return filterClauseEdit{}, fmt.Errorf("invalid context filter value")
 		}
-		clauses := contextFilterClauses(names)
+		clauses := query.ContextFilterClauses(names)
 		status := "Context filter cleared"
 		if len(clauses) > 0 {
-			status = "Filtering context: " + strings.Join(filterClauseParts(clauses), " ")
+			status = "Filtering context: " + strings.Join(query.FilterClauseParts(clauses), " ")
 		}
 		return filterClauseEdit{clauses: clauses, status: status}, nil
 	case operationFilterReview:
@@ -122,7 +123,7 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation OperationInvocation) (fil
 			return filterClauseEdit{status: "Review filter cleared"}, nil
 		}
 		return filterClauseEdit{
-			clauses: filterClauseList(models.QueryFieldReview, models.QueryOperatorPresent, ""),
+			clauses: query.FilterClauseList(models.QueryFieldReview, models.QueryOperatorPresent, ""),
 			status:  "Filtering Review",
 		}, nil
 	case operationFilterStale:
@@ -130,7 +131,7 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation OperationInvocation) (fil
 			return filterClauseEdit{status: "Stale filter cleared"}, nil
 		}
 		return filterClauseEdit{
-			clauses: filterClauseList(models.QueryFieldStale, models.QueryOperatorPresent, ""),
+			clauses: query.FilterClauseList(models.QueryFieldStale, models.QueryOperatorPresent, ""),
 			status:  "Filtering Stale",
 		}, nil
 	case operationFilterPinned:
@@ -138,7 +139,7 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation OperationInvocation) (fil
 			return filterClauseEdit{status: "Pinned filter cleared"}, nil
 		}
 		return filterClauseEdit{
-			clauses: filterClauseList(models.QueryFieldPinned, models.QueryOperatorPresent, ""),
+			clauses: query.FilterClauseList(models.QueryFieldPinned, models.QueryOperatorPresent, ""),
 			status:  "Filtering Pinned",
 		}, nil
 	case operationFilterClear:
@@ -146,39 +147,6 @@ func (m *OutlinerModel) rowFilterClauseEdit(invocation OperationInvocation) (fil
 	default:
 		return filterClauseEdit{}, fmt.Errorf("unknown filter operation %s", invocation.Descriptor.ID)
 	}
-}
-
-// completionAgeClauses spells the cleanup facet. It carries the terminal-state
-// predicate itself, because a completion age asked of open work would name a
-// population that cannot answer it.
-func completionAgeClauses(age CompletionAgeFilter) []models.QueryClause {
-	clauses := filterClauseList(models.QueryFieldState,
-		models.QueryOperatorIs, string(models.StateDone))
-	clauses = appendFilterClause(clauses, models.QueryFieldState,
-		models.QueryOperatorIs, string(models.StateCanceled))
-	if days := age.days(); days > 0 {
-		return appendFilterClause(clauses, models.QueryFieldCompleted,
-			models.QueryOperatorAtLeast, fmt.Sprintf("%dd", days))
-	}
-	return appendFilterClause(clauses, models.QueryFieldCompleted,
-		models.QueryOperatorPresent, "")
-}
-
-// contextFilterClauses spells one context picker result. The no-context
-// pseudo-entry travels in the same list of names and becomes the none operator,
-// so the facet needs no second value channel.
-func contextFilterClauses(names []string) []models.QueryClause {
-	clauses := make([]models.QueryClause, 0, len(names))
-	for _, name := range names {
-		if name == noContextFilterKey {
-			clauses = appendFilterClause(clauses, models.QueryFieldContext,
-				models.QueryOperatorNone, "")
-			continue
-		}
-		clauses = appendFilterClause(clauses, models.QueryFieldContext,
-			models.QueryOperatorIs, name)
-	}
-	return clauses
 }
 
 func priorityThresholdLabel(threshold int) string {
@@ -194,23 +162,23 @@ func priorityThresholdLabel(threshold int) string {
 	}
 }
 
-func hierarchyFilterLabel(filter HierarchyFilter) string {
+func hierarchyFilterLabel(filter query.HierarchyFilter) string {
 	switch filter {
-	case HierarchyParent:
+	case query.HierarchyParent:
 		return "parent"
-	case HierarchyChild:
+	case query.HierarchyChild:
 		return "child"
-	case HierarchyRoot:
+	case query.HierarchyRoot:
 		return "root"
-	case HierarchyLeaf:
+	case query.HierarchyLeaf:
 		return "leaf"
 	default:
 		return "all"
 	}
 }
 
-func completionAgeFilterLabel(filter CompletionAgeFilter) string {
-	if days := filter.days(); days > 0 {
+func completionAgeFilterLabel(filter query.CompletionAgeFilter) string {
+	if days := filter.Days(); days > 0 {
 		return fmt.Sprintf("at least %d days ago", days)
 	}
 	return "all ages"

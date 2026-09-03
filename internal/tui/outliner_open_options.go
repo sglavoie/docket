@@ -3,12 +3,13 @@ package tui
 import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 // OutlinerOpenOptions applies canonical mode, sort, or persisted route state
 // without changing the typed TaskWorkspace route that owns scope.
 type OutlinerOpenOptions struct {
-	Sort    SortField
+	Sort    query.SortField
 	SetSort bool
 	Mode    chrome.OutlinerModeID
 	SetMode bool
@@ -31,7 +32,7 @@ func (m *OutlinerModel) ApplyOpenOptions(opts OutlinerOpenOptions) {
 		}
 	}
 	if opts.SetSort && mode.SupportsManualSort() {
-		sortState := SortState{Field: opts.Sort, Ascending: true}
+		sortState := query.SortState{Field: opts.Sort, Ascending: true}
 		m.sort = sortState
 		m.treeSort = sortState
 		m.rebuildRows()

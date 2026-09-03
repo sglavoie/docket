@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 func TestFilterDueChordPickerAppliesEveryPublicFacet(t *testing.T) {
@@ -16,12 +17,12 @@ func TestFilterDueChordPickerAppliesEveryPublicFacet(t *testing.T) {
 		name   string
 		itemID ListItemID
 		token  string
-		want   DueDateFilter
+		want   query.DueDateFilter
 	}{
-		{name: "overdue", itemID: "filter-due:overdue", token: "@overdue", want: DueDateOverdue},
-		{name: "today", itemID: "filter-due:today", token: "@today", want: DueDateToday},
-		{name: "this week", itemID: "filter-due:week", token: "@week", want: DueDateThisWeek},
-		{name: "no due date", itemID: "filter-due:none", token: "@0", want: DueDateNone},
+		{name: "overdue", itemID: "filter-due:overdue", token: "@overdue", want: query.DueDateOverdue},
+		{name: "today", itemID: "filter-due:today", token: "@today", want: query.DueDateToday},
+		{name: "this week", itemID: "filter-due:week", token: "@week", want: query.DueDateThisWeek},
+		{name: "no due date", itemID: "filter-due:none", token: "@0", want: query.DueDateNone},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -187,7 +188,7 @@ func TestFilterCompletionAgeChordSelectsTerminalLifecycleStates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	filter.setStateFilter(states)
+	filter.SetStateFilter(states)
 
 	cmd := pressFilterChord(t, app, "fa")
 	if cmd == nil {
@@ -208,8 +209,8 @@ func TestFilterCompletionAgeChordSelectsTerminalLifecycleStates(t *testing.T) {
 	if !handled || statusCmd == nil {
 		t.Fatalf("completion-age selection = handled %v cmd %T; want applied status", handled, statusCmd)
 	}
-	if !filter.hasCompletionAgeFilter() || filter.CompletionAge != CompletionAge90Days {
-		t.Errorf("completion-age filter = active %v value %v, want active 90 days", filter.hasCompletionAgeFilter(), filter.CompletionAge)
+	if !filter.HasCompletionAgeFilter() || filter.CompletionAge != query.CompletionAge90Days {
+		t.Errorf("completion-age filter = active %v value %v, want active 90 days", filter.HasCompletionAgeFilter(), filter.CompletionAge)
 	}
 	wantStates, err := models.NewWorkflowStateSet(models.StateDone, models.StateCanceled)
 	if err != nil {
@@ -219,12 +220,12 @@ func TestFilterCompletionAgeChordSelectsTerminalLifecycleStates(t *testing.T) {
 		t.Errorf("fa lifecycle states = %v, want Done and Canceled", filter.States.Values())
 	}
 	wantParts := []string{"$canceled", "$done", "?completed:90d"}
-	if got := commonFilterParts(filter); !slices.Equal(got, wantParts) {
+	if got := query.CommonFilterParts(filter); !slices.Equal(got, wantParts) {
 		t.Errorf("fa badge parts = %v, want terminal states and completion age", got)
 	}
 
 	pressFilterChord(t, app, "fx")
-	if filter.hasCompletionAgeFilter() || filter.hasStateFilter() {
+	if filter.HasCompletionAgeFilter() || filter.HasStateFilter() {
 		t.Fatalf("fx left cleanup facets active: %+v", filter)
 	}
 }
@@ -262,7 +263,7 @@ func TestFilterOperationsApplyPickerValues(t *testing.T) {
 	if cleared.Status != "State filter cleared" {
 		t.Errorf("Status = %q, want %q", cleared.Status, "State filter cleared")
 	}
-	if filter.hasStateFilter() {
+	if filter.HasStateFilter() {
 		t.Error("state filter should be inactive after selecting no states")
 	}
 

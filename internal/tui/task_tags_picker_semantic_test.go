@@ -8,10 +8,11 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-func newFilterTagPickerForTest(t *testing.T, tags []TagInfo) *OperationValuePickerModel {
+func newFilterTagPickerForTest(t *testing.T, tags []query.TagInfo) *OperationValuePickerModel {
 	t.Helper()
 	picker, err := newOperationValuePickerModel(
 		OperationExecutionRequest{},
@@ -67,7 +68,7 @@ func TestSemanticTaskTagExplainerWrapsCompleteTextAtNarrowWidths(t *testing.T) {
 }
 
 func TestSemanticTagPickerReservesHeightForWrappedExplainer(t *testing.T) {
-	picker := newSemanticTagPickerForTest(t, []TagInfo{{Name: "urgent", TaskCount: 1}}, true)
+	picker := newSemanticTagPickerForTest(t, []query.TagInfo{{Name: "urgent", TaskCount: 1}}, true)
 	rendered := picker.renderWithin(minTerminalWidth, minTerminalHeight)
 	if got := lipgloss.Height(rendered); got > minTerminalHeight {
 		t.Fatalf("picker height = %d, want <= %d", got, minTerminalHeight)
@@ -83,7 +84,7 @@ func TestSemanticTagPickerReservesHeightForWrappedExplainer(t *testing.T) {
 	}
 }
 
-func newSemanticTagPickerForTest(t *testing.T, tags []TagInfo, seedUnused bool) *OperationValuePickerModel {
+func newSemanticTagPickerForTest(t *testing.T, tags []query.TagInfo, seedUnused bool) *OperationValuePickerModel {
 	t.Helper()
 	picker, err := newOperationValuePickerModel(
 		OperationExecutionRequest{ID: operationTaskSetTags},
@@ -101,7 +102,7 @@ func newSemanticTagPickerForTest(t *testing.T, tags []TagInfo, seedUnused bool) 
 }
 
 func TestOperationTagPickerRoutesAMintedSemanticTagIntoTheSemanticSection(t *testing.T) {
-	picker := newSemanticTagPickerForTest(t, []TagInfo{{Name: "alpha", TaskCount: 1}}, false)
+	picker := newSemanticTagPickerForTest(t, []query.TagInfo{{Name: "alpha", TaskCount: 1}}, false)
 	if err := picker.addOrSelectTag("Bug"); err != nil {
 		t.Fatalf("addOrSelectTag: %v", err)
 	}
@@ -144,7 +145,7 @@ func TestSemanticTagPickerRowsWearTheTitleColorTheyApply(t *testing.T) {
 	}{
 		{
 			name: "task tags picker",
-			source: taskTagListSource([]TagInfo{
+			source: taskTagListSource([]query.TagInfo{
 				{Name: "urgent", TaskCount: 3},
 				{Name: "platform", TaskCount: 1, ContextCount: 1},
 				{Name: "triage", TaskCount: 1},
@@ -193,7 +194,7 @@ func TestSemanticTagPickerRowsWearTheTitleColorTheyApply(t *testing.T) {
 	// both minting outcomes are walked too: semantic routes into SEMANTIC and
 	// everything else into TAGS.
 	t.Run("minted rows", func(t *testing.T) {
-		picker := newSemanticTagPickerForTest(t, []TagInfo{{Name: "alpha", TaskCount: 1}}, false)
+		picker := newSemanticTagPickerForTest(t, []query.TagInfo{{Name: "alpha", TaskCount: 1}}, false)
 		minted := map[ListItemID]bool{"tag:bug": true, "tag:brandnew": true}
 		for _, tag := range []string{"bug", "brandnew"} {
 			if err := picker.addOrSelectTag(tag); err != nil {
@@ -255,7 +256,7 @@ func assertRowWearsTheColorItApplies(t *testing.T, item ListItem) {
 }
 
 func TestOperationTagPickerKeepsThePrecedenceOrderAfterAddingATag(t *testing.T) {
-	picker := newSemanticTagPickerForTest(t, []TagInfo{{Name: "zeta", TaskCount: 1}}, true)
+	picker := newSemanticTagPickerForTest(t, []query.TagInfo{{Name: "zeta", TaskCount: 1}}, true)
 	if err := picker.addOrSelectTag("alpha"); err != nil {
 		t.Fatalf("addOrSelectTag descriptive: %v", err)
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -66,7 +67,7 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 	// resume with a stale one.
 	scope := m.workModeScopeProjects()
 	m.nextDeferWake = earliestDeferWake(scope, time.Now())
-	m.openChildCounts = openChildCounts(scope)
+	m.openChildCounts = query.OpenChildCounts(scope)
 	if m.showsRankedList() {
 		m.buildSearchProjectionRows()
 		m.expandChecklistRows()
@@ -136,35 +137,6 @@ func earliestDeferWake(projects []*models.Project, now time.Time) time.Time {
 	return earliest
 }
 
-// openChildCounts censuses each task's open direct children across the scope.
-// It reads the authoritative flat project.Tasks, which already holds every
-// nested child, because a row's own task can be a filter-pipeline clone whose
-// Children were rewritten — the marker would then mean one thing in All and
-// another in a flat mode.
-func openChildCounts(projects []*models.Project) map[taskref.TaskIdentity]int {
-	counts := make(map[taskref.TaskIdentity]int)
-	for _, project := range projects {
-		if project == nil {
-			continue
-		}
-		for _, task := range project.Tasks {
-			if task == nil {
-				continue
-			}
-			open := len(task.IncompleteChildren())
-			if open == 0 {
-				continue
-			}
-			identity := taskref.For(task, project)
-			if !identity.Valid() {
-				continue
-			}
-			counts[identity] = open
-		}
-	}
-	return counts
-}
-
 // buildModeCandidateInput completes the shared mode input with the focus-narrowed
 // candidates and the membership a mode owns rather than filters for.
 func (m *OutlinerModel) buildModeCandidateInput(
@@ -202,7 +174,7 @@ func (m *OutlinerModel) recentActivityLead() (*models.Task, *models.Project, str
 	// This is the one mode input built outside buildCanonicalModeRows, so the
 	// census the hierarchy facet reads would otherwise be whichever scope ran
 	// last.
-	m.openChildCounts = openChildCounts(projects)
+	m.openChildCounts = query.OpenChildCounts(projects)
 	input := m.buildModeCandidateInput(chrome.ModeRecent, projects)
 	for _, section := range BuildRecentModeSections(input) {
 		for _, row := range section.Rows {
@@ -387,13 +359,13 @@ func (m *OutlinerModel) workModeTaskFilterAt(now time.Time) func(*models.Task, *
 // axes read the stored ParentID, which survives cloning.
 func (m *OutlinerModel) passesHierarchyFilter(task *models.Task, project *models.Project) bool {
 	switch m.filter.Hierarchy {
-	case HierarchyChild:
+	case query.HierarchyChild:
 		return task.ParentID != nil
-	case HierarchyRoot:
+	case query.HierarchyRoot:
 		return task.ParentID == nil
-	case HierarchyParent:
+	case query.HierarchyParent:
 		return m.openChildCountFor(task, project) > 0
-	case HierarchyLeaf:
+	case query.HierarchyLeaf:
 		return m.openChildCountFor(task, project) == 0
 	default:
 		return true
@@ -410,16 +382,16 @@ func (m *OutlinerModel) passesHierarchyFilter(task *models.Task, project *models
 // verdict: a soft reference gates nothing, so this narrows what is on screen and
 // changes no order, no rank, and no state.
 func (m *OutlinerModel) passesDependencyFilter(task *models.Task, project *models.Project) bool {
-	if m == nil || m.filter.Dependency == DependencyFilterAll {
+	if m == nil || m.filter.Dependency == query.DependencyFilterAll {
 		return true
 	}
 	if task == nil {
 		return false
 	}
 	switch m.filter.Dependency {
-	case DependencyFilterBlocked:
+	case query.DependencyFilterBlocked:
 		return len(task.Dependencies) > 0
-	case DependencyFilterBlocking:
+	case query.DependencyFilterBlocking:
 		identity := taskref.For(task, m.filterQueryProject(project))
 		subject := models.TaskReference{ProjectID: identity.ProjectID, TaskID: identity.TaskID}
 		return len(m.dependencyIndex().Incoming(subject)) > 0

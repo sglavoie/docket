@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 func pickerStatusBarApp(t *testing.T) *AppModel {
@@ -25,7 +26,7 @@ func TestOpenPickerLeavesStatusBarWithTheActiveView(t *testing.T) {
 		t.Fatalf("expected the Outliner hints before the picker opens, got:\n%s", hints)
 	}
 
-	app.operationValuePicker = newSemanticTagPickerForTest(t, []TagInfo{{Name: "urgent", TaskCount: 1}}, true)
+	app.operationValuePicker = newSemanticTagPickerForTest(t, []query.TagInfo{{Name: "urgent", TaskCount: 1}}, true)
 	withPicker := ansi.Strip(app.renderStatusBar())
 	if strings.Contains(withPicker, "colors its title.") {
 		t.Fatalf("picker explainer leaked into status bar:\n%s", withPicker)

@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 // lensOperationApp wires the production lens registrations against the richer
@@ -172,7 +173,7 @@ func TestLensCreateSavesTheCurrentViewAndMakesItActive(t *testing.T) {
 	model := lensOperationApp(t)
 	out := model.crossOutliner
 	out.selectOutlinerMode(chrome.ModeBacklog)
-	out.treeSort = SortState{Field: SortByTitle, Ascending: true}
+	out.treeSort = query.SortState{Field: query.SortByTitle, Ascending: true}
 	before := len(machineLenses(t, model))
 
 	result := executeLens(model, operationLensCreate, EntityIdentity{}, "Backlog by title", false)

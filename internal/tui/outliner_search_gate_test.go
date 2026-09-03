@@ -165,7 +165,7 @@ func TestSearchRefusesRecognizedAndWrongValuesWithRegistryGuidance(t *testing.T)
 		if len(outliner.rows) != 0 {
 			t.Fatalf("search %q kept rows %v", query, searchVisibleTaskIDs(outliner))
 		}
-		guidance := outliner.searchGate.guidanceText()
+		guidance := outliner.searchGate.GuidanceText()
 		if guidance == "" {
 			t.Fatalf("search %q produced no guidance", query)
 		}
@@ -178,7 +178,7 @@ func TestSearchRefusesRecognizedAndWrongValuesWithRegistryGuidance(t *testing.T)
 	}
 	searchRankedList(outliner, "!9")
 	want := textgrammar.InvalidPriorityError("9").Error()
-	if got := outliner.searchGate.guidanceText(); got != want {
+	if got := outliner.searchGate.GuidanceText(); got != want {
 		t.Fatalf("!9 guidance = %q, want the registry sentence %q", got, want)
 	}
 }

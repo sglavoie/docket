@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -149,7 +150,7 @@ func namedLensSummary(lens config.NamedLens) string {
 	facets, remainder := models.PartitionQueryString(lens.Query)
 	// The clauses are rendered by the shared chip renderer, so a saved lens and
 	// the live filter chips spell the same narrowing with the same characters.
-	parts = append(parts, filterClauseParts(facets.Clauses)...)
+	parts = append(parts, query.FilterClauseParts(facets.Clauses)...)
 	if prose := strings.TrimSpace(remainder); prose != "" {
 		parts = append(parts, "/"+prose)
 	}
@@ -177,7 +178,7 @@ func namedLensSortLabel(sorted config.LensSort) string {
 	if err != nil {
 		return "sort: " + sorted.Field
 	}
-	if field == SortByDefault {
+	if field == query.SortByDefault {
 		return ""
 	}
 	direction := "↓"

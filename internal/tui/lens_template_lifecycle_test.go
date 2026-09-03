@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 // These are the end-to-end journeys for the built-in view catalog: a template is
@@ -143,7 +144,7 @@ func TestEveryBuiltinTemplateInstallsItsExactProjection(t *testing.T) {
 				if out.sort != want.sort {
 					t.Fatalf("active sort = %+v, want the template's %+v", out.sort, want.sort)
 				}
-			} else if out.sort != NewSortState() {
+			} else if out.sort != query.NewSortState() {
 				t.Fatalf("active sort = %+v, want a fixed-order mode's inactive default", out.sort)
 			}
 			if out.pendingLens != nil {

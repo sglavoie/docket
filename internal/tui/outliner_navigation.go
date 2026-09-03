@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -85,14 +86,14 @@ func (m *OutlinerModel) revealTask(task *models.Task) {
 	// the chips, and the predicate follow it.
 	clauses := make([]models.QueryClause, 0, 2)
 	if task.IsTerminalState() {
-		clauses = appendFilterClause(clauses, models.QueryFieldState,
+		clauses = query.AppendFilterClause(clauses, models.QueryFieldState,
 			models.QueryOperatorIs, task.State().String())
 	}
 	if task.IsDeferred() {
-		clauses = appendFilterClause(clauses, models.QueryFieldDeferred,
+		clauses = query.AppendFilterClause(clauses, models.QueryFieldDeferred,
 			models.QueryOperatorPresent, "")
 	}
-	m.replaceFilterClauses(filterQueryTaskFields(), clauses)
+	m.replaceFilterClauses(query.FilterQueryTaskFields(), clauses)
 	m.selectOutlinerMode(chrome.ModeAll)
 	for i, row := range m.rows {
 		if row.task != nil && row.task.ID == task.ID {

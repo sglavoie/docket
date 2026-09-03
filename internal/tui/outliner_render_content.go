@@ -7,6 +7,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/pulse"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -145,7 +146,7 @@ func (m *OutlinerModel) buildOutlinerSearchIndicator(width int) string {
 	default:
 		return ""
 	}
-	if guidance := m.searchGate.guidanceText(); guidance != "" {
+	if guidance := m.searchGate.GuidanceText(); guidance != "" {
 		return appendSearchBadge(indicator, " "+guidance, width)
 	}
 	if !m.searchCaseRelaxed {
@@ -193,7 +194,7 @@ func (m *OutlinerModel) buildOutlinerFilterContext() string {
 	// underneath is irrelevant — the sort is live over the ranked rows — so
 	// zeroing the segment there would silently hide it.
 	if m.activeOutlinerModeEntry().FixedOrder() && !m.showsRankedList() {
-		sortField = SortByDefault
+		sortField = query.SortByDefault
 		sortAscending = false
 	}
 	suffix := buildTitleFilterSuffix(&TitleParams{
@@ -306,7 +307,7 @@ func (m *OutlinerModel) outlinerEmptyMessage() string {
 			"No tasks match search %q under the active filters. Press fx to clear filters or Esc to clear the search.",
 			m.SearchQuery())
 	case outlinerEmptySearchInvalid:
-		return fmt.Sprintf("%s. Press Esc to clear.", m.searchGate.guidanceText())
+		return fmt.Sprintf("%s. Press Esc to clear.", m.searchGate.GuidanceText())
 	case outlinerEmptyLens:
 		return "No tasks match this lens. Press Esc to restore the view it replaced."
 	case outlinerEmptyFiltered:

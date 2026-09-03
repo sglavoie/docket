@@ -315,7 +315,7 @@ func TestTUIStateMachine_OutlinerSelectionSurvivesVisibilityRebuilds(t *testing.
 			t.Fatalf("selected count = %d, want 2", got)
 		}
 
-		outliner.filter.setStateFilter(testWorkflowStateSet(models.StateBacklog))
+		outliner.filter.SetStateFilter(testWorkflowStateSet(models.StateBacklog))
 		outliner.adoptFilterCarriers()
 		outliner.rebuildRows()
 
@@ -337,7 +337,7 @@ func TestTUIStateMachine_OutlinerSelectionSurvivesVisibilityRebuilds(t *testing.
 			t.Fatalf("selected count = %d, want 2", got)
 		}
 
-		outliner.filter.setStateFilter(testWorkflowStateSet(models.StateBacklog))
+		outliner.filter.SetStateFilter(testWorkflowStateSet(models.StateBacklog))
 		outliner.adoptFilterCarriers()
 		outliner.crossForceRebuild = true
 		outliner.crossProjectRebuildRows()

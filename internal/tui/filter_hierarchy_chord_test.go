@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 // newHierarchyFilterTestApp builds one project covering every hierarchy
@@ -42,23 +43,23 @@ func newHierarchyFilterTestApp(t *testing.T) *AppModel {
 
 func TestHierarchyFilterReadsOpenChildCensus(t *testing.T) {
 	for _, tc := range []struct {
-		value HierarchyFilter
+		value query.HierarchyFilter
 		want  map[string]bool
 	}{
 		{
-			value: HierarchyParent,
+			value: query.HierarchyParent,
 			want:  map[string]bool{"epic": true, "story": true},
 		},
 		{
-			value: HierarchyChild,
+			value: query.HierarchyChild,
 			want:  map[string]bool{"story": true, "open-leaf": true},
 		},
 		{
-			value: HierarchyRoot,
+			value: query.HierarchyRoot,
 			want:  map[string]bool{"epic": true, "closed-parent": true, "solo": true},
 		},
 		{
-			value: HierarchyLeaf,
+			value: query.HierarchyLeaf,
 			want:  map[string]bool{"open-leaf": true, "closed-parent": true, "solo": true},
 		},
 	} {
@@ -91,28 +92,28 @@ func TestHierarchyFilterBadgeCountAndClear(t *testing.T) {
 	result := app.operationExecutor.Execute(OperationExecutionRequest{
 		ID:       operationFilterHierarchy,
 		Context:  simplifiedOperationContext(),
-		Value:    HierarchyLeaf,
+		Value:    query.HierarchyLeaf,
 		HasValue: true,
 	})
 	if result.Err != nil {
 		t.Fatalf("hierarchy filter error: %v", result.Err)
 	}
-	if got := commonFilterParts(filter); !slices.Equal(got, []string{"?leaf"}) {
+	if got := query.CommonFilterParts(filter); !slices.Equal(got, []string{"?leaf"}) {
 		t.Errorf("badge parts = %v, want the hierarchy facet alone", got)
 	}
-	if got := commonFilterFacetCount(filter); got != 1 {
+	if got := query.CommonFilterFacetCount(filter); got != 1 {
 		t.Errorf("facet count = %d, want 1", got)
 	}
 
 	pressFilterChord(t, app, "fx")
-	if filter.Hierarchy != HierarchyAll {
+	if filter.Hierarchy != query.HierarchyAll {
 		t.Errorf("fx left hierarchy = %v, want HierarchyAll", filter.Hierarchy)
 	}
 }
 
 func TestHierarchyFilterRejectsOutOfRangeValues(t *testing.T) {
 	app := newHierarchyFilterTestApp(t)
-	for _, value := range []HierarchyFilter{HierarchyAll, HierarchyLeaf + 1} {
+	for _, value := range []query.HierarchyFilter{query.HierarchyAll, query.HierarchyLeaf + 1} {
 		result := app.operationExecutor.Execute(OperationExecutionRequest{
 			ID:       operationFilterHierarchy,
 			Context:  simplifiedOperationContext(),
@@ -156,7 +157,7 @@ func TestPriorityThresholdSemantics(t *testing.T) {
 		2: {0: false, 1: true, 2: true, 3: false},
 		3: {0: false, 1: true, 2: true, 3: true},
 	} {
-		filter := newFilterState()
+		filter := query.NewCommonFilterState()
 		filter.Priority = threshold
 		for priority, pass := range want {
 			if got := passesCommonFilters(tasks[priority], &filter); got != pass {
@@ -165,9 +166,9 @@ func TestPriorityThresholdSemantics(t *testing.T) {
 		}
 	}
 
-	filter := newFilterState()
+	filter := query.NewCommonFilterState()
 	filter.Priority = 3
-	badge := commonFilterParts(&filter)
+	badge := query.CommonFilterParts(&filter)
 	if len(badge) != 1 || badge[0] != "!3+" {
 		t.Errorf("badge parts = %v, want [!3+]", badge)
 	}

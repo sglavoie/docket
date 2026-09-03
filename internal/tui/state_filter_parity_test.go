@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 func testWorkflowStateSet(states ...models.WorkflowState) models.WorkflowStateSet {
@@ -57,8 +58,8 @@ func TestStateFilter_SelectsTasksByDerivedState(t *testing.T) {
 	for _, state := range models.AllWorkflowStates() {
 		state := state
 		t.Run(state.String(), func(t *testing.T) {
-			filter := newFilterState()
-			filter.setStateFilter(testWorkflowStateSet(state))
+			filter := query.NewCommonFilterState()
+			filter.SetStateFilter(testWorkflowStateSet(state))
 			for _, task := range project.Tasks {
 				want := task.State() == state
 				got := passesCommonFilters(task, &filter)
@@ -73,8 +74,8 @@ func TestStateFilter_SelectsTasksByDerivedState(t *testing.T) {
 
 func TestStateFilter_MatchesAnySelectedStateAndExplicitEmptyMatchesNone(t *testing.T) {
 	project := buildWorkflowStateFixture(t)
-	filter := newFilterState()
-	filter.setStateFilter(testWorkflowStateSet(models.StateInbox, models.StateWaiting, models.StateDone))
+	filter := query.NewCommonFilterState()
+	filter.SetStateFilter(testWorkflowStateSet(models.StateInbox, models.StateWaiting, models.StateDone))
 
 	for _, task := range project.Tasks {
 		want := filter.States.Contains(task.State())
@@ -88,8 +89,8 @@ func TestStateFilter_MatchesAnySelectedStateAndExplicitEmptyMatchesNone(t *testi
 	// mints no state clause, so the axis is simply absent from the predicate. No
 	// key can author this carrier — the states picker deactivates the facet on an
 	// empty result — so the only way to reach it is to write the field directly.
-	filter.setStateFilter(models.WorkflowStateSet{})
-	if !hasActiveCommonFilters(&filter) {
+	filter.SetStateFilter(models.WorkflowStateSet{})
+	if !query.HasActiveCommonFilters(&filter) {
 		t.Fatal("explicit empty state set must remain an active facet for the chrome")
 	}
 	for _, task := range project.Tasks {
@@ -102,23 +103,23 @@ func TestStateFilter_MatchesAnySelectedStateAndExplicitEmptyMatchesNone(t *testi
 // TestStateFilter_ActiveClearAndBadge confirms the State filter is recognized
 // as active, is reset by clearCommonFilters, and appears in filter badge parts.
 func TestStateFilter_ActiveClearAndBadge(t *testing.T) {
-	filter := newFilterState()
-	filter.setStateFilter(testWorkflowStateSet(models.StateBacklog, models.StateDoing))
+	filter := query.NewCommonFilterState()
+	filter.SetStateFilter(testWorkflowStateSet(models.StateBacklog, models.StateDoing))
 
-	if !hasActiveCommonFilters(&filter) {
+	if !query.HasActiveCommonFilters(&filter) {
 		t.Fatal("State filter should count as an active common filter")
 	}
 
 	// One state is one clause, so the badge carries one $state chip per member.
-	parts := commonFilterParts(&filter)
+	parts := query.CommonFilterParts(&filter)
 	if !containsString(parts, "$backlog") || !containsString(parts, "$doing") {
-		t.Errorf("commonFilterParts()=%v, want a chip per selected state", parts)
+		t.Errorf("CommonFilterParts()=%v, want a chip per selected state", parts)
 	}
 	clearCommonFilters(&filter)
-	if filter.hasStateFilter() {
+	if filter.HasStateFilter() {
 		t.Errorf("clearCommonFilters left States=%v", filter.States.Values())
 	}
-	if hasActiveCommonFilters(&filter) {
+	if query.HasActiveCommonFilters(&filter) {
 		t.Error("cleared filter should not be active")
 	}
 }

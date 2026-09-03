@@ -3,6 +3,8 @@ package tui
 import (
 	"fmt"
 	"strings"
+
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 const (
@@ -18,13 +20,13 @@ const (
 // sortFieldOperations maps each order-axis operation to the field it installs.
 // One descriptor per field rather than one preset-valued operation, so the axis
 // needs no value provider and cannot grow a sort picker.
-var sortFieldOperations = map[OperationID]SortField{
-	operationSortDueDate:   SortByDueDate,
-	operationSortPriority:  SortByPriority,
-	operationSortCreatedAt: SortByCreatedAt,
-	operationSortUpdatedAt: SortByUpdatedAt,
-	operationSortTitle:     SortByTitle,
-	operationSortClear:     SortByDefault,
+var sortFieldOperations = map[OperationID]query.SortField{
+	operationSortDueDate:   query.SortByDueDate,
+	operationSortPriority:  query.SortByPriority,
+	operationSortCreatedAt: query.SortByCreatedAt,
+	operationSortUpdatedAt: query.SortByUpdatedAt,
+	operationSortTitle:     query.SortByTitle,
+	operationSortClear:     query.SortByDefault,
 }
 
 // sortOperationDescriptor is the shape every order-axis key shares: no target,
@@ -137,7 +139,7 @@ func (m *AppModel) executeSortOperation(invocation OperationInvocation) Operatio
 	return OperationHandlerResult{Status: status}
 }
 
-func sortStateLabel(state SortState) string {
+func sortStateLabel(state query.SortState) string {
 	direction := "↑"
 	if !state.Ascending {
 		direction = "↓"

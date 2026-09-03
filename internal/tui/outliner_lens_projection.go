@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -32,7 +33,7 @@ type queryNarrowing struct {
 type narrowingCompilation struct {
 	narrowing queryNarrowing
 	remainder string
-	gate      *searchPredicates
+	gate      *query.SearchPredicates
 	relaxed   bool
 }
 
@@ -55,7 +56,7 @@ func (m *OutlinerModel) lensGuidanceText() string {
 	if m == nil {
 		return ""
 	}
-	return m.lensGate.guidanceText()
+	return m.lensGate.GuidanceText()
 }
 
 // lensTextQuery is the free-text remainder of the lens query, which is what
@@ -121,7 +122,7 @@ func (m *OutlinerModel) compileNarrowingQuery(query string, projects []*models.P
 			matched:  make(map[taskref.TaskIdentity]outlinerMatchSource),
 		},
 	}
-	if predicates.invalid() {
+	if predicates.Invalid() {
 		// The guidance stands and nothing is admitted.
 		return compiled
 	}

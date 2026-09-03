@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 // searchProjectionMatchesWithin applies an optional authoritative candidate
@@ -18,9 +19,9 @@ func searchProjectionMatchesWithin(
 	query string,
 	candidates map[string][]*models.Task,
 	matcher fuzzy.Matcher,
-	predicates *searchPredicates,
+	predicates *query.SearchPredicates,
 ) []outlinerSearchMatch {
-	if predicates.invalid() {
+	if predicates.Invalid() {
 		return nil
 	}
 	if projectRef, shortID, exact := parseProjectShortIDQuery(query); exact {
@@ -30,7 +31,7 @@ func searchProjectionMatchesWithin(
 	matches := make([]outlinerSearchMatch, 0)
 	sourceIndex := 0
 	for _, project := range projects {
-		if project == nil || !predicates.admitsProject(project) {
+		if project == nil || !predicates.AdmitsProject(project) {
 			continue
 		}
 		tasks := project.Tasks
@@ -38,11 +39,11 @@ func searchProjectionMatchesWithin(
 			tasks = bounded
 		}
 		for _, task := range tasks {
-			if task == nil || !predicates.admitsPopulation(task) {
+			if task == nil || !predicates.AdmitsPopulation(task) {
 				sourceIndex++
 				continue
 			}
-			if !predicates.admits(task, project) {
+			if !predicates.Admits(task, project) {
 				sourceIndex++
 				continue
 			}
@@ -205,13 +206,13 @@ func exactProjectShortIDMatchesWithin(
 	projectRef string,
 	shortID int,
 	candidates map[string][]*models.Task,
-	predicates *searchPredicates,
+	predicates *query.SearchPredicates,
 ) []outlinerSearchMatch {
 	for _, project := range projects {
 		if project == nil || !projectSearchRefMatches(project, projectRef) {
 			continue
 		}
-		if !predicates.admitsProject(project) {
+		if !predicates.AdmitsProject(project) {
 			return nil
 		}
 		tasks := project.Tasks
@@ -222,10 +223,10 @@ func exactProjectShortIDMatchesWithin(
 			if task == nil || task.ShortID != shortID {
 				continue
 			}
-			if !predicates.admitsPopulation(task) {
+			if !predicates.AdmitsPopulation(task) {
 				continue
 			}
-			if predicates.admits(task, project) {
+			if predicates.Admits(task, project) {
 				// The qualified reference lives in the project tier, so an
 				// exact hit is attributed there while keeping the exact
 				// path's top rank.

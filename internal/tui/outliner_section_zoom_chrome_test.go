@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 // zoomChromeApp is the filter-chord fixture with fresh touch times, so its tasks
@@ -49,7 +50,7 @@ func TestZoomEmptiedUnderAFilterKeepsTheSectionCause(t *testing.T) {
 	if out.cursor != 0 {
 		t.Fatalf("clampCursor left the zero-row list at cursor %d", out.cursor)
 	}
-	if !hasActiveCommonFilters(&out.filter.CommonFilterState) {
+	if !query.HasActiveCommonFilters(&out.filter.CommonFilterState) {
 		t.Fatal("the fixture lost the filter this ordering is about")
 	}
 

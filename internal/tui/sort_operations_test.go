@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 // sortDriver builds a fixture-backed driver and presses a key path, so the
@@ -70,17 +72,17 @@ func TestSortAxisInstallsAndReversesOnRepeat(t *testing.T) {
 
 	for _, step := range []struct {
 		keys      []string
-		field     SortField
+		field     query.SortField
 		ascending bool
 	}{
-		{[]string{"o", "t"}, SortByTitle, true},
-		{[]string{"o", "t"}, SortByTitle, false},
-		{[]string{"o", "t"}, SortByTitle, true},
-		{[]string{"o", "@"}, SortByDueDate, true},
-		{[]string{"o", "!"}, SortByPriority, true},
-		{[]string{"o", "c"}, SortByCreatedAt, true},
-		{[]string{"o", "u"}, SortByUpdatedAt, true},
-		{[]string{"o", "x"}, SortByDefault, true},
+		{[]string{"o", "t"}, query.SortByTitle, true},
+		{[]string{"o", "t"}, query.SortByTitle, false},
+		{[]string{"o", "t"}, query.SortByTitle, true},
+		{[]string{"o", "@"}, query.SortByDueDate, true},
+		{[]string{"o", "!"}, query.SortByPriority, true},
+		{[]string{"o", "c"}, query.SortByCreatedAt, true},
+		{[]string{"o", "u"}, query.SortByUpdatedAt, true},
+		{[]string{"o", "x"}, query.SortByDefault, true},
 	} {
 		sortPressKeys(t, driver, step.keys...)
 		if outliner.sort.Field != step.field {
@@ -162,19 +164,19 @@ func TestSortAxisRecordsTheChoiceInAFixedOrderMode(t *testing.T) {
 	driver := sortDriver(t, FixtureRich, "g", "t", "o", "@")
 	outliner := driver.App().crossOutliner
 
-	if outliner.sort.Field != SortByDefault {
+	if outliner.sort.Field != query.SortByDefault {
 		t.Fatalf("Today installed sort field %v, want the mode's own order", outliner.sort.Field)
 	}
-	if outliner.treeSort.Field != SortByDueDate {
-		t.Fatalf("Today recorded tree sort field %v, want %v", outliner.treeSort.Field, SortByDueDate)
+	if outliner.treeSort.Field != query.SortByDueDate {
+		t.Fatalf("Today recorded tree sort field %v, want %v", outliner.treeSort.Field, query.SortByDueDate)
 	}
 	if status := driver.App().statusMessage; !strings.Contains(status, "Today owns its order") {
 		t.Fatalf("status %q does not explain the fixed order", status)
 	}
 
 	sortPressKeys(t, driver, "g", "a")
-	if outliner.sort.Field != SortByDueDate {
-		t.Fatalf("All installed sort field %v, want the recorded %v", outliner.sort.Field, SortByDueDate)
+	if outliner.sort.Field != query.SortByDueDate {
+		t.Fatalf("All installed sort field %v, want the recorded %v", outliner.sort.Field, query.SortByDueDate)
 	}
 }
 

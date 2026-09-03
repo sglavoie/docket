@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 // lensRoundTripID is a canonical UUID, which is what a stored definition must
@@ -46,7 +47,7 @@ func lensRoundTripBase(t *testing.T) lensState {
 		scopeProjectID: lensRoundTripScopeID,
 		facets:         facets,
 		query:          "#api ship",
-		sort:           SortState{Field: SortByPriority, Ascending: false},
+		sort:           query.SortState{Field: query.SortByPriority, Ascending: false},
 	}
 }
 
@@ -81,15 +82,15 @@ func TestLensStateRoundTripsEveryModeFacetPopulationAndSortAxis(t *testing.T) {
 	} {
 		variants["facets:"+facets] = func(s *lensState) { *s = lensStateWithFacets(t, *s, facets) }
 	}
-	for _, field := range []SortField{
-		SortByDefault, SortByPriority, SortByDueDate, SortByCreatedAt, SortByUpdatedAt, SortByTitle,
+	for _, field := range []query.SortField{
+		query.SortByDefault, query.SortByPriority, query.SortByDueDate, query.SortByCreatedAt, query.SortByUpdatedAt, query.SortByTitle,
 	} {
 		for _, ascending := range []bool{true, false} {
 			name := "sort:" + lensSortAxis.token(field)
 			if !ascending {
 				name += ":desc"
 			}
-			variants[name] = func(s *lensState) { s.sort = SortState{Field: field, Ascending: ascending} }
+			variants[name] = func(s *lensState) { s.sort = query.SortState{Field: field, Ascending: ascending} }
 		}
 	}
 	// The remainder is the half the canonical vocabulary cannot spell. It round
@@ -134,7 +135,7 @@ func TestLensStateDecodesOmittedTokensAsAxisDefaultsAndRefusesUnknownSpellings(t
 	if err != nil {
 		t.Fatalf("lensStateFromNamedLens: %v", err)
 	}
-	want := lensState{mode: chrome.ModeInbox, sort: SortState{Field: SortByDefault}}
+	want := lensState{mode: chrome.ModeInbox, sort: query.SortState{Field: query.SortByDefault}}
 	if !got.equal(want) {
 		t.Fatalf("omitted tokens decoded to %q, want axis defaults %q", got.fingerprint(), want.fingerprint())
 	}
@@ -223,7 +224,7 @@ func TestLensStateFingerprintWatchesEveryLensOwnedAxis(t *testing.T) {
 		"facet polarity": func(s *lensState) {
 			*s = lensStateWithFacets(t, *s, strings.Replace(lensRoundTripFacets, "#api", "-#api", 1))
 		},
-		"sort field":    func(s *lensState) { s.sort.Field = SortByTitle },
+		"sort field":    func(s *lensState) { s.sort.Field = query.SortByTitle },
 		"sort ordering": func(s *lensState) { s.sort.Ascending = !s.sort.Ascending },
 	}
 

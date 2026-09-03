@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 // applyFilterForComposition drives one facet through the production handler, so
@@ -164,7 +165,7 @@ func TestSearchSortReordersWithinRelevanceTiersOnly(t *testing.T) {
 	if result.Err != nil {
 		t.Fatalf("sort by priority under search failed: %v", result.Err)
 	}
-	if outliner.sort.Field != SortByPriority || !outliner.sort.Ascending {
+	if outliner.sort.Field != query.SortByPriority || !outliner.sort.Ascending {
 		t.Fatalf("sort state = %+v, want ascending priority installed directly", outliner.sort)
 	}
 	// The title tier reorders; the description hit stays last despite carrying

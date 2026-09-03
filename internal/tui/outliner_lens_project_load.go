@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -19,7 +20,7 @@ func (m *OutlinerModel) lensProjectLoadRequired(state lensState) bool {
 		return false
 	}
 	candidate := state.projectFilterState()
-	return projectFilterFingerprint(&candidate) != m.loadedPopulationFingerprint()
+	return query.ProjectFilterFingerprint(&candidate) != m.loadedPopulationFingerprint()
 }
 
 // loadedPopulationFingerprint names the project filter the live population was
@@ -30,7 +31,7 @@ func (m *OutlinerModel) loadedPopulationFingerprint() string {
 	if m.activeLens != nil && m.activeLens.projectFacetsAwaitingLoad {
 		return m.activeLens.loadedPopulationFingerprint
 	}
-	return projectFilterFingerprint(&m.projectFilter)
+	return query.ProjectFilterFingerprint(&m.projectFilter)
 }
 
 // recordLoadedPopulation is where a landed population tells the live lens what
@@ -46,7 +47,7 @@ func (m *OutlinerModel) recordLoadedPopulation(fingerprint string) {
 		return
 	}
 	m.activeLens.loadedPopulationFingerprint = fingerprint
-	m.activeLens.projectFacetsAwaitingLoad = fingerprint != projectFilterFingerprint(&m.projectFilter)
+	m.activeLens.projectFacetsAwaitingLoad = fingerprint != query.ProjectFilterFingerprint(&m.projectFilter)
 }
 
 // beginLensProjectLoad starts a load against the candidate filter without
@@ -198,7 +199,7 @@ func (m *OutlinerModel) finishLensScopeExit(pending *pendingLensApplication, pro
 	// recording the read's own filter is what keeps that an observation rather
 	// than an assumption.
 	readFilter := pending.state.projectFilterState()
-	m.recordLoadedPopulation(projectFilterFingerprint(&readFilter))
+	m.recordLoadedPopulation(query.ProjectFilterFingerprint(&readFilter))
 	m.pruneSelectionsOutsideLoadedProjects()
 	if !m.clearProjectScope() {
 		// Defensive: the scope owns the rebuild, so there is one to do only when it

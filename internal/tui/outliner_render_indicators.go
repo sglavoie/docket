@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/util"
@@ -127,7 +128,7 @@ func (m *OutlinerModel) renderTaskIndicatorSegments(row outlinerRow) taskIndicat
 	}
 	now := time.Now()
 	if m.primaryMode == chrome.ModeRecent && m.columnConfig.IsVisible(ColRecency) {
-		segments.recency = formatRecencyChip(m.rowRecencyKey(row), now)
+		segments.recency = query.FormatRecencyChip(m.rowRecencyKey(row), now)
 	}
 	if task.IsInState(models.StateWaiting) {
 		segments.waiting = formatWaitingAgeIndicator(task, now)
@@ -141,7 +142,7 @@ func (m *OutlinerModel) renderTaskIndicatorSegments(row outlinerRow) taskIndicat
 	// A waiting task's due date is its check-back date, so the countdown replaces
 	// the plain date rather than restating it beside itself.
 	if segments.check == "" && m.columnConfig.IsVisible(ColDueDate) {
-		segments.due = formatDueDate(task)
+		segments.due = query.FormatDueDate(task)
 	}
 	if m.columnConfig.IsVisible(ColDefer) {
 		if task.DeferredUntil != nil {
@@ -203,7 +204,7 @@ func formatWaitingAgeIndicator(task *models.Task, now time.Time) string {
 	if !task.IsInState(models.StateWaiting) {
 		return ""
 	}
-	age := formatRecencyChip(task.StateChangedAt, now)
+	age := query.FormatRecencyChip(task.StateChangedAt, now)
 	if age == "" {
 		return ""
 	}
@@ -216,7 +217,7 @@ func formatDoingAgeIndicator(task *models.Task, now time.Time) string {
 	if !task.IsInState(models.StateDoing) {
 		return ""
 	}
-	age := formatRecencyChip(task.StateChangedAt, now)
+	age := query.FormatRecencyChip(task.StateChangedAt, now)
 	if age == "" {
 		return ""
 	}
@@ -235,11 +236,11 @@ func formatCheckBackIndicator(task *models.Task, now time.Time) string {
 	dueDay := util.StartOfDay(*task.DueDate)
 	switch {
 	case dueDay.Before(today):
-		return theme.OverdueStyle.Render("check +" + formatRecencyAge(dueDay, today))
+		return theme.OverdueStyle.Render("check +" + query.FormatRecencyAge(dueDay, today))
 	case dueDay.Equal(today):
 		return theme.DueTodayStyle.Render("check today")
 	default:
-		return theme.DueDateStyle.Render("check " + formatRecencyAge(today, dueDay))
+		return theme.DueDateStyle.Render("check " + query.FormatRecencyAge(today, dueDay))
 	}
 }
 
@@ -254,7 +255,7 @@ func formatDeferIndicator(task *models.Task, now time.Time) string {
 	if !taskWokeRecently(task, now) {
 		return ""
 	}
-	return theme.MutedStyle.Render("woke") + " " + formatRecencyChip(*task.DeferredUntil, now)
+	return theme.MutedStyle.Render("woke") + " " + query.FormatRecencyChip(*task.DeferredUntil, now)
 }
 
 const repeatedDeferralThreshold = 3
@@ -278,7 +279,7 @@ func taskWokeRecently(task *models.Task, now time.Time) bool {
 	if task == nil || task.DeferredUntil == nil || task.IsDeferredAt(now) {
 		return false
 	}
-	return now.Sub(*task.DeferredUntil) < deferWakeWindow
+	return now.Sub(*task.DeferredUntil) < query.DeferWakeWindow
 }
 
 func (m *OutlinerModel) renderTaskPrioritySegment(task *models.Task, colLayout *chrome.ColumnLayout) string {
@@ -326,11 +327,11 @@ func renderTaskPrefix(prefix, foldIndicator string, bg color.Color) (string, str
 func (m *OutlinerModel) renderTaskTitle(task *models.Task, titleStyle lipgloss.Style, rowWidth int, segments taskRowSegments) string {
 	availableWidth := segments.titleWidth(rowWidth)
 	title := textfit.TruncateToVisualWidth(task.Title, availableWidth)
-	query, caseSensitive := m.titleHighlightQuery()
-	if query == "" {
+	highlight, caseSensitive := m.titleHighlightQuery()
+	if highlight == "" {
 		return titleStyle.Render(title)
 	}
-	positions := searchSubstringPositions(title, query, caseSensitive)
+	positions := query.SearchSubstringPositions(title, highlight, caseSensitive)
 	if len(positions) == 0 {
 		return titleStyle.Render(title)
 	}

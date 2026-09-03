@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -215,8 +216,8 @@ func rowKeepsManualOrder(row outlinerRow) bool {
 // dropped rather than allowed to overflow, exactly as the pressure chips are.
 // budget is the columns the content region has, which is the row width less the
 // gutter the cursor highlight owns.
-func appendManualOrderMarker(content string, row outlinerRow, field SortField, budget int) string {
-	if field == SortByDefault || !rowKeepsManualOrder(row) {
+func appendManualOrderMarker(content string, row outlinerRow, field query.SortField, budget int) string {
+	if field == query.SortByDefault || !rowKeepsManualOrder(row) {
 		return content
 	}
 	suffix := theme.MutedStyle.Render("  · manual")

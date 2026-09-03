@@ -11,20 +11,21 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // ActiveFilterCount returns the number of active filters for the status bar pill.
 func (m *OutlinerModel) ActiveFilterCount() int {
-	return commonFilterFacetCount(&m.filter.CommonFilterState) +
-		projectFilterFacetCount(&m.projectFilter)
+	return query.CommonFilterFacetCount(&m.filter.CommonFilterState) +
+		query.ProjectFilterFacetCount(&m.projectFilter)
 }
 
 // activeFilterParts returns the list of active filter description strings
 // (state, priority, tags, due date, completion age, deferred, and pinned).
 func (m *OutlinerModel) activeFilterParts() []string {
-	return commonFilterParts(&m.filter.CommonFilterState)
+	return query.CommonFilterParts(&m.filter.CommonFilterState)
 }
 
 func (m *OutlinerModel) isQuickEditRow(row outlinerRow) bool {

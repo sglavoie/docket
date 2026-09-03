@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 func noteIndexRow(location app.NoteLocation, label, title, filename string) LocatedNoteRow {
@@ -55,19 +56,19 @@ func TestSearchPredicatesReportAnySigil(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		_, predicates := outliner.compileSearchQuery(testCase.query, nil)
-		if got := predicates.hasAnySigil(); got != testCase.want {
+		if got := predicates.HasAnySigil(); got != testCase.want {
 			t.Fatalf("hasAnySigil(%q) = %v, want %v", testCase.query, got, testCase.want)
 		}
 	}
-	var absent *searchPredicates
-	if absent.hasAnySigil() {
+	var absent *query.SearchPredicates
+	if absent.HasAnySigil() {
 		t.Fatalf("a nil gate reported a sigil")
 	}
 
 	// A retired destination never becomes a token, so it is the guidance arm
 	// rather than this flag that keeps the notes tier out of a refused query.
 	_, refused := outliner.compileSearchQuery("needle $ready", nil)
-	if !refused.invalid() {
+	if !refused.Invalid() {
 		t.Fatalf("a retired sigil compiled to a usable gate")
 	}
 }

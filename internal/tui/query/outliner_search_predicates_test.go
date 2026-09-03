@@ -1,4 +1,4 @@
-package tui
+package query
 
 import (
 	"testing"
@@ -59,7 +59,7 @@ func TestCompileSearchDueHourWindow(t *testing.T) {
 
 func TestSearchPredicatesAdmitsDueHourWindow(t *testing.T) {
 	now := time.Date(2026, 8, 25, 12, 0, 0, 0, time.Local)
-	predicates := &searchPredicates{
+	predicates := &SearchPredicates{
 		now: now,
 		due: compileSearchDue("+4h", now),
 	}
@@ -81,7 +81,7 @@ func TestSearchPredicatesAdmitsDueHourWindow(t *testing.T) {
 		"no due date":       {&models.Task{ID: "e", WorkflowState: models.StateBacklog}, false},
 	}
 	for name, tc := range cases {
-		if got := predicates.admits(tc.task, project); got != tc.want {
+		if got := predicates.Admits(tc.task, project); got != tc.want {
 			t.Errorf("%s: admits = %v, want %v", name, got, tc.want)
 		}
 	}
@@ -103,7 +103,7 @@ func TestSearchTagPrefixReadsNormalizedTagsOnly(t *testing.T) {
 		}
 	}
 
-	predicates := &searchPredicates{contexts: []string{"client"}}
+	predicates := &SearchPredicates{contexts: []string{"client"}}
 	if !predicates.admitsContext(task) {
 		t.Error("context prefix did not match the normalized task context")
 	}
@@ -114,19 +114,19 @@ func TestSearchTagPrefixReadsNormalizedTagsOnly(t *testing.T) {
 }
 
 func TestSearchPredicatesAreNilSafeAndOpen(t *testing.T) {
-	var predicates *searchPredicates
+	var predicates *SearchPredicates
 	task := &models.Task{ID: "task", WorkflowState: models.StateBacklog}
 	project := &models.Project{ID: "alpha", Slug: "alpha"}
-	if predicates.invalid() || predicates.allowsTerminal() || predicates.guidanceText() != "" {
+	if predicates.Invalid() || predicates.AllowsTerminal() || predicates.GuidanceText() != "" {
 		t.Fatal("a nil gate reported a state")
 	}
-	if !predicates.admits(task, project) || !predicates.admitsProject(project) {
+	if !predicates.Admits(task, project) || !predicates.AdmitsProject(project) {
 		t.Fatal("a nil gate rejected a task")
 	}
 }
 
 func TestSearchPriorityGateIsEqualityRatherThanThreshold(t *testing.T) {
-	predicates := &searchPredicates{priorities: []int{models.PriorityMedium}, now: time.Now()}
+	predicates := &SearchPredicates{priorities: []int{models.PriorityMedium}, now: time.Now()}
 	project := &models.Project{ID: "alpha", Slug: "alpha"}
 	for priority, want := range map[int]bool{
 		models.PriorityHigh:   false,
@@ -135,7 +135,7 @@ func TestSearchPriorityGateIsEqualityRatherThanThreshold(t *testing.T) {
 		models.PriorityUnset:  false,
 	} {
 		task := &models.Task{ID: "task", WorkflowState: models.StateBacklog, Priority: priority}
-		if got := predicates.admits(task, project); got != want {
+		if got := predicates.Admits(task, project); got != want {
 			t.Errorf("priority %d admitted = %v, want %v", priority, got, want)
 		}
 	}
@@ -156,14 +156,13 @@ func TestSearchPriorityThresholdWidensOnlyWhereTheSuffixIsTyped(t *testing.T) {
 		{"-!1", map[int]bool{models.PriorityHigh: false, models.PriorityMedium: true, models.PriorityLow: true}},
 	}
 	for _, tt := range tests {
-		outliner := scopeTestOutliner(project)
-		_, gate := outliner.compileSearchQuery(tt.query, []*models.Project{project})
-		if gate.invalid() {
-			t.Fatalf("%s produced guidance %q", tt.query, gate.guidanceText())
+		_, gate := CompileSearchQuery(tt.query, []*models.Project{project}, nil, models.Query{})
+		if gate.Invalid() {
+			t.Fatalf("%s produced guidance %q", tt.query, gate.GuidanceText())
 		}
 		for priority, want := range tt.want {
 			task := &models.Task{ID: "task", WorkflowState: models.StateBacklog, Priority: priority}
-			if got := gate.admits(task, project); got != want {
+			if got := gate.Admits(task, project); got != want {
 				t.Errorf("%s admitted priority %d = %v, want %v", tt.query, priority, got, want)
 			}
 		}
@@ -184,28 +183,26 @@ func TestSearchNegationsSubtractWhatTheirTwinsSelect(t *testing.T) {
 	}
 	plain := &models.Task{ID: "plain", ShortID: 2, Title: "Plain", WorkflowState: models.StateBacklog}
 	project := &models.Project{ID: "alpha", Slug: "alpha", Name: "Alpha", Tasks: []*models.Task{marked, plain}}
-	outliner := scopeTestOutliner(project)
-
 	for _, query := range []string{"-!1", "-#backend", "-##client", "-@today", "-$doing", "-*pin"} {
-		_, gate := outliner.compileSearchQuery(query, []*models.Project{project})
-		if gate.invalid() {
-			t.Fatalf("%s produced guidance %q", query, gate.guidanceText())
+		_, gate := CompileSearchQuery(query, []*models.Project{project}, nil, models.Query{})
+		if gate.Invalid() {
+			t.Fatalf("%s produced guidance %q", query, gate.GuidanceText())
 		}
-		if gate.admits(marked, project) {
+		if gate.Admits(marked, project) {
 			t.Errorf("%s admitted the task it names", query)
 		}
-		if !gate.admits(plain, project) {
+		if !gate.Admits(plain, project) {
 			t.Errorf("%s excluded a task it says nothing about", query)
 		}
 	}
 
 	// The project negation is the one axis that answers about the project rather
 	// than the task, so it is checked where it applies.
-	_, scoped := outliner.compileSearchQuery("-%alpha", []*models.Project{project})
-	if scoped.invalid() {
-		t.Fatalf("-%%alpha produced guidance %q", scoped.guidanceText())
+	_, scoped := CompileSearchQuery("-%alpha", []*models.Project{project}, nil, models.Query{})
+	if scoped.Invalid() {
+		t.Fatalf("-%%alpha produced guidance %q", scoped.GuidanceText())
 	}
-	if scoped.admitsProject(project) {
+	if scoped.AdmitsProject(project) {
 		t.Error("-%alpha admitted the project it names")
 	}
 }
@@ -243,7 +240,6 @@ func TestSearchDerivedPredicatesAnswerComputedQuestions(t *testing.T) {
 		ID: "alpha", Slug: "alpha", Name: "Alpha",
 		Tasks: []*models.Task{stale, parent, child, deferred, finished, target, referrer},
 	}
-	outliner := scopeTestOutliner(project)
 
 	cases := []struct {
 		query string
@@ -257,13 +253,13 @@ func TestSearchDerivedPredicatesAnswerComputedQuestions(t *testing.T) {
 		{"?blocking", target},
 	}
 	for _, tc := range cases {
-		_, gate := outliner.compileSearchQuery(tc.query, []*models.Project{project})
-		if gate.invalid() {
-			t.Fatalf("%s produced guidance %q", tc.query, gate.guidanceText())
+		_, gate := CompileSearchQuery(tc.query, []*models.Project{project}, nil, models.Query{})
+		if gate.Invalid() {
+			t.Fatalf("%s produced guidance %q", tc.query, gate.GuidanceText())
 		}
 		for _, task := range project.Tasks {
 			want := task == tc.want
-			if got := gate.admits(task, project); got != want {
+			if got := gate.Admits(task, project); got != want {
 				t.Errorf("%s admitted %s = %v, want %v", tc.query, task.ID, got, want)
 			}
 		}
@@ -271,21 +267,21 @@ func TestSearchDerivedPredicatesAnswerComputedQuestions(t *testing.T) {
 
 	// Leaf is the complement of parent over the same census, so it is checked as
 	// a set rather than as a single row.
-	_, leaves := outliner.compileSearchQuery("?leaf", []*models.Project{project})
-	if leaves.admits(parent, project) {
+	_, leaves := CompileSearchQuery("?leaf", []*models.Project{project}, nil, models.Query{})
+	if leaves.Admits(parent, project) {
 		t.Error("?leaf admitted a task with an open child")
 	}
-	if !leaves.admits(child, project) || !leaves.admits(stale, project) {
+	if !leaves.Admits(child, project) || !leaves.Admits(stale, project) {
 		t.Error("?leaf excluded a task with no open child")
 	}
 
 	// The completion question opens the terminal population; its negation asks
 	// about live work and deliberately does not.
-	_, notCompleted := outliner.compileSearchQuery("-?completed", []*models.Project{project})
-	if notCompleted.allowsTerminal() {
+	_, notCompleted := CompileSearchQuery("-?completed", []*models.Project{project}, nil, models.Query{})
+	if notCompleted.AllowsTerminal() {
 		t.Error("-?completed opened the terminal population")
 	}
-	if notCompleted.admits(finished, project) {
+	if notCompleted.Admits(finished, project) {
 		t.Error("-?completed admitted a completed task")
 	}
 }

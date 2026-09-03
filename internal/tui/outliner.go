@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/pulse"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -77,20 +78,20 @@ type OutlinerModel struct {
 	// primaryMode is the authoritative canonical row-strategy identity.
 	primaryMode chrome.OutlinerModeID
 
-	sort     SortState // Active render sort; default while a fixed-order mode owns ordering.
-	treeSort SortState // Durable user sort restored whenever a tree-order mode is active.
+	sort     query.SortState // Active render sort; default while a fixed-order mode owns ordering.
+	treeSort query.SortState // Durable user sort restored whenever a tree-order mode is active.
 
 	// filterQuery is the one narrowing predicate the f and F facets author. Both
 	// carriers below are caches derived from it by setFilterQuery, so nothing
 	// downstream can hold a facet the query does not know about.
 	filterQuery models.Query
 
-	filter FilterState // Row facet cache derived from filterQuery.
+	filter query.FilterState // Row facet cache derived from filterQuery.
 
 	// projectFilter is the population facet cache the F chord's clauses derive.
 	// It stays a separate value from the row filter because clearing one must not
 	// clear the other, and a change here needs a reload rather than a rebuild.
-	projectFilter ProjectFilterState
+	projectFilter query.ProjectFilterState
 
 	expandedNodes     map[taskref.TaskIdentity]bool // Project-qualified fold state: true=expanded (default all expanded)
 	collapsedSections map[string]bool               // Section collapse state for All mode
@@ -136,7 +137,7 @@ type OutlinerModel struct {
 	// and the work-mode predicate all read the remainder, so a predicate token is
 	// never scored or highlighted as prose.
 	searchRemainder string
-	searchGate      *searchPredicates
+	searchGate      *query.SearchPredicates
 
 	// lensQuery is the accepted narrowing query of the saved projection the view
 	// is showing, and lensGate, lensRemainder, and lensNarrowRelaxed are its
@@ -144,7 +145,7 @@ type OutlinerModel struct {
 	// narrows its own saved mode, facets, and sort, while ordinary search
 	// replaces the whole projection and stays scope-wide.
 	lensQuery         string
-	lensGate          *searchPredicates
+	lensGate          *query.SearchPredicates
 	lensRemainder     string
 	lensNarrowRelaxed bool
 
@@ -355,10 +356,10 @@ func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runti
 		expandedNodes:      make(map[taskref.TaskIdentity]bool),
 		collapsedSections:  make(map[string]bool),
 		expandedChecklists: make(map[taskref.TaskIdentity]bool),
-		filter:             NewFilterState(),
-		projectFilter:      newProjectFilterState(),
-		sort:               NewSortState(),
-		treeSort:           NewSortState(),
+		filter:             query.NewFilterState(),
+		projectFilter:      query.NewProjectFilterState(),
+		sort:               query.NewSortState(),
+		treeSort:           query.NewSortState(),
 		MultiSelectState:   MultiSelectState{selectedTaskIdentities: make(map[taskref.TaskIdentity]bool)},
 		columnConfig:       NewColumnConfig(nil, nil, DefaultOutlinerColumns),
 	}

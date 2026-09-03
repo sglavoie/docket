@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -188,17 +189,17 @@ func inlinePeekDatesLine(task *models.Task, now time.Time, width int) string {
 	field := func(label, value string) {
 		parts = append(parts, theme.HelpStyle.Render(label+" ")+theme.HelpKeyStyle.Render(value))
 	}
-	if age := formatRecencyAge(task.CreatedAt, now); age != "" {
+	if age := query.FormatRecencyAge(task.CreatedAt, now); age != "" {
 		field("created", age)
 	}
-	if age := formatRecencyAge(task.UpdatedAt, now); age != "" {
+	if age := query.FormatRecencyAge(task.UpdatedAt, now); age != "" {
 		field("updated", age)
 	}
 	if task.DueDate != nil {
 		field("due", chrome.DueGrammarValue(task))
 	}
 	if taskWokeRecently(task, now) {
-		field("woke", formatRecencyAge(*task.DeferredUntil, now))
+		field("woke", query.FormatRecencyAge(*task.DeferredUntil, now))
 	}
 	if taskHasRepeatedDeferrals(task) {
 		field("deferred", fmt.Sprintf("×%d", task.DeferCount))

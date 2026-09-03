@@ -1,4 +1,4 @@
-package tui
+package query
 
 import (
 	"fmt"
@@ -117,7 +117,7 @@ const (
 	CompletionAge90Days
 )
 
-func (f CompletionAgeFilter) days() int {
+func (f CompletionAgeFilter) Days() int {
 	switch f {
 	case CompletionAge7Days:
 		return 7
@@ -130,8 +130,8 @@ func (f CompletionAgeFilter) days() int {
 	}
 }
 
-// formatDueDate returns a styled due date string for inline display.
-func formatDueDate(task *models.Task) string {
+// FormatDueDate returns a styled due date string for inline display.
+func FormatDueDate(task *models.Task) string {
 	if task.DueDate == nil || task.IsComplete() {
 		return ""
 	}
@@ -145,25 +145,25 @@ func formatDueDate(task *models.Task) string {
 	return style.Render(icons.Get("date") + " " + dateStr)
 }
 
-// deferWakeWindow bounds how long a lapsed deferral keeps announcing that the
+// DeferWakeWindow bounds how long a lapsed deferral keeps announcing that the
 // task came back. Past it the task is ordinary work again, not news.
-const deferWakeWindow = 72 * time.Hour
+const DeferWakeWindow = 72 * time.Hour
 
-// formatRecencyChip renders an age as a single-token indicator such as 5m, 2h,
+// FormatRecencyChip renders an age as a single-token indicator such as 5m, 2h,
 // or 3d. Prose relative time is too wide for a row, and the day bucket header
 // already carries the coarse grouping; the chip only disambiguates within it.
-func formatRecencyChip(key, now time.Time) string {
-	age := formatRecencyAge(key, now)
+func FormatRecencyChip(key, now time.Time) string {
+	age := FormatRecencyAge(key, now)
 	if age == "" {
 		return ""
 	}
 	return theme.MutedStyle.Render(age)
 }
 
-// formatRecencyAge is the unstyled age token. Peek composes several of them into
+// FormatRecencyAge is the unstyled age token. Peek composes several of them into
 // one styled line, so it needs the token without the chip's own styling; two
 // formatters would let the same age read two ways on adjacent lines.
-func formatRecencyAge(key, now time.Time) string {
+func FormatRecencyAge(key, now time.Time) string {
 	if key.IsZero() {
 		return ""
 	}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -36,7 +37,7 @@ func assertRowIDs(t *testing.T, got []string, want []string) {
 }
 
 func TestTaskTagListSourceSeedsEverySemanticTagInPrecedenceOrder(t *testing.T) {
-	source := taskTagListSource([]TagInfo{{Name: "urgent", TaskCount: 3}}, true)
+	source := taskTagListSource([]query.TagInfo{{Name: "urgent", TaskCount: 3}}, true)
 
 	assertRowIDs(t, taskTagRowIDs(source.Items, taskTagSemanticCategory), []string{
 		"tag:bug", "tag:question", "tag:epic", "tag:story", "tag:feature", "tag:idea",
@@ -64,7 +65,7 @@ func TestTaskTagListSourceSeedsEverySemanticTagInPrecedenceOrder(t *testing.T) {
 }
 
 func TestTaskTagListSourceWithoutSeedingKeepsOnlyTagsInUse(t *testing.T) {
-	source := taskTagListSource([]TagInfo{
+	source := taskTagListSource([]query.TagInfo{
 		{Name: "urgent", TaskCount: 2},
 		{Name: "idea", TaskCount: 1},
 	}, false)
@@ -74,7 +75,7 @@ func TestTaskTagListSourceWithoutSeedingKeepsOnlyTagsInUse(t *testing.T) {
 }
 
 func TestTaskTagListSourceHasNoSemanticRowsWhenNoneAreInUse(t *testing.T) {
-	source := taskTagListSource([]TagInfo{
+	source := taskTagListSource([]query.TagInfo{
 		{Name: "backend", TaskCount: 4},
 		{Name: "type:bug", TaskCount: 1},
 		{Name: "bugfix", TaskCount: 1},
@@ -89,7 +90,7 @@ func TestTaskTagListSourceHasNoSemanticRowsWhenNoneAreInUse(t *testing.T) {
 }
 
 func TestTaskTagListSourcePromotesCasedVariantsPreservingSpelling(t *testing.T) {
-	source := taskTagListSource([]TagInfo{
+	source := taskTagListSource([]query.TagInfo{
 		{Name: "Bug", TaskCount: 2},
 		{Name: "bug", TaskCount: 5},
 		{Name: "IDEA", TaskCount: 1},
@@ -112,7 +113,7 @@ func TestTaskTagListSourcePromotesCasedVariantsPreservingSpelling(t *testing.T) 
 }
 
 func TestTaskTagListSourceMintsNoDuplicateIDsWhenSeeding(t *testing.T) {
-	source := taskTagListSource([]TagInfo{
+	source := taskTagListSource([]query.TagInfo{
 		{Name: "bug", TaskCount: 2},
 		{Name: "Idea", TaskCount: 1},
 		{Name: "backend", TaskCount: 3},
@@ -132,7 +133,7 @@ func TestTaskTagListSourceMintsNoDuplicateIDsWhenSeeding(t *testing.T) {
 }
 
 func TestTaskTagListSourceKeepsDescriptiveRowsAlphabeticalWithCounts(t *testing.T) {
-	source := taskTagListSource([]TagInfo{
+	source := taskTagListSource([]query.TagInfo{
 		{Name: "zeta", TaskCount: 1},
 		{Name: "alpha", TaskCount: 7},
 		{Name: "middle", TaskCount: 2},
@@ -156,7 +157,7 @@ func TestTaskTagListSourceKeepsDescriptiveRowsAlphabeticalWithCounts(t *testing.
 }
 
 func TestTaskTagListSourceGivesContextValuesTheirOwnSection(t *testing.T) {
-	source := taskTagListSource([]TagInfo{
+	source := taskTagListSource([]query.TagInfo{
 		{Name: "backend", TaskCount: 2},
 		{Name: "platform", TaskCount: 3, ContextCount: 2},
 	}, false)
@@ -187,7 +188,7 @@ func TestTaskTagListSourceGivesContextValuesTheirOwnSection(t *testing.T) {
 // section is the one that colors it. "review" is an ordinary descriptive tag
 // now, so it lands in TAGS beside every other name the vocabulary does not own.
 func TestTaskTagListSourceKeepsAPromotedContextInItsPromotedSection(t *testing.T) {
-	source := taskTagListSource([]TagInfo{
+	source := taskTagListSource([]query.TagInfo{
 		{Name: "bug", TaskCount: 1, ContextCount: 1},
 		{Name: "review", TaskCount: 1, ContextCount: 1},
 	}, false)
@@ -197,7 +198,7 @@ func TestTaskTagListSourceKeepsAPromotedContextInItsPromotedSection(t *testing.T
 }
 
 func TestOperationTagPickerJumpsBetweenSections(t *testing.T) {
-	picker := newFilterTagPickerForTest(t, []TagInfo{
+	picker := newFilterTagPickerForTest(t, []query.TagInfo{
 		{Name: "backend", TaskCount: 1},
 		{Name: "platform", TaskCount: 1, ContextCount: 1},
 		{Name: "review", TaskCount: 1},
@@ -259,7 +260,7 @@ func TestOperationTagPickerJumpKeysStayOutOfNonTagPickers(t *testing.T) {
 }
 
 func TestTaskTagCategoryJumpHintNamesOnlyPopulatedSections(t *testing.T) {
-	source := taskTagListSource([]TagInfo{
+	source := taskTagListSource([]query.TagInfo{
 		{Name: "backend", TaskCount: 1},
 		{Name: "platform", TaskCount: 1, ContextCount: 1},
 	}, false)
@@ -274,7 +275,7 @@ func TestTaskTagCategoryJumpHintNamesOnlyPopulatedSections(t *testing.T) {
 			t.Fatalf("hint key %q does not wear the guidance key color: %q", key, styled)
 		}
 	}
-	seeded := taskTagListSource([]TagInfo{{Name: "backend", TaskCount: 1}}, true)
+	seeded := taskTagListSource([]query.TagInfo{{Name: "backend", TaskCount: 1}}, true)
 	hint = ansi.Strip(taskTagCategoryJumpHint(ValueProviderTags, seeded.Items, 120))
 	if got := strings.Join(strings.Fields(hint), " "); got != "jump s semantic · t tags" {
 		t.Fatalf("seeded hint = %q, want the editor's two sections", got)

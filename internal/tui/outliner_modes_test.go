@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 func TestOutlinerModeCatalogIsExactSevenModeCycle(t *testing.T) {
@@ -115,7 +116,7 @@ func TestEnteringRecentClearsOnlyStaleFacet(t *testing.T) {
 			outliner.filter.Tags = map[string]bool{"deep": true}
 			outliner.filter.Stale = true
 			outliner.projectFilter.Tags = map[string]bool{"client": true}
-			outliner.projectFilter.ParkedMode = projectPopulationInclude
+			outliner.projectFilter.ParkedMode = query.ProjectPopulationInclude
 			outliner.adoptFilterCarriers()
 
 			test.enter(outliner)
@@ -130,7 +131,7 @@ func TestEnteringRecentClearsOnlyStaleFacet(t *testing.T) {
 				t.Fatalf("Recent changed unrelated common filters: %+v", outliner.filter.CommonFilterState)
 			}
 			if !outliner.projectFilter.Tags["client"] ||
-				outliner.projectFilter.ParkedMode != projectPopulationInclude {
+				outliner.projectFilter.ParkedMode != query.ProjectPopulationInclude {
 				t.Fatalf("Recent changed project filters: %+v", outliner.projectFilter)
 			}
 			if outliner.statusMessage != status || !outliner.StatusIsTransient() {

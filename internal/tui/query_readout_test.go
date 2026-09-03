@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -278,7 +279,7 @@ func TestQueryReadoutGrowsTheStatusStripBelowTheConflictLine(t *testing.T) {
 func TestQueryReadoutPeelReloadsThePopulationThroughTheShell(t *testing.T) {
 	app := readoutTestApp(t)
 	out := app.crossOutliner
-	out.projectFilter.ArchivedMode = projectPopulationInclude
+	out.projectFilter.ArchivedMode = query.ProjectPopulationInclude
 	out.adoptFilterCarriers()
 	out.toggleQueryReadout()
 
@@ -294,7 +295,7 @@ func TestQueryReadoutPeelReloadsThePopulationThroughTheShell(t *testing.T) {
 	if !ok {
 		t.Fatalf("population peel raised %T, want a reload request", msg)
 	}
-	if out.projectFilter.ArchivedMode == projectPopulationInclude {
+	if out.projectFilter.ArchivedMode == query.ProjectPopulationInclude {
 		t.Error("the peel did not write the population fields before asking for the reload")
 	}
 	if handled, reload := app.handleOperationOverlayMessage(msg); !handled || reload == nil {

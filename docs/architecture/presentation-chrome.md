@@ -116,7 +116,7 @@ measure exactly the string `statusStripBody` paints, and it sits under the
 conflict indicator, which keeps the lead. `queryReadoutRows` reads the axes in
 the order the title reads them — lens, scope, mode, query, then
 `commonFilterReadoutRows` and `projectFilterReadoutRows` — and a facet row's
-value is `filterClauseParts` output, so a row, a chip, and a typed query spell
+value is `query.FilterClauseParts` output, so a row, a chip, and a typed query spell
 one narrowing with one set of characters. A mode declares no clauses, so its row
 names the mode instead of spelling a gate the catalog never held.
 

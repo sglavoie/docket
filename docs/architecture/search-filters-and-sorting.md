@@ -115,7 +115,7 @@ rather than a chord of its own, because a deferral is a scheduling instant like
 a due date; the picker is single-select, so choosing the deferred row clears the
 due bucket and choosing a due bucket clears the deferred flag. Those five rows
 are `dueFilterShortcuts`, and a shortcut is the canonical token it writes:
-`filterShortcut.token()` is `filterClauseParts` over the clauses the row
+`query.FilterShortcut.Token()` is `query.FilterClauseParts` over the clauses the row
 installs, so the row label, the which-key hint, the operation's preset value, and
 the status all read `@overdue`, `@today`, `@week`, `@0`, or `?deferred`. The
 picker keeps no private spelling of its own — `acceptsPresetValue` rejects a

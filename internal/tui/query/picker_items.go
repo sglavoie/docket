@@ -1,4 +1,4 @@
-package tui
+package query
 
 import (
 	"charm.land/lipgloss/v2"

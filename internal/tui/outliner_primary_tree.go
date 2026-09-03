@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -144,13 +145,13 @@ func excludeTaskTreePromotingChildren(
 }
 
 func (m *OutlinerModel) sortPrimaryTaskTree(tasks []*models.Task) []*models.Task {
-	if m.sort.Field == SortByDefault || len(tasks) == 0 {
+	if m.sort.Field == query.SortByDefault || len(tasks) == 0 {
 		return tasks
 	}
 	sorted := slices.Clone(tasks)
 	sort.SliceStable(sorted, func(i, j int) bool {
-		cmp := CompareTasks(sorted[i], sorted[j], m.sort.Field)
-		return ApplySortDirection(cmp, m.sort.Ascending)
+		cmp := query.CompareTasks(sorted[i], sorted[j], m.sort.Field)
+		return query.ApplySortDirection(cmp, m.sort.Ascending)
 	})
 	for i, task := range sorted {
 		if len(task.Children) == 0 {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -217,7 +218,7 @@ func TestRetainedListSurfaceDomainAdaptersProvideStableTargets(t *testing.T) {
 		t.Fatalf("state adapter = %+v", states.Items)
 	}
 	priorities := ListSourceFromPriorities([]chrome.PriorityInfo{{Priority: 1, Description: "Critical"}})
-	tags := ListSourceFromTags([]TagInfo{{Name: "focus", TaskCount: 2}})
+	tags := ListSourceFromTags([]query.TagInfo{{Name: "focus", TaskCount: 2}})
 	if priorities.Items[0].ID != "priority:1" ||
 		tags.Items[0].CategoryID != "tag:other" {
 		t.Fatalf("priority/tag adapters are not stable: %+v %+v",

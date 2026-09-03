@@ -1,4 +1,4 @@
-package tui
+package query
 
 import (
 	"fmt"
@@ -46,30 +46,30 @@ var filterQueryRowFields = []models.QueryField{
 	models.QueryFieldCompleted,
 }
 
-// filterQueryHierarchyFields are the clause fields the fh facet owns. They are
+// FilterQueryHierarchyFields are the clause fields the fh facet owns. They are
 // lifted out of the Admits half by rowPredicateQuery.
-var filterQueryHierarchyFields = []models.QueryField{
+var FilterQueryHierarchyFields = []models.QueryField{
 	models.QueryFieldParent,
 	models.QueryFieldChild,
 	models.QueryFieldLeaf,
 }
 
-// filterQueryDependencyFields are the clause fields the f~ facet owns. They are
+// FilterQueryDependencyFields are the clause fields the f~ facet owns. They are
 // lifted out of the Admits half for the same reason the hierarchy fields are:
 // blocking is a fact about which other tasks name this one, which no reading of
 // this one can establish, and its twin travels with it so one facet is answered
 // in one place.
-var filterQueryDependencyFields = []models.QueryField{
+var FilterQueryDependencyFields = []models.QueryField{
 	models.QueryFieldBlocked,
 	models.QueryFieldBlocking,
 }
 
-// filterQueryCensusFields is every field models.QueryFieldRequiresCensus marks,
+// FilterQueryCensusFields is every field models.QueryFieldRequiresCensus marks,
 // in canonical order. It is derived rather than listed so a field added to the
 // census family cannot silently stay in the Admits half, where it would be
 // answered by a predicate that does not hold the population.
-func filterQueryCensusFields() []models.QueryField {
-	fields := make([]models.QueryField, 0, len(filterQueryHierarchyFields)+len(filterQueryDependencyFields))
+func FilterQueryCensusFields() []models.QueryField {
+	fields := make([]models.QueryField, 0, len(FilterQueryHierarchyFields)+len(FilterQueryDependencyFields))
 	for _, field := range models.QueryFieldOrder() {
 		if models.QueryFieldRequiresCensus(field) {
 			fields = append(fields, field)
@@ -78,29 +78,29 @@ func filterQueryCensusFields() []models.QueryField {
 	return fields
 }
 
-// filterQueryPopulationFields are the clause fields the F chord owns. Every one
+// FilterQueryPopulationFields are the clause fields the F chord owns. Every one
 // of them reports true from models.QueryFieldRequiresReload.
-var filterQueryPopulationFields = []models.QueryField{
+var FilterQueryPopulationFields = []models.QueryField{
 	models.QueryFieldProjectTag,
 	models.QueryFieldParked,
 	models.QueryFieldArchived,
 }
 
-// filterQueryTaskFields is everything the f chord's Clear Filters drops: the row
+// FilterQueryTaskFields is everything the f chord's Clear Filters drops: the row
 // half plus the census fields, and never the population half, because clearing
 // one family must not clear the other.
-func filterQueryTaskFields() []models.QueryField {
-	return append(slices.Clone(filterQueryRowFields), filterQueryCensusFields()...)
+func FilterQueryTaskFields() []models.QueryField {
+	return append(slices.Clone(filterQueryRowFields), FilterQueryCensusFields()...)
 }
 
-// emptyFilterQueryProject stands in for a row whose project could not be
+// EmptyFilterQueryProject stands in for a row whose project could not be
 // resolved. models.Query.Admits refuses a nil project, and the row half of the
 // filter query reads no project field, so a placeholder answers the same
 // question a resolved project would without inventing a population fact.
-var emptyFilterQueryProject = &models.Project{}
+var EmptyFilterQueryProject = &models.Project{}
 
-// queryClausesForField returns the clauses of one field, in canonical order.
-func queryClausesForField(query models.Query, field models.QueryField) []models.QueryClause {
+// ClausesForField returns the clauses of one field, in canonical order.
+func ClausesForField(query models.Query, field models.QueryField) []models.QueryClause {
 	clauses := make([]models.QueryClause, 0, 2)
 	for _, clause := range query.Canonical().Clauses {
 		if clause.Field == field {
@@ -110,8 +110,8 @@ func queryClausesForField(query models.Query, field models.QueryField) []models.
 	return clauses
 }
 
-// queryWithoutFields drops every clause naming one of the given fields.
-func queryWithoutFields(query models.Query, fields ...models.QueryField) models.Query {
+// WithoutFields drops every clause naming one of the given fields.
+func WithoutFields(query models.Query, fields ...models.QueryField) models.Query {
 	kept := make([]models.QueryClause, 0, len(query.Clauses))
 	for _, clause := range query.Clauses {
 		if slices.Contains(fields, clause.Field) {
@@ -124,15 +124,15 @@ func queryWithoutFields(query models.Query, fields ...models.QueryField) models.
 	return result.Canonical()
 }
 
-// queryWithFields replaces every clause naming one of the given fields with the
+// WithFields replaces every clause naming one of the given fields with the
 // replacements, leaving every other field alone. It is the one write a facet
 // makes: a facet owns its fields outright and nothing else.
-func queryWithFields(
+func WithFields(
 	query models.Query,
 	fields []models.QueryField,
 	replacements []models.QueryClause,
 ) models.Query {
-	result := queryWithoutFields(query, fields...)
+	result := WithoutFields(query, fields...)
 	result.Clauses = append(result.Clauses, replacements...)
 	return result.Canonical()
 }
@@ -153,11 +153,11 @@ func newFilterClause(
 	return clause, true
 }
 
-// appendFilterClause appends one positive clause. The facets select rather than
+// AppendFilterClause appends one positive clause. The facets select rather than
 // subtract — every one of them names what to keep — so the one negative a
 // carrier can express, hierarchy root, goes through newFilterClause directly
 // instead of widening this helper for a single caller.
-func appendFilterClause(
+func AppendFilterClause(
 	clauses []models.QueryClause,
 	field models.QueryField,
 	operator models.QueryOperator,
@@ -170,108 +170,141 @@ func appendFilterClause(
 	return clauses
 }
 
-// commonFilterClauses lifts the row cache back into clauses. It is the inverse
-// of commonFilterStateFromQuery and exists for the one input that is still
+// CommonFilterClauses lifts the row cache back into clauses. It is the inverse
+// of CommonFilterStateFromQuery and exists for the one input that is still
 // carrier-shaped: a captured view snapshot, which restores the carriers it froze
 // and must put the predicate back beside them. A persisted lens no longer needs
 // it — that definition holds the canonical query itself — and this direction
 // goes away with the snapshot's carriers rather than gaining a second caller.
-func commonFilterClauses(f *CommonFilterState) []models.QueryClause {
+func CommonFilterClauses(f *CommonFilterState) []models.QueryClause {
 	if f == nil {
 		return nil
 	}
 	clauses := make([]models.QueryClause, 0, 8)
 	if f.Priority > 0 {
-		clauses = appendFilterClause(clauses, models.QueryFieldPriority,
+		clauses = AppendFilterClause(clauses, models.QueryFieldPriority,
 			models.QueryOperatorAtLeast, fmt.Sprintf("%d", f.Priority))
 	}
 	// An explicitly empty state set has no clause: the query has no
 	// match-nothing term, so the axis narrows nothing rather than everything.
 	for _, state := range f.States.Values() {
-		clauses = appendFilterClause(clauses, models.QueryFieldState,
+		clauses = AppendFilterClause(clauses, models.QueryFieldState,
 			models.QueryOperatorIs, string(state))
 	}
-	if f.hasCompletionAgeFilter() {
-		if days := f.CompletionAge.days(); days > 0 {
-			clauses = appendFilterClause(clauses, models.QueryFieldCompleted,
+	if f.HasCompletionAgeFilter() {
+		if days := f.CompletionAge.Days(); days > 0 {
+			clauses = AppendFilterClause(clauses, models.QueryFieldCompleted,
 				models.QueryOperatorAtLeast, fmt.Sprintf("%dd", days))
 		} else {
-			clauses = appendFilterClause(clauses, models.QueryFieldCompleted,
+			clauses = AppendFilterClause(clauses, models.QueryFieldCompleted,
 				models.QueryOperatorPresent, "")
 		}
 	}
 	for _, tag := range slices.Sorted(maps.Keys(f.Tags)) {
-		clauses = appendFilterClause(clauses, models.QueryFieldTag,
+		clauses = AppendFilterClause(clauses, models.QueryFieldTag,
 			models.QueryOperatorIs, tag)
 	}
 	for _, name := range slices.Sorted(maps.Keys(f.Contexts)) {
-		clauses = appendFilterClause(clauses, models.QueryFieldContext,
+		clauses = AppendFilterClause(clauses, models.QueryFieldContext,
 			models.QueryOperatorIs, name)
 	}
 	if f.NoContext {
-		clauses = appendFilterClause(clauses, models.QueryFieldContext,
+		clauses = AppendFilterClause(clauses, models.QueryFieldContext,
 			models.QueryOperatorNone, "")
 	}
-	clauses = append(clauses, dueFilterClauses(f.DueDate)...)
-	clauses = append(clauses, hierarchyFilterClauses(f.Hierarchy)...)
-	clauses = append(clauses, dependencyFilterClauses(f.Dependency)...)
+	clauses = append(clauses, DueFilterClauses(f.DueDate)...)
+	clauses = append(clauses, HierarchyFilterClauses(f.Hierarchy)...)
+	clauses = append(clauses, DependencyFilterClauses(f.Dependency)...)
 	if f.Stale {
-		clauses = appendFilterClause(clauses, models.QueryFieldStale,
+		clauses = AppendFilterClause(clauses, models.QueryFieldStale,
 			models.QueryOperatorPresent, "")
 	}
 	if f.Deferred {
-		clauses = appendFilterClause(clauses, models.QueryFieldDeferred,
+		clauses = AppendFilterClause(clauses, models.QueryFieldDeferred,
 			models.QueryOperatorPresent, "")
 	}
 	if f.Pinned {
-		clauses = appendFilterClause(clauses, models.QueryFieldPinned,
+		clauses = AppendFilterClause(clauses, models.QueryFieldPinned,
 			models.QueryOperatorPresent, "")
 	}
 	if f.Review {
-		clauses = appendFilterClause(clauses, models.QueryFieldReview,
+		clauses = AppendFilterClause(clauses, models.QueryFieldReview,
 			models.QueryOperatorPresent, "")
 	}
 	return clauses
 }
 
-// dueFilterClauses spells one due bucket. DueDateNone is the unset reading, so
+// DueFilterClauses spells one due bucket. DueDateNone is the unset reading, so
 // it takes the none operator rather than a bucket value of its own.
-func dueFilterClauses(due DueDateFilter) []models.QueryClause {
+func DueFilterClauses(due DueDateFilter) []models.QueryClause {
 	switch due {
 	case DueDateOverdue:
-		return filterClauseList(models.QueryFieldDue, models.QueryOperatorIs, models.QueryDueOverdue)
+		return FilterClauseList(models.QueryFieldDue, models.QueryOperatorIs, models.QueryDueOverdue)
 	case DueDateToday:
-		return filterClauseList(models.QueryFieldDue, models.QueryOperatorIs, models.QueryDueToday)
+		return FilterClauseList(models.QueryFieldDue, models.QueryOperatorIs, models.QueryDueToday)
 	case DueDateThisWeek:
-		return filterClauseList(models.QueryFieldDue, models.QueryOperatorIs, models.QueryDueWeek)
+		return FilterClauseList(models.QueryFieldDue, models.QueryOperatorIs, models.QueryDueWeek)
 	case DueDateNone:
-		return filterClauseList(models.QueryFieldDue, models.QueryOperatorNone, "")
+		return FilterClauseList(models.QueryFieldDue, models.QueryOperatorNone, "")
 	default:
 		return nil
 	}
+}
+
+// CompletionAgeClauses spells the cleanup facet. It carries the terminal-state
+// predicate itself, because a completion age asked of open work would name a
+// population that cannot answer it.
+func CompletionAgeClauses(age CompletionAgeFilter) []models.QueryClause {
+	clauses := FilterClauseList(models.QueryFieldState,
+		models.QueryOperatorIs, string(models.StateDone))
+	clauses = AppendFilterClause(clauses, models.QueryFieldState,
+		models.QueryOperatorIs, string(models.StateCanceled))
+	if days := age.Days(); days > 0 {
+		return AppendFilterClause(clauses, models.QueryFieldCompleted,
+			models.QueryOperatorAtLeast, fmt.Sprintf("%dd", days))
+	}
+	return AppendFilterClause(clauses, models.QueryFieldCompleted,
+		models.QueryOperatorPresent, "")
+}
+
+// ContextFilterClauses spells one context picker result. The no-context
+// pseudo-entry travels in the same list of names and becomes the none operator,
+// so the facet needs no second value channel.
+func ContextFilterClauses(names []string) []models.QueryClause {
+	clauses := make([]models.QueryClause, 0, len(names))
+	for _, name := range names {
+		if name == NoContextFilterKey {
+			clauses = AppendFilterClause(clauses, models.QueryFieldContext,
+				models.QueryOperatorNone, "")
+			continue
+		}
+		clauses = AppendFilterClause(clauses, models.QueryFieldContext,
+			models.QueryOperatorIs, name)
+	}
+	return clauses
 }
 
 // dueBucketAdmits answers one due bucket through the canonical predicate. The
 // bucket is spelled as its clause and handed to models.Query.Admits, so a due
 // facet and a @due search term cannot disagree about which day is overdue.
 func dueBucketAdmits(task *models.Task, bucket DueDateFilter, now time.Time) bool {
-	clauses := dueFilterClauses(bucket)
+	clauses := DueFilterClauses(bucket)
 	if len(clauses) == 0 {
 		return true
 	}
-	return models.Query{Clauses: clauses}.Admits(task, emptyFilterQueryProject, now)
+	return models.Query{Clauses: clauses}.Admits(task, EmptyFilterQueryProject, now)
 }
 
-// hierarchyFilterClauses spells one hierarchy position. Root is the negation of
+// HierarchyFilterClauses spells one hierarchy position. Root is the negation of
 // child, which is why the vocabulary carries no root field.
-func hierarchyFilterClauses(hierarchy HierarchyFilter) []models.QueryClause {
+func HierarchyFilterClauses(hierarchy HierarchyFilter) []models.QueryClause {
 	switch hierarchy {
 	case HierarchyParent:
-		return filterClauseList(models.QueryFieldParent, models.QueryOperatorPresent, "")
+		return FilterClauseList(models.QueryFieldParent, models.QueryOperatorPresent, "")
 	case HierarchyChild:
-		return filterClauseList(models.QueryFieldChild, models.QueryOperatorPresent, "")
+		return FilterClauseList(models.QueryFieldChild, models.QueryOperatorPresent, "")
 	case HierarchyLeaf:
-		return filterClauseList(models.QueryFieldLeaf, models.QueryOperatorPresent, "")
+		return FilterClauseList(models.QueryFieldLeaf, models.QueryOperatorPresent, "")
 	case HierarchyRoot:
 		if clause, ok := newFilterClause(models.QueryFieldChild,
 			models.QueryPolarityNegative, models.QueryOperatorPresent, ""); ok {
@@ -283,19 +316,19 @@ func hierarchyFilterClauses(hierarchy HierarchyFilter) []models.QueryClause {
 	}
 }
 
-// dependencyFilterClauses spells one reference position.
-func dependencyFilterClauses(dependency DependencyFilter) []models.QueryClause {
+// DependencyFilterClauses spells one reference position.
+func DependencyFilterClauses(dependency DependencyFilter) []models.QueryClause {
 	switch dependency {
 	case DependencyFilterBlocked:
-		return filterClauseList(models.QueryFieldBlocked, models.QueryOperatorPresent, "")
+		return FilterClauseList(models.QueryFieldBlocked, models.QueryOperatorPresent, "")
 	case DependencyFilterBlocking:
-		return filterClauseList(models.QueryFieldBlocking, models.QueryOperatorPresent, "")
+		return FilterClauseList(models.QueryFieldBlocking, models.QueryOperatorPresent, "")
 	default:
 		return nil
 	}
 }
 
-func filterClauseList(
+func FilterClauseList(
 	field models.QueryField,
 	operator models.QueryOperator,
 	value string,
@@ -311,40 +344,40 @@ func projectFilterClauses(f *ProjectFilterState) []models.QueryClause {
 	if f == nil {
 		return nil
 	}
-	clauses := projectTagClauses(f)
-	clauses = append(clauses, populationClauses(models.QueryFieldParked, f.ParkedMode)...)
-	clauses = append(clauses, populationClauses(models.QueryFieldArchived, f.ArchivedMode)...)
+	clauses := ProjectTagClauses(f)
+	clauses = append(clauses, PopulationClauses(models.QueryFieldParked, f.ParkedMode)...)
+	clauses = append(clauses, PopulationClauses(models.QueryFieldArchived, f.ArchivedMode)...)
 	return clauses
 }
 
-// projectTagClauses spells the descriptive-tag restriction alone. The F# picker
+// ProjectTagClauses spells the descriptive-tag restriction alone. The F# picker
 // writes it together with the parked axis and never the archived one, so the tag
 // half is a constructor of its own rather than a slice of the whole population.
-func projectTagClauses(f *ProjectFilterState) []models.QueryClause {
+func ProjectTagClauses(f *ProjectFilterState) []models.QueryClause {
 	if f == nil {
 		return nil
 	}
 	clauses := make([]models.QueryClause, 0, 2)
 	for _, tag := range f.restrictionTags() {
-		clauses = appendFilterClause(clauses, models.QueryFieldProjectTag,
+		clauses = AppendFilterClause(clauses, models.QueryFieldProjectTag,
 			models.QueryOperatorIs, tag)
 	}
 	if f.Untagged {
-		clauses = appendFilterClause(clauses, models.QueryFieldProjectTag,
+		clauses = AppendFilterClause(clauses, models.QueryFieldProjectTag,
 			models.QueryOperatorNone, "")
 	}
 	return clauses
 }
 
-// populationClauses spells one population axis. Exclude is the base workspace
+// PopulationClauses spells one population axis. Exclude is the base workspace
 // the loader already owns, so it is the absence of a clause rather than a clause
 // of its own.
-func populationClauses(field models.QueryField, mode projectPopulationMode) []models.QueryClause {
+func PopulationClauses(field models.QueryField, mode ProjectPopulationMode) []models.QueryClause {
 	switch mode {
-	case projectPopulationInclude:
-		return filterClauseList(field, models.QueryOperatorIs, models.QueryPopulationInclude)
-	case projectPopulationOnly:
-		return filterClauseList(field, models.QueryOperatorIs, models.QueryPopulationOnly)
+	case ProjectPopulationInclude:
+		return FilterClauseList(field, models.QueryOperatorIs, models.QueryPopulationInclude)
+	case ProjectPopulationOnly:
+		return FilterClauseList(field, models.QueryOperatorIs, models.QueryPopulationOnly)
 	default:
 		return nil
 	}

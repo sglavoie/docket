@@ -1,4 +1,4 @@
-package tui
+package query
 
 import (
 	"strings"
@@ -50,7 +50,7 @@ type searchDerivedContext struct {
 	dependedOn   map[models.TaskReference]bool
 }
 
-// searchPredicates is the compiled sigil gate for one search query. It is
+// SearchPredicates is the compiled sigil gate for one search query. It is
 // deliberately built without a fuzzy.Matcher: the case-relaxation retry re-runs
 // the scoring pass, and a gate that read the matcher could admit a different set
 // on the second pass than on the first.
@@ -60,7 +60,7 @@ type searchDerivedContext struct {
 // always an AND-of-nots. Repeated negations therefore accumulate on every axis,
 // including the ones whose positive form is a singleton — "not today and not
 // tomorrow" is one coherent question about a single-valued field.
-type searchPredicates struct {
+type SearchPredicates struct {
 	priorities         []int
 	excludedPriorities []int
 	tags               []string
@@ -99,6 +99,16 @@ type searchPredicates struct {
 	sigils bool
 }
 
+// PlanningMembership answers, for one loaded population, which tasks each of the
+// two planning destinations names. Today and Next both store Backlog tasks, so
+// no state compare separates them and a compiled $today or $next has to read the
+// durable plan. The plan belongs to the projection above this gate, so the gate
+// asks it the question rather than holding the model that answers it.
+type PlanningMembership interface {
+	TodayIdentities(projects []*models.Project) map[taskref.TaskIdentity]bool
+	NextIdentities(projects []*models.Project) map[taskref.TaskIdentity]bool
+}
+
 // compileSearchQuery splits one query into the sigil gate and the free-text
 // remainder that keeps today's fuzzy ranking. The query arrives explicitly
 // rather than being read off the search input, because a lens narrows with its
@@ -106,27 +116,29 @@ type searchPredicates struct {
 // one predicate set, one remainder.
 //
 // Terminal and deferred admission are settled here and nowhere else. The sigils
-// answer for themselves as they compile, the facets are read off the canonical
-// filter query, and the two halves are ORed once: a population is on screen when
-// the query says so, whichever carrier spelled it. No caller may reopen a
-// population by writing to the compiled gate afterwards.
-func (m *OutlinerModel) compileSearchQuery(query string, projects []*models.Project) (string, *searchPredicates) {
-	parsed := textgrammar.ParseSearch(strings.TrimSpace(query))
-	predicates := &searchPredicates{now: time.Now(), sigils: len(parsed.Tokens) > 0}
+// answer for themselves as they compile, the facets arrive as the caller's
+// canonical filter query, and the two halves are ORed once: a population is on
+// screen when the query says so, whichever carrier spelled it. No caller may
+// reopen a population by writing to the compiled gate afterwards.
+func CompileSearchQuery(
+	text string,
+	projects []*models.Project,
+	plan PlanningMembership,
+	facets models.Query,
+) (string, *SearchPredicates) {
+	parsed := textgrammar.ParseSearch(strings.TrimSpace(text))
+	predicates := &SearchPredicates{now: time.Now(), sigils: len(parsed.Tokens) > 0}
 	if guidance := textgrammar.SearchGuidance(parsed); guidance != "" {
 		predicates.guidance = guidance
 		return parsed.Text, predicates
 	}
 
 	for _, token := range parsed.Tokens {
-		predicates.applyToken(token, projects, m)
+		predicates.applyToken(token, projects, plan)
 	}
 	predicates.compileDerivedContext(projects)
-	if m != nil {
-		facets := m.filterQuery
-		predicates.admitsTerminal = predicates.admitsTerminal || facets.OpensTerminalPopulation()
-		predicates.admitsDeferred = predicates.admitsDeferred || facets.OpensDeferredPopulation()
-	}
+	predicates.admitsTerminal = predicates.admitsTerminal || facets.OpensTerminalPopulation()
+	predicates.admitsDeferred = predicates.admitsDeferred || facets.OpensDeferredPopulation()
 	return parsed.Text, predicates
 }
 
@@ -134,7 +146,7 @@ func (m *OutlinerModel) compileSearchQuery(query string, projects []*models.Proj
 // compilation path: it reads the same value the positive would have, and only
 // the slice it lands in differs, which is what keeps -@friday and @friday
 // naming the same day.
-func (p *searchPredicates) applyToken(token textgrammar.Token, projects []*models.Project, m *OutlinerModel) {
+func (p *SearchPredicates) applyToken(token textgrammar.Token, projects []*models.Project, plan PlanningMembership) {
 	switch token.Field { //nolint:exhaustive // The placement and retired fields refuse in SearchGuidance before this loop.
 	case textgrammar.FieldPriority:
 		if values, ok := textgrammar.ParseSearchPriority(token.Value); ok {
@@ -167,9 +179,9 @@ func (p *searchPredicates) applyToken(token textgrammar.Token, projects []*model
 	case textgrammar.FieldRemoveDefer:
 		p.excludedDeferral = append(p.excludedDeferral, compileSearchDefer(token.Value, p.now))
 	case textgrammar.FieldDestination:
-		p.setDestination(token.Value, projects, m)
+		p.setDestination(token.Value, projects, plan)
 	case textgrammar.FieldRemoveDestination:
-		if compiled, ok := compileSearchDestination(token.Value, projects, m); ok {
+		if compiled, ok := compileSearchDestination(token.Value, projects, plan); ok {
 			p.excludedDests = append(p.excludedDests, compiled)
 		}
 	case textgrammar.FieldPinned:
@@ -203,31 +215,57 @@ func (p *searchPredicates) applyToken(token textgrammar.Token, projects []*model
 	}
 }
 
-func (p *searchPredicates) invalid() bool {
+func (p *SearchPredicates) Invalid() bool {
 	return p != nil && p.guidance != ""
 }
 
-// hasAnySigil reports whether the query carried a sigil at all. Sigils compile
+// HasAnySigil reports whether the query carried a sigil at all. Sigils compile
 // to an AND gate applied before scoring, and a note satisfies no conjunct of
 // that gate — it has no priority, no state, no tags, no due date. So a query
 // carrying one excludes the notes tier whole rather than exempting notes from
 // the gate, which is the one move that would break the invariant every other
 // search consumer relies on.
-func (p *searchPredicates) hasAnySigil() bool {
+func (p *SearchPredicates) HasAnySigil() bool {
 	return p != nil && p.sigils
 }
 
-func (p *searchPredicates) guidanceText() string {
+func (p *SearchPredicates) GuidanceText() string {
 	if p == nil {
 		return ""
 	}
 	return p.guidance
 }
 
-func (p *searchPredicates) allowsTerminal() bool {
+func (p *SearchPredicates) AllowsTerminal() bool {
 	return p != nil && p.admitsTerminal
 }
 
-func (p *searchPredicates) allowsDeferred() bool {
+func (p *SearchPredicates) AllowsDeferred() bool {
 	return p != nil && p.admitsDeferred
+}
+
+// CompiledDestination names the one positive $destination the query compiled.
+// The second result is what distinguishes "no destination sigil" from one whose
+// zero value happens to be a legal destination, so a caller never has to read a
+// destination it was not given.
+//
+// It exists for the cross-surface parity check: capture, edit and search all
+// read the same $ vocabulary, and the only way to assert they agree is to ask
+// each surface what it compiled.
+func (p *SearchPredicates) CompiledDestination() (textgrammar.Destination, bool) {
+	if p == nil || p.destination == nil {
+		return "", false
+	}
+	return p.destination.destination, true
+}
+
+// DestinationResolvedMembership reports whether the compiled destination read a
+// planning membership set rather than answering from the task's own state.
+// Today and Next are the two destinations that do; every other one is a state,
+// so a true here beside any other destination would be the bug.
+func (p *SearchPredicates) DestinationResolvedMembership() bool {
+	if p == nil || p.destination == nil {
+		return false
+	}
+	return p.destination.todayIDs != nil || p.destination.nextIDs != nil
 }

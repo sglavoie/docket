@@ -114,8 +114,9 @@ the pre-split tree and is consistently pessimistic.
 | `chrome` | 61 | 50 | 48 |
 | `coordinator` | 5 | 3 | 3 |
 | `grammar` | 59 | 196 | 154 |
+| `query` | 69 | 68 | 62 |
 
-Running total against 631: **160**. `grammar` contributes 58, not 154, because
+Running total against 631: **222**. `grammar` contributes 58, not 154, because
 its two counted columns are on a different basis from every row above them:
 Session 2.11 counted 196 promoted names by including methods and struct fields,
 where the other rows count package-level declarations and name their members in
@@ -274,6 +275,37 @@ declaration changes neither. The `coordinator` trap is a different shape — it
 unexported `project` field, and five production call sites in
 `handler_task_line_edit.go`, `outliner_keys_navigation.go` and
 `outliner_quick_edit_view.go` reach it.
+
+`query` is the first package whose production move and test move land in the
+same session, which is why its row is the first where the middle column and the
+last one differ for a reason other than homing a test. Five test files move down
+wholesale and a sixth, `outliner_search_dependency_test.go`, splits: its four
+predicate tests are the package's, its autocomplete test is the shell's
+vocabulary contract. `textgrammar_state_parity_test.go` stays root and was
+rewritten against exported API instead of followed, because it asserts that
+capture, edit and search compile the same `$` vocabulary and no one package owns
+that question. So the six the last column withdraws are step-3 withdrawals in
+the plainest sense: `CompileSearchDue`, `NormalizeSearchTagPrefix`,
+`TaskCarriesTagPrefix`, `UniqueProjects`, `ProjectFilterClauses` and
+`ProjectPopulationAdmits` have no consumer outside `query` at all, test or
+production, once the tests are inside it. Five that look identical to that audit
+stay exported and are worth naming, because each is a different reason a
+zero-consumer name is not withdrawable: `PlanningMembership` is the seam this
+session invented and appears in `CompileSearchQuery`'s signature;
+`ProjectPopulationExclude` is one member of an enum whose two siblings production
+does read, and a half-exported enum is worse than an unused constant;
+`FilterShortcut` is the type of a value production iterates; and
+`CommonFilterClauses` with `NewCommonFilterState` are read only by root test
+files that cannot move, which is the ordinary test-only promotion the ruling
+would otherwise reclaim.
+
+Two things the column does not count sit on top of the 62. Twenty-two fields and
+methods became exported, on the `grammar` basis rather than this row's, and
+`query` needed three graph edges the whitelist did not have — `theme`, `pulse`
+and `chrome`, recorded in `scripts/tui_package_graph.tsv`. Those edges were the
+alternative to moving `RenderFilterBadge`, `FormatDueDate` and the tag chip
+styling up, which CLAUDE.md forbids: it names one tag-color authority and one
+due-date spelling, and relocating either would have minted a second.
 
 Reproduce the last column for one package with the oracle from session 2.4,
 which reports a clean boundary rather than a count:

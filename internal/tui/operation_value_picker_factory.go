@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -201,12 +202,12 @@ func (m *AppModel) newOperationValuePicker(
 		for _, ref := range refs {
 			projects = append(projects, ref.Project)
 		}
-		tagList := BuildProjectsTagList(projects, false)
+		tagList := query.BuildProjectsTagList(projects, false)
 		source := taskTagListSource(tagList, true)
 		// The context rows lead the CONTEXTS section, ahead of the tag rows the
 		// source recategorized there by context usage.
 		source.Items = append(
-			taskContextListItems(collectContextNamesForProjects(projects)), source.Items...,
+			taskContextListItems(query.CollectContextNamesForProjects(projects)), source.Items...,
 		)
 		picker, err := newOperationValuePickerModel(
 			request, provider, "Set Tags & Context", subtitle, source, true, nil,

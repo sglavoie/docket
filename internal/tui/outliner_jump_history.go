@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -183,7 +184,7 @@ func (m *OutlinerModel) jumpProjectionFingerprint() string {
 		projectIDForJumpProjection(m), m.primaryMode, m.scopedProjectID,
 		m.hasSearchProjection(), m.showsRankedList(), m.SearchQuery(),
 		m.sort.Field, m.sort.Ascending, m.treeSort.Field, m.treeSort.Ascending)
-	fmt.Fprintf(&b, "filters=%q|", strings.Join(commonFilterParts(&m.filter.CommonFilterState), "\x1f"))
+	fmt.Fprintf(&b, "filters=%q|", strings.Join(query.CommonFilterParts(&m.filter.CommonFilterState), "\x1f"))
 	fmt.Fprintf(&b, "zoom=%q|", m.zoom.key)
 
 	collapsed := make([]string, 0, len(m.collapsedSections))

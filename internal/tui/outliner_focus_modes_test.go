@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -158,9 +159,9 @@ func TestFocusConstrainsModesFiltersSortFoldsAndSearch(t *testing.T) {
 		t.Fatalf("focused tag facet rows = %v, want only %s", got, insideNested.ID)
 	}
 
-	out.filter = NewFilterState()
+	out.filter = query.NewFilterState()
 	out.adoptFilterCarriers()
-	out.sort = SortState{Field: SortByTitle, Ascending: true}
+	out.sort = query.SortState{Field: query.SortByTitle, Ascending: true}
 	out.treeSort = out.sort
 	out.rebuildRows()
 	ordered := searchVisibleTaskIDs(out)

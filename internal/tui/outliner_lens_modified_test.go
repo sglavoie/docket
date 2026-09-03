@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -118,7 +119,7 @@ func TestLensModifiedTracksModeQuerySortAndProjectFacets(t *testing.T) {
 	}{
 		{"mode", func(o *OutlinerModel) { o.selectOutlinerMode(chrome.ModeInbox) }},
 		{"query", func(o *OutlinerModel) { o.setLensQuery("other") }},
-		{"sort", func(o *OutlinerModel) { o.treeSort = SortState{Field: SortByTitle, Ascending: true} }},
+		{"sort", func(o *OutlinerModel) { o.treeSort = query.SortState{Field: query.SortByTitle, Ascending: true} }},
 		{"project facets", func(o *OutlinerModel) {
 			o.projectFilter.Untagged = true
 			o.adoptFilterCarriers()
@@ -141,7 +142,7 @@ func TestOrdinaryFiltersAndSortRemainEditableUnderALensQuery(t *testing.T) {
 
 	outliner.filter.Priority = int(models.PriorityHigh)
 	outliner.adoptFilterCarriers()
-	outliner.treeSort = SortState{Field: SortByTitle, Ascending: true}
+	outliner.treeSort = query.SortState{Field: query.SortByTitle, Ascending: true}
 	outliner.sort = outliner.treeSort
 	outliner.crossForceRebuild = true
 	outliner.crossProjectRebuildRows()

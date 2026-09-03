@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -192,7 +193,7 @@ func TestParkedWorkFacetsStayInertUnderScopeAndSelectOnExit(t *testing.T) {
 	if !frame.projectFacetsAwaitingLoad {
 		t.Fatal("the scoped application recorded no owed population load")
 	}
-	if out.projectFilter.ParkedMode != projectPopulationOnly {
+	if out.projectFilter.ParkedMode != query.ProjectPopulationOnly {
 		t.Fatal("the scoped application did not record the template's population facets")
 	}
 	if ids := taskRowProjectIDs(out); !slices.Equal(ids, []string{"alpha"}) {

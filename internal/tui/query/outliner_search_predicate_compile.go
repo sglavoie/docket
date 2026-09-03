@@ -1,4 +1,4 @@
-package tui
+package query
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ import (
 // addDerived compiles one ? value. The parse cannot fail here: ParseSearch has
 // already raised the diagnostic for a value the grammar recognized and cannot
 // honor, and that guidance returned before this loop ran.
-func (p *searchPredicates) addDerived(value string, into *[]textgrammar.DerivedPredicate) {
+func (p *SearchPredicates) addDerived(value string, into *[]textgrammar.DerivedPredicate) {
 	predicate, err := textgrammar.ParseDerived(value)
 	if err != nil {
 		return
@@ -34,9 +34,9 @@ func (p *searchPredicates) addDerived(value string, into *[]textgrammar.DerivedP
 
 // compileDerivedContext builds the two censuses only some derived predicates
 // need, once per query. Both are skipped entirely when nothing asks for them.
-func (p *searchPredicates) compileDerivedContext(projects []*models.Project) {
+func (p *SearchPredicates) compileDerivedContext(projects []*models.Project) {
 	if p.needsDerived(models.DerivedNeedsChildCensus) {
-		p.derivedContext.openChildren = openChildCounts(projects)
+		p.derivedContext.openChildren = OpenChildCounts(projects)
 	}
 	if p.needsDerived(models.DerivedNeedsDependentCensus) {
 		p.derivedContext.dependedOn = collectDependencyTargets(projects)
@@ -46,13 +46,46 @@ func (p *searchPredicates) compileDerivedContext(projects []*models.Project) {
 // needsDerived asks the canonical property list which census a query reads,
 // rather than naming the properties here: the question "what does this predicate
 // have to look at" is part of the predicate's meaning and belongs beside it.
-func (p *searchPredicates) needsDerived(reads func(models.DerivedProperty) bool) bool {
+func (p *SearchPredicates) needsDerived(reads func(models.DerivedProperty) bool) bool {
 	for _, predicate := range append(slices.Clone(p.derived), p.excludedDerived...) {
 		if reads(predicate.Name) {
 			return true
 		}
 	}
 	return false
+}
+
+// OpenChildCounts censuses each task's open direct children across the scope.
+// It reads the authoritative flat project.Tasks, which already holds every
+// nested child, because a row's own task can be a filter-pipeline clone whose
+// Children were rewritten — the marker would then mean one thing in All and
+// another in a flat mode.
+//
+// It sits beside the reference census rather than beside the mode wiring that
+// also reads it, because the derived predicates compile against both and cannot
+// reach a projection above them for either one.
+func OpenChildCounts(projects []*models.Project) map[taskref.TaskIdentity]int {
+	counts := make(map[taskref.TaskIdentity]int)
+	for _, project := range projects {
+		if project == nil {
+			continue
+		}
+		for _, task := range project.Tasks {
+			if task == nil {
+				continue
+			}
+			open := len(task.IncompleteChildren())
+			if open == 0 {
+				continue
+			}
+			identity := taskref.For(task, project)
+			if !identity.Valid() {
+				continue
+			}
+			counts[identity] = open
+		}
+	}
+	return counts
 }
 
 // collectDependencyTargets names every task some loaded task points at. It is
@@ -85,7 +118,7 @@ func collectDependencyTargets(projects []*models.Project) map[models.TaskReferen
 // An unresolvable or ambiguous target becomes guidance rather than a predicate
 // that quietly matches nothing, because "no results" and "I could not tell which
 // task you meant" are different answers.
-func (p *searchPredicates) addDependency(value string, projects []*models.Project, into *[]models.TaskReference) {
+func (p *SearchPredicates) addDependency(value string, projects []*models.Project, into *[]models.TaskReference) {
 	if p.guidance != "" {
 		return
 	}
@@ -153,8 +186,8 @@ func compileSearchDependency(value string, projects []*models.Project) (models.T
 	)
 }
 
-func (p *searchPredicates) setDestination(value string, projects []*models.Project, m *OutlinerModel) {
-	compiled, ok := compileSearchDestination(value, projects, m)
+func (p *SearchPredicates) setDestination(value string, projects []*models.Project, plan PlanningMembership) {
+	compiled, ok := compileSearchDestination(value, projects, plan)
 	if !ok {
 		return
 	}
@@ -169,44 +202,30 @@ func (p *searchPredicates) setDestination(value string, projects []*models.Proje
 // memberships, the identity set that answers it. A negation compiles through
 // here too: "not on Today" needs the same membership the positive did, because
 // Today and Next both store Backlog tasks and no state compare separates them.
+//
+// A caller with no plan to read compiles a membership destination to the empty
+// set rather than refusing it: $today from a view that holds no plan names no
+// task, which is the same answer an empty plan gives.
 func compileSearchDestination(
 	value string,
 	projects []*models.Project,
-	m *OutlinerModel,
+	plan PlanningMembership,
 ) (searchDestinationPredicate, bool) {
 	destination, ok := textgrammar.ParseDestination(value)
 	if !ok {
 		return searchDestinationPredicate{}, false
 	}
 	compiled := searchDestinationPredicate{destination: destination}
+	if plan == nil {
+		return compiled, true
+	}
 	switch destination { //nolint:exhaustive // Only the two planning destinations resolve a membership set; the rest gate on state.
 	case textgrammar.DestinationToday:
-		compiled.todayIDs = m.resolveTodayIDs(projects)
+		compiled.todayIDs = plan.TodayIdentities(projects)
 	case textgrammar.DestinationNext:
-		compiled.nextIDs = resolveSearchNextIDs(m, projects)
+		compiled.nextIDs = plan.NextIdentities(projects)
 	}
 	return compiled, true
-}
-
-// resolveSearchNextIDs reads Next membership from the durable plan, because Next
-// and Today both store Backlog tasks and a state compare cannot tell them apart.
-func resolveSearchNextIDs(m *OutlinerModel, projects []*models.Project) map[taskref.TaskIdentity]bool {
-	ids := make(map[taskref.TaskIdentity]bool)
-	if m == nil || m.runtime == nil {
-		return ids
-	}
-	for _, item := range planningNextOrder(m.runtime) {
-		for _, project := range projects {
-			if project == nil || project.ID != item.ProjectID {
-				continue
-			}
-			if task := project.GetTaskByID(item.TaskID); task != nil {
-				ids[taskref.For(task, project)] = true
-			}
-			break
-		}
-	}
-	return ids
 }
 
 func compileSearchDue(value string, now time.Time) searchDuePredicate {

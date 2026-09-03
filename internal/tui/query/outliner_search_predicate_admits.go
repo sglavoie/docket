@@ -1,4 +1,4 @@
-package tui
+package query
 
 import (
 	"slices"
@@ -14,7 +14,7 @@ import (
 // admitsProject applies the one axis whose subject is the project rather than
 // the row. A negated scope drops the whole project, which is what makes
 // "%client -%client-archive" a narrowing rather than a per-row filter.
-func (p *searchPredicates) admitsProject(project *models.Project) bool {
+func (p *SearchPredicates) AdmitsProject(project *models.Project) bool {
 	if p == nil {
 		return true
 	}
@@ -42,7 +42,7 @@ func projectCarriesPrefix(project *models.Project, prefix string) bool {
 // work sit outside the base population every projection loads, and only a query
 // naming them puts them back. Terminal is read first, so terminal work that also
 // carries a live deferral is decided by the state it ended in.
-func (p *searchPredicates) admitsPopulation(task *models.Task) bool {
+func (p *SearchPredicates) AdmitsPopulation(task *models.Task) bool {
 	if p == nil || task == nil {
 		return p == nil
 	}
@@ -55,7 +55,7 @@ func (p *searchPredicates) admitsPopulation(task *models.Task) bool {
 	return true
 }
 
-func (p *searchPredicates) admits(task *models.Task, project *models.Project) bool {
+func (p *SearchPredicates) Admits(task *models.Task, project *models.Project) bool {
 	if p == nil {
 		return true
 	}
@@ -76,7 +76,7 @@ func (p *searchPredicates) admits(task *models.Task, project *models.Project) bo
 
 // admitsPriority reads every priority through EffectivePriority, so an unset or
 // corrupt stored value answers the positive and the negative the same way.
-func (p *searchPredicates) admitsPriority(task *models.Task) bool {
+func (p *SearchPredicates) admitsPriority(task *models.Task) bool {
 	if len(p.priorities) == 0 && len(p.excludedPriorities) == 0 {
 		return true
 	}
@@ -90,7 +90,7 @@ func (p *searchPredicates) admitsPriority(task *models.Task) bool {
 // admitsPinned refuses a task that both spellings claim. *pin and -*pin in one
 // query is a contradiction, and a contradiction admits nothing rather than
 // letting whichever token was typed last silently win.
-func (p *searchPredicates) admitsPinned(task *models.Task) bool {
+func (p *SearchPredicates) admitsPinned(task *models.Task) bool {
 	if p.requirePinned && !task.Pinned {
 		return false
 	}
@@ -99,14 +99,14 @@ func (p *searchPredicates) admitsPinned(task *models.Task) bool {
 
 // admitsReview answers the review axis the way admitsPinned answers the pin one,
 // contradiction included: =review and -=review in one query admit nothing.
-func (p *searchPredicates) admitsReview(task *models.Task) bool {
+func (p *SearchPredicates) admitsReview(task *models.Task) bool {
 	if p.requireReview && !task.Review {
 		return false
 	}
 	return !p.refuseReview || !task.Review
 }
 
-func (p *searchPredicates) admitsTags(task *models.Task) bool {
+func (p *SearchPredicates) admitsTags(task *models.Task) bool {
 	for _, prefix := range p.tags {
 		if !taskCarriesTagPrefix(task, prefix) {
 			return false
@@ -124,7 +124,7 @@ func (p *searchPredicates) admitsTags(task *models.Task) bool {
 // target and none of the excluded ones. Repeated predicates AND, matching every
 // other repeatable sigil, and the negation is the AND-of-nots the join law asks
 // for on any cardinality.
-func (p *searchPredicates) admitsDependencies(task *models.Task) bool {
+func (p *SearchPredicates) admitsDependencies(task *models.Task) bool {
 	for _, reference := range p.dependencies {
 		if !slices.Contains(task.Dependencies, reference) {
 			return false
@@ -138,7 +138,7 @@ func (p *searchPredicates) admitsDependencies(task *models.Task) bool {
 	return true
 }
 
-func (p *searchPredicates) admitsContext(task *models.Task) bool {
+func (p *SearchPredicates) admitsContext(task *models.Task) bool {
 	if len(p.contexts) == 0 && len(p.excludedContexts) == 0 {
 		return true
 	}
@@ -173,7 +173,7 @@ func (p *searchPredicates) admitsContext(task *models.Task) bool {
 	return true
 }
 
-func (p *searchPredicates) admitsDue(task *models.Task) bool {
+func (p *SearchPredicates) admitsDue(task *models.Task) bool {
 	if !matchesSearchDue(task, p.due, p.now) {
 		return false
 	}
@@ -206,7 +206,7 @@ func matchesSearchDue(task *models.Task, predicate searchDuePredicate, now time.
 // the tasks currently hidden and @@none everything else. The day form is
 // deliberately literal instead, since a query naming a wake day is asking about
 // the instant itself.
-func (p *searchPredicates) admitsDeferral(task *models.Task) bool {
+func (p *SearchPredicates) admitsDeferral(task *models.Task) bool {
 	if !matchesSearchDefer(task, p.deferral, p.now) {
 		return false
 	}
@@ -231,7 +231,7 @@ func matchesSearchDefer(task *models.Task, predicate searchDeferPredicate, now t
 	}
 }
 
-func (p *searchPredicates) admitsDestination(task *models.Task, project *models.Project) bool {
+func (p *SearchPredicates) admitsDestination(task *models.Task, project *models.Project) bool {
 	for _, excluded := range p.excludedDests {
 		if excluded.matches(task, project) {
 			return false
@@ -260,7 +260,7 @@ func (d searchDestinationPredicate) matches(task *models.Task, project *models.P
 // does not store, so none of them can be a stored-field compare: two read a
 // census built once per query, and the rest read the clock or the task's own
 // reference list.
-func (p *searchPredicates) admitsDerived(task *models.Task, project *models.Project) bool {
+func (p *SearchPredicates) admitsDerived(task *models.Task, project *models.Project) bool {
 	for _, predicate := range p.derived {
 		if !p.matchesDerived(predicate, task, project) {
 			return false
@@ -279,7 +279,7 @@ func (p *searchPredicates) admitsDerived(task *models.Task, project *models.Proj
 // against tables compileDerivedContext built only if this query asked for them;
 // an absent table reads as a zero, which no predicate reaching here can see,
 // because the same list decided whether to build it.
-func (p *searchPredicates) matchesDerived(
+func (p *SearchPredicates) matchesDerived(
 	predicate textgrammar.DerivedPredicate,
 	task *models.Task,
 	project *models.Project,

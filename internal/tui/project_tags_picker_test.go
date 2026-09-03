@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 func TestBehavioralProjectTagRowIsShortButPreviewStaysComplete(t *testing.T) {
@@ -49,7 +50,7 @@ func TestProjectTagFilterPickerRowsWearTheSameColorsAsTheEditor(t *testing.T) {
 
 	colored := 0
 	for _, item := range picker.surface.Items() {
-		if item.Data == untaggedProjectFilterKey {
+		if item.Data == query.UntaggedProjectFilterKey {
 			if item.PrimaryStyle != nil {
 				t.Fatalf("the untagged row wears %v, want no tag color", item.PrimaryStyle.GetForeground())
 			}

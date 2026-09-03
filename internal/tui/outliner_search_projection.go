@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -22,9 +23,9 @@ import (
 // are restored when the query is dropped.
 type outlinerSearchSnapshot struct {
 	mode               chrome.OutlinerModeID
-	filter             FilterState
-	sort               SortState
-	treeSort           SortState
+	filter             query.FilterState
+	sort               query.SortState
+	treeSort           query.SortState
 	expandedNodes      map[taskref.TaskIdentity]bool
 	expandedChecklists map[taskref.TaskIdentity]bool
 	collapsedSections  map[string]bool
@@ -119,8 +120,8 @@ func (m *OutlinerModel) toggleRankedList() bool {
 	return true
 }
 
-func copyFilterState(src FilterState) FilterState {
-	return FilterState{CommonFilterState: *copyCommonFilterState(&src.CommonFilterState)}
+func copyFilterState(src query.FilterState) query.FilterState {
+	return query.FilterState{CommonFilterState: *query.CopyCommonFilterState(&src.CommonFilterState)}
 }
 
 func (m *OutlinerModel) beginSearchProjection() {
@@ -304,7 +305,7 @@ func (m *OutlinerModel) buildSearchProjectionRows() {
 	// the tier is absent whole rather than exempted per conjunct. Deciding once
 	// here rather than inside the scorer is what makes the case-relaxed retry
 	// below behave identically for free: both passes read the same decision.
-	notesAdmitted := !predicates.invalid() && !predicates.hasAnySigil()
+	notesAdmitted := !predicates.Invalid() && !predicates.HasAnySigil()
 
 	m.searchCaseRelaxed = false
 	matcher := fuzzy.SmartCase(query)
@@ -381,7 +382,7 @@ func (m *OutlinerModel) appendSearchNoteRows(notes []outlinerSearchNoteMatch) {
 // inside searchProjectionMatchesWithin so the lens call site keeps the saved
 // order the lens itself installs.
 func (m *OutlinerModel) sortSearchMatchesWithinTier(matches []outlinerSearchMatch) {
-	if m == nil || m.sort.Field == SortByDefault || len(matches) < 2 {
+	if m == nil || m.sort.Field == query.SortByDefault || len(matches) < 2 {
 		return
 	}
 	field, ascending := m.sort.Field, m.sort.Ascending
@@ -389,7 +390,7 @@ func (m *OutlinerModel) sortSearchMatchesWithinTier(matches []outlinerSearchMatc
 		if matches[i].fieldRank != matches[j].fieldRank {
 			return matches[i].fieldRank < matches[j].fieldRank
 		}
-		return ApplySortDirection(CompareTasks(matches[i].task, matches[j].task, field), ascending)
+		return query.ApplySortDirection(query.CompareTasks(matches[i].task, matches[j].task, field), ascending)
 	})
 }
 
@@ -408,7 +409,7 @@ func (m *OutlinerModel) searchCandidateBoundary(projects []*models.Project) map[
 		return nil
 	}
 	focused := len(m.focusStack) > 0 || len(m.crossFocusStack) > 0
-	faceted := hasActiveCommonFilters(&m.filter.CommonFilterState)
+	faceted := query.HasActiveCommonFilters(&m.filter.CommonFilterState)
 	if !focused && !faceted {
 		return nil
 	}

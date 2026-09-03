@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -24,7 +25,7 @@ func TestOpenChildCountsCensusesEveryDepth(t *testing.T) {
 	}
 	project := renderFixtureProject(t, "project", "project", "Project", tasks)
 
-	counts := openChildCounts([]*models.Project{project})
+	counts := query.OpenChildCounts([]*models.Project{project})
 
 	want := map[string]int{rootID: 1, midID: 1, leafID: 1}
 	for id, expected := range want {
@@ -39,7 +40,7 @@ func TestOpenChildCountsCensusesEveryDepth(t *testing.T) {
 }
 
 func TestOpenChildCountsSkipsNilProjects(t *testing.T) {
-	if counts := openChildCounts([]*models.Project{nil}); len(counts) != 0 {
+	if counts := query.OpenChildCounts([]*models.Project{nil}); len(counts) != 0 {
 		t.Fatalf("nil project produced %d counts", len(counts))
 	}
 }

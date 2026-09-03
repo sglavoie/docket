@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -111,11 +112,11 @@ func TestVisibilityOverridesAndDateSensitiveFiltersShareReferenceTime(t *testing
 		t.Fatalf("explicit projection = %v, want deferred and terminal opt-in", got)
 	}
 
-	common := CommonFilterState{DueDate: DueDateToday, Deferred: true}
+	common := query.CommonFilterState{DueDate: query.DueDateToday, Deferred: true}
 	if passesCommonFiltersAt(sameDayTask, &common, now) {
 		t.Fatal("same-day task incorrectly matched the deferred facet")
 	}
-	if !passesCommonFiltersAt(deferred, &CommonFilterState{Deferred: true}, now) {
+	if !passesCommonFiltersAt(deferred, &query.CommonFilterState{Deferred: true}, now) {
 		t.Fatal("future-date task did not match the deferred facet at the shared reference time")
 	}
 }

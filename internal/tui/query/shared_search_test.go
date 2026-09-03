@@ -1,4 +1,4 @@
-package tui
+package query
 
 import (
 	"slices"
@@ -6,7 +6,7 @@ import (
 )
 
 func TestSearchSubstringPositionsAreCaseInsensitiveAndContiguous(t *testing.T) {
-	got := searchSubstringPositions("Ship OAuth Login", "OAUTH", false)
+	got := SearchSubstringPositions("Ship OAuth Login", "OAUTH", false)
 	want := []int{5, 6, 7, 8, 9}
 	if len(got) != len(want) {
 		t.Fatalf("positions = %v, want %v", got, want)
@@ -16,16 +16,16 @@ func TestSearchSubstringPositionsAreCaseInsensitiveAndContiguous(t *testing.T) {
 			t.Fatalf("positions = %v, want %v", got, want)
 		}
 	}
-	if got := searchSubstringPositions("Ship OAuth Login", "oa log", false); len(got) != 0 {
+	if got := SearchSubstringPositions("Ship OAuth Login", "oa log", false); len(got) != 0 {
 		t.Fatalf("non-contiguous query positions = %v, want none", got)
 	}
 }
 
 func TestSearchSubstringPositionsHonorCaseSensitivity(t *testing.T) {
-	if got := searchSubstringPositions("Ship OAuth Login", "OAUTH", true); len(got) != 0 {
+	if got := SearchSubstringPositions("Ship OAuth Login", "OAUTH", true); len(got) != 0 {
 		t.Fatalf("case-sensitive positions = %v, want none", got)
 	}
-	got := searchSubstringPositions("Ship OAuth Login", "OAuth", true)
+	got := SearchSubstringPositions("Ship OAuth Login", "OAuth", true)
 	want := []int{5, 6, 7, 8, 9}
 	if !slices.Equal(got, want) {
 		t.Fatalf("case-sensitive positions = %v, want %v", got, want)

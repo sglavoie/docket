@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 // newContextFilterTestApp builds a scope whose context vocabulary is uneven and
@@ -57,7 +58,7 @@ func TestFilterContextChordPickerLeadsWithTheGapThenTheVocabulary(t *testing.T) 
 
 	items := app.operationValuePicker.surface.Items()
 	wantIDs := []ListItemID{
-		"filter-context:" + noContextFilterKey,
+		"filter-context:" + query.NoContextFilterKey,
 		"filter-context:deep",
 		"filter-context:errand",
 	}
@@ -100,7 +101,7 @@ func TestFilterContextChordPickerOpensSeededFromBothHalvesOfTheFacet(t *testing.
 
 	selected := app.operationValuePicker.surface.SelectedIDs()
 	slices.Sort(selected)
-	want := []ListItemID{"filter-context:errand", "filter-context:" + noContextFilterKey}
+	want := []ListItemID{"filter-context:errand", "filter-context:" + query.NoContextFilterKey}
 	slices.Sort(want)
 	if !slices.Equal(selected, want) {
 		t.Fatalf("seeded selection = %v, want %v", selected, want)
@@ -139,7 +140,7 @@ func TestFilterContextOperationAppliesOrSemanticsAcrossNamesAndTheGap(t *testing
 	gap := app.operationExecutor.Execute(OperationExecutionRequest{
 		ID:       operationFilterContexts,
 		Context:  ctx,
-		Value:    []string{noContextFilterKey},
+		Value:    []string{query.NoContextFilterKey},
 		HasValue: true,
 	})
 	if gap.Err != nil {

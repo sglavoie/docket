@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -147,7 +148,7 @@ func (model *OperationValuePickerModel) addOrSelectTag(tag string) error {
 		}
 	}
 
-	source := ListSourceFromTags([]TagInfo{{Name: tag}})
+	source := ListSourceFromTags([]query.TagInfo{{Name: tag}})
 	if len(source.Items) != 1 {
 		return fmt.Errorf("building tag row for %q", tag)
 	}

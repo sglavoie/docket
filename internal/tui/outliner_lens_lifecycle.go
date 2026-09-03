@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 // Applying a named lens is one atomic, reversible act. The frame below is what
@@ -169,7 +170,7 @@ func (m *OutlinerModel) validateLensQuery(query string) error {
 		return nil
 	}
 	_, predicates := m.compileSearchQuery(query, m.workModeScopeProjects())
-	if guidance := predicates.guidanceText(); guidance != "" {
+	if guidance := predicates.GuidanceText(); guidance != "" {
 		return errors.New(guidance)
 	}
 	return nil
@@ -192,9 +193,9 @@ func (m *OutlinerModel) publishLens(lens config.NamedLens, state lensState, proj
 	candidate := state.projectFilterState()
 	population := m.loadedPopulationFingerprint()
 	facetsAwaitingLoad := projects == nil &&
-		projectFilterFingerprint(&candidate) != population
+		query.ProjectFilterFingerprint(&candidate) != population
 	if !facetsAwaitingLoad {
-		population = projectFilterFingerprint(&candidate)
+		population = query.ProjectFilterFingerprint(&candidate)
 	}
 
 	// A lens replaces the projection, so an ordinary search projection cannot

@@ -83,7 +83,7 @@ func TestStartupAndGlobalResetRetainNoLensFrame(t *testing.T) {
 	if outliner.lensQuery != "" {
 		t.Fatalf("the global reset retained the narrowing query %q", outliner.lensQuery)
 	}
-	if outliner.primaryMode != chrome.ModeAll || outliner.filter.hasStateFilter() {
+	if outliner.primaryMode != chrome.ModeAll || outliner.filter.HasStateFilter() {
 		t.Fatal("the global reset did not clear the lens-installed axes")
 	}
 }

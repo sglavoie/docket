@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 // TestTagAdderStripsLeadingHash verifies that a tag entered with a leading
@@ -11,7 +12,7 @@ import (
 // literally with the '#' prefix.
 func TestTagAdderStripsLeadingHash(t *testing.T) {
 	adder := NewTagAdder()
-	picker := NewListSurfaceAdapter[TagInfo](nil, PickerConfig{MultiSelect: true})
+	picker := NewListSurfaceAdapter[query.TagInfo](nil, PickerConfig{MultiSelect: true})
 	adder.EnterAddMode()
 	adder.AddTagInput.SetValue("#backend")
 

@@ -1,4 +1,4 @@
-package tui
+package query
 
 import (
 	"maps"
@@ -9,11 +9,11 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-// noContextFilterKey is the pseudo-entry the context picker offers for tasks
+// NoContextFilterKey is the pseudo-entry the context picker offers for tasks
 // carrying no context at all. The empty context is legal, so without it a
 // context filter could never name the tasks the vocabulary does not cover. It
 // travels in the picker's value channel only; the state is the NoContext bool.
-const noContextFilterKey = "\x00nocontext"
+const NoContextFilterKey = "\x00nocontext"
 
 // CommonFilterState contains filter fields shared across views.
 type CommonFilterState struct {
@@ -50,8 +50,8 @@ type CommonFilterState struct {
 	completionAgeSet bool
 }
 
-// copyCommonFilterState returns a deep copy of a CommonFilterState.
-func copyCommonFilterState(src *CommonFilterState) *CommonFilterState {
+// CopyCommonFilterState returns a deep copy of a CommonFilterState.
+func CopyCommonFilterState(src *CommonFilterState) *CommonFilterState {
 	dst := &CommonFilterState{
 		States:           cloneCommonWorkflowStateSet(src.States),
 		Priority:         src.Priority,
@@ -86,22 +86,22 @@ func cloneCommonWorkflowStateSet(states models.WorkflowStateSet) models.Workflow
 	return cloned
 }
 
-func (f *CommonFilterState) hasStateFilter() bool {
+func (f *CommonFilterState) HasStateFilter() bool {
 	return f.statesSet || !f.States.IsEmpty()
 }
 
-// setStateFilter always arms the filter, including for an empty set: an explicit
+// SetStateFilter always arms the filter, including for an empty set: an explicit
 // empty selection is a state the caller chose, not the absence of one.
-func (f *CommonFilterState) setStateFilter(states models.WorkflowStateSet) {
+func (f *CommonFilterState) SetStateFilter(states models.WorkflowStateSet) {
 	f.States = cloneCommonWorkflowStateSet(states)
 	f.statesSet = true
 }
 
-func (f *CommonFilterState) hasCompletionAgeFilter() bool {
+func (f *CommonFilterState) HasCompletionAgeFilter() bool {
 	return f.completionAgeSet
 }
 
-func (f *CommonFilterState) setCompletionAgeFilter(filter CompletionAgeFilter) {
+func (f *CommonFilterState) SetCompletionAgeFilter(filter CompletionAgeFilter) {
 	f.CompletionAge = filter
 	f.completionAgeSet = true
 }
@@ -120,10 +120,10 @@ func (f *CommonFilterState) setCompletionAgeFilter(filter CompletionAgeFilter) {
 // rather than stored. passesHierarchyFilter and passesDependencyFilter answer
 // them.
 
-// hasActiveCommonFilters returns true if any common filter is non-default.
-func hasActiveCommonFilters(f *CommonFilterState) bool {
-	return f.hasStateFilter() ||
-		f.hasCompletionAgeFilter() ||
+// HasActiveCommonFilters returns true if any common filter is non-default.
+func HasActiveCommonFilters(f *CommonFilterState) bool {
+	return f.HasStateFilter() ||
+		f.HasCompletionAgeFilter() ||
 		f.Priority != 0 ||
 		len(f.Tags) > 0 ||
 		len(f.Contexts) > 0 ||
@@ -137,18 +137,18 @@ func hasActiveCommonFilters(f *CommonFilterState) bool {
 		f.Review
 }
 
-// commonFilterFacetCount reports independently clearable task facets. The
+// CommonFilterFacetCount reports independently clearable task facets. The
 // terminal-state predicate installed by a completion-age choice is part of
 // that one cleanup facet, not a second state facet in the clear count.
-func commonFilterFacetCount(f *CommonFilterState) int {
+func CommonFilterFacetCount(f *CommonFilterState) int {
 	if f == nil {
 		return 0
 	}
 	count := 0
-	if f.hasStateFilter() && !completionAgeOwnsTerminalStates(f) {
+	if f.HasStateFilter() && !CompletionAgeOwnsTerminalStates(f) {
 		count++
 	}
-	if f.hasCompletionAgeFilter() {
+	if f.HasCompletionAgeFilter() {
 		count++
 	}
 	if f.Priority != 0 {
@@ -187,26 +187,26 @@ func commonFilterFacetCount(f *CommonFilterState) int {
 	return count
 }
 
-func completionAgeOwnsTerminalStates(f *CommonFilterState) bool {
-	if f == nil || !f.hasCompletionAgeFilter() || !f.hasStateFilter() {
+func CompletionAgeOwnsTerminalStates(f *CommonFilterState) bool {
+	if f == nil || !f.HasCompletionAgeFilter() || !f.HasStateFilter() {
 		return false
 	}
 	terminal, err := models.NewWorkflowStateSet(models.StateDone, models.StateCanceled)
 	return err == nil && f.States.Equal(terminal)
 }
 
-// commonFilterParts returns the active row facets as chrome chips. The chips are
+// CommonFilterParts returns the active row facets as chrome chips. The chips are
 // the clauses' own canonical sigil text, so what the badge shows is spelled the
 // way the same narrowing is typed into search and saved into a lens.
-func commonFilterParts(f *CommonFilterState) []string {
-	return filterClauseParts(commonFilterClauses(f))
+func CommonFilterParts(f *CommonFilterState) []string {
+	return FilterClauseParts(CommonFilterClauses(f))
 }
 
-// collectContextNamesForProjects returns the sorted context vocabulary in use
+// CollectContextNamesForProjects returns the sorted context vocabulary in use
 // across a set of projects. It reads the same BuildTagFacetList census the fc
 // picker takes its counts from, so the names a picker offers and the counts
 // beside them can never come from two different passes over the tasks.
-func collectContextNamesForProjects(projects []*models.Project) []string {
+func CollectContextNamesForProjects(projects []*models.Project) []string {
 	names := make([]string, 0)
 	for _, info := range BuildTagFacetList(projects, false) {
 		if info.ContextCount > 0 {
@@ -214,6 +214,20 @@ func collectContextNamesForProjects(projects []*models.Project) []string {
 		}
 	}
 	return names
+}
+
+// CountTasksWithoutContext counts the gap the no-context row names, over the
+// same population BuildTagFacetList reads for the rows beside it.
+func CountTasksWithoutContext(projects []*models.Project) int {
+	count := 0
+	for _, project := range uniqueProjects(projects) {
+		for _, task := range project.Tasks {
+			if task != nil && task.Context == "" {
+				count++
+			}
+		}
+	}
+	return count
 }
 
 // FilterState contains all task filtering options including view-specific fields
@@ -225,21 +239,21 @@ type FilterState struct {
 // NewFilterState returns an initialized FilterState with allocated maps.
 func NewFilterState() FilterState {
 	return FilterState{
-		CommonFilterState: newFilterState(),
+		CommonFilterState: NewCommonFilterState(),
 	}
 }
 
-// renderFilterBadge renders a styled filter badge from a parts list.
+// RenderFilterBadge renders a styled filter badge from a parts list.
 // Returns empty string if parts is empty.
-func renderFilterBadge(parts []string) string {
+func RenderFilterBadge(parts []string) string {
 	if len(parts) == 0 {
 		return ""
 	}
 	return pulse.OperationalTitleBadge(theme.FilterBadgeStyle, "Filters: "+strings.Join(parts, " "))
 }
 
-// newFilterState returns an initialized CommonFilterState with allocated maps.
-func newFilterState() CommonFilterState {
+// NewCommonFilterState returns an initialized CommonFilterState with allocated maps.
+func NewCommonFilterState() CommonFilterState {
 	return CommonFilterState{
 		Tags:     make(map[string]bool),
 		Contexts: make(map[string]bool),

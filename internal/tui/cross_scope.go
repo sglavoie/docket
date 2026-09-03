@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/pulse"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/workspace"
 )
@@ -35,7 +36,7 @@ type CrossScopeOpts struct {
 	// active it replaces the ActiveOnly base rather than narrowing it, because
 	// the facets both widen (parked, archived) and restrict (tags, untagged);
 	// composing them with a fixed base could never widen.
-	ProjectFilter ProjectFilterState
+	ProjectFilter query.ProjectFilterState
 }
 
 type projectLoadFailure struct {
@@ -130,7 +131,7 @@ func computeWorkspacePulse(rs *config.RuntimeState, todayIDs map[taskref.TaskIde
 func selectCrossScopeProjects(runtime *config.RuntimeState, opts CrossScopeOpts) []*models.Project {
 	var selected []*models.Project
 	switch {
-	case hasActiveProjectFilters(&opts.ProjectFilter):
+	case query.HasActiveProjectFilters(&opts.ProjectFilter):
 		selected = filteredProjectPopulation(runtime, opts.ProjectFilter)
 	case opts.ActiveOnly:
 		selected = runtime.TaskWorkspaceProjects()
@@ -144,18 +145,18 @@ func selectCrossScopeProjects(runtime *config.RuntimeState, opts CrossScopeOpts)
 // The archived candidates are appended as their own population rather than
 // filtered out of a combined list, so archival stays a population choice and the
 // active projects keep their pinned-first presentation order ahead of them.
-func filteredProjectPopulation(runtime *config.RuntimeState, filter ProjectFilterState) []*models.Project {
+func filteredProjectPopulation(runtime *config.RuntimeState, filter query.ProjectFilterState) []*models.Project {
 	candidates := runtime.AvailableProjects()
 	switch filter.ArchivedMode {
-	case projectPopulationOnly:
+	case query.ProjectPopulationOnly:
 		candidates = runtime.ArchivedProjects()
-	case projectPopulationInclude:
+	case query.ProjectPopulationInclude:
 		candidates = append(candidates, runtime.ArchivedProjects()...)
 	default:
 	}
 	selected := make([]*models.Project, 0, len(candidates))
 	for _, project := range candidates {
-		if projectFilterAdmits(project, filter) {
+		if query.ProjectFilterAdmits(project, filter) {
 			selected = append(selected, project)
 		}
 	}

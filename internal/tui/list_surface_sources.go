@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 // The concrete ListSource constructors. Each adapts one established picker
@@ -114,7 +115,7 @@ func ListSourceFromPriorities(priorities []chrome.PriorityInfo) ListSource {
 }
 
 // ListSourceFromTags adapts task-tag picker sources.
-func ListSourceFromTags(tags []TagInfo) ListSource {
+func ListSourceFromTags(tags []query.TagInfo) ListSource {
 	categories := []ListCategory{
 		{ID: "tag:other", Label: "Tags"},
 	}

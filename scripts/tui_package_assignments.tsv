@@ -101,6 +101,41 @@
 #     grammar/deferred_destination.go. Both are parse results: produced in
 #     grammar, consumed above it.
 #
+# Session 2.13 made six more of those declaration-level moves, in both
+# directions, and three of them minted a file this table now carries:
+#   - The twelve operationFilter* OperationID constants left filter_shortcuts.go
+#     (query) for filter_operation_ids.go as operation. A FilterShortcut names
+#     the operation its row invokes, so query held the identifiers of a package
+#     three layers above it; splitting them out is what let filter_shortcuts.go
+#     move at all.
+#   - The eight *OutlinerModel methods left filter_query_state.go (query) for
+#     filter_query_state_outliner.go (outliner). Session 2.13's contract names
+#     filter_query_state.go as query's, and activeNarrowingGate is the reason
+#     the split had to happen rather than the file staying behind: it branches
+#     on hasActiveLens() and reads lensGate and searchGate. Session 4.10 takes
+#     that file, not the cited line in the moved one.
+#   - compileSearchQuery and resolveSearchNextIDs left
+#     outliner_search_predicates.go and outliner_search_predicate_compile.go
+#     (query) for outliner_search_gate.go (outliner). The gate needs Today and
+#     Next membership, which only the durable plan answers, so query declares
+#     the PlanningMembership interface and the Outliner implements it; the
+#     compiled destination reads a set it was handed rather than a model it
+#     holds.
+#   - openChildCounts left outliner_mode_wiring.go (outliner) for query's
+#     outliner_search_predicate_compile.go. ?leaf and ?parent compile against
+#     the same open-direct-child census the mode wiring reads, and an L2 package
+#     cannot reach L7 for it.
+#   - completionAgeClauses and contextFilterClauses left
+#     filter_operations_outliner.go (outliner) for query's filter_query.go as
+#     CompletionAgeClauses and ContextFilterClauses. Both are pure clause
+#     spellings over query's own vocabulary and sit beside DueFilterClauses,
+#     HierarchyFilterClauses and DependencyFilterClauses, which were already
+#     there.
+#   - countTasksWithoutContext left filter_pickers.go (outliner) for query's
+#     filters_common.go as CountTasksWithoutContext. It is the census the
+#     no-context picker row counts, over the same BuildTagFacetList population
+#     CollectContextNamesForProjects already reads there.
+#
 # Test files are deliberately absent. They follow the production file they
 # audit, except the uitest harness and the registry-union parity tests, which
 # context.md keeps in the root shell.
@@ -192,14 +227,16 @@ feature_coordinator_secondary.go	coordinator	L1	receiver:BatchTransactionResultM
 feature_coordinator_subview.go	coordinator	L1	receiver:SubviewCoordinator
 feature_coordinator_task_item.go	coordinator	L1	receiver:TaskItemCoordinator
 feature_runtime.go	tui	L8	receiver:tuiAppRepository
+filter_operation_ids.go	operation	L3	assigned
 filter_operations.go	tui	L8	receiver:AppModel
 filter_operations_outliner.go	outliner	L7	receiver:OutlinerModel
 filter_pickers.go	tui	L8	receiver:AppModel
 filter_project_operations.go	tui	L8	receiver:AppModel
 filter_project_operations_outliner.go	outliner	L7	receiver:OutlinerModel
 filter_query.go	query	L2	assigned
-filter_query_state.go	outliner	L7	receiver:OutlinerModel
-filter_shortcuts.go	query	L2	receiver:filterShortcut
+filter_query_state.go	query	L2	assigned
+filter_query_state_outliner.go	outliner	L7	receiver:OutlinerModel
+filter_shortcuts.go	query	L2	receiver:FilterShortcut
 filters_common.go	query	L2	receiver:CommonFilterState
 filters_project.go	query	L2	receiver:ProjectFilterState
 footer_flash.go	tui	L8	receiver:AppModel
@@ -382,11 +419,12 @@ outliner_rows.go	outliner	L7	receiver:OutlinerModel
 outliner_scope.go	outliner	L7	receiver:OutlinerModel
 outliner_scope_actions.go	tui	L8	receiver:AppModel
 outliner_search_autocomplete.go	outliner	L7	receiver:OutlinerModel
+outliner_search_gate.go	outliner	L7	receiver:OutlinerModel
 outliner_search_history.go	outliner	L7	receiver:outlinerSearchHistory
 outliner_search_notes.go	outliner	L7	receiver:OutlinerModel
-outliner_search_predicate_admits.go	query	L2	receiver:searchPredicates
-outliner_search_predicate_compile.go	query	L2	receiver:searchPredicates
-outliner_search_predicates.go	query	L2	receiver:searchPredicates
+outliner_search_predicate_admits.go	query	L2	receiver:SearchPredicates
+outliner_search_predicate_compile.go	query	L2	receiver:SearchPredicates
+outliner_search_predicates.go	query	L2	receiver:SearchPredicates
 outliner_search_projection.go	outliner	L7	receiver:OutlinerModel
 outliner_search_scoring.go	outliner	L7	assigned
 outliner_search_suggestion_values.go	outliner	L7	receiver:OutlinerModel

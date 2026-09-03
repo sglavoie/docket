@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 type outlinerEmptyCause uint8
@@ -284,19 +285,19 @@ func (m *OutlinerModel) emptyGuidance() chrome.GuidanceSpec {
 
 func (m *OutlinerModel) classifyEmptyCause() outlinerEmptyCause {
 	if m.hasSearchProjection() && m.SearchQuery() != "" {
-		if m.searchGate.invalid() {
+		if m.searchGate.Invalid() {
 			return outlinerEmptySearchInvalid
 		}
 		// Facets are an AND gate applied before scoring, so the plain search
 		// message would claim the query matched nothing when a facet is what hid
 		// the result. Naming both exits is the difference.
-		if hasActiveCommonFilters(&m.filter.CommonFilterState) {
+		if query.HasActiveCommonFilters(&m.filter.CommonFilterState) {
 			return outlinerEmptySearchFiltered
 		}
 		return outlinerEmptySearch
 	}
 	if m.project == nil && len(m.loadedProjects) == 0 {
-		if hasActiveProjectFilters(&m.projectFilter) {
+		if query.HasActiveProjectFilters(&m.projectFilter) {
 			return outlinerEmptyProjectFiltered
 		}
 		return outlinerEmptyNoProjects
@@ -314,7 +315,7 @@ func (m *OutlinerModel) classifyEmptyCause() outlinerEmptyCause {
 	if m.zoom.active() {
 		return outlinerEmptySection
 	}
-	if hasActiveCommonFilters(&m.filter.CommonFilterState) {
+	if query.HasActiveCommonFilters(&m.filter.CommonFilterState) {
 		return outlinerEmptyFiltered
 	}
 	if len(m.focusStack) > 0 || len(m.crossFocusStack) > 0 {
@@ -342,13 +343,13 @@ func (m *OutlinerModel) decoratePendingChordHint(path []string, hint ChordHint) 
 				hint.Label = "priority:" + strings.ToLower(models.PriorityName(filter.Priority)) + "+"
 			}
 		case "$":
-			if filter.hasStateFilter() {
+			if filter.HasStateFilter() {
 				hint.Label = fmt.Sprintf("states:%d", len(filter.States.Values()))
 			}
 		case "a":
-			if filter.hasCompletionAgeFilter() {
+			if filter.HasCompletionAgeFilter() {
 				hint.Label = "completed:all"
-				if days := filter.CompletionAge.days(); days > 0 {
+				if days := filter.CompletionAge.Days(); days > 0 {
 					hint.Label = fmt.Sprintf("completed:%dd+", days)
 				}
 			}
@@ -365,12 +366,12 @@ func (m *OutlinerModel) decoratePendingChordHint(path []string, hint ChordHint) 
 		case "@":
 			// The label is the token the picker's row writes, so the hint, the chip,
 			// and a typed query name this facet with the same characters.
-			active := dueFilterClauses(filter.DueDate)
+			active := query.DueFilterClauses(filter.DueDate)
 			if filter.Deferred {
-				active = filterClauseList(models.QueryFieldDeferred, models.QueryOperatorPresent, "")
+				active = query.FilterClauseList(models.QueryFieldDeferred, models.QueryOperatorPresent, "")
 			}
 			if len(active) > 0 {
-				hint.Label = strings.Join(filterClauseParts(active), " ")
+				hint.Label = strings.Join(query.FilterClauseParts(active), " ")
 			}
 		case "#":
 			if len(filter.Tags) > 0 {
@@ -381,7 +382,7 @@ func (m *OutlinerModel) decoratePendingChordHint(path []string, hint ChordHint) 
 				hint.Label = "review:on"
 			}
 		case "h":
-			if filter.Hierarchy != HierarchyAll {
+			if filter.Hierarchy != query.HierarchyAll {
 				hint.Label = "hierarchy:" + hierarchyFilterLabel(filter.Hierarchy)
 			}
 		case "s":
@@ -389,7 +390,7 @@ func (m *OutlinerModel) decoratePendingChordHint(path []string, hint ChordHint) 
 				hint.Label = "stale:on"
 			}
 		case "x":
-			if count := commonFilterFacetCount(filter); count > 0 {
+			if count := query.CommonFilterFacetCount(filter); count > 0 {
 				hint.Label = fmt.Sprintf("clear:%d", count)
 			}
 		}
@@ -406,27 +407,27 @@ func (m *OutlinerModel) decorateProjectFilterChordHint(key string, hint ChordHin
 	filter := &m.projectFilter
 	switch key {
 	case "#":
-		if selected := projectFilterSelection(filter); len(selected) > 0 {
+		if selected := query.ProjectFilterSelection(filter); len(selected) > 0 {
 			hint.Label = fmt.Sprintf("project tags:%d", len(selected))
 		}
 	case "p":
-		if filter.ParkedMode == projectPopulationInclude {
+		if filter.ParkedMode == query.ProjectPopulationInclude {
 			hint.Label = "parked:on"
 		}
 	case "P":
-		if filter.ParkedMode == projectPopulationOnly {
+		if filter.ParkedMode == query.ProjectPopulationOnly {
 			hint.Label = "parked:only"
 		}
 	case "a":
-		if filter.ArchivedMode == projectPopulationInclude {
+		if filter.ArchivedMode == query.ProjectPopulationInclude {
 			hint.Label = "archived:on"
 		}
 	case "A":
-		if filter.ArchivedMode == projectPopulationOnly {
+		if filter.ArchivedMode == query.ProjectPopulationOnly {
 			hint.Label = "archived:only"
 		}
 	case "x":
-		if count := projectFilterFacetCount(filter); count > 0 {
+		if count := query.ProjectFilterFacetCount(filter); count > 0 {
 			hint.Label = fmt.Sprintf("clear:%d", count)
 		}
 	}

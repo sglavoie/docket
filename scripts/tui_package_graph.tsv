@@ -46,6 +46,17 @@
 #     identity region; `taskref` is the project-qualified planning identity the
 #     Today count is deduplicated by. All three are vocabulary the counter and
 #     the row are written in rather than values a caller could supply.
+#   - `query -> theme,pulse,chrome` were added in Session 2.13, and they are the
+#     same argument one layer up. Three of `query`'s files render rather than
+#     decide: `RenderFilterBadge` paints the facet chips through
+#     `theme.FilterBadgeStyle` into `pulse.OperationalTitleBadge`,
+#     `TagInfo.ListSurfacePrimaryStyle` resolves `theme.TagChipStyle` on the
+#     payload so a retained selector cannot re-mint a plain row, and
+#     `FormatDueDate`/`FormatRecencyChip` classify a due date through
+#     `chrome.ClassifyDueDate`. The alternative is a fourth spelling of a due
+#     date and a second tag-color authority, both of which CLAUDE.md forbids
+#     outright. None can close a cycle: `chrome` names `theme,textfit,pulse,
+#     taskref,keymap` and no L0 or L1 package reaches `query`.
 #   - `textfit -> theme` is the first edge inside L0, added in Session 2.3 when
 #     the package was extracted. context.md gives `textfit` "Markdown,
 #     highlighting" and both are inherently styled: `markdown.go` picks the
@@ -65,7 +76,7 @@ keymap	L0	-
 chrome	L1	theme,textfit,pulse,taskref,keymap
 coordinator	L1	taskref,status
 grammar	L2	chrome,theme,textfit,taskref
-query	L2	taskref,grammar
+query	L2	theme,pulse,taskref,chrome,grammar
 operation	L3	presentation,chrome,taskref,status,grammar
 route	L4	presentation,chrome,operation
 listsurface	L5	route,operation,chrome,textfit,theme,keymap

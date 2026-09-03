@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -109,12 +110,12 @@ func (m *AppModel) newFilterProjectTagsPicker(
 	// The empty tag set is legal, so without this row a tag facet could never
 	// name the projects the vocabulary does not cover.
 	items = append(items, ListItem{
-		ID:            ListItemID("tag:" + untaggedProjectFilterKey),
+		ID:            ListItemID("tag:" + query.UntaggedProjectFilterKey),
 		CategoryID:    tagDescriptiveCategory,
 		PrimaryText:   "Untagged",
 		SecondaryText: projectCountPhrase(untagged),
 		Aliases:       []string{"untagged", "no tags"},
-		Data:          untaggedProjectFilterKey,
+		Data:          query.UntaggedProjectFilterKey,
 	})
 
 	source := ListSource{
@@ -126,7 +127,11 @@ func (m *AppModel) newFilterProjectTagsPicker(
 	}
 	selected := []ListItemID(nil)
 	if m.crossOutliner != nil {
-		selected = projectFilterSelection(&m.crossOutliner.projectFilter)
+		rows := query.ProjectFilterSelection(&m.crossOutliner.projectFilter)
+		selected = make([]ListItemID, 0, len(rows))
+		for _, row := range rows {
+			selected = append(selected, ListItemID(row))
+		}
 	}
 	return newOperationValuePickerModel(
 		request,

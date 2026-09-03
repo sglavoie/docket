@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -90,7 +91,7 @@ func (a *TagAdder) handleAddTagInputKey(
 // HandleAddTagKey processes a key message while in add-tag mode.
 // The picker parameter is used to manipulate the item list and selection.
 // Returns (handled, cmd). The caller should return (m, cmd) when handled is true.
-func (a *TagAdder) HandleAddTagKey(msg tea.KeyPressMsg, picker *ListSurfaceAdapter[TagInfo]) (bool, tea.Cmd) {
+func (a *TagAdder) HandleAddTagKey(msg tea.KeyPressMsg, picker *ListSurfaceAdapter[query.TagInfo]) (bool, tea.Cmd) {
 	return a.handleAddTagInputKey(msg, func(tagName string) error {
 		// Check for duplicate
 		for _, item := range picker.SourceItems() {
@@ -102,7 +103,7 @@ func (a *TagAdder) HandleAddTagKey(msg tea.KeyPressMsg, picker *ListSurfaceAdapt
 		}
 
 		// Add new tag
-		items := append(picker.SourceItems(), TagInfo{Name: tagName, TaskCount: 0})
+		items := append(picker.SourceItems(), query.TagInfo{Name: tagName, TaskCount: 0})
 		sort.Slice(items, func(i, j int) bool {
 			return items[i].Name < items[j].Name
 		})
@@ -146,7 +147,7 @@ func (a *TagAdder) RenderAddTagMode(width, height int) string {
 }
 
 // RenderTagSelectorView renders the standard tag selector view as a fullscreen layout.
-func RenderTagSelectorView(picker *ListSurfaceAdapter[TagInfo], adder *TagAdder, title string, width, height int) string {
+func RenderTagSelectorView(picker *ListSurfaceAdapter[query.TagInfo], adder *TagAdder, title string, width, height int) string {
 	if adder.AddTagMode {
 		return adder.RenderAddTagMode(width, height)
 	}
@@ -179,7 +180,7 @@ func RenderTagSelectorView(picker *ListSurfaceAdapter[TagInfo], adder *TagAdder,
 }
 
 // renderTagSelectorFooter renders the standard footer with 'a' key for adding tags.
-func tagSelectorGuidanceSpec(picker *ListSurfaceAdapter[TagInfo]) (chrome.GuidanceSpec, bool) {
+func tagSelectorGuidanceSpec(picker *ListSurfaceAdapter[query.TagInfo]) (chrome.GuidanceSpec, bool) {
 	if picker.IsSearchMode() {
 		return picker.guidanceSpec()
 	}

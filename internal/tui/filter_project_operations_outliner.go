@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 // populationFilterClauseEdit is one clause constructor per population facet.
@@ -21,25 +22,25 @@ func (m *OutlinerModel) populationFilterClauseEdit(
 		if !ok {
 			return filterClauseEdit{}, fmt.Errorf("invalid project tag filter value")
 		}
-		next := m.projectFilter.clone()
-		applyProjectTagFilterValue(&next, names)
-		clauses := append(projectTagClauses(&next),
-			populationClauses(models.QueryFieldParked, next.ParkedMode)...)
-		return filterClauseEdit{clauses: clauses, status: projectTagFilterStatus(&next)}, nil
+		next := m.projectFilter.Clone()
+		query.ApplyProjectTagFilterValue(&next, names)
+		clauses := append(query.ProjectTagClauses(&next),
+			query.PopulationClauses(models.QueryFieldParked, next.ParkedMode)...)
+		return filterClauseEdit{clauses: clauses, status: query.ProjectTagFilterStatus(&next)}, nil
 	case operationFilterShowParked:
 		return m.populationToggleEdit(models.QueryFieldParked, m.projectFilter.ParkedMode,
-			projectPopulationInclude, "Parked"), nil
+			query.ProjectPopulationInclude, "Parked"), nil
 	case operationFilterOnlyParked:
 		return m.populationToggleEdit(models.QueryFieldParked, m.projectFilter.ParkedMode,
-			projectPopulationOnly, "Parked"), nil
+			query.ProjectPopulationOnly, "Parked"), nil
 	case operationFilterIncludeArchived:
 		return m.populationToggleEdit(models.QueryFieldArchived, m.projectFilter.ArchivedMode,
-			projectPopulationInclude, "Archived"), nil
+			query.ProjectPopulationInclude, "Archived"), nil
 	case operationFilterOnlyArchived:
 		return m.populationToggleEdit(models.QueryFieldArchived, m.projectFilter.ArchivedMode,
-			projectPopulationOnly, "Archived"), nil
+			query.ProjectPopulationOnly, "Archived"), nil
 	case operationFilterProjectClear:
-		if !hasActiveProjectFilters(&m.projectFilter) {
+		if !query.HasActiveProjectFilters(&m.projectFilter) {
 			return filterClauseEdit{declined: true, status: "No project filters are active"}, nil
 		}
 		return filterClauseEdit{status: "Project filters cleared"}, nil
@@ -51,23 +52,23 @@ func (m *OutlinerModel) populationFilterClauseEdit(
 
 func (m *OutlinerModel) populationToggleEdit(
 	field models.QueryField,
-	current, target projectPopulationMode,
+	current, target query.ProjectPopulationMode,
 	name string,
 ) filterClauseEdit {
-	mode := toggleProjectPopulation(current, target)
+	mode := query.ToggleProjectPopulation(current, target)
 	return filterClauseEdit{
-		clauses: populationClauses(field, mode),
+		clauses: query.PopulationClauses(field, mode),
 		status:  projectPopulationStatus(mode, name),
 	}
 }
 
 // projectPopulationStatus names the population one axis now loads rather than
 // the key that was pressed, because two keys reach the same three modes.
-func projectPopulationStatus(mode projectPopulationMode, name string) string {
+func projectPopulationStatus(mode query.ProjectPopulationMode, name string) string {
 	switch mode {
-	case projectPopulationOnly:
+	case query.ProjectPopulationOnly:
 		return "Showing only " + strings.ToLower(name) + " projects"
-	case projectPopulationInclude:
+	case query.ProjectPopulationInclude:
 		return "Showing " + strings.ToLower(name) + " projects"
 	default:
 		return name + " projects hidden"

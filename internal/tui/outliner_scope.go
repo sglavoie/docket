@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -32,8 +33,8 @@ type outlinerScopeFrame struct {
 	primaryMode chrome.OutlinerModeID
 
 	// Active render ordering plus the durable tree-mode sort.
-	sort     SortState
-	treeSort SortState
+	sort     query.SortState
+	treeSort query.SortState
 
 	// Focus stacks (single-project and cross-project).
 	focusStack      []FocusEntry
@@ -174,11 +175,11 @@ func (m *OutlinerModel) projectFacetsAdmitProject(projectID string) bool {
 	if m == nil || m.runtime == nil || projectID == "" {
 		return false
 	}
-	if !hasActiveProjectFilters(&m.projectFilter) {
+	if !query.HasActiveProjectFilters(&m.projectFilter) {
 		// No facet is active, so the load selected the base task workspace.
 		return m.baseWorkspaceAdmitsProject(projectID)
 	}
-	return projectFilterAdmits(m.runtime.GetProject(projectID), m.projectFilter)
+	return query.ProjectFilterAdmits(m.runtime.GetProject(projectID), m.projectFilter)
 }
 
 // settleParkedFocusAgainstPopulation retires the parked-focus exception against
@@ -341,7 +342,7 @@ func (m *OutlinerModel) resetToGlobalAll() {
 	m.expandedNodes = make(map[taskref.TaskIdentity]bool)
 	m.expandedChecklists = make(map[taskref.TaskIdentity]bool)
 	m.sectionToggleRestore = nil
-	m.replaceFilterClauses(filterQueryTaskFields(), nil)
+	m.replaceFilterClauses(query.FilterQueryTaskFields(), nil)
 	m.sort.Reset()
 	m.treeSort.Reset()
 	if m.multiSelectMode {
@@ -391,9 +392,9 @@ func (m *OutlinerModel) resetToLaunchView() ([]string, bool) {
 	note(len(m.focusStack) > 0 || len(m.crossFocusStack) > 0, "focus")
 	note(m.zoom.active(), "zoom")
 	note(m.isProjectScoped(), "scope")
-	note(commonFilterFacetCount(&m.filter.CommonFilterState) > 0, "filters")
-	reload := note(projectFilterFacetCount(&m.projectFilter) > 0, "project filters")
-	note(m.sort.Field != SortByDefault || m.treeSort.Field != SortByDefault, "sort")
+	note(query.CommonFilterFacetCount(&m.filter.CommonFilterState) > 0, "filters")
+	reload := note(query.ProjectFilterFacetCount(&m.projectFilter) > 0, "project filters")
+	note(m.sort.Field != query.SortByDefault || m.treeSort.Field != query.SortByDefault, "sort")
 	note(m.primaryMode != chrome.ModeAll, "mode")
 	if len(cleared) == 0 {
 		return cleared, false
@@ -416,7 +417,7 @@ func (m *OutlinerModel) resetToLaunchView() ([]string, bool) {
 	m.clearProjectScope()
 	// The two filter families are cleared separately for the same reason fx and
 	// Fx are two keys: clearing one must never clear the other.
-	m.replaceFilterClauses(filterQueryTaskFields(), nil)
+	m.replaceFilterClauses(query.FilterQueryTaskFields(), nil)
 	m.replaceFilterClauses(filterOperationFields(operationFilterProjectClear), nil)
 	m.sort.Reset()
 	m.treeSort.Reset()

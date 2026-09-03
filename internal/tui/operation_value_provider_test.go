@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -54,9 +55,9 @@ func TestTaskStatePickerContainsExactCanonicalStatesAndTransitionReasons(t *test
 
 func newOperationTagPickerForTest(t *testing.T, tags ...string) *OperationValuePickerModel {
 	t.Helper()
-	infos := make([]TagInfo, 0, len(tags))
+	infos := make([]query.TagInfo, 0, len(tags))
 	for _, tag := range tags {
-		infos = append(infos, TagInfo{Name: tag})
+		infos = append(infos, query.TagInfo{Name: tag})
 	}
 	source := ListSourceFromTags(infos)
 	for index := range source.Items {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 // This file covers the segments a row reserves rather than earns: the context
@@ -192,7 +193,7 @@ func TestOutlinerTaskRowCountsChildrenPlacedElsewhere(t *testing.T) {
 	}
 	project := renderFixtureProject(t, "project", "project", "Project", tasks)
 	outliner := NewOutlinerModel(project, nil, newTestConfig())
-	outliner.openChildCounts = openChildCounts([]*models.Project{project})
+	outliner.openChildCounts = query.OpenChildCounts([]*models.Project{project})
 
 	detached := ansi.Strip(outliner.renderOutlinerTaskRow(outlinerRow{
 		task: parent,
@@ -223,7 +224,7 @@ func TestOutlinerTaskRowCountsChildrenPlacedElsewhere(t *testing.T) {
 	closedChild := &models.Task{ID: "closed", Title: "closed", WorkflowState: models.StateCanceled, ParentID: &terminalParentID}
 	closedProject := renderFixtureProject(t, "closed", "closed", "Closed", []*models.Task{terminal, closedChild})
 	closedOutliner := NewOutlinerModel(closedProject, nil, newTestConfig())
-	closedOutliner.openChildCounts = openChildCounts([]*models.Project{closedProject})
+	closedOutliner.openChildCounts = query.OpenChildCounts([]*models.Project{closedProject})
 	quiet := ansi.Strip(closedOutliner.renderOutlinerTaskRow(outlinerRow{task: terminal}, false, 120, 120, 0, nil))
 	if strings.Contains(quiet, "›") {
 		t.Fatalf("parent with only terminal children carried a marker: %q", quiet)
@@ -242,7 +243,7 @@ func TestOutlinerTaskRowCombinesBothRelationDirections(t *testing.T) {
 	}
 	project := renderFixtureProject(t, "project", "project", "Project", tasks)
 	outliner := NewOutlinerModel(project, nil, newTestConfig())
-	outliner.openChildCounts = openChildCounts([]*models.Project{project})
+	outliner.openChildCounts = query.OpenChildCounts([]*models.Project{project})
 
 	plain := ansi.Strip(outliner.renderOutlinerTaskRow(outlinerRow{
 		task: tasks[1], Breadcrumb: "Root ›",

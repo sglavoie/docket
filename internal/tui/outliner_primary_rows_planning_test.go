@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -170,7 +171,7 @@ func TestTaskProjectionCopiesDetachDependencies(t *testing.T) {
 		}},
 		{"sortPrimaryTaskTree", func(roots []*models.Task) []*models.Task {
 			outliner, _ := primaryRowsOutliner()
-			outliner.sort = SortState{Field: SortByTitle, Ascending: true}
+			outliner.sort = query.SortState{Field: query.SortByTitle, Ascending: true}
 			return outliner.sortPrimaryTaskTree(roots)
 		}},
 	}

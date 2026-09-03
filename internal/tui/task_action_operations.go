@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -200,7 +201,7 @@ func (id ValueProviderID) acceptsPresetValue(value any) bool {
 		if !ok {
 			return false
 		}
-		_, known := dueFilterShortcutForToken(token)
+		_, known := query.DueFilterShortcutForToken(token)
 		return known
 	case ValueProviderFilterDependency:
 		// The f~ rows are their own canonical tokens too, so the same registration
@@ -209,10 +210,10 @@ func (id ValueProviderID) acceptsPresetValue(value any) bool {
 		if !ok {
 			return false
 		}
-		_, known := dependencyFilterShortcutForToken(token)
+		_, known := query.DependencyFilterShortcutForToken(token)
 		return known
 	case ValueProviderFilterCompletionAge:
-		_, ok := value.(CompletionAgeFilter)
+		_, ok := value.(query.CompletionAgeFilter)
 		return ok
 	case ValueProviderFilterStates,
 		ValueProviderFilterTags,

@@ -7,12 +7,13 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // TagSelectorModel allows multi-selecting tags and adding new ones.
 type TagSelectorModel struct {
-	*ListSurfaceAdapter[TagInfo]
+	*ListSurfaceAdapter[query.TagInfo]
 	TagAdder
 	task *models.Task
 	// identity qualifies task with its owning project so the done message can
@@ -40,7 +41,7 @@ type TagSelectorDoneMsg struct {
 
 // NewTagSelectorModel creates a new tag selector.
 func NewTagSelectorModel(task *models.Task, project *models.Project, currentTags []string) *TagSelectorModel {
-	tags := BuildProjectTagList(project, false)
+	tags := query.BuildProjectTagList(project, false)
 
 	title := "Tags for New Task"
 	if task != nil {

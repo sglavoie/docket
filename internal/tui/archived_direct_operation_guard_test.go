@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 // Fa shows archived projects in the ordinary Outliner, so every direct key is
@@ -69,7 +70,7 @@ func newArchivedGuardEnv(t *testing.T) *archivedGuardEnv {
 	env := &archivedGuardEnv{workspace: workspace, driver: driver, active: active, archived: archived}
 	env.press(t, "F", "a")
 	out := env.outliner(t)
-	if out.projectFilter.ArchivedMode != projectPopulationInclude {
+	if out.projectFilter.ArchivedMode != query.ProjectPopulationInclude {
 		t.Fatal("Fa did not turn on the archived population facet")
 	}
 	if !visibleOutlinerTaskIDs(out)[env.taskID(t, archived, archivedGuardArchivedTaskTitle)] {

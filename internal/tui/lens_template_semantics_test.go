@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -102,7 +103,7 @@ func TestOverdueTemplateUsesDueModeFixedOrdering(t *testing.T) {
 	if !mode.FixedOrder() {
 		t.Fatal("Due must own a fixed order for the template to inherit one")
 	}
-	if outliner.sort != NewSortState() {
+	if outliner.sort != query.NewSortState() {
 		t.Fatalf("active sort = %+v, want a fixed-order mode's inactive default", outliner.sort)
 	}
 

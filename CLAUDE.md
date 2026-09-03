@@ -202,7 +202,7 @@ window still.
 `Q` expands the query readout in that strip, below the conflict line, from a pure
 `queryReadoutBody` `statusStripHeight` measures. It names one row per peelable
 axis and nothing it cannot prove: a mode declares no clauses, so it names the
-mode. Facet rows spell `filterClauseParts`. `peelQueryReadoutAxis` is the one
+mode. Facet rows spell `FilterClauseParts`. `peelQueryReadoutAxis` is the one
 write and routes each axis through the call its own key uses; a peel needing a
 population reload refuses under `showsRankedList()` and otherwise hands the
 shell `QueryReadoutReloadRequestMsg`, as `s` hands it `SaveViewAsLensRequestMsg`.

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 func TestProjectHubHelpNamesTheTaskFilterOnce(t *testing.T) {
@@ -174,7 +175,7 @@ func TestCtrlPRemainsOwnedByInlineOutlinerControls(t *testing.T) {
 	}
 	app.operationTextPrompt = nil
 
-	app.operationValuePicker = newSemanticTagPickerForTest(t, []TagInfo{{Name: "urgent", TaskCount: 1}}, true)
+	app.operationValuePicker = newSemanticTagPickerForTest(t, []query.TagInfo{{Name: "urgent", TaskCount: 1}}, true)
 	if handled, _ := app.handleGlobalKeyPress(ctrlP); !handled || app.operationValuePicker == nil {
 		t.Fatalf("value picker did not retain Ctrl+P: handled=%v picker=%v", handled, app.operationValuePicker != nil)
 	}

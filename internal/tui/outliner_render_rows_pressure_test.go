@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -48,7 +49,7 @@ func TestBehavioralSignalsRowReconcilesWidthsAndOverflow(t *testing.T) {
 			if got := lipgloss.Width(plain); got > width {
 				t.Fatalf("%d-column row assembled %d columns: %q", width, got, plain)
 			}
-			for _, want := range []string{"[abcdefghijk…]", "doing 120d", ansi.Strip(formatDueDate(task))} {
+			for _, want := range []string{"[abcdefghijk…]", "doing 120d", ansi.Strip(query.FormatDueDate(task))} {
 				if !strings.Contains(plain, want) {
 					t.Fatalf("%d-column row missing %q: %q", width, want, plain)
 				}
@@ -58,7 +59,7 @@ func TestBehavioralSignalsRowReconcilesWidthsAndOverflow(t *testing.T) {
 			if got := strings.Contains(indicators, "deferred ×3"); got != wantDeferCount {
 				t.Fatalf("%d-column defer count present = %v, want %v: %q", width, got, wantDeferCount, indicators)
 			}
-			if !strings.Contains(indicators, "doing 120d") || !strings.Contains(indicators, ansi.Strip(formatDueDate(task))) {
+			if !strings.Contains(indicators, "doing 120d") || !strings.Contains(indicators, ansi.Strip(query.FormatDueDate(task))) {
 				t.Fatalf("%d-column row dropped due or Doing before defer count: %q", width, indicators)
 			}
 
@@ -100,7 +101,7 @@ func TestDoingRowRendersAgeAndDueDateAtSixtyColumns(t *testing.T) {
 	}
 
 	plain := ansi.Strip(outliner.renderOutlinerTaskRow(row, false, 60, 60, 0, nil))
-	for _, want := range []string{"Ship the migration safely", "doing 9d", ansi.Strip(formatDueDate(task))} {
+	for _, want := range []string{"Ship the migration safely", "doing 9d", ansi.Strip(query.FormatDueDate(task))} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("60-column Doing row missing %q: %q", want, plain)
 		}

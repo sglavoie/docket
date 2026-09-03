@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -97,7 +98,7 @@ func (m *OutlinerModel) loadCrossProjectsCmd() tea.Cmd {
 	svc := m.projectService
 	adopting := m.pendingParkedFocusID != ""
 	focus := m.focusRequestForLoad()
-	projectFilter := m.projectFilter.clone()
+	projectFilter := m.projectFilter.Clone()
 	return func() tea.Msg {
 		_, loaded, failed := LoadCrossScopeTasks(runtime, svc, CrossScopeOpts{
 			ActiveOnly:     true,
@@ -108,7 +109,7 @@ func (m *OutlinerModel) loadCrossProjectsCmd() tea.Cmd {
 			projects:            loaded,
 			failedLoads:         failed,
 			generation:          gen,
-			loadedProjectFilter: projectFilterFingerprint(&projectFilter),
+			loadedProjectFilter: query.ProjectFilterFingerprint(&projectFilter),
 		}
 		if adopting {
 			msg.focusProjectID = focus
@@ -344,7 +345,7 @@ func (m *OutlinerModel) reseatNoteCursorAfterRebuild() {
 }
 
 func (m *OutlinerModel) crossProjectRowsFingerprint() string {
-	commonParts := commonFilterParts(&m.filter.CommonFilterState)
+	commonParts := query.CommonFilterParts(&m.filter.CommonFilterState)
 
 	var b strings.Builder
 	fmt.Fprintf(&b, "search=%q|", m.SearchQuery())
@@ -357,7 +358,7 @@ func (m *OutlinerModel) crossProjectRowsFingerprint() string {
 	fmt.Fprintf(&b, "lens=%q|", m.lensQuery)
 	fmt.Fprintf(&b, "sort=%d:%t|", m.sort.Field, m.sort.Ascending)
 	fmt.Fprintf(&b, "common=%q|", strings.Join(commonParts, "\x1f"))
-	fmt.Fprintf(&b, "project-filter=%q|", projectFilterFingerprint(&m.projectFilter))
+	fmt.Fprintf(&b, "project-filter=%q|", query.ProjectFilterFingerprint(&m.projectFilter))
 	fmt.Fprintf(&b, "loaded=%s|", loadedProjectIDsFingerprint(m.loadedProjects))
 	fmt.Fprintf(&b, "scope=%q|", m.scopedProjectID)
 	fmt.Fprintf(&b, "mode=%s|", m.primaryMode)
@@ -446,8 +447,8 @@ func (m *OutlinerModel) parkedProjectCount() int {
 // still hidden. The count is dropped once the facets admit parked projects,
 // because nothing is being hidden to report.
 func (m *OutlinerModel) baseScopeChromeLabel() string {
-	parts := projectFilterParts(&m.projectFilter)
-	if !m.projectFilter.showsParked() {
+	parts := query.ProjectFilterParts(&m.projectFilter)
+	if !m.projectFilter.ShowsParked() {
 		if parked := m.parkedProjectCount(); parked > 0 {
 			parts = append(parts, fmt.Sprintf("%d parked", parked))
 		}
