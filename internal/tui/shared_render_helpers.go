@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -155,7 +156,7 @@ func renderTruncatedTags(tags []string, maxTags, maxTagLen int) string {
 		}
 		// The full tag decides the color; truncation is presentation only, so a
 		// clipped chip keeps the color its Peek counterpart shows in full.
-		display := truncateToVisualWidth(tag, maxTagLen)
+		display := textfit.TruncateToVisualWidth(tag, maxTagLen)
 		parts = append(parts, theme.TagChipStyle(tag).Render("#"+display))
 	}
 	result := strings.Join(parts, " ")

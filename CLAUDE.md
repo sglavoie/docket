@@ -235,8 +235,8 @@ Row and Peek budget:
   place a reference target is named; an unresolvable one degrades to its stored
   locator, never dropped. `project export` shares that fallback and writes no
   dependents.
-- `visualWidthOverflow` must subtract the same ellipsis column as
-  `truncateToVisualWidth`, or a character is duplicated or lost.
+- `VisualWidthOverflow` must subtract the same ellipsis column as
+  `TruncateToVisualWidth`, or a character is duplicated or lost.
 - `indicatorDropLadder` is a list: a new indicator gets a position, not an
   append. The trailing `~S/N` counts stored locators in `N` regardless of target
   state or availability, degrades with the content counts, and is gated by no

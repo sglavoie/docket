@@ -9,6 +9,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -120,9 +121,9 @@ func (m *TaskComposerModel) View() tea.View {
 	var b strings.Builder
 	b.WriteString(renderFullscreenTitleWithPulse("Task Composer", m.preset.label(), m.currentWorkspacePulse(), m.width))
 	b.WriteString("\n\n")
-	b.WriteString(theme.SubtitleStyle.Render("Project: ") + truncateToVisualWidth(project, max(m.width-12, 1)))
+	b.WriteString(theme.SubtitleStyle.Render("Project: ") + textfit.TruncateToVisualWidth(project, max(m.width-12, 1)))
 	b.WriteString("\n")
-	b.WriteString(theme.SubtitleStyle.Render("Destination: ") + truncateToVisualWidth(destination, max(m.width-16, 1)))
+	b.WriteString(theme.SubtitleStyle.Render("Destination: ") + textfit.TruncateToVisualWidth(destination, max(m.width-16, 1)))
 	b.WriteString("\n\n")
 	b.WriteString(m.input.View())
 	b.WriteString("\n")

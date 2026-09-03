@@ -1,4 +1,4 @@
-package tui
+package textfit
 
 import (
 	"strings"
@@ -6,10 +6,10 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-// wrapStyled wraps a string that may contain ANSI escape codes, accounting for
+// WrapStyled wraps a string that may contain ANSI escape codes, accounting for
 // visual width (not byte length). Use this when input has been styled with
-// lipgloss; use wrapText for plain text.
-func wrapStyled(s string, width int) []string {
+// lipgloss; use WrapText for plain text.
+func WrapStyled(s string, width int) []string {
 	if width <= 0 || s == "" {
 		return []string{s}
 	}
@@ -23,8 +23,8 @@ func hardWrapStyled(s string, width int) []string {
 	return strings.Split(ansi.Hardwrap(s, width, true), "\n")
 }
 
-// wrapText wraps text to the specified width.
-func wrapText(text string, width int) []string {
+// WrapText wraps text to the specified width.
+func WrapText(text string, width int) []string {
 	if width <= 0 {
 		return []string{text}
 	}

@@ -7,6 +7,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -81,7 +82,7 @@ func (model *OperationTextPromptModel) render(width int) string {
 	var content strings.Builder
 	if model.subtitle != "" {
 		content.WriteString(theme.MutedStyle.Render(
-			"Current: " + truncateToVisualWidth(model.subtitle, max(innerWidth-11, 8)),
+			"Current: " + textfit.TruncateToVisualWidth(model.subtitle, max(innerWidth-11, 8)),
 		))
 		content.WriteString("\n\n")
 	}

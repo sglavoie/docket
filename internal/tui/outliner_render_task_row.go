@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -131,7 +132,7 @@ func (m *OutlinerModel) buildTaskRowSegments(row outlinerRow, rowWidth int, colL
 	contextSegment := ""
 	if task.Context != "" {
 		contextBudget := max(min(rowWidth/5, 12), 6)
-		display := truncateToVisualWidth(task.Context, contextBudget)
+		display := textfit.TruncateToVisualWidth(task.Context, contextBudget)
 		contextSegment = theme.TaskContextBadgeStyle(task).Render("["+display+"]") + " "
 	}
 	tagSegment := ""
@@ -204,7 +205,7 @@ func (m *OutlinerModel) taskRowTitleOverflow(row outlinerRow, rowWidth int, colL
 		return ""
 	}
 	segments := m.buildTaskRowSegments(row, rowWidth, colLayout, cursorPaint{})
-	return visualWidthOverflow(row.task.Title, segments.titleWidth(rowWidth))
+	return textfit.VisualWidthOverflow(row.task.Title, segments.titleWidth(rowWidth))
 }
 
 func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, rowWidth, width, rowIndex int, colLayout *ColumnLayout) string {

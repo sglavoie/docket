@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -386,12 +387,12 @@ func (model *ConflictBrowserModel) renderWithin(width, height int) string {
 	header := make([]string, 0, 2)
 	if model.notice != "" {
 		header = append(header, theme.ErrorStatusStyle.Render(
-			truncateToVisualWidth(model.notice, contentWidth),
+			textfit.TruncateToVisualWidth(model.notice, contentWidth),
 		))
 	}
 	if !model.inspecting() {
 		header = append(header, theme.MutedStyle.Render(
-			truncateToVisualWidth(conflictBrowserReadOnlyLine, contentWidth),
+			textfit.TruncateToVisualWidth(conflictBrowserReadOnlyLine, contentWidth),
 		))
 	}
 
@@ -438,7 +439,7 @@ func (model *ConflictBrowserModel) renderDetail(width, bodyHeight int) string {
 			wrapped = append(wrapped, "")
 			continue
 		}
-		wrapped = append(wrapped, wrapText(line, width)...)
+		wrapped = append(wrapped, textfit.WrapText(line, width)...)
 	}
 	paneHeight := min(max(len(wrapped), conflictBrowserMinBodyRows), conflictBrowserMaxDetailRows)
 	if bodyHeight > 0 {

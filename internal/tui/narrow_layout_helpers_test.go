@@ -5,13 +5,14 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 )
 
 func TestTruncateToVisualWidthUsesDisplayWidth(t *testing.T) {
-	truncated := truncateToVisualWidth("修复界面布局问题", 8)
+	truncated := textfit.TruncateToVisualWidth("修复界面布局问题", 8)
 
 	if lipgloss.Width(truncated) > 8 {
-		t.Fatalf("truncateToVisualWidth exceeded width: %q (width=%d)", truncated, lipgloss.Width(truncated))
+		t.Fatalf("TruncateToVisualWidth exceeded width: %q (width=%d)", truncated, lipgloss.Width(truncated))
 	}
 	if !strings.HasSuffix(truncated, "…") {
 		t.Fatalf("expected ellipsis for truncated text, got %q", truncated)

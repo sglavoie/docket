@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -385,7 +386,7 @@ func (model *ContextActionSheetModel) render(width int) string {
 		header = theme.MutedStyle.Render(search)
 	}
 	if model.notice != "" {
-		notice := theme.ErrorStatusStyle.Render(truncateToVisualWidth(model.notice, max(innerWidth-4, 12)))
+		notice := theme.ErrorStatusStyle.Render(textfit.TruncateToVisualWidth(model.notice, max(innerWidth-4, 12)))
 		if header == "" {
 			header = notice
 		} else {
@@ -402,7 +403,7 @@ func (model *ContextActionSheetModel) render(width int) string {
 		titleText = fmt.Sprintf("%s · %d selected", titleText, model.config.Targets)
 	}
 	if model.config.Subtitle != "" {
-		titleText += ": " + truncateToVisualWidth(model.config.Subtitle, max(innerWidth-20, 12))
+		titleText += ": " + textfit.TruncateToVisualWidth(model.config.Subtitle, max(innerWidth-20, 12))
 	}
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render(titleText)
 	guidance, _ := model.guidanceSpec()

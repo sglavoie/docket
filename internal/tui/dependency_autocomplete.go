@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 )
 
 // dependencyCandidate is one row a ~ or -~ completion may offer. A removal
@@ -116,7 +117,7 @@ func dependencyCandidateRow(candidate dependencyCandidate, effective *models.Pro
 		return value, fmt.Sprintf("%s%s (unavailable)", trigger, value)
 	}
 	value = dependencyAlias(candidate.project, candidate.task, effective)
-	title := truncateToVisualWidth(candidate.task.Title, max(titleWidth, 10))
+	title := textfit.TruncateToVisualWidth(candidate.task.Title, max(titleWidth, 10))
 	name := ""
 	if candidate.project != nil {
 		name = candidate.project.Name

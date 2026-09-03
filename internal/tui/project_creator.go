@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -222,7 +223,7 @@ func renderProjectSlugPreview(slug string, width int, indent, suffix string) str
 		budget = 1
 	}
 
-	line := indent + theme.MutedStyle.Render(prefix+truncateToVisualWidth(slug, budget))
+	line := indent + theme.MutedStyle.Render(prefix+textfit.TruncateToVisualWidth(slug, budget))
 	if suffix != "" {
 		line += theme.InProgressStyle.Render(suffix)
 	}

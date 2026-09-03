@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -143,9 +144,9 @@ func gutterSpace(bg color.Color) string {
 func outlinerCursorRow(gutter, content string, rowWidth int, paint cursorPaint) string {
 	gutterWidth := lipgloss.Width(gutter)
 	if rowWidth <= gutterWidth {
-		return truncateToVisualWidth(gutter, rowWidth)
+		return textfit.TruncateToVisualWidth(gutter, rowWidth)
 	}
-	content = truncateToVisualWidth(content, rowWidth-gutterWidth)
+	content = textfit.TruncateToVisualWidth(content, rowWidth-gutterWidth)
 	fill := rowWidth - gutterWidth - lipgloss.Width(content)
 	if fill <= 0 {
 		return gutter + content
@@ -271,7 +272,7 @@ func (m *OutlinerModel) renderOutlinerProjectHeaderRow(row outlinerRow, selected
 		return outlinerCursorRow(gutter, content, rowWidth, paint)
 	}
 
-	return ZebraLine(truncateToVisualWidth(gutter+content, rowWidth), rowWidth, rowIndex)
+	return ZebraLine(textfit.TruncateToVisualWidth(gutter+content, rowWidth), rowWidth, rowIndex)
 }
 
 // appendProjectHeaderPressure names the overdue and Today-planned work a
@@ -320,7 +321,7 @@ func (m *OutlinerModel) renderOutlinerChecklistRow(row outlinerRow, selected boo
 	if selected {
 		return outlinerCursorRow(gutter, content, rowWidth, paint)
 	}
-	return ZebraLine(truncateToVisualWidth(gutter+content, rowWidth), rowWidth, rowIndex)
+	return ZebraLine(textfit.TruncateToVisualWidth(gutter+content, rowWidth), rowWidth, rowIndex)
 }
 
 // noteRowGlyph marks a note in a mixed result list. It is a literal here rather
@@ -387,13 +388,13 @@ func (m *OutlinerModel) renderOutlinerNoteRow(
 	}
 	title := ""
 	if entry.row.Note != nil {
-		title = truncateToVisualWidth(entry.row.Note.Title, titleWidth())
+		title = textfit.TruncateToVisualWidth(entry.row.Note.Title, titleWidth())
 	}
 	content := glyph + " " + priorityColumn +
-		HighlightText(title, entry.match.titlePositions, theme.NormalStyle) + owner + cue
+		textfit.HighlightText(title, entry.match.titlePositions, theme.NormalStyle) + owner + cue
 
 	if selected {
 		return outlinerCursorRow(gutter, content, rowWidth, paint)
 	}
-	return ZebraLine(truncateToVisualWidth(gutter+content, rowWidth), rowWidth, rowIndex)
+	return ZebraLine(textfit.TruncateToVisualWidth(gutter+content, rowWidth), rowWidth, rowIndex)
 }

@@ -1,4 +1,15 @@
-package tui
+// Package textfit measures, truncates and wraps rendered text: the width
+// arithmetic every TUI surface shares, plus Markdown rendering, match
+// highlighting and the render-audit seam that reports chrome a layout could not
+// fit. It sits at the bottom of the internal/tui layering and imports only
+// theme, which markdown and highlight need to pick the active style.
+//
+// Truncation is a policy, not a utility. Dense data that may clip goes through
+// TruncateIntentional or FitStyledLineToWidth; chrome that is required to stay
+// visible goes through FitStyledChromeToWidth, which reports the clip. Nothing
+// outside text_width_helpers.go calls ansi.Truncate directly, and
+// TestNoRawANSITruncate enforces that across the whole internal/tui subtree.
+package textfit
 
 import (
 	"strings"
@@ -7,7 +18,10 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-func truncateToVisualWidth(text string, width int) string {
+// TruncateToVisualWidth clips text to width, measuring visual (ANSI-aware)
+// width and spending the last column on an ellipsis whenever there is more than
+// one to spend. VisualWidthOverflow returns the tail it drops.
+func TruncateToVisualWidth(text string, width int) string {
 	if width <= 0 {
 		return ""
 	}
@@ -20,12 +34,12 @@ func truncateToVisualWidth(text string, width int) string {
 	return ansi.Truncate(text, width-1, "") + "…"
 }
 
-// visualWidthOverflow returns the text truncateToVisualWidth drops at this
+// VisualWidthOverflow returns the text TruncateToVisualWidth drops at this
 // width, so a caller can render the clipped tail elsewhere. It must subtract the
-// same ellipsis column truncateToVisualWidth reserves, or the two disagree about
+// same ellipsis column TruncateToVisualWidth reserves, or the two disagree about
 // the cut and a character is duplicated or lost. A prefix mismatch returns "" so
 // the failure hides the tail rather than repeating the visible head.
-func visualWidthOverflow(text string, width int) string {
+func VisualWidthOverflow(text string, width int) string {
 	if width <= 0 || lipgloss.Width(text) <= width {
 		return ""
 	}
@@ -40,38 +54,41 @@ func visualWidthOverflow(text string, width int) string {
 	return tail
 }
 
-func fitStyledLineToWidth(line string, width int) string {
+// FitStyledLineToWidth hard-clips a styled line to width without an ellipsis
+// and without reporting, for dense data whose clipping is acceptable.
+func FitStyledLineToWidth(line string, width int) string {
 	if width <= 0 || lipgloss.Width(line) <= width {
 		return line
 	}
 	return ansi.Truncate(line, width, "")
 }
 
-// fitStyledChromeToWidth is the required-auditing counterpart to
-// fitStyledLineToWidth for layout chrome (fullscreen titles, picker/header
+// FitStyledChromeToWidth is the required-auditing counterpart to
+// FitStyledLineToWidth for layout chrome (fullscreen titles, picker/header
 // chrome) that is meant to stay fully visible. It returns the line unchanged
 // when it already fits, but when a clip is unavoidable it routes through
 // truncateRequired so the render audit flags chrome the layout could not fit.
-// site names the render site (e.g. "fullscreen title"). Use fitStyledLineToWidth
+// site names the render site (e.g. "fullscreen title"). Use FitStyledLineToWidth
 // for dense data lines whose clipping is acceptable.
-func fitStyledChromeToWidth(site, line string, width int) string {
+func FitStyledChromeToWidth(site, line string, width int) string {
 	if width <= 0 || lipgloss.Width(line) <= width {
 		return line
 	}
 	return truncateRequired(site, line, width)
 }
 
-// truncateIntentional performs ANSI-aware truncation for dense data where
+// TruncateIntentional performs ANSI-aware truncation for dense data where
 // clipping to fit is the intended, acceptable behavior: list rows, cards,
 // previews, and scrollable content that legitimately cannot always show every
 // character. It records NO render-audit issue — dense data is allowed to
 // truncate. tail is appended when the text is clipped (pass "…" for an ellipsis
 // or "" for a hard clip). This is the default policy shared by the existing data
-// call sites and is the intentional counterpart to truncateRequired.
+// call sites and is the intentional counterpart to FitStyledChromeToWidth.
 //
-// truncateIntentional and truncateRequired are the only sanctioned wrappers over
-// raw ansi.Truncate outside this file; TestNoRawANSITruncate enforces that.
-func truncateIntentional(text string, width int, tail string) string {
+// TruncateIntentional and FitStyledChromeToWidth are the two sanctioned routes
+// onto raw ansi.Truncate from outside this file; TestNoRawANSITruncate enforces
+// that across the whole internal/tui subtree.
+func TruncateIntentional(text string, width int, tail string) string {
 	return ansi.Truncate(text, width, tail)
 }
 

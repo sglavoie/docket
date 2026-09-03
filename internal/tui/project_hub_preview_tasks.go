@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -70,10 +71,10 @@ func (m *ProjectHubModel) renderProjectPreviewTasks(width, height int) []string 
 	}
 	m.syncProjectPreview(project, tasks, loaded)
 	if !m.preview.loaded {
-		return []string{theme.MutedStyle.Render(truncateToVisualWidth("Tasks not loaded.", width))}
+		return []string{theme.MutedStyle.Render(textfit.TruncateToVisualWidth("Tasks not loaded.", width))}
 	}
 	if len(m.preview.rows) == 0 {
-		return []string{theme.MutedStyle.Render(truncateToVisualWidth("No tasks.", width))}
+		return []string{theme.MutedStyle.Render(textfit.TruncateToVisualWidth("No tasks.", width))}
 	}
 
 	start, count, above, below := listPreviewScrollWindow(len(m.preview.rows), m.preview.offset, height)

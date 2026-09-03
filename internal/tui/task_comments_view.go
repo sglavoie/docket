@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -57,7 +58,7 @@ func (m *TaskCommentsModel) renderExpandedView(b *strings.Builder) tea.View {
 	b.WriteString("\n")
 	b.WriteString(theme.MutedStyle.Render(timestamp))
 	b.WriteString("\n\n")
-	b.WriteString(renderMarkdown(comment.Text, max(m.Width()-4, 1)))
+	b.WriteString(textfit.RenderMarkdown(comment.Text, max(m.Width()-4, 1)))
 	b.WriteString("\n\n")
 	spec, ok := m.guidanceSpec()
 	b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
@@ -168,7 +169,7 @@ func (m *TaskCommentsModel) renderCommentEntry(index int, comment *models.Commen
 // renderCommentPreview shows the first two rendered lines of a comment and says
 // how many remain, so a long comment costs the list a fixed three rows.
 func renderCommentPreview(entry *strings.Builder, text string, maxLen int) {
-	renderedLines := strings.Split(renderMarkdown(text, maxLen), "\n")
+	renderedLines := strings.Split(textfit.RenderMarkdown(text, maxLen), "\n")
 	for j, line := range renderedLines {
 		if j > 1 {
 			fmt.Fprintf(entry, "      ... (%d more lines, press Enter to expand)\n", len(renderedLines)-2)
@@ -176,7 +177,7 @@ func renderCommentPreview(entry *strings.Builder, text string, maxLen int) {
 		}
 
 		entry.WriteString("      ")
-		entry.WriteString(truncateIntentional(line, maxLen, ""))
+		entry.WriteString(textfit.TruncateIntentional(line, maxLen, ""))
 		entry.WriteString("\n")
 	}
 }

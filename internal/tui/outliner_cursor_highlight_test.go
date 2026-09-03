@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -83,7 +84,7 @@ func TestCursorRowKeepsItsSearchMatchHighlight(t *testing.T) {
 	if len(positions) == 0 {
 		t.Fatal("fixture query matched nothing")
 	}
-	want := HighlightText(task.Title, positions, theme.GetTitlePriorityStyle(3))
+	want := textfit.HighlightText(task.Title, positions, theme.GetTitlePriorityStyle(3))
 	if !strings.Contains(line, want) {
 		t.Fatalf("cursor row dropped its search-match highlight:\n%q", line)
 	}

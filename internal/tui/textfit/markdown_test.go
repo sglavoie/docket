@@ -1,4 +1,4 @@
-package tui
+package textfit
 
 import (
 	"strings"
@@ -15,7 +15,7 @@ func assertWidthBounded(t *testing.T, rendered string, width int) {
 	for _, line := range strings.Split(rendered, "\n") {
 		stripped := ansi.Strip(line)
 		if !utf8.ValidString(stripped) {
-			t.Fatalf("renderMarkdown produced invalid UTF-8 line: %q", stripped)
+			t.Fatalf("RenderMarkdown produced invalid UTF-8 line: %q", stripped)
 		}
 		if w := lipgloss.Width(stripped); w > width {
 			t.Fatalf("line width = %d, want <= %d for line %q\n\nfull output:\n%s",
@@ -33,7 +33,7 @@ func TestRenderMarkdownWideTableStaysWithinWidth(t *testing.T) {
 	}, "\n")
 
 	const width = 30
-	rendered := renderMarkdown(table, width)
+	rendered := RenderMarkdown(table, width)
 	assertWidthBounded(t, rendered, width)
 
 	// Important cell text must survive (wrapped vertically, not truncated away).
@@ -49,13 +49,13 @@ func TestRenderMarkdownMalformedPipeTableStaysWithinWidth(t *testing.T) {
 	// Mirrors the screenshot content shape: prose around a table-like block with
 	// broken/ragged pipe rows, long unbreakable identifiers, quotes, and backticks.
 	md := strings.Join([]string{
-		"Some prose before the table explaining the `renderMarkdown` contract in detail.",
+		"Some prose before the table explaining the `RenderMarkdown` contract in detail.",
 		"",
 		"| Field | Value | Notes |",
 		"| --- | --- |", // ragged: missing a delimiter cell
 		"| id | ExtremelyLongUnbreakableIdentifierValueThatCannotWrapNicely | see below |",
 		"| quote | \"a quoted phrase with, commas and 'nested' quotes\" | ok |",
-		"| code | `github.com/sglavoie/tt/internal/tui.renderMarkdown` | backticked path |",
+		"| code | `github.com/sglavoie/tt/internal/tui/textfit.RenderMarkdown` | backticked path |",
 		"| broken row without trailing pipe and extra | | pipes | | scattered", // malformed
 		"|||", // degenerate empty row
 		"",
@@ -63,13 +63,13 @@ func TestRenderMarkdownMalformedPipeTableStaysWithinWidth(t *testing.T) {
 	}, "\n")
 
 	const width = 32
-	rendered := renderMarkdown(md, width)
+	rendered := RenderMarkdown(md, width)
 	assertWidthBounded(t, rendered, width)
 
 	// Key text from prose, quotes, backticks, and identifiers must survive wrapping
 	// (may be split across lines, but must not be truncated away entirely).
 	stripped := strings.ReplaceAll(ansi.Strip(rendered), "\n", " ")
-	for _, word := range []string{"renderMarkdown", "quoted", "backticked", "boundToWidth"} {
+	for _, word := range []string{"RenderMarkdown", "quoted", "backticked", "boundToWidth"} {
 		if !strings.Contains(stripped, word) {
 			t.Fatalf("expected malformed-table word %q preserved, got:\n%s", word, ansi.Strip(rendered))
 		}
@@ -80,7 +80,7 @@ func TestRenderMarkdownLongPlainTextStaysWithinWidth(t *testing.T) {
 	text := strings.Repeat("supercalifragilisticexpialidocious ", 8)
 
 	const width = 20
-	rendered := renderMarkdown(text, width)
+	rendered := RenderMarkdown(text, width)
 	assertWidthBounded(t, rendered, width)
 
 	if strings.TrimSpace(ansi.Strip(rendered)) == "" {
@@ -90,7 +90,7 @@ func TestRenderMarkdownLongPlainTextStaysWithinWidth(t *testing.T) {
 
 func TestRenderMarkdownPreservesTextNotTruncated(t *testing.T) {
 	const width = 24
-	rendered := renderMarkdown("The quick brown fox jumps over the lazy dog repeatedly.", width)
+	rendered := RenderMarkdown("The quick brown fox jumps over the lazy dog repeatedly.", width)
 	assertWidthBounded(t, rendered, width)
 
 	stripped := ansi.Strip(rendered)

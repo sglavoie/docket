@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -108,12 +109,12 @@ func (m *TaskAttachmentsModel) renderAttachmentEntry(index int, att models.Attac
 
 	maxLen := max(m.Width()-8, 1)
 	entry.WriteString("      ")
-	entry.WriteString(truncateToVisualWidth(m.attachmentDisplayName(att), maxLen))
+	entry.WriteString(textfit.TruncateToVisualWidth(m.attachmentDisplayName(att), maxLen))
 	entry.WriteString("\n")
 
 	if !att.IsURL && !att.IsCodeRef {
 		entry.WriteString("      ")
-		entry.WriteString(theme.MutedStyle.Render("from: " + truncateToVisualWidth(att.OriginalPath, maxLen)))
+		entry.WriteString(theme.MutedStyle.Render("from: " + textfit.TruncateToVisualWidth(att.OriginalPath, maxLen)))
 		entry.WriteString("\n")
 	}
 

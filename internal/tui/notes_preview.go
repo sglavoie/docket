@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -57,7 +58,7 @@ type notesPreviewState struct {
 	// ready distinguishes a synced empty body from a cache that was never built,
 	// so the zero key of a freshly invalidated state cannot pass for a match.
 	ready bool
-	// lines are the note body rendered through renderMarkdown at key.width and
+	// lines are the note body rendered through textfit.RenderMarkdown at key.width and
 	// split into display lines. Rendering is cached because the cursor moves far
 	// more often than the note under it changes.
 	lines  []string
@@ -90,7 +91,7 @@ func (s *notesPreviewState) sync(key notesPreviewKey, body string, bodyMatched b
 	if strings.TrimSpace(body) == "" {
 		return
 	}
-	rendered := renderMarkdown(body, max(key.width, 1))
+	rendered := textfit.RenderMarkdown(body, max(key.width, 1))
 	if rendered == "" {
 		return
 	}
@@ -325,17 +326,17 @@ func (m *NotesViewModel) renderNotesPreviewBody(width, height int) []string {
 		// spend.
 		m.preview.offset, m.preview.pageSize = 0, 0
 		lines := []string{theme.WarningIconStyle.Render(
-			truncateToVisualWidth("! Note could not be parsed.", width),
+			textfit.TruncateToVisualWidth("! Note could not be parsed.", width),
 		)}
-		for _, line := range wrapText(note.ParseError, max(width, 1)) {
-			lines = append(lines, theme.MutedStyle.Render(truncateToVisualWidth(line, width)))
+		for _, line := range textfit.WrapText(note.ParseError, max(width, 1)) {
+			lines = append(lines, theme.MutedStyle.Render(textfit.TruncateToVisualWidth(line, width)))
 		}
 		return lines[:min(len(lines), height)]
 	}
 
 	m.preview.sync(key, note.Body, m.notesPreviewBodyMatched(row))
 	if len(m.preview.lines) == 0 {
-		return []string{theme.MutedStyle.Render(truncateToVisualWidth("No body.", width))}
+		return []string{theme.MutedStyle.Render(textfit.TruncateToVisualWidth("No body.", width))}
 	}
 
 	start, count, above, below := listPreviewScrollWindow(len(m.preview.lines), m.preview.offset, height)
@@ -351,7 +352,7 @@ func (m *NotesViewModel) renderNotesPreviewBody(width, height int) []string {
 		lines = append(lines, renderListContinuation("↑", start, width))
 	}
 	for index := start; index < start+count; index++ {
-		lines = append(lines, truncateToVisualWidth(m.preview.lines[index], width))
+		lines = append(lines, textfit.TruncateToVisualWidth(m.preview.lines[index], width))
 	}
 	if below {
 		lines = append(lines, renderListContinuation("↓", len(m.preview.lines)-start-count, width))

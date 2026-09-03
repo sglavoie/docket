@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -323,7 +324,7 @@ func renderTaskPrefix(prefix, foldIndicator string, bg color.Color) (string, str
 
 func (m *OutlinerModel) renderTaskTitle(task *models.Task, titleStyle lipgloss.Style, rowWidth int, segments taskRowSegments) string {
 	availableWidth := segments.titleWidth(rowWidth)
-	title := truncateToVisualWidth(task.Title, availableWidth)
+	title := textfit.TruncateToVisualWidth(task.Title, availableWidth)
 	query, caseSensitive := m.titleHighlightQuery()
 	if query == "" {
 		return titleStyle.Render(title)
@@ -332,7 +333,7 @@ func (m *OutlinerModel) renderTaskTitle(task *models.Task, titleStyle lipgloss.S
 	if len(positions) == 0 {
 		return titleStyle.Render(title)
 	}
-	return HighlightText(title, positions, titleStyle)
+	return textfit.HighlightText(title, positions, titleStyle)
 }
 
 // titleHighlightQuery names the free text the visible rows were narrowed by,
@@ -390,7 +391,7 @@ func applyTaskRowLineStyle(gutter, content string, task *models.Task, paint curs
 	// row, so the extra wrapped rows overflow terminal height. Clamp to rowWidth
 	// (ANSI-aware) so every row stays exactly one line. outlinerCursorRow clamps
 	// the cursor row the same way, against the columns its gutter leaves.
-	line := truncateToVisualWidth(gutter+content, rowWidth)
+	line := textfit.TruncateToVisualWidth(gutter+content, rowWidth)
 	if tinted {
 		return tint.Width(rowWidth).Render(line)
 	}

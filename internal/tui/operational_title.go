@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -94,7 +95,7 @@ func renderOperationalTitle(spec operationalTitleSpec, width int) string {
 	if contextBudget <= 0 {
 		return renderOperationalIdentity(spec, width)
 	}
-	return identity + operationalTitleContextGap + truncateToVisualWidth(context, contextBudget)
+	return identity + operationalTitleContextGap + textfit.TruncateToVisualWidth(context, contextBudget)
 }
 
 func renderOperationalIdentity(spec operationalTitleSpec, width int) string {
@@ -116,14 +117,14 @@ func renderOperationalIdentity(spec operationalTitleSpec, width int) string {
 	}
 	scopeBudget := width - fixedWidth - separatorCount*lipgloss.Width(operationalTitleSeparator)
 	if spec.Scope != "" && scopeBudget > 0 {
-		parts[1] = truncateToVisualWidth(spec.Scope, scopeBudget)
+		parts[1] = textfit.TruncateToVisualWidth(spec.Scope, scopeBudget)
 		identity = joinOperationalTitleSegments(parts)
 		if lipgloss.Width(identity) <= width {
 			return identity
 		}
 	}
 
-	return truncateToVisualWidth(identity, width)
+	return textfit.TruncateToVisualWidth(identity, width)
 }
 
 // operationalTitleBadge renders a background-styled title chip without the

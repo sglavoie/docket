@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -258,10 +259,10 @@ func renderListSurfaceEmpty(empty ListEmptyContext, width int) string {
 			title = "No items."
 		}
 	}
-	lines := []string{theme.MutedStyle.Render(truncateToVisualWidth(title, width))}
+	lines := []string{theme.MutedStyle.Render(textfit.TruncateToVisualWidth(title, width))}
 	if detail != "" {
-		for _, line := range wrapText(detail, max(width, 1)) {
-			lines = append(lines, theme.MutedStyle.Render(truncateToVisualWidth(line, width)))
+		for _, line := range textfit.WrapText(detail, max(width, 1)) {
+			lines = append(lines, theme.MutedStyle.Render(textfit.TruncateToVisualWidth(line, width)))
 		}
 	}
 	return strings.Join(lines, "\n")
@@ -274,7 +275,7 @@ func renderListSurfaceRow(
 ) string {
 	if row.Kind == ListRowCategory {
 		label := strings.ToUpper(row.Category.Label)
-		return theme.SectionHeaderStyle.Render(truncateToVisualWidth(label, width))
+		return theme.SectionHeaderStyle.Render(textfit.TruncateToVisualWidth(label, width))
 	}
 
 	item := row.Match.Item
@@ -324,7 +325,7 @@ func renderListSurfaceRow(
 		if layout.Secondary != "" {
 			styled += chrome(layout.Gap + layout.Secondary)
 		}
-		return truncateToVisualWidth(styled, width)
+		return textfit.TruncateToVisualWidth(styled, width)
 	}
 	line := marker + item.PrimaryMarker + layout.Text()
 	if !item.Enabled() {
@@ -336,12 +337,12 @@ func renderListSurfaceRow(
 	if row.Cursor {
 		line = SelectedLine(line, width)
 	}
-	return truncateToVisualWidth(line, width)
+	return textfit.TruncateToVisualWidth(line, width)
 }
 
 func renderListContinuation(direction string, count, width int) string {
 	label := fmt.Sprintf("%s %d more", direction, count)
-	return theme.MutedStyle.Render(truncateToVisualWidth(label, width))
+	return theme.MutedStyle.Render(textfit.TruncateToVisualWidth(label, width))
 }
 
 // listPreviewScrollWindow places the visible slice inside height rows, reserving
@@ -386,13 +387,13 @@ func renderListSurfacePreview(
 		if height > 0 && len(lines) >= height {
 			return
 		}
-		lines = append(lines, truncateToVisualWidth(line, width))
+		lines = append(lines, textfit.TruncateToVisualWidth(line, width))
 	}
 	appendWrapped := func(text string, style lipgloss.Style, limit int) {
 		if strings.TrimSpace(text) == "" {
 			return
 		}
-		wrapped := wrapText(text, max(width, 1))
+		wrapped := textfit.WrapText(text, max(width, 1))
 		if limit > 0 && len(wrapped) > limit {
 			wrapped = wrapped[:limit]
 		}
@@ -454,11 +455,11 @@ func joinListSurfacePanes(left, right string, leftWidth, rightWidth int) string 
 	for index := range lineCount {
 		leftLine := ""
 		if index < len(leftLines) {
-			leftLine = truncateToVisualWidth(leftLines[index], leftWidth)
+			leftLine = textfit.TruncateToVisualWidth(leftLines[index], leftWidth)
 		}
 		rightLine := ""
 		if index < len(rightLines) {
-			rightLine = truncateToVisualWidth(rightLines[index], rightWidth)
+			rightLine = textfit.TruncateToVisualWidth(rightLines[index], rightWidth)
 		}
 		leftLine = lipgloss.NewStyle().Width(leftWidth).Render(leftLine)
 		lines = append(lines, leftLine+" │ "+rightLine)
@@ -477,7 +478,7 @@ func listSurfaceHelp(model *ListSurfaceModel, override string) string {
 }
 
 func appendListSurfaceHelp(content, help string, width int) string {
-	helpLines := wrapText(help, max(width, 1))
+	helpLines := textfit.WrapText(help, max(width, 1))
 	for index := range helpLines {
 		helpLines[index] = theme.HelpStyle.Render(helpLines[index])
 	}

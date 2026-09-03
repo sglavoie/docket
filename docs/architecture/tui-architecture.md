@@ -40,7 +40,7 @@ header's own `OverdueCount` and `TodayCount` from them; the Today membership
 comes from `Planning().GetToday()` directly, so no projection has to thread its
 input down to the row appenders. A Today section suppresses its `today` count,
 which could only restate the group's size. `appendProjectHeaderPressure` renders
-the suffix and degrades it before `truncateToVisualWidth` sees the line,
+the suffix and degrades it before `TruncateToVisualWidth` sees the line,
 dropping `today` and then `overdue`, because a clipped count reads as a
 different number.
 

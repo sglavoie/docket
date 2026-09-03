@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -105,7 +106,7 @@ func (m *AppModel) renderFooterContent(content string, width int) string {
 
 	lines := strings.Split(content, "\n")
 	for index, line := range lines {
-		line = truncateToVisualWidth(line, width)
+		line = textfit.TruncateToVisualWidth(line, width)
 		if gap := width - lipgloss.Width(line); gap > 0 {
 			line += strings.Repeat(" ", gap)
 		}
@@ -158,7 +159,7 @@ func (m *AppModel) renderFooterChrome() string {
 		if width <= 0 {
 			width = 80
 		}
-		msg = truncateToVisualWidth(msg, width)
+		msg = textfit.TruncateToVisualWidth(msg, width)
 		gap := max(width-lipgloss.Width(msg), 0)
 		spacer := lipgloss.NewStyle().
 			Width(gap).
@@ -292,10 +293,10 @@ func fitStatusBarSegments(left, right string, width int) (string, string) {
 	}
 	if leftWidth+rightWidth+minGap > width {
 		availableLeft := max(width-rightWidth-minGap, 1)
-		left = truncateToVisualWidth(left, availableLeft)
+		left = textfit.TruncateToVisualWidth(left, availableLeft)
 		leftWidth = lipgloss.Width(left)
 		if leftWidth+rightWidth+minGap > width {
-			right = truncateToVisualWidth(right, max(width-leftWidth-minGap, 1))
+			right = textfit.TruncateToVisualWidth(right, max(width-leftWidth-minGap, 1))
 		}
 	}
 
@@ -344,7 +345,7 @@ func (m *AppModel) buildBreadcrumb() string {
 	// Truncate total breadcrumb if it would crowd out the help text.
 	maxLen := max(m.width/2, 20)
 	if lipgloss.Width(crumb) > maxLen {
-		crumb = truncateToVisualWidth(crumb, maxLen)
+		crumb = textfit.TruncateToVisualWidth(crumb, maxLen)
 	}
 
 	// Esc-preview: show what pressing Esc will return to. The Outliner is the
@@ -384,7 +385,7 @@ func (m *AppModel) breadcrumbLabel(vt presentation.PresentationID, maxProjectLen
 					label = label[:idx]
 				}
 				if lipgloss.Width(label) > maxProjectLen {
-					label = truncateToVisualWidth(label, maxProjectLen)
+					label = textfit.TruncateToVisualWidth(label, maxProjectLen)
 				}
 			}
 		}

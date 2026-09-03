@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 )
 
 // PickerItem is the typed payload contract used by specialized ListSurface
@@ -318,7 +319,7 @@ func (adapter *ListSurfaceAdapter[T]) RenderInBox(titleContent, headerContent st
 		if headerContent != "" && lipgloss.Width(title) > adapter.Width() {
 			title = renderFullscreenTitle(titleContent, "")
 		}
-		title = fitStyledChromeToWidth("picker title", title, adapter.Width())
+		title = textfit.FitStyledChromeToWidth("picker title", title, adapter.Width())
 	}
 	content.WriteString(title)
 	content.WriteString("\n\n")

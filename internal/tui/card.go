@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -27,7 +28,7 @@ func truncateAndPad(line string, maxWidth int) string {
 
 	// Truncate - dense card content is allowed to clip, so use the intentional
 	// ANSI-aware audited helper.
-	truncated := truncateIntentional(line, maxWidth-3, "")
+	truncated := textfit.TruncateIntentional(line, maxWidth-3, "")
 	truncatedWidth := lipgloss.Width(truncated)
 	// Add ellipsis and pad to exact width
 	return truncated + "..." + strings.Repeat(" ", maxWidth-truncatedWidth-3)

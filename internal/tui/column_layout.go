@@ -6,6 +6,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -95,7 +96,7 @@ func ComputeBadgeWidths(tasks []*models.Task, opts BadgeWidthOpts) *ColumnLayout
 		if opts.ProjectNameFor != nil {
 			name := opts.ProjectNameFor(task)
 			if name != "" {
-				truncated := truncateToVisualWidth(name, maxProjLen)
+				truncated := textfit.TruncateToVisualWidth(name, maxProjLen)
 				badge := theme.MutedStyle.Render(fmt.Sprintf("[%s]", truncated))
 				if w := lipgloss.Width(badge); w > 0 {
 					if w > cl.ProjectWidth {

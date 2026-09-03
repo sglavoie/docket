@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -79,7 +80,7 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 		if val == "" {
 			display = theme.MutedStyle.Render("(none)")
 		} else {
-			preview := truncateToVisualWidth(val, 40)
+			preview := textfit.TruncateToVisualWidth(val, 40)
 			if m.focusIndex == 1 {
 				display = theme.SelectorOptionSelectedStyle.Render(preview)
 			} else {
@@ -110,7 +111,7 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 		var val string
 		if m.draft.parentID != nil {
 			if p := formFindTask(m.project.Tasks, *m.draft.parentID); p != nil {
-				val = fmt.Sprintf("#%d %s", p.ShortID, truncateToVisualWidth(p.Title, 40))
+				val = fmt.Sprintf("#%d %s", p.ShortID, textfit.TruncateToVisualWidth(p.Title, 40))
 			} else {
 				val = theme.MutedStyle.Render("(not found)")
 			}

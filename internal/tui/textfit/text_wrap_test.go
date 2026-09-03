@@ -1,4 +1,4 @@
-package tui
+package textfit
 
 import (
 	"testing"
@@ -8,16 +8,16 @@ import (
 )
 
 func TestWrapTextUnicodePreservesValidUTF8AndWidth(t *testing.T) {
-	lines := wrapText("修复界面布局问题", 6)
+	lines := WrapText("修复界面布局问题", 6)
 	if len(lines) == 0 {
 		t.Fatal("expected wrapped lines")
 	}
 	for _, line := range lines {
 		if !utf8.ValidString(line) {
-			t.Fatalf("wrapText produced invalid UTF-8 line: %q", line)
+			t.Fatalf("WrapText produced invalid UTF-8 line: %q", line)
 		}
 		if width := lipgloss.Width(line); width > 6 {
-			t.Fatalf("wrapText line width = %d, want <= 6 for line %q", width, line)
+			t.Fatalf("WrapText line width = %d, want <= 6 for line %q", width, line)
 		}
 	}
 }

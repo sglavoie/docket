@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -162,7 +163,7 @@ func (m *ParentSelectorModel) View() tea.View {
 	}
 	subtitle := fmt.Sprintf("%d parent%s available", parentCount, pluralize(parentCount, "", "s"))
 	availableSubtitleWidth := max(m.Width()-lipgloss.Width(title)-2, 1)
-	subtitle = truncateToVisualWidth(subtitle, availableSubtitleWidth)
+	subtitle = textfit.TruncateToVisualWidth(subtitle, availableSubtitleWidth)
 	b.WriteString(renderFullscreenTitle(title, subtitle))
 	b.WriteString("\n\n")
 
@@ -215,7 +216,7 @@ func (m *ParentSelectorModel) renderList() string {
 
 			prefix := fmt.Sprintf("  %s ", shortID)
 			maxTitleLen := max(m.Width()-lipgloss.Width(prefix), 1)
-			title := truncateToVisualWidth(item.Task.Title, maxTitleLen)
+			title := textfit.TruncateToVisualWidth(item.Task.Title, maxTitleLen)
 			titleRendered := theme.TaskTitleStyleFor(item.Task, theme.TaskTitleStyleOptions{
 				CursorSelected: m.CursorIndex() == i,
 			}).Render(title)

@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -133,14 +134,14 @@ func (m *HelpViewModel) renderBySectionContent() string {
 	renderItem := func(item filteredHelpItem) string {
 		var renderedKey string
 		if len(item.keyPositions) > 0 {
-			renderedKey = keyStyle.Render(HighlightText(item.Key, item.keyPositions, theme.TagInlineStyle))
+			renderedKey = keyStyle.Render(textfit.HighlightText(item.Key, item.keyPositions, theme.TagInlineStyle))
 		} else {
 			renderedKey = keyStyle.Render(item.Key)
 		}
 		wrappedDesc := wrapDescriptionWithIndent(item.Description, descWidth, keyWidth+2)
 		descLines := strings.Split(wrappedDesc, "\n")
 		if len(item.descPositions) > 0 {
-			descLines[0] = HighlightText(descLines[0], item.descPositions, theme.NormalStyle)
+			descLines[0] = textfit.HighlightText(descLines[0], item.descPositions, theme.NormalStyle)
 		}
 		if suffix := helpAliasSuffix(item.matchedAliases, item.Description, descWidth); suffix != "" {
 			descLines[0] += theme.MutedStyle.Render(suffix)

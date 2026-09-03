@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -230,7 +231,7 @@ func (q *quickCaptureInput) structuralSuggestions(partial string, candidates []*
 		task := s.task
 		// Truncate title if too long (width-aware).
 		titleLimit := max(q.width-15, 10)
-		title := truncateToVisualWidth(task.Title, titleLimit)
+		title := textfit.TruncateToVisualWidth(task.Title, titleLimit)
 		titleRendered := theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{}).Render(title)
 		suggestions = append(suggestions, ACSuggestion{
 			Display: fmt.Sprintf("%s%d %s", displayPrefix, task.ShortID, titleRendered),
@@ -295,7 +296,7 @@ func (q *quickCaptureInput) getProjectSuggestions(partial string) []ACSuggestion
 	for _, s := range scored {
 		project := s.project
 		nameLimit := max(q.width-20, 10)
-		name := truncateToVisualWidth(project.Name, nameLimit)
+		name := textfit.TruncateToVisualWidth(project.Name, nameLimit)
 		suggestions = append(suggestions, ACSuggestion{
 			Display: def.Trigger + name,
 			Value:   project.Slug,

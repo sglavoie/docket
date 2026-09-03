@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -144,7 +145,7 @@ func inlinePeekParentLine(breadcrumb string, width int) string {
 	if chain == "" {
 		return ""
 	}
-	return truncateIntentional(theme.MutedStyle.Render("Parent: ")+chain, width, "…")
+	return textfit.TruncateIntentional(theme.MutedStyle.Render("Parent: ")+chain, width, "…")
 }
 
 // inlinePeekTitleLines completes a title the row clipped rather than restating
@@ -156,19 +157,19 @@ func inlinePeekTitleLines(task *models.Task, overflow, indent string, width int)
 		return nil
 	}
 
-	wrapped := wrapText(overflow, width)
+	wrapped := textfit.WrapText(overflow, width)
 	if len(wrapped) == 0 {
 		return nil
 	}
 	if len(wrapped) > inlinePeekTitleRows {
 		wrapped = wrapped[:inlinePeekTitleRows]
-		wrapped[len(wrapped)-1] = truncateIntentional(wrapped[len(wrapped)-1]+"…", width, "…")
+		wrapped[len(wrapped)-1] = textfit.TruncateIntentional(wrapped[len(wrapped)-1]+"…", width, "…")
 	}
 
 	style := theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{})
 	lines := make([]string, 0, len(wrapped))
 	for _, line := range wrapped {
-		lines = append(lines, indent+style.Render(truncateIntentional(line, width, "…")))
+		lines = append(lines, indent+style.Render(textfit.TruncateIntentional(line, width, "…")))
 	}
 	return lines
 }
@@ -204,7 +205,7 @@ func inlinePeekDatesLine(task *models.Task, now time.Time, width int) string {
 	if len(parts) == 0 {
 		return ""
 	}
-	return truncateIntentional(strings.Join(parts, theme.HelpStyle.Render(" · ")), width, "…")
+	return textfit.TruncateIntentional(strings.Join(parts, theme.HelpStyle.Render(" · ")), width, "…")
 }
 
 func inlinePeekAttachmentsLine(task *models.Task, width int) string {
@@ -226,7 +227,7 @@ func inlinePeekAttachmentsLine(task *models.Task, width int) string {
 	if len(parts) == 0 {
 		return ""
 	}
-	return truncateIntentional("Attachments: "+strings.Join(parts, " · "), width, "…")
+	return textfit.TruncateIntentional("Attachments: "+strings.Join(parts, " · "), width, "…")
 }
 
 // inlinePeekReferenceLine renders one read-only reference section. It names the
@@ -248,14 +249,14 @@ func inlinePeekReferenceLine(label string, details []dependencyDetail, width int
 		}
 		parts = append(parts, detail.String())
 	}
-	return truncateIntentional(label+": "+strings.Join(parts, " · "), width, "…")
+	return textfit.TruncateIntentional(label+": "+strings.Join(parts, " · "), width, "…")
 }
 
 func inlinePeekCommentsLine(task *models.Task, width int) string {
 	if task == nil || len(task.Comments) == 0 || width <= 0 {
 		return ""
 	}
-	return truncateIntentional(fmt.Sprintf("Comments: %d", len(task.Comments)), width, "…")
+	return textfit.TruncateIntentional(fmt.Sprintf("Comments: %d", len(task.Comments)), width, "…")
 }
 
 func inlinePeekTagsLine(task *models.Task, width int) string {
@@ -281,7 +282,7 @@ func inlinePeekTagsLine(task *models.Task, width int) string {
 		parts = append(parts, strings.Join(chips, " "))
 	}
 	line := theme.MutedStyle.Render("Tags: ") + strings.Join(parts, " ")
-	return truncateIntentional(line, width, "…")
+	return textfit.TruncateIntentional(line, width, "…")
 }
 
 func inlinePeekDescriptionLines(description, indent string, width int) []string {
@@ -292,13 +293,13 @@ func inlinePeekDescriptionLines(description, indent string, width int) []string 
 
 	label := "Description: "
 	bodyWidth := max(width-lipgloss.Width(label), 1)
-	wrapped := wrapText(description, bodyWidth)
+	wrapped := textfit.WrapText(description, bodyWidth)
 	if len(wrapped) == 0 {
 		return nil
 	}
 	if len(wrapped) > inlinePeekDescriptionRows {
 		wrapped = wrapped[:inlinePeekDescriptionRows]
-		wrapped[len(wrapped)-1] = truncateIntentional(wrapped[len(wrapped)-1]+"…", bodyWidth, "…")
+		wrapped[len(wrapped)-1] = textfit.TruncateIntentional(wrapped[len(wrapped)-1]+"…", bodyWidth, "…")
 	}
 
 	lines := make([]string, 0, len(wrapped))
@@ -308,7 +309,7 @@ func inlinePeekDescriptionLines(description, indent string, width int) []string 
 			prefix = label
 		}
 		lines = append(lines, indent+theme.MutedStyle.Render(
-			truncateIntentional(prefix+line, width, "…"),
+			textfit.TruncateIntentional(prefix+line, width, "…"),
 		))
 	}
 	return lines

@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -62,7 +63,7 @@ func TestBehavioralSignalsRowReconcilesWidthsAndOverflow(t *testing.T) {
 			}
 
 			titleWidth := segments.titleWidth(width)
-			visible := truncateToVisualWidth(title, titleWidth)
+			visible := textfit.TruncateToVisualWidth(title, titleWidth)
 			overflow := outliner.taskRowTitleOverflow(row, width, nil)
 			if overflow == "" {
 				t.Fatalf("%d-column row did not expose its clipped title tail", width)

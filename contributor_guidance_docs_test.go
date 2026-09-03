@@ -232,7 +232,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"The interactive TUI ignores an inherited `NO_COLOR`",
 		"A value provider is exactly one of `textEntry()`",
 		"`inlinePeekLines` owns a drop order, not a set",
-		"`visualWidthOverflow` must subtract the same ellipsis column as `truncateToVisualWidth`",
+		"`VisualWidthOverflow` must subtract the same ellipsis column as `TruncateToVisualWidth`",
 		"`indicatorDropLadder` is a list: a new indicator gets a position, not an append",
 		"The trailing `~S/N` counts stored locators in `N` regardless of target",
 		"amber blocked, green settled, muted unreadable",

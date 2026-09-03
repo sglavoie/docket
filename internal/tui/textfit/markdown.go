@@ -1,4 +1,4 @@
-package tui
+package textfit
 
 import (
 	"strings"
@@ -9,11 +9,11 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-// renderMarkdown renders the given text as styled terminal markdown using glamour.
+// RenderMarkdown renders the given text as styled terminal markdown using glamour.
 // Falls back to raw text on error. Output is always bounded to width: Glamour word
 // wraps and table wraps, and boundToWidth is a final ANSI-aware guard that re-wraps
 // any remaining over-wide lines (e.g. wide tables) without stripping styling.
-func renderMarkdown(text string, width int) string {
+func RenderMarkdown(text string, width int) string {
 	style := styles.DarkStyleConfig
 	if theme.ActiveThemeName == "light" {
 		style = styles.LightStyleConfig
@@ -53,7 +53,7 @@ func boundToWidth(s string, width int) string {
 			wrapped = append(wrapped, line)
 			continue
 		}
-		for _, wordWrapped := range wrapStyled(line, width) {
+		for _, wordWrapped := range WrapStyled(line, width) {
 			if lipgloss.Width(wordWrapped) <= width {
 				wrapped = append(wrapped, wordWrapped)
 				continue

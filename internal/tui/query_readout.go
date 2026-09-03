@@ -11,6 +11,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -277,10 +278,10 @@ func (m *OutlinerModel) queryReadoutBody(width int) string {
 	width = max(width, 1)
 	rows := m.queryReadoutRows()
 	lines := make([]string, 0, queryReadoutRowLimit+2)
-	lines = append(lines, theme.TitleStyle.Render(truncateToVisualWidth("Narrowing this view", width)))
+	lines = append(lines, theme.TitleStyle.Render(textfit.TruncateToVisualWidth("Narrowing this view", width)))
 	if len(rows) == 0 {
 		return strings.Join(append(lines,
-			theme.MutedStyle.Render(truncateToVisualWidth("nothing: every axis is at its default", width))), "\n")
+			theme.MutedStyle.Render(textfit.TruncateToVisualWidth("nothing: every axis is at its default", width))), "\n")
 	}
 	shown := min(len(rows), queryReadoutRowLimit)
 	labelWidth := 0
@@ -292,12 +293,12 @@ func (m *OutlinerModel) queryReadoutBody(width int) string {
 		if row.note != "" {
 			text += "  (" + row.note + ")"
 		}
-		lines = append(lines, theme.MutedStyle.Render(truncateToVisualWidth(text, width)))
+		lines = append(lines, theme.MutedStyle.Render(textfit.TruncateToVisualWidth(text, width)))
 	}
 	if dropped := len(rows) - shown; dropped > 0 {
 		// Named rather than dropped: the digits are the peel vocabulary, so a
 		// stack past them still has to say what is not on it.
-		lines = append(lines, theme.MutedStyle.Render(truncateToVisualWidth(
+		lines = append(lines, theme.MutedStyle.Render(textfit.TruncateToVisualWidth(
 			fmt.Sprintf("%d more narrowing(s) below the peel digits; peel one to reach them", dropped),
 			width)))
 	}

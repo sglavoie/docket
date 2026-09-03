@@ -28,10 +28,18 @@
 #   - `conflict` is a sibling of `outliner`, not a dependency of it. `gc`
 #     browses conflict bundles as a shell-owned overlay, so the shell holds
 #     that edge.
+#   - `textfit -> theme` is the one edge inside L0, added in Session 2.3 when
+#     the package was extracted. context.md gives `textfit` "Markdown,
+#     highlighting" and both are inherently styled: `markdown.go` picks the
+#     dark or light glamour style from `theme.ActiveThemeName` and
+#     `highlight.go` paints matched runes with `theme.HighlightStyle`. The
+#     alternative was passing both in from six call sites, which is a redesign
+#     Phase 1 does not do. It is safe by construction: `theme` is L0 and
+#     depends on nothing, so this edge can never close a cycle.
 package	layer	depends_on
 presentation	L0	-
 theme	L0	-
-textfit	L0	-
+textfit	L0	theme
 taskref	L0	-
 status	L0	-
 pulse	L0	-

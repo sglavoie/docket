@@ -315,7 +315,7 @@ prefix the row rendered — no label, no ellipsis within `inlinePeekTitleRows` (
 and no repetition of the visible head — styled through `TaskTitleStyleFor` so it
 reads as the same title. The row keeps its `…`, which now reads as "continues
 below". It renders only when the row actually clipped and it is first in the
-order. `visualWidthOverflow` is the counterpart to `truncateToVisualWidth` and
+order. `VisualWidthOverflow` is the counterpart to `TruncateToVisualWidth` and
 must subtract the same ellipsis column, or the two disagree about the cut and a
 character is duplicated or lost.
 

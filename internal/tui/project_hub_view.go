@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/workspace"
 )
@@ -36,7 +37,7 @@ func (m *ProjectHubModel) View() tea.View {
 	if notice := m.notice; notice != "" {
 		content = lipgloss.JoinVertical(
 			lipgloss.Left,
-			theme.MutedStyle.Render(truncateToVisualWidth(notice, width)),
+			theme.MutedStyle.Render(textfit.TruncateToVisualWidth(notice, width)),
 			content,
 		)
 	}

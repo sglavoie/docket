@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 )
 
 // renderFullWidth renders the outliner tree using the full terminal width.
@@ -24,7 +25,7 @@ func fitRenderedBlockToWidth(content string, width int) string {
 	lines := strings.Split(content, "\n")
 	for i, line := range lines {
 		if lipgloss.Width(line) > width {
-			line = truncateIntentional(line, width, "")
+			line = textfit.TruncateIntentional(line, width, "")
 		}
 		if pad := width - lipgloss.Width(line); pad > 0 {
 			line += strings.Repeat(" ", pad)

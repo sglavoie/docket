@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 )
 
 // outlinerSearchSuggestionLimit is the dropdown's total row budget, counting the
@@ -319,7 +320,7 @@ func (m *OutlinerModel) renderSearchAutocompleteDropdown(width int) string {
 	}
 	lines := strings.Split(rendered, "\n")
 	for i, line := range lines {
-		lines[i] = truncateToVisualWidth(line, max(width, 1))
+		lines[i] = textfit.TruncateToVisualWidth(line, max(width, 1))
 	}
 	return strings.Join(lines, "\n")
 }

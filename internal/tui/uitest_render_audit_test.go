@@ -6,21 +6,26 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 )
 
+// The audited truncation itself lives in internal/tui/textfit, which exposes
+// exactly one seam — RequiredTextTruncationSink — and no way to record against
+// it directly. These tests therefore drive the production entry point,
+// textfit.FitStyledChromeToWidth, which is what a renderer actually calls.
 func TestRenderAuditNoOpOutsideAudit(t *testing.T) {
 	if activeRenderAudit != nil {
 		t.Fatalf("activeRenderAudit should be nil at test start, got %+v", activeRenderAudit)
 	}
-	recordRequiredTextTruncation("orphan site", "the full required text", "the ful…")
+	textfit.FitStyledChromeToWidth("orphan site", "the full required text", 8)
 	if activeRenderAudit != nil {
-		t.Fatalf("recordRequiredTextTruncation must not create an audit outside withRenderAudit, got %+v", activeRenderAudit)
+		t.Fatalf("a required truncation must not create an audit outside withRenderAudit, got %+v", activeRenderAudit)
 	}
 }
 
 func TestRenderAuditRecordsInsideAudit(t *testing.T) {
 	out, issues := withRenderAudit(func() string {
-		recordRequiredTextTruncation("footer left", "keys: quit save filter help more", "keys: quit save…")
+		textfit.FitStyledChromeToWidth("footer left", "keys: quit save filter help more", 16)
 		return "rendered screen"
 	})
 
@@ -72,7 +77,7 @@ func (v *recordingAuditView) Init() tea.Cmd { return nil }
 func (v *recordingAuditView) Update(tea.Msg) (tea.Model, tea.Cmd) { return v, nil }
 
 func (v *recordingAuditView) View() tea.View {
-	recordRequiredTextTruncation("recording view", "the full required chrome text", "the full…")
+	textfit.FitStyledChromeToWidth("recording view", "the full required chrome text", 8)
 	return tea.NewView("recording view content")
 }
 

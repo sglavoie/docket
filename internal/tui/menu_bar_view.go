@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -118,7 +119,7 @@ func indentMenuBarDropdown(box string, startCol, width int) string {
 	pad := strings.Repeat(" ", max(startCol, 0))
 	lines := strings.Split(box, "\n")
 	for i, line := range lines {
-		lines[i] = truncateToVisualWidth(pad+line, width)
+		lines[i] = textfit.TruncateToVisualWidth(pad+line, width)
 	}
 	return strings.Join(lines, "\n")
 }

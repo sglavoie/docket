@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -36,7 +37,7 @@ func (m *AppModel) renderPinnedTasksBar(width int) string {
 	for _, item := range pinned {
 		titleWidth := max(perEntryWidth, 3)
 		title := theme.TaskTitleStyleFor(item.Task, theme.TaskTitleStyleOptions{}).
-			Render(truncateToVisualWidth(item.Title, titleWidth))
+			Render(textfit.TruncateToVisualWidth(item.Title, titleWidth))
 		if renderedWidth := lipgloss.Width(title); renderedWidth < titleWidth {
 			title += strings.Repeat(" ", titleWidth-renderedWidth)
 		}

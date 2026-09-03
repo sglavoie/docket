@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/x/ansi"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 )
 
 // This file adds render-time audit plumbing for the `tt tui-test` review
@@ -46,9 +47,9 @@ var activeRenderAudit *renderAudit
 func withRenderAudit(render func() string) (string, []UITestIssue) {
 	audit := &renderAudit{}
 	prev := activeRenderAudit
-	prevSink := requiredTextTruncationSink
+	prevSink := textfit.RequiredTextTruncationSink
 	activeRenderAudit = audit
-	requiredTextTruncationSink = func(context, full, shown string) {
+	textfit.RequiredTextTruncationSink = func(context, full, shown string) {
 		audit.issues = append(audit.issues, UITestIssue{
 			Kind: requiredTextTruncatedKind,
 			Line: 0,
@@ -58,7 +59,7 @@ func withRenderAudit(render func() string) (string, []UITestIssue) {
 	}
 	defer func() {
 		activeRenderAudit = prev
-		requiredTextTruncationSink = prevSink
+		textfit.RequiredTextTruncationSink = prevSink
 	}()
 
 	out := render()

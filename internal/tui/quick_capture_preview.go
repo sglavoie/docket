@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -267,7 +268,7 @@ func (q *quickCaptureInput) clampToRows(styled string, rows int) string {
 	if q.width <= 0 {
 		lines = strings.Split(styled, "\n")
 	} else {
-		lines = wrapStyled(styled, q.width)
+		lines = textfit.WrapStyled(styled, q.width)
 	}
 	if len(lines) > rows {
 		lines = lines[:rows]
@@ -287,9 +288,9 @@ func (q *quickCaptureInput) renderPreviewLine(label, body string) string {
 	if bodyWidth <= 0 {
 		// Width is too narrow for any body alongside the label; let the
 		// label sit on its own line and wrap the body on the next.
-		return prefix + "\n" + strings.Join(wrapStyled(body, q.width), "\n")
+		return prefix + "\n" + strings.Join(textfit.WrapStyled(body, q.width), "\n")
 	}
-	wrapped := wrapStyled(body, bodyWidth)
+	wrapped := textfit.WrapStyled(body, bodyWidth)
 	indent := strings.Repeat(" ", previewGroupLabelWidth)
 	for i, line := range wrapped {
 		if i == 0 {

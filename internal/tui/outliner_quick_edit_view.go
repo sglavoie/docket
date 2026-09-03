@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -66,12 +67,12 @@ func (m *OutlinerModel) renderOutlinerQuickEditRow(row outlinerRow, rowWidth int
 	// the cursor cell after it, so the window must leave that column free.
 	m.quickEdit.SetInputWidth(max(rowWidth-indentWidth-1, 1))
 	selectedPrefix := theme.SelectedStyle.Render(ansi.Strip(inputPrefix))
-	inputLine := fitStyledLineToWidth(selectedPrefix+m.quickEdit.renderSelectedInput(), rowWidth)
+	inputLine := textfit.FitStyledLineToWidth(selectedPrefix+m.quickEdit.renderSelectedInput(), rowWidth)
 
 	lines := []string{metadata, inputLine}
 	if suggestions := m.quickEdit.RenderSuggestions(strings.Repeat(" ", indentWidth), m.quickEditSuggestionBudget()); suggestions != "" {
 		for _, line := range strings.Split(suggestions, "\n") {
-			lines = append(lines, truncateToVisualWidth(line, rowWidth))
+			lines = append(lines, textfit.TruncateToVisualWidth(line, rowWidth))
 		}
 	}
 	return strings.Join(lines, "\n")
@@ -117,7 +118,7 @@ func (m *OutlinerModel) quickEditMetadataLine(row outlinerRow, project *models.P
 		segments = append(segments, optional)
 	}
 	line := strings.Join(segments, " · ")
-	return truncateToVisualWidth(line, width)
+	return textfit.TruncateToVisualWidth(line, width)
 }
 
 func quickEditMandatoryMetadata(label, errorText, route, workflow string, width int) []string {
@@ -143,7 +144,7 @@ func quickEditMandatoryMetadata(label, errorText, route, workflow string, width 
 
 	return []string{
 		label,
-		truncateToVisualWidth(error, errorBudget),
+		textfit.TruncateToVisualWidth(error, errorBudget),
 		compactQuickEditRoute(route, routeBudget),
 		workflow,
 	}
@@ -158,7 +159,7 @@ func compactQuickEditRoute(route string, width int) string {
 	}
 	parts := strings.Split(route, " › ")
 	if len(parts) < 2 || width < 5 {
-		return truncateToVisualWidth(route, width)
+		return textfit.TruncateToVisualWidth(route, width)
 	}
 
 	project, parent := parts[0], parts[len(parts)-1]
@@ -168,7 +169,7 @@ func compactQuickEditRoute(route string, width int) string {
 	}
 	middleWidth := lipgloss.Width(middle)
 	if width <= middleWidth+1 {
-		return truncateToVisualWidth(route, width)
+		return textfit.TruncateToVisualWidth(route, width)
 	}
 
 	endpointBudget := width - middleWidth
@@ -176,14 +177,14 @@ func compactQuickEditRoute(route string, width int) string {
 	projectBudget := min(lipgloss.Width(project), max(endpointBudget-parentFloor, 1))
 	parentBudget := max(endpointBudget-projectBudget, 1)
 	return compactQuickEditProjectChip(project, projectBudget) + middle +
-		truncateToVisualWidth(parent, parentBudget)
+		textfit.TruncateToVisualWidth(parent, parentBudget)
 }
 
 func compactQuickEditProjectChip(project string, width int) string {
 	if lipgloss.Width(project) <= width || width < 3 || !strings.HasPrefix(project, "[") || !strings.HasSuffix(project, "]") {
-		return truncateToVisualWidth(project, width)
+		return textfit.TruncateToVisualWidth(project, width)
 	}
-	return "[" + truncateToVisualWidth(strings.TrimSuffix(strings.TrimPrefix(project, "["), "]"), width-2) + "]"
+	return "[" + textfit.TruncateToVisualWidth(strings.TrimSuffix(strings.TrimPrefix(project, "["), "]"), width-2) + "]"
 }
 
 func quickEditRouteLabel(task *models.Task, project *models.Project) string {

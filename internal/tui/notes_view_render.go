@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -23,14 +24,14 @@ func (m *NotesViewModel) View() tea.View {
 	if width < 40 {
 		subtitle = ""
 	} else {
-		subtitle = truncateToVisualWidth(subtitle, max(width-titleWidth-2, 1))
+		subtitle = textfit.TruncateToVisualWidth(subtitle, max(width-titleWidth-2, 1))
 	}
 	header := []string{
 		renderFullscreenTitleWithPulse("Notes", subtitle, m.currentWorkspacePulse(), width, m.AccentColor()),
-		theme.MutedStyle.Render(truncateToVisualWidth(m.scopeCountLabel(), width)),
+		theme.MutedStyle.Render(textfit.TruncateToVisualWidth(m.scopeCountLabel(), width)),
 	}
 	if search := m.renderSearchLine(); search != "" {
-		header = append(header, fitStyledLineToWidth(search, width))
+		header = append(header, textfit.FitStyledLineToWidth(search, width))
 	}
 	errorLines := m.renderCollectionErrors()
 	if errorLines != "" {
@@ -39,13 +40,13 @@ func (m *NotesViewModel) View() tea.View {
 
 	var footer []string
 	if m.renaming {
-		footer = append(footer, fitStyledLineToWidth("Rename: "+m.renameInput.View(), width))
+		footer = append(footer, textfit.FitStyledLineToWidth("Rename: "+m.renameInput.View(), width))
 	}
 	if guidance, ok := m.ContextualGuidance(); ok {
 		footer = append(footer, renderGuidance(guidance, width, m.AccentColor()))
 	}
 	if m.statusMessage != "" {
-		footer = append(footer, fitStyledLineToWidth(m.renderStatusBar(), width))
+		footer = append(footer, textfit.FitStyledLineToWidth(m.renderStatusBar(), width))
 	}
 
 	headerBlock := strings.Join(header, "\n")
@@ -131,16 +132,16 @@ func (m *NotesViewModel) renderListPane(width, listHeight int) string {
 			parseColumns = 2
 		}
 		titleWidth := max(width-scopeWidth-2-bodyColumns-parseColumns, 1)
-		title := truncateToVisualWidth(row.Note.Title, titleWidth)
+		title := textfit.TruncateToVisualWidth(row.Note.Title, titleWidth)
 		renderedTitle := title
 		if len(match.titlePositions) > 0 {
-			renderedTitle = HighlightText(title, match.titlePositions, theme.NormalStyle)
+			renderedTitle = textfit.HighlightText(title, match.titlePositions, theme.NormalStyle)
 		}
 		line := fmt.Sprintf("%s  %s%s", theme.MutedStyle.Render(owner), renderedTitle, bodyIndicator)
 		if row.Note.ParseError != "" {
 			line = theme.WarningIconStyle.Render("! ") + line
 		}
-		line = fitStyledLineToWidth(line, width)
+		line = textfit.FitStyledLineToWidth(line, width)
 		if i == m.cursor {
 			b.WriteString(theme.PickerSelectedStyle.Render(line))
 		} else {
@@ -154,7 +155,7 @@ func (m *NotesViewModel) renderListPane(width, listHeight int) string {
 func (m *NotesViewModel) renderCollectionErrors() string {
 	width := max(m.Width(), 1)
 	if m.snapshotError != nil {
-		line := truncateToVisualWidth("! Workspace: "+m.snapshotError.Error(), width)
+		line := textfit.TruncateToVisualWidth("! Workspace: "+m.snapshotError.Error(), width)
 		return theme.WarningIconStyle.Render(line)
 	}
 	const maxErrorLines = 2
@@ -164,7 +165,7 @@ func (m *NotesViewModel) renderCollectionErrors() string {
 		visibleFailures = maxErrorLines - 1
 	}
 	for _, failure := range m.collectionErrors[:visibleFailures] {
-		line := truncateToVisualWidth(
+		line := textfit.TruncateToVisualWidth(
 			fmt.Sprintf("! %s: %v", failure.OwnerLabel, failure.Err),
 			width,
 		)
@@ -178,7 +179,7 @@ func (m *NotesViewModel) renderCollectionErrors() string {
 			remaining,
 			pluralize(remaining, "owner", "owners"),
 		)
-		lines = append(lines, theme.WarningIconStyle.Render(truncateToVisualWidth(summary, width)))
+		lines = append(lines, theme.WarningIconStyle.Render(textfit.TruncateToVisualWidth(summary, width)))
 	}
 	return strings.Join(lines, "\n")
 }

@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 )
 
 // listTextGap is the one separator LayoutListText puts between primary and
@@ -27,7 +28,7 @@ func LayoutListText(primary, secondary string, width int) ListTextLayout {
 	primaryWidth := lipgloss.Width(primary)
 	secondaryWidth := lipgloss.Width(secondary)
 	if secondary == "" {
-		layout.Primary = truncateToVisualWidth(primary, width)
+		layout.Primary = textfit.TruncateToVisualWidth(primary, width)
 		return layout
 	}
 
@@ -40,7 +41,7 @@ func LayoutListText(primary, secondary string, width int) ListTextLayout {
 		return layout
 	}
 	if width <= gapWidth+1 {
-		layout.Primary = truncateToVisualWidth(primary, width)
+		layout.Primary = textfit.TruncateToVisualWidth(primary, width)
 		return layout
 	}
 
@@ -56,8 +57,8 @@ func LayoutListText(primary, secondary string, width int) ListTextLayout {
 		primaryBudget = available - secondaryBudget
 	}
 
-	layout.Primary = truncateToVisualWidth(primary, primaryBudget)
-	layout.Secondary = truncateToVisualWidth(secondary, secondaryBudget)
+	layout.Primary = textfit.TruncateToVisualWidth(primary, primaryBudget)
+	layout.Secondary = textfit.TruncateToVisualWidth(secondary, secondaryBudget)
 	layout.Gap = gap
 	return layout
 }

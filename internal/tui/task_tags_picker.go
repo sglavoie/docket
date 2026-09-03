@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -258,7 +259,7 @@ func semanticTaskTagExplainer(provider ValueProviderID, width int) string {
 	}
 	head := theme.MutedStyle.Render(semanticTaskTagExplainerLabel) + "  " +
 		strings.Join(names, theme.MutedStyle.Render(semanticTaskTagExplainerSeparator))
-	return strings.Join(wrapStyled(
+	return strings.Join(textfit.WrapStyled(
 		head+" "+theme.MutedStyle.Render(semanticTaskTagExplainerSummary),
 		width,
 	), "\n")
@@ -287,7 +288,7 @@ func taskTagCategoryJumpHint(provider ValueProviderID, items []ListItem, width i
 	if len(hints) == 0 {
 		return ""
 	}
-	return strings.Join(wrapStyled(
+	return strings.Join(textfit.WrapStyled(
 		theme.MutedStyle.Render(taskTagJumpHintLabel+"  ")+
 			strings.Join(hints, theme.MutedStyle.Render(taskTagJumpHintSeparator)),
 		width,

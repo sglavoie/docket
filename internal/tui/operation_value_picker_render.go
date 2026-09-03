@@ -7,6 +7,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -194,7 +195,7 @@ func (model *OperationValuePickerModel) renderWithin(width, height int) string {
 	}
 	titleText := model.title
 	if model.subtitle != "" {
-		titleText += ": " + truncateToVisualWidth(model.subtitle, max(innerWidth-20, 12))
+		titleText += ": " + textfit.TruncateToVisualWidth(model.subtitle, max(innerWidth-20, 12))
 	}
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render(titleText)
 	guidance, _ := model.guidanceSpec()

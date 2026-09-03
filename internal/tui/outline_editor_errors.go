@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -97,7 +98,7 @@ func (m *OutlineErrorsViewModel) View() tea.View {
 	// content.
 	problemStyle := theme.ValidationErrorStyle.UnsetMarginTop()
 	for _, line := range visible {
-		builder.WriteString(problemStyle.Render(truncateToVisualWidth(line, width)))
+		builder.WriteString(problemStyle.Render(textfit.TruncateToVisualWidth(line, width)))
 		builder.WriteString("\n")
 	}
 	for range capacity - len(visible) {
@@ -105,7 +106,7 @@ func (m *OutlineErrorsViewModel) View() tea.View {
 	}
 
 	builder.WriteString("\n")
-	builder.WriteString(theme.MutedStyle.Render(truncateToVisualWidth("Buffer kept at "+m.bufferPath, width)))
+	builder.WriteString(theme.MutedStyle.Render(textfit.TruncateToVisualWidth("Buffer kept at "+m.bufferPath, width)))
 	builder.WriteString("\n")
 	builder.WriteString(renderGuidance(m.guidance(len(lines), capacity), width))
 
@@ -140,7 +141,7 @@ func (m *OutlineErrorsViewModel) subtitle(budget int) string {
 			return candidate
 		}
 	}
-	return truncateToVisualWidth(count, budget)
+	return textfit.TruncateToVisualWidth(count, budget)
 }
 
 // lines renders each problem as the same "Line N: message" shape multiline
@@ -150,7 +151,7 @@ func (m *OutlineErrorsViewModel) lines() []string {
 	width := max(m.width, 1)
 	out := make([]string, 0, len(m.problems))
 	for _, problem := range m.problems {
-		out = append(out, wrapText(fmt.Sprintf("Line %d: %s", problem.line, problem.message), width)...)
+		out = append(out, textfit.WrapText(fmt.Sprintf("Line %d: %s", problem.line, problem.message), width)...)
 	}
 	return out
 }

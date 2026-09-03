@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -132,7 +133,7 @@ func behavioralProjectTagExplainer(provider ValueProviderID, width int) string {
 		info := models.BehavioralProjectTags[name]
 		entry := behavioralProjectTagBadgeStyle(info.BadgeRole).Render(info.Name) +
 			" " + theme.MutedStyle.Render(info.Summary)
-		lines = append(lines, strings.Join(wrapStyled(entry, width), "\n"))
+		lines = append(lines, strings.Join(textfit.WrapStyled(entry, width), "\n"))
 	}
 	return strings.Join(lines, "\n")
 }

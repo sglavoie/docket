@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -34,7 +35,7 @@ func (model *NamedLensPickerModel) renderWithin(width, height int) string {
 	header := make([]string, 0, 2)
 	if model.notice != "" {
 		header = append(header, theme.ErrorStatusStyle.Render(
-			truncateToVisualWidth(model.notice, contentWidth),
+			textfit.TruncateToVisualWidth(model.notice, contentWidth),
 		))
 	}
 	if model.searching || model.query != "" {
@@ -45,7 +46,7 @@ func (model *NamedLensPickerModel) renderWithin(width, height int) string {
 		header = append(header, theme.MutedStyle.Render("Search: "+model.query+cursor))
 	}
 	if state := model.stateLine(); state != "" {
-		header = append(header, theme.MutedStyle.Render(truncateToVisualWidth(state, contentWidth)))
+		header = append(header, theme.MutedStyle.Render(textfit.TruncateToVisualWidth(state, contentWidth)))
 	}
 
 	listHeight := min(max(len(model.surface.Rows()), 4), 14)

@@ -9,6 +9,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -180,10 +181,10 @@ func (segment guidanceSegment) fitToWidth(width int) guidanceSegment {
 	}
 	key := strings.TrimSpace(segment.Key)
 	if segment.Verbatim == "" && key != "" && lipgloss.Width(key)+1 < width {
-		label := truncateToVisualWidth(strings.TrimSpace(segment.Label), width-lipgloss.Width(key)-1)
+		label := textfit.TruncateToVisualWidth(strings.TrimSpace(segment.Label), width-lipgloss.Width(key)-1)
 		return guidanceSegment{Key: key, Label: label}
 	}
-	return guidanceSegment{Verbatim: truncateToVisualWidth(text, width)}
+	return guidanceSegment{Verbatim: textfit.TruncateToVisualWidth(text, width)}
 }
 
 func guidanceLineText(segments []guidanceSegment) string {
@@ -373,7 +374,7 @@ func renderGuidanceLines(spec GuidanceSpec, width int) []string {
 		for _, segment := range segments {
 			styled = append(styled, renderGuidanceSegment(segment))
 		}
-		lines = append(lines, truncateToVisualWidth(strings.Join(styled, separator), width))
+		lines = append(lines, textfit.TruncateToVisualWidth(strings.Join(styled, separator), width))
 	}
 	return lines
 }

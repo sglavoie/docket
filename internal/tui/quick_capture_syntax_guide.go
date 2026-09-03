@@ -6,6 +6,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -112,7 +113,7 @@ func (q *quickCaptureInput) renderSyntaxGuide() string {
 			lines = append(lines, pad+style.Render(text))
 			return
 		}
-		for _, w := range wrapStyled(text, avail) {
+		for _, w := range textfit.WrapStyled(text, avail) {
 			lines = append(lines, pad+style.Render(w))
 		}
 	}

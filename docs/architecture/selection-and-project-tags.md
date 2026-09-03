@@ -389,9 +389,10 @@ resolved pane width instead of reading the terminal's. The header goes through
 An empty list, a workspace error, or an open location picker has no note to
 preview and keeps the full-width list.
 
-`notesPreviewState` caches the body rendered through `renderMarkdown` at the
-pane width, keyed on note identity, the Notes scope, the active query with the
-case mode that produced the visible rows, the revision, and that width together.
+`notesPreviewState` caches the body rendered through `textfit.RenderMarkdown`
+at the pane width, keyed on note identity, the Notes scope, the active query
+with the case mode that produced the visible rows, the revision, and that width
+together.
 The revision is `RawRevision` when the note carries one and a digest of the body
 otherwise, so an in-memory edit that never reached disk still moves the key. Any
 one component moving re-renders and re-anchors, which is what makes cursor
