@@ -15,10 +15,10 @@ import (
 
 const QuickEditSuggestionLimit = 5
 
-type QuickEditTransition uint8
+type quickEditTransition uint8
 
 const (
-	QuickEditContinue QuickEditTransition = iota
+	QuickEditContinue quickEditTransition = iota
 	QuickEditCommit
 	QuickEditCancel
 )
@@ -33,7 +33,7 @@ type QuickEditComponent struct {
 	original    *QuickEditResult // Original task state for comparison
 	previewErr  string
 	AC          AutocompleteState
-	Triggers    []ACTrigger
+	triggers    []ACTrigger
 	project     *models.Project
 	projects    []*models.Project
 	triggerText string
@@ -57,7 +57,7 @@ func NewQuickEditComponent() *QuickEditComponent {
 		task:     nil,
 		preview:  nil,
 		original: nil,
-		Triggers: quickEditTriggers(),
+		triggers: quickEditTriggers(),
 	}
 }
 
@@ -229,7 +229,7 @@ func (q *QuickEditComponent) Update(msg tea.KeyPressMsg) (textinput.Model, tea.C
 // Handle is the single state-machine funnel for every row-editor message. It
 // owns autocomplete acceptance, strict commit validation, immediate cancel,
 // ordinary cursor/text editing, and bracketed-paste normalization.
-func (q *QuickEditComponent) Handle(msg tea.Msg) (QuickEditTransition, *QuickEditResult, tea.Cmd) {
+func (q *QuickEditComponent) Handle(msg tea.Msg) (quickEditTransition, *QuickEditResult, tea.Cmd) {
 	if !q.mode {
 		return QuickEditContinue, nil, nil
 	}
@@ -315,7 +315,7 @@ func (q *QuickEditComponent) RefreshDraft() {
 		return
 	}
 	q.preview, q.previewErr = parseQuickEditForPreview(q.Input.Value(), q.task, q.project, q.projects)
-	q.RefreshAutocomplete()
+	q.refreshAutocomplete()
 }
 
 func (q *QuickEditComponent) SuggestionLineCount(budget int) int {

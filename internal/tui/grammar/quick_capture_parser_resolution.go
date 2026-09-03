@@ -9,8 +9,8 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// ResolveParent finds the task a >parent reference names.
-func ResolveParent(ref string, project *models.Project) (*models.Task, error) {
+// resolveParent finds the task a >parent reference names.
+func resolveParent(ref string, project *models.Project) (*models.Task, error) {
 	return ResolveStructuralReference(ref, project, "parent")
 }
 
@@ -63,10 +63,10 @@ func ResolveStructuralReference(ref string, project *models.Project, relationshi
 	return nil, fmt.Errorf("%s reference %q is ambiguous: %s", relationship, ref, strings.Join(labels, ", "))
 }
 
-// ResolveProject finds a non-archived project by exact slug. Autocomplete may
+// resolveProject finds a non-archived project by exact slug. Autocomplete may
 // fuzzy-filter display candidates, but committed structural references are
 // stable canonical slugs rather than best-score guesses.
-func ResolveProject(ref string, allProjects []*models.Project) *models.Project {
+func resolveProject(ref string, allProjects []*models.Project) *models.Project {
 	for _, project := range allProjects {
 		if project != nil && !project.Archived && project.Slug == ref {
 			return project

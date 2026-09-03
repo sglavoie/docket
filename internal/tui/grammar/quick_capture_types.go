@@ -16,23 +16,23 @@ import (
 const (
 	ACModeNone        = iota // No autocomplete active
 	ACModeTag                // Completing a #tag
-	ACModeParent             // Completing a >parent
+	acModeParent             // Completing a >parent
 	ACModeChild              // Completing a <child
-	ACModePriority           // Completing a !priority
-	ACModeDate               // Completing a @date
+	acModePriority           // Completing a !priority
+	acModeDate               // Completing a @date
 	ACModeDestination        // Completing a $destination
-	ACModeProject            // Completing a %project
-	ACModePin                // Completing a *pin
-	ACModeReview             // Completing a =review
+	acModeProject            // Completing a %project
+	acModePin                // Completing a *pin
+	acModeReview             // Completing a =review
 	ACModeContext            // Completing a ##context
-	ACModeDefer              // Completing a @@defer
-	ACModeAttachment         // Completing an &link
-	ACModeComment            // Completing a ;comment;
+	acModeDefer              // Completing a @@defer
+	acModeAttachment         // Completing an &link
+	acModeComment            // Completing a ;comment;
 	// acModeRemoveTag completes a -#tag. It is reached only from the search
 	// surface: capture does not carry the field at all, and quick edit peels the
 	// two-character trigger itself so it can reuse the tag mode's candidate list.
-	ACModeRemoveTag
-	// acModeDependency completes a ~task and acModeRemoveDependency a -~task.
+	acModeRemoveTag
+	// ACModeDependency completes a ~task and ACModeRemoveDependency a -~task.
 	// Only the edit surface reaches the removal mode: capture has no stored set to
 	// subtract from, and it peels the two-character trigger itself.
 	ACModeDependency
@@ -42,19 +42,19 @@ const (
 	// field-to-mode projection has to stay one-to-one for a trigger to be resolved
 	// back to the definition it came from; the suggestions themselves come from the
 	// positive twin's vocabulary.
-	ACModeRemovePriority
-	ACModeRemoveContext
-	ACModeRemoveDue
-	ACModeRemoveDefer
-	ACModeRemoveDestination
-	ACModeRemovePin
-	ACModeRemoveReview
-	ACModeRemoveProject
+	acModeRemovePriority
+	acModeRemoveContext
+	acModeRemoveDue
+	acModeRemoveDefer
+	acModeRemoveDestination
+	acModeRemovePin
+	acModeRemoveReview
+	acModeRemoveProject
 	// acModeDerived completes a ?predicate and acModeRemoveDerived a -?predicate.
 	// Both are search-only: a derived value is computed from the task rather than
 	// stored on it, so there is nothing for capture or edit to write.
-	ACModeDerived
-	ACModeRemoveDerived
+	acModeDerived
+	acModeRemoveDerived
 )
 
 // acVisibleCount is the number of suggestions visible at once (scrollable window size)
@@ -91,7 +91,7 @@ type QuickCaptureResult struct {
 	Attachments       []string
 	Comments          []string
 	TargetProjectID   *string // Target project ID for cross-project capture
-	TargetProjectName string  // Target project name (for preview display)
+	targetProjectName string  // Target project name (for preview display)
 }
 
 // ChildIDs projects the resolved children into the stable IDs a CaptureRequest
@@ -133,7 +133,7 @@ type QuickCaptureInput struct {
 	// Context needed for parsing/preview
 	Project           *models.Project
 	allProjects       []*models.Project
-	SkipProjectSyntax bool // When true, %project syntax is disabled
+	skipProjectSyntax bool // When true, %project syntax is disabled
 
 	// Layout
 	Width int // Available width for preview wrapping
@@ -158,23 +158,23 @@ func NewQuickCaptureInput(project *models.Project, allProjects []*models.Project
 	input.Focus()
 	theme.ApplyThemedTextarea(&input)
 
-	triggers := QuickCaptureTriggers(skipProject)
+	triggers := quickCaptureTriggers(skipProject)
 
 	qci := QuickCaptureInput{
 		Input:             input,
 		Project:           project,
 		allProjects:       allProjects,
-		SkipProjectSyntax: skipProject,
+		skipProjectSyntax: skipProject,
 		Triggers:          triggers,
 	}
 	qci.InitCaches()
 	return qci
 }
 
-// QuickCaptureTriggers projects the canonical capture definitions into the
+// quickCaptureTriggers projects the canonical capture definitions into the
 // autocomplete engine's presentation-specific modes. The registry owns which
 // triggers exist; this switch owns only the TUI behavior attached to each field.
-func QuickCaptureTriggers(skipProject bool) []ACTrigger {
+func quickCaptureTriggers(skipProject bool) []ACTrigger {
 	definitions := textgrammar.Definitions(textgrammar.SurfaceCapture)
 	triggers := make([]ACTrigger, 0, len(definitions))
 	for _, definition := range definitions {
@@ -195,61 +195,61 @@ func AutocompleteModeForField(field textgrammar.Field) int {
 	case textgrammar.FieldTag:
 		return ACModeTag
 	case textgrammar.FieldRemoveTag:
-		return ACModeRemoveTag
+		return acModeRemoveTag
 	case textgrammar.FieldContext:
 		return ACModeContext
 	case textgrammar.FieldParent:
-		return ACModeParent
+		return acModeParent
 	case textgrammar.FieldChild:
 		return ACModeChild
 	case textgrammar.FieldPriority:
-		return ACModePriority
+		return acModePriority
 	case textgrammar.FieldDue:
-		return ACModeDate
+		return acModeDate
 	case textgrammar.FieldDefer:
-		return ACModeDefer
+		return acModeDefer
 	case textgrammar.FieldDestination:
 		return ACModeDestination
 	case textgrammar.FieldProject:
-		return ACModeProject
+		return acModeProject
 	case textgrammar.FieldPinned:
-		return ACModePin
+		return acModePin
 	case textgrammar.FieldReview:
-		return ACModeReview
+		return acModeReview
 	case textgrammar.FieldDependency:
 		return ACModeDependency
 	case textgrammar.FieldRemoveDependency:
 		return ACModeRemoveDependency
 	case textgrammar.FieldRemovePriority:
-		return ACModeRemovePriority
+		return acModeRemovePriority
 	case textgrammar.FieldRemoveContext:
-		return ACModeRemoveContext
+		return acModeRemoveContext
 	case textgrammar.FieldRemoveDue:
-		return ACModeRemoveDue
+		return acModeRemoveDue
 	case textgrammar.FieldRemoveDefer:
-		return ACModeRemoveDefer
+		return acModeRemoveDefer
 	case textgrammar.FieldRemoveDestination:
-		return ACModeRemoveDestination
+		return acModeRemoveDestination
 	case textgrammar.FieldRemovePinned:
-		return ACModeRemovePin
+		return acModeRemovePin
 	case textgrammar.FieldRemoveReview:
-		return ACModeRemoveReview
+		return acModeRemoveReview
 	case textgrammar.FieldRemoveProject:
-		return ACModeRemoveProject
+		return acModeRemoveProject
 	case textgrammar.FieldDerived:
-		return ACModeDerived
+		return acModeDerived
 	case textgrammar.FieldRemoveDerived:
-		return ACModeRemoveDerived
+		return acModeRemoveDerived
 	case textgrammar.FieldAttachment:
 		// An attachment value is a pasted URL or path, so there is nothing to
-		// suggest. The mode exists because QuickCaptureTriggers drops a field
-		// returning acModeNone, and the registry projection must stay one-to-one;
+		// suggest. The mode exists because quickCaptureTriggers drops a field
+		// returning ACModeNone, and the registry projection must stay one-to-one;
 		// RefreshAutocomplete has no default arm, so the mode simply shows nothing.
-		return ACModeAttachment
+		return acModeAttachment
 	case textgrammar.FieldComment:
 		// A comment is free prose, so there is nothing to suggest either; the mode
 		// exists for the same one-to-one reason acModeAttachment does.
-		return ACModeComment
+		return acModeComment
 	default:
 		return ACModeNone
 	}

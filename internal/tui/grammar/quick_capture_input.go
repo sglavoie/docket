@@ -17,7 +17,7 @@ import (
 func (q *QuickCaptureInput) InitCaches() {
 	// Cache all tags from the project
 	q.TagCache = CollectTagNamesForProject(q.Project)
-	q.contextCache = CollectContextNamesForProject(q.Project)
+	q.contextCache = collectContextNamesForProject(q.Project)
 
 	// Cache non-archived projects for cross-project capture
 	q.projectCache = make([]*models.Project, 0)
@@ -134,7 +134,7 @@ func (q *QuickCaptureInput) SyntaxScrollPercent() int {
 // Returns true if the key was consumed.
 func (q *QuickCaptureInput) HandleAutocompleteKey(key string) bool {
 	return q.AC.HandleKey(key, func() {
-		q.AcceptSuggestion()
+		q.acceptSuggestion()
 		q.UpdatePreview()
 	})
 }
@@ -198,7 +198,7 @@ func (q *QuickCaptureInput) RefreshAutocomplete() {
 		items = FilterUsedTagSuggestions(items, parsedLine.TokensFor(textgrammar.FieldTag))
 	case ACModeContext:
 		items = q.GetContextSuggestions(partial)
-	case ACModeParent:
+	case acModeParent:
 		items = q.getParentSuggestions(partial, StructuralCandidates(q.effectiveProject(parsedLine)))
 	case ACModeChild:
 		effective := q.effectiveProject(parsedLine)
@@ -206,19 +206,19 @@ func (q *QuickCaptureInput) RefreshAutocomplete() {
 			StructuralCandidates(effective), effective, parsedLine.TokensFor(textgrammar.FieldChild),
 		)
 		items = q.getChildSuggestions(partial, candidates)
-	case ACModePriority:
-		items = q.GetPrioritySuggestions(partial)
-	case ACModeDate:
-		items = q.GetDateSuggestions(partial)
-	case ACModeDefer:
+	case acModePriority:
+		items = q.getPrioritySuggestions(partial)
+	case acModeDate:
+		items = q.getDateSuggestions(partial)
+	case acModeDefer:
 		items = q.getDeferSuggestions(partial)
 	case ACModeDestination:
 		items = q.GetDestinationSuggestions(partial)
-	case ACModeProject:
+	case acModeProject:
 		items = q.getProjectSuggestions(partial)
-	case ACModePin:
-		items = q.GetPinSuggestions(partial)
-	case ACModeReview:
+	case acModePin:
+		items = q.getPinSuggestions(partial)
+	case acModeReview:
 		items = q.getReviewSuggestions(partial)
 	case ACModeDependency:
 		items = q.getDependencySuggestions(partial, parsedLine)
@@ -228,23 +228,23 @@ func (q *QuickCaptureInput) RefreshAutocomplete() {
 
 func autocompleteSingletonField(mode int) (textgrammar.Field, bool) {
 	switch mode {
-	case ACModeParent:
+	case acModeParent:
 		return textgrammar.FieldParent, true
 	case ACModeContext:
 		return textgrammar.FieldContext, true
-	case ACModePriority:
+	case acModePriority:
 		return textgrammar.FieldPriority, true
-	case ACModeDate:
+	case acModeDate:
 		return textgrammar.FieldDue, true
-	case ACModeDefer:
+	case acModeDefer:
 		return textgrammar.FieldDefer, true
 	case ACModeDestination:
 		return textgrammar.FieldDestination, true
-	case ACModeProject:
+	case acModeProject:
 		return textgrammar.FieldProject, true
-	case ACModePin:
+	case acModePin:
 		return textgrammar.FieldPinned, true
-	case ACModeReview:
+	case acModeReview:
 		return textgrammar.FieldReview, true
 	default:
 		return "", false
@@ -257,7 +257,7 @@ func autocompleteSingletonField(mode int) (textgrammar.Field, bool) {
 // rather than the whole buffer because every nonblank line becomes its own
 // request with its own route.
 func (q *QuickCaptureInput) effectiveProject(draftedLine textgrammar.Result) *models.Project {
-	if q.SkipProjectSyntax {
+	if q.skipProjectSyntax {
 		return q.Project
 	}
 	tokens := draftedLine.TokensFor(textgrammar.FieldProject)
@@ -265,7 +265,7 @@ func (q *QuickCaptureInput) effectiveProject(draftedLine textgrammar.Result) *mo
 		return q.Project
 	}
 	// The parser lets the last %project token win, so completion must too.
-	if target := ResolveProject(tokens[len(tokens)-1].Value, q.allProjects); target != nil {
+	if target := resolveProject(tokens[len(tokens)-1].Value, q.allProjects); target != nil {
 		return target
 	}
 	return q.Project

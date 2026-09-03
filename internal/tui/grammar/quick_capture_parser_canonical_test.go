@@ -1,11 +1,10 @@
-package tui
+package grammar
 
 import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 func TestParseQuickCaptureLegacyFormsRemainTitleText(t *testing.T) {
@@ -35,7 +34,7 @@ func TestParseQuickCaptureRetiredTaskTypeAndOrdinaryTags(t *testing.T) {
 func TestParseQuickCaptureNamedPriorityValuesRemainTitleText(t *testing.T) {
 	for _, value := range []string{"urgent", "high", "normal", "medium", "low", "h", "m", "l"} {
 		t.Run(value, func(t *testing.T) {
-			result, err := grammar.ParseQuickCapture("Task !"+value, quickCaptureTestProject(), nil, false)
+			result, err := ParseQuickCapture("Task !"+value, quickCaptureTestProject(), nil, false)
 			if err != nil {
 				t.Fatalf("parse: %v", err)
 			}

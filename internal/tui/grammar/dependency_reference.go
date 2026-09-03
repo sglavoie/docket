@@ -74,7 +74,7 @@ func ResolveDependencyReference(ref string, effective *models.Project, allProjec
 		}
 		return DependencyRefFor(effective, task), nil
 	}
-	if project := ResolveProject(head, allProjects); project != nil {
+	if project := resolveProject(head, allProjects); project != nil {
 		task, err := ResolveStructuralReference(tail, project, DependencyRelationship)
 		if err != nil || task == nil {
 			return CapturedDependencyRef{}, err

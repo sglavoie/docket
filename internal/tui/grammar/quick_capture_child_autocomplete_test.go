@@ -1,4 +1,4 @@
-package tui
+package grammar
 
 import (
 	"slices"
@@ -10,14 +10,13 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
-	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 // draftedCaptureInput builds a quickCaptureInput holding value and refreshes its
 // autocomplete, so a test can assert what the composer would offer for a draft.
-func draftedCaptureInput(t *testing.T, value string, project *models.Project, allProjects []*models.Project, skipProject bool) *grammar.QuickCaptureInput {
+func draftedCaptureInput(t *testing.T, value string, project *models.Project, allProjects []*models.Project, skipProject bool) *QuickCaptureInput {
 	t.Helper()
-	input := grammar.NewQuickCaptureInput(project, allProjects, "", skipProject)
+	input := NewQuickCaptureInput(project, allProjects, "", skipProject)
 	q := &input
 	q.Width = 80
 	q.Input.SetValue(value)
@@ -25,7 +24,7 @@ func draftedCaptureInput(t *testing.T, value string, project *models.Project, al
 	return q
 }
 
-func suggestionDisplays(items []grammar.ACSuggestion) []string {
+func suggestionDisplays(items []ACSuggestion) []string {
 	displays := make([]string, len(items))
 	for i, item := range items {
 		displays[i] = ansi.Strip(item.Display)
@@ -46,8 +45,8 @@ func routedCaptureProject() *models.Project {
 func TestCaptureAutocompleteChildSuggestionsRenderChildSigilInProjectOrder(t *testing.T) {
 	q := draftedCaptureInput(t, "Adopt <", quickCaptureTestProject(), nil, false)
 
-	if q.AC.Mode != grammar.ACModeChild {
-		t.Fatalf("autocomplete mode = %d, want acModeChild", q.AC.Mode)
+	if q.AC.Mode != ACModeChild {
+		t.Fatalf("autocomplete mode = %d, want ACModeChild", q.AC.Mode)
 	}
 	want := []string{
 		"<1 User Authentication",
@@ -81,8 +80,8 @@ func TestCaptureAutocompleteChildSuggestionsRepeatAndFilterAcceptedAliases(t *te
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			q := draftedCaptureInput(t, tt.draft, quickCaptureTestProject(), nil, false)
-			if q.AC.Mode != grammar.ACModeChild {
-				t.Fatalf("autocomplete mode = %d, want acModeChild after an earlier child token", q.AC.Mode)
+			if q.AC.Mode != ACModeChild {
+				t.Fatalf("autocomplete mode = %d, want ACModeChild after an earlier child token", q.AC.Mode)
 			}
 			got := suggestionDisplays(q.AC.Items)
 			if len(got) != 3 {
@@ -122,12 +121,12 @@ func TestCaptureAutocompleteParentStaysSingletonWhileChildRepeats(t *testing.T) 
 	project := quickCaptureTestProject()
 
 	parent := draftedCaptureInput(t, "Adopt >1 >", project, nil, false)
-	if parent.AC.Mode != grammar.ACModeNone || len(parent.AC.Items) != 0 {
+	if parent.AC.Mode != ACModeNone || len(parent.AC.Items) != 0 {
 		t.Fatalf("parent suggestions after >1 = %v (mode %d), want none", suggestionDisplays(parent.AC.Items), parent.AC.Mode)
 	}
 
 	child := draftedCaptureInput(t, "Adopt <1 <", project, nil, false)
-	if child.AC.Mode != grammar.ACModeChild || len(child.AC.Items) == 0 {
+	if child.AC.Mode != ACModeChild || len(child.AC.Items) == 0 {
 		t.Fatalf("child suggestions after <1 = %v (mode %d), want more candidates", suggestionDisplays(child.AC.Items), child.AC.Mode)
 	}
 }
@@ -143,7 +142,7 @@ func TestCaptureAutocompleteWithholdsCompletedTasksThatStayTypeable(t *testing.T
 		}
 	}
 
-	parsed, err := grammar.ParseQuickCapture("Adopt <3", project, nil, false)
+	parsed, err := ParseQuickCapture("Adopt <3", project, nil, false)
 	if err != nil {
 		t.Fatalf("manually typed completed-task reference: %v", err)
 	}
@@ -162,7 +161,7 @@ func TestSyntaxGuideAdvertisesRepeatableChildPlacement(t *testing.T) {
 	}
 
 	for _, skipProject := range []bool{false, true} {
-		q := &grammar.QuickCaptureInput{Width: 120, SkipProjectSyntax: skipProject}
+		q := &QuickCaptureInput{Width: 120, skipProjectSyntax: skipProject}
 		rendered := ansi.Strip(q.RenderSyntaxGuide())
 		if !strings.Contains(rendered, "<child") {
 			t.Errorf("syntax guide (skipProject=%v) omits <child:\n%s", skipProject, rendered)
@@ -177,15 +176,15 @@ func TestSyntaxGuideAdvertisesRepeatableChildPlacement(t *testing.T) {
 }
 
 func TestRenderPreview_ChildrenGroupFollowsRouteInReferenceOrder(t *testing.T) {
-	q := makePreviewInput(t, &grammar.QuickCaptureResult{
+	q := makePreviewInput(t, &QuickCaptureResult{
 		Title: "Ship it",
-		Children: []grammar.CapturedChildRef{
+		Children: []CapturedChildRef{
 			{Id: "task-3", ShortID: 3, Title: "Implement button"},
 			{Id: "epic-1", ShortID: 1, Title: "User Authentication"},
 		},
 	}, "", 0)
 
-	lines := strings.Split(ansi.Strip(q.RenderPreview()), "\n")
+	lines := strings.Split(ansi.Strip(q.renderPreview()), "\n")
 	if len(lines) != 3 {
 		t.Fatalf("expected Task, Route and Children lines, got %d:\n%s", len(lines), strings.Join(lines, "\n"))
 	}
@@ -196,19 +195,19 @@ func TestRenderPreview_ChildrenGroupFollowsRouteInReferenceOrder(t *testing.T) {
 		t.Fatalf("Children line lost first-reference order: %q", lines[2])
 	}
 
-	without := makePreviewInput(t, &grammar.QuickCaptureResult{Title: "Ship it"}, "", 0)
-	if strings.Contains(ansi.Strip(without.RenderPreview()), "Children") {
+	without := makePreviewInput(t, &QuickCaptureResult{Title: "Ship it"}, "", 0)
+	if strings.Contains(ansi.Strip(without.renderPreview()), "Children") {
 		t.Fatal("Children group rendered without any child reference")
 	}
 }
 
 func TestRenderPreview_ChildrenSurviveCompactFlattening(t *testing.T) {
-	q := makePreviewInput(t, &grammar.QuickCaptureResult{
+	q := makePreviewInput(t, &QuickCaptureResult{
 		Title:    "Ship it",
-		Children: []grammar.CapturedChildRef{{Id: "story-2", ShortID: 2, Title: "Login Flow"}},
+		Children: []CapturedChildRef{{Id: "story-2", ShortID: 2, Title: "Login Flow"}},
 	}, "", 120)
 
-	compact := ansi.Strip(q.RenderCompactPreview())
+	compact := ansi.Strip(q.renderCompactPreview())
 	if !strings.Contains(compact, "<2 Login Flow") {
 		t.Fatalf("compact preview dropped the child selection: %q", compact)
 	}
@@ -219,15 +218,15 @@ func TestRenderPreview_ChildrenSurviveCompactFlattening(t *testing.T) {
 
 func TestRenderPreview_ChildrenNarrowSafeWithWideRunes(t *testing.T) {
 	for _, width := range []int{28, 32, 100} {
-		q := makePreviewInput(t, &grammar.QuickCaptureResult{
+		q := makePreviewInput(t, &QuickCaptureResult{
 			Title: "修复收件箱卡片在窄宽度下的宽字符标题截断问题",
-			Children: []grammar.CapturedChildRef{
+			Children: []CapturedChildRef{
 				{Id: "wide-1", ShortID: 11, Title: "登录流程与凭据刷新"},
 				{Id: "wide-2", ShortID: 12, Title: "Implement search across every configured workspace"},
 			},
 		}, "", width)
 
-		for _, line := range strings.Split(q.RenderPreview(), "\n") {
+		for _, line := range strings.Split(q.renderPreview(), "\n") {
 			stripped := ansi.Strip(line)
 			if got := lipgloss.Width(stripped); got > width {
 				t.Errorf("preview line exceeds width %d: %q (width=%d)", width, stripped, got)

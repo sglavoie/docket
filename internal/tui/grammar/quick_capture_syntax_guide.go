@@ -24,8 +24,8 @@ const syntaxGuideTitle = "Capture Syntax"
 type SyntaxGuideEntry struct {
 	Forms      string
 	desc       string
-	Examples   string
-	Validation []string
+	examples   string
+	validation []string
 }
 
 // SyntaxGuideGroup clusters related capture sigils under a heading so the
@@ -44,7 +44,7 @@ func (q *QuickCaptureInput) SyntaxGuideGroups() []SyntaxGuideGroup {
 	var groupOrder []string
 	byGroup := make(map[string][]SyntaxGuideEntry)
 	for _, def := range textgrammar.GuideDefinitions(textgrammar.SurfaceCapture) {
-		if def.Legacy || (q.SkipProjectSyntax && def.Field == textgrammar.FieldProject) {
+		if def.Legacy || (q.skipProjectSyntax && def.Field == textgrammar.FieldProject) {
 			continue
 		}
 		if _, exists := byGroup[def.Group]; !exists {
@@ -53,10 +53,10 @@ func (q *QuickCaptureInput) SyntaxGuideGroups() []SyntaxGuideGroup {
 		entry := SyntaxGuideEntry{
 			Forms:    strings.Join(def.Forms, " · "),
 			desc:     def.Description,
-			Examples: strings.Join(def.Examples, "  "),
+			examples: strings.Join(def.Examples, "  "),
 		}
 		for _, example := range def.Examples {
-			entry.Validation = append(entry.Validation, "Task "+example)
+			entry.validation = append(entry.validation, "Task "+example)
 		}
 		byGroup[def.Group] = append(byGroup[def.Group], entry)
 	}
@@ -130,11 +130,11 @@ func (q *QuickCaptureInput) RenderSyntaxGuide() string {
 	appendEntry := func(e SyntaxGuideEntry) {
 		formsW := lipgloss.Width(e.Forms)
 		descW := lipgloss.Width(e.desc)
-		examplesW := lipgloss.Width(e.Examples)
+		examplesW := lipgloss.Width(e.examples)
 
 		styledForms := theme.MatchHighlightStyle.Render(e.Forms)
 		styledDesc := theme.MutedStyle.Render(e.desc)
-		styledExamples := theme.MutedStyle.Render(e.Examples)
+		styledExamples := theme.MutedStyle.Render(e.examples)
 
 		indentStr := strings.Repeat(" ", syntaxEntryIndent)
 		gapStr := strings.Repeat(" ", syntaxColumnGap)
@@ -149,7 +149,7 @@ func (q *QuickCaptureInput) RenderSyntaxGuide() string {
 			appendWrappedField(syntaxEntryIndent, theme.MatchHighlightStyle, e.Forms)
 			appendWrappedField(syntaxFieldIndent, theme.MutedStyle, e.desc)
 			if examplesW > 0 {
-				appendWrappedField(syntaxFieldIndent, theme.MutedStyle, e.Examples)
+				appendWrappedField(syntaxFieldIndent, theme.MutedStyle, e.examples)
 			}
 		case examplesW > 0 && fdWidth+syntaxColumnGap+examplesW <= q.Width:
 			// Mode 1: aligned single row.
@@ -158,14 +158,14 @@ func (q *QuickCaptureInput) RenderSyntaxGuide() string {
 			// Mode 2: forms + description on the first row, examples wrapped below.
 			lines = append(lines, formsDescRow)
 			if examplesW > 0 {
-				appendWrappedField(syntaxFieldIndent, theme.MutedStyle, e.Examples)
+				appendWrappedField(syntaxFieldIndent, theme.MutedStyle, e.examples)
 			}
 		default:
 			// Mode 3: forms and description cannot coexist; stack every field.
 			appendWrappedField(syntaxEntryIndent, theme.MatchHighlightStyle, e.Forms)
 			appendWrappedField(syntaxFieldIndent, theme.MutedStyle, e.desc)
 			if examplesW > 0 {
-				appendWrappedField(syntaxFieldIndent, theme.MutedStyle, e.Examples)
+				appendWrappedField(syntaxFieldIndent, theme.MutedStyle, e.examples)
 			}
 		}
 	}

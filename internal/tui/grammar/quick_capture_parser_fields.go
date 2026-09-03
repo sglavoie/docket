@@ -282,7 +282,7 @@ func (p *quickCaptureParser) parseProjectTokens(tokens []textgrammar.Token) {
 		return
 	}
 	for _, token := range tokens {
-		targetProject := ResolveProject(token.Value, p.allProjects)
+		targetProject := resolveProject(token.Value, p.allProjects)
 		if targetProject == nil {
 			if p.failf("project not found: '%s' (use an exact %%project-slug)", token.Value) {
 				return
@@ -290,14 +290,14 @@ func (p *quickCaptureParser) parseProjectTokens(tokens []textgrammar.Token) {
 			continue
 		}
 		p.result.TargetProjectID = &targetProject.ID
-		p.result.TargetProjectName = targetProject.Name
+		p.result.targetProjectName = targetProject.Name
 		p.project = targetProject
 	}
 }
 
 func (p *quickCaptureParser) parseParentTokens(tokens []textgrammar.Token) {
 	for _, token := range tokens {
-		parent, err := ResolveParent(token.Value, p.project)
+		parent, err := resolveParent(token.Value, p.project)
 		if err != nil {
 			if p.failf("%s", err) {
 				return

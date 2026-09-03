@@ -13,7 +13,7 @@ func TestCaptureDependencyAutocompleteOffersOpenWorkAcrossProjects(t *testing.T)
 	home, routed := dependencyWorkspace()
 	q := draftedCaptureInput(t, "New work ~", home, []*models.Project{home, routed}, false)
 	if q.AC.Mode != grammar.ACModeDependency {
-		t.Fatalf("autocomplete mode = %d, want acModeDependency", q.AC.Mode)
+		t.Fatalf("autocomplete mode = %d, want ACModeDependency", q.AC.Mode)
 	}
 
 	values := suggestionValues(q.AC.Items)
@@ -74,7 +74,7 @@ func TestRowEditorDependencyAutocompleteSeparatesAdditionsFromRemovals(t *testin
 
 	addition := draftedRowEditor(t, "Edited task ~", task, home, projects)
 	if addition.AC.Mode != grammar.ACModeDependency {
-		t.Fatalf("addition mode = %d, want acModeDependency", addition.AC.Mode)
+		t.Fatalf("addition mode = %d, want ACModeDependency", addition.AC.Mode)
 	}
 	values := suggestionValues(addition.AC.Items)
 	if len(values) == 0 || values[0] != grammar.DependencyClearValue {
@@ -91,7 +91,7 @@ func TestRowEditorDependencyAutocompleteSeparatesAdditionsFromRemovals(t *testin
 
 	removal := draftedRowEditor(t, "Edited task -~", task, home, projects)
 	if removal.AC.Mode != grammar.ACModeRemoveDependency {
-		t.Fatalf("removal mode = %d, want acModeRemoveDependency", removal.AC.Mode)
+		t.Fatalf("removal mode = %d, want ACModeRemoveDependency", removal.AC.Mode)
 	}
 	removalValues := suggestionValues(removal.AC.Items)
 	// A removal reaches exactly the stored set, closed and unloaded targets
@@ -119,7 +119,7 @@ func TestRowEditorDependencyCompletionAcceptsMidLine(t *testing.T) {
 	q.RefreshDraft()
 
 	if q.AC.Mode != grammar.ACModeDependency {
-		t.Fatalf("autocomplete mode = %d, want acModeDependency", q.AC.Mode)
+		t.Fatalf("autocomplete mode = %d, want ACModeDependency", q.AC.Mode)
 	}
 	// BuildAcceptedInputAt always closes the accepted token with a space and keeps
 	// everything past the cursor verbatim, so the tail keeps its own separator.

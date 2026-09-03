@@ -45,7 +45,7 @@ var archivePredicateAudit = map[string]string{
 	"internal/tui/task_action_operations.go:taskActionOperationApplicable":         "lifecycle: an archived owner admits read-only operations only",
 	"internal/tui/project_operations_shell.go:projectRequirementUnmet":             "lifecycle: descriptors require an archived or a live project",
 	"internal/tui/grammar/quick_capture_input.go:InitCaches":                       "availability: %project completes parked projects",
-	"internal/tui/grammar/quick_capture_parser_resolution.go:ResolveProject":       "availability: %project resolves parked projects",
+	"internal/tui/grammar/quick_capture_parser_resolution.go:resolveProject":       "availability: %project resolves parked projects",
 	"internal/tui/task_action_sheet.go:taskActionDisabledReason":                   "lifecycle: an archived owner disables writing task actions",
 	"internal/tui/task_composer_capture.go:cycleProject":                           "availability: the composer cycles onto a parked destination",
 }

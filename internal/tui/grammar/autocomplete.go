@@ -111,7 +111,7 @@ func (ac *AutocompleteState) Selected() ACSuggestion {
 // recent trigger. Triggers only activate at the start of input or after
 // whitespace. When triggers share a prefix, the longest matching trigger wins.
 // Returns the mode, trigger position, and partial text typed after the trigger.
-// Returns acModeNone if no trigger is found.
+// Returns ACModeNone if no trigger is found.
 func DetectTrigger(input string, triggers []ACTrigger) (mode int, pos int, partial string) {
 	if len(input) == 0 {
 		return ACModeNone, 0, ""
@@ -140,7 +140,7 @@ func DetectTrigger(input string, triggers []ACTrigger) (mode int, pos int, parti
 
 // UpdateSuggestions sets the suggestion list and clamps cursor/viewport.
 // If mode or trigger position changed since the last call, cursor resets to 0.
-// If the new suggestion list is empty, mode is reset to acModeNone.
+// If the new suggestion list is empty, mode is reset to ACModeNone.
 func (ac *AutocompleteState) UpdateSuggestions(mode, triggerPos int, items []ACSuggestion) {
 	if mode != ac.Mode || triggerPos != ac.TriggerPos {
 		ac.Cursor = 0

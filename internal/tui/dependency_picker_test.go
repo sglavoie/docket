@@ -141,29 +141,3 @@ func TestReferencePickerAndQuickEditDifferOnlyInSpelling(t *testing.T) {
 		t.Errorf("remove = %v, want every stored reference", got)
 	}
 }
-
-func TestCaptureDependencyPreviewNamesEveryReference(t *testing.T) {
-	home, routed := dependencyWorkspace()
-	q := draftedCaptureInput(t, "New work ~2 ~routed:1", home, []*models.Project{home, routed}, false)
-	q.UpdatePreview()
-	if q.PreviewErr != "" {
-		t.Fatalf("preview error: %s", q.PreviewErr)
-	}
-	groups, ok := q.PreviewGroups()
-	if !ok {
-		t.Fatal("the composer painted no preview")
-	}
-	var depends *grammar.PreviewGroup
-	for i, group := range groups {
-		if group.Label == "Depends" {
-			depends = &groups[i]
-		}
-	}
-	if depends == nil {
-		t.Fatalf("preview groups = %+v, want a Depends group", groups)
-	}
-	want := []string{"~Home #2 Ship the API", "~Routed #1 Routed alpha"}
-	if !slices.Equal(depends.Chunks, want) {
-		t.Fatalf("Depends chunks = %v, want %v", depends.Chunks, want)
-	}
-}

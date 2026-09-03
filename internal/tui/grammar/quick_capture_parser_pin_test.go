@@ -1,15 +1,14 @@
-package tui
+package grammar
 
 import (
 	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/textgrammar"
-	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 func TestParseQuickCapturePinSetsPinnedResult(t *testing.T) {
-	result, err := grammar.ParseQuickCapture("Ship the release !1 *pin", quickCaptureTestProject(), nil, false)
+	result, err := ParseQuickCapture("Ship the release !1 *pin", quickCaptureTestProject(), nil, false)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -30,7 +29,7 @@ func TestParseQuickCaptureRefusesUnpinPerSurface(t *testing.T) {
 		{textgrammar.SurfaceOutline, "omit *pin to unpin here"},
 	}
 	for _, tt := range tests {
-		_, err := grammar.ParseQuickCaptureSurface("Ship the release *unpin", quickCaptureTestProject(), nil, true, tt.surface)
+		_, err := ParseQuickCaptureSurface("Ship the release *unpin", quickCaptureTestProject(), nil, true, tt.surface)
 		if err == nil {
 			t.Fatalf("surface %v: expected an error", tt.surface)
 		}
@@ -41,7 +40,7 @@ func TestParseQuickCaptureRefusesUnpinPerSurface(t *testing.T) {
 }
 
 func TestParseQuickCaptureKeepsUnrecognizedPinValueInTitle(t *testing.T) {
-	result, err := grammar.ParseQuickCapture("Refactor *args handling", quickCaptureTestProject(), nil, false)
+	result, err := ParseQuickCapture("Refactor *args handling", quickCaptureTestProject(), nil, false)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

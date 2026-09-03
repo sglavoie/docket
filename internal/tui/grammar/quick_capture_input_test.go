@@ -1,4 +1,4 @@
-package tui
+package grammar
 
 import (
 	"strings"
@@ -10,14 +10,13 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/textgrammar"
-	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 // makePreviewInput builds a quickCaptureInput pre-populated with the given
 // preview result so renderPreview can be exercised directly.
-func makePreviewInput(t *testing.T, preview *grammar.QuickCaptureResult, previewErr string, width int) *grammar.QuickCaptureInput {
+func makePreviewInput(t *testing.T, preview *QuickCaptureResult, previewErr string, width int) *QuickCaptureInput {
 	t.Helper()
-	return &grammar.QuickCaptureInput{
+	return &QuickCaptureInput{
 		Preview:    preview,
 		PreviewErr: previewErr,
 		Width:      width,
@@ -26,19 +25,19 @@ func makePreviewInput(t *testing.T, preview *grammar.QuickCaptureResult, preview
 
 func TestRenderPreview_EmptyWhenNoPreview(t *testing.T) {
 	q := makePreviewInput(t, nil, "", 0)
-	if got := q.RenderPreview(); got != "" {
+	if got := q.renderPreview(); got != "" {
 		t.Fatalf("expected empty preview, got %q", got)
 	}
 
-	q = makePreviewInput(t, &grammar.QuickCaptureResult{Title: ""}, "", 0)
-	if got := q.RenderPreview(); got != "" {
+	q = makePreviewInput(t, &QuickCaptureResult{Title: ""}, "", 0)
+	if got := q.renderPreview(); got != "" {
 		t.Fatalf("expected empty preview when title is empty, got %q", got)
 	}
 }
 
 func TestRenderPreview_PreviewErrorShortCircuits(t *testing.T) {
-	q := makePreviewInput(t, &grammar.QuickCaptureResult{Title: "ignored"}, "bad due: junk", 0)
-	got := ansi.Strip(q.RenderPreview())
+	q := makePreviewInput(t, &QuickCaptureResult{Title: "ignored"}, "bad due: junk", 0)
+	got := ansi.Strip(q.renderPreview())
 	if !strings.Contains(got, "bad due") {
 		t.Fatalf("expected error text in preview, got %q", got)
 	}
@@ -48,12 +47,12 @@ func TestRenderPreview_PreviewErrorShortCircuits(t *testing.T) {
 }
 
 func TestRenderPreview_TitleOnlyShowsDefaultInboxRoute(t *testing.T) {
-	q := makePreviewInput(t, &grammar.QuickCaptureResult{
+	q := makePreviewInput(t, &QuickCaptureResult{
 		Title:    "Fix login bug",
 		Priority: 0, // default - hidden
 	}, "", 0)
 
-	plain := ansi.Strip(q.RenderPreview())
+	plain := ansi.Strip(q.renderPreview())
 	lines := strings.Split(plain, "\n")
 	if len(lines) != 2 {
 		t.Fatalf("expected exactly two lines (Task + Route) for title-only preview, got %d:\n%s", len(lines), plain)
@@ -78,13 +77,13 @@ func TestRenderPreview_TitleOnlyShowsDefaultInboxRoute(t *testing.T) {
 }
 
 func TestRenderPreview_DefaultInboxRouteWithTargetProject(t *testing.T) {
-	q := makePreviewInput(t, &grammar.QuickCaptureResult{
+	q := makePreviewInput(t, &QuickCaptureResult{
 		Title:             "Capture for other team",
 		Priority:          0,
-		TargetProjectName: "Web App",
+		targetProjectName: "Web App",
 	}, "", 0)
 
-	plain := ansi.Strip(q.RenderPreview())
+	plain := ansi.Strip(q.renderPreview())
 	var routeLine string
 	for _, line := range strings.Split(plain, "\n") {
 		if strings.HasPrefix(line, "Route") {
@@ -103,28 +102,28 @@ func TestRenderPreview_DefaultInboxRouteWithTargetProject(t *testing.T) {
 }
 
 func TestRenderPreviewShowsPlanningDestinationAndChildDefault(t *testing.T) {
-	today := makePreviewInput(t, &grammar.QuickCaptureResult{
+	today := makePreviewInput(t, &QuickCaptureResult{
 		Title: "Plan it", Destination: app.CaptureDestinationToday, DestinationSet: true,
 	}, "", 0)
-	if got := ansi.Strip(today.RenderPreview()); !strings.Contains(got, "$today") || strings.Contains(got, "(default)") {
+	if got := ansi.Strip(today.renderPreview()); !strings.Contains(got, "$today") || strings.Contains(got, "(default)") {
 		t.Fatalf("Today preview = %q", got)
 	}
 
 	parentID := "parent"
-	child := makePreviewInput(t, &grammar.QuickCaptureResult{Title: "Child", ParentID: &parentID}, "", 0)
-	if got := ansi.Strip(child.RenderPreview()); !strings.Contains(got, "$backlog (default)") {
+	child := makePreviewInput(t, &QuickCaptureResult{Title: "Child", ParentID: &parentID}, "", 0)
+	if got := ansi.Strip(child.renderPreview()); !strings.Contains(got, "$backlog (default)") {
 		t.Fatalf("child preview = %q", got)
 	}
 }
 
 func TestRenderPreview_DefaultInboxRouteWrapsAtNarrowWidth(t *testing.T) {
-	q := makePreviewInput(t, &grammar.QuickCaptureResult{
+	q := makePreviewInput(t, &QuickCaptureResult{
 		Title:             "Capture for the offsite tomorrow morning",
 		Priority:          0,
-		TargetProjectName: "Q1 Planning Roadmap Initiative",
+		targetProjectName: "Q1 Planning Roadmap Initiative",
 	}, "", 32)
 
-	rendered := q.RenderPreview()
+	rendered := q.renderPreview()
 	for _, line := range strings.Split(rendered, "\n") {
 		stripped := ansi.Strip(line)
 		if w := lipgloss.Width(stripped); w > 32 {
@@ -146,17 +145,17 @@ func TestRenderPreview_DefaultInboxRouteWrapsAtNarrowWidth(t *testing.T) {
 
 func TestRenderPreview_AllGroupsRendered(t *testing.T) {
 	due := time.Date(2026, 2, 15, 0, 0, 0, 0, time.UTC)
-	q := makePreviewInput(t, &grammar.QuickCaptureResult{
+	q := makePreviewInput(t, &QuickCaptureResult{
 		Title:             "Ship release",
 		Priority:          1,
 		Tags:              []string{"backend", "urgent"},
 		DueDate:           &due,
 		Destination:       textgrammar.DestinationDoing,
 		DestinationSet:    true,
-		TargetProjectName: "Web App",
+		targetProjectName: "Web App",
 	}, "", 0)
 
-	plain := ansi.Strip(q.RenderPreview())
+	plain := ansi.Strip(q.renderPreview())
 	lines := strings.Split(plain, "\n")
 
 	if len(lines) != 5 {
@@ -186,13 +185,13 @@ func TestRenderPreview_AllGroupsRendered(t *testing.T) {
 }
 
 func TestRenderPreview_ShowsSemanticTagWithoutMarkerPrefix(t *testing.T) {
-	q := makePreviewInput(t, &grammar.QuickCaptureResult{
+	q := makePreviewInput(t, &QuickCaptureResult{
 		Title:    "Fix composer",
 		Priority: 3,
 		Tags:     []string{"bug", "capture"},
 	}, "", 80)
 
-	plain := ansi.Strip(q.RenderPreview())
+	plain := ansi.Strip(q.renderPreview())
 	for _, want := range []string{"Task", "Fix composer", "Tags", "#bug", "#capture"} {
 		if !strings.Contains(plain, want) {
 			t.Fatalf("preview missing %q:\n%s", want, plain)
@@ -208,17 +207,17 @@ func TestRenderPreview_ShowsSemanticTagWithoutMarkerPrefix(t *testing.T) {
 
 func TestRenderPreview_NarrowSafeVisualWidth(t *testing.T) {
 	due := time.Date(2026, 2, 15, 0, 0, 0, 0, time.UTC)
-	q := makePreviewInput(t, &grammar.QuickCaptureResult{
+	q := makePreviewInput(t, &QuickCaptureResult{
 		Title:             "Investigate intermittent flaky integration test failure on CI",
 		Priority:          1,
 		Tags:              []string{"backend", "urgent", "production", "hotfix"},
 		DueDate:           &due,
 		Destination:       app.CaptureDestinationBacklog,
 		DestinationSet:    true,
-		TargetProjectName: "Reliability And Observability Platform",
+		targetProjectName: "Reliability And Observability Platform",
 	}, "", 32)
 
-	rendered := q.RenderPreview()
+	rendered := q.renderPreview()
 	for _, line := range strings.Split(rendered, "\n") {
 		stripped := ansi.Strip(line)
 		if w := lipgloss.Width(stripped); w > 32 {
@@ -228,7 +227,7 @@ func TestRenderPreview_NarrowSafeVisualWidth(t *testing.T) {
 }
 
 func TestRenderPreview_NarrowSafeWithWideRunes(t *testing.T) {
-	q := makePreviewInput(t, &grammar.QuickCaptureResult{
+	q := makePreviewInput(t, &QuickCaptureResult{
 		Title:          "修复收件箱卡片在窄宽度下的宽字符标题截断问题",
 		Priority:       3,
 		Tags:           []string{"界面修复", "次要标签"},
@@ -236,7 +235,7 @@ func TestRenderPreview_NarrowSafeWithWideRunes(t *testing.T) {
 		DestinationSet: true,
 	}, "", 28)
 
-	rendered := q.RenderPreview()
+	rendered := q.renderPreview()
 	for _, line := range strings.Split(rendered, "\n") {
 		stripped := ansi.Strip(line)
 		if w := lipgloss.Width(stripped); w > 28 {
@@ -246,13 +245,13 @@ func TestRenderPreview_NarrowSafeWithWideRunes(t *testing.T) {
 }
 
 func TestRenderPreview_ContinuationLinesAlignToLabelColumn(t *testing.T) {
-	q := makePreviewInput(t, &grammar.QuickCaptureResult{
+	q := makePreviewInput(t, &QuickCaptureResult{
 		Title:    "Task title used to force a wrap",
 		Priority: 3,
 		Tags:     []string{"alpha", "beta", "gamma", "delta", "epsilon"},
 	}, "", 28)
 
-	rendered := q.RenderPreview()
+	rendered := q.renderPreview()
 	for _, line := range strings.Split(rendered, "\n") {
 		stripped := ansi.Strip(line)
 		if w := lipgloss.Width(stripped); w > 28 {

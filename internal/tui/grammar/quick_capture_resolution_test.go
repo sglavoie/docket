@@ -1,11 +1,10 @@
-package tui
+package grammar
 
 import (
 	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 func TestResolveParent(t *testing.T) {
@@ -36,7 +35,7 @@ func TestResolveParent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := grammar.ResolveParent(tt.ref, project)
+			result, err := resolveParent(tt.ref, project)
 			if err != nil {
 				t.Fatalf("resolveParent: %v", err)
 			}
@@ -71,16 +70,16 @@ func TestStructuralReferencesShareMatchingAndNameTheirRelationship(t *testing.T)
 	}
 
 	for _, relationship := range []string{"parent", "child"} {
-		byShortID, err := grammar.ResolveStructuralReference("2", project, relationship)
+		byShortID, err := ResolveStructuralReference("2", project, relationship)
 		if err != nil || byShortID == nil || byShortID.ID != "task-2" {
 			t.Errorf("%s reference 2 = %v, %v; want task-2", relationship, byShortID, err)
 		}
-		byPrefix, err := grammar.ResolveStructuralReference("login fl", project, relationship)
+		byPrefix, err := ResolveStructuralReference("login fl", project, relationship)
 		if err != nil || byPrefix == nil || byPrefix.ID != "task-1" {
 			t.Errorf("%s reference 'login fl' = %v, %v; want task-1", relationship, byPrefix, err)
 		}
 
-		task, err := grammar.ResolveStructuralReference("Login", project, relationship)
+		task, err := ResolveStructuralReference("Login", project, relationship)
 		if task != nil || err == nil {
 			t.Fatalf("%s reference Login = %v, %v; want an ambiguity error", relationship, task, err)
 		}
@@ -118,7 +117,7 @@ func TestResolveProject(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := grammar.ResolveProject(tt.ref, projects)
+			result := resolveProject(tt.ref, projects)
 
 			if tt.wantNil {
 				if result != nil {

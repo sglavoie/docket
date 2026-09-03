@@ -1,4 +1,4 @@
-package tui
+package grammar
 
 import (
 	"slices"
@@ -7,7 +7,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 type quickCaptureParseTestCase struct {
@@ -50,7 +49,7 @@ func runQuickCaptureParseTests(t *testing.T, tests []quickCaptureParseTestCase) 
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := grammar.ParseQuickCapture(tt.input, project, nil, false)
+			result, err := ParseQuickCapture(tt.input, project, nil, false)
 
 			if tt.wantErr {
 				if err == nil {

@@ -1,4 +1,4 @@
-package tui
+package grammar
 
 import (
 	"slices"
@@ -8,7 +8,6 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
-	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 // dependencyWorkspace is the two-project fixture every dependency grammar test
@@ -64,7 +63,7 @@ func TestDependencyGrammarIsRegisteredOnBothMutationSurfaces(t *testing.T) {
 	if !ok {
 		t.Fatal("edit does not advertise the dependency field")
 	}
-	if len(edit.Clears) != 1 || edit.Clears[0].Value != grammar.DependencyClearValue {
+	if len(edit.Clears) != 1 || edit.Clears[0].Value != DependencyClearValue {
 		t.Fatalf("edit dependency clears = %+v, want one ~0 form", edit.Clears)
 	}
 	removal, ok := textgrammar.DefinitionFor(textgrammar.SurfaceEdit, textgrammar.FieldRemoveDependency)
@@ -134,7 +133,7 @@ func TestCaptureResolvesDependencyAliasesInEveryForm(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := grammar.ParseQuickCapture(tt.input, home, projects, false)
+			result, err := ParseQuickCapture(tt.input, home, projects, false)
 			if err != nil {
 				t.Fatalf("parseQuickCapture(%q): %v", tt.input, err)
 			}
@@ -154,7 +153,7 @@ func TestCaptureResolvesBareAliasesAgainstTheRoutedProject(t *testing.T) {
 	home, routed := dependencyWorkspace()
 	projects := []*models.Project{home, routed}
 
-	result, err := grammar.ParseQuickCapture("New work %routed ~1", home, projects, false)
+	result, err := ParseQuickCapture("New work %routed ~1", home, projects, false)
 	if err != nil {
 		t.Fatalf("parseQuickCapture: %v", err)
 	}
@@ -163,7 +162,7 @@ func TestCaptureResolvesBareAliasesAgainstTheRoutedProject(t *testing.T) {
 	}
 
 	// A qualified alias is unaffected by the route, and reaches back home.
-	result, err = grammar.ParseQuickCapture("New work %routed ~home:2", home, projects, false)
+	result, err = ParseQuickCapture("New work %routed ~home:2", home, projects, false)
 	if err != nil {
 		t.Fatalf("parseQuickCapture: %v", err)
 	}
@@ -191,7 +190,7 @@ func TestCaptureDependencyDiagnostics(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := grammar.ParseQuickCapture(tt.input, home, projects, false)
+			_, err := ParseQuickCapture(tt.input, home, projects, false)
 			if err == nil {
 				t.Fatalf("parseQuickCapture(%q) accepted the line", tt.input)
 			}
@@ -206,7 +205,7 @@ func TestCaptureDependencyDiagnostics(t *testing.T) {
 // tilde only opens a reference where a sigil may start.
 func TestCaptureLeavesProseTildesAlone(t *testing.T) {
 	home, routed := dependencyWorkspace()
-	result, err := grammar.ParseQuickCapture("Path to~daily file", home, []*models.Project{home, routed}, false)
+	result, err := ParseQuickCapture("Path to~daily file", home, []*models.Project{home, routed}, false)
 	if err != nil {
 		t.Fatalf("parseQuickCapture: %v", err)
 	}

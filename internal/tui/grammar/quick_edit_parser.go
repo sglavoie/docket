@@ -191,7 +191,7 @@ func (p *quickEditParser) applyProject() bool {
 	if len(tokens) == 0 {
 		return false
 	}
-	target := ResolveProject(tokens[0].Value, p.allProjects)
+	target := resolveProject(tokens[0].Value, p.allProjects)
 	if target == nil {
 		return p.setError(fmt.Sprintf("project not found: %q (use an exact %%project-slug)", tokens[0].Value))
 	}
@@ -212,7 +212,7 @@ func (p *quickEditParser) applyParent() bool {
 		p.result.ParentMode = QuickEditParentRoot
 		return false
 	}
-	parent, err := ResolveParent(token.Value, p.effectiveProject)
+	parent, err := resolveParent(token.Value, p.effectiveProject)
 	if err != nil {
 		return p.setError(err.Error())
 	}

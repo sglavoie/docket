@@ -56,7 +56,7 @@ func QuickEditParentCandidates(input string, task *models.Task, source *models.P
 	}
 	effective := source
 	if tokens := parsed.TokensFor(textgrammar.FieldProject); len(tokens) > 0 {
-		effective = ResolveProject(tokens[0].Value, flattenProjectSets(source, [][]*models.Project{allProjects}))
+		effective = resolveProject(tokens[0].Value, flattenProjectSets(source, [][]*models.Project{allProjects}))
 		if effective == nil {
 			return nil, fmt.Sprintf("project not found: %q (use an exact %%project-slug)", tokens[0].Value)
 		}
@@ -81,7 +81,7 @@ func QuickEditChildCandidates(input string, task *models.Task, source *models.Pr
 	effective := source
 	draft := &QuickEditResult{ParentMode: QuickEditParentPreserve}
 	if tokens := parsed.TokensFor(textgrammar.FieldProject); len(tokens) > 0 {
-		effective = ResolveProject(tokens[0].Value, flattenProjectSets(source, [][]*models.Project{allProjects}))
+		effective = resolveProject(tokens[0].Value, flattenProjectSets(source, [][]*models.Project{allProjects}))
 		if effective == nil {
 			return nil, fmt.Sprintf("project not found: %q (use an exact %%project-slug)", tokens[0].Value)
 		}
@@ -117,11 +117,11 @@ func QuickEditChildCandidates(input string, task *models.Task, source *models.Pr
 // does, but keeps the current mode whenever the token names nothing valid: a
 // broken parent already fails the draft, and completion must still describe the
 // hierarchy the rest of the line produces.
-func draftedQuickEditParent(value string, task *models.Task, source, effective *models.Project, mode QuickEditParentMode) (QuickEditParentMode, *models.Task) {
+func draftedQuickEditParent(value string, task *models.Task, source, effective *models.Project, mode quickEditParentMode) (quickEditParentMode, *models.Task) {
 	if value == "0" {
 		return QuickEditParentRoot, nil
 	}
-	parent, err := ResolveParent(value, effective)
+	parent, err := resolveParent(value, effective)
 	if err != nil || parent == nil || InvalidQuickEditParent(task, source, effective, parent) != "" {
 		return mode, nil
 	}

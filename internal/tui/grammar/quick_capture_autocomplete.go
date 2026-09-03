@@ -75,8 +75,8 @@ func (q *QuickCaptureInput) GetContextSuggestions(partial string) []ACSuggestion
 	return suggestions
 }
 
-// GetPrioritySuggestions returns matching priority options for the partial query.
-func (q *QuickCaptureInput) GetPrioritySuggestions(partial string) []ACSuggestion {
+// getPrioritySuggestions returns matching priority options for the partial query.
+func (q *QuickCaptureInput) getPrioritySuggestions(partial string) []ACSuggestion {
 	var suggestions []ACSuggestion
 	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldPriority)
 	for _, value := range def.Values {
@@ -94,8 +94,8 @@ func (q *QuickCaptureInput) GetPrioritySuggestions(partial string) []ACSuggestio
 	return suggestions
 }
 
-// GetPinSuggestions returns the pin options for the partial query.
-func (q *QuickCaptureInput) GetPinSuggestions(partial string) []ACSuggestion {
+// getPinSuggestions returns the pin options for the partial query.
+func (q *QuickCaptureInput) getPinSuggestions(partial string) []ACSuggestion {
 	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldPinned)
 	suggestions := make([]ACSuggestion, 0, len(def.Values))
 	partialLower := strings.ToLower(partial)
@@ -130,8 +130,8 @@ func (q *QuickCaptureInput) getReviewSuggestions(partial string) []ACSuggestion 
 	return suggestions
 }
 
-// GetDateSuggestions returns common due date options for the partial query.
-func (q *QuickCaptureInput) GetDateSuggestions(partial string) []ACSuggestion {
+// getDateSuggestions returns common due date options for the partial query.
+func (q *QuickCaptureInput) getDateSuggestions(partial string) []ACSuggestion {
 	var suggestions []ACSuggestion
 	partialLower := strings.ToLower(partial)
 	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDue)
@@ -305,8 +305,8 @@ func (q *QuickCaptureInput) getProjectSuggestions(partial string) []ACSuggestion
 	return suggestions
 }
 
-// AcceptSuggestion inserts the selected suggestion into the input.
-func (q *QuickCaptureInput) AcceptSuggestion() {
+// acceptSuggestion inserts the selected suggestion into the input.
+func (q *QuickCaptureInput) acceptSuggestion() {
 	if !q.AC.IsActive() {
 		return
 	}

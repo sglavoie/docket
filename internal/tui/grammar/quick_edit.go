@@ -9,10 +9,10 @@ import (
 	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
-type QuickEditParentMode uint8
+type quickEditParentMode uint8
 
 const (
-	QuickEditParentPreserve QuickEditParentMode = iota
+	QuickEditParentPreserve quickEditParentMode = iota
 	QuickEditParentRoot
 	QuickEditParentSet
 )
@@ -53,7 +53,7 @@ type QuickEditResult struct {
 	ReviewSet bool
 
 	TargetProject *models.Project
-	ParentMode    QuickEditParentMode
+	ParentMode    quickEditParentMode
 	Parent        *models.Task
 	// children is the additive adoption patch in first-occurrence order. An
 	// empty slice means the task keeps exactly the children it already has;

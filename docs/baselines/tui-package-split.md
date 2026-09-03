@@ -113,10 +113,16 @@ the pre-split tree and is consistently pessimistic.
 | `pulse` | 13 | 12 | 12 |
 | `chrome` | 61 | 50 | 48 |
 | `coordinator` | 5 | 3 | 3 |
-| `grammar` | 59 | 196 | pending (Session 2.12) |
+| `grammar` | 59 | 196 | 154 |
 
-Running total against 631: **102**. `grammar` is not in it yet: its tests are
-still in the shell, so it has no last-column number to add. The middle column
+Running total against 631: **160**. `grammar` contributes 58, not 154, because
+its two counted columns are on a different basis from every row above them:
+Session 2.11 counted 196 promoted names by including methods and struct fields,
+where the other rows count package-level declarations and name their members in
+prose. Session 2.12 withdrew 42 of the 196 — 27 declarations and 15 members —
+so the declaration-only pair is 85 → 58 and the member pair is 111 → 96. The
+package's whole exported surface, promoted or pre-existing, is 208: 67
+declarations and 141 members. The middle column
 minus the last is the
 test-only promotion the ruling reclaims — 27 for `theme`, none until `chrome`,
 because `textfit` moved its three test files down in the same session, `taskref`

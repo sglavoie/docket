@@ -1,4 +1,4 @@
-package tui
+package grammar
 
 import (
 	"fmt"
@@ -7,11 +7,24 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/sglavoie/tt/internal/tui/grammar"
+
+	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
+// captureDestinationNamesForTest is the shell helper of the same name, carried
+// down with the one test that reads it. It is three lines of registry lookup, so
+// duplicating it is cheaper than exporting a shell test harness across the
+// boundary the split just drew.
+func captureDestinationNamesForTest() []string {
+	definition, ok := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDestination)
+	if !ok {
+		return nil
+	}
+	return definition.Values
+}
+
 func TestQuickCaptureDestinationSuggestionsIncludeAllDestinations(t *testing.T) {
-	q := &grammar.QuickCaptureInput{}
+	q := &QuickCaptureInput{}
 	suggestions := q.GetDestinationSuggestions("")
 
 	want := captureDestinationNamesForTest()
@@ -26,7 +39,7 @@ func TestQuickCaptureDestinationSuggestionsIncludeAllDestinations(t *testing.T) 
 }
 
 func TestQuickCaptureDestinationSuggestionsFilterByPartial(t *testing.T) {
-	q := &grammar.QuickCaptureInput{}
+	q := &QuickCaptureInput{}
 
 	tests := []struct {
 		partial string
@@ -55,39 +68,39 @@ func TestQuickCaptureDestinationSuggestionsFilterByPartial(t *testing.T) {
 func TestDetectTriggerPrefersLongestMatchingText(t *testing.T) {
 	tests := []struct {
 		name     string
-		triggers []grammar.ACTrigger
+		triggers []ACTrigger
 	}{
 		{
 			name: "short trigger first",
-			triggers: []grammar.ACTrigger{
-				{Text: "#", Mode: grammar.ACModeTag},
-				{Text: "##", Mode: grammar.ACModeProject},
+			triggers: []ACTrigger{
+				{Text: "#", Mode: ACModeTag},
+				{Text: "##", Mode: acModeProject},
 			},
 		},
 		{
 			name: "long trigger first",
-			triggers: []grammar.ACTrigger{
-				{Text: "##", Mode: grammar.ACModeProject},
-				{Text: "#", Mode: grammar.ACModeTag},
+			triggers: []ACTrigger{
+				{Text: "##", Mode: acModeProject},
+				{Text: "#", Mode: ACModeTag},
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mode, pos, partial := grammar.DetectTrigger("title ##frontend", tt.triggers)
-			if mode != grammar.ACModeProject || pos != len("title ") || partial != "frontend" {
-				t.Fatalf("DetectTrigger() = (%d, %d, %q), want (%d, %d, %q)", mode, pos, partial, grammar.ACModeProject, len("title "), "frontend")
+			mode, pos, partial := DetectTrigger("title ##frontend", tt.triggers)
+			if mode != acModeProject || pos != len("title ") || partial != "frontend" {
+				t.Fatalf("DetectTrigger() = (%d, %d, %q), want (%d, %d, %q)", mode, pos, partial, acModeProject, len("title "), "frontend")
 			}
 		})
 	}
 }
 
 func TestAutocompleteAcceptsMultiByteTriggerText(t *testing.T) {
-	ac := grammar.AutocompleteState{
-		Mode:       grammar.ACModeProject,
+	ac := AutocompleteState{
+		Mode:       acModeProject,
 		TriggerPos: len("title "),
-		Items:      []grammar.ACSuggestion{{Value: "frontend"}},
+		Items:      []ACSuggestion{{Value: "frontend"}},
 	}
 
 	if got, want := ac.BuildAcceptedInput("title ##fro", "##"), "title ##frontend "; got != want {
@@ -96,13 +109,13 @@ func TestAutocompleteAcceptsMultiByteTriggerText(t *testing.T) {
 }
 
 func TestBoundedAutocompleteUsesEveryAvailableRow(t *testing.T) {
-	items := make([]grammar.ACSuggestion, 10)
+	items := make([]ACSuggestion, 10)
 	for i := range items {
-		items[i] = grammar.ACSuggestion{Display: fmt.Sprintf("item %d", i), Value: fmt.Sprintf("%d", i)}
+		items[i] = ACSuggestion{Display: fmt.Sprintf("item %d", i), Value: fmt.Sprintf("%d", i)}
 	}
 
 	t.Run("all items fit", func(t *testing.T) {
-		ac := grammar.AutocompleteState{Mode: grammar.ACModeDestination, Items: items}
+		ac := AutocompleteState{Mode: ACModeDestination, Items: items}
 		rendered := ansi.Strip(ac.RenderDropdownWithLimit("", 10))
 		if lipgloss.Height(rendered) != 10 || strings.Contains(rendered, "more") {
 			t.Fatalf("fitting dropdown should show all ten rows without hints:\n%s", rendered)
@@ -123,7 +136,7 @@ func TestBoundedAutocompleteUsesEveryAvailableRow(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ac := grammar.AutocompleteState{Mode: grammar.ACModeDestination, Items: items, Cursor: tt.cursor}
+			ac := AutocompleteState{Mode: ACModeDestination, Items: items, Cursor: tt.cursor}
 			rendered := ansi.Strip(ac.RenderDropdownWithLimit("", 5))
 			if got := lipgloss.Height(rendered); got != 5 {
 				t.Fatalf("dropdown height = %d, want 5:\n%s", got, rendered)

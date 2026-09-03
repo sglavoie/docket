@@ -13,103 +13,14 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
-	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
-func TestCaptureAutocompleteProjectsCanonicalRegistry(t *testing.T) {
-	definitions := textgrammar.Definitions(textgrammar.SurfaceCapture)
-	triggers := grammar.QuickCaptureTriggers(false)
-	if len(triggers) != len(definitions) {
-		t.Fatalf("autocomplete triggers = %d, want %d registry definitions", len(triggers), len(definitions))
-	}
-	for i, definition := range definitions {
-		if got, want := triggers[i].Text, definition.Trigger; got != want {
-			t.Errorf("trigger %d = %q, want %q for %s", i, got, want, definition.Field)
-		}
-		if got, want := triggers[i].Mode, grammar.AutocompleteModeForField(definition.Field); got != want {
-			t.Errorf("mode for %s = %d, want %d", definition.Field, got, want)
-		}
-	}
-
-	withoutProject := grammar.QuickCaptureTriggers(true)
-	for _, trigger := range withoutProject {
-		if trigger.Mode == grammar.ACModeProject {
-			t.Fatal("project trigger remained active when project routing was disabled")
-		}
-	}
-	if len(withoutProject) != len(triggers)-1 {
-		t.Fatalf("project-disabled triggers = %d, want %d", len(withoutProject), len(triggers)-1)
-	}
-}
-
-func TestStaticAutocompleteValuesComeFromCanonicalRegistry(t *testing.T) {
-	q := &grammar.QuickCaptureInput{}
-	tests := []struct {
-		field       textgrammar.Field
-		suggestions []grammar.ACSuggestion
-	}{
-		{textgrammar.FieldPriority, q.GetPrioritySuggestions("")},
-		{textgrammar.FieldDue, q.GetDateSuggestions("")},
-		{textgrammar.FieldDestination, q.GetDestinationSuggestions("")},
-		{textgrammar.FieldPinned, q.GetPinSuggestions("")},
-	}
-	for _, tt := range tests {
-		definition, ok := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, tt.field)
-		if !ok {
-			t.Fatalf("missing definition for %s", tt.field)
-		}
-		values := make([]string, len(tt.suggestions))
-		for i, suggestion := range tt.suggestions {
-			values[i] = suggestion.Value
-		}
-		if !slices.Equal(values, definition.Values) {
-			t.Errorf("%s suggestions = %v, want registry values %v", tt.field, values, definition.Values)
-		}
-	}
-}
-
-func TestSyntaxGuideExamplesAndGroupsComeFromCanonicalRegistry(t *testing.T) {
-	project := quickCaptureTestProject()
-	// The routed project carries a task because the dependency examples teach the
-	// qualified alias, which is only resolvable when the named project has one.
-	routed := &models.Project{
-		ID: "routed", Name: "Routed", Slug: "project-slug",
-		Tasks: []*models.Task{{ID: "routed-1", ShortID: 1, Title: "Routed work"}},
-	}
-	q := &grammar.QuickCaptureInput{Width: 120}
-
-	var entries []grammar.SyntaxGuideEntry
-	for _, group := range q.SyntaxGuideGroups() {
-		entries = append(entries, group.Entries...)
-	}
-	// Teach order, not parse order: the composer guide and the `?` grammar
-	// section are the two consumers that read GuideDefinitions, because the
-	// attachment sigil has to be peeled before #tag and must not lead either
-	// teaching surface on that account.
-	definitions := textgrammar.GuideDefinitions(textgrammar.SurfaceCapture)
-	if len(entries) != len(definitions) {
-		t.Fatalf("syntax entries = %d, want %d registry definitions", len(entries), len(definitions))
-	}
-	for i, definition := range definitions {
-		entry := entries[i]
-		if got, want := entry.Forms, strings.Join(definition.Forms, " · "); got != want {
-			t.Errorf("%s forms = %q, want %q", definition.Field, got, want)
-		}
-		if got, want := entry.Examples, strings.Join(definition.Examples, "  "); got != want {
-			t.Errorf("%s examples = %q, want %q", definition.Field, got, want)
-		}
-		if len(entry.Validation) != len(definition.Examples) {
-			t.Errorf("%s validation examples = %d, want %d", definition.Field, len(entry.Validation), len(definition.Examples))
-		}
-		for _, input := range entry.Validation {
-			if _, err := grammar.ParseQuickCapture(input, project, []*models.Project{routed}, false); err != nil {
-				t.Errorf("registry-backed syntax example %q does not parse: %v", input, err)
-			}
-		}
-	}
-}
+// The capture half of this contract — the autocomplete triggers, the static
+// suggestion values, and the composer's syntax guide — moved into
+// internal/tui/grammar with the surfaces it projects. What stays here is the
+// half that names shell declarations: the `?` grammar section, the outline
+// header forms, and the file scan that holds both sides to one registry.
 
 // TestHelpGrammarSectionComesFromCanonicalRegistry holds the `?` grammar section
 // to the same teach order the composer guide reads, over the union of the three

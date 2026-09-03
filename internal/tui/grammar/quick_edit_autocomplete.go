@@ -19,10 +19,10 @@ func (q *QuickEditComponent) cursorByteOffset() int {
 	return len(string(runes[:position]))
 }
 
-func (q *QuickEditComponent) RefreshAutocomplete() {
+func (q *QuickEditComponent) refreshAutocomplete() {
 	value := q.Input.Value()
 	cursorByte := q.cursorByteOffset()
-	mode, pos, partial, triggerText, removeTag := detectQuickEditTrigger(value[:cursorByte], q.Triggers)
+	mode, pos, partial, triggerText, removeTag := detectQuickEditTrigger(value[:cursorByte], q.triggers)
 	if mode == ACModeNone {
 		q.AC.Clear()
 		q.triggerText = ""
@@ -53,7 +53,7 @@ func (q *QuickEditComponent) suggestions(mode, triggerPos int, partial string, p
 		}
 		used := parsedPrefix.TokensFor(field)
 		return FilterUsedTagSuggestions(quickEditTagSuggestions(values, partial, prefix), used)
-	case ACModeParent:
+	case acModeParent:
 		parents, _ := QuickEditParentCandidates(q.Input.Value(), q.task, q.project, q.projects)
 		items := quickEditClearSuggestions(textgrammar.FieldParent, partial)
 		return append(items, quickEditStructuralSuggestions(parents, partial, textgrammar.FieldParent)...)
@@ -66,9 +66,9 @@ func (q *QuickEditComponent) suggestions(mode, triggerPos int, partial string, p
 		return quickEditStructuralSuggestions(children, partial, textgrammar.FieldChild)
 	case ACModeDependency, ACModeRemoveDependency:
 		return q.dependencySuggestions(mode, triggerPos, partial)
-	case ACModeProject:
+	case acModeProject:
 		return quickEditProjectSuggestions(q.projects, partial)
-	case ACModePriority, ACModeDate, ACModeDestination, ACModePin:
+	case acModePriority, acModeDate, ACModeDestination, acModePin:
 		return quickEditStaticSuggestions(mode, partial)
 	default:
 		return nil
@@ -127,7 +127,7 @@ func (q *QuickEditComponent) dependencyReferences() []models.TaskReference {
 func (q *QuickEditComponent) effectiveProject() *models.Project {
 	parsed := textgrammar.Parse(q.Input.Value(), textgrammar.SurfaceEdit)
 	if tokens := parsed.TokensFor(textgrammar.FieldProject); len(tokens) > 0 {
-		if project := ResolveProject(tokens[0].Value, q.projects); project != nil {
+		if project := resolveProject(tokens[0].Value, q.projects); project != nil {
 			return project
 		}
 	}
@@ -141,7 +141,7 @@ func (q *QuickEditComponent) AcceptSuggestion() {
 	cursorByte := q.cursorByteOffset()
 	triggerText := q.triggerText
 	if triggerText == "" {
-		triggerText = TriggerCharForMode(q.AC.Mode, q.Triggers)
+		triggerText = TriggerCharForMode(q.AC.Mode, q.triggers)
 	}
 	selected := q.AC.Selected()
 	value := q.AC.BuildAcceptedInputAt(q.Input.Value(), cursorByte, triggerText)

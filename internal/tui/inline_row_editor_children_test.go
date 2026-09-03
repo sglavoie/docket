@@ -88,7 +88,7 @@ func TestInlineRowEditorChildSuggestionsWithholdEveryReferenceStrictParsingRefus
 	q := draftedRowEditor(t, "Child <", child, project, projects)
 
 	if q.AC.Mode != grammar.ACModeChild {
-		t.Fatalf("autocomplete mode = %d, want acModeChild", q.AC.Mode)
+		t.Fatalf("autocomplete mode = %d, want ACModeChild", q.AC.Mode)
 	}
 	displays := suggestionDisplays(q.AC.Items)
 	if len(displays) == 0 || displays[0] != "<3 Sibling" {

@@ -1,11 +1,10 @@
-package tui
+package grammar
 
 import (
 	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 func TestCrossProjectCapture(t *testing.T) {
@@ -70,7 +69,7 @@ func TestCrossProjectCapture(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := grammar.ParseQuickCapture(tt.input, currentProject, allProjects, false)
+			result, err := ParseQuickCapture(tt.input, currentProject, allProjects, false)
 
 			if tt.wantErr {
 				if err == nil {
@@ -104,8 +103,8 @@ func TestCrossProjectCapture(t *testing.T) {
 				}
 			}
 
-			if result.TargetProjectName != tt.wantTargetName {
-				t.Errorf("targetProjectName = %q, want %q", result.TargetProjectName, tt.wantTargetName)
+			if result.targetProjectName != tt.wantTargetName {
+				t.Errorf("targetProjectName = %q, want %q", result.targetProjectName, tt.wantTargetName)
 			}
 			if tt.wantParentID != nil && (result.ParentID == nil || *result.ParentID != *tt.wantParentID) {
 				t.Errorf("parentID = %v, want %q", result.ParentID, *tt.wantParentID)

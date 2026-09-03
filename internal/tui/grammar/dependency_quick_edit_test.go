@@ -1,4 +1,4 @@
-package tui
+package grammar
 
 import (
 	"slices"
@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 func TestQuickEditDependencyPatchHalves(t *testing.T) {
@@ -47,7 +46,7 @@ func TestQuickEditDependencyPatchHalves(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := grammar.ParseQuickEdit(tt.input, task, home, projects)
+			result, err := ParseQuickEdit(tt.input, task, home, projects)
 			if err != nil {
 				t.Fatalf("parseQuickEdit(%q): %v", tt.input, err)
 			}
@@ -89,7 +88,7 @@ func TestQuickEditDependencyDiagnostics(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := grammar.ParseQuickEdit(tt.input, task, home, projects)
+			_, err := ParseQuickEdit(tt.input, task, home, projects)
 			if err == nil {
 				t.Fatalf("parseQuickEdit(%q) accepted the line", tt.input)
 			}
@@ -110,7 +109,7 @@ func TestQuickEditDependencyPreviewShowsTheResultingSet(t *testing.T) {
 
 	previewLocators := func(input string) []string {
 		t.Helper()
-		result, err := grammar.ParseQuickEdit(input, task, home, projects)
+		result, err := ParseQuickEdit(input, task, home, projects)
 		if err != nil {
 			t.Fatalf("parseQuickEdit(%q): %v", input, err)
 		}
@@ -164,7 +163,7 @@ func TestQuickEditAddExistingTerminalOrUnavailableIsNoOp(t *testing.T) {
 	}
 	for _, tt := range accepted {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := grammar.ParseQuickEdit(tt.input, task, home, projects)
+			result, err := ParseQuickEdit(tt.input, task, home, projects)
 			if err != nil {
 				t.Fatalf("parseQuickEdit(%q): %v", tt.input, err)
 			}
@@ -198,7 +197,7 @@ func TestQuickEditAddExistingTerminalOrUnavailableIsNoOp(t *testing.T) {
 	}
 	for _, tt := range refused {
 		t.Run(tt.name, func(t *testing.T) {
-			if _, err := grammar.ParseQuickEdit(tt.input, bare, home, projects); err == nil {
+			if _, err := ParseQuickEdit(tt.input, bare, home, projects); err == nil {
 				t.Fatalf("parseQuickEdit(%q) accepted the line", tt.input)
 			} else if !strings.Contains(err.Error(), tt.want) {
 				t.Fatalf("error = %q, want it to contain %q", err, tt.want)

@@ -32,9 +32,9 @@ func CollectTagNamesForProject(project *models.Project) []string {
 	return names
 }
 
-// CollectContextNamesForProject returns the sorted unique task contexts used in
+// collectContextNamesForProject returns the sorted unique task contexts used in
 // a project. Context has no project catalog, so task usage is its full vocabulary.
-func CollectContextNamesForProject(project *models.Project) []string {
+func collectContextNamesForProject(project *models.Project) []string {
 	if project == nil {
 		return nil
 	}
