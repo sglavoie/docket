@@ -1,4 +1,4 @@
-package tui
+package grammar
 
 import (
 	"slices"
@@ -33,11 +33,11 @@ func (p *quickCaptureParser) parseDependencyTokens(add, remove []textgrammar.Tok
 		return
 	}
 	for _, token := range add {
-		if token.Value == dependencyClearValue {
+		if token.Value == DependencyClearValue {
 			p.failf("%s%s is not available when capturing; a new task starts without dependencies", definition.Trigger, token.Value)
 			return
 		}
-		ref, err := resolveDependencyReference(token.Value, p.project, p.allProjects)
+		ref, err := ResolveDependencyReference(token.Value, p.project, p.allProjects)
 		if err != nil {
 			if p.failf("%s", err) {
 				return
@@ -45,13 +45,13 @@ func (p *quickCaptureParser) parseDependencyTokens(add, remove []textgrammar.Tok
 			continue
 		}
 		if !ref.resolved {
-			if p.failf("%s", dependencyNotFoundMessage(definition.Trigger, token.Value)) {
+			if p.failf("%s", DependencyNotFoundMessage(definition.Trigger, token.Value)) {
 				return
 			}
 			continue
 		}
 		if ref.terminal {
-			if p.failf("cannot depend on %s: it is already closed", ref.label()) {
+			if p.failf("cannot depend on %s: it is already closed", ref.Label()) {
 				return
 			}
 			continue
@@ -74,35 +74,35 @@ func (p *quickCaptureParser) parseDependencyTokens(add, remove []textgrammar.Tok
 func (p *quickCaptureParser) parseOutlineDependencyTokens(add, remove []textgrammar.Token, definition, removeDefinition textgrammar.Definition) {
 	clears := 0
 	for _, token := range add {
-		if token.Value == dependencyClearValue {
+		if token.Value == DependencyClearValue {
 			clears++
 		}
 	}
 	if clears > 0 {
 		if clears != len(add) || len(remove) > 0 {
-			p.failf("%s%s is the empty set and cannot be combined with adding or removing dependencies", definition.Trigger, dependencyClearValue)
+			p.failf("%s%s is the empty set and cannot be combined with adding or removing dependencies", definition.Trigger, DependencyClearValue)
 		}
 		return
 	}
 
 	removed := make([]app.TaskLocator, 0, len(remove))
 	for _, token := range remove {
-		if token.Value == dependencyClearValue {
-			p.failf("%s%s is not a clear form; use %s%s to clear every dependency", removeDefinition.Trigger, token.Value, definition.Trigger, dependencyClearValue)
+		if token.Value == DependencyClearValue {
+			p.failf("%s%s is not a clear form; use %s%s to clear every dependency", removeDefinition.Trigger, token.Value, definition.Trigger, DependencyClearValue)
 			return
 		}
 		ref, ok := p.resolveOutlineDependency(token, removeDefinition.Trigger)
 		if !ok {
 			return
 		}
-		removed = append(removed, ref.locator)
+		removed = append(removed, ref.Locator)
 	}
 	for _, token := range add {
 		ref, ok := p.resolveOutlineDependency(token, definition.Trigger)
 		if !ok {
 			return
 		}
-		if slices.Contains(removed, ref.locator) {
+		if slices.Contains(removed, ref.Locator) {
 			continue
 		}
 		p.result.dependencies = appendDependencyRef(p.result.dependencies, ref)
@@ -113,15 +113,15 @@ func (p *quickCaptureParser) parseOutlineDependencyTokens(add, remove []textgram
 // cannot resolve is still accepted when it is well-shaped, which is what lets the
 // project-id:task-id fallback the dump printed for an unavailable target come
 // back in unchanged.
-func (p *quickCaptureParser) resolveOutlineDependency(token textgrammar.Token, trigger string) (capturedDependencyRef, bool) {
-	ref, err := resolveDependencyReference(token.Value, p.project, p.allProjects)
+func (p *quickCaptureParser) resolveOutlineDependency(token textgrammar.Token, trigger string) (CapturedDependencyRef, bool) {
+	ref, err := ResolveDependencyReference(token.Value, p.project, p.allProjects)
 	if err != nil {
 		p.failf("%s", err)
-		return capturedDependencyRef{}, false
+		return CapturedDependencyRef{}, false
 	}
-	if ref.locator.TaskID == "" {
-		p.failf("%s", dependencyNotFoundMessage(trigger, token.Value))
-		return capturedDependencyRef{}, false
+	if ref.Locator.TaskID == "" {
+		p.failf("%s", DependencyNotFoundMessage(trigger, token.Value))
+		return CapturedDependencyRef{}, false
 	}
 	return ref, true
 }

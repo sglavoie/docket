@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 func TestTaskComposerHeaderShowsEffectiveRoute(t *testing.T) {
@@ -23,8 +24,8 @@ func TestTaskComposerHeaderShowsEffectiveRoute(t *testing.T) {
 		Shared:             TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
 	}, nil)
 	composer.SetSize(80, 30)
-	composer.input.SetValue("Write regression test %tt $doing")
-	composer.updatePreview()
+	composer.Input.SetValue("Write regression test %tt $doing")
+	composer.UpdatePreview()
 
 	project, destination := composer.effectiveRouteHeader()
 	if project != "tt" || destination != models.StateDoing.Icon()+" $doing" {
@@ -47,8 +48,8 @@ func TestTaskComposerRetainsCtrlPProjectCycling(t *testing.T) {
 	}, nil)
 
 	composer.Update(syntheticCtrlKey('p'))
-	if composer.project == nil || composer.project.ID != beta.ID {
-		t.Fatalf("composer Ctrl+P project = %#v, want Beta", composer.project)
+	if composer.Project == nil || composer.Project.ID != beta.ID {
+		t.Fatalf("composer Ctrl+P project = %#v, want Beta", composer.Project)
 	}
 }
 
@@ -62,7 +63,7 @@ func TestTaskComposerDueTodayRoutesCaptureToToday(t *testing.T) {
 			Destination: app.CaptureDestinationBacklog,
 		},
 	}, nil)
-	composer.input.SetValue("Due today @today")
+	composer.Input.SetValue("Due today @today")
 
 	requests, ok := composer.parseCompactLines()
 	if !ok || len(requests) != 1 {
@@ -101,7 +102,7 @@ func TestTaskComposerHeaderAggregatesMultilineRoutes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			composer.input.SetValue(tt.input)
+			composer.Input.SetValue(tt.input)
 			project, destination := composer.effectiveRouteHeader()
 			if project != tt.wantProject || destination != tt.wantDestination {
 				t.Fatalf("effective header = %q / %q, want %q / %q", project, destination, tt.wantProject, tt.wantDestination)
@@ -128,32 +129,32 @@ func TestTaskComposerAutocompleteSuppressesUsedSingletonsPerLine(t *testing.T) {
 		"Task %target %",
 		"Task >1 >",
 	} {
-		composer.input.SetValue(input)
-		composer.refreshAutocomplete()
-		if composer.ac.IsActive() {
-			t.Errorf("autocomplete remained active for used singleton in %q: %+v", input, composer.ac)
+		composer.Input.SetValue(input)
+		composer.RefreshAutocomplete()
+		if composer.AC.IsActive() {
+			t.Errorf("autocomplete remained active for used singleton in %q: %+v", input, composer.AC)
 		}
 	}
 
-	composer.input.SetValue("First $doing\nSecond $")
-	composer.refreshAutocomplete()
-	if !composer.ac.IsActive() || composer.ac.Mode != acModeDestination {
-		t.Fatalf("singleton on another task line suppressed destination autocomplete: %+v", composer.ac)
+	composer.Input.SetValue("First $doing\nSecond $")
+	composer.RefreshAutocomplete()
+	if !composer.AC.IsActive() || composer.AC.Mode != grammar.ACModeDestination {
+		t.Fatalf("singleton on another task line suppressed destination autocomplete: %+v", composer.AC)
 	}
 }
 
 func TestTaskComposerAutocompleteKeepsUnusedTagsRepeatable(t *testing.T) {
 	project := &models.Project{ID: "project", Name: "Project"}
 	composer := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, nil)
-	composer.tagCache = []string{"backend", "frontend", "urgent"}
-	composer.input.SetValue("Task #backend #")
-	composer.refreshAutocomplete()
+	composer.TagCache = []string{"backend", "frontend", "urgent"}
+	composer.Input.SetValue("Task #backend #")
+	composer.RefreshAutocomplete()
 
-	if !composer.ac.IsActive() || composer.ac.Mode != acModeTag {
-		t.Fatalf("repeatable tag autocomplete is inactive: %+v", composer.ac)
+	if !composer.AC.IsActive() || composer.AC.Mode != grammar.ACModeTag {
+		t.Fatalf("repeatable tag autocomplete is inactive: %+v", composer.AC)
 	}
-	values := make([]string, len(composer.ac.Items))
-	for i, item := range composer.ac.Items {
+	values := make([]string, len(composer.AC.Items))
+	for i, item := range composer.AC.Items {
 		values[i] = item.Value
 	}
 	if slices.Contains(values, "backend") || !slices.Contains(values, "frontend") || !slices.Contains(values, "urgent") {
@@ -165,9 +166,9 @@ func TestTaskComposerAutocompleteUsesAvailableHeight(t *testing.T) {
 	project := &models.Project{ID: "project", Name: "Project"}
 	composer := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, nil)
 	composer.SetSize(80, 30)
-	composer.input.SetValue("Task $")
-	composer.updatePreview()
-	composer.refreshAutocomplete()
+	composer.Input.SetValue("Task $")
+	composer.UpdatePreview()
+	composer.RefreshAutocomplete()
 
 	tall := ansi.Strip(composer.View().Content)
 	if strings.Contains(tall, "more") || !strings.Contains(tall, "$canceled") {
@@ -188,8 +189,8 @@ func TestTaskComposerInputDividerSpacing(t *testing.T) {
 	project := &models.Project{ID: "project", Name: "Project"}
 	composer := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, nil)
 	composer.SetSize(80, 30)
-	composer.input.SetValue("Draft task")
-	composer.updatePreview()
+	composer.Input.SetValue("Draft task")
+	composer.UpdatePreview()
 
 	lines := strings.Split(ansi.Strip(composer.View().Content), "\n")
 	inputLine := -1
@@ -252,16 +253,16 @@ func TestTaskComposerMultilineValidationIsAtomicAndUsesSourceLines(t *testing.T)
 	}, nil)
 	composer.SetCaptureCoordinator(env.features.Capture)
 	input := "First task\n\n!1\nThird task"
-	composer.input.SetValue(input)
+	composer.Input.SetValue(input)
 
 	if cmd := composer.createCompact(false); cmd != nil {
 		t.Fatalf("invalid batch returned commit command %T", cmd())
 	}
-	if len(composer.errors) != 1 || composer.errors[0].line != 3 {
+	if len(composer.errors) != 1 || composer.errors[0].Line != 3 {
 		t.Fatalf("errors = %+v, want source line 3", composer.errors)
 	}
-	if composer.input.Value() != input {
-		t.Fatalf("failed batch changed input: %q", composer.input.Value())
+	if composer.Input.Value() != input {
+		t.Fatalf("failed batch changed Input: %q", composer.Input.Value())
 	}
 	if got := len(env.reload(t).Tasks); got != 0 {
 		t.Fatalf("atomic validation created %d tasks", got)

@@ -1,4 +1,4 @@
-package tui
+package grammar
 
 import (
 	"fmt"
@@ -11,22 +11,22 @@ import (
 	"github.com/sglavoie/tt/internal/tui/textfit"
 )
 
-// dependencyCandidate is one row a ~ or -~ completion may offer. A removal
+// DependencyCandidate is one row a ~ or -~ completion may offer. A removal
 // candidate whose target this workspace never loaded carries the locator alone,
 // because a stored reference must stay droppable even when nothing can be said
 // about what it points at.
-type dependencyCandidate struct {
-	project *models.Project
-	task    *models.Task
-	locator app.TaskLocator
+type DependencyCandidate struct {
+	Project *models.Project
+	Task    *models.Task
+	Locator app.TaskLocator
 }
 
-// dependencyAdditionCandidates offers every open task in every loaded project.
+// DependencyAdditionCandidates offers every open task in every loaded project.
 // An addition records a soft reference, so the only requirements are the ones
 // the application layer enforces: a real, loaded, still-open target that is not
 // the source task and is not already referenced.
-func dependencyAdditionCandidates(projects []*models.Project, sourceTaskID string, excluded map[app.TaskLocator]bool) []dependencyCandidate {
-	candidates := make([]dependencyCandidate, 0, len(projects))
+func DependencyAdditionCandidates(projects []*models.Project, sourceTaskID string, excluded map[app.TaskLocator]bool) []DependencyCandidate {
+	candidates := make([]DependencyCandidate, 0, len(projects))
 	for _, project := range projects {
 		if project == nil || project.Archived {
 			continue
@@ -39,49 +39,49 @@ func dependencyAdditionCandidates(projects []*models.Project, sourceTaskID strin
 			if excluded[locator] {
 				continue
 			}
-			candidates = append(candidates, dependencyCandidate{project: project, task: task, locator: locator})
+			candidates = append(candidates, DependencyCandidate{Project: project, Task: task, Locator: locator})
 		}
 	}
 	return candidates
 }
 
-// dependencyRemovalCandidates offers exactly the references a task carries, in
+// DependencyRemovalCandidates offers exactly the references a task carries, in
 // stored order. Terminal and unloaded targets are deliberately included: they
 // are the references a user is most likely to be dropping, and withholding them
 // would leave the set editable only by hand.
-func dependencyRemovalCandidates(task *models.Task, projects []*models.Project, excluded map[app.TaskLocator]bool) []dependencyCandidate {
+func DependencyRemovalCandidates(task *models.Task, projects []*models.Project, excluded map[app.TaskLocator]bool) []DependencyCandidate {
 	if task == nil {
 		return nil
 	}
-	candidates := make([]dependencyCandidate, 0, len(task.Dependencies))
+	candidates := make([]DependencyCandidate, 0, len(task.Dependencies))
 	for _, reference := range task.Dependencies {
 		locator := app.LocatorForReference(reference)
 		if excluded[locator] {
 			continue
 		}
-		candidate := dependencyCandidate{locator: locator}
-		if project := projectByStableID(reference.ProjectID, projects); project != nil {
-			candidate.project = project
-			candidate.task = project.GetTaskByID(reference.TaskID)
+		candidate := DependencyCandidate{Locator: locator}
+		if project := ProjectByStableID(reference.ProjectID, projects); project != nil {
+			candidate.Project = project
+			candidate.Task = project.GetTaskByID(reference.TaskID)
 		}
 		candidates = append(candidates, candidate)
 	}
 	return candidates
 }
 
-// dependencySuggestions ranks candidates by project name and slug, short ID, and
+// DependencySuggestions ranks candidates by project name and slug, short ID, and
 // title, all scored as one search text so a query may name any of them. The
 // inserted value is the local alias when the target already lives in the
 // effective project and a qualified one otherwise, which is what keeps a
 // same-project reference short without ever making it ambiguous.
-func dependencySuggestions(candidates []dependencyCandidate, partial string, effective *models.Project, trigger string, titleWidth int) []ACSuggestion {
+func DependencySuggestions(candidates []DependencyCandidate, partial string, effective *models.Project, trigger string, titleWidth int) []ACSuggestion {
 	type scored struct {
-		candidate dependencyCandidate
+		candidate DependencyCandidate
 		score     int
 	}
 	items := make([]scored, 0, len(candidates))
 	for _, candidate := range candidates {
-		score := fuzzy.Score(dependencyCandidateSearchText(candidate), partial)
+		score := fuzzy.Score(DependencyCandidateSearchText(candidate), partial)
 		if partial == "" || score > 0 {
 			items = append(items, scored{candidate, score})
 		}
@@ -98,31 +98,31 @@ func dependencySuggestions(candidates []dependencyCandidate, partial string, eff
 	return result
 }
 
-func dependencyCandidateSearchText(candidate dependencyCandidate) string {
-	if candidate.task == nil {
-		return candidate.locator.Reference().Locator()
+func DependencyCandidateSearchText(candidate DependencyCandidate) string {
+	if candidate.Task == nil {
+		return candidate.Locator.Reference().Locator()
 	}
 	name, slug := "", ""
-	if candidate.project != nil {
-		name, slug = candidate.project.Name, candidate.project.Slug
+	if candidate.Project != nil {
+		name, slug = candidate.Project.Name, candidate.Project.Slug
 	}
-	return fmt.Sprintf("%s %s #%d %s", name, slug, candidate.task.ShortID, candidate.task.Title)
+	return fmt.Sprintf("%s %s #%d %s", name, slug, candidate.Task.ShortID, candidate.Task.Title)
 }
 
 // dependencyCandidateRow renders one candidate as the token it inserts followed
 // by the project, state, short ID, and title that identify it.
-func dependencyCandidateRow(candidate dependencyCandidate, effective *models.Project, trigger string, titleWidth int) (value, display string) {
-	if candidate.task == nil {
-		value = candidate.locator.Reference().Locator()
+func dependencyCandidateRow(candidate DependencyCandidate, effective *models.Project, trigger string, titleWidth int) (value, display string) {
+	if candidate.Task == nil {
+		value = candidate.Locator.Reference().Locator()
 		return value, fmt.Sprintf("%s%s (unavailable)", trigger, value)
 	}
-	value = dependencyAlias(candidate.project, candidate.task, effective)
-	title := textfit.TruncateToVisualWidth(candidate.task.Title, max(titleWidth, 10))
+	value = DependencyAlias(candidate.Project, candidate.Task, effective)
+	title := textfit.TruncateToVisualWidth(candidate.Task.Title, max(titleWidth, 10))
 	name := ""
-	if candidate.project != nil {
-		name = candidate.project.Name
+	if candidate.Project != nil {
+		name = candidate.Project.Name
 	}
-	return value, fmt.Sprintf("%s%s %s %s #%d %s", trigger, value, candidate.task.State().Icon(), name, candidate.task.ShortID, title)
+	return value, fmt.Sprintf("%s%s %s %s #%d %s", trigger, value, candidate.Task.State().Icon(), name, candidate.Task.ShortID, title)
 }
 
 // draftedDependencyLocators resolves the dependency tokens already accepted on a
@@ -136,11 +136,11 @@ func draftedDependencyLocators(parsed textgrammar.Result, field textgrammar.Fiel
 	}
 	used := make(map[app.TaskLocator]bool, len(tokens))
 	for _, token := range tokens {
-		ref, err := resolveDependencyReference(token.Value, effective, allProjects)
-		if err != nil || ref.locator.TaskID == "" {
+		ref, err := ResolveDependencyReference(token.Value, effective, allProjects)
+		if err != nil || ref.Locator.TaskID == "" {
 			continue
 		}
-		used[ref.locator] = true
+		used[ref.Locator] = true
 	}
 	return used
 }

@@ -1,4 +1,4 @@
-package tui
+package grammar
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ func appendUnique(values []string, value string) []string {
 	return values
 }
 
-func projectLabel(project *models.Project) string {
+func ProjectLabel(project *models.Project) string {
 	if project == nil {
 		return ""
 	}
@@ -25,10 +25,10 @@ func projectLabel(project *models.Project) string {
 	return project.Name
 }
 
-// validQuickEditParents is also the dynamic completion source for the row
+// ValidQuickEditParents is also the dynamic completion source for the row
 // editor: it derives candidates from the effective project and applies the same
 // cycle and depth checks as strict parsing.
-func validQuickEditParents(task *models.Task, source, effective *models.Project) []*models.Task {
+func ValidQuickEditParents(task *models.Task, source, effective *models.Project) []*models.Task {
 	if effective == nil {
 		return nil
 	}
@@ -37,17 +37,17 @@ func validQuickEditParents(task *models.Task, source, effective *models.Project)
 		if candidate == nil || candidate.IsComplete() {
 			continue
 		}
-		if invalidQuickEditParent(task, source, effective, candidate) == "" {
+		if InvalidQuickEditParent(task, source, effective, candidate) == "" {
 			result = append(result, candidate)
 		}
 	}
 	return result
 }
 
-// quickEditParentCandidates resolves the effective project from the current
+// QuickEditParentCandidates resolves the effective project from the current
 // draft before producing parent completion candidates. It intentionally ignores
 // the draft's parent token: completion is about the choices that may replace it.
-func quickEditParentCandidates(input string, task *models.Task, source *models.Project, allProjects []*models.Project) ([]*models.Task, string) {
+func QuickEditParentCandidates(input string, task *models.Task, source *models.Project, allProjects []*models.Project) ([]*models.Task, string) {
 	parsed := textgrammar.Parse(input, textgrammar.SurfaceEdit)
 	for _, diagnostic := range parsed.Diagnostics {
 		if diagnostic.Field == textgrammar.FieldProject {
@@ -56,22 +56,22 @@ func quickEditParentCandidates(input string, task *models.Task, source *models.P
 	}
 	effective := source
 	if tokens := parsed.TokensFor(textgrammar.FieldProject); len(tokens) > 0 {
-		effective = resolveProject(tokens[0].Value, flattenProjectSets(source, [][]*models.Project{allProjects}))
+		effective = ResolveProject(tokens[0].Value, flattenProjectSets(source, [][]*models.Project{allProjects}))
 		if effective == nil {
 			return nil, fmt.Sprintf("project not found: %q (use an exact %%project-slug)", tokens[0].Value)
 		}
 	}
-	return validQuickEditParents(task, source, effective), ""
+	return ValidQuickEditParents(task, source, effective), ""
 }
 
-// quickEditChildCandidates offers the tasks the draft can still adopt. It reads
+// QuickEditChildCandidates offers the tasks the draft can still adopt. It reads
 // the whole line — the %project route, the parent patch, and every <child token
 // already accepted — because an adoption is legal only against the hierarchy the
 // finished line produces. It withholds exactly what strict parsing would refuse:
 // the edited task itself, an alias of a task the draft already names, a
 // projected ancestor (which covers the task named by >parent), and a candidate
 // whose subtree would overflow the depth limit.
-func quickEditChildCandidates(input string, task *models.Task, source *models.Project, allProjects []*models.Project) ([]*models.Task, string) {
+func QuickEditChildCandidates(input string, task *models.Task, source *models.Project, allProjects []*models.Project) ([]*models.Task, string) {
 	parsed := textgrammar.Parse(input, textgrammar.SurfaceEdit)
 	for _, diagnostic := range parsed.Diagnostics {
 		if diagnostic.Field == textgrammar.FieldProject {
@@ -79,19 +79,19 @@ func quickEditChildCandidates(input string, task *models.Task, source *models.Pr
 		}
 	}
 	effective := source
-	draft := &quickEditResult{parentMode: quickEditParentPreserve}
+	draft := &QuickEditResult{ParentMode: QuickEditParentPreserve}
 	if tokens := parsed.TokensFor(textgrammar.FieldProject); len(tokens) > 0 {
-		effective = resolveProject(tokens[0].Value, flattenProjectSets(source, [][]*models.Project{allProjects}))
+		effective = ResolveProject(tokens[0].Value, flattenProjectSets(source, [][]*models.Project{allProjects}))
 		if effective == nil {
 			return nil, fmt.Sprintf("project not found: %q (use an exact %%project-slug)", tokens[0].Value)
 		}
-		draft.parentMode = quickEditParentRoot
+		draft.ParentMode = QuickEditParentRoot
 	}
 	if task == nil || source == nil || effective == nil {
 		return nil, ""
 	}
 	if tokens := parsed.TokensFor(textgrammar.FieldParent); len(tokens) > 0 {
-		draft.parentMode, draft.parent = draftedQuickEditParent(tokens[0].Value, task, source, effective, draft.parentMode)
+		draft.ParentMode, draft.Parent = draftedQuickEditParent(tokens[0].Value, task, source, effective, draft.ParentMode)
 	}
 	adopted := map[string]bool{}
 	for _, token := range parsed.TokensFor(textgrammar.FieldChild) {
@@ -100,11 +100,11 @@ func quickEditChildCandidates(input string, task *models.Task, source *models.Pr
 			continue
 		}
 		adopted[child.ID] = true
-		draft.children = append(draft.children, child)
+		draft.Children = append(draft.Children, child)
 	}
 	hierarchy := newQuickEditHierarchy(task, source, effective, draft)
 	candidates := make([]*models.Task, 0, len(effective.Tasks))
-	for _, candidate := range structuralCandidates(effective) {
+	for _, candidate := range StructuralCandidates(effective) {
 		if candidate.ID == task.ID || adopted[candidate.ID] || hierarchy.rejectsChild(task, candidate) {
 			continue
 		}
@@ -117,23 +117,23 @@ func quickEditChildCandidates(input string, task *models.Task, source *models.Pr
 // does, but keeps the current mode whenever the token names nothing valid: a
 // broken parent already fails the draft, and completion must still describe the
 // hierarchy the rest of the line produces.
-func draftedQuickEditParent(value string, task *models.Task, source, effective *models.Project, mode quickEditParentMode) (quickEditParentMode, *models.Task) {
+func draftedQuickEditParent(value string, task *models.Task, source, effective *models.Project, mode QuickEditParentMode) (QuickEditParentMode, *models.Task) {
 	if value == "0" {
-		return quickEditParentRoot, nil
+		return QuickEditParentRoot, nil
 	}
-	parent, err := resolveParent(value, effective)
-	if err != nil || parent == nil || invalidQuickEditParent(task, source, effective, parent) != "" {
+	parent, err := ResolveParent(value, effective)
+	if err != nil || parent == nil || InvalidQuickEditParent(task, source, effective, parent) != "" {
 		return mode, nil
 	}
-	return quickEditParentSet, parent
+	return QuickEditParentSet, parent
 }
 
-func invalidQuickEditParent(task *models.Task, source, effective *models.Project, parent *models.Task) string {
+func InvalidQuickEditParent(task *models.Task, source, effective *models.Project, parent *models.Task) string {
 	if task == nil || source == nil || effective == nil || parent == nil {
 		return "task and parent must belong to loaded projects"
 	}
 	if effective.GetTaskByID(parent.ID) != parent {
-		return fmt.Sprintf("parent #%d is stale or not in project %q", parent.ShortID, projectLabel(effective))
+		return fmt.Sprintf("parent #%d is stale or not in project %q", parent.ShortID, ProjectLabel(effective))
 	}
 	if parent.ID == task.ID {
 		return "task cannot be its own parent"
@@ -190,7 +190,7 @@ func hierarchyDepth(project *models.Project, taskID string) (int, error) {
 		seen[taskID] = true
 		task := project.GetTaskByID(taskID)
 		if task == nil {
-			return 0, fmt.Errorf("task %q is missing from project %q", taskID, projectLabel(project))
+			return 0, fmt.Errorf("task %q is missing from project %q", taskID, ProjectLabel(project))
 		}
 		if task.ParentID == nil {
 			return depth, nil
@@ -233,15 +233,15 @@ func subtreeHeight(project *models.Project, taskID string) (int, error) {
 // batch. Measuring the combination is what accepts a hierarchy inversion whose
 // individual edges are illegal on their own, and what refuses an adoption that is
 // only a cycle once the draft's own parent move lands.
-func invalidQuickEditHierarchy(task *models.Task, source, effective *models.Project, result *quickEditResult) string {
-	if len(result.children) == 0 {
+func invalidQuickEditHierarchy(task *models.Task, source, effective *models.Project, result *QuickEditResult) string {
+	if len(result.Children) == 0 {
 		return ""
 	}
 	if task == nil || source == nil || effective == nil {
 		return "task and children must belong to loaded projects"
 	}
 	hierarchy := newQuickEditHierarchy(task, source, effective, result)
-	for _, child := range result.children {
+	for _, child := range result.Children {
 		if hierarchy.childIsAncestor(task, child) {
 			return fmt.Sprintf("child #%d is an ancestor of the edited task", child.ShortID)
 		}
@@ -249,7 +249,7 @@ func invalidQuickEditHierarchy(task *models.Task, source, effective *models.Proj
 	if hierarchy.depthErr != nil {
 		return hierarchy.depthErr.Error()
 	}
-	for _, child := range result.children {
+	for _, child := range result.Children {
 		overflows, err := hierarchy.childOverflowsDepth(child)
 		if err != nil {
 			return err.Error()
@@ -271,7 +271,7 @@ type quickEditHierarchy struct {
 	depthErr    error
 }
 
-func newQuickEditHierarchy(task *models.Task, source, effective *models.Project, result *quickEditResult) quickEditHierarchy {
+func newQuickEditHierarchy(task *models.Task, source, effective *models.Project, result *QuickEditResult) quickEditHierarchy {
 	parents := projectedQuickEditParents(task, source, effective, result)
 	descendants := make(map[string][]string, len(parents))
 	for id, parentID := range parents {
@@ -313,7 +313,7 @@ func (h quickEditHierarchy) rejectsChild(task, child *models.Task) bool {
 // projectedQuickEditParents is the parent map the draft would produce. It holds
 // the effective project's tasks plus, on a cross-project edit, only the moving
 // subtree, because every other source task stays behind.
-func projectedQuickEditParents(task *models.Task, source, effective *models.Project, result *quickEditResult) map[string]*string {
+func projectedQuickEditParents(task *models.Task, source, effective *models.Project, result *QuickEditResult) map[string]*string {
 	parents := make(map[string]*string, len(effective.Tasks))
 	record := func(candidate *models.Task) {
 		if candidate == nil {
@@ -337,15 +337,15 @@ func projectedQuickEditParents(task *models.Task, source, effective *models.Proj
 			}
 		}
 	}
-	switch result.parentMode {
-	case quickEditParentRoot:
+	switch result.ParentMode {
+	case QuickEditParentRoot:
 		parents[task.ID] = nil
-	case quickEditParentSet:
-		parentID := result.parent.ID
+	case QuickEditParentSet:
+		parentID := result.Parent.ID
 		parents[task.ID] = &parentID
-	case quickEditParentPreserve:
+	case QuickEditParentPreserve:
 	}
-	for _, child := range result.children {
+	for _, child := range result.Children {
 		adopter := task.ID
 		parents[child.ID] = &adopter
 	}

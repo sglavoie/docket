@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 // TestReferencePickerAgreesWithTheQuickEditRouteOnThePatchHalves is the
@@ -63,11 +64,11 @@ func TestReferencePickerAgreesWithTheQuickEditRouteOnThePatchHalves(t *testing.T
 			task := home.Tasks[0]
 			task.Dependencies = models.CloneTaskReferences(stored)
 
-			result, err := parseQuickEdit(testCase.input, task, home, []*models.Project{home, routed})
+			result, err := grammar.ParseQuickEdit(testCase.input, task, home, []*models.Project{home, routed})
 			if err != nil {
 				t.Fatalf("parseQuickEdit(%q): %v", testCase.input, err)
 			}
-			typed := result.dependencyPatch()
+			typed := result.DependencyPatch()
 			picked := referencePickerCommit(task, task, testCase.checked...)
 
 			typedAdd := slices.Sorted(slices.Values(dependencyLocatorStrings(typed.Add)))
@@ -102,11 +103,11 @@ func TestReferencePickerAndQuickEditDifferOnlyInSpelling(t *testing.T) {
 	// picker's checked payloads arrive sorted by locator, so its Add is sorted
 	// too. Nothing downstream reads Add order — a soft reference set is stored,
 	// not ranked — which is why the agreement above is asserted on membership.
-	result, err := parseQuickEdit("Edited task ~routed:1 ~2", task, home, projects)
+	result, err := grammar.ParseQuickEdit("Edited task ~routed:1 ~2", task, home, projects)
 	if err != nil {
 		t.Fatalf("parseQuickEdit: %v", err)
 	}
-	typedAdd := dependencyLocatorStrings(result.dependencyPatch().Add)
+	typedAdd := dependencyLocatorStrings(result.DependencyPatch().Add)
 	if want := []string{"routed-project:routed-1", "home-project:home-2"}; !slices.Equal(typedAdd, want) {
 		t.Errorf("typed add = %v, want token order %v", typedAdd, want)
 	}
@@ -124,11 +125,11 @@ func TestReferencePickerAndQuickEditDifferOnlyInSpelling(t *testing.T) {
 	// the whole stored set. The picker cannot spell Clear at all, because the
 	// application layer refuses Clear beside Add or Remove and a picker commit is
 	// always potentially both.
-	cleared, err := parseQuickEdit("Edited task ~0", task, home, projects)
+	cleared, err := grammar.ParseQuickEdit("Edited task ~0", task, home, projects)
 	if err != nil {
 		t.Fatalf("parseQuickEdit: %v", err)
 	}
-	typedClear := cleared.dependencyPatch()
+	typedClear := cleared.DependencyPatch()
 	if !typedClear.Clear || len(typedClear.Remove) != 0 {
 		t.Fatalf("~0 = %+v, want a bare clear", typedClear)
 	}
@@ -144,17 +145,17 @@ func TestReferencePickerAndQuickEditDifferOnlyInSpelling(t *testing.T) {
 func TestCaptureDependencyPreviewNamesEveryReference(t *testing.T) {
 	home, routed := dependencyWorkspace()
 	q := draftedCaptureInput(t, "New work ~2 ~routed:1", home, []*models.Project{home, routed}, false)
-	q.updatePreview()
-	if q.previewErr != "" {
-		t.Fatalf("preview error: %s", q.previewErr)
+	q.UpdatePreview()
+	if q.PreviewErr != "" {
+		t.Fatalf("preview error: %s", q.PreviewErr)
 	}
-	groups, ok := q.previewGroups()
+	groups, ok := q.PreviewGroups()
 	if !ok {
 		t.Fatal("the composer painted no preview")
 	}
-	var depends *previewGroup
+	var depends *grammar.PreviewGroup
 	for i, group := range groups {
-		if group.label == "Depends" {
+		if group.Label == "Depends" {
 			depends = &groups[i]
 		}
 	}
@@ -162,7 +163,7 @@ func TestCaptureDependencyPreviewNamesEveryReference(t *testing.T) {
 		t.Fatalf("preview groups = %+v, want a Depends group", groups)
 	}
 	want := []string{"~Home #2 Ship the API", "~Routed #1 Routed alpha"}
-	if !slices.Equal(depends.chunks, want) {
-		t.Fatalf("Depends chunks = %v, want %v", depends.chunks, want)
+	if !slices.Equal(depends.Chunks, want) {
+		t.Fatalf("Depends chunks = %v, want %v", depends.Chunks, want)
 	}
 }

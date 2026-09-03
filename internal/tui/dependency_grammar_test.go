@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 // dependencyWorkspace is the two-project fixture every dependency grammar test
@@ -63,7 +64,7 @@ func TestDependencyGrammarIsRegisteredOnBothMutationSurfaces(t *testing.T) {
 	if !ok {
 		t.Fatal("edit does not advertise the dependency field")
 	}
-	if len(edit.Clears) != 1 || edit.Clears[0].Value != dependencyClearValue {
+	if len(edit.Clears) != 1 || edit.Clears[0].Value != grammar.DependencyClearValue {
 		t.Fatalf("edit dependency clears = %+v, want one ~0 form", edit.Clears)
 	}
 	removal, ok := textgrammar.DefinitionFor(textgrammar.SurfaceEdit, textgrammar.FieldRemoveDependency)
@@ -133,15 +134,15 @@ func TestCaptureResolvesDependencyAliasesInEveryForm(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := parseQuickCapture(tt.input, home, projects, false)
+			result, err := grammar.ParseQuickCapture(tt.input, home, projects, false)
 			if err != nil {
 				t.Fatalf("parseQuickCapture(%q): %v", tt.input, err)
 			}
-			if got := dependencyLocatorStrings(result.dependencyLocators()); !slices.Equal(got, tt.want) {
+			if got := dependencyLocatorStrings(result.DependencyLocators()); !slices.Equal(got, tt.want) {
 				t.Fatalf("dependencies = %v, want %v", got, tt.want)
 			}
-			if result.title != "New work" {
-				t.Fatalf("title = %q, want %q", result.title, "New work")
+			if result.Title != "New work" {
+				t.Fatalf("title = %q, want %q", result.Title, "New work")
 			}
 		})
 	}
@@ -153,20 +154,20 @@ func TestCaptureResolvesBareAliasesAgainstTheRoutedProject(t *testing.T) {
 	home, routed := dependencyWorkspace()
 	projects := []*models.Project{home, routed}
 
-	result, err := parseQuickCapture("New work %routed ~1", home, projects, false)
+	result, err := grammar.ParseQuickCapture("New work %routed ~1", home, projects, false)
 	if err != nil {
 		t.Fatalf("parseQuickCapture: %v", err)
 	}
-	if got := dependencyLocatorStrings(result.dependencyLocators()); !slices.Equal(got, []string{"routed-project:routed-1"}) {
+	if got := dependencyLocatorStrings(result.DependencyLocators()); !slices.Equal(got, []string{"routed-project:routed-1"}) {
 		t.Fatalf("dependencies = %v, want the routed project's #1", got)
 	}
 
 	// A qualified alias is unaffected by the route, and reaches back home.
-	result, err = parseQuickCapture("New work %routed ~home:2", home, projects, false)
+	result, err = grammar.ParseQuickCapture("New work %routed ~home:2", home, projects, false)
 	if err != nil {
 		t.Fatalf("parseQuickCapture: %v", err)
 	}
-	if got := dependencyLocatorStrings(result.dependencyLocators()); !slices.Equal(got, []string{"home-project:home-2"}) {
+	if got := dependencyLocatorStrings(result.DependencyLocators()); !slices.Equal(got, []string{"home-project:home-2"}) {
 		t.Fatalf("dependencies = %v, want the home project's #2", got)
 	}
 }
@@ -190,7 +191,7 @@ func TestCaptureDependencyDiagnostics(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := parseQuickCapture(tt.input, home, projects, false)
+			_, err := grammar.ParseQuickCapture(tt.input, home, projects, false)
 			if err == nil {
 				t.Fatalf("parseQuickCapture(%q) accepted the line", tt.input)
 			}
@@ -205,14 +206,14 @@ func TestCaptureDependencyDiagnostics(t *testing.T) {
 // tilde only opens a reference where a sigil may start.
 func TestCaptureLeavesProseTildesAlone(t *testing.T) {
 	home, routed := dependencyWorkspace()
-	result, err := parseQuickCapture("Path to~daily file", home, []*models.Project{home, routed}, false)
+	result, err := grammar.ParseQuickCapture("Path to~daily file", home, []*models.Project{home, routed}, false)
 	if err != nil {
 		t.Fatalf("parseQuickCapture: %v", err)
 	}
-	if result.title != "Path to~daily file" {
-		t.Fatalf("title = %q, want the tilde preserved in prose", result.title)
+	if result.Title != "Path to~daily file" {
+		t.Fatalf("title = %q, want the tilde preserved in prose", result.Title)
 	}
-	if len(result.dependencyLocators()) != 0 {
-		t.Fatalf("prose minted dependencies: %v", dependencyLocatorStrings(result.dependencyLocators()))
+	if len(result.DependencyLocators()) != 0 {
+		t.Fatalf("prose minted dependencies: %v", dependencyLocatorStrings(result.DependencyLocators()))
 	}
 }

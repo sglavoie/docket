@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 // searchDerivedVocabulary is the closed set of computed properties plus the one
@@ -33,8 +34,8 @@ func searchDerivedVocabulary(definition textgrammar.Definition) []string {
 func (m *OutlinerModel) searchDependencySuggestions(
 	definition textgrammar.Definition,
 	partial string,
-) []ACSuggestion {
-	return dependencySuggestions(
+) []grammar.ACSuggestion {
+	return grammar.DependencySuggestions(
 		m.searchDependencyCandidates(),
 		partial,
 		m.searchDependencyEffectiveProject(),
@@ -47,10 +48,10 @@ func (m *OutlinerModel) searchDependencySuggestions(
 // reference. Resolution runs over the whole loaded population rather than the
 // search scope, so a scoped query still names a cross-project target by its
 // qualified alias instead of falling back to a bare locator.
-func (m *OutlinerModel) searchDependencyCandidates() []dependencyCandidate {
+func (m *OutlinerModel) searchDependencyCandidates() []grammar.DependencyCandidate {
 	projects := m.loadedProjects
 	seen := make(map[app.TaskLocator]bool)
-	candidates := make([]dependencyCandidate, 0)
+	candidates := make([]grammar.DependencyCandidate, 0)
 	for _, task := range m.searchAutocompleteCandidateTasks() {
 		if task == nil {
 			continue
@@ -61,10 +62,10 @@ func (m *OutlinerModel) searchDependencyCandidates() []dependencyCandidate {
 				continue
 			}
 			seen[locator] = true
-			candidate := dependencyCandidate{locator: locator}
-			if project := projectByStableID(reference.ProjectID, projects); project != nil {
-				candidate.project = project
-				candidate.task = project.GetTaskByID(reference.TaskID)
+			candidate := grammar.DependencyCandidate{Locator: locator}
+			if project := grammar.ProjectByStableID(reference.ProjectID, projects); project != nil {
+				candidate.Project = project
+				candidate.Task = project.GetTaskByID(reference.TaskID)
 			}
 			candidates = append(candidates, candidate)
 		}
@@ -125,8 +126,8 @@ func sliceContainsFold(values []string, want string) bool {
 	return false
 }
 
-func searchPrioritySuggestions(definition textgrammar.Definition, partial string) []ACSuggestion {
-	result := make([]ACSuggestion, 0, len(definition.Values))
+func searchPrioritySuggestions(definition textgrammar.Definition, partial string) []grammar.ACSuggestion {
+	result := make([]grammar.ACSuggestion, 0, len(definition.Values))
 	for _, value := range definition.Values {
 		priorities, ok := textgrammar.ParsePriority(value, false)
 		if !ok || len(priorities) != 1 {
@@ -135,7 +136,7 @@ func searchPrioritySuggestions(definition textgrammar.Definition, partial string
 		if partial != "" && !strings.HasPrefix(value, partial) {
 			continue
 		}
-		result = append(result, ACSuggestion{
+		result = append(result, grammar.ACSuggestion{
 			Display: fmt.Sprintf("%s%s (%s)", definition.Trigger, value, models.PriorityName(priorities[0])),
 			Value:   value,
 		})
@@ -143,21 +144,21 @@ func searchPrioritySuggestions(definition textgrammar.Definition, partial string
 	return result
 }
 
-func searchStaticSuggestions(definition textgrammar.Definition, values []string, partial string) []ACSuggestion {
+func searchStaticSuggestions(definition textgrammar.Definition, values []string, partial string) []grammar.ACSuggestion {
 	partial = strings.ToLower(partial)
-	result := make([]ACSuggestion, 0, len(values))
+	result := make([]grammar.ACSuggestion, 0, len(values))
 	for _, value := range values {
 		if partial != "" && !strings.Contains(strings.ToLower(value), partial) {
 			continue
 		}
-		result = append(result, ACSuggestion{Display: definition.Trigger + value, Value: value})
+		result = append(result, grammar.ACSuggestion{Display: definition.Trigger + value, Value: value})
 	}
 	return result
 }
 
-func searchDestinationSuggestions(definition textgrammar.Definition, partial string) []ACSuggestion {
+func searchDestinationSuggestions(definition textgrammar.Definition, partial string) []grammar.ACSuggestion {
 	partial = strings.ToLower(partial)
-	result := make([]ACSuggestion, 0, len(definition.Values))
+	result := make([]grammar.ACSuggestion, 0, len(definition.Values))
 	for _, value := range definition.Values {
 		if partial != "" && !strings.Contains(strings.ToLower(value), partial) {
 			continue
@@ -166,7 +167,7 @@ func searchDestinationSuggestions(definition textgrammar.Definition, partial str
 		if !ok {
 			continue
 		}
-		result = append(result, ACSuggestion{
+		result = append(result, grammar.ACSuggestion{
 			Display: definition.Trigger + value + " " + searchDestinationDescription(destination),
 			Value:   value,
 		})
@@ -187,14 +188,14 @@ func searchDestinationDescription(destination textgrammar.Destination) string {
 // searchBooleanAxisSuggestions offers both halves of a stored boolean axis. The
 // set value comes from Values and the unset one from the search-surface clear,
 // which is the only place *unpin and =unreview are declared.
-func searchBooleanAxisSuggestions(definition textgrammar.Definition, partial string) []ACSuggestion {
+func searchBooleanAxisSuggestions(definition textgrammar.Definition, partial string) []grammar.ACSuggestion {
 	partial = strings.ToLower(partial)
-	result := make([]ACSuggestion, 0, len(definition.Values)+len(definition.Clears))
+	result := make([]grammar.ACSuggestion, 0, len(definition.Values)+len(definition.Clears))
 	for _, value := range definition.Values {
 		if partial != "" && !strings.Contains(strings.ToLower(value), partial) {
 			continue
 		}
-		result = append(result, ACSuggestion{Display: definition.Trigger + value, Value: value})
+		result = append(result, grammar.ACSuggestion{Display: definition.Trigger + value, Value: value})
 	}
 	for _, clear := range definition.Clears {
 		if partial != "" && !strings.Contains(strings.ToLower(clear.Value), partial) {
@@ -204,7 +205,7 @@ func searchBooleanAxisSuggestions(definition textgrammar.Definition, partial str
 		if clear.Description != "" {
 			display += " (" + clear.Description + ")"
 		}
-		result = append(result, ACSuggestion{Display: display, Value: clear.Value})
+		result = append(result, grammar.ACSuggestion{Display: display, Value: clear.Value})
 	}
 	return result
 }
@@ -218,7 +219,7 @@ func searchBooleanAxisSuggestions(definition textgrammar.Definition, partial str
 func (m *OutlinerModel) searchProjectSuggestions(
 	definition textgrammar.Definition,
 	partial string,
-) []ACSuggestion {
+) []grammar.ACSuggestion {
 	projects := m.projectsInCatalogOrder(m.workModeScopeProjects())
 	loaded := make([]*models.Project, 0, len(projects))
 	for _, project := range projects {
@@ -230,9 +231,9 @@ func (m *OutlinerModel) searchProjectSuggestions(
 	ranked := searchRankByFuzzyScore(loaded, partial, func(project *models.Project) []string {
 		return []string{project.Slug, project.Name}
 	})
-	result := make([]ACSuggestion, 0, len(ranked))
+	result := make([]grammar.ACSuggestion, 0, len(ranked))
 	for _, project := range ranked {
-		result = append(result, ACSuggestion{
+		result = append(result, grammar.ACSuggestion{
 			Display: definition.Trigger + project.Slug + " " + project.Name,
 			Value:   project.Slug,
 		})
@@ -243,13 +244,13 @@ func (m *OutlinerModel) searchProjectSuggestions(
 // searchDynamicSuggestions ranks live values with the shared fuzzy score and
 // keeps source order for ties, so an empty partial — which scores every value
 // identically — offers a list that does not reshuffle between keystrokes.
-func searchDynamicSuggestions(definition textgrammar.Definition, values []string, partial string) []ACSuggestion {
+func searchDynamicSuggestions(definition textgrammar.Definition, values []string, partial string) []grammar.ACSuggestion {
 	ranked := searchRankByFuzzyScore(values, partial, func(value string) []string {
 		return []string{value}
 	})
-	result := make([]ACSuggestion, 0, len(ranked))
+	result := make([]grammar.ACSuggestion, 0, len(ranked))
 	for _, value := range ranked {
-		result = append(result, ACSuggestion{Display: definition.Trigger + value, Value: value})
+		result = append(result, grammar.ACSuggestion{Display: definition.Trigger + value, Value: value})
 	}
 	return result
 }

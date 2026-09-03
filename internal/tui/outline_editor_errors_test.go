@@ -8,14 +8,15 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 func outlineErrorsFixture(count int) *OutlineErrorsViewModel {
-	problems := make([]lineError, 0, count)
+	problems := make([]grammar.LineError, 0, count)
 	for i := range count {
-		problems = append(problems, lineError{
-			line:    i + 1,
-			message: fmt.Sprintf("indent jumps from level 0 to level 2 on problem %d; indent one level at a time", i+1),
+		problems = append(problems, grammar.LineError{
+			Line:    i + 1,
+			Message: fmt.Sprintf("indent jumps from level 0 to level 2 on problem %d; indent one level at a time", i+1),
 		})
 	}
 	return NewOutlineErrorsViewModel("Sonar", "/tmp/tt-outline-abc123.md", problems)

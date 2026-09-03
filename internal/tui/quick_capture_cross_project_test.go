@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 func TestCrossProjectCapture(t *testing.T) {
@@ -69,7 +70,7 @@ func TestCrossProjectCapture(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := parseQuickCapture(tt.input, currentProject, allProjects, false)
+			result, err := grammar.ParseQuickCapture(tt.input, currentProject, allProjects, false)
 
 			if tt.wantErr {
 				if err == nil {
@@ -87,27 +88,27 @@ func TestCrossProjectCapture(t *testing.T) {
 				return
 			}
 
-			if result.title != tt.wantTitle {
-				t.Errorf("title = %q, want %q", result.title, tt.wantTitle)
+			if result.Title != tt.wantTitle {
+				t.Errorf("title = %q, want %q", result.Title, tt.wantTitle)
 			}
 
 			if tt.wantTargetID == nil {
-				if result.targetProjectID != nil {
-					t.Errorf("targetProjectID = %q, want nil", *result.targetProjectID)
+				if result.TargetProjectID != nil {
+					t.Errorf("targetProjectID = %q, want nil", *result.TargetProjectID)
 				}
 			} else {
-				if result.targetProjectID == nil {
+				if result.TargetProjectID == nil {
 					t.Errorf("targetProjectID = nil, want %q", *tt.wantTargetID)
-				} else if *result.targetProjectID != *tt.wantTargetID {
-					t.Errorf("targetProjectID = %q, want %q", *result.targetProjectID, *tt.wantTargetID)
+				} else if *result.TargetProjectID != *tt.wantTargetID {
+					t.Errorf("targetProjectID = %q, want %q", *result.TargetProjectID, *tt.wantTargetID)
 				}
 			}
 
-			if result.targetProjectName != tt.wantTargetName {
-				t.Errorf("targetProjectName = %q, want %q", result.targetProjectName, tt.wantTargetName)
+			if result.TargetProjectName != tt.wantTargetName {
+				t.Errorf("targetProjectName = %q, want %q", result.TargetProjectName, tt.wantTargetName)
 			}
-			if tt.wantParentID != nil && (result.parentID == nil || *result.parentID != *tt.wantParentID) {
-				t.Errorf("parentID = %v, want %q", result.parentID, *tt.wantParentID)
+			if tt.wantParentID != nil && (result.ParentID == nil || *result.ParentID != *tt.wantParentID) {
+				t.Errorf("parentID = %v, want %q", result.ParentID, *tt.wantParentID)
 			}
 		})
 	}

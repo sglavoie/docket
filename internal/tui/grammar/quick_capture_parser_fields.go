@@ -1,4 +1,4 @@
-package tui
+package grammar
 
 import (
 	"slices"
@@ -90,7 +90,7 @@ func (p *quickCaptureParser) applySharedTokens(parsed textgrammar.Result) {
 // app.ResolveAttachmentInput so every surface classifies identically.
 func (p *quickCaptureParser) parseAttachmentTokens(tokens []textgrammar.Token) {
 	for _, token := range tokens {
-		p.result.attachments = append(p.result.attachments, token.Value)
+		p.result.Attachments = append(p.result.Attachments, token.Value)
 	}
 }
 
@@ -101,7 +101,7 @@ func (p *quickCaptureParser) parseAttachmentTokens(tokens []textgrammar.Token) {
 // carries the text.
 func (p *quickCaptureParser) parseCommentTokens(tokens []textgrammar.Token) {
 	for _, token := range tokens {
-		p.result.comments = append(p.result.comments, token.Value)
+		p.result.Comments = append(p.result.Comments, token.Value)
 	}
 }
 
@@ -127,7 +127,7 @@ func (p *quickCaptureParser) parseContextTokens(tokens []textgrammar.Token) {
 			}
 			continue
 		}
-		p.result.context = context
+		p.result.Context = context
 	}
 }
 
@@ -138,7 +138,7 @@ func (p *quickCaptureParser) parsePinTokens(tokens []textgrammar.Token) {
 	setValues := pinSetValues()
 	for _, token := range tokens {
 		if slices.Contains(setValues, token.Value) {
-			p.result.pinned = true
+			p.result.Pinned = true
 			continue
 		}
 		if p.surface == textgrammar.SurfaceOutline {
@@ -170,7 +170,7 @@ func (p *quickCaptureParser) parseReviewTokens(tokens []textgrammar.Token) {
 	setValues := reviewSetValues()
 	for _, token := range tokens {
 		if slices.Contains(setValues, token.Value) {
-			p.result.review = true
+			p.result.Review = true
 			continue
 		}
 		if p.surface == textgrammar.SurfaceOutline {
@@ -217,24 +217,24 @@ func (p *quickCaptureParser) parsePriorityTokens(tokens []textgrammar.Token) {
 			}
 			continue
 		}
-		p.result.priority = values[0]
-		p.result.prioritySet = true
+		p.result.Priority = values[0]
+		p.result.PrioritySet = true
 	}
 }
 
 func (p *quickCaptureParser) parseTagTokens(tokens []textgrammar.Token) {
 	for _, token := range tokens {
-		p.result.tags = append(p.result.tags, token.Value)
+		p.result.Tags = append(p.result.Tags, token.Value)
 	}
 }
 
 func (p *quickCaptureParser) normalizeTagTokens() {
-	tags, err := models.NormalizeTaskTags(p.result.tags)
+	tags, err := models.NormalizeTaskTags(p.result.Tags)
 	if err != nil {
 		p.failf("invalid tags: %s", err)
 		return
 	}
-	p.result.tags = tags
+	p.result.Tags = tags
 }
 
 func (p *quickCaptureParser) parseDueTokens(tokens []textgrammar.Token) {
@@ -249,7 +249,7 @@ func (p *quickCaptureParser) parseDueToken(token textgrammar.Token, parse func(s
 		p.failf("invalid date: %s", token.Value)
 		return
 	}
-	p.result.dueDate = &date
+	p.result.DueDate = &date
 }
 
 // parseDeferTokens reads the deferral token. The clear value reaches here on
@@ -272,8 +272,8 @@ func (p *quickCaptureParser) parseDeferTokens(tokens []textgrammar.Token) {
 			}
 			continue
 		}
-		p.result.deferSet = true
-		p.result.deferUntil = &instant
+		p.result.DeferSet = true
+		p.result.DeferUntil = &instant
 	}
 }
 
@@ -282,22 +282,22 @@ func (p *quickCaptureParser) parseProjectTokens(tokens []textgrammar.Token) {
 		return
 	}
 	for _, token := range tokens {
-		targetProject := resolveProject(token.Value, p.allProjects)
+		targetProject := ResolveProject(token.Value, p.allProjects)
 		if targetProject == nil {
 			if p.failf("project not found: '%s' (use an exact %%project-slug)", token.Value) {
 				return
 			}
 			continue
 		}
-		p.result.targetProjectID = &targetProject.ID
-		p.result.targetProjectName = targetProject.Name
+		p.result.TargetProjectID = &targetProject.ID
+		p.result.TargetProjectName = targetProject.Name
 		p.project = targetProject
 	}
 }
 
 func (p *quickCaptureParser) parseParentTokens(tokens []textgrammar.Token) {
 	for _, token := range tokens {
-		parent, err := resolveParent(token.Value, p.project)
+		parent, err := ResolveParent(token.Value, p.project)
 		if err != nil {
 			if p.failf("%s", err) {
 				return
@@ -310,7 +310,7 @@ func (p *quickCaptureParser) parseParentTokens(tokens []textgrammar.Token) {
 				return
 			}
 		default:
-			p.result.parentID = &parent.ID
+			p.result.ParentID = &parent.ID
 		}
 	}
 }
@@ -335,7 +335,7 @@ func (p *quickCaptureParser) parseChildTokens(tokens []textgrammar.Token) {
 			}
 			continue
 		}
-		if p.result.parentID != nil && *p.result.parentID == child.ID {
+		if p.result.ParentID != nil && *p.result.ParentID == child.ID {
 			if p.failf("#%d cannot be both the parent and a child", child.ShortID) {
 				return
 			}
@@ -345,10 +345,10 @@ func (p *quickCaptureParser) parseChildTokens(tokens []textgrammar.Token) {
 			continue
 		}
 		seen[child.ID] = true
-		p.result.children = append(p.result.children, capturedChildRef{
-			id:       child.ID,
-			shortID:  child.ShortID,
-			title:    child.Title,
+		p.result.Children = append(p.result.Children, CapturedChildRef{
+			Id:       child.ID,
+			ShortID:  child.ShortID,
+			Title:    child.Title,
 			terminal: child.IsTerminalState(),
 		})
 	}
@@ -359,14 +359,14 @@ func (p *quickCaptureParser) parseChildTokens(tokens []textgrammar.Token) {
 // previewing a Done task above open work. It runs after the destination is
 // settled because the destination is what makes an adoption illegal.
 func (p *quickCaptureParser) parseTerminalAdoption() {
-	if !p.result.destinationSet || !p.result.destination.WorkflowState().IsTerminal() {
+	if !p.result.DestinationSet || !p.result.Destination.WorkflowState().IsTerminal() {
 		return
 	}
-	for _, child := range p.result.children {
+	for _, child := range p.result.Children {
 		if child.terminal {
 			continue
 		}
-		if p.failf("cannot capture as %s: adopted #%d is incomplete", p.result.destination, child.shortID) {
+		if p.failf("cannot capture as %s: adopted #%d is incomplete", p.result.Destination, child.ShortID) {
 			return
 		}
 	}
@@ -380,7 +380,7 @@ func (p *quickCaptureParser) parseDestinationTokens(tokens []textgrammar.Token) 
 			p.failf("%s", err)
 			return
 		}
-		p.result.destination = destination
-		p.result.destinationSet = true
+		p.result.Destination = destination
+		p.result.DestinationSet = true
 	}
 }

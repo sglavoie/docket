@@ -1,4 +1,4 @@
-package tui
+package grammar
 
 import (
 	"fmt"
@@ -14,61 +14,61 @@ import (
 )
 
 func (q *QuickEditComponent) cursorByteOffset() int {
-	runes := []rune(q.input.Value())
-	position := max(0, min(q.input.Position(), len(runes)))
+	runes := []rune(q.Input.Value())
+	position := max(0, min(q.Input.Position(), len(runes)))
 	return len(string(runes[:position]))
 }
 
-func (q *QuickEditComponent) refreshAutocomplete() {
-	value := q.input.Value()
+func (q *QuickEditComponent) RefreshAutocomplete() {
+	value := q.Input.Value()
 	cursorByte := q.cursorByteOffset()
-	mode, pos, partial, triggerText, removeTag := detectQuickEditTrigger(value[:cursorByte], q.triggers)
-	if mode == acModeNone {
-		q.ac.Clear()
+	mode, pos, partial, triggerText, removeTag := detectQuickEditTrigger(value[:cursorByte], q.Triggers)
+	if mode == ACModeNone {
+		q.AC.Clear()
 		q.triggerText = ""
-		q.removeTag = false
+		q.RemoveTag = false
 		return
 	}
 	q.triggerText = triggerText
-	q.removeTag = removeTag
+	q.RemoveTag = removeTag
 	parsedPrefix := textgrammar.Parse(value[:pos], textgrammar.SurfaceEdit)
 	if field, singleton := autocompleteSingletonField(mode); singleton && len(parsedPrefix.TokensFor(field)) > 0 {
-		q.ac.Clear()
+		q.AC.Clear()
 		return
 	}
-	q.ac.UpdateSuggestions(mode, pos, q.suggestions(mode, pos, partial, parsedPrefix))
+	q.AC.UpdateSuggestions(mode, pos, q.suggestions(mode, pos, partial, parsedPrefix))
 }
 
 func (q *QuickEditComponent) suggestions(mode, triggerPos int, partial string, parsedPrefix textgrammar.Result) []ACSuggestion {
 	switch mode {
-	case acModeTag:
+	case ACModeTag:
 		project := q.effectiveProject()
 		field := textgrammar.FieldTag
 		values := CollectTagNamesForProject(project)
 		prefix := "#"
-		if q.removeTag {
+		if q.RemoveTag {
 			field = textgrammar.FieldRemoveTag
 			values = append([]string(nil), q.task.Tags...)
 			prefix = "-#"
 		}
 		used := parsedPrefix.TokensFor(field)
-		return filterUsedTagSuggestions(quickEditTagSuggestions(values, partial, prefix), used)
-	case acModeParent:
-		parents, _ := quickEditParentCandidates(q.input.Value(), q.task, q.project, q.projects)
+		return FilterUsedTagSuggestions(quickEditTagSuggestions(values, partial, prefix), used)
+	case ACModeParent:
+		parents, _ := QuickEditParentCandidates(q.Input.Value(), q.task, q.project, q.projects)
 		items := quickEditClearSuggestions(textgrammar.FieldParent, partial)
 		return append(items, quickEditStructuralSuggestions(parents, partial, textgrammar.FieldParent)...)
-	case acModeChild:
+	case ACModeChild:
 		// The token under the cursor is removed before the draft is read, so an
 		// in-progress alias cannot withhold the very task it is naming. Child
 		// declares no clear operation, so no <0 row is offered.
-		draft := quickEditDraftWithoutToken(q.input.Value(), triggerPos)
-		children, _ := quickEditChildCandidates(draft, q.task, q.project, q.projects)
+		draft := quickEditDraftWithoutToken(q.Input.Value(), triggerPos)
+		children, _ := QuickEditChildCandidates(draft, q.task, q.project, q.projects)
 		return quickEditStructuralSuggestions(children, partial, textgrammar.FieldChild)
-	case acModeDependency, acModeRemoveDependency:
+	case ACModeDependency, ACModeRemoveDependency:
 		return q.dependencySuggestions(mode, triggerPos, partial)
-	case acModeProject:
+	case ACModeProject:
 		return quickEditProjectSuggestions(q.projects, partial)
-	case acModePriority, acModeDate, acModeDestination, acModePin:
+	case ACModePriority, ACModeDate, ACModeDestination, ACModePin:
 		return quickEditStaticSuggestions(mode, partial)
 	default:
 		return nil
@@ -82,7 +82,7 @@ func (q *QuickEditComponent) suggestions(mode, triggerPos int, partial string, p
 // closed, moved, and unloaded targets an addition would refuse.
 func (q *QuickEditComponent) dependencySuggestions(mode, triggerPos int, partial string) []ACSuggestion {
 	field := textgrammar.FieldDependency
-	if mode == acModeRemoveDependency {
+	if mode == ACModeRemoveDependency {
 		field = textgrammar.FieldRemoveDependency
 	}
 	definition, ok := textgrammar.DefinitionFor(textgrammar.SurfaceEdit, field)
@@ -92,16 +92,16 @@ func (q *QuickEditComponent) dependencySuggestions(mode, triggerPos int, partial
 	effective := q.effectiveProject()
 	// The token under the cursor is removed before the draft is read, so an
 	// in-progress alias cannot withhold the very task it is naming.
-	draft := textgrammar.Parse(quickEditDraftWithoutToken(q.input.Value(), triggerPos), textgrammar.SurfaceEdit)
+	draft := textgrammar.Parse(quickEditDraftWithoutToken(q.Input.Value(), triggerPos), textgrammar.SurfaceEdit)
 	used := draftedDependencyLocators(draft, field, effective, q.projects)
 
 	sourceID := ""
 	if q.task != nil {
 		sourceID = q.task.ID
 	}
-	if mode == acModeRemoveDependency {
-		candidates := dependencyRemovalCandidates(q.task, q.projects, used)
-		return dependencySuggestions(candidates, partial, effective, definition.Trigger, q.input.Width()-25)
+	if mode == ACModeRemoveDependency {
+		candidates := DependencyRemovalCandidates(q.task, q.projects, used)
+		return DependencySuggestions(candidates, partial, effective, definition.Trigger, q.Input.Width()-25)
 	}
 	// An addition never re-offers a reference the task already stores, for the
 	// same reason it never re-offers one the draft already names.
@@ -111,9 +111,9 @@ func (q *QuickEditComponent) dependencySuggestions(mode, triggerPos int, partial
 		}
 		used[app.LocatorForReference(reference)] = true
 	}
-	candidates := dependencyAdditionCandidates(q.projects, sourceID, used)
+	candidates := DependencyAdditionCandidates(q.projects, sourceID, used)
 	items := quickEditClearSuggestions(field, partial)
-	return append(items, dependencySuggestions(candidates, partial, effective, definition.Trigger, q.input.Width()-25)...)
+	return append(items, DependencySuggestions(candidates, partial, effective, definition.Trigger, q.Input.Width()-25)...)
 }
 
 // dependencyReferences reads the stored set the draft starts from.
@@ -125,47 +125,47 @@ func (q *QuickEditComponent) dependencyReferences() []models.TaskReference {
 }
 
 func (q *QuickEditComponent) effectiveProject() *models.Project {
-	parsed := textgrammar.Parse(q.input.Value(), textgrammar.SurfaceEdit)
+	parsed := textgrammar.Parse(q.Input.Value(), textgrammar.SurfaceEdit)
 	if tokens := parsed.TokensFor(textgrammar.FieldProject); len(tokens) > 0 {
-		if project := resolveProject(tokens[0].Value, q.projects); project != nil {
+		if project := ResolveProject(tokens[0].Value, q.projects); project != nil {
 			return project
 		}
 	}
 	return q.project
 }
 
-func (q *QuickEditComponent) acceptSuggestion() {
-	if !q.ac.IsActive() {
+func (q *QuickEditComponent) AcceptSuggestion() {
+	if !q.AC.IsActive() {
 		return
 	}
 	cursorByte := q.cursorByteOffset()
 	triggerText := q.triggerText
 	if triggerText == "" {
-		triggerText = TriggerCharForMode(q.ac.Mode, q.triggers)
+		triggerText = TriggerCharForMode(q.AC.Mode, q.Triggers)
 	}
-	selected := q.ac.Selected()
-	value := q.ac.BuildAcceptedInputAt(q.input.Value(), cursorByte, triggerText)
-	insertedPrefix := q.input.Value()[:q.ac.TriggerPos] + triggerText + selected.Value + " "
-	q.input.SetValue(value)
-	q.input.SetCursor(utf8.RuneCountInString(insertedPrefix))
-	q.ac.Clear()
+	selected := q.AC.Selected()
+	value := q.AC.BuildAcceptedInputAt(q.Input.Value(), cursorByte, triggerText)
+	insertedPrefix := q.Input.Value()[:q.AC.TriggerPos] + triggerText + selected.Value + " "
+	q.Input.SetValue(value)
+	q.Input.SetCursor(utf8.RuneCountInString(insertedPrefix))
+	q.AC.Clear()
 	q.triggerText = ""
-	q.removeTag = false
+	q.RemoveTag = false
 }
 
 func detectQuickEditTrigger(input string, triggers []ACTrigger) (mode, pos int, partial, triggerText string, removeTag bool) {
 	tokenStart := strings.LastIndexAny(input, " \n\t") + 1
 	if tokenStart < len(input) && strings.HasPrefix(input[tokenStart:], "-#") {
-		return acModeTag, tokenStart, input[tokenStart+2:], "-#", true
+		return ACModeTag, tokenStart, input[tokenStart+2:], "-#", true
 	}
 	// -~ is peeled here for the same reason -# is: DetectTrigger takes the longest
 	// registered trigger, and quickEditTriggers carries single-rune triggers only,
 	// so a two-rune removal form would otherwise complete as its own base sigil.
 	if tokenStart < len(input) && strings.HasPrefix(input[tokenStart:], "-~") {
-		return acModeRemoveDependency, tokenStart, input[tokenStart+2:], "-~", false
+		return ACModeRemoveDependency, tokenStart, input[tokenStart+2:], "-~", false
 	}
 	mode, pos, partial = DetectTrigger(input, triggers)
-	if mode == acModeNone {
+	if mode == ACModeNone {
 		return mode, pos, partial, "", false
 	}
 	return mode, pos, partial, TriggerCharForMode(mode, triggers), false

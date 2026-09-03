@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 )
 
@@ -29,7 +30,7 @@ const outlinerSearchDropdownIndent = "  "
 // Project Hub and Notes deliberately have no counterpart: they stay ordinary
 // fuzzy text searches.
 type outlinerSearchAutocomplete struct {
-	ac AutocompleteState
+	ac grammar.AutocompleteState
 	// triggerText is the accepted token's sigil, retained because a two-character
 	// trigger (-# and ##, @@) cannot be recovered from the mode alone once the
 	// suggestion list is built. The grammar family itself is not retained beside
@@ -56,15 +57,15 @@ func (a *outlinerSearchAutocomplete) clear() {
 // exist and in what parse order; this projection owns nothing but the mode
 // number attached to each field, which is why a sigil added to SurfaceSearch
 // reaches completion without a second list being edited.
-func outlinerSearchTriggers() []ACTrigger {
+func outlinerSearchTriggers() []grammar.ACTrigger {
 	definitions := textgrammar.Definitions(textgrammar.SurfaceSearch)
-	triggers := make([]ACTrigger, 0, len(definitions))
+	triggers := make([]grammar.ACTrigger, 0, len(definitions))
 	for _, definition := range definitions {
-		mode := autocompleteModeForField(definition.Field)
-		if mode == acModeNone {
+		mode := grammar.AutocompleteModeForField(definition.Field)
+		if mode == grammar.ACModeNone {
 			continue
 		}
-		triggers = append(triggers, ACTrigger{Text: definition.Trigger, Mode: mode})
+		triggers = append(triggers, grammar.ACTrigger{Text: definition.Trigger, Mode: mode})
 	}
 	return triggers
 }
@@ -73,11 +74,11 @@ func outlinerSearchTriggers() []ACTrigger {
 // returns the full definition rather than the field alone, so cardinality,
 // values, and clears are read from the same entry the trigger came from.
 func outlinerSearchDefinitionForMode(mode int) (textgrammar.Definition, bool) {
-	if mode == acModeNone {
+	if mode == grammar.ACModeNone {
 		return textgrammar.Definition{}, false
 	}
 	for _, definition := range textgrammar.Definitions(textgrammar.SurfaceSearch) {
-		if autocompleteModeForField(definition.Field) == mode {
+		if grammar.AutocompleteModeForField(definition.Field) == mode {
 			return definition, true
 		}
 	}
@@ -110,7 +111,7 @@ func (m *OutlinerModel) refreshSearchAutocomplete() {
 	// Only the text before the caret can name the active token; the longest
 	// matching trigger wins there, which is what keeps ## out of #, @@ out of @,
 	// and -# out of #.
-	mode, triggerPos, partial := DetectTrigger(value[:cursorByte], outlinerSearchTriggers())
+	mode, triggerPos, partial := grammar.DetectTrigger(value[:cursorByte], outlinerSearchTriggers())
 	definition, ok := outlinerSearchDefinitionForMode(mode)
 	if !ok {
 		m.searchAutocomplete.clear()
@@ -130,7 +131,7 @@ func (m *OutlinerModel) refreshSearchAutocomplete() {
 
 	items := m.searchAutocompleteSuggestions(definition, partial)
 	if definition.Cardinality == textgrammar.CardinalityRepeatable {
-		items = filterUsedTagSuggestions(items, prefix.TokensFor(definition.Field))
+		items = grammar.FilterUsedTagSuggestions(items, prefix.TokensFor(definition.Field))
 	}
 
 	m.searchAutocomplete.triggerText = definition.Trigger
@@ -145,7 +146,7 @@ func (m *OutlinerModel) refreshSearchAutocomplete() {
 func (m *OutlinerModel) searchAutocompleteSuggestions(
 	definition textgrammar.Definition,
 	partial string,
-) []ACSuggestion {
+) []grammar.ACSuggestion {
 	// A negation is completed from its twin's vocabulary, so each pair shares one
 	// arm: -@ offers the due buckets @ offers, and the only difference is the
 	// trigger each suggestion is displayed and accepted with, which comes from the

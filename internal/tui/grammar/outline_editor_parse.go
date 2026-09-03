@@ -1,4 +1,4 @@
-package tui
+package grammar
 
 import (
 	"fmt"
@@ -16,14 +16,14 @@ import (
 // an outline buffer means exactly what the same line means in the composer.
 
 const (
-	// outlineIndentWidth is the number of spaces one nesting level costs. The
+	// OutlineIndentWidth is the number of spaces one nesting level costs. The
 	// buffer header states it, because indentation is the only parentage channel
 	// an outline buffer has.
-	outlineIndentWidth = 2
-	// outlineMarkerPrefix and outlineMarkerSuffix bracket the identity marker a
+	OutlineIndentWidth = 2
+	// OutlineMarkerPrefix and OutlineMarkerSuffix bracket the identity marker a
 	// dumped line carries. A line without one creates a task.
-	outlineMarkerPrefix = "[[tt:"
-	outlineMarkerSuffix = "]]"
+	OutlineMarkerPrefix = "[[tt:"
+	OutlineMarkerSuffix = "]]"
 	// outlineMarkerLength is how much of a task ID the dump prints. Eight
 	// characters keep the marker unobtrusive while staying unique within one
 	// project; the dump verifies that uniqueness before the editor opens.
@@ -39,7 +39,7 @@ type outlineBufferLine struct {
 	body       string
 }
 
-// parseOutlineBuffer turns an edited buffer into application plan lines.
+// ParseOutlineBuffer turns an edited buffer into application plan lines.
 //
 // Validation runs in two phases and both finish before any plan is proposed: the
 // outline phase reads indentation and identity markers, and the line phase hands
@@ -54,11 +54,11 @@ type outlineBufferLine struct {
 // projects is the loaded population a ~task reference is addressed against; the
 // scope project alone would leave a dumped cross-project dependency unresolvable
 // on the way back in.
-func parseOutlineBuffer(buffer string, project *models.Project, projects []*models.Project) ([]app.OutlinePlanLine, []lineError) {
+func ParseOutlineBuffer(buffer string, project *models.Project, projects []*models.Project) ([]app.OutlinePlanLine, []LineError) {
 	structural, errs := parseOutlineStructure(buffer, project)
 	lines, lineErrs := parseOutlineBodies(structural, project, projects)
 	errs = append(errs, lineErrs...)
-	sort.SliceStable(errs, func(i, j int) bool { return errs[i].line < errs[j].line })
+	sort.SliceStable(errs, func(i, j int) bool { return errs[i].Line < errs[j].Line })
 	if len(errs) > 0 {
 		return nil, errs
 	}
@@ -68,11 +68,11 @@ func parseOutlineBuffer(buffer string, project *models.Project, projects []*mode
 // parseOutlineStructure is the outline phase. It rejects malformed indentation
 // and identity markers, and reports a line whose parent was itself rejected
 // rather than silently reattaching it to a surviving ancestor.
-func parseOutlineStructure(buffer string, project *models.Project) ([]outlineBufferLine, []lineError) {
-	markers := outlineMarkerIndex(project)
+func parseOutlineStructure(buffer string, project *models.Project) ([]outlineBufferLine, []LineError) {
+	markers := OutlineMarkerIndex(project)
 	var (
 		out           []outlineBufferLine
-		errs          []lineError
+		errs          []LineError
 		claimed       = make(map[string]int)
 		previousDepth = -1
 		// rejectedDepth is the depth of the shallowest still-open rejected line,
@@ -90,17 +90,17 @@ func parseOutlineStructure(buffer string, project *models.Project) ([]outlineBuf
 
 		indent, body, indentErr := splitOutlineIndent(raw)
 		if indentErr != nil {
-			errs = append(errs, lineError{line: number, message: indentErr.Error()})
+			errs = append(errs, LineError{Line: number, Message: indentErr.Error()})
 			continue
 		}
-		depth := indent / outlineIndentWidth
+		depth := indent / OutlineIndentWidth
 
 		// A rejected line is still a real indentation level, so previousDepth
 		// advances and reject() opens a rejected span at this depth. Anything
 		// nested under it names the line that actually broke instead of being
 		// silently reattached to a surviving ancestor.
 		reject := func(message string) {
-			errs = append(errs, lineError{line: number, message: message})
+			errs = append(errs, LineError{Line: number, Message: message})
 			previousDepth = depth
 			rejectedDepth, rejectedLine = depth, number
 		}
@@ -121,7 +121,7 @@ func parseOutlineStructure(buffer string, project *models.Project) ([]outlineBuf
 			continue
 		}
 
-		marker, body, markerErr := splitOutlineMarker(body)
+		marker, body, markerErr := SplitOutlineMarker(body)
 		if markerErr != nil {
 			reject(markerErr.Error())
 			continue
@@ -130,11 +130,11 @@ func parseOutlineStructure(buffer string, project *models.Project) ([]outlineBuf
 		if marker != "" {
 			resolved, known := markers[marker]
 			if !known {
-				reject(fmt.Sprintf("marker %s%s%s does not name a task in this project", outlineMarkerPrefix, marker, outlineMarkerSuffix))
+				reject(fmt.Sprintf("marker %s%s%s does not name a task in this project", OutlineMarkerPrefix, marker, OutlineMarkerSuffix))
 				continue
 			}
 			if first, duplicate := claimed[resolved]; duplicate {
-				reject(fmt.Sprintf("marker %s%s%s already claimed on line %d", outlineMarkerPrefix, marker, outlineMarkerSuffix, first))
+				reject(fmt.Sprintf("marker %s%s%s already claimed on line %d", OutlineMarkerPrefix, marker, OutlineMarkerSuffix, first))
 				continue
 			}
 			claimed[resolved] = number
@@ -150,39 +150,39 @@ func parseOutlineStructure(buffer string, project *models.Project) ([]outlineBuf
 // parseOutlineBodies is the line phase. The body left after the marker strip is
 // parsed through the shared outline surface. Structural capture tokens receive
 // explicit guidance because the buffer owns project and parent placement.
-func parseOutlineBodies(structural []outlineBufferLine, project *models.Project, projects []*models.Project) ([]app.OutlinePlanLine, []lineError) {
+func parseOutlineBodies(structural []outlineBufferLine, project *models.Project, projects []*models.Project) ([]app.OutlinePlanLine, []LineError) {
 	var (
 		lines []app.OutlinePlanLine
-		errs  []lineError
+		errs  []LineError
 	)
 	for _, item := range structural {
 		structuralTokens := textgrammar.Parse(item.body, textgrammar.SurfaceCapture)
 		forbidden := false
 		if len(structuralTokens.TokensFor(textgrammar.FieldProject)) > 0 {
-			errs = append(errs, lineError{
-				line:    item.sourceLine,
-				message: "the outline buffer owns the project; remove the %project sigil",
+			errs = append(errs, LineError{
+				Line:    item.sourceLine,
+				Message: "the outline buffer owns the project; remove the %project sigil",
 			})
 			forbidden = true
 		}
 		if len(structuralTokens.TokensFor(textgrammar.FieldParent)) > 0 {
-			errs = append(errs, lineError{
-				line:    item.sourceLine,
-				message: "indentation sets parentage here; remove the >parent sigil",
+			errs = append(errs, LineError{
+				Line:    item.sourceLine,
+				Message: "indentation sets parentage here; remove the >parent sigil",
 			})
 			forbidden = true
 		}
 		if len(structuralTokens.TokensFor(textgrammar.FieldChild)) > 0 {
-			errs = append(errs, lineError{
-				line:    item.sourceLine,
-				message: "indentation sets parentage here; remove the <child sigil",
+			errs = append(errs, LineError{
+				Line:    item.sourceLine,
+				Message: "indentation sets parentage here; remove the <child sigil",
 			})
 			forbidden = true
 		}
 		if len(structuralTokens.TokensFor(textgrammar.FieldDefer)) > 0 {
-			errs = append(errs, lineError{
-				line:    item.sourceLine,
-				message: "the outline buffer cannot defer; remove the @@defer sigil",
+			errs = append(errs, LineError{
+				Line:    item.sourceLine,
+				Message: "the outline buffer cannot defer; remove the @@defer sigil",
 			})
 			forbidden = true
 		}
@@ -190,9 +190,9 @@ func parseOutlineBodies(structural []outlineBufferLine, project *models.Project,
 		// creation-time or panel act, so a dumped &link would either duplicate an
 		// existing attachment or silently vanish on the round trip.
 		if len(structuralTokens.TokensFor(textgrammar.FieldAttachment)) > 0 {
-			errs = append(errs, lineError{
-				line:    item.sourceLine,
-				message: "the outline buffer cannot attach; remove the &link sigil",
+			errs = append(errs, LineError{
+				Line:    item.sourceLine,
+				Message: "the outline buffer cannot attach; remove the &link sigil",
 			})
 			forbidden = true
 		}
@@ -200,9 +200,9 @@ func parseOutlineBodies(structural []outlineBufferLine, project *models.Project,
 		// the line, so a ;comment; span could only ever append a duplicate on every
 		// round trip.
 		if len(structuralTokens.TokensFor(textgrammar.FieldComment)) > 0 {
-			errs = append(errs, lineError{
-				line:    item.sourceLine,
-				message: "the outline buffer cannot comment; remove the ;comment; sigil",
+			errs = append(errs, LineError{
+				Line:    item.sourceLine,
+				Message: "the outline buffer cannot comment; remove the ;comment; sigil",
 			})
 			forbidden = true
 		}
@@ -210,32 +210,32 @@ func parseOutlineBodies(structural []outlineBufferLine, project *models.Project,
 			continue
 		}
 
-		parsed, err := parseQuickCaptureSurface(item.body, project, projects, true, textgrammar.SurfaceOutline)
+		parsed, err := ParseQuickCaptureSurface(item.body, project, projects, true, textgrammar.SurfaceOutline)
 		if err != nil {
-			errs = append(errs, lineError{line: item.sourceLine, message: err.Error()})
+			errs = append(errs, LineError{Line: item.sourceLine, Message: err.Error()})
 			continue
 		}
-		if err := models.ValidateTaskTitle(parsed.title); err != nil {
-			errs = append(errs, lineError{line: item.sourceLine, message: err.Error()})
+		if err := models.ValidateTaskTitle(parsed.Title); err != nil {
+			errs = append(errs, LineError{Line: item.sourceLine, Message: err.Error()})
 			continue
 		}
 		line := app.OutlinePlanLine{
 			SourceLine: item.sourceLine,
 			TaskID:     item.taskID,
 			Depth:      item.depth,
-			Title:      parsed.title,
-			Priority:   parsed.priority,
-			Tags:       parsed.tags,
-			Context:    parsed.context,
-			Due:        parsed.dueDate,
-			Pinned:     parsed.pinned,
-			Review:     parsed.review,
+			Title:      parsed.Title,
+			Priority:   parsed.Priority,
+			Tags:       parsed.Tags,
+			Context:    parsed.Context,
+			Due:        parsed.DueDate,
+			Pinned:     parsed.Pinned,
+			Review:     parsed.Review,
 			// The parser has already folded -~task and ~0 in, so this is the final
 			// set the line declares rather than a patch over the stored one.
 			Dependencies: dependencyLocators(parsed.dependencies),
 		}
-		if parsed.destinationSet {
-			line.Destination = parsed.destination
+		if parsed.DestinationSet {
+			line.Destination = parsed.Destination
 		}
 		lines = append(lines, line)
 	}
@@ -259,36 +259,36 @@ func splitOutlineIndent(raw string) (int, string, error) {
 	if strings.HasPrefix(body, "\t") {
 		return 0, "", fmt.Errorf("indent with spaces, not tabs")
 	}
-	if indent%outlineIndentWidth != 0 {
-		return 0, "", fmt.Errorf("indent of %d spaces is not a multiple of %d", indent, outlineIndentWidth)
+	if indent%OutlineIndentWidth != 0 {
+		return 0, "", fmt.Errorf("indent of %d spaces is not a multiple of %d", indent, OutlineIndentWidth)
 	}
 	return indent, strings.TrimRight(body, " \t"), nil
 }
 
-// splitOutlineMarker removes a trailing identity marker and returns it alongside
+// SplitOutlineMarker removes a trailing identity marker and returns it alongside
 // the capture text. The marker is anchored to the end of the line so a title may
 // contain brackets without being mistaken for one.
-func splitOutlineMarker(body string) (string, string, error) {
-	if !strings.HasSuffix(body, outlineMarkerSuffix) {
+func SplitOutlineMarker(body string) (string, string, error) {
+	if !strings.HasSuffix(body, OutlineMarkerSuffix) {
 		return "", body, nil
 	}
-	start := strings.LastIndex(body, outlineMarkerPrefix)
+	start := strings.LastIndex(body, OutlineMarkerPrefix)
 	if start < 0 {
-		return "", "", fmt.Errorf("a line ending in %s must carry a %s…%s marker", outlineMarkerSuffix, outlineMarkerPrefix, outlineMarkerSuffix)
+		return "", "", fmt.Errorf("a line ending in %s must carry a %s…%s marker", OutlineMarkerSuffix, OutlineMarkerPrefix, OutlineMarkerSuffix)
 	}
-	marker := body[start+len(outlineMarkerPrefix) : len(body)-len(outlineMarkerSuffix)]
+	marker := body[start+len(OutlineMarkerPrefix) : len(body)-len(OutlineMarkerSuffix)]
 	if strings.TrimSpace(marker) == "" || strings.ContainsAny(marker, " \t[]") {
 		return "", "", fmt.Errorf("marker %q is malformed", body[start:])
 	}
 	return marker, strings.TrimRight(body[:start], " \t"), nil
 }
 
-// outlineMarkerIndex maps every marker a buffer may legally carry to the task ID
+// OutlineMarkerIndex maps every marker a buffer may legally carry to the task ID
 // it names. Both the printed short marker and the full task ID resolve, so a
 // hand-written marker copied from elsewhere still lands. An ambiguous short
 // marker is left out rather than resolved arbitrarily; the dump refuses to
 // produce one, so reaching this case means the buffer was hand-authored.
-func outlineMarkerIndex(project *models.Project) map[string]string {
+func OutlineMarkerIndex(project *models.Project) map[string]string {
 	index := make(map[string]string)
 	if project == nil {
 		return index
@@ -299,21 +299,21 @@ func outlineMarkerIndex(project *models.Project) map[string]string {
 			continue
 		}
 		index[task.ID] = task.ID
-		short[outlineMarkerFor(task.ID)]++
+		short[OutlineMarkerFor(task.ID)]++
 	}
 	for _, task := range project.Tasks {
 		if task == nil || task.ID == "" {
 			continue
 		}
-		if marker := outlineMarkerFor(task.ID); short[marker] == 1 {
+		if marker := OutlineMarkerFor(task.ID); short[marker] == 1 {
 			index[marker] = task.ID
 		}
 	}
 	return index
 }
 
-// outlineMarkerFor is the marker the dump prints for a task ID.
-func outlineMarkerFor(taskID string) string {
+// OutlineMarkerFor is the marker the dump prints for a task ID.
+func OutlineMarkerFor(taskID string) string {
 	if len(taskID) <= outlineMarkerLength {
 		return taskID
 	}

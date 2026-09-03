@@ -45,7 +45,7 @@ accepts the `+Nh` offsets `util.ParseCalendarDate` refuses by name. It also
 carries a lifecycle effect the other metadata sigils do not: `deferralRefusesState`
 is the terminal half of `deferTask`'s policy, shared by capture and inline edit so
 a refusal is worded the same wherever it is expressed, and a deferral that is
-honored claims Backlog. `composerDeferredDestination` applies that route to both
+honored claims Backlog. `grammar.ComposerDeferredDestination` applies that route to both
 the composer's header and its preview, so neither promises a landing place the
 submitted request will not honor. Entering a state clears `DeferredUntil`, so both
 surfaces write the instant *after* the transition — `buildPreparedCapturedTask`
@@ -220,7 +220,7 @@ to Doing. Inline edit refuses a child locator outside the destination project
 with `invalid child: child must belong to the effective project`.
 
 `~task` is the soft-reference sigil, and it is the one repeatable reference that
-crosses a project boundary: `resolveDependencyReference` accepts a bare alias,
+crosses a project boundary: `grammar.ResolveDependencyReference` accepts a bare alias,
 resolved in the effective project like `>parent` and `<child`, or a
 `project-slug:alias` pair resolved against the loaded population. It is peeled
 before `FieldTag` for the attachment entry's reason — `#([\w][\w.:-]*)` stops at
@@ -235,7 +235,7 @@ and `~0` are refused there by name. Inline edit and the outline buffer take all
 three. Search takes `~task` and `-~task` and compiles them into
 `admitsDependencies`, an AND gate over the stored list and an AND of nots beside
 it: the negation resolves its locator through the same
-`resolveDependencyReference` its positive twin uses, so an ambiguous or unknown
+`grammar.ResolveDependencyReference` its positive twin uses, so an ambiguous or unknown
 alias is reported identically, and the resolved target then subtracts the tasks
 the positive form would have selected. `~0` is still named in
 `placementDiagnostics` and `refusedSearchFields` rather than compiled into a
@@ -263,14 +263,14 @@ work survives a round trip the workspace cannot resolve.
 
 `Ctrl+E` is the second surface that speaks the edit grammar. Its buffer's `# `
 heading is a title line, so `handleTaskContentEdited` routes it through the same
-`parseQuickEdit` and `taskLineEditRequest` the inline editor uses, then rides the
+`grammar.ParseQuickEdit` and `taskLineEditRequest` the inline editor uses, then rides the
 edited body on that request's `Description` field. One `Service.EditTaskLine`
 call therefore commits title, sigils, structure, and body as one transaction and
 one undo entry; a second call would record two. The title is compared against the
 one written into the buffer and parsed only when it differs, so a literal sigil
 character the user never touched cannot be consumed. Because the composer batches
 its create-and-open beside a reload, the handler re-resolves the project and task
-by ID before parsing: `parseQuickEdit` compares task pointers by identity, and a
+by ID before parsing: `grammar.ParseQuickEdit` compares task pointers by identity, and a
 stale pointer would make the edited task look like a stranger.
 
 A recognized value the grammar cannot honor refuses the whole save. Nothing is
@@ -303,7 +303,7 @@ a visual selection, which names rows rather than a project.
 Each dumped task carries a trailing `[[tt:<first 8 hex of task.ID>]]` marker,
 asserted unique at dump time so a collision aborts before the editor opens. The
 outline layer strips that marker before the remainder of the line reaches
-`parseQuickCapture` with `skipProject=true`, which is what keeps one capture
+`grammar.ParseQuickCapture` with `skipProject=true`, which is what keeps one capture
 parser true for the whole product and makes a `>parent` or `<child` sigil an
 error rather than a competing parentage channel. `FieldChild` is absent from
 `SurfaceOutline`, so the rejection is what stops the sigil from surviving inside
@@ -334,14 +334,14 @@ Emptiness follows from the same rule rather than being a syntax error: a buffer
 with every line removed deletes every task in the scope, and it is refused only
 when it also removes nothing, which is the truncated-file case. That ruling
 belongs to `handleOutlineEdited` and to `ApplyOutlinePlan`, never to
-`parseOutlineBuffer`, because only the two of them know the scope the emptiness
+`grammar.ParseOutlineBuffer`, because only the two of them know the scope the emptiness
 is being read against.
 
 Validation runs in two phases, both before any mutation. The outline phase
 checks marker syntax, unknown and duplicate markers, indent multiples and jumps,
 `models.MaxNestingDepth`, and children orphaned by a rejected parent; the line
 phase validates each stripped remainder. Every problem is collected rather than
-reported one at a time, and a rejection renders the line-numbered `lineError`
+reported one at a time, and a rejection renders the line-numbered `grammar.LineError`
 list the multiline composer already uses, on its own scrollable
 `OutlineErrorsViewModel` surface because a status bar is one truncated line. The
 temp file is kept on every refusal so the reported line numbers still resolve.

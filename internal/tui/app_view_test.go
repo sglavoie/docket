@@ -112,9 +112,9 @@ func TestAppViewTaskComposerBudgetsForWrappedFooter(t *testing.T) {
 		t.Fatal("ShowTaskComposerMsg should be handled")
 	}
 	composer := app.taskComposer
-	composer.input.SetValue("Task $")
-	composer.updatePreview()
-	composer.refreshAutocomplete()
+	composer.Input.SetValue("Task $")
+	composer.UpdatePreview()
+	composer.RefreshAutocomplete()
 
 	if got := lipgloss.Height(app.renderStatusBar()); got <= 2 {
 		t.Fatalf("test requires a wrapped contextual footer, got %d rows", got)

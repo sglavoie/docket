@@ -14,7 +14,8 @@ name work that requires navigation before action. Its fourth component is instea
 the current local day's Done count, a non-deficit progress signal, and the ladder
 in `formatWorkspacePulseComponents` drops Done, Inbox, overdue, then Today.
 
-`formatDeferDate` renders the pending half of that ladder against `now`, because
+`chrome.FormatDeferDate` renders the pending half of that ladder against `now`,
+because
 a deferral is an instant and the row has to say when the task comes back. It
 resolves the value into `now`'s zone first — instants read from disk keep the
 fixed-offset zone `parseProjectDocumentInstant` preserves for byte-stable

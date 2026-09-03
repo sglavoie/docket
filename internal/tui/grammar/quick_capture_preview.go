@@ -1,4 +1,4 @@
-package tui
+package grammar
 
 import (
 	"fmt"
@@ -10,20 +10,21 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-// updatePreview updates the live preview state.
-func (q *quickCaptureInput) updatePreview() {
-	input := strings.ReplaceAll(q.input.Value(), "\n", " ")
+// UpdatePreview updates the live preview state.
+func (q *QuickCaptureInput) UpdatePreview() {
+	input := strings.ReplaceAll(q.Input.Value(), "\n", " ")
 	input = strings.TrimSpace(input)
 	if input == "" {
-		q.preview = nil
-		q.previewErr = ""
+		q.Preview = nil
+		q.PreviewErr = ""
 		return
 	}
-	q.preview, q.previewErr = parseQuickCaptureForPreview(input, q.project, q.allProjects, q.skipProjectSyntax)
+	q.Preview, q.PreviewErr = ParseQuickCaptureForPreview(input, q.Project, q.allProjects, q.SkipProjectSyntax)
 }
 
 // previewGroupLabelWidth is the padded width used for the leading group label
@@ -31,33 +32,33 @@ func (q *quickCaptureInput) updatePreview() {
 // the longest label plus a trailing space so the body column lines up.
 const previewGroupLabelWidth = 9
 
-// previewGroup is one labeled cluster of parsed attributes (Task, Route,
+// PreviewGroup is one labeled cluster of parsed attributes (Task, Route,
 // Children, Schedule, Priority, Tags). Both the full grouped preview and the
 // compact two-row fallback are built from the same groups so they can never
 // disagree about what the parser understood.
-type previewGroup struct {
-	label  string
-	chunks []string
+type PreviewGroup struct {
+	Label  string
+	Chunks []string
 }
 
-// previewGroups builds the populated preview groups from the parsed result, or
+// PreviewGroups builds the populated preview groups from the parsed result, or
 // reports ok=false when there is nothing to preview. It is the single source of
 // the recognized task, route, child, schedule, state, priority, tag, and project
 // information shown by both preview renderers.
-func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
-	if q.preview == nil || q.preview.title == "" {
+func (q *QuickCaptureInput) PreviewGroups() (groups []PreviewGroup, ok bool) {
+	if q.Preview == nil || q.Preview.Title == "" {
 		return nil, false
 	}
 
 	previewTask := &models.Task{
-		Title:         q.preview.title,
+		Title:         q.Preview.Title,
 		WorkflowState: models.StateInbox,
-		Priority:      q.preview.priority,
-		Tags:          q.preview.tags,
+		Priority:      q.Preview.Priority,
+		Tags:          q.Preview.Tags,
 	}
-	taskTitle := theme.TaskTitleStyleFor(previewTask, theme.TaskTitleStyleOptions{}).Render(q.preview.title)
+	taskTitle := theme.TaskTitleStyleFor(previewTask, theme.TaskTitleStyleOptions{}).Render(q.Preview.Title)
 	taskChunks := []string{taskTitle}
-	groups = append(groups, previewGroup{label: "Task", chunks: taskChunks})
+	groups = append(groups, PreviewGroup{Label: "Task", Chunks: taskChunks})
 	destinationDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDestination)
 	dueDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDue)
 	priorityDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldPriority)
@@ -67,166 +68,166 @@ func (q *quickCaptureInput) previewGroups() (groups []previewGroup, ok bool) {
 	reviewDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldReview)
 
 	destination := app.CaptureDestinationInbox
-	if q.preview.parentID != nil {
+	if q.Preview.ParentID != nil {
 		destination = app.CaptureDestinationBacklog
 	}
-	if q.preview.destinationSet {
-		destination = q.preview.destination
+	if q.Preview.DestinationSet {
+		destination = q.Preview.Destination
 	}
 	// The deferral route runs through the same helper the submitted request uses,
 	// so the preview never promises a landing place the capture will not honor.
 	deferred := false
-	if routed := composerDeferredDestination(q.preview, destination); routed != destination {
+	if routed := ComposerDeferredDestination(q.Preview, destination); routed != destination {
 		destination, deferred = routed, true
 	}
 	destinationLabel := destinationDefinition.Trigger + string(destination)
 	switch {
 	case deferred:
 		destinationLabel += " (deferred)"
-	case !q.preview.destinationSet:
+	case !q.Preview.DestinationSet:
 		destinationLabel += " (default)"
 	}
 	routeChunks := []string{destination.WorkflowState().Icon() + " " + destinationLabel}
-	if q.preview.targetProjectName != "" {
-		routeChunks = append(routeChunks, "→ "+q.preview.targetProjectName)
+	if q.Preview.TargetProjectName != "" {
+		routeChunks = append(routeChunks, "→ "+q.Preview.TargetProjectName)
 	}
-	groups = append(groups, previewGroup{label: "Route", chunks: routeChunks})
+	groups = append(groups, PreviewGroup{Label: "Route", Chunks: routeChunks})
 
 	// Children sits directly after Route because both answer where the task lands.
 	// The parser already deduped aliases in first-reference order, so one chunk per
 	// entry both survives the compact fallback's flattening and states the count.
-	if len(q.preview.children) > 0 {
-		childChunks := make([]string, len(q.preview.children))
-		for i, child := range q.preview.children {
-			childChunks[i] = fmt.Sprintf("%s%d %s", childDefinition.Trigger, child.shortID, child.title)
+	if len(q.Preview.Children) > 0 {
+		childChunks := make([]string, len(q.Preview.Children))
+		for i, child := range q.Preview.Children {
+			childChunks[i] = fmt.Sprintf("%s%d %s", childDefinition.Trigger, child.ShortID, child.Title)
 		}
-		groups = append(groups, previewGroup{label: "Children", chunks: childChunks})
+		groups = append(groups, PreviewGroup{Label: "Children", Chunks: childChunks})
 	}
 
 	// Depends follows Children because both name other tasks, and it states one
 	// chunk per reference for the same reason: the parser already deduped aliases
 	// in first-reference order, so the group is also the count.
-	if len(q.preview.dependencies) > 0 {
+	if len(q.Preview.dependencies) > 0 {
 		dependencyDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDependency)
-		dependencyChunks := make([]string, len(q.preview.dependencies))
-		for i, ref := range q.preview.dependencies {
-			dependencyChunks[i] = dependencyDefinition.Trigger + ref.label()
+		dependencyChunks := make([]string, len(q.Preview.dependencies))
+		for i, ref := range q.Preview.dependencies {
+			dependencyChunks[i] = dependencyDefinition.Trigger + ref.Label()
 		}
-		groups = append(groups, previewGroup{label: "Depends", chunks: dependencyChunks})
+		groups = append(groups, PreviewGroup{Label: "Depends", Chunks: dependencyChunks})
 	}
 
 	var scheduleChunks []string
-	if q.preview.dueDate != nil {
-		scheduleChunks = append(scheduleChunks, dueDefinition.Trigger+q.preview.dueDate.Format("Jan 2"))
+	if q.Preview.DueDate != nil {
+		scheduleChunks = append(scheduleChunks, dueDefinition.Trigger+q.Preview.DueDate.Format("Jan 2"))
 	}
-	if q.preview.deferUntil != nil {
+	if q.Preview.DeferUntil != nil {
 		deferDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDefer)
-		scheduleChunks = append(scheduleChunks, deferDefinition.Trigger+formatDeferDate(*q.preview.deferUntil, time.Now()))
+		scheduleChunks = append(scheduleChunks, deferDefinition.Trigger+chrome.FormatDeferDate(*q.Preview.DeferUntil, time.Now()))
 	}
 	if len(scheduleChunks) > 0 {
-		groups = append(groups, previewGroup{label: "Schedule", chunks: scheduleChunks})
+		groups = append(groups, PreviewGroup{Label: "Schedule", Chunks: scheduleChunks})
 	}
 
-	if q.preview.priority != models.PriorityUnset {
-		groups = append(groups, previewGroup{label: "Priority", chunks: []string{fmt.Sprintf("%s%d", priorityDefinition.Trigger, q.preview.priority)}})
+	if q.Preview.Priority != models.PriorityUnset {
+		groups = append(groups, PreviewGroup{Label: "Priority", Chunks: []string{fmt.Sprintf("%s%d", priorityDefinition.Trigger, q.Preview.Priority)}})
 	}
-	if q.preview.pinned {
-		groups = append(groups, previewGroup{label: "Pinned", chunks: []string{pinnedDefinition.Trigger + "pin"}})
+	if q.Preview.Pinned {
+		groups = append(groups, PreviewGroup{Label: "Pinned", Chunks: []string{pinnedDefinition.Trigger + "pin"}})
 	}
-	if q.preview.review {
-		groups = append(groups, previewGroup{label: "Review", chunks: []string{reviewDefinition.Trigger + "review"}})
+	if q.Preview.Review {
+		groups = append(groups, PreviewGroup{Label: "Review", Chunks: []string{reviewDefinition.Trigger + "review"}})
 	}
 	// Attachments sit below the metadata groups and one chunk per entry, so the
 	// preview states how many the line would create. Without this group a pasted
 	// URL would vanish from the title with nothing said in its place.
-	if len(q.preview.attachments) > 0 {
+	if len(q.Preview.Attachments) > 0 {
 		attachmentDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldAttachment)
-		attachmentChunks := make([]string, len(q.preview.attachments))
-		for i, value := range q.preview.attachments {
+		attachmentChunks := make([]string, len(q.Preview.Attachments))
+		for i, value := range q.Preview.Attachments {
 			attachmentChunks[i] = attachmentDefinition.Trigger + value
 		}
-		groups = append(groups, previewGroup{label: "Attach", chunks: attachmentChunks})
+		groups = append(groups, PreviewGroup{Label: "Attach", Chunks: attachmentChunks})
 	}
-	// Comments sit beside attachments for the same reason: the span is peeled out
+	// Comments sit beside Attachments for the same reason: the span is peeled out
 	// of the title, so without this group a comment whose closing delimiter is
 	// still missing would be indistinguishable from one already recognized.
-	if len(q.preview.comments) > 0 {
+	if len(q.Preview.Comments) > 0 {
 		commentDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldComment)
-		commentChunks := make([]string, len(q.preview.comments))
-		for i, text := range q.preview.comments {
+		commentChunks := make([]string, len(q.Preview.Comments))
+		for i, text := range q.Preview.Comments {
 			commentChunks[i] = commentDefinition.Trigger + text + commentDefinition.Trigger
 		}
-		groups = append(groups, previewGroup{label: "Comments", chunks: commentChunks})
+		groups = append(groups, PreviewGroup{Label: "Comments", Chunks: commentChunks})
 	}
-	if len(q.preview.tags) > 0 {
-		tagStrs := make([]string, len(q.preview.tags))
-		for i, t := range q.preview.tags {
+	if len(q.Preview.Tags) > 0 {
+		tagStrs := make([]string, len(q.Preview.Tags))
+		for i, t := range q.Preview.Tags {
 			tagStrs[i] = tagDefinition.Trigger + t
 		}
-		groups = append(groups, previewGroup{label: "Tags", chunks: []string{strings.Join(tagStrs, " ")}})
+		groups = append(groups, PreviewGroup{Label: "Tags", Chunks: []string{strings.Join(tagStrs, " ")}})
 	}
 
 	return groups, true
 }
 
-// renderPreview formats the parsed preview for display. The output is chunked
+// RenderPreview formats the parsed preview for display. The output is chunked
 // into labeled groups (Task / Route / Children / Schedule / Priority / Tags) so
 // the user can scan what the parser understood without parsing a
 // separator-soup. Only populated groups are shown.
-func (q *quickCaptureInput) renderPreview() string {
-	if q.previewErr != "" {
-		return theme.ValidationErrorStyle.Render(q.previewErr)
+func (q *QuickCaptureInput) RenderPreview() string {
+	if q.PreviewErr != "" {
+		return theme.ValidationErrorStyle.Render(q.PreviewErr)
 	}
-	groups, ok := q.previewGroups()
+	groups, ok := q.PreviewGroups()
 	if !ok {
 		return ""
 	}
 
 	var lines []string
 	for _, g := range groups {
-		lines = append(lines, q.renderPreviewLine(g.label, strings.Join(g.chunks, " · ")))
+		lines = append(lines, q.renderPreviewLine(g.Label, strings.Join(g.Chunks, " · ")))
 	}
 	return strings.Join(lines, "\n")
 }
 
-// renderCompactPreview renders the same recognized metadata as renderPreview but
+// RenderCompactPreview renders the same recognized metadata as RenderPreview but
 // as a single unlabeled " · "-joined line wrapped to at most two rows. Quick
 // Capture falls back to it when the full grouped preview would displace the
 // scrollable syntax guide or the app-shell footer, keeping the composed view
 // within its height budget without dropping what the parser understood.
-func (q *quickCaptureInput) renderCompactPreview() string {
-	if q.previewErr != "" {
-		return q.clampToRows(theme.ValidationErrorStyle.Render(q.previewErr), 2)
+func (q *QuickCaptureInput) RenderCompactPreview() string {
+	if q.PreviewErr != "" {
+		return q.clampToRows(theme.ValidationErrorStyle.Render(q.PreviewErr), 2)
 	}
-	groups, ok := q.previewGroups()
+	groups, ok := q.PreviewGroups()
 	if !ok {
 		return ""
 	}
 	var chunks []string
 	for _, g := range groups {
-		chunks = append(chunks, g.chunks...)
+		chunks = append(chunks, g.Chunks...)
 	}
 	return q.clampToRows(strings.Join(chunks, " · "), 2)
 }
 
-// composePreviewBlock renders the live preview (or error) for a composed capture
+// ComposePreviewBlock renders the live preview (or error) for a composed capture
 // view, choosing the full grouped preview when it fits alongside the lower pane
 // and falling back to the compact two-row form when it would otherwise displace
 // the lower pane or the footer. It returns the rendered block, its row count, and
 // whether a trailing blank separator should follow it (1 when non-empty). Shared
 // by Quick Capture and the Linked Task Creator so both budget the preview identically.
-func (q *quickCaptureInput) composePreviewBlock(remaining, lowerMin int) (block string, rows, blankAfter int) {
+func (q *QuickCaptureInput) ComposePreviewBlock(remaining, lowerMin int) (block string, rows, blankAfter int) {
 	renderFull := func() string {
 		if q.err != nil {
 			return theme.ValidationErrorStyle.Render(q.err.Error())
 		}
-		return q.renderPreview()
+		return q.RenderPreview()
 	}
 	renderCompact := func() string {
 		if q.err != nil {
 			return q.clampToRows(theme.ValidationErrorStyle.Render(q.err.Error()), 2)
 		}
-		return q.renderCompactPreview()
+		return q.RenderCompactPreview()
 	}
 
 	block = renderFull()
@@ -260,15 +261,15 @@ func (q *quickCaptureInput) composePreviewBlock(remaining, lowerMin int) (block 
 // clampToRows wraps a styled string to q.width and keeps at most rows lines,
 // silently dropping any overflow. Used for the best-effort compact preview,
 // where losing a trailing detail is acceptable but a fixed row budget is not.
-func (q *quickCaptureInput) clampToRows(styled string, rows int) string {
+func (q *QuickCaptureInput) clampToRows(styled string, rows int) string {
 	if rows < 1 {
 		rows = 1
 	}
 	var lines []string
-	if q.width <= 0 {
+	if q.Width <= 0 {
 		lines = strings.Split(styled, "\n")
 	} else {
-		lines = textfit.WrapStyled(styled, q.width)
+		lines = textfit.WrapStyled(styled, q.Width)
 	}
 	if len(lines) > rows {
 		lines = lines[:rows]
@@ -279,16 +280,16 @@ func (q *quickCaptureInput) clampToRows(styled string, rows int) string {
 // renderPreviewLine emits a single "Label   body" line, wrapping the body
 // when width is set so no rendered line exceeds q.width visual columns.
 // Continuation lines are indented to the label column for readability.
-func (q *quickCaptureInput) renderPreviewLine(label, body string) string {
+func (q *QuickCaptureInput) renderPreviewLine(label, body string) string {
 	prefix := theme.MutedStyle.Render(fmt.Sprintf("%-*s", previewGroupLabelWidth, label))
-	if q.width <= 0 {
+	if q.Width <= 0 {
 		return prefix + body
 	}
-	bodyWidth := q.width - previewGroupLabelWidth
+	bodyWidth := q.Width - previewGroupLabelWidth
 	if bodyWidth <= 0 {
 		// Width is too narrow for any body alongside the label; let the
 		// label sit on its own line and wrap the body on the next.
-		return prefix + "\n" + strings.Join(textfit.WrapStyled(body, q.width), "\n")
+		return prefix + "\n" + strings.Join(textfit.WrapStyled(body, q.Width), "\n")
 	}
 	wrapped := textfit.WrapStyled(body, bodyWidth)
 	indent := strings.Repeat(" ", previewGroupLabelWidth)

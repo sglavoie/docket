@@ -1,4 +1,4 @@
-package tui
+package grammar
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ import (
 )
 
 // getTagSuggestions returns matching tags for the partial query.
-func (q *quickCaptureInput) getTagSuggestions(partial string) []ACSuggestion {
+func (q *QuickCaptureInput) getTagSuggestions(partial string) []ACSuggestion {
 	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldTag)
 	type scoredTag struct {
 		tag   string
@@ -23,7 +23,7 @@ func (q *quickCaptureInput) getTagSuggestions(partial string) []ACSuggestion {
 	}
 
 	var scored []scoredTag
-	for _, tag := range q.tagCache {
+	for _, tag := range q.TagCache {
 		score := fuzzy.Score(tag, partial)
 		if score > 0 {
 			scored = append(scored, scoredTag{tag: tag, score: score})
@@ -46,8 +46,8 @@ func (q *quickCaptureInput) getTagSuggestions(partial string) []ACSuggestion {
 	return suggestions
 }
 
-// getContextSuggestions returns matching task contexts for the partial query.
-func (q *quickCaptureInput) getContextSuggestions(partial string) []ACSuggestion {
+// GetContextSuggestions returns matching task contexts for the partial query.
+func (q *QuickCaptureInput) GetContextSuggestions(partial string) []ACSuggestion {
 	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldContext)
 	type scoredContext struct {
 		context string
@@ -75,8 +75,8 @@ func (q *quickCaptureInput) getContextSuggestions(partial string) []ACSuggestion
 	return suggestions
 }
 
-// getPrioritySuggestions returns matching priority options for the partial query.
-func (q *quickCaptureInput) getPrioritySuggestions(partial string) []ACSuggestion {
+// GetPrioritySuggestions returns matching priority options for the partial query.
+func (q *QuickCaptureInput) GetPrioritySuggestions(partial string) []ACSuggestion {
 	var suggestions []ACSuggestion
 	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldPriority)
 	for _, value := range def.Values {
@@ -94,8 +94,8 @@ func (q *quickCaptureInput) getPrioritySuggestions(partial string) []ACSuggestio
 	return suggestions
 }
 
-// getPinSuggestions returns the pin options for the partial query.
-func (q *quickCaptureInput) getPinSuggestions(partial string) []ACSuggestion {
+// GetPinSuggestions returns the pin options for the partial query.
+func (q *QuickCaptureInput) GetPinSuggestions(partial string) []ACSuggestion {
 	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldPinned)
 	suggestions := make([]ACSuggestion, 0, len(def.Values))
 	partialLower := strings.ToLower(partial)
@@ -114,7 +114,7 @@ func (q *quickCaptureInput) getPinSuggestions(partial string) []ACSuggestion {
 // getReviewSuggestions returns the review options for the partial query. It
 // reads the capture definition for the same reason the pin one does: the
 // advertised vocabulary belongs to the registry, not to this list.
-func (q *quickCaptureInput) getReviewSuggestions(partial string) []ACSuggestion {
+func (q *QuickCaptureInput) getReviewSuggestions(partial string) []ACSuggestion {
 	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldReview)
 	suggestions := make([]ACSuggestion, 0, len(def.Values))
 	partialLower := strings.ToLower(partial)
@@ -130,8 +130,8 @@ func (q *quickCaptureInput) getReviewSuggestions(partial string) []ACSuggestion 
 	return suggestions
 }
 
-// getDateSuggestions returns common due date options for the partial query.
-func (q *quickCaptureInput) getDateSuggestions(partial string) []ACSuggestion {
+// GetDateSuggestions returns common due date options for the partial query.
+func (q *QuickCaptureInput) GetDateSuggestions(partial string) []ACSuggestion {
 	var suggestions []ACSuggestion
 	partialLower := strings.ToLower(partial)
 	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDue)
@@ -147,7 +147,7 @@ func (q *quickCaptureInput) getDateSuggestions(partial string) []ACSuggestion {
 }
 
 // getDeferSuggestions returns common deferral targets for the partial query.
-func (q *quickCaptureInput) getDeferSuggestions(partial string) []ACSuggestion {
+func (q *QuickCaptureInput) getDeferSuggestions(partial string) []ACSuggestion {
 	var suggestions []ACSuggestion
 	partialLower := strings.ToLower(partial)
 	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDefer)
@@ -162,9 +162,9 @@ func (q *quickCaptureInput) getDeferSuggestions(partial string) []ACSuggestion {
 	return suggestions
 }
 
-// getDestinationSuggestions returns lifecycle and planning destinations from
+// GetDestinationSuggestions returns lifecycle and planning destinations from
 // the shared capture grammar.
-func (q *quickCaptureInput) getDestinationSuggestions(partial string) []ACSuggestion {
+func (q *QuickCaptureInput) GetDestinationSuggestions(partial string) []ACSuggestion {
 	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDestination)
 	suggestions := make([]ACSuggestion, 0, len(def.Values))
 	partialLower := strings.ToLower(partial)
@@ -189,13 +189,13 @@ func (q *quickCaptureInput) getDestinationSuggestions(partial string) []ACSugges
 }
 
 // getParentSuggestions returns matching parent tasks for the partial query.
-func (q *quickCaptureInput) getParentSuggestions(partial string, candidates []*models.Task) []ACSuggestion {
+func (q *QuickCaptureInput) getParentSuggestions(partial string, candidates []*models.Task) []ACSuggestion {
 	return q.structuralSuggestions(partial, candidates, "#")
 }
 
 // getChildSuggestions returns matching adoptable tasks for the partial query,
 // rendered with the child sigil so a suggestion reads as the token it inserts.
-func (q *quickCaptureInput) getChildSuggestions(partial string, candidates []*models.Task) []ACSuggestion {
+func (q *QuickCaptureInput) getChildSuggestions(partial string, candidates []*models.Task) []ACSuggestion {
 	definition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldChild)
 	return q.structuralSuggestions(partial, candidates, definition.Trigger)
 }
@@ -203,7 +203,7 @@ func (q *quickCaptureInput) getChildSuggestions(partial string, candidates []*mo
 // structuralSuggestions ranks candidate tasks for a >parent or <child reference.
 // Both families score one search text, so the two relationships can never rank
 // the same project differently; only the rendered prefix distinguishes them.
-func (q *quickCaptureInput) structuralSuggestions(partial string, candidates []*models.Task, displayPrefix string) []ACSuggestion {
+func (q *QuickCaptureInput) structuralSuggestions(partial string, candidates []*models.Task, displayPrefix string) []ACSuggestion {
 	type scoredTask struct {
 		task  *models.Task
 		score int
@@ -230,7 +230,7 @@ func (q *quickCaptureInput) structuralSuggestions(partial string, candidates []*
 	for _, s := range scored {
 		task := s.task
 		// Truncate title if too long (width-aware).
-		titleLimit := max(q.width-15, 10)
+		titleLimit := max(q.Width-15, 10)
 		title := textfit.TruncateToVisualWidth(task.Title, titleLimit)
 		titleRendered := theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{}).Render(title)
 		suggestions = append(suggestions, ACSuggestion{
@@ -246,32 +246,32 @@ func (q *quickCaptureInput) structuralSuggestions(partial string, candidates []*
 // cross a project boundary, so withholding other projects would hide exactly
 // what the qualified alias exists for. Capture has no stored set, so there is
 // nothing to remove and no ~0 row.
-func (q *quickCaptureInput) getDependencySuggestions(partial string, parsedLine textgrammar.Result) []ACSuggestion {
+func (q *QuickCaptureInput) getDependencySuggestions(partial string, parsedLine textgrammar.Result) []ACSuggestion {
 	definition, ok := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldDependency)
 	if !ok {
 		return nil
 	}
 	effective := q.effectiveProject(parsedLine)
 	used := draftedDependencyLocators(parsedLine, textgrammar.FieldDependency, effective, q.allProjects)
-	candidates := dependencyAdditionCandidates(q.dependencyProjects(), "", used)
-	return dependencySuggestions(candidates, partial, effective, definition.Trigger, q.width-25)
+	candidates := DependencyAdditionCandidates(q.dependencyProjects(), "", used)
+	return DependencySuggestions(candidates, partial, effective, definition.Trigger, q.Width-25)
 }
 
 // dependencyProjects is the loaded, non-archived population a dependency
 // completion searches. It falls back to the composer's own project so a host
 // launched without a project list still completes locally.
-func (q *quickCaptureInput) dependencyProjects() []*models.Project {
+func (q *QuickCaptureInput) dependencyProjects() []*models.Project {
 	if len(q.projectCache) > 0 {
 		return q.projectCache
 	}
-	if q.project != nil {
-		return []*models.Project{q.project}
+	if q.Project != nil {
+		return []*models.Project{q.Project}
 	}
 	return nil
 }
 
 // getProjectSuggestions returns matching projects for the partial query.
-func (q *quickCaptureInput) getProjectSuggestions(partial string) []ACSuggestion {
+func (q *QuickCaptureInput) getProjectSuggestions(partial string) []ACSuggestion {
 	def, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldProject)
 	type scoredProject struct {
 		project *models.Project
@@ -295,7 +295,7 @@ func (q *quickCaptureInput) getProjectSuggestions(partial string) []ACSuggestion
 	suggestions := make([]ACSuggestion, 0, len(scored))
 	for _, s := range scored {
 		project := s.project
-		nameLimit := max(q.width-20, 10)
+		nameLimit := max(q.Width-20, 10)
 		name := textfit.TruncateToVisualWidth(project.Name, nameLimit)
 		suggestions = append(suggestions, ACSuggestion{
 			Display: def.Trigger + name,
@@ -305,19 +305,19 @@ func (q *quickCaptureInput) getProjectSuggestions(partial string) []ACSuggestion
 	return suggestions
 }
 
-// acceptSuggestion inserts the selected suggestion into the input.
-func (q *quickCaptureInput) acceptSuggestion() {
-	if !q.ac.IsActive() {
+// AcceptSuggestion inserts the selected suggestion into the input.
+func (q *QuickCaptureInput) AcceptSuggestion() {
+	if !q.AC.IsActive() {
 		return
 	}
 
-	triggerText := TriggerCharForMode(q.ac.Mode, q.triggers)
-	newInput := q.ac.BuildAcceptedInput(q.input.Value(), triggerText)
+	triggerText := TriggerCharForMode(q.AC.Mode, q.Triggers)
+	newInput := q.AC.BuildAcceptedInput(q.Input.Value(), triggerText)
 
-	q.input.SetValue(newInput)
+	q.Input.SetValue(newInput)
 	// Move cursor to end
-	q.input.CursorEnd()
+	q.Input.CursorEnd()
 
 	// Reset autocomplete state
-	q.ac.Clear()
+	q.AC.Clear()
 }

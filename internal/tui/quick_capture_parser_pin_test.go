@@ -5,18 +5,19 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 func TestParseQuickCapturePinSetsPinnedResult(t *testing.T) {
-	result, err := parseQuickCapture("Ship the release !1 *pin", quickCaptureTestProject(), nil, false)
+	result, err := grammar.ParseQuickCapture("Ship the release !1 *pin", quickCaptureTestProject(), nil, false)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if !result.pinned {
+	if !result.Pinned {
 		t.Error("expected pinned to be set")
 	}
-	if result.title != "Ship the release" {
-		t.Errorf("title = %q, want %q", result.title, "Ship the release")
+	if result.Title != "Ship the release" {
+		t.Errorf("title = %q, want %q", result.Title, "Ship the release")
 	}
 }
 
@@ -29,7 +30,7 @@ func TestParseQuickCaptureRefusesUnpinPerSurface(t *testing.T) {
 		{textgrammar.SurfaceOutline, "omit *pin to unpin here"},
 	}
 	for _, tt := range tests {
-		_, err := parseQuickCaptureSurface("Ship the release *unpin", quickCaptureTestProject(), nil, true, tt.surface)
+		_, err := grammar.ParseQuickCaptureSurface("Ship the release *unpin", quickCaptureTestProject(), nil, true, tt.surface)
 		if err == nil {
 			t.Fatalf("surface %v: expected an error", tt.surface)
 		}
@@ -40,14 +41,14 @@ func TestParseQuickCaptureRefusesUnpinPerSurface(t *testing.T) {
 }
 
 func TestParseQuickCaptureKeepsUnrecognizedPinValueInTitle(t *testing.T) {
-	result, err := parseQuickCapture("Refactor *args handling", quickCaptureTestProject(), nil, false)
+	result, err := grammar.ParseQuickCapture("Refactor *args handling", quickCaptureTestProject(), nil, false)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if result.title != "Refactor *args handling" {
-		t.Errorf("title = %q, want %q", result.title, "Refactor *args handling")
+	if result.Title != "Refactor *args handling" {
+		t.Errorf("title = %q, want %q", result.Title, "Refactor *args handling")
 	}
-	if result.pinned {
+	if result.Pinned {
 		t.Error("expected pinned to stay unset")
 	}
 }

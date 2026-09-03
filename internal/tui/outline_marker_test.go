@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 func TestOutlineMarkerStripLeavesCaptureText(t *testing.T) {
@@ -27,7 +28,7 @@ func TestOutlineMarkerStripLeavesCaptureText(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			marker, rest, err := splitOutlineMarker(tt.body)
+			marker, rest, err := grammar.SplitOutlineMarker(tt.body)
 			if tt.fails {
 				if err == nil {
 					t.Fatalf("split accepted %q", tt.body)
@@ -58,7 +59,7 @@ func TestOutlineMarkerIndexLeavesAmbiguousShortMarkersUnresolved(t *testing.T) {
 	}
 	project.Tasks = append(project.Tasks, clash)
 
-	index := outlineMarkerIndex(project)
+	index := grammar.OutlineMarkerIndex(project)
 	if resolved, ok := index["4f2a9c11"]; ok {
 		t.Fatalf("ambiguous short marker resolved to %s", resolved)
 	}
@@ -97,8 +98,8 @@ func TestOutlineApplyErrorReusesTheApplicationLineNumber(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			problem := outlineApplyError(tt.err)
-			if problem.line != tt.line || problem.message != tt.message {
-				t.Fatalf("got line %d %q, want line %d %q", problem.line, problem.message, tt.line, tt.message)
+			if problem.Line != tt.line || problem.Message != tt.message {
+				t.Fatalf("got line %d %q, want line %d %q", problem.Line, problem.Message, tt.line, tt.message)
 			}
 		})
 	}
@@ -136,7 +137,7 @@ func TestOutlineDumpScopeExcludesAnOrphanedTask(t *testing.T) {
 		t.Fatalf("dump printed an unreachable task:\n%s", buffer)
 	}
 
-	lines, problems := parseOutlineBuffer(buffer, project, nil)
+	lines, problems := grammar.ParseOutlineBuffer(buffer, project, nil)
 	if len(problems) > 0 {
 		t.Fatalf("unedited buffer was rejected: %v", problems)
 	}

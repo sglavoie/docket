@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -19,7 +20,7 @@ func TestStateChangingTUISurfacesPreservePlanningExclusivity(t *testing.T) {
 		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateBacklog)
 		m.seedDiskToday(t, task.ID, m.currentProject.ID)
 
-		parsed, err := parseQuickEdit("Task $waiting", task, m.currentProject)
+		parsed, err := grammar.ParseQuickEdit("Task $waiting", task, m.currentProject)
 		if err != nil {
 			t.Fatalf("parse inline edit: %v", err)
 		}
@@ -92,7 +93,7 @@ func TestInlineProjectMoveAfterTodayMutationUsesFreshStructuralPlanning(t *testi
 		t.Fatalf("stale shell Today entries = %d, want 1", got)
 	}
 
-	parsed, err := parseQuickEdit(
+	parsed, err := grammar.ParseQuickEdit(
 		moving.Title+" %"+destination.Slug,
 		moving,
 		source,

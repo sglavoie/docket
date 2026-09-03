@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 func TestParseQuickCaptureLegacyFormsRemainTitleText(t *testing.T) {
@@ -34,11 +35,11 @@ func TestParseQuickCaptureRetiredTaskTypeAndOrdinaryTags(t *testing.T) {
 func TestParseQuickCaptureNamedPriorityValuesRemainTitleText(t *testing.T) {
 	for _, value := range []string{"urgent", "high", "normal", "medium", "low", "h", "m", "l"} {
 		t.Run(value, func(t *testing.T) {
-			result, err := parseQuickCapture("Task !"+value, quickCaptureTestProject(), nil, false)
+			result, err := grammar.ParseQuickCapture("Task !"+value, quickCaptureTestProject(), nil, false)
 			if err != nil {
 				t.Fatalf("parse: %v", err)
 			}
-			if result.title != "Task !"+value || result.priority != 0 || result.prioritySet {
+			if result.Title != "Task !"+value || result.Priority != 0 || result.PrioritySet {
 				t.Fatalf("!%s parsed as priority: %+v", value, result)
 			}
 		})

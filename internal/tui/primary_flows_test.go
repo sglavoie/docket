@@ -6,6 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 // TestCaptureCreatesInboxTask verifies that a plain quick-capture input (no
@@ -14,12 +15,12 @@ import (
 func TestCaptureCreatesInboxTask(t *testing.T) {
 	project := testutil.NewTestProject("smoke")
 
-	result, err := parseQuickCapture("Buy milk", project, nil, false)
+	result, err := grammar.ParseQuickCapture("Buy milk", project, nil, false)
 	if err != nil {
 		t.Fatalf("parseQuickCapture: %v", err)
 	}
-	if result.title != "Buy milk" {
-		t.Errorf("title: got %q, want %q", result.title, "Buy milk")
+	if result.Title != "Buy milk" {
+		t.Errorf("Title: got %q, want %q", result.Title, "Buy milk")
 	}
 }
 

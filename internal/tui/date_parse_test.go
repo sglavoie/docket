@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -141,7 +142,7 @@ func TestParseDate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ParseDate(tt.input)
+			got, err := grammar.ParseDate(tt.input)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseDate(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
@@ -187,7 +188,7 @@ func TestParseDateWeekdays(t *testing.T) {
 
 	for _, tt := range weekdayTests {
 		t.Run(tt.input, func(t *testing.T) {
-			got, err := ParseDate(tt.input)
+			got, err := grammar.ParseDate(tt.input)
 			if err != nil {
 				t.Errorf("ParseDate(%q) unexpected error: %v", tt.input, err)
 				return
@@ -240,7 +241,7 @@ func TestParseDateNextWeekday(t *testing.T) {
 
 	for _, tt := range nextWeekdayTests {
 		t.Run(tt.input, func(t *testing.T) {
-			got, err := ParseDate(tt.input)
+			got, err := grammar.ParseDate(tt.input)
 			if err != nil {
 				t.Errorf("ParseDate(%q) unexpected error: %v", tt.input, err)
 				return

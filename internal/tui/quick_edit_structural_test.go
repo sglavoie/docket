@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -23,21 +24,21 @@ func TestParseQuickEditStructuralResolutionIsOrderIndependent(t *testing.T) {
 		"Moved >8 %destination",
 		"Moved %destination >8",
 	} {
-		result, err := parseQuickEdit(input, task, source, projects)
+		result, err := grammar.ParseQuickEdit(input, task, source, projects)
 		if err != nil {
 			t.Fatalf("parseQuickEdit(%q): %v", input, err)
 		}
-		if result.targetProject != destination || result.parent != destinationParent || result.parentMode != quickEditParentSet {
-			t.Fatalf("parseQuickEdit(%q) structural patch = project %v parent %v mode %v", input, result.targetProject, result.parent, result.parentMode)
+		if result.TargetProject != destination || result.Parent != destinationParent || result.ParentMode != grammar.QuickEditParentSet {
+			t.Fatalf("parseQuickEdit(%q) structural patch = project %v parent %v mode %v", input, result.TargetProject, result.Parent, result.ParentMode)
 		}
 	}
 
-	result, err := parseQuickEdit("Moved %destination", task, source, projects)
+	result, err := grammar.ParseQuickEdit("Moved %destination", task, source, projects)
 	if err != nil {
 		t.Fatalf("project-root parse: %v", err)
 	}
-	if result.parentMode != quickEditParentRoot || result.preview.ParentID != nil {
-		t.Fatalf("project-only parent patch = mode %v preview parent %v, want root", result.parentMode, result.preview.ParentID)
+	if result.ParentMode != grammar.QuickEditParentRoot || result.Preview.ParentID != nil {
+		t.Fatalf("project-only parent patch = mode %v preview parent %v, want root", result.ParentMode, result.Preview.ParentID)
 	}
 }
 
@@ -47,7 +48,7 @@ func TestParseQuickEditProjectChangeInvalidatesEarlierParent(t *testing.T) {
 	source := &models.Project{ID: "source", Slug: "source", Tasks: []*models.Task{parent, task}}
 	destination := &models.Project{ID: "destination", Slug: "destination", Tasks: []*models.Task{}}
 
-	_, err := parseQuickEdit("Moved >8 %destination", task, source, []*models.Project{source, destination})
+	_, err := grammar.ParseQuickEdit("Moved >8 %destination", task, source, []*models.Project{source, destination})
 	if err == nil || !strings.Contains(err.Error(), "parent not found") || !strings.Contains(err.Error(), "destination") {
 		t.Fatalf("error = %v, want effective-project parent refusal", err)
 	}
@@ -70,14 +71,14 @@ func TestParseQuickEditParentValidation(t *testing.T) {
 		{input: "Task >999", want: "parent not found"},
 	}
 	for _, tt := range tests {
-		_, err := parseQuickEdit(tt.input, task, project)
+		_, err := grammar.ParseQuickEdit(tt.input, task, project)
 		if err == nil || !strings.Contains(err.Error(), tt.want) {
 			t.Errorf("parseQuickEdit(%q) error = %v, want %q", tt.input, err, tt.want)
 		}
 	}
 
 	stale := &models.Task{ID: "stale", ShortID: 99, Title: "Stale"}
-	if reason := invalidQuickEditParent(task, project, project, stale); !strings.Contains(reason, "stale") {
+	if reason := grammar.InvalidQuickEditParent(task, project, project, stale); !strings.Contains(reason, "stale") {
 		t.Fatalf("stale parent reason = %q", reason)
 	}
 }
@@ -96,7 +97,7 @@ func TestValidQuickEditParentsFiltersDescendantsTerminalAndDepth(t *testing.T) {
 		previous = node
 	}
 	project := &models.Project{ID: "project", Slug: "project", Tasks: tasks}
-	candidates := validQuickEditParents(task, project, project)
+	candidates := grammar.ValidQuickEditParents(task, project, project)
 	ids := make([]string, len(candidates))
 	for i, candidate := range candidates {
 		ids[i] = candidate.ID
@@ -116,7 +117,7 @@ func TestQuickEditParentCandidatesUseEffectiveProject(t *testing.T) {
 	destinationParent := &models.Task{ID: "destination-parent", ShortID: 7, Title: "Destination", WorkflowState: models.StateBacklog}
 	destination := &models.Project{ID: "destination", Slug: "destination", Tasks: []*models.Task{destinationParent}}
 
-	candidates, errMsg := quickEditParentCandidates("Task >anything %destination", task, source, []*models.Project{source, destination})
+	candidates, errMsg := grammar.QuickEditParentCandidates("Task >anything %destination", task, source, []*models.Project{source, destination})
 	if errMsg != "" {
 		t.Fatalf("completion error = %q", errMsg)
 	}
@@ -134,14 +135,14 @@ func TestQuickEditPreviewIsPureAndUsesCanonicalDestinationEffects(t *testing.T) 
 	project := &models.Project{ID: "project", Slug: "project", Tasks: []*models.Task{task}}
 	originalUpdated := task.UpdatedAt
 
-	result, err := parseQuickEdit("Preview !1 #new -#old @tomorrow $today >0", task, project)
+	result, err := grammar.ParseQuickEdit("Preview !1 #new -#old @tomorrow $today >0", task, project)
 	if err != nil {
 		t.Fatalf("parseQuickEdit: %v", err)
 	}
 	if task.Title != "Original" || task.Priority != models.PriorityLow || !slices.Equal(task.Tags, []string{"old"}) || task.State() != models.StateWaiting || task.DeferredUntil != &future || task.UpdatedAt != originalUpdated {
 		t.Fatalf("source task mutated during preview: %+v", task)
 	}
-	preview := result.preview
+	preview := result.Preview
 	if preview.Title != "Preview" || preview.Priority != models.PriorityHigh || !slices.Equal(preview.Tags, []string{"new"}) || preview.DueDate == nil || preview.State() != models.StateBacklog || preview.DeferredUntil != nil || preview.ParentID != nil {
 		t.Fatalf("preview = %+v", preview)
 	}
@@ -165,7 +166,7 @@ func TestQuickEditPreviewDestinationMatrix(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			task := &models.Task{ID: "task", ShortID: 1, Title: "Original", WorkflowState: tt.from}
 			project := &models.Project{ID: "project", Slug: "project", Tasks: []*models.Task{task}}
-			result, err := parseQuickEdit("Original $"+tt.dest, task, project)
+			result, err := grammar.ParseQuickEdit("Original $"+tt.dest, task, project)
 			if tt.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
 					t.Fatalf("error = %v, want %q", err, tt.wantErr)
@@ -175,10 +176,10 @@ func TestQuickEditPreviewDestinationMatrix(t *testing.T) {
 			if err != nil {
 				t.Fatalf("parseQuickEdit: %v", err)
 			}
-			if result.preview.State() != tt.wantState {
-				t.Fatalf("preview state = %s, want %s", result.preview.State(), tt.wantState)
+			if result.Preview.State() != tt.wantState {
+				t.Fatalf("preview state = %s, want %s", result.Preview.State(), tt.wantState)
 			}
-			if tt.wantState.IsTerminal() && result.preview.CompletedAt == nil {
+			if tt.wantState.IsTerminal() && result.Preview.CompletedAt == nil {
 				t.Fatal("terminal preview did not reconcile CompletedAt")
 			}
 		})
@@ -189,16 +190,16 @@ func TestParseQuickEdit_PausedStateAndRetiredAliases(t *testing.T) {
 	project := &models.Project{Name: "test"}
 	task := &models.Task{Title: "Original", WorkflowState: models.StateDoing}
 
-	result, err := parseQuickEdit("Task $paused", task, project)
+	result, err := grammar.ParseQuickEdit("Task $paused", task, project)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !result.stateSet || result.state != models.StatePaused {
-		t.Errorf("expected state paused, got %s (set=%v)", result.state, result.stateSet)
+	if !result.StateSet || result.State != models.StatePaused {
+		t.Errorf("expected state paused, got %s (set=%v)", result.State, result.StateSet)
 	}
 
 	for _, retired := range []string{"$standby", "$hold"} {
-		if _, err = parseQuickEdit("Task "+retired, task, project); err == nil {
+		if _, err = grammar.ParseQuickEdit("Task "+retired, task, project); err == nil {
 			t.Errorf("expected retired alias %s to be rejected", retired)
 		}
 	}
@@ -207,18 +208,18 @@ func TestParseQuickEdit_PausedStateAndRetiredAliases(t *testing.T) {
 func TestTaskLineEditRequestMapsValidatedPatch(t *testing.T) {
 	task := &models.Task{ID: "test-task-id"}
 	tomorrow := time.Now().AddDate(0, 0, 1)
-	result := &quickEditResult{
-		title:        "Updated",
-		priority:     1,
-		prioritySet:  true,
-		tagsToAdd:    []string{"new"},
-		tagsToRemove: []string{"old"},
-		contextValue: "platform",
-		contextSet:   true,
-		dueDate:      &tomorrow,
-		dueDateSet:   true,
-		state:        models.StateDoing,
-		stateSet:     true,
+	result := &grammar.QuickEditResult{
+		Title:        "Updated",
+		Priority:     1,
+		PrioritySet:  true,
+		TagsToAdd:    []string{"new"},
+		TagsToRemove: []string{"old"},
+		ContextValue: "platform",
+		ContextSet:   true,
+		DueDate:      &tomorrow,
+		DueDateSet:   true,
+		State:        models.StateDoing,
+		StateSet:     true,
 	}
 
 	req := taskLineEditRequest(taskref.TaskIdentity{ProjectID: "project", TaskID: task.ID}, result)
@@ -249,7 +250,7 @@ func TestParseQuickEditInvalidStatusDoesNotMutate(t *testing.T) {
 		Tasks: []*models.Task{task},
 	}
 
-	_, err := parseQuickEdit("Changed Title !1 #new $doing", task, project)
+	_, err := grammar.ParseQuickEdit("Changed Title !1 #new $doing", task, project)
 	if err == nil {
 		t.Fatal("expected status error for done->in_progress transition")
 	}
@@ -277,11 +278,11 @@ func TestQuickEditComponent_CanonicalStatePreservedInOriginal(t *testing.T) {
 		WorkflowState: models.StateWaiting,
 	}
 
-	comp := NewQuickEditComponent()
+	comp := grammar.NewQuickEditComponent()
 	comp.Enter(task, false)
 
-	if comp.GetOriginal().state != models.StateWaiting {
-		t.Errorf("expected original.state=%q, got %q", models.StateWaiting, comp.GetOriginal().state)
+	if comp.GetOriginal().State != models.StateWaiting {
+		t.Errorf("expected original.State=%q, got %q", models.StateWaiting, comp.GetOriginal().State)
 	}
 }
 
@@ -301,20 +302,20 @@ func TestQuickEditSnapshotDetachesDependencies(t *testing.T) {
 	}
 	original := models.CloneTaskReferences(task.Dependencies)
 
-	snapshot := quickEditSnapshot(task)
+	snapshot := grammar.QuickEditSnapshot(task)
 	if snapshot == nil {
 		t.Fatal("quickEditSnapshot returned nil")
 	}
-	if !models.TaskReferencesEqual(snapshot.preview.Dependencies, original) {
-		t.Fatalf("snapshot dependencies = %v, want %v", snapshot.preview.Dependencies, original)
+	if !models.TaskReferencesEqual(snapshot.Preview.Dependencies, original) {
+		t.Fatalf("snapshot dependencies = %v, want %v", snapshot.Preview.Dependencies, original)
 	}
-	if len(snapshot.preview.Dependencies) > 0 &&
-		&snapshot.preview.Dependencies[0] == &task.Dependencies[0] {
+	if len(snapshot.Preview.Dependencies) > 0 &&
+		&snapshot.Preview.Dependencies[0] == &task.Dependencies[0] {
 		t.Fatal("snapshot shares the source dependency backing array")
 	}
 
-	snapshot.preview.Dependencies[0] = models.TaskReference{ProjectID: "other", TaskID: "9"}
-	snapshot.preview.Dependencies = append(snapshot.preview.Dependencies[:1],
+	snapshot.Preview.Dependencies[0] = models.TaskReference{ProjectID: "other", TaskID: "9"}
+	snapshot.Preview.Dependencies = append(snapshot.Preview.Dependencies[:1],
 		models.TaskReference{ProjectID: "other", TaskID: "10"})
 	if !models.TaskReferencesEqual(task.Dependencies, original) {
 		t.Fatalf("source dependencies mutated through the snapshot: %v, want %v",

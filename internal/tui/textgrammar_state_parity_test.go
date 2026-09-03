@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -15,20 +16,20 @@ func TestLifecycleDestinationsMapToCanonicalCreationStates(t *testing.T) {
 		t.Run(state.String(), func(t *testing.T) {
 			input := "Task $" + state.String()
 
-			captured, err := parseQuickCapture(input, project, nil, true)
+			captured, err := grammar.ParseQuickCapture(input, project, nil, true)
 			if err != nil {
 				t.Fatalf("capture parse: %v", err)
 			}
-			if !captured.destinationSet || captured.destination.WorkflowState() != state {
-				t.Fatalf("capture destination = %q (set=%v), want state %q", captured.destination, captured.destinationSet, state)
+			if !captured.DestinationSet || captured.Destination.WorkflowState() != state {
+				t.Fatalf("capture destination = %q (set=%v), want state %q", captured.Destination, captured.DestinationSet, state)
 			}
 
-			edited, err := parseQuickEdit(input, &models.Task{Title: "Old"}, project)
+			edited, err := grammar.ParseQuickEdit(input, &models.Task{Title: "Old"}, project)
 			if err != nil {
 				t.Fatalf("edit parse: %v", err)
 			}
-			if !edited.stateSet || edited.state != state {
-				t.Fatalf("edit state = %q (set=%v), want %q", edited.state, edited.stateSet, state)
+			if !edited.StateSet || edited.State != state {
+				t.Fatalf("edit state = %q (set=%v), want %q", edited.State, edited.StateSet, state)
 			}
 
 			outliner := scopeTestOutliner(project)
@@ -69,13 +70,13 @@ func TestSearchPlanningDestinationsAreMembershipRatherThanState(t *testing.T) {
 }
 
 func TestDestinationGrammarDrivesCompletionHelpAndGuidance(t *testing.T) {
-	q := &quickCaptureInput{width: 120}
-	suggestions := q.getDestinationSuggestions("")
+	q := &grammar.QuickCaptureInput{Width: 120}
+	suggestions := q.GetDestinationSuggestions("")
 	if len(suggestions) != len(captureDestinationNamesForTest()) {
 		t.Fatalf("destination suggestions = %d, want %d", len(suggestions), len(captureDestinationNamesForTest()))
 	}
 
-	guide := q.renderSyntaxGuide()
+	guide := q.RenderSyntaxGuide()
 	for _, name := range captureDestinationNamesForTest() {
 		token := "$" + name
 		if !strings.Contains(guide, token) {
@@ -87,7 +88,7 @@ func TestDestinationGrammarDrivesCompletionHelpAndGuidance(t *testing.T) {
 		token := "$" + name
 		task := &models.Task{ID: "task", Title: "Old", WorkflowState: models.StateInbox}
 		project := &models.Project{ID: "grammar", Name: "Grammar", Tasks: []*models.Task{task}}
-		result, err := parseQuickEdit("Task "+token, task, project)
+		result, err := grammar.ParseQuickEdit("Task "+token, task, project)
 		if err != nil {
 			t.Fatalf("quick-edit parse %q: %v", token, err)
 		}
@@ -99,12 +100,12 @@ func TestDestinationGrammarDrivesCompletionHelpAndGuidance(t *testing.T) {
 
 	project := &models.Project{Name: "Grammar"}
 	for raw, replacement := range map[string]string{"ready": "$backlog", "in_progress": "$doing"} {
-		_, captureErr := parseQuickCapture("Task $"+raw, project, nil, true)
+		_, captureErr := grammar.ParseQuickCapture("Task $"+raw, project, nil, true)
 		if captureErr == nil || !strings.Contains(captureErr.Error(), replacement) {
 			t.Errorf("capture error for %q = %v, want replacement %s", raw, captureErr, replacement)
 		}
 	}
-	if parsed, err := parseQuickCapture("Task $today", project, nil, true); err != nil || parsed.destination != app.CaptureDestinationToday {
+	if parsed, err := grammar.ParseQuickCapture("Task $today", project, nil, true); err != nil || parsed.Destination != app.CaptureDestinationToday {
 		t.Fatalf("Today destination = %+v, %v", parsed, err)
 	}
 }

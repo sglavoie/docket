@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 func outlineTestProject(t *testing.T) *models.Project {
@@ -122,7 +123,7 @@ func TestOutlineRoundTripOfAnUneditedBufferIsFaithful(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dump: %v", err)
 	}
-	lines, problems := parseOutlineBuffer(buffer, project, nil)
+	lines, problems := grammar.ParseOutlineBuffer(buffer, project, nil)
 	if len(problems) > 0 {
 		t.Fatalf("unedited buffer was rejected: %v", problems)
 	}
@@ -168,7 +169,7 @@ func TestOutlineParseBuildsPlanLinesForNewAndEditedTasks(t *testing.T) {
 		"Sweep dead flags  [[tt:71f0b3d5]]",
 	}, "\n")
 
-	lines, problems := parseOutlineBuffer(buffer, project, nil)
+	lines, problems := grammar.ParseOutlineBuffer(buffer, project, nil)
 	if len(problems) > 0 {
 		t.Fatalf("buffer was rejected: %v", problems)
 	}
@@ -266,7 +267,7 @@ func TestOutlineParseRejectsEveryOutlinePhaseError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			lines, problems := parseOutlineBuffer(tt.buffer, project, nil)
+			lines, problems := grammar.ParseOutlineBuffer(tt.buffer, project, nil)
 			if lines != nil {
 				t.Fatalf("a rejected buffer produced %d plan lines", len(lines))
 			}
@@ -329,7 +330,7 @@ func TestOutlineParseRejectsEveryLinePhaseError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			lines, problems := parseOutlineBuffer(tt.buffer, project, nil)
+			lines, problems := grammar.ParseOutlineBuffer(tt.buffer, project, nil)
 			if lines != nil {
 				t.Fatalf("a rejected buffer produced %d plan lines", len(lines))
 			}
@@ -339,8 +340,8 @@ func TestOutlineParseRejectsEveryLinePhaseError(t *testing.T) {
 			if tt.message != "" && !outlineProblemsContain(problems, tt.line, tt.message) {
 				t.Fatalf("problems %v do not name line %d: %s", problems, tt.line, tt.message)
 			}
-			if problems[0].line != tt.line {
-				t.Fatalf("first problem names line %d, want %d", problems[0].line, tt.line)
+			if problems[0].Line != tt.line {
+				t.Fatalf("first problem names line %d, want %d", problems[0].Line, tt.line)
 			}
 		})
 	}
@@ -353,7 +354,7 @@ func TestOutlineParseRejectsEveryLinePhaseError(t *testing.T) {
 // the whitespace-delimited sigil: a comparison inside a title is not a <child.
 func TestOutlineAcceptsEmbeddedComparisonText(t *testing.T) {
 	project := outlineTestProject(t)
-	lines, problems := parseOutlineBuffer("Keep a<b under 5 ms  [[tt:4f2a9c11]]", project, nil)
+	lines, problems := grammar.ParseOutlineBuffer("Keep a<b under 5 ms  [[tt:4f2a9c11]]", project, nil)
 	if len(problems) > 0 {
 		t.Fatalf("buffer was rejected: %v", problems)
 	}
@@ -371,7 +372,7 @@ func TestOutlineParseCollectsEveryProblemInOnePass(t *testing.T) {
 		"Sweep dead flags again  [[tt:71f0b3d5]]",
 	}, "\n")
 
-	lines, problems := parseOutlineBuffer(buffer, project, nil)
+	lines, problems := grammar.ParseOutlineBuffer(buffer, project, nil)
 	if lines != nil {
 		t.Fatalf("a rejected buffer produced %d plan lines", len(lines))
 	}
@@ -379,7 +380,7 @@ func TestOutlineParseCollectsEveryProblemInOnePass(t *testing.T) {
 		t.Fatalf("collected %d problems, want 3: %v", len(problems), problems)
 	}
 	for i := 1; i < len(problems); i++ {
-		if problems[i-1].line > problems[i].line {
+		if problems[i-1].Line > problems[i].Line {
 			t.Fatalf("problems are not in line order: %v", problems)
 		}
 	}

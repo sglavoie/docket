@@ -1,4 +1,4 @@
-package tui
+package grammar
 
 import (
 	"fmt"
@@ -9,56 +9,56 @@ import (
 	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
-type quickEditParentMode uint8
+type QuickEditParentMode uint8
 
 const (
-	quickEditParentPreserve quickEditParentMode = iota
-	quickEditParentRoot
-	quickEditParentSet
+	QuickEditParentPreserve QuickEditParentMode = iota
+	QuickEditParentRoot
+	QuickEditParentSet
 )
 
-// quickEditResult is a validated patch plus its pure, overlaid preview. Omitted
+// QuickEditResult is a validated patch plus its pure, overlaid preview. Omitted
 // fields preserve the current task. Structural references are resolved against
 // the effective project, but neither project nor task is mutated by parsing.
-type quickEditResult struct {
-	title string
+type QuickEditResult struct {
+	Title string
 
-	priority    int
-	prioritySet bool
+	Priority    int
+	PrioritySet bool
 
-	tagsToAdd    []string
-	tagsToRemove []string
+	TagsToAdd    []string
+	TagsToRemove []string
 
-	contextValue string
-	contextSet   bool
-	contextClear bool
+	ContextValue string
+	ContextSet   bool
+	ContextClear bool
 
-	dueDate      *time.Time
-	dueDateSet   bool
-	dueDateClear bool
+	DueDate      *time.Time
+	DueDateSet   bool
+	DueDateClear bool
 
-	deferUntil *time.Time
-	deferSet   bool
-	deferClear bool
+	DeferUntil *time.Time
+	DeferSet   bool
+	DeferClear bool
 
-	destination    textgrammar.Destination
-	destinationSet bool
-	state          models.WorkflowState
-	stateSet       bool
+	Destination    textgrammar.Destination
+	DestinationSet bool
+	State          models.WorkflowState
+	StateSet       bool
 
-	pinned    bool
-	pinnedSet bool
+	Pinned    bool
+	PinnedSet bool
 
-	review    bool
-	reviewSet bool
+	Review    bool
+	ReviewSet bool
 
-	targetProject *models.Project
-	parentMode    quickEditParentMode
-	parent        *models.Task
+	TargetProject *models.Project
+	ParentMode    QuickEditParentMode
+	Parent        *models.Task
 	// children is the additive adoption patch in first-occurrence order. An
 	// empty slice means the task keeps exactly the children it already has;
 	// there is no clear form, so nil and empty say the same thing.
-	children []*models.Task
+	Children []*models.Task
 
 	// dependencyAdds and dependencyRemovals are the additive and subtractive
 	// halves of the soft-reference patch, in first-occurrence order.
@@ -66,19 +66,19 @@ type quickEditResult struct {
 	// combined with either, exactly as app.DependencyPatch requires. All three
 	// empty means the edit never mentioned a dependency, which preserves the
 	// stored set.
-	dependencyAdds     []capturedDependencyRef
-	dependencyRemovals []capturedDependencyRef
+	dependencyAdds     []CapturedDependencyRef
+	dependencyRemovals []CapturedDependencyRef
 	dependencyClear    bool
 
 	// preview is a detached task value reflecting every accepted root patch.
 	// Descendants and workspace collections are deliberately never rewritten.
-	preview models.Task
+	Preview models.Task
 }
 
-// parseQuickEdit parses and validates inline task edits. The optional project
+// ParseQuickEdit parses and validates inline task edits. The optional project
 // slice supplies exact-slug cross-project resolution without widening legacy
 // callers that only edit within one project.
-func parseQuickEdit(input string, task *models.Task, project *models.Project, projectSets ...[]*models.Project) (*quickEditResult, error) {
+func ParseQuickEdit(input string, task *models.Task, project *models.Project, projectSets ...[]*models.Project) (*QuickEditResult, error) {
 	result, errMsg := parseQuickEditShared(input, task, project, flattenProjectSets(project, projectSets), true)
 	if errMsg != "" {
 		return nil, fmt.Errorf("%s", errMsg)
@@ -88,7 +88,7 @@ func parseQuickEdit(input string, task *models.Task, project *models.Project, pr
 
 // parseQuickEditForPreview returns the same pure overlay as strict parsing while
 // preserving the first validation error for live feedback.
-func parseQuickEditForPreview(input string, task *models.Task, project *models.Project, projectSets ...[]*models.Project) (*quickEditResult, string) {
+func parseQuickEditForPreview(input string, task *models.Task, project *models.Project, projectSets ...[]*models.Project) (*QuickEditResult, string) {
 	return parseQuickEditShared(input, task, project, flattenProjectSets(project, projectSets), false)
 }
 
@@ -105,10 +105,10 @@ func flattenProjectSets(current *models.Project, sets [][]*models.Project) []*mo
 	return projects
 }
 
-func parseQuickEditShared(input string, task *models.Task, project *models.Project, allProjects []*models.Project, strict bool) (*quickEditResult, string) {
+func parseQuickEditShared(input string, task *models.Task, project *models.Project, allProjects []*models.Project, strict bool) (*QuickEditResult, string) {
 	parser := quickEditParser{
 		parsed:           textgrammar.Parse(input, textgrammar.SurfaceEdit),
-		result:           &quickEditResult{parentMode: quickEditParentPreserve},
+		result:           &QuickEditResult{ParentMode: QuickEditParentPreserve},
 		task:             task,
 		project:          project,
 		allProjects:      allProjects,
@@ -132,9 +132,9 @@ func (p *quickEditParser) applyContext() bool {
 	if len(tokens) == 0 {
 		return false
 	}
-	p.result.contextSet = true
+	p.result.ContextSet = true
 	if tokens[0].Value == "0" {
-		p.result.contextClear = true
+		p.result.ContextClear = true
 		return false
 	}
 	context, err := models.NormalizeTaskContext(tokens[0].Value)
@@ -142,6 +142,6 @@ func (p *quickEditParser) applyContext() bool {
 		definition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceEdit, textgrammar.FieldContext)
 		return p.setError(fmt.Sprintf("invalid context %s%s: %s", definition.Trigger, tokens[0].Value, err))
 	}
-	p.result.contextValue = context
+	p.result.ContextValue = context
 	return false
 }

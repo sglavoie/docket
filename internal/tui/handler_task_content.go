@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -133,13 +134,13 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 		}
 		// An untouched title is never parsed, so a literal `#123` in it cannot be
 		// silently eaten by the tag sigil.
-		return true, m.commitTaskContentEdit(task, project, &quickEditResult{
-			title:      task.Title,
-			parentMode: quickEditParentPreserve,
+		return true, m.commitTaskContentEdit(task, project, &grammar.QuickEditResult{
+			Title:      task.Title,
+			ParentMode: grammar.QuickEditParentPreserve,
 		}, msg)
 	}
 
-	result, err := parseQuickEdit(msg.NewTitle, task, project, m.availableProjects())
+	result, err := grammar.ParseQuickEdit(msg.NewTitle, task, project, m.availableProjects())
 	if err != nil {
 		reopen := EditTaskContentMsg{
 			Task:          task,
@@ -154,7 +155,7 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 	return true, m.commitTaskContentEdit(task, project, result, msg)
 }
 
-func (m *AppModel) commitTaskContentEdit(task *models.Task, project *models.Project, result *quickEditResult, msg TaskContentEditedMsg) tea.Cmd {
+func (m *AppModel) commitTaskContentEdit(task *models.Task, project *models.Project, result *grammar.QuickEditResult, msg TaskContentEditedMsg) tea.Cmd {
 	source := taskref.For(task, project)
 	req := taskLineEditRequest(source, result)
 	req.Description = &msg.NewDescription

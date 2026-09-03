@@ -15,11 +15,12 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 func TestCaptureAutocompleteProjectsCanonicalRegistry(t *testing.T) {
 	definitions := textgrammar.Definitions(textgrammar.SurfaceCapture)
-	triggers := quickCaptureTriggers(false)
+	triggers := grammar.QuickCaptureTriggers(false)
 	if len(triggers) != len(definitions) {
 		t.Fatalf("autocomplete triggers = %d, want %d registry definitions", len(triggers), len(definitions))
 	}
@@ -27,14 +28,14 @@ func TestCaptureAutocompleteProjectsCanonicalRegistry(t *testing.T) {
 		if got, want := triggers[i].Text, definition.Trigger; got != want {
 			t.Errorf("trigger %d = %q, want %q for %s", i, got, want, definition.Field)
 		}
-		if got, want := triggers[i].Mode, autocompleteModeForField(definition.Field); got != want {
+		if got, want := triggers[i].Mode, grammar.AutocompleteModeForField(definition.Field); got != want {
 			t.Errorf("mode for %s = %d, want %d", definition.Field, got, want)
 		}
 	}
 
-	withoutProject := quickCaptureTriggers(true)
+	withoutProject := grammar.QuickCaptureTriggers(true)
 	for _, trigger := range withoutProject {
-		if trigger.Mode == acModeProject {
+		if trigger.Mode == grammar.ACModeProject {
 			t.Fatal("project trigger remained active when project routing was disabled")
 		}
 	}
@@ -44,15 +45,15 @@ func TestCaptureAutocompleteProjectsCanonicalRegistry(t *testing.T) {
 }
 
 func TestStaticAutocompleteValuesComeFromCanonicalRegistry(t *testing.T) {
-	q := &quickCaptureInput{}
+	q := &grammar.QuickCaptureInput{}
 	tests := []struct {
 		field       textgrammar.Field
-		suggestions []ACSuggestion
+		suggestions []grammar.ACSuggestion
 	}{
-		{textgrammar.FieldPriority, q.getPrioritySuggestions("")},
-		{textgrammar.FieldDue, q.getDateSuggestions("")},
-		{textgrammar.FieldDestination, q.getDestinationSuggestions("")},
-		{textgrammar.FieldPinned, q.getPinSuggestions("")},
+		{textgrammar.FieldPriority, q.GetPrioritySuggestions("")},
+		{textgrammar.FieldDue, q.GetDateSuggestions("")},
+		{textgrammar.FieldDestination, q.GetDestinationSuggestions("")},
+		{textgrammar.FieldPinned, q.GetPinSuggestions("")},
 	}
 	for _, tt := range tests {
 		definition, ok := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, tt.field)
@@ -77,11 +78,11 @@ func TestSyntaxGuideExamplesAndGroupsComeFromCanonicalRegistry(t *testing.T) {
 		ID: "routed", Name: "Routed", Slug: "project-slug",
 		Tasks: []*models.Task{{ID: "routed-1", ShortID: 1, Title: "Routed work"}},
 	}
-	q := &quickCaptureInput{width: 120}
+	q := &grammar.QuickCaptureInput{Width: 120}
 
-	var entries []syntaxGuideEntry
-	for _, group := range q.syntaxGuideGroups() {
-		entries = append(entries, group.entries...)
+	var entries []grammar.SyntaxGuideEntry
+	for _, group := range q.SyntaxGuideGroups() {
+		entries = append(entries, group.Entries...)
 	}
 	// Teach order, not parse order: the composer guide and the `?` grammar
 	// section are the two consumers that read GuideDefinitions, because the
@@ -93,17 +94,17 @@ func TestSyntaxGuideExamplesAndGroupsComeFromCanonicalRegistry(t *testing.T) {
 	}
 	for i, definition := range definitions {
 		entry := entries[i]
-		if got, want := entry.forms, strings.Join(definition.Forms, " · "); got != want {
+		if got, want := entry.Forms, strings.Join(definition.Forms, " · "); got != want {
 			t.Errorf("%s forms = %q, want %q", definition.Field, got, want)
 		}
-		if got, want := entry.examples, strings.Join(definition.Examples, "  "); got != want {
+		if got, want := entry.Examples, strings.Join(definition.Examples, "  "); got != want {
 			t.Errorf("%s examples = %q, want %q", definition.Field, got, want)
 		}
-		if len(entry.validation) != len(definition.Examples) {
-			t.Errorf("%s validation examples = %d, want %d", definition.Field, len(entry.validation), len(definition.Examples))
+		if len(entry.Validation) != len(definition.Examples) {
+			t.Errorf("%s validation examples = %d, want %d", definition.Field, len(entry.Validation), len(definition.Examples))
 		}
-		for _, input := range entry.validation {
-			if _, err := parseQuickCapture(input, project, []*models.Project{routed}, false); err != nil {
+		for _, input := range entry.Validation {
+			if _, err := grammar.ParseQuickCapture(input, project, []*models.Project{routed}, false); err != nil {
 				t.Errorf("registry-backed syntax example %q does not parse: %v", input, err)
 			}
 		}
@@ -201,13 +202,16 @@ func TestOutlineHeaderFormsComeFromCanonicalRegistry(t *testing.T) {
 }
 
 func TestInlineGrammarConsumersDoNotOwnParallelStaticLists(t *testing.T) {
+	// Five of the six moved into the grammar package in Session 2.11; the rule
+	// follows the file, not the package, so this stays one contract spanning the
+	// shell's outline editor and the grammar it delegates to.
 	consumerFiles := []string{
 		"outline_editor.go",
-		"outline_editor_parse.go",
-		"quick_capture_autocomplete.go",
-		"quick_capture_input.go",
-		"quick_capture_parser.go",
-		"quick_capture_parser_fields.go",
+		"grammar/outline_editor_parse.go",
+		"grammar/quick_capture_autocomplete.go",
+		"grammar/quick_capture_input.go",
+		"grammar/quick_capture_parser.go",
+		"grammar/quick_capture_parser_fields.go",
 	}
 	triggerSet := make(map[string]bool)
 	for _, definition := range textgrammar.Definitions(textgrammar.SurfaceCapture) {

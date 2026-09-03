@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -115,36 +116,36 @@ func compileSearchDependency(value string, projects []*models.Project) (models.T
 		if len(projects) == 1 {
 			effective = projects[0]
 		}
-		ref, err := resolveDependencyReference(value, effective, projects)
+		ref, err := grammar.ResolveDependencyReference(value, effective, projects)
 		if err != nil {
 			return models.TaskReference{}, err.Error()
 		}
-		if ref.locator.TaskID == "" {
-			return models.TaskReference{}, dependencyNotFoundMessage(trigger, value)
+		if ref.Locator.TaskID == "" {
+			return models.TaskReference{}, grammar.DependencyNotFoundMessage(trigger, value)
 		}
-		return ref.locator.Reference(), ""
+		return ref.Locator.Reference(), ""
 	}
 
-	var matches []capturedDependencyRef
+	var matches []grammar.CapturedDependencyRef
 	for _, project := range projects {
-		task, err := resolveStructuralReference(value, project, dependencyRelationship)
+		task, err := grammar.ResolveStructuralReference(value, project, grammar.DependencyRelationship)
 		if err != nil {
 			return models.TaskReference{}, err.Error()
 		}
 		if task == nil {
 			continue
 		}
-		matches = append(matches, dependencyRefFor(project, task))
+		matches = append(matches, grammar.DependencyRefFor(project, task))
 	}
 	switch len(matches) {
 	case 0:
-		return models.TaskReference{}, dependencyNotFoundMessage(trigger, value)
+		return models.TaskReference{}, grammar.DependencyNotFoundMessage(trigger, value)
 	case 1:
-		return matches[0].locator.Reference(), ""
+		return matches[0].Locator.Reference(), ""
 	}
 	labels := make([]string, len(matches))
 	for i, match := range matches {
-		labels[i] = match.label()
+		labels[i] = match.Label()
 	}
 	return models.TaskReference{}, fmt.Sprintf(
 		"dependency %q matches %s; qualify it as %sproject-slug:short-id",
@@ -225,7 +226,7 @@ func compileSearchDue(value string, now time.Time) searchDuePredicate {
 	case "none":
 		return searchDuePredicate{bucket: DueDateNone, hasBucket: true}
 	}
-	day, err := ParseDate(value)
+	day, err := grammar.ParseDate(value)
 	if err != nil {
 		return searchDuePredicate{}
 	}

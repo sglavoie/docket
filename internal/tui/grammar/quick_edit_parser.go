@@ -1,4 +1,4 @@
-package tui
+package grammar
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 
 type quickEditParser struct {
 	parsed           textgrammar.Result
-	result           *quickEditResult
+	result           *QuickEditResult
 	task             *models.Task
 	project          *models.Project
 	allProjects      []*models.Project
@@ -44,16 +44,16 @@ func (p *quickEditParser) applyPriority() bool {
 	}
 	token := tokens[0]
 	if token.Value == "0" {
-		p.result.priority = models.PriorityUnset
-		p.result.prioritySet = true
+		p.result.Priority = models.PriorityUnset
+		p.result.PrioritySet = true
 		return false
 	}
 	values, ok := textgrammar.ParsePriority(token.Value, false)
 	if !ok {
 		return p.setError(textgrammar.InvalidPriorityError(token.Value).Error())
 	}
-	p.result.priority = values[0]
-	p.result.prioritySet = true
+	p.result.Priority = values[0]
+	p.result.PrioritySet = true
 	return false
 }
 
@@ -66,7 +66,7 @@ func (p *quickEditParser) applyTags() bool {
 			}
 			continue
 		}
-		p.result.tagsToRemove = appendUnique(p.result.tagsToRemove, tag)
+		p.result.TagsToRemove = appendUnique(p.result.TagsToRemove, tag)
 	}
 	for _, token := range p.parsed.TokensFor(textgrammar.FieldTag) {
 		tag, err := models.NormalizeTaskTag(token.Value)
@@ -76,13 +76,13 @@ func (p *quickEditParser) applyTags() bool {
 			}
 			continue
 		}
-		if slices.Contains(p.result.tagsToRemove, tag) {
+		if slices.Contains(p.result.TagsToRemove, tag) {
 			if p.setError(fmt.Sprintf("conflicting tag patch: #%s and -#%s", tag, tag)) {
 				return true
 			}
 			continue
 		}
-		p.result.tagsToAdd = appendUnique(p.result.tagsToAdd, tag)
+		p.result.TagsToAdd = appendUnique(p.result.TagsToAdd, tag)
 	}
 	return false
 }
@@ -93,16 +93,16 @@ func (p *quickEditParser) applyDueDate() bool {
 		return false
 	}
 	token := tokens[0]
-	p.result.dueDateSet = true
+	p.result.DueDateSet = true
 	if token.Value == "0" {
-		p.result.dueDateClear = true
+		p.result.DueDateClear = true
 		return false
 	}
 	date, err := ParseDueDateValue(token.Value)
 	if err != nil {
 		return p.setError(fmt.Sprintf("invalid date: %s", token.Value))
 	}
-	p.result.dueDate = &date
+	p.result.DueDate = &date
 	return false
 }
 
@@ -117,31 +117,31 @@ func (p *quickEditParser) applyDefer() bool {
 		return false
 	}
 	token := tokens[0]
-	p.result.deferSet = true
+	p.result.DeferSet = true
 	if token.Value == "0" {
-		p.result.deferClear = true
+		p.result.DeferClear = true
 		return false
 	}
 	instant, err := util.ParseDeferInstant(token.Value)
 	if err != nil {
 		return p.setError(fmt.Sprintf("invalid defer: %s", token.Value))
 	}
-	p.result.deferUntil = &instant
+	p.result.DeferUntil = &instant
 
 	state := models.StateBacklog
 	switch {
-	case p.result.destinationSet:
-		state = p.result.destination.WorkflowState()
+	case p.result.DestinationSet:
+		state = p.result.Destination.WorkflowState()
 	case p.task != nil:
 		state = p.task.State()
 	}
 	if refusal := app.DeferralRefusesState(state); refusal != "" {
 		return p.setError(refusal)
 	}
-	p.result.destination = textgrammar.DestinationBacklog
-	p.result.destinationSet = true
-	p.result.state = models.StateBacklog
-	p.result.stateSet = true
+	p.result.Destination = textgrammar.DestinationBacklog
+	p.result.DestinationSet = true
+	p.result.State = models.StateBacklog
+	p.result.StateSet = true
 	return false
 }
 
@@ -154,10 +154,10 @@ func (p *quickEditParser) applyDestination() bool {
 	if !ok {
 		return p.setError(textgrammar.InvalidDestinationError(tokens[0].Value).Error())
 	}
-	p.result.destination = destination
-	p.result.destinationSet = true
-	p.result.state = destination.WorkflowState()
-	p.result.stateSet = true
+	p.result.Destination = destination
+	p.result.DestinationSet = true
+	p.result.State = destination.WorkflowState()
+	p.result.StateSet = true
 	return false
 }
 
@@ -170,8 +170,8 @@ func (p *quickEditParser) applyPin() {
 	if len(tokens) == 0 {
 		return
 	}
-	p.result.pinned = slices.Contains(pinSetValues(), tokens[0].Value)
-	p.result.pinnedSet = true
+	p.result.Pinned = slices.Contains(pinSetValues(), tokens[0].Value)
+	p.result.PinnedSet = true
 }
 
 // applyReview reads the one review token this surface tokenizes. Like the pin
@@ -182,8 +182,8 @@ func (p *quickEditParser) applyReview() {
 	if len(tokens) == 0 {
 		return
 	}
-	p.result.review = slices.Contains(reviewSetValues(), tokens[0].Value)
-	p.result.reviewSet = true
+	p.result.Review = slices.Contains(reviewSetValues(), tokens[0].Value)
+	p.result.ReviewSet = true
 }
 
 func (p *quickEditParser) applyProject() bool {
@@ -191,14 +191,14 @@ func (p *quickEditParser) applyProject() bool {
 	if len(tokens) == 0 {
 		return false
 	}
-	target := resolveProject(tokens[0].Value, p.allProjects)
+	target := ResolveProject(tokens[0].Value, p.allProjects)
 	if target == nil {
 		return p.setError(fmt.Sprintf("project not found: %q (use an exact %%project-slug)", tokens[0].Value))
 	}
-	p.result.targetProject = target
+	p.result.TargetProject = target
 	p.effectiveProject = target
 	// A project move without an explicit parent always lands at root.
-	p.result.parentMode = quickEditParentRoot
+	p.result.ParentMode = QuickEditParentRoot
 	return false
 }
 
@@ -209,21 +209,21 @@ func (p *quickEditParser) applyParent() bool {
 	}
 	token := tokens[0]
 	if token.Value == "0" {
-		p.result.parentMode = quickEditParentRoot
+		p.result.ParentMode = QuickEditParentRoot
 		return false
 	}
-	parent, err := resolveParent(token.Value, p.effectiveProject)
+	parent, err := ResolveParent(token.Value, p.effectiveProject)
 	if err != nil {
 		return p.setError(err.Error())
 	}
 	if parent == nil {
-		return p.setError(fmt.Sprintf("parent not found: %q in project %q", token.Value, projectLabel(p.effectiveProject)))
+		return p.setError(fmt.Sprintf("parent not found: %q in project %q", token.Value, ProjectLabel(p.effectiveProject)))
 	}
-	if reason := invalidQuickEditParent(p.task, p.project, p.effectiveProject, parent); reason != "" {
+	if reason := InvalidQuickEditParent(p.task, p.project, p.effectiveProject, parent); reason != "" {
 		return p.setError(reason)
 	}
-	p.result.parentMode = quickEditParentSet
-	p.result.parent = parent
+	p.result.ParentMode = QuickEditParentSet
+	p.result.Parent = parent
 	return false
 }
 
@@ -248,7 +248,7 @@ func (p *quickEditParser) applyChildren() bool {
 			continue
 		}
 		if child == nil {
-			if p.setError(fmt.Sprintf("child not found: %q in project %q", token.Value, projectLabel(p.effectiveProject))) {
+			if p.setError(fmt.Sprintf("child not found: %q in project %q", token.Value, ProjectLabel(p.effectiveProject))) {
 				return true
 			}
 			continue
@@ -259,7 +259,7 @@ func (p *quickEditParser) applyChildren() bool {
 			}
 			continue
 		}
-		if p.result.parentMode == quickEditParentSet && p.result.parent != nil && p.result.parent.ID == child.ID {
+		if p.result.ParentMode == QuickEditParentSet && p.result.Parent != nil && p.result.Parent.ID == child.ID {
 			if p.setError(fmt.Sprintf("#%d cannot be both the parent and a child", child.ShortID)) {
 				return true
 			}
@@ -269,7 +269,7 @@ func (p *quickEditParser) applyChildren() bool {
 			continue
 		}
 		seen[child.ID] = true
-		p.result.children = append(p.result.children, child)
+		p.result.Children = append(p.result.Children, child)
 	}
 	if reason := invalidQuickEditHierarchy(p.task, p.project, p.effectiveProject, p.result); reason != "" {
 		return p.setError(reason)
@@ -299,7 +299,7 @@ func (p *quickEditParser) applyDependencies() bool {
 
 	clears := 0
 	for _, token := range additions {
-		if token.Value == dependencyClearValue {
+		if token.Value == DependencyClearValue {
 			clears++
 		}
 	}
@@ -322,10 +322,10 @@ func (p *quickEditParser) applyDependencies() bool {
 		}
 	}
 	for _, addition := range p.result.dependencyAdds {
-		if slices.ContainsFunc(p.result.dependencyRemovals, func(removal capturedDependencyRef) bool {
-			return removal.locator == addition.locator
+		if slices.ContainsFunc(p.result.dependencyRemovals, func(removal CapturedDependencyRef) bool {
+			return removal.Locator == addition.Locator
 		}) {
-			return p.setError(fmt.Sprintf("conflicting dependency patch: %s%s and %s%s", definition.Trigger, addition.label(), removeDefinition.Trigger, addition.label()))
+			return p.setError(fmt.Sprintf("conflicting dependency patch: %s%s and %s%s", definition.Trigger, addition.Label(), removeDefinition.Trigger, addition.Label()))
 		}
 	}
 	return false
@@ -335,17 +335,17 @@ func (p *quickEditParser) applyDependencies() bool {
 // of the patch. It reports false when the parse must stop, matching the loop
 // convention every other repeatable field uses.
 func (p *quickEditParser) applyDependencyToken(token textgrammar.Token, trigger string, addition bool) bool {
-	if token.Value == dependencyClearValue && !addition {
-		return !p.setError(fmt.Sprintf("%s%s is not a clear form; use ~%s to clear every dependency", trigger, token.Value, dependencyClearValue))
+	if token.Value == DependencyClearValue && !addition {
+		return !p.setError(fmt.Sprintf("%s%s is not a clear form; use ~%s to clear every dependency", trigger, token.Value, DependencyClearValue))
 	}
-	ref, err := resolveDependencyReference(token.Value, p.effectiveProject, p.allProjects)
+	ref, err := ResolveDependencyReference(token.Value, p.effectiveProject, p.allProjects)
 	if err != nil {
 		return !p.setError(err.Error())
 	}
-	if ref.locator.TaskID == "" {
-		return !p.setError(dependencyNotFoundMessage(trigger, token.Value))
+	if ref.Locator.TaskID == "" {
+		return !p.setError(DependencyNotFoundMessage(trigger, token.Value))
 	}
-	if p.task != nil && ref.locator.TaskID == p.task.ID {
+	if p.task != nil && ref.Locator.TaskID == p.task.ID {
 		return !p.setError("a task cannot depend on itself")
 	}
 	if addition {
@@ -353,12 +353,12 @@ func (p *quickEditParser) applyDependencyToken(token textgrammar.Token, trigger 
 		// application layer's existing-versus-new distinction: the workspace keeps a
 		// reference after its target closes or its project stops being loaded, so
 		// naming it again must stay the no-op it was a moment before.
-		if !p.storesDependency(ref.locator) {
+		if !p.storesDependency(ref.Locator) {
 			if !ref.resolved {
-				return !p.setError(dependencyNotFoundMessage(trigger, token.Value))
+				return !p.setError(DependencyNotFoundMessage(trigger, token.Value))
 			}
 			if ref.terminal {
-				return !p.setError(fmt.Sprintf("cannot depend on %s: it is already closed", ref.label()))
+				return !p.setError(fmt.Sprintf("cannot depend on %s: it is already closed", ref.Label()))
 			}
 		}
 		p.result.dependencyAdds = appendDependencyRef(p.result.dependencyAdds, ref)
@@ -378,8 +378,8 @@ func (p *quickEditParser) storesDependency(locator app.TaskLocator) bool {
 	return slices.Contains(p.task.Dependencies, locator.Reference())
 }
 
-// dependencyPatch projects the parsed halves into the application contract.
-func (r *quickEditResult) dependencyPatch() app.DependencyPatch {
+// DependencyPatch projects the parsed halves into the application contract.
+func (r *QuickEditResult) DependencyPatch() app.DependencyPatch {
 	return app.DependencyPatch{
 		Add:    dependencyLocators(r.dependencyAdds),
 		Remove: dependencyLocators(r.dependencyRemovals),
@@ -387,9 +387,9 @@ func (r *quickEditResult) dependencyPatch() app.DependencyPatch {
 	}
 }
 
-func (p *quickEditParser) finish() (*quickEditResult, string) {
-	p.result.title = p.parsed.Text
-	if err := models.ValidateTaskTitle(p.result.title); err != nil {
+func (p *quickEditParser) finish() (*QuickEditResult, string) {
+	p.result.Title = p.parsed.Text
+	if err := models.ValidateTaskTitle(p.result.Title); err != nil {
 		p.setError(err.Error())
 	}
 	if p.task == nil {

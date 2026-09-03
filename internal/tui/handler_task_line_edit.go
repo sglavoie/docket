@@ -18,7 +18,7 @@ func (m *AppModel) handleTaskLineEditFailed(msg coordinator.TaskLineEditFailedMs
 	}
 	if out, ok := m.outlinerPrimary(); ok && out != nil && out.quickEdit.IsActive() {
 		task := out.quickEdit.GetTask()
-		project := out.quickEdit.project
+		project := out.quickEdit.GetProject()
 		if task != nil && project != nil && taskref.For(task, project) == msg.Source {
 			out.quickEdit.RejectCommit(message)
 		}
@@ -31,7 +31,7 @@ func (m *AppModel) handleTaskLineEdited(msg coordinator.TaskLineEditedMsg) tea.C
 	out, ok := m.outlinerPrimary()
 	if ok && out != nil && out.quickEdit.IsActive() {
 		task := out.quickEdit.GetTask()
-		project := out.quickEdit.project
+		project := out.quickEdit.GetProject()
 		if task != nil && project != nil && taskref.For(task, project) == msg.Source {
 			out.quickEdit.Exit()
 		}

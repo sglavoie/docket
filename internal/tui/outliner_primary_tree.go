@@ -136,7 +136,7 @@ func excludeTaskTreePromotingChildren(
 			result = append(result, children...)
 			continue
 		}
-		clone := cloneTaskDetachingDependencies(task)
+		clone := taskref.CloneTaskDetachingDependencies(task)
 		clone.Children = children
 		result = append(result, &clone)
 	}
@@ -156,7 +156,7 @@ func (m *OutlinerModel) sortPrimaryTaskTree(tasks []*models.Task) []*models.Task
 		if len(task.Children) == 0 {
 			continue
 		}
-		clone := cloneTaskDetachingDependencies(task)
+		clone := taskref.CloneTaskDetachingDependencies(task)
 		clone.Children = m.sortPrimaryTaskTree(task.Children)
 		sorted[i] = &clone
 	}

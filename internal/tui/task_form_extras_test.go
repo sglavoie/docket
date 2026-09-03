@@ -362,7 +362,7 @@ func TestTaskComposer_ExpandSeedsAttachmentDraft(t *testing.T) {
 		Project:     project,
 		AllProjects: []*models.Project{project},
 	}, appModel.runtime)
-	m.input.SetValue("Ship the release &https://example.com/spec.pdf")
+	m.Input.SetValue("Ship the release &https://example.com/spec.pdf")
 
 	m.expandSingle()
 	if len(m.errors) > 0 {
@@ -391,7 +391,7 @@ func TestTaskComposer_ExpandSeedsCommentDraft(t *testing.T) {
 		Project:     project,
 		AllProjects: []*models.Project{project},
 	}, appModel.runtime)
-	m.input.SetValue("Call Dana ;ask about the SSO deadline;")
+	m.Input.SetValue("Call Dana ;ask about the SSO deadline;")
 
 	m.expandSingle()
 	if len(m.errors) > 0 {

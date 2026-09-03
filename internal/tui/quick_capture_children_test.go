@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 func TestParseQuickCaptureChildReferences(t *testing.T) {
@@ -97,7 +98,7 @@ func TestParseQuickCaptureChildReferences(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := parseQuickCapture(tt.input, project, nil, false)
+			result, err := grammar.ParseQuickCapture(tt.input, project, nil, false)
 			if tt.errContains != "" {
 				if err == nil {
 					t.Fatalf("expected error containing %q, got none", tt.errContains)
@@ -110,17 +111,17 @@ func TestParseQuickCaptureChildReferences(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if result.title != tt.wantTitle {
-				t.Errorf("title = %q, want %q", result.title, tt.wantTitle)
+			if result.Title != tt.wantTitle {
+				t.Errorf("title = %q, want %q", result.Title, tt.wantTitle)
 			}
-			if !slices.Equal(result.childIDs(), tt.wantChildIDs) {
-				t.Errorf("childIDs = %v, want %v", result.childIDs(), tt.wantChildIDs)
+			if !slices.Equal(result.ChildIDs(), tt.wantChildIDs) {
+				t.Errorf("childIDs = %v, want %v", result.ChildIDs(), tt.wantChildIDs)
 			}
 			switch {
-			case tt.wantParentID == "" && result.parentID != nil:
-				t.Errorf("parentID = %q, want nil", *result.parentID)
-			case tt.wantParentID != "" && (result.parentID == nil || *result.parentID != tt.wantParentID):
-				t.Errorf("parentID = %v, want %q", result.parentID, tt.wantParentID)
+			case tt.wantParentID == "" && result.ParentID != nil:
+				t.Errorf("parentID = %q, want nil", *result.ParentID)
+			case tt.wantParentID != "" && (result.ParentID == nil || *result.ParentID != tt.wantParentID):
+				t.Errorf("parentID = %v, want %q", result.ParentID, tt.wantParentID)
 			}
 		})
 	}
@@ -128,20 +129,20 @@ func TestParseQuickCaptureChildReferences(t *testing.T) {
 
 func TestParseQuickCaptureChildMetadataFeedsPreviewWithoutTaskPointers(t *testing.T) {
 	project := quickCaptureTestProject()
-	result, err := parseQuickCapture("Ship it <2", project, nil, false)
+	result, err := grammar.ParseQuickCapture("Ship it <2", project, nil, false)
 	if err != nil {
 		t.Fatalf("parseQuickCapture: %v", err)
 	}
-	if len(result.children) != 1 {
-		t.Fatalf("children = %+v, want one", result.children)
+	if len(result.Children) != 1 {
+		t.Fatalf("children = %+v, want one", result.Children)
 	}
-	child := result.children[0]
-	if child.id != "story-2" || child.shortID != 2 || child.title != "Login Flow" {
+	child := result.Children[0]
+	if child.Id != "story-2" || child.ShortID != 2 || child.Title != "Login Flow" {
 		t.Fatalf("resolved child = %+v, want story-2 / #2 / Login Flow", child)
 	}
 
 	// The parse result carries copies, so rewriting it cannot reach the project's task.
-	result.children[0].title = "rewritten"
+	result.Children[0].Title = "rewritten"
 	if project.Tasks[1].Title != "Login Flow" {
 		t.Fatalf("view-owned task title = %q, want Login Flow", project.Tasks[1].Title)
 	}
@@ -149,15 +150,15 @@ func TestParseQuickCaptureChildMetadataFeedsPreviewWithoutTaskPointers(t *testin
 
 func TestParseQuickCaptureChildErrorsSurfaceInPreviewWithoutFailingEarly(t *testing.T) {
 	project := quickCaptureTestProject()
-	result, errMsg := parseQuickCaptureForPreview("Ship it !1 <99", project, nil, false)
+	result, errMsg := grammar.ParseQuickCaptureForPreview("Ship it !1 <99", project, nil, false)
 	if !strings.Contains(errMsg, "child not found: '99'") {
 		t.Fatalf("preview error = %q, want a child-not-found message", errMsg)
 	}
-	if result.title != "Ship it" || result.priority != 1 {
-		t.Fatalf("preview kept parsing = %q / %d, want 'Ship it' / 1", result.title, result.priority)
+	if result.Title != "Ship it" || result.Priority != 1 {
+		t.Fatalf("preview kept parsing = %q / %d, want 'Ship it' / 1", result.Title, result.Priority)
 	}
-	if len(result.children) != 0 {
-		t.Fatalf("preview children = %+v, want none", result.children)
+	if len(result.Children) != 0 {
+		t.Fatalf("preview children = %+v, want none", result.Children)
 	}
 }
 
@@ -173,7 +174,7 @@ func TestQuickCaptureTerminalDestinationRefusesIncompleteAdoptedChild(t *testing
 		})
 
 		t.Run("open adopted child blocks "+destination, func(t *testing.T) {
-			_, err := parseQuickCapture("Ship it $"+destination+" <2", project, nil, false)
+			_, err := grammar.ParseQuickCapture("Ship it $"+destination+" <2", project, nil, false)
 			want := "cannot capture as " + destination + ": adopted #2 is incomplete"
 			if err == nil || err.Error() != want {
 				t.Fatalf("error = %v, want %q", err, want)
@@ -181,11 +182,11 @@ func TestQuickCaptureTerminalDestinationRefusesIncompleteAdoptedChild(t *testing
 		})
 
 		t.Run("finished adopted child allows "+destination, func(t *testing.T) {
-			result, err := parseQuickCapture("Ship it $"+destination+" <5", project, nil, false)
+			result, err := grammar.ParseQuickCapture("Ship it $"+destination+" <5", project, nil, false)
 			if err != nil {
 				t.Fatalf("parseQuickCapture: %v", err)
 			}
-			if got := result.childIDs(); len(got) != 1 || got[0] != "done-5" {
+			if got := result.ChildIDs(); len(got) != 1 || got[0] != "done-5" {
 				t.Fatalf("children = %v, want [done-5]", got)
 			}
 		})
@@ -240,7 +241,7 @@ func TestCrossProjectCaptureResolvesChildrenInTheRoutedProject(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := parseQuickCapture(tt.input, currentProject, allProjects, false)
+			result, err := grammar.ParseQuickCapture(tt.input, currentProject, allProjects, false)
 			if tt.errContains != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.errContains) {
 					t.Fatalf("error = %v, want one containing %q", err, tt.errContains)
@@ -250,11 +251,11 @@ func TestCrossProjectCaptureResolvesChildrenInTheRoutedProject(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if result.targetProjectID == nil || *result.targetProjectID != "other-project" {
-				t.Fatalf("targetProjectID = %v, want other-project", result.targetProjectID)
+			if result.TargetProjectID == nil || *result.TargetProjectID != "other-project" {
+				t.Fatalf("targetProjectID = %v, want other-project", result.TargetProjectID)
 			}
-			if !slices.Equal(result.childIDs(), tt.wantChildIDs) {
-				t.Fatalf("childIDs = %v, want %v", result.childIDs(), tt.wantChildIDs)
+			if !slices.Equal(result.ChildIDs(), tt.wantChildIDs) {
+				t.Fatalf("childIDs = %v, want %v", result.ChildIDs(), tt.wantChildIDs)
 			}
 		})
 	}
@@ -282,7 +283,7 @@ func TestTaskComposerMapsResolvedChildrenIntoEveryRequest(t *testing.T) {
 			Due:      &due,
 		},
 	}, nil)
-	composer.input.SetValue("First <1 <Bravo #line\nSecond <3")
+	composer.Input.SetValue("First <1 <Bravo #line\nSecond <3")
 
 	reqs, ok := composer.parseCompactLines()
 	if !ok || len(reqs) != 2 {
@@ -328,7 +329,7 @@ func TestTaskComposerReportsChildFailuresOnTheirSourceLine(t *testing.T) {
 		Project:     project,
 		AllProjects: []*models.Project{project},
 	}, nil)
-	composer.input.SetValue("Fine <1\nMissing <9\nAmbiguous <Implement")
+	composer.Input.SetValue("Fine <1\nMissing <9\nAmbiguous <Implement")
 
 	reqs, ok := composer.parseCompactLines()
 	if ok || reqs != nil {
@@ -337,10 +338,10 @@ func TestTaskComposerReportsChildFailuresOnTheirSourceLine(t *testing.T) {
 	if len(composer.errors) != 2 {
 		t.Fatalf("errors = %+v, want two", composer.errors)
 	}
-	if composer.errors[0].line != 2 || !strings.Contains(composer.errors[0].message, "child not found: '9'") {
+	if composer.errors[0].Line != 2 || !strings.Contains(composer.errors[0].Message, "child not found: '9'") {
 		t.Fatalf("first error = %+v", composer.errors[0])
 	}
-	if composer.errors[1].line != 3 || !strings.Contains(composer.errors[1].message, "is ambiguous") {
+	if composer.errors[1].Line != 3 || !strings.Contains(composer.errors[1].Message, "is ambiguous") {
 		t.Fatalf("second error = %+v", composer.errors[1])
 	}
 }
@@ -358,7 +359,7 @@ func TestTaskComposerExpandRefusesToDropAdoptedChildren(t *testing.T) {
 		Kind:    ComposerProject,
 		Project: project,
 	}, appModel.runtime)
-	composer.input.SetValue("Adopter <1")
+	composer.Input.SetValue("Adopter <1")
 
 	if cmd := composer.expandSingle(); cmd != nil {
 		t.Fatal("expand accepted a line carrying child references")
@@ -366,7 +367,7 @@ func TestTaskComposerExpandRefusesToDropAdoptedChildren(t *testing.T) {
 	if composer.mode != ComposerCompact || composer.expanded != nil {
 		t.Fatal("composer entered expanded mode despite the refusal")
 	}
-	if len(composer.errors) != 1 || !strings.Contains(composer.errors[0].message, "cannot adopt children") {
+	if len(composer.errors) != 1 || !strings.Contains(composer.errors[0].Message, "cannot adopt children") {
 		t.Fatalf("errors = %+v", composer.errors)
 	}
 }
@@ -388,7 +389,7 @@ func TestTaskComposerCommitsAdoptedChildrenInOneTransaction(t *testing.T) {
 		Shared:  TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
 	}, nil)
 	composer.SetCaptureCoordinator(env.features.Capture)
-	composer.input.SetValue("Adopter <1 <Adoptee")
+	composer.Input.SetValue("Adopter <1 <Adoptee")
 
 	cmd := composer.createCompact(false)
 	if cmd == nil {
@@ -431,21 +432,21 @@ func TestQuickCaptureChildZeroIsReservedFromTitlePrefixResolution(t *testing.T) 
 		},
 	}
 
-	_, err := parseQuickCapture("Ship it <0", project, nil, false)
+	_, err := grammar.ParseQuickCapture("Ship it <0", project, nil, false)
 	if err == nil || !strings.Contains(err.Error(), "child not found: '0'") {
 		t.Fatalf("<0 error = %v, want the reserved token to resolve nothing", err)
 	}
 
-	result, err := parseQuickCapture("Ship it <9", project, nil, false)
+	result, err := grammar.ParseQuickCapture("Ship it <9", project, nil, false)
 	if err != nil {
 		t.Fatalf("<9 parse: %v", err)
 	}
-	if ids := result.childIDs(); len(ids) != 1 || ids[0] != "nine-lives" {
+	if ids := result.ChildIDs(); len(ids) != 1 || ids[0] != "nine-lives" {
 		t.Fatalf("<9 children = %v, want [nine-lives]", ids)
 	}
 
 	q := draftedCaptureInput(t, "Ship it <0 <", project, nil, false)
-	if got := suggestionDisplays(q.ac.Items); !slices.Contains(got, "<1 0 day triage") {
+	if got := suggestionDisplays(q.AC.Items); !slices.Contains(got, "<1 0 day triage") {
 		t.Fatalf("suggestions after <0 = %v, want the zero-titled task still offered", got)
 	}
 }

@@ -211,7 +211,7 @@ func TestPlanningCaptureRefreshesRuntimeAndOutlinerSection(t *testing.T) {
 				},
 			}, model.runtime)
 			composer.SetCaptureCoordinator(model.features.Capture)
-			composer.input.SetValue("Planned task $" + string(tc.destination))
+			composer.Input.SetValue("Planned task $" + string(tc.destination))
 
 			cmd := composer.createCompact(false)
 			if cmd == nil {

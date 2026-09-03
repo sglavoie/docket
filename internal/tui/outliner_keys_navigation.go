@@ -5,17 +5,18 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // handleQuickEditMode handles input while in quick edit mode.
 func (m *OutlinerModel) handleQuickEditMode(msg tea.Msg) (tea.Model, tea.Cmd) {
-	m.quickEdit.SetContext(m.quickEdit.project, m.quickEditProjects())
+	m.quickEdit.SetContext(m.quickEdit.GetProject(), m.quickEditProjects())
 	transition, result, cmd := m.quickEdit.Handle(msg)
-	if transition != quickEditCommit || result == nil {
+	if transition != grammar.QuickEditCommit || result == nil {
 		return m, cmd
 	}
-	project := m.quickEdit.project
+	project := m.quickEdit.GetProject()
 	task := m.quickEdit.GetTask()
 	if project == nil || task == nil || project.GetTaskByID(task.ID) != task {
 		m.quickEdit.RejectCommit("task edit context is unavailable")
@@ -34,69 +35,69 @@ func (m *OutlinerModel) quickEditProjects() []*models.Project {
 	return m.loadedProjects
 }
 
-func taskLineEditRequest(source taskref.TaskIdentity, result *quickEditResult) app.TaskLineEditRequest {
+func taskLineEditRequest(source taskref.TaskIdentity, result *grammar.QuickEditResult) app.TaskLineEditRequest {
 	req := app.TaskLineEditRequest{
 		Source:               source.Locator(),
-		Title:                result.title,
-		DueSet:               result.dueDateSet,
-		DeferSet:             result.deferSet,
-		TagsToAdd:            append([]string(nil), result.tagsToAdd...),
-		TagsToRemove:         append([]string(nil), result.tagsToRemove...),
+		Title:                result.Title,
+		DueSet:               result.DueDateSet,
+		DeferSet:             result.DeferSet,
+		TagsToAdd:            append([]string(nil), result.TagsToAdd...),
+		TagsToRemove:         append([]string(nil), result.TagsToRemove...),
 		DestinationProjectID: source.ProjectID,
 		Parent:               app.TaskLineParentPatch{Mode: app.TaskLineParentPreserve},
 	}
-	if result.prioritySet {
-		priority := result.priority
+	if result.PrioritySet {
+		priority := result.Priority
 		req.Priority = &priority
 	}
-	if result.contextSet {
-		context := result.contextValue
-		if result.contextClear {
+	if result.ContextSet {
+		context := result.ContextValue
+		if result.ContextClear {
 			context = ""
 		}
 		req.Context = &context
 	}
-	if result.dueDateSet && !result.dueDateClear {
-		req.Due = result.dueDate
+	if result.DueDateSet && !result.DueDateClear {
+		req.Due = result.DueDate
 	}
-	if result.deferSet && !result.deferClear {
-		req.Defer = result.deferUntil
+	if result.DeferSet && !result.DeferClear {
+		req.Defer = result.DeferUntil
 	}
-	if result.destinationSet {
-		destination := result.destination
+	if result.DestinationSet {
+		destination := result.Destination
 		req.Destination = &destination
 	}
-	if result.pinnedSet {
-		pinned := result.pinned
+	if result.PinnedSet {
+		pinned := result.Pinned
 		req.Pinned = &pinned
 	}
-	if result.reviewSet {
-		review := result.review
+	if result.ReviewSet {
+		review := result.Review
 		req.Review = &review
 	}
-	if result.targetProject != nil {
-		req.DestinationProjectID = result.targetProject.ID
+	if result.TargetProject != nil {
+		req.DestinationProjectID = result.TargetProject.ID
 	}
-	switch result.parentMode {
-	case quickEditParentPreserve:
+	switch result.ParentMode {
+	case grammar.QuickEditParentPreserve:
 		// Preserve is already the request default.
-	case quickEditParentRoot:
+	case grammar.QuickEditParentRoot:
 		req.Parent.Mode = app.TaskLineParentRoot
-	case quickEditParentSet:
+	case grammar.QuickEditParentSet:
 		req.Parent.Mode = app.TaskLineParentSet
-		if result.parent != nil {
+		if result.Parent != nil {
 			req.Parent.Parent = app.TaskLocator{
 				ProjectID: req.DestinationProjectID,
-				TaskID:    result.parent.ID,
+				TaskID:    result.Parent.ID,
 			}
 		}
 	}
 	// A dependency locator is fully qualified at parse time and is independent of
 	// where the edited task lands, so a cross-project move carries it unchanged.
-	req.Dependencies = result.dependencyPatch()
+	req.Dependencies = result.DependencyPatch()
 	// Children resolve in the effective project, which is the destination
 	// whenever the edit also crosses a boundary.
-	for _, child := range result.children {
+	for _, child := range result.Children {
 		req.Children = append(req.Children, app.TaskLocator{
 			ProjectID: req.DestinationProjectID,
 			TaskID:    child.ID,
@@ -109,7 +110,7 @@ func taskLineEditRequest(source taskref.TaskIdentity, result *quickEditResult) a
 // builder instead of inheriting whichever default a prior service call left
 // installed. Cross-project edits carry a complete planning-move delta, so they
 // use the structural builder that reconciles against the newest on-disk state.
-func (m *OutlinerModel) taskLineEditRequest(source taskref.TaskIdentity, result *quickEditResult) app.TaskLineEditRequest {
+func (m *OutlinerModel) taskLineEditRequest(source taskref.TaskIdentity, result *grammar.QuickEditResult) app.TaskLineEditRequest {
 	req := taskLineEditRequest(source, result)
 	req.PlanningArtifacts = shellPlanningReconcileArtifactBuilder(m.runtime, m.configManager)
 	if req.DestinationProjectID != source.ProjectID {

@@ -365,7 +365,7 @@ committing one transaction.
 - Reparenting is edit-only (`>parent`, `>0`, `<child`), applied as one
   `ApplyParentAssignments` batch so cycles and depth are measured on the graph
   the edit produces. `%project` also routes on capture.
-- Inline `e` and the `Ctrl+E` title share `parseQuickEdit`, which reads that
+- Inline `e` and the `Ctrl+E` title share `ParseQuickEdit`, which reads that
   title only when it changed. A refusal reopens the buffer; saving it unchanged
   abandons the edit.
 - `*unpin` belongs to edit and search: capture refuses it by name, and dropping

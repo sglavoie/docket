@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 func TestFormEditorGuidanceRequiresCommitAndCancelByState(t *testing.T) {
@@ -34,7 +35,7 @@ func TestFormEditorGuidanceRequiresCommitAndCancelByState(t *testing.T) {
 		t.Fatalf("external-editor supplemental = %q", got)
 	}
 
-	composer := &TaskComposerModel{errors: []lineError{{line: 1, message: "invalid capture"}}}
+	composer := &TaskComposerModel{errors: []grammar.LineError{{Line: 1, Message: "invalid capture"}}}
 	spec, ok := composer.ContextualGuidance()
 	assertRequiredGuidance(t, "invalid capture", spec, ok, "Enter retry", "Esc cancel")
 }

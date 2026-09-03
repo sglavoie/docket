@@ -81,6 +81,26 @@
 #     2.6 pointing the other way, keeping a message, its constructor and its two
 #     timing constants in one package.
 #
+# Session 2.11 made four moves this table's row shape cannot express, because
+# the file's package was right and one declaration inside it was not. Each left
+# its file for a package below and got a row of its own:
+#   - formatDeferDate left shared_render_helpers.go (listsurface) for
+#     due_format.go as chrome.FormatDeferDate. grammar's capture preview renders
+#     a deferral and may not import listsurface, and FormatDueDate, the sibling
+#     that reads the same clock, was already chrome's.
+#   - cloneTaskDetachingDependencies left outliner_rows.go (outliner) for
+#     taskref/task_clone.go. QuickEditSnapshot builds its preview with it, and
+#     an L2 package cannot reach L7.
+#   - collectTagNamesForProject and collectContextNamesForProject left
+#     filters_common.go (query) for grammar/tag_context_names.go. They are the
+#     single-project vocabulary the capture caches read; left in query they
+#     would have forced grammar -> query, the one sideways L2 edge that closes a
+#     cycle, since query already imports grammar.
+#   - lineError and composerDeferredDestination left outline_editor_errors.go
+#     (outliner) and task_composer.go (taskform) for grammar/line_error.go and
+#     grammar/deferred_destination.go. Both are parse results: produced in
+#     grammar, consumed above it.
+#
 # Test files are deliberately absent. They follow the production file they
 # audit, except the uitest harness and the registry-union parity tests, which
 # context.md keeps in the root shell.
@@ -191,6 +211,9 @@ fullscreen_layout_helpers.go	chrome	L1	assigned
 fullscreen_scroll_helpers.go	chrome	L1	assigned
 fullscreen_tabs_helpers.go	chrome	L1	assigned
 fullscreen_task_helpers.go	chrome	L1	assigned
+grammar/deferred_destination.go	grammar	L2	assigned
+grammar/line_error.go	grammar	L2	assigned
+grammar/tag_context_names.go	grammar	L2	assigned
 grouped_undo.go	tui	L8	assigned
 handler_clipboard.go	tui	L8	receiver:AppModel
 handler_helpers.go	tui	L8	receiver:AppModel
@@ -510,6 +533,7 @@ task_operations_auxiliary.go	tui	L8	receiver:AppModel
 task_state_picker.go	tui	L8	assigned
 task_tags_picker.go	tui	L8	assigned
 task_tool_guidance.go	taskdetail	L7	receiver:TaskCommentsModel
+taskref/task_clone.go	taskref	L0	assigned
 text_editor.go	chrome	L1	assigned
 text_width_helpers.go	textfit	L0	assigned
 text_wrap.go	textfit	L0	assigned

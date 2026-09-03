@@ -1,4 +1,4 @@
-package tui
+package grammar
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/textgrammar"
 )
 
-func buildQuickEditPreview(result *quickEditResult, task *models.Task, project *models.Project) error {
+func buildQuickEditPreview(result *QuickEditResult, task *models.Task, project *models.Project) error {
 	preview := *task
 	preview.Tags = slices.Clone(task.Tags)
 	preview.Children = slices.Clone(task.Children)
@@ -18,56 +18,56 @@ func buildQuickEditPreview(result *quickEditResult, task *models.Task, project *
 	preview.Attachments = slices.Clone(task.Attachments)
 	preview.Checklist = slices.Clone(task.Checklist)
 	preview.Dependencies = applyQuickEditPreviewDependencies(result, task)
-	preview.Title = result.title
-	if result.prioritySet {
-		preview.Priority = result.priority
+	preview.Title = result.Title
+	if result.PrioritySet {
+		preview.Priority = result.Priority
 	}
-	for _, tag := range result.tagsToRemove {
+	for _, tag := range result.TagsToRemove {
 		preview.Tags = slices.DeleteFunc(preview.Tags, func(existing string) bool {
 			normalized, err := models.NormalizeTaskTag(existing)
 			return err == nil && normalized == tag
 		})
 	}
-	for _, tag := range result.tagsToAdd {
+	for _, tag := range result.TagsToAdd {
 		if !preview.HasTag(tag) {
 			preview.Tags = append(preview.Tags, tag)
 		}
 	}
-	if result.contextSet {
-		preview.Context = result.contextValue
-		if result.contextClear {
+	if result.ContextSet {
+		preview.Context = result.ContextValue
+		if result.ContextClear {
 			preview.Context = ""
 		}
 	}
-	if result.dueDateSet {
-		preview.DueDate = result.dueDate
-		if result.dueDateClear {
+	if result.DueDateSet {
+		preview.DueDate = result.DueDate
+		if result.DueDateClear {
 			preview.DueDate = nil
 		}
 	}
-	if result.deferSet {
-		preview.DeferredUntil = result.deferUntil
-		if result.deferClear {
+	if result.DeferSet {
+		preview.DeferredUntil = result.DeferUntil
+		if result.DeferClear {
 			preview.DeferredUntil = nil
 		}
 	}
-	if result.pinnedSet {
-		preview.Pinned = result.pinned
+	if result.PinnedSet {
+		preview.Pinned = result.Pinned
 	}
-	if result.reviewSet {
-		preview.Review = result.review
+	if result.ReviewSet {
+		preview.Review = result.Review
 	}
-	switch result.parentMode {
-	case quickEditParentRoot:
+	switch result.ParentMode {
+	case QuickEditParentRoot:
 		preview.ParentID = nil
 		preview.Parent = nil
-	case quickEditParentSet:
-		parentID := result.parent.ID
+	case QuickEditParentSet:
+		parentID := result.Parent.ID
 		preview.ParentID = &parentID
-		preview.Parent = result.parent
-	case quickEditParentPreserve:
+		preview.Parent = result.Parent
+	case QuickEditParentPreserve:
 	}
-	for _, child := range result.children {
+	for _, child := range result.Children {
 		if !slices.ContainsFunc(preview.Children, func(existing *models.Task) bool {
 			return existing != nil && existing.ID == child.ID
 		}) {
@@ -79,11 +79,11 @@ func buildQuickEditPreview(result *quickEditResult, task *models.Task, project *
 	}
 	// An adoption is the one patch that can leave a task terminal above an open
 	// child, which the application layer's post-mutation reconciliation reopens.
-	if len(result.children) > 0 && preview.IsTerminalState() && hasIncompleteFinalChildren(result, task, project) {
+	if len(result.Children) > 0 && preview.IsTerminalState() && hasIncompleteFinalChildren(result, task, project) {
 		preview.Uncomplete()
 	}
-	result.state = preview.State()
-	result.preview = preview
+	result.State = preview.State()
+	result.Preview = preview
 	return nil
 }
 
@@ -93,9 +93,9 @@ func buildQuickEditPreview(result *quickEditResult, task *models.Task, project *
 // ordinary transition. Only a destination-driven terminal move consults the
 // task's children, because a bare state edit is refused later by the same rule
 // in the application layer.
-func applyQuickEditPreviewLifecycle(result *quickEditResult, task *models.Task, project *models.Project, preview *models.Task) error {
-	if result.destinationSet {
-		switch result.destination {
+func applyQuickEditPreviewLifecycle(result *QuickEditResult, task *models.Task, project *models.Project, preview *models.Task) error {
+	if result.DestinationSet {
+		switch result.Destination {
 		case textgrammar.DestinationToday:
 			_, _, err := app.ApplyPlanningActionToTask(preview, project.ID, app.PlanningAddToday, time.Now())
 			return err
@@ -108,22 +108,22 @@ func applyQuickEditPreviewLifecycle(result *quickEditResult, task *models.Task, 
 		default:
 			// Every other destination settles below as a state transition.
 		}
-	} else if !result.stateSet {
+	} else if !result.StateSet {
 		return nil
 	}
 	// The children check precedes the equal-state return because a destination the
 	// task already holds is still an explicit terminal claim, and the application
 	// layer's guard refuses it on the same terms.
-	if result.destinationSet && result.state.IsTerminal() && hasIncompleteFinalChildren(result, task, project) {
-		return fmt.Errorf("task #%d has incomplete children and cannot move to %s", task.ShortID, result.state)
+	if result.DestinationSet && result.State.IsTerminal() && hasIncompleteFinalChildren(result, task, project) {
+		return fmt.Errorf("task #%d has incomplete children and cannot move to %s", task.ShortID, result.State)
 	}
-	if preview.State() == result.state {
+	if preview.State() == result.State {
 		return nil
 	}
-	if reason := models.CanTransitionState(preview.State(), result.state); reason != "" {
+	if reason := models.CanTransitionState(preview.State(), result.State); reason != "" {
 		return fmt.Errorf("%s", reason)
 	}
-	return preview.ApplyStateTransition(result.state)
+	return preview.ApplyStateTransition(result.State)
 }
 
 // applyQuickEditPreviewDependencies overlays the soft-reference patch on the
@@ -131,14 +131,14 @@ func applyQuickEditPreviewLifecycle(result *quickEditResult, task *models.Task, 
 // removals drop first, additions append in first-occurrence order, and a clear
 // replaces everything with nothing. Keeping the two in step is what stops the
 // preview from promising a set the commit would not produce.
-func applyQuickEditPreviewDependencies(result *quickEditResult, task *models.Task) []models.TaskReference {
+func applyQuickEditPreviewDependencies(result *QuickEditResult, task *models.Task) []models.TaskReference {
 	if result.dependencyClear {
 		return nil
 	}
 	next := make([]models.TaskReference, 0, len(task.Dependencies)+len(result.dependencyAdds))
 	for _, existing := range task.Dependencies {
-		if slices.ContainsFunc(result.dependencyRemovals, func(removal capturedDependencyRef) bool {
-			return removal.locator.Reference() == existing
+		if slices.ContainsFunc(result.dependencyRemovals, func(removal CapturedDependencyRef) bool {
+			return removal.Locator.Reference() == existing
 		}) {
 			continue
 		}
@@ -147,7 +147,7 @@ func applyQuickEditPreviewDependencies(result *quickEditResult, task *models.Tas
 		}
 	}
 	for _, addition := range result.dependencyAdds {
-		reference := addition.locator.Reference()
+		reference := addition.Locator.Reference()
 		if !slices.Contains(next, reference) {
 			next = append(next, reference)
 		}
@@ -167,11 +167,11 @@ func hasIncompleteDirectChildren(task *models.Task, project *models.Project) boo
 // hasIncompleteFinalChildren reads the children the edit ends with: the ones the
 // task already owns plus the ones it adopts. Adoption is additive, so nothing
 // leaves the set and the two sources simply combine.
-func hasIncompleteFinalChildren(result *quickEditResult, task *models.Task, project *models.Project) bool {
+func hasIncompleteFinalChildren(result *QuickEditResult, task *models.Task, project *models.Project) bool {
 	if hasIncompleteDirectChildren(task, project) {
 		return true
 	}
-	return slices.ContainsFunc(result.children, func(child *models.Task) bool {
+	return slices.ContainsFunc(result.Children, func(child *models.Task) bool {
 		return child != nil && !child.IsTerminalState()
 	})
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 // taskReferenceRowID is the picker's stable row identity: the durable
@@ -97,7 +98,7 @@ func taskReferenceMembership(tasks []*models.Task) map[ListItemID]operationValue
 func operationTaskReferenceListSource(tasks []*models.Task, projects []*models.Project) ListSource {
 	stored := make(map[app.TaskLocator]bool)
 	subjects := make(map[string]bool, len(tasks))
-	candidates := make([]dependencyCandidate, 0, len(tasks))
+	candidates := make([]grammar.DependencyCandidate, 0, len(tasks))
 	for _, task := range tasks {
 		if task == nil {
 			continue
@@ -106,13 +107,13 @@ func operationTaskReferenceListSource(tasks []*models.Task, projects []*models.P
 		for _, reference := range task.Dependencies {
 			stored[app.LocatorForReference(reference)] = true
 		}
-		candidates = append(candidates, dependencyRemovalCandidates(task, projects, nil)...)
+		candidates = append(candidates, grammar.DependencyRemovalCandidates(task, projects, nil)...)
 	}
 	if len(subjects) == 0 {
 		return ListSource{}
 	}
-	for _, candidate := range dependencyAdditionCandidates(projects, "", stored) {
-		if candidate.task != nil && subjects[candidate.task.ID] {
+	for _, candidate := range grammar.DependencyAdditionCandidates(projects, "", stored) {
+		if candidate.Task != nil && subjects[candidate.Task.ID] {
 			continue
 		}
 		candidates = append(candidates, candidate)
@@ -122,30 +123,30 @@ func operationTaskReferenceListSource(tasks []*models.Task, projects []*models.P
 	seen := make(map[ListItemID]bool, len(candidates))
 	grouped := make(map[ListCategoryID]bool, len(projects))
 	for _, candidate := range candidates {
-		id := taskReferenceRowID(candidate.locator)
+		id := taskReferenceRowID(candidate.Locator)
 		if seen[id] {
 			continue
 		}
 		seen[id] = true
 		item := ListItem{
 			ID:      id,
-			Aliases: []string{dependencyCandidateSearchText(candidate)},
-			Data:    candidate.locator.Reference().Locator(),
+			Aliases: []string{grammar.DependencyCandidateSearchText(candidate)},
+			Data:    candidate.Locator.Reference().Locator(),
 		}
-		if candidate.task == nil {
+		if candidate.Task == nil {
 			// A reference this view could not read keeps its stored locator and says
 			// only that it is unavailable, the same word Peek uses. It stays enabled
 			// like every other stored row: nothing can be said about the target, but
 			// the reference itself is still the user's to drop.
-			item.PrimaryText = candidate.locator.Reference().Locator()
+			item.PrimaryText = candidate.Locator.Reference().Locator()
 			item.SecondaryText = dependencyDetailUnavailable
 			items = append(items, item)
 			continue
 		}
-		item.PrimaryText = candidate.task.Title
-		item.SecondaryText = fmt.Sprintf("%s #%d", candidate.task.State().Icon(), candidate.task.ShortID)
-		if candidate.project != nil {
-			item.CategoryID = ListCategoryID(candidate.project.ID)
+		item.PrimaryText = candidate.Task.Title
+		item.SecondaryText = fmt.Sprintf("%s #%d", candidate.Task.State().Icon(), candidate.Task.ShortID)
+		if candidate.Project != nil {
+			item.CategoryID = ListCategoryID(candidate.Project.ID)
 			grouped[item.CategoryID] = true
 		}
 		items = append(items, item)

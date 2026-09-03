@@ -6,6 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -135,7 +136,7 @@ func newCrossOutlinerFromEnv(env *crossProjectTestEnv) *OutlinerModel {
 	setTestProjects(runtime, env.projects)
 	outliner := &OutlinerModel{
 		runtime:           testRuntimeAt(runtime.DataDir(), runtime),
-		quickEdit:         NewQuickEditComponent(),
+		quickEdit:         grammar.NewQuickEditComponent(),
 		collapsedSections: make(map[string]bool),
 		expandedNodes:     make(map[taskref.TaskIdentity]bool),
 		MultiSelectState: MultiSelectState{

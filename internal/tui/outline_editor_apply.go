@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -74,7 +75,7 @@ func (m *AppModel) handleOutlineEdited(msg OutlineEditedMsg) tea.Cmd {
 		return status.ErrorCmd("no project to outline")
 	}
 
-	lines, lineErrors := parseOutlineBuffer(msg.Buffer, msg.Project, m.outlineDependencyProjects(msg.Project))
+	lines, lineErrors := grammar.ParseOutlineBuffer(msg.Buffer, msg.Project, m.outlineDependencyProjects(msg.Project))
 	if len(lineErrors) > 0 {
 		m.showView(presentation.ViewOutlineErrors, NewOutlineErrorsViewModel(msg.Project.Name, msg.Path, lineErrors))
 		return nil
@@ -93,7 +94,7 @@ func (m *AppModel) handleOutlineEdited(msg OutlineEditedMsg) tea.Cmd {
 	// all; over a scope that held none it deleted nothing, so it is the truncation
 	// accident the parser used to assume.
 	if len(lines) == 0 && len(pending.deletions) == 0 {
-		m.showView(presentation.ViewOutlineErrors, NewOutlineErrorsViewModel(msg.Project.Name, msg.Path, []lineError{{line: 1, message: "the buffer holds no tasks"}}))
+		m.showView(presentation.ViewOutlineErrors, NewOutlineErrorsViewModel(msg.Project.Name, msg.Path, []grammar.LineError{{Line: 1, Message: "the buffer holds no tasks"}}))
 		return nil
 	}
 	if len(pending.deletions) == 0 {
@@ -144,7 +145,7 @@ func (m *AppModel) applyOutlineBuffer(pending outlineApplyPending) tea.Cmd {
 		return status.DefaultStatusTimeout()
 	}
 	if err != nil {
-		m.showView(presentation.ViewOutlineErrors, NewOutlineErrorsViewModel(pending.project.Name, pending.path, []lineError{outlineApplyError(err)}))
+		m.showView(presentation.ViewOutlineErrors, NewOutlineErrorsViewModel(pending.project.Name, pending.path, []grammar.LineError{outlineApplyError(err)}))
 		return nil
 	}
 
@@ -266,18 +267,18 @@ func outlineTransactionID(result app.OutlinePlanResult) string {
 // line-numbered list the parse phases use. The application layer prefixes its
 // own rejections with "line N: ", which is exactly the part the list column
 // already shows.
-func outlineApplyError(err error) lineError {
+func outlineApplyError(err error) grammar.LineError {
 	message := err.Error()
 	tail, prefixed := strings.CutPrefix(message, "line ")
 	if !prefixed {
-		return lineError{line: 1, message: message}
+		return grammar.LineError{Line: 1, Message: message}
 	}
 	number, detail, split := strings.Cut(tail, ": ")
 	parsed, convErr := strconv.Atoi(number)
 	if !split || convErr != nil || parsed <= 0 {
-		return lineError{line: 1, message: message}
+		return grammar.LineError{Line: 1, Message: message}
 	}
-	return lineError{line: parsed, message: detail}
+	return grammar.LineError{Line: parsed, Message: detail}
 }
 
 // removeOutlineBuffer discards a temp file the user no longer needs. A failed

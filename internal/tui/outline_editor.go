@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 // The outline editor is the bulk-restructuring escape hatch: one project's task
@@ -110,9 +111,9 @@ func outlineBufferHeader(projectName, modeLabel string, now time.Time) string {
 	}
 	return strings.Join([]string{
 		fmt.Sprintf("# tt outline · %s · %s", scope, now.Format("2006-01-02 15:04")),
-		fmt.Sprintf("# Indent = parentage (%d spaces). Sigils: %s", outlineIndentWidth, outlineGrammarForms()),
+		fmt.Sprintf("# Indent = parentage (%d spaces). Sigils: %s", grammar.OutlineIndentWidth, outlineGrammarForms()),
 		"# Lines are declarative: an omitted sigil clears that value.",
-		fmt.Sprintf("# Keep %sxxxxxxxx%s to edit a task. No marker = new task.", outlineMarkerPrefix, outlineMarkerSuffix),
+		fmt.Sprintf("# Keep %sxxxxxxxx%s to edit a task. No marker = new task.", grammar.OutlineMarkerPrefix, grammar.OutlineMarkerSuffix),
 		"# Removing a line deletes that task; you confirm the list on return.",
 		"",
 		"",
@@ -170,8 +171,8 @@ func outlineDumpLine(task *models.Task, depth int, scope *models.Project, projec
 		segments = append(segments, reviewDefinition.Trigger+"review")
 	}
 
-	line := strings.Repeat(" ", depth*outlineIndentWidth) + strings.Join(segments, " ")
-	return line + "  " + outlineMarkerPrefix + outlineMarkerFor(task.ID) + outlineMarkerSuffix
+	line := strings.Repeat(" ", depth*grammar.OutlineIndentWidth) + strings.Join(segments, " ")
+	return line + "  " + grammar.OutlineMarkerPrefix + grammar.OutlineMarkerFor(task.ID) + grammar.OutlineMarkerSuffix
 }
 
 // outlineDependencyAlias renders one stored reference as the token the buffer
@@ -183,11 +184,11 @@ func outlineDumpLine(task *models.Task, depth int, scope *models.Project, projec
 func outlineDependencyAlias(reference models.TaskReference, scope *models.Project, projects []*models.Project) string {
 	target := scope
 	if target == nil || target.ID != reference.ProjectID {
-		target = projectByStableID(reference.ProjectID, projects)
+		target = grammar.ProjectByStableID(reference.ProjectID, projects)
 	}
 	if target != nil {
 		if task := target.GetTaskByID(reference.TaskID); task != nil {
-			return dependencyAlias(target, task, scope)
+			return grammar.DependencyAlias(target, task, scope)
 		}
 	}
 	return reference.Locator()
@@ -203,9 +204,9 @@ func assertOutlineMarkersUnique(project *models.Project) error {
 		if task == nil || task.ID == "" {
 			continue
 		}
-		marker := outlineMarkerFor(task.ID)
+		marker := grammar.OutlineMarkerFor(task.ID)
 		if other, clash := seen[marker]; clash {
-			return fmt.Errorf("tasks %s and %s share the marker %s%s%s", other, task.ID, outlineMarkerPrefix, marker, outlineMarkerSuffix)
+			return fmt.Errorf("tasks %s and %s share the marker %s%s%s", other, task.ID, grammar.OutlineMarkerPrefix, marker, grammar.OutlineMarkerSuffix)
 		}
 		seen[marker] = task.ID
 	}

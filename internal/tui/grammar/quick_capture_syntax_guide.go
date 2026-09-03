@@ -1,4 +1,4 @@
-package tui
+package grammar
 
 import (
 	"strings"
@@ -15,56 +15,56 @@ import (
 // the same grammar reference reads correctly wherever it appears.
 const syntaxGuideTitle = "Capture Syntax"
 
-// syntaxGuideEntry documents one canonical sigil family: the accepted form, a
+// SyntaxGuideEntry documents one canonical sigil family: the accepted form, a
 // short description, display examples, and a set of full capture inputs that
 // must parse successfully. The display fields (forms/desc/examples) may carry
 // presentation sugar such as arrows or "(repeatable)" hints; the validation
 // inputs are kept separate so parser-backed tests exercise real, parseable
 // capture strings rather than the rendered sugar.
-type syntaxGuideEntry struct {
-	forms      string
+type SyntaxGuideEntry struct {
+	Forms      string
 	desc       string
-	examples   string
-	validation []string
+	Examples   string
+	Validation []string
 }
 
-// syntaxGuideGroup clusters related capture sigils under a heading so the
+// SyntaxGuideGroup clusters related capture sigils under a heading so the
 // reference scans as intent groups rather than a flat sigil soup.
-type syntaxGuideGroup struct {
+type SyntaxGuideGroup struct {
 	name    string
-	entries []syntaxGuideEntry
+	Entries []SyntaxGuideEntry
 }
 
-// syntaxGuideGroups returns the grouped sigil reference in teach order, which is
+// SyntaxGuideGroups returns the grouped sigil reference in teach order, which is
 // why it reads GuideDefinitions rather than the parse-order projection: the
 // attachment sigil has to be peeled before #tag and would otherwise lead the
 // guide. Project Routing is only included when %project capture is enabled, so
 // the Linked Task Creator (which skips project syntax) never advertises it.
-func (q *quickCaptureInput) syntaxGuideGroups() []syntaxGuideGroup {
+func (q *QuickCaptureInput) SyntaxGuideGroups() []SyntaxGuideGroup {
 	var groupOrder []string
-	byGroup := make(map[string][]syntaxGuideEntry)
+	byGroup := make(map[string][]SyntaxGuideEntry)
 	for _, def := range textgrammar.GuideDefinitions(textgrammar.SurfaceCapture) {
-		if def.Legacy || (q.skipProjectSyntax && def.Field == textgrammar.FieldProject) {
+		if def.Legacy || (q.SkipProjectSyntax && def.Field == textgrammar.FieldProject) {
 			continue
 		}
 		if _, exists := byGroup[def.Group]; !exists {
 			groupOrder = append(groupOrder, def.Group)
 		}
-		entry := syntaxGuideEntry{
-			forms:    strings.Join(def.Forms, " · "),
+		entry := SyntaxGuideEntry{
+			Forms:    strings.Join(def.Forms, " · "),
 			desc:     def.Description,
-			examples: strings.Join(def.Examples, "  "),
+			Examples: strings.Join(def.Examples, "  "),
 		}
 		for _, example := range def.Examples {
-			entry.validation = append(entry.validation, "Task "+example)
+			entry.Validation = append(entry.Validation, "Task "+example)
 		}
 		byGroup[def.Group] = append(byGroup[def.Group], entry)
 	}
 
-	groups := make([]syntaxGuideGroup, 0, len(groupOrder))
+	groups := make([]SyntaxGuideGroup, 0, len(groupOrder))
 	for _, name := range groupOrder {
 		if entries := byGroup[name]; len(entries) > 0 {
-			groups = append(groups, syntaxGuideGroup{name: name, entries: entries})
+			groups = append(groups, SyntaxGuideGroup{name: name, Entries: entries})
 		}
 	}
 	return groups
@@ -77,7 +77,7 @@ const (
 	syntaxColumnGap   = 2 // Gap between aligned columns.
 )
 
-// renderSyntaxGuide returns the grouped, measured, wrap-aware canonical sigil
+// RenderSyntaxGuide returns the grouped, measured, wrap-aware canonical sigil
 // reference shown when the user toggles the gated syntax help. Shared by Quick
 // Capture and the linked-task creator so both surfaces stay in lockstep.
 //
@@ -90,15 +90,15 @@ const (
 //
 // All measurement uses ANSI-aware visual width, so the guide never overflows
 // q.width at narrow widths regardless of styling.
-func (q *quickCaptureInput) renderSyntaxGuide() string {
-	groups := q.syntaxGuideGroups()
+func (q *QuickCaptureInput) RenderSyntaxGuide() string {
+	groups := q.SyntaxGuideGroups()
 
 	// Compute aligned column widths across every entry so aligned rows line up
 	// their forms and descriptions into consistent columns.
 	formsCol, descCol := 0, 0
 	for _, g := range groups {
-		for _, e := range g.entries {
-			formsCol = max(formsCol, lipgloss.Width(e.forms))
+		for _, e := range g.Entries {
+			formsCol = max(formsCol, lipgloss.Width(e.Forms))
 			descCol = max(descCol, lipgloss.Width(e.desc))
 		}
 	}
@@ -108,8 +108,8 @@ func (q *quickCaptureInput) renderSyntaxGuide() string {
 	// appendWrappedField wraps a single field to q.width at the given indent.
 	appendWrappedField := func(indent int, style lipgloss.Style, text string) {
 		pad := strings.Repeat(" ", indent)
-		avail := q.width - indent
-		if q.width <= 0 || avail <= 0 {
+		avail := q.Width - indent
+		if q.Width <= 0 || avail <= 0 {
 			lines = append(lines, pad+style.Render(text))
 			return
 		}
@@ -127,14 +127,14 @@ func (q *quickCaptureInput) renderSyntaxGuide() string {
 		return styled + strings.Repeat(" ", col-plainWidth)
 	}
 
-	appendEntry := func(e syntaxGuideEntry) {
-		formsW := lipgloss.Width(e.forms)
+	appendEntry := func(e SyntaxGuideEntry) {
+		formsW := lipgloss.Width(e.Forms)
 		descW := lipgloss.Width(e.desc)
-		examplesW := lipgloss.Width(e.examples)
+		examplesW := lipgloss.Width(e.Examples)
 
-		styledForms := theme.MatchHighlightStyle.Render(e.forms)
+		styledForms := theme.MatchHighlightStyle.Render(e.Forms)
 		styledDesc := theme.MutedStyle.Render(e.desc)
-		styledExamples := theme.MutedStyle.Render(e.examples)
+		styledExamples := theme.MutedStyle.Render(e.Examples)
 
 		indentStr := strings.Repeat(" ", syntaxEntryIndent)
 		gapStr := strings.Repeat(" ", syntaxColumnGap)
@@ -144,28 +144,28 @@ func (q *quickCaptureInput) renderSyntaxGuide() string {
 		fdWidth := syntaxEntryIndent + formsCol + syntaxColumnGap + descCol
 
 		switch {
-		case q.width <= 0:
+		case q.Width <= 0:
 			// No width budget: fall back to a simple stacked form.
-			appendWrappedField(syntaxEntryIndent, theme.MatchHighlightStyle, e.forms)
+			appendWrappedField(syntaxEntryIndent, theme.MatchHighlightStyle, e.Forms)
 			appendWrappedField(syntaxFieldIndent, theme.MutedStyle, e.desc)
 			if examplesW > 0 {
-				appendWrappedField(syntaxFieldIndent, theme.MutedStyle, e.examples)
+				appendWrappedField(syntaxFieldIndent, theme.MutedStyle, e.Examples)
 			}
-		case examplesW > 0 && fdWidth+syntaxColumnGap+examplesW <= q.width:
+		case examplesW > 0 && fdWidth+syntaxColumnGap+examplesW <= q.Width:
 			// Mode 1: aligned single row.
 			lines = append(lines, formsDescRow+gapStr+styledExamples)
-		case fdWidth <= q.width:
+		case fdWidth <= q.Width:
 			// Mode 2: forms + description on the first row, examples wrapped below.
 			lines = append(lines, formsDescRow)
 			if examplesW > 0 {
-				appendWrappedField(syntaxFieldIndent, theme.MutedStyle, e.examples)
+				appendWrappedField(syntaxFieldIndent, theme.MutedStyle, e.Examples)
 			}
 		default:
 			// Mode 3: forms and description cannot coexist; stack every field.
-			appendWrappedField(syntaxEntryIndent, theme.MatchHighlightStyle, e.forms)
+			appendWrappedField(syntaxEntryIndent, theme.MatchHighlightStyle, e.Forms)
 			appendWrappedField(syntaxFieldIndent, theme.MutedStyle, e.desc)
 			if examplesW > 0 {
-				appendWrappedField(syntaxFieldIndent, theme.MutedStyle, e.examples)
+				appendWrappedField(syntaxFieldIndent, theme.MutedStyle, e.Examples)
 			}
 		}
 	}
@@ -174,14 +174,14 @@ func (q *quickCaptureInput) renderSyntaxGuide() string {
 	for _, g := range groups {
 		lines = append(lines, "")
 		appendWrappedField(0, theme.SectionHeaderStyle, g.name)
-		for _, e := range g.entries {
+		for _, e := range g.Entries {
 			appendEntry(e)
 		}
 	}
 	return strings.Join(lines, "\n") + "\n"
 }
 
-// isAutocompleteActive returns whether autocomplete is currently showing.
-func (q *quickCaptureInput) isAutocompleteActive() bool {
-	return q.ac.IsActive()
+// IsAutocompleteActive returns whether autocomplete is currently showing.
+func (q *QuickCaptureInput) IsAutocompleteActive() bool {
+	return q.AC.IsActive()
 }

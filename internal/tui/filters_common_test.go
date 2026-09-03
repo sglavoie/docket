@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 func TestBuildProjectTagListUsesTaskCounts(t *testing.T) {
@@ -209,10 +210,10 @@ func TestCollectTagNamesForProjectUsesTaskTags(t *testing.T) {
 		},
 	}
 
-	got := CollectTagNamesForProject(project)
+	got := grammar.CollectTagNamesForProject(project)
 	want := []string{"task-used"}
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("CollectTagNamesForProject() = %v, want %v", got, want)
+		t.Fatalf("grammar.CollectTagNamesForProject() = %v, want %v", got, want)
 	}
 }
 

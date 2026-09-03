@@ -113,8 +113,11 @@ the pre-split tree and is consistently pessimistic.
 | `pulse` | 13 | 12 | 12 |
 | `chrome` | 61 | 50 | 48 |
 | `coordinator` | 5 | 3 | 3 |
+| `grammar` | 59 | 196 | pending (Session 2.12) |
 
-Running total against 631: **102**. The middle column minus the last is the
+Running total against 631: **102**. `grammar` is not in it yet: its tests are
+still in the shell, so it has no last-column number to add. The middle column
+minus the last is the
 test-only promotion the ruling reclaims — 27 for `theme`, none until `chrome`,
 because `textfit` moved its three test files down in the same session, `taskref`
 promoted nothing for a test in the first place, `status` moved its one test file
@@ -236,6 +239,35 @@ test helper cannot cross a package boundary: moving them would strand far more
 than it homes. That harness is why `stubMutator` is declared on both sides —
 `internal/tui/feature_mutator_stub_test.go` is the shell's copy — rather than
 one side reaching for the other.
+
+`grammar` is the second package whose production move and test move are two
+sessions, and the first where the split is what `context.md`'s sizing rule
+demands rather than a convenience. Thirty-nine shell test files read its
+internals, and only three of them — `dependency_grammar_test.go`,
+`quick_capture_input_test.go` and `quick_capture_resolution_test.go` — name
+nothing else the shell declares, so relocating tests alongside the production
+move was never available. Session 2.11 lands the move and over-exports on
+purpose; Session 2.12 homes the tests and withdraws what only they read.
+
+196 is more than three times the projected 59, and the gap is that deliberate
+over-export plus two things the `must export` column never counts. 85 of the 196
+are package-level and 111 are fields and methods across eleven exported value
+types, `QuickCaptureInput` and `QuickEditResult` alone accounting for 66 of
+them. Of the 85, 37 are named by production files outside `grammar`; the other
+48 include all 27 `acMode*` constants, of which production reads exactly one,
+`ACModeNone`. Session 2.12's floor is roughly that 37 plus whatever the member
+half production genuinely reaches.
+
+Over-exporting is safe against the gate, which is worth stating because it is
+not obvious from the `coordinator` row above. `scripts/dead_code.sh` runs
+`deadcode ./...` production-only and `internal/deadcodeaudit` flags declarations
+with no production read; both measure reachability and reads, and renaming a
+declaration changes neither. The `coordinator` trap is a different shape — it
+*adds* a declaration production never calls. Session 2.11 added exactly one,
+`QuickEditComponent.GetProject`, replacing the shell's direct reads of the
+unexported `project` field, and five production call sites in
+`handler_task_line_edit.go`, `outliner_keys_navigation.go` and
+`outliner_quick_edit_view.go` reach it.
 
 Reproduce the last column for one package with the oracle from session 2.4,
 which reports a clean boundary rather than a count:

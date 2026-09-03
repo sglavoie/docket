@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -59,7 +60,7 @@ type OutlinerModel struct {
 	configManager  *config.Manager
 	taskItem       coordinator.TaskItemCoordinator
 	projectService *coordinator.ProjectService
-	quickEdit      *QuickEditComponent
+	quickEdit      *grammar.QuickEditComponent
 
 	project *models.Project
 
@@ -348,7 +349,7 @@ func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runti
 		runtime:            runtime,
 		configManager:      cfgManager,
 		projectService:     coordinator.NewProjectService(),
-		quickEdit:          NewQuickEditComponent(),
+		quickEdit:          grammar.NewQuickEditComponent(),
 		project:            project,
 		primaryMode:        chrome.ModeAll,
 		expandedNodes:      make(map[taskref.TaskIdentity]bool),

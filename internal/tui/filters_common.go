@@ -2,7 +2,6 @@ package tui
 
 import (
 	"maps"
-	"slices"
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -203,32 +202,6 @@ func commonFilterParts(f *CommonFilterState) []string {
 	return filterClauseParts(commonFilterClauses(f))
 }
 
-// CollectTagNamesForProject returns sorted unique tag names from the project's
-// catalog and task usage.
-func CollectTagNamesForProject(project *models.Project) []string {
-	return tagNamesFromInfos(BuildProjectTagList(project, false))
-}
-
-// CollectContextNamesForProject returns the sorted unique task contexts used in
-// a project. Context has no project catalog, so task usage is its full vocabulary.
-func CollectContextNamesForProject(project *models.Project) []string {
-	if project == nil {
-		return nil
-	}
-	contexts := make(map[string]bool)
-	for _, task := range project.Tasks {
-		if task == nil || task.Context == "" {
-			continue
-		}
-		normalized, err := models.NormalizeTaskContext(task.Context)
-		if err == nil {
-			contexts[normalized] = true
-		}
-	}
-	result := maps.Keys(contexts)
-	return slices.Sorted(result)
-}
-
 // collectContextNamesForProjects returns the sorted context vocabulary in use
 // across a set of projects. It reads the same BuildTagFacetList census the fc
 // picker takes its counts from, so the names a picker offers and the counts
@@ -241,14 +214,6 @@ func collectContextNamesForProjects(projects []*models.Project) []string {
 		}
 	}
 	return names
-}
-
-func tagNamesFromInfos(infos []TagInfo) []string {
-	tags := make([]string, len(infos))
-	for i, info := range infos {
-		tags[i] = info.Name
-	}
-	return tags
 }
 
 // FilterState contains all task filtering options including view-specific fields

@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -63,17 +64,17 @@ func inlineEditorChildFixture(t *testing.T) (*OutlinerModel, *models.Project, *m
 
 // draftedRowEditor returns a row editor holding draft with the cursor at the end
 // and its autocomplete refreshed, which is the state a keystroke leaves behind.
-func draftedRowEditor(t *testing.T, draft string, task *models.Task, project *models.Project, projects []*models.Project) *QuickEditComponent {
+func draftedRowEditor(t *testing.T, draft string, task *models.Task, project *models.Project, projects []*models.Project) *grammar.QuickEditComponent {
 	t.Helper()
-	q := NewQuickEditComponent()
+	q := grammar.NewQuickEditComponent()
 	q.EnterWithContext(task, project, projects, false)
-	q.input.SetValue(draft)
-	q.input.CursorEnd()
-	q.refreshDraft()
+	q.Input.SetValue(draft)
+	q.Input.CursorEnd()
+	q.RefreshDraft()
 	return q
 }
 
-func suggestionValues(items []ACSuggestion) []string {
+func suggestionValues(items []grammar.ACSuggestion) []string {
 	values := make([]string, len(items))
 	for i, item := range items {
 		values[i] = item.Value
@@ -86,10 +87,10 @@ func TestInlineRowEditorChildSuggestionsWithholdEveryReferenceStrictParsingRefus
 	projects := []*models.Project{project}
 	q := draftedRowEditor(t, "Child <", child, project, projects)
 
-	if q.ac.Mode != acModeChild {
-		t.Fatalf("autocomplete mode = %d, want acModeChild", q.ac.Mode)
+	if q.AC.Mode != grammar.ACModeChild {
+		t.Fatalf("autocomplete mode = %d, want acModeChild", q.AC.Mode)
 	}
-	displays := suggestionDisplays(q.ac.Items)
+	displays := suggestionDisplays(q.AC.Items)
 	if len(displays) == 0 || displays[0] != "<3 Sibling" {
 		t.Fatalf("child suggestions = %v, want the child sigil in project order", displays)
 	}
@@ -99,7 +100,7 @@ func TestInlineRowEditorChildSuggestionsWithholdEveryReferenceStrictParsingRefus
 		}
 	}
 
-	values := suggestionValues(q.ac.Items)
+	values := suggestionValues(q.AC.Items)
 	for _, withheld := range []string{"1", "2", "4", "10"} {
 		if slices.Contains(values, withheld) {
 			t.Errorf("child suggestions offered #%s: %v", withheld, values)
@@ -119,11 +120,11 @@ func TestInlineRowEditorChildSuggestionsWithholdEveryReferenceStrictParsingRefus
 		"<10": "exceed maximum nesting depth",
 	}
 	for draft, want := range refusals {
-		if _, err := parseQuickEdit("Child "+draft, child, project, projects); err == nil || !strings.Contains(err.Error(), want) {
+		if _, err := grammar.ParseQuickEdit("Child "+draft, child, project, projects); err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("parseQuickEdit(%q) error = %v, want %q", draft, err, want)
 		}
 	}
-	if _, err := parseQuickEdit("Child <4", child, project, projects); err != nil {
+	if _, err := grammar.ParseQuickEdit("Child <4", child, project, projects); err != nil {
 		t.Errorf("manually typed completed-task adoption: %v", err)
 	}
 }
@@ -143,7 +144,7 @@ func TestInlineRowEditorChildSuggestionsFollowTheDraftedParentAndProjectRoute(t 
 	// A drafted parent is an ancestor of the finished line, so it leaves the
 	// candidate set; the current parent it replaces rejoins it.
 	reparented := draftedRowEditor(t, "Child >3 <", child, project, projects)
-	values := suggestionValues(reparented.ac.Items)
+	values := suggestionValues(reparented.AC.Items)
 	if slices.Contains(values, "3") {
 		t.Errorf("drafted parent #3 remained a child candidate: %v", values)
 	}
@@ -152,13 +153,13 @@ func TestInlineRowEditorChildSuggestionsFollowTheDraftedParentAndProjectRoute(t 
 	}
 
 	crossProject := draftedRowEditor(t, "Child %routed <", child, project, projects)
-	if got, want := suggestionDisplays(crossProject.ac.Items), []string{"<1 Routed alpha", "<2 Routed beta"}; !slices.Equal(got, want) {
+	if got, want := suggestionDisplays(crossProject.AC.Items), []string{"<1 Routed alpha", "<2 Routed beta"}; !slices.Equal(got, want) {
 		t.Errorf("routed child suggestions = %v, want %v", got, want)
 	}
 
 	unresolved := draftedRowEditor(t, "Child %missing <", child, project, projects)
-	if unresolved.ac.IsActive() {
-		t.Errorf("unresolvable project route still offered children: %v", suggestionDisplays(unresolved.ac.Items))
+	if unresolved.AC.IsActive() {
+		t.Errorf("unresolvable project route still offered children: %v", suggestionDisplays(unresolved.AC.Items))
 	}
 }
 
@@ -167,14 +168,14 @@ func TestInlineRowEditorChildCompletionIgnoresTheTokenUnderTheCursor(t *testing.
 	projects := []*models.Project{project}
 
 	inProgress := draftedRowEditor(t, "Child <3", child, project, projects)
-	if values := suggestionValues(inProgress.ac.Items); !slices.Contains(values, "3") {
+	if values := suggestionValues(inProgress.AC.Items); !slices.Contains(values, "3") {
 		t.Fatalf("the alias being typed withheld its own task: %v", values)
 	}
 
 	q := draftedRowEditor(t, "Child <3 <20 tail", child, project, projects)
-	q.input.SetCursor(len([]rune("Child <3")))
-	q.refreshDraft()
-	values := suggestionValues(q.ac.Items)
+	q.Input.SetCursor(len([]rune("Child <3")))
+	q.RefreshDraft()
+	values := suggestionValues(q.AC.Items)
 	if !slices.Contains(values, "3") {
 		t.Errorf("mid-line completion withheld the task under the cursor: %v", values)
 	}
@@ -188,38 +189,38 @@ func TestInlineRowEditorChildAcceptanceRepeatsWhileParentStaysSingleton(t *testi
 	projects := []*models.Project{project}
 
 	q := draftedRowEditor(t, "Child <", child, project, projects)
-	if transition, _, _ := q.Handle(tea.KeyPressMsg{Code: tea.KeyTab}); transition != quickEditContinue {
+	if transition, _, _ := q.Handle(tea.KeyPressMsg{Code: tea.KeyTab}); transition != grammar.QuickEditContinue {
 		t.Fatalf("first child acceptance transition = %v, want continue", transition)
 	}
-	if got := q.input.Value(); got != "Child <3 " {
+	if got := q.Input.Value(); got != "Child <3 " {
 		t.Fatalf("first acceptance = %q, want \"Child <3 \"", got)
 	}
 
-	q.input.SetValue(q.input.Value() + "<")
-	q.input.CursorEnd()
-	q.refreshDraft()
-	if q.ac.Mode != acModeChild {
-		t.Fatalf("child completion did not repeat after acceptance: mode %d items %v", q.ac.Mode, suggestionDisplays(q.ac.Items))
+	q.Input.SetValue(q.Input.Value() + "<")
+	q.Input.CursorEnd()
+	q.RefreshDraft()
+	if q.AC.Mode != grammar.ACModeChild {
+		t.Fatalf("child completion did not repeat after acceptance: mode %d items %v", q.AC.Mode, suggestionDisplays(q.AC.Items))
 	}
-	if values := suggestionValues(q.ac.Items); slices.Contains(values, "3") {
+	if values := suggestionValues(q.AC.Items); slices.Contains(values, "3") {
 		t.Fatalf("accepted child reappeared: %v", values)
 	}
 	q.Handle(tea.KeyPressMsg{Code: tea.KeyTab})
 
 	transition, result, _ := q.Handle(tea.KeyPressMsg{Code: tea.KeyEnter})
-	if transition != quickEditCommit || result == nil {
+	if transition != grammar.QuickEditCommit || result == nil {
 		t.Fatalf("commit transition = %v result = %v", transition, result)
 	}
 	if got := childIDsOf(result); len(got) != 2 || got[0] != "sibling" {
 		t.Fatalf("committed children = %v, want two adoptions led by the sibling", got)
 	}
-	if result.title != "Child" {
-		t.Fatalf("committed title = %q, want the reference tokens stripped", result.title)
+	if result.Title != "Child" {
+		t.Fatalf("committed title = %q, want the reference tokens stripped", result.Title)
 	}
 
 	singleton := draftedRowEditor(t, "Child >3 >", child, project, projects)
-	if singleton.ac.IsActive() {
-		t.Fatalf("parent completion repeated after >3: %v", suggestionDisplays(singleton.ac.Items))
+	if singleton.AC.IsActive() {
+		t.Fatalf("parent completion repeated after >3: %v", suggestionDisplays(singleton.AC.Items))
 	}
 }
 
@@ -237,9 +238,9 @@ func TestInlineRowEditorChildDraftRendersWithinMinimumWidth(t *testing.T) {
 		}
 	}
 	out.quickEdit.EnterWithContext(child, project, []*models.Project{project}, false)
-	out.quickEdit.input.SetValue("Child <")
-	out.quickEdit.input.CursorEnd()
-	out.quickEdit.refreshDraft()
+	out.quickEdit.Input.SetValue("Child <")
+	out.quickEdit.Input.CursorEnd()
+	out.quickEdit.RefreshDraft()
 
 	rendered := ansi.Strip(out.renderOutlinerTreeContent(minTerminalWidth))
 	if !strings.Contains(rendered, "EDIT TASK") || !strings.Contains(rendered, "Child <") {
@@ -313,20 +314,20 @@ func TestInlineRowEditorChildAdoptionCommitsRefreshesHierarchyAndUndoes(t *testi
 	projection := out.jumpProjectionFingerprint()
 
 	out.Update(StartTaskLineEditMsg{Task: task, Project: m.currentProject})
-	out.quickEdit.input.SetValue(task.Title + " <")
-	out.quickEdit.input.CursorEnd()
-	out.quickEdit.refreshDraft()
-	if out.quickEdit.ac.Mode != acModeChild {
-		t.Fatalf("child completion inactive in the live row editor: mode %d", out.quickEdit.ac.Mode)
+	out.quickEdit.Input.SetValue(task.Title + " <")
+	out.quickEdit.Input.CursorEnd()
+	out.quickEdit.RefreshDraft()
+	if out.quickEdit.AC.Mode != grammar.ACModeChild {
+		t.Fatalf("child completion inactive in the live row editor: mode %d", out.quickEdit.AC.Mode)
 	}
 	out.handleQuickEditMode(tea.KeyPressMsg{Code: tea.KeyTab})
-	if got := out.quickEdit.input.Value(); !strings.Contains(got, "<2 ") {
+	if got := out.quickEdit.Input.Value(); !strings.Contains(got, "<2 ") {
 		t.Fatalf("accepted draft = %q, want the adopted short ID", got)
 	}
 
 	_, cmd := out.handleQuickEditMode(tea.KeyPressMsg{Code: tea.KeyEnter})
-	if cmd == nil || !out.quickEdit.pending {
-		t.Fatalf("adoption commit did not retain a pending draft: cmd=%v pending=%t", cmd != nil, out.quickEdit.pending)
+	if cmd == nil || !out.quickEdit.Pending {
+		t.Fatalf("adoption commit did not retain a pending draft: cmd=%v pending=%t", cmd != nil, out.quickEdit.Pending)
 	}
 	committed, ok := cmd().(coordinator.TaskLineEditedMsg)
 	if !ok || !committed.Result.Changed || committed.Result.TransactionID == "" {
@@ -351,17 +352,17 @@ func TestInlineRowEditorChildAdoptionCommitsRefreshesHierarchyAndUndoes(t *testi
 
 	live := m.currentProject.GetTaskByID(task.ID)
 	out.Update(StartTaskLineEditMsg{Task: live, Project: m.currentProject})
-	out.quickEdit.input.SetValue(live.Title + " <2")
-	out.quickEdit.input.CursorEnd()
-	out.quickEdit.refreshDraft()
+	out.quickEdit.Input.SetValue(live.Title + " <2")
+	out.quickEdit.Input.CursorEnd()
+	out.quickEdit.RefreshDraft()
 	out.quickEdit.BeginCommit()
 	failure := errors.New("simulated revision conflict")
 	m.handleTaskLineEditFailed(coordinator.TaskLineEditFailedMsg{
 		Source: taskref.For(live, m.currentProject), Err: failure,
 	})
-	if !out.quickEdit.IsActive() || out.quickEdit.pending || !strings.Contains(out.quickEdit.input.Value(), "<2") {
+	if !out.quickEdit.IsActive() || out.quickEdit.Pending || !strings.Contains(out.quickEdit.Input.Value(), "<2") {
 		t.Fatalf("failed adoption lost the draft: active=%t pending=%t value=%q",
-			out.quickEdit.IsActive(), out.quickEdit.pending, out.quickEdit.input.Value())
+			out.quickEdit.IsActive(), out.quickEdit.Pending, out.quickEdit.Input.Value())
 	}
 	if !strings.Contains(out.quickEdit.GetPreviewError(), failure.Error()) {
 		t.Fatalf("inline adoption failure = %q, want %q", out.quickEdit.GetPreviewError(), failure)

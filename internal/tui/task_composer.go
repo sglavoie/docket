@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -91,21 +92,16 @@ func (p TaskComposerPreset) defaultDestination(
 
 // TaskComposerModel is the sole live task creation overlay. Compact mode owns
 // one-or-many capture lines; expanded mode embeds the full form for one task.
-type lineError struct {
-	line    int
-	message string
-}
-
 type TaskComposerModel struct {
 	pulse.WorkspacePulseState
-	quickCaptureInput
+	grammar.QuickCaptureInput
 	preset             TaskComposerPreset
 	runtime            *config.RuntimeState
 	mode               TaskComposerMode
 	expanded           *TaskFormModel
 	capture            coordinator.CaptureCoordinator
 	taskForm           coordinator.TaskFormCoordinator
-	errors             []lineError
+	errors             []grammar.LineError
 	width              int
 	height             int
 	submissionInFlight bool
@@ -131,16 +127,16 @@ func (m *TaskComposerModel) initCompactInput() {
 	if m.preset.PreferMultiline {
 		placeholder = "One task per line…"
 	}
-	m.quickCaptureInput = newQuickCaptureInput(project, m.preset.AllProjects, placeholder, !m.preset.AllowProjectSwitch)
-	m.input.CharLimit = 4000
-	m.input.SetHeight(3)
+	m.QuickCaptureInput = grammar.NewQuickCaptureInput(project, m.preset.AllProjects, placeholder, !m.preset.AllowProjectSwitch)
+	m.Input.CharLimit = 4000
+	m.Input.SetHeight(3)
 	if m.preset.InitialText != "" {
-		m.input.SetValue(m.preset.InitialText)
-		m.input.CursorEnd()
-		m.updatePreview()
+		m.Input.SetValue(m.preset.InitialText)
+		m.Input.CursorEnd()
+		m.UpdatePreview()
 	}
 	if project == nil {
-		m.errors = []lineError{{line: 1, message: "composer preset requires a project"}}
+		m.errors = []grammar.LineError{{Line: 1, Message: "composer preset requires a project"}}
 	}
 }
 
@@ -159,10 +155,10 @@ func (m *TaskComposerModel) SetSize(width, height int) {
 		m.expanded.SetSize(width, height)
 	}
 	if m.mode == ComposerCompact {
-		m.quickCaptureInput.width = max(width-2, 1)
-		m.input.SetWidth(max(min(width-4, 90), 20))
-		m.input.SetHeight(3)
-		m.setSyntaxViewportWidth(max(width-2, 1))
+		m.Width = max(width-2, 1)
+		m.Input.SetWidth(max(min(width-4, 90), 20))
+		m.Input.SetHeight(3)
+		m.SetSyntaxViewportWidth(max(width-2, 1))
 	}
 }
 
@@ -215,47 +211,47 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if handled, cmd := m.handleComposerAutocompleteKey(name); handled {
 			return m, cmd
 		}
-		if m.helpExpanded && !m.isAutocompleteActive() {
+		if m.HelpExpanded && !m.IsAutocompleteActive() {
 			switch name {
 			case "ctrl+k":
-				m.syntaxScrollLine(-1)
+				m.SyntaxScrollLine(-1)
 				return m, nil
 			case "ctrl+j":
-				m.syntaxScrollLine(1)
+				m.SyntaxScrollLine(1)
 				return m, nil
 			case "pgup":
-				m.syntaxScrollPage(-1)
+				m.SyntaxScrollPage(-1)
 				return m, nil
 			case "pgdown":
-				m.syntaxScrollPage(1)
+				m.SyntaxScrollPage(1)
 				return m, nil
 			}
 		}
-		if name == "?" && m.ac.Mode == acModeNone {
-			m.toggleHelp()
+		if name == "?" && m.AC.Mode == grammar.ACModeNone {
+			m.ToggleHelp()
 			return m, nil
 		}
 		switch name {
 		case "esc":
-			if m.helpExpanded {
-				m.closeHelp()
+			if m.HelpExpanded {
+				m.CloseHelp()
 				return m, nil
 			}
-			if strings.TrimSpace(m.input.Value()) != "" {
+			if strings.TrimSpace(m.Input.Value()) != "" {
 				m.ConfirmDiscard = true
 				return m, nil
 			}
 			return m, func() tea.Msg { return status.BackMsg{} }
 		case "shift+enter":
-			m.input.InsertString("\n")
-			m.updatePreview()
+			m.Input.InsertString("\n")
+			m.UpdatePreview()
 			return m, nil
 		case "enter", "ctrl+s":
-			if m.ac.Mode == acModeNone {
+			if m.AC.Mode == grammar.ACModeNone {
 				return m, m.createCompact(false)
 			}
 		case "ctrl+e":
-			if m.ac.Mode == acModeNone {
+			if m.AC.Mode == grammar.ACModeNone {
 				return m, m.createCompact(true)
 			}
 		case "ctrl+f":
@@ -266,14 +262,14 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	return m, m.updateInput(msg)
+	return m, m.UpdateInput(msg)
 }
 
 func (m *TaskComposerModel) handleComposerAutocompleteKey(name string) (bool, tea.Cmd) {
-	if name == "enter" && m.autocompleteLiteralComplete() {
+	if name == "enter" && m.AutocompleteLiteralComplete() {
 		return true, m.createCompact(false)
 	}
-	if m.handleAutocompleteKey(name) {
+	if m.HandleAutocompleteKey(name) {
 		return true, nil
 	}
 	return false, nil
@@ -302,79 +298,79 @@ func (m *TaskComposerModel) createCompact(openContent bool) tea.Cmd {
 func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, bool) {
 	m.errors = nil
 	if m.preset.Project == nil {
-		m.errors = []lineError{{line: 1, message: "project is unavailable"}}
+		m.errors = []grammar.LineError{{Line: 1, Message: "project is unavailable"}}
 		return nil, false
 	}
 
-	lines := strings.Split(m.input.Value(), "\n")
+	lines := strings.Split(m.Input.Value(), "\n")
 	reqs := make([]app.CaptureRequest, 0, len(lines))
 	for idx, raw := range lines {
 		line := strings.TrimSpace(raw)
 		if line == "" {
 			continue
 		}
-		parsed, err := parseQuickCapture(line, m.preset.Project, m.preset.AllProjects, !m.preset.AllowProjectSwitch)
+		parsed, err := grammar.ParseQuickCapture(line, m.preset.Project, m.preset.AllProjects, !m.preset.AllowProjectSwitch)
 		if err != nil {
-			m.errors = append(m.errors, lineError{line: idx + 1, message: err.Error()})
+			m.errors = append(m.errors, grammar.LineError{Line: idx + 1, Message: err.Error()})
 			continue
 		}
-		if err := models.ValidateTaskTitle(parsed.title); err != nil {
-			m.errors = append(m.errors, lineError{line: idx + 1, message: err.Error()})
+		if err := models.ValidateTaskTitle(parsed.Title); err != nil {
+			m.errors = append(m.errors, grammar.LineError{Line: idx + 1, Message: err.Error()})
 			continue
 		}
 
 		target := m.preset.Project
-		if parsed.targetProjectID != nil {
-			target = m.projectByID(*parsed.targetProjectID)
+		if parsed.TargetProjectID != nil {
+			target = m.projectByID(*parsed.TargetProjectID)
 		}
 		if target == nil {
-			m.errors = append(m.errors, lineError{line: idx + 1, message: "target project is unavailable"})
+			m.errors = append(m.errors, grammar.LineError{Line: idx + 1, Message: "target project is unavailable"})
 			continue
 		}
 
-		priority := parsed.priority
-		if m.preset.Shared.Priority != 0 && !parsed.prioritySet {
+		priority := parsed.Priority
+		if m.preset.Shared.Priority != 0 && !parsed.PrioritySet {
 			priority = m.preset.Shared.Priority
 		}
-		parentID := parsed.parentID
+		parentID := parsed.ParentID
 		if parentID == nil {
 			parentID = cloneStringPtr(m.preset.Shared.ParentID)
 		}
-		due := parsed.dueDate
+		due := parsed.DueDate
 		if due == nil {
 			due = cloneTime(m.preset.Shared.Due)
 		}
-		destination := parsed.destination
-		if !parsed.destinationSet {
+		destination := parsed.Destination
+		if !parsed.DestinationSet {
 			destination = m.preset.defaultDestination(parentID)
 		}
 		if coordinator.DueDateIsToday(due) {
 			destination = app.CaptureDestinationToday
 		}
-		destination = composerDeferredDestination(parsed, destination)
+		destination = grammar.ComposerDeferredDestination(parsed, destination)
 		req := app.CaptureRequest{
 			SourceLine:   idx + 1,
 			ProjectID:    target.ID,
-			Title:        parsed.title,
+			Title:        parsed.Title,
 			Priority:     priority,
-			Tags:         mergeComposerTags(m.preset.Shared.Tags, parsed.tags),
-			Context:      parsed.context,
+			Tags:         mergeComposerTags(m.preset.Shared.Tags, parsed.Tags),
+			Context:      parsed.Context,
 			Due:          due,
-			DeferSet:     parsed.deferSet,
-			Defer:        parsed.deferUntil,
+			DeferSet:     parsed.DeferSet,
+			Defer:        parsed.DeferUntil,
 			ParentID:     parentID,
-			ChildIDs:     parsed.childIDs(),
+			ChildIDs:     parsed.ChildIDs(),
 			Destination:  destination,
 			Prepend:      true,
-			Pinned:       parsed.pinned,
-			Review:       parsed.review,
-			Attachments:  parsed.attachments,
-			Comments:     parsed.comments,
-			Dependencies: parsed.dependencyLocators(),
+			Pinned:       parsed.Pinned,
+			Review:       parsed.Review,
+			Attachments:  parsed.Attachments,
+			Comments:     parsed.Comments,
+			Dependencies: parsed.DependencyLocators(),
 		}
 		if parentID != nil {
 			if err := validateComposerParent(target, *parentID); err != nil {
-				m.errors = append(m.errors, lineError{line: idx + 1, message: err.Error()})
+				m.errors = append(m.errors, grammar.LineError{Line: idx + 1, Message: err.Error()})
 				continue
 			}
 		}
@@ -382,7 +378,7 @@ func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, bool) {
 	}
 
 	if len(reqs) == 0 && len(m.errors) == 0 {
-		m.errors = []lineError{{line: 1, message: "no tasks to create"}}
+		m.errors = []grammar.LineError{{Line: 1, Message: "no tasks to create"}}
 	}
 	if len(m.errors) > 0 {
 		return nil, false

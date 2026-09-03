@@ -8,21 +8,8 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
-
-// composerDeferredDestination follows the deferral route the application layer
-// takes, so the composer header and the request it submits agree about where a
-// deferred line lands. A terminal destination is left alone because the refusal
-// belongs to the application layer and has its own wording.
-func composerDeferredDestination(parsed *quickCaptureResult, destination app.CaptureDestination) app.CaptureDestination {
-	if parsed == nil || !parsed.deferSet || parsed.deferUntil == nil {
-		return destination
-	}
-	if destination.WorkflowState().IsTerminal() {
-		return destination
-	}
-	return app.CaptureDestinationBacklog
-}
 
 // validateComposerParent mirrors the application-layer child placement rule so a
 // rejected nesting is reported on the offending line instead of failing the whole
@@ -74,7 +61,7 @@ func (m *TaskComposerModel) projectByID(id string) *models.Project {
 
 func (m *TaskComposerModel) expandSingle() tea.Cmd {
 	if m.preset.Project == nil {
-		m.errors = []lineError{{line: 1, message: "project is unavailable"}}
+		m.errors = []grammar.LineError{{Line: 1, Message: "project is unavailable"}}
 		return nil
 	}
 	if m.nonblankLineCount() == 0 {
@@ -92,25 +79,25 @@ func (m *TaskComposerModel) expandSingle() tea.Cmd {
 		return nil
 	}
 	if len(reqs) != 1 {
-		m.errors = []lineError{{line: 1, message: "expanded mode requires exactly one nonblank task"}}
+		m.errors = []grammar.LineError{{Line: 1, Message: "expanded mode requires exactly one nonblank task"}}
 		return nil
 	}
 	// The expanded form has no adoption channel, so expanding would drop the
 	// references silently rather than carry them.
 	if len(reqs[0].ChildIDs) > 0 {
-		m.errors = []lineError{{line: 1, message: "expanded mode cannot adopt children; submit the line with Enter instead"}}
+		m.errors = []grammar.LineError{{Line: 1, Message: "expanded mode cannot adopt children; submit the line with Enter instead"}}
 		return nil
 	}
 	// The expanded form has no pin control, so expanding would drop the value
 	// silently rather than carry it.
 	if reqs[0].Pinned {
-		m.errors = []lineError{{line: 1, message: "expanded mode cannot pin; submit the line with Enter instead"}}
+		m.errors = []grammar.LineError{{Line: 1, Message: "expanded mode cannot pin; submit the line with Enter instead"}}
 		return nil
 	}
 	// The expanded form has no context control, so expanding would drop the value
 	// silently rather than carry it.
 	if reqs[0].Context != "" {
-		m.errors = []lineError{{line: 1, message: "expanded mode cannot set context; submit the line with Enter instead"}}
+		m.errors = []grammar.LineError{{Line: 1, Message: "expanded mode cannot set context; submit the line with Enter instead"}}
 		return nil
 	}
 	return m.expandRequest(reqs[0])
@@ -119,7 +106,7 @@ func (m *TaskComposerModel) expandSingle() tea.Cmd {
 func (m *TaskComposerModel) expandRequest(req app.CaptureRequest) tea.Cmd {
 	project := m.projectByID(req.ProjectID)
 	if project == nil {
-		m.errors = []lineError{{line: 1, message: "target project is unavailable"}}
+		m.errors = []grammar.LineError{{Line: 1, Message: "target project is unavailable"}}
 		return nil
 	}
 	form := NewTaskFormModelCreate(project, m.runtime, nil)
@@ -173,9 +160,9 @@ func (m *TaskComposerModel) cycleProject() {
 			continue
 		}
 		m.preset.Project = candidate
-		m.project = candidate
-		m.initCaches()
-		m.updatePreview()
+		m.Project = candidate
+		m.InitCaches()
+		m.UpdatePreview()
 		return
 	}
 }

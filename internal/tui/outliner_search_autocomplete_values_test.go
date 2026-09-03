@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -94,7 +95,7 @@ func TestSearchAutocompleteEmptyCandidateSetOffersNothing(t *testing.T) {
 	if outliner.searchAutocomplete.active() {
 		t.Fatalf("tag pane opened over an empty vocabulary: %v", searchACValues(outliner))
 	}
-	if outliner.searchAutocomplete.ac.Mode != acModeNone || outliner.searchAutocomplete.triggerText != "" {
+	if outliner.searchAutocomplete.ac.Mode != grammar.ACModeNone || outliner.searchAutocomplete.triggerText != "" {
 		t.Error("the retained mode and trigger outlived the list they described")
 	}
 	typeSearchAC(outliner, "##")

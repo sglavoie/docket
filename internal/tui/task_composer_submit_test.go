@@ -25,7 +25,7 @@ func TestTaskComposerDoubleSubmitCreatesOneTaskAndOneCommit(t *testing.T) {
 		Shared:  TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
 	}, nil)
 	composer.SetCaptureCoordinator(env.features.Capture)
-	composer.input.SetValue("Create once")
+	composer.Input.SetValue("Create once")
 
 	_, first := composer.Update(syntheticSpecialKey(tea.KeyEnter))
 	_, duplicate := composer.Update(syntheticCtrlKey('s'))
@@ -59,7 +59,7 @@ func TestTaskComposerMultilineDoubleSubmitMintsEachShortIDOnce(t *testing.T) {
 		Shared:  TaskComposerSharedAttributes{Destination: app.CaptureDestinationBacklog},
 	}, nil)
 	composer.SetCaptureCoordinator(env.features.Capture)
-	composer.input.SetValue("First\nSecond")
+	composer.Input.SetValue("First\nSecond")
 
 	_, first := composer.Update(syntheticSpecialKey(tea.KeyEnter))
 	_, duplicate := composer.Update(syntheticSpecialKey(tea.KeyEnter))
@@ -90,7 +90,7 @@ func TestTaskComposerSubmissionGuardClearsAfterError(t *testing.T) {
 	features := coordinator.NewFeatureCoordinators(stub)
 	composer := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, nil)
 	composer.SetCaptureCoordinator(features.Capture)
-	composer.input.SetValue("Retry me")
+	composer.Input.SetValue("Retry me")
 
 	_, first := composer.Update(syntheticSpecialKey(tea.KeyEnter))
 	_, duplicate := composer.Update(syntheticCtrlKey('s'))
@@ -121,7 +121,7 @@ func TestTaskComposerBulkCreationAndUndoAreOneTransaction(t *testing.T) {
 		},
 	}, nil)
 	composer.SetCaptureCoordinator(env.features.Capture)
-	composer.input.SetValue("First #one #bug\nSecond !1")
+	composer.Input.SetValue("First #one #bug\nSecond !1")
 
 	cmd := composer.createCompact(false)
 	if cmd == nil {
@@ -157,11 +157,11 @@ func TestTaskComposerEnterSubmitsCompleteNewTagDespiteFuzzySuggestion(t *testing
 		Shared:  TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
 	}, nil)
 	composer.SetCaptureCoordinator(env.features.Capture)
-	composer.input.SetValue("Fresh task #back")
-	composer.updatePreview()
-	composer.refreshAutocomplete()
-	if !composer.ac.IsActive() || !composer.autocompleteLiteralComplete() {
-		t.Fatalf("expected active fuzzy suggestions for a complete literal: %+v", composer.ac)
+	composer.Input.SetValue("Fresh task #back")
+	composer.UpdatePreview()
+	composer.RefreshAutocomplete()
+	if !composer.AC.IsActive() || !composer.AutocompleteLiteralComplete() {
+		t.Fatalf("expected active fuzzy suggestions for a complete literal: %+v", composer.AC)
 	}
 
 	_, cmd := composer.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -193,7 +193,7 @@ func TestTaskComposerRoutesMultilineProjectsAndParentsInOneTransaction(t *testin
 		Shared:             TaskComposerSharedAttributes{Destination: app.CaptureDestinationInbox},
 	}, nil)
 	composer.SetCaptureCoordinator(features.Capture)
-	composer.input.SetValue("Alpha task\nBeta child %out1 >1")
+	composer.Input.SetValue("Alpha task\nBeta child %out1 >1")
 
 	cmd := composer.createCompact(false)
 	if cmd == nil {
@@ -232,13 +232,13 @@ func TestTaskComposerExpandSingleAndRejectMultiline(t *testing.T) {
 	}
 
 	composer = NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, appModel.runtime)
-	composer.input.SetValue("One\nTwo")
+	composer.Input.SetValue("One\nTwo")
 	composer.expandSingle()
-	if composer.mode != ComposerCompact || len(composer.errors) != 1 || !strings.Contains(composer.errors[0].message, "exactly one") {
+	if composer.mode != ComposerCompact || len(composer.errors) != 1 || !strings.Contains(composer.errors[0].Message, "exactly one") {
 		t.Fatalf("multiline expansion was not rejected: mode=%v errors=%+v", composer.mode, composer.errors)
 	}
 
-	composer.input.SetValue("Ship it #bug !1 #release $backlog")
+	composer.Input.SetValue("Ship it #bug !1 #release $backlog")
 	composer.expandSingle()
 	if composer.mode != ComposerExpanded || composer.expanded == nil {
 		t.Fatal("single line did not expand")
@@ -273,7 +273,7 @@ func TestTaskComposerCancellationFocusAndNarrowLayout(t *testing.T) {
 	appModel, project := newTestAppModelWithProject()
 	composer := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, appModel.runtime)
 	composer.SetSize(60, 18)
-	if !composer.input.Focused() || !composer.HasTextInput() || !composer.ShouldCaptureEsc() {
+	if !composer.Input.Focused() || !composer.HasTextInput() || !composer.ShouldCaptureEsc() {
 		t.Fatal("compact composer did not own initial text focus and cancellation")
 	}
 	for _, line := range strings.Split(composer.View().Content, "\n") {
@@ -282,7 +282,7 @@ func TestTaskComposerCancellationFocusAndNarrowLayout(t *testing.T) {
 		}
 	}
 
-	composer.input.SetValue("draft")
+	composer.Input.SetValue("draft")
 	composer.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	if !composer.ConfirmDiscard {
 		t.Fatal("dirty compact cancellation skipped confirmation")

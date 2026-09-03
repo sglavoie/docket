@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -23,32 +24,32 @@ type composerEffectiveRoute struct {
 
 func (m *TaskComposerModel) effectiveRouteForLine(line string) composerEffectiveRoute {
 	project := m.preset.Project
-	parsed, _ := parseQuickCaptureForPreview(
+	parsed, _ := grammar.ParseQuickCaptureForPreview(
 		strings.TrimSpace(line),
 		m.preset.Project,
 		m.preset.AllProjects,
 		!m.preset.AllowProjectSwitch,
 	)
-	if parsed != nil && parsed.targetProjectID != nil {
-		if target := m.projectByID(*parsed.targetProjectID); target != nil {
+	if parsed != nil && parsed.TargetProjectID != nil {
+		if target := m.projectByID(*parsed.TargetProjectID); target != nil {
 			project = target
 		}
 	}
 
 	var parentID *string
 	if parsed != nil {
-		parentID = parsed.parentID
+		parentID = parsed.ParentID
 	}
 	if parentID == nil {
 		parentID = m.preset.Shared.ParentID
 	}
 	destination := m.preset.defaultDestination(parentID)
-	if parsed != nil && parsed.destinationSet {
-		destination = parsed.destination
+	if parsed != nil && parsed.DestinationSet {
+		destination = parsed.Destination
 	}
 	var due *time.Time
 	if parsed != nil {
-		due = parsed.dueDate
+		due = parsed.DueDate
 	}
 	if due == nil {
 		due = m.preset.Shared.Due
@@ -56,7 +57,7 @@ func (m *TaskComposerModel) effectiveRouteForLine(line string) composerEffective
 	if coordinator.DueDateIsToday(due) {
 		destination = app.CaptureDestinationToday
 	}
-	destination = composerDeferredDestination(parsed, destination)
+	destination = grammar.ComposerDeferredDestination(parsed, destination)
 
 	route := composerEffectiveRoute{destination: destination}
 	if project != nil {
@@ -70,7 +71,7 @@ func (m *TaskComposerModel) effectiveRouteForLine(line string) composerEffective
 
 func (m *TaskComposerModel) effectiveRouteHeader() (project, destination string) {
 	var routes []composerEffectiveRoute
-	for _, line := range strings.Split(m.input.Value(), "\n") {
+	for _, line := range strings.Split(m.Input.Value(), "\n") {
 		if strings.TrimSpace(line) != "" {
 			routes = append(routes, m.effectiveRouteForLine(line))
 		}
@@ -117,7 +118,7 @@ func (m *TaskComposerModel) View() tea.View {
 	if m.mode == ComposerExpanded && m.expanded != nil {
 		return m.expanded.View()
 	}
-	theme.ApplyThemedTextarea(&m.input)
+	theme.ApplyThemedTextarea(&m.Input)
 	contentHeight := m.compactContentHeight()
 	project, destination := m.effectiveRouteHeader()
 	var b strings.Builder
@@ -127,13 +128,13 @@ func (m *TaskComposerModel) View() tea.View {
 	b.WriteString("\n")
 	b.WriteString(theme.SubtitleStyle.Render("Destination: ") + textfit.TruncateToVisualWidth(destination, max(m.width-16, 1)))
 	b.WriteString("\n\n")
-	b.WriteString(m.input.View())
+	b.WriteString(m.Input.View())
 	b.WriteString("\n")
 	b.WriteString(chrome.RenderHorizontalDivider(m.width))
 
 	var errorsBlock strings.Builder
 	for _, lineErr := range m.errors {
-		errorsBlock.WriteString(theme.ValidationErrorStyle.Render(fmt.Sprintf("Line %d: %s", lineErr.line, lineErr.message)))
+		errorsBlock.WriteString(theme.ValidationErrorStyle.Render(fmt.Sprintf("Line %d: %s", lineErr.Line, lineErr.Message)))
 		errorsBlock.WriteString("\n")
 	}
 	errors := strings.TrimRight(errorsBlock.String(), "\n")
@@ -164,23 +165,23 @@ func (m *TaskComposerModel) View() tea.View {
 	preview := ""
 	if count := m.nonblankLineCount(); count > 1 {
 		preview = theme.MutedStyle.Render(fmt.Sprintf("%d tasks · shared attributes apply to every line", count))
-	} else if m.previewErr != "" || m.preview != nil {
+	} else if m.PreviewErr != "" || m.Preview != nil {
 		lowerMin := 0
-		if m.isAutocompleteActive() {
-			lowerMin = min(len(m.ac.Items), 3)
+		if m.IsAutocompleteActive() {
+			lowerMin = min(len(m.AC.Items), 3)
 		}
-		preview, _, _ = m.composePreviewBlock(max(remaining-1, 1), lowerMin)
+		preview, _, _ = m.ComposePreviewBlock(max(remaining-1, 1), lowerMin)
 	}
 
 	appendBlock(preview)
 	fixedRows := prefixRows + blockRows(preview, errors, confirm)
-	if m.isAutocompleteActive() {
+	if m.IsAutocompleteActive() {
 		rowBudget := max(contentHeight-fixedRows-1, 1)
-		appendBlock(strings.TrimRight(m.ac.RenderDropdownWithLimit("", rowBudget), "\n"))
-	} else if m.helpExpanded {
+		appendBlock(strings.TrimRight(m.AC.RenderDropdownWithLimit("", rowBudget), "\n"))
+	} else if m.HelpExpanded {
 		helpBudget := max(contentHeight-fixedRows-1, 1)
-		m.setSyntaxViewportHeight(helpBudget)
-		appendBlock(m.syntaxVP.View())
+		m.SetSyntaxViewportHeight(helpBudget)
+		appendBlock(m.SyntaxVP.View())
 	}
 	appendBlock(errors)
 	appendBlock(confirm)
@@ -189,7 +190,7 @@ func (m *TaskComposerModel) View() tea.View {
 
 func (m *TaskComposerModel) nonblankLineCount() int {
 	count := 0
-	for _, line := range strings.Split(m.input.Value(), "\n") {
+	for _, line := range strings.Split(m.Input.Value(), "\n") {
 		if strings.TrimSpace(line) != "" {
 			count++
 		}
@@ -218,17 +219,17 @@ func (m *TaskComposerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 	}
 	spec := chrome.CaptureGuidanceSpec(
 		m.ConfirmDiscard,
-		m.isAutocompleteActive(),
-		m.helpExpanded,
-		m.helpExpanded && m.syntaxOverflows(),
-		m.syntaxScrollPercent(),
+		m.IsAutocompleteActive(),
+		m.HelpExpanded,
+		m.HelpExpanded && m.SyntaxOverflows(),
+		m.SyntaxScrollPercent(),
 	)
-	if len(m.errors) > 0 && !m.ConfirmDiscard && !m.isAutocompleteActive() && !m.helpExpanded {
+	if len(m.errors) > 0 && !m.ConfirmDiscard && !m.IsAutocompleteActive() && !m.HelpExpanded {
 		spec = chrome.RequiredActionGuidanceSpec(
 			"Enter retry", "Ctrl+E retry & edit", "Ctrl+V paste", "? syntax",
 		)
 	}
-	if !m.ConfirmDiscard && !m.isAutocompleteActive() && !m.helpExpanded {
+	if !m.ConfirmDiscard && !m.IsAutocompleteActive() && !m.HelpExpanded {
 		spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(100,
 			"Shift+Enter new line", "Ctrl+F expand",
 		)...)

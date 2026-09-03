@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 // This file covers how the reference picker's list is assembled: which rows it
@@ -160,11 +161,11 @@ func TestReferencePickerQualifiesCrossProjectRows(t *testing.T) {
 		if item.CategoryID != testCase.category {
 			t.Errorf("%s category = %q, want %q", testCase.locator, item.CategoryID, testCase.category)
 		}
-		candidate := dependencyCandidate{project: testCase.project, task: task, locator: app.TaskLocator{
+		candidate := grammar.DependencyCandidate{Project: testCase.project, Task: task, Locator: app.TaskLocator{
 			ProjectID: testCase.project.ID,
 			TaskID:    testCase.taskID,
 		}}
-		if want := []string{dependencyCandidateSearchText(candidate)}; !slices.Equal(item.Aliases, want) {
+		if want := []string{grammar.DependencyCandidateSearchText(candidate)}; !slices.Equal(item.Aliases, want) {
 			t.Errorf("%s aliases = %v, want the ~ completion's search text %v", testCase.locator, item.Aliases, want)
 		}
 	}

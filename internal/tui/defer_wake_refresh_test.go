@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
@@ -28,8 +29,8 @@ func TestFormatDeferDateLadder(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := formatDeferDate(tc.deferred, now); got != tc.want {
-				t.Fatalf("formatDeferDate(%s) = %q, want %q", tc.deferred, got, tc.want)
+			if got := chrome.FormatDeferDate(tc.deferred, now); got != tc.want {
+				t.Fatalf("chrome.FormatDeferDate(%s) = %q, want %q", tc.deferred, got, tc.want)
 			}
 		})
 	}

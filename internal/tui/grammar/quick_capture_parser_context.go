@@ -1,4 +1,4 @@
-package tui
+package grammar
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ type quickCaptureParser struct {
 	skipProject bool
 	strict      bool
 	surface     textgrammar.Surface
-	result      *quickCaptureResult
+	result      *QuickCaptureResult
 	err         error
 	errMsg      string
 }
@@ -26,7 +26,7 @@ func newQuickCaptureParser(input string, project *models.Project, allProjects []
 		allProjects: allProjects,
 		skipProject: skipProject,
 		strict:      strict,
-		result:      &quickCaptureResult{priority: models.PriorityUnset},
+		result:      &QuickCaptureResult{Priority: models.PriorityUnset},
 	}
 }
 
@@ -43,8 +43,8 @@ func (p *quickCaptureParser) failf(format string, args ...any) bool {
 }
 
 func (p *quickCaptureParser) finalizeTitle() {
-	p.result.title = textgrammar.NormalizeText(p.input)
-	if p.strict && p.result.title == "" {
+	p.result.Title = textgrammar.NormalizeText(p.input)
+	if p.strict && p.result.Title == "" {
 		p.err = fmt.Errorf("task title cannot be empty")
 	}
 }

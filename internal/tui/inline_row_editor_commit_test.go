@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -25,7 +26,7 @@ func TestInlineRowEditorBuildsAtomicCrossProjectRequest(t *testing.T) {
 	}
 	destination.BuildTaskTree()
 
-	result, err := parseQuickEdit(
+	result, err := grammar.ParseQuickEdit(
 		"Renamed !2 @0 $today #new -#alpha %destination >7",
 		child, source, []*models.Project{source, destination},
 	)
@@ -60,12 +61,12 @@ func TestInlineRowEditorAtomicCommitAndFailureLifecycle(t *testing.T) {
 	projection := out.jumpProjectionFingerprint()
 
 	out.Update(StartTaskLineEditMsg{Task: task, Project: m.currentProject})
-	out.quickEdit.input.SetValue("Renamed atomically")
-	out.quickEdit.input.CursorEnd()
-	out.quickEdit.refreshDraft()
+	out.quickEdit.Input.SetValue("Renamed atomically")
+	out.quickEdit.Input.CursorEnd()
+	out.quickEdit.RefreshDraft()
 	_, cmd := out.handleQuickEditMode(tea.KeyPressMsg{Code: tea.KeyEnter})
-	if cmd == nil || !out.quickEdit.IsActive() || !out.quickEdit.pending {
-		t.Fatalf("commit did not retain a pending inline draft: active=%t pending=%t", out.quickEdit.IsActive(), out.quickEdit.pending)
+	if cmd == nil || !out.quickEdit.IsActive() || !out.quickEdit.Pending {
+		t.Fatalf("commit did not retain a pending inline draft: active=%t pending=%t", out.quickEdit.IsActive(), out.quickEdit.Pending)
 	}
 	committed, ok := cmd().(coordinator.TaskLineEditedMsg)
 	if !ok || !committed.Result.Changed || committed.Result.TransactionID == "" {
@@ -84,17 +85,17 @@ func TestInlineRowEditorAtomicCommitAndFailureLifecycle(t *testing.T) {
 
 	live := m.currentProject.GetTaskByID(task.ID)
 	out.Update(StartTaskLineEditMsg{Task: live, Project: m.currentProject})
-	out.quickEdit.input.SetValue("Draft survives")
-	out.quickEdit.input.CursorEnd()
-	out.quickEdit.refreshDraft()
+	out.quickEdit.Input.SetValue("Draft survives")
+	out.quickEdit.Input.CursorEnd()
+	out.quickEdit.RefreshDraft()
 	out.quickEdit.BeginCommit()
 	projection = out.jumpProjectionFingerprint()
 	failure := errors.New("simulated revision conflict")
 	m.handleTaskLineEditFailed(coordinator.TaskLineEditFailedMsg{
 		Source: taskref.For(live, m.currentProject), Err: failure,
 	})
-	if !out.quickEdit.IsActive() || out.quickEdit.pending || out.quickEdit.input.Value() != "Draft survives" {
-		t.Fatalf("failed commit lost draft: active=%t pending=%t value=%q", out.quickEdit.IsActive(), out.quickEdit.pending, out.quickEdit.input.Value())
+	if !out.quickEdit.IsActive() || out.quickEdit.Pending || out.quickEdit.Input.Value() != "Draft survives" {
+		t.Fatalf("failed commit lost draft: active=%t pending=%t value=%q", out.quickEdit.IsActive(), out.quickEdit.Pending, out.quickEdit.Input.Value())
 	}
 	if !strings.Contains(out.quickEdit.GetPreviewError(), failure.Error()) {
 		t.Fatalf("inline failure = %q, want %q", out.quickEdit.GetPreviewError(), failure)
@@ -119,8 +120,8 @@ func TestInlineRowEditorUnchangedCommitCreatesNoUndoTransaction(t *testing.T) {
 	}
 
 	out.Update(StartTaskLineEditMsg{Task: task, Project: m.currentProject})
-	if !out.quickEdit.IsActive() || out.quickEdit.input.Value() != task.Title {
-		t.Fatalf("inline editor did not open with unchanged title: active=%t value=%q", out.quickEdit.IsActive(), out.quickEdit.input.Value())
+	if !out.quickEdit.IsActive() || out.quickEdit.Input.Value() != task.Title {
+		t.Fatalf("inline editor did not open with unchanged title: active=%t value=%q", out.quickEdit.IsActive(), out.quickEdit.Input.Value())
 	}
 	_, cmd := out.handleQuickEditMode(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if cmd == nil {
@@ -211,9 +212,9 @@ func TestInlineRowEditorKeepsTypedTailAndCursorVisibleWhenTitleOverflows(t *test
 	// afterwards for the scroll window to be the one an editing session sees.
 	out.renderOutlinerQuickEditRow(row, 80)
 	value := strings.Repeat("overflowing title ", 8) + "ZZEND"
-	out.quickEdit.input.SetValue(value)
-	out.quickEdit.input.CursorEnd()
-	out.quickEdit.refreshDraft()
+	out.quickEdit.Input.SetValue(value)
+	out.quickEdit.Input.CursorEnd()
+	out.quickEdit.RefreshDraft()
 
 	lines := strings.Split(out.renderOutlinerQuickEditRow(row, 80), "\n")
 	if len(lines) != 2 {

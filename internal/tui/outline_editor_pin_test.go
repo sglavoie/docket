@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 func TestOutlineDumpEmitsThePinSigilAfterTheDestination(t *testing.T) {
@@ -33,7 +35,7 @@ func TestOutlineRoundTripCarriesPinnedOnAndOff(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dump: %v", err)
 	}
-	lines, problems := parseOutlineBuffer(buffer, project, nil)
+	lines, problems := grammar.ParseOutlineBuffer(buffer, project, nil)
 	if len(problems) > 0 {
 		t.Fatalf("unedited buffer was rejected: %v", problems)
 	}
@@ -52,7 +54,7 @@ func TestOutlineRoundTripCarriesPinnedOnAndOff(t *testing.T) {
 	if unpinned == buffer {
 		t.Fatal("buffer carried no pin segment to remove")
 	}
-	lines, problems = parseOutlineBuffer(unpinned, project, nil)
+	lines, problems = grammar.ParseOutlineBuffer(unpinned, project, nil)
 	if len(problems) > 0 {
 		t.Fatalf("edited buffer was rejected: %v", problems)
 	}
@@ -65,7 +67,7 @@ func TestOutlineParseAcceptsAnAddedPinSigil(t *testing.T) {
 	project := outlineTestProject(t)
 	buffer := "Sweep dead flags $inbox *pin  [[tt:71f0b3d5]]"
 
-	lines, problems := parseOutlineBuffer(buffer, project, nil)
+	lines, problems := grammar.ParseOutlineBuffer(buffer, project, nil)
 	if len(problems) > 0 {
 		t.Fatalf("buffer was rejected: %v", problems)
 	}
@@ -84,7 +86,7 @@ func TestOutlineParseRefusesUnpin(t *testing.T) {
 	project := outlineTestProject(t)
 	buffer := "Sweep dead flags $inbox *unpin  [[tt:71f0b3d5]]"
 
-	lines, problems := parseOutlineBuffer(buffer, project, nil)
+	lines, problems := grammar.ParseOutlineBuffer(buffer, project, nil)
 	if len(lines) != 0 {
 		t.Fatalf("lines = %+v, want the line refused", lines)
 	}

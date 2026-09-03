@@ -167,7 +167,7 @@ func removePlanningRowsFromTree(
 			result = append(result, children...)
 			continue
 		}
-		clone := cloneTaskDetachingDependencies(task)
+		clone := taskref.CloneTaskDetachingDependencies(task)
 		clone.Children = children
 		result = append(result, &clone)
 	}

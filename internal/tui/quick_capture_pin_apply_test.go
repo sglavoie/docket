@@ -16,7 +16,7 @@ func TestTaskComposerCarriesPinIntoEveryCaptureRequest(t *testing.T) {
 		Project:     project,
 		AllProjects: []*models.Project{project},
 	}, nil)
-	composer.input.SetValue("First *pin\nSecond\nThird *pin")
+	composer.Input.SetValue("First *pin\nSecond\nThird *pin")
 
 	reqs, ok := composer.parseCompactLines()
 	if !ok || len(reqs) != 3 {
@@ -37,7 +37,7 @@ func TestTaskComposerExpandRefusesToDropPin(t *testing.T) {
 		Kind:    ComposerProject,
 		Project: project,
 	}, appModel.runtime)
-	composer.input.SetValue("Ship release *pin")
+	composer.Input.SetValue("Ship release *pin")
 
 	if cmd := composer.expandSingle(); cmd != nil {
 		t.Fatal("expand accepted a line carrying a pin")
@@ -46,7 +46,7 @@ func TestTaskComposerExpandRefusesToDropPin(t *testing.T) {
 		t.Fatal("composer entered expanded mode despite the refusal")
 	}
 	if len(composer.errors) != 1 ||
-		!strings.Contains(composer.errors[0].message, "expanded mode cannot pin; submit the line with Enter instead") {
+		!strings.Contains(composer.errors[0].Message, "expanded mode cannot pin; submit the line with Enter instead") {
 		t.Fatalf("errors = %+v", composer.errors)
 	}
 }

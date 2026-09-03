@@ -262,7 +262,7 @@ reference gets an enabled row, terminal and unreadable targets included, because
 a set editable only by hand is how a reference gets silently stranded; a target
 the picker cannot read keeps its locator as its `PrimaryText` and carries
 `dependencyDetailUnavailable`, the same word Peek uses. The second half is
-`dependencyAdditionCandidates` — every open task in every loaded non-archived
+`grammar.DependencyAdditionCandidates` — every open task in every loaded non-archived
 project, minus the source and minus the stored half — which is exactly the
 population an addition may name, so the picker needs no inline add-by-locator
 mode. Rows group into one category per project in `dependencyDetailProjects()`

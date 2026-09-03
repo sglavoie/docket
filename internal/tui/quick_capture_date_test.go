@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -35,7 +36,7 @@ func TestParseDateIntegration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			_, err := ParseDate(tt.input)
+			_, err := grammar.ParseDate(tt.input)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseDate(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
 			}
@@ -44,7 +45,7 @@ func TestParseDateIntegration(t *testing.T) {
 }
 
 func TestParseDateTomorrow(t *testing.T) {
-	result, err := ParseDate("tomorrow")
+	result, err := grammar.ParseDate("tomorrow")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

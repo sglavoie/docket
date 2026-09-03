@@ -6,25 +6,26 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 func TestQuickCaptureParsesContextAndRefusesClearBySurface(t *testing.T) {
 	project := &models.Project{ID: "project"}
-	result, err := parseQuickCapture("Ship it ##Client-Acme #bug", project, nil, false)
+	result, err := grammar.ParseQuickCapture("Ship it ##Client-Acme #bug", project, nil, false)
 	if err != nil {
 		t.Fatalf("parse capture: %v", err)
 	}
-	if result.title != "Ship it" || result.context != "client-acme" {
-		t.Fatalf("capture result = title %q context %q", result.title, result.context)
+	if result.Title != "Ship it" || result.Context != "client-acme" {
+		t.Fatalf("capture result = title %q context %q", result.Title, result.Context)
 	}
 
 	captureDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldContext)
-	if _, err := parseQuickCapture("Ship it "+captureDefinition.Trigger+"0", project, nil, false); err == nil || !strings.Contains(err.Error(), captureDefinition.Trigger+"0") {
+	if _, err := grammar.ParseQuickCapture("Ship it "+captureDefinition.Trigger+"0", project, nil, false); err == nil || !strings.Contains(err.Error(), captureDefinition.Trigger+"0") {
 		t.Fatalf("capture clear error = %v, want named refusal", err)
 	}
 
 	outlineDefinition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceOutline, textgrammar.FieldContext)
-	if _, err := parseQuickCaptureSurface("Ship it "+outlineDefinition.Trigger+"0", project, nil, true, textgrammar.SurfaceOutline); err == nil || !strings.Contains(err.Error(), outlineDefinition.Forms[0]) {
+	if _, err := grammar.ParseQuickCaptureSurface("Ship it "+outlineDefinition.Trigger+"0", project, nil, true, textgrammar.SurfaceOutline); err == nil || !strings.Contains(err.Error(), outlineDefinition.Forms[0]) {
 		t.Fatalf("outline clear error = %v, want omission guidance", err)
 	}
 }
@@ -33,20 +34,20 @@ func TestQuickEditSetsAndClearsContext(t *testing.T) {
 	task := &models.Task{ID: "task", Title: "Before", Context: "legacy", WorkflowState: models.StateInbox}
 	project := &models.Project{ID: "project", Tasks: []*models.Task{task}}
 
-	result, err := parseQuickEdit("After ##Client-Acme", task, project)
+	result, err := grammar.ParseQuickEdit("After ##Client-Acme", task, project)
 	if err != nil {
 		t.Fatalf("parse set: %v", err)
 	}
-	if !result.contextSet || result.contextClear || result.contextValue != "client-acme" || result.preview.Context != "client-acme" {
-		t.Fatalf("set patch = %+v preview=%q", result, result.preview.Context)
+	if !result.ContextSet || result.ContextClear || result.ContextValue != "client-acme" || result.Preview.Context != "client-acme" {
+		t.Fatalf("set patch = %+v preview=%q", result, result.Preview.Context)
 	}
 
-	result, err = parseQuickEdit("After ##0", task, project)
+	result, err = grammar.ParseQuickEdit("After ##0", task, project)
 	if err != nil {
 		t.Fatalf("parse clear: %v", err)
 	}
-	if !result.contextSet || !result.contextClear || result.preview.Context != "" {
-		t.Fatalf("clear patch = set %v clear %v preview %q", result.contextSet, result.contextClear, result.preview.Context)
+	if !result.ContextSet || !result.ContextClear || result.Preview.Context != "" {
+		t.Fatalf("clear patch = set %v clear %v preview %q", result.ContextSet, result.ContextClear, result.Preview.Context)
 	}
 }
 
@@ -56,14 +57,14 @@ func TestContextAutocompleteUsesProjectVocabulary(t *testing.T) {
 		{Context: "client-acme"},
 		{Context: "platform"},
 	}}
-	q := newQuickCaptureInput(project, nil, "", false)
-	items := q.getContextSuggestions("plat")
+	q := grammar.NewQuickCaptureInput(project, nil, "", false)
+	items := q.GetContextSuggestions("plat")
 	definition, _ := textgrammar.DefinitionFor(textgrammar.SurfaceCapture, textgrammar.FieldContext)
 	if len(items) != 1 || items[0].Display != definition.Trigger+"platform" || items[0].Value != "platform" {
 		t.Fatalf("context suggestions = %+v", items)
 	}
-	mode, _, partial := DetectTrigger("Ship "+definition.Trigger+"plat", q.triggers)
-	if mode != acModeContext || partial != "plat" {
+	mode, _, partial := grammar.DetectTrigger("Ship "+definition.Trigger+"plat", q.Triggers)
+	if mode != grammar.ACModeContext || partial != "plat" {
 		t.Fatalf("context trigger = mode %d partial %q", mode, partial)
 	}
 }
@@ -75,7 +76,7 @@ func TestTaskComposerCarriesContextAndRefusesExpandedMode(t *testing.T) {
 		Project:     project,
 		AllProjects: []*models.Project{project},
 	}, appModel.runtime)
-	composer.input.SetValue("Ship release ##Client-Acme")
+	composer.Input.SetValue("Ship release ##Client-Acme")
 
 	reqs, ok := composer.parseCompactLines()
 	if !ok || len(reqs) != 1 || reqs[0].Context != "client-acme" {
@@ -84,7 +85,7 @@ func TestTaskComposerCarriesContextAndRefusesExpandedMode(t *testing.T) {
 	if cmd := composer.expandSingle(); cmd != nil {
 		t.Fatal("expand accepted a line carrying a context")
 	}
-	if len(composer.errors) != 1 || !strings.Contains(composer.errors[0].message, "expanded mode cannot set context") {
+	if len(composer.errors) != 1 || !strings.Contains(composer.errors[0].Message, "expanded mode cannot set context") {
 		t.Fatalf("expand errors = %+v", composer.errors)
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -137,7 +138,7 @@ const parentListNoneID ListItemID = "parent:none"
 // a cycle, self-reference, or depth-six overflow reads as a disabled row.
 // Children resolve only in the effective project, exactly as `>parent` does.
 func operationParentListSource(task *models.Task, project *models.Project) ListSource {
-	candidates := structuralCandidates(project)
+	candidates := grammar.StructuralCandidates(project)
 	items := make([]ListItem, 0, len(candidates)+1)
 	items = append(items, ListItem{
 		ID:            parentListNoneID,
@@ -154,7 +155,7 @@ func operationParentListSource(task *models.Task, project *models.Project) ListS
 			PrimaryText:    candidate.Title,
 			SecondaryText:  shortID,
 			Aliases:        []string{shortID, strconv.Itoa(candidate.ShortID), candidate.Title},
-			DisabledReason: invalidQuickEditParent(task, project, project, candidate),
+			DisabledReason: grammar.InvalidQuickEditParent(task, project, project, candidate),
 			Data:           OperationParentValue{ParentID: &id},
 		})
 	}
@@ -167,7 +168,7 @@ func operationParentListSource(task *models.Task, project *models.Project) ListS
 // picker additive: with no row for a child the task already has, no selection
 // state can ask for a detach, which `<0` is not.
 func operationChildListSource(task *models.Task, project *models.Project) ListSource {
-	candidates := structuralCandidates(project)
+	candidates := grammar.StructuralCandidates(project)
 	items := make([]ListItem, 0, len(candidates))
 	for _, candidate := range candidates {
 		if candidate.ID == task.ID {
@@ -183,7 +184,7 @@ func operationChildListSource(task *models.Task, project *models.Project) ListSo
 			PrimaryText:    candidate.Title,
 			SecondaryText:  shortID,
 			Aliases:        []string{shortID, strconv.Itoa(candidate.ShortID), candidate.Title},
-			DisabledReason: invalidQuickEditParent(candidate, project, project, task),
+			DisabledReason: grammar.InvalidQuickEditParent(candidate, project, project, task),
 			Data:           id,
 		})
 	}

@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -32,14 +33,14 @@ const outlineErrorsTitle = "Outline Not Applied"
 type OutlineErrorsViewModel struct {
 	projectName string
 	bufferPath  string
-	problems    []lineError
+	problems    []grammar.LineError
 	width       int
 	height      int
 	offset      int
 }
 
 // NewOutlineErrorsViewModel builds the refusal surface for one rejected buffer.
-func NewOutlineErrorsViewModel(projectName, bufferPath string, problems []lineError) *OutlineErrorsViewModel {
+func NewOutlineErrorsViewModel(projectName, bufferPath string, problems []grammar.LineError) *OutlineErrorsViewModel {
 	return &OutlineErrorsViewModel{
 		projectName: projectName,
 		bufferPath:  bufferPath,
@@ -152,7 +153,7 @@ func (m *OutlineErrorsViewModel) lines() []string {
 	width := max(m.width, 1)
 	out := make([]string, 0, len(m.problems))
 	for _, problem := range m.problems {
-		out = append(out, textfit.WrapText(fmt.Sprintf("Line %d: %s", problem.line, problem.message), width)...)
+		out = append(out, textfit.WrapText(fmt.Sprintf("Line %d: %s", problem.Line, problem.Message), width)...)
 	}
 	return out
 }

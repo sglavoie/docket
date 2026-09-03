@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 func TestQuickEditDependencyPatchHalves(t *testing.T) {
@@ -46,11 +47,11 @@ func TestQuickEditDependencyPatchHalves(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := parseQuickEdit(tt.input, task, home, projects)
+			result, err := grammar.ParseQuickEdit(tt.input, task, home, projects)
 			if err != nil {
 				t.Fatalf("parseQuickEdit(%q): %v", tt.input, err)
 			}
-			patch := result.dependencyPatch()
+			patch := result.DependencyPatch()
 			if got := dependencyLocatorStrings(patch.Add); !slices.Equal(got, tt.wantAdd) {
 				t.Errorf("add = %v, want %v", got, tt.wantAdd)
 			}
@@ -88,7 +89,7 @@ func TestQuickEditDependencyDiagnostics(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := parseQuickEdit(tt.input, task, home, projects)
+			_, err := grammar.ParseQuickEdit(tt.input, task, home, projects)
 			if err == nil {
 				t.Fatalf("parseQuickEdit(%q) accepted the line", tt.input)
 			}
@@ -109,12 +110,12 @@ func TestQuickEditDependencyPreviewShowsTheResultingSet(t *testing.T) {
 
 	previewLocators := func(input string) []string {
 		t.Helper()
-		result, err := parseQuickEdit(input, task, home, projects)
+		result, err := grammar.ParseQuickEdit(input, task, home, projects)
 		if err != nil {
 			t.Fatalf("parseQuickEdit(%q): %v", input, err)
 		}
-		values := make([]string, len(result.preview.Dependencies))
-		for i, reference := range result.preview.Dependencies {
+		values := make([]string, len(result.Preview.Dependencies))
+		for i, reference := range result.Preview.Dependencies {
 			values[i] = reference.Locator()
 		}
 		return values
@@ -163,19 +164,19 @@ func TestQuickEditAddExistingTerminalOrUnavailableIsNoOp(t *testing.T) {
 	}
 	for _, tt := range accepted {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := parseQuickEdit(tt.input, task, home, projects)
+			result, err := grammar.ParseQuickEdit(tt.input, task, home, projects)
 			if err != nil {
 				t.Fatalf("parseQuickEdit(%q): %v", tt.input, err)
 			}
-			patch := result.dependencyPatch()
+			patch := result.DependencyPatch()
 			if got := dependencyLocatorStrings(patch.Add); !slices.Equal(got, []string{tt.want}) {
 				t.Errorf("add = %v, want %v", got, []string{tt.want})
 			}
 			if len(patch.Remove) != 0 || patch.Clear {
 				t.Errorf("patch = %+v, want additions alone", patch)
 			}
-			preview := make([]string, len(result.preview.Dependencies))
-			for i, reference := range result.preview.Dependencies {
+			preview := make([]string, len(result.Preview.Dependencies))
+			for i, reference := range result.Preview.Dependencies {
 				preview[i] = reference.Locator()
 			}
 			if !slices.Equal(preview, []string{"home-project:home-3", "gone-project:gone-9"}) {
@@ -197,7 +198,7 @@ func TestQuickEditAddExistingTerminalOrUnavailableIsNoOp(t *testing.T) {
 	}
 	for _, tt := range refused {
 		t.Run(tt.name, func(t *testing.T) {
-			if _, err := parseQuickEdit(tt.input, bare, home, projects); err == nil {
+			if _, err := grammar.ParseQuickEdit(tt.input, bare, home, projects); err == nil {
 				t.Fatalf("parseQuickEdit(%q) accepted the line", tt.input)
 			} else if !strings.Contains(err.Error(), tt.want) {
 				t.Fatalf("error = %q, want it to contain %q", err, tt.want)

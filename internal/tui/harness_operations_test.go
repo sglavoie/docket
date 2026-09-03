@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/transaction"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/util"
@@ -319,15 +320,15 @@ func (m *AppModel) harnessRecordConflict() error {
 // harnessOutlineProblems is one rejected buffer's worth of problems, holding
 // both validation phases and a message long enough to need wrapping at narrow
 // widths.
-func harnessOutlineProblems() []lineError {
-	return []lineError{
-		{line: 4, message: "indent of 3 spaces is not a multiple of 2"},
-		{line: 6, message: "marker [[tt:deadbeef]] does not name a task in this project"},
-		{line: 9, message: "indent jumps from level 0 to level 2; indent one level at a time"},
-		{line: 11, message: "task title cannot be empty"},
-		{line: 12, message: "indentation sets parentage here; remove the >parent sigil"},
-		{line: 14, message: "indentation sets parentage here; remove the <child sigil"},
-		{line: 15, message: "the outline buffer cannot defer; remove the @@defer sigil"},
+func harnessOutlineProblems() []grammar.LineError {
+	return []grammar.LineError{
+		{Line: 4, Message: "indent of 3 spaces is not a multiple of 2"},
+		{Line: 6, Message: "marker [[tt:deadbeef]] does not name a task in this project"},
+		{Line: 9, Message: "indent jumps from level 0 to level 2; indent one level at a time"},
+		{Line: 11, Message: "task title cannot be empty"},
+		{Line: 12, Message: "indentation sets parentage here; remove the >parent sigil"},
+		{Line: 14, Message: "indentation sets parentage here; remove the <child sigil"},
+		{Line: 15, Message: "the outline buffer cannot defer; remove the @@defer sigil"},
 	}
 }
 
@@ -371,7 +372,7 @@ func (m *AppModel) harnessTaskContentEdited(title string, retry bool) tea.Msg {
 		NewDescription: "Body written in the external editor.",
 	}
 	if retry {
-		_, err := parseQuickEdit(title, task, project, m.availableProjects())
+		_, err := grammar.ParseQuickEdit(title, task, project, m.availableProjects())
 		if err == nil {
 			return nil
 		}

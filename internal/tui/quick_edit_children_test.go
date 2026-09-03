@@ -6,12 +6,13 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
-func childIDsOf(result *quickEditResult) []string {
-	ids := make([]string, len(result.children))
-	for i, child := range result.children {
+func childIDsOf(result *grammar.QuickEditResult) []string {
+	ids := make([]string, len(result.Children))
+	for i, child := range result.Children {
 		ids[i] = child.ID
 	}
 	return ids
@@ -25,7 +26,7 @@ func TestParseQuickEditChildrenAreOrderedUniqueAndAdditive(t *testing.T) {
 	project := &models.Project{ID: "project", Slug: "project", Tasks: []*models.Task{task, existing, login, other}}
 	project.BuildTaskTree()
 
-	result, err := parseQuickEdit("Owner <4 <Login <3", task, project)
+	result, err := grammar.ParseQuickEdit("Owner <4 <Login <3", task, project)
 	if err != nil {
 		t.Fatalf("parseQuickEdit: %v", err)
 	}
@@ -38,8 +39,8 @@ func TestParseQuickEditChildrenAreOrderedUniqueAndAdditive(t *testing.T) {
 	if existing.ParentID == nil || *existing.ParentID != task.ID {
 		t.Fatalf("existing child lost its parent: %v", existing.ParentID)
 	}
-	previewIDs := make([]string, len(result.preview.Children))
-	for i, child := range result.preview.Children {
+	previewIDs := make([]string, len(result.Preview.Children))
+	for i, child := range result.Preview.Children {
 		previewIDs[i] = child.ID
 	}
 	if len(previewIDs) != 3 || previewIDs[0] != existing.ID || previewIDs[1] != other.ID || previewIDs[2] != login.ID {
@@ -80,7 +81,7 @@ func TestParseQuickEditChildResolutionAndConflictErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := parseQuickEdit(tt.input, task, project)
+			_, err := grammar.ParseQuickEdit(tt.input, task, project)
 			if err == nil || !strings.Contains(err.Error(), tt.want) {
 				t.Fatalf("parseQuickEdit(%q) error = %v, want %q", tt.input, err, tt.want)
 			}
@@ -93,15 +94,15 @@ func TestParseQuickEditCombinedParentAndChildInversionIsAccepted(t *testing.T) {
 	task := &models.Task{ID: "task", ShortID: 1, Title: "Owner", ParentID: &parent.ID, WorkflowState: models.StateBacklog}
 	project := &models.Project{ID: "project", Slug: "project", Tasks: []*models.Task{parent, task}}
 
-	if _, err := parseQuickEdit("Owner <2", task, project); err == nil {
+	if _, err := grammar.ParseQuickEdit("Owner <2", task, project); err == nil {
 		t.Fatal("adopting the current parent without clearing it must be a cycle")
 	}
-	result, err := parseQuickEdit("Owner >0 <2", task, project)
+	result, err := grammar.ParseQuickEdit("Owner >0 <2", task, project)
 	if err != nil {
 		t.Fatalf("hierarchy inversion rejected: %v", err)
 	}
-	if result.parentMode != quickEditParentRoot {
-		t.Fatalf("parent mode = %v, want root", result.parentMode)
+	if result.ParentMode != grammar.QuickEditParentRoot {
+		t.Fatalf("parent mode = %v, want root", result.ParentMode)
 	}
 	if got := childIDsOf(result); len(got) != 1 || got[0] != parent.ID {
 		t.Fatalf("children = %v, want [parent]", got)
@@ -133,10 +134,10 @@ func TestParseQuickEditChildDepthUsesFinalGraph(t *testing.T) {
 	tallChild := &models.Task{ID: "tall-child", ShortID: 22, Title: "Tall child", ParentID: &tall.ID, WorkflowState: models.StateBacklog}
 	project := &models.Project{ID: "project", Slug: "project", Tasks: append(chain, leaf, tall, tallChild)}
 
-	if _, err := parseQuickEdit("Depth 5 <20", task, project); err != nil {
+	if _, err := grammar.ParseQuickEdit("Depth 5 <20", task, project); err != nil {
 		t.Fatalf("leaf adoption at the depth limit rejected: %v", err)
 	}
-	_, err := parseQuickEdit("Depth 5 <21", task, project)
+	_, err := grammar.ParseQuickEdit("Depth 5 <21", task, project)
 	if err == nil || !strings.Contains(err.Error(), "child #21 would make the subtree exceed maximum nesting depth of 6 levels") {
 		t.Fatalf("tall adoption error = %v, want depth refusal", err)
 	}
@@ -168,7 +169,7 @@ func TestParseQuickEditCrossProjectChildDepthAndScope(t *testing.T) {
 	destination := &models.Project{ID: "destination", Slug: "destination", Tasks: append(chain, leaf, tall, tallChild)}
 	projects := []*models.Project{source, destination}
 
-	result, err := parseQuickEdit("Movable %destination >5 <20", task, source, projects)
+	result, err := grammar.ParseQuickEdit("Movable %destination >5 <20", task, source, projects)
 	if err != nil {
 		t.Fatalf("cross-project leaf adoption rejected: %v", err)
 	}
@@ -176,12 +177,12 @@ func TestParseQuickEditCrossProjectChildDepthAndScope(t *testing.T) {
 		t.Fatalf("children = %v, want [leaf]", got)
 	}
 
-	_, err = parseQuickEdit("Movable %destination >5 <21", task, source, projects)
+	_, err = grammar.ParseQuickEdit("Movable %destination >5 <21", task, source, projects)
 	if err == nil || !strings.Contains(err.Error(), "exceed maximum nesting depth") {
 		t.Fatalf("cross-project tall adoption error = %v, want depth refusal", err)
 	}
 
-	_, err = parseQuickEdit("Movable %destination <7", task, source, projects)
+	_, err = grammar.ParseQuickEdit("Movable %destination <7", task, source, projects)
 	if err == nil || !strings.Contains(err.Error(), "child not found") {
 		t.Fatalf("source-project child error = %v, want refusal in the effective project", err)
 	}
@@ -194,7 +195,7 @@ func TestQuickEditPreviewChildAdoptionIsPure(t *testing.T) {
 	project.BuildTaskTree()
 	updated := task.UpdatedAt
 
-	result, err := parseQuickEdit("Renamed <2", task, project)
+	result, err := grammar.ParseQuickEdit("Renamed <2", task, project)
 	if err != nil {
 		t.Fatalf("parseQuickEdit: %v", err)
 	}
@@ -204,8 +205,8 @@ func TestQuickEditPreviewChildAdoptionIsPure(t *testing.T) {
 	if adopted.ParentID != nil || adopted.Parent != nil {
 		t.Fatalf("adopted task mutated during preview: parentID=%v parent=%v", adopted.ParentID, adopted.Parent)
 	}
-	if len(result.preview.Children) != 1 || result.preview.Children[0] != adopted {
-		t.Fatalf("preview children = %+v", result.preview.Children)
+	if len(result.Preview.Children) != 1 || result.Preview.Children[0] != adopted {
+		t.Fatalf("preview children = %+v", result.Preview.Children)
 	}
 }
 
@@ -228,7 +229,7 @@ func TestQuickEditTerminalDestinationRefusesIncompleteAdoptedChild(t *testing.T)
 	} {
 		t.Run("open adopted child blocks "+destination, func(t *testing.T) {
 			task, project := quickEditAdoptionFixture(models.StateBacklog, models.StateBacklog)
-			_, err := parseQuickEdit("Owner <2 $"+destination, task, project)
+			_, err := grammar.ParseQuickEdit("Owner <2 $"+destination, task, project)
 			want := "has incomplete children and cannot move to " + destination
 			if err == nil || !strings.Contains(err.Error(), want) {
 				t.Fatalf("error = %v, want %q", err, want)
@@ -237,7 +238,7 @@ func TestQuickEditTerminalDestinationRefusesIncompleteAdoptedChild(t *testing.T)
 
 		t.Run("open adopted child blocks a re-applied "+destination, func(t *testing.T) {
 			task, project := quickEditAdoptionFixture(terminal, models.StateBacklog)
-			_, err := parseQuickEdit("Owner <2 $"+destination, task, project)
+			_, err := grammar.ParseQuickEdit("Owner <2 $"+destination, task, project)
 			want := "has incomplete children and cannot move to " + destination
 			if err == nil || !strings.Contains(err.Error(), want) {
 				t.Fatalf("error = %v, want %q", err, want)
@@ -246,21 +247,21 @@ func TestQuickEditTerminalDestinationRefusesIncompleteAdoptedChild(t *testing.T)
 
 		t.Run("finished adopted child allows "+destination, func(t *testing.T) {
 			task, project := quickEditAdoptionFixture(models.StateBacklog, models.StateDone)
-			result, err := parseQuickEdit("Owner <2 $"+destination, task, project)
+			result, err := grammar.ParseQuickEdit("Owner <2 $"+destination, task, project)
 			if err != nil {
 				t.Fatalf("completed child blocked a terminal destination: %v", err)
 			}
-			if result.preview.State() != terminal {
-				t.Fatalf("preview state = %s, want %s", result.preview.State(), terminal)
+			if result.Preview.State() != terminal {
+				t.Fatalf("preview state = %s, want %s", result.Preview.State(), terminal)
 			}
 
 			task, project = quickEditAdoptionFixture(terminal, models.StateDone)
-			result, err = parseQuickEdit("Owner <2 $"+destination, task, project)
+			result, err = grammar.ParseQuickEdit("Owner <2 $"+destination, task, project)
 			if err != nil {
 				t.Fatalf("re-applied terminal destination: %v", err)
 			}
-			if result.preview.State() != terminal {
-				t.Fatalf("re-applied preview state = %s, want %s", result.preview.State(), terminal)
+			if result.Preview.State() != terminal {
+				t.Fatalf("re-applied preview state = %s, want %s", result.Preview.State(), terminal)
 			}
 		})
 	}
@@ -268,12 +269,12 @@ func TestQuickEditTerminalDestinationRefusesIncompleteAdoptedChild(t *testing.T)
 
 func TestQuickEditPreviewTerminalLifecycleWithAdoptedChildren(t *testing.T) {
 	task, project := quickEditAdoptionFixture(models.StateDone, models.StateBacklog)
-	result, err := parseQuickEdit("Owner <2", task, project)
+	result, err := grammar.ParseQuickEdit("Owner <2", task, project)
 	if err != nil {
 		t.Fatalf("terminal parent adopting an open child: %v", err)
 	}
-	if result.preview.State() != models.StateDoing || result.state != models.StateDoing {
-		t.Fatalf("preview state = %s result state = %s, want doing", result.preview.State(), result.state)
+	if result.Preview.State() != models.StateDoing || result.State != models.StateDoing {
+		t.Fatalf("preview state = %s result state = %s, want doing", result.Preview.State(), result.State)
 	}
 	if task.State() != models.StateDone {
 		t.Fatalf("reconciliation preview mutated the live task: %s", task.State())
@@ -288,7 +289,7 @@ func TestTaskLineEditRequestQualifiesChildLocators(t *testing.T) {
 	destination := &models.Project{ID: "destination", Slug: "destination", Tasks: []*models.Task{destinationChild}}
 	identity := taskref.TaskIdentity{ProjectID: source.ID, TaskID: task.ID}
 
-	result, err := parseQuickEdit("Owner <2", task, source, []*models.Project{source, destination})
+	result, err := grammar.ParseQuickEdit("Owner <2", task, source, []*models.Project{source, destination})
 	if err != nil {
 		t.Fatalf("parseQuickEdit: %v", err)
 	}
@@ -297,7 +298,7 @@ func TestTaskLineEditRequestQualifiesChildLocators(t *testing.T) {
 		t.Fatalf("same-project child locators = %+v", req.Children)
 	}
 
-	result, err = parseQuickEdit("Owner %destination <7", task, source, []*models.Project{source, destination})
+	result, err = grammar.ParseQuickEdit("Owner %destination <7", task, source, []*models.Project{source, destination})
 	if err != nil {
 		t.Fatalf("cross-project parseQuickEdit: %v", err)
 	}
@@ -309,7 +310,7 @@ func TestTaskLineEditRequestQualifiesChildLocators(t *testing.T) {
 		t.Fatalf("cross-project child locators = %+v", req.Children)
 	}
 
-	result, err = parseQuickEdit("Owner", task, source, []*models.Project{source, destination})
+	result, err = grammar.ParseQuickEdit("Owner", task, source, []*models.Project{source, destination})
 	if err != nil {
 		t.Fatalf("childless parseQuickEdit: %v", err)
 	}
@@ -325,7 +326,7 @@ func TestParseQuickEditInvalidChildDoesNotMutate(t *testing.T) {
 	project.BuildTaskTree()
 	updated := task.UpdatedAt
 
-	if _, err := parseQuickEdit("Renamed !1 <2 <999", task, project); err == nil {
+	if _, err := grammar.ParseQuickEdit("Renamed !1 <2 <999", task, project); err == nil {
 		t.Fatal("expected the unresolvable child to reject the whole draft")
 	}
 	if task.Title != "Owner" || task.Priority != models.PriorityLow || task.UpdatedAt != updated || len(task.Children) != 0 {
@@ -343,7 +344,7 @@ func TestQuickEditChildZeroIsReservedFromTitlePrefixResolution(t *testing.T) {
 	project := &models.Project{ID: "project", Slug: "project", Tasks: []*models.Task{task, zero, nine}}
 	project.BuildTaskTree()
 
-	_, err := parseQuickEdit("Owner <0", task, project)
+	_, err := grammar.ParseQuickEdit("Owner <0", task, project)
 	if err == nil || !strings.Contains(err.Error(), `child not found: "0"`) {
 		t.Fatalf("<0 error = %v, want the reserved token to resolve nothing", err)
 	}
@@ -351,7 +352,7 @@ func TestQuickEditChildZeroIsReservedFromTitlePrefixResolution(t *testing.T) {
 		t.Fatalf("<0 adopted the zero-titled task: %v", zero.ParentID)
 	}
 
-	result, err := parseQuickEdit("Owner <9", task, project)
+	result, err := grammar.ParseQuickEdit("Owner <9", task, project)
 	if err != nil {
 		t.Fatalf("<9 parse: %v", err)
 	}
@@ -359,7 +360,7 @@ func TestQuickEditChildZeroIsReservedFromTitlePrefixResolution(t *testing.T) {
 		t.Fatalf("<9 children = %v, want [%s]", got, nine.ID)
 	}
 
-	candidates, reason := quickEditChildCandidates("Owner <0", task, project, nil)
+	candidates, reason := grammar.QuickEditChildCandidates("Owner <0", task, project, nil)
 	if reason != "" {
 		t.Fatalf("candidate reason = %q, want none", reason)
 	}

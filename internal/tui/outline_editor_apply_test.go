@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -303,14 +304,14 @@ func outlineBufferWithoutLine(t *testing.T, buffer, needle string) string {
 func outlineDeepBuffer(depth int) string {
 	lines := make([]string, 0, depth+1)
 	for level := 0; level <= depth; level++ {
-		lines = append(lines, strings.Repeat(" ", level*outlineIndentWidth)+fmt.Sprintf("Level %d", level))
+		lines = append(lines, strings.Repeat(" ", level*grammar.OutlineIndentWidth)+fmt.Sprintf("Level %d", level))
 	}
 	return strings.Join(lines, "\n")
 }
 
-func outlineProblemsContain(problems []lineError, line int, message string) bool {
+func outlineProblemsContain(problems []grammar.LineError, line int, message string) bool {
 	for _, problem := range problems {
-		if problem.line == line && problem.message == message {
+		if problem.Line == line && problem.Message == message {
 			return true
 		}
 	}

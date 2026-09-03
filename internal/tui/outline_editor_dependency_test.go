@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 )
 
 // outlineDependencyWorkspace is the dumped project plus a second loaded project,
@@ -97,7 +98,7 @@ func TestOutlineDependencyRoundTripSurvivesUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dump: %v", err)
 	}
-	lines, problems := parseOutlineBuffer(buffer, scope, projects)
+	lines, problems := grammar.ParseOutlineBuffer(buffer, scope, projects)
 	if len(problems) > 0 {
 		t.Fatalf("parse: %v", problems)
 	}
@@ -166,7 +167,7 @@ func TestOutlineDependencyParseFormsTheFinalSet(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			scope, projects := outlineDependencyWorkspace(t)
 			buffer := tt.body + "  [[tt:4f2a9c11]]"
-			lines, problems := parseOutlineBuffer(buffer, scope, projects)
+			lines, problems := grammar.ParseOutlineBuffer(buffer, scope, projects)
 			if len(problems) > 0 {
 				t.Fatalf("parse: %v", problems)
 			}
@@ -213,12 +214,12 @@ func TestOutlineDependencyParseRefusals(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			scope, projects := outlineDependencyWorkspace(t)
 			buffer := tt.body + "  [[tt:4f2a9c11]]"
-			lines, problems := parseOutlineBuffer(buffer, scope, projects)
+			lines, problems := grammar.ParseOutlineBuffer(buffer, scope, projects)
 			if len(problems) == 0 {
 				t.Fatalf("parse accepted %q: %+v", tt.body, lines)
 			}
-			if !strings.Contains(problems[0].message, tt.want) {
-				t.Errorf("message = %q, want it to contain %q", problems[0].message, tt.want)
+			if !strings.Contains(problems[0].Message, tt.want) {
+				t.Errorf("message = %q, want it to contain %q", problems[0].Message, tt.want)
 			}
 		})
 	}

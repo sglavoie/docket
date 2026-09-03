@@ -11,12 +11,13 @@ import (
 func TestMigratedTaskTitleRenderersAvoidActiveSuccessTitleOverrides(t *testing.T) {
 	files := []string{
 		// shared_render.go and fullscreen_task_helpers.go moved into the chrome
-		// package in Session 2.8; the rule follows the file, not the package.
+		// package in Session 2.8 and quick_capture_autocomplete.go into grammar in
+		// Session 2.11; the rule follows the file, not the package.
 		"chrome/shared_render.go",
 		"outliner_render_rows.go",
 		"app_pinned_tasks_render.go",
 		"parent_selector.go",
-		"quick_capture_autocomplete.go",
+		"grammar/quick_capture_autocomplete.go",
 		"task_attachments_view.go",
 		"task_comments_view.go",
 		"chrome/fullscreen_task_helpers.go",

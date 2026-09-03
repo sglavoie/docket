@@ -1,4 +1,4 @@
-package tui
+package grammar
 
 import (
 	"fmt"
@@ -47,12 +47,12 @@ type ACTrigger struct {
 
 // IsActive returns whether the autocomplete dropdown is currently showing.
 func (ac *AutocompleteState) IsActive() bool {
-	return ac.Mode != acModeNone && len(ac.Items) > 0
+	return ac.Mode != ACModeNone && len(ac.Items) > 0
 }
 
 // Clear resets all autocomplete state.
 func (ac *AutocompleteState) Clear() {
-	ac.Mode = acModeNone
+	ac.Mode = ACModeNone
 	ac.Items = nil
 	ac.Cursor = 0
 	ac.ViewportTop = 0
@@ -114,7 +114,7 @@ func (ac *AutocompleteState) Selected() ACSuggestion {
 // Returns acModeNone if no trigger is found.
 func DetectTrigger(input string, triggers []ACTrigger) (mode int, pos int, partial string) {
 	if len(input) == 0 {
-		return acModeNone, 0, ""
+		return ACModeNone, 0, ""
 	}
 
 	for i := len(input) - 1; i >= 0; i-- {
@@ -135,7 +135,7 @@ func DetectTrigger(input string, triggers []ACTrigger) (mode int, pos int, parti
 			return longest.Mode, i, input[i+len(longest.Text):]
 		}
 	}
-	return acModeNone, 0, ""
+	return ACModeNone, 0, ""
 }
 
 // UpdateSuggestions sets the suggestion list and clamps cursor/viewport.
@@ -153,7 +153,7 @@ func (ac *AutocompleteState) UpdateSuggestions(mode, triggerPos int, items []ACS
 	ac.ClampCursor()
 
 	if len(ac.Items) == 0 {
-		ac.Mode = acModeNone
+		ac.Mode = ACModeNone
 	}
 }
 

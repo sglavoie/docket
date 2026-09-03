@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -31,14 +32,14 @@ func (m *OutlinerModel) isQuickEditRow(row outlinerRow) bool {
 	if !m.quickEdit.IsActive() || task == nil || row.task == nil || row.task.ID != task.ID {
 		return false
 	}
-	if m.project != nil || m.quickEdit.project == nil {
+	if m.project != nil || m.quickEdit.GetProject() == nil {
 		return true
 	}
-	return row.ProjectID == m.quickEdit.project.ID
+	return row.ProjectID == m.quickEdit.GetProject().ID
 }
 
 func (m *OutlinerModel) quickEditSuggestionBudget() int {
-	return min(quickEditSuggestionLimit, max(m.contentHeight()-2, 1))
+	return min(grammar.QuickEditSuggestionLimit, max(m.contentHeight()-2, 1))
 }
 
 func (m *OutlinerModel) quickEditExtraLineCount() int {
@@ -68,7 +69,7 @@ func (m *OutlinerModel) renderOutlinerQuickEditRow(row outlinerRow, rowWidth int
 	// the cursor cell after it, so the window must leave that column free.
 	m.quickEdit.SetInputWidth(max(rowWidth-indentWidth-1, 1))
 	selectedPrefix := theme.SelectedStyle.Render(ansi.Strip(inputPrefix))
-	inputLine := textfit.FitStyledLineToWidth(selectedPrefix+m.quickEdit.renderSelectedInput(), rowWidth)
+	inputLine := textfit.FitStyledLineToWidth(selectedPrefix+m.quickEdit.RenderSelectedInput(), rowWidth)
 
 	lines := []string{metadata, inputLine}
 	if suggestions := m.quickEdit.RenderSuggestions(strings.Repeat(" ", indentWidth), m.quickEditSuggestionBudget()); suggestions != "" {
@@ -80,8 +81,8 @@ func (m *OutlinerModel) renderOutlinerQuickEditRow(row outlinerRow, rowWidth int
 }
 
 func (m *OutlinerModel) quickEditDisplayTask() *models.Task {
-	if preview := m.quickEdit.GetPreview(); preview != nil && preview.preview.ID != "" {
-		return &preview.preview
+	if preview := m.quickEdit.GetPreview(); preview != nil && preview.Preview.ID != "" {
+		return &preview.Preview
 	}
 	return m.quickEdit.GetTask()
 }
@@ -93,8 +94,8 @@ func (m *OutlinerModel) quickEditMetadataLine(row outlinerRow, project *models.P
 	}
 	preview := m.quickEdit.GetPreview()
 	effectiveProject := project
-	if preview != nil && preview.targetProject != nil {
-		effectiveProject = preview.targetProject
+	if preview != nil && preview.TargetProject != nil {
+		effectiveProject = preview.TargetProject
 	}
 
 	label := "EDIT TASK"
@@ -189,7 +190,7 @@ func compactQuickEditProjectChip(project string, width int) string {
 }
 
 func quickEditRouteLabel(task *models.Task, project *models.Project) string {
-	projectName := projectLabel(project)
+	projectName := grammar.ProjectLabel(project)
 	if projectName == "" {
 		projectName = "project"
 	}
@@ -221,9 +222,9 @@ func quickEditRouteLabel(task *models.Task, project *models.Project) string {
 	return strings.Join(append(path, parents...), " › ")
 }
 
-func quickEditWorkflowLabel(row outlinerRow, task *models.Task, preview *quickEditResult) string {
-	if preview != nil && preview.destinationSet {
-		return string(preview.destination)
+func quickEditWorkflowLabel(row outlinerRow, task *models.Task, preview *grammar.QuickEditResult) string {
+	if preview != nil && preview.DestinationSet {
+		return string(preview.Destination)
 	}
 	if row.IsTodaySection {
 		return "today"
@@ -260,7 +261,7 @@ func quickEditOptionalMetadata(task *models.Task, now time.Time) []string {
 		parts = append(parts, prefix+label)
 	}
 	if task.DeferredUntil != nil {
-		parts = append(parts, "defer "+formatDeferDate(*task.DeferredUntil, now))
+		parts = append(parts, "defer "+chrome.FormatDeferDate(*task.DeferredUntil, now))
 	}
 	if task.Pinned {
 		parts = append(parts, "pin")
