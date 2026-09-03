@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -100,7 +101,7 @@ func operationDateItems(deferred bool, categoryID ListCategoryID, disabledReason
 			SecondaryText:  secondary,
 			Aliases:        []string{preset.id, secondary},
 			DisabledReason: disabledReason,
-			Data:           OperationDateValue{Date: date, Deferred: deferred},
+			Data:           operation.OperationDateValue{Date: date, Deferred: deferred},
 		})
 	}
 	return items
@@ -145,7 +146,7 @@ func operationParentListSource(task *models.Task, project *models.Project) ListS
 		PrimaryText:   "No parent (project root)",
 		SecondaryText: ">0",
 		Aliases:       []string{"none", "root", "0", ">0", "detach"},
-		Data:          OperationParentValue{},
+		Data:          operation.OperationParentValue{},
 	})
 	for _, candidate := range candidates {
 		id := candidate.ID
@@ -156,7 +157,7 @@ func operationParentListSource(task *models.Task, project *models.Project) ListS
 			SecondaryText:  shortID,
 			Aliases:        []string{shortID, strconv.Itoa(candidate.ShortID), candidate.Title},
 			DisabledReason: grammar.InvalidQuickEditParent(task, project, project, candidate),
-			Data:           OperationParentValue{ParentID: &id},
+			Data:           operation.OperationParentValue{ParentID: &id},
 		})
 	}
 	return ListSource{Items: items}

@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 const (
@@ -18,7 +19,7 @@ const (
 func TestProjectEditorWrapsCompleteTagsExplainerAtMinimumWidth(t *testing.T) {
 	width := projectEditorExplainerWidth(projectEditorMinimumWidth)
 	body := ansi.Strip(behavioralProjectTagExplainer(
-		ValueProviderProjectTags,
+		operation.ValueProviderProjectTags,
 		width,
 	))
 	for _, line := range strings.Split(body, "\n") {
@@ -34,7 +35,7 @@ func TestProjectEditorWrapsCompleteTagsExplainerAtMinimumWidth(t *testing.T) {
 
 func TestProjectEditorKeepsWideTagsExplainerOnOneLine(t *testing.T) {
 	body := ansi.Strip(behavioralProjectTagExplainer(
-		ValueProviderProjectTags,
+		operation.ValueProviderProjectTags,
 		projectEditorExplainerWidth(projectEditorWideWidth),
 	))
 	if strings.Contains(body, "\n") {

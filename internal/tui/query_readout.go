@@ -12,6 +12,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/textfit"
@@ -315,7 +316,7 @@ func (m *OutlinerModel) queryReadoutGuidance() chrome.GuidanceSpec {
 	closeKey := "Q"
 	if m.operationRegistry != nil {
 		if key := m.operationRegistry.InputShortcutForOperation(
-			InputStrategySimplified, operationCoreQueryReadout); key != "" {
+			operation.InputStrategySimplified, operation.OperationCoreQueryReadout); key != "" {
 			closeKey = key
 		}
 	}

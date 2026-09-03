@@ -1,12 +1,16 @@
 package tui
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/operation"
+)
 
 // TestProjectHubOperationsCannotAppearInBothDirectGrammarAndMenu holds the Hub
 // to the one-path rule the startup gate enforces: the six operations the browse
 // grammar reaches on press one are absent from the Space menu.
 func TestProjectHubOperationsCannotAppearInBothDirectGrammarAndMenu(t *testing.T) {
-	if err := validateOperationOnePath(projectOperationManifest(), ProjectHubInputStrategy()); err != nil {
-		t.Fatalf("validateOperationOnePath() = %v, want nil", err)
+	if err := operation.ValidateOperationOnePath(projectOperationManifest(), ProjectHubInputStrategy()); err != nil {
+		t.Fatalf("ValidateOperationOnePath() = %v, want nil", err)
 	}
 }

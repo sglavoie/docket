@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -39,7 +40,7 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 		width:             80,
 		height:            24,
 		views:             NewViewRegistry(),
-		operationRegistry: NewOperationRegistry(),
+		operationRegistry: operation.NewOperationRegistry(),
 		nextOrder:         []PlanningTask{},
 		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),
 		today:             []PlanningTask{},

@@ -3,6 +3,7 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -119,7 +120,7 @@ func AnyEscStepActive(steps []EscStep) bool {
 	return false
 }
 
-func helpCmd(name string, items []HelpItem) tea.Cmd {
+func helpCmd(name string, items []operation.HelpItem) tea.Cmd {
 	return func() tea.Msg {
 		return ShowHelpMsg{ViewName: name, Items: items}
 	}

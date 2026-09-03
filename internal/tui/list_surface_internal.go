@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/fuzzy"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 )
 
@@ -116,7 +117,7 @@ func normalizeListItems(
 
 func cloneListItem(item ListItem) ListItem {
 	item.Aliases = append([]string(nil), item.Aliases...)
-	item.OperationIDs = append([]OperationID(nil), item.OperationIDs...)
+	item.OperationIDs = append([]operation.OperationID(nil), item.OperationIDs...)
 	item.Preview = cloneListPreview(item.Preview)
 	return item
 }
@@ -330,16 +331,16 @@ func (model *ListSurfaceModel) actionItems() []ListItem {
 	return []ListItem{item}
 }
 
-func intersectOperationIDs(left, right []OperationID) []OperationID {
+func intersectOperationIDs(left, right []operation.OperationID) []operation.OperationID {
 	if len(left) == 0 || len(right) == 0 {
-		return []OperationID{}
+		return []operation.OperationID{}
 	}
-	rightSet := make(map[OperationID]struct{}, len(right))
+	rightSet := make(map[operation.OperationID]struct{}, len(right))
 	for _, id := range right {
 		rightSet[id] = struct{}{}
 	}
-	intersection := make([]OperationID, 0, min(len(left), len(right)))
-	seen := make(map[OperationID]struct{})
+	intersection := make([]operation.OperationID, 0, min(len(left), len(right)))
+	seen := make(map[operation.OperationID]struct{})
 	for _, id := range left {
 		if _, ok := rightSet[id]; !ok {
 			continue

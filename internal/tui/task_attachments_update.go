@@ -6,6 +6,7 @@ import (
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -162,16 +163,16 @@ func (m *TaskAttachmentsModel) dispatchAttachmentsKey(key string) tea.Cmd {
 	if m.dispatch == nil {
 		return nil
 	}
-	_, cmd := m.dispatch(InputStrategyAttachments, []string{key}, m.attachmentsCommandContext())
+	_, cmd := m.dispatch(operation.InputStrategyAttachments, []string{key}, m.attachmentsCommandContext())
 	return cmd
 }
 
 // attachmentsCommandContext names the panel rather than an item: an attachment
 // carries no entity identity, so the cursor the handler reads is the only thing
 // that says which item an operation means.
-func (m *TaskAttachmentsModel) attachmentsCommandContext() CommandContext {
+func (m *TaskAttachmentsModel) attachmentsCommandContext() operation.CommandContext {
 	ctx := PresentationCommandContext(presentation.ViewTaskAttachments)
-	ctx.Capabilities.Add(CapabilityAttachmentsPanel)
+	ctx.Capabilities.Add(operation.CapabilityAttachmentsPanel)
 	return ctx
 }
 

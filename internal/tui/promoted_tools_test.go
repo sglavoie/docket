@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 func TestPromotedToolNotesScope(t *testing.T) {
@@ -80,7 +81,7 @@ func TestPromotedToolNotesScope(t *testing.T) {
 			setTestAppProjects(app, workA, workB, home)
 			app.crossOutliner.loadedProjects = []*models.Project{workA, workB, home}
 			test.configure(app)
-			app.operationRegistry = NewOperationRegistry()
+			app.operationRegistry = operation.NewOperationRegistry()
 			app.operationExecutor = NewOperationExecutor(app.operationRegistry)
 			if err := app.registerCoreInputOperations(); err != nil {
 				t.Fatalf("register core operations: %v", err)
@@ -91,7 +92,7 @@ func TestPromotedToolNotesScope(t *testing.T) {
 				t.Fatalf("operation scope = %v, want %v", context.ScopeProjectIDs, test.wantProjectIDs)
 			}
 
-			notes := executePromotedTool(t, app, operationCoreNotes, context)
+			notes := executePromotedTool(t, app, operation.OperationCoreNotes, context)
 			msg, ok := notes.(ShowNotesManagerMsg)
 			if !ok || msg.Scope != test.wantScope || msg.Focus != (NoteRowIdentity{}) {
 				t.Fatalf("Notes message = %#v, want unfocused %#v", notes, test.wantScope)
@@ -144,8 +145,8 @@ func TestPromotedToolMessagesOpenTypedSecondaryChildren(t *testing.T) {
 func executePromotedTool(
 	t *testing.T,
 	app *AppModel,
-	id OperationID,
-	context CommandContext,
+	id operation.OperationID,
+	context operation.CommandContext,
 ) any {
 	t.Helper()
 	result := app.operationExecutor.Execute(OperationExecutionRequest{

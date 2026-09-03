@@ -5,13 +5,14 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // GetOperationRegistry returns the authoritative operation catalog.
-func (m *AppModel) GetOperationRegistry() *OperationRegistry {
+func (m *AppModel) GetOperationRegistry() *operation.OperationRegistry {
 	return m.operationRegistry
 }
 

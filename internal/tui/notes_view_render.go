@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -254,14 +255,14 @@ func (m *NotesViewModel) renderStatusBar() string {
 // the registry describes every operation the strategy binds, and the keymap
 // names the cursor and undo/redo keys whose descriptors answer only to the
 // Outliner. Keys documented by both keep the registry's spelling.
-func (m *NotesViewModel) GetHelpItems() []HelpItem {
+func (m *NotesViewModel) GetHelpItems() []operation.HelpItem {
 	if m.locationPicker != nil {
 		return m.locationPicker.GetHelpItems()
 	}
 	if m.registry == nil {
 		return nil
 	}
-	items := m.registry.HelpItemsForInputStrategy(InputStrategyNotes, m.notesCommandContext())
+	items := m.registry.HelpItemsForInputStrategy(operation.InputStrategyNotes, m.notesCommandContext())
 	documented := make(map[string]bool, len(items))
 	for _, item := range items {
 		documented[strings.ToLower(item.Key)] = true

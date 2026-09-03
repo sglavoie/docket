@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -16,7 +17,7 @@ func TestFrozenBulkTagPatchPreservesSelectionAcrossCursorMoveAndRebuild(t *testi
 	second := newBulkPickerTestTask(t, 1, "second", "common", "second-only")
 	env := newAppBulkPickerEnv(t, []*models.Task{first}, []*models.Task{second})
 	model := env.appModel()
-	model.operationRegistry = NewOperationRegistry()
+	model.operationRegistry = operation.NewOperationRegistry()
 	model.operationExecutor = NewOperationExecutor(model.operationRegistry)
 	if err := model.registerTaskActionOperations(); err != nil {
 		t.Fatalf("registerTaskActionOperations: %v", err)
@@ -38,7 +39,7 @@ func TestFrozenBulkTagPatchPreservesSelectionAcrossCursorMoveAndRebuild(t *testi
 	result := model.operationExecutor.Execute(OperationExecutionRequest{
 		ID:       operationTaskSetTags,
 		Context:  context,
-		Value:    OperationTagsValue{Add: []string{"first-only"}, Remove: []string{"common"}},
+		Value:    operation.OperationTagsValue{Add: []string{"first-only"}, Remove: []string{"common"}},
 		HasValue: true,
 	})
 	if result.Err != nil {
@@ -64,7 +65,7 @@ func TestFrozenBulkTagPatchPreservesSelectionAcrossCursorMoveAndRebuild(t *testi
 
 func TestTaskActionNativeOperationRequestsOneListSurfaceValue(t *testing.T) {
 	model := newUITestApp()
-	model.operationRegistry = NewOperationRegistry()
+	model.operationRegistry = operation.NewOperationRegistry()
 	model.operationExecutor = NewOperationExecutor(model.operationRegistry)
 	if err := model.registerTaskActionOperations(); err != nil {
 		t.Fatalf("registerTaskActionOperations: %v", err)
@@ -77,7 +78,7 @@ func TestTaskActionNativeOperationRequestsOneListSurfaceValue(t *testing.T) {
 	if result.Err != nil {
 		t.Fatalf("Execute: %v", result.Err)
 	}
-	if result.ValueRequired == nil || result.ValueRequired.Provider != ValueProviderState {
+	if result.ValueRequired == nil || result.ValueRequired.Provider != operation.ValueProviderState {
 		t.Fatalf("value request = %+v, want state provider", result.ValueRequired)
 	}
 	if result.Message != nil || result.ConfirmationRequired != nil {
@@ -94,13 +95,13 @@ func TestBulkTaskValueOperationUsesQualifiedTargetsAndOneUndoEntry(t *testing.T)
 	taskB.Priority = models.PriorityLow
 	env := newAppBulkPickerEnv(t, []*models.Task{taskA}, []*models.Task{taskB})
 	model := env.appModel()
-	model.operationRegistry = NewOperationRegistry()
+	model.operationRegistry = operation.NewOperationRegistry()
 	model.operationExecutor = NewOperationExecutor(model.operationRegistry)
 	if err := model.registerTaskActionOperations(); err != nil {
 		t.Fatalf("registerTaskActionOperations: %v", err)
 	}
 	context := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
-	context.Capabilities.Add(CapabilitySimplifiedInput)
+	context.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	context.Selection.Visual = true
 	for index, task := range []*models.Task{taskA, taskB} {
 		project := env.projects[index]

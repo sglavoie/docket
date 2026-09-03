@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // hands back an ID, and the malformed-payload cases need to deliver something
@@ -17,7 +18,7 @@ import (
 func executeLensValue(model *AppModel, value any) OperationExecutionResult {
 	return model.operationExecutor.Execute(OperationExecutionRequest{
 		ID:       operationLensAddTemplate,
-		Context:  lensOperationContext(EntityIdentity{}),
+		Context:  lensOperationContext(operation.EntityIdentity{}),
 		Value:    value,
 		HasValue: true,
 	})
@@ -50,29 +51,29 @@ func TestLensAddTemplateIsAZeroTargetPickedMutation(t *testing.T) {
 	if descriptor.Label != "Add built-in view" {
 		t.Fatalf("descriptor label = %q", descriptor.Label)
 	}
-	if descriptor.Category != OperationCategoryFilter {
+	if descriptor.Category != operation.OperationCategoryFilter {
 		t.Fatalf("descriptor category = %q, want the filter family", descriptor.Category)
 	}
-	if descriptor.TargetSource != OperationTargetGlobal ||
-		descriptor.TargetCardinality != TargetCardinalityNone {
+	if descriptor.TargetSource != operation.OperationTargetGlobal ||
+		descriptor.TargetCardinality != operation.TargetCardinalityNone {
 		t.Fatalf(
 			"descriptor targets %q/%q, want a global zero-target operation",
 			descriptor.TargetSource,
 			descriptor.TargetCardinality,
 		)
 	}
-	if !descriptor.RequiredCapabilities.Has(CapabilityLensPicker) {
+	if !descriptor.RequiredCapabilities.Has(operation.CapabilityLensPicker) {
 		t.Fatal("descriptor does not require the lens picker capability")
 	}
-	if descriptor.Risk != OperationRiskMutation {
+	if descriptor.Risk != operation.OperationRiskMutation {
 		t.Fatalf("descriptor risk = %q, want mutation", descriptor.Risk)
 	}
-	if descriptor.ValueProviderID != ValueProviderLensTemplate {
-		t.Fatalf("descriptor value provider = %q, want %q", descriptor.ValueProviderID, ValueProviderLensTemplate)
+	if descriptor.ValueProviderID != operation.ValueProviderLensTemplate {
+		t.Fatalf("descriptor value provider = %q, want %q", descriptor.ValueProviderID, operation.ValueProviderLensTemplate)
 	}
 	// The template is picked from a closed catalog, so it must not route to the
 	// typed-text prompt the lens name uses.
-	if descriptor.ValueProviderID.textEntry() {
+	if descriptor.ValueProviderID.TextEntry() {
 		t.Fatal("the template provider must be picked, not typed")
 	}
 }
@@ -81,8 +82,8 @@ func TestLensAddTemplateAsksForATemplateBeforeItWrites(t *testing.T) {
 	model := lensOperationApp(t)
 	before := len(machineLenses(t, model))
 
-	result := executeLens(model, operationLensAddTemplate, EntityIdentity{}, "", false)
-	if result.ValueRequired == nil || result.ValueRequired.Provider != ValueProviderLensTemplate {
+	result := executeLens(model, operationLensAddTemplate, operation.EntityIdentity{}, "", false)
+	if result.ValueRequired == nil || result.ValueRequired.Provider != operation.ValueProviderLensTemplate {
 		t.Fatalf("add template ran without asking for a template: %#v", result.ValueRequired)
 	}
 	if got := len(machineLenses(t, model)); got != before {
@@ -191,7 +192,7 @@ func TestLensAddTemplateRefusesATemplateTheLatestSnapshotAlreadyHolds(t *testing
 	}
 
 	if renamed := executeLens(
-		model, operationLensRename, LensEntity(template.ID), "Renamed by hand", false,
+		model, operationLensRename, operation.LensEntity(template.ID), "Renamed by hand", false,
 	); renamed.Err != nil {
 		t.Fatalf("rename the added template: %v", renamed.Err)
 	}
@@ -206,7 +207,7 @@ func TestLensAddTemplateRefusesATemplateTheLatestSnapshotAlreadyHolds(t *testing
 	// With the stable ID freed, the template is addable again — an added record is
 	// an ordinary lens and nothing more.
 	if deleted := executeLens(
-		model, operationLensDelete, LensEntity(template.ID), "", true,
+		model, operationLensDelete, operation.LensEntity(template.ID), "", true,
 	); deleted.Err != nil {
 		t.Fatalf("delete the added template: %v", deleted.Err)
 	}
@@ -222,7 +223,7 @@ func TestLensAddTemplateRefusesANameAnotherLensAlreadyAnswersTo(t *testing.T) {
 	// A user lens minted under its own UUID, wearing the template's name in a
 	// different case: uniqueness is case-insensitive, so the template cannot land.
 	if created := executeLens(
-		model, operationLensCreate, EntityIdentity{}, strings.ToUpper(template.Name), false,
+		model, operationLensCreate, operation.EntityIdentity{}, strings.ToUpper(template.Name), false,
 	); created.Err != nil {
 		t.Fatalf("create the colliding lens: %v", created.Err)
 	}
@@ -251,13 +252,13 @@ func TestLensAddTemplateReportsTheIDCollisionAheadOfTheNameCollision(t *testing.
 		t.Fatalf("add built-in view: %v", result.Err)
 	}
 	if renamed := executeLens(
-		model, operationLensRename, LensEntity(template.ID), "Renamed by hand", false,
+		model, operationLensRename, operation.LensEntity(template.ID), "Renamed by hand", false,
 	); renamed.Err != nil {
 		t.Fatalf("rename the added template: %v", renamed.Err)
 	}
 	// The template's own name is free again, so a user lens can take it.
 	if created := executeLens(
-		model, operationLensCreate, EntityIdentity{}, template.Name, false,
+		model, operationLensCreate, operation.EntityIdentity{}, template.Name, false,
 	); created.Err != nil {
 		t.Fatalf("create the name-colliding lens: %v", created.Err)
 	}

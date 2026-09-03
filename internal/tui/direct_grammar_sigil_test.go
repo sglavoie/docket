@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // sigilKeyRoute is how one text-grammar trigger reaches the keyboard.
@@ -83,8 +84,8 @@ var grammarSigilRoutes = map[string]sigilKeyRoute{
 
 func TestSigilKeysMatchTextGrammarSigils(t *testing.T) {
 	strategy := SimplifiedInputStrategy()
-	rootKeys := make(map[string]OperationID)
-	prefixes := make(map[string]OperationID)
+	rootKeys := make(map[string]operation.OperationID)
+	prefixes := make(map[string]operation.OperationID)
 	for _, binding := range strategy.Bindings {
 		for _, key := range binding.Keys {
 			rootKeys[key] = binding.OperationID
@@ -150,10 +151,10 @@ func TestSigilKeysMatchTextGrammarSigils(t *testing.T) {
 					)
 				}
 				if _, _, resolution := registeredSimplifiedOperationRegistry(t).InputBindingForSequence(
-					InputStrategySimplified,
+					operation.InputStrategySimplified,
 					[]string{"f", trigger},
 					simplifiedOperationContext(),
-				); resolution != ChordTerminal {
+				); resolution != operation.ChordTerminal {
 					t.Errorf("facet-only sigil %q has no f%s chord", trigger, trigger)
 				}
 			case sigilSearchOnly:
@@ -190,7 +191,7 @@ func TestSigilKeysMatchTextGrammarSigils(t *testing.T) {
 // facet; neither is a root key.
 func TestReviewHasNoDirectKey(t *testing.T) {
 	registry := registeredSimplifiedOperationRegistry(t)
-	if _, exists := registry.Descriptor(OperationID("tui.task.toggle-review")); exists {
+	if _, exists := registry.Descriptor(operation.OperationID("tui.task.toggle-review")); exists {
 		t.Error("the retired review setter is registered again")
 	}
 	for _, entry := range taskOperationDescriptorManifest() {
@@ -204,15 +205,15 @@ func TestReviewHasNoDirectKey(t *testing.T) {
 			continue
 		}
 		if binding.OperationID != operationFilterReview {
-			t.Errorf("%s is bound to %v; review has no setter key", binding.OperationID, binding.paths())
+			t.Errorf("%s is bound to %v; review has no setter key", binding.OperationID, binding.Paths())
 		}
 	}
 	binding, _, resolution := registry.InputBindingForSequence(
-		InputStrategySimplified,
+		operation.InputStrategySimplified,
 		[]string{"f", "="},
 		simplifiedOperationContext(),
 	)
-	if resolution != ChordTerminal || binding.OperationID != operationFilterReview {
+	if resolution != operation.ChordTerminal || binding.OperationID != operationFilterReview {
 		t.Fatalf("f= = %s (%v), want %s terminal", binding.OperationID, resolution, operationFilterReview)
 	}
 }
@@ -233,29 +234,29 @@ func TestFilterAndSortSecondKeysUseSigilsWhereOneExists(t *testing.T) {
 	ctx := simplifiedOperationContext()
 	for _, testCase := range []struct {
 		sequence []string
-		want     ChordResolution
+		want     operation.ChordResolution
 	}{
-		{sequence: []string{"f", "!"}, want: ChordPending},
-		{sequence: []string{"f", "!", "1"}, want: ChordTerminal},
-		{sequence: []string{"f", "#"}, want: ChordTerminal},
-		{sequence: []string{"f", "$"}, want: ChordTerminal},
-		{sequence: []string{"f", "@"}, want: ChordTerminal},
-		{sequence: []string{"f", "*"}, want: ChordTerminal},
-		{sequence: []string{"f", "="}, want: ChordTerminal},
-		{sequence: []string{"f", "s"}, want: ChordTerminal},
-		{sequence: []string{"F", "#"}, want: ChordTerminal},
-		{sequence: []string{"o", "!"}, want: ChordTerminal},
-		{sequence: []string{"o", "@"}, want: ChordTerminal},
-		{sequence: []string{"f", "p"}, want: ChordNoMatch},
-		{sequence: []string{"f", "r"}, want: ChordNoMatch},
-		{sequence: []string{"f", "t"}, want: ChordNoMatch},
-		{sequence: []string{"f", "d"}, want: ChordNoMatch},
-		{sequence: []string{"o", "p"}, want: ChordNoMatch},
-		{sequence: []string{"F", "t"}, want: ChordNoMatch},
+		{sequence: []string{"f", "!"}, want: operation.ChordPending},
+		{sequence: []string{"f", "!", "1"}, want: operation.ChordTerminal},
+		{sequence: []string{"f", "#"}, want: operation.ChordTerminal},
+		{sequence: []string{"f", "$"}, want: operation.ChordTerminal},
+		{sequence: []string{"f", "@"}, want: operation.ChordTerminal},
+		{sequence: []string{"f", "*"}, want: operation.ChordTerminal},
+		{sequence: []string{"f", "="}, want: operation.ChordTerminal},
+		{sequence: []string{"f", "s"}, want: operation.ChordTerminal},
+		{sequence: []string{"F", "#"}, want: operation.ChordTerminal},
+		{sequence: []string{"o", "!"}, want: operation.ChordTerminal},
+		{sequence: []string{"o", "@"}, want: operation.ChordTerminal},
+		{sequence: []string{"f", "p"}, want: operation.ChordNoMatch},
+		{sequence: []string{"f", "r"}, want: operation.ChordNoMatch},
+		{sequence: []string{"f", "t"}, want: operation.ChordNoMatch},
+		{sequence: []string{"f", "d"}, want: operation.ChordNoMatch},
+		{sequence: []string{"o", "p"}, want: operation.ChordNoMatch},
+		{sequence: []string{"F", "t"}, want: operation.ChordNoMatch},
 	} {
 		t.Run(strings.Join(testCase.sequence, ""), func(t *testing.T) {
 			_, _, resolution := registry.InputBindingForSequence(
-				InputStrategySimplified,
+				operation.InputStrategySimplified,
 				testCase.sequence,
 				ctx,
 			)
@@ -275,17 +276,17 @@ func TestFilterAndSortSecondKeysUseSigilsWhereOneExists(t *testing.T) {
 	// to. fa is checked alongside it so the two cannot silently swap back.
 	for _, testCase := range []struct {
 		sequence []string
-		want     OperationID
+		want     operation.OperationID
 	}{
 		{sequence: []string{"f", "c"}, want: operationFilterContexts},
 		{sequence: []string{"f", "a"}, want: operationFilterCompletionAge},
 	} {
 		binding, _, resolution := registry.InputBindingForSequence(
-			InputStrategySimplified,
+			operation.InputStrategySimplified,
 			testCase.sequence,
 			ctx,
 		)
-		if resolution != ChordTerminal || binding.OperationID != testCase.want {
+		if resolution != operation.ChordTerminal || binding.OperationID != testCase.want {
 			t.Fatalf(
 				"%s = %s (%v), want %s terminal",
 				strings.Join(testCase.sequence, ""),

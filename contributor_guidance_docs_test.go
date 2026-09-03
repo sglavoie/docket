@@ -145,7 +145,7 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// instinct here says otherwise: it is persistent, it is visible chrome, and it
 	// will grow dropdowns, all of which look like reasons to mint a
 	// `PresentationID` and a manifest entry — and doing so silently changes what
-	// `surfaceOperationGates()` and `validateOperationOnePath` cover. The one-row
+	// `surfaceOperationGates()` and `ValidateOperationOnePath` cover. The one-row
 	// cost belongs beside it, because the failure it prevents is the quiet one: a
 	// second subtraction at a call site does not crash, it just draws a row short.
 	// Neither rule is derivable from the code, since the code that would state them
@@ -161,7 +161,7 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// meant, the bar is classified as a projection beside `?` help and the footer
 	// ranks, and the one genuinely new rule lands beside it: the bar may make an
 	// operation keyless, but not an entity operation keyless. That last clause is
-	// the only place the boundary is written down. `validateOperationOnePath`
+	// the only place the boundary is written down. `ValidateOperationOnePath`
 	// cannot state it — it never sees the bar — and the bar's own specs cannot,
 	// because the defect it prevents is a descriptor that looks locally reasonable
 	// in core_input_operations.go and only becomes wrong when a menu row names it.
@@ -212,7 +212,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"A task reaching `WriteV8ProjectDocument` without a clock is rejected, never backfilled",
 		"do not add a parallel key router, palette, or view-specific copy",
 		"An entity operation is direct-only or menu-only, never both, in that surface's " +
-			"entity action sheet, enforced by `validateOperationOnePath` over its manifest",
+			"entity action sheet, enforced by `ValidateOperationOnePath` over its manifest",
 		"The menu bar is not a sheet but a projection of the registry, the class `?` help and " +
 			"the footer ranks belong to, so it names directly-bound operations freely",
 		"a menu-only operation's `TargetSource` is target-free or view-scoped, never a task or project",
@@ -239,7 +239,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 			"— do not add one. Group order never changes",
 		"Arming stays in the one deferred closure in `AppModel.Update`",
 		"The interactive TUI ignores an inherited `NO_COLOR`",
-		"A value provider is exactly one of `textEntry()`",
+		"A value provider is exactly one of `TextEntry()`",
 		"`inlinePeekLines` owns a drop order, not a set",
 		"`VisualWidthOverflow` must subtract the same ellipsis column as `TruncateToVisualWidth`",
 		"`indicatorDropLadder` is a list: a new indicator gets a position, not an append",

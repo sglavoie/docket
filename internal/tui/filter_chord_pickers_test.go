@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -64,18 +65,18 @@ func TestFilterDueChordIsOneTerminalPickerBinding(t *testing.T) {
 	ctx := simplifiedOperationContext()
 
 	binding, descriptor, resolution := registry.InputBindingForSequence(
-		InputStrategySimplified,
+		operation.InputStrategySimplified,
 		[]string{"f", "@"},
 		ctx,
 	)
-	if resolution != ChordTerminal || descriptor.ID != operationFilterDue {
+	if resolution != operation.ChordTerminal || descriptor.ID != operationFilterDue {
 		t.Fatalf("f@ = resolution %v operation %s, want terminal %s", resolution, descriptor.ID, operationFilterDue)
 	}
 	if binding.HasPresetValue || binding.DisplayKey != "f@" {
 		t.Errorf("f@ binding = preset %v display %q, want picker display f@", binding.HasPresetValue, binding.DisplayKey)
 	}
 	helpDocumentsDueFacet := false
-	for _, item := range registry.HelpItemsForInputStrategy(InputStrategySimplified, ctx) {
+	for _, item := range registry.HelpItemsForInputStrategy(operation.InputStrategySimplified, ctx) {
 		if item.Key == "f@" && item.Description == "Filter by Due or Deferred" {
 			helpDocumentsDueFacet = true
 			break
@@ -90,7 +91,7 @@ func TestFilterDueChordIsOneTerminalPickerBinding(t *testing.T) {
 		{"f", "@", "o"},
 		{"f", "@", "n"},
 	} {
-		if _, _, got := registry.InputBindingForSequence(InputStrategySimplified, retired, ctx); got != ChordNoMatch {
+		if _, _, got := registry.InputBindingForSequence(operation.InputStrategySimplified, retired, ctx); got != operation.ChordNoMatch {
 			t.Errorf("retired due path %v resolution = %v, want no match", retired, got)
 		}
 	}
@@ -101,18 +102,18 @@ func TestFilterStaleChordIsOneGeneratedHelpTerminal(t *testing.T) {
 	ctx := simplifiedOperationContext()
 
 	binding, descriptor, resolution := registry.InputBindingForSequence(
-		InputStrategySimplified,
+		operation.InputStrategySimplified,
 		[]string{"f", "s"},
 		ctx,
 	)
-	if resolution != ChordTerminal || descriptor.ID != operationFilterStale {
+	if resolution != operation.ChordTerminal || descriptor.ID != operationFilterStale {
 		t.Fatalf("fs = resolution %v operation %s, want terminal %s", resolution, descriptor.ID, operationFilterStale)
 	}
 	if binding.HasPresetValue || binding.DisplayKey != "fs" {
 		t.Errorf("fs binding = preset %v display %q, want toggle display fs", binding.HasPresetValue, binding.DisplayKey)
 	}
 	helpDocumentsStaleFacet := false
-	for _, item := range registry.HelpItemsForInputStrategy(InputStrategySimplified, ctx) {
+	for _, item := range registry.HelpItemsForInputStrategy(operation.InputStrategySimplified, ctx) {
 		if item.Key == "fs" && item.Description == "Filter Stale" {
 			helpDocumentsStaleFacet = true
 			break
@@ -129,13 +130,13 @@ func TestFilterStaleChordAndHelpAreUnavailableInRecent(t *testing.T) {
 	ctx := app.operationCommandContext()
 
 	if _, _, resolution := app.operationRegistry.InputBindingForSequence(
-		InputStrategySimplified,
+		operation.InputStrategySimplified,
 		[]string{"f", "s"},
 		ctx,
-	); resolution != ChordNoMatch {
+	); resolution != operation.ChordNoMatch {
 		t.Fatalf("fs resolution = %v, want no match in Recent", resolution)
 	}
-	for _, item := range app.operationRegistry.HelpItemsForInputStrategy(InputStrategySimplified, ctx) {
+	for _, item := range app.operationRegistry.HelpItemsForInputStrategy(operation.InputStrategySimplified, ctx) {
 		if item.Key == "fs" || item.Description == "Filter Stale" {
 			t.Fatalf("Recent help retained Stale item: %+v", item)
 		}
@@ -175,7 +176,7 @@ func TestRetiredFilterAndSortLetterPathsResolveToNoMatch(t *testing.T) {
 		{"F", "t"},
 		{"o", "p"},
 	} {
-		if _, _, got := registry.InputBindingForSequence(InputStrategySimplified, retired, ctx); got != ChordNoMatch {
+		if _, _, got := registry.InputBindingForSequence(operation.InputStrategySimplified, retired, ctx); got != operation.ChordNoMatch {
 			t.Errorf("retired path %v resolution = %v, want no match", retired, got)
 		}
 	}

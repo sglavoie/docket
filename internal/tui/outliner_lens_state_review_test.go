@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -204,7 +205,7 @@ func reviewFacetRecordedAndClearedByReplace(t *testing.T) {
 		t.Fatal("adding the review facet must mark the lens modified")
 	}
 
-	if result := executeLens(model, operationLensReplace, LensEntity(starter.ID), "", true); result.Err != nil {
+	if result := executeLens(model, operationLensReplace, operation.LensEntity(starter.ID), "", true); result.Err != nil {
 		t.Fatalf("replace lens: %v", result.Err)
 	}
 	replaced := lensNamed(t, model, starter.Name)
@@ -220,7 +221,7 @@ func reviewFacetRecordedAndClearedByReplace(t *testing.T) {
 	if !out.lensModified() {
 		t.Fatal("dropping the review facet must mark the lens modified")
 	}
-	if result := executeLens(model, operationLensReplace, LensEntity(starter.ID), "", true); result.Err != nil {
+	if result := executeLens(model, operationLensReplace, operation.LensEntity(starter.ID), "", true); result.Err != nil {
 		t.Fatalf("replace lens: %v", result.Err)
 	}
 	if again := lensNamed(t, model, starter.Name); strings.Contains(again.Query, "=review") {

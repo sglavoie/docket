@@ -57,6 +57,20 @@
 #     date and a second tag-color authority, both of which CLAUDE.md forbids
 #     outright. None can close a cycle: `chrome` names `theme,textfit,pulse,
 #     taskref,keymap` and no L0 or L1 package reaches `query`.
+#   - `operation -> query` was added in Session 2.14, and it is the same shape
+#     one layer up again. `ValueProviderID.AcceptsPresetValue` refuses a key
+#     binding whose preset names a spelling no picker row writes, and the due
+#     and dependency facet rows are canonical tokens `query` owns. CLAUDE.md
+#     states that refusal as a rule, so the check has to read the vocabulary
+#     rather than a copy of it, and it runs where a strategy is registered
+#     rather than where a key is pressed. It cannot close a cycle: `query` names
+#     `theme,pulse,taskref,chrome,grammar` and none of those reaches `operation`.
+#   - `listsurface -> presentation` was added in the same session, for
+#     ListCategoryID. The operation manifest names a list category on every
+#     entry so an action sheet can group what it lists, which puts the identity
+#     below the surface that owns the concept; `presentation` is where the bare
+#     enum lives and `listsurface` spells it through an alias, so this edge
+#     carries one declaration and no behavior.
 #   - `textfit -> theme` is the first edge inside L0, added in Session 2.3 when
 #     the package was extracted. context.md gives `textfit` "Markdown,
 #     highlighting" and both are inherently styled: `markdown.go` picks the
@@ -77,9 +91,9 @@ chrome	L1	theme,textfit,pulse,taskref,keymap
 coordinator	L1	taskref,status
 grammar	L2	chrome,theme,textfit,taskref
 query	L2	theme,pulse,taskref,chrome,grammar
-operation	L3	presentation,chrome,taskref,status,grammar
+operation	L3	presentation,chrome,taskref,status,grammar,query
 route	L4	presentation,chrome,operation
-listsurface	L5	route,operation,chrome,textfit,theme,keymap
+listsurface	L5	route,operation,chrome,textfit,theme,keymap,presentation
 help	L6	listsurface,operation,chrome,grammar,keymap
 notes	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help
 taskdetail	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help

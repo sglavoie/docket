@@ -4,11 +4,12 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // NewHelpViewModel creates a new help view model.
-func NewHelpViewModel(items []HelpItem, viewName string) *HelpViewModel {
+func NewHelpViewModel(items []operation.HelpItem, viewName string) *HelpViewModel {
 	searchInput := textinput.New()
 	searchInput.Placeholder = "Search keybindings..."
 	searchInput.CharLimit = 50

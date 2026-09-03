@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -18,10 +19,10 @@ import (
 // it. They are reachable only from a tag row inside the F# picker, which is the
 // one surface that names a tag rather than a project.
 const (
-	operationProjectTagRenameAll OperationID = "tui.project-tag.rename-all"
-	operationProjectTagRemoveAll OperationID = "tui.project-tag.remove-all"
-	operationProjectTagParkAll   OperationID = "tui.project-tag.park-all"
-	operationProjectTagUnparkAll OperationID = "tui.project-tag.unpark-all"
+	operationProjectTagRenameAll operation.OperationID = "tui.project-tag.rename-all"
+	operationProjectTagRemoveAll operation.OperationID = "tui.project-tag.remove-all"
+	operationProjectTagParkAll   operation.OperationID = "tui.project-tag.park-all"
+	operationProjectTagUnparkAll operation.OperationID = "tui.project-tag.unpark-all"
 )
 
 const projectTagActionCategory ListCategoryID = "project-tag-actions"
@@ -29,14 +30,14 @@ const projectTagActionCategory ListCategoryID = "project-tag-actions"
 var projectTagActionCategories = []ListCategory{{ID: projectTagActionCategory, Label: "Tag"}}
 
 // projectTagVocabularyOperations is the closed, ordered sheet.
-var projectTagVocabularyOperations = []OperationID{
+var projectTagVocabularyOperations = []operation.OperationID{
 	operationProjectTagRenameAll,
 	operationProjectTagRemoveAll,
 	operationProjectTagParkAll,
 	operationProjectTagUnparkAll,
 }
 
-var projectTagVocabularyActions = map[OperationID]ProjectBulkTagAction{
+var projectTagVocabularyActions = map[operation.OperationID]ProjectBulkTagAction{
 	operationProjectTagRenameAll: ProjectBulkTagRename,
 	operationProjectTagRemoveAll: ProjectBulkTagRemove,
 	operationProjectTagParkAll:   ProjectBulkTagPark,
@@ -46,28 +47,28 @@ var projectTagVocabularyActions = map[OperationID]ProjectBulkTagAction{
 // ProjectTagVocabularyActionsMsg opens the vocabulary sheet for one tag row.
 type ProjectTagVocabularyActionsMsg struct{ Tag string }
 
-func projectTagVocabularyDescriptors() []OperationDescriptor {
-	descriptor := func(id OperationID, label, description string) OperationDescriptor {
-		return OperationDescriptor{
+func projectTagVocabularyDescriptors() []operation.OperationDescriptor {
+	descriptor := func(id operation.OperationID, label, description string) operation.OperationDescriptor {
+		return operation.OperationDescriptor{
 			ID:                   id,
 			Label:                label,
 			Description:          description,
-			Category:             OperationCategoryProject,
-			TargetSource:         OperationTargetSelectedEntities,
-			TargetCardinality:    TargetCardinalityOneOrMore,
-			RequiredCapabilities: NewCapabilitySet(CapabilitySimplifiedInput),
+			Category:             operation.OperationCategoryProject,
+			TargetSource:         operation.OperationTargetSelectedEntities,
+			TargetCardinality:    operation.TargetCardinalityOneOrMore,
+			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
 			Applicability:        projectBulkTagsApplicable,
-			Risk:                 OperationRiskMutation,
+			Risk:                 operation.OperationRiskMutation,
 		}
 	}
-	return []OperationDescriptor{
-		withValueProvider(
+	return []operation.OperationDescriptor{
+		operation.WithValueProvider(
 			descriptor(operationProjectTagRenameAll, "Rename everywhere", "Rename this tag on every project carrying it"),
-			ValueProviderTagName,
+			operation.ValueProviderTagName,
 		),
-		withValueProvider(
+		operation.WithValueProvider(
 			descriptor(operationProjectTagRemoveAll, "Remove everywhere", "Remove this tag from every project carrying it"),
-			ValueProviderProjectTagDestination,
+			operation.ValueProviderProjectTagDestination,
 		),
 		descriptor(operationProjectTagParkAll, "Park all members", "Park every project carrying this tag"),
 		descriptor(operationProjectTagUnparkAll, "Unpark all members", "Unpark every project carrying this tag"),
@@ -79,14 +80,14 @@ func (m *AppModel) registerProjectTagVocabularyOperations() error {
 		return fmt.Errorf("operation registry and executor are required")
 	}
 	if err := m.operationExecutor.RegisterValueProvider(
-		ValueProviderProjectTagDestination,
+		operation.ValueProviderProjectTagDestination,
 		m.projectTagDestinationValue,
 	); err != nil {
 		return err
 	}
 	for _, descriptor := range projectTagVocabularyDescriptors() {
 		if err := m.registerOperation(descriptor, OperationBinding{
-			RequiredCapabilities: NewCapabilitySet(CapabilitySimplifiedInput),
+			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
 			BulkHandler:          m.executeProjectTagVocabulary,
 			// The bulk tag pipeline already owns the park prompt, the single
 			// catalog transaction, and its undo record.
@@ -104,7 +105,7 @@ func (m *AppModel) registerProjectTagVocabularyOperations() error {
 // value because a nested value step overwrites that value on its way back.
 func (m *AppModel) executeProjectTagVocabulary(
 	invocation OperationInvocation,
-	targets []OperationTarget,
+	targets []operation.OperationTarget,
 ) OperationHandlerResult {
 	if m.projectTagActionSubject == "" {
 		return OperationHandlerResult{Err: fmt.Errorf("no project tag is selected")}
@@ -115,7 +116,7 @@ func (m *AppModel) executeProjectTagVocabulary(
 		Tag:        m.projectTagActionSubject,
 	}
 	for _, target := range targets {
-		if target.Entity.Kind != EntityKindProject || target.ProjectID == "" {
+		if target.Entity.Kind != operation.EntityKindProject || target.ProjectID == "" {
 			return OperationHandlerResult{Err: fmt.Errorf(
 				"%s needs project targets, got %s",
 				invocation.Descriptor.Label,
@@ -148,12 +149,12 @@ func (m *AppModel) openProjectTagVocabularyActions(tag string) tea.Cmd {
 	}
 	ctx := m.operationCommandContext()
 	ctx.View = presentation.ViewCrossProjectOutliner
-	ctx.Capabilities.Add(CapabilitySimplifiedInput)
-	ctx.Selection.EntityIdentities = make([]EntityIdentity, 0, len(members))
+	ctx.Capabilities.Add(operation.CapabilitySimplifiedInput)
+	ctx.Selection.EntityIdentities = make([]operation.EntityIdentity, 0, len(members))
 	for _, member := range members {
 		ctx.Selection.EntityIdentities = append(
 			ctx.Selection.EntityIdentities,
-			ProjectEntity(member.ID),
+			operation.ProjectEntity(member.ID),
 		)
 	}
 
@@ -169,7 +170,7 @@ func (m *AppModel) openProjectTagVocabularyActions(tag string) tea.Cmd {
 			Subtitle:     "#" + tag,
 			ItemIDPrefix: "project-tag-action:",
 			Categories:   projectTagActionCategories,
-			CategoryFor: func(OperationDescriptor) ListCategoryID {
+			CategoryFor: func(operation.OperationDescriptor) ListCategoryID {
 				return projectTagActionCategory
 			},
 			SecondaryFor: operationActionSecondaryText,
@@ -269,7 +270,7 @@ func (m *AppModel) newProjectTagDestinationPicker(
 	)
 	return newOperationValuePickerModel(
 		request,
-		ValueProviderProjectTagDestination,
+		operation.ValueProviderProjectTagDestination,
 		"Remove #"+subject+" everywhere",
 		subtitle,
 		ListSource{

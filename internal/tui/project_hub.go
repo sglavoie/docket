@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -27,7 +28,7 @@ func (m *ProjectHubModel) Init() tea.Cmd { return nil }
 func (m *ProjectHubModel) Mode() ProjectHubMode { return m.mode }
 
 func (m *ProjectHubModel) SetOperationSystem(
-	registry *OperationRegistry,
+	registry *operation.OperationRegistry,
 	executor *OperationExecutor,
 	dispatch operationKeyDispatch,
 ) {
@@ -170,7 +171,7 @@ func (m *ProjectHubModel) dispatchProjectHubKey(key string) tea.Cmd {
 		return nil
 	}
 	_, cmd := m.dispatch(
-		InputStrategyProjectHub,
+		operation.InputStrategyProjectHub,
 		[]string{key},
 		m.projectHubCommandContext(m.cursorProjectID()),
 	)

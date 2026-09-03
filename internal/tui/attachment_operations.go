@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -12,19 +13,19 @@ import (
 // item under its cursor, so they stay apart from tui.task.attachments, which
 // only opens the panel and belongs to the task row that owns it.
 const (
-	operationAttachmentAdd                   OperationID = "tui.attachment.add"
-	operationAttachmentOpen                  OperationID = "tui.attachment.open"
-	operationAttachmentOpenInEditor          OperationID = "tui.attachment.open-in-editor"
-	operationAttachmentOpenOriginalDirectory OperationID = "tui.attachment.open-original-directory"
-	operationAttachmentRevealOriginal        OperationID = "tui.attachment.reveal-original"
-	operationAttachmentOpenFolder            OperationID = "tui.attachment.open-attachments-folder"
-	operationAttachmentDelete                OperationID = "tui.attachment.delete"
-	operationAttachmentUnlink                OperationID = "tui.attachment.unlink"
-	operationAttachmentCopyPath              OperationID = "tui.attachment.copy-path"
-	operationAttachmentCopyPathWithLine      OperationID = "tui.attachment.copy-path-with-line"
-	operationAttachmentReorderUp             OperationID = "tui.attachment.reorder-up"
-	operationAttachmentReorderDown           OperationID = "tui.attachment.reorder-down"
-	operationAttachmentActions               OperationID = "tui.attachment.actions"
+	operationAttachmentAdd                   operation.OperationID = "tui.attachment.add"
+	operationAttachmentOpen                  operation.OperationID = "tui.attachment.open"
+	operationAttachmentOpenInEditor          operation.OperationID = "tui.attachment.open-in-editor"
+	operationAttachmentOpenOriginalDirectory operation.OperationID = "tui.attachment.open-original-directory"
+	operationAttachmentRevealOriginal        operation.OperationID = "tui.attachment.reveal-original"
+	operationAttachmentOpenFolder            operation.OperationID = "tui.attachment.open-attachments-folder"
+	operationAttachmentDelete                operation.OperationID = "tui.attachment.delete"
+	operationAttachmentUnlink                operation.OperationID = "tui.attachment.unlink"
+	operationAttachmentCopyPath              operation.OperationID = "tui.attachment.copy-path"
+	operationAttachmentCopyPathWithLine      operation.OperationID = "tui.attachment.copy-path-with-line"
+	operationAttachmentReorderUp             operation.OperationID = "tui.attachment.reorder-up"
+	operationAttachmentReorderDown           operation.OperationID = "tui.attachment.reorder-down"
+	operationAttachmentActions               operation.OperationID = "tui.attachment.actions"
 )
 
 // AttachmentsInputStrategy is the Attachments panel's whole direct key grammar
@@ -54,10 +55,10 @@ const (
 // URL or a code reference, which only the gated keymap beside this strategy can
 // express, so ranking a key here would be a second description of the same
 // footer with no way to stay in step.
-func AttachmentsInputStrategy() InputStrategy {
-	return InputStrategy{
-		ID: InputStrategyAttachments,
-		Bindings: []OperationKeyBinding{
+func AttachmentsInputStrategy() operation.InputStrategy {
+	return operation.InputStrategy{
+		ID: operation.InputStrategyAttachments,
+		Bindings: []operation.OperationKeyBinding{
 			{OperationID: operationAttachmentOpen, Keys: []string{"enter"}, DisplayKey: "Enter"},
 			{OperationID: operationAttachmentAdd, Keys: []string{"a"}, DisplayKey: "a"},
 			{OperationID: operationAttachmentOpenInEditor, Keys: []string{"E"}, DisplayKey: "E"},
@@ -66,16 +67,16 @@ func AttachmentsInputStrategy() InputStrategy {
 			{OperationID: operationAttachmentCopyPathWithLine, Keys: []string{"Y"}, DisplayKey: "Y"},
 			{OperationID: operationAttachmentReorderDown, Keys: []string{"J"}, DisplayKey: "J"},
 			{OperationID: operationAttachmentReorderUp, Keys: []string{"K"}, DisplayKey: "K"},
-			{OperationID: operationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},
-			{OperationID: operationCoreRedo, Keys: []string{"ctrl+r"}, DisplayKey: "Ctrl+R"},
-			{OperationID: operationCoreCursorDown, Keys: []string{"j", "down"}, DisplayKey: "j/↓"},
-			{OperationID: operationCoreCursorUp, Keys: []string{"k", "up"}, DisplayKey: "k/↑"},
-			{OperationID: operationCoreCursorTop, Keys: []string{"home"}, Sequence: []string{"g", "g"}, DisplayKey: "gg/Home", HintLabel: "top"},
-			{OperationID: operationCoreCursorBottom, Keys: []string{"G", "end"}, DisplayKey: "G/End"},
-			{OperationID: operationCoreHelp, Keys: []string{"?"}, DisplayKey: "?"},
-			{OperationID: operationCoreBack, Keys: []string{"esc"}, DisplayKey: "Esc"},
+			{OperationID: operation.OperationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},
+			{OperationID: operation.OperationCoreRedo, Keys: []string{"ctrl+r"}, DisplayKey: "Ctrl+R"},
+			{OperationID: operation.OperationCoreCursorDown, Keys: []string{"j", "down"}, DisplayKey: "j/↓"},
+			{OperationID: operation.OperationCoreCursorUp, Keys: []string{"k", "up"}, DisplayKey: "k/↑"},
+			{OperationID: operation.OperationCoreCursorTop, Keys: []string{"home"}, Sequence: []string{"g", "g"}, DisplayKey: "gg/Home", HintLabel: "top"},
+			{OperationID: operation.OperationCoreCursorBottom, Keys: []string{"G", "end"}, DisplayKey: "G/End"},
+			{OperationID: operation.OperationCoreHelp, Keys: []string{"?"}, DisplayKey: "?"},
+			{OperationID: operation.OperationCoreBack, Keys: []string{"esc"}, DisplayKey: "Esc"},
 		},
-		ChordGroups: []OperationChordGroup{
+		ChordGroups: []operation.OperationChordGroup{
 			{Sequence: []string{"g"}, HintLabel: "go to"},
 		},
 	}
@@ -87,38 +88,38 @@ func AttachmentsInputStrategy() InputStrategy {
 // so the cursor inside the panel is the only thing that says which item an
 // operation means, and every descriptor is therefore target-free and
 // capability-scoped to the mounted panel.
-func attachmentOperationDescriptors() []OperationDescriptor {
+func attachmentOperationDescriptors() []operation.OperationDescriptor {
 	attachment := func(
-		id OperationID,
+		id operation.OperationID,
 		label string,
 		description string,
-		risk OperationRisk,
-	) OperationDescriptor {
-		return OperationDescriptor{
+		risk operation.OperationRisk,
+	) operation.OperationDescriptor {
+		return operation.OperationDescriptor{
 			ID:                   id,
 			Label:                label,
 			Description:          description,
-			Category:             OperationCategoryTask,
-			TargetSource:         OperationTargetGlobal,
-			TargetCardinality:    TargetCardinalityNone,
-			RequiredCapabilities: NewCapabilitySet(CapabilityAttachmentsPanel),
+			Category:             operation.OperationCategoryTask,
+			TargetSource:         operation.OperationTargetGlobal,
+			TargetCardinality:    operation.TargetCardinalityNone,
+			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilityAttachmentsPanel),
 			Risk:                 risk,
 		}
 	}
-	return []OperationDescriptor{
-		attachment(operationAttachmentAdd, "Add attachment", "Attach a file, URL, or code reference", OperationRiskMutation),
-		attachment(operationAttachmentOpen, "Open attachment", "Open this attachment with the system handler", OperationRiskReadOnly),
-		attachment(operationAttachmentOpenInEditor, "Open attachment in editor", "Open this attachment in the external editor", OperationRiskReadOnly),
-		attachment(operationAttachmentOpenOriginalDirectory, "Open original directory", "Open the directory the attached file was copied from", OperationRiskReadOnly),
-		attachment(operationAttachmentRevealOriginal, "Reveal original file", "Reveal the attached file's source in the file manager", OperationRiskReadOnly),
-		attachment(operationAttachmentOpenFolder, "Open attachments directory", "Open the task's attachments directory", OperationRiskReadOnly),
-		attachment(operationAttachmentDelete, "Delete attachment", "Remove this attachment and its stored copy", OperationRiskDestructive),
-		attachment(operationAttachmentUnlink, "Unlink attachment", "Remove this attachment but keep its stored copy", OperationRiskDestructive),
-		attachment(operationAttachmentCopyPath, "Copy attachment path", "Copy this attachment's path to the clipboard", OperationRiskReadOnly),
-		attachment(operationAttachmentCopyPathWithLine, "Copy attachment path with line", "Copy this code reference as path:line", OperationRiskReadOnly),
-		attachment(operationAttachmentReorderUp, "Reorder attachment up", "Move this attachment one position earlier", OperationRiskMutation),
-		attachment(operationAttachmentReorderDown, "Reorder attachment down", "Move this attachment one position later", OperationRiskMutation),
-		attachment(operationAttachmentActions, "Attachment actions", "Open the action sheet for the attachment under the cursor", OperationRiskReadOnly),
+	return []operation.OperationDescriptor{
+		attachment(operationAttachmentAdd, "Add attachment", "Attach a file, URL, or code reference", operation.OperationRiskMutation),
+		attachment(operationAttachmentOpen, "Open attachment", "Open this attachment with the system handler", operation.OperationRiskReadOnly),
+		attachment(operationAttachmentOpenInEditor, "Open attachment in editor", "Open this attachment in the external editor", operation.OperationRiskReadOnly),
+		attachment(operationAttachmentOpenOriginalDirectory, "Open original directory", "Open the directory the attached file was copied from", operation.OperationRiskReadOnly),
+		attachment(operationAttachmentRevealOriginal, "Reveal original file", "Reveal the attached file's source in the file manager", operation.OperationRiskReadOnly),
+		attachment(operationAttachmentOpenFolder, "Open attachments directory", "Open the task's attachments directory", operation.OperationRiskReadOnly),
+		attachment(operationAttachmentDelete, "Delete attachment", "Remove this attachment and its stored copy", operation.OperationRiskDestructive),
+		attachment(operationAttachmentUnlink, "Unlink attachment", "Remove this attachment but keep its stored copy", operation.OperationRiskDestructive),
+		attachment(operationAttachmentCopyPath, "Copy attachment path", "Copy this attachment's path to the clipboard", operation.OperationRiskReadOnly),
+		attachment(operationAttachmentCopyPathWithLine, "Copy attachment path with line", "Copy this code reference as path:line", operation.OperationRiskReadOnly),
+		attachment(operationAttachmentReorderUp, "Reorder attachment up", "Move this attachment one position earlier", operation.OperationRiskMutation),
+		attachment(operationAttachmentReorderDown, "Reorder attachment down", "Move this attachment one position later", operation.OperationRiskMutation),
+		attachment(operationAttachmentActions, "Attachment actions", "Open the action sheet for the attachment under the cursor", operation.OperationRiskReadOnly),
 	}
 }
 
@@ -127,21 +128,21 @@ func attachmentOperationDescriptors() []OperationDescriptor {
 // and leave the Space sheet to the three rare acts on an attachment's origin
 // plus the two destructive ones, which reach the user only there and then only
 // behind the panel's own confirmation.
-func attachmentOperationManifest() []operationManifestEntry {
-	return []operationManifestEntry{
-		{ID: operationAttachmentAdd, Label: "Add attachment", Risk: OperationRiskMutation, DirectOnly: true},
-		{ID: operationAttachmentOpen, Label: "Open attachment", Risk: OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationAttachmentOpenInEditor, Label: "Open attachment in editor", Risk: OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationAttachmentCopyPath, Label: "Copy attachment path", Risk: OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationAttachmentCopyPathWithLine, Label: "Copy attachment path with line", Risk: OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationAttachmentReorderUp, Label: "Reorder attachment up", Risk: OperationRiskMutation, DirectOnly: true},
-		{ID: operationAttachmentReorderDown, Label: "Reorder attachment down", Risk: OperationRiskMutation, DirectOnly: true},
-		{ID: operationAttachmentActions, Label: "Attachment actions", Risk: OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationAttachmentRevealOriginal, Label: "Reveal original file", Risk: OperationRiskReadOnly},
-		{ID: operationAttachmentOpenOriginalDirectory, Label: "Open original directory", Risk: OperationRiskReadOnly},
-		{ID: operationAttachmentOpenFolder, Label: "Open attachments directory", Risk: OperationRiskReadOnly},
-		{ID: operationAttachmentUnlink, Label: "Unlink attachment", Risk: OperationRiskDestructive},
-		{ID: operationAttachmentDelete, Label: "Delete attachment", Risk: OperationRiskDestructive},
+func attachmentOperationManifest() []operation.OperationManifestEntry {
+	return []operation.OperationManifestEntry{
+		{ID: operationAttachmentAdd, Label: "Add attachment", Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operationAttachmentOpen, Label: "Open attachment", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationAttachmentOpenInEditor, Label: "Open attachment in editor", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationAttachmentCopyPath, Label: "Copy attachment path", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationAttachmentCopyPathWithLine, Label: "Copy attachment path with line", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationAttachmentReorderUp, Label: "Reorder attachment up", Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operationAttachmentReorderDown, Label: "Reorder attachment down", Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operationAttachmentActions, Label: "Attachment actions", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationAttachmentRevealOriginal, Label: "Reveal original file", Risk: operation.OperationRiskReadOnly},
+		{ID: operationAttachmentOpenOriginalDirectory, Label: "Open original directory", Risk: operation.OperationRiskReadOnly},
+		{ID: operationAttachmentOpenFolder, Label: "Open attachments directory", Risk: operation.OperationRiskReadOnly},
+		{ID: operationAttachmentUnlink, Label: "Unlink attachment", Risk: operation.OperationRiskDestructive},
+		{ID: operationAttachmentDelete, Label: "Delete attachment", Risk: operation.OperationRiskDestructive},
 	}
 }
 
@@ -149,7 +150,7 @@ func attachmentOperationManifest() []operationManifestEntry {
 // it lists them. The three origin acts are rare enough that a direct key spent
 // them for nothing, and the two destructive ones are the reason the sheet
 // exists: an attachment now leaves the list only through a deliberate menu row.
-var attachmentActionSheetOperations = []OperationID{
+var attachmentActionSheetOperations = []operation.OperationID{
 	operationAttachmentRevealOriginal,
 	operationAttachmentOpenOriginalDirectory,
 	operationAttachmentOpenFolder,
@@ -160,7 +161,7 @@ var attachmentActionSheetOperations = []OperationID{
 // openAttachmentsActionSheet raises the shell-owned sheet over the panel. Every
 // row acts on the panel's cursor rather than on a named entity, so an empty list
 // or a cursor past its end names nothing and the sheet refuses to open.
-func (m *AppModel) openAttachmentsActionSheet(ctx CommandContext, panel *TaskAttachmentsModel) error {
+func (m *AppModel) openAttachmentsActionSheet(ctx operation.CommandContext, panel *TaskAttachmentsModel) error {
 	if !panel.hasSelection() {
 		return errors.New("select an attachment to open actions")
 	}
@@ -198,8 +199,8 @@ func (m *AppModel) openAttachmentsActionSheet(ctx CommandContext, panel *TaskAtt
 // validateAttachmentOperationOnePath holds Attachments to the shared one-path
 // rule: a manifested operation is either bound directly and marked DirectOnly or
 // listed in a menu, never both.
-func validateAttachmentOperationOnePath(strategy InputStrategy) error {
-	return validateOperationOnePath(attachmentOperationManifest(), strategy)
+func validateAttachmentOperationOnePath(strategy operation.InputStrategy) error {
+	return operation.ValidateOperationOnePath(attachmentOperationManifest(), strategy)
 }
 
 // registerAttachmentOperations installs the panel's vocabulary. Every binding
@@ -210,7 +211,7 @@ func validateAttachmentOperationOnePath(strategy InputStrategy) error {
 func (m *AppModel) registerAttachmentOperations() error {
 	for _, descriptor := range attachmentOperationDescriptors() {
 		if err := m.registerOperation(descriptor, OperationBinding{
-			RequiredCapabilities:     NewCapabilitySet(CapabilityAttachmentsPanel),
+			RequiredCapabilities:     operation.NewCapabilitySet(operation.CapabilityAttachmentsPanel),
 			Handler:                  m.executeAttachmentOperation,
 			DelegateTargetResolution: true,
 			DelegateValueProvider:    true,

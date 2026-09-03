@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // searchHistoryOutliner builds a scoped Outliner with the slash input open,
@@ -233,7 +234,7 @@ func TestSearchHistoryBindsNoRootKey(t *testing.T) {
 			if key != "up" && key != "down" {
 				continue
 			}
-			if binding.OperationID != operationCoreCursorUp && binding.OperationID != operationCoreCursorDown {
+			if binding.OperationID != operation.OperationCoreCursorUp && binding.OperationID != operation.OperationCoreCursorDown {
 				t.Fatalf("root %q is bound to %q, want the cursor operations alone", key, binding.OperationID)
 			}
 		}

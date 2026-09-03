@@ -3,10 +3,12 @@ package tui
 import (
 	"slices"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 func helpSmartCaseModel() *HelpViewModel {
-	return NewHelpViewModel([]HelpItem{
+	return NewHelpViewModel([]operation.HelpItem{
 		{Key: "P", Description: "Pin task", Category: "Actions"},
 		{Key: "p", Description: "insert below", Category: "Actions"},
 		{Key: "x", Description: "remove task", Category: "Actions"},

@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -151,7 +152,7 @@ func TestReferencePickerPreservesConcurrentReferenceChanges(t *testing.T) {
 				model.handleOperationOverlayMessage(cmd())
 			}
 			picker := model.operationValuePicker
-			if picker == nil || picker.provider != ValueProviderTaskReference {
+			if picker == nil || picker.provider != operation.ValueProviderTaskReference {
 				t.Fatalf("~ did not open the reference picker: %#v", picker)
 			}
 
@@ -191,7 +192,7 @@ func TestReferencePickerPreservesConcurrentReferenceChanges(t *testing.T) {
 			if !ok {
 				t.Fatalf("Enter emitted %T, want a value selection", msg)
 			}
-			value, ok := selected.Value.(OperationTaskReferenceValue)
+			value, ok := selected.Value.(operation.OperationTaskReferenceValue)
 			if !ok {
 				t.Fatalf("the picker emitted %T, want the reference difference", selected.Value)
 			}

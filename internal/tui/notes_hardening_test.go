@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 func TestNotesWorkspaceRefreshRebuildsOwnersAndRejectsStalePickerResults(t *testing.T) {
@@ -429,7 +430,7 @@ func TestNotesHelpDocumentsTheWorkspaceManager(t *testing.T) {
 	// to the Outliner. Delete is absent because the Space sheet is its one path,
 	// and the two end rows carry the strategy's own spellings rather than the
 	// single physical key each keymap entry binds.
-	want := []HelpItem{
+	want := []operation.HelpItem{
 		{Key: "Enter", Description: "Open note", Category: "Notes"},
 		{Key: "a", Description: "New note", Category: "Notes"},
 		{Key: "e", Description: "Rename note", Category: "Notes"},

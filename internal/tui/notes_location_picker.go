@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 type notesLocationPickerPurpose uint8
@@ -245,7 +246,7 @@ func (picker *notesLocationPicker) guidanceSpec() (chrome.GuidanceSpec, bool) {
 	return spec, true
 }
 
-func (picker *notesLocationPicker) GetHelpItems() []HelpItem {
+func (picker *notesLocationPicker) GetHelpItems() []operation.HelpItem {
 	selectionDescription := "Apply Notes scope"
 	switch picker.purpose {
 	case notesLocationPickerCreation:
@@ -254,7 +255,7 @@ func (picker *notesLocationPicker) GetHelpItems() []HelpItem {
 		selectionDescription = "Move note immediately"
 	case notesLocationPickerScope:
 	}
-	return []HelpItem{
+	return []operation.HelpItem{
 		{Key: "↑/↓", Description: "Move selection", Category: "Navigation"},
 		{Key: "Ctrl+J/K", Description: "Move selection", Category: "Navigation"},
 		{Key: "type", Description: "Filter locations", Category: "Filters"},

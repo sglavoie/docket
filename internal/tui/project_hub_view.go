@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/workspace"
@@ -146,12 +147,12 @@ func (m *ProjectHubModel) StatusBarLabel() string { return "Projects" }
 // the cursor and unwind keys whose descriptors answer only to the Outliner.
 // Ctrl+T is in both because the footer needs its cycling label, so the merge
 // keeps the registry's spelling and drops the keymap's duplicate.
-func (m *ProjectHubModel) GetHelpItems() []HelpItem {
+func (m *ProjectHubModel) GetHelpItems() []operation.HelpItem {
 	if m.registry == nil {
 		return nil
 	}
 	items := m.registry.HelpItemsForInputStrategy(
-		InputStrategyProjectHub,
+		operation.InputStrategyProjectHub,
 		m.projectHubCommandContext(m.cursorProjectID()),
 	)
 	documented := make(map[string]bool, len(items))
@@ -191,48 +192,48 @@ func (m *ProjectHubModel) RefreshProjectHub() {
 // projectHubOperationDescriptors declares everything the Hub grammar reaches
 // that no project row carries: creating a project, and the list vocabulary the
 // surface applies to its own cursor, query, and selection.
-func projectHubOperationDescriptors() []OperationDescriptor {
+func projectHubOperationDescriptors() []operation.OperationDescriptor {
 	surface := func(
-		id OperationID,
+		id operation.OperationID,
 		label string,
-		category OperationCategory,
-		risk OperationRisk,
+		category operation.OperationCategory,
+		risk operation.OperationRisk,
 		aliases ...string,
-	) OperationDescriptor {
-		return OperationDescriptor{
+	) operation.OperationDescriptor {
+		return operation.OperationDescriptor{
 			ID:                   id,
 			Label:                label,
 			Aliases:              aliases,
 			Category:             category,
-			TargetSource:         OperationTargetGlobal,
-			TargetCardinality:    TargetCardinalityNone,
-			RequiredCapabilities: NewCapabilitySet(CapabilityProjectHub),
+			TargetSource:         operation.OperationTargetGlobal,
+			TargetCardinality:    operation.TargetCardinalityNone,
+			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilityProjectHub),
 			Risk:                 risk,
 		}
 	}
 	// needsRow gates the vocabulary that only means something against a project
 	// row. Search and the task filter stay ungated because either can empty the
 	// list and is then the only way back.
-	needsRow := func(descriptor OperationDescriptor) OperationDescriptor {
+	needsRow := func(descriptor operation.OperationDescriptor) operation.OperationDescriptor {
 		descriptor.Applicability = projectOperationApplicable
 		return descriptor
 	}
-	return []OperationDescriptor{
-		surface(operationScopeCreateProject, "New project", OperationCategoryProject, OperationRiskMutation, "create project"),
-		surface(operationProjectHubSearch, "Search projects", OperationCategoryFilter, OperationRiskReadOnly, "filter the project list"),
-		needsRow(surface(operationProjectHubToggleSelection, "Select project", OperationCategoryProject, OperationRiskReadOnly, "toggle project selection")),
-		needsRow(surface(operationProjectHubSelectAll, "Select every matching project", OperationCategoryProject, OperationRiskReadOnly, "select all projects")),
-		needsRow(surface(operationProjectHubActions, "Project actions", OperationCategoryProject, OperationRiskReadOnly, "project action sheet")),
-		surface(operationProjectHubTaskFilter, "Cycle every project, only those holding open tasks, only those holding none open", OperationCategoryFilter, OperationRiskReadOnly, "projects holding open tasks", "projects holding no open tasks"),
-		needsRow(surface(operationProjectHubPreviewPageDown, "Page project tasks down", OperationCategoryNavigation, OperationRiskReadOnly, "scroll project preview down")),
-		needsRow(surface(operationProjectHubPreviewPageUp, "Page project tasks up", OperationCategoryNavigation, OperationRiskReadOnly, "scroll project preview up")),
+	return []operation.OperationDescriptor{
+		surface(operationScopeCreateProject, "New project", operation.OperationCategoryProject, operation.OperationRiskMutation, "create project"),
+		surface(operationProjectHubSearch, "Search projects", operation.OperationCategoryFilter, operation.OperationRiskReadOnly, "filter the project list"),
+		needsRow(surface(operationProjectHubToggleSelection, "Select project", operation.OperationCategoryProject, operation.OperationRiskReadOnly, "toggle project selection")),
+		needsRow(surface(operationProjectHubSelectAll, "Select every matching project", operation.OperationCategoryProject, operation.OperationRiskReadOnly, "select all projects")),
+		needsRow(surface(operationProjectHubActions, "Project actions", operation.OperationCategoryProject, operation.OperationRiskReadOnly, "project action sheet")),
+		surface(operationProjectHubTaskFilter, "Cycle every project, only those holding open tasks, only those holding none open", operation.OperationCategoryFilter, operation.OperationRiskReadOnly, "projects holding open tasks", "projects holding no open tasks"),
+		needsRow(surface(operationProjectHubPreviewPageDown, "Page project tasks down", operation.OperationCategoryNavigation, operation.OperationRiskReadOnly, "scroll project preview down")),
+		needsRow(surface(operationProjectHubPreviewPageUp, "Page project tasks up", operation.OperationCategoryNavigation, operation.OperationRiskReadOnly, "scroll project preview up")),
 	}
 }
 
 func (m *AppModel) registerProjectHubOperations() error {
 	for _, descriptor := range projectHubOperationDescriptors() {
 		if err := m.registerOperation(descriptor, OperationBinding{
-			RequiredCapabilities:     NewCapabilitySet(CapabilityProjectHub),
+			RequiredCapabilities:     operation.NewCapabilitySet(operation.CapabilityProjectHub),
 			Handler:                  m.executeProjectHubOperation,
 			DelegateTargetResolution: true,
 			DelegateValueProvider:    true,

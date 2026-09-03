@@ -7,24 +7,25 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 func TestPendingChordStoresHintsExecutesAndClears(t *testing.T) {
 	newChordApp := func(t *testing.T) *AppModel {
 		t.Helper()
 		app := newUITestApp()
-		app.operationRegistry = NewOperationRegistry()
+		app.operationRegistry = operation.NewOperationRegistry()
 		app.operationExecutor = NewOperationExecutor(app.operationRegistry)
 		if err := app.registerCoreInputOperations(); err != nil {
 			t.Fatalf("registerCoreInputOperations: %v", err)
 		}
-		if err := app.operationRegistry.RegisterInputStrategy(InputStrategy{
-			ID: InputStrategySimplified,
-			Bindings: []OperationKeyBinding{
-				{OperationID: operationCoreCapture, Keys: []string{"a"}},
-				{OperationID: operationCoreHelp, Sequence: []string{",", "h"}, HintLabel: "help"},
+		if err := app.operationRegistry.RegisterInputStrategy(operation.InputStrategy{
+			ID: operation.InputStrategySimplified,
+			Bindings: []operation.OperationKeyBinding{
+				{OperationID: operation.OperationCoreCapture, Keys: []string{"a"}},
+				{OperationID: operation.OperationCoreHelp, Sequence: []string{",", "h"}, HintLabel: "help"},
 			},
-			ChordGroups: []OperationChordGroup{{Sequence: []string{","}, HintLabel: "state"}},
+			ChordGroups: []operation.OperationChordGroup{{Sequence: []string{","}, HintLabel: "state"}},
 		}); err != nil {
 			t.Fatalf("RegisterInputStrategy: %v", err)
 		}
@@ -85,7 +86,7 @@ func TestPendingChordStoresHintsExecutesAndClears(t *testing.T) {
 
 func TestSimplifiedDispatchConsumesLegacyKeysAndDefersInlineSearch(t *testing.T) {
 	app := newUITestApp()
-	app.operationRegistry = NewOperationRegistry()
+	app.operationRegistry = operation.NewOperationRegistry()
 	app.operationExecutor = NewOperationExecutor(app.operationRegistry)
 	if err := app.registerCoreInputOperations(); err != nil {
 		t.Fatalf("registerCoreInputOperations: %v", err)
@@ -138,7 +139,7 @@ func TestSimplifiedDispatchConsumesLegacyKeysAndDefersInlineSearch(t *testing.T)
 
 func TestSimplifiedHelpContainsNoRetiredShortcutAliases(t *testing.T) {
 	registry := registeredSimplifiedOperationRegistry(t)
-	items := registry.HelpItemsForInputStrategy(InputStrategySimplified, simplifiedOperationContext())
+	items := registry.HelpItemsForInputStrategy(operation.InputStrategySimplified, simplifiedOperationContext())
 	keys := make(map[string]bool, len(items))
 	for _, item := range items {
 		keys[item.Key] = true

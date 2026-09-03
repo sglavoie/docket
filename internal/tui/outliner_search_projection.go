@@ -195,7 +195,7 @@ func (m *OutlinerModel) exitSearchOntoCursorTask() (string, bool) {
 	if !m.showsRankedList() {
 		return "", true
 	}
-	identity := m.currentTaskIdentity()
+	identity := m.CurrentTaskIdentity()
 	m.ClearSearch()
 	if !identity.Valid() || m.landOnSearchResult(identity) {
 		return "", true

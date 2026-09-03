@@ -3,6 +3,8 @@ package tui
 import (
 	"fmt"
 	"slices"
+
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // SelectCurrent stores the enabled cursor item. Single selection replaces the
@@ -153,7 +155,7 @@ func (model *ListSurfaceModel) ActionState() ListActionState {
 		}
 	}
 
-	state.OperationIDs = append([]OperationID(nil), items[0].OperationIDs...)
+	state.OperationIDs = append([]operation.OperationID(nil), items[0].OperationIDs...)
 	for _, item := range items[1:] {
 		state.OperationIDs = intersectOperationIDs(state.OperationIDs, item.OperationIDs)
 	}

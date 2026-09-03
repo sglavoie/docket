@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -154,15 +155,15 @@ func TestOpenNoteIsTheFourthEnterActOnANoteRow(t *testing.T) {
 	}
 
 	registry := model.GetOperationRegistry()
-	binding, _, ok := registry.InputBindingForKey(InputStrategySimplified, "enter", ctx)
-	if !ok || binding.OperationID != operationCoreOpenNote {
+	binding, _, ok := registry.InputBindingForKey(operation.InputStrategySimplified, "enter", ctx)
+	if !ok || binding.OperationID != operation.OperationCoreOpenNote {
 		t.Fatalf("note row Enter = %s available=%t, want %s",
-			binding.OperationID, ok, operationCoreOpenNote)
+			binding.OperationID, ok, operation.OperationCoreOpenNote)
 	}
 	// The three acts that read an entity must all refuse, or the shared key
 	// would resolve by declaration order rather than by cursor.
-	for _, id := range []OperationID{
-		operationCoreFocusSubtree, operationCoreZoomSection, operationCoreActivateGroup,
+	for _, id := range []operation.OperationID{
+		operation.OperationCoreFocusSubtree, operation.OperationCoreZoomSection, operation.OperationCoreActivateGroup,
 	} {
 		descriptor, found := registry.Descriptor(id)
 		if !found {
@@ -173,7 +174,7 @@ func TestOpenNoteIsTheFourthEnterActOnANoteRow(t *testing.T) {
 		}
 	}
 
-	descriptor, found := registry.Descriptor(operationCoreOpenNote)
+	descriptor, found := registry.Descriptor(operation.OperationCoreOpenNote)
 	if !found {
 		t.Fatal("Open Note is not registered")
 	}

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -13,15 +14,15 @@ import (
 // operation_target_context.go, so the two contexts cannot disagree about what a
 // row is.
 
-func (m *OutlinerModel) operationCommandContext() CommandContext {
+func (m *OutlinerModel) operationCommandContext() operation.CommandContext {
 	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
-	ctx.Capabilities.Add(CapabilitySimplifiedInput)
+	ctx.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	task, project := m.getTaskRef()
 	header := m.cursorProjectHeaderProject()
 	if checklist, onChecklistRow := m.cursorChecklistItem(); onChecklistRow {
 		ctx.Entity = checklistOperationEntity(checklist)
 	} else if task != nil && project != nil {
-		ctx.Entity = EntityContext{
+		ctx.Entity = operation.EntityContext{
 			ProjectID: project.ID,
 			TaskID:    task.ID,
 			Archived:  project.Archived,
@@ -45,8 +46,8 @@ func (m *OutlinerModel) operationCommandContext() CommandContext {
 	ctx.Selection.VisibleCount = counts.Visible
 	ctx.Selection.HiddenCount = counts.Hidden
 	ctx.Selection.Entities = m.operationSelectionEntities(ctx.Selection.Tasks)
-	ctx.Selection.EntityIdentities = taskEntityIdentities(ctx.Selection.Tasks)
-	ctx.CurrentEntity = commandContextCurrentEntity(ctx.Entity)
+	ctx.Selection.EntityIdentities = operation.TaskEntityIdentities(ctx.Selection.Tasks)
+	ctx.CurrentEntity = operation.CommandContextCurrentEntity(ctx.Entity)
 	projects := m.scopeProjects()
 	ctx.ScopeProjectIDs = make([]string, 0, len(projects))
 	for _, project := range projects {
@@ -54,13 +55,13 @@ func (m *OutlinerModel) operationCommandContext() CommandContext {
 			ctx.ScopeProjectIDs = append(ctx.ScopeProjectIDs, project.ID)
 		}
 	}
-	ctx.ScopeProjectIDs = normalizedProjectIDs(ctx.ScopeProjectIDs)
+	ctx.ScopeProjectIDs = operation.NormalizedProjectIDs(ctx.ScopeProjectIDs)
 	return ctx
 }
 
-func (m *OutlinerModel) operationSelectionEntities(identities []taskref.TaskIdentity) []EntityContext {
-	normalized := normalizedTaskIdentities(identities)
-	entities := make([]EntityContext, 0, len(normalized))
+func (m *OutlinerModel) operationSelectionEntities(identities []taskref.TaskIdentity) []operation.EntityContext {
+	normalized := operation.NormalizedTaskIdentities(identities)
+	entities := make([]operation.EntityContext, 0, len(normalized))
 	for _, identity := range normalized {
 		task, project := m.taskAndProjectForIdentity(identity)
 		if task == nil || project == nil {

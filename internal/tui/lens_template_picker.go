@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // lensTemplatePickerPrefix namespaces the gallery's row IDs. The row identity is
@@ -33,7 +34,7 @@ func (m *AppModel) newLensTemplatePicker(
 	}
 	return newOperationValuePickerModel(
 		request,
-		ValueProviderLensTemplate,
+		operation.ValueProviderLensTemplate,
 		lensTemplatePickerTitle,
 		lensTemplatePickerSubtitle,
 		lensTemplateListSource(m.runtime.Machine()),

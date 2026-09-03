@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -16,12 +17,12 @@ import (
 
 func TestStateValueProviderAcceptsOnlyCanonicalPresets(t *testing.T) {
 	for _, state := range models.AllWorkflowStates() {
-		if !ValueProviderState.acceptsPresetValue(state) {
+		if !operation.ValueProviderState.AcceptsPresetValue(state) {
 			t.Errorf("canonical state preset %q was rejected", state)
 		}
 	}
 	for _, retired := range []models.WorkflowState{"ready", "next", "in_progress", "review"} {
-		if ValueProviderState.acceptsPresetValue(retired) {
+		if operation.ValueProviderState.AcceptsPresetValue(retired) {
 			t.Errorf("retired state preset %q was accepted", retired)
 		}
 	}
@@ -65,7 +66,7 @@ func newOperationTagPickerForTest(t *testing.T, tags ...string) *OperationValueP
 	}
 	picker, err := newOperationValuePickerModel(
 		OperationExecutionRequest{ID: operationTaskSetTags},
-		ValueProviderTags,
+		operation.ValueProviderTags,
 		"Set Tags",
 		"Task",
 		source,
@@ -184,9 +185,9 @@ func TestBulkOperationTagPickerCreatesAndPromotesTagsAsAddPatch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("selectedValue: %v", err)
 	}
-	patch, ok := value.(OperationTagsValue)
+	patch, ok := value.(operation.OperationTagsValue)
 	if !ok {
-		t.Fatalf("tag value = %T, want OperationTagsValue", value)
+		t.Fatalf("tag value = %T, want operation.OperationTagsValue", value)
 	}
 	if !reflect.DeepEqual(patch.Add, []string{"fresh", "partial"}) || len(patch.Remove) != 0 {
 		t.Fatalf("tag patch = %+v, want add fresh and partial only", patch)
@@ -213,9 +214,9 @@ func TestBulkOperationTagPickerKeepsSemanticTagsIndependent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("selectedValue: %v", err)
 	}
-	patch, ok := value.(OperationTagsValue)
+	patch, ok := value.(operation.OperationTagsValue)
 	if !ok {
-		t.Fatalf("tag value = %T, want OperationTagsValue", value)
+		t.Fatalf("tag value = %T, want operation.OperationTagsValue", value)
 	}
 	if !reflect.DeepEqual(patch.Add, []string{"idea"}) || len(patch.Remove) != 0 {
 		t.Fatalf("tag patch = %+v, want add idea without implicit removals", patch)
@@ -232,7 +233,7 @@ func TestOperationValuePickerMultiSelectionReturnsStableValues(t *testing.T) {
 	}}
 	picker, err := newOperationValuePickerModel(
 		OperationExecutionRequest{ID: operationTaskSetTags},
-		ValueProviderTags,
+		operation.ValueProviderTags,
 		"Set Tags",
 		"Task",
 		source,
@@ -261,7 +262,7 @@ func TestBulkTagPickerRepresentsAllSomeNoneAndEmitsPatch(t *testing.T) {
 	env := newAppBulkPickerEnv(t, []*models.Task{common}, []*models.Task{other})
 	model := env.appModel()
 	context := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
-	context.Capabilities.Add(CapabilitySimplifiedInput)
+	context.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	context.Selection.Visual = true
 	for index, task := range []*models.Task{common, other} {
 		project := env.projects[index]
@@ -273,7 +274,7 @@ func TestBulkTagPickerRepresentsAllSomeNoneAndEmitsPatch(t *testing.T) {
 		ID:      operationTaskSetTags,
 		Context: context,
 	}
-	picker, err := model.newOperationValuePicker(request, ValueProviderTags)
+	picker, err := model.newOperationValuePicker(request, operation.ValueProviderTags)
 	if err != nil {
 		t.Fatalf("newOperationValuePicker: %v", err)
 	}
@@ -308,9 +309,9 @@ func TestBulkTagPickerRepresentsAllSomeNoneAndEmitsPatch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("selectedValue: %v", err)
 	}
-	patch, ok := value.(OperationTagsValue)
+	patch, ok := value.(operation.OperationTagsValue)
 	if !ok {
-		t.Fatalf("tag value = %T, want OperationTagsValue", value)
+		t.Fatalf("tag value = %T, want operation.OperationTagsValue", value)
 	}
 	if !reflect.DeepEqual(patch.Add, []string{"first-only"}) ||
 		!reflect.DeepEqual(patch.Remove, []string{"common"}) {
@@ -331,7 +332,7 @@ func TestBulkContextRowsReadIndeterminateAndWriteOnlyWhenPicked(t *testing.T) {
 	env := newAppBulkPickerEnv(t, []*models.Task{first}, []*models.Task{second})
 	model := env.appModel()
 	context := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
-	context.Capabilities.Add(CapabilitySimplifiedInput)
+	context.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	context.Selection.Visual = true
 	for index, task := range []*models.Task{first, second} {
 		project := env.projects[index]
@@ -341,7 +342,7 @@ func TestBulkContextRowsReadIndeterminateAndWriteOnlyWhenPicked(t *testing.T) {
 	context.Entity = context.Selection.Entities[0]
 	picker, err := model.newOperationValuePicker(
 		OperationExecutionRequest{ID: operationTaskSetTags, Context: context},
-		ValueProviderTags,
+		operation.ValueProviderTags,
 	)
 	if err != nil {
 		t.Fatalf("newOperationValuePicker: %v", err)
@@ -362,9 +363,9 @@ func TestBulkContextRowsReadIndeterminateAndWriteOnlyWhenPicked(t *testing.T) {
 	if err != nil {
 		t.Fatalf("selectedValue: %v", err)
 	}
-	patch, ok := value.(OperationTagsValue)
+	patch, ok := value.(operation.OperationTagsValue)
 	if !ok {
-		t.Fatalf("tag value = %T, want OperationTagsValue", value)
+		t.Fatalf("tag value = %T, want operation.OperationTagsValue", value)
 	}
 	if patch.ContextSet {
 		t.Fatalf("untouched disagreeing contexts wrote %+v, want no context write", patch)
@@ -384,9 +385,9 @@ func TestBulkContextRowsReadIndeterminateAndWriteOnlyWhenPicked(t *testing.T) {
 	if err != nil {
 		t.Fatalf("selectedValue after clear: %v", err)
 	}
-	patch, ok = value.(OperationTagsValue)
+	patch, ok = value.(operation.OperationTagsValue)
 	if !ok {
-		t.Fatalf("tag value = %T, want OperationTagsValue", value)
+		t.Fatalf("tag value = %T, want operation.OperationTagsValue", value)
 	}
 	if !patch.ContextSet || patch.Context != "" {
 		t.Fatalf("No context patch = %+v, want ContextSet with an empty context", patch)

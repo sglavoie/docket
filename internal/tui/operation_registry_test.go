@@ -5,21 +5,22 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
-func operationTestDescriptor(id, label string) OperationDescriptor {
-	return OperationDescriptor{
-		ID:                OperationID(id),
+func operationTestDescriptor(id, label string) operation.OperationDescriptor {
+	return operation.OperationDescriptor{
+		ID:                operation.OperationID(id),
 		Label:             label,
-		Category:          OperationCategoryTask,
-		TargetCardinality: TargetCardinalityOne,
-		Risk:              OperationRiskMutation,
+		Category:          operation.OperationCategoryTask,
+		TargetCardinality: operation.TargetCardinalityOne,
+		Risk:              operation.OperationRiskMutation,
 	}
 }
 
 func TestOperationRegistryRejectsDuplicateIDsAndUnconditionalShortcutCollisions(t *testing.T) {
-	registry := NewOperationRegistry()
+	registry := operation.NewOperationRegistry()
 	first := operationTestDescriptor("task.edit", "Edit task")
 	first.DirectKey = "e"
 	if err := registry.Register(first); err != nil {
@@ -42,11 +43,11 @@ func TestOperationRegistryRejectsDuplicateIDsAndUnconditionalShortcutCollisions(
 
 	projectOnly := operationTestDescriptor("project.edit", "Edit project")
 	projectOnly.DirectKey = "e"
-	projectOnly.RequiredCapabilities = NewCapabilitySet(CapabilityProjectScope)
+	projectOnly.RequiredCapabilities = operation.NewCapabilitySet(operation.CapabilityProjectScope)
 	taskOnly := operationTestDescriptor("task.edit-detail", "Edit task detail")
 	taskOnly.DirectKey = "e"
-	taskOnly.RequiredCapabilities = NewCapabilitySet(CapabilityTaskScope)
-	scoped := NewOperationRegistry()
+	taskOnly.RequiredCapabilities = operation.NewCapabilitySet(operation.CapabilityTaskScope)
+	scoped := operation.NewOperationRegistry()
 	if err := scoped.Register(projectOnly); err != nil {
 		t.Fatalf("Register project-only: %v", err)
 	}
@@ -56,15 +57,15 @@ func TestOperationRegistryRejectsDuplicateIDsAndUnconditionalShortcutCollisions(
 }
 
 func TestOperationRegistryDetectsPredicateCollisionInActiveContext(t *testing.T) {
-	registry := NewOperationRegistry()
+	registry := operation.NewOperationRegistry()
 	ready := operationTestDescriptor("task.ready", "Ready task action")
 	ready.DirectKey = "x"
-	ready.Applicability = func(ctx CommandContext) bool {
+	ready.Applicability = func(ctx operation.CommandContext) bool {
 		return ctx.Entity.TaskID == "ready" || ctx.Entity.TaskID == "both"
 	}
 	inbox := operationTestDescriptor("task.inbox", "Inbox task action")
 	inbox.DirectKey = "x"
-	inbox.Applicability = func(ctx CommandContext) bool {
+	inbox.Applicability = func(ctx operation.CommandContext) bool {
 		return ctx.Entity.TaskID == "inbox" || ctx.Entity.TaskID == "both"
 	}
 	if err := registry.Register(ready); err != nil {
@@ -88,21 +89,21 @@ func TestOperationRegistryDetectsPredicateCollisionInActiveContext(t *testing.T)
 }
 
 func TestOperationRegistryOrderingAndCopiesAreDeterministic(t *testing.T) {
-	registry := NewOperationRegistry()
-	descriptors := []OperationDescriptor{
+	registry := operation.NewOperationRegistry()
+	descriptors := []operation.OperationDescriptor{
 		{
-			ID: "navigation.back", Label: "Back", Category: OperationCategoryNavigation,
-			TargetCardinality: TargetCardinalityNone, Risk: OperationRiskReadOnly,
+			ID: "navigation.back", Label: "Back", Category: operation.OperationCategoryNavigation,
+			TargetCardinality: operation.TargetCardinalityNone, Risk: operation.OperationRiskReadOnly,
 		},
 		{
-			ID: "task.start", Label: "Start", Category: OperationCategoryTask,
+			ID: "task.start", Label: "Start", Category: operation.OperationCategoryTask,
 			Aliases:           []string{"begin", "Begin", " start "},
-			TargetCardinality: TargetCardinalityOne, Risk: OperationRiskMutation,
-			RequiredCapabilities: NewCapabilitySet(CapabilityTaskScope),
+			TargetCardinality: operation.TargetCardinalityOne, Risk: operation.OperationRiskMutation,
+			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilityTaskScope),
 		},
 		{
-			ID: "task.edit", Label: "Edit", Category: OperationCategoryTask,
-			TargetCardinality: TargetCardinalityOne, Risk: OperationRiskMutation,
+			ID: "task.edit", Label: "Edit", Category: operation.OperationCategoryTask,
+			TargetCardinality: operation.TargetCardinalityOne, Risk: operation.OperationRiskMutation,
 		},
 	}
 	for _, descriptor := range descriptors {
@@ -113,8 +114,8 @@ func TestOperationRegistryOrderingAndCopiesAreDeterministic(t *testing.T) {
 
 	first := registry.All()
 	second := registry.All()
-	gotIDs := []OperationID{first[0].ID, first[1].ID, first[2].ID}
-	wantIDs := []OperationID{"task.edit", "task.start", "navigation.back"}
+	gotIDs := []operation.OperationID{first[0].ID, first[1].ID, first[2].ID}
+	wantIDs := []operation.OperationID{"task.edit", "task.start", "navigation.back"}
 	if !slices.Equal(gotIDs, wantIDs) {
 		t.Fatalf("ordered IDs = %v, want %v", gotIDs, wantIDs)
 	}
@@ -122,8 +123,8 @@ func TestOperationRegistryOrderingAndCopiesAreDeterministic(t *testing.T) {
 		t.Fatalf("normalized aliases = %v, want [begin]", first[1].Aliases)
 	}
 	first[1].Aliases[0] = "mutated"
-	first[1].RequiredCapabilities.Add(CapabilityAppScope)
-	if second[1].Aliases[0] != "begin" || second[1].RequiredCapabilities.Has(CapabilityAppScope) {
+	first[1].RequiredCapabilities.Add(operation.CapabilityAppScope)
+	if second[1].Aliases[0] != "begin" || second[1].RequiredCapabilities.Has(operation.CapabilityAppScope) {
 		t.Fatal("All returned aliases or capabilities backed by mutable registry storage")
 	}
 }

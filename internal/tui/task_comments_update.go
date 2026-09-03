@@ -6,6 +6,7 @@ import (
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -218,16 +219,16 @@ func (m *TaskCommentsModel) dispatchCommentsKey(key string) tea.Cmd {
 	if m.dispatch == nil {
 		return nil
 	}
-	_, cmd := m.dispatch(InputStrategyComments, []string{key}, m.commentsCommandContext())
+	_, cmd := m.dispatch(operation.InputStrategyComments, []string{key}, m.commentsCommandContext())
 	return cmd
 }
 
 // commentsCommandContext names the panel rather than a comment: a comment
 // carries no entity identity, so the cursor the handler reads is the only thing
 // that says which one an operation means.
-func (m *TaskCommentsModel) commentsCommandContext() CommandContext {
+func (m *TaskCommentsModel) commentsCommandContext() operation.CommandContext {
 	ctx := PresentationCommandContext(presentation.ViewTaskComments)
-	ctx.Capabilities.Add(CapabilityCommentsPanel)
+	ctx.Capabilities.Add(operation.CapabilityCommentsPanel)
 	return ctx
 }
 

@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -82,7 +83,7 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),
 		today:             []PlanningTask{},
 		todayIDs:          make(map[taskref.TaskIdentity]bool),
-		operationRegistry: NewOperationRegistry(),
+		operationRegistry: operation.NewOperationRegistry(),
 		navigation:        NewNavigationState(),
 	}
 	m.operationExecutor = NewOperationExecutor(m.operationRegistry)

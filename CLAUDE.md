@@ -107,7 +107,7 @@ five live strategies. A footer has one source: the strategy's ranks, or the
 gated keymap where modal sub-states narrow a key.
 
 An entity operation is direct-only or menu-only, never both, in that surface's
-entity action sheet, enforced by `validateOperationOnePath` over its manifest.
+entity action sheet, enforced by `ValidateOperationOnePath` over its manifest.
 That scope is the whole rule: the sheet is where a second route to an existing
 key earns nothing. The menu bar is not a sheet but a projection of the registry,
 the class `?` help and the footer ranks belong to, so it names directly-bound
@@ -215,8 +215,8 @@ to all three `renderFooterChrome` dividers and keep the strip divider outside.
 The interactive TUI ignores an inherited `NO_COLOR`; `--no-color` still
 disables color, and non-interactive commands honor it.
 
-A value provider is exactly one of `textEntry()` (a separate overlay),
-`tagEntry()` or `dateEntry()` (inline add modes), or a plain list. A value the
+A value provider is exactly one of `TextEntry()` (a separate overlay),
+`TagEntry()` or `DateEntry()` (inline add modes), or a plain list. A value the
 presets cannot express belongs in an inline mode on that picker, never a
 standalone form. `@` is the one date picker over both fields, so the cursor's
 defer section, not a provider method, lets `+Nh` parse.
@@ -290,7 +290,7 @@ section, project, and task axes; `P` is Select Project; `Ctrl+P` selects pinned;
 pinned is `f*`, references are `f~`, review is `f=`, and the letters `fp` and
 `fr` stay retired. A picker row is the canonical
 token it writes — the `f@` five are `@overdue`, `@today`, `@week`, `@0`,
-`?deferred` — and `acceptsPresetValue` refuses a binding naming any other
+`?deferred` — and `AcceptsPresetValue` refuses a binding naming any other
 spelling, so a picker mints no vocabulary of its own.
 
 `gp` forces All, not the origin mode, and its scope push must precede the mode

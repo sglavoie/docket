@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 func TestLensPickerCreateClosesEveryOverlayAndLeavesTheNewLensActive(t *testing.T) {
@@ -115,8 +116,8 @@ func TestLensPickerEnterOnTheAddRowOpensTheGalleryOverThePicker(t *testing.T) {
 	if model.operationValuePicker == nil {
 		t.Fatal("Enter on the add row raised no gallery")
 	}
-	if got := model.operationValuePicker.provider; got != ValueProviderLensTemplate {
-		t.Errorf("gallery provider = %q, want %q", got, ValueProviderLensTemplate)
+	if got := model.operationValuePicker.provider; got != operation.ValueProviderLensTemplate {
+		t.Errorf("gallery provider = %q, want %q", got, operation.ValueProviderLensTemplate)
 	}
 	if model.lensPicker == nil {
 		t.Error("the main picker must stay mounted beneath the gallery")

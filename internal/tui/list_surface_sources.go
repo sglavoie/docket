@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -48,7 +49,7 @@ func ListSourceFromPickerItems[T PickerItem](items []T, showCounts bool) ListSou
 		}
 		if operations, ok := any(item).(ListSurfaceOperationPickerItem); ok {
 			adaptedItem.OperationIDs = append(
-				[]OperationID(nil),
+				[]operation.OperationID(nil),
 				operations.ListSurfaceOperationIDs()...,
 			)
 		}

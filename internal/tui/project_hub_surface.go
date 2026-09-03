@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 func (m *ProjectHubModel) rebuildProjectSurface(prefer ListItemID) {
@@ -102,7 +103,7 @@ func (m *ProjectHubModel) projectHubItems() []ListItem {
 			SecondaryText: m.projectSecondary(project),
 			Aliases:       projectHubAliases(project, "active project"),
 			Preview:       m.projectPreview(project, false),
-			OperationIDs: append([]OperationID{
+			OperationIDs: append([]operation.OperationID{
 				operationScopeArchiveProject,
 			}, projectBulkOperations...),
 			Data: projectHubEntry{Kind: projectHubEntryActive, Project: project},
@@ -123,7 +124,7 @@ func (m *ProjectHubModel) projectHubItems() []ListItem {
 			SecondaryText: strings.TrimSuffix("archived · "+projectTagChips(project.Tags), " · "),
 			Aliases:       projectHubAliases(project, "archived project"),
 			Preview:       m.projectPreview(project, true),
-			OperationIDs: []OperationID{
+			OperationIDs: []operation.OperationID{
 				operationScopeRestoreProject,
 			},
 			Data: projectHubEntry{Kind: projectHubEntryArchived, Project: project},

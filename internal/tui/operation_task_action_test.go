@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -37,9 +38,9 @@ func newTaskStructureTestProject() *models.Project {
 	return project
 }
 
-func taskOperationTestContext(task *models.Task, project *models.Project) CommandContext {
+func taskOperationTestContext(task *models.Task, project *models.Project) operation.CommandContext {
 	context := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
-	context.Capabilities.Add(CapabilitySimplifiedInput)
+	context.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	context.Entity = taskOperationEntity(task, project)
 	return context
 }
@@ -47,7 +48,7 @@ func taskOperationTestContext(task *models.Task, project *models.Project) Comman
 func taskOperationApplicable(
 	t *testing.T,
 	model *AppModel,
-	id OperationID,
+	id operation.OperationID,
 	task *models.Task,
 	project *models.Project,
 ) bool {
@@ -66,7 +67,7 @@ func TestDirectIndentAndOutdentRemainResolvableAcrossHierarchyPositions(t *testi
 
 	for _, testCase := range []struct {
 		taskID string
-		id     OperationID
+		id     operation.OperationID
 		want   bool
 	}{
 		{taskID: "loose", id: operationTaskIndent, want: true},
@@ -94,7 +95,7 @@ func TestTaskOperationManifestOrdersTheSingleTaskActionSheet(t *testing.T) {
 		model.operationRegistry,
 		taskOperationTestContext(loose, project),
 	)
-	ordered := make([]OperationID, 0, len(descriptors))
+	ordered := make([]operation.OperationID, 0, len(descriptors))
 	for _, descriptor := range descriptors {
 		if _, manifested := taskOperationManifestEntryFor(descriptor.ID); manifested {
 			ordered = append(ordered, descriptor.ID)
@@ -102,13 +103,13 @@ func TestTaskOperationManifestOrdersTheSingleTaskActionSheet(t *testing.T) {
 	}
 	// Every direct and retired operation is absent. The remaining projection is
 	// the single-row task menu, which Delete alone now occupies.
-	want := []OperationID{
+	want := []operation.OperationID{
 		operationTaskDelete,
 	}
 	if !reflect.DeepEqual(ordered, want) {
 		t.Fatalf("manifest order = %v, want %v", ordered, want)
 	}
-	for _, id := range []OperationID{operationTaskIndent, operationTaskOutdent} {
+	for _, id := range []operation.OperationID{operationTaskIndent, operationTaskOutdent} {
 		descriptor, ok := model.operationRegistry.Descriptor(id)
 		if !ok {
 			t.Fatalf("operation %s is not registered", id)
@@ -119,9 +120,9 @@ func TestTaskOperationManifestOrdersTheSingleTaskActionSheet(t *testing.T) {
 	}
 }
 
-func waitingCheckBackInvocation(id OperationID, value any) OperationInvocation {
+func waitingCheckBackInvocation(id operation.OperationID, value any) OperationInvocation {
 	return OperationInvocation{
-		Descriptor: OperationDescriptor{ID: id},
+		Descriptor: operation.OperationDescriptor{ID: id},
 		Context:    taskActionTestContext(),
 		Value:      value,
 		HasValue:   true,
@@ -152,8 +153,8 @@ func TestWaitingCheckBackStepChainsOnlyTheWaitingMove(t *testing.T) {
 	if request.Request.ID != operationTaskSetDueDate {
 		t.Errorf("follow-on operation = %s, want %s", request.Request.ID, operationTaskSetDueDate)
 	}
-	if request.Provider != ValueProviderDueDate {
-		t.Errorf("follow-on provider = %v, want %v", request.Provider, ValueProviderDueDate)
+	if request.Provider != operation.ValueProviderDueDate {
+		t.Errorf("follow-on provider = %v, want %v", request.Provider, operation.ValueProviderDueDate)
 	}
 
 	unchained := []OperationInvocation{
@@ -177,7 +178,7 @@ func TestWaitingCheckBackStepSuccessKeepsFrozenTargets(t *testing.T) {
 	first := &models.Task{ID: "first"}
 	second := &models.Task{ID: "second"}
 	invocation := OperationInvocation{
-		Descriptor: OperationDescriptor{ID: operationTaskSetState},
+		Descriptor: operation.OperationDescriptor{ID: operationTaskSetState},
 		Context:    bulkTaskActionTestContext(project, first, second),
 		Value:      models.StateWaiting,
 		HasValue:   true,
@@ -215,14 +216,14 @@ func TestWaitingCheckBackStepRejectedMoveOpensNoPicker(t *testing.T) {
 	second := &models.Task{ID: "second"}
 	rejected := func() tea.Msg { return coordinator.TransactionErrorMsg{Err: errors.New("cannot move to waiting")} }
 
-	contexts := map[string]CommandContext{
+	contexts := map[string]operation.CommandContext{
 		"single":   taskActionTestContext(),
 		"multiple": bulkTaskActionTestContext(project, first, second),
 	}
 	for name, context := range contexts {
 		t.Run(name, func(t *testing.T) {
 			chained := withWaitingCheckBackStep(OperationInvocation{
-				Descriptor: OperationDescriptor{ID: operationTaskSetState},
+				Descriptor: operation.OperationDescriptor{ID: operationTaskSetState},
 				Context:    context,
 				Value:      models.StateWaiting,
 				HasValue:   true,

@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 func (m *AppModel) registerProjectBulkOperations() error {
@@ -9,14 +11,14 @@ func (m *AppModel) registerProjectBulkOperations() error {
 		return fmt.Errorf("operation registry and executor are required")
 	}
 	if err := m.operationExecutor.RegisterValueProvider(
-		ValueProviderTagName,
+		operation.ValueProviderTagName,
 		pendingTextValueProvider,
 	); err != nil {
 		return err
 	}
 	for _, descriptor := range projectBulkOperationDescriptors() {
 		if err := m.registerOperation(descriptor, OperationBinding{
-			RequiredCapabilities: NewCapabilitySet(CapabilityProjectHub),
+			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilityProjectHub),
 			BulkHandler:          executeProjectBulkTags,
 			// The replacement tag sets are computed against freshly resolved
 			// projects and committed as one catalog transaction, which already owns
@@ -33,14 +35,14 @@ func (m *AppModel) registerProjectBulkOperations() error {
 
 func executeProjectBulkTags(
 	invocation OperationInvocation,
-	targets []OperationTarget,
+	targets []operation.OperationTarget,
 ) OperationHandlerResult {
 	message := ProjectBulkTagsMsg{
 		ProjectIDs: make([]string, 0, len(targets)),
 		Action:     projectBulkTagActions[invocation.Descriptor.ID],
 	}
 	for _, target := range targets {
-		if target.Entity.Kind != EntityKindProject || target.ProjectID == "" {
+		if target.Entity.Kind != operation.EntityKindProject || target.ProjectID == "" {
 			return OperationHandlerResult{Err: fmt.Errorf(
 				"%s needs project targets, got %s",
 				invocation.Descriptor.Label,

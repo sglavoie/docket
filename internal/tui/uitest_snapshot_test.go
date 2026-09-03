@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // newSnapshotWorkspace builds an isolated workspace preloaded with the rich
@@ -147,7 +148,7 @@ func TestUITestAvailableCommandsFields(t *testing.T) {
 	cmds := driver.availableCommands()
 	var found *UITestCommand
 	for index := range cmds {
-		if cmds[index].ID == string(operationCoreCapture) {
+		if cmds[index].ID == string(operation.OperationCoreCapture) {
 			found = &cmds[index]
 			break
 		}
@@ -167,8 +168,8 @@ func TestUITestAvailableCommandsUsesSimplifiedOperationStrategy(t *testing.T) {
 	app := newUITestApp()
 
 	commands := NewUITestDriver(app, 100, 30).availableCommands()
-	strategy, _ := app.operationRegistry.InputStrategy(InputStrategySimplified)
-	bound := make(map[OperationID]struct{}, len(strategy.Bindings))
+	strategy, _ := app.operationRegistry.InputStrategy(operation.InputStrategySimplified)
+	bound := make(map[operation.OperationID]struct{}, len(strategy.Bindings))
 	for _, binding := range strategy.Bindings {
 		bound[binding.OperationID] = struct{}{}
 	}
@@ -177,14 +178,14 @@ func TestUITestAvailableCommandsUsesSimplifiedOperationStrategy(t *testing.T) {
 		byID[command.ID] = command
 		// A preset family declares one binding per value, so the driver reports one
 		// command per operation instead of one per binding.
-		if _, ok := bound[OperationID(command.ID)]; !ok {
+		if _, ok := bound[operation.OperationID(command.ID)]; !ok {
 			t.Errorf("command %s is not bound by the simplified strategy", command.ID)
 		}
 	}
 	if len(commands) != len(byID) {
 		t.Errorf("available operations = %d, distinct IDs = %d", len(commands), len(byID))
 	}
-	if got := byID[string(operationCoreScopeSearch)].Shortcut; got != "/" {
+	if got := byID[string(operation.OperationCoreScopeSearch)].Shortcut; got != "/" {
 		t.Errorf("scope search shortcut = %q, want /", got)
 	}
 }

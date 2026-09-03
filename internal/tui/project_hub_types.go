@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // ProjectHubMode identifies the population exposed by the Project Hub. All is
@@ -22,7 +23,7 @@ type ShowProjectHubMsg struct {
 
 // The operation ID predates the dedicated Project Hub and remains stable for
 // operation-catalog compatibility.
-const operationScopeCreateProject OperationID = "tui.scope.create-project"
+const operationScopeCreateProject operation.OperationID = "tui.scope.create-project"
 
 const (
 	projectHubCategoryActive   ListCategoryID = "project-hub:active"
@@ -151,7 +152,7 @@ type ProjectHubModel struct {
 	taskCounts       map[string]projectTaskTally
 	surface          *ListSurfaceModel
 	actions          *ContextActionSheetModel
-	registry         *OperationRegistry
+	registry         *operation.OperationRegistry
 	executor         *OperationExecutor
 	dispatch         operationKeyDispatch
 	focusedProjectID string

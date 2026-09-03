@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -183,9 +184,9 @@ func TestDateListItemIDsSeparateTheTwoFields(t *testing.T) {
 			t.Errorf("date list repeats row ID %q", item.ID)
 		}
 		seen[item.ID] = true
-		value, ok := item.Data.(OperationDateValue)
+		value, ok := item.Data.(operation.OperationDateValue)
 		if !ok {
-			t.Fatalf("row %q carries %T, want OperationDateValue", item.ID, item.Data)
+			t.Fatalf("row %q carries %T, want operation.OperationDateValue", item.ID, item.Data)
 		}
 		if value.Deferred {
 			deferredRows++
@@ -208,7 +209,7 @@ func TestDateListItemIDsSeparateTheTwoFields(t *testing.T) {
 func TestTerminalTaskDisablesOnlyTheDeferSection(t *testing.T) {
 	source := operationDateListSource("terminal tasks cannot be deferred")
 	for _, item := range source.Items {
-		value := item.Data.(OperationDateValue)
+		value := item.Data.(operation.OperationDateValue)
 		if value.Deferred == item.Enabled() {
 			t.Errorf("row %q enabled = %v with deferred = %v", item.ID, item.Enabled(), value.Deferred)
 		}

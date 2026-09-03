@@ -2,6 +2,7 @@ package tui
 
 import (
 	"github.com/sglavoie/tt/internal/fuzzy"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // buildSectionCategories returns the sections present in m.items, ordered by the
@@ -54,7 +55,7 @@ func (m *HelpViewModel) filterItems() {
 	if m.activeTab > 0 && m.activeTab <= len(m.categories) {
 		activeLabel := m.categories[m.activeTab-1]
 		source = nil
-		matches := func(item HelpItem) bool { return helpSectionForItem(item) == activeLabel }
+		matches := func(item operation.HelpItem) bool { return helpSectionForItem(item) == activeLabel }
 		for _, item := range m.items {
 			if matches(item) {
 				source = append(source, item)

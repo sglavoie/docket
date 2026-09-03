@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // TestPanelEndKeysReachBothEndsOfTheList holds Notes, Comments, and Attachments
@@ -54,30 +55,30 @@ func TestPanelEndKeysReachBothEndsOfTheList(t *testing.T) {
 func TestEntitySurfaceHelpDocumentsBothEndSpellings(t *testing.T) {
 	for _, surface := range []struct {
 		name string
-		help func(*testing.T) []HelpItem
+		help func(*testing.T) []operation.HelpItem
 	}{
 		{
 			name: "project hub",
-			help: func(t *testing.T) []HelpItem {
+			help: func(t *testing.T) []operation.HelpItem {
 				return openProjectHub(t, projectHubApp(t)).GetHelpItems()
 			},
 		},
 		{
 			name: "notes",
-			help: func(t *testing.T) []HelpItem {
+			help: func(t *testing.T) []operation.HelpItem {
 				return mountEndsNavigationNotes(t).GetHelpItems()
 			},
 		},
 		{
 			name: "comments",
-			help: func(t *testing.T) []HelpItem {
+			help: func(t *testing.T) []operation.HelpItem {
 				_, panel, _ := mountCommentsPanel(t)
 				return panel.GetHelpItems()
 			},
 		},
 		{
 			name: "attachments",
-			help: func(t *testing.T) []HelpItem {
+			help: func(t *testing.T) []operation.HelpItem {
 				_, panel, _ := mountAttachmentsPanel(t)
 				return panel.GetHelpItems()
 			},

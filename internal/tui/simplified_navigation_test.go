@@ -9,6 +9,7 @@ import (
 	appservice "github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -168,7 +169,7 @@ func TestSimplifiedShiftEnterPeekRendersAtEveryWidth(t *testing.T) {
 		app.width = width
 		app.crossOutliner.SetSize(width, 22)
 		result := app.operationExecutor.Execute(OperationExecutionRequest{
-			ID:      operationCorePeek,
+			ID:      operation.OperationCorePeek,
 			Context: app.operationCommandContext(),
 		})
 		if result.Err != nil || result.Message != nil {

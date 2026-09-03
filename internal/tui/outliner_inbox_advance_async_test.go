@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -30,7 +31,7 @@ func newInboxAsyncEnv(t *testing.T, taskGroups ...[]*models.Task) *inboxAsyncEnv
 	}
 	env := newAppBulkPickerEnv(t, taskGroups...)
 	model := env.appModel()
-	model.operationRegistry = NewOperationRegistry()
+	model.operationRegistry = operation.NewOperationRegistry()
 	model.operationExecutor = NewOperationExecutor(model.operationRegistry)
 	if err := model.registerTaskActionOperations(); err != nil {
 		t.Fatalf("register task operations: %v", err)
@@ -200,14 +201,14 @@ func TestInboxAsyncCursorMoveAwayAndBackBeforeReloadVoidsAdvance(t *testing.T) {
 	if async.outliner.cursor != settled {
 		t.Fatalf("cursor = %d after moving back, want the settled cursor %d", async.outliner.cursor, settled)
 	}
-	returned := async.outliner.currentTaskIdentity()
+	returned := async.outliner.CurrentTaskIdentity()
 
 	async.applyReload(t, saveCmd)
 
 	if async.outliner.relocationHistory.pending != nil {
 		t.Fatal("a cursor move away and back left the relocation capture armed")
 	}
-	if got := async.outliner.currentTaskIdentity(); got != returned {
+	if got := async.outliner.CurrentTaskIdentity(); got != returned {
 		t.Fatalf("cursor task = %+v, want the row the user returned to %+v", got, returned)
 	}
 }
@@ -288,19 +289,19 @@ func TestInboxAsyncCursorMoveBeforeTheReloadVoidsTheAdvance(t *testing.T) {
 	saveCmd := async.commitState(t, models.StateDone)
 
 	// One j while the disk refresh is still in flight.
-	moved := async.outliner.currentTaskIdentity()
+	moved := async.outliner.CurrentTaskIdentity()
 	async.outliner.cursor++
-	if async.outliner.currentTaskIdentity() == moved {
+	if async.outliner.CurrentTaskIdentity() == moved {
 		t.Fatal("the fixture did not actually move the cursor")
 	}
-	moved = async.outliner.currentTaskIdentity()
+	moved = async.outliner.CurrentTaskIdentity()
 
 	async.applyReload(t, saveCmd)
 
 	if async.outliner.relocationHistory.pending != nil {
 		t.Fatal("a genuine cursor move left the relocation capture armed")
 	}
-	if got := async.outliner.currentTaskIdentity(); got != moved {
+	if got := async.outliner.CurrentTaskIdentity(); got != moved {
 		t.Fatalf("cursor task = %+v, want the row the user moved to %+v", got, moved)
 	}
 }

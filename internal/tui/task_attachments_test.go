@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -237,7 +238,7 @@ func TestAttachmentsSpaceSheetReachesUnlink(t *testing.T) {
 	if sheet == nil {
 		t.Fatal("Space did not open the attachment action sheet")
 	}
-	want := []OperationID{
+	want := []operation.OperationID{
 		operationAttachmentRevealOriginal,
 		operationAttachmentOpenOriginalDirectory,
 		operationAttachmentOpenFolder,

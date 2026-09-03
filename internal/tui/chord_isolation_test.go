@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // TestChordPrefixesNeverFallThroughToRootOperations presses every root key of
@@ -15,7 +16,7 @@ import (
 // which is exactly what adding a second uppercase filter root risks.
 func TestChordPrefixesNeverFallThroughToRootOperations(t *testing.T) {
 	registry := registeredSimplifiedOperationRegistry(t)
-	strategy, ok := registry.InputStrategy(InputStrategySimplified)
+	strategy, ok := registry.InputStrategy(operation.InputStrategySimplified)
 	if !ok {
 		t.Fatal("simplified strategy was not registered")
 	}
@@ -23,7 +24,7 @@ func TestChordPrefixesNeverFallThroughToRootOperations(t *testing.T) {
 
 	rootKeys := make([]string, 0)
 	for _, binding := range strategy.Bindings {
-		for _, path := range binding.paths() {
+		for _, path := range binding.Paths() {
 			if !slices.Contains(rootKeys, path[0]) {
 				rootKeys = append(rootKeys, path[0])
 			}
@@ -37,14 +38,14 @@ func TestChordPrefixesNeverFallThroughToRootOperations(t *testing.T) {
 		for _, key := range rootKeys {
 			sequence := append(slices.Clone(group.Sequence), key)
 			binding, _, resolution := registry.InputBindingForSequence(
-				InputStrategySimplified,
+				operation.InputStrategySimplified,
 				sequence,
 				ctx,
 			)
 			switch resolution {
-			case ChordNoMatch, ChordPending:
+			case operation.ChordNoMatch, operation.ChordPending:
 				continue
-			case ChordTerminal:
+			case operation.ChordTerminal:
 			}
 			if len(binding.Sequence) < len(sequence) ||
 				!slices.Equal(binding.Sequence[:len(group.Sequence)], group.Sequence) {
@@ -154,7 +155,7 @@ func TestRetiredRootKeysStaySilentlyUnbound(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			for _, binding := range strategy.Bindings {
-				for _, path := range binding.paths() {
+				for _, path := range binding.Paths() {
 					if len(path) == 1 && path[0] == name {
 						t.Fatalf("retired root key %q is bound to %s", name, binding.OperationID)
 					}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -90,7 +91,7 @@ func (m *AppModel) coreCaptureMessage() tea.Msg {
 	return m.captureComposerMessage(project, m.availableProjects())
 }
 
-func operationTargetLocators(targets ResolvedOperationTargets) []app.TaskLocator {
+func operationTargetLocators(targets operation.ResolvedOperationTargets) []app.TaskLocator {
 	locators := make([]app.TaskLocator, 0, len(targets.Targets))
 	for _, target := range targets.Targets {
 		if target.Task.Valid() {
@@ -111,7 +112,7 @@ func planningMemberLocators(members map[taskref.TaskIdentity]bool) []app.TaskLoc
 }
 
 func (m *AppModel) corePlanningOperation(
-	targets ResolvedOperationTargets,
+	targets operation.ResolvedOperationTargets,
 	action app.PlanningAction,
 	capture *outlinerRelocationCapture,
 ) tea.Cmd {
@@ -152,7 +153,7 @@ func (m *AppModel) coreMoveToBacklogSingle(capture *outlinerRelocationCapture) t
 	return m.finishSynchronousOutlinerRelocation(m.queueToggleResultCmd(), capture, successMessage, transactionID)
 }
 
-func (m *AppModel) coreToggleToday(targets ResolvedOperationTargets, capture *outlinerRelocationCapture) tea.Cmd {
+func (m *AppModel) coreToggleToday(targets operation.ResolvedOperationTargets, capture *outlinerRelocationCapture) tea.Cmd {
 	locators := operationTargetLocators(targets)
 	if len(locators) == 0 {
 		return nil
@@ -168,7 +169,7 @@ func (m *AppModel) coreToggleToday(targets ResolvedOperationTargets, capture *ou
 	return m.corePlanningOperation(targets, action, capture)
 }
 
-func (m *AppModel) coreToggleNext(targets ResolvedOperationTargets, capture *outlinerRelocationCapture) tea.Cmd {
+func (m *AppModel) coreToggleNext(targets operation.ResolvedOperationTargets, capture *outlinerRelocationCapture) tea.Cmd {
 	locators := operationTargetLocators(targets)
 	if len(locators) == 0 {
 		return nil

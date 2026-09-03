@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -22,7 +23,7 @@ const (
 type OperationValuePickerModel struct {
 	surface   *ListSurfaceModel
 	request   OperationExecutionRequest
-	provider  ValueProviderID
+	provider  operation.ValueProviderID
 	title     string
 	subtitle  string
 	multi     bool
@@ -49,7 +50,7 @@ type OperationValuePickerModel struct {
 
 func newOperationValuePickerModel(
 	request OperationExecutionRequest,
-	provider ValueProviderID,
+	provider operation.ValueProviderID,
 	title string,
 	subtitle string,
 	source ListSource,
@@ -89,10 +90,10 @@ func newOperationValuePickerModel(
 		subtitle: subtitle,
 		multi:    multi,
 	}
-	if provider.tagEntry() {
+	if provider.TagEntry() {
 		model.tagAdder = NewTagAdder()
 	}
-	if provider.dateEntry() {
+	if provider.DateEntry() {
 		model.dateAdder = chrome.NewDateAdder()
 	}
 	return model, nil
@@ -109,7 +110,7 @@ func (model *OperationValuePickerModel) dateSectionUnderCursor() (bool, error) {
 	if !item.Enabled() {
 		return false, fmt.Errorf("%w: %s", ErrListItemDisabled, item.DisabledReason)
 	}
-	value, ok := item.Data.(OperationDateValue)
+	value, ok := item.Data.(operation.OperationDateValue)
 	if !ok {
 		return false, ErrListItemNotFound
 	}
@@ -121,13 +122,13 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 	if model == nil || model.surface == nil {
 		return nil, true, OperationValueCanceledMsg{}
 	}
-	if model.provider.tagEntry() && model.tagAdder.AddTagMode {
+	if model.provider.TagEntry() && model.tagAdder.AddTagMode {
 		handled, cmd := model.tagAdder.handleAddTagInputKey(msg, model.addOrSelectTag)
 		if handled {
 			return cmd, false, nil
 		}
 	}
-	if model.provider.dateEntry() && model.dateAdder.AddDateMode {
+	if model.provider.DateEntry() && model.dateAdder.AddDateMode {
 		var chosen *time.Time
 		cmd := model.dateAdder.HandleAddDateInputKey(msg, func(date time.Time) error {
 			chosen = &date
@@ -138,7 +139,7 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 		if chosen != nil {
 			return nil, true, OperationValueSelectedMsg{
 				Request: model.request,
-				Value:   OperationDateValue{Date: chosen, Deferred: model.dateDeferred},
+				Value:   operation.OperationDateValue{Date: chosen, Deferred: model.dateDeferred},
 			}
 		}
 		return cmd, false, nil
@@ -183,11 +184,11 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 	case "/":
 		model.searching = true
 	case "a":
-		if model.provider.tagEntry() {
+		if model.provider.TagEntry() {
 			model.contextEntry = model.contextRowUnderCursor()
 			return model.tagAdder.EnterAddMode(), false, nil
 		}
-		if model.provider.dateEntry() {
+		if model.provider.DateEntry() {
 			deferred, err := model.dateSectionUnderCursor()
 			if err != nil {
 				return nil, false, status.StatusMsg(err.Error())
@@ -215,13 +216,13 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 	case "v":
 		// The project tag facet picker hands Space to the vocabulary sheet, so
 		// selection moves to the key the project picker already uses for it.
-		if model.provider == ValueProviderFilterProjectTags {
+		if model.provider == operation.ValueProviderFilterProjectTags {
 			if err := model.toggleCurrentMultiValue(); err != nil {
 				return nil, false, status.StatusMsg(err.Error())
 			}
 		}
 	case "space":
-		if model.provider == ValueProviderFilterProjectTags {
+		if model.provider == operation.ValueProviderFilterProjectTags {
 			item, ok := model.surface.CurrentItem()
 			if !ok {
 				return nil, false, nil
@@ -253,13 +254,13 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 	case "#":
 		// The context is single-valued, so its rows are a radio group rather than
 		// the checkboxes the tag rows beside them are.
-		if model.provider == ValueProviderTags {
+		if model.provider == operation.ValueProviderTags {
 			if err := model.selectContextUnderCursor(); err != nil {
 				return nil, false, status.StatusMsg(err.Error())
 			}
 		}
 	default:
-		if model.provider == ValueProviderPriority && len(key) == 1 && key[0] >= '0' && key[0] <= '3' {
+		if model.provider == operation.ValueProviderPriority && len(key) == 1 && key[0] >= '0' && key[0] <= '3' {
 			if model.surface.SetCursorToID(ListItemID("priority:" + key)) {
 				value, err := model.selectedValue()
 				if err == nil {

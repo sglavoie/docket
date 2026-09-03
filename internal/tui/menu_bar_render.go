@@ -5,6 +5,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -135,7 +136,7 @@ func (m *OutlinerModel) resolvedMenuBar() []resolvedMenu {
 	if m.operationRegistry == nil {
 		return nil
 	}
-	strategy, ok := m.operationRegistry.InputStrategy(InputStrategySimplified)
+	strategy, ok := m.operationRegistry.InputStrategy(operation.InputStrategySimplified)
 	if !ok {
 		return nil
 	}

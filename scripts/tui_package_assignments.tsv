@@ -136,6 +136,36 @@
 #     no-context picker row counts, over the same BuildTagFacetList population
 #     CollectContextNamesForProjects already reads there.
 #
+# Session 2.14 minted four files the same way, all of them splits forced by the
+# operation boundary rather than by what a file was assigned:
+#   - The sixty-nine operationCore* OperationID constants left
+#     core_input_descriptors.go for core_operation_ids.go. The registry's
+#     checklist refusal names twenty of them and had to move with the registry,
+#     while coreInputOperationDescriptors names AppModel-side vocabulary and did
+#     not; splitting the identifiers from the descriptors that mint them is what
+#     let one cross without the other. They are exported as OperationCore*.
+#   - surfaceOperationGate and surfaceOperationGates left operation_manifest.go
+#     for surface_operation_gates.go, staying in the shell. Every entry names a
+#     surface input strategy and a surface validator, all of which live above
+#     L3, so this half of the file is the one that could not move.
+#   - HelpItem left help_types.go (help) for help_item.go. operation_help.go
+#     projects descriptors into help rows, so L6 held the struct L3 fills;
+#     filteredHelpItem, HelpProvider, helpItemsFromKeyMap and HelpViewModel all
+#     stayed behind, since none of them is named below help.
+#   - The four picker payload structs and ValueProviderID.AcceptsPresetValue
+#     left operation_value_provider.go and task_action_operations.go for
+#     operation_value_payloads.go. Go pins the method to ValueProviderID, and
+#     the payloads are the types it asserts against; OperationValueSelectedMsg
+#     stayed because it names OperationExecutionRequest, which Session 2.15
+#     carries.
+#
+# One declaration-level move went the other way: ListCategoryID left
+# list_surface_types.go (listsurface) for presentation/list_category.go. Every
+# OperationManifestEntry names a list category so an action sheet can group what
+# it lists, which puts the identity below the surface that owns the concept.
+# list_surface_types.go keeps the name as an alias, so listsurface's own
+# vocabulary is unchanged and no consumer had to be requalified.
+#
 # Test files are deliberately absent. They follow the production file they
 # audit, except the uitest harness and the registry-union parity tests, which
 # context.md keeps in the root shell.
@@ -205,6 +235,7 @@ core_input_descriptors.go	operation	L3	assigned
 core_input_handlers.go	tui	L8	receiver:AppModel
 core_input_operations.go	tui	L8	receiver:AppModel
 core_input_view_actions.go	tui	L8	receiver:AppModel
+core_operation_ids.go	operation	L3	assigned
 cross_project_colors.go	theme	L0	assigned
 cross_project_cursor.go	outliner	L7	receiver:OutlinerModel
 cross_project_outliner.go	outliner	L7	receiver:OutlinerModel
@@ -276,6 +307,7 @@ handler_view_projects.go	tui	L8	receiver:AppModel
 handler_view_support.go	tui	L8	receiver:AppModel
 help_filter.go	help	L6	receiver:HelpViewModel
 help_grammar.go	help	L6	assigned
+help_item.go	operation	L3	assigned
 help_messages.go	help	L6	assigned
 help_render.go	help	L6	receiver:HelpViewModel
 help_types.go	help	L6	assigned
@@ -356,6 +388,7 @@ operation_task_reference_picker.go	tui	L8	assigned
 operation_text_prompt.go	route	L4	receiver:OperationTextPromptModel
 operation_value_list_sources.go	projecthub	L7	receiver:moveProjectPickerItem
 operation_value_membership.go	tui	L8	receiver:AppModel
+operation_value_payloads.go	operation	L3	receiver:ValueProviderID
 operation_value_picker_factory.go	tui	L8	receiver:AppModel
 operation_value_picker_helpers.go	tui	L8	receiver:OperationValuePickerModel
 operation_value_picker_model.go	tui	L8	receiver:OperationValuePickerModel
@@ -519,6 +552,7 @@ styles_theme_rebuild.go	theme	L0	assigned
 styles_theme_state.go	theme	L0	assigned
 styles_ui_components.go	theme	L0	assigned
 styles_view_modes.go	theme	L0	assigned
+surface_operation_gates.go	tui	L8	assigned
 tab_bar.go	chrome	L1	assigned
 tag_add_shared.go	listsurface	L5	receiver:TagAdder
 tag_filter_selector.go	query	L2	assigned

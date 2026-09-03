@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // This file covers how the reference picker's list is assembled: which rows it
@@ -87,7 +88,7 @@ func TestReferencePickerKeepsUnreachableStoredTargetsEnabled(t *testing.T) {
 
 	picker, err := newOperationValuePickerModel(
 		OperationExecutionRequest{},
-		ValueProviderTaskReference,
+		operation.ValueProviderTaskReference,
 		"Set Dependencies",
 		"",
 		source,

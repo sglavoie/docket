@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -301,15 +302,15 @@ func TestConflictBrowserOpensFromTheGoToChord(t *testing.T) {
 	ctx := simplifiedOperationContext()
 
 	binding, _, resolution := registry.InputBindingForSequence(
-		InputStrategySimplified,
+		operation.InputStrategySimplified,
 		[]string{"g", "c"},
 		ctx,
 	)
-	if resolution != ChordTerminal || binding.OperationID != operationCoreConflicts {
+	if resolution != operation.ChordTerminal || binding.OperationID != operation.OperationCoreConflicts {
 		t.Fatalf("gc resolved to %s (resolution %v), want %s",
-			binding.OperationID, resolution, operationCoreConflicts)
+			binding.OperationID, resolution, operation.OperationCoreConflicts)
 	}
-	if _, _, ok := registry.InputBindingForKey(InputStrategySimplified, "c", ctx); ok {
+	if _, _, ok := registry.InputBindingForKey(operation.InputStrategySimplified, "c", ctx); ok {
 		t.Error("root c is bound; it must stay retired")
 	}
 }

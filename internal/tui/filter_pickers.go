@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -48,7 +49,7 @@ func (m *AppModel) newFilterDuePicker(
 	}
 	return newOperationValuePickerModel(
 		request,
-		ValueProviderFilterDue,
+		operation.ValueProviderFilterDue,
 		"Filter by Due or Deferred",
 		"keep matching tasks",
 		ListSource{Items: items},
@@ -90,7 +91,7 @@ func (m *AppModel) newFilterDependencyPicker(
 	}
 	return newOperationValuePickerModel(
 		request,
-		ValueProviderFilterDependency,
+		operation.ValueProviderFilterDependency,
 		"Filter by Dependency",
 		"keep matching tasks",
 		ListSource{Items: items},
@@ -142,7 +143,7 @@ func (m *AppModel) newFilterHierarchyPicker(
 	}
 	return newOperationValuePickerModel(
 		request,
-		ValueProviderFilterHierarchy,
+		operation.ValueProviderFilterHierarchy,
 		"Filter by Hierarchy",
 		"keep matching tasks",
 		ListSource{Items: items},
@@ -193,7 +194,7 @@ func (m *AppModel) newFilterCompletionAgePicker(
 	}
 	return newOperationValuePickerModel(
 		request,
-		ValueProviderFilterCompletionAge,
+		operation.ValueProviderFilterCompletionAge,
 		"Filter by Completion Age",
 		"includes done and canceled tasks",
 		ListSource{Items: items},
@@ -223,7 +224,7 @@ func (m *AppModel) newFilterStatesPicker(
 	}
 	return newOperationValuePickerModel(
 		request,
-		ValueProviderFilterStates,
+		operation.ValueProviderFilterStates,
 		"Filter by State",
 		"keep matching tasks",
 		source,
@@ -343,7 +344,7 @@ func (m *AppModel) newFilterTagsPicker(
 	}
 	return newOperationValuePickerModel(
 		request,
-		ValueProviderFilterTags,
+		operation.ValueProviderFilterTags,
 		"Filter by Tags",
 		"keep matching tasks",
 		source,
@@ -408,7 +409,7 @@ func (m *AppModel) newFilterContextsPicker(
 	}
 	return newOperationValuePickerModel(
 		request,
-		ValueProviderFilterContexts,
+		operation.ValueProviderFilterContexts,
 		"Filter by Context",
 		"keep matching tasks",
 		ListSource{Items: items},

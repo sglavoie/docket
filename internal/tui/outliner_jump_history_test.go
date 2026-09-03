@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -37,7 +38,7 @@ func setJumpHistoryRows(outliner *OutlinerModel, tasks map[string]*models.Task, 
 
 func requireCurrentJumpTask(t *testing.T, outliner *OutlinerModel, want taskref.TaskIdentity) {
 	t.Helper()
-	if got := outliner.currentTaskIdentity(); got != want {
+	if got := outliner.CurrentTaskIdentity(); got != want {
 		t.Fatalf("current task = %+v, want %+v (cursor=%d)", got, want, outliner.cursor)
 	}
 }
@@ -320,7 +321,7 @@ func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) 
 	after := newBulkPickerTestTask(t, 3, "after")
 	env := newAppBulkPickerEnv(t, []*models.Task{before, target, after})
 	model := env.appModel()
-	model.operationRegistry = NewOperationRegistry()
+	model.operationRegistry = operation.NewOperationRegistry()
 	model.operationExecutor = NewOperationExecutor(model.operationRegistry)
 	if err := model.registerTaskActionOperations(); err != nil {
 		t.Fatalf("register task operations: %v", err)
@@ -364,7 +365,7 @@ func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) 
 	if outliner.relocationHistory.pending == nil {
 		t.Fatal("committed direct state update did not arm relocation history")
 	}
-	if got := outliner.currentTaskIdentity(); got != targetIdentity {
+	if got := outliner.CurrentTaskIdentity(); got != targetIdentity {
 		t.Fatalf("refresh cursor = %+v, want relocated target %+v", got, targetIdentity)
 	}
 	if outliner.cursor == originRow {
@@ -390,7 +391,7 @@ func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) 
 	requireCurrentJumpTask(t, outliner, targetIdentity)
 
 	outliner.jumpBackward()
-	if outliner.currentTaskIdentity() == targetIdentity {
+	if outliner.CurrentTaskIdentity() == targetIdentity {
 		t.Fatal("Ctrl+O equivalent did not leave the relocated task")
 	}
 	outliner.jumpForward()

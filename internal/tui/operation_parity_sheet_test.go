@@ -3,13 +3,15 @@ package tui
 import (
 	"slices"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 func TestNotesOperationCatalogMatchesDirectActions(t *testing.T) {
 	app := parityAuditApp(t)
 	// Delete carries no key: it is destructive, so the Space sheet is its one
 	// path and the empty spelling is what the one-path rule demands.
-	wantKeys := map[OperationID]string{
+	wantKeys := map[operation.OperationID]string{
 		operationNoteOpen:      "enter",
 		operationNoteRename:    "e",
 		operationNoteMove:      "%",
@@ -54,7 +56,7 @@ func TestSpaceProjectionUsesTheDeclaredTaskManifest(t *testing.T) {
 	if len(descriptors) == 0 {
 		t.Fatal("the Space sheet offered no action for a live task")
 	}
-	seen := make(map[OperationID]bool)
+	seen := make(map[operation.OperationID]bool)
 	for _, descriptor := range descriptors {
 		if seen[descriptor.ID] {
 			t.Errorf("Space sheet lists %s twice", descriptor.ID)
@@ -82,7 +84,7 @@ func TestSpaceProjectionUsesTheDeclaredTaskManifest(t *testing.T) {
 			t.Errorf("task manifest advertises unregistered operation %s", id)
 		}
 	}
-	strategy, ok := registry.InputStrategy(InputStrategySimplified)
+	strategy, ok := registry.InputStrategy(operation.InputStrategySimplified)
 	if !ok {
 		t.Fatal("simplified input strategy is not registered")
 	}
@@ -95,7 +97,7 @@ func TestSpaceProjectionUsesTheDeclaredTaskManifest(t *testing.T) {
 		}
 		// A removed projection has to leave a key behind, or the operation becomes
 		// unreachable instead of faster.
-		if displayKeysForOperation(strategy, entry.ID) == "" {
+		if operation.DisplayKeysForOperation(strategy, entry.ID) == "" {
 			t.Errorf("direct-only operation %s has no key in the input strategy", entry.ID)
 		}
 	}

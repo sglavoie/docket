@@ -15,6 +15,7 @@ import (
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -441,11 +442,11 @@ func TestResolveNoteEditorEnvironmentPrecedenceAndActionableFailure(t *testing.T
 
 func TestNotesManagerRestoresOnlyMoveToTheMinimalOperations(t *testing.T) {
 	descriptors := noteOperationDescriptors()
-	var ids []OperationID
+	var ids []operation.OperationID
 	for _, descriptor := range descriptors {
 		ids = append(ids, descriptor.ID)
 	}
-	want := []OperationID{
+	want := []operation.OperationID{
 		operationNoteOpen,
 		operationNoteRename,
 		operationNoteMove,

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 func TestDirectKeysHelpAndHandledKeysDeriveFromTheInputStrategy(t *testing.T) {
@@ -20,28 +21,28 @@ func TestDirectKeysHelpAndHandledKeysDeriveFromTheInputStrategy(t *testing.T) {
 	// exactly as before.
 	app.crossOutliner.beginSearchProjection()
 
-	strategy, ok := registry.InputStrategy(InputStrategySimplified)
+	strategy, ok := registry.InputStrategy(operation.InputStrategySimplified)
 	if !ok {
 		t.Fatal("simplified input strategy is not registered")
 	}
 
-	handled := registry.HandledKeysForInputStrategy(InputStrategySimplified)
+	handled := registry.HandledKeysForInputStrategy(operation.InputStrategySimplified)
 	expectedKeys := make([]string, 0, len(handled))
 	for _, binding := range strategy.Bindings {
 		// A checklist row operation only exists under a checklist cursor, so its
 		// keys are audited from the row the user is on when they press them.
 		bindingCtx := ctx
-		if checklistRowGrammar[binding.OperationID] {
+		if operation.ChecklistRowGrammar[binding.OperationID] {
 			bindingCtx.Entity.HasChecklistCursor = true
 		}
-		for _, path := range binding.paths() {
+		for _, path := range binding.Paths() {
 			for _, key := range path {
 				if !slices.Contains(expectedKeys, key) {
 					expectedKeys = append(expectedKeys, key)
 				}
 			}
-			resolved, descriptor, resolution := registry.InputBindingForSequence(InputStrategySimplified, path, bindingCtx)
-			if resolution != ChordTerminal {
+			resolved, descriptor, resolution := registry.InputBindingForSequence(operation.InputStrategySimplified, path, bindingCtx)
+			if resolution != operation.ChordTerminal {
 				t.Errorf("key path %v does not resolve to an operation in the Outliner context", path)
 				continue
 			}
@@ -58,8 +59,8 @@ func TestDirectKeysHelpAndHandledKeysDeriveFromTheInputStrategy(t *testing.T) {
 			}
 			// A chord's own prefixes must wait for the next key rather than run.
 			for depth := 1; depth < len(path); depth++ {
-				_, _, resolution := registry.InputBindingForSequence(InputStrategySimplified, path[:depth], bindingCtx)
-				if resolution != ChordPending {
+				_, _, resolution := registry.InputBindingForSequence(operation.InputStrategySimplified, path[:depth], bindingCtx)
+				if resolution != operation.ChordPending {
 					t.Errorf("chord prefix %v resolution = %v, want pending", path[:depth], resolution)
 				}
 			}
@@ -69,8 +70,8 @@ func TestDirectKeysHelpAndHandledKeysDeriveFromTheInputStrategy(t *testing.T) {
 		t.Errorf("handled keys = %v, want the strategy keys %v", handled, expectedKeys)
 	}
 
-	help := registry.HelpItemsForInputStrategy(InputStrategySimplified, ctx)
-	applicable := registry.InputStrategyOperations(InputStrategySimplified, ctx)
+	help := registry.HelpItemsForInputStrategy(operation.InputStrategySimplified, ctx)
+	applicable := registry.InputStrategyOperations(operation.InputStrategySimplified, ctx)
 	if len(help) != len(applicable) {
 		t.Fatalf("help items = %d, want one per applicable binding (%d)", len(help), len(applicable))
 	}
@@ -79,7 +80,7 @@ func TestDirectKeysHelpAndHandledKeysDeriveFromTheInputStrategy(t *testing.T) {
 		if item.Description != descriptor.Label {
 			t.Errorf("help row %d describes %q, want the descriptor label %q", index, item.Description, descriptor.Label)
 		}
-		shortcut := registry.InputShortcutForOperation(InputStrategySimplified, descriptor.ID)
+		shortcut := registry.InputShortcutForOperation(operation.InputStrategySimplified, descriptor.ID)
 		if item.Key != shortcut {
 			t.Errorf("help row %d shows key %q, want the strategy display key %q", index, item.Key, shortcut)
 		}
@@ -90,12 +91,12 @@ func TestOperationParityGuidanceResolvesThroughApplicableInputMetadata(t *testin
 	app := parityAuditApp(t)
 	registry := app.GetOperationRegistry()
 	ctx := taskActionParityContext(t, app)
-	strategy, ok := registry.InputStrategy(InputStrategySimplified)
+	strategy, ok := registry.InputStrategy(operation.InputStrategySimplified)
 	if !ok {
 		t.Fatal("simplified input strategy is not registered")
 	}
 
-	hints := registry.GuidanceHintsForInputStrategy(InputStrategySimplified, ctx)
+	hints := registry.GuidanceHintsForInputStrategy(operation.InputStrategySimplified, ctx)
 	if len(hints) == 0 {
 		t.Fatal("applicable input strategy produced no guidance")
 	}
@@ -127,7 +128,7 @@ func TestOperationParityGuidanceResolvesThroughApplicableInputMetadata(t *testin
 				if label == "" {
 					label = group.HintLabel
 				}
-				if label == hint.Label && len(registry.ChordHintsForPrefix(InputStrategySimplified, group.Sequence, ctx)) > 0 {
+				if label == hint.Label && len(registry.ChordHintsForPrefix(operation.InputStrategySimplified, group.Sequence, ctx)) > 0 {
 					resolved = true
 					break
 				}
@@ -142,12 +143,12 @@ func TestOperationParityGuidanceResolvesThroughApplicableInputMetadata(t *testin
 
 // sharesInputPath reports whether the operation co-owns the key path as a
 // declared shared binding rather than having stolen it.
-func sharesInputPath(strategy InputStrategy, path []string, id OperationID) bool {
+func sharesInputPath(strategy operation.InputStrategy, path []string, id operation.OperationID) bool {
 	for _, binding := range strategy.Bindings {
 		if binding.OperationID != id || !binding.SharedKey {
 			continue
 		}
-		for _, candidate := range binding.paths() {
+		for _, candidate := range binding.Paths() {
 			if slices.Equal(candidate, path) {
 				return true
 			}
@@ -162,14 +163,14 @@ func TestChordBindingsStayPrefixFreeExecutableAndLabeled(t *testing.T) {
 	executor := app.operationExecutor
 	ctx := taskActionParityContext(t, app)
 
-	strategy, ok := registry.InputStrategy(InputStrategySimplified)
+	strategy, ok := registry.InputStrategy(operation.InputStrategySimplified)
 	if !ok {
 		t.Fatal("simplified input strategy is not registered")
 	}
 
 	paths := make([][]string, 0, len(strategy.Bindings))
 	for _, binding := range strategy.Bindings {
-		paths = append(paths, binding.paths()...)
+		paths = append(paths, binding.Paths()...)
 		descriptor, exists := registry.Descriptor(binding.OperationID)
 		if !exists {
 			t.Errorf("binding %v references unregistered operation %s", binding.DisplayKey, binding.OperationID)
@@ -181,7 +182,7 @@ func TestChordBindingsStayPrefixFreeExecutableAndLabeled(t *testing.T) {
 		if !binding.HasPresetValue {
 			continue
 		}
-		if !descriptor.ValueProviderID.acceptsPresetValue(binding.PresetValue) {
+		if !descriptor.ValueProviderID.AcceptsPresetValue(binding.PresetValue) {
 			t.Errorf(
 				"key %s presets %T, which the %s handler does not accept",
 				binding.DisplayKey,
@@ -203,7 +204,7 @@ func TestChordBindingsStayPrefixFreeExecutableAndLabeled(t *testing.T) {
 	}
 
 	for _, group := range strategy.ChordGroups {
-		hints := registry.ChordHintsForPrefix(InputStrategySimplified, group.Sequence, ctx)
+		hints := registry.ChordHintsForPrefix(operation.InputStrategySimplified, group.Sequence, ctx)
 		if len(hints) == 0 {
 			t.Errorf("chord prefix %v offers no which-key hint", group.Sequence)
 		}
@@ -213,10 +214,10 @@ func TestChordBindingsStayPrefixFreeExecutableAndLabeled(t *testing.T) {
 			}
 			path := append(slices.Clone(group.Sequence), hint.Key)
 			if _, _, resolution := registry.InputBindingForSequence(
-				InputStrategySimplified,
+				operation.InputStrategySimplified,
 				path,
 				ctx,
-			); resolution == ChordNoMatch {
+			); resolution == operation.ChordNoMatch {
 				t.Errorf("which-key row offers %v, which resolves to nothing", path)
 			}
 		}

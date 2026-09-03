@@ -1,8 +1,10 @@
 package tui
 
 import (
+	"fmt"
 	"image/color"
 
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -69,5 +71,29 @@ func accentColorForCategory(category AccentCategory) color.Color {
 		return theme.AccentSupport
 	default:
 		return nil
+	}
+}
+
+// presentationCapability scopes mature renderer commands without affecting
+// typed route identity or history.
+func presentationCapability(view presentation.PresentationID) operation.Capability {
+	return operation.Capability(fmt.Sprintf("presentation:%d", view))
+}
+
+// PresentationCommandContext builds discovery capabilities for one renderer.
+func PresentationCommandContext(view presentation.PresentationID) operation.CommandContext {
+	scope := presentationScope(view)
+	capabilities := operation.NewCapabilitySet(operation.CapabilityCommandDiscovery, presentationCapability(view))
+	switch scope {
+	case ScopeApp:
+		capabilities.Add(operation.CapabilityAppScope)
+	case ScopeTask:
+		capabilities.Add(operation.CapabilityTaskScope)
+	default:
+		capabilities.Add(operation.CapabilityProjectScope)
+	}
+	return operation.CommandContext{
+		View:         view,
+		Capabilities: capabilities,
 	}
 }

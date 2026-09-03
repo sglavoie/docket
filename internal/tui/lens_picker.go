@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -65,7 +66,7 @@ const (
 // three management acts, in the order the product contract names them. Apply is
 // absent because Enter already is it, which is the one-path rule the entity
 // surfaces hold to.
-var namedLensActionSheetOperations = []OperationID{
+var namedLensActionSheetOperations = []operation.OperationID{
 	operationLensRename,
 	operationLensReplace,
 	operationLensDelete,
@@ -84,7 +85,7 @@ type NamedLensPickerResultMsg struct {
 // the picker for one saved lens. The identity travels rather than a pointer, so
 // a later refresh cannot retarget the sheet.
 type NamedLensActionsRequestMsg struct {
-	Entity EntityIdentity
+	Entity operation.EntityIdentity
 	Name   string
 }
 
@@ -238,16 +239,16 @@ func (model *NamedLensPickerModel) Notice() string {
 // under. CapabilityLensPicker is granted here and, for Create alone, by
 // AppModel.saveViewAsLens; every operation that needs a record under the cursor
 // is reachable only through this one, because nothing else supplies the entity.
-func (model *NamedLensPickerModel) commandContext(entity EntityIdentity) CommandContext {
+func (model *NamedLensPickerModel) commandContext(entity operation.EntityIdentity) operation.CommandContext {
 	ctx := PresentationCommandContext(model.view)
-	ctx.Capabilities.Add(CapabilityLensPicker)
+	ctx.Capabilities.Add(operation.CapabilityLensPicker)
 	ctx.CurrentEntity = entity
 	return ctx
 }
 
 func (model *NamedLensPickerModel) request(
-	id OperationID,
-	entity EntityIdentity,
+	id operation.OperationID,
+	entity operation.EntityIdentity,
 ) OperationExecutionRequest {
 	return OperationExecutionRequest{ID: id, Context: model.commandContext(entity)}
 }

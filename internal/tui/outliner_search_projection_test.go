@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -143,7 +144,7 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 
 	searchRankedList(outliner, "needle")
 	filterResult := (&AppModel{crossOutliner: outliner}).executeFilterOperation(OperationInvocation{
-		Descriptor: OperationDescriptor{ID: operationFilterPriority},
+		Descriptor: operation.OperationDescriptor{ID: operationFilterPriority},
 		Value:      models.PriorityHigh,
 	})
 	// The facet applies to the live projection rather than refusing, and Esc

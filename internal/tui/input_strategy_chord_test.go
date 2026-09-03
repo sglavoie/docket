@@ -5,13 +5,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func TestInputStrategyRegistrationRejectsCollisionsAndPrefixes(t *testing.T) {
-	newRegistry := func(t *testing.T) *OperationRegistry {
+	newRegistry := func(t *testing.T) *operation.OperationRegistry {
 		t.Helper()
-		registry := NewOperationRegistry()
+		registry := operation.NewOperationRegistry()
 		for _, descriptor := range coreInputOperationDescriptors()[:2] {
 			if err := registry.Register(descriptor); err != nil {
 				t.Fatal(err)
@@ -22,11 +23,11 @@ func TestInputStrategyRegistrationRejectsCollisionsAndPrefixes(t *testing.T) {
 
 	t.Run("collision", func(t *testing.T) {
 		registry := newRegistry(t)
-		err := registry.RegisterInputStrategy(InputStrategy{
+		err := registry.RegisterInputStrategy(operation.InputStrategy{
 			ID: "collision",
-			Bindings: []OperationKeyBinding{
-				{OperationID: operationCoreCapture, Keys: []string{"a"}},
-				{OperationID: operationCoreEdit, Keys: []string{"a"}},
+			Bindings: []operation.OperationKeyBinding{
+				{OperationID: operation.OperationCoreCapture, Keys: []string{"a"}},
+				{OperationID: operation.OperationCoreEdit, Keys: []string{"a"}},
 			},
 		})
 		if err == nil || !strings.Contains(err.Error(), "collision") {
@@ -36,10 +37,10 @@ func TestInputStrategyRegistrationRejectsCollisionsAndPrefixes(t *testing.T) {
 
 	t.Run("prefix", func(t *testing.T) {
 		registry := newRegistry(t)
-		err := registry.RegisterInputStrategy(InputStrategy{
+		err := registry.RegisterInputStrategy(operation.InputStrategy{
 			ID: "prefix",
-			Bindings: []OperationKeyBinding{
-				{OperationID: operationCoreCapture, Keys: []string{"gg"}},
+			Bindings: []operation.OperationKeyBinding{
+				{OperationID: operation.OperationCoreCapture, Keys: []string{"gg"}},
 			},
 		})
 		if err == nil || !strings.Contains(err.Error(), "direct key event") {
@@ -48,39 +49,39 @@ func TestInputStrategyRegistrationRejectsCollisionsAndPrefixes(t *testing.T) {
 	})
 }
 
-const chordTestSetPriority OperationID = "test.task.set-priority"
+const chordTestSetPriority operation.OperationID = "test.task.set-priority"
 
 // chordTestRegistry adds one value-taking operation to the core descriptors so
 // preset-valued chord bindings can be exercised without the production catalog.
-func chordTestRegistry(t *testing.T) *OperationRegistry {
+func chordTestRegistry(t *testing.T) *operation.OperationRegistry {
 	t.Helper()
-	registry := NewOperationRegistry()
+	registry := operation.NewOperationRegistry()
 	for _, descriptor := range coreInputOperationDescriptors() {
 		if err := registry.Register(descriptor); err != nil {
 			t.Fatalf("Register(%s): %v", descriptor.ID, err)
 		}
 	}
-	if err := registry.Register(OperationDescriptor{
+	if err := registry.Register(operation.OperationDescriptor{
 		ID:                   chordTestSetPriority,
 		Label:                "Set Priority",
-		Category:             OperationCategoryTask,
-		TargetSource:         OperationTargetCurrentTask,
-		TargetCardinality:    TargetCardinalityOne,
-		RequiredCapabilities: NewCapabilitySet(CapabilitySimplifiedInput),
+		Category:             operation.OperationCategoryTask,
+		TargetSource:         operation.OperationTargetCurrentTask,
+		TargetCardinality:    operation.TargetCardinalityOne,
+		RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
 		Applicability:        coreOutlinerApplicability,
-		Risk:                 OperationRiskMutation,
-		ValueProviderID:      ValueProviderPriority,
+		Risk:                 operation.OperationRiskMutation,
+		ValueProviderID:      operation.ValueProviderPriority,
 	}); err != nil {
 		t.Fatalf("Register(%s): %v", chordTestSetPriority, err)
 	}
 	return registry
 }
 
-func chordTestStrategy() InputStrategy {
-	return InputStrategy{
+func chordTestStrategy() operation.InputStrategy {
+	return operation.InputStrategy{
 		ID: "chords",
-		Bindings: []OperationKeyBinding{
-			{OperationID: operationCoreCapture, Keys: []string{"a"}, FooterRank: 1, FooterLabel: "capture"},
+		Bindings: []operation.OperationKeyBinding{
+			{OperationID: operation.OperationCoreCapture, Keys: []string{"a"}, FooterRank: 1, FooterLabel: "capture"},
 			{
 				OperationID:    chordTestSetPriority,
 				Sequence:       []string{"p", "1"},
@@ -97,9 +98,9 @@ func chordTestStrategy() InputStrategy {
 				PresetValue:    2,
 				HasPresetValue: true,
 			},
-			{OperationID: operationCoreHelp, Sequence: []string{",", "h"}, HintLabel: "help"},
+			{OperationID: operation.OperationCoreHelp, Sequence: []string{",", "h"}, HintLabel: "help"},
 		},
-		ChordGroups: []OperationChordGroup{
+		ChordGroups: []operation.OperationChordGroup{
 			{Sequence: []string{"p"}, HintLabel: "priority", FooterRank: 2, FooterLabel: "priority"},
 			{Sequence: []string{","}, HintLabel: "state"},
 		},
@@ -113,11 +114,11 @@ func TestChordSequencesResolveAndProjectThroughOneStrategy(t *testing.T) {
 	}
 	ctx := simplifiedOperationContext()
 
-	if _, _, resolution := registry.InputBindingForSequence("chords", []string{"p"}, ctx); resolution != ChordPending {
+	if _, _, resolution := registry.InputBindingForSequence("chords", []string{"p"}, ctx); resolution != operation.ChordPending {
 		t.Fatalf("prefix p resolution = %v, want pending", resolution)
 	}
 	binding, descriptor, resolution := registry.InputBindingForSequence("chords", []string{"p", "2"}, ctx)
-	if resolution != ChordTerminal {
+	if resolution != operation.ChordTerminal {
 		t.Fatalf("chord p2 resolution = %v, want terminal", resolution)
 	}
 	if descriptor.ID != chordTestSetPriority {
@@ -126,7 +127,7 @@ func TestChordSequencesResolveAndProjectThroughOneStrategy(t *testing.T) {
 	if !binding.HasPresetValue || binding.PresetValue != 2 {
 		t.Errorf("chord p2 preset = (%v, %v), want (2, true)", binding.PresetValue, binding.HasPresetValue)
 	}
-	if _, _, resolution := registry.InputBindingForSequence("chords", []string{"p", "9"}, ctx); resolution != ChordNoMatch {
+	if _, _, resolution := registry.InputBindingForSequence("chords", []string{"p", "9"}, ctx); resolution != operation.ChordNoMatch {
 		t.Errorf("unbound chord p9 resolution = %v, want no match", resolution)
 	}
 	if _, _, ok := registry.InputBindingForKey("chords", "p", ctx); ok {
@@ -141,7 +142,7 @@ func TestChordSequencesResolveAndProjectThroughOneStrategy(t *testing.T) {
 		"chords",
 		[]string{"p"},
 		PresentationCommandContext(presentation.ViewProjectHub),
-	); resolution != ChordNoMatch {
+	); resolution != operation.ChordNoMatch {
 		t.Error("an inapplicable chord subtree still accepted its prefix")
 	}
 
@@ -167,7 +168,7 @@ func TestChordSequencesResolveAndProjectThroughOneStrategy(t *testing.T) {
 	}
 
 	hints := registry.ChordHintsForPrefix("chords", []string{"p"}, ctx)
-	want := []ChordHint{{Key: "1", Label: "critical"}, {Key: "2", Label: "high"}}
+	want := []operation.ChordHint{{Key: "1", Label: "critical"}, {Key: "2", Label: "high"}}
 	if !slices.Equal(hints, want) {
 		t.Errorf("which-key hints = %v, want %v", hints, want)
 	}
@@ -190,105 +191,105 @@ func TestChordSequencesResolveAndProjectThroughOneStrategy(t *testing.T) {
 }
 
 func TestChordStrategyRegistrationRejectsAmbiguousAndUnlabeledGrammars(t *testing.T) {
-	priorityChord := func(sequence []string, preset any) OperationKeyBinding {
-		return OperationKeyBinding{
+	priorityChord := func(sequence []string, preset any) operation.OperationKeyBinding {
+		return operation.OperationKeyBinding{
 			OperationID:    chordTestSetPriority,
 			Sequence:       sequence,
 			PresetValue:    preset,
 			HasPresetValue: true,
 		}
 	}
-	priorityGroup := OperationChordGroup{Sequence: []string{"p"}, HintLabel: "priority"}
+	priorityGroup := operation.OperationChordGroup{Sequence: []string{"p"}, HintLabel: "priority"}
 
 	tests := []struct {
 		name     string
-		strategy InputStrategy
+		strategy operation.InputStrategy
 		want     string
 	}{
 		{
 			name: "direct key shadows a chord prefix",
-			strategy: InputStrategy{
-				Bindings: []OperationKeyBinding{
-					{OperationID: operationCoreCapture, Keys: []string{"p"}},
+			strategy: operation.InputStrategy{
+				Bindings: []operation.OperationKeyBinding{
+					{OperationID: operation.OperationCoreCapture, Keys: []string{"p"}},
 					priorityChord([]string{"p", "1"}, 1),
 				},
-				ChordGroups: []OperationChordGroup{priorityGroup},
+				ChordGroups: []operation.OperationChordGroup{priorityGroup},
 			},
 			want: "prefix collision",
 		},
 		{
 			name: "chord extends a direct key",
-			strategy: InputStrategy{
-				Bindings: []OperationKeyBinding{
+			strategy: operation.InputStrategy{
+				Bindings: []operation.OperationKeyBinding{
 					priorityChord([]string{"p", "1"}, 1),
-					{OperationID: operationCoreCapture, Keys: []string{"p"}},
+					{OperationID: operation.OperationCoreCapture, Keys: []string{"p"}},
 				},
-				ChordGroups: []OperationChordGroup{priorityGroup},
+				ChordGroups: []operation.OperationChordGroup{priorityGroup},
 			},
 			want: "prefix collision",
 		},
 		{
 			name: "duplicate chord path",
-			strategy: InputStrategy{
-				Bindings: []OperationKeyBinding{
+			strategy: operation.InputStrategy{
+				Bindings: []operation.OperationKeyBinding{
 					priorityChord([]string{"p", "1"}, 1),
 					priorityChord([]string{"p", "1"}, 2),
 				},
-				ChordGroups: []OperationChordGroup{priorityGroup},
+				ChordGroups: []operation.OperationChordGroup{priorityGroup},
 			},
 			want: "key collision",
 		},
 		{
 			name: "one-key sequence",
-			strategy: InputStrategy{
-				Bindings: []OperationKeyBinding{priorityChord([]string{"p"}, 1)},
+			strategy: operation.InputStrategy{
+				Bindings: []operation.OperationKeyBinding{priorityChord([]string{"p"}, 1)},
 			},
 			want: "one-key chord sequence",
 		},
 		{
 			name: "repeated operation without presets",
-			strategy: InputStrategy{
-				Bindings: []OperationKeyBinding{
-					{OperationID: operationCoreCapture, Keys: []string{"a"}},
-					{OperationID: operationCoreCapture, Sequence: []string{",", "a"}},
+			strategy: operation.InputStrategy{
+				Bindings: []operation.OperationKeyBinding{
+					{OperationID: operation.OperationCoreCapture, Keys: []string{"a"}},
+					{OperationID: operation.OperationCoreCapture, Sequence: []string{",", "a"}},
 				},
-				ChordGroups: []OperationChordGroup{{Sequence: []string{","}, HintLabel: "state"}},
+				ChordGroups: []operation.OperationChordGroup{{Sequence: []string{","}, HintLabel: "state"}},
 			},
 			want: "more than once",
 		},
 		{
 			name: "preset on an operation that takes no value",
-			strategy: InputStrategy{
-				Bindings: []OperationKeyBinding{{
-					OperationID:    operationCoreCapture,
+			strategy: operation.InputStrategy{
+				Bindings: []operation.OperationKeyBinding{{
+					OperationID:    operation.OperationCoreCapture,
 					Sequence:       []string{",", "a"},
 					PresetValue:    1,
 					HasPresetValue: true,
 				}},
-				ChordGroups: []OperationChordGroup{{Sequence: []string{","}, HintLabel: "state"}},
+				ChordGroups: []operation.OperationChordGroup{{Sequence: []string{","}, HintLabel: "state"}},
 			},
 			want: "presets a value but takes none",
 		},
 		{
 			name: "preset type the provider cannot accept",
-			strategy: InputStrategy{
-				Bindings:    []OperationKeyBinding{priorityChord([]string{"p", "1"}, "high")},
-				ChordGroups: []OperationChordGroup{priorityGroup},
+			strategy: operation.InputStrategy{
+				Bindings:    []operation.OperationKeyBinding{priorityChord([]string{"p", "1"}, "high")},
+				ChordGroups: []operation.OperationChordGroup{priorityGroup},
 			},
 			want: "does not accept",
 		},
 		{
 			name: "chord prefix without a group label",
-			strategy: InputStrategy{
-				Bindings: []OperationKeyBinding{priorityChord([]string{"p", "1"}, 1)},
+			strategy: operation.InputStrategy{
+				Bindings: []operation.OperationKeyBinding{priorityChord([]string{"p", "1"}, 1)},
 			},
 			want: "has no group label",
 		},
 		{
 			name: "group label for a prefix that does not exist",
-			strategy: InputStrategy{
-				Bindings: []OperationKeyBinding{{OperationID: operationCoreCapture, Keys: []string{"a"}}},
-				ChordGroups: []OperationChordGroup{
+			strategy: operation.InputStrategy{
+				Bindings: []operation.OperationKeyBinding{{OperationID: operation.OperationCoreCapture, Keys: []string{"a"}}},
+				ChordGroups: []operation.OperationChordGroup{
 					{Sequence: []string{"f"}, HintLabel: "filter"},
 				},
 			},

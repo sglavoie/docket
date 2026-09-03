@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -84,7 +85,7 @@ func (m *AppModel) coreScrollCursorTo(anchor viewScrollAnchor) OperationHandlerR
 // Esc would return to All instead of the mode the jump was pressed from. A mode
 // that lists the task where All does not (a Done task reached from Recent) keeps
 // the origin instead, and says so.
-func (m *AppModel) coreGotoTaskProject(targets ResolvedOperationTargets) OperationHandlerResult {
+func (m *AppModel) coreGotoTaskProject(targets operation.ResolvedOperationTargets) OperationHandlerResult {
 	out, ok := m.outlinerPrimary()
 	if !ok || out == nil {
 		return OperationHandlerResult{}
@@ -280,12 +281,12 @@ func (m *AppModel) coreOpenMenuBar() error {
 // capture, inline edit, and search. The grammar rows are appended here rather
 // than inside HelpItemsForInputStrategy so that stays a pure registry
 // projection and the grammar section stays Outliner-scoped.
-func (m *AppModel) coreInputHelpItems() []HelpItem {
+func (m *AppModel) coreInputHelpItems() []operation.HelpItem {
 	if m.operationRegistry == nil {
 		return nil
 	}
 	items := m.operationRegistry.HelpItemsForInputStrategy(
-		InputStrategySimplified,
+		operation.InputStrategySimplified,
 		m.operationCommandContext(),
 	)
 	return append(items, grammarHelpItems()...)

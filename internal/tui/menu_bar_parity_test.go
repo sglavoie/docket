@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // This file holds the parity rules themselves: the bar may only name operations
@@ -38,7 +39,7 @@ func TestEveryMenuEntryNamesARegisteredOperation(t *testing.T) {
 
 func TestMenuEntriesNeverSpellTheirOwnKey(t *testing.T) {
 	app := parityAuditApp(t)
-	strategy, ok := app.GetOperationRegistry().InputStrategy(InputStrategySimplified)
+	strategy, ok := app.GetOperationRegistry().InputStrategy(operation.InputStrategySimplified)
 	if !ok {
 		t.Fatal("simplified input strategy is not registered")
 	}
@@ -49,7 +50,7 @@ func TestMenuEntriesNeverSpellTheirOwnKey(t *testing.T) {
 			if entry.OperationID == "" {
 				continue
 			}
-			want := displayKeysForOperation(strategy, entry.OperationID)
+			want := operation.DisplayKeysForOperation(strategy, entry.OperationID)
 			if entry.Key != want {
 				t.Errorf(
 					"menu %s entry %s hints %q, want the strategy's %q",
@@ -74,12 +75,12 @@ func TestMenuEntriesNeverSpellTheirOwnKey(t *testing.T) {
 // than stored beside the entry.
 func TestMenuKeyHintsFollowTheStrategy(t *testing.T) {
 	app := parityAuditApp(t)
-	strategy, ok := app.GetOperationRegistry().InputStrategy(InputStrategySimplified)
+	strategy, ok := app.GetOperationRegistry().InputStrategy(operation.InputStrategySimplified)
 	if !ok {
 		t.Fatal("simplified input strategy is not registered")
 	}
 	for index := range strategy.Bindings {
-		if strategy.Bindings[index].OperationID == operationCoreHelp {
+		if strategy.Bindings[index].OperationID == operation.OperationCoreHelp {
 			strategy.Bindings[index].DisplayKey = "F1"
 		}
 	}
@@ -178,12 +179,12 @@ func TestEveryMenuIsUniquelyIdentifiedAndInhabited(t *testing.T) {
 // discoverable only by a user who already knew to press `M`, and the entity
 // grammar answers that question elsewhere: the `Space` sheet is where
 // direct-only-or-menu-only earns its keep, which is why
-// validateOperationOnePath and TestTaskOperationsCannotAppearInBothDirectGrammarAndMenu
+// ValidateOperationOnePath and TestTaskOperationsCannotAppearInBothDirectGrammarAndMenu
 // are untouched by this rule and keep governing only that sheet.
 func TestAMenuOnlyOperationIsNeverAnEntityOperation(t *testing.T) {
 	registry := parityAuditApp(t).GetOperationRegistry()
 
-	bound := make(map[OperationID]bool)
+	bound := make(map[operation.OperationID]bool)
 	for _, id := range productionInputStrategies {
 		strategy, ok := registry.InputStrategy(id)
 		if !ok {
@@ -194,7 +195,7 @@ func TestAMenuOnlyOperationIsNeverAnEntityOperation(t *testing.T) {
 		}
 	}
 
-	menuOnly := make([]OperationID, 0, 1)
+	menuOnly := make([]operation.OperationID, 0, 1)
 	for _, spec := range outlinerMenuSpecs(chrome.ModeAll, false, true) {
 		for _, entry := range spec.Entries {
 			if entry.OperationID == "" || bound[entry.OperationID] {
@@ -208,15 +209,15 @@ func TestAMenuOnlyOperationIsNeverAnEntityOperation(t *testing.T) {
 			}
 			// Global is target-free and ScopedProjects is the view's own scope; the
 			// four remaining sources all name an entity the cursor supplies.
-			if descriptor.TargetSource != OperationTargetGlobal &&
-				descriptor.TargetSource != OperationTargetScopedProjects {
+			if descriptor.TargetSource != operation.OperationTargetGlobal &&
+				descriptor.TargetSource != operation.OperationTargetScopedProjects {
 				t.Errorf(
 					"menu-only operation %s resolves its target from %q; a keyless operation must be target-free or view-scoped",
 					descriptor.ID,
 					descriptor.TargetSource,
 				)
 			}
-			if descriptor.TargetCardinality != TargetCardinalityNone {
+			if descriptor.TargetCardinality != operation.TargetCardinalityNone {
 				t.Errorf(
 					"menu-only operation %s wants %v target(s); a keyless operation carries none",
 					descriptor.ID,
@@ -244,8 +245,8 @@ func TestTheKeylessFoldClearIsReachableOnlyFromTheMenu(t *testing.T) {
 			t.Fatalf("input strategy %s is not registered", id)
 		}
 		for _, binding := range strategy.Bindings {
-			if binding.OperationID == operationCoreClearFolds {
-				t.Fatalf("%s bound the keyless fold clear to %v", id, binding.paths())
+			if binding.OperationID == operation.OperationCoreClearFolds {
+				t.Fatalf("%s bound the keyless fold clear to %v", id, binding.Paths())
 			}
 		}
 	}
@@ -265,7 +266,7 @@ func TestTheKeylessFoldClearIsReachableOnlyFromTheMenu(t *testing.T) {
 	}
 	index := -1
 	for position, entry := range view.Entries {
-		if entry.OperationID == operationCoreClearFolds {
+		if entry.OperationID == operation.OperationCoreClearFolds {
 			index = position
 			// A keyless operation spells no key, which is the visible half of the rule.
 			if entry.Key != "" {

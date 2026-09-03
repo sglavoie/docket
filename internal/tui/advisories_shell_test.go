@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // The shell half of the advisory coverage: the `--no-advisories` option, the
@@ -84,7 +85,7 @@ func TestAdvisoriesMenuRowCarriesLiveVisibility(t *testing.T) {
 	for _, visible := range []bool{false, true} {
 		var found bool
 		for _, entry := range viewMenuEntries(chrome.ModeAll, true, visible) {
-			if entry.OperationID != operationCoreToggleAdvisories {
+			if entry.OperationID != operation.OperationCoreToggleAdvisories {
 				continue
 			}
 			found = true

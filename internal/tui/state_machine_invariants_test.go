@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -262,7 +263,7 @@ func wireInvariantSimplifiedRoot(t *testing.T, app *AppModel) {
 
 func wireInvariantSimplifiedOutliner(t *testing.T, app *AppModel, outliner *OutlinerModel) {
 	t.Helper()
-	app.operationRegistry = NewOperationRegistry()
+	app.operationRegistry = operation.NewOperationRegistry()
 	app.operationExecutor = NewOperationExecutor(app.operationRegistry)
 	app.crossOutliner = outliner
 	app.views.Register(presentation.ViewCrossProjectOutliner, outliner)
@@ -402,7 +403,7 @@ func newFocusToggleTestAppState(t *testing.T) (*AppModel, *models.Task) {
 		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),
 		today:             []PlanningTask{},
 		todayIDs:          make(map[taskref.TaskIdentity]bool),
-		operationRegistry: NewOperationRegistry(),
+		operationRegistry: operation.NewOperationRegistry(),
 		navigation:        NewNavigationState(),
 	}
 	appModel.operationExecutor = NewOperationExecutor(appModel.operationRegistry)

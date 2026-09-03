@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -29,7 +30,7 @@ func (transaction *operationTestTransaction) Rollback() error {
 
 func TestOperationTargetResolverResolvesEveryTargetSourceDeterministically(t *testing.T) {
 	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
-	ctx.Entity = EntityContext{ProjectID: "project-b", TaskID: "task-current"}
+	ctx.Entity = operation.EntityContext{ProjectID: "project-b", TaskID: "task-current"}
 	ctx.Selection.Tasks = []taskref.TaskIdentity{
 		{ProjectID: "project-b", TaskID: "task-2"},
 		{ProjectID: "project-a", TaskID: "task-1"},
@@ -40,25 +41,25 @@ func TestOperationTargetResolverResolvesEveryTargetSourceDeterministically(t *te
 
 	tests := []struct {
 		name         string
-		source       OperationTargetSource
-		category     OperationCategory
-		cardinality  TargetCardinality
+		source       operation.OperationTargetSource
+		category     operation.OperationCategory
+		cardinality  operation.TargetCardinality
 		wantTasks    []taskref.TaskIdentity
 		wantProjects []string
 		wantCount    int
 	}{
 		{
-			name: "current task", source: OperationTargetCurrentTask,
-			category:     OperationCategoryTask,
-			cardinality:  TargetCardinalityOne,
+			name: "current task", source: operation.OperationTargetCurrentTask,
+			category:     operation.OperationCategoryTask,
+			cardinality:  operation.TargetCardinalityOne,
 			wantTasks:    []taskref.TaskIdentity{{ProjectID: "project-b", TaskID: "task-current"}},
 			wantProjects: []string{"project-b"},
 			wantCount:    1,
 		},
 		{
-			name: "selected tasks", source: OperationTargetSelectedTasks,
-			category:    OperationCategoryTask,
-			cardinality: TargetCardinalityOneOrMore,
+			name: "selected tasks", source: operation.OperationTargetSelectedTasks,
+			category:    operation.OperationCategoryTask,
+			cardinality: operation.TargetCardinalityOneOrMore,
 			wantTasks: []taskref.TaskIdentity{
 				{ProjectID: "project-a", TaskID: "task-1"},
 				{ProjectID: "project-b", TaskID: "task-2"},
@@ -67,38 +68,38 @@ func TestOperationTargetResolverResolvesEveryTargetSourceDeterministically(t *te
 			wantCount:    2,
 		},
 		{
-			name: "current project", source: OperationTargetCurrentProject,
-			category:     OperationCategoryProject,
-			cardinality:  TargetCardinalityOne,
+			name: "current project", source: operation.OperationTargetCurrentProject,
+			category:     operation.OperationCategoryProject,
+			cardinality:  operation.TargetCardinalityOne,
 			wantProjects: []string{"project-b"},
 			wantCount:    1,
 		},
 		{
-			name: "scoped project set", source: OperationTargetScopedProjects,
-			category:     OperationCategoryProject,
-			cardinality:  TargetCardinalityOneOrMore,
+			name: "scoped project set", source: operation.OperationTargetScopedProjects,
+			category:     operation.OperationCategoryProject,
+			cardinality:  operation.TargetCardinalityOneOrMore,
 			wantProjects: []string{"project-a", "project-b"},
 			wantCount:    2,
 		},
 		{
-			name: "global", source: OperationTargetGlobal,
-			category:    OperationCategorySystem,
-			cardinality: TargetCardinalityNone,
+			name: "global", source: operation.OperationTargetGlobal,
+			category:    operation.OperationCategorySystem,
+			cardinality: operation.TargetCardinalityNone,
 			wantCount:   0,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			descriptor := OperationDescriptor{
-				ID:                OperationID("test." + test.name),
+			descriptor := operation.OperationDescriptor{
+				ID:                operation.OperationID("test." + test.name),
 				Label:             test.name,
 				Category:          test.category,
 				TargetSource:      test.source,
 				TargetCardinality: test.cardinality,
-				Risk:              OperationRiskReadOnly,
+				Risk:              operation.OperationRiskReadOnly,
 			}
-			targets, err := (OperationTargetResolver{}).Resolve(descriptor, ctx)
+			targets, err := (operation.OperationTargetResolver{}).Resolve(descriptor, ctx)
 			if err != nil {
 				t.Fatalf("Resolve: %v", err)
 			}
@@ -117,17 +118,17 @@ func TestOperationTargetResolverResolvesEveryTargetSourceDeterministically(t *te
 
 func TestOperationTargetResolverSelectedTasksFallsBackToCurrentTask(t *testing.T) {
 	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
-	ctx.Entity = EntityContext{ProjectID: "project", TaskID: "current"}
-	descriptor := OperationDescriptor{
+	ctx.Entity = operation.EntityContext{ProjectID: "project", TaskID: "current"}
+	descriptor := operation.OperationDescriptor{
 		ID:                "task.bulk",
 		Label:             "Bulk task",
-		Category:          OperationCategoryTask,
-		TargetSource:      OperationTargetSelectedTasks,
-		TargetCardinality: TargetCardinalityOneOrMore,
-		Risk:              OperationRiskMutation,
+		Category:          operation.OperationCategoryTask,
+		TargetSource:      operation.OperationTargetSelectedTasks,
+		TargetCardinality: operation.TargetCardinalityOneOrMore,
+		Risk:              operation.OperationRiskMutation,
 	}
 
-	targets, err := (OperationTargetResolver{}).Resolve(descriptor, ctx)
+	targets, err := (operation.OperationTargetResolver{}).Resolve(descriptor, ctx)
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
@@ -138,15 +139,15 @@ func TestOperationTargetResolverSelectedTasksFallsBackToCurrentTask(t *testing.T
 }
 
 func TestOperationExecutorCentralizesValueConfirmationTransactionStatusAndUndo(t *testing.T) {
-	registry := NewOperationRegistry()
-	descriptor := OperationDescriptor{
+	registry := operation.NewOperationRegistry()
+	descriptor := operation.OperationDescriptor{
 		ID:                "task.destroy",
 		Label:             "Destroy selected tasks",
-		Category:          OperationCategoryTask,
-		TargetSource:      OperationTargetSelectedTasks,
-		TargetCardinality: TargetCardinalityOneOrMore,
-		Risk:              OperationRiskDestructive,
-		ValueProviderID:   ValueProviderState,
+		Category:          operation.OperationCategoryTask,
+		TargetSource:      operation.OperationTargetSelectedTasks,
+		TargetCardinality: operation.TargetCardinalityOneOrMore,
+		Risk:              operation.OperationRiskDestructive,
+		ValueProviderID:   operation.ValueProviderState,
 	}
 	if err := registry.Register(descriptor); err != nil {
 		t.Fatalf("Register descriptor: %v", err)
@@ -154,7 +155,7 @@ func TestOperationExecutorCentralizesValueConfirmationTransactionStatusAndUndo(t
 	executor := NewOperationExecutor(registry)
 
 	providerCalls := 0
-	if err := executor.RegisterValueProvider(ValueProviderState, func(OperationInvocation) OperationValueProviderResult {
+	if err := executor.RegisterValueProvider(operation.ValueProviderState, func(OperationInvocation) OperationValueProviderResult {
 		providerCalls++
 		return OperationValueProviderResult{Value: "done", HasValue: true}
 	}); err != nil {
@@ -181,7 +182,7 @@ func TestOperationExecutorCentralizesValueConfirmationTransactionStatusAndUndo(t
 	redoCalls := 0
 	if err := executor.Register(OperationBinding{
 		OperationID: descriptor.ID,
-		BulkHandler: func(invocation OperationInvocation, targets []OperationTarget) OperationHandlerResult {
+		BulkHandler: func(invocation OperationInvocation, targets []operation.OperationTarget) OperationHandlerResult {
 			handlerCalls++
 			if len(targets) != 2 {
 				t.Fatalf("bulk targets = %d, want 2", len(targets))

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -130,10 +131,10 @@ func TestProductionTaskOperationBulkEntriesExecuteAcrossEverySelectedTask(t *tes
 		project.GetTaskByID("loose"),
 	)
 
-	values := map[OperationID]any{
+	values := map[operation.OperationID]any{
 		operationTaskSetState:    models.StateBacklog,
 		operationTaskSetPriority: 2,
-		operationTaskSetDueDate:  OperationDateValue{},
+		operationTaskSetDueDate:  operation.OperationDateValue{},
 		operationTaskSetTags:     []string{"release"},
 	}
 	for _, entry := range taskOperationManifest() {
@@ -168,14 +169,14 @@ func TestProductionTaskOperationBulkEntriesExecuteAcrossEverySelectedTask(t *tes
 func TestTaskDeleteOperationRoutesThroughCanonicalConfirmation(t *testing.T) {
 	e := newTaskDeleteEnv(t)
 	m := e.appModel()
-	m.operationRegistry = NewOperationRegistry()
+	m.operationRegistry = operation.NewOperationRegistry()
 	m.operationExecutor = NewOperationExecutor(m.operationRegistry)
 	if err := m.registerTaskActionOperations(); err != nil {
 		t.Fatalf("registerTaskActionOperations: %v", err)
 	}
 
 	context := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
-	context.Capabilities.Add(CapabilitySimplifiedInput)
+	context.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	context.Entity = taskOperationEntity(e.parent, e.alpha)
 
 	result := m.operationExecutor.Execute(OperationExecutionRequest{

@@ -5,16 +5,17 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
-func (m *AppModel) operationTaskRefs(context CommandContext) ([]TaskProjectRef, error) {
-	identities := normalizedTaskIdentities(context.Selection.Tasks)
+func (m *AppModel) operationTaskRefs(context operation.CommandContext) ([]TaskProjectRef, error) {
+	identities := operation.NormalizedTaskIdentities(context.Selection.Tasks)
 	if len(identities) == 0 {
 		if context.Selection.Visual {
 			return nil, fmt.Errorf("select at least one task")
 		}
-		if current := currentTaskIdentity(context); current.Valid() {
+		if current := operation.CurrentTaskIdentity(context); current.Valid() {
 			identities = []taskref.TaskIdentity{current}
 		}
 	}

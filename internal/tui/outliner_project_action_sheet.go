@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -12,7 +13,7 @@ import (
 // from the Hub's own sheet operation because the two surfaces offer different
 // rows: the Hub reaches its project keys directly and menus only the lifecycle
 // pair, while here the whole administration set is the menu.
-const operationProjectActions OperationID = "tui.project.actions"
+const operationProjectActions operation.OperationID = "tui.project.actions"
 
 // The Outliner's project sheet groups into two categories only. Project holds
 // the reversible edits and Danger the two acts that end the project's presence
@@ -35,26 +36,26 @@ var outlinerProjectActionCategories = []ListCategory{
 // menu row on the other. Edit project is the clearest case — `e` on the Hub,
 // menu row here, because the Outliner's `e` already edits a task.
 //
-// The DirectOnly entries stay listed here so validateOperationOnePath can see
+// The DirectOnly entries stay listed here so ValidateOperationOnePath can see
 // them, but the sheet skips them: each already has a key on this surface. Pin
 // joined them when the project header gained `*`, the same rule that took
 // Comments and Attachments out of the task menu when they gained `;` and `&`.
 //
 // Three project operations are absent on purpose. Open project already has
-// Enter through operationCoreActivateGroup and Open project notes already has
-// Ctrl+N through operationCoreNotes; listing either would be the second path the
+// Enter through OperationCoreActivateGroup and Open project notes already has
+// Ctrl+N through OperationCoreNotes; listing either would be the second path the
 // rule exists to prevent. Unarchive project is absent for a different reason: an
 // Outliner project header is drawn from TaskWorkspaceProjects(), which is
 // non-archived by definition, so the row could never be offered. Archiving is
 // therefore one-way from here — the Hub is where an archived project comes back.
-func outlinerProjectOperationManifest() []operationManifestEntry {
-	return []operationManifestEntry{
-		{ID: operationProjectSetTags, Label: "Set project tags", Aliases: []string{"project tags"}, Provider: ValueProviderProjectTags, Category: outlinerProjectActionCategoryProject, Risk: OperationRiskMutation, DirectOnly: true},
-		{ID: operationProjectActions, Label: "Project actions", Aliases: []string{"project action sheet"}, Category: outlinerProjectActionCategoryProject, Risk: OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationScopeRenameProject, Label: "Edit project", Aliases: []string{"project settings"}, Category: outlinerProjectActionCategoryProject, Risk: OperationRiskMutation},
-		{ID: operationScopePinProject, Label: "Toggle project pin", Aliases: []string{"pin project", "unpin project"}, Category: outlinerProjectActionCategoryProject, Risk: OperationRiskMutation, DirectOnly: true},
-		{ID: operationScopeArchiveProject, Label: "Archive project", Category: outlinerProjectActionCategoryDanger, Risk: OperationRiskDestructive},
-		{ID: operationProjectDelete, Label: "Delete project", Aliases: []string{"remove project", "destroy project"}, Category: outlinerProjectActionCategoryDanger, Risk: OperationRiskDestructive},
+func outlinerProjectOperationManifest() []operation.OperationManifestEntry {
+	return []operation.OperationManifestEntry{
+		{ID: operationProjectSetTags, Label: "Set project tags", Aliases: []string{"project tags"}, Provider: operation.ValueProviderProjectTags, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operationProjectActions, Label: "Project actions", Aliases: []string{"project action sheet"}, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationScopeRenameProject, Label: "Edit project", Aliases: []string{"project settings"}, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskMutation},
+		{ID: operationScopePinProject, Label: "Toggle project pin", Aliases: []string{"pin project", "unpin project"}, Category: outlinerProjectActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operationScopeArchiveProject, Label: "Archive project", Category: outlinerProjectActionCategoryDanger, Risk: operation.OperationRiskDestructive},
+		{ID: operationProjectDelete, Label: "Delete project", Aliases: []string{"remove project", "destroy project"}, Category: outlinerProjectActionCategoryDanger, Risk: operation.OperationRiskDestructive},
 	}
 }
 
@@ -62,13 +63,13 @@ func outlinerProjectOperationManifest() []operationManifestEntry {
 // project sheet, the counterpart of taskOperationManifestEntryFor. The two stay
 // separate so a project operation can never appear in the task Space menu and a
 // task operation can never appear in this one.
-func outlinerProjectOperationManifestEntryFor(id OperationID) (operationManifestEntry, bool) {
+func outlinerProjectOperationManifestEntryFor(id operation.OperationID) (operation.OperationManifestEntry, bool) {
 	for _, entry := range outlinerProjectOperationManifest() {
 		if entry.ID == id {
 			return entry, true
 		}
 	}
-	return operationManifestEntry{}, false
+	return operation.OperationManifestEntry{}, false
 }
 
 // projectActionSheetOperationDescriptor states the sheet's applicability apart
@@ -77,18 +78,18 @@ func outlinerProjectOperationManifestEntryFor(id OperationID) (operationManifest
 // scope also satisfies. This one asks the stricter question the row kind
 // answers, so the key opens a project sheet only where a project header actually
 // is.
-func projectActionSheetOperationDescriptor() OperationDescriptor {
-	return OperationDescriptor{
+func projectActionSheetOperationDescriptor() operation.OperationDescriptor {
+	return operation.OperationDescriptor{
 		ID:                   operationProjectActions,
 		Label:                "Project Actions",
 		Description:          "Open the project action menu",
 		Aliases:              []string{"project action sheet", "project menu"},
-		Category:             OperationCategoryProject,
-		TargetSource:         OperationTargetCurrentEntity,
-		TargetCardinality:    TargetCardinalityOne,
-		RequiredCapabilities: NewCapabilitySet(CapabilitySimplifiedInput),
-		Risk:                 OperationRiskReadOnly,
-		Applicability: func(ctx CommandContext) bool {
+		Category:             operation.OperationCategoryProject,
+		TargetSource:         operation.OperationTargetCurrentEntity,
+		TargetCardinality:    operation.TargetCardinalityOne,
+		RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
+		Risk:                 operation.OperationRiskReadOnly,
+		Applicability: func(ctx operation.CommandContext) bool {
 			return coreOutlinerApplicability(ctx) &&
 				!ctx.Selection.Visual &&
 				!ctx.Entity.HasChecklistCursor &&
@@ -105,7 +106,7 @@ func (m *AppModel) registerProjectActionSheetOperation() error {
 	return m.registerOperation(projectActionSheetOperationDescriptor(), OperationBinding{
 		SingleHandler: func(
 			invocation OperationInvocation,
-			_ OperationTarget,
+			_ operation.OperationTarget,
 		) OperationHandlerResult {
 			if err := m.openProjectActionSheet(invocation.Context); err != nil {
 				m.setInfoStatus(err.Error())
@@ -120,9 +121,9 @@ func (m *AppModel) registerProjectActionSheetOperation() error {
 // contextual engine. The CommandContext carries the frozen project identity, so
 // a cursor move beneath the modal cannot retarget the eventual operation.
 func NewProjectActionSheetModel(
-	registry *OperationRegistry,
+	registry *operation.OperationRegistry,
 	executor *OperationExecutor,
-	context CommandContext,
+	context operation.CommandContext,
 	projectName string,
 ) (*ContextActionSheetModel, error) {
 	return NewContextActionSheetModel(
@@ -159,13 +160,13 @@ func NewProjectActionSheetModel(
 // or archiving one that is already archived — drops out with no branching here:
 // projectOperationRequirements already decides it.
 func ProjectActionSheetOperationIDs(
-	registry *OperationRegistry,
-	context CommandContext,
-) []OperationID {
+	registry *operation.OperationRegistry,
+	context operation.CommandContext,
+) []operation.OperationID {
 	if registry == nil {
-		return []OperationID{}
+		return []operation.OperationID{}
 	}
-	ids := make([]OperationID, 0, len(outlinerProjectOperationManifest()))
+	ids := make([]operation.OperationID, 0, len(outlinerProjectOperationManifest()))
 	for _, entry := range outlinerProjectOperationManifest() {
 		if entry.DirectOnly {
 			continue
@@ -174,7 +175,7 @@ func ProjectActionSheetOperationIDs(
 		if !ok || !descriptor.Applicable(context) {
 			continue
 		}
-		if _, err := (OperationTargetResolver{}).Resolve(descriptor, context); err != nil {
+		if _, err := (operation.OperationTargetResolver{}).Resolve(descriptor, context); err != nil {
 			continue
 		}
 		ids = append(ids, entry.ID)
@@ -182,11 +183,11 @@ func ProjectActionSheetOperationIDs(
 	return ids
 }
 
-func outlinerProjectActionCategory(descriptor OperationDescriptor) ListCategoryID {
+func outlinerProjectActionCategory(descriptor operation.OperationDescriptor) ListCategoryID {
 	if entry, manifested := outlinerProjectOperationManifestEntryFor(descriptor.ID); manifested {
 		return entry.Category
 	}
-	if descriptor.Risk == OperationRiskDestructive {
+	if descriptor.Risk == operation.OperationRiskDestructive {
 		return outlinerProjectActionCategoryDanger
 	}
 	return outlinerProjectActionCategoryProject
@@ -195,7 +196,7 @@ func outlinerProjectActionCategory(descriptor OperationDescriptor) ListCategoryI
 // openProjectActionSheet raises the sheet for the project header under the
 // cursor. The refusal names the row kind the key needs rather than the
 // operation, so a user who pressed Space one row too high knows where to move.
-func (m *AppModel) openProjectActionSheet(context CommandContext) error {
+func (m *AppModel) openProjectActionSheet(context operation.CommandContext) error {
 	project := m.cursorProjectHeaderProject()
 	if project == nil {
 		return fmt.Errorf("move the cursor to a project header to open project actions")

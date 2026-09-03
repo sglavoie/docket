@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -114,7 +115,7 @@ type NotesViewModel struct {
 	locationPicker *notesLocationPicker
 	moveSource     *noteMutationRef
 
-	registry *OperationRegistry
+	registry *operation.OperationRegistry
 	dispatch operationKeyDispatch
 }
 
@@ -123,7 +124,7 @@ type NotesViewModel struct {
 // documents nothing, so a host that mounts this model must supply both. The
 // executor stays out because the Space sheet is shell-owned.
 func (m *NotesViewModel) SetOperationSystem(
-	registry *OperationRegistry,
+	registry *operation.OperationRegistry,
 	dispatch operationKeyDispatch,
 ) {
 	m.registry = registry

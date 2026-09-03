@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 func newSession4TaggedProject(t *testing.T, name string, tags ...string) *models.Project {
@@ -30,13 +31,13 @@ func parkTagMembersThroughProjectTagVocabulary(
 	if len(members) == 0 {
 		t.Fatalf("no available project carries #%s", tag)
 	}
-	targets := make([]OperationTarget, 0, len(members))
+	targets := make([]operation.OperationTarget, 0, len(members))
 	for _, member := range members {
-		targets = append(targets, operationTargetFor(ProjectEntity(member.ID)))
+		targets = append(targets, operation.OperationTargetFor(operation.ProjectEntity(member.ID)))
 	}
 	app.projectTagActionSubject = tag
 	result := app.executeProjectTagVocabulary(
-		OperationInvocation{Descriptor: OperationDescriptor{ID: operationProjectTagParkAll}},
+		OperationInvocation{Descriptor: operation.OperationDescriptor{ID: operationProjectTagParkAll}},
 		targets,
 	)
 	if result.Err != nil {

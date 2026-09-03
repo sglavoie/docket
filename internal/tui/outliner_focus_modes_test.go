@@ -25,7 +25,7 @@ func searchProjectionCursorOnTitle(t *testing.T, out *OutlinerModel, title strin
 	for index, row := range out.rows {
 		if row.isTaskRow() && row.task != nil && row.task.Title == title {
 			out.cursor = index
-			return out.currentTaskIdentity()
+			return out.CurrentTaskIdentity()
 		}
 	}
 	t.Fatalf("search %q listed no row for it", title)

@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -57,7 +58,7 @@ func TestOutlineEditorIsInapplicableUnderVisualSelection(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = workspace.Cleanup() })
 	app := driver.App()
-	descriptor, ok := app.GetOperationRegistry().Descriptor(operationCoreOutlineEditor)
+	descriptor, ok := app.GetOperationRegistry().Descriptor(operation.OperationCoreOutlineEditor)
 	if !ok {
 		t.Fatal("tui.core.outline-editor is not registered")
 	}

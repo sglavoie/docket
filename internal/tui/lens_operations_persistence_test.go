@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // With no writable workspace rooted, the in-memory seam is the whole commit and
@@ -19,7 +20,7 @@ func TestLensOperationsUseTheInMemorySeamWithoutADataDir(t *testing.T) {
 	}
 	before := model.runtime.Machine()
 
-	if result := executeLens(model, operationLensCreate, EntityIdentity{}, "In memory", false); result.Err != nil {
+	if result := executeLens(model, operationLensCreate, operation.EntityIdentity{}, "In memory", false); result.Err != nil {
 		t.Fatalf("create lens: %v", result.Err)
 	}
 	after := model.runtime.Machine()
@@ -48,7 +49,7 @@ func TestLensCreatePersistsToTheMachineLocalFile(t *testing.T) {
 		t.Fatalf("seed planning: %v", err)
 	}
 
-	if result := executeLens(model, operationLensCreate, EntityIdentity{}, "Persisted", false); result.Err != nil {
+	if result := executeLens(model, operationLensCreate, operation.EntityIdentity{}, "Persisted", false); result.Err != nil {
 		t.Fatalf("create lens: %v", result.Err)
 	}
 
@@ -86,7 +87,7 @@ func TestAFailedLensCommitChangesNeitherMachineStateNorTheActiveLens(t *testing.
 	t.Cleanup(func() { _ = os.Chmod(home, 0o700) })
 
 	before := model.runtime.Machine()
-	result := executeLens(model, operationLensRename, LensEntity(starter.ID), "Renamed", false)
+	result := executeLens(model, operationLensRename, operation.LensEntity(starter.ID), "Renamed", false)
 	if result.Err == nil {
 		t.Skip("the runtime root stayed writable; the failure path is untested here")
 	}

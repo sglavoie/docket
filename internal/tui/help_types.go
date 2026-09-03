@@ -5,25 +5,15 @@ import (
 	"charm.land/bubbles/v2/viewport"
 
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 )
-
-// HelpItem represents a single help entry. Aliases carry the vocabulary a user
-// is likely to type for an operation whose label does not contain it — "defer"
-// for Set Due or Defer — so `?` search can reach a row its label hides. They are
-// matched, never rendered as a column of their own.
-type HelpItem struct {
-	Key         string // e.g., "j/k", "ctrl+O"
-	Description string // e.g., "Move cursor"
-	Category    string // e.g., "Navigation", "Actions"
-	Aliases     []string
-}
 
 // filteredHelpItem pairs a HelpItem with fuzzy match positions for highlighting.
 // matchedAliases names the aliases that earned the match, so the row can say why
 // it survived a query its description does not contain.
 type filteredHelpItem struct {
-	HelpItem
+	operation.HelpItem
 	keyPositions   []int
 	descPositions  []int
 	matchedAliases []string
@@ -32,14 +22,14 @@ type filteredHelpItem struct {
 // HelpProvider is implemented by views that project help directly from their
 // active keymap or other view-local controls.
 type HelpProvider interface {
-	GetHelpItems() []HelpItem
+	GetHelpItems() []operation.HelpItem
 }
 
-func helpItemsFromKeyMap(km *keymap.KeyMap) []HelpItem {
+func helpItemsFromKeyMap(km *keymap.KeyMap) []operation.HelpItem {
 	raw := km.HelpItems()
-	items := make([]HelpItem, len(raw))
+	items := make([]operation.HelpItem, len(raw))
 	for i, item := range raw {
-		items[i] = HelpItem{
+		items[i] = operation.HelpItem{
 			Key:         item.Key,
 			Description: item.Description,
 			Category:    item.Category,
@@ -51,7 +41,7 @@ func helpItemsFromKeyMap(km *keymap.KeyMap) []HelpItem {
 // HelpViewModel is the model for the help view.
 type HelpViewModel struct {
 	pulse.WorkspacePulseState
-	items         []HelpItem
+	items         []operation.HelpItem
 	filteredItems []filteredHelpItem
 	viewport      viewport.Model
 	searchInput   textinput.Model

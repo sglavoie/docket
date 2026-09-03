@@ -140,8 +140,8 @@ func TestNoteRowIsNavigableButNeverATaskRow(t *testing.T) {
 	if task := outliner.getCursorTask(); task != nil {
 		t.Fatalf("getCursorTask on a note row = %v, want nothing", task)
 	}
-	if identity := outliner.currentTaskIdentity(); identity.Valid() {
-		t.Fatalf("currentTaskIdentity on a note row = %+v, want an invalid identity", identity)
+	if identity := outliner.CurrentTaskIdentity(); identity.Valid() {
+		t.Fatalf("CurrentTaskIdentity on a note row = %+v, want an invalid identity", identity)
 	}
 	if identity, ok := outliner.cursorTaskIdentity(); ok {
 		t.Fatalf("cursorTaskIdentity on a note row = %+v, want a refusal", identity)

@@ -6,29 +6,30 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // contextActionTestDescriptor is a global, value-free operation so engine tests
 // exercise sheet behavior instead of task target resolution.
-func contextActionTestDescriptor(id OperationID, label string) OperationDescriptor {
-	return OperationDescriptor{
+func contextActionTestDescriptor(id operation.OperationID, label string) operation.OperationDescriptor {
+	return operation.OperationDescriptor{
 		ID:                id,
 		Label:             label,
-		Category:          OperationCategoryScope,
-		TargetSource:      OperationTargetGlobal,
-		TargetCardinality: TargetCardinalityNone,
-		Risk:              OperationRiskMutation,
+		Category:          operation.OperationCategoryScope,
+		TargetSource:      operation.OperationTargetGlobal,
+		TargetCardinality: operation.TargetCardinalityNone,
+		Risk:              operation.OperationRiskMutation,
 	}
 }
 
 func contextActionTestEngine(
 	t *testing.T,
-	descriptors []OperationDescriptor,
-	handlers map[OperationID]OperationHandler,
-) (*OperationRegistry, *OperationExecutor) {
+	descriptors []operation.OperationDescriptor,
+	handlers map[operation.OperationID]OperationHandler,
+) (*operation.OperationRegistry, *OperationExecutor) {
 	t.Helper()
-	registry := NewOperationRegistry()
+	registry := operation.NewOperationRegistry()
 	for _, descriptor := range descriptors {
 		if err := registry.Register(descriptor); err != nil {
 			t.Fatalf("register %s: %v", descriptor.ID, err)
@@ -46,16 +47,16 @@ func contextActionTestEngine(
 	return registry, executor
 }
 
-func contextActionTestContext() CommandContext {
+func contextActionTestContext() operation.CommandContext {
 	context := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
-	context.Capabilities.Add(CapabilitySimplifiedInput)
+	context.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	return context
 }
 
 func TestContextActionSheetPreservesHostOrderAndDropsUnavailableOperations(t *testing.T) {
 	blocked := contextActionTestDescriptor("test.blocked", "Blocked")
-	blocked.Applicability = func(CommandContext) bool { return false }
-	registry, executor := contextActionTestEngine(t, []OperationDescriptor{
+	blocked.Applicability = func(operation.CommandContext) bool { return false }
+	registry, executor := contextActionTestEngine(t, []operation.OperationDescriptor{
 		contextActionTestDescriptor("test.zeta", "Zeta"),
 		contextActionTestDescriptor("test.alpha", "Alpha"),
 		blocked,
@@ -65,13 +66,13 @@ func TestContextActionSheetPreservesHostOrderAndDropsUnavailableOperations(t *te
 		registry,
 		executor,
 		contextActionTestContext(),
-		[]OperationID{"test.zeta", "test.alpha", "test.zeta", "test.blocked", "test.missing"},
+		[]operation.OperationID{"test.zeta", "test.alpha", "test.zeta", "test.blocked", "test.missing"},
 		ContextActionSheetConfig{Host: ContextActionHostProjectHub},
 	)
 	if err != nil {
 		t.Fatalf("NewContextActionSheetModel: %v", err)
 	}
-	want := []OperationID{"test.zeta", "test.alpha"}
+	want := []operation.OperationID{"test.zeta", "test.alpha"}
 	if got := sheet.operationIDs(); !slices.Equal(got, want) {
 		t.Fatalf("sheet operations = %v, want host order %v", got, want)
 	}
@@ -82,9 +83,9 @@ func TestContextActionSheetPreservesHostOrderAndDropsUnavailableOperations(t *te
 
 func TestContextActionSheetFreezesHostContextAndValue(t *testing.T) {
 	var invocation OperationInvocation
-	registry, executor := contextActionTestEngine(t, []OperationDescriptor{
+	registry, executor := contextActionTestEngine(t, []operation.OperationDescriptor{
 		contextActionTestDescriptor("test.act", "Act"),
-	}, map[OperationID]OperationHandler{
+	}, map[operation.OperationID]OperationHandler{
 		"test.act": func(got OperationInvocation) OperationHandlerResult {
 			invocation = got
 			return OperationHandlerResult{Status: "acted"}
@@ -97,7 +98,7 @@ func TestContextActionSheetFreezesHostContextAndValue(t *testing.T) {
 		registry,
 		executor,
 		context,
-		[]OperationID{"test.act"},
+		[]operation.OperationID{"test.act"},
 		ContextActionSheetConfig{
 			Host:     ContextActionHostProjectHub,
 			Value:    "frozen-row",
@@ -130,10 +131,10 @@ func TestContextActionSheetFreezesHostContextAndValue(t *testing.T) {
 }
 
 func TestContextActionSheetRetainsFailureAndClosesOnlyOnCompletion(t *testing.T) {
-	registry, executor := contextActionTestEngine(t, []OperationDescriptor{
+	registry, executor := contextActionTestEngine(t, []operation.OperationDescriptor{
 		contextActionTestDescriptor("test.fail", "Fail"),
 		contextActionTestDescriptor("test.ok", "Ok"),
-	}, map[OperationID]OperationHandler{
+	}, map[operation.OperationID]OperationHandler{
 		"test.fail": func(OperationInvocation) OperationHandlerResult {
 			return OperationHandlerResult{Err: errors.New("handler refused")}
 		},
@@ -146,7 +147,7 @@ func TestContextActionSheetRetainsFailureAndClosesOnlyOnCompletion(t *testing.T)
 		registry,
 		executor,
 		contextActionTestContext(),
-		[]OperationID{"test.fail", "test.ok"},
+		[]operation.OperationID{"test.fail", "test.ok"},
 		ContextActionSheetConfig{Host: ContextActionHostOutliner},
 	)
 	if err != nil {
@@ -180,9 +181,9 @@ func TestContextActionSheetRetainsFailureAndClosesOnlyOnCompletion(t *testing.T)
 
 func TestContextActionSheetEscReturnsToHostWithoutExecuting(t *testing.T) {
 	executed := false
-	registry, executor := contextActionTestEngine(t, []OperationDescriptor{
+	registry, executor := contextActionTestEngine(t, []operation.OperationDescriptor{
 		contextActionTestDescriptor("test.act", "Act"),
-	}, map[OperationID]OperationHandler{
+	}, map[operation.OperationID]OperationHandler{
 		"test.act": func(OperationInvocation) OperationHandlerResult {
 			executed = true
 			return OperationHandlerResult{}
@@ -193,7 +194,7 @@ func TestContextActionSheetEscReturnsToHostWithoutExecuting(t *testing.T) {
 		registry,
 		executor,
 		contextActionTestContext(),
-		[]OperationID{"test.act"},
+		[]operation.OperationID{"test.act"},
 		ContextActionSheetConfig{Host: ContextActionHostProjectHub},
 	)
 	if err != nil {
@@ -222,7 +223,7 @@ func TestContextActionSheetConfirmationCancelReturnsToSheet(t *testing.T) {
 	app := newUITestApp()
 	executed := false
 	descriptor := contextActionTestDescriptor("test.destroy", "Destroy")
-	descriptor.Risk = OperationRiskDestructive
+	descriptor.Risk = operation.OperationRiskDestructive
 	if err := app.operationRegistry.Register(descriptor); err != nil {
 		t.Fatalf("register: %v", err)
 	}
@@ -240,7 +241,7 @@ func TestContextActionSheetConfirmationCancelReturnsToSheet(t *testing.T) {
 		app.operationRegistry,
 		app.operationExecutor,
 		contextActionTestContext(),
-		[]OperationID{descriptor.ID},
+		[]operation.OperationID{descriptor.ID},
 		ContextActionSheetConfig{Host: ContextActionHostOutliner},
 	)
 	if err != nil {
@@ -293,7 +294,7 @@ func TestContextActionSheetConfirmationCancelReturnsToSheet(t *testing.T) {
 }
 
 func TestListActionStateIntersectionFeedsContextActionSheet(t *testing.T) {
-	registry, executor := contextActionTestEngine(t, []OperationDescriptor{
+	registry, executor := contextActionTestEngine(t, []operation.OperationDescriptor{
 		contextActionTestDescriptor("test.shared", "Shared"),
 		contextActionTestDescriptor("test.only-first", "Only First"),
 	}, nil)
@@ -302,12 +303,12 @@ func TestListActionStateIntersectionFeedsContextActionSheet(t *testing.T) {
 		{
 			ID:           "row:first",
 			PrimaryText:  "First",
-			OperationIDs: []OperationID{"test.shared", "test.only-first"},
+			OperationIDs: []operation.OperationID{"test.shared", "test.only-first"},
 		},
 		{
 			ID:           "row:second",
 			PrimaryText:  "Second",
-			OperationIDs: []OperationID{"test.shared"},
+			OperationIDs: []operation.OperationID{"test.shared"},
 		},
 	}, nil, ListSurfaceConfig{SelectionMode: ListSelectionMulti})
 	if err != nil {
@@ -337,13 +338,13 @@ func TestListActionStateIntersectionFeedsContextActionSheet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewContextActionSheetModel: %v", err)
 	}
-	if got := sheet.operationIDs(); !slices.Equal(got, []OperationID{"test.shared"}) {
+	if got := sheet.operationIDs(); !slices.Equal(got, []operation.OperationID{"test.shared"}) {
 		t.Fatalf("sheet operations = %v, want only the intersection", got)
 	}
 }
 
 func TestContextActionSheetTaskAdapterKeepsStableItemIdentity(t *testing.T) {
-	registry := NewOperationRegistry()
+	registry := operation.NewOperationRegistry()
 	for _, descriptor := range taskActionTestDescriptors() {
 		registerTaskActionTestDescriptor(t, registry, descriptor)
 	}

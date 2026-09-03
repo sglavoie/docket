@@ -5,42 +5,43 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 // filterOperationDescriptor is the shape every facet shares: no target, no
 // transaction, and applicability decided by the Outliner alone.
 func filterOperationDescriptor(
-	id OperationID,
+	id operation.OperationID,
 	label string,
-	provider ValueProviderID,
+	provider operation.ValueProviderID,
 	aliases ...string,
-) OperationDescriptor {
-	return OperationDescriptor{
+) operation.OperationDescriptor {
+	return operation.OperationDescriptor{
 		ID:                   id,
 		Label:                label,
 		Aliases:              aliases,
-		Category:             OperationCategoryFilter,
-		TargetCardinality:    TargetCardinalityNone,
-		RequiredCapabilities: NewCapabilitySet(CapabilitySimplifiedInput),
+		Category:             operation.OperationCategoryFilter,
+		TargetCardinality:    operation.TargetCardinalityNone,
+		RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
 		Applicability:        coreOutlinerApplicability,
-		Risk:                 OperationRiskReadOnly,
+		Risk:                 operation.OperationRiskReadOnly,
 		ValueProviderID:      provider,
 	}
 }
 
-func filterOperationDescriptors() []OperationDescriptor {
+func filterOperationDescriptors() []operation.OperationDescriptor {
 	descriptor := filterOperationDescriptor
-	return []OperationDescriptor{
-		descriptor(operationFilterPriority, "Filter by Priority", ValueProviderFilterPriority, "priority threshold"),
-		descriptor(operationFilterStates, "Filter by State", ValueProviderFilterStates, "state filter"),
-		descriptor(operationFilterTags, "Filter by Tags", ValueProviderFilterTags, "tag filter"),
-		descriptor(operationFilterContexts, "Filter by Context", ValueProviderFilterContexts, "context filter"),
+	return []operation.OperationDescriptor{
+		descriptor(operationFilterPriority, "Filter by Priority", operation.ValueProviderFilterPriority, "priority threshold"),
+		descriptor(operationFilterStates, "Filter by State", operation.ValueProviderFilterStates, "state filter"),
+		descriptor(operationFilterTags, "Filter by Tags", operation.ValueProviderFilterTags, "tag filter"),
+		descriptor(operationFilterContexts, "Filter by Context", operation.ValueProviderFilterContexts, "context filter"),
 		descriptor(operationFilterReview, "Filter Review", "", "review flag filter", "flagged for review"),
-		descriptor(operationFilterDue, "Filter by Due or Deferred", ValueProviderFilterDue, "due filter", "deferred", "hidden"),
-		descriptor(operationFilterCompletionAge, "Filter by Completion Age", ValueProviderFilterCompletionAge, "completion age", "cleanup age"),
-		descriptor(operationFilterHierarchy, "Filter by Hierarchy", ValueProviderFilterHierarchy, "hierarchy position", "parent or child"),
-		descriptor(operationFilterDependency, "Filter by Dependency", ValueProviderFilterDependency, "?blocked", "?blocking", "references"),
+		descriptor(operationFilterDue, "Filter by Due or Deferred", operation.ValueProviderFilterDue, "due filter", "deferred", "hidden"),
+		descriptor(operationFilterCompletionAge, "Filter by Completion Age", operation.ValueProviderFilterCompletionAge, "completion age", "cleanup age"),
+		descriptor(operationFilterHierarchy, "Filter by Hierarchy", operation.ValueProviderFilterHierarchy, "hierarchy position", "parent or child"),
+		descriptor(operationFilterDependency, "Filter by Dependency", operation.ValueProviderFilterDependency, "?blocked", "?blocking", "references"),
 		descriptor(operationFilterStale, "Filter Stale", "", "stale work", "untouched work"),
 		// The pinned axis has been in the row cache and in the canonical query all
 		// along; only the key was missing, so this is a binding for an existing
@@ -56,7 +57,7 @@ func (m *AppModel) registerFilterOperations() error {
 	}
 	// Priority is the only preset-only facet: each f!0-3 binding carries its
 	// threshold, so reaching the provider means a caller bypassed the grammar.
-	if err := m.operationExecutor.RegisterValueProvider(ValueProviderFilterPriority,
+	if err := m.operationExecutor.RegisterValueProvider(operation.ValueProviderFilterPriority,
 		func(OperationInvocation) OperationValueProviderResult {
 			return OperationValueProviderResult{
 				Err: fmt.Errorf("this filter takes its value from the f!0-3 chord"),
@@ -64,15 +65,15 @@ func (m *AppModel) registerFilterOperations() error {
 		}); err != nil {
 		return err
 	}
-	for _, provider := range []ValueProviderID{
-		ValueProviderFilterStates,
-		ValueProviderFilterTags,
-		ValueProviderFilterContexts,
-		ValueProviderFilterDue,
-		ValueProviderFilterCompletionAge,
-		ValueProviderFilterHierarchy,
-		ValueProviderFilterDependency,
-		ValueProviderFilterProjectTags,
+	for _, provider := range []operation.ValueProviderID{
+		operation.ValueProviderFilterStates,
+		operation.ValueProviderFilterTags,
+		operation.ValueProviderFilterContexts,
+		operation.ValueProviderFilterDue,
+		operation.ValueProviderFilterCompletionAge,
+		operation.ValueProviderFilterHierarchy,
+		operation.ValueProviderFilterDependency,
+		operation.ValueProviderFilterProjectTags,
 	} {
 		if err := m.operationExecutor.RegisterValueProvider(provider,
 			func(OperationInvocation) OperationValueProviderResult {
@@ -87,11 +88,11 @@ func (m *AppModel) registerFilterOperations() error {
 	// projection is not declared here: it is read off the clause fields the
 	// operation writes, so a key is advertised exactly when its handler will
 	// accept it.
-	register := func(descriptors []OperationDescriptor, handler OperationHandler) error {
+	register := func(descriptors []operation.OperationDescriptor, handler OperationHandler) error {
 		for _, descriptor := range descriptors {
 			stale := descriptor.ID == operationFilterStale
 			refusesSearchProjection := filterOperationRequiresReload(descriptor.ID)
-			descriptor.Applicability = func(ctx CommandContext) bool {
+			descriptor.Applicability = func(ctx operation.CommandContext) bool {
 				if !coreOutlinerApplicability(ctx) {
 					return false
 				}
@@ -103,7 +104,7 @@ func (m *AppModel) registerFilterOperations() error {
 					m.crossOutliner.activeOutlinerMode() != chrome.ModeRecent
 			}
 			if err := m.registerOperation(descriptor, OperationBinding{
-				RequiredCapabilities:     NewCapabilitySet(CapabilitySimplifiedInput),
+				RequiredCapabilities:     operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
 				Applicability:            descriptor.Applicability,
 				Handler:                  handler,
 				DelegateTargetResolution: true,
@@ -126,7 +127,7 @@ func (m *AppModel) registerFilterOperations() error {
 // filterOperationFields names the clause fields one facet owns. A facet writes
 // these fields outright and nothing else, so applying it can neither preserve a
 // value it just replaced nor disturb a facet beside it.
-func filterOperationFields(id OperationID) []models.QueryField {
+func filterOperationFields(id operation.OperationID) []models.QueryField {
 	switch id {
 	case operationFilterPriority:
 		return []models.QueryField{models.QueryFieldPriority}
@@ -178,7 +179,7 @@ func filterOperationFields(id OperationID) []models.QueryField {
 // population rather than rebuilding the rows. It is computed from the fields the
 // operation writes rather than declared beside its handler, so a facet cannot be
 // registered claiming one obligation and implemented honoring another.
-func filterOperationRequiresReload(id OperationID) bool {
+func filterOperationRequiresReload(id operation.OperationID) bool {
 	for _, field := range filterOperationFields(id) {
 		if models.QueryFieldRequiresReload(field) {
 			return true
@@ -208,7 +209,7 @@ type filterClauseEdit struct {
 // the top of a freshly loaded scope. That same obligation is why it refuses under
 // a search projection: the projection is scored over the snapshot the reload
 // replaces.
-func (m *AppModel) applyFilterClauseEdit(id OperationID, edit filterClauseEdit) OperationHandlerResult {
+func (m *AppModel) applyFilterClauseEdit(id operation.OperationID, edit filterClauseEdit) OperationHandlerResult {
 	out := m.crossOutliner
 	if out == nil {
 		return OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}

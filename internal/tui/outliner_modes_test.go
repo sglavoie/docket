@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -160,7 +161,7 @@ func TestProjectScopePopClearsStaleWhenRestoringRecent(t *testing.T) {
 	outliner.pushProjectScope(project.ID)
 	outliner.selectOutlinerMode(chrome.ModeAll)
 	result := (&AppModel{crossOutliner: outliner}).executeFilterOperation(OperationInvocation{
-		Descriptor: OperationDescriptor{ID: operationFilterStale},
+		Descriptor: operation.OperationDescriptor{ID: operationFilterStale},
 	})
 	if result.Err != nil {
 		t.Fatalf("apply Stale filter in focused project: %v", result.Err)

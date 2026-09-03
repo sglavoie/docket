@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce runs per strategy because
@@ -27,7 +29,7 @@ func TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce(t *testing.T) {
 // silence. gg is spelled as the complete path it is, the way the Hub table below
 // spells it.
 func assertCommentsOwnsEveryDocumentedKeyOnce(t *testing.T) {
-	direct := map[string]OperationID{
+	direct := map[string]operation.OperationID{
 		"enter":  operationCommentExpand,
 		"a":      operationCommentAdd,
 		"e":      operationCommentEdit,
@@ -35,18 +37,18 @@ func assertCommentsOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"space":  operationCommentActions,
 		"y":      operationCommentCopy,
 		"Y":      operationCommentCopyAll,
-		"u":      operationCoreUndo,
-		"ctrl+r": operationCoreRedo,
-		"j":      operationCoreCursorDown,
-		"down":   operationCoreCursorDown,
-		"k":      operationCoreCursorUp,
-		"up":     operationCoreCursorUp,
-		"gg":     operationCoreCursorTop,
-		"home":   operationCoreCursorTop,
-		"G":      operationCoreCursorBottom,
-		"end":    operationCoreCursorBottom,
-		"?":      operationCoreHelp,
-		"esc":    operationCoreBack,
+		"u":      operation.OperationCoreUndo,
+		"ctrl+r": operation.OperationCoreRedo,
+		"j":      operation.OperationCoreCursorDown,
+		"down":   operation.OperationCoreCursorDown,
+		"k":      operation.OperationCoreCursorUp,
+		"up":     operation.OperationCoreCursorUp,
+		"gg":     operation.OperationCoreCursorTop,
+		"home":   operation.OperationCoreCursorTop,
+		"G":      operation.OperationCoreCursorBottom,
+		"end":    operation.OperationCoreCursorBottom,
+		"?":      operation.OperationCoreHelp,
+		"esc":    operation.OperationCoreBack,
 	}
 	assertStrategyOwnsEveryKeyOnce(t, CommentsInputStrategy(), direct)
 }
@@ -60,7 +62,7 @@ func assertCommentsOwnsEveryDocumentedKeyOnce(t *testing.T) {
 // way it does on every other surface, because adding and removing an attachment
 // are workspace-ledger transactions.
 func assertAttachmentsOwnsEveryDocumentedKeyOnce(t *testing.T) {
-	direct := map[string]OperationID{
+	direct := map[string]operation.OperationID{
 		"enter":  operationAttachmentOpen,
 		"a":      operationAttachmentAdd,
 		"E":      operationAttachmentOpenInEditor,
@@ -69,18 +71,18 @@ func assertAttachmentsOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"J":      operationAttachmentReorderDown,
 		"K":      operationAttachmentReorderUp,
 		"space":  operationAttachmentActions,
-		"u":      operationCoreUndo,
-		"ctrl+r": operationCoreRedo,
-		"j":      operationCoreCursorDown,
-		"down":   operationCoreCursorDown,
-		"k":      operationCoreCursorUp,
-		"up":     operationCoreCursorUp,
-		"gg":     operationCoreCursorTop,
-		"home":   operationCoreCursorTop,
-		"G":      operationCoreCursorBottom,
-		"end":    operationCoreCursorBottom,
-		"?":      operationCoreHelp,
-		"esc":    operationCoreBack,
+		"u":      operation.OperationCoreUndo,
+		"ctrl+r": operation.OperationCoreRedo,
+		"j":      operation.OperationCoreCursorDown,
+		"down":   operation.OperationCoreCursorDown,
+		"k":      operation.OperationCoreCursorUp,
+		"up":     operation.OperationCoreCursorUp,
+		"gg":     operation.OperationCoreCursorTop,
+		"home":   operation.OperationCoreCursorTop,
+		"G":      operation.OperationCoreCursorBottom,
+		"end":    operation.OperationCoreCursorBottom,
+		"?":      operation.OperationCoreHelp,
+		"esc":    operation.OperationCoreBack,
 	}
 
 	owners := assertStrategyOwnsEveryKeyOnce(t, AttachmentsInputStrategy(), direct)
@@ -103,7 +105,7 @@ func assertAttachmentsOwnsEveryDocumentedKeyOnce(t *testing.T) {
 // Space sheet is its one path. gg is spelled as the complete path it is, the way
 // the Hub table below spells it.
 func assertNotesOwnsEveryDocumentedKeyOnce(t *testing.T) {
-	direct := map[string]OperationID{
+	direct := map[string]operation.OperationID{
 		"enter":  operationNoteOpen,
 		"a":      operationNotesCreate,
 		"e":      operationNoteRename,
@@ -113,22 +115,22 @@ func assertNotesOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"y":      operationNoteCopyTitle,
 		"Y":      operationNoteCopyPath,
 		"space":  operationNotesActions,
-		"u":      operationCoreUndo,
-		"ctrl+r": operationCoreRedo,
-		"j":      operationCoreCursorDown,
-		"down":   operationCoreCursorDown,
-		"k":      operationCoreCursorUp,
-		"up":     operationCoreCursorUp,
-		"gg":     operationCoreCursorTop,
-		"home":   operationCoreCursorTop,
-		"G":      operationCoreCursorBottom,
-		"end":    operationCoreCursorBottom,
-		"ctrl+d": operationCoreCursorPageDown,
-		"pgdown": operationCoreCursorPageDown,
-		"ctrl+u": operationCoreCursorPageUp,
-		"pgup":   operationCoreCursorPageUp,
-		"?":      operationCoreHelp,
-		"esc":    operationCoreBack,
+		"u":      operation.OperationCoreUndo,
+		"ctrl+r": operation.OperationCoreRedo,
+		"j":      operation.OperationCoreCursorDown,
+		"down":   operation.OperationCoreCursorDown,
+		"k":      operation.OperationCoreCursorUp,
+		"up":     operation.OperationCoreCursorUp,
+		"gg":     operation.OperationCoreCursorTop,
+		"home":   operation.OperationCoreCursorTop,
+		"G":      operation.OperationCoreCursorBottom,
+		"end":    operation.OperationCoreCursorBottom,
+		"ctrl+d": operation.OperationCoreCursorPageDown,
+		"pgdown": operation.OperationCoreCursorPageDown,
+		"ctrl+u": operation.OperationCoreCursorPageUp,
+		"pgup":   operation.OperationCoreCursorPageUp,
+		"?":      operation.OperationCoreHelp,
+		"esc":    operation.OperationCoreBack,
 	}
 	assertStrategyOwnsEveryKeyOnce(t, NotesInputStrategy(), direct)
 }
@@ -136,11 +138,11 @@ func assertNotesOwnsEveryDocumentedKeyOnce(t *testing.T) {
 // assertStrategyOwnsEveryKeyOnce holds one surface grammar to the one-key
 // rule: every declared path resolves to exactly the operation the table names,
 // and the grammar declares no path the table omits.
-func assertStrategyOwnsEveryKeyOnce(t *testing.T, strategy InputStrategy, direct map[string]OperationID) map[string][]OperationID {
+func assertStrategyOwnsEveryKeyOnce(t *testing.T, strategy operation.InputStrategy, direct map[string]operation.OperationID) map[string][]operation.OperationID {
 	t.Helper()
-	owners := make(map[string][]OperationID)
+	owners := make(map[string][]operation.OperationID)
 	for _, binding := range strategy.Bindings {
-		for _, path := range binding.paths() {
+		for _, path := range binding.Paths() {
 			spelling := strings.Join(path, "")
 			if len(owners[spelling]) > 0 && !binding.SharedKey {
 				t.Errorf("direct key %q is owned by both %s and %s", spelling, owners[spelling][0], binding.OperationID)
@@ -152,7 +154,7 @@ func assertStrategyOwnsEveryKeyOnce(t *testing.T, strategy InputStrategy, direct
 		t.Fatalf("direct key count = %d, want %d; got %v", len(owners), len(direct), owners)
 	}
 	for key, operationID := range direct {
-		if got := owners[key]; !slices.Equal(got, []OperationID{operationID}) {
+		if got := owners[key]; !slices.Equal(got, []operation.OperationID{operationID}) {
 			t.Errorf("direct key %q = %v, want %s", key, got, operationID)
 		}
 	}
@@ -163,18 +165,18 @@ func assertStrategyOwnsEveryKeyOnce(t *testing.T, strategy InputStrategy, direct
 // root keys: the Hub grammar holds a single chord, so gg belongs in the same
 // table as the presses beside it.
 func assertProjectHubOwnsEveryDocumentedKeyOnce(t *testing.T) {
-	direct := map[string]OperationID{
+	direct := map[string]operation.OperationID{
 		"/":      operationProjectHubSearch,
-		"j":      operationCoreCursorDown,
-		"down":   operationCoreCursorDown,
-		"k":      operationCoreCursorUp,
-		"up":     operationCoreCursorUp,
-		"gg":     operationCoreCursorTop,
-		"home":   operationCoreCursorTop,
-		"G":      operationCoreCursorBottom,
-		"end":    operationCoreCursorBottom,
-		"ctrl+d": operationCoreCursorPageDown,
-		"ctrl+u": operationCoreCursorPageUp,
+		"j":      operation.OperationCoreCursorDown,
+		"down":   operation.OperationCoreCursorDown,
+		"k":      operation.OperationCoreCursorUp,
+		"up":     operation.OperationCoreCursorUp,
+		"gg":     operation.OperationCoreCursorTop,
+		"home":   operation.OperationCoreCursorTop,
+		"G":      operation.OperationCoreCursorBottom,
+		"end":    operation.OperationCoreCursorBottom,
+		"ctrl+d": operation.OperationCoreCursorPageDown,
+		"ctrl+u": operation.OperationCoreCursorPageUp,
 		"ctrl+f": operationProjectHubPreviewPageDown,
 		"ctrl+b": operationProjectHubPreviewPageUp,
 		"a":      operationScopeCreateProject,
@@ -187,10 +189,10 @@ func assertProjectHubOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"space":  operationProjectHubActions,
 		"enter":  operationProjectOpen,
 		"ctrl+t": operationProjectHubTaskFilter,
-		"u":      operationCoreUndo,
-		"ctrl+r": operationCoreRedo,
-		"?":      operationCoreHelp,
-		"esc":    operationCoreBack,
+		"u":      operation.OperationCoreUndo,
+		"ctrl+r": operation.OperationCoreRedo,
+		"?":      operation.OperationCoreHelp,
+		"esc":    operation.OperationCoreBack,
 	}
 
 	owners := assertStrategyOwnsEveryKeyOnce(t, ProjectHubInputStrategy(), direct)
@@ -206,26 +208,26 @@ func assertProjectHubOwnsEveryDocumentedKeyOnce(t *testing.T) {
 
 func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	strategy := SimplifiedInputStrategy()
-	direct := map[string]OperationID{
-		"a":      operationCoreCapture,
-		"E":      operationCoreEditDescription,
-		"ctrl+e": operationCoreExternalEditor,
-		"O":      operationCoreOutlineEditor,
-		"j":      operationCoreCursorDown, "down": operationCoreCursorDown,
-		"k": operationCoreCursorUp, "up": operationCoreCursorUp,
-		"home": operationCoreCursorTop,
-		"G":    operationCoreCursorBottom, "end": operationCoreCursorBottom,
-		"ctrl+u": operationCoreCursorPageUp, "pgup": operationCoreCursorPageUp,
-		"ctrl+d": operationCoreCursorPageDown, "pgdown": operationCoreCursorPageDown,
-		"ctrl+o": operationCoreJumpBackward, "ctrl+i": operationCoreJumpForward,
-		"ctrl+l": operationCoreFocusLatest,
-		"ctrl+p": operationCoreSelectPinned,
-		"h":      operationCoreCollapseParent, "left": operationCoreCollapseParent,
-		"l": operationCoreExpand, "right": operationCoreExpand,
-		"s": operationCoreToggleSections,
-		"p": operationCoreToggleProjectGroup,
-		"t": operationCoreToggleSubtrees,
-		"n": operationCoreNextHeader, "N": operationCorePreviousHeader,
+	direct := map[string]operation.OperationID{
+		"a":      operation.OperationCoreCapture,
+		"E":      operation.OperationCoreEditDescription,
+		"ctrl+e": operation.OperationCoreExternalEditor,
+		"O":      operation.OperationCoreOutlineEditor,
+		"j":      operation.OperationCoreCursorDown, "down": operation.OperationCoreCursorDown,
+		"k": operation.OperationCoreCursorUp, "up": operation.OperationCoreCursorUp,
+		"home": operation.OperationCoreCursorTop,
+		"G":    operation.OperationCoreCursorBottom, "end": operation.OperationCoreCursorBottom,
+		"ctrl+u": operation.OperationCoreCursorPageUp, "pgup": operation.OperationCoreCursorPageUp,
+		"ctrl+d": operation.OperationCoreCursorPageDown, "pgdown": operation.OperationCoreCursorPageDown,
+		"ctrl+o": operation.OperationCoreJumpBackward, "ctrl+i": operation.OperationCoreJumpForward,
+		"ctrl+l": operation.OperationCoreFocusLatest,
+		"ctrl+p": operation.OperationCoreSelectPinned,
+		"h":      operation.OperationCoreCollapseParent, "left": operation.OperationCoreCollapseParent,
+		"l": operation.OperationCoreExpand, "right": operation.OperationCoreExpand,
+		"s": operation.OperationCoreToggleSections,
+		"p": operation.OperationCoreToggleProjectGroup,
+		"t": operation.OperationCoreToggleSubtrees,
+		"n": operation.OperationCoreNextHeader, "N": operation.OperationCorePreviousHeader,
 		"[": operationTaskOutdent, "]": operationTaskIndent,
 		">":           operationTaskSetParent,
 		"<":           operationTaskAdoptChildren,
@@ -233,29 +235,29 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"%":           operationTaskMoveToProject,
 		"&":           operationTaskAttachments,
 		";":           operationTaskComments,
-		"shift+enter": operationCoreFocusParent,
-		"ctrl+enter":  operationCorePeek,
-		"/":           operationCoreScopeSearch,
-		"v":           operationCoreMultiSelect, "V": operationCoreRangeSelect,
-		"ctrl+a": operationCoreSelectAll,
-		"P":      operationCoreSelectProject,
-		"\\":     operationCoreNamedLenses,
-		"ctrl+n": operationCoreNotes, "T": operationCoreToggleTheme,
-		"M": operationCoreToggleMenuBar, "ctrl+m": operationCoreOpenMenuBar,
-		"Q": operationCoreQueryReadout,
-		"u": operationCoreUndo, "ctrl+r": operationCoreRedo,
-		"esc": operationCoreBack, "?": operationCoreHelp, "ctrl+c": operationCoreQuit,
-		"tab": operationCoreNextWorkMode, "shift+tab": operationCorePreviousWorkMode,
+		"shift+enter": operation.OperationCoreFocusParent,
+		"ctrl+enter":  operation.OperationCorePeek,
+		"/":           operation.OperationCoreScopeSearch,
+		"v":           operation.OperationCoreMultiSelect, "V": operation.OperationCoreRangeSelect,
+		"ctrl+a": operation.OperationCoreSelectAll,
+		"P":      operation.OperationCoreSelectProject,
+		"\\":     operation.OperationCoreNamedLenses,
+		"ctrl+n": operation.OperationCoreNotes, "T": operation.OperationCoreToggleTheme,
+		"M": operation.OperationCoreToggleMenuBar, "ctrl+m": operation.OperationCoreOpenMenuBar,
+		"Q": operation.OperationCoreQueryReadout,
+		"u": operation.OperationCoreUndo, "ctrl+r": operation.OperationCoreRedo,
+		"esc": operation.OperationCoreBack, "?": operation.OperationCoreHelp, "ctrl+c": operation.OperationCoreQuit,
+		"tab": operation.OperationCoreNextWorkMode, "shift+tab": operation.OperationCorePreviousWorkMode,
 		"@": operationTaskSetDueDate,
 		"y": operationTaskCopyTitle, "Y": operationTaskCopyDetails,
 		"ctrl+y": operationTaskCopyTitleDescription,
 		// The digit row: 0 returns to the launch view and 1-7 are the seven modes
 		// in Tab-cycle order, each a second spelling on the go-to chord's binding.
-		"0": operationCoreResetToLaunchView,
-		"1": operationCoreGotoAll, "2": operationCoreGotoToday,
-		"3": operationCoreGotoInbox, "4": operationCoreGotoNext,
-		"5": operationCoreGotoBacklog, "6": operationCoreGotoDue,
-		"7": operationCoreGotoRecent,
+		"0": operation.OperationCoreResetToLaunchView,
+		"1": operation.OperationCoreGotoAll, "2": operation.OperationCoreGotoToday,
+		"3": operation.OperationCoreGotoInbox, "4": operation.OperationCoreGotoNext,
+		"5": operation.OperationCoreGotoBacklog, "6": operation.OperationCoreGotoDue,
+		"7": operation.OperationCoreGotoRecent,
 	}
 
 	// A shared key is one the cursor disambiguates, and each meaning keeps its own
@@ -264,24 +266,24 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	// with a third answer, the checklist row; the rest ask whether it names a
 	// checklist item, and the checklist meaning is listed first because resolution
 	// takes the first applicable binding.
-	shared := map[string][]OperationID{
+	shared := map[string][]operation.OperationID{
 		"#":      {operationTaskSetTags, operationProjectSetTags},
 		"*":      {operationTaskTogglePin, operationScopePinProject},
-		"e":      {operationChecklistEditItem, operationCoreEdit},
-		"A":      {operationChecklistAddItem, operationTaskNewChild},
-		"x":      {operationChecklistToggleItem, operationChecklistStart},
-		"space":  {operationChecklistActions, operationProjectActions, operationCoreActions},
-		"J":      {operationChecklistMoveDown, operationCoreReorderDown},
-		"K":      {operationChecklistMoveUp, operationCoreReorderUp},
-		"ctrl+j": {operationChecklistMoveBottom, operationCoreReorderBottom},
-		"ctrl+k": {operationChecklistMoveTop, operationCoreReorderTop},
+		"e":      {operation.OperationChecklistEditItem, operation.OperationCoreEdit},
+		"A":      {operation.OperationChecklistAddItem, operationTaskNewChild},
+		"x":      {operation.OperationChecklistToggleItem, operation.OperationChecklistStart},
+		"space":  {operation.OperationChecklistActions, operationProjectActions, operation.OperationCoreActions},
+		"J":      {operation.OperationChecklistMoveDown, operation.OperationCoreReorderDown},
+		"K":      {operation.OperationChecklistMoveUp, operation.OperationCoreReorderUp},
+		"ctrl+j": {operation.OperationChecklistMoveBottom, operation.OperationCoreReorderBottom},
+		"ctrl+k": {operation.OperationChecklistMoveTop, operation.OperationCoreReorderTop},
 		"enter": {
-			operationCoreFocusSubtree, operationCoreZoomSection,
-			operationCoreActivateGroup, operationCoreOpenNote,
+			operation.OperationCoreFocusSubtree, operation.OperationCoreZoomSection,
+			operation.OperationCoreActivateGroup, operation.OperationCoreOpenNote,
 		},
 	}
 
-	owners := make(map[string][]OperationID)
+	owners := make(map[string][]operation.OperationID)
 	for _, binding := range strategy.Bindings {
 		for _, key := range binding.Keys {
 			if len(owners[key]) > 0 && !binding.SharedKey {
@@ -294,7 +296,7 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		t.Fatalf("direct key count = %d, want %d; got %v", len(owners), len(direct)+len(shared), owners)
 	}
 	for key, operationID := range direct {
-		if got := owners[key]; !slices.Equal(got, []OperationID{operationID}) {
+		if got := owners[key]; !slices.Equal(got, []operation.OperationID{operationID}) {
 			t.Errorf("direct key %q = %v, want %s", key, got, operationID)
 		}
 	}

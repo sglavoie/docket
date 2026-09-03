@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // parityAuditApp builds the production catalog exactly as NewAppModel does, so
@@ -35,18 +37,18 @@ func TestEveryRegisteredOperationHasOneCompatibleHandler(t *testing.T) {
 				unconditional++
 			}
 			switch descriptor.TargetCardinality {
-			case TargetCardinalityNone:
+			case operation.TargetCardinalityNone:
 				if binding.Handler == nil {
 					t.Errorf("operation %s resolves no targets but binds a target handler", descriptor.ID)
 				}
-			case TargetCardinalityOneOrMore:
+			case operation.TargetCardinalityOneOrMore:
 				// executeOperationBinding falls through to ErrOperationHandler when a
 				// SingleHandler receives more than one target, so a bulk-capable
 				// descriptor bound that way fails only once a user selects two rows.
 				if binding.SingleHandler != nil {
 					t.Errorf("operation %s accepts many targets but binds a single-target handler", descriptor.ID)
 				}
-			case TargetCardinalityOne:
+			case operation.TargetCardinalityOne:
 			}
 		}
 		if unconditional > 1 {
@@ -59,7 +61,7 @@ func TestEveryRegisteredOperationHasOneCompatibleHandler(t *testing.T) {
 // handler owns a canonical confirmation prompt of its own. Every other
 // destructive operation must fall through to the executor gate; adding a new
 // exemption here is a deliberate claim that the handler prompts before writing.
-var delegatedDestructiveConfirmations = map[OperationID]string{
+var delegatedDestructiveConfirmations = map[operation.OperationID]string{
 	operationTaskDelete:          "handleTaskDeleteRequested prompts before confirmTaskDelete writes",
 	operationScopeArchiveProject: "showProjectArchiveConfirm prompts",
 	operationProjectDelete:       "showProjectDeleteConfirm prompts with the cascade note before commitProjectDelete writes",
@@ -75,7 +77,7 @@ func TestEveryDestructiveOperationPromptsBeforeItWrites(t *testing.T) {
 
 	destructive := 0
 	for _, descriptor := range app.GetOperationRegistry().All() {
-		if descriptor.Risk != OperationRiskDestructive {
+		if descriptor.Risk != operation.OperationRiskDestructive {
 			continue
 		}
 		destructive++
@@ -112,7 +114,7 @@ func TestEveryDestructiveOperationPromptsBeforeItWrites(t *testing.T) {
 			t.Errorf("exempt operation %s is no longer registered", id)
 			continue
 		}
-		if descriptor.Risk != OperationRiskDestructive {
+		if descriptor.Risk != operation.OperationRiskDestructive {
 			t.Errorf("exempt operation %s is no longer destructive", id)
 		}
 	}
@@ -123,8 +125,8 @@ func TestHarnessAndRetiredOperationsStayOutOfProductionSurfaces(t *testing.T) {
 	registry := app.GetOperationRegistry()
 	ctx := app.operationCommandContext()
 
-	strategyOperations := make(map[OperationID]bool)
-	strategy, ok := registry.InputStrategy(InputStrategySimplified)
+	strategyOperations := make(map[operation.OperationID]bool)
+	strategy, ok := registry.InputStrategy(operation.InputStrategySimplified)
 	if !ok {
 		t.Fatal("simplified input strategy is not registered")
 	}
@@ -175,7 +177,7 @@ func TestHarnessAndRetiredOperationsStayOutOfProductionSurfaces(t *testing.T) {
 
 // taskActionParityContext focuses the Outliner on the first live task so the
 // sheet projection is evaluated against a real target instead of an empty one.
-func taskActionParityContext(t *testing.T, app *AppModel) CommandContext {
+func taskActionParityContext(t *testing.T, app *AppModel) operation.CommandContext {
 	t.Helper()
 	outliner := app.crossOutliner
 	if outliner == nil {
@@ -187,10 +189,10 @@ func taskActionParityContext(t *testing.T, app *AppModel) CommandContext {
 		}
 		outliner.cursor = index
 		ctx := outliner.operationCommandContext()
-		if currentTaskIdentity(ctx).Valid() {
+		if operation.CurrentTaskIdentity(ctx).Valid() {
 			return ctx
 		}
 	}
 	t.Fatal("fixture Outliner exposed no task row")
-	return CommandContext{}
+	return operation.CommandContext{}
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -312,7 +313,7 @@ func TestFilterRebuildKeepsQualifiedCursorIdentity(t *testing.T) {
 
 	appModel := &AppModel{crossOutliner: outliner}
 	result := appModel.executeFilterOperation(OperationInvocation{
-		Descriptor: OperationDescriptor{ID: operationFilterPriority},
+		Descriptor: operation.OperationDescriptor{ID: operationFilterPriority},
 		Value:      1,
 	})
 	if result.Err != nil {

@@ -118,7 +118,7 @@ are `dueFilterShortcuts`, and a shortcut is the canonical token it writes:
 `query.FilterShortcut.Token()` is `query.FilterClauseParts` over the clauses the row
 installs, so the row label, the which-key hint, the operation's preset value, and
 the status all read `@overdue`, `@today`, `@week`, `@0`, or `?deferred`. The
-picker keeps no private spelling of its own — `acceptsPresetValue` rejects a
+picker keeps no private spelling of its own — `operation.AcceptsPresetValue` rejects a
 binding naming a token no row offers, which is what makes the token set the
 grammar rather than a parallel vocabulary. The pinned facet answers to `f*`, its
 own sigil; `fp` stays retired, because that letter used to mean priority and a

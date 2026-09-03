@@ -167,7 +167,7 @@ func TestApplyNamedLensKeepsTheCursorOnASurvivingIdentity(t *testing.T) {
 
 	applyLensOrFatal(t, outliner, waitingLens(lensTestID(1), "Waiting", ""))
 
-	if identity := outliner.currentTaskIdentity(); identity.TaskID != "waiting" {
+	if identity := outliner.CurrentTaskIdentity(); identity.TaskID != "waiting" {
 		t.Fatalf("cursor identity = %+v, want the surviving waiting task", identity)
 	}
 }
@@ -182,7 +182,7 @@ func TestApplyNamedLensFallsBackToTheNearestSurvivorWhenTheCursorTaskLeaves(t *t
 	// nearest-survivor fallback has to seat it on a task row that remains.
 	applyLensOrFatal(t, outliner, waitingLens(lensTestID(1), "Waiting", ""))
 
-	identity := outliner.currentTaskIdentity()
+	identity := outliner.CurrentTaskIdentity()
 	if identity.TaskID != "waiting" && identity.TaskID != "beta-waiting" {
 		t.Fatalf("cursor identity = %+v, want a surviving lens row", identity)
 	}

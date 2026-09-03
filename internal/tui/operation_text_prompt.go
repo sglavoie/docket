@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -109,15 +110,15 @@ func (model *OperationTextPromptModel) render(width int) string {
 // target that already vanished fails here instead of after the user types.
 func (m *AppModel) newOperationTextPrompt(
 	request OperationExecutionRequest,
-	provider ValueProviderID,
+	provider operation.ValueProviderID,
 ) (*OperationTextPromptModel, error) {
-	identity := currentEntityIdentity(request.Context)
+	identity := operation.CurrentEntityIdentity(request.Context)
 	label := string(provider)
 	if descriptor, ok := m.GetOperationRegistry().Descriptor(request.ID); ok {
 		label = descriptor.Label
 	}
 	switch provider {
-	case ValueProviderNoteTitle:
+	case operation.ValueProviderNoteTitle:
 		note, err := m.resolveNoteTarget(identity)
 		if err != nil {
 			return nil, err
@@ -125,19 +126,19 @@ func (m *AppModel) newOperationTextPrompt(
 		return newOperationTextPromptModel(
 			request, label, note.Note.Title, note.Note.Title, "new note title",
 		), nil
-	case ValueProviderTagName:
+	case operation.ValueProviderTagName:
 		// A tag name applies across a whole selection, so there is no single
 		// current value to prefill or show.
 		return newOperationTextPromptModel(request, label, "", "", "tag name"), nil
-	case ValueProviderChecklistItem:
+	case operation.ValueProviderChecklistItem:
 		// Adding appends a new item, so only an edit has a current value; the
 		// request's own operation decides which, not the cursor.
 		current := ""
-		if request.ID == operationChecklistEditItem {
+		if request.ID == operation.OperationChecklistEditItem {
 			current = m.checklistItemTextForContext(request.Context)
 		}
 		return newOperationTextPromptModel(request, label, current, current, "checklist item"), nil
-	case ValueProviderLensName:
+	case operation.ValueProviderLensName:
 		// Saving the current view mints a new record, so only a rename has a
 		// current value. The request's own operation decides which, because the
 		// cursor names a lens in both cases.

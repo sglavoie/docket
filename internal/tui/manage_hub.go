@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 )
@@ -43,7 +44,7 @@ type ManageHubDependencies struct {
 	ResolveProject     func(string) *models.Project
 	ActiveProjectFocus func() string
 	TaskCounts         func() map[string]projectTaskTally
-	OperationRegistry  *OperationRegistry
+	OperationRegistry  *operation.OperationRegistry
 	OperationExecutor  *OperationExecutor
 	DispatchKey        operationKeyDispatch
 }
@@ -285,9 +286,9 @@ func (m *ManageHubModel) getTaskRef() (*models.Task, *models.Project) {
 	return nil, nil
 }
 
-func (m *ManageHubModel) GetHelpItems() []HelpItem {
+func (m *ManageHubModel) GetHelpItems() []operation.HelpItem {
 	if provider, ok := m.active.(HelpProvider); ok {
-		return append([]HelpItem(nil), provider.GetHelpItems()...)
+		return append([]operation.HelpItem(nil), provider.GetHelpItems()...)
 	}
 	// Both collections answer HelpProvider, so an unactivated hub has no grammar
 	// to describe rather than a generic one.
@@ -308,24 +309,24 @@ func (m *ManageHubModel) StatusBarLabel() string {
 	}
 }
 
-func (m *ManageHubModel) CommandContext() CommandContext {
+func (m *ManageHubModel) CommandContext() operation.CommandContext {
 	if view, ok := m.PresentationView(); ok {
 		ctx := PresentationCommandContext(view)
 		if m.params.Module == ManageNotes && m.params.NotesScope.commandScope().Kind == ScopeProject {
-			delete(ctx.Capabilities, CapabilityAppScope)
-			ctx.Capabilities.Add(CapabilityProjectScope)
+			delete(ctx.Capabilities, operation.CapabilityAppScope)
+			ctx.Capabilities.Add(operation.CapabilityProjectScope)
 		} else {
-			delete(ctx.Capabilities, CapabilityProjectScope)
-			ctx.Capabilities.Add(CapabilityAppScope)
+			delete(ctx.Capabilities, operation.CapabilityProjectScope)
+			ctx.Capabilities.Add(operation.CapabilityAppScope)
 		}
 		ctx.ScopeProjectIDs = m.ScopeProjectIDs()
 		return ctx
 	}
-	return CommandContext{
+	return operation.CommandContext{
 		View: presentation.ViewProjectHub,
-		Capabilities: NewCapabilitySet(
-			CapabilityCommandDiscovery,
-			CapabilityAppScope,
+		Capabilities: operation.NewCapabilitySet(
+			operation.CapabilityCommandDiscovery,
+			operation.CapabilityAppScope,
 		),
 	}
 }
@@ -345,7 +346,7 @@ func (m *ManageHubModel) ScopeProjectIDs() []string {
 			ids = append(ids, project.ID)
 		}
 	}
-	return normalizedProjectIDs(ids)
+	return operation.NormalizedProjectIDs(ids)
 }
 
 // PresentationView exposes the active renderer identity for command discovery.

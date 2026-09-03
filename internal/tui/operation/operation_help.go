@@ -1,4 +1,4 @@
-package tui
+package operation
 
 import (
 	"slices"
@@ -73,9 +73,9 @@ func (registry *OperationRegistry) HelpItemsForInputStrategy(
 			continue
 		}
 		items = append(items, HelpItem{
-			Key:         displayKeysForOperation(strategy, binding.OperationID),
+			Key:         DisplayKeysForOperation(strategy, binding.OperationID),
 			Description: descriptor.Label,
-			Category:    operationCategoryLabel(descriptor.Category),
+			Category:    OperationCategoryLabel(descriptor.Category),
 			Aliases:     descriptor.Aliases,
 		})
 	}
@@ -92,7 +92,7 @@ func (registry *OperationRegistry) HandledKeysForInputStrategy(id InputStrategyI
 	seen := make(map[string]bool)
 	keys := make([]string, 0)
 	for _, binding := range strategy.Bindings {
-		for _, path := range binding.paths() {
+		for _, path := range binding.Paths() {
 			for _, key := range path {
 				if !seen[key] {
 					seen[key] = true
@@ -186,10 +186,10 @@ func (registry *OperationRegistry) InputShortcutForOperation(
 	if !ok {
 		return ""
 	}
-	return displayKeysForOperation(strategy, operationID)
+	return DisplayKeysForOperation(strategy, operationID)
 }
 
-func displayKeysForOperation(strategy InputStrategy, operationID OperationID) string {
+func DisplayKeysForOperation(strategy InputStrategy, operationID OperationID) string {
 	spellings := make([]string, 0, 1)
 	for _, binding := range strategy.Bindings {
 		if binding.OperationID != operationID {
@@ -294,7 +294,7 @@ func (registry *OperationRegistry) chordNodeForPrefix(id InputStrategyID, prefix
 	}
 	node := registry.inputChords[id]
 	for _, raw := range prefix {
-		node = node.child(normalizeOperationKey(raw))
+		node = node.child(NormalizeOperationKey(raw))
 		if node == nil {
 			return nil
 		}
@@ -311,7 +311,7 @@ func chordGroupHintLabel(strategy InputStrategy, prefix []string) string {
 	return ""
 }
 
-func operationCategoryLabel(category OperationCategory) string {
+func OperationCategoryLabel(category OperationCategory) string {
 	switch category {
 	case OperationCategoryTask:
 		return "Tasks"

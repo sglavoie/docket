@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 func TestLayoutListTextUsesUnicodeDisplayWidth(t *testing.T) {
@@ -35,8 +36,8 @@ func TestListSurfacePreviewAndActionsUseOperationRegistryAndExecutor(t *testing.
 	t.Parallel()
 
 	const (
-		inspectID OperationID = "list.inspect"
-		shareID   OperationID = "list.share"
+		inspectID operation.OperationID = "list.inspect"
+		shareID   operation.OperationID = "list.share"
 	)
 	items := []ListItem{
 		{
@@ -48,12 +49,12 @@ func TestListSurfacePreviewAndActionsUseOperationRegistryAndExecutor(t *testing.
 				Body:    "Body",
 				Fields:  []ListPreviewField{{Label: "Kind", Value: "task"}},
 			},
-			OperationIDs: []OperationID{inspectID, shareID},
+			OperationIDs: []operation.OperationID{inspectID, shareID},
 		},
 		{
 			ID:           "b",
 			PrimaryText:  "Bravo",
-			OperationIDs: []OperationID{inspectID},
+			OperationIDs: []operation.OperationID{inspectID},
 		},
 	}
 	model := mustListSurface(t, items, nil, ListSurfaceConfig{SelectionMode: ListSelectionMulti})
@@ -79,23 +80,23 @@ func TestListSurfacePreviewAndActionsUseOperationRegistryAndExecutor(t *testing.
 		t.Fatalf("multi action state = %+v", state)
 	}
 
-	registry := NewOperationRegistry()
-	for id, label := range map[OperationID]string{
+	registry := operation.NewOperationRegistry()
+	for id, label := range map[operation.OperationID]string{
 		inspectID: "Inspect",
 		shareID:   "Share",
 	} {
-		if err := registry.Register(OperationDescriptor{
+		if err := registry.Register(operation.OperationDescriptor{
 			ID:                id,
 			Label:             label,
-			Category:          OperationCategoryTask,
-			TargetSource:      OperationTargetGlobal,
-			TargetCardinality: TargetCardinalityNone,
-			Risk:              OperationRiskReadOnly,
+			Category:          operation.OperationCategoryTask,
+			TargetSource:      operation.OperationTargetGlobal,
+			TargetCardinality: operation.TargetCardinalityNone,
+			Risk:              operation.OperationRiskReadOnly,
 		}); err != nil {
 			t.Fatalf("register %s: %v", id, err)
 		}
 	}
-	descriptors, err := state.Descriptors(registry, CommandContext{})
+	descriptors, err := state.Descriptors(registry, operation.CommandContext{})
 	if err != nil {
 		t.Fatalf("Descriptors() error = %v", err)
 	}
@@ -116,7 +117,7 @@ func TestListSurfacePreviewAndActionsUseOperationRegistryAndExecutor(t *testing.
 	}
 	result := model.ExecuteAction(executor, OperationExecutionRequest{
 		ID:      inspectID,
-		Context: CommandContext{},
+		Context: operation.CommandContext{},
 	})
 	if result.Err != nil || result.Status != "inspected" {
 		t.Fatalf("ExecuteAction() = %+v", result)
@@ -127,7 +128,7 @@ func TestListSurfacePreviewAndActionsUseOperationRegistryAndExecutor(t *testing.
 
 	result = model.ExecuteAction(executor, OperationExecutionRequest{
 		ID:      shareID,
-		Context: CommandContext{},
+		Context: operation.CommandContext{},
 	})
 	if !errors.Is(result.Err, ErrListActionUnavailable) {
 		t.Fatalf("non-common action error = %v, want %v", result.Err, ErrListActionUnavailable)

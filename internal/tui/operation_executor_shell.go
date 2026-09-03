@@ -2,6 +2,8 @@ package tui
 
 import (
 	"fmt"
+
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // registerOperation is the shell's convenience wrapper over the two registries:
@@ -10,7 +12,7 @@ import (
 // AppModel coupling the operation core has, which is why it sits here rather
 // than in operation_executor.go beside the type-level pipeline.
 func (m *AppModel) registerOperation(
-	descriptor OperationDescriptor,
+	descriptor operation.OperationDescriptor,
 	binding OperationBinding,
 ) error {
 	if m == nil || m.operationRegistry == nil || m.operationExecutor == nil {

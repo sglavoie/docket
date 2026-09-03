@@ -2,81 +2,82 @@ package tui
 
 import (
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // Project operation IDs. The tui.scope.* IDs predate this catalog and keep
 // their identity because they already name the same action from the Scope Hub;
 // tui.project.* is reserved for the maintenance actions added alongside them.
 const (
-	operationScopeRenameProject   OperationID = "tui.scope.rename-project"
-	operationScopePinProject      OperationID = "tui.scope.pin-project"
-	operationScopeArchiveProject  OperationID = "tui.scope.archive-project"
-	operationScopeRestoreProject  OperationID = "tui.scope.restore-project"
-	operationScopeOpenProjectNote OperationID = "tui.scope.open-project-notes"
+	operationScopeRenameProject   operation.OperationID = "tui.scope.rename-project"
+	operationScopePinProject      operation.OperationID = "tui.scope.pin-project"
+	operationScopeArchiveProject  operation.OperationID = "tui.scope.archive-project"
+	operationScopeRestoreProject  operation.OperationID = "tui.scope.restore-project"
+	operationScopeOpenProjectNote operation.OperationID = "tui.scope.open-project-notes"
 
-	operationProjectOpen    OperationID = "tui.project.open"
-	operationProjectSetTags OperationID = "tui.project.set-tags"
-	operationProjectDelete  OperationID = "tui.project.delete"
+	operationProjectOpen    operation.OperationID = "tui.project.open"
+	operationProjectSetTags operation.OperationID = "tui.project.set-tags"
+	operationProjectDelete  operation.OperationID = "tui.project.delete"
 )
 
 // projectOperationDescriptors is the authoritative catalog of project-targeted
 // operations. Every entry resolves one frozen project identity, so the same
 // descriptor serves the Scope Hub and any other host that names a
 // project row.
-func projectOperationDescriptors() []OperationDescriptor {
+func projectOperationDescriptors() []operation.OperationDescriptor {
 	descriptor := func(
-		id OperationID,
+		id operation.OperationID,
 		label string,
 		description string,
-		category OperationCategory,
-		risk OperationRisk,
+		category operation.OperationCategory,
+		risk operation.OperationRisk,
 		aliases ...string,
-	) OperationDescriptor {
-		return OperationDescriptor{
+	) operation.OperationDescriptor {
+		return operation.OperationDescriptor{
 			ID:                id,
 			Label:             label,
 			Description:       description,
 			Aliases:           aliases,
 			Category:          category,
-			TargetSource:      OperationTargetCurrentEntity,
-			TargetCardinality: TargetCardinalityOne,
+			TargetSource:      operation.OperationTargetCurrentEntity,
+			TargetCardinality: operation.TargetCardinalityOne,
 			Applicability:     projectOperationApplicable,
 			Risk:              risk,
 		}
 	}
-	return []OperationDescriptor{
-		descriptor(operationProjectOpen, "Open project", "Focus the Outliner on this project", OperationCategoryProject, OperationRiskReadOnly, "focus project"),
-		descriptor(operationScopeRenameProject, "Edit project", "Edit lean project metadata", OperationCategoryProject, OperationRiskMutation, "project settings"),
-		descriptor(operationScopePinProject, "Toggle project pin", "Pin or unpin the project", OperationCategoryProject, OperationRiskMutation, "pin project", "unpin project"),
-		descriptor(operationScopeArchiveProject, "Archive project", "Archive the project", OperationCategoryProject, OperationRiskDestructive),
-		descriptor(operationScopeRestoreProject, "Unarchive project", "Return the project to active", OperationCategoryProject, OperationRiskMutation, "restore archived project"),
-		descriptor(operationProjectDelete, "Delete project", "Delete the project and everything it owns", OperationCategoryProject, OperationRiskDestructive, "remove project", "destroy project"),
-		descriptor(operationScopeOpenProjectNote, "Open project notes", "Open notes owned by this project", OperationCategoryNote, OperationRiskReadOnly),
-		withValueProvider(
-			descriptor(operationProjectSetTags, "Set project tags", "Edit the tags carried by this project", OperationCategoryProject, OperationRiskMutation, "project tags", "park project", "unpark project"),
-			ValueProviderProjectTags,
+	return []operation.OperationDescriptor{
+		descriptor(operationProjectOpen, "Open project", "Focus the Outliner on this project", operation.OperationCategoryProject, operation.OperationRiskReadOnly, "focus project"),
+		descriptor(operationScopeRenameProject, "Edit project", "Edit lean project metadata", operation.OperationCategoryProject, operation.OperationRiskMutation, "project settings"),
+		descriptor(operationScopePinProject, "Toggle project pin", "Pin or unpin the project", operation.OperationCategoryProject, operation.OperationRiskMutation, "pin project", "unpin project"),
+		descriptor(operationScopeArchiveProject, "Archive project", "Archive the project", operation.OperationCategoryProject, operation.OperationRiskDestructive),
+		descriptor(operationScopeRestoreProject, "Unarchive project", "Return the project to active", operation.OperationCategoryProject, operation.OperationRiskMutation, "restore archived project"),
+		descriptor(operationProjectDelete, "Delete project", "Delete the project and everything it owns", operation.OperationCategoryProject, operation.OperationRiskDestructive, "remove project", "destroy project"),
+		descriptor(operationScopeOpenProjectNote, "Open project notes", "Open notes owned by this project", operation.OperationCategoryNote, operation.OperationRiskReadOnly),
+		operation.WithValueProvider(
+			descriptor(operationProjectSetTags, "Set project tags", "Edit the tags carried by this project", operation.OperationCategoryProject, operation.OperationRiskMutation, "project tags", "park project", "unpark project"),
+			operation.ValueProviderProjectTags,
 		),
 	}
 }
 
 // projectOperationApplicable admits a project operation only when the context
-// names exactly one project. currentEntityIdentity degrades to the first scoped
+// names exactly one project. CurrentEntityIdentity degrades to the first scoped
 // project when nothing is focused, so a multi-project scope is refused rather
 // than allowed to borrow an unrelated project.
-func projectOperationApplicable(ctx CommandContext) bool {
+func projectOperationApplicable(ctx operation.CommandContext) bool {
 	// A section header names a lane, not a project. The scope fallback below would
 	// hand it the sole scoped project, which is how a key meant for a project
 	// header reaches one from a row that never named it.
 	if ctx.Entity.HasSectionHeaderCursor {
 		return false
 	}
-	if currentEntityIdentity(ctx).Kind != EntityKindProject {
+	if operation.CurrentEntityIdentity(ctx).Kind != operation.EntityKindProject {
 		return false
 	}
-	if normalizeEntityIdentity(ctx.CurrentEntity).Kind == EntityKindProject || ctx.Entity.ProjectID != "" {
+	if operation.NormalizeEntityIdentity(ctx.CurrentEntity).Kind == operation.EntityKindProject || ctx.Entity.ProjectID != "" {
 		return true
 	}
-	return len(normalizedProjectIDs(ctx.ScopeProjectIDs)) == 1
+	return len(operation.NormalizedProjectIDs(ctx.ScopeProjectIDs)) == 1
 }
 
 // projectTagsOperationResult round-trips the project's own tag set through the
@@ -94,7 +95,7 @@ func projectTagsOperationResult(
 				ID:      invocation.Descriptor.ID,
 				Context: cloneCommandContext(invocation.Context),
 			},
-			Provider: ValueProviderProjectTags,
+			Provider: operation.ValueProviderProjectTags,
 		}}
 	}
 	return OperationHandlerResult{Message: SetProjectTagsMsg{Project: project, Tags: tags}}
@@ -107,7 +108,7 @@ type projectOperationRequirement struct {
 	rejectSystemUnfiled bool
 }
 
-var projectOperationRequirements = map[OperationID]projectOperationRequirement{
+var projectOperationRequirements = map[operation.OperationID]projectOperationRequirement{
 	operationProjectOpen:          {requireActive: true},
 	operationScopePinProject:      {requireActive: true},
 	operationScopeArchiveProject:  {requireActive: true, rejectSystemUnfiled: true},

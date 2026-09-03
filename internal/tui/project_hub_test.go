@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // projectHubApp builds a two-project shell whose cross-project Outliner is
@@ -162,13 +163,13 @@ func projectHubHasItem(hub *ProjectHubModel, id ListItemID) bool {
 	return false
 }
 
-func projectHubActionIDs(hub *ProjectHubModel) []OperationID {
+func projectHubActionIDs(hub *ProjectHubModel) []operation.OperationID {
 	if hub.actions == nil || hub.actions.surface == nil {
 		return nil
 	}
-	ids := make([]OperationID, 0)
+	ids := make([]operation.OperationID, 0)
 	for _, item := range hub.actions.surface.Items() {
-		if descriptor, ok := item.Data.(OperationDescriptor); ok {
+		if descriptor, ok := item.Data.(operation.OperationDescriptor); ok {
 			ids = append(ids, descriptor.ID)
 		}
 	}

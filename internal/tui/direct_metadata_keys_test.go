@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // executeDirectPath resolves one strategy key path in ctx and runs it exactly as
@@ -15,16 +16,16 @@ import (
 func executeDirectPath(
 	t *testing.T,
 	model *AppModel,
-	ctx CommandContext,
+	ctx operation.CommandContext,
 	path []string,
 ) OperationExecutionResult {
 	t.Helper()
 	binding, descriptor, resolution := model.operationRegistry.InputBindingForSequence(
-		InputStrategySimplified,
+		operation.InputStrategySimplified,
 		path,
 		ctx,
 	)
-	if resolution != ChordTerminal {
+	if resolution != operation.ChordTerminal {
 		t.Fatalf("key path %v resolution = %v, want terminal", path, resolution)
 	}
 	return model.operationExecutor.Execute(OperationExecutionRequest{
@@ -43,7 +44,7 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 
 	presets := []struct {
 		path  []string
-		want  OperationID
+		want  operation.OperationID
 		value any
 	}{
 		{path: []string{"!", "0"}, want: operationTaskSetPriority, value: 0},
@@ -61,13 +62,13 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 	for _, preset := range presets {
 		single := taskOperationTestContext(loose, project)
 		bulk := bulkTaskActionTestContext(project, loose, project.GetTaskByID("story"))
-		for name, ctx := range map[string]CommandContext{"single": single, "bulk": bulk} {
+		for name, ctx := range map[string]operation.CommandContext{"single": single, "bulk": bulk} {
 			binding, descriptor, resolution := model.operationRegistry.InputBindingForSequence(
-				InputStrategySimplified,
+				operation.InputStrategySimplified,
 				preset.path,
 				ctx,
 			)
-			if resolution != ChordTerminal {
+			if resolution != operation.ChordTerminal {
 				t.Fatalf("%s %v resolution = %v, want terminal", name, preset.path, resolution)
 			}
 			if descriptor.ID != preset.want {
@@ -93,19 +94,19 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 
 	for _, action := range []struct {
 		path []string
-		want OperationID
+		want operation.OperationID
 	}{
-		{path: []string{"$", "b"}, want: operationCoreBacklog},
-		{path: []string{"$", "n"}, want: operationCoreNext},
-		{path: []string{"$", "t"}, want: operationCoreToday},
+		{path: []string{"$", "b"}, want: operation.OperationCoreBacklog},
+		{path: []string{"$", "n"}, want: operation.OperationCoreNext},
+		{path: []string{"$", "t"}, want: operation.OperationCoreToday},
 	} {
 		ctx := taskOperationTestContext(loose, project)
 		binding, descriptor, resolution := model.operationRegistry.InputBindingForSequence(
-			InputStrategySimplified,
+			operation.InputStrategySimplified,
 			action.path,
 			ctx,
 		)
-		if resolution != ChordTerminal || descriptor.ID != action.want {
+		if resolution != operation.ChordTerminal || descriptor.ID != action.want {
 			t.Errorf("%v resolved to %s/%v, want %s/terminal", action.path, descriptor.ID, resolution, action.want)
 		}
 		if binding.HasPresetValue {
@@ -122,11 +123,11 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 	// direct_grammar_test.go already owns exhaustively.
 	for _, picker := range []struct {
 		key      string
-		want     OperationID
-		provider ValueProviderID
+		want     operation.OperationID
+		provider operation.ValueProviderID
 	}{
-		{key: "@", want: operationTaskSetDueDate, provider: ValueProviderDate},
-		{key: "#", want: operationTaskSetTags, provider: ValueProviderTags},
+		{key: "@", want: operationTaskSetDueDate, provider: operation.ValueProviderDate},
+		{key: "#", want: operationTaskSetTags, provider: operation.ValueProviderTags},
 	} {
 		ctx := taskOperationTestContext(loose, project)
 		result := executeDirectPath(t, model, ctx, []string{picker.key})
@@ -223,10 +224,10 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 	// dispatch in their own files.
 	for _, picker := range []struct {
 		key      rune
-		provider ValueProviderID
+		provider operation.ValueProviderID
 	}{
-		{key: '@', provider: ValueProviderDate},
-		{key: '#', provider: ValueProviderTags},
+		{key: '@', provider: operation.ValueProviderDate},
+		{key: '#', provider: operation.ValueProviderTags},
 	} {
 		t.Run(string(picker.key)+" opens its picker", func(t *testing.T) {
 			app := newApp(t)

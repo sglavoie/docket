@@ -2,6 +2,7 @@ package tui
 
 import (
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // ListSource is the validated input shape shared by List Surface adapters and
@@ -29,7 +30,7 @@ type ListSurfacePreviewPickerItem interface {
 
 // ListSurfaceOperationPickerItem optionally supplies contextual operation IDs.
 type ListSurfaceOperationPickerItem interface {
-	ListSurfaceOperationIDs() []OperationID
+	ListSurfaceOperationIDs() []operation.OperationID
 }
 
 // ListSurfaceStyledPickerItem optionally colors an adapted row's primary text.

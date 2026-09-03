@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -49,7 +50,7 @@ func TestFilterContextChordPickerLeadsWithTheGapThenTheVocabulary(t *testing.T) 
 		t.Fatal("fc produced no value-request command")
 	}
 	app.handleOperationOverlayMessage(cmd())
-	if app.operationValuePicker == nil || app.operationValuePicker.provider != ValueProviderFilterContexts {
+	if app.operationValuePicker == nil || app.operationValuePicker.provider != operation.ValueProviderFilterContexts {
 		t.Fatalf("fc did not open the context picker: %#v", app.operationValuePicker)
 	}
 	if title := app.operationValuePicker.title; title != "Filter by Context" {
@@ -192,7 +193,7 @@ func TestFilterTagsPickerNarrowsTagsAloneWithNoContextSection(t *testing.T) {
 		t.Fatal("f# produced no value-request command")
 	}
 	app.handleOperationOverlayMessage(cmd())
-	if app.operationValuePicker == nil || app.operationValuePicker.provider != ValueProviderFilterTags {
+	if app.operationValuePicker == nil || app.operationValuePicker.provider != operation.ValueProviderFilterTags {
 		t.Fatalf("f# did not open the tags picker: %#v", app.operationValuePicker)
 	}
 
@@ -211,7 +212,7 @@ func TestFilterTagsPickerNarrowsTagsAloneWithNoContextSection(t *testing.T) {
 		}
 	}
 
-	hint := ansi.Strip(taskTagCategoryJumpHint(ValueProviderFilterTags, items, 120))
+	hint := ansi.Strip(taskTagCategoryJumpHint(operation.ValueProviderFilterTags, items, 120))
 	if got := strings.Join(strings.Fields(hint), " "); got != "jump t tags" {
 		t.Fatalf("f# jump hint = %q, want the tag section alone", got)
 	}

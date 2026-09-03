@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -16,12 +17,12 @@ import (
 func applyFilterForComposition(
 	t *testing.T,
 	outliner *OutlinerModel,
-	id OperationID,
+	id operation.OperationID,
 	value any,
 ) string {
 	t.Helper()
 	result := (&AppModel{crossOutliner: outliner}).executeFilterOperation(OperationInvocation{
-		Descriptor: OperationDescriptor{ID: id},
+		Descriptor: operation.OperationDescriptor{ID: id},
 		Value:      value,
 	})
 	if result.Err != nil {
@@ -160,7 +161,7 @@ func TestSearchSortReordersWithinRelevanceTiersOnly(t *testing.T) {
 	}
 
 	result := app.executeSortOperation(OperationInvocation{
-		Descriptor: OperationDescriptor{ID: operationSortPriority},
+		Descriptor: operation.OperationDescriptor{ID: operationSortPriority},
 	})
 	if result.Err != nil {
 		t.Fatalf("sort by priority under search failed: %v", result.Err)
@@ -176,7 +177,7 @@ func TestSearchSortReordersWithinRelevanceTiersOnly(t *testing.T) {
 	}
 
 	result = app.executeSortOperation(OperationInvocation{
-		Descriptor: OperationDescriptor{ID: operationSortClear},
+		Descriptor: operation.OperationDescriptor{ID: operationSortClear},
 	})
 	if result.Status != "Sort cleared" {
 		t.Fatalf("clear sort status = %q, want the cleared sentence", result.Status)
@@ -194,8 +195,8 @@ func TestPopulationFacetsRefuseOnlyUnderTheRankedList(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	ctx := app.operationCommandContext()
 	if _, _, resolution := app.operationRegistry.InputBindingForSequence(
-		InputStrategySimplified, []string{"F", "#"}, ctx,
-	); resolution != ChordTerminal {
+		operation.InputStrategySimplified, []string{"F", "#"}, ctx,
+	); resolution != operation.ChordTerminal {
 		t.Fatalf("F# resolution outside search = %v, want a terminal chord", resolution)
 	}
 
@@ -204,28 +205,28 @@ func TestPopulationFacetsRefuseOnlyUnderTheRankedList(t *testing.T) {
 		t.Fatal("the search projection did not start")
 	}
 	if _, _, resolution := app.operationRegistry.InputBindingForSequence(
-		InputStrategySimplified, []string{"F", "#"}, app.operationCommandContext(),
-	); resolution != ChordTerminal {
+		operation.InputStrategySimplified, []string{"F", "#"}, app.operationCommandContext(),
+	); resolution != operation.ChordTerminal {
 		t.Fatalf("F# resolution under a narrowing query = %v, want it still live", resolution)
 	}
 
 	app.crossOutliner.toggleRankedList()
 	searchCtx := app.operationCommandContext()
 	if _, _, resolution := app.operationRegistry.InputBindingForSequence(
-		InputStrategySimplified, []string{"F", "#"}, searchCtx,
-	); resolution != ChordNoMatch {
+		operation.InputStrategySimplified, []string{"F", "#"}, searchCtx,
+	); resolution != operation.ChordNoMatch {
 		t.Fatalf("F# resolution under search = %v, want no match", resolution)
 	}
 	// The row facets keep resolving on the same context, which is the whole point
 	// of the split: one family composes and the other does not.
 	if _, _, resolution := app.operationRegistry.InputBindingForSequence(
-		InputStrategySimplified, []string{"f", "#"}, searchCtx,
-	); resolution != ChordTerminal {
+		operation.InputStrategySimplified, []string{"f", "#"}, searchCtx,
+	); resolution != operation.ChordTerminal {
 		t.Fatalf("f# resolution under search = %v, want a terminal chord", resolution)
 	}
 
 	result := app.executeProjectFilterOperation(OperationInvocation{
-		Descriptor: OperationDescriptor{ID: operationFilterProjectTags},
+		Descriptor: operation.OperationDescriptor{ID: operationFilterProjectTags},
 		Value:      []string{"backend"},
 	})
 	if result.Status != "Exit search before changing filters" {

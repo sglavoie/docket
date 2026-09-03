@@ -115,6 +115,7 @@ the pre-split tree and is consistently pessimistic.
 | `coordinator` | 5 | 3 | 3 |
 | `grammar` | 59 | 196 | 154 |
 | `query` | 69 | 68 | 62 |
+| `operation` | 124 | 106 so far (Session 2.14 of three) | — |
 
 Running total against 631: **222**. `grammar` contributes 58, not 154, because
 its two counted columns are on a different basis from every row above them:
@@ -306,6 +307,61 @@ and `chrome`, recorded in `scripts/tui_package_graph.tsv`. Those edges were the
 alternative to moving `RenderFilterBadge`, `FormatDueDate` and the tag chip
 styling up, which CLAUDE.md forbids: it names one tag-color authority and one
 due-date spelling, and relocating either would have minted a second.
+
+`operation` is the first package the plan splits across three sessions, so its
+row carries a partial middle column and no last column at all: Session 2.14
+lands the registry third, 2.15 the executor and 2.16 the strategies and the
+tests. Nothing it promotes can be withdrawn yet, because no test moved down with
+it — all eight candidates the reference graph offered name `AppModel`, the
+executor, or a list-surface identifier, so `internal/tui/operation` has no test
+files and no `main_test.go` until 2.16. The running total above therefore stays
+at 222 for two more sessions.
+
+106 of the projected 124 are package-level declarations, plus six members the
+column does not count: `OperationKeyBinding.Paths`, `OperationRegistry.Register`
+and the four `ValueProviderID` predicates `TextEntry`, `TagEntry`, `DateEntry`
+and `AcceptsPresetValue`. Exactly one promotion was withdrawn under step 3 —
+`cloneInputStrategy`, which `input_strategy_lookup.go` still calls inside the
+package and whose only consumer outside it was
+`direct_grammar_one_path_test.go`, which now declares the four-line
+`mutableInputStrategy` it actually needs instead.
+
+The moving set is where this row differs from every one above it. The session
+brief named seven representative files; the dependency-closed set is thirteen,
+because `OperationRegistry` holds `inputStrategies` and `inputChords` fields, so
+the strategy types and their trie cannot stay above it. Three more files split
+rather than move whole, and each split is a Go pinning fact rather than a
+judgement call:
+
+- `core_operation_ids.go` is the 69-constant `operationCore*` block lifted out
+  of `core_input_descriptors.go`, which stays in the shell for Session 2.15.
+  `operation_checklist_refusal.go` reads those constants and is itself pinned by
+  its three moving readers of `operationRefusedOnChecklistRow`.
+- `help_item.go` is the `HelpItem` struct alone, lifted out of `help_types.go`;
+  `HelpProvider`, `HelpViewModel` and `helpItemsFromKeyMap` all stay.
+- `operation_value_payloads.go` is the four picker payload structs plus
+  `AcceptsPresetValue`, moved out of `operation_value_provider.go` and
+  `task_action_operations.go`. The method had to move: `tuiqualify` rewrote its
+  *declaration* to `func (id operation.ValueProviderID) …`, which is not legal
+  Go. Expect that failure shape wherever a method on a moving type is declared
+  in a file the assignment table leaves behind.
+
+`surface_operation_gates.go` is minted in the opposite direction, staying in the
+shell: every entry names a surface strategy and a surface validator, and both
+live above `operation`. `ValidateOperationOnePath` moves down with the manifest
+it reads; `surfaceOperationGates()` does not.
+
+Two graph edges the whitelist did not have, both recorded in
+`scripts/tui_package_graph.tsv`. `operation` needs `query`, because
+`AcceptsPresetValue` checks a preset against the canonical token
+`DueFilterShortcutForToken`, `DependencyFilterShortcutForToken` and
+`CompletionAgeFilter` mint, and CLAUDE.md makes a picker mint no spelling of its
+own. `listsurface` needs `presentation`, because `ListCategoryID` moved there:
+the operation manifest names one on every entry, which puts the same bare
+identity on both sides of a boundary the list surface sits above. The list
+surface keeps its own vocabulary through a type alias, so not one of its
+references had to be requalified — the cheapest shape available whenever an
+identity is genuinely shared rather than owned.
 
 Reproduce the last column for one package with the oracle from session 2.4,
 which reports a clean boundary rather than a count:

@@ -1,6 +1,10 @@
 package tui
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/operation"
+)
 
 // A section header names a lane, not a project. projectOperationApplicable ends
 // in a scope fallback, so in a single-project scope that row would otherwise
@@ -11,19 +15,19 @@ import "testing"
 // OutlinerModel fills it from the scoped project, and the gate has to refuse
 // both or the footer advertises a key dispatch declines.
 func TestProjectOperationsRefuseASectionHeaderCursor(t *testing.T) {
-	scoped := func(entity EntityContext) CommandContext {
+	scoped := func(entity operation.EntityContext) operation.CommandContext {
 		ctx := simplifiedOperationContext()
 		ctx.Entity = entity
-		ctx.CurrentEntity = commandContextCurrentEntity(entity)
+		ctx.CurrentEntity = operation.CommandContextCurrentEntity(entity)
 		ctx.ScopeProjectIDs = []string{"only-project"}
 		return ctx
 	}
 
-	for name, ctx := range map[string]CommandContext{
-		"AppModel shape, ProjectID unfilled": scoped(EntityContext{
+	for name, ctx := range map[string]operation.CommandContext{
+		"AppModel shape, ProjectID unfilled": scoped(operation.EntityContext{
 			HasSectionHeaderCursor: true,
 		}),
-		"OutlinerModel shape, ProjectID from the scoped project": scoped(EntityContext{
+		"OutlinerModel shape, ProjectID from the scoped project": scoped(operation.EntityContext{
 			ProjectID:              "only-project",
 			HasSectionHeaderCursor: true,
 		}),
@@ -35,7 +39,7 @@ func TestProjectOperationsRefuseASectionHeaderCursor(t *testing.T) {
 
 	// The positive control: the same single-project scope on a project header,
 	// which is the row that does name a project.
-	header := scoped(EntityContext{ProjectID: "only-project", HasProjectHeaderCursor: true})
+	header := scoped(operation.EntityContext{ProjectID: "only-project", HasProjectHeaderCursor: true})
 	if !projectOperationApplicable(header) {
 		t.Error("a project header cursor no longer admits a project operation")
 	}
@@ -53,11 +57,11 @@ func TestSectionHeaderClaimsNeitherArmOfASharedKey(t *testing.T) {
 	registry := registeredSimplifiedOperationRegistry(t)
 
 	section := simplifiedOperationContext()
-	section.Entity = EntityContext{ProjectID: "only-project", HasSectionHeaderCursor: true}
-	section.CurrentEntity = commandContextCurrentEntity(section.Entity)
+	section.Entity = operation.EntityContext{ProjectID: "only-project", HasSectionHeaderCursor: true}
+	section.CurrentEntity = operation.CommandContextCurrentEntity(section.Entity)
 	section.ScopeProjectIDs = []string{"only-project"}
 	for _, key := range []string{"*", "#"} {
-		if binding, _, ok := registry.InputBindingForKey(InputStrategySimplified, key, section); ok {
+		if binding, _, ok := registry.InputBindingForKey(operation.InputStrategySimplified, key, section); ok {
 			t.Errorf("%s on a section header resolves %s", key, binding.OperationID)
 		}
 	}
@@ -65,10 +69,10 @@ func TestSectionHeaderClaimsNeitherArmOfASharedKey(t *testing.T) {
 	// The positive control, one row away: the header that does name a project
 	// answers with the project arm, under the label the footer teaches.
 	header := simplifiedOperationContext()
-	header.Entity = EntityContext{ProjectID: "only-project", HasProjectHeaderCursor: true}
-	header.CurrentEntity = commandContextCurrentEntity(header.Entity)
+	header.Entity = operation.EntityContext{ProjectID: "only-project", HasProjectHeaderCursor: true}
+	header.CurrentEntity = operation.CommandContextCurrentEntity(header.Entity)
 	header.ScopeProjectIDs = []string{"only-project"}
-	binding, _, ok := registry.InputBindingForKey(InputStrategySimplified, "*", header)
+	binding, _, ok := registry.InputBindingForKey(operation.InputStrategySimplified, "*", header)
 	if !ok || binding.OperationID != operationScopePinProject {
 		t.Fatalf("* on a project header = %s available=%t, want %s", binding.OperationID, ok, operationScopePinProject)
 	}

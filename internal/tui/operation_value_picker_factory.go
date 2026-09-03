@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -24,34 +25,34 @@ func (m *AppModel) taskAndProjectForIdentity(identity taskref.TaskIdentity) (*mo
 //nolint:gocyclo // One factory exhaustively maps typed operation values to their picker contracts.
 func (m *AppModel) newOperationValuePicker(
 	request OperationExecutionRequest,
-	provider ValueProviderID,
+	provider operation.ValueProviderID,
 ) (*OperationValuePickerModel, error) {
 	// Filter pickers refine the whole view, so they must open without any task
 	// under the cursor and never resolve task targets.
 	switch provider {
-	case ValueProviderFilterStates:
+	case operation.ValueProviderFilterStates:
 		return m.newFilterStatesPicker(request)
-	case ValueProviderFilterTags:
+	case operation.ValueProviderFilterTags:
 		return m.newFilterTagsPicker(request)
-	case ValueProviderFilterContexts:
+	case operation.ValueProviderFilterContexts:
 		return m.newFilterContextsPicker(request)
-	case ValueProviderFilterDue:
+	case operation.ValueProviderFilterDue:
 		return m.newFilterDuePicker(request)
-	case ValueProviderFilterCompletionAge:
+	case operation.ValueProviderFilterCompletionAge:
 		return m.newFilterCompletionAgePicker(request)
-	case ValueProviderFilterHierarchy:
+	case operation.ValueProviderFilterHierarchy:
 		return m.newFilterHierarchyPicker(request)
-	case ValueProviderFilterDependency:
+	case operation.ValueProviderFilterDependency:
 		return m.newFilterDependencyPicker(request)
-	case ValueProviderFilterProjectTags:
+	case operation.ValueProviderFilterProjectTags:
 		return m.newFilterProjectTagsPicker(request)
-	case ValueProviderProjectTagDestination:
+	case operation.ValueProviderProjectTagDestination:
 		return m.newProjectTagDestinationPicker(request)
-	case ValueProviderProjectTags:
+	case operation.ValueProviderProjectTags:
 		// A project tag edit resolves a project, not a task, so it must open from
 		// a project header where no task ref exists.
 		return m.newProjectTagsPicker(request)
-	case ValueProviderLensTemplate:
+	case operation.ValueProviderLensTemplate:
 		// The built-in view catalog is global, so the gallery opens from the lens
 		// picker where there is no task under the cursor at all.
 		return m.newLensTemplatePicker(request)
@@ -68,13 +69,13 @@ func (m *AppModel) newOperationValuePicker(
 	}
 
 	switch provider {
-	case ValueProviderState:
+	case operation.ValueProviderState:
 		states := make([]models.WorkflowState, 0, len(refs))
 		for _, ref := range refs {
 			states = append(states, ref.Task.State())
 		}
 		return NewTaskStatePickerForTargets(request, states, subtitle)
-	case ValueProviderPriority:
+	case operation.ValueProviderPriority:
 		priorities := []chrome.PriorityInfo{
 			{Priority: 0, Description: "Unset"},
 			{Priority: 1, Description: "High"},
@@ -94,7 +95,7 @@ func (m *AppModel) newOperationValuePicker(
 			false,
 			selected,
 		)
-	case ValueProviderDate:
+	case operation.ValueProviderDate:
 		selected := []ListItemID(nil)
 		due, dueShared := commonTaskDate(refs, false)
 		deferred, deferShared := commonTaskDate(refs, true)
@@ -110,7 +111,7 @@ func (m *AppModel) newOperationValuePicker(
 			false,
 			selected,
 		)
-	case ValueProviderDueDate:
+	case operation.ValueProviderDueDate:
 		selected := []ListItemID(nil)
 		if date, ok := commonTaskDate(refs, false); ok {
 			selected = dueDateSelectedID(date)
@@ -124,7 +125,7 @@ func (m *AppModel) newOperationValuePicker(
 			false,
 			selected,
 		)
-	case ValueProviderParent:
+	case operation.ValueProviderParent:
 		return newOperationValuePickerModel(
 			request,
 			provider,
@@ -134,7 +135,7 @@ func (m *AppModel) newOperationValuePicker(
 			false,
 			parentSelectedID(refs[0].Task),
 		)
-	case ValueProviderChild:
+	case operation.ValueProviderChild:
 		// Nothing is preselected: the checked set is the adoption, so a preselected
 		// row would make unchecking it read as a detach the `<child` sigil cannot
 		// express.
@@ -147,7 +148,7 @@ func (m *AppModel) newOperationValuePicker(
 			true,
 			nil,
 		)
-	case ValueProviderTaskReference:
+	case operation.ValueProviderTaskReference:
 		// The stored set is preselected where the adoption picker above preselects
 		// nothing, and the asymmetry is a grammar fact rather than a preference:
 		// `~` declares both `~0` and `-~task`, so unchecking a row is a removal the
@@ -187,7 +188,7 @@ func (m *AppModel) newOperationValuePicker(
 			return nil, err
 		}
 		return picker, nil
-	case ValueProviderProject:
+	case operation.ValueProviderProject:
 		return newOperationValuePickerModel(
 			request,
 			provider,
@@ -197,7 +198,7 @@ func (m *AppModel) newOperationValuePicker(
 			false,
 			nil,
 		)
-	case ValueProviderTags:
+	case operation.ValueProviderTags:
 		projects := make([]*models.Project, 0, len(refs))
 		for _, ref := range refs {
 			projects = append(projects, ref.Project)

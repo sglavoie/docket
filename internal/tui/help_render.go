@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -17,7 +18,7 @@ import (
 const helpKeyColumnWidth = 17
 
 // helpSectionOrder is the display order of `?` help sections. Its names are the
-// categories the projections actually emit: operationCategoryLabel produces the
+// categories the projections actually emit: OperationCategoryLabel produces the
 // registry ones, the keymap-projected providers add View, Actions, and Filters,
 // and grammarHelpItems adds the last. A category absent from this list still
 // renders — helpSectionsForCategories appends it in first-seen order — so a new
@@ -39,7 +40,7 @@ var helpSectionOrder = []string{
 	helpGrammarCategory,
 }
 
-// helpSectionOther is the catch-all operationCategoryLabel emits for an
+// helpSectionOther is the catch-all OperationCategoryLabel emits for an
 // uncategorized operation. It renders after every named section, so a remainder
 // reads as one rather than as a peer.
 const helpSectionOther = "Other"
@@ -62,7 +63,7 @@ func helpAliasSuffix(aliases []string, description string, descWidth int) string
 
 // helpSectionForItem names the section an item renders under. An item carrying
 // no category is a remainder, not a section of its own.
-func helpSectionForItem(item HelpItem) string {
+func helpSectionForItem(item operation.HelpItem) string {
 	if strings.TrimSpace(item.Category) == "" {
 		return helpSectionOther
 	}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -19,7 +20,7 @@ import (
 // The zero OperationID is a separator, the rule between two groups; it names no
 // operation, so it carries neither label, key hint, nor state.
 type menuEntrySpec struct {
-	OperationID OperationID
+	OperationID operation.OperationID
 	// Label is optional shorter wording for the bar. Empty means the
 	// descriptor's own Label, which is the wording `?` help already teaches.
 	Label string
@@ -40,7 +41,7 @@ type menuSpec struct {
 // live input strategy. Key is always the strategy's own spelling for the
 // operation, never a string the spec supplied.
 type resolvedMenuEntry struct {
-	OperationID OperationID
+	OperationID operation.OperationID
 	Label       string
 	Key         string
 	Checked     *bool
@@ -83,12 +84,12 @@ func outlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 			ID:    menuIDTask,
 			Title: "Task",
 			Entries: []menuEntrySpec{
-				{OperationID: operationCoreCapture},
+				{OperationID: operation.OperationCoreCapture},
 				{OperationID: operationTaskNewChild, Label: "Capture Child"},
-				{OperationID: operationCoreEdit, Label: "Edit"},
-				{OperationID: operationCoreEditDescription, Label: "Description"},
-				{OperationID: operationCoreExternalEditor, Label: "External Editor"},
-				{OperationID: operationCoreOutlineEditor},
+				{OperationID: operation.OperationCoreEdit, Label: "Edit"},
+				{OperationID: operation.OperationCoreEditDescription, Label: "Description"},
+				{OperationID: operation.OperationCoreExternalEditor, Label: "External Editor"},
+				{OperationID: operation.OperationCoreOutlineEditor},
 				menuSeparator(),
 				{OperationID: operationTaskAttachments},
 				{OperationID: operationTaskComments},
@@ -108,26 +109,26 @@ func outlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 			ID:    menuIDGo,
 			Title: "Go",
 			Entries: []menuEntrySpec{
-				{OperationID: operationCoreSelectProject},
-				{OperationID: operationCoreSelectPinned},
-				{OperationID: operationCoreGotoTaskProject, Label: "Project of Task"},
+				{OperationID: operation.OperationCoreSelectProject},
+				{OperationID: operation.OperationCoreSelectPinned},
+				{OperationID: operation.OperationCoreGotoTaskProject, Label: "Project of Task"},
 				menuSeparator(),
-				{OperationID: operationCoreNotes},
-				{OperationID: operationCoreNamedLenses},
-				{OperationID: operationCoreConflicts, Label: "Conflict Browser"},
+				{OperationID: operation.OperationCoreNotes},
+				{OperationID: operation.OperationCoreNamedLenses},
+				{OperationID: operation.OperationCoreConflicts, Label: "Conflict Browser"},
 				menuSeparator(),
-				{OperationID: operationCoreCursorTop, Label: "Top"},
-				{OperationID: operationCoreCursorBottom, Label: "Bottom"},
-				{OperationID: operationCoreJumpBackward, Label: "Jump Back"},
-				{OperationID: operationCoreJumpForward, Label: "Jump Forward"},
-				{OperationID: operationCoreFocusLatest, Label: "Latest Activity"},
+				{OperationID: operation.OperationCoreCursorTop, Label: "Top"},
+				{OperationID: operation.OperationCoreCursorBottom, Label: "Bottom"},
+				{OperationID: operation.OperationCoreJumpBackward, Label: "Jump Back"},
+				{OperationID: operation.OperationCoreJumpForward, Label: "Jump Forward"},
+				{OperationID: operation.OperationCoreFocusLatest, Label: "Latest Activity"},
 			},
 		},
 		{
 			ID:    menuIDFind,
 			Title: "Find",
 			Entries: []menuEntrySpec{
-				{OperationID: operationCoreScopeSearch, Label: "Search"},
+				{OperationID: operation.OperationCoreScopeSearch, Label: "Search"},
 				{OperationID: operationFilterPriority},
 				{OperationID: operationFilterStates},
 				{OperationID: operationFilterTags},
@@ -147,14 +148,14 @@ func outlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 				{OperationID: operationFilterOnlyArchived},
 				{OperationID: operationFilterProjectClear},
 				menuSeparator(),
-				{OperationID: operationCoreResetToLaunchView},
+				{OperationID: operation.OperationCoreResetToLaunchView},
 			},
 		},
 		{
 			ID:    menuIDHelp,
 			Title: "Help",
 			Entries: []menuEntrySpec{
-				{OperationID: operationCoreHelp, Label: "Key Reference"},
+				{OperationID: operation.OperationCoreHelp, Label: "Key Reference"},
 			},
 		},
 	}
@@ -193,13 +194,13 @@ func viewMenuEntries(activeMode chrome.OutlinerModeID, menuBarVisible, advisorie
 		// to nothing, so this menu is the only place it exists. A keyless operation
 		// may not be an entity operation — see menu_bar_test.go — and this one is
 		// target-free, acting on the view's fold state alone.
-		menuEntrySpec{OperationID: operationCoreClearFolds},
-		menuEntrySpec{OperationID: operationCorePeek, Label: "Peek"},
-		menuEntrySpec{OperationID: operationCoreQueryReadout},
+		menuEntrySpec{OperationID: operation.OperationCoreClearFolds},
+		menuEntrySpec{OperationID: operation.OperationCorePeek, Label: "Peek"},
+		menuEntrySpec{OperationID: operation.OperationCoreQueryReadout},
 		menuSeparator(),
-		menuEntrySpec{OperationID: operationCoreToggleTheme, Label: "Theme"},
+		menuEntrySpec{OperationID: operation.OperationCoreToggleTheme, Label: "Theme"},
 		menuEntrySpec{
-			OperationID: operationCoreToggleMenuBar,
+			OperationID: operation.OperationCoreToggleMenuBar,
 			Label:       "Menu Bar",
 			Checked:     &menuBarVisible,
 		},
@@ -209,7 +210,7 @@ func viewMenuEntries(activeMode chrome.OutlinerModeID, menuBarVisible, advisorie
 		// shown, so the box reads the same way Menu Bar's does — ticked is the thing
 		// being on screen.
 		menuEntrySpec{
-			OperationID: operationCoreToggleAdvisories,
+			OperationID: operation.OperationCoreToggleAdvisories,
 			Label:       "Advisories",
 			Checked:     &advisoriesVisible,
 		},
@@ -219,7 +220,7 @@ func viewMenuEntries(activeMode chrome.OutlinerModeID, menuBarVisible, advisorie
 // gotoOperationForMode names the operation that selects one mode. The mode
 // catalog and the jump operations are already paired by gotoModeOperations, so
 // the menu reads that pairing rather than declaring a second one.
-func gotoOperationForMode(mode chrome.OutlinerModeID) OperationID {
+func gotoOperationForMode(mode chrome.OutlinerModeID) operation.OperationID {
 	for id, target := range gotoModeOperations {
 		if target == mode {
 			return id
@@ -235,16 +236,16 @@ func gotoOperationForMode(mode chrome.OutlinerModeID) OperationID {
 //     not a silently dropped row.
 //   - An entry whose descriptor does not apply to ctx is removed, not greyed,
 //     which is what makes the menu honest about the current cursor.
-//   - A key hint is always displayKeysForOperation, the same helper `?` reads.
+//   - A key hint is always DisplayKeysForOperation, the same helper `?` reads.
 //   - A menu with no surviving entry is omitted, so the bar never shows a label
 //     that opens nothing.
 //
 // Nothing here is cached: the caller rebuilds on every render, which is what
 // keeps a checkmark or a key hint from going stale.
 func resolveMenuEntries(
-	registry *OperationRegistry,
-	strategy InputStrategy,
-	ctx CommandContext,
+	registry *operation.OperationRegistry,
+	strategy operation.InputStrategy,
+	ctx operation.CommandContext,
 	specs []menuSpec,
 ) ([]resolvedMenu, error) {
 	if registry == nil {
@@ -276,7 +277,7 @@ func resolveMenuEntries(
 			entries = append(entries, resolvedMenuEntry{
 				OperationID: entry.OperationID,
 				Label:       label,
-				Key:         displayKeysForOperation(strategy, entry.OperationID),
+				Key:         operation.DisplayKeysForOperation(strategy, entry.OperationID),
 				Checked:     entry.Checked,
 			})
 		}
@@ -318,12 +319,12 @@ func collapseMenuSeparators(entries []resolvedMenuEntry) []resolvedMenuEntry {
 // describes; a machine whose file says otherwise changes what the rows show,
 // never which rows exist.
 func (m *AppModel) validateMenuBarSpecs() error {
-	strategy, ok := m.operationRegistry.InputStrategy(InputStrategySimplified)
+	strategy, ok := m.operationRegistry.InputStrategy(operation.InputStrategySimplified)
 	if !ok {
 		return fmt.Errorf("simplified input strategy is required")
 	}
 	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
-	ctx.Capabilities.Add(CapabilitySimplifiedInput)
+	ctx.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	menus, err := resolveMenuEntries(
 		m.operationRegistry,
 		strategy,

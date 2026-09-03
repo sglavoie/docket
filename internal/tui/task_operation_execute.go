@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -73,7 +74,7 @@ func withWaitingCheckBackStep(invocation OperationInvocation, cmd tea.Cmd) tea.C
 			ID:      operationTaskSetDueDate,
 			Context: cloneCommandContext(invocation.Context),
 		},
-		Provider: ValueProviderDueDate,
+		Provider: operation.ValueProviderDueDate,
 	}
 	return func() tea.Msg {
 		msg := cmd()
@@ -180,7 +181,7 @@ func applicationTaskOperationRequest(
 			fmt.Sprintf("Set Priority · Set priority on %d task(s)", count), true, nil
 
 	case operationTaskSetDueDate:
-		value, ok := invocation.Value.(OperationDateValue)
+		value, ok := invocation.Value.(operation.OperationDateValue)
 		if !ok {
 			return request, "", "", true, fmt.Errorf("invalid date value")
 		}
@@ -207,7 +208,7 @@ func applicationTaskOperationRequest(
 		switch value := invocation.Value.(type) {
 		case []string:
 			request.Tags = append([]string(nil), value...)
-		case OperationTagsValue:
+		case operation.OperationTagsValue:
 			request.TagPatch = true
 			request.TagsToAdd = append([]string(nil), value.Add...)
 			request.TagsToRemove = append([]string(nil), value.Remove...)
@@ -236,7 +237,7 @@ func applicationTaskOperationRequest(
 		if count < 2 {
 			return app.TaskOperationRequest{}, "", "", false, nil
 		}
-		value, ok := invocation.Value.(OperationTaskReferenceValue)
+		value, ok := invocation.Value.(operation.OperationTaskReferenceValue)
 		if !ok {
 			return request, "", "", true, fmt.Errorf("invalid dependency value")
 		}
@@ -288,7 +289,7 @@ func (m *AppModel) executeSingleTaskOperation(
 		}
 		return cmdResult(m.secondaryFeatures.TaskItem.SetPriority(identity, priority))
 	case operationTaskSetDueDate:
-		value, ok := invocation.Value.(OperationDateValue)
+		value, ok := invocation.Value.(operation.OperationDateValue)
 		if !ok {
 			return OperationHandlerResult{Err: fmt.Errorf("invalid date value")}
 		}
@@ -297,7 +298,7 @@ func (m *AppModel) executeSingleTaskOperation(
 		}
 		return cmdResult(m.secondaryFeatures.TaskItem.SetDueDate(identity, cloneOperationDate(value.Date)))
 	case operationTaskSetParent:
-		value, ok := invocation.Value.(OperationParentValue)
+		value, ok := invocation.Value.(operation.OperationParentValue)
 		if !ok {
 			return OperationHandlerResult{Err: fmt.Errorf("invalid parent value")}
 		}
@@ -315,7 +316,7 @@ func (m *AppModel) executeSingleTaskOperation(
 	case operationTaskReferences:
 		// No relocation capture: a reference edit records a soft link and moves no
 		// row, so there is no destination for the outliner to follow.
-		value, ok := invocation.Value.(OperationTaskReferenceValue)
+		value, ok := invocation.Value.(operation.OperationTaskReferenceValue)
 		if !ok {
 			return OperationHandlerResult{Err: fmt.Errorf("invalid dependency value")}
 		}

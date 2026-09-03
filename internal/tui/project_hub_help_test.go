@@ -3,6 +3,7 @@ package tui
 import (
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
@@ -182,12 +183,12 @@ func TestCtrlPRemainsOwnedByInlineOutlinerControls(t *testing.T) {
 	app.operationValuePicker = nil
 
 	descriptor := contextActionTestDescriptor("test.ctrl-p-owner", "Owner")
-	registry, executor := contextActionTestEngine(t, []OperationDescriptor{descriptor}, nil)
+	registry, executor := contextActionTestEngine(t, []operation.OperationDescriptor{descriptor}, nil)
 	sheet, err := NewContextActionSheetModel(
 		registry,
 		executor,
 		contextActionTestContext(),
-		[]OperationID{descriptor.ID},
+		[]operation.OperationID{descriptor.ID},
 		ContextActionSheetConfig{Host: ContextActionHostOutliner},
 	)
 	if err != nil {

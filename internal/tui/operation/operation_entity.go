@@ -1,4 +1,4 @@
-package tui
+package operation
 
 import (
 	"fmt"
@@ -57,7 +57,7 @@ type EntityIdentity struct {
 // never invalidates it, and a UUID the machine snapshot no longer carries is
 // what a handler reports as a stale target.
 func LensEntity(id string) EntityIdentity {
-	return normalizeEntityIdentity(EntityIdentity{
+	return NormalizeEntityIdentity(EntityIdentity{
 		Kind: EntityKindLens,
 		Name: id,
 	})
@@ -65,7 +65,7 @@ func LensEntity(id string) EntityIdentity {
 
 // TaskEntity returns the project-qualified identity of one task.
 func TaskEntity(projectID, taskID string) EntityIdentity {
-	return normalizeEntityIdentity(EntityIdentity{
+	return NormalizeEntityIdentity(EntityIdentity{
 		Kind:      EntityKindTask,
 		ProjectID: projectID,
 		TaskID:    taskID,
@@ -74,7 +74,7 @@ func TaskEntity(projectID, taskID string) EntityIdentity {
 
 // ProjectEntity returns the identity of one project.
 func ProjectEntity(projectID string) EntityIdentity {
-	return normalizeEntityIdentity(EntityIdentity{
+	return NormalizeEntityIdentity(EntityIdentity{
 		Kind:      EntityKindProject,
 		ProjectID: projectID,
 	})
@@ -82,7 +82,7 @@ func ProjectEntity(projectID string) EntityIdentity {
 
 // GlobalNoteEntity returns the identity of one workspace scratch note.
 func GlobalNoteEntity(filename string) EntityIdentity {
-	return normalizeEntityIdentity(EntityIdentity{
+	return NormalizeEntityIdentity(EntityIdentity{
 		Kind:  EntityKindNote,
 		Scope: EntityScopeGlobal,
 		Name:  filename,
@@ -91,7 +91,7 @@ func GlobalNoteEntity(filename string) EntityIdentity {
 
 // ProjectNoteEntity returns the identity of one project note.
 func ProjectNoteEntity(projectID, filename string) EntityIdentity {
-	return normalizeEntityIdentity(EntityIdentity{
+	return NormalizeEntityIdentity(EntityIdentity{
 		Kind:      EntityKindNote,
 		Scope:     EntityScopeProject,
 		ProjectID: projectID,
@@ -108,10 +108,10 @@ func ProjectNoteEntity(projectID, filename string) EntityIdentity {
 // ToolEntity returns the identity of one promoted or secondary tool.
 // OperationEntity returns the identity of one registered operation, letting an
 // operation target another operation.
-// entityForTaskIdentity converts a task identity into the typed operation
+// EntityForTaskIdentity converts a task identity into the typed operation
 // identity. It is Task's inverse and a free function rather than a method
 // because taskref owns TaskIdentity, so only that package may declare on it.
-func entityForTaskIdentity(id taskref.TaskIdentity) EntityIdentity {
+func EntityForTaskIdentity(id taskref.TaskIdentity) EntityIdentity {
 	return TaskEntity(id.ProjectID, id.TaskID)
 }
 
@@ -177,7 +177,7 @@ func (id EntityIdentity) String() string {
 	}
 }
 
-func normalizeEntityIdentity(id EntityIdentity) EntityIdentity {
+func NormalizeEntityIdentity(id EntityIdentity) EntityIdentity {
 	id.ProjectID = strings.TrimSpace(id.ProjectID)
 	id.TaskID = strings.TrimSpace(id.TaskID)
 	id.Name = strings.TrimSpace(id.Name)
@@ -187,13 +187,13 @@ func normalizeEntityIdentity(id EntityIdentity) EntityIdentity {
 	return id
 }
 
-// normalizedEntityIdentities drops malformed and duplicate identities and
+// NormalizedEntityIdentities drops malformed and duplicate identities and
 // returns the remainder in one deterministic order.
-func normalizedEntityIdentities(identities []EntityIdentity) []EntityIdentity {
+func NormalizedEntityIdentities(identities []EntityIdentity) []EntityIdentity {
 	seen := make(map[EntityIdentity]bool, len(identities))
 	normalized := make([]EntityIdentity, 0, len(identities))
 	for _, identity := range identities {
-		identity = normalizeEntityIdentity(identity)
+		identity = NormalizeEntityIdentity(identity)
 		if !identity.Valid() || seen[identity] {
 			continue
 		}
@@ -221,20 +221,20 @@ func entityIdentityLess(left, right EntityIdentity) bool {
 	return false
 }
 
-// taskEntityIdentities converts selected task identities into typed identities
+// TaskEntityIdentities converts selected task identities into typed identities
 // so hosts fill the typed selection without duplicating normalization.
-func taskEntityIdentities(tasks []taskref.TaskIdentity) []EntityIdentity {
-	normalized := normalizedTaskIdentities(tasks)
+func TaskEntityIdentities(tasks []taskref.TaskIdentity) []EntityIdentity {
+	normalized := NormalizedTaskIdentities(tasks)
 	identities := make([]EntityIdentity, 0, len(normalized))
 	for _, task := range normalized {
-		identities = append(identities, entityForTaskIdentity(task))
+		identities = append(identities, EntityForTaskIdentity(task))
 	}
 	return identities
 }
 
-// commandContextCurrentEntity derives the focused typed identity from the
+// CommandContextCurrentEntity derives the focused typed identity from the
 // untyped entity snapshot every host already fills in.
-func commandContextCurrentEntity(entity EntityContext) EntityIdentity {
+func CommandContextCurrentEntity(entity EntityContext) EntityIdentity {
 	switch {
 	case entity.ProjectID != "" && entity.TaskID != "":
 		return TaskEntity(entity.ProjectID, entity.TaskID)
@@ -245,10 +245,10 @@ func commandContextCurrentEntity(entity EntityContext) EntityIdentity {
 	}
 }
 
-// commandContextNamesNonTaskEntity reports whether the focused row positively
+// CommandContextNamesNonTaskEntity reports whether the focused row positively
 // identifies something other than a task. An empty identity is not a non-task
 // cursor: it means the host has not named the row at all.
-func commandContextNamesNonTaskEntity(ctx CommandContext) bool {
-	current := normalizeEntityIdentity(ctx.CurrentEntity)
+func CommandContextNamesNonTaskEntity(ctx CommandContext) bool {
+	current := NormalizeEntityIdentity(ctx.CurrentEntity)
 	return current.Valid() && current.Kind != EntityKindTask
 }

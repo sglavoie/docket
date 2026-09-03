@@ -61,7 +61,7 @@ func (m *OutlinerModel) captureOutlinerRelocation(targets []taskref.TaskIdentity
 		return nil
 	}
 	m.syncJumpProjection()
-	cursorTask := m.currentTaskIdentity()
+	cursorTask := m.CurrentTaskIdentity()
 	if !cursorTask.Valid() {
 		return nil
 	}
@@ -113,7 +113,7 @@ func (m *OutlinerModel) armOutlinerRelocation(capture *outlinerRelocationCapture
 		return
 	}
 	m.syncJumpProjection()
-	if capture.Projection != m.relocationHistory.projection || m.currentTaskIdentity() != capture.Task {
+	if capture.Projection != m.relocationHistory.projection || m.CurrentTaskIdentity() != capture.Task {
 		return
 	}
 	copy := *capture
@@ -171,7 +171,7 @@ func (m *OutlinerModel) discardDisplacedRelocationCapture() {
 	if pending == nil {
 		return
 	}
-	if m.currentTaskIdentity() == pending.Task {
+	if m.CurrentTaskIdentity() == pending.Task {
 		return
 	}
 	if pending.Settled && m.cursor == pending.SettledCursor {
@@ -214,7 +214,7 @@ func (m *OutlinerModel) finishOutlinerRelocation(capture *outlinerRelocationCapt
 		m.advanceAfterDeparture(capture)
 		return nil, false
 	}
-	if !forceFollow && m.currentTaskIdentity() != capture.Task {
+	if !forceFollow && m.CurrentTaskIdentity() != capture.Task {
 		return nil, false
 	}
 	if destination == capture.Origin.RowIndex {

@@ -1,7 +1,6 @@
-package tui
+package operation
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/sglavoie/tt/internal/tui/presentation"
@@ -191,28 +190,4 @@ type CommandContext struct {
 	// It lets operation execution resolve scoped-project targets without
 	// depending on renderer models or palette-specific messages.
 	ScopeProjectIDs []string
-}
-
-// presentationCapability scopes mature renderer commands without affecting
-// typed route identity or history.
-func presentationCapability(view presentation.PresentationID) Capability {
-	return Capability(fmt.Sprintf("presentation:%d", view))
-}
-
-// PresentationCommandContext builds discovery capabilities for one renderer.
-func PresentationCommandContext(view presentation.PresentationID) CommandContext {
-	scope := presentationScope(view)
-	capabilities := NewCapabilitySet(CapabilityCommandDiscovery, presentationCapability(view))
-	switch scope {
-	case ScopeApp:
-		capabilities.Add(CapabilityAppScope)
-	case ScopeTask:
-		capabilities.Add(CapabilityTaskScope)
-	default:
-		capabilities.Add(CapabilityProjectScope)
-	}
-	return CommandContext{
-		View:         view,
-		Capabilities: capabilities,
-	}
 }

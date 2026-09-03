@@ -6,14 +6,15 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // openNotesActionSheet raises the shell-owned sheet over the Notes manager. The
 // frozen context already names the note under the cursor, and the sheet owns
 // every key while it is open, so the row it lists cannot move beneath it.
-func (m *AppModel) openNotesActionSheet(ctx CommandContext) error {
-	if currentEntityIdentity(ctx).Kind != EntityKindNote {
+func (m *AppModel) openNotesActionSheet(ctx operation.CommandContext) error {
+	if operation.CurrentEntityIdentity(ctx).Kind != operation.EntityKindNote {
 		return errors.New("select a note to open actions")
 	}
 	sheet, err := NewContextActionSheetModel(
@@ -48,8 +49,8 @@ func (m *AppModel) openNotesActionSheet(ctx CommandContext) error {
 
 // noteTitleForContext names the sheet's frozen note. A note whose file vanished
 // since the row was built yields no subtitle rather than a stale one.
-func (m *AppModel) noteTitleForContext(ctx CommandContext) string {
-	resolved, err := m.resolveNoteTarget(currentEntityIdentity(ctx))
+func (m *AppModel) noteTitleForContext(ctx operation.CommandContext) string {
+	resolved, err := m.resolveNoteTarget(operation.CurrentEntityIdentity(ctx))
 	if err != nil {
 		return ""
 	}
@@ -69,7 +70,7 @@ func (m *AppModel) noteTitleForContext(ctx CommandContext) string {
 func (m *AppModel) registerNotesSurfaceOperations() error {
 	for _, descriptor := range notesSurfaceOperationDescriptors() {
 		if err := m.registerOperation(descriptor, OperationBinding{
-			RequiredCapabilities:     NewCapabilitySet(CapabilityNotesManager),
+			RequiredCapabilities:     operation.NewCapabilitySet(operation.CapabilityNotesManager),
 			Handler:                  m.executeNotesSurfaceOperation,
 			DelegateTargetResolution: true,
 			DelegateValueProvider:    true,
@@ -83,7 +84,7 @@ func (m *AppModel) registerNotesSurfaceOperations() error {
 		if err := m.operationExecutor.Register(OperationBinding{
 			OperationID:              id,
 			Views:                    []presentation.PresentationID{presentation.ViewNotes, presentation.ViewGlobalNotes},
-			RequiredCapabilities:     NewCapabilitySet(CapabilityNotesManager),
+			RequiredCapabilities:     operation.NewCapabilitySet(operation.CapabilityNotesManager),
 			Handler:                  m.executeNotesSurfaceOperation,
 			DelegateTargetResolution: true,
 			DelegateValueProvider:    true,

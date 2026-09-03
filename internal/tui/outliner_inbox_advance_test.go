@@ -47,7 +47,7 @@ func departAfterCapture(t *testing.T, outliner *OutlinerModel, task *models.Task
 
 func requireCursorTask(t *testing.T, outliner *OutlinerModel, want taskref.TaskIdentity) {
 	t.Helper()
-	if got := outliner.currentTaskIdentity(); got != want {
+	if got := outliner.CurrentTaskIdentity(); got != want {
 		t.Fatalf("cursor task = %+v, want %+v (cursor=%d)", got, want, outliner.cursor)
 	}
 }

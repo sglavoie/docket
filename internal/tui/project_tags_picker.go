@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -24,7 +25,7 @@ const (
 func (m *AppModel) newProjectTagsPicker(
 	request OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
-	project := m.projectByID(currentEntityIdentity(request.Context).ProjectID)
+	project := m.projectByID(operation.CurrentEntityIdentity(request.Context).ProjectID)
 	if project == nil {
 		return nil, fmt.Errorf("project tags need a project target")
 	}
@@ -34,7 +35,7 @@ func (m *AppModel) newProjectTagsPicker(
 	}
 	return newOperationValuePickerModel(
 		request,
-		ValueProviderProjectTags,
+		operation.ValueProviderProjectTags,
 		"Project Tags",
 		project.Name,
 		m.projectTagListSource(project),
@@ -119,8 +120,8 @@ func (m *AppModel) projectTagListSource(project *models.Project) ListSource {
 // The picker cannot show the effect by example the way a state change can, so
 // the sentence has to be on screen the whole time the choice is open. Each
 // complete entry wraps inline rather than sending a detached tail elsewhere.
-func behavioralProjectTagExplainer(provider ValueProviderID, width int) string {
-	if provider != ValueProviderProjectTags {
+func behavioralProjectTagExplainer(provider operation.ValueProviderID, width int) string {
+	if provider != operation.ValueProviderProjectTags {
 		return ""
 	}
 	names := make([]string, 0, len(models.BehavioralProjectTags))

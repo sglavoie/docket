@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -408,7 +409,7 @@ func (m *ProjectEditorModel) View() tea.View {
 	b.WriteString(m.tagsInput.View())
 	b.WriteString("\n")
 	if explainer := behavioralProjectTagExplainer(
-		ValueProviderProjectTags,
+		operation.ValueProviderProjectTags,
 		projectEditorExplainerWidth(m.width),
 	); explainer != "" {
 		for _, line := range strings.Split(explainer, "\n") {

@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -134,7 +135,7 @@ func (model *OperationValuePickerModel) addOrSelectTag(tag string) error {
 	if model.contextEntry {
 		return model.addOrSelectContext(tag)
 	}
-	if model.provider == ValueProviderProjectTags {
+	if model.provider == operation.ValueProviderProjectTags {
 		// The project tag namespace is folded at rest, so the row a typed tag
 		// creates must already carry the spelling the catalog will store.
 		tag = strings.ToLower(tag)
@@ -159,7 +160,7 @@ func (model *OperationValuePickerModel) addOrSelectTag(tag string) error {
 	// colored section.
 	style := theme.TagChipStyle(tag)
 	item.PrimaryStyle = &style
-	if model.provider == ValueProviderProjectTags {
+	if model.provider == operation.ValueProviderProjectTags {
 		item.SecondaryText = ""
 	}
 	// A minted tag the registry knows belongs in the semantic section, or it
@@ -271,8 +272,8 @@ func (model *OperationValuePickerModel) syncValueMembershipRows() error {
 }
 
 func (model *OperationValuePickerModel) selectedValue() (any, error) {
-	if model.provider == ValueProviderTags && len(model.membershipCurrent) > 0 {
-		value := OperationTagsValue{}
+	if model.provider == operation.ValueProviderTags && len(model.membershipCurrent) > 0 {
+		value := operation.OperationTagsValue{}
 		for _, item := range model.surface.Items() {
 			if _, isContext := taskContextRowName(item); isContext {
 				continue
@@ -307,7 +308,7 @@ func (model *OperationValuePickerModel) selectedValue() (any, error) {
 	// cross-project load can republish a stored set while the overlay is up, and
 	// only a difference can leave that republished change standing — which is the
 	// same reason a selection's untouched row must stay untouched.
-	if model.provider == ValueProviderTaskReference && len(model.membershipCurrent) > 0 {
+	if model.provider == operation.ValueProviderTaskReference && len(model.membershipCurrent) > 0 {
 		return taskReferenceSelection(model.membershipInitial, model.membershipCurrent), nil
 	}
 	if model.multi {

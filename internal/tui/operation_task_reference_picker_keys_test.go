@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -23,7 +24,7 @@ import (
 // no longer a refusal — it edits every selected task, which
 // TestReferencePickerEditsAWholeSelectionTriState holds.
 func TestReferencePickerRefusesOffATaskRow(t *testing.T) {
-	descriptorFor := func(t *testing.T, model *AppModel) OperationDescriptor {
+	descriptorFor := func(t *testing.T, model *AppModel) operation.OperationDescriptor {
 		t.Helper()
 		descriptor, ok := model.operationRegistry.Descriptor(operationTaskReferences)
 		if !ok {
@@ -45,9 +46,9 @@ func TestReferencePickerRefusesOffATaskRow(t *testing.T) {
 			t.Fatalf("the fixture cursor is not on a project header row: %+v", ctx.Entity)
 		}
 		descriptor := descriptorFor(t, model)
-		if _, err := (OperationTargetResolver{}).Resolve(descriptor, ctx); err == nil {
+		if _, err := (operation.OperationTargetResolver{}).Resolve(descriptor, ctx); err == nil {
 			t.Fatal("~ resolved a target from a project header cursor")
-		} else if err.Error() != operationTargetRejectionMessage(OperationCategoryTask) {
+		} else if err.Error() != operation.OperationTargetRejectionMessage(operation.OperationCategoryTask) {
 			t.Errorf("rejection = %q, want the shared sentence", err)
 		}
 
@@ -71,7 +72,7 @@ func TestReferencePickerRefusesOffATaskRow(t *testing.T) {
 		if !descriptorFor(t, model).Applicable(ctx) {
 			t.Fatal("~ stopped applying under a visual selection")
 		}
-		targets, err := (OperationTargetResolver{}).Resolve(descriptorFor(t, model), ctx)
+		targets, err := (operation.OperationTargetResolver{}).Resolve(descriptorFor(t, model), ctx)
 		if err != nil {
 			t.Fatalf("~ resolved no target under a visual selection: %v", err)
 		}
@@ -113,7 +114,7 @@ func TestReferencePickerEditsAWholeSelectionTriState(t *testing.T) {
 		model.handleOperationOverlayMessage(cmd())
 	}
 	picker := model.operationValuePicker
-	if picker == nil || picker.provider != ValueProviderTaskReference {
+	if picker == nil || picker.provider != operation.ValueProviderTaskReference {
 		t.Fatalf("~ did not open the reference picker over a selection: %#v", picker)
 	}
 
@@ -146,7 +147,7 @@ func TestReferencePickerEditsAWholeSelectionTriState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("selectedValue: %v", err)
 	}
-	selection, ok := value.(OperationTaskReferenceValue)
+	selection, ok := value.(operation.OperationTaskReferenceValue)
 	if !ok {
 		t.Fatalf("the picker emitted %T, want a reference difference", value)
 	}
@@ -177,7 +178,7 @@ func TestReferencePickerOpensOnTildeWithTheStoredSetChecked(t *testing.T) {
 		model.handleOperationOverlayMessage(cmd())
 	}
 	picker := model.operationValuePicker
-	if picker == nil || picker.provider != ValueProviderTaskReference {
+	if picker == nil || picker.provider != operation.ValueProviderTaskReference {
 		t.Fatalf("~ did not open the reference picker: %#v", picker)
 	}
 

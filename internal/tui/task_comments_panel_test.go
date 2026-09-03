@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -120,7 +121,7 @@ func TestCommentsSpaceSheetReachesDelete(t *testing.T) {
 	if sheet == nil {
 		t.Fatal("Space did not open the comment action sheet")
 	}
-	want := []OperationID{operationCommentDelete}
+	want := []operation.OperationID{operationCommentDelete}
 	if got := sheet.operationIDs(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("comment sheet lists %v, want exactly %v", got, want)
 	}

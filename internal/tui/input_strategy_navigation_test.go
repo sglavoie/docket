@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -26,12 +27,12 @@ func TestProductionInputStrategyDefaultsToSimplified(t *testing.T) {
 	}
 
 	binding, _, resolution := app.operationRegistry.InputBindingForSequence(
-		InputStrategySimplified,
+		operation.InputStrategySimplified,
 		[]string{"g", "g"},
 		app.operationCommandContext(),
 	)
-	if resolution != ChordTerminal || binding.OperationID != operationCoreCursorTop {
-		t.Fatalf("gg resolved to %s (resolution %v), want %s", binding.OperationID, resolution, operationCoreCursorTop)
+	if resolution != operation.ChordTerminal || binding.OperationID != operation.OperationCoreCursorTop {
+		t.Fatalf("gg resolved to %s (resolution %v), want %s", binding.OperationID, resolution, operation.OperationCoreCursorTop)
 	}
 
 	handled, cmd = app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 'F', Text: "F"})
@@ -71,27 +72,27 @@ func TestGoToChordResolvesTopJumpAndEveryMode(t *testing.T) {
 		// 0 is the eighth digit and the one that names no mode.
 		"0": {"0"},
 	}
-	want := map[string]OperationID{
-		"gg": operationCoreCursorTop,
-		"ga": operationCoreGotoAll,
-		"gi": operationCoreGotoInbox,
-		"gt": operationCoreGotoToday,
-		"gn": operationCoreGotoNext,
-		"gb": operationCoreGotoBacklog,
-		"g@": operationCoreGotoDue,
-		"gr": operationCoreGotoRecent,
-		"1":  operationCoreGotoAll,
-		"2":  operationCoreGotoToday,
-		"3":  operationCoreGotoInbox,
-		"4":  operationCoreGotoNext,
-		"5":  operationCoreGotoBacklog,
-		"6":  operationCoreGotoDue,
-		"7":  operationCoreGotoRecent,
-		"0":  operationCoreResetToLaunchView,
+	want := map[string]operation.OperationID{
+		"gg": operation.OperationCoreCursorTop,
+		"ga": operation.OperationCoreGotoAll,
+		"gi": operation.OperationCoreGotoInbox,
+		"gt": operation.OperationCoreGotoToday,
+		"gn": operation.OperationCoreGotoNext,
+		"gb": operation.OperationCoreGotoBacklog,
+		"g@": operation.OperationCoreGotoDue,
+		"gr": operation.OperationCoreGotoRecent,
+		"1":  operation.OperationCoreGotoAll,
+		"2":  operation.OperationCoreGotoToday,
+		"3":  operation.OperationCoreGotoInbox,
+		"4":  operation.OperationCoreGotoNext,
+		"5":  operation.OperationCoreGotoBacklog,
+		"6":  operation.OperationCoreGotoDue,
+		"7":  operation.OperationCoreGotoRecent,
+		"0":  operation.OperationCoreResetToLaunchView,
 	}
 	for spelling, path := range paths {
-		binding, _, resolution := registry.InputBindingForSequence(InputStrategySimplified, path, ctx)
-		if resolution != ChordTerminal {
+		binding, _, resolution := registry.InputBindingForSequence(operation.InputStrategySimplified, path, ctx)
+		if resolution != operation.ChordTerminal {
 			t.Errorf("%s resolution = %v, want ChordTerminal", spelling, resolution)
 			continue
 		}
@@ -100,31 +101,31 @@ func TestGoToChordResolvesTopJumpAndEveryMode(t *testing.T) {
 		}
 	}
 	taskContext := ctx
-	taskContext.Entity = EntityContext{ProjectID: "project", TaskID: "task"}
+	taskContext.Entity = operation.EntityContext{ProjectID: "project", TaskID: "task"}
 	binding, _, resolution := registry.InputBindingForSequence(
-		InputStrategySimplified,
+		operation.InputStrategySimplified,
 		[]string{"g", "p"},
 		taskContext,
 	)
-	if resolution != ChordTerminal || binding.OperationID != operationCoreGotoTaskProject {
-		t.Errorf("gp resolved to %s (resolution %v), want %s", binding.OperationID, resolution, operationCoreGotoTaskProject)
+	if resolution != operation.ChordTerminal || binding.OperationID != operation.OperationCoreGotoTaskProject {
+		t.Errorf("gp resolved to %s (resolution %v), want %s", binding.OperationID, resolution, operation.OperationCoreGotoTaskProject)
 	}
 
 	if _, _, resolution := registry.InputBindingForSequence(
-		InputStrategySimplified,
+		operation.InputStrategySimplified,
 		[]string{"g"},
 		ctx,
-	); resolution != ChordPending {
+	); resolution != operation.ChordPending {
 		t.Errorf("bare g resolution = %v, want ChordPending", resolution)
 	}
 
-	binding, _, ok := registry.InputBindingForKey(InputStrategySimplified, "home", ctx)
-	if !ok || binding.OperationID != operationCoreCursorTop {
-		t.Errorf("Home resolved to %s (found %v), want %s", binding.OperationID, ok, operationCoreCursorTop)
+	binding, _, ok := registry.InputBindingForKey(operation.InputStrategySimplified, "home", ctx)
+	if !ok || binding.OperationID != operation.OperationCoreCursorTop {
+		t.Errorf("Home resolved to %s (found %v), want %s", binding.OperationID, ok, operation.OperationCoreCursorTop)
 	}
 
 	if label, ok := registry.ChordGroupLabelForPrefix(
-		InputStrategySimplified,
+		operation.InputStrategySimplified,
 		[]string{"g", "q"},
 	); !ok || label != "go to" {
 		t.Errorf("abandoned g chord label = %q (found %v), want %q", label, ok, "go to")
@@ -132,17 +133,17 @@ func TestGoToChordResolvesTopJumpAndEveryMode(t *testing.T) {
 
 	// Both spellings reach ? help and the footer for free, because the projection
 	// reads the binding's one DisplayKey rather than composing a second one.
-	for operationID, want := range map[OperationID]string{
-		operationCoreGotoAll:           "ga/1",
-		operationCoreGotoToday:         "gt/2",
-		operationCoreGotoInbox:         "gi/3",
-		operationCoreGotoNext:          "gn/4",
-		operationCoreGotoBacklog:       "gb/5",
-		operationCoreGotoDue:           "g@/6",
-		operationCoreGotoRecent:        "gr/7",
-		operationCoreResetToLaunchView: "0",
+	for operationID, want := range map[operation.OperationID]string{
+		operation.OperationCoreGotoAll:           "ga/1",
+		operation.OperationCoreGotoToday:         "gt/2",
+		operation.OperationCoreGotoInbox:         "gi/3",
+		operation.OperationCoreGotoNext:          "gn/4",
+		operation.OperationCoreGotoBacklog:       "gb/5",
+		operation.OperationCoreGotoDue:           "g@/6",
+		operation.OperationCoreGotoRecent:        "gr/7",
+		operation.OperationCoreResetToLaunchView: "0",
 	} {
-		if got := registry.InputShortcutForOperation(InputStrategySimplified, operationID); got != want {
+		if got := registry.InputShortcutForOperation(operation.InputStrategySimplified, operationID); got != want {
 			t.Errorf("%s display key = %q, want %q", operationID, got, want)
 		}
 	}
@@ -155,14 +156,14 @@ func TestScrollChordResolvesEveryAnchor(t *testing.T) {
 	registry := registeredSimplifiedOperationRegistry(t)
 	ctx := simplifiedOperationContext()
 
-	for spelling, want := range map[string]OperationID{
-		"zt": operationCoreScrollCursorTop,
-		"zz": operationCoreScrollCursorMiddle,
-		"zb": operationCoreScrollCursorBottom,
+	for spelling, want := range map[string]operation.OperationID{
+		"zt": operation.OperationCoreScrollCursorTop,
+		"zz": operation.OperationCoreScrollCursorMiddle,
+		"zb": operation.OperationCoreScrollCursorBottom,
 	} {
 		path := []string{"z", spelling[1:]}
-		binding, _, resolution := registry.InputBindingForSequence(InputStrategySimplified, path, ctx)
-		if resolution != ChordTerminal {
+		binding, _, resolution := registry.InputBindingForSequence(operation.InputStrategySimplified, path, ctx)
+		if resolution != operation.ChordTerminal {
 			t.Errorf("%s resolution = %v, want ChordTerminal", spelling, resolution)
 			continue
 		}
@@ -172,15 +173,15 @@ func TestScrollChordResolvesEveryAnchor(t *testing.T) {
 	}
 
 	if _, _, resolution := registry.InputBindingForSequence(
-		InputStrategySimplified,
+		operation.InputStrategySimplified,
 		[]string{"z"},
 		ctx,
-	); resolution != ChordPending {
+	); resolution != operation.ChordPending {
 		t.Errorf("bare z resolution = %v, want ChordPending", resolution)
 	}
 
 	if label, ok := registry.ChordGroupLabelForPrefix(
-		InputStrategySimplified,
+		operation.InputStrategySimplified,
 		[]string{"z", "q"},
 	); !ok || label != "scroll" {
 		t.Errorf("abandoned z chord label = %q (found %v), want %q", label, ok, "scroll")

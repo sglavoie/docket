@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -26,13 +27,13 @@ var taskActionCategories = []ListCategory{
 // identities, so cursor changes beneath the modal cannot retarget the eventual
 // operation.
 func NewTaskActionSheetModel(
-	registry *OperationRegistry,
+	registry *operation.OperationRegistry,
 	executor *OperationExecutor,
-	context CommandContext,
+	context operation.CommandContext,
 	taskTitle string,
 ) (*ContextActionSheetModel, error) {
 	descriptors := TaskActionSheetDescriptors(registry, context)
-	ids := make([]OperationID, 0, len(descriptors))
+	ids := make([]operation.OperationID, 0, len(descriptors))
 	for _, descriptor := range descriptors {
 		ids = append(ids, descriptor.ID)
 	}
@@ -49,7 +50,7 @@ func NewTaskActionSheetModel(
 		Categories:   taskActionCategories,
 		CategoryFor:  taskActionCategory,
 		SecondaryFor: operationActionSecondaryText,
-		DisabledFor: func(descriptor OperationDescriptor) string {
+		DisabledFor: func(descriptor operation.OperationDescriptor) string {
 			return taskActionDisabledReason(descriptor, context)
 		},
 		ImmediateFilter: true,
@@ -69,13 +70,13 @@ func NewTaskActionSheetModel(
 // TaskActionSheetDescriptors returns the deterministic selected-task operation
 // projection used by the sheet and its tests.
 func TaskActionSheetDescriptors(
-	registry *OperationRegistry,
-	context CommandContext,
-) []OperationDescriptor {
+	registry *operation.OperationRegistry,
+	context operation.CommandContext,
+) []operation.OperationDescriptor {
 	if registry == nil || taskActionTargetCount(context) == 0 {
-		return []OperationDescriptor{}
+		return []operation.OperationDescriptor{}
 	}
-	descriptors := make([]OperationDescriptor, 0)
+	descriptors := make([]operation.OperationDescriptor, 0)
 	for _, descriptor := range registry.All() {
 		if !taskActionSheetEligible(descriptor) ||
 			!taskActionDescriptorApplicableToEveryTarget(descriptor, context) {
@@ -87,7 +88,7 @@ func TaskActionSheetDescriptors(
 		if context.Selection.Visual && !taskOperationSupportsBulk(descriptor.ID) {
 			continue
 		}
-		if _, err := (OperationTargetResolver{}).Resolve(descriptor, context); err != nil {
+		if _, err := (operation.OperationTargetResolver{}).Resolve(descriptor, context); err != nil {
 			continue
 		}
 		descriptors = append(descriptors, descriptor)
@@ -96,19 +97,19 @@ func TaskActionSheetDescriptors(
 	return descriptors
 }
 
-func taskActionTargetCount(context CommandContext) int {
+func taskActionTargetCount(context operation.CommandContext) int {
 	if context.Selection.Visual {
-		return len(normalizedTaskIdentities(context.Selection.Tasks))
+		return len(operation.NormalizedTaskIdentities(context.Selection.Tasks))
 	}
-	if currentTaskIdentity(context).Valid() {
+	if operation.CurrentTaskIdentity(context).Valid() {
 		return 1
 	}
 	return 0
 }
 
 func taskActionDescriptorApplicableToEveryTarget(
-	descriptor OperationDescriptor,
-	context CommandContext,
+	descriptor operation.OperationDescriptor,
+	context operation.CommandContext,
 ) bool {
 	if !descriptor.Applicable(context) {
 		return false
@@ -116,7 +117,7 @@ func taskActionDescriptorApplicableToEveryTarget(
 	if !context.Selection.Visual {
 		return true
 	}
-	selected := normalizedTaskIdentities(context.Selection.Tasks)
+	selected := operation.NormalizedTaskIdentities(context.Selection.Tasks)
 	if len(selected) == 0 || len(context.Selection.Entities) != len(selected) {
 		return false
 	}
@@ -130,7 +131,7 @@ func taskActionDescriptorApplicableToEveryTarget(
 	return true
 }
 
-func taskActionSheetEligible(descriptor OperationDescriptor) bool {
+func taskActionSheetEligible(descriptor operation.OperationDescriptor) bool {
 	// The task manifest is an allowlist, not merely an ordering hint. Keeping
 	// eligibility closed over its one menu entry prevents newly registered task
 	// operations from silently expanding the Space menu.
@@ -138,8 +139,8 @@ func taskActionSheetEligible(descriptor OperationDescriptor) bool {
 	return manifested && !entry.DirectOnly
 }
 
-func taskActionCategory(descriptor OperationDescriptor) ListCategoryID {
-	if descriptor.Risk == OperationRiskDestructive {
+func taskActionCategory(descriptor operation.OperationDescriptor) ListCategoryID {
+	if descriptor.Risk == operation.OperationRiskDestructive {
 		return taskActionCategoryDanger
 	}
 	if entry, manifested := taskOperationManifestEntryFor(descriptor.ID); manifested {
@@ -148,11 +149,11 @@ func taskActionCategory(descriptor OperationDescriptor) ListCategoryID {
 	return taskActionCategoryContent
 }
 
-func operationActionSecondaryText(descriptor OperationDescriptor) string {
+func operationActionSecondaryText(descriptor operation.OperationDescriptor) string {
 	switch {
 	case descriptor.ValueProviderID != "":
 		return "choose " + strings.ReplaceAll(string(descriptor.ValueProviderID), "-", " ")
-	case descriptor.Risk == OperationRiskDestructive:
+	case descriptor.Risk == operation.OperationRiskDestructive:
 		return "confirmation required"
 	case descriptor.DirectKey != "":
 		return descriptor.DirectKey
@@ -162,10 +163,10 @@ func operationActionSecondaryText(descriptor OperationDescriptor) string {
 }
 
 func taskActionDisabledReason(
-	descriptor OperationDescriptor,
-	context CommandContext,
+	descriptor operation.OperationDescriptor,
+	context operation.CommandContext,
 ) string {
-	if descriptor.Risk == OperationRiskMutation && context.Entity.Archived {
+	if descriptor.Risk == operation.OperationRiskMutation && context.Entity.Archived {
 		return "project is archived"
 	}
 	return ""
@@ -174,7 +175,7 @@ func taskActionDisabledReason(
 // sortTaskActionDescriptors groups by action-sheet category, then puts manifest
 // operations in their authoritative order ahead of any other action in the same
 // category.
-func sortTaskActionDescriptors(descriptors []OperationDescriptor) {
+func sortTaskActionDescriptors(descriptors []operation.OperationDescriptor) {
 	categoryRank := func(id ListCategoryID) int {
 		for index, category := range taskActionCategories {
 			if category.ID == id {
@@ -203,19 +204,19 @@ func sortTaskActionDescriptors(descriptors []OperationDescriptor) {
 	})
 }
 
-func cloneCommandContext(context CommandContext) CommandContext {
-	context.Capabilities = cloneCapabilitySet(context.Capabilities)
+func cloneCommandContext(context operation.CommandContext) operation.CommandContext {
+	context.Capabilities = operation.CloneCapabilitySet(context.Capabilities)
 	context.Selection.Tasks = append([]taskref.TaskIdentity(nil), context.Selection.Tasks...)
-	context.Selection.Entities = append([]EntityContext(nil), context.Selection.Entities...)
+	context.Selection.Entities = append([]operation.EntityContext(nil), context.Selection.Entities...)
 	context.Selection.EntityIdentities = append(
-		[]EntityIdentity(nil),
+		[]operation.EntityIdentity(nil),
 		context.Selection.EntityIdentities...,
 	)
 	context.ScopeProjectIDs = append([]string(nil), context.ScopeProjectIDs...)
 	return context
 }
 
-func (m *AppModel) openTaskActionSheet(context CommandContext) error {
+func (m *AppModel) openTaskActionSheet(context operation.CommandContext) error {
 	if context.Selection.Visual {
 		refs, err := m.operationTaskRefs(context)
 		if err != nil {
@@ -225,7 +226,7 @@ func (m *AppModel) openTaskActionSheet(context CommandContext) error {
 			return fmt.Errorf("select at least one task to open bulk actions")
 		}
 		context.Selection.Tasks = make([]taskref.TaskIdentity, 0, len(refs))
-		context.Selection.Entities = make([]EntityContext, 0, len(refs))
+		context.Selection.Entities = make([]operation.EntityContext, 0, len(refs))
 		for _, ref := range refs {
 			context.Selection.Tasks = append(context.Selection.Tasks, ref.Identity())
 			context.Selection.Entities = append(
@@ -236,7 +237,7 @@ func (m *AppModel) openTaskActionSheet(context CommandContext) error {
 		// operationTaskRefs can drop rows the selection still names, so the typed
 		// identities are rederived rather than inherited; otherwise the frozen
 		// sheet would act on a wider set than it lists.
-		context.Selection.EntityIdentities = taskEntityIdentities(context.Selection.Tasks)
+		context.Selection.EntityIdentities = operation.TaskEntityIdentities(context.Selection.Tasks)
 		context.Entity = context.Selection.Entities[0]
 		subtitle := fmt.Sprintf("%d tasks", len(refs))
 		if context.Selection.VisibleCount+context.Selection.HiddenCount == len(refs) {

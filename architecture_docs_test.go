@@ -113,7 +113,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"A footer has one source per surface, never two ranked descriptions that can drift apart",
 		"`registerSurfaceInputStrategies` walks `surfaceOperationGates()` and runs each surface's check " +
 			"before registering its strategy",
-		"The five named wrappers each delegate to one `validateOperationOnePath`",
+		"The five named wrappers each delegate to one `operation.ValidateOperationOnePath`",
 		"`SimplifiedInputStrategy` is the only Outliner key grammar",
 		"the one `Space` action",
 		"`taskDirectOperationManifest` holds Comments and Attachments as `DirectOnly` entries instead, " +

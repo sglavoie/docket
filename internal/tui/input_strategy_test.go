@@ -9,12 +9,13 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
-func registeredSimplifiedOperationRegistry(t *testing.T) *OperationRegistry {
+func registeredSimplifiedOperationRegistry(t *testing.T) *operation.OperationRegistry {
 	t.Helper()
-	registry := NewOperationRegistry()
+	registry := operation.NewOperationRegistry()
 	descriptors := append(coreInputOperationDescriptors(), simplifiedTaskActionDescriptors()...)
 	for _, descriptor := range descriptors {
 		if err := registry.Register(descriptor); err != nil {
@@ -38,7 +39,7 @@ func guidanceHintsText(hints []chrome.GuidanceHint) string {
 // simplifiedTaskActionDescriptors supplies the task-scoped and filter
 // descriptors the simplified strategy binds directly, for tests that assemble a
 // registry without a fully initialized AppModel.
-func simplifiedTaskActionDescriptors() []OperationDescriptor {
+func simplifiedTaskActionDescriptors() []operation.OperationDescriptor {
 	descriptors := append((&AppModel{}).taskActionOperationDescriptors(), filterOperationDescriptors()...)
 	descriptors = append(descriptors, projectFilterOperationDescriptors()...)
 	descriptors = append(descriptors, sortAxisOperationDescriptors()...)
@@ -48,24 +49,24 @@ func simplifiedTaskActionDescriptors() []OperationDescriptor {
 	return append(descriptors, projectOperationDescriptors()...)
 }
 
-func simplifiedOperationContext() CommandContext {
+func simplifiedOperationContext() operation.CommandContext {
 	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
-	ctx.Capabilities.Add(CapabilitySimplifiedInput)
+	ctx.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	return ctx
 }
 
 func TestSimplifiedInputStrategyIsCollisionAndPrefixFree(t *testing.T) {
 	registry := registeredSimplifiedOperationRegistry(t)
-	strategy, ok := registry.InputStrategy(InputStrategySimplified)
+	strategy, ok := registry.InputStrategy(operation.InputStrategySimplified)
 	if !ok {
 		t.Fatal("simplified strategy was not registered")
 	}
 
 	ctx := simplifiedOperationContext()
-	seen := make(map[string]OperationID)
+	seen := make(map[string]operation.OperationID)
 	sharable := make(map[string]bool)
 	pathKeys := make(map[string]bool)
-	documented := make(map[OperationID]bool)
+	documented := make(map[operation.OperationID]bool)
 	for _, binding := range strategy.Bindings {
 		if binding.DisplayKey == "" {
 			t.Fatalf("%s has no documented display key", binding.OperationID)
@@ -78,7 +79,7 @@ func TestSimplifiedInputStrategyIsCollisionAndPrefixFree(t *testing.T) {
 			documented[binding.OperationID] = true
 		}
 		for _, key := range binding.Keys {
-			if !isDirectInputKey(key) {
+			if !operation.IsDirectInputKey(key) {
 				t.Errorf("%s key %q is not one direct event", binding.OperationID, key)
 			}
 			// A repeated key is a grammar defect unless every binding on it opted
@@ -90,25 +91,25 @@ func TestSimplifiedInputStrategyIsCollisionAndPrefixFree(t *testing.T) {
 			seen[key] = binding.OperationID
 			sharable[key] = binding.SharedKey
 		}
-		for _, path := range binding.paths() {
+		for _, path := range binding.Paths() {
 			for _, key := range path {
 				pathKeys[key] = true
 			}
 		}
 	}
 
-	handled := registry.HandledKeysForInputStrategy(InputStrategySimplified)
+	handled := registry.HandledKeysForInputStrategy(operation.InputStrategySimplified)
 	if len(handled) != len(pathKeys) {
 		t.Fatalf("handled keys = %d, keys on declared paths = %d", len(handled), len(pathKeys))
 	}
 	// One help row per applicable operation, so a preset family collapses instead
 	// of documenting the same operation once per spelling.
-	help := registry.HelpItemsForInputStrategy(InputStrategySimplified, ctx)
+	help := registry.HelpItemsForInputStrategy(operation.InputStrategySimplified, ctx)
 	if len(help) != len(documented) {
 		t.Fatalf("help items = %d, applicable bound operations = %d", len(help), len(documented))
 	}
 	footer := guidanceHintsText(registry.GuidanceHintsForInputStrategy(
-		InputStrategySimplified, simplifiedOperationContext(),
+		operation.InputStrategySimplified, simplifiedOperationContext(),
 	))
 	for _, want := range []string{"a capture", "$ workflow", "/ search", "T theme", "? help"} {
 		if !strings.Contains(footer, want) {
@@ -127,20 +128,20 @@ func TestSimplifiedInputStrategyUsesVisibleSearchAndFinalNavigation(t *testing.T
 	ctx := simplifiedOperationContext()
 	tests := []struct {
 		key  string
-		want OperationID
+		want operation.OperationID
 	}{
-		{key: "/", want: operationCoreScopeSearch},
-		{key: "h", want: operationCoreCollapseParent},
-		{key: "left", want: operationCoreCollapseParent},
-		{key: "l", want: operationCoreExpand},
-		{key: "right", want: operationCoreExpand},
-		{key: "s", want: operationCoreToggleSections},
-		{key: "ctrl+o", want: operationCoreJumpBackward},
-		{key: "ctrl+i", want: operationCoreJumpForward},
-		{key: "ctrl+e", want: operationCoreExternalEditor},
+		{key: "/", want: operation.OperationCoreScopeSearch},
+		{key: "h", want: operation.OperationCoreCollapseParent},
+		{key: "left", want: operation.OperationCoreCollapseParent},
+		{key: "l", want: operation.OperationCoreExpand},
+		{key: "right", want: operation.OperationCoreExpand},
+		{key: "s", want: operation.OperationCoreToggleSections},
+		{key: "ctrl+o", want: operation.OperationCoreJumpBackward},
+		{key: "ctrl+i", want: operation.OperationCoreJumpForward},
+		{key: "ctrl+e", want: operation.OperationCoreExternalEditor},
 	}
 	for _, test := range tests {
-		binding, _, ok := registry.InputBindingForKey(InputStrategySimplified, test.key, ctx)
+		binding, _, ok := registry.InputBindingForKey(operation.InputStrategySimplified, test.key, ctx)
 		if !ok {
 			t.Fatalf("key %q did not resolve", test.key)
 		}
@@ -151,7 +152,7 @@ func TestSimplifiedInputStrategyUsesVisibleSearchAndFinalNavigation(t *testing.T
 	helpHasToggleSections := false
 	helpHasJumpBackward := false
 	helpHasJumpForward := false
-	for _, item := range registry.HelpItemsForInputStrategy(InputStrategySimplified, ctx) {
+	for _, item := range registry.HelpItemsForInputStrategy(operation.InputStrategySimplified, ctx) {
 		if item.Key == "s" && item.Description == "Toggle All Sections" {
 			helpHasToggleSections = true
 		}
@@ -168,7 +169,7 @@ func TestSimplifiedInputStrategyUsesVisibleSearchAndFinalNavigation(t *testing.T
 	if !helpHasJumpBackward || !helpHasJumpForward {
 		t.Errorf("generated help jump rows = backward %t forward %t, want both", helpHasJumpBackward, helpHasJumpForward)
 	}
-	if _, _, ok := registry.InputBindingForKey(InputStrategySimplified, ":", ctx); ok {
+	if _, _, ok := registry.InputBindingForKey(operation.InputStrategySimplified, ":", ctx); ok {
 		t.Error("removed Finder key still resolves")
 	}
 }
@@ -180,19 +181,19 @@ func TestSimplifiedNamedLensesIsTaughtByHelpAndNotByTheFooter(t *testing.T) {
 	registry := registeredSimplifiedOperationRegistry(t)
 	ctx := simplifiedOperationContext()
 
-	binding, _, ok := registry.InputBindingForKey(InputStrategySimplified, `\`, ctx)
+	binding, _, ok := registry.InputBindingForKey(operation.InputStrategySimplified, `\`, ctx)
 	if !ok {
 		t.Fatal(`\ did not resolve on the Outliner`)
 	}
-	if binding.OperationID != operationCoreNamedLenses {
-		t.Fatalf(`\ resolved to %s, want %s`, binding.OperationID, operationCoreNamedLenses)
+	if binding.OperationID != operation.OperationCoreNamedLenses {
+		t.Fatalf(`\ resolved to %s, want %s`, binding.OperationID, operation.OperationCoreNamedLenses)
 	}
 	if binding.FooterRank != 0 || binding.FooterLabel != "" {
 		t.Errorf("named lenses declares footer rank %d label %q, want neither", binding.FooterRank, binding.FooterLabel)
 	}
 
 	taught := false
-	for _, item := range registry.HelpItemsForInputStrategy(InputStrategySimplified, ctx) {
+	for _, item := range registry.HelpItemsForInputStrategy(operation.InputStrategySimplified, ctx) {
 		if item.Key == `\` && item.Description == "Named Lenses" {
 			taught = true
 		}
@@ -202,7 +203,7 @@ func TestSimplifiedNamedLensesIsTaughtByHelpAndNotByTheFooter(t *testing.T) {
 	}
 
 	footer := guidanceHintsText(registry.GuidanceHintsForInputStrategy(
-		InputStrategySimplified, ctx,
+		operation.InputStrategySimplified, ctx,
 	))
 	if strings.Contains(footer, `\`) {
 		t.Errorf("footer %q advertises the named-lens key", footer)
@@ -259,24 +260,24 @@ func TestSimplifiedNavigationAliasesShareOneOperationAndDisplayKey(t *testing.T)
 	ctx := simplifiedOperationContext()
 	aliases := []struct {
 		keys    []string
-		want    OperationID
+		want    operation.OperationID
 		display string
 	}{
-		{keys: []string{"home"}, want: operationCoreCursorTop, display: "gg/Home"},
-		{keys: []string{"G", "end"}, want: operationCoreCursorBottom, display: "G/End"},
-		{keys: []string{"ctrl+u", "pgup"}, want: operationCoreCursorPageUp, display: "Ctrl+U/PgUp"},
-		{keys: []string{"ctrl+d", "pgdown"}, want: operationCoreCursorPageDown, display: "Ctrl+D/PgDn"},
+		{keys: []string{"home"}, want: operation.OperationCoreCursorTop, display: "gg/Home"},
+		{keys: []string{"G", "end"}, want: operation.OperationCoreCursorBottom, display: "G/End"},
+		{keys: []string{"ctrl+u", "pgup"}, want: operation.OperationCoreCursorPageUp, display: "Ctrl+U/PgUp"},
+		{keys: []string{"ctrl+d", "pgdown"}, want: operation.OperationCoreCursorPageDown, display: "Ctrl+D/PgDn"},
 	}
 
-	handled := registry.HandledKeysForInputStrategy(InputStrategySimplified)
+	handled := registry.HandledKeysForInputStrategy(operation.InputStrategySimplified)
 	helpKeys := make(map[string]bool)
-	for _, item := range registry.HelpItemsForInputStrategy(InputStrategySimplified, ctx) {
+	for _, item := range registry.HelpItemsForInputStrategy(operation.InputStrategySimplified, ctx) {
 		helpKeys[item.Key] = true
 	}
 
 	for _, alias := range aliases {
 		for _, key := range alias.keys {
-			binding, _, ok := registry.InputBindingForKey(InputStrategySimplified, key, ctx)
+			binding, _, ok := registry.InputBindingForKey(operation.InputStrategySimplified, key, ctx)
 			if !ok {
 				t.Fatalf("key %q did not resolve", key)
 			}
@@ -295,7 +296,7 @@ func TestSimplifiedNavigationAliasesShareOneOperationAndDisplayKey(t *testing.T)
 		}
 	}
 
-	footer := guidanceHintsText(registry.GuidanceHintsForInputStrategy(InputStrategySimplified, ctx))
+	footer := guidanceHintsText(registry.GuidanceHintsForInputStrategy(operation.InputStrategySimplified, ctx))
 	for _, alias := range aliases {
 		if strings.Contains(footer, alias.display) {
 			t.Errorf("compact footer spends its hint budget on %q", alias.display)

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // projectHeaderCursorApp parks the fixture Outliner's cursor on a project header
@@ -13,7 +14,7 @@ import (
 // from it. Going through the real fixture rather than a hand-built EntityContext
 // is the point: HasProjectHeaderCursor, the frozen project identity, and the
 // scope IDs all have to agree, and only the production path makes them agree.
-func projectHeaderCursorApp(t *testing.T) (*AppModel, *models.Project, CommandContext) {
+func projectHeaderCursorApp(t *testing.T) (*AppModel, *models.Project, operation.CommandContext) {
 	t.Helper()
 	driver, workspace, err := NewFixtureDriver(FixtureRich, 100, 35)
 	if err != nil {
@@ -38,7 +39,7 @@ func projectHeaderCursorApp(t *testing.T) (*AppModel, *models.Project, CommandCo
 		return app, project, context
 	}
 	t.Fatal("fixture Outliner exposed no project header row")
-	return nil, nil, CommandContext{}
+	return nil, nil, operation.CommandContext{}
 }
 
 // TestProjectActionSheetProjectsTheOutlinerProjectManifest pins the exact rows
@@ -53,7 +54,7 @@ func TestProjectActionSheetProjectsTheOutlinerProjectManifest(t *testing.T) {
 	registry := app.GetOperationRegistry()
 
 	ids := ProjectActionSheetOperationIDs(registry, context)
-	wantIDs := []OperationID{
+	wantIDs := []operation.OperationID{
 		operationScopeRenameProject,
 		operationScopeArchiveProject,
 		operationProjectDelete,
@@ -75,7 +76,7 @@ func TestProjectActionSheetProjectsTheOutlinerProjectManifest(t *testing.T) {
 	}
 	// Danger holds exactly the two acts that end the project's presence, so the
 	// list a user arrows through looking for Edit never puts one under the cursor.
-	for id, want := range map[OperationID]ListCategoryID{
+	for id, want := range map[operation.OperationID]ListCategoryID{
 		operationScopeRenameProject:  outlinerProjectActionCategoryProject,
 		operationScopeArchiveProject: outlinerProjectActionCategoryDanger,
 		operationProjectDelete:       outlinerProjectActionCategoryDanger,
@@ -87,7 +88,7 @@ func TestProjectActionSheetProjectsTheOutlinerProjectManifest(t *testing.T) {
 	}
 	// The three direct-only manifest entries carry their own keys — `#`, `*` and
 	// Space itself — so listing any would be the second path one-path forbids.
-	for _, excluded := range []OperationID{
+	for _, excluded := range []operation.OperationID{
 		operationProjectSetTags,
 		operationProjectActions,
 		operationScopePinProject,
@@ -110,7 +111,7 @@ func TestProjectActionSheetDropsRowsTheProjectStateForbids(t *testing.T) {
 	project.Archived = true
 
 	ids := ProjectActionSheetOperationIDs(app.GetOperationRegistry(), context)
-	wantIDs := []OperationID{operationScopeRenameProject, operationProjectDelete}
+	wantIDs := []operation.OperationID{operationScopeRenameProject, operationProjectDelete}
 	if !slices.Equal(ids, wantIDs) {
 		t.Fatalf("archived project sheet IDs = %v, want %v", ids, wantIDs)
 	}
@@ -128,7 +129,7 @@ func TestProjectActionSheetRefusesTheSystemUnfiledDelete(t *testing.T) {
 		t.Fatal("fixture workspace has no system Unfiled project")
 	}
 	context.Entity.ProjectID = unfiled.ID
-	context.CurrentEntity = commandContextCurrentEntity(context.Entity)
+	context.CurrentEntity = operation.CommandContextCurrentEntity(context.Entity)
 
 	ids := ProjectActionSheetOperationIDs(app.GetOperationRegistry(), context)
 	if slices.Contains(ids, operationProjectDelete) {

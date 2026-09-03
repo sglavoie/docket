@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -66,7 +67,7 @@ func TestProjectTagFilterPickerRowsWearTheSameColorsAsTheEditor(t *testing.T) {
 
 func TestBehavioralProjectTagExplainerWrapsEverySummaryInline(t *testing.T) {
 	for _, width := range []int{40, 49, 60} {
-		explainer := behavioralProjectTagExplainer(ValueProviderProjectTags, width)
+		explainer := behavioralProjectTagExplainer(operation.ValueProviderProjectTags, width)
 		plain := ansi.Strip(explainer)
 		for _, line := range strings.Split(plain, "\n") {
 			if got := lipgloss.Width(line); got > width {
@@ -81,7 +82,7 @@ func TestBehavioralProjectTagExplainerWrapsEverySummaryInline(t *testing.T) {
 }
 
 func TestBehavioralProjectTagExplainerKeepsWideSummaryOnOneLine(t *testing.T) {
-	explainer := behavioralProjectTagExplainer(ValueProviderProjectTags, 200)
+	explainer := behavioralProjectTagExplainer(operation.ValueProviderProjectTags, 200)
 	info := models.BehavioralProjectTags[models.ParkedProjectTag]
 	if got := ansi.Strip(explainer); got != info.Name+" "+info.Summary {
 		t.Fatalf("wide explainer = %q, want the full summary", got)
@@ -89,12 +90,12 @@ func TestBehavioralProjectTagExplainerKeepsWideSummaryOnOneLine(t *testing.T) {
 }
 
 func TestBehavioralProjectTagExplainerIsSilentForOtherProviders(t *testing.T) {
-	for _, provider := range []ValueProviderID{
-		ValueProviderTags,
-		ValueProviderFilterTags,
-		ValueProviderFilterProjectTags,
-		ValueProviderPriority,
-		ValueProviderState,
+	for _, provider := range []operation.ValueProviderID{
+		operation.ValueProviderTags,
+		operation.ValueProviderFilterTags,
+		operation.ValueProviderFilterProjectTags,
+		operation.ValueProviderPriority,
+		operation.ValueProviderState,
 	} {
 		if got := behavioralProjectTagExplainer(provider, 60); got != "" {
 			t.Fatalf("provider %q explainer = %q, want empty", provider, got)

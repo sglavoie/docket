@@ -4,18 +4,19 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // projectOperationContext mimics a non-Project-Hub host naming one frozen
 // project.
-func projectOperationContext(projectID string) CommandContext {
+func projectOperationContext(projectID string) operation.CommandContext {
 	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
-	ctx.CurrentEntity = ProjectEntity(projectID)
+	ctx.CurrentEntity = operation.ProjectEntity(projectID)
 	return ctx
 }
 
-func containsOperationID(ids []OperationID, want OperationID) bool {
+func containsOperationID(ids []operation.OperationID, want operation.OperationID) bool {
 	for _, id := range ids {
 		if id == want {
 			return true
@@ -24,7 +25,7 @@ func containsOperationID(ids []OperationID, want OperationID) bool {
 	return false
 }
 
-func executeProjectOperation(app *AppModel, id OperationID, ctx CommandContext) OperationExecutionResult {
+func executeProjectOperation(app *AppModel, id operation.OperationID, ctx operation.CommandContext) OperationExecutionResult {
 	return app.operationExecutor.Execute(OperationExecutionRequest{
 		ID:      id,
 		Context: ctx,
@@ -87,7 +88,7 @@ func TestProjectOperationsRejectArchivedAndImmutableTargets(t *testing.T) {
 
 	cases := []struct {
 		name string
-		id   OperationID
+		id   operation.OperationID
 		proj string
 	}{
 		{"open archived", operationProjectOpen, "archived"},
@@ -135,7 +136,7 @@ func TestOpenProjectNotesRejectsArchivedProject(t *testing.T) {
 	}
 	handlerResult := app.executeProjectOperation(
 		OperationInvocation{Descriptor: descriptor},
-		operationTargetFor(ProjectEntity("archived")),
+		operation.OperationTargetFor(operation.ProjectEntity("archived")),
 	)
 	if handlerResult.Err == nil || handlerResult.Err.Error() != "Open project notes is unavailable while Archived is archived" {
 		t.Fatalf("archived handler error = %v, want the shared lifecycle refusal", handlerResult.Err)

@@ -1,16 +1,18 @@
 package tui
 
+import "github.com/sglavoie/tt/internal/tui/operation"
+
 // Project Hub surface operation IDs. They name what the Hub grammar does to its
 // own list rather than to a project, so they stay apart from the tui.scope.* and
 // tui.project.* operations a project row carries into an action sheet.
 const (
-	operationProjectHubSearch          OperationID = "tui.project-hub.search"
-	operationProjectHubToggleSelection OperationID = "tui.project-hub.toggle-selection"
-	operationProjectHubSelectAll       OperationID = "tui.project-hub.select-all"
-	operationProjectHubActions         OperationID = "tui.project-hub.actions"
-	operationProjectHubTaskFilter      OperationID = "tui.project-hub.task-filter"
-	operationProjectHubPreviewPageDown OperationID = "tui.project-hub.preview-page-down"
-	operationProjectHubPreviewPageUp   OperationID = "tui.project-hub.preview-page-up"
+	operationProjectHubSearch          operation.OperationID = "tui.project-hub.search"
+	operationProjectHubToggleSelection operation.OperationID = "tui.project-hub.toggle-selection"
+	operationProjectHubSelectAll       operation.OperationID = "tui.project-hub.select-all"
+	operationProjectHubActions         operation.OperationID = "tui.project-hub.actions"
+	operationProjectHubTaskFilter      operation.OperationID = "tui.project-hub.task-filter"
+	operationProjectHubPreviewPageDown operation.OperationID = "tui.project-hub.preview-page-down"
+	operationProjectHubPreviewPageUp   operation.OperationID = "tui.project-hub.preview-page-up"
 )
 
 // ProjectHubInputStrategy is the Project Hub's whole direct key grammar and the
@@ -33,10 +35,10 @@ const (
 // Hub archives, parks, renames, pins, and tags, and the status strip it already
 // renders offers `u undo` after a bulk tag set. Binding them closes that
 // promise rather than adding a new one.
-func ProjectHubInputStrategy() InputStrategy {
-	return InputStrategy{
-		ID: InputStrategyProjectHub,
-		Bindings: []OperationKeyBinding{
+func ProjectHubInputStrategy() operation.InputStrategy {
+	return operation.InputStrategy{
+		ID: operation.InputStrategyProjectHub,
+		Bindings: []operation.OperationKeyBinding{
 			{OperationID: operationProjectOpen, Keys: []string{"enter"}, DisplayKey: "Enter", FooterRank: 2, FooterLabel: "open"},
 			{OperationID: operationProjectHubActions, Keys: []string{"space"}, DisplayKey: "Space", FooterRank: 5, FooterLabel: "actions"},
 			{OperationID: operationScopeCreateProject, Keys: []string{"a"}, DisplayKey: "a", FooterRank: 6, FooterLabel: "new"},
@@ -53,18 +55,18 @@ func ProjectHubInputStrategy() InputStrategy {
 			// halves of vim's paging vocabulary split between them.
 			{OperationID: operationProjectHubPreviewPageDown, Keys: []string{"ctrl+f"}, DisplayKey: "Ctrl+F"},
 			{OperationID: operationProjectHubPreviewPageUp, Keys: []string{"ctrl+b"}, DisplayKey: "Ctrl+B"},
-			{OperationID: operationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},
-			{OperationID: operationCoreRedo, Keys: []string{"ctrl+r"}, DisplayKey: "Ctrl+R"},
-			{OperationID: operationCoreCursorDown, Keys: []string{"j", "down"}, DisplayKey: "j/↓"},
-			{OperationID: operationCoreCursorUp, Keys: []string{"k", "up"}, DisplayKey: "k/↑"},
-			{OperationID: operationCoreCursorTop, Keys: []string{"home"}, Sequence: []string{"g", "g"}, DisplayKey: "gg/Home", HintLabel: "top"},
-			{OperationID: operationCoreCursorBottom, Keys: []string{"G", "end"}, DisplayKey: "G/End"},
-			{OperationID: operationCoreCursorPageDown, Keys: []string{"ctrl+d"}, DisplayKey: "Ctrl+D"},
-			{OperationID: operationCoreCursorPageUp, Keys: []string{"ctrl+u"}, DisplayKey: "Ctrl+U"},
-			{OperationID: operationCoreHelp, Keys: []string{"?"}, DisplayKey: "?"},
-			{OperationID: operationCoreBack, Keys: []string{"esc"}, DisplayKey: "Esc"},
+			{OperationID: operation.OperationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},
+			{OperationID: operation.OperationCoreRedo, Keys: []string{"ctrl+r"}, DisplayKey: "Ctrl+R"},
+			{OperationID: operation.OperationCoreCursorDown, Keys: []string{"j", "down"}, DisplayKey: "j/↓"},
+			{OperationID: operation.OperationCoreCursorUp, Keys: []string{"k", "up"}, DisplayKey: "k/↑"},
+			{OperationID: operation.OperationCoreCursorTop, Keys: []string{"home"}, Sequence: []string{"g", "g"}, DisplayKey: "gg/Home", HintLabel: "top"},
+			{OperationID: operation.OperationCoreCursorBottom, Keys: []string{"G", "end"}, DisplayKey: "G/End"},
+			{OperationID: operation.OperationCoreCursorPageDown, Keys: []string{"ctrl+d"}, DisplayKey: "Ctrl+D"},
+			{OperationID: operation.OperationCoreCursorPageUp, Keys: []string{"ctrl+u"}, DisplayKey: "Ctrl+U"},
+			{OperationID: operation.OperationCoreHelp, Keys: []string{"?"}, DisplayKey: "?"},
+			{OperationID: operation.OperationCoreBack, Keys: []string{"esc"}, DisplayKey: "Esc"},
 		},
-		ChordGroups: []OperationChordGroup{
+		ChordGroups: []operation.OperationChordGroup{
 			{Sequence: []string{"g"}, HintLabel: "go to"},
 		},
 	}
@@ -77,38 +79,38 @@ func ProjectHubInputStrategy() InputStrategy {
 // the bulk tag set.
 //
 // The seven list operations below the six project ones are here so the one-path
-// rule sees them: a manifest is all validateOperationOnePath inspects, so an
+// rule sees them: a manifest is all ValidateOperationOnePath inspects, so an
 // unmanifested operation is the one thing that gate cannot check. Listing them
 // adds no menu row, because both sheets take an explicit operation list rather
 // than this one; their category is stated so projectHubActionCategory keeps
 // answering what it answered while they were absent.
-func projectOperationManifest() []operationManifestEntry {
-	return []operationManifestEntry{
-		{ID: operationProjectOpen, Label: "Open project", Aliases: []string{"focus project"}, Category: projectHubActionCategoryProject, Risk: OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationScopeCreateProject, Label: "New project", Aliases: []string{"create project"}, Category: projectHubActionCategoryProject, Risk: OperationRiskMutation, DirectOnly: true},
-		{ID: operationScopeRenameProject, Label: "Edit project", Aliases: []string{"project settings"}, Category: projectHubActionCategoryProject, Risk: OperationRiskMutation, DirectOnly: true},
-		{ID: operationScopePinProject, Label: "Toggle project pin", Aliases: []string{"pin project", "unpin project"}, Category: projectHubActionCategoryProject, Risk: OperationRiskMutation, DirectOnly: true},
-		{ID: operationProjectSetTags, Label: "Set project tags", Aliases: []string{"project tags"}, Provider: ValueProviderProjectTags, Category: projectHubActionCategoryProject, Risk: OperationRiskMutation, DirectOnly: true},
-		{ID: operationScopeOpenProjectNote, Label: "Open project notes", Category: projectHubActionCategoryProject, Risk: OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationProjectHubSearch, Label: "Search projects", Aliases: []string{"filter the project list"}, Category: projectHubActionCategoryProject, Risk: OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationProjectHubToggleSelection, Label: "Select project", Aliases: []string{"toggle project selection"}, Category: projectHubActionCategoryProject, Risk: OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationProjectHubSelectAll, Label: "Select every matching project", Aliases: []string{"select all projects"}, Category: projectHubActionCategoryProject, Risk: OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationProjectHubActions, Label: "Project actions", Aliases: []string{"project action sheet"}, Category: projectHubActionCategoryProject, Risk: OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationProjectHubTaskFilter, Label: "Cycle every project, only those holding open tasks, only those holding none open", Aliases: []string{"projects holding open tasks", "projects holding no open tasks"}, Category: projectHubActionCategoryProject, Risk: OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationProjectHubPreviewPageDown, Label: "Page project tasks down", Aliases: []string{"scroll project preview down"}, Category: projectHubActionCategoryProject, Risk: OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationProjectHubPreviewPageUp, Label: "Page project tasks up", Aliases: []string{"scroll project preview up"}, Category: projectHubActionCategoryProject, Risk: OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationProjectBulkAddTag, Label: "Add tag", Category: projectHubActionCategoryProject, Risk: OperationRiskMutation, Bulk: true},
-		{ID: operationProjectBulkRemoveTag, Label: "Remove tag", Category: projectHubActionCategoryProject, Risk: OperationRiskMutation, Bulk: true},
-		{ID: operationProjectBulkPark, Label: "Park projects", Category: projectHubActionCategoryProject, Risk: OperationRiskMutation, Bulk: true},
-		{ID: operationProjectBulkUnpark, Label: "Unpark projects", Category: projectHubActionCategoryProject, Risk: OperationRiskMutation, Bulk: true},
-		{ID: operationScopeRestoreProject, Label: "Unarchive project", Aliases: []string{"restore archived project"}, Category: projectHubActionCategoryRecovery, Risk: OperationRiskMutation},
-		{ID: operationScopeArchiveProject, Label: "Archive project", Category: projectHubActionCategoryDanger, Risk: OperationRiskDestructive},
+func projectOperationManifest() []operation.OperationManifestEntry {
+	return []operation.OperationManifestEntry{
+		{ID: operationProjectOpen, Label: "Open project", Aliases: []string{"focus project"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationScopeCreateProject, Label: "New project", Aliases: []string{"create project"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operationScopeRenameProject, Label: "Edit project", Aliases: []string{"project settings"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operationScopePinProject, Label: "Toggle project pin", Aliases: []string{"pin project", "unpin project"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operationProjectSetTags, Label: "Set project tags", Aliases: []string{"project tags"}, Provider: operation.ValueProviderProjectTags, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operationScopeOpenProjectNote, Label: "Open project notes", Category: projectHubActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationProjectHubSearch, Label: "Search projects", Aliases: []string{"filter the project list"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationProjectHubToggleSelection, Label: "Select project", Aliases: []string{"toggle project selection"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationProjectHubSelectAll, Label: "Select every matching project", Aliases: []string{"select all projects"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationProjectHubActions, Label: "Project actions", Aliases: []string{"project action sheet"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationProjectHubTaskFilter, Label: "Cycle every project, only those holding open tasks, only those holding none open", Aliases: []string{"projects holding open tasks", "projects holding no open tasks"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationProjectHubPreviewPageDown, Label: "Page project tasks down", Aliases: []string{"scroll project preview down"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationProjectHubPreviewPageUp, Label: "Page project tasks up", Aliases: []string{"scroll project preview up"}, Category: projectHubActionCategoryProject, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: operationProjectBulkAddTag, Label: "Add tag", Category: projectHubActionCategoryProject, Risk: operation.OperationRiskMutation, Bulk: true},
+		{ID: operationProjectBulkRemoveTag, Label: "Remove tag", Category: projectHubActionCategoryProject, Risk: operation.OperationRiskMutation, Bulk: true},
+		{ID: operationProjectBulkPark, Label: "Park projects", Category: projectHubActionCategoryProject, Risk: operation.OperationRiskMutation, Bulk: true},
+		{ID: operationProjectBulkUnpark, Label: "Unpark projects", Category: projectHubActionCategoryProject, Risk: operation.OperationRiskMutation, Bulk: true},
+		{ID: operationScopeRestoreProject, Label: "Unarchive project", Aliases: []string{"restore archived project"}, Category: projectHubActionCategoryRecovery, Risk: operation.OperationRiskMutation},
+		{ID: operationScopeArchiveProject, Label: "Archive project", Category: projectHubActionCategoryDanger, Risk: operation.OperationRiskDestructive},
 	}
 }
 
 // validateProjectOperationOnePath holds the Project Hub to the shared one-path
 // rule: a manifested operation is either bound directly and marked DirectOnly or
 // listed in the Space menu, never both.
-func validateProjectOperationOnePath(strategy InputStrategy) error {
-	return validateOperationOnePath(projectOperationManifest(), strategy)
+func validateProjectOperationOnePath(strategy operation.InputStrategy) error {
+	return operation.ValidateOperationOnePath(projectOperationManifest(), strategy)
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -237,7 +238,7 @@ func TestOperationTagPickerJumpsBetweenSections(t *testing.T) {
 func TestOperationTagPickerJumpKeysStayOutOfNonTagPickers(t *testing.T) {
 	picker, err := newOperationValuePickerModel(
 		OperationExecutionRequest{ID: operationTaskSetPriority},
-		ValueProviderPriority,
+		operation.ValueProviderPriority,
 		"Set Priority",
 		"Task",
 		ListSourceFromPriorities([]chrome.PriorityInfo{
@@ -265,7 +266,7 @@ func TestTaskTagCategoryJumpHintNamesOnlyPopulatedSections(t *testing.T) {
 		{Name: "platform", TaskCount: 1, ContextCount: 1},
 	}, false)
 
-	styled := taskTagCategoryJumpHint(ValueProviderFilterTags, source.Items, 120)
+	styled := taskTagCategoryJumpHint(operation.ValueProviderFilterTags, source.Items, 120)
 	hint := ansi.Strip(styled)
 	if got := strings.Join(strings.Fields(hint), " "); got != "jump c contexts · t tags" {
 		t.Fatalf("hint = %q, want only the populated sections", got)
@@ -276,11 +277,11 @@ func TestTaskTagCategoryJumpHintNamesOnlyPopulatedSections(t *testing.T) {
 		}
 	}
 	seeded := taskTagListSource([]query.TagInfo{{Name: "backend", TaskCount: 1}}, true)
-	hint = ansi.Strip(taskTagCategoryJumpHint(ValueProviderTags, seeded.Items, 120))
+	hint = ansi.Strip(taskTagCategoryJumpHint(operation.ValueProviderTags, seeded.Items, 120))
 	if got := strings.Join(strings.Fields(hint), " "); got != "jump s semantic · t tags" {
 		t.Fatalf("seeded hint = %q, want the editor's two sections", got)
 	}
-	for _, provider := range []ValueProviderID{ValueProviderProjectTags, ValueProviderFilterProjectTags} {
+	for _, provider := range []operation.ValueProviderID{operation.ValueProviderProjectTags, operation.ValueProviderFilterProjectTags} {
 		if got := taskTagCategoryJumpHint(provider, source.Items, 120); got != "" {
 			t.Fatalf("provider %q hint = %q, want none", provider, got)
 		}

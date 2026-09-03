@@ -8,13 +8,14 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 func (m *AppModel) executeLensOperation(
 	invocation OperationInvocation,
-	target OperationTarget,
+	target operation.OperationTarget,
 ) OperationHandlerResult {
-	if target.Entity.Kind != EntityKindLens {
+	if target.Entity.Kind != operation.EntityKindLens {
 		return OperationHandlerResult{
 			Err: fmt.Errorf("%s needs a lens target, got %s", invocation.Descriptor.Label, target.Entity),
 		}

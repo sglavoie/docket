@@ -96,8 +96,8 @@ It is the second `GuideDefinitions` consumer and teaches in the same order as th
 first. `AppModel.coreInputHelpItems` appends it, because `?` is a core input
 operation and that function is the Outliner's one help projection.
 
-A value provider is exactly one of `textEntry()` (a separate overlay),
-`tagEntry()` (inline add mode), `dateEntry()` (inline add mode), or a plain list
+A value provider is exactly one of `operation.TextEntry()` (a separate overlay),
+`operation.TagEntry()` (inline add mode), `operation.DateEntry()` (inline add mode), or a plain list
 such as `ValueProviderParent`.
 Inline modes bind `a` inside `OperationValuePickerModel` and must emit the same
 value type the provider's preset rows carry, so the executor and the single and
@@ -419,7 +419,7 @@ surface that advertises the key has to answer it.
 `registerSurfaceInputStrategies` walks `surfaceOperationGates()` and runs each
 surface's check before registering its strategy, so a surface that drifted fails
 at model construction rather than at the key press that would have found it. The
-five named wrappers each delegate to one `validateOperationOnePath`, which reads
+five named wrappers each delegate to one `operation.ValidateOperationOnePath`, which reads
 the strategy's own bindings and rejects an entry that is both bound and listed,
 or marked `DirectOnly` with no binding left to justify it. Keeping the wrappers
 named per surface is what puts the surface's ID in the error text; the rule

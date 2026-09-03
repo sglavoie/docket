@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -46,7 +47,7 @@ func entityOperationApp(t *testing.T, titles ...string) (*AppModel, *models.Proj
 	return model, project
 }
 
-func executeEntityOperation(app *AppModel, id OperationID, entity EntityIdentity) OperationExecutionResult {
+func executeEntityOperation(app *AppModel, id operation.OperationID, entity operation.EntityIdentity) OperationExecutionResult {
 	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.CurrentEntity = entity
 	return app.operationExecutor.Execute(OperationExecutionRequest{
@@ -74,13 +75,13 @@ func TestNoteOperationsResolveTheNoteAtExecution(t *testing.T) {
 	model, project := entityOperationApp(t, "Design log")
 	filename := onlyNoteFilename(t, model, app.ProjectNoteLocation(project.ID))
 
-	result := executeEntityOperation(model, operationNoteOpen, ProjectNoteEntity(project.ID, filename))
+	result := executeEntityOperation(model, operationNoteOpen, operation.ProjectNoteEntity(project.ID, filename))
 	open, ok := result.Message.(OperationCommandResultMsg)
 	if !ok || open.Cmd == nil {
 		t.Fatalf("open note emitted %#v, want an external-editor command", result.Message)
 	}
 
-	move := executeEntityOperation(model, operationNoteMove, ProjectNoteEntity(project.ID, filename))
+	move := executeEntityOperation(model, operationNoteMove, operation.ProjectNoteEntity(project.ID, filename))
 	moveManager, ok := move.Message.(ShowNotesManagerMsg)
 	if !ok || moveManager.Scope != AllNotesScope() ||
 		moveManager.Focus != (NoteRowIdentity{
@@ -97,7 +98,7 @@ func TestNoteOperationsResolveTheNoteAtExecution(t *testing.T) {
 	if err := os.Remove(filepath.Join(storage.NotesDir(project), filename)); err != nil {
 		t.Fatalf("remove note: %v", err)
 	}
-	stale := executeEntityOperation(model, operationNoteOpen, ProjectNoteEntity(project.ID, filename))
+	stale := executeEntityOperation(model, operationNoteOpen, operation.ProjectNoteEntity(project.ID, filename))
 	if stale.Err == nil {
 		t.Fatalf("open on a removed note emitted %#v, want an unavailable error", stale.Message)
 	}
@@ -107,14 +108,14 @@ func TestNoteOperationsRejectTargetsOutsideTheirScope(t *testing.T) {
 	model, project := entityOperationApp(t, "Design log")
 	filename := onlyNoteFilename(t, model, app.ProjectNoteLocation(project.ID))
 
-	// currentEntityIdentity degrades to the focused project, so an unguarded note
+	// CurrentEntityIdentity degrades to the focused project, so an unguarded note
 	// descriptor would silently borrow it.
 	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	if noteOperationApplicable(ctx) {
 		t.Fatal("a note operation was offered with only a project in focus")
 	}
 
-	missing := executeEntityOperation(model, operationNoteOpen, ProjectNoteEntity("ghost", filename))
+	missing := executeEntityOperation(model, operationNoteOpen, operation.ProjectNoteEntity("ghost", filename))
 	if missing.Err == nil {
 		t.Fatalf("a note in a removed project emitted %#v, want an error", missing.Message)
 	}
@@ -129,7 +130,7 @@ func TestNoteOperationsPreserveMalformedNoteRestrictions(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "broken.md"), []byte("no frontmatter here\n"), 0o644); err != nil {
 		t.Fatalf("write malformed note: %v", err)
 	}
-	entity := ProjectNoteEntity(project.ID, "broken.md")
+	entity := operation.ProjectNoteEntity(project.ID, "broken.md")
 
 	if result := executeEntityOperation(model, operationNoteMove, entity); result.Err == nil {
 		t.Fatalf("move ran on a malformed note and emitted %#v", result.Message)
@@ -137,7 +138,7 @@ func TestNoteOperationsPreserveMalformedNoteRestrictions(t *testing.T) {
 
 	// Repair and removal stay reachable, otherwise a malformed note is stranded.
 	rename := executeEntityOperation(model, operationNoteRename, entity)
-	if rename.ValueRequired == nil || rename.ValueRequired.Provider != ValueProviderNoteTitle {
+	if rename.ValueRequired == nil || rename.ValueRequired.Provider != operation.ValueProviderNoteTitle {
 		t.Fatalf("rename on a malformed note emitted %#v, want a title prompt", rename)
 	}
 	if delete := executeEntityOperation(model, operationNoteDelete, entity); delete.ConfirmationRequired == nil {
@@ -148,7 +149,7 @@ func TestNoteOperationsPreserveMalformedNoteRestrictions(t *testing.T) {
 func TestNoteDeleteRunsOnlyAfterConfirmation(t *testing.T) {
 	model, project := entityOperationApp(t, "Throwaway")
 	filename := onlyNoteFilename(t, model, app.ProjectNoteLocation(project.ID))
-	entity := ProjectNoteEntity(project.ID, filename)
+	entity := operation.ProjectNoteEntity(project.ID, filename)
 
 	result := executeEntityOperation(model, operationNoteDelete, entity)
 	if result.ConfirmationRequired == nil || result.Message != nil {
@@ -193,17 +194,17 @@ func TestNoteCopyOperationsNameTheNoteInEitherCollection(t *testing.T) {
 
 	for _, testCase := range []struct {
 		name   string
-		entity EntityIdentity
+		entity operation.EntityIdentity
 		path   string
 	}{
 		{
 			name:   "project",
-			entity: ProjectNoteEntity(project.ID, projectFile),
+			entity: operation.ProjectNoteEntity(project.ID, projectFile),
 			path:   filepath.Join(storage.NotesDir(project), projectFile),
 		},
 		{
 			name:   "global",
-			entity: GlobalNoteEntity(globalNote.Filename),
+			entity: operation.GlobalNoteEntity(globalNote.Filename),
 			path:   filepath.Join(globalDir, globalNote.Filename),
 		},
 	} {
@@ -251,7 +252,7 @@ func TestNoteCopyOperationsSurviveAMalformedNoteAndAFailedClipboard(t *testing.T
 	if err := os.WriteFile(filepath.Join(dir, "broken.md"), []byte("no frontmatter here\n"), 0o644); err != nil {
 		t.Fatalf("write malformed note: %v", err)
 	}
-	entity := ProjectNoteEntity(project.ID, "broken.md")
+	entity := operation.ProjectNoteEntity(project.ID, "broken.md")
 
 	var copied string
 	withFakeClipboard(t, nil, &copied)

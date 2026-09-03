@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -109,11 +110,11 @@ func (m *ProjectHubModel) activateProjectHubCurrent() tea.Cmd {
 	return m.dispatchProjectHubKey("enter")
 }
 
-func (m *ProjectHubModel) projectHubCommandContext(projectID string) CommandContext {
+func (m *ProjectHubModel) projectHubCommandContext(projectID string) operation.CommandContext {
 	ctx := PresentationCommandContext(presentation.ViewProjectHub)
-	ctx.Capabilities.Add(CapabilityProjectHub)
+	ctx.Capabilities.Add(operation.CapabilityProjectHub)
 	if projectID != "" {
-		ctx.CurrentEntity = ProjectEntity(projectID)
+		ctx.CurrentEntity = operation.ProjectEntity(projectID)
 	}
 	return ctx
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/fuzzy"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -65,7 +66,7 @@ func lensPickerActionRows(snapshot NamedLensPickerSnapshot) []ListItem {
 			PrimaryMarker: lensPickerOrdinalMarker(0),
 			Aliases:       []string{"save", "new lens", "create lens"},
 			SecondaryText: snapshot.CurrentSummary,
-			OperationIDs:  []OperationID{operationLensCreate},
+			OperationIDs:  []operation.OperationID{operationLensCreate},
 		},
 		{
 			ID:            lensPickerAddTemplateItemID,
@@ -75,7 +76,7 @@ func lensPickerActionRows(snapshot NamedLensPickerSnapshot) []ListItem {
 			// this product calls a lens, so the row answers to all three.
 			Aliases:       []string{"template", "preset", "built-in view"},
 			SecondaryText: lensPickerAddTemplateSecondary,
-			OperationIDs:  []OperationID{operationLensAddTemplate},
+			OperationIDs:  []operation.OperationID{operationLensAddTemplate},
 		},
 	}
 }
@@ -98,7 +99,7 @@ func namedLensPickerItem(
 		PrimaryText:   lens.Name,
 		PrimaryMarker: marker,
 		SecondaryText: namedLensSummary(lens),
-		OperationIDs:  append([]OperationID{operationLensApply}, namedLensActionSheetOperations...),
+		OperationIDs:  append([]operation.OperationID{operationLensApply}, namedLensActionSheetOperations...),
 		Data:          lens,
 	}
 	// The accent is read from the definition every time a row is built, which is

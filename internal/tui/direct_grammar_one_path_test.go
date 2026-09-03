@@ -10,10 +10,21 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
+
+// mutableInputStrategy detaches the binding slice the one-path checks below
+// rewrite. A strategy factory already returns a fresh value, so the package's
+// own defensive clone is not what this needs: only Bindings is mutated here,
+// and appending to a shared backing array is the single way these subtests
+// could reach each other.
+func mutableInputStrategy(strategy operation.InputStrategy) operation.InputStrategy {
+	strategy.Bindings = append([]operation.OperationKeyBinding(nil), strategy.Bindings...)
+	return strategy
+}
 
 func TestTaskOperationsCannotAppearInBothDirectGrammarAndMenu(t *testing.T) {
 	registry := registeredSimplifiedOperationRegistry(t)
@@ -22,11 +33,11 @@ func TestTaskOperationsCannotAppearInBothDirectGrammarAndMenu(t *testing.T) {
 		t.Fatalf("production grammar: %v", err)
 	}
 
-	bound := make(map[OperationID]bool)
+	bound := make(map[operation.OperationID]bool)
 	for _, binding := range strategy.Bindings {
 		bound[binding.OperationID] = true
 	}
-	menu := make(map[OperationID]bool)
+	menu := make(map[operation.OperationID]bool)
 	for _, id := range taskOperationManifestIDs() {
 		menu[id] = true
 	}
@@ -44,8 +55,8 @@ func TestTaskOperationsCannotAppearInBothDirectGrammarAndMenu(t *testing.T) {
 	}
 
 	t.Run("duplicate placement", func(t *testing.T) {
-		candidate := cloneInputStrategy(strategy)
-		candidate.Bindings = append(candidate.Bindings, OperationKeyBinding{
+		candidate := mutableInputStrategy(strategy)
+		candidate.Bindings = append(candidate.Bindings, operation.OperationKeyBinding{
 			OperationID: operationTaskDelete,
 			Keys:        []string{"Z"},
 		})
@@ -56,8 +67,8 @@ func TestTaskOperationsCannotAppearInBothDirectGrammarAndMenu(t *testing.T) {
 	})
 
 	t.Run("unreachable direct-only operation", func(t *testing.T) {
-		candidate := cloneInputStrategy(strategy)
-		candidate.Bindings = slices.DeleteFunc(candidate.Bindings, func(binding OperationKeyBinding) bool {
+		candidate := mutableInputStrategy(strategy)
+		candidate.Bindings = slices.DeleteFunc(candidate.Bindings, func(binding operation.OperationKeyBinding) bool {
 			return binding.OperationID == operationTaskSetDueDate
 		})
 		err := validateOutlinerOperationOnePath(candidate)
@@ -82,8 +93,8 @@ func invocationPathCount(value bool) int {
 func TestEverySurfaceManifestSatisfiesTheOnePathRule(t *testing.T) {
 	surfaces := []struct {
 		name     string
-		strategy InputStrategy
-		manifest []operationManifestEntry
+		strategy operation.InputStrategy
+		manifest []operation.OperationManifestEntry
 	}{
 		{"outliner", SimplifiedInputStrategy(), outlinerOperationDescriptorManifest()},
 		{"project hub", ProjectHubInputStrategy(), projectOperationManifest()},
@@ -111,9 +122,9 @@ func TestEverySurfaceManifestSatisfiesTheOnePathRule(t *testing.T) {
 
 	for _, surface := range surfaces {
 		t.Run(surface.name, func(t *testing.T) {
-			var firstMenu, firstDirect OperationID
+			var firstMenu, firstDirect operation.OperationID
 			for _, entry := range surface.manifest {
-				if entry.Risk == OperationRiskDestructive && entry.DirectOnly {
+				if entry.Risk == operation.OperationRiskDestructive && entry.DirectOnly {
 					t.Errorf("destructive operation %s is direct; it belongs behind the menu", entry.ID)
 				}
 				switch {
@@ -127,23 +138,23 @@ func TestEverySurfaceManifestSatisfiesTheOnePathRule(t *testing.T) {
 				t.Fatalf("manifest has no menu entry (%q) or no direct entry (%q)", firstMenu, firstDirect)
 			}
 
-			duplicate := cloneInputStrategy(surface.strategy)
-			duplicate.Bindings = append(duplicate.Bindings, OperationKeyBinding{
+			duplicate := mutableInputStrategy(surface.strategy)
+			duplicate.Bindings = append(duplicate.Bindings, operation.OperationKeyBinding{
 				OperationID: firstMenu,
 				Keys:        []string{"Z"},
 			})
-			err := validateOperationOnePath(surface.manifest, duplicate)
+			err := operation.ValidateOperationOnePath(surface.manifest, duplicate)
 			if err == nil || !strings.Contains(err.Error(), "bound directly and listed") {
 				t.Errorf("duplicate placement error = %v, want rejection", err)
 			} else if !strings.Contains(err.Error(), string(surface.strategy.ID)) {
 				t.Errorf("error %q does not name the surface it came from", err)
 			}
 
-			unreachable := cloneInputStrategy(surface.strategy)
-			unreachable.Bindings = slices.DeleteFunc(unreachable.Bindings, func(binding OperationKeyBinding) bool {
+			unreachable := mutableInputStrategy(surface.strategy)
+			unreachable.Bindings = slices.DeleteFunc(unreachable.Bindings, func(binding operation.OperationKeyBinding) bool {
 				return binding.OperationID == firstDirect
 			})
-			err = validateOperationOnePath(surface.manifest, unreachable)
+			err = operation.ValidateOperationOnePath(surface.manifest, unreachable)
 			if err == nil || !strings.Contains(err.Error(), "direct-only but has no direct binding") {
 				t.Errorf("unreachable direct-only error = %v, want rejection", err)
 			}
@@ -160,7 +171,7 @@ func TestEverySurfaceManifestSatisfiesTheOnePathRule(t *testing.T) {
 func TestPanelFootersOnlyAdvertiseKeysTheStrategyBinds(t *testing.T) {
 	for _, surface := range []struct {
 		name     string
-		strategy InputStrategy
+		strategy operation.InputStrategy
 		keys     *keymap.KeyMap
 		modal    []string
 	}{

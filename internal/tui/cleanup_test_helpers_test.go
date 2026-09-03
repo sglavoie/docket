@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 func captureDestinationNamesForTest() []string {
@@ -21,7 +22,7 @@ func pendingChordHintRowForTest(m *AppModel) string {
 	ctx := m.operationCommandContext()
 	ctx.View = m.currentView()
 	hints := m.operationRegistry.DecoratedChordHintsForPrefix(
-		InputStrategySimplified,
+		operation.InputStrategySimplified,
 		m.pendingChord,
 		ctx,
 		m.crossOutliner.decoratePendingChordHint,

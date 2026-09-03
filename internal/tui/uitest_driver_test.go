@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -12,7 +13,7 @@ import (
 // NewAppModel.
 func newUITestApp() *AppModel {
 	app := newTestAppModel()
-	app.operationRegistry = NewOperationRegistry()
+	app.operationRegistry = operation.NewOperationRegistry()
 	app.operationExecutor = NewOperationExecutor(app.operationRegistry)
 	o := NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner = o

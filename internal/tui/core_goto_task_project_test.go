@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -179,7 +180,7 @@ func TestGotoTaskProjectRefusesWithoutASingleTaskCursor(t *testing.T) {
 		if !ok {
 			t.Fatalf("header press produced %T, not a refusal", cmd())
 		}
-		if failure.Err.Error() != operationTargetRejectionMessage(OperationCategoryTask) {
+		if failure.Err.Error() != operation.OperationTargetRejectionMessage(operation.OperationCategoryTask) {
 			t.Fatalf("refusal reads %q, not the shared sentence", failure.Err.Error())
 		}
 		if outliner.scopedProjectID != "" {
@@ -206,7 +207,7 @@ func TestGotoTaskProjectJumpsFromASearchResult(t *testing.T) {
 	outliner := gotoProjectOutliner(t, driver)
 	outliner.SetSearchQuery("Beta rollout")
 	gotoProjectCursorOnTask(t, outliner)
-	identity := outliner.currentTaskIdentity()
+	identity := outliner.CurrentTaskIdentity()
 	_, project := outliner.taskAndProjectForIdentity(identity)
 	if project == nil {
 		t.Fatalf("search result %+v resolved no project", identity)

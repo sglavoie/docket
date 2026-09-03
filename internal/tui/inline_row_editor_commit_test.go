@@ -175,8 +175,8 @@ func TestTaskLineEditRelocationFollowsVisibleResultAndFallsBackAtOrigin(t *testi
 	out.crossForceRebuild = true
 	out.crossProjectRebuildRows()
 	_, recorded := out.finishTaskLineEditRelocation(capture, taskref.For(task, destination))
-	if !recorded || out.currentTaskIdentity() != taskref.For(task, destination) || len(out.relocationHistory.back) != 1 {
-		t.Fatalf("visible relocation = current %+v recorded=%t history=%d", out.currentTaskIdentity(), recorded, len(out.relocationHistory.back))
+	if !recorded || out.CurrentTaskIdentity() != taskref.For(task, destination) || len(out.relocationHistory.back) != 1 {
+		t.Fatalf("visible relocation = current %+v recorded=%t history=%d", out.CurrentTaskIdentity(), recorded, len(out.relocationHistory.back))
 	}
 
 	out, source, _, task = makeOutliner()
@@ -185,8 +185,8 @@ func TestTaskLineEditRelocationFollowsVisibleResultAndFallsBackAtOrigin(t *testi
 	out.crossForceRebuild = true
 	out.crossProjectRebuildRows()
 	_, recorded = out.finishTaskLineEditRelocation(capture, taskref.TaskIdentity{ProjectID: "hidden", TaskID: task.ID})
-	if recorded || out.currentTaskIdentity().TaskID != "neighbor" || len(out.relocationHistory.back) != 0 {
-		t.Fatalf("hidden relocation = current %+v recorded=%t history=%d", out.currentTaskIdentity(), recorded, len(out.relocationHistory.back))
+	if recorded || out.CurrentTaskIdentity().TaskID != "neighbor" || len(out.relocationHistory.back) != 0 {
+		t.Fatalf("hidden relocation = current %+v recorded=%t history=%d", out.CurrentTaskIdentity(), recorded, len(out.relocationHistory.back))
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -241,12 +242,12 @@ func (d *UITestDriver) availableCommands() []UITestCommand {
 	operations := d.app.operationRegistry
 	result := make([]UITestCommand, 0, len(descriptors))
 	for _, descriptor := range descriptors {
-		shortcut := operations.InputShortcutForOperation(InputStrategySimplified, descriptor.ID)
+		shortcut := operations.InputShortcutForOperation(operation.InputStrategySimplified, descriptor.ID)
 		result = append(result, UITestCommand{
 			ID:       string(descriptor.ID),
 			Name:     descriptor.Label,
 			Shortcut: shortcut,
-			Category: operationCategoryLabel(descriptor.Category),
+			Category: operation.OperationCategoryLabel(descriptor.Category),
 			Aliases:  append([]string(nil), descriptor.Aliases...),
 		})
 	}
@@ -259,13 +260,13 @@ func (d *UITestDriver) availableCommands() []UITestCommand {
 	return result
 }
 
-func (d *UITestDriver) availableOperationDescriptors() []OperationDescriptor {
+func (d *UITestDriver) availableOperationDescriptors() []operation.OperationDescriptor {
 	if d == nil || d.app == nil || d.app.operationRegistry == nil {
 		return nil
 	}
 	ctx := d.app.operationCommandContext()
 	ctx.View = d.app.currentView()
-	return d.app.operationRegistry.InputStrategyOperations(InputStrategySimplified, ctx)
+	return d.app.operationRegistry.InputStrategyOperations(operation.InputStrategySimplified, ctx)
 }
 
 // viewStackNames returns the human-readable names of the current view stack,

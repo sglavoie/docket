@@ -120,7 +120,7 @@ func TestTaskLineEditCrossProjectRelocationRefreshesOutlinerSnapshot(t *testing.
 		Source:     sourceIdentity,
 		Relocation: capture,
 	})
-	if got := outliner.currentTaskIdentity(); got != finalIdentity {
+	if got := outliner.CurrentTaskIdentity(); got != finalIdentity {
 		t.Fatalf("post-edit cursor = %+v, want destination %+v", got, finalIdentity)
 	}
 	if len(outliner.relocationHistory.back) != 1 {
@@ -128,11 +128,11 @@ func TestTaskLineEditCrossProjectRelocationRefreshesOutlinerSnapshot(t *testing.
 	}
 
 	outliner.jumpBackward()
-	if got := outliner.currentTaskIdentity(); got != (taskref.TaskIdentity{ProjectID: source.ID, TaskID: neighbor.ID}) {
+	if got := outliner.CurrentTaskIdentity(); got != (taskref.TaskIdentity{ProjectID: source.ID, TaskID: neighbor.ID}) {
 		t.Fatalf("Ctrl+O destination = %+v, want origin neighbor", got)
 	}
 	outliner.jumpForward()
-	if got := outliner.currentTaskIdentity(); got != finalIdentity {
+	if got := outliner.CurrentTaskIdentity(); got != finalIdentity {
 		t.Fatalf("Ctrl+I destination = %+v, want moved task", got)
 	}
 }

@@ -1,4 +1,4 @@
-package tui
+package operation
 
 import (
 	"fmt"
@@ -79,11 +79,11 @@ const (
 	ChordTerminal
 )
 
-// paths returns every key path that resolves this binding. Direct keys are
+// Paths returns every key path that resolves this binding. Direct keys are
 // length-1 paths, so a chord and a direct key are the same kind of value, and a
 // binding may declare both when one operation genuinely answers to a direct key
 // and a chord alike.
-func (binding OperationKeyBinding) paths() [][]string {
+func (binding OperationKeyBinding) Paths() [][]string {
 	paths := make([][]string, 0, len(binding.Keys)+1)
 	for _, key := range binding.Keys {
 		paths = append(paths, []string{key})
@@ -146,7 +146,7 @@ func (registry *OperationRegistry) RegisterInputStrategy(strategy InputStrategy)
 					binding.OperationID,
 				)
 			}
-			if !descriptor.ValueProviderID.acceptsPresetValue(binding.PresetValue) {
+			if !descriptor.ValueProviderID.AcceptsPresetValue(binding.PresetValue) {
 				return fmt.Errorf(
 					"input strategy %s operation %s presets %T, which its %s value provider does not accept",
 					strategy.ID,
@@ -186,7 +186,7 @@ func (registry *OperationRegistry) RegisterInputStrategy(strategy InputStrategy)
 		}
 
 		index := len(normalized.Bindings)
-		for _, path := range binding.paths() {
+		for _, path := range binding.Paths() {
 			if err := trie.insert(strategy.ID, binding.OperationID, path, index, binding.SharedKey); err != nil {
 				return err
 			}
@@ -214,8 +214,8 @@ func normalizeChordPath(strategyID InputStrategyID, owner string, path []string)
 	}
 	normalized := make([]string, 0, len(path))
 	for _, raw := range path {
-		key := normalizeOperationKey(raw)
-		if !isDirectInputKey(key) {
+		key := NormalizeOperationKey(raw)
+		if !IsDirectInputKey(key) {
 			return nil, fmt.Errorf(
 				"input strategy %s %s key %q is not one direct key event",
 				strategyID,

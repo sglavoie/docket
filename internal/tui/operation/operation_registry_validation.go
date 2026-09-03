@@ -1,4 +1,4 @@
-package tui
+package operation
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ func normalizeOperationDescriptor(descriptor OperationDescriptor) (OperationDesc
 	descriptor.ID = OperationID(strings.TrimSpace(string(descriptor.ID)))
 	descriptor.Label = strings.TrimSpace(descriptor.Label)
 	descriptor.Description = strings.TrimSpace(descriptor.Description)
-	descriptor.DirectKey = normalizeOperationKey(descriptor.DirectKey)
+	descriptor.DirectKey = NormalizeOperationKey(descriptor.DirectKey)
 	descriptor.ValueProviderID = ValueProviderID(strings.TrimSpace(string(descriptor.ValueProviderID)))
 	if descriptor.ID == "" {
 		return OperationDescriptor{}, fmt.Errorf("operation ID is required")
@@ -35,7 +35,7 @@ func normalizeOperationDescriptor(descriptor OperationDescriptor) (OperationDesc
 			descriptor.TargetCardinality,
 		)
 	}
-	if !validOperationTargetSource(descriptor.TargetSource) {
+	if !ValidOperationTargetSource(descriptor.TargetSource) {
 		return OperationDescriptor{}, fmt.Errorf(
 			"operation %s has invalid target source %q",
 			descriptor.ID,
@@ -45,15 +45,15 @@ func normalizeOperationDescriptor(descriptor OperationDescriptor) (OperationDesc
 	if !validOperationRisk(descriptor.Risk) {
 		return OperationDescriptor{}, fmt.Errorf("operation %s has invalid risk %q", descriptor.ID, descriptor.Risk)
 	}
-	if err := validateOperationCapabilities(descriptor.ID, descriptor.RequiredCapabilities); err != nil {
+	if err := ValidateOperationCapabilities(descriptor.ID, descriptor.RequiredCapabilities); err != nil {
 		return OperationDescriptor{}, err
 	}
 	descriptor.Aliases = normalizeOperationAliases(descriptor.Label, descriptor.Aliases)
-	descriptor.RequiredCapabilities = cloneCapabilitySet(descriptor.RequiredCapabilities)
+	descriptor.RequiredCapabilities = CloneCapabilitySet(descriptor.RequiredCapabilities)
 	return descriptor, nil
 }
 
-func validateOperationCapabilities(id OperationID, capabilities CapabilitySet) error {
+func ValidateOperationCapabilities(id OperationID, capabilities CapabilitySet) error {
 	for capability := range capabilities {
 		if !validCapability(capability) {
 			return fmt.Errorf("operation %s has unknown required capability %q", id, capability)
@@ -64,11 +64,11 @@ func validateOperationCapabilities(id OperationID, capabilities CapabilitySet) e
 
 func cloneOperationDescriptor(descriptor OperationDescriptor) OperationDescriptor {
 	descriptor.Aliases = append([]string(nil), descriptor.Aliases...)
-	descriptor.RequiredCapabilities = cloneCapabilitySet(descriptor.RequiredCapabilities)
+	descriptor.RequiredCapabilities = CloneCapabilitySet(descriptor.RequiredCapabilities)
 	return descriptor
 }
 
-func cloneCapabilitySet(capabilities CapabilitySet) CapabilitySet {
+func CloneCapabilitySet(capabilities CapabilitySet) CapabilitySet {
 	if len(capabilities) == 0 {
 		return nil
 	}
@@ -102,7 +102,7 @@ func normalizeOperationAliases(label string, aliases []string) []string {
 	return normalized
 }
 
-func normalizeOperationKey(key string) string {
+func NormalizeOperationKey(key string) string {
 	key = strings.TrimSpace(key)
 	if utf8.RuneCountInString(key) <= 1 {
 		return key

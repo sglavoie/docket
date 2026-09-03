@@ -4,17 +4,18 @@ import (
 	"fmt"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 const (
-	operationTaskComments             OperationID = "tui.task.comments"
-	operationTaskAttachments          OperationID = "tui.task.attachments"
-	operationTaskCopyTitle            OperationID = "tui.task.copy-title"
-	operationTaskCopyDetails          OperationID = "tui.task.copy-details"
-	operationTaskCopyTitleDescription OperationID = "tui.task.copy-title-description"
-	operationTaskTogglePin            OperationID = "tui.task.toggle-pin"
-	operationTaskNewChild             OperationID = "tui.task.new-child"
+	operationTaskComments             operation.OperationID = "tui.task.comments"
+	operationTaskAttachments          operation.OperationID = "tui.task.attachments"
+	operationTaskCopyTitle            operation.OperationID = "tui.task.copy-title"
+	operationTaskCopyDetails          operation.OperationID = "tui.task.copy-details"
+	operationTaskCopyTitleDescription operation.OperationID = "tui.task.copy-title-description"
+	operationTaskTogglePin            operation.OperationID = "tui.task.toggle-pin"
+	operationTaskNewChild             operation.OperationID = "tui.task.new-child"
 )
 
 // taskAuxiliaryAllowsOperation gates the child creator on live task state that
@@ -22,7 +23,7 @@ const (
 // task that cannot hold one. A target that no longer resolves stays applicable
 // so the handler reports the single authoritative "no longer available" error
 // instead of the row vanishing.
-func (m *AppModel) taskAuxiliaryAllowsOperation(id OperationID, entity EntityContext) bool {
+func (m *AppModel) taskAuxiliaryAllowsOperation(id operation.OperationID, entity operation.EntityContext) bool {
 	if id != operationTaskNewChild {
 		return true
 	}
@@ -83,7 +84,7 @@ func (m *AppModel) executeAuxiliaryTaskOperation(
 // target, so core task operations act on the frozen identity rather than
 // whatever row the cursor has since moved to.
 func (m *AppModel) taskAndProjectForTargets(
-	targets ResolvedOperationTargets,
+	targets operation.ResolvedOperationTargets,
 ) (*models.Task, *models.Project) {
 	if len(targets.Targets) == 0 {
 		return nil, nil

@@ -1,4 +1,4 @@
-package tui
+package operation
 
 // ValueProviderID identifies the picker or other value source an operation
 // needs before execution. The empty value means no provider is required.
@@ -93,30 +93,30 @@ const (
 	ValueProviderProjectTagDestination ValueProviderID = "project-tag-destination"
 )
 
-// textEntry reports whether the provider's value is typed rather than picked
+// TextEntry reports whether the provider's value is typed rather than picked
 // from a list, so the value step opens the text prompt instead of the picker.
-func (id ValueProviderID) textEntry() bool {
+func (id ValueProviderID) TextEntry() bool {
 	return id == ValueProviderNoteTitle ||
 		id == ValueProviderTagName ||
 		id == ValueProviderChecklistItem ||
 		id == ValueProviderLensName
 }
 
-// tagEntry reports whether the picker offers "a" to mint a tag the vocabulary
+// TagEntry reports whether the picker offers "a" to mint a tag the vocabulary
 // does not contain yet. Both tag namespaces need it because neither is a closed
 // enumeration the way states and priorities are.
-func (id ValueProviderID) tagEntry() bool {
+func (id ValueProviderID) TagEntry() bool {
 	return id == ValueProviderTags || id == ValueProviderProjectTags
 }
 
-// dateEntry reports whether the picker offers "a" to type a date its relative
+// DateEntry reports whether the picker offers "a" to type a date its relative
 // presets cannot express. The calendar is not a closed enumeration either, so
 // both date providers need the same escape hatch.
-func (id ValueProviderID) dateEntry() bool {
+func (id ValueProviderID) DateEntry() bool {
 	return id == ValueProviderDate || id == ValueProviderDueDate
 }
 
-func withValueProvider(descriptor OperationDescriptor, provider ValueProviderID) OperationDescriptor {
+func WithValueProvider(descriptor OperationDescriptor, provider ValueProviderID) OperationDescriptor {
 	descriptor.ValueProviderID = provider
 	return descriptor
 }

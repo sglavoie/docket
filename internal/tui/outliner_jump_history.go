@@ -31,7 +31,7 @@ type outlinerRelocationHistory struct {
 	projection string
 }
 
-func (m *OutlinerModel) currentTaskIdentity() taskref.TaskIdentity {
+func (m *OutlinerModel) CurrentTaskIdentity() taskref.TaskIdentity {
 	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
 		return taskref.TaskIdentity{}
 	}
@@ -47,7 +47,7 @@ func (m *OutlinerModel) currentJumpPosition() (outlinerJumpPosition, bool) {
 		return outlinerJumpPosition{}, false
 	}
 	return outlinerJumpPosition{
-		Task:         m.currentTaskIdentity(),
+		Task:         m.CurrentTaskIdentity(),
 		RowIndex:     m.cursor,
 		ScrollOffset: m.viewScrollOffset,
 	}, true

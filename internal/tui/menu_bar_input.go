@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // An open menu is a gated sub-state of the Outliner, built on the same template
@@ -25,7 +26,7 @@ import (
 // The menu raises it rather than executing the operation itself for the same
 // reason the readout raises its save request: a view model holds no executor,
 // and the one invocation pipeline lives above it.
-type MenuBarActivateMsg struct{ OperationID OperationID }
+type MenuBarActivateMsg struct{ OperationID operation.OperationID }
 
 func (msg MenuBarActivateMsg) String() string { return "menu bar activate" }
 
@@ -131,7 +132,7 @@ func (m *OutlinerModel) handleMenuBarKey(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 	// readout gets for free from its close-on-anything fall-through and this
 	// keymap has to say out loud: re-emitting Ctrl+M through the non-modal arm
 	// below would close the menu and immediately reopen it.
-	if slices.Contains(m.menuBarOpenKeys(), normalizeOperationKey(key)) {
+	if slices.Contains(m.menuBarOpenKeys(), operation.NormalizeOperationKey(key)) {
 		m.closeMenuBar()
 		return m, nil
 	}
@@ -188,17 +189,17 @@ func (m *OutlinerModel) menuBarOpenKeys() []string {
 	if m == nil || m.operationRegistry == nil {
 		return nil
 	}
-	strategy, ok := m.operationRegistry.InputStrategy(InputStrategySimplified)
+	strategy, ok := m.operationRegistry.InputStrategy(operation.InputStrategySimplified)
 	if !ok {
 		return nil
 	}
 	keys := make([]string, 0, 1)
 	for _, binding := range strategy.Bindings {
-		if binding.OperationID != operationCoreOpenMenuBar {
+		if binding.OperationID != operation.OperationCoreOpenMenuBar {
 			continue
 		}
 		for _, key := range binding.Keys {
-			keys = append(keys, normalizeOperationKey(key))
+			keys = append(keys, operation.NormalizeOperationKey(key))
 		}
 	}
 	return keys
@@ -211,7 +212,7 @@ func (m *OutlinerModel) menuBarGuidance() chrome.GuidanceSpec {
 	closeKey := "Esc"
 	if m.operationRegistry != nil {
 		if key := m.operationRegistry.InputShortcutForOperation(
-			InputStrategySimplified, operationCoreOpenMenuBar); key != "" {
+			operation.InputStrategySimplified, operation.OperationCoreOpenMenuBar); key != "" {
 			closeKey = key + "/Esc"
 		}
 	}

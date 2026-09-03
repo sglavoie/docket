@@ -182,7 +182,7 @@ value reader: it requires a `string`, matches it against the catalog by exact ID
 and rejects a `config.NamedLens` payload as malformed, so the definition that is
 committed is always the catalog's own rather than whatever a stale row carried.
 
-`ValueProviderLensTemplate` is deliberately absent from `textEntry()`, which is
+`ValueProviderLensTemplate` is deliberately absent from `operation.TextEntry()`, which is
 what routes it to a picker; its case in `newOperationValuePicker` returns before
 `operationTaskRefs`, so the gallery opens with no entity under the cursor.
 `lensTemplateListSource` is the whole of it: alphabetical rows whose `Aliases`

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -22,10 +23,10 @@ type operationSelectionCountsProvider interface {
 // operationCommandContext captures the active cursor, multi-selection, project
 // scope, and entity state before an overlay (such as the palette) shadows the
 // primary view.
-func (m *AppModel) operationCommandContext() CommandContext {
+func (m *AppModel) operationCommandContext() operation.CommandContext {
 	view := m.currentView()
 	ctx := PresentationCommandContext(view)
-	ctx.Capabilities.Add(CapabilitySimplifiedInput)
+	ctx.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	if manage, ok := m.activeView().(*ManageHubModel); ok {
 		ctx = manage.CommandContext()
 	}
@@ -37,7 +38,7 @@ func (m *AppModel) operationCommandContext() CommandContext {
 	case onChecklistRow:
 		ctx.Entity = checklistOperationEntity(checklist)
 	case task != nil && project != nil:
-		ctx.Entity = EntityContext{
+		ctx.Entity = operation.EntityContext{
 			ProjectID: project.ID,
 			TaskID:    task.ID,
 			Archived:  project.Archived,
@@ -67,15 +68,15 @@ func (m *AppModel) operationCommandContext() CommandContext {
 		ctx.Selection.HiddenCount = counts.Hidden
 	}
 	ctx.Selection.Entities = m.operationSelectionEntities(ctx.Selection.Tasks)
-	ctx.Selection.EntityIdentities = taskEntityIdentities(ctx.Selection.Tasks)
-	ctx.CurrentEntity = commandContextCurrentEntity(ctx.Entity)
+	ctx.Selection.EntityIdentities = operation.TaskEntityIdentities(ctx.Selection.Tasks)
+	ctx.CurrentEntity = operation.CommandContextCurrentEntity(ctx.Entity)
 	ctx.ScopeProjectIDs = m.operationScopeProjectIDs(project)
 	return ctx
 }
 
-func (m *AppModel) operationSelectionEntities(identities []taskref.TaskIdentity) []EntityContext {
-	normalized := normalizedTaskIdentities(identities)
-	entities := make([]EntityContext, 0, len(normalized))
+func (m *AppModel) operationSelectionEntities(identities []taskref.TaskIdentity) []operation.EntityContext {
+	normalized := operation.NormalizedTaskIdentities(identities)
+	entities := make([]operation.EntityContext, 0, len(normalized))
 	for _, identity := range normalized {
 		task, project := m.taskAndProjectForIdentity(identity)
 		if task == nil || project == nil {
@@ -95,7 +96,7 @@ func (m *AppModel) operationScopeProjectIDs(cursorProject *models.Project) []str
 				ids = append(ids, project.ID)
 			}
 		}
-		return normalizedProjectIDs(ids)
+		return operation.NormalizedProjectIDs(ids)
 	}
 	if manage, ok := m.activeView().(*ManageHubModel); ok {
 		return manage.ScopeProjectIDs()
@@ -113,24 +114,24 @@ func (m *AppModel) operationScopeProjectIDs(cursorProject *models.Project) []str
 			ids = append(ids, project.ID)
 		}
 	}
-	return normalizedProjectIDs(ids)
+	return operation.NormalizedProjectIDs(ids)
 }
 
 // checklistOperationEntity names the checklist item under the cursor while
 // keeping the owner task and project filled, so the archived-project guard and
 // the checklist operations' own target resolution both keep working.
-func checklistOperationEntity(cursor checklistCursor) EntityContext {
+func checklistOperationEntity(cursor checklistCursor) operation.EntityContext {
 	entity := taskOperationEntity(cursor.Task, cursor.Project)
 	entity.HasChecklistCursor = true
 	entity.ChecklistIndex = cursor.Index
 	return entity
 }
 
-func taskOperationEntity(task *models.Task, project *models.Project) EntityContext {
+func taskOperationEntity(task *models.Task, project *models.Project) operation.EntityContext {
 	if task == nil || project == nil {
-		return EntityContext{}
+		return operation.EntityContext{}
 	}
-	return EntityContext{
+	return operation.EntityContext{
 		ProjectID: project.ID,
 		TaskID:    task.ID,
 		Archived:  project.Archived,

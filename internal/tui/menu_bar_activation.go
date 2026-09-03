@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // activateMenuBarEntry runs the operation a menu row named, through the same
@@ -10,7 +11,7 @@ import (
 // is already closed by the time this runs, so the operation resolves its target
 // against the view the user is left looking at rather than against one with a
 // dropdown over it.
-func (m *AppModel) activateMenuBarEntry(id OperationID) tea.Cmd {
+func (m *AppModel) activateMenuBarEntry(id operation.OperationID) tea.Cmd {
 	if m.operationRegistry == nil || m.operationExecutor == nil {
 		return nil
 	}

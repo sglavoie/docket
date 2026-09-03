@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -30,7 +31,7 @@ func (m *OutlinerModel) HandledKeys() []string {
 	if m.operationRegistry == nil {
 		return nil
 	}
-	return m.operationRegistry.HandledKeysForInputStrategy(InputStrategySimplified)
+	return m.operationRegistry.HandledKeysForInputStrategy(operation.InputStrategySimplified)
 }
 
 // The Outliner has no GetHelpItems of its own: `?` is a core input operation, so
@@ -91,7 +92,7 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 	case m.peekMode:
 		peekKey := "Ctrl+Enter"
 		if m.operationRegistry != nil {
-			if key := m.operationRegistry.InputShortcutForOperation(InputStrategySimplified, operationCorePeek); key != "" {
+			if key := m.operationRegistry.InputShortcutForOperation(operation.InputStrategySimplified, operation.OperationCorePeek); key != "" {
 				peekKey = key
 			}
 		}
@@ -123,7 +124,7 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 	}
 
 	hints := m.operationRegistry.GuidanceHintsForInputStrategy(
-		InputStrategySimplified,
+		operation.InputStrategySimplified,
 		m.operationCommandContext(),
 	)
 	if len(hints) == 0 {
@@ -208,7 +209,7 @@ func (m *OutlinerModel) headerGuidance() chrome.GuidanceSpec {
 	hints := make([]chrome.GuidanceHint, 0, 8)
 	if m.operationRegistry != nil {
 		for _, hint := range m.operationRegistry.GuidanceHintsForInputStrategy(
-			InputStrategySimplified,
+			operation.InputStrategySimplified,
 			m.operationCommandContext(),
 		) {
 			if (hint.Key == "Enter" && !zoomed) || hint.Key == "Ctrl+Enter" {
@@ -330,7 +331,7 @@ func (m *OutlinerModel) classifyEmptyCause() outlinerEmptyCause {
 // decoratePendingChordHint adds effective filter state to the existing live
 // registry entry. It never creates or reorders a key, so which-key and dispatch
 // continue sharing the same metadata and applicability checks.
-func (m *OutlinerModel) decoratePendingChordHint(path []string, hint ChordHint) ChordHint {
+func (m *OutlinerModel) decoratePendingChordHint(path []string, hint operation.ChordHint) operation.ChordHint {
 	if m == nil || len(path) != 2 {
 		return hint
 	}
@@ -403,7 +404,7 @@ func (m *OutlinerModel) decoratePendingChordHint(path []string, hint ChordHint) 
 // decorateProjectFilterChordHint decorates one F continuation. Each population
 // key only reports the mode it owns, so the other key of the same axis keeps
 // its static affordance instead of both rows naming one state.
-func (m *OutlinerModel) decorateProjectFilterChordHint(key string, hint ChordHint) ChordHint {
+func (m *OutlinerModel) decorateProjectFilterChordHint(key string, hint operation.ChordHint) operation.ChordHint {
 	filter := &m.projectFilter
 	switch key {
 	case "#":

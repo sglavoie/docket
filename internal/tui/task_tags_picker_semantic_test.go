@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -16,7 +17,7 @@ func newFilterTagPickerForTest(t *testing.T, tags []query.TagInfo) *OperationVal
 	t.Helper()
 	picker, err := newOperationValuePickerModel(
 		OperationExecutionRequest{},
-		ValueProviderFilterTags,
+		operation.ValueProviderFilterTags,
 		"Filter by Tags",
 		"keep matching tasks",
 		taskTagListSource(tags, false),
@@ -30,7 +31,7 @@ func newFilterTagPickerForTest(t *testing.T, tags []query.TagInfo) *OperationVal
 }
 
 func TestSemanticTaskTagExplainerNamesThePrecedenceForTaskTagProvidersOnly(t *testing.T) {
-	for _, provider := range []ValueProviderID{ValueProviderTags, ValueProviderFilterTags} {
+	for _, provider := range []operation.ValueProviderID{operation.ValueProviderTags, operation.ValueProviderFilterTags} {
 		explainer := semanticTaskTagExplainer(provider, 120)
 		plain := ansi.Strip(explainer)
 		if !strings.Contains(plain, "semantic  bug › question › epic › story › feature › idea —") {
@@ -40,11 +41,11 @@ func TestSemanticTaskTagExplainerNamesThePrecedenceForTaskTagProvidersOnly(t *te
 			t.Fatalf("provider %q explainer = %q, want the full summary", provider, plain)
 		}
 	}
-	for _, provider := range []ValueProviderID{
-		ValueProviderProjectTags,
-		ValueProviderFilterProjectTags,
-		ValueProviderPriority,
-		ValueProviderState,
+	for _, provider := range []operation.ValueProviderID{
+		operation.ValueProviderProjectTags,
+		operation.ValueProviderFilterProjectTags,
+		operation.ValueProviderPriority,
+		operation.ValueProviderState,
 	} {
 		if got := semanticTaskTagExplainer(provider, 120); got != "" {
 			t.Fatalf("provider %q explainer = %q, want none", provider, got)
@@ -55,7 +56,7 @@ func TestSemanticTaskTagExplainerNamesThePrecedenceForTaskTagProvidersOnly(t *te
 func TestSemanticTaskTagExplainerWrapsCompleteTextAtNarrowWidths(t *testing.T) {
 	want := "semantic bug › question › epic › story › feature › idea " + semanticTaskTagExplainerSummary
 	for _, width := range []int{12, 30, 42, 44, 60} {
-		plain := ansi.Strip(semanticTaskTagExplainer(ValueProviderTags, width))
+		plain := ansi.Strip(semanticTaskTagExplainer(operation.ValueProviderTags, width))
 		for _, line := range strings.Split(plain, "\n") {
 			if got := lipgloss.Width(line); got > width {
 				t.Fatalf("width %d line %q is %d columns wide", width, line, got)
@@ -88,7 +89,7 @@ func newSemanticTagPickerForTest(t *testing.T, tags []query.TagInfo, seedUnused 
 	t.Helper()
 	picker, err := newOperationValuePickerModel(
 		OperationExecutionRequest{ID: operationTaskSetTags},
-		ValueProviderTags,
+		operation.ValueProviderTags,
 		"Set Tags",
 		"Task",
 		taskTagListSource(tags, seedUnused),

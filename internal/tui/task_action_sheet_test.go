@@ -10,25 +10,26 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
-func taskActionTestContext() CommandContext {
+func taskActionTestContext() operation.CommandContext {
 	context := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
-	context.Capabilities.Add(CapabilitySimplifiedInput)
-	context.Entity = EntityContext{ProjectID: "project", TaskID: "task"}
+	context.Capabilities.Add(operation.CapabilitySimplifiedInput)
+	context.Entity = operation.EntityContext{ProjectID: "project", TaskID: "task"}
 	return context
 }
 
 // bulkTaskActionTestContext freezes a visual selection over live tasks, the same
 // shape openTaskActionSheet builds from the Outliner's selected rows.
-func bulkTaskActionTestContext(project *models.Project, tasks ...*models.Task) CommandContext {
+func bulkTaskActionTestContext(project *models.Project, tasks ...*models.Task) operation.CommandContext {
 	context := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
-	context.Capabilities.Add(CapabilitySimplifiedInput)
+	context.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	context.Selection.Visual = true
 	context.Selection.Tasks = make([]taskref.TaskIdentity, 0, len(tasks))
-	context.Selection.Entities = make([]EntityContext, 0, len(tasks))
+	context.Selection.Entities = make([]operation.EntityContext, 0, len(tasks))
 	for _, task := range tasks {
 		context.Selection.Tasks = append(context.Selection.Tasks, taskref.For(task, project))
 		context.Selection.Entities = append(context.Selection.Entities, taskOperationEntity(task, project))
@@ -40,14 +41,14 @@ func bulkTaskActionTestContext(project *models.Project, tasks ...*models.Task) C
 // taskActionTestDescriptors builds the production planning/structure
 // descriptors. The app carries no projects, so structure-dependent applicability
 // falls back to structural eligibility.
-func taskActionTestDescriptors() []OperationDescriptor {
+func taskActionTestDescriptors() []operation.OperationDescriptor {
 	return newUITestApp().taskActionOperationDescriptors()
 }
 
 func registerTaskActionTestDescriptor(
 	t *testing.T,
-	registry *OperationRegistry,
-	descriptor OperationDescriptor,
+	registry *operation.OperationRegistry,
+	descriptor operation.OperationDescriptor,
 ) {
 	t.Helper()
 	if err := registry.Register(descriptor); err != nil {
@@ -58,7 +59,7 @@ func registerTaskActionTestDescriptor(
 func TestTaskActionSheetMissingSelectionSchedulesStatusClear(t *testing.T) {
 	model := newUITestApp()
 	result := model.executeCoreInputOperation(OperationInvocation{
-		Descriptor: OperationDescriptor{ID: operationCoreActions},
+		Descriptor: operation.OperationDescriptor{ID: operation.OperationCoreActions},
 	})
 
 	if result.Err != nil {
@@ -80,22 +81,22 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 	story := project.GetTaskByID("story")
 	context := taskOperationTestContext(story, project)
 	registry := model.operationRegistry
-	registerTaskActionTestDescriptor(t, registry, OperationDescriptor{
-		ID:                   OperationID("test.task.unlisted"),
+	registerTaskActionTestDescriptor(t, registry, operation.OperationDescriptor{
+		ID:                   operation.OperationID("test.task.unlisted"),
 		Label:                "Unlisted Task Tool",
-		Category:             OperationCategoryTask,
-		TargetSource:         OperationTargetCurrentTask,
-		TargetCardinality:    TargetCardinalityOne,
-		RequiredCapabilities: NewCapabilitySet(CapabilitySimplifiedInput),
-		Risk:                 OperationRiskReadOnly,
+		Category:             operation.OperationCategoryTask,
+		TargetSource:         operation.OperationTargetCurrentTask,
+		TargetCardinality:    operation.TargetCardinalityOne,
+		RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
+		Risk:                 operation.OperationRiskReadOnly,
 	})
 
 	descriptors := TaskActionSheetDescriptors(registry, context)
-	ids := make([]OperationID, 0, len(descriptors))
+	ids := make([]operation.OperationID, 0, len(descriptors))
 	for _, descriptor := range descriptors {
 		ids = append(ids, descriptor.ID)
 	}
-	wantIDs := []OperationID{
+	wantIDs := []operation.OperationID{
 		operationTaskDelete,
 	}
 	if !slices.Equal(ids, wantIDs) {
@@ -115,7 +116,7 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 	// project operations are listed too: the one-path gate reads both manifests
 	// concatenated, so only the two sheets asking their own manifest keeps a
 	// project row out of the task menu.
-	for _, excluded := range []OperationID{
+	for _, excluded := range []operation.OperationID{
 		operationProjectActions,
 		operationProjectDelete,
 		operationScopeRenameProject,
@@ -123,10 +124,10 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		operationScopeArchiveProject,
 		operationScopeRestoreProject,
 		operationProjectSetTags,
-		operationCoreActions,
-		operationCoreCapture,
-		operationCoreMultiSelect,
-		operationCoreCursorDown,
+		operation.OperationCoreActions,
+		operation.OperationCoreCapture,
+		operation.OperationCoreMultiSelect,
+		operation.OperationCoreCursorDown,
 		operationTaskSetState,
 		operationTaskSetPriority,
 		operationTaskSetDueDate,
@@ -136,10 +137,10 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		operationTaskAdoptChildren,
 		operationTaskIndent,
 		operationTaskOutdent,
-		operationCoreEdit,
-		operationCoreEditDescription,
-		operationCoreExternalEditor,
-		operationCorePeek,
+		operation.OperationCoreEdit,
+		operation.OperationCoreEditDescription,
+		operation.OperationCoreExternalEditor,
+		operation.OperationCorePeek,
 		operationTaskCopyTitle,
 		operationTaskCopyDetails,
 		operationTaskCopyTitleDescription,
@@ -213,7 +214,7 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 // Attachments answer to & and ;, so a single row can no longer move; the shared
 // sheet engine is exercised through an Outliner-hosted two-row sheet instead.
 func TestActionSheetMovesWithCtrlJAndCtrlK(t *testing.T) {
-	registry, executor := contextActionTestEngine(t, []OperationDescriptor{
+	registry, executor := contextActionTestEngine(t, []operation.OperationDescriptor{
 		contextActionTestDescriptor("test.first", "First"),
 		contextActionTestDescriptor("test.second", "Second"),
 	}, nil)
@@ -221,7 +222,7 @@ func TestActionSheetMovesWithCtrlJAndCtrlK(t *testing.T) {
 		registry,
 		executor,
 		contextActionTestContext(),
-		[]OperationID{"test.first", "test.second"},
+		[]operation.OperationID{"test.first", "test.second"},
 		ContextActionSheetConfig{Host: ContextActionHostOutliner, ImmediateFilter: true},
 	)
 	if err != nil {
@@ -251,7 +252,7 @@ func TestActionSheetMovesWithCtrlJAndCtrlK(t *testing.T) {
 }
 
 func TestTaskActionSheetOmitsDirectDateOperation(t *testing.T) {
-	registry := NewOperationRegistry()
+	registry := operation.NewOperationRegistry()
 	for _, descriptor := range taskActionTestDescriptors() {
 		registerTaskActionTestDescriptor(t, registry, descriptor)
 	}
@@ -283,14 +284,14 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 	context := bulkTaskActionTestContext(project, story, loose)
 
 	descriptors := TaskActionSheetDescriptors(registry, context)
-	ids := make([]OperationID, 0, len(descriptors))
+	ids := make([]operation.OperationID, 0, len(descriptors))
 	for _, descriptor := range descriptors {
 		ids = append(ids, descriptor.ID)
 	}
-	if !slices.Equal(ids, []OperationID{operationTaskDelete}) {
+	if !slices.Equal(ids, []operation.OperationID{operationTaskDelete}) {
 		t.Fatalf("bulk action sheet IDs = %v, want Delete", ids)
 	}
-	for _, excluded := range []OperationID{
+	for _, excluded := range []operation.OperationID{
 		// The four metadata operations reach a selection through their direct key.
 		operationTaskSetState,
 		operationTaskSetPriority,
@@ -300,8 +301,8 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 		operationTaskAdoptChildren,
 		operationTaskIndent,
 		operationTaskOutdent,
-		operationCoreEdit,
-		operationCorePeek,
+		operation.OperationCoreEdit,
+		operation.OperationCorePeek,
 		operationTaskCopyTitle,
 		operationTaskNewChild,
 	} {
@@ -437,7 +438,7 @@ func TestVisualSelectionRejectsPeekWithoutCursorFallback(t *testing.T) {
 	app.crossOutliner.cursor = 1
 
 	result := app.operationExecutor.Execute(OperationExecutionRequest{
-		ID:      operationCorePeek,
+		ID:      operation.OperationCorePeek,
 		Context: app.operationCommandContext(),
 	})
 	if !errors.Is(result.Err, ErrOperationUnavailable) {

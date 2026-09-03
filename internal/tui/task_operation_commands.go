@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -62,7 +63,7 @@ func (m *AppModel) adoptChildrenCmd(
 // transaction would still write a ledger entry `u` could take back, and a
 // picker closed unchanged — or one whose every edit the fresh state already
 // reflects — is not something to undo.
-func (m *AppModel) setTaskReferencesCmd(identity taskref.TaskIdentity, value OperationTaskReferenceValue) tea.Cmd {
+func (m *AppModel) setTaskReferencesCmd(identity taskref.TaskIdentity, value operation.OperationTaskReferenceValue) tea.Cmd {
 	task, project := m.taskAndProjectForIdentity(identity)
 	if task == nil || project == nil {
 		return func() tea.Msg {
@@ -205,7 +206,7 @@ func (m *AppModel) executeBulkTaskValueOperation(
 		}
 		return cmdResult(m.secondaryFeatures.Bulk.SetPriorityLocators(locators, priority))
 	case operationTaskSetDueDate:
-		value, ok := invocation.Value.(OperationDateValue)
+		value, ok := invocation.Value.(operation.OperationDateValue)
 		if !ok {
 			return OperationHandlerResult{Err: fmt.Errorf("invalid date value")}
 		}

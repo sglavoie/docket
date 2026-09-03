@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // This file makes scenarios executable in-process. It drives the AppModel one
@@ -168,8 +169,8 @@ func (d *UITestDriver) runCommand(name string) error {
 	}
 	view := d.app.currentView()
 	descriptors := d.availableOperationDescriptors()
-	var match *OperationDescriptor
-	find := func(candidates []OperationDescriptor) *OperationDescriptor {
+	var match *operation.OperationDescriptor
+	find := func(candidates []operation.OperationDescriptor) *operation.OperationDescriptor {
 		for i := range candidates {
 			if strings.EqualFold(string(candidates[i].ID), name) ||
 				strings.EqualFold(candidates[i].Label, name) {

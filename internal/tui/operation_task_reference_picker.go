@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // taskReferenceRowID is the picker's stable row identity: the durable
@@ -178,8 +179,8 @@ func operationTaskReferenceListSource(tasks []*models.Task, projects []*models.P
 //
 // Both halves are sorted, so the emitted value never depends on the order rows
 // were ticked in or on map iteration.
-func taskReferenceSelection(initial, current map[ListItemID]operationValueMembership) OperationTaskReferenceValue {
-	value := OperationTaskReferenceValue{}
+func taskReferenceSelection(initial, current map[ListItemID]operationValueMembership) operation.OperationTaskReferenceValue {
+	value := operation.OperationTaskReferenceValue{}
 	for id, state := range current {
 		locator, ok := taskReferenceRowLocator(id)
 		if !ok {
@@ -205,7 +206,7 @@ func taskReferenceSelection(initial, current map[ListItemID]operationValueMember
 // the idempotence the single-task path gets from merging: an addition a target
 // already stores round-trips through the known-addition rule, and a removal
 // naming nothing it stores is a no-op.
-func taskReferenceBulkPatch(value OperationTaskReferenceValue) app.DependencyPatch {
+func taskReferenceBulkPatch(value operation.OperationTaskReferenceValue) app.DependencyPatch {
 	patch := app.DependencyPatch{}
 	for _, raw := range value.Add {
 		if locator, ok := taskReferenceLocator(raw); ok {
@@ -238,7 +239,7 @@ func taskReferenceBulkPatch(value OperationTaskReferenceValue) app.DependencyPat
 // Clear beside Add or Remove, and removing every stored reference says exactly
 // the same thing. Add and Remove cannot overlap by construction, so the
 // "cannot add and remove" refusal is unreachable from this surface.
-func taskReferencePatch(task *models.Task, value OperationTaskReferenceValue) app.DependencyPatch {
+func taskReferencePatch(task *models.Task, value operation.OperationTaskReferenceValue) app.DependencyPatch {
 	if task == nil {
 		return app.DependencyPatch{}
 	}

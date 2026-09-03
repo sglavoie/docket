@@ -9,6 +9,7 @@ import (
 
 	apppkg "github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -142,12 +143,12 @@ func TestManageHubNotesScopeMapsCommandContextAndPresentation(t *testing.T) {
 	}{
 		{
 			name: "all", scope: AllNotesScope(),
-			wantProjectIDs: normalizedProjectIDs([]string{other.ID, project.ID}),
+			wantProjectIDs: operation.NormalizedProjectIDs([]string{other.ID, project.ID}),
 			wantStatus:     "Notes · All", wantPresentation: presentation.ViewGlobalNotes, wantAppCapability: true,
 		},
 		{
 			name: "global", scope: GlobalNotesScope(),
-			wantProjectIDs: normalizedProjectIDs([]string{other.ID, project.ID}),
+			wantProjectIDs: operation.NormalizedProjectIDs([]string{other.ID, project.ID}),
 			wantStatus:     "Notes · Global", wantPresentation: presentation.ViewGlobalNotes, wantAppCapability: true,
 		},
 		{
@@ -173,8 +174,8 @@ func TestManageHubNotesScopeMapsCommandContextAndPresentation(t *testing.T) {
 					ok,
 				)
 			}
-			if ctx.Capabilities.Has(CapabilityAppScope) != test.wantAppCapability ||
-				ctx.Capabilities.Has(CapabilityProjectScope) == test.wantAppCapability {
+			if ctx.Capabilities.Has(operation.CapabilityAppScope) != test.wantAppCapability ||
+				ctx.Capabilities.Has(operation.CapabilityProjectScope) == test.wantAppCapability {
 				t.Fatalf("scope capabilities = %#v, want app=%t", ctx.Capabilities, test.wantAppCapability)
 			}
 		})

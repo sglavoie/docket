@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -167,7 +168,7 @@ func TestPeekOperationTogglesAndEscDismissesFirst(t *testing.T) {
 	invokePeek := func() {
 		t.Helper()
 		result := model.operationExecutor.Execute(OperationExecutionRequest{
-			ID: operationCorePeek, Context: model.operationCommandContext(),
+			ID: operation.OperationCorePeek, Context: model.operationCommandContext(),
 		})
 		if result.Err != nil {
 			t.Fatalf("toggle Peek: %v", result.Err)

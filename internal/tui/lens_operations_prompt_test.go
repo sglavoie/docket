@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // Saving from accepted ordinary-search results must carry the query the visible
@@ -26,7 +27,7 @@ func TestLensCreateCapturesAcceptedSearchQuery(t *testing.T) {
 		t.Fatal("expected the accepted search to hold results")
 	}
 
-	if result := executeLens(model, operationLensCreate, EntityIdentity{}, "From search", false); result.Err != nil {
+	if result := executeLens(model, operationLensCreate, operation.EntityIdentity{}, "From search", false); result.Err != nil {
 		t.Fatalf("create lens: %v", result.Err)
 	}
 
@@ -70,7 +71,7 @@ func TestLensCreateCapturesAcceptedSearchQuery(t *testing.T) {
 	// Replace reads the same axis, so overwriting a saved lens from accepted
 	// results records the query rather than dropping it.
 	starter := lensNamed(t, model, config.StarterNamedLenses()[0].Name)
-	if result := executeLens(model, operationLensReplace, LensEntity(starter.ID), "", true); result.Err != nil {
+	if result := executeLens(model, operationLensReplace, operation.LensEntity(starter.ID), "", true); result.Err != nil {
 		t.Fatalf("replace lens: %v", result.Err)
 	}
 	if replaced := lensNamed(t, model, starter.Name); replaced.Query != "needle" {
@@ -89,7 +90,7 @@ func TestDeletingAnInactiveLensLeavesTheActiveOneAlone(t *testing.T) {
 	applyLensOrFatal(t, out, active)
 	other := lensNamed(t, model, starters[1].Name)
 
-	if result := executeLens(model, operationLensDelete, LensEntity(other.ID), "", true); result.Err != nil {
+	if result := executeLens(model, operationLensDelete, operation.LensEntity(other.ID), "", true); result.Err != nil {
 		t.Fatalf("delete lens: %v", result.Err)
 	}
 	if !out.hasActiveLens() || out.activeLens.lensID != active.ID {
@@ -104,8 +105,8 @@ func TestLensReplaceAndDeleteConfirmBeforeTheyWrite(t *testing.T) {
 	applyLensOrFatal(t, out, starter)
 	out.selectOutlinerMode(chrome.ModeBacklog)
 
-	for _, id := range []OperationID{operationLensReplace, operationLensDelete} {
-		result := executeLens(model, id, LensEntity(starter.ID), "", false)
+	for _, id := range []operation.OperationID{operationLensReplace, operationLensDelete} {
+		result := executeLens(model, id, operation.LensEntity(starter.ID), "", false)
 		if result.ConfirmationRequired == nil {
 			t.Fatalf("%s ran without asking for confirmation", id)
 		}
@@ -129,14 +130,14 @@ func TestLensRenameAndCreateAskForANameBeforeTheyWrite(t *testing.T) {
 	starter := lensNamed(t, model, config.StarterNamedLenses()[0].Name)
 
 	for _, entity := range []struct {
-		id     OperationID
-		entity EntityIdentity
+		id     operation.OperationID
+		entity operation.EntityIdentity
 	}{
-		{operationLensCreate, EntityIdentity{}},
-		{operationLensRename, LensEntity(starter.ID)},
+		{operationLensCreate, operation.EntityIdentity{}},
+		{operationLensRename, operation.LensEntity(starter.ID)},
 	} {
 		result := executeLens(model, entity.id, entity.entity, "", false)
-		if result.ValueRequired == nil || result.ValueRequired.Provider != ValueProviderLensName {
+		if result.ValueRequired == nil || result.ValueRequired.Provider != operation.ValueProviderLensName {
 			t.Fatalf("%s ran without asking for a name: %#v", entity.id, result.ValueRequired)
 		}
 	}
@@ -153,8 +154,8 @@ func TestLensNamePromptPrefillsTheRenameTargetAndRefusesAStaleOne(t *testing.T) 
 
 	prompt, err := model.newOperationTextPrompt(OperationExecutionRequest{
 		ID:      operationLensRename,
-		Context: lensOperationContext(LensEntity(starter.ID)),
-	}, ValueProviderLensName)
+		Context: lensOperationContext(operation.LensEntity(starter.ID)),
+	}, operation.ValueProviderLensName)
 	if err != nil {
 		t.Fatalf("rename prompt: %v", err)
 	}
@@ -164,8 +165,8 @@ func TestLensNamePromptPrefillsTheRenameTargetAndRefusesAStaleOne(t *testing.T) 
 
 	create, err := model.newOperationTextPrompt(OperationExecutionRequest{
 		ID:      operationLensCreate,
-		Context: lensOperationContext(EntityIdentity{}),
-	}, ValueProviderLensName)
+		Context: lensOperationContext(operation.EntityIdentity{}),
+	}, operation.ValueProviderLensName)
 	if err != nil {
 		t.Fatalf("create prompt: %v", err)
 	}
@@ -175,8 +176,8 @@ func TestLensNamePromptPrefillsTheRenameTargetAndRefusesAStaleOne(t *testing.T) 
 
 	if _, err := model.newOperationTextPrompt(OperationExecutionRequest{
 		ID:      operationLensRename,
-		Context: lensOperationContext(LensEntity(lensTestID(42))),
-	}, ValueProviderLensName); err == nil {
+		Context: lensOperationContext(operation.LensEntity(lensTestID(42))),
+	}, operation.ValueProviderLensName); err == nil {
 		t.Fatal("expected a stale rename target to refuse at the prompt")
 	}
 }
@@ -193,16 +194,16 @@ func TestStarterLensesAreEditableAndRemovableLikeUserRecords(t *testing.T) {
 			t.Fatalf("starter %q loaded under %q, want the frozen %q", starter.Name, saved.ID, starter.ID)
 		}
 		renamed := "Preset " + strings.Repeat("x", i+1)
-		if result := executeLens(model, operationLensRename, LensEntity(saved.ID), renamed, false); result.Err != nil {
+		if result := executeLens(model, operationLensRename, operation.LensEntity(saved.ID), renamed, false); result.Err != nil {
 			t.Fatalf("rename starter %q: %v", starter.Name, result.Err)
 		}
-		if result := executeLens(model, operationLensReplace, LensEntity(saved.ID), "", true); result.Err != nil {
+		if result := executeLens(model, operationLensReplace, operation.LensEntity(saved.ID), "", true); result.Err != nil {
 			t.Fatalf("replace starter %q: %v", starter.Name, result.Err)
 		}
 		if got := lensNamed(t, model, renamed); got.ID != saved.ID {
 			t.Fatalf("editing starter %q minted a new identity", starter.Name)
 		}
-		if result := executeLens(model, operationLensDelete, LensEntity(saved.ID), "", true); result.Err != nil {
+		if result := executeLens(model, operationLensDelete, operation.LensEntity(saved.ID), "", true); result.Err != nil {
 			t.Fatalf("delete starter %q: %v", starter.Name, result.Err)
 		}
 	}

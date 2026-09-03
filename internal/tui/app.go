@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -101,7 +102,7 @@ type AppModel struct {
 	// View registry for centralized view management
 	views *ViewRegistry
 
-	operationRegistry *OperationRegistry
+	operationRegistry *operation.OperationRegistry
 	operationExecutor *OperationExecutor
 
 	// Typed accessors for views that need direct access (e.g., for HasActiveSearch)

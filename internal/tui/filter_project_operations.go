@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -16,18 +17,18 @@ import (
 // f chord's row facets because they decide which projects load at all: applying
 // one needs a reload, not a rebuild.
 const (
-	operationFilterProjectTags     OperationID = "tui.filter.project-tags"
-	operationFilterShowParked      OperationID = "tui.filter.show-parked"
-	operationFilterOnlyParked      OperationID = "tui.filter.only-parked"
-	operationFilterIncludeArchived OperationID = "tui.filter.include-archived"
-	operationFilterOnlyArchived    OperationID = "tui.filter.only-archived"
-	operationFilterProjectClear    OperationID = "tui.filter.project-clear"
+	operationFilterProjectTags     operation.OperationID = "tui.filter.project-tags"
+	operationFilterShowParked      operation.OperationID = "tui.filter.show-parked"
+	operationFilterOnlyParked      operation.OperationID = "tui.filter.only-parked"
+	operationFilterIncludeArchived operation.OperationID = "tui.filter.include-archived"
+	operationFilterOnlyArchived    operation.OperationID = "tui.filter.only-archived"
+	operationFilterProjectClear    operation.OperationID = "tui.filter.project-clear"
 )
 
-func projectFilterOperationDescriptors() []OperationDescriptor {
+func projectFilterOperationDescriptors() []operation.OperationDescriptor {
 	descriptor := filterOperationDescriptor
-	return []OperationDescriptor{
-		descriptor(operationFilterProjectTags, "Filter Projects by Tag", ValueProviderFilterProjectTags, "project tag filter"),
+	return []operation.OperationDescriptor{
+		descriptor(operationFilterProjectTags, "Filter Projects by Tag", operation.ValueProviderFilterProjectTags, "project tag filter"),
 		descriptor(operationFilterShowParked, "Include Parked Projects", "", "parked projects"),
 		descriptor(operationFilterOnlyParked, "Only Parked Projects", "", "isolate parked projects"),
 		descriptor(operationFilterIncludeArchived, "Include Archived Projects", "", "archived projects"),
@@ -135,7 +136,7 @@ func (m *AppModel) newFilterProjectTagsPicker(
 	}
 	return newOperationValuePickerModel(
 		request,
-		ValueProviderFilterProjectTags,
+		operation.ValueProviderFilterProjectTags,
 		"Filter Projects by Tag",
 		"choose which projects load",
 		source,

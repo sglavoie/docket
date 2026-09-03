@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -23,19 +24,19 @@ import (
 // operation absent from all five has no key anywhere, which is what "menu-only"
 // means; reading them off surfaceOperationGates would only name the four entity
 // ones plus the Outliner, in a shape built for a different question.
-var productionInputStrategies = []InputStrategyID{
-	InputStrategySimplified,
-	InputStrategyProjectHub,
-	InputStrategyNotes,
-	InputStrategyAttachments,
-	InputStrategyComments,
+var productionInputStrategies = []operation.InputStrategyID{
+	operation.InputStrategySimplified,
+	operation.InputStrategyProjectHub,
+	operation.InputStrategyNotes,
+	operation.InputStrategyAttachments,
+	operation.InputStrategyComments,
 }
 
 // menuBarCommandContext is the launch context: the Outliner presentation with
 // the simplified grammar and a cursor that names nothing.
-func menuBarCommandContext() CommandContext {
+func menuBarCommandContext() operation.CommandContext {
 	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
-	ctx.Capabilities.Add(CapabilitySimplifiedInput)
+	ctx.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	return ctx
 }
 
@@ -44,7 +45,7 @@ func menuBarCommandContext() CommandContext {
 // than a test-local subset of them.
 func resolveOutlinerMenus(t *testing.T, app *AppModel, activeMode chrome.OutlinerModeID) []resolvedMenu {
 	t.Helper()
-	strategy, ok := app.GetOperationRegistry().InputStrategy(InputStrategySimplified)
+	strategy, ok := app.GetOperationRegistry().InputStrategy(operation.InputStrategySimplified)
 	if !ok {
 		t.Fatal("simplified input strategy is not registered")
 	}
@@ -73,19 +74,19 @@ func menuWithID(t *testing.T, menus []resolvedMenu, id string) resolvedMenu {
 
 func registerMenuTestOperation(
 	t *testing.T,
-	registry *OperationRegistry,
-	id OperationID,
+	registry *operation.OperationRegistry,
+	id operation.OperationID,
 	label string,
 	applicable bool,
 ) {
 	t.Helper()
-	if err := registry.Register(OperationDescriptor{
+	if err := registry.Register(operation.OperationDescriptor{
 		ID:                id,
 		Label:             label,
-		Category:          OperationCategorySystem,
-		TargetCardinality: TargetCardinalityNone,
-		Risk:              OperationRiskReadOnly,
-		Applicability:     func(CommandContext) bool { return applicable },
+		Category:          operation.OperationCategorySystem,
+		TargetCardinality: operation.TargetCardinalityNone,
+		Risk:              operation.OperationRiskReadOnly,
+		Applicability:     func(operation.CommandContext) bool { return applicable },
 	}); err != nil {
 		t.Fatalf("register %s: %v", id, err)
 	}
@@ -147,10 +148,10 @@ func menuHasLabel(menu resolvedMenu, label string) bool {
 }
 
 func TestResolveMenuEntriesRefusesAnUnregisteredOperation(t *testing.T) {
-	registry := NewOperationRegistry()
+	registry := operation.NewOperationRegistry()
 	registerMenuTestOperation(t, registry, "test.menu.present", "Present", true)
 
-	_, err := resolveMenuEntries(registry, InputStrategy{}, menuBarCommandContext(), []menuSpec{{
+	_, err := resolveMenuEntries(registry, operation.InputStrategy{}, menuBarCommandContext(), []menuSpec{{
 		ID:    "test",
 		Title: "Test",
 		Entries: []menuEntrySpec{
@@ -164,11 +165,11 @@ func TestResolveMenuEntriesRefusesAnUnregisteredOperation(t *testing.T) {
 }
 
 func TestResolveMenuEntriesRemovesRatherThanGreys(t *testing.T) {
-	registry := NewOperationRegistry()
+	registry := operation.NewOperationRegistry()
 	registerMenuTestOperation(t, registry, "test.menu.here", "Here", true)
 	registerMenuTestOperation(t, registry, "test.menu.gone", "Gone", false)
 
-	menus, err := resolveMenuEntries(registry, InputStrategy{}, menuBarCommandContext(), []menuSpec{
+	menus, err := resolveMenuEntries(registry, operation.InputStrategy{}, menuBarCommandContext(), []menuSpec{
 		{ID: "mixed", Title: "Mixed", Entries: []menuEntrySpec{
 			{OperationID: "test.menu.here"},
 			menuSeparator(),

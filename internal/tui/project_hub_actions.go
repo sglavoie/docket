@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -33,7 +34,7 @@ func (m *ProjectHubModel) openProjectHubActions() {
 			Subtitle:     entry.Project.Name,
 			Categories:   projectHubActionCategories,
 			CategoryFor:  projectHubActionCategory,
-			SecondaryFor: func(descriptor OperationDescriptor) string { return string(descriptor.Risk) },
+			SecondaryFor: func(descriptor operation.OperationDescriptor) string { return string(descriptor.Risk) },
 			Value:        target,
 			HasValue:     true,
 			EmptyState:   ListEmptyState{Title: "No actions available."},
@@ -56,13 +57,13 @@ func (m *ProjectHubModel) openProjectHubActions() {
 // same target set when the tag prompt resumes the request.
 func (m *ProjectHubModel) openProjectHubBulkActions() {
 	selected := m.surface.SelectedItems()
-	identities := make([]EntityIdentity, 0, len(selected))
+	identities := make([]operation.EntityIdentity, 0, len(selected))
 	for _, item := range selected {
 		entry, ok := item.Data.(projectHubEntry)
 		if !ok || entry.Project == nil {
 			continue
 		}
-		identities = append(identities, ProjectEntity(entry.Project.ID))
+		identities = append(identities, operation.ProjectEntity(entry.Project.ID))
 	}
 	if len(identities) == 0 {
 		return
@@ -81,7 +82,7 @@ func (m *ProjectHubModel) openProjectHubBulkActions() {
 			Title:        "Bulk Actions",
 			Categories:   projectHubActionCategories,
 			CategoryFor:  projectHubActionCategory,
-			SecondaryFor: func(descriptor OperationDescriptor) string { return string(descriptor.Risk) },
+			SecondaryFor: func(descriptor operation.OperationDescriptor) string { return string(descriptor.Risk) },
 			Bulk:         true,
 			Targets:      len(identities),
 			EmptyState:   ListEmptyState{Title: "No bulk actions available."},
@@ -103,8 +104,8 @@ func (m *ProjectHubModel) openProjectHubBulkActions() {
 // actions, in their declared order, and drops any the selection does not share.
 // An archived row in the selection carries none of them, so a mixed selection
 // offers nothing rather than an action half of it would refuse.
-func projectHubBulkOperationIDs(available []OperationID) []OperationID {
-	ids := make([]OperationID, 0, len(projectBulkOperations))
+func projectHubBulkOperationIDs(available []operation.OperationID) []operation.OperationID {
+	ids := make([]operation.OperationID, 0, len(projectBulkOperations))
 	for _, id := range projectBulkOperations {
 		if slices.Contains(available, id) {
 			ids = append(ids, id)
@@ -113,7 +114,7 @@ func projectHubBulkOperationIDs(available []OperationID) []OperationID {
 	return ids
 }
 
-func projectHubActionCategory(descriptor OperationDescriptor) ListCategoryID {
+func projectHubActionCategory(descriptor operation.OperationDescriptor) ListCategoryID {
 	for _, entry := range projectOperationManifest() {
 		if entry.ID == descriptor.ID {
 			return entry.Category

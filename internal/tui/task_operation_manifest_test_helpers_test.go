@@ -1,8 +1,10 @@
 package tui
 
-func taskOperationManifestIDs() []OperationID {
+import "github.com/sglavoie/tt/internal/tui/operation"
+
+func taskOperationManifestIDs() []operation.OperationID {
 	manifest := taskOperationManifest()
-	ids := make([]OperationID, 0, len(manifest))
+	ids := make([]operation.OperationID, 0, len(manifest))
 	for _, entry := range manifest {
 		if !entry.DirectOnly {
 			ids = append(ids, entry.ID)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -88,7 +89,7 @@ func TestCollapseOrMoveToParentReachesTheRowlessFocusRoot(t *testing.T) {
 			if !slices.Equal(stack, test.wantStack) {
 				t.Fatalf("focus stack = %v, want %v", stack, test.wantStack)
 			}
-			if got := out.currentTaskIdentity(); got != identity(test.wantCursor) {
+			if got := out.CurrentTaskIdentity(); got != identity(test.wantCursor) {
 				t.Fatalf("cursor = %+v, want %s", got, test.wantCursor)
 			}
 		})
@@ -114,7 +115,7 @@ func TestFocusParentRefusesATaskWithoutAParent(t *testing.T) {
 	}
 
 	result := model.operationExecutor.Execute(OperationExecutionRequest{
-		ID:      operationCoreFocusParent,
+		ID:      operation.OperationCoreFocusParent,
 		Context: model.operationCommandContext(),
 	})
 	if result.Err != nil || result.Status != "No parent to focus" {
@@ -140,7 +141,7 @@ func TestFocusLeafFeedbackAndSearchResultJump(t *testing.T) {
 	leafTitle := out.rows[out.cursor].task.Title
 
 	result := model.operationExecutor.Execute(OperationExecutionRequest{
-		ID:      operationCoreFocusSubtree,
+		ID:      operation.OperationCoreFocusSubtree,
 		Context: model.operationCommandContext(),
 	})
 	if result.Err != nil || result.Status != "No children to focus" {
@@ -153,7 +154,7 @@ func TestFocusLeafFeedbackAndSearchResultJump(t *testing.T) {
 	t.Run("a leaf result jumps without focusing", func(t *testing.T) {
 		identity := searchProjectionCursorOnTitle(t, out, leafTitle)
 		result := model.operationExecutor.Execute(OperationExecutionRequest{
-			ID:      operationCoreFocusSubtree,
+			ID:      operation.OperationCoreFocusSubtree,
 			Context: model.operationCommandContext(),
 		})
 		if result.Err != nil || result.Status != "No children to focus" {
@@ -162,7 +163,7 @@ func TestFocusLeafFeedbackAndSearchResultJump(t *testing.T) {
 		if out.hasSearchProjection() {
 			t.Fatal("Enter kept the temporary search projection")
 		}
-		if got := out.currentTaskIdentity(); got != identity {
+		if got := out.CurrentTaskIdentity(); got != identity {
 			t.Fatalf("cursor = %+v, want the result %+v", got, identity)
 		}
 		if len(out.crossFocusStack) != 0 {
@@ -173,7 +174,7 @@ func TestFocusLeafFeedbackAndSearchResultJump(t *testing.T) {
 	t.Run("a parent result jumps and focuses", func(t *testing.T) {
 		identity := searchProjectionCursorOnTitle(t, out, "User Authentication")
 		result := model.operationExecutor.Execute(OperationExecutionRequest{
-			ID:      operationCoreFocusSubtree,
+			ID:      operation.OperationCoreFocusSubtree,
 			Context: model.operationCommandContext(),
 		})
 		if result.Err != nil || result.Status != "" {
@@ -203,7 +204,7 @@ func TestFocusParentFromSearchResultJumpsToTheParentFrame(t *testing.T) {
 	parentID := *task.ParentID
 
 	result := model.operationExecutor.Execute(OperationExecutionRequest{
-		ID:      operationCoreFocusParent,
+		ID:      operation.OperationCoreFocusParent,
 		Context: model.operationCommandContext(),
 	})
 	if result.Err != nil || result.Status != "" {
@@ -215,7 +216,7 @@ func TestFocusParentFromSearchResultJumpsToTheParentFrame(t *testing.T) {
 	if len(out.crossFocusStack) != 1 || out.crossFocusStack[0].TaskID != parentID {
 		t.Fatalf("focus stack = %+v, want one frame rooted at %q", out.crossFocusStack, parentID)
 	}
-	if got := out.currentTaskIdentity(); got != identity {
+	if got := out.CurrentTaskIdentity(); got != identity {
 		t.Fatalf("cursor = %+v, want the result %+v", got, identity)
 	}
 }
@@ -230,7 +231,7 @@ func TestFocusFromSearchForcesAllWhenTheRestoredModeHidesTheResult(t *testing.T)
 
 	identity := searchProjectionCursorOnTitle(t, out, "User Authentication")
 	result := model.operationExecutor.Execute(OperationExecutionRequest{
-		ID:      operationCoreFocusSubtree,
+		ID:      operation.OperationCoreFocusSubtree,
 		Context: model.operationCommandContext(),
 	})
 	if result.Err != nil || result.Status != "" {

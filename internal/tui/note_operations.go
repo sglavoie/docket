@@ -11,74 +11,75 @@ import (
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // Note operation IDs. Every one of them targets a single note identity, which
 // names the collection (project or global) and the filename inside it.
 const (
-	operationNoteOpen      OperationID = "tui.note.open"
-	operationNoteRename    OperationID = "tui.note.rename"
-	operationNoteMove      OperationID = "tui.note.move-to-project"
-	operationNoteCopyTitle OperationID = "tui.note.copy-title"
-	operationNoteCopyPath  OperationID = "tui.note.copy-path"
-	operationNoteDelete    OperationID = "tui.note.delete"
+	operationNoteOpen      operation.OperationID = "tui.note.open"
+	operationNoteRename    operation.OperationID = "tui.note.rename"
+	operationNoteMove      operation.OperationID = "tui.note.move-to-project"
+	operationNoteCopyTitle operation.OperationID = "tui.note.copy-title"
+	operationNoteCopyPath  operation.OperationID = "tui.note.copy-path"
+	operationNoteDelete    operation.OperationID = "tui.note.delete"
 )
 
 // noteOperationDescriptors is the authoritative catalog of note-targeted
 // operations. Each one resolves the frozen note identity at execution, so the
 // same descriptor serves the Notes manager and any other host that
 // names a note row.
-func noteOperationDescriptors() []OperationDescriptor {
+func noteOperationDescriptors() []operation.OperationDescriptor {
 	descriptor := func(
-		id OperationID,
+		id operation.OperationID,
 		label string,
 		description string,
-		risk OperationRisk,
-		applicability OperationApplicability,
-	) OperationDescriptor {
-		return OperationDescriptor{
+		risk operation.OperationRisk,
+		applicability operation.OperationApplicability,
+	) operation.OperationDescriptor {
+		return operation.OperationDescriptor{
 			ID:                id,
 			Label:             label,
 			Description:       description,
-			Category:          OperationCategoryNote,
-			TargetSource:      OperationTargetCurrentEntity,
-			TargetCardinality: TargetCardinalityOne,
+			Category:          operation.OperationCategoryNote,
+			TargetSource:      operation.OperationTargetCurrentEntity,
+			TargetCardinality: operation.TargetCardinalityOne,
 			Applicability:     applicability,
 			Risk:              risk,
 		}
 	}
 	note := func(
-		id OperationID,
+		id operation.OperationID,
 		label string,
 		description string,
-		risk OperationRisk,
-	) OperationDescriptor {
+		risk operation.OperationRisk,
+	) operation.OperationDescriptor {
 		return descriptor(id, label, description, risk, noteOperationApplicable)
 	}
-	return []OperationDescriptor{
-		note(operationNoteOpen, "Open note", "Open this note in the external editor", OperationRiskMutation),
-		withValueProvider(
-			note(operationNoteRename, "Rename note", "Give this note a new title", OperationRiskMutation),
-			ValueProviderNoteTitle,
+	return []operation.OperationDescriptor{
+		note(operationNoteOpen, "Open note", "Open this note in the external editor", operation.OperationRiskMutation),
+		operation.WithValueProvider(
+			note(operationNoteRename, "Rename note", "Give this note a new title", operation.OperationRiskMutation),
+			operation.ValueProviderNoteTitle,
 		),
-		note(operationNoteMove, "Move note", "Move this note to another location", OperationRiskMutation),
-		note(operationNoteCopyTitle, "Copy note title", "Copy this note's title to the clipboard", OperationRiskReadOnly),
-		note(operationNoteCopyPath, "Copy note path", "Copy this note's file path to the clipboard", OperationRiskReadOnly),
-		note(operationNoteDelete, "Delete note", "Delete this note", OperationRiskDestructive),
+		note(operationNoteMove, "Move note", "Move this note to another location", operation.OperationRiskMutation),
+		note(operationNoteCopyTitle, "Copy note title", "Copy this note's title to the clipboard", operation.OperationRiskReadOnly),
+		note(operationNoteCopyPath, "Copy note path", "Copy this note's file path to the clipboard", operation.OperationRiskReadOnly),
+		note(operationNoteDelete, "Delete note", "Delete this note", operation.OperationRiskDestructive),
 	}
 }
 
 // noteOperationApplicable admits a note operation only when the focused entity
-// is a note. currentEntityIdentity degrades to the focused task and then the
+// is a note. CurrentEntityIdentity degrades to the focused task and then the
 // scoped project, so an unguarded descriptor would borrow an unrelated target.
-func noteOperationApplicable(ctx CommandContext) bool {
-	return currentEntityIdentity(ctx).Kind == EntityKindNote
+func noteOperationApplicable(ctx operation.CommandContext) bool {
+	return operation.CurrentEntityIdentity(ctx).Kind == operation.EntityKindNote
 }
 
 // noteOperationsUnavailableWithParseError lists the restored actions that need parsed
 // note content. Open and delete stay available so a malformed note can still be
 // repaired or removed.
-var noteOperationsUnavailableWithParseError = map[OperationID]bool{
+var noteOperationsUnavailableWithParseError = map[operation.OperationID]bool{
 	operationNoteMove: true,
 }
 
@@ -87,7 +88,7 @@ func (m *AppModel) registerNoteOperations() error {
 		return fmt.Errorf("operation registry and executor are required")
 	}
 	if err := m.operationExecutor.RegisterValueProvider(
-		ValueProviderNoteTitle,
+		operation.ValueProviderNoteTitle,
 		pendingTextValueProvider,
 	); err != nil {
 		return err
@@ -114,12 +115,12 @@ type resolvedNote struct {
 // resolveNoteTarget reloads the note the identity names. A note whose file or
 // owning project disappeared since the row was built fails loudly instead of
 // acting on stale metadata.
-func (m *AppModel) resolveNoteTarget(identity EntityIdentity) (resolvedNote, error) {
+func (m *AppModel) resolveNoteTarget(identity operation.EntityIdentity) (resolvedNote, error) {
 	resolved := resolvedNote{}
 	switch identity.Scope {
-	case EntityScopeGlobal:
+	case operation.EntityScopeGlobal:
 		resolved.Location = app.GlobalNoteLocation()
-	case EntityScopeProject:
+	case operation.EntityScopeProject:
 		project := m.projectByID(identity.ProjectID)
 		if project == nil {
 			return resolvedNote{}, fmt.Errorf("project %s is no longer available", identity.ProjectID)
@@ -163,9 +164,9 @@ func (m *AppModel) noteOperationPath(resolved resolvedNote) string {
 
 func (m *AppModel) executeNoteOperation(
 	invocation OperationInvocation,
-	target OperationTarget,
+	target operation.OperationTarget,
 ) OperationHandlerResult {
-	if target.Entity.Kind != EntityKindNote {
+	if target.Entity.Kind != operation.EntityKindNote {
 		return OperationHandlerResult{
 			Err: fmt.Errorf("%s needs a note target, got %s", invocation.Descriptor.Label, target.Entity),
 		}

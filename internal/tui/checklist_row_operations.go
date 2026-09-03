@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -13,7 +14,7 @@ import (
 // rests on a checklist row. That disjointness is what lets these operations
 // share e, A, J, K and Space with their task-row counterparts, since shared-key
 // resolution picks the first binding whose descriptor applies.
-func checklistRowOperationApplicable(ctx CommandContext) bool {
+func checklistRowOperationApplicable(ctx operation.CommandContext) bool {
 	return ctx.View == presentation.ViewCrossProjectOutliner && ctx.Entity.HasChecklistCursor
 }
 
@@ -25,70 +26,70 @@ func checklistRowOperationApplicable(ctx CommandContext) bool {
 // Every descriptor is Task category so that a key shared with a task operation
 // keeps one category across its bindings, which is what lets a non-task cursor
 // still explain the key it refused.
-func checklistRowOperationDescriptors() []OperationDescriptor {
+func checklistRowOperationDescriptors() []operation.OperationDescriptor {
 	item := func(
-		id OperationID,
+		id operation.OperationID,
 		label string,
 		description string,
-		risk OperationRisk,
-	) OperationDescriptor {
-		return OperationDescriptor{
+		risk operation.OperationRisk,
+	) operation.OperationDescriptor {
+		return operation.OperationDescriptor{
 			ID:                   id,
 			Label:                label,
 			Description:          description,
-			Category:             OperationCategoryTask,
-			TargetSource:         OperationTargetCurrentTask,
-			TargetCardinality:    TargetCardinalityOne,
-			RequiredCapabilities: NewCapabilitySet(CapabilitySimplifiedInput),
+			Category:             operation.OperationCategoryTask,
+			TargetSource:         operation.OperationTargetCurrentTask,
+			TargetCardinality:    operation.TargetCardinalityOne,
+			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
 			Applicability:        checklistRowOperationApplicable,
 			Risk:                 risk,
 		}
 	}
-	return []OperationDescriptor{
-		item(operationChecklistToggleItem, "Toggle Item", "Tick or untick this checklist item", OperationRiskMutation),
-		withValueProvider(
-			item(operationChecklistEditItem, "Edit Item", "Rewrite this checklist item", OperationRiskMutation),
-			ValueProviderChecklistItem,
+	return []operation.OperationDescriptor{
+		item(operation.OperationChecklistToggleItem, "Toggle Item", "Tick or untick this checklist item", operation.OperationRiskMutation),
+		operation.WithValueProvider(
+			item(operation.OperationChecklistEditItem, "Edit Item", "Rewrite this checklist item", operation.OperationRiskMutation),
+			operation.ValueProviderChecklistItem,
 		),
-		item(operationChecklistMoveDown, "Move Item Down", "Swap this item with the one below it", OperationRiskMutation),
-		item(operationChecklistMoveUp, "Move Item Up", "Swap this item with the one above it", OperationRiskMutation),
-		item(operationChecklistMoveBottom, "Move Item to Bottom", "Send this item past every item below it", OperationRiskMutation),
-		item(operationChecklistMoveTop, "Move Item to Top", "Send this item past every item above it", OperationRiskMutation),
-		withValueProvider(
-			item(operationChecklistAddItem, "Add Item", "Append an item to this checklist", OperationRiskMutation),
-			ValueProviderChecklistItem,
+		item(operation.OperationChecklistMoveDown, "Move Item Down", "Swap this item with the one below it", operation.OperationRiskMutation),
+		item(operation.OperationChecklistMoveUp, "Move Item Up", "Swap this item with the one above it", operation.OperationRiskMutation),
+		item(operation.OperationChecklistMoveBottom, "Move Item to Bottom", "Send this item past every item below it", operation.OperationRiskMutation),
+		item(operation.OperationChecklistMoveTop, "Move Item to Top", "Send this item past every item above it", operation.OperationRiskMutation),
+		operation.WithValueProvider(
+			item(operation.OperationChecklistAddItem, "Add Item", "Append an item to this checklist", operation.OperationRiskMutation),
+			operation.ValueProviderChecklistItem,
 		),
-		item(operationChecklistActions, "Checklist Actions", "Open the checklist item action menu", OperationRiskReadOnly),
-		item(operationChecklistDeleteItem, "Delete Item", "Remove this checklist item", OperationRiskDestructive),
+		item(operation.OperationChecklistActions, "Checklist Actions", "Open the checklist item action menu", operation.OperationRiskReadOnly),
+		item(operation.OperationChecklistDeleteItem, "Delete Item", "Remove this checklist item", operation.OperationRiskDestructive),
 	}
 }
 
 // checklistStartOperationDescriptor admits the cursor's task only while that
 // task holds no checklist at all, which is exactly the case no checklist row can
-// cover. The gate is disjoint from operationChecklistAddItem rather than a
+// cover. The gate is disjoint from OperationChecklistAddItem rather than a
 // second route to it, so the row grammar keeps owning every later item.
-func (m *AppModel) checklistStartOperationDescriptor() OperationDescriptor {
-	return withValueProvider(OperationDescriptor{
-		ID:                   operationChecklistStart,
+func (m *AppModel) checklistStartOperationDescriptor() operation.OperationDescriptor {
+	return operation.WithValueProvider(operation.OperationDescriptor{
+		ID:                   operation.OperationChecklistStart,
 		Label:                "Start Checklist",
 		Description:          "Add the first checklist item to this task",
-		Category:             OperationCategoryTask,
-		TargetSource:         OperationTargetCurrentTask,
-		TargetCardinality:    TargetCardinalityOne,
-		RequiredCapabilities: NewCapabilitySet(CapabilitySimplifiedInput),
+		Category:             operation.OperationCategoryTask,
+		TargetSource:         operation.OperationTargetCurrentTask,
+		TargetCardinality:    operation.TargetCardinalityOne,
+		RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
 		Applicability:        m.checklistStartApplicable,
-		Risk:                 OperationRiskMutation,
-	}, ValueProviderChecklistItem)
+		Risk:                 operation.OperationRiskMutation,
+	}, operation.ValueProviderChecklistItem)
 }
 
-func (m *AppModel) checklistStartApplicable(ctx CommandContext) bool {
+func (m *AppModel) checklistStartApplicable(ctx operation.CommandContext) bool {
 	if ctx.View != presentation.ViewCrossProjectOutliner ||
 		ctx.Entity.HasChecklistCursor ||
 		ctx.Selection.Visual ||
-		commandContextNamesNonTaskEntity(ctx) {
+		operation.CommandContextNamesNonTaskEntity(ctx) {
 		return false
 	}
-	identity := currentTaskIdentity(ctx)
+	identity := operation.CurrentTaskIdentity(ctx)
 	if !identity.Valid() {
 		return false
 	}
@@ -102,7 +103,7 @@ func (m *AppModel) checklistStartApplicable(ctx CommandContext) bool {
 func (m *AppModel) executeChecklistStart(
 	invocation OperationInvocation,
 ) OperationHandlerResult {
-	identity := currentTaskIdentity(invocation.Context)
+	identity := operation.CurrentTaskIdentity(invocation.Context)
 	task, _ := m.taskAndProjectForIdentity(identity)
 	if task == nil {
 		return OperationHandlerResult{Err: errors.New("task is no longer available")}
@@ -122,14 +123,14 @@ func (m *AppModel) registerChecklistRowOperations() error {
 		return fmt.Errorf("operation registry and executor are required")
 	}
 	if err := m.operationExecutor.RegisterValueProvider(
-		ValueProviderChecklistItem,
+		operation.ValueProviderChecklistItem,
 		pendingTextValueProvider,
 	); err != nil {
 		return err
 	}
 	for _, descriptor := range checklistRowOperationDescriptors() {
 		if err := m.registerOperation(descriptor, OperationBinding{
-			RequiredCapabilities: NewCapabilitySet(CapabilitySimplifiedInput),
+			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
 			Applicability:        descriptor.Applicability,
 			Handler:              m.executeChecklistRowOperation,
 			// Every handler dispatches to the subview coordinator, which owns the
@@ -141,7 +142,7 @@ func (m *AppModel) registerChecklistRowOperations() error {
 	}
 	start := m.checklistStartOperationDescriptor()
 	return m.registerOperation(start, OperationBinding{
-		RequiredCapabilities: NewCapabilitySet(CapabilitySimplifiedInput),
+		RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
 		Applicability:        start.Applicability,
 		Handler:              m.executeChecklistStart,
 		DelegateTransaction:  true,
@@ -157,9 +158,9 @@ func (m *AppModel) executeChecklistRowOperation(
 ) OperationHandlerResult {
 	entity := invocation.Context.Entity
 	if !entity.HasChecklistCursor {
-		return OperationHandlerResult{Err: errors.New(checklistRowRejectionMessage)}
+		return OperationHandlerResult{Err: errors.New(operation.ChecklistRowRejectionMessage)}
 	}
-	identity := currentTaskIdentity(invocation.Context)
+	identity := operation.CurrentTaskIdentity(invocation.Context)
 	task, _ := m.taskAndProjectForIdentity(identity)
 	if task == nil {
 		return OperationHandlerResult{Err: errors.New("task is no longer available")}
@@ -171,48 +172,48 @@ func (m *AppModel) executeChecklistRowOperation(
 
 	coordinator := m.secondaryFeatures.Subview
 	switch invocation.Descriptor.ID {
-	case operationChecklistToggleItem:
+	case operation.OperationChecklistToggleItem:
 		return checklistCommandResult(coordinator.ToggleChecklistItem(identity, index))
-	case operationChecklistEditItem:
+	case operation.OperationChecklistEditItem:
 		text, err := checklistItemText(invocation)
 		if err != nil {
 			return OperationHandlerResult{Err: err}
 		}
 		return checklistCommandResult(coordinator.EditChecklistItem(identity, index, text))
-	case operationChecklistDeleteItem:
+	case operation.OperationChecklistDeleteItem:
 		return checklistCommandResult(coordinator.RemoveChecklistItem(identity, index))
-	case operationChecklistMoveDown:
+	case operation.OperationChecklistMoveDown:
 		if index == len(task.Checklist)-1 {
 			return OperationHandlerResult{Err: errors.New("this item is already last")}
 		}
 		m.followReorderedChecklistItem(1)
 		return checklistCommandResult(coordinator.ReorderChecklistItem(identity, index, index+1))
-	case operationChecklistMoveUp:
+	case operation.OperationChecklistMoveUp:
 		if index == 0 {
 			return OperationHandlerResult{Err: errors.New("this item is already first")}
 		}
 		m.followReorderedChecklistItem(-1)
 		return checklistCommandResult(coordinator.ReorderChecklistItem(identity, index, index-1))
-	case operationChecklistMoveBottom:
+	case operation.OperationChecklistMoveBottom:
 		last := len(task.Checklist) - 1
 		if index == last {
 			return OperationHandlerResult{Err: errors.New("this item is already last")}
 		}
 		m.followReorderedChecklistItem(last - index)
 		return checklistCommandResult(coordinator.MoveChecklistItem(identity, index, last))
-	case operationChecklistMoveTop:
+	case operation.OperationChecklistMoveTop:
 		if index == 0 {
 			return OperationHandlerResult{Err: errors.New("this item is already first")}
 		}
 		m.followReorderedChecklistItem(-index)
 		return checklistCommandResult(coordinator.MoveChecklistItem(identity, index, 0))
-	case operationChecklistAddItem:
+	case operation.OperationChecklistAddItem:
 		text, err := checklistItemText(invocation)
 		if err != nil {
 			return OperationHandlerResult{Err: err}
 		}
 		return checklistCommandResult(coordinator.AddChecklistItem(identity, text))
-	case operationChecklistActions:
+	case operation.OperationChecklistActions:
 		if err := m.openChecklistActionSheet(invocation.Context); err != nil {
 			return OperationHandlerResult{Err: err}
 		}
@@ -260,14 +261,14 @@ func checklistItemText(invocation OperationInvocation) (string, error) {
 // checklistActionSheetOperations is the checklist row's Space menu. Delete has
 // no direct key and reaches the user only here, behind the executor's
 // destructive confirmation.
-var checklistActionSheetOperations = []OperationID{
-	operationChecklistEditItem,
-	operationChecklistDeleteItem,
+var checklistActionSheetOperations = []operation.OperationID{
+	operation.OperationChecklistEditItem,
+	operation.OperationChecklistDeleteItem,
 }
 
-func (m *AppModel) openChecklistActionSheet(context CommandContext) error {
+func (m *AppModel) openChecklistActionSheet(context operation.CommandContext) error {
 	if !context.Entity.HasChecklistCursor {
-		return errors.New(checklistRowRejectionMessage)
+		return errors.New(operation.ChecklistRowRejectionMessage)
 	}
 	sheet, err := NewContextActionSheetModel(
 		m.GetOperationRegistry(),
@@ -299,8 +300,8 @@ func (m *AppModel) openChecklistActionSheet(context CommandContext) error {
 	return nil
 }
 
-func (m *AppModel) checklistItemTextForContext(context CommandContext) string {
-	task, _ := m.taskAndProjectForIdentity(currentTaskIdentity(context))
+func (m *AppModel) checklistItemTextForContext(context operation.CommandContext) string {
+	task, _ := m.taskAndProjectForIdentity(operation.CurrentTaskIdentity(context))
 	if task == nil {
 		return ""
 	}

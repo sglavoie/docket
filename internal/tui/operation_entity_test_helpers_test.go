@@ -1,29 +1,32 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/tui/chrome"
+import (
+	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
+)
 
-func WorkspaceTagEntity(name string) EntityIdentity {
-	return normalizeEntityIdentity(EntityIdentity{Kind: EntityKindTag, Scope: EntityScopeGlobal, Name: name})
+func WorkspaceTagEntity(name string) operation.EntityIdentity {
+	return operation.NormalizeEntityIdentity(operation.EntityIdentity{Kind: operation.EntityKindTag, Scope: operation.EntityScopeGlobal, Name: name})
 }
 
-func ProjectTagEntity(projectID, name string) EntityIdentity {
-	return normalizeEntityIdentity(EntityIdentity{
-		Kind: EntityKindTag, Scope: EntityScopeProject, ProjectID: projectID, Name: name,
+func ProjectTagEntity(projectID, name string) operation.EntityIdentity {
+	return operation.NormalizeEntityIdentity(operation.EntityIdentity{
+		Kind: operation.EntityKindTag, Scope: operation.EntityScopeProject, ProjectID: projectID, Name: name,
 	})
 }
 
-func ScopeEntity(name string) EntityIdentity {
-	return normalizeEntityIdentity(EntityIdentity{Kind: EntityKindScope, Name: name})
+func ScopeEntity(name string) operation.EntityIdentity {
+	return operation.NormalizeEntityIdentity(operation.EntityIdentity{Kind: operation.EntityKindScope, Name: name})
 }
 
-func ModeEntity(id chrome.OutlinerModeID) EntityIdentity {
-	return normalizeEntityIdentity(EntityIdentity{Kind: EntityKindMode, Name: string(id)})
+func ModeEntity(id chrome.OutlinerModeID) operation.EntityIdentity {
+	return operation.NormalizeEntityIdentity(operation.EntityIdentity{Kind: operation.EntityKindMode, Name: string(id)})
 }
 
-func ToolEntity(id string) EntityIdentity {
-	return normalizeEntityIdentity(EntityIdentity{Kind: EntityKindTool, Name: id})
+func ToolEntity(id string) operation.EntityIdentity {
+	return operation.NormalizeEntityIdentity(operation.EntityIdentity{Kind: operation.EntityKindTool, Name: id})
 }
 
-func OperationEntity(id OperationID) EntityIdentity {
-	return normalizeEntityIdentity(EntityIdentity{Kind: EntityKindOperation, Name: string(id)})
+func OperationEntity(id operation.OperationID) operation.EntityIdentity {
+	return operation.NormalizeEntityIdentity(operation.EntityIdentity{Kind: operation.EntityKindOperation, Name: string(id)})
 }

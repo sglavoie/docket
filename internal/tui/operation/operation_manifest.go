@@ -1,15 +1,19 @@
-package tui
+package operation
 
-import "fmt"
+import (
+	"fmt"
 
-// operationManifestEntry describes one ordered production action on an entity
+	"github.com/sglavoie/tt/internal/tui/presentation"
+)
+
+// OperationManifestEntry describes one ordered production action on an entity
 // surface.
-type operationManifestEntry struct {
+type OperationManifestEntry struct {
 	ID       OperationID
 	Label    string
 	Aliases  []string
 	Provider ValueProviderID
-	Category ListCategoryID
+	Category presentation.ListCategoryID
 	Risk     OperationRisk
 	// Bulk marks the operations an existing multi-target coordinator supports.
 	Bulk bool
@@ -25,29 +29,10 @@ type operationManifestEntry struct {
 	DirectOnly bool
 }
 
-// surfaceOperationGate names one entity surface and, once the surface manifests
-// its operations, the startup check that holds it to the one-path rule.
-type surfaceOperationGate struct {
-	strategy InputStrategy
-	validate func(InputStrategy) error
-}
-
-// surfaceOperationGates is the inventory of entity surfaces the one-operation
-// grammar governs.
-func surfaceOperationGates() []surfaceOperationGate {
-	return []surfaceOperationGate{
-		{strategy: SimplifiedInputStrategy(), validate: validateOutlinerOperationOnePath},
-		{strategy: ProjectHubInputStrategy(), validate: validateProjectOperationOnePath},
-		{strategy: NotesInputStrategy(), validate: validateNotesOperationOnePath},
-		{strategy: AttachmentsInputStrategy(), validate: validateAttachmentOperationOnePath},
-		{strategy: CommentsInputStrategy(), validate: validateCommentOperationOnePath},
-	}
-}
-
-// validateOperationOnePath rejects drift between a surface's direct grammar and
+// ValidateOperationOnePath rejects drift between a surface's direct grammar and
 // its action menu before the application starts. A manifested operation is
 // either bound directly and marked DirectOnly or listed in the menu, never both.
-func validateOperationOnePath(manifest []operationManifestEntry, strategy InputStrategy) error {
+func ValidateOperationOnePath(manifest []OperationManifestEntry, strategy InputStrategy) error {
 	direct := make(map[OperationID]bool, len(strategy.Bindings))
 	for _, binding := range strategy.Bindings {
 		direct[binding.OperationID] = true

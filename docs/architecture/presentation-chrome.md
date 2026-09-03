@@ -80,7 +80,7 @@ reservation follow for free, since `statusStripHeight` measures the same body
 file, because two inputs decide it: `MachineState.AdvisoriesHidden`, read once in
 `NewAppModel`, and `RunOptions.HideAdvisories`, which `RunApp` turns into
 `WithHiddenAdvisories()` — a flag forcing hidden for one run and writing nothing.
-`operationCoreToggleAdvisories` writes both, mirroring `coreToggleMenuBar`, so
+`operation.OperationCoreToggleAdvisories` writes both, mirroring `coreToggleMenuBar`, so
 toggling back after a flagged launch persists "shown": the state a user can see
 is the state that was saved. It is registered with `TargetCardinalityNone` and
 bound to no key at all, which is what lets it be menu-only without becoming an
@@ -95,7 +95,7 @@ on the lens picker's template rather than a surface: a `ListSurfaceModel` inside
 one in `dimmedOverlayRenderers`, and one `ConflictBrowserClosedMsg` case in
 `handleOperationOverlayMessage`. It declares no `PresentationID`, no
 `InputStrategy`, and no manifest entry, so `surfaceOperationGates()` still lists
-five strategies and `validateOperationOnePath` — which iterates manifests — has
+five strategies and `operation.ValidateOperationOnePath` — which iterates manifests — has
 nothing new to check. `gc` opens it through the existing go-to chord on
 `SimplifiedInputStrategy`, which is why root `c` stays retired. The host port is
 `AppModel.openConflictBrowser`: it reads `ConflictStore.List` through the same
@@ -184,7 +184,7 @@ forces a key, but until the bar existed nothing could reach one. `menu_bar_test.
 bounds the category with its fourth parity rule — a menu-only operation's
 `TargetSource` must be `OperationTargetGlobal` or `OperationTargetScopedProjects`,
 so it is target-free or view-scoped and never a task or a project. That rule is
-independent of `validateOperationOnePath`, which sees no menu spec and keeps
+independent of `operation.ValidateOperationOnePath`, which sees no menu spec and keeps
 governing the entity action sheets alone; the bar is a projection of the registry
 in the same class as `HelpItemsForInputStrategy` and `GuidanceHintsForInputStrategy`,
 so it names directly-bound operations freely and adds a route rather than a second

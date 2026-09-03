@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // TaskStatePickerModel is the advanced eight-state ListSurface picker used by the
@@ -41,7 +42,7 @@ func NewTaskStatePickerForTargets(
 	}
 	picker, err := newOperationValuePickerModel(
 		request,
-		ValueProviderState,
+		operation.ValueProviderState,
 		"Set State",
 		taskTitle,
 		source,

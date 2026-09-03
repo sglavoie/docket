@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // projectOperationApplicability composes the entity-shape check with the same
@@ -17,15 +18,15 @@ import (
 // applicable so the handler reports the single authoritative "no longer
 // available" error.
 func (m *AppModel) projectOperationApplicability(
-	id OperationID,
+	id operation.OperationID,
 	label string,
-) OperationApplicability {
+) operation.OperationApplicability {
 	requirement, gated := projectOperationRequirements[id]
-	return func(ctx CommandContext) bool {
+	return func(ctx operation.CommandContext) bool {
 		if !projectOperationApplicable(ctx) {
 			return false
 		}
-		project := m.projectByID(currentEntityIdentity(ctx).ProjectID)
+		project := m.projectByID(operation.CurrentEntityIdentity(ctx).ProjectID)
 		if project == nil {
 			return true
 		}
@@ -64,9 +65,9 @@ func (m *AppModel) registerProjectOperations() error {
 
 func (m *AppModel) executeProjectOperation(
 	invocation OperationInvocation,
-	target OperationTarget,
+	target operation.OperationTarget,
 ) OperationHandlerResult {
-	if target.Entity.Kind != EntityKindProject || target.ProjectID == "" {
+	if target.Entity.Kind != operation.EntityKindProject || target.ProjectID == "" {
 		return OperationHandlerResult{
 			Err: fmt.Errorf("%s needs a project target, got %s", invocation.Descriptor.Label, target.Entity),
 		}
@@ -96,7 +97,7 @@ func (m *AppModel) executeProjectOperation(
 // the state a row was built from, so a project archived or removed since the
 // action sheet opened fails loudly instead of acting on stale metadata.
 func (m *AppModel) projectOperationUnavailable(
-	descriptor OperationDescriptor,
+	descriptor operation.OperationDescriptor,
 	project *models.Project,
 ) error {
 	return m.projectRequirementUnmet(
@@ -126,7 +127,7 @@ func (m *AppModel) projectRequirementUnmet(
 }
 
 //nolint:exhaustive // Only project operations are registered with this handler.
-func (m *AppModel) projectOperationMessage(id OperationID, project *models.Project) tea.Msg {
+func (m *AppModel) projectOperationMessage(id operation.OperationID, project *models.Project) tea.Msg {
 	switch id {
 	case operationProjectOpen:
 		return ApplyProjectScopeMsg{ProjectID: project.ID}

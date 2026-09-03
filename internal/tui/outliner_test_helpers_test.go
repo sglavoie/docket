@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -21,7 +22,7 @@ func typedTestApp(t *testing.T) *AppModel {
 	model.features = coordinator.NewFeatureCoordinators(service)
 	model.secondaryFeatures = coordinator.NewSecondaryCoordinators(service)
 	model.deps = newShellDeps(nil)
-	model.operationRegistry = NewOperationRegistry()
+	model.operationRegistry = operation.NewOperationRegistry()
 	model.operationExecutor = NewOperationExecutor(model.operationRegistry)
 
 	model.crossOutliner = NewOutlinerModel(nil, model.configManager, model.runtime)

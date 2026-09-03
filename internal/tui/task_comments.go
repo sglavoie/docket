@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -147,7 +148,7 @@ func (m *TaskCommentsModel) ShouldCaptureEsc() bool {
 // source: the core help descriptor the strategy binds is inapplicable off the
 // Outliner, so the registry half of a merge would contribute nothing and only the
 // keymap can name this panel's own grammar.
-func (m *TaskCommentsModel) GetHelpItems() []HelpItem {
+func (m *TaskCommentsModel) GetHelpItems() []operation.HelpItem {
 	return helpItemsFromKeyMap(m.buildKeyMap())
 }
 

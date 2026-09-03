@@ -41,7 +41,7 @@ surviving as a stale action target.
 
 `ProjectHubInputStrategy` is that grammar, and it is a peer of
 `SimplifiedInputStrategy` rather than a copy: the registry projects one strategy
-into dispatch, footer hints, `?` help, and `validateOperationOnePath`, so a
+into dispatch, footer hints, `?` help, and `operation.ValidateOperationOnePath`, so a
 surface earns its own vocabulary by declaring bindings, not by adding a key
 router. The Hub's cursor keys resolve to the core navigation operations because
 moving a list cursor is the same act everywhere; those descriptors answer only

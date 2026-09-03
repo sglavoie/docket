@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -198,7 +199,7 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, tas
 		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),
 		today:             []PlanningTask{},
 		todayIDs:          make(map[taskref.TaskIdentity]bool),
-		operationRegistry: NewOperationRegistry(),
+		operationRegistry: operation.NewOperationRegistry(),
 		navigation:        NewNavigationState(),
 	}
 	appModel.operationExecutor = NewOperationExecutor(appModel.operationRegistry)

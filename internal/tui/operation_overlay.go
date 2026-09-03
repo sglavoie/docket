@@ -29,7 +29,7 @@ func (m *AppModel) executeOperationOverlayRequest(
 // openOperationValueStep opens the value overlay one provider needs: a typed
 // prompt for text values, the ListSurface picker for everything else.
 func (m *AppModel) openOperationValueStep(request OperationValueRequestMsg) tea.Cmd {
-	if request.Provider.textEntry() {
+	if request.Provider.TextEntry() {
 		prompt, err := m.newOperationTextPrompt(request.Request, request.Provider)
 		if err != nil {
 			m.err = err

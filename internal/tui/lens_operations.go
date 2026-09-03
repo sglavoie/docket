@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // Named lens definitions are portable: they live in the synced
@@ -32,26 +33,26 @@ import (
 // no act to be ordered ahead of. Create, replace, rename, and delete all still
 // commit first.
 const (
-	operationLensApply       OperationID = "tui.lens.apply"
-	operationLensCreate      OperationID = "tui.lens.create"
-	operationLensAddTemplate OperationID = "tui.lens.add-template"
-	operationLensRename      OperationID = "tui.lens.rename"
-	operationLensReplace     OperationID = "tui.lens.replace"
-	operationLensDelete      OperationID = "tui.lens.delete"
+	operationLensApply       operation.OperationID = "tui.lens.apply"
+	operationLensCreate      operation.OperationID = "tui.lens.create"
+	operationLensAddTemplate operation.OperationID = "tui.lens.add-template"
+	operationLensRename      operation.OperationID = "tui.lens.rename"
+	operationLensReplace     operation.OperationID = "tui.lens.replace"
+	operationLensDelete      operation.OperationID = "tui.lens.delete"
 )
 
 // lensOperationDescriptors is the authoritative catalog of named-lens
 // operations. Four of them target one saved lens by its UUID; Create and Add
 // built-in view resolve no target, because the record each writes does not
 // exist yet.
-func lensOperationDescriptors() []OperationDescriptor {
+func lensOperationDescriptors() []operation.OperationDescriptor {
 	lens := func(
-		id OperationID,
+		id operation.OperationID,
 		label string,
 		description string,
-		risk OperationRisk,
-	) OperationDescriptor {
-		return OperationDescriptor{
+		risk operation.OperationRisk,
+	) operation.OperationDescriptor {
+		return operation.OperationDescriptor{
 			ID:          id,
 			Label:       label,
 			Description: description,
@@ -59,26 +60,26 @@ func lensOperationDescriptors() []OperationDescriptor {
 			// every facet it narrows by.
 			// It groups with the facets that decide the same axes rather than with
 			// an entity family, because it owns no domain entity of its own.
-			Category:             OperationCategoryFilter,
-			TargetSource:         OperationTargetCurrentEntity,
-			TargetCardinality:    TargetCardinalityOne,
-			RequiredCapabilities: NewCapabilitySet(CapabilityLensPicker),
+			Category:             operation.OperationCategoryFilter,
+			TargetSource:         operation.OperationTargetCurrentEntity,
+			TargetCardinality:    operation.TargetCardinalityOne,
+			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilityLensPicker),
 			Applicability:        lensOperationApplicable,
 			Risk:                 risk,
 		}
 	}
-	return []OperationDescriptor{
-		lens(operationLensApply, "Apply lens", "Open this saved view", OperationRiskReadOnly),
+	return []operation.OperationDescriptor{
+		lens(operationLensApply, "Apply lens", "Open this saved view", operation.OperationRiskReadOnly),
 		{
 			ID:                   operationLensCreate,
 			Label:                "Save current view",
 			Description:          "Save the current view as a new lens",
-			Category:             OperationCategoryFilter,
-			TargetSource:         OperationTargetGlobal,
-			TargetCardinality:    TargetCardinalityNone,
-			RequiredCapabilities: NewCapabilitySet(CapabilityLensPicker),
-			Risk:                 OperationRiskMutation,
-			ValueProviderID:      ValueProviderLensName,
+			Category:             operation.OperationCategoryFilter,
+			TargetSource:         operation.OperationTargetGlobal,
+			TargetCardinality:    operation.TargetCardinalityNone,
+			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilityLensPicker),
+			Risk:                 operation.OperationRiskMutation,
+			ValueProviderID:      operation.ValueProviderLensName,
 		},
 		{
 			// Adding a template writes an ordinary lens under the catalog's own
@@ -87,16 +88,16 @@ func lensOperationDescriptors() []OperationDescriptor {
 			ID:                   operationLensAddTemplate,
 			Label:                "Add built-in view",
 			Description:          "Add one of the built-in views as a saved lens",
-			Category:             OperationCategoryFilter,
-			TargetSource:         OperationTargetGlobal,
-			TargetCardinality:    TargetCardinalityNone,
-			RequiredCapabilities: NewCapabilitySet(CapabilityLensPicker),
-			Risk:                 OperationRiskMutation,
-			ValueProviderID:      ValueProviderLensTemplate,
+			Category:             operation.OperationCategoryFilter,
+			TargetSource:         operation.OperationTargetGlobal,
+			TargetCardinality:    operation.TargetCardinalityNone,
+			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilityLensPicker),
+			Risk:                 operation.OperationRiskMutation,
+			ValueProviderID:      operation.ValueProviderLensTemplate,
 		},
-		withValueProvider(
-			lens(operationLensRename, "Rename lens", "Give this lens a new name", OperationRiskMutation),
-			ValueProviderLensName,
+		operation.WithValueProvider(
+			lens(operationLensRename, "Rename lens", "Give this lens a new name", operation.OperationRiskMutation),
+			operation.ValueProviderLensName,
 		),
 		// Replace and Delete overwrite or drop a saved record with no undo entry
 		// behind them, so both carry destructive risk and fall through to the
@@ -107,17 +108,17 @@ func lensOperationDescriptors() []OperationDescriptor {
 			// sits under the lens's own name: what needs saying is which view wins.
 			"Replace from current view",
 			"Overwrite this lens with the current view",
-			OperationRiskDestructive,
+			operation.OperationRiskDestructive,
 		),
-		lens(operationLensDelete, "Delete lens", "Delete this saved lens", OperationRiskDestructive),
+		lens(operationLensDelete, "Delete lens", "Delete this saved lens", operation.OperationRiskDestructive),
 	}
 }
 
 // lensOperationApplicable admits a lens operation only when the focused entity
-// is a lens. currentEntityIdentity degrades to the focused task and then the
+// is a lens. CurrentEntityIdentity degrades to the focused task and then the
 // scoped project, so an unguarded descriptor would borrow an unrelated target.
-func lensOperationApplicable(ctx CommandContext) bool {
-	return currentEntityIdentity(ctx).Kind == EntityKindLens
+func lensOperationApplicable(ctx operation.CommandContext) bool {
+	return operation.CurrentEntityIdentity(ctx).Kind == operation.EntityKindLens
 }
 
 func (m *AppModel) registerLensOperations() error {
@@ -125,13 +126,13 @@ func (m *AppModel) registerLensOperations() error {
 		return fmt.Errorf("operation registry and executor are required")
 	}
 	if err := m.operationExecutor.RegisterValueProvider(
-		ValueProviderLensName,
+		operation.ValueProviderLensName,
 		pendingTextValueProvider,
 	); err != nil {
 		return err
 	}
 	if err := m.operationExecutor.RegisterValueProvider(
-		ValueProviderLensTemplate,
+		operation.ValueProviderLensTemplate,
 		// Returning no immediate value asks the shell to open the built-in view
 		// gallery. Registering it here is also what makes the executor's own value
 		// gate reachable: an add with no template selected stops before the handler.
@@ -141,13 +142,13 @@ func (m *AppModel) registerLensOperations() error {
 	}
 	for _, descriptor := range lensOperationDescriptors() {
 		binding := OperationBinding{
-			RequiredCapabilities: NewCapabilitySet(CapabilityLensPicker),
+			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilityLensPicker),
 			Applicability:        descriptor.Applicability,
 			// Machine-local state lives outside the synced workspace set, so no
 			// workspace transaction is opened for any of these.
 			DelegateTransaction: true,
 		}
-		if descriptor.TargetCardinality == TargetCardinalityNone {
+		if descriptor.TargetCardinality == operation.TargetCardinalityNone {
 			handler := m.zeroTargetLensHandler(descriptor.ID)
 			if handler == nil {
 				return fmt.Errorf(
@@ -172,7 +173,7 @@ func (m *AppModel) registerLensOperations() error {
 // values, so each dispatches to its own handler rather than sharing one branch.
 // An unmapped zero-target descriptor fails registration instead of borrowing a
 // neighbor's handler.
-func (m *AppModel) zeroTargetLensHandler(id OperationID) OperationHandler {
+func (m *AppModel) zeroTargetLensHandler(id operation.OperationID) OperationHandler {
 	switch id {
 	case operationLensCreate:
 		return m.executeLensCreateOperation
@@ -187,8 +188,8 @@ func (m *AppModel) zeroTargetLensHandler(id OperationID) OperationHandler {
 // machine snapshot. A UUID the snapshot no longer carries — a lens another
 // window deleted, or a row built before a reload — fails loudly here instead of
 // acting on a stale copy the picker still shows.
-func (m *AppModel) resolveLensTarget(identity EntityIdentity) (config.NamedLens, error) {
-	if identity.Kind != EntityKindLens || !identity.Valid() {
+func (m *AppModel) resolveLensTarget(identity operation.EntityIdentity) (config.NamedLens, error) {
+	if identity.Kind != operation.EntityKindLens || !identity.Valid() {
 		return config.NamedLens{}, fmt.Errorf("%s is not a lens", identity)
 	}
 	if m == nil || m.runtime == nil {

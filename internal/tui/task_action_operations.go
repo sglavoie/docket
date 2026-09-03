@@ -4,32 +4,31 @@ import (
 	"fmt"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
-func (m *AppModel) taskActionOperationDescriptors() []OperationDescriptor {
+func (m *AppModel) taskActionOperationDescriptors() []operation.OperationDescriptor {
 	manifest := taskOperationDescriptorManifest()
-	descriptors := make([]OperationDescriptor, 0, len(manifest))
+	descriptors := make([]operation.OperationDescriptor, 0, len(manifest))
 	for _, entry := range manifest {
 		if entry.Core {
 			continue
 		}
-		source, cardinality := OperationTargetCurrentTask, TargetCardinalityOne
+		source, cardinality := operation.OperationTargetCurrentTask, operation.TargetCardinalityOne
 		if entry.Bulk {
-			source, cardinality = OperationTargetSelectedTasks, TargetCardinalityOneOrMore
+			source, cardinality = operation.OperationTargetSelectedTasks, operation.TargetCardinalityOneOrMore
 		}
 		id := entry.ID
-		descriptors = append(descriptors, OperationDescriptor{
+		descriptors = append(descriptors, operation.OperationDescriptor{
 			ID:                   id,
 			Label:                entry.Label,
 			Aliases:              entry.Aliases,
-			Category:             OperationCategoryTask,
+			Category:             operation.OperationCategoryTask,
 			TargetSource:         source,
 			TargetCardinality:    cardinality,
-			RequiredCapabilities: NewCapabilitySet(CapabilitySimplifiedInput),
-			Applicability: func(context CommandContext) bool {
+			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
+			Applicability: func(context operation.CommandContext) bool {
 				return m.taskActionOperationApplicable(id, context)
 			},
 			Risk:            entry.Risk,
@@ -39,7 +38,7 @@ func (m *AppModel) taskActionOperationDescriptors() []OperationDescriptor {
 	return descriptors
 }
 
-func (m *AppModel) taskActionOperationApplicable(id OperationID, context CommandContext) bool {
+func (m *AppModel) taskActionOperationApplicable(id operation.OperationID, context operation.CommandContext) bool {
 	if !coreOutlinerApplicability(context) {
 		return false
 	}
@@ -54,11 +53,11 @@ func (m *AppModel) taskActionOperationApplicable(id OperationID, context Command
 		if context.Selection.Visual {
 			return entry.Bulk
 		}
-		return !commandContextNamesNonTaskEntity(context)
+		return !operation.CommandContextNamesNonTaskEntity(context)
 	}
-	entities := []EntityContext{context.Entity}
+	entities := []operation.EntityContext{context.Entity}
 	if context.Selection.Visual {
-		selected := normalizedTaskIdentities(context.Selection.Tasks)
+		selected := operation.NormalizedTaskIdentities(context.Selection.Tasks)
 		if len(selected) == 0 || len(context.Selection.Entities) != len(selected) {
 			return false
 		}
@@ -71,7 +70,7 @@ func (m *AppModel) taskActionOperationApplicable(id OperationID, context Command
 		if entity.TaskID == "" || entity.ProjectID == "" {
 			return false
 		}
-		if entity.Archived && entry.Risk != OperationRiskReadOnly {
+		if entity.Archived && entry.Risk != operation.OperationRiskReadOnly {
 			return false
 		}
 		if !m.taskStructureAllowsOperation(id, entity) {
@@ -106,7 +105,7 @@ func deferRefusalReason(refs []TaskProjectRef) string {
 // domain would reject: an indent with no legal parent above or an outdent at root. A target
 // that no longer resolves stays applicable so the handler reports the single
 // authoritative "no longer available" error instead of the row vanishing.
-func (m *AppModel) taskStructureAllowsOperation(id OperationID, entity EntityContext) bool {
+func (m *AppModel) taskStructureAllowsOperation(id operation.OperationID, entity operation.EntityContext) bool {
 	switch id {
 	case operationTaskIndent, operationTaskOutdent:
 	default:
@@ -148,16 +147,16 @@ func (m *AppModel) registerTaskActionOperations() error {
 		return fmt.Errorf("operation registry and executor are required")
 	}
 	executor := m.operationExecutor
-	for _, provider := range []ValueProviderID{
-		ValueProviderState,
-		ValueProviderPriority,
-		ValueProviderDate,
-		ValueProviderDueDate,
-		ValueProviderTags,
-		ValueProviderParent,
-		ValueProviderChild,
-		ValueProviderProject,
-		ValueProviderTaskReference,
+	for _, provider := range []operation.ValueProviderID{
+		operation.ValueProviderState,
+		operation.ValueProviderPriority,
+		operation.ValueProviderDate,
+		operation.ValueProviderDueDate,
+		operation.ValueProviderTags,
+		operation.ValueProviderParent,
+		operation.ValueProviderChild,
+		operation.ValueProviderProject,
+		operation.ValueProviderTaskReference,
 	} {
 		if err := executor.RegisterValueProvider(provider, pendingPickedValueProvider); err != nil {
 			return err
@@ -165,7 +164,7 @@ func (m *AppModel) registerTaskActionOperations() error {
 	}
 	for _, descriptor := range m.taskActionOperationDescriptors() {
 		if err := m.registerOperation(descriptor, OperationBinding{
-			RequiredCapabilities: NewCapabilitySet(CapabilitySimplifiedInput),
+			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
 			Applicability:        descriptor.Applicability,
 			Handler:              m.executeTaskOperation,
 			// Every handler below dispatches to an application-layer coordinator
@@ -180,69 +179,4 @@ func (m *AppModel) registerTaskActionOperations() error {
 		}
 	}
 	return nil
-}
-
-// acceptsPresetValue reports whether a key binding may deliver value directly
-// instead of opening the provider's picker. It mirrors the type assertions the
-// task handlers below make, so a mistyped preset is rejected when the input
-// strategy is registered rather than when the user presses the chord.
-func (id ValueProviderID) acceptsPresetValue(value any) bool {
-	switch id {
-	case ValueProviderState:
-		state, ok := value.(models.WorkflowState)
-		return ok && state.IsValid()
-	case ValueProviderPriority, ValueProviderFilterPriority:
-		_, ok := value.(int)
-		return ok
-	case ValueProviderFilterDue:
-		// A due preset is the token one row writes, so a binding that names a
-		// spelling no row offers is rejected at registration.
-		token, ok := value.(string)
-		if !ok {
-			return false
-		}
-		_, known := query.DueFilterShortcutForToken(token)
-		return known
-	case ValueProviderFilterDependency:
-		// The f~ rows are their own canonical tokens too, so the same registration
-		// check keeps a binding from naming a spelling no row offers.
-		token, ok := value.(string)
-		if !ok {
-			return false
-		}
-		_, known := query.DependencyFilterShortcutForToken(token)
-		return known
-	case ValueProviderFilterCompletionAge:
-		_, ok := value.(query.CompletionAgeFilter)
-		return ok
-	case ValueProviderFilterStates,
-		ValueProviderFilterTags,
-		ValueProviderFilterContexts,
-		ValueProviderFilterProjectTags:
-		_, ok := value.([]string)
-		return ok
-	case ValueProviderProjectTagDestination, ValueProviderProject:
-		_, ok := value.(string)
-		return ok
-	case ValueProviderDate, ValueProviderDueDate:
-		_, ok := value.(OperationDateValue)
-		return ok
-	case ValueProviderParent:
-		_, ok := value.(OperationParentValue)
-		return ok
-	case ValueProviderChild:
-		_, ok := value.([]string)
-		return ok
-	case ValueProviderTags:
-		if _, ok := value.([]string); ok {
-			return true
-		}
-		_, ok := value.(OperationTagsValue)
-		return ok
-	case ValueProviderNoteTitle, ValueProviderTagName:
-		_, ok := value.(string)
-		return ok
-	default:
-		return false
-	}
 }

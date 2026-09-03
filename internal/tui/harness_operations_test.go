@@ -15,33 +15,34 @@ import (
 	"github.com/sglavoie/tt/internal/transaction"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/util"
 )
 
-const CapabilityHarness Capability = "surface:test-harness"
+const CapabilityHarness operation.Capability = "surface:test-harness"
 
 const (
-	operationHarnessNewProject      OperationID = "tui.harness.new-project"
-	operationHarnessOutliner        OperationID = "tui.harness.outliner"
-	operationHarnessOutlinerRoot    OperationID = "tui.harness.outliner-root"
-	operationHarnessReference       OperationID = "tui.harness.reference"
-	operationHarnessScope           OperationID = "tui.harness.scope"
-	operationHarnessInbox           OperationID = "tui.harness.inbox"
-	operationHarnessProjectInbox    OperationID = "tui.harness.project-inbox"
-	operationHarnessRenameProject   OperationID = "tui.harness.rename-project"
-	operationHarnessTaskAttachments OperationID = "tui.harness.task-attachments"
-	operationHarnessTaskComments    OperationID = "tui.harness.task-comments"
-	operationHarnessProjectNotes    OperationID = "tui.harness.project-notes"
-	operationHarnessOutlineErrors   OperationID = "tui.harness.outline-errors"
-	operationHarnessOutlineDelete   OperationID = "tui.harness.outline-delete-confirm"
-	operationHarnessEditorSigils    OperationID = "tui.harness.external-editor-sigils"
-	operationHarnessEditorRefusal   OperationID = "tui.harness.external-editor-refusal"
-	operationHarnessDanglingLens    OperationID = "tui.harness.dangling-active-lens"
-	operationHarnessRecordConflict  OperationID = "tui.harness.record-conflict"
-	operationHarnessConflictOffTick OperationID = "tui.harness.record-conflict-off-tick"
-	operationHarnessForeignTxn      OperationID = "tui.harness.foreign-live-transaction"
+	operationHarnessNewProject      operation.OperationID = "tui.harness.new-project"
+	operationHarnessOutliner        operation.OperationID = "tui.harness.outliner"
+	operationHarnessOutlinerRoot    operation.OperationID = "tui.harness.outliner-root"
+	operationHarnessReference       operation.OperationID = "tui.harness.reference"
+	operationHarnessScope           operation.OperationID = "tui.harness.scope"
+	operationHarnessInbox           operation.OperationID = "tui.harness.inbox"
+	operationHarnessProjectInbox    operation.OperationID = "tui.harness.project-inbox"
+	operationHarnessRenameProject   operation.OperationID = "tui.harness.rename-project"
+	operationHarnessTaskAttachments operation.OperationID = "tui.harness.task-attachments"
+	operationHarnessTaskComments    operation.OperationID = "tui.harness.task-comments"
+	operationHarnessProjectNotes    operation.OperationID = "tui.harness.project-notes"
+	operationHarnessOutlineErrors   operation.OperationID = "tui.harness.outline-errors"
+	operationHarnessOutlineDelete   operation.OperationID = "tui.harness.outline-delete-confirm"
+	operationHarnessEditorSigils    operation.OperationID = "tui.harness.external-editor-sigils"
+	operationHarnessEditorRefusal   operation.OperationID = "tui.harness.external-editor-refusal"
+	operationHarnessDanglingLens    operation.OperationID = "tui.harness.dangling-active-lens"
+	operationHarnessRecordConflict  operation.OperationID = "tui.harness.record-conflict"
+	operationHarnessConflictOffTick operation.OperationID = "tui.harness.record-conflict-off-tick"
+	operationHarnessForeignTxn      operation.OperationID = "tui.harness.foreign-live-transaction"
 )
 
 // The canned conflict bundle. A conflict is recorded only when a project changes
@@ -77,9 +78,9 @@ const (
 const harnessOutlineScenarioPath = "/tmp/tt-outline-scenario.md"
 
 type harnessOperationSpec struct {
-	id       OperationID
+	id       operation.OperationID
 	label    string
-	category OperationCategory
+	category operation.OperationCategory
 	message  func() tea.Msg
 }
 
@@ -89,51 +90,51 @@ type harnessOperationSpec struct {
 // links never appear in help, footers, or available-command output.
 func (m *AppModel) registerHarnessOperations() error {
 	specs := []harnessOperationSpec{
-		{operationHarnessNewProject, "new project", OperationCategoryProject, func() tea.Msg { return CreateProjectMsg{} }},
-		{operationHarnessOutliner, "outliner", OperationCategoryNavigation, func() tea.Msg { return m.harnessOpenOutliner(OutlinerOpenOptions{}) }},
-		{operationHarnessOutlinerRoot, "outliner root", OperationCategoryNavigation, func() tea.Msg { return m.harnessOpenOutliner(OutlinerOpenOptions{}) }},
-		{operationHarnessReference, "reference", OperationCategorySystem, func() tea.Msg {
+		{operationHarnessNewProject, "new project", operation.OperationCategoryProject, func() tea.Msg { return CreateProjectMsg{} }},
+		{operationHarnessOutliner, "outliner", operation.OperationCategoryNavigation, func() tea.Msg { return m.harnessOpenOutliner(OutlinerOpenOptions{}) }},
+		{operationHarnessOutlinerRoot, "outliner root", operation.OperationCategoryNavigation, func() tea.Msg { return m.harnessOpenOutliner(OutlinerOpenOptions{}) }},
+		{operationHarnessReference, "reference", operation.OperationCategorySystem, func() tea.Msg {
 			return ShowHelpMsg{
 				ViewName: "Outliner",
 				Items:    m.coreInputHelpItems(),
 			}
 		}},
-		{operationHarnessScope, "choose scope", OperationCategoryScope, func() tea.Msg { return ShowProjectHubMsg{} }},
-		{operationHarnessInbox, "global inbox mode", OperationCategoryMode, func() tea.Msg {
+		{operationHarnessScope, "choose scope", operation.OperationCategoryScope, func() tea.Msg { return ShowProjectHubMsg{} }},
+		{operationHarnessInbox, "global inbox mode", operation.OperationCategoryMode, func() tea.Msg {
 			return m.harnessOpenOutliner(OutlinerOpenOptions{SetMode: true, Mode: chrome.ModeInbox})
 		}},
-		{operationHarnessProjectInbox, "project inbox mode", OperationCategoryMode, func() tea.Msg {
+		{operationHarnessProjectInbox, "project inbox mode", operation.OperationCategoryMode, func() tea.Msg {
 			return m.harnessOpenOutliner(OutlinerOpenOptions{SetMode: true, Mode: chrome.ModeInbox})
 		}},
-		{operationHarnessRenameProject, "rename project", OperationCategoryProject, func() tea.Msg {
+		{operationHarnessRenameProject, "rename project", operation.OperationCategoryProject, func() tea.Msg {
 			_, project := m.outlinerTarget()
 			if project == nil {
 				return nil
 			}
 			return EditProjectMsg{Project: project}
 		}},
-		{operationHarnessTaskAttachments, "task attachments", OperationCategoryTask, func() tea.Msg {
+		{operationHarnessTaskAttachments, "task attachments", operation.OperationCategoryTask, func() tea.Msg {
 			task, project := m.outlinerTarget()
 			if task == nil || project == nil {
 				return nil
 			}
 			return ShowTaskAttachmentsMsg{Task: task, Project: project}
 		}},
-		{operationHarnessTaskComments, "task comments", OperationCategoryTask, func() tea.Msg {
+		{operationHarnessTaskComments, "task comments", operation.OperationCategoryTask, func() tea.Msg {
 			task, project := m.outlinerTarget()
 			if task == nil || project == nil {
 				return nil
 			}
 			return ShowTaskCommentsMsg{Task: task, Project: project}
 		}},
-		{operationHarnessProjectNotes, "show notes", OperationCategoryNote, func() tea.Msg {
+		{operationHarnessProjectNotes, "show notes", operation.OperationCategoryNote, func() tea.Msg {
 			_, project := m.outlinerTarget()
 			if project != nil {
 				return ShowNotesManagerMsg{Scope: ProjectNotesScope(project.ID)}
 			}
 			return ShowNotesManagerMsg{Scope: AllNotesScope()}
 		}},
-		{operationHarnessOutlineErrors, "outline errors", OperationCategorySystem, func() tea.Msg {
+		{operationHarnessOutlineErrors, "outline errors", operation.OperationCategorySystem, func() tea.Msg {
 			// The outline refusal surface is only reachable through an external
 			// editor round trip, which no harness action can replay: editors are
 			// disabled and the `command` action carries no buffer payload. Scenarios
@@ -145,20 +146,20 @@ func (m *AppModel) registerHarnessOperations() error {
 			))
 			return nil
 		}},
-		{operationHarnessOutlineDelete, "outline delete confirm", OperationCategorySystem, func() tea.Msg {
+		{operationHarnessOutlineDelete, "outline delete confirm", operation.OperationCategorySystem, func() tea.Msg {
 			// Same reason as the refusal surface: the round trip cannot be replayed,
 			// so the harness dumps the cursor's project, drops the buffer's last line,
 			// and hands the result to the real handler. Everything the prompt shows is
 			// therefore produced by the production path.
 			return m.harnessOutlineDeleteConfirm()
 		}},
-		{operationHarnessEditorSigils, "external editor sigils", OperationCategorySystem, func() tea.Msg {
+		{operationHarnessEditorSigils, "external editor sigils", operation.OperationCategorySystem, func() tea.Msg {
 			return m.harnessTaskContentEdited(harnessEditorSigilTitle, false)
 		}},
-		{operationHarnessEditorRefusal, "external editor refusal", OperationCategorySystem, func() tea.Msg {
+		{operationHarnessEditorRefusal, "external editor refusal", operation.OperationCategorySystem, func() tea.Msg {
 			return m.harnessTaskContentEdited(harnessEditorRefusedTitle, true)
 		}},
-		{operationHarnessDanglingLens, "dangling active lens", OperationCategorySystem, func() tea.Msg {
+		{operationHarnessDanglingLens, "dangling active lens", operation.OperationCategorySystem, func() tea.Msg {
 			// The saved definitions are left alone: what is being staged is a
 			// pointer that outlived its record, which is what the next launch has
 			// to fail closed on.
@@ -170,7 +171,7 @@ func (m *AppModel) registerHarnessOperations() error {
 			}
 			return nil
 		}},
-		{operationHarnessRecordConflict, "record merge conflict", OperationCategorySystem, func() tea.Msg {
+		{operationHarnessRecordConflict, "record merge conflict", operation.OperationCategorySystem, func() tea.Msg {
 			if err := m.harnessRecordConflict(); err != nil {
 				return status.ErrorMsg{Err: err}
 			}
@@ -180,7 +181,7 @@ func (m *AppModel) registerHarnessOperations() error {
 			m.refreshOutstandingConflicts()
 			return nil
 		}},
-		{operationHarnessConflictOffTick, "record merge conflict off tick", OperationCategorySystem, func() tea.Msg {
+		{operationHarnessConflictOffTick, "record merge conflict off tick", operation.OperationCategorySystem, func() tea.Msg {
 			// Same bundle, no refresh. This is what another machine writing a
 			// bundle into the synced directory looks like from here: the file is
 			// there and this app has not looked yet, so only the periodic tick can
@@ -190,7 +191,7 @@ func (m *AppModel) registerHarnessOperations() error {
 			}
 			return nil
 		}},
-		{operationHarnessForeignTxn, "stage foreign live transaction", OperationCategorySystem, func() tea.Msg {
+		{operationHarnessForeignTxn, "stage foreign live transaction", operation.OperationCategorySystem, func() tea.Msg {
 			if err := m.harnessStageForeignTransaction(); err != nil {
 				return status.ErrorMsg{Err: err}
 			}
@@ -200,17 +201,17 @@ func (m *AppModel) registerHarnessOperations() error {
 
 	for _, spec := range specs {
 		spec := spec
-		descriptor := OperationDescriptor{
+		descriptor := operation.OperationDescriptor{
 			ID:                   spec.id,
 			Label:                spec.label,
 			Category:             spec.category,
-			TargetSource:         OperationTargetGlobal,
-			TargetCardinality:    TargetCardinalityNone,
-			RequiredCapabilities: NewCapabilitySet(CapabilityHarness),
-			Risk:                 OperationRiskReadOnly,
+			TargetSource:         operation.OperationTargetGlobal,
+			TargetCardinality:    operation.TargetCardinalityNone,
+			RequiredCapabilities: operation.NewCapabilitySet(CapabilityHarness),
+			Risk:                 operation.OperationRiskReadOnly,
 		}
 		if err := m.registerOperation(descriptor, OperationBinding{
-			RequiredCapabilities:     NewCapabilitySet(CapabilityHarness),
+			RequiredCapabilities:     operation.NewCapabilitySet(CapabilityHarness),
 			DelegateTargetResolution: true,
 			DelegateValueProvider:    true,
 			DelegateConfirmation:     true,

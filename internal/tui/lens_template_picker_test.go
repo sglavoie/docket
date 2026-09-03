@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -22,7 +23,7 @@ const lensTemplateForeignID = "11111111-2222-4333-8444-555555555501"
 // names a task, which is the point — the catalog is global.
 func openLensTemplateGallery(t *testing.T, model *AppModel) *OperationValuePickerModel {
 	t.Helper()
-	result := executeLens(model, operationLensAddTemplate, EntityIdentity{}, "", false)
+	result := executeLens(model, operationLensAddTemplate, operation.EntityIdentity{}, "", false)
 	if result.ValueRequired == nil {
 		t.Fatalf("add template did not ask for a value: %#v", result)
 	}
@@ -95,8 +96,8 @@ func TestLensTemplateGalleryOpensWithoutAnyTaskContext(t *testing.T) {
 	// resolved task refs would fail here instead of rendering the catalog.
 	picker := openLensTemplateGallery(t, model)
 
-	if picker.provider != ValueProviderLensTemplate {
-		t.Fatalf("gallery provider = %q, want %q", picker.provider, ValueProviderLensTemplate)
+	if picker.provider != operation.ValueProviderLensTemplate {
+		t.Fatalf("gallery provider = %q, want %q", picker.provider, operation.ValueProviderLensTemplate)
 	}
 	if picker.multi {
 		t.Fatal("the gallery is a single-select picker")
@@ -107,7 +108,7 @@ func TestLensTemplateGalleryOpensWithoutAnyTaskContext(t *testing.T) {
 	if picker.subtitle != "Choose a lens template" {
 		t.Fatalf("gallery subtitle = %q, want Choose a lens template", picker.subtitle)
 	}
-	if picker.provider.textEntry() || picker.provider.tagEntry() || picker.provider.dateEntry() {
+	if picker.provider.TextEntry() || picker.provider.TagEntry() || picker.provider.DateEntry() {
 		t.Fatal("the gallery provider must be a plain list, not a text, tag, or date entry")
 	}
 }

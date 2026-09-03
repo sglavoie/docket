@@ -1,5 +1,7 @@
 package tui
 
+import "github.com/sglavoie/tt/internal/tui/operation"
+
 // CloseHelpMsg is sent when the help view should close.
 type CloseHelpMsg struct{ PopViewMsg }
 
@@ -8,5 +10,5 @@ type CloseHelpMsg struct{ PopViewMsg }
 // where they were, and the help viewer never needs to name its opener.
 type ShowHelpMsg struct {
 	ViewName string
-	Items    []HelpItem
+	Items    []operation.HelpItem
 }

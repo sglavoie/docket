@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 func TestNotesDirectGrammarMatchesTheWorkspaceManager(t *testing.T) {
@@ -63,7 +64,7 @@ func TestFinalPriorityChordUsesBangPrefix(t *testing.T) {
 func TestFinalStateChordOwnsEveryStateAndPlanningAction(t *testing.T) {
 	strategy := SimplifiedInputStrategy()
 	type terminal struct {
-		operation OperationID
+		operation operation.OperationID
 		value     any
 		hasValue  bool
 		display   string
@@ -86,9 +87,9 @@ func TestFinalStateChordOwnsEveryStateAndPlanningAction(t *testing.T) {
 	const stateSpelling = "$i/g/w/p/m/d/c"
 	want := map[string]terminal{
 		"i": {operation: operationTaskSetState, value: models.StateInbox, hasValue: true, display: stateSpelling},
-		"b": {operation: operationCoreBacklog, display: "$b"},
-		"n": {operation: operationCoreNext, display: "$n"},
-		"t": {operation: operationCoreToday, display: "$t"},
+		"b": {operation: operation.OperationCoreBacklog, display: "$b"},
+		"n": {operation: operation.OperationCoreNext, display: "$n"},
+		"t": {operation: operation.OperationCoreToday, display: "$t"},
 		"g": {operation: operationTaskSetState, value: models.StateDoing, hasValue: true, display: stateSpelling},
 		"w": {operation: operationTaskSetState, value: models.StateWaiting, hasValue: true, display: stateSpelling},
 		"p": {operation: operationTaskSetState, value: models.StatePaused, hasValue: true, display: stateSpelling},
@@ -117,7 +118,7 @@ func TestFinalStateChordOwnsEveryStateAndPlanningAction(t *testing.T) {
 func TestDirectTaskGrammarRemainsDocumentedWithoutACursorTarget(t *testing.T) {
 	registry := registeredSimplifiedOperationRegistry(t)
 	items := registry.HelpItemsForInputStrategy(
-		InputStrategySimplified,
+		operation.InputStrategySimplified,
 		simplifiedOperationContext(),
 	)
 	keys := make(map[string]bool, len(items))

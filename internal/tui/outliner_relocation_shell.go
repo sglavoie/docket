@@ -3,6 +3,7 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -12,7 +13,7 @@ import (
 // and carrying one alongside a transaction result until the committed rows are
 // visible.
 
-func (m *AppModel) captureOutlinerRelocationForTargets(targets ResolvedOperationTargets) *outlinerRelocationCapture {
+func (m *AppModel) captureOutlinerRelocationForTargets(targets operation.ResolvedOperationTargets) *outlinerRelocationCapture {
 	out, ok := m.outlinerPrimary()
 	if !ok || out == nil {
 		return nil

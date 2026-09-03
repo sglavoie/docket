@@ -6,32 +6,33 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestFocusKeyGrammarDispatchHelpAndGuidanceAgree(t *testing.T) {
 	registry := registeredSimplifiedOperationRegistry(t)
 	ctx := simplifiedOperationContext()
-	ctx.Entity = EntityContext{ProjectID: "project", TaskID: "parent"}
-	ctx.CurrentEntity = TaskEntity("project", "parent")
+	ctx.Entity = operation.EntityContext{ProjectID: "project", TaskID: "parent"}
+	ctx.CurrentEntity = operation.TaskEntity("project", "parent")
 	ctx.ScopeProjectIDs = []string{"project"}
 
 	for _, test := range []struct {
 		key  string
-		want OperationID
+		want operation.OperationID
 	}{
-		{key: "enter", want: operationCoreFocusSubtree},
-		{key: "shift+enter", want: operationCoreFocusParent},
-		{key: "ctrl+enter", want: operationCorePeek},
+		{key: "enter", want: operation.OperationCoreFocusSubtree},
+		{key: "shift+enter", want: operation.OperationCoreFocusParent},
+		{key: "ctrl+enter", want: operation.OperationCorePeek},
 	} {
-		binding, _, ok := registry.InputBindingForKey(InputStrategySimplified, test.key, ctx)
+		binding, _, ok := registry.InputBindingForKey(operation.InputStrategySimplified, test.key, ctx)
 		if !ok || binding.OperationID != test.want {
 			t.Fatalf("%s binding = %s available=%t, want %s", test.key, binding.OperationID, ok, test.want)
 		}
 	}
 
-	help := registry.HelpItemsForInputStrategy(InputStrategySimplified, ctx)
-	footer := guidanceHintsText(registry.GuidanceHintsForInputStrategy(InputStrategySimplified, ctx))
+	help := registry.HelpItemsForInputStrategy(operation.InputStrategySimplified, ctx)
+	footer := guidanceHintsText(registry.GuidanceHintsForInputStrategy(operation.InputStrategySimplified, ctx))
 	for key, description := range map[string]string{
 		"Enter":       "Focus Subtree",
 		"Shift+Enter": "Focus Parent",
@@ -55,23 +56,23 @@ func TestFocusKeyGrammarDispatchHelpAndGuidanceAgree(t *testing.T) {
 	}
 
 	section := simplifiedOperationContext()
-	section.Entity = EntityContext{HasSectionHeaderCursor: true}
-	binding, _, ok := registry.InputBindingForKey(InputStrategySimplified, "enter", section)
-	if !ok || binding.OperationID != operationCoreZoomSection {
-		t.Fatalf("section header Enter = %s available=%t, want %s", binding.OperationID, ok, operationCoreZoomSection)
+	section.Entity = operation.EntityContext{HasSectionHeaderCursor: true}
+	binding, _, ok := registry.InputBindingForKey(operation.InputStrategySimplified, "enter", section)
+	if !ok || binding.OperationID != operation.OperationCoreZoomSection {
+		t.Fatalf("section header Enter = %s available=%t, want %s", binding.OperationID, ok, operation.OperationCoreZoomSection)
 	}
-	sectionHelp := registry.HelpItemsForInputStrategy(InputStrategySimplified, section)
-	if !slices.ContainsFunc(sectionHelp, func(item HelpItem) bool {
+	sectionHelp := registry.HelpItemsForInputStrategy(operation.InputStrategySimplified, section)
+	if !slices.ContainsFunc(sectionHelp, func(item operation.HelpItem) bool {
 		return item.Key == "Enter" && item.Description == "Zoom to Section"
 	}) {
 		t.Error("generated help omits Enter Zoom to Section")
 	}
 
 	header := simplifiedOperationContext()
-	header.Entity = EntityContext{ProjectID: "project"}
-	binding, _, ok = registry.InputBindingForKey(InputStrategySimplified, "enter", header)
-	if !ok || binding.OperationID != operationCoreActivateGroup {
-		t.Fatalf("project header Enter = %s available=%t, want %s", binding.OperationID, ok, operationCoreActivateGroup)
+	header.Entity = operation.EntityContext{ProjectID: "project"}
+	binding, _, ok = registry.InputBindingForKey(operation.InputStrategySimplified, "enter", header)
+	if !ok || binding.OperationID != operation.OperationCoreActivateGroup {
+		t.Fatalf("project header Enter = %s available=%t, want %s", binding.OperationID, ok, operation.OperationCoreActivateGroup)
 	}
 }
 
@@ -121,12 +122,12 @@ func TestCrossProjectFocusShowsDescendantsAndRestoresNestedViewport(t *testing.T
 	}
 
 	if !out.popFocusLevel() || out.cursor != childCursor || out.viewScrollOffset != 2 ||
-		out.currentTaskIdentity() != (taskref.TaskIdentity{ProjectID: project.ID, TaskID: child.ID}) {
-		t.Fatalf("first restore = cursor %d scroll %d task %+v", out.cursor, out.viewScrollOffset, out.currentTaskIdentity())
+		out.CurrentTaskIdentity() != (taskref.TaskIdentity{ProjectID: project.ID, TaskID: child.ID}) {
+		t.Fatalf("first restore = cursor %d scroll %d task %+v", out.cursor, out.viewScrollOffset, out.CurrentTaskIdentity())
 	}
 	if !out.popFocusLevel() || out.cursor != rootCursor || out.viewScrollOffset != 4 ||
-		out.currentTaskIdentity() != (taskref.TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) {
-		t.Fatalf("root restore = cursor %d scroll %d task %+v", out.cursor, out.viewScrollOffset, out.currentTaskIdentity())
+		out.CurrentTaskIdentity() != (taskref.TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) {
+		t.Fatalf("root restore = cursor %d scroll %d task %+v", out.cursor, out.viewScrollOffset, out.CurrentTaskIdentity())
 	}
 }
 
@@ -210,7 +211,7 @@ func TestFocusParentWidensOneLevelAndClimbsOutOfFocus(t *testing.T) {
 				}
 			}
 			assertStack("after widening")
-			if got := out.currentTaskIdentity(); got != identity(test.cursor) {
+			if got := out.CurrentTaskIdentity(); got != identity(test.cursor) {
 				t.Fatalf("cursor = %+v, want the task the press came from", got)
 			}
 			visible := visibleOutlinerTaskIDs(out)

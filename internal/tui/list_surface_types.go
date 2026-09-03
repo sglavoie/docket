@@ -6,13 +6,18 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+
+	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // ListItemID is the stable identity used for cursor and selection preservation.
 type ListItemID string
 
-// ListCategoryID is the stable identity of a list category.
-type ListCategoryID string
+// ListCategoryID is the stable identity of a list category. The type itself
+// lives in presentation because the operation manifest names one below this
+// layer; this alias keeps the list surface's own vocabulary unqualified.
+type ListCategoryID = presentation.ListCategoryID
 
 // ListSelectionMode controls whether a surface stores one or many selections.
 type ListSelectionMode uint8
@@ -114,7 +119,7 @@ type ListItem struct {
 	// SelectedLine strips styling but not characters.
 	PrimaryMarker string
 	Preview       ListPreview
-	OperationIDs  []OperationID
+	OperationIDs  []operation.OperationID
 	Data          any
 }
 
@@ -207,7 +212,7 @@ type ListGuidanceState struct {
 // CommandContext identities consumed by OperationExecutor.
 type ListActionState struct {
 	ItemIDs        []ListItemID
-	OperationIDs   []OperationID
+	OperationIDs   []operation.OperationID
 	DisabledReason string
 }
 
@@ -218,17 +223,17 @@ func (state ListActionState) Enabled() bool {
 
 // Descriptors resolves available action metadata without invoking handlers.
 func (state ListActionState) Descriptors(
-	registry *OperationRegistry,
-	ctx CommandContext,
-) ([]OperationDescriptor, error) {
+	registry *operation.OperationRegistry,
+	ctx operation.CommandContext,
+) ([]operation.OperationDescriptor, error) {
 	if registry == nil {
 		return nil, fmt.Errorf("list action state requires an operation registry")
 	}
 	if !state.Enabled() {
-		return []OperationDescriptor{}, nil
+		return []operation.OperationDescriptor{}, nil
 	}
 
-	descriptors := make([]OperationDescriptor, 0, len(state.OperationIDs))
+	descriptors := make([]operation.OperationDescriptor, 0, len(state.OperationIDs))
 	for _, id := range state.OperationIDs {
 		descriptor, ok := registry.Descriptor(id)
 		if !ok {

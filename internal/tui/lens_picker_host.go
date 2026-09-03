@@ -4,6 +4,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -69,7 +70,7 @@ func (m *AppModel) saveViewAsLens() tea.Cmd {
 		return nil
 	}
 	ctx := PresentationCommandContext(m.currentView())
-	ctx.Capabilities.Add(CapabilityLensPicker)
+	ctx.Capabilities.Add(operation.CapabilityLensPicker)
 	result := m.operationExecutor.Execute(OperationExecutionRequest{
 		ID:      operationLensCreate,
 		Context: ctx,

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -55,8 +56,8 @@ func taskTagJumpCategory(key string) (ListCategoryID, string, bool) {
 // semanticTaskTagProvider reports whether a picker draws the task tag
 // vocabulary. The project namespace has its own two tiers and reserves parked,
 // so a semantic name means nothing there.
-func semanticTaskTagProvider(provider ValueProviderID) bool {
-	return provider == ValueProviderTags || provider == ValueProviderFilterTags
+func semanticTaskTagProvider(provider operation.ValueProviderID) bool {
+	return provider == operation.ValueProviderTags || provider == operation.ValueProviderFilterTags
 }
 
 // taskTagListSource pins the semantic vocabulary above the tags in use.
@@ -250,7 +251,7 @@ func semanticTaskTagItem(name string, entry models.SemanticTaskTag, taskCount in
 // those rows resolve one SemanticTaskTitleStyle lookup, so the chain here and
 // the section above it can never disagree and a future registry entry cannot
 // render uncolored. The complete block wraps inline when needed.
-func semanticTaskTagExplainer(provider ValueProviderID, width int) string {
+func semanticTaskTagExplainer(provider operation.ValueProviderID, width int) string {
 	if !semanticTaskTagProvider(provider) {
 		return ""
 	}
@@ -270,7 +271,7 @@ func semanticTaskTagExplainer(provider ValueProviderID, width int) string {
 // the footer's browse profile has one row and four more hints would evict Enter
 // and Esc. It lists only the sections the source populates, so a key it names
 // always lands somewhere.
-func taskTagCategoryJumpHint(provider ValueProviderID, items []ListItem, width int) string {
+func taskTagCategoryJumpHint(provider operation.ValueProviderID, items []ListItem, width int) string {
 	if !semanticTaskTagProvider(provider) {
 		return ""
 	}

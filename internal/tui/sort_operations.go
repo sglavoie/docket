@@ -4,23 +4,24 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 const (
-	operationSortDueDate   OperationID = "tui.sort.due"
-	operationSortPriority  OperationID = "tui.sort.priority"
-	operationSortCreatedAt OperationID = "tui.sort.created"
-	operationSortUpdatedAt OperationID = "tui.sort.updated"
-	operationSortTitle     OperationID = "tui.sort.title"
-	operationSortClear     OperationID = "tui.sort.clear"
-	operationSortRanked    OperationID = "tui.sort.ranked"
+	operationSortDueDate   operation.OperationID = "tui.sort.due"
+	operationSortPriority  operation.OperationID = "tui.sort.priority"
+	operationSortCreatedAt operation.OperationID = "tui.sort.created"
+	operationSortUpdatedAt operation.OperationID = "tui.sort.updated"
+	operationSortTitle     operation.OperationID = "tui.sort.title"
+	operationSortClear     operation.OperationID = "tui.sort.clear"
+	operationSortRanked    operation.OperationID = "tui.sort.ranked"
 )
 
 // sortFieldOperations maps each order-axis operation to the field it installs.
 // One descriptor per field rather than one preset-valued operation, so the axis
 // needs no value provider and cannot grow a sort picker.
-var sortFieldOperations = map[OperationID]query.SortField{
+var sortFieldOperations = map[operation.OperationID]query.SortField{
 	operationSortDueDate:   query.SortByDueDate,
 	operationSortPriority:  query.SortByPriority,
 	operationSortCreatedAt: query.SortByCreatedAt,
@@ -31,22 +32,22 @@ var sortFieldOperations = map[OperationID]query.SortField{
 
 // sortOperationDescriptor is the shape every order-axis key shares: no target,
 // no value, no transaction, and applicability decided by the Outliner alone.
-func sortOperationDescriptor(id OperationID, label string, aliases ...string) OperationDescriptor {
-	return OperationDescriptor{
+func sortOperationDescriptor(id operation.OperationID, label string, aliases ...string) operation.OperationDescriptor {
+	return operation.OperationDescriptor{
 		ID:                   id,
 		Label:                label,
 		Aliases:              aliases,
-		Category:             OperationCategorySort,
-		TargetCardinality:    TargetCardinalityNone,
-		RequiredCapabilities: NewCapabilitySet(CapabilitySimplifiedInput),
+		Category:             operation.OperationCategorySort,
+		TargetCardinality:    operation.TargetCardinalityNone,
+		RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
 		Applicability:        coreOutlinerApplicability,
-		Risk:                 OperationRiskReadOnly,
+		Risk:                 operation.OperationRiskReadOnly,
 	}
 }
 
-func sortAxisOperationDescriptors() []OperationDescriptor {
+func sortAxisOperationDescriptors() []operation.OperationDescriptor {
 	descriptor := sortOperationDescriptor
-	return []OperationDescriptor{
+	return []operation.OperationDescriptor{
 		descriptor(operationSortDueDate, "Sort by Due Date", "order by due date"),
 		descriptor(operationSortPriority, "Sort by Priority", "order by priority"),
 		descriptor(operationSortCreatedAt, "Sort by Created", "order by creation date"),
@@ -68,13 +69,13 @@ func (m *AppModel) registerSortOperations() error {
 		// Ranking is offered only while a query is held, because with no query
 		// there is nothing to rank; every other order key stands unconditionally.
 		if descriptor.ID == operationSortRanked {
-			descriptor.Applicability = func(ctx CommandContext) bool {
+			descriptor.Applicability = func(ctx operation.CommandContext) bool {
 				return coreOutlinerApplicability(ctx) &&
 					m.crossOutliner != nil && m.crossOutliner.hasSearchProjection()
 			}
 		}
 		if err := m.registerOperation(descriptor, OperationBinding{
-			RequiredCapabilities:     NewCapabilitySet(CapabilitySimplifiedInput),
+			RequiredCapabilities:     operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
 			Applicability:            descriptor.Applicability,
 			Handler:                  m.executeSortOperation,
 			DelegateTargetResolution: true,

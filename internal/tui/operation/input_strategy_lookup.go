@@ -1,4 +1,4 @@
-package tui
+package operation
 
 import (
 	"strings"
@@ -35,7 +35,7 @@ func (registry *OperationRegistry) InputBindingForSequence(
 	}
 	node := registry.inputChords[id]
 	for _, raw := range sequence {
-		node = node.child(normalizeOperationKey(raw))
+		node = node.child(NormalizeOperationKey(raw))
 		if node == nil {
 			return OperationKeyBinding{}, OperationDescriptor{}, ChordNoMatch
 		}
@@ -148,7 +148,7 @@ func (registry *OperationRegistry) ChordGroupLabelForPrefix(
 	}
 	keys := make([]string, 0, len(sequence)-1)
 	for _, key := range sequence[:len(sequence)-1] {
-		keys = append(keys, normalizeOperationKey(key))
+		keys = append(keys, NormalizeOperationKey(key))
 	}
 	prefix := chordPathString(keys)
 	for _, group := range strategy.ChordGroups {
@@ -195,7 +195,7 @@ func (registry *OperationRegistry) chordSubtreeIsApplicable(
 	return false
 }
 
-func isDirectInputKey(key string) bool {
+func IsDirectInputKey(key string) bool {
 	if key == "" || strings.ContainsAny(key, " \t\r\n") {
 		return false
 	}
@@ -221,7 +221,7 @@ func isDirectInputKey(key string) bool {
 			return false
 		}
 	}
-	return isDirectInputKey(parts[len(parts)-1])
+	return IsDirectInputKey(parts[len(parts)-1])
 }
 
 func cloneOperationKeyBinding(binding OperationKeyBinding) OperationKeyBinding {

@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // checklistDocumentationSections names, per document, the heading whose own
@@ -73,7 +75,7 @@ func spelledOperationCount(t *testing.T, count int) string {
 }
 
 type checklistDocumentedOperation struct {
-	ID    OperationID
+	ID    operation.OperationID
 	Label string
 	// Key is the descriptor's own display key, empty when it answers none.
 	Key string
@@ -81,7 +83,7 @@ type checklistDocumentedOperation struct {
 
 type checklistDocumentationCatalog struct {
 	operations []checklistDocumentedOperation
-	byID       map[OperationID]checklistDocumentedOperation
+	byID       map[operation.OperationID]checklistDocumentedOperation
 	totalWord  string
 	keyedWord  string
 }
@@ -92,13 +94,13 @@ type checklistDocumentationCatalog struct {
 // what lets a swapped key fail.
 func checklistDocumentationCatalogFromRegistry(t *testing.T) checklistDocumentationCatalog {
 	t.Helper()
-	keys := make(map[OperationID]string)
+	keys := make(map[operation.OperationID]string)
 	for _, binding := range SimplifiedInputStrategy().Bindings {
-		if checklistRowGrammar[binding.OperationID] {
+		if operation.ChecklistRowGrammar[binding.OperationID] {
 			keys[binding.OperationID] = binding.DisplayKey
 		}
 	}
-	catalog := checklistDocumentationCatalog{byID: make(map[OperationID]checklistDocumentedOperation)}
+	catalog := checklistDocumentationCatalog{byID: make(map[operation.OperationID]checklistDocumentedOperation)}
 	for _, descriptor := range checklistRowOperationDescriptors() {
 		operation := checklistDocumentedOperation{
 			ID:    descriptor.ID,
@@ -224,8 +226,8 @@ func TestChecklistRowOperationDocumentationMatchesCatalog(t *testing.T) {
 // that reads them as pairs can reject it.
 func TestChecklistRowOperationDocumentationRejectsSwappedAssociations(t *testing.T) {
 	catalog := checklistDocumentationCatalogFromRegistry(t)
-	bottom := catalog.byID[operationChecklistMoveBottom]
-	top := catalog.byID[operationChecklistMoveTop]
+	bottom := catalog.byID[operation.OperationChecklistMoveBottom]
+	top := catalog.byID[operation.OperationChecklistMoveTop]
 	if bottom.Key == "" || top.Key == "" {
 		t.Fatal("the far-end checklist move operations no longer answer keys")
 	}

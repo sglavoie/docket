@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // ContextualGuidance projects Project Hub list state through the shared list
@@ -111,7 +112,7 @@ func (m *ProjectHubModel) projectHubActionHints(state ListGuidanceState) []chrom
 		return nil
 	}
 	hints := m.registry.GuidanceHintsForInputStrategy(
-		InputStrategyProjectHub,
+		operation.InputStrategyProjectHub,
 		m.projectHubCommandContext(m.cursorProjectID()),
 	)
 	switch {
@@ -125,8 +126,8 @@ func (m *ProjectHubModel) projectHubActionHints(state ListGuidanceState) []chrom
 
 // soleRequiredHint keeps one operation's hint and promotes it, so a narrowed
 // state advertises the press that leaves it rather than the whole grammar.
-func (m *ProjectHubModel) soleRequiredHint(hints []chrome.GuidanceHint, id OperationID) []chrome.GuidanceHint {
-	key := m.registry.InputShortcutForOperation(InputStrategyProjectHub, id)
+func (m *ProjectHubModel) soleRequiredHint(hints []chrome.GuidanceHint, id operation.OperationID) []chrome.GuidanceHint {
+	key := m.registry.InputShortcutForOperation(operation.InputStrategyProjectHub, id)
 	for _, hint := range hints {
 		if hint.Key != key {
 			continue

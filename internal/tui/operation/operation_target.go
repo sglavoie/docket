@@ -1,4 +1,4 @@
-package tui
+package operation
 
 import (
 	"errors"
@@ -38,7 +38,7 @@ type OperationTarget struct {
 	ProjectID string
 }
 
-func operationTargetFor(entity EntityIdentity) OperationTarget {
+func OperationTargetFor(entity EntityIdentity) OperationTarget {
 	return OperationTarget{
 		Entity:    entity,
 		Task:      entity.Task(),
@@ -114,42 +114,42 @@ func (OperationTargetResolver) Resolve(
 	case OperationTargetGlobal:
 		targets = nil
 	case OperationTargetCurrentTask:
-		if current := currentTaskIdentity(ctx); current.Valid() {
-			targets = []OperationTarget{operationTargetFor(entityForTaskIdentity(current))}
+		if current := CurrentTaskIdentity(ctx); current.Valid() {
+			targets = []OperationTarget{OperationTargetFor(EntityForTaskIdentity(current))}
 		}
 	case OperationTargetSelectedTasks:
-		selected := normalizedTaskIdentities(ctx.Selection.Tasks)
+		selected := NormalizedTaskIdentities(ctx.Selection.Tasks)
 		if len(selected) == 0 && !ctx.Selection.Visual {
-			if current := currentTaskIdentity(ctx); current.Valid() {
+			if current := CurrentTaskIdentity(ctx); current.Valid() {
 				selected = []taskref.TaskIdentity{current}
 			}
 		}
 		targets = make([]OperationTarget, 0, len(selected))
 		for _, task := range selected {
-			targets = append(targets, operationTargetFor(entityForTaskIdentity(task)))
+			targets = append(targets, OperationTargetFor(EntityForTaskIdentity(task)))
 		}
 	case OperationTargetCurrentProject:
 		if projectID := currentProjectID(ctx); projectID != "" {
-			targets = []OperationTarget{operationTargetFor(ProjectEntity(projectID))}
+			targets = []OperationTarget{OperationTargetFor(ProjectEntity(projectID))}
 		}
 	case OperationTargetScopedProjects:
-		projects := normalizedProjectIDs(ctx.ScopeProjectIDs)
+		projects := NormalizedProjectIDs(ctx.ScopeProjectIDs)
 		if len(projects) == 0 && ctx.Entity.ProjectID != "" {
 			projects = []string{ctx.Entity.ProjectID}
 		}
 		targets = make([]OperationTarget, 0, len(projects))
 		for _, projectID := range projects {
-			targets = append(targets, operationTargetFor(ProjectEntity(projectID)))
+			targets = append(targets, OperationTargetFor(ProjectEntity(projectID)))
 		}
 	case OperationTargetCurrentEntity:
-		if current := currentEntityIdentity(ctx); current.Valid() {
-			targets = []OperationTarget{operationTargetFor(current)}
+		if current := CurrentEntityIdentity(ctx); current.Valid() {
+			targets = []OperationTarget{OperationTargetFor(current)}
 		}
 	case OperationTargetSelectedEntities:
 		selected := selectedEntityIdentities(ctx)
 		targets = make([]OperationTarget, 0, len(selected))
 		for _, entity := range selected {
-			targets = append(targets, operationTargetFor(entity))
+			targets = append(targets, OperationTargetFor(entity))
 		}
 	default:
 		return ResolvedOperationTargets{}, fmt.Errorf(
@@ -161,7 +161,7 @@ func (OperationTargetResolver) Resolve(
 
 	resolved := ResolvedOperationTargets{Source: source, Targets: targets}
 	if !descriptor.TargetCardinality.Accepts(resolved.Count()) {
-		return ResolvedOperationTargets{}, operationTargetRejection(descriptor)
+		return ResolvedOperationTargets{}, OperationTargetRejection(descriptor)
 	}
 	// The entity sources degrade to the focused project when the cursor names no
 	// task, so a task operation reaching one of them would act on whichever
@@ -170,19 +170,19 @@ func (OperationTargetResolver) Resolve(
 	if descriptor.Category == OperationCategoryTask {
 		for _, target := range resolved.Targets {
 			if target.Entity.Kind != EntityKindTask {
-				return ResolvedOperationTargets{}, operationTargetRejection(descriptor)
+				return ResolvedOperationTargets{}, OperationTargetRejection(descriptor)
 			}
 		}
 	}
 	return resolved, nil
 }
 
-// operationTargetRejection is the one sentence every surface shows when a bound
+// OperationTargetRejection is the one sentence every surface shows when a bound
 // operation resolves no target it can act on. Registry-resolved and delegated
 // operations both return it, so a task key pressed on a project header row reads
 // the same however it entered the grammar.
-func operationTargetRejection(descriptor OperationDescriptor) error {
-	return errors.New(operationTargetRejectionMessage(operationTargetRejectionCategory(descriptor)))
+func OperationTargetRejection(descriptor OperationDescriptor) error {
+	return errors.New(OperationTargetRejectionMessage(operationTargetRejectionCategory(descriptor)))
 }
 
 // operationTargetRejectionCategory describes the entity a failed target
@@ -212,13 +212,13 @@ func operationTargetRejectionCategory(descriptor OperationDescriptor) OperationC
 	}
 }
 
-// archivedTaskTargetRejection refuses any operation that would change a task an
+// ArchivedTaskTargetRejection refuses any operation that would change a task an
 // archived project owns. The Fa project filter deliberately loads archived
 // projects into the ordinary Outliner, so the read-only lifecycle rule has to
 // hold where every operation passes rather than where the population is built.
 // A visual selection is judged whole: one archived member refuses the whole
 // operation so a mixed selection can never mutate its active subset.
-func archivedTaskTargetRejection(descriptor OperationDescriptor, ctx CommandContext) error {
+func ArchivedTaskTargetRejection(descriptor OperationDescriptor, ctx CommandContext) error {
 	if descriptor.Risk == OperationRiskReadOnly {
 		return nil
 	}
@@ -239,18 +239,18 @@ func archivedTaskTargetRejection(descriptor OperationDescriptor, ctx CommandCont
 	return nil
 }
 
-// checklistCursorRejection refuses every operation that would act on the owner
+// ChecklistCursorRejection refuses every operation that would act on the owner
 // task while the cursor rests on one of its checklist items. The row carries
 // the owner's pointer, so ordinary target resolution finds a perfectly valid
 // task and the whole task grammar would otherwise mutate one level up from
-// where the user is pointing. It runs beside archivedTaskTargetRejection,
+// where the user is pointing. It runs beside ArchivedTaskTargetRejection,
 // before resolution, because delegated bindings swallow resolver errors and
 // target-free operations resolve no target for a resolver guard to inspect.
-func checklistCursorRejection(descriptor OperationDescriptor, ctx CommandContext) error {
+func ChecklistCursorRejection(descriptor OperationDescriptor, ctx CommandContext) error {
 	if !ctx.Entity.HasChecklistCursor || !operationRefusedOnChecklistRow(descriptor) {
 		return nil
 	}
-	return errors.New(checklistRowRejectionMessage)
+	return errors.New(ChecklistRowRejectionMessage)
 }
 
 // entityContextNamesArchivedTask keys on the task identity so project lifecycle
@@ -259,7 +259,7 @@ func entityContextNamesArchivedTask(entity EntityContext) bool {
 	return entity.TaskID != "" && entity.Archived
 }
 
-func operationTargetRejectionMessage(category OperationCategory) string {
+func OperationTargetRejectionMessage(category OperationCategory) string {
 	switch category {
 	case OperationCategoryTask, OperationCategoryTag:
 		return "move the cursor to a task to use this action"
@@ -270,7 +270,7 @@ func operationTargetRejectionMessage(category OperationCategory) string {
 	}
 }
 
-func currentTaskIdentity(ctx CommandContext) taskref.TaskIdentity {
+func CurrentTaskIdentity(ctx CommandContext) taskref.TaskIdentity {
 	if ctx.Entity.TaskID == "" {
 		return taskref.TaskIdentity{}
 	}
@@ -288,14 +288,14 @@ func currentProjectID(ctx CommandContext) string {
 	return firstProjectID(ctx.ScopeProjectIDs)
 }
 
-// currentEntityIdentity prefers the typed focused identity and degrades to the
+// CurrentEntityIdentity prefers the typed focused identity and degrades to the
 // task and project sources so both migrated and unmigrated hosts resolve.
-func currentEntityIdentity(ctx CommandContext) EntityIdentity {
-	if current := normalizeEntityIdentity(ctx.CurrentEntity); current.Valid() {
+func CurrentEntityIdentity(ctx CommandContext) EntityIdentity {
+	if current := NormalizeEntityIdentity(ctx.CurrentEntity); current.Valid() {
 		return current
 	}
-	if task := currentTaskIdentity(ctx); task.Valid() {
-		return entityForTaskIdentity(task)
+	if task := CurrentTaskIdentity(ctx); task.Valid() {
+		return EntityForTaskIdentity(task)
 	}
 	if projectID := currentProjectID(ctx); projectID != "" {
 		return ProjectEntity(projectID)
@@ -304,22 +304,22 @@ func currentEntityIdentity(ctx CommandContext) EntityIdentity {
 }
 
 func selectedEntityIdentities(ctx CommandContext) []EntityIdentity {
-	if selected := normalizedEntityIdentities(ctx.Selection.EntityIdentities); len(selected) > 0 {
+	if selected := NormalizedEntityIdentities(ctx.Selection.EntityIdentities); len(selected) > 0 {
 		return selected
 	}
-	if selected := taskEntityIdentities(ctx.Selection.Tasks); len(selected) > 0 {
+	if selected := TaskEntityIdentities(ctx.Selection.Tasks); len(selected) > 0 {
 		return selected
 	}
 	if ctx.Selection.Visual {
 		return nil
 	}
-	if current := currentEntityIdentity(ctx); current.Valid() {
+	if current := CurrentEntityIdentity(ctx); current.Valid() {
 		return []EntityIdentity{current}
 	}
 	return nil
 }
 
-func normalizedTaskIdentities(tasks []taskref.TaskIdentity) []taskref.TaskIdentity {
+func NormalizedTaskIdentities(tasks []taskref.TaskIdentity) []taskref.TaskIdentity {
 	seen := make(map[taskref.TaskIdentity]bool, len(tasks))
 	normalized := make([]taskref.TaskIdentity, 0, len(tasks))
 	for _, task := range tasks {
@@ -338,7 +338,7 @@ func normalizedTaskIdentities(tasks []taskref.TaskIdentity) []taskref.TaskIdenti
 	return normalized
 }
 
-func normalizedProjectIDs(projects []string) []string {
+func NormalizedProjectIDs(projects []string) []string {
 	seen := make(map[string]bool, len(projects))
 	normalized := make([]string, 0, len(projects))
 	for _, projectID := range projects {
@@ -353,7 +353,7 @@ func normalizedProjectIDs(projects []string) []string {
 }
 
 func firstProjectID(projects []string) string {
-	normalized := normalizedProjectIDs(projects)
+	normalized := NormalizedProjectIDs(projects)
 	if len(normalized) == 0 {
 		return ""
 	}
@@ -386,7 +386,7 @@ func defaultOperationTargetSource(
 	}
 }
 
-func validOperationTargetSource(source OperationTargetSource) bool {
+func ValidOperationTargetSource(source OperationTargetSource) bool {
 	switch source {
 	case OperationTargetCurrentTask,
 		OperationTargetSelectedTasks,

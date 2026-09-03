@@ -6,11 +6,12 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 func TestHelpRenderKeepsSetStateChordOnOneLine(t *testing.T) {
 	strategy := SimplifiedInputStrategy()
-	key := displayKeysForOperation(strategy, operationTaskSetState)
+	key := operation.DisplayKeysForOperation(strategy, operationTaskSetState)
 	if !strings.HasPrefix(key, "$") {
 		t.Fatalf("Set State key = %q, want the $ chord prefix", key)
 	}
@@ -23,7 +24,7 @@ func TestHelpRenderKeepsSetStateChordOnOneLine(t *testing.T) {
 		}
 	}
 
-	items := []HelpItem{
+	items := []operation.HelpItem{
 		{Key: key, Description: "Set State", Category: "Status"},
 		{Key: "!0-3", Description: "Set Priority", Category: "Priority"},
 	}
@@ -59,13 +60,13 @@ func TestHelpRenderKeepsSetStateChordOnOneLine(t *testing.T) {
 
 func TestHelpRenderKeyColumnFitsEveryComposedSpelling(t *testing.T) {
 	strategy := SimplifiedInputStrategy()
-	seen := make(map[OperationID]bool, len(strategy.Bindings))
+	seen := make(map[operation.OperationID]bool, len(strategy.Bindings))
 	for _, binding := range strategy.Bindings {
 		if seen[binding.OperationID] {
 			continue
 		}
 		seen[binding.OperationID] = true
-		key := displayKeysForOperation(strategy, binding.OperationID)
+		key := operation.DisplayKeysForOperation(strategy, binding.OperationID)
 		if width := lipgloss.Width(key); width > helpKeyColumnWidth {
 			t.Errorf("%s displays as %q (%d cells), which wraps the %d-cell help key column",
 				binding.OperationID, key, width, helpKeyColumnWidth)

@@ -8,10 +8,11 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
-const operationTaskDelete OperationID = "tui.task.delete"
+const operationTaskDelete operation.OperationID = "tui.task.delete"
 
 // executeTaskDeleteOperation turns the frozen action-sheet targets into the one
 // canonical delete request. The registry never mutates task data: confirmation
@@ -40,7 +41,7 @@ func (m *AppModel) executeTaskDeleteOperation(
 	}}
 }
 
-func deleteSelectionCounts(context CommandContext, targetCount int) SelectionCounts {
+func deleteSelectionCounts(context operation.CommandContext, targetCount int) SelectionCounts {
 	counts := SelectionCounts{Total: targetCount, Visible: targetCount}
 	if context.Selection.VisibleCount+context.Selection.HiddenCount == targetCount {
 		counts.Visible = context.Selection.VisibleCount

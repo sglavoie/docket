@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // TestPendingChordGuidanceUsesAtMostTwoNonwrappingHintLines holds the shell's
@@ -17,7 +18,7 @@ import (
 // layer above chrome; chrome's own packing invariants live beside the packer in
 // internal/tui/chrome/footer_helpers_test.go.
 func TestPendingChordGuidanceUsesAtMostTwoNonwrappingHintLines(t *testing.T) {
-	hints := []ChordHint{
+	hints := []operation.ChordHint{
 		{Key: "i", Label: "inbox"},
 		{Key: "b", Label: "backlog"},
 		{Key: "n", Label: "next"},
@@ -80,7 +81,7 @@ func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 	outliner.SetSize(minTerminalWidth, minTerminalHeight-2)
 
 	hints := app.operationRegistry.GuidanceHintsForInputStrategy(
-		InputStrategySimplified, outliner.operationCommandContext(),
+		operation.InputStrategySimplified, outliner.operationCommandContext(),
 	)
 	pairs := make([]string, 0, len(hints))
 	for _, hint := range hints {

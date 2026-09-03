@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -59,9 +60,9 @@ type ContextActionSheetConfig struct {
 	// ItemIDPrefix namespaces row IDs so two hosts never collide.
 	ItemIDPrefix string
 	Categories   []ListCategory
-	CategoryFor  func(OperationDescriptor) ListCategoryID
-	SecondaryFor func(OperationDescriptor) string
-	DisabledFor  func(OperationDescriptor) string
+	CategoryFor  func(operation.OperationDescriptor) ListCategoryID
+	SecondaryFor func(operation.OperationDescriptor) string
+	DisabledFor  func(operation.OperationDescriptor) string
 	// ImmediateFilter makes printable text update the plain list query without
 	// requiring a search-mode key. Arrow keys remain navigation.
 	ImmediateFilter bool
@@ -82,7 +83,7 @@ type ContextActionSheetConfig struct {
 type ContextActionSheetModel struct {
 	surface   *ListSurfaceModel
 	executor  *OperationExecutor
-	context   CommandContext
+	context   operation.CommandContext
 	config    ContextActionSheetConfig
 	notice    string
 	searching bool
@@ -93,10 +94,10 @@ type ContextActionSheetModel struct {
 // registered or not applicable in the frozen context are dropped so a sheet
 // only ever offers actions its host really has.
 func NewContextActionSheetModel(
-	registry *OperationRegistry,
+	registry *operation.OperationRegistry,
 	executor *OperationExecutor,
-	ctx CommandContext,
-	operationIDs []OperationID,
+	ctx operation.CommandContext,
+	operationIDs []operation.OperationID,
 	config ContextActionSheetConfig,
 ) (*ContextActionSheetModel, error) {
 	if registry == nil {
@@ -106,7 +107,7 @@ func NewContextActionSheetModel(
 	frozen := cloneCommandContext(ctx)
 
 	items := make([]ListItem, 0, len(operationIDs))
-	seen := make(map[OperationID]bool, len(operationIDs))
+	seen := make(map[operation.OperationID]bool, len(operationIDs))
 	for _, id := range operationIDs {
 		if seen[id] {
 			continue
@@ -156,14 +157,14 @@ func normalizeContextActionSheetConfig(config ContextActionSheetConfig) ContextA
 }
 
 func contextActionSheetItem(
-	descriptor OperationDescriptor,
+	descriptor operation.OperationDescriptor,
 	config ContextActionSheetConfig,
 ) ListItem {
 	item := ListItem{
 		ID:           ListItemID(config.ItemIDPrefix + string(descriptor.ID)),
 		PrimaryText:  descriptor.Label,
 		Aliases:      append([]string(nil), descriptor.Aliases...),
-		OperationIDs: []OperationID{descriptor.ID},
+		OperationIDs: []operation.OperationID{descriptor.ID},
 		Preview: ListPreview{
 			Title: descriptor.Label,
 			Fields: []ListPreviewField{
@@ -186,12 +187,12 @@ func contextActionSheetItem(
 }
 
 // operationIDs returns the available actions in host-supplied order.
-func (model *ContextActionSheetModel) operationIDs() []OperationID {
+func (model *ContextActionSheetModel) operationIDs() []operation.OperationID {
 	if model == nil || model.surface == nil {
 		return nil
 	}
 	items := model.surface.Items()
-	ids := make([]OperationID, 0, len(items))
+	ids := make([]operation.OperationID, 0, len(items))
 	for _, item := range items {
 		ids = append(ids, item.OperationIDs...)
 	}
@@ -200,7 +201,7 @@ func (model *ContextActionSheetModel) operationIDs() []OperationID {
 
 // request builds the frozen execution request for one operation. The cloned
 // context makes later host cursor movement unable to retarget it.
-func (model *ContextActionSheetModel) request(id OperationID) OperationExecutionRequest {
+func (model *ContextActionSheetModel) request(id operation.OperationID) OperationExecutionRequest {
 	return OperationExecutionRequest{
 		ID:       id,
 		Context:  cloneCommandContext(model.context),
@@ -353,7 +354,7 @@ func (model *ContextActionSheetModel) activateCursor() (tea.Cmd, bool, tea.Msg) 
 		model.notice = item.DisabledReason
 		return nil, false, status.StatusMsg(item.DisabledReason)
 	}
-	descriptor, ok := item.Data.(OperationDescriptor)
+	descriptor, ok := item.Data.(operation.OperationDescriptor)
 	if !ok {
 		model.notice = "Action is unavailable"
 		return nil, false, status.StatusMsg("Action is unavailable")

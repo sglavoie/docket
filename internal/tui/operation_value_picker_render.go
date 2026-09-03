@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -28,7 +29,7 @@ func (model *OperationValuePickerModel) guidanceSpec() (chrome.GuidanceSpec, boo
 	if model == nil || model.surface == nil {
 		return chrome.GuidanceSpec{}, false
 	}
-	if model.provider.tagEntry() && model.tagAdder.AddTagMode {
+	if model.provider.TagEntry() && model.tagAdder.AddTagMode {
 		return chrome.GuidanceSpec{
 			Hints: chrome.RequiredGuidanceHints(
 				"Enter add "+model.tagAdderNoun(), "Esc cancel",
@@ -36,7 +37,7 @@ func (model *OperationValuePickerModel) guidanceSpec() (chrome.GuidanceSpec, boo
 			Rows: 2,
 		}, true
 	}
-	if model.provider.dateEntry() && model.dateAdder.AddDateMode {
+	if model.provider.DateEntry() && model.dateAdder.AddDateMode {
 		return chrome.GuidanceSpec{
 			Hints: chrome.RequiredGuidanceHints("Enter set date", "Esc cancel"),
 			Rows:  2,
@@ -79,25 +80,25 @@ func (model *OperationValuePickerModel) guidanceSpec() (chrome.GuidanceSpec, boo
 		}
 		km.Entries = append(km.Entries, keymap.Bind(key, description, "Actions", options...))
 	}
-	if model.provider == ValueProviderFilterProjectTags {
+	if model.provider == operation.ValueProviderFilterProjectTags {
 		add("v", "Toggle current facet", "toggle", 3, func() bool { return !searching && count > 0 })
 		add("space", "Open tag actions", "tag actions", 4, func() bool { return !searching && count > 0 })
 	} else if model.multi {
 		add("space", "Toggle current value", "toggle", 3, func() bool { return !searching && count > 0 })
 	}
-	if model.provider.tagEntry() {
+	if model.provider.TagEntry() {
 		noun := "tag"
 		if model.contextRowUnderCursor() {
 			noun = "context"
 		}
 		add("a", "Add a "+noun, "add "+noun, 4, func() bool { return !searching })
 	}
-	if model.provider == ValueProviderTags {
+	if model.provider == operation.ValueProviderTags {
 		add("#", "Set the task context", "set context", 5, func() bool {
 			return !searching && count > 0
 		})
 	}
-	if model.provider.dateEntry() {
+	if model.provider.DateEntry() {
 		add("a", "Type a specific date", "set date", 4, func() bool { return !searching })
 	}
 	return listSurfaceGuidanceSpec(model.surface.GuidanceState(searching), km, nil)
@@ -115,7 +116,7 @@ func (model *OperationValuePickerModel) renderWithin(width, height int) string {
 		return ""
 	}
 	innerWidth := operationValuePickerInnerWidth(width)
-	if model.provider.tagEntry() && model.tagAdder.AddTagMode {
+	if model.provider.TagEntry() && model.tagAdder.AddTagMode {
 		noun := model.tagAdderNoun()
 		content := theme.MutedStyle.Render(fmt.Sprintf(
 			"Enter a %s name (max %d characters)",
@@ -137,7 +138,7 @@ func (model *OperationValuePickerModel) renderWithin(width, height int) string {
 			lipgloss.NewStyle().Foreground(theme.ColorPrimary),
 		)
 	}
-	if model.provider.dateEntry() && model.dateAdder.AddDateMode {
+	if model.provider.DateEntry() && model.dateAdder.AddDateMode {
 		content := model.dateAdder.AddDateInput.View() + "\n\n" +
 			theme.MutedStyle.Render(strings.Join(model.dateAdder.DateAdderFormats(), "\n"))
 		if model.dateAdder.AddDateError != "" {

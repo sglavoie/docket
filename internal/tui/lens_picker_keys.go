@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -126,7 +127,7 @@ func (model *NamedLensPickerModel) activateCursor() (tea.Cmd, bool, tea.Msg) {
 		return nil, false, nil
 	}
 	if action, isAction := lensPickerActionOperation(item.ID); isAction {
-		result, dismissed := model.Execute(model.request(action, EntityIdentity{}))
+		result, dismissed := model.Execute(model.request(action, operation.EntityIdentity{}))
 		return nil, dismissed, NamedLensPickerResultMsg{Result: result}
 	}
 	lens, ok := item.Data.(config.NamedLens)
@@ -134,14 +135,14 @@ func (model *NamedLensPickerModel) activateCursor() (tea.Cmd, bool, tea.Msg) {
 		model.notice = "That row is not a saved lens"
 		return nil, false, status.StatusMsg(model.notice)
 	}
-	result, dismissed := model.Execute(model.request(operationLensApply, LensEntity(lens.ID)))
+	result, dismissed := model.Execute(model.request(operationLensApply, operation.LensEntity(lens.ID)))
 	return nil, dismissed, NamedLensPickerResultMsg{Result: result}
 }
 
 // lensPickerActionOperation maps one query-exempt row onto the operation Enter
 // dispatches from it. A saved-lens row answers false, which is what keeps the
 // two act rows and the population rows on separate dispatch paths.
-func lensPickerActionOperation(id ListItemID) (OperationID, bool) {
+func lensPickerActionOperation(id ListItemID) (operation.OperationID, bool) {
 	switch id {
 	case lensPickerCreateItemID:
 		return operationLensCreate, true
@@ -173,7 +174,7 @@ func (model *NamedLensPickerModel) openActionsForCursor() (tea.Cmd, bool, tea.Ms
 	}
 	model.notice = ""
 	return nil, false, NamedLensActionsRequestMsg{
-		Entity: LensEntity(lens.ID),
+		Entity: operation.LensEntity(lens.ID),
 		Name:   lens.Name,
 	}
 }

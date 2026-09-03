@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // helpGrammarCategory is the `?` section the shared sigil grammar renders under.
@@ -22,10 +23,10 @@ const helpGrammarCategory = "Capture & Edit Grammar"
 // swaps in the search wording for the bare SurfaceSearch mask, which keeps these
 // rows describing what a sigil does rather than what it matches. Legacy entries
 // are already excluded by Definitions.
-func grammarHelpItems() []HelpItem {
+func grammarHelpItems() []operation.HelpItem {
 	surfaces := textgrammar.SurfaceCapture | textgrammar.SurfaceEdit | textgrammar.SurfaceSearch
 	definitions := textgrammar.GuideDefinitions(surfaces)
-	items := make([]HelpItem, 0, len(definitions))
+	items := make([]operation.HelpItem, 0, len(definitions))
 	for _, def := range definitions {
 		description := def.Description
 		for _, clear := range def.Clears {
@@ -34,7 +35,7 @@ func grammarHelpItems() []HelpItem {
 		if forms := grammarHelpSearchForms(def); forms != "" {
 			description += " · search: " + forms
 		}
-		items = append(items, HelpItem{
+		items = append(items, operation.HelpItem{
 			Key:         strings.Join(def.Forms, " "),
 			Description: description,
 			Category:    helpGrammarCategory,

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -23,7 +24,7 @@ import (
 //
 // A new or retargeted operation must be classified here deliberately, so a task
 // mutation can never silently acquire a project target from a header cursor.
-var headerTargetAudit = map[OperationID]string{
+var headerTargetAudit = map[operation.OperationID]string{
 	"tui.checklist.actions":           "reject",
 	"tui.checklist.add-item":          "reject",
 	"tui.checklist.edit-item":         "reject",
@@ -151,13 +152,13 @@ func TestHeaderTargetResolutionIsClassified(t *testing.T) {
 	ctx := headerTargetCursorContext(t)
 	app := headerTargetAuditApp(t)
 	registry := app.GetOperationRegistry()
-	strategy, ok := registry.InputStrategy(InputStrategySimplified)
+	strategy, ok := registry.InputStrategy(operation.InputStrategySimplified)
 	if !ok {
 		t.Fatal("simplified input strategy is not registered")
 	}
 
-	resolver := OperationTargetResolver{}
-	observed := make(map[OperationID]string)
+	resolver := operation.OperationTargetResolver{}
+	observed := make(map[operation.OperationID]string)
 	for _, binding := range strategy.Bindings {
 		if _, seen := observed[binding.OperationID]; seen {
 			continue
@@ -203,7 +204,7 @@ func TestHeaderTargetRejectionIsOneSentence(t *testing.T) {
 	ctx := headerTargetCursorContext(t)
 	app := headerTargetAuditApp(t)
 	registry := app.GetOperationRegistry()
-	resolver := OperationTargetResolver{}
+	resolver := operation.OperationTargetResolver{}
 
 	checked := 0
 	for id, classification := range headerTargetAudit {
@@ -220,7 +221,7 @@ func TestHeaderTargetRejectionIsOneSentence(t *testing.T) {
 			t.Errorf("operation %s resolved a target from a project header cursor", id)
 			continue
 		}
-		if err.Error() != operationTargetRejectionMessage(OperationCategoryTask) {
+		if err.Error() != operation.OperationTargetRejectionMessage(operation.OperationCategoryTask) {
 			t.Errorf("operation %s rejects with %q, not the shared sentence", id, err.Error())
 		}
 		checked++
@@ -252,7 +253,7 @@ func TestHeaderTargetCoreOperationsRefuseInsteadOfNoOp(t *testing.T) {
 			t.Errorf("core operation %s silently did nothing from a project header cursor", id)
 			continue
 		}
-		if result.Err.Error() != operationTargetRejectionMessage(OperationCategoryTask) {
+		if result.Err.Error() != operation.OperationTargetRejectionMessage(operation.OperationCategoryTask) {
 			t.Errorf("core operation %s rejects with %q, not the shared sentence", id, result.Err.Error())
 		}
 	}
@@ -309,7 +310,7 @@ func TestHeaderTargetKeyPressesReachTheRejection(t *testing.T) {
 			if !ok {
 				t.Fatalf("the key path produced %T, not a refusal", last())
 			}
-			if failure.Err.Error() != operationTargetRejectionMessage(OperationCategoryTask) {
+			if failure.Err.Error() != operation.OperationTargetRejectionMessage(operation.OperationCategoryTask) {
 				t.Fatalf("refusal reads %q, not the shared sentence", failure.Err.Error())
 			}
 		})
@@ -339,7 +340,7 @@ func headerTargetAuditApp(t *testing.T) *AppModel {
 
 // headerTargetCursorContext parks the Outliner cursor on a project header row
 // and returns the context dispatch would build from it.
-func headerTargetCursorContext(t *testing.T) CommandContext {
+func headerTargetCursorContext(t *testing.T) operation.CommandContext {
 	t.Helper()
 	app := headerTargetAuditApp(t)
 	outliner := app.crossOutliner
@@ -356,14 +357,14 @@ func headerTargetCursorContext(t *testing.T) CommandContext {
 		return ctx
 	}
 	t.Fatal("fixture Outliner exposed no project header row")
-	return CommandContext{}
+	return operation.CommandContext{}
 }
 
 func headerTargetClassification(
 	t *testing.T,
-	resolver OperationTargetResolver,
-	descriptor OperationDescriptor,
-	ctx CommandContext,
+	resolver operation.OperationTargetResolver,
+	descriptor operation.OperationDescriptor,
+	ctx operation.CommandContext,
 ) string {
 	t.Helper()
 	resolved, err := resolver.Resolve(descriptor, ctx)
@@ -374,7 +375,7 @@ func headerTargetClassification(
 		return "target-free"
 	}
 	for _, target := range resolved.Targets {
-		if target.Entity.Kind != EntityKindProject {
+		if target.Entity.Kind != operation.EntityKindProject {
 			t.Errorf(
 				"operation %s resolved %s from a project header cursor",
 				descriptor.ID,

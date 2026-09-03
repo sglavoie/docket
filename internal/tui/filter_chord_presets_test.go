@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -172,7 +173,7 @@ func TestFilterDuePickerDeferredRowOwnsTheDeferredFacet(t *testing.T) {
 	filter.DueDate = query.DueDateToday
 
 	result := app.executeFilterOperation(OperationInvocation{
-		Descriptor: OperationDescriptor{ID: operationFilterDue},
+		Descriptor: operation.OperationDescriptor{ID: operationFilterDue},
 		Value:      "?deferred",
 	})
 	if result.Err != nil {
@@ -186,7 +187,7 @@ func TestFilterDuePickerDeferredRowOwnsTheDeferredFacet(t *testing.T) {
 	}
 
 	result = app.executeFilterOperation(OperationInvocation{
-		Descriptor: OperationDescriptor{ID: operationFilterDue},
+		Descriptor: operation.OperationDescriptor{ID: operationFilterDue},
 		Value:      "@overdue",
 	})
 	if result.Err != nil {
@@ -213,7 +214,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 			t.Fatal("f@ produced no value-request command")
 		}
 		app.handleOperationOverlayMessage(cmd())
-		if app.operationValuePicker == nil || app.operationValuePicker.provider != ValueProviderFilterDue {
+		if app.operationValuePicker == nil || app.operationValuePicker.provider != operation.ValueProviderFilterDue {
 			t.Fatalf("f@ did not open the due-date picker: %#v", app.operationValuePicker)
 		}
 		items := app.operationValuePicker.surface.Items()
@@ -251,7 +252,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 			t.Fatal("f$ produced no value-request command")
 		}
 		app.handleOperationOverlayMessage(cmd())
-		if app.operationValuePicker == nil || app.operationValuePicker.provider != ValueProviderFilterStates {
+		if app.operationValuePicker == nil || app.operationValuePicker.provider != operation.ValueProviderFilterStates {
 			t.Fatalf("f$ did not open the states picker: %#v", app.operationValuePicker)
 		}
 		selected := app.operationValuePicker.surface.SelectedIDs()
@@ -270,7 +271,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 			t.Fatal("fa produced no value-request command")
 		}
 		app.handleOperationOverlayMessage(cmd())
-		if app.operationValuePicker == nil || app.operationValuePicker.provider != ValueProviderFilterCompletionAge {
+		if app.operationValuePicker == nil || app.operationValuePicker.provider != operation.ValueProviderFilterCompletionAge {
 			t.Fatalf("fa did not open the completion-age picker: %#v", app.operationValuePicker)
 		}
 		items := app.operationValuePicker.surface.Items()
@@ -303,7 +304,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 			t.Fatal("f# produced no value-request command")
 		}
 		app.handleOperationOverlayMessage(cmd())
-		if app.operationValuePicker == nil || app.operationValuePicker.provider != ValueProviderFilterTags {
+		if app.operationValuePicker == nil || app.operationValuePicker.provider != operation.ValueProviderFilterTags {
 			t.Fatalf("f# did not open the tags picker: %#v", app.operationValuePicker)
 		}
 		selected := app.operationValuePicker.surface.SelectedIDs()

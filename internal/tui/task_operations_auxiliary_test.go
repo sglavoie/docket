@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 // auxiliaryTaskTestApp builds a registered app over one project holding a story
@@ -33,8 +34,8 @@ func auxiliaryTaskTestApp(t *testing.T) (*AppModel, *models.Project, *models.Tas
 func executeTaskOperationForTest(
 	t *testing.T,
 	model *AppModel,
-	id OperationID,
-	context CommandContext,
+	id operation.OperationID,
+	context operation.CommandContext,
 ) OperationExecutionResult {
 	t.Helper()
 	result := model.operationExecutor.Execute(OperationExecutionRequest{
@@ -51,7 +52,7 @@ func TestTaskOperationAuxiliaryCatalogRoutesToProductionMessages(t *testing.T) {
 	model, project, task := auxiliaryTaskTestApp(t)
 	context := taskOperationTestContext(task, project)
 
-	checks := map[OperationID]func(*testing.T, any){
+	checks := map[operation.OperationID]func(*testing.T, any){
 		operationTaskComments: func(t *testing.T, msg any) {
 			assertTaskMessageTarget(t, msg.(ShowTaskCommentsMsg).Task, task)
 		},
@@ -107,7 +108,7 @@ func TestTaskOperationSheetOmitsDirectCoreEditAndDetail(t *testing.T) {
 		taskOperationTestContext(task, project),
 	)
 
-	labels := make(map[string][]OperationID)
+	labels := make(map[string][]operation.OperationID)
 	for _, descriptor := range descriptors {
 		key := strings.ToLower(descriptor.Label)
 		labels[key] = append(labels[key], descriptor.ID)
@@ -143,7 +144,7 @@ func TestTaskOperationCatalogIsFullyManifested(t *testing.T) {
 
 func TestTaskOperationAliasesCoverUserTerminology(t *testing.T) {
 	model, _, _ := auxiliaryTaskTestApp(t)
-	wanted := map[OperationID]string{
+	wanted := map[operation.OperationID]string{
 		operationTaskComments:             "add comment",
 		operationTaskAttachments:          "add attachment",
 		operationTaskCopyTitle:            "yank title",
@@ -151,8 +152,8 @@ func TestTaskOperationAliasesCoverUserTerminology(t *testing.T) {
 		operationTaskCopyTitleDescription: "yank title and description",
 		operationTaskTogglePin:            "keep on top",
 		operationTaskNewChild:             "new subtask",
-		operationCoreEdit:                 "rename task",
-		operationCorePeek:                 "task preview",
+		operation.OperationCoreEdit:       "rename task",
+		operation.OperationCorePeek:       "task preview",
 	}
 	for id, alias := range wanted {
 		descriptor, ok := model.operationRegistry.Descriptor(id)
@@ -165,7 +166,7 @@ func TestTaskOperationAliasesCoverUserTerminology(t *testing.T) {
 	}
 }
 
-func descriptorHasAlias(descriptor OperationDescriptor, alias string) bool {
+func descriptorHasAlias(descriptor operation.OperationDescriptor, alias string) bool {
 	for _, candidate := range descriptor.Aliases {
 		if strings.EqualFold(candidate, alias) {
 			return true
@@ -187,11 +188,11 @@ func TestTaskOperationExecutesAgainstFrozenTargetAfterCursorMove(t *testing.T) {
 	out.rows = []outlinerRow{{task: other, ProjectID: project.ID}}
 	out.cursor = 0
 
-	edit := executeTaskOperationForTest(t, model, operationCoreEdit, context)
+	edit := executeTaskOperationForTest(t, model, operation.OperationCoreEdit, context)
 	if got := edit.Message.(StartTaskLineEditMsg).Task; got != task {
 		t.Errorf("edit target = %v, want the frozen task %v", got, task)
 	}
-	externalEdit := executeTaskOperationForTest(t, model, operationCoreExternalEditor, context)
+	externalEdit := executeTaskOperationForTest(t, model, operation.OperationCoreExternalEditor, context)
 	if got := externalEdit.Message.(EditTaskContentMsg).Task; got != task {
 		t.Errorf("external editor target = %v, want the frozen task %v", got, task)
 	}
@@ -239,7 +240,7 @@ func TestTaskChildActionsFollowHierarchyLeafAndDepthLimits(t *testing.T) {
 
 	for _, testCase := range []struct {
 		taskID string
-		id     OperationID
+		id     operation.OperationID
 		want   bool
 	}{
 		{taskID: "epic", id: operationTaskNewChild, want: true},

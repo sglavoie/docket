@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -33,7 +34,7 @@ func assertSession8Guidance(t *testing.T, state string, spec chrome.GuidanceSpec
 }
 
 func TestHelpGuidanceTracksBrowseSearchTabAndEmptyStates(t *testing.T) {
-	model := NewHelpViewModel([]HelpItem{{Key: "j", Description: "Move", Category: "Navigate"}}, "Outliner")
+	model := NewHelpViewModel([]operation.HelpItem{{Key: "j", Description: "Move", Category: "Navigate"}}, "Outliner")
 	model.SetSize(90, 24)
 
 	spec, ok := model.ContextualGuidance()
@@ -61,11 +62,11 @@ func TestHelpGuidanceTracksBrowseSearchTabAndEmptyStates(t *testing.T) {
 }
 
 func TestContextActionSheetGuidanceTracksBrowseSearchEmptyAndFailure(t *testing.T) {
-	registry, executor := contextActionTestEngine(t, []OperationDescriptor{
+	registry, executor := contextActionTestEngine(t, []operation.OperationDescriptor{
 		contextActionTestDescriptor("test.act", "Act"),
 	}, nil)
 	sheet, err := NewContextActionSheetModel(
-		registry, executor, contextActionTestContext(), []OperationID{"test.act"},
+		registry, executor, contextActionTestContext(), []operation.OperationID{"test.act"},
 		ContextActionSheetConfig{Host: ContextActionHostOutliner},
 	)
 	if err != nil {

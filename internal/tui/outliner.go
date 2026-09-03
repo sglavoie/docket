@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -311,7 +312,7 @@ type OutlinerModel struct {
 
 	// operationRegistry projects help, handled keys, and footer hints from the
 	// same operation metadata used by shell dispatch.
-	operationRegistry *OperationRegistry
+	operationRegistry *operation.OperationRegistry
 
 	// workspacePulse mirrors AppModel.workspacePulse for the title-row
 	// operational counter.

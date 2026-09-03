@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -14,7 +15,7 @@ import (
 func TestOperationExecutionResultStatusDeliveryPrecedence(t *testing.T) {
 	failure := errors.New("copy failed")
 	confirmation := &OperationConfirmationRequestMsg{Label: "Delete note"}
-	value := &OperationValueRequestMsg{Provider: ValueProviderNoteTitle}
+	value := &OperationValueRequestMsg{Provider: operation.ValueProviderNoteTitle}
 
 	tests := []struct {
 		name   string
@@ -76,18 +77,18 @@ func TestOperationExecutionResultStatusDeliveryPrecedence(t *testing.T) {
 // reporter still name the operation, and an installed reporter takes over
 // delivery.
 func TestOperationExecutorStatusOnlyResultReachesTheMessageSeam(t *testing.T) {
-	registry := NewOperationRegistry()
-	reporting := OperationDescriptor{
-		ID: "note.copy-title", Label: "Copy note title", Category: OperationCategoryNote,
-		TargetSource: OperationTargetGlobal, TargetCardinality: TargetCardinalityNone,
-		Risk: OperationRiskReadOnly,
+	registry := operation.NewOperationRegistry()
+	reporting := operation.OperationDescriptor{
+		ID: "note.copy-title", Label: "Copy note title", Category: operation.OperationCategoryNote,
+		TargetSource: operation.OperationTargetGlobal, TargetCardinality: operation.TargetCardinalityNone,
+		Risk: operation.OperationRiskReadOnly,
 	}
-	silent := OperationDescriptor{
-		ID: "core.back", Label: "Back", Category: OperationCategorySystem,
-		TargetSource: OperationTargetGlobal, TargetCardinality: TargetCardinalityNone,
-		Risk: OperationRiskReadOnly,
+	silent := operation.OperationDescriptor{
+		ID: "core.back", Label: "Back", Category: operation.OperationCategorySystem,
+		TargetSource: operation.OperationTargetGlobal, TargetCardinality: operation.TargetCardinalityNone,
+		Risk: operation.OperationRiskReadOnly,
 	}
-	for _, descriptor := range []OperationDescriptor{reporting, silent} {
+	for _, descriptor := range []operation.OperationDescriptor{reporting, silent} {
 		if err := registry.Register(descriptor); err != nil {
 			t.Fatalf("Register(%s): %v", descriptor.ID, err)
 		}
@@ -145,18 +146,18 @@ func TestOperationExecutorStatusOnlyResultReachesTheMessageSeam(t *testing.T) {
 // completed status only when it is the outcome's whole feedback, so a handler
 // that returns a message plus a status still reaches the user exactly once.
 func TestOperationExecutorMessageAndStatusWithInstalledReporterDeliverOnce(t *testing.T) {
-	registry := NewOperationRegistry()
-	speaking := OperationDescriptor{
-		ID: "task.done", Label: "Complete task", Category: OperationCategoryTask,
-		TargetSource: OperationTargetGlobal, TargetCardinality: TargetCardinalityNone,
-		Risk: OperationRiskReadOnly,
+	registry := operation.NewOperationRegistry()
+	speaking := operation.OperationDescriptor{
+		ID: "task.done", Label: "Complete task", Category: operation.OperationCategoryTask,
+		TargetSource: operation.OperationTargetGlobal, TargetCardinality: operation.TargetCardinalityNone,
+		Risk: operation.OperationRiskReadOnly,
 	}
-	statusOnly := OperationDescriptor{
-		ID: "note.copy-title", Label: "Copy note title", Category: OperationCategoryNote,
-		TargetSource: OperationTargetGlobal, TargetCardinality: TargetCardinalityNone,
-		Risk: OperationRiskReadOnly,
+	statusOnly := operation.OperationDescriptor{
+		ID: "note.copy-title", Label: "Copy note title", Category: operation.OperationCategoryNote,
+		TargetSource: operation.OperationTargetGlobal, TargetCardinality: operation.TargetCardinalityNone,
+		Risk: operation.OperationRiskReadOnly,
 	}
-	for _, descriptor := range []OperationDescriptor{speaking, statusOnly} {
+	for _, descriptor := range []operation.OperationDescriptor{speaking, statusOnly} {
 		if err := registry.Register(descriptor); err != nil {
 			t.Fatalf("Register(%s): %v", descriptor.ID, err)
 		}
@@ -211,14 +212,14 @@ func TestOperationExecutorMessageAndStatusWithInstalledReporterDeliverOnce(t *te
 }
 
 func TestOperationExecutorRollsBackFailedHandler(t *testing.T) {
-	registry := NewOperationRegistry()
-	descriptor := OperationDescriptor{
+	registry := operation.NewOperationRegistry()
+	descriptor := operation.OperationDescriptor{
 		ID:                "global.mutate",
 		Label:             "Mutate",
-		Category:          OperationCategorySystem,
-		TargetSource:      OperationTargetGlobal,
-		TargetCardinality: TargetCardinalityNone,
-		Risk:              OperationRiskMutation,
+		Category:          operation.OperationCategorySystem,
+		TargetSource:      operation.OperationTargetGlobal,
+		TargetCardinality: operation.TargetCardinalityNone,
+		Risk:              operation.OperationRiskMutation,
 	}
 	if err := registry.Register(descriptor); err != nil {
 		t.Fatalf("Register descriptor: %v", err)
@@ -251,18 +252,18 @@ func TestOperationExecutorRollsBackFailedHandler(t *testing.T) {
 }
 
 func TestOperationExecutorSupportsSingleAndBulkHandlers(t *testing.T) {
-	registry := NewOperationRegistry()
-	singleDescriptor := OperationDescriptor{
-		ID: "task.single", Label: "Single", Category: OperationCategoryTask,
-		TargetSource: OperationTargetCurrentTask, TargetCardinality: TargetCardinalityOne,
-		Risk: OperationRiskReadOnly,
+	registry := operation.NewOperationRegistry()
+	singleDescriptor := operation.OperationDescriptor{
+		ID: "task.single", Label: "Single", Category: operation.OperationCategoryTask,
+		TargetSource: operation.OperationTargetCurrentTask, TargetCardinality: operation.TargetCardinalityOne,
+		Risk: operation.OperationRiskReadOnly,
 	}
-	bulkDescriptor := OperationDescriptor{
-		ID: "task.bulk", Label: "Bulk", Category: OperationCategoryTask,
-		TargetSource: OperationTargetSelectedTasks, TargetCardinality: TargetCardinalityOneOrMore,
-		Risk: OperationRiskReadOnly,
+	bulkDescriptor := operation.OperationDescriptor{
+		ID: "task.bulk", Label: "Bulk", Category: operation.OperationCategoryTask,
+		TargetSource: operation.OperationTargetSelectedTasks, TargetCardinality: operation.TargetCardinalityOneOrMore,
+		Risk: operation.OperationRiskReadOnly,
 	}
-	for _, descriptor := range []OperationDescriptor{singleDescriptor, bulkDescriptor} {
+	for _, descriptor := range []operation.OperationDescriptor{singleDescriptor, bulkDescriptor} {
 		if err := registry.Register(descriptor); err != nil {
 			t.Fatalf("Register(%s): %v", descriptor.ID, err)
 		}
@@ -270,7 +271,7 @@ func TestOperationExecutorSupportsSingleAndBulkHandlers(t *testing.T) {
 	executor := NewOperationExecutor(registry)
 	if err := executor.Register(OperationBinding{
 		OperationID: singleDescriptor.ID,
-		SingleHandler: func(_ OperationInvocation, target OperationTarget) OperationHandlerResult {
+		SingleHandler: func(_ OperationInvocation, target operation.OperationTarget) OperationHandlerResult {
 			return OperationHandlerResult{Message: operationTestMsg(target.Task.TaskID)}
 		},
 	}); err != nil {
@@ -278,7 +279,7 @@ func TestOperationExecutorSupportsSingleAndBulkHandlers(t *testing.T) {
 	}
 	if err := executor.Register(OperationBinding{
 		OperationID: bulkDescriptor.ID,
-		BulkHandler: func(_ OperationInvocation, targets []OperationTarget) OperationHandlerResult {
+		BulkHandler: func(_ OperationInvocation, targets []operation.OperationTarget) OperationHandlerResult {
 			return OperationHandlerResult{Message: operationTestMsg("2")}
 		},
 	}); err != nil {
@@ -286,7 +287,7 @@ func TestOperationExecutorSupportsSingleAndBulkHandlers(t *testing.T) {
 	}
 
 	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
-	ctx.Entity = EntityContext{ProjectID: "project", TaskID: "current"}
+	ctx.Entity = operation.EntityContext{ProjectID: "project", TaskID: "current"}
 	ctx.Selection.Tasks = []taskref.TaskIdentity{
 		{ProjectID: "project", TaskID: "one"},
 		{ProjectID: "project", TaskID: "two"},
