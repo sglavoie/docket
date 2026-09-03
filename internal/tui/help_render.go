@@ -210,7 +210,7 @@ func (m *HelpViewModel) renderHelpHeader(tabBar string) string {
 	pad := " "
 	var b strings.Builder
 
-	b.WriteString(renderFullscreenTitleWithPulse("Help", m.viewName, m.currentWorkspacePulse(), m.width))
+	b.WriteString(renderFullscreenTitleWithPulse("Help", m.viewName, m.CurrentWorkspacePulse(), m.width))
 	b.WriteString("\n")
 	b.WriteString(pad)
 	b.WriteString(tabBar)

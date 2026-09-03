@@ -119,7 +119,7 @@ func (m *TaskComposerModel) View() tea.View {
 	contentHeight := m.compactContentHeight()
 	project, destination := m.effectiveRouteHeader()
 	var b strings.Builder
-	b.WriteString(renderFullscreenTitleWithPulse("Task Composer", m.preset.label(), m.currentWorkspacePulse(), m.width))
+	b.WriteString(renderFullscreenTitleWithPulse("Task Composer", m.preset.label(), m.CurrentWorkspacePulse(), m.width))
 	b.WriteString("\n\n")
 	b.WriteString(theme.SubtitleStyle.Render("Project: ") + textfit.TruncateToVisualWidth(project, max(m.width-12, 1)))
 	b.WriteString("\n")

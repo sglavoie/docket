@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -230,7 +231,7 @@ func (m *OutlinerModel) projectGroupPressure(tasks []*models.Task, projectID str
 		if task == nil {
 			continue
 		}
-		if taskIsOverdueAt(task, now) {
+		if pulse.TaskIsOverdueAt(task, now) {
 			overdue++
 		}
 		if planned[taskref.TaskIdentity{ProjectID: projectID, TaskID: task.ID}] {

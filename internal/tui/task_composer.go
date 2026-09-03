@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -94,7 +95,7 @@ type lineError struct {
 }
 
 type TaskComposerModel struct {
-	workspacePulseState
+	pulse.WorkspacePulseState
 	quickCaptureInput
 	preset             TaskComposerPreset
 	runtime            *config.RuntimeState
@@ -163,10 +164,10 @@ func (m *TaskComposerModel) SetSize(width, height int) {
 	}
 }
 
-func (m *TaskComposerModel) setWorkspacePulse(pulse WorkspacePulse) {
-	m.workspacePulseState.setWorkspacePulse(pulse)
+func (m *TaskComposerModel) SetWorkspacePulse(workspacePulse pulse.WorkspacePulse) {
+	m.WorkspacePulseState.SetWorkspacePulse(workspacePulse)
 	if m.expanded != nil {
-		m.expanded.setWorkspacePulse(pulse)
+		m.expanded.SetWorkspacePulse(workspacePulse)
 	}
 }
 

@@ -9,7 +9,7 @@ pulse-free and preserve the host's title row. There are no presentation
 exemptions: every reachable presentation has shell, surface, or overlay guidance
 ownership.
 
-`renderOperationalTitle` is the one-line title fitter. Identity on the left
+`RenderOperationalTitle` is the one-line title fitter. Identity on the left
 contains surface, scope, and mode exactly once; selection, search, filters,
 focus, or editor state forms the interaction context; and the workspace pulse is
 the right region. Today is normally mandatory. When width is constrained, the

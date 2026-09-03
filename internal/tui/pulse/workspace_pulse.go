@@ -1,4 +1,4 @@
-package tui
+package pulse
 
 import (
 	"fmt"
@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -33,47 +31,41 @@ const (
 	workspacePulseHidden
 )
 
-// workspacePulseState is embedded by full-screen presentations that own a
+// WorkspacePulseState is embedded by full-screen presentations that own a
 // workspace-pulse title. The app shell refreshes it immediately before paint.
 // Keeping this state separate from view-specific scope makes task- and
 // project-scoped screens label the readout as workspace-wide.
-type workspacePulseState struct {
+type WorkspacePulseState struct {
 	workspacePulse WorkspacePulse
 }
 
-func (s *workspacePulseState) setWorkspacePulse(pulse WorkspacePulse) {
+func (s *WorkspacePulseState) SetWorkspacePulse(pulse WorkspacePulse) {
 	s.workspacePulse = pulse
 }
 
-func (s *workspacePulseState) currentWorkspacePulse() WorkspacePulse {
+func (s *WorkspacePulseState) CurrentWorkspacePulse() WorkspacePulse {
 	return s.workspacePulse
 }
 
-// workspacePulseAware is implemented by views that render the workspace pulse.
+// WorkspacePulseAware is implemented by views that render the workspace pulse.
 // AppModel injects the latest cached value before each render.
-type workspacePulseAware interface {
-	setWorkspacePulse(WorkspacePulse)
+type WorkspacePulseAware interface {
+	SetWorkspacePulse(WorkspacePulse)
 }
 
-// ComputeWorkspacePulse counts actionable work across the base task workspace
-// at one injected reference time. It preserves the cross-scope loader's partial
-// failure behavior: successfully loaded projects contribute while failures are
-// warned and skipped.
+// ComputeWorkspacePulse counts actionable work across an already-loaded base
+// task workspace at one injected reference time. Selecting and loading that
+// population is the caller's, because the snapshot loader sits well above this
+// package; passing the partial result through preserves the cross-scope
+// loader's partial failure behavior, since a project that failed to load is
+// simply absent from projects and contributes nothing.
 //
 // Today membership is project-qualified and counted at most once per planning
 // identity. Stale references, ineligible tasks, and references to excluded
 // projects do not contribute because only loaded eligible tasks are considered.
-func ComputeWorkspacePulse(rs *config.RuntimeState, todayIDs map[taskref.TaskIdentity]bool, now time.Time) WorkspacePulse {
-	if rs == nil {
-		return WorkspacePulse{}
-	}
-
+func ComputeWorkspacePulse(projects []*models.Project, todayIDs map[taskref.TaskIdentity]bool, now time.Time) WorkspacePulse {
 	var pulse WorkspacePulse
 	countedToday := make(map[taskref.TaskIdentity]bool, len(todayIDs))
-	_, projects, failed := loadCrossScopeSelection(rs.TaskWorkspaceProjects(), nil)
-	for _, failure := range failed {
-		logging.Warn("workspace pulse: %s", failure.Detail)
-	}
 	for _, project := range projects {
 		if project == nil {
 			continue
@@ -91,7 +83,7 @@ func ComputeWorkspacePulse(rs *config.RuntimeState, todayIDs map[taskref.TaskIde
 			if task.IsInState(models.StateInbox) {
 				pulse.Inbox++
 			}
-			if taskIsOverdueAt(task, now) {
+			if TaskIsOverdueAt(task, now) {
 				pulse.Overdue++
 			}
 		}
@@ -99,7 +91,7 @@ func ComputeWorkspacePulse(rs *config.RuntimeState, todayIDs map[taskref.TaskIde
 	return pulse
 }
 
-func taskIsOverdueAt(task *models.Task, now time.Time) bool {
+func TaskIsOverdueAt(task *models.Task, now time.Time) bool {
 	if task == nil || task.DueDate == nil || task.State().IsTerminal() {
 		return false
 	}

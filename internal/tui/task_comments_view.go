@@ -21,7 +21,7 @@ func (m *TaskCommentsModel) View() tea.View {
 		fmt.Sprintf("Comments · #%d: ", m.task.ShortID),
 		m.task,
 		"",
-		m.currentWorkspacePulse(),
+		m.CurrentWorkspacePulse(),
 		m.Width(),
 		m.AccentColor()))
 	b.WriteString("\n\n")

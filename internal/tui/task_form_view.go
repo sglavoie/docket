@@ -47,7 +47,7 @@ func (m *TaskFormModel) View() tea.View {
 	if m.hostTitle != "" {
 		titleText = m.hostTitle
 	}
-	title := renderFullscreenTitleWithPulse(titleText, subtitle, m.currentWorkspacePulse(), m.width)
+	title := renderFullscreenTitleWithPulse(titleText, subtitle, m.CurrentWorkspacePulse(), m.width)
 
 	// ── Tab bar ───────────────────────────────────────────────────────────────
 	tabBar := RenderTabBar(formTabNames, m.activeTab, m.width-CreatorTabBarPadding, 1)

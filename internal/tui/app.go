@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -116,7 +117,7 @@ type AppModel struct {
 	// workspacePulse caches the cross-project operational counts surfaced in the
 	// title row. It is recomputed after committed count-changing mutations so
 	// paint paths can read it without an extra full-tree walk.
-	workspacePulse WorkspacePulse
+	workspacePulse pulse.WorkspacePulse
 	// completionActivity is refreshed through the application query alongside
 	// other operational title state, then injected into the Outliner before paint.
 	// Keeping the snapshot out of View avoids render-time filesystem reads.

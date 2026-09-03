@@ -9,13 +9,14 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // TextEditorModel handles editing a single text field in a popup overlay.
 // Used for task title and description editing in task creator/editor forms.
 type TextEditorModel struct {
-	workspacePulseState
+	pulse.WorkspacePulseState
 	textarea     textarea.Model
 	fieldName    string // "title" or "description"
 	initialValue string // for cancel restoration
@@ -152,7 +153,7 @@ func (m *TextEditorModel) View() tea.View {
 		title = "Edit Description"
 	}
 
-	b.WriteString(renderFullscreenTitleWithPulse(title, "", m.currentWorkspacePulse(), m.width))
+	b.WriteString(renderFullscreenTitleWithPulse(title, "", m.CurrentWorkspacePulse(), m.width))
 	b.WriteString("\n\n")
 	theme.ApplyThemedTextarea(&m.textarea)
 	b.WriteString(m.textarea.View())

@@ -22,7 +22,7 @@ func (m *TaskAttachmentsModel) View() tea.View { //nolint:gocyclo
 		fmt.Sprintf("Attachments for #%d: ", m.task.ShortID),
 		m.task,
 		fmt.Sprintf("%d attachment(s)", len(m.task.Attachments)),
-		m.currentWorkspacePulse(),
+		m.CurrentWorkspacePulse(),
 		m.Width(),
 		m.AccentColor()))
 	b.WriteString("\n\n")

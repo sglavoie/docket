@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -269,7 +270,7 @@ func renderFilterBadge(parts []string) string {
 	if len(parts) == 0 {
 		return ""
 	}
-	return operationalTitleBadge(theme.FilterBadgeStyle, "Filters: "+strings.Join(parts, " "))
+	return pulse.OperationalTitleBadge(theme.FilterBadgeStyle, "Filters: "+strings.Join(parts, " "))
 }
 
 // newFilterState returns an initialized CommonFilterState with allocated maps.

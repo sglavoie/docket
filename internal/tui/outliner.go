@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -50,7 +51,7 @@ type OutlinerModel struct {
 	BaseSearchableView
 	InteractiveViewState
 	MultiSelectState
-	todayPaceState
+	pulse.TodayPaceState
 
 	runtime        *config.RuntimeState
 	configManager  *config.Manager
@@ -310,11 +311,13 @@ type OutlinerModel struct {
 
 	// workspacePulse mirrors AppModel.workspacePulse for the title-row
 	// operational counter.
-	workspacePulse WorkspacePulse
+	workspacePulse pulse.WorkspacePulse
 }
 
-// setWorkspacePulse injects the latest cross-project operational counts.
-func (m *OutlinerModel) setWorkspacePulse(pulse WorkspacePulse) { m.workspacePulse = pulse }
+// SetWorkspacePulse injects the latest cross-project operational counts.
+func (m *OutlinerModel) SetWorkspacePulse(workspacePulse pulse.WorkspacePulse) {
+	m.workspacePulse = workspacePulse
+}
 
 func (m *OutlinerModel) resetViewScrollOffset() {
 	m.viewScrollOffset = 0

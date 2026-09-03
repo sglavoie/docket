@@ -5,6 +5,7 @@ import (
 	"charm.land/bubbles/v2/viewport"
 
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/pulse"
 )
 
 // HelpItem represents a single help entry. Aliases carry the vocabulary a user
@@ -49,7 +50,7 @@ func helpItemsFromKeyMap(km *keymap.KeyMap) []HelpItem {
 
 // HelpViewModel is the model for the help view.
 type HelpViewModel struct {
-	workspacePulseState
+	pulse.WorkspacePulseState
 	items         []HelpItem
 	filteredItems []filteredHelpItem
 	viewport      viewport.Model

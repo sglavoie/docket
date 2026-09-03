@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -86,7 +87,7 @@ func TestPeriodicTickRefreshesWorkspacePulseWhenDeferredTaskWakes(t *testing.T) 
 	model.todayIDs = map[taskref.TaskIdentity]bool{taskref.For(deferred, project): true}
 
 	model.refreshWorkspacePulseAt(wake.Add(-time.Minute))
-	pending := WorkspacePulse{Done: 1}
+	pending := pulse.WorkspacePulse{Done: 1}
 	if model.workspacePulse != pending {
 		t.Fatalf("pending-deferral pulse = %+v, want %+v", model.workspacePulse, pending)
 	}
@@ -114,7 +115,7 @@ func TestPeriodicTickRefreshesWorkspacePulseWhenDeferredTaskWakes(t *testing.T) 
 	if !out.nextDeferWake.IsZero() {
 		t.Fatalf("the consumed wake clock survived: %s", out.nextDeferWake)
 	}
-	woken := WorkspacePulse{Inbox: 1, Today: 1, Overdue: 1, Done: 1}
+	woken := pulse.WorkspacePulse{Inbox: 1, Today: 1, Overdue: 1, Done: 1}
 	if model.workspacePulse != woken {
 		t.Fatalf("same-day wake pulse = %+v, want %+v", model.workspacePulse, woken)
 	}
@@ -156,7 +157,7 @@ func TestPeriodicTickAcrossMidnightHoldsActionableCountsUntilTheWakeIsConsumed(t
 	model.todayIDs = map[taskref.TaskIdentity]bool{taskref.For(deferred, project): true}
 
 	model.refreshWorkspacePulseAt(beforeWake)
-	pending := WorkspacePulse{Done: 2}
+	pending := pulse.WorkspacePulse{Done: 2}
 	if model.workspacePulse != pending {
 		t.Fatalf("previous-day pending-deferral pulse = %+v, want %+v", model.workspacePulse, pending)
 	}
@@ -174,7 +175,7 @@ func TestPeriodicTickAcrossMidnightHoldsActionableCountsUntilTheWakeIsConsumed(t
 	if !model.completionActivity.IsCurrentLocalDay(tickAt) {
 		t.Fatal("the cross-midnight tick did not install the new local day's activity")
 	}
-	frozen := WorkspacePulse{Done: 1}
+	frozen := pulse.WorkspacePulse{Done: 1}
 	if model.workspacePulse != frozen {
 		t.Fatalf("cross-midnight refused-wake pulse = %+v, want %+v", model.workspacePulse, frozen)
 	}
@@ -189,7 +190,7 @@ func TestPeriodicTickAcrossMidnightHoldsActionableCountsUntilTheWakeIsConsumed(t
 	if !out.nextDeferWake.IsZero() {
 		t.Fatalf("the consumed wake clock survived: %s", out.nextDeferWake)
 	}
-	woken := WorkspacePulse{Inbox: 1, Today: 1, Overdue: 1, Done: 1}
+	woken := pulse.WorkspacePulse{Inbox: 1, Today: 1, Overdue: 1, Done: 1}
 	if model.workspacePulse != woken {
 		t.Fatalf("cross-midnight consumed-wake pulse = %+v, want %+v", model.workspacePulse, woken)
 	}

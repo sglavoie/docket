@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -19,7 +20,7 @@ import (
 
 // ProjectCreatorModel handles creating a new project via TUI.
 type ProjectCreatorModel struct {
-	workspacePulseState
+	pulse.WorkspacePulseState
 	runtime *config.RuntimeState
 	manager *config.Manager
 	service *app.Service
@@ -192,7 +193,7 @@ func (m *ProjectCreatorModel) View() tea.View {
 	guidance := renderGuidance(m.guidanceSpec(), m.width)
 
 	var out strings.Builder
-	out.WriteString(renderFullscreenTitleWithPulse("Create Project", "", m.currentWorkspacePulse(), m.width))
+	out.WriteString(renderFullscreenTitleWithPulse("Create Project", "", m.CurrentWorkspacePulse(), m.width))
 	out.WriteString("\n\n")
 	out.WriteString(b.String())
 	out.WriteString("\n")

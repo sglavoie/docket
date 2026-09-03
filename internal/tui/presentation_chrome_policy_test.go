@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/pulse"
 )
 
 type staticCompletionActivityReader struct {
@@ -90,11 +91,11 @@ func TestPresentationGuidanceReachabilityNamesShellAndSurfaceOwners(t *testing.T
 func TestFullscreenWorkspacePulseTitleRendersZeroAndNonzeroStates(t *testing.T) {
 	tests := []struct {
 		name  string
-		pulse WorkspacePulse
+		pulse pulse.WorkspacePulse
 		want  string
 	}{
-		{name: "zero", pulse: WorkspacePulse{}, want: "workspace: today 0 · done 0"},
-		{name: "nonzero", pulse: WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4}, want: "workspace: inbox 3 · today 2 · overdue 1 · done 4"},
+		{name: "zero", pulse: pulse.WorkspacePulse{}, want: "workspace: today 0 · done 0"},
+		{name: "nonzero", pulse: pulse.WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4}, want: "workspace: inbox 3 · today 2 · overdue 1 · done 4"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -112,8 +113,8 @@ func TestFullscreenWorkspacePulseTitleRendersZeroAndNonzeroStates(t *testing.T) 
 func TestTodayPaceReadoutIsTodayOnlyAndRequiresHistory(t *testing.T) {
 	project := scopeTestProject("alpha", "Alpha", "launch")
 	outliner := scopeTestOutliner(project)
-	outliner.workspacePulse = WorkspacePulse{Inbox: 3, Today: 9, Overdue: 1}
-	outliner.setCompletionActivity(app.CompletionActivity{
+	outliner.workspacePulse = pulse.WorkspacePulse{Inbox: 3, Today: 9, Overdue: 1}
+	outliner.SetCompletionActivity(app.CompletionActivity{
 		DailyCompletions: map[time.Time]int{time.Date(2026, time.August, 19, 0, 0, 0, 0, time.UTC): 1},
 	})
 
@@ -135,7 +136,7 @@ func TestTodayPaceReadoutIsTodayOnlyAndRequiresHistory(t *testing.T) {
 	}
 
 	outliner.primaryMode = ModeToday
-	outliner.setCompletionActivity(app.CompletionActivity{})
+	outliner.SetCompletionActivity(app.CompletionActivity{})
 	plain := ansi.Strip(outliner.buildOutlinerTitleLine(160))
 	if strings.Contains(plain, "median") || strings.Contains(plain, "(30d)") {
 		t.Fatalf("history-free workspace rendered a zero pace: %q", plain)
@@ -150,14 +151,14 @@ func TestAppViewUsesCachedCompletionActivityWithoutRenderTimeRead(t *testing.T) 
 	model.features.Activity = ActivityCoordinator{reader: reader}
 	model.crossOutliner.primaryMode = ModeToday
 	model.refreshWorkspacePulseAt(time.Now())
-	model.crossOutliner.setCompletionActivity(app.CompletionActivity{})
+	model.crossOutliner.SetCompletionActivity(app.CompletionActivity{})
 
 	_ = model.View()
 
 	if reader.calls != 1 {
 		t.Fatalf("completion activity queries = %d, want one cached refresh and no render-time read", reader.calls)
 	}
-	if !model.crossOutliner.completionActivity.HasHistory() {
+	if !model.crossOutliner.CompletionActivity.HasHistory() {
 		t.Fatal("active Outliner did not receive refreshed completion activity")
 	}
 }
@@ -171,69 +172,80 @@ func TestPresentationChromeEligibleFamiliesRenderWorkspacePulse(t *testing.T) {
 
 	tests := []struct {
 		name string
-		view func(WorkspacePulse) string
+		view func(pulse.WorkspacePulse) string
 	}{
-		{name: "project creator", view: func(pulse WorkspacePulse) string {
+		{name: "project creator", view: func(workspacePulse pulse.WorkspacePulse) string {
 			m := NewProjectCreatorModel(nil, nil, nil)
 			m.SetSize(140, 30)
-			m.setWorkspacePulse(pulse)
+			m.SetWorkspacePulse(workspacePulse)
 			return m.View().Content
 		}},
-		{name: "project editor", view: func(pulse WorkspacePulse) string {
+		{name: "project editor", view: func(workspacePulse pulse.WorkspacePulse) string {
 			m := NewProjectEditorModel(project, nil, nil, nil, false)
 			m.SetSize(140, 30)
-			m.setWorkspacePulse(pulse)
+			m.SetWorkspacePulse(workspacePulse)
 			return m.View().Content
 		}},
-		{name: "notes", view: func(pulse WorkspacePulse) string {
+		{name: "notes", view: func(workspacePulse pulse.WorkspacePulse) string {
 			m := &NotesViewModel{scope: AllNotesScope()}
 			m.SetSize(140, 30)
-			m.setWorkspacePulse(pulse)
+			m.SetWorkspacePulse(workspacePulse)
 			return m.View().Content
 		}},
-		{name: "task composer", view: func(pulse WorkspacePulse) string {
+		{name: "task composer", view: func(workspacePulse pulse.WorkspacePulse) string {
 			m := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, nil)
 			m.SetSize(140, 30)
-			m.setWorkspacePulse(pulse)
+			m.SetWorkspacePulse(workspacePulse)
 			return m.View().Content
 		}},
-		{name: "task form", view: func(pulse WorkspacePulse) string {
+		{name: "task form", view: func(workspacePulse pulse.WorkspacePulse) string {
 			m := NewTaskFormModelCreate(project, nil, nil)
 			m.SetSize(140, 30)
-			m.setWorkspacePulse(pulse)
+			m.SetWorkspacePulse(workspacePulse)
 			return m.View().Content
 		}},
-		{name: "task tool", view: func(pulse WorkspacePulse) string {
+		{name: "task tool", view: func(workspacePulse pulse.WorkspacePulse) string {
 			m := NewTaskCommentsModel(task, project)
 			m.SetSize(140, 30)
-			m.setWorkspacePulse(pulse)
+			m.SetWorkspacePulse(workspacePulse)
 			return m.View().Content
 		}},
-		{name: "text editor", view: func(pulse WorkspacePulse) string {
+		{name: "text editor", view: func(workspacePulse pulse.WorkspacePulse) string {
 			m := NewTextEditorModel("description", "body")
 			m.SetSize(140, 30)
-			m.setWorkspacePulse(pulse)
+			m.SetWorkspacePulse(workspacePulse)
 			return m.View().Content
 		}},
-		{name: "help", view: func(pulse WorkspacePulse) string {
+		{name: "help", view: func(workspacePulse pulse.WorkspacePulse) string {
 			m := NewHelpViewModel(nil, "Outliner")
 			m.SetSize(140, 30)
-			m.setWorkspacePulse(pulse)
+			m.SetWorkspacePulse(workspacePulse)
 			return m.View().Content
 		}},
-		{name: "project hub", view: func(pulse WorkspacePulse) string {
+		{name: "project hub", view: func(workspacePulse pulse.WorkspacePulse) string {
 			m := NewProjectHubModel(config.EmptyRuntimeState(""))
 			m.SetSize(140, 30)
-			m.setWorkspacePulse(pulse)
+			m.SetWorkspacePulse(workspacePulse)
 			return m.View().Content
 		}},
 	}
 
+	// The two expectations are spelled out rather than read back from the
+	// formatter internal/tui/pulse owns, which is what this file already does
+	// for the same two pulses above and below. The formatter's own component
+	// order and ladder are asserted inside that package; what this test adds is
+	// that every eligible family paints the full form exactly once.
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			for _, pulse := range []WorkspacePulse{{}, {Inbox: 3, Today: 2, Overdue: 1, Done: 4}} {
-				plain := ansi.Strip(tt.view(pulse))
-				want := ansi.Strip(formatWorkspacePulseComponents(pulse, workspacePulseFull))
+			for _, pulse := range []struct {
+				value pulse.WorkspacePulse
+				want  string
+			}{
+				{value: pulse.WorkspacePulse{}, want: "workspace: today 0 · done 0"},
+				{value: pulse.WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4}, want: "workspace: inbox 3 · today 2 · overdue 1 · done 4"},
+			} {
+				plain := ansi.Strip(tt.view(pulse.value))
+				want := pulse.want
 				if !strings.Contains(plain, want) {
 					t.Fatalf("view missing workspace pulse %q:\n%s", want, plain)
 				}
@@ -247,7 +259,7 @@ func TestPresentationChromeEligibleFamiliesRenderWorkspacePulse(t *testing.T) {
 
 func TestPresentationChromeTransientPopupPreservesHostPulse(t *testing.T) {
 	const width, height = 100, 8
-	hostTitle := renderFullscreenTitleWithPulse("Notes", "All Notes", WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4}, width)
+	hostTitle := renderFullscreenTitleWithPulse("Notes", "All Notes", pulse.WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4}, width)
 	host := hostTitle + strings.Repeat("\n", height-1)
 	tallPopup := strings.Repeat("transient action\n", height*2) + "last action"
 	rendered := ansi.Strip(overlayPopupBelowPersistentTitle(host, tallPopup, width, height))

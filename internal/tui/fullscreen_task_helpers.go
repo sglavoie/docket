@@ -6,6 +6,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -18,11 +19,11 @@ func renderFullscreenTitle(title, subtitle string, accent ...color.Color) string
 // renderFullscreenTitleWithPulse renders the shared one-row full-screen title
 // with the workspace-wide pulse right-aligned. Transient presentations use
 // renderFullscreenTitle instead and therefore never duplicate the host pulse.
-func renderFullscreenTitleWithPulse(title, subtitle string, pulse WorkspacePulse, width int, accent ...color.Color) string {
+func renderFullscreenTitleWithPulse(title, subtitle string, workspacePulse pulse.WorkspacePulse, width int, accent ...color.Color) string {
 	return renderFullscreenTitleContentWithPulse(
 		fullscreenTitleStyle(accent...).Render(title),
 		subtitle,
-		pulse,
+		workspacePulse,
 		width,
 	)
 }
@@ -42,7 +43,7 @@ func renderFullscreenTitleContent(titleContent, subtitle string) string {
 	return t
 }
 
-func renderFullscreenTitleContentWithPulse(titleContent, subtitle string, pulse WorkspacePulse, width int) string {
+func renderFullscreenTitleContentWithPulse(titleContent, subtitle string, workspacePulse pulse.WorkspacePulse, width int) string {
 	if width <= 0 {
 		return renderFullscreenTitleContent(titleContent, subtitle)
 	}
@@ -50,20 +51,20 @@ func renderFullscreenTitleContentWithPulse(titleContent, subtitle string, pulse 
 	if subtitle != "" {
 		context = theme.MutedStyle.Render(subtitle)
 	}
-	return renderOperationalTitle(operationalTitleSpec{
+	return pulse.RenderOperationalTitle(pulse.OperationalTitleSpec{
 		Surface: titleContent,
 		Context: []string{context},
-		Pulse:   &pulse,
+		Pulse:   &workspacePulse,
 	}, width)
 }
 
-func renderTaskScopedFullscreenTitleWithPulse(prefix string, task *models.Task, subtitle string, pulse WorkspacePulse, width int, accent ...color.Color) string {
+func renderTaskScopedFullscreenTitleWithPulse(prefix string, task *models.Task, subtitle string, workspacePulse pulse.WorkspacePulse, width int, accent ...color.Color) string {
 	titleStyle := fullscreenTitleStyle(accent...)
 	if task == nil {
-		return renderFullscreenTitleContentWithPulse(titleStyle.Render(prefix), subtitle, pulse, width)
+		return renderFullscreenTitleContentWithPulse(titleStyle.Render(prefix), subtitle, workspacePulse, width)
 	}
 	titleContent := titleStyle.Render(prefix) + theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{}).Render(task.Title)
-	return renderFullscreenTitleContentWithPulse(titleContent, subtitle, pulse, width)
+	return renderFullscreenTitleContentWithPulse(titleContent, subtitle, workspacePulse, width)
 }
 
 // renderPriorityBadge renders a priority indicator with color styling. An unset

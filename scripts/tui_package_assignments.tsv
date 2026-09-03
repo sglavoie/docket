@@ -12,11 +12,8 @@
 # L4 route, L5 listsurface, L6 help, L7 notes|taskdetail|taskform|lens|conflict
 # then projecthub then outliner, L8 tui (root shell).
 #
-# Two assignments correct context.md rather than follow it, and Session 1.6
-# should treat them as findings, not typos:
-#   - operational_title.go is chrome, not pulse: it renders a header row out of
-#     theme styles and the mode catalog and only holds *WorkspacePulse and
-#     *todayPaceReadout as spec fields.
+# One assignment corrects context.md rather than follow it, and Session 1.6
+# should treat it as a finding, not a typo:
 #   - outliner_mode.go and outliner_mode_style.go are chrome, not outliner: the
 #     mode catalog is vocabulary that operation, route, lens, projecthub and
 #     query all read, so it cannot sit at L7.
@@ -31,6 +28,16 @@
 #     already sends to status; leaving it in the shell would have split a
 #     message from its only constructor across a package boundary for no gain.
 #     Session 2.6's completion contract names the file explicitly.
+#   - operational_title.go is pulse, not chrome (Session 2.7). Session 1.5 read
+#     it as a header renderer over theme styles and the mode catalog and put it
+#     at L1; Session 2.7's completion contract names it as pulse's, and the
+#     export budget settles it. The title row is the only reader of the pulse
+#     ladder and of TodayPaceReadout, so splitting the two forces
+#     formatWorkspacePulseComponents, workspacePulseLevel, its five constants
+#     and TodayPaceReadout public for one consumer, while keeping them together
+#     leaves every one of them unexported. Its one genuine chrome dependency,
+#     the mode chip, stayed behind as operationalTitleModeSegment in
+#     outliner_mode_style.go, which is where the mode catalog already lives.
 #
 # Test files are deliberately absent. They follow the production file they
 # audit, except the uitest harness and the registry-union parity tests, which
@@ -253,7 +260,7 @@ operation_value_picker_model.go	tui	L8	receiver:OperationValuePickerModel
 operation_value_picker_render.go	tui	L8	receiver:OperationValuePickerModel
 operation_value_provider.go	operation	L3	assigned
 operation_value_provider_ids.go	operation	L3	receiver:ValueProviderID
-operational_title.go	chrome	L1	assigned
+operational_title.go	pulse	L0	assigned
 outline_editor.go	tui	L8	receiver:AppModel
 outline_editor_apply.go	tui	L8	receiver:AppModel
 outline_editor_errors.go	outliner	L7	receiver:OutlineErrorsViewModel

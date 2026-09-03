@@ -122,7 +122,7 @@ load; `median` explicitly marks the outside-view statistic; and `(30d)` names
 the observation window. When there is no completion history, render no pace
 readout rather than a zero median. The readout belongs to the interaction/middle
 region, never inside `WorkspacePulse`; this binds the region model at
-`operationalTitleSpec` in `internal/tui/operational_title.go`.
+`OperationalTitleSpec` in `internal/tui/pulse/operational_title.go`.
 
 Under width pressure, preserve identity and required interaction context, then
 use these pace candidates in order:
@@ -137,7 +137,7 @@ the contracted comparison and duplicates pulse information. On Today, the pace
 candidate outranks the passive workspace pulse; exhaust the pulse ladder before
 shortening the pace candidate, then omit pace before truncating required
 interaction context. This extends, rather than reverses, the existing rule at
-`renderOperationalTitle` in `internal/tui/operational_title.go` that passive
+`RenderOperationalTitle` in `internal/tui/pulse/operational_title.go` that passive
 title state disappears before required context.
 
 ## Workspace pulse
@@ -151,7 +151,7 @@ workspace: inbox 3 · today 2 · overdue 1 · done 4
 `done` is the number completed on the current local day and renders even when
 zero; it is a progress count, not another deficit count. Component order binds
 `WorkspacePulse` and `formatWorkspacePulseComponents` in
-`internal/tui/workspace_pulse.go`.
+`internal/tui/pulse/workspace_pulse.go`.
 
 The four-step pressure ladder, first removed to last removed, is:
 
@@ -164,7 +164,7 @@ Thus the new retrospective component never displaces live operational state,
 and the three existing components retain their current relative drop order.
 Today remains the final survivor. Replace the current boolean pair with this
 explicit ladder and have `operationalPulseVariants` in
-`internal/tui/operational_title.go` iterate its candidates.
+`internal/tui/pulse/operational_title.go` iterate its candidates.
 
 ## Vocabulary check
 

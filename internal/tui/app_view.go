@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -43,11 +44,11 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 
 	if current := m.activeView(); current != nil {
 		policy, classified := chromePolicyForPresentation(m.currentPresentationView())
-		if injector, ok := current.(workspacePulseAware); classified && policy.workspacePulseEligible() && ok {
-			injector.setWorkspacePulse(m.workspacePulse)
+		if injector, ok := current.(pulse.WorkspacePulseAware); classified && policy.workspacePulseEligible() && ok {
+			injector.SetWorkspacePulse(m.workspacePulse)
 		}
-		if injector, ok := current.(completionActivityAware); classified && policy.workspacePulseEligible() && ok {
-			injector.setCompletionActivity(m.completionActivity)
+		if injector, ok := current.(pulse.CompletionActivityAware); classified && policy.workspacePulseEligible() && ok {
+			injector.SetCompletionActivity(m.completionActivity)
 		}
 	}
 	resultView := tea.NewView("")

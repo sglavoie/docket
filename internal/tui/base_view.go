@@ -2,12 +2,14 @@ package tui
 
 import (
 	"image/color"
+
+	"github.com/sglavoie/tt/internal/tui/pulse"
 )
 
 // BaseView provides common functionality for TUI views.
 // Embed this in view models to get standard dimension and error handling.
 type BaseView struct {
-	workspacePulseState
+	pulse.WorkspacePulseState
 	width       int
 	height      int
 	err         error

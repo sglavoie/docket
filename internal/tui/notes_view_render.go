@@ -27,7 +27,7 @@ func (m *NotesViewModel) View() tea.View {
 		subtitle = textfit.TruncateToVisualWidth(subtitle, max(width-titleWidth-2, 1))
 	}
 	header := []string{
-		renderFullscreenTitleWithPulse("Notes", subtitle, m.currentWorkspacePulse(), width, m.AccentColor()),
+		renderFullscreenTitleWithPulse("Notes", subtitle, m.CurrentWorkspacePulse(), width, m.AccentColor()),
 		theme.MutedStyle.Render(textfit.TruncateToVisualWidth(m.scopeCountLabel(), width)),
 	}
 	if search := m.renderSearchLine(); search != "" {

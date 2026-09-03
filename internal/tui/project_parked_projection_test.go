@@ -220,7 +220,7 @@ func TestParkedProjectLeavesOperationScopeAndWorkspacePulse(t *testing.T) {
 	storage.DefaultRepository = repo
 	defer func() { storage.DefaultRepository = previous }()
 
-	pulse := ComputeWorkspacePulse(runtime, map[taskref.TaskIdentity]bool{
+	pulse := computeWorkspacePulse(runtime, map[taskref.TaskIdentity]bool{
 		taskref.For(parked.Tasks[0], parked): true,
 	}, time.Now())
 	if pulse.Inbox != 1 {

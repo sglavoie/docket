@@ -110,18 +110,30 @@ the pre-split tree and is consistently pessimistic.
 | `textfit` | 12 | 9 | 9 |
 | `taskref` | 2 | 2 | 2 |
 | `status` | 10 | 10 | 10 |
+| `pulse` | 13 | 12 | 12 |
 
-Running total against 631: **39**. The middle column minus the last is the
+Running total against 631: **51**. The middle column minus the last is the
 test-only promotion the ruling reclaims — 27 for `theme`, none since, because
 `textfit` moved its three test files down in the same session, `taskref`
-promoted nothing for a test in the first place, and `status` moved its one test
-file down with the two helpers only that test reads.
+promoted nothing for a test in the first place, `status` moved its one test
+file down with the two helpers only that test reads, and `pulse` moved down the
+six tests that read its unexported ladder and title internals.
 
 `status` is the first row to spend its projection exactly. It also exported one
 struct field the `must export` column does not count, because that column counts
 declarations: `periodicSaveMsg.at` became `PeriodicSaveMsg.At` so the shell can
 still build the message it schedules. Expect a field or two on top of the
 budget wherever a moving message type is constructed outside its own file.
+
+`pulse` under-spends its projection for a reason the earlier under-spends do
+not share: the one assignment it corrected. `operational_title.go` was projected
+into `chrome`, so every identifier the title row and the pulse share crossed a
+package boundary in that projection. Extracting them together keeps
+`formatWorkspacePulseComponents`, `workspacePulseLevel` with its five constants,
+and the whole `operationalTitle*` fitting apparatus unexported. It also exported
+three struct fields the column does not count, for the same reason `status` did:
+`todayPaceState.completionActivity` and both `todayPaceReadout` fields are set
+by the shell that builds the value.
 
 Reproduce the last column for one package with the oracle from session 2.4,
 which reports a clean boundary rather than a count:

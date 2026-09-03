@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/pulse"
 )
 
 // TestFullscreenTitleChromeFittingStaysWithinWidth verifies that the semantic
@@ -16,10 +17,10 @@ func TestFullscreenTitleChromeFittingStaysWithinWidth(t *testing.T) {
 		name  string
 		title string
 		width int
-		pulse WorkspacePulse
+		pulse pulse.WorkspacePulse
 	}{
-		{name: "narrow", title: longPrefix, width: 20, pulse: WorkspacePulse{}},
-		{name: "wide", title: "Tasks", width: 120, pulse: WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4}},
+		{name: "narrow", title: longPrefix, width: 20, pulse: pulse.WorkspacePulse{}},
+		{name: "wide", title: "Tasks", width: 120, pulse: pulse.WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			rendered := renderTaskScopedFullscreenTitleWithPulse(tc.title, nil, "", tc.pulse, tc.width)

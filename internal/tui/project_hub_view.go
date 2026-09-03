@@ -106,7 +106,7 @@ func (m *ProjectHubModel) renderProjectHubTitle(width int) string {
 	return renderFullscreenTitleWithPulse(
 		title,
 		m.subtitle(),
-		m.currentWorkspacePulse(),
+		m.CurrentWorkspacePulse(),
 		width,
 		m.AccentColor(),
 	)

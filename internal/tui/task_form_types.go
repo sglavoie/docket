@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/pulse"
 )
 
 // formSubtaskDraft is a draft subtask entry on the Children tab.
@@ -56,7 +57,7 @@ type taskFormDraft struct {
 
 // TaskFormModel drives expanded task creation.
 type TaskFormModel struct {
-	workspacePulseState
+	pulse.WorkspacePulseState
 	project           *models.Project
 	draft             taskFormDraft
 	taskForm          TaskFormCoordinator

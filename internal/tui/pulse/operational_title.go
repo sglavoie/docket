@@ -1,4 +1,4 @@
-package tui
+package pulse
 
 import (
 	"fmt"
@@ -17,23 +17,23 @@ const (
 	operationalTitleMinContextWidth = 14
 )
 
-// operationalTitleSpec describes the semantic regions of a one-row
+// OperationalTitleSpec describes the semantic regions of a one-row
 // operational header. Segment strings may already contain ANSI styling; all
 // fitting is based on terminal-cell width rather than bytes or runes.
-type operationalTitleSpec struct {
+type OperationalTitleSpec struct {
 	Surface string
 	Scope   string
 	Mode    string
 	Context []string
-	Pace    *todayPaceReadout
+	Pace    *TodayPaceReadout
 	Pulse   *WorkspacePulse
 }
 
-// renderOperationalTitle composes identity, interaction context, and passive
+// RenderOperationalTitle composes identity, interaction context, and passive
 // workspace state onto exactly one non-wrapping row. Passive pulse components
 // are removed in the product-wide precedence order (Done, Inbox, Overdue, Today)
 // before required interaction context is shortened.
-func renderOperationalTitle(spec operationalTitleSpec, width int) string {
+func RenderOperationalTitle(spec OperationalTitleSpec, width int) string {
 	if width <= 0 {
 		return ""
 	}
@@ -98,7 +98,7 @@ func renderOperationalTitle(spec operationalTitleSpec, width int) string {
 	return identity + operationalTitleContextGap + textfit.TruncateToVisualWidth(context, contextBudget)
 }
 
-func renderOperationalIdentity(spec operationalTitleSpec, width int) string {
+func renderOperationalIdentity(spec OperationalTitleSpec, width int) string {
 	parts := []string{spec.Surface, spec.Scope, spec.Mode}
 	identity := joinOperationalTitleSegments(parts)
 	if width <= 0 || lipgloss.Width(identity) <= width {
@@ -127,16 +127,11 @@ func renderOperationalIdentity(spec operationalTitleSpec, width int) string {
 	return textfit.TruncateToVisualWidth(identity, width)
 }
 
-// operationalTitleBadge renders a background-styled title chip without the
+// OperationalTitleBadge renders a background-styled title chip without the
 // theme's padding cells. The row's separator and context gap own every
 // inter-region space, so a padded edge widens one of those gaps by a cell.
-func operationalTitleBadge(style lipgloss.Style, text string) string {
+func OperationalTitleBadge(style lipgloss.Style, text string) string {
 	return style.Padding(0, 0).Render(text)
-}
-
-// operationalTitleModeSegment renders the mode identity segment.
-func operationalTitleModeSegment(mode OutlinerMode) string {
-	return operationalTitleBadge(GetOutlinerModeStyle(mode.ID), mode.Label)
 }
 
 func joinOperationalTitleSegments(parts []string) string {
@@ -170,12 +165,12 @@ func operationalPulseVariants(pulse WorkspacePulse) []string {
 	return variants
 }
 
-func operationalPaceVariants(pace todayPaceReadout) []string {
-	rate := strconv.FormatFloat(pace.medianPerDay, 'f', -1, 64)
+func operationalPaceVariants(pace TodayPaceReadout) []string {
+	rate := strconv.FormatFloat(pace.MedianPerDay, 'f', -1, 64)
 	candidates := []string{
-		fmt.Sprintf("today %d · median %s/day (30d)", pace.openCount, rate),
-		fmt.Sprintf("today %d · median %s/day", pace.openCount, rate),
-		fmt.Sprintf("today %d · %s/day", pace.openCount, rate),
+		fmt.Sprintf("today %d · median %s/day (30d)", pace.OpenCount, rate),
+		fmt.Sprintf("today %d · median %s/day", pace.OpenCount, rate),
+		fmt.Sprintf("today %d · %s/day", pace.OpenCount, rate),
 	}
 	variants := make([]string, 0, len(candidates))
 	for _, candidate := range candidates {

@@ -4,6 +4,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -39,4 +40,16 @@ func GetOutlinerModeStyle(mode OutlinerModeID) lipgloss.Style {
 		return theme.GetWorkflowStateGroupStyle(group)
 	}
 	return theme.ViewModeAllStyle
+}
+
+// operationalTitleModeSegment renders the mode identity segment of the
+// operational title row.
+//
+// It sits here rather than beside the rest of the title row because it is the
+// one segment built out of the mode catalog: OutlinerMode and the style table
+// above are chrome vocabulary, and internal/tui/pulse is below chrome. The
+// badge itself is pulse's, so this is the adapter that hands chrome's mode to
+// it and nothing more.
+func operationalTitleModeSegment(mode OutlinerMode) string {
+	return pulse.OperationalTitleBadge(GetOutlinerModeStyle(mode.ID), mode.Label)
 }

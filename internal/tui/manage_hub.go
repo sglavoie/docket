@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/pulse"
 )
 
 // ManageHubModuleSelectedMsg changes the active Manage mode without creating a
@@ -217,10 +218,10 @@ func (m *ManageHubModel) SetAccentColor(accent color.Color) {
 	}
 }
 
-func (m *ManageHubModel) setWorkspacePulse(pulse WorkspacePulse) {
-	m.BaseView.setWorkspacePulse(pulse)
-	if injector, ok := m.active.(workspacePulseAware); ok {
-		injector.setWorkspacePulse(pulse)
+func (m *ManageHubModel) SetWorkspacePulse(workspacePulse pulse.WorkspacePulse) {
+	m.BaseView.SetWorkspacePulse(workspacePulse)
+	if injector, ok := m.active.(pulse.WorkspacePulseAware); ok {
+		injector.SetWorkspacePulse(workspacePulse)
 	}
 }
 

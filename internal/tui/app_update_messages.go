@@ -345,7 +345,7 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState, reloadCrossProject 
 
 func (m *AppModel) refreshWorkspacePulseAt(now time.Time) {
 	cachedActivityIsCurrent := m.completionActivity.IsCurrentLocalDay(now)
-	m.workspacePulse = ComputeWorkspacePulse(m.runtime, m.todayIDs, now)
+	m.workspacePulse = computeWorkspacePulse(m.runtime, m.todayIDs, now)
 	activity, err := m.features.Activity.CompletionActivity()
 	if err != nil {
 		logging.Warn("refresh completion activity: %v", err)

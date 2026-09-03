@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -231,14 +232,14 @@ func (m *OutlinerModel) buildOutlinerInteractionContext(width int) []string {
 
 // buildOutlinerTitleLine assembles the Outliner's one-row operational title.
 func (m *OutlinerModel) buildOutlinerTitleLine(width int) string {
-	var pace *todayPaceReadout
-	if m.primaryMode == ModeToday && m.completionActivity.HasHistory() {
-		pace = &todayPaceReadout{
-			openCount:    m.workspacePulse.Today,
-			medianPerDay: m.completionActivity.MedianPerDay(),
+	var pace *pulse.TodayPaceReadout
+	if m.primaryMode == ModeToday && m.CompletionActivity.HasHistory() {
+		pace = &pulse.TodayPaceReadout{
+			OpenCount:    m.workspacePulse.Today,
+			MedianPerDay: m.CompletionActivity.MedianPerDay(),
 		}
 	}
-	return renderOperationalTitle(operationalTitleSpec{
+	return pulse.RenderOperationalTitle(pulse.OperationalTitleSpec{
 		Scope:   theme.TitleStyle.Render(m.outlinerScopeLabel()),
 		Mode:    operationalTitleModeSegment(m.activeOutlinerModeEntry()),
 		Context: m.buildOutlinerInteractionContext(max(width, 1)),

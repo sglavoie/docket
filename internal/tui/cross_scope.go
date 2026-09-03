@@ -2,9 +2,13 @@ package tui
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/pulse"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/workspace"
 )
 
@@ -97,6 +101,25 @@ func loadCrossScopeSelection(selected []*models.Project, loader *workspace.Loade
 		copyCatalogMetadata(project, catalogByID[project.ID])
 	}
 	return snap.Tasks(), projects, failed
+}
+
+// computeWorkspacePulse selects and loads the base task workspace, then hands
+// the loaded projects to the counting half in internal/tui/pulse.
+//
+// The split is what keeps that package at L0: the snapshot loader below is
+// shell-and-outliner infrastructure, so pulse counts what it is given rather
+// than reaching up for it. Partial failure behavior is unchanged — a project
+// that fails to load is warned about here and is simply absent from the slice
+// the counter walks.
+func computeWorkspacePulse(rs *config.RuntimeState, todayIDs map[taskref.TaskIdentity]bool, now time.Time) pulse.WorkspacePulse {
+	if rs == nil {
+		return pulse.WorkspacePulse{}
+	}
+	_, projects, failed := loadCrossScopeSelection(rs.TaskWorkspaceProjects(), nil)
+	for _, failure := range failed {
+		logging.Warn("workspace pulse: %s", failure.Detail)
+	}
+	return pulse.ComputeWorkspacePulse(projects, todayIDs, now)
 }
 
 // selectCrossScopeProjects is the one place task projections choose a project

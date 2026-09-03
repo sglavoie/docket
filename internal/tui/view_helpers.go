@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -50,7 +51,7 @@ func buildTitleFilterSuffix(params *TitleParams, baseWidth int) string {
 	// Build compact filter badge
 	compactFilterBadge := ""
 	if len(params.FilterParts) > 0 {
-		compactFilterBadge = operationalTitleBadge(theme.FilterBadgeStyle, fmt.Sprintf("[%d filters]", len(params.FilterParts)))
+		compactFilterBadge = pulse.OperationalTitleBadge(theme.FilterBadgeStyle, fmt.Sprintf("[%d filters]", len(params.FilterParts)))
 	}
 
 	// Try progressively degraded versions

@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -30,7 +31,7 @@ const (
 
 // ProjectEditorModel handles editing an existing project via TUI.
 type ProjectEditorModel struct {
-	workspacePulseState
+	pulse.WorkspacePulseState
 	project           *models.Project
 	configManager     *config.Manager
 	runtime           *config.RuntimeState
@@ -430,7 +431,7 @@ func (m *ProjectEditorModel) View() tea.View {
 	guidance := renderGuidance(m.guidanceSpec(), m.width)
 
 	var out strings.Builder
-	out.WriteString(renderFullscreenTitleWithPulse(title, "", m.currentWorkspacePulse(), m.width))
+	out.WriteString(renderFullscreenTitleWithPulse(title, "", m.CurrentWorkspacePulse(), m.width))
 	out.WriteString("\n\n")
 	out.WriteString(b.String())
 	out.WriteString("\n")
