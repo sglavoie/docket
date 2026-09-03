@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -145,7 +146,7 @@ func (m *AppModel) coreMoveToBacklogSingle(capture *outlinerRelocationCapture) t
 	fresh, _, transactionID, err := m.applyTaskPlanningAction(task.ID, project.ID, app.PlanningBacklog)
 	if err != nil {
 		m.err = err
-		return errorCmd("%s", err)
+		return status.ErrorCmd("%s", err)
 	}
 	successMessage := fmt.Sprintf("Moved to Backlog: %s", taskTitleOrFallback(fresh, task))
 	return m.finishSynchronousOutlinerRelocation(m.queueToggleResultCmd(), capture, successMessage, transactionID)
@@ -162,7 +163,7 @@ func (m *AppModel) coreToggleToday(targets ResolvedOperationTargets, capture *ou
 		planningMemberLocators(m.todayIDs),
 	)
 	if err != nil {
-		return errorCmd("%s", err)
+		return status.ErrorCmd("%s", err)
 	}
 	return m.corePlanningOperation(targets, action, capture)
 }
@@ -178,7 +179,7 @@ func (m *AppModel) coreToggleNext(targets ResolvedOperationTargets, capture *out
 		planningMemberLocators(m.nextOrderIDs),
 	)
 	if err != nil {
-		return errorCmd("%s", err)
+		return status.ErrorCmd("%s", err)
 	}
 	return m.corePlanningOperation(targets, action, capture)
 }

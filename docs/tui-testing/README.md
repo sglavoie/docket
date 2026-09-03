@@ -33,7 +33,7 @@ The script only re-selects tests the ordinary suite already runs, so `just ci`
 covers the same ground without invoking it.
 
 A scenario never sleeps out one of the app's timers. Each driver owns a virtual
-clock, a timer scheduled through `tickCmd` reports itself instead of firing, and
+clock, a timer scheduled through `status.TickCmd` reports itself instead of firing, and
 a `wait` action advances that clock. Schedule a new timer through `tea.Tick`
 directly and a scenario pays its real duration, which is both slow and a race
 against the drain budget.

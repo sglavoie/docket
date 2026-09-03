@@ -21,11 +21,16 @@
 #     mode catalog is vocabulary that operation, route, lens, projecthub and
 #     query all read, so it cannot sit at L7.
 #
-# One row was corrected while its package was being extracted:
+# Two rows were corrected while their package was being extracted:
 #   - view_accent.go is route, not theme (Session 2.1). It resolves a
 #     PresentationID to an accent category and only then asks theme for a color,
 #     so its whole vocabulary is route's; assigned to theme it was the one file
 #     that made an L0 package call upward into L4.
+#   - app_errors.go is status, not tui (Session 2.6). It declares errorCmd
+#     alone, whose entire body constructs the ErrorMsg that app_messages_core.go
+#     already sends to status; leaving it in the shell would have split a
+#     message from its only constructor across a package boundary for no gain.
+#     Session 2.6's completion contract names the file explicitly.
 #
 # Test files are deliberately absent. They follow the production file they
 # audit, except the uitest harness and the registry-union parity tests, which
@@ -38,7 +43,7 @@ app_bulk_task_cleanup.go	tui	L8	receiver:AppModel
 app_daily_plan.go	tui	L8	receiver:AppModel
 app_domain_commit.go	tui	L8	receiver:AppModel
 app_editor.go	tui	L8	assigned
-app_errors.go	tui	L8	assigned
+app_errors.go	status	L0	assigned
 app_handlers.go	tui	L8	receiver:AppModel
 app_init.go	tui	L8	receiver:AppModel
 app_manage_hub.go	tui	L8	receiver:AppModel

@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // A project header row is cursorable, so every key in the Outliner grammar is
@@ -304,7 +305,7 @@ func TestHeaderTargetKeyPressesReachTheRejection(t *testing.T) {
 			if last == nil {
 				t.Fatal("the key path did nothing instead of refusing the header cursor")
 			}
-			failure, ok := last().(ErrorMsg)
+			failure, ok := last().(status.ErrorMsg)
 			if !ok {
 				t.Fatalf("the key path produced %T, not a refusal", last())
 			}

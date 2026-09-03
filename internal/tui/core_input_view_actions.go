@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -102,17 +103,17 @@ func (m *AppModel) coreGotoTaskProject(targets ResolvedOperationTargets) Operati
 	out.selectOutlinerMode(ModeAll)
 	out.NavigateToTaskInProject(task, project)
 
-	status := "Project: " + project.Name
+	message := "Project: " + project.Name
 	if _, found := out.rowIndexForTask(taskref.For(task, project)); !found && origin.ID != ModeAll {
 		out.selectOutlinerMode(origin.ID)
 		out.NavigateToTaskInProject(task, project)
-		status += " — kept " + origin.Label + ", the task is not listed in All"
+		message += " — kept " + origin.Label + ", the task is not listed in All"
 	}
-	m.setInfoStatus(status)
+	m.setInfoStatus(message)
 	return OperationHandlerResult{
 		Message: commandMessage(tea.Batch(
 			flashIfJumped(previous, out.cursor, &out.cursorFlash),
-			defaultStatusTimeout(),
+			status.DefaultStatusTimeout(),
 		)),
 	}
 }

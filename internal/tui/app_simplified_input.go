@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // handleSimplifiedInputKey resolves one root-level key through the selected
@@ -109,7 +110,7 @@ func (m *AppModel) entityScopedKeyRejection(
 			return nil
 		}
 		rejection := errors.New(checklistRowRejectionMessage)
-		return func() tea.Msg { return ErrorMsg{Err: rejection} }
+		return func() tea.Msg { return status.ErrorMsg{Err: rejection} }
 	}
 	if !commandContextNamesNonTaskEntity(ctx) {
 		return nil
@@ -119,7 +120,7 @@ func (m *AppModel) entityScopedKeyRejection(
 		return nil
 	}
 	rejection := errors.New(operationTargetRejectionMessage(category))
-	return func() tea.Msg { return ErrorMsg{Err: rejection} }
+	return func() tea.Msg { return status.ErrorMsg{Err: rejection} }
 }
 
 // chordMissStatus names the path a second key abandoned. An unbound root key is
@@ -131,7 +132,7 @@ func (m *AppModel) chordMissStatus(strategyID InputStrategyID, sequence []string
 		return nil
 	}
 	m.setWarningStatus(strings.Join(sequence, "") + " is not a " + label + " action")
-	return defaultStatusTimeout()
+	return status.DefaultStatusTimeout()
 }
 
 // executeSimplifiedGlobalKey routes a grammar-owned global key through the same

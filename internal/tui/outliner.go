@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -375,7 +376,7 @@ func (m *OutlinerModel) Init() tea.Cmd {
 // Update implements tea.Model.
 func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case CursorFlashClearMsg:
+	case status.CursorFlashClearMsg:
 		m.cursorFlash = false
 		return m, nil
 
@@ -410,7 +411,7 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleQuickEditMode(msg)
 		}
 		return m, nil
-	case ViewDidAppearMsg:
+	case status.ViewDidAppearMsg:
 		return m, m.handleViewDidAppear()
 	case crossProjectsLoadedMsg:
 		return m, m.handleCrossProjectsLoaded(msg)

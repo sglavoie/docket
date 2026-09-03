@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -321,7 +322,7 @@ func assertNotTransactionError(t *testing.T, msg any) {
 	switch m := msg.(type) {
 	case TransactionErrorMsg:
 		t.Fatalf("transaction error: %v", m.Err)
-	case ErrorMsg:
+	case status.ErrorMsg:
 		t.Fatalf("error: %v", m.Err)
 	}
 }

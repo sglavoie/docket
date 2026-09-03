@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -23,7 +24,7 @@ func TestOperationExecutionResultStatusDeliveryPrecedence(t *testing.T) {
 		{
 			name:   "status only",
 			result: OperationExecutionResult{Status: "Copied title to clipboard"},
-			want:   StatusMsg("Copied title to clipboard"),
+			want:   status.StatusMsg("Copied title to clipboard"),
 		},
 		{
 			name: "message outranks status",
@@ -36,7 +37,7 @@ func TestOperationExecutionResultStatusDeliveryPrecedence(t *testing.T) {
 		{
 			name:   "error outranks status",
 			result: OperationExecutionResult{Status: "Copied title to clipboard", Err: failure},
-			want:   ErrorMsg{Err: failure},
+			want:   status.ErrorMsg{Err: failure},
 		},
 		{
 			name:   "confirmation outranks status",
@@ -114,7 +115,7 @@ func TestOperationExecutorStatusOnlyResultReachesTheMessageSeam(t *testing.T) {
 	if copied.Err != nil || copied.Message != nil {
 		t.Fatalf("copy result = %#v, want a status-only outcome", copied)
 	}
-	if got := copied.AsMessage(); got != StatusMsg("Copied title to clipboard") {
+	if got := copied.AsMessage(); got != status.StatusMsg("Copied title to clipboard") {
 		t.Fatalf("copy message = %#v, want the handler status", got)
 	}
 

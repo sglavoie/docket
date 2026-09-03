@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -194,14 +195,14 @@ func (m *AppModel) planningLedgerRestore(redo bool) tea.Cmd {
 		if strings.Contains(err.Error(), "history available") {
 			return nil
 		}
-		return errorCmd("%s", err)
+		return status.ErrorCmd("%s", err)
 	}
 	for _, id := range entry.ProjectIDs {
 		m.reloadProjectByID(id)
 	}
 	m.refreshRuntime()
 	if changed, reconcileErr := m.appService.ReconcilePlanning(); reconcileErr != nil {
-		return errorCmd("%s", reconcileErr)
+		return status.ErrorCmd("%s", reconcileErr)
 	} else if changed {
 		m.refreshRuntime()
 	}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 func openProjectEditor(
@@ -218,7 +219,7 @@ func TestProjectEditorRefusesToParkTheSystemUnfiledProject(t *testing.T) {
 	editor := openProjectEditor(t, fixture, live, true)
 	typeProjectEditorTags(t, editor, models.ParkedProjectTag)
 	msg := pressProjectEditorSave(t, editor)
-	errMsg, ok := msg.(ErrorMsg)
+	errMsg, ok := msg.(status.ErrorMsg)
 	if !ok || !strings.Contains(errMsg.Err.Error(), "cannot park the system Unfiled project") {
 		t.Fatalf("protected park emitted %#v", msg)
 	}

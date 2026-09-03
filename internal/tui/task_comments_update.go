@@ -7,6 +7,7 @@ import (
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -117,7 +118,7 @@ func (m *TaskCommentsModel) updateAddMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *TaskCommentsModel) updateNormalMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case CursorFlashClearMsg:
+	case status.CursorFlashClearMsg:
 		m.cursorFlash = false
 		return m, nil
 	case tea.WindowSizeMsg:
@@ -153,7 +154,7 @@ func (m *TaskCommentsModel) handleNormalKey(key string) tea.Cmd {
 	// already routed the add, edit, expanded, and confirm states elsewhere, so u is
 	// never a character being typed into a comment here.
 	if key == "u" || key == "ctrl+r" {
-		return workspaceUndoCmd(key == "ctrl+r")
+		return status.WorkspaceUndoCmd(key == "ctrl+r")
 	}
 
 	return nil

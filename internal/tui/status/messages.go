@@ -1,4 +1,4 @@
-package tui
+package status
 
 // Message Type Patterns
 //
@@ -70,7 +70,8 @@ package tui
 //
 // Messages are defined close to their primary consumers:
 //
-//   - app_messages_*.go: Core navigation and shared app-level messages
+//   - internal/tui/status: Core navigation and shared app-level messages,
+//     with the timers that schedule them
 //   - bulk_edit_types.go: Bulk edit panel specific
 //   - [view]_xxx.go: View-specific messages near the view
 //

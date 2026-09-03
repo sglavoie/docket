@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -72,7 +73,7 @@ func (m *TaskAttachmentsModel) finishOptimisticAdd() {
 func (m *TaskAttachmentsModel) executeDelete() tea.Cmd {
 	m.resolveTask()
 	if m.cursor < 0 || m.cursor >= len(m.task.Attachments) {
-		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("attachment no longer exists")} }
+		return func() tea.Msg { return status.ErrorMsg{Err: fmt.Errorf("attachment no longer exists")} }
 	}
 	// URL attachments have no bytes on disk; the file-backed ones delete their
 	// copied bytes in the same transaction (matching the old RemoveAttachmentFile).
@@ -83,7 +84,7 @@ func (m *TaskAttachmentsModel) executeDelete() tea.Cmd {
 func (m *TaskAttachmentsModel) executeKeep() tea.Cmd {
 	m.resolveTask()
 	if m.cursor < 0 || m.cursor >= len(m.task.Attachments) {
-		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("attachment no longer exists")} }
+		return func() tea.Msg { return status.ErrorMsg{Err: fmt.Errorf("attachment no longer exists")} }
 	}
 	return m.coordinator.RemoveAttachment(taskref.For(m.task, m.project), m.cursor, false)
 }
@@ -118,7 +119,7 @@ func (m *TaskAttachmentsModel) openAttachmentDefault() tea.Cmd {
 
 	return tea.ExecProcess(openCmd, func(err error) tea.Msg {
 		if err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to open: %w", err)}
+			return status.ErrorMsg{Err: fmt.Errorf("failed to open: %w", err)}
 		}
 		return nil
 	})
@@ -147,11 +148,11 @@ func (m *TaskAttachmentsModel) openAttachmentInEditor() tea.Cmd {
 
 	openCmd, err := buildOpenCommand(target)
 	if err != nil {
-		return errorCmd("%s", err)
+		return status.ErrorCmd("%s", err)
 	}
 	return tea.ExecProcess(openCmd, func(err error) tea.Msg {
 		if err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to open: %w", err)}
+			return status.ErrorMsg{Err: fmt.Errorf("failed to open: %w", err)}
 		}
 		return nil
 	})
@@ -171,7 +172,7 @@ func (m *TaskAttachmentsModel) openAttachmentsDir() tea.Cmd {
 
 	return tea.ExecProcess(openCmd, func(err error) tea.Msg {
 		if err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to open directory: %w", err)}
+			return status.ErrorMsg{Err: fmt.Errorf("failed to open directory: %w", err)}
 		}
 		return nil
 	})
@@ -236,7 +237,7 @@ func (m *TaskAttachmentsModel) openOriginalPath() tea.Cmd {
 
 	return tea.ExecProcess(openCmd, func(err error) tea.Msg {
 		if err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to open directory: %w", err)}
+			return status.ErrorMsg{Err: fmt.Errorf("failed to open directory: %w", err)}
 		}
 		return nil
 	})
@@ -264,7 +265,7 @@ func (m *TaskAttachmentsModel) revealOriginalFile() tea.Cmd {
 
 	return tea.ExecProcess(openCmd, func(err error) tea.Msg {
 		if err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to reveal file: %w", err)}
+			return status.ErrorMsg{Err: fmt.Errorf("failed to reveal file: %w", err)}
 		}
 		return nil
 	})

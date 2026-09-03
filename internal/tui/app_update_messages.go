@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 func (m *AppModel) handleGlobalMessage(msg tea.Msg) (bool, tea.Cmd) {
@@ -53,7 +54,7 @@ func (m *AppModel) handleGlobalInputMessage(msg tea.Msg) (bool, tea.Cmd) {
 
 func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case QuitMsg:
+	case status.QuitMsg:
 		m.saveProjectViewState()
 		m.saveOutlinerFilterState()
 		m.quitting = true
@@ -123,25 +124,25 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 
 func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case periodicSaveMsg:
+	case status.PeriodicSaveMsg:
 		m.saveProjectViewState()
 		m.saveOutlinerFilterState()
 		// A consumed wake makes rows visible that ComputeWorkspacePulse excluded
 		// while their deferral was pending, so the same update recounts the pulse
 		// even within one local day.
-		if m.wakeDeferredRows(msg.at) {
-			m.refreshWorkspacePulseAt(msg.at)
-		} else if !m.completionActivity.IsCurrentLocalDay(msg.at) {
-			m.refreshWorkspacePulseAcrossLocalDay(msg.at)
+		if m.wakeDeferredRows(msg.At) {
+			m.refreshWorkspacePulseAt(msg.At)
+		} else if !m.completionActivity.IsCurrentLocalDay(msg.At) {
+			m.refreshWorkspacePulseAcrossLocalDay(msg.At)
 		}
 		// Conflict bundles are written by another process on another machine, so
 		// no local mutation can announce one; the periodic tick is what makes the
 		// indicator appear, and what clears it once the CLI resolves the last one.
 		m.refreshOutstandingConflicts()
-		return true, tickCmd(periodicSaveInterval, func(at time.Time) tea.Msg {
-			return periodicSaveMsg{at: at}
+		return true, status.TickCmd(periodicSaveInterval, func(at time.Time) tea.Msg {
+			return status.PeriodicSaveMsg{At: at}
 		})
-	case SaveCompleteMsg:
+	case status.SaveCompleteMsg:
 		return true, m.handleSaveComplete(msg)
 	case TransactionResultMsg:
 		return true, m.handleTransactionResult(msg)
@@ -149,7 +150,7 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 		return true, m.handleBatchTransactionResult(msg)
 	case TransactionErrorMsg:
 		m.err = msg.Err
-		return true, statusTimeout(5 * time.Second)
+		return true, status.StatusTimeout(5 * time.Second)
 	default:
 		return false, nil
 	}
@@ -214,7 +215,7 @@ func (m *AppModel) handleTransactionResult(msg TransactionResultMsg) tea.Cmd {
 	if m.crossOutliner != nil {
 		m.crossOutliner.settleRelocationCursor()
 	}
-	saveCmd := m.handleSaveComplete(SaveCompleteMsg{})
+	saveCmd := m.handleSaveComplete(status.SaveCompleteMsg{})
 	feedbackCmd := m.setRecoveryFeedback(msg.SuccessMessage(), msg.Result.TransactionID, false)
 	return tea.Batch(saveCmd, feedbackCmd)
 }
@@ -253,7 +254,7 @@ func (m *AppModel) handleBatchTransactionResult(msg BatchTransactionResultMsg) t
 	if successMessage == "" {
 		successMessage = m.statusMessage
 	}
-	saveCmd := m.handleSaveComplete(SaveCompleteMsg{})
+	saveCmd := m.handleSaveComplete(status.SaveCompleteMsg{})
 	feedbackCmd := m.setRecoveryFeedback(successMessage, msg.TransactionID, false)
 	return tea.Batch(saveCmd, feedbackCmd)
 }
@@ -283,7 +284,7 @@ func (m *AppModel) reloadProjectByID(projectID string) {
 
 func (m *AppModel) handleGlobalRefreshMessage(tea.Msg) (bool, tea.Cmd) { return false, nil }
 
-func (m *AppModel) handleSaveComplete(msg SaveCompleteMsg) tea.Cmd {
+func (m *AppModel) handleSaveComplete(msg status.SaveCompleteMsg) tea.Cmd {
 	m.clearToggleHistory()
 	// An empty success message means the mutation carried no status of its own
 	// (e.g. a ProjectTree/Outliner reorder committed through CommitProjectWorkflow):
@@ -292,7 +293,7 @@ func (m *AppModel) handleSaveComplete(msg SaveCompleteMsg) tea.Cmd {
 		m.setSuccessStatus(msg.SuccessMessage)
 	}
 	saveCmds := m.refreshTaskViewsAfterSave()
-	saveCmds = append(saveCmds, defaultStatusTimeout())
+	saveCmds = append(saveCmds, status.DefaultStatusTimeout())
 	return tea.Batch(saveCmds...)
 }
 
@@ -335,7 +336,7 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState, reloadCrossProject 
 				continue
 			}
 			if !refresher.refreshAfterReload() && m.currentView() == viewType {
-				saveCmds = append(saveCmds, func() tea.Msg { return BackMsg{} })
+				saveCmds = append(saveCmds, func() tea.Msg { return status.BackMsg{} })
 			}
 		}
 	}

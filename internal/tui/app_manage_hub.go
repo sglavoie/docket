@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 func (m *AppModel) ensureManageHub() *ManageHubModel {
@@ -59,7 +60,7 @@ func (m *AppModel) ensureManageHub() *ManageHubModel {
 func (m *AppModel) activateManageHub(params ManageParams) tea.Cmd {
 	route, err := NewRoute(SecondaryTool, params)
 	if err != nil {
-		return func() tea.Msg { return ErrorMsg{Err: err} }
+		return func() tea.Msg { return status.ErrorMsg{Err: err} }
 	}
 	params = route.Params().(ManageParams)
 
@@ -71,12 +72,12 @@ func (m *AppModel) activateManageHub(params ManageParams) tea.Cmd {
 		params.NotesScope = AllNotesScope()
 		route, err = NewRoute(SecondaryTool, params)
 		if err != nil {
-			return func() tea.Msg { return ErrorMsg{Err: err} }
+			return func() tea.Msg { return status.ErrorMsg{Err: err} }
 		}
 		params = route.Params().(ManageParams)
 	}
 	if activateErr := hub.Activate(params); activateErr != nil {
-		return func() tea.Msg { return ErrorMsg{Err: activateErr} }
+		return func() tea.Msg { return status.ErrorMsg{Err: activateErr} }
 	}
 	if missingProject {
 		m.setInfoStatus("Project is unavailable — showing All Notes")
@@ -96,7 +97,7 @@ func (m *AppModel) activateManageHub(params ManageParams) tea.Cmd {
 		err = m.navigation.PushChild(route)
 	}
 	if err != nil {
-		return func() tea.Msg { return ErrorMsg{Err: err} }
+		return func() tea.Msg { return status.ErrorMsg{Err: err} }
 	}
 	m.setAccentOnView(hub)
 	if active != nil {

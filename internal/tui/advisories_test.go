@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -92,7 +93,7 @@ func TestLoadFailureAdvisoryObeysTheGate(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("a failed load produced no notice while advisories were shown")
 	}
-	msg, ok := cmd().(InfoStatusMsg)
+	msg, ok := cmd().(status.InfoStatusMsg)
 	if !ok {
 		t.Fatalf("notice message = %T, want InfoStatusMsg", cmd())
 	}

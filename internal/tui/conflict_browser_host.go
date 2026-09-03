@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // The shell side of the conflict browser. The browser itself knows only its
@@ -37,19 +38,19 @@ func (m *AppModel) openConflictBrowser() tea.Msg {
 	records, err := store.List()
 	if err != nil {
 		m.err = err
-		return commandMessage(defaultStatusTimeout())
+		return commandMessage(status.DefaultStatusTimeout())
 	}
 	// The strip and this overlay count the same directory, so one listing settles
 	// both rather than leaving the strip a tick behind what the user just read.
 	m.outstandingConflicts = len(records)
 	if len(records) == 0 {
 		m.setInfoStatus(conflictBrowserEmptyStatus)
-		return commandMessage(defaultStatusTimeout())
+		return commandMessage(status.DefaultStatusTimeout())
 	}
 	browser, err := NewConflictBrowserModel(records, store.Load)
 	if err != nil {
 		m.err = err
-		return commandMessage(defaultStatusTimeout())
+		return commandMessage(status.DefaultStatusTimeout())
 	}
 	m.conflictBrowser = browser
 	return nil

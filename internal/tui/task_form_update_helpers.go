@@ -5,6 +5,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // applyTextEditorResult merges a TextEditorModel result into the draft.
@@ -108,7 +109,7 @@ func (m *TaskFormModel) handleTextInputKey(msg tea.KeyPressMsg, commit func(), i
 		if m.hasChanges {
 			m.confirmDiscard = true
 		} else {
-			return func() tea.Msg { return BackMsg{} }
+			return func() tea.Msg { return status.BackMsg{} }
 		}
 		return nil
 	default:

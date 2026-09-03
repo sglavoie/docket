@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // The harness gives every driver its own virtual clock. A timer scheduled
@@ -21,7 +22,7 @@ import (
 // driver.
 
 func init() {
-	tickScheduler = func(delay time.Duration, fire func(time.Time) tea.Msg) tea.Cmd {
+	status.TickScheduler = func(delay time.Duration, fire func(time.Time) tea.Msg) tea.Cmd {
 		return func() tea.Msg {
 			return uitestScheduledTick{delay: delay, fire: fire}
 		}

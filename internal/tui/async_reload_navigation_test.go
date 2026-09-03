@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 func TestCrossProjectColdLoadAlwaysRendersLoadingFrame(t *testing.T) {
@@ -172,7 +173,7 @@ func TestBackMsgReturnsAppearanceReloadCommand(t *testing.T) {
 	pushTestPresentationOverlay(app, presentation.ViewTaskComments)
 	generation := cross.crossLoadGen
 
-	_, cmd := app.Update(BackMsg{})
+	_, cmd := app.Update(status.BackMsg{})
 	if cmd == nil {
 		t.Fatal("BackMsg dropped popView's ViewDidAppearMsg command")
 	}
@@ -200,7 +201,7 @@ func TestViewDidAppearDoesNotSupersedePendingReloadAndPreservesCursor(t *testing
 	loadCmd := cross.reloadCrossProjects()
 	generation := cross.crossLoadGen
 	savedCursor := cross.cursor
-	_, duplicateCmd := app.Update(ViewDidAppearMsg{})
+	_, duplicateCmd := app.Update(status.ViewDidAppearMsg{})
 
 	if duplicateCmd != nil {
 		t.Fatal("appearance signal should not launch a second load while one is pending")
@@ -328,7 +329,7 @@ func TestCoveredCrossProjectLoadCompletionSettlesAuthoritativeOutliner(t *testin
 		t.Fatalf("covered load completion did not update the Outliner cache: %#v", cross.loadedProjects)
 	}
 
-	_, popCmd := app.Update(BackMsg{})
+	_, popCmd := app.Update(status.BackMsg{})
 	if popCmd == nil {
 		t.Fatal("returning to the Outliner did not emit its appearance reload")
 	}

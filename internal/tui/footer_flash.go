@@ -8,6 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
 
 	"charm.land/lipgloss/v2"
@@ -138,7 +139,7 @@ func (m *AppModel) scheduleViewStatusExpiry(before footerFlashProbe) tea.Cmd {
 	if !ok || !owner.StatusIsTransient() {
 		return nil
 	}
-	return viewStatusTimeout(after.view, after.viewStatusSeq)
+	return status.ViewStatusTimeout(after.view, after.viewStatusSeq)
 }
 
 // advanceFooterFlash steps one frame and reports the command that schedules the

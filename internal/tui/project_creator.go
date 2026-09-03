@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -67,7 +68,7 @@ func (m *ProjectCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "y", "Y":
 				m.confirmDiscard = false
 				return m, func() tea.Msg {
-					return BackMsg{}
+					return status.BackMsg{}
 				}
 			case "n", "N", "esc":
 				m.confirmDiscard = false
@@ -86,7 +87,7 @@ func (m *ProjectCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			return m, func() tea.Msg {
-				return BackMsg{}
+				return status.BackMsg{}
 			}
 
 		case "enter":
@@ -105,16 +106,16 @@ func (m *ProjectCreatorModel) createProject() tea.Cmd {
 	service := m.service
 	return func() tea.Msg {
 		if name == "" {
-			return ErrorMsg{Err: fmt.Errorf("project name cannot be empty")}
+			return status.ErrorMsg{Err: fmt.Errorf("project name cannot be empty")}
 		}
 
 		// Check for duplicate slug
 		slug := models.Slugify(name)
 		if slug == "" {
-			return ErrorMsg{Err: fmt.Errorf("project name must contain at least one ASCII letter or digit")}
+			return status.ErrorMsg{Err: fmt.Errorf("project name must contain at least one ASCII letter or digit")}
 		}
 		if runtime.GetProject(slug) != nil {
-			return ErrorMsg{Err: fmt.Errorf("project with slug '%s' already exists", slug)}
+			return status.ErrorMsg{Err: fmt.Errorf("project with slug '%s' already exists", slug)}
 		}
 
 		// Create project
@@ -122,32 +123,32 @@ func (m *ProjectCreatorModel) createProject() tea.Cmd {
 		projectPath := runtime.ProjectPath(slug)
 		project, err := models.NewProject(projectID, name, projectPath)
 		if err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create project: %w", err)}
+			return status.ErrorMsg{Err: fmt.Errorf("failed to create project: %w", err)}
 		}
 
 		if manager == nil || service == nil {
-			return ErrorMsg{Err: fmt.Errorf("project transaction service is unavailable")}
+			return status.ErrorMsg{Err: fmt.Errorf("project transaction service is unavailable")}
 		}
 
 		if ensureErr := runtime.EnsureDataDir(); ensureErr != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create data directory: %w", ensureErr)}
+			return status.ErrorMsg{Err: fmt.Errorf("failed to create data directory: %w", ensureErr)}
 		}
 
 		catalog := cloneWorkspaceCatalog(runtime.Catalog())
 		if upsertErr := catalog.UpsertProject(project); upsertErr != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to update project catalog: %w", upsertErr)}
+			return status.ErrorMsg{Err: fmt.Errorf("failed to update project catalog: %w", upsertErr)}
 		}
 		catalogArtifacts, err := catalogDomainArtifact(runtime, catalog)
 		if err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to encode project catalog: %w", err)}
+			return status.ErrorMsg{Err: fmt.Errorf("failed to encode project catalog: %w", err)}
 		}
 		document, err := storage.CanonicalProjectDocument(project, nil)
 		if err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to encode project: %w", err)}
+			return status.ErrorMsg{Err: fmt.Errorf("failed to encode project: %w", err)}
 		}
 		content, err := document.WriteCurrent()
 		if err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to encode project: %w", err)}
+			return status.ErrorMsg{Err: fmt.Errorf("failed to encode project: %w", err)}
 		}
 		requireAbsent := ""
 		artifacts := append(catalogArtifacts, storage.ArtifactChange{
@@ -163,10 +164,10 @@ func (m *ProjectCreatorModel) createProject() tea.Cmd {
 			UndoContext: project.Name,
 		})
 		if err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to create project: %w", err)}
+			return status.ErrorMsg{Err: fmt.Errorf("failed to create project: %w", err)}
 		}
 		if err := runtime.RefreshAfterCommit(); err != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to refresh project catalog: %w", err)}
+			return status.ErrorMsg{Err: fmt.Errorf("failed to refresh project catalog: %w", err)}
 		}
 
 		return ProjectCreatedMsg{Project: project, TransactionID: transactionID}

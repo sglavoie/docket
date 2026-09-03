@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // requestProjectTags applies a replacement project tag set, prompting first only
@@ -19,13 +20,13 @@ func (m *AppModel) requestProjectTags(project *models.Project, tags []string) te
 	}
 	normalized, err := models.NormalizeProjectTags(tags)
 	if err != nil {
-		return errorCmd("%v", err)
+		return status.ErrorCmd("%v", err)
 	}
 	if !models.ProjectTagsParked(normalized) || models.ProjectTagsParked(project.Tags) {
 		return m.commitProjectTags(project, normalized)
 	}
 	if m.runtime.IsSystemUnfiledProject(project.ID) {
-		return errorCmd("cannot park the system Unfiled project")
+		return status.ErrorCmd("cannot park the system Unfiled project")
 	}
 	m.pendingProjectTags = project
 	m.pendingProjectTagsSet = normalized
@@ -42,7 +43,7 @@ func (m *AppModel) requestProjectEditorPark(save *projectEditorSave) tea.Cmd {
 		return nil
 	}
 	if m.runtime.IsSystemUnfiledProject(save.project.ID) {
-		return errorCmd("cannot park the system Unfiled project")
+		return status.ErrorCmd("cannot park the system Unfiled project")
 	}
 	m.pendingProjectEditorSave = save
 	m.projectParkConfirm.Show(projectParkConfirmAction, projectParkPrompt(save.name, save.project))

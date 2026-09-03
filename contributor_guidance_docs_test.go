@@ -181,7 +181,16 @@ func TestContributorGuidanceStaysRulesOnly(t *testing.T) {
 	// allowed, unresolvable is not" is a rule about which paths may read a stored
 	// document, and neither the merge code nor the store can state it, since both
 	// are what a contributor is about to change.
-	const budget = 28772
+	// That raise is spent as well, and this one is the first that buys no rule at
+	// all. The package split gives a named thing a longer name: `tickCmd` became
+	// `status.TickCmd` when Session 2.6 moved it, and the sentence naming it grew
+	// by the seven bytes of the qualifier. Absorbing that by trimming an unrelated
+	// rule would be the worse trade, because it makes the diff claim an edit the
+	// author did not intend to make. So a requalification is paid for at cost, in
+	// exactly the bytes the qualifier adds, and says so here; the ratchet still
+	// refuses prose, which is what it was built to refuse. Expect one of these per
+	// remaining extraction that touches a name this file spells out.
+	const budget = 28779
 	if len(data) > budget {
 		t.Errorf("CLAUDE.md is %d bytes, over the %d-byte rules-only budget; "+
 			"move explanatory prose to README.md or docs/architecture.md", len(data), budget)
@@ -282,7 +291,7 @@ func TestArchitectureContributorGuidanceMatchesFinalGrammar(t *testing.T) {
 		"v4/v5/v6/v11 decoders are migration-only",
 		"Every JSON file in `docs/tui-testing/scenarios/` is a committed final-product contract",
 		"focused snapshot-first migration and interrupted activation recovery tests",
-		"App timers go through `tickCmd`, never `tea.Tick`",
+		"App timers go through `status.TickCmd`, never `tea.Tick`",
 		"## Where the details live",
 	} {
 		if !strings.Contains(content, strings.Join(strings.Fields(required), " ")) {

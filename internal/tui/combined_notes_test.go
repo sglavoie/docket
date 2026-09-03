@@ -15,6 +15,7 @@ import (
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 type combinedNotesService struct {
@@ -230,7 +231,7 @@ func TestNotesManagerMalformedEditorUsesSelectedRowsActualOwner(t *testing.T) {
 		t.Fatalf("malformed row directory = %q, want selected owner %q", view.effectiveDir(row), storage.NotesDir(beta))
 	}
 	msg := view.editCurrentNote()()
-	if failure, failed := msg.(ErrorMsg); failed {
+	if failure, failed := msg.(status.ErrorMsg); failed {
 		t.Fatalf("malformed editor could not read beta-owned raw content: %v", failure.Err)
 	}
 }

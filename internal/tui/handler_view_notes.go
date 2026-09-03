@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // handleNotesMessages handles note-related view messages.
@@ -25,7 +26,7 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 			nv.setErrorStatus(msg.Err.Error())
 			return true, nil
 		}
-		return true, func() tea.Msg { return ErrorMsg{Err: msg.Err} }
+		return true, func() tea.Msg { return status.ErrorMsg{Err: msg.Err} }
 
 	case ProjectNoteLedgerResultMsg:
 		location := normalizedNoteLocation(msg.Location, msg.ProjectID)
@@ -43,7 +44,7 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 			}
 		} else if refreshErr != nil {
 			m.err = fmt.Errorf("%s completed, refresh failed: %w", ledgerRestoreLabel(msg.Redo), refreshErr)
-			cmds = append(cmds, statusTimeout(5*time.Second))
+			cmds = append(cmds, status.StatusTimeout(5*time.Second))
 		}
 		// A ledger restore rewrites note bytes without emitting a mutation
 		// result, so it owes the index its own reload.

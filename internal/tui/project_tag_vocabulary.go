@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -142,7 +143,7 @@ func (m *AppModel) executeProjectTagVocabulary(
 func (m *AppModel) openProjectTagVocabularyActions(tag string) tea.Cmd {
 	members := m.projectTagMembers(tag)
 	if len(members) == 0 {
-		return errorCmd("no active project carries #%s", tag)
+		return status.ErrorCmd("no active project carries #%s", tag)
 	}
 	ctx := m.operationCommandContext()
 	ctx.View = presentation.ViewCrossProjectOutliner
@@ -178,7 +179,7 @@ func (m *AppModel) openProjectTagVocabularyActions(tag string) tea.Cmd {
 		},
 	)
 	if err != nil {
-		return errorCmd("%v", err)
+		return status.ErrorCmd("%v", err)
 	}
 	m.projectTagActionSubject = tag
 	m.contextActionSheet = sheet

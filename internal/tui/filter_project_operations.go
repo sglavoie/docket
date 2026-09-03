@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -51,9 +52,9 @@ func (m *AppModel) executeProjectFilterOperation(invocation OperationInvocation)
 }
 
 // projectFilterReloadCmd reloads the population and reports the new facets. The
-// status travels inside the command because a handler that returns both a
-// message and a status delivers only the message.
-func (m *AppModel) projectFilterReloadCmd(status string) tea.Cmd {
+// The status text travels inside the command because a handler that returns
+// both a message and a status delivers only the message.
+func (m *AppModel) projectFilterReloadCmd(text string) tea.Cmd {
 	out := m.crossOutliner
 	if out == nil {
 		return nil
@@ -63,8 +64,8 @@ func (m *AppModel) projectFilterReloadCmd(status string) tea.Cmd {
 	out.crossReloadFromTop = true
 	return tea.Batch(
 		out.reloadCrossProjects(),
-		func() tea.Msg { return StatusMsg(status) },
-		defaultStatusTimeout(),
+		func() tea.Msg { return status.StatusMsg(text) },
+		status.DefaultStatusTimeout(),
 	)
 }
 

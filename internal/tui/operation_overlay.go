@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 func (m *AppModel) executeOperationOverlayRequest(
@@ -12,12 +13,12 @@ func (m *AppModel) executeOperationOverlayRequest(
 ) tea.Cmd {
 	if m.operationExecutor == nil {
 		m.err = fmt.Errorf("operation registry is unavailable")
-		return statusTimeout(5 * time.Second)
+		return status.StatusTimeout(5 * time.Second)
 	}
 	result := m.operationExecutor.Execute(request)
 	if result.Err != nil {
 		m.err = result.Err
-		return statusTimeout(5 * time.Second)
+		return status.StatusTimeout(5 * time.Second)
 	}
 	if result.ValueRequired != nil {
 		return m.openOperationValueStep(*result.ValueRequired)
@@ -32,7 +33,7 @@ func (m *AppModel) openOperationValueStep(request OperationValueRequestMsg) tea.
 		prompt, err := m.newOperationTextPrompt(request.Request, request.Provider)
 		if err != nil {
 			m.err = err
-			return statusTimeout(5 * time.Second)
+			return status.StatusTimeout(5 * time.Second)
 		}
 		m.operationTextPrompt = prompt
 		return prompt.initCmd()
@@ -40,7 +41,7 @@ func (m *AppModel) openOperationValueStep(request OperationValueRequestMsg) tea.
 	picker, err := m.newOperationValuePicker(request.Request, request.Provider)
 	if err != nil {
 		m.err = err
-		return statusTimeout(5 * time.Second)
+		return status.StatusTimeout(5 * time.Second)
 	}
 	m.operationValuePicker = picker
 	return nil

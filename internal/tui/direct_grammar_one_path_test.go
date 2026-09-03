@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -234,7 +235,7 @@ func TestDirectThemeAndQuitOperationsUseTheirDescriptors(t *testing.T) {
 	if app.statusMessage != "Theme: "+app.runtime.Machine().Theme {
 		t.Fatalf("theme status = %q, want the active theme", app.statusMessage)
 	}
-	if handled, _ := app.handleViewMessages(StatusClearMsg{ScheduledAt: app.statusUpdatedAt.Add(time.Nanosecond)}); !handled {
+	if handled, _ := app.handleViewMessages(status.StatusClearMsg{ScheduledAt: app.statusUpdatedAt.Add(time.Nanosecond)}); !handled {
 		t.Fatal("theme status clear message was not handled")
 	}
 	if app.statusMessage != "" {
@@ -259,7 +260,7 @@ func TestDirectThemeAndQuitOperationsUseTheirDescriptors(t *testing.T) {
 	if !handled || cmd == nil {
 		t.Fatalf("Ctrl+C over a subordinate route = handled %v cmd %v, want descriptor dispatch", handled, cmd)
 	}
-	if _, ok := cmd().(QuitMsg); !ok {
+	if _, ok := cmd().(status.QuitMsg); !ok {
 		t.Fatalf("Ctrl+C command emitted %T, want QuitMsg", cmd())
 	}
 }

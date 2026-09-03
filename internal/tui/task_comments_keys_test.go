@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // mountCommentsPanel opens the panel over a live shell on a task carrying two
@@ -127,7 +128,7 @@ func TestCommentsUndoKeysAskTheShellForTheWorkspaceLedger(t *testing.T) {
 	if driver.pendingCmd == nil {
 		t.Fatal("u emitted no workspace undo request")
 	}
-	if msg, ok := driver.pendingCmd().(WorkspaceUndoMsg); !ok || msg.Redo {
+	if msg, ok := driver.pendingCmd().(status.WorkspaceUndoMsg); !ok || msg.Redo {
 		t.Fatalf("u emitted %#v, want an undo request", driver.pendingCmd())
 	}
 
@@ -135,7 +136,7 @@ func TestCommentsUndoKeysAskTheShellForTheWorkspaceLedger(t *testing.T) {
 	if driver.pendingCmd == nil {
 		t.Fatal("Ctrl+R emitted no workspace redo request")
 	}
-	if msg, ok := driver.pendingCmd().(WorkspaceUndoMsg); !ok || !msg.Redo {
+	if msg, ok := driver.pendingCmd().(status.WorkspaceUndoMsg); !ok || !msg.Redo {
 		t.Fatalf("Ctrl+R emitted %#v, want a redo request", driver.pendingCmd())
 	}
 }
@@ -152,7 +153,7 @@ func TestCommentsSubStatesKeepUAsTypedText(t *testing.T) {
 		if driver.pendingCmd == nil {
 			return
 		}
-		if _, ok := driver.pendingCmd().(WorkspaceUndoMsg); ok {
+		if _, ok := driver.pendingCmd().(status.WorkspaceUndoMsg); ok {
 			t.Fatalf("u reached the workspace ledger while %s owned the key stream", state)
 		}
 	}

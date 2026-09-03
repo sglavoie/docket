@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // UITestDriver drives an AppModel directly (bypassing the tea.Program event
@@ -141,8 +142,8 @@ func (d *UITestDriver) bootLaunchCommands() {
 		d.pendingCmd = cmd
 		d.drain()
 	}
-	d.pendingCmd = tickCmd(periodicSaveInterval, func(at time.Time) tea.Msg {
-		return periodicSaveMsg{at: at}
+	d.pendingCmd = status.TickCmd(periodicSaveInterval, func(at time.Time) tea.Msg {
+		return status.PeriodicSaveMsg{At: at}
 	})
 	d.drain()
 }

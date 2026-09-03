@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 func gotoProjectDriver(t *testing.T) *UITestDriver {
@@ -173,7 +174,7 @@ func TestGotoTaskProjectRefusesWithoutASingleTaskCursor(t *testing.T) {
 		if !handled || cmd == nil {
 			t.Fatalf("header press = handled %v cmd %v, want the shared refusal", handled, cmd)
 		}
-		failure, ok := cmd().(ErrorMsg)
+		failure, ok := cmd().(status.ErrorMsg)
 		if !ok {
 			t.Fatalf("header press produced %T, not a refusal", cmd())
 		}

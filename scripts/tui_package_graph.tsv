@@ -28,7 +28,17 @@
 #   - `conflict` is a sibling of `outliner`, not a dependency of it. `gc`
 #     browses conflict bundles as a shell-owned overlay, so the shell holds
 #     that edge.
-#   - `textfit -> theme` is the one edge inside L0, added in Session 2.3 when
+#   - Two edges run inside L0, and both are the same shape: an L0 package needs
+#     a bare vocabulary another L0 package owns, and threading the value in from
+#     every call site would be a redesign Phase 1 does not do. Neither can close
+#     a cycle, because both targets depend on nothing.
+#   - `status -> presentation` is the second, added in Session 2.6.
+#     `ViewStatusClearMsg` names the view whose status line it clears, so the
+#     message carries a `presentation.PresentationID` field. That is why
+#     `presentation` was split out as its own L0 package in the first place —
+#     context.md calls the bare enum load-bearing below `operation`, and the
+#     same argument reaches one layer further down.
+#   - `textfit -> theme` is the first edge inside L0, added in Session 2.3 when
 #     the package was extracted. context.md gives `textfit` "Markdown,
 #     highlighting" and both are inherently styled: `markdown.go` picks the
 #     dark or light glamour style from `theme.ActiveThemeName` and
@@ -41,7 +51,7 @@ presentation	L0	-
 theme	L0	-
 textfit	L0	theme
 taskref	L0	-
-status	L0	-
+status	L0	presentation
 pulse	L0	-
 keymap	L0	-
 chrome	L1	theme,textfit,pulse,taskref,keymap

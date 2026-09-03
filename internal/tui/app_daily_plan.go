@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -32,7 +33,7 @@ func (m *AppModel) toggleToday(capture *outlinerRelocationCapture) tea.Cmd {
 	fresh, _, transactionID, err := m.todayLedgerTransition(taskID, projectID, add)
 	if err != nil {
 		m.err = err
-		return errorCmd("%s", err)
+		return status.ErrorCmd("%s", err)
 	}
 	successMessage := fmt.Sprintf("Added to today's plan: %s", taskTitleOrFallback(fresh, task))
 	if !add {

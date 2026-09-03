@@ -6,6 +6,7 @@ import (
 	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 type operationValueMembership uint8
@@ -188,7 +189,7 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 		if model.provider.dateEntry() {
 			deferred, err := model.dateSectionUnderCursor()
 			if err != nil {
-				return nil, false, StatusMsg(err.Error())
+				return nil, false, status.StatusMsg(err.Error())
 			}
 			model.dateDeferred = deferred
 			if deferred {
@@ -215,7 +216,7 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 		// selection moves to the key the project picker already uses for it.
 		if model.provider == ValueProviderFilterProjectTags {
 			if err := model.toggleCurrentMultiValue(); err != nil {
-				return nil, false, StatusMsg(err.Error())
+				return nil, false, status.StatusMsg(err.Error())
 			}
 		}
 	case "space":
@@ -226,19 +227,19 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 			}
 			tag, ok := projectTagVocabularySelectableTag(item)
 			if !ok {
-				return nil, false, StatusMsg("Untagged is a facet, not a tag")
+				return nil, false, status.StatusMsg("Untagged is a facet, not a tag")
 			}
 			return nil, true, ProjectTagVocabularyActionsMsg{Tag: tag}
 		}
 		if model.multi {
 			if err := model.toggleCurrentMultiValue(); err != nil {
-				return nil, false, StatusMsg(err.Error())
+				return nil, false, status.StatusMsg(err.Error())
 			}
 		}
 	case "enter":
 		value, err := model.selectedValue()
 		if err != nil {
-			return nil, false, StatusMsg(err.Error())
+			return nil, false, status.StatusMsg(err.Error())
 		}
 		return nil, true, OperationValueSelectedMsg{
 			Request: model.request,
@@ -253,7 +254,7 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 		// the checkboxes the tag rows beside them are.
 		if model.provider == ValueProviderTags {
 			if err := model.selectContextUnderCursor(); err != nil {
-				return nil, false, StatusMsg(err.Error())
+				return nil, false, status.StatusMsg(err.Error())
 			}
 		}
 	default:

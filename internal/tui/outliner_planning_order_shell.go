@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // handleOutlinerPlanningReorder persists a global Outliner planning-order reorder
@@ -28,7 +29,7 @@ func (m *AppModel) handleOutlinerPlanningReorder(msg OutlinerPlanningReorderMsg)
 	}
 	if err != nil {
 		m.err = err
-		return errorCmd("%s", err)
+		return status.ErrorCmd("%s", err)
 	}
 
 	m.refreshRuntime()

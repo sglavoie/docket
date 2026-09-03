@@ -10,6 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/external"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -41,7 +42,7 @@ func (m *TaskCommentsModel) executeDelete() tea.Cmd {
 	m.refreshTaskReference()
 	index := m.cursor
 	if !m.task.RemoveComment(index) {
-		return func() tea.Msg { return ErrorMsg{Err: errors.New("failed to remove comment")} }
+		return func() tea.Msg { return status.ErrorMsg{Err: errors.New("failed to remove comment")} }
 	}
 	if m.cursor >= len(m.task.Comments) && m.cursor > 0 {
 		m.cursor--
@@ -73,7 +74,7 @@ func (m *TaskCommentsModel) saveEditedComment() tea.Cmd {
 	m.refreshTaskReference()
 	if m.editIndex >= len(m.task.Comments) {
 		m.cancelEditMode()
-		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("comment was deleted externally")} }
+		return func() tea.Msg { return status.ErrorMsg{Err: fmt.Errorf("comment was deleted externally")} }
 	}
 
 	editIndex := m.editIndex
@@ -103,7 +104,7 @@ func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
 			task = t
 		}
 		if editIndex >= len(task.Comments) {
-			return ErrorMsg{Err: fmt.Errorf("comment was deleted externally")}
+			return status.ErrorMsg{Err: fmt.Errorf("comment was deleted externally")}
 		}
 
 		task.Comments[editIndex].Text = newText
@@ -142,7 +143,7 @@ func (m *TaskCommentsModel) addCommentInExternalEditor() tea.Cmd {
 func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 	if m.editIndex >= len(m.task.Comments) {
 		m.cancelEditMode()
-		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("comment was deleted externally")} }
+		return func() tea.Msg { return status.ErrorMsg{Err: fmt.Errorf("comment was deleted externally")} }
 	}
 	comment := m.task.Comments[m.editIndex]
 	editIndex := m.editIndex
@@ -163,7 +164,7 @@ func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 			task = t
 		}
 		if editIndex >= len(task.Comments) {
-			return ErrorMsg{Err: fmt.Errorf("comment was deleted externally")}
+			return status.ErrorMsg{Err: fmt.Errorf("comment was deleted externally")}
 		}
 
 		task.Comments[editIndex].Text = newText
@@ -240,22 +241,22 @@ func (m *TaskCommentsModel) editCommentWithExternalEditor(content string, emptyI
 	editor, editorErr := external.ResolveEditor(m.editor)
 	if editorErr != nil {
 		_ = os.Remove(tmpPath)
-		return errorCmd("%s", editorErr)
+		return status.ErrorCmd("%s", editorErr)
 	}
 
 	command := external.EditorCommand(editor, tmpPath)
 	return tea.ExecProcess(command, func(err error) tea.Msg {
 		if err != nil {
 			_ = os.Remove(tmpPath)
-			return ErrorMsg{Err: fmt.Errorf("editor failed: %w", err)}
+			return status.ErrorMsg{Err: fmt.Errorf("editor failed: %w", err)}
 		}
 
 		newText, readErr := readEditedCommentText(tmpPath)
 		if readErr != nil {
-			return ErrorMsg{Err: readErr}
+			return status.ErrorMsg{Err: readErr}
 		}
 		if newText == "" && emptyIsError {
-			return ErrorMsg{Err: fmt.Errorf("comment text cannot be empty")}
+			return status.ErrorMsg{Err: fmt.Errorf("comment text cannot be empty")}
 		}
 
 		return apply(newText)

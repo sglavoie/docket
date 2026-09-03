@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -354,8 +355,8 @@ const periodicSaveInterval = 60 * time.Second
 
 func (m *AppModel) Init() tea.Cmd {
 	cmds := []tea.Cmd{
-		tickCmd(periodicSaveInterval, func(at time.Time) tea.Msg {
-			return periodicSaveMsg{at: at}
+		status.TickCmd(periodicSaveInterval, func(at time.Time) tea.Msg {
+			return status.PeriodicSaveMsg{At: at}
 		}),
 	}
 	if m.startupMessage != nil {

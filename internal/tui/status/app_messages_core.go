@@ -1,4 +1,4 @@
-package tui
+package status
 
 import (
 	"time"
@@ -38,8 +38,8 @@ type UndoToastTimeoutMsg struct{}
 // names what moved in the status strip and refreshes every open surface.
 type WorkspaceUndoMsg struct{ Redo bool }
 
-// workspaceUndoCmd is the command a panel returns for its u / Ctrl+R press.
-func workspaceUndoCmd(redo bool) tea.Cmd {
+// WorkspaceUndoCmd is the command a panel returns for its u / Ctrl+R press.
+func WorkspaceUndoCmd(redo bool) tea.Cmd {
 	return func() tea.Msg { return WorkspaceUndoMsg{Redo: redo} }
 }
 
@@ -54,8 +54,8 @@ type ViewStatusClearMsg struct {
 // CursorFlashClearMsg clears the cursor flash highlight after a timeout.
 type CursorFlashClearMsg struct{}
 
-// periodicSaveMsg triggers a periodic save of spatial state (cursor/fold).
-type periodicSaveMsg struct{ at time.Time }
+// PeriodicSaveMsg triggers a periodic save of spatial state (cursor/fold).
+type PeriodicSaveMsg struct{ At time.Time }
 
 // StatusMsg sets a temporary status message.
 type StatusMsg string
@@ -75,23 +75,23 @@ type SaveCompleteMsg struct {
 // StatusUpdateTimeout is the default duration for status messages before they auto-clear.
 const StatusUpdateTimeout = 2 * time.Second
 
-// statusTimeout returns a command that clears the status message after the given duration.
-func statusTimeout(d time.Duration) tea.Cmd {
+// StatusTimeout returns a command that clears the status message after the given duration.
+func StatusTimeout(d time.Duration) tea.Cmd {
 	scheduledAt := time.Now()
-	return tickCmd(d, func(time.Time) tea.Msg {
+	return TickCmd(d, func(time.Time) tea.Msg {
 		return StatusClearMsg{ScheduledAt: scheduledAt}
 	})
 }
 
-// defaultStatusTimeout returns a command that clears the status message after the default timeout.
-func defaultStatusTimeout() tea.Cmd {
-	return statusTimeout(StatusUpdateTimeout)
+// DefaultStatusTimeout returns a command that clears the status message after the default timeout.
+func DefaultStatusTimeout() tea.Cmd {
+	return StatusTimeout(StatusUpdateTimeout)
 }
 
-// viewStatusTimeout returns a command that clears one generation of a
+// ViewStatusTimeout returns a command that clears one generation of a
 // view-owned status message after the default timeout.
-func viewStatusTimeout(view presentation.PresentationID, seq uint64) tea.Cmd {
-	return tickCmd(StatusUpdateTimeout, func(time.Time) tea.Msg {
+func ViewStatusTimeout(view presentation.PresentationID, seq uint64) tea.Cmd {
+	return TickCmd(StatusUpdateTimeout, func(time.Time) tea.Msg {
 		return ViewStatusClearMsg{View: view, Seq: seq}
 	})
 }
@@ -99,9 +99,9 @@ func viewStatusTimeout(view presentation.PresentationID, seq uint64) tea.Cmd {
 // CursorFlashDuration is how long the cursor flash highlight stays visible.
 const CursorFlashDuration = 150 * time.Millisecond
 
-// cursorFlashTimeout returns a command that clears the cursor flash after CursorFlashDuration.
-func cursorFlashTimeout() tea.Cmd {
-	return tickCmd(CursorFlashDuration, func(time.Time) tea.Msg {
+// CursorFlashTimeout returns a command that clears the cursor flash after CursorFlashDuration.
+func CursorFlashTimeout() tea.Cmd {
+	return TickCmd(CursorFlashDuration, func(time.Time) tea.Msg {
 		return CursorFlashClearMsg{}
 	})
 }

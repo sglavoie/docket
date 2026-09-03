@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // selectProjectHubRows selects each named row and reports the resulting count,
@@ -142,7 +143,7 @@ func TestProjectBulkTagNoChangeReportsInsteadOfWriting(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("a no-op bulk edit reported nothing")
 	}
-	msg, ok := cmd().(ErrorMsg)
+	msg, ok := cmd().(status.ErrorMsg)
 	if !ok || !strings.Contains(msg.Err.Error(), "no selected project is parked") {
 		t.Fatalf("no-op bulk edit emitted %#v", cmd())
 	}

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 func TestTaskAttachmentsDeleteDispatchesCoordinator(t *testing.T) {
@@ -76,7 +77,7 @@ func TestTaskAttachmentsDeleteOutOfBounds(t *testing.T) {
 
 	// Should return an error message, not panic
 	msg := cmd()
-	if _, ok := msg.(ErrorMsg); !ok {
+	if _, ok := msg.(status.ErrorMsg); !ok {
 		t.Fatalf("expected ErrorMsg for out-of-bounds delete, got %T", msg)
 	}
 

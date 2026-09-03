@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -146,7 +147,7 @@ func (m *ProjectEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "y", "Y":
 				m.confirmDiscard = false
 				return m, func() tea.Msg {
-					return BackMsg{}
+					return status.BackMsg{}
 				}
 			case "n", "N", "esc":
 				m.confirmDiscard = false
@@ -165,7 +166,7 @@ func (m *ProjectEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			return m, func() tea.Msg {
-				return BackMsg{}
+				return status.BackMsg{}
 			}
 
 		case "tab", "shift+tab":
@@ -256,7 +257,7 @@ type projectEditorSave struct {
 func (m *ProjectEditorModel) saveProject() tea.Cmd {
 	save, err := m.resolveSave()
 	if err != nil {
-		return func() tea.Msg { return ErrorMsg{Err: err} }
+		return func() tea.Msg { return status.ErrorMsg{Err: err} }
 	}
 	if save.parks {
 		// The park confirmation, its cursor anchor, and its recovery status are
@@ -331,7 +332,7 @@ func (s *projectEditorSave) commit() tea.Msg {
 	if expected, err := storage.LoadProjectForRewrite(&updated); err == nil {
 		content, renderErr := storage.WriteTasksMarkdown(updated.Name, updated.Tasks)
 		if renderErr != nil {
-			return ErrorMsg{Err: fmt.Errorf("failed to render renamed project: %w", renderErr)}
+			return status.ErrorMsg{Err: fmt.Errorf("failed to render renamed project: %w", renderErr)}
 		}
 		tasksMarkdown = []byte(content)
 		tasksExpectedRevision = expected
@@ -339,14 +340,14 @@ func (s *projectEditorSave) commit() tea.Msg {
 
 	catalog := cloneWorkspaceCatalog(s.runtime.Catalog())
 	if err := catalog.UpsertProject(&updated); err != nil {
-		return ErrorMsg{Err: fmt.Errorf("failed to update project catalog: %w", err)}
+		return status.ErrorMsg{Err: fmt.Errorf("failed to update project catalog: %w", err)}
 	}
 
 	// One artifact set, one transaction: the directory move, the tasks.md
 	// rewrite, and the catalog record either all commit or none of them do.
 	configArts, err := catalogDomainArtifact(s.runtime, catalog)
 	if err != nil {
-		return ErrorMsg{Err: fmt.Errorf("failed to encode config: %w", err)}
+		return status.ErrorMsg{Err: fmt.Errorf("failed to encode config: %w", err)}
 	}
 
 	transactionID, err := s.appService.RenameProjectResult(app.RenameProjectRequest{
@@ -361,10 +362,10 @@ func (s *projectEditorSave) commit() tea.Msg {
 		Config:                 configArts,
 	})
 	if err != nil {
-		return ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
+		return status.ErrorMsg{Err: fmt.Errorf("failed to save project: %w", err)}
 	}
 	if err := s.runtime.RefreshAfterCommit(); err != nil {
-		return ErrorMsg{Err: fmt.Errorf("failed to refresh project catalog: %w", err)}
+		return status.ErrorMsg{Err: fmt.Errorf("failed to refresh project catalog: %w", err)}
 	}
 
 	copyCatalogMetadata(project, &updated)

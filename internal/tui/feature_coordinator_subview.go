@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -142,7 +143,7 @@ func adaptSubviewCommit(commit tea.Cmd, success func() tea.Msg) tea.Cmd {
 	return func() tea.Msg {
 		outcome := commit()
 		if msg, ok := outcome.(TransactionErrorMsg); ok {
-			return ErrorMsg(msg)
+			return status.ErrorMsg(msg)
 		}
 		msg := success()
 		result, ok := outcome.(TransactionResultMsg)

@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -28,7 +29,7 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 			fieldName = "description"
 			currentValue = msg.Task.Description
 		default:
-			return true, errorCmd("unsupported task text operation %q", msg.Operation)
+			return true, status.ErrorCmd("unsupported task text operation %q", msg.Operation)
 		}
 		m.pendingTaskTextEdit = &struct {
 			Identity  taskref.TaskIdentity
@@ -79,13 +80,13 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 func (m *AppModel) handleTextEditorExternal(msg TextEditorExternalMsg) (bool, tea.Cmd) {
 	tmpPath, err := external.CreateTempFileWithContent(msg.CurrentValue, "tt-text-", ".md")
 	if err != nil {
-		return true, errorCmd("%s", err)
+		return true, status.ErrorCmd("%s", err)
 	}
 
 	editor, editorErr := external.ResolveEditor("")
 	if editorErr != nil {
 		_ = os.Remove(tmpPath)
-		return true, errorCmd("%s", editorErr)
+		return true, status.ErrorCmd("%s", editorErr)
 	}
 	c := external.EditorCommand(editor, tmpPath)
 

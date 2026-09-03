@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -223,7 +224,7 @@ func TestOperationTagPickerJumpsBetweenSections(t *testing.T) {
 	if dismissed {
 		t.Fatal("a refused jump dismissed the picker")
 	}
-	if status, ok := msg.(StatusMsg); !ok || string(status) != "No SEMANTIC rows" {
+	if status, ok := msg.(status.StatusMsg); !ok || string(status) != "No SEMANTIC rows" {
 		t.Fatalf("refused jump message = %#v, want the empty-section status", msg)
 	}
 	if item, ok := picker.surface.CurrentItem(); !ok || item.ID != "tag:platform" {

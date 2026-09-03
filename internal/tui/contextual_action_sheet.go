@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -349,12 +350,12 @@ func (model *ContextActionSheetModel) activateCursor() (tea.Cmd, bool, tea.Msg) 
 	}
 	if !item.Enabled() {
 		model.notice = item.DisabledReason
-		return nil, false, StatusMsg(item.DisabledReason)
+		return nil, false, status.StatusMsg(item.DisabledReason)
 	}
 	descriptor, ok := item.Data.(OperationDescriptor)
 	if !ok {
 		model.notice = "Action is unavailable"
-		return nil, false, StatusMsg("Action is unavailable")
+		return nil, false, status.StatusMsg("Action is unavailable")
 	}
 	request := model.request(descriptor.ID)
 	result, dismissed := model.Execute(request)

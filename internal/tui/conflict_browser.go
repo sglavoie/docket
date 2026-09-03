@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -350,12 +351,12 @@ func (model *ConflictBrowserModel) inspectCursor() (tea.Cmd, bool, tea.Msg) {
 	record, ok := model.CurrentRecord()
 	if !ok {
 		model.notice = conflictBrowserMissingRecord
-		return nil, false, StatusMsg(model.notice)
+		return nil, false, status.StatusMsg(model.notice)
 	}
 	bundle, err := model.load(record.ID)
 	if err != nil {
 		model.notice = err.Error()
-		return nil, false, StatusMsg(model.notice)
+		return nil, false, status.StatusMsg(model.notice)
 	}
 	model.notice = ""
 	model.detail = conflictDetailLines(bundle.Record)

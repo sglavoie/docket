@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // TaskComposerPresetKind is the typed intent carried into the one task composer
@@ -178,7 +179,7 @@ func (m *TaskComposerModel) Init() tea.Cmd {
 
 func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg.(type) {
-	case TaskCreatedMsg, ErrorMsg:
+	case TaskCreatedMsg, status.ErrorMsg:
 		m.submissionInFlight = false
 	}
 
@@ -198,7 +199,7 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch key.String() {
 			case "y", "Y":
 				m.confirmDiscard = false
-				return m, func() tea.Msg { return BackMsg{} }
+				return m, func() tea.Msg { return status.BackMsg{} }
 			case "n", "N", "esc":
 				m.confirmDiscard = false
 			}
@@ -241,7 +242,7 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.confirmDiscard = true
 				return m, nil
 			}
-			return m, func() tea.Msg { return BackMsg{} }
+			return m, func() tea.Msg { return status.BackMsg{} }
 		case "shift+enter":
 			m.input.InsertString("\n")
 			m.updatePreview()

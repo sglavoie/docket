@@ -3,6 +3,8 @@ package tui
 import (
 	"fmt"
 	"strings"
+
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // operationProjectActions is the Outliner's Space on a project group header. It
@@ -107,7 +109,7 @@ func (m *AppModel) registerProjectActionSheetOperation() error {
 		) OperationHandlerResult {
 			if err := m.openProjectActionSheet(invocation.Context); err != nil {
 				m.setInfoStatus(err.Error())
-				return OperationHandlerResult{Message: commandMessage(defaultStatusTimeout())}
+				return OperationHandlerResult{Message: commandMessage(status.DefaultStatusTimeout())}
 			}
 			return OperationHandlerResult{}
 		},

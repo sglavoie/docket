@@ -5,24 +5,25 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // handleViewCoreMessages handles generic view navigation, status, and utility messages.
 func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
-	case BackMsg:
+	case status.BackMsg:
 		return true, m.popView()
 
-	case ErrorMsg:
+	case status.ErrorMsg:
 		m.err = msg.Err
-		return true, tea.Batch(m.delegateToCurrentView(msg), statusTimeout(5*time.Second))
+		return true, tea.Batch(m.delegateToCurrentView(msg), status.StatusTimeout(5*time.Second))
 
 	case ShowHelpMsg:
 		m.helpView = NewHelpViewModel(msg.Items, msg.ViewName)
 		m.showView(presentation.ViewHelp, m.helpView)
 		return true, nil
 
-	case StatusClearMsg:
+	case status.StatusClearMsg:
 		if !msg.ScheduledAt.IsZero() && !m.statusUpdatedAt.Before(msg.ScheduledAt) {
 			return true, nil
 		}
@@ -36,7 +37,7 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 		m.clearStatus()
 		return true, nil
 
-	case ViewStatusClearMsg:
+	case status.ViewStatusClearMsg:
 		if m.currentView() != msg.View {
 			return true, nil
 		}
@@ -48,7 +49,7 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 	case FooterFlashTickMsg:
 		return true, m.advanceFooterFlash(msg.Seq)
 
-	case UndoToastTimeoutMsg:
+	case status.UndoToastTimeoutMsg:
 		// Only clear if the deadline that fired this tick is still the
 		// active one. A newer toast (with later expiresAt) may have
 		// replaced this one — leave its callback alone.
@@ -57,7 +58,7 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 		}
 		return true, nil
 
-	case WorkspaceUndoMsg:
+	case status.WorkspaceUndoMsg:
 		// The panels reach the workspace ledger through the same entry point the
 		// Outliner's u and Ctrl+R press, so a live undo toast still outranks the
 		// ledger and an exhausted ledger stays silent here too.
@@ -66,13 +67,13 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 		}
 		return true, m.coreUndo()
 
-	case StatusMsg:
+	case status.StatusMsg:
 		m.setSuccessStatus(string(msg))
-		return true, defaultStatusTimeout()
+		return true, status.DefaultStatusTimeout()
 
-	case InfoStatusMsg:
+	case status.InfoStatusMsg:
 		m.setInfoStatus(string(msg))
-		return true, defaultStatusTimeout()
+		return true, status.DefaultStatusTimeout()
 
 	case OutlinerPlanningReorderMsg:
 		return true, m.handleOutlinerPlanningReorder(msg)

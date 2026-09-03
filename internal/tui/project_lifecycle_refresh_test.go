@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 type session4LifecycleFixture struct {
@@ -327,7 +328,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 					t.Fatal("covered unarchive should still return its status command")
 				}
 
-				_, revealCmd := fixture.app.Update(BackMsg{})
+				_, revealCmd := fixture.app.Update(status.BackMsg{})
 				runSession2AppCommand(t, fixture.app, revealCmd)
 
 				session4LoadedProject(t, fixture.cross, project.ID)

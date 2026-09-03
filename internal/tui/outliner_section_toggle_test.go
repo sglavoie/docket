@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -220,7 +221,7 @@ func TestToggleVisibleSectionsReportsInsideASectionZoom(t *testing.T) {
 	if !handled || cmd == nil {
 		t.Fatalf("zoomed s = handled %v, cmd %v; want handled with a status", handled, cmd)
 	}
-	if status, ok := cmd().(StatusMsg); !ok || string(status) != "No foldable sections here" {
+	if status, ok := cmd().(status.StatusMsg); !ok || string(status) != "No foldable sections here" {
 		t.Fatalf("zoomed s message = %#v, want the refusal status", cmd())
 	}
 	if !maps.Equal(outliner.collapsedSections, foldsBefore) {

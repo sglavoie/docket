@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // lensTemplateForeignID is a UUID outside the frozen `6f1a0c4e-…` catalog
@@ -309,7 +310,7 @@ func TestLensTemplateGalleryRefusesADisabledRowAndStaysOpen(t *testing.T) {
 	if dismissed {
 		t.Fatal("a refused row closed the gallery")
 	}
-	status, ok := msg.(StatusMsg)
+	status, ok := msg.(status.StatusMsg)
 	if !ok {
 		t.Fatalf("refusal message = %#v, want a StatusMsg", msg)
 	}

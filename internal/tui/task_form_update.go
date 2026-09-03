@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 //nolint:gocyclo // main Update dispatch
@@ -17,7 +18,7 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.submissionInFlight = false
 		return m, nil
 
-	case ErrorMsg:
+	case status.ErrorMsg:
 		m.submissionInFlight = false
 		m.err = msg.Err
 		return m, nil
@@ -60,7 +61,7 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "y", "Y":
 				m.confirmDiscard = false
 				m.confirmOverlay.Cancel()
-				return m, func() tea.Msg { return BackMsg{} }
+				return m, func() tea.Msg { return status.BackMsg{} }
 			case "n", "N", "esc":
 				m.confirmDiscard = false
 				m.confirmOverlay.Cancel()
@@ -118,7 +119,7 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if dirty {
 					m.confirmDiscard = true
 				} else {
-					return m, func() tea.Msg { return BackMsg{} }
+					return m, func() tea.Msg { return status.BackMsg{} }
 				}
 				return m, nil
 			default:
@@ -229,7 +230,7 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.hasChanges {
 				m.confirmDiscard = true
 			} else {
-				return m, func() tea.Msg { return BackMsg{} }
+				return m, func() tea.Msg { return status.BackMsg{} }
 			}
 		}
 

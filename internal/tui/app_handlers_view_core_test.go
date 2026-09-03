@@ -8,6 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 func TestHandleViewMessagesBack(t *testing.T) {
@@ -15,7 +16,7 @@ func TestHandleViewMessagesBack(t *testing.T) {
 	app.pushView(presentation.ViewCrossProjectOutliner)
 	app.pushView(presentation.ViewTaskComposer)
 
-	msg := BackMsg{}
+	msg := status.BackMsg{}
 	handled, _ := app.handleViewMessages(msg)
 
 	if !handled {
@@ -30,7 +31,7 @@ func TestHandleViewMessagesError(t *testing.T) {
 	app := newTestAppModel()
 	testErr := errors.New("task not found")
 
-	msg := ErrorMsg{Err: testErr}
+	msg := status.ErrorMsg{Err: testErr}
 	handled, _ := app.handleViewMessages(msg)
 
 	if !handled {
@@ -45,7 +46,7 @@ func TestHandleViewMessagesStatusClear(t *testing.T) {
 	app := newTestAppModel()
 	app.statusMessage = "Some status"
 
-	msg := StatusClearMsg{}
+	msg := status.StatusClearMsg{}
 	handled, _ := app.handleViewMessages(msg)
 
 	if !handled {
@@ -59,7 +60,7 @@ func TestHandleViewMessagesStatusClear(t *testing.T) {
 func TestHandleViewMessagesStatusMsg(t *testing.T) {
 	app := newTestAppModel()
 
-	msg := StatusMsg("Operation completed")
+	msg := status.StatusMsg("Operation completed")
 	handled, cmd := app.handleViewMessages(msg)
 
 	if !handled {
@@ -79,7 +80,7 @@ func TestHandleViewMessagesStatusMsg(t *testing.T) {
 func TestHandleViewMessagesInfoStatusMsg(t *testing.T) {
 	app := newTestAppModel()
 
-	msg := InfoStatusMsg("Some info")
+	msg := status.InfoStatusMsg("Some info")
 	handled, cmd := app.handleViewMessages(msg)
 
 	if !handled {
@@ -101,7 +102,7 @@ func TestHandleViewMessagesStatusClearResetsInfoFlag(t *testing.T) {
 	app.statusMessage = "Some status"
 	app.statusIsInfo = true
 
-	msg := StatusClearMsg{}
+	msg := status.StatusClearMsg{}
 	handled, _ := app.handleViewMessages(msg)
 
 	if !handled {
@@ -150,7 +151,7 @@ func TestUndoToastTimeoutClearsExpiredToast(t *testing.T) {
 	// Force the toast to look already-expired so the timeout handler clears it.
 	app.statusExpiresAt = time.Now().Add(-time.Second)
 
-	handled, _ := app.handleViewMessages(UndoToastTimeoutMsg{})
+	handled, _ := app.handleViewMessages(status.UndoToastTimeoutMsg{})
 	if !handled {
 		t.Error("UndoToastTimeoutMsg should be handled")
 	}
@@ -175,7 +176,7 @@ func TestUndoToastTimeoutLeavesReplacedToastAlone(t *testing.T) {
 	}
 
 	// First tick fires now (Now() < replacement expiresAt) — must NOT clear.
-	handled, _ := app.handleViewMessages(UndoToastTimeoutMsg{})
+	handled, _ := app.handleViewMessages(status.UndoToastTimeoutMsg{})
 	if !handled {
 		t.Error("UndoToastTimeoutMsg should be handled")
 	}
@@ -203,7 +204,7 @@ func TestStatusClearMsgPreservesActiveUndoToast(t *testing.T) {
 	})
 
 	// The earlier StatusClearMsg now arrives. It must NOT clear the live toast.
-	handled, _ := app.handleViewMessages(StatusClearMsg{})
+	handled, _ := app.handleViewMessages(status.StatusClearMsg{})
 	if !handled {
 		t.Error("StatusClearMsg should be handled")
 	}
@@ -229,7 +230,7 @@ func TestStatusClearMsgDoesNotReplaceNewerStatusWithFooter(t *testing.T) {
 	scheduledAt := time.Now()
 	app.setInfoStatus("newer guidance")
 
-	handled, _ := app.handleViewMessages(StatusClearMsg{ScheduledAt: scheduledAt})
+	handled, _ := app.handleViewMessages(status.StatusClearMsg{ScheduledAt: scheduledAt})
 	if !handled {
 		t.Fatal("StatusClearMsg should be handled")
 	}
@@ -243,7 +244,7 @@ func TestStatusClearMsgPreservesStatusWithSameTimestamp(t *testing.T) {
 	app.setInfoStatus("coalesced-clock guidance")
 	scheduledAt := app.statusUpdatedAt
 
-	handled, _ := app.handleViewMessages(StatusClearMsg{ScheduledAt: scheduledAt})
+	handled, _ := app.handleViewMessages(status.StatusClearMsg{ScheduledAt: scheduledAt})
 	if !handled {
 		t.Fatal("StatusClearMsg should be handled")
 	}
@@ -260,7 +261,7 @@ func TestStatusClearMsgClearsExpiredUndoToast(t *testing.T) {
 	_ = app.setUndoableStatus("old", func() tea.Cmd { return nil })
 	app.statusExpiresAt = time.Now().Add(-time.Second)
 
-	handled, _ := app.handleViewMessages(StatusClearMsg{})
+	handled, _ := app.handleViewMessages(status.StatusClearMsg{})
 	if !handled {
 		t.Error("StatusClearMsg should be handled")
 	}

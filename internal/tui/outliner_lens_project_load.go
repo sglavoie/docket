@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // lensProjectLoadRequired reports whether installing the lens changes which
@@ -155,7 +156,7 @@ func (m *OutlinerModel) handleLensProjectsLoaded(msg lensProjectsLoadedMsg) (tea
 		// install a lens over an empty population and destroy the restoration point
 		// in the same step, so the application is abandoned instead.
 		detail := msg.failedLoads[0].Detail
-		return func() tea.Msg { return ErrorMsg{Err: errors.New(detail)} }, false
+		return func() tea.Msg { return status.ErrorMsg{Err: errors.New(detail)} }, false
 	}
 
 	if pending.scopeExitFrom != "" {

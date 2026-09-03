@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -192,13 +193,13 @@ func (m *AppModel) setUndoableStatus(msg string, undoCb func() tea.Cmd) tea.Cmd 
 	if undoCb == nil {
 		logging.Warn("setUndoableStatus called with nil undoCb; degrading to plain info status: %q", msg)
 		m.setInfoStatus(msg)
-		return defaultStatusTimeout()
+		return status.DefaultStatusTimeout()
 	}
 	m.setInfoStatus(msg)
 	m.statusUndoCb = undoCb
 	m.statusExpiresAt = time.Now().Add(UndoToastTimeout)
-	return tickCmd(UndoToastTimeout, func(time.Time) tea.Msg {
-		return UndoToastTimeoutMsg{}
+	return status.TickCmd(UndoToastTimeout, func(time.Time) tea.Msg {
+		return status.UndoToastTimeoutMsg{}
 	})
 }
 
@@ -210,12 +211,12 @@ func (m *AppModel) setRecoveryFeedback(successMessage, transactionID string, ori
 	transactionID = strings.TrimSpace(transactionID)
 	if transactionID == "" {
 		m.setSuccessStatus(successMessage)
-		return defaultStatusTimeout()
+		return status.DefaultStatusTimeout()
 	}
 	entry, ok, err := workspaceLedgerFromConfig(m.runtime).SelectNewestUndo(storage.GlobalScope())
 	if err != nil || !ok || entry.TransactionID != transactionID {
 		m.setSuccessStatus(successMessage)
-		return defaultStatusTimeout()
+		return status.DefaultStatusTimeout()
 	}
 	undoCb := func() tea.Cmd { return m.handleLedgerTaskUndoRedo(false) }
 	cmd := m.setUndoableStatus(formatRecoveryFeedback(entry.Action, entry.Context, originRecorded), undoCb)

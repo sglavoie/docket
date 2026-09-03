@@ -54,7 +54,7 @@ row. It is not part of `WorkspacePulse` — `workspacePulseLevel` is a contiguou
 ordinal ladder and `ComputeWorkspacePulse` takes no filesystem-derived input, so
 the ladder has no rung for it. The shell owns the count:
 `AppModel.refreshOutstandingConflicts` calls `ConflictStore.List` at launch and
-on the existing 60s `periodicSaveMsg` tick, caches the length on
+on the existing 60s `status.PeriodicSaveMsg` tick, caches the length on
 `outstandingConflicts`, and injects `outstandingConflictCount` into every
 Outliner through `wireOutlinerOperationExecutor`, so no render reads the
 directory and no new timer is armed. The store is read directly rather than

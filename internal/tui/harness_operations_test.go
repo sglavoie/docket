@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/transaction"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -163,13 +164,13 @@ func (m *AppModel) registerHarnessOperations() error {
 				machine.ActiveLensID = harnessDanglingLensID
 				return nil
 			}); err != nil {
-				return ErrorMsg{Err: err}
+				return status.ErrorMsg{Err: err}
 			}
 			return nil
 		}},
 		{operationHarnessRecordConflict, "record merge conflict", OperationCategorySystem, func() tea.Msg {
 			if err := m.harnessRecordConflict(); err != nil {
-				return ErrorMsg{Err: err}
+				return status.ErrorMsg{Err: err}
 			}
 			// The strip counts the same directory this just wrote to, so the count
 			// is refreshed here rather than waiting for the 60s tick. Scenarios
@@ -183,13 +184,13 @@ func (m *AppModel) registerHarnessOperations() error {
 			// there and this app has not looked yet, so only the periodic tick can
 			// make the count appear.
 			if err := m.harnessRecordConflict(); err != nil {
-				return ErrorMsg{Err: err}
+				return status.ErrorMsg{Err: err}
 			}
 			return nil
 		}},
 		{operationHarnessForeignTxn, "stage foreign live transaction", OperationCategorySystem, func() tea.Msg {
 			if err := m.harnessStageForeignTransaction(); err != nil {
-				return ErrorMsg{Err: err}
+				return status.ErrorMsg{Err: err}
 			}
 			return nil
 		}},
@@ -384,7 +385,7 @@ func (m *AppModel) harnessOpenOutliner(options OutlinerOpenOptions) tea.Msg {
 	m.crossOutliner.ApplyOpenOptions(options)
 	route, err := NewRoute(TaskWorkspace, TaskWorkspaceParams{Scope: AppEntityScope()})
 	if err != nil {
-		return ErrorMsg{Err: err}
+		return status.ErrorMsg{Err: err}
 	}
 	return OperationCommandResultMsg{Cmd: tea.Batch(m.activateTaskWorkspaceRoute(route), presentationCmd)}
 }

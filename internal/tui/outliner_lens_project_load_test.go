@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 func TestLensProjectLoadPublishesOnlyOnTheMatchingGeneration(t *testing.T) {
@@ -115,7 +116,7 @@ func TestLensProjectLoadAbortsWhenNothingLoaded(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("a wholly failed load must report why")
 	}
-	if _, ok := cmd().(ErrorMsg); !ok {
+	if _, ok := cmd().(status.ErrorMsg); !ok {
 		t.Fatal("a wholly failed load must raise an error")
 	}
 }
@@ -141,7 +142,7 @@ func TestLensProjectLoadPublishesPartialResultWithWarning(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("a partial load must report the projects it dropped")
 	}
-	if _, ok := cmd().(InfoStatusMsg); !ok {
+	if _, ok := cmd().(status.InfoStatusMsg); !ok {
 		t.Fatal("a partial load must warn rather than error")
 	}
 }

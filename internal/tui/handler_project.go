@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // handleProjectMessages handles project-related messages (create, edit, archive, restore).
@@ -36,7 +37,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 
 	case ProjectArchiveRequestMsg:
 		if msg.Project != nil && m.runtime.IsSystemUnfiledProject(msg.Project.ID) {
-			return true, errorCmd("cannot archive the system Unfiled project")
+			return true, status.ErrorCmd("cannot archive the system Unfiled project")
 		}
 		return true, m.showProjectArchiveConfirm(msg.Project, msg.Archive)
 
@@ -48,7 +49,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 
 	case ProjectDeleteRequestMsg:
 		if msg.Project != nil && m.runtime.IsSystemUnfiledProject(msg.Project.ID) {
-			return true, errorCmd("cannot delete the system Unfiled project")
+			return true, status.ErrorCmd("cannot delete the system Unfiled project")
 		}
 		return true, m.showProjectDeleteConfirm(msg.Project)
 
@@ -174,7 +175,7 @@ func (m *AppModel) showProjectArchiveConfirm(project *models.Project, archive bo
 	}
 	if m.runtime.IsSystemUnfiledProject(project.ID) {
 		m.clearPendingProjectArchive()
-		return errorCmd("cannot archive the system Unfiled project")
+		return status.ErrorCmd("cannot archive the system Unfiled project")
 	}
 
 	m.pendingProjectArchive = project
@@ -203,7 +204,7 @@ func (m *AppModel) confirmProjectArchive() tea.Cmd {
 		return nil
 	}
 	if m.runtime.IsSystemUnfiledProject(project.ID) {
-		return errorCmd("cannot archive the system Unfiled project")
+		return status.ErrorCmd("cannot archive the system Unfiled project")
 	}
 
 	if archive {
@@ -228,10 +229,10 @@ func (m *AppModel) commitProjectArchive(project *models.Project) tea.Cmd {
 	updated := *project
 	if updated.Tasks == nil {
 		if m.persister == nil {
-			return errorCmd("cannot archive project: project storage is unavailable")
+			return status.ErrorCmd("cannot archive project: project storage is unavailable")
 		}
 		if err := m.persister.Load(&updated); err != nil {
-			return errorCmd("cannot archive project: %v", err)
+			return status.ErrorCmd("cannot archive project: %v", err)
 		}
 	}
 	updated.Archive()
@@ -295,14 +296,14 @@ func (m *AppModel) showProjectDeleteConfirm(project *models.Project) tea.Cmd {
 	}
 	if m.runtime.IsSystemUnfiledProject(project.ID) {
 		m.clearPendingProjectDelete()
-		return errorCmd("cannot delete the system Unfiled project")
+		return status.ErrorCmd("cannot delete the system Unfiled project")
 	}
 
 	loaded := *project
 	if loaded.Tasks == nil && m.persister != nil {
 		if err := m.persister.Load(&loaded); err != nil {
 			m.clearPendingProjectDelete()
-			return errorCmd("cannot delete project: %v", err)
+			return status.ErrorCmd("cannot delete project: %v", err)
 		}
 	}
 	m.pendingProjectDelete = &loaded
@@ -368,7 +369,7 @@ func (m *AppModel) confirmProjectDelete() tea.Cmd {
 		return nil
 	}
 	if m.runtime.IsSystemUnfiledProject(project.ID) {
-		return errorCmd("cannot delete the system Unfiled project")
+		return status.ErrorCmd("cannot delete the system Unfiled project")
 	}
 	return func() tea.Msg {
 		return ProjectDeletedMsg{Project: project}
@@ -384,15 +385,15 @@ func (m *AppModel) commitProjectDelete(project *models.Project) tea.Cmd {
 		return nil
 	}
 	if m.runtime == nil || m.appService == nil {
-		return errorCmd("cannot delete project: project storage is unavailable")
+		return status.ErrorCmd("cannot delete project: project storage is unavailable")
 	}
 	updated := *project
 	if updated.Tasks == nil {
 		if m.persister == nil {
-			return errorCmd("cannot delete project: project storage is unavailable")
+			return status.ErrorCmd("cannot delete project: project storage is unavailable")
 		}
 		if err := m.persister.Load(&updated); err != nil {
-			return errorCmd("cannot delete project: %v", err)
+			return status.ErrorCmd("cannot delete project: %v", err)
 		}
 	}
 

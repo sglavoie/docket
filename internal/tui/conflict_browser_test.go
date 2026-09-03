@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // conflictBrowserFixture is one recorded bundle with both a field edit carrying
@@ -233,7 +234,7 @@ func TestConflictBrowserRefusesAResolvedBundle(t *testing.T) {
 	if browser.inspecting() {
 		t.Fatal("a refused inspect opened the detail pane")
 	}
-	status, ok := msg.(StatusMsg)
+	status, ok := msg.(status.StatusMsg)
 	if !ok || !strings.Contains(string(status), "not found") {
 		t.Fatalf("refusal message = %#v, want a StatusMsg naming the missing bundle", msg)
 	}

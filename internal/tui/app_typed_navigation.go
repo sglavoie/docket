@@ -3,6 +3,7 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // currentPresentationView resolves the renderer selected by the authoritative
@@ -190,7 +191,7 @@ func (m *AppModel) activateTaskWorkspaceRoute(route Route) tea.Cmd {
 		return nil
 	}
 	if err := m.navigation.ReplaceDestination(route); err != nil {
-		return func() tea.Msg { return ErrorMsg{Err: err} }
+		return func() tea.Msg { return status.ErrorMsg{Err: err} }
 	}
 	return nil
 }

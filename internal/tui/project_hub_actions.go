@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // openProjectHubActions offers the cursor's project, or the whole selection
@@ -135,7 +136,7 @@ func (m *ProjectHubModel) updateProjectHubActions(key tea.KeyPressMsg) (tea.Mode
 		return m, cmd
 	case ContextActionSheetResultMsg:
 		return m, m.applyProjectHubExecutionResult(typed.Result)
-	case StatusMsg:
+	case status.StatusMsg:
 		m.notice = string(typed)
 	}
 	return m, cmd

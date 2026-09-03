@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -25,7 +26,7 @@ func (model *OperationValuePickerModel) jumpToTagCategory(key string) tea.Msg {
 			return nil
 		}
 	}
-	return StatusMsg(fmt.Sprintf("No %s rows", strings.ToUpper(label)))
+	return status.StatusMsg(fmt.Sprintf("No %s rows", strings.ToUpper(label)))
 }
 
 // tagAdderNoun names what the inline add mode is minting, which the cursor

@@ -27,7 +27,7 @@ midnight test is `value.Equal(util.StartOfDay(value))` rather than a call into
 every other token.
 
 A deferral that lapses while the Outliner is open has to bring its row back
-without a key press, and it does so on the existing 60-second `periodicSaveMsg`
+without a key press, and it does so on the existing 60-second `status.PeriodicSaveMsg`
 tick rather than a second scheduler. Each row rebuild stores `nextDeferWake`,
 the `earliestDeferWake` min-scan over the flat `project.Tasks` of the scoped
 projects, which already contains every nested child, so no tree walk is needed.

@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 func (m *NotesViewModel) editCurrentNote() tea.Cmd {
@@ -19,7 +20,7 @@ func (m *NotesViewModel) editCurrentNote() tea.Cmd {
 	}
 	editor, err := external.ResolveNoteEditor()
 	if err != nil {
-		return errorCmd("%s", err)
+		return status.ErrorCmd("%s", err)
 	}
 	return noteEditCmd(row.Note, row.Location, m.effectiveDir(row), editor)
 }
@@ -30,11 +31,11 @@ func noteEditCmd(note *models.Note, location app.NoteLocation, dir, editor strin
 	if note.ParseError != "" {
 		path, pathErr := storage.NoteFilePathIn(dir, note.Filename)
 		if pathErr != nil {
-			return errorCmd("invalid note path: %w", pathErr)
+			return status.ErrorCmd("invalid note path: %w", pathErr)
 		}
 		raw, readErr := os.ReadFile(path)
 		if readErr != nil {
-			return errorCmd("failed to read malformed note: %w", readErr)
+			return status.ErrorCmd("failed to read malformed note: %w", readErr)
 		}
 		return startNoteEditorWithContent(editor, location, note, string(raw), false)
 	}

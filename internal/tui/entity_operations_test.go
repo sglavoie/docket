@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // entityOperationApp wires the operation registry against a real note-capable
@@ -312,7 +313,7 @@ func TestNotesBrowseKeysReachTheCopyOperations(t *testing.T) {
 	}
 	// The status strip is the only place a copy is visible, so the key has to
 	// carry the confirmation out of the handler and not just the copied value.
-	if status, ok := cmd().(StatusMsg); !ok || string(status) != "Note title copied to clipboard" {
+	if status, ok := cmd().(status.StatusMsg); !ok || string(status) != "Note title copied to clipboard" {
 		t.Fatalf("y emitted %#v, want the clipboard confirmation status", cmd())
 	}
 
@@ -324,7 +325,7 @@ func TestNotesBrowseKeysReachTheCopyOperations(t *testing.T) {
 	if want := filepath.Join(storage.NotesDir(project), filename); copied != want {
 		t.Fatalf("Y copied %q, want %q", copied, want)
 	}
-	if status, ok := cmd().(StatusMsg); !ok || string(status) != "Note path copied to clipboard" {
+	if status, ok := cmd().(status.StatusMsg); !ok || string(status) != "Note path copied to clipboard" {
 		t.Fatalf("Y emitted %#v, want the clipboard confirmation status", cmd())
 	}
 }

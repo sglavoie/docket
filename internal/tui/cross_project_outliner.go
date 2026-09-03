@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // crossProjectsLoadedMsg carries the result of an async cross-project load.
@@ -79,7 +80,7 @@ func (m *OutlinerModel) startCrossProjectLoad() tea.Cmd {
 	m.crossLoadGen++
 	return tea.Batch(
 		m.loadCrossProjectsCmd(),
-		tickCmd(crossSpinnerDelay, func(time.Time) tea.Msg {
+		status.TickCmd(crossSpinnerDelay, func(time.Time) tea.Msg {
 			return crossSpinnerDelayMsg{}
 		}),
 	)
@@ -198,7 +199,7 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 			m.crossSpinnerVisible = false
 			m.crossReloadProjectID = ""
 			m.crossReloadTaskID = ""
-			return func() tea.Msg { return ErrorMsg{Err: errors.New(detail)} }
+			return func() tea.Msg { return status.ErrorMsg{Err: errors.New(detail)} }
 		}
 	}
 	fallbackCursor := m.cursor
@@ -232,7 +233,7 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 	// A scoped project may have been archived or removed externally
 	// while the reload was in flight; unwind to the nearest valid scope.
 	if scopeMsg, repaired := m.reconcileProjectScope(); repaired {
-		cmds = append(cmds, func() tea.Msg { return InfoStatusMsg(scopeMsg) })
+		cmds = append(cmds, func() tea.Msg { return status.InfoStatusMsg(scopeMsg) })
 	}
 
 	if advisory := m.loadFailureAdvisory(msg.failedLoads); advisory != nil {

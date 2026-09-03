@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // currentViewAsModel returns the current view as a tea.Model for interface assertions.
@@ -88,7 +89,7 @@ func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { /
 		return true, cmd
 	}
 	if handled, cmd := m.validateCurrentProject(); handled {
-		return true, tea.Batch(cmd, defaultStatusTimeout())
+		return true, tea.Batch(cmd, status.DefaultStatusTimeout())
 	}
 	if handled, cmd := m.handleSimplifiedInputKey(msg); handled {
 		return true, cmd

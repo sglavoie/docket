@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 func TestTaskForm_TabSwitchForward(t *testing.T) {
@@ -153,7 +154,7 @@ func TestTaskForm_EscWithoutChanges_EmitsBackMsg(t *testing.T) {
 		t.Fatal("expected a Cmd from Esc without changes, got nil")
 	}
 	msg := cmd()
-	if _, ok := msg.(BackMsg); !ok {
+	if _, ok := msg.(status.BackMsg); !ok {
 		t.Errorf("expected BackMsg, got %T", msg)
 	}
 }
@@ -176,7 +177,7 @@ func TestTaskForm_ConfirmDiscard_YEmitsBackMsg(t *testing.T) {
 		t.Fatal("expected Cmd from confirm-y, got nil")
 	}
 	msg := cmd()
-	if _, ok := msg.(BackMsg); !ok {
+	if _, ok := msg.(status.BackMsg); !ok {
 		t.Errorf("expected BackMsg, got %T", msg)
 	}
 }

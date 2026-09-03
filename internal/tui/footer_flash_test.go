@@ -9,6 +9,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -24,7 +25,7 @@ func flashTestApp(t *testing.T) *AppModel {
 func TestFooterFlashArmsOnShellStatusUpdate(t *testing.T) {
 	app := flashTestApp(t)
 
-	_, cmd := app.Update(StatusMsg("task saved"))
+	_, cmd := app.Update(status.StatusMsg("task saved"))
 
 	if cmd == nil {
 		t.Fatal("expected a command batch carrying the first flash tick")
@@ -43,7 +44,7 @@ func TestFooterFlashArmsOnShellStatusUpdate(t *testing.T) {
 func TestFooterFlashArmsOnError(t *testing.T) {
 	app := flashTestApp(t)
 
-	app.Update(ErrorMsg{Err: errors.New("storage failed")})
+	app.Update(status.ErrorMsg{Err: errors.New("storage failed")})
 
 	if got := app.footerFlash.severity; got != flashError {
 		t.Fatalf("severity = %v, want flashError", got)
@@ -52,10 +53,10 @@ func TestFooterFlashArmsOnError(t *testing.T) {
 
 func TestFooterFlashDoesNotArmOnStatusClear(t *testing.T) {
 	app := flashTestApp(t)
-	app.Update(StatusMsg("task saved"))
+	app.Update(status.StatusMsg("task saved"))
 	armedSeq := app.footerFlash.seq
 
-	app.Update(StatusClearMsg{})
+	app.Update(status.StatusClearMsg{})
 
 	if app.statusMessage != "" {
 		t.Fatalf("status not cleared: %q", app.statusMessage)
@@ -74,7 +75,7 @@ func TestFooterFlashAdvancesThroughFramesThenClears(t *testing.T) {
 	}
 
 	app := flashTestApp(t)
-	app.Update(StatusMsg("task saved"))
+	app.Update(status.StatusMsg("task saved"))
 	seq := app.footerFlash.seq
 
 	for frame := 1; frame < footerFlashFrames; frame++ {
@@ -98,7 +99,7 @@ func TestFooterFlashAdvancesThroughFramesThenClears(t *testing.T) {
 
 func TestFooterFlashIgnoresStaleTick(t *testing.T) {
 	app := flashTestApp(t)
-	app.Update(StatusMsg("task saved"))
+	app.Update(status.StatusMsg("task saved"))
 	seq := app.footerFlash.seq
 
 	_, cmd := app.Update(FooterFlashTickMsg{Seq: seq - 1})
@@ -113,11 +114,11 @@ func TestFooterFlashIgnoresStaleTick(t *testing.T) {
 
 func TestFooterFlashRestartsOnNewStatus(t *testing.T) {
 	app := flashTestApp(t)
-	app.Update(StatusMsg("task saved"))
+	app.Update(status.StatusMsg("task saved"))
 	firstSeq := app.footerFlash.seq
 	app.Update(FooterFlashTickMsg{Seq: firstSeq})
 
-	app.Update(InfoStatusMsg("filters cleared"))
+	app.Update(status.InfoStatusMsg("filters cleared"))
 
 	if app.footerFlash.frame != 0 {
 		t.Fatalf("frame = %d, want the restart to reset to 0", app.footerFlash.frame)

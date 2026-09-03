@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // handleKey implements the shell's compact key-interceptor contract.
@@ -91,11 +92,11 @@ func (model *NamedLensPickerModel) applyOrdinal(ordinal int) (tea.Cmd, bool, tea
 	}
 	if ordinal < 1 || ordinal > len(model.ordinals) {
 		model.notice = lensPickerOrdinalRefusal(len(model.ordinals))
-		return nil, false, StatusMsg(model.notice)
+		return nil, false, status.StatusMsg(model.notice)
 	}
 	if !model.SelectLens(model.ordinals[ordinal-1]) {
 		model.notice = lensPickerOrdinalRefusal(len(model.ordinals))
-		return nil, false, StatusMsg(model.notice)
+		return nil, false, status.StatusMsg(model.notice)
 	}
 	return model.activateCursor()
 }
@@ -131,7 +132,7 @@ func (model *NamedLensPickerModel) activateCursor() (tea.Cmd, bool, tea.Msg) {
 	lens, ok := item.Data.(config.NamedLens)
 	if !ok {
 		model.notice = "That row is not a saved lens"
-		return nil, false, StatusMsg(model.notice)
+		return nil, false, status.StatusMsg(model.notice)
 	}
 	result, dismissed := model.Execute(model.request(operationLensApply, LensEntity(lens.ID)))
 	return nil, dismissed, NamedLensPickerResultMsg{Result: result}
@@ -168,7 +169,7 @@ func (model *NamedLensPickerModel) openActionsForCursor() (tea.Cmd, bool, tea.Ms
 		if item.ID == lensPickerAddTemplateItemID {
 			model.notice = lensPickerAddTemplateSpaceHint
 		}
-		return nil, false, StatusMsg(model.notice)
+		return nil, false, status.StatusMsg(model.notice)
 	}
 	model.notice = ""
 	return nil, false, NamedLensActionsRequestMsg{

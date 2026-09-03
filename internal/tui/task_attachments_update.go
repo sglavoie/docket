@@ -7,6 +7,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
@@ -19,7 +20,7 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //noli
 	}
 
 	switch msg := msg.(type) {
-	case CursorFlashClearMsg:
+	case status.CursorFlashClearMsg:
 		m.cursorFlash = false
 		return m, nil
 	case tea.WindowSizeMsg:
@@ -97,7 +98,7 @@ func (m *TaskAttachmentsModel) updateNormalKey(key string) tea.Cmd {
 	// already ruled out the add and confirmation modes above, so u is never a
 	// character being typed into the attachment input here.
 	if key == "u" || key == "ctrl+r" {
-		return workspaceUndoCmd(key == "ctrl+r")
+		return status.WorkspaceUndoCmd(key == "ctrl+r")
 	}
 
 	return nil

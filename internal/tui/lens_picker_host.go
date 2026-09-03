@@ -4,6 +4,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // The shell side of the named-lens picker. The picker itself knows only the
@@ -48,7 +49,7 @@ func (m *AppModel) openNamedLensPicker() tea.Cmd {
 	)
 	if err != nil {
 		m.err = err
-		return statusTimeout(5 * time.Second)
+		return status.StatusTimeout(5 * time.Second)
 	}
 	m.lensPicker = picker
 	return nil
@@ -78,7 +79,7 @@ func (m *AppModel) saveViewAsLens() tea.Cmd {
 	}
 	if result.Err != nil {
 		m.err = result.Err
-		return statusTimeout(5 * time.Second)
+		return status.StatusTimeout(5 * time.Second)
 	}
 	return operationResultCmd(result)
 }
@@ -119,7 +120,7 @@ func (m *AppModel) openNamedLensActions(msg NamedLensActionsRequestMsg) tea.Cmd 
 	)
 	if err != nil {
 		m.err = err
-		return statusTimeout(5 * time.Second)
+		return status.StatusTimeout(5 * time.Second)
 	}
 	m.contextActionSheet = sheet
 	return nil

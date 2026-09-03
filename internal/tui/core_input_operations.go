@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // coreInputOperationRefusesSearchProjection names the outliner navigation
@@ -121,10 +122,10 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		switch {
 		case refusal != "":
 			m.setWarningStatus(refusal)
-			message = commandMessage(defaultStatusTimeout())
+			message = commandMessage(status.DefaultStatusTimeout())
 		case project == nil:
 			m.setWarningStatus("No project under the cursor to outline")
-			message = commandMessage(defaultStatusTimeout())
+			message = commandMessage(status.DefaultStatusTimeout())
 		default:
 			message = OpenOutlineEditorMsg{Project: project}
 		}
@@ -152,7 +153,7 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 	case operationCoreActions:
 		if actionErr := m.openTaskActionSheet(invocation.Context); actionErr != nil {
 			m.setInfoStatus(actionErr.Error())
-			message = commandMessage(defaultStatusTimeout())
+			message = commandMessage(status.DefaultStatusTimeout())
 		}
 	case operationCoreCursorDown:
 		message = commandMessage(m.coreMoveCursor("j"))
@@ -324,17 +325,17 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 	case operationCoreToggleTheme:
 		err = m.coreToggleTheme()
 		if err == nil {
-			message = commandMessage(defaultStatusTimeout())
+			message = commandMessage(status.DefaultStatusTimeout())
 		}
 	case operationCoreToggleMenuBar:
 		err = m.coreToggleMenuBar()
 		if err == nil {
-			message = commandMessage(defaultStatusTimeout())
+			message = commandMessage(status.DefaultStatusTimeout())
 		}
 	case operationCoreToggleAdvisories:
 		err = m.coreToggleAdvisories()
 		if err == nil {
-			message = commandMessage(defaultStatusTimeout())
+			message = commandMessage(status.DefaultStatusTimeout())
 		}
 	case operationCoreOpenMenuBar:
 		err = m.coreOpenMenuBar()
@@ -355,7 +356,7 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 			Items:    m.coreInputHelpItems(),
 		}
 	case operationCoreQuit:
-		message = QuitMsg{}
+		message = status.QuitMsg{}
 	case operationCoreNextWorkMode:
 		if out, ok := m.outlinerPrimary(); ok {
 			_, _ = out.cycleWorkMode(1)

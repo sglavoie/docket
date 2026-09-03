@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 var (
@@ -139,7 +140,7 @@ func (msg OperationCommandResultMsg) Type() string { return "operation_command_r
 func (result OperationExecutionResult) AsMessage() tea.Msg {
 	switch {
 	case result.Err != nil:
-		return ErrorMsg{Err: result.Err}
+		return status.ErrorMsg{Err: result.Err}
 	case result.ConfirmationRequired != nil:
 		return *result.ConfirmationRequired
 	case result.Message != nil:
@@ -147,7 +148,7 @@ func (result OperationExecutionResult) AsMessage() tea.Msg {
 	case result.ValueRequired != nil:
 		return *result.ValueRequired
 	case result.Status != "" && !result.StatusReported:
-		return StatusMsg(result.Status)
+		return status.StatusMsg(result.Status)
 	default:
 		return nil
 	}

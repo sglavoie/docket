@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // This file introduces the feature-coordinator seam for the primary TUI views.
@@ -154,7 +155,7 @@ func (c CaptureCoordinator) CaptureCreate(req app.CaptureRequest, openContent bo
 	return func() tea.Msg {
 		res, err := mutator.Capture(req)
 		if err != nil {
-			return ErrorMsg{Err: err}
+			return status.ErrorMsg{Err: err}
 		}
 		result := res
 		return TaskCreatedMsg{
@@ -174,7 +175,7 @@ func (c CaptureCoordinator) CaptureBulk(reqs []app.CaptureRequest, closeOnSucces
 	return func() tea.Msg {
 		results, err := mutator.CaptureMany(reqs)
 		if err != nil {
-			return ErrorMsg{Err: err}
+			return status.ErrorMsg{Err: err}
 		}
 		if closeOnSuccess {
 			msg := TaskCreatedMsg{
@@ -187,7 +188,7 @@ func (c CaptureCoordinator) CaptureBulk(reqs []app.CaptureRequest, closeOnSucces
 			}
 			return msg
 		}
-		return SaveCompleteMsg{}
+		return status.SaveCompleteMsg{}
 	}
 }
 
@@ -205,7 +206,7 @@ func (c TaskFormCoordinator) CreateForm(req app.AddTaskRequest, openSubtaskIdx i
 	return func() tea.Msg {
 		res, err := mutator.AddTaskWithChildren(req)
 		if err != nil {
-			return ErrorMsg{Err: err}
+			return status.ErrorMsg{Err: err}
 		}
 		result := res.Task
 		openTaskID := ""

@@ -1,6 +1,9 @@
 package tui
 
-import tea "charm.land/bubbletea/v2"
+import (
+	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/status"
+)
 
 // jumpCursor moves cursor by delta within [0, total-1].
 func jumpCursor(cursor *int, total, delta int) {
@@ -56,7 +59,7 @@ func flashIfJumped(oldCursor, newCursor int, flash *bool) tea.Cmd {
 	}
 	if delta > 1 {
 		*flash = true
-		return cursorFlashTimeout()
+		return status.CursorFlashTimeout()
 	}
 	return nil
 }

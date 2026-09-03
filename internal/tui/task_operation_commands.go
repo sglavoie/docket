@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -69,7 +70,7 @@ func (m *AppModel) setTaskReferencesCmd(identity taskref.TaskIdentity, value Ope
 	}
 	patch := taskReferencePatch(task, value)
 	if patch.IsZero() {
-		return func() tea.Msg { return InfoStatusMsg("Dependencies unchanged") }
+		return func() tea.Msg { return status.InfoStatusMsg("Dependencies unchanged") }
 	}
 	req := app.TaskLineEditRequest{
 		Source:               identity.Locator(),

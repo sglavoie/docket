@@ -8,13 +8,14 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 //nolint:gocyclo // Centralized dispatch keeps Notes interaction and Esc precedence auditable.
 func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case CursorFlashClearMsg:
+	case status.CursorFlashClearMsg:
 		m.cursorFlash = false
 		return m, nil
 	case notesLocationPickerResultMsg:

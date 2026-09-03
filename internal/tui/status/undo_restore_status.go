@@ -1,4 +1,4 @@
-package tui
+package status
 
 import (
 	"errors"
@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func formatUndoRedoRestoreError(label string, err error) error {
+func FormatUndoRedoRestoreError(label string, err error) error {
 	if err == nil {
 		return nil
 	}

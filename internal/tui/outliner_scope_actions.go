@@ -3,6 +3,7 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // ApplyProjectScopeMsg applies a Project Hub or project-header selection to the
@@ -93,5 +94,5 @@ func (m *AppModel) returnToOutlinerAfterProjectScope() tea.Cmd {
 	if view := m.views.Get(m.currentView()); view != nil {
 		m.setAccentOnView(view)
 	}
-	return func() tea.Msg { return ViewDidAppearMsg{} }
+	return func() tea.Msg { return status.ViewDidAppearMsg{} }
 }

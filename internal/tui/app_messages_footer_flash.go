@@ -4,6 +4,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // FooterFlashTickMsg advances the footer divider flash one frame. Seq
@@ -12,7 +13,7 @@ type FooterFlashTickMsg struct{ Seq uint64 }
 
 // footerFlashTick schedules the next frame of the footer divider flash.
 func footerFlashTick(seq uint64) tea.Cmd {
-	return tickCmd(footerFlashFrameInterval, func(time.Time) tea.Msg {
+	return status.TickCmd(footerFlashFrameInterval, func(time.Time) tea.Msg {
 		return FooterFlashTickMsg{Seq: seq}
 	})
 }

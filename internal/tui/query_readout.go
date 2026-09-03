@@ -11,6 +11,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -377,7 +378,7 @@ func (m *OutlinerModel) peelQueryReadoutRow(index int) tea.Cmd {
 	rows := m.queryReadoutRows()
 	if index < 0 || index >= len(rows) || index >= queryReadoutRowLimit {
 		m.setTransientStatus("Nothing to peel there")
-		return defaultStatusTimeout()
+		return status.DefaultStatusTimeout()
 	}
 	row := rows[index]
 	// A population peel reloads, and a ranked projection is scored over the
@@ -385,14 +386,14 @@ func (m *OutlinerModel) peelQueryReadoutRow(index int) tea.Cmd {
 	// chord refuses in rather than reloading out from under the results.
 	if queryReadoutRowRequiresReload(row) && m.showsRankedList() {
 		m.setTransientStatus("Exit search before changing filters")
-		return defaultStatusTimeout()
+		return status.DefaultStatusTimeout()
 	}
-	status := "Peeled " + row.label + ": " + row.value
+	peeled := "Peeled " + row.label + ": " + row.value
 	if m.peelQueryReadoutAxis(row) {
-		return func() tea.Msg { return QueryReadoutReloadRequestMsg{Status: status} }
+		return func() tea.Msg { return QueryReadoutReloadRequestMsg{Status: peeled} }
 	}
-	m.setTransientStatus(status)
-	return defaultStatusTimeout()
+	m.setTransientStatus(peeled)
+	return status.DefaultStatusTimeout()
 }
 
 // peelAllQueryReadoutRows peels from the top until the stack is empty. It walks
@@ -417,14 +418,14 @@ func (m *OutlinerModel) peelAllQueryReadoutRows() tea.Cmd {
 	}
 	if peeled == 0 {
 		m.setTransientStatus("Nothing to peel")
-		return defaultStatusTimeout()
+		return status.DefaultStatusTimeout()
 	}
-	status := fmt.Sprintf("Peeled %d narrowing(s)", peeled)
+	summary := fmt.Sprintf("Peeled %d narrowing(s)", peeled)
 	if reload {
-		return func() tea.Msg { return QueryReadoutReloadRequestMsg{Status: status} }
+		return func() tea.Msg { return QueryReadoutReloadRequestMsg{Status: summary} }
 	}
-	m.setTransientStatus(status)
-	return defaultStatusTimeout()
+	m.setTransientStatus(summary)
+	return status.DefaultStatusTimeout()
 }
 
 // peelQueryReadoutAxis is the one write. Each axis is taken away through the

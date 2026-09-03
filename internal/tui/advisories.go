@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // An advisory is ambient workspace state the user did not ask for: a line that
@@ -54,7 +55,7 @@ func (m *OutlinerModel) advisoryStatus(text string) tea.Cmd {
 	if text == "" || m.advisoriesSuppressed() {
 		return nil
 	}
-	return func() tea.Msg { return InfoStatusMsg(text) }
+	return func() tea.Msg { return status.InfoStatusMsg(text) }
 }
 
 // loadFailureAdvisory is the notice a partly-loaded population reports: the

@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -40,7 +41,7 @@ func TestPeriodicTickWakesOnlyPastTheDeferWake(t *testing.T) {
 
 	out.crossForceRebuild = false
 	out.nextDeferWake = tickAt.Add(time.Hour)
-	if handled, _ := app.handleGlobalSaveMessage(periodicSaveMsg{at: tickAt}); !handled {
+	if handled, _ := app.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: tickAt}); !handled {
 		t.Fatal("periodicSaveMsg was not handled")
 	}
 	if out.crossForceRebuild {
@@ -48,7 +49,7 @@ func TestPeriodicTickWakesOnlyPastTheDeferWake(t *testing.T) {
 	}
 
 	out.nextDeferWake = tickAt.Add(-time.Minute)
-	if handled, _ := app.handleGlobalSaveMessage(periodicSaveMsg{at: tickAt}); !handled {
+	if handled, _ := app.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: tickAt}); !handled {
 		t.Fatal("periodicSaveMsg was not handled")
 	}
 	if !out.crossForceRebuild {
@@ -93,7 +94,7 @@ func TestPeriodicTickRefreshesWorkspacePulseWhenDeferredTaskWakes(t *testing.T) 
 	pushTestPresentationOverlay(model, presentation.ViewTaskComments)
 	out.crossForceRebuild = false
 	out.nextDeferWake = wake
-	if handled, _ := model.handleGlobalSaveMessage(periodicSaveMsg{at: tickAt}); !handled {
+	if handled, _ := model.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: tickAt}); !handled {
 		t.Fatal("periodicSaveMsg was not handled")
 	}
 	if out.crossForceRebuild || !out.nextDeferWake.Equal(wake) {
@@ -104,7 +105,7 @@ func TestPeriodicTickRefreshesWorkspacePulseWhenDeferredTaskWakes(t *testing.T) 
 	}
 
 	setTestPresentationPath(model, presentation.ViewCrossProjectOutliner)
-	if handled, _ := model.handleGlobalSaveMessage(periodicSaveMsg{at: tickAt}); !handled {
+	if handled, _ := model.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: tickAt}); !handled {
 		t.Fatal("second periodicSaveMsg was not handled")
 	}
 	if !out.crossForceRebuild {
@@ -164,7 +165,7 @@ func TestPeriodicTickAcrossMidnightHoldsActionableCountsUntilTheWakeIsConsumed(t
 	pushTestPresentationOverlay(model, presentation.ViewTaskComments)
 	out.crossForceRebuild = false
 	out.nextDeferWake = wake
-	if handled, _ := model.handleGlobalSaveMessage(periodicSaveMsg{at: tickAt}); !handled {
+	if handled, _ := model.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: tickAt}); !handled {
 		t.Fatal("periodicSaveMsg was not handled")
 	}
 	if out.crossForceRebuild || !out.nextDeferWake.Equal(wake) {
@@ -179,7 +180,7 @@ func TestPeriodicTickAcrossMidnightHoldsActionableCountsUntilTheWakeIsConsumed(t
 	}
 
 	setTestPresentationPath(model, presentation.ViewCrossProjectOutliner)
-	if handled, _ := model.handleGlobalSaveMessage(periodicSaveMsg{at: tickAt}); !handled {
+	if handled, _ := model.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: tickAt}); !handled {
 		t.Fatal("second periodicSaveMsg was not handled")
 	}
 	if !out.crossForceRebuild {
@@ -227,7 +228,7 @@ func TestDeferWakeIsDeferredWhileTheUserIsMidOperation(t *testing.T) {
 			lapsed := time.Now().Add(-time.Minute)
 			out.nextDeferWake = lapsed
 
-			if handled, _ := app.handleGlobalSaveMessage(periodicSaveMsg{at: time.Now()}); !handled {
+			if handled, _ := app.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: time.Now()}); !handled {
 				t.Fatal("periodicSaveMsg was not handled")
 			}
 			if out.crossForceRebuild {
@@ -251,7 +252,7 @@ func TestDeferWakeIsDeferredWhileTheUserIsMidOperation(t *testing.T) {
 		out.crossForceRebuild = false
 		out.nextDeferWake = time.Now().Add(-time.Minute)
 
-		if handled, _ := app.handleGlobalSaveMessage(periodicSaveMsg{at: time.Now()}); !handled {
+		if handled, _ := app.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: time.Now()}); !handled {
 			t.Fatal("periodicSaveMsg was not handled")
 		}
 		if !out.crossForceRebuild {

@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 func NewProjectHubModel(runtime *config.RuntimeState, modes ...ProjectHubMode) *ProjectHubModel {
@@ -129,7 +130,7 @@ func (m *ProjectHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// character in the query. The core undo descriptors answer only to the
 		// Outliner, so the press asks the shell for the one workspace ledger
 		// instead of dispatching, and the shell names what moved.
-		return m, workspaceUndoCmd(key.String() == "ctrl+r")
+		return m, status.WorkspaceUndoCmd(key.String() == "ctrl+r")
 	case "esc":
 		// The shell only routes Esc here while ShouldCaptureEsc holds it, so this
 		// is the selection rung of the unwind and never the close.

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -21,7 +22,7 @@ func (m *AppModel) handleTaskLineEditFailed(msg TaskLineEditFailedMsg) tea.Cmd {
 			out.quickEdit.RejectCommit(message)
 		}
 	}
-	return statusTimeout(5 * time.Second)
+	return status.StatusTimeout(5 * time.Second)
 }
 
 func (m *AppModel) handleTaskLineEdited(msg TaskLineEditedMsg) tea.Cmd {
@@ -37,7 +38,7 @@ func (m *AppModel) handleTaskLineEdited(msg TaskLineEditedMsg) tea.Cmd {
 
 	if !msg.Result.Changed {
 		m.setInfoStatus("No task changes")
-		return defaultStatusTimeout()
+		return status.DefaultStatusTimeout()
 	}
 	for _, projectID := range msg.Result.AffectedProjectIDs {
 		m.reloadProjectByID(projectID)
@@ -62,7 +63,7 @@ func (m *AppModel) handleTaskLineEdited(msg TaskLineEditedMsg) tea.Cmd {
 	if msg.Result.MovedDescendantCount > 0 {
 		summary = fmt.Sprintf("Updated #%d and moved %d descendant(s)", msg.Result.ShortID, msg.Result.MovedDescendantCount)
 	}
-	saveCmd := m.handleSaveComplete(SaveCompleteMsg{})
+	saveCmd := m.handleSaveComplete(status.SaveCompleteMsg{})
 	feedbackCmd := m.setRecoveryFeedback(summary, msg.Result.TransactionID, recordedOrigin)
 	return tea.Batch(saveCmd, jumpCmd, feedbackCmd)
 }

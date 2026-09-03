@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -33,7 +34,7 @@ func (m *AppModel) queueToggleResultCmd() tea.Cmd {
 	// cursor advances before the next render, without waiting for an async reload.
 	m.refreshLoadedTaskWorkspace()
 	cmds := m.refreshTaskViewsAfterPlanningMutation()
-	cmds = append(cmds, defaultStatusTimeout())
+	cmds = append(cmds, status.DefaultStatusTimeout())
 	return tea.Batch(cmds...)
 }
 
@@ -64,7 +65,7 @@ func (m *AppModel) toggleQueue(capture *outlinerRelocationCapture) tea.Cmd {
 		fresh, _, transactionID, err := m.queueLedgerTransition(taskID, projectID, false)
 		if err != nil {
 			m.err = err
-			return errorCmd("%s", err)
+			return status.ErrorCmd("%s", err)
 		}
 		title := taskTitleOrFallback(fresh, task)
 		successMessage := fmt.Sprintf("Removed from Next: %s", title)
@@ -77,7 +78,7 @@ func (m *AppModel) toggleQueue(capture *outlinerRelocationCapture) tea.Cmd {
 		fresh, _, transactionID, err := m.queueLedgerTransition(taskID, projectID, true)
 		if err != nil {
 			m.err = err
-			return errorCmd("%s", err)
+			return status.ErrorCmd("%s", err)
 		}
 		title := taskTitleOrFallback(fresh, task)
 		successMessage := fmt.Sprintf("Added to Next: %s", title)

@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // normalizedNoteLocation completes a half-named location. A message that
@@ -46,7 +47,7 @@ func startNoteEditor(editor string, location app.NoteLocation, note *models.Note
 	original := cloneNoteForCommand(note)
 	content, err := storage.RenderNoteContent(original)
 	if err != nil {
-		return errorCmd("failed to render note: %w", err)
+		return status.ErrorCmd("failed to render note: %w", err)
 	}
 	return startNoteEditorWithContent(editor, location, original, content, create)
 }
@@ -55,7 +56,7 @@ func startNoteEditorWithContent(editor string, location app.NoteLocation, note *
 	original := cloneNoteForCommand(note)
 	tmpPath, err := external.CreateTempFileWithContent(content, "tt-note-edit-", ".md")
 	if err != nil {
-		return errorCmd("failed to create temporary note: %w", err)
+		return status.ErrorCmd("failed to create temporary note: %w", err)
 	}
 	command := external.EditorCommand(editor, tmpPath)
 	return tea.ExecProcess(command, func(execErr error) tea.Msg {

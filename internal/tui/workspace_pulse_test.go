@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -177,7 +178,7 @@ func TestPeriodicTickRefreshesActivityAcrossIdleLocalMidnight(t *testing.T) {
 	model.crossOutliner.crossForceRebuild = false
 	model.crossOutliner.nextDeferWake = tickAt.Add(-time.Minute)
 
-	if handled, _ := model.handleGlobalSaveMessage(periodicSaveMsg{at: tickAt}); !handled {
+	if handled, _ := model.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: tickAt}); !handled {
 		t.Fatal("periodicSaveMsg was not handled")
 	}
 	if reader.calls != 1 {
@@ -193,7 +194,7 @@ func TestPeriodicTickRefreshesActivityAcrossIdleLocalMidnight(t *testing.T) {
 		t.Fatal("periodic tick did not use its supplied timestamp for the defer wake")
 	}
 
-	if handled, _ := model.handleGlobalSaveMessage(periodicSaveMsg{at: tickAt.Add(time.Hour)}); !handled {
+	if handled, _ := model.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: tickAt.Add(time.Hour)}); !handled {
 		t.Fatal("second periodicSaveMsg was not handled")
 	}
 	if reader.calls != 1 {

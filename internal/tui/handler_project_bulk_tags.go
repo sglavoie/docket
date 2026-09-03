@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // projectBulkTagUpdate is one project's replacement tag set.
@@ -38,10 +39,10 @@ type projectBulkTagEdit struct {
 func (m *AppModel) requestProjectBulkTags(msg ProjectBulkTagsMsg) tea.Cmd {
 	edit, err := m.planProjectBulkTags(msg)
 	if err != nil {
-		return errorCmd("%v", err)
+		return status.ErrorCmd("%v", err)
 	}
 	if len(edit.updates) == 0 {
-		return errorCmd("%s", projectBulkTagNoChange(edit))
+		return status.ErrorCmd("%s", projectBulkTagNoChange(edit))
 	}
 	if len(edit.parking) == 0 {
 		return m.commitProjectBulkTags(edit)

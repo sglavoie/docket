@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -28,13 +29,13 @@ func (m *AppModel) handleEditTaskContent(msg EditTaskContentMsg) (bool, tea.Cmd)
 
 	tmpPath, err := writeTaskContentBuffer(msg.Path, content)
 	if err != nil {
-		return true, errorCmd("%s", err)
+		return true, status.ErrorCmd("%s", err)
 	}
 
 	editor, editorErr := external.ResolveEditor("")
 	if editorErr != nil {
 		removeTaskContentBuffer(tmpPath)
-		return true, errorCmd("%s", editorErr)
+		return true, status.ErrorCmd("%s", editorErr)
 	}
 	c := external.EditorCommand(editor, tmpPath)
 
@@ -100,7 +101,7 @@ func removeTaskContentBuffer(path string) {
 // reopens the buffer instead.
 func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.Cmd) {
 	if msg.Err != nil {
-		return true, errorCmd("editor failed: %w", msg.Err)
+		return true, status.ErrorCmd("editor failed: %w", msg.Err)
 	}
 	if msg.Task == nil || msg.Project == nil {
 		return true, nil
@@ -116,7 +117,7 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 	}
 	if task == nil {
 		removeTaskContentBuffer(msg.Path)
-		return true, errorCmd("task edit context is unavailable")
+		return true, status.ErrorCmd("task edit context is unavailable")
 	}
 
 	baseline := msg.RejectedTitle
@@ -127,7 +128,7 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 	if msg.NewTitle == baseline {
 		if msg.RejectedTitle != "" {
 			removeTaskContentBuffer(msg.Path)
-			return true, errorCmd("%s", msg.Notice)
+			return true, status.ErrorCmd("%s", msg.Notice)
 		}
 		// An untouched title is never parsed, so a literal `#123` in it cannot be
 		// silently eaten by the tag sigil.

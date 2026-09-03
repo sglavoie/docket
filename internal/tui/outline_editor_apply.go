@@ -14,12 +14,13 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // handleOpenOutlineEditor dumps the project and hands the terminal to $EDITOR.
 func (m *AppModel) handleOpenOutlineEditor(msg OpenOutlineEditorMsg) tea.Cmd {
 	if msg.Project == nil {
-		return errorCmd("no project to outline")
+		return status.ErrorCmd("no project to outline")
 	}
 	modeLabel := ""
 	if out := m.activeOutliner(); out != nil {
@@ -29,16 +30,16 @@ func (m *AppModel) handleOpenOutlineEditor(msg OpenOutlineEditorMsg) tea.Cmd {
 	}
 	project, revision, buffer, scopeTaskIDs, err := m.outlineDumpSource(msg.Project.ID, modeLabel)
 	if err != nil {
-		return errorCmd("%s", err)
+		return status.ErrorCmd("%s", err)
 	}
 	path, err := external.CreateTempFileWithContent(buffer, outlineBufferPrefix, outlineBufferSuffix)
 	if err != nil {
-		return errorCmd("%s", err)
+		return status.ErrorCmd("%s", err)
 	}
 	editor, editorErr := external.ResolveEditor("")
 	if editorErr != nil {
 		removeOutlineBuffer(path)
-		return errorCmd("%s", editorErr)
+		return status.ErrorCmd("%s", editorErr)
 	}
 	return tea.ExecProcess(external.EditorCommand(editor, path), func(execErr error) tea.Msg {
 		edited := OutlineEditedMsg{Project: project, Revision: revision, ScopeTaskIDs: scopeTaskIDs, Path: path}
@@ -65,11 +66,11 @@ func (m *AppModel) handleOpenOutlineEditor(msg OpenOutlineEditorMsg) tea.Cmd {
 func (m *AppModel) handleOutlineEdited(msg OutlineEditedMsg) tea.Cmd {
 	if msg.Err != nil {
 		removeOutlineBuffer(msg.Path)
-		return errorCmd("%s", msg.Err)
+		return status.ErrorCmd("%s", msg.Err)
 	}
 	if msg.Project == nil {
 		removeOutlineBuffer(msg.Path)
-		return errorCmd("no project to outline")
+		return status.ErrorCmd("no project to outline")
 	}
 
 	lines, lineErrors := parseOutlineBuffer(msg.Buffer, msg.Project, m.outlineDependencyProjects(msg.Project))
@@ -139,7 +140,7 @@ func (m *AppModel) applyOutlineBuffer(pending outlineApplyPending) tea.Cmd {
 	})
 	if errors.Is(err, storage.ErrStaleRevision) {
 		m.setWarningStatus("Workspace changed while the editor was open · buffer kept at " + pending.path)
-		return defaultStatusTimeout()
+		return status.DefaultStatusTimeout()
 	}
 	if err != nil {
 		m.showView(presentation.ViewOutlineErrors, NewOutlineErrorsViewModel(pending.project.Name, pending.path, []lineError{outlineApplyError(err)}))
@@ -149,7 +150,7 @@ func (m *AppModel) applyOutlineBuffer(pending outlineApplyPending) tea.Cmd {
 	removeOutlineBuffer(pending.path)
 	return tea.Batch(
 		m.setRecoveryFeedback(result.Summary(), outlineTransactionID(result), false),
-		func() tea.Msg { return SaveCompleteMsg{} },
+		func() tea.Msg { return status.SaveCompleteMsg{} },
 	)
 }
 
@@ -177,7 +178,7 @@ func (m *AppModel) handleOutlineDeleteConfirmKey(key string) (bool, tea.Cmd) {
 		// landed would leave the user guessing which half. The file stays, so the
 		// same edits can be resubmitted after the removals are put back.
 		m.setWarningStatus("Outline not applied · buffer kept at " + path)
-		return true, defaultStatusTimeout()
+		return true, status.DefaultStatusTimeout()
 	}
 	return true, nil
 }

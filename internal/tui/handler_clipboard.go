@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/external"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 var errClipboardUnsupported = errors.New("clipboard not supported on this OS")
@@ -40,7 +41,7 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case TaskClipboardProjectedMsg:
 		if err := copyTextToClipboard(msg.Projection.Text); err != nil {
-			return true, errorCmd("copy failed: %w", err)
+			return true, status.ErrorCmd("copy failed: %w", err)
 		}
 		switch msg.Projection.Operation {
 		case app.TaskOperationCopyTitle:
@@ -50,7 +51,7 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 		case app.TaskOperationCopyTitleDescription:
 			return true, func() tea.Msg { return TaskCopiedMsg{Count: 1, TitleAndDesc: true} }
 		default:
-			return true, errorCmd("copy failed: unknown clipboard projection %q", msg.Projection.Operation)
+			return true, status.ErrorCmd("copy failed: unknown clipboard projection %q", msg.Projection.Operation)
 		}
 
 	case CopyTaskTitleMsg:
@@ -59,7 +60,7 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		_, err := external.CopyTaskTitle(msg.Task)
 		if err != nil {
-			return true, errorCmd("copy failed: %w", err)
+			return true, status.ErrorCmd("copy failed: %w", err)
 		}
 		return true, func() tea.Msg {
 			return TaskCopiedMsg{Count: 1, FullDetail: false}
@@ -71,11 +72,11 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		if msg.Task.Description == "" {
 			m.setInfoStatus("No description to copy")
-			return true, defaultStatusTimeout()
+			return true, status.DefaultStatusTimeout()
 		}
 		_, err := external.CopyTaskDetails(msg.Task)
 		if err != nil {
-			return true, errorCmd("copy failed: %w", err)
+			return true, status.ErrorCmd("copy failed: %w", err)
 		}
 		return true, func() tea.Msg {
 			return TaskCopiedMsg{Count: 1, FullDetail: true}
@@ -87,7 +88,7 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		_, err := external.CopyTaskTitleAndDescription(msg.Task)
 		if err != nil {
-			return true, errorCmd("copy failed: %w", err)
+			return true, status.ErrorCmd("copy failed: %w", err)
 		}
 		return true, func() tea.Msg {
 			return TaskCopiedMsg{Count: 1, TitleAndDesc: true}
@@ -107,7 +108,7 @@ func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 		} else {
 			m.setSuccessStatus(fmt.Sprintf("Copied %s for %d tasks to clipboard", what, msg.Count))
 		}
-		return true, defaultStatusTimeout()
+		return true, status.DefaultStatusTimeout()
 	}
 	return false, nil
 }

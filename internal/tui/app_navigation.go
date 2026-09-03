@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -107,7 +108,7 @@ func (m *AppModel) popView() tea.Cmd {
 	}
 	// Notify the cross-project outliner that it has become visible again.
 	if cv == presentation.ViewCrossProjectOutliner {
-		return tea.Batch(func() tea.Msg { return ViewDidAppearMsg{} }, resumeCmd)
+		return tea.Batch(func() tea.Msg { return status.ViewDidAppearMsg{} }, resumeCmd)
 	}
 	return resumeCmd
 }
@@ -140,7 +141,7 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 		cmd := m.popView()
 		if closingLabel != "" {
 			m.setInfoStatus("Closed " + closingLabel)
-			return true, tea.Batch(cmd, defaultStatusTimeout())
+			return true, tea.Batch(cmd, status.DefaultStatusTimeout())
 		}
 		return true, cmd
 	}

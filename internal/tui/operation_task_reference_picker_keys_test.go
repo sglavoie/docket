@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -216,7 +217,7 @@ func TestReferencePickerCommitsNothingWhenTheCheckedSetIsUnchanged(t *testing.T)
 	if cmd == nil {
 		t.Fatal("an unchanged reference set produced no command at all")
 	}
-	if msg, ok := cmd().(InfoStatusMsg); !ok {
+	if msg, ok := cmd().(status.InfoStatusMsg); !ok {
 		t.Fatalf("an unchanged reference set = %T, want a status notice and no edit", msg)
 	}
 }

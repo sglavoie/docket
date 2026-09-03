@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // The shell half of the outstanding-conflict coverage: counting bundles on
@@ -79,7 +80,7 @@ func TestConflictIndicatorRefreshesOnThePeriodicTick(t *testing.T) {
 	store := storage.NewConflictStore(config.ConflictsDir(dataDir))
 	id := recordTestConflict(t, store, "Alpha")
 
-	handled, cmd := shell.handleGlobalSaveMessage(periodicSaveMsg{at: time.Now()})
+	handled, cmd := shell.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: time.Now()})
 	if !handled {
 		t.Fatal("periodicSaveMsg was not handled")
 	}
@@ -93,7 +94,7 @@ func TestConflictIndicatorRefreshesOnThePeriodicTick(t *testing.T) {
 	if err := store.Delete(id); err != nil {
 		t.Fatalf("resolve conflict: %v", err)
 	}
-	if _, cmd = shell.handleGlobalSaveMessage(periodicSaveMsg{at: time.Now()}); cmd == nil {
+	if _, cmd = shell.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: time.Now()}); cmd == nil {
 		t.Fatal("the periodic tick must re-arm itself after a resolution")
 	}
 	if got := shell.outstandingConflictCount(); got != 0 {

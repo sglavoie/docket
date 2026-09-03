@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -211,7 +212,7 @@ func TestToggleVisibleProjectGroupsReportsInsideAProjectScope(t *testing.T) {
 	if !handled || cmd == nil {
 		t.Fatalf("scoped p = handled %v, cmd %v; want handled with a status", handled, cmd)
 	}
-	if status, ok := cmd().(StatusMsg); !ok || string(status) != "No project groups here; P switches project" {
+	if status, ok := cmd().(status.StatusMsg); !ok || string(status) != "No project groups here; P switches project" {
 		t.Fatalf("scoped p message = %#v, want the refusal that names P", cmd())
 	}
 	if !maps.Equal(outliner.collapsedSections, foldsBefore) {

@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 func TestProjectHubEscKeepsFilterThenCloses(t *testing.T) {
@@ -148,7 +149,7 @@ func TestProjectHubUndoKeysAskTheShellForTheWorkspaceLedger(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("browse u emitted no workspace undo request")
 	}
-	if msg, ok := cmd().(WorkspaceUndoMsg); !ok || msg.Redo {
+	if msg, ok := cmd().(status.WorkspaceUndoMsg); !ok || msg.Redo {
 		t.Fatalf("browse u emitted %#v, want an undo request", cmd())
 	}
 
@@ -156,7 +157,7 @@ func TestProjectHubUndoKeysAskTheShellForTheWorkspaceLedger(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("browse Ctrl+R emitted no workspace redo request")
 	}
-	if msg, ok := cmd().(WorkspaceUndoMsg); !ok || !msg.Redo {
+	if msg, ok := cmd().(status.WorkspaceUndoMsg); !ok || !msg.Redo {
 		t.Fatalf("browse Ctrl+R emitted %#v, want a redo request", cmd())
 	}
 }
@@ -169,7 +170,7 @@ func TestProjectHubSearchPlainURemainsQueryInput(t *testing.T) {
 	hub := openProjectHub(t, projectHubApp(t))
 	hub.Update(syntheticKey('/'))
 	if _, cmd := hub.Update(syntheticKey('u')); cmd != nil {
-		if _, ok := cmd().(WorkspaceUndoMsg); ok {
+		if _, ok := cmd().(status.WorkspaceUndoMsg); ok {
 			t.Fatal("u undid a transaction while the query was being typed")
 		}
 	}
@@ -304,7 +305,7 @@ func TestProjectHubStaleDirectKeyUsesProductionExecutorError(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("a stale direct key reported nothing")
 	}
-	failure, ok := cmd().(ErrorMsg)
+	failure, ok := cmd().(status.ErrorMsg)
 	if !ok || failure.Err == nil || failure.Err.Error() != "project beta is no longer available" {
 		t.Fatalf("stale direct key emitted %#v, want the production executor error", cmd())
 	}

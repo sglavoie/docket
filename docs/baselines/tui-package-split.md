@@ -109,11 +109,19 @@ the pre-split tree and is consistently pessimistic.
 | `theme` | 46 | 45 | 18 |
 | `textfit` | 12 | 9 | 9 |
 | `taskref` | 2 | 2 | 2 |
+| `status` | 10 | 10 | 10 |
 
-Running total against 631: **29**. The middle column minus the last is the
+Running total against 631: **39**. The middle column minus the last is the
 test-only promotion the ruling reclaims — 27 for `theme`, none since, because
-`textfit` moved its three test files down in the same session and `taskref`
-promoted nothing for a test in the first place.
+`textfit` moved its three test files down in the same session, `taskref`
+promoted nothing for a test in the first place, and `status` moved its one test
+file down with the two helpers only that test reads.
+
+`status` is the first row to spend its projection exactly. It also exported one
+struct field the `must export` column does not count, because that column counts
+declarations: `periodicSaveMsg.at` became `PeriodicSaveMsg.At` so the shell can
+still build the message it schedules. Expect a field or two on top of the
+budget wherever a moving message type is constructed outside its own file.
 
 Reproduce the last column for one package with the oracle from session 2.4,
 which reports a clean boundary rather than a count:

@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -56,7 +57,7 @@ func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
 		if strings.Contains(err.Error(), "history available") {
 			return nil
 		}
-		return errorCmd("%s", formatUndoRedoRestoreError(label, err))
+		return status.ErrorCmd("%s", status.FormatUndoRedoRestoreError(label, err))
 	}
 	restored := make([]*models.Project, 0, len(entry.ProjectIDs))
 	for _, id := range entry.ProjectIDs {
@@ -67,7 +68,7 @@ func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
 	}
 	m.refreshRuntime()
 	if err := m.repairTaskProjectRefsAfterRestore(restored); err != nil {
-		return errorCmd("%s", err)
+		return status.ErrorCmd("%s", err)
 	}
 	m.rebuildPlanningFromRuntime()
 	m.refreshLoadedTaskWorkspace()
@@ -75,7 +76,7 @@ func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
 	m.setSuccessStatus(fmt.Sprintf("%s: %s", verb, desc))
 	m.refreshProjectHubIfActive()
 	cmds := m.refreshTaskViewsAfterSave()
-	cmds = append(cmds, m.refreshActiveNotesManager(), defaultStatusTimeout())
+	cmds = append(cmds, m.refreshActiveNotesManager(), status.DefaultStatusTimeout())
 	return tea.Batch(cmds...)
 }
 

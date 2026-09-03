@@ -509,8 +509,8 @@ contract replayed by the ordinary test suite, which also runs the focused
 snapshot-first migration and interrupted activation recovery tests. Prefer
 public keys for behavior and harness operations only for setup with no public
 shortcut. Include `no_layout_issues` for important narrow and resized states.
-App timers go through `tickCmd`, never `tea.Tick`. Harness format and authoring
-rules live in
+App timers go through `status.TickCmd`, never `tea.Tick`. Harness format and
+authoring rules live in
 [`docs/tui-testing/README.md`](docs/tui-testing/README.md).
 
 ## Where the details live

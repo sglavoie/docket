@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // TestScopedEquivalentLensSwitchRetainsDeferredPopulationLoad pins the
@@ -306,7 +307,7 @@ func TestParkedScopedLensExitKeepsSelectedPopulation(t *testing.T) {
 		{
 			name: "navigation return first",
 			settle: func(app *AppModel, result lensProjectsLoadedMsg) {
-				app.Update(ViewDidAppearMsg{})
+				app.Update(status.ViewDidAppearMsg{})
 				app.Update(result)
 			},
 		},
@@ -314,7 +315,7 @@ func TestParkedScopedLensExitKeepsSelectedPopulation(t *testing.T) {
 			name: "lens load first",
 			settle: func(app *AppModel, result lensProjectsLoadedMsg) {
 				app.Update(result)
-				app.Update(ViewDidAppearMsg{})
+				app.Update(status.ViewDidAppearMsg{})
 			},
 			// The return finds the exit already settled, so it starts the ordinary
 			// eager reload it always does on becoming visible.
