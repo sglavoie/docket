@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 const (
@@ -203,7 +205,7 @@ func sortTaskActionDescriptors(descriptors []OperationDescriptor) {
 
 func cloneCommandContext(context CommandContext) CommandContext {
 	context.Capabilities = cloneCapabilitySet(context.Capabilities)
-	context.Selection.Tasks = append([]TaskIdentity(nil), context.Selection.Tasks...)
+	context.Selection.Tasks = append([]taskref.TaskIdentity(nil), context.Selection.Tasks...)
 	context.Selection.Entities = append([]EntityContext(nil), context.Selection.Entities...)
 	context.Selection.EntityIdentities = append(
 		[]EntityIdentity(nil),
@@ -222,7 +224,7 @@ func (m *AppModel) openTaskActionSheet(context CommandContext) error {
 		if len(refs) == 0 {
 			return fmt.Errorf("select at least one task to open bulk actions")
 		}
-		context.Selection.Tasks = make([]TaskIdentity, 0, len(refs))
+		context.Selection.Tasks = make([]taskref.TaskIdentity, 0, len(refs))
 		context.Selection.Entities = make([]EntityContext, 0, len(refs))
 		for _, ref := range refs {
 			context.Selection.Tasks = append(context.Selection.Tasks, ref.Identity())

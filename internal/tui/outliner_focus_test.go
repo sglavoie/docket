@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestFocusKeyGrammarDispatchHelpAndGuidanceAgree(t *testing.T) {
@@ -82,7 +83,7 @@ func TestCrossProjectFocusShowsDescendantsAndRestoresNestedViewport(t *testing.T
 	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{root, child, grandchild, sibling})
 	out := scopeTestOutliner(project)
 
-	if !out.moveCursorToIdentity(TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) {
+	if !out.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) {
 		t.Fatal("root row is unavailable")
 	}
 	rootCursor := out.cursor
@@ -103,7 +104,7 @@ func TestCrossProjectFocusShowsDescendantsAndRestoresNestedViewport(t *testing.T
 		t.Fatalf("root Focus context = %q", got)
 	}
 
-	if !out.moveCursorToIdentity(TaskIdentity{ProjectID: project.ID, TaskID: child.ID}) {
+	if !out.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: child.ID}) {
 		t.Fatal("child row is unavailable inside root Focus")
 	}
 	childCursor := out.cursor
@@ -120,11 +121,11 @@ func TestCrossProjectFocusShowsDescendantsAndRestoresNestedViewport(t *testing.T
 	}
 
 	if !out.popFocusLevel() || out.cursor != childCursor || out.viewScrollOffset != 2 ||
-		out.currentTaskIdentity() != (TaskIdentity{ProjectID: project.ID, TaskID: child.ID}) {
+		out.currentTaskIdentity() != (taskref.TaskIdentity{ProjectID: project.ID, TaskID: child.ID}) {
 		t.Fatalf("first restore = cursor %d scroll %d task %+v", out.cursor, out.viewScrollOffset, out.currentTaskIdentity())
 	}
 	if !out.popFocusLevel() || out.cursor != rootCursor || out.viewScrollOffset != 4 ||
-		out.currentTaskIdentity() != (TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) {
+		out.currentTaskIdentity() != (taskref.TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) {
 		t.Fatalf("root restore = cursor %d scroll %d task %+v", out.cursor, out.viewScrollOffset, out.currentTaskIdentity())
 	}
 }
@@ -183,8 +184,8 @@ func TestFocusParentWidensOneLevelAndClimbsOutOfFocus(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			out, project := newFixture()
-			identity := func(taskID string) TaskIdentity {
-				return TaskIdentity{ProjectID: project.ID, TaskID: taskID}
+			identity := func(taskID string) taskref.TaskIdentity {
+				return taskref.TaskIdentity{ProjectID: project.ID, TaskID: taskID}
 			}
 			for _, taskID := range test.seedFocus {
 				if !out.moveCursorToIdentity(identity(taskID)) || !out.focusSubtreeAtCursor() {
@@ -240,7 +241,7 @@ func TestFocusParentClimbsTheAncestorChainAndLeavesFocus(t *testing.T) {
 	project := primaryRowsProject("project", root, child, grandchild)
 	out := scopeTestOutliner(project)
 
-	if !out.moveCursorToIdentity(TaskIdentity{ProjectID: project.ID, TaskID: grandchild.ID}) {
+	if !out.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: grandchild.ID}) {
 		t.Fatal("grandchild row is unavailable")
 	}
 	for _, want := range [][]string{{child.ID}, {root.ID}, {}} {

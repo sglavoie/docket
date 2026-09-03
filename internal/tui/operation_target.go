@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // OperationTargetSource declares which part of the active UI context supplies
@@ -32,7 +34,7 @@ const (
 // reading the fields they already use.
 type OperationTarget struct {
 	Entity    EntityIdentity
-	Task      TaskIdentity
+	Task      taskref.TaskIdentity
 	ProjectID string
 }
 
@@ -61,8 +63,8 @@ func (targets ResolvedOperationTargets) Count() int {
 }
 
 // Tasks returns a defensive copy of every resolved task identity.
-func (targets ResolvedOperationTargets) Tasks() []TaskIdentity {
-	tasks := make([]TaskIdentity, 0, len(targets.Targets))
+func (targets ResolvedOperationTargets) Tasks() []taskref.TaskIdentity {
+	tasks := make([]taskref.TaskIdentity, 0, len(targets.Targets))
 	for _, target := range targets.Targets {
 		if target.Task.Valid() {
 			tasks = append(tasks, target.Task)
@@ -113,18 +115,18 @@ func (OperationTargetResolver) Resolve(
 		targets = nil
 	case OperationTargetCurrentTask:
 		if current := currentTaskIdentity(ctx); current.Valid() {
-			targets = []OperationTarget{operationTargetFor(current.Entity())}
+			targets = []OperationTarget{operationTargetFor(entityForTaskIdentity(current))}
 		}
 	case OperationTargetSelectedTasks:
 		selected := normalizedTaskIdentities(ctx.Selection.Tasks)
 		if len(selected) == 0 && !ctx.Selection.Visual {
 			if current := currentTaskIdentity(ctx); current.Valid() {
-				selected = []TaskIdentity{current}
+				selected = []taskref.TaskIdentity{current}
 			}
 		}
 		targets = make([]OperationTarget, 0, len(selected))
 		for _, task := range selected {
-			targets = append(targets, operationTargetFor(task.Entity()))
+			targets = append(targets, operationTargetFor(entityForTaskIdentity(task)))
 		}
 	case OperationTargetCurrentProject:
 		if projectID := currentProjectID(ctx); projectID != "" {
@@ -268,15 +270,15 @@ func operationTargetRejectionMessage(category OperationCategory) string {
 	}
 }
 
-func currentTaskIdentity(ctx CommandContext) TaskIdentity {
+func currentTaskIdentity(ctx CommandContext) taskref.TaskIdentity {
 	if ctx.Entity.TaskID == "" {
-		return TaskIdentity{}
+		return taskref.TaskIdentity{}
 	}
 	projectID := ctx.Entity.ProjectID
 	if projectID == "" && len(ctx.ScopeProjectIDs) == 1 {
 		projectID = ctx.ScopeProjectIDs[0]
 	}
-	return TaskIdentity{ProjectID: projectID, TaskID: ctx.Entity.TaskID}
+	return taskref.TaskIdentity{ProjectID: projectID, TaskID: ctx.Entity.TaskID}
 }
 
 func currentProjectID(ctx CommandContext) string {
@@ -293,7 +295,7 @@ func currentEntityIdentity(ctx CommandContext) EntityIdentity {
 		return current
 	}
 	if task := currentTaskIdentity(ctx); task.Valid() {
-		return task.Entity()
+		return entityForTaskIdentity(task)
 	}
 	if projectID := currentProjectID(ctx); projectID != "" {
 		return ProjectEntity(projectID)
@@ -317,9 +319,9 @@ func selectedEntityIdentities(ctx CommandContext) []EntityIdentity {
 	return nil
 }
 
-func normalizedTaskIdentities(tasks []TaskIdentity) []TaskIdentity {
-	seen := make(map[TaskIdentity]bool, len(tasks))
-	normalized := make([]TaskIdentity, 0, len(tasks))
+func normalizedTaskIdentities(tasks []taskref.TaskIdentity) []taskref.TaskIdentity {
+	seen := make(map[taskref.TaskIdentity]bool, len(tasks))
+	normalized := make([]taskref.TaskIdentity, 0, len(tasks))
 	for _, task := range tasks {
 		if !task.Valid() || seen[task] {
 			continue

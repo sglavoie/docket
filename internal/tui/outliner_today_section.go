@@ -1,6 +1,9 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/models"
+import (
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
+)
 
 const (
 	todaySectionCollapseKey       = "_planning:today"
@@ -10,7 +13,7 @@ const (
 
 type planningSectionBuild struct {
 	rows       []outlinerRow
-	suppressed map[TaskIdentity]bool
+	suppressed map[taskref.TaskIdentity]bool
 	group      models.WorkflowStateGroup
 }
 
@@ -19,10 +22,10 @@ type planningSectionBuild struct {
 // appender restores hierarchy among relatives that share the section.
 func (m *OutlinerModel) buildTodaySection(
 	input OutlinerModeInput,
-	pinned map[TaskIdentity]bool,
+	pinned map[taskref.TaskIdentity]bool,
 ) planningSectionBuild {
 	result := planningSectionBuild{
-		suppressed: make(map[TaskIdentity]bool, len(input.TodayIDs)),
+		suppressed: make(map[taskref.TaskIdentity]bool, len(input.TodayIDs)),
 		group:      models.StateGroupToday,
 	}
 	projects := modeProjectIndex(input.Projects)
@@ -35,13 +38,13 @@ func (m *OutlinerModel) buildTodaySection(
 			continue
 		}
 		if task := project.GetTaskByID(item.Task.ID); planningTodayEligible(task) {
-			result.suppressed[TaskIdentity{ProjectID: project.ID, TaskID: task.ID}] = true
+			result.suppressed[taskref.TaskIdentity{ProjectID: project.ID, TaskID: task.ID}] = true
 		}
 	}
 
 	previousExclude := input.TaskExclude
 	input.TaskExclude = func(task *models.Task, project *models.Project) bool {
-		return pinned[taskIdentityFor(task, project)] ||
+		return pinned[taskref.For(task, project)] ||
 			(previousExclude != nil && previousExclude(task, project))
 	}
 	for _, modeRow := range BuildTodayModeRows(input) {
@@ -57,11 +60,11 @@ func (m *OutlinerModel) buildTodaySection(
 // both lists, matching the locked All-mode group precedence.
 func (m *OutlinerModel) buildNextSection(
 	input OutlinerModeInput,
-	pinned map[TaskIdentity]bool,
-	today map[TaskIdentity]bool,
+	pinned map[taskref.TaskIdentity]bool,
+	today map[taskref.TaskIdentity]bool,
 ) planningSectionBuild {
 	result := planningSectionBuild{
-		suppressed: make(map[TaskIdentity]bool, len(input.NextOrder)),
+		suppressed: make(map[taskref.TaskIdentity]bool, len(input.NextOrder)),
 		group:      models.StateGroupNext,
 	}
 	projects := modeProjectIndex(input.Projects)
@@ -71,13 +74,13 @@ func (m *OutlinerModel) buildNextSection(
 			continue
 		}
 		if task := project.GetTaskByID(locator.TaskID); task != nil && task.State().IsValid() && !task.IsTerminalState() {
-			result.suppressed[TaskIdentity{ProjectID: locator.ProjectID, TaskID: locator.TaskID}] = true
+			result.suppressed[taskref.TaskIdentity{ProjectID: locator.ProjectID, TaskID: locator.TaskID}] = true
 		}
 	}
 
 	previousExclude := input.TaskExclude
 	input.TaskExclude = func(task *models.Task, project *models.Project) bool {
-		identity := taskIdentityFor(task, project)
+		identity := taskref.For(task, project)
 		return pinned[identity] || today[identity] ||
 			(previousExclude != nil && previousExclude(task, project))
 	}
@@ -149,7 +152,7 @@ func (m *OutlinerModel) appendPlanningSection(section planningSectionBuild) {
 func removePlanningRowsFromTree(
 	tasks []*models.Task,
 	projectID string,
-	suppressed map[TaskIdentity]bool,
+	suppressed map[taskref.TaskIdentity]bool,
 ) []*models.Task {
 	if len(tasks) == 0 || len(suppressed) == 0 {
 		return tasks
@@ -160,7 +163,7 @@ func removePlanningRowsFromTree(
 			continue
 		}
 		children := removePlanningRowsFromTree(task.Children, projectID, suppressed)
-		if suppressed[TaskIdentity{ProjectID: projectID, TaskID: task.ID}] {
+		if suppressed[taskref.TaskIdentity{ProjectID: projectID, TaskID: task.ID}] {
 			result = append(result, children...)
 			continue
 		}

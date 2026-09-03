@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestParentSelectorUpdate_AllowNoneSelection(t *testing.T) {
@@ -82,7 +83,7 @@ func TestParentSelectorUpdate_CtrlXClearsParent(t *testing.T) {
 	}
 
 	m := NewParentSelectorModel([]*models.Task{parent}, &parent.ID, true, presentation.ViewCrossProjectOutliner)
-	m.reparentTask = TaskIdentity{ProjectID: "project-1", TaskID: "task-1"}
+	m.reparentTask = taskref.TaskIdentity{ProjectID: "project-1", TaskID: "task-1"}
 
 	_, cmd := m.Update(syntheticCtrlKey('x'))
 	if cmd == nil {
@@ -98,7 +99,7 @@ func TestParentSelectorUpdate_CtrlXClearsParent(t *testing.T) {
 	if msg.Source != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("expected source %v, got %v", presentation.ViewCrossProjectOutliner, msg.Source)
 	}
-	if msg.ReparentTask != (TaskIdentity{ProjectID: "project-1", TaskID: "task-1"}) {
+	if msg.ReparentTask != (taskref.TaskIdentity{ProjectID: "project-1", TaskID: "task-1"}) {
 		t.Fatalf("expected qualified reparent task, got %#v", msg.ReparentTask)
 	}
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // QueueToggleable is implemented by views that can provide a task for queue toggling.
@@ -20,7 +21,7 @@ func (m *AppModel) taskIsNext(task *models.Task, project *models.Project) bool {
 	if task == nil || project == nil {
 		return false
 	}
-	return m.nextOrderIDs[taskIdentityFor(task, project)]
+	return m.nextOrderIDs[taskref.For(task, project)]
 }
 
 // queueToggleResultCmd fans the state change out to every task view (mirroring a

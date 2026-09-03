@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // =============================================================================
@@ -22,13 +23,13 @@ type StartTaskLineEditMsg struct {
 // been reloaded and the result's final qualified identity can be followed.
 type TaskLineEditedMsg struct {
 	Result     app.TaskLineEditResult
-	Source     TaskIdentity
+	Source     taskref.TaskIdentity
 	Relocation *outlinerRelocationCapture
 }
 
 // TaskLineEditFailedMsg keeps the row editor open with its original draft when
 // application validation or persistence rejects an atomic edit.
 type TaskLineEditFailedMsg struct {
-	Source TaskIdentity
+	Source taskref.TaskIdentity
 	Err    error
 }

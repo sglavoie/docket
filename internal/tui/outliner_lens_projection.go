@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // A narrowing query narrows the projection its own mode, facets, scope, and sort
@@ -21,8 +22,8 @@ import (
 // hits alone, so a retained ancestor carries no cue it did not earn.
 type queryNarrowing struct {
 	active   bool
-	retained map[TaskIdentity]bool
-	matched  map[TaskIdentity]outlinerMatchSource
+	retained map[taskref.TaskIdentity]bool
+	matched  map[taskref.TaskIdentity]outlinerMatchSource
 }
 
 // narrowingCompilation is everything compiling one narrowing query produced. The
@@ -116,8 +117,8 @@ func (m *OutlinerModel) compileNarrowingQuery(query string, projects []*models.P
 		gate:      predicates,
 		narrowing: queryNarrowing{
 			active:   true,
-			retained: make(map[TaskIdentity]bool),
-			matched:  make(map[TaskIdentity]outlinerMatchSource),
+			retained: make(map[taskref.TaskIdentity]bool),
+			matched:  make(map[taskref.TaskIdentity]outlinerMatchSource),
 		},
 	}
 	if predicates.invalid() {
@@ -133,7 +134,7 @@ func (m *OutlinerModel) compileNarrowingQuery(query string, projects []*models.P
 	}
 
 	for _, match := range matches {
-		identity := taskIdentityFor(match.task, match.project)
+		identity := taskref.For(match.task, match.project)
 		if !identity.Valid() {
 			continue
 		}
@@ -147,7 +148,7 @@ func (m *OutlinerModel) compileNarrowingQuery(query string, projects []*models.P
 // retainNarrowingAncestors admits the canonical ancestry of one match. It follows
 // stored ParentID links through the authoritative project rather than a row's
 // own Children, which the filter pipeline may have rewritten.
-func retainNarrowingAncestors(retained map[TaskIdentity]bool, task *models.Task, project *models.Project) {
+func retainNarrowingAncestors(retained map[taskref.TaskIdentity]bool, task *models.Task, project *models.Project) {
 	if project == nil {
 		return
 	}
@@ -162,7 +163,7 @@ func retainNarrowingAncestors(retained map[TaskIdentity]bool, task *models.Task,
 		if parent == nil {
 			return
 		}
-		retained[taskIdentityFor(parent, project)] = true
+		retained[taskref.For(parent, project)] = true
 		current = parent
 	}
 }
@@ -197,7 +198,7 @@ func (m *OutlinerModel) constrainModeFilterToNarrowing(
 		if project == nil {
 			project = m.project
 		}
-		return retained[taskIdentityFor(task, project)]
+		return retained[taskref.For(task, project)]
 	}
 }
 
@@ -209,14 +210,14 @@ func retainedUnderBaseFilter(
 	narrowing queryNarrowing,
 	base func(*models.Task, *models.Project) bool,
 	projects []*models.Project,
-) map[TaskIdentity]bool {
-	retained := make(map[TaskIdentity]bool, len(narrowing.retained))
+) map[taskref.TaskIdentity]bool {
+	retained := make(map[taskref.TaskIdentity]bool, len(narrowing.retained))
 	for _, project := range projects {
 		if project == nil {
 			continue
 		}
 		for _, task := range project.Tasks {
-			identity := taskIdentityFor(task, project)
+			identity := taskref.For(task, project)
 			if !identity.Valid() {
 				continue
 			}

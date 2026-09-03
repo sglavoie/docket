@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // TestSearchAutocompleteCardinalityFollowsTheGrammarDefinition walks every search
@@ -121,7 +122,7 @@ func TestSearchAutocompleteValuesStayInsideFocus(t *testing.T) {
 		t.Fatalf("scope-wide tag values = %v, want every project's tags", got)
 	}
 
-	outliner.pushFocusFrame(TaskIdentity{ProjectID: alpha.ID, TaskID: parent.ID}, 0, 0)
+	outliner.pushFocusFrame(taskref.TaskIdentity{ProjectID: alpha.ID, TaskID: parent.ID}, 0, 0)
 	typeSearchAC(outliner, "#")
 	if got := searchACValues(outliner); !slices.Equal(got, []string{"child-tag"}) {
 		t.Fatalf("focused tag values = %v, want the focused branch alone", got)

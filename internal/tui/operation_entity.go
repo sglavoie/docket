@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // OperationEntityKind names the domain entity an operation target identifies.
@@ -107,16 +108,20 @@ func ProjectNoteEntity(projectID, filename string) EntityIdentity {
 // ToolEntity returns the identity of one promoted or secondary tool.
 // OperationEntity returns the identity of one registered operation, letting an
 // operation target another operation.
-// Entity converts a task identity into the typed operation identity.
-func (id TaskIdentity) Entity() EntityIdentity { return TaskEntity(id.ProjectID, id.TaskID) }
+// entityForTaskIdentity converts a task identity into the typed operation
+// identity. It is Task's inverse and a free function rather than a method
+// because taskref owns TaskIdentity, so only that package may declare on it.
+func entityForTaskIdentity(id taskref.TaskIdentity) EntityIdentity {
+	return TaskEntity(id.ProjectID, id.TaskID)
+}
 
 // Task returns the task identity a task entity names. Other kinds return the
 // zero identity.
-func (id EntityIdentity) Task() TaskIdentity {
+func (id EntityIdentity) Task() taskref.TaskIdentity {
 	if id.Kind != EntityKindTask {
-		return TaskIdentity{}
+		return taskref.TaskIdentity{}
 	}
-	return TaskIdentity{ProjectID: id.ProjectID, TaskID: id.TaskID}
+	return taskref.TaskIdentity{ProjectID: id.ProjectID, TaskID: id.TaskID}
 }
 
 // Valid reports whether the identity carries exactly the fields its kind
@@ -218,11 +223,11 @@ func entityIdentityLess(left, right EntityIdentity) bool {
 
 // taskEntityIdentities converts selected task identities into typed identities
 // so hosts fill the typed selection without duplicating normalization.
-func taskEntityIdentities(tasks []TaskIdentity) []EntityIdentity {
+func taskEntityIdentities(tasks []taskref.TaskIdentity) []EntityIdentity {
 	normalized := normalizedTaskIdentities(tasks)
 	identities := make([]EntityIdentity, 0, len(normalized))
 	for _, task := range normalized {
-		identities = append(identities, task.Entity())
+		identities = append(identities, entityForTaskIdentity(task))
 	}
 	return identities
 }

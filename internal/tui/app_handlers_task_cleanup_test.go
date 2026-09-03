@@ -6,6 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestPruneDeletedTaskRefs(t *testing.T) {
@@ -26,16 +27,16 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 			{Task: deletedTask, Project: deletedProject},
 			{Task: task2, Project: project},
 		}
-		app.nextOrderIDs = map[TaskIdentity]bool{
-			taskIdentityFor(task1, project):              true,
-			taskIdentityFor(deletedTask, deletedProject): true,
-			taskIdentityFor(task2, project):              true,
+		app.nextOrderIDs = map[taskref.TaskIdentity]bool{
+			taskref.For(task1, project):              true,
+			taskref.For(deletedTask, deletedProject): true,
+			taskref.For(task2, project):              true,
 		}
 		app.today = []PlanningTask{
 			{Task: deletedTask, Project: deletedProject},
 		}
-		app.todayIDs = map[TaskIdentity]bool{
-			taskIdentityFor(deletedTask, deletedProject): true,
+		app.todayIDs = map[taskref.TaskIdentity]bool{
+			taskref.For(deletedTask, deletedProject): true,
 		}
 		app.pruneDeletedTaskRefs()
 
@@ -43,7 +44,7 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 		if len(app.nextOrder) != 2 {
 			t.Fatalf("expected 2 focus queue entries, got %d", len(app.nextOrder))
 		}
-		if app.nextOrderIDs[taskIdentityFor(deletedTask, deletedProject)] {
+		if app.nextOrderIDs[taskref.For(deletedTask, deletedProject)] {
 			t.Error("deleted task should be removed from nextOrderIDs")
 		}
 
@@ -51,7 +52,7 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 		if len(app.today) != 0 {
 			t.Fatalf("expected 0 daily plan entries, got %d", len(app.today))
 		}
-		if app.todayIDs[taskIdentityFor(deletedTask, deletedProject)] {
+		if app.todayIDs[taskref.For(deletedTask, deletedProject)] {
 			t.Error("deleted task should be removed from todayIDs")
 		}
 	})
@@ -85,12 +86,12 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 			{Task: task1, Project: project},
 			{Task: otherTask, Project: otherProject},
 		}
-		app.nextOrderIDs = map[TaskIdentity]bool{
-			taskIdentityFor(task1, project):          true,
-			taskIdentityFor(otherTask, otherProject): true,
+		app.nextOrderIDs = map[taskref.TaskIdentity]bool{
+			taskref.For(task1, project):          true,
+			taskref.For(otherTask, otherProject): true,
 		}
 		app.today = []PlanningTask{}
-		app.todayIDs = map[TaskIdentity]bool{}
+		app.todayIDs = map[taskref.TaskIdentity]bool{}
 		app.pruneDeletedTaskRefs()
 
 		// Both tasks should survive — the unloaded project's task must
@@ -98,7 +99,7 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 		if len(app.nextOrder) != 2 {
 			t.Fatalf("expected 2 focus queue entries, got %d", len(app.nextOrder))
 		}
-		if !app.nextOrderIDs[taskIdentityFor(otherTask, otherProject)] {
+		if !app.nextOrderIDs[taskref.For(otherTask, otherProject)] {
 			t.Error("task from unloaded project should NOT be pruned")
 		}
 
@@ -113,9 +114,9 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 		task1 := project.Tasks[0]
 
 		app.nextOrder = []PlanningTask{{Task: task1, Project: project}}
-		app.nextOrderIDs = map[TaskIdentity]bool{taskIdentityFor(task1, project): true}
+		app.nextOrderIDs = map[taskref.TaskIdentity]bool{taskref.For(task1, project): true}
 		app.today = []PlanningTask{}
-		app.todayIDs = map[TaskIdentity]bool{}
+		app.todayIDs = map[taskref.TaskIdentity]bool{}
 		app.pruneDeletedTaskRefs()
 
 		if len(app.nextOrder) != 1 {

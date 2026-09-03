@@ -7,13 +7,14 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // searchProjectionCursorOnTitle opens the flat ranked list the jump has to leave
 // and lands its cursor on the named result. The ranked list is the presentation
 // the jump exits; a query that only narrows the mode's own lanes leaves the
 // cursor where it already is, which is why the toggle is part of the setup.
-func searchProjectionCursorOnTitle(t *testing.T, out *OutlinerModel, title string) TaskIdentity {
+func searchProjectionCursorOnTitle(t *testing.T, out *OutlinerModel, title string) taskref.TaskIdentity {
 	t.Helper()
 	searchRankedList(out, title)
 	if !out.showsRankedList() {
@@ -26,7 +27,7 @@ func searchProjectionCursorOnTitle(t *testing.T, out *OutlinerModel, title strin
 		}
 	}
 	t.Fatalf("search %q listed no row for it", title)
-	return TaskIdentity{}
+	return taskref.TaskIdentity{}
 }
 
 func TestEnterZoomsSectionHeadersAndScopesProjectHeaders(t *testing.T) {
@@ -125,7 +126,7 @@ func TestFocusConstrainsModesFiltersSortFoldsAndSearch(t *testing.T) {
 	})
 	out.crossForceRebuild = true
 	out.crossProjectRebuildRows()
-	if !out.moveCursorToIdentity(TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) || !out.focusSubtreeAtCursor() {
+	if !out.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) || !out.focusSubtreeAtCursor() {
 		t.Fatal("could not enter fixture Focus")
 	}
 
@@ -166,7 +167,7 @@ func TestFocusConstrainsModesFiltersSortFoldsAndSearch(t *testing.T) {
 		t.Fatalf("focused title sort escaped branch: %v", ordered)
 	}
 
-	out.expandedNodes[TaskIdentity{ProjectID: project.ID, TaskID: insideBacklog.ID}] = false
+	out.expandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: insideBacklog.ID}] = false
 	out.rebuildRows()
 	if visible := visibleOutlinerTaskIDs(out); visible[insideNested.ID] || visible[outsideBacklog.ID] {
 		t.Fatalf("focused fold rows = %v, want nested child hidden and outside task absent", visible)

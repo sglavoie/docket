@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestFocusRecoveryUnwindsMovedAndRemovedFramesWithOwningViewport(t *testing.T) {
@@ -27,11 +28,11 @@ func TestFocusRecoveryUnwindsMovedAndRemovedFramesWithOwningViewport(t *testing.
 	beta := primaryRowsProject("beta", duplicateRoot, duplicateChild)
 	out := scopeTestOutliner(project, beta)
 
-	if !out.moveCursorToIdentity(TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) {
+	if !out.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) {
 		t.Fatal("root row unavailable")
 	}
 	out.viewScrollOffset = 6
-	if !out.focusSubtreeAtCursor() || !out.moveCursorToIdentity(TaskIdentity{ProjectID: project.ID, TaskID: child.ID}) {
+	if !out.focusSubtreeAtCursor() || !out.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: child.ID}) {
 		t.Fatal("could not enter root Focus and select child")
 	}
 	childFrameCursor := out.cursor
@@ -92,8 +93,8 @@ func TestSingleProjectFocusSurvivesReloadedPointersAndRepairsReparenting(t *test
 	out := NewOutlinerModel(project, nil, nil)
 	out.rebuildRows()
 
-	if !out.moveCursorToIdentity(TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) || !out.focusSubtreeAtCursor() ||
-		!out.moveCursorToIdentity(TaskIdentity{ProjectID: project.ID, TaskID: child.ID}) || !out.focusSubtreeAtCursor() {
+	if !out.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) || !out.focusSubtreeAtCursor() ||
+		!out.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: child.ID}) || !out.focusSubtreeAtCursor() {
 		t.Fatal("could not seed nested single-project Focus")
 	}
 
@@ -129,7 +130,7 @@ func TestFocusEscPriorityAndNarrowBreadcrumb(t *testing.T) {
 	project.Name = "A Long Project Name"
 	out := scopeTestOutliner(project)
 	out.pushProjectScope(project.ID)
-	if !out.moveCursorToIdentity(TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) || !out.focusSubtreeAtCursor() {
+	if !out.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) || !out.focusSubtreeAtCursor() {
 		t.Fatal("could not seed scoped task Focus")
 	}
 
@@ -143,7 +144,7 @@ func TestFocusEscPriorityAndNarrowBreadcrumb(t *testing.T) {
 	}
 
 	out.SetSearchQuery("child")
-	out.StartRangeSelection(TaskIdentity{ProjectID: project.ID, TaskID: child.ID})
+	out.StartRangeSelection(taskref.TaskIdentity{ProjectID: project.ID, TaskID: child.ID})
 	out.peekMode = true
 
 	assertState := func(step string, peek, liveRange, selection, search bool, focusDepth int, scoped bool) {

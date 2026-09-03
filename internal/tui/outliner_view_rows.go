@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // Tree connector characters for outliner rendering.
@@ -166,7 +167,7 @@ func buildTreePrefix(ancestorIsLast []bool, isLast bool) string {
 // When expandedNodes is empty (default), all nodes are expanded.
 // isExpanded returns true if the node should show its children.
 // When the expandedNodes map is empty (default), all nodes are expanded.
-func (m *OutlinerModel) isExpanded(identity TaskIdentity) bool {
+func (m *OutlinerModel) isExpanded(identity taskref.TaskIdentity) bool {
 	if len(m.expandedNodes) == 0 {
 		return true
 	}

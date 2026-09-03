@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // bulkMoveSelection installs a frozen visual selection over the named fixture
@@ -15,11 +16,11 @@ import (
 func bulkMoveSelection(t *testing.T, m *AppModel, titles ...string) []TaskProjectRef {
 	t.Helper()
 	refs := make([]TaskProjectRef, 0, len(titles))
-	identities := make([]TaskIdentity, 0, len(titles))
+	identities := make([]taskref.TaskIdentity, 0, len(titles))
 	for _, title := range titles {
 		task, project := taskContentFixtureTask(t, m, title)
 		refs = append(refs, TaskProjectRef{Task: task, Project: project})
-		identities = append(identities, taskIdentityFor(task, project))
+		identities = append(identities, taskref.For(task, project))
 	}
 	if m.crossOutliner == nil {
 		t.Fatal("the fixture app has no Outliner to select in")
@@ -119,9 +120,9 @@ func TestBulkMoveToProjectCommitsASelectionSpanningSourceProjects(t *testing.T) 
 			len(refs),
 		)
 	}
-	cleared := make(map[TaskIdentity]bool, len(msg.ClearSelectionTaskLocators))
+	cleared := make(map[taskref.TaskIdentity]bool, len(msg.ClearSelectionTaskLocators))
 	for _, locator := range msg.ClearSelectionTaskLocators {
-		cleared[taskIdentityFromLocator(locator)] = true
+		cleared[taskref.FromLocator(locator)] = true
 	}
 	for _, ref := range refs {
 		if !cleared[ref.Identity()] {

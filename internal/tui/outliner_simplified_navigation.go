@@ -2,13 +2,14 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // sectionToggleRestoreAnchor identifies a task temporarily hidden by an
 // s-driven all-section collapse. The next s-driven expansion restores focus to
 // it when the task remains visible in the active view.
 type sectionToggleRestoreAnchor struct {
-	task       TaskIdentity
+	task       taskref.TaskIdentity
 	sectionKey string
 }
 
@@ -56,7 +57,7 @@ func (m *OutlinerModel) collapseOrMoveToParent() bool {
 	if parentID == "" {
 		return false
 	}
-	parent := TaskIdentity{ProjectID: identity.ProjectID, TaskID: parentID}
+	parent := taskref.TaskIdentity{ProjectID: identity.ProjectID, TaskID: parentID}
 	if m.moveCursorToIdentity(parent) {
 		return true
 	}

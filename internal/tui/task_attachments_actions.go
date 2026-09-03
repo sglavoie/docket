@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // addAttachment routes a pasted value to one of the three attach paths. The
@@ -41,7 +42,7 @@ func (m *TaskAttachmentsModel) addAttachment() tea.Cmd {
 
 func (m *TaskAttachmentsModel) addURLAttachment(input string) tea.Cmd {
 	m.finishOptimisticAdd()
-	return m.coordinator.AttachURL(taskIdentityFor(m.task, m.project), input)
+	return m.coordinator.AttachURL(taskref.For(m.task, m.project), input)
 }
 
 func (m *TaskAttachmentsModel) addCodeReference(resolved app.ResolvedAttachmentInput) tea.Cmd {
@@ -50,12 +51,12 @@ func (m *TaskAttachmentsModel) addCodeReference(resolved app.ResolvedAttachmentI
 	}
 
 	m.finishOptimisticAdd()
-	return m.coordinator.AttachCodeReference(taskIdentityFor(m.task, m.project), resolved.CodePath, resolved.CodeLine)
+	return m.coordinator.AttachCodeReference(taskref.For(m.task, m.project), resolved.CodePath, resolved.CodeLine)
 }
 
 func (m *TaskAttachmentsModel) addFileAttachment(absPath string) tea.Cmd {
 	m.finishOptimisticAdd()
-	return m.coordinator.AttachFile(taskIdentityFor(m.task, m.project), absPath)
+	return m.coordinator.AttachFile(taskref.For(m.task, m.project), absPath)
 }
 
 // finishOptimisticAdd exits add mode before the transaction commits; the new
@@ -76,7 +77,7 @@ func (m *TaskAttachmentsModel) executeDelete() tea.Cmd {
 	// URL attachments have no bytes on disk; the file-backed ones delete their
 	// copied bytes in the same transaction (matching the old RemoveAttachmentFile).
 	deleteFile := !m.task.Attachments[m.cursor].IsURL
-	return m.coordinator.RemoveAttachment(taskIdentityFor(m.task, m.project), m.cursor, deleteFile)
+	return m.coordinator.RemoveAttachment(taskref.For(m.task, m.project), m.cursor, deleteFile)
 }
 
 func (m *TaskAttachmentsModel) executeKeep() tea.Cmd {
@@ -84,7 +85,7 @@ func (m *TaskAttachmentsModel) executeKeep() tea.Cmd {
 	if m.cursor < 0 || m.cursor >= len(m.task.Attachments) {
 		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("attachment no longer exists")} }
 	}
-	return m.coordinator.RemoveAttachment(taskIdentityFor(m.task, m.project), m.cursor, false)
+	return m.coordinator.RemoveAttachment(taskref.For(m.task, m.project), m.cursor, false)
 }
 
 func (m *TaskAttachmentsModel) reorderAttachment(from, to int) tea.Cmd {
@@ -94,7 +95,7 @@ func (m *TaskAttachmentsModel) reorderAttachment(from, to int) tea.Cmd {
 	m.task.Attachments[from], m.task.Attachments[to] = m.task.Attachments[to], m.task.Attachments[from]
 	m.cursor = to
 
-	return m.coordinator.Reorder(taskIdentityFor(m.task, m.project), from, to)
+	return m.coordinator.Reorder(taskref.For(m.task, m.project), from, to)
 }
 
 func (m *TaskAttachmentsModel) openAttachmentDefault() tea.Cmd {

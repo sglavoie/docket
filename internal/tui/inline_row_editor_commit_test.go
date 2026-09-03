@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestInlineRowEditorBuildsAtomicCrossProjectRequest(t *testing.T) {
@@ -30,7 +31,7 @@ func TestInlineRowEditorBuildsAtomicCrossProjectRequest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse cross-project row edit: %v", err)
 	}
-	req := taskLineEditRequest(taskIdentityFor(child, source), result)
+	req := taskLineEditRequest(taskref.For(child, source), result)
 	if req.Source.ProjectID != source.ID || req.Source.TaskID != child.ID || req.DestinationProjectID != destination.ID {
 		t.Fatalf("request route = source %+v destination %q", req.Source, req.DestinationProjectID)
 	}
@@ -51,7 +52,7 @@ func TestInlineRowEditorAtomicCommitAndFailureLifecycle(t *testing.T) {
 	out.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 	out.SetSize(100, 20)
 	out.rebuildRows()
-	out.expandedNodes[taskIdentityFor(task, m.currentProject)] = false
+	out.expandedNodes[taskref.For(task, m.currentProject)] = false
 	out.collapsedSections["unrelated"] = true
 	m.crossOutliner = out
 	m.navigation.ResetRoot()
@@ -89,7 +90,7 @@ func TestInlineRowEditorAtomicCommitAndFailureLifecycle(t *testing.T) {
 	projection = out.jumpProjectionFingerprint()
 	failure := errors.New("simulated revision conflict")
 	m.handleTaskLineEditFailed(TaskLineEditFailedMsg{
-		Source: taskIdentityFor(live, m.currentProject), Err: failure,
+		Source: taskref.For(live, m.currentProject), Err: failure,
 	})
 	if !out.quickEdit.IsActive() || out.quickEdit.pending || out.quickEdit.input.Value() != "Draft survives" {
 		t.Fatalf("failed commit lost draft: active=%t pending=%t value=%q", out.quickEdit.IsActive(), out.quickEdit.pending, out.quickEdit.input.Value())
@@ -166,22 +167,22 @@ func TestTaskLineEditRelocationFollowsVisibleResultAndFallsBackAtOrigin(t *testi
 	}
 
 	out, source, destination, task := makeOutliner()
-	capture := out.captureOutlinerRelocation([]TaskIdentity{taskIdentityFor(task, source)})
+	capture := out.captureOutlinerRelocation([]taskref.TaskIdentity{taskref.For(task, source)})
 	source.Tasks = source.Tasks[1:]
 	destination.Tasks = append(destination.Tasks, task)
 	out.crossForceRebuild = true
 	out.crossProjectRebuildRows()
-	_, recorded := out.finishTaskLineEditRelocation(capture, taskIdentityFor(task, destination))
-	if !recorded || out.currentTaskIdentity() != taskIdentityFor(task, destination) || len(out.relocationHistory.back) != 1 {
+	_, recorded := out.finishTaskLineEditRelocation(capture, taskref.For(task, destination))
+	if !recorded || out.currentTaskIdentity() != taskref.For(task, destination) || len(out.relocationHistory.back) != 1 {
 		t.Fatalf("visible relocation = current %+v recorded=%t history=%d", out.currentTaskIdentity(), recorded, len(out.relocationHistory.back))
 	}
 
 	out, source, _, task = makeOutliner()
-	capture = out.captureOutlinerRelocation([]TaskIdentity{taskIdentityFor(task, source)})
+	capture = out.captureOutlinerRelocation([]taskref.TaskIdentity{taskref.For(task, source)})
 	source.Tasks = source.Tasks[1:]
 	out.crossForceRebuild = true
 	out.crossProjectRebuildRows()
-	_, recorded = out.finishTaskLineEditRelocation(capture, TaskIdentity{ProjectID: "hidden", TaskID: task.ID})
+	_, recorded = out.finishTaskLineEditRelocation(capture, taskref.TaskIdentity{ProjectID: "hidden", TaskID: task.ID})
 	if recorded || out.currentTaskIdentity().TaskID != "neighbor" || len(out.relocationHistory.back) != 0 {
 		t.Fatalf("hidden relocation = current %+v recorded=%t history=%d", out.currentTaskIdentity(), recorded, len(out.relocationHistory.back))
 	}

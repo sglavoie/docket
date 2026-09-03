@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // This file exercises the secondary-view feature coordinators
@@ -30,7 +31,7 @@ func newSecondaryEnv(t *testing.T, slug string, tasks ...*models.Task) (*scenari
 func envLocators(env *scenarioEnv, tasks ...*models.Task) []app.TaskLocator {
 	locators := make([]app.TaskLocator, 0, len(tasks))
 	for _, task := range tasks {
-		locators = append(locators, taskIdentityFor(task, env.project).Locator())
+		locators = append(locators, taskref.For(task, env.project).Locator())
 	}
 	return locators
 }
@@ -59,7 +60,7 @@ func TestAttachmentScenario(t *testing.T) {
 	task := seedTask(t, 1, "Attach here", models.StateBacklog)
 	env, features := newSecondaryEnv(t, "attach", task)
 
-	res := runResult(t, features.Attachment.AttachURL(taskIdentityFor(task, env.project), "https://example.com/spec"))
+	res := runResult(t, features.Attachment.AttachURL(taskref.For(task, env.project), "https://example.com/spec"))
 	if res.Revision == "" {
 		t.Fatal("attachment result carried no committed revision")
 	}
@@ -275,7 +276,7 @@ func TestSubviewCommentScenario(t *testing.T) {
 	task := seedTask(t, 1, "Comment here", models.StateBacklog)
 	env, features := newSecondaryEnv(t, "subview-comment", task)
 
-	res := runResult(t, features.Subview.AddComment(taskIdentityFor(task, env.project), "found the root cause"))
+	res := runResult(t, features.Subview.AddComment(taskref.For(task, env.project), "found the root cause"))
 	if res.Revision == "" {
 		t.Fatal("comment result carried no committed revision")
 	}
@@ -297,8 +298,8 @@ func TestSubviewChecklistScenario(t *testing.T) {
 	task := seedTask(t, 1, "Check here", models.StateBacklog)
 	env, features := newSecondaryEnv(t, "subview-checklist", task)
 
-	runResult(t, features.Subview.AddChecklistItem(taskIdentityFor(task, env.project), "write the test"))
-	runResult(t, features.Subview.ToggleChecklistItem(taskIdentityFor(task, env.project), 0))
+	runResult(t, features.Subview.AddChecklistItem(taskref.For(task, env.project), "write the test"))
+	runResult(t, features.Subview.ToggleChecklistItem(taskref.For(task, env.project), 0))
 
 	if got := env.reload(t).GetTaskByID(task.ID); got == nil || len(got.Checklist) != 1 || !got.Checklist[0].Done {
 		t.Fatalf("reloaded checklist = %v, want one done item", got)
@@ -316,9 +317,9 @@ func TestAttachmentReorderScenario(t *testing.T) {
 	task := seedTask(t, 1, "Reorder here", models.StateBacklog)
 	env, features := newSecondaryEnv(t, "attach-reorder", task)
 
-	runResult(t, features.Attachment.AttachURL(taskIdentityFor(task, env.project), "https://example.com/a"))
-	runResult(t, features.Attachment.AttachURL(taskIdentityFor(task, env.project), "https://example.com/b"))
-	runResult(t, features.Attachment.Reorder(taskIdentityFor(task, env.project), 0, 1))
+	runResult(t, features.Attachment.AttachURL(taskref.For(task, env.project), "https://example.com/a"))
+	runResult(t, features.Attachment.AttachURL(taskref.For(task, env.project), "https://example.com/b"))
+	runResult(t, features.Attachment.Reorder(taskref.For(task, env.project), 0, 1))
 
 	if got := env.reload(t).GetTaskByID(task.ID); got == nil || got.Attachments[0].Filename != "https://example.com/b" {
 		t.Fatalf("reloaded attachments = %v, want b first", got)

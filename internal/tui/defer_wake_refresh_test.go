@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestFormatDeferDateLadder(t *testing.T) {
@@ -81,7 +82,7 @@ func TestPeriodicTickRefreshesWorkspacePulseWhenDeferredTaskWakes(t *testing.T) 
 	}
 	reader := &staticCompletionActivityReader{activity: activity}
 	model.features.Activity = ActivityCoordinator{reader: reader}
-	model.todayIDs = map[TaskIdentity]bool{taskIdentityFor(deferred, project): true}
+	model.todayIDs = map[taskref.TaskIdentity]bool{taskref.For(deferred, project): true}
 
 	model.refreshWorkspacePulseAt(wake.Add(-time.Minute))
 	pending := WorkspacePulse{Done: 1}
@@ -151,7 +152,7 @@ func TestPeriodicTickAcrossMidnightHoldsActionableCountsUntilTheWakeIsConsumed(t
 	}
 	reader := &staticCompletionActivityReader{activity: cached}
 	model.features.Activity = ActivityCoordinator{reader: reader}
-	model.todayIDs = map[TaskIdentity]bool{taskIdentityFor(deferred, project): true}
+	model.todayIDs = map[taskref.TaskIdentity]bool{taskref.For(deferred, project): true}
 
 	model.refreshWorkspacePulseAt(beforeWake)
 	pending := WorkspacePulse{Done: 2}
@@ -207,7 +208,7 @@ func TestDeferWakeIsDeferredWhileTheUserIsMidOperation(t *testing.T) {
 		{"visual selection", func(app *AppModel) {
 			out := app.crossOutliner
 			project := out.loadedProjects[0]
-			out.ReplaceSelection([]TaskIdentity{taskIdentityFor(project.Tasks[0], project)})
+			out.ReplaceSelection([]taskref.TaskIdentity{taskref.For(project.Tasks[0], project)})
 		}},
 		{"ranked list", func(app *AppModel) {
 			out := app.crossOutliner

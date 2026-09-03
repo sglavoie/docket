@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // recentTask seeds a task whose last activity is dayOffset days in the past.
@@ -116,7 +117,7 @@ func TestBuildRecentModeSectionsHoldsFrozenOrderAgainstLiveActivity(t *testing.T
 	older := recentTask("older", models.StateBacklog, 3)
 	newer := recentTask("newer", models.StateBacklog, 2)
 	project := primaryRowsProject("alpha", older, newer)
-	frozen := map[TaskIdentity]time.Time{
+	frozen := map[taskref.TaskIdentity]time.Time{
 		{ProjectID: project.ID, TaskID: older.ID}: older.UpdatedAt,
 		{ProjectID: project.ID, TaskID: newer.ID}: newer.UpdatedAt,
 	}

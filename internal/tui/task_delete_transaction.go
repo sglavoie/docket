@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 const operationTaskDelete OperationID = "tui.task.delete"
@@ -108,7 +109,7 @@ func (m *AppModel) handleTaskDeleteRequested(msg TaskDeleteRequestedMsg) {
 // confirmTaskDelete and the application service); this only shapes the
 // confirmation summary.
 func canonicalizeTaskDeleteRoots(refs []TaskProjectRef) []TaskProjectRef {
-	seen := make(map[TaskIdentity]bool, len(refs))
+	seen := make(map[taskref.TaskIdentity]bool, len(refs))
 	roots := make([]TaskProjectRef, 0, len(refs))
 	for _, ref := range refs {
 		if ref.Task == nil || ref.Project == nil || ref.Task.ID == "" {
@@ -129,7 +130,7 @@ func canonicalizeTaskDeleteRoots(refs []TaskProjectRef) []TaskProjectRef {
 // so these are the exact effective roots used by both impact accounting and the
 // application transaction.
 func collapseNestedTaskDeleteRoots(refs []TaskProjectRef) []TaskProjectRef {
-	selected := make(map[TaskIdentity]bool, len(refs))
+	selected := make(map[taskref.TaskIdentity]bool, len(refs))
 	for _, ref := range refs {
 		selected[ref.Identity()] = true
 	}
@@ -140,7 +141,7 @@ func collapseNestedTaskDeleteRoots(refs []TaskProjectRef) []TaskProjectRef {
 		parentID := ref.Task.ParentID
 		for parentID != nil && *parentID != "" && !seen[*parentID] {
 			seen[*parentID] = true
-			if selected[TaskIdentity{ProjectID: ref.Project.ID, TaskID: *parentID}] {
+			if selected[taskref.TaskIdentity{ProjectID: ref.Project.ID, TaskID: *parentID}] {
 				ancestorSelected = true
 				break
 			}
@@ -158,16 +159,16 @@ func collapseNestedTaskDeleteRoots(refs []TaskProjectRef) []TaskProjectRef {
 }
 
 func calculateTaskDeleteImpact(roots []TaskProjectRef, selection SelectionCounts) taskDeleteImpact {
-	rootSet := make(map[TaskIdentity]bool, len(roots))
+	rootSet := make(map[taskref.TaskIdentity]bool, len(roots))
 	projects := make(map[string]*models.Project)
 	for _, root := range roots {
 		rootSet[root.Identity()] = true
 		projects[root.Project.ID] = root.Project
 	}
-	removed := make(map[TaskIdentity]*models.Task)
+	removed := make(map[taskref.TaskIdentity]*models.Task)
 	for projectID, project := range projects {
 		for _, task := range project.Tasks {
-			identity := TaskIdentity{ProjectID: projectID, TaskID: task.ID}
+			identity := taskref.TaskIdentity{ProjectID: projectID, TaskID: task.ID}
 			if taskDeleteRootAncestor(identity, task, project, rootSet) {
 				removed[identity] = task
 			}
@@ -212,10 +213,10 @@ func attachmentImpactNote(stored, linked int) string {
 }
 
 func taskDeleteRootAncestor(
-	identity TaskIdentity,
+	identity taskref.TaskIdentity,
 	task *models.Task,
 	project *models.Project,
-	roots map[TaskIdentity]bool,
+	roots map[taskref.TaskIdentity]bool,
 ) bool {
 	seen := make(map[string]bool)
 	for task != nil && !seen[task.ID] {

@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // FocusEntry is the retained internal focus-frame representation. It records
@@ -86,14 +87,14 @@ type OutlinerModel struct {
 	// clear the other, and a change here needs a reload rather than a rebuild.
 	projectFilter ProjectFilterState
 
-	expandedNodes     map[TaskIdentity]bool // Project-qualified fold state: true=expanded (default all expanded)
-	collapsedSections map[string]bool       // Section collapse state for All mode
+	expandedNodes     map[taskref.TaskIdentity]bool // Project-qualified fold state: true=expanded (default all expanded)
+	collapsedSections map[string]bool               // Section collapse state for All mode
 	// expandedChecklists is the project-qualified checklist fold state, and it
 	// defaults to collapsed: an absent key hides the owner's items. It is
 	// deliberately separate from expandedNodes, which defaults to expanded, and
 	// from collapsedSections, whose string keys are shared with grouping headers
 	// and are never cleared on a mode change.
-	expandedChecklists map[TaskIdentity]bool
+	expandedChecklists map[taskref.TaskIdentity]bool
 	// sectionToggleRestore preserves a task focus across one S-driven
 	// collapse/expand cycle. It is deliberately session-only.
 	sectionToggleRestore *sectionToggleRestoreAnchor
@@ -105,7 +106,7 @@ type OutlinerModel struct {
 	// recencyKeys freezes Recent mode's ordering timestamps against the
 	// projection they were taken in, so triaging a row from Recent does not
 	// reshuffle the list the user is reading.
-	recencyKeys       map[TaskIdentity]time.Time
+	recencyKeys       map[taskref.TaskIdentity]time.Time
 	recencyProjection string
 
 	// searchProjection is the navigation frame a slash search was typed in. It
@@ -219,7 +220,7 @@ type OutlinerModel struct {
 	// openChildCounts holds each task's open direct-child count, read from the
 	// authoritative project trees rather than from a row's own task, whose
 	// Children the filter pipeline may have rewritten.
-	openChildCounts map[TaskIdentity]int
+	openChildCounts map[taskref.TaskIdentity]int
 
 	// dependencyIndexCache is the row-rebuild pass's reading of the soft
 	// reference graph over the loaded population. It is a cache and never
@@ -344,14 +345,14 @@ func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runti
 		quickEdit:          NewQuickEditComponent(),
 		project:            project,
 		primaryMode:        ModeAll,
-		expandedNodes:      make(map[TaskIdentity]bool),
+		expandedNodes:      make(map[taskref.TaskIdentity]bool),
 		collapsedSections:  make(map[string]bool),
-		expandedChecklists: make(map[TaskIdentity]bool),
+		expandedChecklists: make(map[taskref.TaskIdentity]bool),
 		filter:             NewFilterState(),
 		projectFilter:      newProjectFilterState(),
 		sort:               NewSortState(),
 		treeSort:           NewSortState(),
-		MultiSelectState:   MultiSelectState{selectedTaskIdentities: make(map[TaskIdentity]bool)},
+		MultiSelectState:   MultiSelectState{selectedTaskIdentities: make(map[taskref.TaskIdentity]bool)},
 		columnConfig:       NewColumnConfig(nil, nil, DefaultOutlinerColumns),
 	}
 	m.InitSearchInput("Search tasks...", 100, 30)

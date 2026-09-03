@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestPinnedSectionAppearsAbovePromotingModesAndDeduplicatesQualifiedTasks(t *testing.T) {
@@ -77,8 +78,8 @@ func TestPinnedSectionAppearsAbovePromotingModesAndDeduplicatesQualifiedTasks(t 
 			if pinnedTasks[0].Breadcrumb != "parent ›" || pinnedTasks[0].ProjectID != alpha.ID {
 				t.Fatalf("promoted child context = project %q breadcrumb %q", pinnedTasks[0].ProjectID, pinnedTasks[0].Breadcrumb)
 			}
-			if countTaskRowsForIdentity(outliner, TaskIdentity{ProjectID: alpha.ID, TaskID: child.ID}) != 1 ||
-				countTaskRowsForIdentity(outliner, TaskIdentity{ProjectID: beta.ID, TaskID: sameID.ID}) != 1 {
+			if countTaskRowsForIdentity(outliner, taskref.TaskIdentity{ProjectID: alpha.ID, TaskID: child.ID}) != 1 ||
+				countTaskRowsForIdentity(outliner, taskref.TaskIdentity{ProjectID: beta.ID, TaskID: sameID.ID}) != 1 {
 				t.Fatalf("mode %s duplicated a promoted pinned identity", mode)
 			}
 		})
@@ -117,7 +118,7 @@ func TestPinnedSectionIsAbsentFromNarrowModes(t *testing.T) {
 				}
 			}
 			if got := countTaskRowsForIdentity(outliner,
-				TaskIdentity{ProjectID: project.ID, TaskID: testCase.counted.ID}); got != 1 {
+				taskref.TaskIdentity{ProjectID: project.ID, TaskID: testCase.counted.ID}); got != 1 {
 				t.Fatalf("%s rendered the pinned task %d times, want 1", testCase.mode, got)
 			}
 		})
@@ -153,10 +154,10 @@ func TestPinnedProjectHeadersCollapseIndependently(t *testing.T) {
 	if !outliner.collapsedSections[collapseKey] {
 		t.Fatalf("Pinned group collapse key %q was not recorded", collapseKey)
 	}
-	if countTaskRowsForIdentity(outliner, TaskIdentity{ProjectID: alpha.ID, TaskID: alphaTask.ID}) != 0 {
+	if countTaskRowsForIdentity(outliner, taskref.TaskIdentity{ProjectID: alpha.ID, TaskID: alphaTask.ID}) != 0 {
 		t.Fatal("collapsing Alpha retained its pinned task")
 	}
-	if countTaskRowsForIdentity(outliner, TaskIdentity{ProjectID: beta.ID, TaskID: betaTask.ID}) != 1 {
+	if countTaskRowsForIdentity(outliner, taskref.TaskIdentity{ProjectID: beta.ID, TaskID: betaTask.ID}) != 1 {
 		t.Fatal("collapsing Alpha hid Beta's pinned task")
 	}
 
@@ -166,7 +167,7 @@ func TestPinnedProjectHeadersCollapseIndependently(t *testing.T) {
 	if outliner.collapsedSections[collapseKey] {
 		t.Fatalf("Pinned group collapse key %q remained set after expansion", collapseKey)
 	}
-	if countTaskRowsForIdentity(outliner, TaskIdentity{ProjectID: alpha.ID, TaskID: alphaTask.ID}) != 1 {
+	if countTaskRowsForIdentity(outliner, taskref.TaskIdentity{ProjectID: alpha.ID, TaskID: alphaTask.ID}) != 1 {
 		t.Fatal("expanding Alpha did not restore its pinned task")
 	}
 }
@@ -200,7 +201,7 @@ func TestPinnedSectionRanksSubtreesByRootPinOrder(t *testing.T) {
 			parentRow, parentFound, childRow, childFound)
 	}
 
-	outliner.expandedNodes[TaskIdentity{ProjectID: project.ID, TaskID: parent.ID}] = false
+	outliner.expandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: parent.ID}] = false
 	outliner.rebuildRows()
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{other.ID, parent.ID}) {
 		t.Fatalf("collapsed Pinned rows = %v, want nested child hidden", got)
@@ -226,10 +227,10 @@ func TestPinnedSectionOmitsProjectHeaderInFocusedProjectScope(t *testing.T) {
 			t.Fatalf("focused Pinned section rendered redundant project header: %+v", row)
 		}
 	}
-	if countTaskRowsForIdentity(outliner, TaskIdentity{ProjectID: alpha.ID, TaskID: alphaTask.ID}) != 1 {
+	if countTaskRowsForIdentity(outliner, taskref.TaskIdentity{ProjectID: alpha.ID, TaskID: alphaTask.ID}) != 1 {
 		t.Fatal("focused Pinned section omitted Alpha's task")
 	}
-	if countTaskRowsForIdentity(outliner, TaskIdentity{ProjectID: beta.ID, TaskID: betaTask.ID}) != 0 {
+	if countTaskRowsForIdentity(outliner, taskref.TaskIdentity{ProjectID: beta.ID, TaskID: betaTask.ID}) != 0 {
 		t.Fatal("focused Pinned section retained an out-of-scope task")
 	}
 }
@@ -290,7 +291,7 @@ func TestPinnedPromotionRebuildKeepsCrossProjectCursorIdentity(t *testing.T) {
 	if !row.IsPinnedSection || row.ProjectID != beta.ID || row.task == nil || row.task.ID != betaTask.ID {
 		t.Fatalf("cursor after promotion = %+v, want beta/shared in Pinned", row)
 	}
-	if countTaskRowsForIdentity(outliner, TaskIdentity{ProjectID: beta.ID, TaskID: betaTask.ID}) != 1 {
+	if countTaskRowsForIdentity(outliner, taskref.TaskIdentity{ProjectID: beta.ID, TaskID: betaTask.ID}) != 1 {
 		t.Fatal("promoted cursor task was not deduplicated")
 	}
 }
@@ -351,7 +352,7 @@ func TestPinnedSectionEndsWithSeparatorInEveryPromotingMode(t *testing.T) {
 	}
 }
 
-func countTaskRowsForIdentity(outliner *OutlinerModel, identity TaskIdentity) int {
+func countTaskRowsForIdentity(outliner *OutlinerModel, identity taskref.TaskIdentity) int {
 	count := 0
 	for _, row := range outliner.rows {
 		if row.isTaskRow() && row.task != nil && outliner.taskIdentityForRow(row) == identity {

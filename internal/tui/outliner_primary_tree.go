@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // primaryModeRoots applies the active single-project or qualified cross-project
@@ -239,7 +240,7 @@ func (m *OutlinerModel) flattenPrimaryTask(
 		hasVisibleChildren: len(task.Children) > 0,
 		ProjectID:          projectID,
 	})
-	identity := TaskIdentity{ProjectID: projectID, TaskID: task.ID}
+	identity := taskref.TaskIdentity{ProjectID: projectID, TaskID: task.ID}
 	if identity.ProjectID == "" && m.project != nil {
 		identity.ProjectID = m.project.ID
 	}

@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 const (
@@ -34,7 +35,7 @@ type stateGroupProjectForest struct {
 // exact rows promoted into Pinned without maintaining a second task collection.
 type pinnedModeProjection struct {
 	rows      []OutlinerModeRow
-	projected map[TaskIdentity]bool
+	projected map[taskref.TaskIdentity]bool
 }
 
 // buildPinnedModeProjection selects visible pinned tasks from the current
@@ -43,7 +44,7 @@ type pinnedModeProjection struct {
 // section to each mode; this helper owns the visibility and ordering contract.
 func buildPinnedModeProjection(input OutlinerModeInput) pinnedModeProjection {
 	input.Now = input.now()
-	projection := pinnedModeProjection{projected: make(map[TaskIdentity]bool)}
+	projection := pinnedModeProjection{projected: make(map[taskref.TaskIdentity]bool)}
 	var candidates []orderedModeTask
 	for _, candidate := range orderedModeTasks(input) {
 		task, project := candidate.row.Task, candidate.row.Project
@@ -76,7 +77,7 @@ func buildPinnedModeProjection(input OutlinerModeInput) pinnedModeProjection {
 	for _, candidate := range candidates {
 		row := candidate.row
 		row.Breadcrumb = taskAncestorBreadcrumb(row.Task)
-		identity := taskIdentityFor(row.Task, row.Project)
+		identity := taskref.For(row.Task, row.Project)
 		projection.projected[identity] = true
 		projection.rows = append(projection.rows, row)
 	}
@@ -86,7 +87,7 @@ func buildPinnedModeProjection(input OutlinerModeInput) pinnedModeProjection {
 func (m *OutlinerModel) buildPrimaryModeRowsWithInput(
 	projects []*models.Project,
 	input OutlinerModeInput,
-	pinned map[TaskIdentity]bool,
+	pinned map[taskref.TaskIdentity]bool,
 ) {
 	mode := m.primaryMode
 	if !isPrimaryOutlinerMode(mode) {
@@ -113,7 +114,7 @@ func (m *OutlinerModel) buildPrimaryModeRowsWithInput(
 func (m *OutlinerModel) buildAllPrimaryRows(
 	projects []*models.Project,
 	input OutlinerModeInput,
-	pinned map[TaskIdentity]bool,
+	pinned map[taskref.TaskIdentity]bool,
 ) {
 	today := m.buildTodaySection(input, pinned)
 	next := m.buildNextSection(input, pinned, today.suppressed)
@@ -169,14 +170,14 @@ func (m *OutlinerModel) buildAllPrimaryRows(
 // projectedDoingTasks names the qualified rows claimed by the lifecycle Doing
 // lane so derived sections can apply precedence without conflating state age
 // with touch age. The section builders apply their own visibility guards.
-func projectedDoingTasks(input OutlinerModeInput) map[TaskIdentity]bool {
-	projected := make(map[TaskIdentity]bool)
+func projectedDoingTasks(input OutlinerModeInput) map[taskref.TaskIdentity]bool {
+	projected := make(map[taskref.TaskIdentity]bool)
 	for _, candidate := range orderedModeTasks(input) {
 		task, project := candidate.row.Task, candidate.row.Project
 		if task == nil || project == nil || task.State() != models.StateDoing {
 			continue
 		}
-		projected[taskIdentityFor(task, project)] = true
+		projected[taskref.For(task, project)] = true
 	}
 	return projected
 }
@@ -184,7 +185,7 @@ func projectedDoingTasks(input OutlinerModeInput) map[TaskIdentity]bool {
 func (m *OutlinerModel) appendPlanningModeRows(
 	mode OutlinerModeID,
 	input OutlinerModeInput,
-	pinned map[TaskIdentity]bool,
+	pinned map[taskref.TaskIdentity]bool,
 ) {
 	// Today and Next render their planning body ungrouped, under no header of
 	// their own, so no zoom key can ever name it. Today's Pinned section is the
@@ -205,7 +206,7 @@ func (m *OutlinerModel) appendPlanningModeRows(
 	rows := make([]outlinerRow, 0, len(modeRows))
 	for _, modeRow := range modeRows {
 		if modeRow.Task == nil || modeRow.Project == nil ||
-			pinned[taskIdentityFor(modeRow.Task, modeRow.Project)] {
+			pinned[taskref.For(modeRow.Task, modeRow.Project)] {
 			continue
 		}
 		row := m.outlinerRowFromModeRow(modeRow)
@@ -224,7 +225,7 @@ func (m *OutlinerModel) buildPrimaryProjectTrees(
 	projects []*models.Project,
 	mode OutlinerModeID,
 	input OutlinerModeInput,
-	pinned map[TaskIdentity]bool,
+	pinned map[taskref.TaskIdentity]bool,
 ) []primaryProjectTree {
 	var trees []primaryProjectTree
 	for _, project := range projects {
@@ -236,7 +237,7 @@ func (m *OutlinerModel) buildPrimaryProjectTrees(
 		if mode == ModeBacklog {
 			defaultExclude := hardExclude
 			hardExclude = func(task *models.Task) bool {
-				return defaultExclude(task) || input.TodayIDs[taskIdentityFor(task, project)]
+				return defaultExclude(task) || input.TodayIDs[taskref.For(task, project)]
 			}
 		}
 		roots = excludeTaskTreePromotingChildren(roots, hardExclude)
@@ -247,7 +248,7 @@ func (m *OutlinerModel) buildPrimaryProjectTrees(
 				return task.IsInState(models.StateInbox)
 			case ModeBacklog:
 				return task.IsInState(models.StateBacklog) &&
-					!input.TodayIDs[taskIdentityFor(task, project)]
+					!input.TodayIDs[taskref.For(task, project)]
 			default:
 				return false
 			}
@@ -290,7 +291,7 @@ func (m *OutlinerModel) buildPrimaryProjectTrees(
 func removeProjectedRowsFromTree(
 	tasks []*models.Task,
 	projectID string,
-	projected map[TaskIdentity]bool,
+	projected map[taskref.TaskIdentity]bool,
 ) []*models.Task {
 	if len(tasks) == 0 || len(projected) == 0 {
 		return tasks
@@ -301,7 +302,7 @@ func removeProjectedRowsFromTree(
 			continue
 		}
 		children := removeProjectedRowsFromTree(task.Children, projectID, projected)
-		if projected[TaskIdentity{ProjectID: projectID, TaskID: task.ID}] {
+		if projected[taskref.TaskIdentity{ProjectID: projectID, TaskID: task.ID}] {
 			result = append(result, children...)
 			continue
 		}

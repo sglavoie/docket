@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -289,7 +290,7 @@ func TestInlineRowEditorAutocompleteIsBoundedAndViewportTracksResize(t *testing.
 
 func TestInlineRowEditorRendersOnFoldedParentWithoutLeakingChildren(t *testing.T) {
 	out, project, parent, child := inlineEditorFixture(t)
-	out.expandedNodes = map[TaskIdentity]bool{{ProjectID: project.ID, TaskID: parent.ID}: false}
+	out.expandedNodes = map[taskref.TaskIdentity]bool{{ProjectID: project.ID, TaskID: parent.ID}: false}
 	out.rebuildRows()
 	for index, row := range out.rows {
 		if row.task != nil && row.task.ID == parent.ID {

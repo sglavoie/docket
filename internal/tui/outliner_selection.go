@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // taskOpsView implementation for OutlinerModel.
@@ -49,15 +50,15 @@ func (m *OutlinerModel) cursorProjectHeaderProject() *models.Project {
 
 func (m *OutlinerModel) setStatus(msg string) { m.InteractiveViewState.setStatus(msg) }
 
-func (m *OutlinerModel) taskIdentityForRow(row outlinerRow) TaskIdentity {
+func (m *OutlinerModel) taskIdentityForRow(row outlinerRow) taskref.TaskIdentity {
 	if row.task == nil {
-		return TaskIdentity{}
+		return taskref.TaskIdentity{}
 	}
 	project := m.project
 	if project == nil {
 		project = m.crossResolveProject(row.ProjectID)
 	}
-	return taskIdentityFor(row.task, project)
+	return taskref.For(row.task, project)
 }
 
 func (m *OutlinerModel) isRowSelected(row outlinerRow) bool {
@@ -150,9 +151,9 @@ func (m *OutlinerModel) updateVisualSelectionStatus() {
 	m.setStatus("Visual selection: v toggle · V range · Ctrl+A all visible · Esc clear")
 }
 
-func (m *OutlinerModel) visibleTaskIdentities() []TaskIdentity {
-	visible := make([]TaskIdentity, 0, len(m.rows))
-	seen := make(map[TaskIdentity]bool, len(m.rows))
+func (m *OutlinerModel) visibleTaskIdentities() []taskref.TaskIdentity {
+	visible := make([]taskref.TaskIdentity, 0, len(m.rows))
+	seen := make(map[taskref.TaskIdentity]bool, len(m.rows))
 	for _, row := range m.rows {
 		if !row.isTaskRow() || row.task == nil {
 			continue
@@ -203,7 +204,7 @@ func (m *OutlinerModel) updateRangeSelection() {
 	if start > end {
 		start, end = end, start
 	}
-	identities := make([]TaskIdentity, 0, end-start+1)
+	identities := make([]taskref.TaskIdentity, 0, end-start+1)
 	for _, row := range m.rows[start : end+1] {
 		if row.isTaskRow() && row.task != nil {
 			identities = append(identities, m.taskIdentityForRow(row))

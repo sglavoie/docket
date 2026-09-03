@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestFrozenBulkTagPatchPreservesSelectionAcrossCursorMoveAndRebuild(t *testing.T) {
@@ -26,8 +27,8 @@ func TestFrozenBulkTagPatchPreservesSelectionAcrossCursorMoveAndRebuild(t *testi
 		{task: second, ProjectID: env.projects[1].ID},
 	}
 	outliner.multiSelectMode = true
-	outliner.SelectTaskIdentity(taskIdentityFor(first, env.projects[0]))
-	outliner.SelectTaskIdentity(taskIdentityFor(second, env.projects[1]))
+	outliner.SelectTaskIdentity(taskref.For(first, env.projects[0]))
+	outliner.SelectTaskIdentity(taskref.For(second, env.projects[1]))
 	model.crossOutliner = outliner
 	model.views.Register(presentation.ViewCrossProjectOutliner, outliner)
 
@@ -104,7 +105,7 @@ func TestBulkTaskValueOperationUsesQualifiedTargetsAndOneUndoEntry(t *testing.T)
 		project := env.projects[index]
 		context.Selection.Tasks = append(
 			context.Selection.Tasks,
-			taskIdentityFor(task, project),
+			taskref.For(task, project),
 		)
 		context.Selection.Entities = append(
 			context.Selection.Entities,

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func (m *AppModel) handleTaskLineEditFailed(msg TaskLineEditFailedMsg) tea.Cmd {
@@ -16,7 +17,7 @@ func (m *AppModel) handleTaskLineEditFailed(msg TaskLineEditFailedMsg) tea.Cmd {
 	if out, ok := m.outlinerPrimary(); ok && out != nil && out.quickEdit.IsActive() {
 		task := out.quickEdit.GetTask()
 		project := out.quickEdit.project
-		if task != nil && project != nil && taskIdentityFor(task, project) == msg.Source {
+		if task != nil && project != nil && taskref.For(task, project) == msg.Source {
 			out.quickEdit.RejectCommit(message)
 		}
 	}
@@ -29,7 +30,7 @@ func (m *AppModel) handleTaskLineEdited(msg TaskLineEditedMsg) tea.Cmd {
 	if ok && out != nil && out.quickEdit.IsActive() {
 		task := out.quickEdit.GetTask()
 		project := out.quickEdit.project
-		if task != nil && project != nil && taskIdentityFor(task, project) == msg.Source {
+		if task != nil && project != nil && taskref.For(task, project) == msg.Source {
 			out.quickEdit.Exit()
 		}
 	}
@@ -50,7 +51,7 @@ func (m *AppModel) handleTaskLineEdited(msg TaskLineEditedMsg) tea.Cmd {
 	recordedOrigin := false
 	var jumpCmd tea.Cmd
 	if ok && out != nil {
-		final := TaskIdentity{
+		final := taskref.TaskIdentity{
 			ProjectID: msg.Result.Task.ProjectID,
 			TaskID:    msg.Result.Task.TaskID,
 		}

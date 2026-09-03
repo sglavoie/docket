@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestTUISetDueDateTodayMovesTaskToTodayAtomically(t *testing.T) {
@@ -49,7 +50,7 @@ func TestTUISetDueDateTodayMovesTaskToTodayAtomically(t *testing.T) {
 	}
 
 	m.handleBatchTransactionResult(msg)
-	identity := TaskIdentity{ProjectID: m.currentProject.ID, TaskID: task.ID}
+	identity := taskref.TaskIdentity{ProjectID: m.currentProject.ID, TaskID: task.ID}
 	if !m.todayIDs[identity] {
 		t.Fatalf("runtime Today index = %+v, want %v", m.todayIDs, identity)
 	}
@@ -123,9 +124,9 @@ func newPlanningLedgerApp(t *testing.T, state models.WorkflowState) (*AppModel, 
 		views:             NewViewRegistry(),
 		currentProject:    project,
 		nextOrder:         []PlanningTask{},
-		nextOrderIDs:      make(map[TaskIdentity]bool),
+		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),
 		today:             []PlanningTask{},
-		todayIDs:          make(map[TaskIdentity]bool),
+		todayIDs:          make(map[taskref.TaskIdentity]bool),
 	}
 	appModel.showView(presentation.ViewCrossProjectOutliner, &invariantQueueView{taskID: task.ID, project: project})
 	return appModel, repo, task, dataDir
@@ -318,7 +319,7 @@ func TestStateMovesPreservePlanningExclusivity(t *testing.T) {
 		m.seedDiskToday(t, task.ID, m.currentProject.ID)
 
 		cmd := m.secondaryFeatures.TaskItem.Transition(
-			taskIdentityFor(task, m.currentProject),
+			taskref.For(task, m.currentProject),
 			models.StateWaiting,
 		)
 		assertNotTransactionError(t, cmd())

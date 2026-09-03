@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // planningOrderProject seeds one on-disk project with the given StateBacklog tasks
@@ -76,9 +77,9 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 		views:             NewViewRegistry(),
 		currentProject:    projects[0],
 		nextOrder:         []PlanningTask{},
-		nextOrderIDs:      make(map[TaskIdentity]bool),
+		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),
 		today:             []PlanningTask{},
-		todayIDs:          make(map[TaskIdentity]bool),
+		todayIDs:          make(map[taskref.TaskIdentity]bool),
 		operationRegistry: NewOperationRegistry(),
 		navigation:        NewNavigationState(),
 	}

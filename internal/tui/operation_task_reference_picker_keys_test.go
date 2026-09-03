@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // This file covers the `~` key path itself: which cursors it refuses, what it
@@ -60,7 +61,7 @@ func TestReferencePickerRefusesOffATaskRow(t *testing.T) {
 
 	t.Run("a visual selection is the selection, never the cursor", func(t *testing.T) {
 		model, subject, home, _ := referencePickerFixture(t)
-		model.crossOutliner.ReplaceSelection([]TaskIdentity{taskIdentityFor(subject, home)})
+		model.crossOutliner.ReplaceSelection([]taskref.TaskIdentity{taskref.For(subject, home)})
 
 		ctx := model.operationCommandContext()
 		if !ctx.Selection.Visual {
@@ -102,8 +103,8 @@ func TestReferencePickerEditsAWholeSelectionTriState(t *testing.T) {
 		{task: subject, ProjectID: home.ID},
 		{task: second, ProjectID: home.ID},
 	}
-	model.crossOutliner.ReplaceSelection([]TaskIdentity{
-		taskIdentityFor(subject, home), taskIdentityFor(second, home),
+	model.crossOutliner.ReplaceSelection([]taskref.TaskIdentity{
+		taskref.For(subject, home), taskref.For(second, home),
 	})
 
 	_, cmd := model.handleGlobalKeyPress(tea.KeyPressMsg{Code: '~', Text: "~"})
@@ -211,7 +212,7 @@ func TestReferencePickerCommitsNothingWhenTheCheckedSetIsUnchanged(t *testing.T)
 	if value.Add != nil || value.Remove != nil {
 		t.Fatalf("leaving the preselection alone emitted %+v, want no intent at all", value)
 	}
-	cmd := model.setTaskReferencesCmd(taskIdentityFor(subject, home), value)
+	cmd := model.setTaskReferencesCmd(taskref.For(subject, home), value)
 	if cmd == nil {
 		t.Fatal("an unchanged reference set produced no command at all")
 	}

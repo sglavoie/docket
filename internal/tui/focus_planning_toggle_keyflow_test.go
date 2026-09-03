@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // TestPlanningToggleUndoRedoKeyFlow drives the Next/Today planning toggles and their
@@ -57,7 +58,7 @@ func assertQueueKeyFlow(t *testing.T, app *AppModel, taskID string, inQueue bool
 	if fresh.State() != models.StateBacklog {
 		t.Fatalf("queue toggle changed lifecycle to %s, want backlog", fresh.State())
 	}
-	identity := TaskIdentity{ProjectID: app.currentProject.ID, TaskID: taskID}
+	identity := taskref.TaskIdentity{ProjectID: app.currentProject.ID, TaskID: taskID}
 	if app.nextOrderIDs[identity] != inQueue {
 		t.Fatalf("order-index membership = %v, want %v", app.nextOrderIDs[identity], inQueue)
 	}
@@ -71,7 +72,7 @@ func assertQueueKeyFlow(t *testing.T, app *AppModel, taskID string, inQueue bool
 func assertTodayKeyFlow(t *testing.T, app *AppModel, taskID string, inPlan bool) {
 	t.Helper()
 
-	identity := TaskIdentity{ProjectID: app.currentProject.ID, TaskID: taskID}
+	identity := taskref.TaskIdentity{ProjectID: app.currentProject.ID, TaskID: taskID}
 	if app.todayIDs[identity] != inPlan {
 		t.Fatalf("daily-plan membership = %v, want %v", app.todayIDs[identity], inPlan)
 	}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -189,7 +190,7 @@ func outgoingDependencyDetails(task *models.Task, index *app.DependencyIndex) []
 // a task in an archived or unloaded project may name the subject without
 // appearing here, and no archived project is opened merely to decorate a detail
 // pane.
-func incomingDependencyDetails(identity TaskIdentity, index *app.DependencyIndex) []dependencyDetail {
+func incomingDependencyDetails(identity taskref.TaskIdentity, index *app.DependencyIndex) []dependencyDetail {
 	if identity.ProjectID == "" || identity.TaskID == "" {
 		return nil
 	}

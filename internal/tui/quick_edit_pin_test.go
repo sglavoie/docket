@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestParseQuickEditPinPatchesAndPreviews(t *testing.T) {
@@ -34,7 +35,7 @@ func TestParseQuickEditPinPatchesAndPreviews(t *testing.T) {
 			if result.preview.Pinned != testCase.want {
 				t.Fatalf("preview.Pinned = %v, want %v", result.preview.Pinned, testCase.want)
 			}
-			req := taskLineEditRequest(TaskIdentity{ProjectID: project.ID, TaskID: task.ID}, result)
+			req := taskLineEditRequest(taskref.TaskIdentity{ProjectID: project.ID, TaskID: task.ID}, result)
 			if req.Pinned == nil || *req.Pinned != testCase.want {
 				t.Fatalf("request Pinned = %v, want %v", req.Pinned, testCase.want)
 			}
@@ -57,7 +58,7 @@ func TestParseQuickEditWithoutPinPreservesPinnedState(t *testing.T) {
 	if !result.preview.Pinned {
 		t.Fatalf("preview.Pinned = false, want the task's own state carried through")
 	}
-	req := taskLineEditRequest(TaskIdentity{ProjectID: project.ID, TaskID: task.ID}, result)
+	req := taskLineEditRequest(taskref.TaskIdentity{ProjectID: project.ID, TaskID: task.ID}, result)
 	if req.Pinned != nil {
 		t.Fatalf("request Pinned = %v, want nil", req.Pinned)
 	}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -235,8 +236,8 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 
 // rowIdentity resolves a row's project-qualified task identity, supplying the
 // scoped project ID that single-project rows omit.
-func (m *OutlinerModel) rowIdentity(row outlinerRow) TaskIdentity {
-	identity := TaskIdentity{ProjectID: row.ProjectID}
+func (m *OutlinerModel) rowIdentity(row outlinerRow) taskref.TaskIdentity {
+	identity := taskref.TaskIdentity{ProjectID: row.ProjectID}
 	if row.task != nil {
 		identity.TaskID = row.task.ID
 	}

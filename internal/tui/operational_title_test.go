@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -213,11 +214,11 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 		}, wantNarrow: []string{"Filters:"}, wantWide: []string{"Filters:", "!1+"}},
 		{name: "multiselect", configure: func(m *OutlinerModel) {
 			m.multiSelectMode = true
-			m.selectedTaskIdentities = map[TaskIdentity]bool{{ProjectID: project.ID, TaskID: task.ID}: true}
+			m.selectedTaskIdentities = map[taskref.TaskIdentity]bool{{ProjectID: project.ID, TaskID: task.ID}: true}
 		}, wantNarrow: []string{"MULTI-SELECT"}, wantWide: []string{"MULTI-SELECT: 1 selected"}},
 		{name: "combined interaction context", configure: func(m *OutlinerModel) {
 			m.multiSelectMode = true
-			m.selectedTaskIdentities = map[TaskIdentity]bool{{ProjectID: project.ID, TaskID: task.ID}: true}
+			m.selectedTaskIdentities = map[taskref.TaskIdentity]bool{{ProjectID: project.ID, TaskID: task.ID}: true}
 			m.SetSearchQuery("needle")
 			m.filter = NewFilterState()
 			m.filter.Priority = 1

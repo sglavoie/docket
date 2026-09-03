@@ -1,5 +1,7 @@
 package tui
 
+import "github.com/sglavoie/tt/internal/tui/taskref"
+
 const (
 	pinnedSectionName                  = "Pinned"
 	pinnedSectionCollapseKey           = "_synthetic:pinned"
@@ -12,7 +14,7 @@ const (
 type pinnedSectionBuild struct {
 	groups    []projectRowGroup
 	count     int
-	projected map[TaskIdentity]bool
+	projected map[taskref.TaskIdentity]bool
 }
 
 // buildPinnedSection realizes Pinned from the same scoped candidates, reference

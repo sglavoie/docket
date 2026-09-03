@@ -8,6 +8,7 @@ import (
 
 	appservice "github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func findTaskRow(rows []outlinerRow, taskID string) int {
@@ -159,7 +160,7 @@ func TestSimplifiedShiftEnterPeekRendersAtEveryWidth(t *testing.T) {
 	app.crossOutliner.loadedProjects = []*models.Project{project}
 	app.crossOutliner.crossForceRebuild = true
 	app.crossOutliner.crossProjectRebuildRows()
-	app.crossOutliner.moveCursorToIdentity(TaskIdentity{ProjectID: project.ID, TaskID: task.ID})
+	app.crossOutliner.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: task.ID})
 
 	for _, width := range []int{60, 99, 100, 160} {
 		app.crossOutliner.peekMode = false
@@ -310,8 +311,8 @@ func TestMutationRebuildPreservesCursorIdentityAndVisibleSelection(t *testing.T)
 		t.Fatal("second task is missing before rebuild")
 	}
 	m.multiSelectMode = true
-	m.SelectTaskIdentity(taskIdentityFor(first, project))
-	m.SelectTaskIdentity(taskIdentityFor(second, project))
+	m.SelectTaskIdentity(taskref.For(first, project))
+	m.SelectTaskIdentity(taskref.For(second, project))
 
 	project.Tasks[0], project.Tasks[1] = project.Tasks[1], project.Tasks[0]
 	project.BuildTaskTree()

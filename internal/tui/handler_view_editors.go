@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // handleEditorMessages handles text editor, glow, and external editor messages.
@@ -30,11 +31,11 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 			return true, errorCmd("unsupported task text operation %q", msg.Operation)
 		}
 		m.pendingTaskTextEdit = &struct {
-			Identity  TaskIdentity
+			Identity  taskref.TaskIdentity
 			Operation app.TaskOperation
 			Original  string
 		}{
-			Identity:  taskIdentityFor(msg.Task, msg.Project),
+			Identity:  taskref.For(msg.Task, msg.Project),
 			Operation: msg.Operation,
 			Original:  currentValue,
 		}

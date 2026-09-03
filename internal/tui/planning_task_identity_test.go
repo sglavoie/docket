@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func duplicatePlanningProjects(t *testing.T) (*models.Project, *models.Project, *models.Task, *models.Task) {
@@ -68,8 +69,8 @@ func TestPlanningHydrationKeepsDuplicateTaskIDsProjectQualified(t *testing.T) {
 	shell := &AppModel{
 		runtime:      runtime,
 		persister:    persister,
-		nextOrderIDs: make(map[TaskIdentity]bool),
-		todayIDs:     make(map[TaskIdentity]bool),
+		nextOrderIDs: make(map[taskref.TaskIdentity]bool),
+		todayIDs:     make(map[taskref.TaskIdentity]bool),
 		nextOrder:    []PlanningTask{},
 		today:        []PlanningTask{},
 	}
@@ -78,10 +79,10 @@ func TestPlanningHydrationKeepsDuplicateTaskIDsProjectQualified(t *testing.T) {
 	shell.hydrateNextOrder([]*models.Project{alpha, beta}, loads, true)
 	shell.hydrateToday([]*models.Project{alpha, beta}, loads)
 
-	alphaID := taskIdentityFor(alphaTask, alpha)
-	betaID := taskIdentityFor(betaTask, beta)
-	alphaTodayID := taskIdentityFor(alphaToday, alpha)
-	betaTodayID := taskIdentityFor(betaToday, beta)
+	alphaID := taskref.For(alphaTask, alpha)
+	betaID := taskref.For(betaTask, beta)
+	alphaTodayID := taskref.For(alphaToday, alpha)
+	betaTodayID := taskref.For(betaToday, beta)
 	if len(shell.nextOrder) != 2 || !shell.nextOrderIDs[alphaID] || !shell.nextOrderIDs[betaID] {
 		t.Fatalf("qualified Next hydration = slice:%d map:%v", len(shell.nextOrder), shell.nextOrderIDs)
 	}
@@ -94,7 +95,7 @@ func TestPlanningWorkspacePulseDoesNotBleedAcrossDuplicateTaskIDs(t *testing.T) 
 	alpha, beta, alphaTask, betaTask := duplicatePlanningProjects(t)
 	alphaTask.WorkflowState = models.StateBacklog
 	betaTask.WorkflowState = models.StateBacklog
-	alphaID := taskIdentityFor(alphaTask, alpha)
+	alphaID := taskref.For(alphaTask, alpha)
 
 	repo := testutil.NewMockRepository()
 	repo.Projects[alpha.ID] = alpha
@@ -104,7 +105,7 @@ func TestPlanningWorkspacePulseDoesNotBleedAcrossDuplicateTaskIDs(t *testing.T) 
 	defer func() { storage.DefaultRepository = oldRepo }()
 
 	runtime := testConfigWithProjects(alpha, beta)
-	pulse := ComputeWorkspacePulse(runtime, map[TaskIdentity]bool{alphaID: true}, time.Now())
+	pulse := ComputeWorkspacePulse(runtime, map[taskref.TaskIdentity]bool{alphaID: true}, time.Now())
 	if pulse.Today != 1 {
 		t.Fatalf("Today workspace pulse = %d, want only alpha's qualified task", pulse.Today)
 	}
@@ -116,12 +117,12 @@ func TestPlanningArtifactMembershipIsProjectQualified(t *testing.T) {
 		Next:  []config.ProjectTaskLocator{{ProjectID: alpha.ID, TaskID: alphaTask.ID}},
 		Today: []config.ProjectTaskLocator{{ProjectID: alpha.ID, TaskID: alphaTask.ID}},
 	}
-	if !nextOrderContains(planning, taskIdentityFor(alphaTask, alpha)) ||
-		!todayContains(planning, taskIdentityFor(alphaTask, alpha)) {
+	if !nextOrderContains(planning, taskref.For(alphaTask, alpha)) ||
+		!todayContains(planning, taskref.For(alphaTask, alpha)) {
 		t.Fatal("alpha membership was not found")
 	}
-	if nextOrderContains(planning, taskIdentityFor(betaTask, beta)) ||
-		todayContains(planning, taskIdentityFor(betaTask, beta)) {
+	if nextOrderContains(planning, taskref.For(betaTask, beta)) ||
+		todayContains(planning, taskref.For(betaTask, beta)) {
 		t.Fatal("beta duplicate inherited alpha's persisted membership")
 	}
 }

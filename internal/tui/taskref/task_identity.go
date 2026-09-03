@@ -1,4 +1,7 @@
-package tui
+// Package taskref owns the presentation layer's stable task selection key and
+// its conversions to and from the application layer's locator. It sits at L0:
+// it names no view, no model of the shell, and nothing above itself.
+package taskref
 
 import (
 	"github.com/sglavoie/tt/internal/app"
@@ -20,25 +23,17 @@ func (id TaskIdentity) Locator() app.TaskLocator {
 	return app.TaskLocator{ProjectID: id.ProjectID, TaskID: id.TaskID}
 }
 
-func taskIdentityFromLocator(locator app.TaskLocator) TaskIdentity {
+// FromLocator is Locator's inverse, so a locator that came back from the
+// application layer addresses the same selection it was built from.
+func FromLocator(locator app.TaskLocator) TaskIdentity {
 	return TaskIdentity{ProjectID: locator.ProjectID, TaskID: locator.TaskID}
 }
 
-// taskIdentityFor builds the canonical TUI identity from a task and its owning
-// project. Invalid or incomplete refs deliberately produce the zero value.
-func taskIdentityFor(task *models.Task, project *models.Project) TaskIdentity {
+// For builds the canonical TUI identity from a task and its owning project.
+// Invalid or incomplete refs deliberately produce the zero value.
+func For(task *models.Task, project *models.Project) TaskIdentity {
 	if task == nil || project == nil || task.ID == "" || project.ID == "" {
 		return TaskIdentity{}
 	}
 	return TaskIdentity{ProjectID: project.ID, TaskID: task.ID}
-}
-
-// Identity converts a qualified task ref into the canonical TUI selection key.
-func (ref TaskProjectRef) Identity() TaskIdentity {
-	return taskIdentityFor(ref.Task, ref.Project)
-}
-
-// Locator converts a qualified task ref directly into an application locator.
-func (ref TaskProjectRef) Locator() app.TaskLocator {
-	return ref.Identity().Locator()
 }

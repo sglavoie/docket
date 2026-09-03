@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func (m *OutlinerModel) reorderTask(delta int) tea.Cmd {
@@ -27,8 +28,8 @@ func (m *OutlinerModel) reorderTask(delta int) tea.Cmd {
 	if project == nil {
 		return nil
 	}
-	taskIdentity := taskIdentityFor(task, project)
-	targetIdentity := taskIdentityFor(other, project)
+	taskIdentity := taskref.For(task, project)
+	targetIdentity := taskref.For(other, project)
 	if m.taskItem.task != nil {
 		return m.taskItem.ReorderSiblings(taskIdentity, targetIdentity)
 	}
@@ -77,11 +78,11 @@ func (m *OutlinerModel) reorderTaskEdge(delta int) tea.Cmd {
 		return nil
 	}
 	if m.taskItem.task != nil {
-		order := make([]TaskIdentity, 0, len(rotated))
+		order := make([]taskref.TaskIdentity, 0, len(rotated))
 		for _, task := range rotated {
-			order = append(order, taskIdentityFor(task, project))
+			order = append(order, taskref.For(task, project))
 		}
-		return m.taskItem.ReorderSiblingOrder(taskIdentityFor(row.task, project), order, reorderEdgeLabel(delta))
+		return m.taskItem.ReorderSiblingOrder(taskref.For(row.task, project), order, reorderEdgeLabel(delta))
 	}
 
 	// Isolated Outliner models have no transaction coordinator. Preserve their

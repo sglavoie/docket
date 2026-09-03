@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 const outlinerJumpHistoryLimit = 100
@@ -15,9 +16,9 @@ const outlinerJumpHistoryLimit = 100
 // leave Task empty so jumping backward prefers the first unaffected task that
 // followed the moved target, then the preceding task, before using the old row.
 type outlinerJumpPosition struct {
-	Task         TaskIdentity
-	Following    TaskIdentity
-	Preceding    TaskIdentity
+	Task         taskref.TaskIdentity
+	Following    taskref.TaskIdentity
+	Preceding    taskref.TaskIdentity
 	RowIndex     int
 	ScrollOffset int
 }
@@ -29,13 +30,13 @@ type outlinerRelocationHistory struct {
 	projection string
 }
 
-func (m *OutlinerModel) currentTaskIdentity() TaskIdentity {
+func (m *OutlinerModel) currentTaskIdentity() taskref.TaskIdentity {
 	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
-		return TaskIdentity{}
+		return taskref.TaskIdentity{}
 	}
 	row := m.rows[m.cursor]
 	if !row.isTaskRow() || row.task == nil {
-		return TaskIdentity{}
+		return taskref.TaskIdentity{}
 	}
 	return m.taskIdentityForRow(row)
 }
@@ -51,7 +52,7 @@ func (m *OutlinerModel) currentJumpPosition() (outlinerJumpPosition, bool) {
 	}, true
 }
 
-func (m *OutlinerModel) rowIndexForTask(identity TaskIdentity) (int, bool) {
+func (m *OutlinerModel) rowIndexForTask(identity taskref.TaskIdentity) (int, bool) {
 	if !identity.Valid() {
 		return 0, false
 	}

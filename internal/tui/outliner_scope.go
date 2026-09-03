@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // outlinerScopeFrame captures the outliner state that a project-scope push
@@ -336,8 +337,8 @@ func (m *OutlinerModel) resetToGlobalAll() {
 	// restates the focus-stack nils.
 	m.clearSectionZoom()
 	m.collapsedSections = make(map[string]bool)
-	m.expandedNodes = make(map[TaskIdentity]bool)
-	m.expandedChecklists = make(map[TaskIdentity]bool)
+	m.expandedNodes = make(map[taskref.TaskIdentity]bool)
+	m.expandedChecklists = make(map[taskref.TaskIdentity]bool)
 	m.sectionToggleRestore = nil
 	m.replaceFilterClauses(filterQueryTaskFields(), nil)
 	m.sort.Reset()

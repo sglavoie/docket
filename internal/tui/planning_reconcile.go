@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // shellPlanningReconcileArtifactBuilder binds application-owned invariant
@@ -139,7 +140,7 @@ func (m *AppModel) rebuildPlanningFromRuntime() {
 	planning := m.runtime.Planning()
 	m.nextOrder = m.nextOrder[:0]
 	if m.nextOrderIDs == nil {
-		m.nextOrderIDs = make(map[TaskIdentity]bool)
+		m.nextOrderIDs = make(map[taskref.TaskIdentity]bool)
 	} else {
 		clear(m.nextOrderIDs)
 	}
@@ -150,12 +151,12 @@ func (m *AppModel) rebuildPlanningFromRuntime() {
 		}
 		if t := p.GetTaskByID(item.TaskID); t != nil {
 			m.nextOrder = append(m.nextOrder, PlanningTask{Task: t, Project: p})
-			m.nextOrderIDs[TaskIdentity{ProjectID: item.ProjectID, TaskID: item.TaskID}] = true
+			m.nextOrderIDs[taskref.TaskIdentity{ProjectID: item.ProjectID, TaskID: item.TaskID}] = true
 		}
 	}
 	m.today = m.today[:0]
 	if m.todayIDs == nil {
-		m.todayIDs = make(map[TaskIdentity]bool)
+		m.todayIDs = make(map[taskref.TaskIdentity]bool)
 	} else {
 		clear(m.todayIDs)
 	}
@@ -166,7 +167,7 @@ func (m *AppModel) rebuildPlanningFromRuntime() {
 		}
 		if t := p.GetTaskByID(item.TaskID); t != nil {
 			m.today = append(m.today, PlanningTask{Task: t, Project: p})
-			m.todayIDs[TaskIdentity{ProjectID: item.ProjectID, TaskID: item.TaskID}] = true
+			m.todayIDs[taskref.TaskIdentity{ProjectID: item.ProjectID, TaskID: item.TaskID}] = true
 		}
 	}
 }

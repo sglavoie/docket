@@ -10,6 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/external"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -31,7 +32,7 @@ func (m *TaskCommentsModel) saveComment() tea.Cmd {
 	m.cursor = len(m.task.Comments) - 1
 
 	return adaptSubviewCommit(
-		m.coordinator.AddComment(taskIdentityFor(task, m.project), text),
+		m.coordinator.AddComment(taskref.For(task, m.project), text),
 		func() tea.Msg { return CommentAddedMsg{} },
 	)
 }
@@ -47,7 +48,7 @@ func (m *TaskCommentsModel) executeDelete() tea.Cmd {
 	}
 
 	return adaptSubviewCommit(
-		m.coordinator.RemoveComment(taskIdentityFor(m.task, m.project), index),
+		m.coordinator.RemoveComment(taskref.For(m.task, m.project), index),
 		func() tea.Msg { return CommentDeletedMsg{} },
 	)
 }
@@ -81,7 +82,7 @@ func (m *TaskCommentsModel) saveEditedComment() tea.Cmd {
 	m.err = nil
 
 	return adaptSubviewCommit(
-		m.coordinator.EditComment(taskIdentityFor(m.task, m.project), editIndex, text),
+		m.coordinator.EditComment(taskref.For(m.task, m.project), editIndex, text),
 		func() tea.Msg { return CommentEditedMsg{} },
 	)
 }
@@ -107,7 +108,7 @@ func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
 
 		task.Comments[editIndex].Text = newText
 		return adaptSubviewCommit(
-			coordinator.EditComment(taskIdentityFor(task, project), editIndex, newText),
+			coordinator.EditComment(taskref.For(task, project), editIndex, newText),
 			func() tea.Msg { return CommentEditedMsg{} },
 		)()
 	})
@@ -132,7 +133,7 @@ func (m *TaskCommentsModel) addCommentInExternalEditor() tea.Cmd {
 
 		task.AddComment(newText)
 		return adaptSubviewCommit(
-			coordinator.AddComment(taskIdentityFor(task, project), newText),
+			coordinator.AddComment(taskref.For(task, project), newText),
 			func() tea.Msg { return CommentAddedMsg{} },
 		)()
 	})
@@ -167,7 +168,7 @@ func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 
 		task.Comments[editIndex].Text = newText
 		return adaptSubviewCommit(
-			coordinator.EditComment(taskIdentityFor(task, project), editIndex, newText),
+			coordinator.EditComment(taskref.For(task, project), editIndex, newText),
 			func() tea.Msg { return CommentEditedMsg{} },
 		)()
 	})

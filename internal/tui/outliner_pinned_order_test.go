@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // pinSpec seeds one pinned task: its title doubles as the assertion label and
@@ -242,7 +243,7 @@ func TestOutlinerPinnedOrderJK(t *testing.T) {
 		m, cross, _ := newPlanningOrderApp(t, project)
 		cross.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 		enterCrossMode(cross, ModeAll)
-		cross.expandedNodes[TaskIdentity{ProjectID: project.ID, TaskID: tasks["Parent"].ID}] = false
+		cross.expandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: tasks["Parent"].ID}] = false
 		cross.crossForceRebuild = true
 		cross.crossProjectRebuildRows()
 		if got := visibleTaskTitles(cross); !slices.Equal(got, []string{"Other Root", "Parent"}) {

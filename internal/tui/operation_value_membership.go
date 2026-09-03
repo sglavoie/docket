@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func (m *AppModel) operationTaskRefs(context CommandContext) ([]TaskProjectRef, error) {
@@ -14,7 +15,7 @@ func (m *AppModel) operationTaskRefs(context CommandContext) ([]TaskProjectRef, 
 			return nil, fmt.Errorf("select at least one task")
 		}
 		if current := currentTaskIdentity(context); current.Valid() {
-			identities = []TaskIdentity{current}
+			identities = []taskref.TaskIdentity{current}
 		}
 	}
 	refs := make([]TaskProjectRef, 0, len(identities))

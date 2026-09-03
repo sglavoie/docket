@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestLifecycleDestinationsMapToCanonicalCreationStates(t *testing.T) {
@@ -90,7 +91,7 @@ func TestDestinationGrammarDrivesCompletionHelpAndGuidance(t *testing.T) {
 		if err != nil {
 			t.Fatalf("quick-edit parse %q: %v", token, err)
 		}
-		req := taskLineEditRequest(TaskIdentity{ProjectID: project.ID, TaskID: task.ID}, result)
+		req := taskLineEditRequest(taskref.TaskIdentity{ProjectID: project.ID, TaskID: task.ID}, result)
 		if req.Destination == nil || string(*req.Destination) != name {
 			t.Errorf("quick-edit request destination = %v, want %q", req.Destination, name)
 		}

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // foldAllProject seeds one three-generation tree beside a childless sibling, so
@@ -45,7 +46,7 @@ func TestToggleAllSubtreesFoldsEveryDescendantAndRestoresThem(t *testing.T) {
 	}
 
 	// A childless task has nothing to fold, so it never earns an entry.
-	if _, exists := outliner.expandedNodes[TaskIdentity{ProjectID: project.ID, TaskID: tasks["loner"].ID}]; exists {
+	if _, exists := outliner.expandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: tasks["loner"].ID}]; exists {
 		t.Error("a childless task gained a fold entry")
 	}
 
@@ -67,7 +68,7 @@ func TestToggleAllSubtreesUnfoldsWhenAnySingleSubtreeIsFolded(t *testing.T) {
 
 	// Fold the inner node only, leaving its parent expanded — the mixed state a
 	// direction rule keyed on "all folded" would read the wrong way.
-	outliner.expandedNodes[TaskIdentity{ProjectID: project.ID, TaskID: tasks["child"].ID}] = false
+	outliner.expandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: tasks["child"].ID}] = false
 	outliner.rebuildRows()
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{"parent", "child", "loner"}) {
 		t.Fatalf("hand-folded rows = %v, want the grandchild hidden and the rest visible", got)
@@ -89,7 +90,7 @@ func TestToggleAllSubtreesUnfoldsWhenAnySingleSubtreeIsFolded(t *testing.T) {
 func TestToggleAllSubtreesRidesTheCursorToAVisibleAncestor(t *testing.T) {
 	outliner, project, tasks := foldAllProject(t)
 
-	deepest := TaskIdentity{ProjectID: project.ID, TaskID: tasks["grandchild"].ID}
+	deepest := taskref.TaskIdentity{ProjectID: project.ID, TaskID: tasks["grandchild"].ID}
 	if !outliner.moveCursorToIdentity(deepest) {
 		t.Fatal("grandchild row is missing before the fold")
 	}
@@ -117,7 +118,7 @@ func TestToggleAllSubtreesRidesTheCursorToAVisibleAncestor(t *testing.T) {
 func TestToggleAllSubtreesLeavesTheOtherFoldAxesAlone(t *testing.T) {
 	outliner, project, tasks := foldAllProject(t)
 
-	checklistOwner := TaskIdentity{ProjectID: project.ID, TaskID: tasks["parent"].ID}
+	checklistOwner := taskref.TaskIdentity{ProjectID: project.ID, TaskID: tasks["parent"].ID}
 	outliner.setChecklistExpanded(checklistOwner, true)
 	headers := outliner.visibleSectionHeaders()
 	if len(headers) == 0 {

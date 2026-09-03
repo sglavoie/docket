@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // handleEditTaskContent launches external editor for task title and description.
@@ -152,7 +153,7 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 }
 
 func (m *AppModel) commitTaskContentEdit(task *models.Task, project *models.Project, result *quickEditResult, msg TaskContentEditedMsg) tea.Cmd {
-	source := taskIdentityFor(task, project)
+	source := taskref.For(task, project)
 	req := taskLineEditRequest(source, result)
 	req.Description = &msg.NewDescription
 	req.PlanningArtifacts = shellPlanningReconcileArtifactBuilder(m.runtime, m.configManager)
@@ -161,7 +162,7 @@ func (m *AppModel) commitTaskContentEdit(task *models.Task, project *models.Proj
 	}
 	var relocation *outlinerRelocationCapture
 	if out, ok := m.outlinerPrimary(); ok {
-		relocation = out.captureOutlinerRelocation([]TaskIdentity{source})
+		relocation = out.captureOutlinerRelocation([]taskref.TaskIdentity{source})
 	}
 
 	edited, err := m.appService.EditTaskLine(req)

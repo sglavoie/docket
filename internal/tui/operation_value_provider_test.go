@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestStateValueProviderAcceptsOnlyCanonicalPresets(t *testing.T) {
@@ -263,7 +264,7 @@ func TestBulkTagPickerRepresentsAllSomeNoneAndEmitsPatch(t *testing.T) {
 	context.Selection.Visual = true
 	for index, task := range []*models.Task{common, other} {
 		project := env.projects[index]
-		context.Selection.Tasks = append(context.Selection.Tasks, taskIdentityFor(task, project))
+		context.Selection.Tasks = append(context.Selection.Tasks, taskref.For(task, project))
 		context.Selection.Entities = append(context.Selection.Entities, taskOperationEntity(task, project))
 	}
 	context.Entity = context.Selection.Entities[0]
@@ -333,7 +334,7 @@ func TestBulkContextRowsReadIndeterminateAndWriteOnlyWhenPicked(t *testing.T) {
 	context.Selection.Visual = true
 	for index, task := range []*models.Task{first, second} {
 		project := env.projects[index]
-		context.Selection.Tasks = append(context.Selection.Tasks, taskIdentityFor(task, project))
+		context.Selection.Tasks = append(context.Selection.Tasks, taskref.For(task, project))
 		context.Selection.Entities = append(context.Selection.Entities, taskOperationEntity(task, project))
 	}
 	context.Entity = context.Selection.Entities[0]

@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // lensLifecycleOutliner builds one two-project cross-project scope whose tasks
@@ -79,7 +80,7 @@ func TestApplyNamedLensInstallsSavedProjectionAndEscRestoresBaseline(t *testing.
 	outliner.treeSort = SortState{Field: SortByTitle, Ascending: true}
 	outliner.collapsedSections["baseline-fold"] = true
 	outliner.peekMode = true
-	outliner.selectedTaskIdentities[TaskIdentity{ProjectID: "beta", TaskID: "beta-inbox"}] = true
+	outliner.selectedTaskIdentities[taskref.TaskIdentity{ProjectID: "beta", TaskID: "beta-inbox"}] = true
 	baselineRows := searchVisibleTaskIDs(outliner)
 
 	applyLensOrFatal(t, outliner, waitingLens(lensTestID(1), "Waiting", "needle"))
@@ -130,7 +131,7 @@ func TestApplyNamedLensInstallsSavedProjectionAndEscRestoresBaseline(t *testing.
 	if !outliner.peekMode {
 		t.Fatal("restoration dropped Peek")
 	}
-	if !outliner.selectedTaskIdentities[TaskIdentity{ProjectID: "beta", TaskID: "beta-inbox"}] {
+	if !outliner.selectedTaskIdentities[taskref.TaskIdentity{ProjectID: "beta", TaskID: "beta-inbox"}] {
 		t.Fatal("restoration dropped the baseline selection")
 	}
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, baselineRows) {

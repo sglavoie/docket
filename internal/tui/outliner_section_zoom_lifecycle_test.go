@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func projectHeaderIndex(t *testing.T, outliner *OutlinerModel, projectID string) int {
@@ -227,7 +228,7 @@ func TestEscCascadeUnwindsZoomBetweenFocusAndScope(t *testing.T) {
 	outliner.pushProjectScope(project.ID)
 
 	zoomIntoSection(t, outliner, models.StateGroupDoing.Label())
-	if !outliner.moveCursorToIdentity(TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) ||
+	if !outliner.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) ||
 		!outliner.focusSubtreeAtCursor() {
 		t.Fatal("could not seed task Focus inside the zoom")
 	}

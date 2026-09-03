@@ -4,16 +4,17 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // through its owner so a fold started from one lands on the task it belongs to.
-func (m *OutlinerModel) cursorTaskIdentity() (TaskIdentity, bool) {
+func (m *OutlinerModel) cursorTaskIdentity() (taskref.TaskIdentity, bool) {
 	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
-		return TaskIdentity{}, false
+		return taskref.TaskIdentity{}, false
 	}
 	row := m.rows[m.cursor]
 	if (!row.isTaskRow() && !row.IsChecklistItem) || row.task == nil {
-		return TaskIdentity{}, false
+		return taskref.TaskIdentity{}, false
 	}
 	return m.taskIdentityForRow(row), true
 }
@@ -22,7 +23,7 @@ func (m *OutlinerModel) cursorTaskIdentity() (TaskIdentity, bool) {
 // walks ParentID through the owning project rather than the row's Parent
 // pointer, because a projection row can hold a clone whose links no longer
 // reach the loaded tree — the same reason visibleSiblings reads parentIDOf.
-func (m *OutlinerModel) cursorAncestorIdentities() []TaskIdentity {
+func (m *OutlinerModel) cursorAncestorIdentities() []taskref.TaskIdentity {
 	identity, ok := m.cursorTaskIdentity()
 	if !ok {
 		return nil
@@ -31,10 +32,10 @@ func (m *OutlinerModel) cursorAncestorIdentities() []TaskIdentity {
 	if project == nil {
 		return nil
 	}
-	var ancestors []TaskIdentity
+	var ancestors []taskref.TaskIdentity
 	parentID := parentIDOf(m.rows[m.cursor].task)
 	for depth := 0; parentID != "" && depth <= models.MaxNestingDepth; depth++ {
-		ancestors = append(ancestors, TaskIdentity{ProjectID: identity.ProjectID, TaskID: parentID})
+		ancestors = append(ancestors, taskref.TaskIdentity{ProjectID: identity.ProjectID, TaskID: parentID})
 		parent := project.GetTaskByID(parentID)
 		if parent == nil {
 			break
@@ -46,7 +47,7 @@ func (m *OutlinerModel) cursorAncestorIdentities() []TaskIdentity {
 
 // moveCursorToNearestIdentity parks the cursor on the first candidate that still
 // has a row, clamping when none does.
-func (m *OutlinerModel) moveCursorToNearestIdentity(candidates []TaskIdentity) {
+func (m *OutlinerModel) moveCursorToNearestIdentity(candidates []taskref.TaskIdentity) {
 	for _, candidate := range candidates {
 		if m.moveCursorToIdentity(candidate) {
 			return
@@ -187,7 +188,7 @@ func (m *OutlinerModel) setSectionRowCollapsed(row outlinerRow, collapsed bool) 
 	m.collapsedSections[key] = collapsed
 }
 
-func (m *OutlinerModel) moveCursorToIdentity(identity TaskIdentity) bool {
+func (m *OutlinerModel) moveCursorToIdentity(identity taskref.TaskIdentity) bool {
 	for i, row := range m.rows {
 		if !row.isTaskRow() || row.task == nil {
 			continue

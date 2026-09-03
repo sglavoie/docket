@@ -6,6 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // TestMoveToProjectListsEveryAvailableProjectButTheCurrentOne pins the picker's
@@ -60,7 +61,7 @@ func TestMoveToProjectReassignsShortIDsAcrossTheWholeSubtree(t *testing.T) {
 		t.Fatal("the destination fixture task has no ShortID to collide with")
 	}
 
-	cmd := m.moveTaskToProjectCmd([]TaskIdentity{taskIdentityFor(source, sourceProject)}, destination.ID, nil)
+	cmd := m.moveTaskToProjectCmd([]taskref.TaskIdentity{taskref.For(source, sourceProject)}, destination.ID, nil)
 	if cmd == nil {
 		t.Fatal("the move produced no command")
 	}

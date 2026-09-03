@@ -2,6 +2,8 @@ package tui
 
 import (
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestToggleMode(t *testing.T) {
@@ -20,7 +22,7 @@ func TestToggleMode(t *testing.T) {
 	t.Run("exits multi-select mode and clears selections", func(t *testing.T) {
 		s := &MultiSelectState{
 			multiSelectMode: true,
-			selectedTaskIdentities: map[TaskIdentity]bool{
+			selectedTaskIdentities: map[taskref.TaskIdentity]bool{
 				{ProjectID: "project", TaskID: "a"}: true,
 				{ProjectID: "project", TaskID: "b"}: true,
 			},
@@ -42,7 +44,7 @@ func TestToggleMode(t *testing.T) {
 func TestToggleTaskIdentityAndUpdateStatus(t *testing.T) {
 	noSel := "no selection"
 	withSel := "%d selected"
-	identity := TaskIdentity{ProjectID: "project", TaskID: "task-1"}
+	identity := taskref.TaskIdentity{ProjectID: "project", TaskID: "task-1"}
 
 	t.Run("selecting a task updates status with count", func(t *testing.T) {
 		s := &MultiSelectState{multiSelectMode: true}
@@ -60,7 +62,7 @@ func TestToggleTaskIdentityAndUpdateStatus(t *testing.T) {
 	t.Run("deselecting last task shows no-selection message", func(t *testing.T) {
 		s := &MultiSelectState{
 			multiSelectMode:        true,
-			selectedTaskIdentities: map[TaskIdentity]bool{identity: true},
+			selectedTaskIdentities: map[taskref.TaskIdentity]bool{identity: true},
 		}
 		var status string
 		s.ToggleTaskIdentity(identity)
@@ -89,7 +91,7 @@ func TestUpdateStatus(t *testing.T) {
 
 	t.Run("multiple selections", func(t *testing.T) {
 		s := &MultiSelectState{
-			selectedTaskIdentities: map[TaskIdentity]bool{
+			selectedTaskIdentities: map[taskref.TaskIdentity]bool{
 				{ProjectID: "project", TaskID: "a"}: true,
 				{ProjectID: "project", TaskID: "b"}: true,
 				{ProjectID: "project", TaskID: "c"}: true,
@@ -106,7 +108,7 @@ func TestUpdateStatus(t *testing.T) {
 func TestFinishBulkPreservesSelection(t *testing.T) {
 	s := &MultiSelectState{
 		multiSelectMode: true,
-		selectedTaskIdentities: map[TaskIdentity]bool{
+		selectedTaskIdentities: map[taskref.TaskIdentity]bool{
 			{ProjectID: "project", TaskID: "a"}: true,
 			{ProjectID: "project", TaskID: "b"}: true,
 		},
@@ -129,7 +131,7 @@ func TestMultiSelectStateHasTaskIDRejectsAmbiguousIdentity(t *testing.T) {
 	sharedID := "shared-task"
 	state := &MultiSelectState{
 		multiSelectMode: true,
-		selectedTaskIdentities: map[TaskIdentity]bool{
+		selectedTaskIdentities: map[taskref.TaskIdentity]bool{
 			{ProjectID: "alpha", TaskID: sharedID}: true,
 			{ProjectID: "beta", TaskID: sharedID}:  true,
 		},

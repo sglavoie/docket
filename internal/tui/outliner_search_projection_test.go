@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // The ranked list is the one presentation that leaves the mode's lanes and the
@@ -44,11 +45,11 @@ func TestTheRankedListLeavesModeAndFoldsButHonorsScopeAndFacets(t *testing.T) {
 	outliner := scopeTestOutliner(alpha, beta)
 	outliner.pushProjectScope(alpha.ID)
 	outliner.selectOutlinerMode(ModeBacklog)
-	outliner.expandedNodes[TaskIdentity{ProjectID: alpha.ID, TaskID: parent.ID}] = false
+	outliner.expandedNodes[taskref.TaskIdentity{ProjectID: alpha.ID, TaskID: parent.ID}] = false
 	searchRankedList(outliner, "needle")
 
 	got := qualifiedVisibleTaskIDs(outliner)
-	want := []TaskIdentity{
+	want := []taskref.TaskIdentity{
 		{ProjectID: alpha.ID, TaskID: inbox.ID},
 		{ProjectID: alpha.ID, TaskID: child.ID},
 	}
@@ -63,7 +64,7 @@ func TestTheRankedListLeavesModeAndFoldsButHonorsScopeAndFacets(t *testing.T) {
 	// query asked for it. Admission has one rule and the query is it.
 	searchRankedList(outliner, "needle @@any")
 	if got := qualifiedVisibleTaskIDs(outliner); !slices.Equal(got,
-		[]TaskIdentity{{ProjectID: alpha.ID, TaskID: deferred.ID}}) {
+		[]taskref.TaskIdentity{{ProjectID: alpha.ID, TaskID: deferred.ID}}) {
 		t.Fatalf("deferred query = %v, want the deferred hit alone", got)
 	}
 	searchRankedList(outliner, "needle")
@@ -76,7 +77,7 @@ func TestTheRankedListLeavesModeAndFoldsButHonorsScopeAndFacets(t *testing.T) {
 	outliner.crossForceRebuild = true
 	outliner.crossProjectRebuildRows()
 	if got := qualifiedVisibleTaskIDs(outliner); !slices.Equal(got,
-		[]TaskIdentity{{ProjectID: alpha.ID, TaskID: inbox.ID}}) {
+		[]taskref.TaskIdentity{{ProjectID: alpha.ID, TaskID: inbox.ID}}) {
 		t.Fatalf("search under the priority facet = %v, want only the low-priority hit", got)
 	}
 }
@@ -128,7 +129,7 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 	outliner.filter.Tags = map[string]bool{"saved": true}
 	outliner.adoptFilterCarriers()
 	outliner.collapsedSections = map[string]bool{"saved-section": true}
-	outliner.expandedNodes = map[TaskIdentity]bool{{ProjectID: project.ID, TaskID: first.ID}: false}
+	outliner.expandedNodes = map[taskref.TaskIdentity]bool{{ProjectID: project.ID, TaskID: first.ID}: false}
 	outliner.crossForceRebuild = true
 	outliner.crossProjectRebuildRows()
 	if !outliner.moveCursorToProjectTask(second.ID, project.ID) {
@@ -154,7 +155,7 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 	outliner.filter.Tags = map[string]bool{"changed": true}
 	outliner.adoptFilterCarriers()
 	outliner.collapsedSections["changed-section"] = true
-	outliner.expandedNodes[TaskIdentity{ProjectID: project.ID, TaskID: third.ID}] = false
+	outliner.expandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: third.ID}] = false
 	// The mode is a live axis under a held query, and it is also part of the
 	// frame the query was typed in, so moving it here is exactly what Esc has to
 	// put back below.
@@ -279,11 +280,11 @@ func TestScopeWideSearchAppliesSmartCaseAndFallsBackWhenEmpty(t *testing.T) {
 	}
 }
 
-func qualifiedVisibleTaskIDs(outliner *OutlinerModel) []TaskIdentity {
-	result := make([]TaskIdentity, 0)
+func qualifiedVisibleTaskIDs(outliner *OutlinerModel) []taskref.TaskIdentity {
+	result := make([]taskref.TaskIdentity, 0)
 	for _, row := range outliner.rows {
 		if row.isTaskRow() && row.task != nil {
-			result = append(result, TaskIdentity{ProjectID: row.ProjectID, TaskID: row.task.ID})
+			result = append(result, taskref.TaskIdentity{ProjectID: row.ProjectID, TaskID: row.task.ID})
 		}
 	}
 	return result

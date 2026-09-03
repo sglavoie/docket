@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // inboxAsyncEnv wires the whole asynchronous mutation chain over a real Inbox
@@ -87,16 +88,16 @@ func (e *inboxAsyncEnv) applyReload(t *testing.T, saveCmd tea.Cmd) {
 	e.outliner.handleCrossProjectsLoaded(loaded)
 }
 
-func (e *inboxAsyncEnv) identity(t *testing.T, projectIndex int, taskID string) TaskIdentity {
+func (e *inboxAsyncEnv) identity(t *testing.T, projectIndex int, taskID string) taskref.TaskIdentity {
 	t.Helper()
 	project := e.env.projects[projectIndex]
 	for _, task := range project.Tasks {
 		if task.ID == taskID {
-			return taskIdentityFor(task, project)
+			return taskref.For(task, project)
 		}
 	}
 	t.Fatalf("task %q is not in project %d", taskID, projectIndex)
-	return TaskIdentity{}
+	return taskref.TaskIdentity{}
 }
 
 // TestInboxAsyncDoneAdvancesAcrossAProjectGroupHeader is the reconciliation: $d
@@ -140,7 +141,7 @@ func TestInboxAsyncBulkSweepLandsPastTheWholeSelection(t *testing.T) {
 		[]*models.Task{betaOne, betaTwo})
 
 	inboxCursorTo(t, async.outliner, alphaTwo.ID)
-	async.outliner.ReplaceSelection([]TaskIdentity{
+	async.outliner.ReplaceSelection([]taskref.TaskIdentity{
 		async.identity(t, 0, alphaTwo.ID),
 		async.identity(t, 1, betaOne.ID),
 	})

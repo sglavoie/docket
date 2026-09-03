@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -56,7 +57,7 @@ type ParentSelectorModel struct {
 	allItems     []ParentPickerItem          // All valid parent candidates
 	allowNone    bool                        // Whether "None" is a valid option
 	source       presentation.PresentationID // Which view opened this selector
-	reparentTask TaskIdentity                // When valid, forwarded back in ParentSelectedMsg
+	reparentTask taskref.TaskIdentity        // When valid, forwarded back in ParentSelectedMsg
 	alwaysSearch *alwaysSearchSinglePicker[ParentPickerItem]
 }
 

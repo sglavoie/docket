@@ -6,13 +6,14 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func foundationTestContext() CommandContext {
 	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Entity = EntityContext{ProjectID: "project-b", TaskID: "task-current"}
 	ctx.CurrentEntity = TaskEntity("project-b", "task-current")
-	ctx.Selection.Tasks = []TaskIdentity{{ProjectID: "project-a", TaskID: "task-1"}}
+	ctx.Selection.Tasks = []taskref.TaskIdentity{{ProjectID: "project-a", TaskID: "task-1"}}
 	ctx.Selection.EntityIdentities = []EntityIdentity{TaskEntity("project-a", "task-1")}
 	ctx.ScopeProjectIDs = []string{"project-a", "project-b"}
 	return ctx
@@ -100,11 +101,11 @@ func TestFoundationInvariants(t *testing.T) {
 			rendered[form.wantString] = form.name
 		}
 
-		task := TaskIdentity{ProjectID: "project-a", TaskID: "task-1"}
-		if got := task.Entity().Task(); got != task {
+		task := taskref.TaskIdentity{ProjectID: "project-a", TaskID: "task-1"}
+		if got := entityForTaskIdentity(task).Task(); got != task {
 			t.Fatalf("task round trip = %#v, want %#v", got, task)
 		}
-		if got := ProjectEntity("project-a").Task(); got != (TaskIdentity{}) {
+		if got := ProjectEntity("project-a").Task(); got != (taskref.TaskIdentity{}) {
 			t.Fatalf("non-task identity yielded task %#v", got)
 		}
 	})
@@ -261,7 +262,7 @@ func TestOperationTargetResolverResolvesTypedEntityIdentities(t *testing.T) {
 func TestOperationTargetResolverProjectsTaskSelectionOntoBothSources(t *testing.T) {
 	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Entity = EntityContext{ProjectID: "project-b", TaskID: "task-current"}
-	ctx.Selection.Tasks = []TaskIdentity{
+	ctx.Selection.Tasks = []taskref.TaskIdentity{
 		{ProjectID: "project-b", TaskID: "task-2"},
 		{ProjectID: "project-a", TaskID: "task-1"},
 	}
@@ -275,7 +276,7 @@ func TestOperationTargetResolverProjectsTaskSelectionOntoBothSources(t *testing.
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
-	wantTasks := []TaskIdentity{
+	wantTasks := []taskref.TaskIdentity{
 		{ProjectID: "project-a", TaskID: "task-1"},
 		{ProjectID: "project-b", TaskID: "task-2"},
 	}

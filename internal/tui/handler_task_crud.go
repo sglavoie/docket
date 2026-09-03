@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -131,7 +132,7 @@ func (m *AppModel) createdTaskSectionLabel(task *models.Task, project *models.Pr
 		return ""
 	}
 	if project != nil {
-		identity := taskIdentityFor(task, project)
+		identity := taskref.For(task, project)
 		if m.todayIDs[identity] {
 			return models.StateGroupToday.Label()
 		}

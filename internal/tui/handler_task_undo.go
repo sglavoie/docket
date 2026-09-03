@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // workspaceLedgerRestoreIsNewest reports whether the durable workspace ledger
@@ -85,7 +86,7 @@ func (m *AppModel) repairTaskProjectRefsAfterRestore(projects []*models.Project)
 }
 
 func (m *AppModel) rewireTaskProjectRefsAfterRestore(projects []*models.Project) {
-	refs := make(map[TaskIdentity]TaskProjectRef)
+	refs := make(map[taskref.TaskIdentity]TaskProjectRef)
 	refsByTaskID := make(map[string][]TaskProjectRef)
 	for _, project := range projects {
 		if project == nil {
@@ -94,7 +95,7 @@ func (m *AppModel) rewireTaskProjectRefsAfterRestore(projects []*models.Project)
 		for _, task := range project.Tasks {
 			if task != nil && task.ID != "" {
 				ref := TaskProjectRef{Task: task, Project: project}
-				refs[taskIdentityFor(task, project)] = ref
+				refs[taskref.For(task, project)] = ref
 				refsByTaskID[task.ID] = append(refsByTaskID[task.ID], ref)
 			}
 		}
@@ -104,7 +105,7 @@ func (m *AppModel) rewireTaskProjectRefsAfterRestore(projects []*models.Project)
 			return TaskProjectRef{}, false
 		}
 		if project != nil {
-			ref, ok := refs[taskIdentityFor(task, project)]
+			ref, ok := refs[taskref.For(task, project)]
 			return ref, ok
 		}
 		candidates := refsByTaskID[task.ID]

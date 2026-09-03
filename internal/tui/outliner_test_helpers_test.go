@@ -6,6 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // typedTestApp wires the same typed route, operation, and Outliner foundations
@@ -135,9 +136,9 @@ func newCrossOutlinerFromEnv(env *crossProjectTestEnv) *OutlinerModel {
 		runtime:           testRuntimeAt(runtime.DataDir(), runtime),
 		quickEdit:         NewQuickEditComponent(),
 		collapsedSections: make(map[string]bool),
-		expandedNodes:     make(map[TaskIdentity]bool),
+		expandedNodes:     make(map[taskref.TaskIdentity]bool),
 		MultiSelectState: MultiSelectState{
-			selectedTaskIdentities: make(map[TaskIdentity]bool),
+			selectedTaskIdentities: make(map[taskref.TaskIdentity]bool),
 		},
 		loadedProjects: env.projects,
 	}

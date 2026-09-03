@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // Persist the canonical mode DTO for the active Outliner scope. Filter facets
@@ -27,7 +28,7 @@ func (m *AppModel) saveOutlinerFilterState() {
 // operation, so it commits through TaskItem.ExecuteOperation like every other
 // `#` edit; the shell owns reload and toast via the batch result, and the
 // durable write records through the workspace undo ledger.
-func (m *AppModel) applyTagsToTask(identity TaskIdentity, task *models.Task, selectedTags []string) tea.Cmd {
+func (m *AppModel) applyTagsToTask(identity taskref.TaskIdentity, task *models.Task, selectedTags []string) tea.Cmd {
 	if task == nil || !identity.Valid() {
 		return nil
 	}

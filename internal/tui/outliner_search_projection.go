@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // outlinerSearchSnapshot is the navigation frame a slash search was typed in.
@@ -23,8 +24,8 @@ type outlinerSearchSnapshot struct {
 	filter             FilterState
 	sort               SortState
 	treeSort           SortState
-	expandedNodes      map[TaskIdentity]bool
-	expandedChecklists map[TaskIdentity]bool
+	expandedNodes      map[taskref.TaskIdentity]bool
+	expandedChecklists map[taskref.TaskIdentity]bool
 	collapsedSections  map[string]bool
 	focusStack         []FocusEntry
 	crossFocusStack    []CrossProjectFocusEntry
@@ -204,7 +205,7 @@ func (m *OutlinerModel) exitSearchOntoCursorTask() (string, bool) {
 	return "Task is hidden by the active facets", false
 }
 
-func (m *OutlinerModel) landOnSearchResult(identity TaskIdentity) bool {
+func (m *OutlinerModel) landOnSearchResult(identity taskref.TaskIdentity) bool {
 	task, project := m.taskAndProjectForIdentity(identity)
 	if task == nil {
 		return false

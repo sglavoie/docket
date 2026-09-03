@@ -1,5 +1,7 @@
 package tui
 
+import "github.com/sglavoie/tt/internal/tui/taskref"
+
 // focusSubtreeAtCursor enters a descendants-only projection rooted at the
 // selected task. Each frame retains the exact parent cursor and scroll offset,
 // so nested Focus levels unwind without moving the viewport.
@@ -51,7 +53,7 @@ func (m *OutlinerModel) focusParentAtCursor() bool {
 			return false
 		}
 		m.pushFocusFrame(
-			TaskIdentity{ProjectID: origin.ProjectID, TaskID: parentID},
+			taskref.TaskIdentity{ProjectID: origin.ProjectID, TaskID: parentID},
 			m.cursor,
 			m.viewScrollOffset,
 		)
@@ -64,7 +66,7 @@ func (m *OutlinerModel) focusParentAtCursor() bool {
 
 // pushFocusFrame records one Focus frame in whichever stack the current scope
 // owns, retaining the cursor and scroll offset Esc restores.
-func (m *OutlinerModel) pushFocusFrame(identity TaskIdentity, cursorIndex, scrollOffset int) {
+func (m *OutlinerModel) pushFocusFrame(identity taskref.TaskIdentity, cursorIndex, scrollOffset int) {
 	if m.project != nil {
 		m.focusStack = append(m.focusStack, FocusEntry{
 			TaskID:       identity.TaskID,
@@ -95,7 +97,7 @@ func (m *OutlinerModel) climbFocusLevel() {
 	cursorIndex, scrollOffset := m.popFocusFrame()
 	m.cursor, m.viewScrollOffset = cursorIndex, scrollOffset
 
-	parent := TaskIdentity{ProjectID: root.ProjectID, TaskID: parentIDOf(rootTask)}
+	parent := taskref.TaskIdentity{ProjectID: root.ProjectID, TaskID: parentIDOf(rootTask)}
 	if parent.TaskID == "" {
 		return
 	}
@@ -126,20 +128,20 @@ func (m *OutlinerModel) popFocusFrame() (cursorIndex, scrollOffset int) {
 // focusRootIdentity names the task the current Focus projection is rooted at.
 // Rebuild-time focus-stack validation keeps the frame live, so a caller still
 // resolves the identity against loaded state before acting on it.
-func (m *OutlinerModel) focusRootIdentity() (TaskIdentity, bool) {
+func (m *OutlinerModel) focusRootIdentity() (taskref.TaskIdentity, bool) {
 	if m == nil {
-		return TaskIdentity{}, false
+		return taskref.TaskIdentity{}, false
 	}
-	var identity TaskIdentity
+	var identity taskref.TaskIdentity
 	switch {
 	case len(m.crossFocusStack) > 0:
 		top := m.crossFocusStack[len(m.crossFocusStack)-1]
-		identity = TaskIdentity{ProjectID: top.ProjectID, TaskID: top.TaskID}
+		identity = taskref.TaskIdentity{ProjectID: top.ProjectID, TaskID: top.TaskID}
 	case m.project != nil && len(m.focusStack) > 0:
 		top := m.focusStack[len(m.focusStack)-1]
-		identity = TaskIdentity{ProjectID: m.project.ID, TaskID: top.TaskID}
+		identity = taskref.TaskIdentity{ProjectID: m.project.ID, TaskID: top.TaskID}
 	default:
-		return TaskIdentity{}, false
+		return taskref.TaskIdentity{}, false
 	}
 	return identity, identity.Valid()
 }

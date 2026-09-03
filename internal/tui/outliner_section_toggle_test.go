@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestToggleVisibleSectionsCollapsesBuiltInsAndRestoresTaskFocus(t *testing.T) {
@@ -27,14 +28,14 @@ func TestToggleVisibleSectionsCollapsesBuiltInsAndRestoresTaskFocus(t *testing.T
 	}})
 	outliner.selectOutlinerMode(ModeAll)
 
-	focus := TaskIdentity{ProjectID: project.ID, TaskID: doing.ID}
+	focus := taskref.TaskIdentity{ProjectID: project.ID, TaskID: doing.ID}
 	if !outliner.moveCursorToIdentity(focus) {
 		t.Fatal("Doing task is missing before the bulk toggle")
 	}
 	outliner.multiSelectMode = true
 	outliner.SelectTaskIdentity(focus)
 
-	parentIdentity := TaskIdentity{ProjectID: project.ID, TaskID: parent.ID}
+	parentIdentity := taskref.TaskIdentity{ProjectID: project.ID, TaskID: parent.ID}
 	outliner.expandedNodes[parentIdentity] = false
 	expandedBefore := maps.Clone(outliner.expandedNodes)
 	projectHeaderKey := ""
@@ -144,7 +145,7 @@ func TestToggleVisibleSectionsKeepsUnsectionedPrimaryTaskFocused(t *testing.T) {
 	}})
 	outliner.selectOutlinerMode(ModeToday)
 
-	regularIdentity := TaskIdentity{ProjectID: project.ID, TaskID: regular.ID}
+	regularIdentity := taskref.TaskIdentity{ProjectID: project.ID, TaskID: regular.ID}
 	if !outliner.moveCursorToIdentity(regularIdentity) {
 		t.Fatal("planned Today task is missing before bulk toggle")
 	}
@@ -167,7 +168,7 @@ func TestToggleVisibleSectionsDispatchesLowercaseS(t *testing.T) {
 	outliner.loadedProjects = []*models.Project{project}
 	outliner.crossForceRebuild = true
 	outliner.crossProjectRebuildRows()
-	if !outliner.moveCursorToIdentity(TaskIdentity{ProjectID: project.ID, TaskID: "task"}) {
+	if !outliner.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: "task"}) {
 		t.Fatal("task is missing before s dispatch")
 	}
 

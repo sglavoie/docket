@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -54,7 +55,7 @@ func (m *OutlinerModel) navigateToTask(task *models.Task) bool {
 	m.clearSectionZoom()
 	m.ensureExpandedNodes()
 	for ancestor := task.Parent; ancestor != nil; ancestor = ancestor.Parent {
-		m.expandedNodes[TaskIdentity{ProjectID: projectID, TaskID: ancestor.ID}] = true
+		m.expandedNodes[taskref.TaskIdentity{ProjectID: projectID, TaskID: ancestor.ID}] = true
 	}
 	m.rebuildRows()
 
@@ -140,7 +141,7 @@ func (m *OutlinerModel) NavigateToTaskInProject(task *models.Task, project *mode
 	m.clearSectionZoom()
 	m.ensureExpandedNodes()
 	for ancestor := task.Parent; ancestor != nil; ancestor = ancestor.Parent {
-		m.expandedNodes[TaskIdentity{ProjectID: projectID, TaskID: ancestor.ID}] = true
+		m.expandedNodes[taskref.TaskIdentity{ProjectID: projectID, TaskID: ancestor.ID}] = true
 	}
 	m.rebuildRows()
 

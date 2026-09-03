@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func commandMessage(cmd tea.Cmd) tea.Msg {
@@ -98,7 +99,7 @@ func operationTargetLocators(targets ResolvedOperationTargets) []app.TaskLocator
 	return locators
 }
 
-func planningMemberLocators(members map[TaskIdentity]bool) []app.TaskLocator {
+func planningMemberLocators(members map[taskref.TaskIdentity]bool) []app.TaskLocator {
 	locators := make([]app.TaskLocator, 0, len(members))
 	for identity, member := range members {
 		if member {

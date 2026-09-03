@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // newTaskStructureTestProject lays out one epic with a story child followed by a
@@ -180,14 +181,14 @@ func TestWaitingCheckBackStepSuccessKeepsFrozenTargets(t *testing.T) {
 		Value:      models.StateWaiting,
 		HasValue:   true,
 	}
-	frozen := append([]TaskIdentity(nil), invocation.Context.Selection.Tasks...)
+	frozen := append([]taskref.TaskIdentity(nil), invocation.Context.Selection.Tasks...)
 
 	chained := withWaitingCheckBackStep(invocation, func() tea.Msg {
 		return BatchTransactionResultMsg{Action: "Set State"}
 	})
 	// The commit relocates the cursor, which is what the live selection would
 	// follow; the already-built chain must not.
-	invocation.Context.Selection.Tasks[0] = TaskIdentity{ProjectID: "project", TaskID: "relocated"}
+	invocation.Context.Selection.Tasks[0] = taskref.TaskIdentity{ProjectID: "project", TaskID: "relocated"}
 
 	cmds, ok := commandGroupMessage(chained())
 	if !ok {

@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -37,9 +38,9 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 		views:             NewViewRegistry(),
 		operationRegistry: NewOperationRegistry(),
 		nextOrder:         []PlanningTask{},
-		nextOrderIDs:      make(map[TaskIdentity]bool),
+		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),
 		today:             []PlanningTask{},
-		todayIDs:          make(map[TaskIdentity]bool),
+		todayIDs:          make(map[taskref.TaskIdentity]bool),
 	}
 
 	// The machine-local advisory setting is read before the options run, so
@@ -304,7 +305,7 @@ func (m *AppModel) hydrateNextOrder(workspaceProjects []*models.Project, startup
 			}
 			if task := p.GetTaskByID(item.TaskID); task != nil && task.State().IsNonterminal() {
 				m.nextOrder = append(m.nextOrder, PlanningTask{Task: task, Project: p})
-				m.nextOrderIDs[taskIdentityFor(task, p)] = true
+				m.nextOrderIDs[taskref.For(task, p)] = true
 			}
 			break
 		}
@@ -338,7 +339,7 @@ func (m *AppModel) hydrateToday(workspaceProjects []*models.Project, startupLoad
 			continue
 		}
 		m.today = append(m.today, PlanningTask{Task: foundTask, Project: foundProject})
-		m.todayIDs[taskIdentityFor(foundTask, foundProject)] = true
+		m.todayIDs[taskref.For(foundTask, foundProject)] = true
 	}
 	if planChanged && allowReconcile && m.appService != nil {
 		if _, err := m.appService.ReconcilePlanning(); err != nil {

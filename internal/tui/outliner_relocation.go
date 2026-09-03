@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // outlinerRelocationCapture travels with a mutation until its committed rows
@@ -16,7 +17,7 @@ import (
 // exactly as that refresh left it, so the reload guard can accept an untouched
 // cursor and still discard a moved one.
 type outlinerRelocationCapture struct {
-	Task          TaskIdentity
+	Task          taskref.TaskIdentity
 	Origin        outlinerJumpPosition
 	Projection    string
 	TransactionID string
@@ -31,7 +32,7 @@ type outlinerOriginRecordedMsg struct{ TransactionID string }
 
 // captureOutlinerRelocation snapshots the cursor's old list neighborhood only
 // when the followed task is part of the mutation target set.
-func (m *OutlinerModel) captureOutlinerRelocation(targets []TaskIdentity) *outlinerRelocationCapture {
+func (m *OutlinerModel) captureOutlinerRelocation(targets []taskref.TaskIdentity) *outlinerRelocationCapture {
 	if m == nil || len(targets) == 0 || m.cursor < 0 || m.cursor >= len(m.rows) {
 		return nil
 	}
@@ -40,7 +41,7 @@ func (m *OutlinerModel) captureOutlinerRelocation(targets []TaskIdentity) *outli
 	if !cursorTask.Valid() {
 		return nil
 	}
-	targetSet := make(map[TaskIdentity]bool, len(targets))
+	targetSet := make(map[taskref.TaskIdentity]bool, len(targets))
 	for _, target := range targets {
 		if target.Valid() {
 			targetSet[target] = true
@@ -228,7 +229,7 @@ func (m *OutlinerModel) advanceAfterDeparture(capture *outlinerRelocationCapture
 // after an atomic row edit. A visible result is followed and records the vacated
 // origin; a result hidden by the unchanged search/mode/filter/scope projection
 // leaves history intact and lands on the nearest surviving origin neighbor.
-func (m *OutlinerModel) finishTaskLineEditRelocation(capture *outlinerRelocationCapture, final TaskIdentity) (tea.Cmd, bool) {
+func (m *OutlinerModel) finishTaskLineEditRelocation(capture *outlinerRelocationCapture, final taskref.TaskIdentity) (tea.Cmd, bool) {
 	if m == nil || capture == nil || !final.Valid() {
 		return nil, false
 	}

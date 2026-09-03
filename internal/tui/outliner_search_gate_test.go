@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -125,7 +126,7 @@ func TestSearchProjectSigilNarrowsWithinFocusRatherThanEscapingIt(t *testing.T) 
 	beta := primaryRowsProject("beta", betaTask)
 
 	outliner := scopeTestOutliner(alpha, beta)
-	outliner.pushFocusFrame(TaskIdentity{ProjectID: alpha.ID, TaskID: parent.ID}, 0, 0)
+	outliner.pushFocusFrame(taskref.TaskIdentity{ProjectID: alpha.ID, TaskID: parent.ID}, 0, 0)
 
 	searchRankedList(outliner, "%alpha")
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{child.ID}) {

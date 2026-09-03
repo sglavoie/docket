@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -73,10 +74,10 @@ func TestWorkspacePulseCountsEligibleFlatTasksAtInjectedTime(t *testing.T) {
 	runtime := testConfigWithProjects(active, nilTasks, parked, archived)
 	installPulseRepository(t, active, nilTasks, parked, archived)
 
-	todayIDs := map[TaskIdentity]bool{
-		taskIdentityFor(today, active):                 true,
-		taskIdentityFor(terminal, active):              true,
-		taskIdentityFor(deferred, active):              true,
+	todayIDs := map[taskref.TaskIdentity]bool{
+		taskref.For(today, active):                     true,
+		taskref.For(terminal, active):                  true,
+		taskref.For(deferred, active):                  true,
 		{ProjectID: active.ID, TaskID: "stale"}:        true,
 		{ProjectID: parked.ID, TaskID: "parked-inbox"}: true,
 	}

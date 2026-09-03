@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -188,8 +189,8 @@ func compileSearchDestination(
 
 // resolveSearchNextIDs reads Next membership from the durable plan, because Next
 // and Today both store Backlog tasks and a state compare cannot tell them apart.
-func resolveSearchNextIDs(m *OutlinerModel, projects []*models.Project) map[TaskIdentity]bool {
-	ids := make(map[TaskIdentity]bool)
+func resolveSearchNextIDs(m *OutlinerModel, projects []*models.Project) map[taskref.TaskIdentity]bool {
+	ids := make(map[taskref.TaskIdentity]bool)
 	if m == nil || m.runtime == nil {
 		return ids
 	}
@@ -199,7 +200,7 @@ func resolveSearchNextIDs(m *OutlinerModel, projects []*models.Project) map[Task
 				continue
 			}
 			if task := project.GetTaskByID(item.TaskID); task != nil {
-				ids[taskIdentityFor(task, project)] = true
+				ids[taskref.For(task, project)] = true
 			}
 			break
 		}

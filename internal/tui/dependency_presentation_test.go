@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -166,7 +167,7 @@ func TestOutgoingDependencyDetailsNameLoadedTargetsAndFallBackToLocators(t *test
 func TestIncomingDependencyDetailsAreComputedFromLoadedProjectsOnly(t *testing.T) {
 	alpha, beta := dependencyPresentationFixture(t)
 
-	dependents := incomingDependencyDetails(TaskIdentity{ProjectID: "proj-b", TaskID: "remote"}, dependencyTestIndex(alpha, beta))
+	dependents := incomingDependencyDetails(taskref.TaskIdentity{ProjectID: "proj-b", TaskID: "remote"}, dependencyTestIndex(alpha, beta))
 	if len(dependents) != 1 || dependents[0].String() != "Alpha #1 Wire the importer (doing)" {
 		t.Fatalf("dependents = %#v, want the referring task named", dependents)
 	}
@@ -174,7 +175,7 @@ func TestIncomingDependencyDetailsAreComputedFromLoadedProjectsOnly(t *testing.T
 	// Drop the referring project from the population and the incoming view is
 	// empty rather than wrong: dependents are derived, and a derivation over a
 	// smaller population is honestly smaller.
-	if got := incomingDependencyDetails(TaskIdentity{ProjectID: "proj-b", TaskID: "remote"}, dependencyTestIndex(beta)); len(got) != 0 {
+	if got := incomingDependencyDetails(taskref.TaskIdentity{ProjectID: "proj-b", TaskID: "remote"}, dependencyTestIndex(beta)); len(got) != 0 {
 		t.Fatalf("dependents = %#v over an unloaded referrer, want none", got)
 	}
 }

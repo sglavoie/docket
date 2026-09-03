@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 type operationTestMsg string
@@ -29,7 +30,7 @@ func (transaction *operationTestTransaction) Rollback() error {
 func TestOperationTargetResolverResolvesEveryTargetSourceDeterministically(t *testing.T) {
 	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Entity = EntityContext{ProjectID: "project-b", TaskID: "task-current"}
-	ctx.Selection.Tasks = []TaskIdentity{
+	ctx.Selection.Tasks = []taskref.TaskIdentity{
 		{ProjectID: "project-b", TaskID: "task-2"},
 		{ProjectID: "project-a", TaskID: "task-1"},
 		{ProjectID: "project-b", TaskID: "task-2"},
@@ -42,7 +43,7 @@ func TestOperationTargetResolverResolvesEveryTargetSourceDeterministically(t *te
 		source       OperationTargetSource
 		category     OperationCategory
 		cardinality  TargetCardinality
-		wantTasks    []TaskIdentity
+		wantTasks    []taskref.TaskIdentity
 		wantProjects []string
 		wantCount    int
 	}{
@@ -50,7 +51,7 @@ func TestOperationTargetResolverResolvesEveryTargetSourceDeterministically(t *te
 			name: "current task", source: OperationTargetCurrentTask,
 			category:     OperationCategoryTask,
 			cardinality:  TargetCardinalityOne,
-			wantTasks:    []TaskIdentity{{ProjectID: "project-b", TaskID: "task-current"}},
+			wantTasks:    []taskref.TaskIdentity{{ProjectID: "project-b", TaskID: "task-current"}},
 			wantProjects: []string{"project-b"},
 			wantCount:    1,
 		},
@@ -58,7 +59,7 @@ func TestOperationTargetResolverResolvesEveryTargetSourceDeterministically(t *te
 			name: "selected tasks", source: OperationTargetSelectedTasks,
 			category:    OperationCategoryTask,
 			cardinality: TargetCardinalityOneOrMore,
-			wantTasks: []TaskIdentity{
+			wantTasks: []taskref.TaskIdentity{
 				{ProjectID: "project-a", TaskID: "task-1"},
 				{ProjectID: "project-b", TaskID: "task-2"},
 			},
@@ -130,7 +131,7 @@ func TestOperationTargetResolverSelectedTasksFallsBackToCurrentTask(t *testing.T
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
-	want := []TaskIdentity{{ProjectID: "project", TaskID: "current"}}
+	want := []taskref.TaskIdentity{{ProjectID: "project", TaskID: "current"}}
 	if got := targets.Tasks(); !slices.Equal(got, want) {
 		t.Fatalf("Tasks = %v, want %v", got, want)
 	}
@@ -206,7 +207,7 @@ func TestOperationExecutorCentralizesValueConfirmationTransactionStatusAndUndo(t
 	}
 
 	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
-	ctx.Selection.Tasks = []TaskIdentity{
+	ctx.Selection.Tasks = []taskref.TaskIdentity{
 		{ProjectID: "project-b", TaskID: "task-2"},
 		{ProjectID: "project-a", TaskID: "task-1"},
 	}

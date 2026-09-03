@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // adoptChildrenCmd routes the picker's checked set through the same task-line
@@ -17,7 +18,7 @@ import (
 // verbatim and never reparsed, and the request names no parent patch, so the
 // adopting task keeps its own place in the tree.
 func (m *AppModel) adoptChildrenCmd(
-	identity TaskIdentity,
+	identity taskref.TaskIdentity,
 	childIDs []string,
 	relocation *outlinerRelocationCapture,
 ) tea.Cmd {
@@ -59,7 +60,7 @@ func (m *AppModel) adoptChildrenCmd(
 // transaction would still write a ledger entry `u` could take back, and a
 // picker closed unchanged — or one whose every edit the fresh state already
 // reflects — is not something to undo.
-func (m *AppModel) setTaskReferencesCmd(identity TaskIdentity, value OperationTaskReferenceValue) tea.Cmd {
+func (m *AppModel) setTaskReferencesCmd(identity taskref.TaskIdentity, value OperationTaskReferenceValue) tea.Cmd {
 	task, project := m.taskAndProjectForIdentity(identity)
 	if task == nil || project == nil {
 		return func() tea.Msg {
@@ -92,7 +93,7 @@ func (m *AppModel) setTaskReferencesCmd(identity TaskIdentity, value OperationTa
 // reads as a rename, and the destination ShortIDs are reissued by the same
 // model primitive.
 func (m *AppModel) moveTaskToProjectCmd(
-	identities []TaskIdentity,
+	identities []taskref.TaskIdentity,
 	projectID string,
 	relocation *outlinerRelocationCapture,
 ) tea.Cmd {
@@ -108,7 +109,7 @@ func (m *AppModel) moveTaskToProjectCmd(
 }
 
 func (m *AppModel) moveOneTaskToProjectCmd(
-	identity TaskIdentity,
+	identity taskref.TaskIdentity,
 	projectID string,
 	relocation *outlinerRelocationCapture,
 ) tea.Cmd {
@@ -134,7 +135,7 @@ func (m *AppModel) moveOneTaskToProjectCmd(
 // their targets addressable and therefore chainable, a move invalidates the very
 // identities the selection is made of.
 func (m *AppModel) moveTaskSelectionToProjectCmd(
-	identities []TaskIdentity,
+	identities []taskref.TaskIdentity,
 	projectID string,
 	relocation *outlinerRelocationCapture,
 ) tea.Cmd {
@@ -168,7 +169,7 @@ func (m *AppModel) moveDestinationName(projectID string) string {
 func (m *AppModel) executeBulkTaskValueOperation(
 	invocation OperationInvocation,
 ) OperationHandlerResult {
-	identities := make([]TaskIdentity, 0, len(invocation.Targets.Targets))
+	identities := make([]taskref.TaskIdentity, 0, len(invocation.Targets.Targets))
 	locators := make([]app.TaskLocator, 0, len(invocation.Targets.Targets))
 	for _, target := range invocation.Targets.Targets {
 		if !target.Task.Valid() {

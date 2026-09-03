@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestCollapseOrMoveToParentReachesTheRowlessFocusRoot(t *testing.T) {
@@ -58,8 +59,8 @@ func TestCollapseOrMoveToParentReachesTheRowlessFocusRoot(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			out, project, grandchild := newFixture()
-			identity := func(taskID string) TaskIdentity {
-				return TaskIdentity{ProjectID: project.ID, TaskID: taskID}
+			identity := func(taskID string) taskref.TaskIdentity {
+				return taskref.TaskIdentity{ProjectID: project.ID, TaskID: taskID}
 			}
 			for _, taskID := range test.seedFocus {
 				if !out.moveCursorToIdentity(identity(taskID)) || !out.focusSubtreeAtCursor() {

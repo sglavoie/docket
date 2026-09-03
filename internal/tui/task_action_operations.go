@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func (m *AppModel) taskActionOperationDescriptors() []OperationDescriptor {
@@ -110,7 +111,7 @@ func (m *AppModel) taskStructureAllowsOperation(id OperationID, entity EntityCon
 	default:
 		return true
 	}
-	task, project := m.taskAndProjectForIdentity(TaskIdentity{
+	task, project := m.taskAndProjectForIdentity(taskref.TaskIdentity{
 		ProjectID: entity.ProjectID,
 		TaskID:    entity.TaskID,
 	})

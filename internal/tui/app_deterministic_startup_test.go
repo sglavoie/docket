@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 //nolint:govet // Commit and reload stages intentionally use local error scopes.
@@ -33,9 +34,9 @@ func TestLaunchResetsEveryPresentationAxisAndRelaunchPreservesOnlyTheme(t *testi
 	outliner.adoptFilterCarriers()
 	outliner.cursor = 7
 	outliner.collapsedSections["stale"] = true
-	outliner.expandedNodes[TaskIdentity{ProjectID: projects[0].ID, TaskID: "stale"}] = true
+	outliner.expandedNodes[taskref.TaskIdentity{ProjectID: projects[0].ID, TaskID: "stale"}] = true
 	outliner.multiSelectMode = true
-	outliner.selectedTaskIdentities[TaskIdentity{ProjectID: projects[0].ID, TaskID: "stale"}] = true
+	outliner.selectedTaskIdentities[taskref.TaskIdentity{ProjectID: projects[0].ID, TaskID: "stale"}] = true
 	app.currentProject = projects[0]
 	pushTestPresentationOverlay(app, presentation.ViewHelp)
 

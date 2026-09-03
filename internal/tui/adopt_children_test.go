@@ -2,6 +2,8 @@ package tui
 
 import (
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // TestAdoptChildrenPickerOmitsTheTasksItAlreadyParents is the structural half of
@@ -53,7 +55,7 @@ func TestAdoptChildrenWithNothingCheckedKeepsEveryExistingChild(t *testing.T) {
 	parent, project := taskContentFixtureTask(t, m, "User authentication")
 	child, _ := taskContentFixtureTask(t, m, "Build login form")
 
-	cmd := m.adoptChildrenCmd(taskIdentityFor(parent, project), nil, nil)
+	cmd := m.adoptChildrenCmd(taskref.For(parent, project), nil, nil)
 	if cmd == nil {
 		t.Fatal("adopting nothing produced no command")
 	}

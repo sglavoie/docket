@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestPinnedModeProjectionIsNewestFirstAndProjectionOwned(t *testing.T) {
@@ -57,11 +58,11 @@ func TestPinnedModeProjectionIsNewestFirstAndProjectionOwned(t *testing.T) {
 	if projection.rows[0].Breadcrumb != "parent ›" {
 		t.Fatalf("child breadcrumb = %q, want parent path", projection.rows[0].Breadcrumb)
 	}
-	if !projection.projected[TaskIdentity{ProjectID: "alpha", TaskID: "shared"}] ||
-		!projection.projected[TaskIdentity{ProjectID: "beta", TaskID: "shared"}] {
+	if !projection.projected[taskref.TaskIdentity{ProjectID: "alpha", TaskID: "shared"}] ||
+		!projection.projected[taskref.TaskIdentity{ProjectID: "beta", TaskID: "shared"}] {
 		t.Fatalf("qualified projected identities = %v, want both same-ID tasks for later-section deduplication", projection.projected)
 	}
-	for _, hidden := range []TaskIdentity{
+	for _, hidden := range []taskref.TaskIdentity{
 		{ProjectID: "beta", TaskID: "deferred"},
 		{ProjectID: "beta", TaskID: "done"},
 	} {

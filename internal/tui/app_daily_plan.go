@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // toggleToday adds or removes the focused task from the daily plan.
@@ -26,7 +27,7 @@ func (m *AppModel) toggleToday(capture *outlinerRelocationCapture) tea.Cmd {
 		return nil
 	}
 	taskID, projectID := task.ID, project.ID
-	identity := taskIdentityFor(task, project)
+	identity := taskref.For(task, project)
 	add := !m.todayIDs[identity]
 	fresh, _, transactionID, err := m.todayLedgerTransition(taskID, projectID, add)
 	if err != nil {

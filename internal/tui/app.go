@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // AppModel is the main TUI model.
@@ -106,11 +107,11 @@ type AppModel struct {
 
 	// Focus view session state (persists across view navigation within a session)
 	nextOrder    []PlanningTask
-	nextOrderIDs map[TaskIdentity]bool
+	nextOrderIDs map[taskref.TaskIdentity]bool
 
 	// Today session state (persists across view navigation within a session)
 	today    []PlanningTask
-	todayIDs map[TaskIdentity]bool
+	todayIDs map[taskref.TaskIdentity]bool
 
 	// workspacePulse caches the cross-project operational counts surfaced in the
 	// title row. It is recomputed after committed count-changing mutations so
@@ -173,7 +174,7 @@ type AppModel struct {
 	// Pending narrow daily task edit. Stable identity is captured when the editor
 	// opens so cursor movement or a view rebuild cannot retarget the save.
 	pendingTaskTextEdit *struct {
-		Identity  TaskIdentity
+		Identity  taskref.TaskIdentity
 		Operation app.TaskOperation
 		Original  string
 	}

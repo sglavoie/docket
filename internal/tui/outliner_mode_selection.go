@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // workModeCycleOrder is derived from the catalog so presentation identity and
@@ -49,7 +50,7 @@ func (m *OutlinerModel) activeOutlinerModeEntry() OutlinerMode {
 // the viewport (numeric row index and persistent scroll offset) before a mode
 // transition rebuilds the row list, so continuity can be restored afterward.
 type modeCursorAnchor struct {
-	identity     TaskIdentity
+	identity     taskref.TaskIdentity
 	hasTask      bool
 	prevCursor   int
 	scrollOffset int
@@ -68,7 +69,7 @@ func (m *OutlinerModel) captureModeCursor() modeCursorAnchor {
 			if m.project != nil {
 				projectID = m.project.ID
 			}
-			anchor.identity = TaskIdentity{ProjectID: projectID, TaskID: row.task.ID}
+			anchor.identity = taskref.TaskIdentity{ProjectID: projectID, TaskID: row.task.ID}
 			anchor.hasTask = true
 		}
 	}
@@ -165,7 +166,7 @@ func (m *OutlinerModel) focusLatestActivity() tea.Cmd {
 		}
 		return nil
 	}
-	identity := taskIdentityFor(task, project)
+	identity := taskref.For(task, project)
 	index, found := m.rowIndexForTask(identity)
 	if !found {
 		m.revealRecentActivityLead(task, identity, sectionKey)
@@ -195,14 +196,14 @@ func (m *OutlinerModel) focusLatestActivity() tea.Cmd {
 // only after a first attempt failed, so an unrelated fold is never disturbed.
 func (m *OutlinerModel) revealRecentActivityLead(
 	task *models.Task,
-	identity TaskIdentity,
+	identity taskref.TaskIdentity,
 	sectionKey string,
 ) {
 	delete(m.collapsedSections, sectionKey)
 	delete(m.collapsedSections, modeSectionProjectCollapseKey(sectionKey, identity.ProjectID))
 	m.ensureExpandedNodes()
 	for ancestor := task.Parent; ancestor != nil; ancestor = ancestor.Parent {
-		m.expandedNodes[TaskIdentity{ProjectID: identity.ProjectID, TaskID: ancestor.ID}] = true
+		m.expandedNodes[taskref.TaskIdentity{ProjectID: identity.ProjectID, TaskID: ancestor.ID}] = true
 	}
 }
 

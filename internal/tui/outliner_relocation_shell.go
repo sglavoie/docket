@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // The shell half of the relocation capture. outliner_relocation.go owns the
@@ -15,7 +16,7 @@ func (m *AppModel) captureOutlinerRelocationForTargets(targets ResolvedOperation
 	if !ok || out == nil {
 		return nil
 	}
-	identities := make([]TaskIdentity, 0, len(targets.Targets))
+	identities := make([]taskref.TaskIdentity, 0, len(targets.Targets))
 	for _, target := range targets.Targets {
 		if target.Task.Valid() {
 			identities = append(identities, target.Task)

@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -245,7 +246,7 @@ func TestCursorRowLeavesTheRestOfItsGutterOrdinary(t *testing.T) {
 	outliner, project := cursorHighlightOutliner(t, task)
 	prefix := "│   ├── "
 	row := outlinerRow{task: task, ProjectID: project.ID, prefix: prefix}
-	outliner.ReplaceSelection([]TaskIdentity{outliner.taskIdentityForRow(row)})
+	outliner.ReplaceSelection([]taskref.TaskIdentity{outliner.taskIdentityForRow(row)})
 
 	line := outliner.renderOutlinerTaskRow(row, true, 80, 80, 0, nil)
 

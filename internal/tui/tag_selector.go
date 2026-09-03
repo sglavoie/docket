@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // TagSelectorModel allows multi-selecting tags and adding new ones.
@@ -17,7 +18,7 @@ type TagSelectorModel struct {
 	// identity qualifies task with its owning project so the done message can
 	// name one application-layer target. It is the zero value for the composer,
 	// which opens the selector before any task exists.
-	identity TaskIdentity
+	identity taskref.TaskIdentity
 }
 
 // ShowTagSelectorMsg is sent to open the tag selector.
@@ -32,7 +33,7 @@ type TagSelectorDoneMsg struct {
 	Task *models.Task
 	// Identity is Task's project-qualified key, so the shell commits the tag
 	// edit without re-deriving the owning project from the task alone.
-	Identity     TaskIdentity
+	Identity     taskref.TaskIdentity
 	SelectedTags []string
 	Canceled     bool
 }
@@ -65,7 +66,7 @@ func NewTagSelectorModel(task *models.Task, project *models.Project, currentTags
 		ListSurfaceAdapter: picker,
 		TagAdder:           NewTagAdder(),
 		task:               task,
-		identity:           taskIdentityFor(task, project),
+		identity:           taskref.For(task, project),
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // OutlinerModeRow is the representation-neutral output of a purpose-built row
@@ -23,7 +24,7 @@ type OutlinerModeRow struct {
 // a present project entry, including an empty one, is authoritative.
 type OutlinerModeInput struct {
 	Projects []*models.Project
-	TodayIDs map[TaskIdentity]bool
+	TodayIDs map[taskref.TaskIdentity]bool
 	// CandidateTasks optionally narrows the tasks eligible for a projection per
 	// project. A missing project entry falls back to Project.Tasks.
 	CandidateTasks map[string][]*models.Task
@@ -35,7 +36,7 @@ type OutlinerModeInput struct {
 	// RecencyKeys freezes each task's Recent ordering timestamp so triaging a row
 	// does not move it out from under the cursor. A task the map does not name
 	// orders by its live UpdatedAt.
-	RecencyKeys     map[TaskIdentity]time.Time
+	RecencyKeys     map[taskref.TaskIdentity]time.Time
 	Now             time.Time
 	IncludeDeferred bool
 	IncludeTerminal bool
@@ -49,7 +50,7 @@ func (in OutlinerModeInput) now() time.Time {
 }
 
 func (in OutlinerModeInput) recencyKey(task *models.Task, project *models.Project) time.Time {
-	if frozen, ok := in.RecencyKeys[taskIdentityFor(task, project)]; ok {
+	if frozen, ok := in.RecencyKeys[taskref.For(task, project)]; ok {
 		return frozen
 	}
 	return task.UpdatedAt
@@ -61,7 +62,7 @@ func BuildTodayModeRows(in OutlinerModeInput) []OutlinerModeRow {
 	projects := modeProjectIndex(in.Projects)
 	now := in.now()
 	rows := make([]OutlinerModeRow, 0, len(in.TodayOrder))
-	seen := make(map[TaskIdentity]bool, len(in.TodayOrder))
+	seen := make(map[taskref.TaskIdentity]bool, len(in.TodayOrder))
 	for _, item := range in.TodayOrder {
 		if item.Task == nil || item.Project == nil {
 			continue
@@ -71,7 +72,7 @@ func BuildTodayModeRows(in OutlinerModeInput) []OutlinerModeRow {
 			continue
 		}
 		task := project.GetTaskByID(item.Task.ID)
-		identity := TaskIdentity{ProjectID: project.ID, TaskID: item.Task.ID}
+		identity := taskref.TaskIdentity{ProjectID: project.ID, TaskID: item.Task.ID}
 		if task == nil || seen[identity] || !modeCandidateContains(in, identity) {
 			continue
 		}
@@ -96,9 +97,9 @@ func BuildNextModeRows(in OutlinerModeInput) []OutlinerModeRow {
 	projects := modeProjectIndex(in.Projects)
 	now := in.now()
 	rows := make([]OutlinerModeRow, 0, len(in.NextOrder))
-	seen := make(map[TaskIdentity]bool, len(in.NextOrder))
+	seen := make(map[taskref.TaskIdentity]bool, len(in.NextOrder))
 	for _, locator := range in.NextOrder {
-		identity := TaskIdentity{ProjectID: locator.ProjectID, TaskID: locator.TaskID}
+		identity := taskref.TaskIdentity{ProjectID: locator.ProjectID, TaskID: locator.TaskID}
 		if seen[identity] || !modeCandidateContains(in, identity) {
 			continue
 		}
@@ -133,7 +134,7 @@ func modeProjectIndex(projects []*models.Project) map[string]*models.Project {
 	return index
 }
 
-func modeCandidateContains(in OutlinerModeInput, identity TaskIdentity) bool {
+func modeCandidateContains(in OutlinerModeInput, identity taskref.TaskIdentity) bool {
 	candidates, constrained := in.CandidateTasks[identity.ProjectID]
 	if !constrained {
 		return true

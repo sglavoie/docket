@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestBuildTreePrefix(t *testing.T) {
@@ -109,7 +110,7 @@ func TestViewportReservesTheTitleContinuationRows(t *testing.T) {
 	outliner := NewOutlinerModel(project, nil, newTestConfig())
 	outliner.SetSize(width, height)
 	outliner.rebuildRows()
-	outliner.moveCursorToIdentity(TaskIdentity{ProjectID: project.ID, TaskID: long.ID})
+	outliner.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: long.ID})
 
 	outliner.peekMode = true
 	row := outliner.rows[outliner.cursor]

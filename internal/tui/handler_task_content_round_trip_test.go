@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func taskContentFixtureApp(t *testing.T, fixture string) *AppModel {
@@ -82,7 +83,7 @@ func TestExternalEditorTitleAppliesCaptureSigils(t *testing.T) {
 	if edited.Description != "Sort by age." {
 		t.Fatalf("description = %q", edited.Description)
 	}
-	if !m.nextOrderIDs[TaskIdentity{ProjectID: project.ID, TaskID: task.ID}] {
+	if !m.nextOrderIDs[taskref.TaskIdentity{ProjectID: project.ID, TaskID: task.ID}] {
 		t.Error("$next did not add the task to the Next collection")
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {

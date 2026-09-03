@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -270,9 +271,9 @@ func prospectiveOutlinerStateCounts(
 	projection.setFilterQuery(query)
 	projection.rows = nil
 	projection.OpenAtTask = nil
-	projection.expandedNodes = make(map[TaskIdentity]bool)
+	projection.expandedNodes = make(map[taskref.TaskIdentity]bool)
 	projection.collapsedSections = make(map[string]bool)
-	projection.expandedChecklists = make(map[TaskIdentity]bool)
+	projection.expandedChecklists = make(map[taskref.TaskIdentity]bool)
 	projection.focusStack = append([]FocusEntry(nil), outliner.focusStack...)
 	projection.crossFocusStack = append(
 		[]CrossProjectFocusEntry(nil),
@@ -290,7 +291,7 @@ func prospectiveOutlinerStateCounts(
 	// facets exactly once.
 	now := time.Now()
 	matches := projection.facetPredicateAt(now)
-	seen := make(map[TaskIdentity]struct{})
+	seen := make(map[taskref.TaskIdentity]struct{})
 	for _, row := range projection.rows {
 		if !row.isTaskRow() || row.task == nil {
 			continue
@@ -303,7 +304,7 @@ func prospectiveOutlinerStateCounts(
 		if projectID == "" && project != nil {
 			projectID = project.ID
 		}
-		identity := TaskIdentity{ProjectID: projectID, TaskID: row.task.ID}
+		identity := taskref.TaskIdentity{ProjectID: projectID, TaskID: row.task.ID}
 		if _, duplicate := seen[identity]; duplicate {
 			continue
 		}

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func childIDsOf(result *quickEditResult) []string {
@@ -285,7 +286,7 @@ func TestTaskLineEditRequestQualifiesChildLocators(t *testing.T) {
 	source := &models.Project{ID: "source", Slug: "source", Tasks: []*models.Task{task, sibling}}
 	destinationChild := &models.Task{ID: "destination-child", ShortID: 7, Title: "Destination child", WorkflowState: models.StateBacklog}
 	destination := &models.Project{ID: "destination", Slug: "destination", Tasks: []*models.Task{destinationChild}}
-	identity := TaskIdentity{ProjectID: source.ID, TaskID: task.ID}
+	identity := taskref.TaskIdentity{ProjectID: source.ID, TaskID: task.ID}
 
 	result, err := parseQuickEdit("Owner <2", task, source, []*models.Project{source, destination})
 	if err != nil {

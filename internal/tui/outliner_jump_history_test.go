@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func jumpHistoryFixture(taskIDs ...string) (*OutlinerModel, map[string]*models.Task) {
@@ -32,7 +33,7 @@ func setJumpHistoryRows(outliner *OutlinerModel, tasks map[string]*models.Task, 
 	}
 }
 
-func requireCurrentJumpTask(t *testing.T, outliner *OutlinerModel, want TaskIdentity) {
+func requireCurrentJumpTask(t *testing.T, outliner *OutlinerModel, want taskref.TaskIdentity) {
 	t.Helper()
 	if got := outliner.currentTaskIdentity(); got != want {
 		t.Fatalf("current task = %+v, want %+v (cursor=%d)", got, want, outliner.cursor)
@@ -41,18 +42,18 @@ func requireCurrentJumpTask(t *testing.T, outliner *OutlinerModel, want TaskIden
 
 func TestOutlinerRelocationJumpBackwardAndForward(t *testing.T) {
 	outliner, tasks := jumpHistoryFixture("before", "target", "after", "tail")
-	target := TaskIdentity{ProjectID: "alpha", TaskID: "target"}
+	target := taskref.TaskIdentity{ProjectID: "alpha", TaskID: "target"}
 	outliner.cursor = 1
 	outliner.viewScrollOffset = 7
 
-	capture := outliner.captureOutlinerRelocation([]TaskIdentity{target})
+	capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 	if capture == nil {
 		t.Fatal("relocation capture = nil")
 	}
-	if got := capture.Origin.Following; got != (TaskIdentity{ProjectID: "alpha", TaskID: "after"}) {
+	if got := capture.Origin.Following; got != (taskref.TaskIdentity{ProjectID: "alpha", TaskID: "after"}) {
 		t.Fatalf("following anchor = %+v, want after", got)
 	}
-	if got := capture.Origin.Preceding; got != (TaskIdentity{ProjectID: "alpha", TaskID: "before"}) {
+	if got := capture.Origin.Preceding; got != (taskref.TaskIdentity{ProjectID: "alpha", TaskID: "before"}) {
 		t.Fatalf("preceding anchor = %+v, want before", got)
 	}
 
@@ -69,7 +70,7 @@ func TestOutlinerRelocationJumpBackwardAndForward(t *testing.T) {
 	requireCurrentJumpTask(t, outliner, target)
 
 	outliner.jumpBackward()
-	requireCurrentJumpTask(t, outliner, TaskIdentity{ProjectID: "alpha", TaskID: "after"})
+	requireCurrentJumpTask(t, outliner, taskref.TaskIdentity{ProjectID: "alpha", TaskID: "after"})
 	if outliner.viewScrollOffset != 7 {
 		t.Fatalf("backward scroll offset = %d, want 7", outliner.viewScrollOffset)
 	}
@@ -80,9 +81,9 @@ func TestOutlinerRelocationJumpBackwardAndForward(t *testing.T) {
 
 func TestOutlinerRelocationReportsNoOriginWhenRowDoesNotMove(t *testing.T) {
 	outliner, _ := jumpHistoryFixture("target", "after")
-	target := TaskIdentity{ProjectID: "alpha", TaskID: "target"}
+	target := taskref.TaskIdentity{ProjectID: "alpha", TaskID: "target"}
 	outliner.cursor = 0
-	capture := outliner.captureOutlinerRelocation([]TaskIdentity{target})
+	capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 	if _, recorded := outliner.finishOutlinerRelocation(capture, true); recorded {
 		t.Fatal("unchanged row advertised recorded origin history")
 	}
@@ -91,26 +92,26 @@ func TestOutlinerRelocationReportsNoOriginWhenRowDoesNotMove(t *testing.T) {
 func TestOutlinerRelocationOriginFallsBackToPrecedingThenNearestRow(t *testing.T) {
 	t.Run("preceding", func(t *testing.T) {
 		outliner, tasks := jumpHistoryFixture("before", "target", "after")
-		target := TaskIdentity{ProjectID: "alpha", TaskID: "target"}
+		target := taskref.TaskIdentity{ProjectID: "alpha", TaskID: "target"}
 		outliner.cursor = 1
-		capture := outliner.captureOutlinerRelocation([]TaskIdentity{target})
+		capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 
 		setJumpHistoryRows(outliner, tasks, "target", "before")
 		outliner.finishOutlinerRelocation(capture, true)
 		outliner.jumpBackward()
-		requireCurrentJumpTask(t, outliner, TaskIdentity{ProjectID: "alpha", TaskID: "before"})
+		requireCurrentJumpTask(t, outliner, taskref.TaskIdentity{ProjectID: "alpha", TaskID: "before"})
 	})
 
 	t.Run("numeric", func(t *testing.T) {
 		outliner, tasks := jumpHistoryFixture("before", "target", "after", "survivor")
-		target := TaskIdentity{ProjectID: "alpha", TaskID: "target"}
+		target := taskref.TaskIdentity{ProjectID: "alpha", TaskID: "target"}
 		outliner.cursor = 1
-		capture := outliner.captureOutlinerRelocation([]TaskIdentity{target})
+		capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 
 		setJumpHistoryRows(outliner, tasks, "target", "survivor")
 		outliner.finishOutlinerRelocation(capture, true)
 		outliner.jumpBackward()
-		requireCurrentJumpTask(t, outliner, TaskIdentity{ProjectID: "alpha", TaskID: "survivor"})
+		requireCurrentJumpTask(t, outliner, taskref.TaskIdentity{ProjectID: "alpha", TaskID: "survivor"})
 	})
 }
 
@@ -125,8 +126,8 @@ func TestOutlinerRelocationUsesProjectQualifiedTaskAnchors(t *testing.T) {
 		{task: beta.Tasks[0], ProjectID: beta.ID},
 	}
 	outliner.cursor = 1
-	target := TaskIdentity{ProjectID: alpha.ID, TaskID: "target"}
-	capture := outliner.captureOutlinerRelocation([]TaskIdentity{target})
+	target := taskref.TaskIdentity{ProjectID: alpha.ID, TaskID: "target"}
+	capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 
 	outliner.rows = []outlinerRow{
 		{task: alpha.Tasks[1], ProjectID: alpha.ID},
@@ -135,14 +136,14 @@ func TestOutlinerRelocationUsesProjectQualifiedTaskAnchors(t *testing.T) {
 	}
 	outliner.finishOutlinerRelocation(capture, true)
 	outliner.jumpBackward()
-	requireCurrentJumpTask(t, outliner, TaskIdentity{ProjectID: beta.ID, TaskID: "same"})
+	requireCurrentJumpTask(t, outliner, taskref.TaskIdentity{ProjectID: beta.ID, TaskID: "same"})
 }
 
 func TestOutlinerRelocationHistoryClearsOnProjectionChange(t *testing.T) {
 	outliner, tasks := jumpHistoryFixture("before", "target", "after")
-	target := TaskIdentity{ProjectID: "alpha", TaskID: "target"}
+	target := taskref.TaskIdentity{ProjectID: "alpha", TaskID: "target"}
 	outliner.cursor = 1
-	capture := outliner.captureOutlinerRelocation([]TaskIdentity{target})
+	capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 	setJumpHistoryRows(outliner, tasks, "target", "before", "after")
 	outliner.finishOutlinerRelocation(capture, true)
 
@@ -155,9 +156,9 @@ func TestOutlinerRelocationHistoryClearsOnProjectionChange(t *testing.T) {
 
 func TestOutlinerOrdinaryMotionPreservesForwardHistory(t *testing.T) {
 	outliner, tasks := jumpHistoryFixture("before", "target", "after", "tail")
-	target := TaskIdentity{ProjectID: "alpha", TaskID: "target"}
+	target := taskref.TaskIdentity{ProjectID: "alpha", TaskID: "target"}
 	outliner.cursor = 1
-	capture := outliner.captureOutlinerRelocation([]TaskIdentity{target})
+	capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 	setJumpHistoryRows(outliner, tasks, "target", "before", "after", "tail")
 	outliner.finishOutlinerRelocation(capture, true)
 	outliner.jumpBackward()
@@ -166,14 +167,14 @@ func TestOutlinerOrdinaryMotionPreservesForwardHistory(t *testing.T) {
 	outliner.jumpForward()
 	requireCurrentJumpTask(t, outliner, target)
 	outliner.jumpBackward()
-	requireCurrentJumpTask(t, outliner, TaskIdentity{ProjectID: "alpha", TaskID: "tail"})
+	requireCurrentJumpTask(t, outliner, taskref.TaskIdentity{ProjectID: "alpha", TaskID: "tail"})
 }
 
 func TestOutlinerRelocationHistoryIgnoresNoOpAndHiddenDestinations(t *testing.T) {
 	t.Run("same row", func(t *testing.T) {
 		outliner, _ := jumpHistoryFixture("target", "after")
-		target := TaskIdentity{ProjectID: "alpha", TaskID: "target"}
-		capture := outliner.captureOutlinerRelocation([]TaskIdentity{target})
+		target := taskref.TaskIdentity{ProjectID: "alpha", TaskID: "target"}
+		capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 		outliner.finishOutlinerRelocation(capture, true)
 		if len(outliner.relocationHistory.back) != 0 {
 			t.Fatalf("same-row mutation recorded %d entries", len(outliner.relocationHistory.back))
@@ -182,9 +183,9 @@ func TestOutlinerRelocationHistoryIgnoresNoOpAndHiddenDestinations(t *testing.T)
 
 	t.Run("hidden", func(t *testing.T) {
 		outliner, tasks := jumpHistoryFixture("before", "target", "after")
-		target := TaskIdentity{ProjectID: "alpha", TaskID: "target"}
+		target := taskref.TaskIdentity{ProjectID: "alpha", TaskID: "target"}
 		outliner.cursor = 1
-		capture := outliner.captureOutlinerRelocation([]TaskIdentity{target})
+		capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 		setJumpHistoryRows(outliner, tasks, "before", "after")
 		outliner.finishOutlinerRelocation(capture, true)
 		if len(outliner.relocationHistory.back) != 0 {
@@ -208,9 +209,9 @@ func TestOutlinerRelocationHistoryIsBounded(t *testing.T) {
 
 func TestOutlinerAsyncRelocationCaptureOnlyArmsOnSuccessfulCurrentTarget(t *testing.T) {
 	outliner, tasks := jumpHistoryFixture("before", "target", "after")
-	target := TaskIdentity{ProjectID: "alpha", TaskID: "target"}
+	target := taskref.TaskIdentity{ProjectID: "alpha", TaskID: "target"}
 	outliner.cursor = 1
-	capture := outliner.captureOutlinerRelocation([]TaskIdentity{target})
+	capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 
 	wrapped := withOutlinerRelocationCapture(func() tea.Msg {
 		return BatchTransactionResultMsg{Action: "Set State"}
@@ -234,7 +235,7 @@ func TestOutlinerAsyncRelocationCaptureOnlyArmsOnSuccessfulCurrentTarget(t *test
 
 	outliner2, _ := jumpHistoryFixture("before", "target", "after")
 	outliner2.cursor = 1
-	capture2 := outliner2.captureOutlinerRelocation([]TaskIdentity{target})
+	capture2 := outliner2.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 	outliner2.cursor = 2 // User moved while the mutation was in flight.
 	outliner2.armOutlinerRelocation(capture2)
 	if outliner2.relocationHistory.pending != nil {
@@ -243,7 +244,7 @@ func TestOutlinerAsyncRelocationCaptureOnlyArmsOnSuccessfulCurrentTarget(t *test
 
 	outliner3, _ := jumpHistoryFixture("before", "target", "after")
 	outliner3.cursor = 1
-	capture3 := outliner3.captureOutlinerRelocation([]TaskIdentity{target})
+	capture3 := outliner3.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 	outliner3.armOutlinerRelocation(capture3)
 	outliner3.cursor = 2 // User moved after commit but before the reload completed.
 	outliner3.crossLoadGen = 1
@@ -257,7 +258,7 @@ func TestOutlinerAsyncRelocationCaptureOnlyArmsOnSuccessfulCurrentTarget(t *test
 
 	outliner4, tasks4 := jumpHistoryFixture("before", "target", "after")
 	outliner4.cursor = 1
-	capture4 := outliner4.captureOutlinerRelocation([]TaskIdentity{target})
+	capture4 := outliner4.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 	outliner4.armOutlinerRelocation(capture4)
 	// The committed mutation's own refresh took the target off the projection and
 	// left the cursor where it fell. That displacement is the mutation's doing, so
@@ -296,19 +297,19 @@ func TestCtrlOAndCtrlIDispatchThroughTheSimplifiedOperationPipeline(t *testing.T
 	outliner.cursor = 0
 	outliner.syncJumpProjection()
 	outliner.pushJumpBack(outlinerJumpPosition{
-		Following: TaskIdentity{ProjectID: project.ID, TaskID: after.ID},
+		Following: taskref.TaskIdentity{ProjectID: project.ID, TaskID: after.ID},
 		RowIndex:  1,
 	})
 
 	if handled, _ := model.handleGlobalKeyPress(syntheticCtrlKey('o')); !handled {
 		t.Fatal("Ctrl+O was not handled by the simplified input pipeline")
 	}
-	requireCurrentJumpTask(t, outliner, TaskIdentity{ProjectID: project.ID, TaskID: after.ID})
+	requireCurrentJumpTask(t, outliner, taskref.TaskIdentity{ProjectID: project.ID, TaskID: after.ID})
 
 	if handled, _ := model.handleGlobalKeyPress(syntheticCtrlKey('i')); !handled {
 		t.Fatal("Ctrl+I was not handled by the simplified input pipeline")
 	}
-	requireCurrentJumpTask(t, outliner, TaskIdentity{ProjectID: project.ID, TaskID: target.ID})
+	requireCurrentJumpTask(t, outliner, taskref.TaskIdentity{ProjectID: project.ID, TaskID: target.ID})
 }
 
 func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) {
@@ -331,7 +332,7 @@ func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) 
 	model.views.Register(presentation.ViewCrossProjectOutliner, outliner)
 	model.wireOutlinerOperationExecutor(outliner)
 
-	targetIdentity := taskIdentityFor(target, env.projects[0])
+	targetIdentity := taskref.For(target, env.projects[0])
 	targetRow, ok := outliner.rowIndexForTask(targetIdentity)
 	if !ok {
 		t.Fatal("initial All projection does not contain target")

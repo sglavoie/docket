@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // handleQuickEditMode handles input while in quick edit mode.
@@ -20,8 +21,8 @@ func (m *OutlinerModel) handleQuickEditMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.quickEdit.RejectCommit("task edit context is unavailable")
 		return m, nil
 	}
-	source := taskIdentityFor(task, project)
-	relocation := m.captureOutlinerRelocation([]TaskIdentity{source})
+	source := taskref.For(task, project)
+	relocation := m.captureOutlinerRelocation([]taskref.TaskIdentity{source})
 	m.quickEdit.BeginCommit()
 	return m, m.taskItem.EditTaskLine(m.taskLineEditRequest(source, result), relocation)
 }
@@ -33,7 +34,7 @@ func (m *OutlinerModel) quickEditProjects() []*models.Project {
 	return m.loadedProjects
 }
 
-func taskLineEditRequest(source TaskIdentity, result *quickEditResult) app.TaskLineEditRequest {
+func taskLineEditRequest(source taskref.TaskIdentity, result *quickEditResult) app.TaskLineEditRequest {
 	req := app.TaskLineEditRequest{
 		Source:               source.Locator(),
 		Title:                result.title,
@@ -108,7 +109,7 @@ func taskLineEditRequest(source TaskIdentity, result *quickEditResult) app.TaskL
 // builder instead of inheriting whichever default a prior service call left
 // installed. Cross-project edits carry a complete planning-move delta, so they
 // use the structural builder that reconciles against the newest on-disk state.
-func (m *OutlinerModel) taskLineEditRequest(source TaskIdentity, result *quickEditResult) app.TaskLineEditRequest {
+func (m *OutlinerModel) taskLineEditRequest(source taskref.TaskIdentity, result *quickEditResult) app.TaskLineEditRequest {
 	req := taskLineEditRequest(source, result)
 	req.PlanningArtifacts = shellPlanningReconcileArtifactBuilder(m.runtime, m.configManager)
 	if req.DestinationProjectID != source.ProjectID {

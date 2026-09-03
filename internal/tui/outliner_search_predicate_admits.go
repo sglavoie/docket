@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -244,7 +245,7 @@ func (p *searchPredicates) admitsDestination(task *models.Task, project *models.
 
 // matches answers one compiled destination for one row.
 func (d searchDestinationPredicate) matches(task *models.Task, project *models.Project) bool {
-	identity := taskIdentityFor(task, project)
+	identity := taskref.For(task, project)
 	switch d.destination {
 	case textgrammar.DestinationToday:
 		return d.todayIDs[identity]
@@ -283,7 +284,7 @@ func (p *searchPredicates) matchesDerived(
 	task *models.Task,
 	project *models.Project,
 ) bool {
-	identity := taskIdentityFor(task, project)
+	identity := taskref.For(task, project)
 	census := models.DerivedCensus{
 		OpenChildren: p.derivedContext.openChildren[identity],
 		HasDependents: p.derivedContext.dependedOn[models.TaskReference{

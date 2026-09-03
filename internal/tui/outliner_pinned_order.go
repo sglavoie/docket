@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // isPinnedReorderRow reports whether J/K reorders the pin order rather than
@@ -27,15 +28,15 @@ func (m *OutlinerModel) isPinnedReorderRow() bool {
 // retained only when the parent is itself projected into the same group. The
 // backward scan is sufficient because the flattener always emits a parent above
 // its children and only descends into expanded parents.
-func (m *OutlinerModel) pinnedSectionParentAt(index int) TaskIdentity {
+func (m *OutlinerModel) pinnedSectionParentAt(index int) taskref.TaskIdentity {
 	if index < 0 || index >= len(m.rows) {
-		return TaskIdentity{}
+		return taskref.TaskIdentity{}
 	}
 	row := m.rows[index]
 	if row.task == nil || row.task.ParentID == nil {
-		return TaskIdentity{}
+		return taskref.TaskIdentity{}
 	}
-	parent := TaskIdentity{
+	parent := taskref.TaskIdentity{
 		ProjectID: m.taskIdentityForRow(row).ProjectID,
 		TaskID:    *row.task.ParentID,
 	}
@@ -43,13 +44,13 @@ func (m *OutlinerModel) pinnedSectionParentAt(index int) TaskIdentity {
 		candidate := m.rows[i]
 		if !candidate.IsPinnedSection || !candidate.isTaskRow() ||
 			candidate.task == nil || candidate.ProjectID != row.ProjectID {
-			return TaskIdentity{}
+			return taskref.TaskIdentity{}
 		}
 		if m.taskIdentityForRow(candidate) == parent {
 			return parent
 		}
 	}
-	return TaskIdentity{}
+	return taskref.TaskIdentity{}
 }
 
 // visiblePinnedSiblings returns every visible pinned row index in the delta
@@ -126,7 +127,7 @@ func (m *OutlinerModel) pinnedReorderEdge(delta int) tea.Cmd {
 	if len(rows) == 0 {
 		return nil
 	}
-	peers := make([]TaskIdentity, 0, len(rows))
+	peers := make([]taskref.TaskIdentity, 0, len(rows))
 	for _, index := range rows {
 		peers = append(peers, m.taskIdentityForRow(m.rows[index]))
 	}

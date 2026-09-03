@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestOpenChildCountsCensusesEveryDepth(t *testing.T) {
@@ -27,7 +28,7 @@ func TestOpenChildCountsCensusesEveryDepth(t *testing.T) {
 
 	want := map[string]int{rootID: 1, midID: 1, leafID: 1}
 	for id, expected := range want {
-		got := counts[TaskIdentity{ProjectID: project.ID, TaskID: id}]
+		got := counts[taskref.TaskIdentity{ProjectID: project.ID, TaskID: id}]
 		if got != expected {
 			t.Fatalf("open children of %q = %d, want %d", id, got, expected)
 		}

@@ -3,6 +3,8 @@ package tui
 import (
 	"fmt"
 	"sort"
+
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // MultiSelectState provides reusable multi-selection state for views that
@@ -10,9 +12,9 @@ import (
 // common fields and basic selection operations.
 type MultiSelectState struct {
 	multiSelectMode        bool
-	selectedTaskIdentities map[TaskIdentity]bool
+	selectedTaskIdentities map[taskref.TaskIdentity]bool
 	rangeSelectionActive   bool
-	rangeAnchor            TaskIdentity
+	rangeAnchor            taskref.TaskIdentity
 }
 
 // SelectionCounts classifies a persistent selection against the task rows in
@@ -26,12 +28,12 @@ type SelectionCounts struct {
 
 // ClearSelection resets all selections without changing multiSelectMode.
 func (s *MultiSelectState) ClearSelection() {
-	s.selectedTaskIdentities = make(map[TaskIdentity]bool)
+	s.selectedTaskIdentities = make(map[taskref.TaskIdentity]bool)
 	s.FreezeRangeSelection()
 }
 
-func (s *MultiSelectState) replaceSelection(ids []TaskIdentity) {
-	s.selectedTaskIdentities = make(map[TaskIdentity]bool, len(ids))
+func (s *MultiSelectState) replaceSelection(ids []taskref.TaskIdentity) {
+	s.selectedTaskIdentities = make(map[taskref.TaskIdentity]bool, len(ids))
 	for _, id := range ids {
 		if id.Valid() {
 			s.selectedTaskIdentities[id] = true
@@ -46,8 +48,8 @@ func (s *MultiSelectState) SelectedCount() int {
 
 // SelectedTaskIdentities returns a deterministic defensive copy suitable for
 // operation target resolution.
-func (s *MultiSelectState) SelectedTaskIdentities() []TaskIdentity {
-	selected := make([]TaskIdentity, 0, len(s.selectedTaskIdentities))
+func (s *MultiSelectState) SelectedTaskIdentities() []taskref.TaskIdentity {
+	selected := make([]taskref.TaskIdentity, 0, len(s.selectedTaskIdentities))
 	for identity, active := range s.selectedTaskIdentities {
 		if active && identity.Valid() {
 			selected = append(selected, identity)
@@ -75,25 +77,25 @@ func (s *MultiSelectState) IsRangeSelectionActive() bool {
 }
 
 // StartRangeSelection replaces every prior selection with the anchor task.
-func (s *MultiSelectState) StartRangeSelection(anchor TaskIdentity) {
+func (s *MultiSelectState) StartRangeSelection(anchor taskref.TaskIdentity) {
 	if !anchor.Valid() {
 		return
 	}
 	s.multiSelectMode = true
 	s.rangeSelectionActive = true
 	s.rangeAnchor = anchor
-	s.replaceSelection([]TaskIdentity{anchor})
+	s.replaceSelection([]taskref.TaskIdentity{anchor})
 }
 
 // FreezeRangeSelection leaves the selected identities intact while stopping
 // cursor-driven range recalculation.
 func (s *MultiSelectState) FreezeRangeSelection() {
 	s.rangeSelectionActive = false
-	s.rangeAnchor = TaskIdentity{}
+	s.rangeAnchor = taskref.TaskIdentity{}
 }
 
 // ReplaceSelection installs a frozen visual selection.
-func (s *MultiSelectState) ReplaceSelection(ids []TaskIdentity) {
+func (s *MultiSelectState) ReplaceSelection(ids []taskref.TaskIdentity) {
 	s.multiSelectMode = true
 	s.FreezeRangeSelection()
 	s.replaceSelection(ids)
@@ -101,9 +103,9 @@ func (s *MultiSelectState) ReplaceSelection(ids []TaskIdentity) {
 
 // ClassifySelection compares the persistent identities with the current
 // visible projection. Duplicate visible rows count once.
-func (s *MultiSelectState) ClassifySelection(visible []TaskIdentity) SelectionCounts {
+func (s *MultiSelectState) ClassifySelection(visible []taskref.TaskIdentity) SelectionCounts {
 	counts := SelectionCounts{Total: len(s.SelectedTaskIdentities())}
-	seen := make(map[TaskIdentity]bool, len(visible))
+	seen := make(map[taskref.TaskIdentity]bool, len(visible))
 	for _, identity := range visible {
 		if !identity.Valid() || seen[identity] {
 			continue
@@ -123,7 +125,7 @@ func (s *MultiSelectState) ExitMultiSelect() {
 	s.ClearSelection()
 }
 
-func (s *MultiSelectState) ToggleTaskIdentity(id TaskIdentity) {
+func (s *MultiSelectState) ToggleTaskIdentity(id taskref.TaskIdentity) {
 	if !id.Valid() {
 		return
 	}
@@ -132,32 +134,32 @@ func (s *MultiSelectState) ToggleTaskIdentity(id TaskIdentity) {
 		return
 	}
 	if s.selectedTaskIdentities == nil {
-		s.selectedTaskIdentities = make(map[TaskIdentity]bool)
+		s.selectedTaskIdentities = make(map[taskref.TaskIdentity]bool)
 	}
 	s.selectedTaskIdentities[id] = true
 }
 
-func (s *MultiSelectState) SelectTaskIdentity(id TaskIdentity) {
+func (s *MultiSelectState) SelectTaskIdentity(id taskref.TaskIdentity) {
 	if !id.Valid() {
 		return
 	}
 	if s.selectedTaskIdentities == nil {
-		s.selectedTaskIdentities = make(map[TaskIdentity]bool)
+		s.selectedTaskIdentities = make(map[taskref.TaskIdentity]bool)
 	}
 	s.selectedTaskIdentities[id] = true
 }
 
-func (s *MultiSelectState) DeselectTaskIdentity(id TaskIdentity) {
+func (s *MultiSelectState) DeselectTaskIdentity(id taskref.TaskIdentity) {
 	delete(s.selectedTaskIdentities, id)
 }
 
-func (s *MultiSelectState) IsTaskIdentitySelected(id TaskIdentity) bool {
+func (s *MultiSelectState) IsTaskIdentitySelected(id taskref.TaskIdentity) bool {
 	return id.Valid() && s.selectedTaskIdentities[id]
 }
 
 // CheckboxTaskIdentity renders an identity-safe multi-select marker for
 // cross-project task lists.
-func (s *MultiSelectState) CheckboxTaskIdentity(id TaskIdentity) string {
+func (s *MultiSelectState) CheckboxTaskIdentity(id taskref.TaskIdentity) string {
 	if !s.multiSelectMode {
 		return ""
 	}

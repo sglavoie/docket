@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // installDistinctOutlinerSnapshot gives the Outliner the immutable workspace
@@ -60,7 +61,7 @@ func TestTaskLineEditCrossProjectRelocationRefreshesOutlinerSnapshot(t *testing.
 
 	model, outliner := newSession2OutlinerApp(t, dataDir, source, destination)
 	installDistinctOutlinerSnapshot(t, model, outliner)
-	sourceIdentity := TaskIdentity{ProjectID: source.ID, TaskID: moving.ID}
+	sourceIdentity := taskref.TaskIdentity{ProjectID: source.ID, TaskID: moving.ID}
 	for index, row := range outliner.rows {
 		if row.isTaskRow() && row.ProjectID == source.ID && row.task.ID == moving.ID {
 			outliner.cursor = index
@@ -68,7 +69,7 @@ func TestTaskLineEditCrossProjectRelocationRefreshesOutlinerSnapshot(t *testing.
 		}
 	}
 	outliner.syncJumpProjection()
-	capture := outliner.captureOutlinerRelocation([]TaskIdentity{sourceIdentity})
+	capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{sourceIdentity})
 	if capture == nil {
 		t.Fatal("capture task-line relocation: nil")
 	}
@@ -104,7 +105,7 @@ func TestTaskLineEditCrossProjectRelocationRefreshesOutlinerSnapshot(t *testing.
 		t.Fatal("Outliner snapshot was pre-mutated before handler refresh")
 	}
 
-	finalIdentity := TaskIdentity{ProjectID: destination.ID, TaskID: moving.ID}
+	finalIdentity := taskref.TaskIdentity{ProjectID: destination.ID, TaskID: moving.ID}
 	model.handleTaskLineEdited(TaskLineEditedMsg{
 		Result: domainapp.TaskLineEditResult{
 			Task:               domainapp.TaskLocator{ProjectID: destination.ID, TaskID: moving.ID},
@@ -125,7 +126,7 @@ func TestTaskLineEditCrossProjectRelocationRefreshesOutlinerSnapshot(t *testing.
 	}
 
 	outliner.jumpBackward()
-	if got := outliner.currentTaskIdentity(); got != (TaskIdentity{ProjectID: source.ID, TaskID: neighbor.ID}) {
+	if got := outliner.currentTaskIdentity(); got != (taskref.TaskIdentity{ProjectID: source.ID, TaskID: neighbor.ID}) {
 		t.Fatalf("Ctrl+O destination = %+v, want origin neighbor", got)
 	}
 	outliner.jumpForward()
@@ -225,7 +226,7 @@ func TestPlanningCaptureRefreshesRuntimeAndOutlinerSection(t *testing.T) {
 			}
 			runSession2AppCommand(t, model, refreshCmd)
 
-			identity := TaskIdentity{ProjectID: project.ID, TaskID: created.Result.TaskID}
+			identity := taskref.TaskIdentity{ProjectID: project.ID, TaskID: created.Result.TaskID}
 			planning, err := model.configManager.DomainCoordinator().LoadPlanning()
 			if err != nil {
 				t.Fatalf("load durable planning: %v", err)

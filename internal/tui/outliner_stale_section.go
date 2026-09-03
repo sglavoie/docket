@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 const (
@@ -14,7 +15,7 @@ const (
 type staleSectionBuild struct {
 	groups    []projectRowGroup
 	count     int
-	projected map[TaskIdentity]bool
+	projected map[taskref.TaskIdentity]bool
 }
 
 // taskIsStale is the Stale lane's reading of staleness, which is the ?stale
@@ -32,17 +33,17 @@ func taskIsStale(task *models.Task, now time.Time) bool {
 // than derived age, so those rows move rather than duplicate.
 func (m *OutlinerModel) buildStaleSection(
 	input OutlinerModeInput,
-	pinned, today, next, review, doing map[TaskIdentity]bool,
+	pinned, today, next, review, doing map[taskref.TaskIdentity]bool,
 ) staleSectionBuild {
 	input.Now = input.now()
-	result := staleSectionBuild{projected: make(map[TaskIdentity]bool)}
+	result := staleSectionBuild{projected: make(map[taskref.TaskIdentity]bool)}
 	var rows []outlinerRow
 	for _, candidate := range orderedModeTasks(input) {
 		task, project := candidate.row.Task, candidate.row.Project
 		if task == nil || project == nil {
 			continue
 		}
-		identity := taskIdentityFor(task, project)
+		identity := taskref.For(task, project)
 		if !taskIsStale(task, input.Now) || pinned[identity] || today[identity] ||
 			next[identity] || review[identity] || doing[identity] {
 			continue

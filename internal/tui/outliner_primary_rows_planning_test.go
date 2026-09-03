@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestPlanningSectionsNestAtEarliestMemberRankWithoutMutatingDurableOrder(t *testing.T) {
@@ -148,7 +149,7 @@ func flattenProjectedTasks(tasks []*models.Task) []*models.Task {
 // lets a later element write or in-capacity append reach repository-owned
 // state. Every projection must detach the list.
 func TestTaskProjectionCopiesDetachDependencies(t *testing.T) {
-	suppressed := map[TaskIdentity]bool{{ProjectID: "proj", TaskID: "absent"}: true}
+	suppressed := map[taskref.TaskIdentity]bool{{ProjectID: "proj", TaskID: "absent"}: true}
 
 	cases := []struct {
 		name    string

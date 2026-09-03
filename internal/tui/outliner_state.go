@@ -2,15 +2,17 @@ package tui
 
 import (
 	"maps"
+
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // OutlinerToggleState captures section/fold state so it can survive outliner
 // recreation within the same TUI session.
 type OutlinerToggleState struct {
-	CollapsedSections map[string]bool       // Section collapse state for All mode
-	ExpandedNodes     map[TaskIdentity]bool // Project-qualified node fold state (empty = all expanded)
-	CursorTaskID      string                // Task ID at cursor position (session-only)
-	FocusStack        []FocusEntry          // Focus stack (session-only)
+	CollapsedSections map[string]bool               // Section collapse state for All mode
+	ExpandedNodes     map[taskref.TaskIdentity]bool // Project-qualified node fold state (empty = all expanded)
+	CursorTaskID      string                        // Task ID at cursor position (session-only)
+	FocusStack        []FocusEntry                  // Focus stack (session-only)
 }
 
 // SaveToggleState snapshots the current section/fold state.

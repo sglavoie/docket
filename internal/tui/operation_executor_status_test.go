@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestOperationExecutionResultStatusDeliveryPrecedence(t *testing.T) {
@@ -285,7 +286,7 @@ func TestOperationExecutorSupportsSingleAndBulkHandlers(t *testing.T) {
 
 	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Entity = EntityContext{ProjectID: "project", TaskID: "current"}
-	ctx.Selection.Tasks = []TaskIdentity{
+	ctx.Selection.Tasks = []taskref.TaskIdentity{
 		{ProjectID: "project", TaskID: "one"},
 		{ProjectID: "project", TaskID: "two"},
 	}

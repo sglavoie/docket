@@ -1,6 +1,9 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/config"
+import (
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/taskref"
+)
 
 func WithPersister(p Persister) AppOption {
 	return func(app *AppModel) {
@@ -32,7 +35,7 @@ func commitCatalogToRuntime(runtime *config.RuntimeState, mutate func(*config.Wo
 	return runtime.CommitCatalog(catalog)
 }
 
-func nextOrderContains(planning *config.PlanningState, identity TaskIdentity) bool {
+func nextOrderContains(planning *config.PlanningState, identity taskref.TaskIdentity) bool {
 	for _, item := range planning.GetNext() {
 		if item.TaskID == identity.TaskID && item.ProjectID == identity.ProjectID {
 			return true
@@ -41,7 +44,7 @@ func nextOrderContains(planning *config.PlanningState, identity TaskIdentity) bo
 	return false
 }
 
-func todayContains(planning *config.PlanningState, identity TaskIdentity) bool {
+func todayContains(planning *config.PlanningState, identity taskref.TaskIdentity) bool {
 	for _, item := range planning.GetToday() {
 		if item.TaskID == identity.TaskID && item.ProjectID == identity.ProjectID {
 			return true

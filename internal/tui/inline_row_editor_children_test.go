@@ -13,6 +13,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // appendInlineTaskChain adds a root task followed by nodes-1 descendants, each
@@ -355,7 +356,7 @@ func TestInlineRowEditorChildAdoptionCommitsRefreshesHierarchyAndUndoes(t *testi
 	out.quickEdit.BeginCommit()
 	failure := errors.New("simulated revision conflict")
 	m.handleTaskLineEditFailed(TaskLineEditFailedMsg{
-		Source: taskIdentityFor(live, m.currentProject), Err: failure,
+		Source: taskref.For(live, m.currentProject), Err: failure,
 	})
 	if !out.quickEdit.IsActive() || out.quickEdit.pending || !strings.Contains(out.quickEdit.input.Value(), "<2") {
 		t.Fatalf("failed adoption lost the draft: active=%t pending=%t value=%q",

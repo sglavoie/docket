@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // activeCrossProjectOutliner returns the sole Outliner model.
@@ -274,7 +275,7 @@ func (m *AppModel) pruneDeletedTaskRefs() {
 	// Build a set of all valid project-qualified task identities.
 	// Projects not yet loaded from disk have nil Tasks; load them
 	// temporarily so their task IDs are not incorrectly pruned.
-	validTasks := make(map[TaskIdentity]bool)
+	validTasks := make(map[taskref.TaskIdentity]bool)
 	for _, p := range m.availableProjects() {
 		wasUnloaded := p.Tasks == nil
 		if wasUnloaded {
@@ -290,7 +291,7 @@ func (m *AppModel) pruneDeletedTaskRefs() {
 			}
 		}
 		for _, t := range p.Tasks {
-			validTasks[taskIdentityFor(t, p)] = true
+			validTasks[taskref.For(t, p)] = true
 		}
 		if wasUnloaded {
 			p.Tasks = nil
@@ -302,7 +303,7 @@ func (m *AppModel) pruneDeletedTaskRefs() {
 	// Prune focus queue
 	n := 0
 	for _, ft := range m.nextOrder {
-		identity := taskIdentityFor(ft.Task, ft.Project)
+		identity := taskref.For(ft.Task, ft.Project)
 		if validTasks[identity] {
 			m.nextOrder[n] = ft
 			n++
@@ -316,7 +317,7 @@ func (m *AppModel) pruneDeletedTaskRefs() {
 	// Prune daily plan
 	n = 0
 	for _, ft := range m.today {
-		identity := taskIdentityFor(ft.Task, ft.Project)
+		identity := taskref.For(ft.Task, ft.Project)
 		if validTasks[identity] {
 			m.today[n] = ft
 			n++

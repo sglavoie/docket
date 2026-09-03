@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // The base task workspace admits only non-archived projects that do not carry
@@ -219,8 +220,8 @@ func TestParkedProjectLeavesOperationScopeAndWorkspacePulse(t *testing.T) {
 	storage.DefaultRepository = repo
 	defer func() { storage.DefaultRepository = previous }()
 
-	pulse := ComputeWorkspacePulse(runtime, map[TaskIdentity]bool{
-		taskIdentityFor(parked.Tasks[0], parked): true,
+	pulse := ComputeWorkspacePulse(runtime, map[taskref.TaskIdentity]bool{
+		taskref.For(parked.Tasks[0], parked): true,
 	}, time.Now())
 	if pulse.Inbox != 1 {
 		t.Fatalf("workspace pulse inbox = %d, want only the base workspace inbox task", pulse.Inbox)
@@ -242,9 +243,9 @@ func TestParkedProjectPlanningReferencesDoNotHydrate(t *testing.T) {
 		persister:    persister,
 		projects:     map[string]*models.Project{active.ID: active, parked.ID: parked},
 		nextOrder:    []PlanningTask{},
-		nextOrderIDs: make(map[TaskIdentity]bool),
+		nextOrderIDs: make(map[taskref.TaskIdentity]bool),
 		today:        []PlanningTask{},
-		todayIDs:     make(map[TaskIdentity]bool),
+		todayIDs:     make(map[taskref.TaskIdentity]bool),
 	}
 
 	workspaceProjects := shell.taskWorkspaceProjects()
@@ -270,9 +271,9 @@ func TestReloadDropsSelectionsOutsideTheAdmittedWorkspace(t *testing.T) {
 	outliner.crossForceRebuild = true
 	outliner.crossProjectRebuildRows()
 
-	activeIdentity := taskIdentityFor(active.Tasks[0], active)
-	parkedIdentity := taskIdentityFor(parked.Tasks[0], parked)
-	outliner.ReplaceSelection([]TaskIdentity{activeIdentity, parkedIdentity})
+	activeIdentity := taskref.For(active.Tasks[0], active)
+	parkedIdentity := taskref.For(parked.Tasks[0], parked)
+	outliner.ReplaceSelection([]taskref.TaskIdentity{activeIdentity, parkedIdentity})
 
 	outliner.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
 		projects:   admittedWorkspace(runtime, active, parked),
@@ -294,8 +295,8 @@ func TestReloadKeepsSelectionsHiddenByFilters(t *testing.T) {
 	outliner := baseWorkspaceOutliner(runtime, active, parked)
 	outliner.selectOutlinerMode(ModeAll)
 
-	hidden := taskIdentityFor(active.Tasks[0], active)
-	outliner.ReplaceSelection([]TaskIdentity{hidden})
+	hidden := taskref.For(active.Tasks[0], active)
+	outliner.ReplaceSelection([]taskref.TaskIdentity{hidden})
 	outliner.selectOutlinerMode(ModeDue)
 
 	outliner.handleCrossProjectsLoaded(crossProjectsLoadedMsg{

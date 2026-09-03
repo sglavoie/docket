@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // projectGroupToggleFixture seeds alpha with two tasks and beta with one, in a
@@ -173,7 +174,7 @@ func TestToggleVisibleProjectGroupsLeavesTheOtherFoldAxesAlone(t *testing.T) {
 	outliner.setSectionRowCollapsed(sections[0], true)
 	outliner.rebuildRows()
 
-	outliner.expandedNodes[TaskIdentity{ProjectID: alpha.ID, TaskID: parent.ID}] = false
+	outliner.expandedNodes[taskref.TaskIdentity{ProjectID: alpha.ID, TaskID: parent.ID}] = false
 	outliner.rebuildRows()
 	sectionsBefore := sectionFoldStates(outliner)
 	nodesBefore := maps.Clone(outliner.expandedNodes)

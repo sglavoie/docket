@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // planningReconcileEnv is a filesystem-backed workspace wiring the real
@@ -124,7 +125,7 @@ func TestTUIStateTransitionsPreservePlanningExclusivity(t *testing.T) {
 
 		coords := newSecondaryCoordinators(env.service)
 		cmd := coords.TaskItem.Transition(
-			TaskIdentity{ProjectID: env.project.ID, TaskID: env.taskID},
+			taskref.TaskIdentity{ProjectID: env.project.ID, TaskID: env.taskID},
 			models.StateWaiting,
 		)
 		assertNotTransactionError(t, cmd())
@@ -242,7 +243,7 @@ func TestPlanningToggleUndoOrderingAndDurability(t *testing.T) {
 		assertQueueKeyFlow(t, app, task.ID, true)
 
 		// A newer, unrelated workspace-ledger mutation (transaction #2).
-		if _, err := app.appService.SetPriority(taskIdentityFor(task, app.currentProject).Locator(), newPriority); err != nil {
+		if _, err := app.appService.SetPriority(taskref.For(task, app.currentProject).Locator(), newPriority); err != nil {
 			t.Fatalf("newer mutation (set priority): %v", err)
 		}
 		app.reloadProjectByID(app.currentProject.ID)

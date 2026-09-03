@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 type invariantQueueView struct {
@@ -41,7 +42,7 @@ func TestTUIStateMachine_OutlinerEscOwnershipIsDeterministic(t *testing.T) {
 	outliner := NewOutlinerModel(project, app.configManager, app.runtime)
 	outliner.rebuildRows()
 	outliner.multiSelectMode = true
-	outliner.SelectTaskIdentity(taskIdentityFor(project.Tasks[0], project))
+	outliner.SelectTaskIdentity(taskref.For(project.Tasks[0], project))
 	outliner.focusStack = []FocusEntry{{TaskID: project.Tasks[0].ID, CursorIndex: 0}}
 	outliner.SetSearchQuery(project.Tasks[0].Title)
 	app.showView(presentation.ViewCrossProjectOutliner, outliner)
@@ -133,7 +134,7 @@ func TestTUIStateMachine_QueueAndTodayStayExclusive(t *testing.T) {
 func TestNextMembershipIsExplicitPlanningState(t *testing.T) {
 	t.Run("q toggles explicit membership without inventing a lifecycle state", func(t *testing.T) {
 		app, task := newFocusToggleTestAppState(t)
-		identity := taskIdentityFor(task, app.currentProject)
+		identity := taskref.For(task, app.currentProject)
 
 		_ = app.toggleQueue(nil)
 		if !app.nextOrderIDs[identity] {
@@ -151,7 +152,7 @@ func TestNextMembershipIsExplicitPlanningState(t *testing.T) {
 
 	t.Run("Today and Next memberships remain exclusive", func(t *testing.T) {
 		app, task := newFocusToggleTestAppState(t)
-		identity := taskIdentityFor(task, app.currentProject)
+		identity := taskref.For(task, app.currentProject)
 		_ = app.toggleQueue(nil)
 		_ = app.toggleToday(nil)
 		if !app.todayIDs[identity] || app.nextOrderIDs[identity] {
@@ -396,9 +397,9 @@ func newFocusToggleTestAppState(t *testing.T) (*AppModel, *models.Task) {
 		views:             NewViewRegistry(),
 		currentProject:    project,
 		nextOrder:         []PlanningTask{},
-		nextOrderIDs:      make(map[TaskIdentity]bool),
+		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),
 		today:             []PlanningTask{},
-		todayIDs:          make(map[TaskIdentity]bool),
+		todayIDs:          make(map[taskref.TaskIdentity]bool),
 		operationRegistry: NewOperationRegistry(),
 		navigation:        NewNavigationState(),
 	}
@@ -439,7 +440,7 @@ func newFocusToggleTestAppState(t *testing.T) (*AppModel, *models.Task) {
 func assertExclusiveMembership(t *testing.T, app *AppModel, taskID string, inQueue, inDaily bool) {
 	t.Helper()
 
-	identity := TaskIdentity{ProjectID: app.currentProject.ID, TaskID: taskID}
+	identity := taskref.TaskIdentity{ProjectID: app.currentProject.ID, TaskID: taskID}
 	if app.nextOrderIDs[identity] != inQueue {
 		t.Fatalf("queue membership = %v, want %v", app.nextOrderIDs[identity], inQueue)
 	}

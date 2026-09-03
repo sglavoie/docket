@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestParseQuickEdit_Priority(t *testing.T) {
@@ -36,7 +37,7 @@ func TestParseQuickEditClearPriorityWithBangZero(t *testing.T) {
 	if !result.prioritySet || result.priority != models.PriorityUnset {
 		t.Fatalf("priority = %d set=%v, want Unset", result.priority, result.prioritySet)
 	}
-	req := taskLineEditRequest(TaskIdentity{ProjectID: "project", TaskID: task.ID}, result)
+	req := taskLineEditRequest(taskref.TaskIdentity{ProjectID: "project", TaskID: task.ID}, result)
 	if req.Priority == nil || *req.Priority != models.PriorityUnset {
 		t.Fatalf("request priority = %v, want Unset", req.Priority)
 	}

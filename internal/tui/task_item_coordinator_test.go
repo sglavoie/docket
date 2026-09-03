@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // This file exercises the single-task TaskItemCoordinator
@@ -18,7 +19,7 @@ func TestTaskItemTransitionScenario(t *testing.T) {
 	task := seedTask(t, 1, "Park me", models.StateBacklog)
 	env, features := newSecondaryEnv(t, "state", task)
 
-	runResult(t, features.TaskItem.Transition(taskIdentityFor(task, env.project), models.StateSomeday))
+	runResult(t, features.TaskItem.Transition(taskref.For(task, env.project), models.StateSomeday))
 	got := env.reload(t).GetTaskByID(task.ID)
 	if got == nil || got.State() != models.StateSomeday {
 		t.Fatalf("reloaded state = %v, want %q", got, models.StateSomeday)
@@ -51,7 +52,7 @@ func TestTaskItemMoveToTopScenario(t *testing.T) {
 	c := seedTask(t, 3, "C", models.StateBacklog)
 	env, features := newSecondaryEnv(t, "reorder", a, b, c)
 
-	msg := runBatchResult(t, features.TaskItem.MoveToTop(taskIdentityFor(c, env.project)))
+	msg := runBatchResult(t, features.TaskItem.MoveToTop(taskref.For(c, env.project)))
 	if len(msg.TouchedProjectIDs) != 1 {
 		t.Fatalf("touched projects = %v, want 1", msg.TouchedProjectIDs)
 	}
@@ -70,7 +71,7 @@ func TestTaskItemMoveToBottomScenario(t *testing.T) {
 	c := seedTask(t, 3, "C", models.StateBacklog)
 	env, features := newSecondaryEnv(t, "reorder", a, b, c)
 
-	msg := runBatchResult(t, features.TaskItem.MoveToBottom(taskIdentityFor(a, env.project)))
+	msg := runBatchResult(t, features.TaskItem.MoveToBottom(taskref.For(a, env.project)))
 	if msg.Summary != "Moved #1 to bottom" {
 		t.Errorf("summary = %q, want %q", msg.Summary, "Moved #1 to bottom")
 	}

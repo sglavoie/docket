@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -274,10 +275,10 @@ func TestBuildStaleSectionUsesUpdatedCalendarDayAndVisibilityGuards(t *testing.T
 			return task.ID != filtered.ID
 		},
 	}
-	empty := map[TaskIdentity]bool{}
+	empty := map[taskref.TaskIdentity]bool{}
 	section := outliner.buildStaleSection(input, empty, empty, empty, empty, empty)
 
-	want := TaskIdentity{ProjectID: project.ID, TaskID: boundary.ID}
+	want := taskref.TaskIdentity{ProjectID: project.ID, TaskID: boundary.ID}
 	if section.count != 1 || len(section.projected) != 1 || !section.projected[want] {
 		t.Fatalf("Stale projection = count %d identities %v, want only %v", section.count, section.projected, want)
 	}
@@ -391,7 +392,7 @@ func TestPrimaryModeMembershipHierarchyOrderingAndQualifiedRows(t *testing.T) {
 		t.Fatalf("nested Next rows = parent %+v found=%t child %+v found=%t", parentRow, parentFound, childRow, childFound)
 	}
 
-	outliner.expandedNodes[TaskIdentity{ProjectID: alpha.ID, TaskID: alphaNext.ID}] = false
+	outliner.expandedNodes[taskref.TaskIdentity{ProjectID: alpha.ID, TaskID: alphaNext.ID}] = false
 	outliner.rebuildRows()
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{alphaNext.ID, betaNext.ID}) {
 		t.Fatalf("collapsed Next rows = %v, want nested child hidden", got)

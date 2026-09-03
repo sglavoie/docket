@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // sectionRowForest is a presentation-only hierarchy over rows that already
@@ -41,7 +42,7 @@ type sectionForestOptions struct {
 func (m *OutlinerModel) buildSectionRowForestWith(rows []outlinerRow, opts sectionForestOptions) sectionRowForest {
 	forest := sectionRowForest{}
 	nodes := make([]*sectionRowNode, 0, len(rows))
-	byIdentity := make(map[TaskIdentity]*sectionRowNode, len(rows))
+	byIdentity := make(map[taskref.TaskIdentity]*sectionRowNode, len(rows))
 
 	for sourceIndex, row := range rows {
 		if row.task == nil {
@@ -62,7 +63,7 @@ func (m *OutlinerModel) buildSectionRowForestWith(rows []outlinerRow, opts secti
 	for _, node := range nodes {
 		identity := m.sectionRowIdentity(node.row)
 		if node.row.task.ParentID != nil && identity.Valid() {
-			parentIdentity := TaskIdentity{
+			parentIdentity := taskref.TaskIdentity{
 				ProjectID: identity.ProjectID,
 				TaskID:    *node.row.task.ParentID,
 			}
@@ -99,15 +100,15 @@ func (m *OutlinerModel) buildSectionRowForestWith(rows []outlinerRow, opts secti
 	return forest
 }
 
-func (m *OutlinerModel) sectionRowIdentity(row outlinerRow) TaskIdentity {
+func (m *OutlinerModel) sectionRowIdentity(row outlinerRow) taskref.TaskIdentity {
 	projectID := row.ProjectID
 	if projectID == "" && m.project != nil {
 		projectID = m.project.ID
 	}
 	if row.task == nil {
-		return TaskIdentity{}
+		return taskref.TaskIdentity{}
 	}
-	return TaskIdentity{ProjectID: projectID, TaskID: row.task.ID}
+	return taskref.TaskIdentity{ProjectID: projectID, TaskID: row.task.ID}
 }
 
 // projectRowGroup is one project's portion of a section, already assembled into
@@ -232,7 +233,7 @@ func (m *OutlinerModel) projectGroupPressure(tasks []*models.Task, projectID str
 		if taskIsOverdueAt(task, now) {
 			overdue++
 		}
-		if planned[TaskIdentity{ProjectID: projectID, TaskID: task.ID}] {
+		if planned[taskref.TaskIdentity{ProjectID: projectID, TaskID: task.ID}] {
 			today++
 		}
 	}
@@ -242,14 +243,14 @@ func (m *OutlinerModel) projectGroupPressure(tasks []*models.Task, projectID str
 // todayPlanIdentities reads the durable Today membership directly, so a header
 // counts the same plan every projection resolves from without threading the
 // mode input through the row appenders.
-func (m *OutlinerModel) todayPlanIdentities() map[TaskIdentity]bool {
+func (m *OutlinerModel) todayPlanIdentities() map[taskref.TaskIdentity]bool {
 	if m.runtime == nil {
 		return nil
 	}
 	plan := m.runtime.Planning().GetToday()
-	identities := make(map[TaskIdentity]bool, len(plan))
+	identities := make(map[taskref.TaskIdentity]bool, len(plan))
 	for _, item := range plan {
-		identities[TaskIdentity{ProjectID: item.ProjectID, TaskID: item.TaskID}] = true
+		identities[taskref.TaskIdentity{ProjectID: item.ProjectID, TaskID: item.TaskID}] = true
 	}
 	return identities
 }

@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // The Outliner builds its own CommandContext rather than borrowing the shell's,
@@ -57,7 +58,7 @@ func (m *OutlinerModel) operationCommandContext() CommandContext {
 	return ctx
 }
 
-func (m *OutlinerModel) operationSelectionEntities(identities []TaskIdentity) []EntityContext {
+func (m *OutlinerModel) operationSelectionEntities(identities []taskref.TaskIdentity) []EntityContext {
 	normalized := normalizedTaskIdentities(identities)
 	entities := make([]EntityContext, 0, len(normalized))
 	for _, identity := range normalized {
@@ -70,7 +71,7 @@ func (m *OutlinerModel) operationSelectionEntities(identities []TaskIdentity) []
 	return entities
 }
 
-func (m *OutlinerModel) taskAndProjectForIdentity(identity TaskIdentity) (*models.Task, *models.Project) {
+func (m *OutlinerModel) taskAndProjectForIdentity(identity taskref.TaskIdentity) (*models.Task, *models.Project) {
 	if !identity.Valid() {
 		return nil, nil
 	}

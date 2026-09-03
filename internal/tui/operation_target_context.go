@@ -2,12 +2,13 @@ package tui
 
 import (
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // operationSelectionProvider exposes stable selected identities without
 // leaking renderer selection maps into execution.
 type operationSelectionProvider interface {
-	SelectedTaskIdentities() []TaskIdentity
+	SelectedTaskIdentities() []taskref.TaskIdentity
 }
 
 type operationVisualSelectionProvider interface {
@@ -72,7 +73,7 @@ func (m *AppModel) operationCommandContext() CommandContext {
 	return ctx
 }
 
-func (m *AppModel) operationSelectionEntities(identities []TaskIdentity) []EntityContext {
+func (m *AppModel) operationSelectionEntities(identities []taskref.TaskIdentity) []EntityContext {
 	normalized := normalizedTaskIdentities(identities)
 	entities := make([]EntityContext, 0, len(normalized))
 	for _, identity := range normalized {

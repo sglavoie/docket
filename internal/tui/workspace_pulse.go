@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -62,13 +63,13 @@ type workspacePulseAware interface {
 // Today membership is project-qualified and counted at most once per planning
 // identity. Stale references, ineligible tasks, and references to excluded
 // projects do not contribute because only loaded eligible tasks are considered.
-func ComputeWorkspacePulse(rs *config.RuntimeState, todayIDs map[TaskIdentity]bool, now time.Time) WorkspacePulse {
+func ComputeWorkspacePulse(rs *config.RuntimeState, todayIDs map[taskref.TaskIdentity]bool, now time.Time) WorkspacePulse {
 	if rs == nil {
 		return WorkspacePulse{}
 	}
 
 	var pulse WorkspacePulse
-	countedToday := make(map[TaskIdentity]bool, len(todayIDs))
+	countedToday := make(map[taskref.TaskIdentity]bool, len(todayIDs))
 	_, projects, failed := loadCrossScopeSelection(rs.TaskWorkspaceProjects(), nil)
 	for _, failure := range failed {
 		logging.Warn("workspace pulse: %s", failure.Detail)
@@ -82,7 +83,7 @@ func ComputeWorkspacePulse(rs *config.RuntimeState, todayIDs map[TaskIdentity]bo
 				continue
 			}
 
-			identity := taskIdentityFor(task, project)
+			identity := taskref.For(task, project)
 			if identity.Valid() && todayIDs[identity] && !countedToday[identity] && app.PlanningTodayEligible(task.State()) {
 				pulse.Today++
 				countedToday[identity] = true

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // A temporary Outliner narrowing owes the user the exact view it replaced. Two
@@ -97,11 +98,11 @@ type outlinerViewSnapshot struct {
 	// Subordinate tools.
 	peekMode        bool
 	multiSelectMode bool
-	selected        map[TaskIdentity]bool
+	selected        map[taskref.TaskIdentity]bool
 
 	// Recent's frozen ordering keys, so returning to a Recent baseline reads the
 	// list the user was triaging rather than a reshuffled one.
-	recencyKeys       map[TaskIdentity]time.Time
+	recencyKeys       map[taskref.TaskIdentity]time.Time
 	recencyProjection string
 }
 
@@ -158,7 +159,7 @@ func (m *OutlinerModel) restoreOutlinerViewSnapshot(snapshot outlinerViewSnapsho
 	m.multiSelectMode = snapshot.multiSelectMode
 	m.selectedTaskIdentities = copyBoolMap(snapshot.selected)
 	if m.selectedTaskIdentities == nil {
-		m.selectedTaskIdentities = make(map[TaskIdentity]bool)
+		m.selectedTaskIdentities = make(map[taskref.TaskIdentity]bool)
 	}
 	m.FreezeRangeSelection()
 

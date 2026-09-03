@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -141,7 +142,7 @@ func (m *OutlinerModel) flattenSectionForest(forest *sectionTaskForest, projectI
 				hasVisibleChildren: len(children) > 0,
 				ProjectID:          projectID,
 			})
-			identity := TaskIdentity{ProjectID: projectID, TaskID: task.ID}
+			identity := taskref.TaskIdentity{ProjectID: projectID, TaskID: task.ID}
 			if identity.ProjectID == "" && m.project != nil {
 				identity.ProjectID = m.project.ID
 			}

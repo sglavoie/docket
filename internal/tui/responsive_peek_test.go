@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestOutlinerUsesFullWidthAndPeekFollowsCursorAtEveryWidth(t *testing.T) {
@@ -26,7 +27,7 @@ func TestOutlinerUsesFullWidthAndPeekFollowsCursorAtEveryWidth(t *testing.T) {
 	for _, width := range []int{60, 99, 100, 160} {
 		outliner.SetSize(width, 22)
 		outliner.rebuildRows()
-		outliner.moveCursorToIdentity(TaskIdentity{ProjectID: project.ID, TaskID: first.ID})
+		outliner.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: first.ID})
 		outliner.peekMode = false
 		closed := ansi.Strip(outliner.View().Content)
 		if strings.Contains(closed, "Description: First description") || strings.Contains(closed, "Inspector") {
@@ -39,7 +40,7 @@ func TestOutlinerUsesFullWidthAndPeekFollowsCursorAtEveryWidth(t *testing.T) {
 			!strings.Contains(firstView, "Tags: #backend #security") {
 			t.Fatalf("width %d Peek missing first task:\n%s", width, firstView)
 		}
-		outliner.moveCursorToIdentity(TaskIdentity{ProjectID: project.ID, TaskID: second.ID})
+		outliner.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: second.ID})
 		secondView := ansi.Strip(outliner.View().Content)
 		if !strings.Contains(secondView, "Description: Second description") ||
 			!strings.Contains(secondView, "Tags: #frontend") ||
@@ -241,7 +242,7 @@ func TestOutlinerRowsPromoteOperationalSignalsAndHideShortID(t *testing.T) {
 	outliner := NewOutlinerModel(project, nil, newTestConfig())
 	outliner.SetSize(100, 22)
 	outliner.rebuildRows()
-	outliner.moveCursorToIdentity(TaskIdentity{ProjectID: project.ID, TaskID: task.ID})
+	outliner.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: task.ID})
 
 	plain := ansi.Strip(outliner.View().Content)
 	for _, want := range []string{"Operational task", due.Format("Jan 2"), "woke", "1/2"} {

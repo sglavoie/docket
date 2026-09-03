@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestParseQuickEditStructuralResolutionIsOrderIndependent(t *testing.T) {
@@ -220,7 +221,7 @@ func TestTaskLineEditRequestMapsValidatedPatch(t *testing.T) {
 		stateSet:     true,
 	}
 
-	req := taskLineEditRequest(TaskIdentity{ProjectID: "project", TaskID: task.ID}, result)
+	req := taskLineEditRequest(taskref.TaskIdentity{ProjectID: "project", TaskID: task.ID}, result)
 	if req.Title != "Updated" || req.Priority == nil || *req.Priority != 1 {
 		t.Fatalf("request content = %+v", req)
 	}

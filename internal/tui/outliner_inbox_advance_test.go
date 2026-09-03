@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // inboxAdvanceOutliner builds the real Inbox row pipeline over the given
@@ -30,8 +31,8 @@ func inboxAdvanceRebuild(outliner *OutlinerModel) {
 // forceFollow, exactly as the planning path does.
 func departAfterCapture(t *testing.T, outliner *OutlinerModel, task *models.Task, project *models.Project, state models.WorkflowState) {
 	t.Helper()
-	identity := taskIdentityFor(task, project)
-	capture := outliner.captureOutlinerRelocation([]TaskIdentity{identity})
+	identity := taskref.For(task, project)
+	capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{identity})
 	if capture == nil {
 		t.Fatalf("relocation capture for %s = nil", task.ID)
 	}
@@ -42,7 +43,7 @@ func departAfterCapture(t *testing.T, outliner *OutlinerModel, task *models.Task
 	}
 }
 
-func requireCursorTask(t *testing.T, outliner *OutlinerModel, want TaskIdentity) {
+func requireCursorTask(t *testing.T, outliner *OutlinerModel, want taskref.TaskIdentity) {
 	t.Helper()
 	if got := outliner.currentTaskIdentity(); got != want {
 		t.Fatalf("cursor task = %+v, want %+v (cursor=%d)", got, want, outliner.cursor)
@@ -90,7 +91,7 @@ func TestInboxAdvanceCrossesAProjectGroupHeader(t *testing.T) {
 	departAfterCapture(t, outliner, alphaTwo, alpha, models.StateBacklog)
 
 	requireCursorRow(t, outliner, betaOne.ID)
-	requireCursorTask(t, outliner, taskIdentityFor(betaOne, beta))
+	requireCursorTask(t, outliner, taskref.For(betaOne, beta))
 }
 
 // TestInboxAdvanceLandsOnAPromotedChild pins the case most likely to be
@@ -109,7 +110,7 @@ func TestInboxAdvanceLandsOnAPromotedChild(t *testing.T) {
 	departAfterCapture(t, outliner, parent, alpha, models.StateDoing)
 
 	requireCursorRow(t, outliner, child.ID)
-	requireCursorTask(t, outliner, taskIdentityFor(child, alpha))
+	requireCursorTask(t, outliner, taskref.For(child, alpha))
 }
 
 // TestInboxAdvanceStopsAtTheLastRow leaves the cursor to the existing clamp when
@@ -121,7 +122,7 @@ func TestInboxAdvanceStopsAtTheLastRow(t *testing.T) {
 	outliner := inboxAdvanceOutliner(t, alpha)
 
 	inboxCursorTo(t, outliner, last.ID)
-	capture := outliner.captureOutlinerRelocation([]TaskIdentity{taskIdentityFor(last, alpha)})
+	capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{taskref.For(last, alpha)})
 	if capture.Origin.Following.Valid() {
 		t.Fatalf("last row recorded a successor %+v", capture.Origin.Following)
 	}
@@ -147,7 +148,7 @@ func TestInboxAdvanceIgnoresFailedMutations(t *testing.T) {
 
 	inboxCursorTo(t, outliner, one.ID)
 	before := outliner.cursor
-	capture := outliner.captureOutlinerRelocation([]TaskIdentity{taskIdentityFor(one, alpha)})
+	capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{taskref.For(one, alpha)})
 	failure := TransactionErrorMsg{Err: errors.New("commit refused")}
 	wrapped := withOutlinerRelocationCapture(func() tea.Msg { return failure }, capture)
 	if got, ok := wrapped().(TransactionErrorMsg); !ok || got != failure {
@@ -247,11 +248,11 @@ func TestOutlinerDepartureDoesNotAdvanceOutsideInbox(t *testing.T) {
 			outliner.selectOutlinerMode(mode)
 
 			inboxCursorTo(t, outliner, alphaTwo.ID)
-			capture := outliner.captureOutlinerRelocation([]TaskIdentity{taskIdentityFor(alphaTwo, alpha)})
+			capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{taskref.For(alphaTwo, alpha)})
 			if capture == nil {
 				t.Fatal("relocation capture = nil")
 			}
-			successor := taskIdentityFor(betaOne, beta)
+			successor := taskref.For(betaOne, beta)
 			if capture.Origin.Following != successor {
 				t.Fatalf("%s successor = %+v, want %+v", mode, capture.Origin.Following, successor)
 			}

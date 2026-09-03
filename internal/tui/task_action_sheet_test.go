@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func taskActionTestContext() CommandContext {
@@ -26,10 +27,10 @@ func bulkTaskActionTestContext(project *models.Project, tasks ...*models.Task) C
 	context := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	context.Capabilities.Add(CapabilitySimplifiedInput)
 	context.Selection.Visual = true
-	context.Selection.Tasks = make([]TaskIdentity, 0, len(tasks))
+	context.Selection.Tasks = make([]taskref.TaskIdentity, 0, len(tasks))
 	context.Selection.Entities = make([]EntityContext, 0, len(tasks))
 	for _, task := range tasks {
-		context.Selection.Tasks = append(context.Selection.Tasks, taskIdentityFor(task, project))
+		context.Selection.Tasks = append(context.Selection.Tasks, taskref.For(task, project))
 		context.Selection.Entities = append(context.Selection.Entities, taskOperationEntity(task, project))
 	}
 	context.Entity = context.Selection.Entities[0]
@@ -383,7 +384,7 @@ func TestSimplifiedVisualSelectionKeysOpenBulkActionsAndEscFreezes(t *testing.T)
 		}
 	}
 	send(tea.KeyPressMsg{Code: 'V', Text: "V"})
-	if !app.crossOutliner.IsTaskIdentitySelected(taskIdentityFor(first, project)) {
+	if !app.crossOutliner.IsTaskIdentitySelected(taskref.For(first, project)) {
 		t.Fatal("V did not anchor a fresh visual range at the cursor row")
 	}
 	send(tea.KeyPressMsg{Code: tea.KeyEscape})

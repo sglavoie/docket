@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // TestStateChangingTUISurfacesPreservePlanningExclusivity locks FR-011-002 for
@@ -22,7 +23,7 @@ func TestStateChangingTUISurfacesPreservePlanningExclusivity(t *testing.T) {
 			t.Fatalf("parse inline edit: %v", err)
 		}
 		cmd := m.secondaryFeatures.TaskItem.EditTaskLine(
-			taskLineEditRequest(taskIdentityFor(task, m.currentProject), parsed), nil,
+			taskLineEditRequest(taskref.For(task, m.currentProject), parsed), nil,
 		)
 		assertNotTransactionError(t, cmd())
 
@@ -66,9 +67,9 @@ func TestInlineProjectMoveAfterTodayMutationUsesFreshStructuralPlanning(t *testi
 		},
 		currentProject: source,
 		nextOrder:      []PlanningTask{},
-		nextOrderIDs:   make(map[TaskIdentity]bool),
+		nextOrderIDs:   make(map[taskref.TaskIdentity]bool),
 		today:          []PlanningTask{},
-		todayIDs:       make(map[TaskIdentity]bool),
+		todayIDs:       make(map[taskref.TaskIdentity]bool),
 	}
 
 	// A live Today mutation installs the runtime-bound reconciliation builder as
@@ -100,7 +101,7 @@ func TestInlineProjectMoveAfterTodayMutationUsesFreshStructuralPlanning(t *testi
 		t.Fatalf("parse inline project move: %v", err)
 	}
 	outliner := NewOutlinerModel(nil, manager, runtime)
-	req := outliner.taskLineEditRequest(taskIdentityFor(moving, source), parsed)
+	req := outliner.taskLineEditRequest(taskref.For(moving, source), parsed)
 	if req.PlanningArtifacts == nil {
 		t.Fatal("cross-project inline request has no explicit planning builder")
 	}

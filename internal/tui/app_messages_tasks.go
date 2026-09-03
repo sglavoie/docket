@@ -4,6 +4,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // =============================================================================
@@ -43,14 +44,14 @@ type OpenParentSelectorMsg struct {
 	CurrentID    *string                     // Pre-select current parent
 	AllowNone    bool                        // Whether "None" is valid option
 	Source       presentation.PresentationID // Which view opened it
-	ReparentTask TaskIdentity                // When valid, reparent this qualified task instead of updating a form field
+	ReparentTask taskref.TaskIdentity        // When valid, reparent this qualified task instead of updating a form field
 }
 
 // ParentSelectedMsg returns the selected parent from parent selector.
 type ParentSelectedMsg struct {
 	ParentID     *string                     // nil means "None"
 	Source       presentation.PresentationID // Which view to send result to
-	ReparentTask TaskIdentity                // Forwarded from OpenParentSelectorMsg for delayed reparent operations
+	ReparentTask taskref.TaskIdentity        // Forwarded from OpenParentSelectorMsg for delayed reparent operations
 }
 
 // CloseParentSelectorMsg closes the parent selector without selection.

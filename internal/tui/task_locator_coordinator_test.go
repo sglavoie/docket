@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 const duplicateLocatorTaskID = "duplicate-task-id"
@@ -32,7 +33,7 @@ func newDuplicateLocatorEnv(t *testing.T, betaExtras ...*models.Task) (*crossPro
 func TestTaskItemCoordinatorDuplicateIDsUseSelectedProject(t *testing.T) {
 	t.Run("state", func(t *testing.T) {
 		env, beta := newDuplicateLocatorEnv(t)
-		identity := taskIdentityFor(beta, env.projects[1])
+		identity := taskref.For(beta, env.projects[1])
 
 		res := runResult(t, env.taskItem.Transition(identity, models.StateDoing))
 		if res.ProjectID != env.projects[1].ID {
@@ -48,7 +49,7 @@ func TestTaskItemCoordinatorDuplicateIDsUseSelectedProject(t *testing.T) {
 
 	t.Run("priority and due date", func(t *testing.T) {
 		env, beta := newDuplicateLocatorEnv(t)
-		identity := taskIdentityFor(beta, env.projects[1])
+		identity := taskref.For(beta, env.projects[1])
 		due := time.Date(2026, time.July, 30, 0, 0, 0, 0, time.UTC)
 
 		if res := runResult(t, env.taskItem.SetPriority(identity, 1)); res.ProjectID != env.projects[1].ID {
@@ -76,7 +77,7 @@ func TestTaskItemCoordinatorDuplicateIDsUseSelectedProject(t *testing.T) {
 		_, cmd := outliner.handleCrossProjectReparent(ParentSelectedMsg{
 			ParentID:     &newParentID,
 			Source:       presentation.ViewCrossProjectOutliner,
-			ReparentTask: taskIdentityFor(beta, env.projects[1]),
+			ReparentTask: taskref.For(beta, env.projects[1]),
 		})
 		res := runResult(t, cmd)
 		if res.ProjectID != env.projects[1].ID {
@@ -94,7 +95,7 @@ func TestTaskItemCoordinatorDuplicateIDsUseSelectedProject(t *testing.T) {
 	t.Run("edit", func(t *testing.T) {
 		env, beta := newDuplicateLocatorEnv(t)
 		title := "Edited beta only"
-		res := runResult(t, env.taskItem.Edit(taskIdentityFor(beta, env.projects[1]), app.EditRequest{Title: &title}))
+		res := runResult(t, env.taskItem.Edit(taskref.For(beta, env.projects[1]), app.EditRequest{Title: &title}))
 		if res.ProjectID != env.projects[1].ID {
 			t.Fatalf("edit result project = %q, want beta", res.ProjectID)
 		}
@@ -109,7 +110,7 @@ func TestTaskItemCoordinatorDuplicateIDsUseSelectedProject(t *testing.T) {
 	t.Run("attachment and subview", func(t *testing.T) {
 		env, beta := newDuplicateLocatorEnv(t)
 		features := newSecondaryCoordinators(env.svc)
-		identity := taskIdentityFor(beta, env.projects[1])
+		identity := taskref.For(beta, env.projects[1])
 
 		if res := runResult(t, features.Attachment.AttachURL(identity, "https://example.com/beta")); res.ProjectID != env.projects[1].ID {
 			t.Fatalf("attachment result project = %q, want beta", res.ProjectID)

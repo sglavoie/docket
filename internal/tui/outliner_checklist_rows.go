@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // checklistCursor names the checklist item the cursor rests on, together with
@@ -40,13 +41,13 @@ func (m *OutlinerModel) cursorChecklistItem() (checklistCursor, bool) {
 // isChecklistExpanded reports whether the owner task's checklist items render as
 // their own rows. Absent means collapsed, so the default projection is exactly
 // the one that existed before checklist rows.
-func (m *OutlinerModel) isChecklistExpanded(identity TaskIdentity) bool {
+func (m *OutlinerModel) isChecklistExpanded(identity taskref.TaskIdentity) bool {
 	return m != nil && m.expandedChecklists[identity]
 }
 
-func (m *OutlinerModel) setChecklistExpanded(identity TaskIdentity, expanded bool) {
+func (m *OutlinerModel) setChecklistExpanded(identity taskref.TaskIdentity, expanded bool) {
 	if m.expandedChecklists == nil {
-		m.expandedChecklists = make(map[TaskIdentity]bool)
+		m.expandedChecklists = make(map[taskref.TaskIdentity]bool)
 	}
 	if expanded {
 		m.expandedChecklists[identity] = true
@@ -118,7 +119,7 @@ func (m *OutlinerModel) syncChecklistSelectionRows() {
 	if m == nil || len(m.expandedChecklists) == 0 {
 		return
 	}
-	owner := TaskIdentity{}
+	owner := taskref.TaskIdentity{}
 	if m.cursor >= 0 && m.cursor < len(m.rows) {
 		owner = m.taskIdentityForRow(m.rows[m.cursor])
 	}

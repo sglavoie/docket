@@ -1,5 +1,7 @@
 package tui
 
+import "github.com/sglavoie/tt/internal/tui/taskref"
+
 // reviewLaneKey names the Review lane on the synthetic rows that carry it. It
 // is a lane identity, not a tag: review is a stored boolean on the task, and
 // nothing here reads a tag list.
@@ -13,7 +15,7 @@ const (
 type reviewSectionBuild struct {
 	groups    []projectRowGroup
 	count     int
-	projected map[TaskIdentity]bool
+	projected map[taskref.TaskIdentity]bool
 }
 
 // buildReviewSection promotes ordinary open tasks carrying the stored review
@@ -22,13 +24,13 @@ type reviewSectionBuild struct {
 // so planning a flagged task moves its row instead of duplicating it.
 func (m *OutlinerModel) buildReviewSection(
 	input OutlinerModeInput,
-	pinned, today, next map[TaskIdentity]bool,
+	pinned, today, next map[taskref.TaskIdentity]bool,
 ) reviewSectionBuild {
-	result := reviewSectionBuild{projected: make(map[TaskIdentity]bool)}
+	result := reviewSectionBuild{projected: make(map[taskref.TaskIdentity]bool)}
 	var rows []outlinerRow
 	for _, candidate := range orderedModeTasks(input) {
 		task, project := candidate.row.Task, candidate.row.Project
-		identity := taskIdentityFor(task, project)
+		identity := taskref.For(task, project)
 		if task == nil || project == nil || task.IsTerminalState() || task.IsDeferredAt(input.now()) ||
 			!task.Review ||
 			pinned[identity] || today[identity] || next[identity] {

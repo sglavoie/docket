@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 const (
@@ -25,7 +26,7 @@ func (m *AppModel) taskAuxiliaryAllowsOperation(id OperationID, entity EntityCon
 	if id != operationTaskNewChild {
 		return true
 	}
-	task, _ := m.taskAndProjectForIdentity(TaskIdentity{
+	task, _ := m.taskAndProjectForIdentity(taskref.TaskIdentity{
 		ProjectID: entity.ProjectID,
 		TaskID:    entity.TaskID,
 	})
@@ -49,7 +50,7 @@ func taskAcceptsDeeperChild(task *models.Task) bool {
 //nolint:gocyclo // One auditable switch keeps the auxiliary catalog in a single place.
 func (m *AppModel) executeAuxiliaryTaskOperation(
 	invocation OperationInvocation,
-	identity TaskIdentity,
+	identity taskref.TaskIdentity,
 ) OperationHandlerResult {
 	task, project := m.taskAndProjectForIdentity(identity)
 	if task == nil || project == nil {

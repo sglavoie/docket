@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // TestTUIWorkspaceLedgerUndoRedoForApplicationMutations is the FR-011-001
@@ -193,9 +194,9 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, tas
 		views:             NewViewRegistry(),
 		currentProject:    project,
 		nextOrder:         []PlanningTask{},
-		nextOrderIDs:      make(map[TaskIdentity]bool),
+		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),
 		today:             []PlanningTask{},
-		todayIDs:          make(map[TaskIdentity]bool),
+		todayIDs:          make(map[taskref.TaskIdentity]bool),
 		operationRegistry: NewOperationRegistry(),
 		navigation:        NewNavigationState(),
 	}
@@ -258,7 +259,7 @@ func planningTaskInToday(t *testing.T, manager *config.Manager, ids ...string) b
 		t.Fatalf("load planning: %v", err)
 	}
 	if len(ids) == 2 {
-		return todayContains(planning, TaskIdentity{ProjectID: ids[0], TaskID: ids[1]})
+		return todayContains(planning, taskref.TaskIdentity{ProjectID: ids[0], TaskID: ids[1]})
 	}
 	if len(ids) == 1 {
 		for _, item := range planning.GetToday() {

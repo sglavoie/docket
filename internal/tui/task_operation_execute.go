@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func (m *AppModel) executeTaskOperation(
@@ -262,7 +263,7 @@ func applicationTaskOperationRequest(
 
 func (m *AppModel) executeSingleTaskOperation(
 	invocation OperationInvocation,
-	identity TaskIdentity,
+	identity taskref.TaskIdentity,
 ) OperationHandlerResult {
 	cmdResult := func(cmd tea.Cmd) OperationHandlerResult {
 		return OperationHandlerResult{Message: OperationCommandResultMsg{Cmd: cmd}}
@@ -324,7 +325,7 @@ func (m *AppModel) executeSingleTaskOperation(
 			return OperationHandlerResult{Err: fmt.Errorf("invalid project value")}
 		}
 		return cmdResult(m.moveTaskToProjectCmd(
-			[]TaskIdentity{identity},
+			[]taskref.TaskIdentity{identity},
 			projectID,
 			m.captureOutlinerRelocationForTargets(invocation.Targets),
 		))

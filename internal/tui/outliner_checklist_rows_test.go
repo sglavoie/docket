@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // A checklist row carries its owner's task pointer so it can render, which is
@@ -172,7 +173,7 @@ func TestChecklistRowsSuppressedDuringVisualSelection(t *testing.T) {
 	}
 }
 
-func focusChecklistOwner(t *testing.T, driver *UITestDriver, title string) TaskIdentity {
+func focusChecklistOwner(t *testing.T, driver *UITestDriver, title string) taskref.TaskIdentity {
 	t.Helper()
 	outliner := driver.App().crossOutliner
 	for index, row := range outliner.rows {
@@ -182,7 +183,7 @@ func focusChecklistOwner(t *testing.T, driver *UITestDriver, title string) TaskI
 		}
 	}
 	t.Fatalf("checklist fixture has no visible task row titled %q", title)
-	return TaskIdentity{}
+	return taskref.TaskIdentity{}
 }
 
 func checklistRowTexts(outliner *OutlinerModel) []string {

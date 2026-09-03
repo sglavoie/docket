@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // clearBulkTaskSelectionsForTaskIDs is the compatibility entry point for async
@@ -17,9 +18,9 @@ func (m *AppModel) clearBulkTaskSelectionsForLocators(locators []app.TaskLocator
 	if len(locators) == 0 {
 		return
 	}
-	set := make(map[TaskIdentity]bool, len(locators))
+	set := make(map[taskref.TaskIdentity]bool, len(locators))
 	for _, locator := range locators {
-		identity := taskIdentityFromLocator(locator)
+		identity := taskref.FromLocator(locator)
 		if identity.Valid() {
 			set[identity] = true
 		}

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func rangeSelectionTestApp(t *testing.T) (*AppModel, *models.Project, []*models.Task) {
@@ -57,7 +58,7 @@ func TestVimRangeSelectionSkipsHeadersAndFreezes(t *testing.T) {
 	}
 	sendRangeSelectionKey(t, app, "j") // second task
 	for _, task := range tasks[:2] {
-		if !out.IsTaskIdentitySelected(taskIdentityFor(task, project)) {
+		if !out.IsTaskIdentitySelected(taskref.For(task, project)) {
 			t.Fatalf("range omitted task %s", task.ID)
 		}
 	}
@@ -78,7 +79,7 @@ func TestVimRangeSelectionSkipsHeadersAndFreezes(t *testing.T) {
 	out.cursor = 2
 	sendRangeSelectionKey(t, app, "V")
 	if !out.IsRangeSelectionActive() || out.SelectedCount() != 1 ||
-		!out.IsTaskIdentitySelected(taskIdentityFor(tasks[1], project)) {
+		!out.IsTaskIdentitySelected(taskref.For(tasks[1], project)) {
 		t.Fatalf("new range did not replace selection at second task: active=%v selected=%v", out.IsRangeSelectionActive(), out.SelectedTaskIdentities())
 	}
 	sendRangeSelectionKey(t, app, "esc")
@@ -90,7 +91,7 @@ func TestVimRangeSelectionSkipsHeadersAndFreezes(t *testing.T) {
 func TestCtrlAReplacesSelectionWithVisibleTaskRows(t *testing.T) {
 	app, project, tasks := rangeSelectionTestApp(t)
 	out := app.crossOutliner
-	hidden := TaskIdentity{ProjectID: "hidden-project", TaskID: "hidden-task"}
+	hidden := taskref.TaskIdentity{ProjectID: "hidden-project", TaskID: "hidden-task"}
 	out.multiSelectMode = true
 	out.SelectTaskIdentity(hidden)
 
@@ -102,7 +103,7 @@ func TestCtrlAReplacesSelectionWithVisibleTaskRows(t *testing.T) {
 		t.Fatal("Ctrl+A added to the old selection instead of replacing it")
 	}
 	for _, task := range tasks {
-		if !out.IsTaskIdentitySelected(taskIdentityFor(task, project)) {
+		if !out.IsTaskIdentitySelected(taskref.For(task, project)) {
 			t.Fatalf("Ctrl+A omitted visible task %s", task.ID)
 		}
 	}
@@ -112,9 +113,9 @@ func TestOperationContextClassifiesHiddenSelectionAndBulkSheetNamesIt(t *testing
 	app, project, tasks := rangeSelectionTestApp(t)
 	out := app.crossOutliner
 	out.rows = out.rows[:1]
-	out.ReplaceSelection([]TaskIdentity{
-		taskIdentityFor(tasks[0], project),
-		taskIdentityFor(tasks[1], project),
+	out.ReplaceSelection([]taskref.TaskIdentity{
+		taskref.For(tasks[0], project),
+		taskref.For(tasks[1], project),
 	})
 
 	context := app.operationCommandContext()
@@ -162,16 +163,16 @@ func TestToggleSelectionBuildsNonContiguousSetWithoutARange(t *testing.T) {
 		t.Fatal("v activated a range instead of toggling one row")
 	}
 	if out.SelectedCount() != 2 ||
-		!out.IsTaskIdentitySelected(taskIdentityFor(tasks[0], project)) ||
-		!out.IsTaskIdentitySelected(taskIdentityFor(tasks[2], project)) {
+		!out.IsTaskIdentitySelected(taskref.For(tasks[0], project)) ||
+		!out.IsTaskIdentitySelected(taskref.For(tasks[2], project)) {
 		t.Fatalf("toggled selection = %v, want the first and third tasks only", out.SelectedTaskIdentities())
 	}
-	if out.IsTaskIdentitySelected(taskIdentityFor(tasks[1], project)) {
+	if out.IsTaskIdentitySelected(taskref.For(tasks[1], project)) {
 		t.Fatal("cursor movement between two toggles selected the task it passed over")
 	}
 
 	sendRangeSelectionKey(t, app, "v")
-	if out.SelectedCount() != 1 || out.IsTaskIdentitySelected(taskIdentityFor(tasks[2], project)) {
+	if out.SelectedCount() != 1 || out.IsTaskIdentitySelected(taskref.For(tasks[2], project)) {
 		t.Fatalf("second v on the same row = %v, want it deselected", out.SelectedTaskIdentities())
 	}
 	if !out.multiSelectMode {
@@ -194,7 +195,7 @@ func TestToggleDuringActiveRangeFreezesThenDropsTheCursorRow(t *testing.T) {
 	if out.IsRangeSelectionActive() {
 		t.Fatal("v did not freeze the live range")
 	}
-	if out.SelectedCount() != 1 || !out.IsTaskIdentitySelected(taskIdentityFor(tasks[0], project)) {
+	if out.SelectedCount() != 1 || !out.IsTaskIdentitySelected(taskref.For(tasks[0], project)) {
 		t.Fatalf("v over the range end = %v, want only the anchor task", out.SelectedTaskIdentities())
 	}
 

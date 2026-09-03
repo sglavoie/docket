@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestSwitchingLensesRetainsTheOriginalBaseline(t *testing.T) {
@@ -88,7 +89,7 @@ func TestLensModifiedTracksOwnedAxesOnly(t *testing.T) {
 	outliner.cursor = 0
 	outliner.collapsedSections["some-section"] = true
 	outliner.peekMode = true
-	outliner.selectedTaskIdentities[TaskIdentity{ProjectID: "alpha", TaskID: "waiting"}] = true
+	outliner.selectedTaskIdentities[taskref.TaskIdentity{ProjectID: "alpha", TaskID: "waiting"}] = true
 	if outliner.lensModified() {
 		t.Fatal("cursor, folds, selection, and Peek must not mark a lens modified")
 	}

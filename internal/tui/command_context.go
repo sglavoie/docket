@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // Capability is a declarative feature exposed by the active route or overlay.
@@ -117,7 +118,7 @@ func (s CapabilitySet) Add(capabilities ...Capability) {
 // SelectionContext preserves project-qualified task identity independently of
 // cursor or row position.
 type SelectionContext struct {
-	Tasks []TaskIdentity
+	Tasks []taskref.TaskIdentity
 	// VisibleCount and HiddenCount classify Tasks against the originating
 	// projection at the moment the command context is frozen.
 	VisibleCount int

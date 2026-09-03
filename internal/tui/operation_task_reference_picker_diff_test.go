@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // This file covers what a commit spells: the difference between the membership
@@ -143,7 +144,7 @@ func TestReferencePickerPreservesConcurrentReferenceChanges(t *testing.T) {
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			model, subject, home := concurrentReferencePickerFixture(t)
-			identity := taskIdentityFor(subject, home)
+			identity := taskref.For(subject, home)
 
 			_, cmd := model.handleGlobalKeyPress(tea.KeyPressMsg{Code: '~', Text: "~"})
 			if cmd != nil {

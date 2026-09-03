@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // buildOutlinerModeInput assembles the common scoped input all canonical mode
@@ -139,8 +140,8 @@ func earliestDeferWake(projects []*models.Project, now time.Time) time.Time {
 // nested child, because a row's own task can be a filter-pipeline clone whose
 // Children were rewritten — the marker would then mean one thing in All and
 // another in a flat mode.
-func openChildCounts(projects []*models.Project) map[TaskIdentity]int {
-	counts := make(map[TaskIdentity]int)
+func openChildCounts(projects []*models.Project) map[taskref.TaskIdentity]int {
+	counts := make(map[taskref.TaskIdentity]int)
 	for _, project := range projects {
 		if project == nil {
 			continue
@@ -153,7 +154,7 @@ func openChildCounts(projects []*models.Project) map[TaskIdentity]int {
 			if open == 0 {
 				continue
 			}
-			identity := taskIdentityFor(task, project)
+			identity := taskref.For(task, project)
 			if !identity.Valid() {
 				continue
 			}
@@ -224,10 +225,10 @@ func (m *OutlinerModel) recentActivityLead() (*models.Task, *models.Project, str
 func (m *OutlinerModel) freezeRecencyKeys(
 	candidates map[string][]*models.Task,
 	projects []*models.Project,
-) map[TaskIdentity]time.Time {
+) map[taskref.TaskIdentity]time.Time {
 	projection := m.jumpProjectionFingerprint()
 	if m.recencyProjection != projection || m.recencyKeys == nil {
-		m.recencyKeys = make(map[TaskIdentity]time.Time)
+		m.recencyKeys = make(map[taskref.TaskIdentity]time.Time)
 		m.recencyProjection = projection
 	}
 	for _, project := range projects {
@@ -235,7 +236,7 @@ func (m *OutlinerModel) freezeRecencyKeys(
 			continue
 		}
 		for _, task := range candidates[project.ID] {
-			identity := taskIdentityFor(task, project)
+			identity := taskref.For(task, project)
 			if !identity.Valid() {
 				continue
 			}
@@ -260,7 +261,7 @@ func (m *OutlinerModel) separatePinnedSection(boundary int) {
 // a mode's fixed grouped order, emitting only non-empty sections.
 func (m *OutlinerModel) appendFilteredModeSections(
 	sections []OutlinerModeSection,
-	excluded map[TaskIdentity]bool,
+	excluded map[taskref.TaskIdentity]bool,
 	taskFilter func(*models.Task, *models.Project) bool,
 ) {
 	for _, section := range sections {
@@ -270,7 +271,7 @@ func (m *OutlinerModel) appendFilteredModeSections(
 		rows := make([]OutlinerModeRow, 0, len(section.Rows))
 		for _, row := range section.Rows {
 			if row.Task != nil &&
-				!excluded[taskIdentityFor(row.Task, row.Project)] &&
+				!excluded[taskref.For(row.Task, row.Project)] &&
 				(taskFilter == nil || taskFilter(row.Task, row.Project)) {
 				rows = append(rows, row)
 			}
@@ -313,8 +314,8 @@ func planningNextOrder(runtime *config.RuntimeState) []config.ProjectTaskLocator
 // resolveTodayIDs returns the identity set of daily-planned tasks that
 // exist in the scope projects. Derived from the durable plan so it does not
 // depend on any externally-maintained indicator cache.
-func (m *OutlinerModel) resolveTodayIDs(projects []*models.Project) map[TaskIdentity]bool {
-	ids := make(map[TaskIdentity]bool)
+func (m *OutlinerModel) resolveTodayIDs(projects []*models.Project) map[taskref.TaskIdentity]bool {
+	ids := make(map[taskref.TaskIdentity]bool)
 	if m.runtime == nil {
 		return ids
 	}
@@ -324,7 +325,7 @@ func (m *OutlinerModel) resolveTodayIDs(projects []*models.Project) map[TaskIden
 				continue
 			}
 			if t := p.GetTaskByID(item.TaskID); t != nil {
-				ids[taskIdentityFor(t, p)] = true
+				ids[taskref.For(t, p)] = true
 			}
 			break
 		}
@@ -418,7 +419,7 @@ func (m *OutlinerModel) passesDependencyFilter(task *models.Task, project *model
 	case DependencyFilterBlocked:
 		return len(task.Dependencies) > 0
 	case DependencyFilterBlocking:
-		identity := taskIdentityFor(task, m.filterQueryProject(project))
+		identity := taskref.For(task, m.filterQueryProject(project))
 		subject := models.TaskReference{ProjectID: identity.ProjectID, TaskID: identity.TaskID}
 		return len(m.dependencyIndex().Incoming(subject)) > 0
 	default:
@@ -432,7 +433,7 @@ func (m *OutlinerModel) openChildCountFor(task *models.Task, project *models.Pro
 	if project == nil {
 		project = m.project
 	}
-	return m.openChildCounts[taskIdentityFor(task, project)]
+	return m.openChildCounts[taskref.For(task, project)]
 }
 
 // outlinerRowFromModeRow adapts a representation-neutral OutlinerModeRow to a

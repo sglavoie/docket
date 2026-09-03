@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // searchDuePredicate is either one relational bucket, one exact calendar day,
@@ -36,8 +37,8 @@ type searchDeferPredicate struct {
 // "not on Today" cannot be answered from a state compare either.
 type searchDestinationPredicate struct {
 	destination textgrammar.Destination
-	todayIDs    map[TaskIdentity]bool
-	nextIDs     map[TaskIdentity]bool
+	todayIDs    map[taskref.TaskIdentity]bool
+	nextIDs     map[taskref.TaskIdentity]bool
 }
 
 // searchDerivedContext holds the two censuses a derived predicate needs and a
@@ -45,7 +46,7 @@ type searchDestinationPredicate struct {
 // predicate that reads them is present, so an ordinary search walks no extra
 // tree and scans no other project.
 type searchDerivedContext struct {
-	openChildren map[TaskIdentity]int
+	openChildren map[taskref.TaskIdentity]int
 	dependedOn   map[models.TaskReference]bool
 }
 
