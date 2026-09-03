@@ -1,10 +1,9 @@
-package tui
+package chrome
 
 import (
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
-	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -13,7 +12,7 @@ func TestSelectedLineStripsAndRestylesContent(t *testing.T) {
 	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
 	styled := theme.MutedStyle.Render("prefix") + " " + theme.TitleStyle.Render("My task")
-	selected := chrome.SelectedLine(styled, 80)
+	selected := SelectedLine(styled, 80)
 
 	// The output must differ from the styled input.
 	if selected == styled {

@@ -154,16 +154,16 @@ func GuidanceHintText(hint GuidanceHint) string {
 	return strings.TrimSpace(strings.TrimSpace(hint.Key) + " " + strings.TrimSpace(hint.Label))
 }
 
-// GuidanceSegment is one packed footer entry. Key and Label carry a keystroke
+// guidanceSegment is one packed footer entry. Key and Label carry a keystroke
 // entry whose two halves are colored apart at render time; Verbatim carries
 // supplemental state text that names no keystroke and stays fully muted.
-type GuidanceSegment struct {
+type guidanceSegment struct {
 	Key      string
 	Label    string
 	Verbatim string
 }
 
-func (segment GuidanceSegment) Text() string {
+func (segment guidanceSegment) text() string {
 	if segment.Verbatim != "" {
 		return segment.Verbatim
 	}
@@ -173,8 +173,8 @@ func (segment GuidanceSegment) Text() string {
 // FitToWidth clips one segment for the narrow fallback path, keeping the
 // keystroke intact so the entry stays actionable and only its label loses
 // characters. A key too wide to pair with any label degrades to verbatim text.
-func (segment GuidanceSegment) FitToWidth(width int) GuidanceSegment {
-	text := segment.Text()
+func (segment guidanceSegment) fitToWidth(width int) guidanceSegment {
+	text := segment.text()
 	width = max(width, 1)
 	if lipgloss.Width(text) <= width {
 		return segment
@@ -182,15 +182,15 @@ func (segment GuidanceSegment) FitToWidth(width int) GuidanceSegment {
 	key := strings.TrimSpace(segment.Key)
 	if segment.Verbatim == "" && key != "" && lipgloss.Width(key)+1 < width {
 		label := textfit.TruncateToVisualWidth(strings.TrimSpace(segment.Label), width-lipgloss.Width(key)-1)
-		return GuidanceSegment{Key: key, Label: label}
+		return guidanceSegment{Key: key, Label: label}
 	}
-	return GuidanceSegment{Verbatim: textfit.TruncateToVisualWidth(text, width)}
+	return guidanceSegment{Verbatim: textfit.TruncateToVisualWidth(text, width)}
 }
 
-func guidanceLineText(segments []GuidanceSegment) string {
+func guidanceLineText(segments []guidanceSegment) string {
 	texts := make([]string, 0, len(segments))
 	for _, segment := range segments {
-		texts = append(texts, segment.Text())
+		texts = append(texts, segment.text())
 	}
 	return strings.Join(texts, FooterHelpSeparator)
 }
@@ -198,7 +198,7 @@ func guidanceLineText(segments []GuidanceSegment) string {
 // GuidanceLines is the plain-text projection of the packed guidance. Packing
 // stays plain so every width decision is made before any styling exists.
 func GuidanceLines(spec GuidanceSpec, width int) []string {
-	segmentLines := GuidanceSegmentLines(spec, width)
+	segmentLines := guidanceSegmentLines(spec, width)
 	if len(segmentLines) == 0 {
 		return nil
 	}
@@ -209,12 +209,12 @@ func GuidanceLines(spec GuidanceSpec, width int) []string {
 	return lines
 }
 
-// GuidanceSegmentLines selects and packs complete entries within the spec's row
+// guidanceSegmentLines selects and packs complete entries within the spec's row
 // budget. Required entries are reserved first. Optional entries are considered
 // by priority while successful entries retain declaration order; after one
 // optional entry cannot fit, lower-priority entries are not promoted. The
 // supplemental value is attempted last and therefore drops first under pressure.
-func GuidanceSegmentLines(spec GuidanceSpec, width int) [][]GuidanceSegment {
+func guidanceSegmentLines(spec GuidanceSpec, width int) [][]guidanceSegment {
 	if width <= 0 {
 		width = 80
 	}
@@ -226,13 +226,13 @@ func GuidanceSegmentLines(spec GuidanceSpec, width int) [][]GuidanceSegment {
 	type candidate struct {
 		index   int
 		hint    GuidanceHint
-		segment GuidanceSegment
+		segment guidanceSegment
 	}
 	candidates := make([]candidate, 0, len(spec.Hints))
 	selected := make(map[int]bool, len(spec.Hints))
 	for index, hint := range spec.Hints {
-		segment := GuidanceSegment{Key: strings.TrimSpace(hint.Key), Label: strings.TrimSpace(hint.Label)}
-		if segment.Text() == "" {
+		segment := guidanceSegment{Key: strings.TrimSpace(hint.Key), Label: strings.TrimSpace(hint.Label)}
+		if segment.text() == "" {
 			continue
 		}
 		entryCandidate := candidate{index: index, hint: hint, segment: segment}
@@ -242,15 +242,15 @@ func GuidanceSegmentLines(spec GuidanceSpec, width int) [][]GuidanceSegment {
 		}
 	}
 
-	selectedSegments := func(extra string) []GuidanceSegment {
-		segments := make([]GuidanceSegment, 0, len(selected)+1)
+	selectedSegments := func(extra string) []guidanceSegment {
+		segments := make([]guidanceSegment, 0, len(selected)+1)
 		for _, candidate := range candidates {
 			if selected[candidate.index] {
 				segments = append(segments, candidate.segment)
 			}
 		}
 		if extra = strings.TrimSpace(extra); extra != "" {
-			segments = append(segments, GuidanceSegment{Verbatim: extra})
+			segments = append(segments, guidanceSegment{Verbatim: extra})
 		}
 		return segments
 	}
@@ -287,18 +287,18 @@ func GuidanceSegmentLines(spec GuidanceSpec, width int) [][]GuidanceSegment {
 	return lines
 }
 
-func packGuidanceSegments(segments []GuidanceSegment, width, maxLines int) ([][]GuidanceSegment, bool) {
+func packGuidanceSegments(segments []guidanceSegment, width, maxLines int) ([][]guidanceSegment, bool) {
 	if len(segments) == 0 || width <= 0 || maxLines <= 0 {
 		return nil, len(segments) == 0
 	}
-	lines := make([][]GuidanceSegment, 0, maxLines)
+	lines := make([][]guidanceSegment, 0, maxLines)
 	for _, segment := range segments {
-		text := segment.Text()
+		text := segment.text()
 		if text == "" || lipgloss.Width(text) > width {
 			return nil, false
 		}
 		if len(lines) == 0 {
-			lines = append(lines, []GuidanceSegment{segment})
+			lines = append(lines, []guidanceSegment{segment})
 			continue
 		}
 		last := len(lines) - 1
@@ -310,24 +310,24 @@ func packGuidanceSegments(segments []GuidanceSegment, width, maxLines int) ([][]
 		if len(lines) == maxLines {
 			return nil, false
 		}
-		lines = append(lines, []GuidanceSegment{segment})
+		lines = append(lines, []guidanceSegment{segment})
 	}
 	return lines, true
 }
 
-func fitRequiredGuidanceSegments(segments []GuidanceSegment, width, rows int) [][]GuidanceSegment {
-	lines := make([][]GuidanceSegment, 0, rows)
+func fitRequiredGuidanceSegments(segments []guidanceSegment, width, rows int) [][]guidanceSegment {
+	lines := make([][]guidanceSegment, 0, rows)
 	for _, segment := range segments {
-		segment = segment.FitToWidth(width)
-		if segment.Text() == "" {
+		segment = segment.fitToWidth(width)
+		if segment.text() == "" {
 			continue
 		}
 		if len(lines) == 0 {
-			lines = append(lines, []GuidanceSegment{segment})
+			lines = append(lines, []guidanceSegment{segment})
 			continue
 		}
 		last := len(lines) - 1
-		candidate := guidanceLineText(lines[last]) + FooterHelpSeparator + segment.Text()
+		candidate := guidanceLineText(lines[last]) + FooterHelpSeparator + segment.text()
 		if lipgloss.Width(candidate) <= width {
 			lines[last] = append(lines[last], segment)
 			continue
@@ -335,14 +335,14 @@ func fitRequiredGuidanceSegments(segments []GuidanceSegment, width, rows int) []
 		if len(lines) == rows {
 			break
 		}
-		lines = append(lines, []GuidanceSegment{segment})
+		lines = append(lines, []guidanceSegment{segment})
 	}
 	return lines
 }
 
 // renderGuidanceSegment colors the keystroke apart from its action so the key
 // carries the scan weight. Supplemental state text names no key and stays muted.
-func renderGuidanceSegment(segment GuidanceSegment) string {
+func renderGuidanceSegment(segment guidanceSegment) string {
 	if segment.Verbatim != "" {
 		return theme.HelpStyle.Render(segment.Verbatim)
 	}
@@ -363,7 +363,7 @@ func RenderGuidanceLines(spec GuidanceSpec, width int) []string {
 	if width <= 0 {
 		width = 80
 	}
-	segmentLines := GuidanceSegmentLines(spec, width)
+	segmentLines := guidanceSegmentLines(spec, width)
 	if len(segmentLines) == 0 {
 		return nil
 	}

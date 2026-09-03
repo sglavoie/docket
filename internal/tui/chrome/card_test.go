@@ -1,4 +1,4 @@
-package tui
+package chrome
 
 import (
 	"strings"
@@ -6,7 +6,6 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -20,7 +19,7 @@ func TestRenderOverlayBoxCompleteFrameAndHalo(t *testing.T) {
 	footer := lipgloss.NewStyle().Foreground(lipgloss.Color("#888888")).Render("Enter · Esc")
 
 	const frameWidth = 24
-	rendered := chrome.RenderOverlayBox("first\nsecond", frameWidth, title, footer, borderStyle)
+	rendered := RenderOverlayBox("first\nsecond", frameWidth, title, footer, borderStyle)
 	lines := strings.Split(rendered, "\n")
 	plain := make([]string, len(lines))
 	for i, line := range lines {

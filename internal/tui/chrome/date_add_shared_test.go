@@ -1,4 +1,4 @@
-package tui
+package chrome
 
 import (
 	"strings"
@@ -6,11 +6,10 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 func TestDateAdderSubmitsTheParsedDateAndLeavesAddMode(t *testing.T) {
-	adder := chrome.NewDateAdder()
+	adder := NewDateAdder()
 	adder.EnterAddMode()
 	adder.AddDateInput.SetValue("2027-03-15")
 
@@ -34,7 +33,7 @@ func TestDateAdderSubmitsTheParsedDateAndLeavesAddMode(t *testing.T) {
 }
 
 func TestDateAdderKeepsTheInputOpenOnAParseFailure(t *testing.T) {
-	adder := chrome.NewDateAdder()
+	adder := NewDateAdder()
 	adder.EnterAddMode()
 	adder.AddDateInput.SetValue("nonsense")
 
@@ -55,7 +54,7 @@ func TestDateAdderKeepsTheInputOpenOnAParseFailure(t *testing.T) {
 }
 
 func TestDateAdderEscapeReturnsToThePresetList(t *testing.T) {
-	adder := chrome.NewDateAdder()
+	adder := NewDateAdder()
 	adder.EnterAddMode()
 	adder.AddDateError = "stale"
 
@@ -69,7 +68,7 @@ func TestDateAdderEscapeReturnsToThePresetList(t *testing.T) {
 }
 
 func TestInstantDateAdderAcceptsTheHourForm(t *testing.T) {
-	adder := chrome.NewInstantDateAdder()
+	adder := NewInstantDateAdder()
 	adder.EnterAddMode()
 	adder.AddDateInput.SetValue("+4h")
 
@@ -92,7 +91,7 @@ func TestInstantDateAdderAcceptsTheHourForm(t *testing.T) {
 }
 
 func TestDayDateAdderRefusesTheHourFormByName(t *testing.T) {
-	adder := chrome.NewDateAdder()
+	adder := NewDateAdder()
 	adder.EnterAddMode()
 	adder.AddDateInput.SetValue("+4h")
 
@@ -106,8 +105,8 @@ func TestDayDateAdderRefusesTheHourFormByName(t *testing.T) {
 }
 
 func TestInstantDateAdderFormatsAddExactlyTheHoursLine(t *testing.T) {
-	day := chrome.NewDateAdder()
-	instant := chrome.NewInstantDateAdder()
+	day := NewDateAdder()
+	instant := NewInstantDateAdder()
 
 	dayFormats := day.DateAdderFormats()
 	instantFormats := instant.DateAdderFormats()

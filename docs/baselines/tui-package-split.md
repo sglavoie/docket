@@ -111,30 +111,44 @@ the pre-split tree and is consistently pessimistic.
 | `taskref` | 2 | 2 | 2 |
 | `status` | 10 | 10 | 10 |
 | `pulse` | 13 | 12 | 12 |
-| `chrome` | 61 | 50 | Session 2.9 |
+| `chrome` | 61 | 50 | 48 |
 
-Running total against 631: **51**, plus whatever `chrome` settles on. The middle
-column minus the last is the test-only promotion the ruling reclaims — 27 for
-`theme`, none since, because `textfit` moved its three test files down in the
-same session, `taskref` promoted nothing for a test in the first place, `status`
-moved its one test file down with the two helpers only that test reads, and
-`pulse` moved down the six tests that read its unexported ladder and title
-internals.
+Running total against 631: **99**. The middle column minus the last is the
+test-only promotion the ruling reclaims — 27 for `theme`, none until `chrome`,
+because `textfit` moved its three test files down in the same session, `taskref`
+promoted nothing for a test in the first place, `status` moved its one test file
+down with the two helpers only that test reads, and `pulse` moved down the six
+tests that read its unexported ladder and title internals.
 
 `chrome` is the first package whose production move and test move are two
-sessions, so its last column stays open until Session 2.9. Three of the 50 are
-already known to be test-only and should come back down with
-`footer_helpers_test.go`: `GuidanceSegment`, `GuidanceSegmentLines` and
-`GuidanceHintText` have no production consumer outside the package. It also
-promoted four struct fields and five methods the `must export` column does not
-count — `DiscardConfirmState.ConfirmDiscard`, `DiscardConfirmState.ConfirmOverlay`,
+sessions. Session 2.9 withdrew two of the 50 — `GuidanceSegment` and
+`GuidanceSegmentLines`, now `guidanceSegment` and `guidanceSegmentLines` — plus
+two of the five promoted methods, `guidanceSegment.fitToWidth` and
+`guidanceSegment.text`, once the packing tests moved into
+`internal/tui/chrome/footer_helpers_test.go`. The third name Session 2.8 flagged
+as test-only, `GuidanceHintText`, stays exported: it has no production consumer
+outside `chrome`, but nine shell test files read a footer hint back through it,
+and those tests exercise shell surfaces rather than the packer. Two more it
+flagged, `DateAdder.HandleAddDateInputKey` and `DateAdder.DateAdderFormats`, are
+not test-only at all — `operation_value_picker_model.go:132` and
+`operation_value_picker_render.go:142` call them in production. `chrome` retains
+four struct fields and three methods the `must export` column does not count:
+`DiscardConfirmState.ConfirmDiscard`, `DiscardConfirmState.ConfirmOverlay`,
 `ConfirmDialog.Detail`, `TextEditorModel.ExternalEdit`,
-`DateAdder.HandleAddDateInputKey`, `DateAdder.DateAdderFormats`,
-`TextEditorModel.GuidanceSpec`, `GuidanceSegment.FitToWidth` and
-`GuidanceSegment.Text` — of which the last five and `ConfirmDialog.Detail` and
-`TextEditorModel.ExternalEdit` are test-only. `chrome` also came in eleven under
-its projection because eight files the assignment table gave it could not move
-at all; see the header of `scripts/tui_package_assignments.tsv`.
+`DateAdder.HandleAddDateInputKey`, `DateAdder.DateAdderFormats` and
+`TextEditorModel.GuidanceSpec`. `chrome` also came in eleven under its
+projection because eight files the assignment table gave it could not move at
+all; see the header of `scripts/tui_package_assignments.tsv`.
+
+Reproduce the withdrawal set with a `go/packages` pass keyed on the *string*
+form of each object rather than its pointer, because `Tests: true` loads a
+package twice and the two instances declare distinct `types.Object` values for
+the same declaration — comparing `Defs` against `Uses` by identity reports
+every method of the test variant as unused. Intersect the result with the names
+the extraction commit actually promoted (lowercase in the tree before it,
+exported in the sub-package after), or already-public vocabulary the split never
+touched drowns the signal: `chrome` has 107 exported declarations with no
+consumer outside itself and only four of them were forced public by the move.
 
 `status` is the first row to spend its projection exactly. It also exported one
 struct field the `must export` column does not count, because that column counts
