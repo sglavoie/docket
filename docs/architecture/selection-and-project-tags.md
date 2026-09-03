@@ -214,7 +214,7 @@ explainer use the complete `Summary`.
 `theme.TagChipStyle` (`internal/tui/theme/styles_helpers.go`) is the single tag
 color authority, and it generalizes that "one lookup, so the surface previews the
 effect" rule to every tag rather than the six semantic ones. It hashes
-`models.NormalizeTag(tag)` onto a slot of `theme.TagChipColors`, which
+`models.NormalizeTag(tag)` onto a slot of `tagChipColors`, which
 `rebuildTagChipColors` re-resolves from `config.DefaultTagChipRamp(variant)` on
 every `ApplyTheme`. The slot index, not a resolved hex, is therefore the durable
 unit of tag identity: `T` re-colors every chip and slot `i` stays the same color

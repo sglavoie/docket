@@ -1,4 +1,4 @@
-package tui
+package theme
 
 import (
 	"image/color"
@@ -8,34 +8,33 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func TestSemanticTagTitleStylesUseExactCaseInsensitivePrecedence(t *testing.T) {
-	theme.ApplyTheme(theme.ThemeConfig{Name: "dark"})
-	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{Name: "dark"}) })
+	ApplyTheme(ThemeConfig{Name: "dark"})
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{Name: "dark"}) })
 
 	tests := []struct {
 		name string
 		tags []string
 		want color.Color
 	}{
-		{name: "bug", tags: []string{"BUG"}, want: lipgloss.Color(theme.DefaultColorSemanticBugTitle)},
-		{name: "question", tags: []string{"QuEsTiOn"}, want: lipgloss.Color(theme.DefaultColorSemanticQuestionTitle)},
-		{name: "epic", tags: []string{"EPIC"}, want: lipgloss.Color(theme.DefaultColorSemanticEpicTitle)},
-		{name: "story", tags: []string{"Story"}, want: lipgloss.Color(theme.DefaultColorSemanticStoryTitle)},
-		{name: "feature", tags: []string{"Feature"}, want: lipgloss.Color(theme.DefaultColorSemanticFeatureTitle)},
-		{name: "idea", tags: []string{"iDeA"}, want: lipgloss.Color(theme.DefaultColorSemanticIdeaTitle)},
-		{name: "bug precedence", tags: []string{"idea", "feature", "story", "epic", "question", "bug"}, want: lipgloss.Color(theme.DefaultColorSemanticBugTitle)},
-		{name: "question precedence", tags: []string{"idea", "feature", "story", "epic", "question"}, want: lipgloss.Color(theme.DefaultColorSemanticQuestionTitle)},
-		{name: "epic precedence", tags: []string{"idea", "feature", "story", "epic"}, want: lipgloss.Color(theme.DefaultColorSemanticEpicTitle)},
-		{name: "story precedence", tags: []string{"idea", "feature", "story"}, want: lipgloss.Color(theme.DefaultColorSemanticStoryTitle)},
-		{name: "feature precedence", tags: []string{"idea", "feature"}, want: lipgloss.Color(theme.DefaultColorSemanticFeatureTitle)},
+		{name: "bug", tags: []string{"BUG"}, want: lipgloss.Color(defaultColorSemanticBugTitle)},
+		{name: "question", tags: []string{"QuEsTiOn"}, want: lipgloss.Color(defaultColorSemanticQuestionTitle)},
+		{name: "epic", tags: []string{"EPIC"}, want: lipgloss.Color(defaultColorSemanticEpicTitle)},
+		{name: "story", tags: []string{"Story"}, want: lipgloss.Color(defaultColorSemanticStoryTitle)},
+		{name: "feature", tags: []string{"Feature"}, want: lipgloss.Color(defaultColorSemanticFeatureTitle)},
+		{name: "idea", tags: []string{"iDeA"}, want: lipgloss.Color(defaultColorSemanticIdeaTitle)},
+		{name: "bug precedence", tags: []string{"idea", "feature", "story", "epic", "question", "bug"}, want: lipgloss.Color(defaultColorSemanticBugTitle)},
+		{name: "question precedence", tags: []string{"idea", "feature", "story", "epic", "question"}, want: lipgloss.Color(defaultColorSemanticQuestionTitle)},
+		{name: "epic precedence", tags: []string{"idea", "feature", "story", "epic"}, want: lipgloss.Color(defaultColorSemanticEpicTitle)},
+		{name: "story precedence", tags: []string{"idea", "feature", "story"}, want: lipgloss.Color(defaultColorSemanticStoryTitle)},
+		{name: "feature precedence", tags: []string{"idea", "feature"}, want: lipgloss.Color(defaultColorSemanticFeatureTitle)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			task := &models.Task{WorkflowState: models.StateBacklog, Priority: models.PriorityMedium, Tags: tt.tags}
-			if got := theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{}).GetForeground(); got != tt.want {
+			if got := TaskTitleStyleFor(task, TaskTitleStyleOptions{}).GetForeground(); got != tt.want {
 				t.Fatalf("foreground = %v, want %v", got, tt.want)
 			}
 		})
@@ -45,13 +44,13 @@ func TestSemanticTagTitleStylesUseExactCaseInsensitivePrecedence(t *testing.T) {
 func TestIdeaTagColorsOtherwiseUncoloredTaskTitles(t *testing.T) {
 	for _, themeName := range []string{"dark", "light"} {
 		t.Run(themeName, func(t *testing.T) {
-			theme.ApplyTheme(theme.ThemeConfig{Name: themeName})
-			t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{Name: "dark"}) })
+			ApplyTheme(ThemeConfig{Name: themeName})
+			t.Cleanup(func() { ApplyTheme(ThemeConfig{Name: "dark"}) })
 
 			plain := &models.Task{WorkflowState: models.StateBacklog}
 			idea := &models.Task{WorkflowState: models.StateBacklog, Tags: []string{"idea"}}
-			plainForeground := theme.TaskTitleStyleFor(plain, theme.TaskTitleStyleOptions{}).GetForeground()
-			ideaForeground := theme.TaskTitleStyleFor(idea, theme.TaskTitleStyleOptions{}).GetForeground()
+			plainForeground := TaskTitleStyleFor(plain, TaskTitleStyleOptions{}).GetForeground()
+			ideaForeground := TaskTitleStyleFor(idea, TaskTitleStyleOptions{}).GetForeground()
 			if ideaForeground == plainForeground {
 				t.Fatalf("idea foreground = ordinary task foreground %v", plainForeground)
 			}
@@ -60,15 +59,15 @@ func TestIdeaTagColorsOtherwiseUncoloredTaskTitles(t *testing.T) {
 }
 
 func TestSemanticTagTitleStylesIgnoreFormerMarkersAndPartialMatches(t *testing.T) {
-	theme.ApplyTheme(theme.ThemeConfig{Name: "dark"})
-	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{Name: "dark"}) })
+	ApplyTheme(ThemeConfig{Name: "dark"})
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{Name: "dark"}) })
 
 	for _, tags := range [][]string{
 		{"type:bug"}, {"type:epic"}, {"storytelling"}, {"bugfix"}, {"feature:ui"}, {" idea "}, {" epic "},
 	} {
 		task := &models.Task{WorkflowState: models.StateBacklog, Priority: models.PriorityHigh, Tags: tags}
-		got := theme.TaskTitleStyleFor(task, theme.TaskTitleStyleOptions{})
-		assertStylesEqual(t, got, theme.GetTitlePriorityStyle(models.PriorityHigh))
+		got := TaskTitleStyleFor(task, TaskTitleStyleOptions{})
+		assertStylesEqual(t, got, GetTitlePriorityStyle(models.PriorityHigh))
 	}
 }
 
@@ -112,21 +111,21 @@ func TestSemanticTagTitleStylesCoverThemeSelectedAndDeferredVariants(t *testing.
 	}
 	for _, variant := range themes {
 		t.Run(variant.name, func(t *testing.T) {
-			theme.ApplyTheme(theme.ThemeConfig{Name: variant.name})
-			t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{Name: "dark"}) })
+			ApplyTheme(ThemeConfig{Name: variant.name})
+			t.Cleanup(func() { ApplyTheme(ThemeConfig{Name: "dark"}) })
 
 			for _, role := range variant.roles {
 				t.Run(role.tag, func(t *testing.T) {
 					base := &models.Task{WorkflowState: models.StateBacklog, Tags: []string{role.tag}}
-					if got := theme.TaskTitleStyleFor(base, theme.TaskTitleStyleOptions{}).GetForeground(); got != lipgloss.Color(role.base) {
+					if got := TaskTitleStyleFor(base, TaskTitleStyleOptions{}).GetForeground(); got != lipgloss.Color(role.base) {
 						t.Errorf("base foreground = %v, want %s", got, role.base)
 					}
-					selected := theme.TaskTitleStyleFor(base, theme.TaskTitleStyleOptions{CursorSelected: true})
+					selected := TaskTitleStyleFor(base, TaskTitleStyleOptions{CursorSelected: true})
 					if got := selected.GetForeground(); got != lipgloss.Color(role.selected) || !selected.GetBold() {
 						t.Errorf("selected style foreground/bold = %v/%v, want %s/true", got, selected.GetBold(), role.selected)
 					}
 					base.DeferredUntil = &tomorrow
-					deferred := theme.TaskTitleStyleFor(base, theme.TaskTitleStyleOptions{})
+					deferred := TaskTitleStyleFor(base, TaskTitleStyleOptions{})
 					if got := deferred.GetForeground(); got != lipgloss.Color(role.deferred) || !deferred.GetFaint() {
 						t.Errorf("deferred style foreground/faint = %v/%v, want %s/true", got, deferred.GetFaint(), role.deferred)
 					}

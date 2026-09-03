@@ -8,7 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 )
 
-const ZebraBackgroundDarkenFactor = 0.08
+const zebraBackgroundDarkenFactor = 0.08
 
 // The cursor row is marked by one bright column at its left edge and a dim fill
 // past its content. Both are derived from the theme's cursor color, in opposite
@@ -51,7 +51,7 @@ func NewThemeConfig(machine *config.MachineState) ThemeConfig {
 }
 
 // rebuildStyles reassigns every style variable using the current palette colors.
-// This must be called after RebuildPalette so styles pick up user overrides.
+// This must be called after rebuildPalette so styles pick up user overrides.
 func rebuildStyles() {
 	rebuildTextStyles()
 	rebuildTaskStyles()
@@ -63,7 +63,7 @@ func rebuildStyles() {
 	rebuildPanelStyles()
 	rebuildCategoryStyles()
 	rebuildMiscStyles()
-	RebuildPriorityTitleStyles()
+	rebuildPriorityTitleStyles()
 	rebuildTagChipColors()
 	rebuildLensAccentStyles()
 }
@@ -83,7 +83,7 @@ func ApplyTheme(tc ThemeConfig) {
 	ColorBackground = lipgloss.Color(effectiveBgColor)
 
 	rebuildAccentColors()
-	RebuildPalette(themeDefaults.Palette)
+	rebuildPalette(themeDefaults.Palette)
 	rebuildStyles()
 	ThemedTextInputStyles = themedTextInputStyles()
 	ThemedTextareaStyles = themedTextareaStyles()
@@ -94,10 +94,10 @@ func ApplyTheme(tc ThemeConfig) {
 	// Which way "louder" and "quieter" point depends on the paper, so the pair of
 	// directions flips with the theme rather than being fixed to lighter/darker,
 	// and each step's size flips with it.
-	pop, dim := lightenHex, DarkenHex
+	pop, dim := lightenHex, darkenHex
 	barFactor, flashFactor, dimFactor := cursorBarDarkFactor, cursorFlashDarkFactor, cursorTrailDarkFactor
 	if tc.Name == "light" {
-		pop, dim = DarkenHex, lightenHex
+		pop, dim = darkenHex, lightenHex
 		barFactor, flashFactor, dimFactor = cursorBarLightFactor, cursorFlashLightFactor, cursorTrailLightFactor
 	}
 	effectiveBar := pop(effectiveBg, barFactor)
@@ -166,7 +166,7 @@ func ApplyTheme(tc ThemeConfig) {
 
 	// Derive zebra background: darken custom bg 8%, or use default ColorZebraBg.
 	if effectiveBgColor != "" {
-		derivedZebra := DarkenHex(effectiveBgColor, ZebraBackgroundDarkenFactor)
+		derivedZebra := darkenHex(effectiveBgColor, zebraBackgroundDarkenFactor)
 		ZebraRowStyle = lipgloss.NewStyle().Background(lipgloss.Color(derivedZebra))
 	} else {
 		ZebraRowStyle = lipgloss.NewStyle().Background(ColorZebraBg)
@@ -174,7 +174,7 @@ func ApplyTheme(tc ThemeConfig) {
 
 	// Derive tree group background: darken custom bg 4%, or use default ColorTreeGroupBg.
 	if effectiveBgColor != "" {
-		derivedGroupBg := DarkenHex(effectiveBgColor, 0.04)
+		derivedGroupBg := darkenHex(effectiveBgColor, 0.04)
 		TreeGroupOddBgStyle = lipgloss.NewStyle().Background(lipgloss.Color(derivedGroupBg))
 	} else {
 		TreeGroupOddBgStyle = lipgloss.NewStyle().Background(ColorTreeGroupBg)
@@ -251,9 +251,9 @@ func makeBadgeStyle(fg, bg string) lipgloss.Style {
 		Background(lipgloss.Color(bg))
 }
 
-// MakeViewModeStyle creates a view mode tab style with tone-aware background.
+// makeViewModeStyle creates a view mode tab style with tone-aware background.
 // dark is used on dark themes; lightHex (a curated hex color) on light themes.
-func MakeViewModeStyle(dark, lightHex string) lipgloss.Style {
+func makeViewModeStyle(dark, lightHex string) lipgloss.Style {
 	bgStr := dark
 	fgStr := "#c0caf5"
 	if ActiveThemeName == "light" {
@@ -283,7 +283,7 @@ func makeDueBadgeStyle(darkHex, lightHex string) lipgloss.Style {
 }
 
 // makeLensAccentStyle creates a foreground-only accent in the tone the active
-// theme calls readable. It is the counterpart of MakeViewModeStyle and
+// theme calls readable. It is the counterpart of makeViewModeStyle and
 // makeDueBadgeStyle for text that carries no chip: a lens name is ordinary list
 // text, so an accent may color it and may change nothing else about it.
 func makeLensAccentStyle(darkHex, lightHex string) lipgloss.Style {

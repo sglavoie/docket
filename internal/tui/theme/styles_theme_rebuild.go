@@ -117,7 +117,7 @@ func rebuildLayoutStyles() {
 	}
 	var tabBgHex string
 	if ActiveThemeName == "light" {
-		tabBgHex = DarkenHex(bgHex, 0.03)
+		tabBgHex = darkenHex(bgHex, 0.03)
 	} else {
 		tabBgHex = lightenHex(bgHex, 0.05)
 	}
@@ -151,18 +151,18 @@ func rebuildViewStyles() {
 	HelpCategoryStyle = lipgloss.NewStyle().Bold(true).Foreground(ColorSecondary).MarginTop(1)
 	HelpFilterActiveStyle = lipgloss.NewStyle().Foreground(ColorWarning)
 
-	ViewModeActiveStyle = MakeViewModeStyle("#2e4a30", "#15803d")
-	ViewModeWorkStyle = MakeViewModeStyle("#4a321e", "#9a3412")
-	ViewModeNextStyle = MakeViewModeStyle("#2d3a6a", "#3730a3")
-	ViewModeInboxStyle = MakeViewModeStyle("#1e3a5f", "#1d4ed8")
-	ViewModeWaitingStyle = MakeViewModeStyle("#5c3a1e", "#92400e")
-	ViewModeSomedayStyle = MakeViewModeStyle("#3d2a5c", "#6d28d9")
-	ViewModeCompletedStyle = MakeViewModeStyle("#3b3f5c", "#4b5563")
-	ViewModeStandbyStyle = MakeViewModeStyle("#4a2e6a", "#7c3aed")
-	ViewModeDeferredStyle = MakeViewModeStyle("#4a2e3a", "#7c2d12")
-	ViewModeCanceledStyle = MakeViewModeStyle("#4a2430", "#991b1b")
-	ViewModeAllStyle = MakeViewModeStyle("#283352", "#0369a1")
-	ViewModeReviewStyle = MakeViewModeStyle("#57398c", "#5b21b6")
+	ViewModeActiveStyle = makeViewModeStyle("#2e4a30", "#15803d")
+	ViewModeWorkStyle = makeViewModeStyle("#4a321e", "#9a3412")
+	ViewModeNextStyle = makeViewModeStyle("#2d3a6a", "#3730a3")
+	ViewModeInboxStyle = makeViewModeStyle("#1e3a5f", "#1d4ed8")
+	ViewModeWaitingStyle = makeViewModeStyle("#5c3a1e", "#92400e")
+	ViewModeSomedayStyle = makeViewModeStyle("#3d2a5c", "#6d28d9")
+	ViewModeCompletedStyle = makeViewModeStyle("#3b3f5c", "#4b5563")
+	ViewModeStandbyStyle = makeViewModeStyle("#4a2e6a", "#7c3aed")
+	ViewModeDeferredStyle = makeViewModeStyle("#4a2e3a", "#7c2d12")
+	ViewModeCanceledStyle = makeViewModeStyle("#4a2430", "#991b1b")
+	ViewModeAllStyle = makeViewModeStyle("#283352", "#0369a1")
+	ViewModeReviewStyle = makeViewModeStyle("#57398c", "#5b21b6")
 }
 
 func rebuildSelectionStyles() {
@@ -204,7 +204,7 @@ func rebuildCategoryStyles() {
 	CategoryViewStyle = lipgloss.NewStyle().Foreground(ColorSecondary)
 }
 
-func RebuildPriorityTitleStyles() {
+func rebuildPriorityTitleStyles() {
 	TitlePriority1Style = lipgloss.NewStyle().Foreground(ColorPriority1Title).Bold(true).Italic(true)
 	TitlePriority2Style = lipgloss.NewStyle().Foreground(ColorPriority2Title).Bold(true)
 	TitlePriority3Style = lipgloss.NewStyle().Foreground(ColorPriority3Title)

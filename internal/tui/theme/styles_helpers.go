@@ -128,7 +128,7 @@ func TaskContextBadgeStyle(task *models.Task) lipgloss.Style {
 	return style
 }
 
-// TagChipSlot resolves a tag name to its index in the chip ramp. The normalized
+// tagChipSlot resolves a tag name to its index in the chip ramp. The normalized
 // spelling is what hashes, so Bug and bug are one chip while the stored spelling
 // still reaches the screen. The hash is FNV-1a from the standard library because
 // it is specified rather than merely implemented: a tag keeps its color across
@@ -139,22 +139,22 @@ func TaskContextBadgeStyle(task *models.Task) lipgloss.Style {
 // the ones it already had; new tags simply land wherever their name hashes,
 // collisions included. Color is a mnemonic, not a legend: two unrelated tags
 // sharing slot 3 is expected, not a bug.
-func TagChipSlot(tag string) int {
-	if len(TagChipColors) == 0 {
+func tagChipSlot(tag string) int {
+	if len(tagChipColors) == 0 {
 		return 0
 	}
 	h := fnv.New32a()
 	_, _ = h.Write([]byte(models.NormalizeTag(tag)))
-	return int(h.Sum32() % uint32(len(TagChipColors)))
+	return int(h.Sum32() % uint32(len(tagChipColors)))
 }
 
 // TagChipStyle returns the one style every rendered tag chip wears. Foreground
 // only: chips carry no bold, so bold stays the title's selection channel.
 func TagChipStyle(tag string) lipgloss.Style {
-	if len(TagChipColors) == 0 {
+	if len(tagChipColors) == 0 {
 		return TagInlineStyle
 	}
-	return lipgloss.NewStyle().Foreground(TagChipColors[TagChipSlot(tag)])
+	return lipgloss.NewStyle().Foreground(tagChipColors[tagChipSlot(tag)])
 }
 
 // TaskTitleStyleFor returns the canonical style for a rendered task title.

@@ -42,15 +42,15 @@ func newLensAccentReviewStyle() lipgloss.Style   { return makeLensAccentStyle("#
 
 // Named lens accents, repainted by rebuildLensAccentStyles on every theme change.
 var (
-	LensAccentPlanStyle     = newLensAccentPlanStyle()
-	LensAccentWorkStyle     = newLensAccentWorkStyle()
-	LensAccentInboxStyle    = newLensAccentInboxStyle()
-	LensAccentNextStyle     = newLensAccentNextStyle()
-	LensAccentWaitingStyle  = newLensAccentWaitingStyle()
-	LensAccentPausedStyle   = newLensAccentPausedStyle()
-	LensAccentSomedayStyle  = newLensAccentSomedayStyle()
-	LensAccentCompleteStyle = newLensAccentCompleteStyle()
-	LensAccentCanceledStyle = newLensAccentCanceledStyle()
+	lensAccentPlanStyle     = newLensAccentPlanStyle()
+	lensAccentWorkStyle     = newLensAccentWorkStyle()
+	lensAccentInboxStyle    = newLensAccentInboxStyle()
+	lensAccentNextStyle     = newLensAccentNextStyle()
+	lensAccentWaitingStyle  = newLensAccentWaitingStyle()
+	lensAccentPausedStyle   = newLensAccentPausedStyle()
+	lensAccentSomedayStyle  = newLensAccentSomedayStyle()
+	lensAccentCompleteStyle = newLensAccentCompleteStyle()
+	lensAccentCanceledStyle = newLensAccentCanceledStyle()
 	LensAccentOverdueStyle  = newLensAccentOverdueStyle()
 	LensAccentDueTodayStyle = newLensAccentDueTodayStyle()
 	LensAccentDueStyle      = newLensAccentDueStyle()
@@ -59,15 +59,15 @@ var (
 )
 
 func rebuildLensAccentStyles() {
-	LensAccentPlanStyle = newLensAccentPlanStyle()
-	LensAccentWorkStyle = newLensAccentWorkStyle()
-	LensAccentInboxStyle = newLensAccentInboxStyle()
-	LensAccentNextStyle = newLensAccentNextStyle()
-	LensAccentWaitingStyle = newLensAccentWaitingStyle()
-	LensAccentPausedStyle = newLensAccentPausedStyle()
-	LensAccentSomedayStyle = newLensAccentSomedayStyle()
-	LensAccentCompleteStyle = newLensAccentCompleteStyle()
-	LensAccentCanceledStyle = newLensAccentCanceledStyle()
+	lensAccentPlanStyle = newLensAccentPlanStyle()
+	lensAccentWorkStyle = newLensAccentWorkStyle()
+	lensAccentInboxStyle = newLensAccentInboxStyle()
+	lensAccentNextStyle = newLensAccentNextStyle()
+	lensAccentWaitingStyle = newLensAccentWaitingStyle()
+	lensAccentPausedStyle = newLensAccentPausedStyle()
+	lensAccentSomedayStyle = newLensAccentSomedayStyle()
+	lensAccentCompleteStyle = newLensAccentCompleteStyle()
+	lensAccentCanceledStyle = newLensAccentCanceledStyle()
 	LensAccentOverdueStyle = newLensAccentOverdueStyle()
 	LensAccentDueTodayStyle = newLensAccentDueTodayStyle()
 	LensAccentDueStyle = newLensAccentDueStyle()
@@ -83,23 +83,23 @@ func rebuildLensAccentStyles() {
 func WorkflowStateGroupAccentStyle(group models.WorkflowStateGroup) (lipgloss.Style, bool) {
 	switch group.ThemeRole() {
 	case models.StateThemePlan, models.StateThemeBacklog:
-		return LensAccentPlanStyle, true
+		return lensAccentPlanStyle, true
 	case models.StateThemeWork:
-		return LensAccentWorkStyle, true
+		return lensAccentWorkStyle, true
 	case models.StateThemeInbox:
-		return LensAccentInboxStyle, true
+		return lensAccentInboxStyle, true
 	case models.StateThemeNext:
-		return LensAccentNextStyle, true
+		return lensAccentNextStyle, true
 	case models.StateThemeWaiting:
-		return LensAccentWaitingStyle, true
+		return lensAccentWaitingStyle, true
 	case models.StateThemePaused:
-		return LensAccentPausedStyle, true
+		return lensAccentPausedStyle, true
 	case models.StateThemeSomeday:
-		return LensAccentSomedayStyle, true
+		return lensAccentSomedayStyle, true
 	case models.StateThemeComplete:
-		return LensAccentCompleteStyle, true
+		return lensAccentCompleteStyle, true
 	case models.StateThemeCanceled:
-		return LensAccentCanceledStyle, true
+		return lensAccentCanceledStyle, true
 	default:
 		return lipgloss.Style{}, false
 	}

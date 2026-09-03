@@ -5,126 +5,23 @@ import (
 	"strings"
 	"testing"
 
-	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
-
-// tagChipGoldenSlots pins the hash and the ramp length — the two inputs that
-// decide where a canonical tag lands. A tag's color is a promise kept across
-// machines and releases, so a change here is a deliberate repaint of every
-// workspace, never a silent reshuffle: swapping the hash or resizing the ramp
-// fails this table by name. The normalizer feeding it is pinned separately, by
-// TestTagChipSlotCollapsesSpellingsOfOneTag.
-var tagChipGoldenSlots = map[string]int{
-	"bug":      1,
-	"question": 3,
-	"epic":     2,
-	"story":    0,
-	"feature":  5,
-	"idea":     2,
-	"review":   1,
-	"ux":       4,
-	"billing":  4,
-	"refactor": 5,
-	"infra":    1,
-	"security": 3,
-}
-
-func TestTagChipSlotsMatchTheGoldenMap(t *testing.T) {
-	if got := len(theme.TagChipColors); got != len(config.DefaultTagChipRamp("dark")) {
-		t.Fatalf("chip ramp = %d slots, want %d", got, len(config.DefaultTagChipRamp("dark")))
-	}
-	if got := len(theme.TagChipColors); got != 6 {
-		t.Fatalf("chip ramp = %d slots; the golden slots below are taken mod 6", got)
-	}
-	for tag, want := range tagChipGoldenSlots {
-		if got := theme.TagChipSlot(tag); got != want {
-			t.Errorf("tag %q now lands on slot %d, want %d: every existing workspace repaints this tag", tag, got, want)
-		}
-	}
-}
-
-func TestTagChipSlotIsDeterministicAcrossCalls(t *testing.T) {
-	for _, tag := range []string{"ux", "billing", "type:authentication", "über-tag"} {
-		first := theme.TagChipSlot(tag)
-		for range 8 {
-			if got := theme.TagChipSlot(tag); got != first {
-				t.Fatalf("tag %q resolved to slot %d then %d", tag, first, got)
-			}
-		}
-		if got := theme.TagChipStyle(tag).GetForeground(); got != theme.TagChipColors[first] {
-			t.Errorf("tag %q chip foreground = %v, want slot %d color %v", tag, got, first, theme.TagChipColors[first])
-		}
-	}
-}
-
-func TestTagChipSlotCollapsesSpellingsOfOneTag(t *testing.T) {
-	want := theme.TagChipSlot("bug")
-	for _, spelling := range []string{"Bug", "BUG", "#bug", "#Bug", "  bug  "} {
-		if got := theme.TagChipSlot(spelling); got != want {
-			t.Errorf("%q resolved to slot %d, want %d — normalization decides the slot", spelling, got, want)
-		}
-	}
-}
-
-func TestTagChipStyleCarriesColorOnly(t *testing.T) {
-	style := theme.TagChipStyle("ux")
-	if style.GetBold() {
-		t.Error("a tag chip is bold; bold stays the title's selection channel")
-	}
-	if unset := lipgloss.NewStyle().GetBackground(); style.GetBackground() != unset {
-		t.Errorf("a tag chip carries background %v; chips are foreground only", style.GetBackground())
-	}
-}
-
-func TestTagChipColorsReResolveAfterApplyTheme(t *testing.T) {
-	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
-
-	const probe = "ux"
-	resolved := map[string]lipgloss.Style{}
-	slots := map[string]int{}
-
-	for _, variant := range []string{"dark", "light"} {
-		theme.ApplyTheme(theme.ThemeConfig{Name: variant})
-
-		want := config.DefaultTagChipRamp(variant)
-		if len(theme.TagChipColors) != len(want) {
-			t.Fatalf("%s ramp = %d slots, want %d", variant, len(theme.TagChipColors), len(want))
-		}
-		for i, hex := range want {
-			if theme.TagChipColors[i] != lipgloss.Color(hex) {
-				t.Errorf("%s slot %d = %v, want %s", variant, i, theme.TagChipColors[i], hex)
-			}
-		}
-		slots[variant] = theme.TagChipSlot(probe)
-		resolved[variant] = theme.TagChipStyle(probe)
-		if got, want := resolved[variant].GetForeground(), theme.TagChipColors[slots[variant]]; got != want {
-			t.Errorf("%s: %q chip = %v, want its slot color %v", variant, probe, got, want)
-		}
-	}
-
-	// Slot identity survives T; only the hex behind the slot changes.
-	if slots["dark"] != slots["light"] {
-		t.Errorf("%q moved from slot %d to slot %d across themes", probe, slots["dark"], slots["light"])
-	}
-	if resolved["dark"].GetForeground() == resolved["light"].GetForeground() {
-		t.Errorf("%q kept the dark color %v under the light theme", probe, resolved["dark"].GetForeground())
-	}
-}
 
 func TestRowAndPeekTagChipsWearOneColor(t *testing.T) {
 	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
 	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
 	// infra and ux hold different slots, so a row that styled the whole join
-	// under one color could not pass this.
+	// under one color could not pass this. Which slot each holds is theme's to
+	// know — the fixture proves they differ by rendering the same text through
+	// both chips, which is all a caller outside theme may ask.
 	task := &models.Task{ID: "task", Tags: []string{"infra", "ux"}}
-	if theme.TagChipSlot("infra") == theme.TagChipSlot("ux") {
-		t.Fatalf("fixture tags share slot %d; pick two that differ", theme.TagChipSlot("infra"))
+	if theme.TagChipStyle("infra").Render("x") == theme.TagChipStyle("ux").Render("x") {
+		t.Fatalf("fixture tags share one chip color; pick two that differ")
 	}
 	row := renderTruncatedTags(task.Tags, 2, 8)
 	peek := inlinePeekTagsLine(task, 80)

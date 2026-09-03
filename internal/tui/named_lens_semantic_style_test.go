@@ -99,68 +99,27 @@ func TestNamedLensPrimaryStyle(t *testing.T) {
 		}
 	})
 
-	// A mode borrows its group's accent and Today shares Backlog's the way their
-	// badges already do, so the accents themselves — not the definitions that
-	// reach them — are what must read apart.
-	t.Run("accents read apart", func(t *testing.T) {
+	// A priority definition borrows the priority title color rather than owning an
+	// accent of its own, so the accent has to be whatever GetTitlePriorityStyle
+	// currently answers — under either theme, and never a hex captured here. That
+	// the accents themselves read apart is theme's own invariant, asserted by
+	// TestLensAccentsReadApart beside the palette that holds them.
+	t.Run("priority accents are the priority title colors", func(t *testing.T) {
 		for _, themeName := range []string{"dark", "light"} {
 			theme.ApplyTheme(theme.ThemeConfig{Name: themeName})
 
-			accents := map[string]lipgloss.Style{
-				"plan":      theme.LensAccentPlanStyle,
-				"work":      theme.LensAccentWorkStyle,
-				"inbox":     theme.LensAccentInboxStyle,
-				"next":      theme.LensAccentNextStyle,
-				"waiting":   theme.LensAccentWaitingStyle,
-				"paused":    theme.LensAccentPausedStyle,
-				"someday":   theme.LensAccentSomedayStyle,
-				"complete":  theme.LensAccentCompleteStyle,
-				"canceled":  theme.LensAccentCanceledStyle,
-				"overdue":   theme.LensAccentOverdueStyle,
-				"due today": theme.LensAccentDueTodayStyle,
-				"due":       theme.LensAccentDueStyle,
-				"deferred":  theme.LensAccentDeferredStyle,
-				"review":    theme.LensAccentReviewStyle,
-			}
-
-			seen := make(map[string]string, len(accents))
-			for name, style := range accents {
-				assertForegroundOnlyStyle(t, style)
-				key := lipgloss.NewStyle().Foreground(style.GetForeground()).Render("x")
-				if previous, clash := seen[key]; clash {
-					t.Errorf("%s theme: %s wears the same accent as %s", themeName, name, previous)
-					continue
-				}
-				seen[key] = name
-			}
-
-			// An accent that landed exactly on a priority title color would make a
-			// state lens and a priority lens indistinguishable.
 			for _, priority := range []int{models.PriorityHigh, models.PriorityMedium, models.PriorityLow} {
-				title := theme.GetTitlePriorityStyle(priority).GetForeground()
-				for name, style := range accents {
-					if style.GetForeground() == title {
-						t.Errorf("%s theme: %s accent equals the priority %d title color", themeName, name, priority)
-					}
+				style, ok := namedLensPrimaryStyle(
+					namedLensQueryFixture(fmt.Sprintf("!%d", priority)))
+				if !ok {
+					t.Fatalf("%s theme: priority %d definition resolved no style", themeName, priority)
 				}
+				if got, want := style.GetForeground(), theme.GetTitlePriorityStyle(priority).GetForeground(); got != want {
+					t.Errorf("%s theme: priority %d accent = %v, want the priority title color %v", themeName, priority, got, want)
+				}
+				assertForegroundOnlyStyle(t, style)
 			}
 		}
-	})
-
-	t.Run("priority accents follow the palette", func(t *testing.T) {
-		theme.ApplyTheme(theme.ThemeConfig{Name: "dark"})
-		theme.RebuildPalette(config.PaletteColors{Priority1Title: "#123456"})
-		theme.RebuildPriorityTitleStyles()
-
-		style, ok := namedLensPrimaryStyle(
-			namedLensQueryFixture(fmt.Sprintf("!%d", models.PriorityHigh)))
-		if !ok {
-			t.Fatalf("priority definition resolved no style")
-		}
-		if got := style.GetForeground(); got != lipgloss.Color("#123456") {
-			t.Errorf("priority 1 accent = %v, want the overridden #123456", got)
-		}
-		assertForegroundOnlyStyle(t, style)
 	})
 }
 

@@ -1,11 +1,10 @@
-package tui
+package theme
 
 import (
 	"image/color"
 	"testing"
 
 	"charm.land/lipgloss/v2"
-	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // dueBadgeTier names one due chip. The three are asserted together because the
@@ -18,18 +17,18 @@ type dueBadgeTier struct {
 
 func dueBadgeTiers() []dueBadgeTier {
 	return []dueBadgeTier{
-		{"overdue", theme.OverdueStyle},
-		{"today", theme.DueTodayStyle},
-		{"upcoming", theme.DueDateStyle},
+		{"overdue", OverdueStyle},
+		{"today", DueTodayStyle},
+		{"upcoming", DueDateStyle},
 	}
 }
 
 func TestDueBadgesKeepDistinctFillsAcrossThemes(t *testing.T) {
-	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 
 	for _, themeName := range []string{"dark", "light"} {
 		t.Run(themeName, func(t *testing.T) {
-			theme.ApplyTheme(theme.ThemeConfig{Name: themeName})
+			ApplyTheme(ThemeConfig{Name: themeName})
 
 			tiers := dueBadgeTiers()
 			for _, tier := range tiers {
@@ -71,7 +70,7 @@ func TestDueBadgesKeepDistinctFillsAcrossThemes(t *testing.T) {
 // slate outright, so a due chip read as a section header. A due date is not a
 // section, and no fill may say otherwise.
 func TestDueBadgeFillsAvoidSectionBadges(t *testing.T) {
-	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 
 	sections := func() []struct {
 		name  string
@@ -81,24 +80,24 @@ func TestDueBadgeFillsAvoidSectionBadges(t *testing.T) {
 			name  string
 			style lipgloss.Style
 		}{
-			{"active", theme.ViewModeActiveStyle},
-			{"work", theme.ViewModeWorkStyle},
-			{"next", theme.ViewModeNextStyle},
-			{"inbox", theme.ViewModeInboxStyle},
-			{"waiting", theme.ViewModeWaitingStyle},
-			{"someday", theme.ViewModeSomedayStyle},
-			{"completed", theme.ViewModeCompletedStyle},
-			{"standby", theme.ViewModeStandbyStyle},
-			{"deferred", theme.ViewModeDeferredStyle},
-			{"canceled", theme.ViewModeCanceledStyle},
-			{"all", theme.ViewModeAllStyle},
-			{"review", theme.ViewModeReviewStyle},
+			{"active", ViewModeActiveStyle},
+			{"work", ViewModeWorkStyle},
+			{"next", ViewModeNextStyle},
+			{"inbox", ViewModeInboxStyle},
+			{"waiting", ViewModeWaitingStyle},
+			{"someday", ViewModeSomedayStyle},
+			{"completed", ViewModeCompletedStyle},
+			{"standby", ViewModeStandbyStyle},
+			{"deferred", ViewModeDeferredStyle},
+			{"canceled", ViewModeCanceledStyle},
+			{"all", ViewModeAllStyle},
+			{"review", ViewModeReviewStyle},
 		}
 	}
 
 	for _, themeName := range []string{"dark", "light"} {
 		t.Run(themeName, func(t *testing.T) {
-			theme.ApplyTheme(theme.ThemeConfig{Name: themeName})
+			ApplyTheme(ThemeConfig{Name: themeName})
 			for _, tier := range dueBadgeTiers() {
 				for _, section := range sections() {
 					if tier.style.GetBackground() == section.style.GetBackground() {
@@ -112,15 +111,15 @@ func TestDueBadgeFillsAvoidSectionBadges(t *testing.T) {
 }
 
 func TestDueBadgeFillsTrackTheActiveTheme(t *testing.T) {
-	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
+	t.Cleanup(func() { ApplyTheme(ThemeConfig{}) })
 
-	theme.ApplyTheme(theme.ThemeConfig{Name: "dark"})
+	ApplyTheme(ThemeConfig{Name: "dark"})
 	dark := map[string]color.Color{}
 	for _, tier := range dueBadgeTiers() {
 		dark[tier.name] = tier.style.GetBackground()
 	}
 
-	theme.ApplyTheme(theme.ThemeConfig{Name: "light"})
+	ApplyTheme(ThemeConfig{Name: "light"})
 	for _, tier := range dueBadgeTiers() {
 		if got := tier.style.GetBackground(); got == dark[tier.name] {
 			t.Fatalf("%s due badge kept its dark fill %v under the light theme", tier.name, got)

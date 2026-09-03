@@ -1,4 +1,4 @@
-package tui
+package theme
 
 import (
 	"fmt"
@@ -11,19 +11,18 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 var projectColorHexPattern = regexp.MustCompile(`^#[0-9a-f]{6}$`)
 
 func TestProjectColorPaletteLiteralsAndUniqueness(t *testing.T) {
-	if got := len(theme.ProjectColorPalette); got != config.ProjectColorSlotCount {
+	if got := len(projectColorPalette); got != config.ProjectColorSlotCount {
 		t.Fatalf("palette length = %d, want %d", got, config.ProjectColorSlotCount)
 	}
 
-	darkSeen := make(map[string]int, len(theme.ProjectColorPalette))
-	lightSeen := make(map[string]int, len(theme.ProjectColorPalette))
-	for i, pair := range theme.ProjectColorPalette {
+	darkSeen := make(map[string]int, len(projectColorPalette))
+	lightSeen := make(map[string]int, len(projectColorPalette))
+	for i, pair := range projectColorPalette {
 		slot := i + 1
 		for theme, literal := range map[string]string{"dark": pair.Dark, "light": pair.Light} {
 			if !projectColorHexPattern.MatchString(literal) {
@@ -44,24 +43,24 @@ func TestProjectColorPaletteLiteralsAndUniqueness(t *testing.T) {
 func TestProjectColorPaletteContrast(t *testing.T) {
 	themes := []struct {
 		name       string
-		foreground func(theme.ProjectColorPair) string
+		foreground func(ProjectColorPair) string
 		background []string
 	}{
 		{
 			name:       "dark",
-			foreground: func(pair theme.ProjectColorPair) string { return pair.Dark },
+			foreground: func(pair ProjectColorPair) string { return pair.Dark },
 			background: projectColorTestBackgrounds(config.DefaultDarkTheme()),
 		},
 		{
 			name:       "light",
-			foreground: func(pair theme.ProjectColorPair) string { return pair.Light },
+			foreground: func(pair ProjectColorPair) string { return pair.Light },
 			background: projectColorTestBackgrounds(config.DefaultLightTheme()),
 		},
 	}
 
 	for _, variant := range themes {
 		t.Run(variant.name, func(t *testing.T) {
-			for i, pair := range theme.ProjectColorPalette {
+			for i, pair := range projectColorPalette {
 				foreground := variant.foreground(pair)
 				for _, background := range variant.background {
 					if ratio := projectColorContrast(foreground, background); ratio < 4.5 {
@@ -76,12 +75,12 @@ func TestProjectColorPaletteContrast(t *testing.T) {
 func TestProjectColorPaletteCIE76DistanceAndHuePairing(t *testing.T) {
 	const minimumDistance = 6.5
 	minimumObserved := math.MaxFloat64
-	for i, first := range theme.ProjectColorPalette {
+	for i, first := range projectColorPalette {
 		if difference := projectColorHueDifference(first.Dark, first.Light); difference > 2 {
 			t.Errorf("slot %d dark/light hue difference = %.3f degrees, want <= 2", i+1, difference)
 		}
-		for j := i + 1; j < len(theme.ProjectColorPalette); j++ {
-			second := theme.ProjectColorPalette[j]
+		for j := i + 1; j < len(projectColorPalette); j++ {
+			second := projectColorPalette[j]
 			weakerDistance := math.Min(
 				projectColorCIE76(first.Dark, second.Dark),
 				projectColorCIE76(first.Light, second.Light),
@@ -96,28 +95,28 @@ func TestProjectColorPaletteCIE76DistanceAndHuePairing(t *testing.T) {
 }
 
 func TestProjectColorResolutionAndFallback(t *testing.T) {
-	previousTheme := theme.ActiveThemeName
-	defer func() { theme.ActiveThemeName = previousTheme }()
+	previousTheme := ActiveThemeName
+	defer func() { ActiveThemeName = previousTheme }()
 
 	project := &models.Project{ColorSlot: 1}
-	theme.ActiveThemeName = ""
-	if got, want := theme.ProjectColor(project), lipgloss.Color(theme.ProjectColorPalette[0].Dark); got != want {
-		t.Errorf("empty theme ProjectColor = %v, want dark %v", got, want)
+	ActiveThemeName = ""
+	if got, want := projectColor(project), lipgloss.Color(projectColorPalette[0].Dark); got != want {
+		t.Errorf("empty theme projectColor = %v, want dark %v", got, want)
 	}
-	theme.ActiveThemeName = "dark"
-	if got, want := theme.ProjectColor(project), lipgloss.Color(theme.ProjectColorPalette[0].Dark); got != want {
-		t.Errorf("dark ProjectColor = %v, want %v", got, want)
+	ActiveThemeName = "dark"
+	if got, want := projectColor(project), lipgloss.Color(projectColorPalette[0].Dark); got != want {
+		t.Errorf("dark projectColor = %v, want %v", got, want)
 	}
-	theme.ActiveThemeName = "light"
-	if got, want := theme.ProjectColor(project), lipgloss.Color(theme.ProjectColorPalette[0].Light); got != want {
-		t.Errorf("light ProjectColor = %v, want %v", got, want)
+	ActiveThemeName = "light"
+	if got, want := projectColor(project), lipgloss.Color(projectColorPalette[0].Light); got != want {
+		t.Errorf("light projectColor = %v, want %v", got, want)
 	}
 
 	for _, invalid := range []*models.Project{nil, {}, {ColorSlot: -1}, {ColorSlot: config.ProjectColorSlotCount + 1}} {
-		if got := theme.ProjectColor(invalid); got != nil {
-			t.Errorf("ProjectColor(%+v) = %v, want nil", invalid, got)
+		if got := projectColor(invalid); got != nil {
+			t.Errorf("projectColor(%+v) = %v, want nil", invalid, got)
 		}
-		if got, want := fmt.Sprint(theme.ProjectColorStyle(invalid).GetForeground()), fmt.Sprint(theme.MutedStyle.GetForeground()); got != want {
+		if got, want := fmt.Sprint(ProjectColorStyle(invalid).GetForeground()), fmt.Sprint(MutedStyle.GetForeground()); got != want {
 			t.Errorf("ProjectColorStyle(%+v) foreground = %q, want muted %q", invalid, got, want)
 		}
 	}
@@ -127,7 +126,7 @@ func projectColorTestBackgrounds(defaults config.Theme) []string {
 	return []string{
 		defaults.BackgroundColor,
 		defaults.Palette.DimmedBg,
-		theme.DarkenHex(defaults.BackgroundColor, theme.ZebraBackgroundDarkenFactor),
+		darkenHex(defaults.BackgroundColor, zebraBackgroundDarkenFactor),
 	}
 }
 

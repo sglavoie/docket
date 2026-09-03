@@ -4,19 +4,11 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-func TestWorkflowStateGroupThemeSemanticsCoverEveryGroup(t *testing.T) {
-	groups := append(models.AllModeWorkflowStateGroups(), models.StateGroupDone, models.StateGroupCanceled)
-	for _, group := range groups {
-		label := group.Label()
-		if got := theme.GetWorkflowStateGroupStyle(group).Render(label); got == "" {
-			t.Errorf("group %q rendered an empty header", group)
-		}
-	}
-}
-
+// That every group answers a theme role is theme's own invariant and is
+// asserted there, by TestWorkflowStateGroupThemeSemanticsCoverEveryGroup. What
+// belongs here is the grouping the Outliner builds from those same states.
 func TestCanonicalAllGroupingUsesExactStateGroups(t *testing.T) {
 	backlog, _ := models.NewGenericTask("backlog", 1, "Backlog")
 	doing, _ := models.NewGenericTask("doing", 2, "Doing")
