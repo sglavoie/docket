@@ -1,7 +1,12 @@
 version: '2'
 
 run:
-  timeout: 5m
+  # Analysis itself takes seconds, so this is a starvation budget rather than a
+  # work budget: another checkout linting or testing on the same machine can
+  # stretch a three-second run past five minutes, and a timeout there reports a
+  # busy machine as a lint failure. Matches the 20m go test deadline ci.sh sets
+  # for the same reason.
+  timeout: 20m
 
 formatters:
   enable:

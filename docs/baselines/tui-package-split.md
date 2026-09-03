@@ -93,3 +93,32 @@ qualify, because a method cannot cross a package boundary.
 public. It is the export-minimization budget for that session, not a target:
 the recipe's step 3 says anything exported for exactly one consumer should move
 into that consumer instead.
+
+## Realised forced exports, against `context.md`'s 631
+
+`context.md` budgets **631** unexported identifiers that must become exported
+for production cross-package use, plus **588** more that would be forced public
+only to keep tests compiling. The second number is what the "move and edit
+tests" ruling is meant to remove, so each extraction records what it actually
+spent once its tests are homed — the budget column above is a projection over
+the pre-split tree and is consistently pessimistic.
+
+| package | projected | exported at the production move | still exported after tests are homed |
+| --- | --- | --- | --- |
+| `presentation` | 0 | 0 | 0 |
+| `theme` | 46 | 45 | 18 |
+| `textfit` | 12 | 9 | 9 |
+| `taskref` | 2 | 2 | 2 |
+
+Running total against 631: **29**. The middle column minus the last is the
+test-only promotion the ruling reclaims — 27 for `theme`, none since, because
+`textfit` moved its three test files down in the same session and `taskref`
+promoted nothing for a test in the first place.
+
+Reproduce the last column for one package with the oracle from session 2.4,
+which reports a clean boundary rather than a count:
+
+```sh
+go run ./scripts/tuirefs -o /tmp/refs.tsv
+go run ./scripts/tuiqualify -edges /tmp/refs.tsv -package taskref
+```
