@@ -445,7 +445,7 @@ func TestQuickCaptureChildZeroIsReservedFromTitlePrefixResolution(t *testing.T) 
 		t.Fatalf("<9 children = %v, want [nine-lives]", ids)
 	}
 
-	q := draftedCaptureInput(t, "Ship it <0 <", project, nil, false)
+	q := draftedCaptureInput(t, "Ship it <0 <", project, nil)
 	if got := suggestionDisplays(q.AC.Items); !slices.Contains(got, "<1 0 day triage") {
 		t.Fatalf("suggestions after <0 = %v, want the zero-titled task still offered", got)
 	}

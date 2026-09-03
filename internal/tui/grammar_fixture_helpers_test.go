@@ -71,9 +71,11 @@ func dependencyLocatorStrings(locators []app.TaskLocator) []string {
 
 // draftedCaptureInput builds a QuickCaptureInput holding value and refreshes its
 // autocomplete, so a test can assert what the composer would offer for a draft.
-func draftedCaptureInput(t *testing.T, value string, project *models.Project, allProjects []*models.Project, skipProject bool) *grammar.QuickCaptureInput {
+// The grammar-side copy takes a skipProject flag; no shell caller sets it, so
+// this one pins the project route open rather than carrying a constant.
+func draftedCaptureInput(t *testing.T, value string, project *models.Project, allProjects []*models.Project) *grammar.QuickCaptureInput {
 	t.Helper()
-	input := grammar.NewQuickCaptureInput(project, allProjects, "", skipProject)
+	input := grammar.NewQuickCaptureInput(project, allProjects, "", false)
 	q := &input
 	q.Width = 80
 	q.Input.SetValue(value)

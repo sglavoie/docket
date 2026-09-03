@@ -11,7 +11,7 @@ import (
 
 func TestCaptureDependencyAutocompleteOffersOpenWorkAcrossProjects(t *testing.T) {
 	home, routed := dependencyWorkspace()
-	q := draftedCaptureInput(t, "New work ~", home, []*models.Project{home, routed}, false)
+	q := draftedCaptureInput(t, "New work ~", home, []*models.Project{home, routed})
 	if q.AC.Mode != grammar.ACModeDependency {
 		t.Fatalf("autocomplete mode = %d, want ACModeDependency", q.AC.Mode)
 	}
@@ -40,7 +40,7 @@ func TestCaptureDependencyAutocompleteFollowsTheDraftedRouteAndDropsUsedTargets(
 	home, routed := dependencyWorkspace()
 	projects := []*models.Project{home, routed}
 
-	q := draftedCaptureInput(t, "New work %routed ~", home, projects, false)
+	q := draftedCaptureInput(t, "New work %routed ~", home, projects)
 	values := suggestionValues(q.AC.Items)
 	if !slices.Contains(values, "1") || !slices.Contains(values, "2") {
 		t.Fatalf("routed draft = %v, want the routed project's tasks under local aliases", values)
@@ -56,7 +56,7 @@ func TestCaptureDependencyAutocompleteFollowsTheDraftedRouteAndDropsUsedTargets(
 		"New work ~home:2 ~": "2",
 	}
 	for draft, alias := range withheld {
-		q := draftedCaptureInput(t, draft, home, projects, false)
+		q := draftedCaptureInput(t, draft, home, projects)
 		if slices.Contains(suggestionValues(q.AC.Items), alias) {
 			t.Errorf("draft %q re-offered %q, a target it already names: %v", draft, alias, suggestionValues(q.AC.Items))
 		}
@@ -205,7 +205,7 @@ func TestMultilineCaptureCarriesDependenciesPerLine(t *testing.T) {
 // carry the edit-only removal and clear forms.
 func TestDependencyGrammarReachesBothHelpSurfaces(t *testing.T) {
 	home, routed := dependencyWorkspace()
-	q := draftedCaptureInput(t, "", home, []*models.Project{home, routed}, false)
+	q := draftedCaptureInput(t, "", home, []*models.Project{home, routed})
 
 	var guideForms []string
 	for _, group := range q.SyntaxGuideGroups() {
