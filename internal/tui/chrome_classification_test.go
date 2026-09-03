@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 )
 
@@ -23,7 +24,7 @@ func TestFullscreenTitleChromeFittingStaysWithinWidth(t *testing.T) {
 		{name: "wide", title: "Tasks", width: 120, pulse: pulse.WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			rendered := renderTaskScopedFullscreenTitleWithPulse(tc.title, nil, "", tc.pulse, tc.width)
+			rendered := chrome.RenderTaskScopedFullscreenTitleWithPulse(tc.title, nil, "", tc.pulse, tc.width)
 			if strings.Contains(rendered, "\n") {
 				t.Fatalf("fullscreen title wrapped onto multiple rows: %q", rendered)
 			}

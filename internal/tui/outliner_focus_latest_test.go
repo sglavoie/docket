@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // cursorTaskID returns the task ID under the cursor, or "" when the cursor does
@@ -87,10 +88,10 @@ func TestFocusLatestActivityOpensOnlyTheFoldsHidingTheTarget(t *testing.T) {
 	yesterday := recentTask("yesterday", models.StateBacklog, 1)
 	project := primaryRowsProject("alpha", today, yesterday)
 	outliner, _ := primaryRowsOutliner(project)
-	outliner.selectOutlinerMode(ModeRecent)
+	outliner.selectOutlinerMode(chrome.ModeRecent)
 
-	todayKey := canonicalModeCollapseKey(ModeRecent, "today")
-	yesterdayKey := canonicalModeCollapseKey(ModeRecent, "yesterday")
+	todayKey := canonicalModeCollapseKey(chrome.ModeRecent, "today")
+	yesterdayKey := canonicalModeCollapseKey(chrome.ModeRecent, "yesterday")
 	outliner.collapsedSections[todayKey] = true
 	outliner.collapsedSections[yesterdayKey] = true
 

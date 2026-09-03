@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // applyFilterForComposition drives one facet through the production handler, so
@@ -120,7 +121,7 @@ func TestQueryAloneNeverFreezesAnAxis(t *testing.T) {
 	if outliner.showsRankedList() {
 		t.Fatal("typing a query opened the flat ranked list")
 	}
-	if _, _ = outliner.selectOutlinerMode(ModeBacklog); outliner.primaryMode != ModeBacklog {
+	if _, _ = outliner.selectOutlinerMode(chrome.ModeBacklog); outliner.primaryMode != chrome.ModeBacklog {
 		t.Fatalf("mode under a held query = %v, want the mode change to apply", outliner.primaryMode)
 	}
 	if !outliner.hasSearchProjection() {

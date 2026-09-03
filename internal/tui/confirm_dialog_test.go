@@ -3,10 +3,12 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 func TestConfirmDialog_Lifecycle(t *testing.T) {
-	var c ConfirmDialog
+	var c chrome.ConfirmDialog
 
 	// Initially inactive
 	if c.IsActive() {
@@ -33,7 +35,7 @@ func TestConfirmDialog_Lifecycle(t *testing.T) {
 }
 
 func TestConfirmDialog_HandleKey_Confirm(t *testing.T) {
-	var c ConfirmDialog
+	var c chrome.ConfirmDialog
 	c.Show("delete", "Delete?")
 
 	confirmed, handled := c.HandleKey("y")
@@ -51,7 +53,7 @@ func TestConfirmDialog_HandleKey_Confirm(t *testing.T) {
 func TestConfirmDialog_HandleKey_Cancel(t *testing.T) {
 	tests := []string{"n", "N", "esc"}
 	for _, key := range tests {
-		var c ConfirmDialog
+		var c chrome.ConfirmDialog
 		c.Show("delete", "Delete?")
 
 		confirmed, handled := c.HandleKey(key)
@@ -68,7 +70,7 @@ func TestConfirmDialog_HandleKey_Cancel(t *testing.T) {
 }
 
 func TestConfirmDialog_HandleKey_OtherKeys(t *testing.T) {
-	var c ConfirmDialog
+	var c chrome.ConfirmDialog
 	c.Show("delete", "Delete?")
 
 	// Other keys should be blocked but not confirm/cancel
@@ -85,7 +87,7 @@ func TestConfirmDialog_HandleKey_OtherKeys(t *testing.T) {
 }
 
 func TestConfirmDialog_HandleKey_Inactive(t *testing.T) {
-	var c ConfirmDialog
+	var c chrome.ConfirmDialog
 	// Dialog not active
 
 	confirmed, handled := c.HandleKey("y")
@@ -98,7 +100,7 @@ func TestConfirmDialog_HandleKey_Inactive(t *testing.T) {
 }
 
 func TestConfirmDialog_DefaultPrompt(t *testing.T) {
-	var c ConfirmDialog
+	var c chrome.ConfirmDialog
 	c.Show("test", "")
 
 	if c.Prompt() != "Are you sure?" {
@@ -107,7 +109,7 @@ func TestConfirmDialog_DefaultPrompt(t *testing.T) {
 }
 
 func TestConfirmDialog_Render(t *testing.T) {
-	var c ConfirmDialog
+	var c chrome.ConfirmDialog
 
 	// Render() always returns empty (inline rendering is disabled)
 	c.Show("delete", "Delete?")
@@ -130,8 +132,8 @@ func TestConfirmDialog_Render(t *testing.T) {
 }
 
 func TestConfirmDialog_RenderOverlay_NoWrapping(t *testing.T) {
-	var c ConfirmDialog
-	c.ShowWithDetail("delete", "Delete this task?", &ConfirmDetail{
+	var c chrome.ConfirmDialog
+	c.ShowWithDetail("delete", "Delete this task?", &chrome.ConfirmDetail{
 		Items:    []string{"#1 A task with a longer title (task)"},
 		UndoHint: true,
 	})

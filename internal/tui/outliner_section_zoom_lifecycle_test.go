@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -39,7 +40,7 @@ func TestSectionZoomScopeRoundTripDropsAndRestoresTheZoom(t *testing.T) {
 	alpha := primaryRowsProject("alpha", primaryRowsTask("alpha-doing", models.StateDoing))
 	beta := primaryRowsProject("beta", primaryRowsTask("beta-doing", models.StateDoing))
 	outliner, _ := primaryRowsOutliner(alpha, beta)
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 
 	doingLabel := models.StateGroupDoing.Label()
 	zoomIntoSection(t, outliner, doingLabel)
@@ -88,10 +89,10 @@ func TestSectionZoomIsClearedByAModeChange(t *testing.T) {
 	backlog := primaryRowsTask("backlog", models.StateBacklog)
 	project := primaryRowsProject("alpha", doing, backlog)
 	outliner, _ := primaryRowsOutliner(project)
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 
 	zoomIntoSection(t, outliner, models.StateGroupDoing.Label())
-	outliner.selectOutlinerMode(ModeBacklog)
+	outliner.selectOutlinerMode(chrome.ModeBacklog)
 
 	if outliner.zoom.active() {
 		t.Fatalf("the mode change kept the zoom %+v, which names a section Backlog never emits", outliner.zoom)
@@ -112,7 +113,7 @@ func TestSectionZoomIsSuspendedForSearchAndRestoredOnClear(t *testing.T) {
 	backlog := primaryRowsTask("backlog", models.StateBacklog)
 	project := primaryRowsProject("alpha", doing, backlog)
 	outliner, _ := primaryRowsOutliner(project)
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 
 	doingLabel := models.StateGroupDoing.Label()
 	zoomIntoSection(t, outliner, doingLabel)
@@ -149,7 +150,7 @@ func TestSectionZoomIsClearedByResetToGlobalAll(t *testing.T) {
 	backlog := primaryRowsTask("backlog", models.StateBacklog)
 	project := primaryRowsProject("alpha", doing, backlog)
 	outliner, _ := primaryRowsOutliner(project)
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 
 	zoomIntoSection(t, outliner, models.StateGroupDoing.Label())
 	outliner.resetToGlobalAll()
@@ -157,8 +158,8 @@ func TestSectionZoomIsClearedByResetToGlobalAll(t *testing.T) {
 	if outliner.zoom.active() {
 		t.Fatalf("the global reset left the zoom %+v narrowing the root", outliner.zoom)
 	}
-	if outliner.primaryMode != ModeAll {
-		t.Fatalf("reset mode = %q, want %q", outliner.primaryMode, ModeAll)
+	if outliner.primaryMode != chrome.ModeAll {
+		t.Fatalf("reset mode = %q, want %q", outliner.primaryMode, chrome.ModeAll)
 	}
 	if len(sectionHeaderNames(outliner)) < 2 {
 		t.Fatalf("reset sections = %v, want the whole mode back", sectionHeaderNames(outliner))
@@ -175,7 +176,7 @@ func TestSectionZoomThawsTheRecencyFreeze(t *testing.T) {
 		recentTask("touched-yesterday", models.StateBacklog, 1),
 	)
 	outliner, _ := primaryRowsOutliner(project)
-	outliner.selectOutlinerMode(ModeRecent)
+	outliner.selectOutlinerMode(chrome.ModeRecent)
 
 	frozen := outliner.recencyProjection
 	if frozen == "" {
@@ -207,10 +208,10 @@ func TestSectionZoomIsClearedByGotoTaskProject(t *testing.T) {
 	if outliner.zoom.active() {
 		t.Fatalf("gp landed still zoomed to %+v", outliner.zoom)
 	}
-	if outliner.scopedProjectID != beta || outliner.primaryMode != ModeAll {
+	if outliner.scopedProjectID != beta || outliner.primaryMode != chrome.ModeAll {
 		t.Fatalf(
 			"landing = scope %q mode %q, want %q and %q",
-			outliner.scopedProjectID, outliner.primaryMode, beta, ModeAll,
+			outliner.scopedProjectID, outliner.primaryMode, beta, chrome.ModeAll,
 		)
 	}
 }
@@ -224,7 +225,7 @@ func TestEscCascadeUnwindsZoomBetweenFocusAndScope(t *testing.T) {
 	child.ParentID = &root.ID
 	project := primaryRowsProject("alpha", root, child)
 	outliner := scopeTestOutliner(project)
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 	outliner.pushProjectScope(project.ID)
 
 	zoomIntoSection(t, outliner, models.StateGroupDoing.Label())

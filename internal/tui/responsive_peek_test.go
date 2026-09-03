@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -101,7 +102,7 @@ func TestPeekContinuationCompletesTheRowTitleAtEveryWidth(t *testing.T) {
 
 	for _, width := range []int{60, 100} {
 		row := outlinerRow{task: task, ProjectID: project.ID}
-		colLayout := worstCaseColumnLayout(width)
+		colLayout := chrome.WorstCaseColumnLayout(width)
 		overflow := outliner.taskRowTitleOverflow(row, width, colLayout)
 		if overflow == "" || !strings.HasSuffix(title, overflow) {
 			t.Fatalf("width %d overflow %q is not the title's own tail", width, overflow)
@@ -218,7 +219,7 @@ func TestPeekModeSurvivesModeAndScopeChanges(t *testing.T) {
 	outliner.crossProjectRebuildRows()
 	outliner.peekMode = true
 
-	_, _ = outliner.selectOutlinerMode(ModeInbox)
+	_, _ = outliner.selectOutlinerMode(chrome.ModeInbox)
 	if !outliner.peekMode {
 		t.Fatal("mode change disabled Peek")
 	}

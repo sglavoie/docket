@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -94,17 +95,17 @@ func (m *OutlinerModel) buildPrimaryModeRowsWithInput(
 		return
 	}
 
-	if mode == ModeAll {
+	if mode == chrome.ModeAll {
 		m.buildAllPrimaryRows(projects, input, pinned)
 		return
 	}
-	if mode == ModeToday || mode == ModeNext {
+	if mode == chrome.ModeToday || mode == chrome.ModeNext {
 		m.appendPlanningModeRows(mode, input, pinned)
 		return
 	}
 
 	switch mode {
-	case ModeInbox, ModeBacklog:
+	case chrome.ModeInbox, chrome.ModeBacklog:
 	default:
 		return
 	}
@@ -183,7 +184,7 @@ func projectedDoingTasks(input OutlinerModeInput) map[taskref.TaskIdentity]bool 
 }
 
 func (m *OutlinerModel) appendPlanningModeRows(
-	mode OutlinerModeID,
+	mode chrome.OutlinerModeID,
 	input OutlinerModeInput,
 	pinned map[taskref.TaskIdentity]bool,
 ) {
@@ -195,9 +196,9 @@ func (m *OutlinerModel) appendPlanningModeRows(
 	}
 	var modeRows []OutlinerModeRow
 	switch mode {
-	case ModeToday:
+	case chrome.ModeToday:
 		modeRows = BuildTodayModeRows(input)
-	case ModeNext:
+	case chrome.ModeNext:
 		modeRows = BuildNextModeRows(input)
 	default:
 		return
@@ -210,12 +211,12 @@ func (m *OutlinerModel) appendPlanningModeRows(
 			continue
 		}
 		row := m.outlinerRowFromModeRow(modeRow)
-		row.IsTodaySection = mode == ModeToday
-		row.IsNextSection = mode == ModeNext
+		row.IsTodaySection = mode == chrome.ModeToday
+		row.IsNextSection = mode == chrome.ModeNext
 		rows = append(rows, row)
 	}
 	group := models.StateGroupToday
-	if mode == ModeNext {
+	if mode == chrome.ModeNext {
 		group = models.StateGroupNext
 	}
 	m.appendPlanningRows(rows, group)
@@ -223,7 +224,7 @@ func (m *OutlinerModel) appendPlanningModeRows(
 
 func (m *OutlinerModel) buildPrimaryProjectTrees(
 	projects []*models.Project,
-	mode OutlinerModeID,
+	mode chrome.OutlinerModeID,
 	input OutlinerModeInput,
 	pinned map[taskref.TaskIdentity]bool,
 ) []primaryProjectTree {
@@ -234,7 +235,7 @@ func (m *OutlinerModel) buildPrimaryProjectTrees(
 		}
 		roots := m.primaryModeRoots(project)
 		hardExclude := m.primaryDefaultExclusion(input.Now)
-		if mode == ModeBacklog {
+		if mode == chrome.ModeBacklog {
 			defaultExclude := hardExclude
 			hardExclude = func(task *models.Task) bool {
 				return defaultExclude(task) || input.TodayIDs[taskref.For(task, project)]
@@ -244,9 +245,9 @@ func (m *OutlinerModel) buildPrimaryProjectTrees(
 
 		membership := func(task *models.Task) bool {
 			switch mode {
-			case ModeInbox:
+			case chrome.ModeInbox:
 				return task.IsInState(models.StateInbox)
-			case ModeBacklog:
+			case chrome.ModeBacklog:
 				return task.IsInState(models.StateBacklog) &&
 					!input.TodayIDs[taskref.For(task, project)]
 			default:
@@ -264,7 +265,7 @@ func (m *OutlinerModel) buildPrimaryProjectTrees(
 		// task leaves Inbox its row must disappear even when an Inbox descendant
 		// survives. Promote that descendant to the nearest visible level while
 		// retaining hierarchy between tasks that are themselves still in Inbox.
-		if mode == ModeInbox {
+		if mode == chrome.ModeInbox {
 			roots = excludeTaskTreePromotingChildren(roots, func(task *models.Task) bool {
 				return !membership(task)
 			})
@@ -277,7 +278,7 @@ func (m *OutlinerModel) buildPrimaryProjectTrees(
 		if len(roots) == 0 {
 			continue
 		}
-		if mode == ModeInbox || mode == ModeBacklog {
+		if mode == chrome.ModeInbox || mode == chrome.ModeBacklog {
 			roots = m.sortPrimaryTaskTree(roots)
 		}
 		trees = append(trees, primaryProjectTree{project: project, roots: roots})

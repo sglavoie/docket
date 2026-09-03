@@ -1,4 +1,4 @@
-package tui
+package chrome
 
 import (
 	"strings"
@@ -21,9 +21,9 @@ type TextEditorModel struct {
 	fieldName    string // "title" or "description"
 	initialValue string // for cancel restoration
 	width        int
-	externalEdit bool
+	ExternalEdit bool
 
-	discardConfirmState
+	DiscardConfirmState
 }
 
 // NewTextEditorModel creates a new text editor popup.
@@ -48,10 +48,10 @@ func NewTextEditorModel(fieldName, currentValue string) *TextEditorModel {
 func (m *TextEditorModel) SetSize(width, height int) {
 	m.width = width
 	// Use same resize logic as other forms for consistent width
-	formFactory.ResizeTextarea(&m.textarea, width)
+	FormFactory.ResizeTextarea(&m.textarea, width)
 	// Expand the textarea into the rows left after the title/spacing and the
 	// currently rendered one- or two-row guidance footer.
-	footerHeight := lipgloss.Height(renderGuidance(m.guidanceSpec(), width))
+	footerHeight := lipgloss.Height(RenderGuidance(m.GuidanceSpec(), width))
 	m.textarea.SetHeight(max(height-2-footerHeight, 1))
 }
 
@@ -61,11 +61,11 @@ func (m *TextEditorModel) Init() tea.Cmd {
 
 func (m *TextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Handle discard confirmation
-	if m.confirmDiscard {
+	if m.ConfirmDiscard {
 		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 			switch keyMsg.String() {
 			case "y", "Y":
-				m.confirmDiscard = false
+				m.ConfirmDiscard = false
 				return m, func() tea.Msg {
 					return TextEditorDoneMsg{
 						FieldName: m.fieldName,
@@ -74,7 +74,7 @@ func (m *TextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			case "n", "N", "esc":
-				m.confirmDiscard = false
+				m.ConfirmDiscard = false
 				return m, nil
 			}
 			return m, nil
@@ -84,7 +84,7 @@ func (m *TextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case TextEditorExternalDoneMsg:
 		// External editor finished - update textarea with result
-		m.externalEdit = false
+		m.ExternalEdit = false
 		if !msg.Canceled {
 			m.textarea.SetValue(msg.Value)
 		}
@@ -95,7 +95,7 @@ func (m *TextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			// Show confirmation if content changed from initial value
 			if m.textarea.Value() != m.initialValue {
-				m.confirmDiscard = true
+				m.ConfirmDiscard = true
 				return m, nil
 			}
 			return m, func() tea.Msg {
@@ -124,7 +124,7 @@ func (m *TextEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "ctrl+e":
 			// Open external editor
-			m.externalEdit = true
+			m.ExternalEdit = true
 			return m, func() tea.Msg {
 				return TextEditorExternalMsg{
 					FieldName:    m.fieldName,
@@ -153,25 +153,25 @@ func (m *TextEditorModel) View() tea.View {
 		title = "Edit Description"
 	}
 
-	b.WriteString(renderFullscreenTitleWithPulse(title, "", m.CurrentWorkspacePulse(), m.width))
+	b.WriteString(RenderFullscreenTitleWithPulse(title, "", m.CurrentWorkspacePulse(), m.width))
 	b.WriteString("\n\n")
 	theme.ApplyThemedTextarea(&m.textarea)
 	b.WriteString(m.textarea.View())
 	b.WriteString("\n")
 
-	b.WriteString(renderGuidance(m.guidanceSpec(), m.width))
+	b.WriteString(RenderGuidance(m.GuidanceSpec(), m.width))
 
 	return tea.NewView(b.String())
 }
 
-func (m *TextEditorModel) guidanceSpec() GuidanceSpec {
-	if m.confirmDiscard {
-		return confirmationGuidanceSpec()
+func (m *TextEditorModel) GuidanceSpec() GuidanceSpec {
+	if m.ConfirmDiscard {
+		return ConfirmationGuidanceSpec()
 	}
-	spec := requiredActionGuidanceSpec(
+	spec := RequiredActionGuidanceSpec(
 		"Ctrl+S save", "Ctrl+E external editor", "Shift+Enter new line",
 	)
-	if m.externalEdit {
+	if m.ExternalEdit {
 		spec.Supplemental = "External editor open"
 	}
 	return spec

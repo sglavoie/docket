@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -134,7 +135,7 @@ func TestFocusConstrainsModesFiltersSortFoldsAndSearch(t *testing.T) {
 		insideInbox.ID: true, insideToday.ID: true, insideNext.ID: true,
 		insideBacklog.ID: true, insideDue.ID: true, insideRecent.ID: true, insideNested.ID: true,
 	}
-	for _, mode := range []OutlinerModeID{ModeAll, ModeToday, ModeInbox, ModeNext, ModeBacklog, ModeDue, ModeRecent} {
+	for _, mode := range []chrome.OutlinerModeID{chrome.ModeAll, chrome.ModeToday, chrome.ModeInbox, chrome.ModeNext, chrome.ModeBacklog, chrome.ModeDue, chrome.ModeRecent} {
 		out.selectOutlinerMode(mode)
 		visible := visibleOutlinerTaskIDs(out)
 		if len(visible) == 0 {
@@ -147,7 +148,7 @@ func TestFocusConstrainsModesFiltersSortFoldsAndSearch(t *testing.T) {
 		}
 	}
 
-	out.selectOutlinerMode(ModeAll)
+	out.selectOutlinerMode(chrome.ModeAll)
 	insideNested.Tags = []string{"focus-match"}
 	outsideBacklog.Tags = []string{"focus-match"}
 	out.filter.Tags = map[string]bool{"focus-match": true}
@@ -191,7 +192,7 @@ func TestFocusConstrainsModesFiltersSortFoldsAndSearch(t *testing.T) {
 	}
 
 	insideInbox.WorkflowState = models.StateBacklog
-	out.selectOutlinerMode(ModeInbox)
+	out.selectOutlinerMode(chrome.ModeInbox)
 	if len(out.rows) != 0 || out.outlinerEmptyMessage() != "No tasks are visible in this Focus. Press Esc to return." {
 		t.Fatalf("empty Focus = rows %d message %q", len(out.rows), out.outlinerEmptyMessage())
 	}

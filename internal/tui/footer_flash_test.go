@@ -9,6 +9,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -197,10 +198,10 @@ func TestFooterDividerAnimationPhases(t *testing.T) {
 	if got := countHeavy(impact); got != app.width {
 		t.Fatalf("impact heavy cells = %d, want %d", got, app.width)
 	}
-	wantImpact := renderHorizontalDivider(
+	wantImpact := chrome.RenderHorizontalDivider(
 		app.width,
-		WithDividerColor(theme.ColorError),
-		WithDividerGlyph(footerDividerFlashGlyph),
+		chrome.WithDividerColor(theme.ColorError),
+		chrome.WithDividerGlyph(footerDividerFlashGlyph),
 	)
 	if got := app.renderFooterDivider(app.width); got != wantImpact {
 		t.Fatalf("impact divider = %q, want %q", got, wantImpact)

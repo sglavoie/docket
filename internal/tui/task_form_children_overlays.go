@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -37,7 +38,7 @@ func (m *TaskFormModel) renderChecklistEditOverlay() string {
 	titleMinInner := lipgloss.Width(title) + 6 - 2
 	maxWidth := min(max(m.width*2/3, 40), m.width-4)
 	innerWidth := min(max(maxWidth, titleMinInner), max(m.width-4, 1))
-	footerText := renderGuidanceText(requiredActionGuidanceSpec(
+	footerText := chrome.RenderGuidanceText(chrome.RequiredActionGuidanceSpec(
 		"Enter save",
 	), max(innerWidth-4, 1))
 
@@ -45,7 +46,7 @@ func (m *TaskFormModel) renderChecklistEditOverlay() string {
 	theme.ApplyThemedTextInput(&m.checklistItemInput)
 	content := " " + m.checklistItemInput.View()
 
-	return renderOverlayBox(content, innerWidth, title, footerText, borderStyle)
+	return chrome.RenderOverlayBox(content, innerWidth, title, footerText, borderStyle)
 }
 
 // TaskFormSubtaskEditedMsg is emitted when a subtask draft edit is confirmed.
@@ -82,12 +83,12 @@ func (m *TaskFormModel) renderSubtaskEditOverlay() string {
 	titleMinInner := lipgloss.Width(title) + 6 - 2
 	maxWidth := min(max(m.width*2/3, 40), m.width-4)
 	innerWidth := min(max(maxWidth, titleMinInner), max(m.width-4, 1))
-	footerText := renderGuidanceText(requiredActionGuidanceSpec(
+	footerText := chrome.RenderGuidanceText(chrome.RequiredActionGuidanceSpec(
 		"Enter save", "Ctrl+E save & edit description",
 	), max(innerWidth-4, 1))
 
 	m.subtaskItemInput.SetWidth(max(innerWidth-6, 1))
 	theme.ApplyThemedTextInput(&m.subtaskItemInput)
 
-	return renderOverlayBox(" "+m.subtaskItemInput.View(), innerWidth, title, footerText, borderStyle)
+	return chrome.RenderOverlayBox(" "+m.subtaskItemInput.View(), innerWidth, title, footerText, borderStyle)
 }

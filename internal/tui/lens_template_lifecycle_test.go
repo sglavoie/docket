@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // These are the end-to-end journeys for the built-in view catalog: a template is
@@ -87,13 +88,13 @@ func TestEveryBuiltinTemplateInstallsItsExactProjection(t *testing.T) {
 			out := model.crossOutliner
 			// A mode no template names, so the restoration assertion below cannot
 			// pass by accident.
-			out.selectOutlinerMode(ModeInbox)
+			out.selectOutlinerMode(chrome.ModeInbox)
 
 			want, err := lensStateFromNamedLens(template)
 			if err != nil {
 				t.Fatalf("the catalog definition does not decode: %v", err)
 			}
-			mode, ok := OutlinerModeByID(want.mode)
+			mode, ok := chrome.OutlinerModeByID(want.mode)
 			if !ok {
 				t.Fatalf("template mode %q is not a catalog mode", want.mode)
 			}
@@ -153,7 +154,7 @@ func TestEveryBuiltinTemplateInstallsItsExactProjection(t *testing.T) {
 			if !RunEscCascade(out.escSteps()) {
 				t.Fatal("expected Esc to consume the added lens")
 			}
-			if out.hasActiveLens() || out.primaryMode != ModeInbox {
+			if out.hasActiveLens() || out.primaryMode != chrome.ModeInbox {
 				t.Fatalf("one Esc left mode %v with lens=%v", out.primaryMode, out.hasActiveLens())
 			}
 		})
@@ -186,7 +187,7 @@ func TestAddingTemplatesFromANormalViewKeepsOneRestorationPoint(t *testing.T) {
 	model := lensOperationApp(t)
 	emptyTemplateMachine(t, model)
 	out := model.crossOutliner
-	out.selectOutlinerMode(ModeBacklog)
+	out.selectOutlinerMode(chrome.ModeBacklog)
 	out.collapsedSections["pre-lens-fold"] = true
 	baselineProjects := slices.Clone(out.loadedProjects)
 
@@ -212,8 +213,8 @@ func TestAddingTemplatesFromANormalViewKeepsOneRestorationPoint(t *testing.T) {
 	if out.hasActiveLens() {
 		t.Fatal("one Esc must leave the lens entirely after a chain of adds")
 	}
-	if out.primaryMode != ModeBacklog {
-		t.Fatalf("restored mode = %v, want the pre-lens %v", out.primaryMode, ModeBacklog)
+	if out.primaryMode != chrome.ModeBacklog {
+		t.Fatalf("restored mode = %v, want the pre-lens %v", out.primaryMode, chrome.ModeBacklog)
 	}
 	if !out.collapsedSections["pre-lens-fold"] {
 		t.Fatal("restoration lost the fold the pre-lens view held")
@@ -230,17 +231,17 @@ func TestAddingATemplateFromInsideALensKeepsThePreLensBaseline(t *testing.T) {
 	model := lensOperationApp(t)
 	emptyTemplateMachine(t, model)
 	out := model.crossOutliner
-	out.selectOutlinerMode(ModeInbox)
+	out.selectOutlinerMode(chrome.ModeInbox)
 
 	// A saved user lens first, so the template is added from inside an active one.
 	applyLensOrFatal(t, out, waitingLens(lensTestID(1), "Held", "needle"))
 	origin := out.activeLens.origin
-	if origin.presentation.mode != ModeInbox {
-		t.Fatalf("pre-lens baseline mode = %v, want %v", origin.presentation.mode, ModeInbox)
+	if origin.presentation.mode != chrome.ModeInbox {
+		t.Fatalf("pre-lens baseline mode = %v, want %v", origin.presentation.mode, chrome.ModeInbox)
 	}
 
 	addTemplateAndSettle(t, model, lensTemplateByName(t, "Parked Work"))
-	if out.activeLens.origin.presentation.mode != ModeInbox {
+	if out.activeLens.origin.presentation.mode != chrome.ModeInbox {
 		t.Fatal("adding a template from inside a lens rebased the restoration point onto that lens")
 	}
 	if out.lensQuery != "" {
@@ -250,7 +251,7 @@ func TestAddingATemplateFromInsideALensKeepsThePreLensBaseline(t *testing.T) {
 	if !RunEscCascade(out.escSteps()) {
 		t.Fatal("expected Esc to consume the lens")
 	}
-	if out.hasActiveLens() || out.primaryMode != ModeInbox {
+	if out.hasActiveLens() || out.primaryMode != chrome.ModeInbox {
 		t.Fatalf("one Esc left mode %v with lens=%v", out.primaryMode, out.hasActiveLens())
 	}
 }

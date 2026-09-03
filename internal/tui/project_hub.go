@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -224,7 +225,7 @@ func (m *ProjectHubModel) moveProjectHubHalfPage(direction int) {
 	if m.surface == nil || direction == 0 {
 		return
 	}
-	m.surface.MoveCursor(direction * HalfPage(m.surface.Viewport().Height))
+	m.surface.MoveCursor(direction * chrome.HalfPage(m.surface.Viewport().Height))
 }
 
 func (m *ProjectHubModel) currentProjectHubItemID() ListItemID {

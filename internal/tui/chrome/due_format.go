@@ -1,4 +1,4 @@
-package tui
+package chrome
 
 import "github.com/sglavoie/tt/internal/models"
 
@@ -9,11 +9,11 @@ const dueDisplayDateOnly = "2006-01-02"
 // hh:mm clock time.
 const dueDisplayWithTime = "2006-01-02 15:04"
 
-// dueGrammarValue renders a task's due date as the value that follows the @
+// DueGrammarValue renders a task's due date as the value that follows the @
 // sigil in a grammar surface (outline dump, previews). It appends the hh:mm
 // clock only when the due date carries an explicit time, so a date-only due
 // date round-trips unchanged and a timed one preserves its time.
-func dueGrammarValue(task *models.Task) string {
+func DueGrammarValue(task *models.Task) string {
 	if task.DueDate == nil {
 		return ""
 	}
@@ -23,9 +23,9 @@ func dueGrammarValue(task *models.Task) string {
 	return task.DueDate.Format(dueDisplayDateOnly)
 }
 
-// formatDueClock renders just the hh:mm clock of a timed due date, for compact
+// FormatDueClock renders just the hh:mm clock of a timed due date, for compact
 // row and Peek surfaces that already carry the date elsewhere.
-func formatDueClock(task *models.Task) string {
+func FormatDueClock(task *models.Task) string {
 	if task.DueDate == nil || !task.DueHasTime() {
 		return ""
 	}

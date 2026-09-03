@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -17,7 +18,7 @@ func (m *TaskFormModel) renderScheduleTab() string {
 	const lw = formScheduleLabelWidth
 
 	// 0: Due — inline textinput when focused, plain text otherwise.
-	b.WriteString(renderFormLabelWithWidth("Due:", lw, m.focusIndex == 0))
+	b.WriteString(chrome.RenderFormLabelWithWidth("Due:", lw, m.focusIndex == 0))
 	if m.focusIndex == 0 {
 		theme.ApplyThemedTextInput(&m.dueTextInput)
 		b.WriteString(m.dueTextInput.View())

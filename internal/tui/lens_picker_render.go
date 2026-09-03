@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -63,11 +64,11 @@ func (model *NamedLensPickerModel) renderWithin(width, height int) string {
 
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render("Named Lenses")
 	guidance := model.guidanceSpec()
-	return renderOverlayBox(
+	return chrome.RenderOverlayBox(
 		content,
 		innerWidth,
 		title,
-		renderGuidanceText(guidance, max(innerWidth-4, 1)),
+		chrome.RenderGuidanceText(guidance, max(innerWidth-4, 1)),
 		lipgloss.NewStyle().Foreground(theme.ColorPrimary),
 	)
 }
@@ -88,9 +89,9 @@ func (model *NamedLensPickerModel) stateLine() string {
 
 // guidanceSpec returns the footer spec alone: this picker always draws a footer,
 // so there is no "no guidance" case for a caller to branch on.
-func (model *NamedLensPickerModel) guidanceSpec() GuidanceSpec {
+func (model *NamedLensPickerModel) guidanceSpec() chrome.GuidanceSpec {
 	if model == nil || model.surface == nil {
-		return GuidanceSpec{}
+		return chrome.GuidanceSpec{}
 	}
 	searching := model.searching
 	onLens := func() bool {
@@ -165,7 +166,7 @@ func namedLensModeLabel(token string) string {
 	if err != nil {
 		return token
 	}
-	if mode, ok := OutlinerModeByID(id); ok {
+	if mode, ok := chrome.OutlinerModeByID(id); ok {
 		return mode.Label
 	}
 	return token

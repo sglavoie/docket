@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // Applying a named lens is one atomic, reversible act. The frame below is what
@@ -106,7 +107,7 @@ func (m *OutlinerModel) ApplyNamedLens(lens config.NamedLens) (tea.Cmd, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, ok := OutlinerModeByID(state.mode); !ok {
+	if _, ok := chrome.OutlinerModeByID(state.mode); !ok {
 		return nil, fmt.Errorf("lens %q names an unknown mode", lens.Name)
 	}
 	if err := m.validateLensQuery(state.query); err != nil {

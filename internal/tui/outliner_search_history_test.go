@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // searchHistoryOutliner builds a scoped Outliner with the slash input open,
@@ -261,7 +262,7 @@ func TestSearchHistoryGuidanceAppearsOnlyWithEntries(t *testing.T) {
 	}
 }
 
-func guidanceHintLabels(spec GuidanceSpec) string {
+func guidanceHintLabels(spec chrome.GuidanceSpec) string {
 	labels := make([]string, 0, len(spec.Hints))
 	for _, hint := range spec.Hints {
 		labels = append(labels, strings.TrimSpace(hint.Key+" "+hint.Label))

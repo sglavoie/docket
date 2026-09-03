@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/icons"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -29,16 +30,16 @@ func (m *AppModel) renderFooterDivider(width int) string {
 	}
 	accent := m.currentAccentColor()
 	if !m.footerFlash.active() {
-		return renderHorizontalDivider(width, WithDividerColor(accent))
+		return chrome.RenderHorizontalDivider(width, chrome.WithDividerColor(accent))
 	}
 
 	highlight := m.footerFlash.severity.color()
 	frame := min(max(m.footerFlash.frame, 0), footerFlashFrames-1)
 	if frame < footerFlashImpactFrames {
-		return renderHorizontalDivider(
+		return chrome.RenderHorizontalDivider(
 			width,
-			WithDividerColor(highlight),
-			WithDividerGlyph(footerDividerFlashGlyph),
+			chrome.WithDividerColor(highlight),
+			chrome.WithDividerGlyph(footerDividerFlashGlyph),
 		)
 	}
 
@@ -143,7 +144,7 @@ func (m *AppModel) renderStatusBar() string {
 	}
 	// Deliberately static: the strip is view content, so it is neither one of
 	// the flash-capable dividers nor a taker of the footer content wash.
-	return renderHorizontalDivider(m.width) + "\n" + strip + "\n" + footer
+	return chrome.RenderHorizontalDivider(m.width) + "\n" + strip + "\n" + footer
 }
 
 func (m *AppModel) renderFooterChrome() string {
@@ -177,7 +178,7 @@ func (m *AppModel) renderFooterChrome() string {
 	// An unfinished chord owns the footer: the which-key row is live input
 	// feedback, so it outranks banners and transient status text.
 	if spec, ok := m.pendingChordGuidance(); ok {
-		return renderFooter(renderGuidanceText(spec, m.width))
+		return renderFooter(chrome.RenderGuidanceText(spec, m.width))
 	}
 
 	// Show temporary status message if present.
@@ -200,7 +201,7 @@ func (m *AppModel) renderFooterChrome() string {
 	if view := m.activeView(); view != nil {
 		if provider, ok := view.(ContextualGuidanceProvider); ok {
 			if spec, ok := provider.ContextualGuidance(); ok {
-				return renderFooter(renderGuidanceText(spec, m.width))
+				return renderFooter(chrome.RenderGuidanceText(spec, m.width))
 			}
 		}
 	}
@@ -227,8 +228,8 @@ func (m *AppModel) renderFooterChrome() string {
 			help = theme.HelpStyle.Render(hint)
 		} else {
 			help = strings.Join(
-				renderGuidanceLines(escapeGuidanceSpec(), m.width),
-				theme.HelpStyle.Render(footerHelpSeparator),
+				chrome.RenderGuidanceLines(chrome.EscapeGuidanceSpec(), m.width),
+				theme.HelpStyle.Render(chrome.FooterHelpSeparator),
 			)
 		}
 	}

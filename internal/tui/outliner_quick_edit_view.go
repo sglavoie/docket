@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -53,7 +54,7 @@ func (m *OutlinerModel) renderOutlinerQuickEditRow(row outlinerRow, rowWidth int
 	project := m.resolveProjectForRow(row)
 	m.quickEdit.SetContext(project, m.quickEditProjects())
 
-	metadata := SelectedLine(m.quickEditMetadataLine(row, project, rowWidth), rowWidth)
+	metadata := chrome.SelectedLine(m.quickEditMetadataLine(row, project, rowWidth), rowWidth)
 	previewTask := m.quickEditDisplayTask()
 	status := m.renderTaskStatusIcon(previewTask)
 	prefixBudget := max(min(rowWidth/3, 12), 4)
@@ -253,7 +254,7 @@ func quickEditOptionalMetadata(task *models.Task, now time.Time) []string {
 			prefix = "check "
 		}
 		label := task.DueDate.Format("Jan 2")
-		if clock := formatDueClock(task); clock != "" {
+		if clock := chrome.FormatDueClock(task); clock != "" {
 			label += " " + clock
 		}
 		parts = append(parts, prefix+label)

@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -20,7 +21,7 @@ import (
 // mode, facets, folds, zoom, ordering, and viewport are the frame's own axes and
 // are restored when the query is dropped.
 type outlinerSearchSnapshot struct {
-	mode               OutlinerModeID
+	mode               chrome.OutlinerModeID
 	filter             FilterState
 	sort               SortState
 	treeSort           SortState
@@ -198,7 +199,7 @@ func (m *OutlinerModel) exitSearchOntoCursorTask() (string, bool) {
 	if !identity.Valid() || m.landOnSearchResult(identity) {
 		return "", true
 	}
-	m.selectOutlinerMode(ModeAll)
+	m.selectOutlinerMode(chrome.ModeAll)
 	if m.landOnSearchResult(identity) {
 		return "", true
 	}

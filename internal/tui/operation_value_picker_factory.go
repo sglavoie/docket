@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -73,7 +74,7 @@ func (m *AppModel) newOperationValuePicker(
 		}
 		return NewTaskStatePickerForTargets(request, states, subtitle)
 	case ValueProviderPriority:
-		priorities := []PriorityInfo{
+		priorities := []chrome.PriorityInfo{
 			{Priority: 0, Description: "Unset"},
 			{Priority: 1, Description: "High"},
 			{Priority: 2, Description: "Medium"},

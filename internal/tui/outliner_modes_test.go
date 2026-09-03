@@ -6,12 +6,13 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 func TestOutlinerModeCatalogIsExactSevenModeCycle(t *testing.T) {
-	want := []OutlinerModeID{ModeAll, ModeToday, ModeInbox, ModeNext, ModeBacklog, ModeDue, ModeRecent}
-	catalog := OutlinerModeCatalog()
-	tabModes := OutlinerTabModes()
+	want := []chrome.OutlinerModeID{chrome.ModeAll, chrome.ModeToday, chrome.ModeInbox, chrome.ModeNext, chrome.ModeBacklog, chrome.ModeDue, chrome.ModeRecent}
+	catalog := chrome.OutlinerModeCatalog()
+	tabModes := chrome.OutlinerTabModes()
 	if len(catalog) != len(want) {
 		t.Fatalf("mode catalog length = %d, want %d", len(catalog), len(want))
 	}
@@ -27,10 +28,10 @@ func TestOutlinerModeCatalogIsExactSevenModeCycle(t *testing.T) {
 				index, tabModes[index].ID, mode.ID)
 		}
 	}
-	for _, retired := range []OutlinerModeID{
+	for _, retired := range []chrome.OutlinerModeID{
 		"priority", "blocked", "parked", "daily-review", "activity",
 	} {
-		if _, ok := OutlinerModeByID(retired); ok {
+		if _, ok := chrome.OutlinerModeByID(retired); ok {
 			t.Errorf("retired mode %q remains selectable", retired)
 		}
 	}
@@ -46,16 +47,16 @@ func TestOutlinerTabCyclingWrapsForwardAndBackwardAcrossSevenModes(t *testing.T)
 	project := primaryRowsProject("alpha")
 	outliner := NewOutlinerModel(project, nil, nil)
 
-	for _, want := range []OutlinerModeID{
-		ModeToday, ModeInbox, ModeNext, ModeBacklog, ModeDue, ModeRecent, ModeAll,
+	for _, want := range []chrome.OutlinerModeID{
+		chrome.ModeToday, chrome.ModeInbox, chrome.ModeNext, chrome.ModeBacklog, chrome.ModeDue, chrome.ModeRecent, chrome.ModeAll,
 	} {
 		outliner.cycleWorkMode(1)
 		if got := outliner.activeOutlinerMode(); got != want {
 			t.Fatalf("forward cycle mode = %q, want %q", got, want)
 		}
 	}
-	for _, want := range []OutlinerModeID{
-		ModeRecent, ModeDue, ModeBacklog, ModeNext, ModeInbox, ModeToday, ModeAll,
+	for _, want := range []chrome.OutlinerModeID{
+		chrome.ModeRecent, chrome.ModeDue, chrome.ModeBacklog, chrome.ModeNext, chrome.ModeInbox, chrome.ModeToday, chrome.ModeAll,
 	} {
 		outliner.cycleWorkMode(-1)
 		if got := outliner.activeOutlinerMode(); got != want {
@@ -79,7 +80,7 @@ func TestEnteringRecentClearsOnlyStaleFacet(t *testing.T) {
 		{
 			name: "direct",
 			enter: func(outliner *OutlinerModel) {
-				outliner.selectOutlinerMode(ModeRecent)
+				outliner.selectOutlinerMode(chrome.ModeRecent)
 			},
 		},
 		{
@@ -109,7 +110,7 @@ func TestEnteringRecentClearsOnlyStaleFacet(t *testing.T) {
 			project := primaryRowsProject("alpha", test.tasks...)
 			project.Tags = []string{"client"}
 			outliner := NewOutlinerModel(project, nil, nil)
-			outliner.selectOutlinerMode(ModeDue)
+			outliner.selectOutlinerMode(chrome.ModeDue)
 			outliner.filter.Priority = models.PriorityMedium
 			outliner.filter.Tags = map[string]bool{"deep": true}
 			outliner.filter.Stale = true
@@ -119,8 +120,8 @@ func TestEnteringRecentClearsOnlyStaleFacet(t *testing.T) {
 
 			test.enter(outliner)
 
-			if got := outliner.activeOutlinerMode(); got != ModeRecent {
-				t.Fatalf("mode = %q, want %q", got, ModeRecent)
+			if got := outliner.activeOutlinerMode(); got != chrome.ModeRecent {
+				t.Fatalf("mode = %q, want %q", got, chrome.ModeRecent)
 			}
 			if outliner.filter.Stale {
 				t.Fatal("Recent retained the Stale facet")
@@ -151,12 +152,12 @@ func TestProjectScopePopClearsStaleWhenRestoringRecent(t *testing.T) {
 	const status = "Stale filter cleared: Recent only includes the last 30 days"
 	project := primaryRowsProject("alpha", recentTask("latest", models.StateBacklog, 0))
 	outliner, _ := primaryRowsOutliner(project)
-	outliner.selectOutlinerMode(ModeRecent)
+	outliner.selectOutlinerMode(chrome.ModeRecent)
 
 	// gp captures Recent as the base scope before switching the focused
 	// project to All, where fs is available.
 	outliner.pushProjectScope(project.ID)
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 	result := (&AppModel{crossOutliner: outliner}).executeFilterOperation(OperationInvocation{
 		Descriptor: OperationDescriptor{ID: operationFilterStale},
 	})
@@ -171,8 +172,8 @@ func TestProjectScopePopClearsStaleWhenRestoringRecent(t *testing.T) {
 	if !outliner.popProjectScope() {
 		t.Fatal("project scope did not pop")
 	}
-	if got := outliner.activeOutlinerMode(); got != ModeRecent {
-		t.Fatalf("mode = %q, want %q", got, ModeRecent)
+	if got := outliner.activeOutlinerMode(); got != chrome.ModeRecent {
+		t.Fatalf("mode = %q, want %q", got, chrome.ModeRecent)
 	}
 	if outliner.filter.Stale {
 		t.Fatal("scope pop restored Recent with the Stale facet active")
@@ -207,7 +208,7 @@ func TestDueModeProjectsDatedOpenWorkInGlobalAndProjectScopes(t *testing.T) {
 	beta := primaryRowsProject("beta", betaOverdue, betaLater, betaDeferred)
 
 	outliner, _ := primaryRowsOutliner(alpha, beta)
-	outliner.selectOutlinerMode(ModeDue)
+	outliner.selectOutlinerMode(chrome.ModeDue)
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{
 		alphaOverdue.ID,
 		betaOverdue.ID,
@@ -218,7 +219,7 @@ func TestDueModeProjectsDatedOpenWorkInGlobalAndProjectScopes(t *testing.T) {
 	}
 
 	outliner.scopedProjectID = alpha.ID
-	outliner.selectOutlinerMode(ModeDue)
+	outliner.selectOutlinerMode(chrome.ModeDue)
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{
 		alphaOverdue.ID,
 		alphaToday.ID,
@@ -236,7 +237,7 @@ func TestDueModeNestsRelativesOnlyWithinSameDateBucket(t *testing.T) {
 	parent.DueDate, child.DueDate, other.DueDate = &now, &now, &now
 	project := primaryRowsProject("alpha", parent, child, other)
 	outliner, _ := primaryRowsOutliner(project)
-	outliner.selectOutlinerMode(ModeDue)
+	outliner.selectOutlinerMode(chrome.ModeDue)
 
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{parent.ID, child.ID, other.ID}) {
 		t.Fatalf("same-bucket Due rows = %v, want nested hierarchy", got)
@@ -269,7 +270,7 @@ func TestBacklogRetainsProjectHierarchyAndManualSiblingOrder(t *testing.T) {
 	project := primaryRowsProject("alpha", parent, child, firstSibling, secondSibling)
 
 	outliner, _ := primaryRowsOutliner(project)
-	outliner.selectOutlinerMode(ModeBacklog)
+	outliner.selectOutlinerMode(chrome.ModeBacklog)
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{
 		parent.ID,
 		child.ID,

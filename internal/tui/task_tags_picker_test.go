@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -238,7 +239,7 @@ func TestOperationTagPickerJumpKeysStayOutOfNonTagPickers(t *testing.T) {
 		ValueProviderPriority,
 		"Set Priority",
 		"Task",
-		ListSourceFromPriorities([]PriorityInfo{
+		ListSourceFromPriorities([]chrome.PriorityInfo{
 			{Priority: 0, Description: "Unset"},
 			{Priority: 1, Description: "High"},
 		}),

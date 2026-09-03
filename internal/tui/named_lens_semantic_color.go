@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -67,7 +68,7 @@ type namedLensRole struct {
 	Kind     namedLensRoleKind
 	Priority int
 	Group    models.WorkflowStateGroup
-	Mode     OutlinerModeID
+	Mode     chrome.OutlinerModeID
 }
 
 // namedLensSemanticRole classifies one lens definition. It is pure: no theme, no
@@ -112,7 +113,7 @@ func namedLensSemanticRole(lens config.NamedLens) namedLensRole {
 		return namedLensRole{Kind: namedLensRoleWarning}
 	}
 
-	if mode, err := lensModeAxis.value(lens.Mode); err == nil && mode != ModeAll {
+	if mode, err := lensModeAxis.value(lens.Mode); err == nil && mode != chrome.ModeAll {
 		return namedLensRole{Kind: namedLensRoleMode, Mode: mode}
 	}
 
@@ -202,7 +203,7 @@ func namedLensRoleStyle(role namedLensRole) (lipgloss.Style, bool) {
 	case namedLensRoleWarning:
 		return lipgloss.NewStyle().Foreground(theme.ColorWarning), true
 	case namedLensRoleMode:
-		if group, ok := outlinerModeStateGroup(role.Mode); ok {
+		if group, ok := chrome.OutlinerModeStateGroup(role.Mode); ok {
 			return theme.WorkflowStateGroupAccentStyle(group)
 		}
 	case namedLensRoleNone:

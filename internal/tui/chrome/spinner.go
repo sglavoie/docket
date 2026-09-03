@@ -1,4 +1,4 @@
-package tui
+package chrome
 
 import (
 	"charm.land/bubbles/v2/spinner"

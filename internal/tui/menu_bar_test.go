@@ -3,6 +3,7 @@ package tui
 import (
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -41,7 +42,7 @@ func menuBarCommandContext() CommandContext {
 // resolveOutlinerMenus projects the production bar against the production
 // catalog, which is what makes these assertions audit the shipped specs rather
 // than a test-local subset of them.
-func resolveOutlinerMenus(t *testing.T, app *AppModel, activeMode OutlinerModeID) []resolvedMenu {
+func resolveOutlinerMenus(t *testing.T, app *AppModel, activeMode chrome.OutlinerModeID) []resolvedMenu {
 	t.Helper()
 	strategy, ok := app.GetOperationRegistry().InputStrategy(InputStrategySimplified)
 	if !ok {
@@ -196,8 +197,8 @@ func TestResolveMenuEntriesRemovesRatherThanGreys(t *testing.T) {
 func TestResolveMenuEntriesRebuildsOnEveryCall(t *testing.T) {
 	app := parityAuditApp(t)
 
-	inbox := menuWithID(t, resolveOutlinerMenus(t, app, ModeInbox), menuIDView)
-	recent := menuWithID(t, resolveOutlinerMenus(t, app, ModeRecent), menuIDView)
+	inbox := menuWithID(t, resolveOutlinerMenus(t, app, chrome.ModeInbox), menuIDView)
+	recent := menuWithID(t, resolveOutlinerMenus(t, app, chrome.ModeRecent), menuIDView)
 	if len(inbox.Entries) != len(recent.Entries) {
 		t.Fatalf("view menu changed shape between resolutions: %d then %d", len(inbox.Entries), len(recent.Entries))
 	}
@@ -206,10 +207,10 @@ func TestResolveMenuEntriesRebuildsOnEveryCall(t *testing.T) {
 		if !ok {
 			continue
 		}
-		if got, want := *entry.Checked, mode == ModeInbox; got != want {
+		if got, want := *entry.Checked, mode == chrome.ModeInbox; got != want {
 			t.Errorf("entry %d for mode %s checked=%v under Inbox, want %v", index, mode, got, want)
 		}
-		if got, want := *recent.Entries[index].Checked, mode == ModeRecent; got != want {
+		if got, want := *recent.Entries[index].Checked, mode == chrome.ModeRecent; got != want {
 			t.Errorf("entry %d for mode %s checked=%v under Recent, want %v", index, mode, got, want)
 		}
 	}

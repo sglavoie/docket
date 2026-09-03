@@ -4,19 +4,20 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 func TestComputeBadgeWidthsEmpty(t *testing.T) {
-	if got := ComputeBadgeWidths(nil, BadgeWidthOpts{IncludeStatus: true}); got != nil {
+	if got := chrome.ComputeBadgeWidths(nil, chrome.BadgeWidthOpts{IncludeStatus: true}); got != nil {
 		t.Errorf("nil tasks should return nil layout, got %+v", got)
 	}
-	if got := ComputeBadgeWidths([]*models.Task{}, BadgeWidthOpts{IncludeStatus: true}); got != nil {
+	if got := chrome.ComputeBadgeWidths([]*models.Task{}, chrome.BadgeWidthOpts{IncludeStatus: true}); got != nil {
 		t.Errorf("empty tasks should return nil layout, got %+v", got)
 	}
 }
 
 func TestComputeBadgeWidthsAllNil(t *testing.T) {
-	if got := ComputeBadgeWidths([]*models.Task{nil, nil, nil}, BadgeWidthOpts{
+	if got := chrome.ComputeBadgeWidths([]*models.Task{nil, nil, nil}, chrome.BadgeWidthOpts{
 		IncludeStatus: true,
 	}); got != nil {
 		t.Errorf("all-nil tasks should return nil layout, got %+v", got)
@@ -39,7 +40,7 @@ func TestComputeBadgeWidthsMixed(t *testing.T) {
 		WorkflowState: models.StateWaiting,
 	}
 
-	cl := ComputeBadgeWidths([]*models.Task{t1, t2, nil, t3}, BadgeWidthOpts{
+	cl := chrome.ComputeBadgeWidths([]*models.Task{t1, t2, nil, t3}, chrome.BadgeWidthOpts{
 		IncludeStatus: true,
 	})
 	if cl == nil {
@@ -63,7 +64,7 @@ func TestComputeBadgeWidthsMixed(t *testing.T) {
 func TestComputeBadgeWidthsAllOptional(t *testing.T) {
 	// No options enabled → only priority is measured.
 	t1 := &models.Task{Priority: 1, WorkflowState: models.StateBacklog}
-	cl := ComputeBadgeWidths([]*models.Task{t1}, BadgeWidthOpts{})
+	cl := chrome.ComputeBadgeWidths([]*models.Task{t1}, chrome.BadgeWidthOpts{})
 	if cl == nil {
 		t.Fatal("expected non-nil layout")
 	}
@@ -84,7 +85,7 @@ func TestComputeBadgeWidthsProject(t *testing.T) {
 		"2": "much-longer-project-name-that-should-be-truncated",
 	}
 
-	cl := ComputeBadgeWidths([]*models.Task{t1, t2}, BadgeWidthOpts{
+	cl := chrome.ComputeBadgeWidths([]*models.Task{t1, t2}, chrome.BadgeWidthOpts{
 		ProjectNameFor: func(task *models.Task) string { return names[task.ID] },
 		MaxProjectLen:  12,
 	})
@@ -99,7 +100,7 @@ func TestComputeBadgeWidthsProject(t *testing.T) {
 
 func TestComputeBadgeWidthsProjectEmptyName(t *testing.T) {
 	t1 := &models.Task{ID: "1", WorkflowState: models.StateBacklog}
-	cl := ComputeBadgeWidths([]*models.Task{t1}, BadgeWidthOpts{
+	cl := chrome.ComputeBadgeWidths([]*models.Task{t1}, chrome.BadgeWidthOpts{
 		ProjectNameFor: func(*models.Task) string { return "" },
 	})
 	if cl == nil {

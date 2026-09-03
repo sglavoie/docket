@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 func TestLensPickerGuidanceNamesTheActUnderTheCursor(t *testing.T) {
@@ -15,7 +16,7 @@ func TestLensPickerGuidanceNamesTheActUnderTheCursor(t *testing.T) {
 	footerOf := func() string {
 		t.Helper()
 		guidance := model.lensPicker.guidanceSpec()
-		return ansi.Strip(renderGuidanceText(guidance, 200))
+		return ansi.Strip(chrome.RenderGuidanceText(guidance, 200))
 	}
 
 	if got := footerOf(); !strings.Contains(got, lensPickerCreateEnterLabel) {

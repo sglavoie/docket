@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -69,7 +70,7 @@ func crossSpinnerTickFwd(cmd tea.Cmd) tea.Cmd {
 // loading of all context-filtered projects plus a 200ms initial-spinner delay.
 func (m *OutlinerModel) startCrossProjectLoad() tea.Cmd {
 	if !m.hasCrossProjectSnapshot() {
-		m.crossSpinner = NewSpinner()
+		m.crossSpinner = chrome.NewSpinner()
 	}
 	// An ordinary reload reads the live project filter, which is not the candidate
 	// filter a pending lens application is waiting on. That application can never
@@ -474,7 +475,7 @@ func (m *OutlinerModel) crossStatusBarLabel() string {
 		}
 	}
 	label := "Outliner"
-	if m.primaryMode != ModeAll {
+	if m.primaryMode != chrome.ModeAll {
 		label += ": " + m.activeOutlinerModeEntry().Label
 	}
 	return fmt.Sprintf("%s · %s · %d tasks", label, scopeName, taskCount)

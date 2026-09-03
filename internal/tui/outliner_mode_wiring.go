@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -77,7 +78,7 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 	// it rather than outliving the rows that named them.
 	m.searchNoteMatches = nil
 
-	mode, ok := OutlinerModeByID(m.primaryMode)
+	mode, ok := chrome.OutlinerModeByID(m.primaryMode)
 	if !ok {
 		return
 	}
@@ -99,11 +100,11 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 	pinnedBoundary := len(m.rows)
 
 	switch mode.RowStrategy {
-	case RowStrategyAll, RowStrategyInbox, RowStrategyToday, RowStrategyNext, RowStrategyBacklog:
+	case chrome.RowStrategyAll, chrome.RowStrategyInbox, chrome.RowStrategyToday, chrome.RowStrategyNext, chrome.RowStrategyBacklog:
 		m.buildPrimaryModeRowsWithInput(projects, input, pinned.projected)
-	case RowStrategyDue:
+	case chrome.RowStrategyDue:
 		m.appendFilteredModeSections(BuildDueModeSections(input), pinned.projected, input.TaskFilter)
-	case RowStrategyRecent:
+	case chrome.RowStrategyRecent:
 		m.appendFilteredModeSections(BuildRecentModeSections(input), pinned.projected, input.TaskFilter)
 	default:
 		return
@@ -167,11 +168,11 @@ func openChildCounts(projects []*models.Project) map[taskref.TaskIdentity]int {
 // buildModeCandidateInput completes the shared mode input with the focus-narrowed
 // candidates and the membership a mode owns rather than filters for.
 func (m *OutlinerModel) buildModeCandidateInput(
-	mode OutlinerModeID,
+	mode chrome.OutlinerModeID,
 	projects []*models.Project,
 ) OutlinerModeInput {
 	input := m.buildOutlinerModeInput(projects)
-	recent := mode == ModeRecent
+	recent := mode == chrome.ModeRecent
 	// Recent reports what happened, so it owns terminal and deferred membership
 	// outright. Every other mode admits those populations only when the query
 	// says so, and the query is the facets and the sigils together — one rule,
@@ -202,7 +203,7 @@ func (m *OutlinerModel) recentActivityLead() (*models.Task, *models.Project, str
 	// census the hierarchy facet reads would otherwise be whichever scope ran
 	// last.
 	m.openChildCounts = openChildCounts(projects)
-	input := m.buildModeCandidateInput(ModeRecent, projects)
+	input := m.buildModeCandidateInput(chrome.ModeRecent, projects)
 	for _, section := range BuildRecentModeSections(input) {
 		for _, row := range section.Rows {
 			if row.Task == nil || row.Project == nil {

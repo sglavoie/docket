@@ -2,6 +2,8 @@ package tui
 
 import (
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // This file holds the parity rules themselves: the bar may only name operations
@@ -15,7 +17,7 @@ func TestEveryMenuEntryNamesARegisteredOperation(t *testing.T) {
 	registry := parityAuditApp(t).GetOperationRegistry()
 
 	named := 0
-	for _, spec := range outlinerMenuSpecs(ModeAll, false, true) {
+	for _, spec := range outlinerMenuSpecs(chrome.ModeAll, false, true) {
 		for index, entry := range spec.Entries {
 			if entry.OperationID == "" {
 				if entry.Label != "" || entry.Checked != nil {
@@ -42,7 +44,7 @@ func TestMenuEntriesNeverSpellTheirOwnKey(t *testing.T) {
 	}
 
 	hinted := 0
-	for _, menu := range resolveOutlinerMenus(t, app, ModeAll) {
+	for _, menu := range resolveOutlinerMenus(t, app, chrome.ModeAll) {
 		for _, entry := range menu.Entries {
 			if entry.OperationID == "" {
 				continue
@@ -86,7 +88,7 @@ func TestMenuKeyHintsFollowTheStrategy(t *testing.T) {
 		app.GetOperationRegistry(),
 		strategy,
 		menuBarCommandContext(),
-		outlinerMenuSpecs(ModeAll, false, true),
+		outlinerMenuSpecs(chrome.ModeAll, false, true),
 	)
 	if err != nil {
 		t.Fatalf("resolve menus: %v", err)
@@ -99,10 +101,10 @@ func TestMenuKeyHintsFollowTheStrategy(t *testing.T) {
 
 func TestViewMenuCoversEveryOutlinerModeInCatalogOrder(t *testing.T) {
 	app := parityAuditApp(t)
-	view := menuWithID(t, resolveOutlinerMenus(t, app, ModeToday), menuIDView)
+	view := menuWithID(t, resolveOutlinerMenus(t, app, chrome.ModeToday), menuIDView)
 
-	modes := make([]OutlinerModeID, 0, len(outlinerModes))
-	checked := make([]OutlinerModeID, 0, 1)
+	modes := make([]chrome.OutlinerModeID, 0, len(chrome.OutlinerModes))
+	checked := make([]chrome.OutlinerModeID, 0, 1)
 	for _, entry := range view.Entries {
 		mode, ok := gotoModeOperations[entry.OperationID]
 		if !ok {
@@ -118,21 +120,21 @@ func TestViewMenuCoversEveryOutlinerModeInCatalogOrder(t *testing.T) {
 		}
 	}
 
-	if len(modes) != len(outlinerModes) {
-		t.Fatalf("view menu offers %d modes, want the catalog's %d", len(modes), len(outlinerModes))
+	if len(modes) != len(chrome.OutlinerModes) {
+		t.Fatalf("view menu offers %d modes, want the catalog's %d", len(modes), len(chrome.OutlinerModes))
 	}
-	for index, mode := range outlinerModes {
+	for index, mode := range chrome.OutlinerModes {
 		if modes[index] != mode.ID {
 			t.Errorf("view menu mode %d is %s, want catalog order's %s", index, modes[index], mode.ID)
 		}
 	}
-	if len(checked) != 1 || checked[0] != ModeToday {
+	if len(checked) != 1 || checked[0] != chrome.ModeToday {
 		t.Errorf("view menu checks %v, want exactly the active mode Today", checked)
 	}
 }
 
 func TestEveryMenuIsUniquelyIdentifiedAndInhabited(t *testing.T) {
-	menus := resolveOutlinerMenus(t, parityAuditApp(t), ModeAll)
+	menus := resolveOutlinerMenus(t, parityAuditApp(t), chrome.ModeAll)
 
 	seen := make(map[string]bool, len(menus))
 	for _, menu := range menus {
@@ -193,7 +195,7 @@ func TestAMenuOnlyOperationIsNeverAnEntityOperation(t *testing.T) {
 	}
 
 	menuOnly := make([]OperationID, 0, 1)
-	for _, spec := range outlinerMenuSpecs(ModeAll, false, true) {
+	for _, spec := range outlinerMenuSpecs(chrome.ModeAll, false, true) {
 		for _, entry := range spec.Entries {
 			if entry.OperationID == "" || bound[entry.OperationID] {
 				continue

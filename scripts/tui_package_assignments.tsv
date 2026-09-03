@@ -18,7 +18,7 @@
 #     mode catalog is vocabulary that operation, route, lens, projecthub and
 #     query all read, so it cannot sit at L7.
 #
-# Two rows were corrected while their package was being extracted:
+# Twelve rows were corrected while their package was being extracted:
 #   - view_accent.go is route, not theme (Session 2.1). It resolves a
 #     PresentationID to an accent category and only then asks theme for a color,
 #     so its whole vocabulary is route's; assigned to theme it was the one file
@@ -38,6 +38,43 @@
 #     leaves every one of them unexported. Its one genuine chrome dependency,
 #     the mode chip, stayed behind as operationalTitleModeSegment in
 #     outliner_mode_style.go, which is where the mode catalog already lives.
+#   - cursor.go is chrome, not listsurface (Session 2.8). It declares ClampCursor
+#     and HalfPage, two integer functions over a cursor and a window, and its
+#     nine production consumers span L2 to L7: grammar's autocomplete.go is one
+#     of them, and grammar may import only chrome, theme, textfit and taskref, so
+#     at L5 the file was unreachable from its own caller. At L1 every consumer
+#     reaches it.
+#   - fullscreen_task_helpers.go is chrome, not taskdetail (Session 2.8). It
+#     imports image/color, lipgloss, models, pulse and theme and nothing else,
+#     declares the shared full-screen title row and renderPriorityBadge, and is
+#     read by text_editor.go, parent_selector.go, tag_add_shared.go and
+#     column_layout.go. Session 2.8's brief names it through its
+#     fullscreen_*_helpers.go glob.
+#
+# Eight more rows were corrected by Session 2.8 in the other direction: they
+# were assigned chrome but reference identifiers above L1, so they stayed in
+# package tui with a corrected row, the shape Session 2.4 established for
+# dependency_reference.go.
+#   - contextual_action_sheet.go is listsurface, not chrome. It is built on
+#     ListSurfaceModel and thirteen more listsurface types, and reads
+#     tui.cloneCommandContext.
+#   - operation_text_prompt.go is route, not chrome. It names twelve operation
+#     identifiers, reads tui.operationLensRename, and declares
+#     (*AppModel).newOperationTextPrompt, which pins that half to the shell.
+#   - parent_selector.go, tag_selector.go and tag_add_shared.go are listsurface,
+#     not chrome. All three are ListSurfaceAdapter pickers, and the two tag ones
+#     also name query.TagInfo.
+#   - picker_items.go is query, not chrome. Every declaration left in it is a
+#     method on TagInfo, which tag_filter_selector.go declares in query, so Go
+#     pins the file there.
+#   - view_helpers.go is outliner, not chrome. TitleParams and
+#     buildTitleFilterSuffix read query's SortField, SortByDefault and
+#     renderFilterBadge for one consumer, outliner_render_content.go.
+#   - app_messages_footer_flash.go is tui, not chrome. footerFlashTick reads
+#     footerFlashFrameInterval, whose sibling footerFlashFrames lives in the
+#     AppModel-pinned footer_flash.go; this is app_errors.go's rule from Session
+#     2.6 pointing the other way, keeping a message, its constructor and its two
+#     timing constants in one package.
 #
 # Test files are deliberately absent. They follow the production file they
 # audit, except the uitest harness and the registry-union parity tests, which
@@ -58,7 +95,7 @@ app_messages_clipboard.go	tui	L8	assigned
 app_messages_close_view.go	route	L4	assigned
 app_messages_core.go	status	L0	assigned
 app_messages_external_editor.go	tui	L8	assigned
-app_messages_footer_flash.go	chrome	L1	assigned
+app_messages_footer_flash.go	tui	L8	assigned
 app_messages_notes.go	notes	L7	assigned
 app_messages_projects.go	projecthub	L7	assigned
 app_messages_task_detail.go	taskdetail	L7	assigned
@@ -103,7 +140,7 @@ conflict_browser.go	conflict	L7	receiver:ConflictBrowserModel
 conflict_browser_host.go	tui	L8	receiver:AppModel
 conflict_indicator.go	outliner	L7	receiver:OutlinerModel
 conflict_indicator_shell.go	tui	L8	receiver:AppModel
-contextual_action_sheet.go	chrome	L1	receiver:ContextActionSheetModel
+contextual_action_sheet.go	listsurface	L5	receiver:ContextActionSheetModel
 core_input_descriptors.go	operation	L3	assigned
 core_input_handlers.go	tui	L8	receiver:AppModel
 core_input_operations.go	tui	L8	receiver:AppModel
@@ -116,7 +153,7 @@ cross_project_outliner_mutations_common.go	outliner	L7	receiver:OutlinerModel
 cross_project_outliner_view.go	outliner	L7	receiver:OutlinerModel
 cross_project_render.go	outliner	L7	receiver:OutlinerModel
 cross_scope.go	outliner	L7	assigned
-cursor.go	listsurface	L5	assigned
+cursor.go	chrome	L1	assigned
 date_add_shared.go	chrome	L1	receiver:DateAdder
 date_parse.go	grammar	L2	assigned
 dependency_autocomplete.go	grammar	L2	assigned
@@ -148,7 +185,7 @@ fullscreen_date_helpers.go	chrome	L1	assigned
 fullscreen_layout_helpers.go	chrome	L1	assigned
 fullscreen_scroll_helpers.go	chrome	L1	assigned
 fullscreen_tabs_helpers.go	chrome	L1	assigned
-fullscreen_task_helpers.go	taskdetail	L7	assigned
+fullscreen_task_helpers.go	chrome	L1	assigned
 grouped_undo.go	tui	L8	assigned
 handler_clipboard.go	tui	L8	receiver:AppModel
 handler_helpers.go	tui	L8	receiver:AppModel
@@ -251,7 +288,7 @@ operation_target.go	operation	L3	receiver:ResolvedOperationTargets
 operation_target_context.go	tui	L8	receiver:AppModel
 operation_target_context_outliner.go	outliner	L7	receiver:OutlinerModel
 operation_task_reference_picker.go	tui	L8	assigned
-operation_text_prompt.go	chrome	L1	receiver:OperationTextPromptModel
+operation_text_prompt.go	route	L4	receiver:OperationTextPromptModel
 operation_value_list_sources.go	projecthub	L7	receiver:moveProjectPickerItem
 operation_value_membership.go	tui	L8	receiver:AppModel
 operation_value_picker_factory.go	tui	L8	receiver:AppModel
@@ -334,8 +371,8 @@ outliner_today_section.go	outliner	L7	receiver:OutlinerModel
 outliner_view_rows.go	outliner	L7	receiver:OutlinerModel
 outliner_view_snapshot.go	outliner	L7	receiver:OutlinerModel
 overlay_popup.go	chrome	L1	assigned
-parent_selector.go	chrome	L1	assigned
-picker_items.go	chrome	L1	assigned
+parent_selector.go	listsurface	L5	assigned
+picker_items.go	query	L2	receiver:TagInfo
 pipeline_stage.go	listsurface	L5	assigned
 planning_reconcile.go	tui	L8	receiver:AppModel
 presentation/names.go	presentation	L0	assigned
@@ -417,9 +454,9 @@ styles_theme_state.go	theme	L0	assigned
 styles_ui_components.go	theme	L0	assigned
 styles_view_modes.go	theme	L0	assigned
 tab_bar.go	chrome	L1	assigned
-tag_add_shared.go	chrome	L1	receiver:TagAdder
+tag_add_shared.go	listsurface	L5	receiver:TagAdder
 tag_filter_selector.go	query	L2	assigned
-tag_selector.go	chrome	L1	assigned
+tag_selector.go	listsurface	L5	assigned
 task_action_operations.go	tui	L8	receiver:AppModel
 task_action_sheet.go	tui	L8	receiver:AppModel
 task_attachments.go	taskdetail	L7	receiver:TaskAttachmentsModel
@@ -478,7 +515,7 @@ typed_route.go	route	L4	assigned
 undo_restore_status.go	status	L0	assigned
 view.go	route	L4	assigned
 view_accent.go	route	L4	assigned
-view_helpers.go	chrome	L1	assigned
+view_helpers.go	outliner	L7	assigned
 workflow_state_helpers.go	theme	L0	assigned
 workspace_ledger.go	tui	L8	assigned
 workspace_pulse.go	pulse	L0	assigned

@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -107,7 +108,7 @@ type TaskComposerModel struct {
 	width              int
 	height             int
 	submissionInFlight bool
-	discardConfirmState
+	chrome.DiscardConfirmState
 }
 
 func NewTaskComposerModel(preset TaskComposerPreset, runtime *config.RuntimeState) *TaskComposerModel {
@@ -195,14 +196,14 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	if m.confirmDiscard {
+	if m.ConfirmDiscard {
 		if key, ok := msg.(tea.KeyPressMsg); ok {
 			switch key.String() {
 			case "y", "Y":
-				m.confirmDiscard = false
+				m.ConfirmDiscard = false
 				return m, func() tea.Msg { return status.BackMsg{} }
 			case "n", "N", "esc":
-				m.confirmDiscard = false
+				m.ConfirmDiscard = false
 			}
 		}
 		return m, nil
@@ -240,7 +241,7 @@ func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			if strings.TrimSpace(m.input.Value()) != "" {
-				m.confirmDiscard = true
+				m.ConfirmDiscard = true
 				return m, nil
 			}
 			return m, func() tea.Msg { return status.BackMsg{} }
@@ -346,7 +347,7 @@ func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, bool) {
 		if !parsed.destinationSet {
 			destination = m.preset.defaultDestination(parentID)
 		}
-		if dueDateIsToday(due) {
+		if chrome.DueDateIsToday(due) {
 			destination = app.CaptureDestinationToday
 		}
 		destination = composerDeferredDestination(parsed, destination)

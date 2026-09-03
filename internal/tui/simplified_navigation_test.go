@@ -8,6 +8,7 @@ import (
 
 	appservice "github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -43,7 +44,7 @@ func simplifiedTreeOutliner(t *testing.T) (*OutlinerModel, *models.Project, *mod
 	project.BuildTaskTree()
 	cfg := newTestConfig()
 	m := NewOutlinerModel(project, nil, testRuntimeAt(cfg.DataDir(), cfg))
-	m.selectOutlinerMode(ModeAll)
+	m.selectOutlinerMode(chrome.ModeAll)
 	return m, project, parent, child
 }
 
@@ -263,18 +264,18 @@ func TestSimplifiedReorderEligibility(t *testing.T) {
 		project: project,
 		rows:    []outlinerRow{{task: task}},
 	}
-	for _, mode := range []OutlinerModeID{ModeAll, ModeInbox, ModeNext, ModeBacklog} {
+	for _, mode := range []chrome.OutlinerModeID{chrome.ModeAll, chrome.ModeInbox, chrome.ModeNext, chrome.ModeBacklog} {
 		m.primaryMode = mode
 		if !m.simplifiedReorderEligible() {
 			t.Errorf("%s should allow project-focused reorder", mode)
 		}
 	}
-	m.primaryMode = ModeDue
+	m.primaryMode = chrome.ModeDue
 	if m.simplifiedReorderEligible() {
 		t.Fatal("computed Due mode allowed manual reorder")
 	}
 	// A pinned row carries its own manual order ahead of the mode's ordering.
-	m.primaryMode = ModeToday
+	m.primaryMode = chrome.ModeToday
 	m.rows[0].IsPinnedSection = true
 	if !m.simplifiedReorderEligible() {
 		t.Fatal("Pinned row in Today mode refused manual reorder")
@@ -282,7 +283,7 @@ func TestSimplifiedReorderEligibility(t *testing.T) {
 	m.rows[0].IsPinnedSection = false
 
 	m.project = nil
-	m.primaryMode = ModeAll
+	m.primaryMode = chrome.ModeAll
 	m.loadedProjects = []*models.Project{project}
 	m.rows[0].ProjectID = project.ID
 	if !m.simplifiedReorderEligible() {
@@ -305,7 +306,7 @@ func TestMutationRebuildPreservesCursorIdentityAndVisibleSelection(t *testing.T)
 	project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{first, second}}
 	project.BuildTaskTree()
 	m := NewOutlinerModel(project, nil, nil)
-	m.selectOutlinerMode(ModeAll)
+	m.selectOutlinerMode(chrome.ModeAll)
 	m.cursor = findTaskRow(m.rows, second.ID)
 	if m.cursor < 0 {
 		t.Fatal("second task is missing before rebuild")

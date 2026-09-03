@@ -163,15 +163,15 @@ func TestTaskForm_EscWithChanges_SetsConfirmDiscard(t *testing.T) {
 	m := newTestTaskForm()
 	m.hasChanges = true
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEscape))
-	if !m.confirmDiscard {
-		t.Error("expected confirmDiscard=true after Esc with hasChanges")
+	if !m.ConfirmDiscard {
+		t.Error("expected ConfirmDiscard=true after Esc with hasChanges")
 	}
 }
 
 func TestTaskForm_ConfirmDiscard_YEmitsBackMsg(t *testing.T) {
 	m := newTestTaskForm()
 	m.hasChanges = true
-	m.confirmDiscard = true
+	m.ConfirmDiscard = true
 	_, cmd := m.Update(syntheticKey('y'))
 	if cmd == nil {
 		t.Fatal("expected Cmd from confirm-y, got nil")
@@ -185,10 +185,10 @@ func TestTaskForm_ConfirmDiscard_YEmitsBackMsg(t *testing.T) {
 func TestTaskForm_ConfirmDiscard_NCancels(t *testing.T) {
 	m := newTestTaskForm()
 	m.hasChanges = true
-	m.confirmDiscard = true
+	m.ConfirmDiscard = true
 	m = sendFormKey(m, syntheticKey('n'))
-	if m.confirmDiscard {
-		t.Error("expected confirmDiscard=false after 'n'")
+	if m.ConfirmDiscard {
+		t.Error("expected ConfirmDiscard=false after 'n'")
 	}
 }
 
@@ -196,8 +196,8 @@ func TestTaskForm_CreateModeEscWithTitle_ShowsConfirmDiscard(t *testing.T) {
 	m := newTestTaskForm()
 	m.titleInput.SetValue("Some title")
 	m = sendFormKey(m, syntheticSpecialKey(tea.KeyEscape))
-	if !m.confirmDiscard {
-		t.Error("expected confirmDiscard=true after Esc with non-empty title in create mode")
+	if !m.ConfirmDiscard {
+		t.Error("expected ConfirmDiscard=true after Esc with non-empty title in create mode")
 	}
 }
 

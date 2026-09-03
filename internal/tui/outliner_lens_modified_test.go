@@ -7,12 +7,13 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestSwitchingLensesRetainsTheOriginalBaseline(t *testing.T) {
 	outliner := lensLifecycleOutliner()
-	outliner.selectOutlinerMode(ModeInbox)
+	outliner.selectOutlinerMode(chrome.ModeInbox)
 
 	applyLensOrFatal(t, outliner, waitingLens(lensTestID(1), "Waiting", "needle"))
 	first := outliner.activeLens.origin
@@ -34,8 +35,8 @@ func TestSwitchingLensesRetainsTheOriginalBaseline(t *testing.T) {
 	if outliner.hasActiveLens() {
 		t.Fatal("one Esc must leave the lens entirely")
 	}
-	if outliner.primaryMode != ModeInbox {
-		t.Fatalf("restored mode = %v, want the pre-lens %v", outliner.primaryMode, ModeInbox)
+	if outliner.primaryMode != chrome.ModeInbox {
+		t.Fatalf("restored mode = %v, want the pre-lens %v", outliner.primaryMode, chrome.ModeInbox)
 	}
 }
 
@@ -115,7 +116,7 @@ func TestLensModifiedTracksModeQuerySortAndProjectFacets(t *testing.T) {
 		name   string
 		modify func(*OutlinerModel)
 	}{
-		{"mode", func(o *OutlinerModel) { o.selectOutlinerMode(ModeInbox) }},
+		{"mode", func(o *OutlinerModel) { o.selectOutlinerMode(chrome.ModeInbox) }},
 		{"query", func(o *OutlinerModel) { o.setLensQuery("other") }},
 		{"sort", func(o *OutlinerModel) { o.treeSort = SortState{Field: SortByTitle, Ascending: true} }},
 		{"project facets", func(o *OutlinerModel) {
@@ -177,7 +178,7 @@ func TestApplyNamedLensRefusesInvalidDefinitionsWithoutTouchingTheView(t *testin
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			outliner := lensLifecycleOutliner()
-			outliner.selectOutlinerMode(ModeInbox)
+			outliner.selectOutlinerMode(chrome.ModeInbox)
 			before := searchVisibleTaskIDs(outliner)
 
 			cmd, err := outliner.ApplyNamedLens(tc.lens())
@@ -190,7 +191,7 @@ func TestApplyNamedLensRefusesInvalidDefinitionsWithoutTouchingTheView(t *testin
 			if outliner.hasActiveLens() || outliner.pendingLens != nil {
 				t.Fatal("a refusal must leave no lens state behind")
 			}
-			if outliner.primaryMode != ModeInbox || outliner.lensQuery != "" {
+			if outliner.primaryMode != chrome.ModeInbox || outliner.lensQuery != "" {
 				t.Fatal("a refusal must leave the current projection untouched")
 			}
 			if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, before) {

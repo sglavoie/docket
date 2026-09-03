@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -203,14 +204,14 @@ func (m *HelpViewModel) renderHelpTabBar() string {
 
 func (m *HelpViewModel) renderFullHelpTabBar() string {
 	tabNames := append([]string{"All"}, m.categories...)
-	return renderWrappingTabBar(tabNames, m.activeTab, m.innerWidth())
+	return chrome.RenderWrappingTabBar(tabNames, m.activeTab, m.innerWidth())
 }
 
 func (m *HelpViewModel) renderHelpHeader(tabBar string) string {
 	pad := " "
 	var b strings.Builder
 
-	b.WriteString(renderFullscreenTitleWithPulse("Help", m.viewName, m.CurrentWorkspacePulse(), m.width))
+	b.WriteString(chrome.RenderFullscreenTitleWithPulse("Help", m.viewName, m.CurrentWorkspacePulse(), m.width))
 	b.WriteString("\n")
 	b.WriteString(pad)
 	b.WriteString(tabBar)
@@ -245,26 +246,26 @@ func (m *HelpViewModel) renderHelpHeader(tabBar string) string {
 	return b.String()
 }
 
-func (m *HelpViewModel) ContextualGuidance() (GuidanceSpec, bool) {
+func (m *HelpViewModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 	if m.searchMode {
-		return GuidanceSpec{
-			Hints: append(requiredGuidanceHints("Enter apply filter", "Esc cancel edit"),
-				optionalGuidanceHints(10, "Shift+←/→ tabs", "\\ find tab")...),
+		return chrome.GuidanceSpec{
+			Hints: append(chrome.RequiredGuidanceHints("Enter apply filter", "Esc cancel edit"),
+				chrome.OptionalGuidanceHints(10, "Shift+←/→ tabs", "\\ find tab")...),
 			Supplemental: m.helpScrollSupplemental(),
 			Rows:         2,
 		}, true
 	}
 	if m.tabSearchMode {
-		return GuidanceSpec{
-			Hints: append(requiredGuidanceHints("Enter apply tab", "Esc cancel find"),
-				optionalGuidanceHints(10, "/ edit filter")...),
+		return chrome.GuidanceSpec{
+			Hints: append(chrome.RequiredGuidanceHints("Enter apply tab", "Esc cancel find"),
+				chrome.OptionalGuidanceHints(10, "/ edit filter")...),
 			Supplemental: m.helpScrollSupplemental(),
 			Rows:         2,
 		}, true
 	}
-	spec, ok := guidanceSpecFromKeyMap(m.buildKeyMap(), 1)
+	spec, ok := chrome.GuidanceSpecFromKeyMap(m.buildKeyMap(), 1)
 	if !ok {
-		return GuidanceSpec{}, false
+		return chrome.GuidanceSpec{}, false
 	}
 	spec.Supplemental = m.helpScrollSupplemental()
 	if len(m.filteredItems) == 0 {
@@ -285,7 +286,7 @@ func (m *HelpViewModel) renderHelpFooter() string {
 	if !ok {
 		return ""
 	}
-	return renderGuidance(spec, m.width)
+	return chrome.RenderGuidance(spec, m.width)
 }
 
 func (m *HelpViewModel) View() tea.View {

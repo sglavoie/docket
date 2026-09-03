@@ -351,7 +351,7 @@ func TestTaskDeleteConfirmationReportsFrozenCountsAndAttachmentConsequences(t *t
 		},
 		Selection: SelectionCounts{Total: 2, Visible: 1, Hidden: 1},
 	})
-	detail := m.taskDeleteConfirm.detail
+	detail := m.taskDeleteConfirm.Detail
 	if detail == nil {
 		t.Fatal("delete confirmation omitted rich impact detail")
 	}

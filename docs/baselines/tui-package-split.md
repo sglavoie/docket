@@ -111,13 +111,30 @@ the pre-split tree and is consistently pessimistic.
 | `taskref` | 2 | 2 | 2 |
 | `status` | 10 | 10 | 10 |
 | `pulse` | 13 | 12 | 12 |
+| `chrome` | 61 | 50 | Session 2.9 |
 
-Running total against 631: **51**. The middle column minus the last is the
-test-only promotion the ruling reclaims — 27 for `theme`, none since, because
-`textfit` moved its three test files down in the same session, `taskref`
-promoted nothing for a test in the first place, `status` moved its one test
-file down with the two helpers only that test reads, and `pulse` moved down the
-six tests that read its unexported ladder and title internals.
+Running total against 631: **51**, plus whatever `chrome` settles on. The middle
+column minus the last is the test-only promotion the ruling reclaims — 27 for
+`theme`, none since, because `textfit` moved its three test files down in the
+same session, `taskref` promoted nothing for a test in the first place, `status`
+moved its one test file down with the two helpers only that test reads, and
+`pulse` moved down the six tests that read its unexported ladder and title
+internals.
+
+`chrome` is the first package whose production move and test move are two
+sessions, so its last column stays open until Session 2.9. Three of the 50 are
+already known to be test-only and should come back down with
+`footer_helpers_test.go`: `GuidanceSegment`, `GuidanceSegmentLines` and
+`GuidanceHintText` have no production consumer outside the package. It also
+promoted four struct fields and five methods the `must export` column does not
+count — `DiscardConfirmState.ConfirmDiscard`, `DiscardConfirmState.ConfirmOverlay`,
+`ConfirmDialog.Detail`, `TextEditorModel.ExternalEdit`,
+`DateAdder.HandleAddDateInputKey`, `DateAdder.DateAdderFormats`,
+`TextEditorModel.GuidanceSpec`, `GuidanceSegment.FitToWidth` and
+`GuidanceSegment.Text` — of which the last five and `ConfirmDialog.Detail` and
+`TextEditorModel.ExternalEdit` are test-only. `chrome` also came in eleven under
+its projection because eight files the assignment table gave it could not move
+at all; see the header of `scripts/tui_package_assignments.tsv`.
 
 `status` is the first row to spend its projection exactly. It also exported one
 struct field the `must export` column does not count, because that column counts

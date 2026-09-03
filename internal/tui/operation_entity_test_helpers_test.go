@@ -1,5 +1,7 @@
 package tui
 
+import "github.com/sglavoie/tt/internal/tui/chrome"
+
 func WorkspaceTagEntity(name string) EntityIdentity {
 	return normalizeEntityIdentity(EntityIdentity{Kind: EntityKindTag, Scope: EntityScopeGlobal, Name: name})
 }
@@ -14,7 +16,7 @@ func ScopeEntity(name string) EntityIdentity {
 	return normalizeEntityIdentity(EntityIdentity{Kind: EntityKindScope, Name: name})
 }
 
-func ModeEntity(id OutlinerModeID) EntityIdentity {
+func ModeEntity(id chrome.OutlinerModeID) EntityIdentity {
 	return normalizeEntityIdentity(EntityIdentity{Kind: EntityKindMode, Name: string(id)})
 }
 

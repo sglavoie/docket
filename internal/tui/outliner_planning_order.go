@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // planningReorderKind names the durable planning list a J/K move reorders in a
@@ -43,7 +44,7 @@ func (m *OutlinerModel) isPlanningReorderMode() bool {
 	if row.IsPinnedSection {
 		return false
 	}
-	if (m.primaryMode == ModeToday || m.primaryMode == ModeNext) && row.isTaskRow() {
+	if (m.primaryMode == chrome.ModeToday || m.primaryMode == chrome.ModeNext) && row.isTaskRow() {
 		return true
 	}
 	return row.IsTodaySection || row.IsNextSection
@@ -65,7 +66,7 @@ func (m *OutlinerModel) planningReorderMove(delta int) (tea.Model, tea.Cmd) {
 	kind := reorderToday
 	order := m.globalTodayOrder()
 	row := m.rows[m.cursor]
-	if m.primaryMode == ModeNext || row.IsNextSection {
+	if m.primaryMode == chrome.ModeNext || row.IsNextSection {
 		kind = reorderNextOrder
 		order = m.globalNextOrder()
 	}
@@ -161,7 +162,7 @@ func (m *OutlinerModel) planningReorderEdge(delta int) (tea.Model, tea.Cmd) {
 	kind := reorderToday
 	order := m.globalTodayOrder()
 	row := m.rows[m.cursor]
-	if m.primaryMode == ModeNext || row.IsNextSection {
+	if m.primaryMode == chrome.ModeNext || row.IsNextSection {
 		kind = reorderNextOrder
 		order = m.globalNextOrder()
 	}

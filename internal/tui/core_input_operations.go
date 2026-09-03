@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -109,7 +110,7 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		}
 	case operationCoreEditDescription:
 		if task, project := m.taskAndProjectForTargets(invocation.Targets); task != nil {
-			message = ShowTaskTextEditorMsg{
+			message = chrome.ShowTaskTextEditorMsg{
 				Task: task, Project: project, Operation: app.TaskOperationEditDescription,
 			}
 		}

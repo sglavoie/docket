@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -18,7 +19,7 @@ func (m *TaskAttachmentsModel) View() tea.View { //nolint:gocyclo
 	}
 
 	var b strings.Builder
-	b.WriteString(renderTaskScopedFullscreenTitleWithPulse(
+	b.WriteString(chrome.RenderTaskScopedFullscreenTitleWithPulse(
 		fmt.Sprintf("Attachments for #%d: ", m.task.ShortID),
 		m.task,
 		fmt.Sprintf("%d attachment(s)", len(m.task.Attachments)),
@@ -74,7 +75,7 @@ func (m *TaskAttachmentsModel) renderAttachmentsList(b *strings.Builder, availab
 	if maxVisible == 0 {
 		return
 	}
-	scrollOffset := calcScrollOffset(m.cursor, maxVisible)
+	scrollOffset := chrome.CalcScrollOffset(m.cursor, maxVisible)
 
 	for i := scrollOffset; i < len(m.task.Attachments) && i < scrollOffset+maxVisible; i++ {
 		b.WriteString(m.renderAttachmentEntry(i, m.task.Attachments[i]))

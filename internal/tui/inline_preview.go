@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -36,7 +37,7 @@ type inlinePeekOptions struct {
 	DependencyCensus dependencyCensus
 }
 
-func (m *OutlinerModel) inlinePeekLinesForRow(row outlinerRow, indent string, rowWidth int, colLayout *ColumnLayout) []string {
+func (m *OutlinerModel) inlinePeekLinesForRow(row outlinerRow, indent string, rowWidth int, colLayout *chrome.ColumnLayout) []string {
 	if m == nil || !row.isTaskRow() {
 		return nil
 	}
@@ -61,7 +62,7 @@ func (m *OutlinerModel) inlinePeekLinesForRow(row outlinerRow, indent string, ro
 func (m *OutlinerModel) inlinePeekLineCount(row outlinerRow, width int) int {
 	width = max(width, 1)
 	indent := strings.Repeat(" ", lipgloss.Width(row.prefix)+4)
-	return len(m.inlinePeekLinesForRow(row, indent, width, worstCaseColumnLayout(width)))
+	return len(m.inlinePeekLinesForRow(row, indent, width, chrome.WorstCaseColumnLayout(width)))
 }
 
 // inlinePeekLines renders the additive, cursor-following task preview. The
@@ -194,7 +195,7 @@ func inlinePeekDatesLine(task *models.Task, now time.Time, width int) string {
 		field("updated", age)
 	}
 	if task.DueDate != nil {
-		field("due", dueGrammarValue(task))
+		field("due", chrome.DueGrammarValue(task))
 	}
 	if taskWokeRecently(task, now) {
 		field("woke", formatRecencyAge(*task.DeferredUntil, now))

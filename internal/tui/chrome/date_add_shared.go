@@ -1,4 +1,4 @@
-package tui
+package chrome
 
 import (
 	"time"
@@ -62,10 +62,10 @@ func (a *DateAdder) leaveAddMode() {
 	a.AddDateInput.Blur()
 }
 
-// handleAddDateInputKey owns the typed-date input lifecycle. Every key belongs
+// HandleAddDateInputKey owns the typed-date input lifecycle. Every key belongs
 // to the input while the mode is active, and clearing stays on the preset list,
 // so this mode only ever produces a date.
-func (a *DateAdder) handleAddDateInputKey(
+func (a *DateAdder) HandleAddDateInputKey(
 	msg tea.KeyPressMsg,
 	submit func(time.Time) error,
 ) tea.Cmd {
@@ -100,11 +100,11 @@ func (a *DateAdder) parse(input string) (time.Time, error) {
 	if a.allowsTime {
 		return util.ParseDeferInstant(input)
 	}
-	return ParseDate(input)
+	return util.ParseCalendarDate(input)
 }
 
-// dateAdderFormats is the accepted-format reference shown beneath the input.
-func (a *DateAdder) dateAdderFormats() []string {
+// DateAdderFormats is the accepted-format reference shown beneath the input.
+func (a *DateAdder) DateAdderFormats() []string {
 	formats := []string{
 		"2026-01-15    Exact date (YYYY-MM-DD)",
 		"tomorrow      Tomorrow's date",

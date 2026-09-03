@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -85,7 +86,7 @@ func (m *OutlineErrorsViewModel) View() tea.View {
 	capacity := m.capacity()
 
 	var builder strings.Builder
-	builder.WriteString(renderFullscreenTitle(outlineErrorsTitle, m.subtitle(width-lipgloss.Width(outlineErrorsTitle)-2)))
+	builder.WriteString(chrome.RenderFullscreenTitle(outlineErrorsTitle, m.subtitle(width-lipgloss.Width(outlineErrorsTitle)-2)))
 	builder.WriteString("\n\n")
 
 	visible := lines[min(m.offset, len(lines)):]
@@ -108,7 +109,7 @@ func (m *OutlineErrorsViewModel) View() tea.View {
 	builder.WriteString("\n")
 	builder.WriteString(theme.MutedStyle.Render(textfit.TruncateToVisualWidth("Buffer kept at "+m.bufferPath, width)))
 	builder.WriteString("\n")
-	builder.WriteString(renderGuidance(m.guidance(len(lines), capacity), width))
+	builder.WriteString(chrome.RenderGuidance(m.guidance(len(lines), capacity), width))
 
 	return tea.NewView(builder.String())
 }
@@ -165,10 +166,10 @@ func (m *OutlineErrorsViewModel) clampOffset() {
 	m.offset = max(m.offset, 0)
 }
 
-func (m *OutlineErrorsViewModel) guidance(total, capacity int) GuidanceSpec {
-	spec := GuidanceSpec{Hints: requiredGuidanceHints("Esc close"), Rows: 2}
+func (m *OutlineErrorsViewModel) guidance(total, capacity int) chrome.GuidanceSpec {
+	spec := chrome.GuidanceSpec{Hints: chrome.RequiredGuidanceHints("Esc close"), Rows: 2}
 	if total > capacity {
-		spec.Hints = append(spec.Hints, optionalGuidanceHints(10, "j/k scroll")...)
+		spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(10, "j/k scroll")...)
 		spec.Supplemental = fmt.Sprintf("%d–%d of %d", m.offset+1, min(m.offset+capacity, total), total)
 	}
 	return spec

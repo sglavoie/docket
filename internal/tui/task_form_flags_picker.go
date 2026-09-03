@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/icons"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -65,7 +66,7 @@ func (p *formFlagsPicker) render(width int) string {
 
 	maxWidth := min(max(width*2/5, 40), width-4)
 	innerWidth := min(maxWidth, max(width-4, 1))
-	footerText := renderGuidanceText(requiredActionGuidanceSpec(
+	footerText := chrome.RenderGuidanceText(chrome.RequiredActionGuidanceSpec(
 		"Enter confirm", "Space/x toggle", "j/k navigate",
 	), max(innerWidth-4, 1))
 
@@ -98,5 +99,5 @@ func (p *formFlagsPicker) render(width int) string {
 		}
 	}
 
-	return renderOverlayBox(content.String(), innerWidth, title, footerText, borderStyle)
+	return chrome.RenderOverlayBox(content.String(), innerWidth, title, footerText, borderStyle)
 }

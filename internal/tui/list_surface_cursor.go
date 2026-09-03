@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
@@ -193,13 +194,13 @@ func (model *ListSurfaceModel) GuidanceState(searchEditing bool) ListGuidanceSta
 func listSurfaceGuidanceSpec(
 	state ListGuidanceState,
 	km *keymap.KeyMap,
-	actionHints []GuidanceHint,
-) (GuidanceSpec, bool) {
+	actionHints []chrome.GuidanceHint,
+) (chrome.GuidanceSpec, bool) {
 	rows := 1
 	if state.Profile == ListGuidanceSearchEditing {
 		rows = 2
 	}
-	spec, _ := guidanceSpecFromKeyMap(km, rows)
+	spec, _ := chrome.GuidanceSpecFromKeyMap(km, rows)
 	spec.Rows = rows
 	spec.Hints = append(spec.Hints, actionHints...)
 	switch state.Profile {

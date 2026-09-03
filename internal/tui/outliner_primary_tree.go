@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -166,7 +167,7 @@ func (m *OutlinerModel) sortPrimaryTaskTree(tasks []*models.Task) []*models.Task
 // projects lead, followed by an alphabetical order, and each group keeps its
 // own tree-prefix run, so the last root of a group closes with the terminal
 // connector rather than continuing into the next project.
-func (m *OutlinerModel) flattenPrimaryProjectTrees(trees []primaryProjectTree, mode OutlinerModeID) {
+func (m *OutlinerModel) flattenPrimaryProjectTrees(trees []primaryProjectTree, mode chrome.OutlinerModeID) {
 	ordered := slices.Clone(trees)
 	sort.SliceStable(ordered, func(i, j int) bool {
 		leftID, rightID := "", ""

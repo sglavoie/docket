@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -56,7 +57,7 @@ func (p *formStatePicker) render(width int, current models.WorkflowState) string
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render("Set State")
 	minInnerWidth := lipgloss.Width(title) + 4
 	innerWidth := min(max(max(width*2/5, 36), minInnerWidth), max(width-4, 1))
-	footer := renderGuidanceText(requiredActionGuidanceSpec(
+	footer := chrome.RenderGuidanceText(chrome.RequiredActionGuidanceSpec(
 		"Enter select", "j/k navigate",
 	), max(innerWidth-4, 1))
 
@@ -78,5 +79,5 @@ func (p *formStatePicker) render(width int, current models.WorkflowState) string
 			content.WriteString("\n")
 		}
 	}
-	return renderOverlayBox(content.String(), innerWidth, title, footer, borderStyle)
+	return chrome.RenderOverlayBox(content.String(), innerWidth, title, footer, borderStyle)
 }

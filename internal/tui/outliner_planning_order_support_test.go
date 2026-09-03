@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -124,7 +125,7 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 
 // enterCrossMode selects a mode on the cross Outliner and rebuilds its
 // rows so the mode's live rows and flags are exactly what production renders.
-func enterCrossMode(cross *OutlinerModel, id OutlinerModeID) {
+func enterCrossMode(cross *OutlinerModel, id chrome.OutlinerModeID) {
 	cross.selectOutlinerMode(id)
 	cross.crossForceRebuild = true
 	cross.crossProjectRebuildRows()

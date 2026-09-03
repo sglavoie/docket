@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -119,7 +120,7 @@ func (a *TagAdder) HandleAddTagKey(msg tea.KeyPressMsg, picker *ListSurfaceAdapt
 func (a *TagAdder) RenderAddTagMode(width, height int) string {
 	var b strings.Builder
 
-	b.WriteString(renderFullscreenTitle("Add New Tag", ""))
+	b.WriteString(chrome.RenderFullscreenTitle("Add New Tag", ""))
 	b.WriteString("\n\n")
 
 	b.WriteString(theme.MutedStyle.Render(fmt.Sprintf(
@@ -136,8 +137,8 @@ func (a *TagAdder) RenderAddTagMode(width, height int) string {
 		b.WriteString("\n")
 	}
 
-	b.WriteString(renderGuidance(GuidanceSpec{
-		Hints: requiredGuidanceHints("Enter add tag", "Esc cancel"),
+	b.WriteString(chrome.RenderGuidance(chrome.GuidanceSpec{
+		Hints: chrome.RequiredGuidanceHints("Enter add tag", "Esc cancel"),
 		Rows:  2,
 	}, width))
 
@@ -160,7 +161,7 @@ func RenderTagSelectorView(picker *ListSurfaceAdapter[TagInfo], adder *TagAdder,
 		subtitle = fmt.Sprintf("%d tag%s selected", selectedCount, pluralize(selectedCount, "", "s"))
 	}
 
-	b.WriteString(renderFullscreenTitle(title, subtitle))
+	b.WriteString(chrome.RenderFullscreenTitle(title, subtitle))
 	b.WriteString("\n\n")
 
 	b.WriteString(picker.RenderSearchBar())
@@ -172,16 +173,16 @@ func RenderTagSelectorView(picker *ListSurfaceAdapter[TagInfo], adder *TagAdder,
 	b.WriteString(picker.RenderList(maxVisible))
 
 	guidance, _ := tagSelectorGuidanceSpec(picker)
-	b.WriteString(renderGuidance(guidance, width))
+	b.WriteString(chrome.RenderGuidance(guidance, width))
 
 	return b.String()
 }
 
 // renderTagSelectorFooter renders the standard footer with 'a' key for adding tags.
-func tagSelectorGuidanceSpec(picker *ListSurfaceAdapter[TagInfo]) (GuidanceSpec, bool) {
+func tagSelectorGuidanceSpec(picker *ListSurfaceAdapter[TagInfo]) (chrome.GuidanceSpec, bool) {
 	if picker.IsSearchMode() {
 		return picker.guidanceSpec()
 	}
-	add := newGuidanceHint("a add tag", 5, len(picker.FilteredItems()) == 0 && !picker.IsSearchMode())
+	add := chrome.NewGuidanceHint("a add tag", 5, len(picker.FilteredItems()) == 0 && !picker.IsSearchMode())
 	return picker.guidanceSpec(add)
 }

@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -21,7 +22,7 @@ func jumpHistoryFixture(taskIDs ...string) (*OutlinerModel, map[string]*models.T
 	}
 	project := primaryRowsProject(projectID, tasks...)
 	outliner, _ := primaryRowsOutliner(project)
-	outliner.primaryMode = ModeAll
+	outliner.primaryMode = chrome.ModeAll
 	setJumpHistoryRows(outliner, byID, taskIDs...)
 	return outliner, byID
 }
@@ -119,7 +120,7 @@ func TestOutlinerRelocationUsesProjectQualifiedTaskAnchors(t *testing.T) {
 	alpha := primaryRowsProject("alpha", &models.Task{ID: "same", Title: "alpha same"}, &models.Task{ID: "target", Title: "target"})
 	beta := primaryRowsProject("beta", &models.Task{ID: "same", Title: "beta same"})
 	outliner, _ := primaryRowsOutliner(alpha, beta)
-	outliner.primaryMode = ModeAll
+	outliner.primaryMode = chrome.ModeAll
 	outliner.rows = []outlinerRow{
 		{task: alpha.Tasks[0], ProjectID: alpha.ID},
 		{task: alpha.Tasks[1], ProjectID: alpha.ID},
@@ -147,7 +148,7 @@ func TestOutlinerRelocationHistoryClearsOnProjectionChange(t *testing.T) {
 	setJumpHistoryRows(outliner, tasks, "target", "before", "after")
 	outliner.finishOutlinerRelocation(capture, true)
 
-	outliner.primaryMode = ModeInbox
+	outliner.primaryMode = chrome.ModeInbox
 	outliner.syncJumpProjection()
 	if len(outliner.relocationHistory.back) != 0 || len(outliner.relocationHistory.forward) != 0 || outliner.relocationHistory.pending != nil {
 		t.Fatalf("projection change retained history: %+v", outliner.relocationHistory)
@@ -327,7 +328,7 @@ func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) 
 	outliner := NewOutlinerModel(nil, model.configManager, model.runtime)
 	outliner.loadedProjects = env.projects
 	outliner.crossForceRebuild = true
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 	model.crossOutliner = outliner
 	model.views.Register(presentation.ViewCrossProjectOutliner, outliner)
 	model.wireOutlinerOperationExecutor(outliner)

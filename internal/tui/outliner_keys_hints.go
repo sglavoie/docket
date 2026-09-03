@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 type outlinerEmptyCause uint8
@@ -39,9 +40,9 @@ func (m *OutlinerModel) HandledKeys() []string {
 // to the ranked operation projection for an ordinary task row. Interaction and
 // causal recovery controls are required so narrow terminals retain the action
 // that exits the current state.
-func (m *OutlinerModel) ContextualGuidance() (GuidanceSpec, bool) {
+func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 	if m == nil {
-		return GuidanceSpec{}, false
+		return chrome.GuidanceSpec{}, false
 	}
 	switch {
 	case m.menuBarOpen:
@@ -54,20 +55,20 @@ func (m *OutlinerModel) ContextualGuidance() (GuidanceSpec, bool) {
 		// describes keys the stack is currently refusing.
 		return m.queryReadoutGuidance(), true
 	case m.confirm.IsActive():
-		return GuidanceSpec{Hints: requiredGuidanceHints("Y confirm", "N/Esc cancel"), Rows: 2}, true
+		return chrome.GuidanceSpec{Hints: chrome.RequiredGuidanceHints("Y confirm", "N/Esc cancel"), Rows: 2}, true
 	case m.quickEdit.IsActive():
-		hints := requiredGuidanceHints("Enter save", "Esc cancel")
+		hints := chrome.RequiredGuidanceHints("Enter save", "Esc cancel")
 		if !m.quickEdit.IsRenameOnly() {
-			hints = append(hints, optionalGuidanceHints(10, quickEditGrammarGuidance()...)...)
+			hints = append(hints, chrome.OptionalGuidanceHints(10, quickEditGrammarGuidance()...)...)
 		}
-		return GuidanceSpec{Hints: hints, Rows: 2}, true
+		return chrome.GuidanceSpec{Hints: hints, Rows: 2}, true
 	case m.editingLensQuery():
 		// The shared input is holding the lens's narrowing query, not an ordinary
 		// search: Enter keeps what was typed and Esc puts back the query the edit
 		// opened on, neither of which is what the search wording promises.
-		return GuidanceSpec{
-			Hints: append(requiredGuidanceHints("Enter narrow lens", "Esc cancel edit"),
-				optionalGuidanceHints(10, "lens query narrows this lens only")...),
+		return chrome.GuidanceSpec{
+			Hints: append(chrome.RequiredGuidanceHints("Enter narrow lens", "Esc cancel edit"),
+				chrome.OptionalGuidanceHints(10, "lens query narrows this lens only")...),
 			Rows: 2,
 		}, true
 	case m.IsSearchMode() && m.searchAutocomplete.active():
@@ -75,13 +76,13 @@ func (m *OutlinerModel) ContextualGuidance() (GuidanceSpec, bool) {
 		// the search, and saying so is the whole point of the swap.
 		return m.searchAutocompleteGuidance(), true
 	case m.IsSearchMode():
-		hints := requiredGuidanceHints("Enter apply search", "Esc clear search")
+		hints := chrome.RequiredGuidanceHints("Enter apply search", "Esc clear search")
 		if m.hasSearchHistory() {
 			// Only once something has been submitted: an empty ring would advertise
 			// a walk that does nothing on its first press.
-			hints = append(hints, optionalGuidanceHints(10, "↑/↓ recall query")...)
+			hints = append(hints, chrome.OptionalGuidanceHints(10, "↑/↓ recall query")...)
 		}
-		return GuidanceSpec{Hints: hints, Rows: 2}, true
+		return chrome.GuidanceSpec{Hints: hints, Rows: 2}, true
 	case len(m.rows) == 0:
 		return m.emptyGuidance(), true
 	case m.multiSelectMode:
@@ -93,15 +94,15 @@ func (m *OutlinerModel) ContextualGuidance() (GuidanceSpec, bool) {
 				peekKey = key
 			}
 		}
-		return GuidanceSpec{
-			Hints: append(requiredGuidanceHints(peekKey+" close Peek", "Esc close Peek"),
-				optionalGuidanceHints(10, "Space actions", "e edit", "? help")...),
+		return chrome.GuidanceSpec{
+			Hints: append(chrome.RequiredGuidanceHints(peekKey+" close Peek", "Esc close Peek"),
+				chrome.OptionalGuidanceHints(10, "Space actions", "e edit", "? help")...),
 			Rows: 2,
 		}, true
 	case m.hasSearchProjection():
-		return GuidanceSpec{
-			Hints: append(requiredGuidanceHints("Esc clear search"),
-				optionalGuidanceHints(10, "/ edit search", "a capture", "P projects", "? help")...),
+		return chrome.GuidanceSpec{
+			Hints: append(chrome.RequiredGuidanceHints("Esc clear search"),
+				chrome.OptionalGuidanceHints(10, "/ edit search", "a capture", "P projects", "? help")...),
 			Rows: 1,
 		}, true
 	case m.hasActiveLens():
@@ -109,15 +110,15 @@ func (m *OutlinerModel) ContextualGuidance() (GuidanceSpec, bool) {
 		// here exactly as clearing search is above. `/` is named beside it because
 		// under a lens that key edits the lens's narrowing query rather than
 		// opening a scope-wide search, which nothing else on screen says.
-		return GuidanceSpec{
-			Hints: append(requiredGuidanceHints("Esc restore lens"),
-				optionalGuidanceHints(10, `/ lens query`, `\ lenses`, "a capture", "? help")...),
+		return chrome.GuidanceSpec{
+			Hints: append(chrome.RequiredGuidanceHints("Esc restore lens"),
+				chrome.OptionalGuidanceHints(10, `/ lens query`, `\ lenses`, "a capture", "? help")...),
 			Rows: 1,
 		}, true
 	case m.cursorNamesHeader():
 		return m.headerGuidance(), true
 	case m.operationRegistry == nil:
-		return GuidanceSpec{}, false
+		return chrome.GuidanceSpec{}, false
 	}
 
 	hints := m.operationRegistry.GuidanceHintsForInputStrategy(
@@ -125,9 +126,9 @@ func (m *OutlinerModel) ContextualGuidance() (GuidanceSpec, bool) {
 		m.operationCommandContext(),
 	)
 	if len(hints) == 0 {
-		return GuidanceSpec{}, false
+		return chrome.GuidanceSpec{}, false
 	}
-	return GuidanceSpec{Hints: hints, Rows: 1}, true
+	return chrome.GuidanceSpec{Hints: hints, Rows: 1}, true
 }
 
 func quickEditGrammarGuidance() []string {
@@ -166,20 +167,20 @@ func quickEditGrammarGuidance() []string {
 	return entries
 }
 
-func (m *OutlinerModel) multiSelectGuidance() GuidanceSpec {
+func (m *OutlinerModel) multiSelectGuidance() chrome.GuidanceSpec {
 	rangeAction := "V range"
 	if m.IsRangeSelectionActive() {
 		rangeAction = "V freeze range"
 	}
-	hints := []GuidanceHint{
-		newGuidanceHint("Space actions", 1, m.SelectedCount() > 0),
-		newGuidanceHint("v toggle", 2, false),
-		newGuidanceHint(rangeAction, 3, false),
-		newGuidanceHint("Ctrl+A select visible", 4, false),
-		newGuidanceHint("Esc clear selection", 0, true),
-		newGuidanceHint("? help", 10, false),
+	hints := []chrome.GuidanceHint{
+		chrome.NewGuidanceHint("Space actions", 1, m.SelectedCount() > 0),
+		chrome.NewGuidanceHint("v toggle", 2, false),
+		chrome.NewGuidanceHint(rangeAction, 3, false),
+		chrome.NewGuidanceHint("Ctrl+A select visible", 4, false),
+		chrome.NewGuidanceHint("Esc clear selection", 0, true),
+		chrome.NewGuidanceHint("? help", 10, false),
 	}
-	return GuidanceSpec{Hints: hints, Rows: 1}
+	return chrome.GuidanceSpec{Hints: hints, Rows: 1}
 }
 
 func (m *OutlinerModel) cursorNamesHeader() bool {
@@ -200,10 +201,10 @@ func (m *OutlinerModel) cursorNamesHeader() bool {
 // they are minor; on a header, opening what the row names is the act the row
 // exists for, so it must outlive the mode and search chrome when the terminal
 // narrows.
-func (m *OutlinerModel) headerGuidance() GuidanceSpec {
+func (m *OutlinerModel) headerGuidance() chrome.GuidanceSpec {
 	row := m.rows[m.cursor]
 	zoomed := m.isZoomedSectionRow(row)
-	hints := make([]GuidanceHint, 0, 8)
+	hints := make([]chrome.GuidanceHint, 0, 8)
 	if m.operationRegistry != nil {
 		for _, hint := range m.operationRegistry.GuidanceHintsForInputStrategy(
 			InputStrategySimplified,
@@ -217,11 +218,11 @@ func (m *OutlinerModel) headerGuidance() GuidanceSpec {
 	}
 	switch {
 	case zoomed:
-		hints = append(hints, newGuidanceHint("Esc unzoom", 1, true))
+		hints = append(hints, chrome.NewGuidanceHint("Esc unzoom", 1, true))
 	case m.isSectionRowCollapsed(row):
-		hints = append(hints, newGuidanceHint("l/Right expand", 1, false))
+		hints = append(hints, chrome.NewGuidanceHint("l/Right expand", 1, false))
 	default:
-		hints = append(hints, newGuidanceHint("h/Left collapse", 1, false))
+		hints = append(hints, chrome.NewGuidanceHint("h/Left collapse", 1, false))
 	}
 	if row.IsProjectHeader {
 		// All three sit at rank 2 and the stable sort keeps them in this order, so
@@ -230,25 +231,25 @@ func (m *OutlinerModel) headerGuidance() GuidanceSpec {
 		// does. The two keys that left the menu follow it, each labeled as the
 		// strategy labels it.
 		hints = append(hints,
-			newGuidanceHint("Space actions", 2, false),
-			newGuidanceHint("# project tags", 2, false),
-			newGuidanceHint("* project pin", 2, false),
+			chrome.NewGuidanceHint("Space actions", 2, false),
+			chrome.NewGuidanceHint("# project tags", 2, false),
+			chrome.NewGuidanceHint("* project pin", 2, false),
 		)
 	} else if !zoomed {
-		hints = append(hints, newGuidanceHint("s sections", 2, false))
+		hints = append(hints, chrome.NewGuidanceHint("s sections", 2, false))
 	}
-	hints = append(hints, optionalGuidanceHints(3, "Tab next mode", "P projects", "/ search", "? help")...)
-	return GuidanceSpec{Hints: hints, Rows: 1}
+	hints = append(hints, chrome.OptionalGuidanceHints(3, "Tab next mode", "P projects", "/ search", "? help")...)
+	return chrome.GuidanceSpec{Hints: hints, Rows: 1}
 }
 
-func (m *OutlinerModel) emptyGuidance() GuidanceSpec {
+func (m *OutlinerModel) emptyGuidance() chrome.GuidanceSpec {
 	var required string
 	cause := m.classifyEmptyCause()
 	switch cause {
 	case outlinerEmptyNoProjects:
 		required = "P projects"
 	case outlinerEmptyMode:
-		if m.primaryMode == ModeInbox {
+		if m.primaryMode == chrome.ModeInbox {
 			required = "a capture"
 		} else {
 			required = "Tab next mode"
@@ -277,8 +278,8 @@ func (m *OutlinerModel) emptyGuidance() GuidanceSpec {
 	if cause == outlinerEmptySearchFiltered {
 		optional = append([]string{"Esc clear search"}, optional...)
 	}
-	hints := append(requiredGuidanceHints(required), optionalGuidanceHints(10, optional...)...)
-	return GuidanceSpec{Hints: hints, Rows: 1}
+	hints := append(chrome.RequiredGuidanceHints(required), chrome.OptionalGuidanceHints(10, optional...)...)
+	return chrome.GuidanceSpec{Hints: hints, Rows: 1}
 }
 
 func (m *OutlinerModel) classifyEmptyCause() outlinerEmptyCause {
@@ -319,7 +320,7 @@ func (m *OutlinerModel) classifyEmptyCause() outlinerEmptyCause {
 	if len(m.focusStack) > 0 || len(m.crossFocusStack) > 0 {
 		return outlinerEmptyFocus
 	}
-	if m.primaryMode != ModeAll {
+	if m.primaryMode != chrome.ModeAll {
 		return outlinerEmptyMode
 	}
 	return outlinerEmptyNoTasks

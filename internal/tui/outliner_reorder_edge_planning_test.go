@@ -2,6 +2,8 @@ package tui
 
 import (
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 func TestPlanningReorderEdge(t *testing.T) {
@@ -13,7 +15,7 @@ func TestPlanningReorderEdge(t *testing.T) {
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]),
 			locatorOf(project, tasks[2]), locatorOf(project, tasks[3]),
 		)
-		enterCrossMode(cross, ModeNext)
+		enterCrossMode(cross, chrome.ModeNext)
 		if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
 			t.Fatal("cursor did not land on Alpha")
 		}
@@ -34,7 +36,7 @@ func TestPlanningReorderEdge(t *testing.T) {
 		seedTodayOrder(t, m,
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]), locatorOf(project, tasks[2]),
 		)
-		enterCrossMode(cross, ModeToday)
+		enterCrossMode(cross, chrome.ModeToday)
 		if !cross.moveCursorToProjectTask(tasks[2].ID, project.ID) {
 			t.Fatal("cursor did not land on Charlie")
 		}
@@ -59,7 +61,7 @@ func TestPlanningReorderEdge(t *testing.T) {
 		}
 		cross.filter.Tags = map[string]bool{"keep": true}
 		cross.adoptFilterCarriers()
-		enterCrossMode(cross, ModeNext)
+		enterCrossMode(cross, chrome.ModeNext)
 		if got := visibleTaskIDs(cross); len(got) != 3 {
 			t.Fatalf("filtered Next rows = %v, want 3", got)
 		}
@@ -85,7 +87,7 @@ func TestPlanningReorderEdge(t *testing.T) {
 		tasks[0].Tags = []string{"keep"}
 		cross.filter.Tags = map[string]bool{"keep": true}
 		cross.adoptFilterCarriers()
-		enterCrossMode(cross, ModeNext)
+		enterCrossMode(cross, chrome.ModeNext)
 		if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
 			t.Fatal("cursor did not land on keep-one")
 		}
@@ -103,7 +105,7 @@ func TestPlanningReorderEdge(t *testing.T) {
 		m, cross, dataDir := newPlanningOrderApp(t, project)
 		seedTodayOrder(t, m, locatorOf(project, tasks[0]), locatorOf(project, tasks[1]))
 		seedNextOrderOrder(t, m, locatorOf(project, tasks[2]), locatorOf(project, tasks[3]))
-		enterCrossMode(cross, ModeAll)
+		enterCrossMode(cross, chrome.ModeAll)
 		if !cross.moveCursorToProjectTask(tasks[1].ID, project.ID) {
 			t.Fatal("cursor did not land on Today Two")
 		}
@@ -132,7 +134,7 @@ func TestPlanningReorderEdge(t *testing.T) {
 			locatorOf(bravo, bravoTasks[0]), locatorOf(bravo, bravoTasks[1]),
 		)
 		seeded := []string{alphaTasks[0].ID, alphaTasks[1].ID, bravoTasks[0].ID, bravoTasks[1].ID}
-		enterCrossMode(cross, ModeToday)
+		enterCrossMode(cross, chrome.ModeToday)
 
 		if !cross.moveCursorToProjectTask(bravoTasks[0].ID, bravo.ID) {
 			t.Fatal("cursor did not land on B1")
@@ -160,7 +162,7 @@ func TestPlanningReorderEdge(t *testing.T) {
 		seedNextOrderOrder(t, m,
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]), locatorOf(project, tasks[2]),
 		)
-		enterCrossMode(cross, ModeNext)
+		enterCrossMode(cross, chrome.ModeNext)
 		if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
 			t.Fatal("cursor did not land on Alpha")
 		}

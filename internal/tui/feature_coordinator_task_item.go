@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -254,7 +255,7 @@ func (c TaskItemCoordinator) SetDueDate(task taskref.TaskIdentity, due *time.Tim
 			res app.TaskResult
 			err error
 		)
-		planningChanged := dueDateIsToday(due)
+		planningChanged := chrome.DueDateIsToday(due)
 		if planningChanged {
 			res, err = c.task.SetDueDateAndPlanToday(task.Locator(), *due)
 		} else {

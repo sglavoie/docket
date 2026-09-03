@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -233,7 +234,7 @@ func taskDeleteRootAncestor(
 	return false
 }
 
-func taskDeleteConfirmDetail(roots []TaskProjectRef, impact taskDeleteImpact) *ConfirmDetail {
+func taskDeleteConfirmDetail(roots []TaskProjectRef, impact taskDeleteImpact) *chrome.ConfirmDetail {
 	items := make([]string, 0, min(len(roots), 5))
 	for _, root := range roots {
 		if len(items) == 5 {
@@ -242,7 +243,7 @@ func taskDeleteConfirmDetail(roots []TaskProjectRef, impact taskDeleteImpact) *C
 		items = append(items, fmt.Sprintf("%s:#%d %s", root.Project.Slug, root.Task.ShortID, root.Task.Title))
 	}
 	attachmentImpact := attachmentImpactNote(impact.storedAttachments, impact.linkedAttachments)
-	return &ConfirmDetail{
+	return &chrome.ConfirmDetail{
 		Items:      items,
 		TotalCount: len(roots),
 		CascadeNote: fmt.Sprintf(

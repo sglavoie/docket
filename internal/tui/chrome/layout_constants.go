@@ -1,4 +1,4 @@
-package tui
+package chrome
 
 // Layout constants for TUI rendering dimensions and spacing.
 // These replace hardcoded magic numbers throughout the view code.
@@ -24,13 +24,13 @@ const (
 	MinColumnAlignWidth = 60
 )
 
-// worstCaseColumnLayout stands in for the real layout on the viewport
+// WorstCaseColumnLayout stands in for the real layout on the viewport
 // measurement pass, which cannot have one: ComputeOutlinerColumnLayout reads the
 // row window computeOutlinerViewport is still deriving. Padding only ever widens
 // a badge and every status/priority glyph is single-width, so assuming it is
 // present over-reserves the Peek height by at most two columns of title budget
 // instead of under-reserving it and overflowing terminal height.
-func worstCaseColumnLayout(rowWidth int) *ColumnLayout {
+func WorstCaseColumnLayout(rowWidth int) *ColumnLayout {
 	if rowWidth < MinColumnAlignWidth {
 		return nil
 	}

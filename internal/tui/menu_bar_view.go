@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -70,9 +71,9 @@ func (m *OutlinerModel) renderOutlinerMenuDropdown(width int) string {
 	}
 	surface.SetCursorToID(menuBarDropdownItemID(cursor))
 	content := RenderCompactListSurface(surface, innerWidth-4, listHeight)
-	box := renderOverlayBox(content, innerWidth, "", "",
+	box := chrome.RenderOverlayBox(content, innerWidth, "", "",
 		lipgloss.NewStyle().Foreground(theme.ColorPrimary))
-	box = fitOverlayPopupHeight(box, maxBoxRows)
+	box = chrome.FitOverlayPopupHeight(box, maxBoxRows)
 	return indentMenuBarDropdown(box, menuBarDropdownStartCol(menus, width, m.menuBarMenuIndex, box), width)
 }
 
@@ -107,7 +108,7 @@ func menuBarDropdownStartCol(menus []resolvedMenu, width, openIdx int, box strin
 	if boxes := menuBarLayout(menus, width); openIdx < len(boxes) {
 		startCol = boxes[openIdx].StartCol
 	}
-	return min(max(startCol, 0), max(width-popupWidth(box), 0))
+	return min(max(startCol, 0), max(width-chrome.PopupWidth(box), 0))
 }
 
 // indentMenuBarDropdown moves the finished block right to its column. Every line

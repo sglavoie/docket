@@ -5,12 +5,13 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
-func guidanceEntryText(spec GuidanceSpec) string {
+func guidanceEntryText(spec chrome.GuidanceSpec) string {
 	parts := make([]string, 0, len(spec.Hints))
 	for _, hint := range spec.Hints {
-		parts = append(parts, guidanceHintText(hint))
+		parts = append(parts, chrome.GuidanceHintText(hint))
 	}
 	return strings.Join(parts, " · ")
 }
@@ -106,7 +107,7 @@ func TestOutlinerEmptyStatesAdvertiseCausalRecovery(t *testing.T) {
 			configure: func(out *OutlinerModel) {
 				out.project = project
 				out.loadedProjects = []*models.Project{project}
-				out.primaryMode = ModeDue
+				out.primaryMode = chrome.ModeDue
 				out.rows = nil
 			},
 			wantMessage: "Due is empty. Press Tab or Shift+Tab to change modes.",
@@ -117,7 +118,7 @@ func TestOutlinerEmptyStatesAdvertiseCausalRecovery(t *testing.T) {
 			configure: func(out *OutlinerModel) {
 				out.project = project
 				out.loadedProjects = []*models.Project{project}
-				out.primaryMode = ModeAll
+				out.primaryMode = chrome.ModeAll
 				out.filter.Priority = models.PriorityHigh
 				out.adoptFilterCarriers()
 				out.rows = nil

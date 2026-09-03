@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -28,7 +29,7 @@ type outlinerScopeFrame struct {
 	cursor           int
 	viewScrollOffset int
 
-	primaryMode OutlinerModeID
+	primaryMode chrome.OutlinerModeID
 
 	// Active render ordering plus the durable tree-mode sort.
 	sort     SortState
@@ -354,7 +355,7 @@ func (m *OutlinerModel) resetToGlobalAll() {
 	m.clearActiveLensWithoutRestore()
 	m.cursor = 0
 	m.resetViewScrollOffset()
-	m.selectOutlinerMode(ModeAll)
+	m.selectOutlinerMode(chrome.ModeAll)
 	m.crossForceRebuild = true
 	m.rebuildRows()
 	m.clampCursor()
@@ -393,7 +394,7 @@ func (m *OutlinerModel) resetToLaunchView() ([]string, bool) {
 	note(commonFilterFacetCount(&m.filter.CommonFilterState) > 0, "filters")
 	reload := note(projectFilterFacetCount(&m.projectFilter) > 0, "project filters")
 	note(m.sort.Field != SortByDefault || m.treeSort.Field != SortByDefault, "sort")
-	note(m.primaryMode != ModeAll, "mode")
+	note(m.primaryMode != chrome.ModeAll, "mode")
 	if len(cleared) == 0 {
 		return cleared, false
 	}
@@ -421,7 +422,7 @@ func (m *OutlinerModel) resetToLaunchView() ([]string, bool) {
 	m.treeSort.Reset()
 	// Selecting the mode is the last write and owns the rebuild, so the rows are
 	// built once, over every axis this reset has already put down.
-	m.selectOutlinerMode(ModeAll)
+	m.selectOutlinerMode(chrome.ModeAll)
 	return cleared, reload
 }
 

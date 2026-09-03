@@ -1,4 +1,4 @@
-package tui
+package chrome
 
 import (
 	"strings"
@@ -45,11 +45,11 @@ func RenderScrollbar(totalItems, viewportHeight, scrollOffset int) string {
 	return b.String()
 }
 
-// attachScrollbarAtWidth attaches a newline-delimited scrollbar after fitting
+// AttachScrollbarAtWidth attaches a newline-delimited scrollbar after fitting
 // each content line to contentWidth visual cells before the scrollbar. Callers
 // should pass the width already reserved for content inside their layout; non-
 // positive widths derive the width from the widest content line.
-func attachScrollbarAtWidth(content, scrollbar string, contentWidth int) string {
+func AttachScrollbarAtWidth(content, scrollbar string, contentWidth int) string {
 	if scrollbar == "" {
 		return content
 	}
@@ -93,10 +93,10 @@ func attachScrollbarAtWidth(content, scrollbar string, contentWidth int) string 
 	return b.String()
 }
 
-// calcScrollOffset returns the scroll offset needed to keep cursorIdx visible
+// CalcScrollOffset returns the scroll offset needed to keep cursorIdx visible
 // within a window of maxVisible items. Used by views that iterate over items
 // with index-based windowing (for i := offset; i < offset+maxVisible; ...).
-func calcScrollOffset(cursorIdx, maxVisible int) int {
+func CalcScrollOffset(cursorIdx, maxVisible int) int {
 	if cursorIdx >= maxVisible {
 		return cursorIdx - maxVisible + 1
 	}
@@ -132,9 +132,9 @@ func adjustPersistentScrollOffset(cursorIdx, totalItems, viewportHeight int, scr
 	}
 }
 
-// persistentIndexWindow adjusts *scrollOffset to keep cursorIdx visible, then
+// PersistentIndexWindow adjusts *scrollOffset to keep cursorIdx visible, then
 // returns the [start,end) item range for index-window renderers.
-func persistentIndexWindow(cursorIdx, totalItems, viewportHeight int, scrollOffset *int) (int, int) {
+func PersistentIndexWindow(cursorIdx, totalItems, viewportHeight int, scrollOffset *int) (int, int) {
 	if viewportHeight <= 0 {
 		return 0, 0
 	}

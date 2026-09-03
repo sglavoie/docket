@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // Saving from accepted ordinary-search results must carry the query the visible
@@ -101,7 +102,7 @@ func TestLensReplaceAndDeleteConfirmBeforeTheyWrite(t *testing.T) {
 	out := model.crossOutliner
 	starter := lensNamed(t, model, config.StarterNamedLenses()[0].Name)
 	applyLensOrFatal(t, out, starter)
-	out.selectOutlinerMode(ModeBacklog)
+	out.selectOutlinerMode(chrome.ModeBacklog)
 
 	for _, id := range []OperationID{operationLensReplace, operationLensDelete} {
 		result := executeLens(model, id, LensEntity(starter.ID), "", false)

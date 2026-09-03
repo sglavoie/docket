@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -40,14 +41,14 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case TextEditorDoneMsg:
+	case chrome.TextEditorDoneMsg:
 		// Routed here from handler_view_editors.go when the composer is current.
 		if !msg.Canceled {
 			m.applyTextEditorResult(msg.FieldName, msg.Value)
 		}
 		return m, nil
 
-	case TextEditorExternalDoneMsg:
+	case chrome.TextEditorExternalDoneMsg:
 		// Direct Ctrl+E from task form (no TextEditor view on the stack).
 		if !msg.Canceled {
 			m.applyTextEditorResult(msg.FieldName, msg.Value)
@@ -56,15 +57,15 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		// ── Discard confirmation ───────────────────────────────────────────────
-		if m.confirmDiscard {
+		if m.ConfirmDiscard {
 			switch msg.String() {
 			case "y", "Y":
-				m.confirmDiscard = false
-				m.confirmOverlay.Cancel()
+				m.ConfirmDiscard = false
+				m.ConfirmOverlay.Cancel()
 				return m, func() tea.Msg { return status.BackMsg{} }
 			case "n", "N", "esc":
-				m.confirmDiscard = false
-				m.confirmOverlay.Cancel()
+				m.ConfirmDiscard = false
+				m.ConfirmOverlay.Cancel()
 			}
 			return m, nil
 		}
@@ -117,7 +118,7 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// not been set yet (for example an expanded compact draft).
 				dirty := m.hasChanges || m.draft.title != ""
 				if dirty {
-					m.confirmDiscard = true
+					m.ConfirmDiscard = true
 				} else {
 					return m, func() tea.Msg { return status.BackMsg{} }
 				}
@@ -221,14 +222,14 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.activeTab == formTabBasics && m.focusIndex == 1 {
 				currentDesc := m.draft.desc
 				return m, func() tea.Msg {
-					return TextEditorExternalMsg{FieldName: "formDesc", CurrentValue: currentDesc}
+					return chrome.TextEditorExternalMsg{FieldName: "formDesc", CurrentValue: currentDesc}
 				}
 			}
 		case "ctrl+s":
 			return m, m.handleSave()
 		case "esc":
 			if m.hasChanges {
-				m.confirmDiscard = true
+				m.ConfirmDiscard = true
 			} else {
 				return m, func() tea.Msg { return status.BackMsg{} }
 			}

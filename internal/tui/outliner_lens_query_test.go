@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 func TestLensQueryEditingNarrowsWithoutASearchProjection(t *testing.T) {
@@ -82,7 +83,7 @@ func TestStartupAndGlobalResetRetainNoLensFrame(t *testing.T) {
 	if outliner.lensQuery != "" {
 		t.Fatalf("the global reset retained the narrowing query %q", outliner.lensQuery)
 	}
-	if outliner.primaryMode != ModeAll || outliner.filter.hasStateFilter() {
+	if outliner.primaryMode != chrome.ModeAll || outliner.filter.hasStateFilter() {
 		t.Fatal("the global reset did not clear the lens-installed axes")
 	}
 }

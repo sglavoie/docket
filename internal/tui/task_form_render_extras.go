@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -130,7 +131,7 @@ func (m *TaskFormModel) renderCommentEditOverlay() string {
 	titleMinInner := lipgloss.Width(title) + 6 - 2
 	maxWidth := min(max(m.width*2/3, 40), m.width-4)
 	innerWidth := min(max(maxWidth, titleMinInner), max(m.width-4, 1))
-	footerText := renderGuidanceText(requiredActionGuidanceSpec(
+	footerText := chrome.RenderGuidanceText(chrome.RequiredActionGuidanceSpec(
 		"Enter save",
 	), max(innerWidth-4, 1))
 
@@ -138,7 +139,7 @@ func (m *TaskFormModel) renderCommentEditOverlay() string {
 	theme.ApplyThemedTextInput(&m.commentItemInput)
 	content := " " + m.commentItemInput.View()
 
-	return renderOverlayBox(content, innerWidth, title, footerText, borderStyle)
+	return chrome.RenderOverlayBox(content, innerWidth, title, footerText, borderStyle)
 }
 
 // renderAttachmentItemRow renders a single attachment draft row.
@@ -165,7 +166,7 @@ func (m *TaskFormModel) renderAttachmentEditOverlay() string {
 	titleMinInner := lipgloss.Width(title) + 6 - 2
 	maxWidth := min(max(m.width*2/3, 40), m.width-4)
 	innerWidth := min(max(maxWidth, titleMinInner), max(m.width-4, 1))
-	footerText := renderGuidanceText(requiredActionGuidanceSpec(
+	footerText := chrome.RenderGuidanceText(chrome.RequiredActionGuidanceSpec(
 		"Enter save",
 	), max(innerWidth-4, 1))
 
@@ -173,5 +174,5 @@ func (m *TaskFormModel) renderAttachmentEditOverlay() string {
 	theme.ApplyThemedTextInput(&m.attachmentItemInput)
 	content := " " + m.attachmentItemInput.View()
 
-	return renderOverlayBox(content, innerWidth, title, footerText, borderStyle)
+	return chrome.RenderOverlayBox(content, innerWidth, title, footerText, borderStyle)
 }

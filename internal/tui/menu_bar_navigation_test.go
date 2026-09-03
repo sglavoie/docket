@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // This file covers the sub-state a user drives: revealing the band, walking it,
@@ -219,13 +221,13 @@ func TestEnterRunsTheHighlightedEntryAndClosesTheMenu(t *testing.T) {
 	if len(menus) < 2 || menus[1].ID != menuIDView {
 		t.Fatalf("the second menu is not %s: %+v", menuIDView, menus)
 	}
-	if outliner.primaryMode != ModeAll {
+	if outliner.primaryMode != chrome.ModeAll {
 		t.Fatalf("the fixture launched in %s, want the All the View menu checks", outliner.primaryMode)
 	}
 
 	pressMenuBarKey(t, driver, "l", "j")
 	entry := menus[1].Entries[outliner.menuBarItemIndex]
-	if got := gotoModeOperations[entry.OperationID]; got != ModeToday {
+	if got := gotoModeOperations[entry.OperationID]; got != chrome.ModeToday {
 		t.Fatalf("the highlighted entry is %s, want the Today mode row", entry.OperationID)
 	}
 
@@ -233,7 +235,7 @@ func TestEnterRunsTheHighlightedEntryAndClosesTheMenu(t *testing.T) {
 	if outliner.menuBarOpen {
 		t.Error("enter left the menu open")
 	}
-	if got := driver.App().crossOutliner.primaryMode; got != ModeToday {
+	if got := driver.App().crossOutliner.primaryMode; got != chrome.ModeToday {
 		t.Errorf("enter left the Outliner in %s, want Today", got)
 	}
 }

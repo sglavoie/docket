@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -42,7 +43,7 @@ func waitingLens(id, name, query string) config.NamedLens {
 		panic(err)
 	}
 	state := lensState{
-		mode:   ModeAll,
+		mode:   chrome.ModeAll,
 		facets: facets,
 		query:  query,
 		sort:   NewSortState(),
@@ -76,7 +77,7 @@ func applyLensOrFatal(t *testing.T, outliner *OutlinerModel, lens config.NamedLe
 
 func TestApplyNamedLensInstallsSavedProjectionAndEscRestoresBaseline(t *testing.T) {
 	outliner := lensLifecycleOutliner()
-	outliner.selectOutlinerMode(ModeInbox)
+	outliner.selectOutlinerMode(chrome.ModeInbox)
 	outliner.treeSort = SortState{Field: SortByTitle, Ascending: true}
 	outliner.collapsedSections["baseline-fold"] = true
 	outliner.peekMode = true
@@ -88,8 +89,8 @@ func TestApplyNamedLensInstallsSavedProjectionAndEscRestoresBaseline(t *testing.
 	if !outliner.hasActiveLens() {
 		t.Fatal("expected an active lens after ApplyNamedLens")
 	}
-	if outliner.primaryMode != ModeAll {
-		t.Fatalf("lens mode = %v, want %v", outliner.primaryMode, ModeAll)
+	if outliner.primaryMode != chrome.ModeAll {
+		t.Fatalf("lens mode = %v, want %v", outliner.primaryMode, chrome.ModeAll)
 	}
 	if outliner.lensQuery != "needle" {
 		t.Fatalf("lens query = %q, want %q", outliner.lensQuery, "needle")
@@ -113,8 +114,8 @@ func TestApplyNamedLensInstallsSavedProjectionAndEscRestoresBaseline(t *testing.
 	if outliner.hasActiveLens() {
 		t.Fatal("Esc left the lens active")
 	}
-	if outliner.primaryMode != ModeInbox {
-		t.Fatalf("restored mode = %v, want %v", outliner.primaryMode, ModeInbox)
+	if outliner.primaryMode != chrome.ModeInbox {
+		t.Fatalf("restored mode = %v, want %v", outliner.primaryMode, chrome.ModeInbox)
 	}
 	if outliner.lensQuery != "" {
 		t.Fatalf("restored lens query = %q, want empty", outliner.lensQuery)

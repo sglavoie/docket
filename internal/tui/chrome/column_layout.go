@@ -1,4 +1,4 @@
-package tui
+package chrome
 
 import (
 	"fmt"
@@ -9,38 +9,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
-
-// ComputeOutlinerColumnLayout computes a ColumnLayout by scanning a slice of
-// visible outliner rows. Non-task rows (section headers, project sub-headers,
-// separators) are skipped via isTaskRow(). Returns nil when no task rows are
-// present.
-func ComputeOutlinerColumnLayout(rows []outlinerRow) *ColumnLayout {
-	if len(rows) == 0 {
-		return nil
-	}
-	cl := &ColumnLayout{}
-	hasRows := false
-	for _, row := range rows {
-		if !row.isTaskRow() || row.task == nil {
-			continue
-		}
-		hasRows = true
-		task := row.task
-
-		// Priority (pre-title in outliner)
-		badge := renderPriorityBadge(task.Priority)
-		if w := lipgloss.Width(badge); w > 0 {
-			cl.HasPriority = true
-			if w > cl.PriorityWidth {
-				cl.PriorityWidth = w
-			}
-		}
-	}
-	if !hasRows {
-		return nil
-	}
-	return cl
-}
 
 // BadgeWidthOpts configures which badge columns ComputeBadgeWidths should
 // measure. Consumers explicitly enable each column so the helper can serve
@@ -75,7 +43,7 @@ func ComputeBadgeWidths(tasks []*models.Task, opts BadgeWidthOpts) *ColumnLayout
 		}
 		hasTasks = true
 
-		badge := renderPriorityBadge(task.Priority)
+		badge := RenderPriorityBadge(task.Priority)
 		if w := lipgloss.Width(badge); w > 0 {
 			cl.HasPriority = true
 			if w > cl.PriorityWidth {

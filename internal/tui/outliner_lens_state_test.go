@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // lensRoundTripID is a canonical UUID, which is what a stored definition must
@@ -41,7 +42,7 @@ func lensRoundTripBase(t *testing.T) lensState {
 		t.Fatalf("ParseQuery: %v", err)
 	}
 	return lensState{
-		mode:           ModeAll,
+		mode:           chrome.ModeAll,
 		scopeProjectID: lensRoundTripScopeID,
 		facets:         facets,
 		query:          "#api ship",
@@ -64,7 +65,7 @@ func TestLensStateRoundTripsEveryModeFacetPopulationAndSortAxis(t *testing.T) {
 	base := lensRoundTripBase(t)
 
 	variants := map[string]func(*lensState){}
-	for _, mode := range OutlinerModeCatalog() {
+	for _, mode := range chrome.OutlinerModeCatalog() {
 		variants["mode:"+string(mode.ID)] = func(s *lensState) { s.mode = mode.ID }
 	}
 	// Every canonical field a lens may narrow on, one variant each, so an axis
@@ -133,7 +134,7 @@ func TestLensStateDecodesOmittedTokensAsAxisDefaultsAndRefusesUnknownSpellings(t
 	if err != nil {
 		t.Fatalf("lensStateFromNamedLens: %v", err)
 	}
-	want := lensState{mode: ModeInbox, sort: SortState{Field: SortByDefault}}
+	want := lensState{mode: chrome.ModeInbox, sort: SortState{Field: SortByDefault}}
 	if !got.equal(want) {
 		t.Fatalf("omitted tokens decoded to %q, want axis defaults %q", got.fingerprint(), want.fingerprint())
 	}
@@ -209,7 +210,7 @@ func TestLensStateFingerprintIsIndependentOfFacetSpellingOrder(t *testing.T) {
 // future axis cannot be added to namedLens alone.
 func TestLensStateFingerprintWatchesEveryLensOwnedAxis(t *testing.T) {
 	mutations := map[string]func(*lensState){
-		"mode": func(s *lensState) { s.mode = ModeInbox },
+		"mode": func(s *lensState) { s.mode = chrome.ModeInbox },
 		// Scope is lens-owned, so a push or a pop under a live lens has to read as
 		// a divergence; dropping it is the unowned axis, which must read as one too.
 		"scope":         func(s *lensState) { s.scopeProjectID = lensRoundTripID },

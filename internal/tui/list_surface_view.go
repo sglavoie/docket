@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -335,7 +336,7 @@ func renderListSurfaceRow(
 		line = theme.SelectionStyle.Render(line)
 	}
 	if row.Cursor {
-		line = SelectedLine(line, width)
+		line = chrome.SelectedLine(line, width)
 	}
 	return textfit.TruncateToVisualWidth(line, width)
 }

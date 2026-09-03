@@ -2,19 +2,20 @@ package tui
 
 import (
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // gotoModeOperations maps each direct mode-jump operation to the mode it
 // selects. Seven descriptors rather than one preset-valued operation, so the
 // grammar never needs a mode value provider and cannot resurrect a mode picker.
-var gotoModeOperations = map[OperationID]OutlinerModeID{
-	operationCoreGotoAll:     ModeAll,
-	operationCoreGotoInbox:   ModeInbox,
-	operationCoreGotoToday:   ModeToday,
-	operationCoreGotoNext:    ModeNext,
-	operationCoreGotoBacklog: ModeBacklog,
-	operationCoreGotoDue:     ModeDue,
-	operationCoreGotoRecent:  ModeRecent,
+var gotoModeOperations = map[OperationID]chrome.OutlinerModeID{
+	operationCoreGotoAll:     chrome.ModeAll,
+	operationCoreGotoInbox:   chrome.ModeInbox,
+	operationCoreGotoToday:   chrome.ModeToday,
+	operationCoreGotoNext:    chrome.ModeNext,
+	operationCoreGotoBacklog: chrome.ModeBacklog,
+	operationCoreGotoDue:     chrome.ModeDue,
+	operationCoreGotoRecent:  chrome.ModeRecent,
 }
 
 // SimplifiedInputStrategy returns a fresh copy of the accepted daily-loop

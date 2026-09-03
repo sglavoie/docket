@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 )
@@ -99,7 +100,7 @@ func TestFullscreenWorkspacePulseTitleRendersZeroAndNonzeroStates(t *testing.T) 
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rendered := ansi.Strip(renderFullscreenTitleWithPulse("Notes", "All Notes", tt.pulse, 100))
+			rendered := ansi.Strip(chrome.RenderFullscreenTitleWithPulse("Notes", "All Notes", tt.pulse, 100))
 			if !strings.Contains(rendered, tt.want) {
 				t.Fatalf("title missing pulse %q:\n%s", tt.want, rendered)
 			}
@@ -118,10 +119,10 @@ func TestTodayPaceReadoutIsTodayOnlyAndRequiresHistory(t *testing.T) {
 		DailyCompletions: map[time.Time]int{time.Date(2026, time.August, 19, 0, 0, 0, 0, time.UTC): 1},
 	})
 
-	for _, mode := range OutlinerModeCatalog() {
+	for _, mode := range chrome.OutlinerModeCatalog() {
 		outliner.primaryMode = mode.ID
 		plain := ansi.Strip(outliner.buildOutlinerTitleLine(160))
-		if mode.ID == ModeToday {
+		if mode.ID == chrome.ModeToday {
 			if !strings.Contains(plain, "today 9 · median 0/day (30d)") {
 				t.Fatalf("Today title missing pace readout: %q", plain)
 			}
@@ -135,7 +136,7 @@ func TestTodayPaceReadoutIsTodayOnlyAndRequiresHistory(t *testing.T) {
 		}
 	}
 
-	outliner.primaryMode = ModeToday
+	outliner.primaryMode = chrome.ModeToday
 	outliner.SetCompletionActivity(app.CompletionActivity{})
 	plain := ansi.Strip(outliner.buildOutlinerTitleLine(160))
 	if strings.Contains(plain, "median") || strings.Contains(plain, "(30d)") {
@@ -149,7 +150,7 @@ func TestAppViewUsesCachedCompletionActivityWithoutRenderTimeRead(t *testing.T) 
 		DailyCompletions: map[time.Time]int{time.Date(2026, time.August, 19, 0, 0, 0, 0, time.UTC): 1},
 	}}
 	model.features.Activity = ActivityCoordinator{reader: reader}
-	model.crossOutliner.primaryMode = ModeToday
+	model.crossOutliner.primaryMode = chrome.ModeToday
 	model.refreshWorkspacePulseAt(time.Now())
 	model.crossOutliner.SetCompletionActivity(app.CompletionActivity{})
 
@@ -211,7 +212,7 @@ func TestPresentationChromeEligibleFamiliesRenderWorkspacePulse(t *testing.T) {
 			return m.View().Content
 		}},
 		{name: "text editor", view: func(workspacePulse pulse.WorkspacePulse) string {
-			m := NewTextEditorModel("description", "body")
+			m := chrome.NewTextEditorModel("description", "body")
 			m.SetSize(140, 30)
 			m.SetWorkspacePulse(workspacePulse)
 			return m.View().Content
@@ -259,7 +260,7 @@ func TestPresentationChromeEligibleFamiliesRenderWorkspacePulse(t *testing.T) {
 
 func TestPresentationChromeTransientPopupPreservesHostPulse(t *testing.T) {
 	const width, height = 100, 8
-	hostTitle := renderFullscreenTitleWithPulse("Notes", "All Notes", pulse.WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4}, width)
+	hostTitle := chrome.RenderFullscreenTitleWithPulse("Notes", "All Notes", pulse.WorkspacePulse{Inbox: 3, Today: 2, Overdue: 1, Done: 4}, width)
 	host := hostTitle + strings.Repeat("\n", height-1)
 	tallPopup := strings.Repeat("transient action\n", height*2) + "last action"
 	rendered := ansi.Strip(overlayPopupBelowPersistentTitle(host, tallPopup, width, height))

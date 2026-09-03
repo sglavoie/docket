@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 )
 
@@ -115,7 +116,7 @@ type TaskFormModel struct {
 	err                error
 	hasChanges         bool
 	submissionInFlight bool
-	discardConfirmState
+	chrome.DiscardConfirmState
 }
 
 // childFocusKind identifies what the Children-tab focus points at.

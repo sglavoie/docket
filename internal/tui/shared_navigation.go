@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -43,10 +44,10 @@ func handleListNavigation(key string, cursor *int, total, height int, flash *boo
 		}
 		return true, flashIfJumped(old, *cursor, flash)
 	case "ctrl+u", "pgup":
-		jumpCursor(cursor, total, -HalfPage(height))
+		jumpCursor(cursor, total, -chrome.HalfPage(height))
 		return true, flashIfJumped(old, *cursor, flash)
 	case "ctrl+d", "pgdown":
-		jumpCursor(cursor, total, HalfPage(height))
+		jumpCursor(cursor, total, chrome.HalfPage(height))
 		return true, flashIfJumped(old, *cursor, flash)
 	}
 	return false, nil

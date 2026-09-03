@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -17,7 +18,7 @@ func (m *TaskCommentsModel) View() tea.View {
 	}
 
 	var b strings.Builder
-	b.WriteString(renderTaskScopedFullscreenTitleWithPulse(
+	b.WriteString(chrome.RenderTaskScopedFullscreenTitleWithPulse(
 		fmt.Sprintf("Comments · #%d: ", m.task.ShortID),
 		m.task,
 		"",
@@ -51,7 +52,7 @@ func (m *TaskCommentsModel) View() tea.View {
 
 func (m *TaskCommentsModel) renderExpandedView(b *strings.Builder) tea.View {
 	comment := m.task.Comments[m.cursor]
-	timestamp := FormatTimestampBracket(comment.CreatedAt)
+	timestamp := chrome.FormatTimestampBracket(comment.CreatedAt)
 	headerLabel := fmt.Sprintf("Comment [%d]", m.cursor)
 
 	b.WriteString(theme.FieldLabelFocusedStyle.Render(headerLabel))
@@ -76,7 +77,7 @@ func (m *TaskCommentsModel) renderEditMode(b *strings.Builder) tea.View {
 	comment := m.task.Comments[m.editIndex]
 	b.WriteString(theme.FieldLabelFocusedStyle.Render(fmt.Sprintf("Edit Comment [%d]:", m.editIndex)))
 	b.WriteString("\n")
-	b.WriteString(theme.MutedStyle.Render(FormatTimestampLabeled("Created", comment.CreatedAt)))
+	b.WriteString(theme.MutedStyle.Render(chrome.FormatTimestampLabeled("Created", comment.CreatedAt)))
 	b.WriteString("\n\n")
 	theme.ApplyThemedTextarea(&m.editTextInput)
 	b.WriteString(m.editTextInput.View())
@@ -121,7 +122,7 @@ func (m *TaskCommentsModel) renderCommentsList(b *strings.Builder, availableRows
 	if maxVisible == 0 {
 		return
 	}
-	scrollOffset := calcScrollOffset(m.cursor, maxVisible)
+	scrollOffset := chrome.CalcScrollOffset(m.cursor, maxVisible)
 	maxLen := max(m.Width()-12, 1)
 
 	for i := scrollOffset; i < len(m.task.Comments) && i < scrollOffset+maxVisible; i++ {
@@ -150,7 +151,7 @@ func (m *TaskCommentsModel) renderCommentEntry(index int, comment *models.Commen
 	var entry strings.Builder
 	entry.WriteString("  ")
 
-	timestamp := FormatTimestampBracket(comment.CreatedAt)
+	timestamp := chrome.FormatTimestampBracket(comment.CreatedAt)
 
 	if index == m.cursor {
 		entry.WriteString(theme.BoldStyle.Render(fmt.Sprintf("[%d] ", index)))

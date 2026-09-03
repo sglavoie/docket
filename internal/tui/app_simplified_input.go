@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -163,9 +164,9 @@ func (m *AppModel) executeSimplifiedGlobalKey(key string) (bool, tea.Cmd) {
 	}
 }
 
-func (m *AppModel) pendingChordGuidance() (GuidanceSpec, bool) {
+func (m *AppModel) pendingChordGuidance() (chrome.GuidanceSpec, bool) {
 	if m == nil || m.operationRegistry == nil || len(m.pendingChord) == 0 {
-		return GuidanceSpec{}, false
+		return chrome.GuidanceSpec{}, false
 	}
 	ctx := m.operationCommandContext()
 	ctx.View = m.currentView()
@@ -176,7 +177,27 @@ func (m *AppModel) pendingChordGuidance() (GuidanceSpec, bool) {
 		m.crossOutliner.decoratePendingChordHint,
 	)
 	if len(hints) == 0 {
-		return GuidanceSpec{}, false
+		return chrome.GuidanceSpec{}, false
 	}
 	return pendingChordGuidanceSpec(strings.Join(m.pendingChord, ""), hints), true
+}
+
+func pendingChordGuidanceSpec(prefix string, hints []ChordHint) chrome.GuidanceSpec {
+	spec := chrome.GuidanceSpec{Rows: 2}
+	if prefix = strings.TrimSpace(prefix); prefix != "" {
+		spec.Hints = append(spec.Hints, chrome.GuidanceHint{Key: prefix + "…"})
+	}
+	for index, hint := range hints {
+		spec.Hints = append(spec.Hints, chrome.GuidanceHint{
+			Key:      hint.Key,
+			Label:    hint.Label,
+			Priority: index + 1,
+		})
+	}
+	spec.Hints = append(spec.Hints, chrome.GuidanceHint{
+		Key:      "Esc",
+		Label:    "cancel",
+		Required: true,
+	})
+	return spec
 }

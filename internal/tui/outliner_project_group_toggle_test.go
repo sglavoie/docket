@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -15,10 +16,10 @@ import (
 // mode that renders a project group header for each. It covers the modes
 // newGroupingFixture declines, so between them every grouping surface has a
 // fixture and the mode table below can name all seven.
-func projectGroupToggleFixture(t *testing.T, mode OutlinerModeID) (*OutlinerModel, []string) {
+func projectGroupToggleFixture(t *testing.T, mode chrome.OutlinerModeID) (*OutlinerModel, []string) {
 	t.Helper()
 	switch mode {
-	case ModeAll, ModeToday, ModeNext:
+	case chrome.ModeAll, chrome.ModeToday, chrome.ModeNext:
 		alphaOne := primaryRowsTask("alpha-one", models.StateBacklog)
 		alphaTwo := primaryRowsTask("alpha-two", models.StateBacklog)
 		betaOne := primaryRowsTask("beta-one", models.StateBacklog)
@@ -31,9 +32,9 @@ func projectGroupToggleFixture(t *testing.T, mode OutlinerModeID) (*OutlinerMode
 			{ProjectID: beta.ID, TaskID: betaOne.ID},
 		}
 		switch mode {
-		case ModeToday:
+		case chrome.ModeToday:
 			runtime.Planning().SetToday(plan)
-		case ModeNext:
+		case chrome.ModeNext:
 			runtime.Planning().SetNext(plan)
 		default:
 			// All groups by state, so it needs no planning membership.
@@ -62,7 +63,7 @@ func sectionFoldStates(m *OutlinerModel) map[string]bool {
 // themselves keep rendering throughout: folding a group hides its tasks, not the
 // row naming the project the tasks belong to.
 func TestToggleVisibleProjectGroupsFoldsEveryHeaderAndRestoresThem(t *testing.T) {
-	outliner, tasks := projectGroupToggleFixture(t, ModeAll)
+	outliner, tasks := projectGroupToggleFixture(t, chrome.ModeAll)
 
 	headers, _ := projectGroupHeaders(outliner)
 	if len(headers) != 2 {
@@ -95,7 +96,7 @@ func TestToggleVisibleProjectGroupsFoldsEveryHeaderAndRestoresThem(t *testing.T)
 // The direction rule is any, not all: one folded group makes the next press
 // unfold rather than fold the remaining groups to match it.
 func TestToggleVisibleProjectGroupsUnfoldsWhenAnySingleGroupIsFolded(t *testing.T) {
-	outliner, tasks := projectGroupToggleFixture(t, ModeAll)
+	outliner, tasks := projectGroupToggleFixture(t, chrome.ModeAll)
 
 	first := outliner.visibleProjectGroupHeaders()[0]
 	outliner.setSectionRowCollapsed(first, true)
@@ -121,7 +122,7 @@ func TestToggleVisibleProjectGroupsUnfoldsWhenAnySingleGroupIsFolded(t *testing.
 // key it admits, and that admitted section still emits its project headers. So
 // unlike s, p there folds rows that are genuinely on screen.
 func TestToggleVisibleProjectGroupsFoldsInsideASectionZoom(t *testing.T) {
-	outliner, _ := projectGroupToggleFixture(t, ModeAll)
+	outliner, _ := projectGroupToggleFixture(t, chrome.ModeAll)
 
 	headers := outliner.visibleSectionHeaders()
 	if len(headers) == 0 {
@@ -166,7 +167,7 @@ func TestToggleVisibleProjectGroupsLeavesTheOtherFoldAxesAlone(t *testing.T) {
 	betaOne := primaryRowsTask("beta-one", models.StateBacklog)
 	alpha := primaryRowsProject("alpha", doing, parent, child)
 	outliner, _ := primaryRowsOutliner(alpha, primaryRowsProject("beta", betaOne))
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 
 	sections := outliner.visibleSectionHeaders()
 	if len(sections) < 2 {
@@ -225,8 +226,8 @@ func TestToggleVisibleProjectGroupsReportsInsideAProjectScope(t *testing.T) {
 // section. The scan over row kind is what makes those five collapse-key
 // namespaces one operation instead of five.
 func TestToggleVisibleProjectGroupsReachesEveryGroupingNamespace(t *testing.T) {
-	for _, mode := range []OutlinerModeID{
-		ModeToday, ModeNext, ModeInbox, ModeBacklog, ModeAll, ModeDue, ModeRecent,
+	for _, mode := range []chrome.OutlinerModeID{
+		chrome.ModeToday, chrome.ModeNext, chrome.ModeInbox, chrome.ModeBacklog, chrome.ModeAll, chrome.ModeDue, chrome.ModeRecent,
 	} {
 		t.Run(string(mode), func(t *testing.T) {
 			outliner, tasks := projectGroupToggleFixture(t, mode)

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -24,7 +25,7 @@ func TestLaunchResetsEveryPresentationAxisAndRelaunchPreservesOnlyTheme(t *testi
 	}
 
 	// Seed every launch-sensitive axis with stale in-session state.
-	outliner.selectOutlinerMode(ModeDue)
+	outliner.selectOutlinerMode(chrome.ModeDue)
 	outliner.SetSearchActive(true)
 	outliner.SetSearchQuery("stale search")
 	outliner.scopedProjectID = projects[0].ID
@@ -123,8 +124,8 @@ func assertCleanLaunchRoot(t *testing.T, app *AppModel) {
 	if outliner == nil {
 		t.Fatal("launch has no global Outliner")
 	}
-	if got := outliner.activeOutlinerMode(); got != ModeAll {
-		t.Fatalf("launch mode = %q, want %q", got, ModeAll)
+	if got := outliner.activeOutlinerMode(); got != chrome.ModeAll {
+		t.Fatalf("launch mode = %q, want %q", got, chrome.ModeAll)
 	}
 	if outliner.scopedProjectID != "" || len(outliner.scopeStack) != 0 {
 		t.Fatalf("launch retained scope: project=%q stack=%d", outliner.scopedProjectID, len(outliner.scopeStack))

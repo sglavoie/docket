@@ -5,32 +5,33 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 func TestRenderScrollbar_ContentFits(t *testing.T) {
 	// When totalItems <= viewportHeight, no scrollbar needed
-	if got := RenderScrollbar(5, 10, 0); got != "" {
+	if got := chrome.RenderScrollbar(5, 10, 0); got != "" {
 		t.Errorf("expected empty string for content that fits, got %q", got)
 	}
-	if got := RenderScrollbar(10, 10, 0); got != "" {
+	if got := chrome.RenderScrollbar(10, 10, 0); got != "" {
 		t.Errorf("expected empty string when exactly equal, got %q", got)
 	}
 }
 
 func TestRenderScrollbar_ZeroAndEdgeCases(t *testing.T) {
-	if got := RenderScrollbar(0, 10, 0); got != "" {
+	if got := chrome.RenderScrollbar(0, 10, 0); got != "" {
 		t.Errorf("expected empty for 0 items, got %q", got)
 	}
-	if got := RenderScrollbar(10, 0, 0); got != "" {
+	if got := chrome.RenderScrollbar(10, 0, 0); got != "" {
 		t.Errorf("expected empty for 0 viewport, got %q", got)
 	}
-	if got := RenderScrollbar(1, 1, 0); got != "" {
+	if got := chrome.RenderScrollbar(1, 1, 0); got != "" {
 		t.Errorf("expected empty for 1 item in 1 viewport, got %q", got)
 	}
 }
 
 func TestRenderScrollbar_LineCount(t *testing.T) {
-	result := RenderScrollbar(20, 10, 0)
+	result := chrome.RenderScrollbar(20, 10, 0)
 	lines := strings.Split(result, "\n")
 	if len(lines) != 10 {
 		t.Errorf("expected 10 lines, got %d", len(lines))
@@ -39,7 +40,7 @@ func TestRenderScrollbar_LineCount(t *testing.T) {
 
 func TestRenderScrollbar_MinThumbSize(t *testing.T) {
 	// With very large totalItems, thumb should still be at least 1 line
-	result := RenderScrollbar(1000, 5, 0)
+	result := chrome.RenderScrollbar(1000, 5, 0)
 	lines := strings.Split(result, "\n")
 
 	thumbCount := 0
@@ -54,7 +55,7 @@ func TestRenderScrollbar_MinThumbSize(t *testing.T) {
 }
 
 func TestRenderScrollbar_ThumbAtTop(t *testing.T) {
-	result := RenderScrollbar(20, 10, 0)
+	result := chrome.RenderScrollbar(20, 10, 0)
 	lines := strings.Split(result, "\n")
 	// First line should be thumb (at top position)
 	if !strings.Contains(lines[0], "█") {
@@ -63,7 +64,7 @@ func TestRenderScrollbar_ThumbAtTop(t *testing.T) {
 }
 
 func TestRenderScrollbar_ThumbAtBottom(t *testing.T) {
-	result := RenderScrollbar(20, 10, 10) // scrollOffset = totalItems - viewportHeight
+	result := chrome.RenderScrollbar(20, 10, 10) // scrollOffset = totalItems - viewportHeight
 	lines := strings.Split(result, "\n")
 	// Last line should be thumb
 	if !strings.Contains(lines[len(lines)-1], "█") {
@@ -72,7 +73,7 @@ func TestRenderScrollbar_ThumbAtBottom(t *testing.T) {
 }
 
 func TestRenderScrollbar_ThumbInMiddle(t *testing.T) {
-	result := RenderScrollbar(30, 10, 10) // middle scroll position
+	result := chrome.RenderScrollbar(30, 10, 10) // middle scroll position
 	lines := strings.Split(result, "\n")
 
 	// Find thumb lines
@@ -94,7 +95,7 @@ func TestRenderScrollbar_ThumbInMiddle(t *testing.T) {
 }
 
 func TestRenderScrollbar_ViewportOne(t *testing.T) {
-	result := RenderScrollbar(5, 1, 0)
+	result := chrome.RenderScrollbar(5, 1, 0)
 	lines := strings.Split(result, "\n")
 	if len(lines) != 1 {
 		t.Errorf("expected 1 line for viewport=1, got %d", len(lines))
@@ -106,7 +107,7 @@ func TestRenderScrollbar_ViewportOne(t *testing.T) {
 
 func TestAttachScrollbar_EmptyScrollbar(t *testing.T) {
 	content := "line1\nline2\nline3"
-	result := attachScrollbarAtWidth(content, "", 0)
+	result := chrome.AttachScrollbarAtWidth(content, "", 0)
 	if result != content {
 		t.Errorf("expected content unchanged when scrollbar empty, got %q", result)
 	}
@@ -115,7 +116,7 @@ func TestAttachScrollbar_EmptyScrollbar(t *testing.T) {
 func TestAttachScrollbar_ZipsLines(t *testing.T) {
 	content := "aaa\nbbb\nccc"
 	scrollbar := "X\nY\nZ"
-	result := attachScrollbarAtWidth(content, scrollbar, 0)
+	result := chrome.AttachScrollbarAtWidth(content, scrollbar, 0)
 	lines := strings.Split(result, "\n")
 	if len(lines) != 3 {
 		t.Fatalf("expected 3 lines, got %d", len(lines))
@@ -131,7 +132,7 @@ func TestAttachScrollbar_ZipsLines(t *testing.T) {
 func TestAttachScrollbarAtWidth_NonPositiveWidthUsesDerivedWidth(t *testing.T) {
 	content := "a\nabc"
 	scrollbar := "X\nY"
-	result := attachScrollbarAtWidth(content, scrollbar, 0)
+	result := chrome.AttachScrollbarAtWidth(content, scrollbar, 0)
 
 	expected := "a  X\nabcY"
 	if result != expected {
@@ -143,7 +144,7 @@ func TestAttachScrollbarAtWidth_StyledAndWideContent(t *testing.T) {
 	styled := "\x1b[31mgo\x1b[0m"
 	content := styled + "\n🚀\n界"
 	scrollbar := "X\nY\nZ"
-	result := attachScrollbarAtWidth(content, scrollbar, 4)
+	result := chrome.AttachScrollbarAtWidth(content, scrollbar, 4)
 	lines := strings.Split(result, "\n")
 
 	expected := []string{
@@ -165,7 +166,7 @@ func TestAttachScrollbarAtWidth_StyledAndWideContent(t *testing.T) {
 }
 
 func TestAttachScrollbarAtWidth_TruncatesOverlongContent(t *testing.T) {
-	result := attachScrollbarAtWidth("abcdef", "X", 4)
+	result := chrome.AttachScrollbarAtWidth("abcdef", "X", 4)
 
 	expected := "abcdX"
 	if result != expected {
@@ -179,7 +180,7 @@ func TestAttachScrollbarAtWidth_TruncatesOverlongContent(t *testing.T) {
 func TestAttachScrollbarAtWidth_PadsShorterLines(t *testing.T) {
 	content := "a\nabcd"
 	scrollbar := "X\nY"
-	result := attachScrollbarAtWidth(content, scrollbar, 4)
+	result := chrome.AttachScrollbarAtWidth(content, scrollbar, 4)
 
 	expected := "a   X\nabcdY"
 	if result != expected {
@@ -210,7 +211,7 @@ func TestAttachScrollbarAtWidth_LineCountMismatch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := attachScrollbarAtWidth(tt.content, tt.scrollbar, 2)
+			result := chrome.AttachScrollbarAtWidth(tt.content, tt.scrollbar, 2)
 			if result != tt.want {
 				t.Fatalf("expected mismatch attachment %q, got %q", tt.want, result)
 			}
@@ -304,7 +305,7 @@ func TestPersistentIndexWindowKeepsViewportStable(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			scrollOffset := tt.scrollOffset
-			start, end := persistentIndexWindow(tt.cursorIdx, tt.totalItems, tt.viewportRows, &scrollOffset)
+			start, end := chrome.PersistentIndexWindow(tt.cursorIdx, tt.totalItems, tt.viewportRows, &scrollOffset)
 			if start != tt.wantStart || end != tt.wantEnd {
 				t.Fatalf("persistentIndexWindow() = (%d, %d), want (%d, %d)", start, end, tt.wantStart, tt.wantEnd)
 			}
@@ -318,7 +319,7 @@ func TestPersistentIndexWindowKeepsViewportStable(t *testing.T) {
 func TestPersistentIndexWindowInvalidViewportLeavesOffset(t *testing.T) {
 	for _, viewportRows := range []int{0, -1} {
 		scrollOffset := 2
-		start, end := persistentIndexWindow(3, 10, viewportRows, &scrollOffset)
+		start, end := chrome.PersistentIndexWindow(3, 10, viewportRows, &scrollOffset)
 		if start != 0 || end != 0 {
 			t.Fatalf("viewportRows %d: got (%d, %d), want (0, 0)", viewportRows, start, end)
 		}

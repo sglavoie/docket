@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -98,14 +99,14 @@ type NotesViewModel struct {
 	// Outliner only, so the manager keeps its own one-key prefix.
 	pendingTopChord bool
 
-	confirm       ConfirmDialog
+	confirm       chrome.ConfirmDialog
 	pendingDelete NoteRowIdentity
 
 	renaming       bool
 	renameTarget   NoteRowIdentity
 	renameInput    textinput.Model
 	confirmDiscard bool
-	confirmOverlay ConfirmDialog
+	confirmOverlay chrome.ConfirmDialog
 
 	statusMessage string
 	statusIsError bool
@@ -351,7 +352,7 @@ func (m *NotesViewModel) SetSize(width, height int) {
 	m.preview.invalidate()
 }
 
-func (m *NotesViewModel) GetConfirmDialog() *ConfirmDialog {
+func (m *NotesViewModel) GetConfirmDialog() *chrome.ConfirmDialog {
 	if m.confirmDiscard {
 		m.confirmOverlay.Show("discard", "Discard unsaved changes?")
 		return &m.confirmOverlay

@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -24,7 +25,7 @@ func (m *AppModel) handleOpenOutlineEditor(msg OpenOutlineEditorMsg) tea.Cmd {
 	}
 	modeLabel := ""
 	if out := m.activeOutliner(); out != nil {
-		if mode, ok := OutlinerModeByID(out.primaryMode); ok {
+		if mode, ok := chrome.OutlinerModeByID(out.primaryMode); ok {
 			modeLabel = mode.Label
 		}
 	}
@@ -218,7 +219,7 @@ func outlineDeletePrompt(project *models.Project, deletions []*models.Task) stri
 // outlineDeleteConfirmDetail describes the removal the buffer asked for. It
 // carries no root/descendant split: every deletion here is a line the user
 // removed themselves, so there is no cascade to warn about.
-func outlineDeleteConfirmDetail(deletions []*models.Task) *ConfirmDetail {
+func outlineDeleteConfirmDetail(deletions []*models.Task) *chrome.ConfirmDetail {
 	items := make([]string, 0, min(len(deletions), 5))
 	for _, task := range deletions {
 		if len(items) == 5 {
@@ -231,7 +232,7 @@ func outlineDeleteConfirmDetail(deletions []*models.Task) *ConfirmDetail {
 	if len(deletions) == 1 {
 		noun = "task"
 	}
-	return &ConfirmDetail{
+	return &chrome.ConfirmDetail{
 		Items:       items,
 		TotalCount:  len(deletions),
 		CascadeNote: fmt.Sprintf("%d %s deleted · %s", len(deletions), noun, attachmentImpactNote(stored, linked)),

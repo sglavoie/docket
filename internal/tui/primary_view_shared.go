@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -134,8 +135,8 @@ func formatDueDate(task *models.Task) string {
 	if task.DueDate == nil || task.IsComplete() {
 		return ""
 	}
-	dateStr, style := ClassifyDueDate(task.DueDate)
-	if clock := formatDueClock(task); clock != "" {
+	dateStr, style := chrome.ClassifyDueDate(task.DueDate)
+	if clock := chrome.FormatDueClock(task); clock != "" {
 		dateStr += " " + clock
 		if task.IsOverdue() {
 			style = theme.OverdueStyle

@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -44,7 +45,7 @@ func TestTheRankedListLeavesModeAndFoldsButHonorsScopeAndFacets(t *testing.T) {
 
 	outliner := scopeTestOutliner(alpha, beta)
 	outliner.pushProjectScope(alpha.ID)
-	outliner.selectOutlinerMode(ModeBacklog)
+	outliner.selectOutlinerMode(chrome.ModeBacklog)
 	outliner.expandedNodes[taskref.TaskIdentity{ProjectID: alpha.ID, TaskID: parent.ID}] = false
 	searchRankedList(outliner, "needle")
 
@@ -125,7 +126,7 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 	third.Tags = []string{"saved"}
 	project := primaryRowsProject("alpha", first, second, third)
 	outliner := scopeTestOutliner(project)
-	outliner.selectOutlinerMode(ModeInbox)
+	outliner.selectOutlinerMode(chrome.ModeInbox)
 	outliner.filter.Tags = map[string]bool{"saved": true}
 	outliner.adoptFilterCarriers()
 	outliner.collapsedSections = map[string]bool{"saved-section": true}
@@ -159,14 +160,14 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 	// The mode is a live axis under a held query, and it is also part of the
 	// frame the query was typed in, so moving it here is exactly what Esc has to
 	// put back below.
-	if _, _ = outliner.selectOutlinerMode(ModeDue); outliner.primaryMode != ModeDue {
+	if _, _ = outliner.selectOutlinerMode(chrome.ModeDue); outliner.primaryMode != chrome.ModeDue {
 		t.Fatalf("mode refused to change during search, staying %s", outliner.primaryMode)
 	}
 	outliner.SetSearchActive(true)
 	outliner.SetSearchInputValue("needle")
 	_, _ = outliner.handleKeyMsg(syntheticSpecialKey(tea.KeyEsc))
 
-	if outliner.primaryMode != ModeInbox ||
+	if outliner.primaryMode != chrome.ModeInbox ||
 		outliner.filter.Priority != wantFilter.Priority ||
 		!maps.Equal(outliner.filter.Tags, wantFilter.Tags) ||
 		!maps.Equal(outliner.collapsedSections, wantCollapsed) ||

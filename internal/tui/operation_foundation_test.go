@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -69,7 +70,7 @@ func TestFoundationInvariants(t *testing.T) {
 				"scope:project-a",
 			},
 			{
-				"mode", ModeEntity(ModeInbox),
+				"mode", ModeEntity(chrome.ModeInbox),
 				EntityIdentity{Kind: EntityKindMode, Name: "inbox"},
 				"mode:inbox",
 			},

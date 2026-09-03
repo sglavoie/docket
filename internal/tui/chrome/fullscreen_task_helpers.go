@@ -1,4 +1,4 @@
-package tui
+package chrome
 
 import (
 	"image/color"
@@ -10,25 +10,25 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-// renderFullscreenTitle renders a title line for fullscreen views with optional subtitle.
+// RenderFullscreenTitle renders a title line for fullscreen views with optional subtitle.
 // Pass an optional accent color to override the title foreground color.
-func renderFullscreenTitle(title, subtitle string, accent ...color.Color) string {
-	return renderFullscreenTitleContent(fullscreenTitleStyle(accent...).Render(title), subtitle)
+func RenderFullscreenTitle(title, subtitle string, accent ...color.Color) string {
+	return renderFullscreenTitleContent(FullscreenTitleStyle(accent...).Render(title), subtitle)
 }
 
-// renderFullscreenTitleWithPulse renders the shared one-row full-screen title
+// RenderFullscreenTitleWithPulse renders the shared one-row full-screen title
 // with the workspace-wide pulse right-aligned. Transient presentations use
-// renderFullscreenTitle instead and therefore never duplicate the host pulse.
-func renderFullscreenTitleWithPulse(title, subtitle string, workspacePulse pulse.WorkspacePulse, width int, accent ...color.Color) string {
+// RenderFullscreenTitle instead and therefore never duplicate the host pulse.
+func RenderFullscreenTitleWithPulse(title, subtitle string, workspacePulse pulse.WorkspacePulse, width int, accent ...color.Color) string {
 	return renderFullscreenTitleContentWithPulse(
-		fullscreenTitleStyle(accent...).Render(title),
+		FullscreenTitleStyle(accent...).Render(title),
 		subtitle,
 		workspacePulse,
 		width,
 	)
 }
 
-func fullscreenTitleStyle(accent ...color.Color) lipgloss.Style {
+func FullscreenTitleStyle(accent ...color.Color) lipgloss.Style {
 	if len(accent) > 0 && accent[0] != nil {
 		return lipgloss.NewStyle().Bold(true).Foreground(accent[0])
 	}
@@ -58,8 +58,8 @@ func renderFullscreenTitleContentWithPulse(titleContent, subtitle string, worksp
 	}, width)
 }
 
-func renderTaskScopedFullscreenTitleWithPulse(prefix string, task *models.Task, subtitle string, workspacePulse pulse.WorkspacePulse, width int, accent ...color.Color) string {
-	titleStyle := fullscreenTitleStyle(accent...)
+func RenderTaskScopedFullscreenTitleWithPulse(prefix string, task *models.Task, subtitle string, workspacePulse pulse.WorkspacePulse, width int, accent ...color.Color) string {
+	titleStyle := FullscreenTitleStyle(accent...)
 	if task == nil {
 		return renderFullscreenTitleContentWithPulse(titleStyle.Render(prefix), subtitle, workspacePulse, width)
 	}
@@ -67,10 +67,10 @@ func renderTaskScopedFullscreenTitleWithPulse(prefix string, task *models.Task, 
 	return renderFullscreenTitleContentWithPulse(titleContent, subtitle, workspacePulse, width)
 }
 
-// renderPriorityBadge renders a priority indicator with color styling. An unset
+// RenderPriorityBadge renders a priority indicator with color styling. An unset
 // priority has no glyph of its own, so it renders nothing rather than borrowing
 // the normal-priority icon.
-func renderPriorityBadge(priority int) string {
+func RenderPriorityBadge(priority int) string {
 	if models.ValidatePriority(priority, false) != nil {
 		return ""
 	}

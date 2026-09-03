@@ -9,6 +9,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -51,7 +52,7 @@ func (m *TaskComposerModel) effectiveRouteForLine(line string) composerEffective
 	if due == nil {
 		due = m.preset.Shared.Due
 	}
-	if dueDateIsToday(due) {
+	if chrome.DueDateIsToday(due) {
 		destination = app.CaptureDestinationToday
 	}
 	destination = composerDeferredDestination(parsed, destination)
@@ -105,7 +106,7 @@ func renderComposerDestination(destination app.CaptureDestination) string {
 func (m *TaskComposerModel) compactContentHeight() int {
 	contentHeight := m.height
 	if spec, ok := m.ContextualGuidance(); ok {
-		footerRows := lipgloss.Height(renderGuidance(spec, m.width))
+		footerRows := lipgloss.Height(chrome.RenderGuidance(spec, m.width))
 		contentHeight -= max(footerRows-2, 0)
 	}
 	return max(contentHeight, 1)
@@ -119,7 +120,7 @@ func (m *TaskComposerModel) View() tea.View {
 	contentHeight := m.compactContentHeight()
 	project, destination := m.effectiveRouteHeader()
 	var b strings.Builder
-	b.WriteString(renderFullscreenTitleWithPulse("Task Composer", m.preset.label(), m.CurrentWorkspacePulse(), m.width))
+	b.WriteString(chrome.RenderFullscreenTitleWithPulse("Task Composer", m.preset.label(), m.CurrentWorkspacePulse(), m.width))
 	b.WriteString("\n\n")
 	b.WriteString(theme.SubtitleStyle.Render("Project: ") + textfit.TruncateToVisualWidth(project, max(m.width-12, 1)))
 	b.WriteString("\n")
@@ -127,7 +128,7 @@ func (m *TaskComposerModel) View() tea.View {
 	b.WriteString("\n\n")
 	b.WriteString(m.input.View())
 	b.WriteString("\n")
-	b.WriteString(renderHorizontalDivider(m.width))
+	b.WriteString(chrome.RenderHorizontalDivider(m.width))
 
 	var errorsBlock strings.Builder
 	for _, lineErr := range m.errors {
@@ -136,7 +137,7 @@ func (m *TaskComposerModel) View() tea.View {
 	}
 	errors := strings.TrimRight(errorsBlock.String(), "\n")
 	confirm := ""
-	if m.confirmDiscard {
+	if m.ConfirmDiscard {
 		confirm = theme.ValidationErrorStyle.Render("Discard input? (y/n)")
 	}
 
@@ -203,35 +204,35 @@ func (m *TaskComposerModel) StatusBarLabel() string { return "Task Composer" }
 // GetConfirmDialog surfaces the embedded form's confirmation in expanded mode
 // so the App shell can render and dismiss it. Compact mode owns its own discard
 // state directly on the composer.
-func (m *TaskComposerModel) GetConfirmDialog() *ConfirmDialog {
+func (m *TaskComposerModel) GetConfirmDialog() *chrome.ConfirmDialog {
 	if m.mode == ComposerExpanded && m.expanded != nil {
 		return m.expanded.GetConfirmDialog()
 	}
-	return m.discardConfirmState.GetConfirmDialog()
+	return m.DiscardConfirmState.GetConfirmDialog()
 }
 
-func (m *TaskComposerModel) ContextualGuidance() (GuidanceSpec, bool) {
+func (m *TaskComposerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 	if m.mode == ComposerExpanded {
-		return GuidanceSpec{}, false
+		return chrome.GuidanceSpec{}, false
 	}
-	spec := captureGuidanceSpec(
-		m.confirmDiscard,
+	spec := chrome.CaptureGuidanceSpec(
+		m.ConfirmDiscard,
 		m.isAutocompleteActive(),
 		m.helpExpanded,
 		m.helpExpanded && m.syntaxOverflows(),
 		m.syntaxScrollPercent(),
 	)
-	if len(m.errors) > 0 && !m.confirmDiscard && !m.isAutocompleteActive() && !m.helpExpanded {
-		spec = requiredActionGuidanceSpec(
+	if len(m.errors) > 0 && !m.ConfirmDiscard && !m.isAutocompleteActive() && !m.helpExpanded {
+		spec = chrome.RequiredActionGuidanceSpec(
 			"Enter retry", "Ctrl+E retry & edit", "Ctrl+V paste", "? syntax",
 		)
 	}
-	if !m.confirmDiscard && !m.isAutocompleteActive() && !m.helpExpanded {
-		spec.Hints = append(spec.Hints, optionalGuidanceHints(100,
+	if !m.ConfirmDiscard && !m.isAutocompleteActive() && !m.helpExpanded {
+		spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(100,
 			"Shift+Enter new line", "Ctrl+F expand",
 		)...)
 		if m.preset.AllowProjectSwitch && len(m.preset.AllProjects) > 1 {
-			spec.Hints = append(spec.Hints, optionalGuidanceHints(102, "Ctrl+P project")...)
+			spec.Hints = append(spec.Hints, chrome.OptionalGuidanceHints(102, "Ctrl+P project")...)
 		}
 	}
 	if spec.Supplemental == "" {

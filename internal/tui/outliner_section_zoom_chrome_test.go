@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // zoomChromeApp is the filter-chord fixture with fresh touch times, so its tasks
@@ -105,7 +106,7 @@ func TestZoomedHeaderGuidanceOffersUnzoomInsteadOfDeadKeys(t *testing.T) {
 			t.Errorf("zoomed header guidance names %q, which cannot act there: %q", dead, got)
 		}
 	}
-	index := slices.IndexFunc(spec.Hints, func(hint GuidanceHint) bool { return hint.Key == "Esc" })
+	index := slices.IndexFunc(spec.Hints, func(hint chrome.GuidanceHint) bool { return hint.Key == "Esc" })
 	if index < 0 || !spec.Hints[index].Required {
 		t.Fatalf("Esc unzoom is not a required hint: %+v", spec.Hints)
 	}

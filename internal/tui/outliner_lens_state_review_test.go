@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // reviewFacetAxes are the three narrowing axes a review-flagged lens used to be
@@ -231,7 +232,7 @@ func reviewFacetRecordedAndClearedByReplace(t *testing.T) {
 
 func TestCaptureLensStateReadsRememberedTreeSortAndDetachesCollections(t *testing.T) {
 	outliner := scopeTestOutliner(primaryRowsProject("alpha"))
-	outliner.primaryMode = ModeDue
+	outliner.primaryMode = chrome.ModeDue
 	outliner.setLensQuery("  ship it  ")
 	outliner.filter.Tags = map[string]bool{"api": true}
 	outliner.projectFilter.Tags = map[string]bool{"client": true}
@@ -242,7 +243,7 @@ func TestCaptureLensStateReadsRememberedTreeSortAndDetachesCollections(t *testin
 	outliner.treeSort = SortState{Field: SortByTitle, Ascending: false}
 
 	captured := outliner.captureLensState()
-	if captured.mode != ModeDue || captured.query != "ship it" {
+	if captured.mode != chrome.ModeDue || captured.query != "ship it" {
 		t.Fatalf("captured mode/query = %s/%q", captured.mode, captured.query)
 	}
 	if captured.sort != (SortState{Field: SortByTitle, Ascending: false}) {
@@ -263,7 +264,7 @@ func TestCaptureLensStateReadsRememberedTreeSortAndDetachesCollections(t *testin
 
 func TestApplyLensStateInstallsManualSortAndRemembersItInFixedOrderModes(t *testing.T) {
 	saved := SortState{Field: SortByUpdatedAt, Ascending: false}
-	for _, mode := range OutlinerModeCatalog() {
+	for _, mode := range chrome.OutlinerModeCatalog() {
 		t.Run(string(mode.ID), func(t *testing.T) {
 			outliner := scopeTestOutliner(primaryRowsProject("alpha"))
 			outliner.sort = SortState{Field: SortByTitle, Ascending: true}
@@ -290,10 +291,10 @@ func TestApplyLensStateInstallsManualSortAndRemembersItInFixedOrderModes(t *test
 	}
 
 	outliner := scopeTestOutliner(primaryRowsProject("alpha"))
-	if outliner.applyLensState(lensState{mode: OutlinerModeID("archive")}) {
+	if outliner.applyLensState(lensState{mode: chrome.OutlinerModeID("archive")}) {
 		t.Fatal("applyLensState accepted a mode outside the catalog")
 	}
-	if outliner.primaryMode != ModeAll {
+	if outliner.primaryMode != chrome.ModeAll {
 		t.Fatalf("a refused lens changed the mode to %s", outliner.primaryMode)
 	}
 }

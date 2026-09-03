@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -24,7 +25,7 @@ func TestOutlineEditorRequestRefusesFixedOrderModes(t *testing.T) {
 		t.Fatal("fixture app has no Outliner")
 	}
 
-	for _, mode := range OutlinerModeCatalog() {
+	for _, mode := range chrome.OutlinerModeCatalog() {
 		outliner.primaryMode = mode.ID
 		project, label, refusal := app.outlineEditorRequest()
 		if mode.FixedOrder() {

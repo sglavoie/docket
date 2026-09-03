@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // lensPickerOrdinalSlots returns the fixed-width number column of every row, in
@@ -289,7 +290,7 @@ func TestLensPickerGuidanceAdvertisesTheOrdinalsOnlyWhenLensesAreListed(t *testi
 	model := lensPickerApp(t)
 	footerOf := func() string {
 		t.Helper()
-		return ansi.Strip(renderGuidanceText(model.lensPicker.guidanceSpec(), 200))
+		return ansi.Strip(chrome.RenderGuidanceText(model.lensPicker.guidanceSpec(), 200))
 	}
 
 	got := footerOf()

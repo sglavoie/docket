@@ -3,18 +3,19 @@ package tui
 import (
 	"sort"
 
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
 // ContextualGuidance projects Project Hub list state through the shared list
 // profiles. Navigation and unwind controls come from a gated keymap; direct
 // project-operation labels and applicability come from the operation registry.
-func (m *ProjectHubModel) ContextualGuidance() (GuidanceSpec, bool) {
+func (m *ProjectHubModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 	if m.actions != nil {
 		return m.actions.guidanceSpec()
 	}
 	if m.surface == nil {
-		return GuidanceSpec{}, false
+		return chrome.GuidanceSpec{}, false
 	}
 	state := m.surface.GuidanceState(m.HasActiveSearch())
 	km := m.projectHubGuidanceKeyMap(state)
@@ -105,7 +106,7 @@ func (m *ProjectHubModel) projectHubGuidanceKeyMap(state ListGuidanceState) *key
 // footer hints. Two states narrow that to the single press that resolves them:
 // while the query is being typed the browse keys are not live, and a list its
 // own source emptied cannot be searched or browsed at all.
-func (m *ProjectHubModel) projectHubActionHints(state ListGuidanceState) []GuidanceHint {
+func (m *ProjectHubModel) projectHubActionHints(state ListGuidanceState) []chrome.GuidanceHint {
 	if m.registry == nil {
 		return nil
 	}
@@ -124,14 +125,14 @@ func (m *ProjectHubModel) projectHubActionHints(state ListGuidanceState) []Guida
 
 // soleRequiredHint keeps one operation's hint and promotes it, so a narrowed
 // state advertises the press that leaves it rather than the whole grammar.
-func (m *ProjectHubModel) soleRequiredHint(hints []GuidanceHint, id OperationID) []GuidanceHint {
+func (m *ProjectHubModel) soleRequiredHint(hints []chrome.GuidanceHint, id OperationID) []chrome.GuidanceHint {
 	key := m.registry.InputShortcutForOperation(InputStrategyProjectHub, id)
 	for _, hint := range hints {
 		if hint.Key != key {
 			continue
 		}
 		hint.Required = true
-		return []GuidanceHint{hint}
+		return []chrome.GuidanceHint{hint}
 	}
 	return nil
 }

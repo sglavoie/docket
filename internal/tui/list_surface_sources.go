@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // The concrete ListSource constructors. Each adapts one established picker
@@ -90,7 +91,7 @@ func ListSourceFromWorkflowStates(states []models.WorkflowState) ListSource {
 }
 
 // ListSourceFromPriorities adapts the established priority picker options.
-func ListSourceFromPriorities(priorities []PriorityInfo) ListSource {
+func ListSourceFromPriorities(priorities []chrome.PriorityInfo) ListSource {
 	items := make([]ListItem, 0, len(priorities))
 	for _, priority := range priorities {
 		items = append(items, ListItem{
@@ -159,4 +160,11 @@ func workflowStateListLabel(state models.WorkflowState) string {
 	default:
 		return state.String()
 	}
+}
+
+// CountDisplayer is implemented by PickerItems that want custom styled count
+// text instead of the default "(N)" format. The returned string is pre-rendered
+// and should not be wrapped in additional styles.
+type CountDisplayer interface {
+	CountDisplayText() string
 }

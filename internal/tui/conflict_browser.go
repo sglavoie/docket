@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/textfit"
@@ -413,11 +414,11 @@ func (model *ConflictBrowserModel) renderWithin(width, height int) string {
 	}
 
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render(conflictBrowserTitle)
-	return renderOverlayBox(
+	return chrome.RenderOverlayBox(
 		content,
 		innerWidth,
 		title,
-		renderGuidanceText(model.guidanceSpec(), max(innerWidth-4, 1)),
+		chrome.RenderGuidanceText(model.guidanceSpec(), max(innerWidth-4, 1)),
 		lipgloss.NewStyle().Foreground(theme.ColorPrimary),
 	)
 }
@@ -458,9 +459,9 @@ func (model *ConflictBrowserModel) renderDetail(width, bodyHeight int) string {
 // footer, so there is no "no guidance" case for a caller to branch on. Both
 // states reuse the same three bindings under different labels, because the keys
 // genuinely do not change — only what they move.
-func (model *ConflictBrowserModel) guidanceSpec() GuidanceSpec {
+func (model *ConflictBrowserModel) guidanceSpec() chrome.GuidanceSpec {
 	if model == nil || model.surface == nil {
-		return GuidanceSpec{}
+		return chrome.GuidanceSpec{}
 	}
 	inspecting := model.inspecting()
 	moveLabel := "navigate"

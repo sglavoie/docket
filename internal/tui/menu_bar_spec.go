@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -76,7 +77,7 @@ func menuSeparator() menuEntrySpec { return menuEntrySpec{} }
 // menu's rows show. They are passed in rather than read from a model so the
 // specification stays pure data: a menu row can describe live state, but it
 // cannot reach back into the Outliner to find it.
-func outlinerMenuSpecs(activeMode OutlinerModeID, menuBarVisible, advisoriesVisible bool) []menuSpec {
+func outlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisoriesVisible bool) []menuSpec {
 	return []menuSpec{
 		{
 			ID:    menuIDTask,
@@ -168,9 +169,9 @@ func outlinerMenuSpecs(activeMode OutlinerModeID, menuBarVisible, advisoriesVisi
 // drawn. A menu that can hide the surface it is opened from is unusual, but the
 // key that shows the bar is the one thing a user who found the bar by accident
 // cannot read off the bar itself, so it belongs here rather than only in `?`.
-func viewMenuEntries(activeMode OutlinerModeID, menuBarVisible, advisoriesVisible bool) []menuEntrySpec {
-	entries := make([]menuEntrySpec, 0, len(outlinerModes)+13)
-	for _, mode := range outlinerModes {
+func viewMenuEntries(activeMode chrome.OutlinerModeID, menuBarVisible, advisoriesVisible bool) []menuEntrySpec {
+	entries := make([]menuEntrySpec, 0, len(chrome.OutlinerModes)+13)
+	for _, mode := range chrome.OutlinerModes {
 		checked := mode.ID == activeMode
 		entries = append(entries, menuEntrySpec{
 			OperationID: gotoOperationForMode(mode.ID),
@@ -218,7 +219,7 @@ func viewMenuEntries(activeMode OutlinerModeID, menuBarVisible, advisoriesVisibl
 // gotoOperationForMode names the operation that selects one mode. The mode
 // catalog and the jump operations are already paired by gotoModeOperations, so
 // the menu reads that pairing rather than declaring a second one.
-func gotoOperationForMode(mode OutlinerModeID) OperationID {
+func gotoOperationForMode(mode chrome.OutlinerModeID) OperationID {
 	for id, target := range gotoModeOperations {
 		if target == mode {
 			return id
@@ -327,7 +328,7 @@ func (m *AppModel) validateMenuBarSpecs() error {
 		m.operationRegistry,
 		strategy,
 		ctx,
-		outlinerMenuSpecs(ModeAll, false, true),
+		outlinerMenuSpecs(chrome.ModeAll, false, true),
 	)
 	if err != nil {
 		return err

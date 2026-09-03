@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -43,7 +44,7 @@ func (m *TaskFormModel) handleBasicsEnter() tea.Cmd {
 		// Description: open TextEditorModel.
 		currentDesc := m.draft.desc
 		return func() tea.Msg {
-			return ShowTextEditorMsg{FieldName: "formDesc", CurrentValue: currentDesc}
+			return chrome.ShowTextEditorMsg{FieldName: "formDesc", CurrentValue: currentDesc}
 		}
 
 	case 2:

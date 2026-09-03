@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -26,12 +27,12 @@ func registeredSimplifiedOperationRegistry(t *testing.T) *OperationRegistry {
 	return registry
 }
 
-func guidanceHintsText(hints []GuidanceHint) string {
+func guidanceHintsText(hints []chrome.GuidanceHint) string {
 	parts := make([]string, 0, len(hints))
 	for _, hint := range hints {
-		parts = append(parts, guidanceHintText(hint))
+		parts = append(parts, chrome.GuidanceHintText(hint))
 	}
-	return strings.Join(parts, footerHelpSeparator)
+	return strings.Join(parts, chrome.FooterHelpSeparator)
 }
 
 // simplifiedTaskActionDescriptors supplies the task-scoped and filter

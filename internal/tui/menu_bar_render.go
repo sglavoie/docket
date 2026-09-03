@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -88,8 +89,8 @@ func menuBarLayout(menus []resolvedMenu, width int) []menuLabelBox {
 // under it is padded to.
 func renderMenuBarRow(menus []resolvedMenu, width int, openIdx int) string {
 	boxes := menuBarLayout(menus, width)
-	open := activeTabStyle(menuBarLabelPadding, false)
-	closed := inactiveTabStyle(menuBarLabelPadding, false)
+	open := chrome.ActiveTabStyle(menuBarLabelPadding, false)
+	closed := chrome.InactiveTabStyle(menuBarLabelPadding, false)
 
 	var b strings.Builder
 	col := 0

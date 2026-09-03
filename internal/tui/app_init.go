@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -134,7 +135,7 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	// emits launchOutlinerMsg, whose handler resets the root and returns the
 	// current generation's reload command.
 	_ = app.prepareCrossProjectOutliner()
-	app.crossOutliner.ApplyOpenOptions(OutlinerOpenOptions{Mode: ModeAll, SetMode: true})
+	app.crossOutliner.ApplyOpenOptions(OutlinerOpenOptions{Mode: chrome.ModeAll, SetMode: true})
 	app.setAccentOnView(app.crossOutliner)
 
 	return app, nil

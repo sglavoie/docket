@@ -1,4 +1,4 @@
-package tui
+package chrome
 
 // This file establishes the final seven-mode Outliner catalog.
 
@@ -97,8 +97,8 @@ func (mode OutlinerMode) FixedOrder() bool {
 	return mode.OrderPolicy != OrderPolicyTree
 }
 
-// outlinerModes is the ordered catalog and the exact Tab/Shift+Tab cycle.
-var outlinerModes = []OutlinerMode{
+// OutlinerModes is the ordered catalog and the exact Tab/Shift+Tab cycle.
+var OutlinerModes = []OutlinerMode{
 	{ID: ModeAll, Label: "All", OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyAll, ShowsPinned: true},
 	{ID: ModeToday, Label: "Today", OrderPolicy: OrderPolicyTodayOrder, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyToday, ShowsPinned: true},
 	{ID: ModeInbox, Label: "Inbox", OrderPolicy: OrderPolicyTree, ReorderPolicy: ReorderPolicyContextual, RowStrategy: RowStrategyInbox, AdvancesOnDeparture: true},
@@ -110,8 +110,8 @@ var outlinerModes = []OutlinerMode{
 
 // outlinerModeIndex maps each mode ID to its catalog entry for O(1) lookup.
 var outlinerModeIndex = func() map[OutlinerModeID]OutlinerMode {
-	index := make(map[OutlinerModeID]OutlinerMode, len(outlinerModes))
-	for _, mode := range outlinerModes {
+	index := make(map[OutlinerModeID]OutlinerMode, len(OutlinerModes))
+	for _, mode := range OutlinerModes {
 		index[mode.ID] = mode
 	}
 	return index
@@ -119,8 +119,8 @@ var outlinerModeIndex = func() map[OutlinerModeID]OutlinerMode {
 
 // OutlinerModeCatalog returns the ordered mode catalog.
 func OutlinerModeCatalog() []OutlinerMode {
-	out := make([]OutlinerMode, len(outlinerModes))
-	copy(out, outlinerModes)
+	out := make([]OutlinerMode, len(OutlinerModes))
+	copy(out, OutlinerModes)
 	return out
 }
 

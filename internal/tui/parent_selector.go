@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/textfit"
@@ -165,7 +166,7 @@ func (m *ParentSelectorModel) View() tea.View {
 	subtitle := fmt.Sprintf("%d parent%s available", parentCount, pluralize(parentCount, "", "s"))
 	availableSubtitleWidth := max(m.Width()-lipgloss.Width(title)-2, 1)
 	subtitle = textfit.TruncateToVisualWidth(subtitle, availableSubtitleWidth)
-	b.WriteString(renderFullscreenTitle(title, subtitle))
+	b.WriteString(chrome.RenderFullscreenTitle(title, subtitle))
 	b.WriteString("\n\n")
 
 	// Search input
@@ -175,12 +176,12 @@ func (m *ParentSelectorModel) View() tea.View {
 	// Render the list
 	b.WriteString(m.renderList())
 
-	extra := []GuidanceHint(nil)
+	extra := []chrome.GuidanceHint(nil)
 	if m.allowNone {
-		extra = append(extra, newGuidanceHint("Ctrl+X no parent", 3, false))
+		extra = append(extra, chrome.NewGuidanceHint("Ctrl+X no parent", 3, false))
 	}
 	guidance, _ := m.alwaysSearchGuidanceSpec("select", extra...)
-	b.WriteString(renderGuidance(guidance, m.Width()))
+	b.WriteString(chrome.RenderGuidance(guidance, m.Width()))
 
 	return tea.NewView(b.String())
 }
@@ -198,14 +199,14 @@ func (m *ParentSelectorModel) renderList() string {
 		return theme.MutedStyle.Render("No matching parents.")
 	}
 
-	scrollOffset := calcScrollOffset(m.CursorIndex(), maxVisible)
+	scrollOffset := chrome.CalcScrollOffset(m.CursorIndex(), maxVisible)
 
 	for i, item := range m.FilteredItems() {
 		if i >= scrollOffset && i < scrollOffset+maxVisible {
 			if item.None {
 				line := theme.MutedStyle.Render(parentSelectorNoParentLabel)
 				if m.CursorIndex() == i {
-					line = SelectedLine(parentSelectorNoParentLabel, m.Width())
+					line = chrome.SelectedLine(parentSelectorNoParentLabel, m.Width())
 				}
 				b.WriteString(line)
 				b.WriteString("\n")
@@ -224,7 +225,7 @@ func (m *ParentSelectorModel) renderList() string {
 			line := prefix + titleRendered
 
 			if m.CursorIndex() == i {
-				line = SelectedLine(line, m.Width())
+				line = chrome.SelectedLine(line, m.Width())
 			}
 
 			b.WriteString(line)

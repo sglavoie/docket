@@ -1,5 +1,7 @@
 package tui
 
+import "github.com/sglavoie/tt/internal/tui/chrome"
+
 // applyOverlays composites all popup/overlay layers onto the base content.
 // h is the overlay positioning height (m.height for full-height views,
 // targetContentHeight for views with an external status bar).
@@ -27,8 +29,8 @@ func (m *AppModel) applyOverlays(content string, h int) string {
 // fitting a transient popup. Full-screen hosts keep their workspace pulse
 // visible while the popup owns only its local interaction chrome.
 func overlayPopupBelowPersistentTitle(base, popup string, width, height int) string {
-	popup = fitOverlayPopupHeight(popup, max(height-1, 1))
-	return OverlayPopupDimmed(base, popup, width, height)
+	popup = chrome.FitOverlayPopupHeight(popup, max(height-1, 1))
+	return chrome.OverlayPopupDimmed(base, popup, width, height)
 }
 
 // widthRenderer is satisfied by all overlay pickers/popups that render given a width.
@@ -99,7 +101,7 @@ func (m *AppModel) renderConfirmDialogOverlay() string {
 	if view == nil {
 		return ""
 	}
-	provider, ok := view.(ConfirmDialogProvider)
+	provider, ok := view.(chrome.ConfirmDialogProvider)
 	if !ok {
 		return ""
 	}

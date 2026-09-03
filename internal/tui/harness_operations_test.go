@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/util"
@@ -98,10 +99,10 @@ func (m *AppModel) registerHarnessOperations() error {
 		}},
 		{operationHarnessScope, "choose scope", OperationCategoryScope, func() tea.Msg { return ShowProjectHubMsg{} }},
 		{operationHarnessInbox, "global inbox mode", OperationCategoryMode, func() tea.Msg {
-			return m.harnessOpenOutliner(OutlinerOpenOptions{SetMode: true, Mode: ModeInbox})
+			return m.harnessOpenOutliner(OutlinerOpenOptions{SetMode: true, Mode: chrome.ModeInbox})
 		}},
 		{operationHarnessProjectInbox, "project inbox mode", OperationCategoryMode, func() tea.Msg {
-			return m.harnessOpenOutliner(OutlinerOpenOptions{SetMode: true, Mode: ModeInbox})
+			return m.harnessOpenOutliner(OutlinerOpenOptions{SetMode: true, Mode: chrome.ModeInbox})
 		}},
 		{operationHarnessRenameProject, "rename project", OperationCategoryProject, func() tea.Msg {
 			_, project := m.outlinerTarget()

@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // hands back an ID, and the malformed-payload cases need to deliver something
@@ -92,7 +93,7 @@ func TestLensAddTemplateAsksForATemplateBeforeItWrites(t *testing.T) {
 func TestLensAddTemplatePersistsTheCatalogDefinitionAndAppliesIt(t *testing.T) {
 	model := lensOperationApp(t)
 	out := model.crossOutliner
-	out.selectOutlinerMode(ModeInbox)
+	out.selectOutlinerMode(chrome.ModeInbox)
 	template := addableTemplate(t, model)
 	before := len(machineLenses(t, model))
 
@@ -125,7 +126,7 @@ func TestLensAddTemplatePersistsTheCatalogDefinitionAndAppliesIt(t *testing.T) {
 	// One Esc still returns to the pre-lens view, so the application kept the
 	// baseline rather than stacking a new one.
 	out.restoreLensBaseline()
-	if out.hasActiveLens() || out.primaryMode != ModeInbox {
+	if out.hasActiveLens() || out.primaryMode != chrome.ModeInbox {
 		t.Fatalf("one restore left mode %v with lens=%v", out.primaryMode, out.hasActiveLens())
 	}
 	// Machine-local state rides no workspace transaction, so nothing here may

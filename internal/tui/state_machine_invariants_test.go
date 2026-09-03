@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -184,7 +185,7 @@ func TestNextMembershipConsumersUseExplicitPlanning(t *testing.T) {
 
 	t.Run("outliner Next follows explicit eligible membership", func(t *testing.T) {
 		outliner := NewOutlinerModel(project, nil, runtime)
-		outliner.ApplyOpenOptions(OutlinerOpenOptions{Mode: ModeNext, SetMode: true})
+		outliner.ApplyOpenOptions(OutlinerOpenOptions{Mode: chrome.ModeNext, SetMode: true})
 		visible := visibleOutlinerTaskIDs(outliner)
 		if !visible[indexedNext.ID] {
 			t.Fatal("Outliner Next omitted an explicit eligible member")

@@ -7,6 +7,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -92,12 +93,12 @@ func (model *OperationTextPromptModel) render(width int) string {
 		content.WriteString(theme.ValidationErrorStyle.Render(model.notice))
 	}
 
-	return renderOverlayBox(
+	return chrome.RenderOverlayBox(
 		content.String(),
 		innerWidth,
 		lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render(model.title),
-		renderGuidanceText(GuidanceSpec{
-			Hints: requiredGuidanceHints("Enter apply", "Esc back"),
+		chrome.RenderGuidanceText(chrome.GuidanceSpec{
+			Hints: chrome.RequiredGuidanceHints("Enter apply", "Esc back"),
 			Rows:  2,
 		}, max(innerWidth-4, 1)),
 		lipgloss.NewStyle().Foreground(theme.ColorPrimary),

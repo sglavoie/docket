@@ -6,11 +6,12 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // flatGroupingModes are the modes that gained project grouping; All, Today, and
 // Next already had it and are covered by outliner_planning_headers_test.go.
-var flatGroupingModes = []OutlinerModeID{ModeInbox, ModeBacklog, ModeDue, ModeRecent}
+var flatGroupingModes = []chrome.OutlinerModeID{chrome.ModeInbox, chrome.ModeBacklog, chrome.ModeDue, chrome.ModeRecent}
 
 // projectGroupHeaders returns the project sub-headers in render order plus each
 // one's declared count.
@@ -52,23 +53,23 @@ func groupingDueTask(id string, dayOffset int) *models.Task {
 	return task
 }
 
-func newGroupingFixture(t *testing.T, mode OutlinerModeID) groupingFixture {
+func newGroupingFixture(t *testing.T, mode chrome.OutlinerModeID) groupingFixture {
 	t.Helper()
 	var alphaOne, alphaTwo, betaOne *models.Task
 	switch mode {
-	case ModeInbox:
+	case chrome.ModeInbox:
 		alphaOne = primaryRowsTask("alpha-one", models.StateInbox)
 		alphaTwo = primaryRowsTask("alpha-two", models.StateInbox)
 		betaOne = primaryRowsTask("beta-one", models.StateInbox)
-	case ModeBacklog:
+	case chrome.ModeBacklog:
 		alphaOne = primaryRowsTask("alpha-one", models.StateBacklog)
 		alphaTwo = primaryRowsTask("alpha-two", models.StateBacklog)
 		betaOne = primaryRowsTask("beta-one", models.StateBacklog)
-	case ModeDue:
+	case chrome.ModeDue:
 		alphaOne = groupingDueTask("alpha-one", -3)
 		alphaTwo = groupingDueTask("alpha-two", -2)
 		betaOne = groupingDueTask("beta-one", -1)
-	case ModeRecent:
+	case chrome.ModeRecent:
 		alphaOne = recentTask("alpha-one", models.StateBacklog, 3)
 		alphaTwo = recentTask("alpha-two", models.StateBacklog, 4)
 		betaOne = recentTask("beta-one", models.StateBacklog, 5)
@@ -155,7 +156,7 @@ func TestDueProjectGroupsUseAlphabeticalProjectHeaders(t *testing.T) {
 	beta := primaryRowsProject("beta", betaTask)
 
 	outliner, _ := primaryRowsOutliner(alpha, beta)
-	outliner.selectOutlinerMode(ModeDue)
+	outliner.selectOutlinerMode(chrome.ModeDue)
 
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{alphaTask.ID, betaTask.ID}) {
 		t.Fatalf("Due rows = %v, want rows grouped by alphabetical project headers", got)
@@ -172,7 +173,7 @@ func TestRecentProjectHeadersStayAlphabeticalAcrossTriageAndReentry(t *testing.T
 	beta := primaryRowsProject("beta", betaTask)
 
 	outliner, _ := primaryRowsOutliner(alpha, beta)
-	outliner.selectOutlinerMode(ModeRecent)
+	outliner.selectOutlinerMode(chrome.ModeRecent)
 	if headers, _ := projectGroupHeaders(outliner); !slices.Equal(headers, []string{alpha.ID, beta.ID}) {
 		t.Fatalf("Recent project headers = %v, want alphabetical order", headers)
 	}
@@ -183,7 +184,7 @@ func TestRecentProjectHeadersStayAlphabeticalAcrossTriageAndReentry(t *testing.T
 		t.Fatalf("Recent project headers after triage = %v, want the same alphabetical order", headers)
 	}
 
-	outliner.selectOutlinerMode(ModeRecent)
+	outliner.selectOutlinerMode(chrome.ModeRecent)
 	if headers, _ := projectGroupHeaders(outliner); !slices.Equal(headers, []string{alpha.ID, beta.ID}) {
 		t.Fatalf("Recent project headers after re-entry = %v, want alphabetical order", headers)
 	}
@@ -204,9 +205,9 @@ func TestBacklogModeAndAllModeBacklogGroupFoldIndependently(t *testing.T) {
 
 	t.Run("backlog-mode-fold-leaves-all-mode-expanded", func(t *testing.T) {
 		outliner, alpha, alphaTask, betaTask := newOutliner()
-		outliner.selectOutlinerMode(ModeBacklog)
+		outliner.selectOutlinerMode(chrome.ModeBacklog)
 		key := projectGroupCollapseKey(outliner, alpha.ID)
-		if want := modeProjectCollapseKey(ModeBacklog, alpha.ID); key != want {
+		if want := modeProjectCollapseKey(chrome.ModeBacklog, alpha.ID); key != want {
 			t.Fatalf("Backlog project fold key = %q, want %q", key, want)
 		}
 		outliner.collapsedSections[key] = true
@@ -215,7 +216,7 @@ func TestBacklogModeAndAllModeBacklogGroupFoldIndependently(t *testing.T) {
 			t.Fatalf("folded Backlog rows = %v, want beta only", got)
 		}
 
-		outliner.selectOutlinerMode(ModeAll)
+		outliner.selectOutlinerMode(chrome.ModeAll)
 		if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{alphaTask.ID, betaTask.ID}) {
 			t.Fatalf("All rows = %v, want Backlog mode's fold to stay behind", got)
 		}
@@ -223,7 +224,7 @@ func TestBacklogModeAndAllModeBacklogGroupFoldIndependently(t *testing.T) {
 
 	t.Run("all-mode-fold-leaves-backlog-mode-expanded", func(t *testing.T) {
 		outliner, alpha, alphaTask, betaTask := newOutliner()
-		outliner.selectOutlinerMode(ModeAll)
+		outliner.selectOutlinerMode(chrome.ModeAll)
 		key := projectGroupCollapseKey(outliner, alpha.ID)
 		if want := projectSectionCollapseKey(alpha.ID, models.StateGroupBacklog); key != want {
 			t.Fatalf("All mode project fold key = %q, want %q", key, want)
@@ -234,7 +235,7 @@ func TestBacklogModeAndAllModeBacklogGroupFoldIndependently(t *testing.T) {
 			t.Fatalf("folded All rows = %v, want beta only", got)
 		}
 
-		outliner.selectOutlinerMode(ModeBacklog)
+		outliner.selectOutlinerMode(chrome.ModeBacklog)
 		if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{alphaTask.ID, betaTask.ID}) {
 			t.Fatalf("Backlog rows = %v, want All mode's fold to stay behind", got)
 		}

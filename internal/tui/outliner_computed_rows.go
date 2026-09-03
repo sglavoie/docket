@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -24,7 +25,7 @@ type OutlinerModeSection struct {
 
 const canonicalModeCollapseKeyPrefix = "_mode:"
 
-func canonicalModeCollapseKey(mode OutlinerModeID, bucket string) string {
+func canonicalModeCollapseKey(mode chrome.OutlinerModeID, bucket string) string {
 	return canonicalModeCollapseKeyPrefix + string(mode) + ":" + bucket
 }
 
@@ -36,7 +37,7 @@ const canonicalModeProjectCollapseKeyPrefix = "_mode_project:"
 
 // modeProjectCollapseKey identifies one project's group in a mode that emits no
 // bucket header of its own.
-func modeProjectCollapseKey(mode OutlinerModeID, projectID string) string {
+func modeProjectCollapseKey(mode chrome.OutlinerModeID, projectID string) string {
 	return canonicalModeProjectCollapseKeyPrefix + string(mode) + ":" + projectID
 }
 
@@ -121,10 +122,10 @@ func isComputedOpenWork(task *models.Task, in OutlinerModeInput) bool {
 func BuildDueModeSections(in OutlinerModeInput) []OutlinerModeSection {
 	in.Now = in.now()
 	sections := []OutlinerModeSection{
-		{Name: "Overdue", CollapseKey: canonicalModeCollapseKey(ModeDue, "overdue")},
-		{Name: "Today", CollapseKey: canonicalModeCollapseKey(ModeDue, "today")},
-		{Name: "Next Seven Days", CollapseKey: canonicalModeCollapseKey(ModeDue, "next-seven-days")},
-		{Name: "Later", CollapseKey: canonicalModeCollapseKey(ModeDue, "later")},
+		{Name: "Overdue", CollapseKey: canonicalModeCollapseKey(chrome.ModeDue, "overdue")},
+		{Name: "Today", CollapseKey: canonicalModeCollapseKey(chrome.ModeDue, "today")},
+		{Name: "Next Seven Days", CollapseKey: canonicalModeCollapseKey(chrome.ModeDue, "next-seven-days")},
+		{Name: "Later", CollapseKey: canonicalModeCollapseKey(chrome.ModeDue, "later")},
 	}
 	now := in.now()
 
@@ -172,10 +173,10 @@ func BuildDueModeSections(in OutlinerModeInput) []OutlinerModeSection {
 func BuildRecentModeSections(in OutlinerModeInput) []OutlinerModeSection {
 	in.Now = in.now()
 	sections := []OutlinerModeSection{
-		{Name: "Today", CollapseKey: canonicalModeCollapseKey(ModeRecent, "today")},
-		{Name: "Yesterday", CollapseKey: canonicalModeCollapseKey(ModeRecent, "yesterday")},
-		{Name: "Last 7 Days", CollapseKey: canonicalModeCollapseKey(ModeRecent, "last-seven-days")},
-		{Name: "Last 30 Days", CollapseKey: canonicalModeCollapseKey(ModeRecent, "last-thirty-days")},
+		{Name: "Today", CollapseKey: canonicalModeCollapseKey(chrome.ModeRecent, "today")},
+		{Name: "Yesterday", CollapseKey: canonicalModeCollapseKey(chrome.ModeRecent, "yesterday")},
+		{Name: "Last 7 Days", CollapseKey: canonicalModeCollapseKey(chrome.ModeRecent, "last-seven-days")},
+		{Name: "Last 30 Days", CollapseKey: canonicalModeCollapseKey(chrome.ModeRecent, "last-thirty-days")},
 	}
 	now := in.now()
 

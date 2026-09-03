@@ -2,6 +2,7 @@ package tui
 
 import (
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // persistActiveRouteState is intentionally run-local in the lean machine model.
@@ -21,7 +22,7 @@ func (m *OutlinerModel) applyOutlinerRouteState(route config.OutlinerRouteState)
 	}
 	route = config.NormalizeOutlinerRouteState(route)
 
-	m.selectOutlinerMode(OutlinerModeID(route.Mode))
+	m.selectOutlinerMode(chrome.OutlinerModeID(route.Mode))
 	m.crossForceRebuild = true
 	m.rebuildRows()
 }

@@ -1,13 +1,16 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/config"
+import (
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/chrome"
+)
 
 // OutlinerOpenOptions applies canonical mode, sort, or persisted route state
 // without changing the typed TaskWorkspace route that owns scope.
 type OutlinerOpenOptions struct {
 	Sort    SortField
 	SetSort bool
-	Mode    OutlinerModeID
+	Mode    chrome.OutlinerModeID
 	SetMode bool
 
 	RouteState    config.OutlinerRouteState
@@ -22,7 +25,7 @@ func (m *OutlinerModel) ApplyOpenOptions(opts OutlinerOpenOptions) {
 
 	mode := m.activeOutlinerModeEntry()
 	if opts.SetMode {
-		if selected, ok := OutlinerModeByID(opts.Mode); ok {
+		if selected, ok := chrome.OutlinerModeByID(opts.Mode); ok {
 			mode = selected
 			m.selectOutlinerMode(selected.ID)
 		}

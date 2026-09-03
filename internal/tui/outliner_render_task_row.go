@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -121,7 +122,7 @@ func taskMatchSourceCue(row outlinerRow) string {
 // title. paint is how the row wears the cursor, and the zero value on an
 // ordinary row; it changes no piece's width, so a caller measuring the title
 // budget can pass the zero value.
-func (m *OutlinerModel) buildTaskRowSegments(row outlinerRow, rowWidth int, colLayout *ColumnLayout, paint cursorPaint) taskRowSegments {
+func (m *OutlinerModel) buildTaskRowSegments(row outlinerRow, rowWidth int, colLayout *chrome.ColumnLayout, paint cursorPaint) taskRowSegments {
 	task := row.task
 	bg := paint.gutterBg()
 	foldIndicator := m.renderTaskFoldIndicator(row, bg)
@@ -146,14 +147,14 @@ func (m *OutlinerModel) buildTaskRowSegments(row outlinerRow, rowWidth int, colL
 
 	// Von Restorff: demote non-hero badges so the most urgent attribute stands
 	// out.
-	hero := pickHeroAttribute(task)
-	if hero != HeroNone {
-		if !statusIsHero(hero) {
-			statusIcon = demoteBadge(statusIcon)
+	hero := chrome.PickHeroAttribute(task)
+	if hero != chrome.HeroNone {
+		if !chrome.StatusIsHero(hero) {
+			statusIcon = chrome.DemoteBadge(statusIcon)
 		}
-		if !priorityIsHero(hero) && prioritySegment != "" {
+		if !chrome.PriorityIsHero(hero) && prioritySegment != "" {
 			if trimmed := strings.TrimRight(prioritySegment, " "); trimmed != "" {
-				prioritySegment = demoteBadge(trimmed) + " "
+				prioritySegment = chrome.DemoteBadge(trimmed) + " "
 			}
 		}
 	}
@@ -201,7 +202,7 @@ func (m *OutlinerModel) buildTaskRowSegments(row outlinerRow, rowWidth int, colL
 
 // taskRowTitleOverflow returns the title text the row itself could not show, so
 // Peek can complete it rather than restate it.
-func (m *OutlinerModel) taskRowTitleOverflow(row outlinerRow, rowWidth int, colLayout *ColumnLayout) string {
+func (m *OutlinerModel) taskRowTitleOverflow(row outlinerRow, rowWidth int, colLayout *chrome.ColumnLayout) string {
 	if m == nil || row.task == nil {
 		return ""
 	}
@@ -209,7 +210,7 @@ func (m *OutlinerModel) taskRowTitleOverflow(row outlinerRow, rowWidth int, colL
 	return textfit.VisualWidthOverflow(row.task.Title, segments.titleWidth(rowWidth))
 }
 
-func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, rowWidth, width, rowIndex int, colLayout *ColumnLayout) string {
+func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, rowWidth, width, rowIndex int, colLayout *chrome.ColumnLayout) string {
 	task := row.task
 	titleStyle := m.renderTaskTitleStyle(task)
 	paint := m.cursorPaintFor(selected)

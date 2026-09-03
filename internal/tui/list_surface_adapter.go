@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 )
@@ -231,9 +232,9 @@ func (adapter *ListSurfaceAdapter[T]) RenderSearchBar() string {
 	return "Filter: " + adapter.SearchInputView() + "\n\n"
 }
 
-func (adapter *ListSurfaceAdapter[T]) guidanceSpec(extraHints ...GuidanceHint) (GuidanceSpec, bool) {
+func (adapter *ListSurfaceAdapter[T]) guidanceSpec(extraHints ...chrome.GuidanceHint) (chrome.GuidanceSpec, bool) {
 	if adapter == nil || adapter.surface == nil {
-		return GuidanceSpec{}, false
+		return chrome.GuidanceSpec{}, false
 	}
 	searching := adapter.IsSearchMode()
 	hasItems := func() bool { return len(adapter.FilteredItems()) > 0 }
@@ -276,10 +277,10 @@ func (adapter *ListSurfaceAdapter[T]) guidanceSpec(extraHints ...GuidanceHint) (
 
 func (adapter *ListSurfaceAdapter[T]) alwaysSearchGuidanceSpec(
 	selectLabel string,
-	extraHints ...GuidanceHint,
-) (GuidanceSpec, bool) {
+	extraHints ...chrome.GuidanceHint,
+) (chrome.GuidanceSpec, bool) {
 	if adapter == nil || adapter.surface == nil {
-		return GuidanceSpec{}, false
+		return chrome.GuidanceSpec{}, false
 	}
 	count := len(adapter.FilteredItems())
 	escapeLabel := "cancel"
@@ -298,7 +299,7 @@ func (adapter *ListSurfaceAdapter[T]) alwaysSearchGuidanceSpec(
 	}}
 	spec, ok := listSurfaceGuidanceSpec(adapter.surface.GuidanceState(true), km, extraHints)
 	if !ok {
-		return GuidanceSpec{}, false
+		return chrome.GuidanceSpec{}, false
 	}
 	spec.Supplemental = fmt.Sprintf("%d %s", count, pluralize(count, "item", "items"))
 	return spec, true
@@ -309,15 +310,15 @@ func (adapter *ListSurfaceAdapter[T]) RenderFooter() string {
 	if !ok {
 		return ""
 	}
-	return strings.Join(guidanceLines(spec, max(adapter.Width(), 1)), "\n")
+	return strings.Join(chrome.GuidanceLines(spec, max(adapter.Width(), 1)), "\n")
 }
 
 func (adapter *ListSurfaceAdapter[T]) RenderInBox(titleContent, headerContent string, maxVisible int) string {
 	var content strings.Builder
-	title := renderFullscreenTitle(titleContent, headerContent)
+	title := chrome.RenderFullscreenTitle(titleContent, headerContent)
 	if adapter.Width() > 0 {
 		if headerContent != "" && lipgloss.Width(title) > adapter.Width() {
-			title = renderFullscreenTitle(titleContent, "")
+			title = chrome.RenderFullscreenTitle(titleContent, "")
 		}
 		title = textfit.FitStyledChromeToWidth("picker title", title, adapter.Width())
 	}
@@ -332,7 +333,7 @@ func (adapter *ListSurfaceAdapter[T]) RenderInBox(titleContent, headerContent st
 	}
 	content.WriteString(adapter.RenderList(maxVisible))
 	guidance, _ := adapter.guidanceSpec()
-	content.WriteString(renderGuidance(guidance, adapter.Width()))
+	content.WriteString(chrome.RenderGuidance(guidance, adapter.Width()))
 	return content.String()
 }
 

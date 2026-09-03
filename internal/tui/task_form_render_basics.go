@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -25,14 +26,14 @@ func (m *TaskFormModel) renderBasicsTabCollapsed() string {
 	const lw = formBasicsLabelWidth
 
 	// 0: Title
-	b.WriteString(renderFormLabelWithWidth("Title:", lw, m.focusIndex == 0))
+	b.WriteString(chrome.RenderFormLabelWithWidth("Title:", lw, m.focusIndex == 0))
 	b.WriteString("\n")
 	theme.ApplyThemedTextarea(&m.titleInput)
 	b.WriteString(m.titleInput.View())
 	b.WriteString("\n")
 
 	// 1: Priority
-	b.WriteString(renderFormLabelWithWidth("Priority:", lw, m.focusIndex == 1))
+	b.WriteString(chrome.RenderFormLabelWithWidth("Priority:", lw, m.focusIndex == 1))
 	{
 		icon := theme.GetPriorityStyle(m.draft.priority).Render(theme.PriorityIcon(m.draft.priority))
 		lbl := formPriorityLabel(m.draft.priority)
@@ -50,7 +51,7 @@ func (m *TaskFormModel) renderBasicsTabCollapsed() string {
 	if m.focusIndex == 2 {
 		expandLabel = theme.SelectorOptionSelectedStyle.Render("+ more fields")
 	}
-	b.WriteString(renderFormLabelWithWidth("", lw, false))
+	b.WriteString(chrome.RenderFormLabelWithWidth("", lw, false))
 	b.WriteString(expandLabel)
 	if m.focusIndex == 2 {
 		b.WriteString(theme.HelpStyle.Render("  (Enter to expand)"))
@@ -66,14 +67,14 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 	const lw = formBasicsLabelWidth
 
 	// 0: Title (inline textarea)
-	b.WriteString(renderFormLabelWithWidth("Title:", lw, m.focusIndex == 0))
+	b.WriteString(chrome.RenderFormLabelWithWidth("Title:", lw, m.focusIndex == 0))
 	b.WriteString("\n")
 	theme.ApplyThemedTextarea(&m.titleInput)
 	b.WriteString(m.titleInput.View())
 	b.WriteString("\n")
 
 	// 1: Description — read-only row; Enter opens TextEditorModel.
-	b.WriteString(renderFormLabelWithWidth("Description:", lw, m.focusIndex == 1))
+	b.WriteString(chrome.RenderFormLabelWithWidth("Description:", lw, m.focusIndex == 1))
 	{
 		val := m.draft.desc
 		var display string
@@ -92,7 +93,7 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 	b.WriteString("\n")
 
 	// 2: Priority
-	b.WriteString(renderFormLabelWithWidth("Priority:", lw, m.focusIndex == 2))
+	b.WriteString(chrome.RenderFormLabelWithWidth("Priority:", lw, m.focusIndex == 2))
 	{
 		icon := theme.GetPriorityStyle(m.draft.priority).Render(theme.PriorityIcon(m.draft.priority))
 		lbl := formPriorityLabel(m.draft.priority)
@@ -106,7 +107,7 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 	b.WriteString("\n")
 
 	// 3: Parent
-	b.WriteString(renderFormLabelWithWidth("Parent:", lw, m.focusIndex == 3))
+	b.WriteString(chrome.RenderFormLabelWithWidth("Parent:", lw, m.focusIndex == 3))
 	{
 		var val string
 		if m.draft.parentID != nil {
@@ -127,7 +128,7 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 	b.WriteString("\n")
 
 	// 4: State
-	b.WriteString(renderFormLabelWithWidth("State:", lw, m.focusIndex == 4))
+	b.WriteString(chrome.RenderFormLabelWithWidth("State:", lw, m.focusIndex == 4))
 	{
 		val := m.draft.state.String()
 		if m.focusIndex == 4 {
@@ -139,12 +140,12 @@ func (m *TaskFormModel) renderBasicsTabExpanded() string {
 	b.WriteString("\n")
 
 	// 5: Flags
-	b.WriteString(renderFormLabelWithWidth("Flags:", lw, m.focusIndex == 5))
+	b.WriteString(chrome.RenderFormLabelWithWidth("Flags:", lw, m.focusIndex == 5))
 	b.WriteString(renderFormFlagsValue(m.draft.pinned, m.draft.review, m.focusIndex == 5))
 	b.WriteString("\n")
 
 	// 6: Tags
-	b.WriteString(renderFormLabelWithWidth("Tags:", lw, m.focusIndex == 6))
+	b.WriteString(chrome.RenderFormLabelWithWidth("Tags:", lw, m.focusIndex == 6))
 	{
 		var val string
 		if len(m.draft.tags) == 0 {

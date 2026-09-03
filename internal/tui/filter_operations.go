@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // filterOperationDescriptor is the shape every facet shares: no target, no
@@ -98,7 +99,7 @@ func (m *AppModel) registerFilterOperations() error {
 					return false
 				}
 				return !stale || m.crossOutliner == nil ||
-					m.crossOutliner.activeOutlinerMode() != ModeRecent
+					m.crossOutliner.activeOutlinerMode() != chrome.ModeRecent
 			}
 			if err := m.registerOperation(descriptor, OperationBinding{
 				RequiredCapabilities:     NewCapabilitySet(CapabilitySimplifiedInput),

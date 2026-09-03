@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/util"
@@ -125,7 +126,7 @@ func (m *OutlinerModel) renderTaskIndicatorSegments(row outlinerRow) taskIndicat
 		return segments
 	}
 	now := time.Now()
-	if m.primaryMode == ModeRecent && m.columnConfig.IsVisible(ColRecency) {
+	if m.primaryMode == chrome.ModeRecent && m.columnConfig.IsVisible(ColRecency) {
 		segments.recency = formatRecencyChip(m.rowRecencyKey(row), now)
 	}
 	if task.IsInState(models.StateWaiting) {
@@ -280,8 +281,8 @@ func taskWokeRecently(task *models.Task, now time.Time) bool {
 	return now.Sub(*task.DeferredUntil) < deferWakeWindow
 }
 
-func (m *OutlinerModel) renderTaskPrioritySegment(task *models.Task, colLayout *ColumnLayout) string {
-	priorityBadge := renderPriorityBadge(task.Priority)
+func (m *OutlinerModel) renderTaskPrioritySegment(task *models.Task, colLayout *chrome.ColumnLayout) string {
+	priorityBadge := chrome.RenderPriorityBadge(task.Priority)
 	if colLayout != nil && colLayout.HasPriority {
 		return theme.PadBadge(priorityBadge, colLayout.PriorityWidth) + " "
 	}
@@ -395,5 +396,5 @@ func applyTaskRowLineStyle(gutter, content string, task *models.Task, paint curs
 	if tinted {
 		return tint.Width(rowWidth).Render(line)
 	}
-	return ZebraLine(line, rowWidth, rowIndex)
+	return chrome.ZebraLine(line, rowWidth, rowIndex)
 }

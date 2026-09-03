@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -53,7 +54,7 @@ func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	if m.quickEdit.IsActive() {
 		extraFooter += m.quickEditExtraLineCount()
 		if spec, ok := m.ContextualGuidance(); ok {
-			extraFooter += max(lipgloss.Height(renderGuidance(spec, width))-2, 0)
+			extraFooter += max(lipgloss.Height(chrome.RenderGuidance(spec, width))-2, 0)
 		}
 	}
 
@@ -233,7 +234,7 @@ func (m *OutlinerModel) buildOutlinerInteractionContext(width int) []string {
 // buildOutlinerTitleLine assembles the Outliner's one-row operational title.
 func (m *OutlinerModel) buildOutlinerTitleLine(width int) string {
 	var pace *pulse.TodayPaceReadout
-	if m.primaryMode == ModeToday && m.CompletionActivity.HasHistory() {
+	if m.primaryMode == chrome.ModeToday && m.CompletionActivity.HasHistory() {
 		pace = &pulse.TodayPaceReadout{
 			OpenCount:    m.workspacePulse.Today,
 			MedianPerDay: m.CompletionActivity.MedianPerDay(),
@@ -241,7 +242,7 @@ func (m *OutlinerModel) buildOutlinerTitleLine(width int) string {
 	}
 	return pulse.RenderOperationalTitle(pulse.OperationalTitleSpec{
 		Scope:   theme.TitleStyle.Render(m.outlinerScopeLabel()),
-		Mode:    operationalTitleModeSegment(m.activeOutlinerModeEntry()),
+		Mode:    chrome.OperationalTitleModeSegment(m.activeOutlinerModeEntry()),
 		Context: m.buildOutlinerInteractionContext(max(width, 1)),
 		Pace:    pace,
 		Pulse:   &m.workspacePulse,
@@ -316,7 +317,7 @@ func (m *OutlinerModel) outlinerEmptyMessage() string {
 		return "No tasks are left in this section. Press Esc to return."
 	case outlinerEmptyMode:
 		mode := m.activeOutlinerModeEntry()
-		if mode.ID == ModeInbox {
+		if mode.ID == chrome.ModeInbox {
 			return "Inbox is empty. Press a to capture or Tab to change modes."
 		}
 		return fmt.Sprintf("%s is empty. Press Tab or Shift+Tab to change modes.", mode.Label)
@@ -340,7 +341,7 @@ func (m *OutlinerModel) computeOutlinerViewport(width int, extraFooterLines int)
 		visibleRows = max(visibleRows-m.inlinePeekLineCount(m.rows[m.cursor], width-1)-1, 1)
 	}
 
-	startIdx, endIdx := persistentIndexWindow(m.cursor, len(m.rows), visibleRows, &m.viewScrollOffset)
+	startIdx, endIdx := chrome.PersistentIndexWindow(m.cursor, len(m.rows), visibleRows, &m.viewScrollOffset)
 	rowWidth := width
 	if len(m.rows) > visibleRows {
 		rowWidth = width - 1

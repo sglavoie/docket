@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -311,7 +312,7 @@ func (m *AppModel) showProjectDeleteConfirm(project *models.Project) tea.Cmd {
 	m.projectDeleteConfirm.ShowWithDetail(
 		projectDeleteConfirmAction,
 		fmt.Sprintf("Delete %s and everything it owns?", loaded.Name),
-		&ConfirmDetail{
+		&chrome.ConfirmDetail{
 			CascadeNote: m.projectDeleteCascadeNote(&loaded),
 			UndoHint:    true,
 		},

@@ -5,13 +5,14 @@ import (
 
 	"charm.land/bubbles/v2/textinput"
 
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/util"
 )
 
 // initTitleInput creates and configures the title textarea with an optional initial value.
 func (m *TaskFormModel) initTitleInput(value string) {
-	factory := DefaultFormFieldFactory()
+	factory := chrome.DefaultFormFieldFactory()
 	m.titleInput = factory.NewTitleInputWithValue(value)
 	// Focus by default (Basics tab, field 0 is selected on open)
 	m.titleInput.Focus()

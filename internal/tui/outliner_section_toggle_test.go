@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -27,7 +28,7 @@ func TestToggleVisibleSectionsCollapsesBuiltInsAndRestoresTaskFocus(t *testing.T
 		ProjectID: project.ID,
 		TaskID:    today.ID,
 	}})
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 
 	focus := taskref.TaskIdentity{ProjectID: project.ID, TaskID: doing.ID}
 	if !outliner.moveCursorToIdentity(focus) {
@@ -105,7 +106,7 @@ func TestToggleVisibleSectionsExpandsMixedAndComputedModes(t *testing.T) {
 	later.DueDate = &laterDue
 	project := primaryRowsProject("alpha", today, later)
 	outliner, _ := primaryRowsOutliner(project)
-	outliner.selectOutlinerMode(ModeDue)
+	outliner.selectOutlinerMode(chrome.ModeDue)
 
 	headers := outliner.visibleSectionHeaders()
 	if len(headers) != 2 {
@@ -123,7 +124,7 @@ func TestToggleVisibleSectionsExpandsMixedAndComputedModes(t *testing.T) {
 	}
 
 	plain := NewOutlinerModel(project, nil, nil)
-	plain.selectOutlinerMode(ModeInbox)
+	plain.selectOutlinerMode(chrome.ModeInbox)
 	if len(plain.visibleSectionHeaders()) != 0 {
 		t.Fatal("un-pinned Inbox fixture unexpectedly has section headers")
 	}
@@ -144,7 +145,7 @@ func TestToggleVisibleSectionsKeepsUnsectionedPrimaryTaskFocused(t *testing.T) {
 		ProjectID: project.ID,
 		TaskID:    regular.ID,
 	}})
-	outliner.selectOutlinerMode(ModeToday)
+	outliner.selectOutlinerMode(chrome.ModeToday)
 
 	regularIdentity := taskref.TaskIdentity{ProjectID: project.ID, TaskID: regular.ID}
 	if !outliner.moveCursorToIdentity(regularIdentity) {

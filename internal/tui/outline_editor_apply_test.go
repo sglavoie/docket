@@ -81,7 +81,7 @@ func TestOutlineEditedArmsTheDeleteConfirmBeforeApplying(t *testing.T) {
 	if got, want := model.outlineDeleteConfirm.Prompt(), "Delete task #4 from Sonar?"; got != want {
 		t.Errorf("prompt = %q, want %q", got, want)
 	}
-	detail := model.outlineDeleteConfirm.detail
+	detail := model.outlineDeleteConfirm.Detail
 	if detail == nil || detail.TotalCount != 1 || !detail.UndoHint {
 		t.Fatalf("detail = %+v, want one task with the undo hint", detail)
 	}

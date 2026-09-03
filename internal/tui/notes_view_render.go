@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -20,14 +21,14 @@ func (m *NotesViewModel) View() tea.View {
 	width := max(m.Width(), 1)
 	height := max(m.Height(), 1)
 	subtitle := m.scopeLabel()
-	titleWidth := lipgloss.Width(fullscreenTitleStyle(m.AccentColor()).Render("Notes"))
+	titleWidth := lipgloss.Width(chrome.FullscreenTitleStyle(m.AccentColor()).Render("Notes"))
 	if width < 40 {
 		subtitle = ""
 	} else {
 		subtitle = textfit.TruncateToVisualWidth(subtitle, max(width-titleWidth-2, 1))
 	}
 	header := []string{
-		renderFullscreenTitleWithPulse("Notes", subtitle, m.CurrentWorkspacePulse(), width, m.AccentColor()),
+		chrome.RenderFullscreenTitleWithPulse("Notes", subtitle, m.CurrentWorkspacePulse(), width, m.AccentColor()),
 		theme.MutedStyle.Render(textfit.TruncateToVisualWidth(m.scopeCountLabel(), width)),
 	}
 	if search := m.renderSearchLine(); search != "" {
@@ -43,7 +44,7 @@ func (m *NotesViewModel) View() tea.View {
 		footer = append(footer, textfit.FitStyledLineToWidth("Rename: "+m.renameInput.View(), width))
 	}
 	if guidance, ok := m.ContextualGuidance(); ok {
-		footer = append(footer, renderGuidance(guidance, width, m.AccentColor()))
+		footer = append(footer, chrome.RenderGuidance(guidance, width, m.AccentColor()))
 	}
 	if m.statusMessage != "" {
 		footer = append(footer, textfit.FitStyledLineToWidth(m.renderStatusBar(), width))
@@ -51,8 +52,8 @@ func (m *NotesViewModel) View() tea.View {
 
 	headerBlock := strings.Join(header, "\n")
 	footerBlock := strings.Join(footer, "\n")
-	contentHeight := fullscreenContentHeightForBlocks(height, headerBlock, footerBlock)
-	content := fitBlockHeight(m.renderNotesContent(width, contentHeight), contentHeight)
+	contentHeight := chrome.FullscreenContentHeightForBlocks(height, headerBlock, footerBlock)
+	content := chrome.FitBlockHeight(m.renderNotesContent(width, contentHeight), contentHeight)
 	return tea.NewView(lipgloss.JoinVertical(
 		lipgloss.Left,
 		headerBlock,
@@ -90,7 +91,7 @@ func (m *NotesViewModel) renderNotesContent(width, height int) string {
 // charged against the pane rather than the terminal.
 func (m *NotesViewModel) renderListPane(width, listHeight int) string {
 	if m.snapshotError != nil {
-		return renderEmptyState("Notes are unavailable.", "Resolve the workspace error and reopen Notes.") + "\n"
+		return chrome.RenderEmptyState("Notes are unavailable.", "Resolve the workspace error and reopen Notes.") + "\n"
 	}
 	if len(m.visibleRows) == 0 {
 		if strings.TrimSpace(m.activeSearchQuery()) != "" {
@@ -98,7 +99,7 @@ func (m *NotesViewModel) renderListPane(width, listHeight int) string {
 			if m.searchEditing {
 				hint = "Keep typing or press Esc to restore the accepted search."
 			}
-			return renderEmptyState(
+			return chrome.RenderEmptyState(
 				"No matching notes.",
 				hint,
 			) + "\n"
@@ -107,17 +108,17 @@ func (m *NotesViewModel) renderListPane(width, listHeight int) string {
 		if len(m.collectionErrors) > 0 {
 			message = "No notes loaded from the available owners."
 		}
-		return renderEmptyState(message, "Press a to choose a location and create one.") + "\n"
+		return chrome.RenderEmptyState(message, "Press a to choose a location and create one.") + "\n"
 	}
 
 	var b strings.Builder
 	listHeight = max(listHeight, 1)
-	start, end := persistentIndexWindow(m.cursor, len(m.visibleRows), listHeight, &m.scrollOffset)
+	start, end := chrome.PersistentIndexWindow(m.cursor, len(m.visibleRows), listHeight, &m.scrollOffset)
 	width = max(width, 1)
 	scopeWidth := min(24, max(width/3, 6))
 	for i := start; i < end; i++ {
 		row := m.visibleRows[i]
-		owner := truncateAndPad(row.OwnerLabel, scopeWidth)
+		owner := chrome.TruncateAndPad(row.OwnerLabel, scopeWidth)
 		match := m.searchMatches[row.Identity()]
 		bodyIndicator := ""
 		if match.bodyMatched {

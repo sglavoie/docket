@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -87,7 +88,7 @@ func newSession4LifecycleFixture(
 func attachSession4CrossOutliner(t *testing.T, app *AppModel) *OutlinerModel {
 	t.Helper()
 	cross := NewOutlinerModel(nil, app.configManager, app.runtime)
-	cross.selectOutlinerMode(ModeAll)
+	cross.selectOutlinerMode(chrome.ModeAll)
 	raw := cross.loadCrossProjectsCmd()()
 	loaded, ok := raw.(crossProjectsLoadedMsg)
 	if !ok {

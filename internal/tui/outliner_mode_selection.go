@@ -6,14 +6,15 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // workModeCycleOrder is derived from the catalog so presentation identity and
 // keyboard cycling cannot drift.
-var workModeCycleOrder = func() []OutlinerModeID {
-	modes := OutlinerTabModes()
-	ids := make([]OutlinerModeID, len(modes))
+var workModeCycleOrder = func() []chrome.OutlinerModeID {
+	modes := chrome.OutlinerTabModes()
+	ids := make([]chrome.OutlinerModeID, len(modes))
 	for i, mode := range modes {
 		ids[i] = mode.ID
 	}
@@ -25,7 +26,7 @@ const recentStaleFilterClearedStatus = "Stale filter cleared: Recent only includ
 // clearStaleForRecentMode enforces the facet contract at every path that can
 // activate Recent, including restoration of a captured project-scope frame.
 func (m *OutlinerModel) clearStaleForRecentMode() {
-	if m.primaryMode != ModeRecent || !m.filter.Stale {
+	if m.primaryMode != chrome.ModeRecent || !m.filter.Stale {
 		return
 	}
 	m.replaceFilterClauses([]models.QueryField{models.QueryFieldStale}, nil)
@@ -33,16 +34,16 @@ func (m *OutlinerModel) clearStaleForRecentMode() {
 }
 
 // activeOutlinerMode returns the sole mode identity owned by the Outliner.
-func (m *OutlinerModel) activeOutlinerMode() OutlinerModeID {
-	if _, ok := OutlinerModeByID(m.primaryMode); ok {
+func (m *OutlinerModel) activeOutlinerMode() chrome.OutlinerModeID {
+	if _, ok := chrome.OutlinerModeByID(m.primaryMode); ok {
 		return m.primaryMode
 	}
-	return ModeAll
+	return chrome.ModeAll
 }
 
 // activeOutlinerModeEntry returns the catalog entry for the active mode.
-func (m *OutlinerModel) activeOutlinerModeEntry() OutlinerMode {
-	mode, _ := OutlinerModeByID(m.activeOutlinerMode())
+func (m *OutlinerModel) activeOutlinerModeEntry() chrome.OutlinerMode {
+	mode, _ := chrome.OutlinerModeByID(m.activeOutlinerMode())
 	return mode
 }
 
@@ -119,8 +120,8 @@ func (m *OutlinerModel) restoreModeCursor(anchor modeCursorAnchor) {
 // A held query never refuses a mode change: the query is a clause the new mode
 // narrows with, so the mode keeps its own lanes and grouping and simply shows
 // fewer rows.
-func (m *OutlinerModel) selectOutlinerMode(id OutlinerModeID) (tea.Model, tea.Cmd) {
-	mode, ok := OutlinerModeByID(id)
+func (m *OutlinerModel) selectOutlinerMode(id chrome.OutlinerModeID) (tea.Model, tea.Cmd) {
+	mode, ok := chrome.OutlinerModeByID(id)
 	if !ok {
 		return m, nil
 	}
@@ -137,7 +138,7 @@ func (m *OutlinerModel) selectOutlinerMode(id OutlinerModeID) (tea.Model, tea.Cm
 
 	// Entering Recent re-reads activity, so gr over an already-open Recent is the
 	// manual refresh.
-	if mode.ID == ModeRecent {
+	if mode.ID == chrome.ModeRecent {
 		m.recencyKeys = nil
 		m.recencyProjection = ""
 	}
@@ -157,7 +158,7 @@ func (m *OutlinerModel) selectOutlinerMode(id OutlinerModeID) (tea.Model, tea.Cm
 // last rather than the one that led the snapshot you have been triaging.
 func (m *OutlinerModel) focusLatestActivity() tea.Cmd {
 	staleWasActive := m.filter.Stale
-	m.selectOutlinerMode(ModeRecent)
+	m.selectOutlinerMode(chrome.ModeRecent)
 	staleWasCleared := staleWasActive && !m.filter.Stale
 	task, project, sectionKey, ok := m.recentActivityLead()
 	if !ok {
@@ -219,7 +220,7 @@ func (m *OutlinerModel) cycleWorkMode(delta int) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	var target OutlinerModeID
+	var target chrome.OutlinerModeID
 	if idx < 0 {
 		if delta >= 0 {
 			target = workModeCycleOrder[0]
@@ -236,9 +237,9 @@ func (m *OutlinerModel) cycleWorkMode(delta int) (tea.Model, tea.Cmd) {
 	return m.selectOutlinerMode(target)
 }
 
-func isPrimaryOutlinerMode(mode OutlinerModeID) bool {
+func isPrimaryOutlinerMode(mode chrome.OutlinerModeID) bool {
 	switch mode {
-	case ModeAll, ModeInbox, ModeToday, ModeNext, ModeBacklog:
+	case chrome.ModeAll, chrome.ModeInbox, chrome.ModeToday, chrome.ModeNext, chrome.ModeBacklog:
 		return true
 	default:
 		return false

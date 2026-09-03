@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 func TestTaskForm_BasicsTab_DescriptionEmpty_ShowsNone(t *testing.T) {
@@ -35,7 +36,7 @@ func TestTaskForm_BasicsTab_EnterOnDescription_EmitsShowTextEditorMsg(t *testing
 		t.Fatal("expected Cmd from Enter on Description, got nil")
 	}
 	msg := cmd()
-	editorMsg, ok := msg.(ShowTextEditorMsg)
+	editorMsg, ok := msg.(chrome.ShowTextEditorMsg)
 	if !ok {
 		t.Fatalf("expected ShowTextEditorMsg, got %T", msg)
 	}
@@ -49,7 +50,7 @@ func TestTaskForm_BasicsTab_EnterOnDescription_EmitsShowTextEditorMsg(t *testing
 
 func TestTaskForm_TextEditorDoneMsg_FormDesc_UpdatesDraft(t *testing.T) {
 	m := newTestTaskForm()
-	m = sendFormMsg(m, TextEditorDoneMsg{FieldName: "formDesc", Value: "new description", Canceled: false})
+	m = sendFormMsg(m, chrome.TextEditorDoneMsg{FieldName: "formDesc", Value: "new description", Canceled: false})
 	if m.draft.desc != "new description" {
 		t.Errorf("expected draft.desc='new description', got %q", m.draft.desc)
 	}
@@ -61,7 +62,7 @@ func TestTaskForm_TextEditorDoneMsg_FormDesc_UpdatesDraft(t *testing.T) {
 func TestTaskForm_TextEditorDoneMsg_Canceled_NoChange(t *testing.T) {
 	m := newTestTaskForm()
 	m.draft.desc = "original"
-	m = sendFormMsg(m, TextEditorDoneMsg{FieldName: "formDesc", Value: "new", Canceled: true})
+	m = sendFormMsg(m, chrome.TextEditorDoneMsg{FieldName: "formDesc", Value: "new", Canceled: true})
 	if m.draft.desc != "original" {
 		t.Errorf("canceled TextEditorDoneMsg should not update draft; got %q", m.draft.desc)
 	}

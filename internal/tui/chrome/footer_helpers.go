@@ -1,4 +1,4 @@
-package tui
+package chrome
 
 import (
 	"fmt"
@@ -13,79 +13,99 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-// captureGuidanceSpec selects the controls for the composer's current
+// GuidanceHint is one complete key/action entry in contextual guidance.
+// Lower Priority values are retained before higher values. Required hints are
+// reserved before any optional hint is considered, regardless of priority.
+type GuidanceHint struct {
+	Key      string
+	Label    string
+	Priority int
+	Required bool
+}
+
+// GuidanceSpec describes the persistent controls for one interaction state.
+// Hints retain declaration order when rendered. Supplemental is optional
+// state data (for example a scroll percentage), not an action. Rows is clamped
+// to the product's one- or two-row guidance budget; zero means one row.
+type GuidanceSpec struct {
+	Hints        []GuidanceHint
+	Supplemental string
+	Rows         int
+}
+
+// CaptureGuidanceSpec selects the controls for the composer's current
 // interaction. Capture is always active input, so every state receives the
 // two-row budget and marks its essential completion/cancellation controls as
 // required.
-func captureGuidanceSpec(confirmDiscard, autocompleteActive, helpExpanded, syntaxOverflow bool, scrollPercent int) GuidanceSpec {
+func CaptureGuidanceSpec(ConfirmDiscard, autocompleteActive, helpExpanded, syntaxOverflow bool, scrollPercent int) GuidanceSpec {
 	var spec GuidanceSpec
 	switch {
-	case confirmDiscard:
-		spec.Hints = requiredGuidanceHints("Y discard", "N/Esc keep editing")
+	case ConfirmDiscard:
+		spec.Hints = RequiredGuidanceHints("Y discard", "N/Esc keep editing")
 	case autocompleteActive:
 		spec.Hints = []GuidanceHint{
-			newGuidanceHint("Tab/Enter accept", 0, true),
-			newGuidanceHint("Ctrl+J/K navigate", 1, false),
-			newGuidanceHint("Esc dismiss", 0, true),
+			NewGuidanceHint("Tab/Enter accept", 0, true),
+			NewGuidanceHint("Ctrl+J/K navigate", 1, false),
+			NewGuidanceHint("Esc dismiss", 0, true),
 		}
 	case helpExpanded && syntaxOverflow:
 		spec.Hints = []GuidanceHint{
-			newGuidanceHint("Enter create", 0, true),
-			newGuidanceHint("Ctrl+E create & edit", 1, false),
-			newGuidanceHint("Ctrl+V paste", 2, false),
-			newGuidanceHint("Ctrl+J/K scroll", 3, false),
-			newGuidanceHint("PgUp/PgDn page", 4, false),
-			newGuidanceHint("? close syntax", 0, true),
-			newGuidanceHint("Esc close syntax", 0, true),
+			NewGuidanceHint("Enter create", 0, true),
+			NewGuidanceHint("Ctrl+E create & edit", 1, false),
+			NewGuidanceHint("Ctrl+V paste", 2, false),
+			NewGuidanceHint("Ctrl+J/K scroll", 3, false),
+			NewGuidanceHint("PgUp/PgDn page", 4, false),
+			NewGuidanceHint("? close syntax", 0, true),
+			NewGuidanceHint("Esc close syntax", 0, true),
 		}
 		spec.Supplemental = fmt.Sprintf("%d%%", scrollPercent)
 	case helpExpanded:
 		spec.Hints = []GuidanceHint{
-			newGuidanceHint("Enter create", 0, true),
-			newGuidanceHint("Ctrl+E create & edit", 1, false),
-			newGuidanceHint("Ctrl+V paste", 2, false),
-			newGuidanceHint("? close syntax", 0, true),
-			newGuidanceHint("Esc close syntax", 0, true),
+			NewGuidanceHint("Enter create", 0, true),
+			NewGuidanceHint("Ctrl+E create & edit", 1, false),
+			NewGuidanceHint("Ctrl+V paste", 2, false),
+			NewGuidanceHint("? close syntax", 0, true),
+			NewGuidanceHint("Esc close syntax", 0, true),
 		}
 	default:
 		spec.Hints = []GuidanceHint{
-			newGuidanceHint("Enter create", 0, true),
-			newGuidanceHint("Ctrl+E create & edit", 1, false),
-			newGuidanceHint("Ctrl+V paste", 2, false),
-			newGuidanceHint("? syntax", 3, false),
-			newGuidanceHint("Esc cancel", 0, true),
+			NewGuidanceHint("Enter create", 0, true),
+			NewGuidanceHint("Ctrl+E create & edit", 1, false),
+			NewGuidanceHint("Ctrl+V paste", 2, false),
+			NewGuidanceHint("? syntax", 3, false),
+			NewGuidanceHint("Esc cancel", 0, true),
 		}
 	}
 	spec.Rows = 2
 	return spec
 }
 
-// confirmationGuidanceSpec is the canonical destructive-confirmation chrome.
+// ConfirmationGuidanceSpec is the canonical destructive-confirmation chrome.
 // Confirmation overlays block every unrelated key, so both outcomes are
 // required and keep the two-row interaction budget at narrow widths.
-func confirmationGuidanceSpec() GuidanceSpec {
+func ConfirmationGuidanceSpec() GuidanceSpec {
 	return GuidanceSpec{
-		Hints: requiredGuidanceHints("y confirm", "n/Esc cancel"),
+		Hints: RequiredGuidanceHints("y confirm", "n/Esc cancel"),
 		Rows:  2,
 	}
 }
 
-func requiredGuidanceHints(entries ...string) []GuidanceHint {
+func RequiredGuidanceHints(entries ...string) []GuidanceHint {
 	return guidanceHintsFromEntries(true, 0, entries...)
 }
 
-func optionalGuidanceHints(priority int, entries ...string) []GuidanceHint {
+func OptionalGuidanceHints(priority int, entries ...string) []GuidanceHint {
 	return guidanceHintsFromEntries(false, priority, entries...)
 }
 
-func newGuidanceHint(entry string, priority int, required bool) GuidanceHint {
+func NewGuidanceHint(entry string, priority int, required bool) GuidanceHint {
 	key, label := splitGuidanceEntry(entry)
 	return GuidanceHint{Key: key, Label: label, Priority: priority, Required: required}
 }
 
-// guidanceSpecFromKeyMap adapts live gated binding metadata without copying
+// GuidanceSpecFromKeyMap adapts live gated binding metadata without copying
 // gate or visibility decisions into a surface renderer.
-func guidanceSpecFromKeyMap(km *keymap.KeyMap, rows int) (GuidanceSpec, bool) {
+func GuidanceSpecFromKeyMap(km *keymap.KeyMap, rows int) (GuidanceSpec, bool) {
 	footerHints := km.FooterHints()
 	if len(footerHints) == 0 {
 		return GuidanceSpec{}, false
@@ -100,26 +120,6 @@ func guidanceSpecFromKeyMap(km *keymap.KeyMap, rows int) (GuidanceSpec, bool) {
 		})
 	}
 	return spec, true
-}
-
-func pendingChordGuidanceSpec(prefix string, hints []ChordHint) GuidanceSpec {
-	spec := GuidanceSpec{Rows: 2}
-	if prefix = strings.TrimSpace(prefix); prefix != "" {
-		spec.Hints = append(spec.Hints, GuidanceHint{Key: prefix + "…"})
-	}
-	for index, hint := range hints {
-		spec.Hints = append(spec.Hints, GuidanceHint{
-			Key:      hint.Key,
-			Label:    hint.Label,
-			Priority: index + 1,
-		})
-	}
-	spec.Hints = append(spec.Hints, GuidanceHint{
-		Key:      "Esc",
-		Label:    "cancel",
-		Required: true,
-	})
-	return spec
 }
 
 func guidanceHintsFromEntries(required bool, basePriority int, entries ...string) []GuidanceHint {
@@ -150,31 +150,31 @@ func splitGuidanceEntry(entry string) (string, string) {
 	return entry, ""
 }
 
-func guidanceHintText(hint GuidanceHint) string {
+func GuidanceHintText(hint GuidanceHint) string {
 	return strings.TrimSpace(strings.TrimSpace(hint.Key) + " " + strings.TrimSpace(hint.Label))
 }
 
-// guidanceSegment is one packed footer entry. Key and Label carry a keystroke
+// GuidanceSegment is one packed footer entry. Key and Label carry a keystroke
 // entry whose two halves are colored apart at render time; Verbatim carries
 // supplemental state text that names no keystroke and stays fully muted.
-type guidanceSegment struct {
+type GuidanceSegment struct {
 	Key      string
 	Label    string
 	Verbatim string
 }
 
-func (segment guidanceSegment) text() string {
+func (segment GuidanceSegment) Text() string {
 	if segment.Verbatim != "" {
 		return segment.Verbatim
 	}
-	return guidanceHintText(GuidanceHint{Key: segment.Key, Label: segment.Label})
+	return GuidanceHintText(GuidanceHint{Key: segment.Key, Label: segment.Label})
 }
 
-// fitToWidth clips one segment for the narrow fallback path, keeping the
+// FitToWidth clips one segment for the narrow fallback path, keeping the
 // keystroke intact so the entry stays actionable and only its label loses
 // characters. A key too wide to pair with any label degrades to verbatim text.
-func (segment guidanceSegment) fitToWidth(width int) guidanceSegment {
-	text := segment.text()
+func (segment GuidanceSegment) FitToWidth(width int) GuidanceSegment {
+	text := segment.Text()
 	width = max(width, 1)
 	if lipgloss.Width(text) <= width {
 		return segment
@@ -182,23 +182,23 @@ func (segment guidanceSegment) fitToWidth(width int) guidanceSegment {
 	key := strings.TrimSpace(segment.Key)
 	if segment.Verbatim == "" && key != "" && lipgloss.Width(key)+1 < width {
 		label := textfit.TruncateToVisualWidth(strings.TrimSpace(segment.Label), width-lipgloss.Width(key)-1)
-		return guidanceSegment{Key: key, Label: label}
+		return GuidanceSegment{Key: key, Label: label}
 	}
-	return guidanceSegment{Verbatim: textfit.TruncateToVisualWidth(text, width)}
+	return GuidanceSegment{Verbatim: textfit.TruncateToVisualWidth(text, width)}
 }
 
-func guidanceLineText(segments []guidanceSegment) string {
+func guidanceLineText(segments []GuidanceSegment) string {
 	texts := make([]string, 0, len(segments))
 	for _, segment := range segments {
-		texts = append(texts, segment.text())
+		texts = append(texts, segment.Text())
 	}
-	return strings.Join(texts, footerHelpSeparator)
+	return strings.Join(texts, FooterHelpSeparator)
 }
 
-// guidanceLines is the plain-text projection of the packed guidance. Packing
+// GuidanceLines is the plain-text projection of the packed guidance. Packing
 // stays plain so every width decision is made before any styling exists.
-func guidanceLines(spec GuidanceSpec, width int) []string {
-	segmentLines := guidanceSegmentLines(spec, width)
+func GuidanceLines(spec GuidanceSpec, width int) []string {
+	segmentLines := GuidanceSegmentLines(spec, width)
 	if len(segmentLines) == 0 {
 		return nil
 	}
@@ -209,12 +209,12 @@ func guidanceLines(spec GuidanceSpec, width int) []string {
 	return lines
 }
 
-// guidanceSegmentLines selects and packs complete entries within the spec's row
+// GuidanceSegmentLines selects and packs complete entries within the spec's row
 // budget. Required entries are reserved first. Optional entries are considered
 // by priority while successful entries retain declaration order; after one
 // optional entry cannot fit, lower-priority entries are not promoted. The
 // supplemental value is attempted last and therefore drops first under pressure.
-func guidanceSegmentLines(spec GuidanceSpec, width int) [][]guidanceSegment {
+func GuidanceSegmentLines(spec GuidanceSpec, width int) [][]GuidanceSegment {
 	if width <= 0 {
 		width = 80
 	}
@@ -226,13 +226,13 @@ func guidanceSegmentLines(spec GuidanceSpec, width int) [][]guidanceSegment {
 	type candidate struct {
 		index   int
 		hint    GuidanceHint
-		segment guidanceSegment
+		segment GuidanceSegment
 	}
 	candidates := make([]candidate, 0, len(spec.Hints))
 	selected := make(map[int]bool, len(spec.Hints))
 	for index, hint := range spec.Hints {
-		segment := guidanceSegment{Key: strings.TrimSpace(hint.Key), Label: strings.TrimSpace(hint.Label)}
-		if segment.text() == "" {
+		segment := GuidanceSegment{Key: strings.TrimSpace(hint.Key), Label: strings.TrimSpace(hint.Label)}
+		if segment.Text() == "" {
 			continue
 		}
 		entryCandidate := candidate{index: index, hint: hint, segment: segment}
@@ -242,15 +242,15 @@ func guidanceSegmentLines(spec GuidanceSpec, width int) [][]guidanceSegment {
 		}
 	}
 
-	selectedSegments := func(extra string) []guidanceSegment {
-		segments := make([]guidanceSegment, 0, len(selected)+1)
+	selectedSegments := func(extra string) []GuidanceSegment {
+		segments := make([]GuidanceSegment, 0, len(selected)+1)
 		for _, candidate := range candidates {
 			if selected[candidate.index] {
 				segments = append(segments, candidate.segment)
 			}
 		}
 		if extra = strings.TrimSpace(extra); extra != "" {
-			segments = append(segments, guidanceSegment{Verbatim: extra})
+			segments = append(segments, GuidanceSegment{Verbatim: extra})
 		}
 		return segments
 	}
@@ -287,22 +287,22 @@ func guidanceSegmentLines(spec GuidanceSpec, width int) [][]guidanceSegment {
 	return lines
 }
 
-func packGuidanceSegments(segments []guidanceSegment, width, maxLines int) ([][]guidanceSegment, bool) {
+func packGuidanceSegments(segments []GuidanceSegment, width, maxLines int) ([][]GuidanceSegment, bool) {
 	if len(segments) == 0 || width <= 0 || maxLines <= 0 {
 		return nil, len(segments) == 0
 	}
-	lines := make([][]guidanceSegment, 0, maxLines)
+	lines := make([][]GuidanceSegment, 0, maxLines)
 	for _, segment := range segments {
-		text := segment.text()
+		text := segment.Text()
 		if text == "" || lipgloss.Width(text) > width {
 			return nil, false
 		}
 		if len(lines) == 0 {
-			lines = append(lines, []guidanceSegment{segment})
+			lines = append(lines, []GuidanceSegment{segment})
 			continue
 		}
 		last := len(lines) - 1
-		candidate := guidanceLineText(lines[last]) + footerHelpSeparator + text
+		candidate := guidanceLineText(lines[last]) + FooterHelpSeparator + text
 		if lipgloss.Width(candidate) <= width {
 			lines[last] = append(lines[last], segment)
 			continue
@@ -310,24 +310,24 @@ func packGuidanceSegments(segments []guidanceSegment, width, maxLines int) ([][]
 		if len(lines) == maxLines {
 			return nil, false
 		}
-		lines = append(lines, []guidanceSegment{segment})
+		lines = append(lines, []GuidanceSegment{segment})
 	}
 	return lines, true
 }
 
-func fitRequiredGuidanceSegments(segments []guidanceSegment, width, rows int) [][]guidanceSegment {
-	lines := make([][]guidanceSegment, 0, rows)
+func fitRequiredGuidanceSegments(segments []GuidanceSegment, width, rows int) [][]GuidanceSegment {
+	lines := make([][]GuidanceSegment, 0, rows)
 	for _, segment := range segments {
-		segment = segment.fitToWidth(width)
-		if segment.text() == "" {
+		segment = segment.FitToWidth(width)
+		if segment.Text() == "" {
 			continue
 		}
 		if len(lines) == 0 {
-			lines = append(lines, []guidanceSegment{segment})
+			lines = append(lines, []GuidanceSegment{segment})
 			continue
 		}
 		last := len(lines) - 1
-		candidate := guidanceLineText(lines[last]) + footerHelpSeparator + segment.text()
+		candidate := guidanceLineText(lines[last]) + FooterHelpSeparator + segment.Text()
 		if lipgloss.Width(candidate) <= width {
 			lines[last] = append(lines[last], segment)
 			continue
@@ -335,14 +335,14 @@ func fitRequiredGuidanceSegments(segments []guidanceSegment, width, rows int) []
 		if len(lines) == rows {
 			break
 		}
-		lines = append(lines, []guidanceSegment{segment})
+		lines = append(lines, []GuidanceSegment{segment})
 	}
 	return lines
 }
 
 // renderGuidanceSegment colors the keystroke apart from its action so the key
 // carries the scan weight. Supplemental state text names no key and stays muted.
-func renderGuidanceSegment(segment guidanceSegment) string {
+func renderGuidanceSegment(segment GuidanceSegment) string {
 	if segment.Verbatim != "" {
 		return theme.HelpStyle.Render(segment.Verbatim)
 	}
@@ -357,17 +357,17 @@ func renderGuidanceSegment(segment guidanceSegment) string {
 	return theme.HelpKeyStyle.Render(key) + theme.HelpStyle.Render(" "+label)
 }
 
-// renderGuidanceLines styles the packed guidance one segment at a time. Styling
+// RenderGuidanceLines styles the packed guidance one segment at a time. Styling
 // happens after packing, so the visible width matches the plain projection.
-func renderGuidanceLines(spec GuidanceSpec, width int) []string {
+func RenderGuidanceLines(spec GuidanceSpec, width int) []string {
 	if width <= 0 {
 		width = 80
 	}
-	segmentLines := guidanceSegmentLines(spec, width)
+	segmentLines := GuidanceSegmentLines(spec, width)
 	if len(segmentLines) == 0 {
 		return nil
 	}
-	separator := theme.HelpStyle.Render(footerHelpSeparator)
+	separator := theme.HelpStyle.Render(FooterHelpSeparator)
 	lines := make([]string, 0, len(segmentLines))
 	for _, segments := range segmentLines {
 		styled := make([]string, 0, len(segments))
@@ -379,15 +379,15 @@ func renderGuidanceLines(spec GuidanceSpec, width int) []string {
 	return lines
 }
 
-// renderGuidance is the sole structured guidance renderer used by shell-owned
+// RenderGuidance is the sole structured guidance renderer used by shell-owned
 // contextual controls and pending chords. It emits one divider plus at most the
 // spec's one- or two-row budget.
-func renderGuidance(spec GuidanceSpec, width int, accent ...color.Color) string {
+func RenderGuidance(spec GuidanceSpec, width int, accent ...color.Color) string {
 	var dividerOpts []DividerOption
 	if len(accent) > 0 && accent[0] != nil {
 		dividerOpts = append(dividerOpts, WithDividerColor(accent[0]))
 	}
-	return renderGuidanceWithSeparator(spec, width, renderHorizontalDivider(width, dividerOpts...))
+	return renderGuidanceWithSeparator(spec, width, RenderHorizontalDivider(width, dividerOpts...))
 }
 
 // renderGuidanceWithSeparator keeps shared guidance packing while allowing a
@@ -396,29 +396,29 @@ func renderGuidanceWithSeparator(spec GuidanceSpec, width int, separator string)
 	if width <= 0 {
 		width = 80
 	}
-	lines := renderGuidanceLines(spec, width)
+	lines := RenderGuidanceLines(spec, width)
 	if len(lines) == 0 {
 		return ""
 	}
 	return separator + "\n" + strings.Join(lines, "\n")
 }
 
-// renderGuidanceText renders structured guidance without a divider. Inline
+// RenderGuidanceText renders structured guidance without a divider. Inline
 // overlays use it inside their own bordered frame, where a second separator
 // would duplicate the frame's visual boundary.
-func renderGuidanceText(spec GuidanceSpec, width int) string {
-	return strings.Join(renderGuidanceLines(spec, width), "\n")
+func RenderGuidanceText(spec GuidanceSpec, width int) string {
+	return strings.Join(RenderGuidanceLines(spec, width), "\n")
 }
 
-// requiredActionGuidanceSpec builds the common two-row contract for active
+// RequiredActionGuidanceSpec builds the common two-row contract for active
 // editors: the commit and cancel exits are reserved before optional controls.
-func requiredActionGuidanceSpec(commit string, optional ...string) GuidanceSpec {
+func RequiredActionGuidanceSpec(commit string, optional ...string) GuidanceSpec {
 	return GuidanceSpec{
-		Hints: append(requiredGuidanceHints(commit, "Esc cancel"), optionalGuidanceHints(10, optional...)...),
+		Hints: append(RequiredGuidanceHints(commit, "Esc cancel"), OptionalGuidanceHints(10, optional...)...),
 		Rows:  2,
 	}
 }
 
-func escapeGuidanceSpec() GuidanceSpec {
-	return GuidanceSpec{Hints: optionalGuidanceHints(0, "Esc back", "? help"), Rows: 1}
+func EscapeGuidanceSpec() GuidanceSpec {
+	return GuidanceSpec{Hints: OptionalGuidanceHints(0, "Esc back", "? help"), Rows: 1}
 }

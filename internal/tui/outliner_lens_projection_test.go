@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // lensNarrowedIDs installs one lens query and returns the task order the mode
@@ -256,7 +257,7 @@ func TestLensQueryKeepsTheRegistryGuidanceForARefusedValue(t *testing.T) {
 // ranked list is what abandons them for relevance order.
 func TestSearchNarrowsTheModeAndTheRankedListLeavesIt(t *testing.T) {
 	outliner := lensProjectionOutliner()
-	outliner.ApplyOpenOptions(OutlinerOpenOptions{Mode: ModeInbox, SetMode: true})
+	outliner.ApplyOpenOptions(OutlinerOpenOptions{Mode: chrome.ModeInbox, SetMode: true})
 	outliner.filter.Pinned = true
 	outliner.adoptFilterCarriers()
 	outliner.crossForceRebuild = true
@@ -276,7 +277,7 @@ func TestSearchNarrowsTheModeAndTheRankedListLeavesIt(t *testing.T) {
 	// mode is widened to one that holds the matches.
 	outliner.filter.Pinned = false
 	outliner.adoptFilterCarriers()
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 	got := searchVisibleTaskIDs(outliner)
 	for _, id := range []string{"child", "described", "beta-task"} {
 		if !slices.Contains(got, id) {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -73,7 +74,7 @@ func TestHandleViewMessagesTextEditorDone(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(presentation.ViewTextEditor)
 
-	msg := TextEditorDoneMsg{Canceled: true}
+	msg := chrome.TextEditorDoneMsg{Canceled: true}
 	handled, _ := app.handleViewMessages(msg)
 
 	if !handled {

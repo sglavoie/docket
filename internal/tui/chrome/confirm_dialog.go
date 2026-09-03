@@ -1,4 +1,4 @@
-package tui
+package chrome
 
 import (
 	"fmt"
@@ -28,28 +28,28 @@ type ConfirmDetail struct {
 type ConfirmDialog struct {
 	action string         // e.g., "delete", "archive", "bulk-delete"
 	prompt string         // custom prompt text to display
-	detail *ConfirmDetail // optional rich detail shown below prompt
+	Detail *ConfirmDetail // optional rich detail shown below prompt
 }
 
 // Show activates the confirmation dialog with the given action and prompt.
 func (c *ConfirmDialog) Show(action, prompt string) {
 	c.action = action
 	c.prompt = prompt
-	c.detail = nil
+	c.Detail = nil
 }
 
 // ShowWithDetail activates the confirmation dialog with rich detail content.
 func (c *ConfirmDialog) ShowWithDetail(action, prompt string, detail *ConfirmDetail) {
 	c.action = action
 	c.prompt = prompt
-	c.detail = detail
+	c.Detail = detail
 }
 
 // Cancel deactivates the confirmation dialog.
 func (c *ConfirmDialog) Cancel() {
 	c.action = ""
 	c.prompt = ""
-	c.detail = nil
+	c.Detail = nil
 }
 
 // IsActive returns true if a confirmation is pending.
@@ -113,8 +113,8 @@ func (c *ConfirmDialog) RenderOverlay(width int) string {
 	// is sized based on visual widths, avoiding ANSI-aware wrapping bugs.
 	var detailLines []string
 	maxPlainWidth := lipgloss.Width(promptText)
-	if c.detail != nil {
-		d := c.detail
+	if c.Detail != nil {
+		d := c.Detail
 		for _, item := range d.Items {
 			plain := "  " + item
 			if w := lipgloss.Width(plain); w > maxPlainWidth {
@@ -155,7 +155,7 @@ func (c *ConfirmDialog) RenderOverlay(width int) string {
 	// Title and footer text (computed early so we can size the box to fit)
 	titleStyle := lipgloss.NewStyle().Foreground(theme.ColorWarning).Bold(true)
 	title := titleStyle.Render("Confirm")
-	footerText := renderGuidanceText(confirmationGuidanceSpec(), max(width-8, 1))
+	footerText := RenderGuidanceText(ConfirmationGuidanceSpec(), max(width-8, 1))
 
 	// Minimum Width() value so titled borders fit (╭─ text ─…─╮ needs
 	// textWidth + 5 decoration chars + at least 1 dash = textWidth + 6).
@@ -180,22 +180,22 @@ func (c *ConfirmDialog) RenderOverlay(width int) string {
 	// Reserve one terminal cell outside the one-cell halo on each side.
 	innerWidth = min(innerWidth, max(width-4, 1))
 
-	return renderOverlayBox(content, innerWidth, title, footerText, borderStyle)
+	return RenderOverlayBox(content, innerWidth, title, footerText, borderStyle)
 }
 
-// discardConfirmState bundles the confirmDiscard flag with a ConfirmDialog and
+// DiscardConfirmState bundles the ConfirmDiscard flag with a ConfirmDialog and
 // provides a standard GetConfirmDialog that shows "Discard unsaved changes?"
-// when confirmDiscard is true. Embed in view models to satisfy ConfirmDialogProvider.
-type discardConfirmState struct {
-	confirmDiscard bool
-	confirmOverlay ConfirmDialog
+// when ConfirmDiscard is true. Embed in view models to satisfy ConfirmDialogProvider.
+type DiscardConfirmState struct {
+	ConfirmDiscard bool
+	ConfirmOverlay ConfirmDialog
 }
 
-func (s *discardConfirmState) GetConfirmDialog() *ConfirmDialog {
-	if s.confirmDiscard {
-		s.confirmOverlay.Show("discard", "Discard unsaved changes?")
+func (s *DiscardConfirmState) GetConfirmDialog() *ConfirmDialog {
+	if s.ConfirmDiscard {
+		s.ConfirmOverlay.Show("discard", "Discard unsaved changes?")
 	} else {
-		s.confirmOverlay.Cancel()
+		s.ConfirmOverlay.Cancel()
 	}
-	return &s.confirmOverlay
+	return &s.ConfirmOverlay
 }

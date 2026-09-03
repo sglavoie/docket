@@ -1,4 +1,4 @@
-package tui
+package chrome
 
 import (
 	"strings"
@@ -21,19 +21,19 @@ func DimContent(content string) string {
 // OverlayPopupDimmed dims the base content before placing the popup at
 // bottom-center. Popup renderers own their complete frame and symmetric halo.
 func OverlayPopupDimmed(base, popup string, baseWidth, baseHeight int) string {
-	return overlayPopup(DimContent(base), popup, baseWidth, baseHeight, max((baseWidth-popupWidth(popup))/2, 0))
+	return overlayPopup(DimContent(base), popup, baseWidth, baseHeight, max((baseWidth-PopupWidth(popup))/2, 0))
 }
 
 func overlayPopup(base, popup string, baseWidth, baseHeight, startCol int) string {
 	if popup == "" {
 		return base
 	}
-	popup = fitOverlayPopupHeight(popup, baseHeight)
+	popup = FitOverlayPopupHeight(popup, baseHeight)
 
 	baseLines := strings.Split(base, "\n")
 	popupLines := strings.Split(popup, "\n")
 	popupHeight := len(popupLines)
-	maxPopupWidth := popupWidth(popup)
+	maxPopupWidth := PopupWidth(popup)
 	startCol = min(max(startCol, 0), max(baseWidth-maxPopupWidth, 0))
 
 	for len(baseLines) < baseHeight {
@@ -57,12 +57,12 @@ func overlayPopup(base, popup string, baseWidth, baseHeight, startCol int) strin
 	return strings.Join(baseLines, "\n")
 }
 
-// fitOverlayPopupHeight removes only interior rows when a modal is taller than
+// FitOverlayPopupHeight removes only interior rows when a modal is taller than
 // the viewport. The complete outer treatment remains visible: top halo, top
 // border, title, help, bottom border, and bottom halo are retained whenever the
 // viewport has room for them. App-level minimum-size guards keep real popup
 // viewports above the four rows required for the halo and border alone.
-func fitOverlayPopupHeight(popup string, maxHeight int) string {
+func FitOverlayPopupHeight(popup string, maxHeight int) string {
 	if popup == "" || maxHeight < 1 {
 		return ""
 	}
@@ -89,7 +89,7 @@ func bottomPopupTopRow(baseHeight, popupHeight int) int {
 	return max(baseHeight-popupHeight, 0)
 }
 
-func popupWidth(popup string) int {
+func PopupWidth(popup string) int {
 	width := 0
 	for line := range strings.SplitSeq(popup, "\n") {
 		if lineWidth := lipgloss.Width(line); lineWidth > width {

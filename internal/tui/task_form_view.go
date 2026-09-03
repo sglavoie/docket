@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -47,10 +48,10 @@ func (m *TaskFormModel) View() tea.View {
 	if m.hostTitle != "" {
 		titleText = m.hostTitle
 	}
-	title := renderFullscreenTitleWithPulse(titleText, subtitle, m.CurrentWorkspacePulse(), m.width)
+	title := chrome.RenderFullscreenTitleWithPulse(titleText, subtitle, m.CurrentWorkspacePulse(), m.width)
 
 	// ── Tab bar ───────────────────────────────────────────────────────────────
-	tabBar := RenderTabBar(formTabNames, m.activeTab, m.width-CreatorTabBarPadding, 1)
+	tabBar := chrome.RenderTabBar(formTabNames, m.activeTab, m.width-chrome.CreatorTabBarPadding, 1)
 
 	// ── Per-tab content (or inline overlay) ───────────────────────────────────
 	var body string
@@ -91,7 +92,7 @@ func (m *TaskFormModel) View() tea.View {
 	}
 
 	// ── Footer ────────────────────────────────────────────────────────────────
-	guidance := renderGuidance(m.guidanceSpec(), m.width)
+	guidance := chrome.RenderGuidance(m.guidanceSpec(), m.width)
 
 	// Clamp the interior body so the fullscreen title, tab bar, and footer stay
 	// visible even when the body is inherently taller than the allotted height.
@@ -122,7 +123,7 @@ func (m *TaskFormModel) View() tea.View {
 	return tea.NewView(out.String())
 }
 
-func (m *TaskFormModel) guidanceSpec() GuidanceSpec {
+func (m *TaskFormModel) guidanceSpec() chrome.GuidanceSpec {
 	commit := "Ctrl+S save"
 	if m.err != nil {
 		commit = "Ctrl+S retry"
@@ -136,7 +137,7 @@ func (m *TaskFormModel) guidanceSpec() GuidanceSpec {
 		optional = []string{"a attachments", "Ctrl+L add", "Enter edit", "Ctrl+D delete", "Ctrl+J/K reorder"}
 		optional = append([]string{"c comments", "Ctrl+Y add comment"}, optional...)
 	}
-	return requiredActionGuidanceSpec(commit, optional...)
+	return chrome.RequiredActionGuidanceSpec(commit, optional...)
 }
 
 // clampFormBody limits the form body to maxRows lines so the surrounding

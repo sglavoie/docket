@@ -11,6 +11,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -114,7 +115,7 @@ func (m *OutlinerModel) queryReadoutRows() []queryReadoutRow {
 	}
 	// All is the unnarrowed mode, so it is the absence of a row rather than a row
 	// saying nothing is narrowed.
-	if mode := m.activeOutlinerModeEntry(); mode.ID != ModeAll {
+	if mode := m.activeOutlinerModeEntry(); mode.ID != chrome.ModeAll {
 		rows = append(rows, queryReadoutRow{
 			axis:  queryReadoutAxisMode,
 			label: "mode",
@@ -309,7 +310,7 @@ func (m *OutlinerModel) queryReadoutBody(width int) string {
 // queryReadoutGuidance is the footer while the stack is open. It is the gated
 // keymap a modal sub-state supplies, so the readout takes no footer rank of its
 // own and the ranked projection stays untouched.
-func (m *OutlinerModel) queryReadoutGuidance() GuidanceSpec {
+func (m *OutlinerModel) queryReadoutGuidance() chrome.GuidanceSpec {
 	closeKey := "Q"
 	if m.operationRegistry != nil {
 		if key := m.operationRegistry.InputShortcutForOperation(
@@ -319,8 +320,8 @@ func (m *OutlinerModel) queryReadoutGuidance() GuidanceSpec {
 	}
 	rows := m.queryReadoutRows()
 	if len(rows) == 0 {
-		return GuidanceSpec{
-			Hints: requiredGuidanceHints(closeKey+" close readout", "Esc close readout"),
+		return chrome.GuidanceSpec{
+			Hints: chrome.RequiredGuidanceHints(closeKey+" close readout", "Esc close readout"),
 			Rows:  1,
 		}
 	}
@@ -328,9 +329,9 @@ func (m *OutlinerModel) queryReadoutGuidance() GuidanceSpec {
 	if shown := min(len(rows), queryReadoutRowLimit); shown > 1 {
 		peel = fmt.Sprintf("1-%d peel one", shown)
 	}
-	return GuidanceSpec{
-		Hints: append(requiredGuidanceHints(peel, "x peel all", closeKey+"/Esc close"),
-			optionalGuidanceHints(10, "s save as lens")...),
+	return chrome.GuidanceSpec{
+		Hints: append(chrome.RequiredGuidanceHints(peel, "x peel all", closeKey+"/Esc close"),
+			chrome.OptionalGuidanceHints(10, "s save as lens")...),
 		Rows: 2,
 	}
 }
@@ -442,7 +443,7 @@ func (m *OutlinerModel) peelQueryReadoutAxis(row queryReadoutRow) bool {
 	case queryReadoutAxisScope:
 		m.clearProjectScope()
 	case queryReadoutAxisMode:
-		_, _ = m.selectOutlinerMode(ModeAll)
+		_, _ = m.selectOutlinerMode(chrome.ModeAll)
 	case queryReadoutAxisQuery:
 		m.ClearSearch()
 	case queryReadoutAxisLensQuery:

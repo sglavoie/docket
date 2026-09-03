@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -59,7 +60,7 @@ func TestQueryReadoutNamesEveryActiveAxisAndNothingElse(t *testing.T) {
 	out.filter.Tags = map[string]bool{"deep": true}
 	out.filter.Pinned = true
 	out.adoptFilterCarriers()
-	if _, _ = out.selectOutlinerMode(ModeBacklog); out.activeOutlinerModeEntry().ID != ModeBacklog {
+	if _, _ = out.selectOutlinerMode(chrome.ModeBacklog); out.activeOutlinerModeEntry().ID != chrome.ModeBacklog {
 		t.Fatal("the test could not reach a non-All mode")
 	}
 
@@ -146,7 +147,7 @@ func TestQueryReadoutPeelAllClearsEveryNarrowingAtOnce(t *testing.T) {
 	out.filter.Priority = models.PriorityHigh
 	out.filter.Tags = map[string]bool{"deep": true}
 	out.adoptFilterCarriers()
-	out.selectOutlinerMode(ModeBacklog)
+	out.selectOutlinerMode(chrome.ModeBacklog)
 	out.SetSearchQuery("one")
 	out.toggleQueryReadout()
 
@@ -157,7 +158,7 @@ func TestQueryReadoutPeelAllClearsEveryNarrowingAtOnce(t *testing.T) {
 	if rows := out.queryReadoutRows(); len(rows) != 0 {
 		t.Fatalf("rows after peel-all = %+v, want none", rows)
 	}
-	if out.SearchQuery() != "" || out.activeOutlinerModeEntry().ID != ModeAll {
+	if out.SearchQuery() != "" || out.activeOutlinerModeEntry().ID != chrome.ModeAll {
 		t.Errorf("peel-all left query %q and mode %v", out.SearchQuery(), out.activeOutlinerModeEntry().ID)
 	}
 	// Five, not four: clearing a search restores the presentation snapshot it was

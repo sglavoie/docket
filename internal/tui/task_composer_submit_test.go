@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -282,7 +283,7 @@ func TestTaskComposerCancellationFocusAndNarrowLayout(t *testing.T) {
 
 	composer.input.SetValue("draft")
 	composer.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
-	if !composer.confirmDiscard {
+	if !composer.ConfirmDiscard {
 		t.Fatal("dirty compact cancellation skipped confirmation")
 	}
 	if dialog := composer.GetConfirmDialog(); dialog == nil || !dialog.IsActive() {
@@ -311,7 +312,7 @@ func TestDailyTaskEditsUseInlineTitleAndNarrowDescription(t *testing.T) {
 	}
 
 	appModel.crossOutliner.quickEdit.Exit()
-	appModel.Update(ShowTaskTextEditorMsg{
+	appModel.Update(chrome.ShowTaskTextEditorMsg{
 		Task: task, Project: project, Operation: app.TaskOperationEditDescription,
 	})
 	if appModel.currentView() != presentation.ViewTextEditor {

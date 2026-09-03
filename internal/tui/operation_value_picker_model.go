@@ -6,6 +6,7 @@ import (
 	"unicode/utf8"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -34,7 +35,7 @@ type OperationValuePickerModel struct {
 	membershipInitial map[ListItemID]operationValueMembership
 	membershipCurrent map[ListItemID]operationValueMembership
 	tagAdder          TagAdder
-	dateAdder         DateAdder
+	dateAdder         chrome.DateAdder
 	// dateDeferred records which section the inline date mode was opened from,
 	// so the typed value writes the same field the row under the cursor names.
 	dateDeferred bool
@@ -92,7 +93,7 @@ func newOperationValuePickerModel(
 		model.tagAdder = NewTagAdder()
 	}
 	if provider.dateEntry() {
-		model.dateAdder = NewDateAdder()
+		model.dateAdder = chrome.NewDateAdder()
 	}
 	return model, nil
 }
@@ -128,7 +129,7 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 	}
 	if model.provider.dateEntry() && model.dateAdder.AddDateMode {
 		var chosen *time.Time
-		cmd := model.dateAdder.handleAddDateInputKey(msg, func(date time.Time) error {
+		cmd := model.dateAdder.HandleAddDateInputKey(msg, func(date time.Time) error {
 			chosen = &date
 			return nil
 		})
@@ -193,9 +194,9 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 			}
 			model.dateDeferred = deferred
 			if deferred {
-				model.dateAdder = NewInstantDateAdder()
+				model.dateAdder = chrome.NewInstantDateAdder()
 			} else {
-				model.dateAdder = NewDateAdder()
+				model.dateAdder = chrome.NewDateAdder()
 			}
 			return model.dateAdder.EnterAddMode(), false, nil
 		}

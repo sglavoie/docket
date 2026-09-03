@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -146,7 +147,7 @@ func TestRecentModeFreezesOrderAcrossRebuildsAndRefreshesOnReentry(t *testing.T)
 	project := primaryRowsProject("alpha", older, newer)
 	outliner, _ := primaryRowsOutliner(project)
 
-	outliner.selectOutlinerMode(ModeRecent)
+	outliner.selectOutlinerMode(chrome.ModeRecent)
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{newer.ID, older.ID}) {
 		t.Fatalf("Recent rows = %v, want newest activity first", got)
 	}
@@ -157,7 +158,7 @@ func TestRecentModeFreezesOrderAcrossRebuildsAndRefreshesOnReentry(t *testing.T)
 		t.Fatalf("rows after triage = %v, want the frozen order", got)
 	}
 
-	outliner.selectOutlinerMode(ModeRecent)
+	outliner.selectOutlinerMode(chrome.ModeRecent)
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{older.ID, newer.ID}) {
 		t.Fatalf("rows after re-entry = %v, want re-read activity order", got)
 	}

@@ -1,4 +1,4 @@
-package tui
+package chrome
 
 import (
 	"strings"
@@ -8,9 +8,9 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-// truncateAndPad truncates a line to exactly maxWidth visual characters,
+// TruncateAndPad truncates a line to exactly maxWidth visual characters,
 // padding with spaces if shorter, truncating with "..." if longer.
-func truncateAndPad(line string, maxWidth int) string {
+func TruncateAndPad(line string, maxWidth int) string {
 	if maxWidth < 4 {
 		maxWidth = 4
 	}
@@ -34,11 +34,11 @@ func truncateAndPad(line string, maxWidth int) string {
 	return truncated + "..." + strings.Repeat(" ", maxWidth-truncatedWidth-3)
 }
 
-// renderOverlayBox renders a modal surface with an uninterrupted semantic
+// RenderOverlayBox renders a modal surface with an uninterrupted semantic
 // border, title and help text inside the frame, and a subtle one-cell halo on
 // all four sides. Width is the framed box width; the halo adds two columns and
 // two rows. Title and footer must already be styled.
-func renderOverlayBox(content string, width int, title, footer string, borderStyle lipgloss.Style) string {
+func RenderOverlayBox(content string, width int, title, footer string, borderStyle lipgloss.Style) string {
 	boxStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(borderStyle.GetForeground()).

@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -68,7 +69,7 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 		}, wantNarrow: []string{"MULTI-SELECT"}, wantWide: []string{"MULTI-SELECT: 1 selected", "Search: \"needle\"", "Filters:", "Focus: [Alpha] › Launch"}},
 	}
 
-	for _, mode := range OutlinerModeCatalog() {
+	for _, mode := range chrome.OutlinerModeCatalog() {
 		mode := mode
 		tests = append(tests, struct {
 			name       string
@@ -134,15 +135,15 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 
 func TestOperationalTitleModeSegmentSpelling(t *testing.T) {
 	const context = "Search: \"needle\""
-	for _, mode := range OutlinerModeCatalog() {
+	for _, mode := range chrome.OutlinerModeCatalog() {
 		t.Run(mode.Label, func(t *testing.T) {
-			if chip := ansi.Strip(operationalTitleModeSegment(mode)); chip != mode.Label {
+			if chip := ansi.Strip(chrome.OperationalTitleModeSegment(mode)); chip != mode.Label {
 				t.Fatalf("mode chip = %q, want %q", chip, mode.Label)
 			}
 			plain := ansi.Strip(pulse.RenderOperationalTitle(pulse.OperationalTitleSpec{
 				Surface: theme.TitleStyle.Render("Outliner"),
 				Scope:   theme.TitleStyle.Render(activeProjectsScopeLabel),
-				Mode:    operationalTitleModeSegment(mode),
+				Mode:    chrome.OperationalTitleModeSegment(mode),
 				Context: []string{theme.MutedStyle.Render(context)},
 			}, 160))
 			want := operationalTitleSeparator + mode.Label + operationalTitleContextGap + context

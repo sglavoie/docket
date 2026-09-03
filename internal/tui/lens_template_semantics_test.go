@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -94,8 +95,8 @@ func TestOverdueTemplateUsesDueModeFixedOrdering(t *testing.T) {
 	template := lensTemplateByName(t, "Overdue")
 	applyLensOrFatal(t, outliner, template)
 
-	mode, ok := OutlinerModeByID(outliner.primaryMode)
-	if !ok || outliner.primaryMode != ModeDue {
+	mode, ok := chrome.OutlinerModeByID(outliner.primaryMode)
+	if !ok || outliner.primaryMode != chrome.ModeDue {
 		t.Fatalf("mode = %v, want Due", outliner.primaryMode)
 	}
 	if !mode.FixedOrder() {

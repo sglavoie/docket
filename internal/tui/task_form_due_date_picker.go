@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -112,7 +113,7 @@ func (p *formDueDatePicker) render(width int, current *time.Time) string {
 	titleMinInner := lipgloss.Width(title) + 6 - 2
 	maxWidth := min(max(width*2/5, 36), width-4)
 	innerWidth := min(max(maxWidth, titleMinInner), max(width-4, 1))
-	footerText := renderGuidanceText(requiredActionGuidanceSpec(
+	footerText := chrome.RenderGuidanceText(chrome.RequiredActionGuidanceSpec(
 		"Enter select", "j/k navigate", "preset key pick",
 	), max(innerWidth-4, 1))
 
@@ -159,5 +160,5 @@ func (p *formDueDatePicker) render(width int, current *time.Time) string {
 		}
 	}
 
-	return renderOverlayBox(content.String(), innerWidth, title, footerText, borderStyle)
+	return chrome.RenderOverlayBox(content.String(), innerWidth, title, footerText, borderStyle)
 }

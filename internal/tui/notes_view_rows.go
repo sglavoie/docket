@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/fuzzy"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 func (m *NotesViewModel) requestedLocations() []app.NoteLocation {
@@ -177,7 +178,7 @@ func (m *NotesViewModel) restoreVisibleSelection(identity NoteRowIdentity, prese
 			}
 		}
 	}
-	m.cursor = ClampCursor(m.cursor, len(m.visibleRows))
+	m.cursor = chrome.ClampCursor(m.cursor, len(m.visibleRows))
 	m.resetScrollOffset()
 }
 

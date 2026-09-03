@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 func filterFacetTask(
@@ -122,11 +123,11 @@ func TestTagFacetDropsNonmatchingAncestorAcrossWorkflowSections(t *testing.T) {
 func TestHierarchicalModesPromoteMatchingChildPastFacetMismatch(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
-		mode  OutlinerModeID
+		mode  chrome.OutlinerModeID
 		state models.WorkflowState
 	}{
-		{name: "inbox", mode: ModeInbox, state: models.StateInbox},
-		{name: "backlog", mode: ModeBacklog, state: models.StateBacklog},
+		{name: "inbox", mode: chrome.ModeInbox, state: models.StateInbox},
+		{name: "backlog", mode: chrome.ModeBacklog, state: models.StateBacklog},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			parent := filterFacetTask("parent", tc.state, 0, []string{"other"}, nil, nil)
@@ -161,7 +162,7 @@ func TestPromotedFacetBreadcrumbStopsAtFocusBoundary(t *testing.T) {
 	match.ParentID = &hiddenParent.ID
 	project := primaryRowsProject("project", focusRoot, hiddenParent, match)
 	outliner := scopeTestOutliner(project)
-	outliner.selectOutlinerMode(ModeBacklog)
+	outliner.selectOutlinerMode(chrome.ModeBacklog)
 	outliner.crossFocusStack = []CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: focusRoot.ID}}
 	outliner.filter.Tags = map[string]bool{"bug": true}
 	outliner.adoptFilterCarriers()
@@ -192,7 +193,7 @@ func TestBacklogContextRowsMustSatisfyEveryActiveFacet(t *testing.T) {
 			child.ParentID = &parent.ID
 			project := primaryRowsProject("project", parent, child)
 			outliner := scopeTestOutliner(project)
-			outliner.selectOutlinerMode(ModeBacklog)
+			outliner.selectOutlinerMode(chrome.ModeBacklog)
 			outliner.filter.Tags = map[string]bool{"bug": true}
 			outliner.filter.Priority = 1
 			outliner.adoptFilterCarriers()
@@ -378,7 +379,7 @@ func TestFilterFacetsPersistAcrossModeAndProjectScopeChanges(t *testing.T) {
 	outliner.filter.Deferred = true
 	outliner.adoptFilterCarriers()
 
-	outliner.selectOutlinerMode(ModeDue)
+	outliner.selectOutlinerMode(chrome.ModeDue)
 	if outliner.filter.Priority != 2 || !outliner.filter.Deferred {
 		t.Fatalf("mode change reset facets: %+v", outliner.filter.CommonFilterState)
 	}
@@ -435,7 +436,7 @@ func TestFilterFacetsAreExcludedFromPersistedRouteState(t *testing.T) {
 		FilterDeferred: true,
 		FilterPinned:   true,
 	})
-	if outliner.activeOutlinerMode() != ModeDue {
+	if outliner.activeOutlinerMode() != chrome.ModeDue {
 		t.Fatalf("route mode = %s, want Due", outliner.activeOutlinerMode())
 	}
 	if !outliner.filter.States.Equal(liveStates) ||

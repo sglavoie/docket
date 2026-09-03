@@ -6,15 +6,16 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 func TestDateAdderSubmitsTheParsedDateAndLeavesAddMode(t *testing.T) {
-	adder := NewDateAdder()
+	adder := chrome.NewDateAdder()
 	adder.EnterAddMode()
 	adder.AddDateInput.SetValue("2027-03-15")
 
 	var got *time.Time
-	adder.handleAddDateInputKey(tea.KeyPressMsg{Code: tea.KeyEnter}, func(date time.Time) error {
+	adder.HandleAddDateInputKey(tea.KeyPressMsg{Code: tea.KeyEnter}, func(date time.Time) error {
 		got = &date
 		return nil
 	})
@@ -33,12 +34,12 @@ func TestDateAdderSubmitsTheParsedDateAndLeavesAddMode(t *testing.T) {
 }
 
 func TestDateAdderKeepsTheInputOpenOnAParseFailure(t *testing.T) {
-	adder := NewDateAdder()
+	adder := chrome.NewDateAdder()
 	adder.EnterAddMode()
 	adder.AddDateInput.SetValue("nonsense")
 
 	submitted := false
-	adder.handleAddDateInputKey(tea.KeyPressMsg{Code: tea.KeyEnter}, func(time.Time) error {
+	adder.HandleAddDateInputKey(tea.KeyPressMsg{Code: tea.KeyEnter}, func(time.Time) error {
 		submitted = true
 		return nil
 	})
@@ -54,11 +55,11 @@ func TestDateAdderKeepsTheInputOpenOnAParseFailure(t *testing.T) {
 }
 
 func TestDateAdderEscapeReturnsToThePresetList(t *testing.T) {
-	adder := NewDateAdder()
+	adder := chrome.NewDateAdder()
 	adder.EnterAddMode()
 	adder.AddDateError = "stale"
 
-	adder.handleAddDateInputKey(tea.KeyPressMsg{Code: tea.KeyEscape}, func(time.Time) error {
+	adder.HandleAddDateInputKey(tea.KeyPressMsg{Code: tea.KeyEscape}, func(time.Time) error {
 		t.Fatal("escape submitted a date")
 		return nil
 	})
@@ -68,13 +69,13 @@ func TestDateAdderEscapeReturnsToThePresetList(t *testing.T) {
 }
 
 func TestInstantDateAdderAcceptsTheHourForm(t *testing.T) {
-	adder := NewInstantDateAdder()
+	adder := chrome.NewInstantDateAdder()
 	adder.EnterAddMode()
 	adder.AddDateInput.SetValue("+4h")
 
 	before := time.Now()
 	var got *time.Time
-	adder.handleAddDateInputKey(tea.KeyPressMsg{Code: tea.KeyEnter}, func(date time.Time) error {
+	adder.HandleAddDateInputKey(tea.KeyPressMsg{Code: tea.KeyEnter}, func(date time.Time) error {
 		got = &date
 		return nil
 	})
@@ -91,11 +92,11 @@ func TestInstantDateAdderAcceptsTheHourForm(t *testing.T) {
 }
 
 func TestDayDateAdderRefusesTheHourFormByName(t *testing.T) {
-	adder := NewDateAdder()
+	adder := chrome.NewDateAdder()
 	adder.EnterAddMode()
 	adder.AddDateInput.SetValue("+4h")
 
-	adder.handleAddDateInputKey(tea.KeyPressMsg{Code: tea.KeyEnter}, func(time.Time) error {
+	adder.HandleAddDateInputKey(tea.KeyPressMsg{Code: tea.KeyEnter}, func(time.Time) error {
 		t.Fatal("the day adder submitted an hour offset")
 		return nil
 	})
@@ -105,11 +106,11 @@ func TestDayDateAdderRefusesTheHourFormByName(t *testing.T) {
 }
 
 func TestInstantDateAdderFormatsAddExactlyTheHoursLine(t *testing.T) {
-	day := NewDateAdder()
-	instant := NewInstantDateAdder()
+	day := chrome.NewDateAdder()
+	instant := chrome.NewInstantDateAdder()
 
-	dayFormats := day.dateAdderFormats()
-	instantFormats := instant.dateAdderFormats()
+	dayFormats := day.DateAdderFormats()
+	instantFormats := instant.DateAdderFormats()
 	if len(instantFormats) != len(dayFormats)+1 {
 		t.Fatalf("instant formats = %d lines, want one more than the day adder's %d", len(instantFormats), len(dayFormats))
 	}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // A named lens is a saved Outliner projection: the mode it opens, the narrowing
@@ -29,7 +30,7 @@ import (
 // than to the lens: folds, focus, zoom, selection, cursor, and viewport are all
 // deliberately excluded.
 type lensState struct {
-	mode OutlinerModeID
+	mode chrome.OutlinerModeID
 	// scopeProjectID is the single project the lens reopens into, or empty when
 	// the lens does not own the scope axis.
 	scopeProjectID string
@@ -91,18 +92,18 @@ func (a lensAxis[T]) value(token string) (T, error) {
 	return zero, fmt.Errorf("lens %s %q is not a known value", a.name, token)
 }
 
-var lensModeAxis = lensAxis[OutlinerModeID]{
+var lensModeAxis = lensAxis[chrome.OutlinerModeID]{
 	name: "mode",
-	tokens: map[OutlinerModeID]string{
-		ModeAll:     config.LensModeAll,
-		ModeInbox:   config.LensModeInbox,
-		ModeToday:   config.LensModeToday,
-		ModeNext:    config.LensModeNext,
-		ModeBacklog: config.LensModeBacklog,
-		ModeDue:     config.LensModeDue,
-		ModeRecent:  config.LensModeRecent,
+	tokens: map[chrome.OutlinerModeID]string{
+		chrome.ModeAll:     config.LensModeAll,
+		chrome.ModeInbox:   config.LensModeInbox,
+		chrome.ModeToday:   config.LensModeToday,
+		chrome.ModeNext:    config.LensModeNext,
+		chrome.ModeBacklog: config.LensModeBacklog,
+		chrome.ModeDue:     config.LensModeDue,
+		chrome.ModeRecent:  config.LensModeRecent,
 	},
-	fallback:      ModeAll,
+	fallback:      chrome.ModeAll,
 	requiresToken: true,
 }
 
@@ -171,7 +172,7 @@ func (m *OutlinerModel) capturedLensQuery() string {
 // is exactly the reconciliation ApplyOutlinerModeTransition performs when
 // leaving a tree-order mode: manual-sort modes take the sort as their active
 // order, and fixed-order modes keep their own while remembering it in treeSort.
-var lensTreeOrderPrev = OutlinerMode{OrderPolicy: OrderPolicyTree}
+var lensTreeOrderPrev = chrome.OutlinerMode{OrderPolicy: chrome.OrderPolicyTree}
 
 // applyLensState installs a saved projection, reporting whether it named a
 // catalog mode. Only the lens-owned axes are written; folds, focus, zoom,
@@ -182,7 +183,7 @@ var lensTreeOrderPrev = OutlinerMode{OrderPolicy: OrderPolicyTree}
 // before a lens-owned axis is written, so the frame it captures holds the view
 // the user was in rather than the projection being installed over it.
 func (m *OutlinerModel) applyLensState(state lensState) bool {
-	mode, ok := OutlinerModeByID(state.mode)
+	mode, ok := chrome.OutlinerModeByID(state.mode)
 	if m == nil || !ok {
 		return false
 	}

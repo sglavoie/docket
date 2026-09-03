@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -153,7 +154,7 @@ func TestLensProjectLoadPublishesPartialResultWithWarning(t *testing.T) {
 // through, not the view the lens replaced.
 func TestLensProjectLoadCapturesBaselineBeforeIO(t *testing.T) {
 	outliner := lensLifecycleOutliner()
-	outliner.selectOutlinerMode(ModeInbox)
+	outliner.selectOutlinerMode(chrome.ModeInbox)
 	outliner.collapsedSections["baseline-fold"] = true
 	baselineProjects := slices.Clone(outliner.loadedProjects)
 
@@ -162,13 +163,13 @@ func TestLensProjectLoadCapturesBaselineBeforeIO(t *testing.T) {
 	if cmd := applyLensOrFatal(t, outliner, lens); cmd == nil {
 		t.Fatal("a project-population change must start a load")
 	}
-	if got := outliner.pendingLens.origin.presentation.mode; got != ModeInbox {
-		t.Fatalf("frozen baseline mode = %v, want %v", got, ModeInbox)
+	if got := outliner.pendingLens.origin.presentation.mode; got != chrome.ModeInbox {
+		t.Fatalf("frozen baseline mode = %v, want %v", got, chrome.ModeInbox)
 	}
 
 	// The user keeps navigating and searching while the projects read. None of it
 	// may rewrite the baseline the application already froze.
-	outliner.selectOutlinerMode(ModeBacklog)
+	outliner.selectOutlinerMode(chrome.ModeBacklog)
 	delete(outliner.collapsedSections, "baseline-fold")
 	outliner.SetSearchQuery("needle")
 
@@ -187,8 +188,8 @@ func TestLensProjectLoadCapturesBaselineBeforeIO(t *testing.T) {
 	if outliner.hasActiveLens() {
 		t.Fatal("Esc left the lens active")
 	}
-	if outliner.primaryMode != ModeInbox {
-		t.Fatalf("restored mode = %v, want the pre-load %v", outliner.primaryMode, ModeInbox)
+	if outliner.primaryMode != chrome.ModeInbox {
+		t.Fatalf("restored mode = %v, want the pre-load %v", outliner.primaryMode, chrome.ModeInbox)
 	}
 	if !outliner.collapsedSections["baseline-fold"] {
 		t.Fatal("restoration lost the fold the baseline held before the load")
@@ -207,7 +208,7 @@ func TestLensProjectLoadCapturesBaselineBeforeIO(t *testing.T) {
 // behind it must be settled rather than left holding the loading state.
 func TestLensProjectLoadSupersededBySynchronousLensClearsPendingState(t *testing.T) {
 	outliner := lensLifecycleOutliner()
-	outliner.selectOutlinerMode(ModeInbox)
+	outliner.selectOutlinerMode(chrome.ModeInbox)
 	baselineProjects := slices.Clone(outliner.loadedProjects)
 
 	async := waitingLens(lensTestID(1), "Parked", "")
@@ -248,8 +249,8 @@ func TestLensProjectLoadSupersededBySynchronousLensClearsPendingState(t *testing
 	if !RunEscCascade(outliner.escSteps()) {
 		t.Fatal("expected the Esc cascade to consume the active lens")
 	}
-	if outliner.primaryMode != ModeInbox {
-		t.Fatalf("restored mode = %v, want the pre-lens %v", outliner.primaryMode, ModeInbox)
+	if outliner.primaryMode != chrome.ModeInbox {
+		t.Fatalf("restored mode = %v, want the pre-lens %v", outliner.primaryMode, chrome.ModeInbox)
 	}
 	if !slices.Equal(outliner.loadedProjects, baselineProjects) {
 		t.Fatal("a superseded load leaked its population into the restored view")

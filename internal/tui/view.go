@@ -4,6 +4,7 @@ import (
 	"image/color"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // View is the base interface that all TUI views must implement.
@@ -26,32 +27,12 @@ type ViewCapabilities interface {
 	IsFullHeight() bool
 }
 
-// GuidanceHint is one complete key/action entry in contextual guidance.
-// Lower Priority values are retained before higher values. Required hints are
-// reserved before any optional hint is considered, regardless of priority.
-type GuidanceHint struct {
-	Key      string
-	Label    string
-	Priority int
-	Required bool
-}
-
-// GuidanceSpec describes the persistent controls for one interaction state.
-// Hints retain declaration order when rendered. Supplemental is optional
-// state data (for example a scroll percentage), not an action. Rows is clamped
-// to the product's one- or two-row guidance budget; zero means one row.
-type GuidanceSpec struct {
-	Hints        []GuidanceHint
-	Supplemental string
-	Rows         int
-}
-
 // ContextualGuidanceProvider is implemented by views that supply structured
 // guidance for the app shell. The shell renders it above the pinned-task bar
 // and generic breadcrumb but below transient loading/error/status overlays.
 // Returning ok=false lets the shell fall through to lower-priority chrome.
 type ContextualGuidanceProvider interface {
-	ContextualGuidance() (spec GuidanceSpec, ok bool)
+	ContextualGuidance() (spec chrome.GuidanceSpec, ok bool)
 }
 
 // ViewStatusStripProvider is implemented by views that own a status strip the

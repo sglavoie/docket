@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -72,7 +73,7 @@ type OutlinerModel struct {
 	// different footer state and move viewScrollOffset.
 	lastViewport outlinerViewport
 	// primaryMode is the authoritative canonical row-strategy identity.
-	primaryMode OutlinerModeID
+	primaryMode chrome.OutlinerModeID
 
 	sort     SortState // Active render sort; default while a fixed-order mode owns ordering.
 	treeSort SortState // Durable user sort restored whenever a tree-order mode is active.
@@ -256,15 +257,15 @@ type OutlinerModel struct {
 	OpenAtTask *models.Task
 
 	// Cross-project mode fields (used when m.project == nil)
-	loadedProjects       []*models.Project // Successfully loaded projects
-	crossSnapshotReady   bool              // True after the first cross-project snapshot has been accepted
-	crossLoading         bool              // True while cross-project load is in progress
-	crossSpinnerVisible  bool              // True once the 200ms delay has elapsed during an initial load
-	crossLoadGen         int               // Generation counter; discards stale load results
-	crossSpinner         SpinnerModel      // View-local spinner, independent of global save spinner
-	crossReloadProjectID string            // Project owning the cursor task captured before an async reload
-	crossReloadTaskID    string            // Cursor task captured before an async reload; restored after rows rebuild
-	crossReloadFromTop   bool              // One-shot scope-change guard that suppresses stale cursor restoration
+	loadedProjects       []*models.Project   // Successfully loaded projects
+	crossSnapshotReady   bool                // True after the first cross-project snapshot has been accepted
+	crossLoading         bool                // True while cross-project load is in progress
+	crossSpinnerVisible  bool                // True once the 200ms delay has elapsed during an initial load
+	crossLoadGen         int                 // Generation counter; discards stale load results
+	crossSpinner         chrome.SpinnerModel // View-local spinner, independent of global save spinner
+	crossReloadProjectID string              // Project owning the cursor task captured before an async reload
+	crossReloadTaskID    string              // Cursor task captured before an async reload; restored after rows rebuild
+	crossReloadFromTop   bool                // One-shot scope-change guard that suppresses stale cursor restoration
 
 	// crossReloadHeaderProjectID lands the cursor on one project sub-header after
 	// the next reload. Parking a project deletes every row the cursor was on, and
@@ -348,7 +349,7 @@ func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runti
 		projectService:     NewProjectService(),
 		quickEdit:          NewQuickEditComponent(),
 		project:            project,
-		primaryMode:        ModeAll,
+		primaryMode:        chrome.ModeAll,
 		expandedNodes:      make(map[taskref.TaskIdentity]bool),
 		collapsedSections:  make(map[string]bool),
 		expandedChecklists: make(map[taskref.TaskIdentity]bool),
@@ -424,7 +425,7 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case crossSpinnerDelayMsg:
 		if m.crossLoading && !m.hasCrossProjectSnapshot() {
 			m.crossSpinnerVisible = true
-			m.crossSpinner = NewSpinner()
+			m.crossSpinner = chrome.NewSpinner()
 			return m, m.crossSpinner.Tick()
 		}
 		return m, nil

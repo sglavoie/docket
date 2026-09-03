@@ -1,4 +1,4 @@
-package tui
+package chrome
 
 import (
 	"github.com/charmbracelet/x/ansi"
@@ -39,11 +39,11 @@ const (
 	HeroP1
 )
 
-// pickHeroAttribute returns the highest-precedence hero attribute for a task.
+// PickHeroAttribute returns the highest-precedence hero attribute for a task.
 // Returns HeroNone when no attribute qualifies (the row keeps current badge
 // styling; nothing is demoted) and for quiet states — completed, canceled,
 // tasks never claim the hero slot.
-func pickHeroAttribute(t *models.Task) HeroKind {
+func PickHeroAttribute(t *models.Task) HeroKind {
 	if t == nil {
 		return HeroNone
 	}
@@ -67,18 +67,18 @@ func pickHeroAttribute(t *models.Task) HeroKind {
 
 // dueIsInlineHero reports whether a task's due date may be rendered as the
 // dense-row urgency anchor.
-// demoteBadge re-renders a pre-styled badge with MutedStyle, preserving the
+// DemoteBadge re-renders a pre-styled badge with MutedStyle, preserving the
 // glyph and the visual width (trailing padding from PadBadge is untouched).
 // Returns the input unchanged when empty.
-func demoteBadge(badge string) string {
+func DemoteBadge(badge string) string {
 	if badge == "" {
 		return ""
 	}
 	return theme.MutedStyle.Render(ansi.Strip(badge))
 }
 
-// statusIsHero reports whether the status badge is the hero for a given kind.
-func statusIsHero(h HeroKind) bool { return h == HeroWaiting }
+// StatusIsHero reports whether the status badge is the hero for a given kind.
+func StatusIsHero(h HeroKind) bool { return h == HeroWaiting }
 
-// priorityIsHero reports whether the priority badge is the hero.
-func priorityIsHero(h HeroKind) bool { return h == HeroP1 }
+// PriorityIsHero reports whether the priority badge is the hero.
+func PriorityIsHero(h HeroKind) bool { return h == HeroP1 }

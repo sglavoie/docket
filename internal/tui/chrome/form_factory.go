@@ -1,4 +1,4 @@
-package tui
+package chrome
 
 import (
 	"charm.land/bubbles/v2/textarea"
@@ -6,8 +6,8 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-// formFactory is a shared factory instance for resizing form fields.
-var formFactory = DefaultFormFieldFactory()
+// FormFactory is a shared factory instance for resizing form fields.
+var FormFactory = DefaultFormFieldFactory()
 
 // FormFieldFactory creates consistently configured input fields.
 // Use this to ensure uniform appearance and behavior across forms.

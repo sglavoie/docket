@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/textfit"
@@ -408,13 +409,13 @@ func (model *ContextActionSheetModel) render(width int) string {
 	}
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render(titleText)
 	guidance, _ := model.guidanceSpec()
-	footer := renderGuidanceText(guidance, max(innerWidth-4, 1))
-	return renderOverlayBox(content, innerWidth, title, footer, lipgloss.NewStyle().Foreground(theme.ColorPrimary))
+	footer := chrome.RenderGuidanceText(guidance, max(innerWidth-4, 1))
+	return chrome.RenderOverlayBox(content, innerWidth, title, footer, lipgloss.NewStyle().Foreground(theme.ColorPrimary))
 }
 
-func (model *ContextActionSheetModel) guidanceSpec() (GuidanceSpec, bool) {
+func (model *ContextActionSheetModel) guidanceSpec() (chrome.GuidanceSpec, bool) {
 	if model == nil || model.surface == nil {
-		return GuidanceSpec{}, false
+		return chrome.GuidanceSpec{}, false
 	}
 	query := model.surface.Query().Raw
 	searching := model.searching

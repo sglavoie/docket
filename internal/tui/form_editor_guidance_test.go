@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 func TestFormEditorGuidanceRequiresCommitAndCancelByState(t *testing.T) {
@@ -18,7 +19,7 @@ func TestFormEditorGuidanceRequiresCommitAndCancelByState(t *testing.T) {
 
 	creator := &ProjectCreatorModel{}
 	assertRequiredGuidance(t, "project creator", creator.guidanceSpec(), true, "Enter create", "Esc cancel")
-	creator.confirmDiscard = true
+	creator.ConfirmDiscard = true
 	assertRequiredGuidance(t, "project creator discard", creator.guidanceSpec(), true, "y confirm", "n/Esc cancel")
 
 	editor := &ProjectEditorModel{hasChanges: true}
@@ -26,10 +27,10 @@ func TestFormEditorGuidanceRequiresCommitAndCancelByState(t *testing.T) {
 	editor.err = errors.New("invalid project")
 	assertRequiredGuidance(t, "invalid project editor", editor.guidanceSpec(), true, "Ctrl+S retry", "Esc cancel")
 
-	textEditor := NewTextEditorModel("description", "")
-	assertRequiredGuidance(t, "text editor", textEditor.guidanceSpec(), true, "Ctrl+S save", "Esc cancel")
-	textEditor.externalEdit = true
-	if got := textEditor.guidanceSpec().Supplemental; got != "External editor open" {
+	textEditor := chrome.NewTextEditorModel("description", "")
+	assertRequiredGuidance(t, "text editor", textEditor.GuidanceSpec(), true, "Ctrl+S save", "Esc cancel")
+	textEditor.ExternalEdit = true
+	if got := textEditor.GuidanceSpec().Supplemental; got != "External editor open" {
 		t.Fatalf("external-editor supplemental = %q", got)
 	}
 
@@ -43,11 +44,11 @@ func TestFormEditorGuidanceFitsNarrowBudgets(t *testing.T) {
 	form.activeTab = formTabChildren
 	form.err = errors.New("invalid task")
 
-	specs := []GuidanceSpec{
+	specs := []chrome.GuidanceSpec{
 		form.guidanceSpec(),
 		(&ProjectCreatorModel{}).guidanceSpec(),
 		(&ProjectEditorModel{hasChanges: true}).guidanceSpec(),
-		NewTextEditorModel("description", "").guidanceSpec(),
+		chrome.NewTextEditorModel("description", "").GuidanceSpec(),
 	}
 	for index, spec := range specs {
 		if spec.Rows != 2 {
@@ -63,7 +64,7 @@ func TestFormEditorMinimumLayoutsBudgetRenderedGuidance(t *testing.T) {
 	form.SetSize(formMinWidth, formMinHeight)
 	assertFitsWithin(t, form.View().Content, formMinWidth, formMinHeight)
 
-	textEditor := NewTextEditorModel("description", "draft")
+	textEditor := chrome.NewTextEditorModel("description", "draft")
 	textEditor.SetSize(minTerminalWidth, formMinHeight)
 	textView := textEditor.View().Content
 	assertFitsWithin(t, textView, minTerminalWidth, formMinHeight)

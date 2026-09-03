@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 func TestNotesPreviewPagingRefusesWhereNoPaneExists(t *testing.T) {
@@ -200,7 +201,7 @@ func TestNotesPreviewPagingIsAdvertisedOnlyWhereItIsActionable(t *testing.T) {
 		ModifiedAt: time.Unix(1_700_000_000, 0), RawRevision: "rev-long",
 	})
 
-	guidanceHas := func(t *testing.T, spec GuidanceSpec, ok bool) bool {
+	guidanceHas := func(t *testing.T, spec chrome.GuidanceSpec, ok bool) bool {
 		t.Helper()
 		if !ok {
 			t.Fatal("Notes guidance is unavailable")

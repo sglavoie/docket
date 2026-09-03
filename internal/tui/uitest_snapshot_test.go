@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // newSnapshotWorkspace builds an isolated workspace preloaded with the rich
@@ -71,8 +72,8 @@ func TestUITestSnapshotOutliner(t *testing.T) {
 	}
 
 	snap := m.UITestSnapshot()
-	if got := snapString(t, snap, "mode"); got != string(ModeAll) {
-		t.Errorf("mode = %q, want %s", got, ModeAll)
+	if got := snapString(t, snap, "mode"); got != string(chrome.ModeAll) {
+		t.Errorf("mode = %q, want %s", got, chrome.ModeAll)
 	}
 	if got := snapInt(t, snap, "row_count"); got <= 0 {
 		t.Errorf("row_count = %d, want > 0", got)

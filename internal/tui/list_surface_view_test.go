@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -215,7 +216,7 @@ func TestRetainedListSurfaceDomainAdaptersProvideStableTargets(t *testing.T) {
 		states.Items[2].ID != "state:doing" {
 		t.Fatalf("state adapter = %+v", states.Items)
 	}
-	priorities := ListSourceFromPriorities([]PriorityInfo{{Priority: 1, Description: "Critical"}})
+	priorities := ListSourceFromPriorities([]chrome.PriorityInfo{{Priority: 1, Description: "Critical"}})
 	tags := ListSourceFromTags([]TagInfo{{Name: "focus", TaskCount: 2}})
 	if priorities.Items[0].ID != "priority:1" ||
 		tags.Items[0].CategoryID != "tag:other" {

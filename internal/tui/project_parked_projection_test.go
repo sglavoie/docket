@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -102,7 +103,7 @@ func TestParkedProjectLeavesEveryOutlinerMode(t *testing.T) {
 	runtime, active, parked := parkedWorkspace(t)
 	outliner := baseWorkspaceOutliner(runtime, active, parked)
 
-	for _, mode := range []OutlinerModeID{ModeAll, ModeInbox, ModeToday, ModeNext, ModeBacklog, ModeDue} {
+	for _, mode := range []chrome.OutlinerModeID{chrome.ModeAll, chrome.ModeInbox, chrome.ModeToday, chrome.ModeNext, chrome.ModeBacklog, chrome.ModeDue} {
 		t.Run(string(mode), func(t *testing.T) {
 			outliner.selectOutlinerMode(mode)
 			projectIDs := taskRowProjectIDs(outliner)
@@ -129,7 +130,7 @@ func TestParkedProjectLeavesPinnedProjections(t *testing.T) {
 	parkProject(t, runtime, parked.ID)
 
 	outliner := baseWorkspaceOutliner(runtime, active, parked)
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 	for _, row := range outliner.rows {
 		if row.IsPinnedSection && row.isTaskRow() && row.ProjectID == parked.ID {
 			t.Fatalf("Pinned section projects the parked task %q", row.task.ID)
@@ -161,7 +162,7 @@ func assertIDs(t *testing.T, got []string, want ...string) {
 func TestParkedProjectLeavesSearchProjection(t *testing.T) {
 	runtime, active, parked := parkedWorkspace(t)
 	outliner := baseWorkspaceOutliner(runtime, active, parked)
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 
 	outliner.SetSearchQuery("shared")
 	if !outliner.hasSearchProjection() {
@@ -293,11 +294,11 @@ func TestReloadDropsSelectionsOutsideTheAdmittedWorkspace(t *testing.T) {
 func TestReloadKeepsSelectionsHiddenByFilters(t *testing.T) {
 	runtime, active, parked := parkedWorkspace(t)
 	outliner := baseWorkspaceOutliner(runtime, active, parked)
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 
 	hidden := taskref.For(active.Tasks[0], active)
 	outliner.ReplaceSelection([]taskref.TaskIdentity{hidden})
-	outliner.selectOutlinerMode(ModeDue)
+	outliner.selectOutlinerMode(chrome.ModeDue)
 
 	outliner.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
 		projects:   admittedWorkspace(runtime, active, parked),

@@ -6,6 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // The bar is chrome with a budget: it must be exactly as wide as every other
@@ -134,7 +135,7 @@ func TestRenderMenuBarRowMarksOnlyTheOpenMenu(t *testing.T) {
 func TestViewMenuBarRowCarriesLiveVisibility(t *testing.T) {
 	for _, visible := range []bool{false, true} {
 		var found bool
-		for _, entry := range viewMenuEntries(ModeAll, visible, true) {
+		for _, entry := range viewMenuEntries(chrome.ModeAll, visible, true) {
 			if entry.OperationID != operationCoreToggleMenuBar {
 				continue
 			}

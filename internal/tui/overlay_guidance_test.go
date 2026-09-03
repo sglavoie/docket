@@ -7,18 +7,19 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
-func session8GuidanceText(spec GuidanceSpec) string {
+func session8GuidanceText(spec chrome.GuidanceSpec) string {
 	entries := make([]string, 0, len(spec.Hints))
 	for _, hint := range spec.Hints {
-		entries = append(entries, guidanceHintText(hint))
+		entries = append(entries, chrome.GuidanceHintText(hint))
 	}
 	return strings.Join(entries, " | ") + " | " + spec.Supplemental
 }
 
-func assertSession8Guidance(t *testing.T, state string, spec GuidanceSpec, ok bool, want ...string) {
+func assertSession8Guidance(t *testing.T, state string, spec chrome.GuidanceSpec, ok bool, want ...string) {
 	t.Helper()
 	if !ok {
 		t.Fatalf("%s guidance unavailable", state)
@@ -158,7 +159,7 @@ func TestOperationOverlaysRenderLocalGuidanceWithoutWorkspacePulse(t *testing.T)
 }
 
 func TestConfirmationGuidanceIsMandatoryAndNormalized(t *testing.T) {
-	spec := confirmationGuidanceSpec()
+	spec := chrome.ConfirmationGuidanceSpec()
 	assertSession8Guidance(t, "confirm", spec, true, "y confirm", "n/Esc cancel")
 	for _, hint := range spec.Hints {
 		if !hint.Required {
@@ -166,7 +167,7 @@ func TestConfirmationGuidanceIsMandatoryAndNormalized(t *testing.T) {
 		}
 	}
 
-	var dialog ConfirmDialog
+	var dialog chrome.ConfirmDialog
 	dialog.Show("delete", "Delete this item?")
 	rendered := ansi.Strip(dialog.RenderOverlay(24))
 	if !strings.Contains(rendered, "y confirm") || !strings.Contains(rendered, "n/Esc cancel") {
@@ -175,12 +176,12 @@ func TestConfirmationGuidanceIsMandatoryAndNormalized(t *testing.T) {
 }
 
 func TestReplaceFooterRemovesEveryStructuredGuidanceRow(t *testing.T) {
-	oldFooter := renderGuidance(GuidanceSpec{
-		Hints: requiredGuidanceHints("Enter apply", "Esc cancel", "Tab navigate"),
+	oldFooter := chrome.RenderGuidance(chrome.GuidanceSpec{
+		Hints: chrome.RequiredGuidanceHints("Enter apply", "Esc cancel", "Tab navigate"),
 		Rows:  2,
 	}, 18)
-	newFooter := renderGuidance(GuidanceSpec{
-		Hints: requiredGuidanceHints("Esc dismiss status"),
+	newFooter := chrome.RenderGuidance(chrome.GuidanceSpec{
+		Hints: chrome.RequiredGuidanceHints("Esc dismiss status"),
 		Rows:  1,
 	}, 18)
 	replaced := ansi.Strip(replaceFooter("content\n"+oldFooter, newFooter))

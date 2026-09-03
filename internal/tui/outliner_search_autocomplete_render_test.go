@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // searchACWideOutliner builds a scope with enough tags to overflow the row
@@ -162,10 +163,10 @@ func TestSearchAutocompleteGuidanceSwapsOnlyWhileTheDropdownIsOpen(t *testing.T)
 	}
 }
 
-func searchACGuidanceText(spec GuidanceSpec) string {
+func searchACGuidanceText(spec chrome.GuidanceSpec) string {
 	parts := make([]string, 0, len(spec.Hints))
 	for _, hint := range spec.Hints {
-		parts = append(parts, guidanceHintText(hint))
+		parts = append(parts, chrome.GuidanceHintText(hint))
 	}
 	return strings.Join(parts, " | ")
 }

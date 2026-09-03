@@ -4,6 +4,8 @@ import (
 	"slices"
 	"sort"
 	"strings"
+
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // Discover returns every applicable operation without interpreting legacy
@@ -109,14 +111,14 @@ func (registry *OperationRegistry) HandledKeysForInputStrategy(id InputStrategyI
 func (registry *OperationRegistry) GuidanceHintsForInputStrategy(
 	id InputStrategyID,
 	ctx CommandContext,
-) []GuidanceHint {
+) []chrome.GuidanceHint {
 	strategy, ok := registry.InputStrategy(id)
 	if !ok {
 		return nil
 	}
 	type rankedHint struct {
 		index int
-		hint  GuidanceHint
+		hint  chrome.GuidanceHint
 	}
 	var hints []rankedHint
 	for index, binding := range strategy.Bindings {
@@ -133,7 +135,7 @@ func (registry *OperationRegistry) GuidanceHintsForInputStrategy(
 		}
 		hints = append(hints, rankedHint{
 			index: index,
-			hint: GuidanceHint{
+			hint: chrome.GuidanceHint{
 				Key:      binding.DisplayKey,
 				Label:    label,
 				Priority: binding.FooterRank,
@@ -153,7 +155,7 @@ func (registry *OperationRegistry) GuidanceHintsForInputStrategy(
 		}
 		hints = append(hints, rankedHint{
 			index: len(strategy.Bindings) + index,
-			hint: GuidanceHint{
+			hint: chrome.GuidanceHint{
 				Key:      strings.Join(group.Sequence, ""),
 				Label:    label,
 				Priority: group.FooterRank,
@@ -166,7 +168,7 @@ func (registry *OperationRegistry) GuidanceHintsForInputStrategy(
 		}
 		return hints[i].index < hints[j].index
 	})
-	structured := make([]GuidanceHint, len(hints))
+	structured := make([]chrome.GuidanceHint, len(hints))
 	for i := range hints {
 		structured[i] = hints[i].hint
 	}

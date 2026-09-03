@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -35,7 +36,7 @@ func TestPinnedSectionAppearsAbovePromotingModesAndDeduplicatesQualifiedTasks(t 
 	outliner, _ := primaryRowsOutliner(alpha, beta)
 	outliner.loadedProjects = []*models.Project{beta, alpha}
 
-	for _, mode := range []OutlinerModeID{ModeAll, ModeToday} {
+	for _, mode := range []chrome.OutlinerModeID{chrome.ModeAll, chrome.ModeToday} {
 		t.Run(string(mode), func(t *testing.T) {
 			outliner.selectOutlinerMode(mode)
 			if len(outliner.rows) < 3 || !outliner.rows[0].IsSectionHeader ||
@@ -101,14 +102,14 @@ func TestPinnedSectionIsAbsentFromNarrowModes(t *testing.T) {
 	runtime.Planning().SetNext([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: pinned.ID}})
 
 	for _, testCase := range []struct {
-		mode    OutlinerModeID
+		mode    chrome.OutlinerModeID
 		counted *models.Task
 	}{
-		{ModeInbox, pinnedInbox},
-		{ModeNext, pinned},
-		{ModeBacklog, pinned},
-		{ModeDue, pinned},
-		{ModeRecent, pinned},
+		{chrome.ModeInbox, pinnedInbox},
+		{chrome.ModeNext, pinned},
+		{chrome.ModeBacklog, pinned},
+		{chrome.ModeDue, pinned},
+		{chrome.ModeRecent, pinned},
 	} {
 		t.Run(string(testCase.mode), func(t *testing.T) {
 			outliner.selectOutlinerMode(testCase.mode)
@@ -134,7 +135,7 @@ func TestPinnedProjectHeadersCollapseIndependently(t *testing.T) {
 	alpha := primaryRowsProject("alpha", alphaTask)
 	beta := primaryRowsProject("beta", betaTask)
 	outliner, _ := primaryRowsOutliner(alpha, beta)
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 
 	alphaHeader := -1
 	for index, row := range outliner.rows {
@@ -186,7 +187,7 @@ func TestPinnedSectionRanksSubtreesByRootPinOrder(t *testing.T) {
 	other.Pinned, other.PinnedAt = true, &otherTime
 	project := primaryRowsProject("alpha", parent, child, other)
 	outliner, _ := primaryRowsOutliner(project)
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 
 	// The child holds the newest pin, but a subtree ranks by its own root so the
 	// order J/K manipulates is the order the rows display in.
@@ -250,7 +251,7 @@ func TestPinnedAndDueTiesUsePinnedProjectThenAlphabeticalOrder(t *testing.T) {
 	outliner := NewOutlinerModel(nil, nil, runtime)
 	outliner.loadedProjects = []*models.Project{alpha, beta}
 
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 	if got := visibleQualifiedTaskIDs(outliner); !slices.Equal(got, []string{
 		"beta/beta-a",
 		"alpha/alpha-a",
@@ -262,7 +263,7 @@ func TestPinnedAndDueTiesUsePinnedProjectThenAlphabeticalOrder(t *testing.T) {
 	for _, task := range []*models.Task{alphaA, alphaB, betaA} {
 		task.Pinned, task.PinnedAt = false, nil
 	}
-	outliner.selectOutlinerMode(ModeDue)
+	outliner.selectOutlinerMode(chrome.ModeDue)
 	if got := visibleQualifiedTaskIDs(outliner); !slices.Equal(got, []string{
 		"beta/beta-a",
 		"alpha/alpha-a",
@@ -279,7 +280,7 @@ func TestPinnedPromotionRebuildKeepsCrossProjectCursorIdentity(t *testing.T) {
 	alpha := primaryRowsProject("alpha", alphaTask)
 	beta := primaryRowsProject("beta", betaTask)
 	outliner, _ := primaryRowsOutliner(alpha, beta)
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 	if !outliner.moveCursorToProjectTask(betaTask.ID, beta.ID) {
 		t.Fatal("cursor did not land on beta/shared")
 	}
@@ -304,7 +305,7 @@ func TestFilterRebuildKeepsQualifiedCursorIdentity(t *testing.T) {
 	alpha := primaryRowsProject("alpha", alphaTask)
 	beta := primaryRowsProject("beta", betaTask)
 	outliner, _ := primaryRowsOutliner(alpha, beta)
-	outliner.selectOutlinerMode(ModeBacklog)
+	outliner.selectOutlinerMode(chrome.ModeBacklog)
 	if !outliner.moveCursorToProjectTask(betaTask.ID, beta.ID) {
 		t.Fatal("cursor did not land on beta/shared")
 	}
@@ -335,7 +336,7 @@ func TestPinnedSectionEndsWithSeparatorInEveryPromotingMode(t *testing.T) {
 	outliner, runtime := primaryRowsOutliner(project)
 	runtime.Planning().SetToday([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: plain.ID}})
 
-	for _, mode := range []OutlinerModeID{ModeAll, ModeToday} {
+	for _, mode := range []chrome.OutlinerModeID{chrome.ModeAll, chrome.ModeToday} {
 		t.Run(string(mode), func(t *testing.T) {
 			outliner.selectOutlinerMode(mode)
 			boundary := slices.IndexFunc(outliner.rows, func(row outlinerRow) bool { return row.IsSeparator })

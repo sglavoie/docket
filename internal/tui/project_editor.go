@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -54,7 +55,7 @@ type ProjectEditorModel struct {
 	err        error
 	hasChanges bool
 
-	discardConfirmState
+	chrome.DiscardConfirmState
 }
 
 // NewProjectEditorModel creates a domain-native project editor. Catalog metadata
@@ -67,7 +68,7 @@ func NewProjectEditorModel(
 	svc *app.Service,
 	identityProtected bool,
 ) *ProjectEditorModel {
-	factory := DefaultFormFieldFactory()
+	factory := chrome.DefaultFormFieldFactory()
 
 	nameInput := factory.NewTextInputWithValue(project.Name, "")
 	nameInput.Focus()
@@ -127,9 +128,9 @@ func (m *ProjectEditorModel) SetSize(width, height int) {
 	const descriptionLabelReserve = 12
 
 	m.width = width
-	formFactory.ResizeTextInputWithReserve(&m.nameInput, width, theme.FormLabelWidth)
-	formFactory.ResizeTextInputWithReserve(&m.descriptionInput, width, descriptionLabelReserve)
-	formFactory.ResizeTextInputWithReserve(&m.tagsInput, width, descriptionLabelReserve)
+	chrome.FormFactory.ResizeTextInputWithReserve(&m.nameInput, width, theme.FormLabelWidth)
+	chrome.FormFactory.ResizeTextInputWithReserve(&m.descriptionInput, width, descriptionLabelReserve)
+	chrome.FormFactory.ResizeTextInputWithReserve(&m.tagsInput, width, descriptionLabelReserve)
 }
 
 func (m *ProjectEditorModel) SupportsHelpShortcut() bool { return false }
@@ -142,16 +143,16 @@ func (m *ProjectEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	// Handle discard confirmation
-	if m.confirmDiscard {
+	if m.ConfirmDiscard {
 		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 			switch keyMsg.String() {
 			case "y", "Y":
-				m.confirmDiscard = false
+				m.ConfirmDiscard = false
 				return m, func() tea.Msg {
 					return status.BackMsg{}
 				}
 			case "n", "N", "esc":
-				m.confirmDiscard = false
+				m.ConfirmDiscard = false
 				return m, nil
 			}
 			return m, nil
@@ -163,7 +164,7 @@ func (m *ProjectEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "esc":
 			if m.checkChanges() {
-				m.confirmDiscard = true
+				m.ConfirmDiscard = true
 				return m, nil
 			}
 			return m, func() tea.Msg {
@@ -377,7 +378,7 @@ func (m *ProjectEditorModel) View() tea.View {
 	var b strings.Builder
 
 	// Name input with slug preview
-	b.WriteString(renderFormLabelShared("Name:", int(projectEditorFieldName), int(m.focusIndex)))
+	b.WriteString(chrome.RenderFormLabelShared("Name:", int(projectEditorFieldName), int(m.focusIndex)))
 	b.WriteString(m.nameInput.View())
 	b.WriteString("\n")
 
@@ -396,14 +397,14 @@ func (m *ProjectEditorModel) View() tea.View {
 	b.WriteString("\n\n")
 
 	// Description input
-	b.WriteString(renderFormLabelShared("Description:", int(projectEditorFieldDescription), int(m.focusIndex)))
+	b.WriteString(chrome.RenderFormLabelShared("Description:", int(projectEditorFieldDescription), int(m.focusIndex)))
 	b.WriteString(m.descriptionInput.View())
 	b.WriteString("\n\n")
 
 	// Tags input. The behavioral explainer sits under the field because typing
 	// one of these words changes what the project does, and the form is the one
 	// place that offers them without a picker to say so.
-	b.WriteString(renderFormLabelShared("Tags:", int(projectEditorFieldTags), int(m.focusIndex)))
+	b.WriteString(chrome.RenderFormLabelShared("Tags:", int(projectEditorFieldTags), int(m.focusIndex)))
 	b.WriteString(m.tagsInput.View())
 	b.WriteString("\n")
 	if explainer := behavioralProjectTagExplainer(
@@ -428,10 +429,10 @@ func (m *ProjectEditorModel) View() tea.View {
 		title += " *"
 	}
 
-	guidance := renderGuidance(m.guidanceSpec(), m.width)
+	guidance := chrome.RenderGuidance(m.guidanceSpec(), m.width)
 
 	var out strings.Builder
-	out.WriteString(renderFullscreenTitleWithPulse(title, "", m.CurrentWorkspacePulse(), m.width))
+	out.WriteString(chrome.RenderFullscreenTitleWithPulse(title, "", m.CurrentWorkspacePulse(), m.width))
 	out.WriteString("\n\n")
 	out.WriteString(b.String())
 	out.WriteString("\n")
@@ -440,15 +441,15 @@ func (m *ProjectEditorModel) View() tea.View {
 	return tea.NewView(out.String())
 }
 
-func (m *ProjectEditorModel) guidanceSpec() GuidanceSpec {
-	if m.confirmDiscard {
-		return confirmationGuidanceSpec()
+func (m *ProjectEditorModel) guidanceSpec() chrome.GuidanceSpec {
+	if m.ConfirmDiscard {
+		return chrome.ConfirmationGuidanceSpec()
 	}
 	commit := "Ctrl+S save"
 	if m.err != nil {
 		commit = "Ctrl+S retry"
 	}
-	spec := requiredActionGuidanceSpec(commit, "Tab next", "Shift+Tab previous", "Enter next/save")
+	spec := chrome.RequiredActionGuidanceSpec(commit, "Tab next", "Shift+Tab previous", "Enter next/save")
 	if m.hasChanges {
 		spec.Supplemental = "Unsaved changes"
 	}

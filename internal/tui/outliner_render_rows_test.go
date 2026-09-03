@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // This file covers the segments a row reserves rather than earns: the context
@@ -81,7 +82,7 @@ func TestCrossProjectTaskRowsOmitProjectBadge(t *testing.T) {
 	alpha := primaryRowsProject("alpha", primaryRowsTask("alpha-task", models.StateBacklog))
 	beta := primaryRowsProject("beta", primaryRowsTask("beta-task", models.StateBacklog))
 	outliner, _ := primaryRowsOutliner(alpha, beta)
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 
 	headerLabels := make(map[string]bool)
 	for index, row := range outliner.rows {

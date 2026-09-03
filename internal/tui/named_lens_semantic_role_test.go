@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // This file walks the resolver's precedence ladder rung by rung: which single
@@ -225,7 +226,7 @@ func TestNamedLensSemanticRole(t *testing.T) {
 				l.Mode = config.LensModeInbox
 				l.Query = fmt.Sprintf("$%s $%s", models.StateInbox, models.StateDoing)
 			}),
-			want: modeRole(ModeInbox),
+			want: modeRole(chrome.ModeInbox),
 		},
 		{
 			// A negated state selects the complement of the group it names, so it is
@@ -276,32 +277,32 @@ func TestNamedLensSemanticRole(t *testing.T) {
 		{
 			name: "inbox mode",
 			lens: namedLensFixture(func(l *config.NamedLens) { l.Mode = config.LensModeInbox }),
-			want: modeRole(ModeInbox),
+			want: modeRole(chrome.ModeInbox),
 		},
 		{
 			name: "today mode",
 			lens: namedLensFixture(func(l *config.NamedLens) { l.Mode = config.LensModeToday }),
-			want: modeRole(ModeToday),
+			want: modeRole(chrome.ModeToday),
 		},
 		{
 			name: "next mode",
 			lens: namedLensFixture(func(l *config.NamedLens) { l.Mode = config.LensModeNext }),
-			want: modeRole(ModeNext),
+			want: modeRole(chrome.ModeNext),
 		},
 		{
 			name: "backlog mode",
 			lens: namedLensFixture(func(l *config.NamedLens) { l.Mode = config.LensModeBacklog }),
-			want: modeRole(ModeBacklog),
+			want: modeRole(chrome.ModeBacklog),
 		},
 		{
 			name: "due mode without a due bucket",
 			lens: namedLensFixture(func(l *config.NamedLens) { l.Mode = config.LensModeDue }),
-			want: modeRole(ModeDue),
+			want: modeRole(chrome.ModeDue),
 		},
 		{
 			name: "recent mode",
 			lens: namedLensFixture(func(l *config.NamedLens) { l.Mode = config.LensModeRecent }),
-			want: modeRole(ModeRecent),
+			want: modeRole(chrome.ModeRecent),
 		},
 		{
 			name: "all mode is the default and is not a signal",

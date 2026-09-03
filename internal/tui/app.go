@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -183,13 +184,13 @@ type AppModel struct {
 	// Pending project archive/unarchive confirmation
 	pendingProjectArchive        *models.Project
 	pendingProjectArchiveArchive bool
-	projectArchiveConfirm        ConfirmDialog
+	projectArchiveConfirm        chrome.ConfirmDialog
 
 	// Pending project delete confirmation. Deleting is the one project act that
 	// removes files, so it keeps its own dialog rather than sharing the archive
 	// one: the prompt counts the cascade the archive sentence never names.
 	pendingProjectDelete *models.Project
-	projectDeleteConfirm ConfirmDialog
+	projectDeleteConfirm chrome.ConfirmDialog
 
 	// Pending project park confirmation. Only a tag edit that newly adds the
 	// reserved parked tag prompts; every other project tag applies straight away.
@@ -197,7 +198,7 @@ type AppModel struct {
 	pendingProjectTagsSet    []string
 	pendingProjectBulkTags   *projectBulkTagEdit
 	pendingProjectEditorSave *projectEditorSave
-	projectParkConfirm       ConfirmDialog
+	projectParkConfirm       chrome.ConfirmDialog
 
 	// projectTagActionSubject is the tag the vocabulary sheet edits. It lives
 	// here rather than in the sheet's frozen value because a nested value step
@@ -209,13 +210,13 @@ type AppModel struct {
 	// originating presentation here, prompts through taskDeleteConfirm, and only
 	// executes the atomic BulkCoordinator.DeleteLocators transaction on confirmation.
 	pendingTaskDelete taskDeletePending
-	taskDeleteConfirm ConfirmDialog
+	taskDeleteConfirm chrome.ConfirmDialog
 
 	// Pending outline apply held while its deletions await confirmation. The
 	// buffer is parsed and the removals counted before the prompt opens, so the
 	// numbers on screen are the ones the transaction will act on.
 	pendingOutlineApply  outlineApplyPending
-	outlineDeleteConfirm ConfirmDialog
+	outlineDeleteConfirm chrome.ConfirmDialog
 
 	// The contextual action flow is the only generic two-level overlay:
 	// action sheet -> value step. The sheet is host-agnostic; the host it was
@@ -237,7 +238,7 @@ type AppModel struct {
 
 	// A destructive contextual action prompts here and keeps its frozen request
 	// so cancellation returns to the sheet with nothing executed.
-	operationConfirm        ConfirmDialog
+	operationConfirm        chrome.ConfirmDialog
 	pendingOperationRequest OperationExecutionRequest
 
 	// Keys already pressed toward an unfinished chord. A non-empty prefix owns

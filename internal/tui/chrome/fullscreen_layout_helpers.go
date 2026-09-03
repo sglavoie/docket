@@ -1,4 +1,4 @@
-package tui
+package chrome
 
 import (
 	"image/color"
@@ -8,8 +8,8 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-// fitBlockHeight truncates or pads a rendered block to an exact line count.
-func fitBlockHeight(block string, height int) string {
+// FitBlockHeight truncates or pads a rendered block to an exact line count.
+func FitBlockHeight(block string, height int) string {
 	if height <= 0 {
 		return ""
 	}
@@ -27,7 +27,7 @@ func fitBlockHeight(block string, height int) string {
 	return strings.Join(lines, "\n")
 }
 
-// fullscreenContentHeightForBlocks returns the largest content-block height (in
+// FullscreenContentHeightForBlocks returns the largest content-block height (in
 // lines) such that the surrounding chrome/footer blocks, joined vertically with
 // an h-line content block, still fit within totalHeight. Unlike
 // fullscreenContentHeight, which assumes a fixed two-line footer, it budgets
@@ -36,11 +36,11 @@ func fitBlockHeight(block string, height int) string {
 // blocks that flank the content in the same lipgloss.JoinVertical the caller
 // renders (e.g. title, tab bar, footer). This mirrors metricsContentHeight and
 // settingsContentHeight, which now share this helper.
-func fullscreenContentHeightForBlocks(totalHeight int, blocks ...string) int {
+func FullscreenContentHeightForBlocks(totalHeight int, blocks ...string) int {
 	for h := max(totalHeight, 1); h >= 1; h-- {
 		sized := make([]string, 0, len(blocks)+1)
 		sized = append(sized, blocks...)
-		sized = append(sized, fitBlockHeight("", h))
+		sized = append(sized, FitBlockHeight("", h))
 		if lipgloss.Height(lipgloss.JoinVertical(lipgloss.Left, sized...)) <= totalHeight {
 			return h
 		}
@@ -48,11 +48,11 @@ func fullscreenContentHeightForBlocks(totalHeight int, blocks ...string) int {
 	return 1
 }
 
-// footerHelpSeparator delimits complete key/action entries in structured
+// FooterHelpSeparator delimits complete key/action entries in structured
 // guidance after they have been selected for the current row budget.
-const footerHelpSeparator = " · "
+const FooterHelpSeparator = " · "
 
-// DividerOption configures optional behavior for renderHorizontalDivider.
+// DividerOption configures optional behavior for RenderHorizontalDivider.
 type DividerOption func(*dividerConfig)
 
 type dividerConfig struct {
@@ -74,9 +74,9 @@ func WithDividerGlyph(glyph rune) DividerOption {
 	}
 }
 
-// renderHorizontalDivider renders a full-width ─── line with optional styling.
+// RenderHorizontalDivider renders a full-width ─── line with optional styling.
 // Use WithDividerColor and WithDividerGlyph to change its appearance.
-func renderHorizontalDivider(width int, opts ...DividerOption) string {
+func RenderHorizontalDivider(width int, opts ...DividerOption) string {
 	if width <= 0 {
 		width = 80
 	}
@@ -95,13 +95,13 @@ func renderHorizontalDivider(width int, opts ...DividerOption) string {
 }
 
 // Spacing rule: 1 blank line between sections, 0 blank lines between rows
-// within a section. Use renderEmptyState for empty-state blocks so spacing is
+// within a section. Use RenderEmptyState for empty-state blocks so spacing is
 // embedded and not duplicated at call sites.
 
-// renderEmptyState returns the standard empty-state block used when a view has
+// RenderEmptyState returns the standard empty-state block used when a view has
 // no visible tasks. msg is rendered in MutedStyle; helpText (if non-empty) is
 // appended below in HelpStyle with a blank-line separator.
-func renderEmptyState(msg string, helpText string) string {
+func RenderEmptyState(msg string, helpText string) string {
 	s := theme.MutedStyle.Render(msg)
 	if helpText != "" {
 		s += "\n\n" + theme.HelpStyle.Render(helpText)

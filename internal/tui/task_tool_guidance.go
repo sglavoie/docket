@@ -5,36 +5,37 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
-func taskToolGuidanceSpec(confirmActive bool, activeInteraction bool, km *keymap.KeyMap) (GuidanceSpec, bool) {
+func taskToolGuidanceSpec(confirmActive bool, activeInteraction bool, km *keymap.KeyMap) (chrome.GuidanceSpec, bool) {
 	if confirmActive {
-		return confirmationGuidanceSpec(), true
+		return chrome.ConfirmationGuidanceSpec(), true
 	}
 	rows := 1
 	if activeInteraction {
 		rows = 2
 	}
-	return guidanceSpecFromKeyMap(km, rows)
+	return chrome.GuidanceSpecFromKeyMap(km, rows)
 }
 
-func (m *TaskCommentsModel) guidanceSpec() (GuidanceSpec, bool) {
+func (m *TaskCommentsModel) guidanceSpec() (chrome.GuidanceSpec, bool) {
 	return taskToolGuidanceSpec(m.confirm.IsActive(), m.addMode || m.editMode || m.expandedView, m.buildKeyMap())
 }
 
-func (m *TaskAttachmentsModel) guidanceSpec() (GuidanceSpec, bool) {
+func (m *TaskAttachmentsModel) guidanceSpec() (chrome.GuidanceSpec, bool) {
 	return taskToolGuidanceSpec(m.confirm.IsActive(), m.addMode, m.buildKeyMap())
 }
 
-func renderTaskToolGuidance(spec GuidanceSpec, ok bool, width int, accent ...color.Color) string {
+func renderTaskToolGuidance(spec chrome.GuidanceSpec, ok bool, width int, accent ...color.Color) string {
 	if !ok {
 		return ""
 	}
 	if len(accent) > 0 {
-		return renderGuidance(spec, width, accent[0])
+		return chrome.RenderGuidance(spec, width, accent[0])
 	}
-	return renderGuidance(spec, width)
+	return chrome.RenderGuidance(spec, width)
 }
 
 // taskToolAvailableRows measures the already-rendered prefix and structured

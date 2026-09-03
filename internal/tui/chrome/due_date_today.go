@@ -1,10 +1,10 @@
-package tui
+package chrome
 
 import "time"
 
-// dueDateIsToday compares calendar fields rather than instants: task due dates
+// DueDateIsToday compares calendar fields rather than instants: task due dates
 // are date-only values and may retain a location different from the TUI clock.
-func dueDateIsToday(due *time.Time) bool {
+func DueDateIsToday(due *time.Time) bool {
 	if due == nil {
 		return false
 	}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -60,7 +61,7 @@ func TestPrimaryAllUsesCanonicalGroupsAndDeduplicatesToday(t *testing.T) {
 		TaskID:    "next",
 	}})
 
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 
 	var groups []models.WorkflowStateGroup
 	for _, row := range outliner.rows {
@@ -117,7 +118,7 @@ func TestPrimaryAllPromotesReviewAfterDoingWithoutMutatingMembership(t *testing.
 	outliner, runtime := primaryRowsOutliner(project)
 	runtime.Planning().SetToday([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: reviewedToday.ID}})
 	runtime.Planning().SetNext([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: reviewedNext.ID}})
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 
 	lanes := []struct {
 		id          string
@@ -201,7 +202,7 @@ func TestPrimaryAllStaleLanePrecedenceAndOrder(t *testing.T) {
 	outliner, runtime := primaryRowsOutliner(project)
 	runtime.Planning().SetToday([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: today.ID}})
 	runtime.Planning().SetNext([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: next.ID}})
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 
 	wantLane := map[string]string{
 		pinned.ID: "Pinned",
@@ -311,7 +312,7 @@ func TestPrimaryAllExplicitFiltersOverrideTerminalAndDeferredDefaults(t *testing
 	// but the projection remains defensive while a refresh is in flight.
 	runtime.Planning().SetNext([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: done.ID}})
 	runtime.Planning().SetToday([]config.ProjectTaskLocator{{ProjectID: project.ID, TaskID: deferred.ID}})
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 
 	outliner.filter.setStateFilter(testWorkflowStateSet(models.StateDone, models.StateCanceled))
 	outliner.adoptFilterCarriers()
@@ -372,7 +373,7 @@ func TestPrimaryModeMembershipHierarchyOrderingAndQualifiedRows(t *testing.T) {
 		TaskID:    alphaToday.ID,
 	}})
 
-	outliner.selectOutlinerMode(ModeNext)
+	outliner.selectOutlinerMode(chrome.ModeNext)
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{
 		alphaNext.ID,
 		alphaNextChild.ID,
@@ -401,17 +402,17 @@ func TestPrimaryModeMembershipHierarchyOrderingAndQualifiedRows(t *testing.T) {
 		t.Fatalf("collapsed Next child remained visible: %+v", row)
 	}
 
-	outliner.selectOutlinerMode(ModeToday)
+	outliner.selectOutlinerMode(chrome.ModeToday)
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{alphaToday.ID}) {
 		t.Fatalf("Today rows = %v, want explicit durable membership only", got)
 	}
 
-	outliner.selectOutlinerMode(ModeInbox)
+	outliner.selectOutlinerMode(chrome.ModeInbox)
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{alphaInbox.ID, betaInbox.ID}) {
 		t.Fatalf("Inbox rows = %v, want exact StateInbox membership", got)
 	}
 
-	outliner.selectOutlinerMode(ModeBacklog)
+	outliner.selectOutlinerMode(chrome.ModeBacklog)
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{
 		alphaNext.ID,
 		alphaReady.ID,
@@ -421,7 +422,7 @@ func TestPrimaryModeMembershipHierarchyOrderingAndQualifiedRows(t *testing.T) {
 	}
 
 	outliner.scopedProjectID = beta.ID
-	outliner.selectOutlinerMode(ModeInbox)
+	outliner.selectOutlinerMode(chrome.ModeInbox)
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{betaInbox.ID}) {
 		t.Fatalf("project-scoped Inbox rows = %v, want beta only", got)
 	}

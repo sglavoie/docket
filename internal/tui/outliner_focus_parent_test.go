@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -225,7 +226,7 @@ func TestFocusFromSearchForcesAllWhenTheRestoredModeHidesTheResult(t *testing.T)
 	out := model.crossOutliner
 	out.crossForceRebuild = true
 	out.crossProjectRebuildRows()
-	out.selectOutlinerMode(ModeToday)
+	out.selectOutlinerMode(chrome.ModeToday)
 
 	identity := searchProjectionCursorOnTitle(t, out, "User Authentication")
 	result := model.operationExecutor.Execute(OperationExecutionRequest{
@@ -235,7 +236,7 @@ func TestFocusFromSearchForcesAllWhenTheRestoredModeHidesTheResult(t *testing.T)
 	if result.Err != nil || result.Status != "" {
 		t.Fatalf("search-projected Enter = status %q err %v", result.Status, result.Err)
 	}
-	if out.primaryMode != ModeAll {
+	if out.primaryMode != chrome.ModeAll {
 		t.Fatalf("mode = %s, want All forced by a result Today cannot list", out.primaryMode)
 	}
 	if len(out.crossFocusStack) != 1 || out.crossFocusStack[0].TaskID != identity.TaskID {

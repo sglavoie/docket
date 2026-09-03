@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -28,7 +29,7 @@ func TestHandleEscKey_PropagatesForModalViews(t *testing.T) {
 		{
 			name:    "TextEditor",
 			viewTyp: presentation.ViewTextEditor,
-			view:    NewTextEditorModel("title", "some value"),
+			view:    chrome.NewTextEditorModel("title", "some value"),
 		},
 	}
 

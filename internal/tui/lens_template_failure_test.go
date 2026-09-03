@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // --- an added template is an ordinary record ---------------------------------
@@ -65,7 +66,7 @@ func TestAnAddedTemplateIsAnOrdinaryRecordAcrossRenameReplaceAndDelete(t *testin
 	// Replace overwrites the definition under the same ID with whatever the view
 	// currently is, which is the furthest an added record can travel from its
 	// template and still be it.
-	out.selectOutlinerMode(ModeInbox)
+	out.selectOutlinerMode(chrome.ModeInbox)
 	out.treeSort = SortState{Field: SortByTitle, Ascending: true}
 	if result := executeLens(
 		model, operationLensReplace, LensEntity(template.ID), "", true,
@@ -111,7 +112,7 @@ func TestAnAddedTemplateIsAnOrdinaryRecordAcrossRenameReplaceAndDelete(t *testin
 
 // lensPickerAppInMode opens the lens picker over a named mode, so a refusal can
 // be asserted to have left the view underneath it alone.
-func lensPickerAppInMode(t *testing.T, mode OutlinerModeID) *AppModel {
+func lensPickerAppInMode(t *testing.T, mode chrome.OutlinerModeID) *AppModel {
 	t.Helper()
 	model := lensOperationApp(t)
 	model.crossOutliner.selectOutlinerMode(mode)
@@ -175,7 +176,7 @@ func TestAddTemplateFailuresRetainThePickerAndChangeNothing(t *testing.T) {
 		},
 	} {
 		t.Run(phase.name, func(t *testing.T) {
-			model := lensPickerAppInMode(t, ModeInbox)
+			model := lensPickerAppInMode(t, chrome.ModeInbox)
 			template := addableTemplate(t, model)
 			if template.Name != "Overdue" {
 				t.Fatalf("the first addable template is %q; the name-collision row is written for Overdue", template.Name)
@@ -206,8 +207,8 @@ func TestAddTemplateFailuresRetainThePickerAndChangeNothing(t *testing.T) {
 				if out.pendingLens != nil {
 					t.Error("a refused add left a population load armed")
 				}
-				if out.primaryMode != ModeInbox {
-					t.Errorf("current view = %v, want the untouched %v", out.primaryMode, ModeInbox)
+				if out.primaryMode != chrome.ModeInbox {
+					t.Errorf("current view = %v, want the untouched %v", out.primaryMode, chrome.ModeInbox)
 				}
 			}
 
@@ -230,7 +231,7 @@ func TestAddTemplateFailuresRetainThePickerAndChangeNothing(t *testing.T) {
 // cached snapshot, and the current view exactly as they were — and says so on the
 // picker rather than anywhere else.
 func TestAddTemplateDiskCommitFailureRetainsThePicker(t *testing.T) {
-	model := lensPickerAppInMode(t, ModeInbox)
+	model := lensPickerAppInMode(t, chrome.ModeInbox)
 	dataDir := t.TempDir()
 	project := models.Project{ID: "alpha", Name: "alpha", Slug: "alpha"}
 	model.runtime = testRuntimeAt(dataDir, testConfigWithProjects(&project))
@@ -263,7 +264,7 @@ func TestAddTemplateDiskCommitFailureRetainsThePicker(t *testing.T) {
 	if before.NamedLensByID(template.ID) != nil {
 		t.Error("a failed commit added the template to the cached snapshot")
 	}
-	if out := model.crossOutliner; out.hasActiveLens() || out.primaryMode != ModeInbox {
+	if out := model.crossOutliner; out.hasActiveLens() || out.primaryMode != chrome.ModeInbox {
 		t.Error("a failed commit applied the template anyway")
 	}
 }

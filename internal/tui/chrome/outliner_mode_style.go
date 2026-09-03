@@ -1,4 +1,4 @@
-package tui
+package chrome
 
 import (
 	"charm.land/lipgloss/v2"
@@ -8,7 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-// outlinerModeStateGroup names the workflow-state group a mode borrows its
+// OutlinerModeStateGroup names the workflow-state group a mode borrows its
 // semantic color from. All has none of its own, and neither does an unknown
 // token. This is the single mode-to-group table: both the badge style below and
 // the named-lens accent read it rather than restating it.
@@ -16,7 +16,7 @@ import (
 // It sits beside the mode catalog rather than beside the theme palette because
 // the question it answers is about a mode, not about a color: the theme names
 // state groups and knows nothing of OutlinerModeID.
-func outlinerModeStateGroup(mode OutlinerModeID) (models.WorkflowStateGroup, bool) {
+func OutlinerModeStateGroup(mode OutlinerModeID) (models.WorkflowStateGroup, bool) {
 	switch mode {
 	case ModeInbox:
 		return models.StateGroupInbox, true
@@ -36,13 +36,13 @@ func outlinerModeStateGroup(mode OutlinerModeID) (models.WorkflowStateGroup, boo
 // GetOutlinerModeStyle resolves one of the final seven mode identities to its
 // static theme role. Workflow group headers use GetWorkflowStateGroupStyle.
 func GetOutlinerModeStyle(mode OutlinerModeID) lipgloss.Style {
-	if group, ok := outlinerModeStateGroup(mode); ok {
+	if group, ok := OutlinerModeStateGroup(mode); ok {
 		return theme.GetWorkflowStateGroupStyle(group)
 	}
 	return theme.ViewModeAllStyle
 }
 
-// operationalTitleModeSegment renders the mode identity segment of the
+// OperationalTitleModeSegment renders the mode identity segment of the
 // operational title row.
 //
 // It sits here rather than beside the rest of the title row because it is the
@@ -50,6 +50,6 @@ func GetOutlinerModeStyle(mode OutlinerModeID) lipgloss.Style {
 // above are chrome vocabulary, and internal/tui/pulse is below chrome. The
 // badge itself is pulse's, so this is the adapter that hands chrome's mode to
 // it and nothing more.
-func operationalTitleModeSegment(mode OutlinerMode) string {
+func OperationalTitleModeSegment(mode OutlinerMode) string {
 	return pulse.OperationalTitleBadge(GetOutlinerModeStyle(mode.ID), mode.Label)
 }

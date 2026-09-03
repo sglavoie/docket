@@ -36,10 +36,3 @@ func (t TagInfo) ItemID() string {
 func (t TagInfo) ListSurfacePrimaryStyle() lipgloss.Style {
 	return theme.TagChipStyle(t.Name)
 }
-
-// CountDisplayer is implemented by PickerItems that want custom styled count
-// text instead of the default "(N)" format. The returned string is pre-rendered
-// and should not be wrapped in additional styles.
-type CountDisplayer interface {
-	CountDisplayText() string
-}

@@ -8,13 +8,14 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func TestGuidanceRequiredHintsEvictOptionalAndSupplemental(t *testing.T) {
-	spec := GuidanceSpec{
-		Hints: []GuidanceHint{
+	spec := chrome.GuidanceSpec{
+		Hints: []chrome.GuidanceHint{
 			{Key: "a", Label: "alpha", Priority: 1},
 			{Key: "b", Label: "beta", Priority: 2},
 			{Key: "Esc", Label: "cancel", Required: true},
@@ -22,14 +23,14 @@ func TestGuidanceRequiredHintsEvictOptionalAndSupplemental(t *testing.T) {
 		Supplemental: "50%",
 		Rows:         1,
 	}
-	line := strings.Join(guidanceLines(spec, 20), "\n")
+	line := strings.Join(chrome.GuidanceLines(spec, 20), "\n")
 	if line != "a alpha · Esc cancel" {
 		t.Fatalf("packed guidance = %q, want highest-priority optional plus required control", line)
 	}
 	if strings.Contains(line, "b beta") || strings.Contains(line, "50%") {
 		t.Fatalf("lower-priority content displaced a required control: %q", line)
 	}
-	wide := strings.Join(guidanceLines(spec, 40), "\n")
+	wide := strings.Join(chrome.GuidanceLines(spec, 40), "\n")
 	for _, want := range []string{"a alpha", "b beta", "Esc cancel", "50%"} {
 		if !strings.Contains(wide, want) {
 			t.Fatalf("wide guidance omitted %q: %q", want, wide)
@@ -40,22 +41,22 @@ func TestGuidanceRequiredHintsEvictOptionalAndSupplemental(t *testing.T) {
 func TestGuidanceUsesUnicodeCellWidthAndRowBudget(t *testing.T) {
 	first := "界 open"
 	second := "Enter choose"
-	spec := GuidanceSpec{Hints: []GuidanceHint{
+	spec := chrome.GuidanceSpec{Hints: []chrome.GuidanceHint{
 		{Key: "界", Label: "open", Priority: 1},
 		{Key: "Enter", Label: "choose", Priority: 2},
 	}}
-	exact := lipgloss.Width(first + footerHelpSeparator + second)
-	if got := guidanceLines(spec, exact); !slices.Equal(got, []string{first + footerHelpSeparator + second}) {
+	exact := lipgloss.Width(first + chrome.FooterHelpSeparator + second)
+	if got := chrome.GuidanceLines(spec, exact); !slices.Equal(got, []string{first + chrome.FooterHelpSeparator + second}) {
 		t.Fatalf("Unicode exact-fit guidance = %q", got)
 	}
 
 	spec.Rows = 1
-	oneRow := guidanceLines(spec, lipgloss.Width(first))
+	oneRow := chrome.GuidanceLines(spec, lipgloss.Width(first))
 	if !slices.Equal(oneRow, []string{first}) {
 		t.Fatalf("one-row guidance = %q, want only first complete hint", oneRow)
 	}
 	spec.Rows = 2
-	twoRows := guidanceLines(spec, lipgloss.Width(second))
+	twoRows := chrome.GuidanceLines(spec, lipgloss.Width(second))
 	if !slices.Equal(twoRows, []string{first, second}) {
 		t.Fatalf("two-row guidance = %q, want both complete hints", twoRows)
 	}
@@ -76,7 +77,7 @@ func TestPendingChordGuidanceUsesAtMostTwoNonwrappingHintLines(t *testing.T) {
 	}
 
 	spec := pendingChordGuidanceSpec("w", hints)
-	lines := guidanceLines(spec, minTerminalWidth)
+	lines := chrome.GuidanceLines(spec, minTerminalWidth)
 	if len(lines) == 0 || len(lines) > 2 {
 		t.Fatalf("pending chord lines = %d, want 1..2: %q", len(lines), lines)
 	}
@@ -102,7 +103,7 @@ func TestPendingChordGuidanceUsesAtMostTwoNonwrappingHintLines(t *testing.T) {
 		last = index
 	}
 
-	rendered := renderGuidance(spec, minTerminalWidth)
+	rendered := chrome.RenderGuidance(spec, minTerminalWidth)
 	if got := lipgloss.Height(rendered); got > 3 {
 		t.Fatalf("pending chord footer height = %d, want divider plus at most two rows", got)
 	}
@@ -117,11 +118,11 @@ func TestGuidanceSegmentsKeepKeysApartFromLabelsAndSupplemental(t *testing.T) {
 	spec := pendingChordGuidanceSpec("w", []ChordHint{{Key: "i", Label: "inbox"}})
 	spec.Supplemental = "search: alpha · location: Global"
 
-	lines := guidanceSegmentLines(spec, 80)
+	lines := chrome.GuidanceSegmentLines(spec, 80)
 	if len(lines) != 1 {
 		t.Fatalf("segment lines = %d, want 1: %v", len(lines), lines)
 	}
-	want := []guidanceSegment{
+	want := []chrome.GuidanceSegment{
 		{Key: "w…"},
 		{Key: "i", Label: "inbox"},
 		{Key: "Esc", Label: "cancel"},
@@ -131,18 +132,18 @@ func TestGuidanceSegmentsKeepKeysApartFromLabelsAndSupplemental(t *testing.T) {
 		t.Fatalf("segments = %v, want %v", lines[0], want)
 	}
 	plain := "w… · i inbox · Esc cancel · search: alpha · location: Global"
-	if got := strings.Join(guidanceLines(spec, 80), "\n"); got != plain {
+	if got := strings.Join(chrome.GuidanceLines(spec, 80), "\n"); got != plain {
 		t.Fatalf("plain guidance = %q, want %q", got, plain)
 	}
 }
 
 func TestRenderedGuidanceColorsKeysAndPreservesPlainText(t *testing.T) {
-	spec := GuidanceSpec{
-		Hints:        requiredGuidanceHints("Enter create", "Esc cancel"),
+	spec := chrome.GuidanceSpec{
+		Hints:        chrome.RequiredGuidanceHints("Enter create", "Esc cancel"),
 		Supplemental: "50%",
 		Rows:         1,
 	}
-	rendered := renderGuidanceText(spec, 60)
+	rendered := chrome.RenderGuidanceText(spec, 60)
 	for _, want := range []string{
 		theme.HelpKeyStyle.Render("Enter"),
 		theme.HelpStyle.Render(" create"),
@@ -154,7 +155,7 @@ func TestRenderedGuidanceColorsKeysAndPreservesPlainText(t *testing.T) {
 			t.Fatalf("rendered guidance %q omits styled fragment %q", rendered, want)
 		}
 	}
-	plain := strings.Join(guidanceLines(spec, 60), "\n")
+	plain := strings.Join(chrome.GuidanceLines(spec, 60), "\n")
 	if got := ansi.Strip(rendered); got != plain {
 		t.Fatalf("styled guidance text = %q, want plain %q", got, plain)
 	}
@@ -164,15 +165,15 @@ func TestRenderedGuidanceColorsKeysAndPreservesPlainText(t *testing.T) {
 }
 
 func TestGuidanceSegmentFitToWidthKeepsKeyAndClipsLabel(t *testing.T) {
-	segment := guidanceSegment{Key: "Ctrl+E", Label: "create & edit"}
-	fitted := segment.fitToWidth(10)
+	segment := chrome.GuidanceSegment{Key: "Ctrl+E", Label: "create & edit"}
+	fitted := segment.FitToWidth(10)
 	if fitted.Key != "Ctrl+E" {
 		t.Fatalf("fitted key = %q, want the keystroke intact", fitted.Key)
 	}
-	if got := lipgloss.Width(fitted.text()); got > 10 {
-		t.Fatalf("fitted width = %d, want <= 10: %q", got, fitted.text())
+	if got := lipgloss.Width(fitted.Text()); got > 10 {
+		t.Fatalf("fitted width = %d, want <= 10: %q", got, fitted.Text())
 	}
-	degraded := segment.fitToWidth(4)
+	degraded := segment.FitToWidth(4)
 	if degraded.Key != "" || degraded.Verbatim == "" {
 		t.Fatalf("segment narrower than its key = %+v, want verbatim clip", degraded)
 	}
@@ -191,11 +192,11 @@ func TestGuidanceFromGatedKeyMapMatchesHelpAndHandledKeys(t *testing.T) {
 		})),
 	}}
 
-	spec, ok := guidanceSpecFromKeyMap(km, 1)
+	spec, ok := chrome.GuidanceSpecFromKeyMap(km, 1)
 	if !ok || len(spec.Hints) != 2 {
 		t.Fatalf("live keymap guidance = (%+v, %v), want two visible active hints", spec, ok)
 	}
-	if got := []string{guidanceHintText(spec.Hints[0]), guidanceHintText(spec.Hints[1])}; !slices.Equal(got, []string{"/ search", "enter choose"}) {
+	if got := []string{chrome.GuidanceHintText(spec.Hints[0]), chrome.GuidanceHintText(spec.Hints[1])}; !slices.Equal(got, []string{"/ search", "enter choose"}) {
 		t.Fatalf("ranked keymap guidance = %v", got)
 	}
 	if !spec.Hints[1].Required {
@@ -216,13 +217,13 @@ func TestGuidanceFromGatedKeyMapMatchesHelpAndHandledKeys(t *testing.T) {
 		}
 	}
 	for _, unavailable := range []string{"x delete", "z unavailable"} {
-		if strings.Contains(strings.Join(guidanceLines(spec, 80), "\n"), unavailable) {
+		if strings.Contains(strings.Join(chrome.GuidanceLines(spec, 80), "\n"), unavailable) {
 			t.Errorf("guidance exposed hidden or gated binding %q", unavailable)
 		}
 	}
 
 	live = false
-	spec, ok = guidanceSpecFromKeyMap(km, 1)
+	spec, ok = chrome.GuidanceSpecFromKeyMap(km, 1)
 	if !ok || len(spec.Hints) != 1 || spec.Hints[0].Key != "enter" {
 		t.Fatalf("closed gate guidance = (%+v, %v), want required Enter only", spec, ok)
 	}
@@ -244,7 +245,7 @@ func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 	)
 	pairs := make([]string, 0, len(hints))
 	for _, hint := range hints {
-		pairs = append(pairs, guidanceHintText(hint))
+		pairs = append(pairs, chrome.GuidanceHintText(hint))
 	}
 	// `M menu` sits sixth because revealing the map of this grammar outranks every
 	// act the map lists; the four hints the rendered row is held to below are
@@ -260,7 +261,7 @@ func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 	if !ok {
 		t.Fatal("Outliner did not provide its operation footer")
 	}
-	lines := guidanceLines(spec, minTerminalWidth)
+	lines := chrome.GuidanceLines(spec, minTerminalWidth)
 	if len(lines) != 1 {
 		t.Fatalf("Outliner browse guidance rows = %d, want one: %q", len(lines), lines)
 	}
@@ -284,7 +285,7 @@ func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 	}
 	allHints := make([]string, 0, len(spec.Hints))
 	for _, hint := range spec.Hints {
-		allHints = append(allHints, guidanceHintText(hint))
+		allHints = append(allHints, chrome.GuidanceHintText(hint))
 	}
 	joined := strings.Join(allHints, "\n")
 	for _, unavailable := range []string{"e edit", "E description", "Ctrl+E editor"} {

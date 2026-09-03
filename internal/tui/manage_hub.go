@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 )
@@ -249,8 +250,8 @@ func (m *ManageHubModel) IsFullHeight() bool {
 	return false
 }
 
-func (m *ManageHubModel) GetConfirmDialog() *ConfirmDialog {
-	if provider, ok := m.active.(ConfirmDialogProvider); ok {
+func (m *ManageHubModel) GetConfirmDialog() *chrome.ConfirmDialog {
+	if provider, ok := m.active.(chrome.ConfirmDialogProvider); ok {
 		return provider.GetConfirmDialog()
 	}
 	return nil

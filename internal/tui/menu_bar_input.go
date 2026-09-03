@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // An open menu is a gated sub-state of the Outliner, built on the same template
@@ -206,7 +207,7 @@ func (m *OutlinerModel) menuBarOpenKeys() []string {
 // menuBarGuidance is the footer while a menu is open. It is the gated keymap the
 // sub-state supplies, which is why none of these keys carries a footer rank of
 // its own and the ranked projection underneath is untouched.
-func (m *OutlinerModel) menuBarGuidance() GuidanceSpec {
+func (m *OutlinerModel) menuBarGuidance() chrome.GuidanceSpec {
 	closeKey := "Esc"
 	if m.operationRegistry != nil {
 		if key := m.operationRegistry.InputShortcutForOperation(
@@ -214,10 +215,10 @@ func (m *OutlinerModel) menuBarGuidance() GuidanceSpec {
 			closeKey = key + "/Esc"
 		}
 	}
-	return GuidanceSpec{
+	return chrome.GuidanceSpec{
 		Hints: append(
-			requiredGuidanceHints("←/→ menu", "↑/↓ entry", "Enter run", closeKey+" close"),
-			optionalGuidanceHints(10, "any other key runs its own act")...),
+			chrome.RequiredGuidanceHints("←/→ menu", "↑/↓ entry", "Enter run", closeKey+" close"),
+			chrome.OptionalGuidanceHints(10, "any other key runs its own act")...),
 		Rows: 2,
 	}
 }

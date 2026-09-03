@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 func newTaskToolGuidanceFixture(t *testing.T) (*models.Project, *models.Task) {
@@ -24,7 +25,7 @@ func newTaskToolGuidanceFixture(t *testing.T) (*models.Project, *models.Task) {
 	return project, task
 }
 
-func assertGuidanceExcludes(t *testing.T, state string, spec GuidanceSpec, excluded ...string) {
+func assertGuidanceExcludes(t *testing.T, state string, spec chrome.GuidanceSpec, excluded ...string) {
 	t.Helper()
 	got := guidanceEntryText(spec)
 	for _, entry := range excluded {
@@ -136,10 +137,10 @@ func TestTaskToolGuidanceFitsNarrowBudgetsAndViews(t *testing.T) {
 
 	for _, tc := range []struct {
 		name string
-		spec GuidanceSpec
+		spec chrome.GuidanceSpec
 	}{
-		{"comments", func() GuidanceSpec { spec, _ := comments.guidanceSpec(); return spec }()},
-		{"attachments", func() GuidanceSpec { spec, _ := attachments.guidanceSpec(); return spec }()},
+		{"comments", func() chrome.GuidanceSpec { spec, _ := comments.guidanceSpec(); return spec }()},
+		{"attachments", func() chrome.GuidanceSpec { spec, _ := attachments.guidanceSpec(); return spec }()},
 	} {
 		if tc.spec.Rows != 1 {
 			t.Errorf("%s browse row budget = %d, want 1", tc.name, tc.spec.Rows)

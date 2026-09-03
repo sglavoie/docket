@@ -3,31 +3,33 @@ package tui
 import (
 	"fmt"
 	"strings"
+
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // ContextualGuidance returns the controls for the Notes interaction that owns
 // input right now. Modal commit/cancel controls are required and receive the
 // two-row interaction budget; ordinary browse and causal empty states stay on
 // one row.
-func (m *NotesViewModel) ContextualGuidance() (GuidanceSpec, bool) {
+func (m *NotesViewModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 	if m.locationPicker != nil {
 		return m.locationPicker.guidanceSpec()
 	}
 
 	switch {
 	case m.confirmDiscard:
-		return GuidanceSpec{
-			Hints: requiredGuidanceHints("Y discard", "N/Esc keep editing"),
+		return chrome.GuidanceSpec{
+			Hints: chrome.RequiredGuidanceHints("Y discard", "N/Esc keep editing"),
 			Rows:  2,
 		}, true
 	case m.confirm.IsActive():
-		return GuidanceSpec{
-			Hints: requiredGuidanceHints("Y delete", "N/Esc cancel"),
+		return chrome.GuidanceSpec{
+			Hints: chrome.RequiredGuidanceHints("Y delete", "N/Esc cancel"),
 			Rows:  2,
 		}, true
 	case m.renaming:
-		return GuidanceSpec{
-			Hints:        requiredGuidanceHints("Enter save", "Esc cancel"),
+		return chrome.GuidanceSpec{
+			Hints:        chrome.RequiredGuidanceHints("Enter save", "Esc cancel"),
 			Supplemental: m.currentLocationGuidance(),
 			Rows:         2,
 		}, true
@@ -36,10 +38,10 @@ func (m *NotesViewModel) ContextualGuidance() (GuidanceSpec, bool) {
 		if len(m.visibleRows) == 0 {
 			supplemental = "no matches"
 		}
-		hints := append(requiredGuidanceHints("Enter apply search", "Esc cancel edit"),
-			optionalGuidanceHints(10, "Ctrl+J/K navigate")...)
+		hints := append(chrome.RequiredGuidanceHints("Enter apply search", "Esc cancel edit"),
+			chrome.OptionalGuidanceHints(10, "Ctrl+J/K navigate")...)
 		hints = append(hints, m.previewPagingGuidance(11)...)
-		return GuidanceSpec{
+		return chrome.GuidanceSpec{
 			Hints:        hints,
 			Supplemental: supplemental,
 			Rows:         2,
@@ -50,12 +52,12 @@ func (m *NotesViewModel) ContextualGuidance() (GuidanceSpec, bool) {
 		return m.emptyGuidance()
 	}
 
-	spec, ok := guidanceSpecFromKeyMap(m.buildKeyMap(), 1)
+	spec, ok := chrome.GuidanceSpecFromKeyMap(m.buildKeyMap(), 1)
 	if !ok {
-		return GuidanceSpec{}, false
+		return chrome.GuidanceSpec{}, false
 	}
 	if query := strings.TrimSpace(m.searchApplied); query != "" {
-		spec.Hints = append(requiredGuidanceHints("Esc clear search"), spec.Hints...)
+		spec.Hints = append(chrome.RequiredGuidanceHints("Esc clear search"), spec.Hints...)
 		spec.Supplemental = fmt.Sprintf("search: %s", query)
 	}
 	spec.Hints = append(spec.Hints, m.previewPagingGuidance(12)...)
@@ -71,31 +73,31 @@ func (m *NotesViewModel) ContextualGuidance() (GuidanceSpec, bool) {
 // owe the reader. The keymap entry stays unranked because the footer may only
 // rank keys the Notes strategy binds; this is the same gate, spelled where a
 // conditional hint belongs.
-func (m *NotesViewModel) previewPagingGuidance(priority int) []GuidanceHint {
+func (m *NotesViewModel) previewPagingGuidance(priority int) []chrome.GuidanceHint {
 	if !m.notesPreviewPageable() {
 		return nil
 	}
-	return optionalGuidanceHints(priority, "Ctrl+F/B preview")
+	return chrome.OptionalGuidanceHints(priority, "Ctrl+F/B preview")
 }
 
-func (m *NotesViewModel) emptyGuidance() (GuidanceSpec, bool) {
+func (m *NotesViewModel) emptyGuidance() (chrome.GuidanceSpec, bool) {
 	if m.snapshotError != nil {
-		return GuidanceSpec{
-			Hints: requiredGuidanceHints("Esc close"),
+		return chrome.GuidanceSpec{
+			Hints: chrome.RequiredGuidanceHints("Esc close"),
 			Rows:  1,
 		}, true
 	}
 	if query := strings.TrimSpace(m.searchApplied); query != "" {
-		return GuidanceSpec{
-			Hints: append(requiredGuidanceHints("Esc clear search"),
-				optionalGuidanceHints(10, "/ edit search")...),
+		return chrome.GuidanceSpec{
+			Hints: append(chrome.RequiredGuidanceHints("Esc clear search"),
+				chrome.OptionalGuidanceHints(10, "/ edit search")...),
 			Supplemental: "search: " + query,
 			Rows:         1,
 		}, true
 	}
-	return GuidanceSpec{
-		Hints: append(requiredGuidanceHints("a choose location"),
-			optionalGuidanceHints(10, "p scope", "Esc close")...),
+	return chrome.GuidanceSpec{
+		Hints: append(chrome.RequiredGuidanceHints("a choose location"),
+			chrome.OptionalGuidanceHints(10, "p scope", "Esc close")...),
 		Rows: 1,
 	}, true
 }

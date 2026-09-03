@@ -1,6 +1,10 @@
 package tui
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/chrome"
+)
 
 func TestClampCursor(t *testing.T) {
 	tests := []struct {
@@ -61,7 +65,7 @@ func TestClampCursor(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ClampCursor(tt.cursor, tt.length)
+			got := chrome.ClampCursor(tt.cursor, tt.length)
 			if got != tt.want {
 				t.Errorf("ClampCursor(%d, %d) = %d, want %d", tt.cursor, tt.length, got, tt.want)
 			}

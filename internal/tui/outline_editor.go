@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // The outline editor is the bulk-restructuring escape hatch: one project's task
@@ -38,7 +39,7 @@ func (m *AppModel) outlineEditorRequest() (*models.Project, string, string) {
 	if out == nil {
 		return nil, "", ""
 	}
-	mode, ok := OutlinerModeByID(out.primaryMode)
+	mode, ok := chrome.OutlinerModeByID(out.primaryMode)
 	if !ok || mode.FixedOrder() {
 		return nil, "", outlineEditorModeRefusal
 	}
@@ -143,7 +144,7 @@ func outlineDumpLine(task *models.Task, depth int, scope *models.Project, projec
 		segments = append(segments, fmt.Sprintf("%s%d", priorityDefinition.Trigger, task.Priority))
 	}
 	if task.DueDate != nil {
-		segments = append(segments, dueDefinition.Trigger+dueGrammarValue(task))
+		segments = append(segments, dueDefinition.Trigger+chrome.DueGrammarValue(task))
 	}
 	for _, tag := range task.Tags {
 		segments = append(segments, tagDefinition.Trigger+tag)

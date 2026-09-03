@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 func TestPlanningRowsGroupEachProjectUnderOneHeader(t *testing.T) {
@@ -22,7 +23,7 @@ func TestPlanningRowsGroupEachProjectUnderOneHeader(t *testing.T) {
 		{ProjectID: alpha.ID, TaskID: alphaTwo.ID},
 	})
 
-	for _, mode := range []OutlinerModeID{ModeAll, ModeNext} {
+	for _, mode := range []chrome.OutlinerModeID{chrome.ModeAll, chrome.ModeNext} {
 		t.Run(string(mode), func(t *testing.T) {
 			outliner.selectOutlinerMode(mode)
 			if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{
@@ -61,7 +62,7 @@ func TestPlanningProjectHeadersCollapseAndDisappearInProjectScope(t *testing.T) 
 		{ProjectID: beta.ID, TaskID: betaOne.ID},
 		{ProjectID: alpha.ID, TaskID: alphaTwo.ID},
 	})
-	outliner.selectOutlinerMode(ModeNext)
+	outliner.selectOutlinerMode(chrome.ModeNext)
 
 	for index, row := range outliner.rows {
 		if row.IsProjectHeader && row.IsNextSection && row.ProjectID == alpha.ID {
@@ -95,7 +96,7 @@ func TestTodayRowsUseTheSameProjectHeaderContract(t *testing.T) {
 		{ProjectID: alpha.ID, TaskID: alphaTask.ID},
 		{ProjectID: beta.ID, TaskID: betaTask.ID},
 	})
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 
 	var headers []string
 	for _, row := range outliner.rows {

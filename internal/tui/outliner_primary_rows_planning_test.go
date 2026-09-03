@@ -6,11 +6,12 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestPlanningSectionsNestAtEarliestMemberRankWithoutMutatingDurableOrder(t *testing.T) {
-	for _, mode := range []OutlinerModeID{ModeToday, ModeNext} {
+	for _, mode := range []chrome.OutlinerModeID{chrome.ModeToday, chrome.ModeNext} {
 		t.Run(string(mode), func(t *testing.T) {
 			parent := primaryRowsTask("parent", models.StateBacklog)
 			child := primaryRowsTask("child", models.StateBacklog)
@@ -24,13 +25,13 @@ func TestPlanningSectionsNestAtEarliestMemberRankWithoutMutatingDurableOrder(t *
 				{ProjectID: beta.ID, TaskID: betaTask.ID},
 				{ProjectID: alpha.ID, TaskID: parent.ID},
 			}
-			if mode == ModeToday {
+			if mode == chrome.ModeToday {
 				runtime.Planning().SetToday(order)
 			} else {
 				runtime.Planning().SetNext(order)
 			}
 
-			for _, renderedMode := range []OutlinerModeID{mode, ModeAll} {
+			for _, renderedMode := range []chrome.OutlinerModeID{mode, chrome.ModeAll} {
 				outliner.selectOutlinerMode(renderedMode)
 				if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{parent.ID, child.ID, betaTask.ID}) {
 					t.Fatalf("%s rows = %v, want earliest-ranked Alpha subtree before Beta", renderedMode, got)
@@ -44,7 +45,7 @@ func TestPlanningSectionsNestAtEarliestMemberRankWithoutMutatingDurableOrder(t *
 			}
 
 			var gotOrder []config.ProjectTaskLocator
-			if mode == ModeToday {
+			if mode == chrome.ModeToday {
 				gotOrder = runtime.Planning().GetToday()
 			} else {
 				gotOrder = runtime.Planning().GetNext()
@@ -63,7 +64,7 @@ func TestPrimaryAllFocusedProjectOmitsRedundantProjectHeaders(t *testing.T) {
 		primaryRowsTask("alpha-ready", models.StateBacklog),
 	)
 	outliner, _ := primaryRowsOutliner(alpha)
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 
 	baseProjectHeaders := 0
 	for _, row := range outliner.rows {

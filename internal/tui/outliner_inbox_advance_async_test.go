@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -38,7 +39,7 @@ func newInboxAsyncEnv(t *testing.T, taskGroups ...[]*models.Task) *inboxAsyncEnv
 	outliner := NewOutlinerModel(nil, model.configManager, model.runtime)
 	outliner.loadedProjects = env.projects
 	outliner.crossForceRebuild = true
-	outliner.selectOutlinerMode(ModeInbox)
+	outliner.selectOutlinerMode(chrome.ModeInbox)
 	model.crossOutliner = outliner
 	model.views.Register(presentation.ViewCrossProjectOutliner, outliner)
 	model.wireOutlinerOperationExecutor(outliner)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -159,13 +160,13 @@ func TestNarrowDescriptionEditorCommitsThroughCommonApplicationOperation(t *test
 		operation app.TaskOperation
 		value     string
 	}{{operation: app.TaskOperationEditDescription, value: "New body"}} {
-		handled, _ := model.handleEditorMessages(ShowTaskTextEditorMsg{
+		handled, _ := model.handleEditorMessages(chrome.ShowTaskTextEditorMsg{
 			Task: task, Project: project, Operation: testCase.operation,
 		})
 		if !handled || model.currentView() != presentation.ViewTextEditor {
 			t.Fatalf("%s did not open the narrow editor", testCase.operation)
 		}
-		handled, cmd := model.handleEditorMessages(TextEditorDoneMsg{Value: testCase.value})
+		handled, cmd := model.handleEditorMessages(chrome.TextEditorDoneMsg{Value: testCase.value})
 		if !handled || cmd == nil {
 			t.Fatalf("%s did not produce a service command", testCase.operation)
 		}

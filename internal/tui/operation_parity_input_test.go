@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 func TestDirectKeysHelpAndHandledKeysDeriveFromTheInputStrategy(t *testing.T) {
@@ -132,7 +134,7 @@ func TestOperationParityGuidanceResolvesThroughApplicableInputMetadata(t *testin
 			}
 		}
 		if !resolved {
-			t.Errorf("guidance hint %q resolves to no applicable operation or chord", guidanceHintText(hint))
+			t.Errorf("guidance hint %q resolves to no applicable operation or chord", chrome.GuidanceHintText(hint))
 		}
 	}
 

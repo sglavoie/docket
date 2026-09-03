@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -17,7 +18,7 @@ import (
 func inboxAdvanceOutliner(t *testing.T, projects ...*models.Project) *OutlinerModel {
 	t.Helper()
 	outliner, _ := primaryRowsOutliner(projects...)
-	outliner.selectOutlinerMode(ModeInbox)
+	outliner.selectOutlinerMode(chrome.ModeInbox)
 	return outliner
 }
 
@@ -218,7 +219,7 @@ func TestInboxAdvancePastACollapsedProjectGroup(t *testing.T) {
 	beta := primaryRowsProject("beta", betaOne)
 	gamma := primaryRowsProject("gamma", gammaOne)
 	outliner := inboxAdvanceOutliner(t, alpha, beta, gamma)
-	outliner.collapsedSections[modeProjectCollapseKey(ModeInbox, beta.ID)] = true
+	outliner.collapsedSections[modeProjectCollapseKey(chrome.ModeInbox, beta.ID)] = true
 	inboxAdvanceRebuild(outliner)
 
 	if got := countTaskRows(outliner, betaOne.ID); got != 0 {
@@ -233,7 +234,7 @@ func TestInboxAdvancePastACollapsedProjectGroup(t *testing.T) {
 // TestOutlinerDepartureDoesNotAdvanceOutsideInbox is the gate's contract: the
 // identical sequence in a mode a user reads must leave the cursor alone.
 func TestOutlinerDepartureDoesNotAdvanceOutsideInbox(t *testing.T) {
-	for _, mode := range []OutlinerModeID{ModeAll, ModeBacklog} {
+	for _, mode := range []chrome.OutlinerModeID{chrome.ModeAll, chrome.ModeBacklog} {
 		t.Run(string(mode), func(t *testing.T) {
 			// The same multi-project shape the Inbox defect needs: departing the
 			// last task of a non-final group is exactly where an advance would
@@ -275,8 +276,8 @@ func TestOutlinerDepartureDoesNotAdvanceOutsideInbox(t *testing.T) {
 // TestOutlinerModeCatalogIsExactSevenModeCycle, which compares IDs only, and
 // mirrors how ShowsPinned is constrained.
 func TestOutlinerModeCatalogGrantsCursorAdvanceToInboxAlone(t *testing.T) {
-	for _, mode := range OutlinerModeCatalog() {
-		want := mode.ID == ModeInbox
+	for _, mode := range chrome.OutlinerModeCatalog() {
+		want := mode.ID == chrome.ModeInbox
 		if got := mode.SupportsCursorAdvance(); got != want {
 			t.Errorf("%s SupportsCursorAdvance() = %t, want %t", mode.ID, got, want)
 		}

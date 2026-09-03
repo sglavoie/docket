@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -170,7 +171,7 @@ func TestLensOperationsRejectAStaleLensID(t *testing.T) {
 func TestLensCreateSavesTheCurrentViewAndMakesItActive(t *testing.T) {
 	model := lensOperationApp(t)
 	out := model.crossOutliner
-	out.selectOutlinerMode(ModeBacklog)
+	out.selectOutlinerMode(chrome.ModeBacklog)
 	out.treeSort = SortState{Field: SortByTitle, Ascending: true}
 	before := len(machineLenses(t, model))
 
@@ -213,7 +214,7 @@ func TestLensCreateSavesTheCurrentViewAndMakesItActive(t *testing.T) {
 func TestLensCreateRetainsAnExistingBaseline(t *testing.T) {
 	model := lensOperationApp(t)
 	out := model.crossOutliner
-	out.selectOutlinerMode(ModeInbox)
+	out.selectOutlinerMode(chrome.ModeInbox)
 	origin := out.captureOutlinerViewSnapshot()
 	applyLensOrFatal(t, out, waitingLens(lensTestID(1), "Waiting", "needle"))
 
@@ -228,7 +229,7 @@ func TestLensCreateRetainsAnExistingBaseline(t *testing.T) {
 		)
 	}
 	out.restoreLensBaseline()
-	if out.hasActiveLens() || out.primaryMode != ModeInbox {
+	if out.hasActiveLens() || out.primaryMode != chrome.ModeInbox {
 		t.Fatalf("one restore left mode %v with lens=%v", out.primaryMode, out.hasActiveLens())
 	}
 }
@@ -305,7 +306,7 @@ func TestLensReplaceOverwritesUnderTheSameIDAndClearsTheModifiedMarker(t *testin
 	starter := lensNamed(t, model, config.StarterNamedLenses()[0].Name)
 	applyLensOrFatal(t, out, starter)
 
-	out.selectOutlinerMode(ModeBacklog)
+	out.selectOutlinerMode(chrome.ModeBacklog)
 	if !out.lensModified() {
 		t.Fatal("expected the diverged view to mark the lens modified")
 	}
@@ -332,7 +333,7 @@ func TestLensReplaceOverwritesUnderTheSameIDAndClearsTheModifiedMarker(t *testin
 func TestLensDeleteRemovesTheDefinitionAndRestoresTheBaseline(t *testing.T) {
 	model := lensOperationApp(t)
 	out := model.crossOutliner
-	out.selectOutlinerMode(ModeInbox)
+	out.selectOutlinerMode(chrome.ModeInbox)
 	starter := lensNamed(t, model, config.StarterNamedLenses()[0].Name)
 	applyLensOrFatal(t, out, starter)
 
@@ -345,7 +346,7 @@ func TestLensDeleteRemovesTheDefinitionAndRestoresTheBaseline(t *testing.T) {
 	if out.hasActiveLens() {
 		t.Fatal("deleting the active lens must exit it")
 	}
-	if out.primaryMode != ModeInbox {
-		t.Fatalf("restored mode = %v, want the pre-lens %v", out.primaryMode, ModeInbox)
+	if out.primaryMode != chrome.ModeInbox {
+		t.Fatalf("restored mode = %v, want the pre-lens %v", out.primaryMode, chrome.ModeInbox)
 	}
 }

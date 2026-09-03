@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -92,7 +93,7 @@ func (m *OutlinerModel) revealTask(task *models.Task) {
 			models.QueryOperatorPresent, "")
 	}
 	m.replaceFilterClauses(filterQueryTaskFields(), clauses)
-	m.selectOutlinerMode(ModeAll)
+	m.selectOutlinerMode(chrome.ModeAll)
 	for i, row := range m.rows {
 		if row.task != nil && row.task.ID == task.ID {
 			m.cursor = i

@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -86,7 +87,7 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 	if m.presetDestination.IsPlanning() && m.draft.state == models.StateBacklog {
 		destination = m.presetDestination
 	}
-	if dueDateIsToday(m.draft.dueDate) {
+	if chrome.DueDateIsToday(m.draft.dueDate) {
 		destination = app.CaptureDestinationToday
 	}
 

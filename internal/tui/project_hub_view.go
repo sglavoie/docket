@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 	"github.com/sglavoie/tt/internal/workspace"
@@ -24,10 +25,10 @@ func (m *ProjectHubModel) View() tea.View {
 	footer := ""
 	if m.actions == nil {
 		if guidance, ok := m.ContextualGuidance(); ok {
-			footer = renderGuidance(guidance, width, m.AccentColor())
+			footer = chrome.RenderGuidance(guidance, width, m.AccentColor())
 		}
 	}
-	contentHeight := fullscreenContentHeightForBlocks(height, header, footer)
+	contentHeight := chrome.FullscreenContentHeightForBlocks(height, header, footer)
 	var content string
 	if m.actions != nil {
 		content = m.actions.render(width)
@@ -44,7 +45,7 @@ func (m *ProjectHubModel) View() tea.View {
 	return tea.NewView(lipgloss.JoinVertical(
 		lipgloss.Left,
 		header,
-		fitBlockHeight(content, contentHeight),
+		chrome.FitBlockHeight(content, contentHeight),
 		footer,
 	))
 }
@@ -103,7 +104,7 @@ func (m *ProjectHubModel) renderProjectHubTitle(width int) string {
 	if m.mode == ProjectHubModePinned {
 		title = "Select Pinned Project"
 	}
-	return renderFullscreenTitleWithPulse(
+	return chrome.RenderFullscreenTitleWithPulse(
 		title,
 		m.subtitle(),
 		m.CurrentWorkspacePulse(),

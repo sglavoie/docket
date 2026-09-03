@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -76,8 +77,8 @@ func TestGotoTaskProjectScopesToTheCursorTaskAndForcesAll(t *testing.T) {
 	if outliner.scopedProjectID != beta {
 		t.Fatalf("scoped project = %q, want Client Beta %q", outliner.scopedProjectID, beta)
 	}
-	if outliner.primaryMode != ModeAll {
-		t.Fatalf("mode = %q, want %q", outliner.primaryMode, ModeAll)
+	if outliner.primaryMode != chrome.ModeAll {
+		t.Fatalf("mode = %q, want %q", outliner.primaryMode, chrome.ModeAll)
 	}
 	if got := gotoProjectCursorTitle(outliner); got != gotoProjectTaskTitle {
 		t.Fatalf("cursor task = %q, want the task the jump was pressed from", got)
@@ -98,17 +99,17 @@ func TestGotoTaskProjectEscRestoresTheOriginMode(t *testing.T) {
 	driver := gotoProjectDriver(t)
 	outliner := gotoProjectOutliner(t, driver)
 	sortPressKeys(t, driver, "g", "b")
-	if outliner.primaryMode != ModeBacklog {
-		t.Fatalf("origin mode = %q, want %q", outliner.primaryMode, ModeBacklog)
+	if outliner.primaryMode != chrome.ModeBacklog {
+		t.Fatalf("origin mode = %q, want %q", outliner.primaryMode, chrome.ModeBacklog)
 	}
 	beta := gotoProjectID(t, driver.App())
 	gotoProjectCursorOnTask(t, outliner)
 
 	sortPressKeys(t, driver, "g", "p")
-	if outliner.scopedProjectID != beta || outliner.primaryMode != ModeAll {
+	if outliner.scopedProjectID != beta || outliner.primaryMode != chrome.ModeAll {
 		t.Fatalf(
 			"landing = scope %q mode %q, want %q and %q",
-			outliner.scopedProjectID, outliner.primaryMode, beta, ModeAll,
+			outliner.scopedProjectID, outliner.primaryMode, beta, chrome.ModeAll,
 		)
 	}
 
@@ -116,8 +117,8 @@ func TestGotoTaskProjectEscRestoresTheOriginMode(t *testing.T) {
 	if outliner.scopedProjectID != "" {
 		t.Fatalf("Esc left the scope at %q, want the base scope", outliner.scopedProjectID)
 	}
-	if outliner.primaryMode != ModeBacklog {
-		t.Fatalf("Esc restored mode %q, want the origin %q", outliner.primaryMode, ModeBacklog)
+	if outliner.primaryMode != chrome.ModeBacklog {
+		t.Fatalf("Esc restored mode %q, want the origin %q", outliner.primaryMode, chrome.ModeBacklog)
 	}
 }
 
@@ -140,8 +141,8 @@ func TestGotoTaskProjectKeepsTheOriginModeWhenAllOmitsTheTask(t *testing.T) {
 	if outliner.scopedProjectID != beta {
 		t.Fatalf("scoped project = %q, want Client Beta %q", outliner.scopedProjectID, beta)
 	}
-	if outliner.primaryMode != ModeRecent {
-		t.Fatalf("mode = %q, want the origin %q kept", outliner.primaryMode, ModeRecent)
+	if outliner.primaryMode != chrome.ModeRecent {
+		t.Fatalf("mode = %q, want the origin %q kept", outliner.primaryMode, chrome.ModeRecent)
 	}
 	if got := gotoProjectCursorTitle(outliner); got != gotoProjectTaskTitle {
 		t.Fatalf("cursor task = %q, want the task the jump was pressed from", got)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // A named lens wears one color, resolved from its definition alone. This file
@@ -49,7 +50,7 @@ func groupRole(group models.WorkflowStateGroup) namedLensRole {
 	return namedLensRole{Kind: namedLensRoleWorkflowGroup, Group: group}
 }
 
-func modeRole(mode OutlinerModeID) namedLensRole {
+func modeRole(mode chrome.OutlinerModeID) namedLensRole {
 	return namedLensRole{Kind: namedLensRoleMode, Mode: mode}
 }
 

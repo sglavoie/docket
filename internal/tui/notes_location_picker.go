@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
@@ -197,12 +198,12 @@ func (picker *notesLocationPicker) View() tea.View {
 	}
 	header := lipgloss.JoinVertical(
 		lipgloss.Left,
-		renderFullscreenTitle(title, "Notes", picker.AccentColor()),
+		chrome.RenderFullscreenTitle(title, "Notes", picker.AccentColor()),
 		"Search: "+picker.SearchInputView(),
 	)
 	guidance, _ := picker.guidanceSpec()
-	footer := renderGuidance(guidance, width, picker.AccentColor())
-	contentHeight := fullscreenContentHeightForBlocks(height, header, footer)
+	footer := chrome.RenderGuidance(guidance, width, picker.AccentColor())
+	contentHeight := chrome.FullscreenContentHeightForBlocks(height, header, footer)
 	content := NewListSurfaceRenderer(ListSurfaceRenderConfig{
 		Width:    width,
 		Height:   contentHeight,
@@ -212,12 +213,12 @@ func (picker *notesLocationPicker) View() tea.View {
 	return tea.NewView(lipgloss.JoinVertical(
 		lipgloss.Left,
 		header,
-		fitBlockHeight(content, contentHeight),
+		chrome.FitBlockHeight(content, contentHeight),
 		footer,
 	))
 }
 
-func (picker *notesLocationPicker) guidanceSpec() (GuidanceSpec, bool) {
+func (picker *notesLocationPicker) guidanceSpec() (chrome.GuidanceSpec, bool) {
 	count := len(picker.FilteredItems())
 	hasSelection := func() bool { return count > 0 }
 	verb := "apply"
@@ -238,7 +239,7 @@ func (picker *notesLocationPicker) guidanceSpec() (GuidanceSpec, bool) {
 	}}
 	spec, ok := listSurfaceGuidanceSpec(picker.surface.GuidanceState(true), km, nil)
 	if !ok {
-		return GuidanceSpec{}, false
+		return chrome.GuidanceSpec{}, false
 	}
 	spec.Supplemental = fmt.Sprintf("%d %s", count, pluralize(count, "location", "locations"))
 	return spec, true

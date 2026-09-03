@@ -1,4 +1,4 @@
-package tui
+package chrome
 
 // CursorInBounds returns true if cursor is valid for the given slice length.
 // Use this to guard operations that require a valid selection.

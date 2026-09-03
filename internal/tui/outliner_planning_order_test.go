@@ -6,6 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 func TestOutlinerPlanningOrderJK(t *testing.T) {
@@ -15,8 +16,8 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 		seedNextOrderOrder(t, m,
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]), locatorOf(project, tasks[2]),
 		)
-		enterCrossMode(cross, ModeNext)
-		if cross.primaryMode != ModeNext {
+		enterCrossMode(cross, chrome.ModeNext)
+		if cross.primaryMode != chrome.ModeNext {
 			t.Fatal("ModeNext did not become the global Outliner mode")
 		}
 		if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
@@ -34,7 +35,7 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 		assertTreeUnchanged(t, project, []string{tasks[0].ID, tasks[1].ID, tasks[2].ID})
 
 		// A rebuild from the committed runtime keeps the reordered sequence.
-		enterCrossMode(cross, ModeNext)
+		enterCrossMode(cross, chrome.ModeNext)
 		assertOrder(t, "focus queue after reload", diskNextOrderIDs(t, dataDir),
 			[]string{tasks[1].ID, tasks[0].ID, tasks[2].ID})
 	})
@@ -45,7 +46,7 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 		seedNextOrderOrder(t, m,
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]), locatorOf(project, tasks[2]),
 		)
-		enterCrossMode(cross, ModeNext)
+		enterCrossMode(cross, chrome.ModeNext)
 		if !cross.moveCursorToProjectTask(tasks[2].ID, project.ID) {
 			t.Fatal("cursor did not land on Charlie")
 		}
@@ -67,7 +68,7 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 		seedNextOrderOrder(t, m,
 			locatorOf(p1, t1[0]), locatorOf(p2, t2[0]), locatorOf(p1, t1[1]), locatorOf(p2, t2[1]),
 		)
-		enterCrossMode(cross, ModeNext)
+		enterCrossMode(cross, chrome.ModeNext)
 		if !cross.moveCursorToProjectTask(t2[0].ID, p2.ID) {
 			t.Fatal("cursor did not land on B")
 		}
@@ -94,7 +95,7 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 			locatorOf(p1, t1[0]), locatorOf(p2, t2[0]), locatorOf(p1, t1[1]), locatorOf(p2, t2[1]),
 		}
 		seedNextOrderOrder(t, m, seeded...)
-		enterCrossMode(cross, ModeNext)
+		enterCrossMode(cross, chrome.ModeNext)
 		if !cross.moveCursorToProjectTask(t2[0].ID, p2.ID) {
 			t.Fatal("cursor did not land on B")
 		}
@@ -116,7 +117,7 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 		seedTodayOrder(t, m,
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]), locatorOf(project, tasks[2]),
 		)
-		enterCrossMode(cross, ModeToday)
+		enterCrossMode(cross, chrome.ModeToday)
 		if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
 			t.Fatal("cursor did not land on Alpha")
 		}
@@ -134,7 +135,7 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 		project, tasks := planningOrderProject(t, t.TempDir(), "p-all-next", "all-next", "Alpha", "Bravo")
 		m, cross, dataDir := newPlanningOrderApp(t, project)
 		seedNextOrderOrder(t, m, locatorOf(project, tasks[0]), locatorOf(project, tasks[1]))
-		enterCrossMode(cross, ModeAll)
+		enterCrossMode(cross, chrome.ModeAll)
 		if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
 			t.Fatal("cursor did not land on Alpha")
 		}
@@ -155,7 +156,7 @@ func TestTodayPlanningReorderCrossesLifecycleStatesInDurableOrder(t *testing.T) 
 	tasks[1].ApplyWorkflowState(models.StateBacklog)
 	m, cross, dataDir := newPlanningOrderApp(t, project)
 	seedTodayOrder(t, m, locatorOf(project, tasks[0]), locatorOf(project, tasks[1]))
-	enterCrossMode(cross, ModeToday)
+	enterCrossMode(cross, chrome.ModeToday)
 	assertOrder(t, "Today before cross-state reorder", visibleTaskIDs(cross),
 		[]string{tasks[0].ID, tasks[1].ID})
 	if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
@@ -170,7 +171,7 @@ func TestTodayPlanningReorderCrossesLifecycleStatesInDurableOrder(t *testing.T) 
 		t.Fatalf("status = %q, want reorder success", m.statusMessage)
 	}
 	cross.loadedProjects = []*models.Project{project}
-	enterCrossMode(cross, ModeToday)
+	enterCrossMode(cross, chrome.ModeToday)
 	assertOrder(t, "Today after rebuild", visibleTaskIDs(cross), want)
 	assertTreeUnchanged(t, project, []string{tasks[0].ID, tasks[1].ID})
 }
@@ -193,7 +194,7 @@ func TestOutlinerPlanningOrderJKFilteredAndScoped(t *testing.T) {
 		tasks[2].Tags = []string{"keep"}
 		cross.filter.Tags = map[string]bool{"keep": true}
 		cross.adoptFilterCarriers()
-		enterCrossMode(cross, ModeNext)
+		enterCrossMode(cross, chrome.ModeNext)
 
 		if got := visibleTaskIDs(cross); len(got) != 2 {
 			t.Fatalf("filtered Next visible rows = %v, want 2 (hidden middle pruned)", got)
@@ -226,7 +227,7 @@ func TestOutlinerPlanningOrderJKFilteredAndScoped(t *testing.T) {
 		tasks[2].Tags = []string{"keep"}
 		cross.filter.Tags = map[string]bool{"keep": true}
 		cross.adoptFilterCarriers()
-		enterCrossMode(cross, ModeToday)
+		enterCrossMode(cross, chrome.ModeToday)
 
 		if got := visibleTaskIDs(cross); len(got) != 2 {
 			t.Fatalf("filtered Today visible rows = %v, want 2 (hidden middle pruned)", got)
@@ -255,7 +256,7 @@ func TestOutlinerPlanningOrderJKFilteredAndScoped(t *testing.T) {
 		)
 		// Scope to project one: only A and C are visible.
 		cross.scopedProjectID = p1.ID
-		enterCrossMode(cross, ModeNext)
+		enterCrossMode(cross, chrome.ModeNext)
 
 		if got := visibleTaskIDs(cross); len(got) != 2 {
 			t.Fatalf("scoped Next visible rows = %v, want 2 (project one only)", got)
@@ -285,7 +286,7 @@ func TestOutlinerPlanningOrderJKFilteredAndScoped(t *testing.T) {
 		tasks[0].Tags = []string{"keep"}
 		cross.filter.Tags = map[string]bool{"keep": true}
 		cross.adoptFilterCarriers()
-		enterCrossMode(cross, ModeNext)
+		enterCrossMode(cross, chrome.ModeNext)
 
 		if got := visibleTaskIDs(cross); len(got) != 1 {
 			t.Fatalf("filtered visible rows = %v, want 1", got)
@@ -315,7 +316,7 @@ func TestHierarchicalReorderSwapsAdjacentVisibleQualifiedSiblings(t *testing.T) 
 	tasks[2].Tags = []string{"keep"}
 	cross.filter.Tags = map[string]bool{"keep": true}
 	cross.adoptFilterCarriers()
-	enterCrossMode(cross, ModeBacklog)
+	enterCrossMode(cross, chrome.ModeBacklog)
 	if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
 		t.Fatal("cursor did not land on keep-one")
 	}

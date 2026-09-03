@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -22,7 +23,7 @@ func foldAllProject(t *testing.T) (*OutlinerModel, *models.Project, map[string]*
 
 	project := primaryRowsProject("alpha", parent, child, grandchild, loner)
 	outliner, _ := primaryRowsOutliner(project)
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 
 	return outliner, project, map[string]*models.Task{
 		"parent": parent, "child": child, "grandchild": grandchild, "loner": loner,
@@ -146,7 +147,7 @@ func TestToggleAllSubtreesLeavesTheOtherFoldAxesAlone(t *testing.T) {
 func TestToggleAllSubtreesReportsWithoutAFoldableSubtree(t *testing.T) {
 	loner := primaryRowsTask("loner", models.StateBacklog)
 	outliner, _ := primaryRowsOutliner(primaryRowsProject("alpha", loner))
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 
 	if outliner.toggleAllSubtrees() {
 		t.Fatal("a flat view reported a subtree fold")

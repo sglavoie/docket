@@ -8,13 +8,14 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
-	var colLayout *ColumnLayout
-	if viewport.rowWidth >= MinColumnAlignWidth {
+	var colLayout *chrome.ColumnLayout
+	if viewport.rowWidth >= chrome.MinColumnAlignWidth {
 		colLayout = ComputeOutlinerColumnLayout(m.rows[viewport.startIdx:viewport.endIdx])
 		// Augment with status widths from the same row set.
 		var visibleTasks []*models.Task
@@ -24,7 +25,7 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 			}
 			visibleTasks = append(visibleTasks, row.task)
 		}
-		if badge := ComputeBadgeWidths(visibleTasks, BadgeWidthOpts{
+		if badge := chrome.ComputeBadgeWidths(visibleTasks, chrome.BadgeWidthOpts{
 			IncludeStatus: true,
 		}); badge != nil {
 			if colLayout == nil {
@@ -43,7 +44,7 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 
 		switch {
 		case row.IsSeparator:
-			rowBuilder.WriteString(renderHorizontalDivider(viewport.rowWidth))
+			rowBuilder.WriteString(chrome.RenderHorizontalDivider(viewport.rowWidth))
 		case row.IsSectionHeader:
 			rowBuilder.WriteString(m.renderOutlinerSectionHeaderRow(row, selected, viewport.rowWidth, i))
 		case row.IsProjectHeader:
@@ -63,8 +64,8 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 		}
 	}
 
-	scrollbar := RenderScrollbar(len(m.rows), viewport.visibleRows, viewport.startIdx)
-	return attachScrollbarAtWidth(rowBuilder.String(), scrollbar, viewport.rowWidth)
+	scrollbar := chrome.RenderScrollbar(len(m.rows), viewport.visibleRows, viewport.startIdx)
+	return chrome.AttachScrollbarAtWidth(rowBuilder.String(), scrollbar, viewport.rowWidth)
 }
 
 // cursorPaint decides how one row wears the cursor. One call answers both
@@ -196,7 +197,7 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 		return outlinerCursorRow(gutter, content, rowWidth, paint)
 	}
 
-	return ZebraLine(gutter+content, rowWidth, rowIndex)
+	return chrome.ZebraLine(gutter+content, rowWidth, rowIndex)
 }
 
 // rowKeepsManualOrder reports whether the section a row belongs to is one the
@@ -272,7 +273,7 @@ func (m *OutlinerModel) renderOutlinerProjectHeaderRow(row outlinerRow, selected
 		return outlinerCursorRow(gutter, content, rowWidth, paint)
 	}
 
-	return ZebraLine(textfit.TruncateToVisualWidth(gutter+content, rowWidth), rowWidth, rowIndex)
+	return chrome.ZebraLine(textfit.TruncateToVisualWidth(gutter+content, rowWidth), rowWidth, rowIndex)
 }
 
 // appendProjectHeaderPressure names the overdue and Today-planned work a
@@ -321,7 +322,7 @@ func (m *OutlinerModel) renderOutlinerChecklistRow(row outlinerRow, selected boo
 	if selected {
 		return outlinerCursorRow(gutter, content, rowWidth, paint)
 	}
-	return ZebraLine(textfit.TruncateToVisualWidth(gutter+content, rowWidth), rowWidth, rowIndex)
+	return chrome.ZebraLine(textfit.TruncateToVisualWidth(gutter+content, rowWidth), rowWidth, rowIndex)
 }
 
 // noteRowGlyph marks a note in a mixed result list. It is a literal here rather
@@ -341,7 +342,7 @@ func (m *OutlinerModel) renderOutlinerNoteRow(
 	row outlinerRow,
 	selected bool,
 	rowWidth, rowIndex int,
-	colLayout *ColumnLayout,
+	colLayout *chrome.ColumnLayout,
 ) string {
 	entry := m.searchNoteMatches[row.NoteRow]
 	paint := m.cursorPaintFor(selected)
@@ -396,5 +397,37 @@ func (m *OutlinerModel) renderOutlinerNoteRow(
 	if selected {
 		return outlinerCursorRow(gutter, content, rowWidth, paint)
 	}
-	return ZebraLine(textfit.TruncateToVisualWidth(gutter+content, rowWidth), rowWidth, rowIndex)
+	return chrome.ZebraLine(textfit.TruncateToVisualWidth(gutter+content, rowWidth), rowWidth, rowIndex)
+}
+
+// ComputeOutlinerColumnLayout computes a ColumnLayout by scanning a slice of
+// visible outliner rows. Non-task rows (section headers, project sub-headers,
+// separators) are skipped via isTaskRow(). Returns nil when no task rows are
+// present.
+func ComputeOutlinerColumnLayout(rows []outlinerRow) *chrome.ColumnLayout {
+	if len(rows) == 0 {
+		return nil
+	}
+	cl := &chrome.ColumnLayout{}
+	hasRows := false
+	for _, row := range rows {
+		if !row.isTaskRow() || row.task == nil {
+			continue
+		}
+		hasRows = true
+		task := row.task
+
+		// Priority (pre-title in outliner)
+		badge := chrome.RenderPriorityBadge(task.Priority)
+		if w := lipgloss.Width(badge); w > 0 {
+			cl.HasPriority = true
+			if w > cl.PriorityWidth {
+				cl.PriorityWidth = w
+			}
+		}
+	}
+	if !hasRows {
+		return nil
+	}
+	return cl
 }

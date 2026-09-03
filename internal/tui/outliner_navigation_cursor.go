@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -253,15 +254,15 @@ func (m *OutlinerModel) simplifiedReorderEligible() bool {
 	if m.isPinnedReorderRow() {
 		return true
 	}
-	mode, ok := OutlinerModeByID(m.activeOutlinerMode())
-	if !ok || mode.ReorderPolicy == ReorderPolicyNone {
+	mode, ok := chrome.OutlinerModeByID(m.activeOutlinerMode())
+	if !ok || mode.ReorderPolicy == chrome.ReorderPolicyNone {
 		return false
 	}
 	if m.isPlanningReorderMode() {
 		return true
 	}
 	switch mode.ID {
-	case ModeAll, ModeInbox, ModeBacklog:
+	case chrome.ModeAll, chrome.ModeInbox, chrome.ModeBacklog:
 		return m.resolveProjectForRow(row) != nil
 	default:
 		return false

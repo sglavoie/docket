@@ -6,6 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -23,21 +24,21 @@ func operationValuePickerExplainerWidth(width int) int {
 	return operationValuePickerInnerWidth(width) - 4
 }
 
-func (model *OperationValuePickerModel) guidanceSpec() (GuidanceSpec, bool) {
+func (model *OperationValuePickerModel) guidanceSpec() (chrome.GuidanceSpec, bool) {
 	if model == nil || model.surface == nil {
-		return GuidanceSpec{}, false
+		return chrome.GuidanceSpec{}, false
 	}
 	if model.provider.tagEntry() && model.tagAdder.AddTagMode {
-		return GuidanceSpec{
-			Hints: requiredGuidanceHints(
+		return chrome.GuidanceSpec{
+			Hints: chrome.RequiredGuidanceHints(
 				"Enter add "+model.tagAdderNoun(), "Esc cancel",
 			),
 			Rows: 2,
 		}, true
 	}
 	if model.provider.dateEntry() && model.dateAdder.AddDateMode {
-		return GuidanceSpec{
-			Hints: requiredGuidanceHints("Enter set date", "Esc cancel"),
+		return chrome.GuidanceSpec{
+			Hints: chrome.RequiredGuidanceHints("Enter set date", "Esc cancel"),
 			Rows:  2,
 		}, true
 	}
@@ -128,27 +129,27 @@ func (model *OperationValuePickerModel) renderWithin(width, height int) string {
 			"Add New " + strings.ToUpper(noun[:1]) + noun[1:],
 		)
 		guidance, _ := model.guidanceSpec()
-		return renderOverlayBox(
+		return chrome.RenderOverlayBox(
 			content,
 			innerWidth,
 			title,
-			renderGuidanceText(guidance, max(innerWidth-4, 1)),
+			chrome.RenderGuidanceText(guidance, max(innerWidth-4, 1)),
 			lipgloss.NewStyle().Foreground(theme.ColorPrimary),
 		)
 	}
 	if model.provider.dateEntry() && model.dateAdder.AddDateMode {
 		content := model.dateAdder.AddDateInput.View() + "\n\n" +
-			theme.MutedStyle.Render(strings.Join(model.dateAdder.dateAdderFormats(), "\n"))
+			theme.MutedStyle.Render(strings.Join(model.dateAdder.DateAdderFormats(), "\n"))
 		if model.dateAdder.AddDateError != "" {
 			content += "\n\n" + theme.BoldStyle.Foreground(theme.ColorError).Render(model.dateAdder.AddDateError)
 		}
 		title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render("Set a Specific Date")
 		guidance, _ := model.guidanceSpec()
-		return renderOverlayBox(
+		return chrome.RenderOverlayBox(
 			content,
 			innerWidth,
 			title,
-			renderGuidanceText(guidance, max(innerWidth-4, 1)),
+			chrome.RenderGuidanceText(guidance, max(innerWidth-4, 1)),
 			lipgloss.NewStyle().Foreground(theme.ColorPrimary),
 		)
 	}
@@ -199,11 +200,11 @@ func (model *OperationValuePickerModel) renderWithin(width, height int) string {
 	}
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render(titleText)
 	guidance, _ := model.guidanceSpec()
-	return renderOverlayBox(
+	return chrome.RenderOverlayBox(
 		content,
 		innerWidth,
 		title,
-		renderGuidanceText(guidance, max(innerWidth-4, 1)),
+		chrome.RenderGuidanceText(guidance, max(innerWidth-4, 1)),
 		lipgloss.NewStyle().Foreground(theme.ColorPrimary),
 	)
 }

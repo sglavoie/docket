@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -194,7 +195,7 @@ func applicationTaskOperationRequest(
 				fmt.Sprintf("Set Defer · %s %d task(s)", verb, count), true, nil
 		}
 		request.Operation = app.TaskOperationSetDueDate
-		request.PlanForToday = dueDateIsToday(value.Date)
+		request.PlanForToday = chrome.DueDateIsToday(value.Date)
 		verb := "Set due date on"
 		if value.Date == nil {
 			verb = "Cleared due date on"

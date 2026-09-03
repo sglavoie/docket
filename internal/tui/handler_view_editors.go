@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/external"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -16,10 +17,10 @@ import (
 // Returns true if the message was handled.
 func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case ShowTextEditorMsg:
-		return m.showViewInit(presentation.ViewTextEditor, NewTextEditorModel(msg.FieldName, msg.CurrentValue))
+	case chrome.ShowTextEditorMsg:
+		return m.showViewInit(presentation.ViewTextEditor, chrome.NewTextEditorModel(msg.FieldName, msg.CurrentValue))
 
-	case ShowTaskTextEditorMsg:
+	case chrome.ShowTaskTextEditorMsg:
 		if msg.Task == nil || msg.Project == nil {
 			return true, nil
 		}
@@ -40,9 +41,9 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 			Operation: msg.Operation,
 			Original:  currentValue,
 		}
-		return m.showViewInit(presentation.ViewTextEditor, NewTextEditorModel(fieldName, currentValue))
+		return m.showViewInit(presentation.ViewTextEditor, chrome.NewTextEditorModel(fieldName, currentValue))
 
-	case TextEditorDoneMsg:
+	case chrome.TextEditorDoneMsg:
 		m.popView()
 		if m.pendingTaskTextEdit != nil {
 			pending := m.pendingTaskTextEdit
@@ -63,10 +64,10 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 		cmd := m.views.Update(m.currentView(), msg)
 		return true, cmd
 
-	case TextEditorExternalMsg:
+	case chrome.TextEditorExternalMsg:
 		return m.handleTextEditorExternal(msg)
 
-	case TextEditorExternalDoneMsg:
+	case chrome.TextEditorExternalDoneMsg:
 		m.clearStatus()
 		// Forward to text editor view to update its textarea
 		cmd := m.views.Update(m.currentView(), msg)
@@ -77,7 +78,7 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 }
 
 // handleTextEditorExternal opens an external editor for text field editing.
-func (m *AppModel) handleTextEditorExternal(msg TextEditorExternalMsg) (bool, tea.Cmd) {
+func (m *AppModel) handleTextEditorExternal(msg chrome.TextEditorExternalMsg) (bool, tea.Cmd) {
 	tmpPath, err := external.CreateTempFileWithContent(msg.CurrentValue, "tt-text-", ".md")
 	if err != nil {
 		return true, status.ErrorCmd("%s", err)
@@ -95,13 +96,13 @@ func (m *AppModel) handleTextEditorExternal(msg TextEditorExternalMsg) (bool, te
 	return true, tea.ExecProcess(c, func(err error) tea.Msg {
 		if err != nil {
 			_ = os.Remove(tmpPath)
-			return TextEditorExternalDoneMsg{FieldName: fieldName, Value: "", Canceled: true}
+			return chrome.TextEditorExternalDoneMsg{FieldName: fieldName, Value: "", Canceled: true}
 		}
 		content, readErr := os.ReadFile(tmpPath)
 		_ = os.Remove(tmpPath)
 		if readErr != nil {
-			return TextEditorExternalDoneMsg{FieldName: fieldName, Value: "", Canceled: true}
+			return chrome.TextEditorExternalDoneMsg{FieldName: fieldName, Value: "", Canceled: true}
 		}
-		return TextEditorExternalDoneMsg{FieldName: fieldName, Value: string(content), Canceled: false}
+		return chrome.TextEditorExternalDoneMsg{FieldName: fieldName, Value: string(content), Canceled: false}
 	})
 }

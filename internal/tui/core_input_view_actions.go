@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -100,11 +101,11 @@ func (m *AppModel) coreGotoTaskProject(targets ResolvedOperationTargets) Operati
 	previous := out.cursor
 
 	out.pushProjectScope(project.ID)
-	out.selectOutlinerMode(ModeAll)
+	out.selectOutlinerMode(chrome.ModeAll)
 	out.NavigateToTaskInProject(task, project)
 
 	message := "Project: " + project.Name
-	if _, found := out.rowIndexForTask(taskref.For(task, project)); !found && origin.ID != ModeAll {
+	if _, found := out.rowIndexForTask(taskref.For(task, project)); !found && origin.ID != chrome.ModeAll {
 		out.selectOutlinerMode(origin.ID)
 		out.NavigateToTaskInProject(task, project)
 		message += " — kept " + origin.Label + ", the task is not listed in All"

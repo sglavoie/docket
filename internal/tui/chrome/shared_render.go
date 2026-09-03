@@ -1,4 +1,4 @@
-package tui
+package chrome
 
 import (
 	"github.com/charmbracelet/x/ansi"

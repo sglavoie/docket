@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/textgrammar"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 )
 
@@ -328,11 +329,11 @@ func (m *OutlinerModel) renderSearchAutocompleteDropdown(width int) string {
 // searchAutocompleteGuidance describes the suggestion controls while the pane is
 // open. It is additive: Enter and Esc keep saying what they do for the query, so
 // closing the pane does not read as losing the search.
-func (m *OutlinerModel) searchAutocompleteGuidance() GuidanceSpec {
-	return GuidanceSpec{
+func (m *OutlinerModel) searchAutocompleteGuidance() chrome.GuidanceSpec {
+	return chrome.GuidanceSpec{
 		Hints: append(
-			requiredGuidanceHints("Tab accept", "Esc close suggestions"),
-			optionalGuidanceHints(10, "↑/↓ or Ctrl+N/P select", "j/k results", "Enter apply search")...,
+			chrome.RequiredGuidanceHints("Tab accept", "Esc close suggestions"),
+			chrome.OptionalGuidanceHints(10, "↑/↓ or Ctrl+N/P select", "j/k results", "Enter apply search")...,
 		),
 		Rows: 2,
 	}

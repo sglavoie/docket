@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -173,8 +174,8 @@ func TestTaskCreatedRefreshesVisibleOutlinerSnapshot(t *testing.T) {
 	if !outlinerHasTask(outliner, project.ID, task.ID) {
 		t.Fatal("created task did not appear without navigating away")
 	}
-	if got := outliner.activeOutlinerMode(); got != ModeAll {
-		t.Fatalf("Outliner mode changed to %q, want %q", got, ModeAll)
+	if got := outliner.activeOutlinerMode(); got != chrome.ModeAll {
+		t.Fatalf("Outliner mode changed to %q, want %q", got, chrome.ModeAll)
 	}
 }
 
@@ -277,7 +278,7 @@ func TestPlanningOrderMutationRefreshPreservesQualifiedCursorIdentity(t *testing
 		{ProjectID: alpha.ID, TaskID: alphaTask.ID},
 		{ProjectID: beta.ID, TaskID: betaTask.ID},
 	})
-	outliner.selectOutlinerMode(ModeToday)
+	outliner.selectOutlinerMode(chrome.ModeToday)
 	if !outliner.moveCursorToProjectTask(betaTask.ID, beta.ID) {
 		t.Fatal("cursor did not land on beta/shared")
 	}

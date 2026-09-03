@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/textfit"
@@ -28,13 +29,13 @@ type ProjectCreatorModel struct {
 	nameInput textinput.Model
 	width     int
 
-	discardConfirmState
+	chrome.DiscardConfirmState
 }
 
 // NewProjectCreatorModel creates a project creator over the domain-native
 // catalog snapshot. A new project starts with no tags.
 func NewProjectCreatorModel(runtime *config.RuntimeState, manager *config.Manager, service *app.Service) *ProjectCreatorModel {
-	factory := DefaultFormFieldFactory()
+	factory := chrome.DefaultFormFieldFactory()
 	nameInput := factory.NewTextInputFocused("Project name")
 	nameInput.CharLimit = 100
 
@@ -50,7 +51,7 @@ func NewProjectCreatorModel(runtime *config.RuntimeState, manager *config.Manage
 // SetSize sets the view dimensions.
 func (m *ProjectCreatorModel) SetSize(width, height int) {
 	m.width = width
-	formFactory.ResizeTextInputWithReserve(&m.nameInput, width, theme.FormLabelWidth)
+	chrome.FormFactory.ResizeTextInputWithReserve(&m.nameInput, width, theme.FormLabelWidth)
 }
 
 func (m *ProjectCreatorModel) SupportsHelpShortcut() bool { return false }
@@ -63,16 +64,16 @@ func (m *ProjectCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	// Handle discard confirmation
-	if m.confirmDiscard {
+	if m.ConfirmDiscard {
 		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 			switch keyMsg.String() {
 			case "y", "Y":
-				m.confirmDiscard = false
+				m.ConfirmDiscard = false
 				return m, func() tea.Msg {
 					return status.BackMsg{}
 				}
 			case "n", "N", "esc":
-				m.confirmDiscard = false
+				m.ConfirmDiscard = false
 				return m, nil
 			}
 			return m, nil
@@ -84,7 +85,7 @@ func (m *ProjectCreatorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "esc":
 			if strings.TrimSpace(m.nameInput.Value()) != "" {
-				m.confirmDiscard = true
+				m.ConfirmDiscard = true
 				return m, nil
 			}
 			return m, func() tea.Msg {
@@ -179,7 +180,7 @@ func (m *ProjectCreatorModel) View() tea.View {
 	var b strings.Builder
 
 	// Name input
-	b.WriteString(renderFormLabelShared("Name:", 0, 0))
+	b.WriteString(chrome.RenderFormLabelShared("Name:", 0, 0))
 	b.WriteString(m.nameInput.View())
 	b.WriteString("\n\n")
 
@@ -190,10 +191,10 @@ func (m *ProjectCreatorModel) View() tea.View {
 		b.WriteString(renderProjectSlugPreview(slug, m.width, "", ""))
 	}
 
-	guidance := renderGuidance(m.guidanceSpec(), m.width)
+	guidance := chrome.RenderGuidance(m.guidanceSpec(), m.width)
 
 	var out strings.Builder
-	out.WriteString(renderFullscreenTitleWithPulse("Create Project", "", m.CurrentWorkspacePulse(), m.width))
+	out.WriteString(chrome.RenderFullscreenTitleWithPulse("Create Project", "", m.CurrentWorkspacePulse(), m.width))
 	out.WriteString("\n\n")
 	out.WriteString(b.String())
 	out.WriteString("\n")
@@ -202,11 +203,11 @@ func (m *ProjectCreatorModel) View() tea.View {
 	return tea.NewView(out.String())
 }
 
-func (m *ProjectCreatorModel) guidanceSpec() GuidanceSpec {
-	if m.confirmDiscard {
-		return confirmationGuidanceSpec()
+func (m *ProjectCreatorModel) guidanceSpec() chrome.GuidanceSpec {
+	if m.ConfirmDiscard {
+		return chrome.ConfirmationGuidanceSpec()
 	}
-	spec := requiredActionGuidanceSpec("Enter create")
+	spec := chrome.RequiredActionGuidanceSpec("Enter create")
 	spec.Supplemental = "Create Project"
 	return spec
 }

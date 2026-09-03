@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -66,7 +67,7 @@ func newSession2OutlinerApp(t *testing.T, dataDir string, projects ...*models.Pr
 
 	cross := NewOutlinerModel(nil, app.configManager, app.runtime)
 	cross.loadedProjects = projects
-	cross.selectOutlinerMode(ModeAll)
+	cross.selectOutlinerMode(chrome.ModeAll)
 	cross.crossForceRebuild = true
 	cross.crossProjectRebuildRows()
 	app.crossOutliner = cross

@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 func TestProjectHubGuidanceFollowsBrowseSearchSelectionAndActions(t *testing.T) {
@@ -184,7 +185,7 @@ func TestNotesGuidanceCausalEmptyAndFooterHeightKeepSelectionVisible(t *testing.
 	}
 }
 
-func assertGuidanceContains(t *testing.T, state string, spec GuidanceSpec, ok bool, want ...string) {
+func assertGuidanceContains(t *testing.T, state string, spec chrome.GuidanceSpec, ok bool, want ...string) {
 	t.Helper()
 	if !ok {
 		t.Fatalf("%s guidance is unavailable", state)
@@ -197,13 +198,13 @@ func assertGuidanceContains(t *testing.T, state string, spec GuidanceSpec, ok bo
 	}
 }
 
-func assertRequiredGuidance(t *testing.T, state string, spec GuidanceSpec, ok bool, want ...string) {
+func assertRequiredGuidance(t *testing.T, state string, spec chrome.GuidanceSpec, ok bool, want ...string) {
 	t.Helper()
 	assertGuidanceContains(t, state, spec, ok, want...)
 	for _, expected := range want {
 		found := false
 		for _, hint := range spec.Hints {
-			if guidanceHintText(hint) == expected && hint.Required {
+			if chrome.GuidanceHintText(hint) == expected && hint.Required {
 				found = true
 				break
 			}
@@ -214,9 +215,9 @@ func assertRequiredGuidance(t *testing.T, state string, spec GuidanceSpec, ok bo
 	}
 }
 
-func assertGuidanceFits(t *testing.T, spec GuidanceSpec, width int) {
+func assertGuidanceFits(t *testing.T, spec chrome.GuidanceSpec, width int) {
 	t.Helper()
-	lines := guidanceLines(spec, width)
+	lines := chrome.GuidanceLines(spec, width)
 	if len(lines) > max(spec.Rows, 1) {
 		t.Fatalf("guidance uses %d lines with row budget %d: %v", len(lines), spec.Rows, lines)
 	}

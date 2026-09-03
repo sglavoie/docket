@@ -1,6 +1,9 @@
 package tui
 
-import tea "charm.land/bubbletea/v2"
+import (
+	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/chrome"
+)
 
 // InteractiveViewState provides common interactive state for views that
 // support cursor navigation, status messages, and
@@ -13,7 +16,7 @@ type InteractiveViewState struct {
 	statusMessage    string
 	statusSeq        uint64
 	statusTransient  bool
-	confirm          ConfirmDialog
+	confirm          chrome.ConfirmDialog
 }
 
 // setStatus sets the status message. The message is sticky: it stays until the
@@ -57,7 +60,7 @@ func (s *InteractiveViewState) DefaultShouldCaptureEsc() bool {
 
 // ClampCursorTo ensures cursor is within [0, length-1] range.
 func (s *InteractiveViewState) ClampCursorTo(length int) {
-	s.cursor = ClampCursor(s.cursor, length)
+	s.cursor = chrome.ClampCursor(s.cursor, length)
 }
 
 // ResetCursor sets the cursor to position 0.
@@ -99,7 +102,7 @@ func (s *InteractiveViewState) IsConfirmActive() bool {
 }
 
 // GetConfirmDialog returns a pointer to the embedded confirm dialog.
-func (s *InteractiveViewState) GetConfirmDialog() *ConfirmDialog {
+func (s *InteractiveViewState) GetConfirmDialog() *chrome.ConfirmDialog {
 	return &s.confirm
 }
 

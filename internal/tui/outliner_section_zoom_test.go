@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 func sectionHeaderNames(outliner *OutlinerModel) []string {
@@ -52,7 +53,7 @@ func TestSectionZoomNarrowsAllToOneSectionAndRestoresViewport(t *testing.T) {
 		ProjectID: project.ID,
 		TaskID:    planned.ID,
 	}})
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 
 	fullRows := len(outliner.rows)
 	doingLabel := models.StateGroupDoing.Label()
@@ -106,7 +107,7 @@ func TestSectionZoomOverridesTheSectionFoldWithoutWritingIt(t *testing.T) {
 	backlog := primaryRowsTask("backlog", models.StateBacklog)
 	project := primaryRowsProject("alpha", doing, backlog)
 	outliner, _ := primaryRowsOutliner(project)
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 
 	doingLabel := models.StateGroupDoing.Label()
 	outliner.setSectionRowCollapsed(outliner.rows[sectionHeaderIndex(t, outliner, doingLabel)], true)
@@ -147,7 +148,7 @@ func TestSectionZoomOnPinnedEmitsNoSeparator(t *testing.T) {
 	other := primaryRowsTask("other", models.StateBacklog)
 	project := primaryRowsProject("alpha", pinned, other)
 	outliner, _ := primaryRowsOutliner(project)
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 
 	zoomIntoSection(t, outliner, pinnedSectionName)
 	for index, row := range outliner.rows {
@@ -175,7 +176,7 @@ func TestSectionZoomNarrowsTodayPinnedToPinnedRows(t *testing.T) {
 		{ProjectID: project.ID, TaskID: pinned.ID},
 		{ProjectID: project.ID, TaskID: plain.ID},
 	})
-	outliner.selectOutlinerMode(ModeToday)
+	outliner.selectOutlinerMode(chrome.ModeToday)
 
 	fullRows := len(outliner.rows)
 	if ids := visibleOutlinerTaskIDs(outliner); !ids[pinned.ID] || !ids[plain.ID] {
@@ -235,7 +236,7 @@ func TestSectionZoomNarrowsComputedDueAndRecentBuckets(t *testing.T) {
 	dueLater.DueDate = &laterDue
 	dueProject := primaryRowsProject("alpha", dueToday, dueLater)
 	dueOutliner, _ := primaryRowsOutliner(dueProject)
-	dueOutliner.selectOutlinerMode(ModeDue)
+	dueOutliner.selectOutlinerMode(chrome.ModeDue)
 
 	dueSections := len(sectionHeaderNames(dueOutliner))
 	zoomIntoSection(t, dueOutliner, "Today")
@@ -260,7 +261,7 @@ func TestSectionZoomNarrowsComputedDueAndRecentBuckets(t *testing.T) {
 		recentTask("touched-yesterday", models.StateBacklog, 1),
 	)
 	recentOutliner, _ := primaryRowsOutliner(recentProject)
-	recentOutliner.selectOutlinerMode(ModeRecent)
+	recentOutliner.selectOutlinerMode(chrome.ModeRecent)
 
 	zoomIntoSection(t, recentOutliner, "Yesterday")
 	if names := sectionHeaderNames(recentOutliner); len(names) != 1 || names[0] != "Yesterday" {
@@ -278,7 +279,7 @@ func TestReenteringTheSameSectionZoomKeepsTheRetainedViewport(t *testing.T) {
 	second := primaryRowsTask("second", models.StateDoing)
 	project := primaryRowsProject("alpha", first, second)
 	outliner, _ := primaryRowsOutliner(project)
-	outliner.selectOutlinerMode(ModeAll)
+	outliner.selectOutlinerMode(chrome.ModeAll)
 
 	doingLabel := models.StateGroupDoing.Label()
 	doingIndex := sectionHeaderIndex(t, outliner, doingLabel)

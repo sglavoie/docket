@@ -8,6 +8,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
@@ -194,14 +195,14 @@ func TestListSurfaceGuidanceUsesLiveKeymapAndApplicableActionHints(t *testing.T)
 		Profile:        ListGuidanceSelection,
 		SelectionCount: 2,
 	}
-	actions := []GuidanceHint{{Key: "Space", Label: "actions", Priority: 3}}
+	actions := []chrome.GuidanceHint{{Key: "Space", Label: "actions", Priority: 3}}
 	spec, ok := listSurfaceGuidanceSpec(state, km, actions)
 	if !ok {
 		t.Fatal("list guidance adapter returned no guidance")
 	}
 	got := make([]string, 0, len(spec.Hints))
 	for _, hint := range spec.Hints {
-		got = append(got, guidanceHintText(hint))
+		got = append(got, chrome.GuidanceHintText(hint))
 	}
 	if !slices.Equal(got, []string{"Esc clear", "/ search", "Space actions"}) {
 		t.Fatalf("list guidance hints = %v", got)

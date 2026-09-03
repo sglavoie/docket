@@ -6,6 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -18,9 +19,9 @@ func TestOverlayPopupDimmedKeepsCompleteHaloInsideViewport(t *testing.T) {
 	baseLine := strings.Repeat(".", baseWidth)
 	base := strings.Repeat(baseLine+"\n", baseHeight-1) + baseLine
 	borderStyle := lipgloss.NewStyle().Foreground(theme.ColorPrimary)
-	popup := renderOverlayBox("body", frameWidth, "Title", "Enter · Esc", borderStyle)
+	popup := chrome.RenderOverlayBox("body", frameWidth, "Title", "Enter · Esc", borderStyle)
 
-	rendered := OverlayPopupDimmed(base, popup, baseWidth, baseHeight)
+	rendered := chrome.OverlayPopupDimmed(base, popup, baseWidth, baseHeight)
 	lines := strings.Split(rendered, "\n")
 	if got := len(lines); got != baseHeight {
 		t.Fatalf("composed height = %d, want %d", got, baseHeight)
@@ -65,12 +66,12 @@ func TestOverlayPopupDimmedFitsTallPopupWithoutClippingFrame(t *testing.T) {
 	base := strings.Repeat(baseLine+"\n", baseHeight-1) + baseLine
 	content := strings.Repeat("row\n", 16) + "last row"
 	borderStyle := lipgloss.NewStyle().Foreground(theme.ColorWarning)
-	popup := renderOverlayBox("body\n"+content, frameWidth, "Confirm", "y · n", borderStyle)
+	popup := chrome.RenderOverlayBox("body\n"+content, frameWidth, "Confirm", "y · n", borderStyle)
 	if lipgloss.Height(popup) <= baseHeight {
 		t.Fatal("test popup must exceed the viewport height")
 	}
 
-	rendered := OverlayPopupDimmed(base, popup, baseWidth, baseHeight)
+	rendered := chrome.OverlayPopupDimmed(base, popup, baseWidth, baseHeight)
 	lines := strings.Split(ansi.Strip(rendered), "\n")
 	if got := len(lines); got != baseHeight {
 		t.Fatalf("composed height = %d, want %d", got, baseHeight)
@@ -102,14 +103,14 @@ func TestOverlayPopupDimmedPreservesNestedModalFrames(t *testing.T) {
 	)
 	baseLine := strings.Repeat(".", baseWidth)
 	base := strings.Repeat(baseLine+"\n", baseHeight-1) + baseLine
-	parent := renderOverlayBox(
+	parent := chrome.RenderOverlayBox(
 		"parent content\nline two\nline three\nline four\nline five\nline six",
 		30,
 		"Parent actions",
 		"Enter",
 		lipgloss.NewStyle().Foreground(theme.ColorPrimary),
 	)
-	child := renderOverlayBox(
+	child := chrome.RenderOverlayBox(
 		"Proceed?",
 		18,
 		"Confirm",
@@ -117,8 +118,8 @@ func TestOverlayPopupDimmedPreservesNestedModalFrames(t *testing.T) {
 		lipgloss.NewStyle().Foreground(theme.ColorWarning),
 	)
 
-	withParent := OverlayPopupDimmed(base, parent, baseWidth, baseHeight)
-	rendered := OverlayPopupDimmed(withParent, child, baseWidth, baseHeight)
+	withParent := chrome.OverlayPopupDimmed(base, parent, baseWidth, baseHeight)
+	rendered := chrome.OverlayPopupDimmed(withParent, child, baseWidth, baseHeight)
 	plain := ansi.Strip(rendered)
 	if !strings.Contains(plain, "Parent actions") || !strings.Contains(plain, "Confirm") {
 		t.Fatalf("nested composition dropped a modal identity:\n%s", plain)

@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 func TestFilterDueChordPickerAppliesEveryPublicFacet(t *testing.T) {
@@ -123,7 +124,7 @@ func TestFilterStaleChordIsOneGeneratedHelpTerminal(t *testing.T) {
 
 func TestFilterStaleChordAndHelpAreUnavailableInRecent(t *testing.T) {
 	app := newFilterChordTestApp(t)
-	app.crossOutliner.selectOutlinerMode(ModeRecent)
+	app.crossOutliner.selectOutlinerMode(chrome.ModeRecent)
 	ctx := app.operationCommandContext()
 
 	if _, _, resolution := app.operationRegistry.InputBindingForSequence(
