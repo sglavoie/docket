@@ -290,7 +290,7 @@ func TestOpenCodeReference_NonPositiveLineOmitsLineArgForGotoEditor(t *testing.T
 		t.Fatalf("OpenCodeReference('code', ..., -3) failed: %v", err)
 	}
 
-	recorded, err := readFileEventuallyMatching(argFile, 5*time.Second, func(data []byte) bool {
+	recorded, err := readFileEventuallyMatching(argFile, launchRecordTimeout, func(data []byte) bool {
 		return strings.TrimSpace(string(data)) == filePath
 	})
 	if err != nil {
@@ -326,7 +326,7 @@ func TestOpenCodeReference_CodiumUsesGotoPattern(t *testing.T) {
 		t.Fatalf("OpenCodeReference('codium', ..., 12) failed: %v", err)
 	}
 
-	recorded, err := readFileEventuallyMatching(argFile, 5*time.Second, func(data []byte) bool {
+	recorded, err := readFileEventuallyMatching(argFile, launchRecordTimeout, func(data []byte) bool {
 		return strings.TrimSpace(string(data)) == "--goto\n"+filePath+":12"
 	})
 	if err != nil {
@@ -337,6 +337,19 @@ func TestOpenCodeReference_CodiumUsesGotoPattern(t *testing.T) {
 		t.Fatalf("expected ['--goto', filePath:12], got %v", args)
 	}
 }
+
+// launchRecordTimeout bounds how long a fire-and-forget launch assertion waits
+// for the spawned editor to write its argument file. The bound exists to catch a
+// genuine regression -- an editor that is never launched, or launched with the
+// wrong arguments -- not to measure how fast this machine spawns a process.
+// `scripts/ci.sh` runs the whole module under `-race` with coverage in one fan-out,
+// where a package's wall time is its share of a contended machine: that script
+// records `internal/tui` at 257s alone against 1206s inside the sweep. A budget
+// tight enough to be a stopwatch is therefore a budget that fails on load, which
+// is exactly how the 5s predecessor failed. Generosity is free here because
+// readFileEventuallyMatching returns as soon as the content matches, so a healthy
+// run never waits: only a real regression pays this number.
+const launchRecordTimeout = 60 * time.Second
 
 // readFileEventuallyMatching polls path until want reports the content is
 // complete, or the timeout elapses. Use it for fire-and-forget launch assertions
