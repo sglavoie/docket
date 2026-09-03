@@ -1,12 +1,17 @@
 version: '2'
 
 run:
-  # Analysis itself takes seconds, so this is a starvation budget rather than a
-  # work budget: another checkout linting or testing on the same machine can
-  # stretch a three-second run past five minutes, and a timeout there reports a
-  # busy machine as a lint failure. Matches the 20m go test deadline ci.sh sets
-  # for the same reason.
-  timeout: 20m
+  # No deadline, which is also golangci-lint v2's own default. Analysis takes
+  # about three seconds, so any value here is a starvation budget rather than a
+  # work budget: another checkout linting or testing on the same machine has
+  # already stretched that three-second run past a five-minute deadline, and
+  # every such run reported `0 issues` before exiting 4. A deadline that can
+  # only ever report a busy machine as a lint failure is worth nothing, and
+  # raising it just moves the load level that trips it. The CI job and the
+  # harness that invoke `./scripts/ci.sh` bound the run instead. Unlike this,
+  # the 20m deadline ci.sh passes to `go test` replaces Go's implicit 10m
+  # per-package default, which cannot be disabled.
+  timeout: 0s
 
 formatters:
   enable:
