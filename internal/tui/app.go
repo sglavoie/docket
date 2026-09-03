@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -39,13 +40,13 @@ type AppModel struct {
 	projects map[string]*models.Project
 
 	// Persister for project persistence operations (enables testing with mocks)
-	persister Persister
+	persister coordinator.Persister
 
 	// features are the application-backed coordinators the primary feature views
 	// dispatch their mutations and queries through. They route persistence
 	// through the application layer (one atomic ChangeSet per mutation) instead of
 	// letting a view mutate and save its own model copy. See feature_coordinator.go.
-	features FeatureCoordinators
+	features coordinator.FeatureCoordinators
 
 	// secondaryFeatures are the application-backed coordinators the secondary
 	// views and overlays (bulk operations, attachments, and tags)
@@ -54,7 +55,7 @@ type AppModel struct {
 	// routes persistence through one atomic ChangeSet (or config write) instead of
 	// a direct saveProjectSync / configManager.Save call. See
 	// feature_coordinator_secondary.go and its per-coordinator files.
-	secondaryFeatures SecondaryCoordinators
+	secondaryFeatures coordinator.SecondaryCoordinators
 
 	// manageHub is the sole live Manage destination for scoped collections and
 	// contexts.

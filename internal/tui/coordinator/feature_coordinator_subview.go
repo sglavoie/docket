@@ -1,16 +1,23 @@
-package tui
+package coordinator
 
 import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // AttachmentCoordinator backs the task attachment overlay.
 type AttachmentCoordinator struct {
 	attach AttachmentMutator
+}
+
+// NewAttachmentCoordinator binds an attachment mutator. It is the only way to
+// populate the coordinator from outside this package, which is what lets the
+// attachment-panel tests drive the overlay against a recording double rather
+// than a whole application service.
+func NewAttachmentCoordinator(mutator AttachmentMutator) AttachmentCoordinator {
+	return AttachmentCoordinator{attach: mutator}
 }
 
 // AttachURL records a URL attachment on a task.
@@ -52,8 +59,8 @@ func (c AttachmentCoordinator) Reorder(task taskref.TaskIdentity, from, to int) 
 
 // SubviewCoordinator backs the task subview panels (comments and checklist).
 // Every method resolves to the shared transaction messages; the
-// panels adapt them back to their own message vocabulary with
-// adaptSubviewCommit so their existing toasts and refresh behavior survive the
+// panels adapt them back to their own message vocabulary with their own
+// adapter so their existing toasts and refresh behavior survive the
 // move onto the application layer.
 type SubviewCoordinator struct {
 	sub SubviewMutator
@@ -130,38 +137,4 @@ func (c SubviewCoordinator) MoveChecklistItem(task taskref.TaskIdentity, from, t
 		res, err := c.sub.MoveChecklistItem(task.Locator(), from, to)
 		return res.Task, err
 	})
-}
-
-// adaptSubviewCommit runs a coordinator command inline and adapts its outcome
-// back to a view-specific message contract: a TransactionErrorMsg surfaces as
-// the shared ErrorMsg, and a committed transaction resolves to success(), which
-// runs after the commit so it can re-resolve fresh task pointers. This is the
-// single-task analog of the batch transaction adapter — the migrated
-// panels keep their existing message vocabulary (and therefore their toasts and
-// refresh behavior) while the durable write flows through the application layer.
-func adaptSubviewCommit(commit tea.Cmd, success func() tea.Msg) tea.Cmd {
-	return func() tea.Msg {
-		outcome := commit()
-		if msg, ok := outcome.(TransactionErrorMsg); ok {
-			return status.ErrorMsg(msg)
-		}
-		msg := success()
-		result, ok := outcome.(TransactionResultMsg)
-		if !ok {
-			return msg
-		}
-		switch msg := msg.(type) {
-		case CommentAddedMsg:
-			msg.TransactionID = result.Result.TransactionID
-			return msg
-		case CommentDeletedMsg:
-			msg.TransactionID = result.Result.TransactionID
-			return msg
-		case CommentEditedMsg:
-			msg.TransactionID = result.Result.TransactionID
-			return msg
-		default:
-			return msg
-		}
-	}
 }

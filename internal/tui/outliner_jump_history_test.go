@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -215,13 +216,13 @@ func TestOutlinerAsyncRelocationCaptureOnlyArmsOnSuccessfulCurrentTarget(t *test
 	capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 
 	wrapped := withOutlinerRelocationCapture(func() tea.Msg {
-		return BatchTransactionResultMsg{Action: "Set State"}
+		return coordinator.BatchTransactionResultMsg{Action: "Set State"}
 	}, capture)
-	result, ok := wrapped().(BatchTransactionResultMsg)
-	if !ok || result.outlinerRelocation == nil {
+	result, ok := wrapped().(coordinator.BatchTransactionResultMsg)
+	if !ok || result.Relocation == nil {
 		t.Fatalf("successful batch result = %#v, want attached relocation", wrapped())
 	}
-	outliner.armOutlinerRelocation(result.outlinerRelocation)
+	outliner.armOutlinerRelocation(outlinerRelocationFrom(result.Relocation))
 	setJumpHistoryRows(outliner, tasks, "target", "before", "after")
 	outliner.cursor = 0
 	outliner.finishPendingOutlinerRelocation()
@@ -355,7 +356,7 @@ func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) 
 		t.Fatalf("state result = %T, want OperationCommandResultMsg", result.Message)
 	}
 	batch := runBatchResult(t, command.Cmd)
-	if batch.outlinerRelocation == nil {
+	if batch.Relocation == nil {
 		t.Fatal("successful direct state update carried no relocation capture")
 	}
 

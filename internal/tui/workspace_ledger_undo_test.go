@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -187,7 +188,7 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, tas
 		runtime:           runtime,
 		deps:              newShellDeps(ledger),
 		projects:          map[string]*models.Project{project.ID: project},
-		persister:         NewProjectService(),
+		persister:         coordinator.NewProjectService(),
 		appService:        svc,
 		width:             80,
 		height:            24,

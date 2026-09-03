@@ -3,6 +3,7 @@ package tui
 import (
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -59,7 +60,7 @@ func TestAdoptChildrenWithNothingCheckedKeepsEveryExistingChild(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("adopting nothing produced no command")
 	}
-	msg, ok := cmd().(TaskLineEditedMsg)
+	msg, ok := cmd().(coordinator.TaskLineEditedMsg)
 	if !ok {
 		t.Fatalf("adopting nothing = %T, want an edit result", cmd())
 	}

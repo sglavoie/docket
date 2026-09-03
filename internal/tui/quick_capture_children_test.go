@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 )
 
 func TestParseQuickCaptureChildReferences(t *testing.T) {
@@ -393,7 +394,7 @@ func TestTaskComposerCommitsAdoptedChildrenInOneTransaction(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("adoption returned nil command")
 	}
-	if msg, ok := cmd().(TaskCreatedMsg); !ok || msg.Result == nil {
+	if msg, ok := cmd().(coordinator.TaskCreatedMsg); !ok || msg.Result == nil {
 		t.Fatalf("adoption result = %#v", msg)
 	}
 

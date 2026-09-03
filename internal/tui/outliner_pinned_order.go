@@ -97,7 +97,7 @@ func (m *OutlinerModel) adjacentVisiblePinnedSibling(delta int) (int, bool) {
 // first: pinned rows sort PinnedAt-descending and the application layer
 // resolves an exact tie in favor of its first argument.
 func (m *OutlinerModel) pinnedReorderMove(delta int) tea.Cmd {
-	if !m.isPinnedReorderRow() || m.taskItem.task == nil {
+	if !m.isPinnedReorderRow() || !m.taskItem.Wired() {
 		return nil
 	}
 	targetIndex, ok := m.adjacentVisiblePinnedSibling(delta)
@@ -120,7 +120,7 @@ func (m *OutlinerModel) pinnedReorderMove(delta int) tea.Cmd {
 // names only the peers the cursor would have swapped past one at a time, so the
 // redistributed timestamps stay inside that run.
 func (m *OutlinerModel) pinnedReorderEdge(delta int) tea.Cmd {
-	if !m.isPinnedReorderRow() || m.taskItem.task == nil {
+	if !m.isPinnedReorderRow() || !m.taskItem.Wired() {
 		return nil
 	}
 	rows := m.visiblePinnedSiblings(delta)

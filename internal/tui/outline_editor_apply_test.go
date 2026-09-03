@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -32,7 +33,7 @@ func TestOutlineEditedCarriesTheDumpRevisionAndKeepsTheBufferWhenItIsStale(t *te
 	}
 
 	applied := &stubMutator{result: app.TaskResult{Revision: "rev-2"}}
-	model.features = newFeatureCoordinators(applied)
+	model.features = coordinator.NewFeatureCoordinators(applied)
 	model.handleOutlineEdited(OutlineEditedMsg{
 		Project: project, Revision: "rev-1", ScopeTaskIDs: scope, Buffer: buffer,
 	})
@@ -43,7 +44,7 @@ func TestOutlineEditedCarriesTheDumpRevisionAndKeepsTheBufferWhenItIsStale(t *te
 	conflicted := &stubMutator{err: &storage.RevisionConflictError{
 		ProjectID: project.ID, ProjectName: project.Name, Expected: "rev-1", Actual: "rev-2",
 	}}
-	model.features = newFeatureCoordinators(conflicted)
+	model.features = coordinator.NewFeatureCoordinators(conflicted)
 	model.handleOutlineEdited(OutlineEditedMsg{
 		Project: project, Revision: "rev-1", ScopeTaskIDs: scope,
 		Path: "/tmp/tt-outline-stale.md", Buffer: buffer,
@@ -65,7 +66,7 @@ func TestOutlineEditedCarriesTheDumpRevisionAndKeepsTheBufferWhenItIsStale(t *te
 func TestOutlineEditedArmsTheDeleteConfirmBeforeApplying(t *testing.T) {
 	model, project, buffer, scope := outlineConfirmFixture(t)
 	stub := &stubMutator{result: app.TaskResult{Revision: "rev-2"}}
-	model.features = newFeatureCoordinators(stub)
+	model.features = coordinator.NewFeatureCoordinators(stub)
 
 	model.handleOutlineEdited(OutlineEditedMsg{
 		Project: project, Revision: "rev-1", ScopeTaskIDs: scope,
@@ -102,7 +103,7 @@ func TestOutlineEditedArmsTheDeleteConfirmBeforeApplying(t *testing.T) {
 func TestOutlineDeleteConfirmDeclineKeepsTheBufferAndChangesNothing(t *testing.T) {
 	model, project, buffer, scope := outlineConfirmFixture(t)
 	stub := &stubMutator{result: app.TaskResult{Revision: "rev-2"}}
-	model.features = newFeatureCoordinators(stub)
+	model.features = coordinator.NewFeatureCoordinators(stub)
 
 	file, err := os.CreateTemp(t.TempDir(), "tt-outline-*.md")
 	if err != nil {
@@ -144,7 +145,7 @@ func TestOutlineDeleteConfirmDeclineKeepsTheBufferAndChangesNothing(t *testing.T
 func TestOutlineDeleteConfirmCommitsEditsAndDeletesTogether(t *testing.T) {
 	model, project, buffer, scope := outlineConfirmFixture(t)
 	stub := &stubMutator{result: app.TaskResult{Revision: "rev-2"}}
-	model.features = newFeatureCoordinators(stub)
+	model.features = coordinator.NewFeatureCoordinators(stub)
 
 	edited := outlineBufferWithoutLine(t, buffer, "Sweep dead flags")
 	edited = strings.Replace(edited, "Ship auth rewrite", "Ship auth rewrite v2", 1)
@@ -185,7 +186,7 @@ func TestOutlineDeleteConfirmCommitsEditsAndDeletesTogether(t *testing.T) {
 func TestOutlineEditedAppliesWithoutAConfirmWhenNothingIsAbsent(t *testing.T) {
 	model, project, buffer, scope := outlineConfirmFixture(t)
 	stub := &stubMutator{result: app.TaskResult{Revision: "rev-2"}}
-	model.features = newFeatureCoordinators(stub)
+	model.features = coordinator.NewFeatureCoordinators(stub)
 
 	model.handleOutlineEdited(OutlineEditedMsg{
 		Project: project, Revision: "rev-1", ScopeTaskIDs: scope,
@@ -209,7 +210,7 @@ func TestOutlineEditedAppliesWithoutAConfirmWhenNothingIsAbsent(t *testing.T) {
 func TestOutlineEditedEmptiedBufferDeletesEveryTask(t *testing.T) {
 	model, project, _, scope := outlineConfirmFixture(t)
 	stub := &stubMutator{result: app.TaskResult{Revision: "rev-2"}}
-	model.features = newFeatureCoordinators(stub)
+	model.features = coordinator.NewFeatureCoordinators(stub)
 
 	model.handleOutlineEdited(OutlineEditedMsg{
 		Project: project, Revision: "rev-1", ScopeTaskIDs: scope,
@@ -247,7 +248,7 @@ func TestOutlineEditedEmptiedBufferDeletesEveryTask(t *testing.T) {
 func TestOutlineEditedRefusesAnEmptyBufferThatDeletesNothing(t *testing.T) {
 	model, _, _, _ := outlineConfirmFixture(t)
 	stub := &stubMutator{result: app.TaskResult{Revision: "rev-2"}}
-	model.features = newFeatureCoordinators(stub)
+	model.features = coordinator.NewFeatureCoordinators(stub)
 
 	model.handleOutlineEdited(OutlineEditedMsg{
 		Project:  &models.Project{ID: "project-2", Name: "Empty", Slug: "empty"},

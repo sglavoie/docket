@@ -112,8 +112,9 @@ the pre-split tree and is consistently pessimistic.
 | `status` | 10 | 10 | 10 |
 | `pulse` | 13 | 12 | 12 |
 | `chrome` | 61 | 50 | 48 |
+| `coordinator` | 5 | 3 | 3 |
 
-Running total against 631: **99**. The middle column minus the last is the
+Running total against 631: **102**. The middle column minus the last is the
 test-only promotion the ruling reclaims — 27 for `theme`, none until `chrome`,
 because `textfit` moved its three test files down in the same session, `taskref`
 promoted nothing for a test in the first place, `status` moved its one test file
@@ -165,6 +166,76 @@ and the whole `operationalTitle*` fitting apparatus unexported. It also exported
 three struct fields the column does not count, for the same reason `status` did:
 `todayPaceState.completionActivity` and both `todayPaceReadout` fields are set
 by the shell that builds the value.
+
+`coordinator` spends three of its five, and the two it withdraws are the two
+step-3 moves rather than a measurement error. `adaptSubviewCommit` has exactly
+one production consumer, `task_comments_actions.go`, and the three comment
+messages it stamps are that surface's vocabulary, so it moved *up* into that
+file instead of being exported; that also removed three upward edges from an L1
+package. `errCompletionActivityReaderUnavailable` was projected public for one
+test, and that test moved down into
+`internal/tui/coordinator/feature_coordinator_test.go`, so the sentinel stays
+unexported. The three it does spend — `NewFeatureCoordinators`,
+`NewSecondaryCoordinators` and `FinalizeStaleSelectionBatchResult` — are all
+called from production shell wiring and cannot be withdrawn by homing a test.
+
+`coordinator` also corrected one assignment row and moved two message families,
+and both are worth reading before the next L1 extraction:
+
+- `due_date_today.go` is `coordinator`, not `chrome`. `DueDateIsToday` has no
+  consumer inside `chrome` at all, and its six callers are two coordinator files
+  plus four shell surfaces. Both packages sit at L1, so honouring the row would
+  have introduced the graph's only sideways L1 edge for one function.
+- `TaskCreatedMsg`, `TaskClipboardProjectedMsg`, `TaskLineEditedMsg` and
+  `TaskLineEditFailedMsg` moved down into `internal/tui/coordinator/messages.go`
+  under Session 2.6's rule that a message type belongs to the package that
+  constructs it. Each is built by a coordinator method and by nothing else.
+
+The one seam that needed inventing is `TransactionRelocation`, an interface with
+a single `StampTransaction(id string) TransactionRelocation` method. The
+outliner attaches a navigation capture to a mutation that may move the followed
+task between rows, and the coordinator has to carry that capture across the
+commit and stamp it with the committed transaction ID. Moving the capture down
+to L1 was the alternative and it is the wrong one: `outlinerRelocationCapture`
+holds an `outlinerJumpPosition`, which jump history reads independently of any
+coordinator, so the whole outliner navigation vocabulary would have followed it
+down. The interface keeps the capture in the outliner and leaves the coordinator
+holding an opaque value. Its cost is one exported method on an unexported shell
+type and the two fields the `must export` column does not count,
+`TransactionResultMsg.Relocation` and `BatchTransactionResultMsg.Relocation`,
+both renamed from `outlinerRelocation` because the shell sets them.
+
+Four more exported declarations sit outside the column for the ordinary reason —
+an unexported field a consumer used to set or read directly:
+`NewActivityCoordinator` and `NewAttachmentCoordinator` replace the
+`ActivityCoordinator{reader: …}` and `AttachmentCoordinator{attach: …}` literals
+the shell tests wrote, `TaskItemCoordinator.Wired` replaces the
+`m.taskItem.task != nil` guard the reorder handlers read, and
+`ProjectService.WorkspaceLoader` replaces three direct reads of
+`projectService.workspaceLoader`.
+
+The two constructors are also where `context.md`'s warning about `deadcode`
+lands for the first time. `scripts/dead_code.sh` runs `deadcode ./...`
+production-only, so an exported constructor written *for* a test is an
+unreachable production function and fails the gate — added as test-only
+helpers, `NewActivityCoordinator` and `NewAttachmentCoordinator` did exactly
+that. The fix is not to withdraw them but to route the package's own wiring
+through them: `NewFeatureCoordinators` now builds its `Activity` field with
+`NewActivityCoordinator` and `NewSecondaryCoordinators` its `Attachment` field
+with `NewAttachmentCoordinator`, instead of writing the struct literal a second
+time. A constructor that is the single way to populate a value is reachable by
+construction; one that merely mirrors a literal the package still writes inline
+is not. Expect this wherever an extraction replaces an unexported-field literal.
+
+Only one of `coordinator`'s test files moved down. `feature_coordinator_test.go`
+names nothing the shell declares once its fixtures are inlined, so it is now
+`package coordinator`. The four scenario and helper files stay in `internal/tui`
+because `secondary_coordinator_helpers_test.go` declares the shell's application
+service harness that roughly twenty-five other shell test files read, and a Go
+test helper cannot cross a package boundary: moving them would strand far more
+than it homes. That harness is why `stubMutator` is declared on both sides —
+`internal/tui/feature_mutator_stub_test.go` is the shell's copy — rather than
+one side reaching for the other.
 
 Reproduce the last column for one package with the oracle from session 2.4,
 which reports a clean boundary rather than a count:

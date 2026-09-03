@@ -64,7 +64,7 @@ func (e *inboxAsyncEnv) commitState(t *testing.T, state models.WorkflowState) te
 		t.Fatalf("state result = %T, want OperationCommandResultMsg", result.Message)
 	}
 	batch := runBatchResult(t, command.Cmd)
-	if batch.outlinerRelocation == nil {
+	if batch.Relocation == nil {
 		t.Fatal("successful async state update carried no relocation capture")
 	}
 	return e.model.handleBatchTransactionResult(batch)

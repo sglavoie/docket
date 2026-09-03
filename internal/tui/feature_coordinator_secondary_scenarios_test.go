@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -20,10 +21,10 @@ import (
 
 // secondaryEnv extends scenarioEnv with the secondary coordinators bound to the
 // same application service.
-func newSecondaryEnv(t *testing.T, slug string, tasks ...*models.Task) (*scenarioEnv, SecondaryCoordinators) {
+func newSecondaryEnv(t *testing.T, slug string, tasks ...*models.Task) (*scenarioEnv, coordinator.SecondaryCoordinators) {
 	t.Helper()
 	env := newScenarioEnv(t, slug, tasks...)
-	return env, newSecondaryCoordinators(env.svc)
+	return env, coordinator.NewSecondaryCoordinators(env.svc)
 }
 
 // envLocators qualifies the named seed tasks with the environment's project, so
@@ -38,20 +39,20 @@ func envLocators(env *scenarioEnv, tasks ...*models.Task) []app.TaskLocator {
 
 // runBatchResult executes a coordinator command and asserts it produced a
 // committed batch-transaction message, returning it.
-func runBatchResult(t *testing.T, cmd tea.Cmd) BatchTransactionResultMsg {
+func runBatchResult(t *testing.T, cmd tea.Cmd) coordinator.BatchTransactionResultMsg {
 	t.Helper()
 	if cmd == nil {
 		t.Fatal("coordinator returned a nil command")
 	}
 	switch msg := cmd().(type) {
-	case BatchTransactionResultMsg:
+	case coordinator.BatchTransactionResultMsg:
 		return msg
-	case TransactionErrorMsg:
+	case coordinator.TransactionErrorMsg:
 		t.Fatalf("expected a committed batch, got error: %v", msg.Err)
 	default:
-		t.Fatalf("expected BatchTransactionResultMsg, got %T", msg)
+		t.Fatalf("expected coordinator.BatchTransactionResultMsg, got %T", msg)
 	}
-	return BatchTransactionResultMsg{}
+	return coordinator.BatchTransactionResultMsg{}
 }
 
 // TestAttachmentScenario covers the transactional attachment overlay: attaching a
@@ -237,7 +238,7 @@ func TestBulkDeferScenario(t *testing.T) {
 }
 
 // TestBulkSetTagsScenario covers the transactional bulk tags overlay, which has
-// no BulkCoordinator method and commits through TaskItem.ExecuteOperation:
+// no coordinator.BulkCoordinator method and commits through TaskItem.ExecuteOperation:
 // replacing the tag set on two tasks commits one batch, the reloaded project
 // shows the new tags, and undo restores the originals.
 func TestBulkSetTagsScenario(t *testing.T) {

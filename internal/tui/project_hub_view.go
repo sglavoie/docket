@@ -323,7 +323,7 @@ func (m *AppModel) projectHubTaskCounts() map[string]projectTaskTally {
 			}
 		}
 		if m.crossOutliner.projectService != nil {
-			loader = m.crossOutliner.projectService.workspaceLoader
+			loader = m.crossOutliner.projectService.WorkspaceLoader()
 		}
 	}
 	if m.runtime == nil {

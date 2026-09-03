@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 )
 
 func TestGitHubIssueAttachmentLabels(t *testing.T) {
@@ -15,7 +16,7 @@ func TestGitHubIssueAttachmentLabels(t *testing.T) {
 		Filename: "https://example.com/design.pdf",
 		IsURL:    true,
 	}
-	model := NewTaskAttachmentsModel(&models.Task{}, &models.Project{}, nil, AttachmentCoordinator{})
+	model := NewTaskAttachmentsModel(&models.Task{}, &models.Project{}, nil, coordinator.AttachmentCoordinator{})
 
 	if got := model.attachmentTypeLabel(issueAttachment); got != "GITHUB ISSUE" {
 		t.Fatalf("GitHub issue attachment label = %q, want GITHUB ISSUE", got)

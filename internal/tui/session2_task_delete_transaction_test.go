@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 )
 
 // taskDeleteEnv wires the canonical shell-owned deletion transaction over the
@@ -100,9 +101,9 @@ func (e *taskDeleteEnv) appModel() *AppModel {
 		configManager:     e.mgr,
 		runtime:           testRuntimeAt(e.cfg.DataDir(), e.cfg),
 		projects:          map[string]*models.Project{e.alpha.ID: e.alpha, e.beta.ID: e.beta},
-		persister:         NewProjectService(),
+		persister:         coordinator.NewProjectService(),
 		appService:        e.svc,
-		secondaryFeatures: newSecondaryCoordinators(e.svc),
+		secondaryFeatures: coordinator.NewSecondaryCoordinators(e.svc),
 		views:             NewViewRegistry(),
 		width:             80,
 		height:            24,
@@ -468,7 +469,7 @@ func TestTaskDeleteFailurePreservesStateNoSuccess(t *testing.T) {
 		t.Fatal("confirm should dispatch a command even for a doomed delete")
 	}
 	out := cmd()
-	if _, ok := out.(TransactionErrorMsg); !ok {
+	if _, ok := out.(coordinator.TransactionErrorMsg); !ok {
 		t.Fatalf("failed delete should yield TransactionErrorMsg, got %T", out)
 	}
 	// A rejected batch never enriches ClearSelectionTaskIDs, so the shell keeps the

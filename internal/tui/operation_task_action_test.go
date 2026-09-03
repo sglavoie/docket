@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -128,7 +129,7 @@ func waitingCheckBackInvocation(id OperationID, value any) OperationInvocation {
 }
 
 func TestWaitingCheckBackStepChainsOnlyTheWaitingMove(t *testing.T) {
-	committed := func() tea.Msg { return BatchTransactionResultMsg{Action: "Set State"} }
+	committed := func() tea.Msg { return coordinator.BatchTransactionResultMsg{Action: "Set State"} }
 
 	chained := withWaitingCheckBackStep(
 		waitingCheckBackInvocation(operationTaskSetState, models.StateWaiting),
@@ -141,7 +142,7 @@ func TestWaitingCheckBackStepChainsOnlyTheWaitingMove(t *testing.T) {
 	if len(cmds) != 2 {
 		t.Fatalf("sequence length = %d, want 2 (state move, then check-back)", len(cmds))
 	}
-	if _, isResult := cmds[0]().(BatchTransactionResultMsg); !isResult {
+	if _, isResult := cmds[0]().(coordinator.BatchTransactionResultMsg); !isResult {
 		t.Fatalf("the state move is not the first step of the sequence")
 	}
 	request, isRequest := cmds[1]().(OperationValueRequestMsg)
@@ -162,7 +163,7 @@ func TestWaitingCheckBackStepChainsOnlyTheWaitingMove(t *testing.T) {
 	}
 	for _, invocation := range unchained {
 		msg := withWaitingCheckBackStep(invocation, committed)()
-		if _, isResult := msg.(BatchTransactionResultMsg); !isResult {
+		if _, isResult := msg.(coordinator.BatchTransactionResultMsg); !isResult {
 			t.Errorf("%s with value %v was wrapped in a check-back chain", invocation.Descriptor.ID, invocation.Value)
 		}
 	}
@@ -184,7 +185,7 @@ func TestWaitingCheckBackStepSuccessKeepsFrozenTargets(t *testing.T) {
 	frozen := append([]taskref.TaskIdentity(nil), invocation.Context.Selection.Tasks...)
 
 	chained := withWaitingCheckBackStep(invocation, func() tea.Msg {
-		return BatchTransactionResultMsg{Action: "Set State"}
+		return coordinator.BatchTransactionResultMsg{Action: "Set State"}
 	})
 	// The commit relocates the cursor, which is what the live selection would
 	// follow; the already-built chain must not.
@@ -212,7 +213,7 @@ func TestWaitingCheckBackStepRejectedMoveOpensNoPicker(t *testing.T) {
 	project := &models.Project{ID: "project", Name: "Project", Slug: "project"}
 	first := &models.Task{ID: "first"}
 	second := &models.Task{ID: "second"}
-	rejected := func() tea.Msg { return TransactionErrorMsg{Err: errors.New("cannot move to waiting")} }
+	rejected := func() tea.Msg { return coordinator.TransactionErrorMsg{Err: errors.New("cannot move to waiting")} }
 
 	contexts := map[string]CommandContext{
 		"single":   taskActionTestContext(),
@@ -231,7 +232,7 @@ func TestWaitingCheckBackStepRejectedMoveOpensNoPicker(t *testing.T) {
 			if cmds, isGroup := commandGroupMessage(msg); isGroup {
 				t.Fatalf("a rejected Waiting move scheduled %d follow-on command(s)", len(cmds))
 			}
-			failure, isFailure := msg.(TransactionErrorMsg)
+			failure, isFailure := msg.(coordinator.TransactionErrorMsg)
 			if !isFailure {
 				t.Fatalf("rejected move resolved to %T, want TransactionErrorMsg", msg)
 			}

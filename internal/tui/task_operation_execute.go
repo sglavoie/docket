@@ -8,7 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -93,7 +93,7 @@ func withWaitingCheckBackStep(invocation OperationInvocation, cmd tea.Cmd) tea.C
 // single-task commit path still emits TransactionResultMsg.
 func transactionCommitted(msg tea.Msg) bool {
 	switch msg.(type) {
-	case BatchTransactionResultMsg, TransactionResultMsg:
+	case coordinator.BatchTransactionResultMsg, coordinator.TransactionResultMsg:
 		return true
 	default:
 		return false
@@ -195,7 +195,7 @@ func applicationTaskOperationRequest(
 				fmt.Sprintf("Set Defer · %s %d task(s)", verb, count), true, nil
 		}
 		request.Operation = app.TaskOperationSetDueDate
-		request.PlanForToday = chrome.DueDateIsToday(value.Date)
+		request.PlanForToday = coordinator.DueDateIsToday(value.Date)
 		verb := "Set due date on"
 		if value.Date == nil {
 			verb = "Cleared due date on"

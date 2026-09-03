@@ -8,7 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -80,14 +80,14 @@ func (m *TaskFormModel) parseDraftDueDate() error {
 // saveCreate builds an AddTaskRequest from the draft and routes creation through
 // the task-form coordinator, which commits the new task and any subtasks as one
 // atomic ChangeSet. The returned Cmd emits a
-// TaskCreatedMsg carrying the committed result; the shell reloads and re-resolves
+// coordinator.TaskCreatedMsg carrying the committed result; the shell reloads and re-resolves
 // the task pointers for navigation, status, and open-after.
 func (m *TaskFormModel) saveCreate() tea.Cmd {
 	destination := app.CaptureDestination(m.draft.state)
 	if m.presetDestination.IsPlanning() && m.draft.state == models.StateBacklog {
 		destination = m.presetDestination
 	}
-	if chrome.DueDateIsToday(m.draft.dueDate) {
+	if coordinator.DueDateIsToday(m.draft.dueDate) {
 		destination = app.CaptureDestinationToday
 	}
 
@@ -163,4 +163,4 @@ func (m *TaskFormModel) saveCreate() tea.Cmd {
 }
 
 // SetTaskFormCoordinator injects the shared task-form coordinator (taskFormWireable).
-func (m *TaskFormModel) SetTaskFormCoordinator(c TaskFormCoordinator) { m.taskForm = c }
+func (m *TaskFormModel) SetTaskFormCoordinator(c coordinator.TaskFormCoordinator) { m.taskForm = c }

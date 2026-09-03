@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -19,19 +20,19 @@ func scenarioCreateForm(t *testing.T, env *scenarioEnv) *TaskFormModel {
 	return m
 }
 
-// runCreate executes handleSave and returns the committed TaskCreatedMsg.
-func runCreate(t *testing.T, m *TaskFormModel) TaskCreatedMsg {
+// runCreate executes handleSave and returns the committed coordinator.TaskCreatedMsg.
+func runCreate(t *testing.T, m *TaskFormModel) coordinator.TaskCreatedMsg {
 	t.Helper()
 	cmd := m.handleSave()
 	if cmd == nil {
 		t.Fatalf("expected non-nil Cmd on successful create; err=%v", m.err)
 	}
-	msg, ok := cmd().(TaskCreatedMsg)
+	msg, ok := cmd().(coordinator.TaskCreatedMsg)
 	if !ok {
-		t.Fatalf("expected TaskCreatedMsg, got %T", cmd())
+		t.Fatalf("expected coordinator.TaskCreatedMsg, got %T", cmd())
 	}
 	if msg.Result == nil {
-		t.Fatal("TaskCreatedMsg.Result should be non-nil on the coordinator path")
+		t.Fatal("coordinator.TaskCreatedMsg.Result should be non-nil on the coordinator path")
 	}
 	return msg
 }
@@ -84,7 +85,7 @@ func TestTaskFormCreateDoubleSubmitCreatesOneShortIDAndOneCommit(t *testing.T) {
 	if first == nil || duplicate != nil || !m.submissionInFlight {
 		t.Fatalf("commands first=%v duplicate=%v inFlight=%v", first != nil, duplicate != nil, m.submissionInFlight)
 	}
-	msg, ok := first().(TaskCreatedMsg)
+	msg, ok := first().(coordinator.TaskCreatedMsg)
 	if !ok || msg.Result == nil {
 		t.Fatalf("first result = %#v", msg)
 	}
@@ -105,7 +106,7 @@ func TestTaskFormCreateDoubleSubmitCreatesOneShortIDAndOneCommit(t *testing.T) {
 
 func TestTaskFormCreateSubmissionGuardClearsAfterError(t *testing.T) {
 	stub := &stubMutator{err: errors.New("create failed")}
-	features := newFeatureCoordinators(stub)
+	features := coordinator.NewFeatureCoordinators(stub)
 	m := newTestTaskForm()
 	m.SetTaskFormCoordinator(features.TaskForm)
 	m.titleInput.SetValue("Retry create")

@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -33,7 +34,7 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 		configManager:     manager,
 		runtime:           runtime,
 		projects:          make(map[string]*models.Project),
-		persister:         NewProjectService(),
+		persister:         coordinator.NewProjectService(),
 		navigation:        NewNavigationState(),
 		width:             80,
 		height:            24,
@@ -75,8 +76,8 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	// adapter, matching the coordinator-driven view-local pickers.
 	appService.WithPlanningArtifacts(planningReconcileArtifactBuilder(manager))
 	app.appService = appService
-	app.features = newFeatureCoordinators(appService)
-	app.secondaryFeatures = newSecondaryCoordinators(appService)
+	app.features = coordinator.NewFeatureCoordinators(appService)
+	app.secondaryFeatures = coordinator.NewSecondaryCoordinators(appService)
 
 	// Assemble the domain-native dependency bundle shared by the shell and views.
 	app.deps = newShellDeps(ledger)

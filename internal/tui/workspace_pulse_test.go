@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -131,8 +132,8 @@ func TestWorkspacePulseRefreshUsesSameDayCompletionActivity(t *testing.T) {
 	service := app.NewServiceWithArtifacts(newTestAppRepo(project), nil, nil, nil)
 	shell := &AppModel{
 		runtime: runtime,
-		features: FeatureCoordinators{
-			Activity: ActivityCoordinator{reader: service},
+		features: coordinator.FeatureCoordinators{
+			Activity: coordinator.NewActivityCoordinator(service),
 		},
 	}
 
@@ -168,7 +169,7 @@ func TestPeriodicTickRefreshesActivityAcrossIdleLocalMidnight(t *testing.T) {
 		t.Fatalf("seed current-day activity: %v", err)
 	}
 	reader := &staticCompletionActivityReader{activity: refreshed}
-	model.features.Activity = ActivityCoordinator{reader: reader}
+	model.features.Activity = coordinator.NewActivityCoordinator(reader)
 	model.completionActivity = cached
 	model.workspacePulse.Done = cached.CompletedToday()
 	model.crossOutliner.crossForceRebuild = false
@@ -217,8 +218,8 @@ func TestWorkspacePulseRefreshPreservesValidSameDayActivityOnFailure(t *testing.
 	shell := &AppModel{
 		runtime:            runtime,
 		completionActivity: cached,
-		features: FeatureCoordinators{
-			Activity: ActivityCoordinator{reader: reader},
+		features: coordinator.FeatureCoordinators{
+			Activity: coordinator.NewActivityCoordinator(reader),
 		},
 	}
 
@@ -250,8 +251,8 @@ func TestWorkspacePulseRefreshClearsCrossDayActivityOnFailureAndRetries(t *testi
 	shell := &AppModel{
 		runtime:            runtime,
 		completionActivity: cached,
-		features: FeatureCoordinators{
-			Activity: ActivityCoordinator{reader: reader},
+		features: coordinator.FeatureCoordinators{
+			Activity: coordinator.NewActivityCoordinator(reader),
 		},
 	}
 
@@ -270,11 +271,5 @@ func TestWorkspacePulseRefreshClearsCrossDayActivityOnFailureAndRetries(t *testi
 	shell.refreshWorkspacePulseAt(now.Add(time.Minute))
 	if reader.calls != 2 {
 		t.Fatalf("completion activity queries = %d, want retry after stale cache clear", reader.calls)
-	}
-}
-
-func TestActivityCoordinatorRejectsNilReader(t *testing.T) {
-	if _, err := (ActivityCoordinator{}).CompletionActivity(); !errors.Is(err, errCompletionActivityReaderUnavailable) {
-		t.Fatalf("nil reader error = %v, want %v", err, errCompletionActivityReaderUnavailable)
 	}
 }

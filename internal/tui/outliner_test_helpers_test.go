@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -16,8 +17,8 @@ func typedTestApp(t *testing.T) *AppModel {
 	model, project := newTestAppModelWithProject()
 	service := app.NewServiceWithArtifacts(newTestAppRepo(project), nil, nil, nil)
 	model.appService = service
-	model.features = newFeatureCoordinators(service)
-	model.secondaryFeatures = newSecondaryCoordinators(service)
+	model.features = coordinator.NewFeatureCoordinators(service)
+	model.secondaryFeatures = coordinator.NewSecondaryCoordinators(service)
 	model.deps = newShellDeps(nil)
 	model.operationRegistry = NewOperationRegistry()
 	model.operationExecutor = NewOperationExecutor(model.operationRegistry)

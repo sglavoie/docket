@@ -30,7 +30,7 @@ func (m *OutlinerModel) reorderTask(delta int) tea.Cmd {
 	}
 	taskIdentity := taskref.For(task, project)
 	targetIdentity := taskref.For(other, project)
-	if m.taskItem.task != nil {
+	if m.taskItem.Wired() {
 		return m.taskItem.ReorderSiblings(taskIdentity, targetIdentity)
 	}
 
@@ -77,7 +77,7 @@ func (m *OutlinerModel) reorderTaskEdge(delta int) tea.Cmd {
 	if project == nil {
 		return nil
 	}
-	if m.taskItem.task != nil {
+	if m.taskItem.Wired() {
 		order := make([]taskref.TaskIdentity, 0, len(rotated))
 		for _, task := range rotated {
 			order = append(order, taskref.For(task, project))

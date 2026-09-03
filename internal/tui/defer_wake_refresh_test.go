@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -83,7 +84,7 @@ func TestPeriodicTickRefreshesWorkspacePulseWhenDeferredTaskWakes(t *testing.T) 
 		t.Fatalf("seed completion activity: %v", err)
 	}
 	reader := &staticCompletionActivityReader{activity: activity}
-	model.features.Activity = ActivityCoordinator{reader: reader}
+	model.features.Activity = coordinator.NewActivityCoordinator(reader)
 	model.todayIDs = map[taskref.TaskIdentity]bool{taskref.For(deferred, project): true}
 
 	model.refreshWorkspacePulseAt(wake.Add(-time.Minute))
@@ -153,7 +154,7 @@ func TestPeriodicTickAcrossMidnightHoldsActionableCountsUntilTheWakeIsConsumed(t
 		t.Fatalf("seed current-day activity: %v", err)
 	}
 	reader := &staticCompletionActivityReader{activity: cached}
-	model.features.Activity = ActivityCoordinator{reader: reader}
+	model.features.Activity = coordinator.NewActivityCoordinator(reader)
 	model.todayIDs = map[taskref.TaskIdentity]bool{taskref.For(deferred, project): true}
 
 	model.refreshWorkspacePulseAt(beforeWake)

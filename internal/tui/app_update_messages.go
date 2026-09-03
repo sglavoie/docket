@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -144,11 +145,11 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 		})
 	case status.SaveCompleteMsg:
 		return true, m.handleSaveComplete(msg)
-	case TransactionResultMsg:
+	case coordinator.TransactionResultMsg:
 		return true, m.handleTransactionResult(msg)
-	case BatchTransactionResultMsg:
+	case coordinator.BatchTransactionResultMsg:
 		return true, m.handleBatchTransactionResult(msg)
-	case TransactionErrorMsg:
+	case coordinator.TransactionErrorMsg:
 		m.err = msg.Err
 		return true, status.StatusTimeout(5 * time.Second)
 	default:
@@ -203,10 +204,10 @@ func (m *AppModel) safeToRebuildForWake() bool {
 // its own freshly loaded snapshot, so the AppModel's in-memory copy of the
 // affected project is reloaded from disk before the shared post-save refresh
 // runs, keeping every open view consistent with the committed transaction.
-func (m *AppModel) handleTransactionResult(msg TransactionResultMsg) tea.Cmd {
+func (m *AppModel) handleTransactionResult(msg coordinator.TransactionResultMsg) tea.Cmd {
 	m.reloadProjectByID(msg.Result.ProjectID)
 	if m.crossOutliner != nil {
-		m.crossOutliner.armOutlinerRelocation(msg.outlinerRelocation)
+		m.crossOutliner.armOutlinerRelocation(outlinerRelocationFrom(msg.Relocation))
 	}
 	if msg.PlanningChanged && m.refreshRuntime() {
 		m.rebuildPlanningFromRuntime()
@@ -225,12 +226,12 @@ func (m *AppModel) handleTransactionResult(msg TransactionResultMsg) tea.Cmd {
 // shell. The application layer committed one atomic ChangeSet across every touched
 // project, so each affected project's in-memory copy is reloaded from disk before
 // the shared post-save refresh runs, keeping every open view consistent.
-func (m *AppModel) handleBatchTransactionResult(msg BatchTransactionResultMsg) tea.Cmd {
+func (m *AppModel) handleBatchTransactionResult(msg coordinator.BatchTransactionResultMsg) tea.Cmd {
 	for _, projectID := range msg.TouchedProjectIDs {
 		m.reloadProjectByID(projectID)
 	}
 	if m.crossOutliner != nil {
-		m.crossOutliner.armOutlinerRelocation(msg.outlinerRelocation)
+		m.crossOutliner.armOutlinerRelocation(outlinerRelocationFrom(msg.Relocation))
 	}
 	m.refreshLoadedTaskWorkspace()
 	if m.crossOutliner != nil {

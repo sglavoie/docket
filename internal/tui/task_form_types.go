@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 )
 
@@ -61,7 +62,7 @@ type TaskFormModel struct {
 	pulse.WorkspacePulseState
 	project           *models.Project
 	draft             taskFormDraft
-	taskForm          TaskFormCoordinator
+	taskForm          coordinator.TaskFormCoordinator
 	presetDestination app.CaptureDestination
 	hostTitle         string
 

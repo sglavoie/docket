@@ -1,4 +1,4 @@
-package tui
+package coordinator
 
 import (
 	"fmt"
@@ -9,7 +9,6 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
 // BulkCoordinator backs the bulk-edit / bulk-capture selection overlays.
@@ -79,7 +78,7 @@ func (c BulkCoordinator) SetDueDateLocators(locators []app.TaskLocator, due time
 			res app.BulkResult
 			err error
 		)
-		if chrome.DueDateIsToday(&due) {
+		if DueDateIsToday(&due) {
 			res, err = c.bulk.BulkSetDueDateAndPlanToday(locators, due)
 		} else {
 			res, err = c.bulk.BulkSetDueDate(locators, due)

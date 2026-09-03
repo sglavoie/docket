@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -109,7 +110,7 @@ func TestTaskItemCoordinatorDuplicateIDsUseSelectedProject(t *testing.T) {
 
 	t.Run("attachment and subview", func(t *testing.T) {
 		env, beta := newDuplicateLocatorEnv(t)
-		features := newSecondaryCoordinators(env.svc)
+		features := coordinator.NewSecondaryCoordinators(env.svc)
 		identity := taskref.For(beta, env.projects[1])
 
 		if res := runResult(t, features.Attachment.AttachURL(identity, "https://example.com/beta")); res.ProjectID != env.projects[1].ID {

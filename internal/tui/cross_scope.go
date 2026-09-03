@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/workspace"
@@ -69,11 +70,11 @@ func diagnosticToLoadFailure(diag workspace.Diagnostic) projectLoadFailure {
 // The view-owned ProjectService retains the snapshot loader across rebuilds.
 // Changed projects are parsed once into the new snapshot while unchanged
 // projects reuse their indexed parse.
-func LoadCrossScopeTasks(runtime *config.RuntimeState, service *ProjectService, opts CrossScopeOpts) (tasks []*models.Task, projects []*models.Project, failed []projectLoadFailure) {
+func LoadCrossScopeTasks(runtime *config.RuntimeState, service *coordinator.ProjectService, opts CrossScopeOpts) (tasks []*models.Task, projects []*models.Project, failed []projectLoadFailure) {
 	if service == nil {
-		service = NewProjectService()
+		service = coordinator.NewProjectService()
 	}
-	return loadCrossScopeSelection(selectCrossScopeProjects(runtime, opts), service.workspaceLoader)
+	return loadCrossScopeSelection(selectCrossScopeProjects(runtime, opts), service.WorkspaceLoader())
 }
 
 // loadCrossScopeSelection loads an already-selected project set into an immutable

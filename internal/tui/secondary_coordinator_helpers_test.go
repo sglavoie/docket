@@ -4,6 +4,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 )
 
 // testAppRepo is a minimal app.Repository for isolated view tests, backed by
@@ -60,6 +61,6 @@ func (r *testAppRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.Commit
 // newTestSecondaryCoordinators builds production-shaped secondary coordinators
 // over an application service seeded with the given projects, for isolated
 // view tests that exercise coordinator-backed mutations.
-func newTestSecondaryCoordinators(projects ...*models.Project) SecondaryCoordinators {
-	return newSecondaryCoordinators(app.NewServiceWithArtifacts(newTestAppRepo(projects...), nil, nil, nil))
+func newTestSecondaryCoordinators(projects ...*models.Project) coordinator.SecondaryCoordinators {
+	return coordinator.NewSecondaryCoordinators(app.NewServiceWithArtifacts(newTestAppRepo(projects...), nil, nil, nil))
 }

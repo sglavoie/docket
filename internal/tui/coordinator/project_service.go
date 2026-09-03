@@ -1,4 +1,4 @@
-package tui
+package coordinator
 
 import (
 	"github.com/sglavoie/tt/internal/models"
@@ -26,6 +26,12 @@ func NewProjectService() *ProjectService {
 		workspaceLoader: workspace.NewLoader(),
 	}
 }
+
+// WorkspaceLoader returns the retained snapshot loader. The loader is what keeps
+// an unchanged project's indexed parse across rebuilds, so the cross-scope load
+// and the Hub's tally both read it from the one view-owned service rather than
+// building a second loader of their own.
+func (s *ProjectService) WorkspaceLoader() *workspace.Loader { return s.workspaceLoader }
 
 // Load reloads a project from disk.
 func (s *ProjectService) Load(project *models.Project) error {

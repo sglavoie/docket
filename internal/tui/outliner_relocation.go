@@ -2,6 +2,8 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -23,6 +25,28 @@ type outlinerRelocationCapture struct {
 	TransactionID string
 	Settled       bool
 	SettledCursor int
+}
+
+// StampTransaction satisfies coordinator.TransactionRelocation, which is how a
+// capture rides a mutation the coordinator layer commits without that layer
+// naming this struct. It returns a copy so the caller's capture is never
+// mutated by a command it handed off.
+func (c *outlinerRelocationCapture) StampTransaction(id string) coordinator.TransactionRelocation {
+	if c == nil {
+		return nil
+	}
+	stamped := *c
+	stamped.TransactionID = id
+	return &stamped
+}
+
+// outlinerRelocationFrom recovers the shell's own capture from the opaque value
+// a coordinator carried across the commit. A nil interface and a value some
+// other surface attached both yield nil, which every consumer already treats as
+// "nothing to relocate".
+func outlinerRelocationFrom(value coordinator.TransactionRelocation) *outlinerRelocationCapture {
+	capture, _ := value.(*outlinerRelocationCapture)
+	return capture
 }
 
 // outlinerOriginRecordedMsg reports that a committed relocation actually added

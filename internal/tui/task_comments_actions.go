@@ -10,10 +10,50 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/external"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/util"
 )
+
+// adaptSubviewCommit runs a subview coordinator command inline and adapts its
+// outcome back to this panel's message contract: a TransactionErrorMsg surfaces
+// as the shared ErrorMsg, and a committed transaction resolves to success(),
+// which runs after the commit so it can re-resolve fresh task pointers. This is
+// the single-task analog of the batch transaction adapter — the migrated panels
+// keep their existing message vocabulary (and therefore their toasts and
+// refresh behavior) while the durable write flows through the application
+// layer.
+//
+// It sits here rather than beside SubviewCoordinator because the three comment
+// messages it stamps are this surface's vocabulary, which the coordinator layer
+// sits below and cannot name.
+func adaptSubviewCommit(commit tea.Cmd, success func() tea.Msg) tea.Cmd {
+	return func() tea.Msg {
+		outcome := commit()
+		if msg, ok := outcome.(coordinator.TransactionErrorMsg); ok {
+			return status.ErrorMsg(msg)
+		}
+		msg := success()
+		result, ok := outcome.(coordinator.TransactionResultMsg)
+		if !ok {
+			return msg
+		}
+		switch msg := msg.(type) {
+		case CommentAddedMsg:
+			msg.TransactionID = result.Result.TransactionID
+			return msg
+		case CommentDeletedMsg:
+			msg.TransactionID = result.Result.TransactionID
+			return msg
+		case CommentEditedMsg:
+			msg.TransactionID = result.Result.TransactionID
+			return msg
+		default:
+			return msg
+		}
+	}
+}
 
 // The panel mutates its model synchronously in Update() (avoiding data races
 // with View()); adaptSubviewCommit then hands the same mutation to the
@@ -95,7 +135,7 @@ func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
 
 	task := m.task
 	project := m.project
-	coordinator := m.coordinator
+	subview := m.coordinator
 	return m.editCommentWithExternalEditor(content, true, func(newText string) tea.Msg {
 		if newText == comment.Text {
 			return nil
@@ -109,7 +149,7 @@ func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
 
 		task.Comments[editIndex].Text = newText
 		return adaptSubviewCommit(
-			coordinator.EditComment(taskref.For(task, project), editIndex, newText),
+			subview.EditComment(taskref.For(task, project), editIndex, newText),
 			func() tea.Msg { return CommentEditedMsg{} },
 		)()
 	})
@@ -121,7 +161,7 @@ func (m *TaskCommentsModel) addCommentInExternalEditor() tea.Cmd {
 
 	task := m.task
 	project := m.project
-	coordinator := m.coordinator
+	subview := m.coordinator
 	m.cancelAddMode()
 
 	return m.editCommentWithExternalEditor(content, false, func(newText string) tea.Msg {
@@ -134,7 +174,7 @@ func (m *TaskCommentsModel) addCommentInExternalEditor() tea.Cmd {
 
 		task.AddComment(newText)
 		return adaptSubviewCommit(
-			coordinator.AddComment(taskref.For(task, project), newText),
+			subview.AddComment(taskref.For(task, project), newText),
 			func() tea.Msg { return CommentAddedMsg{} },
 		)()
 	})
@@ -152,7 +192,7 @@ func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 
 	task := m.task
 	project := m.project
-	coordinator := m.coordinator
+	subview := m.coordinator
 	originalText := comment.Text
 	m.cancelEditMode()
 
@@ -169,7 +209,7 @@ func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 
 		task.Comments[editIndex].Text = newText
 		return adaptSubviewCommit(
-			coordinator.EditComment(taskref.For(task, project), editIndex, newText),
+			subview.EditComment(taskref.For(task, project), editIndex, newText),
 			func() tea.Msg { return CommentEditedMsg{} },
 		)()
 	})

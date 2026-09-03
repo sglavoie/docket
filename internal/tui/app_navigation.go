@@ -4,6 +4,7 @@ import (
 	"image/color"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -197,7 +198,7 @@ func (m *AppModel) setAccentOnView(view View) {
 // all from the single showView/replaceView site so no construction path can
 // forget to inject the coordinator (a nil mutator would panic in a bulk handler).
 type bulkWireable interface {
-	SetBulkCoordinator(BulkCoordinator)
+	SetBulkCoordinator(coordinator.BulkCoordinator)
 }
 
 // taskItemWireable is implemented by every view that routes its single-task
@@ -205,7 +206,7 @@ type bulkWireable interface {
 // bulkWireable. The shell wires them all from the single showView/replaceView
 // site so no construction path forgets to inject the coordinator.
 type taskItemWireable interface {
-	SetTaskItemCoordinator(TaskItemCoordinator)
+	SetTaskItemCoordinator(coordinator.TaskItemCoordinator)
 }
 
 // captureWireable is implemented by every capture-creation view that routes its
@@ -214,13 +215,13 @@ type taskItemWireable interface {
 // forget to inject the coordinator (a nil mutator would panic in a create
 // handler).
 type captureWireable interface {
-	SetCaptureCoordinator(CaptureCoordinator)
+	SetCaptureCoordinator(coordinator.CaptureCoordinator)
 }
 
 // taskFormWireable is implemented by the expanded create form, which routes its
 // mutation through the application-layer TaskFormCoordinator.
 type taskFormWireable interface {
-	SetTaskFormCoordinator(TaskFormCoordinator)
+	SetTaskFormCoordinator(coordinator.TaskFormCoordinator)
 }
 
 // wireSecondaryCoordinators injects the shell's shared coordinators into a view

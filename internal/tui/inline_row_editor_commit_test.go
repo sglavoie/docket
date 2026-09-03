@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -66,7 +67,7 @@ func TestInlineRowEditorAtomicCommitAndFailureLifecycle(t *testing.T) {
 	if cmd == nil || !out.quickEdit.IsActive() || !out.quickEdit.pending {
 		t.Fatalf("commit did not retain a pending inline draft: active=%t pending=%t", out.quickEdit.IsActive(), out.quickEdit.pending)
 	}
-	committed, ok := cmd().(TaskLineEditedMsg)
+	committed, ok := cmd().(coordinator.TaskLineEditedMsg)
 	if !ok || !committed.Result.Changed || committed.Result.TransactionID == "" {
 		t.Fatalf("atomic command result = %#v", committed)
 	}
@@ -89,7 +90,7 @@ func TestInlineRowEditorAtomicCommitAndFailureLifecycle(t *testing.T) {
 	out.quickEdit.BeginCommit()
 	projection = out.jumpProjectionFingerprint()
 	failure := errors.New("simulated revision conflict")
-	m.handleTaskLineEditFailed(TaskLineEditFailedMsg{
+	m.handleTaskLineEditFailed(coordinator.TaskLineEditFailedMsg{
 		Source: taskref.For(live, m.currentProject), Err: failure,
 	})
 	if !out.quickEdit.IsActive() || out.quickEdit.pending || out.quickEdit.input.Value() != "Draft survives" {
@@ -125,7 +126,7 @@ func TestInlineRowEditorUnchangedCommitCreatesNoUndoTransaction(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("unchanged inline commit returned nil command")
 	}
-	committed, ok := cmd().(TaskLineEditedMsg)
+	committed, ok := cmd().(coordinator.TaskLineEditedMsg)
 	if !ok || committed.Result.Changed || committed.Result.TransactionID != "" {
 		t.Fatalf("unchanged inline result = %#v", committed)
 	}

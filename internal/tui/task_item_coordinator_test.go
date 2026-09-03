@@ -7,7 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
-// This file exercises the single-task TaskItemCoordinator
+// This file exercises the single-task coordinator.TaskItemCoordinator
 // (feature_coordinator_task_item.go) end to end through the real transactional
 // storage stack and undo ledger, mirroring the bulk-coordinator scenarios. The
 // coordinator is the additive migration seam for the cross-project single-task

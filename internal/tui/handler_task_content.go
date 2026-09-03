@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -169,7 +170,7 @@ func (m *AppModel) commitTaskContentEdit(task *models.Task, project *models.Proj
 	edited, err := m.appService.EditTaskLine(req)
 	removeTaskContentBuffer(msg.Path)
 	if err != nil {
-		return m.handleTaskLineEditFailed(TaskLineEditFailedMsg{Source: source, Err: err})
+		return m.handleTaskLineEditFailed(coordinator.TaskLineEditFailedMsg{Source: source, Err: err})
 	}
-	return m.handleTaskLineEdited(TaskLineEditedMsg{Result: edited, Source: source, Relocation: relocation})
+	return m.handleTaskLineEdited(coordinator.TaskLineEditedMsg{Result: edited, Source: source, Relocation: relocation})
 }

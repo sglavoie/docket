@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -107,7 +108,7 @@ func TestTaskLineEditCrossProjectRelocationRefreshesOutlinerSnapshot(t *testing.
 	}
 
 	finalIdentity := taskref.TaskIdentity{ProjectID: destination.ID, TaskID: moving.ID}
-	model.handleTaskLineEdited(TaskLineEditedMsg{
+	model.handleTaskLineEdited(coordinator.TaskLineEditedMsg{
 		Result: domainapp.TaskLineEditResult{
 			Task:               domainapp.TaskLocator{ProjectID: destination.ID, TaskID: moving.ID},
 			ShortID:            committedMoving.ShortID,
@@ -165,7 +166,7 @@ func TestTaskCreatedRefreshesVisibleOutlinerSnapshot(t *testing.T) {
 
 	model.pushView(presentation.ViewTaskComposer)
 	result := domainapp.TaskResult{ProjectID: project.ID, TaskID: task.ID}
-	_, cmd := model.Update(TaskCreatedMsg{Result: &result})
+	_, cmd := model.Update(coordinator.TaskCreatedMsg{Result: &result})
 	runSession2AppCommand(t, model, cmd)
 
 	if outliner.crossLoading {
@@ -198,7 +199,7 @@ func TestPlanningCaptureRefreshesRuntimeAndOutlinerSection(t *testing.T) {
 				t.Fatal("seeded planning snapshot did not refresh")
 			}
 			model.appService.WithPlanningArtifacts(planningReconcileArtifactBuilder(model.configManager))
-			model.features = newFeatureCoordinators(model.appService)
+			model.features = coordinator.NewFeatureCoordinators(model.appService)
 			installDistinctOutlinerSnapshot(t, model, outliner)
 
 			composer := NewTaskComposerModel(TaskComposerPreset{
@@ -216,9 +217,9 @@ func TestPlanningCaptureRefreshesRuntimeAndOutlinerSection(t *testing.T) {
 			if cmd == nil {
 				t.Fatalf("$%s capture returned nil command: %+v", tc.destination, composer.errors)
 			}
-			created, ok := cmd().(TaskCreatedMsg)
+			created, ok := cmd().(coordinator.TaskCreatedMsg)
 			if !ok || created.Result == nil || !created.PlanningChanged {
-				t.Fatalf("capture result = %#v, want planning-aware TaskCreatedMsg", created)
+				t.Fatalf("capture result = %#v, want planning-aware coordinator.TaskCreatedMsg", created)
 			}
 
 			_, refreshCmd := model.handleTaskCreated(created)

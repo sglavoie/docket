@@ -5,11 +5,12 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
-func (m *AppModel) handleTaskLineEditFailed(msg TaskLineEditFailedMsg) tea.Cmd {
+func (m *AppModel) handleTaskLineEditFailed(msg coordinator.TaskLineEditFailedMsg) tea.Cmd {
 	m.err = msg.Err
 	message := "task edit failed"
 	if msg.Err != nil {
@@ -25,7 +26,7 @@ func (m *AppModel) handleTaskLineEditFailed(msg TaskLineEditFailedMsg) tea.Cmd {
 	return status.StatusTimeout(5 * time.Second)
 }
 
-func (m *AppModel) handleTaskLineEdited(msg TaskLineEditedMsg) tea.Cmd {
+func (m *AppModel) handleTaskLineEdited(msg coordinator.TaskLineEditedMsg) tea.Cmd {
 	m.err = nil
 	out, ok := m.outlinerPrimary()
 	if ok && out != nil && out.quickEdit.IsActive() {
@@ -56,7 +57,7 @@ func (m *AppModel) handleTaskLineEdited(msg TaskLineEditedMsg) tea.Cmd {
 			ProjectID: msg.Result.Task.ProjectID,
 			TaskID:    msg.Result.Task.TaskID,
 		}
-		jumpCmd, recordedOrigin = out.finishTaskLineEditRelocation(msg.Relocation, final)
+		jumpCmd, recordedOrigin = out.finishTaskLineEditRelocation(outlinerRelocationFrom(msg.Relocation), final)
 	}
 
 	summary := fmt.Sprintf("Updated #%d %s", msg.Result.ShortID, msg.Result.Title)

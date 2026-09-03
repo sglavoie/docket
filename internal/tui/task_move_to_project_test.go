@@ -6,6 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -65,7 +66,7 @@ func TestMoveToProjectReassignsShortIDsAcrossTheWholeSubtree(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("the move produced no command")
 	}
-	msg, ok := cmd().(TaskLineEditedMsg)
+	msg, ok := cmd().(coordinator.TaskLineEditedMsg)
 	if !ok {
 		t.Fatalf("the move produced %T, want an edit result", cmd())
 	}

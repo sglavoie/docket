@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -102,8 +103,8 @@ type TaskComposerModel struct {
 	runtime            *config.RuntimeState
 	mode               TaskComposerMode
 	expanded           *TaskFormModel
-	capture            CaptureCoordinator
-	taskForm           TaskFormCoordinator
+	capture            coordinator.CaptureCoordinator
+	taskForm           coordinator.TaskFormCoordinator
 	errors             []lineError
 	width              int
 	height             int
@@ -143,9 +144,9 @@ func (m *TaskComposerModel) initCompactInput() {
 	}
 }
 
-func (m *TaskComposerModel) SetCaptureCoordinator(c CaptureCoordinator) { m.capture = c }
+func (m *TaskComposerModel) SetCaptureCoordinator(c coordinator.CaptureCoordinator) { m.capture = c }
 
-func (m *TaskComposerModel) SetTaskFormCoordinator(c TaskFormCoordinator) {
+func (m *TaskComposerModel) SetTaskFormCoordinator(c coordinator.TaskFormCoordinator) {
 	m.taskForm = c
 	if m.expanded != nil {
 		m.expanded.SetTaskFormCoordinator(c)
@@ -181,7 +182,7 @@ func (m *TaskComposerModel) Init() tea.Cmd {
 
 func (m *TaskComposerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg.(type) {
-	case TaskCreatedMsg, status.ErrorMsg:
+	case coordinator.TaskCreatedMsg, status.ErrorMsg:
 		m.submissionInFlight = false
 	}
 
@@ -347,7 +348,7 @@ func (m *TaskComposerModel) parseCompactLines() ([]app.CaptureRequest, bool) {
 		if !parsed.destinationSet {
 			destination = m.preset.defaultDestination(parentID)
 		}
-		if chrome.DueDateIsToday(due) {
+		if coordinator.DueDateIsToday(due) {
 			destination = app.CaptureDestinationToday
 		}
 		destination = composerDeferredDestination(parsed, destination)

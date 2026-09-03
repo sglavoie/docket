@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 )
 
 // handleTaskMessages handles task-related messages (create, edit, delete, status changes).
@@ -54,10 +55,10 @@ func (m *AppModel) handleTaskContentMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case OutlineEditedMsg:
 		return true, m.handleOutlineEdited(msg)
 
-	case TaskLineEditedMsg:
+	case coordinator.TaskLineEditedMsg:
 		return true, m.handleTaskLineEdited(msg)
 
-	case TaskLineEditFailedMsg:
+	case coordinator.TaskLineEditFailedMsg:
 		return true, m.handleTaskLineEditFailed(msg)
 
 	}

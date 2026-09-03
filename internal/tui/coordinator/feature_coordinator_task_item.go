@@ -1,4 +1,4 @@
-package tui
+package coordinator
 
 import (
 	"fmt"
@@ -9,7 +9,6 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -26,6 +25,12 @@ import (
 type TaskItemCoordinator struct {
 	task TaskItemMutator
 }
+
+// Wired reports whether an application mutator was injected. Isolated Outliner
+// models built for focused rendering and navigation tests carry the zero
+// coordinator, and the few structural handlers that keep an in-memory fallback
+// for them ask this before dispatching a transaction.
+func (c TaskItemCoordinator) Wired() bool { return c.task != nil }
 
 // ExecuteOperation runs title/description edits, clipboard projections, child
 // creation, and direct state/metadata actions through one application request.
@@ -216,7 +221,7 @@ func (c TaskItemCoordinator) Edit(task taskref.TaskIdentity, req app.EditRequest
 // EditTaskLine commits one parsed row edit without mutating any view-owned task
 // first. A rejected command returns the source identity so the shell can restore
 // input immediately on the still-active editor.
-func (c TaskItemCoordinator) EditTaskLine(req app.TaskLineEditRequest, relocation *outlinerRelocationCapture) tea.Cmd {
+func (c TaskItemCoordinator) EditTaskLine(req app.TaskLineEditRequest, relocation TransactionRelocation) tea.Cmd {
 	return func() tea.Msg {
 		result, err := c.task.EditTaskLine(req)
 		source := taskref.TaskIdentity{ProjectID: req.Source.ProjectID, TaskID: req.Source.TaskID}
@@ -255,7 +260,7 @@ func (c TaskItemCoordinator) SetDueDate(task taskref.TaskIdentity, due *time.Tim
 			res app.TaskResult
 			err error
 		)
-		planningChanged := chrome.DueDateIsToday(due)
+		planningChanged := DueDateIsToday(due)
 		if planningChanged {
 			res, err = c.task.SetDueDateAndPlanToday(task.Locator(), *due)
 		} else {

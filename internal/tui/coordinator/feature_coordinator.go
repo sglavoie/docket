@@ -1,4 +1,4 @@
-package tui
+package coordinator
 
 import (
 	"errors"
@@ -68,6 +68,21 @@ var (
 
 var errCompletionActivityReaderUnavailable = errors.New("completion activity reader is unavailable")
 
+// TransactionRelocation is the opaque navigation capture a surface attaches to
+// a mutation that may move the followed task between rows. The capture is that
+// surface's own vocabulary — it names row positions and neighbors this layer
+// sits below and cannot see — so a coordinator only carries it across the
+// commit and stamps it with the committed transaction ID on the way back.
+//
+// The interface exists rather than a concrete type because the alternative,
+// moving the capture down here, would drag the whole outliner jump-position
+// vocabulary with it: that struct is read by jump history independently of any
+// coordinator.
+type TransactionRelocation interface {
+	// StampTransaction returns a copy of the capture carrying id.
+	StampTransaction(id string) TransactionRelocation
+}
+
 // TransactionResultMsg is emitted when a coordinator mutation commits. It
 // carries the presentation-neutral outcome (the committed revision, the affected
 // task's qualified reference and final workflow state) so a primary view renders
@@ -85,9 +100,10 @@ type TransactionResultMsg struct {
 	// PlanningChanged reports that the same ChangeSet carried a checked planning
 	// artifact. The shell advances its planning snapshot before refreshing the Outliner.
 	PlanningChanged bool
-	// outlinerRelocation is an internal navigation capture attached only to a
-	// successful operation that may move the followed task between rows.
-	outlinerRelocation *outlinerRelocationCapture
+	// Relocation is the opaque navigation capture attached only to a successful
+	// operation that may move the followed task between rows. It is nil
+	// whenever the operation cannot relocate anything.
+	Relocation TransactionRelocation
 }
 
 // SuccessMessage renders the status line shown when the transaction commits.
@@ -269,12 +285,12 @@ type FeatureCoordinators struct {
 	Activity ActivityCoordinator
 }
 
-// newFeatureCoordinators builds the primary coordinators over a shared
+// NewFeatureCoordinators builds the primary coordinators over a shared
 // application mutation surface.
-func newFeatureCoordinators(mutator FeatureMutator) FeatureCoordinators {
+func NewFeatureCoordinators(mutator FeatureMutator) FeatureCoordinators {
 	var activity ActivityCoordinator
 	if reader, ok := mutator.(CompletionActivityReader); ok {
-		activity.reader = reader
+		activity = NewActivityCoordinator(reader)
 	}
 	return FeatureCoordinators{
 		Capture:  CaptureCoordinator{newFeatureCoordinator("capture", mutator)},
@@ -282,4 +298,12 @@ func newFeatureCoordinators(mutator FeatureMutator) FeatureCoordinators {
 		Outline:  OutlineCoordinator{newFeatureCoordinator("outline", mutator)},
 		Activity: activity,
 	}
+}
+
+// NewActivityCoordinator binds a completion-activity reader. It is the only way
+// to populate the coordinator from outside this package, which is what lets the
+// shell tests that drive the Today title's cross-day fallbacks inject a reader
+// rather than stand up a whole application service.
+func NewActivityCoordinator(reader CompletionActivityReader) ActivityCoordinator {
+	return ActivityCoordinator{reader: reader}
 }

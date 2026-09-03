@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -52,7 +53,7 @@ func (m *TaskComposerModel) effectiveRouteForLine(line string) composerEffective
 	if due == nil {
 		due = m.preset.Shared.Due
 	}
-	if chrome.DueDateIsToday(due) {
+	if coordinator.DueDateIsToday(due) {
 		destination = app.CaptureDestinationToday
 	}
 	destination = composerDeferredDestination(parsed, destination)

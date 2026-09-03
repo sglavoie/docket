@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 )
@@ -149,7 +150,7 @@ func TestAppViewUsesCachedCompletionActivityWithoutRenderTimeRead(t *testing.T) 
 	reader := &staticCompletionActivityReader{activity: app.CompletionActivity{
 		DailyCompletions: map[time.Time]int{time.Date(2026, time.August, 19, 0, 0, 0, 0, time.UTC): 1},
 	}}
-	model.features.Activity = ActivityCoordinator{reader: reader}
+	model.features.Activity = coordinator.NewActivityCoordinator(reader)
 	model.crossOutliner.primaryMode = chrome.ModeToday
 	model.refreshWorkspacePulseAt(time.Now())
 	model.crossOutliner.SetCompletionActivity(app.CompletionActivity{})

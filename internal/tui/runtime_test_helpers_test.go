@@ -2,10 +2,11 @@ package tui
 
 import (
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
-func WithPersister(p Persister) AppOption {
+func WithPersister(p coordinator.Persister) AppOption {
 	return func(app *AppModel) {
 		app.persister = p
 	}

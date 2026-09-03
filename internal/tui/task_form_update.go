@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -15,7 +16,7 @@ import (
 func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	// ── External overlay results ───────────────────────────────────────────────
-	case TaskCreatedMsg:
+	case coordinator.TaskCreatedMsg:
 		m.submissionInFlight = false
 		return m, nil
 

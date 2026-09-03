@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 )
 
 func newBulkPickerTestTask(t *testing.T, shortID int, title string, tags ...string) *models.Task {
@@ -49,7 +50,7 @@ type appBulkPickerEnv struct {
 	dataDir  string
 	ledger   *storage.WorkspaceLedger
 	svc      *app.Service
-	features SecondaryCoordinators
+	features coordinator.SecondaryCoordinators
 	mgr      *config.Manager
 	cfg      *config.RuntimeState
 	projects []*models.Project
@@ -95,7 +96,7 @@ func newAppBulkPickerEnv(t *testing.T, taskGroups ...[]*models.Task) *appBulkPic
 	}
 	return &appBulkPickerEnv{
 		dataDir: dataDir, ledger: ledger, svc: svc,
-		features: newSecondaryCoordinators(svc),
+		features: coordinator.NewSecondaryCoordinators(svc),
 		mgr:      mgr, cfg: cfg, projects: projects,
 	}
 }
@@ -108,7 +109,7 @@ func (e *appBulkPickerEnv) appModel() *AppModel {
 	return &AppModel{
 		configManager: e.mgr, runtime: testRuntimeAt(e.cfg.DataDir(), e.cfg),
 		deps:     newShellDeps(nil),
-		projects: projects, persister: NewProjectService(), appService: e.svc,
+		projects: projects, persister: coordinator.NewProjectService(), appService: e.svc,
 		secondaryFeatures: e.features, views: NewViewRegistry(),
 		navigation: NewNavigationState(), width: 80, height: 24,
 	}

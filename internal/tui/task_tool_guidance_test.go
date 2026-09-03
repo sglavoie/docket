@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 )
 
 func newTaskToolGuidanceFixture(t *testing.T) (*models.Project, *models.Task) {
@@ -78,7 +79,7 @@ func TestAttachmentGuidanceTracksFileCodeURLAndEmptyVariants(t *testing.T) {
 		{Filename: "code.go", OriginalPath: "/tmp/code.go", IsCodeRef: true, LineNumber: 12},
 		{Filename: "https://example.com", OriginalPath: "https://example.com", IsURL: true},
 	}
-	model := NewTaskAttachmentsModel(task, project, nil, AttachmentCoordinator{})
+	model := NewTaskAttachmentsModel(task, project, nil, coordinator.AttachmentCoordinator{})
 
 	spec, ok := model.guidanceSpec()
 	assertGuidanceContains(t, "file attachment", spec, ok,
@@ -120,7 +121,7 @@ func TestTaskToolGuidanceFitsNarrowBudgetsAndViews(t *testing.T) {
 	comments := NewTaskCommentsModel(task, project)
 	comments.SetSize(36, 16)
 	comments.cursor = len(task.Comments) - 1
-	attachments := NewTaskAttachmentsModel(task, project, nil, AttachmentCoordinator{})
+	attachments := NewTaskAttachmentsModel(task, project, nil, coordinator.AttachmentCoordinator{})
 	attachments.SetSize(36, 16)
 	attachments.cursor = len(task.Attachments) - 1
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -18,7 +19,7 @@ type TaskAttachmentsModel struct {
 	// coordinator routes attachment mutations through the application layer
 	// (one atomic ChangeSet each) instead of a direct project save. See
 	// feature_coordinator_subview.go.
-	coordinator AttachmentCoordinator
+	coordinator coordinator.AttachmentCoordinator
 
 	// Add mode
 	addMode   bool
@@ -39,7 +40,7 @@ func (m *TaskAttachmentsModel) SetOperationDispatch(dispatch operationKeyDispatc
 }
 
 // NewTaskAttachmentsModel creates a new task attachments viewer.
-func NewTaskAttachmentsModel(task *models.Task, project *models.Project, runtime *config.RuntimeState, coordinator AttachmentCoordinator) *TaskAttachmentsModel {
+func NewTaskAttachmentsModel(task *models.Task, project *models.Project, runtime *config.RuntimeState, coordinator coordinator.AttachmentCoordinator) *TaskAttachmentsModel {
 	ti := textinput.New()
 	ti.Placeholder = "Enter file path, URL, or code ref (file:line)..."
 	ti.CharLimit = 500

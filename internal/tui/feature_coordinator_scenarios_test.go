@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 )
 
 // This file exercises the primary-view feature coordinators end to end through
@@ -85,7 +86,7 @@ type scenarioEnv struct {
 	dataDir  string
 	ledger   *storage.WorkspaceLedger
 	svc      *app.Service
-	features FeatureCoordinators
+	features coordinator.FeatureCoordinators
 	project  *models.Project
 }
 
@@ -120,7 +121,7 @@ func newScenarioEnv(t *testing.T, slug string, tasks ...*models.Task) *scenarioE
 		dataDir:  dataDir,
 		ledger:   ledger,
 		svc:      svc,
-		features: newFeatureCoordinators(svc),
+		features: coordinator.NewFeatureCoordinators(svc),
 		project:  project,
 	}
 }
@@ -153,12 +154,12 @@ func runResult(t *testing.T, cmd tea.Cmd) app.TaskResult {
 		t.Fatal("coordinator returned a nil command")
 	}
 	switch msg := cmd().(type) {
-	case TransactionResultMsg:
+	case coordinator.TransactionResultMsg:
 		return msg.Result
-	case TransactionErrorMsg:
+	case coordinator.TransactionErrorMsg:
 		t.Fatalf("expected a committed transaction, got error: %v", msg.Err)
 	default:
-		t.Fatalf("expected TransactionResultMsg, got %T", msg)
+		t.Fatalf("expected coordinator.TransactionResultMsg, got %T", msg)
 	}
 	return app.TaskResult{}
 }

@@ -1,4 +1,4 @@
-package tui
+package coordinator
 
 import (
 	"errors"
@@ -7,6 +7,8 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/testutil"
 )
 
 // stubMutator is a hand-rolled FeatureMutator recording the last call and
@@ -68,7 +70,7 @@ func (s *stubMutator) ProjectAtRevision(string) (*models.Project, string, error)
 
 func TestFeatureCoordinatorRunEmitsResult(t *testing.T) {
 	stub := &stubMutator{result: app.TaskResult{Title: "Done thing", Revision: "rev-1"}}
-	features := newFeatureCoordinators(stub)
+	features := NewFeatureCoordinators(stub)
 
 	msg := features.Capture.Capture(app.CaptureRequest{ProjectID: "project", Title: "Done thing"})()
 	result, ok := msg.(TransactionResultMsg)
@@ -95,7 +97,7 @@ func TestCaptureCoordinatorsReportPlanningChanges(t *testing.T) {
 		destination := destination
 		t.Run(string(destination), func(t *testing.T) {
 			stub := &stubMutator{result: app.TaskResult{ProjectID: "project", TaskID: "task"}}
-			features := newFeatureCoordinators(stub)
+			features := NewFeatureCoordinators(stub)
 			want := destination.IsPlanning()
 
 			transaction, ok := features.Capture.Capture(app.CaptureRequest{
@@ -122,7 +124,7 @@ func TestCaptureCoordinatorsReportPlanningChanges(t *testing.T) {
 	}
 
 	stub := &stubMutator{result: app.TaskResult{ProjectID: "project", TaskID: "task"}}
-	features := newFeatureCoordinators(stub)
+	features := NewFeatureCoordinators(stub)
 	bulk, ok := features.Capture.CaptureBulk([]app.CaptureRequest{
 		{ProjectID: "project", Title: "Backlog", Destination: app.CaptureDestinationBacklog},
 		{ProjectID: "project", Title: "Next", Destination: app.CaptureDestinationNext},
@@ -135,7 +137,7 @@ func TestCaptureCoordinatorsReportPlanningChanges(t *testing.T) {
 func TestFeatureCoordinatorRunEmitsError(t *testing.T) {
 	sentinel := errors.New("boom")
 	stub := &stubMutator{err: sentinel}
-	features := newFeatureCoordinators(stub)
+	features := NewFeatureCoordinators(stub)
 
 	msg := features.Capture.Capture(app.CaptureRequest{ProjectID: "project", Title: "Rejected"})()
 	failure, ok := msg.(TransactionErrorMsg)
@@ -147,17 +149,64 @@ func TestFeatureCoordinatorRunEmitsError(t *testing.T) {
 	}
 }
 
+// fixedCompletionActivityClock pins the service's notion of "today" so a
+// same-day completion is a fact of the fixture rather than of the wall clock.
+type fixedCompletionActivityClock struct{ now time.Time }
+
+func (c fixedCompletionActivityClock) Now() time.Time { return c.now }
+
+// installActivityRepository swaps the process-wide repository for an in-memory
+// mock holding the given projects, restoring the previous one on cleanup, so
+// the service's snapshot load never touches a real workspace.
+func installActivityRepository(t *testing.T, projects ...*models.Project) {
+	t.Helper()
+	repository := testutil.NewMockRepository()
+	for _, project := range projects {
+		repository.Projects[project.ID] = project
+	}
+	previous := storage.DefaultRepository
+	storage.DefaultRepository = repository
+	t.Cleanup(func() { storage.DefaultRepository = previous })
+}
+
+// activityRepo is the minimum app.Repository the completion-activity query
+// needs: one snapshot over the installed mock repository. Nothing here commits,
+// so Commit only has to satisfy the interface.
+type activityRepo struct{ projects []*models.Project }
+
+func (r *activityRepo) Snapshot() (app.Snapshot, error) {
+	revisions := make(map[string]string, len(r.projects))
+	documents := make(map[string]*storage.ProjectDocument, len(r.projects))
+	for _, project := range r.projects {
+		if err := storage.LoadProject(project); err != nil {
+			return nil, err
+		}
+		doc, err := storage.LoadProjectDocument(project)
+		if err != nil {
+			return nil, err
+		}
+		revisions[project.ID] = doc.Revision
+		documents[project.ID] = doc
+	}
+	return app.NewSnapshot(r.projects, revisions, documents), nil
+}
+
+func (r *activityRepo) Commit(...storage.ChangeSet) ([]*storage.CommitResult, error) {
+	return nil, errors.New("activityRepo does not commit")
+}
+
 // The activity reader is acquired by a runtime type assertion over the mutation
 // surface, so the construction seam is where a lost reader would go unnoticed.
 func TestNewFeatureCoordinatorsBindsActivityReaderOrReportsItMissing(t *testing.T) {
 	now := time.Date(2026, time.August, 20, 9, 0, 0, 0, time.UTC)
-	done := primaryRowsTask("done-today", models.StateDone)
+	done := &models.Task{ID: "done-today", Title: "done-today", WorkflowState: models.StateDone, UpdatedAt: now}
 	done.CompletedAt = &now
-	project := primaryRowsProject("activity-wiring", done)
-	installPulseRepository(t, project)
-	service := app.NewServiceWithArtifacts(newTestAppRepo(project), fixedCompletionActivityClock{now: now}, nil, nil)
+	project := &models.Project{ID: "activity-wiring", Name: "activity-wiring", Slug: "activity-wiring", Tasks: []*models.Task{done}}
+	project.BuildTaskTree()
+	installActivityRepository(t, project)
+	service := app.NewServiceWithArtifacts(&activityRepo{projects: []*models.Project{project}}, fixedCompletionActivityClock{now: now}, nil, nil)
 
-	activity, err := newFeatureCoordinators(service).Activity.CompletionActivity()
+	activity, err := NewFeatureCoordinators(service).Activity.CompletionActivity()
 	if err != nil {
 		t.Fatalf("activity query over *app.Service: %v", err)
 	}
@@ -165,9 +214,15 @@ func TestNewFeatureCoordinatorsBindsActivityReaderOrReportsItMissing(t *testing.
 		t.Fatalf("activity = %+v, want the service-computed same-day completion", activity)
 	}
 
-	_, err = newFeatureCoordinators(&stubMutator{}).Activity.CompletionActivity()
+	_, err = NewFeatureCoordinators(&stubMutator{}).Activity.CompletionActivity()
 	if !errors.Is(err, errCompletionActivityReaderUnavailable) {
 		t.Fatalf("mutator-only coordinator error = %v, want %v", err, errCompletionActivityReaderUnavailable)
+	}
+}
+
+func TestActivityCoordinatorRejectsNilReader(t *testing.T) {
+	if _, err := (ActivityCoordinator{}).CompletionActivity(); !errors.Is(err, errCompletionActivityReaderUnavailable) {
+		t.Fatalf("nil reader error = %v, want %v", err, errCompletionActivityReaderUnavailable)
 	}
 }
 

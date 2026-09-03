@@ -5,6 +5,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -14,7 +15,7 @@ type TaskCommentsModel struct {
 	InteractiveViewState
 	task        *models.Task
 	project     *models.Project
-	coordinator SubviewCoordinator
+	coordinator coordinator.SubviewCoordinator
 
 	// Add mode
 	addMode   bool
@@ -71,7 +72,7 @@ func NewTaskCommentsModel(task *models.Task, project *models.Project) *TaskComme
 
 // NewTaskCommentsModelWithEditor creates a task comments viewer with editor
 // config and the coordinator its mutations commit through.
-func NewTaskCommentsModelWithEditor(task *models.Task, project *models.Project, editor string, coordinator SubviewCoordinator) *TaskCommentsModel {
+func NewTaskCommentsModelWithEditor(task *models.Task, project *models.Project, editor string, coordinator coordinator.SubviewCoordinator) *TaskCommentsModel {
 	m := NewTaskCommentsModel(task, project)
 	m.editor = editor
 	m.coordinator = coordinator

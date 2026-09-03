@@ -3,6 +3,7 @@ package tui
 import (
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -51,11 +52,11 @@ func TestHandleTaskMessagesTaskCreated(t *testing.T) {
 	app, _ := newTestAppModelWithProject()
 	app.pushView(presentation.ViewTaskComposer)
 
-	msg := TaskCreatedMsg{}
+	msg := coordinator.TaskCreatedMsg{}
 	handled, _ := app.handleTaskMessages(msg)
 
 	if !handled {
-		t.Error("TaskCreatedMsg should be handled")
+		t.Error("coordinator.TaskCreatedMsg should be handled")
 	}
 	if app.currentView() != presentation.ViewCrossProjectOutliner {
 		t.Errorf("currentView should be Outliner after task created, got %v", app.currentView())

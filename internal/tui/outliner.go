@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -56,8 +57,8 @@ type OutlinerModel struct {
 
 	runtime        *config.RuntimeState
 	configManager  *config.Manager
-	taskItem       TaskItemCoordinator
-	projectService *ProjectService
+	taskItem       coordinator.TaskItemCoordinator
+	projectService *coordinator.ProjectService
 	quickEdit      *QuickEditComponent
 
 	project *models.Project
@@ -346,7 +347,7 @@ func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runti
 	m := &OutlinerModel{
 		runtime:            runtime,
 		configManager:      cfgManager,
-		projectService:     NewProjectService(),
+		projectService:     coordinator.NewProjectService(),
 		quickEdit:          NewQuickEditComponent(),
 		project:            project,
 		primaryMode:        chrome.ModeAll,
@@ -365,7 +366,7 @@ func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runti
 }
 
 // SetTaskItemCoordinator wires the retained application mutation seam.
-func (m *OutlinerModel) SetTaskItemCoordinator(coordinator TaskItemCoordinator) {
+func (m *OutlinerModel) SetTaskItemCoordinator(coordinator coordinator.TaskItemCoordinator) {
 	m.taskItem = coordinator
 }
 

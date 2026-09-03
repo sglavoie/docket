@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -31,7 +32,7 @@ func TestTaskComposerDoubleSubmitCreatesOneTaskAndOneCommit(t *testing.T) {
 	if first == nil || duplicate != nil || !composer.submissionInFlight {
 		t.Fatalf("commands first=%v duplicate=%v inFlight=%v", first != nil, duplicate != nil, composer.submissionInFlight)
 	}
-	msg, ok := first().(TaskCreatedMsg)
+	msg, ok := first().(coordinator.TaskCreatedMsg)
 	if !ok || msg.Result == nil {
 		t.Fatalf("first result = %#v", msg)
 	}
@@ -65,7 +66,7 @@ func TestTaskComposerMultilineDoubleSubmitMintsEachShortIDOnce(t *testing.T) {
 	if first == nil || duplicate != nil {
 		t.Fatalf("commands first=%v duplicate=%v", first != nil, duplicate != nil)
 	}
-	msg, ok := first().(TaskCreatedMsg)
+	msg, ok := first().(coordinator.TaskCreatedMsg)
 	if !ok || msg.CreatedCount != 2 {
 		t.Fatalf("multiline result = %#v", msg)
 	}
@@ -86,7 +87,7 @@ func TestTaskComposerMultilineDoubleSubmitMintsEachShortIDOnce(t *testing.T) {
 func TestTaskComposerSubmissionGuardClearsAfterError(t *testing.T) {
 	project := &models.Project{ID: "project", Name: "Project"}
 	stub := &stubMutator{err: errors.New("capture failed")}
-	features := newFeatureCoordinators(stub)
+	features := coordinator.NewFeatureCoordinators(stub)
 	composer := NewTaskComposerModel(TaskComposerPreset{Kind: ComposerProject, Project: project}, nil)
 	composer.SetCaptureCoordinator(features.Capture)
 	composer.input.SetValue("Retry me")
@@ -126,9 +127,9 @@ func TestTaskComposerBulkCreationAndUndoAreOneTransaction(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("valid batch returned nil command")
 	}
-	msg, ok := cmd().(TaskCreatedMsg)
+	msg, ok := cmd().(coordinator.TaskCreatedMsg)
 	if !ok || msg.CreatedCount != 2 {
-		t.Fatalf("bulk result = %#v, want TaskCreatedMsg count 2", msg)
+		t.Fatalf("bulk result = %#v, want coordinator.TaskCreatedMsg count 2", msg)
 	}
 	fresh := env.reload(t)
 	if len(fresh.Tasks) != 2 || !fresh.Tasks[0].HasTag("shared") || !fresh.Tasks[0].HasTag("one") ||
@@ -167,7 +168,7 @@ func TestTaskComposerEnterSubmitsCompleteNewTagDespiteFuzzySuggestion(t *testing
 	if cmd == nil {
 		t.Fatal("Enter accepted autocomplete instead of submitting the complete literal")
 	}
-	if msg, ok := cmd().(TaskCreatedMsg); !ok || msg.Result == nil {
+	if msg, ok := cmd().(coordinator.TaskCreatedMsg); !ok || msg.Result == nil {
 		t.Fatalf("submit result = %#v", msg)
 	}
 	fresh := env.reload(t)
@@ -183,7 +184,7 @@ func TestTaskComposerRoutesMultilineProjectsAndParentsInOneTransaction(t *testin
 		t.Fatal(err)
 	}
 	env := newCrossProjectTestEnv(t, nil, []*models.Task{parent})
-	features := newFeatureCoordinators(env.svc)
+	features := coordinator.NewFeatureCoordinators(env.svc)
 	composer := NewTaskComposerModel(TaskComposerPreset{
 		Kind:               ComposerGlobal,
 		Project:            env.projects[0],
@@ -198,9 +199,9 @@ func TestTaskComposerRoutesMultilineProjectsAndParentsInOneTransaction(t *testin
 	if cmd == nil {
 		t.Fatal("routed batch returned nil command")
 	}
-	msg, ok := cmd().(TaskCreatedMsg)
+	msg, ok := cmd().(coordinator.TaskCreatedMsg)
 	if !ok || msg.CreatedCount != 2 {
-		t.Fatalf("routed result = %#v, want TaskCreatedMsg count 2", msg)
+		t.Fatalf("routed result = %#v, want coordinator.TaskCreatedMsg count 2", msg)
 	}
 	alpha := env.reload(t, 0)
 	beta := env.reload(t, 1)

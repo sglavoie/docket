@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -150,9 +151,9 @@ func TestInboxAdvanceIgnoresFailedMutations(t *testing.T) {
 	inboxCursorTo(t, outliner, one.ID)
 	before := outliner.cursor
 	capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{taskref.For(one, alpha)})
-	failure := TransactionErrorMsg{Err: errors.New("commit refused")}
+	failure := coordinator.TransactionErrorMsg{Err: errors.New("commit refused")}
 	wrapped := withOutlinerRelocationCapture(func() tea.Msg { return failure }, capture)
-	if got, ok := wrapped().(TransactionErrorMsg); !ok || got != failure {
+	if got, ok := wrapped().(coordinator.TransactionErrorMsg); !ok || got != failure {
 		t.Fatalf("failed mutation = %#v, want the bare TransactionErrorMsg", wrapped())
 	}
 	if outliner.cursor != before {

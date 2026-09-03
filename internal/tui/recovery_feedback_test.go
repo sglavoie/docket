@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 )
 
 func newRecoveryFeedbackEnv(t *testing.T) (*AppModel, string) {
@@ -132,10 +133,10 @@ func TestRemainingMutationFamiliesRequireMatchingLedgerTransaction(t *testing.T)
 			model.handleCommentEdited(CommentEditedMsg{TransactionID: transactionID})
 		}},
 		{name: "attachment", fallback: "Attach File", deliver: func(model *AppModel, transactionID string) {
-			model.handleTransactionResult(TransactionResultMsg{Action: "Attach File", Result: app.TaskResult{TransactionID: transactionID}})
+			model.handleTransactionResult(coordinator.TransactionResultMsg{Action: "Attach File", Result: app.TaskResult{TransactionID: transactionID}})
 		}},
 		{name: "tag", fallback: "Tagged 1 task", deliver: func(model *AppModel, transactionID string) {
-			model.handleBatchTransactionResult(BatchTransactionResultMsg{Action: "Tag Tasks", Summary: "Tagged 1 task", TransactionID: transactionID})
+			model.handleBatchTransactionResult(coordinator.BatchTransactionResultMsg{Action: "Tag Tasks", Summary: "Tagged 1 task", TransactionID: transactionID})
 		}},
 	}
 
@@ -161,7 +162,7 @@ func TestRemainingMutationFamiliesRequireMatchingLedgerTransaction(t *testing.T)
 func TestSubviewAdapterPreservesTransactionCorrelation(t *testing.T) {
 	transactionID := "subview-transaction"
 	commit := func() tea.Msg {
-		return TransactionResultMsg{Result: app.TaskResult{TransactionID: transactionID}}
+		return coordinator.TransactionResultMsg{Result: app.TaskResult{TransactionID: transactionID}}
 	}
 	tests := []struct {
 		name    string

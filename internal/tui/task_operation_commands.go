@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -26,7 +27,7 @@ func (m *AppModel) adoptChildrenCmd(
 	task, project := m.taskAndProjectForIdentity(identity)
 	if task == nil || project == nil {
 		return func() tea.Msg {
-			return TaskLineEditFailedMsg{Source: identity, Err: fmt.Errorf("selected task is no longer available")}
+			return coordinator.TaskLineEditFailedMsg{Source: identity, Err: fmt.Errorf("selected task is no longer available")}
 		}
 	}
 	req := app.TaskLineEditRequest{
@@ -65,7 +66,7 @@ func (m *AppModel) setTaskReferencesCmd(identity taskref.TaskIdentity, value Ope
 	task, project := m.taskAndProjectForIdentity(identity)
 	if task == nil || project == nil {
 		return func() tea.Msg {
-			return TaskLineEditFailedMsg{Source: identity, Err: fmt.Errorf("selected task is no longer available")}
+			return coordinator.TaskLineEditFailedMsg{Source: identity, Err: fmt.Errorf("selected task is no longer available")}
 		}
 	}
 	patch := taskReferencePatch(task, value)
@@ -100,7 +101,7 @@ func (m *AppModel) moveTaskToProjectCmd(
 ) tea.Cmd {
 	if len(identities) == 0 {
 		return func() tea.Msg {
-			return TransactionErrorMsg{Err: fmt.Errorf("select at least one task")}
+			return coordinator.TransactionErrorMsg{Err: fmt.Errorf("select at least one task")}
 		}
 	}
 	if len(identities) == 1 {
@@ -117,7 +118,7 @@ func (m *AppModel) moveOneTaskToProjectCmd(
 	task, project := m.taskAndProjectForIdentity(identity)
 	if task == nil || project == nil {
 		return func() tea.Msg {
-			return TaskLineEditFailedMsg{Source: identity, Err: fmt.Errorf("selected task is no longer available")}
+			return coordinator.TaskLineEditFailedMsg{Source: identity, Err: fmt.Errorf("selected task is no longer available")}
 		}
 	}
 	req := app.TaskLineEditRequest{
@@ -144,7 +145,7 @@ func (m *AppModel) moveTaskSelectionToProjectCmd(
 	for _, identity := range identities {
 		if !identity.Valid() {
 			return func() tea.Msg {
-				return TransactionErrorMsg{Err: fmt.Errorf("selected task is no longer available")}
+				return coordinator.TransactionErrorMsg{Err: fmt.Errorf("selected task is no longer available")}
 			}
 		}
 		locators = append(locators, identity.Locator())
@@ -154,7 +155,7 @@ func (m *AppModel) moveTaskSelectionToProjectCmd(
 	cmd := m.secondaryFeatures.Bulk.MoveToProjectLocators(locators, projectID, func(moved int) string {
 		return fmt.Sprintf("Moved %d task(s) to %s", moved, destination)
 	})
-	return finalizeStaleSelectionBatchResult(withOutlinerRelocationCapture(cmd, relocation), locators)
+	return coordinator.FinalizeStaleSelectionBatchResult(withOutlinerRelocationCapture(cmd, relocation), locators)
 }
 
 // moveDestinationName names the destination the way the picker row did, and

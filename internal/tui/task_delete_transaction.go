@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -314,7 +315,7 @@ func (m *AppModel) confirmTaskDelete() tea.Cmd {
 	if len(selected) == 0 {
 		selected = roots
 	}
-	return finalizeStaleSelectionBatchResult(cmd, taskLocatorsFromTaskRefs(selected))
+	return coordinator.FinalizeStaleSelectionBatchResult(cmd, taskLocatorsFromTaskRefs(selected))
 }
 
 // clearPendingTaskDelete discards the pending roots and dismisses the confirm

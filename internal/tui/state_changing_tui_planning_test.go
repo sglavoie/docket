@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -60,7 +61,7 @@ func TestInlineProjectMoveAfterTodayMutationUsesFreshStructuralPlanning(t *testi
 		configManager:     manager,
 		runtime:           runtime,
 		appService:        env.svc,
-		secondaryFeatures: newSecondaryCoordinators(env.svc),
+		secondaryFeatures: coordinator.NewSecondaryCoordinators(env.svc),
 		projects: map[string]*models.Project{
 			source.ID:      source,
 			destination.ID: destination,
@@ -106,12 +107,12 @@ func TestInlineProjectMoveAfterTodayMutationUsesFreshStructuralPlanning(t *testi
 		t.Fatal("cross-project inline request has no explicit planning builder")
 	}
 	raw := model.secondaryFeatures.TaskItem.EditTaskLine(req, nil)()
-	edited, ok := raw.(TaskLineEditedMsg)
+	edited, ok := raw.(coordinator.TaskLineEditedMsg)
 	if !ok {
-		if failed, isFailure := raw.(TaskLineEditFailedMsg); isFailure {
+		if failed, isFailure := raw.(coordinator.TaskLineEditFailedMsg); isFailure {
 			t.Fatalf("inline project move failed: %v", failed.Err)
 		}
-		t.Fatalf("inline project move result = %T, want TaskLineEditedMsg", raw)
+		t.Fatalf("inline project move result = %T, want coordinator.TaskLineEditedMsg", raw)
 	}
 	if edited.Result.Task.ProjectID != destination.ID {
 		t.Fatalf("inline project move destination = %q, want %q", edited.Result.Task.ProjectID, destination.ID)

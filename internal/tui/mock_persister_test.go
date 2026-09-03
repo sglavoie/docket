@@ -2,6 +2,7 @@ package tui
 
 import (
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 )
 
 // MockPersister implements the Persister interface for testing.
@@ -38,4 +39,4 @@ func (m *MockPersister) Load(project *models.Project) error {
 }
 
 // Verify MockPersister implements Persister interface
-var _ Persister = (*MockPersister)(nil)
+var _ coordinator.Persister = (*MockPersister)(nil)

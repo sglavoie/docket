@@ -18,7 +18,12 @@
 #     mode catalog is vocabulary that operation, route, lens, projecthub and
 #     query all read, so it cannot sit at L7.
 #
-# Twelve rows were corrected while their package was being extracted:
+# Thirteen rows were corrected while their package was being extracted:
+#   - due_date_today.go is coordinator, not chrome (Session 2.10). It declares
+#     DueDateIsToday alone, which no file in chrome reads; the callers are two
+#     coordinator files plus four shell surfaces, all of which reach coordinator.
+#     Both packages sit at L1, so leaving it in chrome would have forced the only
+#     sideways L1 edge in the graph, coordinator -> chrome, for one function.
 #   - view_accent.go is route, not theme (Session 2.1). It resolves a
 #     PresentationID to an accent category and only then asks theme for a color,
 #     so its whole vocabulary is route's; assigned to theme it was the one file
@@ -159,7 +164,7 @@ date_parse.go	grammar	L2	assigned
 dependency_autocomplete.go	grammar	L2	assigned
 dependency_detail.go	outliner	L7	receiver:OutlinerModel
 dependency_reference.go	grammar	L2	receiver:capturedDependencyRef
-due_date_today.go	chrome	L1	assigned
+due_date_today.go	coordinator	L1	assigned
 due_format.go	chrome	L1	assigned
 feature_coordinator.go	coordinator	L1	receiver:CaptureCoordinator
 feature_coordinator_bulk.go	coordinator	L1	receiver:BulkCoordinator

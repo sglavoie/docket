@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -391,7 +392,7 @@ func newFocusToggleTestAppState(t *testing.T) (*AppModel, *models.Task) {
 		runtime:           runtime,
 		deps:              newShellDeps(ledger),
 		projects:          map[string]*models.Project{project.ID: project},
-		persister:         NewProjectService(),
+		persister:         coordinator.NewProjectService(),
 		appService:        svc,
 		width:             80,
 		height:            24,

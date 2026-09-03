@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -124,7 +125,7 @@ func TestTUIStateTransitionsPreservePlanningExclusivity(t *testing.T) {
 		env := newPlanningReconcileEnv(t)
 		env.seedToday(t)
 
-		coords := newSecondaryCoordinators(env.service)
+		coords := coordinator.NewSecondaryCoordinators(env.service)
 		cmd := coords.TaskItem.Transition(
 			taskref.TaskIdentity{ProjectID: env.project.ID, TaskID: env.taskID},
 			models.StateWaiting,
@@ -155,7 +156,7 @@ func TestTUIStateTransitionsPreservePlanningExclusivity(t *testing.T) {
 		env := newPlanningReconcileEnv(t)
 		env.seedToday(t)
 
-		coords := newSecondaryCoordinators(env.service)
+		coords := coordinator.NewSecondaryCoordinators(env.service)
 		cmd := coords.Bulk.TransitionLocators(
 			[]app.TaskLocator{{ProjectID: env.project.ID, TaskID: env.taskID}},
 			models.StateWaiting,
@@ -320,7 +321,7 @@ func diskTask(t *testing.T, project *models.Project, taskID string) *models.Task
 func assertNotTransactionError(t *testing.T, msg any) {
 	t.Helper()
 	switch m := msg.(type) {
-	case TransactionErrorMsg:
+	case coordinator.TransactionErrorMsg:
 		t.Fatalf("transaction error: %v", m.Err)
 	case status.ErrorMsg:
 		t.Fatalf("error: %v", m.Err)

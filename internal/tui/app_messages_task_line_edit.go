@@ -1,9 +1,7 @@
 package tui
 
 import (
-	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // =============================================================================
@@ -16,20 +14,4 @@ import (
 type StartTaskLineEditMsg struct {
 	Task    *models.Task
 	Project *models.Project
-}
-
-// TaskLineEditedMsg returns one successful atomic inline edit to the shell.
-// Source and relocation preserve the origin until the committed workspace has
-// been reloaded and the result's final qualified identity can be followed.
-type TaskLineEditedMsg struct {
-	Result     app.TaskLineEditResult
-	Source     taskref.TaskIdentity
-	Relocation *outlinerRelocationCapture
-}
-
-// TaskLineEditFailedMsg keeps the row editor open with its original draft when
-// application validation or persistence rejects an atomic edit.
-type TaskLineEditFailedMsg struct {
-	Source taskref.TaskIdentity
-	Err    error
 }

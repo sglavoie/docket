@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -57,9 +58,9 @@ func (f *fakeAttachmentMutator) ReorderAttachment(locator app.TaskLocator, from,
 	return app.TaskResult{TaskID: locator.TaskID, ProjectID: locator.ProjectID}, nil
 }
 
-func newFakeAttachmentCoordinator() (AttachmentCoordinator, *fakeAttachmentMutator) {
+func newFakeAttachmentCoordinator() (coordinator.AttachmentCoordinator, *fakeAttachmentMutator) {
 	fake := &fakeAttachmentMutator{}
-	return AttachmentCoordinator{attach: fake}, fake
+	return coordinator.NewAttachmentCoordinator(fake), fake
 }
 
 // mountAttachmentsPanel opens the panel over a live shell on a task carrying two

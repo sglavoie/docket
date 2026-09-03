@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 )
 
 // crossProjectTestEnv seeds projects on disk and wires the coordinators used
@@ -18,8 +19,8 @@ type crossProjectTestEnv struct {
 	dataDir  string
 	ledger   *storage.WorkspaceLedger
 	svc      *app.Service
-	bulk     BulkCoordinator
-	taskItem TaskItemCoordinator
+	bulk     coordinator.BulkCoordinator
+	taskItem coordinator.TaskItemCoordinator
 	projects []*models.Project
 }
 
@@ -53,7 +54,7 @@ func newCrossProjectTestEnv(t *testing.T, taskGroups ...[]*models.Task) *crossPr
 	repo := newScenarioRepo(commitSvc, projects...)
 	repo.seed(t)
 	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil)
-	coords := newSecondaryCoordinators(svc)
+	coords := coordinator.NewSecondaryCoordinators(svc)
 	return &crossProjectTestEnv{
 		dataDir: dataDir, ledger: ledger, svc: svc,
 		bulk: coords.Bulk, taskItem: coords.TaskItem, projects: projects,

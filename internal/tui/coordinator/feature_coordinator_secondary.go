@@ -1,4 +1,4 @@
-package tui
+package coordinator
 
 import (
 	"time"
@@ -169,9 +169,10 @@ type BatchTransactionResultMsg struct {
 	TouchedProjectIDs []string
 	Summary           string
 	TransactionID     string
-	// outlinerRelocation is an internal navigation capture attached only to a
-	// successful state/planning/metadata mutation.
-	outlinerRelocation *outlinerRelocationCapture
+	// Relocation is the opaque navigation capture attached only to a successful
+	// state/planning/metadata mutation. It is nil whenever the operation cannot
+	// relocate anything.
+	Relocation TransactionRelocation
 	// ClearSelectionTaskIDs are compatibility identifiers whose multiselect state
 	// the shell clears once the batch commits.
 	ClearSelectionTaskIDs []string
@@ -185,11 +186,11 @@ type BatchTransactionResultMsg struct {
 	// descendants). Nil for non-delete mutations.
 }
 
-// finalizeStaleSelectionBatchResult clears exactly the project-qualified
+// FinalizeStaleSelectionBatchResult clears exactly the project-qualified
 // locators a committed batch invalidated — the roots a delete removed, or the
 // source addresses a cross-project move emptied. Canceled and failed batches
 // never produce a successful result and therefore leave selection intact.
-func finalizeStaleSelectionBatchResult(cmd tea.Cmd, locators []app.TaskLocator) tea.Cmd {
+func FinalizeStaleSelectionBatchResult(cmd tea.Cmd, locators []app.TaskLocator) tea.Cmd {
 	if cmd == nil {
 		return nil
 	}
@@ -254,16 +255,16 @@ type SecondaryCoordinators struct {
 	Subview    SubviewCoordinator
 }
 
-// newSecondaryCoordinators builds the secondary coordinators over the shared
+// NewSecondaryCoordinators builds the secondary coordinators over the shared
 // application service. Each coordinator stores only its narrow
 // host port even though every task/artifact port is satisfied by the one service.
 // In production svc is the TUI app service; scenario tests inject an in-memory
 // service.
-func newSecondaryCoordinators(svc *app.Service) SecondaryCoordinators {
+func NewSecondaryCoordinators(svc *app.Service) SecondaryCoordinators {
 	return SecondaryCoordinators{
 		Bulk:       BulkCoordinator{bulk: svc},
 		TaskItem:   TaskItemCoordinator{task: svc},
-		Attachment: AttachmentCoordinator{attach: svc},
+		Attachment: NewAttachmentCoordinator(svc),
 		Subview:    SubviewCoordinator{sub: svc},
 	}
 }

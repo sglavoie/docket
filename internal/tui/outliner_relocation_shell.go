@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -34,15 +35,11 @@ func withOutlinerRelocationCapture(cmd tea.Cmd, capture *outlinerRelocationCaptu
 	return func() tea.Msg {
 		msg := cmd()
 		switch result := msg.(type) {
-		case BatchTransactionResultMsg:
-			copy := *capture
-			copy.TransactionID = result.TransactionID
-			result.outlinerRelocation = &copy
+		case coordinator.BatchTransactionResultMsg:
+			result.Relocation = capture.StampTransaction(result.TransactionID)
 			return result
-		case TransactionResultMsg:
-			copy := *capture
-			copy.TransactionID = result.Result.TransactionID
-			result.outlinerRelocation = &copy
+		case coordinator.TransactionResultMsg:
+			result.Relocation = capture.StampTransaction(result.Result.TransactionID)
 			return result
 		default:
 			return msg

@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -17,7 +18,7 @@ func (m *AppModel) handleTaskCRUDMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case CreateTaskMsg:
 		return m.handleCreateTask(msg)
 
-	case TaskCreatedMsg:
+	case coordinator.TaskCreatedMsg:
 		return m.handleTaskCreated(msg)
 
 	case TaskDeleteRequestedMsg:
@@ -41,8 +42,8 @@ func (m *AppModel) handleCreateTask(msg CreateTaskMsg) (bool, tea.Cmd) {
 	return true, m.openTaskComposer(m.createComposerPreset(project, msg.ParentTask))
 }
 
-// handleTaskCreated handles the TaskCreatedMsg.
-func (m *AppModel) handleTaskCreated(msg TaskCreatedMsg) (bool, tea.Cmd) {
+// handleTaskCreated handles the coordinator.TaskCreatedMsg.
+func (m *AppModel) handleTaskCreated(msg coordinator.TaskCreatedMsg) (bool, tea.Cmd) {
 	// Capture whether this creation originated from the Quick Capture view and the
 	// pre-capture task count before handleWithRefresh pops the view / reloads.
 	// Coordinator path: the capture committed one atomic ChangeSet through the

@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -139,7 +140,7 @@ func TestOutlineEditorDumpsOneSnapshotWhenTheCursorProjectIsStale(t *testing.T) 
 	fresh.Tasks[0].Title = "Ship auth rewrite, reworded upstream"
 
 	stub := &stubMutator{project: fresh, result: app.TaskResult{Revision: "rev-7"}}
-	model := &AppModel{features: newFeatureCoordinators(stub)}
+	model := &AppModel{features: coordinator.NewFeatureCoordinators(stub)}
 
 	project, revision, buffer, scope, err := model.outlineDumpSource(stale.ID, "Backlog")
 	if err != nil {

@@ -246,7 +246,7 @@ func TestProjectHubReusesOutlinerLoaderAcrossOpens(t *testing.T) {
 	writeProjectHubTasks(t, parked, 1)
 	addTestAppProject(app, parked)
 
-	loader := app.crossOutliner.projectService.workspaceLoader
+	loader := app.crossOutliner.projectService.WorkspaceLoader()
 	before := loader.ParseCount()
 	openProjectHub(t, app)
 	first := loader.ParseCount()

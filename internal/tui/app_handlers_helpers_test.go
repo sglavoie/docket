@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -23,7 +24,7 @@ func newTestAppModel() *AppModel {
 		runtime:       runtime,
 		deps:          newShellDeps(nil),
 		projects:      make(map[string]*models.Project),
-		persister:     NewProjectService(),
+		persister:     coordinator.NewProjectService(),
 		navigation:    NewNavigationState(),
 		width:         80,
 		height:        24,
@@ -47,7 +48,7 @@ func newTestAppModelWithProject() (*AppModel, *models.Project) {
 		runtime:        runtime,
 		deps:           newShellDeps(nil),
 		projects:       map[string]*models.Project{project.ID: project},
-		persister:      NewProjectService(),
+		persister:      coordinator.NewProjectService(),
 		navigation:     NewNavigationState(),
 		width:          80,
 		height:         24,

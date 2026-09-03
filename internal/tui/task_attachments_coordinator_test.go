@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -27,8 +28,8 @@ func TestTaskAttachmentsDeleteDispatchesCoordinator(t *testing.T) {
 	}
 	project.Tasks = []*models.Task{task}
 
-	coordinator, fake := newFakeAttachmentCoordinator()
-	model := NewTaskAttachmentsModel(task, project, nil, coordinator)
+	attach, fake := newFakeAttachmentCoordinator()
+	model := NewTaskAttachmentsModel(task, project, nil, attach)
 	model.cursor = 1
 
 	cmd := model.executeDelete()
@@ -37,7 +38,7 @@ func TestTaskAttachmentsDeleteDispatchesCoordinator(t *testing.T) {
 	}
 	if msg := cmd(); msg == nil {
 		t.Fatal("expected transaction message from executeDelete command")
-	} else if _, ok := msg.(TransactionResultMsg); !ok {
+	} else if _, ok := msg.(coordinator.TransactionResultMsg); !ok {
 		t.Fatalf("expected TransactionResultMsg, got %T", msg)
 	}
 
@@ -66,8 +67,8 @@ func TestTaskAttachmentsDeleteOutOfBounds(t *testing.T) {
 	}
 	project.Tasks = []*models.Task{task}
 
-	coordinator, fake := newFakeAttachmentCoordinator()
-	model := NewTaskAttachmentsModel(task, project, nil, coordinator)
+	attach, fake := newFakeAttachmentCoordinator()
+	model := NewTaskAttachmentsModel(task, project, nil, attach)
 	model.cursor = 5 // Out of bounds
 
 	cmd := model.executeDelete()
@@ -106,15 +107,15 @@ func TestTaskAttachmentsKeepDispatchesCoordinator(t *testing.T) {
 	}
 	project.Tasks = []*models.Task{task}
 
-	coordinator, fake := newFakeAttachmentCoordinator()
-	model := NewTaskAttachmentsModel(task, project, nil, coordinator)
+	attach, fake := newFakeAttachmentCoordinator()
+	model := NewTaskAttachmentsModel(task, project, nil, attach)
 	model.cursor = 0
 
 	cmd := model.executeKeep()
 	if cmd == nil {
 		t.Fatal("expected non-nil command from executeKeep")
 	}
-	if _, ok := cmd().(TransactionResultMsg); !ok {
+	if _, ok := cmd().(coordinator.TransactionResultMsg); !ok {
 		t.Fatal("expected TransactionResultMsg from executeKeep command")
 	}
 	if len(fake.removals) != 1 || fake.removals[0].index != 0 || fake.removals[0].deleteFile {
@@ -134,8 +135,8 @@ func TestTaskAttachmentsAddURLDispatchesCoordinator(t *testing.T) {
 	}
 	project.Tasks = []*models.Task{task}
 
-	coordinator, fake := newFakeAttachmentCoordinator()
-	model := NewTaskAttachmentsModel(task, project, nil, coordinator)
+	attach, fake := newFakeAttachmentCoordinator()
+	model := NewTaskAttachmentsModel(task, project, nil, attach)
 	model.addMode = true
 	model.textInput.SetValue("https://example.com/design.pdf")
 
@@ -143,7 +144,7 @@ func TestTaskAttachmentsAddURLDispatchesCoordinator(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("expected non-nil command from addAttachment")
 	}
-	if _, ok := cmd().(TransactionResultMsg); !ok {
+	if _, ok := cmd().(coordinator.TransactionResultMsg); !ok {
 		t.Fatal("expected TransactionResultMsg from addAttachment command")
 	}
 
@@ -171,7 +172,7 @@ func TestTaskAttachmentsAddEmptyPath(t *testing.T) {
 	}
 	project.Tasks = []*models.Task{task}
 
-	model := NewTaskAttachmentsModel(task, project, nil, AttachmentCoordinator{})
+	model := NewTaskAttachmentsModel(task, project, nil, coordinator.AttachmentCoordinator{})
 	model.addMode = true
 	model.textInput.SetValue("   ")
 
@@ -213,8 +214,8 @@ func TestTaskAttachmentsAddNormalizesPastedPaths(t *testing.T) {
 			}
 			project.Tasks = []*models.Task{task}
 
-			coordinator, _ := newFakeAttachmentCoordinator()
-			model := NewTaskAttachmentsModel(task, project, nil, coordinator)
+			attach, _ := newFakeAttachmentCoordinator()
+			model := NewTaskAttachmentsModel(task, project, nil, attach)
 			model.addMode = true
 			model.textInput.SetValue(tc.input)
 
@@ -266,7 +267,7 @@ func TestOpenAttachmentInEditor_EmptyEditorUsesOSDefault(t *testing.T) {
 	}
 	project.Tasks = []*models.Task{task}
 
-	model := NewTaskAttachmentsModel(task, project, testRuntimeAt(cfg.DataDir(), cfg), AttachmentCoordinator{})
+	model := NewTaskAttachmentsModel(task, project, testRuntimeAt(cfg.DataDir(), cfg), coordinator.AttachmentCoordinator{})
 	model.cursor = 0
 
 	// openAttachmentInEditor should attempt

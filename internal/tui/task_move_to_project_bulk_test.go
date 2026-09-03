@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -86,7 +87,7 @@ func TestBulkMoveToProjectCommitsASelectionSpanningSourceProjects(t *testing.T) 
 	)
 	destination := taskContentFixtureProject(t, m, "Client Beta")
 
-	msg, ok := executeBulkMoveToProject(t, m, destination.ID).(BatchTransactionResultMsg)
+	msg, ok := executeBulkMoveToProject(t, m, destination.ID).(coordinator.BatchTransactionResultMsg)
 	if !ok {
 		t.Fatalf("a multi-project selection did not commit as a batch")
 	}
@@ -184,7 +185,7 @@ func TestBulkMoveToProjectUndoRestoresEveryTaskToItsOriginProject(t *testing.T) 
 		origins[ref.Task.Title] = ref.Project.ID
 	}
 
-	msg, ok := executeBulkMoveToProject(t, m, destination.ID).(BatchTransactionResultMsg)
+	msg, ok := executeBulkMoveToProject(t, m, destination.ID).(coordinator.BatchTransactionResultMsg)
 	if !ok {
 		t.Fatal("a multi-project selection did not commit as a batch")
 	}
@@ -277,7 +278,7 @@ func TestMoveToProjectWithoutASelectionKeepsTheSingleTaskPath(t *testing.T) {
 		t.Fatalf("Move to Project produced %T, want an operation command", result.Message)
 	}
 	msg := command.Cmd()
-	edited, ok := msg.(TaskLineEditedMsg)
+	edited, ok := msg.(coordinator.TaskLineEditedMsg)
 	if !ok {
 		t.Fatalf("a selection-free move produced %T, want the single task-line edit", msg)
 	}
@@ -306,7 +307,7 @@ func TestMoveToProjectRefusesAnEmptyTargetSet(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("an empty move produced no command")
 	}
-	if _, ok := cmd().(TransactionErrorMsg); !ok {
+	if _, ok := cmd().(coordinator.TransactionErrorMsg); !ok {
 		t.Fatalf("an empty move produced %T, want a rejection", cmd())
 	}
 }

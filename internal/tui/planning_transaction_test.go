@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -27,7 +28,7 @@ func TestTUISetDueDateTodayMovesTaskToTodayAtomically(t *testing.T) {
 		t.Fatal("SetDueDateLocators returned nil")
 	}
 	raw := cmd()
-	msg, ok := raw.(BatchTransactionResultMsg)
+	msg, ok := raw.(coordinator.BatchTransactionResultMsg)
 	if !ok {
 		t.Fatalf("due-date result = %T, want BatchTransactionResultMsg", raw)
 	}
@@ -116,9 +117,9 @@ func newPlanningLedgerApp(t *testing.T, state models.WorkflowState) (*AppModel, 
 		runtime:           runtime,
 		deps:              newShellDeps(ledger),
 		projects:          map[string]*models.Project{project.ID: project},
-		persister:         NewProjectService(),
+		persister:         coordinator.NewProjectService(),
 		appService:        svc,
-		secondaryFeatures: newSecondaryCoordinators(svc),
+		secondaryFeatures: coordinator.NewSecondaryCoordinators(svc),
 		width:             80,
 		height:            24,
 		views:             NewViewRegistry(),

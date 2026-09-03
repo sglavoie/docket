@@ -15,12 +15,12 @@ import (
 // application boundary that can append a workspace-ledger entry. A new direct
 // boundary fails closed until its transaction-correlation route is named here.
 var recoveryGatewayInventory = map[string]string{
-	"internal/tui/app_domain_commit.go:AppModel.commitCatalogProjectMutation:CommitProjectArtifactsResult": "returns the transaction ID to project pin and tag feedback",
-	"internal/tui/app_domain_commit.go:AppModel.commitRuntimeDomainsWithUndo:CommitProjectArtifactsResult": "returns the transaction ID to project archive feedback",
-	"internal/tui/feature_coordinator_task_item.go:TaskItemCoordinator.CommitProject:CommitProject":        "emits BatchTransactionResultMsg with the transaction ID",
-	"internal/tui/project_creator.go:ProjectCreatorModel.createProject:CommitProjectMutationResult":        "emits ProjectCreatedMsg with the transaction ID",
-	"internal/tui/project_editor.go:projectEditorSave.commit:RenameProjectResult":                          "emits ProjectUpdatedMsg with the transaction ID",
-	"internal/tui/project_note_commands.go:noteMutationCmd:ApplyNoteBatch":                                 "emits ProjectNoteMutationResultMsg carrying NoteBatchResult.TransactionID",
+	"internal/tui/app_domain_commit.go:AppModel.commitCatalogProjectMutation:CommitProjectArtifactsResult":      "returns the transaction ID to project pin and tag feedback",
+	"internal/tui/app_domain_commit.go:AppModel.commitRuntimeDomainsWithUndo:CommitProjectArtifactsResult":      "returns the transaction ID to project archive feedback",
+	"internal/tui/coordinator/feature_coordinator_task_item.go:TaskItemCoordinator.CommitProject:CommitProject": "emits BatchTransactionResultMsg with the transaction ID",
+	"internal/tui/project_creator.go:ProjectCreatorModel.createProject:CommitProjectMutationResult":             "emits ProjectCreatedMsg with the transaction ID",
+	"internal/tui/project_editor.go:projectEditorSave.commit:RenameProjectResult":                               "emits ProjectUpdatedMsg with the transaction ID",
+	"internal/tui/project_note_commands.go:noteMutationCmd:ApplyNoteBatch":                                      "emits ProjectNoteMutationResultMsg carrying NoteBatchResult.TransactionID",
 }
 
 // These application commits intentionally do not create user-facing ledger

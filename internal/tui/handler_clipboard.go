@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/external"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -39,7 +40,7 @@ var copyTextToClipboard = func(text string) error {
 // Returns true if the message was handled.
 func (m *AppModel) handleClipboardMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case TaskClipboardProjectedMsg:
+	case coordinator.TaskClipboardProjectedMsg:
 		if err := copyTextToClipboard(msg.Projection.Text); err != nil {
 			return true, status.ErrorCmd("copy failed: %w", err)
 		}

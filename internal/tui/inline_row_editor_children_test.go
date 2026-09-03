@@ -13,6 +13,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -327,7 +328,7 @@ func TestInlineRowEditorChildAdoptionCommitsRefreshesHierarchyAndUndoes(t *testi
 	if cmd == nil || !out.quickEdit.pending {
 		t.Fatalf("adoption commit did not retain a pending draft: cmd=%v pending=%t", cmd != nil, out.quickEdit.pending)
 	}
-	committed, ok := cmd().(TaskLineEditedMsg)
+	committed, ok := cmd().(coordinator.TaskLineEditedMsg)
 	if !ok || !committed.Result.Changed || committed.Result.TransactionID == "" {
 		t.Fatalf("adoption command result = %#v", committed)
 	}
@@ -355,7 +356,7 @@ func TestInlineRowEditorChildAdoptionCommitsRefreshesHierarchyAndUndoes(t *testi
 	out.quickEdit.refreshDraft()
 	out.quickEdit.BeginCommit()
 	failure := errors.New("simulated revision conflict")
-	m.handleTaskLineEditFailed(TaskLineEditFailedMsg{
+	m.handleTaskLineEditFailed(coordinator.TaskLineEditFailedMsg{
 		Source: taskref.For(live, m.currentProject), Err: failure,
 	})
 	if !out.quickEdit.IsActive() || out.quickEdit.pending || !strings.Contains(out.quickEdit.input.Value(), "<2") {
