@@ -8,9 +8,11 @@ run:
   # every such run reported `0 issues` before exiting 4. A deadline that can
   # only ever report a busy machine as a lint failure is worth nothing, and
   # raising it just moves the load level that trips it. The CI job and the
-  # harness that invoke `./scripts/ci.sh` bound the run instead. Unlike this,
-  # the 20m deadline ci.sh passes to `go test` replaces Go's implicit 10m
-  # per-package default, which cannot be disabled.
+  # harness that invoke `./scripts/ci.sh` bound the run instead. The `go test`
+  # deadline in that script is disabled for the same reason and by the same
+  # spelling, `-timeout=0`; an earlier revision of this comment claimed it had
+  # to carry a value because it replaces Go's implicit 10m per-package default,
+  # and that was wrong.
   timeout: 0s
 
 formatters:

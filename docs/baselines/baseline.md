@@ -66,7 +66,7 @@ Four packages carry a higher per-package floor, listed in `.coverage-packages`:
 | `github.com/sglavoie/tt/internal/transaction/` | 80% |
 
 `scripts/ci.sh` collects the profile with
-`go test -race -count=1 -timeout=20m -coverprofile=coverage.out ./...` and then
+`go test -race -count=1 -timeout=0 -coverprofile=coverage.out ./...` and then
 enforces both floors through `./scripts/check_coverage.sh coverage.out`. The
 GitHub workflow only invokes `./scripts/ci.sh`; it holds no threshold logic of
 its own. Neither floor may regress across the program.
