@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
@@ -18,13 +19,13 @@ import (
 func TestPanelEndKeysReachBothEndsOfTheList(t *testing.T) {
 	t.Run("notes", func(t *testing.T) {
 		view := mountEndsNavigationNotes(t)
-		if got := len(view.visibleRows); got != 3 {
+		if got := len(view.VisibleRows); got != 3 {
 			t.Fatalf("visible notes = %d, want 3", got)
 		}
 		press := notesKeyPresser(t, view)
-		noise := func() string { return view.statusMessage }
-		assertPanelReachesBothEnds(t, press, func() int { return view.cursor }, 3)
-		assertLoneChordPrefixIsSilent(t, press, func() int { return view.cursor }, noise)
+		noise := func() string { return view.StatusMessage }
+		assertPanelReachesBothEnds(t, press, func() int { return view.Cursor }, 3)
+		assertLoneChordPrefixIsSilent(t, press, func() int { return view.Cursor }, noise)
 	})
 
 	t.Run("comments", func(t *testing.T) {
@@ -169,7 +170,7 @@ func panelNoise(base *listsurface.BaseView, state *listsurface.InteractiveViewSt
 // notesKeyPresser drives the manager directly. Notes mounts inside the Manage
 // hub rather than over the Outliner, so its keys arrive at the model the same
 // way every other Notes test delivers them.
-func notesKeyPresser(t *testing.T, view *NotesViewModel) func(string) {
+func notesKeyPresser(t *testing.T, view *notes.NotesViewModel) func(string) {
 	t.Helper()
 	return func(key string) {
 		t.Helper()
@@ -184,7 +185,7 @@ func notesKeyPresser(t *testing.T, view *NotesViewModel) func(string) {
 // mountEndsNavigationNotes builds a three-row All Notes list. Three rows is the
 // smallest list where the middle is neither end, so a cursor that only clamps
 // cannot pass for one that jumps.
-func mountEndsNavigationNotes(t *testing.T) *NotesViewModel {
+func mountEndsNavigationNotes(t *testing.T) *notes.NotesViewModel {
 	t.Helper()
 	project := &models.Project{ID: "alpha", Name: "Alpha", Path: t.TempDir()}
 	service := &combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{
@@ -194,8 +195,8 @@ func mountEndsNavigationNotes(t *testing.T) *NotesViewModel {
 			{Title: "Third", Filename: "third.md", ModifiedAt: time.Unix(1, 0)},
 		},
 	}}
-	view := NewNotesViewModelWithService(t.TempDir(), route.AllNotesScope(), service, nil, project)
-	mountNotesManager(t, view)
+	view := notes.NewNotesViewModelWithService(t.TempDir(), route.AllNotesScope(), service, nil, project)
+	mountNotesManager(t, view, route.AllNotesScope())
 	view.SetSize(80, 24)
 	return view
 }

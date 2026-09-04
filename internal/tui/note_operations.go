@@ -11,78 +11,16 @@ import (
 	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
 
-// Note operation IDs. Every one of them targets a single note identity, which
-// names the collection (project or global) and the filename inside it.
-const (
-	operationNoteOpen      operation.OperationID = "tui.note.open"
-	operationNoteRename    operation.OperationID = "tui.note.rename"
-	operationNoteMove      operation.OperationID = "tui.note.move-to-project"
-	operationNoteCopyTitle operation.OperationID = "tui.note.copy-title"
-	operationNoteCopyPath  operation.OperationID = "tui.note.copy-path"
-	operationNoteDelete    operation.OperationID = "tui.note.delete"
-)
-
-// noteOperationDescriptors is the authoritative catalog of note-targeted
-// operations. Each one resolves the frozen note identity at execution, so the
-// same descriptor serves the Notes manager and any other host that
-// names a note row.
-func noteOperationDescriptors() []operation.OperationDescriptor {
-	descriptor := func(
-		id operation.OperationID,
-		label string,
-		description string,
-		risk operation.OperationRisk,
-		applicability operation.OperationApplicability,
-	) operation.OperationDescriptor {
-		return operation.OperationDescriptor{
-			ID:                id,
-			Label:             label,
-			Description:       description,
-			Category:          operation.OperationCategoryNote,
-			TargetSource:      operation.OperationTargetCurrentEntity,
-			TargetCardinality: operation.TargetCardinalityOne,
-			Applicability:     applicability,
-			Risk:              risk,
-		}
-	}
-	note := func(
-		id operation.OperationID,
-		label string,
-		description string,
-		risk operation.OperationRisk,
-	) operation.OperationDescriptor {
-		return descriptor(id, label, description, risk, noteOperationApplicable)
-	}
-	return []operation.OperationDescriptor{
-		note(operationNoteOpen, "Open note", "Open this note in the external editor", operation.OperationRiskMutation),
-		operation.WithValueProvider(
-			note(operationNoteRename, "Rename note", "Give this note a new title", operation.OperationRiskMutation),
-			operation.ValueProviderNoteTitle,
-		),
-		note(operationNoteMove, "Move note", "Move this note to another location", operation.OperationRiskMutation),
-		note(operationNoteCopyTitle, "Copy note title", "Copy this note's title to the clipboard", operation.OperationRiskReadOnly),
-		note(operationNoteCopyPath, "Copy note path", "Copy this note's file path to the clipboard", operation.OperationRiskReadOnly),
-		note(operationNoteDelete, "Delete note", "Delete this note", operation.OperationRiskDestructive),
-	}
-}
-
-// noteOperationApplicable admits a note operation only when the focused entity
-// is a note. CurrentEntityIdentity degrades to the focused task and then the
-// scoped project, so an unguarded descriptor would borrow an unrelated target.
-func noteOperationApplicable(ctx operation.CommandContext) bool {
-	return operation.CurrentEntityIdentity(ctx).Kind == operation.EntityKindNote
-}
-
-// noteOperationsUnavailableWithParseError lists the restored actions that need parsed
-// note content. Open and delete stay available so a malformed note can still be
-// repaired or removed.
-var noteOperationsUnavailableWithParseError = map[operation.OperationID]bool{
-	operationNoteMove: true,
-}
+// The tui.note.* operation IDs, their descriptors, and the parse-error refusal
+// set are declared beside the Notes grammar that binds them, in
+// notes_input_strategy.go and note_operations_catalog.go, because that grammar
+// sits a package below this registrar. What stays here is the half a descriptor
+// cannot carry: the handler, which needs the shell's services.
 
 func (m *AppModel) registerNoteOperations() error {
 	if m == nil || m.operationExecutor == nil {
@@ -94,7 +32,7 @@ func (m *AppModel) registerNoteOperations() error {
 	); err != nil {
 		return err
 	}
-	for _, descriptor := range noteOperationDescriptors() {
+	for _, descriptor := range notes.NoteOperationDescriptors() {
 		if err := m.registerOperation(descriptor, operation.OperationBinding{
 			SingleHandler:       m.executeNoteOperation,
 			DelegateTransaction: true,
@@ -134,11 +72,11 @@ func (m *AppModel) resolveNoteTarget(identity operation.EntityIdentity) (resolve
 	if m.appService == nil {
 		return resolvedNote{}, fmt.Errorf("note service is unavailable")
 	}
-	notes, err := m.appService.NotesAt(resolved.Location)
+	collection, err := m.appService.NotesAt(resolved.Location)
 	if err != nil {
 		return resolvedNote{}, err
 	}
-	for _, note := range notes {
+	for _, note := range collection {
 		if note != nil && note.Filename == identity.Name {
 			resolved.Note = note
 			return resolved, nil
@@ -176,7 +114,7 @@ func (m *AppModel) executeNoteOperation(
 	if err != nil {
 		return operation.OperationHandlerResult{Err: err}
 	}
-	if resolved.Note.ParseError != "" && noteOperationsUnavailableWithParseError[invocation.Descriptor.ID] {
+	if resolved.Note.ParseError != "" && notes.NoteOperationUnavailableWithParseError(invocation.Descriptor.ID) {
 		return operation.OperationHandlerResult{
 			Err: fmt.Errorf(
 				"%s is unavailable while %s has a parse error; edit the note to repair it",
@@ -199,34 +137,34 @@ func (m *AppModel) noteOperationResult(
 	}
 
 	switch invocation.Descriptor.ID {
-	case operationNoteOpen:
+	case notes.OperationNoteOpen:
 		editor, err := external.ResolveNoteEditor()
 		if err != nil {
 			return operation.OperationHandlerResult{Err: err}
 		}
-		return command(noteEditCmd(note, resolved.Location, m.noteOperationDir(resolved), editor))
+		return command(notes.NoteEditCmd(note, resolved.Location, m.noteOperationDir(resolved), editor))
 
-	case operationNoteRename:
+	case notes.OperationNoteRename:
 		return m.renameNoteOperation(invocation, resolved)
 
-	case operationNoteMove:
-		return operation.OperationHandlerResult{Message: ShowNotesManagerMsg{
+	case notes.OperationNoteMove:
+		return operation.OperationHandlerResult{Message: notes.ShowNotesManagerMsg{
 			Scope: route.AllNotesScope(),
-			Focus: NoteRowIdentity{
+			Focus: notes.NoteRowIdentity{
 				Location: resolved.Location,
 				Filename: note.Filename,
 			},
-			MoveSource: newNoteMutationRef(resolved.Location, note),
+			MoveSource: notes.NewNoteMutationRef(resolved.Location, note),
 		}}
 
-	case operationNoteCopyTitle:
+	case notes.OperationNoteCopyTitle:
 		return copyNoteValue(note.Title, "Note title copied to clipboard")
 
-	case operationNoteCopyPath:
+	case notes.OperationNoteCopyPath:
 		return copyNoteValue(m.noteOperationPath(resolved), "Note path copied to clipboard")
 
-	case operationNoteDelete:
-		return command(noteMutationCmd(m.appService, resolved.Location, app.NoteBatchRequest{
+	case notes.OperationNoteDelete:
+		return command(notes.NoteMutationCmd(m.appService, resolved.Location, app.NoteBatchRequest{
 			Operations:  []app.NoteMutationRequest{{Kind: app.NoteDelete, Location: resolved.Location, Note: note}},
 			UndoAction:  "Delete Note",
 			UndoContext: note.Title,
@@ -262,7 +200,7 @@ func (m *AppModel) renameNoteOperation(
 		return operation.OperationHandlerResult{Status: "Rename canceled: same title"}
 	}
 	return operation.OperationHandlerResult{Message: operation.OperationCommandResultMsg{
-		Cmd: noteMutationCmd(m.appService, resolved.Location, app.NoteBatchRequest{
+		Cmd: notes.NoteMutationCmd(m.appService, resolved.Location, app.NoteBatchRequest{
 			Operations: []app.NoteMutationRequest{{
 				Kind:     app.NoteRename,
 				Location: resolved.Location,

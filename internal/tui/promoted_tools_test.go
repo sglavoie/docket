@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
@@ -93,10 +94,10 @@ func TestPromotedToolNotesScope(t *testing.T) {
 				t.Fatalf("operation scope = %v, want %v", context.ScopeProjectIDs, test.wantProjectIDs)
 			}
 
-			notes := executePromotedTool(t, app, operation.OperationCoreNotes, context)
-			msg, ok := notes.(ShowNotesManagerMsg)
-			if !ok || msg.Scope != test.wantScope || msg.Focus != (NoteRowIdentity{}) {
-				t.Fatalf("Notes message = %#v, want unfocused %#v", notes, test.wantScope)
+			manager := executePromotedTool(t, app, operation.OperationCoreNotes, context)
+			msg, ok := manager.(notes.ShowNotesManagerMsg)
+			if !ok || msg.Scope != test.wantScope || msg.Focus != (notes.NoteRowIdentity{}) {
+				t.Fatalf("Notes message = %#v, want unfocused %#v", manager, test.wantScope)
 			}
 		})
 	}
@@ -110,7 +111,7 @@ func TestPromotedToolMessagesOpenTypedSecondaryChildren(t *testing.T) {
 	}{
 		{
 			name:    "all notes",
-			message: ShowNotesManagerMsg{Scope: route.AllNotesScope()},
+			message: notes.ShowNotesManagerMsg{Scope: route.AllNotesScope()},
 			check: func(t *testing.T, params route.RouteParams) {
 				got, ok := params.(route.ManageParams)
 				if !ok || got != (route.ManageParams{Module: route.ManageNotes, NotesScope: route.AllNotesScope()}) {
@@ -120,7 +121,7 @@ func TestPromotedToolMessagesOpenTypedSecondaryChildren(t *testing.T) {
 		},
 		{
 			name:    "global notes",
-			message: ShowNotesManagerMsg{Scope: route.GlobalNotesScope()},
+			message: notes.ShowNotesManagerMsg{Scope: route.GlobalNotesScope()},
 			check: func(t *testing.T, params route.RouteParams) {
 				got, ok := params.(route.ManageParams)
 				if !ok || got != (route.ManageParams{Module: route.ManageNotes, NotesScope: route.GlobalNotesScope()}) {

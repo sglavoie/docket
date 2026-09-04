@@ -1,4 +1,4 @@
-package tui
+package notes
 
 import (
 	"fmt"
@@ -123,10 +123,10 @@ func TestNotesPreviewUsesSharedGeometryAndChargesTheListPaneWidth(t *testing.T) 
 	// The body-match indicator is a list-pane column, so it must be charged
 	// against the pane rather than the terminal: it survives beside the owner and
 	// the truncated title instead of being pushed past the pane's right edge.
-	view.searchApplied = "needle"
-	view.rederiveVisibleRows()
-	if len(view.visibleRows) != 1 {
-		t.Fatalf("body search rows = %d, want one", len(view.visibleRows))
+	view.SearchApplied = "needle"
+	view.RederiveVisibleRows()
+	if len(view.VisibleRows) != 1 {
+		t.Fatalf("body search rows = %d, want one", len(view.VisibleRows))
 	}
 	pane := ansi.Strip(view.renderListPane(listWidth, 5))
 	for _, line := range strings.Split(strings.TrimRight(pane, "\n"), "\n") {
@@ -173,12 +173,12 @@ func TestNotesPreviewRendersMarkdownEmptyAndParseErrorStates(t *testing.T) {
 	view.SetSize(100, 24)
 
 	// Newest first, so the rendered note is the landing row.
-	if got := view.visibleRows[0].Note.Filename; got != "rendered.md" {
+	if got := view.VisibleRows[0].Note.Filename; got != "rendered.md" {
 		t.Fatalf("landing row = %q, want rendered.md", got)
 	}
 
-	header := notesPreviewHeader(&view.visibleRows[0])
-	if header.Title != "Rendered note" || header.Summary != view.visibleRows[0].OwnerLabel {
+	header := notesPreviewHeader(&view.VisibleRows[0])
+	if header.Title != "Rendered note" || header.Summary != view.VisibleRows[0].OwnerLabel {
 		t.Fatalf("preview header = %#v", header)
 	}
 	if len(header.Fields) != 1 || header.Fields[0].Label != "Modified" ||
@@ -200,14 +200,14 @@ func TestNotesPreviewRendersMarkdownEmptyAndParseErrorStates(t *testing.T) {
 		}
 	}
 
-	view.cursor = 1
+	view.Cursor = 1
 	empty := ansi.Strip(strings.Join(view.renderNotesPreviewBody(paneWidth, 20), "\n"))
 	if empty != "No body." {
 		t.Fatalf("empty-body preview = %q, want the explicit empty state", empty)
 	}
 
-	view.cursor = 2
-	broken := &view.visibleRows[2]
+	view.Cursor = 2
+	broken := &view.VisibleRows[2]
 	if got := notesPreviewHeader(broken).Title; got != "broken.md" {
 		t.Fatalf("parse-error header title = %q, want the filename", got)
 	}
@@ -326,7 +326,7 @@ func TestNotesPreviewOffsetResetsOnCursorMoveRevisionChangeAndResize(t *testing.
 		t.Fatal("Ctrl+F did not move the offset")
 	}
 
-	view.cursor = 1
+	view.Cursor = 1
 	page()
 	if view.preview.offset != 0 || view.preview.key.identity.Filename != "older.md" {
 		t.Fatalf("cursor move left a stale preview: %#v", view.preview.key)
@@ -429,10 +429,10 @@ func TestNotesPreviewKeepsTheCursorRowAndFooterAtMinimumHeights(t *testing.T) {
 			view.SetSize(width, height)
 			// A search line, a status line, and an accepted query all take rows from
 			// the same budget the list and preview draw into.
-			view.searchApplied = "note"
-			view.rederiveVisibleRows()
-			view.setErrorStatus(strings.Repeat("a visible and actionable error summary ", 3))
-			view.cursor = min(7, len(view.visibleRows)-1)
+			view.SearchApplied = "note"
+			view.RederiveVisibleRows()
+			view.SetErrorStatus(strings.Repeat("a visible and actionable error summary ", 3))
+			view.Cursor = min(7, len(view.VisibleRows)-1)
 
 			screen := notesScreen(t, view)
 			lines := strings.Split(strings.TrimRight(screen, "\n"), "\n")
@@ -441,7 +441,7 @@ func TestNotesPreviewKeepsTheCursorRowAndFooterAtMinimumHeights(t *testing.T) {
 			}
 			// The list rows land newest-first, so the cursor's title is the one this
 			// index names; it must survive however few content rows are left.
-			cursorTitle := fmt.Sprintf("Note %02d ", 11-view.cursor)
+			cursorTitle := fmt.Sprintf("Note %02d ", 11-view.Cursor)
 			if !strings.Contains(screen, cursorTitle) {
 				t.Fatalf("%dx%d clipped the cursor row %q:\n%s", width, height, cursorTitle, screen)
 			}

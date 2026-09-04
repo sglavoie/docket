@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -98,7 +99,7 @@ func TestEverySurfaceManifestSatisfiesTheOnePathRule(t *testing.T) {
 	}{
 		{"outliner", SimplifiedInputStrategy(), outlinerOperationDescriptorManifest()},
 		{"project hub", ProjectHubInputStrategy(), projectOperationManifest()},
-		{"notes", NotesInputStrategy(), notesOperationManifest()},
+		{"notes", notes.NotesInputStrategy(), notes.NotesOperationManifest()},
 		{"attachments", AttachmentsInputStrategy(), attachmentOperationManifest()},
 		{"comments", CommentsInputStrategy(), commentOperationManifest()},
 	}
@@ -175,7 +176,7 @@ func TestPanelFootersOnlyAdvertiseKeysTheStrategyBinds(t *testing.T) {
 		keys     *keymap.KeyMap
 		modal    []string
 	}{
-		{"notes", NotesInputStrategy(), (&NotesViewModel{}).buildKeyMap(), nil},
+		{"notes", notes.NotesInputStrategy(), (&notes.NotesViewModel{}).BuildKeyMap(), nil},
 		{"attachments", AttachmentsInputStrategy(), (&TaskAttachmentsModel{}).buildKeyMap(), nil},
 		{
 			name:     "comments",

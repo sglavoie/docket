@@ -1,4 +1,4 @@
-package tui
+package notes
 
 import (
 	"fmt"
@@ -21,11 +21,11 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case status.CursorFlashClearMsg:
 		m.cursorFlash = false
 		return m, nil
-	case notesLocationPickerResultMsg:
+	case NotesLocationPickerResultMsg:
 		return m.handleLocationPickerResult(msg)
 	case tea.PasteMsg:
-		if m.locationPicker != nil {
-			if handled, cmd := m.locationPicker.Update(msg); handled {
+		if m.LocationPicker != nil {
+			if handled, cmd := m.LocationPicker.Update(msg); handled {
 				return m, cmd
 			}
 		}
@@ -39,8 +39,8 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.KeyPressMsg:
 		key := msg.String()
-		if m.locationPicker != nil {
-			if handled, cmd := m.locationPicker.Update(msg); handled {
+		if m.LocationPicker != nil {
+			if handled, cmd := m.LocationPicker.Update(msg); handled {
 				return m, cmd
 			}
 		}
@@ -49,7 +49,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "y", "Y":
 				m.confirmDiscard = false
 				m.renaming = false
-				m.setStatus("Rename canceled")
+				m.SetStatus("Rename canceled")
 			case "n", "N", "esc":
 				m.confirmDiscard = false
 			}
@@ -58,10 +58,10 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.renaming {
 			return m.handleRenameKey(msg)
 		}
-		if m.confirm.IsActive() {
+		if m.Confirm.IsActive() {
 			if confirmed, handled := m.handleConfirmKey(key); handled {
-				if confirmed && m.rowByIdentity(m.pendingDelete) != nil {
-					return m, m.performDelete()
+				if confirmed && m.rowByIdentity(m.PendingDelete) != nil {
+					return m, m.PerformDelete()
 				}
 				return m, nil
 			}
@@ -94,8 +94,8 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				_, cmd := listsurface.HandleListNavigation(
 					navKey,
-					&m.cursor,
-					len(m.visibleRows),
+					&m.Cursor,
+					len(m.VisibleRows),
 					m.Height(),
 					&m.cursorFlash,
 				)
@@ -111,7 +111,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		switch key {
 		case "j", "down", "k", "up", "G", "end", "ctrl+u", "pgup", "ctrl+d", "pgdown":
-			_, cmd := listsurface.HandleListNavigation(key, &m.cursor, len(m.visibleRows), m.Height(), &m.cursorFlash)
+			_, cmd := listsurface.HandleListNavigation(key, &m.Cursor, len(m.VisibleRows), m.Height(), &m.cursorFlash)
 			return m, cmd
 		case "g":
 			m.pendingTopChord = true
@@ -126,13 +126,13 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case " ", "space":
 			return m, m.dispatchNotesKey("space")
 		case "u":
-			return m, m.undoDelete()
+			return m, m.UndoDelete()
 		case "ctrl+r":
-			return m, m.redoNoteMutation()
+			return m, m.RedoNoteMutation()
 		case "?":
 			return m, help.HelpCmd("Notes", m.GetHelpItems())
 		case "esc":
-			if m.searchApplied != "" {
+			if m.SearchApplied != "" {
 				m.clearSearch()
 				return m, nil
 			}
@@ -162,69 +162,69 @@ func (m *NotesViewModel) completeNotesTopChord(key string) bool {
 // moveCursorToTop is the one act Home and gg share, so the window follows the
 // cursor to the first row under either spelling.
 func (m *NotesViewModel) moveCursorToTop() {
-	m.cursor = 0
+	m.Cursor = 0
 	m.resetScrollOffset()
 }
 
 // ShouldCaptureEsc returns true while Notes owns an internal interaction layer.
 func (m *NotesViewModel) ShouldCaptureEsc() bool {
-	return m.confirm.IsActive() || m.renaming || m.confirmDiscard ||
-		m.locationPicker != nil || m.searchEditing || m.searchApplied != ""
+	return m.Confirm.IsActive() || m.renaming || m.confirmDiscard ||
+		m.LocationPicker != nil || m.searchEditing || m.SearchApplied != ""
 }
 
 func (m *NotesViewModel) HasTextInput() bool {
-	return m.renaming || m.locationPicker != nil || m.searchEditing
+	return m.renaming || m.LocationPicker != nil || m.searchEditing
 }
 
 func (m *NotesViewModel) handleLocationPickerResult(
-	msg notesLocationPickerResultMsg,
+	msg NotesLocationPickerResultMsg,
 ) (tea.Model, tea.Cmd) {
-	if m.locationPicker == nil || m.locationPicker.purpose != msg.Purpose {
+	if m.LocationPicker == nil || m.LocationPicker.Purpose != msg.Purpose {
 		return m, nil
 	}
-	if msg.Selected && !m.locationPicker.contains(msg.Item) {
-		m.locationPicker = nil
+	if msg.Selected && !m.LocationPicker.contains(msg.Item) {
+		m.LocationPicker = nil
 		m.moveSource = nil
-		m.setErrorStatus("Location selection failed: the location is no longer available")
+		m.SetErrorStatus("Location selection failed: the location is no longer available")
 		return m, nil
 	}
-	m.locationPicker = nil
+	m.LocationPicker = nil
 	moveSource := m.moveSource
 	m.moveSource = nil
 	if !msg.Selected {
 		switch msg.Purpose {
-		case notesLocationPickerCreation:
-			m.setStatus("Note creation canceled")
-		case notesLocationPickerMove:
-			m.setStatus("Note move canceled")
-		case notesLocationPickerScope:
-			m.setStatus("Scope selection canceled")
+		case NotesLocationPickerCreation:
+			m.SetStatus("Note creation canceled")
+		case NotesLocationPickerMove:
+			m.SetStatus("Note move canceled")
+		case NotesLocationPickerScope:
+			m.SetStatus("Scope selection canceled")
 		}
 		return m, nil
 	}
 
 	switch msg.Purpose {
-	case notesLocationPickerScope:
+	case NotesLocationPickerScope:
 		scope := msg.Item.Scope
 		return m, func() tea.Msg {
-			return ManageHubModuleSelectedMsg{
+			return route.ManageHubModuleSelectedMsg{
 				Params: route.ManageParams{Module: route.ManageNotes, NotesScope: scope},
 			}
 		}
-	case notesLocationPickerCreation:
+	case NotesLocationPickerCreation:
 		return m, m.createNoteAt(msg.Item.Location)
-	case notesLocationPickerMove:
-		if moveSource == nil || !moveSource.valid() {
-			m.setErrorStatus("Move failed: note is no longer available")
+	case NotesLocationPickerMove:
+		if moveSource == nil || !moveSource.Valid() {
+			m.SetErrorStatus("Move failed: note is no longer available")
 			return m, nil
 		}
 		if msg.Item.Location == moveSource.Location {
-			m.setStatus("Move canceled: destination is the current location")
+			m.SetStatus("Move canceled: destination is the current location")
 			return m, nil
 		}
-		sourceLabel := m.locationLabel(moveSource.Location)
-		destinationLabel := m.locationLabel(msg.Item.Location)
-		return m, noteMutationCmd(m.noteService, moveSource.Location, app.NoteBatchRequest{
+		sourceLabel := m.LocationLabel(moveSource.Location)
+		destinationLabel := m.LocationLabel(msg.Item.Location)
+		return m, NoteMutationCmd(m.NoteService, moveSource.Location, app.NoteBatchRequest{
 			Operations: []app.NoteMutationRequest{{
 				Kind:        app.NoteMove,
 				Location:    moveSource.Location,
@@ -250,23 +250,23 @@ func (m *NotesViewModel) handleRenameKey(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 	case "enter":
 		newTitle := strings.TrimSpace(m.renameInput.Value())
 		if newTitle == "" {
-			m.setStatus("Rename canceled: empty title")
+			m.SetStatus("Rename canceled: empty title")
 			m.renaming = false
 			return m, nil
 		}
 		if row == nil {
 			m.renaming = false
-			m.setErrorStatus("Rename failed: note no longer exists")
+			m.SetErrorStatus("Rename failed: note no longer exists")
 			return m, nil
 		}
 		oldTitle := row.Note.Title
 		if newTitle == oldTitle {
 			m.renaming = false
-			m.setStatus("Rename canceled: same title")
+			m.SetStatus("Rename canceled: same title")
 			return m, nil
 		}
 		m.renaming = false
-		return m, noteMutationCmd(m.noteService, row.Location, app.NoteBatchRequest{
+		return m, NoteMutationCmd(m.NoteService, row.Location, app.NoteBatchRequest{
 			Operations: []app.NoteMutationRequest{{
 				Kind:     app.NoteRename,
 				Location: row.Location,
@@ -282,7 +282,7 @@ func (m *NotesViewModel) handleRenameKey(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 			return m, nil
 		}
 		m.renaming = false
-		m.setStatus("Rename canceled")
+		m.SetStatus("Rename canceled")
 		return m, nil
 	default:
 		var cmd tea.Cmd
@@ -291,14 +291,14 @@ func (m *NotesViewModel) handleRenameKey(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 	}
 }
 
-// startRename begins inline rename mode for the current located row.
-func (m *NotesViewModel) startRename() {
-	row := m.currentRow()
+// StartRename begins inline rename mode for the current located row.
+func (m *NotesViewModel) StartRename() {
+	row := m.CurrentRow()
 	if row == nil {
 		return
 	}
 	if row.Note.ParseError != "" {
-		m.setErrorStatus("cannot rename — note has a parse error; press Enter to repair it")
+		m.SetErrorStatus("cannot rename — note has a parse error; press Enter to repair it")
 		return
 	}
 	ti := textinput.New()

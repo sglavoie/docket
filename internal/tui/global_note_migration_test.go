@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
@@ -22,7 +23,7 @@ type globalNoteTUIEnv struct {
 	ledger  *storage.WorkspaceLedger
 	svc     *app.Service
 	project *models.Project
-	view    *NotesViewModel
+	view    *notes.NotesViewModel
 	shell   *AppModel
 }
 
@@ -49,14 +50,14 @@ func newGlobalNoteTUIEnv(t *testing.T, titles ...string) *globalNoteTUIEnv {
 	}
 
 	svc := app.NewServiceWithArtifacts(repo, nil, nil, app.NewStorageWorkspaceNotePort(dataDir))
-	view := NewNotesViewModelWithService(
+	view := notes.NewNotesViewModelWithService(
 		dir,
 		route.AllNotesScope(),
 		svc,
 		ledger,
 		project,
 	)
-	mountNotesManager(t, view)
+	mountNotesManager(t, view, route.AllNotesScope())
 	view.SetSize(80, 40)
 	views := route.NewViewRegistry()
 	views.Register(presentation.ViewGlobalNotes, view)
@@ -79,11 +80,11 @@ func (e *globalNoteTUIEnv) note(t *testing.T, filename string) *models.Note {
 
 func TestGlobalNoteMutationCommitsCopiedRequestBeforeReconciliation(t *testing.T) {
 	env := newGlobalNoteTUIEnv(t, "Edit me")
-	before := env.view.visibleRows[0].Note
-	updated := cloneNoteForCommand(before)
+	before := env.view.VisibleRows[0].Note
+	updated := notes.CloneNoteForCommand(before)
 	updated.Body = "edited body"
 	updated.ModifiedAt = time.Now()
-	cmd := noteMutationCmd(env.svc, app.GlobalNoteLocation(), app.NoteBatchRequest{
+	cmd := notes.NoteMutationCmd(env.svc, app.GlobalNoteLocation(), app.NoteBatchRequest{
 		Operations: []app.NoteMutationRequest{{Kind: app.NoteUpdate, Location: app.GlobalNoteLocation(), Note: updated}},
 		UndoAction: "Edit Note",
 	}, "Edited")
@@ -91,7 +92,7 @@ func TestGlobalNoteMutationCommitsCopiedRequestBeforeReconciliation(t *testing.T
 	if result.Location != app.GlobalNoteLocation() {
 		t.Fatalf("result location = %#v", result.Location)
 	}
-	if env.view.visibleRows[0].Note != before || env.view.visibleRows[0].Note.Body != "Edit me body" {
+	if env.view.VisibleRows[0].Note != before || env.view.VisibleRows[0].Note.Body != "Edit me body" {
 		t.Fatal("command mutated the global view cache before Update")
 	}
 	if disk := env.note(t, before.Filename); disk.Body != "edited body" {
@@ -105,18 +106,18 @@ func TestGlobalNoteMutationCommitsCopiedRequestBeforeReconciliation(t *testing.T
 		t.Fatalf("global-only transaction carried project IDs: %v", entry.ProjectIDs)
 	}
 	env.shell.handleNotesMessages(result)
-	if env.view.visibleRows[0].Note.Body != "edited body" || env.view.visibleRows[0].Note == before {
+	if env.view.VisibleRows[0].Note.Body != "edited body" || env.view.VisibleRows[0].Note == before {
 		t.Fatal("Update did not reconcile the committed global note")
 	}
 }
 
 func TestCombinedNotesUndoRedoUsesWorkspaceLedgerOrder(t *testing.T) {
 	env := newGlobalNoteTUIEnv(t, "Scoped note")
-	note := env.view.visibleRows[0].Note
-	updated := cloneNoteForCommand(note)
+	note := env.view.VisibleRows[0].Note
+	updated := notes.CloneNoteForCommand(note)
 	updated.Body = "updated scoped body"
 	updated.ModifiedAt = time.Now()
-	cmd := noteMutationCmd(env.svc, app.GlobalNoteLocation(), app.NoteBatchRequest{
+	cmd := notes.NoteMutationCmd(env.svc, app.GlobalNoteLocation(), app.NoteBatchRequest{
 		Operations: []app.NoteMutationRequest{{Kind: app.NoteUpdate, Location: app.GlobalNoteLocation(), Note: updated}},
 		UndoAction: "Edit Note",
 	}, "Edited")
@@ -135,7 +136,7 @@ func TestCombinedNotesUndoRedoUsesWorkspaceLedgerOrder(t *testing.T) {
 		t.Fatalf("newest workspace transaction ok=%v err=%v", ok, err)
 	}
 
-	undo, ok := env.view.undoDelete()().(ProjectNoteLedgerResultMsg)
+	undo, ok := env.view.UndoDelete()().(notes.ProjectNoteLedgerResultMsg)
 	if !ok || undo.Entry.TransactionID != taskEntry.TransactionID {
 		t.Fatalf("combined Notes undo selected %#v, want newest transaction %q", undo, taskEntry.TransactionID)
 	}
@@ -150,7 +151,7 @@ func TestCombinedNotesUndoRedoUsesWorkspaceLedgerOrder(t *testing.T) {
 		t.Fatalf("combined Notes undo retained newer project task: %#v", task)
 	}
 
-	redo, ok := env.view.redoNoteMutation()().(ProjectNoteLedgerResultMsg)
+	redo, ok := env.view.RedoNoteMutation()().(notes.ProjectNoteLedgerResultMsg)
 	if !ok || redo.Entry.TransactionID != taskEntry.TransactionID {
 		t.Fatalf("combined Notes redo selected %#v, want newest transaction %q", redo, taskEntry.TransactionID)
 	}
@@ -168,15 +169,15 @@ func TestCombinedNotesUndoRedoUsesWorkspaceLedgerOrder(t *testing.T) {
 
 func TestGlobalNoteEditorResultUsesTypedRenameTransaction(t *testing.T) {
 	env := newGlobalNoteTUIEnv(t, "Editable")
-	original := env.view.visibleRows[0].Note
+	original := env.view.VisibleRows[0].Note
 	content, err := storage.RenderNoteContent(original)
 	if err != nil {
 		t.Fatal(err)
 	}
 	modified := strings.Replace(content, "title: Editable", "title: Edited globally", 1)
-	handled, cmd := env.shell.handleNotesMessages(ProjectNoteEditorDoneMsg{
+	handled, cmd := env.shell.handleNotesMessages(notes.ProjectNoteEditorDoneMsg{
 		Location:        app.GlobalNoteLocation(),
-		Original:        cloneNoteForCommand(original),
+		Original:        notes.CloneNoteForCommand(original),
 		OriginalContent: content,
 		Modified:        modified,
 	})
@@ -185,8 +186,8 @@ func TestGlobalNoteEditorResultUsesTypedRenameTransaction(t *testing.T) {
 	}
 	result := runProjectNoteMutation(t, func() any { return cmd() })
 	env.shell.handleNotesMessages(result)
-	if len(env.view.visibleRows) != 1 || env.view.visibleRows[0].Note.Title != "Edited globally" {
-		t.Fatalf("global editor reconciliation = %#v", env.view.visibleRows)
+	if len(env.view.VisibleRows) != 1 || env.view.VisibleRows[0].Note.Title != "Edited globally" {
+		t.Fatalf("global editor reconciliation = %#v", env.view.VisibleRows)
 	}
 	if _, err := os.Stat(filepath.Join(env.dir, original.Filename)); !os.IsNotExist(err) {
 		t.Fatalf("global rename left original canonical file: %v", err)
@@ -202,9 +203,9 @@ func TestGlobalNoteCreateEditorResultDoesNotPersistPlaceholder(t *testing.T) {
 	}
 	modified := strings.Replace(content, "title: Untitled Note", "title: Created globally", 1)
 	modified += "\ncreated body\n"
-	handled, cmd := env.shell.handleNotesMessages(ProjectNoteEditorDoneMsg{
+	handled, cmd := env.shell.handleNotesMessages(notes.ProjectNoteEditorDoneMsg{
 		Location:        app.GlobalNoteLocation(),
-		Original:        cloneNoteForCommand(original),
+		Original:        notes.CloneNoteForCommand(original),
 		OriginalContent: content,
 		Modified:        modified,
 		Create:          true,
@@ -217,7 +218,7 @@ func TestGlobalNoteCreateEditorResultDoesNotPersistPlaceholder(t *testing.T) {
 	}
 	result := runProjectNoteMutation(t, func() any { return cmd() })
 	env.shell.handleNotesMessages(result)
-	if len(env.view.visibleRows) != 1 || env.view.visibleRows[0].Note.Title != "Created globally" || env.view.visibleRows[0].Note.Body != "created body" {
-		t.Fatalf("created global note = %#v", env.view.visibleRows)
+	if len(env.view.VisibleRows) != 1 || env.view.VisibleRows[0].Note.Title != "Created globally" || env.view.VisibleRows[0].Note.Body != "created body" {
+		t.Fatalf("created global note = %#v", env.view.VisibleRows)
 	}
 }

@@ -48,7 +48,7 @@ func TestOutlinerMultiSelectStatusFitsHeight(t *testing.T) {
 	m.SetSize(72, paneHeight)
 	m.rebuildRows()
 	m.MultiSelectMode = true
-	m.setStatus("Multi-select: Space=toggle, a=all, A=deselect, D=delete, v/Esc=exit")
+	m.SetStatus("Multi-select: Space=toggle, a=all, A=deselect, D=delete, v/Esc=exit")
 
 	// 39 mirrors the ~55% tree pane width the split-pane layout allots at 72
 	// cols, which forces both the status line and the title badge to wrap.

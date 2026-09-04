@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
@@ -65,7 +66,7 @@ var delegatedDestructiveConfirmations = map[operation.OperationID]string{
 	operation.OperationTaskDelete:          "handleTaskDeleteRequested prompts before confirmTaskDelete writes",
 	operation.OperationScopeArchiveProject: "showProjectArchiveConfirm prompts",
 	operation.OperationProjectDelete:       "showProjectDeleteConfirm prompts with the cascade note before commitProjectDelete writes",
-	operationNoteDelete:                    "deleteCurrentNote prompts on the Notes manager's own confirm dialog before performDelete writes",
+	notes.OperationNoteDelete:              "DeleteCurrentNote prompts on the Notes manager's own confirm dialog before performDelete writes",
 	operationAttachmentDelete:              "confirmDeleteSelectedAttachment prompts on the panel's own confirm dialog before executeDelete writes",
 	operationAttachmentUnlink:              "confirmUnlinkSelectedAttachment prompts on the panel's own confirm dialog before executeKeep writes",
 	operationCommentDelete:                 "confirmDeleteSelectedComment prompts on the panel's own confirm dialog before executeDelete writes",

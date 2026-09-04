@@ -1,4 +1,4 @@
-package tui
+package notes
 
 import (
 	tea "charm.land/bubbletea/v2"
@@ -9,14 +9,28 @@ import (
 	"github.com/sglavoie/tt/internal/tui/route"
 )
 
+// Note operation IDs. Every one of them targets a single note identity, which
+// names the collection (project or global) and the filename inside it. They are
+// declared here rather than beside the descriptors that carry them, because the
+// grammar below binds them and the shell registrar that builds those
+// descriptors sits a package above it.
+const (
+	OperationNoteOpen      operation.OperationID = "tui.note.open"
+	OperationNoteRename    operation.OperationID = "tui.note.rename"
+	OperationNoteMove      operation.OperationID = "tui.note.move-to-project"
+	OperationNoteCopyTitle operation.OperationID = "tui.note.copy-title"
+	OperationNoteCopyPath  operation.OperationID = "tui.note.copy-path"
+	OperationNoteDelete    operation.OperationID = "tui.note.delete"
+)
+
 // Notes surface operation IDs. They name what the Notes grammar does to the
 // manager itself rather than to a note, so they stay apart from the tui.note.*
 // operations a note row carries into any host that lists it.
 const (
-	operationNotesCreate  operation.OperationID = "tui.notes.create"
-	operationNotesSearch  operation.OperationID = "tui.notes.search"
-	operationNotesScope   operation.OperationID = "tui.notes.scope"
-	operationNotesActions operation.OperationID = "tui.notes.actions"
+	OperationNotesCreate  operation.OperationID = "tui.notes.create"
+	OperationNotesSearch  operation.OperationID = "tui.notes.search"
+	OperationNotesScope   operation.OperationID = "tui.notes.scope"
+	OperationNotesActions operation.OperationID = "tui.notes.actions"
 )
 
 // NotesInputStrategy is the Notes manager's whole direct key grammar and the
@@ -31,7 +45,7 @@ const (
 //
 // Deleting a note is the one note operation with no direct key. It is
 // destructive, so it reaches the user only through the Space sheet and its
-// confirmation, which is why operationNoteDelete is absent from this table.
+// confirmation, which is why OperationNoteDelete is absent from this table.
 //
 // The cursor keys, the note ledger's undo and redo, help, and Esc resolve to the
 // core operations because they are the same acts everywhere. Those descriptors
@@ -47,15 +61,15 @@ func NotesInputStrategy() operation.InputStrategy {
 	return operation.InputStrategy{
 		ID: operation.InputStrategyNotes,
 		Bindings: []operation.OperationKeyBinding{
-			{OperationID: operationNoteOpen, Keys: []string{"enter"}, DisplayKey: "Enter"},
-			{OperationID: operationNotesCreate, Keys: []string{"a"}, DisplayKey: "a"},
-			{OperationID: operationNoteRename, Keys: []string{"e"}, DisplayKey: "e"},
-			{OperationID: operationNoteMove, Keys: []string{"%"}, DisplayKey: "%"},
-			{OperationID: operationNotesSearch, Keys: []string{"/"}, DisplayKey: "/"},
-			{OperationID: operationNotesScope, Keys: []string{"p"}, DisplayKey: "p"},
-			{OperationID: operationNoteCopyTitle, Keys: []string{"y"}, DisplayKey: "y"},
-			{OperationID: operationNoteCopyPath, Keys: []string{"Y"}, DisplayKey: "Y"},
-			{OperationID: operationNotesActions, Keys: []string{"space"}, DisplayKey: "Space"},
+			{OperationID: OperationNoteOpen, Keys: []string{"enter"}, DisplayKey: "Enter"},
+			{OperationID: OperationNotesCreate, Keys: []string{"a"}, DisplayKey: "a"},
+			{OperationID: OperationNoteRename, Keys: []string{"e"}, DisplayKey: "e"},
+			{OperationID: OperationNoteMove, Keys: []string{"%"}, DisplayKey: "%"},
+			{OperationID: OperationNotesSearch, Keys: []string{"/"}, DisplayKey: "/"},
+			{OperationID: OperationNotesScope, Keys: []string{"p"}, DisplayKey: "p"},
+			{OperationID: OperationNoteCopyTitle, Keys: []string{"y"}, DisplayKey: "y"},
+			{OperationID: OperationNoteCopyPath, Keys: []string{"Y"}, DisplayKey: "Y"},
+			{OperationID: OperationNotesActions, Keys: []string{"space"}, DisplayKey: "Space"},
 			{OperationID: operation.OperationCoreUndo, Keys: []string{"u"}, DisplayKey: "u"},
 			{OperationID: operation.OperationCoreRedo, Keys: []string{"ctrl+r"}, DisplayKey: "Ctrl+R"},
 			{OperationID: operation.OperationCoreCursorDown, Keys: []string{"j", "down"}, DisplayKey: "j/↓"},
@@ -88,7 +102,7 @@ func (m *NotesViewModel) dispatchNotesKey(key string) tea.Cmd {
 func (m *NotesViewModel) notesCommandContext() operation.CommandContext {
 	ctx := route.PresentationCommandContext(m.presentationID())
 	ctx.Capabilities.Add(operation.CapabilityNotesManager)
-	if row := m.currentRow(); row != nil {
+	if row := m.CurrentRow(); row != nil {
 		ctx.CurrentEntity = noteRowEntity(*row)
 	}
 	return ctx
@@ -97,7 +111,7 @@ func (m *NotesViewModel) notesCommandContext() operation.CommandContext {
 // presentationID names the renderer the current scope selects, matching the
 // hub's own mapping so a Notes-scoped binding resolves under either spelling.
 func (m *NotesViewModel) presentationID() presentation.PresentationID {
-	if m.scope.Kind == route.NotesScopeProject {
+	if m.Scope.Kind == route.NotesScopeProject {
 		return presentation.ViewNotes
 	}
 	return presentation.ViewGlobalNotes
@@ -115,12 +129,12 @@ func noteRowEntity(row LocatedNoteRow) operation.EntityIdentity {
 	return operation.ProjectNoteEntity(row.Location.ProjectID, row.Note.Filename)
 }
 
-// notesSurfaceOperationDescriptors declares what the Notes grammar reaches that
+// NotesSurfaceOperationDescriptors declares what the Notes grammar reaches that
 // no note row carries: creating a note, and the list vocabulary the manager
 // applies to its own query and scope. None of them names a row, so all three
 // stay available while the list is empty, which is what makes an empty
 // collection recoverable.
-func notesSurfaceOperationDescriptors() []operation.OperationDescriptor {
+func NotesSurfaceOperationDescriptors() []operation.OperationDescriptor {
 	surface := func(
 		id operation.OperationID,
 		label string,
@@ -141,28 +155,28 @@ func notesSurfaceOperationDescriptors() []operation.OperationDescriptor {
 	}
 	return []operation.OperationDescriptor{
 		surface(
-			operationNotesCreate,
+			OperationNotesCreate,
 			"New note",
 			"Create a note after choosing its location",
 			operation.OperationCategoryNote,
 			operation.OperationRiskMutation,
 		),
 		surface(
-			operationNotesSearch,
+			OperationNotesSearch,
 			"Search notes",
 			"Search note titles and bodies",
 			operation.OperationCategoryFilter,
 			operation.OperationRiskReadOnly,
 		),
 		surface(
-			operationNotesScope,
+			OperationNotesScope,
 			"Choose Notes scope",
 			"Show all notes, global notes, or one project's notes",
 			operation.OperationCategoryNote,
 			operation.OperationRiskReadOnly,
 		),
 		surface(
-			operationNotesActions,
+			OperationNotesActions,
 			"Note actions",
 			"Open the action sheet for the note under the cursor",
 			operation.OperationCategoryNote,
@@ -171,7 +185,7 @@ func notesSurfaceOperationDescriptors() []operation.OperationDescriptor {
 	}
 }
 
-// notesOperationManifest is the authoritative ordered Notes action list. Nine
+// NotesOperationManifest is the authoritative ordered Notes action list. Nine
 // of the ten entries are DirectOnly: they keep their descriptor and value
 // provider and leave the Space sheet to Delete, which is destructive and so
 // carries no direct key at all.
@@ -179,41 +193,41 @@ func notesSurfaceOperationDescriptors() []operation.OperationDescriptor {
 // Space itself is manifested for the same reason the other eight are: a manifest
 // is all ValidateOperationOnePath inspects, so leaving the key that opens the
 // sheet out of it was the one binding the gate could not check. The sheet lists
-// notesActionSheetOperations, not this manifest, so the row it opens is
+// NotesActionSheetOperations, not this manifest, so the row it opens is
 // unchanged.
-func notesOperationManifest() []operation.OperationManifestEntry {
+func NotesOperationManifest() []operation.OperationManifestEntry {
 	return []operation.OperationManifestEntry{
-		{ID: operationNoteOpen, Label: "Open note", Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: operationNotesCreate, Label: "New note", Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: operationNoteRename, Label: "Rename note", Provider: operation.ValueProviderNoteTitle, Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: operationNoteMove, Label: "Move note", Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: operationNotesSearch, Label: "Search notes", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationNotesScope, Label: "Choose Notes scope", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationNoteCopyTitle, Label: "Copy note title", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationNoteCopyPath, Label: "Copy note path", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationNotesActions, Label: "Note actions", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationNoteDelete, Label: "Delete note", Risk: operation.OperationRiskDestructive},
+		{ID: OperationNoteOpen, Label: "Open note", Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: OperationNotesCreate, Label: "New note", Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: OperationNoteRename, Label: "Rename note", Provider: operation.ValueProviderNoteTitle, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: OperationNoteMove, Label: "Move note", Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: OperationNotesSearch, Label: "Search notes", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: OperationNotesScope, Label: "Choose Notes scope", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: OperationNoteCopyTitle, Label: "Copy note title", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: OperationNoteCopyPath, Label: "Copy note path", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: OperationNotesActions, Label: "Note actions", Risk: operation.OperationRiskReadOnly, DirectOnly: true},
+		{ID: OperationNoteDelete, Label: "Delete note", Risk: operation.OperationRiskDestructive},
 	}
 }
 
-// notesActionSheetOperations is the Notes Space sheet. It holds Delete alone:
+// NotesActionSheetOperations is the Notes Space sheet. It holds Delete alone:
 // Notes has no multi-select, so this is one note's action sheet rather than a
 // bulk menu, and Delete reaches the user only here behind a confirmation.
-var notesActionSheetOperations = []operation.OperationID{operationNoteDelete}
+var NotesActionSheetOperations = []operation.OperationID{OperationNoteDelete}
 
-// validateNotesOperationOnePath holds Notes to the shared one-path rule: a
+// ValidateNotesOperationOnePath holds Notes to the shared one-path rule: a
 // manifested operation is either bound directly and marked DirectOnly or listed
 // in the Space sheet, never both.
-func validateNotesOperationOnePath(strategy operation.InputStrategy) error {
-	return operation.ValidateOperationOnePath(notesOperationManifest(), strategy)
+func ValidateNotesOperationOnePath(strategy operation.InputStrategy) error {
+	return operation.ValidateOperationOnePath(NotesOperationManifest(), strategy)
 }
 
-// notesHostedNoteOperations are the note operations the manager performs itself.
-func notesHostedNoteOperations() []operation.OperationID {
+// NotesHostedNoteOperations are the note operations the manager performs itself.
+func NotesHostedNoteOperations() []operation.OperationID {
 	return []operation.OperationID{
-		operationNoteOpen,
-		operationNoteRename,
-		operationNoteMove,
-		operationNoteDelete,
+		OperationNoteOpen,
+		OperationNoteRename,
+		OperationNoteMove,
+		OperationNoteDelete,
 	}
 }

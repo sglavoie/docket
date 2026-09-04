@@ -39,13 +39,13 @@ type TaskCommentsModel struct {
 	// Outliner only, so the panel keeps its own one-key prefix.
 	pendingTopChord bool
 
-	dispatch operationKeyDispatch
+	dispatch operation.KeyDispatch
 }
 
 // SetOperationDispatch hands the panel the shell's key dispatch seam. Without it
 // the browse grammar resolves nothing, so a host that mounts this model must
 // supply it. The registry stays out because help still derives from buildKeyMap.
-func (m *TaskCommentsModel) SetOperationDispatch(dispatch operationKeyDispatch) {
+func (m *TaskCommentsModel) SetOperationDispatch(dispatch operation.KeyDispatch) {
 	m.dispatch = dispatch
 }
 

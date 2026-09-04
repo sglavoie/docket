@@ -6,14 +6,15 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/fuzzy"
+	"github.com/sglavoie/tt/internal/tui/notes"
 )
 
 // outlinerSearchNoteMatch is one scored note from the shell's index. It is the
 // note counterpart of outlinerSearchMatch and carries the same two things a
 // task match does: the subject and the evidence that ranked it.
 type outlinerSearchNoteMatch struct {
-	row   LocatedNoteRow
-	match noteSearchMatch
+	row   notes.LocatedNoteRow
+	match notes.NoteSearchMatch
 	// sourceIndex is the note's position in the in-scope index under the index's
 	// own order — location, then filename. It is the tier's tiebreak exactly as
 	// it is for tasks, and it is carried rather than recompared so that ordering
@@ -24,7 +25,7 @@ type outlinerSearchNoteMatch struct {
 // setNoteSearchIndex injects the shell's note accessor. It is deliberately a
 // setter rather than a constructor parameter: NewOutlinerModel builds the Hub
 // preview painter too, and that surface must keep the nil accessor.
-func (m *OutlinerModel) setNoteSearchIndex(accessor func() []LocatedNoteRow) {
+func (m *OutlinerModel) setNoteSearchIndex(accessor func() []notes.LocatedNoteRow) {
 	m.noteSearchIndex = accessor
 }
 
@@ -34,7 +35,7 @@ func (m *OutlinerModel) setNoteSearchIndex(accessor func() []LocatedNoteRow) {
 // project's work; unscoped yields Global plus every project the index carries.
 // Archived owners were already refused when the index was built, so there is
 // no archive test here.
-func (m *OutlinerModel) noteSearchRowsInScope() []LocatedNoteRow {
+func (m *OutlinerModel) noteSearchRowsInScope() []notes.LocatedNoteRow {
 	if m == nil || m.noteSearchIndex == nil {
 		return nil
 	}
@@ -46,7 +47,7 @@ func (m *OutlinerModel) noteSearchRowsInScope() []LocatedNoteRow {
 	if scopeID == "" {
 		return rows
 	}
-	scoped := make([]LocatedNoteRow, 0, len(rows))
+	scoped := make([]notes.LocatedNoteRow, 0, len(rows))
 	for _, row := range rows {
 		if row.Location.Scope == app.NoteScopeProject && row.Location.ProjectID == scopeID {
 			scoped = append(scoped, row)
@@ -61,7 +62,7 @@ func (m *OutlinerModel) noteSearchRowsInScope() []LocatedNoteRow {
 // whether the tier exists for this query at all; the scorer does not re-derive
 // it, which is what keeps the sigil rule stated in exactly one place.
 //
-// scoreNoteSearch is reused as-is: the Notes manager and this tier must agree
+// ScoreNoteSearch is reused as-is: the Notes manager and this tier must agree
 // about what a note matches and how strongly, or the same query would rank the
 // same note two ways on two surfaces.
 func (m *OutlinerModel) scoreNoteSearchTier(
@@ -85,7 +86,7 @@ func (m *OutlinerModel) scoreNoteSearchTier(
 	sortNoteSearchIndexRows(rows)
 	matches := make([]outlinerSearchNoteMatch, 0, len(rows))
 	for sourceIndex, row := range rows {
-		match, ok := scoreNoteSearch(row.Note, query, matcher)
+		match, ok := notes.ScoreNoteSearch(row.Note, query, matcher)
 		if !ok {
 			continue
 		}
@@ -95,8 +96,8 @@ func (m *OutlinerModel) scoreNoteSearchTier(
 	}
 	sort.SliceStable(matches, func(i, j int) bool {
 		left, right := matches[i], matches[j]
-		if left.match.score != right.match.score {
-			return left.match.score > right.match.score
+		if left.match.Score != right.match.Score {
+			return left.match.Score > right.match.Score
 		}
 		return left.sourceIndex < right.sourceIndex
 	})

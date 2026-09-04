@@ -1,4 +1,4 @@
-package tui
+package notes
 
 import (
 	"fmt"
@@ -15,10 +15,10 @@ import (
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
-// normalizedNoteLocation completes a half-named location. A message that
+// NormalizedNoteLocation completes a half-named location. A message that
 // carried only a project ID names that project's notes; one that named neither
 // is global.
-func normalizedNoteLocation(location app.NoteLocation, projectID string) app.NoteLocation {
+func NormalizedNoteLocation(location app.NoteLocation, projectID string) app.NoteLocation {
 	if location.Scope != "" {
 		return location
 	}
@@ -28,23 +28,23 @@ func normalizedNoteLocation(location app.NoteLocation, projectID string) app.Not
 	return app.GlobalNoteLocation()
 }
 
-// noteViewMatchesLocation reports whether the open manager owns the location a
+// NoteViewMatchesLocation reports whether the open manager owns the location a
 // result came back for, which is what decides between a view status line and
 // the shell's own error path.
-func noteViewMatchesLocation(view *NotesViewModel, location app.NoteLocation) bool {
+func NoteViewMatchesLocation(view *NotesViewModel, location app.NoteLocation) bool {
 	if view == nil {
 		return false
 	}
 	if location.Scope == app.NoteScopeGlobal {
-		_, ok := view.owners[app.GlobalNoteLocation()]
+		_, ok := view.Owners[app.GlobalNoteLocation()]
 		return ok
 	}
-	_, ok := view.owners[location]
+	_, ok := view.Owners[location]
 	return ok
 }
 
 func startNoteEditor(editor string, location app.NoteLocation, note *models.Note, create bool) tea.Cmd {
-	original := cloneNoteForCommand(note)
+	original := CloneNoteForCommand(note)
 	content, err := storage.RenderNoteContent(original)
 	if err != nil {
 		return status.ErrorCmd("failed to render note: %w", err)
@@ -53,7 +53,7 @@ func startNoteEditor(editor string, location app.NoteLocation, note *models.Note
 }
 
 func startNoteEditorWithContent(editor string, location app.NoteLocation, note *models.Note, content string, create bool) tea.Cmd {
-	original := cloneNoteForCommand(note)
+	original := CloneNoteForCommand(note)
 	tmpPath, err := external.CreateTempFileWithContent(content, "tt-note-edit-", ".md")
 	if err != nil {
 		return status.ErrorCmd("failed to create temporary note: %w", err)
@@ -72,7 +72,7 @@ func startNoteEditorWithContent(editor string, location app.NoteLocation, note *
 	})
 }
 
-func parseProjectNoteEditorResult(original *models.Note, modified string, create bool) (*models.Note, error) {
+func ParseProjectNoteEditorResult(original *models.Note, modified string, create bool) (*models.Note, error) {
 	if original == nil {
 		return nil, fmt.Errorf("edited note has no source")
 	}

@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
@@ -28,7 +29,7 @@ type projectNoteTUIEnv struct {
 	ledger  *storage.WorkspaceLedger
 	svc     *app.Service
 	project *models.Project
-	view    *NotesViewModel
+	view    *notes.NotesViewModel
 	shell   *AppModel
 }
 
@@ -55,14 +56,14 @@ func newProjectNoteTUIEnv(t *testing.T, titles ...string) *projectNoteTUIEnv {
 	}
 
 	svc := app.NewServiceWithArtifacts(repo, nil, nil, app.NewStorageWorkspaceNotePort(dataDir))
-	view := NewNotesViewModelWithService(
+	view := notes.NewNotesViewModelWithService(
 		storage.GlobalNotesDir(dataDir),
 		route.AllNotesScope(),
 		svc,
 		ledger,
 		project,
 	)
-	mountNotesManager(t, view)
+	mountNotesManager(t, view, route.AllNotesScope())
 	view.SetSize(80, 40)
 	views := route.NewViewRegistry()
 	views.Register(presentation.ViewNotes, view)
@@ -97,12 +98,12 @@ func (e *projectNoteTUIEnv) note(t *testing.T, filename string) *models.Note {
 	return note
 }
 
-func runProjectNoteMutation(t *testing.T, cmd func() any) ProjectNoteMutationResultMsg {
+func runProjectNoteMutation(t *testing.T, cmd func() any) notes.ProjectNoteMutationResultMsg {
 	t.Helper()
 	msg := cmd()
-	result, ok := msg.(ProjectNoteMutationResultMsg)
+	result, ok := msg.(notes.ProjectNoteMutationResultMsg)
 	if !ok {
-		if failure, failed := msg.(ProjectNoteMutationErrorMsg); failed {
+		if failure, failed := msg.(notes.ProjectNoteMutationErrorMsg); failed {
 			t.Fatalf("project note mutation failed: %v", failure.Err)
 		}
 		t.Fatalf("project note mutation message = %T", msg)
@@ -120,7 +121,7 @@ func writeMalformedProjectNote(t *testing.T, env *projectNoteTUIEnv, filename st
 	if err := os.WriteFile(path, raw, storage.FilePermissions); err != nil {
 		t.Fatalf("write malformed note: %v", err)
 	}
-	env.view.loadNotes()
+	env.view.LoadNotes()
 	return path
 }
 
@@ -135,7 +136,7 @@ func projectNoteIndex(t *testing.T, notes []*models.Note, filename string) int {
 	return -1
 }
 
-func noteModels(rows []LocatedNoteRow) []*models.Note {
+func noteModels(rows []notes.LocatedNoteRow) []*models.Note {
 	notes := make([]*models.Note, len(rows))
 	for i := range rows {
 		notes[i] = rows[i].Note
@@ -145,17 +146,17 @@ func noteModels(rows []LocatedNoteRow) []*models.Note {
 
 func TestProjectNoteMutationRefreshesOnlyAfterCommittedResult(t *testing.T) {
 	env := newProjectNoteTUIEnv(t, "Edit me")
-	before := env.view.visibleRows[0].Note
-	updated := cloneNoteForCommand(before)
+	before := env.view.VisibleRows[0].Note
+	updated := notes.CloneNoteForCommand(before)
 	updated.Body = "edited body"
 	updated.ModifiedAt = time.Now()
 	location := app.ProjectNoteLocation(env.project.ID)
-	cmd := noteMutationCmd(env.svc, location, app.NoteBatchRequest{
+	cmd := notes.NoteMutationCmd(env.svc, location, app.NoteBatchRequest{
 		Operations: []app.NoteMutationRequest{{Kind: app.NoteUpdate, Location: location, Note: updated}},
 		UndoAction: "Edit Note",
 	}, "Edited")
 	msg := runProjectNoteMutation(t, func() any { return cmd() })
-	if env.view.visibleRows[0].Note != before || env.view.visibleRows[0].Note.Body != "Edit me body" {
+	if env.view.VisibleRows[0].Note != before || env.view.VisibleRows[0].Note.Body != "Edit me body" {
 		t.Fatal("command goroutine mutated the live notes view cache")
 	}
 	if disk := env.note(t, before.Filename); disk.Body != "edited body" {
@@ -163,7 +164,7 @@ func TestProjectNoteMutationRefreshesOnlyAfterCommittedResult(t *testing.T) {
 	}
 
 	env.shell.handleNotesMessages(msg)
-	if env.view.visibleRows[0].Note.Body != "edited body" || env.view.visibleRows[0].Note == before {
+	if env.view.VisibleRows[0].Note.Body != "edited body" || env.view.VisibleRows[0].Note == before {
 		t.Fatal("Update handling did not replace the cache from committed state")
 	}
 }
@@ -172,14 +173,14 @@ func TestProjectMalformedNoteDelete(t *testing.T) {
 	t.Run("single", func(t *testing.T) {
 		env := newProjectNoteTUIEnv(t)
 		path := writeMalformedProjectNote(t, env, "malformed-single.md", []byte("missing frontmatter\n"))
-		notes := noteModels(env.view.visibleRows)
+		notes := noteModels(env.view.VisibleRows)
 		index := projectNoteIndex(t, notes, "malformed-single.md")
 		if notes[index].ParseError == "" || notes[index].RawRevision == "" {
 			t.Fatalf("view did not retain malformed note evidence: %+v", notes[index])
 		}
-		env.view.pendingDelete = env.view.visibleRows[index].Identity()
+		env.view.PendingDelete = env.view.VisibleRows[index].Identity()
 
-		result := runProjectNoteMutation(t, func() any { return env.view.performDelete()() })
+		result := runProjectNoteMutation(t, func() any { return env.view.PerformDelete()() })
 		if len(result.Result.Results) != 1 || result.Result.Results[0].Filename != "malformed-single.md" {
 			t.Fatalf("single malformed delete result = %+v", result.Result)
 		}
@@ -187,24 +188,24 @@ func TestProjectMalformedNoteDelete(t *testing.T) {
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
 			t.Fatalf("single malformed note still exists: %v", err)
 		}
-		if len(env.view.visibleRows) != 0 {
-			t.Fatalf("view retained deleted malformed note: %+v", env.view.visibleRows)
+		if len(env.view.VisibleRows) != 0 {
+			t.Fatalf("view retained deleted malformed note: %+v", env.view.VisibleRows)
 		}
 	})
 }
 
 func TestProjectNoteEditorResultCommitsTempContentAndRejectsMalformedOutput(t *testing.T) {
 	env := newProjectNoteTUIEnv(t, "Editable")
-	original := env.view.visibleRows[0].Note
+	original := env.view.VisibleRows[0].Note
 	originalContent, err := storage.RenderNoteContent(original)
 	if err != nil {
 		t.Fatal(err)
 	}
 	modified := strings.Replace(originalContent, "title: Editable", "title: Edited", 1)
 	modified = strings.Replace(modified, "Editable body", "edited body", 1)
-	handled, cmd := env.shell.handleNotesMessages(ProjectNoteEditorDoneMsg{
+	handled, cmd := env.shell.handleNotesMessages(notes.ProjectNoteEditorDoneMsg{
 		ProjectID:       env.project.ID,
-		Original:        cloneNoteForCommand(original),
+		Original:        notes.CloneNoteForCommand(original),
 		OriginalContent: originalContent,
 		Modified:        modified,
 	})
@@ -228,13 +229,13 @@ func TestProjectNoteEditorResultCommitsTempContentAndRejectsMalformedOutput(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, malformedCmd := env.shell.handleNotesMessages(ProjectNoteEditorDoneMsg{
+	_, malformedCmd := env.shell.handleNotesMessages(notes.ProjectNoteEditorDoneMsg{
 		ProjectID:       env.project.ID,
-		Original:        cloneNoteForCommand(committed),
+		Original:        notes.CloneNoteForCommand(committed),
 		OriginalContent: modified,
 		Modified:        "malformed output without frontmatter",
 	})
-	malformed, ok := malformedCmd().(ProjectNoteMutationErrorMsg)
+	malformed, ok := malformedCmd().(notes.ProjectNoteMutationErrorMsg)
 	if !ok || malformed.Err == nil {
 		t.Fatalf("malformed editor result = %#v", malformedCmd())
 	}
@@ -257,9 +258,9 @@ func TestProjectNoteEditorCreateDoesNotPersistPlaceholder(t *testing.T) {
 	modified := strings.Replace(originalContent, "title: Untitled Note", "title: Created in Temp", 1)
 	modified += "\ncreated body\n"
 
-	_, unchangedCmd := env.shell.handleNotesMessages(ProjectNoteEditorDoneMsg{
+	_, unchangedCmd := env.shell.handleNotesMessages(notes.ProjectNoteEditorDoneMsg{
 		ProjectID:       env.project.ID,
-		Original:        cloneNoteForCommand(original),
+		Original:        notes.CloneNoteForCommand(original),
 		OriginalContent: originalContent,
 		Modified:        originalContent,
 		Create:          true,
@@ -271,9 +272,9 @@ func TestProjectNoteEditorCreateDoesNotPersistPlaceholder(t *testing.T) {
 		t.Fatalf("unchanged editor persisted placeholder: notes=%d err=%v", len(notes), notesErr)
 	}
 
-	_, createCmd := env.shell.handleNotesMessages(ProjectNoteEditorDoneMsg{
+	_, createCmd := env.shell.handleNotesMessages(notes.ProjectNoteEditorDoneMsg{
 		ProjectID:       env.project.ID,
-		Original:        cloneNoteForCommand(original),
+		Original:        notes.CloneNoteForCommand(original),
 		OriginalContent: originalContent,
 		Modified:        modified,
 		Create:          true,
@@ -291,12 +292,12 @@ func TestProjectNoteEditorCreateDoesNotPersistPlaceholder(t *testing.T) {
 
 func TestProjectNoteWorkspaceLedgerUndoRedoRefreshesCommittedState(t *testing.T) {
 	env := newProjectNoteTUIEnv(t, "Undoable")
-	filename := env.view.visibleRows[0].Note.Filename
-	updated := cloneNoteForCommand(env.view.visibleRows[0].Note)
+	filename := env.view.VisibleRows[0].Note.Filename
+	updated := notes.CloneNoteForCommand(env.view.VisibleRows[0].Note)
 	updated.Body = "undoable edit"
 	updated.ModifiedAt = time.Now()
 	location := app.ProjectNoteLocation(env.project.ID)
-	cmd := noteMutationCmd(env.svc, location, app.NoteBatchRequest{
+	cmd := notes.NoteMutationCmd(env.svc, location, app.NoteBatchRequest{
 		Operations: []app.NoteMutationRequest{{Kind: app.NoteUpdate, Location: location, Note: updated}},
 		UndoAction: "Edit Note",
 	}, "Edited")
@@ -306,21 +307,21 @@ func TestProjectNoteWorkspaceLedgerUndoRedoRefreshesCommittedState(t *testing.T)
 		t.Fatal("edit mutation did not commit")
 	}
 
-	undo, ok := env.view.undoDelete()().(ProjectNoteLedgerResultMsg)
+	undo, ok := env.view.UndoDelete()().(notes.ProjectNoteLedgerResultMsg)
 	if !ok || undo.Redo {
 		t.Fatalf("undo result = %#v", undo)
 	}
 	env.shell.handleNotesMessages(undo)
-	if env.note(t, filename).Body != "Undoable body" || env.view.visibleRows[0].Note.Body != "Undoable body" {
+	if env.note(t, filename).Body != "Undoable body" || env.view.VisibleRows[0].Note.Body != "Undoable body" {
 		t.Fatal("project-scoped workspace undo did not refresh restored note")
 	}
 
-	redo, ok := env.view.redoNoteMutation()().(ProjectNoteLedgerResultMsg)
+	redo, ok := env.view.RedoNoteMutation()().(notes.ProjectNoteLedgerResultMsg)
 	if !ok || !redo.Redo {
 		t.Fatalf("redo result = %#v", redo)
 	}
 	env.shell.handleNotesMessages(redo)
-	if env.note(t, filename).Body != "undoable edit" || env.view.visibleRows[0].Note.Body != "undoable edit" {
+	if env.note(t, filename).Body != "undoable edit" || env.view.VisibleRows[0].Note.Body != "undoable edit" {
 		t.Fatal("project-scoped workspace redo did not refresh replayed note")
 	}
 }

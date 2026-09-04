@@ -3,6 +3,7 @@ package tui
 import (
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
@@ -19,18 +20,18 @@ func TestAllNotesOpenPathsUseShellLedger(t *testing.T) {
 	project := shell.projectByID(shell.runtime.SystemUnfiledProject().ID)
 	assertLedger := func(name string, view presentation.PresentationID) {
 		t.Helper()
-		notes, ok := shell.views.Get(view).(*NotesViewModel)
+		manager, ok := shell.views.Get(view).(*notes.NotesViewModel)
 		if !ok {
 			t.Fatalf("%s view = %T", name, shell.views.Get(view))
 		}
-		if notes.noteLedger != ledger {
+		if manager.NoteLedger != ledger {
 			t.Fatalf("%s received a different workspace ledger", name)
 		}
 	}
 
-	shell.handleNotesMessages(ShowNotesManagerMsg{Scope: route.ProjectNotesScope(project.ID)})
+	shell.handleNotesMessages(notes.ShowNotesManagerMsg{Scope: route.ProjectNotesScope(project.ID)})
 	assertLedger("direct project notes", presentation.ViewNotes)
-	shell.handleNotesMessages(ShowNotesManagerMsg{Scope: route.GlobalNotesScope()})
+	shell.handleNotesMessages(notes.ShowNotesManagerMsg{Scope: route.GlobalNotesScope()})
 	assertLedger("direct global notes", presentation.ViewGlobalNotes)
 
 }
@@ -47,18 +48,18 @@ func TestNilShellLedgerMakesHistoryUnavailableWithoutPanic(t *testing.T) {
 	shell.appService = service
 	shell.deps = newShellDeps(nil)
 
-	if handled, _ := shell.handleNotesMessages(ShowNotesManagerMsg{Scope: route.GlobalNotesScope()}); !handled {
-		t.Fatal("ShowNotesManagerMsg was not handled")
+	if handled, _ := shell.handleNotesMessages(notes.ShowNotesManagerMsg{Scope: route.GlobalNotesScope()}); !handled {
+		t.Fatal("notes.ShowNotesManagerMsg was not handled")
 	}
-	notes, ok := shell.views.Get(presentation.ViewGlobalNotes).(*NotesViewModel)
+	manager, ok := shell.views.Get(presentation.ViewGlobalNotes).(*notes.NotesViewModel)
 	if !ok {
-		t.Fatalf("global notes view = %T", shell.views.Get(presentation.ViewGlobalNotes))
+		t.Fatalf("global manager view = %T", shell.views.Get(presentation.ViewGlobalNotes))
 	}
-	if notes.noteLedger != nil {
+	if manager.NoteLedger != nil {
 		t.Fatal("isolated nil-ledger composition unexpectedly created history")
 	}
-	msg := notes.undoDelete()()
-	failure, ok := msg.(ProjectNoteLedgerErrorMsg)
+	msg := manager.UndoDelete()()
+	failure, ok := msg.(notes.ProjectNoteLedgerErrorMsg)
 	if !ok || failure.Err == nil || failure.Err.Error() != "workspace undo ledger is unavailable" {
 		t.Fatalf("nil-ledger undo = %#v, want typed unavailable error", msg)
 	}

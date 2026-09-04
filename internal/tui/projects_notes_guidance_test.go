@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
 
@@ -93,8 +94,8 @@ func TestNotesGuidanceFollowsBrowseSearchRenameMoveAndDelete(t *testing.T) {
 	service := &combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{
 		app.GlobalNoteLocation(): {{Title: "Global note", Filename: "global.md"}},
 	}}
-	view := NewNotesViewModelWithService(t.TempDir(), route.AllNotesScope(), service, nil, project)
-	shell := mountNotesManager(t, view)
+	view := notes.NewNotesViewModelWithService(t.TempDir(), route.AllNotesScope(), service, nil, project)
+	shell := mountNotesManager(t, view, route.AllNotesScope())
 	view.SetSize(80, 24)
 
 	spec, ok := view.ContextualGuidance()
@@ -124,7 +125,7 @@ func TestNotesGuidanceFollowsBrowseSearchRenameMoveAndDelete(t *testing.T) {
 	_, _ = view.Update(syntheticSpecialKey(tea.KeyEsc))
 
 	_, _ = view.Update(syntheticKey('%'))
-	if view.locationPicker == nil || view.locationPicker.purpose != notesLocationPickerMove {
+	if view.LocationPicker == nil || view.LocationPicker.Purpose != notes.NotesLocationPickerMove {
 		t.Fatal("move did not open the location picker")
 	}
 	spec, ok = view.ContextualGuidance()
@@ -150,11 +151,11 @@ func TestNotesGuidanceFollowsBrowseSearchRenameMoveAndDelete(t *testing.T) {
 }
 
 func TestNotesGuidanceCausalEmptyAndFooterHeightKeepSelectionVisible(t *testing.T) {
-	empty := NewNotesViewModelWithService(
+	empty := notes.NewNotesViewModelWithService(
 		t.TempDir(), route.AllNotesScope(),
 		&combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{}}, nil,
 	)
-	mountNotesManager(t, empty)
+	mountNotesManager(t, empty, route.AllNotesScope())
 	empty.SetSize(32, 12)
 	spec, ok := empty.ContextualGuidance()
 	assertRequiredGuidance(t, "empty notes", spec, ok, "a choose location")
@@ -163,26 +164,26 @@ func TestNotesGuidanceCausalEmptyAndFooterHeightKeepSelectionVisible(t *testing.
 	assertRequiredGuidance(t, "notes creation location", spec, ok, "Enter choose", "Esc cancel")
 	assertGuidanceFits(t, spec, 24)
 
-	notes := make([]*models.Note, 0, 24)
+	manager := make([]*models.Note, 0, 24)
 	for i := range 24 {
-		notes = append(notes, &models.Note{
+		manager = append(manager, &models.Note{
 			Title: fmt.Sprintf("Note %02d", i), Filename: fmt.Sprintf("note-%02d.md", i),
 		})
 	}
-	view := NewNotesViewModelWithService(
+	view := notes.NewNotesViewModelWithService(
 		t.TempDir(), route.GlobalNotesScope(),
 		&combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{
-			app.GlobalNoteLocation(): notes,
+			app.GlobalNoteLocation(): manager,
 		}}, nil,
 	)
-	mountNotesManager(t, view)
+	mountNotesManager(t, view, route.GlobalNotesScope())
 	view.SetSize(48, 12)
-	view.cursor = len(view.visibleRows) - 1
+	view.Cursor = len(view.VisibleRows) - 1
 	_ = view.View()
 	_, _ = view.Update(syntheticKey('/'))
 	rendered := view.View().Content
-	if !strings.Contains(rendered, "Note 23") || view.scrollOffset == 0 {
-		t.Fatalf("two-row search footer lost persistent selection: offset=%d\n%s", view.scrollOffset, rendered)
+	if !strings.Contains(rendered, "Note 23") || view.ScrollOffset == 0 {
+		t.Fatalf("two-row search footer lost persistent selection: offset=%d\n%s", view.ScrollOffset, rendered)
 	}
 }
 

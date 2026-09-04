@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -82,8 +83,8 @@ func (m *AppModel) ledgerProjectByID(projectID string) *models.Project {
 		return m.currentProject
 	}
 	if m.views != nil {
-		if view, ok := m.views.Get(presentation.ViewNotes).(*NotesViewModel); ok {
-			if project := view.projectByID(projectID); project != nil {
+		if view, ok := m.views.Get(presentation.ViewNotes).(*notes.NotesViewModel); ok {
+			if project := view.ProjectByID(projectID); project != nil {
 				return project
 			}
 		}
@@ -91,11 +92,11 @@ func (m *AppModel) ledgerProjectByID(projectID string) *models.Project {
 	return nil
 }
 
-func (m *AppModel) reloadActiveNotesAfterLedgerRestore() *NotesViewModel {
+func (m *AppModel) reloadActiveNotesAfterLedgerRestore() *notes.NotesViewModel {
 	view := m.getActiveNotesView()
 	if view == nil {
 		return nil
 	}
-	view.loadNotes()
+	view.Reload()
 	return view
 }

@@ -1,4 +1,4 @@
-package tui
+package notes
 
 import (
 	"slices"
@@ -73,18 +73,18 @@ func TestNotesSearchRankingPrefersTitlesAndUsesDeterministicTies(t *testing.T) {
 	)
 	mountNotesManager(t, view)
 
-	view.searchApplied = "needle"
-	view.rederiveVisibleRows()
+	view.SearchApplied = "needle"
+	view.RederiveVisibleRows()
 
 	var got []string
-	for _, row := range view.visibleRows {
+	for _, row := range view.VisibleRows {
 		got = append(got, row.Note.Filename)
 	}
 	want := []string{"title.md", "newer.md", "a.md", "b.md", "z.md", "beta.md"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("search ranking = %v, want %v", got, want)
 	}
-	if match := view.searchMatches[titleMatchIdentity(titleMatch)]; len(match.titlePositions) == 0 {
+	if match := view.SearchMatches[titleMatchIdentity(titleMatch)]; len(match.TitlePositions) == 0 {
 		t.Fatal("title match did not retain fuzzy highlight positions")
 	}
 }
@@ -101,35 +101,35 @@ func TestNotesSearchSmartCaseNarrowsThenFallsBackWithLabel(t *testing.T) {
 	mountNotesManager(t, view)
 	view.SetSize(120, 24)
 
-	view.searchApplied = "api"
-	view.rederiveVisibleRows()
-	if len(view.visibleRows) != 2 || view.searchCaseRelaxed {
+	view.SearchApplied = "api"
+	view.RederiveVisibleRows()
+	if len(view.VisibleRows) != 2 || view.searchCaseRelaxed {
 		t.Fatalf("lowercase search = %d rows relaxed=%v, want both notes unrelaxed",
-			len(view.visibleRows), view.searchCaseRelaxed)
+			len(view.VisibleRows), view.searchCaseRelaxed)
 	}
 
-	view.searchApplied = "API"
-	view.rederiveVisibleRows()
-	if len(view.visibleRows) != 1 || view.visibleRows[0].Note.Filename != "upper.md" || view.searchCaseRelaxed {
+	view.SearchApplied = "API"
+	view.RederiveVisibleRows()
+	if len(view.VisibleRows) != 1 || view.VisibleRows[0].Note.Filename != "upper.md" || view.searchCaseRelaxed {
 		t.Fatalf("uppercase search = %#v relaxed=%v, want only upper.md unrelaxed",
-			view.visibleRows, view.searchCaseRelaxed)
+			view.VisibleRows, view.searchCaseRelaxed)
 	}
 
-	view.searchApplied = "Cleanup"
-	view.rederiveVisibleRows()
-	if len(view.visibleRows) != 1 || view.visibleRows[0].Note.Filename != "lower.md" || !view.searchCaseRelaxed {
+	view.SearchApplied = "Cleanup"
+	view.RederiveVisibleRows()
+	if len(view.VisibleRows) != 1 || view.VisibleRows[0].Note.Filename != "lower.md" || !view.searchCaseRelaxed {
 		t.Fatalf("fallback search = %#v relaxed=%v, want lower.md via a relaxed retry",
-			view.visibleRows, view.searchCaseRelaxed)
+			view.VisibleRows, view.searchCaseRelaxed)
 	}
 	if got := view.scopeCountLabel(); !strings.Contains(got, `"Cleanup" (case ignored) in`) {
 		t.Fatalf("relaxed count label = %q, want a case-ignored badge", got)
 	}
 
-	view.searchApplied = "Zebra"
-	view.rederiveVisibleRows()
-	if len(view.visibleRows) != 0 || view.searchCaseRelaxed {
+	view.SearchApplied = "Zebra"
+	view.RederiveVisibleRows()
+	if len(view.VisibleRows) != 0 || view.searchCaseRelaxed {
 		t.Fatalf("unmatchable search = %d rows relaxed=%v, want an ordinary empty state",
-			len(view.visibleRows), view.searchCaseRelaxed)
+			len(view.VisibleRows), view.searchCaseRelaxed)
 	}
 	if got := view.scopeCountLabel(); strings.Contains(got, "case ignored") {
 		t.Fatalf("empty retry count label = %q, want no badge", got)
@@ -171,34 +171,34 @@ func TestNotesSearchLiveInputNavigationAndEscTransitions(t *testing.T) {
 	for _, r := range "needle" {
 		_, _ = view.Update(syntheticKey(r))
 	}
-	if view.locationPicker != nil {
+	if view.LocationPicker != nil {
 		t.Fatal("search text propagated a to the note creation control")
 	}
-	if view.SearchQuery() != "" || len(view.visibleRows) != 2 {
+	if view.SearchQuery() != "" || len(view.VisibleRows) != 2 {
 		t.Fatalf(
 			"live draft changed accepted query or results: accepted=%q rows=%d",
 			view.SearchQuery(),
-			len(view.visibleRows),
+			len(view.VisibleRows),
 		)
 	}
 
-	view.cursor = 0
+	view.Cursor = 0
 	_, _ = view.Update(syntheticSpecialKey(tea.KeyDown))
-	if view.cursor != 1 {
-		t.Fatalf("Down during search moved cursor to %d, want 1", view.cursor)
+	if view.Cursor != 1 {
+		t.Fatalf("Down during search moved cursor to %d, want 1", view.Cursor)
 	}
 	_, _ = view.Update(syntheticCtrlKey('k'))
-	if view.cursor != 0 {
-		t.Fatalf("Ctrl+K during search moved cursor to %d, want 0", view.cursor)
+	if view.Cursor != 0 {
+		t.Fatalf("Ctrl+K during search moved cursor to %d, want 0", view.Cursor)
 	}
 
 	_, _ = view.Update(syntheticSpecialKey(tea.KeyEnter))
-	if view.HasTextInput() || view.SearchQuery() != "needle" || len(view.visibleRows) != 2 {
+	if view.HasTextInput() || view.SearchQuery() != "needle" || len(view.VisibleRows) != 2 {
 		t.Fatalf(
 			"accepted search = input %t query %q rows %d",
 			view.HasTextInput(),
 			view.SearchQuery(),
-			len(view.visibleRows),
+			len(view.VisibleRows),
 		)
 	}
 	rendered := view.View().Content
@@ -221,29 +221,29 @@ func TestNotesSearchLiveInputNavigationAndEscTransitions(t *testing.T) {
 	}
 	_, _ = view.Update(syntheticSpecialKey(tea.KeyEsc))
 	_, _ = view.Update(syntheticKey(' '))
-	if shell.contextActionSheet == nil {
+	if !shell.actionSheetOpened {
 		t.Fatal("applied search result could not reach its action sheet")
 	}
-	shell.contextActionSheet = nil
+	shell.actionSheetOpened = false
 
 	_, _ = view.Update(syntheticKey('/'))
 	_, _ = view.Update(syntheticKey('z'))
-	if len(view.visibleRows) != 0 || view.SearchQuery() != "needle" {
-		t.Fatalf("draft edit = rows %d accepted %q, want zero rows and prior query", len(view.visibleRows), view.SearchQuery())
+	if len(view.VisibleRows) != 0 || view.SearchQuery() != "needle" {
+		t.Fatalf("draft edit = rows %d accepted %q, want zero rows and prior query", len(view.VisibleRows), view.SearchQuery())
 	}
 	_, _ = view.Update(syntheticSpecialKey(tea.KeyEsc))
-	if view.HasTextInput() || view.SearchQuery() != "needle" || len(view.visibleRows) != 2 {
+	if view.HasTextInput() || view.SearchQuery() != "needle" || len(view.VisibleRows) != 2 {
 		t.Fatalf(
 			"editing Esc did not restore accepted search: input=%t query=%q rows=%d",
 			view.HasTextInput(),
 			view.SearchQuery(),
-			len(view.visibleRows),
+			len(view.VisibleRows),
 		)
 	}
 
 	_, clearCmd := view.Update(syntheticSpecialKey(tea.KeyEsc))
-	if clearCmd != nil || view.SearchQuery() != "" || len(view.visibleRows) != 3 {
-		t.Fatalf("normal Esc did not clear search first: cmd=%v query=%q rows=%d", clearCmd, view.SearchQuery(), len(view.visibleRows))
+	if clearCmd != nil || view.SearchQuery() != "" || len(view.VisibleRows) != 3 {
+		t.Fatalf("normal Esc did not clear search first: cmd=%v query=%q rows=%d", clearCmd, view.SearchQuery(), len(view.VisibleRows))
 	}
 	_, closeCmd := view.Update(syntheticSpecialKey(tea.KeyEsc))
 	if closeCmd == nil {
@@ -279,14 +279,14 @@ func TestNotesSearchAcceptedQuerySurvivesScopeAndRefresh(t *testing.T) {
 	_, _ = view.Update(syntheticSpecialKey(tea.KeyEnter))
 
 	view.SetScope(route.GlobalNotesScope())
-	if view.SearchQuery() != "needle" || len(view.visibleRows) != 1 ||
-		view.visibleRows[0].Location != app.GlobalNoteLocation() {
-		t.Fatalf("Global scope lost search: query=%q rows=%#v", view.SearchQuery(), view.visibleRows)
+	if view.SearchQuery() != "needle" || len(view.VisibleRows) != 1 ||
+		view.VisibleRows[0].Location != app.GlobalNoteLocation() {
+		t.Fatalf("Global scope lost search: query=%q rows=%#v", view.SearchQuery(), view.VisibleRows)
 	}
 	view.SetScope(route.ProjectNotesScope(project.ID))
-	if view.SearchQuery() != "needle" || len(view.visibleRows) != 1 ||
-		view.visibleRows[0].Location != app.ProjectNoteLocation(project.ID) {
-		t.Fatalf("project scope lost search: query=%q rows=%#v", view.SearchQuery(), view.visibleRows)
+	if view.SearchQuery() != "needle" || len(view.VisibleRows) != 1 ||
+		view.VisibleRows[0].Location != app.ProjectNoteLocation(project.ID) {
+		t.Fatalf("project scope lost search: query=%q rows=%#v", view.SearchQuery(), view.VisibleRows)
 	}
 
 	service.byLocation[app.ProjectNoteLocation(project.ID)] = append(
@@ -294,7 +294,7 @@ func TestNotesSearchAcceptedQuerySurvivesScopeAndRefresh(t *testing.T) {
 		&models.Note{Title: "Another", Filename: "another.md", Body: "needle"},
 	)
 	view.RefreshWorkspace(project)
-	if view.SearchQuery() != "needle" || len(view.visibleRows) != 2 {
-		t.Fatalf("refresh lost accepted search: query=%q rows=%d", view.SearchQuery(), len(view.visibleRows))
+	if view.SearchQuery() != "needle" || len(view.VisibleRows) != 2 {
+		t.Fatalf("refresh lost accepted search: query=%q rows=%d", view.SearchQuery(), len(view.VisibleRows))
 	}
 }

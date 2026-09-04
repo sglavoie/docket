@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/query"
@@ -188,7 +189,7 @@ type OutlinerModel struct {
 	// preview painter both get: that preview is a task preview, and notes are
 	// not tasks. The Outliner never learns where notes live or when they are
 	// read; it only reads whatever the shell last retained.
-	noteSearchIndex func() []LocatedNoteRow
+	noteSearchIndex func() []notes.LocatedNoteRow
 
 	// noteCursorReseat is the note the cursor rested on when an accepted
 	// note-index refresh forced a rebuild. The refresh lands asynchronously and
@@ -196,14 +197,14 @@ type OutlinerModel struct {
 	// different result on the next frame. It is captured with the force flag and
 	// consumed by the one rebuild that flag guarantees; a rebuild that finds the
 	// note gone leaves the ordinary clamp in place.
-	noteCursorReseat NoteRowIdentity
+	noteCursorReseat notes.NoteRowIdentity
 
 	// searchNoteMatches is what the notes tier's rows are rendered from, keyed the
 	// way the Notes manager keys its own match map. It lives beside the rows
 	// rather than on them because a note row's render payload is wide — the note
 	// itself, its owner label, and the positions that ranked its title — and
 	// outlinerRow is copied for every row of every rebuild.
-	searchNoteMatches map[NoteRowIdentity]outlinerSearchNoteMatch
+	searchNoteMatches map[notes.NoteRowIdentity]outlinerSearchNoteMatch
 
 	// searchAutocomplete is the slash-search suggestion pane. It holds no cached
 	// vocabulary: every refresh reprojects the grammar and rereads the live

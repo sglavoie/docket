@@ -1,4 +1,4 @@
-package tui
+package notes
 
 import (
 	"fmt"
@@ -194,10 +194,10 @@ func (m *NotesViewModel) notesPreviewGeometry(width int) (int, int) {
 // nothing to show beside the list. A picker owns the whole view while it is
 // open, and a snapshot error means no row is trustworthy.
 func (m *NotesViewModel) notesPreviewRow() *LocatedNoteRow {
-	if m.locationPicker != nil || m.snapshotError != nil {
+	if m.LocationPicker != nil || m.snapshotError != nil {
 		return nil
 	}
-	row := m.currentRow()
+	row := m.CurrentRow()
 	if row == nil || row.Note == nil {
 		return nil
 	}
@@ -210,7 +210,7 @@ func (m *NotesViewModel) notesPreviewRow() *LocatedNoteRow {
 func (m *NotesViewModel) notesPreviewCacheKey(row *LocatedNoteRow, width int) notesPreviewKey {
 	return notesPreviewKey{
 		identity:      row.Identity(),
-		scope:         m.scope,
+		scope:         m.Scope,
 		query:         strings.TrimSpace(m.activeSearchQuery()),
 		caseSensitive: m.effectiveSearchCaseSensitive(),
 		revision:      notesPreviewRevision(row.Note),
@@ -234,7 +234,7 @@ func (m *NotesViewModel) effectiveSearchCaseSensitive() bool {
 // the visible result set decided it. A title-only hit reports false and opens at
 // the top.
 func (m *NotesViewModel) notesPreviewBodyMatched(row *LocatedNoteRow) bool {
-	return m.searchMatches[row.Identity()].bodyMatched
+	return m.SearchMatches[row.Identity()].BodyMatched
 }
 
 // notesPreviewVisible answers whether the pane is on screen at all: the shared

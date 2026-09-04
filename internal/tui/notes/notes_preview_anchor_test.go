@@ -1,4 +1,4 @@
-package tui
+package notes
 
 import (
 	"fmt"
@@ -53,10 +53,10 @@ func renderedLineContaining(t *testing.T, view *NotesViewModel, needle string) i
 // applyNotesSearch accepts a query the way Enter does, so the visible rows, the
 // match map, and the relaxed-case flag are all the ones the surface would show.
 func applyNotesSearch(view *NotesViewModel, query string) {
-	view.searchApplied = query
+	view.SearchApplied = query
 	view.searchBeforeEdit = query
 	view.searchInput.SetValue(query)
-	view.rederiveVisibleRows()
+	view.RederiveVisibleRows()
 }
 
 func anchorPage(view *NotesViewModel) string {
@@ -145,10 +145,10 @@ func TestNotesPreviewAnchorFollowsTheEffectiveQueryAndCaseMode(t *testing.T) {
 	t.Run("fuzzy body match anchors on the line it is locatable in", func(t *testing.T) {
 		view := newView(t)
 		applyNotesSearch(view, "kstrl")
-		if len(view.visibleRows) != 1 {
-			t.Fatalf("fuzzy body query matched %d rows, want one", len(view.visibleRows))
+		if len(view.VisibleRows) != 1 {
+			t.Fatalf("fuzzy body query matched %d rows, want one", len(view.VisibleRows))
 		}
-		if !view.notesPreviewBodyMatched(&view.visibleRows[0]) {
+		if !view.notesPreviewBodyMatched(&view.VisibleRows[0]) {
 			t.Fatal("fuzzy body query did not report a body match")
 		}
 		anchorPage(view)
@@ -187,7 +187,7 @@ func TestNotesPreviewAnchorFollowsTheEffectiveQueryAndCaseMode(t *testing.T) {
 	t.Run("title-only match and no query both open at the top", func(t *testing.T) {
 		view := newView(t)
 		applyNotesSearch(view, "Long")
-		if view.notesPreviewBodyMatched(&view.visibleRows[0]) {
+		if view.notesPreviewBodyMatched(&view.VisibleRows[0]) {
 			t.Fatal("a title hit reported a body match")
 		}
 		anchorPage(view)
@@ -298,25 +298,25 @@ func TestNotesPreviewAnchorKeyResetsOnEveryAxisAndHoldsManualPagingOtherwise(t *
 		}
 	}
 
-	reanchor(t, "note identity", func() { view.cursor = 1 })
+	reanchor(t, "note identity", func() { view.Cursor = 1 })
 	reanchor(t, "accepted query", func() { applyNotesSearch(view, "KESTREL") })
 	reanchor(t, "live draft", func() {
 		view.searchEditing = true
 		view.searchInput.SetValue("kestre")
-		view.rederiveVisibleRows()
+		view.RederiveVisibleRows()
 	})
-	reanchor(t, "raw revision", func() { view.currentRow().Note.RawRevision = "rev-reloaded" })
+	reanchor(t, "raw revision", func() { view.CurrentRow().Note.RawRevision = "rev-reloaded" })
 	// Dropping the revision moves the key onto the body digest, and changing the
 	// body then moves the digest: an in-memory edit that never reached disk still
 	// re-renders and re-anchors.
-	reanchor(t, "revision absent", func() { view.currentRow().Note.RawRevision = "" })
+	reanchor(t, "revision absent", func() { view.CurrentRow().Note.RawRevision = "" })
 	reanchor(t, "body digest", func() {
-		row := view.currentRow()
+		row := view.CurrentRow()
 		row.Note.Body = "- prepended lead line\n" + row.Note.Body
 	})
 	reanchor(t, "scope", func() { view.SetScope(route.GlobalNotesScope()) })
-	if view.currentRow().Note.Filename != "global.md" {
-		t.Fatalf("scope change left the cursor on %q", view.currentRow().Note.Filename)
+	if view.CurrentRow().Note.Filename != "global.md" {
+		t.Fatalf("scope change left the cursor on %q", view.CurrentRow().Note.Filename)
 	}
 
 	// Width is the one axis the key records from the render rather than the model,
@@ -386,8 +386,8 @@ func TestNotesPreviewPagingDuringSearchEditingLeavesTheDraftAlone(t *testing.T) 
 	if !view.searchEditing {
 		t.Fatal("Ctrl+F accepted or canceled the search draft")
 	}
-	if view.searchApplied != "" {
-		t.Fatalf("Ctrl+F accepted the draft as %q", view.searchApplied)
+	if view.SearchApplied != "" {
+		t.Fatalf("Ctrl+F accepted the draft as %q", view.SearchApplied)
 	}
 	if view.searchInput.Value() != "kestrel" {
 		t.Fatalf("Ctrl+F reached the text input: draft = %q", view.searchInput.Value())
@@ -409,8 +409,8 @@ func TestNotesPreviewPagingDuringSearchEditingLeavesTheDraftAlone(t *testing.T) 
 	paged := view.preview.offset
 	_, _ = view.Update(syntheticSpecialKey(tea.KeyEnter))
 	notesScreen(t, view)
-	if view.searchApplied != "kestrel" {
-		t.Fatalf("Enter did not accept the draft: %q", view.searchApplied)
+	if view.SearchApplied != "kestrel" {
+		t.Fatalf("Enter did not accept the draft: %q", view.SearchApplied)
 	}
 	if view.preview.offset != paged {
 		t.Fatalf("accepting an unchanged draft reset the page from %d to %d", paged, view.preview.offset)

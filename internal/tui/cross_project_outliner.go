@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -332,7 +333,7 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 // capture alive until the rebuild the force flag guarantees actually runs.
 func (m *OutlinerModel) reseatNoteCursorAfterRebuild() {
 	identity := m.noteCursorReseat
-	m.noteCursorReseat = NoteRowIdentity{}
+	m.noteCursorReseat = notes.NoteRowIdentity{}
 	if identity.Filename == "" {
 		return
 	}

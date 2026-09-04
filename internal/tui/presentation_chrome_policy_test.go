@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/help"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
@@ -127,7 +128,7 @@ func TestPresentationChromeEligibleFamiliesRenderWorkspacePulse(t *testing.T) {
 			return m.View().Content
 		}},
 		{name: "notes", view: func(workspacePulse pulse.WorkspacePulse) string {
-			m := &NotesViewModel{scope: route.AllNotesScope()}
+			m := &notes.NotesViewModel{Scope: route.AllNotesScope()}
 			m.SetSize(140, 30)
 			m.SetWorkspacePulse(workspacePulse)
 			return m.View().Content

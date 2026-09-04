@@ -8,11 +8,12 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
-func noteIndexRow(location app.NoteLocation, label, title, filename string) LocatedNoteRow {
-	return LocatedNoteRow{
+func noteIndexRow(location app.NoteLocation, label, title, filename string) notes.LocatedNoteRow {
+	return notes.LocatedNoteRow{
 		Note:       &models.Note{Title: title, Filename: filename},
 		Location:   location,
 		OwnerLabel: label,
@@ -21,14 +22,14 @@ func noteIndexRow(location app.NoteLocation, label, title, filename string) Loca
 
 // noteTierOutliner builds a cross-project Outliner whose note index is the
 // supplied snapshot, which is what the shell injects in production.
-func noteTierOutliner(rows []LocatedNoteRow, projects ...*models.Project) *OutlinerModel {
+func noteTierOutliner(rows []notes.LocatedNoteRow, projects ...*models.Project) *OutlinerModel {
 	outliner := scopeTestOutliner(projects...)
-	outliner.setNoteSearchIndex(func() []LocatedNoteRow { return rows })
+	outliner.setNoteSearchIndex(func() []notes.LocatedNoteRow { return rows })
 	return outliner
 }
 
-func noteTierIdentities(matches []outlinerSearchNoteMatch) []NoteRowIdentity {
-	identities := make([]NoteRowIdentity, len(matches))
+func noteTierIdentities(matches []outlinerSearchNoteMatch) []notes.NoteRowIdentity {
+	identities := make([]notes.NoteRowIdentity, len(matches))
 	for i, match := range matches {
 		identities[i] = match.row.Identity()
 	}
@@ -87,7 +88,7 @@ func TestNoteSearchTierIsAbsentWithoutAnInjectedIndex(t *testing.T) {
 }
 
 func TestNoteSearchTierRefusedByTheSigilDecision(t *testing.T) {
-	rows := []LocatedNoteRow{
+	rows := []notes.LocatedNoteRow{
 		noteIndexRow(app.GlobalNoteLocation(), "Global", "Needle note", "needle.md"),
 	}
 	outliner := noteTierOutliner(rows)
@@ -104,7 +105,7 @@ func TestNoteSearchTierRefusedByTheSigilDecision(t *testing.T) {
 func TestNoteSearchTierRespectsProjectScope(t *testing.T) {
 	alpha := primaryRowsProject("alpha")
 	beta := primaryRowsProject("beta")
-	rows := []LocatedNoteRow{
+	rows := []notes.LocatedNoteRow{
 		noteIndexRow(app.GlobalNoteLocation(), "Global", "Global plan", "global.md"),
 		noteIndexRow(app.ProjectNoteLocation(alpha.ID), "alpha", "Alpha plan", "alpha.md"),
 		noteIndexRow(app.ProjectNoteLocation(beta.ID), "beta", "Beta plan", "beta.md"),
@@ -112,7 +113,7 @@ func TestNoteSearchTierRespectsProjectScope(t *testing.T) {
 	outliner := noteTierOutliner(rows, alpha, beta)
 
 	unscoped := noteTierIdentities(outliner.scoreNoteSearchTier("plan", fuzzy.NewMatcher(false), true))
-	wantUnscoped := []NoteRowIdentity{
+	wantUnscoped := []notes.NoteRowIdentity{
 		{Location: app.GlobalNoteLocation(), Filename: "global.md"},
 		{Location: app.ProjectNoteLocation(alpha.ID), Filename: "alpha.md"},
 		{Location: app.ProjectNoteLocation(beta.ID), Filename: "beta.md"},
@@ -123,7 +124,7 @@ func TestNoteSearchTierRespectsProjectScope(t *testing.T) {
 
 	outliner.pushProjectScope(alpha.ID)
 	scoped := noteTierIdentities(outliner.scoreNoteSearchTier("plan", fuzzy.NewMatcher(false), true))
-	wantScoped := []NoteRowIdentity{
+	wantScoped := []notes.NoteRowIdentity{
 		{Location: app.ProjectNoteLocation(alpha.ID), Filename: "alpha.md"},
 	}
 	if !slices.Equal(scoped, wantScoped) {
@@ -134,7 +135,7 @@ func TestNoteSearchTierRespectsProjectScope(t *testing.T) {
 // Ranking ties fall to the index's own location-then-filename order, so the
 // same query lists the same notes in the same order on every rebuild.
 func TestNoteSearchTierRanksByScoreThenIndexOrder(t *testing.T) {
-	rows := []LocatedNoteRow{
+	rows := []notes.LocatedNoteRow{
 		noteIndexRow(app.GlobalNoteLocation(), "Global", "Nothing here", "a.md"),
 		noteIndexRow(app.ProjectNoteLocation("alpha"), "alpha", "Widget rollout", "b.md"),
 		noteIndexRow(app.ProjectNoteLocation("alpha"), "alpha", "Widget rollout", "a.md"),
@@ -143,7 +144,7 @@ func TestNoteSearchTierRanksByScoreThenIndexOrder(t *testing.T) {
 	outliner := noteTierOutliner(rows)
 
 	got := noteTierIdentities(outliner.scoreNoteSearchTier("widget", fuzzy.NewMatcher(false), true))
-	want := []NoteRowIdentity{
+	want := []notes.NoteRowIdentity{
 		{Location: app.ProjectNoteLocation("alpha"), Filename: "a.md"},
 		{Location: app.ProjectNoteLocation("alpha"), Filename: "b.md"},
 		{Location: app.GlobalNoteLocation(), Filename: "a.md"},
@@ -160,7 +161,7 @@ func TestSearchRelaxesItsCaseUniformlyAcrossTasksAndNotes(t *testing.T) {
 	task := primaryRowsTask("task", models.StateBacklog)
 	task.Title = "Unrelated"
 	alpha := primaryRowsProject("alpha", task)
-	rows := []LocatedNoteRow{
+	rows := []notes.LocatedNoteRow{
 		noteIndexRow(app.GlobalNoteLocation(), "Global", "widget rollout", "widget.md"),
 	}
 	outliner := noteTierOutliner(rows, alpha)
@@ -196,7 +197,7 @@ func TestNoteOwnerCatalogAdmitsGlobalAndRefusesArchivedOwners(t *testing.T) {
 	blank := &models.Project{ID: "  ", Name: "Blank", Path: t.TempDir()}
 	unnamed := &models.Project{ID: "unnamed", Path: t.TempDir()}
 
-	owners, projects := noteOwnerCatalog("/notes", []*models.Project{alpha, archived, blank, unnamed, alpha})
+	owners, projects := notes.NoteOwnerCatalog("/notes", []*models.Project{alpha, archived, blank, unnamed, alpha})
 	if len(projects) != 2 || projects[0] != alpha || projects[1] != unnamed {
 		t.Fatalf("owned projects = %+v, want alpha and unnamed once each", projects)
 	}
@@ -234,13 +235,13 @@ func TestNoteSearchIndexCmdOrdersRowsAndLabelsOwners(t *testing.T) {
 	if msg.generation != 7 || msg.err != nil {
 		t.Fatalf("generation %d err %v, want the requested generation and no error", msg.generation, msg.err)
 	}
-	got := make([]NoteRowIdentity, len(msg.rows))
+	got := make([]notes.NoteRowIdentity, len(msg.rows))
 	labels := make([]string, len(msg.rows))
 	for i, row := range msg.rows {
 		got[i] = row.Identity()
 		labels[i] = row.OwnerLabel
 	}
-	want := []NoteRowIdentity{
+	want := []notes.NoteRowIdentity{
 		{Location: global, Filename: "z.md"},
 		{Location: alpha, Filename: "a.md"},
 		{Location: alpha, Filename: "b.md"},
@@ -267,8 +268,8 @@ func TestNoteSearchIndexCmdOrdersRowsAndLabelsOwners(t *testing.T) {
 }
 
 func TestNoteSearchIndexKeepsItsRowsAgainstStaleAndFailedReads(t *testing.T) {
-	live := []LocatedNoteRow{noteIndexRow(app.GlobalNoteLocation(), "Global", "Live", "live.md")}
-	stale := []LocatedNoteRow{noteIndexRow(app.GlobalNoteLocation(), "Global", "Stale", "stale.md")}
+	live := []notes.LocatedNoteRow{noteIndexRow(app.GlobalNoteLocation(), "Global", "Live", "live.md")}
+	stale := []notes.LocatedNoteRow{noteIndexRow(app.GlobalNoteLocation(), "Global", "Stale", "stale.md")}
 	model := &AppModel{noteIndexGeneration: 3, noteIndexRows: live}
 
 	model.handleNoteSearchIndexLoaded(noteSearchIndexLoadedMsg{generation: 2, rows: stale})
@@ -312,7 +313,7 @@ func TestNoteSearchIndexRefreshRebuildsOpenProjection(t *testing.T) {
 		t.Fatalf("projection = %d note rows before the index landed, want none", got)
 	}
 
-	refreshed := []LocatedNoteRow{
+	refreshed := []notes.LocatedNoteRow{
 		noteIndexRow(app.GlobalNoteLocation(), "Global", "Widget rollout", "widget.md"),
 	}
 	model.handleNoteSearchIndexLoaded(noteSearchIndexLoadedMsg{generation: 4, rows: refreshed})
@@ -325,7 +326,7 @@ func TestNoteSearchIndexRefreshRebuildsOpenProjection(t *testing.T) {
 
 	// A stale generation and a failed read leave the displayed projection alone
 	// rather than replacing it with a superseded or empty answer.
-	superseded := []LocatedNoteRow{
+	superseded := []notes.LocatedNoteRow{
 		noteIndexRow(app.GlobalNoteLocation(), "Global", "Nothing here", "other.md"),
 	}
 	model.handleNoteSearchIndexLoaded(noteSearchIndexLoadedMsg{generation: 3, rows: superseded})
@@ -352,7 +353,7 @@ func TestNoteSearchIndexRefreshPreservesCursorIdentity(t *testing.T) {
 	// One title for all three, so the tier's score ties and its filename
 	// tiebreak is what decides order. Inserting "widget-a.md" then pushes every
 	// already-visible match down exactly one row.
-	rows := []LocatedNoteRow{
+	rows := []notes.LocatedNoteRow{
 		noteIndexRow(global, "Global", "Widget notes", "widget-b.md"),
 		noteIndexRow(global, "Global", "Widget notes", "widget-c.md"),
 	}
@@ -364,7 +365,7 @@ func TestNoteSearchIndexRefreshPreservesCursorIdentity(t *testing.T) {
 	if got := countNoteRows(outliner); got != 2 {
 		t.Fatalf("projection = %d note rows, want both matching notes", got)
 	}
-	selected := NoteRowIdentity{Location: global, Filename: "widget-c.md"}
+	selected := notes.NoteRowIdentity{Location: global, Filename: "widget-c.md"}
 	index, ok := noteRowIndex(outliner, selected)
 	if !ok {
 		t.Fatalf("note rows = %+v, want the selected note on screen", noteRowIdentities(outliner))
@@ -381,7 +382,7 @@ func TestNoteSearchIndexRefreshPreservesCursorIdentity(t *testing.T) {
 			outliner.Cursor, countNoteRows(outliner))
 	}
 
-	inserted := []LocatedNoteRow{
+	inserted := []notes.LocatedNoteRow{
 		noteIndexRow(global, "Global", "Widget notes", "widget-a.md"),
 		rows[0],
 		rows[1],
@@ -426,8 +427,8 @@ func TestNoteSearchIndexRefreshPreservesCursorIdentity(t *testing.T) {
 	}
 }
 
-func noteRowIdentities(outliner *OutlinerModel) []NoteRowIdentity {
-	var identities []NoteRowIdentity
+func noteRowIdentities(outliner *OutlinerModel) []notes.NoteRowIdentity {
+	var identities []notes.NoteRowIdentity
 	for _, row := range outliner.rows {
 		if row.IsNoteRow {
 			identities = append(identities, row.NoteRow)
@@ -436,7 +437,7 @@ func noteRowIdentities(outliner *OutlinerModel) []NoteRowIdentity {
 	return identities
 }
 
-func noteRowIndex(outliner *OutlinerModel, identity NoteRowIdentity) (int, bool) {
+func noteRowIndex(outliner *OutlinerModel, identity notes.NoteRowIdentity) (int, bool) {
 	for index, row := range outliner.rows {
 		if row.IsNoteRow && row.NoteRow == identity {
 			return index, true

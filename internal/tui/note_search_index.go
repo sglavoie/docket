@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/notes"
 )
 
 // noteSearchIndexOwner is the value-only owner description a background note
@@ -24,7 +25,7 @@ type noteSearchIndexOwner struct {
 // does, so a slow read can never overwrite a newer one.
 type noteSearchIndexLoadedMsg struct {
 	generation int
-	rows       []LocatedNoteRow
+	rows       []notes.LocatedNoteRow
 	err        error
 }
 
@@ -33,7 +34,7 @@ type noteSearchIndexLoadedMsg struct {
 // read that produces it must happen exactly once per invalidation and never
 // inside a row rebuild.
 func noteSearchIndexCmd(
-	service projectNoteService,
+	service notes.ProjectNoteService,
 	generation int,
 	owners []noteSearchIndexOwner,
 ) tea.Cmd {
@@ -51,7 +52,7 @@ func noteSearchIndexCmd(
 		if err != nil {
 			return noteSearchIndexLoadedMsg{generation: generation, err: err}
 		}
-		rows := make([]LocatedNoteRow, 0, len(results))
+		rows := make([]notes.LocatedNoteRow, 0, len(results))
 		for _, result := range results {
 			// A collection that failed to read contributes nothing rather than
 			// failing the whole index: the Notes manager is the surface that
@@ -64,7 +65,7 @@ func noteSearchIndexCmd(
 				if note == nil {
 					continue
 				}
-				rows = append(rows, LocatedNoteRow{
+				rows = append(rows, notes.LocatedNoteRow{
 					Note:       note,
 					Location:   result.Location,
 					OwnerLabel: labels[result.Location],
@@ -78,9 +79,9 @@ func noteSearchIndexCmd(
 
 // sortNoteSearchIndexRows gives the index one deterministic order — location,
 // then filename — so a ranking tie resolves the same way on every rebuild.
-func sortNoteSearchIndexRows(rows []LocatedNoteRow) {
+func sortNoteSearchIndexRows(rows []notes.LocatedNoteRow) {
 	sort.SliceStable(rows, func(i, j int) bool {
-		if order := compareNoteLocations(rows[i].Location, rows[j].Location); order != 0 {
+		if order := notes.CompareNoteLocations(rows[i].Location, rows[j].Location); order != 0 {
 			return order < 0
 		}
 		return rows[i].Note.Filename < rows[j].Note.Filename
@@ -89,14 +90,14 @@ func sortNoteSearchIndexRows(rows []LocatedNoteRow) {
 
 // noteSearchIndexOwners freezes the current owner catalog. Global leads, then
 // every available project in catalog order, all of it admitted by the same
-// noteOwnerCatalog rule the Notes manager uses, so an archived project is
+// NoteOwnerCatalog rule the Notes manager uses, so an archived project is
 // already absent here rather than filtered later.
 func (m *AppModel) noteSearchIndexOwners() []noteSearchIndexOwner {
 	global := noteSearchIndexOwner{Location: app.GlobalNoteLocation(), Label: "Global"}
 	if m == nil || m.runtime == nil {
 		return []noteSearchIndexOwner{global}
 	}
-	catalog, projects := noteOwnerCatalog(
+	catalog, projects := notes.NoteOwnerCatalog(
 		storage.GlobalNotesDir(m.runtime.DataDir()),
 		m.availableProjects(),
 	)
@@ -130,7 +131,7 @@ func (m *AppModel) requestNoteSearchIndexLoad() tea.Cmd {
 	m.noteIndexGeneration++
 	// A typed nil *app.Service would satisfy the interface without satisfying
 	// the nil check inside the command, so the seam is narrowed here.
-	var service projectNoteService
+	var service notes.ProjectNoteService
 	if m.appService != nil {
 		service = m.appService
 	}
@@ -187,6 +188,6 @@ func (m *AppModel) invalidateOutlinerForNoteSearchIndex() {
 // noteSearchIndexRows is the accessor the Outliner is injected with. It is a
 // method value rather than a copied slice so an invalidation that lands while a
 // search projection is open is visible to the very next rebuild.
-func (m *AppModel) noteSearchIndexRows() []LocatedNoteRow {
+func (m *AppModel) noteSearchIndexRows() []notes.LocatedNoteRow {
 	return m.noteIndexRows
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -18,7 +19,7 @@ func (m *AppModel) ensureManageHub() *ManageHubModel {
 	if m.deps != nil {
 		historyLedger = m.deps.historyLedger()
 	}
-	var noteService projectNoteService
+	var noteService notes.ProjectNoteService
 	if m.appService != nil {
 		noteService = m.appService
 	}
@@ -121,7 +122,7 @@ func (m *AppModel) registerManageModulePresentation(params route.ManageParams, v
 
 func (m *AppModel) handleManageHubMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case ManageHubModuleSelectedMsg:
+	case route.ManageHubModuleSelectedMsg:
 		return true, m.activateManageHub(msg.Params)
 	default:
 		return false, nil
@@ -138,8 +139,8 @@ func (m *AppModel) handleInvalidManageProjectScope() (bool, tea.Cmd) {
 	if m.currentProject != nil && m.currentProject.ID == params.NotesScope.ProjectID {
 		m.currentProject = nil
 	}
-	if notes := m.getActiveNotesView(); notes != nil {
-		notes.RefreshWorkspace(m.availableProjects()...)
+	if view := m.getActiveNotesView(); view != nil {
+		view.RefreshWorkspace(m.availableProjects()...)
 	}
 	params.NotesScope = route.AllNotesScope()
 	m.setInfoStatus("Project was removed — showing All Notes")
@@ -151,15 +152,15 @@ func (m *AppModel) handleInvalidManageProjectScope() (bool, tea.Cmd) {
 // and the canonical typed route are replaced immediately instead of waiting for
 // the next keypress.
 func (m *AppModel) refreshActiveNotesManager() tea.Cmd {
-	notes := m.getActiveNotesView()
-	if notes == nil {
+	view := m.getActiveNotesView()
+	if view == nil {
 		return nil
 	}
-	if !notes.RefreshWorkspace(m.availableProjects()...) {
+	if !view.RefreshWorkspace(m.availableProjects()...) {
 		return nil
 	}
 	if m.manageHub == nil {
-		notes.setErrorStatus("Project is unavailable; reopen Notes to use All Notes")
+		view.SetErrorStatus("Project is unavailable; reopen Notes to use All Notes")
 		return nil
 	}
 
@@ -172,7 +173,7 @@ func (m *AppModel) refreshActiveNotesManager() tea.Cmd {
 	m.setInfoStatus(message)
 	cmd := m.activateManageHub(params)
 	if active := m.getActiveNotesView(); active != nil {
-		active.setStatus(message)
+		active.SetStatus(message)
 	}
 	return cmd
 }

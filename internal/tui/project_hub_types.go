@@ -147,7 +147,7 @@ type ProjectHubModel struct {
 	actions          *listsurface.ContextActionSheetModel
 	registry         *operation.OperationRegistry
 	executor         *operation.OperationExecutor
-	dispatch         operationKeyDispatch
+	dispatch         operation.KeyDispatch
 	focusedProjectID string
 	notice           string
 	taskFilter       projectHubTaskFilter

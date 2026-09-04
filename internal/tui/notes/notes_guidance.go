@@ -1,4 +1,4 @@
-package tui
+package notes
 
 import (
 	"fmt"
@@ -12,8 +12,8 @@ import (
 // two-row interaction budget; ordinary browse and causal empty states stay on
 // one row.
 func (m *NotesViewModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
-	if m.locationPicker != nil {
-		return m.locationPicker.guidanceSpec()
+	if m.LocationPicker != nil {
+		return m.LocationPicker.guidanceSpec()
 	}
 
 	switch {
@@ -22,7 +22,7 @@ func (m *NotesViewModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 			Hints: chrome.RequiredGuidanceHints("Y discard", "N/Esc keep editing"),
 			Rows:  2,
 		}, true
-	case m.confirm.IsActive():
+	case m.Confirm.IsActive():
 		return chrome.GuidanceSpec{
 			Hints: chrome.RequiredGuidanceHints("Y delete", "N/Esc cancel"),
 			Rows:  2,
@@ -35,7 +35,7 @@ func (m *NotesViewModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		}, true
 	case m.searchEditing:
 		supplemental := ""
-		if len(m.visibleRows) == 0 {
+		if len(m.VisibleRows) == 0 {
 			supplemental = "no matches"
 		}
 		hints := append(chrome.RequiredGuidanceHints("Enter apply search", "Esc cancel edit"),
@@ -48,15 +48,15 @@ func (m *NotesViewModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		}, true
 	}
 
-	if len(m.visibleRows) == 0 {
+	if len(m.VisibleRows) == 0 {
 		return m.emptyGuidance()
 	}
 
-	spec, ok := chrome.GuidanceSpecFromKeyMap(m.buildKeyMap(), 1)
+	spec, ok := chrome.GuidanceSpecFromKeyMap(m.BuildKeyMap(), 1)
 	if !ok {
 		return chrome.GuidanceSpec{}, false
 	}
-	if query := strings.TrimSpace(m.searchApplied); query != "" {
+	if query := strings.TrimSpace(m.SearchApplied); query != "" {
 		spec.Hints = append(chrome.RequiredGuidanceHints("Esc clear search"), spec.Hints...)
 		spec.Supplemental = fmt.Sprintf("search: %s", query)
 	}
@@ -87,7 +87,7 @@ func (m *NotesViewModel) emptyGuidance() (chrome.GuidanceSpec, bool) {
 			Rows:  1,
 		}, true
 	}
-	if query := strings.TrimSpace(m.searchApplied); query != "" {
+	if query := strings.TrimSpace(m.SearchApplied); query != "" {
 		return chrome.GuidanceSpec{
 			Hints: append(chrome.RequiredGuidanceHints("Esc clear search"),
 				chrome.OptionalGuidanceHints(10, "/ edit search")...),
@@ -103,13 +103,13 @@ func (m *NotesViewModel) emptyGuidance() (chrome.GuidanceSpec, bool) {
 }
 
 func (m *NotesViewModel) currentLocationGuidance() string {
-	row := m.currentRow()
+	row := m.CurrentRow()
 	if row == nil {
 		return ""
 	}
 	label := strings.TrimSpace(row.OwnerLabel)
 	if label == "" {
-		label = strings.TrimSpace(m.locationLabel(row.Location))
+		label = strings.TrimSpace(m.LocationLabel(row.Location))
 	}
 	if label == "" {
 		return ""

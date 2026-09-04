@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -73,11 +74,11 @@ func TestNoteRowDropsItsCueThenItsOwnerAsWidthFalls(t *testing.T) {
 }
 
 // TestNoteTierAndNotesManagerShareOneScorer pins the reuse the tier is built
-// on. Both surfaces admit notes through scoreNoteSearch, so the same query must
+// on. Both surfaces admit notes through notes.ScoreNoteSearch, so the same query must
 // admit the same notes with the same strength on both; a private scorer on
 // either side would let one surface rank a note the other never showed.
 func TestNoteTierAndNotesManagerShareOneScorer(t *testing.T) {
-	rows := []LocatedNoteRow{
+	rows := []notes.LocatedNoteRow{
 		{
 			Note:     &models.Note{Title: "Needle notes", Filename: "needle.md", Body: "the needle is in the title"},
 			Location: app.GlobalNoteLocation(),
@@ -103,18 +104,18 @@ func TestNoteTierAndNotesManagerShareOneScorer(t *testing.T) {
 	// The manager derives its own visible rows from the same snapshot. Only the
 	// fields deriveVisibleRows reads are set: the scorer is what is under test,
 	// not the file read that ordinarily fills loadedRows.
-	manager := &NotesViewModel{scope: route.AllNotesScope(), loadedRows: rows, searchApplied: query}
-	manager.deriveVisibleRows()
-	if len(manager.searchMatches) != len(tier) {
+	manager := &notes.NotesViewModel{Scope: route.AllNotesScope(), LoadedRows: rows, SearchApplied: query}
+	manager.DeriveVisibleRows()
+	if len(manager.SearchMatches) != len(tier) {
 		t.Fatalf("manager admitted %d notes, tier admitted %d",
-			len(manager.searchMatches), len(tier))
+			len(manager.SearchMatches), len(tier))
 	}
 	for _, match := range tier {
-		managed, ok := manager.searchMatches[match.row.Identity()]
+		managed, ok := manager.SearchMatches[match.row.Identity()]
 		if !ok {
 			t.Fatalf("the tier admitted %+v and the manager did not", match.row.Identity())
 		}
-		if managed.score != match.match.score || managed.bodyMatched != match.match.bodyMatched {
+		if managed.Score != match.match.Score || managed.BodyMatched != match.match.BodyMatched {
 			t.Fatalf("note %+v scored %+v on the tier and %+v in the manager",
 				match.row.Identity(), match.match, managed)
 		}
@@ -124,7 +125,7 @@ func TestNoteTierAndNotesManagerShareOneScorer(t *testing.T) {
 // noteTierFixtureApp searches the rich fixture for a query both a task and a
 // note answer and parks the cursor on the first note row, which is the only
 // cursor Open Note is applicable over.
-func noteTierFixtureApp(t *testing.T) (*AppModel, NoteRowIdentity) {
+func noteTierFixtureApp(t *testing.T) (*AppModel, notes.NoteRowIdentity) {
 	t.Helper()
 	app := headerTargetAuditApp(t)
 	outliner := app.crossOutliner
@@ -140,7 +141,7 @@ func noteTierFixtureApp(t *testing.T) (*AppModel, NoteRowIdentity) {
 		return app, row.NoteRow
 	}
 	t.Fatal("the fixture search returned no note row")
-	return nil, NoteRowIdentity{}
+	return nil, notes.NoteRowIdentity{}
 }
 
 // TestOpenNoteIsTheFourthEnterActOnANoteRow drives the descriptor the way the
@@ -183,9 +184,9 @@ func TestOpenNoteIsTheFourthEnterActOnANoteRow(t *testing.T) {
 	if result.Err != nil {
 		t.Fatalf("Open Note refused a note row: %v", result.Err)
 	}
-	message, isShow := result.Message.(ShowNotesManagerMsg)
+	message, isShow := result.Message.(notes.ShowNotesManagerMsg)
 	if !isShow {
-		t.Fatalf("Open Note emitted %T, want ShowNotesManagerMsg", result.Message)
+		t.Fatalf("Open Note emitted %T, want notes.ShowNotesManagerMsg", result.Message)
 	}
 	if message.Scope != route.AllNotesScope() {
 		t.Fatalf("Open Note opened scope %+v, want every note reachable", message.Scope)

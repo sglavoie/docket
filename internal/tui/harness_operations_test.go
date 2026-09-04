@@ -16,6 +16,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/help"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -132,9 +133,9 @@ func (m *AppModel) registerHarnessOperations() error {
 		{operationHarnessProjectNotes, "show notes", operation.OperationCategoryNote, func() tea.Msg {
 			_, project := m.outlinerTarget()
 			if project != nil {
-				return ShowNotesManagerMsg{Scope: route.ProjectNotesScope(project.ID)}
+				return notes.ShowNotesManagerMsg{Scope: route.ProjectNotesScope(project.ID)}
 			}
-			return ShowNotesManagerMsg{Scope: route.AllNotesScope()}
+			return notes.ShowNotesManagerMsg{Scope: route.AllNotesScope()}
 		}},
 		{operationHarnessOutlineErrors, "outline errors", operation.OperationCategorySystem, func() tea.Msg {
 			// The outline refusal surface is only reachable through an external

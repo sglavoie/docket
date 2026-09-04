@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -41,7 +42,7 @@ type outlinerRow struct {
 	ChecklistDone      bool                      // Ticked state of the item this row names
 	MatchSource        outlinerMatchSource       // Field that produced this search hit; matchSourceNone on every ordinary row
 	IsNoteRow          bool                      // True for one note from the search projection's notes tier
-	NoteRow            NoteRowIdentity           // Workspace identity of the note an IsNoteRow row names
+	NoteRow            notes.NoteRowIdentity     // Workspace identity of the note an IsNoteRow row names
 }
 
 // isTaskRow reports whether the row carries a task payload (i.e. it is not a
@@ -120,13 +121,13 @@ func (m *OutlinerModel) cursorNamesSectionHeader() bool {
 // of the cursor's row kind both command contexts share. A note row carries no
 // project or task, so this identity is the only thing an operation acting on it
 // can resolve a target from.
-func (m *OutlinerModel) cursorNoteIdentity() (NoteRowIdentity, bool) {
+func (m *OutlinerModel) cursorNoteIdentity() (notes.NoteRowIdentity, bool) {
 	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.rows) {
-		return NoteRowIdentity{}, false
+		return notes.NoteRowIdentity{}, false
 	}
 	row := m.rows[m.Cursor]
 	if !row.IsNoteRow || row.NoteRow.Filename == "" {
-		return NoteRowIdentity{}, false
+		return notes.NoteRowIdentity{}, false
 	}
 	return row.NoteRow, true
 }

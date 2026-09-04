@@ -1,4 +1,4 @@
-package tui
+package notes
 
 import (
 	"fmt"
@@ -10,39 +10,39 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 )
 
-// projectNoteService is the narrow typed application boundary used by project
+// ProjectNoteService is the narrow typed application boundary used by project
 // note views and overlays. Production supplies *app.Service; tests can inject a
 // deterministic fake without exposing canonical note paths.
-type projectNoteService interface {
+type ProjectNoteService interface {
 	NotesAtLocations([]app.NoteLocation) ([]app.NoteCollectionResult, error)
 	ApplyNoteBatch(app.NoteBatchRequest) (app.NoteBatchResult, error)
 }
 
-// noteMutationRef is an immutable, path-free snapshot of a note selected for a
+// NoteMutationRef is an immutable, path-free snapshot of a note selected for a
 // pending operation. Keeping the note by value prevents later view refreshes
 // from changing the revision or content that the eventual command commits.
-type noteMutationRef struct {
+type NoteMutationRef struct {
 	Location app.NoteLocation
 	Note     models.Note
 }
 
-func newNoteMutationRef(location app.NoteLocation, note *models.Note) noteMutationRef {
-	copyNote := cloneNoteForCommand(note)
+func NewNoteMutationRef(location app.NoteLocation, note *models.Note) NoteMutationRef {
+	copyNote := CloneNoteForCommand(note)
 	if copyNote == nil {
-		return noteMutationRef{Location: location}
+		return NoteMutationRef{Location: location}
 	}
-	return noteMutationRef{Location: location, Note: *copyNote}
+	return NoteMutationRef{Location: location, Note: *copyNote}
 }
 
-func (r noteMutationRef) valid() bool {
+func (r NoteMutationRef) Valid() bool {
 	return r.Location.Scope != "" && r.Note.Filename != ""
 }
 
-func (r noteMutationRef) noteCopy() *models.Note {
-	return cloneNoteForCommand(&r.Note)
+func (r NoteMutationRef) noteCopy() *models.Note {
+	return CloneNoteForCommand(&r.Note)
 }
 
-func cloneNoteForCommand(note *models.Note) *models.Note {
+func CloneNoteForCommand(note *models.Note) *models.Note {
 	if note == nil {
 		return nil
 	}
@@ -50,20 +50,20 @@ func cloneNoteForCommand(note *models.Note) *models.Note {
 	return &clone
 }
 
-func cloneNoteBatchRequest(req app.NoteBatchRequest) app.NoteBatchRequest {
+func CloneNoteBatchRequest(req app.NoteBatchRequest) app.NoteBatchRequest {
 	copyReq := req
 	copyReq.Operations = make([]app.NoteMutationRequest, len(req.Operations))
 	for i, operation := range req.Operations {
 		copyReq.Operations[i] = operation
-		copyReq.Operations[i].Note = cloneNoteForCommand(operation.Note)
+		copyReq.Operations[i].Note = CloneNoteForCommand(operation.Note)
 	}
 	return copyReq
 }
 
-// noteMutationCmd freezes the complete request before starting an asynchronous
+// NoteMutationCmd freezes the complete request before starting an asynchronous
 // project or global note commit.
-func noteMutationCmd(service projectNoteService, location app.NoteLocation, req app.NoteBatchRequest, success string) tea.Cmd {
-	request := cloneNoteBatchRequest(req)
+func NoteMutationCmd(service ProjectNoteService, location app.NoteLocation, req app.NoteBatchRequest, success string) tea.Cmd {
+	request := CloneNoteBatchRequest(req)
 	return func() tea.Msg {
 		if service == nil {
 			return ProjectNoteMutationErrorMsg{Location: location, ProjectID: location.ProjectID, Err: fmt.Errorf("note service is unavailable")}

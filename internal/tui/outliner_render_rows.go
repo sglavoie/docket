@@ -435,7 +435,7 @@ func (m *OutlinerModel) renderOutlinerNoteRow(
 		title = textfit.TruncateToVisualWidth(entry.row.Note.Title, titleWidth())
 	}
 	content := glyph + " " + priorityColumn +
-		textfit.HighlightText(title, entry.match.titlePositions, theme.NormalStyle) + owner + cue
+		textfit.HighlightText(title, entry.match.TitlePositions, theme.NormalStyle) + owner + cue
 
 	if selected {
 		return outlinerCursorRow(gutter, content, rowWidth, paint)

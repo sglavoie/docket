@@ -141,7 +141,7 @@ func TestFooterFlashArmsOnViewStatusLine(t *testing.T) {
 	app := flashTestApp(t)
 
 	before := app.captureFooterFlashProbe()
-	app.crossOutliner.setStatus("Exit search before changing modes")
+	app.crossOutliner.SetStatus("Exit search before changing modes")
 	cmd := app.armFooterFlashSince(before)
 
 	if cmd == nil {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -24,7 +25,7 @@ func noteRowProjection(t *testing.T) *OutlinerModel {
 	other.Title = "Unrelated work"
 	project := primaryRowsProject("alpha", task, other)
 
-	outliner := noteTierOutliner([]LocatedNoteRow{
+	outliner := noteTierOutliner([]notes.LocatedNoteRow{
 		noteIndexRow(app.GlobalNoteLocation(), "", "Needle notes", "needle.md"),
 		noteIndexRow(app.ProjectNoteLocation("alpha"), "alpha", "Needle again", "again.md"),
 		noteIndexRow(app.GlobalNoteLocation(), "", "Nothing here", "quiet.md"),
@@ -86,11 +87,11 @@ func TestSearchProjectionSeatsNoteRowsBelowEveryTaskMatch(t *testing.T) {
 	for i := 1; i < len(noteIndexes); i++ {
 		prev := outliner.searchNoteMatches[outliner.rows[noteIndexes[i-1]].NoteRow]
 		curr := outliner.searchNoteMatches[outliner.rows[noteIndexes[i]].NoteRow]
-		if prev.match.score < curr.match.score {
+		if prev.match.Score < curr.match.Score {
 			t.Fatalf("note row scores ran uphill: %d before %d",
-				prev.match.score, curr.match.score)
+				prev.match.Score, curr.match.Score)
 		}
-		if prev.match.score == curr.match.score && prev.sourceIndex >= curr.sourceIndex {
+		if prev.match.Score == curr.match.Score && prev.sourceIndex >= curr.sourceIndex {
 			t.Fatalf("tied note rows ordered %d before %d, want the index's own order",
 				prev.sourceIndex, curr.sourceIndex)
 		}

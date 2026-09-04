@@ -103,6 +103,21 @@
 #     `internal/tui/grammar`, the surface package this column names. None of the
 #     four can close a cycle: `theme`, `textfit` and `pulse` are L0 and `route`
 #     is L4, and no package below L6 reaches `help`.
+#   - `notes` lost `taskref,pulse,coordinator,grammar,query` in Session 2.22,
+#     when the package was extracted and its row could be read off real imports
+#     rather than predicted. Notes are location-qualified, never task-qualified,
+#     so no file names `taskref.TaskIdentity`; the manager holds no task and
+#     never asks `coordinator` a date question, writes no capture grammar, and
+#     compiles no facet, so `grammar` and `query` go unread too. `pulse` is
+#     reached only through the base view it embeds, and Go imports are not
+#     transitive in the other direction: an edge nothing spells is a dependency
+#     nothing has. What remains is what a full-screen list surface is written
+#     in -- `route.View` and `presentation.PresentationID` for navigation,
+#     `listsurface` for the base and the preview, `operation` for the strategy
+#     and the descriptors, `chrome`/`theme`/`textfit` for the render,
+#     `keymap.Binding` for the help projection, `status` for the notice, and
+#     `help` because `?` raises the viewer from this surface. Removing five
+#     edges can close no cycle.
 #   - `textfit -> theme` is the first edge inside L0, added in Session 2.3 when
 #     the package was extracted. context.md gives `textfit` "Markdown,
 #     highlighting" and both are inherently styled: `markdown.go` picks the
@@ -127,7 +142,7 @@ operation	L3	presentation,chrome,taskref,status,grammar,query
 route	L4	presentation,chrome,operation,theme
 listsurface	L5	route,operation,chrome,textfit,theme,keymap,presentation,taskref,query,status,pulse
 help	L6	listsurface,operation,chrome,keymap,route,theme,textfit,pulse
-notes	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help
+notes	L7	presentation,theme,textfit,status,keymap,chrome,operation,route,listsurface,help
 taskdetail	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help
 taskform	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help
 lens	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help

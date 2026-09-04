@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
@@ -143,7 +144,7 @@ func (m *AppModel) projectOperationMessage(id operation.OperationID, project *mo
 	case operation.OperationProjectDelete:
 		return ProjectDeleteRequestMsg{Project: project}
 	case operation.OperationScopeOpenProjectNote:
-		return ShowNotesManagerMsg{Scope: route.ProjectNotesScope(project.ID)}
+		return notes.ShowNotesManagerMsg{Scope: route.ProjectNotesScope(project.ID)}
 	default:
 		return nil
 	}

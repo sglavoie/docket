@@ -247,6 +247,33 @@
 #     would be an upward import the layer fitness test fails on. The file is
 #     help's for good, and the grammar it reads is internal/textgrammar.
 #
+# Session 2.22 made four declaration-level moves and left five rows standing:
+#   - operationKeyDispatch left app_operations.go (tui) for the operation
+#     package as operation.KeyDispatch. It is the signature every mounted
+#     surface is handed so its browse grammar can resolve, and Notes is the
+#     third surface to need it across a package boundary; naming it in the
+#     package that owns InputStrategyID and CommandContext is what keeps the
+#     shell from exporting a func type for each new tenant.
+#   - ManageHubModuleSelectedMsg left manage_hub.go (tui) for route. The Notes
+#     location picker raises it, and the module it names is a route.ManageModule
+#     already, so the message is route vocabulary; left in the shell it would
+#     have forced notes -> tui, the one edge the split forbids.
+#   - The tui.note.* OperationID constants left note_operations.go (tui) for
+#     notes_input_strategy.go (notes). An operation ID is named by the grammar
+#     that binds it, and that grammar sits a package below the registrar.
+#   - The note descriptor catalog -- NoteOperationDescriptors,
+#     noteOperationApplicable and NoteOperationUnavailableWithParseError -- left
+#     note_operations.go for note_operations_catalog.go (notes), for the same
+#     reason one step further: a descriptor is data about a key, and only the
+#     handler needs the shell's services. note_operations.go keeps the handler.
+#   - handler_view_notes.go, note_ledger_reconcile.go, note_operations.go,
+#     note_search_index.go and notes_input_strategy_shell.go stay tui, as this
+#     table has said since Session 1.5, and Session 2.22's completion contract
+#     asking for note_*.go and note_search_index.go does not change it: every
+#     one of the five declares *AppModel methods, which Go pins to the shell.
+#     There is no combined_notes.go production file; combined_notes_test.go is
+#     the whole of that name and it was homed with the manager it exercises.
+#
 # Test files are deliberately absent. They follow the production file they
 # audit, except the uitest harness and the registry-union parity tests, which
 # context.md keeps in the root shell.

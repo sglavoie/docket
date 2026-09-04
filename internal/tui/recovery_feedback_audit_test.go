@@ -20,7 +20,7 @@ var recoveryGatewayInventory = map[string]string{
 	"internal/tui/coordinator/feature_coordinator_task_item.go:TaskItemCoordinator.CommitProject:CommitProject": "emits BatchTransactionResultMsg with the transaction ID",
 	"internal/tui/project_creator.go:ProjectCreatorModel.createProject:CommitProjectMutationResult":             "emits ProjectCreatedMsg with the transaction ID",
 	"internal/tui/project_editor.go:projectEditorSave.commit:RenameProjectResult":                               "emits ProjectUpdatedMsg with the transaction ID",
-	"internal/tui/project_note_commands.go:noteMutationCmd:ApplyNoteBatch":                                      "emits ProjectNoteMutationResultMsg carrying NoteBatchResult.TransactionID",
+	"internal/tui/notes/project_note_commands.go:NoteMutationCmd:ApplyNoteBatch":                                "emits notes.ProjectNoteMutationResultMsg carrying NoteBatchResult.TransactionID",
 }
 
 // These application commits intentionally do not create user-facing ledger

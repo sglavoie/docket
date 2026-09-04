@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -263,7 +264,7 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		// what positions the cursor on it once it is there.
 		if out, ok := m.outlinerPrimary(); ok {
 			if identity, onNote := out.cursorNoteIdentity(); onNote {
-				message = ShowNotesManagerMsg{Scope: route.AllNotesScope(), Focus: identity}
+				message = notes.ShowNotesManagerMsg{Scope: route.AllNotesScope(), Focus: identity}
 			}
 		}
 	case operation.OperationCorePeek:
@@ -304,7 +305,7 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 			out.toggleQueryReadout()
 		}
 	case operation.OperationCoreNotes:
-		message = ShowNotesManagerMsg{Scope: m.coreNotesScope()}
+		message = notes.ShowNotesManagerMsg{Scope: m.coreNotesScope()}
 	case operation.OperationCoreToggleTheme:
 		err = m.coreToggleTheme()
 		if err == nil {

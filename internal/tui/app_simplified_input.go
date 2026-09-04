@@ -42,10 +42,9 @@ func (m *AppModel) handleSimplifiedInputKey(msg tea.KeyPressMsg) (bool, tea.Cmd)
 	return m.dispatchOperationKey(operation.InputStrategySimplified, sequence, ctx)
 }
 
-// operationKeyDispatch is how a mounted surface reaches dispatchOperationKey.
-// A view model holds no shell reference, so the shell hands the seam down when
-// it mounts the surface.
-type operationKeyDispatch func(operation.InputStrategyID, []string, operation.CommandContext) (bool, tea.Cmd)
+// operation.KeyDispatch is the seam a mounted surface uses to reach
+// dispatchOperationKey below. It lives in internal/tui/operation because the
+// surfaces that hold one are packages below this shell.
 
 // dispatchOperationKey resolves one surface's key path against that surface's
 // strategy and runs whatever operation it reaches. Chord bookkeeping, the

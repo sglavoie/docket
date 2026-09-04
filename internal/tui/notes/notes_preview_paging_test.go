@@ -1,4 +1,4 @@
-package tui
+package notes
 
 import (
 	"strings"
@@ -42,8 +42,8 @@ func TestNotesPreviewPagingRefusesWhereNoPaneExists(t *testing.T) {
 	// No current row: a query matching nothing leaves the pane with no note.
 	view.SetSize(100, 24)
 	applyNotesSearch(view, "zzzznotanote")
-	if len(view.visibleRows) != 0 {
-		t.Fatalf("the impossible query matched %d rows", len(view.visibleRows))
+	if len(view.VisibleRows) != 0 {
+		t.Fatalf("the impossible query matched %d rows", len(view.VisibleRows))
 	}
 	if view.notesPreviewVisible() {
 		t.Fatal("an empty result set reported a visible preview")
@@ -55,9 +55,9 @@ func TestNotesPreviewPagingRefusesWhereNoPaneExists(t *testing.T) {
 	applyNotesSearch(view, "")
 
 	// A parse-error row previews its warning and never scrolls off it.
-	view.cursor = 1
-	if view.visibleRows[view.cursor].Note.Filename != "broken.md" {
-		t.Fatalf("cursor row = %q, want broken.md", view.visibleRows[view.cursor].Note.Filename)
+	view.Cursor = 1
+	if view.VisibleRows[view.Cursor].Note.Filename != "broken.md" {
+		t.Fatalf("cursor row = %q, want broken.md", view.VisibleRows[view.Cursor].Note.Filename)
 	}
 	notesScreen(t, view)
 	_, _ = view.Update(tea.KeyPressMsg{Code: 'f', Mod: tea.ModCtrl})
@@ -68,7 +68,7 @@ func TestNotesPreviewPagingRefusesWhereNoPaneExists(t *testing.T) {
 
 	// Minimum heights keep both the cursor row and the footer on screen while the
 	// paging keys stay live.
-	view.cursor = 0
+	view.Cursor = 0
 	for height := 7; height <= 12; height++ {
 		view.SetSize(100, height)
 		notesScreen(t, view)
@@ -139,9 +139,9 @@ func TestNotesPreviewPagingGuidanceRejectsParseErrors(t *testing.T) {
 		}
 	})
 
-	view.cursor = 1
-	if view.visibleRows[view.cursor].Note.Filename != "broken.md" {
-		t.Fatalf("cursor row = %q, want broken.md", view.visibleRows[view.cursor].Note.Filename)
+	view.Cursor = 1
+	if view.VisibleRows[view.Cursor].Note.Filename != "broken.md" {
+		t.Fatalf("cursor row = %q, want broken.md", view.VisibleRows[view.Cursor].Note.Filename)
 	}
 	notesScreen(t, view)
 	if view.notesPreviewPageable() {
@@ -180,7 +180,7 @@ func TestNotesPreviewPagingGuidanceRejectsParseErrors(t *testing.T) {
 	}
 
 	// Returning to the parseable note restores both controls and a working page.
-	view.cursor = 0
+	view.Cursor = 0
 	notesScreen(t, view)
 	if !advertises(t, "browse back on the parseable note") {
 		t.Fatal("browse guidance did not restore the paging hint")

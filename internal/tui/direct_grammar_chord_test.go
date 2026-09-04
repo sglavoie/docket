@@ -6,11 +6,12 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 func TestNotesDirectGrammarMatchesTheWorkspaceManager(t *testing.T) {
-	view := &NotesViewModel{}
+	view := &notes.NotesViewModel{}
 	// home and G are the physical keys behind the two end rows the manager's own
 	// help names as gg/Home and G/End; the help spelling is display only, so
 	// HandledKeys still reports the keys the keymap actually carries.

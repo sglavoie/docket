@@ -4,6 +4,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
@@ -12,18 +13,18 @@ func TestNotesOperationCatalogMatchesDirectActions(t *testing.T) {
 	// Delete carries no key: it is destructive, so the Space sheet is its one
 	// path and the empty spelling is what the one-path rule demands.
 	wantKeys := map[operation.OperationID]string{
-		operationNoteOpen:      "enter",
-		operationNoteRename:    "e",
-		operationNoteMove:      "%",
-		operationNoteCopyTitle: "y",
-		operationNoteCopyPath:  "Y",
-		operationNoteDelete:    "",
+		notes.OperationNoteOpen:      "enter",
+		notes.OperationNoteRename:    "e",
+		notes.OperationNoteMove:      "%",
+		notes.OperationNoteCopyTitle: "y",
+		notes.OperationNoteCopyPath:  "Y",
+		notes.OperationNoteDelete:    "",
 	}
-	descriptors := noteOperationDescriptors()
+	descriptors := notes.NoteOperationDescriptors()
 	if len(descriptors) != len(wantKeys) {
 		t.Fatalf("note operation count = %d, want %d", len(descriptors), len(wantKeys))
 	}
-	handled := (&NotesViewModel{}).HandledKeys()
+	handled := (&notes.NotesViewModel{}).HandledKeys()
 	for _, descriptor := range descriptors {
 		key, ok := wantKeys[descriptor.ID]
 		if !ok {
@@ -31,7 +32,7 @@ func TestNotesOperationCatalogMatchesDirectActions(t *testing.T) {
 			continue
 		}
 		switch {
-		case key == "" && !slices.Contains(notesActionSheetOperations, descriptor.ID):
+		case key == "" && !slices.Contains(notes.NotesActionSheetOperations, descriptor.ID):
 			t.Errorf("note operation %s has no direct key and no Space sheet row", descriptor.ID)
 		case key != "" && !slices.Contains(handled, key):
 			t.Errorf("note operation %s has no Notes direct key %q", descriptor.ID, key)

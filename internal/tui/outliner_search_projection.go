@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -358,13 +359,13 @@ func (m *OutlinerModel) appendSearchTaskRows(matches []outlinerSearchMatch) {
 // its owner label, and the title positions that ranked it — stays off a struct
 // every projection copies per row. The map is replaced on every rebuild, so it
 // can never describe a result set that is no longer on screen.
-func (m *OutlinerModel) appendSearchNoteRows(notes []outlinerSearchNoteMatch) {
+func (m *OutlinerModel) appendSearchNoteRows(matches []outlinerSearchNoteMatch) {
 	m.searchNoteMatches = nil
-	if len(notes) == 0 {
+	if len(matches) == 0 {
 		return
 	}
-	m.searchNoteMatches = make(map[NoteRowIdentity]outlinerSearchNoteMatch, len(notes))
-	for _, note := range notes {
+	m.searchNoteMatches = make(map[notes.NoteRowIdentity]outlinerSearchNoteMatch, len(matches))
+	for _, note := range matches {
 		identity := note.row.Identity()
 		m.searchNoteMatches[identity] = note
 		m.rows = append(m.rows, outlinerRow{

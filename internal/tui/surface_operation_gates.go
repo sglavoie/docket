@@ -1,6 +1,9 @@
 package tui
 
-import "github.com/sglavoie/tt/internal/tui/operation"
+import (
+	"github.com/sglavoie/tt/internal/tui/notes"
+	"github.com/sglavoie/tt/internal/tui/operation"
+)
 
 // surfaceOperationGate names one entity surface and, once the surface manifests
 // its operations, the startup check that holds it to the one-path rule.
@@ -19,7 +22,7 @@ func surfaceOperationGates() []surfaceOperationGate {
 	return []surfaceOperationGate{
 		{strategy: SimplifiedInputStrategy(), validate: validateOutlinerOperationOnePath},
 		{strategy: ProjectHubInputStrategy(), validate: validateProjectOperationOnePath},
-		{strategy: NotesInputStrategy(), validate: validateNotesOperationOnePath},
+		{strategy: notes.NotesInputStrategy(), validate: notes.ValidateNotesOperationOnePath},
 		{strategy: AttachmentsInputStrategy(), validate: validateAttachmentOperationOnePath},
 		{strategy: CommentsInputStrategy(), validate: validateCommentOperationOnePath},
 	}

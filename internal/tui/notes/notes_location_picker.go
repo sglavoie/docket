@@ -1,4 +1,4 @@
-package tui
+package notes
 
 import (
 	"fmt"
@@ -16,27 +16,27 @@ import (
 	"github.com/sglavoie/tt/internal/tui/route"
 )
 
-type notesLocationPickerPurpose uint8
+type NotesLocationPickerPurpose uint8
 
 const (
-	notesLocationPickerScope notesLocationPickerPurpose = iota
-	notesLocationPickerCreation
-	notesLocationPickerMove
+	NotesLocationPickerScope NotesLocationPickerPurpose = iota
+	NotesLocationPickerCreation
+	NotesLocationPickerMove
 )
 
-type notesLocationPickerItem struct {
+type NotesLocationPickerItem struct {
 	Label    string
 	Scope    route.NotesScope
 	Location app.NoteLocation
 }
 
-func (item notesLocationPickerItem) FilterText() string { return item.Label }
+func (item NotesLocationPickerItem) FilterText() string { return item.Label }
 
-func (item notesLocationPickerItem) DisplayText() string { return item.Label }
+func (item NotesLocationPickerItem) DisplayText() string { return item.Label }
 
-func (item notesLocationPickerItem) CountValue() int { return 0 }
+func (item NotesLocationPickerItem) CountValue() int { return 0 }
 
-func (item notesLocationPickerItem) ItemID() string {
+func (item NotesLocationPickerItem) ItemID() string {
 	switch item.Scope.Kind {
 	case route.NotesScopeAll:
 		return "notes-location:all"
@@ -49,9 +49,9 @@ func (item notesLocationPickerItem) ItemID() string {
 	}
 }
 
-type notesLocationPickerResultMsg struct {
-	Purpose  notesLocationPickerPurpose
-	Item     notesLocationPickerItem
+type NotesLocationPickerResultMsg struct {
+	Purpose  NotesLocationPickerPurpose
+	Item     NotesLocationPickerItem
 	Selected bool
 }
 
@@ -59,12 +59,12 @@ type notesLocationPickerResultMsg struct {
 // scope, note creation, and note moves. Purpose is retained in every result so
 // callers cannot accidentally apply a scope as a destination or vice versa.
 type notesLocationPicker struct {
-	*listsurface.ListSurfaceAdapter[notesLocationPickerItem]
-	purpose      notesLocationPickerPurpose
-	alwaysSearch *listsurface.AlwaysSearchSinglePicker[notesLocationPickerItem]
+	*listsurface.ListSurfaceAdapter[NotesLocationPickerItem]
+	Purpose      NotesLocationPickerPurpose
+	alwaysSearch *listsurface.AlwaysSearchSinglePicker[NotesLocationPickerItem]
 }
 
-func (picker *notesLocationPicker) contains(item notesLocationPickerItem) bool {
+func (picker *notesLocationPicker) contains(item NotesLocationPickerItem) bool {
 	id := item.ItemID()
 	if id == "" {
 		return false
@@ -80,21 +80,21 @@ func (picker *notesLocationPicker) contains(item notesLocationPickerItem) bool {
 }
 
 func newNotesLocationPicker(
-	purpose notesLocationPickerPurpose,
+	purpose NotesLocationPickerPurpose,
 	currentScope route.NotesScope,
 	excludedLocation app.NoteLocation,
 	projects []*models.Project,
 ) *notesLocationPicker {
-	items := make([]notesLocationPickerItem, 0, len(projects)+2)
-	if purpose == notesLocationPickerScope {
-		items = append(items, notesLocationPickerItem{
+	items := make([]NotesLocationPickerItem, 0, len(projects)+2)
+	if purpose == NotesLocationPickerScope {
+		items = append(items, NotesLocationPickerItem{
 			Label: "All Notes",
 			Scope: route.AllNotesScope(),
 		})
 	}
 	global := app.GlobalNoteLocation()
-	if purpose != notesLocationPickerMove || global != excludedLocation {
-		items = append(items, notesLocationPickerItem{
+	if purpose != NotesLocationPickerMove || global != excludedLocation {
+		items = append(items, NotesLocationPickerItem{
 			Label:    "Global",
 			Scope:    route.GlobalNotesScope(),
 			Location: global,
@@ -105,14 +105,14 @@ func newNotesLocationPicker(
 			continue
 		}
 		location := app.ProjectNoteLocation(project.ID)
-		if purpose == notesLocationPickerMove && location == excludedLocation {
+		if purpose == NotesLocationPickerMove && location == excludedLocation {
 			continue
 		}
 		label := strings.TrimSpace(project.Name)
 		if label == "" {
 			label = project.ID
 		}
-		items = append(items, notesLocationPickerItem{
+		items = append(items, NotesLocationPickerItem{
 			Label:    label,
 			Scope:    route.ProjectNotesScope(project.ID),
 			Location: location,
@@ -120,7 +120,7 @@ func newNotesLocationPicker(
 	}
 
 	emptyMessage := "No note locations available."
-	if purpose == notesLocationPickerMove {
+	if purpose == NotesLocationPickerMove {
 		emptyMessage = "No move destinations available."
 	}
 	picker := listsurface.NewListSurfaceAdapter(items, listsurface.PickerConfig{
@@ -131,16 +131,16 @@ func newNotesLocationPicker(
 	})
 	model := &notesLocationPicker{
 		ListSurfaceAdapter: picker,
-		purpose:            purpose,
+		Purpose:            purpose,
 	}
 	model.alwaysSearch = listsurface.NewAlwaysSearchSinglePicker(
 		model.ListSurfaceAdapter,
-		listsurface.AlwaysSearchSinglePickerConfig[notesLocationPickerItem]{
+		listsurface.AlwaysSearchSinglePickerConfig[NotesLocationPickerItem]{
 			CancelMsg: func() tea.Msg {
-				return notesLocationPickerResultMsg{Purpose: purpose}
+				return NotesLocationPickerResultMsg{Purpose: purpose}
 			},
-			SelectMsg: func(cursor int, filtered []notesLocationPickerItem) tea.Msg {
-				return notesLocationPickerResultMsg{
+			SelectMsg: func(cursor int, filtered []NotesLocationPickerItem) tea.Msg {
+				return NotesLocationPickerResultMsg{
 					Purpose:  purpose,
 					Item:     filtered[cursor],
 					Selected: true,
@@ -152,11 +152,11 @@ func newNotesLocationPicker(
 
 	selectedScope := currentScope
 	switch purpose {
-	case notesLocationPickerCreation:
+	case NotesLocationPickerCreation:
 		selectedScope = notesCreationDefaultScope(currentScope)
-	case notesLocationPickerMove:
+	case NotesLocationPickerMove:
 		selectedScope = route.NotesScope{}
-	case notesLocationPickerScope:
+	case NotesLocationPickerScope:
 	}
 	for _, item := range items {
 		if item.Scope == selectedScope {
@@ -192,12 +192,12 @@ func (picker *notesLocationPicker) View() tea.View {
 	width := max(picker.Width(), 1)
 	height := max(picker.Height(), 1)
 	title := "Select scope"
-	switch picker.purpose {
-	case notesLocationPickerCreation:
+	switch picker.Purpose {
+	case NotesLocationPickerCreation:
 		title = "Create note in"
-	case notesLocationPickerMove:
+	case NotesLocationPickerMove:
 		title = "Move note to"
-	case notesLocationPickerScope:
+	case NotesLocationPickerScope:
 	}
 	header := lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -225,12 +225,12 @@ func (picker *notesLocationPicker) guidanceSpec() (chrome.GuidanceSpec, bool) {
 	count := len(picker.FilteredItems())
 	hasSelection := func() bool { return count > 0 }
 	verb := "apply"
-	switch picker.purpose {
-	case notesLocationPickerCreation:
+	switch picker.Purpose {
+	case NotesLocationPickerCreation:
 		verb = "choose"
-	case notesLocationPickerMove:
+	case NotesLocationPickerMove:
 		verb = "move"
-	case notesLocationPickerScope:
+	case NotesLocationPickerScope:
 	}
 	km := &keymap.KeyMap{Entries: []keymap.Entry{
 		keymap.Bind("up", "Move selection", "Navigation",
@@ -250,12 +250,12 @@ func (picker *notesLocationPicker) guidanceSpec() (chrome.GuidanceSpec, bool) {
 
 func (picker *notesLocationPicker) GetHelpItems() []operation.HelpItem {
 	selectionDescription := "Apply Notes scope"
-	switch picker.purpose {
-	case notesLocationPickerCreation:
+	switch picker.Purpose {
+	case NotesLocationPickerCreation:
 		selectionDescription = "Choose creation location"
-	case notesLocationPickerMove:
+	case NotesLocationPickerMove:
 		selectionDescription = "Move note immediately"
-	case notesLocationPickerScope:
+	case NotesLocationPickerScope:
 	}
 	return []operation.HelpItem{
 		{Key: "↑/↓", Description: "Move selection", Category: "Navigation"},

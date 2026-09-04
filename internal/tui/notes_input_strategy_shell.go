@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -23,7 +24,7 @@ func (m *AppModel) openNotesActionSheet(ctx operation.CommandContext) error {
 		m.GetOperationRegistry(),
 		m.operationExecutor,
 		ctx,
-		notesActionSheetOperations,
+		notes.NotesActionSheetOperations,
 		listsurface.ContextActionSheetConfig{
 			Host:         listsurface.ContextActionHostNotes,
 			Completion:   listsurface.ContextActionCompleteCloseSheet,
@@ -70,7 +71,7 @@ func (m *AppModel) noteTitleForContext(ctx operation.CommandContext) string {
 // confirm nothing, so the manager has no step to own and the global binding from
 // registerNoteOperations is what the executor selects for them here.
 func (m *AppModel) registerNotesSurfaceOperations() error {
-	for _, descriptor := range notesSurfaceOperationDescriptors() {
+	for _, descriptor := range notes.NotesSurfaceOperationDescriptors() {
 		if err := m.registerOperation(descriptor, operation.OperationBinding{
 			RequiredCapabilities:     operation.NewCapabilitySet(operation.CapabilityNotesManager),
 			Handler:                  m.executeNotesSurfaceOperation,
@@ -82,7 +83,7 @@ func (m *AppModel) registerNotesSurfaceOperations() error {
 			return err
 		}
 	}
-	for _, id := range notesHostedNoteOperations() {
+	for _, id := range notes.NotesHostedNoteOperations() {
 		if err := m.operationExecutor.Register(operation.OperationBinding{
 			OperationID:              id,
 			Views:                    []presentation.PresentationID{presentation.ViewNotes, presentation.ViewGlobalNotes},
@@ -105,32 +106,32 @@ func (m *AppModel) registerNotesSurfaceOperations() error {
 //
 //nolint:exhaustive // Only the Notes grammar's operations are registered with this handler.
 func (m *AppModel) executeNotesSurfaceOperation(invocation operation.OperationInvocation) operation.OperationHandlerResult {
-	notes := m.activeNotesManager()
-	if notes == nil {
+	manager := m.activeNotesManager()
+	if manager == nil {
 		return operation.OperationHandlerResult{Err: fmt.Errorf("the Notes manager is not open")}
 	}
 	command := func(cmd tea.Cmd) operation.OperationHandlerResult {
 		return operation.OperationHandlerResult{Message: operation.OperationCommandResultMsg{Cmd: cmd}}
 	}
 	switch invocation.Descriptor.ID {
-	case operationNotesCreate:
-		return command(notes.beginDestinationPicker())
-	case operationNotesSearch:
-		return command(notes.beginSearch())
-	case operationNotesScope:
-		return command(notes.beginScopePicker())
-	case operationNotesActions:
+	case notes.OperationNotesCreate:
+		return command(manager.BeginDestinationPicker())
+	case notes.OperationNotesSearch:
+		return command(manager.BeginSearch())
+	case notes.OperationNotesScope:
+		return command(manager.BeginScopePicker())
+	case notes.OperationNotesActions:
 		if err := m.openNotesActionSheet(invocation.Context); err != nil {
 			return operation.OperationHandlerResult{Err: err}
 		}
-	case operationNoteOpen:
-		return command(notes.editCurrentNote())
-	case operationNoteMove:
-		return command(notes.beginMovePicker())
-	case operationNoteRename:
-		notes.startRename()
-	case operationNoteDelete:
-		notes.deleteCurrentNote()
+	case notes.OperationNoteOpen:
+		return command(manager.EditCurrentNote())
+	case notes.OperationNoteMove:
+		return command(manager.BeginMovePicker())
+	case notes.OperationNoteRename:
+		manager.StartRename()
+	case notes.OperationNoteDelete:
+		manager.DeleteCurrentNote()
 	}
 	return operation.OperationHandlerResult{}
 }
@@ -139,10 +140,10 @@ func (m *AppModel) executeNotesSurfaceOperation(invocation operation.OperationIn
 // is on another module. getActiveNotesView answers the presentation registry so
 // a note mutation result can find its renderer from anywhere; a dispatched key
 // already knows Manage is what it came from.
-func (m *AppModel) activeNotesManager() *NotesViewModel {
+func (m *AppModel) activeNotesManager() *notes.NotesViewModel {
 	if m == nil || m.manageHub == nil || m.manageHub.Params().Module != route.ManageNotes {
 		return nil
 	}
-	notes, _ := m.manageHub.ActiveModuleView().(*NotesViewModel)
-	return notes
+	manager, _ := m.manageHub.ActiveModuleView().(*notes.NotesViewModel)
+	return manager
 }

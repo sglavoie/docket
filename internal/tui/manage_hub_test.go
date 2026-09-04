@@ -10,6 +10,7 @@ import (
 	apppkg "github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -34,13 +35,13 @@ func TestManageHubDeepLinksUseOneTypedRouteAndDirectEsc(t *testing.T) {
 		params route.ManageParams
 	}{
 		{name: "project notes", open: func(app *AppModel, project *models.Project) (bool, tea.Cmd) {
-			return app.handleNotesMessages(ShowNotesManagerMsg{Scope: route.ProjectNotesScope(project.ID)})
+			return app.handleNotesMessages(notes.ShowNotesManagerMsg{Scope: route.ProjectNotesScope(project.ID)})
 		}, params: route.ManageParams{Module: route.ManageNotes, NotesScope: route.ProjectNotesScope("project")}},
 		{name: "global notes", open: func(app *AppModel, _ *models.Project) (bool, tea.Cmd) {
-			return app.handleNotesMessages(ShowNotesManagerMsg{Scope: route.GlobalNotesScope()})
+			return app.handleNotesMessages(notes.ShowNotesManagerMsg{Scope: route.GlobalNotesScope()})
 		}, params: route.ManageParams{Module: route.ManageNotes, NotesScope: route.GlobalNotesScope()}},
 		{name: "all notes", open: func(app *AppModel, _ *models.Project) (bool, tea.Cmd) {
-			return app.handleNotesMessages(ShowNotesManagerMsg{Scope: route.AllNotesScope()})
+			return app.handleNotesMessages(notes.ShowNotesManagerMsg{Scope: route.AllNotesScope()})
 		}, params: route.ManageParams{Module: route.ManageNotes, NotesScope: route.AllNotesScope()}},
 	}
 
@@ -82,18 +83,18 @@ func TestManageHubDeepLinksUseOneTypedRouteAndDirectEsc(t *testing.T) {
 func TestManageHubScopeUsesRouteParams(t *testing.T) {
 	app := typedTestApp(t)
 	project := app.currentProject
-	app.handleNotesMessages(ShowNotesManagerMsg{Scope: route.GlobalNotesScope()})
-	globalNotes := app.manageHub.ActiveModuleView().(*NotesViewModel)
+	app.handleNotesMessages(notes.ShowNotesManagerMsg{Scope: route.GlobalNotesScope()})
+	globalNotes := app.manageHub.ActiveModuleView().(*notes.NotesViewModel)
 	if params := app.CurrentRoute().Params().(route.ManageParams); params.NotesScope != route.GlobalNotesScope() ||
-		globalNotes.scope != route.GlobalNotesScope() ||
+		globalNotes.Scope != route.GlobalNotesScope() ||
 		app.manageHub.StatusBarLabel() != "Notes · Global" {
-		t.Fatalf("initial Global scope = %#v/%#v/%q", params.NotesScope, globalNotes.scope, app.manageHub.StatusBarLabel())
+		t.Fatalf("initial Global scope = %#v/%#v/%q", params.NotesScope, globalNotes.Scope, app.manageHub.StatusBarLabel())
 	}
 	_, _ = app.manageHub.Update(syntheticKey('p'))
-	if globalNotes.locationPicker == nil || globalNotes.locationPicker.purpose != notesLocationPickerScope {
+	if globalNotes.LocationPicker == nil || globalNotes.LocationPicker.Purpose != notes.NotesLocationPickerScope {
 		t.Fatal("Manage Hub did not forward p to the Notes scope picker")
 	}
-	globalNotes.locationPicker.SetCursorToID(notesLocationPickerItem{
+	globalNotes.LocationPicker.SetCursorToID(notes.NotesLocationPickerItem{
 		Scope: route.ProjectNotesScope(project.ID),
 	}.ItemID())
 	_, cmd := app.manageHub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -106,23 +107,23 @@ func TestManageHubScopeUsesRouteParams(t *testing.T) {
 	}
 	app.handleManageHubMessages(cmd())
 	params := app.CurrentRoute().Params().(route.ManageParams)
-	notes, ok := app.manageHub.ActiveModuleView().(*NotesViewModel)
+	manager, ok := app.manageHub.ActiveModuleView().(*notes.NotesViewModel)
 	var resolvedProject *models.Project
 	if ok {
-		resolvedProject = notes.projectByID(project.ID)
+		resolvedProject = manager.ProjectByID(project.ID)
 	}
 	if params.NotesScope != route.ProjectNotesScope(project.ID) || !ok ||
-		notes.scope != route.ProjectNotesScope(project.ID) ||
+		manager.Scope != route.ProjectNotesScope(project.ID) ||
 		resolvedProject == nil || resolvedProject.ID != project.ID {
 		t.Fatalf("project scope = %#v/%T, want %q/%p", params.NotesScope, app.manageHub.ActiveModuleView(), project.ID, project)
 	}
-	if notes != globalNotes {
+	if manager != globalNotes {
 		t.Fatal("scope selection rebuilt the Notes manager")
 	}
 	_, _ = app.manageHub.Update(syntheticKey('a'))
-	if notes.locationPicker == nil || notes.locationPicker.purpose != notesLocationPickerCreation ||
-		notes.locationPicker.SelectedItem().Location != apppkg.ProjectNoteLocation(project.ID) {
-		t.Fatalf("project scope creation picker = %#v, want project %q selected", notes.locationPicker, project.ID)
+	if manager.LocationPicker == nil || manager.LocationPicker.Purpose != notes.NotesLocationPickerCreation ||
+		manager.LocationPicker.SelectedItem().Location != apppkg.ProjectNoteLocation(project.ID) {
+		t.Fatalf("project scope creation picker = %#v, want project %q selected", manager.LocationPicker, project.ID)
 	}
 	if app.navigation.Primary.Depth() != 2 {
 		t.Fatalf("scope replacement depth = %d, want root plus one child", app.navigation.Primary.Depth())
@@ -162,7 +163,7 @@ func TestManageHubNotesScopeMapsCommandContextAndPresentation(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			app.handleNotesMessages(ShowNotesManagerMsg{Scope: test.scope})
+			app.handleNotesMessages(notes.ShowNotesManagerMsg{Scope: test.scope})
 			ctx := app.manageHub.CommandContext()
 			presentation, ok := app.manageHub.PresentationView()
 			if !slices.Equal(ctx.ScopeProjectIDs, test.wantProjectIDs) ||
@@ -207,18 +208,18 @@ func TestNotesManagerMessageFocusIsLocationQualified(t *testing.T) {
 	app.appService = service
 	app.deps = newShellDeps(nil)
 
-	focus := NoteRowIdentity{
+	focus := notes.NoteRowIdentity{
 		Location: apppkg.ProjectNoteLocation(project.ID),
 		Filename: filename,
 	}
-	handled, _ := app.handleNotesMessages(ShowNotesManagerMsg{
+	handled, _ := app.handleNotesMessages(notes.ShowNotesManagerMsg{
 		Scope: route.AllNotesScope(),
 		Focus: focus,
 	})
-	notes := app.manageHub.ActiveModuleView().(*NotesViewModel)
-	if !handled || len(notes.visibleRows) != 2 || notes.currentRow() == nil ||
-		notes.currentRow().Identity() != focus {
-		t.Fatalf("focused manager = handled %t rows %d current %+v, want %+v", handled, len(notes.visibleRows), notes.currentRow(), focus)
+	manager := app.manageHub.ActiveModuleView().(*notes.NotesViewModel)
+	if !handled || len(manager.VisibleRows) != 2 || manager.CurrentRow() == nil ||
+		manager.CurrentRow().Identity() != focus {
+		t.Fatalf("focused manager = handled %t rows %d current %+v, want %+v", handled, len(manager.VisibleRows), manager.CurrentRow(), focus)
 	}
 }
 
@@ -228,9 +229,9 @@ func TestManageHubCollectionGrammarAndProjectPickerFallback(t *testing.T) {
 	other := &models.Project{ID: "other", Name: "Other Project", Slug: "other"}
 	setTestAppProjects(app, project, other)
 
-	app.handleNotesMessages(ShowNotesManagerMsg{Scope: route.ProjectNotesScope(project.ID)})
-	notes := app.manageHub.ActiveModuleView().(*NotesViewModel)
-	notes.visibleRows = []LocatedNoteRow{{
+	app.handleNotesMessages(notes.ShowNotesManagerMsg{Scope: route.ProjectNotesScope(project.ID)})
+	manager := app.manageHub.ActiveModuleView().(*notes.NotesViewModel)
+	manager.VisibleRows = []notes.LocatedNoteRow{{
 		Note:       &models.Note{Filename: "one.md", Title: "One"},
 		Location:   apppkg.GlobalNoteLocation(),
 		OwnerLabel: "Global",
@@ -238,24 +239,24 @@ func TestManageHubCollectionGrammarAndProjectPickerFallback(t *testing.T) {
 	// Notes has no multi-select, so Space is one note's action sheet.
 	_, spaceCmd := app.manageHub.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	sheet := app.contextActionSheet
-	if spaceCmd != nil || len(notes.visibleRows) != 1 || sheet == nil ||
+	if spaceCmd != nil || len(manager.VisibleRows) != 1 || sheet == nil ||
 		sheet.Config.Bulk || sheet.Config.Targets != 1 {
 		t.Fatalf("Space did not open a single-note action sheet: %#v", sheet)
 	}
 	if got := len(sheet.Surface.Items()); got != 1 ||
-		!sheet.Surface.SetCursorToID(listsurface.ListItemID("note-action:"+string(operationNoteDelete))) {
+		!sheet.Surface.SetCursorToID(listsurface.ListItemID("note-action:"+string(notes.OperationNoteDelete))) {
 		t.Fatalf("note action sheet holds %d rows, want Delete alone", got)
 	}
 	app.contextActionSheet = nil
 	_, _ = app.manageHub.Update(syntheticKey('a'))
-	if notes.locationPicker == nil || notes.locationPicker.purpose != notesLocationPickerCreation {
+	if manager.LocationPicker == nil || manager.LocationPicker.Purpose != notes.NotesLocationPickerCreation {
 		t.Fatal("Notes a did not open the destination picker")
 	}
-	if notes.locationPicker.SelectedItem().Location != apppkg.ProjectNoteLocation(project.ID) {
-		t.Fatalf("project Notes preselection = %+v, want project", notes.locationPicker.SelectedItem().Location)
+	if manager.LocationPicker.SelectedItem().Location != apppkg.ProjectNoteLocation(project.ID) {
+		t.Fatalf("project Notes preselection = %+v, want project", manager.LocationPicker.SelectedItem().Location)
 	}
 	var destinations []apppkg.NoteLocation
-	for _, item := range notes.locationPicker.SourceItems() {
+	for _, item := range manager.LocationPicker.SourceItems() {
 		destinations = append(destinations, item.Location)
 	}
 	if !slices.Contains(destinations, apppkg.ProjectNoteLocation(other.ID)) {
@@ -272,10 +273,10 @@ func TestManageHubCollectionGrammarAndProjectPickerFallback(t *testing.T) {
 		t.Fatalf("Manage collection grammar = %v, want %v", gotHelp, wantHelp)
 	}
 
-	app.handleNotesMessages(ShowNotesManagerMsg{Scope: route.ProjectNotesScope("missing")})
+	app.handleNotesMessages(notes.ShowNotesManagerMsg{Scope: route.ProjectNotesScope("missing")})
 	params := app.CurrentRoute().Params().(route.ManageParams)
 	if app.CurrentRoute().ID() != route.SecondaryTool || params.NotesScope != route.AllNotesScope() ||
-		app.manageHub.ActiveModuleView().(*NotesViewModel).locationPicker != nil {
+		app.manageHub.ActiveModuleView().(*notes.NotesViewModel).LocationPicker != nil {
 		t.Fatalf("missing project fallback = %s/%#v, want All Notes without a picker", app.CurrentRoute().ID(), params)
 	}
 }
@@ -290,14 +291,14 @@ func TestManageHubNotesDeleteKeyDeletesGlobalAndProjectNotes(t *testing.T) {
 			name:     "global",
 			location: apppkg.GlobalNoteLocation(),
 			open: func(app *AppModel, _ *models.Project) {
-				app.handleNotesMessages(ShowNotesManagerMsg{Scope: route.GlobalNotesScope()})
+				app.handleNotesMessages(notes.ShowNotesManagerMsg{Scope: route.GlobalNotesScope()})
 			},
 		},
 		{
 			name:     "project",
 			location: apppkg.ProjectNoteLocation("project"),
 			open: func(app *AppModel, project *models.Project) {
-				app.handleNotesMessages(ShowNotesManagerMsg{Scope: route.ProjectNotesScope(project.ID)})
+				app.handleNotesMessages(notes.ShowNotesManagerMsg{Scope: route.ProjectNotesScope(project.ID)})
 			},
 		},
 	}
@@ -314,12 +315,12 @@ func TestManageHubNotesDeleteKeyDeletesGlobalAndProjectNotes(t *testing.T) {
 
 			note := &models.Note{Filename: test.name + ".md", Title: test.name + " note"}
 			service := &combinedNotesService{byLocation: map[apppkg.NoteLocation][]*models.Note{}}
-			notes := app.manageHub.ActiveModuleView().(*NotesViewModel)
-			notes.noteService = service
-			notes.visibleRows = []LocatedNoteRow{{
+			manager := app.manageHub.ActiveModuleView().(*notes.NotesViewModel)
+			manager.NoteService = service
+			manager.VisibleRows = []notes.LocatedNoteRow{{
 				Note:       note,
 				Location:   location,
-				OwnerLabel: notes.locationLabel(location),
+				OwnerLabel: manager.LocationLabel(location),
 			}}
 
 			_, cmd := app.manageHub.Update(tea.KeyPressMsg{Code: tea.KeySpace})
@@ -333,8 +334,8 @@ func TestManageHubNotesDeleteKeyDeletesGlobalAndProjectNotes(t *testing.T) {
 			if handled, _ := app.handleOperationOverlayMessage(sheetCmd()); !handled {
 				t.Fatal("the sheet's Delete row was not executed")
 			}
-			if app.contextActionSheet != nil || !notes.confirm.IsActive() {
-				t.Fatalf("sheet Delete did not hand the confirmation back: active=%t", notes.confirm.IsActive())
+			if app.contextActionSheet != nil || !manager.Confirm.IsActive() {
+				t.Fatalf("sheet Delete did not hand the confirmation back: active=%t", manager.Confirm.IsActive())
 			}
 			if overlay := app.renderConfirmDialogOverlay(); !strings.Contains(overlay, note.Title) {
 				t.Fatalf("delete confirmation overlay missing note title %q: %q", note.Title, overlay)
@@ -344,7 +345,7 @@ func TestManageHubNotesDeleteKeyDeletesGlobalAndProjectNotes(t *testing.T) {
 			if cmd == nil {
 				t.Fatal("confirmed delete emitted no mutation command")
 			}
-			result, ok := cmd().(ProjectNoteMutationResultMsg)
+			result, ok := cmd().(notes.ProjectNoteMutationResultMsg)
 			if !ok || result.Location != location {
 				t.Fatalf("delete result = %#v, want location %+v", result, location)
 			}
@@ -363,7 +364,7 @@ func TestManageHubNotesDeleteKeyDeletesGlobalAndProjectNotes(t *testing.T) {
 func TestManageHubRemovedProjectFallsBackToAllNotes(t *testing.T) {
 	app := typedTestApp(t)
 	project := app.currentProject
-	app.handleNotesMessages(ShowNotesManagerMsg{Scope: route.ProjectNotesScope(project.ID)})
+	app.handleNotesMessages(notes.ShowNotesManagerMsg{Scope: route.ProjectNotesScope(project.ID)})
 	setTestAppProjects(app)
 
 	handled, _ := app.handleGlobalKeyPress(syntheticKey('j'))

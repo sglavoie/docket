@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
@@ -106,15 +107,15 @@ func assertAttachmentsOwnsEveryDocumentedKeyOnce(t *testing.T) {
 // the Hub table below spells it.
 func assertNotesOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	direct := map[string]operation.OperationID{
-		"enter":  operationNoteOpen,
-		"a":      operationNotesCreate,
-		"e":      operationNoteRename,
-		"%":      operationNoteMove,
-		"/":      operationNotesSearch,
-		"p":      operationNotesScope,
-		"y":      operationNoteCopyTitle,
-		"Y":      operationNoteCopyPath,
-		"space":  operationNotesActions,
+		"enter":  notes.OperationNoteOpen,
+		"a":      notes.OperationNotesCreate,
+		"e":      notes.OperationNoteRename,
+		"%":      notes.OperationNoteMove,
+		"/":      notes.OperationNotesSearch,
+		"p":      notes.OperationNotesScope,
+		"y":      notes.OperationNoteCopyTitle,
+		"Y":      notes.OperationNoteCopyPath,
+		"space":  notes.OperationNotesActions,
 		"u":      operation.OperationCoreUndo,
 		"ctrl+r": operation.OperationCoreRedo,
 		"j":      operation.OperationCoreCursorDown,
@@ -132,7 +133,7 @@ func assertNotesOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"?":      operation.OperationCoreHelp,
 		"esc":    operation.OperationCoreBack,
 	}
-	assertStrategyOwnsEveryKeyOnce(t, NotesInputStrategy(), direct)
+	assertStrategyOwnsEveryKeyOnce(t, notes.NotesInputStrategy(), direct)
 }
 
 // assertStrategyOwnsEveryKeyOnce holds one surface grammar to the one-key

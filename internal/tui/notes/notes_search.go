@@ -1,4 +1,4 @@
-package tui
+package notes
 
 import (
 	"strings"
@@ -12,15 +12,19 @@ import (
 
 const noteTitleSearchWeight = 2
 
-type noteSearchMatch struct {
-	score          int
-	titlePositions []int
-	bodyMatched    bool
+// NoteSearchMatch is one note's ranking against a query. Score and
+// TitlePositions are exported because the Outliner's notes tier ranks and
+// highlights with the same numbers this manager does; whether the body matched
+// is this package's own rendering cue.
+type NoteSearchMatch struct {
+	Score          int
+	TitlePositions []int
+	BodyMatched    bool
 }
 
-func scoreNoteSearch(note *models.Note, query string, matcher fuzzy.Matcher) (noteSearchMatch, bool) {
+func ScoreNoteSearch(note *models.Note, query string, matcher fuzzy.Matcher) (NoteSearchMatch, bool) {
 	if note == nil {
-		return noteSearchMatch{}, false
+		return NoteSearchMatch{}, false
 	}
 
 	titleScore, titlePositions := matcher.ScoreTermsWithPositions(note.Title, query)
@@ -32,12 +36,12 @@ func scoreNoteSearch(note *models.Note, query string, matcher fuzzy.Matcher) (no
 	bodyScore := scoreNoteBodyTerms(note.Body, query, matcher)
 	score := max(titleScore, bodyScore)
 	if score == 0 {
-		return noteSearchMatch{}, false
+		return NoteSearchMatch{}, false
 	}
-	return noteSearchMatch{
-		score:          score,
-		titlePositions: titlePositions,
-		bodyMatched:    bodyScore > 0,
+	return NoteSearchMatch{
+		Score:          score,
+		TitlePositions: titlePositions,
+		BodyMatched:    bodyScore > 0,
 	}, true
 }
 
@@ -75,12 +79,12 @@ func scoreNoteBodyTerms(body, query string, matcher fuzzy.Matcher) int {
 	return total
 }
 
-func (m *NotesViewModel) beginSearch() tea.Cmd {
+func (m *NotesViewModel) BeginSearch() tea.Cmd {
 	if m.searchInput.CharLimit == 0 {
 		m.initSearchInput()
 	}
-	m.searchBeforeEdit = m.searchApplied
-	m.searchInput.SetValue(m.searchApplied)
+	m.searchBeforeEdit = m.SearchApplied
+	m.searchInput.SetValue(m.SearchApplied)
 	m.searchInput.CursorEnd()
 	m.searchInput.Focus()
 	m.searchEditing = true
@@ -92,33 +96,33 @@ func (m *NotesViewModel) updateSearchDraft(msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
 	m.searchInput, cmd = m.searchInput.Update(msg)
 	if m.searchInput.Value() != oldValue {
-		m.rederiveVisibleRows()
+		m.RederiveVisibleRows()
 	}
 	return cmd
 }
 
 func (m *NotesViewModel) acceptSearch() {
-	m.searchApplied = strings.TrimSpace(m.searchInput.Value())
-	m.searchBeforeEdit = m.searchApplied
-	m.searchInput.SetValue(m.searchApplied)
+	m.SearchApplied = strings.TrimSpace(m.searchInput.Value())
+	m.searchBeforeEdit = m.SearchApplied
+	m.searchInput.SetValue(m.SearchApplied)
 	m.searchInput.Blur()
 	m.searchEditing = false
-	m.rederiveVisibleRows()
+	m.RederiveVisibleRows()
 }
 
 func (m *NotesViewModel) cancelSearchEdit() {
-	m.searchApplied = m.searchBeforeEdit
-	m.searchInput.SetValue(m.searchApplied)
+	m.SearchApplied = m.searchBeforeEdit
+	m.searchInput.SetValue(m.SearchApplied)
 	m.searchInput.Blur()
 	m.searchEditing = false
-	m.rederiveVisibleRows()
+	m.RederiveVisibleRows()
 }
 
 func (m *NotesViewModel) clearSearch() {
-	m.searchApplied = ""
+	m.SearchApplied = ""
 	m.searchBeforeEdit = ""
 	m.searchInput.SetValue("")
 	m.searchInput.Blur()
 	m.searchEditing = false
-	m.rederiveVisibleRows()
+	m.RederiveVisibleRows()
 }

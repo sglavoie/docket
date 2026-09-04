@@ -59,7 +59,7 @@ func TestConflictIndicatorRendersInTheStatusStrip(t *testing.T) {
 	// The indicator is durable state and the status message is transient, so the
 	// indicator must stay on the first row rather than being pushed down by a
 	// message that will clear on its own.
-	m.setStatus("Moved 1 task")
+	m.SetStatus("Moved 1 task")
 	lines := strings.Split(m.statusStripBody(width), "\n")
 	if len(lines) != 2 {
 		t.Fatalf("strip lines = %d, want the indicator plus the status message", len(lines))

@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -95,7 +96,7 @@ type AppModel struct {
 	// noteIndexGeneration discards a superseded read, and noteIndexOwners is the
 	// owner-catalog fingerprint that decides whether an availability change owes
 	// a reload at all.
-	noteIndexRows       []LocatedNoteRow
+	noteIndexRows       []notes.LocatedNoteRow
 	noteIndexGeneration int
 	noteIndexOwners     string
 

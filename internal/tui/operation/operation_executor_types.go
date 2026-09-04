@@ -46,6 +46,13 @@ type OperationHandler func(OperationInvocation) OperationHandlerResult
 type SingleOperationHandler func(OperationInvocation, OperationTarget) OperationHandlerResult
 type BulkOperationHandler func(OperationInvocation, []OperationTarget) OperationHandlerResult
 
+// KeyDispatch is how a mounted surface reaches the shell's single key path. A
+// view model holds no shell reference, so the shell hands the seam down when it
+// mounts the surface. It lives here rather than in the shell because every
+// surface that receives it is a package below the shell, and a func type cannot
+// be satisfied across a boundary by a differently named twin.
+type KeyDispatch func(InputStrategyID, []string, CommandContext) (bool, tea.Cmd)
+
 // OperationBinding binds one descriptor to context-specific execution. Legacy
 // command adapters delegate policies that their existing message flow already
 // owns; new bindings use centralized target/value/confirmation/transaction

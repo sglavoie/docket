@@ -2,6 +2,7 @@ package tui
 
 import (
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
 
@@ -32,11 +33,11 @@ func (m *AppModel) cursorNamesSectionHeader() bool {
 
 // cursorNoteIdentity returns the note the Outliner cursor names, so the shell's
 // command context reads the same row kind the Outliner's own does.
-func (m *AppModel) cursorNoteIdentity() (NoteRowIdentity, bool) {
+func (m *AppModel) cursorNoteIdentity() (notes.NoteRowIdentity, bool) {
 	if out := m.activeOutliner(); out != nil {
 		return out.cursorNoteIdentity()
 	}
-	return NoteRowIdentity{}, false
+	return notes.NoteRowIdentity{}, false
 }
 
 // cursorChecklistItem returns the checklist item the Outliner cursor names.

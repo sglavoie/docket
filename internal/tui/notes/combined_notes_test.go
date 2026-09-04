@@ -1,4 +1,4 @@
-package tui
+package notes
 
 import (
 	"errors"
@@ -19,35 +19,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
-
-type combinedNotesService struct {
-	byLocation  map[app.NoteLocation][]*models.Note
-	errors      map[app.NoteLocation]error
-	snapshotErr error
-	queryCount  int
-	requests    []app.NoteBatchRequest
-}
-
-func (s *combinedNotesService) NotesAtLocations(locations []app.NoteLocation) ([]app.NoteCollectionResult, error) {
-	s.queryCount++
-	if s.snapshotErr != nil {
-		return nil, s.snapshotErr
-	}
-	results := make([]app.NoteCollectionResult, len(locations))
-	for i, location := range locations {
-		results[i] = app.NoteCollectionResult{
-			Location: location,
-			Notes:    append([]*models.Note(nil), s.byLocation[location]...),
-			Err:      s.errors[location],
-		}
-	}
-	return results, nil
-}
-
-func (s *combinedNotesService) ApplyNoteBatch(request app.NoteBatchRequest) (app.NoteBatchResult, error) {
-	s.requests = append(s.requests, request)
-	return app.NoteBatchResult{}, nil
-}
 
 func TestNotesManagerLoadsEveryOwnerWithStableLocatedOrdering(t *testing.T) {
 	alpha := &models.Project{ID: "alpha", Name: "Alpha", Path: t.TempDir()}
@@ -76,8 +47,8 @@ func TestNotesManagerLoadsEveryOwnerWithStableLocatedOrdering(t *testing.T) {
 	if service.queryCount != 1 {
 		t.Fatalf("bulk queries = %d, want one", service.queryCount)
 	}
-	if len(view.loadedRows) != 4 || len(view.visibleRows) != 4 {
-		t.Fatalf("rows = loaded %d visible %d, want four", len(view.loadedRows), len(view.visibleRows))
+	if len(view.LoadedRows) != 4 || len(view.VisibleRows) != 4 {
+		t.Fatalf("rows = loaded %d visible %d, want four", len(view.LoadedRows), len(view.VisibleRows))
 	}
 	wantIDs := []NoteRowIdentity{
 		{Location: app.GlobalNoteLocation(), Filename: "duplicate.md"},
@@ -85,8 +56,8 @@ func TestNotesManagerLoadsEveryOwnerWithStableLocatedOrdering(t *testing.T) {
 		{Location: app.ProjectNoteLocation("alpha"), Filename: "z.md"},
 		{Location: app.ProjectNoteLocation("beta"), Filename: "beta.md"},
 	}
-	gotIDs := make([]NoteRowIdentity, len(view.visibleRows))
-	for i, row := range view.visibleRows {
+	gotIDs := make([]NoteRowIdentity, len(view.VisibleRows))
+	for i, row := range view.VisibleRows {
 		gotIDs[i] = row.Identity()
 	}
 	if !slices.Equal(gotIDs, wantIDs) {
@@ -123,8 +94,8 @@ func TestNotesManagerRetainsPartialResultsAndOwnerErrors(t *testing.T) {
 	mountNotesManager(t, view)
 	view.SetSize(80, 24)
 
-	if len(view.visibleRows) != 1 || len(view.collectionErrors) != 1 || view.snapshotError != nil {
-		t.Fatalf("partial load = rows %d errors %d snapshot %v", len(view.visibleRows), len(view.collectionErrors), view.snapshotError)
+	if len(view.VisibleRows) != 1 || len(view.collectionErrors) != 1 || view.snapshotError != nil {
+		t.Fatalf("partial load = rows %d errors %d snapshot %v", len(view.VisibleRows), len(view.collectionErrors), view.snapshotError)
 	}
 	rendered := view.View().Content
 	for _, want := range []string{"Available", "Beta", betaErr.Error()} {
@@ -151,26 +122,26 @@ func TestNotesManagerScopeDerivationAndRefreshPreserveLocatedSelection(t *testin
 	)
 	mountNotesManager(t, view)
 	projectID := NoteRowIdentity{Location: app.ProjectNoteLocation(alpha.ID), Filename: "duplicate.md"}
-	for i := range view.visibleRows {
-		if view.visibleRows[i].Identity() == projectID {
-			view.cursor = i
+	for i := range view.VisibleRows {
+		if view.VisibleRows[i].Identity() == projectID {
+			view.Cursor = i
 		}
 	}
 
 	service.byLocation[app.GlobalNoteLocation()][0].ModifiedAt = time.Unix(0, 0)
 	service.byLocation[app.ProjectNoteLocation(alpha.ID)][0].ModifiedAt = time.Unix(3, 0)
-	view.loadNotes()
-	if row := view.currentRow(); row == nil || row.Identity() != projectID {
+	view.LoadNotes()
+	if row := view.CurrentRow(); row == nil || row.Identity() != projectID {
 		t.Fatalf("refresh selection = %#v, want project duplicate", row)
 	}
 
 	view.SetScope(route.GlobalNotesScope())
-	if len(view.visibleRows) != 1 || view.visibleRows[0].Location != app.GlobalNoteLocation() {
-		t.Fatalf("global rows = %#v", view.visibleRows)
+	if len(view.VisibleRows) != 1 || view.VisibleRows[0].Location != app.GlobalNoteLocation() {
+		t.Fatalf("global rows = %#v", view.VisibleRows)
 	}
 	view.SetScope(route.ProjectNotesScope(alpha.ID))
-	if len(view.visibleRows) != 1 || view.visibleRows[0].Identity() != projectID {
-		t.Fatalf("project rows = %#v", view.visibleRows)
+	if len(view.VisibleRows) != 1 || view.VisibleRows[0].Identity() != projectID {
+		t.Fatalf("project rows = %#v", view.VisibleRows)
 	}
 	if service.queryCount != 2 {
 		t.Fatalf("scope derivation queries = %d, want only the two explicit snapshot loads", service.queryCount)
@@ -187,8 +158,8 @@ func TestNotesManagerTotalSnapshotFailureBlocksRows(t *testing.T) {
 	)
 	mountNotesManager(t, view)
 	view.SetSize(80, 24)
-	if len(view.loadedRows) != 0 || len(view.visibleRows) != 0 || !errors.Is(view.snapshotError, snapshotErr) {
-		t.Fatalf("total failure = rows %d/%d error %v", len(view.loadedRows), len(view.visibleRows), view.snapshotError)
+	if len(view.LoadedRows) != 0 || len(view.VisibleRows) != 0 || !errors.Is(view.snapshotError, snapshotErr) {
+		t.Fatalf("total failure = rows %d/%d error %v", len(view.LoadedRows), len(view.VisibleRows), view.snapshotError)
 	}
 	rendered := view.View().Content
 	if !strings.Contains(rendered, "Workspace") || !strings.Contains(rendered, snapshotErr.Error()) {
@@ -222,17 +193,17 @@ func TestNotesManagerMalformedEditorUsesSelectedRowsActualOwner(t *testing.T) {
 		beta,
 	)
 	mountNotesManager(t, view)
-	for i := range view.visibleRows {
-		if view.visibleRows[i].Identity() == (NoteRowIdentity{Location: app.ProjectNoteLocation(beta.ID), Filename: filename}) {
-			view.cursor = i
+	for i := range view.VisibleRows {
+		if view.VisibleRows[i].Identity() == (NoteRowIdentity{Location: app.ProjectNoteLocation(beta.ID), Filename: filename}) {
+			view.Cursor = i
 			break
 		}
 	}
-	row := view.currentRow()
+	row := view.CurrentRow()
 	if row == nil || view.effectiveDir(row) != storage.NotesDir(beta) {
 		t.Fatalf("malformed row directory = %q, want selected owner %q", view.effectiveDir(row), storage.NotesDir(beta))
 	}
-	msg := view.editCurrentNote()()
+	msg := view.EditCurrentNote()()
 	if failure, failed := msg.(status.ErrorMsg); failed {
 		t.Fatalf("malformed editor could not read beta-owned raw content: %v", failure.Err)
 	}
@@ -253,7 +224,7 @@ func TestNotesManagerCreationRequiresLocationConfirmation(t *testing.T) {
 	mountNotesManager(t, view)
 
 	_, _ = view.Update(syntheticKey('a'))
-	if view.locationPicker == nil || view.locationPicker.purpose != notesLocationPickerCreation {
+	if view.LocationPicker == nil || view.LocationPicker.Purpose != NotesLocationPickerCreation {
 		t.Fatal("a did not open the destination picker")
 	}
 	if !view.ShouldCaptureEsc() {
@@ -262,7 +233,7 @@ func TestNotesManagerCreationRequiresLocationConfirmation(t *testing.T) {
 	if !view.HasTextInput() {
 		t.Fatal("destination picker did not focus its search input")
 	}
-	if got := view.locationPicker.SelectedItem().Location; got != app.GlobalNoteLocation() {
+	if got := view.LocationPicker.SelectedItem().Location; got != app.GlobalNoteLocation() {
 		t.Fatalf("All Notes preselected destination = %+v, want Global", got)
 	}
 
@@ -270,12 +241,12 @@ func TestNotesManagerCreationRequiresLocationConfirmation(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("Enter did not emit a destination result")
 	}
-	result, ok := cmd().(notesLocationPickerResultMsg)
+	result, ok := cmd().(NotesLocationPickerResultMsg)
 	if !ok || !result.Selected {
 		t.Fatalf("destination result = %#v, want selected location", result)
 	}
 	_, cmd = view.Update(result)
-	if view.locationPicker != nil {
+	if view.LocationPicker != nil {
 		t.Fatal("Enter did not confirm the destination")
 	}
 	if cmd == nil {
@@ -304,7 +275,7 @@ func TestNotesManagerCreationOffersEveryActiveProject(t *testing.T) {
 		app.ProjectNoteLocation(beta.ID),
 	}
 	var got []app.NoteLocation
-	for _, item := range view.locationPicker.SourceItems() {
+	for _, item := range view.LocationPicker.SourceItems() {
 		got = append(got, item.Location)
 		if item.Scope.Kind == route.NotesScopeAll {
 			t.Fatal("creation picker offered All Notes as a destination")
@@ -336,28 +307,28 @@ func TestNotesScopePickerFiltersNavigatesAndCancelsWithoutChangingScope(t *testi
 	view.SetSize(80, 24)
 
 	_, _ = view.Update(syntheticKey('p'))
-	if view.locationPicker == nil || !view.HasTextInput() || !view.ShouldCaptureEsc() {
+	if view.LocationPicker == nil || !view.HasTextInput() || !view.ShouldCaptureEsc() {
 		t.Fatal("p did not open a focused scope picker that owns Esc")
 	}
-	if got := view.locationPicker.SelectedItem().Scope; got != route.GlobalNotesScope() {
+	if got := view.LocationPicker.SelectedItem().Scope; got != route.GlobalNotesScope() {
 		t.Fatalf("initial scope picker selection = %#v, want Global", got)
 	}
 	_, _ = view.Update(syntheticSpecialKey(tea.KeyDown))
-	if got := view.locationPicker.SelectedItem().Scope; got != route.ProjectNotesScope(alpha.ID) {
+	if got := view.LocationPicker.SelectedItem().Scope; got != route.ProjectNotesScope(alpha.ID) {
 		t.Fatalf("Down selection = %#v, want Alpha", got)
 	}
 	_, _ = view.Update(syntheticCtrlKey('j'))
-	if got := view.locationPicker.SelectedItem().Scope; got != route.ProjectNotesScope(beta.ID) {
+	if got := view.LocationPicker.SelectedItem().Scope; got != route.ProjectNotesScope(beta.ID) {
 		t.Fatalf("Ctrl+J selection = %#v, want Beta", got)
 	}
 	_, _ = view.Update(syntheticCtrlKey('k'))
-	if got := view.locationPicker.SelectedItem().Scope; got != route.ProjectNotesScope(alpha.ID) {
+	if got := view.LocationPicker.SelectedItem().Scope; got != route.ProjectNotesScope(alpha.ID) {
 		t.Fatalf("Ctrl+K selection = %#v, want Alpha", got)
 	}
 	for _, r := range "launch" {
 		_, _ = view.Update(syntheticKey(r))
 	}
-	filtered := view.locationPicker.FilteredItems()
+	filtered := view.LocationPicker.FilteredItems()
 	if len(filtered) != 1 || filtered[0].Scope != route.ProjectNotesScope(beta.ID) {
 		t.Fatalf("filtered scope locations = %#v, want Beta", filtered)
 	}
@@ -366,13 +337,13 @@ func TestNotesScopePickerFiltersNavigatesAndCancelsWithoutChangingScope(t *testi
 	if cmd == nil {
 		t.Fatal("Esc emitted no picker cancellation")
 	}
-	result, ok := cmd().(notesLocationPickerResultMsg)
-	if !ok || result.Selected || result.Purpose != notesLocationPickerScope {
+	result, ok := cmd().(NotesLocationPickerResultMsg)
+	if !ok || result.Selected || result.Purpose != NotesLocationPickerScope {
 		t.Fatalf("scope cancel result = %#v", result)
 	}
 	_, _ = view.Update(result)
-	if view.locationPicker != nil || view.scope != route.GlobalNotesScope() {
-		t.Fatalf("scope cancel changed manager state: picker=%v scope=%#v", view.locationPicker, view.scope)
+	if view.LocationPicker != nil || view.Scope != route.GlobalNotesScope() {
+		t.Fatalf("scope cancel changed manager state: picker=%v scope=%#v", view.LocationPicker, view.Scope)
 	}
 }
 
@@ -388,19 +359,19 @@ func TestNotesScopePickerEmptyResultsAreSafeAndResize(t *testing.T) {
 	for _, r := range "nothing-matches" {
 		_, _ = view.Update(syntheticKey(r))
 	}
-	if len(view.locationPicker.FilteredItems()) != 0 {
-		t.Fatalf("scope picker unexpectedly matched %#v", view.locationPicker.FilteredItems())
+	if len(view.LocationPicker.FilteredItems()) != 0 {
+		t.Fatalf("scope picker unexpectedly matched %#v", view.LocationPicker.FilteredItems())
 	}
 	_, cmd := view.Update(syntheticSpecialKey(tea.KeyEnter))
-	if cmd != nil || view.locationPicker == nil {
+	if cmd != nil || view.LocationPicker == nil {
 		t.Fatal("Enter on empty results closed the scope picker")
 	}
 
 	view.SetSize(68, 20)
 	rendered := view.View().Content
-	if view.locationPicker.Width() != 68 || view.locationPicker.Height() != 20 ||
+	if view.LocationPicker.Width() != 68 || view.LocationPicker.Height() != 20 ||
 		!strings.Contains(rendered, "No matching note locations") {
-		t.Fatalf("resized empty picker = %dx%d:\n%s", view.locationPicker.Width(), view.locationPicker.Height(), rendered)
+		t.Fatalf("resized empty picker = %dx%d:\n%s", view.LocationPicker.Width(), view.LocationPicker.Height(), rendered)
 	}
 }
 
@@ -442,18 +413,18 @@ func TestResolveNoteEditorEnvironmentPrecedenceAndActionableFailure(t *testing.T
 }
 
 func TestNotesManagerRestoresOnlyMoveToTheMinimalOperations(t *testing.T) {
-	descriptors := noteOperationDescriptors()
+	descriptors := NoteOperationDescriptors()
 	var ids []operation.OperationID
 	for _, descriptor := range descriptors {
 		ids = append(ids, descriptor.ID)
 	}
 	want := []operation.OperationID{
-		operationNoteOpen,
-		operationNoteRename,
-		operationNoteMove,
-		operationNoteCopyTitle,
-		operationNoteCopyPath,
-		operationNoteDelete,
+		OperationNoteOpen,
+		OperationNoteRename,
+		OperationNoteMove,
+		OperationNoteCopyTitle,
+		OperationNoteCopyPath,
+		OperationNoteDelete,
 	}
 	if !slices.Equal(ids, want) {
 		t.Fatalf("note operations = %v, want %v", ids, want)

@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/notes"
 )
 
 func newRecoveryFeedbackEnv(t *testing.T) (*AppModel, string) {
@@ -127,7 +128,7 @@ func TestRemainingMutationFamiliesRequireMatchingLedgerTransaction(t *testing.T)
 			model.handleProjectMessages(ProjectUpdatedMsg{TransactionID: transactionID})
 		}},
 		{name: "note", fallback: "Updated note", deliver: func(model *AppModel, transactionID string) {
-			model.reconcileNoteResult(ProjectNoteMutationResultMsg{Result: app.NoteBatchResult{TransactionID: transactionID}, SuccessMessage: "Updated note"})
+			model.reconcileNoteResult(notes.ProjectNoteMutationResultMsg{Result: app.NoteBatchResult{TransactionID: transactionID}, SuccessMessage: "Updated note"})
 		}},
 		{name: "comment", fallback: "Comment updated", deliver: func(model *AppModel, transactionID string) {
 			model.handleCommentEdited(CommentEditedMsg{TransactionID: transactionID})

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -44,11 +45,11 @@ func TestProjectOperationsShareOneHandlerAcrossHosts(t *testing.T) {
 	)
 	fromOtherHost := executeProjectOperation(app, operation.OperationScopeOpenProjectNote, projectOperationContext("beta"))
 
-	hubMsg, ok := fromHub.Message.(ShowNotesManagerMsg)
+	hubMsg, ok := fromHub.Message.(notes.ShowNotesManagerMsg)
 	if !ok || hubMsg.Scope != route.ProjectNotesScope("beta") {
 		t.Fatalf("Project Hub notes emitted %#v, want beta", fromHub.Message)
 	}
-	otherHostMsg, ok := fromOtherHost.Message.(ShowNotesManagerMsg)
+	otherHostMsg, ok := fromOtherHost.Message.(notes.ShowNotesManagerMsg)
 	if !ok || otherHostMsg != hubMsg {
 		t.Fatalf("other host notes emitted %#v, want the same project handler path", fromOtherHost.Message)
 	}
@@ -127,7 +128,7 @@ func TestOpenProjectNotesRejectsArchivedProject(t *testing.T) {
 	if result.Err == nil {
 		t.Fatalf("Open project notes emitted %#v for an archived project", result.Message)
 	}
-	if _, ok := result.Message.(ShowNotesManagerMsg); ok {
+	if _, ok := result.Message.(notes.ShowNotesManagerMsg); ok {
 		t.Fatalf("Open project notes emitted a Notes manager message for an archived project: %#v", result.Message)
 	}
 
@@ -142,7 +143,7 @@ func TestOpenProjectNotesRejectsArchivedProject(t *testing.T) {
 	if handlerResult.Err == nil || handlerResult.Err.Error() != "Open project notes is unavailable while Archived is archived" {
 		t.Fatalf("archived handler error = %v, want the shared lifecycle refusal", handlerResult.Err)
 	}
-	if _, ok := handlerResult.Message.(ShowNotesManagerMsg); ok {
+	if _, ok := handlerResult.Message.(notes.ShowNotesManagerMsg); ok {
 		t.Fatalf("archived handler emitted a Notes manager message: %#v", handlerResult.Message)
 	}
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -76,20 +77,20 @@ func TestNoteOperationsResolveTheNoteAtExecution(t *testing.T) {
 	model, project := entityOperationApp(t, "Design log")
 	filename := onlyNoteFilename(t, model, app.ProjectNoteLocation(project.ID))
 
-	result := executeEntityOperation(model, operationNoteOpen, operation.ProjectNoteEntity(project.ID, filename))
+	result := executeEntityOperation(model, notes.OperationNoteOpen, operation.ProjectNoteEntity(project.ID, filename))
 	open, ok := result.Message.(operation.OperationCommandResultMsg)
 	if !ok || open.Cmd == nil {
 		t.Fatalf("open note emitted %#v, want an external-editor command", result.Message)
 	}
 
-	move := executeEntityOperation(model, operationNoteMove, operation.ProjectNoteEntity(project.ID, filename))
-	moveManager, ok := move.Message.(ShowNotesManagerMsg)
+	move := executeEntityOperation(model, notes.OperationNoteMove, operation.ProjectNoteEntity(project.ID, filename))
+	moveManager, ok := move.Message.(notes.ShowNotesManagerMsg)
 	if !ok || moveManager.Scope != route.AllNotesScope() ||
-		moveManager.Focus != (NoteRowIdentity{
+		moveManager.Focus != (notes.NoteRowIdentity{
 			Location: app.ProjectNoteLocation(project.ID),
 			Filename: filename,
 		}) ||
-		!moveManager.MoveSource.valid() ||
+		!moveManager.MoveSource.Valid() ||
 		moveManager.MoveSource.Location != app.ProjectNoteLocation(project.ID) {
 		t.Fatalf("move note emitted %#v, want the searchable manager on its frozen source", move.Message)
 	}
@@ -99,7 +100,7 @@ func TestNoteOperationsResolveTheNoteAtExecution(t *testing.T) {
 	if err := os.Remove(filepath.Join(storage.NotesDir(project), filename)); err != nil {
 		t.Fatalf("remove note: %v", err)
 	}
-	stale := executeEntityOperation(model, operationNoteOpen, operation.ProjectNoteEntity(project.ID, filename))
+	stale := executeEntityOperation(model, notes.OperationNoteOpen, operation.ProjectNoteEntity(project.ID, filename))
 	if stale.Err == nil {
 		t.Fatalf("open on a removed note emitted %#v, want an unavailable error", stale.Message)
 	}
@@ -112,11 +113,16 @@ func TestNoteOperationsRejectTargetsOutsideTheirScope(t *testing.T) {
 	// CurrentEntityIdentity degrades to the focused project, so an unguarded note
 	// descriptor would silently borrow it.
 	ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
-	if noteOperationApplicable(ctx) {
-		t.Fatal("a note operation was offered with only a project in focus")
+	for _, descriptor := range notes.NoteOperationDescriptors() {
+		if descriptor.Applicability == nil {
+			t.Fatalf("%s carries no applicability guard", descriptor.ID)
+		}
+		if descriptor.Applicability(ctx) {
+			t.Fatalf("%s was offered with only a project in focus", descriptor.ID)
+		}
 	}
 
-	missing := executeEntityOperation(model, operationNoteOpen, operation.ProjectNoteEntity("ghost", filename))
+	missing := executeEntityOperation(model, notes.OperationNoteOpen, operation.ProjectNoteEntity("ghost", filename))
 	if missing.Err == nil {
 		t.Fatalf("a note in a removed project emitted %#v, want an error", missing.Message)
 	}
@@ -133,16 +139,16 @@ func TestNoteOperationsPreserveMalformedNoteRestrictions(t *testing.T) {
 	}
 	entity := operation.ProjectNoteEntity(project.ID, "broken.md")
 
-	if result := executeEntityOperation(model, operationNoteMove, entity); result.Err == nil {
+	if result := executeEntityOperation(model, notes.OperationNoteMove, entity); result.Err == nil {
 		t.Fatalf("move ran on a malformed note and emitted %#v", result.Message)
 	}
 
 	// Repair and removal stay reachable, otherwise a malformed note is stranded.
-	rename := executeEntityOperation(model, operationNoteRename, entity)
+	rename := executeEntityOperation(model, notes.OperationNoteRename, entity)
 	if rename.ValueRequired == nil || rename.ValueRequired.Provider != operation.ValueProviderNoteTitle {
 		t.Fatalf("rename on a malformed note emitted %#v, want a title prompt", rename)
 	}
-	if delete := executeEntityOperation(model, operationNoteDelete, entity); delete.ConfirmationRequired == nil {
+	if delete := executeEntityOperation(model, notes.OperationNoteDelete, entity); delete.ConfirmationRequired == nil {
 		t.Fatalf("delete on a malformed note emitted %#v, want a confirmation", delete)
 	}
 }
@@ -152,7 +158,7 @@ func TestNoteDeleteRunsOnlyAfterConfirmation(t *testing.T) {
 	filename := onlyNoteFilename(t, model, app.ProjectNoteLocation(project.ID))
 	entity := operation.ProjectNoteEntity(project.ID, filename)
 
-	result := executeEntityOperation(model, operationNoteDelete, entity)
+	result := executeEntityOperation(model, notes.OperationNoteDelete, entity)
 	if result.ConfirmationRequired == nil || result.Message != nil {
 		t.Fatalf("note delete ran without confirmation: %#v", result)
 	}
@@ -162,7 +168,7 @@ func TestNoteDeleteRunsOnlyAfterConfirmation(t *testing.T) {
 	if !ok || command.Cmd == nil {
 		t.Fatalf("confirmed note delete emitted %#v, want a mutation command", confirmed.Message)
 	}
-	mutation, ok := command.Cmd().(ProjectNoteMutationResultMsg)
+	mutation, ok := command.Cmd().(notes.ProjectNoteMutationResultMsg)
 	if !ok {
 		t.Fatalf("note delete produced %#v, want a note mutation result", command.Cmd())
 	}
@@ -211,7 +217,7 @@ func TestNoteCopyOperationsNameTheNoteInEitherCollection(t *testing.T) {
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
 			copied = ""
-			title := executeEntityOperation(model, operationNoteCopyTitle, testCase.entity)
+			title := executeEntityOperation(model, notes.OperationNoteCopyTitle, testCase.entity)
 			if title.Err != nil {
 				t.Fatalf("copy note title: %v", title.Err)
 			}
@@ -223,7 +229,7 @@ func TestNoteCopyOperationsNameTheNoteInEitherCollection(t *testing.T) {
 			}
 
 			copied = ""
-			path := executeEntityOperation(model, operationNoteCopyPath, testCase.entity)
+			path := executeEntityOperation(model, notes.OperationNoteCopyPath, testCase.entity)
 			if path.Err != nil {
 				t.Fatalf("copy note path: %v", path.Err)
 			}
@@ -257,13 +263,13 @@ func TestNoteCopyOperationsSurviveAMalformedNoteAndAFailedClipboard(t *testing.T
 
 	var copied string
 	withFakeClipboard(t, nil, &copied)
-	if result := executeEntityOperation(model, operationNoteCopyPath, entity); result.Err != nil {
+	if result := executeEntityOperation(model, notes.OperationNoteCopyPath, entity); result.Err != nil {
 		t.Fatalf("copy path on a malformed note: %v", result.Err)
 	}
 	if want := filepath.Join(dir, "broken.md"); copied != want {
 		t.Fatalf("copied path = %q, want %q", copied, want)
 	}
-	if result := executeEntityOperation(model, operationNoteCopyTitle, entity); result.Err != nil {
+	if result := executeEntityOperation(model, notes.OperationNoteCopyTitle, entity); result.Err != nil {
 		t.Fatalf("copy title on a malformed note: %v", result.Err)
 	}
 	if copied == "" {
@@ -271,7 +277,7 @@ func TestNoteCopyOperationsSurviveAMalformedNoteAndAFailedClipboard(t *testing.T
 	}
 
 	withFakeClipboard(t, errClipboardUnsupported, nil)
-	failed := executeEntityOperation(model, operationNoteCopyTitle, entity)
+	failed := executeEntityOperation(model, notes.OperationNoteCopyTitle, entity)
 	if failed.Err == nil {
 		t.Fatalf("a refusing clipboard emitted %#v, want an error", failed.Message)
 	}
@@ -288,19 +294,19 @@ func TestNotesBrowseKeysReachTheCopyOperations(t *testing.T) {
 	model, project := entityOperationApp(t, "Design log")
 	filename := onlyNoteFilename(t, model, app.ProjectNoteLocation(project.ID))
 
-	view := NewNotesViewModelWithService(
+	view := notes.NewNotesViewModelWithService(
 		storage.GlobalNotesDir(model.runtime.DataDir()),
 		route.AllNotesScope(),
 		model.appService,
 		nil,
 		project,
 	)
-	model.manageHub.params = route.ManageParams{Module: route.ManageNotes, NotesScope: view.scope}
+	model.manageHub.params = route.ManageParams{Module: route.ManageNotes, NotesScope: view.Scope}
 	model.manageHub.active = view
 	view.SetOperationSystem(model.GetOperationRegistry(), model.dispatchOperationKey)
 	view.SetSize(80, 24)
-	if len(view.visibleRows) != 1 {
-		t.Fatalf("notes rows = %d, want the one seeded note", len(view.visibleRows))
+	if len(view.VisibleRows) != 1 {
+		t.Fatalf("notes rows = %d, want the one seeded note", len(view.VisibleRows))
 	}
 
 	var copied string

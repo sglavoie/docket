@@ -1,4 +1,4 @@
-package tui
+package notes
 
 import (
 	"github.com/sglavoie/tt/internal/app"
@@ -17,7 +17,7 @@ import (
 type ShowNotesManagerMsg struct {
 	Scope      route.NotesScope
 	Focus      NoteRowIdentity
-	MoveSource noteMutationRef
+	MoveSource NoteMutationRef
 }
 
 // CloseNotesManagerMsg closes the Notes manager's single secondary-tool route.

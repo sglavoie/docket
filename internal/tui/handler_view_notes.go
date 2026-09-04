@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -15,33 +16,33 @@ import (
 // Returns true if the message was handled.
 func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
-	case ProjectNoteMutationResultMsg:
+	case notes.ProjectNoteMutationResultMsg:
 		// A committed note transaction is the primary invalidation: the index
 		// holds parsed note bodies, so a create, edit, rename, move, or delete
 		// makes it stale immediately.
 		return true, tea.Batch(m.reconcileNoteResult(msg), m.requestNoteSearchIndexLoad())
 
-	case ProjectNoteMutationErrorMsg:
-		location := normalizedNoteLocation(msg.Location, msg.ProjectID)
-		if nv := m.getActiveNotesView(); noteViewMatchesLocation(nv, location) {
-			nv.setErrorStatus(msg.Err.Error())
+	case notes.ProjectNoteMutationErrorMsg:
+		location := notes.NormalizedNoteLocation(msg.Location, msg.ProjectID)
+		if nv := m.getActiveNotesView(); notes.NoteViewMatchesLocation(nv, location) {
+			nv.SetErrorStatus(msg.Err.Error())
 			return true, nil
 		}
 		return true, func() tea.Msg { return status.ErrorMsg{Err: msg.Err} }
 
-	case ProjectNoteLedgerResultMsg:
-		location := normalizedNoteLocation(msg.Location, msg.ProjectID)
+	case notes.ProjectNoteLedgerResultMsg:
+		location := notes.NormalizedNoteLocation(msg.Location, msg.ProjectID)
 		cmds, refreshErr := m.reconcileNoteLedgerRestore(msg.Entry)
 		nv := m.reloadActiveNotesAfterLedgerRestore()
-		if noteViewMatchesLocation(nv, location) {
+		if notes.NoteViewMatchesLocation(nv, location) {
 			verb := "Undid"
 			if msg.Redo {
 				verb = "Redid"
 			}
 			if refreshErr != nil {
-				nv.setErrorStatus(fmt.Sprintf("%s completed, refresh failed: %v", ledgerRestoreLabel(msg.Redo), refreshErr))
+				nv.SetErrorStatus(fmt.Sprintf("%s completed, refresh failed: %v", ledgerRestoreLabel(msg.Redo), refreshErr))
 			} else {
-				nv.setStatus(fmt.Sprintf("%s: %s", verb, msg.Action))
+				nv.SetStatus(fmt.Sprintf("%s: %s", verb, msg.Action))
 			}
 		} else if refreshErr != nil {
 			m.err = fmt.Errorf("%s completed, refresh failed: %w", ledgerRestoreLabel(msg.Redo), refreshErr)
@@ -52,34 +53,34 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 		cmds = append(cmds, m.requestNoteSearchIndexLoad())
 		return true, tea.Batch(cmds...)
 
-	case ProjectNoteLedgerErrorMsg:
-		location := normalizedNoteLocation(msg.Location, msg.ProjectID)
-		if nv := m.getActiveNotesView(); noteViewMatchesLocation(nv, location) {
-			nv.setErrorStatus(msg.Err.Error())
+	case notes.ProjectNoteLedgerErrorMsg:
+		location := notes.NormalizedNoteLocation(msg.Location, msg.ProjectID)
+		if nv := m.getActiveNotesView(); notes.NoteViewMatchesLocation(nv, location) {
+			nv.SetErrorStatus(msg.Err.Error())
 		}
 		return true, nil
 
-	case ProjectNoteEditorDoneMsg:
-		location := normalizedNoteLocation(msg.Location, msg.ProjectID)
+	case notes.ProjectNoteEditorDoneMsg:
+		location := notes.NormalizedNoteLocation(msg.Location, msg.ProjectID)
 		if msg.Err != nil {
 			return true, func() tea.Msg {
-				return ProjectNoteMutationErrorMsg{Location: location, ProjectID: location.ProjectID, Err: msg.Err}
+				return notes.ProjectNoteMutationErrorMsg{Location: location, ProjectID: location.ProjectID, Err: msg.Err}
 			}
 		}
 		if msg.Modified == msg.OriginalContent {
-			if nv := m.getActiveNotesView(); noteViewMatchesLocation(nv, location) {
+			if nv := m.getActiveNotesView(); notes.NoteViewMatchesLocation(nv, location) {
 				if msg.Create {
-					nv.setStatus("Note creation canceled")
+					nv.SetStatus("Note creation canceled")
 				} else {
-					nv.setStatus("No changes made")
+					nv.SetStatus("No changes made")
 				}
 			}
 			return true, nil
 		}
-		updated, err := parseProjectNoteEditorResult(msg.Original, msg.Modified, msg.Create)
+		updated, err := notes.ParseProjectNoteEditorResult(msg.Original, msg.Modified, msg.Create)
 		if err != nil {
 			return true, func() tea.Msg {
-				return ProjectNoteMutationErrorMsg{Location: location, ProjectID: location.ProjectID, Err: err}
+				return notes.ProjectNoteMutationErrorMsg{Location: location, ProjectID: location.ProjectID, Err: err}
 			}
 		}
 		kind := app.NoteUpdate
@@ -94,16 +95,16 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 		if kind == app.NoteRename {
 			operation.NewTitle = updated.Title
 		}
-		return true, noteMutationCmd(m.appService, location, app.NoteBatchRequest{
+		return true, notes.NoteMutationCmd(m.appService, location, app.NoteBatchRequest{
 			Operations:  []app.NoteMutationRequest{operation},
 			UndoAction:  undoAction,
 			UndoContext: updated.Title,
 		}, undoAction+": "+updated.Title)
 
-	case ShowNotesManagerMsg:
+	case notes.ShowNotesManagerMsg:
 		hadNotesManager := false
 		if m.manageHub != nil {
-			_, hadNotesManager = m.manageHub.ActiveModuleView().(*NotesViewModel)
+			_, hadNotesManager = m.manageHub.ActiveModuleView().(*notes.NotesViewModel)
 		}
 		cmd := m.activateManageHub(route.ManageParams{Module: route.ManageNotes, NotesScope: msg.Scope})
 		if hadNotesManager {
@@ -112,9 +113,9 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 			}
 		}
 		m.selectActiveNote(msg.Focus)
-		if msg.MoveSource.valid() {
+		if msg.MoveSource.Valid() {
 			if nv := m.getActiveNotesView(); nv != nil {
-				return true, tea.Batch(cmd, nv.beginMovePickerForSource(msg.MoveSource))
+				return true, tea.Batch(cmd, nv.BeginMovePickerForSource(msg.MoveSource))
 			}
 		}
 		return true, cmd
@@ -123,20 +124,15 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 	return false, nil
 }
 
-func (m *AppModel) selectActiveNote(identity NoteRowIdentity) {
+func (m *AppModel) selectActiveNote(identity notes.NoteRowIdentity) {
 	if identity.Filename == "" || identity.Location.Scope == "" || m.manageHub == nil {
 		return
 	}
-	notes, ok := m.manageHub.ActiveModuleView().(*NotesViewModel)
+	manager, ok := m.manageHub.ActiveModuleView().(*notes.NotesViewModel)
 	if !ok {
 		return
 	}
-	for index, row := range notes.visibleRows {
-		if row.Identity() == identity {
-			notes.cursor = index
-			return
-		}
-	}
+	manager.FocusNote(identity)
 }
 
 func ledgerRestoreLabel(redo bool) string {
@@ -146,30 +142,23 @@ func ledgerRestoreLabel(redo bool) string {
 	return "undo"
 }
 
-func (m *AppModel) reconcileNoteResult(msg ProjectNoteMutationResultMsg) tea.Cmd {
-	location := normalizedNoteLocation(msg.Location, msg.ProjectID)
+func (m *AppModel) reconcileNoteResult(msg notes.ProjectNoteMutationResultMsg) tea.Cmd {
+	location := notes.NormalizedNoteLocation(msg.Location, msg.ProjectID)
 	feedbackCmd := m.setRecoveryFeedback(msg.SuccessMessage, msg.Result.TransactionID, false)
 	nv := m.getActiveNotesView()
-	if !noteViewMatchesLocation(nv, location) {
+	if !notes.NoteViewMatchesLocation(nv, location) {
 		return feedbackCmd
 	}
-	target := NoteRowIdentity{}
+	target := notes.NoteRowIdentity{}
 	if len(msg.Result.Results) > 0 {
 		result := msg.Result.Results[len(msg.Result.Results)-1]
-		target = NoteRowIdentity{
-			Location: normalizedNoteLocation(result.Location, result.ProjectID),
+		target = notes.NoteRowIdentity{
+			Location: notes.NormalizedNoteLocation(result.Location, result.ProjectID),
 			Filename: result.Filename,
 		}
 	}
-	nv.loadNotes()
-	if target.Filename != "" {
-		for i, row := range nv.visibleRows {
-			if row.Identity() == target {
-				nv.cursor = i
-				break
-			}
-		}
-	}
-	nv.setStatus(msg.SuccessMessage)
+	nv.Reload()
+	nv.FocusNote(target)
+	nv.SetStatus(msg.SuccessMessage)
 	return feedbackCmd
 }

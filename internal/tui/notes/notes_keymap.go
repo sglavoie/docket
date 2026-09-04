@@ -1,14 +1,14 @@
-package tui
+package notes
 
 import (
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
-// buildKeyMap constructs the declarative KeyMap for NotesViewModel.
-func (m *NotesViewModel) buildKeyMap() *keymap.KeyMap {
-	hasRow := func() bool { return m.currentRow() != nil }
+// BuildKeyMap constructs the declarative KeyMap for NotesViewModel.
+func (m *NotesViewModel) BuildKeyMap() *keymap.KeyMap {
+	hasRow := func() bool { return m.CurrentRow() != nil }
 	canRename := func() bool {
-		row := m.currentRow()
+		row := m.CurrentRow()
 		return row != nil && row.Note != nil && row.Note.ParseError == ""
 	}
 	entries := []keymap.Entry{
@@ -75,5 +75,5 @@ func (m *NotesViewModel) buildKeyMap() *keymap.KeyMap {
 
 // HandledKeys returns all keys NotesViewModel's Update method can process.
 func (m *NotesViewModel) HandledKeys() []string {
-	return m.buildKeyMap().HandledKeys()
+	return m.BuildKeyMap().HandledKeys()
 }

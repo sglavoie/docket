@@ -39,7 +39,7 @@ func TestAdvisoryLineDropsTheStripRowAndItsHeight(t *testing.T) {
 
 	// Feedback from the user's own operations is not an advisory, so hiding
 	// advisories must never silence it — and the indicator must stay gone above it.
-	m.setStatus("Moved 1 task")
+	m.SetStatus("Moved 1 task")
 	body := m.statusStripBody(width)
 	if !strings.Contains(body, "Moved 1 task") {
 		t.Fatalf("suppressed strip dropped the user's own status: %q", body)

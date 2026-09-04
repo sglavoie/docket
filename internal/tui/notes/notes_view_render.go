@@ -1,4 +1,4 @@
-package tui
+package notes
 
 import (
 	"fmt"
@@ -18,8 +18,8 @@ import (
 )
 
 func (m *NotesViewModel) View() tea.View {
-	if m.locationPicker != nil {
-		return m.locationPicker.View()
+	if m.LocationPicker != nil {
+		return m.LocationPicker.View()
 	}
 
 	width := max(m.Width(), 1)
@@ -50,7 +50,7 @@ func (m *NotesViewModel) View() tea.View {
 	if guidance, ok := m.ContextualGuidance(); ok {
 		footer = append(footer, chrome.RenderGuidance(guidance, width, m.AccentColor()))
 	}
-	if m.statusMessage != "" {
+	if m.StatusMessage != "" {
 		footer = append(footer, textfit.FitStyledLineToWidth(m.renderStatusBar(), width))
 	}
 
@@ -97,7 +97,7 @@ func (m *NotesViewModel) renderListPane(width, listHeight int) string {
 	if m.snapshotError != nil {
 		return chrome.RenderEmptyState("Notes are unavailable.", "Resolve the workspace error and reopen Notes.") + "\n"
 	}
-	if len(m.visibleRows) == 0 {
+	if len(m.VisibleRows) == 0 {
 		if strings.TrimSpace(m.activeSearchQuery()) != "" {
 			hint := "Press / to edit the search or Esc to clear it."
 			if m.searchEditing {
@@ -117,19 +117,19 @@ func (m *NotesViewModel) renderListPane(width, listHeight int) string {
 
 	var b strings.Builder
 	listHeight = max(listHeight, 1)
-	start, end := chrome.PersistentIndexWindow(m.cursor, len(m.visibleRows), listHeight, &m.scrollOffset)
+	start, end := chrome.PersistentIndexWindow(m.Cursor, len(m.VisibleRows), listHeight, &m.ScrollOffset)
 	width = max(width, 1)
 	scopeWidth := min(24, max(width/3, 6))
 	for i := start; i < end; i++ {
-		row := m.visibleRows[i]
+		row := m.VisibleRows[i]
 		owner := chrome.TruncateAndPad(row.OwnerLabel, scopeWidth)
-		match := m.searchMatches[row.Identity()]
+		match := m.SearchMatches[row.Identity()]
 		bodyIndicator := ""
-		if match.bodyMatched {
+		if match.BodyMatched {
 			bodyIndicator = "  " + theme.MutedStyle.Render("· body")
 		}
 		bodyColumns := 0
-		if match.bodyMatched {
+		if match.BodyMatched {
 			bodyColumns = 8
 		}
 		parseColumns := 0
@@ -139,15 +139,15 @@ func (m *NotesViewModel) renderListPane(width, listHeight int) string {
 		titleWidth := max(width-scopeWidth-2-bodyColumns-parseColumns, 1)
 		title := textfit.TruncateToVisualWidth(row.Note.Title, titleWidth)
 		renderedTitle := title
-		if len(match.titlePositions) > 0 {
-			renderedTitle = textfit.HighlightText(title, match.titlePositions, theme.NormalStyle)
+		if len(match.TitlePositions) > 0 {
+			renderedTitle = textfit.HighlightText(title, match.TitlePositions, theme.NormalStyle)
 		}
 		line := fmt.Sprintf("%s  %s%s", theme.MutedStyle.Render(owner), renderedTitle, bodyIndicator)
 		if row.Note.ParseError != "" {
 			line = theme.WarningIconStyle.Render("! ") + line
 		}
 		line = textfit.FitStyledLineToWidth(line, width)
-		if i == m.cursor {
+		if i == m.Cursor {
 			b.WriteString(theme.PickerSelectedStyle.Render(line))
 		} else {
 			b.WriteString(line)
@@ -190,18 +190,18 @@ func (m *NotesViewModel) renderCollectionErrors() string {
 }
 
 func (m *NotesViewModel) scopeLabel() string {
-	switch m.scope.Kind {
+	switch m.Scope.Kind {
 	case route.NotesScopeGlobal:
 		return "Global"
 	case route.NotesScopeProject:
-		return m.locationLabel(app.ProjectNoteLocation(m.scope.ProjectID))
+		return m.LocationLabel(app.ProjectNoteLocation(m.Scope.ProjectID))
 	default:
 		return "All Notes"
 	}
 }
 
 func (m *NotesViewModel) scopeCountLabel() string {
-	count := len(m.visibleRows)
+	count := len(m.VisibleRows)
 	if query := strings.TrimSpace(m.activeSearchQuery()); query != "" {
 		caseNote := ""
 		if m.searchCaseRelaxed {
@@ -216,7 +216,7 @@ func (m *NotesViewModel) scopeCountLabel() string {
 			m.scopeLabel(),
 		)
 	}
-	switch m.scope.Kind {
+	switch m.Scope.Kind {
 	case route.NotesScopeGlobal:
 		return fmt.Sprintf("%d Global notes", count)
 	case route.NotesScopeProject:
@@ -234,24 +234,24 @@ func (m *NotesViewModel) renderSearchLine() string {
 	if m.searchEditing {
 		return "Search: " + m.searchInput.View()
 	}
-	if m.searchApplied != "" {
-		return theme.MutedStyle.Render(fmt.Sprintf("Search: %q", m.searchApplied))
+	if m.SearchApplied != "" {
+		return theme.MutedStyle.Render(fmt.Sprintf("Search: %q", m.SearchApplied))
 	}
 	return ""
 }
 
-func (m *NotesViewModel) locationLabel(location app.NoteLocation) string {
-	return m.ownerForLocation(location).Label
+func (m *NotesViewModel) LocationLabel(location app.NoteLocation) string {
+	return m.OwnerForLocation(location).Label
 }
 
 func (m *NotesViewModel) renderStatusBar() string {
-	if m.statusMessage == "" {
+	if m.StatusMessage == "" {
 		return ""
 	}
-	if m.statusIsError {
-		return theme.WarningIconStyle.Render(m.statusMessage)
+	if m.StatusIsError {
+		return theme.WarningIconStyle.Render(m.StatusMessage)
 	}
-	return theme.SuccessStyle.Render(m.statusMessage)
+	return theme.SuccessStyle.Render(m.StatusMessage)
 }
 
 // GetHelpItems documents the Notes grammar from the two sources that own it:
@@ -259,8 +259,8 @@ func (m *NotesViewModel) renderStatusBar() string {
 // names the cursor and undo/redo keys whose descriptors answer only to the
 // Outliner. Keys documented by both keep the registry's spelling.
 func (m *NotesViewModel) GetHelpItems() []operation.HelpItem {
-	if m.locationPicker != nil {
-		return m.locationPicker.GetHelpItems()
+	if m.LocationPicker != nil {
+		return m.LocationPicker.GetHelpItems()
 	}
 	if m.registry == nil {
 		return nil
@@ -270,7 +270,7 @@ func (m *NotesViewModel) GetHelpItems() []operation.HelpItem {
 	for _, item := range items {
 		documented[strings.ToLower(item.Key)] = true
 	}
-	for _, item := range help.HelpItemsFromKeyMap(m.buildKeyMap()) {
+	for _, item := range help.HelpItemsFromKeyMap(m.BuildKeyMap()) {
 		if !documented[strings.ToLower(item.Key)] {
 			items = append(items, item)
 		}

@@ -121,6 +121,15 @@ type ManageParams struct {
 
 func (ManageParams) routeParams() {}
 
+// ManageHubModuleSelectedMsg changes the active Manage mode without creating a
+// child route. The shell owns the corresponding typed route replacement. It
+// lives beside ManageParams rather than beside the Hub because the surfaces
+// that raise it sit below the Hub in the package graph: Notes asks for the
+// Manage scope to change and cannot import the package that hosts it.
+type ManageHubModuleSelectedMsg struct {
+	Params ManageParams
+}
+
 type ReferenceKind uint8
 
 const (

@@ -1,17 +1,13 @@
 package tui
 
 import (
-	"fmt"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
 
-	tea "charm.land/bubbletea/v2"
-
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
 
@@ -28,7 +24,7 @@ func TestNotesWorkspaceRefreshRebuildsOwnersAndRejectsStalePickerResults(t *test
 			app.ProjectNoteLocation(beta.ID): {{Title: "Beta note", Filename: "beta.md"}},
 		},
 	}}
-	view := NewNotesViewModelWithService(
+	view := notes.NewNotesViewModelWithService(
 		t.TempDir(),
 		route.AllNotesScope(),
 		service,
@@ -36,18 +32,18 @@ func TestNotesWorkspaceRefreshRebuildsOwnersAndRejectsStalePickerResults(t *test
 		alpha,
 		beta,
 	)
-	mountNotesManager(t, view)
+	mountNotesManager(t, view, route.AllNotesScope())
 	view.SetSize(80, 24)
-	view.searchApplied = "needle"
-	view.rederiveVisibleRows()
+	view.SearchApplied = "needle"
+	view.RederiveVisibleRows()
 
 	_, _ = view.Update(syntheticKey('%'))
-	betaItem := notesLocationPickerItem{
+	betaItem := notes.NotesLocationPickerItem{
 		Label:    beta.Name,
 		Scope:    route.ProjectNotesScope(beta.ID),
 		Location: app.ProjectNoteLocation(beta.ID),
 	}
-	view.locationPicker.SetCursorToID(betaItem.ItemID())
+	view.LocationPicker.SetCursorToID(betaItem.ItemID())
 	for _, r := range "beta" {
 		_, _ = view.Update(syntheticKey(r))
 	}
@@ -61,38 +57,38 @@ func TestNotesWorkspaceRefreshRebuildsOwnersAndRejectsStalePickerResults(t *test
 	if view.SearchQuery() != "needle" {
 		t.Fatalf("workspace refresh lost accepted search %q", view.SearchQuery())
 	}
-	if len(view.loadedRows) != 1 || view.loadedRows[0].Location != app.GlobalNoteLocation() {
-		t.Fatalf("removed owner survived canonical rows: %#v", view.loadedRows)
+	if len(view.LoadedRows) != 1 || view.LoadedRows[0].Location != app.GlobalNoteLocation() {
+		t.Fatalf("removed owner survived canonical rows: %#v", view.LoadedRows)
 	}
-	if _, ok := view.owners[app.ProjectNoteLocation(beta.ID)]; ok {
+	if _, ok := view.Owners[app.ProjectNoteLocation(beta.ID)]; ok {
 		t.Fatal("removed Beta owner survived workspace refresh")
 	}
-	if owner := view.ownerForLocation(app.ProjectNoteLocation(alpha.ID)); owner.Label != renamedAlpha.Name {
+	if owner := view.OwnerForLocation(app.ProjectNoteLocation(alpha.ID)); owner.Label != renamedAlpha.Name {
 		t.Fatalf("renamed owner label = %q, want %q", owner.Label, renamedAlpha.Name)
 	}
-	if view.locationPicker == nil || view.locationPicker.SearchQuery() != "beta" ||
-		len(view.locationPicker.FilteredItems()) != 0 {
+	if view.LocationPicker == nil || view.LocationPicker.SearchQuery() != "beta" ||
+		len(view.LocationPicker.FilteredItems()) != 0 {
 		t.Fatalf(
 			"refreshed move picker = picker %v query %q matches %#v",
-			view.locationPicker,
-			view.locationPicker.SearchQuery(),
-			view.locationPicker.FilteredItems(),
+			view.LocationPicker,
+			view.LocationPicker.SearchQuery(),
+			view.LocationPicker.FilteredItems(),
 		)
 	}
 
-	_, cmd := view.Update(notesLocationPickerResultMsg{
-		Purpose:  notesLocationPickerMove,
+	_, cmd := view.Update(notes.NotesLocationPickerResultMsg{
+		Purpose:  notes.NotesLocationPickerMove,
 		Item:     betaItem,
 		Selected: true,
 	})
-	if cmd != nil || view.locationPicker != nil || !view.statusIsError ||
-		!strings.Contains(view.statusMessage, "no longer available") {
+	if cmd != nil || view.LocationPicker != nil || !view.StatusIsError ||
+		!strings.Contains(view.StatusMessage, "no longer available") {
 		t.Fatalf(
 			"stale picker result = cmd %v picker %v error %t status %q",
 			cmd,
-			view.locationPicker,
-			view.statusIsError,
-			view.statusMessage,
+			view.LocationPicker,
+			view.StatusIsError,
+			view.StatusMessage,
 		)
 	}
 	if len(service.requests) != 0 {
@@ -125,41 +121,41 @@ func TestNotesWorkspaceRefreshNormalizesInvalidScopeAndTypedRouteImmediately(t *
 		t.Run(tc.name, func(t *testing.T) {
 			shell := typedTestApp(t)
 			project := shell.currentProject
-			_, _ = shell.handleNotesMessages(ShowNotesManagerMsg{
+			_, _ = shell.handleNotesMessages(notes.ShowNotesManagerMsg{
 				Scope: route.ProjectNotesScope(project.ID),
 			})
-			notes := shell.getActiveNotesView()
-			notes.searchApplied = "needle"
-			notes.rederiveVisibleRows()
-			_, _ = notes.Update(syntheticKey('a'))
+			manager := shell.getActiveNotesView()
+			manager.SearchApplied = "needle"
+			manager.RederiveVisibleRows()
+			_, _ = manager.Update(syntheticKey('a'))
 
 			setTestAppProjects(shell, tc.projects(project)...)
 			_ = shell.refreshActiveNotesManager()
 
 			params := shell.CurrentRoute().Params().(route.ManageParams)
-			notes = shell.getActiveNotesView()
-			if params.NotesScope != route.AllNotesScope() || notes.scope != route.AllNotesScope() {
-				t.Fatalf("invalid scope survived refresh: route %#v model %#v", params.NotesScope, notes.scope)
+			manager = shell.getActiveNotesView()
+			if params.NotesScope != route.AllNotesScope() || manager.Scope != route.AllNotesScope() {
+				t.Fatalf("invalid scope survived refresh: route %#v model %#v", params.NotesScope, manager.Scope)
 			}
-			if notes.locationPicker != nil {
+			if manager.LocationPicker != nil {
 				t.Fatal("invalid project creation destination survived route normalization")
 			}
-			if notes.SearchQuery() != "needle" {
-				t.Fatalf("scope fallback lost accepted search %q", notes.SearchQuery())
+			if manager.SearchQuery() != "needle" {
+				t.Fatalf("scope fallback lost accepted search %q", manager.SearchQuery())
 			}
-			if len(notes.owners) != 1 || !notes.locationAvailable(app.GlobalNoteLocation()) {
-				t.Fatalf("scope fallback owners = %#v, want Global only", notes.owners)
+			if len(manager.Owners) != 1 || !manager.LocationAvailable(app.GlobalNoteLocation()) {
+				t.Fatalf("scope fallback owners = %#v, want Global only", manager.Owners)
 			}
 			if shell.currentProject != nil {
 				t.Fatalf("invalid current project survived refresh: %#v", shell.currentProject)
 			}
 			if !shell.statusIsInfo || !strings.Contains(shell.statusMessage, "showing All Notes") ||
-				!strings.Contains(notes.statusMessage, "showing All Notes") {
+				!strings.Contains(manager.StatusMessage, "showing All Notes") {
 				t.Fatalf(
-					"scope fallback status = shell %q info=%t notes %q",
+					"scope fallback status = shell %q info=%t manager %q",
 					shell.statusMessage,
 					shell.statusIsInfo,
-					notes.statusMessage,
+					manager.StatusMessage,
 				)
 			}
 		})
@@ -171,14 +167,14 @@ func TestNotesWorkspaceRefreshUpdatesOpenPickerLabelsAndQuery(t *testing.T) {
 	alpha := shell.currentProject
 	beta := &models.Project{ID: "beta", Name: "Old Destination", Slug: "beta", Path: t.TempDir()}
 	setTestAppProjects(shell, alpha, beta)
-	_, _ = shell.handleNotesMessages(ShowNotesManagerMsg{Scope: route.AllNotesScope()})
-	notes := shell.getActiveNotesView()
-	_, _ = notes.Update(syntheticKey('a'))
+	_, _ = shell.handleNotesMessages(notes.ShowNotesManagerMsg{Scope: route.AllNotesScope()})
+	manager := shell.getActiveNotesView()
+	_, _ = manager.Update(syntheticKey('a'))
 	for _, r := range "renamed" {
-		_, _ = notes.Update(syntheticKey(r))
+		_, _ = manager.Update(syntheticKey(r))
 	}
-	if len(notes.locationPicker.FilteredItems()) != 0 {
-		t.Fatalf("pre-rename picker unexpectedly matched %#v", notes.locationPicker.FilteredItems())
+	if len(manager.LocationPicker.FilteredItems()) != 0 {
+		t.Fatalf("pre-rename picker unexpectedly matched %#v", manager.LocationPicker.FilteredItems())
 	}
 
 	renamed := *beta
@@ -186,18 +182,18 @@ func TestNotesWorkspaceRefreshUpdatesOpenPickerLabelsAndQuery(t *testing.T) {
 	setTestAppProjects(shell, alpha, &renamed)
 	_ = shell.refreshActiveNotesManager()
 
-	notes = shell.getActiveNotesView()
-	filtered := notes.locationPicker.FilteredItems()
-	if notes.locationPicker.SearchQuery() != "renamed" ||
+	manager = shell.getActiveNotesView()
+	filtered := manager.LocationPicker.FilteredItems()
+	if manager.LocationPicker.SearchQuery() != "renamed" ||
 		len(filtered) != 1 || filtered[0].Location != app.ProjectNoteLocation(beta.ID) ||
 		filtered[0].Label != renamed.Name {
 		t.Fatalf(
 			"renamed picker state = query %q filtered %#v",
-			notes.locationPicker.SearchQuery(),
+			manager.LocationPicker.SearchQuery(),
 			filtered,
 		)
 	}
-	if owner := notes.ownerForLocation(app.ProjectNoteLocation(beta.ID)); owner.Label != renamed.Name {
+	if owner := manager.OwnerForLocation(app.ProjectNoteLocation(beta.ID)); owner.Label != renamed.Name {
 		t.Fatalf("renamed owner label = %q, want %q", owner.Label, renamed.Name)
 	}
 }
@@ -205,22 +201,22 @@ func TestNotesWorkspaceRefreshUpdatesOpenPickerLabelsAndQuery(t *testing.T) {
 func TestNotesManagerReopenRebuildsActiveOwnerCatalog(t *testing.T) {
 	shell := typedTestApp(t)
 	alpha := shell.currentProject
-	_, _ = shell.handleNotesMessages(ShowNotesManagerMsg{Scope: route.AllNotesScope()})
-	notes := shell.getActiveNotesView()
+	_, _ = shell.handleNotesMessages(notes.ShowNotesManagerMsg{Scope: route.AllNotesScope()})
+	manager := shell.getActiveNotesView()
 
 	renamedAlpha := *alpha
 	renamedAlpha.Name = "Alpha Renamed"
 	beta := &models.Project{ID: "beta", Name: "Beta", Slug: "beta", Path: t.TempDir()}
 	setTestAppProjects(shell, &renamedAlpha, beta)
-	_, _ = shell.handleNotesMessages(ShowNotesManagerMsg{Scope: route.AllNotesScope()})
+	_, _ = shell.handleNotesMessages(notes.ShowNotesManagerMsg{Scope: route.AllNotesScope()})
 
-	if shell.getActiveNotesView() != notes {
+	if shell.getActiveNotesView() != manager {
 		t.Fatal("reopening Notes rebuilt the manager instead of refreshing it")
 	}
-	if owner := notes.ownerForLocation(app.ProjectNoteLocation(alpha.ID)); owner.Label != renamedAlpha.Name {
+	if owner := manager.OwnerForLocation(app.ProjectNoteLocation(alpha.ID)); owner.Label != renamedAlpha.Name {
 		t.Fatalf("reopened Alpha label = %q, want %q", owner.Label, renamedAlpha.Name)
 	}
-	if !notes.locationAvailable(app.ProjectNoteLocation(beta.ID)) {
+	if !manager.LocationAvailable(app.ProjectNoteLocation(beta.ID)) {
 		t.Fatal("reopening Notes did not add the new active owner")
 	}
 }
@@ -245,18 +241,18 @@ func TestNotesMutationRefreshPreservesProjectScopeAndAcceptedSearch(t *testing.T
 					}},
 				},
 			}}
-			_, _ = shell.handleNotesMessages(ShowNotesManagerMsg{
+			_, _ = shell.handleNotesMessages(notes.ShowNotesManagerMsg{
 				Scope: route.ProjectNotesScope(project.ID),
 			})
-			notes := shell.getActiveNotesView()
-			notes.noteService = service
-			notes.searchApplied = "needle"
-			notes.loadNotes()
+			manager := shell.getActiveNotesView()
+			manager.NoteService = service
+			manager.SearchApplied = "needle"
+			manager.LoadNotes()
 
 			service.byLocation[location] = []*models.Note{{
 				Title: "Needle after", Filename: "after.md", Body: "needle",
 			}}
-			shell.reconcileNoteResult(ProjectNoteMutationResultMsg{
+			shell.reconcileNoteResult(notes.ProjectNoteMutationResultMsg{
 				Location: location,
 				Result: app.NoteBatchResult{Results: []app.NoteResult{{
 					Kind:      kind,
@@ -267,192 +263,20 @@ func TestNotesMutationRefreshPreservesProjectScopeAndAcceptedSearch(t *testing.T
 				SuccessMessage: "Changed",
 			})
 
-			if notes.scope != route.ProjectNotesScope(project.ID) ||
-				notes.SearchQuery() != "needle" ||
-				len(notes.visibleRows) != 1 ||
-				notes.visibleRows[0].Identity() != (NoteRowIdentity{
+			if manager.Scope != route.ProjectNotesScope(project.ID) ||
+				manager.SearchQuery() != "needle" ||
+				len(manager.VisibleRows) != 1 ||
+				manager.VisibleRows[0].Identity() != (notes.NoteRowIdentity{
 					Location: location,
 					Filename: "after.md",
 				}) {
 				t.Fatalf(
 					"mutation refresh = scope %#v query %q rows %#v",
-					notes.scope,
-					notes.SearchQuery(),
-					notes.visibleRows,
+					manager.Scope,
+					manager.SearchQuery(),
+					manager.VisibleRows,
 				)
 			}
 		})
-	}
-}
-
-func TestNotesInteractionLayersFitMinimumLayoutWithLargeOwnerCatalog(t *testing.T) {
-	const (
-		width  = 60
-		height = 20
-	)
-	projects := make([]*models.Project, 0, 160)
-	byLocation := map[app.NoteLocation][]*models.Note{
-		app.GlobalNoteLocation(): {{
-			Title:       "Duplicate title with a very long suffix for layout coverage",
-			Body:        "needle",
-			Filename:    "duplicate.md",
-			ModifiedAt:  time.Unix(2, 0),
-			RawRevision: "global-revision",
-		}},
-	}
-	collectionErrors := make(map[app.NoteLocation]error)
-	for i := range 160 {
-		project := &models.Project{
-			ID:   fmt.Sprintf("project-%03d", i),
-			Name: fmt.Sprintf("Project %03d with an exceptionally long owner label", i),
-			Path: t.TempDir(),
-		}
-		projects = append(projects, project)
-		location := app.ProjectNoteLocation(project.ID)
-		switch {
-		case i < 2:
-			byLocation[location] = []*models.Note{{
-				Title:       "Duplicate title with a very long suffix for layout coverage",
-				Body:        "needle",
-				Filename:    "duplicate.md",
-				ModifiedAt:  time.Unix(int64(4-i), 0),
-				RawRevision: fmt.Sprintf("revision-%d", i),
-			}}
-		case i%7 == 0:
-			collectionErrors[location] = fmt.Errorf(
-				"permission denied while reading a deliberately long collection path for owner %03d",
-				i,
-			)
-		}
-	}
-	service := &notesMoveService{combinedNotesService: combinedNotesService{
-		byLocation: byLocation,
-		errors:     collectionErrors,
-	}}
-	view := NewNotesViewModelWithService(
-		t.TempDir(),
-		route.AllNotesScope(),
-		service,
-		nil,
-		projects...,
-	)
-	mountNotesManager(t, view)
-	view.SetSize(width, height)
-	view.setErrorStatus(strings.Repeat("actionable visible error summary ", 8))
-
-	assertNotesLayoutFits(t, "flat list", view)
-	if len(view.visibleRows) != 3 {
-		t.Fatalf("duplicate located rows = %d, want three", len(view.visibleRows))
-	}
-
-	_, _ = view.Update(syntheticKey('/'))
-	for _, r := range "needleae%p" {
-		_, _ = view.Update(syntheticKey(r))
-	}
-	if view.locationPicker != nil || view.renaming || view.confirm.IsActive() {
-		t.Fatal("search input leaked typed operation keys into the manager")
-	}
-	assertNotesLayoutFits(t, "persistent search", view)
-	_, _ = view.Update(syntheticSpecialKey(tea.KeyEsc))
-
-	_, _ = view.Update(syntheticKey('p'))
-	for _, r := range "project 159 ae%/" {
-		_, _ = view.Update(syntheticKey(r))
-	}
-	if view.locationPicker == nil || view.locationPicker.purpose != notesLocationPickerScope ||
-		view.searchEditing || view.renaming || view.confirm.IsActive() {
-		t.Fatal("scope picker leaked typed operation keys into the manager")
-	}
-	assertNotesLayoutFits(t, "scope picker", view)
-	cancelNotesPicker(t, view)
-
-	_, _ = view.Update(syntheticKey('a'))
-	for _, r := range "project 159 e%/p" {
-		_, _ = view.Update(syntheticKey(r))
-	}
-	if view.locationPicker == nil || view.locationPicker.purpose != notesLocationPickerCreation ||
-		view.searchEditing || view.renaming || view.confirm.IsActive() {
-		t.Fatal("creation picker leaked typed operation keys into the manager")
-	}
-	assertNotesLayoutFits(t, "creation picker", view)
-	cancelNotesPicker(t, view)
-
-	_, _ = view.Update(syntheticKey('%'))
-	for _, r := range "project 159 ae/p" {
-		_, _ = view.Update(syntheticKey(r))
-	}
-	if view.locationPicker == nil || view.locationPicker.purpose != notesLocationPickerMove ||
-		view.searchEditing || view.renaming || view.confirm.IsActive() {
-		t.Fatal("move picker leaked typed operation keys into the manager")
-	}
-	assertNotesLayoutFits(t, "move picker", view)
-	cancelNotesPicker(t, view)
-}
-
-func assertNotesLayoutFits(t *testing.T, state string, view *NotesViewModel) {
-	t.Helper()
-	content, auditIssues := withRenderAudit(func() string {
-		return view.View().Content
-	})
-	_, issues := normalizeScreen(content, 60, 20)
-	issues = append(issues, auditIssues...)
-	if len(issues) != 0 {
-		t.Fatalf("%s layout issues = %#v\n%s", state, issues, content)
-	}
-}
-
-func cancelNotesPicker(t *testing.T, view *NotesViewModel) {
-	t.Helper()
-	_, cmd := view.Update(syntheticSpecialKey(tea.KeyEsc))
-	if cmd == nil {
-		t.Fatal("picker Esc emitted no cancellation result")
-	}
-	result, ok := cmd().(notesLocationPickerResultMsg)
-	if !ok || result.Selected {
-		t.Fatalf("picker cancellation result = %#v", result)
-	}
-	_, _ = view.Update(result)
-	if view.locationPicker != nil {
-		t.Fatal("picker remained open after cancellation")
-	}
-}
-
-func TestNotesHelpDocumentsTheWorkspaceManager(t *testing.T) {
-	project := &models.Project{ID: "alpha", Name: "Alpha", Path: t.TempDir()}
-	service := &combinedNotesService{byLocation: map[app.NoteLocation][]*models.Note{
-		app.GlobalNoteLocation(): {{Title: "Needle", Filename: "needle.md"}},
-	}}
-	view := NewNotesViewModelWithService(t.TempDir(), route.AllNotesScope(), service, nil, project)
-	mountNotesManager(t, view)
-	view.SetSize(80, 24)
-
-	// The registry names every operation the Notes grammar binds; the keymap
-	// supplies only the cursor, end, and ledger keys whose core descriptors answer
-	// to the Outliner. Delete is absent because the Space sheet is its one path,
-	// and the two end rows carry the strategy's own spellings rather than the
-	// single physical key each keymap entry binds.
-	want := []operation.HelpItem{
-		{Key: "Enter", Description: "Open note", Category: "Notes"},
-		{Key: "a", Description: "New note", Category: "Notes"},
-		{Key: "e", Description: "Rename note", Category: "Notes"},
-		{Key: "%", Description: "Move note", Category: "Notes"},
-		{Key: "/", Description: "Search notes", Category: "Discovery"},
-		{Key: "p", Description: "Choose Notes scope", Category: "Notes"},
-		{Key: "y", Description: "Copy note title", Category: "Notes"},
-		{Key: "Y", Description: "Copy note path", Category: "Notes"},
-		{Key: "Space", Description: "Note actions", Category: "Notes"},
-		{Key: "j", Description: "Move cursor down", Category: "Navigation"},
-		{Key: "k", Description: "Move cursor up", Category: "Navigation"},
-		// The preview pane is on screen at 80 columns with a note under the cursor,
-		// so its paging row is gated in; Ctrl+B is hidden because the one row names
-		// both presses.
-		{Key: "Ctrl+F/B", Description: "Page note preview", Category: "Navigation"},
-		{Key: "gg/Home", Description: "Jump to first note", Category: "Navigation"},
-		{Key: "G/End", Description: "Jump to last note", Category: "Navigation"},
-		{Key: "u", Description: "Undo workspace change", Category: "Actions"},
-		{Key: "ctrl+r", Description: "Redo workspace change", Category: "Actions"},
-	}
-	if got := view.GetHelpItems(); !reflect.DeepEqual(got, want) {
-		t.Fatalf("Notes help = %#v, want %#v", got, want)
 	}
 }

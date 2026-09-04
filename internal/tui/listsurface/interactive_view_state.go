@@ -19,7 +19,7 @@ type InteractiveViewState struct {
 	Confirm          chrome.ConfirmDialog
 }
 
-// setStatus sets the status message. The message is sticky: it stays until the
+// SetStatus sets the status message. The message is sticky: it stays until the
 // view replaces or clears it.
 func (s *InteractiveViewState) SetStatus(msg string) {
 	s.StatusMessage = msg

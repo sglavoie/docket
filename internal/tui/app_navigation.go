@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -18,7 +19,7 @@ func (m *AppModel) GetOperationRegistry() *operation.OperationRegistry {
 }
 
 // getActiveNotesView returns the currently active NotesViewModel (project or global).
-func (m *AppModel) getActiveNotesView() *NotesViewModel {
+func (m *AppModel) getActiveNotesView() *notes.NotesViewModel {
 	cv := m.currentView()
 	var viewType presentation.PresentationID
 	switch cv {
@@ -40,7 +41,7 @@ func (m *AppModel) getActiveNotesView() *NotesViewModel {
 		}
 	}
 	if v := m.views.Get(viewType); v != nil {
-		if nv, ok := v.(*NotesViewModel); ok {
+		if nv, ok := v.(*notes.NotesViewModel); ok {
 			return nv
 		}
 	}

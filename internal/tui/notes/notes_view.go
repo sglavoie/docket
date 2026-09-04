@@ -1,4 +1,4 @@
-package tui
+package notes
 
 import (
 	"strings"
@@ -56,20 +56,20 @@ type NotesViewModel struct {
 	listsurface.BaseView
 
 	notesDir    string
-	scope       route.NotesScope
-	noteService projectNoteService
-	noteLedger  *storage.WorkspaceLedger
+	Scope       route.NotesScope
+	NoteService ProjectNoteService
+	NoteLedger  *storage.WorkspaceLedger
 
-	owners           map[app.NoteLocation]noteManagerOwner
+	Owners           map[app.NoteLocation]noteManagerOwner
 	ownerProjects    []*models.Project
-	loadedRows       []LocatedNoteRow
-	visibleRows      []LocatedNoteRow
+	LoadedRows       []LocatedNoteRow
+	VisibleRows      []LocatedNoteRow
 	collectionErrors []noteCollectionFailure
 	snapshotError    error
-	searchMatches    map[NoteRowIdentity]noteSearchMatch
+	SearchMatches    map[NoteRowIdentity]NoteSearchMatch
 
 	searchEditing    bool
-	searchApplied    string
+	SearchApplied    string
 	searchBeforeEdit string
 	searchInput      textinput.Model
 
@@ -78,8 +78,8 @@ type NotesViewModel struct {
 	// nothing.
 	searchCaseRelaxed bool
 
-	cursor       int
-	scrollOffset int
+	Cursor       int
+	ScrollOffset int
 	cursorFlash  bool
 
 	// preview is the wide-layout body pane's line cache and scroll position. It
@@ -91,8 +91,8 @@ type NotesViewModel struct {
 	// Outliner only, so the manager keeps its own one-key prefix.
 	pendingTopChord bool
 
-	confirm       chrome.ConfirmDialog
-	pendingDelete NoteRowIdentity
+	Confirm       chrome.ConfirmDialog
+	PendingDelete NoteRowIdentity
 
 	renaming       bool
 	renameTarget   NoteRowIdentity
@@ -100,14 +100,14 @@ type NotesViewModel struct {
 	confirmDiscard bool
 	confirmOverlay chrome.ConfirmDialog
 
-	statusMessage string
-	statusIsError bool
+	StatusMessage string
+	StatusIsError bool
 
-	locationPicker *notesLocationPicker
-	moveSource     *noteMutationRef
+	LocationPicker *notesLocationPicker
+	moveSource     *NoteMutationRef
 
 	registry *operation.OperationRegistry
-	dispatch operationKeyDispatch
+	dispatch operation.KeyDispatch
 }
 
 // SetOperationSystem hands the manager the descriptor authority and the shell's
@@ -116,7 +116,7 @@ type NotesViewModel struct {
 // executor stays out because the Space sheet is shell-owned.
 func (m *NotesViewModel) SetOperationSystem(
 	registry *operation.OperationRegistry,
-	dispatch operationKeyDispatch,
+	dispatch operation.KeyDispatch,
 ) {
 	m.registry = registry
 	m.dispatch = dispatch
@@ -127,19 +127,19 @@ func (m *NotesViewModel) SetOperationSystem(
 func NewNotesViewModelWithService(
 	notesDir string,
 	scope route.NotesScope,
-	service projectNoteService,
+	service ProjectNoteService,
 	ledger *storage.WorkspaceLedger,
 	projects ...*models.Project,
 ) *NotesViewModel {
 	m := &NotesViewModel{
 		notesDir:    notesDir,
-		scope:       scope,
-		noteService: service,
-		noteLedger:  ledger,
+		Scope:       scope,
+		NoteService: service,
+		NoteLedger:  ledger,
 	}
 	m.initSearchInput()
 	m.setOwnerProjects(projects)
-	m.loadNotes()
+	m.LoadNotes()
 	return m
 }
 
@@ -153,16 +153,16 @@ func (m *NotesViewModel) initSearchInput() {
 
 // setOwnerProjects rebuilds the owner catalog.
 func (m *NotesViewModel) setOwnerProjects(projects []*models.Project) {
-	m.owners, m.ownerProjects = noteOwnerCatalog(m.notesDir, projects)
+	m.Owners, m.ownerProjects = NoteOwnerCatalog(m.notesDir, projects)
 }
 
-// noteOwnerCatalog resolves the note owners a workspace-wide read covers:
+// NoteOwnerCatalog resolves the note owners a workspace-wide read covers:
 // Global plus every supplied project, in the supplied order. Archival is the
 // only reason a project is refused — a parked owner keeps its notes reachable,
 // so the parked tag is deliberately not consulted here. The Notes manager and
 // the Outliner's search-tier note index both admit owners through this one
 // function, so neither can drift from the other's exclusion rule.
-func noteOwnerCatalog(
+func NoteOwnerCatalog(
 	notesDir string,
 	projects []*models.Project,
 ) (map[app.NoteLocation]noteManagerOwner, []*models.Project) {
@@ -200,36 +200,36 @@ func noteOwnerCatalog(
 // normalized to All Notes so the shell can replace its typed route immediately.
 func (m *NotesViewModel) RefreshWorkspace(projects ...*models.Project) bool {
 	m.setOwnerProjects(projects)
-	scopeInvalid := m.scope.Kind == route.NotesScopeProject &&
-		!m.locationAvailable(app.ProjectNoteLocation(m.scope.ProjectID))
+	scopeInvalid := m.Scope.Kind == route.NotesScopeProject &&
+		!m.LocationAvailable(app.ProjectNoteLocation(m.Scope.ProjectID))
 	if scopeInvalid {
-		m.scope = route.AllNotesScope()
+		m.Scope = route.AllNotesScope()
 	}
 	m.refreshLocationPicker()
-	m.loadNotes()
+	m.LoadNotes()
 	return scopeInvalid
 }
 
-func (m *NotesViewModel) locationAvailable(location app.NoteLocation) bool {
-	_, ok := m.owners[location]
+func (m *NotesViewModel) LocationAvailable(location app.NoteLocation) bool {
+	_, ok := m.Owners[location]
 	return ok
 }
 
 func (m *NotesViewModel) refreshLocationPicker() {
-	if m.locationPicker == nil {
+	if m.LocationPicker == nil {
 		return
 	}
 
-	purpose := m.locationPicker.purpose
-	query := m.locationPicker.SearchQuery()
-	selectedID := m.locationPicker.SelectedItem().ItemID()
+	purpose := m.LocationPicker.Purpose
+	query := m.LocationPicker.SearchQuery()
+	selectedID := m.LocationPicker.SelectedItem().ItemID()
 	excluded := app.NoteLocation{}
-	if purpose == notesLocationPickerMove {
-		if m.moveSource == nil || !m.moveSource.valid() ||
-			!m.locationAvailable(m.moveSource.Location) {
-			m.locationPicker = nil
+	if purpose == NotesLocationPickerMove {
+		if m.moveSource == nil || !m.moveSource.Valid() ||
+			!m.LocationAvailable(m.moveSource.Location) {
+			m.LocationPicker = nil
 			m.moveSource = nil
-			m.setErrorStatus("Move canceled: the source location is no longer available")
+			m.SetErrorStatus("Move canceled: the source location is no longer available")
 			return
 		}
 		excluded = m.moveSource.Location
@@ -237,14 +237,14 @@ func (m *NotesViewModel) refreshLocationPicker() {
 
 	picker := newNotesLocationPicker(
 		purpose,
-		m.scope,
+		m.Scope,
 		excluded,
 		m.ownerProjects,
 	)
-	if purpose == notesLocationPickerMove && len(picker.SourceItems()) == 0 {
-		m.locationPicker = nil
+	if purpose == NotesLocationPickerMove && len(picker.SourceItems()) == 0 {
+		m.LocationPicker = nil
 		m.moveSource = nil
-		m.setStatus("No other note locations are available; note was not moved")
+		m.SetStatus("No other note locations are available; note was not moved")
 		return
 	}
 	picker.SetSize(m.Width(), m.Height())
@@ -257,11 +257,11 @@ func (m *NotesViewModel) refreshLocationPicker() {
 	if selectedID != "" {
 		picker.SetCursorToID(selectedID)
 	}
-	m.locationPicker = picker
+	m.LocationPicker = picker
 }
 
-func (m *NotesViewModel) ownerForLocation(location app.NoteLocation) noteManagerOwner {
-	if owner, ok := m.owners[location]; ok {
+func (m *NotesViewModel) OwnerForLocation(location app.NoteLocation) noteManagerOwner {
+	if owner, ok := m.Owners[location]; ok {
 		return owner
 	}
 	label := location.ProjectID
@@ -274,8 +274,11 @@ func (m *NotesViewModel) ownerForLocation(location app.NoteLocation) noteManager
 	return noteManagerOwner{Label: label}
 }
 
-func (m *NotesViewModel) projectByID(projectID string) *models.Project {
-	owner, ok := m.owners[app.ProjectNoteLocation(projectID)]
+// ProjectByID answers the owner catalog this view already built. The shell
+// reaches for it while restoring a ledger entry, because a project the runtime
+// catalog no longer lists can still own the notes on screen.
+func (m *NotesViewModel) ProjectByID(projectID string) *models.Project {
+	owner, ok := m.Owners[app.ProjectNoteLocation(projectID)]
 	if !ok {
 		return nil
 	}
@@ -286,42 +289,42 @@ func (m *NotesViewModel) effectiveDir(row *LocatedNoteRow) string {
 	if row == nil {
 		return ""
 	}
-	return m.ownerForLocation(row.Location).Directory
+	return m.OwnerForLocation(row.Location).Directory
 }
 
 func (m *NotesViewModel) noteLedgerScope() storage.LedgerScope {
 	return storage.GlobalScope()
 }
 
-func (m *NotesViewModel) setStatus(msg string) {
-	m.statusMessage = msg
-	m.statusIsError = false
+func (m *NotesViewModel) SetStatus(msg string) {
+	m.StatusMessage = msg
+	m.StatusIsError = false
 }
 
-func (m *NotesViewModel) setErrorStatus(msg string) {
-	m.statusMessage = msg
-	m.statusIsError = true
+func (m *NotesViewModel) SetErrorStatus(msg string) {
+	m.StatusMessage = msg
+	m.StatusIsError = true
 }
 
 func (m *NotesViewModel) clearStatus() {
-	m.statusMessage = ""
-	m.statusIsError = false
+	m.StatusMessage = ""
+	m.StatusIsError = false
 }
 
 func (m *NotesViewModel) resetScrollOffset() {
-	m.scrollOffset = 0
+	m.ScrollOffset = 0
 }
 
 func (m *NotesViewModel) handleConfirmKey(key string) (confirmed, handled bool) {
-	if !m.confirm.IsActive() {
+	if !m.Confirm.IsActive() {
 		return false, false
 	}
-	return m.confirm.HandleKey(key)
+	return m.Confirm.HandleKey(key)
 }
 
 func (m *NotesViewModel) Init() tea.Cmd {
-	if m.locationPicker != nil {
-		return m.locationPicker.Init()
+	if m.LocationPicker != nil {
+		return m.LocationPicker.Init()
 	}
 	if m.searchEditing {
 		m.searchInput.Focus()
@@ -333,8 +336,8 @@ func (m *NotesViewModel) Init() tea.Cmd {
 func (m *NotesViewModel) SetSize(width, height int) {
 	m.BaseView.SetSize(width, height)
 	m.searchInput.SetWidth(listsurface.SearchInputWidth(width))
-	if m.locationPicker != nil {
-		m.locationPicker.SetSize(width, height)
+	if m.LocationPicker != nil {
+		m.LocationPicker.SetSize(width, height)
 	}
 	m.resetScrollOffset()
 	// A resize can change the pane width, the row budget, or whether the preview
@@ -350,7 +353,7 @@ func (m *NotesViewModel) GetConfirmDialog() *chrome.ConfirmDialog {
 		return &m.confirmOverlay
 	}
 	m.confirmOverlay.Cancel()
-	return &m.confirm
+	return &m.Confirm
 }
 
 func (m *NotesViewModel) StatusBarLabel() string {

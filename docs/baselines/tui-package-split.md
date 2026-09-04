@@ -119,8 +119,9 @@ the pre-split tree and is consistently pessimistic.
 | `route` | 14 | 16 | 9 |
 | `listsurface` | 29 | 26 | 23 |
 | `help` | 4 | 3 | 3 |
+| `notes` | 32 | 41 | 37 |
 
-Running total against 631: **417**.
+Running total against 631: **454**.
 `grammar` contributes 58, not 154, because its two counted columns are on a
 different basis from every row above them:
 Session 2.11 counted 196 promoted names by including methods and struct fields,
@@ -753,6 +754,73 @@ Session 2.11", which it did not; the file is `help`'s, as both tables have said
 since Session 1.5, and since Session 2.14 moved `HelpItem` down to `operation`
 at L3 the alternative is no longer merely unwarranted but impossible — `grammar`
 is L2 and cannot name an L3 type. Both table headers now carry that note.
+
+`notes` is the first row to overspend a projection because the projection
+counted the wrong things, not because the extraction was careless. Its 32 was
+read off cross-file references to *declarations*; the manager is one struct with
+a shell that reaches into it, so the real cost is 37 promoted declarations and
+42 promoted members. Neither number is avoidable by moving a test: 28 of the 37
+have a production consumer in the root shell, which still owns
+`handler_view_notes.go`, `note_operations.go`, `note_ledger_reconcile.go`,
+`note_search_index.go` and `notes_input_strategy_shell.go`. Size an L7 surface's
+projection by counting members as well as declarations, or every remaining row
+in this table will read low.
+
+Four names were promoted during the move and withdrawn once the tests were
+homed, which is the gap between the last two columns: `notesPreviewAnchor` and
+`notesPreviewRevision` went back down with the three preview test files,
+`notesPreviewHeader` with `notes_preview_test.go`, and `scoreNoteBodyTerms` with
+`notes_search_test.go`. Each has an in-package production caller, so
+`scripts/dead_code.sh` never saw them; the reason to withdraw is the recipe's
+"export the minimum", not a gate.
+
+Four declaration-level moves preceded the file move, and three of the four were
+forced by the one edge the split forbids, `notes -> tui`:
+
+- `operationKeyDispatch` became `operation.KeyDispatch`. Notes is the third
+  mounted surface handed the shell's key-dispatch seam, after the attachments
+  and comments panels, and a func type is cheaper to name once at L3 than to
+  re-export per tenant.
+- `ManageHubModuleSelectedMsg` moved to `route`. The location picker raises it
+  and the module it names is a `route.ManageModule` already.
+- The `tui.note.*` `OperationID` constants moved into
+  `notes/notes_input_strategy.go`, beside the grammar that binds them.
+- The note descriptor catalog followed them into
+  `notes/note_operations_catalog.go`. A descriptor is data about a key and the
+  handler is what needs the shell's services, so `note_operations.go` keeps the
+  handler alone. This is the split CLAUDE.md's registry rule already implies and
+  the first session to have to make it.
+
+Five files the session's own done-when named could not move, for the reason
+Session 2.21 hit with `help_grammar.go`: `handler_view_notes.go`,
+`note_ledger_reconcile.go`, `note_operations.go`, `note_search_index.go` and
+`notes_input_strategy_shell.go` all declare `*AppModel` methods, which Go pins
+to the shell. There is no `combined_notes.go` production file at all —
+`combined_notes_test.go` is the whole of that name, and it was homed with the
+manager it exercises. Read a done-when's file list against
+`scripts/tui_package_assignments.tsv` before planning around it.
+
+Nine test files moved down and two were split, the highest ratio so far because
+the Notes surface is where the shell and the manager interleave most. The split
+files are the useful record: `notes_move_test.go` kept three tests in the shell
+that drive `handleNotesMessages` and `reconcileNoteResult`, and
+`notes_hardening_test.go` gave up only its layout tests, which needed no shell
+at all. `internal/tui/notes/notes_test_harness_test.go` carries in-package
+copies of `mountNotesManager`, `combinedNotesService`, `withRenderAudit`,
+`normalizeScreen` and the three guidance helpers, on the `listsurface`
+precedent: a test helper exported to cross a package boundary is
+production-unused API. The shell keeps its own copies, and its
+`mountNotesManager` now takes the scope as an argument rather than reading it
+back off the view, because the hub's params are what pick the presentation the
+executor binds against.
+
+One accident is worth naming because it was silent until a test crashed:
+promoting `NotesViewModel.setStatus` with a text-level rename also renamed
+`OutlinerModel.setStatus`, whose whole body forwards to the embedded
+`listsurface.BaseView.SetStatus`. The result compiled, passed `go vet`, and
+recursed until the goroutine stack overflowed. Rename an unexported method with
+`gopls rename` rather than a regex whenever the exported name it forwards to
+already exists on the same receiver.
 
 Reproduce the last column for one package with the oracle from session 2.4,
 which reports a clean boundary rather than a count:

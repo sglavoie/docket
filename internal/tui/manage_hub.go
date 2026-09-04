@@ -12,24 +12,22 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
 
-// ManageHubModuleSelectedMsg changes the active Manage mode without creating a
-// child route. The shell owns the corresponding typed route replacement.
-type ManageHubModuleSelectedMsg struct {
-	Params route.ManageParams
-}
+// The module-selection message this hub answers is route.ManageHubModuleSelectedMsg.
+// It sits beside route.ManageParams because Notes raises it from below.
 
 // ManageHubDependencies collects the existing transaction-backed collection
 // seams. The hub owns navigation and lifecycle only; mutations remain in the
 // application service and feature coordinators used by the embedded models.
 type ManageHubDependencies struct {
 	Runtime            *config.RuntimeState
-	NoteService        projectNoteService
+	NoteService        notes.ProjectNoteService
 	HistoryLedger      *storage.WorkspaceLedger
 	Wire               func(route.View)
 	ResolveProject     func(string) *models.Project
@@ -37,7 +35,7 @@ type ManageHubDependencies struct {
 	TaskCounts         func() map[string]projectTaskTally
 	OperationRegistry  *operation.OperationRegistry
 	OperationExecutor  *operation.OperationExecutor
-	DispatchKey        operationKeyDispatch
+	DispatchKey        operation.KeyDispatch
 }
 
 // ManageHubModel is the sole live Manage destination for collection and log
@@ -101,8 +99,8 @@ func (m *ManageHubModel) Activate(params route.ManageParams) error {
 	}
 	key := manageModuleCacheKey(params)
 	if params.Module == route.ManageNotes && previousParams.Module == route.ManageNotes {
-		if notes, ok := m.active.(*NotesViewModel); ok {
-			notes.SetScope(params.NotesScope)
+		if manager, ok := m.active.(*notes.NotesViewModel); ok {
+			manager.SetScope(params.NotesScope)
 			m.activeKey = key
 			m.prepareActiveView()
 			return nil
@@ -117,15 +115,15 @@ func (m *ManageHubModel) Activate(params route.ManageParams) error {
 	var view route.View
 	switch params.Module {
 	case route.ManageNotes:
-		notes := NewNotesViewModelWithService(
+		manager := notes.NewNotesViewModelWithService(
 			storage.GlobalNotesDir(m.deps.Runtime.DataDir()),
 			params.NotesScope,
 			m.deps.NoteService,
 			m.deps.HistoryLedger,
 			m.deps.Runtime.AvailableProjects()...,
 		)
-		notes.SetOperationSystem(m.deps.OperationRegistry, m.deps.DispatchKey)
-		view = notes
+		manager.SetOperationSystem(m.deps.OperationRegistry, m.deps.DispatchKey)
+		view = manager
 	case route.ManageProjects:
 		hub := NewProjectHubModel(m.deps.Runtime, params.ProjectHubMode)
 		hub.SetOperationSystem(m.deps.OperationRegistry, m.deps.OperationExecutor, m.deps.DispatchKey)
