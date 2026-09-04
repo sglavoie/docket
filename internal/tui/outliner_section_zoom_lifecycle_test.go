@@ -179,12 +179,12 @@ func TestSectionZoomThawsTheRecencyFreeze(t *testing.T) {
 	outliner, _ := primaryRowsOutliner(project)
 	outliner.selectOutlinerMode(chrome.ModeRecent)
 
-	frozen := outliner.recencyProjection
+	frozen := outliner.recency.projection
 	if frozen == "" {
 		t.Fatal("Recent froze no projection fingerprint to compare against")
 	}
 	zoomIntoSection(t, outliner, "Yesterday")
-	if outliner.recencyProjection == frozen {
+	if outliner.recency.projection == frozen {
 		t.Fatal("the zoom left the recency freeze intact")
 	}
 }

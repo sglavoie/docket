@@ -2,6 +2,7 @@ package listsurface
 
 import (
 	"fmt"
+	"maps"
 	"sort"
 
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -117,6 +118,35 @@ func (s *MultiSelectState) ClassifySelection(visible []taskref.TaskIdentity) Sel
 	}
 	counts.Hidden = counts.Total - counts.Visible
 	return counts
+}
+
+// SelectionSnapshot is a captured visual selection: the mode and the identities
+// standing in it. The live range is deliberately absent, which is what makes
+// RestoreSelection below a freeze — see there.
+type SelectionSnapshot struct {
+	Active   bool
+	Selected map[taskref.TaskIdentity]bool
+}
+
+// CaptureSelection copies the selection out so the retained frame can never
+// alias a map the live view goes on to mutate.
+func (s *MultiSelectState) CaptureSelection() SelectionSnapshot {
+	return SelectionSnapshot{Active: s.MultiSelectMode, Selected: maps.Clone(s.Selected)}
+}
+
+// RestoreSelection writes it back frozen. Range selection is not restored
+// because it is not selection state but cursor state: the anchor describes an
+// extension the cursor was making, and the cursor that was making it is gone by
+// the time a frame is restored. A restored selection therefore holds exactly the
+// identities it captured and stops recalculating. The map is always non-nil on
+// the way out, since every selection write below assumes one.
+func (s *MultiSelectState) RestoreSelection(snapshot SelectionSnapshot) {
+	s.MultiSelectMode = snapshot.Active
+	s.Selected = maps.Clone(snapshot.Selected)
+	if s.Selected == nil {
+		s.Selected = make(map[taskref.TaskIdentity]bool)
+	}
+	s.FreezeRangeSelection()
 }
 
 // ExitMultiSelect deactivates multi-select mode and clears all selections.

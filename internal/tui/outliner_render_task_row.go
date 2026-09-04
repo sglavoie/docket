@@ -253,7 +253,7 @@ func (m *OutlinerModel) rowIdentity(row outlinerRow) taskref.TaskIdentity {
 // with the bucket the row was placed in, falling back to live activity for a
 // task the snapshot does not name.
 func (m *OutlinerModel) rowRecencyKey(row outlinerRow) time.Time {
-	if frozen, ok := m.recencyKeys[m.rowIdentity(row)]; ok {
+	if frozen, ok := m.recency.frozenAt(m.rowIdentity(row)); ok {
 		return frozen
 	}
 	if row.task == nil {

@@ -203,6 +203,31 @@ dependency between the two runs one way: `ActivateSearch` asks
 already reaches into the search projection, the population, the scope, and the
 cursor, and reversing it would put the lens above the search it has to put down.
 
+`recencyState` is the smallest of these and the clearest about why the axis has
+an owner: Recent's frozen ordering timestamps and the projection fingerprint
+they were frozen against are one fact, not two, so no caller can rebase the
+fingerprint without dropping the keys hanging off it. Freezing is first-write-wins
+and thawing is the `gr` re-read, which is the whole of the mode's ordering
+contract stated once.
+
+`outlinerViewSnapshot` is where that ladder is measured. The restoration point a
+lens application captures is one field per cluster — presentation, the population
+facet carrier and the population itself, scope, search's frame beside the input
+that produced it, the lens query, Peek and the selection, and the frozen recency
+— and each of those fields is the cluster's own snapshot type. A cluster decides
+for itself which of its members describes a view worth restoring and which
+describes work in flight that must not be restarted: `scopeState` withholds its
+pending parked reload, `searchState` reinstates its frame and then resets the
+compilation that frame no longer explains, and `restorePopulation` routes through
+`setLoadedProjects` because reinstating a population owes the dependency index
+the same drop a load does. That is what keeps the snapshot a ledger rather than a
+second, competing model — nothing in it knows the shape of any cluster it names,
+so a member added to a sub-state is carried without the snapshot learning about
+it, and a member that must not be carried is refused where it lives rather than
+by an omission nobody would notice. What the snapshot keeps for itself is the
+rebuild no cluster can own: invalidate the population guard, build the rows once
+over every axis just written, and seat the cursor through `restoreSearchCursor`.
+
 A checklist row owns nine operations of its own — Toggle Item, Edit Item, Move
 Item Down, Move Item Up, Move Item to Bottom, Move Item to Top, Add Item,
 Checklist Actions, and Delete Item — registered in

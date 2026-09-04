@@ -79,11 +79,13 @@ type OutlinerModel struct {
 	// that automatically move the followed task to another visible row.
 	relocationHistory outlinerRelocationHistory
 
-	// recencyKeys freezes Recent mode's ordering timestamps against the
-	// projection they were taken in, so triaging a row from Recent does not
-	// reshuffle the list the user is reading.
-	recencyKeys       map[taskref.TaskIdentity]time.Time
-	recencyProjection string
+	// recency freezes Recent mode's ordering timestamps against the projection
+	// they were taken in, so triaging a row from Recent does not reshuffle the
+	// list the user is reading. Like the search and the lens below it, it is a
+	// named field rather than promoted ones — outliner_recency_state.go owns the
+	// pair, and no caller can move the fingerprint without the keys that hang off
+	// it.
+	recency recencyState
 
 	// search is the slash-search frame, the compiled reading of the query it
 	// holds, the input's suggestion pane and recall ring, and the notes tier that

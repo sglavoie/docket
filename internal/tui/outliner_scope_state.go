@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"slices"
+
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
@@ -158,16 +160,42 @@ func (s *scopeState) clearStack() {
 	s.stack = nil
 }
 
-// restore writes a captured scope back at once. The presentation snapshot
-// captures the focus and the frame behind it together, because restoring one
-// without the other would leave the view standing in a scope with no way back
-// out of it, or holding a frame for a scope it is not in.
-func (s *scopeState) restore(projectID string, stack []outlinerScopeFrame) {
+// scopeSnapshot is the part of this state a restoration point carries: the
+// focus, the frame behind it, and the parked exception that may be the reason
+// the focus is reachable. The in-flight request and the owed reload are
+// deliberately absent, because both name work rather than a view — reinstating
+// them would re-open a load that already settled or re-owe a reload nobody is
+// waiting for.
+type scopeSnapshot struct {
+	projectID       string
+	stack           []outlinerScopeFrame
+	parkedProjectID string
+}
+
+// capture reads those three out, copying the stack so the retained frame cannot
+// alias one a later push replaces.
+func (s *scopeState) capture() scopeSnapshot {
+	if s == nil {
+		return scopeSnapshot{}
+	}
+	return scopeSnapshot{
+		projectID:       s.projectID,
+		stack:           slices.Clone(s.stack),
+		parkedProjectID: s.parkedProjectID,
+	}
+}
+
+// restore writes a captured scope back at once. The three go together because
+// restoring any one alone leaves a view standing in a scope with no way back out
+// of it, holding a frame for a scope it is not in, or focused on a parked project
+// the snapshot no longer admits.
+func (s *scopeState) restore(snapshot scopeSnapshot) {
 	if s == nil {
 		return
 	}
-	s.projectID = projectID
-	s.stack = stack
+	s.projectID = snapshot.projectID
+	s.stack = slices.Clone(snapshot.stack)
+	s.parkedProjectID = snapshot.parkedProjectID
 }
 
 // focusRequest names the parked project the next load must admit. An in-flight

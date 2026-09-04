@@ -199,11 +199,7 @@ func (m *OutlinerModel) freezeRecencyKeys(
 	candidates map[string][]*models.Task,
 	projects []*models.Project,
 ) map[taskref.TaskIdentity]time.Time {
-	projection := m.jumpProjectionFingerprint()
-	if m.recencyProjection != projection || m.recencyKeys == nil {
-		m.recencyKeys = make(map[taskref.TaskIdentity]time.Time)
-		m.recencyProjection = projection
-	}
+	m.recency.rebase(m.jumpProjectionFingerprint())
 	for _, project := range projects {
 		if project == nil {
 			continue
@@ -213,12 +209,10 @@ func (m *OutlinerModel) freezeRecencyKeys(
 			if !identity.Valid() {
 				continue
 			}
-			if _, frozen := m.recencyKeys[identity]; !frozen {
-				m.recencyKeys[identity] = task.UpdatedAt
-			}
+			m.recency.freeze(identity, task.UpdatedAt)
 		}
 	}
-	return m.recencyKeys
+	return m.recency.frozenKeys()
 }
 
 // separatePinnedSection closes Pinned with a rule so the promoted rows never

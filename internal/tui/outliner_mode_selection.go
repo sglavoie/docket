@@ -140,8 +140,7 @@ func (m *OutlinerModel) selectOutlinerMode(id chrome.OutlinerModeID) (tea.Model,
 	// Entering Recent re-reads activity, so gr over an already-open Recent is the
 	// manual refresh.
 	if mode.ID == chrome.ModeRecent {
-		m.recencyKeys = nil
-		m.recencyProjection = ""
+		m.recency.thaw()
 	}
 	// A zoom names a section of the mode it was taken in, so carrying it across
 	// would silence every gated emitter of a mode that never emits that key.

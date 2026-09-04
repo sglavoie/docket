@@ -254,14 +254,12 @@ func (m *OutlinerModel) clearSearchProjectionWithoutRestore() {
 	m.BaseSearchableView.ClearSearch()
 }
 
+// resetSearchCompilation is the model's name for dropping everything derived
+// from the held query. Both clear paths route here, so neither can leave a pane
+// open over no search; the restoration path reaches the same act through
+// searchState.restore, which owes it for the query it is replacing.
 func (m *OutlinerModel) resetSearchCompilation() {
-	// Suggestions describe the query being compiled, so they die with it: both
-	// clear paths route here, and neither can leave a pane open over no search.
-	m.search.autocomplete.clear()
-	m.search.setCompilation("", nil, false)
-	// The retained note payloads outlive the rows that named them otherwise, and
-	// they hold every matched note's body.
-	m.search.clearNoteMatches()
+	m.search.resetCompilation()
 }
 
 // searchTextQuery is the free-text remainder every consumer of the query must

@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"slices"
+
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -196,6 +198,29 @@ func (p *populationState) record(fingerprint string, focusDepth, taskCount int) 
 // for nothing.
 func (p *populationState) recordFocusDepth(focusDepth int) { p.focusDepth = focusDepth }
 
+// populationSnapshot is the part of this state a restoration point carries: the
+// loaded set and whether it was ever an accepted one. The read lifecycle, the
+// reload targets and the memo guard are all deliberately absent — a frame
+// describes a population, not a load, and reinstating a captured "loading" or a
+// captured generation would restart a read that already settled.
+//
+// The set is retained by value, which is what makes returning from a lens that
+// widened the population a pure in-memory step rather than a second disk read
+// that could fail, be slow, or land after the user moved on.
+type populationSnapshot struct {
+	projects      []*models.Project
+	snapshotReady bool
+}
+
+// capture copies the set out so the retained frame can never alias a slice a
+// later load replaces underneath it.
+func (p *populationState) capture() populationSnapshot {
+	if p == nil {
+		return populationSnapshot{}
+	}
+	return populationSnapshot{projects: slices.Clone(p.projects), snapshotReady: p.snapshotReady}
+}
+
 // setLoadedProjects installs a new loaded population. It exists so replacing
 // that population and dropping the reading derived from it are one act: a
 // caller that assigned the slice directly would leave an index describing
@@ -208,4 +233,18 @@ func (m *OutlinerModel) setLoadedProjects(projects []*models.Project) {
 	}
 	m.population.setProjects(projects)
 	m.invalidateDependencyIndex()
+}
+
+// restorePopulation reinstalls a retained population and the accepted-snapshot
+// flag that stood with it. It goes through setLoadedProjects rather than writing
+// the set, because reinstating a population owes the dependency index the same
+// drop a load does and there is one place that pairing is stated. The flag
+// travels beside the set for the same reason it is captured beside it: returning
+// to a baseline taken before any load landed must not claim one did.
+func (m *OutlinerModel) restorePopulation(snapshot populationSnapshot) {
+	if m == nil {
+		return
+	}
+	m.setLoadedProjects(slices.Clone(snapshot.projects))
+	m.population.setSnapshotReady(snapshot.snapshotReady)
 }

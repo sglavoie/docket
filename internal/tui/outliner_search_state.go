@@ -112,13 +112,54 @@ func (s *searchState) discard() {
 	s.rankedList = false
 }
 
-// restore installs a captured frame and the presentation it stood under. It is
-// discard's inverse: a lens restoration point carries search's own restoration
+// searchSnapshot is the part of this state a lens restoration point carries: the
+// frame ordinary search was itself holding and the presentation it stood under.
+// The compilation is absent because it is not state a frame owns but the last
+// rebuild's reading of a query, and the rebuild that follows a restore produces
+// its own; the suggestion pane and the recall ring are absent for the same
+// reason and because the ring is not scoped to a projection at all.
+type searchSnapshot struct {
+	projection *outlinerSearchSnapshot
+	rankedList bool
+}
+
+// capture reads the frame out. The pointer is retained rather than copied
+// because begin already took the presentation by value, so what is shared here is
+// a frame nothing writes to again.
+func (s *searchState) capture() searchSnapshot {
+	if s == nil {
+		return searchSnapshot{}
+	}
+	return searchSnapshot{projection: s.projection, rankedList: s.rankedList}
+}
+
+// restore installs a captured frame and the presentation it stood under, then
+// drops the compilation the replaced query left behind. It is discard's inverse
+// on both counts: a lens restoration point carries search's own restoration
 // point, so handing it back has to hand back both axes together or the flat list
-// returns over a query that is no longer held.
-func (s *searchState) restore(projection *outlinerSearchSnapshot, rankedList bool) {
-	s.projection = projection
-	s.rankedList = rankedList
+// returns over a query that is no longer held, and a reading of the lens query
+// that is going away would badge and highlight rows the restored query never
+// matched.
+func (s *searchState) restore(snapshot searchSnapshot) {
+	if s == nil {
+		return
+	}
+	s.projection = snapshot.projection
+	s.rankedList = snapshot.rankedList
+	s.resetCompilation()
+}
+
+// resetCompilation drops everything derived from the query and nothing else.
+// Suggestions describe the query being compiled, so they die with it; the
+// retained note payloads hold every matched note's body and would otherwise
+// outlive the rows that named them.
+func (s *searchState) resetCompilation() {
+	if s == nil {
+		return
+	}
+	s.autocomplete.clear()
+	s.setCompilation("", nil, false)
+	s.clearNoteMatches()
 }
 
 // setCompilation installs the reading of the query the visible result set was

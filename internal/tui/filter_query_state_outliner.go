@@ -37,15 +37,30 @@ func (m *OutlinerModel) replaceFilterClauses(
 
 // adoptFilterCarriers lifts carrier-shaped state that entered from outside the
 // facet keys into the query, then re-derives so the caches and the predicate
-// agree again. The restored view snapshot is its one remaining caller: it freezes
-// and restores the carriers, so the predicate is rebuilt from them on the way
-// back in. A lens does not come through here, because a lens definition carries
-// the canonical query and enters through setFilterQuery directly.
+// agree again. Snapshot restoration is its only caller, on both halves: a
+// captured frame is still carrier-shaped, so whichever carrier a restore just
+// wrote, the predicate is rebuilt from the pair rather than left holding the one
+// that was replaced. A lens does not come through here, because a lens definition
+// carries the canonical query and enters through setFilterQuery directly.
 func (m *OutlinerModel) adoptFilterCarriers() {
 	if m == nil {
 		return
 	}
 	m.setFilterQuery(query.FilterQueryFromCarriers(&m.filter.CommonFilterState, &m.projectFilter))
+}
+
+// restoreFilterCarriers reinstalls the population facet cache a frame froze and
+// re-derives the predicate from it. The two are one act: the cache is what the F
+// chord authored and the predicate is what every reader downstream asks, so a
+// restore that wrote one without the other would show a population selected by
+// facets the query has never heard of. It is the row carrier's counterpart —
+// restorePresentationSnapshot writes that one and re-derives on the same terms.
+func (m *OutlinerModel) restoreFilterCarriers(projectFilter query.ProjectFilterState) {
+	if m == nil {
+		return
+	}
+	m.projectFilter = projectFilter.Clone()
+	m.adoptFilterCarriers()
 }
 
 // rowPredicateQuery is the half of the filter query models.Query.Admits answers.

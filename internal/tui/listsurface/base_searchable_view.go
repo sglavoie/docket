@@ -95,6 +95,37 @@ func (v *BaseSearchableView) SetSearchInputValue(value string) {
 	v.searchInput.SetValue(value)
 }
 
+// SearchInputSnapshot is the whole of what a restoration point owes the search
+// input: the confirmed query, the text still standing in the box, and whether
+// the box has focus. The three travel together because they disagree
+// legitimately — a confirmed search holds a query with the input closed, and a
+// search still being typed holds a value the query has not caught up with — so
+// restoring any one of them alone reinstalls a state the user was never in.
+type SearchInputSnapshot struct {
+	Query  string
+	Value  string
+	Active bool
+}
+
+// CaptureSearchInput reads that state without disturbing it.
+func (v *BaseSearchableView) CaptureSearchInput() SearchInputSnapshot {
+	return SearchInputSnapshot{
+		Query:  v.searchQuery,
+		Value:  v.searchInput.Value(),
+		Active: v.searchActive,
+	}
+}
+
+// RestoreSearchInput writes it back. It assigns the query rather than routing
+// through SetSearchQuery, because an embedder that overrides that setter to open
+// a projection of its own would reopen one here, and the caller restoring this
+// already holds the projection the query belongs to.
+func (v *BaseSearchableView) RestoreSearchInput(snapshot SearchInputSnapshot) {
+	v.searchQuery = snapshot.Query
+	v.searchInput.SetValue(snapshot.Value)
+	v.searchActive = snapshot.Active
+}
+
 // SearchInputCursor returns the caret's rune index inside the search input.
 // Cursor-aware completion needs it so a suggestion accepted mid-query replaces
 // only the token under the caret.
