@@ -1,4 +1,4 @@
-package tui
+package listsurface
 
 import (
 	"strings"
@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -19,11 +18,11 @@ func TestParentSelectorUpdate_AllowNoneSelection(t *testing.T) {
 		t.Fatalf("NewTask: %v", err)
 	}
 
-	m := listsurface.NewParentSelectorModel([]*models.Task{parent}, nil, true, presentation.ViewCrossProjectOutliner)
+	m := NewParentSelectorModel([]*models.Task{parent}, nil, true, presentation.ViewCrossProjectOutliner)
 	m.Init()
 
 	model, _ := m.Update(syntheticCtrlKey('d'))
-	m = model.(*listsurface.ParentSelectorModel)
+	m = model.(*ParentSelectorModel)
 	if m.CursorIndex() != 1 {
 		t.Fatalf("ctrl+d should clamp to the parent entry, got cursor %d", m.CursorIndex())
 	}
@@ -32,7 +31,7 @@ func TestParentSelectorUpdate_AllowNoneSelection(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("enter should emit a parent selection message")
 	}
-	msg, ok := cmd().(listsurface.ParentSelectedMsg)
+	msg, ok := cmd().(ParentSelectedMsg)
 	if !ok {
 		t.Fatalf("expected ParentSelectedMsg, got %T", cmd())
 	}
@@ -41,7 +40,7 @@ func TestParentSelectorUpdate_AllowNoneSelection(t *testing.T) {
 	}
 
 	model, _ = m.Update(syntheticCtrlKey('u'))
-	m = model.(*listsurface.ParentSelectorModel)
+	m = model.(*ParentSelectorModel)
 	if m.CursorIndex() != 0 {
 		t.Fatalf("ctrl+u should clamp back to None, got cursor %d", m.CursorIndex())
 	}
@@ -50,7 +49,7 @@ func TestParentSelectorUpdate_AllowNoneSelection(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("enter on None should still emit a selection message")
 	}
-	msg, ok = cmd().(listsurface.ParentSelectedMsg)
+	msg, ok = cmd().(ParentSelectedMsg)
 	if !ok {
 		t.Fatalf("expected ParentSelectedMsg, got %T", cmd())
 	}
@@ -65,12 +64,12 @@ func TestParentSelectorView_AllowNoneLabelsNoParent(t *testing.T) {
 		t.Fatalf("NewTask: %v", err)
 	}
 
-	m := listsurface.NewParentSelectorModel([]*models.Task{parent}, nil, true, presentation.ViewCrossProjectOutliner)
+	m := NewParentSelectorModel([]*models.Task{parent}, nil, true, presentation.ViewCrossProjectOutliner)
 	m.SetSize(80, 24)
 
 	view := m.View().Content
-	if !strings.Contains(view, listsurface.ParentSelectorNoParentLabel) {
-		t.Fatalf("expected no-parent label %q in view, got:\n%s", listsurface.ParentSelectorNoParentLabel, view)
+	if !strings.Contains(view, parentSelectorNoParentLabel) {
+		t.Fatalf("expected no-parent label %q in view, got:\n%s", parentSelectorNoParentLabel, view)
 	}
 	if !strings.Contains(ansi.Strip(view), "Ctrl+X no parent") {
 		t.Fatalf("expected Ctrl+X no-parent hint in view, got:\n%s", view)
@@ -83,14 +82,14 @@ func TestParentSelectorUpdate_CtrlXClearsParent(t *testing.T) {
 		t.Fatalf("NewTask: %v", err)
 	}
 
-	m := listsurface.NewParentSelectorModel([]*models.Task{parent}, &parent.ID, true, presentation.ViewCrossProjectOutliner)
+	m := NewParentSelectorModel([]*models.Task{parent}, &parent.ID, true, presentation.ViewCrossProjectOutliner)
 	m.ReparentTask = taskref.TaskIdentity{ProjectID: "project-1", TaskID: "task-1"}
 
 	_, cmd := m.Update(syntheticCtrlKey('x'))
 	if cmd == nil {
 		t.Fatal("ctrl+x should emit a parent selection message")
 	}
-	msg, ok := cmd().(listsurface.ParentSelectedMsg)
+	msg, ok := cmd().(ParentSelectedMsg)
 	if !ok {
 		t.Fatalf("expected ParentSelectedMsg, got %T", cmd())
 	}
@@ -111,7 +110,7 @@ func TestParentSelectorUpdate_CtrlXIgnoredWhenNoneDisallowed(t *testing.T) {
 		t.Fatalf("NewTask: %v", err)
 	}
 
-	m := listsurface.NewParentSelectorModel([]*models.Task{parent}, nil, false, presentation.ViewCrossProjectOutliner)
+	m := NewParentSelectorModel([]*models.Task{parent}, nil, false, presentation.ViewCrossProjectOutliner)
 
 	_, cmd := m.Update(syntheticCtrlKey('x'))
 	if cmd != nil {

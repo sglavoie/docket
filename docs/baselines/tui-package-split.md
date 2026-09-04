@@ -117,9 +117,9 @@ the pre-split tree and is consistently pessimistic.
 | `query` | 69 | 68 | 62 |
 | `operation` | 124 | 162 | 159 |
 | `route` | 14 | 16 | 9 |
-| `listsurface` | 29 | 26 | Session 2.20 |
+| `listsurface` | 29 | 26 | 23 |
 
-Running total against 631: **416**.
+Running total against 631: **413**.
 `grammar` contributes 58, not 154, because its two counted columns are on a
 different basis from every row above them:
 Session 2.11 counted 196 promoted names by including methods and struct fields,
@@ -629,6 +629,70 @@ have, `taskref`, `query`, `status` and `pulse`, all justified in the header of
 a footer string, name no list, cursor or row, and are read only by
 `app_view_status.go`, so Session 2.17's invitation to weigh that row resolves
 against the move.
+
+Session 2.20 closes the row at 26 → 23, and the three withdrawals are
+`JumpCursor`, `ParentSelectorNoParentLabel` and `ListItemScore`, now
+`jumpCursor`, `parentSelectorNoParentLabel` and `listItemScore`. A fourth name
+withdrew alongside them without moving the column, because it was never one of
+the 26: `CloseParentSelectorMsg` came down from `app_messages_tasks.go` already
+exported and is `closeParentSelectorMsg` now, which is safe only because the
+shell handles it through the `route.CloseViewMsg` interface at
+`app_update.go:52` and so never spells the type. Read that as the general rule
+for a moved message: what decides whether it can withdraw is whether any
+consumer names it, not whether it was promoted. `ListItemScore` withdrew by
+rewriting its one shell assertion in `list_surface_pin_marker_test.go` onto
+`SetQuery`/`Matches`, which is the product-visible path the scorer feeds; the
+test got stronger, not weaker, and that is the shape a step-3 withdrawal should
+take when the internal is reachable through public behaviour.
+
+After the withdrawals *zero* promoted `listsurface` names are unused outside the
+package, so the row is closed rather than merely reduced. Four promoted names
+survive on test consumers alone and are deliberate keeps.
+`RenderListSurfaceRow` is read by `lens_template_picker_render_test.go`, which
+renders one row against a plain twin on purpose; routing it through a whole
+`ListSurfaceModel` would weaken the assertion it exists to make.
+`ContextActionSheetModel.Config`, `.Context` and `.Notice` are read by six shell
+test files and *written* by `overlay_guidance_test.go:96`, so accessors would be
+the same surface with more code.
+
+The movable set is far smaller than the brief projected, and the reason is not
+`route`'s. 67 shell test files spell `listsurface.`; nine could legally be
+homed, and all nine were. A `listsurface` test may name `internal/app`,
+`internal/config`, `internal/models`, `internal/storage` and
+`internal/textgrammar` — the package transitively imports all five — so the
+import whitelist that held `route` to two files does not bind here. What binds
+instead is shell production identifiers: a test that reaches one unexported
+shell function is unhomeable no matter how much `listsurface` it also reads.
+Size a test move by that, not by `grep -l`.
+
+Two consequences of that split are worth carrying:
+
+- `multiselect_state_test.go` moved down minus one function.
+  `TestMultiSelectStateHasTaskIDRejectsAmbiguousIdentity` builds a
+  `listsurface.MultiSelectState` but tests the shell's own
+  `multiSelectStateHasTaskID`, so it split into
+  `internal/tui/app_bulk_task_cleanup_test.go` beside the reducer it covers.
+  Session 2.17 set that precedent; expect roughly one such split per large
+  package.
+- Helpers were duplicated across the boundary rather than exported.
+  `mustListSurface` now exists in both `internal/tui/list_surface_registry_test.go`
+  and `internal/tui/listsurface/list_surface_test_helpers_test.go`, two of the
+  five helpers in `key_helpers_test.go` were copied down, and
+  `assertListSurfaceWidth` became a local `assertProjectHubFitsWidth` in its one
+  remaining shell consumer. An exported test helper is production-unused API and
+  `scripts/dead_code.sh` rejects it, so duplication is the only move available —
+  which is a cost the plan should assume for every package whose tests split
+  across the boundary.
+
+`list_surface_registry_test.go` stays in the shell, as the plan says, but not
+for the reason the plan gives. It does not need a registry union: it builds its
+own two-operation registry through `operation.NewOperationRegistry()`, and
+nothing in it is unhomeable on imports. It stays because what it asserts is the
+seam between L3 `operation` and L5 `listsurface` — descriptors resolved through
+a registry, invoked through an executor, guidance assembled from a live keymap —
+and a contract between two layers belongs above both, not inside the lower one.
+The placement is right and the stated justification is not; check a pinned
+placement against the file before repeating its rationale.
 
 Reproduce the last column for one package with the oracle from session 2.4,
 which reports a clean boundary rather than a count:

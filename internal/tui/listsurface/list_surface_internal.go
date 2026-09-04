@@ -154,7 +154,7 @@ func (model *ListSurfaceModel) rebuildMatches() {
 	}
 	buckets := make(map[ListCategoryID][]listSurfaceMatch, len(model.categories)+1)
 	for sourceIndex, item := range model.items {
-		score := ListItemScore(item, model.query.Normalized)
+		score := listItemScore(item, model.query.Normalized)
 		if score == 0 {
 			continue
 		}
@@ -176,7 +176,7 @@ func (model *ListSurfaceModel) rebuildMatches() {
 	model.matches = append(model.matches, uncategorized...)
 }
 
-func ListItemScore(item ListItem, query string) int {
+func listItemScore(item ListItem, query string) int {
 	if query == "" {
 		return 1
 	}

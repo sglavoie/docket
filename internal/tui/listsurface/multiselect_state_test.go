@@ -1,15 +1,14 @@
-package tui
+package listsurface
 
 import (
 	"testing"
 
-	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestToggleMode(t *testing.T) {
 	t.Run("enters multi-select mode with enter message", func(t *testing.T) {
-		s := &listsurface.MultiSelectState{}
+		s := &MultiSelectState{}
 		var status string
 		s.ToggleMode(&status, "Multi-select active")
 		if !s.MultiSelectMode {
@@ -21,7 +20,7 @@ func TestToggleMode(t *testing.T) {
 	})
 
 	t.Run("exits multi-select mode and clears selections", func(t *testing.T) {
-		s := &listsurface.MultiSelectState{
+		s := &MultiSelectState{
 			MultiSelectMode: true,
 			Selected: map[taskref.TaskIdentity]bool{
 				{ProjectID: "project", TaskID: "a"}: true,
@@ -48,7 +47,7 @@ func TestToggleTaskIdentityAndUpdateStatus(t *testing.T) {
 	identity := taskref.TaskIdentity{ProjectID: "project", TaskID: "task-1"}
 
 	t.Run("selecting a task updates status with count", func(t *testing.T) {
-		s := &listsurface.MultiSelectState{MultiSelectMode: true}
+		s := &MultiSelectState{MultiSelectMode: true}
 		var status string
 		s.ToggleTaskIdentity(identity)
 		s.UpdateStatus(&status, noSel, withSel)
@@ -61,7 +60,7 @@ func TestToggleTaskIdentityAndUpdateStatus(t *testing.T) {
 	})
 
 	t.Run("deselecting last task shows no-selection message", func(t *testing.T) {
-		s := &listsurface.MultiSelectState{
+		s := &MultiSelectState{
 			MultiSelectMode: true,
 			Selected:        map[taskref.TaskIdentity]bool{identity: true},
 		}
@@ -82,7 +81,7 @@ func TestUpdateStatus(t *testing.T) {
 	withSel := "%d items"
 
 	t.Run("zero selections", func(t *testing.T) {
-		s := &listsurface.MultiSelectState{}
+		s := &MultiSelectState{}
 		var status string
 		s.UpdateStatus(&status, noSel, withSel)
 		if status != noSel {
@@ -91,7 +90,7 @@ func TestUpdateStatus(t *testing.T) {
 	})
 
 	t.Run("multiple selections", func(t *testing.T) {
-		s := &listsurface.MultiSelectState{
+		s := &MultiSelectState{
 			Selected: map[taskref.TaskIdentity]bool{
 				{ProjectID: "project", TaskID: "a"}: true,
 				{ProjectID: "project", TaskID: "b"}: true,
@@ -107,7 +106,7 @@ func TestUpdateStatus(t *testing.T) {
 }
 
 func TestFinishBulkPreservesSelection(t *testing.T) {
-	s := &listsurface.MultiSelectState{
+	s := &MultiSelectState{
 		MultiSelectMode: true,
 		Selected: map[taskref.TaskIdentity]bool{
 			{ProjectID: "project", TaskID: "a"}: true,
@@ -125,24 +124,5 @@ func TestFinishBulkPreservesSelection(t *testing.T) {
 	}
 	if status != "Changed 2 tasks" {
 		t.Fatalf("expected result message, got %q", status)
-	}
-}
-
-func TestMultiSelectStateHasTaskIDRejectsAmbiguousIdentity(t *testing.T) {
-	sharedID := "shared-task"
-	state := &listsurface.MultiSelectState{
-		MultiSelectMode: true,
-		Selected: map[taskref.TaskIdentity]bool{
-			{ProjectID: "alpha", TaskID: sharedID}: true,
-			{ProjectID: "beta", TaskID: sharedID}:  true,
-		},
-	}
-	selectedIDs := map[string]bool{sharedID: true}
-
-	if multiSelectStateHasTaskID(state, selectedIDs) {
-		t.Fatal("ID-only lookup should reject duplicate selected task identities")
-	}
-	if !state.MultiSelectMode || state.SelectedCount() != 2 {
-		t.Fatalf("ambiguous selection changed: active=%v count=%d", state.MultiSelectMode, state.SelectedCount())
 	}
 }

@@ -1,37 +1,35 @@
-package tui
+package listsurface
 
 import (
 	"errors"
 	"fmt"
 	"slices"
 	"testing"
-
-	"github.com/sglavoie/tt/internal/tui/listsurface"
 )
 
 func TestListSurfaceValidatesStableIDsAndAllowsDuplicateLabels(t *testing.T) {
 	t.Parallel()
 
-	_, err := listsurface.NewListSurfaceModel([]listsurface.ListItem{
+	_, err := NewListSurfaceModel([]ListItem{
 		{ID: "same", PrimaryText: "Duplicate"},
 		{ID: "same", PrimaryText: "Duplicate"},
-	}, nil, listsurface.ListSurfaceConfig{})
-	if !errors.Is(err, listsurface.ErrListItemDuplicateID) {
-		t.Fatalf("duplicate IDs error = %v, want %v", err, listsurface.ErrListItemDuplicateID)
+	}, nil, ListSurfaceConfig{})
+	if !errors.Is(err, ErrListItemDuplicateID) {
+		t.Fatalf("duplicate IDs error = %v, want %v", err, ErrListItemDuplicateID)
 	}
 
-	items := []listsurface.ListItem{
+	items := []ListItem{
 		{
 			ID:          "first",
 			PrimaryText: "Duplicate",
 			Aliases:     []string{"one"},
-			Preview: listsurface.ListPreview{
-				Fields: []listsurface.ListPreviewField{{Label: "Kind", Value: "first"}},
+			Preview: ListPreview{
+				Fields: []ListPreviewField{{Label: "Kind", Value: "first"}},
 			},
 		},
 		{ID: "second", PrimaryText: "Duplicate", Aliases: []string{"two"}},
 	}
-	model := mustListSurface(t, items, nil, listsurface.ListSurfaceConfig{})
+	model := mustListSurface(t, items, nil, ListSurfaceConfig{})
 	if !model.SetCursorToID("second") {
 		t.Fatal("failed to place cursor on duplicate-label item by stable ID")
 	}
@@ -51,7 +49,7 @@ func TestListSurfaceValidatesStableIDsAndAllowsDuplicateLabels(t *testing.T) {
 		t.Fatalf("stored preview field = %q, want defensive copy %q", got, "first")
 	}
 
-	if err := model.SetItems([]listsurface.ListItem{
+	if err := model.SetItems([]ListItem{
 		{ID: "second", PrimaryText: "Duplicate"},
 		{ID: "first", PrimaryText: "Duplicate"},
 	}); err != nil {
@@ -69,9 +67,9 @@ func TestListSurfaceValidatesStableIDsAndAllowsDuplicateLabels(t *testing.T) {
 func TestListSurfaceContextualEmptyStates(t *testing.T) {
 	t.Parallel()
 
-	config := listsurface.ListSurfaceConfig{
-		EmptyState:   listsurface.ListEmptyState{Title: "Nothing here", Detail: "Create one."},
-		NoMatchState: listsurface.ListEmptyState{Title: "No matches", Detail: "Clear the query."},
+	config := ListSurfaceConfig{
+		EmptyState:   ListEmptyState{Title: "Nothing here", Detail: "Create one."},
+		NoMatchState: ListEmptyState{Title: "No matches", Detail: "Clear the query."},
 	}
 	model := mustListSurface(t, nil, nil, config)
 	model.SetSize(80, 10)
@@ -89,16 +87,16 @@ func TestListSurfaceContextualEmptyStates(t *testing.T) {
 		t.Fatalf("empty visible rows = %v, want none", got)
 	}
 	empty, ok := model.EmptyContext()
-	if !ok || empty.Kind != listsurface.ListEmptySource || empty.State != config.EmptyState {
+	if !ok || empty.Kind != ListEmptySource || empty.State != config.EmptyState {
 		t.Fatalf("source empty context = (%+v, %v)", empty, ok)
 	}
 
-	if err := model.SetItems([]listsurface.ListItem{{ID: "one", PrimaryText: "Alpha"}}); err != nil {
+	if err := model.SetItems([]ListItem{{ID: "one", PrimaryText: "Alpha"}}); err != nil {
 		t.Fatalf("SetItems() error = %v", err)
 	}
 	model.SetQuery("zzzz")
 	empty, ok = model.EmptyContext()
-	if !ok || empty.Kind != listsurface.ListEmptyNoMatches || empty.State != config.NoMatchState {
+	if !ok || empty.Kind != ListEmptyNoMatches || empty.State != config.NoMatchState {
 		t.Fatalf("query empty context = (%+v, %v)", empty, ok)
 	}
 
@@ -111,23 +109,23 @@ func TestListSurfaceContextualEmptyStates(t *testing.T) {
 func TestListSurfaceSetEmptyStatesReplacesCopyOnly(t *testing.T) {
 	t.Parallel()
 
-	model := mustListSurface(t, []listsurface.ListItem{
+	model := mustListSurface(t, []ListItem{
 		{ID: "one", PrimaryText: "Alpha"},
 		{ID: "two", PrimaryText: "Bravo"},
-	}, nil, listsurface.ListSurfaceConfig{
-		SelectionMode: listsurface.ListSelectionMulti,
-		EmptyState:    listsurface.ListEmptyState{Title: "Nothing here", Detail: "Create one."},
-		NoMatchState:  listsurface.ListEmptyState{Title: "No matches", Detail: "Clear the query."},
+	}, nil, ListSurfaceConfig{
+		SelectionMode: ListSelectionMulti,
+		EmptyState:    ListEmptyState{Title: "Nothing here", Detail: "Create one."},
+		NoMatchState:  ListEmptyState{Title: "No matches", Detail: "Clear the query."},
 	})
 	if !model.SetCursorToID("two") {
 		t.Fatal("failed to set the initial cursor")
 	}
-	if err := model.SetSelectedIDs([]listsurface.ListItemID{"one"}); err != nil {
+	if err := model.SetSelectedIDs([]ListItemID{"one"}); err != nil {
 		t.Fatalf("SetSelectedIDs() error = %v", err)
 	}
 
-	empty := listsurface.ListEmptyState{Title: "No projects hold tasks.", Detail: "Press Ctrl+T to show every project."}
-	noMatch := listsurface.ListEmptyState{Title: "No projects match this search.", Detail: "Press Esc to clear the query, or Ctrl+T to show every project."}
+	empty := ListEmptyState{Title: "No projects hold tasks.", Detail: "Press Ctrl+T to show every project."}
+	noMatch := ListEmptyState{Title: "No projects match this search.", Detail: "Press Esc to clear the query, or Ctrl+T to show every project."}
 	model.SetEmptyStates(empty, noMatch)
 
 	if got := model.Config().EmptyState; got != empty {
@@ -145,58 +143,58 @@ func TestListSurfaceSetEmptyStatesReplacesCopyOnly(t *testing.T) {
 	}
 
 	model.SetQuery("zzzz")
-	if context, ok := model.EmptyContext(); !ok || context.Kind != listsurface.ListEmptyNoMatches || context.State != noMatch {
+	if context, ok := model.EmptyContext(); !ok || context.Kind != ListEmptyNoMatches || context.State != noMatch {
 		t.Fatalf("no-match context = (%+v, %v), want the replaced copy", context, ok)
 	}
 	if err := model.SetItems(nil); err != nil {
 		t.Fatalf("SetItems() error = %v", err)
 	}
-	if context, ok := model.EmptyContext(); !ok || context.Kind != listsurface.ListEmptySource || context.State != empty {
+	if context, ok := model.EmptyContext(); !ok || context.Kind != ListEmptySource || context.State != empty {
 		t.Fatalf("source empty context = (%+v, %v), want the replaced copy", context, ok)
 	}
 
-	var absent *listsurface.ListSurfaceModel
+	var absent *ListSurfaceModel
 	absent.SetEmptyStates(empty, noMatch)
 }
 
 func TestListSurfaceFuzzyRanksAliasesWithinStableCategories(t *testing.T) {
 	t.Parallel()
 
-	categories := []listsurface.ListCategory{
+	categories := []ListCategory{
 		{ID: "work", Label: "Work"},
 		{ID: "personal", Label: "Personal"},
 	}
-	items := []listsurface.ListItem{
+	items := []ListItem{
 		{ID: "w1", CategoryID: "work", PrimaryText: "Quarterly report", Aliases: []string{"roadmap"}},
 		{ID: "p1", CategoryID: "personal", PrimaryText: "Road trip"},
 		{ID: "w2", CategoryID: "work", PrimaryText: "Roadmap review"},
 		{ID: "loose", PrimaryText: "Roadside note"},
 	}
-	model := mustListSurface(t, items, categories, listsurface.ListSurfaceConfig{})
+	model := mustListSurface(t, items, categories, ListSurfaceConfig{})
 	model.SetQuery("road")
 
 	matches := model.Matches()
-	gotIDs := make([]listsurface.ListItemID, 0, len(matches))
+	gotIDs := make([]ListItemID, 0, len(matches))
 	for _, match := range matches {
 		gotIDs = append(gotIDs, match.Item.ID)
 	}
 	// Categories stay in caller order and ranking is applied inside each group;
 	// uncategorized matches follow declared groups.
-	wantIDs := []listsurface.ListItemID{"w2", "w1", "p1", "loose"}
+	wantIDs := []ListItemID{"w2", "w1", "p1", "loose"}
 	if fmt.Sprint(gotIDs) != fmt.Sprint(wantIDs) {
 		t.Fatalf("ranked IDs = %v, want %v", gotIDs, wantIDs)
 	}
 
 	rows := model.Rows()
-	wantKinds := []listsurface.ListRowKind{
-		listsurface.ListRowCategory,
-		listsurface.ListRowItem,
-		listsurface.ListRowItem,
-		listsurface.ListRowCategory,
-		listsurface.ListRowItem,
-		listsurface.ListRowItem,
+	wantKinds := []ListRowKind{
+		ListRowCategory,
+		ListRowItem,
+		ListRowItem,
+		ListRowCategory,
+		ListRowItem,
+		ListRowItem,
 	}
-	gotKinds := make([]listsurface.ListRowKind, 0, len(rows))
+	gotKinds := make([]ListRowKind, 0, len(rows))
 	for _, row := range rows {
 		gotKinds = append(gotKinds, row.Kind)
 	}
@@ -211,12 +209,12 @@ func TestListSurfaceFuzzyRanksAliasesWithinStableCategories(t *testing.T) {
 func TestListSurfaceCursorPreservationAcrossFilteringAndReloads(t *testing.T) {
 	t.Parallel()
 
-	model := mustListSurface(t, []listsurface.ListItem{
+	model := mustListSurface(t, []ListItem{
 		{ID: "a", PrimaryText: "Alpha"},
 		{ID: "b", PrimaryText: "Bravo"},
 		{ID: "c", PrimaryText: "Charlie"},
 		{ID: "d", PrimaryText: "Delta"},
-	}, nil, listsurface.ListSurfaceConfig{})
+	}, nil, ListSurfaceConfig{})
 	if !model.SetCursorToID("c") {
 		t.Fatal("failed to set initial cursor")
 	}
@@ -238,7 +236,7 @@ func TestListSurfaceCursorPreservationAcrossFilteringAndReloads(t *testing.T) {
 	if !model.SetCursorToID("c") {
 		t.Fatal("failed to restore cursor to c")
 	}
-	if err := model.SetItems([]listsurface.ListItem{
+	if err := model.SetItems([]ListItem{
 		{ID: "a", PrimaryText: "Alpha"},
 		{ID: "b", PrimaryText: "Bravo"},
 		{ID: "d", PrimaryText: "Delta"},
@@ -255,19 +253,19 @@ func TestListSurfaceCursorPreservationAcrossFilteringAndReloads(t *testing.T) {
 func TestListSurfaceSingleAndMultiSelectionRespectDisabledItems(t *testing.T) {
 	t.Parallel()
 
-	items := []listsurface.ListItem{
+	items := []ListItem{
 		{ID: "a", PrimaryText: "Alpha"},
 		{ID: "b", PrimaryText: "Bravo", DisabledReason: "read only"},
 		{ID: "c", PrimaryText: "Charlie"},
 	}
-	multi := mustListSurface(t, items, nil, listsurface.ListSurfaceConfig{SelectionMode: listsurface.ListSelectionMulti})
+	multi := mustListSurface(t, items, nil, ListSurfaceConfig{SelectionMode: ListSelectionMulti})
 	selected, err := multi.ToggleCurrentSelection()
 	if err != nil || !selected {
 		t.Fatalf("select a = (%v, %v), want selected", selected, err)
 	}
 	multi.MoveCursor(1)
-	if _, err := multi.ToggleCurrentSelection(); !errors.Is(err, listsurface.ErrListItemDisabled) {
-		t.Fatalf("select disabled error = %v, want %v", err, listsurface.ErrListItemDisabled)
+	if _, err := multi.ToggleCurrentSelection(); !errors.Is(err, ErrListItemDisabled) {
+		t.Fatalf("select disabled error = %v, want %v", err, ErrListItemDisabled)
 	}
 	multi.MoveCursor(1)
 	if err := multi.SelectCurrent(); err != nil {
@@ -281,7 +279,7 @@ func TestListSurfaceSingleAndMultiSelectionRespectDisabledItems(t *testing.T) {
 	if got := multi.SelectedIDs(); fmt.Sprint(got) != "[a c]" {
 		t.Fatalf("hidden selected IDs = %v, want stable [a c]", got)
 	}
-	if err := multi.SetItems([]listsurface.ListItem{
+	if err := multi.SetItems([]ListItem{
 		{ID: "b", PrimaryText: "Bravo"},
 		{ID: "c", PrimaryText: "Charlie", DisabledReason: "now disabled"},
 	}); err != nil {
@@ -291,14 +289,14 @@ func TestListSurfaceSingleAndMultiSelectionRespectDisabledItems(t *testing.T) {
 		t.Fatalf("pruned selected IDs = %v, want none", got)
 	}
 
-	single := mustListSurface(t, items, nil, listsurface.ListSurfaceConfig{SelectionMode: listsurface.ListSelectionSingle})
-	if err := single.SetSelectedIDs([]listsurface.ListItemID{"a", "c"}); !errors.Is(err, listsurface.ErrListSelectionCardinality) {
+	single := mustListSurface(t, items, nil, ListSurfaceConfig{SelectionMode: ListSelectionSingle})
+	if err := single.SetSelectedIDs([]ListItemID{"a", "c"}); !errors.Is(err, ErrListSelectionCardinality) {
 		t.Fatalf("single selection cardinality error = %v", err)
 	}
 	if got := single.SelectedIDs(); len(got) != 0 {
 		t.Fatalf("failed atomic single selection changed state to %v", got)
 	}
-	if err := single.SetSelectedIDs([]listsurface.ListItemID{"c"}); err != nil {
+	if err := single.SetSelectedIDs([]ListItemID{"c"}); err != nil {
 		t.Fatalf("single SetSelectedIDs() error = %v", err)
 	}
 	if !single.SetCursorToID("a") {
@@ -315,23 +313,23 @@ func TestListSurfaceSingleAndMultiSelectionRespectDisabledItems(t *testing.T) {
 func TestListSurfaceViewportIsBoundedAcrossLargeListsCategoriesAndResize(t *testing.T) {
 	t.Parallel()
 
-	categories := []listsurface.ListCategory{
+	categories := []ListCategory{
 		{ID: "first", Label: "First"},
 		{ID: "second", Label: "Second"},
 	}
-	items := make([]listsurface.ListItem, 0, 100)
+	items := make([]ListItem, 0, 100)
 	for index := range 100 {
-		category := listsurface.ListCategoryID("first")
+		category := ListCategoryID("first")
 		if index >= 50 {
 			category = "second"
 		}
-		items = append(items, listsurface.ListItem{
-			ID:          listsurface.ListItemID(fmt.Sprintf("item-%03d", index)),
+		items = append(items, ListItem{
+			ID:          ListItemID(fmt.Sprintf("item-%03d", index)),
 			CategoryID:  category,
 			PrimaryText: fmt.Sprintf("Item %03d", index),
 		})
 	}
-	model := mustListSurface(t, items, categories, listsurface.ListSurfaceConfig{})
+	model := mustListSurface(t, items, categories, ListSurfaceConfig{})
 	model.SetSize(80, 5)
 	if !model.MoveCursorToEnd() {
 		t.Fatal("failed to move cursor to end")
@@ -377,7 +375,7 @@ func TestListSurfaceViewportIsBoundedAcrossLargeListsCategoriesAndResize(t *test
 	if model.Cursor() != 4 {
 		t.Fatalf("paged cursor = %d, want selectable index 4", model.Cursor())
 	}
-	if row := model.Rows()[0]; row.Kind != listsurface.ListRowCategory || row.Cursor {
+	if row := model.Rows()[0]; row.Kind != ListRowCategory || row.Cursor {
 		t.Fatalf("category row became selectable: %+v", row)
 	}
 }

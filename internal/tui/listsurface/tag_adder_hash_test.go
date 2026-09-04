@@ -1,10 +1,9 @@
-package tui
+package listsurface
 
 import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -12,8 +11,8 @@ import (
 // '#' (as users would type in quick capture syntax) does not get stored
 // literally with the '#' prefix.
 func TestTagAdderStripsLeadingHash(t *testing.T) {
-	adder := listsurface.NewTagAdder()
-	picker := listsurface.NewListSurfaceAdapter[query.TagInfo](nil, listsurface.PickerConfig{MultiSelect: true})
+	adder := NewTagAdder()
+	picker := NewListSurfaceAdapter[query.TagInfo](nil, PickerConfig{MultiSelect: true})
 	adder.EnterAddMode()
 	adder.AddTagInput.SetValue("#backend")
 

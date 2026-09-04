@@ -6,8 +6,8 @@ import (
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
-// JumpCursor moves cursor by delta within [0, total-1].
-func JumpCursor(cursor *int, total, delta int) {
+// jumpCursor moves cursor by delta within [0, total-1].
+func jumpCursor(cursor *int, total, delta int) {
 	if total <= 0 {
 		*cursor = 0
 		return
@@ -44,10 +44,10 @@ func HandleListNavigation(key string, cursor *int, total, height int, flash *boo
 		}
 		return true, FlashIfJumped(old, *cursor, flash)
 	case "ctrl+u", "pgup":
-		JumpCursor(cursor, total, -chrome.HalfPage(height))
+		jumpCursor(cursor, total, -chrome.HalfPage(height))
 		return true, FlashIfJumped(old, *cursor, flash)
 	case "ctrl+d", "pgdown":
-		JumpCursor(cursor, total, chrome.HalfPage(height))
+		jumpCursor(cursor, total, chrome.HalfPage(height))
 		return true, FlashIfJumped(old, *cursor, flash)
 	}
 	return false, nil

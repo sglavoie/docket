@@ -16,7 +16,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-const ParentSelectorNoParentLabel = "No parent (top-level)"
+const parentSelectorNoParentLabel = "No parent (top-level)"
 
 // ParentSelectedMsg returns the selected parent from parent selector.
 type ParentSelectedMsg struct {
@@ -25,8 +25,8 @@ type ParentSelectedMsg struct {
 	ReparentTask taskref.TaskIdentity        // Forwarded from OpenParentSelectorMsg for delayed reparent operations
 }
 
-// CloseParentSelectorMsg closes the parent selector without selection.
-type CloseParentSelectorMsg struct{ route.PopViewMsg }
+// closeParentSelectorMsg closes the parent selector without selection.
+type closeParentSelectorMsg struct{ route.PopViewMsg }
 
 // ParentPickerItem wraps a Task for parent selection with fuzzy scoring.
 type ParentPickerItem struct {
@@ -37,7 +37,7 @@ type ParentPickerItem struct {
 // FilterText returns searchable text for parent filtering.
 func (p ParentPickerItem) FilterText() string {
 	if p.None {
-		return ParentSelectorNoParentLabel
+		return parentSelectorNoParentLabel
 	}
 	return fmt.Sprintf("#%d %s", p.Task.ShortID, p.Task.Title)
 }
@@ -45,7 +45,7 @@ func (p ParentPickerItem) FilterText() string {
 // DisplayText returns the task title for display.
 func (p ParentPickerItem) DisplayText() string {
 	if p.None {
-		return ParentSelectorNoParentLabel
+		return parentSelectorNoParentLabel
 	}
 	return p.Task.Title
 }
@@ -105,11 +105,11 @@ func NewParentSelectorModel(validParents []*models.Task, currentID *string, allo
 
 	m.alwaysSearch = NewAlwaysSearchSinglePicker(m.ListSurfaceAdapter, AlwaysSearchSinglePickerConfig[ParentPickerItem]{
 		CancelMsg: func() tea.Msg {
-			return CloseParentSelectorMsg{}
+			return closeParentSelectorMsg{}
 		},
 		SelectMsg: func(cursor int, filtered []ParentPickerItem) tea.Msg {
 			if cursor >= len(filtered) {
-				return CloseParentSelectorMsg{}
+				return closeParentSelectorMsg{}
 			}
 			var parentID *string
 			if !filtered[cursor].None {
@@ -215,9 +215,9 @@ func (m *ParentSelectorModel) renderList() string {
 	for i, item := range m.FilteredItems() {
 		if i >= scrollOffset && i < scrollOffset+maxVisible {
 			if item.None {
-				line := theme.MutedStyle.Render(ParentSelectorNoParentLabel)
+				line := theme.MutedStyle.Render(parentSelectorNoParentLabel)
 				if m.CursorIndex() == i {
-					line = chrome.SelectedLine(ParentSelectorNoParentLabel, m.Width())
+					line = chrome.SelectedLine(parentSelectorNoParentLabel, m.Width())
 				}
 				b.WriteString(line)
 				b.WriteString("\n")

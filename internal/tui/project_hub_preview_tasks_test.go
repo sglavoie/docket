@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
@@ -98,7 +99,7 @@ func TestProjectHubPreviewListsEveryTaskInTreeOrder(t *testing.T) {
 			t.Errorf("preview dropped the %q connector:\n%s", want, pane)
 		}
 	}
-	assertListSurfaceWidth(t, hub.View().Content, 120)
+	assertProjectHubFitsWidth(t, hub.View().Content, 120)
 }
 
 func TestProjectHubPreviewNamesAnUnreadProjectRatherThanShowingItEmpty(t *testing.T) {
@@ -241,6 +242,20 @@ func TestProjectPreviewTaskRowsListsAnOrphanExactlyOnce(t *testing.T) {
 		}
 		if rows[index].ProjectID != "proj" {
 			t.Fatalf("row %d carries project %q, want %q", index, rows[index].ProjectID, "proj")
+		}
+	}
+}
+
+// assertProjectHubFitsWidth is the Hub's own copy of the overflow assertion the
+// list-surface render tests make. It stayed behind when those tests followed
+// their subject into listsurface: this is the only shell caller, so per the
+// extraction recipe it moves into its consumer rather than crossing the
+// boundary as exported test API.
+func assertProjectHubFitsWidth(t *testing.T, rendered string, width int) {
+	t.Helper()
+	for index, line := range strings.Split(rendered, "\n") {
+		if got := lipgloss.Width(line); got > width {
+			t.Fatalf("line %d width = %d, want <= %d: %q", index, got, width, line)
 		}
 	}
 }

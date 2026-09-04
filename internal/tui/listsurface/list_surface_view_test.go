@@ -1,4 +1,4 @@
-package tui
+package listsurface
 
 import (
 	"fmt"
@@ -10,7 +10,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -20,20 +19,20 @@ func TestListSurfaceCompactRendererExposesSelectionDisabledStateContinuationAndH
 ) {
 	t.Parallel()
 
-	model := mustListSurface(t, []listsurface.ListItem{
+	model := mustListSurface(t, []ListItem{
 		{ID: "alpha", PrimaryText: "Alpha"},
 		{ID: "bravo", PrimaryText: "Bravo", DisabledReason: "read only"},
 		{ID: "charlie", PrimaryText: "Charlie"},
 		{ID: "delta", PrimaryText: "Delta"},
-	}, nil, listsurface.ListSurfaceConfig{SelectionMode: listsurface.ListSelectionMulti})
-	if err := model.SetSelectedIDs([]listsurface.ListItemID{"alpha"}); err != nil {
+	}, nil, ListSurfaceConfig{SelectionMode: ListSelectionMulti})
+	if err := model.SetSelectedIDs([]ListItemID{"alpha"}); err != nil {
 		t.Fatalf("SetSelectedIDs() error = %v", err)
 	}
 	if !model.SetCursorToID("bravo") {
 		t.Fatal("failed to move cursor to disabled item")
 	}
 
-	rendered := listsurface.NewListSurfaceRenderer(listsurface.ListSurfaceRenderConfig{
+	rendered := NewListSurfaceRenderer(ListSurfaceRenderConfig{
 		Width:  40,
 		Height: 3,
 	}).Render(model)
@@ -47,7 +46,7 @@ func TestListSurfaceCompactRendererExposesSelectionDisabledStateContinuationAndH
 	if !model.MoveCursorToEnd() {
 		t.Fatal("failed to move cursor to final item")
 	}
-	rendered = listsurface.NewListSurfaceRenderer(listsurface.ListSurfaceRenderConfig{
+	rendered = NewListSurfaceRenderer(ListSurfaceRenderConfig{
 		Width:    40,
 		Height:   3,
 		HideHelp: true,
@@ -60,22 +59,22 @@ func TestListSurfaceCompactRendererExposesSelectionDisabledStateContinuationAndH
 func TestListSurfaceWideRendererShowsPreviewAndFallsBackAtMinimumWidth(t *testing.T) {
 	t.Parallel()
 
-	model := mustListSurface(t, []listsurface.ListItem{{
+	model := mustListSurface(t, []ListItem{{
 		ID:            "alpha",
 		PrimaryText:   "Alpha",
 		SecondaryText: "Ready",
-		Preview: listsurface.ListPreview{
+		Preview: ListPreview{
 			Title:   "Alpha preview",
 			Summary: "A compact summary.",
 			Body:    "Longer preview body.",
-			Fields:  []listsurface.ListPreviewField{{Label: "Project", Value: "Example"}},
+			Fields:  []ListPreviewField{{Label: "Project", Value: "Example"}},
 		},
-	}}, nil, listsurface.ListSurfaceConfig{})
+	}}, nil, ListSurfaceConfig{})
 
-	wide := listsurface.NewListSurfaceRenderer(listsurface.ListSurfaceRenderConfig{
+	wide := NewListSurfaceRenderer(ListSurfaceRenderConfig{
 		Width:       90,
 		Height:      6,
-		Layout:      listsurface.ListSurfaceLayoutWide,
+		Layout:      ListSurfaceLayoutWide,
 		ShowPreview: true,
 		HideHelp:    true,
 	}).Render(model)
@@ -86,10 +85,10 @@ func TestListSurfaceWideRendererShowsPreviewAndFallsBackAtMinimumWidth(t *testin
 	}
 	assertListSurfaceWidth(t, wide, 90)
 
-	compact := listsurface.NewListSurfaceRenderer(listsurface.ListSurfaceRenderConfig{
+	compact := NewListSurfaceRenderer(ListSurfaceRenderConfig{
 		Width:       48,
 		Height:      6,
-		Layout:      listsurface.ListSurfaceLayoutWide,
+		Layout:      ListSurfaceLayoutWide,
 		ShowPreview: true,
 		HideHelp:    true,
 	}).Render(model)
@@ -102,21 +101,21 @@ func TestListSurfaceWideRendererShowsPreviewAndFallsBackAtMinimumWidth(t *testin
 func TestListSurfacePreviewBodyCapsTheDescriptionAndFillsTheRest(t *testing.T) {
 	t.Parallel()
 
-	model := mustListSurface(t, []listsurface.ListItem{{
+	model := mustListSurface(t, []ListItem{{
 		ID:          "alpha",
 		PrimaryText: "Alpha",
-		Preview: listsurface.ListPreview{
+		Preview: ListPreview{
 			Title:   "Alpha preview",
 			Summary: "Active · 0 tasks · slug alpha",
 			Body:    strings.Repeat("A very long description that wraps well past two lines. ", 6),
 		},
-	}}, nil, listsurface.ListSurfaceConfig{})
+	}}, nil, ListSurfaceConfig{})
 
 	var gotWidth, gotHeight int
-	rendered := listsurface.NewListSurfaceRenderer(listsurface.ListSurfaceRenderConfig{
+	rendered := NewListSurfaceRenderer(ListSurfaceRenderConfig{
 		Width:       90,
 		Height:      10,
-		Layout:      listsurface.ListSurfaceLayoutWide,
+		Layout:      ListSurfaceLayoutWide,
 		ShowPreview: true,
 		HideHelp:    true,
 		PreviewBody: func(width, height int) []string {
@@ -147,10 +146,10 @@ func TestListSurfacePreviewBodyCapsTheDescriptionAndFillsTheRest(t *testing.T) {
 
 	// Compact fallback owns no preview pane, so the hook must not run at all.
 	ran := false
-	compact := listsurface.NewListSurfaceRenderer(listsurface.ListSurfaceRenderConfig{
+	compact := NewListSurfaceRenderer(ListSurfaceRenderConfig{
 		Width:       48,
 		Height:      10,
-		Layout:      listsurface.ListSurfaceLayoutWide,
+		Layout:      ListSurfaceLayoutWide,
 		ShowPreview: true,
 		HideHelp:    true,
 		PreviewBody: func(int, int) []string { ran = true; return []string{"pane row one"} },
@@ -163,27 +162,27 @@ func TestListSurfacePreviewBodyCapsTheDescriptionAndFillsTheRest(t *testing.T) {
 func TestListSurfaceRendererKeepsCursorInsideContinuationRowBudget(t *testing.T) {
 	t.Parallel()
 
-	categories := []listsurface.ListCategory{
+	categories := []ListCategory{
 		{ID: "first", Label: "First"},
 		{ID: "second", Label: "Second"},
 	}
-	items := make([]listsurface.ListItem, 0, 8)
+	items := make([]ListItem, 0, 8)
 	for index := range 8 {
-		category := listsurface.ListCategoryID("first")
+		category := ListCategoryID("first")
 		if index >= 4 {
 			category = "second"
 		}
-		items = append(items, listsurface.ListItem{
-			ID:          listsurface.ListItemID(fmt.Sprintf("item-%d", index)),
+		items = append(items, ListItem{
+			ID:          ListItemID(fmt.Sprintf("item-%d", index)),
 			CategoryID:  category,
 			PrimaryText: fmt.Sprintf("Item %d", index),
 		})
 	}
-	model := mustListSurface(t, items, categories, listsurface.ListSurfaceConfig{})
-	renderer := listsurface.NewListSurfaceRenderer(listsurface.ListSurfaceRenderConfig{
+	model := mustListSurface(t, items, categories, ListSurfaceConfig{})
+	renderer := NewListSurfaceRenderer(ListSurfaceRenderConfig{
 		Width:    30,
 		Height:   4,
-		Layout:   listsurface.ListSurfaceLayoutCompact,
+		Layout:   ListSurfaceLayoutCompact,
 		HideHelp: true,
 	})
 
@@ -213,13 +212,13 @@ func TestListSurfaceRendererKeepsCursorInsideContinuationRowBudget(t *testing.T)
 func TestRetainedListSurfaceDomainAdaptersProvideStableTargets(t *testing.T) {
 	t.Parallel()
 
-	states := listsurface.ListSourceFromWorkflowStates(models.AllWorkflowStates())
+	states := ListSourceFromWorkflowStates(models.AllWorkflowStates())
 	if len(states.Items) != len(models.AllWorkflowStates()) ||
 		states.Items[2].ID != "state:doing" {
 		t.Fatalf("state adapter = %+v", states.Items)
 	}
-	priorities := listsurface.ListSourceFromPriorities([]chrome.PriorityInfo{{Priority: 1, Description: "Critical"}})
-	tags := listsurface.ListSourceFromTags([]query.TagInfo{{Name: "focus", TaskCount: 2}})
+	priorities := ListSourceFromPriorities([]chrome.PriorityInfo{{Priority: 1, Description: "Critical"}})
+	tags := ListSourceFromTags([]query.TagInfo{{Name: "focus", TaskCount: 2}})
 	if priorities.Items[0].ID != "priority:1" ||
 		tags.Items[0].CategoryID != "tag:other" {
 		t.Fatalf("priority/tag adapters are not stable: %+v %+v",
@@ -229,25 +228,25 @@ func TestRetainedListSurfaceDomainAdaptersProvideStableTargets(t *testing.T) {
 
 func TestListSurfaceRowKeepsItemColorWhenCheckedAndDropsItUnderTheCursor(t *testing.T) {
 	style := theme.SemanticTaskTitleStyle(models.SemanticTaskTagBug, 0, false, false)
-	colored := listsurface.ListItem{ID: "bug", PrimaryText: "bug", SecondaryText: "a defect", PrimaryStyle: &style}
+	colored := ListItem{ID: "bug", PrimaryText: "bug", SecondaryText: "a defect", PrimaryStyle: &style}
 	plain := colored
 	plain.PrimaryStyle = nil
 
 	for _, state := range []struct {
 		name      string
-		row       listsurface.ListSurfaceRow
+		row       ListSurfaceRow
 		wantColor bool
 	}{
-		{name: "unchecked", row: listsurface.ListSurfaceRow{}, wantColor: true},
-		{name: "checked", row: listsurface.ListSurfaceRow{Selected: true}, wantColor: true},
-		{name: "cursor", row: listsurface.ListSurfaceRow{Cursor: true}, wantColor: false},
+		{name: "unchecked", row: ListSurfaceRow{}, wantColor: true},
+		{name: "checked", row: ListSurfaceRow{Selected: true}, wantColor: true},
+		{name: "cursor", row: ListSurfaceRow{Cursor: true}, wantColor: false},
 	} {
 		t.Run(state.name, func(t *testing.T) {
 			styledRow, plainRow := state.row, state.row
-			styledRow.Match = listsurface.ListMatch{Item: colored}
-			plainRow.Match = listsurface.ListMatch{Item: plain}
-			got := listsurface.RenderListSurfaceRow(styledRow, listsurface.ListSelectionMulti, 40)
-			want := listsurface.RenderListSurfaceRow(plainRow, listsurface.ListSelectionMulti, 40)
+			styledRow.Match = ListMatch{Item: colored}
+			plainRow.Match = ListMatch{Item: plain}
+			got := RenderListSurfaceRow(styledRow, ListSelectionMulti, 40)
+			want := RenderListSurfaceRow(plainRow, ListSelectionMulti, 40)
 
 			if has := strings.Contains(got, style.Render("bug")); has != state.wantColor {
 				t.Fatalf("colored primary text present = %v, want %v:\n%q", has, state.wantColor, got)

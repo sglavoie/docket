@@ -1,4 +1,4 @@
-package tui
+package listsurface
 
 import (
 	"fmt"
@@ -9,7 +9,6 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -18,7 +17,7 @@ import (
 // row one flat style cannot pass the distinctness guard below. `bug` is in the
 // fixture on purpose: this surface names tags, so a semantic tag wears its chip
 // here rather than the title color the `#` picker's SEMANTIC section previews.
-func newTagSelectorForTest(t *testing.T, currentTags ...string) *listsurface.TagSelectorModel {
+func newTagSelectorForTest(t *testing.T, currentTags ...string) *TagSelectorModel {
 	t.Helper()
 	project := &models.Project{
 		ID:   "project-alpha",
@@ -28,7 +27,7 @@ func newTagSelectorForTest(t *testing.T, currentTags ...string) *listsurface.Tag
 			{Title: "two", Tags: []string{"bug", "ux"}},
 		},
 	}
-	selector := listsurface.NewTagSelectorModel(nil, project, currentTags)
+	selector := NewTagSelectorModel(nil, project, currentTags)
 	if got := len(selector.Surface.Items()); got != 3 {
 		t.Fatalf("fixture built %d rows, want 3", got)
 	}
@@ -37,7 +36,7 @@ func newTagSelectorForTest(t *testing.T, currentTags ...string) *listsurface.Tag
 
 // assertTagSelectorRowWearsItsChip ties the row to the same authority every
 // other tag surface reads rather than to a hex, so a ramp edit moves both.
-func assertTagSelectorRowWearsItsChip(t *testing.T, item listsurface.ListItem) {
+func assertTagSelectorRowWearsItsChip(t *testing.T, item ListItem) {
 	t.Helper()
 	if item.PrimaryStyle == nil {
 		t.Fatalf("row %q has no color", item.ID)
@@ -48,7 +47,7 @@ func assertTagSelectorRowWearsItsChip(t *testing.T, item listsurface.ListItem) {
 	}
 }
 
-func assertTagSelectorRowsAreChipColored(t *testing.T, items []listsurface.ListItem) {
+func assertTagSelectorRowsAreChipColored(t *testing.T, items []ListItem) {
 	t.Helper()
 	foregrounds := make(map[string]bool, len(items))
 	for _, item := range items {
@@ -142,7 +141,7 @@ func TestTagSelectorKeepsSelectionAndFilteringWithColoredRows(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("enter produced no message")
 	}
-	done, ok := cmd().(listsurface.TagSelectorDoneMsg)
+	done, ok := cmd().(TagSelectorDoneMsg)
 	if !ok {
 		t.Fatalf("enter emitted %T, want TagSelectorDoneMsg", cmd())
 	}
@@ -159,7 +158,7 @@ func TestTagSelectorDropsRowColorUnderTheCursorOnly(t *testing.T) {
 	selector.SetSize(80, 24)
 	selector.SetCursorToID("bug")
 
-	rendered := listsurface.RenderTagSelectorView(
+	rendered := RenderTagSelectorView(
 		selector.ListSurfaceAdapter, &selector.TagAdder, selector.Config.Title, 80, 24,
 	)
 	if strings.Contains(rendered, theme.TagChipStyle("bug").Render("bug")) {

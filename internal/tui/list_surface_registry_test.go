@@ -1,3 +1,12 @@
+// This file is the list surface's root integration test and stays in the shell
+// while the package's unit tests live in internal/tui/listsurface. What it
+// asserts is the seam between two layers rather than either one's behavior:
+// that a list surface resolves its action descriptors through an
+// OperationRegistry and invokes them through an OperationExecutor, and that its
+// guidance is assembled from a live keymap. The shell is where those three
+// authorities are wired together for real, so a regression in the contract
+// between them belongs to a test that sits above both packages, not inside the
+// lower one.
 package tui
 
 import (
@@ -250,12 +259,4 @@ func mustListSurface(
 		t.Fatalf("NewListSurfaceModel() error = %v", err)
 	}
 	return model
-}
-
-func assertCurrentListItem(t *testing.T, model *listsurface.ListSurfaceModel, want listsurface.ListItemID) {
-	t.Helper()
-	item, ok := model.CurrentItem()
-	if !ok || item.ID != want {
-		t.Fatalf("current item = (%+v, %v), want %s", item, ok, want)
-	}
 }

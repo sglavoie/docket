@@ -1,14 +1,12 @@
-package tui
+package listsurface
 
 import (
 	"errors"
 	"testing"
-
-	"github.com/sglavoie/tt/internal/tui/listsurface"
 )
 
 func TestBaseView_Dimensions(t *testing.T) {
-	v := &listsurface.BaseView{}
+	v := &BaseView{}
 	v.SetSize(100, 50)
 
 	if got := v.Width(); got != 100 {
@@ -26,7 +24,7 @@ func TestBaseView_Dimensions(t *testing.T) {
 }
 
 func TestBaseView_ContentDimensionsMinimum(t *testing.T) {
-	v := &listsurface.BaseView{}
+	v := &BaseView{}
 	v.SetSize(10, 5)
 
 	if got := v.ContentWidth(); got != 6 {
@@ -38,7 +36,7 @@ func TestBaseView_ContentDimensionsMinimum(t *testing.T) {
 }
 
 func TestBaseView_ContentDimensionsZeroFloor(t *testing.T) {
-	v := &listsurface.BaseView{}
+	v := &BaseView{}
 	v.SetSize(2, 1)
 
 	if got := v.ContentWidth(); got != 0 {
@@ -50,7 +48,7 @@ func TestBaseView_ContentDimensionsZeroFloor(t *testing.T) {
 }
 
 func TestBaseView_Error(t *testing.T) {
-	v := &listsurface.BaseView{}
+	v := &BaseView{}
 
 	if v.HasError() {
 		t.Error("HasError() = true, want false for new view")
@@ -80,7 +78,7 @@ type errTestError struct{}
 func (errTestError) Error() string { return "test error" }
 
 func TestBaseSearchableView_SearchWorkflow(t *testing.T) {
-	v := &listsurface.BaseSearchableView{}
+	v := &BaseSearchableView{}
 	v.InitSearchInput("Search...", 100, 40)
 
 	if v.HasActiveSearch() {
@@ -118,7 +116,7 @@ func TestBaseSearchableView_SearchWorkflow(t *testing.T) {
 }
 
 func TestBaseSearchableView_ClearSearch(t *testing.T) {
-	v := &listsurface.BaseSearchableView{}
+	v := &BaseSearchableView{}
 	v.InitSearchInput("Search...", 100, 40)
 
 	_ = v.ActivateSearch()
