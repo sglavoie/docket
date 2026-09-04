@@ -142,7 +142,7 @@ func (m *OutlinerModel) ApplyNamedLens(lens config.NamedLens) (tea.Cmd, error) {
 // the base Outliner scopes into and it is already non-archived and unparked, so
 // that single membership test answers all three refusals; the catalog is read
 // only to word the message and never to widen admission. Parked therefore fails
-// closed in v1 — parkedFocusProjectID and settleParkedFocusException are the
+// closed in v1 — scopeState.parkedProjectID and settleParkedFocusException are the
 // seam a later revision would reopen it through.
 func (m *OutlinerModel) lensScopeRefusal(name, projectID string) error {
 	if projectID == "" || m.baseWorkspaceAdmitsProject(projectID) {

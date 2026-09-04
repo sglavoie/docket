@@ -33,7 +33,7 @@ func settleLensPopulationLoad(t *testing.T, outliner *OutlinerModel, sources ...
 	}
 	selected := selectCrossScopeProjects(outliner.runtime, CrossScopeOpts{
 		ActiveOnly:     true,
-		FocusProjectID: outliner.focusRequestForLoad(),
+		FocusProjectID: outliner.scope.focusRequest(),
 		ProjectFilter:  pending.state.projectFilterState(),
 	})
 	byID := make(map[string]*models.Project, len(sources))

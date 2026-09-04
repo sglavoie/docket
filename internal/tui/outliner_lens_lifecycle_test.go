@@ -83,8 +83,8 @@ func TestApplyNamedLensRetainsScopeFocusAndCursorIdentity(t *testing.T) {
 
 	applyLensOrFatal(t, outliner, waitingLens(lensTestID(1), "Waiting", ""))
 
-	if outliner.scopedProjectID != "alpha" {
-		t.Fatalf("scoped project = %q, want alpha", outliner.scopedProjectID)
+	if outliner.scope.projectID != "alpha" {
+		t.Fatalf("scoped project = %q, want alpha", outliner.scope.projectID)
 	}
 	if len(outliner.focus.crossStack) != 1 {
 		t.Fatalf("focus stack depth = %d, want 1", len(outliner.focus.crossStack))
@@ -180,7 +180,7 @@ func TestScopedLensActivatesProjectFacetsOnExplicitScopeExit(t *testing.T) {
 	if cmd == nil || outliner.pendingLens == nil {
 		t.Fatal("clearing the scope under a project-filtering lens must load the population it selects")
 	}
-	if outliner.scopedProjectID != "beta" {
+	if outliner.scope.projectID != "beta" {
 		t.Fatal("the scope was dropped onto the population it replaced instead of the one the lens selects")
 	}
 
@@ -192,7 +192,7 @@ func TestScopedLensActivatesProjectFacetsOnExplicitScopeExit(t *testing.T) {
 	}); published {
 		t.Fatal("a wholly failed load published a scope exit")
 	}
-	if outliner.scopedProjectID != "beta" || !outliner.hasActiveLens() {
+	if outliner.scope.projectID != "beta" || !outliner.hasActiveLens() {
 		t.Fatal("a wholly failed load did not leave the scope and the lens as they were")
 	}
 	if ids := loadedProjectIDs(outliner); !slices.Equal(ids, baseline) {
@@ -240,8 +240,8 @@ func TestScopedLensActivatesProjectFacetsOnExplicitScopeExit(t *testing.T) {
 	if !listsurface.RunEscCascade(outliner.escSteps()) {
 		t.Fatal("expected Esc to consume the lens")
 	}
-	if outliner.scopedProjectID != "alpha" {
-		t.Fatalf("restored scope = %q, want the pre-lens alpha", outliner.scopedProjectID)
+	if outliner.scope.projectID != "alpha" {
+		t.Fatalf("restored scope = %q, want the pre-lens alpha", outliner.scope.projectID)
 	}
 	if !outliner.hasSearchProjection() {
 		t.Fatal("restoration dropped the pre-lens search projection")

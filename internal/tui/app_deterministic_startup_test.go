@@ -28,8 +28,8 @@ func TestLaunchResetsEveryPresentationAxisAndRelaunchPreservesOnlyTheme(t *testi
 	outliner.selectOutlinerMode(chrome.ModeDue)
 	outliner.SetSearchActive(true)
 	outliner.SetSearchQuery("stale search")
-	outliner.scopedProjectID = projects[0].ID
-	outliner.scopeStack = []outlinerScopeFrame{{}}
+	outliner.scope.projectID = projects[0].ID
+	outliner.scope.stack = []outlinerScopeFrame{{}}
 	outliner.filter.Priority = 3
 	outliner.filter.Tags = map[string]bool{"stale": true}
 	outliner.adoptFilterCarriers()
@@ -127,8 +127,8 @@ func assertCleanLaunchRoot(t *testing.T, app *AppModel) {
 	if got := outliner.activeOutlinerMode(); got != chrome.ModeAll {
 		t.Fatalf("launch mode = %q, want %q", got, chrome.ModeAll)
 	}
-	if outliner.scopedProjectID != "" || len(outliner.scopeStack) != 0 {
-		t.Fatalf("launch retained scope: project=%q stack=%d", outliner.scopedProjectID, len(outliner.scopeStack))
+	if outliner.scope.projectID != "" || len(outliner.scope.stack) != 0 {
+		t.Fatalf("launch retained scope: project=%q stack=%d", outliner.scope.projectID, len(outliner.scope.stack))
 	}
 	if outliner.HasActiveSearch() || outliner.SearchQuery() != "" || outliner.ActiveFilterCount() != 0 {
 		t.Fatalf("launch retained search/filter: active=%v query=%q filters=%d", outliner.HasActiveSearch(), outliner.SearchQuery(), outliner.ActiveFilterCount())

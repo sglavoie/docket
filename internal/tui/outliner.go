@@ -180,33 +180,13 @@ type OutlinerModel struct {
 	// through m.population.invalidate() rather than by writing a flag.
 	population populationState
 
-	// scopedProjectID names the single project the global outliner is currently
-	// scoped to. Empty means the authoritative all-projects scope. Only
-	// meaningful in cross-project mode (m.project == nil); scoping filters the
-	// loaded data set down to one project without switching to a separate
-	// single-project OutlinerModel.
-	scopedProjectID string
-
-	// pendingParkedFocusID names a parked project whose focus load is in flight.
-	// The scope is pushed only once that load lands, so a failed or superseded
-	// request leaves the base snapshot exactly as it was.
-	pendingParkedFocusID string
-
-	// parkedFocusProjectID names the parked project the current snapshot admits
-	// as an explicit exception. Every later reload re-requests it, so an ordinary
-	// mutation refresh cannot silently drop the focused tree.
-	parkedFocusProjectID string
-
-	// parkedFocusReloadPending records that a parked focus was just dropped and
-	// the shell still owes a reload to shed the parked project from the snapshot.
-	// The Esc cascade cannot return a Cmd, so the shell claims it afterwards.
-	parkedFocusReloadPending bool
-
-	// scopeStack records the state to restore when a project scope is popped.
-	// Each push saves the previous scope's cursor, scroll, mode, multi-project
-	// filter, and focus so Esc returns exactly where the user left off. The
-	// bottom of the stack is the base all-projects frame.
-	scopeStack []outlinerScopeFrame
+	// scope is the single project focus the cross-project Outliner is standing in,
+	// the one base frame Esc restores behind it, and the parked-project exception
+	// that can be the reason that focus is reachable at all. Like the population
+	// above it, it is a named field rather than promoted ones —
+	// outliner_scope_state.go owns the cluster, and the wide resets below stay
+	// orchestrators that name it rather than being distributed into it.
+	scope scopeState
 
 	// operationRegistry projects help, handled keys, and footer hints from the
 	// same operation metadata used by shell dispatch.

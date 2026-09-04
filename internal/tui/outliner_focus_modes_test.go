@@ -71,8 +71,8 @@ func TestEnterZoomsSectionHeadersAndScopesProjectHeaders(t *testing.T) {
 	}
 
 	out.Cursor = projectHeaderIndex(t, out, project.ID)
-	if !out.activateGroupAtCursor() || out.scopedProjectID != project.ID {
-		t.Fatalf("Enter on the project header scoped to %q, want %q", out.scopedProjectID, project.ID)
+	if !out.activateGroupAtCursor() || out.scope.projectID != project.ID {
+		t.Fatalf("Enter on the project header scoped to %q, want %q", out.scope.projectID, project.ID)
 	}
 	if out.focus.zoom.active() {
 		t.Fatalf("the project header took a zoom %+v", out.focus.zoom)

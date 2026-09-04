@@ -82,7 +82,7 @@ func (m *OutlinerModel) beginLensScopeExit() (tea.Cmd, bool) {
 		return nil, false
 	}
 	// Leaving the scope supersedes any parked focus still being requested: that
-	// request would otherwise win focusRequestForLoad and have its project
+	// request would otherwise win scopeState.focusRequest and have its project
 	// appended to this population as an exception, while the settlement below only
 	// ever evaluates the adopted one. Canceling it here, before the read selects
 	// its focus, is what keeps the population the exit installs exactly the one
@@ -94,7 +94,7 @@ func (m *OutlinerModel) beginLensScopeExit() (tea.Cmd, bool) {
 	return m.startLensProjectLoad(&pendingLensApplication{
 		state:         m.captureLensState(),
 		origin:        m.lensRestorationPoint(),
-		scopeExitFrom: m.scopedProjectID,
+		scopeExitFrom: m.scope.projectID,
 	}), true
 }
 
@@ -112,7 +112,7 @@ func (m *OutlinerModel) startLensProjectLoad(pending *pendingLensApplication) te
 	generation := pending.generation
 	runtime := m.runtime
 	service := m.projectService
-	focus := m.focusRequestForLoad()
+	focus := m.scope.focusRequest()
 	projectFilter := pending.state.projectFilterState()
 	return func() tea.Msg {
 		_, loaded, failed := LoadCrossScopeTasks(runtime, service, CrossScopeOpts{
@@ -177,7 +177,7 @@ func (m *OutlinerModel) handleLensProjectsLoaded(msg lensProjectsLoadedMsg) (tea
 // that installed it and none of them is being replaced here. It reports whether
 // the exit was still the one to take.
 func (m *OutlinerModel) finishLensScopeExit(pending *pendingLensApplication, projects []*models.Project) bool {
-	if m.scopedProjectID != pending.scopeExitFrom {
+	if m.scope.projectID != pending.scopeExitFrom {
 		// The scope moved while the read ran. Replacing one project scope with
 		// another keeps the facets inert, so the population loaded here is dropped
 		// and the exit is left to whichever scope the user is in now.

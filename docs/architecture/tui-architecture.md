@@ -166,6 +166,23 @@ also needs `population.invalidate()` stays the call site's decision rather than
 the type's: the memoization guard is the population's, and the rebuild-time
 stack validation deliberately does not claim one.
 
+The project focus that ladder reaches last is the model's `scope` field, whose
+`scopeState` holds the focused project, the one base frame `Esc` restores behind
+it, and the parked-project exception. The exception is in that type rather than
+beside it because it is not separable from the scope it serves: a parked project
+is absent from `TaskWorkspaceProjects()`, so scoping into one is possible only
+while the exception holds it inside the loaded snapshot — requested before the
+push, re-decided by every load that carries it, and shed by the same `Esc` that
+pops the scope. Splitting them would put "may this scope exist" in one type and
+"does it exist" in another. The frame is a slice holding at most the base frame,
+since a second push replaces the focus in place; it stays a slice because that is
+what the presentation snapshot captures and what a defensive repair of older
+nested state truncates. `resetToGlobalAll`, `resetToLaunchView` and the
+`captureScopeFrame`/`restoreScopeFrame` pair stay orchestrators that name this
+state alongside the folds, the focus and the population rather than being
+distributed into any of them: a method that names six sub-states is honest, and
+six sub-states that quietly knew about each other would not be.
+
 A checklist row owns nine operations of its own — Toggle Item, Edit Item, Move
 Item Down, Move Item Up, Move Item to Bottom, Move Item to Top, Add Item,
 Checklist Actions, and Delete Item — registered in

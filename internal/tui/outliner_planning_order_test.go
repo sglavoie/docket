@@ -254,7 +254,7 @@ func TestOutlinerPlanningOrderJKFilteredAndScoped(t *testing.T) {
 			locatorOf(p1, t1[0]), locatorOf(p2, t2[0]), locatorOf(p1, t1[1]), locatorOf(p2, t2[1]),
 		)
 		// Scope to project one: only A and C are visible.
-		cross.scopedProjectID = p1.ID
+		cross.scope.projectID = p1.ID
 		enterCrossMode(cross, chrome.ModeNext)
 
 		if got := visibleTaskIDs(cross); len(got) != 2 {

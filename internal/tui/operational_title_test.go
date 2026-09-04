@@ -45,7 +45,7 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 		wantWide   []string
 	}{
 		{name: "Active Projects", configure: func(*OutlinerModel) {}, wantNarrow: []string{activeProjectsScopeLabel}, wantWide: []string{activeProjectsScopeLabel, "All"}},
-		{name: "focused project", configure: func(m *OutlinerModel) { m.scopedProjectID = project.ID }, wantNarrow: []string{project.Name}, wantWide: []string{project.Name, "All"}},
+		{name: "focused project", configure: func(m *OutlinerModel) { m.scope.projectID = project.ID }, wantNarrow: []string{project.Name}, wantWide: []string{project.Name, "All"}},
 		{name: "focus", configure: func(m *OutlinerModel) {
 			m.focus.crossStack = []CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: task.ID}}
 		}, wantNarrow: []string{"Focus:"}, wantWide: []string{"Focus: [Alpha] › " + task.Title}},

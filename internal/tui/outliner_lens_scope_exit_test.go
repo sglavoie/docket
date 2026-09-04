@@ -74,7 +74,7 @@ func TestScopedEquivalentLensSwitchRetainsDeferredPopulationLoad(t *testing.T) {
 	if cmd == nil || outliner.pendingLens == nil {
 		t.Fatal("the explicit exit skipped the population the live lens facets select")
 	}
-	if outliner.scopedProjectID != "alpha" {
+	if outliner.scope.projectID != "alpha" {
 		t.Fatal("the scope was dropped before the population it owes landed")
 	}
 
@@ -86,7 +86,7 @@ func TestScopedEquivalentLensSwitchRetainsDeferredPopulationLoad(t *testing.T) {
 	}); published {
 		t.Fatal("a wholly failed load published a scope exit")
 	}
-	if outliner.scopedProjectID != "alpha" || !outliner.activeLens.projectFacetsAwaitingLoad {
+	if outliner.scope.projectID != "alpha" || !outliner.activeLens.projectFacetsAwaitingLoad {
 		t.Fatal("a wholly failed load did not leave the scope and the owed load as they were")
 	}
 
@@ -113,8 +113,8 @@ func TestScopedEquivalentLensSwitchRetainsDeferredPopulationLoad(t *testing.T) {
 	if !listsurface.RunEscCascade(outliner.escSteps()) {
 		t.Fatal("expected Esc to consume the lens")
 	}
-	if outliner.scopedProjectID != "alpha" {
-		t.Fatalf("restored scope = %q, want the pre-lens alpha", outliner.scopedProjectID)
+	if outliner.scope.projectID != "alpha" {
+		t.Fatalf("restored scope = %q, want the pre-lens alpha", outliner.scope.projectID)
 	}
 	if ids := loadedProjectIDs(outliner); !slices.Equal(ids, baseline) {
 		t.Fatalf("restored population = %v, want the pre-lens %v", ids, baseline)
@@ -211,7 +211,7 @@ func TestScopedLensPopulationProvenanceTracksOrdinaryReloads(t *testing.T) {
 	}); published {
 		t.Fatal("a wholly failed load published a scope exit")
 	}
-	if outliner.scopedProjectID != "alpha" || !outliner.activeLens.projectFacetsAwaitingLoad {
+	if outliner.scope.projectID != "alpha" || !outliner.activeLens.projectFacetsAwaitingLoad {
 		t.Fatal("a wholly failed load did not leave the scope and the owed load as they were")
 	}
 	if ids := loadedProjectIDs(outliner); !slices.Equal(ids, append(slices.Clone(baseline), "parked")) {
@@ -243,8 +243,8 @@ func TestScopedLensPopulationProvenanceTracksOrdinaryReloads(t *testing.T) {
 	if !listsurface.RunEscCascade(outliner.escSteps()) {
 		t.Fatal("expected Esc to consume the lens")
 	}
-	if outliner.scopedProjectID != "alpha" {
-		t.Fatalf("restored scope = %q, want the pre-lens alpha", outliner.scopedProjectID)
+	if outliner.scope.projectID != "alpha" {
+		t.Fatalf("restored scope = %q, want the pre-lens alpha", outliner.scope.projectID)
 	}
 	if ids := loadedProjectIDs(outliner); !slices.Equal(ids, baseline) {
 		t.Fatalf("restored population = %v, want the pre-lens %v", ids, baseline)
@@ -285,9 +285,9 @@ func parkedFocusLensApp(t *testing.T, extra ...*models.Project) (*AppModel, *Out
 		generation:     outliner.population.loadGen,
 		focusProjectID: parked.ID,
 	})
-	if outliner.scopedProjectID != parked.ID || outliner.parkedFocusProjectID != parked.ID {
+	if outliner.scope.projectID != parked.ID || outliner.scope.parkedProjectID != parked.ID {
 		t.Fatalf("parked focus did not settle: scope=%q exception=%q",
-			outliner.scopedProjectID, outliner.parkedFocusProjectID)
+			outliner.scope.projectID, outliner.scope.parkedProjectID)
 	}
 	return app, outliner, everything
 }
@@ -360,10 +360,10 @@ func TestParkedScopedLensExitKeepsSelectedPopulation(t *testing.T) {
 			if ids := taskRowProjectIDs(outliner); !slices.Contains(ids, "parked") {
 				t.Fatalf("rows = %v, want the parked project the lens admits", ids)
 			}
-			if outliner.parkedFocusReloadPending {
+			if outliner.scope.parkedReloadPending {
 				t.Fatal("the exit armed a corrective reload no handler on this route claims")
 			}
-			if outliner.parkedFocusProjectID != "" {
+			if outliner.scope.parkedProjectID != "" {
 				t.Fatal("a project the facets select is population, not a focus exception")
 			}
 			if outliner.population.loading != ordering.loading {
@@ -405,7 +405,7 @@ func TestParkedScopedLensExitShedsAProjectItsFacetsReject(t *testing.T) {
 	if ids := loadedProjectIDs(outliner); !slices.Equal(ids, []string{"alpha", "beta"}) {
 		t.Fatalf("population = %v, want the projects the lens facets select", ids)
 	}
-	if outliner.parkedFocusReloadPending {
+	if outliner.scope.parkedReloadPending {
 		t.Fatal("shedding a rejected project armed a reload the population already answered")
 	}
 }
@@ -435,8 +435,8 @@ func TestParkedScopedLensExitDoesNotLeakPendingFocus(t *testing.T) {
 	if cmd := outliner.beginParkedProjectFocus(interloper.ID); cmd == nil {
 		t.Fatal("the second parked focus started no load")
 	}
-	if outliner.pendingParkedFocusID != interloper.ID {
-		t.Fatalf("pending parked focus = %q, want the requested %q", outliner.pendingParkedFocusID, interloper.ID)
+	if outliner.scope.pendingParkedID != interloper.ID {
+		t.Fatalf("pending parked focus = %q, want the requested %q", outliner.scope.pendingParkedID, interloper.ID)
 	}
 
 	if handled, cmd := app.applyProjectScope(ApplyProjectScopeMsg{Clear: true}); !handled || cmd == nil {
@@ -446,8 +446,8 @@ func TestParkedScopedLensExitDoesNotLeakPendingFocus(t *testing.T) {
 	if pending == nil {
 		t.Fatal("the exit armed no pending application")
 	}
-	if outliner.pendingParkedFocusID != "" {
-		t.Fatalf("the exit left the superseded focus request %q in flight", outliner.pendingParkedFocusID)
+	if outliner.scope.pendingParkedID != "" {
+		t.Fatalf("the exit left the superseded focus request %q in flight", outliner.scope.pendingParkedID)
 	}
 
 	// The selection the exit's read performs, minus the disk load the fixture has
@@ -455,7 +455,7 @@ func TestParkedScopedLensExitDoesNotLeakPendingFocus(t *testing.T) {
 	// whether the interloper is appended to this population at all.
 	population := selectCrossScopeProjects(outliner.runtime, CrossScopeOpts{
 		ActiveOnly:     true,
-		FocusProjectID: outliner.focusRequestForLoad(),
+		FocusProjectID: outliner.scope.focusRequest(),
 		ProjectFilter:  pending.state.projectFilterState(),
 	})
 	app.Update(lensProjectsLoadedMsg{projects: population, generation: pending.generation})
@@ -469,11 +469,11 @@ func TestParkedScopedLensExitDoesNotLeakPendingFocus(t *testing.T) {
 	if ids := taskRowProjectIDs(outliner); slices.Contains(ids, interloper.ID) {
 		t.Fatalf("rows = %v, want no project the superseded request appended", ids)
 	}
-	if outliner.parkedFocusProjectID != "" || outliner.pendingParkedFocusID != "" {
+	if outliner.scope.parkedProjectID != "" || outliner.scope.pendingParkedID != "" {
 		t.Fatalf("focus fields after the exit: adopted=%q pending=%q, want both cleared",
-			outliner.parkedFocusProjectID, outliner.pendingParkedFocusID)
+			outliner.scope.parkedProjectID, outliner.scope.pendingParkedID)
 	}
-	if outliner.parkedFocusReloadPending {
+	if outliner.scope.parkedReloadPending {
 		t.Fatal("the exit armed a corrective reload no handler on this route claims")
 	}
 	if !outliner.hasActiveLens() || outliner.activeLens != frame {

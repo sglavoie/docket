@@ -77,7 +77,7 @@ func (m *AppModel) finishParkedProjectFocus(focusProjectID string) tea.Cmd {
 	if focusProjectID == "" || m.crossOutliner == nil {
 		return nil
 	}
-	if m.crossOutliner.scopedProjectID != focusProjectID {
+	if m.crossOutliner.scope.projectID != focusProjectID {
 		return nil
 	}
 	if m.currentView() != presentation.ViewProjectHub {

@@ -40,7 +40,7 @@ func (m *OutlinerModel) noteSearchRowsInScope() []notes.LocatedNoteRow {
 		return nil
 	}
 	rows := m.search.noteIndex()
-	scopeID := m.scopedProjectID
+	scopeID := m.scope.projectID
 	if m.project != nil {
 		scopeID = m.project.ID
 	}

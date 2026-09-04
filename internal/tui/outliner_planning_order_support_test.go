@@ -93,7 +93,7 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 	cross := NewOutlinerModel(nil, manager, runtime)
 	cross.population.projects = projects
 	if len(projects) == 1 {
-		cross.scopedProjectID = projects[0].ID
+		cross.scope.projectID = projects[0].ID
 	}
 	cross.SetSize(120, 40)
 	m.crossOutliner = cross

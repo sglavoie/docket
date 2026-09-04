@@ -52,8 +52,8 @@ func TestSectionZoomScopeRoundTripDropsAndRestoresTheZoom(t *testing.T) {
 	if !outliner.activateGroupAtCursor() {
 		t.Fatal("Enter on the project sub-header was refused")
 	}
-	if outliner.scopedProjectID != beta.ID {
-		t.Fatalf("scoped project = %q, want %q", outliner.scopedProjectID, beta.ID)
+	if outliner.scope.projectID != beta.ID {
+		t.Fatalf("scoped project = %q, want %q", outliner.scope.projectID, beta.ID)
 	}
 	if outliner.focus.zoom.active() {
 		t.Fatalf("the scope push kept the zoom %+v", outliner.focus.zoom)
@@ -209,10 +209,10 @@ func TestSectionZoomIsClearedByGotoTaskProject(t *testing.T) {
 	if outliner.focus.zoom.active() {
 		t.Fatalf("gp landed still zoomed to %+v", outliner.focus.zoom)
 	}
-	if outliner.scopedProjectID != beta || outliner.primaryMode != chrome.ModeAll {
+	if outliner.scope.projectID != beta || outliner.primaryMode != chrome.ModeAll {
 		t.Fatalf(
 			"landing = scope %q mode %q, want %q and %q",
-			outliner.scopedProjectID, outliner.primaryMode, beta, chrome.ModeAll,
+			outliner.scope.projectID, outliner.primaryMode, beta, chrome.ModeAll,
 		)
 	}
 }

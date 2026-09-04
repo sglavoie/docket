@@ -82,10 +82,10 @@ func (m *OutlinerModel) capturedLensScope() string {
 	if m == nil || m.project != nil {
 		return ""
 	}
-	if !m.baseWorkspaceAdmitsProject(m.scopedProjectID) {
+	if !m.baseWorkspaceAdmitsProject(m.scope.projectID) {
 		return ""
 	}
-	return m.scopedProjectID
+	return m.scope.projectID
 }
 
 // capturedLensQuery is the accepted query the current view is narrowed by,

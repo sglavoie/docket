@@ -47,7 +47,7 @@ refusal is indistinguishable from never having asked. `lensScopeRefusal` tests
 membership in `TaskWorkspaceProjects()` alone, which is already non-archived and
 unparked, so one test answers all three cases; `GetProject` is read only to word
 the message as archived, parked, or no longer existing, never to widen
-admission. Parked therefore fails closed, with `parkedFocusProjectID` and
+admission. Parked therefore fails closed, with `scopeState.parkedProjectID` and
 `settleParkedFocusException` the named seam a later revision would reopen it
 through. When the lens changes which projects load, `beginLensProjectLoad`
 carries the candidate filter with the load instead of writing it to the model and

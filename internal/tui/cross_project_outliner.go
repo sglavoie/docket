@@ -95,8 +95,8 @@ func (m *OutlinerModel) loadCrossProjectsCmd() tea.Cmd {
 	gen := m.population.loadGen
 	runtime := m.runtime
 	svc := m.projectService
-	adopting := m.pendingParkedFocusID != ""
-	focus := m.focusRequestForLoad()
+	adopting := m.scope.pendingParkedID != ""
+	focus := m.scope.focusRequest()
 	projectFilter := m.projectFilter.Clone()
 	return func() tea.Msg {
 		_, loaded, failed := LoadCrossScopeTasks(runtime, svc, CrossScopeOpts{
@@ -119,17 +119,6 @@ func (m *OutlinerModel) loadCrossProjectsCmd() tea.Cmd {
 	}
 }
 
-// focusRequestForLoad names the parked project the next load must admit. An
-// in-flight request wins over the adopted one so a changed focus is not fought
-// by the project it replaces; an adopted focus is re-requested by every later
-// reload so an ordinary mutation refresh cannot drop the focused tree.
-func (m *OutlinerModel) focusRequestForLoad() string {
-	if m.pendingParkedFocusID != "" {
-		return m.pendingParkedFocusID
-	}
-	return m.parkedFocusProjectID
-}
-
 // beginParkedProjectFocus starts the load that admits one parked project on top
 // of the base workspace. The generation bump inside startCrossProjectLoad is
 // what makes a repeated, changed, or abandoned request safe: only the newest
@@ -138,17 +127,17 @@ func (m *OutlinerModel) beginParkedProjectFocus(projectID string) tea.Cmd {
 	if m == nil || m.project != nil || projectID == "" {
 		return nil
 	}
-	m.pendingParkedFocusID = projectID
+	m.scope.requestParked(projectID)
 	return m.reloadCrossProjects()
 }
 
 // cancelParkedProjectFocus abandons an in-flight focus request. The base
 // snapshot is untouched, so there is nothing to restore.
 func (m *OutlinerModel) cancelParkedProjectFocus() {
-	if m == nil || m.pendingParkedFocusID == "" {
+	if m == nil || m.scope.pendingParkedID == "" {
 		return
 	}
-	m.pendingParkedFocusID = ""
+	m.scope.clearPendingParked()
 	m.cancelCrossProjectLoad()
 }
 
@@ -156,7 +145,7 @@ func (m *OutlinerModel) cancelParkedProjectFocus() {
 // synchronously. The Esc cascade drops the project from the live snapshot so no
 // empty frame is rendered; this reload then re-reads the base workspace alone.
 func (m *OutlinerModel) takeParkedFocusReload() tea.Cmd {
-	if m == nil || !m.parkedFocusReloadPending {
+	if m == nil || !m.scope.parkedReloadPending {
 		return nil
 	}
 	return m.reloadCrossProjects()
@@ -192,7 +181,7 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 		return nil // Stale result from a superseded load; discard.
 	}
 	if msg.focusProjectID != "" {
-		m.pendingParkedFocusID = ""
+		m.scope.clearPendingParked()
 		if detail, failed := parkedFocusFailureDetail(msg, msg.focusProjectID); failed {
 			// The base snapshot stays exactly as it was: a focus that could not be
 			// read must not disturb the workspace the user is still looking at.
@@ -218,7 +207,7 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 		// position the user actually left, not a transient reload artifact.
 		m.settleParkedFocusException(msg.focusProjectID)
 		m.pushProjectScope(msg.focusProjectID)
-	case msg.retainedFocusProjectID != "" && msg.retainedFocusProjectID == m.parkedFocusProjectID:
+	case msg.retainedFocusProjectID != "" && msg.retainedFocusProjectID == m.scope.parkedProjectID:
 		// A reload that merely carried the adopted focus leaves it in place and
 		// only re-decides the exception.
 		m.settleParkedFocusException(msg.retainedFocusProjectID)
@@ -349,7 +338,7 @@ func (m *OutlinerModel) crossProjectRowsFingerprint() string {
 	fmt.Fprintf(&b, "common=%q|", strings.Join(commonParts, "\x1f"))
 	fmt.Fprintf(&b, "project-filter=%q|", query.ProjectFilterFingerprint(&m.projectFilter))
 	fmt.Fprintf(&b, "loaded=%s|", loadedProjectIDsFingerprint(m.population.projects))
-	fmt.Fprintf(&b, "scope=%q|", m.scopedProjectID)
+	fmt.Fprintf(&b, "scope=%q|", m.scope.projectID)
 	fmt.Fprintf(&b, "mode=%s|", m.primaryMode)
 	fmt.Fprintf(&b, "zoom=%q|", m.focus.zoom.key)
 	fmt.Fprintf(&b, "today-fold=%t|next-fold=%t|", m.folds.collapsedSections[todaySectionCollapseKey], m.folds.collapsedSections[nextSectionCollapseKey])
@@ -382,7 +371,7 @@ func loadedProjectIDsFingerprint(projects []*models.Project) string {
 }
 
 func (m *OutlinerModel) reloadCrossProjects() tea.Cmd {
-	m.parkedFocusReloadPending = false
+	m.scope.clearParkedReload()
 	if !m.population.consumeReloadFromTop() {
 		m.preserveCrossOutlinerCursorForReload()
 	}

@@ -52,8 +52,8 @@ func openScopedProjectDrilldown(t *testing.T) (*UITestDriver, *models.Project) {
 	if driver.App().currentView() != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("current view = %s, want CrossProjectOutliner", driver.App().currentView())
 	}
-	if !cross.isProjectScoped() || cross.scopedProjectID != targetProject.ID {
-		t.Fatalf("outliner scope = %q (scoped=%v), want %q", cross.scopedProjectID, cross.isProjectScoped(), targetProject.ID)
+	if !cross.isProjectScoped() || cross.scope.projectID != targetProject.ID {
+		t.Fatalf("outliner scope = %q (scoped=%v), want %q", cross.scope.projectID, cross.isProjectScoped(), targetProject.ID)
 	}
 	return driver, targetProject
 }
@@ -133,8 +133,8 @@ func TestScopedPinnedLeafCompletionKeepsProjectOutlinerVisible(t *testing.T) { /
 	if got := app.currentView(); got != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("current view = %s, want CrossProjectOutliner", got)
 	}
-	if cross.scopedProjectID != project.ID {
-		t.Fatalf("project scope = %q, want %q", cross.scopedProjectID, project.ID)
+	if cross.scope.projectID != project.ID {
+		t.Fatalf("project scope = %q, want %q", cross.scope.projectID, project.ID)
 	}
 	if cross.population.loading {
 		t.Fatal("completion left the Outliner refresh pending")

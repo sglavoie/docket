@@ -33,7 +33,7 @@ func TestPromotedToolNotesScope(t *testing.T) {
 		{
 			name: "project focus",
 			configure: func(app *AppModel) {
-				app.crossOutliner.scopedProjectID = workB.ID
+				app.crossOutliner.scope.projectID = workB.ID
 			},
 			wantProjectIDs: []string{workB.ID},
 			wantScope:      route.AllNotesScope(),

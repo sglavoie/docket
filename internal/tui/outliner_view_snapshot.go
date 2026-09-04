@@ -116,9 +116,9 @@ func (m *OutlinerModel) captureOutlinerViewSnapshot() outlinerViewSnapshot {
 		projectFilter:        m.projectFilter.Clone(),
 		loadedProjects:       slices.Clone(m.population.projects),
 		crossSnapshotReady:   m.population.snapshotReady,
-		parkedFocusProjectID: m.parkedFocusProjectID,
-		scopedProjectID:      m.scopedProjectID,
-		scopeStack:           slices.Clone(m.scopeStack),
+		parkedFocusProjectID: m.scope.parkedProjectID,
+		scopedProjectID:      m.scope.projectID,
+		scopeStack:           slices.Clone(m.scope.stack),
 		searchProjection:     m.search.projection,
 		rankedList:           m.search.rankedList,
 		searchQuery:          m.SearchQuery(),
@@ -146,9 +146,8 @@ func (m *OutlinerModel) restoreOutlinerViewSnapshot(snapshot outlinerViewSnapsho
 	m.adoptFilterCarriers()
 	m.setLoadedProjects(slices.Clone(snapshot.loadedProjects))
 	m.population.setSnapshotReady(snapshot.crossSnapshotReady)
-	m.parkedFocusProjectID = snapshot.parkedFocusProjectID
-	m.scopedProjectID = snapshot.scopedProjectID
-	m.scopeStack = slices.Clone(snapshot.scopeStack)
+	m.scope.setParkedException(snapshot.parkedFocusProjectID)
+	m.scope.restore(snapshot.scopedProjectID, slices.Clone(snapshot.scopeStack))
 
 	m.setLensQuery(snapshot.lensQuery)
 	m.search.restore(snapshot.searchProjection, snapshot.rankedList)

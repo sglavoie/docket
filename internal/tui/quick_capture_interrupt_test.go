@@ -78,8 +78,8 @@ func openFixtureOutliner(t *testing.T, driver *UITestDriver, project *models.Pro
 	if obs.CurrentView != presentation.ViewCrossProjectOutliner.String() {
 		t.Fatalf("current view = %q, want %q", obs.CurrentView, presentation.ViewCrossProjectOutliner.String())
 	}
-	if cross.scopedProjectID != project.ID {
-		t.Fatalf("expected project scope %q after selecting project, got %q", project.ID, cross.scopedProjectID)
+	if cross.scope.projectID != project.ID {
+		t.Fatalf("expected project scope %q after selecting project, got %q", project.ID, cross.scope.projectID)
 	}
 }
 

@@ -312,8 +312,8 @@ func TestApplyLensStateDetachesFilterCollectionsFromTheDefinition(t *testing.T) 
 	if !outliner.applyLensState(state) {
 		t.Fatal("applyLensState refused the definition")
 	}
-	if outliner.scopedProjectID != "alpha" {
-		t.Fatalf("applyLensState did not enter the lens's scope, got %q", outliner.scopedProjectID)
+	if outliner.scope.projectID != "alpha" {
+		t.Fatalf("applyLensState did not enter the lens's scope, got %q", outliner.scope.projectID)
 	}
 	if !outliner.captureLensState().equal(state) {
 		t.Fatalf("captured %q after applying %q", outliner.captureLensState().fingerprint(), state.fingerprint())

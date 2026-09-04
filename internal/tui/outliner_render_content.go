@@ -181,7 +181,7 @@ func appendSearchBadge(indicator, text string, width int) string {
 func (m *OutlinerModel) outlinerScopeLabel() string {
 	if m.project == nil {
 		if m.isProjectScoped() {
-			return m.scopedProjectChromeLabel(m.scopedProjectID)
+			return m.scopedProjectChromeLabel(m.scope.projectID)
 		}
 		return m.baseScopeChromeLabel()
 	}

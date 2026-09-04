@@ -220,7 +220,7 @@ func TestDueModeProjectsDatedOpenWorkInGlobalAndProjectScopes(t *testing.T) {
 		t.Fatalf("global Due rows = %v, want dated open work in date order", got)
 	}
 
-	outliner.scopedProjectID = alpha.ID
+	outliner.scope.projectID = alpha.ID
 	outliner.selectOutlinerMode(chrome.ModeDue)
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{
 		alphaOverdue.ID,

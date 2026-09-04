@@ -182,7 +182,7 @@ func (m *OutlinerModel) syncJumpProjection() {
 func (m *OutlinerModel) jumpProjectionFingerprint() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "project=%q|mode=%s|scope=%q|search=%t:%t:%q|sort=%d:%t|tree=%d:%t|",
-		projectIDForJumpProjection(m), m.primaryMode, m.scopedProjectID,
+		projectIDForJumpProjection(m), m.primaryMode, m.scope.projectID,
 		m.hasSearchProjection(), m.showsRankedList(), m.SearchQuery(),
 		m.sort.Field, m.sort.Ascending, m.treeSort.Field, m.treeSort.Ascending)
 	fmt.Fprintf(&b, "filters=%q|", strings.Join(query.CommonFilterParts(&m.filter.CommonFilterState), "\x1f"))

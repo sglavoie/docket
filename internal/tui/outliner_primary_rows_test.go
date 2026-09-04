@@ -399,7 +399,7 @@ func TestPrimaryModeMembershipHierarchyOrderingAndQualifiedRows(t *testing.T) {
 		t.Fatalf("Backlog rows = %v, want Backlog lifecycle tasks excluding Today with folded descendants hidden", got)
 	}
 
-	outliner.scopedProjectID = beta.ID
+	outliner.scope.projectID = beta.ID
 	outliner.selectOutlinerMode(chrome.ModeInbox)
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{betaInbox.ID}) {
 		t.Fatalf("project-scoped Inbox rows = %v, want beta only", got)

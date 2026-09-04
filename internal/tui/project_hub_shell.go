@@ -82,7 +82,7 @@ func (m *AppModel) refreshProjectHubIfActive() {
 	hub.RefreshProjectHub()
 	hub.SetTaskCounts(m.projectHubTaskCounts())
 	if m.crossOutliner != nil {
-		hub.SetProjectFocus(m.crossOutliner.scopedProjectID)
+		hub.SetProjectFocus(m.crossOutliner.scope.projectID)
 	}
 }
 

@@ -352,7 +352,7 @@ func TestSimplifiedCaptureUsesSystemInboxAtBaseAndFocusedProjectInScope(t *testi
 		t.Fatalf("base capture project = %v, want system Inbox %v", base.Preset.Project, inbox)
 	}
 
-	app.crossOutliner.scopedProjectID = project.ID
+	app.crossOutliner.scope.projectID = project.ID
 	focused, ok := app.coreCaptureMessage().(taskform.ShowTaskComposerMsg)
 	if !ok || focused.Preset.Project != project {
 		t.Fatalf("focused capture = %#v, want project %v", focused, project)

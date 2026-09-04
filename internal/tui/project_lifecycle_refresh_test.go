@@ -254,8 +254,8 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				if fixture.cross.activeOutlinerMode() != modeBefore {
 					t.Fatal("metadata reload changed the active mode")
 				}
-				if fixture.cross.scopedProjectID != project.ID {
-					t.Fatalf("metadata reload changed valid scope to %q", fixture.cross.scopedProjectID)
+				if fixture.cross.scope.projectID != project.ID {
+					t.Fatalf("metadata reload changed valid scope to %q", fixture.cross.scope.projectID)
 				}
 				cursorRow := fixture.cross.rows[fixture.cross.Cursor]
 				if !cursorRow.isTaskRow() || cursorRow.task == nil ||
@@ -282,8 +282,8 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				if fixture.app.currentView() != presentation.ViewCrossProjectOutliner {
 					t.Fatalf("archive popped the clean Outliner root to %s", fixture.app.currentView())
 				}
-				if fixture.cross.scopedProjectID != "" {
-					t.Fatalf("archived scope was not reconciled: %q", fixture.cross.scopedProjectID)
+				if fixture.cross.scope.projectID != "" {
+					t.Fatalf("archived scope was not reconciled: %q", fixture.cross.scope.projectID)
 				}
 				if session4HasLoadedProject(fixture.cross, project.ID) {
 					t.Fatal("archived project remained in the visible active-project cache")
