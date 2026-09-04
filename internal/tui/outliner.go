@@ -244,20 +244,16 @@ type OutlinerModel struct {
 	// Peek mode follows the cursor and shows additive task detail inline.
 	peekMode bool
 
-	// queryReadoutExpanded opens the narrowing stack in the status strip. It is
-	// the readout's whole state: the rows themselves are read off the live axes
-	// each frame, so there is nothing here that can go stale.
-	queryReadoutExpanded bool
+	// queryReadout opens the narrowing stack in the status strip. Its own file
+	// carries the whole of that sub-state; nothing here can go stale, because the
+	// rows are read off the live axes each frame.
+	queryReadout queryReadoutState
 
-	// menuBarOpen is the menu bar's dropdown gate, and menuBarMenuIndex and
-	// menuBarItemIndex are where the highlight sits inside it. Like the readout
-	// above, this is the whole of the sub-state: the menus and their entries are
-	// resolved off the live catalog every frame, so the two indices are the only
-	// thing that could go stale and both are re-resolved against that resolution
-	// before they are read.
-	menuBarOpen      bool
-	menuBarMenuIndex int
-	menuBarItemIndex int
+	// menuBar is the menu bar's dropdown gate and the two indices that say where
+	// the highlight sits inside it. Like the readout above it is a named field
+	// rather than promoted ones: menu_bar_state.go owns the cluster, and every
+	// reset that replaces the whole projection reaches it through closeMenuBar.
+	menuBar menuBarState
 
 	// OpenAtTask, when set, positions the cursor on the given task the first
 	// time rebuildRows produces a non-empty row list. Cleared after first use.

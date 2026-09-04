@@ -109,7 +109,7 @@ mutating store method: resolution stays in `tt conflict resolve`.
 The query readout is the strip's fourth line and the expansion of the
 operational title rather than a rival to it. Collapsed it renders nothing, since
 the title already carries the lens, the scope, the query, and the chips;
-`Q` sets `queryReadoutExpanded` and `queryReadoutBody` then lists one row per
+`Q` sets the `queryReadout` sub-state and `queryReadoutBody` then lists one row per
 independently peelable narrowing, rebuilt from live state every frame so nothing
 is remembered or inferred. It is pure, which is what lets `statusStripHeight`
 measure exactly the string `statusStripBody` paints, and it sits under the
@@ -152,8 +152,9 @@ and `menuBarLayout` reports where each label landed rather than only what the
 row reads, because a dropdown is padded to a column and `RenderTabBar` returns
 a string alone.
 
-The open menu is the `Q` readout's template applied a second time: `menuBarOpen`
-and two indices on the model, `closeMenuBar` in every projection-replacing
+The open menu is the `Q` readout's template applied a second time: the gate and
+two indices named together as the model's `menuBar` field, whose own
+`menuBarState` owns every write to them, `closeMenuBar` in every projection-replacing
 reset, a first branch in `handleKeyMsg` delegating to `handleMenuBarKey`, a
 claim in `simplifiedInlineControlOwnsInput`, and `menuBarGuidance` as the first
 case of `ContextualGuidance` — which reads its own close key back through
@@ -208,7 +209,7 @@ and back up once per press; skipping the window authority is what leaves
 `ViewScrollOffset` and `lastViewport` holding the window the last list frame drew,
 which is both the window the close redraws and the one a key re-emitted through
 the non-modal arm pages against. The branch is keyed on the drawn block rather
-than on `menuBarOpen`, since a dropdown that resolved to nothing must fall back
+than on the `menuBar` gate, since a dropdown that resolved to nothing must fall back
 to an ordinary frame rather than blank the view. `menuBarDropdownRowBudget` then
 spends what the hidden list freed: `contentHeight` plus the undrawn title row,
 less `statusStripHeight`, because the shell pins that strip and a box claiming

@@ -278,10 +278,10 @@ func TestTheKeylessFoldClearIsReachableOnlyFromTheMenu(t *testing.T) {
 		t.Fatal("the keyless entry resolved without its operation ID")
 	}
 
-	outliner.menuBarItemIndex = index
+	outliner.menuBar.itemIndex = index
 	pressMenuBarKey(t, driver, "enter")
 
-	if outliner.menuBarOpen {
+	if outliner.menuBar.open {
 		t.Error("running the keyless entry left the menu open")
 	}
 	if driver.App().crossOutliner.anyTaskFoldCollapsed() {

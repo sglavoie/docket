@@ -24,7 +24,8 @@ type outlinerViewport struct {
 func (m *OutlinerModel) renderOutlinerTreeContent(width int) string {
 	// An open menu hangs off the label it was opened from, so it is drawn before
 	// anything else on the frame — and it is the whole frame. The branch is keyed
-	// on the drawn block rather than on menuBarOpen, because the dropdown returns
+	// on the drawn block rather than on the menuBar sub-state's gate, because the
+	// dropdown returns
 	// nothing for a width or a resolution it cannot draw, and blanking the view
 	// over a menu nobody can see would be the worse failure.
 	if menu := m.renderOutlinerMenuDropdown(width); menu != "" {

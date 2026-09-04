@@ -35,10 +35,10 @@ const (
 // read by the bar row and by the dropdown from the one resolution, so the
 // highlight and the block under it can never name different menus.
 func (m *OutlinerModel) openMenuBarIndex() int {
-	if m == nil || !m.menuBarOpen {
+	if m == nil || !m.menuBar.open {
 		return -1
 	}
-	return m.menuBarMenuIndex
+	return m.menuBar.menuIndex
 }
 
 // renderOutlinerMenuDropdown draws the open menu, or the empty string when none
@@ -51,12 +51,12 @@ func (m *OutlinerModel) renderOutlinerMenuDropdown(width int) string {
 	if !ok || width <= 0 {
 		return ""
 	}
-	entries := menus[m.menuBarMenuIndex].Entries
-	cursor := resolveMenuBarItem(entries, m.menuBarItemIndex)
+	entries := menus[m.menuBar.menuIndex].Entries
+	cursor := resolveMenuBarItem(entries, m.menuBar.itemIndex)
 	if cursor < 0 {
 		return ""
 	}
-	m.menuBarItemIndex = cursor
+	m.menuBar.selectItem(cursor)
 
 	innerWidth := menuBarDropdownWidth(entries, width)
 	// The box's own rows come off the budget before the list is sized.
@@ -75,7 +75,7 @@ func (m *OutlinerModel) renderOutlinerMenuDropdown(width int) string {
 	box := chrome.RenderOverlayBox(content, innerWidth, "", "",
 		lipgloss.NewStyle().Foreground(theme.ColorPrimary))
 	box = chrome.FitOverlayPopupHeight(box, maxBoxRows)
-	return indentMenuBarDropdown(box, menuBarDropdownStartCol(menus, width, m.menuBarMenuIndex, box), width)
+	return indentMenuBarDropdown(box, menuBarDropdownStartCol(menus, width, m.menuBar.menuIndex, box), width)
 }
 
 // menuBarDropdownRowBudget is how tall the block may grow. The frame it is drawn

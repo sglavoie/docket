@@ -114,7 +114,7 @@ func TestQueryReadoutPeelRemovesOneAxisAndIsIdempotentAtZero(t *testing.T) {
 	if !out.filter.Stale {
 		t.Error("peeling the priority facet also cleared the stale facet")
 	}
-	if !out.queryReadoutExpanded {
+	if !out.queryReadout.expanded {
 		t.Error("peeling closed the readout; the stack stays open so the next digit is honest")
 	}
 
@@ -193,7 +193,7 @@ func TestQueryReadoutOwnsInputWhileOpen(t *testing.T) {
 
 	// v opens a visual selection everywhere else in the Outliner; here it is an
 	// unlisted key, so it may only put the stack down.
-	if _, _ = out.handleQueryReadoutKey("v"); out.queryReadoutExpanded {
+	if _, _ = out.handleQueryReadoutKey("v"); out.queryReadout.expanded {
 		t.Error("an unlisted key left the readout open")
 	}
 	if out.selectionCounts().Total > 0 {
@@ -201,7 +201,7 @@ func TestQueryReadoutOwnsInputWhileOpen(t *testing.T) {
 	}
 
 	out.toggleQueryReadout()
-	if _, cmd := out.handleQueryReadoutKey("esc"); cmd != nil || out.queryReadoutExpanded {
+	if _, cmd := out.handleQueryReadoutKey("esc"); cmd != nil || out.queryReadout.expanded {
 		t.Error("Esc did not close the readout on its own")
 	}
 }
@@ -221,7 +221,7 @@ func TestQueryReadoutSaveAsLensRoutesThroughTheShell(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("s raised no save request")
 	}
-	if out.queryReadoutExpanded {
+	if out.queryReadout.expanded {
 		t.Error("s left the readout open over the name prompt")
 	}
 	msg := cmd()

@@ -68,13 +68,13 @@ type queryReadoutRow struct {
 }
 
 // toggleQueryReadout opens or closes the expanded stack. It is the whole of the
-// operation's handler: the strip reads the flag when it next renders, so there
-// is no second copy of the readout to keep in step.
+// operation's handler: the strip reads the sub-state when it next renders, so
+// there is no second copy of the readout to keep in step.
 func (m *OutlinerModel) toggleQueryReadout() {
 	if m == nil {
 		return
 	}
-	m.queryReadoutExpanded = !m.queryReadoutExpanded
+	m.queryReadout.toggle()
 }
 
 // closeQueryReadout puts the stack down without asking what it was showing. The
@@ -84,7 +84,7 @@ func (m *OutlinerModel) closeQueryReadout() {
 	if m == nil {
 		return
 	}
-	m.queryReadoutExpanded = false
+	m.queryReadout.close()
 }
 
 // queryReadoutRows lists the active narrowings, widest context first. The order
@@ -276,7 +276,7 @@ func projectFilterReadoutRows(f *query.ProjectFilterState) []queryReadoutRow {
 // collapsed. It is pure, because statusStripHeight measures exactly this string
 // before statusStripBody paints it.
 func (m *OutlinerModel) queryReadoutBody(width int) string {
-	if m == nil || !m.queryReadoutExpanded {
+	if m == nil || !m.queryReadout.expanded {
 		return ""
 	}
 	width = max(width, 1)

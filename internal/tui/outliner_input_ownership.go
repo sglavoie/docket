@@ -11,13 +11,13 @@ func (m *OutlinerModel) simplifiedInlineControlOwnsInput() bool {
 	if m.IsSearchMode() ||
 		m.quickEdit.IsActive() ||
 		m.Confirm.IsActive() ||
-		m.queryReadoutExpanded ||
+		m.queryReadout.expanded ||
 		// An open menu claims the key first even though most keys end up running
 		// their root operation anyway: it has to close before the accelerator
 		// fires, or the act would run under a dropdown still covering the rows it
 		// changed. handleMenuBarKey closes and re-emits, so the grammar sees the
 		// same key one update later with nothing owning input.
-		m.menuBarOpen {
+		m.menuBar.open {
 		return true
 	}
 	return false

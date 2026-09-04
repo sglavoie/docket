@@ -30,27 +30,26 @@ type MenuBarActivateMsg struct{ OperationID operation.OperationID }
 
 func (msg MenuBarActivateMsg) String() string { return "menu bar activate" }
 
-// openMenuBar drops the first menu out of the bar. It always opens on the first
-// menu rather than on the last one used: the bar is read left to right and an
-// open menu that remembers where it was would put the highlight somewhere the
-// user did not leave it, one whole session ago.
+// openMenuBar drops the first menu out of the bar. It is the model's one-line
+// way into menuBarState, kept as a named method because the operation handler
+// asks the Outliner to open a menu rather than reaching into its sub-state.
 func (m *OutlinerModel) openMenuBar() {
 	if m == nil {
 		return
 	}
-	m.menuBarOpen = true
-	m.menuBarMenuIndex = 0
-	m.menuBarItemIndex = 0
+	m.menuBar.openFirstMenu()
 }
 
 // closeMenuBar puts the menu away without asking what it was showing. Every
 // reset that replaces the whole projection calls it, so a dropdown resolved
-// against one population cannot survive into another.
+// against one population cannot survive into another — and this one line is
+// where that spread meets the sub-state, which is what keeps the six
+// projection-replacing callers out of the menu's fields entirely.
 func (m *OutlinerModel) closeMenuBar() {
 	if m == nil {
 		return
 	}
-	m.menuBarOpen = false
+	m.menuBar.close()
 }
 
 // openMenuBarMenus is the resolution both the dropdown and this keymap read.
@@ -61,7 +60,7 @@ func (m *OutlinerModel) closeMenuBar() {
 // A resolution that came back empty is a bar with nothing to open, which closes
 // the sub-state rather than leaving a gate open over no menus.
 func (m *OutlinerModel) openMenuBarMenus() ([]resolvedMenu, bool) {
-	if m == nil || !m.menuBarOpen {
+	if m == nil || !m.menuBar.open {
 		return nil, false
 	}
 	menus := m.resolvedMenuBar()
@@ -69,7 +68,7 @@ func (m *OutlinerModel) openMenuBarMenus() ([]resolvedMenu, bool) {
 		m.closeMenuBar()
 		return nil, false
 	}
-	m.menuBarMenuIndex = min(max(m.menuBarMenuIndex, 0), len(menus)-1)
+	m.menuBar.clampMenu(len(menus))
 	return menus, true
 }
 
@@ -119,14 +118,15 @@ func stepMenuBarItem(entries []resolvedMenuEntry, index, delta int) int {
 }
 
 // handleMenuBarKey is the open menu's gated keymap. It runs before every other
-// Outliner branch while a menu is open, and it is the only place the two stored
-// indices are written.
+// Outliner branch while a menu is open, and it is the only place a keystroke
+// moves the two stored indices — the render's own write is a re-resolution of
+// what this one left, never a second navigation.
 func (m *OutlinerModel) handleMenuBarKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	menus, ok := m.openMenuBarMenus()
 	if !ok {
 		return m, nil
 	}
-	entries := menus[m.menuBarMenuIndex].Entries
+	entries := menus[m.menuBar.menuIndex].Entries
 	key := msg.String()
 	// The key that opened the menu puts it away again, which is the one thing the
 	// readout gets for free from its close-on-anything fall-through and this
@@ -147,13 +147,13 @@ func (m *OutlinerModel) handleMenuBarKey(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 		m.cycleMenuBarMenu(1, len(menus))
 		return m, nil
 	case "k", "up":
-		m.menuBarItemIndex = stepMenuBarItem(entries, m.menuBarItemIndex, -1)
+		m.menuBar.selectItem(stepMenuBarItem(entries, m.menuBar.itemIndex, -1))
 		return m, nil
 	case "j", "down":
-		m.menuBarItemIndex = stepMenuBarItem(entries, m.menuBarItemIndex, 1)
+		m.menuBar.selectItem(stepMenuBarItem(entries, m.menuBar.itemIndex, 1))
 		return m, nil
 	case "enter":
-		index := resolveMenuBarItem(entries, m.menuBarItemIndex)
+		index := resolveMenuBarItem(entries, m.menuBar.itemIndex)
 		m.closeMenuBar()
 		if index < 0 {
 			return m, nil
@@ -170,16 +170,11 @@ func (m *OutlinerModel) handleMenuBarKey(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 	return m, func() tea.Msg { return msg }
 }
 
-// cycleMenuBarMenu moves along the bar and starts the new menu at its top. It
-// wraps, unlike the vertical walk: the bar is a ring of five labels a user
-// crosses repeatedly, and stopping at Help would make the leftmost menu three
-// presses away from the rightmost.
+// cycleMenuBarMenu moves along the bar. The wrap and the reset to the new
+// menu's top are menuBarState's, so the keymap here names the direction and the
+// sub-state keeps the two indices in step.
 func (m *OutlinerModel) cycleMenuBarMenu(delta, count int) {
-	if count <= 0 {
-		return
-	}
-	m.menuBarMenuIndex = ((m.menuBarMenuIndex+delta)%count + count) % count
-	m.menuBarItemIndex = 0
+	m.menuBar.cycleMenu(delta, count)
 }
 
 // menuBarOpenKeys is the grammar's own spelling of the key that opens a menu,
