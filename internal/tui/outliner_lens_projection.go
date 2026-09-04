@@ -99,7 +99,7 @@ func (m *OutlinerModel) compileActiveNarrowing(projects []*models.Project) query
 		query = m.SearchQuery()
 	}
 	compiled := m.compileNarrowingQuery(query, projects)
-	m.searchRemainder, m.searchGate, m.searchCaseRelaxed = compiled.remainder, compiled.gate, compiled.relaxed
+	m.search.setCompilation(compiled.remainder, compiled.gate, compiled.relaxed)
 	return compiled.narrowing
 }
 

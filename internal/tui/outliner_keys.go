@@ -66,7 +66,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if model, cmd, handled := m.HandleSearchMode(msg, m, func() {
 		// Typing ends the walk, so the next Up starts from the newest query again
 		// rather than from wherever the abandoned walk had reached.
-		m.searchHistory.resetRecall()
+		m.search.history.resetRecall()
 		rebuildOutlinerPreservingCursor(m)
 	}); handled {
 		// Recompute unconditionally rather than on value change alone: a bare caret

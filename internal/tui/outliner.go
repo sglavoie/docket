@@ -12,7 +12,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
-	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/query"
@@ -119,29 +118,13 @@ type OutlinerModel struct {
 	recencyKeys       map[taskref.TaskIdentity]time.Time
 	recencyProjection string
 
-	// searchProjection is the navigation frame a slash search was typed in. It
-	// preserves every presentation axis the search frame may move while it stands,
-	// so leaving the frame returns the user to where the query was typed.
-	searchProjection *outlinerSearchSnapshot
-
-	// rankedList shows the held query's matches as one flat relevance-ordered
-	// list instead of narrowing the mode's own lanes. It is a presentation of the
-	// same query, toggled deliberately, never entered by typing, and it dies with
-	// the query that gave it rows.
-	rankedList bool
-
-	// searchCaseRelaxed records that the last projection rebuild found nothing
-	// under the query's smart-case reading and fell back to a case-insensitive
-	// pass. Highlighting and the chrome badge both read it, so what matched and
-	// what is shown can never disagree.
-	searchCaseRelaxed bool
-
-	// searchRemainder is the free text left after the sigil gate was lifted out
-	// of the query, and searchGate is that gate. Scoring, smart-case, highlighting
-	// and the work-mode predicate all read the remainder, so a predicate token is
-	// never scored or highlighted as prose.
-	searchRemainder string
-	searchGate      *query.SearchPredicates
+	// search is the slash-search frame, the compiled reading of the query it
+	// holds, the input's suggestion pane and recall ring, and the notes tier that
+	// query may reach. Like the readout, the menu bar and the population below it
+	// is a named field rather than promoted ones — outliner_search_state.go owns
+	// the cluster, and the two clear paths reach every part of it through
+	// m.search rather than by assigning each field they happen to remember.
+	search searchState
 
 	// lensQuery is the accepted narrowing query of the saved projection the view
 	// is showing, and lensGate, lensRemainder, and lensNarrowRelaxed are its
@@ -183,44 +166,6 @@ type OutlinerModel struct {
 	// advisory is gated by. A nil accessor reads as showing them; see
 	// advisories.go.
 	advisoriesHiddenAccessor func() bool
-
-	// noteSearchIndex is the shell-injected accessor over the workspace-wide note
-	// index the search tier ranks. A nil accessor means the tier is simply
-	// absent, which is what a struct-literal test model and the Project Hub's
-	// preview painter both get: that preview is a task preview, and notes are
-	// not tasks. The Outliner never learns where notes live or when they are
-	// read; it only reads whatever the shell last retained.
-	noteSearchIndex func() []notes.LocatedNoteRow
-
-	// noteCursorReseat is the note the cursor rested on when an accepted
-	// note-index refresh forced a rebuild. The refresh lands asynchronously and
-	// re-ranks the notes tier, so the numeric cursor alone would silently name a
-	// different result on the next frame. It is captured with the force flag and
-	// consumed by the one rebuild that flag guarantees; a rebuild that finds the
-	// note gone leaves the ordinary clamp in place.
-	noteCursorReseat notes.NoteRowIdentity
-
-	// searchNoteMatches is what the notes tier's rows are rendered from, keyed the
-	// way the Notes manager keys its own match map. It lives beside the rows
-	// rather than on them because a note row's render payload is wide — the note
-	// itself, its owner label, and the positions that ranked its title — and
-	// outlinerRow is copied for every row of every rebuild.
-	searchNoteMatches map[notes.NoteRowIdentity]outlinerSearchNoteMatch
-
-	// searchAutocomplete is the slash-search suggestion pane. It holds no cached
-	// vocabulary: every refresh reprojects the grammar and rereads the live
-	// candidates, so a mutation or a scope change cannot leave a stale value
-	// behind. The zero value is inert, which keeps struct-literal test models
-	// working without a constructor.
-	searchAutocomplete outlinerSearchAutocomplete
-
-	// searchHistory is the session-only ring of submitted slash queries, walked
-	// with Up and Down inside the input. It is never persisted, exactly like jump
-	// history, and unlike jump history it is not scoped to a projection: a query
-	// is worth recalling in whatever mode or scope the user reaches for it next,
-	// and it names tasks rather than row positions, so no rebuild can invalidate
-	// it. The zero value is inert.
-	searchHistory outlinerSearchHistory
 
 	// nextDeferWake is the soonest instant a pending deferral in scope lapses,
 	// and zero means none is pending. It is a refresh clock read by the periodic

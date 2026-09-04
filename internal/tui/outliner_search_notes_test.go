@@ -181,12 +181,12 @@ func TestSearchRelaxesItsCaseUniformlyAcrossTasksAndNotes(t *testing.T) {
 	if tasks != 0 || notes != 1 {
 		t.Fatalf("projection = %d task rows and %d note rows, want the note alone", tasks, notes)
 	}
-	if !outliner.searchCaseRelaxed {
+	if !outliner.search.caseRelaxed {
 		t.Fatalf("searchCaseRelaxed = false, want the note-only hit to relax the query")
 	}
 
 	searchRankedList(outliner, "Widget !1")
-	if outliner.searchCaseRelaxed {
+	if outliner.search.caseRelaxed {
 		t.Fatalf("searchCaseRelaxed = true under a sigil, want the notes tier absent whole")
 	}
 }

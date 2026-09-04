@@ -241,7 +241,7 @@ func TestScopeWideSearchAppliesSmartCaseAndFallsBackWhenEmpty(t *testing.T) {
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{upper.ID, lower.ID}) {
 		t.Fatalf("lowercase search = %v, want both casings", got)
 	}
-	if outliner.searchCaseRelaxed || outliner.searchCaseSensitive() {
+	if outliner.search.caseRelaxed || outliner.searchCaseSensitive() {
 		t.Fatal("lowercase query was treated as case-sensitive")
 	}
 
@@ -249,25 +249,25 @@ func TestScopeWideSearchAppliesSmartCaseAndFallsBackWhenEmpty(t *testing.T) {
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{upper.ID}) {
 		t.Fatalf("uppercase search = %v, want only the exact-case title", got)
 	}
-	if outliner.searchCaseRelaxed || !outliner.searchCaseSensitive() {
+	if outliner.search.caseRelaxed || !outliner.searchCaseSensitive() {
 		t.Fatalf("narrowing search relaxed=%v sensitive=%v, want a case-sensitive pass",
-			outliner.searchCaseRelaxed, outliner.searchCaseSensitive())
+			outliner.search.caseRelaxed, outliner.searchCaseSensitive())
 	}
 
 	searchRankedList(outliner, "Docs")
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{lower.ID}) {
 		t.Fatalf("fallback search = %v, want the case-insensitive retry to match", got)
 	}
-	if !outliner.searchCaseRelaxed || outliner.searchCaseSensitive() {
+	if !outliner.search.caseRelaxed || outliner.searchCaseSensitive() {
 		t.Fatalf("fallback search relaxed=%v sensitive=%v, want a relaxed pass",
-			outliner.searchCaseRelaxed, outliner.searchCaseSensitive())
+			outliner.search.caseRelaxed, outliner.searchCaseSensitive())
 	}
 
 	searchRankedList(outliner, "Zebra")
 	if len(outliner.rows) != 0 {
 		t.Fatalf("unmatchable query kept rows %v", searchVisibleTaskIDs(outliner))
 	}
-	if outliner.searchCaseRelaxed {
+	if outliner.search.caseRelaxed {
 		t.Fatal("an empty insensitive retry still claimed the case was ignored")
 	}
 
@@ -277,7 +277,7 @@ func TestScopeWideSearchAppliesSmartCaseAndFallsBackWhenEmpty(t *testing.T) {
 	}
 
 	outliner.ClearSearch()
-	if outliner.searchCaseRelaxed {
+	if outliner.search.caseRelaxed {
 		t.Fatal("ClearSearch left the relaxed flag set")
 	}
 }

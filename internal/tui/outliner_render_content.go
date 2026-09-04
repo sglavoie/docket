@@ -148,10 +148,10 @@ func (m *OutlinerModel) buildOutlinerSearchIndicator(width int) string {
 	default:
 		return ""
 	}
-	if guidance := m.searchGate.GuidanceText(); guidance != "" {
+	if guidance := m.search.gate.GuidanceText(); guidance != "" {
 		return appendSearchBadge(indicator, " "+guidance, width)
 	}
-	if !m.searchCaseRelaxed {
+	if !m.search.caseRelaxed {
 		return indicator
 	}
 	return appendSearchBadge(indicator, " (case ignored)", width)
@@ -309,7 +309,7 @@ func (m *OutlinerModel) outlinerEmptyMessage() string {
 			"No tasks match search %q under the active filters. Press fx to clear filters or Esc to clear the search.",
 			m.SearchQuery())
 	case outlinerEmptySearchInvalid:
-		return fmt.Sprintf("%s. Press Esc to clear.", m.searchGate.GuidanceText())
+		return fmt.Sprintf("%s. Press Esc to clear.", m.search.gate.GuidanceText())
 	case outlinerEmptyLens:
 		return "No tasks match this lens. Press Esc to restore the view it replaced."
 	case outlinerEmptyFiltered:

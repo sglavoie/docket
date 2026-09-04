@@ -34,7 +34,7 @@ func TestLifecycleDestinationsMapToCanonicalCreationStates(t *testing.T) {
 
 			outliner := scopeTestOutliner(project)
 			outliner.SetSearchQuery(input)
-			gate := outliner.searchGate
+			gate := outliner.search.gate
 			searched, ok := gate.CompiledDestination()
 			if !ok || searched.WorkflowState() != state {
 				t.Fatalf("search destination = %q (set=%v), want state %q", searched, ok, state)
@@ -51,7 +51,7 @@ func TestSearchPlanningDestinationsAreMembershipRatherThanState(t *testing.T) {
 	for _, name := range []string{"today", "next"} {
 		outliner := scopeTestOutliner(project)
 		outliner.SetSearchQuery("Task $" + name)
-		gate := outliner.searchGate
+		gate := outliner.search.gate
 		destination, ok := gate.CompiledDestination()
 		if !ok {
 			t.Fatalf("$%s produced no destination gate", name)

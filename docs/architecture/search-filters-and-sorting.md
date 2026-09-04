@@ -14,7 +14,12 @@ query: mode changes, folds, facets, and reordering all apply, because a query is
 a clause rather than a mode. Esc drops the query and restores the mode, facets,
 sort, cursor, scroll, and folds the search was typed over.
 
-`or` toggles `rankedList`, the other presentation of that same query: one flat
+The Outliner holds the whole of that search in one `searchState` sub-state — the
+frame the query was typed in, the compiled reading of it, the input's suggestion
+pane and recall ring, and the notes tier — so a clear path drops all four
+together rather than each field its caller happened to remember.
+
+`or` toggles `search.rankedList`, the other presentation of that same query: one flat
 relevance-ordered list over the whole project scope, with no lanes, no headers,
 and no folds, ranking title matches before description, tag, and project metadata
 matches, then by fuzzy score and stable project/task order; `project#shortID` is
@@ -98,9 +103,11 @@ case-sensitivity bit, `fuzzy.CaseSensitiveQuery` is the single detection rule
 (`strings.ToLower(query) != query`), and the zero-value matcher is
 case-insensitive so every non-search scorer keeps its behavior. A surface runs
 its scoring pass under `fuzzy.SmartCase(query)`; if a case-sensitive pass yields
-nothing it repeats the pass case-insensitively and records `searchCaseRelaxed`,
-which drives both the `(case ignored)` chrome and the highlight positions, so
-what matched and what is marked can never disagree. The retry re-runs the same
+nothing it repeats the pass case-insensitively and records that relaxation, as
+`search.caseRelaxed` on the Outliner and as an unrelated field of its own named
+`searchCaseRelaxed` on Help and on Notes. That reading drives both the `(case
+ignored)` chrome and the highlight positions, so what matched and what is marked
+can never disagree. The retry re-runs the same
 gate, so relaxing case can never admit a task a sigil excluded. An empty relaxed
 pass leaves the ordinary empty state. The rule stops at the four search
 surfaces — Outliner

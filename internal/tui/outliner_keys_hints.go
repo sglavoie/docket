@@ -73,7 +73,7 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 				chrome.OptionalGuidanceHints(10, "lens query narrows this lens only")...),
 			Rows: 2,
 		}, true
-	case m.IsSearchMode() && m.searchAutocomplete.active():
+	case m.IsSearchMode() && m.search.autocomplete.active():
 		// Only while the pane is open: an Esc here closes suggestions rather than
 		// the search, and saying so is the whole point of the swap.
 		return m.searchAutocompleteGuidance(), true
@@ -286,7 +286,7 @@ func (m *OutlinerModel) emptyGuidance() chrome.GuidanceSpec {
 
 func (m *OutlinerModel) classifyEmptyCause() outlinerEmptyCause {
 	if m.hasSearchProjection() && m.SearchQuery() != "" {
-		if m.searchGate.Invalid() {
+		if m.search.gate.Invalid() {
 			return outlinerEmptySearchInvalid
 		}
 		// Facets are an AND gate applied before scoring, so the plain search

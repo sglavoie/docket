@@ -40,16 +40,16 @@ func typeSearchACAt(outliner *OutlinerModel, value string, runeCursor int) {
 }
 
 func searchACValues(outliner *OutlinerModel) []string {
-	values := make([]string, 0, len(outliner.searchAutocomplete.ac.Items))
-	for _, item := range outliner.searchAutocomplete.ac.Items {
+	values := make([]string, 0, len(outliner.search.autocomplete.ac.Items))
+	for _, item := range outliner.search.autocomplete.ac.Items {
 		values = append(values, item.Value)
 	}
 	return values
 }
 
 func searchACDisplays(outliner *OutlinerModel) []string {
-	displays := make([]string, 0, len(outliner.searchAutocomplete.ac.Items))
-	for _, item := range outliner.searchAutocomplete.ac.Items {
+	displays := make([]string, 0, len(outliner.search.autocomplete.ac.Items))
+	for _, item := range outliner.search.autocomplete.ac.Items {
 		displays = append(displays, item.Display)
 	}
 	return displays
@@ -119,16 +119,16 @@ func TestSearchAutocompleteUsesLongestTriggerAtTheCursor(t *testing.T) {
 	}
 	for _, tc := range cases {
 		typeSearchAC(outliner, tc.query)
-		if !outliner.searchAutocomplete.active() {
+		if !outliner.search.autocomplete.active() {
 			t.Fatalf("query %q opened no suggestions", tc.query)
 		}
-		definition, ok := outlinerSearchDefinitionForMode(outliner.searchAutocomplete.ac.Mode)
+		definition, ok := outlinerSearchDefinitionForMode(outliner.search.autocomplete.ac.Mode)
 		if !ok {
 			t.Errorf("query %q opened a mode no search definition claims", tc.query)
 		} else if definition.Field != tc.field {
 			t.Errorf("query %q completed %s, want %s", tc.query, definition.Field, tc.field)
 		}
-		if got := outliner.searchAutocomplete.triggerText; got != tc.query {
+		if got := outliner.search.autocomplete.triggerText; got != tc.query {
 			t.Errorf("query %q retained trigger %q", tc.query, got)
 		}
 	}

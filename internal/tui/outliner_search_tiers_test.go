@@ -325,7 +325,7 @@ func TestSearchDenseFuzzyFallbackStillReachesTheNewTiers(t *testing.T) {
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{task.ID}) {
 		t.Fatalf("relaxed retry = %v, want the comment match", got)
 	}
-	if !outliner.searchCaseRelaxed {
+	if !outliner.search.caseRelaxed {
 		t.Fatal("the uppercase query did not report a relaxed pass")
 	}
 	if outliner.rows[0].MatchSource != matchSourceComment {

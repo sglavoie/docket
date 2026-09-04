@@ -103,7 +103,7 @@ func (m *OutlinerModel) refreshSearchAutocomplete() {
 		return
 	}
 	if !m.IsSearchMode() {
-		m.searchAutocomplete.clear()
+		m.search.autocomplete.clear()
 		return
 	}
 
@@ -115,7 +115,7 @@ func (m *OutlinerModel) refreshSearchAutocomplete() {
 	mode, triggerPos, partial := grammar.DetectTrigger(value[:cursorByte], outlinerSearchTriggers())
 	definition, ok := outlinerSearchDefinitionForMode(mode)
 	if !ok {
-		m.searchAutocomplete.clear()
+		m.search.autocomplete.clear()
 		return
 	}
 
@@ -126,7 +126,7 @@ func (m *OutlinerModel) refreshSearchAutocomplete() {
 	prefix := textgrammar.Parse(value[:triggerPos], textgrammar.SurfaceSearch)
 	if definition.Cardinality == textgrammar.CardinalitySingleton &&
 		len(prefix.TokensFor(definition.Field)) > 0 {
-		m.searchAutocomplete.clear()
+		m.search.autocomplete.clear()
 		return
 	}
 
@@ -135,12 +135,12 @@ func (m *OutlinerModel) refreshSearchAutocomplete() {
 		items = grammar.FilterUsedTagSuggestions(items, prefix.TokensFor(definition.Field))
 	}
 
-	m.searchAutocomplete.triggerText = definition.Trigger
-	m.searchAutocomplete.ac.UpdateSuggestions(mode, triggerPos, items)
-	if !m.searchAutocomplete.ac.IsActive() {
+	m.search.autocomplete.triggerText = definition.Trigger
+	m.search.autocomplete.ac.UpdateSuggestions(mode, triggerPos, items)
+	if !m.search.autocomplete.ac.IsActive() {
 		// The active token no longer has anything to offer, so the retained
 		// trigger would outlive the list it described.
-		m.searchAutocomplete.clear()
+		m.search.autocomplete.clear()
 	}
 }
 
@@ -248,7 +248,7 @@ func (m *OutlinerModel) searchCandidateContextNames() []string {
 // j and k are ordinary characters, so this claim lasts exactly as long as the
 // pane does: one Esc closes it and gives both letters back to the query.
 func (m *OutlinerModel) handleSearchAutocompleteKey(key string) bool {
-	if m == nil || !m.searchAutocomplete.active() {
+	if m == nil || !m.search.autocomplete.active() {
 		return false
 	}
 	switch key {
@@ -258,10 +258,10 @@ func (m *OutlinerModel) handleSearchAutocompleteKey(key string) bool {
 	case "esc":
 		// The first Esc closes the suggestions; the next one reaches the search
 		// cascade below and clears or restores the projection.
-		m.searchAutocomplete.clear()
+		m.search.autocomplete.clear()
 		return true
 	case "up", "ctrl+p", "down", "ctrl+n":
-		return m.searchAutocomplete.ac.HandleKey(key, nil)
+		return m.search.autocomplete.ac.HandleKey(key, nil)
 	case "j", "k":
 		m.moveSearchResultCursor(key)
 		return true
@@ -290,7 +290,7 @@ func (m *OutlinerModel) moveSearchResultCursor(key string) {
 // everything after it, so completing a sigil in the middle of a settled query
 // never discards the tokens that follow.
 func (m *OutlinerModel) acceptSearchSuggestion() {
-	state := &m.searchAutocomplete
+	state := &m.search.autocomplete
 	if !state.ac.IsActive() {
 		return
 	}
@@ -313,11 +313,11 @@ func (m *OutlinerModel) acceptSearchSuggestion() {
 // the returned string rather than predicting its height, because
 // RenderDropdownWithLimit decides how many of its rows go to overflow hints.
 func (m *OutlinerModel) renderSearchAutocompleteDropdown(width int) string {
-	if m == nil || !m.searchAutocomplete.active() {
+	if m == nil || !m.search.autocomplete.active() {
 		return ""
 	}
 	budget := min(outlinerSearchSuggestionLimit, max(m.contentHeight()-2, 1))
-	rendered := m.searchAutocomplete.ac.RenderDropdownWithLimit(outlinerSearchDropdownIndent, budget)
+	rendered := m.search.autocomplete.ac.RenderDropdownWithLimit(outlinerSearchDropdownIndent, budget)
 	if rendered == "" {
 		return ""
 	}

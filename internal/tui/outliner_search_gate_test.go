@@ -165,7 +165,7 @@ func TestSearchRefusesRecognizedAndWrongValuesWithRegistryGuidance(t *testing.T)
 		if len(outliner.rows) != 0 {
 			t.Fatalf("search %q kept rows %v", query, searchVisibleTaskIDs(outliner))
 		}
-		guidance := outliner.searchGate.GuidanceText()
+		guidance := outliner.search.gate.GuidanceText()
 		if guidance == "" {
 			t.Fatalf("search %q produced no guidance", query)
 		}
@@ -178,7 +178,7 @@ func TestSearchRefusesRecognizedAndWrongValuesWithRegistryGuidance(t *testing.T)
 	}
 	searchRankedList(outliner, "!9")
 	want := textgrammar.InvalidPriorityError("9").Error()
-	if got := outliner.searchGate.GuidanceText(); got != want {
+	if got := outliner.search.gate.GuidanceText(); got != want {
 		t.Fatalf("!9 guidance = %q, want the registry sentence %q", got, want)
 	}
 }
@@ -189,10 +189,10 @@ func TestSearchCaseRelaxationRetryAdmitsTheSameGatedSet(t *testing.T) {
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{"beta-task"}) {
 		t.Fatalf("relaxed gated search = %v, want the backend-tagged match", got)
 	}
-	if !outliner.searchCaseRelaxed {
+	if !outliner.search.caseRelaxed {
 		t.Fatal("the retry did not report a relaxed pass")
 	}
-	if outliner.searchRemainder != "Auth" {
-		t.Fatalf("remainder = %q, want the sigil lifted out", outliner.searchRemainder)
+	if outliner.search.remainder != "Auth" {
+		t.Fatalf("remainder = %q, want the sigil lifted out", outliner.search.remainder)
 	}
 }

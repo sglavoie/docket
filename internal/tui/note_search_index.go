@@ -180,7 +180,7 @@ func (m *AppModel) invalidateOutlinerForNoteSearchIndex() {
 		return
 	}
 	if identity, onNote := m.crossOutliner.cursorNoteIdentity(); onNote {
-		m.crossOutliner.noteCursorReseat = identity
+		m.crossOutliner.search.captureNoteCursor(identity)
 	}
 	m.crossOutliner.population.invalidate()
 }

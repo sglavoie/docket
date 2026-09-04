@@ -24,7 +24,7 @@ import (
 func TestNoteRowDropsItsCueThenItsOwnerAsWidthFalls(t *testing.T) {
 	outliner := noteRowProjection(t)
 	row := noteRowWithOwner(t, outliner)
-	entry := outliner.searchNoteMatches[row.NoteRow]
+	entry := outliner.search.noteMatches[row.NoteRow]
 	cue := "· " + matchSourceLabels[matchSourceNote]
 	owner := "[" + entry.row.OwnerLabel + "]"
 

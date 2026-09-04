@@ -257,7 +257,7 @@ func TestOneNarrowingQueryCompilesAtATime(t *testing.T) {
 	if outliner.lensGate == nil {
 		t.Fatal("the canonical path did not compile the lens narrowing")
 	}
-	if outliner.searchGate != nil {
+	if outliner.search.gate != nil {
 		t.Fatal("the lens rebuild also wrote the search gate")
 	}
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{"needle"}) {
@@ -273,7 +273,7 @@ func TestOneNarrowingQueryCompilesAtATime(t *testing.T) {
 	if outliner.lensGate != nil {
 		t.Fatal("a lens-free rebuild compiled a lens narrowing")
 	}
-	if outliner.searchGate == nil {
+	if outliner.search.gate == nil {
 		t.Fatal("the search query was never compiled")
 	}
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{"other"}) {

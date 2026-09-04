@@ -94,7 +94,7 @@ func (m *OutlinerModel) activeNarrowingGate() *query.SearchPredicates {
 	if m.hasActiveLens() {
 		return m.lensGate
 	}
-	return m.searchGate
+	return m.search.gate
 }
 
 // filterQueryProject resolves the project a row is read inside, falling back to

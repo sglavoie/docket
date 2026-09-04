@@ -40,8 +40,8 @@ func TestSearchAutocompleteRendersAtMostFiveRowsIncludingOverflow(t *testing.T) 
 		{"bottom", 11, true, false},
 	}
 	for _, tc := range cases {
-		outliner.searchAutocomplete.ac.Cursor = tc.cursor
-		outliner.searchAutocomplete.ac.ClampCursor()
+		outliner.search.autocomplete.ac.Cursor = tc.cursor
+		outliner.search.autocomplete.ac.ClampCursor()
 		rendered := ansi.Strip(outliner.renderSearchAutocompleteDropdown(120))
 		lines := strings.Split(rendered, "\n")
 		if len(lines) > outlinerSearchSuggestionLimit {
@@ -53,7 +53,7 @@ func TestSearchAutocompleteRendersAtMostFiveRowsIncludingOverflow(t *testing.T) 
 		if got := strings.Contains(rendered, "↓"); got != tc.wantBottom {
 			t.Errorf("%s: bottom overflow hint = %v, want %v:\n%s", tc.name, got, tc.wantBottom, rendered)
 		}
-		if !strings.Contains(rendered, outliner.searchAutocomplete.ac.Selected().Display) {
+		if !strings.Contains(rendered, outliner.search.autocomplete.ac.Selected().Display) {
 			t.Errorf("%s: the selected row scrolled out of its own window:\n%s", tc.name, rendered)
 		}
 	}
@@ -70,7 +70,7 @@ func TestSearchAutocompleteViewportSubtractsTheRenderedHeight(t *testing.T) {
 	baseline := outliner.lastViewport.visibleRows
 
 	typeSearchAC(outliner, "#")
-	if !outliner.searchAutocomplete.active() {
+	if !outliner.search.autocomplete.active() {
 		t.Fatal("no pane to reserve for")
 	}
 	content := outliner.renderOutlinerTreeContent(120)
@@ -78,7 +78,7 @@ func TestSearchAutocompleteViewportSubtractsTheRenderedHeight(t *testing.T) {
 
 	// Measure the pane exactly as the render did: whatever height it drew is the
 	// height the list lost.
-	dropdownHeight := lipgloss.Height(outliner.searchAutocomplete.ac.RenderDropdownWithLimit(
+	dropdownHeight := lipgloss.Height(outliner.search.autocomplete.ac.RenderDropdownWithLimit(
 		outlinerSearchDropdownIndent, outlinerSearchSuggestionLimit))
 	if got, want := baseline-withPane, dropdownHeight; got != want {
 		t.Fatalf("rows reserved = %d, want the pane's own height %d", got, want)
@@ -110,14 +110,14 @@ func TestSearchAutocompleteRenderFitsNarrowAndMinimumLayouts(t *testing.T) {
 	// contentHeight()-2 is the pane's ceiling, so a three-row terminal leaves room
 	// for exactly one row and it must be the selected one rather than a hint.
 	outliner.SetSize(120, 4)
-	outliner.searchAutocomplete.ac.Cursor = 6
-	outliner.searchAutocomplete.ac.ClampCursor()
+	outliner.search.autocomplete.ac.Cursor = 6
+	outliner.search.autocomplete.ac.ClampCursor()
 	minimum := ansi.Strip(outliner.renderSearchAutocompleteDropdown(120))
 	lines := strings.Split(minimum, "\n")
 	if len(lines) != 1 {
 		t.Fatalf("minimum-height pane rendered %d rows, want 1:\n%s", len(lines), minimum)
 	}
-	if !strings.Contains(minimum, outliner.searchAutocomplete.ac.Selected().Display) {
+	if !strings.Contains(minimum, outliner.search.autocomplete.ac.Selected().Display) {
 		t.Errorf("minimum-height pane dropped the selection for a hint: %q", minimum)
 	}
 

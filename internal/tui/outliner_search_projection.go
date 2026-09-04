@@ -91,7 +91,7 @@ type outlinerSearchMatch struct {
 // query is presented: by default the query narrows the mode's own lanes, and
 // only showsRankedList reports the flat presentation.
 func (m *OutlinerModel) hasSearchProjection() bool {
-	return m != nil && m.searchProjection != nil
+	return m != nil && m.search.active()
 }
 
 // showsRankedList reports that the held query is being presented as one flat
@@ -101,7 +101,7 @@ func (m *OutlinerModel) hasSearchProjection() bool {
 // that reshape those axes refuse here and nowhere else. A query alone never
 // freezes an axis.
 func (m *OutlinerModel) showsRankedList() bool {
-	return m != nil && m.rankedList && m.searchProjection != nil
+	return m != nil && m.search.showsRanked()
 }
 
 // toggleRankedList switches the held query between narrowing the mode and the
@@ -112,8 +112,7 @@ func (m *OutlinerModel) toggleRankedList() bool {
 	if !m.hasSearchProjection() {
 		return false
 	}
-	m.rankedList = !m.rankedList
-	if m.rankedList {
+	if m.search.toggleRanked() {
 		m.clearSectionZoom()
 	}
 	m.population.invalidate()
@@ -126,12 +125,11 @@ func copyFilterState(src query.FilterState) query.FilterState {
 }
 
 func (m *OutlinerModel) beginSearchProjection() {
-	if m == nil || m.searchProjection != nil {
+	if m == nil || m.search.active() {
 		return
 	}
 	m.closeMenuBar()
-	snapshot := m.capturePresentationSnapshot()
-	m.searchProjection = &snapshot
+	m.search.begin(m.capturePresentationSnapshot())
 	m.population.invalidate()
 	m.rebuildRows()
 }
@@ -148,7 +146,7 @@ func (m *OutlinerModel) ActivateSearch() tea.Cmd {
 	m.beginSearchProjection()
 	// Every open starts a fresh walk: the ring survives the input closing, the
 	// position in it does not, so the first Up always names the newest query.
-	m.searchHistory.resetRecall()
+	m.search.history.resetRecall()
 	return m.BaseSearchableView.ActivateSearch()
 }
 
@@ -169,15 +167,13 @@ func (m *OutlinerModel) SetSearchQuery(query string) {
 // Outliner state. If the original task vanished while search operations were
 // mutating data, focus falls back to the nearest surviving task row.
 func (m *OutlinerModel) ClearSearch() {
-	if m == nil || m.searchProjection == nil {
-		m.searchAutocomplete.clear()
+	if m == nil || !m.search.active() {
+		m.search.autocomplete.clear()
 		m.BaseSearchableView.ClearSearch()
 		return
 	}
 	m.closeMenuBar()
-	snapshot := m.searchProjection
-	m.searchProjection = nil
-	m.rankedList = false
+	snapshot := m.search.take()
 	m.resetSearchCompilation()
 	m.BaseSearchableView.ClearSearch()
 	m.restorePresentationSnapshot(*snapshot)
@@ -253,8 +249,7 @@ func (m *OutlinerModel) clearSearchProjectionWithoutRestore() {
 	if m == nil {
 		return
 	}
-	m.searchProjection = nil
-	m.rankedList = false
+	m.search.discard()
 	m.resetSearchCompilation()
 	m.BaseSearchableView.ClearSearch()
 }
@@ -262,13 +257,11 @@ func (m *OutlinerModel) clearSearchProjectionWithoutRestore() {
 func (m *OutlinerModel) resetSearchCompilation() {
 	// Suggestions describe the query being compiled, so they die with it: both
 	// clear paths route here, and neither can leave a pane open over no search.
-	m.searchAutocomplete.clear()
-	m.searchCaseRelaxed = false
-	m.searchRemainder = ""
-	m.searchGate = nil
+	m.search.autocomplete.clear()
+	m.search.setCompilation("", nil, false)
 	// The retained note payloads outlive the rows that named them otherwise, and
 	// they hold every matched note's body.
-	m.searchNoteMatches = nil
+	m.search.clearNoteMatches()
 }
 
 // searchTextQuery is the free-text remainder every consumer of the query must
@@ -279,7 +272,7 @@ func (m *OutlinerModel) searchTextQuery() string {
 		return ""
 	}
 	if m.hasSearchProjection() {
-		return m.searchRemainder
+		return m.search.remainder
 	}
 	return strings.TrimSpace(m.SearchQuery())
 }
@@ -287,7 +280,7 @@ func (m *OutlinerModel) searchTextQuery() string {
 // searchCaseSensitive reports the case mode the visible result set was actually
 // produced under, so highlighting and predicates never disagree with the rows.
 func (m *OutlinerModel) searchCaseSensitive() bool {
-	if m == nil || m.searchCaseRelaxed {
+	if m == nil || m.search.caseRelaxed {
 		return false
 	}
 	return fuzzy.CaseSensitiveQuery(m.searchTextQuery())
@@ -298,8 +291,9 @@ func (m *OutlinerModel) buildSearchProjectionRows() {
 	candidates := m.searchCandidateBoundary(projects)
 
 	query, predicates := m.compileSearchQuery(m.SearchQuery(), projects)
-	m.searchRemainder = query
-	m.searchGate = predicates
+	// The pass opens unrelaxed: the retry below is the only thing that can raise
+	// the case reading, and it has not run yet.
+	m.search.setCompilation(query, predicates, false)
 
 	// The one place the notes tier is admitted or refused. A sigil compiles to an
 	// AND gate applied before scoring and a note satisfies no conjunct of it, so
@@ -308,7 +302,6 @@ func (m *OutlinerModel) buildSearchProjectionRows() {
 	// below behave identically for free: both passes read the same decision.
 	notesAdmitted := !predicates.Invalid() && !predicates.HasAnySigil()
 
-	m.searchCaseRelaxed = false
 	matcher := fuzzy.SmartCase(query)
 	matches := searchProjectionMatchesWithin(projects, query, candidates, matcher, predicates)
 	notes := m.scoreNoteSearchTier(query, matcher, notesAdmitted)
@@ -318,7 +311,7 @@ func (m *OutlinerModel) buildSearchProjectionRows() {
 		relaxed := fuzzy.NewMatcher(false)
 		matches = searchProjectionMatchesWithin(projects, query, candidates, relaxed, predicates)
 		notes = m.scoreNoteSearchTier(query, relaxed, notesAdmitted)
-		m.searchCaseRelaxed = len(matches) > 0 || len(notes) > 0
+		m.search.setCaseRelaxed(len(matches) > 0 || len(notes) > 0)
 	}
 	m.sortSearchMatchesWithinTier(matches)
 
@@ -360,20 +353,21 @@ func (m *OutlinerModel) appendSearchTaskRows(matches []outlinerSearchMatch) {
 // every projection copies per row. The map is replaced on every rebuild, so it
 // can never describe a result set that is no longer on screen.
 func (m *OutlinerModel) appendSearchNoteRows(matches []outlinerSearchNoteMatch) {
-	m.searchNoteMatches = nil
+	m.search.clearNoteMatches()
 	if len(matches) == 0 {
 		return
 	}
-	m.searchNoteMatches = make(map[notes.NoteRowIdentity]outlinerSearchNoteMatch, len(matches))
+	payloads := make(map[notes.NoteRowIdentity]outlinerSearchNoteMatch, len(matches))
 	for _, note := range matches {
 		identity := note.row.Identity()
-		m.searchNoteMatches[identity] = note
+		payloads[identity] = note
 		m.rows = append(m.rows, outlinerRow{
 			IsNoteRow:   true,
 			NoteRow:     identity,
 			MatchSource: matchSourceNote,
 		})
 	}
+	m.search.setNoteMatches(payloads)
 }
 
 // sortSearchMatchesWithinTier reorders a resolved result set by the active sort

@@ -201,7 +201,7 @@ func TestSearchHistoryYieldsUpAndDownToAnOpenSuggestionPane(t *testing.T) {
 	outliner.SetSearchInputValue("$")
 	outliner.SetSearchInputCursor(1)
 	outliner.refreshSearchAutocomplete()
-	if !outliner.searchAutocomplete.active() {
+	if !outliner.search.autocomplete.active() {
 		t.Fatal("fixture produced no suggestion pane")
 	}
 
@@ -211,7 +211,7 @@ func TestSearchHistoryYieldsUpAndDownToAnOpenSuggestionPane(t *testing.T) {
 	}
 
 	pressSearchKey(outliner, tea.KeyEscape)
-	if outliner.searchAutocomplete.active() {
+	if outliner.search.autocomplete.active() {
 		t.Fatal("Esc left the suggestion pane open")
 	}
 	pressSearchKey(outliner, tea.KeyUp)

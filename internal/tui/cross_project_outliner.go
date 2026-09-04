@@ -10,7 +10,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -322,8 +321,7 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 // A memoized no-op rebuild returns before this point, which is what keeps the
 // capture alive until the rebuild the force flag guarantees actually runs.
 func (m *OutlinerModel) reseatNoteCursorAfterRebuild() {
-	identity := m.noteCursorReseat
-	m.noteCursorReseat = notes.NoteRowIdentity{}
+	identity := m.search.takeNoteCursor()
 	if identity.Filename == "" {
 		return
 	}

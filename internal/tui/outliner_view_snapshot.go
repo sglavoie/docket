@@ -117,8 +117,8 @@ func (m *OutlinerModel) captureOutlinerViewSnapshot() outlinerViewSnapshot {
 		parkedFocusProjectID: m.parkedFocusProjectID,
 		scopedProjectID:      m.scopedProjectID,
 		scopeStack:           slices.Clone(m.scopeStack),
-		searchProjection:     m.searchProjection,
-		rankedList:           m.rankedList,
+		searchProjection:     m.search.projection,
+		rankedList:           m.search.rankedList,
 		searchQuery:          m.SearchQuery(),
 		searchInputValue:     m.SearchInputValue(),
 		searchInputActive:    m.IsSearchMode(),
@@ -149,8 +149,7 @@ func (m *OutlinerModel) restoreOutlinerViewSnapshot(snapshot outlinerViewSnapsho
 	m.scopeStack = slices.Clone(snapshot.scopeStack)
 
 	m.setLensQuery(snapshot.lensQuery)
-	m.searchProjection = snapshot.searchProjection
-	m.rankedList = snapshot.rankedList
+	m.search.restore(snapshot.searchProjection, snapshot.rankedList)
 	m.resetSearchCompilation()
 	m.BaseSearchableView.SetSearchQuery(snapshot.searchQuery)
 	m.SetSearchInputValue(snapshot.searchInputValue)

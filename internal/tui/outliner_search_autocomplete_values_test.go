@@ -30,15 +30,15 @@ func TestSearchAutocompleteCardinalityFollowsTheGrammarDefinition(t *testing.T) 
 		// Take the first value the pane actually offers, so the settled prefix is a
 		// query the grammar parses back into this field.
 		typeSearchAC(outliner, definition.Trigger)
-		if !outliner.searchAutocomplete.active() {
+		if !outliner.search.autocomplete.active() {
 			t.Fatalf("%s offered nothing to settle with", definition.Field)
 		}
-		accepted := outliner.searchAutocomplete.ac.Items[0].Value
+		accepted := outliner.search.autocomplete.ac.Items[0].Value
 
 		typeSearchAC(outliner, definition.Trigger+accepted+" "+definition.Trigger)
 		switch definition.Cardinality {
 		case textgrammar.CardinalitySingleton:
-			if outliner.searchAutocomplete.active() {
+			if outliner.search.autocomplete.active() {
 				t.Errorf("%s is a singleton but offered %v after being accepted",
 					definition.Field, searchACValues(outliner))
 			}
@@ -92,14 +92,14 @@ func TestSearchAutocompleteEmptyCandidateSetOffersNothing(t *testing.T) {
 	outliner := searchACOutliner(primaryRowsProject("alpha", searchACTask("t1", nil, "")))
 
 	typeSearchAC(outliner, "#")
-	if outliner.searchAutocomplete.active() {
+	if outliner.search.autocomplete.active() {
 		t.Fatalf("tag pane opened over an empty vocabulary: %v", searchACValues(outliner))
 	}
-	if outliner.searchAutocomplete.ac.Mode != grammar.ACModeNone || outliner.searchAutocomplete.triggerText != "" {
+	if outliner.search.autocomplete.ac.Mode != grammar.ACModeNone || outliner.search.autocomplete.triggerText != "" {
 		t.Error("the retained mode and trigger outlived the list they described")
 	}
 	typeSearchAC(outliner, "##")
-	if outliner.searchAutocomplete.active() {
+	if outliner.search.autocomplete.active() {
 		t.Fatalf("context pane opened over an empty vocabulary: %v", searchACValues(outliner))
 	}
 }
@@ -264,7 +264,7 @@ func TestSearchAutocompleteAcceptsMidQueryWithoutLosingTrailingTokens(t *testing
 	query := "café #inf naïve $done"
 	caret := utf8.RuneCountInString("café #inf")
 	typeSearchACAt(outliner, query, caret)
-	if !outliner.searchAutocomplete.active() {
+	if !outliner.search.autocomplete.active() {
 		t.Fatalf("mid-query token opened no suggestions")
 	}
 	if got := searchACValues(outliner); !slices.Equal(got, []string{"infra"}) {
@@ -282,7 +282,7 @@ func TestSearchAutocompleteAcceptsMidQueryWithoutLosingTrailingTokens(t *testing
 	if got, want := outliner.SearchInputCursor(), utf8.RuneCountInString("café #infra "); got != want {
 		t.Errorf("caret = %d, want %d (after the inserted token and its space)", got, want)
 	}
-	if outliner.searchAutocomplete.active() {
+	if outliner.search.autocomplete.active() {
 		t.Error("the pane stayed open over the trailing space it just inserted")
 	}
 	if got, want := outliner.SearchQuery(), "café #infra  naïve $done"; got != want {

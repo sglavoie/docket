@@ -75,7 +75,7 @@ func TestSearchProjectionSeatsNoteRowsBelowEveryTaskMatch(t *testing.T) {
 		if row.NoteRow.Filename == "" {
 			t.Fatalf("note row %d carried no note identity", index)
 		}
-		if _, ok := outliner.searchNoteMatches[row.NoteRow]; !ok {
+		if _, ok := outliner.search.noteMatches[row.NoteRow]; !ok {
 			t.Fatalf("note row %d identity %+v is absent from the retained payloads",
 				index, row.NoteRow)
 		}
@@ -85,8 +85,8 @@ func TestSearchProjectionSeatsNoteRowsBelowEveryTaskMatch(t *testing.T) {
 	// index's own location-then-filename order, so the same query lists the same
 	// notes in the same order on every rebuild.
 	for i := 1; i < len(noteIndexes); i++ {
-		prev := outliner.searchNoteMatches[outliner.rows[noteIndexes[i-1]].NoteRow]
-		curr := outliner.searchNoteMatches[outliner.rows[noteIndexes[i]].NoteRow]
+		prev := outliner.search.noteMatches[outliner.rows[noteIndexes[i-1]].NoteRow]
+		curr := outliner.search.noteMatches[outliner.rows[noteIndexes[i]].NoteRow]
 		if prev.match.Score < curr.match.Score {
 			t.Fatalf("note row scores ran uphill: %d before %d",
 				prev.match.Score, curr.match.Score)
@@ -104,7 +104,7 @@ func noteRowWithOwner(t *testing.T, outliner *OutlinerModel) outlinerRow {
 	t.Helper()
 	for _, index := range noteRowIndexes(outliner) {
 		row := outliner.rows[index]
-		if outliner.searchNoteMatches[row.NoteRow].row.OwnerLabel != "" {
+		if outliner.search.noteMatches[row.NoteRow].row.OwnerLabel != "" {
 			return row
 		}
 	}
@@ -155,7 +155,7 @@ func TestNoteRowIsNavigableButNeverATaskRow(t *testing.T) {
 func TestNoteRowRendersWithoutTaskFurniture(t *testing.T) {
 	outliner := noteRowProjection(t)
 	row := noteRowWithOwner(t, outliner)
-	entry := outliner.searchNoteMatches[row.NoteRow]
+	entry := outliner.search.noteMatches[row.NoteRow]
 
 	const rowWidth = 80
 	line := outliner.renderOutlinerNoteRow(row, false, rowWidth, 0, nil)
@@ -189,12 +189,12 @@ func TestNoteRowRendersWithoutTaskFurniture(t *testing.T) {
 // holds — every matched note's body — from outliving the rows that named it.
 func TestClearSearchDropsTheRetainedNotePayloads(t *testing.T) {
 	outliner := noteRowProjection(t)
-	if len(outliner.searchNoteMatches) == 0 {
+	if len(outliner.search.noteMatches) == 0 {
 		t.Fatal("the projection retained no note payloads to drop")
 	}
 	outliner.ClearSearch()
-	if outliner.searchNoteMatches != nil {
-		t.Fatalf("cleared search retained %d note payloads", len(outliner.searchNoteMatches))
+	if outliner.search.noteMatches != nil {
+		t.Fatalf("cleared search retained %d note payloads", len(outliner.search.noteMatches))
 	}
 	if indexes := noteRowIndexes(outliner); len(indexes) != 0 {
 		t.Fatalf("cleared search left note rows at %v", indexes)

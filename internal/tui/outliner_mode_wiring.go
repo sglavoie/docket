@@ -77,7 +77,7 @@ func (m *OutlinerModel) buildCanonicalModeRows() {
 	}
 	// Only the flat list has a notes tier, so the payloads it retained die with
 	// it rather than outliving the rows that named them.
-	m.searchNoteMatches = nil
+	m.search.clearNoteMatches()
 
 	mode, ok := chrome.OutlinerModeByID(m.primaryMode)
 	if !ok {

@@ -101,7 +101,7 @@ func (m *OutlinerModel) recordSearchHistoryEntry(query string) {
 	if m == nil {
 		return
 	}
-	m.searchHistory.record(query)
+	m.search.history.record(query)
 }
 
 // recallSearchHistory claims Up and Down inside the slash input, and only there.
@@ -119,9 +119,9 @@ func (m *OutlinerModel) recallSearchHistory(key string) bool {
 	)
 	switch key {
 	case "up":
-		value, ok = m.searchHistory.older(m.SearchInputValue())
+		value, ok = m.search.history.older(m.SearchInputValue())
 	case "down":
-		value, ok = m.searchHistory.newer()
+		value, ok = m.search.history.newer()
 	default:
 		return false
 	}
@@ -142,12 +142,12 @@ func (m *OutlinerModel) applyRecalledSearchQuery(value string) {
 	m.SetSearchInputValue(value)
 	m.SetSearchInputCursor(utf8.RuneCountInString(value))
 	m.BaseSearchableView.SetSearchQuery(value)
-	m.searchAutocomplete.clear()
+	m.search.autocomplete.clear()
 	rebuildOutlinerPreservingCursor(m)
 }
 
 // hasSearchHistory reports whether anything is there to recall, which is what
 // decides if the search footer advertises the walk.
 func (m *OutlinerModel) hasSearchHistory() bool {
-	return m != nil && len(m.searchHistory.entries) > 0
+	return m != nil && len(m.search.history.entries) > 0
 }

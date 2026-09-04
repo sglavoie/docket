@@ -21,20 +21,20 @@ func TestSearchAutocompleteKeysClaimOnlyTheDropdownControls(t *testing.T) {
 	typeSearchAC(outliner, "#")
 
 	for _, key := range []string{"down", "ctrl+n"} {
-		before := outliner.searchAutocomplete.ac.Cursor
+		before := outliner.search.autocomplete.ac.Cursor
 		if !outliner.handleSearchAutocompleteKey(key) {
 			t.Fatalf("%s was not claimed by the open pane", key)
 		}
-		if got := outliner.searchAutocomplete.ac.Cursor; got != before+1 {
+		if got := outliner.search.autocomplete.ac.Cursor; got != before+1 {
 			t.Errorf("%s moved the cursor to %d, want %d", key, got, before+1)
 		}
 	}
 	for _, key := range []string{"up", "ctrl+p"} {
-		before := outliner.searchAutocomplete.ac.Cursor
+		before := outliner.search.autocomplete.ac.Cursor
 		if !outliner.handleSearchAutocompleteKey(key) {
 			t.Fatalf("%s was not claimed by the open pane", key)
 		}
-		if got := outliner.searchAutocomplete.ac.Cursor; got != before-1 {
+		if got := outliner.search.autocomplete.ac.Cursor; got != before-1 {
 			t.Errorf("%s moved the cursor to %d, want %d", key, got, before-1)
 		}
 	}
@@ -87,7 +87,7 @@ func TestSearchAutocompleteJKNavigateResultsWhilePaneOpen(t *testing.T) {
 	for _, key := range []string{"t", "a", "s", "k", "-", " ", "#"} {
 		outliner.handleKeyMsg(syntheticKeyStr(key))
 	}
-	if !outliner.searchAutocomplete.active() {
+	if !outliner.search.autocomplete.active() {
 		t.Fatal("the tag sigil opened no pane for j/k to navigate under")
 	}
 	if got, want := outliner.SearchInputValue(), "task- #"; got != want {
@@ -101,7 +101,7 @@ func TestSearchAutocompleteJKNavigateResultsWhilePaneOpen(t *testing.T) {
 	// into the dropdown would be visible as a suggestion move rather than hidden
 	// behind an already-clamped cursor.
 	outliner.handleKeyMsg(syntheticKeyStr("down"))
-	suggestionCursor := outliner.searchAutocomplete.ac.Cursor
+	suggestionCursor := outliner.search.autocomplete.ac.Cursor
 	if suggestionCursor != 1 {
 		t.Fatalf("suggestion cursor = %d, want 1 after one Down", suggestionCursor)
 	}
@@ -124,17 +124,17 @@ func TestSearchAutocompleteJKNavigateResultsWhilePaneOpen(t *testing.T) {
 	if got, want := outliner.SearchInputValue(), "task- #"; got != want {
 		t.Errorf("query after j/k = %q, want it untouched at %q", got, want)
 	}
-	if got := outliner.searchAutocomplete.ac.Cursor; got != suggestionCursor {
+	if got := outliner.search.autocomplete.ac.Cursor; got != suggestionCursor {
 		t.Errorf("j/k moved the suggestion cursor to %d, want it left at %d", got, suggestionCursor)
 	}
-	if !outliner.searchAutocomplete.active() {
+	if !outliner.search.autocomplete.active() {
 		t.Error("result navigation closed the pane it was supposed to navigate under")
 	}
 
 	// Closing the pane gives both letters back to the query, which is what keeps
 	// the claim honest: no character is permanently unreachable.
 	outliner.handleKeyMsg(syntheticKeyStr("esc"))
-	if outliner.searchAutocomplete.active() {
+	if outliner.search.autocomplete.active() {
 		t.Fatal("Esc left the pane open")
 	}
 	outliner.handleKeyMsg(syntheticKeyStr("j"))
@@ -150,7 +150,7 @@ func TestSearchAutocompleteEnterStillLandsOnTheResult(t *testing.T) {
 	task := searchACTask("t1", []string{"infra"}, "")
 	outliner := searchACOutliner(primaryRowsProject("alpha", task))
 	typeSearchAC(outliner, "#inf")
-	if !outliner.searchAutocomplete.active() {
+	if !outliner.search.autocomplete.active() {
 		t.Fatal("no pane open for Enter to bypass")
 	}
 
@@ -164,7 +164,7 @@ func TestSearchAutocompleteEnterStillLandsOnTheResult(t *testing.T) {
 	if got, want := outliner.SearchQuery(), "#inf"; got != want {
 		t.Errorf("applied query = %q, want %q", got, want)
 	}
-	if outliner.searchAutocomplete.active() {
+	if outliner.search.autocomplete.active() {
 		t.Error("landing on the results left the pane open")
 	}
 }
@@ -176,12 +176,12 @@ func TestSearchAutocompleteEscCascadesSuggestionsThenSearch(t *testing.T) {
 	task := searchACTask("t1", []string{"infra"}, "")
 	outliner := searchACOutliner(primaryRowsProject("alpha", task))
 	typeSearchAC(outliner, "#")
-	if !outliner.searchAutocomplete.active() {
+	if !outliner.search.autocomplete.active() {
 		t.Fatal("no pane to unwind")
 	}
 
 	outliner.handleKeyMsg(syntheticKeyStr("esc"))
-	if outliner.searchAutocomplete.active() {
+	if outliner.search.autocomplete.active() {
 		t.Fatal("the first Esc left the pane open")
 	}
 	if !outliner.IsSearchMode() {
@@ -205,22 +205,22 @@ func TestSearchAutocompleteClosesWhenTheActiveTokenStopsOffering(t *testing.T) {
 	outliner := searchACOutliner(primaryRowsProject("alpha", task))
 
 	typeSearchAC(outliner, "#in")
-	if !outliner.searchAutocomplete.active() {
+	if !outliner.search.autocomplete.active() {
 		t.Fatal("#in offered nothing")
 	}
 	typeSearchAC(outliner, "#zzz")
-	if outliner.searchAutocomplete.active() {
+	if outliner.search.autocomplete.active() {
 		t.Fatalf("#zzz kept the pane open: %v", searchACValues(outliner))
 	}
 	// Free text is not a token at all.
 	typeSearchAC(outliner, "plain text")
-	if outliner.searchAutocomplete.active() {
+	if outliner.search.autocomplete.active() {
 		t.Fatalf("free text opened a pane: %v", searchACValues(outliner))
 	}
 	// Leaving search closes it regardless of what was on screen.
 	typeSearchAC(outliner, "#")
 	outliner.ClearSearch()
-	if outliner.searchAutocomplete.active() {
+	if outliner.search.autocomplete.active() {
 		t.Error("clearing the search left the pane open")
 	}
 }

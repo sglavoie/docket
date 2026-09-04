@@ -26,7 +26,7 @@ type outlinerSearchNoteMatch struct {
 // setter rather than a constructor parameter: NewOutlinerModel builds the Hub
 // preview painter too, and that surface must keep the nil accessor.
 func (m *OutlinerModel) setNoteSearchIndex(accessor func() []notes.LocatedNoteRow) {
-	m.noteSearchIndex = accessor
+	m.search.setNoteIndex(accessor)
 }
 
 // noteSearchRowsInScope applies the Outliner's own project scope to the
@@ -36,10 +36,10 @@ func (m *OutlinerModel) setNoteSearchIndex(accessor func() []notes.LocatedNoteRo
 // Archived owners were already refused when the index was built, so there is
 // no archive test here.
 func (m *OutlinerModel) noteSearchRowsInScope() []notes.LocatedNoteRow {
-	if m == nil || m.noteSearchIndex == nil {
+	if m == nil || m.search.noteIndex == nil {
 		return nil
 	}
-	rows := m.noteSearchIndex()
+	rows := m.search.noteIndex()
 	scopeID := m.scopedProjectID
 	if m.project != nil {
 		scopeID = m.project.ID

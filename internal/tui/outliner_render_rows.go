@@ -387,7 +387,7 @@ func (m *OutlinerModel) renderOutlinerNoteRow(
 	rowWidth, rowIndex int,
 	colLayout *chrome.ColumnLayout,
 ) string {
-	entry := m.searchNoteMatches[row.NoteRow]
+	entry := m.search.noteMatches[row.NoteRow]
 	paint := m.cursorPaintFor(selected)
 	bg := paint.gutterBg()
 	gutter := paint.bar(lipgloss.NewStyle(), theme.RenderCursorPrefix())

@@ -377,7 +377,7 @@ func (m *OutlinerModel) beginLensQueryEdit() tea.Cmd {
 	m.lensQueryEditOrigin = m.lensQuery
 	// Suggestions describe the ordinary search grammar's candidate set and its
 	// projection, neither of which exists here.
-	m.searchAutocomplete.clear()
+	m.search.autocomplete.clear()
 	m.SetSearchInputValue(m.lensQuery)
 	m.SetSearchInputCursor(len([]rune(m.lensQuery)))
 	cmd := m.BaseSearchableView.ActivateSearch()
@@ -440,6 +440,6 @@ func (m *OutlinerModel) endLensQueryEdit() {
 	}
 	m.lensQueryEditing = false
 	m.lensQueryEditOrigin = ""
-	m.searchAutocomplete.clear()
+	m.search.autocomplete.clear()
 	m.DeactivateSearch()
 }
