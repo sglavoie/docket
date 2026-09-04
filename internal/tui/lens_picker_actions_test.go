@@ -215,8 +215,8 @@ func TestLensReplaceConfirmedReturnsToTheRefreshedPicker(t *testing.T) {
 	target := selectLensRow(t, model, "Waiting")
 	// Give the live view a facet the saved definition does not carry, so the
 	// replacement is observable.
-	model.crossOutliner.filter.Pinned = true
-	model.crossOutliner.adoptFilterCarriers()
+	model.crossOutliner.Filter.Pinned = true
+	model.crossOutliner.AdoptFilterCarriers()
 	pressLens(t, model, "space")
 	pressLens(t, model, "j")
 	pressLens(t, model, "enter")
@@ -270,7 +270,7 @@ func TestLensDeleteReturnsToTheNearestSurvivingRow(t *testing.T) {
 
 func TestLensDeleteOfTheActiveLensRestoresTheBaseBeneathThePicker(t *testing.T) {
 	model := lensOperationApp(t)
-	baseMode := model.crossOutliner.primaryMode
+	baseMode := model.crossOutliner.PrimaryMode
 	waiting := lensNamed(t, model, "Waiting")
 	if _, err := model.crossOutliner.ApplyNamedLens(waiting); err != nil {
 		t.Fatalf("apply lens: %v", err)
@@ -287,10 +287,10 @@ func TestLensDeleteOfTheActiveLensRestoresTheBaseBeneathThePicker(t *testing.T) 
 	if model.lensPicker == nil {
 		t.Fatal("deleting the active lens closed the picker")
 	}
-	if model.crossOutliner.hasActiveLens() {
+	if model.crossOutliner.HasActiveLens() {
 		t.Error("the deleted lens is still active")
 	}
-	if got := model.crossOutliner.primaryMode; got != baseMode {
+	if got := model.crossOutliner.PrimaryMode; got != baseMode {
 		t.Errorf("restored mode = %v, want the pre-lens %v", got, baseMode)
 	}
 	if got := lensPickerRowTitles(t, model); slices.Contains(got, "Waiting") {

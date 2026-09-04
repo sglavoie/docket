@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
 // The Ctrl+J/Ctrl+K edge moves are the single-press equivalent of repeating J/K
@@ -21,7 +22,7 @@ func TestHierarchicalReorderEdge(t *testing.T) {
 			"Alpha", "Bravo", "Charlie", "Delta")
 		ids := seededTaskIDs(tasks)
 		m, cross := newHierarchyEdgeApp(t, project)
-		if !cross.moveCursorToProjectTask(ids[1], project.ID) {
+		if !cross.MoveCursorToProjectTask(ids[1], project.ID) {
 			t.Fatal("cursor did not land on Bravo")
 		}
 
@@ -39,7 +40,7 @@ func TestHierarchicalReorderEdge(t *testing.T) {
 			"Alpha", "Bravo", "Charlie", "Delta")
 		ids := seededTaskIDs(tasks)
 		m, cross := newHierarchyEdgeApp(t, project)
-		if !cross.moveCursorToProjectTask(ids[2], project.ID) {
+		if !cross.MoveCursorToProjectTask(ids[2], project.ID) {
 			t.Fatal("cursor did not land on Charlie")
 		}
 
@@ -54,7 +55,7 @@ func TestHierarchicalReorderEdge(t *testing.T) {
 			"Alpha", "Bravo")
 		ids := seededTaskIDs(tasks)
 		m, cross := newHierarchyEdgeApp(t, project)
-		if !cross.moveCursorToProjectTask(ids[1], project.ID) {
+		if !cross.MoveCursorToProjectTask(ids[1], project.ID) {
 			t.Fatal("cursor did not land on Bravo")
 		}
 
@@ -72,14 +73,14 @@ func TestHierarchicalReorderEdge(t *testing.T) {
 		for _, index := range []int{0, 2, 3} {
 			tasks[index].Tags = []string{"keep"}
 		}
-		cross.filter.Tags = map[string]bool{"keep": true}
-		cross.adoptFilterCarriers()
-		cross.population.invalidate()
-		cross.crossProjectRebuildRows()
+		cross.Filter.Tags = map[string]bool{"keep": true}
+		cross.AdoptFilterCarriers()
+		cross.Population.Invalidate()
+		cross.CrossProjectRebuildRows()
 		if got := visibleTaskIDs(cross); len(got) != 3 {
 			t.Fatalf("filtered rows = %v, want 3 (hidden sibling pruned)", got)
 		}
-		if !cross.moveCursorToProjectTask(ids[0], project.ID) {
+		if !cross.MoveCursorToProjectTask(ids[0], project.ID) {
 			t.Fatal("cursor did not land on keep-one")
 		}
 
@@ -97,7 +98,7 @@ func TestHierarchicalReorderEdge(t *testing.T) {
 		beta, betaTasks := planningOrderProject(t, dir, "h-beta", "h-beta", "Beta One", "Beta Two")
 		alphaIDs, betaIDs := seededTaskIDs(alphaTasks), seededTaskIDs(betaTasks)
 		m, cross := newHierarchyEdgeApp(t, alpha, beta)
-		if !cross.moveCursorToProjectTask(alphaIDs[1], alpha.ID) {
+		if !cross.MoveCursorToProjectTask(alphaIDs[1], alpha.ID) {
 			t.Fatal("cursor did not land on Alpha Two")
 		}
 
@@ -113,10 +114,10 @@ func TestHierarchicalReorderEdge(t *testing.T) {
 			"Alpha", "Bravo", "Charlie")
 		ids := seededTaskIDs(tasks)
 		m, cross := newHierarchyEdgeApp(t, project)
-		if !cross.moveCursorToProjectTask(ids[0], project.ID) {
+		if !cross.MoveCursorToProjectTask(ids[0], project.ID) {
 			t.Fatal("cursor did not land on Alpha")
 		}
-		cross.toggleMultiSelectMode()
+		cross.ToggleMultiSelectMode()
 		if !cross.MultiSelectMode {
 			t.Fatal("visual selection did not open")
 		}
@@ -134,7 +135,7 @@ func TestHierarchicalReorderEdge(t *testing.T) {
 		m, cross, dataDir := newPlanningOrderApp(t, project)
 		cross.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 		enterCrossMode(cross, chrome.ModeBacklog)
-		if !cross.moveCursorToProjectTask(ids[0], project.ID) {
+		if !cross.MoveCursorToProjectTask(ids[0], project.ID) {
 			t.Fatal("cursor did not land on Alpha")
 		}
 		if !pressReorderCtrlKey(t, m, 'j') {
@@ -162,7 +163,7 @@ func TestPinnedReorderEdge(t *testing.T) {
 		m, cross, _ := newPlanningOrderApp(t, project)
 		cross.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 		enterCrossMode(cross, chrome.ModeAll)
-		if !cross.moveCursorToProjectTask(tasks["Alpha"].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks["Alpha"].ID, project.ID) {
 			t.Fatal("cursor did not land on Alpha")
 		}
 
@@ -182,7 +183,7 @@ func TestPinnedReorderEdge(t *testing.T) {
 		m, cross, _ := newPlanningOrderApp(t, project)
 		cross.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 		enterCrossMode(cross, chrome.ModeAll)
-		if !cross.moveCursorToProjectTask(tasks["Charlie"].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks["Charlie"].ID, project.ID) {
 			t.Fatal("cursor did not land on Charlie")
 		}
 
@@ -200,7 +201,7 @@ func TestPinnedReorderEdge(t *testing.T) {
 		m, cross, _ := newPlanningOrderApp(t, project)
 		cross.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 		enterCrossMode(cross, chrome.ModeAll)
-		if !cross.moveCursorToProjectTask(tasks["Bravo"].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks["Bravo"].ID, project.ID) {
 			t.Fatal("cursor did not land on Bravo")
 		}
 
@@ -221,7 +222,7 @@ func TestPinnedReorderEdge(t *testing.T) {
 		m, cross, _ := newPlanningOrderApp(t, alpha, beta)
 		cross.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 		enterCrossMode(cross, chrome.ModeAll)
-		if !cross.moveCursorToProjectTask(alphaTasks["Alpha Two"].ID, alpha.ID) {
+		if !cross.MoveCursorToProjectTask(alphaTasks["Alpha Two"].ID, alpha.ID) {
 			t.Fatal("cursor did not land on Alpha Two")
 		}
 
@@ -243,7 +244,7 @@ func TestPinnedReorderEdge(t *testing.T) {
 		m, cross, _ := newPlanningOrderApp(t, project)
 		cross.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 		enterCrossMode(cross, chrome.ModeAll)
-		if !cross.moveCursorToProjectTask(tasks["First Child"].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks["First Child"].ID, project.ID) {
 			t.Fatal("cursor did not land on First Child")
 		}
 
@@ -262,10 +263,10 @@ func TestPinnedReorderEdge(t *testing.T) {
 		m, cross, _ := newPlanningOrderApp(t, project)
 		cross.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 		enterCrossMode(cross, chrome.ModeAll)
-		if !cross.moveCursorToProjectTask(tasks["Alpha"].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks["Alpha"].ID, project.ID) {
 			t.Fatal("cursor did not land on Alpha")
 		}
-		cross.toggleMultiSelectMode()
+		cross.ToggleMultiSelectMode()
 
 		if pressReorderCtrlKey(t, m, 'j') {
 			t.Fatal("Ctrl+J reordered a pin under a visual selection")
@@ -286,7 +287,7 @@ func seededTaskIDs(tasks []*models.Task) []string {
 
 // newHierarchyEdgeApp builds the planning-order app wired for hierarchical
 // reorders and parks it in Backlog, the mode whose rows carry manual order.
-func newHierarchyEdgeApp(t *testing.T, projects ...*models.Project) (*AppModel, *OutlinerModel) {
+func newHierarchyEdgeApp(t *testing.T, projects ...*models.Project) (*AppModel, *outliner.OutlinerModel) {
 	t.Helper()
 	m, cross, _ := newPlanningOrderApp(t, projects...)
 	cross.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)

@@ -54,7 +54,7 @@ func TestFilterDueChordPickerAppliesEveryPublicFacet(t *testing.T) {
 			if !handled || statusCmd == nil {
 				t.Fatalf("due-date selection = handled %v cmd %T; want applied status", handled, statusCmd)
 			}
-			if got := app.crossOutliner.filter.DueDate; got != test.want {
+			if got := app.crossOutliner.Filter.DueDate; got != test.want {
 				t.Errorf("DueDate = %v, want %v", got, test.want)
 			}
 		})
@@ -127,7 +127,7 @@ func TestFilterStaleChordIsOneGeneratedHelpTerminal(t *testing.T) {
 
 func TestFilterStaleChordAndHelpAreUnavailableInRecent(t *testing.T) {
 	app := newFilterChordTestApp(t)
-	app.crossOutliner.selectOutlinerMode(chrome.ModeRecent)
+	app.crossOutliner.SelectOutlinerMode(chrome.ModeRecent)
 	ctx := app.operationCommandContext()
 
 	if _, _, resolution := app.operationRegistry.InputBindingForSequence(
@@ -154,7 +154,7 @@ func TestFilterStaleChordAndHelpAreUnavailableInRecent(t *testing.T) {
 	if handled, _ := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 's', Text: "s"}); !handled {
 		t.Fatal("s after f was not consumed by the Outliner grammar")
 	}
-	if app.crossOutliner.filter.Stale {
+	if app.crossOutliner.Filter.Stale {
 		t.Fatal("fs enabled the Stale facet in Recent")
 	}
 	if want := "fs is not a filter action"; app.statusMessage != want {
@@ -185,7 +185,7 @@ func TestRetiredFilterAndSortLetterPathsResolveToNoMatch(t *testing.T) {
 
 func TestFilterCompletionAgeChordSelectsTerminalLifecycleStates(t *testing.T) {
 	app := newFilterChordTestApp(t)
-	filter := &app.crossOutliner.filter.CommonFilterState
+	filter := &app.crossOutliner.Filter.CommonFilterState
 	states, err := models.NewWorkflowStateSet(models.StateWaiting)
 	if err != nil {
 		t.Fatal(err)
@@ -235,7 +235,7 @@ func TestFilterCompletionAgeChordSelectsTerminalLifecycleStates(t *testing.T) {
 func TestFilterOperationsApplyPickerValues(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	ctx := simplifiedOperationContext()
-	filter := &app.crossOutliner.filter.CommonFilterState
+	filter := &app.crossOutliner.Filter.CommonFilterState
 
 	states := app.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationFilterStates,

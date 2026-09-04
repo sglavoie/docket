@@ -185,8 +185,8 @@ func TestProjectPreviewTaskRowsListsAnOrphanExactlyOnce(t *testing.T) {
 		t.Fatalf("rows = %d, want one per task", len(rows))
 	}
 	for index, want := range []string{"Root", "Orphan"} {
-		if rows[index].task.Title != want {
-			t.Fatalf("row %d = %q, want %q", index, rows[index].task.Title, want)
+		if rows[index].Task.Title != want {
+			t.Fatalf("row %d = %q, want %q", index, rows[index].Task.Title, want)
 		}
 		if rows[index].ProjectID != "proj" {
 			t.Fatalf("row %d carries project %q, want %q", index, rows[index].ProjectID, "proj")

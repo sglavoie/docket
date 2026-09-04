@@ -27,16 +27,16 @@ func (m *AppModel) coreMoveCursor(key string) tea.Cmd {
 	handled, cmd := listsurface.HandleListNavigation(
 		key,
 		&out.Cursor,
-		len(out.rows),
-		out.contentHeight(),
+		len(out.Rows),
+		out.ContentHeight(),
 		&out.CursorFlash,
 	)
 	if !handled {
 		return nil
 	}
-	cmd = out.crossSkipNonNavigableRows(previous, cmd)
-	out.updateRangeSelection()
-	out.voidRelocationCaptureAfterNavigation(previous)
+	cmd = out.CrossSkipNonNavigableRows(previous, cmd)
+	out.UpdateRangeSelection()
+	out.VoidRelocationCaptureAfterNavigation(previous)
 	return cmd
 }
 
@@ -63,7 +63,7 @@ func (m *AppModel) coreScrollCursorTo(anchor viewScrollAnchor) operation.Operati
 	if !ok || out == nil {
 		return operation.OperationHandlerResult{}
 	}
-	start, end := out.visibleRowWindow()
+	start, end := out.VisibleRowWindow()
 	if start >= end {
 		return operation.OperationHandlerResult{}
 	}
@@ -76,7 +76,7 @@ func (m *AppModel) coreScrollCursorTo(anchor viewScrollAnchor) operation.Operati
 		desired -= height - 1
 	case viewScrollAnchorTop:
 	}
-	out.ViewScrollOffset = min(max(desired, 0), max(len(out.rows)-height, 0))
+	out.ViewScrollOffset = min(max(desired, 0), max(len(out.Rows)-height, 0))
 	return operation.OperationHandlerResult{}
 }
 
@@ -100,16 +100,16 @@ func (m *AppModel) coreGotoTaskProject(targets operation.ResolvedOperationTarget
 	if task == nil || project == nil {
 		return operation.OperationHandlerResult{}
 	}
-	origin := out.activeOutlinerModeEntry()
+	origin := out.ActiveOutlinerModeEntry()
 	previous := out.Cursor
 
-	out.pushProjectScope(project.ID)
-	out.selectOutlinerMode(chrome.ModeAll)
+	out.PushProjectScope(project.ID)
+	out.SelectOutlinerMode(chrome.ModeAll)
 	out.NavigateToTaskInProject(task, project)
 
 	message := "Project: " + project.Name
-	if _, found := out.rowIndexForTask(taskref.For(task, project)); !found && origin.ID != chrome.ModeAll {
-		out.selectOutlinerMode(origin.ID)
+	if _, found := out.RowIndexForTask(taskref.For(task, project)); !found && origin.ID != chrome.ModeAll {
+		out.SelectOutlinerMode(origin.ID)
 		out.NavigateToTaskInProject(task, project)
 		message += " — kept " + origin.Label + ", the task is not listed in All"
 	}
@@ -124,20 +124,20 @@ func (m *AppModel) coreGotoTaskProject(targets operation.ResolvedOperationTarget
 
 func (m *AppModel) coreReorder(delta int) tea.Cmd {
 	out, ok := m.outlinerPrimary()
-	if !ok || out == nil || !out.simplifiedReorderEligible() {
+	if !ok || out == nil || !out.SimplifiedReorderEligible() {
 		if out != nil {
-			out.orderingUnavailableStatus()
+			out.OrderingUnavailableStatus()
 		}
 		return nil
 	}
-	if out.isPinnedReorderRow() {
-		return out.pinnedReorderMove(delta)
+	if out.IsPinnedReorderRow() {
+		return out.PinnedReorderMove(delta)
 	}
-	if out.isPlanningReorderMode() {
-		_, cmd := out.planningReorderMove(delta)
+	if out.IsPlanningReorderMode() {
+		_, cmd := out.PlanningReorderMove(delta)
 		return cmd
 	}
-	return out.reorderTask(delta)
+	return out.ReorderTask(delta)
 }
 
 // coreReorderEdge is the single-press equivalent of repeating coreReorder until
@@ -145,20 +145,20 @@ func (m *AppModel) coreReorder(delta int) tea.Cmd {
 // the two families can never disagree about which durable order a row belongs to.
 func (m *AppModel) coreReorderEdge(delta int) tea.Cmd {
 	out, ok := m.outlinerPrimary()
-	if !ok || out == nil || !out.simplifiedReorderEligible() {
+	if !ok || out == nil || !out.SimplifiedReorderEligible() {
 		if out != nil {
-			out.orderingUnavailableStatus()
+			out.OrderingUnavailableStatus()
 		}
 		return nil
 	}
-	if out.isPinnedReorderRow() {
-		return out.pinnedReorderEdge(delta)
+	if out.IsPinnedReorderRow() {
+		return out.PinnedReorderEdge(delta)
 	}
-	if out.isPlanningReorderMode() {
-		_, cmd := out.planningReorderEdge(delta)
+	if out.IsPlanningReorderMode() {
+		_, cmd := out.PlanningReorderEdge(delta)
 		return cmd
 	}
-	return out.reorderTaskEdge(delta)
+	return out.ReorderTaskEdge(delta)
 }
 
 func (m *AppModel) coreUndo() tea.Cmd {
@@ -194,7 +194,7 @@ func (m *AppModel) coreResetToLaunchView() operation.OperationHandlerResult {
 	if !ok || out == nil {
 		return operation.OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
 	}
-	cleared, reload := out.resetToLaunchView()
+	cleared, reload := out.ResetToLaunchView()
 	if len(cleared) == 0 {
 		return operation.OperationHandlerResult{Status: "Already at the launch view"}
 	}
@@ -264,7 +264,7 @@ func (m *AppModel) coreOpenMenuBar() error {
 	if !ok || out == nil {
 		return fmt.Errorf("the menu bar belongs to the Outliner")
 	}
-	if !out.menuBarVisible() {
+	if !out.MenuBarVisible() {
 		if m.runtime == nil || m.runtime.Machine() == nil {
 			return fmt.Errorf("machine chrome state is unavailable")
 		}
@@ -274,7 +274,7 @@ func (m *AppModel) coreOpenMenuBar() error {
 			return fmt.Errorf("save menu bar visibility: %w", err)
 		}
 	}
-	out.openMenuBar()
+	out.OpenMenuBar()
 	return nil
 }
 

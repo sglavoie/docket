@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/testutil"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -80,7 +81,7 @@ func parkedWorkspace(t *testing.T) (runtime *config.RuntimeState, active, parked
 // a test substitutes its own task-bearing projects for the surviving IDs.
 func admittedWorkspace(runtime *config.RuntimeState, fixtures ...*models.Project) []*models.Project {
 	admitted := make(map[string]bool)
-	for _, project := range selectCrossScopeProjects(runtime, CrossScopeOpts{ActiveOnly: true}) {
+	for _, project := range outliner.SelectCrossScopeProjects(runtime, outliner.CrossScopeOpts{ActiveOnly: true}) {
 		admitted[project.ID] = true
 	}
 	loaded := make([]*models.Project, 0, len(fixtures))
@@ -92,10 +93,10 @@ func admittedWorkspace(runtime *config.RuntimeState, fixtures ...*models.Project
 	return loaded
 }
 
-func baseWorkspaceOutliner(runtime *config.RuntimeState, fixtures ...*models.Project) *OutlinerModel {
-	outliner := NewOutlinerModel(nil, nil, runtime)
-	outliner.population.projects = admittedWorkspace(runtime, fixtures...)
-	return outliner
+func baseWorkspaceOutliner(runtime *config.RuntimeState, fixtures ...*models.Project) *outliner.OutlinerModel {
+	outlinerView := outliner.NewOutlinerModel(nil, nil, runtime)
+	outlinerView.Population.Projects = admittedWorkspace(runtime, fixtures...)
+	return outlinerView
 }
 
 // TestParkedProjectLeavesEveryOutlinerMode also covers the Today and Next
@@ -103,12 +104,12 @@ func baseWorkspaceOutliner(runtime *config.RuntimeState, fixtures ...*models.Pro
 // which the projections must refuse to resolve rather than merely not order.
 func TestParkedProjectLeavesEveryOutlinerMode(t *testing.T) {
 	runtime, active, parked := parkedWorkspace(t)
-	outliner := baseWorkspaceOutliner(runtime, active, parked)
+	outlinerView := baseWorkspaceOutliner(runtime, active, parked)
 
 	for _, mode := range []chrome.OutlinerModeID{chrome.ModeAll, chrome.ModeInbox, chrome.ModeToday, chrome.ModeNext, chrome.ModeBacklog, chrome.ModeDue} {
 		t.Run(string(mode), func(t *testing.T) {
-			outliner.selectOutlinerMode(mode)
-			projectIDs := taskRowProjectIDs(outliner)
+			outlinerView.SelectOutlinerMode(mode)
+			projectIDs := taskRowProjectIDs(outlinerView)
 			if containsProject(projectIDs, parked.ID) {
 				t.Fatalf("%s projects the parked project: %v", mode, projectIDs)
 			}
@@ -131,11 +132,11 @@ func TestParkedProjectLeavesPinnedProjections(t *testing.T) {
 	runtime := testConfigWithProjects(active, parked)
 	parkProject(t, runtime, parked.ID)
 
-	outliner := baseWorkspaceOutliner(runtime, active, parked)
-	outliner.selectOutlinerMode(chrome.ModeAll)
-	for _, row := range outliner.rows {
-		if row.IsPinnedSection && row.isTaskRow() && row.ProjectID == parked.ID {
-			t.Fatalf("Pinned section projects the parked task %q", row.task.ID)
+	outlinerView := baseWorkspaceOutliner(runtime, active, parked)
+	outlinerView.SelectOutlinerMode(chrome.ModeAll)
+	for _, row := range outlinerView.Rows {
+		if row.IsPinnedSection && row.IsTaskRow() && row.ProjectID == parked.ID {
+			t.Fatalf("Pinned section projects the parked task %q", row.Task.ID)
 		}
 	}
 
@@ -163,14 +164,14 @@ func assertIDs(t *testing.T, got []string, want ...string) {
 
 func TestParkedProjectLeavesSearchProjection(t *testing.T) {
 	runtime, active, parked := parkedWorkspace(t)
-	outliner := baseWorkspaceOutliner(runtime, active, parked)
-	outliner.selectOutlinerMode(chrome.ModeAll)
+	outlinerView := baseWorkspaceOutliner(runtime, active, parked)
+	outlinerView.SelectOutlinerMode(chrome.ModeAll)
 
-	outliner.SetSearchQuery("shared")
-	if !outliner.hasSearchProjection() {
+	outlinerView.SetSearchQuery("shared")
+	if !outlinerView.HasSearchProjection() {
 		t.Fatal("search did not replace the ordinary projection")
 	}
-	projectIDs := taskRowProjectIDs(outliner)
+	projectIDs := taskRowProjectIDs(outlinerView)
 	if containsProject(projectIDs, parked.ID) {
 		t.Fatalf("search projects the parked project: %v", projectIDs)
 	}
@@ -223,7 +224,7 @@ func TestParkedProjectLeavesOperationScopeAndWorkspacePulse(t *testing.T) {
 	storage.DefaultRepository = repo
 	defer func() { storage.DefaultRepository = previous }()
 
-	pulse := computeWorkspacePulse(runtime, map[taskref.TaskIdentity]bool{
+	pulse := outliner.ComputeWorkspacePulse(runtime, map[taskref.TaskIdentity]bool{
 		taskref.For(parked.Tasks[0], parked): true,
 	}, time.Now())
 	if pulse.Inbox != 1 {
@@ -245,9 +246,9 @@ func TestParkedProjectPlanningReferencesDoNotHydrate(t *testing.T) {
 		runtime:      runtime,
 		persister:    persister,
 		projects:     map[string]*models.Project{active.ID: active, parked.ID: parked},
-		nextOrder:    []PlanningTask{},
+		nextOrder:    []outliner.PlanningTask{},
 		nextOrderIDs: make(map[taskref.TaskIdentity]bool),
-		today:        []PlanningTask{},
+		today:        []outliner.PlanningTask{},
 		todayIDs:     make(map[taskref.TaskIdentity]bool),
 	}
 
@@ -269,24 +270,24 @@ func TestParkedProjectPlanningReferencesDoNotHydrate(t *testing.T) {
 // selection whose project stays admitted is deliberately preserved.
 func TestReloadDropsSelectionsOutsideTheAdmittedWorkspace(t *testing.T) {
 	runtime, active, parked := parkedWorkspace(t)
-	outliner := NewOutlinerModel(nil, nil, runtime)
-	outliner.population.projects = []*models.Project{active, parked}
-	outliner.population.invalidate()
-	outliner.crossProjectRebuildRows()
+	outlinerView := outliner.NewOutlinerModel(nil, nil, runtime)
+	outlinerView.Population.Projects = []*models.Project{active, parked}
+	outlinerView.Population.Invalidate()
+	outlinerView.CrossProjectRebuildRows()
 
 	activeIdentity := taskref.For(active.Tasks[0], active)
 	parkedIdentity := taskref.For(parked.Tasks[0], parked)
-	outliner.ReplaceSelection([]taskref.TaskIdentity{activeIdentity, parkedIdentity})
+	outlinerView.ReplaceSelection([]taskref.TaskIdentity{activeIdentity, parkedIdentity})
 
-	outliner.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
-		projects:   admittedWorkspace(runtime, active, parked),
-		generation: outliner.population.loadGen,
+	outlinerView.HandleCrossProjectsLoaded(outliner.CrossProjectsLoadedMsg{
+		Projects:   admittedWorkspace(runtime, active, parked),
+		Generation: outlinerView.Population.LoadGen,
 	})
 
-	if outliner.IsTaskIdentitySelected(parkedIdentity) {
+	if outlinerView.IsTaskIdentitySelected(parkedIdentity) {
 		t.Fatal("a parked project's task stayed selected after the reload dropped it")
 	}
-	if !outliner.IsTaskIdentitySelected(activeIdentity) {
+	if !outlinerView.IsTaskIdentitySelected(activeIdentity) {
 		t.Fatal("the reload dropped a selection the base workspace still admits")
 	}
 }
@@ -295,19 +296,19 @@ func TestReloadDropsSelectionsOutsideTheAdmittedWorkspace(t *testing.T) {
 // invariant the parked prune must not widen into.
 func TestReloadKeepsSelectionsHiddenByFilters(t *testing.T) {
 	runtime, active, parked := parkedWorkspace(t)
-	outliner := baseWorkspaceOutliner(runtime, active, parked)
-	outliner.selectOutlinerMode(chrome.ModeAll)
+	outlinerView := baseWorkspaceOutliner(runtime, active, parked)
+	outlinerView.SelectOutlinerMode(chrome.ModeAll)
 
 	hidden := taskref.For(active.Tasks[0], active)
-	outliner.ReplaceSelection([]taskref.TaskIdentity{hidden})
-	outliner.selectOutlinerMode(chrome.ModeDue)
+	outlinerView.ReplaceSelection([]taskref.TaskIdentity{hidden})
+	outlinerView.SelectOutlinerMode(chrome.ModeDue)
 
-	outliner.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
-		projects:   admittedWorkspace(runtime, active, parked),
-		generation: outliner.population.loadGen,
+	outlinerView.HandleCrossProjectsLoaded(outliner.CrossProjectsLoadedMsg{
+		Projects:   admittedWorkspace(runtime, active, parked),
+		Generation: outlinerView.Population.LoadGen,
 	})
 
-	if !outliner.IsTaskIdentitySelected(hidden) {
+	if !outlinerView.IsTaskIdentitySelected(hidden) {
 		t.Fatal("a selection hidden by the active mode was dropped by the reload")
 	}
 }

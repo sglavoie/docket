@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -293,7 +294,7 @@ func TestTaskLineEditRequestQualifiesChildLocators(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseQuickEdit: %v", err)
 	}
-	req := taskLineEditRequest(identity, result)
+	req := outliner.TaskLineEditRequest(identity, result)
 	if len(req.Children) != 1 || req.Children[0].ProjectID != source.ID || req.Children[0].TaskID != sibling.ID {
 		t.Fatalf("same-project child locators = %+v", req.Children)
 	}
@@ -302,7 +303,7 @@ func TestTaskLineEditRequestQualifiesChildLocators(t *testing.T) {
 	if err != nil {
 		t.Fatalf("cross-project parseQuickEdit: %v", err)
 	}
-	req = taskLineEditRequest(identity, result)
+	req = outliner.TaskLineEditRequest(identity, result)
 	if req.DestinationProjectID != destination.ID {
 		t.Fatalf("destination project = %q", req.DestinationProjectID)
 	}
@@ -314,7 +315,7 @@ func TestTaskLineEditRequestQualifiesChildLocators(t *testing.T) {
 	if err != nil {
 		t.Fatalf("childless parseQuickEdit: %v", err)
 	}
-	if req = taskLineEditRequest(identity, result); req.Children != nil {
+	if req = outliner.TaskLineEditRequest(identity, result); req.Children != nil {
 		t.Fatalf("childless request children = %+v, want nil", req.Children)
 	}
 }

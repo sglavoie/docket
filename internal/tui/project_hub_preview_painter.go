@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 )
 
@@ -17,8 +18,8 @@ import (
 // pane's rows are the product's rows rather than a second row grammar that would
 // drift from them.
 type projectPreviewPainter struct {
-	rows    []outlinerRow
-	painter *OutlinerModel
+	rows    []outliner.OutlinerRow
+	painter *outliner.OutlinerModel
 }
 
 func (p *projectPreviewPainter) RowCount() int { return len(p.rows) }
@@ -32,7 +33,7 @@ func (p *projectPreviewPainter) RenderRow(index, width int) string {
 	// layout matches what the Outliner passes below its own alignment threshold,
 	// and the absolute row index keeps zebra striping anchored to the task rather
 	// than to the scroll position.
-	return p.painter.renderOutlinerTaskRow(p.rows[index], false, width, width, index, nil)
+	return p.painter.RenderOutlinerTaskRow(p.rows[index], false, width, width, index, nil)
 }
 
 // newProjectPreviewPainter is the Hub's NewPreviewTaskPainter. Building one costs
@@ -44,7 +45,7 @@ func newProjectPreviewPainter(
 ) projecthub.PreviewTaskPainter {
 	return &projectPreviewPainter{
 		rows:    projectPreviewTaskRows(project.ID, tasks),
-		painter: NewOutlinerModel(project, nil, runtime),
+		painter: outliner.NewOutlinerModel(project, nil, runtime),
 	}
 }
 
@@ -56,7 +57,7 @@ func newProjectPreviewPainter(
 // Roots are the tasks no other task claims as a child rather than the tasks
 // reporting no parent, so a task whose parent reference dangles is still listed
 // once instead of disappearing between the two readings.
-func projectPreviewTaskRows(projectID string, tasks []*models.Task) []outlinerRow {
+func projectPreviewTaskRows(projectID string, tasks []*models.Task) []outliner.OutlinerRow {
 	if len(tasks) == 0 {
 		return nil
 	}
@@ -78,7 +79,7 @@ func projectPreviewTaskRows(projectID string, tasks []*models.Task) []outlinerRo
 		}
 	}
 
-	rows := make([]outlinerRow, 0, len(tasks))
+	rows := make([]outliner.OutlinerRow, 0, len(tasks))
 	visited := make(map[string]bool, len(tasks))
 	var walk func(siblings []*models.Task, ancestorIsLast []bool)
 	walk = func(siblings []*models.Task, ancestorIsLast []bool) {
@@ -88,10 +89,10 @@ func projectPreviewTaskRows(projectID string, tasks []*models.Task) []outlinerRo
 			}
 			visited[task.ID] = true
 			isLast := index == len(siblings)-1
-			rows = append(rows, outlinerRow{
-				task:               task,
-				prefix:             buildTreePrefix(ancestorIsLast, isLast),
-				hasVisibleChildren: len(task.Children) > 0,
+			rows = append(rows, outliner.OutlinerRow{
+				Task:               task,
+				Prefix:             outliner.BuildTreePrefix(ancestorIsLast, isLast),
+				HasVisibleChildren: len(task.Children) > 0,
 				ProjectID:          projectID,
 			})
 			if len(task.Children) > 0 {

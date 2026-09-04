@@ -8,6 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -288,7 +289,7 @@ func newUITestApp() *AppModel {
 	app := newTestAppModel()
 	app.operationRegistry = operation.NewOperationRegistry()
 	app.operationExecutor = operation.NewOperationExecutor(app.operationRegistry)
-	o := NewOutlinerModel(nil, app.configManager, app.runtime)
+	o := outliner.NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner = o
 	app.views.Register(presentation.ViewCrossProjectOutliner, o)
 	setTestPresentationPath(app, presentation.ViewCrossProjectOutliner)

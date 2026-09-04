@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
@@ -33,11 +34,11 @@ func projectHubApp(t *testing.T) *AppModel {
 	beta.Path = t.TempDir()
 	setTestAppProjects(app, alpha, beta)
 	app.currentProject = nil
-	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
+	app.crossOutliner = outliner.NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner.SetSize(120, 40)
-	app.crossOutliner.population.projects = []*models.Project{alpha, beta}
-	app.crossOutliner.population.invalidate()
-	app.crossOutliner.rebuildRows()
+	app.crossOutliner.Population.Projects = []*models.Project{alpha, beta}
+	app.crossOutliner.Population.Invalidate()
+	app.crossOutliner.RebuildRows()
 	return app
 }
 
@@ -111,11 +112,11 @@ func projectHubDiskApp(t *testing.T) *AppModel {
 	beta := scopeTestProject("beta", "Beta", "1")
 	setTestAppProjects(app, alpha, beta)
 	app.currentProject = nil
-	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
+	app.crossOutliner = outliner.NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner.SetSize(120, 40)
-	app.crossOutliner.population.projects = []*models.Project{alpha, beta}
-	app.crossOutliner.population.invalidate()
-	app.crossOutliner.rebuildRows()
+	app.crossOutliner.Population.Projects = []*models.Project{alpha, beta}
+	app.crossOutliner.Population.Invalidate()
+	app.crossOutliner.RebuildRows()
 	return app
 }
 

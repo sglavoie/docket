@@ -13,17 +13,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 )
 
-// crossProjectTestEnv seeds projects on disk and wires the coordinators used
-// by cross-project Outliner mutation tests.
-type crossProjectTestEnv struct {
-	dataDir  string
-	ledger   *storage.WorkspaceLedger
-	svc      *app.Service
-	bulk     coordinator.BulkCoordinator
-	taskItem coordinator.TaskItemCoordinator
-	projects []*models.Project
-}
-
 func newCrossProjectTestEnv(t *testing.T, taskGroups ...[]*models.Task) *crossProjectTestEnv {
 	t.Helper()
 	dataDir := t.TempDir()
@@ -76,4 +65,15 @@ func (e *crossProjectTestEnv) undo(t *testing.T) {
 	if _, err := e.ledger.Undo(storage.GlobalScope()); err != nil {
 		t.Fatalf("ledger undo: %v", err)
 	}
+}
+
+// crossProjectTestEnv seeds projects on disk and wires the coordinators used
+// by cross-project Outliner mutation tests.
+type crossProjectTestEnv struct {
+	dataDir  string
+	ledger   *storage.WorkspaceLedger
+	svc      *app.Service
+	bulk     coordinator.BulkCoordinator
+	taskItem coordinator.TaskItemCoordinator
+	projects []*models.Project
 }

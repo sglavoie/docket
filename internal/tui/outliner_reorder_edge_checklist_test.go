@@ -11,37 +11,37 @@ func TestChecklistReorderEdge(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
-	outliner := driver.App().crossOutliner
+	outlinerView := driver.App().crossOutliner
 	focusChecklistOwner(t, driver, checklistFixtureFoldTitle)
-	if !outliner.expandAtCursor() {
+	if !outlinerView.ExpandAtCursor() {
 		t.Fatal("expandAtCursor did not expand the checklist")
 	}
-	outliner.Cursor++
-	if !outliner.rows[outliner.Cursor].IsChecklistItem {
+	outlinerView.Cursor++
+	if !outlinerView.Rows[outlinerView.Cursor].IsChecklistItem {
 		t.Fatal("the cursor is not on the first checklist row")
 	}
 
 	pressChecklistEdgeKey(t, driver, "ctrl+j")
-	assertOrder(t, "checklist after Ctrl+J", checklistRowTexts(outliner), []string{
+	assertOrder(t, "checklist after Ctrl+J", checklistRowTexts(outlinerView), []string{
 		checklistFixtureSecondItem, checklistFixtureThirdItem, checklistFixtureFirstItem,
 	})
-	if !outliner.rows[outliner.Cursor].IsChecklistItem ||
-		outliner.rows[outliner.Cursor].ChecklistIndex != 2 {
-		t.Fatalf("cursor did not follow the moved item: %+v", outliner.rows[outliner.Cursor])
+	if !outlinerView.Rows[outlinerView.Cursor].IsChecklistItem ||
+		outlinerView.Rows[outlinerView.Cursor].ChecklistIndex != 2 {
+		t.Fatalf("cursor did not follow the moved item: %+v", outlinerView.Rows[outlinerView.Cursor])
 	}
 
 	// The item is already last, so a second Ctrl+J changes nothing.
 	pressChecklistEdgeKey(t, driver, "ctrl+j")
-	assertOrder(t, "checklist after the no-op Ctrl+J", checklistRowTexts(outliner), []string{
+	assertOrder(t, "checklist after the no-op Ctrl+J", checklistRowTexts(outlinerView), []string{
 		checklistFixtureSecondItem, checklistFixtureThirdItem, checklistFixtureFirstItem,
 	})
 
 	pressChecklistEdgeKey(t, driver, "ctrl+k")
-	assertOrder(t, "checklist after Ctrl+K", checklistRowTexts(outliner), []string{
+	assertOrder(t, "checklist after Ctrl+K", checklistRowTexts(outlinerView), []string{
 		checklistFixtureFirstItem, checklistFixtureSecondItem, checklistFixtureThirdItem,
 	})
-	if outliner.rows[outliner.Cursor].ChecklistIndex != 0 {
-		t.Fatalf("cursor did not follow the item back to the top: %+v", outliner.rows[outliner.Cursor])
+	if outlinerView.Rows[outlinerView.Cursor].ChecklistIndex != 0 {
+		t.Fatalf("cursor did not follow the item back to the top: %+v", outlinerView.Rows[outlinerView.Cursor])
 	}
 }
 

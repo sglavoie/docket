@@ -22,13 +22,13 @@ func TestOutlineEditorRequestRefusesFixedOrderModes(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = workspace.Cleanup() })
 	app := driver.App()
-	outliner := app.activeOutliner()
-	if outliner == nil {
+	outlinerView := app.activeOutliner()
+	if outlinerView == nil {
 		t.Fatal("fixture app has no Outliner")
 	}
 
 	for _, mode := range chrome.OutlinerModeCatalog() {
-		outliner.primaryMode = mode.ID
+		outlinerView.PrimaryMode = mode.ID
 		project, label, refusal := app.outlineEditorRequest()
 		if mode.FixedOrder() {
 			if refusal != outlineEditorModeRefusal {
@@ -85,17 +85,17 @@ func TestOutlineEditorRequestReadsTheProjectUnderEveryRowKind(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = workspace.Cleanup() })
 	app := driver.App()
-	outliner := app.activeOutliner()
-	if outliner == nil {
+	outlinerView := app.activeOutliner()
+	if outlinerView == nil {
 		t.Fatal("fixture app has no Outliner")
 	}
 
 	header, task := -1, -1
-	for index, row := range outliner.rows {
+	for index, row := range outlinerView.Rows {
 		if row.IsProjectHeader && header < 0 {
 			header = index
 		}
-		if row.isTaskRow() && task < 0 {
+		if row.IsTaskRow() && task < 0 {
 			task = index
 		}
 	}
@@ -103,7 +103,7 @@ func TestOutlineEditorRequestReadsTheProjectUnderEveryRowKind(t *testing.T) {
 		t.Fatalf("fixture exposed header=%d task=%d", header, task)
 	}
 
-	outliner.Cursor = header
+	outlinerView.Cursor = header
 	fromHeader, _, refusal := app.outlineEditorRequest()
 	if refusal != "" {
 		t.Fatalf("a project header refused with %q", refusal)
@@ -111,17 +111,17 @@ func TestOutlineEditorRequestReadsTheProjectUnderEveryRowKind(t *testing.T) {
 	if fromHeader == nil {
 		t.Fatal("a project header named no project")
 	}
-	if fromHeader.ID != outliner.rows[header].ProjectID {
-		t.Errorf("header resolved %s, want %s", fromHeader.ID, outliner.rows[header].ProjectID)
+	if fromHeader.ID != outlinerView.Rows[header].ProjectID {
+		t.Errorf("header resolved %s, want %s", fromHeader.ID, outlinerView.Rows[header].ProjectID)
 	}
 
-	outliner.Cursor = task
+	outlinerView.Cursor = task
 	fromTask, _, refusal := app.outlineEditorRequest()
 	if refusal != "" {
 		t.Fatalf("a task row refused with %q", refusal)
 	}
-	if fromTask == nil || fromTask.ID != outliner.rows[task].ProjectID {
-		t.Errorf("task row resolved %v, want %s", fromTask, outliner.rows[task].ProjectID)
+	if fromTask == nil || fromTask.ID != outlinerView.Rows[task].ProjectID {
+		t.Errorf("task row resolved %v, want %s", fromTask, outlinerView.Rows[task].ProjectID)
 	}
 }
 

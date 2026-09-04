@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -60,7 +61,7 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 		m.saveOutlinerFilterState()
 		m.quitting = true
 		return true, tea.Quit
-	case crossProjectsLoadedMsg:
+	case outliner.CrossProjectsLoadedMsg:
 		// Cross-project loads belong to the sole authoritative Outliner, not to
 		// whichever child presentation happens to be visible when the async
 		// command completes. Routing the result globally guarantees loading state
@@ -70,12 +71,12 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 		if m.crossOutliner == nil {
 			return true, nil
 		}
-		adopted := msg.generation == m.crossOutliner.population.loadGen
+		adopted := msg.Generation == m.crossOutliner.Population.LoadGen
 		if adopted {
-			m.adoptCrossProjectSnapshot(msg.projects)
+			m.adoptCrossProjectSnapshot(msg.Projects)
 		}
-		wantedFocus := msg.focusProjectID
-		cmd := m.crossOutliner.handleCrossProjectsLoaded(msg)
+		wantedFocus := msg.FocusProjectID
+		cmd := m.crossOutliner.HandleCrossProjectsLoaded(msg)
 		// The launch lens is drained here rather than in the launch handler
 		// because a lens names a project scope and a set of project facets, and
 		// neither can be validated against a population that has not been adopted
@@ -99,21 +100,21 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 			return true, cmd
 		}
 		return true, tea.Batch(cmd, returnCmd, lensCmd, noteCmd)
-	case lensProjectsLoadedMsg:
+	case outliner.LensProjectsLoadedMsg:
 		// A lens application publishes a whole population or none of it, so the
 		// shell cache is adopted only once the lens actually went live.
 		if m.crossOutliner == nil {
 			return true, nil
 		}
-		cmd, published := m.crossOutliner.handleLensProjectsLoaded(msg)
+		cmd, published := m.crossOutliner.HandleLensProjectsLoaded(msg)
 		if published {
-			m.adoptCrossProjectSnapshot(m.crossOutliner.population.projects)
+			m.adoptCrossProjectSnapshot(m.crossOutliner.Population.Projects)
 		}
 		return true, cmd
 	case noteSearchIndexLoadedMsg:
 		m.handleNoteSearchIndexLoaded(msg)
 		return true, nil
-	case outlinerOriginRecordedMsg:
+	case outliner.OutlinerOriginRecordedMsg:
 		if msg.TransactionID == "" || msg.TransactionID != m.statusTransactionID || m.statusUndoCb == nil || !time.Now().Before(m.statusExpiresAt) {
 			return true, nil
 		}
@@ -168,8 +169,8 @@ func (m *AppModel) wakeDeferredRows(now time.Time) bool {
 		return false
 	}
 	out := m.crossOutliner
-	out.nextDeferWake = time.Time{}
-	out.population.invalidate()
+	out.NextDeferWake = time.Time{}
+	out.Population.Invalidate()
 	return true
 }
 
@@ -178,7 +179,7 @@ func (m *AppModel) wakeDeferredRows(now time.Time) bool {
 // clock it consumes.
 func (m *AppModel) deferWakeOwedAt(now time.Time) bool {
 	out := m.crossOutliner
-	return out != nil && !out.nextDeferWake.IsZero() && !now.Before(out.nextDeferWake)
+	return out != nil && !out.NextDeferWake.IsZero() && !now.Before(out.NextDeferWake)
 }
 
 // safeToRebuildForWake refuses while a new row would invalidate what the user
@@ -194,9 +195,9 @@ func (m *AppModel) safeToRebuildForWake() bool {
 		return false
 	}
 	return !m.Overlays().Active() &&
-		!out.quickEdit.IsActive() &&
+		!out.QuickEdit.IsActive() &&
 		!out.IsMultiSelectActive() &&
-		!out.showsRankedList()
+		!out.ShowsRankedList()
 }
 
 // handleTransactionResult routes a committed feature-coordinator mutation back
@@ -207,14 +208,14 @@ func (m *AppModel) safeToRebuildForWake() bool {
 func (m *AppModel) handleTransactionResult(msg coordinator.TransactionResultMsg) tea.Cmd {
 	m.reloadProjectByID(msg.Result.ProjectID)
 	if m.crossOutliner != nil {
-		m.crossOutliner.armOutlinerRelocation(outlinerRelocationFrom(msg.Relocation))
+		m.crossOutliner.ArmOutlinerRelocation(outliner.OutlinerRelocationFrom(msg.Relocation))
 	}
 	if msg.PlanningChanged && m.refreshRuntime() {
 		m.rebuildPlanningFromRuntime()
 	}
 	m.refreshLoadedTaskWorkspace()
 	if m.crossOutliner != nil {
-		m.crossOutliner.settleRelocationCursor()
+		m.crossOutliner.SettleRelocationCursor()
 	}
 	saveCmd := m.handleSaveComplete(status.SaveCompleteMsg{})
 	feedbackCmd := m.setRecoveryFeedback(msg.SuccessMessage(), msg.Result.TransactionID, false)
@@ -231,11 +232,11 @@ func (m *AppModel) handleBatchTransactionResult(msg coordinator.BatchTransaction
 		m.reloadProjectByID(projectID)
 	}
 	if m.crossOutliner != nil {
-		m.crossOutliner.armOutlinerRelocation(outlinerRelocationFrom(msg.Relocation))
+		m.crossOutliner.ArmOutlinerRelocation(outliner.OutlinerRelocationFrom(msg.Relocation))
 	}
 	m.refreshLoadedTaskWorkspace()
 	if m.crossOutliner != nil {
-		m.crossOutliner.settleRelocationCursor()
+		m.crossOutliner.SettleRelocationCursor()
 	}
 	// Clear multiselect state only now that the batch has committed, so a rejected
 	// batch (TransactionErrorMsg, which never reaches this handler) leaves the
@@ -262,7 +263,7 @@ func (m *AppModel) handleBatchTransactionResult(msg coordinator.BatchTransaction
 
 func (m *AppModel) refreshLoadedTaskWorkspace() {
 	if m.crossOutliner != nil {
-		rebuildOutlinerPreservingCursor(m.crossOutliner)
+		outliner.RebuildOutlinerPreservingCursor(m.crossOutliner)
 	}
 }
 
@@ -346,7 +347,7 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState, reloadCrossProject 
 
 func (m *AppModel) refreshWorkspacePulseAt(now time.Time) {
 	cachedActivityIsCurrent := m.completionActivity.IsCurrentLocalDay(now)
-	m.workspacePulse = computeWorkspacePulse(m.runtime, m.todayIDs, now)
+	m.workspacePulse = outliner.ComputeWorkspacePulse(m.runtime, m.todayIDs, now)
 	activity, err := m.features.Activity.CompletionActivity()
 	if err != nil {
 		logging.Warn("refresh completion activity: %v", err)

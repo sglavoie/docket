@@ -7,12 +7,13 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestCollapseOrMoveToParentReachesTheRowlessFocusRoot(t *testing.T) {
-	newFixture := func() (*OutlinerModel, *models.Project, *models.Task) {
+	newFixture := func() (*outliner.OutlinerModel, *models.Project, *models.Task) {
 		root := primaryRowsTask("root", models.StateBacklog)
 		child := primaryRowsTask("child", models.StateBacklog)
 		child.ParentID = &root.ID
@@ -65,25 +66,25 @@ func TestCollapseOrMoveToParentReachesTheRowlessFocusRoot(t *testing.T) {
 				return taskref.TaskIdentity{ProjectID: project.ID, TaskID: taskID}
 			}
 			for _, taskID := range test.seedFocus {
-				if !out.moveCursorToIdentity(identity(taskID)) || !out.focusSubtreeAtCursor() {
+				if !out.MoveCursorToIdentity(identity(taskID)) || !out.FocusSubtreeAtCursor() {
 					t.Fatalf("could not seed Focus on %q", taskID)
 				}
 			}
 			if test.promoteTag {
 				grandchild.Tags = []string{"promote"}
-				out.filter.Tags = map[string]bool{"promote": true}
-				out.adoptFilterCarriers()
-				out.rebuildRows()
+				out.Filter.Tags = map[string]bool{"promote": true}
+				out.AdoptFilterCarriers()
+				out.RebuildRows()
 			}
-			if !out.moveCursorToIdentity(identity("grandchild")) {
+			if !out.MoveCursorToIdentity(identity("grandchild")) {
 				t.Fatal("grandchild row is not listed")
 			}
 
-			if got := out.collapseOrMoveToParent(); got != test.wantMoved {
+			if got := out.CollapseOrMoveToParent(); got != test.wantMoved {
 				t.Fatalf("collapseOrMoveToParent() = %t, want %t", got, test.wantMoved)
 			}
-			stack := make([]string, 0, len(out.focus.crossStack))
-			for _, frame := range out.focus.crossStack {
+			stack := make([]string, 0, len(out.Focus.CrossStack))
+			for _, frame := range out.Focus.CrossStack {
 				stack = append(stack, frame.TaskID)
 			}
 			if !slices.Equal(stack, test.wantStack) {
@@ -100,11 +101,11 @@ func TestFocusParentRefusesATaskWithoutAParent(t *testing.T) {
 	model := typedTestApp(t)
 	setTestPresentationPath(model, presentation.ViewCrossProjectOutliner)
 	out := model.crossOutliner
-	out.population.invalidate()
-	out.crossProjectRebuildRows()
+	out.Population.Invalidate()
+	out.CrossProjectRebuildRows()
 	rooted := false
-	for index, row := range out.rows {
-		if row.isTaskRow() && row.task != nil && row.task.ParentID == nil {
+	for index, row := range out.Rows {
+		if row.IsTaskRow() && row.Task != nil && row.Task.ParentID == nil {
 			out.Cursor = index
 			rooted = true
 			break
@@ -121,8 +122,8 @@ func TestFocusParentRefusesATaskWithoutAParent(t *testing.T) {
 	if result.Err != nil || result.Status != "No parent to focus" {
 		t.Fatalf("root task Focus Parent = status %q err %v", result.Status, result.Err)
 	}
-	if len(out.focus.crossStack) != 0 {
-		t.Fatalf("refused Focus Parent pushed frames: %+v", out.focus.crossStack)
+	if len(out.Focus.CrossStack) != 0 {
+		t.Fatalf("refused Focus Parent pushed frames: %+v", out.Focus.CrossStack)
 	}
 }
 
@@ -130,15 +131,15 @@ func TestFocusLeafFeedbackAndSearchResultJump(t *testing.T) {
 	model := typedTestApp(t)
 	setTestPresentationPath(model, presentation.ViewCrossProjectOutliner)
 	out := model.crossOutliner
-	out.population.invalidate()
-	out.crossProjectRebuildRows()
-	for index, row := range out.rows {
-		if row.isTaskRow() && row.task != nil && len(row.task.Children) == 0 {
+	out.Population.Invalidate()
+	out.CrossProjectRebuildRows()
+	for index, row := range out.Rows {
+		if row.IsTaskRow() && row.Task != nil && len(row.Task.Children) == 0 {
 			out.Cursor = index
 			break
 		}
 	}
-	leafTitle := out.rows[out.Cursor].task.Title
+	leafTitle := out.Rows[out.Cursor].Task.Title
 
 	result := model.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:      operation.OperationCoreFocusSubtree,
@@ -147,8 +148,8 @@ func TestFocusLeafFeedbackAndSearchResultJump(t *testing.T) {
 	if result.Err != nil || result.Status != "No children to focus" {
 		t.Fatalf("leaf Focus result = status %q err %v", result.Status, result.Err)
 	}
-	if len(out.focus.crossStack) != 0 {
-		t.Fatalf("leaf Focus pushed frames: %+v", out.focus.crossStack)
+	if len(out.Focus.CrossStack) != 0 {
+		t.Fatalf("leaf Focus pushed frames: %+v", out.Focus.CrossStack)
 	}
 
 	t.Run("a leaf result jumps without focusing", func(t *testing.T) {
@@ -160,14 +161,14 @@ func TestFocusLeafFeedbackAndSearchResultJump(t *testing.T) {
 		if result.Err != nil || result.Status != "No children to focus" {
 			t.Fatalf("search-projected leaf Enter = status %q err %v", result.Status, result.Err)
 		}
-		if out.hasSearchProjection() {
+		if out.HasSearchProjection() {
 			t.Fatal("Enter kept the temporary search projection")
 		}
 		if got := out.CurrentTaskIdentity(); got != identity {
 			t.Fatalf("cursor = %+v, want the result %+v", got, identity)
 		}
-		if len(out.focus.crossStack) != 0 {
-			t.Fatalf("a leaf result pushed frames: %+v", out.focus.crossStack)
+		if len(out.Focus.CrossStack) != 0 {
+			t.Fatalf("a leaf result pushed frames: %+v", out.Focus.CrossStack)
 		}
 	})
 
@@ -180,11 +181,11 @@ func TestFocusLeafFeedbackAndSearchResultJump(t *testing.T) {
 		if result.Err != nil || result.Status != "" {
 			t.Fatalf("search-projected Enter = status %q err %v", result.Status, result.Err)
 		}
-		if out.hasSearchProjection() {
+		if out.HasSearchProjection() {
 			t.Fatal("Enter kept the temporary search projection")
 		}
-		if len(out.focus.crossStack) != 1 || out.focus.crossStack[0].TaskID != identity.TaskID {
-			t.Fatalf("focus stack = %+v, want one frame rooted at %+v", out.focus.crossStack, identity)
+		if len(out.Focus.CrossStack) != 1 || out.Focus.CrossStack[0].TaskID != identity.TaskID {
+			t.Fatalf("focus stack = %+v, want one frame rooted at %+v", out.Focus.CrossStack, identity)
 		}
 	})
 }
@@ -193,11 +194,11 @@ func TestFocusParentFromSearchResultJumpsToTheParentFrame(t *testing.T) {
 	model := typedTestApp(t)
 	setTestPresentationPath(model, presentation.ViewCrossProjectOutliner)
 	out := model.crossOutliner
-	out.population.invalidate()
-	out.crossProjectRebuildRows()
+	out.Population.Invalidate()
+	out.CrossProjectRebuildRows()
 
 	identity := searchProjectionCursorOnTitle(t, out, "Create login form")
-	task, _ := out.taskAndProjectForIdentity(identity)
+	task, _ := out.TaskAndProjectForIdentity(identity)
 	if task == nil || task.ParentID == nil {
 		t.Fatalf("fixture task %+v has no parent", identity)
 	}
@@ -210,11 +211,11 @@ func TestFocusParentFromSearchResultJumpsToTheParentFrame(t *testing.T) {
 	if result.Err != nil || result.Status != "" {
 		t.Fatalf("search-projected Shift+Enter = status %q err %v", result.Status, result.Err)
 	}
-	if out.hasSearchProjection() {
+	if out.HasSearchProjection() {
 		t.Fatal("Shift+Enter kept the temporary search projection")
 	}
-	if len(out.focus.crossStack) != 1 || out.focus.crossStack[0].TaskID != parentID {
-		t.Fatalf("focus stack = %+v, want one frame rooted at %q", out.focus.crossStack, parentID)
+	if len(out.Focus.CrossStack) != 1 || out.Focus.CrossStack[0].TaskID != parentID {
+		t.Fatalf("focus stack = %+v, want one frame rooted at %q", out.Focus.CrossStack, parentID)
 	}
 	if got := out.CurrentTaskIdentity(); got != identity {
 		t.Fatalf("cursor = %+v, want the result %+v", got, identity)
@@ -225,9 +226,9 @@ func TestFocusFromSearchForcesAllWhenTheRestoredModeHidesTheResult(t *testing.T)
 	model := typedTestApp(t)
 	setTestPresentationPath(model, presentation.ViewCrossProjectOutliner)
 	out := model.crossOutliner
-	out.population.invalidate()
-	out.crossProjectRebuildRows()
-	out.selectOutlinerMode(chrome.ModeToday)
+	out.Population.Invalidate()
+	out.CrossProjectRebuildRows()
+	out.SelectOutlinerMode(chrome.ModeToday)
 
 	identity := searchProjectionCursorOnTitle(t, out, "User Authentication")
 	result := model.operationExecutor.Execute(operation.OperationExecutionRequest{
@@ -237,10 +238,10 @@ func TestFocusFromSearchForcesAllWhenTheRestoredModeHidesTheResult(t *testing.T)
 	if result.Err != nil || result.Status != "" {
 		t.Fatalf("search-projected Enter = status %q err %v", result.Status, result.Err)
 	}
-	if out.primaryMode != chrome.ModeAll {
-		t.Fatalf("mode = %s, want All forced by a result Today cannot list", out.primaryMode)
+	if out.PrimaryMode != chrome.ModeAll {
+		t.Fatalf("mode = %s, want All forced by a result Today cannot list", out.PrimaryMode)
 	}
-	if len(out.focus.crossStack) != 1 || out.focus.crossStack[0].TaskID != identity.TaskID {
-		t.Fatalf("focus stack = %+v, want one frame rooted at %+v", out.focus.crossStack, identity)
+	if len(out.Focus.CrossStack) != 1 || out.Focus.CrossStack[0].TaskID != identity.TaskID {
+		t.Fatalf("focus stack = %+v, want one frame rooted at %+v", out.Focus.CrossStack, identity)
 	}
 }

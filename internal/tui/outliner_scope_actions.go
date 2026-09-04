@@ -24,16 +24,16 @@ func (m *AppModel) applyProjectScope(msg ApplyProjectScopeMsg) (bool, tea.Cmd) {
 		// on, because the scope had already fixed the population. Leaving the scope
 		// is when they decide it, so the exit rides that load instead of dropping
 		// the scope onto the population it replaced.
-		activation, deferred := m.crossOutliner.beginLensScopeExit()
+		activation, deferred := m.crossOutliner.BeginLensScopeExit()
 		if !deferred {
-			m.crossOutliner.clearProjectScope()
+			m.crossOutliner.ClearProjectScope()
 		}
 		if returnToOutliner {
 			return true, tea.Batch(activation, m.returnToOutlinerAfterProjectScope())
 		}
 		return true, activation
 	}
-	if !m.crossOutliner.projectIsLoaded(msg.ProjectID) {
+	if !m.crossOutliner.ProjectIsLoaded(msg.ProjectID) {
 		// A parked project keeps its tasks on disk but contributes nothing to the
 		// base workspace, so opening it is an explicit lazy load rather than an
 		// error. The scope is pushed by the load result, not here.
@@ -43,7 +43,7 @@ func (m *AppModel) applyProjectScope(msg ApplyProjectScopeMsg) (bool, tea.Cmd) {
 		m.setInfoStatus("That project isn't loaded — restore it before scoping")
 		return true, nil
 	}
-	m.crossOutliner.pushProjectScope(msg.ProjectID)
+	m.crossOutliner.PushProjectScope(msg.ProjectID)
 	if returnToOutliner {
 		return true, m.returnToOutlinerAfterProjectScope()
 	}
@@ -67,7 +67,7 @@ func (m *AppModel) startParkedProjectFocus(projectID string) (tea.Cmd, bool) {
 		// load, not a parked project. Leave the existing guidance in place.
 		return nil, false
 	}
-	return m.crossOutliner.beginParkedProjectFocus(projectID), true
+	return m.crossOutliner.BeginParkedProjectFocus(projectID), true
 }
 
 // finishParkedProjectFocus closes the surface that requested a parked focus once
@@ -77,7 +77,7 @@ func (m *AppModel) finishParkedProjectFocus(focusProjectID string) tea.Cmd {
 	if focusProjectID == "" || m.crossOutliner == nil {
 		return nil
 	}
-	if m.crossOutliner.scope.projectID != focusProjectID {
+	if m.crossOutliner.Scope.ProjectID != focusProjectID {
 		return nil
 	}
 	if m.currentView() != presentation.ViewProjectHub {

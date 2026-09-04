@@ -15,6 +15,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -26,7 +27,7 @@ func (m *AppModel) handleOpenOutlineEditor(msg OpenOutlineEditorMsg) tea.Cmd {
 	}
 	modeLabel := ""
 	if out := m.activeOutliner(); out != nil {
-		if mode, ok := chrome.OutlinerModeByID(out.primaryMode); ok {
+		if mode, ok := chrome.OutlinerModeByID(out.PrimaryMode); ok {
 			modeLabel = mode.Label
 		}
 	}
@@ -77,7 +78,7 @@ func (m *AppModel) handleOutlineEdited(msg OutlineEditedMsg) tea.Cmd {
 
 	lines, lineErrors := grammar.ParseOutlineBuffer(msg.Buffer, msg.Project, m.outlineDependencyProjects(msg.Project))
 	if len(lineErrors) > 0 {
-		m.showView(presentation.ViewOutlineErrors, NewOutlineErrorsViewModel(msg.Project.Name, msg.Path, lineErrors))
+		m.showView(presentation.ViewOutlineErrors, outliner.NewOutlineErrorsViewModel(msg.Project.Name, msg.Path, lineErrors))
 		return nil
 	}
 
@@ -94,7 +95,7 @@ func (m *AppModel) handleOutlineEdited(msg OutlineEditedMsg) tea.Cmd {
 	// all; over a scope that held none it deleted nothing, so it is the truncation
 	// accident the parser used to assume.
 	if len(lines) == 0 && len(pending.deletions) == 0 {
-		m.showView(presentation.ViewOutlineErrors, NewOutlineErrorsViewModel(msg.Project.Name, msg.Path, []grammar.LineError{{Line: 1, Message: "the buffer holds no tasks"}}))
+		m.showView(presentation.ViewOutlineErrors, outliner.NewOutlineErrorsViewModel(msg.Project.Name, msg.Path, []grammar.LineError{{Line: 1, Message: "the buffer holds no tasks"}}))
 		return nil
 	}
 	if len(pending.deletions) == 0 {
@@ -145,7 +146,7 @@ func (m *AppModel) applyOutlineBuffer(pending outlineApplyPending) tea.Cmd {
 		return status.DefaultStatusTimeout()
 	}
 	if err != nil {
-		m.showView(presentation.ViewOutlineErrors, NewOutlineErrorsViewModel(pending.project.Name, pending.path, []grammar.LineError{outlineApplyError(err)}))
+		m.showView(presentation.ViewOutlineErrors, outliner.NewOutlineErrorsViewModel(pending.project.Name, pending.path, []grammar.LineError{outlineApplyError(err)}))
 		return nil
 	}
 

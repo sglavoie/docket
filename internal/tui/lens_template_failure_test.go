@@ -69,8 +69,8 @@ func TestAnAddedTemplateIsAnOrdinaryRecordAcrossRenameReplaceAndDelete(t *testin
 	// Replace overwrites the definition under the same ID with whatever the view
 	// currently is, which is the furthest an added record can travel from its
 	// template and still be it.
-	out.selectOutlinerMode(chrome.ModeInbox)
-	out.treeSort = query.SortState{Field: query.SortByTitle, Ascending: true}
+	out.SelectOutlinerMode(chrome.ModeInbox)
+	out.TreeSort = query.SortState{Field: query.SortByTitle, Ascending: true}
 	if result := executeLens(
 		model, lens.OperationLensReplace, operation.LensEntity(template.ID), "", true,
 	); result.Err != nil {
@@ -118,7 +118,7 @@ func TestAnAddedTemplateIsAnOrdinaryRecordAcrossRenameReplaceAndDelete(t *testin
 func lensPickerAppInMode(t *testing.T, mode chrome.OutlinerModeID) *AppModel {
 	t.Helper()
 	model := lensOperationApp(t)
-	model.crossOutliner.selectOutlinerMode(mode)
+	model.crossOutliner.SelectOutlinerMode(mode)
 	if cmd := model.openNamedLensPicker(); cmd != nil {
 		drainLensPickerCmd(t, model, cmd)
 	}
@@ -204,14 +204,14 @@ func TestAddTemplateFailuresRetainThePickerAndChangeNothing(t *testing.T) {
 				t.Errorf("durable list = %v, want the untouched %v", got, before)
 			}
 			if out := model.crossOutliner; out != nil {
-				if out.hasActiveLens() {
+				if out.HasActiveLens() {
 					t.Error("a refused add applied a lens")
 				}
-				if out.lens.pending != nil {
+				if out.Lens.Pending != nil {
 					t.Error("a refused add left a population load armed")
 				}
-				if out.primaryMode != chrome.ModeInbox {
-					t.Errorf("current view = %v, want the untouched %v", out.primaryMode, chrome.ModeInbox)
+				if out.PrimaryMode != chrome.ModeInbox {
+					t.Errorf("current view = %v, want the untouched %v", out.PrimaryMode, chrome.ModeInbox)
 				}
 			}
 
@@ -267,7 +267,7 @@ func TestAddTemplateDiskCommitFailureRetainsThePicker(t *testing.T) {
 	if before.NamedLensByID(template.ID) != nil {
 		t.Error("a failed commit added the template to the cached snapshot")
 	}
-	if out := model.crossOutliner; out.hasActiveLens() || out.primaryMode != chrome.ModeInbox {
+	if out := model.crossOutliner; out.HasActiveLens() || out.PrimaryMode != chrome.ModeInbox {
 		t.Error("a failed commit applied the template anyway")
 	}
 }

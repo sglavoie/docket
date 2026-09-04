@@ -40,11 +40,11 @@ func (m *AppModel) outlineEditorRequest() (*models.Project, string, string) {
 	if out == nil {
 		return nil, "", ""
 	}
-	mode, ok := chrome.OutlinerModeByID(out.primaryMode)
+	mode, ok := chrome.OutlinerModeByID(out.PrimaryMode)
 	if !ok || mode.FixedOrder() {
 		return nil, "", outlineEditorModeRefusal
 	}
-	return out.cursorProject(), mode.Label, ""
+	return out.CursorProject(), mode.Label, ""
 }
 
 // dumpOutlineBuffer renders a project's complete task tree and names every task

@@ -16,7 +16,7 @@ func TestPlanningReorderEdge(t *testing.T) {
 			locatorOf(project, tasks[2]), locatorOf(project, tasks[3]),
 		)
 		enterCrossMode(cross, chrome.ModeNext)
-		if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks[0].ID, project.ID) {
 			t.Fatal("cursor did not land on Alpha")
 		}
 
@@ -37,7 +37,7 @@ func TestPlanningReorderEdge(t *testing.T) {
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]), locatorOf(project, tasks[2]),
 		)
 		enterCrossMode(cross, chrome.ModeToday)
-		if !cross.moveCursorToProjectTask(tasks[2].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks[2].ID, project.ID) {
 			t.Fatal("cursor did not land on Charlie")
 		}
 
@@ -59,13 +59,13 @@ func TestPlanningReorderEdge(t *testing.T) {
 		for _, index := range []int{0, 2, 3} {
 			tasks[index].Tags = []string{"keep"}
 		}
-		cross.filter.Tags = map[string]bool{"keep": true}
-		cross.adoptFilterCarriers()
+		cross.Filter.Tags = map[string]bool{"keep": true}
+		cross.AdoptFilterCarriers()
 		enterCrossMode(cross, chrome.ModeNext)
 		if got := visibleTaskIDs(cross); len(got) != 3 {
 			t.Fatalf("filtered Next rows = %v, want 3", got)
 		}
-		if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks[0].ID, project.ID) {
 			t.Fatal("cursor did not land on keep-one")
 		}
 
@@ -85,10 +85,10 @@ func TestPlanningReorderEdge(t *testing.T) {
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]), locatorOf(project, tasks[2]),
 		)
 		tasks[0].Tags = []string{"keep"}
-		cross.filter.Tags = map[string]bool{"keep": true}
-		cross.adoptFilterCarriers()
+		cross.Filter.Tags = map[string]bool{"keep": true}
+		cross.AdoptFilterCarriers()
 		enterCrossMode(cross, chrome.ModeNext)
-		if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks[0].ID, project.ID) {
 			t.Fatal("cursor did not land on keep-one")
 		}
 
@@ -106,10 +106,10 @@ func TestPlanningReorderEdge(t *testing.T) {
 		seedTodayOrder(t, m, locatorOf(project, tasks[0]), locatorOf(project, tasks[1]))
 		seedNextOrderOrder(t, m, locatorOf(project, tasks[2]), locatorOf(project, tasks[3]))
 		enterCrossMode(cross, chrome.ModeAll)
-		if !cross.moveCursorToProjectTask(tasks[1].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks[1].ID, project.ID) {
 			t.Fatal("cursor did not land on Today Two")
 		}
-		if !cross.rows[cross.Cursor].IsTodaySection {
+		if !cross.Rows[cross.Cursor].IsTodaySection {
 			t.Fatal("the cursor row lost its Today section identity")
 		}
 
@@ -136,7 +136,7 @@ func TestPlanningReorderEdge(t *testing.T) {
 		seeded := []string{alphaTasks[0].ID, alphaTasks[1].ID, bravoTasks[0].ID, bravoTasks[1].ID}
 		enterCrossMode(cross, chrome.ModeToday)
 
-		if !cross.moveCursorToProjectTask(bravoTasks[0].ID, bravo.ID) {
+		if !cross.MoveCursorToProjectTask(bravoTasks[0].ID, bravo.ID) {
 			t.Fatal("cursor did not land on B1")
 		}
 		if pressReorderCtrlKey(t, m, 'k') {
@@ -145,7 +145,7 @@ func TestPlanningReorderEdge(t *testing.T) {
 		assertOrder(t, "daily plan", diskTodayIDs(t, dataDir), seeded)
 
 		// Inside the group the edge move still works.
-		if !cross.moveCursorToProjectTask(bravoTasks[1].ID, bravo.ID) {
+		if !cross.MoveCursorToProjectTask(bravoTasks[1].ID, bravo.ID) {
 			t.Fatal("cursor did not land on B2")
 		}
 		if !pressReorderCtrlKey(t, m, 'k') {
@@ -163,10 +163,10 @@ func TestPlanningReorderEdge(t *testing.T) {
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]), locatorOf(project, tasks[2]),
 		)
 		enterCrossMode(cross, chrome.ModeNext)
-		if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks[0].ID, project.ID) {
 			t.Fatal("cursor did not land on Alpha")
 		}
-		cross.toggleMultiSelectMode()
+		cross.ToggleMultiSelectMode()
 
 		if pressReorderCtrlKey(t, m, 'j') {
 			t.Fatal("Ctrl+J reordered a planning list under a visual selection")

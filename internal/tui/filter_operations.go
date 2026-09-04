@@ -3,10 +3,9 @@ package tui
 import (
 	"fmt"
 
-	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
 // filterOperationDescriptor is the shape every facet shares: no target, no
@@ -91,17 +90,17 @@ func (m *AppModel) registerFilterOperations() error {
 	register := func(descriptors []operation.OperationDescriptor, handler operation.OperationHandler) error {
 		for _, descriptor := range descriptors {
 			stale := descriptor.ID == operation.OperationFilterStale
-			refusesSearchProjection := filterOperationRequiresReload(descriptor.ID)
+			refusesSearchProjection := outliner.FilterOperationRequiresReload(descriptor.ID)
 			descriptor.Applicability = func(ctx operation.CommandContext) bool {
 				if !operation.CoreOutlinerApplicability(ctx) {
 					return false
 				}
 				if refusesSearchProjection &&
-					m.crossOutliner != nil && m.crossOutliner.showsRankedList() {
+					m.crossOutliner != nil && m.crossOutliner.ShowsRankedList() {
 					return false
 				}
 				return !stale || m.crossOutliner == nil ||
-					m.crossOutliner.activeOutlinerMode() != chrome.ModeRecent
+					m.crossOutliner.ActiveOutlinerMode() != chrome.ModeRecent
 			}
 			if err := m.registerOperation(descriptor, operation.OperationBinding{
 				RequiredCapabilities:     operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
@@ -124,81 +123,6 @@ func (m *AppModel) registerFilterOperations() error {
 	return register(projectFilterOperationDescriptors(), m.executeProjectFilterOperation)
 }
 
-// filterOperationFields names the clause fields one facet owns. A facet writes
-// these fields outright and nothing else, so applying it can neither preserve a
-// value it just replaced nor disturb a facet beside it.
-func filterOperationFields(id operation.OperationID) []models.QueryField {
-	switch id {
-	case operation.OperationFilterPriority:
-		return []models.QueryField{models.QueryFieldPriority}
-	case operation.OperationFilterStates:
-		return []models.QueryField{models.QueryFieldState}
-	case operation.OperationFilterTags:
-		return []models.QueryField{models.QueryFieldTag}
-	case operation.OperationFilterContexts:
-		return []models.QueryField{models.QueryFieldContext}
-	case operation.OperationFilterDue:
-		// The due picker's deferred row and its four bucket rows are one facet:
-		// choosing either clears the other, which is only true if both fields
-		// belong to the same operation.
-		return []models.QueryField{models.QueryFieldDue, models.QueryFieldDeferred}
-	case operation.OperationFilterCompletionAge:
-		// The cleanup facet installs the terminal-state predicate itself, which is
-		// why CommonFilterFacetCount reads the pair as one clearable facet.
-		return []models.QueryField{models.QueryFieldCompleted, models.QueryFieldState}
-	case operation.OperationFilterHierarchy:
-		return query.FilterQueryHierarchyFields
-	case operation.OperationFilterDependency:
-		// Both directions are one facet: choosing either clears the other, the
-		// same way the due picker's buckets and its deferred row do.
-		return query.FilterQueryDependencyFields
-	case operation.OperationFilterStale:
-		return []models.QueryField{models.QueryFieldStale}
-	case operation.OperationFilterPinned:
-		return []models.QueryField{models.QueryFieldPinned}
-	case operation.OperationFilterReview:
-		return []models.QueryField{models.QueryFieldReview}
-	case operation.OperationFilterClear:
-		return query.FilterQueryTaskFields()
-	case operation.OperationFilterProjectTags:
-		// The F# picker carries the parked row in the same list of names, so the
-		// tag restriction and the parked axis move together.
-		return []models.QueryField{models.QueryFieldProjectTag, models.QueryFieldParked}
-	case operation.OperationFilterShowParked, operation.OperationFilterOnlyParked:
-		return []models.QueryField{models.QueryFieldParked}
-	case operation.OperationFilterIncludeArchived, operation.OperationFilterOnlyArchived:
-		return []models.QueryField{models.QueryFieldArchived}
-	case operation.OperationFilterProjectClear:
-		return query.FilterQueryPopulationFields
-	default:
-		return nil
-	}
-}
-
-// filterOperationRequiresReload reports whether applying a facet reloads the
-// population rather than rebuilding the rows. It is computed from the fields the
-// operation writes rather than declared beside its handler, so a facet cannot be
-// registered claiming one obligation and implemented honoring another.
-func filterOperationRequiresReload(id operation.OperationID) bool {
-	for _, field := range filterOperationFields(id) {
-		if models.QueryFieldRequiresReload(field) {
-			return true
-		}
-	}
-	return false
-}
-
-// filterClauseEdit is what one facet constructor produces: the clauses its own
-// fields now carry, and the status the surface reports. Narrowing nothing is an
-// empty clause list, not a separate clearing verb.
-type filterClauseEdit struct {
-	clauses []models.QueryClause
-	status  string
-	// declined reports a facet that changed nothing and only has something to
-	// say, such as a clear with nothing to clear.
-	declined bool
-}
-
 // applyFilterClauseEdit is the one path every facet mutation takes. It writes the
 // operation's fields into the Outliner's single filter query and lets both
 // carriers be re-derived from the result, so a picker, a chip, a count, and the
@@ -209,27 +133,27 @@ type filterClauseEdit struct {
 // the top of a freshly loaded scope. That same obligation is why it refuses under
 // a search projection: the projection is scored over the snapshot the reload
 // replaces.
-func (m *AppModel) applyFilterClauseEdit(id operation.OperationID, edit filterClauseEdit) operation.OperationHandlerResult {
+func (m *AppModel) applyFilterClauseEdit(id operation.OperationID, edit outliner.FilterClauseEdit) operation.OperationHandlerResult {
 	out := m.crossOutliner
 	if out == nil {
 		return operation.OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
 	}
-	reload := filterOperationRequiresReload(id)
-	if reload && out.showsRankedList() {
+	reload := outliner.FilterOperationRequiresReload(id)
+	if reload && out.ShowsRankedList() {
 		return operation.OperationHandlerResult{Status: "Exit search before changing filters"}
 	}
-	if edit.declined {
-		return operation.OperationHandlerResult{Status: edit.status}
+	if edit.Declined {
+		return operation.OperationHandlerResult{Status: edit.Status}
 	}
-	out.replaceFilterClauses(filterOperationFields(id), edit.clauses)
+	out.ReplaceFilterClauses(outliner.FilterOperationFields(id), edit.Clauses)
 	if reload {
 		return operation.OperationHandlerResult{
-			Message: operation.OperationCommandResultMsg{Cmd: m.projectFilterReloadCmd(edit.status)},
+			Message: operation.OperationCommandResultMsg{Cmd: m.projectFilterReloadCmd(edit.Status)},
 		}
 	}
-	out.population.invalidate()
-	rebuildOutlinerPreservingCursor(out)
-	return operation.OperationHandlerResult{Status: edit.status}
+	out.Population.Invalidate()
+	outliner.RebuildOutlinerPreservingCursor(out)
+	return operation.OperationHandlerResult{Status: edit.Status}
 }
 
 func (m *AppModel) executeFilterOperation(invocation operation.OperationInvocation) operation.OperationHandlerResult {
@@ -237,7 +161,7 @@ func (m *AppModel) executeFilterOperation(invocation operation.OperationInvocati
 	if out == nil {
 		return operation.OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
 	}
-	edit, err := out.rowFilterClauseEdit(invocation)
+	edit, err := out.RowFilterClauseEdit(invocation)
 	if err != nil {
 		return operation.OperationHandlerResult{Err: err}
 	}

@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"sort"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -72,20 +71,9 @@ func noteSearchIndexCmd(
 				})
 			}
 		}
-		sortNoteSearchIndexRows(rows)
+		notes.SortLocatedNoteRows(rows)
 		return noteSearchIndexLoadedMsg{generation: generation, rows: rows}
 	}
-}
-
-// sortNoteSearchIndexRows gives the index one deterministic order — location,
-// then filename — so a ranking tie resolves the same way on every rebuild.
-func sortNoteSearchIndexRows(rows []notes.LocatedNoteRow) {
-	sort.SliceStable(rows, func(i, j int) bool {
-		if order := notes.CompareNoteLocations(rows[i].Location, rows[j].Location); order != 0 {
-			return order < 0
-		}
-		return rows[i].Note.Filename < rows[j].Note.Filename
-	})
 }
 
 // noteSearchIndexOwners freezes the current owner catalog. Global leads, then
@@ -179,10 +167,10 @@ func (m *AppModel) invalidateOutlinerForNoteSearchIndex() {
 	if m == nil || m.crossOutliner == nil {
 		return
 	}
-	if identity, onNote := m.crossOutliner.cursorNoteIdentity(); onNote {
-		m.crossOutliner.search.captureNoteCursor(identity)
+	if identity, onNote := m.crossOutliner.CursorNoteIdentity(); onNote {
+		m.crossOutliner.Search.CaptureNoteCursor(identity)
 	}
-	m.crossOutliner.population.invalidate()
+	m.crossOutliner.Population.Invalidate()
 }
 
 // noteSearchIndexRows is the accessor the Outliner is injected with. It is a

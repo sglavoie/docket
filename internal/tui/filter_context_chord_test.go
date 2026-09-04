@@ -34,9 +34,9 @@ func newContextFilterTestApp(t *testing.T) *AppModel {
 	}
 	project.BuildTaskTree()
 	setTestAppProjects(app, project)
-	app.crossOutliner.population.projects = []*models.Project{project}
-	app.crossOutliner.population.invalidate()
-	app.crossOutliner.rebuildRows()
+	app.crossOutliner.Population.Projects = []*models.Project{project}
+	app.crossOutliner.Population.Invalidate()
+	app.crossOutliner.RebuildRows()
 	return app
 }
 
@@ -91,7 +91,7 @@ func TestFilterContextChordPickerLeadsWithTheGapThenTheVocabulary(t *testing.T) 
 
 func TestFilterContextChordPickerOpensSeededFromBothHalvesOfTheFacet(t *testing.T) {
 	app := newContextFilterTestApp(t)
-	filter := &app.crossOutliner.filter.CommonFilterState
+	filter := &app.crossOutliner.Filter.CommonFilterState
 	filter.Contexts = map[string]bool{"errand": true}
 	filter.NoContext = true
 
@@ -115,7 +115,7 @@ func TestFilterContextChordPickerOpensSeededFromBothHalvesOfTheFacet(t *testing.
 func TestFilterContextOperationAppliesOrSemanticsAcrossNamesAndTheGap(t *testing.T) {
 	app := newContextFilterTestApp(t)
 	ctx := simplifiedOperationContext()
-	filter := &app.crossOutliner.filter.CommonFilterState
+	filter := &app.crossOutliner.Filter.CommonFilterState
 
 	both := app.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationFilterContexts,

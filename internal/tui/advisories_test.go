@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -17,30 +18,30 @@ func TestAdvisoryLineDropsTheStripRowAndItsHeight(t *testing.T) {
 	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
 	const width = 80
-	m := &OutlinerModel{}
-	m.setOutstandingConflicts(func() int { return 2 })
+	m := &outliner.OutlinerModel{}
+	m.SetOutstandingConflicts(func() int { return 2 })
 
-	if body := m.statusStripBody(width); !strings.Contains(body, "2 unresolved merge conflicts") {
+	if body := m.StatusStripBody(width); !strings.Contains(body, "2 unresolved merge conflicts") {
 		t.Fatalf("baseline strip body = %q, want the indicator", body)
 	}
-	shown := m.statusStripHeight(width)
+	shown := m.StatusStripHeight(width)
 	if shown < 2 {
 		t.Fatalf("baseline strip height = %d, want the divider plus its line", shown)
 	}
 
 	hidden := true
-	m.setAdvisoriesHidden(func() bool { return hidden })
-	if body := m.statusStripBody(width); body != "" {
+	m.SetAdvisoriesHidden(func() bool { return hidden })
+	if body := m.StatusStripBody(width); body != "" {
 		t.Fatalf("suppressed strip body = %q, want empty", body)
 	}
-	if height := m.statusStripHeight(width); height != 0 {
+	if height := m.StatusStripHeight(width); height != 0 {
 		t.Fatalf("suppressed strip height = %d, want 0", height)
 	}
 
 	// Feedback from the user's own operations is not an advisory, so hiding
 	// advisories must never silence it — and the indicator must stay gone above it.
 	m.SetStatus("Moved 1 task")
-	body := m.statusStripBody(width)
+	body := m.StatusStripBody(width)
 	if !strings.Contains(body, "Moved 1 task") {
 		t.Fatalf("suppressed strip dropped the user's own status: %q", body)
 	}
@@ -50,7 +51,7 @@ func TestAdvisoryLineDropsTheStripRowAndItsHeight(t *testing.T) {
 
 	hidden = false
 	m.ClearStatus()
-	if got := m.statusStripHeight(width); got != shown {
+	if got := m.StatusStripHeight(width); got != shown {
 		t.Fatalf("strip height after showing again = %d, want the baseline %d", got, shown)
 	}
 }
@@ -64,17 +65,17 @@ func TestAdvisoryHelpersAreNilSafeAndDefaultToShowing(t *testing.T) {
 		t.Fatal("a nil shell reports advisories hidden")
 	}
 
-	m := &OutlinerModel{}
-	if m.advisoriesSuppressed() {
+	m := &outliner.OutlinerModel{}
+	if m.AdvisoriesSuppressed() {
 		t.Fatal("a model with no injected accessor suppresses advisories")
 	}
-	if got := m.advisoryLine("text"); got != "text" {
+	if got := m.AdvisoryLine("text"); got != "text" {
 		t.Fatalf("advisoryLine with no accessor = %q, want the text through", got)
 	}
-	if m.advisoryStatus("text") == nil {
+	if m.AdvisoryStatus("text") == nil {
 		t.Fatal("advisoryStatus with no accessor returned nil")
 	}
-	if m.advisoryStatus("") != nil {
+	if m.AdvisoryStatus("") != nil {
 		t.Fatal("advisoryStatus with empty text must send nothing")
 	}
 }
@@ -83,13 +84,13 @@ func TestAdvisoryHelpersAreNilSafeAndDefaultToShowing(t *testing.T) {
 // partly-loaded-population notice. It routes through the same helper as the strip
 // row, which is what makes one flag cover both.
 func TestLoadFailureAdvisoryObeysTheGate(t *testing.T) {
-	failures := []projectLoadFailure{{Detail: "alpha: unreadable"}}
+	failures := []outliner.ProjectLoadFailure{{Detail: "alpha: unreadable"}}
 
-	m := &OutlinerModel{}
-	if m.loadFailureAdvisory(nil) != nil {
+	m := &outliner.OutlinerModel{}
+	if m.LoadFailureAdvisory(nil) != nil {
 		t.Fatal("no failures must produce no notice")
 	}
-	cmd := m.loadFailureAdvisory(failures)
+	cmd := m.LoadFailureAdvisory(failures)
 	if cmd == nil {
 		t.Fatal("a failed load produced no notice while advisories were shown")
 	}
@@ -101,8 +102,8 @@ func TestLoadFailureAdvisoryObeysTheGate(t *testing.T) {
 		t.Fatalf("notice text = %q", string(msg))
 	}
 
-	m.setAdvisoriesHidden(func() bool { return true })
-	if m.loadFailureAdvisory(failures) != nil {
+	m.SetAdvisoriesHidden(func() bool { return true })
+	if m.LoadFailureAdvisory(failures) != nil {
 		t.Fatal("a suppressed load-failure notice was still sent")
 	}
 }

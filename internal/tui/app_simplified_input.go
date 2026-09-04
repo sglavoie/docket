@@ -31,7 +31,7 @@ func (m *AppModel) handleSimplifiedInputKey(msg tea.KeyPressMsg) (bool, tea.Cmd)
 		m.pendingChord = nil
 		return false, nil
 	}
-	if out.simplifiedInlineControlOwnsInput() {
+	if out.SimplifiedInlineControlOwnsInput() {
 		m.pendingChord = nil
 		return false, nil
 	}
@@ -174,7 +174,7 @@ func (m *AppModel) pendingChordGuidance() (chrome.GuidanceSpec, bool) {
 		operation.InputStrategySimplified,
 		m.pendingChord,
 		ctx,
-		m.crossOutliner.decoratePendingChordHint,
+		m.crossOutliner.DecoratePendingChordHint,
 	)
 	if len(hints) == 0 {
 		return chrome.GuidanceSpec{}, false

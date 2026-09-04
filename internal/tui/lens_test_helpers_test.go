@@ -19,6 +19,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -97,7 +98,7 @@ func lensNames(list config.NamedLensList) []string {
 
 // lensLifecycleOutliner builds one two-project cross-project scope whose tasks
 // span the states, priorities, and titles the lifecycle assertions narrow on.
-func lensLifecycleOutliner() *OutlinerModel {
+func lensLifecycleOutliner() *outliner.OutlinerModel {
 	backlog := primaryRowsTask("backlog", models.StateBacklog)
 	backlog.Title = "Needle in the backlog"
 	doing := primaryRowsTask("doing", models.StateDoing)
@@ -123,13 +124,13 @@ func waitingLens(id, name, narrowing string) config.NamedLens {
 	if err != nil {
 		panic(err)
 	}
-	state := lensState{
-		mode:   chrome.ModeAll,
-		facets: facets,
-		query:  narrowing,
-		sort:   query.NewSortState(),
+	state := outliner.LensState{
+		Mode:   chrome.ModeAll,
+		Facets: facets,
+		Query:  narrowing,
+		Sort:   query.NewSortState(),
 	}
-	return state.namedLens(id, name)
+	return state.NamedLens(id, name)
 }
 
 // lensWithFacet adds one canonical token to a saved definition's narrowing. A
@@ -147,9 +148,9 @@ func lensTestID(n int) string {
 	return fmt.Sprintf("6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6d%02d", n)
 }
 
-func applyLensOrFatal(t *testing.T, outliner *OutlinerModel, lens config.NamedLens) tea.Cmd {
+func applyLensOrFatal(t *testing.T, outlinerView *outliner.OutlinerModel, lens config.NamedLens) tea.Cmd {
 	t.Helper()
-	cmd, err := outliner.ApplyNamedLens(lens)
+	cmd, err := outlinerView.ApplyNamedLens(lens)
 	if err != nil {
 		t.Fatalf("ApplyNamedLens(%q): %v", lens.Name, err)
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -16,7 +17,7 @@ import (
 // mode that renders a project group header for each. It covers the modes
 // newGroupingFixture declines, so between them every grouping surface has a
 // fixture and the mode table below can name all seven.
-func projectGroupToggleFixture(t *testing.T, mode chrome.OutlinerModeID) (*OutlinerModel, []string) {
+func projectGroupToggleFixture(t *testing.T, mode chrome.OutlinerModeID) (*outliner.OutlinerModel, []string) {
 	t.Helper()
 	switch mode {
 	case chrome.ModeAll, chrome.ModeToday, chrome.ModeNext:
@@ -25,7 +26,7 @@ func projectGroupToggleFixture(t *testing.T, mode chrome.OutlinerModeID) (*Outli
 		betaOne := primaryRowsTask("beta-one", models.StateBacklog)
 		alpha := primaryRowsProject("alpha", alphaOne, alphaTwo)
 		beta := primaryRowsProject("beta", betaOne)
-		outliner, runtime := primaryRowsOutliner(alpha, beta)
+		outlinerView, runtime := primaryRowsOutliner(alpha, beta)
 		plan := []config.ProjectTaskLocator{
 			{ProjectID: alpha.ID, TaskID: alphaOne.ID},
 			{ProjectID: alpha.ID, TaskID: alphaTwo.ID},
@@ -39,22 +40,22 @@ func projectGroupToggleFixture(t *testing.T, mode chrome.OutlinerModeID) (*Outli
 		default:
 			// All groups by state, so it needs no planning membership.
 		}
-		outliner.selectOutlinerMode(mode)
-		return outliner, []string{alphaOne.ID, alphaTwo.ID, betaOne.ID}
+		outlinerView.SelectOutlinerMode(mode)
+		return outlinerView, []string{alphaOne.ID, alphaTwo.ID, betaOne.ID}
 	default:
 		fixture := newGroupingFixture(t, mode)
-		outliner, _ := primaryRowsOutliner(fixture.alpha, fixture.beta)
-		outliner.selectOutlinerMode(mode)
-		return outliner, fixture.tasks
+		outlinerView, _ := primaryRowsOutliner(fixture.alpha, fixture.beta)
+		outlinerView.SelectOutlinerMode(mode)
+		return outlinerView, fixture.tasks
 	}
 }
 
 // sectionFoldStates records the collapse flag of every section header, so a
 // project-axis press can be shown to have written none of them.
-func sectionFoldStates(m *OutlinerModel) map[string]bool {
+func sectionFoldStates(m *outliner.OutlinerModel) map[string]bool {
 	states := make(map[string]bool)
-	for _, row := range m.visibleSectionHeaders() {
-		states[row.effectiveCollapseKey()] = m.isSectionRowCollapsed(row)
+	for _, row := range m.VisibleSectionHeaders() {
+		states[row.EffectiveCollapseKey()] = m.IsSectionRowCollapsed(row)
 	}
 	return states
 }
@@ -63,32 +64,32 @@ func sectionFoldStates(m *OutlinerModel) map[string]bool {
 // themselves keep rendering throughout: folding a group hides its tasks, not the
 // row naming the project the tasks belong to.
 func TestToggleVisibleProjectGroupsFoldsEveryHeaderAndRestoresThem(t *testing.T) {
-	outliner, tasks := projectGroupToggleFixture(t, chrome.ModeAll)
+	outlinerView, tasks := projectGroupToggleFixture(t, chrome.ModeAll)
 
-	headers, _ := projectGroupHeaders(outliner)
+	headers, _ := projectGroupHeaders(outlinerView)
 	if len(headers) != 2 {
 		t.Fatalf("seeded project headers = %v, want one per project", headers)
 	}
 
-	if !outliner.toggleVisibleProjectGroups() {
+	if !outlinerView.ToggleVisibleProjectGroups() {
 		t.Fatal("toggleVisibleProjectGroups reported no change on all-expanded groups")
 	}
-	for _, row := range outliner.visibleProjectGroupHeaders() {
-		if !outliner.isSectionRowCollapsed(row) {
+	for _, row := range outlinerView.VisibleProjectGroupHeaders() {
+		if !outlinerView.IsSectionRowCollapsed(row) {
 			t.Errorf("project group %q did not fold", row.ProjectID)
 		}
 	}
-	if got := visibleTaskIDs(outliner); len(got) != 0 {
+	if got := visibleTaskIDs(outlinerView); len(got) != 0 {
 		t.Fatalf("folded rows = %v, want no task rows", got)
 	}
-	if folded, _ := projectGroupHeaders(outliner); !slices.Equal(folded, headers) {
+	if folded, _ := projectGroupHeaders(outlinerView); !slices.Equal(folded, headers) {
 		t.Fatalf("folded project headers = %v, want the same headers still rendered", folded)
 	}
 
-	if !outliner.toggleVisibleProjectGroups() {
+	if !outlinerView.ToggleVisibleProjectGroups() {
 		t.Fatal("the second press reported no change on folded groups")
 	}
-	if got := visibleTaskIDs(outliner); !slices.Equal(got, tasks) {
+	if got := visibleTaskIDs(outlinerView); !slices.Equal(got, tasks) {
 		t.Fatalf("restored rows = %v, want %v", got, tasks)
 	}
 }
@@ -96,24 +97,24 @@ func TestToggleVisibleProjectGroupsFoldsEveryHeaderAndRestoresThem(t *testing.T)
 // The direction rule is any, not all: one folded group makes the next press
 // unfold rather than fold the remaining groups to match it.
 func TestToggleVisibleProjectGroupsUnfoldsWhenAnySingleGroupIsFolded(t *testing.T) {
-	outliner, tasks := projectGroupToggleFixture(t, chrome.ModeAll)
+	outlinerView, tasks := projectGroupToggleFixture(t, chrome.ModeAll)
 
-	first := outliner.visibleProjectGroupHeaders()[0]
-	outliner.setSectionRowCollapsed(first, true)
-	outliner.rebuildRows()
-	if got := visibleTaskIDs(outliner); len(got) == 0 || len(got) == len(tasks) {
+	first := outlinerView.VisibleProjectGroupHeaders()[0]
+	outlinerView.SetSectionRowCollapsed(first, true)
+	outlinerView.RebuildRows()
+	if got := visibleTaskIDs(outlinerView); len(got) == 0 || len(got) == len(tasks) {
 		t.Fatalf("hand-folded rows = %v, want a genuinely mixed state", got)
 	}
 
-	if !outliner.toggleVisibleProjectGroups() {
+	if !outlinerView.ToggleVisibleProjectGroups() {
 		t.Fatal("a mixed set of groups reported no change")
 	}
-	for _, row := range outliner.visibleProjectGroupHeaders() {
-		if outliner.isSectionRowCollapsed(row) {
+	for _, row := range outlinerView.VisibleProjectGroupHeaders() {
+		if outlinerView.IsSectionRowCollapsed(row) {
 			t.Errorf("project group %q stayed folded", row.ProjectID)
 		}
 	}
-	if got := visibleTaskIDs(outliner); !slices.Equal(got, tasks) {
+	if got := visibleTaskIDs(outlinerView); !slices.Equal(got, tasks) {
 		t.Fatalf("rows after the press = %v, want %v", got, tasks)
 	}
 }
@@ -122,34 +123,34 @@ func TestToggleVisibleProjectGroupsUnfoldsWhenAnySingleGroupIsFolded(t *testing.
 // key it admits, and that admitted section still emits its project headers. So
 // unlike s, p there folds rows that are genuinely on screen.
 func TestToggleVisibleProjectGroupsFoldsInsideASectionZoom(t *testing.T) {
-	outliner, _ := projectGroupToggleFixture(t, chrome.ModeAll)
+	outlinerView, _ := projectGroupToggleFixture(t, chrome.ModeAll)
 
-	headers := outliner.visibleSectionHeaders()
+	headers := outlinerView.VisibleSectionHeaders()
 	if len(headers) == 0 {
 		t.Fatal("All mode emitted no section headers to zoom into")
 	}
-	if !outliner.enterSectionZoom(headers[0]) {
+	if !outlinerView.EnterSectionZoom(headers[0]) {
 		t.Fatal("the section header refused a zoom")
 	}
-	zoomed := visibleTaskIDs(outliner)
+	zoomed := visibleTaskIDs(outlinerView)
 	if len(zoomed) == 0 {
 		t.Fatal("the zoomed section rendered no tasks")
 	}
-	if groups := outliner.visibleProjectGroupHeaders(); len(groups) == 0 {
+	if groups := outlinerView.VisibleProjectGroupHeaders(); len(groups) == 0 {
 		t.Fatal("the zoomed section rendered no project headers")
 	}
 
-	if !outliner.toggleVisibleProjectGroups() {
+	if !outlinerView.ToggleVisibleProjectGroups() {
 		t.Fatal("p refused inside a section zoom")
 	}
-	if got := visibleTaskIDs(outliner); len(got) != 0 {
+	if got := visibleTaskIDs(outlinerView); len(got) != 0 {
 		t.Fatalf("zoomed folded rows = %v, want no task rows", got)
 	}
 
-	if !outliner.toggleVisibleProjectGroups() {
+	if !outlinerView.ToggleVisibleProjectGroups() {
 		t.Fatal("the second zoomed press reported no change")
 	}
-	if got := visibleTaskIDs(outliner); !slices.Equal(got, zoomed) {
+	if got := visibleTaskIDs(outlinerView); !slices.Equal(got, zoomed) {
 		t.Fatalf("zoomed restored rows = %v, want %v", got, zoomed)
 	}
 }
@@ -166,29 +167,29 @@ func TestToggleVisibleProjectGroupsLeavesTheOtherFoldAxesAlone(t *testing.T) {
 	child.ParentID = &parent.ID
 	betaOne := primaryRowsTask("beta-one", models.StateBacklog)
 	alpha := primaryRowsProject("alpha", doing, parent, child)
-	outliner, _ := primaryRowsOutliner(alpha, primaryRowsProject("beta", betaOne))
-	outliner.selectOutlinerMode(chrome.ModeAll)
+	outlinerView, _ := primaryRowsOutliner(alpha, primaryRowsProject("beta", betaOne))
+	outlinerView.SelectOutlinerMode(chrome.ModeAll)
 
-	sections := outliner.visibleSectionHeaders()
+	sections := outlinerView.VisibleSectionHeaders()
 	if len(sections) < 2 {
 		t.Fatalf("section header count = %d, want a folded one and an expanded one", len(sections))
 	}
-	outliner.setSectionRowCollapsed(sections[0], true)
-	outliner.rebuildRows()
+	outlinerView.SetSectionRowCollapsed(sections[0], true)
+	outlinerView.RebuildRows()
 
-	outliner.folds.expandedNodes[taskref.TaskIdentity{ProjectID: alpha.ID, TaskID: parent.ID}] = false
-	outliner.rebuildRows()
-	sectionsBefore := sectionFoldStates(outliner)
-	nodesBefore := maps.Clone(outliner.folds.expandedNodes)
+	outlinerView.Folds.ExpandedNodes[taskref.TaskIdentity{ProjectID: alpha.ID, TaskID: parent.ID}] = false
+	outlinerView.RebuildRows()
+	sectionsBefore := sectionFoldStates(outlinerView)
+	nodesBefore := maps.Clone(outlinerView.Folds.ExpandedNodes)
 
-	outliner.toggleVisibleProjectGroups()
-	outliner.toggleVisibleProjectGroups()
+	outlinerView.ToggleVisibleProjectGroups()
+	outlinerView.ToggleVisibleProjectGroups()
 
-	if got := sectionFoldStates(outliner); !maps.Equal(got, sectionsBefore) {
+	if got := sectionFoldStates(outlinerView); !maps.Equal(got, sectionsBefore) {
 		t.Errorf("the project toggle rewrote sections: got %v, want %v", got, sectionsBefore)
 	}
-	if !maps.Equal(outliner.folds.expandedNodes, nodesBefore) {
-		t.Errorf("the project toggle rewrote task folds: got %v, want %v", outliner.folds.expandedNodes, nodesBefore)
+	if !maps.Equal(outlinerView.Folds.ExpandedNodes, nodesBefore) {
+		t.Errorf("the project toggle rewrote task folds: got %v, want %v", outlinerView.Folds.ExpandedNodes, nodesBefore)
 	}
 }
 
@@ -199,15 +200,15 @@ func TestToggleVisibleProjectGroupsReportsInsideAProjectScope(t *testing.T) {
 	app := newUITestApp()
 	project := scopeTestProject("project", "Project", "task")
 	app.projects[project.ID] = project
-	outliner := app.crossOutliner
-	outliner.population.projects = []*models.Project{project}
-	outliner.population.invalidate()
-	outliner.crossProjectRebuildRows()
-	outliner.pushProjectScope(project.ID)
-	if groups := outliner.visibleProjectGroupHeaders(); len(groups) != 0 {
+	outlinerView := app.crossOutliner
+	outlinerView.Population.Projects = []*models.Project{project}
+	outlinerView.Population.Invalidate()
+	outlinerView.CrossProjectRebuildRows()
+	outlinerView.PushProjectScope(project.ID)
+	if groups := outlinerView.VisibleProjectGroupHeaders(); len(groups) != 0 {
 		t.Fatalf("project scope rendered %d redundant group headers", len(groups))
 	}
-	foldsBefore := maps.Clone(outliner.folds.collapsedSections)
+	foldsBefore := maps.Clone(outlinerView.Folds.CollapsedSections)
 
 	handled, cmd := app.handleGlobalKeyPress(syntheticKey('p'))
 	if !handled || cmd == nil {
@@ -216,8 +217,8 @@ func TestToggleVisibleProjectGroupsReportsInsideAProjectScope(t *testing.T) {
 	if status, ok := cmd().(status.StatusMsg); !ok || string(status) != "No project groups here; P switches project" {
 		t.Fatalf("scoped p message = %#v, want the refusal that names P", cmd())
 	}
-	if !maps.Equal(outliner.folds.collapsedSections, foldsBefore) {
-		t.Fatalf("scoped p wrote a fold: got %v, want %v", outliner.folds.collapsedSections, foldsBefore)
+	if !maps.Equal(outlinerView.Folds.CollapsedSections, foldsBefore) {
+		t.Fatalf("scoped p wrote a fold: got %v, want %v", outlinerView.Folds.CollapsedSections, foldsBefore)
 	}
 }
 
@@ -230,22 +231,22 @@ func TestToggleVisibleProjectGroupsReachesEveryGroupingNamespace(t *testing.T) {
 		chrome.ModeToday, chrome.ModeNext, chrome.ModeInbox, chrome.ModeBacklog, chrome.ModeAll, chrome.ModeDue, chrome.ModeRecent,
 	} {
 		t.Run(string(mode), func(t *testing.T) {
-			outliner, tasks := projectGroupToggleFixture(t, mode)
-			if groups := outliner.visibleProjectGroupHeaders(); len(groups) != 2 {
+			outlinerView, tasks := projectGroupToggleFixture(t, mode)
+			if groups := outlinerView.VisibleProjectGroupHeaders(); len(groups) != 2 {
 				t.Fatalf("%s project headers = %d, want one per project", mode, len(groups))
 			}
 
-			if !outliner.toggleVisibleProjectGroups() {
+			if !outlinerView.ToggleVisibleProjectGroups() {
 				t.Fatalf("%s reported no change on all-expanded groups", mode)
 			}
-			if got := visibleTaskIDs(outliner); len(got) != 0 {
+			if got := visibleTaskIDs(outlinerView); len(got) != 0 {
 				t.Fatalf("%s folded rows = %v, want no task rows", mode, got)
 			}
 
-			if !outliner.toggleVisibleProjectGroups() {
+			if !outlinerView.ToggleVisibleProjectGroups() {
 				t.Fatalf("%s reported no change on folded groups", mode)
 			}
-			if got := visibleTaskIDs(outliner); !slices.Equal(got, tasks) {
+			if got := visibleTaskIDs(outlinerView); !slices.Equal(got, tasks) {
 				t.Fatalf("%s restored rows = %v, want %v", mode, got, tasks)
 			}
 		})

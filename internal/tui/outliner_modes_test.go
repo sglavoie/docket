@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -47,21 +48,21 @@ func TestOutlinerModeCatalogIsExactSevenModeCycle(t *testing.T) {
 
 func TestOutlinerTabCyclingWrapsForwardAndBackwardAcrossSevenModes(t *testing.T) {
 	project := primaryRowsProject("alpha")
-	outliner := NewOutlinerModel(project, nil, nil)
+	outlinerView := outliner.NewOutlinerModel(project, nil, nil)
 
 	for _, want := range []chrome.OutlinerModeID{
 		chrome.ModeToday, chrome.ModeInbox, chrome.ModeNext, chrome.ModeBacklog, chrome.ModeDue, chrome.ModeRecent, chrome.ModeAll,
 	} {
-		outliner.cycleWorkMode(1)
-		if got := outliner.activeOutlinerMode(); got != want {
+		outlinerView.CycleWorkMode(1)
+		if got := outlinerView.ActiveOutlinerMode(); got != want {
 			t.Fatalf("forward cycle mode = %q, want %q", got, want)
 		}
 	}
 	for _, want := range []chrome.OutlinerModeID{
 		chrome.ModeRecent, chrome.ModeDue, chrome.ModeBacklog, chrome.ModeNext, chrome.ModeInbox, chrome.ModeToday, chrome.ModeAll,
 	} {
-		outliner.cycleWorkMode(-1)
-		if got := outliner.activeOutlinerMode(); got != want {
+		outlinerView.CycleWorkMode(-1)
+		if got := outlinerView.ActiveOutlinerMode(); got != want {
 			t.Fatalf("reverse cycle mode = %q, want %q", got, want)
 		}
 	}
@@ -75,34 +76,34 @@ func TestEnteringRecentClearsOnlyStaleFacet(t *testing.T) {
 	tests := []struct {
 		name             string
 		tasks            []*models.Task
-		enter            func(*OutlinerModel)
+		enter            func(*outliner.OutlinerModel)
 		wantEmpty        bool
 		wantCursorTaskID string
 	}{
 		{
 			name: "direct",
-			enter: func(outliner *OutlinerModel) {
-				outliner.selectOutlinerMode(chrome.ModeRecent)
+			enter: func(outlinerView *outliner.OutlinerModel) {
+				outlinerView.SelectOutlinerMode(chrome.ModeRecent)
 			},
 		},
 		{
 			name: "Tab",
-			enter: func(outliner *OutlinerModel) {
-				outliner.cycleWorkMode(1)
+			enter: func(outlinerView *outliner.OutlinerModel) {
+				outlinerView.CycleWorkMode(1)
 			},
 		},
 		{
 			name: "Ctrl+L empty",
-			enter: func(outliner *OutlinerModel) {
-				outliner.focusLatestActivity()
+			enter: func(outlinerView *outliner.OutlinerModel) {
+				outlinerView.FocusLatestActivity()
 			},
 			wantEmpty: true,
 		},
 		{
 			name:  "Ctrl+L successful jump",
 			tasks: []*models.Task{latest},
-			enter: func(outliner *OutlinerModel) {
-				outliner.focusLatestActivity()
+			enter: func(outlinerView *outliner.OutlinerModel) {
+				outlinerView.FocusLatestActivity()
 			},
 			wantCursorTaskID: latest.ID,
 		},
@@ -111,40 +112,40 @@ func TestEnteringRecentClearsOnlyStaleFacet(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			project := primaryRowsProject("alpha", test.tasks...)
 			project.Tags = []string{"client"}
-			outliner := NewOutlinerModel(project, nil, nil)
-			outliner.selectOutlinerMode(chrome.ModeDue)
-			outliner.filter.Priority = models.PriorityMedium
-			outliner.filter.Tags = map[string]bool{"deep": true}
-			outliner.filter.Stale = true
-			outliner.projectFilter.Tags = map[string]bool{"client": true}
-			outliner.projectFilter.ParkedMode = query.ProjectPopulationInclude
-			outliner.adoptFilterCarriers()
+			outlinerView := outliner.NewOutlinerModel(project, nil, nil)
+			outlinerView.SelectOutlinerMode(chrome.ModeDue)
+			outlinerView.Filter.Priority = models.PriorityMedium
+			outlinerView.Filter.Tags = map[string]bool{"deep": true}
+			outlinerView.Filter.Stale = true
+			outlinerView.ProjectFilter.Tags = map[string]bool{"client": true}
+			outlinerView.ProjectFilter.ParkedMode = query.ProjectPopulationInclude
+			outlinerView.AdoptFilterCarriers()
 
-			test.enter(outliner)
+			test.enter(outlinerView)
 
-			if got := outliner.activeOutlinerMode(); got != chrome.ModeRecent {
+			if got := outlinerView.ActiveOutlinerMode(); got != chrome.ModeRecent {
 				t.Fatalf("mode = %q, want %q", got, chrome.ModeRecent)
 			}
-			if outliner.filter.Stale {
+			if outlinerView.Filter.Stale {
 				t.Fatal("Recent retained the Stale facet")
 			}
-			if outliner.filter.Priority != models.PriorityMedium || !outliner.filter.Tags["deep"] {
-				t.Fatalf("Recent changed unrelated common filters: %+v", outliner.filter.CommonFilterState)
+			if outlinerView.Filter.Priority != models.PriorityMedium || !outlinerView.Filter.Tags["deep"] {
+				t.Fatalf("Recent changed unrelated common filters: %+v", outlinerView.Filter.CommonFilterState)
 			}
-			if !outliner.projectFilter.Tags["client"] ||
-				outliner.projectFilter.ParkedMode != query.ProjectPopulationInclude {
-				t.Fatalf("Recent changed project filters: %+v", outliner.projectFilter)
+			if !outlinerView.ProjectFilter.Tags["client"] ||
+				outlinerView.ProjectFilter.ParkedMode != query.ProjectPopulationInclude {
+				t.Fatalf("Recent changed project filters: %+v", outlinerView.ProjectFilter)
 			}
-			if outliner.StatusMessage != status || !outliner.StatusIsTransient() {
+			if outlinerView.StatusMessage != status || !outlinerView.StatusIsTransient() {
 				t.Fatalf("status = %q transient=%t, want transient %q",
-					outliner.StatusMessage, outliner.StatusIsTransient(), status)
+					outlinerView.StatusMessage, outlinerView.StatusIsTransient(), status)
 			}
-			if test.wantEmpty && len(visibleTaskIDs(outliner)) != 0 {
-				t.Fatalf("Recent rows = %v, want an empty Ctrl+L result", visibleTaskIDs(outliner))
+			if test.wantEmpty && len(visibleTaskIDs(outlinerView)) != 0 {
+				t.Fatalf("Recent rows = %v, want an empty Ctrl+L result", visibleTaskIDs(outlinerView))
 			}
-			if test.wantCursorTaskID != "" && cursorTaskID(outliner) != test.wantCursorTaskID {
+			if test.wantCursorTaskID != "" && cursorTaskID(outlinerView) != test.wantCursorTaskID {
 				t.Fatalf("cursor task = %q, want %q after Ctrl+L",
-					cursorTaskID(outliner), test.wantCursorTaskID)
+					cursorTaskID(outlinerView), test.wantCursorTaskID)
 			}
 		})
 	}
@@ -153,36 +154,36 @@ func TestEnteringRecentClearsOnlyStaleFacet(t *testing.T) {
 func TestProjectScopePopClearsStaleWhenRestoringRecent(t *testing.T) {
 	const status = "Stale filter cleared: Recent only includes the last 30 days"
 	project := primaryRowsProject("alpha", recentTask("latest", models.StateBacklog, 0))
-	outliner, _ := primaryRowsOutliner(project)
-	outliner.selectOutlinerMode(chrome.ModeRecent)
+	outlinerView, _ := primaryRowsOutliner(project)
+	outlinerView.SelectOutlinerMode(chrome.ModeRecent)
 
 	// gp captures Recent as the base scope before switching the focused
 	// project to All, where fs is available.
-	outliner.pushProjectScope(project.ID)
-	outliner.selectOutlinerMode(chrome.ModeAll)
-	result := (&AppModel{crossOutliner: outliner}).executeFilterOperation(operation.OperationInvocation{
+	outlinerView.PushProjectScope(project.ID)
+	outlinerView.SelectOutlinerMode(chrome.ModeAll)
+	result := (&AppModel{crossOutliner: outlinerView}).executeFilterOperation(operation.OperationInvocation{
 		Descriptor: operation.OperationDescriptor{ID: operation.OperationFilterStale},
 	})
 	if result.Err != nil {
 		t.Fatalf("apply Stale filter in focused project: %v", result.Err)
 	}
-	if !outliner.filter.Stale {
+	if !outlinerView.Filter.Stale {
 		t.Fatal("fs did not enable the Stale facet in All")
 	}
 
 	// Esc returns through popProjectScope to the captured Recent frame.
-	if !outliner.popProjectScope() {
+	if !outlinerView.PopProjectScope() {
 		t.Fatal("project scope did not pop")
 	}
-	if got := outliner.activeOutlinerMode(); got != chrome.ModeRecent {
+	if got := outlinerView.ActiveOutlinerMode(); got != chrome.ModeRecent {
 		t.Fatalf("mode = %q, want %q", got, chrome.ModeRecent)
 	}
-	if outliner.filter.Stale {
+	if outlinerView.Filter.Stale {
 		t.Fatal("scope pop restored Recent with the Stale facet active")
 	}
-	if outliner.StatusMessage != status || !outliner.StatusIsTransient() {
+	if outlinerView.StatusMessage != status || !outlinerView.StatusIsTransient() {
 		t.Fatalf("status = %q transient=%t, want transient %q",
-			outliner.StatusMessage, outliner.StatusIsTransient(), status)
+			outlinerView.StatusMessage, outlinerView.StatusIsTransient(), status)
 	}
 }
 
@@ -209,9 +210,9 @@ func TestDueModeProjectsDatedOpenWorkInGlobalAndProjectScopes(t *testing.T) {
 	betaDeferred.DeferredUntil = &deferUntil
 	beta := primaryRowsProject("beta", betaOverdue, betaLater, betaDeferred)
 
-	outliner, _ := primaryRowsOutliner(alpha, beta)
-	outliner.selectOutlinerMode(chrome.ModeDue)
-	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{
+	outlinerView, _ := primaryRowsOutliner(alpha, beta)
+	outlinerView.SelectOutlinerMode(chrome.ModeDue)
+	if got := visibleTaskIDs(outlinerView); !slices.Equal(got, []string{
 		alphaOverdue.ID,
 		betaOverdue.ID,
 		alphaToday.ID,
@@ -220,9 +221,9 @@ func TestDueModeProjectsDatedOpenWorkInGlobalAndProjectScopes(t *testing.T) {
 		t.Fatalf("global Due rows = %v, want dated open work in date order", got)
 	}
 
-	outliner.scope.projectID = alpha.ID
-	outliner.selectOutlinerMode(chrome.ModeDue)
-	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{
+	outlinerView.Scope.ProjectID = alpha.ID
+	outlinerView.SelectOutlinerMode(chrome.ModeDue)
+	if got := visibleTaskIDs(outlinerView); !slices.Equal(got, []string{
 		alphaOverdue.ID,
 		alphaToday.ID,
 	}) {
@@ -238,24 +239,24 @@ func TestDueModeNestsRelativesOnlyWithinSameDateBucket(t *testing.T) {
 	other := primaryRowsTask("other", models.StateBacklog)
 	parent.DueDate, child.DueDate, other.DueDate = &now, &now, &now
 	project := primaryRowsProject("alpha", parent, child, other)
-	outliner, _ := primaryRowsOutliner(project)
-	outliner.selectOutlinerMode(chrome.ModeDue)
+	outlinerView, _ := primaryRowsOutliner(project)
+	outlinerView.SelectOutlinerMode(chrome.ModeDue)
 
-	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{parent.ID, child.ID, other.ID}) {
+	if got := visibleTaskIDs(outlinerView); !slices.Equal(got, []string{parent.ID, child.ID, other.ID}) {
 		t.Fatalf("same-bucket Due rows = %v, want nested hierarchy", got)
 	}
-	parentRow, parentFound := findPlanningTaskRow(outliner, parent.ID)
-	childRow, childFound := findPlanningTaskRow(outliner, child.ID)
-	if !parentFound || !childFound || !parentRow.hasVisibleChildren || childRow.Breadcrumb != "" ||
-		len(childRow.prefix) <= len(parentRow.prefix) {
+	parentRow, parentFound := findPlanningTaskRow(outlinerView, parent.ID)
+	childRow, childFound := findPlanningTaskRow(outlinerView, child.ID)
+	if !parentFound || !childFound || !parentRow.HasVisibleChildren || childRow.Breadcrumb != "" ||
+		len(childRow.Prefix) <= len(parentRow.Prefix) {
 		t.Fatalf("same-bucket Due hierarchy = parent %+v found=%t child %+v found=%t",
 			parentRow, parentFound, childRow, childFound)
 	}
 
 	tomorrow := now.AddDate(0, 0, 1)
 	child.DueDate = &tomorrow
-	outliner.rebuildRows()
-	childRow, childFound = findPlanningTaskRow(outliner, child.ID)
+	outlinerView.RebuildRows()
+	childRow, childFound = findPlanningTaskRow(outlinerView, child.ID)
 	if !childFound || childRow.Breadcrumb != parent.Title+" ›" {
 		t.Fatalf("cross-bucket Due child = %+v found=%t, want ancestor breadcrumb", childRow, childFound)
 	}
@@ -271,9 +272,9 @@ func TestBacklogRetainsProjectHierarchyAndManualSiblingOrder(t *testing.T) {
 	secondSibling.Priority = models.PriorityMax
 	project := primaryRowsProject("alpha", parent, child, firstSibling, secondSibling)
 
-	outliner, _ := primaryRowsOutliner(project)
-	outliner.selectOutlinerMode(chrome.ModeBacklog)
-	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{
+	outlinerView, _ := primaryRowsOutliner(project)
+	outlinerView.SelectOutlinerMode(chrome.ModeBacklog)
+	if got := visibleTaskIDs(outlinerView); !slices.Equal(got, []string{
 		parent.ID,
 		child.ID,
 		firstSibling.ID,

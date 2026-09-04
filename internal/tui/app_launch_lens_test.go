@@ -31,18 +31,18 @@ func TestPendingLaunchLensDrainsExactlyOnce(t *testing.T) {
 	if app.pendingLaunchLens != nil {
 		t.Fatal("the launch lens was left armed after being drained")
 	}
-	if app.crossOutliner.scope.projectID != lensScopeBetaID {
+	if app.crossOutliner.Scope.ProjectID != lensScopeBetaID {
 		t.Fatalf("scope after the launch drain = %q, want the lens's own %q",
-			app.crossOutliner.scope.projectID, lensScopeBetaID)
+			app.crossOutliner.Scope.ProjectID, lensScopeBetaID)
 	}
-	if app.crossOutliner.lens.active == nil {
+	if app.crossOutliner.Lens.Active == nil {
 		t.Fatal("the drain installed no lens frame")
 	}
 
 	// Whatever the user does next owns the view; a second drain is a no-op.
-	app.crossOutliner.clearActiveLensWithoutRestore()
+	app.crossOutliner.ClearActiveLensWithoutRestore()
 	app.restorePendingLaunchLens()
-	if app.crossOutliner.lens.active != nil {
+	if app.crossOutliner.Lens.Active != nil {
 		t.Fatal("a second drain reinstalled a lens the pointer no longer names")
 	}
 }
@@ -62,11 +62,11 @@ func TestPendingLaunchLensRefusalIsSilent(t *testing.T) {
 	if app.pendingLaunchLens != nil {
 		t.Fatal("a refused launch lens stayed armed for the next population load")
 	}
-	if app.crossOutliner.lens.active != nil {
+	if app.crossOutliner.Lens.Active != nil {
 		t.Fatal("a lens scoped to a project the workspace does not admit was installed anyway")
 	}
-	if app.crossOutliner.scope.projectID != "" {
-		t.Fatalf("a refused lens moved the scope to %q", app.crossOutliner.scope.projectID)
+	if app.crossOutliner.Scope.ProjectID != "" {
+		t.Fatalf("a refused lens moved the scope to %q", app.crossOutliner.Scope.ProjectID)
 	}
 }
 

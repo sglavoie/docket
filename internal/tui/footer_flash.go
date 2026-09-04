@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -85,7 +86,7 @@ type viewStatusOwner interface {
 
 // The Outliner is the view this interface exists for, so its conformance is
 // asserted at compile time rather than discovered as a dead type switch.
-var _ viewStatusOwner = (*OutlinerModel)(nil)
+var _ viewStatusOwner = (*outliner.OutlinerModel)(nil)
 
 // footerFlashProbe is the status identity compared across one Update. The
 // shell's own message carries a sequence, but m.err has ~87 assignment sites

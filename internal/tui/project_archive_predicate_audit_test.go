@@ -40,7 +40,7 @@ var archivePredicateAudit = map[string]string{
 	"internal/tui/query/filters_project.go:ProjectFilterAdmits":                    "lifecycle: the archived population axis decides exclude, include, or only",
 	"internal/tui/handler_project_bulk_tags.go:planProjectBulkTags":                "lifecycle: an archived project refuses a tag edit",
 	"internal/tui/notes/notes_view.go:NoteOwnerCatalog":                            "availability: parked owners keep their notes, on the Notes manager and in the Outliner's note search index alike",
-	"internal/tui/outliner_lens_lifecycle.go:lensScopeRefusal":                     "lifecycle: admission was already decided by TaskWorkspaceProjects; this only words the refusal as archived",
+	"internal/tui/outliner/outliner_lens.go:lensScopeRefusal":            "lifecycle: admission was already decided by TaskWorkspaceProjects; this only words the refusal as archived",
 	"internal/tui/operation/operation_target.go:entityContextNamesArchivedTask":    "lifecycle: an archived owner refuses every task-changing operation",
 	"internal/tui/task_action_operations.go:taskActionOperationApplicable":         "lifecycle: an archived owner admits read-only operations only",
 	"internal/tui/project_operations_shell.go:projectRequirementUnmet":             "lifecycle: descriptors require an archived or a live project",

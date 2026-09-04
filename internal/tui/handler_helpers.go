@@ -10,12 +10,13 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // activeCrossProjectOutliner returns the sole Outliner model.
-func (m *AppModel) activeCrossProjectOutliner() *OutlinerModel {
+func (m *AppModel) activeCrossProjectOutliner() *outliner.OutlinerModel {
 	return m.crossOutliner
 }
 
@@ -31,7 +32,7 @@ func (m *AppModel) requestCrossProjectOutlinerReload() tea.Cmd {
 	if !m.activeOutlinerRoute() {
 		return nil
 	}
-	return cross.reloadCrossProjects()
+	return cross.ReloadCrossProjects()
 }
 
 // reloadCrossProjectOutlinerProject refreshes one project object already owned
@@ -40,7 +41,7 @@ func (m *AppModel) reloadCrossProjectOutlinerProject(projectID string) {
 	if projectID == "" || m.crossOutliner == nil || m.persister == nil {
 		return
 	}
-	for _, project := range m.crossOutliner.population.projects {
+	for _, project := range m.crossOutliner.Population.Projects {
 		if project == nil || project.ID != projectID {
 			continue
 		}
@@ -51,21 +52,11 @@ func (m *AppModel) reloadCrossProjectOutlinerProject(projectID string) {
 		if m.runtime != nil {
 			coordinator.CopyCatalogMetadata(project, m.runtime.GetProject(projectID))
 		}
-		m.crossOutliner.population.invalidate()
-		m.crossOutliner.crossProjectRebuildRows()
-		m.crossOutliner.clampCursor()
+		m.crossOutliner.Population.Invalidate()
+		m.crossOutliner.CrossProjectRebuildRows()
+		m.crossOutliner.ClampCursor()
 		return
 	}
-}
-
-func rebuildOutlinerPreservingCursor(outliner *OutlinerModel) {
-	if outliner == nil {
-		return
-	}
-	anchor := outliner.captureModeCursor()
-	outliner.rebuildRows()
-	outliner.restoreModeCursor(anchor)
-	outliner.clampCursor()
 }
 
 // refreshAllViews rebuilds in-memory rows for the project tree and Outliner.
@@ -74,7 +65,7 @@ func rebuildOutlinerPreservingCursor(outliner *OutlinerModel) {
 func (m *AppModel) refreshAllViews() {
 	m.refreshProjectView()
 	if cross := m.activeCrossProjectOutliner(); cross != nil {
-		rebuildOutlinerPreservingCursor(cross)
+		outliner.RebuildOutlinerPreservingCursor(cross)
 	}
 }
 

@@ -60,7 +60,7 @@ func (env *stateTransitionFeedbackEnv) press(t *testing.T, key string) {
 func (env *stateTransitionFeedbackEnv) focusTask(t *testing.T, taskID string) {
 	t.Helper()
 	env.press(t, "home")
-	for range len(env.driver.App().crossOutliner.rows) + 1 {
+	for range len(env.driver.App().crossOutliner.Rows) + 1 {
 		if task, _ := env.driver.App().getCurrentCursorTaskAndProject(); task != nil && task.ID == taskID {
 			return
 		}
@@ -108,8 +108,8 @@ func TestDirectStateTransitionFeedbackUsesResolvedTaskCardinality(t *testing.T) 
 		env.focusTask(t, env.firstTaskID)
 		env.press(t, "V")
 		env.focusTask(t, env.secondTaskID)
-		if outliner := env.driver.App().crossOutliner; !outliner.IsMultiSelectActive() || outliner.SelectedCount() != 2 {
-			t.Fatalf("visual selection = active %v, selected %d; want two selected tasks", outliner.IsMultiSelectActive(), outliner.SelectedCount())
+		if outlinerView := env.driver.App().crossOutliner; !outlinerView.IsMultiSelectActive() || outlinerView.SelectedCount() != 2 {
+			t.Fatalf("visual selection = active %v, selected %d; want two selected tasks", outlinerView.IsMultiSelectActive(), outlinerView.SelectedCount())
 		}
 
 		env.completeSelection(t)

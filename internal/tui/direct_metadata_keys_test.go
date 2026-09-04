@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
 func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
@@ -132,8 +133,8 @@ func TestDirectMetadataKeysDispatchFromTheOutliner(t *testing.T) {
 		project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{task}}
 		project.BuildTaskTree()
 		setTestAppProjects(app, project)
-		app.crossOutliner.population.projects = []*models.Project{project}
-		app.crossOutliner.rows = []outlinerRow{{task: task, ProjectID: project.ID}}
+		app.crossOutliner.Population.Projects = []*models.Project{project}
+		app.crossOutliner.Rows = []outliner.OutlinerRow{{Task: task, ProjectID: project.ID}}
 		return app
 	}
 

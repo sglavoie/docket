@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -56,7 +57,7 @@ func (m *AppModel) registerCoreInputOperations() error {
 			inner := descriptor.Applicability
 			descriptor.Applicability = func(ctx operation.CommandContext) bool {
 				return (inner == nil || inner(ctx)) &&
-					(m.crossOutliner == nil || !m.crossOutliner.showsRankedList())
+					(m.crossOutliner == nil || !m.crossOutliner.ShowsRankedList())
 			}
 		}
 		if err := m.registerOperation(descriptor, operation.OperationBinding{
@@ -90,7 +91,7 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		message = m.coreCaptureMessage()
 	case operation.OperationCoreEdit:
 		if task, project := m.taskAndProjectForTargets(invocation.Targets); task != nil {
-			message = StartTaskLineEditMsg{Task: task, Project: project}
+			message = outliner.StartTaskLineEditMsg{Task: task, Project: project}
 		}
 	case operation.OperationCoreEditDescription:
 		if task, project := m.taskAndProjectForTargets(invocation.Targets); task != nil {
@@ -164,7 +165,7 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 			delta = -1
 		}
 		if out, ok := m.outlinerPrimary(); ok {
-			cmd, moved := out.moveCursorToAdjacentHeader(delta)
+			cmd, moved := out.MoveCursorToAdjacentHeader(delta)
 			if !moved {
 				return operation.OperationHandlerResult{Status: "No sections to jump between"}
 			}
@@ -172,25 +173,25 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		}
 	case operation.OperationCoreJumpBackward:
 		if out, ok := m.outlinerPrimary(); ok {
-			message = commandMessage(out.jumpBackward())
+			message = commandMessage(out.JumpBackward())
 		}
 	case operation.OperationCoreJumpForward:
 		if out, ok := m.outlinerPrimary(); ok {
-			message = commandMessage(out.jumpForward())
+			message = commandMessage(out.JumpForward())
 		}
 	case operation.OperationCoreFocusLatest:
 		if out, ok := m.outlinerPrimary(); ok {
-			message = commandMessage(out.focusLatestActivity())
+			message = commandMessage(out.FocusLatestActivity())
 		}
 	case operation.OperationCoreGotoTaskProject:
 		return m.coreGotoTaskProject(invocation.Targets)
 	case operation.OperationCoreCollapseParent:
 		if out, ok := m.outlinerPrimary(); ok {
-			out.collapseOrMoveToParent()
+			out.CollapseOrMoveToParent()
 		}
 	case operation.OperationCoreExpand:
 		if out, ok := m.outlinerPrimary(); ok {
-			out.expandAtCursor()
+			out.ExpandAtCursor()
 		}
 	// The three fold toggles report their refusals and nothing else: a productive
 	// press returns a zero result, so it arms no footer flash for a change already
@@ -198,19 +199,19 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 	// is exactly where the key used to open Select Project.
 	case operation.OperationCoreToggleSections:
 		if out, ok := m.outlinerPrimary(); ok {
-			if !out.toggleVisibleSections() {
+			if !out.ToggleVisibleSections() {
 				return operation.OperationHandlerResult{Status: "No foldable sections here"}
 			}
 		}
 	case operation.OperationCoreToggleProjectGroup:
 		if out, ok := m.outlinerPrimary(); ok {
-			if !out.toggleVisibleProjectGroups() {
+			if !out.ToggleVisibleProjectGroups() {
 				return operation.OperationHandlerResult{Status: "No project groups here; P switches project"}
 			}
 		}
 	case operation.OperationCoreToggleSubtrees:
 		if out, ok := m.outlinerPrimary(); ok {
-			if !out.toggleAllSubtrees() {
+			if !out.ToggleAllSubtrees() {
 				return operation.OperationHandlerResult{Status: "No foldable subtrees here"}
 			}
 		}
@@ -220,7 +221,7 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 	// menu having eaten the press.
 	case operation.OperationCoreClearFolds:
 		if out, ok := m.outlinerPrimary(); ok {
-			if !out.clearAllFolds() {
+			if !out.ClearAllFolds() {
 				return operation.OperationHandlerResult{Status: "Nothing is folded"}
 			}
 			return operation.OperationHandlerResult{Status: "All folds cleared"}
@@ -235,42 +236,42 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		message = commandMessage(m.coreReorderEdge(-1))
 	case operation.OperationCoreFocusSubtree:
 		if out, ok := m.outlinerPrimary(); ok {
-			if status, landed := out.exitSearchOntoCursorTask(); !landed {
+			if status, landed := out.ExitSearchOntoCursorTask(); !landed {
 				return operation.OperationHandlerResult{Status: status}
 			}
-			if !out.focusSubtreeAtCursor() {
+			if !out.FocusSubtreeAtCursor() {
 				return operation.OperationHandlerResult{Status: "No children to focus"}
 			}
 		}
 	case operation.OperationCoreFocusParent:
 		if out, ok := m.outlinerPrimary(); ok {
-			if status, landed := out.exitSearchOntoCursorTask(); !landed {
+			if status, landed := out.ExitSearchOntoCursorTask(); !landed {
 				return operation.OperationHandlerResult{Status: status}
 			}
-			if !out.focusParentAtCursor() {
+			if !out.FocusParentAtCursor() {
 				return operation.OperationHandlerResult{Status: "No parent to focus"}
 			}
 		}
 	case operation.OperationCoreZoomSection:
 		if out, ok := m.outlinerPrimary(); ok {
-			out.zoomSectionAtCursor()
+			out.ZoomSectionAtCursor()
 		}
 	case operation.OperationCoreActivateGroup:
 		if out, ok := m.outlinerPrimary(); ok {
-			out.activateGroupAtCursor()
+			out.ActivateGroupAtCursor()
 		}
 	case operation.OperationCoreOpenNote:
 		// All Notes rather than the Outliner's own scope: the manager has to hold
 		// the note the row named whatever the search was scoped to, and Focus is
 		// what positions the cursor on it once it is there.
 		if out, ok := m.outlinerPrimary(); ok {
-			if identity, onNote := out.cursorNoteIdentity(); onNote {
+			if identity, onNote := out.CursorNoteIdentity(); onNote {
 				message = notes.ShowNotesManagerMsg{Scope: route.AllNotesScope(), Focus: identity}
 			}
 		}
 	case operation.OperationCorePeek:
 		if out, ok := m.outlinerPrimary(); ok {
-			out.togglePeek()
+			out.TogglePeek()
 		}
 	case operation.OperationCoreScopeSearch:
 		if out, ok := m.outlinerPrimary(); ok {
@@ -282,16 +283,16 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		message = projecthub.ShowProjectHubMsg{Mode: route.ProjectHubModePinned}
 	case operation.OperationCoreMultiSelect:
 		if out, ok := m.outlinerPrimary(); ok {
-			out.toggleCursorSelection()
+			out.ToggleCursorSelection()
 		}
 	case operation.OperationCoreRangeSelect:
 		if out, ok := m.outlinerPrimary(); ok {
-			out.startCursorRangeSelection()
+			out.StartCursorRangeSelection()
 		}
 	case operation.OperationCoreSelectAll:
 		if out, ok := m.outlinerPrimary(); ok {
-			out.selectAllVisible()
-			out.updateVisualSelectionStatus()
+			out.SelectAllVisible()
+			out.UpdateVisualSelectionStatus()
 		}
 	case operation.OperationCoreNamedLenses:
 		// The picker is a shell overlay rather than a route, so opening it mounts
@@ -303,7 +304,7 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		message = m.openConflictBrowser()
 	case operation.OperationCoreQueryReadout:
 		if out, ok := m.outlinerPrimary(); ok {
-			out.toggleQueryReadout()
+			out.ToggleQueryReadout()
 		}
 	case operation.OperationCoreNotes:
 		message = notes.ShowNotesManagerMsg{Scope: m.coreNotesScope()}
@@ -330,10 +331,10 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		message = commandMessage(m.coreRedo())
 	case operation.OperationCoreBack:
 		if out, ok := m.outlinerPrimary(); ok {
-			listsurface.RunEscCascade(out.escSteps())
+			listsurface.RunEscCascade(out.EscSteps())
 			// Leaving a parked focus drops the project from the snapshot in place;
 			// the cascade cannot return a Cmd, so the reload is claimed here.
-			message = commandMessage(out.takeParkedFocusReload())
+			message = commandMessage(out.TakeParkedFocusReload())
 		}
 	case operation.OperationCoreHelp:
 		message = help.ShowHelpMsg{
@@ -344,18 +345,18 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		message = status.QuitMsg{}
 	case operation.OperationCoreNextWorkMode:
 		if out, ok := m.outlinerPrimary(); ok {
-			_, _ = out.cycleWorkMode(1)
+			_, _ = out.CycleWorkMode(1)
 		}
 	case operation.OperationCorePreviousWorkMode:
 		if out, ok := m.outlinerPrimary(); ok {
-			_, _ = out.cycleWorkMode(-1)
+			_, _ = out.CycleWorkMode(-1)
 		}
 	case operation.OperationCoreResetToLaunchView:
 		return m.coreResetToLaunchView()
 	default:
 		if mode, ok := operation.GotoModeOperations[invocation.Descriptor.ID]; ok {
 			if out, outlinerOK := m.outlinerPrimary(); outlinerOK {
-				_, _ = out.selectOutlinerMode(mode)
+				_, _ = out.SelectOutlinerMode(mode)
 			}
 		}
 	}

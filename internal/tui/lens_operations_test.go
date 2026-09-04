@@ -104,8 +104,8 @@ func TestLensOperationsRejectAStaleLensID(t *testing.T) {
 func TestLensCreateSavesTheCurrentViewAndMakesItActive(t *testing.T) {
 	model := lensOperationApp(t)
 	out := model.crossOutliner
-	out.selectOutlinerMode(chrome.ModeBacklog)
-	out.treeSort = query.SortState{Field: query.SortByTitle, Ascending: true}
+	out.SelectOutlinerMode(chrome.ModeBacklog)
+	out.TreeSort = query.SortState{Field: query.SortByTitle, Ascending: true}
 	before := len(machineLenses(t, model))
 
 	result := executeLens(model, lens.OperationLensCreate, operation.EntityIdentity{}, "Backlog by title", false)
@@ -126,13 +126,13 @@ func TestLensCreateSavesTheCurrentViewAndMakesItActive(t *testing.T) {
 	if saved.Sort.Field != config.LensSortTitle || !saved.Sort.Ascending {
 		t.Fatalf("captured sort = %+v, want an ascending title sort", saved.Sort)
 	}
-	if !out.hasActiveLens() {
+	if !out.HasActiveLens() {
 		t.Fatal("expected the new lens to be active")
 	}
-	if out.lens.active.lensID != saved.ID {
-		t.Fatalf("active lens = %q, want the new record %q", out.lens.active.lensID, saved.ID)
+	if out.Lens.Active.LensID != saved.ID {
+		t.Fatalf("active lens = %q, want the new record %q", out.Lens.Active.LensID, saved.ID)
 	}
-	if out.lensModified() {
+	if out.LensModified() {
 		t.Fatal("a lens saved from the current view starts unmodified")
 	}
 	// Machine-local state rides no workspace transaction, so nothing here may
@@ -147,23 +147,23 @@ func TestLensCreateSavesTheCurrentViewAndMakesItActive(t *testing.T) {
 func TestLensCreateRetainsAnExistingBaseline(t *testing.T) {
 	model := lensOperationApp(t)
 	out := model.crossOutliner
-	out.selectOutlinerMode(chrome.ModeInbox)
-	origin := out.captureOutlinerViewSnapshot()
+	out.SelectOutlinerMode(chrome.ModeInbox)
+	origin := out.CaptureOutlinerViewSnapshot()
 	applyLensOrFatal(t, out, waitingLens(lensTestID(1), "Waiting", "needle"))
 
 	if result := executeLens(model, lens.OperationLensCreate, operation.EntityIdentity{}, "Narrowed", false); result.Err != nil {
 		t.Fatalf("create lens: %v", result.Err)
 	}
-	if out.lens.active.origin.presentation.mode != origin.presentation.mode {
+	if out.Lens.Active.Origin.Presentation.Mode != origin.Presentation.Mode {
 		t.Fatalf(
 			"baseline mode = %v, want the pre-lens %v",
-			out.lens.active.origin.presentation.mode,
-			origin.presentation.mode,
+			out.Lens.Active.Origin.Presentation.Mode,
+			origin.Presentation.Mode,
 		)
 	}
-	out.restoreLensBaseline()
-	if out.hasActiveLens() || out.primaryMode != chrome.ModeInbox {
-		t.Fatalf("one restore left mode %v with lens=%v", out.primaryMode, out.hasActiveLens())
+	out.RestoreLensBaseline()
+	if out.HasActiveLens() || out.PrimaryMode != chrome.ModeInbox {
+		t.Fatalf("one restore left mode %v with lens=%v", out.PrimaryMode, out.HasActiveLens())
 	}
 }
 
@@ -190,9 +190,9 @@ func TestLensRenamePreservesTheIDAndTheProjection(t *testing.T) {
 	out := model.crossOutliner
 	starter := lensNamed(t, model, config.StarterNamedLenses()[0].Name)
 	applyLensOrFatal(t, out, starter)
-	fingerprint := out.lens.active.savedFingerprint
-	mode := out.primaryMode
-	query := out.lens.query
+	fingerprint := out.Lens.Active.SavedFingerprint
+	mode := out.PrimaryMode
+	query := out.Lens.Query
 
 	if result := executeLens(model, lens.OperationLensRename, operation.LensEntity(starter.ID), "Blocked", false); result.Err != nil {
 		t.Fatalf("rename lens: %v", result.Err)
@@ -202,11 +202,11 @@ func TestLensRenamePreservesTheIDAndTheProjection(t *testing.T) {
 	if renamed.ID != starter.ID {
 		t.Fatalf("rename changed the ID to %q, want %q", renamed.ID, starter.ID)
 	}
-	if out.lens.active == nil || out.lens.active.name != "Blocked" {
-		t.Fatalf("active label = %q, want the new name", out.activeLensLabel())
+	if out.Lens.Active == nil || out.Lens.Active.Name != "Blocked" {
+		t.Fatalf("active label = %q, want the new name", out.ActiveLensLabel())
 	}
-	if out.lens.active.savedFingerprint != fingerprint ||
-		out.primaryMode != mode || out.lens.query != query {
+	if out.Lens.Active.SavedFingerprint != fingerprint ||
+		out.PrimaryMode != mode || out.Lens.Query != query {
 		t.Fatal("rename changed projection state")
 	}
 }
@@ -228,8 +228,8 @@ func TestLensRenameRefusesADuplicateNameWithoutTouchingAnything(t *testing.T) {
 	if got := lensNamed(t, model, starters[0].Name); got.ID != first.ID {
 		t.Fatal("a refused rename rewrote the saved record")
 	}
-	if out.lens.active.name != first.Name {
-		t.Fatalf("a refused rename relabeled the active lens to %q", out.lens.active.name)
+	if out.Lens.Active.Name != first.Name {
+		t.Fatalf("a refused rename relabeled the active lens to %q", out.Lens.Active.Name)
 	}
 }
 
@@ -239,8 +239,8 @@ func TestLensReplaceOverwritesUnderTheSameIDAndClearsTheModifiedMarker(t *testin
 	starter := lensNamed(t, model, config.StarterNamedLenses()[0].Name)
 	applyLensOrFatal(t, out, starter)
 
-	out.selectOutlinerMode(chrome.ModeBacklog)
-	if !out.lensModified() {
+	out.SelectOutlinerMode(chrome.ModeBacklog)
+	if !out.LensModified() {
 		t.Fatal("expected the diverged view to mark the lens modified")
 	}
 
@@ -255,18 +255,18 @@ func TestLensReplaceOverwritesUnderTheSameIDAndClearsTheModifiedMarker(t *testin
 	if replaced.Mode != config.LensModeBacklog {
 		t.Fatalf("replaced mode = %q, want the current view's %q", replaced.Mode, config.LensModeBacklog)
 	}
-	if out.lensModified() {
+	if out.LensModified() {
 		t.Fatal("replacing the active lens must clear the modified marker")
 	}
-	if !strings.HasSuffix(out.activeLensLabel(), starter.Name) {
-		t.Fatalf("active label = %q, want an unmarked %q", out.activeLensLabel(), starter.Name)
+	if !strings.HasSuffix(out.ActiveLensLabel(), starter.Name) {
+		t.Fatalf("active label = %q, want an unmarked %q", out.ActiveLensLabel(), starter.Name)
 	}
 }
 
 func TestLensDeleteRemovesTheDefinitionAndRestoresTheBaseline(t *testing.T) {
 	model := lensOperationApp(t)
 	out := model.crossOutliner
-	out.selectOutlinerMode(chrome.ModeInbox)
+	out.SelectOutlinerMode(chrome.ModeInbox)
 	starter := lensNamed(t, model, config.StarterNamedLenses()[0].Name)
 	applyLensOrFatal(t, out, starter)
 
@@ -276,10 +276,10 @@ func TestLensDeleteRemovesTheDefinitionAndRestoresTheBaseline(t *testing.T) {
 	if model.runtime.Machine().NamedLensByID(starter.ID) != nil {
 		t.Fatal("delete left the definition in place")
 	}
-	if out.hasActiveLens() {
+	if out.HasActiveLens() {
 		t.Fatal("deleting the active lens must exit it")
 	}
-	if out.primaryMode != chrome.ModeInbox {
-		t.Fatalf("restored mode = %v, want the pre-lens %v", out.primaryMode, chrome.ModeInbox)
+	if out.PrimaryMode != chrome.ModeInbox {
+		t.Fatalf("restored mode = %v, want the pre-lens %v", out.PrimaryMode, chrome.ModeInbox)
 	}
 }

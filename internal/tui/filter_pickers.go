@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -40,8 +41,8 @@ func (m *AppModel) newFilterDuePicker(
 	}
 	selected := []listsurface.ListItemID(nil)
 	if m.crossOutliner != nil {
-		active := query.DueFilterClauses(m.crossOutliner.filter.DueDate)
-		if m.crossOutliner.filter.Deferred {
+		active := query.DueFilterClauses(m.crossOutliner.Filter.DueDate)
+		if m.crossOutliner.Filter.Deferred {
 			active = query.FilterClauseList(models.QueryFieldDeferred, models.QueryOperatorPresent, "")
 		}
 		if id, ok := byToken[strings.Join(query.FilterClauseParts(active), " ")]; ok {
@@ -83,9 +84,9 @@ func (m *AppModel) newFilterDependencyPicker(
 	}
 	selected := []listsurface.ListItemID(nil)
 	if m.crossOutliner != nil {
-		active := query.ClausesForField(m.crossOutliner.filterQuery, models.QueryFieldBlocked)
+		active := query.ClausesForField(m.crossOutliner.FilterQuery, models.QueryFieldBlocked)
 		active = append(active,
-			query.ClausesForField(m.crossOutliner.filterQuery, models.QueryFieldBlocking)...)
+			query.ClausesForField(m.crossOutliner.FilterQuery, models.QueryFieldBlocking)...)
 		if id, ok := byToken[strings.Join(query.FilterClauseParts(active), " ")]; ok {
 			selected = []listsurface.ListItemID{id}
 		}
@@ -129,7 +130,7 @@ func (m *AppModel) newFilterHierarchyPicker(
 	}
 	selected := []listsurface.ListItemID(nil)
 	if m.crossOutliner != nil {
-		switch m.crossOutliner.filter.Hierarchy {
+		switch m.crossOutliner.Filter.Hierarchy {
 		case query.HierarchyAll:
 			selected = nil
 		case query.HierarchyParent:
@@ -180,9 +181,9 @@ func (m *AppModel) newFilterCompletionAgePicker(
 		})
 	}
 	selected := []listsurface.ListItemID(nil)
-	if m.crossOutliner != nil && m.crossOutliner.filter.HasCompletionAgeFilter() {
+	if m.crossOutliner != nil && m.crossOutliner.Filter.HasCompletionAgeFilter() {
 		suffix := "all"
-		switch m.crossOutliner.filter.CompletionAge {
+		switch m.crossOutliner.Filter.CompletionAge {
 		case query.CompletionAge7Days:
 			suffix = "7"
 		case query.CompletionAge30Days:
@@ -219,7 +220,7 @@ func (m *AppModel) newFilterStatesPicker(
 	}
 	selected := []listsurface.ListItemID(nil)
 	if m.crossOutliner != nil {
-		for _, state := range m.crossOutliner.filter.States.Values() {
+		for _, state := range m.crossOutliner.Filter.States.Values() {
 			selected = append(selected, listsurface.ListItemID("state:"+state.String()))
 		}
 	}
@@ -249,7 +250,7 @@ func (m *AppModel) prospectiveStateFilterCounts() map[models.WorkflowState]int {
 		clauses = query.AppendFilterClause(clauses, models.QueryFieldState,
 			models.QueryOperatorIs, state.String())
 	}
-	prospective := query.WithFields(m.crossOutliner.filterQuery,
+	prospective := query.WithFields(m.crossOutliner.FilterQuery,
 		[]models.QueryField{models.QueryFieldState}, clauses)
 	return prospectiveOutlinerStateCounts(m.crossOutliner, prospective)
 }
@@ -259,29 +260,29 @@ func (m *AppModel) prospectiveStateFilterCounts() map[models.WorkflowState]int {
 // folds from changing facet totals, while rebuilding through the normal mode
 // pipeline preserves all actual scope and visibility rules.
 func prospectiveOutlinerStateCounts(
-	outliner *OutlinerModel,
+	outlinerView *outliner.OutlinerModel,
 	prospective models.Query,
 ) map[models.WorkflowState]int {
 	counts := make(map[models.WorkflowState]int, len(models.AllWorkflowStates()))
-	if outliner == nil {
+	if outlinerView == nil {
 		return counts
 	}
 
-	projection := *outliner
+	projection := *outlinerView
 	// The copy takes the prospective narrowing through the one writer, so its
 	// carriers are derived from the query the count is asked about rather than
 	// the one the Outliner is still showing.
-	projection.setFilterQuery(prospective)
-	projection.rows = nil
+	projection.SetFilterQuery(prospective)
+	projection.Rows = nil
 	projection.OpenAtTask = nil
-	projection.folds.resetAll()
-	projection.focus.restore(
-		append([]FocusEntry(nil), outliner.focus.stack...),
-		append([]CrossProjectFocusEntry(nil), outliner.focus.crossStack...),
-		outliner.focus.zoom,
+	projection.Folds.ResetAll()
+	projection.Focus.Restore(
+		append([]outliner.FocusEntry(nil), outlinerView.Focus.Stack...),
+		append([]outliner.CrossProjectFocusEntry(nil), outlinerView.Focus.CrossStack...),
+		outlinerView.Focus.Zoom,
 	)
-	projection.population.invalidate()
-	projection.rebuildRows()
+	projection.Population.Invalidate()
+	projection.RebuildRows()
 
 	// A matching descendant can retain a non-matching ancestor as hierarchy
 	// context. Count only rows that satisfy the prospective predicate themselves.
@@ -291,26 +292,26 @@ func prospectiveOutlinerStateCounts(
 	// undercounting; facetPredicateAt is correct in both branches and applies the
 	// facets exactly once.
 	now := time.Now()
-	matches := projection.facetPredicateAt(now)
+	matches := projection.FacetPredicateAt(now)
 	seen := make(map[taskref.TaskIdentity]struct{})
-	for _, row := range projection.rows {
-		if !row.isTaskRow() || row.task == nil {
+	for _, row := range projection.Rows {
+		if !row.IsTaskRow() || row.Task == nil {
 			continue
 		}
-		project := projection.resolveProjectForRow(row)
-		if !matches(row.task, project) {
+		project := projection.ResolveProjectForRow(row)
+		if !matches(row.Task, project) {
 			continue
 		}
 		projectID := row.ProjectID
 		if projectID == "" && project != nil {
 			projectID = project.ID
 		}
-		identity := taskref.TaskIdentity{ProjectID: projectID, TaskID: row.task.ID}
+		identity := taskref.TaskIdentity{ProjectID: projectID, TaskID: row.Task.ID}
 		if _, duplicate := seen[identity]; duplicate {
 			continue
 		}
 		seen[identity] = struct{}{}
-		counts[row.task.State()]++
+		counts[row.Task.State()]++
 	}
 	return counts
 }
@@ -337,7 +338,7 @@ func (m *AppModel) newFilterTagsPicker(
 	source := taskTagListSource(tagList, false)
 	selected := []listsurface.ListItemID(nil)
 	if m.crossOutliner != nil {
-		for tag := range m.crossOutliner.filter.Tags {
+		for tag := range m.crossOutliner.Filter.Tags {
 			selected = append(selected, listsurface.ListItemID("tag:"+tag))
 		}
 	}
@@ -356,8 +357,8 @@ func (m *AppModel) newFilterTagsPicker(
 // the loaded scope once there is one, and the whole task workspace before the
 // first load.
 func (m *AppModel) filterScopeProjects() []*models.Project {
-	if m.crossOutliner != nil && len(m.crossOutliner.population.projects) > 0 {
-		return m.crossOutliner.workModeScopeProjects()
+	if m.crossOutliner != nil && len(m.crossOutliner.Population.Projects) > 0 {
+		return m.crossOutliner.WorkModeScopeProjects()
 	}
 	return m.taskWorkspaceProjects()
 }
@@ -398,7 +399,7 @@ func (m *AppModel) newFilterContextsPicker(
 	}
 	selected := []listsurface.ListItemID(nil)
 	if m.crossOutliner != nil {
-		filter := &m.crossOutliner.filter.CommonFilterState
+		filter := &m.crossOutliner.Filter.CommonFilterState
 		if filter.NoContext {
 			selected = append(selected, listsurface.ListItemID("filter-context:"+query.NoContextFilterKey))
 		}

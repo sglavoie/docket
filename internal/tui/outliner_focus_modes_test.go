@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -17,14 +18,14 @@ import (
 // and lands its cursor on the named result. The ranked list is the presentation
 // the jump exits; a query that only narrows the mode's own lanes leaves the
 // cursor where it already is, which is why the toggle is part of the setup.
-func searchProjectionCursorOnTitle(t *testing.T, out *OutlinerModel, title string) taskref.TaskIdentity {
+func searchProjectionCursorOnTitle(t *testing.T, out *outliner.OutlinerModel, title string) taskref.TaskIdentity {
 	t.Helper()
 	searchRankedList(out, title)
-	if !out.showsRankedList() {
+	if !out.ShowsRankedList() {
 		t.Fatalf("search %q opened no ranked list", title)
 	}
-	for index, row := range out.rows {
-		if row.isTaskRow() && row.task != nil && row.task.Title == title {
+	for index, row := range out.Rows {
+		if row.IsTaskRow() && row.Task != nil && row.Task.Title == title {
 			out.Cursor = index
 			return out.CurrentTaskIdentity()
 		}
@@ -38,7 +39,7 @@ func TestEnterZoomsSectionHeadersAndScopesProjectHeaders(t *testing.T) {
 	other := scopeTestProject("other", "Other", "other-task")
 	out := scopeTestOutliner(project, other)
 	sectionIndex := -1
-	for index, row := range out.rows {
+	for index, row := range out.Rows {
 		if row.IsSectionHeader {
 			sectionIndex = index
 			break
@@ -47,35 +48,35 @@ func TestEnterZoomsSectionHeadersAndScopesProjectHeaders(t *testing.T) {
 	if sectionIndex < 0 {
 		t.Fatal("the fixture emits no section header")
 	}
-	fullRows := len(out.rows)
+	fullRows := len(out.Rows)
 
 	out.Cursor = sectionIndex
-	sectionName := out.rows[sectionIndex].SectionName
-	if !out.zoomSectionAtCursor() {
+	sectionName := out.Rows[sectionIndex].SectionName
+	if !out.ZoomSectionAtCursor() {
 		t.Fatal("Enter did not zoom into the selected section header")
 	}
 	if names := sectionHeaderNames(out); len(names) != 1 || names[0] != sectionName {
 		t.Fatalf("zoomed sections = %v, want %q alone", names, sectionName)
 	}
 
-	if !listsurface.RunEscCascade(out.escSteps()) {
+	if !listsurface.RunEscCascade(out.EscSteps()) {
 		t.Fatal("Esc did not leave the zoom")
 	}
-	if out.focus.zoom.active() || len(out.rows) != fullRows {
-		t.Fatalf("unzoomed state = zoom %+v rows %d, want no zoom and the pre-zoom %d", out.focus.zoom, len(out.rows), fullRows)
+	if out.Focus.Zoom.Active() || len(out.Rows) != fullRows {
+		t.Fatalf("unzoomed state = zoom %+v rows %d, want no zoom and the pre-zoom %d", out.Focus.Zoom, len(out.Rows), fullRows)
 	}
 
 	out.Cursor = sectionHeaderIndex(t, out, sectionName)
-	if out.activateGroupAtCursor() {
+	if out.ActivateGroupAtCursor() {
 		t.Fatal("a section header still reached the project scope act")
 	}
 
 	out.Cursor = projectHeaderIndex(t, out, project.ID)
-	if !out.activateGroupAtCursor() || out.scope.projectID != project.ID {
-		t.Fatalf("Enter on the project header scoped to %q, want %q", out.scope.projectID, project.ID)
+	if !out.ActivateGroupAtCursor() || out.Scope.ProjectID != project.ID {
+		t.Fatalf("Enter on the project header scoped to %q, want %q", out.Scope.ProjectID, project.ID)
 	}
-	if out.focus.zoom.active() {
-		t.Fatalf("the project header took a zoom %+v", out.focus.zoom)
+	if out.Focus.Zoom.Active() {
+		t.Fatalf("the project header took a zoom %+v", out.Focus.Zoom)
 	}
 	if ids := taskRowProjectIDs(out); len(ids) != 1 || ids[0] != project.ID {
 		t.Fatalf("scoped task rows = %v, want %q alone", ids, project.ID)
@@ -119,17 +120,17 @@ func TestFocusConstrainsModesFiltersSortFoldsAndSearch(t *testing.T) {
 		insideInbox, insideToday, insideNext, insideBacklog, insideDue, insideRecent, insideNested,
 		outsideInbox, outsideToday, outsideNext, outsideBacklog, outsideDue, outsideRecent)
 	out := scopeTestOutliner(project)
-	out.runtime.Planning().SetToday([]config.ProjectTaskLocator{
+	out.Runtime.Planning().SetToday([]config.ProjectTaskLocator{
 		{ProjectID: project.ID, TaskID: insideToday.ID},
 		{ProjectID: project.ID, TaskID: outsideToday.ID},
 	})
-	out.runtime.Planning().SetNext([]config.ProjectTaskLocator{
+	out.Runtime.Planning().SetNext([]config.ProjectTaskLocator{
 		{ProjectID: project.ID, TaskID: insideNext.ID},
 		{ProjectID: project.ID, TaskID: outsideNext.ID},
 	})
-	out.population.invalidate()
-	out.crossProjectRebuildRows()
-	if !out.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) || !out.focusSubtreeAtCursor() {
+	out.Population.Invalidate()
+	out.CrossProjectRebuildRows()
+	if !out.MoveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) || !out.FocusSubtreeAtCursor() {
 		t.Fatal("could not enter fixture Focus")
 	}
 
@@ -138,7 +139,7 @@ func TestFocusConstrainsModesFiltersSortFoldsAndSearch(t *testing.T) {
 		insideBacklog.ID: true, insideDue.ID: true, insideRecent.ID: true, insideNested.ID: true,
 	}
 	for _, mode := range []chrome.OutlinerModeID{chrome.ModeAll, chrome.ModeToday, chrome.ModeInbox, chrome.ModeNext, chrome.ModeBacklog, chrome.ModeDue, chrome.ModeRecent} {
-		out.selectOutlinerMode(mode)
+		out.SelectOutlinerMode(mode)
 		visible := visibleOutlinerTaskIDs(out)
 		if len(visible) == 0 {
 			t.Fatalf("%s Focus projection is unexpectedly empty", mode)
@@ -150,28 +151,28 @@ func TestFocusConstrainsModesFiltersSortFoldsAndSearch(t *testing.T) {
 		}
 	}
 
-	out.selectOutlinerMode(chrome.ModeAll)
+	out.SelectOutlinerMode(chrome.ModeAll)
 	insideNested.Tags = []string{"focus-match"}
 	outsideBacklog.Tags = []string{"focus-match"}
-	out.filter.Tags = map[string]bool{"focus-match": true}
-	out.adoptFilterCarriers()
-	out.rebuildRows()
+	out.Filter.Tags = map[string]bool{"focus-match": true}
+	out.AdoptFilterCarriers()
+	out.RebuildRows()
 	if got := visibleOutlinerTaskIDs(out); len(got) != 1 || !got[insideNested.ID] {
 		t.Fatalf("focused tag facet rows = %v, want only %s", got, insideNested.ID)
 	}
 
-	out.filter = query.NewFilterState()
-	out.adoptFilterCarriers()
-	out.sort = query.SortState{Field: query.SortByTitle, Ascending: true}
-	out.treeSort = out.sort
-	out.rebuildRows()
+	out.Filter = query.NewFilterState()
+	out.AdoptFilterCarriers()
+	out.Sort = query.SortState{Field: query.SortByTitle, Ascending: true}
+	out.TreeSort = out.Sort
+	out.RebuildRows()
 	ordered := searchVisibleTaskIDs(out)
 	if len(ordered) == 0 || ordered[0] == outsideBacklog.ID || !inside[ordered[0]] {
 		t.Fatalf("focused title sort escaped branch: %v", ordered)
 	}
 
-	out.folds.expandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: insideBacklog.ID}] = false
-	out.rebuildRows()
+	out.Folds.ExpandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: insideBacklog.ID}] = false
+	out.RebuildRows()
 	if visible := visibleOutlinerTaskIDs(out); visible[insideNested.ID] || visible[outsideBacklog.ID] {
 		t.Fatalf("focused fold rows = %v, want nested child hidden and outside task absent", visible)
 	}
@@ -189,13 +190,13 @@ func TestFocusConstrainsModesFiltersSortFoldsAndSearch(t *testing.T) {
 		t.Fatalf("exact search escaped Focus to %v", got)
 	}
 	out.ClearSearch()
-	if len(out.focus.crossStack) != 1 || out.focus.crossStack[0].TaskID != root.ID {
-		t.Fatalf("search restoration lost Focus: %+v", out.focus.crossStack)
+	if len(out.Focus.CrossStack) != 1 || out.Focus.CrossStack[0].TaskID != root.ID {
+		t.Fatalf("search restoration lost Focus: %+v", out.Focus.CrossStack)
 	}
 
 	insideInbox.WorkflowState = models.StateBacklog
-	out.selectOutlinerMode(chrome.ModeInbox)
-	if len(out.rows) != 0 || out.outlinerEmptyMessage() != "No tasks are visible in this Focus. Press Esc to return." {
-		t.Fatalf("empty Focus = rows %d message %q", len(out.rows), out.outlinerEmptyMessage())
+	out.SelectOutlinerMode(chrome.ModeInbox)
+	if len(out.Rows) != 0 || out.OutlinerEmptyMessage() != "No tasks are visible in this Focus. Press Esc to return." {
+		t.Fatalf("empty Focus = rows %d message %q", len(out.Rows), out.OutlinerEmptyMessage())
 	}
 }

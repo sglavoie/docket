@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
 // This file covers how the reference picker's list is assembled: which rows it
@@ -119,8 +120,8 @@ func TestReferencePickerUnavailableRowKeepsItsLocator(t *testing.T) {
 		if item.PrimaryText != locator {
 			t.Errorf("%s label = %q, want the raw project-id:task-id", locator, item.PrimaryText)
 		}
-		if item.SecondaryText != dependencyDetailUnavailable {
-			t.Errorf("%s status = %q, want %q", locator, item.SecondaryText, dependencyDetailUnavailable)
+		if item.SecondaryText != outliner.DependencyDetailUnavailable {
+			t.Errorf("%s status = %q, want %q", locator, item.SecondaryText, outliner.DependencyDetailUnavailable)
 		}
 		if item.Data != locator {
 			t.Errorf("%s payload = %v, want the raw locator", locator, item.Data)

@@ -16,7 +16,7 @@ func TestPlanningRowsGroupEachProjectUnderOneHeader(t *testing.T) {
 	alpha := primaryRowsProject("alpha", alphaOne, alphaTwo)
 	beta := primaryRowsProject("beta", betaOne)
 	beta.Pinned = true
-	outliner, runtime := primaryRowsOutliner(alpha, beta)
+	outlinerView, runtime := primaryRowsOutliner(alpha, beta)
 	runtime.Planning().SetNext([]config.ProjectTaskLocator{
 		{ProjectID: alpha.ID, TaskID: alphaOne.ID},
 		{ProjectID: beta.ID, TaskID: betaOne.ID},
@@ -25,8 +25,8 @@ func TestPlanningRowsGroupEachProjectUnderOneHeader(t *testing.T) {
 
 	for _, mode := range []chrome.OutlinerModeID{chrome.ModeAll, chrome.ModeNext} {
 		t.Run(string(mode), func(t *testing.T) {
-			outliner.selectOutlinerMode(mode)
-			if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{
+			outlinerView.SelectOutlinerMode(mode)
+			if got := visibleTaskIDs(outlinerView); !slices.Equal(got, []string{
 				betaOne.ID, alphaOne.ID, alphaTwo.ID,
 			}) {
 				t.Fatalf("Next task order = %v, want rows grouped under pinned-first project headers", got)
@@ -34,7 +34,7 @@ func TestPlanningRowsGroupEachProjectUnderOneHeader(t *testing.T) {
 
 			var headers []string
 			counts := make(map[string]int)
-			for _, row := range outliner.rows {
+			for _, row := range outlinerView.Rows {
 				if row.IsProjectHeader && row.IsNextSection {
 					headers = append(headers, row.ProjectID)
 					counts[row.ProjectID] = row.SectionCount
@@ -56,29 +56,29 @@ func TestPlanningProjectHeadersCollapseAndDisappearInProjectScope(t *testing.T) 
 	betaOne := primaryRowsTask("beta-one", models.StateBacklog)
 	alpha := primaryRowsProject("alpha", alphaOne, alphaTwo)
 	beta := primaryRowsProject("beta", betaOne)
-	outliner, runtime := primaryRowsOutliner(alpha, beta)
+	outlinerView, runtime := primaryRowsOutliner(alpha, beta)
 	runtime.Planning().SetNext([]config.ProjectTaskLocator{
 		{ProjectID: alpha.ID, TaskID: alphaOne.ID},
 		{ProjectID: beta.ID, TaskID: betaOne.ID},
 		{ProjectID: alpha.ID, TaskID: alphaTwo.ID},
 	})
-	outliner.selectOutlinerMode(chrome.ModeNext)
+	outlinerView.SelectOutlinerMode(chrome.ModeNext)
 
-	for index, row := range outliner.rows {
+	for index, row := range outlinerView.Rows {
 		if row.IsProjectHeader && row.IsNextSection && row.ProjectID == alpha.ID {
-			outliner.Cursor = index
+			outlinerView.Cursor = index
 			break
 		}
 	}
-	if !outliner.collapseOrMoveToParent() {
+	if !outlinerView.CollapseOrMoveToParent() {
 		t.Fatal("left on a Next project header did not collapse its project group")
 	}
-	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{betaOne.ID}) {
+	if got := visibleTaskIDs(outlinerView); !slices.Equal(got, []string{betaOne.ID}) {
 		t.Fatalf("collapsed Next tasks = %v, want only beta", got)
 	}
 
-	outliner.pushProjectScope(alpha.ID)
-	for _, row := range outliner.rows {
+	outlinerView.PushProjectScope(alpha.ID)
+	for _, row := range outlinerView.Rows {
 		if row.IsProjectHeader && row.IsNextSection {
 			t.Fatalf("project-scoped Next rendered a redundant project header: %+v", row)
 		}
@@ -91,15 +91,15 @@ func TestTodayRowsUseTheSameProjectHeaderContract(t *testing.T) {
 	alpha := primaryRowsProject("alpha", alphaTask)
 	beta := primaryRowsProject("beta", betaTask)
 	beta.Pinned = true
-	outliner, runtime := primaryRowsOutliner(alpha, beta)
+	outlinerView, runtime := primaryRowsOutliner(alpha, beta)
 	runtime.Planning().SetToday([]config.ProjectTaskLocator{
 		{ProjectID: alpha.ID, TaskID: alphaTask.ID},
 		{ProjectID: beta.ID, TaskID: betaTask.ID},
 	})
-	outliner.selectOutlinerMode(chrome.ModeAll)
+	outlinerView.SelectOutlinerMode(chrome.ModeAll)
 
 	var headers []string
-	for _, row := range outliner.rows {
+	for _, row := range outlinerView.Rows {
 		if row.IsProjectHeader && row.IsTodaySection {
 			headers = append(headers, row.ProjectID)
 		}

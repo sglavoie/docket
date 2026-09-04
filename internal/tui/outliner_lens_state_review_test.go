@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -52,8 +53,8 @@ func reviewFacetCombination(mask int) (name string, query string, present []bool
 // lensStateHoldsReview reports whether the canonical half carries the review
 // clause. It reads the clause rather than the rendered string so a tag named
 // "review" cannot be mistaken for the flag.
-func lensStateHoldsReview(state lensState) bool {
-	return len(query.ClausesForField(state.facets, models.QueryFieldReview)) == 1
+func lensStateHoldsReview(state outliner.LensState) bool {
+	return len(query.ClausesForField(state.Facets, models.QueryFieldReview)) == 1
 }
 
 // Review must survive every hop a lens takes: capture off a live view, the
@@ -76,7 +77,7 @@ func reviewFacetSurvivesEncodeDecode(t *testing.T) {
 		name, query, present := reviewFacetCombination(mask)
 		t.Run(name, func(t *testing.T) {
 			want := lensStateWithFacets(t, lensRoundTripBase(t), query)
-			stored := want.namedLens(lensRoundTripID, "Review "+name)
+			stored := want.NamedLens(lensRoundTripID, "Review "+name)
 			if err := stored.Validate(); err != nil {
 				t.Fatalf("stored definition invalid: %v", err)
 			}
@@ -87,20 +88,20 @@ func reviewFacetSurvivesEncodeDecode(t *testing.T) {
 				}
 			}
 
-			got, err := lensStateFromNamedLens(stored)
+			got, err := outliner.LensStateFromNamedLens(stored)
 			if err != nil {
 				t.Fatalf("lensStateFromNamedLens: %v", err)
 			}
-			if !got.equal(want) {
-				t.Fatalf("round trip = %q, want %q", got.fingerprint(), want.fingerprint())
+			if got.Fingerprint() != want.Fingerprint() {
+				t.Fatalf("round trip = %q, want %q", got.Fingerprint(), want.Fingerprint())
 			}
 			if lensStateHoldsReview(got) != present[0] {
 				t.Fatalf("restored review clause = %v, want %v", lensStateHoldsReview(got), present[0])
 			}
-			if other, clash := fingerprints[got.fingerprint()]; clash {
-				t.Fatalf("combination %q is indistinguishable from %q: %q", name, other, got.fingerprint())
+			if other, clash := fingerprints[got.Fingerprint()]; clash {
+				t.Fatalf("combination %q is indistinguishable from %q: %q", name, other, got.Fingerprint())
 			}
-			fingerprints[got.fingerprint()] = name
+			fingerprints[got.Fingerprint()] = name
 		})
 	}
 }
@@ -109,7 +110,7 @@ func reviewFacetSurvivesEncodeDecode(t *testing.T) {
 // axis is followed through the durable bytes as well as through the encoder.
 func reviewFacetSurvivesDurableBytes(t *testing.T) {
 	want := lensStateWithFacets(t, lensRoundTripBase(t), "=review *pin #review")
-	raw, err := json.Marshal(want.namedLens(lensRoundTripID, "Review Queue"))
+	raw, err := json.Marshal(want.NamedLens(lensRoundTripID, "Review Queue"))
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
@@ -121,15 +122,15 @@ func reviewFacetSurvivesDurableBytes(t *testing.T) {
 	if err = json.Unmarshal(raw, &reloaded); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	got, err := lensStateFromNamedLens(reloaded)
+	got, err := outliner.LensStateFromNamedLens(reloaded)
 	if err != nil {
 		t.Fatalf("lensStateFromNamedLens: %v", err)
 	}
-	if !got.equal(want) {
-		t.Fatalf("restart round trip = %q, want %q", got.fingerprint(), want.fingerprint())
+	if got.Fingerprint() != want.Fingerprint() {
+		t.Fatalf("restart round trip = %q, want %q", got.Fingerprint(), want.Fingerprint())
 	}
 	if !lensStateHoldsReview(got) {
-		t.Fatalf("restarted lens lost the review clause: %q", got.facets.String())
+		t.Fatalf("restarted lens lost the review clause: %q", got.Facets.String())
 	}
 }
 
@@ -138,17 +139,17 @@ func reviewFacetSurvivesDurableBytes(t *testing.T) {
 func reviewFacetIsWatchedByFingerprint(t *testing.T) {
 	withoutReview := lensStateWithFacets(t, lensRoundTripBase(t), "*pin #review")
 	withReview := lensStateWithFacets(t, lensRoundTripBase(t), "=review *pin #review")
-	if withoutReview.fingerprint() == withReview.fingerprint() {
-		t.Fatalf("adding review left the lens reading as unmodified: %q", withReview.fingerprint())
+	if withoutReview.Fingerprint() == withReview.Fingerprint() {
+		t.Fatalf("adding review left the lens reading as unmodified: %q", withReview.Fingerprint())
 	}
 
 	reviewOnly := lensStateWithFacets(t, lensRoundTripBase(t), "=review")
 	pinnedOnly := lensStateWithFacets(t, lensRoundTripBase(t), "*pin")
 	taggedOnly := lensStateWithFacets(t, lensRoundTripBase(t), "#review")
-	if reviewOnly.fingerprint() == pinnedOnly.fingerprint() {
+	if reviewOnly.Fingerprint() == pinnedOnly.Fingerprint() {
 		t.Fatal("review and pinned produced one fingerprint")
 	}
-	if reviewOnly.fingerprint() == taggedOnly.fingerprint() {
+	if reviewOnly.Fingerprint() == taggedOnly.Fingerprint() {
 		t.Fatal("the review flag and a #review tag produced one fingerprint")
 	}
 }
@@ -157,37 +158,37 @@ func reviewFacetIsWatchedByFingerprint(t *testing.T) {
 // writes CommonFilterState.Review, and a capture reads the query the carriers
 // were adopted into.
 func reviewFacetCapturedFromLiveView(t *testing.T) {
-	outliner := scopeTestOutliner(primaryRowsProject("alpha"))
-	outliner.filter.Review = true
-	outliner.filter.Pinned = true
-	outliner.filter.Tags = map[string]bool{"review": true}
-	outliner.adoptFilterCarriers()
+	outlinerView := scopeTestOutliner(primaryRowsProject("alpha"))
+	outlinerView.Filter.Review = true
+	outlinerView.Filter.Pinned = true
+	outlinerView.Filter.Tags = map[string]bool{"review": true}
+	outlinerView.AdoptFilterCarriers()
 
-	captured := outliner.captureLensState()
+	captured := outlinerView.CaptureLensState()
 	if !lensStateHoldsReview(captured) {
-		t.Fatalf("captured facets dropped the review flag: %q", captured.facets.String())
+		t.Fatalf("captured facets dropped the review flag: %q", captured.Facets.String())
 	}
-	if want := "#review *pin =review"; captured.facets.String() != want {
-		t.Fatalf("captured facets = %q, want %q", captured.facets.String(), want)
+	if want := "#review *pin =review"; captured.Facets.String() != want {
+		t.Fatalf("captured facets = %q, want %q", captured.Facets.String(), want)
 	}
 
-	restored, err := lensStateFromNamedLens(captured.namedLens(lensRoundTripID, "Review"))
+	restored, err := outliner.LensStateFromNamedLens(captured.NamedLens(lensRoundTripID, "Review"))
 	if err != nil {
 		t.Fatalf("lensStateFromNamedLens: %v", err)
 	}
 	reopened := scopeTestOutliner(primaryRowsProject("alpha"))
-	if !reopened.applyLensState(restored) {
+	if !reopened.ApplyLensState(restored) {
 		t.Fatal("applyLensState refused the definition")
 	}
-	if !reopened.filter.Review {
+	if !reopened.Filter.Review {
 		t.Fatal("applying the lens left the review facet off")
 	}
-	if !reopened.filter.Pinned || !reopened.filter.Tags["review"] {
-		t.Fatalf("applying the lens disturbed the axes beside review: %+v", reopened.filter.CommonFilterState)
+	if !reopened.Filter.Pinned || !reopened.Filter.Tags["review"] {
+		t.Fatalf("applying the lens disturbed the axes beside review: %+v", reopened.Filter.CommonFilterState)
 	}
-	if !reopened.captureLensState().equal(captured) {
+	if reopened.CaptureLensState().Fingerprint() != captured.Fingerprint() {
 		t.Fatalf("recaptured %q after applying %q",
-			reopened.captureLensState().fingerprint(), captured.fingerprint())
+			reopened.CaptureLensState().Fingerprint(), captured.Fingerprint())
 	}
 }
 
@@ -200,9 +201,9 @@ func reviewFacetRecordedAndClearedByReplace(t *testing.T) {
 	starter := lensNamed(t, model, config.StarterNamedLenses()[0].Name)
 	applyLensOrFatal(t, out, starter)
 
-	out.filter.Review = true
-	out.adoptFilterCarriers()
-	if !out.lensModified() {
+	out.Filter.Review = true
+	out.AdoptFilterCarriers()
+	if !out.LensModified() {
 		t.Fatal("adding the review facet must mark the lens modified")
 	}
 
@@ -213,13 +214,13 @@ func reviewFacetRecordedAndClearedByReplace(t *testing.T) {
 	if !strings.Contains(replaced.Query, "=review") {
 		t.Fatalf("replaced query = %q, want the review facet the view carried", replaced.Query)
 	}
-	if out.lensModified() {
+	if out.LensModified() {
 		t.Fatal("replacing the active lens must clear the modified marker")
 	}
 
-	out.filter.Review = false
-	out.adoptFilterCarriers()
-	if !out.lensModified() {
+	out.Filter.Review = false
+	out.AdoptFilterCarriers()
+	if !out.LensModified() {
 		t.Fatal("dropping the review facet must mark the lens modified")
 	}
 	if result := executeLens(model, lens.OperationLensReplace, operation.LensEntity(starter.ID), "", true); result.Err != nil {
@@ -228,40 +229,40 @@ func reviewFacetRecordedAndClearedByReplace(t *testing.T) {
 	if again := lensNamed(t, model, starter.Name); strings.Contains(again.Query, "=review") {
 		t.Fatalf("replaced query = %q, want the review facet dropped", again.Query)
 	}
-	if out.lensModified() {
+	if out.LensModified() {
 		t.Fatal("replacing the active lens must clear the modified marker")
 	}
 }
 
 func TestCaptureLensStateReadsRememberedTreeSortAndDetachesCollections(t *testing.T) {
-	outliner := scopeTestOutliner(primaryRowsProject("alpha"))
-	outliner.primaryMode = chrome.ModeDue
-	outliner.setLensQuery("  ship it  ")
-	outliner.filter.Tags = map[string]bool{"api": true}
-	outliner.projectFilter.Tags = map[string]bool{"client": true}
-	outliner.adoptFilterCarriers()
+	outlinerView := scopeTestOutliner(primaryRowsProject("alpha"))
+	outlinerView.PrimaryMode = chrome.ModeDue
+	outlinerView.SetLensQuery("  ship it  ")
+	outlinerView.Filter.Tags = map[string]bool{"api": true}
+	outlinerView.ProjectFilter.Tags = map[string]bool{"client": true}
+	outlinerView.AdoptFilterCarriers()
 	// Due owns its order, so the active sort is default while the user's manual
 	// choice survives in treeSort. The lens owns the remembered one.
-	outliner.sort = query.NewSortState()
-	outliner.treeSort = query.SortState{Field: query.SortByTitle, Ascending: false}
+	outlinerView.Sort = query.NewSortState()
+	outlinerView.TreeSort = query.SortState{Field: query.SortByTitle, Ascending: false}
 
-	captured := outliner.captureLensState()
-	if captured.mode != chrome.ModeDue || captured.query != "ship it" {
-		t.Fatalf("captured mode/query = %s/%q", captured.mode, captured.query)
+	captured := outlinerView.CaptureLensState()
+	if captured.Mode != chrome.ModeDue || captured.Query != "ship it" {
+		t.Fatalf("captured mode/query = %s/%q", captured.Mode, captured.Query)
 	}
-	if captured.sort != (query.SortState{Field: query.SortByTitle, Ascending: false}) {
-		t.Fatalf("captured sort = %+v, want the remembered tree sort", captured.sort)
+	if captured.Sort != (query.SortState{Field: query.SortByTitle, Ascending: false}) {
+		t.Fatalf("captured sort = %+v, want the remembered tree sort", captured.Sort)
 	}
-	if want := "#api +#client"; captured.facets.String() != want {
-		t.Fatalf("captured facets = %q, want %q", captured.facets.String(), want)
+	if want := "#api +#client"; captured.Facets.String() != want {
+		t.Fatalf("captured facets = %q, want %q", captured.Facets.String(), want)
 	}
 
-	before := captured.facets.String()
-	outliner.filter.Tags["late"] = true
-	outliner.projectFilter.Tags["late"] = true
-	outliner.adoptFilterCarriers()
-	if captured.facets.String() != before {
-		t.Fatalf("a later facet edit reached into the captured definition: %q", captured.facets.String())
+	before := captured.Facets.String()
+	outlinerView.Filter.Tags["late"] = true
+	outlinerView.ProjectFilter.Tags["late"] = true
+	outlinerView.AdoptFilterCarriers()
+	if captured.Facets.String() != before {
+		t.Fatalf("a later facet edit reached into the captured definition: %q", captured.Facets.String())
 	}
 }
 
@@ -269,61 +270,61 @@ func TestApplyLensStateInstallsManualSortAndRemembersItInFixedOrderModes(t *test
 	saved := query.SortState{Field: query.SortByUpdatedAt, Ascending: false}
 	for _, mode := range chrome.OutlinerModeCatalog() {
 		t.Run(string(mode.ID), func(t *testing.T) {
-			outliner := scopeTestOutliner(primaryRowsProject("alpha"))
-			outliner.sort = query.SortState{Field: query.SortByTitle, Ascending: true}
-			outliner.treeSort = query.SortState{Field: query.SortByTitle, Ascending: true}
+			outlinerView := scopeTestOutliner(primaryRowsProject("alpha"))
+			outlinerView.Sort = query.SortState{Field: query.SortByTitle, Ascending: true}
+			outlinerView.TreeSort = query.SortState{Field: query.SortByTitle, Ascending: true}
 
-			state := lensState{mode: mode.ID, sort: saved}
-			if !outliner.applyLensState(state) {
+			state := outliner.LensState{Mode: mode.ID, Sort: saved}
+			if !outlinerView.ApplyLensState(state) {
 				t.Fatal("applyLensState refused a catalog mode")
 			}
-			if outliner.primaryMode != mode.ID {
-				t.Fatalf("mode = %s, want %s", outliner.primaryMode, mode.ID)
+			if outlinerView.PrimaryMode != mode.ID {
+				t.Fatalf("mode = %s, want %s", outlinerView.PrimaryMode, mode.ID)
 			}
-			if outliner.treeSort != saved {
-				t.Fatalf("treeSort = %+v, want the saved manual sort %+v", outliner.treeSort, saved)
+			if outlinerView.TreeSort != saved {
+				t.Fatalf("treeSort = %+v, want the saved manual sort %+v", outlinerView.TreeSort, saved)
 			}
 			wantActive := saved
 			if mode.FixedOrder() {
 				wantActive = query.NewSortState()
 			}
-			if outliner.sort != wantActive {
-				t.Fatalf("%s active sort = %+v, want %+v", mode.ID, outliner.sort, wantActive)
+			if outlinerView.Sort != wantActive {
+				t.Fatalf("%s active sort = %+v, want %+v", mode.ID, outlinerView.Sort, wantActive)
 			}
 		})
 	}
 
-	outliner := scopeTestOutliner(primaryRowsProject("alpha"))
-	if outliner.applyLensState(lensState{mode: chrome.OutlinerModeID("archive")}) {
+	outlinerView := scopeTestOutliner(primaryRowsProject("alpha"))
+	if outlinerView.ApplyLensState(outliner.LensState{Mode: chrome.OutlinerModeID("archive")}) {
 		t.Fatal("applyLensState accepted a mode outside the catalog")
 	}
-	if outliner.primaryMode != chrome.ModeAll {
-		t.Fatalf("a refused lens changed the mode to %s", outliner.primaryMode)
+	if outlinerView.PrimaryMode != chrome.ModeAll {
+		t.Fatalf("a refused lens changed the mode to %s", outlinerView.PrimaryMode)
 	}
 }
 
 func TestApplyLensStateDetachesFilterCollectionsFromTheDefinition(t *testing.T) {
-	outliner := scopeTestOutliner(primaryRowsProject("alpha"))
+	outlinerView := scopeTestOutliner(primaryRowsProject("alpha"))
 	state := lensRoundTripBase(t)
 	// The scope axis is only readable back when the base workspace admits the
 	// project it names: that population is the one scope the Outliner can be asked
 	// for, so it is the one a capture reports.
-	state.scopeProjectID = "alpha"
-	if !outliner.applyLensState(state) {
+	state.ScopeProjectID = "alpha"
+	if !outlinerView.ApplyLensState(state) {
 		t.Fatal("applyLensState refused the definition")
 	}
-	if outliner.scope.projectID != "alpha" {
-		t.Fatalf("applyLensState did not enter the lens's scope, got %q", outliner.scope.projectID)
+	if outlinerView.Scope.ProjectID != "alpha" {
+		t.Fatalf("applyLensState did not enter the lens's scope, got %q", outlinerView.Scope.ProjectID)
 	}
-	if !outliner.captureLensState().equal(state) {
-		t.Fatalf("captured %q after applying %q", outliner.captureLensState().fingerprint(), state.fingerprint())
+	if outlinerView.CaptureLensState().Fingerprint() != state.Fingerprint() {
+		t.Fatalf("captured %q after applying %q", outlinerView.CaptureLensState().Fingerprint(), state.Fingerprint())
 	}
 
-	before := state.facets.String()
-	outliner.filter.Tags["live"] = true
-	outliner.projectFilter.Tags["live"] = true
-	outliner.adoptFilterCarriers()
-	if state.facets.String() != before {
-		t.Fatalf("a live facet edit mutated the applied definition: %q", state.facets.String())
+	before := state.Facets.String()
+	outlinerView.Filter.Tags["live"] = true
+	outlinerView.ProjectFilter.Tags["live"] = true
+	outlinerView.AdoptFilterCarriers()
+	if state.Facets.String() != before {
+		t.Fatalf("a live facet edit mutated the applied definition: %q", state.Facets.String())
 	}
 }

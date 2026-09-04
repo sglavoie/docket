@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -32,12 +33,12 @@ func sortPressKeys(t *testing.T, driver *UITestDriver, keys ...string) {
 
 func sortProjectHeaderOrder(t *testing.T, driver *UITestDriver) []string {
 	t.Helper()
-	outliner := driver.App().crossOutliner
-	if outliner == nil {
+	outlinerView := driver.App().crossOutliner
+	if outlinerView == nil {
 		t.Fatal("the fixture app has no Outliner")
 	}
-	order := make([]string, 0, len(outliner.rows))
-	for _, row := range outliner.rows {
+	order := make([]string, 0, len(outlinerView.Rows))
+	for _, row := range outlinerView.Rows {
 		if row.IsProjectHeader {
 			order = append(order, row.ProjectID)
 		}
@@ -48,16 +49,16 @@ func sortProjectHeaderOrder(t *testing.T, driver *UITestDriver) []string {
 	return order
 }
 
-func sortSectionTaskTitles(t *testing.T, driver *UITestDriver, section func(outlinerRow) bool) []string {
+func sortSectionTaskTitles(t *testing.T, driver *UITestDriver, section func(outliner.OutlinerRow) bool) []string {
 	t.Helper()
-	outliner := driver.App().crossOutliner
-	if outliner == nil {
+	outlinerView := driver.App().crossOutliner
+	if outlinerView == nil {
 		t.Fatal("the fixture app has no Outliner")
 	}
-	titles := make([]string, 0, len(outliner.rows))
-	for _, row := range outliner.rows {
-		if row.task != nil && section(row) {
-			titles = append(titles, row.task.Title)
+	titles := make([]string, 0, len(outlinerView.Rows))
+	for _, row := range outlinerView.Rows {
+		if row.Task != nil && section(row) {
+			titles = append(titles, row.Task.Title)
 		}
 	}
 	return titles
@@ -68,7 +69,7 @@ func sortSectionTaskTitles(t *testing.T, driver *UITestDriver, section func(outl
 // switches fields back to ascending, and the clear key drops it.
 func TestSortAxisInstallsAndReversesOnRepeat(t *testing.T) {
 	driver := sortDriver(t, FixtureBusy)
-	outliner := driver.App().crossOutliner
+	outlinerView := driver.App().crossOutliner
 
 	for _, step := range []struct {
 		keys      []string
@@ -85,11 +86,11 @@ func TestSortAxisInstallsAndReversesOnRepeat(t *testing.T) {
 		{[]string{"o", "x"}, query.SortByDefault, true},
 	} {
 		sortPressKeys(t, driver, step.keys...)
-		if outliner.sort.Field != step.field {
-			t.Fatalf("%s: sort field = %v, want %v", strings.Join(step.keys, ""), outliner.sort.Field, step.field)
+		if outlinerView.Sort.Field != step.field {
+			t.Fatalf("%s: sort field = %v, want %v", strings.Join(step.keys, ""), outlinerView.Sort.Field, step.field)
 		}
-		if outliner.sort.Ascending != step.ascending {
-			t.Fatalf("%s: ascending = %v, want %v", strings.Join(step.keys, ""), outliner.sort.Ascending, step.ascending)
+		if outlinerView.Sort.Ascending != step.ascending {
+			t.Fatalf("%s: ascending = %v, want %v", strings.Join(step.keys, ""), outlinerView.Sort.Ascending, step.ascending)
 		}
 	}
 }
@@ -98,8 +99,8 @@ func TestSortAxisInstallsAndReversesOnRepeat(t *testing.T) {
 // rows a tree-order mode owns.
 func TestSortAxisOrdersTasksWithinTheirGroup(t *testing.T) {
 	driver := sortDriver(t, FixtureBusy, "o", "t")
-	titles := sortSectionTaskTitles(t, driver, func(row outlinerRow) bool {
-		return strings.HasPrefix(row.task.Title, "Waiting")
+	titles := sortSectionTaskTitles(t, driver, func(row outliner.OutlinerRow) bool {
+		return strings.HasPrefix(row.Task.Title, "Waiting")
 	})
 	want := []string{"Waiting on vendor response", "Waiting: production outage"}
 	if !equalStringSlices(titles, want) {
@@ -107,8 +108,8 @@ func TestSortAxisOrdersTasksWithinTheirGroup(t *testing.T) {
 	}
 
 	sortPressKeys(t, driver, "o", "t")
-	titles = sortSectionTaskTitles(t, driver, func(row outlinerRow) bool {
-		return strings.HasPrefix(row.task.Title, "Waiting")
+	titles = sortSectionTaskTitles(t, driver, func(row outliner.OutlinerRow) bool {
+		return strings.HasPrefix(row.Task.Title, "Waiting")
 	})
 	want = []string{"Waiting: production outage", "Waiting on vendor response"}
 	if !equalStringSlices(titles, want) {
@@ -139,7 +140,7 @@ func TestSortAxisNeverReachesManualOrder(t *testing.T) {
 	driver.Wait(defaultWaitTimeout)
 
 	pinned := func() []string {
-		return sortSectionTaskTitles(t, driver, func(row outlinerRow) bool {
+		return sortSectionTaskTitles(t, driver, func(row outliner.OutlinerRow) bool {
 			return row.IsPinnedSection
 		})
 	}
@@ -162,21 +163,21 @@ func TestSortAxisNeverReachesManualOrder(t *testing.T) {
 // return to a tree-order mode.
 func TestSortAxisRecordsTheChoiceInAFixedOrderMode(t *testing.T) {
 	driver := sortDriver(t, FixtureRich, "g", "t", "o", "@")
-	outliner := driver.App().crossOutliner
+	outlinerView := driver.App().crossOutliner
 
-	if outliner.sort.Field != query.SortByDefault {
-		t.Fatalf("Today installed sort field %v, want the mode's own order", outliner.sort.Field)
+	if outlinerView.Sort.Field != query.SortByDefault {
+		t.Fatalf("Today installed sort field %v, want the mode's own order", outlinerView.Sort.Field)
 	}
-	if outliner.treeSort.Field != query.SortByDueDate {
-		t.Fatalf("Today recorded tree sort field %v, want %v", outliner.treeSort.Field, query.SortByDueDate)
+	if outlinerView.TreeSort.Field != query.SortByDueDate {
+		t.Fatalf("Today recorded tree sort field %v, want %v", outlinerView.TreeSort.Field, query.SortByDueDate)
 	}
 	if status := driver.App().statusMessage; !strings.Contains(status, "Today owns its order") {
 		t.Fatalf("status %q does not explain the fixed order", status)
 	}
 
 	sortPressKeys(t, driver, "g", "a")
-	if outliner.sort.Field != query.SortByDueDate {
-		t.Fatalf("All installed sort field %v, want the recorded %v", outliner.sort.Field, query.SortByDueDate)
+	if outlinerView.Sort.Field != query.SortByDueDate {
+		t.Fatalf("All installed sort field %v, want the recorded %v", outlinerView.Sort.Field, query.SortByDueDate)
 	}
 }
 

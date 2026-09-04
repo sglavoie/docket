@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -47,29 +48,29 @@ func TestUpdatePanicRecoveryRestoresOutlinerRoot(t *testing.T) {
 func TestUpdatePanicRecoveryCancelsPendingCrossProjectRefresh(t *testing.T) {
 	app := newTestAppModel()
 	project := scopeTestProject("alpha", "Alpha", "task")
-	cross := NewOutlinerModel(nil, app.configManager, app.runtime)
-	cross.population.projects = []*models.Project{project}
-	cross.population.snapshotReady = true
+	cross := outliner.NewOutlinerModel(nil, app.configManager, app.runtime)
+	cross.Population.Projects = []*models.Project{project}
+	cross.Population.SnapshotReady = true
 	cross.SetSize(app.width, app.height-2)
-	cross.population.invalidate()
-	cross.crossProjectRebuildRows()
+	cross.Population.Invalidate()
+	cross.CrossProjectRebuildRows()
 	app.crossOutliner = cross
 	app.views.Register(presentation.ViewCrossProjectOutliner, cross)
 	app.views.Register(presentation.ViewTaskComments, &panicOnCustomView{})
 	pushTestPresentationOverlay(app, presentation.ViewTaskComments)
 
-	_ = cross.reloadCrossProjects()
-	abandonedGeneration := cross.population.loadGen
-	cross.population.spinnerVisible = true
+	_ = cross.ReloadCrossProjects()
+	abandonedGeneration := cross.Population.LoadGen
+	cross.Population.SpinnerVisible = true
 
 	model, cmd := app.Update(panicCustomMsg{})
 	if model == nil || cmd != nil {
 		t.Fatalf("panic recovery = model %T cmd %T, want model and no abandoned command", model, cmd)
 	}
-	if cross.population.loading || cross.population.spinnerVisible {
+	if cross.Population.Loading || cross.Population.SpinnerVisible {
 		t.Fatal("panic recovery left the cross-project refresh active")
 	}
-	if cross.population.loadGen == abandonedGeneration {
+	if cross.Population.LoadGen == abandonedGeneration {
 		t.Fatal("panic recovery did not invalidate the abandoned load generation")
 	}
 	if got := app.currentView(); got != presentation.ViewCrossProjectOutliner {
@@ -79,8 +80,8 @@ func TestUpdatePanicRecoveryCancelsPendingCrossProjectRefresh(t *testing.T) {
 		t.Fatalf("recovered root is not renderable:\n%s", content)
 	}
 
-	app.Update(crossProjectsLoadedMsg{generation: abandonedGeneration})
-	if len(cross.population.projects) != 1 || cross.population.projects[0].ID != project.ID {
-		t.Fatalf("stale load replaced the recovered snapshot: %#v", cross.population.projects)
+	app.Update(outliner.CrossProjectsLoadedMsg{Generation: abandonedGeneration})
+	if len(cross.Population.Projects) != 1 || cross.Population.Projects[0].ID != project.ID {
+		t.Fatalf("stale load replaced the recovered snapshot: %#v", cross.Population.Projects)
 	}
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -220,7 +221,7 @@ func (m *AppModel) openTaskActionSheet(context operation.CommandContext) error {
 			context.Selection.Tasks = append(context.Selection.Tasks, ref.Identity())
 			context.Selection.Entities = append(
 				context.Selection.Entities,
-				taskOperationEntity(ref.Task, ref.Project),
+				outliner.TaskOperationEntity(ref.Task, ref.Project),
 			)
 		}
 		// operationTaskRefs can drop rows the selection still names, so the typed

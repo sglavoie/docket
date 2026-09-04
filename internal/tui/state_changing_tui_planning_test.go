@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -25,7 +26,7 @@ func TestStateChangingTUISurfacesPreservePlanningExclusivity(t *testing.T) {
 			t.Fatalf("parse inline edit: %v", err)
 		}
 		cmd := m.secondaryFeatures.TaskItem.EditTaskLine(
-			taskLineEditRequest(taskref.For(task, m.currentProject), parsed), nil,
+			outliner.TaskLineEditRequest(taskref.For(task, m.currentProject), parsed), nil,
 		)
 		assertNotTransactionError(t, cmd())
 
@@ -68,9 +69,9 @@ func TestInlineProjectMoveAfterTodayMutationUsesFreshStructuralPlanning(t *testi
 			destination.ID: destination,
 		},
 		currentProject: source,
-		nextOrder:      []PlanningTask{},
+		nextOrder:      []outliner.PlanningTask{},
 		nextOrderIDs:   make(map[taskref.TaskIdentity]bool),
-		today:          []PlanningTask{},
+		today:          []outliner.PlanningTask{},
 		todayIDs:       make(map[taskref.TaskIdentity]bool),
 	}
 
@@ -102,8 +103,8 @@ func TestInlineProjectMoveAfterTodayMutationUsesFreshStructuralPlanning(t *testi
 	if err != nil {
 		t.Fatalf("parse inline project move: %v", err)
 	}
-	outliner := NewOutlinerModel(nil, manager, runtime)
-	req := outliner.taskLineEditRequest(taskref.For(moving, source), parsed)
+	outlinerView := outliner.NewOutlinerModel(nil, manager, runtime)
+	req := outlinerView.TaskLineEditRequest(taskref.For(moving, source), parsed)
 	if req.PlanningArtifacts == nil {
 		t.Fatal("cross-project inline request has no explicit planning builder")
 	}

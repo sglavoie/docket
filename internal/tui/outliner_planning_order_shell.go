@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -15,16 +16,16 @@ import (
 // The Outliner computes the whole new workspace order and raises
 // OutlinerPlanningReorderMsg; only the shell holds the application service that
 // can commit it. See outliner_planning_order.go for the row side.
-func (m *AppModel) handleOutlinerPlanningReorder(msg OutlinerPlanningReorderMsg) tea.Cmd {
+func (m *AppModel) handleOutlinerPlanningReorder(msg outliner.OutlinerPlanningReorderMsg) tea.Cmd {
 	order := make([]app.TaskLocator, 0, len(msg.Order))
 	for _, loc := range msg.Order {
 		order = append(order, app.TaskLocator{ProjectID: loc.ProjectID, TaskID: loc.TaskID})
 	}
 	var err error
 	switch msg.Kind {
-	case reorderNextOrder:
+	case outliner.ReorderNextOrder:
 		err = m.appService.ReorderNext(order)
-	case reorderToday:
+	case outliner.ReorderToday:
 		err = m.appService.ReorderToday(order)
 	}
 	if err != nil {
@@ -35,7 +36,7 @@ func (m *AppModel) handleOutlinerPlanningReorder(msg OutlinerPlanningReorderMsg)
 	m.refreshRuntime()
 	m.rebuildPlanningFromRuntime()
 	if m.crossOutliner != nil {
-		m.crossOutliner.population.invalidate()
+		m.crossOutliner.Population.Invalidate()
 	}
 	m.setInfoStatus("Reordered planning list")
 	return tea.Batch(m.refreshTaskViewsAfterPlanningMutation()...)

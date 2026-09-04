@@ -71,17 +71,17 @@ func TestPendingChordGuidanceUsesAtMostTwoNonwrappingHintLines(t *testing.T) {
 
 func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 	app := newFilterChordTestApp(t)
-	outliner := app.crossOutliner
-	for index, row := range outliner.rows {
-		if row.isTaskRow() {
-			outliner.Cursor = index
+	outlinerView := app.crossOutliner
+	for index, row := range outlinerView.Rows {
+		if row.IsTaskRow() {
+			outlinerView.Cursor = index
 			break
 		}
 	}
-	outliner.SetSize(chrome.MinTerminalWidth, chrome.MinTerminalHeight-2)
+	outlinerView.SetSize(chrome.MinTerminalWidth, chrome.MinTerminalHeight-2)
 
 	hints := app.operationRegistry.GuidanceHintsForInputStrategy(
-		operation.InputStrategySimplified, outliner.operationCommandContext(),
+		operation.InputStrategySimplified, outlinerView.OperationCommandContext(),
 	)
 	pairs := make([]string, 0, len(hints))
 	for _, hint := range hints {
@@ -97,7 +97,7 @@ func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 	if len(pairs) < len(wantWorkflow) || !slices.Equal(pairs[:len(wantWorkflow)], wantWorkflow) {
 		t.Fatalf("ranked footer prefix = %v, want workflow-first task guidance %v", pairs, wantWorkflow)
 	}
-	spec, ok := outliner.ContextualGuidance()
+	spec, ok := outlinerView.ContextualGuidance()
 	if !ok {
 		t.Fatal("Outliner did not provide its operation footer")
 	}
@@ -117,9 +117,9 @@ func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 	// A visual selection makes cursor-only edit operations inapplicable. At a
 	// wide size they would otherwise be visible, so their absence proves the
 	// footer uses live descriptor applicability rather than a static key list.
-	outliner.MultiSelectMode = true
-	outliner.SetSize(240, chrome.MinTerminalHeight-2)
-	spec, ok = outliner.ContextualGuidance()
+	outlinerView.MultiSelectMode = true
+	outlinerView.SetSize(240, chrome.MinTerminalHeight-2)
+	spec, ok = outlinerView.ContextualGuidance()
 	if !ok {
 		t.Fatal("selected Outliner did not provide its operation footer")
 	}

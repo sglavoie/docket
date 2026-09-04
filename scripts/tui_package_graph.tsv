@@ -23,8 +23,13 @@
 #     when its package already reaches keymap through chrome.
 #   - context.md writes L7's lower dependencies as `...`. That ellipsis is
 #     spelled out here as the full L0-L6 set; the L7-internal edges
-#     (`projecthub -> notes`, `outliner -> taskform, taskdetail, lens,
+#     (`projecthub -> notes`, `outliner -> notes, taskform, taskdetail, lens,
 #     projecthub`) are what keep the layer one-directional.
+#   - `outliner -> notes` was measured, not predicted, when Session 4.10 lifted
+#     the Outliner out of the shell. The `/` search's lowest tier is notes, so
+#     the projection reads the note search index the `notes` package owns. It is
+#     read-only discovery — Enter leaves for the Notes surface — and `notes`
+#     names nothing in `outliner`, so the edge stays one-directional.
 #   - `conflict` is a sibling of `outliner`, not a dependency of it. `gc`
 #     browses conflict bundles as a shell-owned overlay, so the shell holds
 #     that edge.
@@ -182,5 +187,5 @@ taskform	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordi
 lens	L7	presentation,theme,textfit,status,keymap,chrome,query,operation,route,listsurface
 conflict	L7	theme,textfit,status,keymap,chrome,listsurface
 projecthub	L7	presentation,theme,textfit,status,pulse,keymap,chrome,coordinator,operation,route,listsurface,help,notes
-outliner	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help,taskform,taskdetail,lens,projecthub
+outliner	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help,notes,taskform,taskdetail,lens,projecthub
 tui	L8	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help,notes,taskdetail,taskform,lens,conflict,projecthub,outliner

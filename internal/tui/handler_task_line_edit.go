@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -16,11 +17,11 @@ func (m *AppModel) handleTaskLineEditFailed(msg coordinator.TaskLineEditFailedMs
 	if msg.Err != nil {
 		message = msg.Err.Error()
 	}
-	if out, ok := m.outlinerPrimary(); ok && out != nil && out.quickEdit.IsActive() {
-		task := out.quickEdit.GetTask()
-		project := out.quickEdit.GetProject()
+	if out, ok := m.outlinerPrimary(); ok && out != nil && out.QuickEdit.IsActive() {
+		task := out.QuickEdit.GetTask()
+		project := out.QuickEdit.GetProject()
 		if task != nil && project != nil && taskref.For(task, project) == msg.Source {
-			out.quickEdit.RejectCommit(message)
+			out.QuickEdit.RejectCommit(message)
 		}
 	}
 	return status.StatusTimeout(5 * time.Second)
@@ -29,11 +30,11 @@ func (m *AppModel) handleTaskLineEditFailed(msg coordinator.TaskLineEditFailedMs
 func (m *AppModel) handleTaskLineEdited(msg coordinator.TaskLineEditedMsg) tea.Cmd {
 	m.err = nil
 	out, ok := m.outlinerPrimary()
-	if ok && out != nil && out.quickEdit.IsActive() {
-		task := out.quickEdit.GetTask()
-		project := out.quickEdit.GetProject()
+	if ok && out != nil && out.QuickEdit.IsActive() {
+		task := out.QuickEdit.GetTask()
+		project := out.QuickEdit.GetProject()
 		if task != nil && project != nil && taskref.For(task, project) == msg.Source {
-			out.quickEdit.Exit()
+			out.QuickEdit.Exit()
 		}
 	}
 
@@ -57,7 +58,7 @@ func (m *AppModel) handleTaskLineEdited(msg coordinator.TaskLineEditedMsg) tea.C
 			ProjectID: msg.Result.Task.ProjectID,
 			TaskID:    msg.Result.Task.TaskID,
 		}
-		jumpCmd, recordedOrigin = out.finishTaskLineEditRelocation(outlinerRelocationFrom(msg.Relocation), final)
+		jumpCmd, recordedOrigin = out.FinishTaskLineEditRelocation(outliner.OutlinerRelocationFrom(msg.Relocation), final)
 	}
 
 	summary := fmt.Sprintf("Updated #%d %s", msg.Result.ShortID, msg.Result.Title)

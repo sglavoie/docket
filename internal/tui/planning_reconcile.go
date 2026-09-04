@@ -2,57 +2,19 @@ package tui
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
-
-// shellPlanningReconcileArtifactBuilder binds application-owned invariant
-// mutations to the shell's revision-bound planning snapshot. A mismatched
-// manager/runtime pair is rejected before mutation instead of writing planning
-// through an unrelated workspace root.
-func shellPlanningReconcileArtifactBuilder(runtime *config.RuntimeState, mgr *config.Manager) app.PlanningArtifactBuilder {
-	if runtime != nil {
-		if planningWorkspaceMismatch(runtime, mgr) {
-			return func(app.PlanningReconcileRequest) ([]storage.ArtifactChange, error) {
-				return nil, fmt.Errorf("planning manager and runtime refer to different workspaces")
-			}
-		}
-		return runtimePlanningReconcileArtifactBuilder(runtime)
-	}
-	return planningReconcileArtifactBuilder(mgr)
-}
-
-// shellStructuralPlanningArtifactBuilder is used for delete and project move.
-// Their request contains the complete qualified remove/reassign delta, so it can
-// reconcile the newest on-disk planning state without adopting stale shell
-// intent. The resulting expected revision still detects a writer racing the
-// combined project-plus-planning commit.
-func shellStructuralPlanningArtifactBuilder(runtime *config.RuntimeState, mgr *config.Manager) app.PlanningArtifactBuilder {
-	if planningWorkspaceMismatch(runtime, mgr) {
-		return func(app.PlanningReconcileRequest) ([]storage.ArtifactChange, error) {
-			return nil, fmt.Errorf("planning manager and runtime refer to different workspaces")
-		}
-	}
-	if mgr != nil {
-		return planningReconcileArtifactBuilder(mgr)
-	}
-	return runtimePlanningReconcileArtifactBuilder(runtime)
-}
-
-func planningWorkspaceMismatch(runtime *config.RuntimeState, mgr *config.Manager) bool {
-	return runtime != nil && mgr != nil && runtime.DataDir() != "" &&
-		filepath.Clean(config.WorkspaceRootFromConfigPath(mgr.GetConfigPath())) != filepath.Clean(runtime.DataDir())
-}
 
 // nextOrderContains reports whether the Next order index already lists the
 // project-qualified task.
@@ -78,7 +40,7 @@ func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.
 				}
 			}
 		}
-		builder := shellPlanningReconcileArtifactBuilder(m.runtime, m.configManager)
+		builder := coordinator.PlanningArtifacts(m.runtime, m.configManager)
 		m.appService.WithPlanningArtifacts(builder)
 		res, err := m.appService.ApplyPlanning(app.PlanningRequest{
 			Locator: app.TaskLocator{ProjectID: projectID, TaskID: taskID},
@@ -94,7 +56,7 @@ func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.
 		m.refreshRuntime()
 		m.rebuildPlanningFromRuntime()
 		if m.crossOutliner != nil {
-			m.crossOutliner.population.invalidate()
+			m.crossOutliner.Population.Invalidate()
 		}
 		project := m.projectByID(res.ProjectID)
 		if project == nil {
@@ -151,7 +113,7 @@ func (m *AppModel) rebuildPlanningFromRuntime() {
 			continue
 		}
 		if t := p.GetTaskByID(item.TaskID); t != nil {
-			m.nextOrder = append(m.nextOrder, PlanningTask{Task: t, Project: p})
+			m.nextOrder = append(m.nextOrder, outliner.PlanningTask{Task: t, Project: p})
 			m.nextOrderIDs[taskref.TaskIdentity{ProjectID: item.ProjectID, TaskID: item.TaskID}] = true
 		}
 	}
@@ -167,7 +129,7 @@ func (m *AppModel) rebuildPlanningFromRuntime() {
 			continue
 		}
 		if t := p.GetTaskByID(item.TaskID); t != nil {
-			m.today = append(m.today, PlanningTask{Task: t, Project: p})
+			m.today = append(m.today, outliner.PlanningTask{Task: t, Project: p})
 			m.todayIDs[taskref.TaskIdentity{ProjectID: item.ProjectID, TaskID: item.TaskID}] = true
 		}
 	}
@@ -209,51 +171,4 @@ func (m *AppModel) planningLedgerRestore(redo bool) tea.Cmd {
 	m.rebuildPlanningFromRuntime()
 	m.setInfoStatus(fmt.Sprintf("%s: %s", verb, desc))
 	return m.queueToggleResultCmd()
-}
-
-// planningReconcileArtifactBuilder returns the planning-artifact builder the
-// application layer invokes after a transition (and its rule cascade) settles. It
-// loads the current planning domain, reconciles Today/Next exclusivity for the
-// transitioned tasks, and renders one revision-checked planning.json artifact for
-// the same transaction. A nil manager yields a nil builder (a bare transition).
-func planningReconcileArtifactBuilder(mgr *config.Manager) app.PlanningArtifactBuilder {
-	if mgr == nil {
-		return nil
-	}
-	return func(req app.PlanningReconcileRequest) ([]storage.ArtifactChange, error) {
-		coord := mgr.DomainCoordinator()
-		planning, err := coord.LoadPlanning()
-		if err != nil {
-			return nil, err
-		}
-		if !app.ReconcilePlanningState(planning, req) {
-			return nil, nil
-		}
-		artifact, err := coord.CheckedPlanningArtifact(planning)
-		if err != nil {
-			return nil, err
-		}
-		return []storage.ArtifactChange{artifact.StorageChange()}, nil
-	}
-}
-
-// runtimePlanningReconcileArtifactBuilder binds an interactive planning action
-// to the shell's current runtime snapshot. This keeps injected/failing runtime
-// tests honest and prevents a long-lived service from writing through a stale
-// manager after the shell switches workspace state.
-func runtimePlanningReconcileArtifactBuilder(runtime *config.RuntimeState) app.PlanningArtifactBuilder {
-	if runtime == nil {
-		return nil
-	}
-	return func(req app.PlanningReconcileRequest) ([]storage.ArtifactChange, error) {
-		planning := clonePlanningState(runtime.Planning())
-		if !app.ReconcilePlanningState(planning, req) {
-			return nil, nil
-		}
-		artifact, err := runtime.CheckedPlanningArtifact(planning)
-		if err != nil {
-			return nil, err
-		}
-		return []storage.ArtifactChange{artifact.StorageChange()}, nil
-	}
 }

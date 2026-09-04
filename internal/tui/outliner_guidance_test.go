@@ -7,21 +7,14 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 )
-
-func guidanceEntryText(spec chrome.GuidanceSpec) string {
-	parts := make([]string, 0, len(spec.Hints))
-	for _, hint := range spec.Hints {
-		parts = append(parts, chrome.GuidanceHintText(hint))
-	}
-	return strings.Join(parts, " · ")
-}
 
 func TestOutlinerGuidanceProfilesFollowInteractionState(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	out := app.crossOutliner
 
-	out.peekMode = true
+	out.PeekMode = true
 	spec, ok := out.ContextualGuidance()
 	if !ok || spec.Rows != 2 {
 		t.Fatalf("Peek guidance = (%+v, %v), want two-row profile", spec, ok)
@@ -30,9 +23,9 @@ func TestOutlinerGuidanceProfilesFollowInteractionState(t *testing.T) {
 		t.Fatalf("Peek guidance = %q", got)
 	}
 
-	out.peekMode = false
+	out.PeekMode = false
 	out.MultiSelectMode = true
-	out.ReplaceSelection(out.visibleTaskIdentities()[:1])
+	out.ReplaceSelection(out.VisibleTaskIdentities()[:1])
 	spec, ok = out.ContextualGuidance()
 	if !ok || spec.Rows != 1 {
 		t.Fatalf("selection guidance = (%+v, %v), want one-row browse profile", spec, ok)
@@ -58,7 +51,7 @@ func TestOutlinerHeaderGuidanceDoesNotAdvertiseTaskWorkflow(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	out := app.crossOutliner
 	header := -1
-	for index, row := range out.rows {
+	for index, row := range out.Rows {
 		if row.IsSectionHeader || row.IsProjectHeader {
 			header = index
 			break
@@ -89,62 +82,62 @@ func TestOutlinerEmptyStatesAdvertiseCausalRecovery(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		configure   func(*OutlinerModel)
+		configure   func(*outliner.OutlinerModel)
 		wantMessage string
 		wantHint    string
 	}{
 		{
 			name: "no projects",
-			configure: func(out *OutlinerModel) {
-				out.project = nil
-				out.population.projects = nil
-				out.rows = nil
+			configure: func(out *outliner.OutlinerModel) {
+				out.Project = nil
+				out.Population.Projects = nil
+				out.Rows = nil
 			},
 			wantMessage: "No projects are available. Press P to open Projects.",
 			wantHint:    "P projects",
 		},
 		{
 			name: "empty mode",
-			configure: func(out *OutlinerModel) {
-				out.project = project
-				out.population.projects = []*models.Project{project}
-				out.primaryMode = chrome.ModeDue
-				out.rows = nil
+			configure: func(out *outliner.OutlinerModel) {
+				out.Project = project
+				out.Population.Projects = []*models.Project{project}
+				out.PrimaryMode = chrome.ModeDue
+				out.Rows = nil
 			},
 			wantMessage: "Due is empty. Press Tab or Shift+Tab to change modes.",
 			wantHint:    "Tab next mode",
 		},
 		{
 			name: "filtered empty",
-			configure: func(out *OutlinerModel) {
-				out.project = project
-				out.population.projects = []*models.Project{project}
-				out.primaryMode = chrome.ModeAll
-				out.filter.Priority = models.PriorityHigh
-				out.adoptFilterCarriers()
-				out.rows = nil
+			configure: func(out *outliner.OutlinerModel) {
+				out.Project = project
+				out.Population.Projects = []*models.Project{project}
+				out.PrimaryMode = chrome.ModeAll
+				out.Filter.Priority = models.PriorityHigh
+				out.AdoptFilterCarriers()
+				out.Rows = nil
 			},
 			wantMessage: listsurface.EmptyStateFiltered,
 			wantHint:    "fx clear filters",
 		},
 		{
 			name: "search empty",
-			configure: func(out *OutlinerModel) {
-				out.project = project
-				out.population.projects = []*models.Project{project}
+			configure: func(out *outliner.OutlinerModel) {
+				out.Project = project
+				out.Population.Projects = []*models.Project{project}
 				out.SetSearchQuery("missing")
-				out.rows = nil
+				out.Rows = nil
 			},
 			wantMessage: `No tasks match search "missing". Press Esc to clear.`,
 			wantHint:    "Esc clear search",
 		},
 		{
 			name: "Focus empty",
-			configure: func(out *OutlinerModel) {
-				out.project = project
-				out.population.projects = []*models.Project{project}
-				out.focus.stack = []FocusEntry{{TaskID: "missing"}}
-				out.rows = nil
+			configure: func(out *outliner.OutlinerModel) {
+				out.Project = project
+				out.Population.Projects = []*models.Project{project}
+				out.Focus.Stack = []outliner.FocusEntry{{TaskID: "missing"}}
+				out.Rows = nil
 			},
 			wantMessage: "No tasks are visible in this Focus. Press Esc to return.",
 			wantHint:    "Esc return",
@@ -156,7 +149,7 @@ func TestOutlinerEmptyStatesAdvertiseCausalRecovery(t *testing.T) {
 			app := newUITestApp()
 			out := app.crossOutliner
 			test.configure(out)
-			if got := out.outlinerEmptyMessage(); got != test.wantMessage {
+			if got := out.OutlinerEmptyMessage(); got != test.wantMessage {
 				t.Fatalf("empty message = %q, want %q", got, test.wantMessage)
 			}
 			spec, ok := out.ContextualGuidance()
@@ -171,4 +164,12 @@ func TestOutlinerEmptyStatesAdvertiseCausalRecovery(t *testing.T) {
 			}
 		})
 	}
+}
+
+func guidanceEntryText(spec chrome.GuidanceSpec) string {
+	parts := make([]string, 0, len(spec.Hints))
+	for _, hint := range spec.Hints {
+		parts = append(parts, chrome.GuidanceHintText(hint))
+	}
+	return strings.Join(parts, " · ")
 }

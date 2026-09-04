@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -25,16 +26,16 @@ import (
 // task-bearing fixtures stand in for what the read would have returned; a caller
 // asserting only identity can leave them out. It is a no-op for a template that
 // applies synchronously, so a caller never has to know which kind it just added.
-func settleLensPopulationLoad(t *testing.T, outliner *OutlinerModel, sources ...*models.Project) {
+func settleLensPopulationLoad(t *testing.T, outlinerView *outliner.OutlinerModel, sources ...*models.Project) {
 	t.Helper()
-	pending := outliner.lens.pending
+	pending := outlinerView.Lens.Pending
 	if pending == nil {
 		return
 	}
-	selected := selectCrossScopeProjects(outliner.runtime, CrossScopeOpts{
+	selected := outliner.SelectCrossScopeProjects(outlinerView.Runtime, outliner.CrossScopeOpts{
 		ActiveOnly:     true,
-		FocusProjectID: outliner.scope.focusRequest(),
-		ProjectFilter:  pending.state.projectFilterState(),
+		FocusProjectID: outlinerView.Scope.FocusRequest(),
+		ProjectFilter:  pending.State.ProjectFilterState(),
 	})
 	byID := make(map[string]*models.Project, len(sources))
 	for _, source := range sources {
@@ -48,9 +49,9 @@ func settleLensPopulationLoad(t *testing.T, outliner *OutlinerModel, sources ...
 		}
 		projects = append(projects, project)
 	}
-	if _, published := outliner.handleLensProjectsLoaded(lensProjectsLoadedMsg{
-		projects:   projects,
-		generation: pending.generation,
+	if _, published := outlinerView.HandleLensProjectsLoaded(outliner.LensProjectsLoadedMsg{
+		Projects:   projects,
+		Generation: pending.Generation,
 	}); !published {
 		t.Fatal("the pending population load published nothing")
 	}
@@ -90,15 +91,15 @@ func TestEveryBuiltinTemplateInstallsItsExactProjection(t *testing.T) {
 			out := model.crossOutliner
 			// A mode no template names, so the restoration assertion below cannot
 			// pass by accident.
-			out.selectOutlinerMode(chrome.ModeInbox)
+			out.SelectOutlinerMode(chrome.ModeInbox)
 
-			want, err := lensStateFromNamedLens(template)
+			want, err := outliner.LensStateFromNamedLens(template)
 			if err != nil {
 				t.Fatalf("the catalog definition does not decode: %v", err)
 			}
-			mode, ok := chrome.OutlinerModeByID(want.mode)
+			mode, ok := chrome.OutlinerModeByID(want.Mode)
 			if !ok {
-				t.Fatalf("template mode %q is not a catalog mode", want.mode)
+				t.Fatalf("template mode %q is not a catalog mode", want.Mode)
 			}
 
 			addTemplateAndSettle(t, model, template)
@@ -111,53 +112,53 @@ func TestEveryBuiltinTemplateInstallsItsExactProjection(t *testing.T) {
 				t.Fatalf("saved record = %+v, want the catalog definition %+v", *saved, template)
 			}
 
-			if !out.hasActiveLens() || out.lens.active.lensID != template.ID {
-				t.Fatalf("the added template is not the live lens: %v", out.activeLensLabel())
+			if !out.HasActiveLens() || out.Lens.Active.LensID != template.ID {
+				t.Fatalf("the added template is not the live lens: %v", out.ActiveLensLabel())
 			}
-			if out.lens.active.name != template.Name {
-				t.Fatalf("frame name = %q, want %q", out.lens.active.name, template.Name)
+			if out.Lens.Active.Name != template.Name {
+				t.Fatalf("frame name = %q, want %q", out.Lens.Active.Name, template.Name)
 			}
-			if out.primaryMode != want.mode {
-				t.Fatalf("mode = %v, want the template's %v", out.primaryMode, want.mode)
+			if out.PrimaryMode != want.Mode {
+				t.Fatalf("mode = %v, want the template's %v", out.PrimaryMode, want.Mode)
 			}
-			if out.lens.query != "" {
-				t.Fatalf("narrowing query = %q, want the template's empty one", out.lens.query)
+			if out.Lens.Query != "" {
+				t.Fatalf("narrowing query = %q, want the template's empty one", out.Lens.Query)
 			}
 			// The fingerprint is the canonical rendering of every lens-owned axis at
 			// once: filters, population facets, query, mode, and sort. Comparing it
 			// against the definition's own is what proves the live view is the
 			// template rather than merely something like it.
-			if got := out.captureLensState().fingerprint(); got != want.fingerprint() {
-				t.Fatalf("live projection fingerprint = %q, want %q", got, want.fingerprint())
+			if got := out.CaptureLensState().Fingerprint(); got != want.Fingerprint() {
+				t.Fatalf("live projection fingerprint = %q, want %q", got, want.Fingerprint())
 			}
-			if out.lens.active.savedFingerprint != want.fingerprint() {
+			if out.Lens.Active.SavedFingerprint != want.Fingerprint() {
 				t.Fatal("the frame recorded a definition the template never carried")
 			}
-			if out.lensModified() {
+			if out.LensModified() {
 				t.Fatal("a freshly added built-in view starts unmodified")
 			}
 			// The manual sort the template owns survives as treeSort whatever the
 			// mode does with it; only a tree-order mode makes it the active order.
-			if out.treeSort != want.sort {
-				t.Fatalf("treeSort = %+v, want the template's %+v", out.treeSort, want.sort)
+			if out.TreeSort != want.Sort {
+				t.Fatalf("treeSort = %+v, want the template's %+v", out.TreeSort, want.Sort)
 			}
 			if mode.SupportsManualSort() {
-				if out.sort != want.sort {
-					t.Fatalf("active sort = %+v, want the template's %+v", out.sort, want.sort)
+				if out.Sort != want.Sort {
+					t.Fatalf("active sort = %+v, want the template's %+v", out.Sort, want.Sort)
 				}
-			} else if out.sort != query.NewSortState() {
-				t.Fatalf("active sort = %+v, want a fixed-order mode's inactive default", out.sort)
+			} else if out.Sort != query.NewSortState() {
+				t.Fatalf("active sort = %+v, want a fixed-order mode's inactive default", out.Sort)
 			}
-			if out.lens.pending != nil {
+			if out.Lens.Pending != nil {
 				t.Fatal("the application left a load still armed")
 			}
 
 			// One Esc, whichever path the template took to get here.
-			if !listsurface.RunEscCascade(out.escSteps()) {
+			if !listsurface.RunEscCascade(out.EscSteps()) {
 				t.Fatal("expected Esc to consume the added lens")
 			}
-			if out.hasActiveLens() || out.primaryMode != chrome.ModeInbox {
-				t.Fatalf("one Esc left mode %v with lens=%v", out.primaryMode, out.hasActiveLens())
+			if out.HasActiveLens() || out.PrimaryMode != chrome.ModeInbox {
+				t.Fatalf("one Esc left mode %v with lens=%v", out.PrimaryMode, out.HasActiveLens())
 			}
 		})
 	}
@@ -172,8 +173,8 @@ func TestEveryBuiltinTemplateInstallsItsExactProjection(t *testing.T) {
 // a half-applied add in front of a user.
 func TestNoCatalogTemplateCanFailToApplyAfterItsCommit(t *testing.T) {
 	for _, template := range config.BuiltinNamedLensTemplates() {
-		outliner := lensLifecycleOutliner()
-		if _, err := outliner.ApplyNamedLens(template); err != nil {
+		outlinerView := lensLifecycleOutliner()
+		if _, err := outlinerView.ApplyNamedLens(template); err != nil {
 			t.Fatalf("template %q cannot be applied: %v", template.Name, err)
 		}
 	}
@@ -189,39 +190,39 @@ func TestAddingTemplatesFromANormalViewKeepsOneRestorationPoint(t *testing.T) {
 	model := lensOperationApp(t)
 	emptyTemplateMachine(t, model)
 	out := model.crossOutliner
-	out.selectOutlinerMode(chrome.ModeBacklog)
-	out.folds.collapsedSections["pre-lens-fold"] = true
-	baselineProjects := slices.Clone(out.population.projects)
+	out.SelectOutlinerMode(chrome.ModeBacklog)
+	out.Folds.CollapsedSections["pre-lens-fold"] = true
+	baselineProjects := slices.Clone(out.Population.Projects)
 
 	chain := []string{"Overdue", "Active Work", "Parked Work"}
-	var origin outlinerViewSnapshot
+	var origin outliner.OutlinerViewSnapshot
 	for i, name := range chain {
 		addTemplateAndSettle(t, model, lensTemplateByName(t, name))
 		if i == 0 {
-			origin = out.lens.active.origin
+			origin = out.Lens.Active.Origin
 			continue
 		}
-		if out.lens.active.origin.presentation.mode != origin.presentation.mode {
+		if out.Lens.Active.Origin.Presentation.Mode != origin.Presentation.Mode {
 			t.Fatalf("adding %q replaced the original restoration point", name)
 		}
 	}
-	if out.lens.active.name != "Parked Work" {
-		t.Fatalf("active lens = %q, want the last one added", out.lens.active.name)
+	if out.Lens.Active.Name != "Parked Work" {
+		t.Fatalf("active lens = %q, want the last one added", out.Lens.Active.Name)
 	}
 
-	if !listsurface.RunEscCascade(out.escSteps()) {
+	if !listsurface.RunEscCascade(out.EscSteps()) {
 		t.Fatal("expected Esc to consume the lens")
 	}
-	if out.hasActiveLens() {
+	if out.HasActiveLens() {
 		t.Fatal("one Esc must leave the lens entirely after a chain of adds")
 	}
-	if out.primaryMode != chrome.ModeBacklog {
-		t.Fatalf("restored mode = %v, want the pre-lens %v", out.primaryMode, chrome.ModeBacklog)
+	if out.PrimaryMode != chrome.ModeBacklog {
+		t.Fatalf("restored mode = %v, want the pre-lens %v", out.PrimaryMode, chrome.ModeBacklog)
 	}
-	if !out.folds.collapsedSections["pre-lens-fold"] {
+	if !out.Folds.CollapsedSections["pre-lens-fold"] {
 		t.Fatal("restoration lost the fold the pre-lens view held")
 	}
-	if !slices.Equal(out.population.projects, baselineProjects) {
+	if !slices.Equal(out.Population.Projects, baselineProjects) {
 		t.Fatal("restoration did not return the pre-lens population")
 	}
 }
@@ -233,28 +234,28 @@ func TestAddingATemplateFromInsideALensKeepsThePreLensBaseline(t *testing.T) {
 	model := lensOperationApp(t)
 	emptyTemplateMachine(t, model)
 	out := model.crossOutliner
-	out.selectOutlinerMode(chrome.ModeInbox)
+	out.SelectOutlinerMode(chrome.ModeInbox)
 
 	// A saved user lens first, so the template is added from inside an active one.
 	applyLensOrFatal(t, out, waitingLens(lensTestID(1), "Held", "needle"))
-	origin := out.lens.active.origin
-	if origin.presentation.mode != chrome.ModeInbox {
-		t.Fatalf("pre-lens baseline mode = %v, want %v", origin.presentation.mode, chrome.ModeInbox)
+	origin := out.Lens.Active.Origin
+	if origin.Presentation.Mode != chrome.ModeInbox {
+		t.Fatalf("pre-lens baseline mode = %v, want %v", origin.Presentation.Mode, chrome.ModeInbox)
 	}
 
 	addTemplateAndSettle(t, model, lensTemplateByName(t, "Parked Work"))
-	if out.lens.active.origin.presentation.mode != chrome.ModeInbox {
+	if out.Lens.Active.Origin.Presentation.Mode != chrome.ModeInbox {
 		t.Fatal("adding a template from inside a lens rebased the restoration point onto that lens")
 	}
-	if out.lens.query != "" {
-		t.Fatalf("the added template inherited the previous lens's query %q", out.lens.query)
+	if out.Lens.Query != "" {
+		t.Fatalf("the added template inherited the previous lens's query %q", out.Lens.Query)
 	}
 
-	if !listsurface.RunEscCascade(out.escSteps()) {
+	if !listsurface.RunEscCascade(out.EscSteps()) {
 		t.Fatal("expected Esc to consume the lens")
 	}
-	if out.hasActiveLens() || out.primaryMode != chrome.ModeInbox {
-		t.Fatalf("one Esc left mode %v with lens=%v", out.primaryMode, out.hasActiveLens())
+	if out.HasActiveLens() || out.PrimaryMode != chrome.ModeInbox {
+		t.Fatalf("one Esc left mode %v with lens=%v", out.PrimaryMode, out.HasActiveLens())
 	}
 }
 

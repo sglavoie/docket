@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -33,7 +34,7 @@ func TestInlineRowEditorBuildsAtomicCrossProjectRequest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse cross-project row edit: %v", err)
 	}
-	req := taskLineEditRequest(taskref.For(child, source), result)
+	req := outliner.TaskLineEditRequest(taskref.For(child, source), result)
 	if req.Source.ProjectID != source.ID || req.Source.TaskID != child.ID || req.DestinationProjectID != destination.ID {
 		t.Fatalf("request route = source %+v destination %q", req.Source, req.DestinationProjectID)
 	}
@@ -50,67 +51,67 @@ func TestInlineRowEditorBuildsAtomicCrossProjectRequest(t *testing.T) {
 
 func TestInlineRowEditorAtomicCommitAndFailureLifecycle(t *testing.T) {
 	m, _, task, _ := newPlanningLedgerApp(t, models.StateBacklog)
-	out := NewOutlinerModel(m.currentProject, m.configManager, m.runtime)
+	out := outliner.NewOutlinerModel(m.currentProject, m.configManager, m.runtime)
 	out.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 	out.SetSize(100, 20)
-	out.rebuildRows()
-	out.folds.expandedNodes[taskref.For(task, m.currentProject)] = false
-	out.folds.collapsedSections["unrelated"] = true
+	out.RebuildRows()
+	out.Folds.ExpandedNodes[taskref.For(task, m.currentProject)] = false
+	out.Folds.CollapsedSections["unrelated"] = true
 	m.crossOutliner = out
 	m.navigation.ResetRoot()
-	projection := out.jumpProjectionFingerprint()
+	projection := out.JumpProjectionFingerprint()
 
-	out.Update(StartTaskLineEditMsg{Task: task, Project: m.currentProject})
-	out.quickEdit.Input.SetValue("Renamed atomically")
-	out.quickEdit.Input.CursorEnd()
-	out.quickEdit.RefreshDraft()
-	_, cmd := out.handleQuickEditMode(tea.KeyPressMsg{Code: tea.KeyEnter})
-	if cmd == nil || !out.quickEdit.IsActive() || !out.quickEdit.Pending {
-		t.Fatalf("commit did not retain a pending inline draft: active=%t pending=%t", out.quickEdit.IsActive(), out.quickEdit.Pending)
+	out.Update(outliner.StartTaskLineEditMsg{Task: task, Project: m.currentProject})
+	out.QuickEdit.Input.SetValue("Renamed atomically")
+	out.QuickEdit.Input.CursorEnd()
+	out.QuickEdit.RefreshDraft()
+	_, cmd := out.HandleQuickEditMode(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if cmd == nil || !out.QuickEdit.IsActive() || !out.QuickEdit.Pending {
+		t.Fatalf("commit did not retain a pending inline draft: active=%t pending=%t", out.QuickEdit.IsActive(), out.QuickEdit.Pending)
 	}
 	committed, ok := cmd().(coordinator.TaskLineEditedMsg)
 	if !ok || !committed.Result.Changed || committed.Result.TransactionID == "" {
 		t.Fatalf("atomic command result = %#v", committed)
 	}
 	m.handleTaskLineEdited(committed)
-	if out.quickEdit.IsActive() {
+	if out.QuickEdit.IsActive() {
 		t.Fatal("successful atomic edit left the row editor active")
 	}
 	if got := m.currentProject.GetTaskByID(task.ID).Title; got != "Renamed atomically" {
 		t.Fatalf("reloaded title = %q, want Renamed atomically", got)
 	}
-	if got := out.jumpProjectionFingerprint(); got != projection {
+	if got := out.JumpProjectionFingerprint(); got != projection {
 		t.Fatalf("successful inline edit changed projection state:\n before %s\n after  %s", projection, got)
 	}
 
 	live := m.currentProject.GetTaskByID(task.ID)
-	out.Update(StartTaskLineEditMsg{Task: live, Project: m.currentProject})
-	out.quickEdit.Input.SetValue("Draft survives")
-	out.quickEdit.Input.CursorEnd()
-	out.quickEdit.RefreshDraft()
-	out.quickEdit.BeginCommit()
-	projection = out.jumpProjectionFingerprint()
+	out.Update(outliner.StartTaskLineEditMsg{Task: live, Project: m.currentProject})
+	out.QuickEdit.Input.SetValue("Draft survives")
+	out.QuickEdit.Input.CursorEnd()
+	out.QuickEdit.RefreshDraft()
+	out.QuickEdit.BeginCommit()
+	projection = out.JumpProjectionFingerprint()
 	failure := errors.New("simulated revision conflict")
 	m.handleTaskLineEditFailed(coordinator.TaskLineEditFailedMsg{
 		Source: taskref.For(live, m.currentProject), Err: failure,
 	})
-	if !out.quickEdit.IsActive() || out.quickEdit.Pending || out.quickEdit.Input.Value() != "Draft survives" {
-		t.Fatalf("failed commit lost draft: active=%t pending=%t value=%q", out.quickEdit.IsActive(), out.quickEdit.Pending, out.quickEdit.Input.Value())
+	if !out.QuickEdit.IsActive() || out.QuickEdit.Pending || out.QuickEdit.Input.Value() != "Draft survives" {
+		t.Fatalf("failed commit lost draft: active=%t pending=%t value=%q", out.QuickEdit.IsActive(), out.QuickEdit.Pending, out.QuickEdit.Input.Value())
 	}
-	if !strings.Contains(out.quickEdit.GetPreviewError(), failure.Error()) {
-		t.Fatalf("inline failure = %q, want %q", out.quickEdit.GetPreviewError(), failure)
+	if !strings.Contains(out.QuickEdit.GetPreviewError(), failure.Error()) {
+		t.Fatalf("inline failure = %q, want %q", out.QuickEdit.GetPreviewError(), failure)
 	}
-	if got := out.jumpProjectionFingerprint(); got != projection {
+	if got := out.JumpProjectionFingerprint(); got != projection {
 		t.Fatalf("failed inline edit changed projection state:\n before %s\n after  %s", projection, got)
 	}
 }
 
 func TestInlineRowEditorUnchangedCommitCreatesNoUndoTransaction(t *testing.T) {
 	m, _, task, _ := newPlanningLedgerApp(t, models.StateBacklog)
-	out := NewOutlinerModel(m.currentProject, m.configManager, m.runtime)
+	out := outliner.NewOutlinerModel(m.currentProject, m.configManager, m.runtime)
 	out.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 	out.SetSize(100, 20)
-	out.rebuildRows()
+	out.RebuildRows()
 	m.crossOutliner = out
 	m.navigation.ResetRoot()
 
@@ -119,11 +120,11 @@ func TestInlineRowEditorUnchangedCommitCreatesNoUndoTransaction(t *testing.T) {
 		t.Fatalf("undo count before unchanged edit: %v", err)
 	}
 
-	out.Update(StartTaskLineEditMsg{Task: task, Project: m.currentProject})
-	if !out.quickEdit.IsActive() || out.quickEdit.Input.Value() != task.Title {
-		t.Fatalf("inline editor did not open with unchanged title: active=%t value=%q", out.quickEdit.IsActive(), out.quickEdit.Input.Value())
+	out.Update(outliner.StartTaskLineEditMsg{Task: task, Project: m.currentProject})
+	if !out.QuickEdit.IsActive() || out.QuickEdit.Input.Value() != task.Title {
+		t.Fatalf("inline editor did not open with unchanged title: active=%t value=%q", out.QuickEdit.IsActive(), out.QuickEdit.Input.Value())
 	}
-	_, cmd := out.handleQuickEditMode(tea.KeyPressMsg{Code: tea.KeyEnter})
+	_, cmd := out.HandleQuickEditMode(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if cmd == nil {
 		t.Fatal("unchanged inline commit returned nil command")
 	}
@@ -133,7 +134,7 @@ func TestInlineRowEditorUnchangedCommitCreatesNoUndoTransaction(t *testing.T) {
 	}
 	m.handleTaskLineEdited(committed)
 
-	if out.quickEdit.IsActive() {
+	if out.QuickEdit.IsActive() {
 		t.Fatal("unchanged inline commit left the row editor active")
 	}
 	if m.statusMessage != "No task changes" {
@@ -149,44 +150,44 @@ func TestInlineRowEditorUnchangedCommitCreatesNoUndoTransaction(t *testing.T) {
 }
 
 func TestTaskLineEditRelocationFollowsVisibleResultAndFallsBackAtOrigin(t *testing.T) {
-	makeOutliner := func() (*OutlinerModel, *models.Project, *models.Project, *models.Task) {
+	makeOutliner := func() (*outliner.OutlinerModel, *models.Project, *models.Project, *models.Task) {
 		task := &models.Task{ID: "moving", ShortID: 1, Title: "Moving", WorkflowState: models.StateBacklog}
 		neighbor := &models.Task{ID: "neighbor", ShortID: 2, Title: "Neighbor", WorkflowState: models.StateBacklog}
 		source := &models.Project{ID: "alpha-source", Slug: "alpha-source", Name: "Source", Tasks: []*models.Task{task, neighbor}}
 		destination := &models.Project{ID: "zeta-destination", Slug: "zeta-destination", Name: "Destination"}
-		out := NewOutlinerModel(nil, nil, nil)
-		out.population.projects = []*models.Project{source, destination}
-		out.population.snapshotReady = true
-		out.population.invalidate()
-		out.crossProjectRebuildRows()
-		for index, row := range out.rows {
-			if row.task != nil && row.task.ID == task.ID && row.ProjectID == source.ID {
+		out := outliner.NewOutlinerModel(nil, nil, nil)
+		out.Population.Projects = []*models.Project{source, destination}
+		out.Population.SnapshotReady = true
+		out.Population.Invalidate()
+		out.CrossProjectRebuildRows()
+		for index, row := range out.Rows {
+			if row.Task != nil && row.Task.ID == task.ID && row.ProjectID == source.ID {
 				out.Cursor = index
 			}
 		}
-		out.syncJumpProjection()
+		out.SyncJumpProjection()
 		return out, source, destination, task
 	}
 
 	out, source, destination, task := makeOutliner()
-	capture := out.captureOutlinerRelocation([]taskref.TaskIdentity{taskref.For(task, source)})
+	capture := out.CaptureOutlinerRelocation([]taskref.TaskIdentity{taskref.For(task, source)})
 	source.Tasks = source.Tasks[1:]
 	destination.Tasks = append(destination.Tasks, task)
-	out.population.invalidate()
-	out.crossProjectRebuildRows()
-	_, recorded := out.finishTaskLineEditRelocation(capture, taskref.For(task, destination))
-	if !recorded || out.CurrentTaskIdentity() != taskref.For(task, destination) || len(out.relocationHistory.back) != 1 {
-		t.Fatalf("visible relocation = current %+v recorded=%t history=%d", out.CurrentTaskIdentity(), recorded, len(out.relocationHistory.back))
+	out.Population.Invalidate()
+	out.CrossProjectRebuildRows()
+	_, recorded := out.FinishTaskLineEditRelocation(capture, taskref.For(task, destination))
+	if !recorded || out.CurrentTaskIdentity() != taskref.For(task, destination) || len(out.RelocationHistory.Back) != 1 {
+		t.Fatalf("visible relocation = current %+v recorded=%t history=%d", out.CurrentTaskIdentity(), recorded, len(out.RelocationHistory.Back))
 	}
 
 	out, source, _, task = makeOutliner()
-	capture = out.captureOutlinerRelocation([]taskref.TaskIdentity{taskref.For(task, source)})
+	capture = out.CaptureOutlinerRelocation([]taskref.TaskIdentity{taskref.For(task, source)})
 	source.Tasks = source.Tasks[1:]
-	out.population.invalidate()
-	out.crossProjectRebuildRows()
-	_, recorded = out.finishTaskLineEditRelocation(capture, taskref.TaskIdentity{ProjectID: "hidden", TaskID: task.ID})
-	if recorded || out.CurrentTaskIdentity().TaskID != "neighbor" || len(out.relocationHistory.back) != 0 {
-		t.Fatalf("hidden relocation = current %+v recorded=%t history=%d", out.CurrentTaskIdentity(), recorded, len(out.relocationHistory.back))
+	out.Population.Invalidate()
+	out.CrossProjectRebuildRows()
+	_, recorded = out.FinishTaskLineEditRelocation(capture, taskref.TaskIdentity{ProjectID: "hidden", TaskID: task.ID})
+	if recorded || out.CurrentTaskIdentity().TaskID != "neighbor" || len(out.RelocationHistory.Back) != 0 {
+		t.Fatalf("hidden relocation = current %+v recorded=%t history=%d", out.CurrentTaskIdentity(), recorded, len(out.RelocationHistory.Back))
 	}
 }
 
@@ -205,18 +206,18 @@ func longestVisibleSuffix(line, value string) int {
 
 func TestInlineRowEditorKeepsTypedTailAndCursorVisibleWhenTitleOverflows(t *testing.T) {
 	out, project, _, child := inlineEditorFixture(t)
-	out.quickEdit.EnterWithContext(child, project, []*models.Project{project}, false)
-	row := out.rows[out.Cursor]
+	out.QuickEdit.EnterWithContext(child, project, []*models.Project{project}, false)
+	row := out.Rows[out.Cursor]
 
 	// The first frame is what installs the row width, so the value has to land
 	// afterwards for the scroll window to be the one an editing session sees.
-	out.renderOutlinerQuickEditRow(row, 80)
+	out.RenderOutlinerQuickEditRow(row, 80)
 	value := strings.Repeat("overflowing title ", 8) + "ZZEND"
-	out.quickEdit.Input.SetValue(value)
-	out.quickEdit.Input.CursorEnd()
-	out.quickEdit.RefreshDraft()
+	out.QuickEdit.Input.SetValue(value)
+	out.QuickEdit.Input.CursorEnd()
+	out.QuickEdit.RefreshDraft()
 
-	lines := strings.Split(out.renderOutlinerQuickEditRow(row, 80), "\n")
+	lines := strings.Split(out.RenderOutlinerQuickEditRow(row, 80), "\n")
 	if len(lines) != 2 {
 		t.Fatalf("quick edit rendered %d lines, want the metadata and input lines only", len(lines))
 	}
@@ -237,8 +238,8 @@ func TestInlineRowEditorKeepsTypedTailAndCursorVisibleWhenTitleOverflows(t *test
 		t.Errorf("overflowing input line has no reverse-video cursor block: %q", lines[1])
 	}
 
-	narrow := ansi.Strip(strings.Split(out.renderOutlinerQuickEditRow(row, 40), "\n")[1])
-	wide := ansi.Strip(strings.Split(out.renderOutlinerQuickEditRow(row, 120), "\n")[1])
+	narrow := ansi.Strip(strings.Split(out.RenderOutlinerQuickEditRow(row, 40), "\n")[1])
+	wide := ansi.Strip(strings.Split(out.RenderOutlinerQuickEditRow(row, 120), "\n")[1])
 	narrowVisible := longestVisibleSuffix(narrow, value)
 	wideVisible := longestVisibleSuffix(wide, value)
 	if wideVisible <= narrowVisible {

@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -183,7 +184,7 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, tas
 	// Mirror app_init.go: fold Today/Next exclusivity into every transition so a
 	// planning-aware move rides the same durable ledger transaction as the task
 	// write.
-	svc.WithPlanningArtifacts(planningReconcileArtifactBuilder(manager))
+	svc.WithPlanningArtifacts(coordinator.ManagerPlanningArtifacts(manager))
 
 	appModel := &AppModel{
 		configManager:     manager,
@@ -196,18 +197,18 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, tas
 		height:            24,
 		views:             route.NewViewRegistry(),
 		currentProject:    project,
-		nextOrder:         []PlanningTask{},
+		nextOrder:         []outliner.PlanningTask{},
 		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),
-		today:             []PlanningTask{},
+		today:             []outliner.PlanningTask{},
 		todayIDs:          make(map[taskref.TaskIdentity]bool),
 		operationRegistry: operation.NewOperationRegistry(),
 		navigation:        route.NewNavigationState(),
 	}
 	appModel.operationExecutor = operation.NewOperationExecutor(appModel.operationRegistry)
-	outliner := NewOutlinerModel(project, manager, runtime)
-	outliner.rebuildRows()
-	outliner.moveCursorToTask(taskID)
-	appModel.showView(presentation.ViewCrossProjectOutliner, outliner)
+	outlinerView := outliner.NewOutlinerModel(project, manager, runtime)
+	outlinerView.RebuildRows()
+	outlinerView.MoveCursorToTask(taskID)
+	appModel.showView(presentation.ViewCrossProjectOutliner, outlinerView)
 	if err := appModel.registerCoreInputOperations(); err != nil {
 		t.Fatalf("register core operations: %v", err)
 	}
@@ -232,7 +233,7 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, tas
 	if err := appModel.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		t.Fatalf("register simplified input strategy: %v", err)
 	}
-	appModel.wireOutlinerOperationExecutor(outliner)
+	appModel.wireOutlinerOperationExecutor(outlinerView)
 	return appModel
 }
 

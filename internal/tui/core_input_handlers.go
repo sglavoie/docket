@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskform"
@@ -32,7 +33,7 @@ func (m *AppModel) coreNotesScope() route.NotesScope {
 	if !ok || out == nil {
 		return route.AllNotesScope()
 	}
-	header := out.cursorProjectHeaderProject()
+	header := out.CursorProjectHeaderProject()
 	if header == nil || m.activeProjectByID(header.ID) == nil {
 		return route.AllNotesScope()
 	}
@@ -54,7 +55,7 @@ func (m *AppModel) coreCaptureMessage() tea.Msg {
 		return m.captureComposerMessage(nil, nil)
 	}
 	var project *models.Project
-	if identity, focused := out.focusRootIdentity(); focused {
+	if identity, focused := out.FocusRootIdentity(); focused {
 		if task, focusProject := m.taskAndProjectForIdentity(identity); task != nil && focusProject != nil {
 			if taskAcceptsDeeperChild(task) {
 				return taskform.ShowTaskComposerMsg{Preset: m.focusChildComposerPreset(focusProject, task)}
@@ -64,14 +65,14 @@ func (m *AppModel) coreCaptureMessage() tea.Msg {
 	}
 	if project == nil {
 		switch {
-		case out.project != nil:
-			project = out.project
-		case out.isProjectScoped():
-			project = out.scopedProject()
+		case out.Project != nil:
+			project = out.Project
+		case out.IsProjectScoped():
+			project = out.ScopedProject()
 		}
 	}
 	if project == nil {
-		project = out.cursorProjectHeaderProject()
+		project = out.CursorProjectHeaderProject()
 	}
 	if project == nil {
 		// Resolve through RuntimeState's canonical workspace-owned Unfiled
@@ -116,7 +117,7 @@ func planningMemberLocators(members map[taskref.TaskIdentity]bool) []app.TaskLoc
 func (m *AppModel) corePlanningOperation(
 	targets operation.ResolvedOperationTargets,
 	action app.PlanningAction,
-	capture *outlinerRelocationCapture,
+	capture *outliner.OutlinerRelocationCapture,
 ) tea.Cmd {
 	locators := operationTargetLocators(targets)
 	if len(locators) == 0 {
@@ -141,7 +142,7 @@ func (m *AppModel) corePlanningOperation(
 	)
 }
 
-func (m *AppModel) coreMoveToBacklogSingle(capture *outlinerRelocationCapture) tea.Cmd {
+func (m *AppModel) coreMoveToBacklogSingle(capture *outliner.OutlinerRelocationCapture) tea.Cmd {
 	task, project := m.outlinerTarget()
 	if task == nil || project == nil {
 		return nil
@@ -155,7 +156,7 @@ func (m *AppModel) coreMoveToBacklogSingle(capture *outlinerRelocationCapture) t
 	return m.finishSynchronousOutlinerRelocation(m.queueToggleResultCmd(), capture, successMessage, transactionID)
 }
 
-func (m *AppModel) coreToggleToday(targets operation.ResolvedOperationTargets, capture *outlinerRelocationCapture) tea.Cmd {
+func (m *AppModel) coreToggleToday(targets operation.ResolvedOperationTargets, capture *outliner.OutlinerRelocationCapture) tea.Cmd {
 	locators := operationTargetLocators(targets)
 	if len(locators) == 0 {
 		return nil
@@ -171,7 +172,7 @@ func (m *AppModel) coreToggleToday(targets operation.ResolvedOperationTargets, c
 	return m.corePlanningOperation(targets, action, capture)
 }
 
-func (m *AppModel) coreToggleNext(targets operation.ResolvedOperationTargets, capture *outlinerRelocationCapture) tea.Cmd {
+func (m *AppModel) coreToggleNext(targets operation.ResolvedOperationTargets, capture *outliner.OutlinerRelocationCapture) tea.Cmd {
 	locators := operationTargetLocators(targets)
 	if len(locators) == 0 {
 		return nil

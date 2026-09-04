@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -40,9 +41,9 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 		height:            24,
 		views:             route.NewViewRegistry(),
 		operationRegistry: operation.NewOperationRegistry(),
-		nextOrder:         []PlanningTask{},
+		nextOrder:         []outliner.PlanningTask{},
 		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),
-		today:             []PlanningTask{},
+		today:             []outliner.PlanningTask{},
 		todayIDs:          make(map[taskref.TaskIdentity]bool),
 	}
 
@@ -74,7 +75,7 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	// through this service (global state pickers, palette actions, pinned/quick-
 	// switch state changes), so exclusivity holds regardless of the initiating
 	// adapter, matching the coordinator-driven view-local pickers.
-	appService.WithPlanningArtifacts(planningReconcileArtifactBuilder(manager))
+	appService.WithPlanningArtifacts(coordinator.ManagerPlanningArtifacts(manager))
 	app.appService = appService
 	app.features = coordinator.NewFeatureCoordinators(appService)
 	app.secondaryFeatures = coordinator.NewSecondaryCoordinators(appService)
@@ -136,7 +137,7 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	// emits launchOutlinerMsg, whose handler resets the root and returns the
 	// current generation's reload command.
 	_ = app.prepareCrossProjectOutliner()
-	app.crossOutliner.ApplyOpenOptions(OutlinerOpenOptions{Mode: chrome.ModeAll, SetMode: true})
+	app.crossOutliner.ApplyOpenOptions(outliner.OutlinerOpenOptions{Mode: chrome.ModeAll, SetMode: true})
 	app.setAccentOnView(app.crossOutliner)
 
 	return app, nil
@@ -283,7 +284,7 @@ func (m *AppModel) hydrateNextOrder(workspaceProjects []*models.Project, startup
 			}
 		}
 		if canReconcile {
-			reconciled := clonePlanningState(planning)
+			reconciled := coordinator.ClonePlanningState(planning)
 			if app.ReconcilePlanningState(reconciled, app.PlanningReconcileRequest{
 				Targets: targets, Complete: true,
 			}) {
@@ -307,7 +308,7 @@ func (m *AppModel) hydrateNextOrder(workspaceProjects []*models.Project, startup
 				break
 			}
 			if task := p.GetTaskByID(item.TaskID); task != nil && task.State().IsNonterminal() {
-				m.nextOrder = append(m.nextOrder, PlanningTask{Task: task, Project: p})
+				m.nextOrder = append(m.nextOrder, outliner.PlanningTask{Task: task, Project: p})
 				m.nextOrderIDs[taskref.For(task, p)] = true
 			}
 			break
@@ -341,7 +342,7 @@ func (m *AppModel) hydrateToday(workspaceProjects []*models.Project, startupLoad
 			planChanged = true
 			continue
 		}
-		m.today = append(m.today, PlanningTask{Task: foundTask, Project: foundProject})
+		m.today = append(m.today, outliner.PlanningTask{Task: foundTask, Project: foundProject})
 		m.todayIDs[taskref.For(foundTask, foundProject)] = true
 	}
 	if planChanged && allowReconcile && m.appService != nil {

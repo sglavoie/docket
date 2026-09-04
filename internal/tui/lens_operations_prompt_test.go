@@ -21,7 +21,7 @@ func TestLensCreateCapturesAcceptedSearchQuery(t *testing.T) {
 	out := model.crossOutliner
 
 	out.SetSearchQuery("needle")
-	if !out.hasSearchProjection() || out.IsSearchMode() {
+	if !out.HasSearchProjection() || out.IsSearchMode() {
 		t.Fatal("expected an accepted ordinary-search projection with no open input")
 	}
 	searchRows := slices.Clone(searchVisibleTaskIDs(out))
@@ -37,13 +37,13 @@ func TestLensCreateCapturesAcceptedSearchQuery(t *testing.T) {
 	if saved.Query != "needle" {
 		t.Fatalf("captured query = %q, want the accepted search query %q", saved.Query, "needle")
 	}
-	if !out.hasActiveLens() || out.lens.query != "needle" {
-		t.Fatalf("applied lens query = %q with lens=%v", out.lens.query, out.hasActiveLens())
+	if !out.HasActiveLens() || out.Lens.Query != "needle" {
+		t.Fatalf("applied lens query = %q with lens=%v", out.Lens.Query, out.HasActiveLens())
 	}
-	if out.hasSearchProjection() {
+	if out.HasSearchProjection() {
 		t.Fatal("a lens must not leave an ordinary search projection underneath it")
 	}
-	if out.lensModified() {
+	if out.LensModified() {
 		t.Fatal("a lens saved from the current view starts unmodified")
 	}
 	narrowed := searchVisibleTaskIDs(out)
@@ -57,14 +57,14 @@ func TestLensCreateCapturesAcceptedSearchQuery(t *testing.T) {
 	}
 
 	// One Esc hands the pre-lens frame back exactly, search included.
-	if !listsurface.RunEscCascade(out.escSteps()) {
+	if !listsurface.RunEscCascade(out.EscSteps()) {
 		t.Fatal("expected the Esc cascade to consume the active lens")
 	}
-	if out.hasActiveLens() || out.lens.query != "" {
-		t.Fatalf("Esc left lens=%v query=%q", out.hasActiveLens(), out.lens.query)
+	if out.HasActiveLens() || out.Lens.Query != "" {
+		t.Fatalf("Esc left lens=%v query=%q", out.HasActiveLens(), out.Lens.Query)
 	}
-	if !out.hasSearchProjection() || out.SearchQuery() != "needle" {
-		t.Fatalf("restored search projection=%v query=%q", out.hasSearchProjection(), out.SearchQuery())
+	if !out.HasSearchProjection() || out.SearchQuery() != "needle" {
+		t.Fatalf("restored search projection=%v query=%q", out.HasSearchProjection(), out.SearchQuery())
 	}
 	if got := searchVisibleTaskIDs(out); !slices.Equal(got, searchRows) {
 		t.Fatalf("restored rows = %v, want the accepted search rows %v", got, searchRows)
@@ -95,7 +95,7 @@ func TestDeletingAnInactiveLensLeavesTheActiveOneAlone(t *testing.T) {
 	if result := executeLens(model, lens.OperationLensDelete, operation.LensEntity(other.ID), "", true); result.Err != nil {
 		t.Fatalf("delete lens: %v", result.Err)
 	}
-	if !out.hasActiveLens() || out.lens.active.lensID != active.ID {
+	if !out.HasActiveLens() || out.Lens.Active.LensID != active.ID {
 		t.Fatal("deleting another lens dismissed the active one")
 	}
 }
@@ -105,7 +105,7 @@ func TestLensReplaceAndDeleteConfirmBeforeTheyWrite(t *testing.T) {
 	out := model.crossOutliner
 	starter := lensNamed(t, model, config.StarterNamedLenses()[0].Name)
 	applyLensOrFatal(t, out, starter)
-	out.selectOutlinerMode(chrome.ModeBacklog)
+	out.SelectOutlinerMode(chrome.ModeBacklog)
 
 	for _, id := range []operation.OperationID{lens.OperationLensReplace, lens.OperationLensDelete} {
 		result := executeLens(model, id, operation.LensEntity(starter.ID), "", false)
@@ -121,7 +121,7 @@ func TestLensReplaceAndDeleteConfirmBeforeTheyWrite(t *testing.T) {
 		if saved.Mode != starter.Mode {
 			t.Fatalf("%s rewrote the saved record before confirmation", id)
 		}
-		if !out.hasActiveLens() || out.lens.active.lensID != starter.ID {
+		if !out.HasActiveLens() || out.Lens.Active.LensID != starter.ID {
 			t.Fatalf("%s changed the active lens before confirmation", id)
 		}
 	}

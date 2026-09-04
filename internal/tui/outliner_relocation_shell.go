@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -13,7 +14,7 @@ import (
 // and carrying one alongside a transaction result until the committed rows are
 // visible.
 
-func (m *AppModel) captureOutlinerRelocationForTargets(targets operation.ResolvedOperationTargets) *outlinerRelocationCapture {
+func (m *AppModel) captureOutlinerRelocationForTargets(targets operation.ResolvedOperationTargets) *outliner.OutlinerRelocationCapture {
 	out, ok := m.outlinerPrimary()
 	if !ok || out == nil {
 		return nil
@@ -24,12 +25,12 @@ func (m *AppModel) captureOutlinerRelocationForTargets(targets operation.Resolve
 			identities = append(identities, target.Task)
 		}
 	}
-	return out.captureOutlinerRelocation(identities)
+	return out.CaptureOutlinerRelocation(identities)
 }
 
 // withOutlinerRelocationCapture decorates only successful batch results. Error
 // messages pass through unchanged, so failed mutations cannot pollute history.
-func withOutlinerRelocationCapture(cmd tea.Cmd, capture *outlinerRelocationCapture) tea.Cmd {
+func withOutlinerRelocationCapture(cmd tea.Cmd, capture *outliner.OutlinerRelocationCapture) tea.Cmd {
 	if cmd == nil || capture == nil {
 		return cmd
 	}
@@ -48,11 +49,11 @@ func withOutlinerRelocationCapture(cmd tea.Cmd, capture *outlinerRelocationCaptu
 	}
 }
 
-func (m *AppModel) finishSynchronousOutlinerRelocation(cmd tea.Cmd, capture *outlinerRelocationCapture, successMessage, transactionID string) tea.Cmd {
+func (m *AppModel) finishSynchronousOutlinerRelocation(cmd tea.Cmd, capture *outliner.OutlinerRelocationCapture, successMessage, transactionID string) tea.Cmd {
 	recorded := false
 	var jumpCmd tea.Cmd
 	if m != nil && m.crossOutliner != nil && capture != nil {
-		jumpCmd, recorded = m.crossOutliner.finishOutlinerRelocation(capture, true)
+		jumpCmd, recorded = m.crossOutliner.FinishOutlinerRelocation(capture, true)
 	}
 	feedbackCmd := m.setRecoveryFeedback(successMessage, transactionID, recorded)
 	return tea.Batch(cmd, jumpCmd, feedbackCmd)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
 func makeBoardTask(t *testing.T, id string, shortID int, title string) *models.Task {
@@ -19,7 +20,7 @@ func makeBoardTask(t *testing.T, id string, shortID int, title string) *models.T
 	return task
 }
 
-func modeRowQualifiedIDs(rows []OutlinerModeRow) []string {
+func modeRowQualifiedIDs(rows []outliner.OutlinerModeRow) []string {
 	ids := make([]string, 0, len(rows))
 	for _, row := range rows {
 		if row.Task != nil && row.Project != nil {
@@ -44,9 +45,9 @@ func TestTodayModeUsesExplicitDurableOrderWithoutImplicitDescendants(t *testing.
 	deferred.DeferredUntil = &future
 	beta := primaryRowsProject("beta", sameID, deferred)
 
-	rows := BuildTodayModeRows(OutlinerModeInput{
+	rows := outliner.BuildTodayModeRows(outliner.OutlinerModeInput{
 		Projects: []*models.Project{alpha, beta},
-		TodayOrder: []PlanningTask{
+		TodayOrder: []outliner.PlanningTask{
 			{Task: child, Project: alpha},
 			{Task: sameID, Project: beta},
 			{Task: parent, Project: alpha},
@@ -68,9 +69,9 @@ func TestTodayModeUsesExplicitDurableOrderWithoutImplicitDescendants(t *testing.
 		}
 	}
 
-	rows = BuildTodayModeRows(OutlinerModeInput{
+	rows = outliner.BuildTodayModeRows(outliner.OutlinerModeInput{
 		Projects:        []*models.Project{alpha, beta},
-		TodayOrder:      []PlanningTask{{Task: deferred, Project: beta}},
+		TodayOrder:      []outliner.PlanningTask{{Task: deferred, Project: beta}},
 		IncludeDeferred: true,
 	})
 	if got := modeRowQualifiedIDs(rows); !slices.Equal(got, []string{"beta/deferred"}) {
@@ -93,7 +94,7 @@ func TestNextModeUsesQualifiedDurableOrderAndDirectFilters(t *testing.T) {
 		{ProjectID: alpha.ID, TaskID: alphaChild.ID},
 		{ProjectID: beta.ID, TaskID: betaOther.ID},
 	}
-	rows := BuildNextModeRows(OutlinerModeInput{
+	rows := outliner.BuildNextModeRows(outliner.OutlinerModeInput{
 		Projects:  []*models.Project{alpha, beta},
 		NextOrder: order,
 		TaskFilter: func(task *models.Task, _ *models.Project) bool {
@@ -117,10 +118,10 @@ func TestPlanningModesHonorFocusCandidatesWithoutAddingAncestors(t *testing.T) {
 	outside := primaryRowsTask("outside", models.StateBacklog)
 	project := primaryRowsProject("project", parent, child, outside)
 
-	input := OutlinerModeInput{
+	input := outliner.OutlinerModeInput{
 		Projects:       []*models.Project{project},
 		CandidateTasks: map[string][]*models.Task{project.ID: {child}},
-		TodayOrder: []PlanningTask{
+		TodayOrder: []outliner.PlanningTask{
 			{Task: parent, Project: project},
 			{Task: child, Project: project},
 		},
@@ -129,10 +130,10 @@ func TestPlanningModesHonorFocusCandidatesWithoutAddingAncestors(t *testing.T) {
 			{ProjectID: project.ID, TaskID: child.ID},
 		},
 	}
-	if got := modeRowQualifiedIDs(BuildTodayModeRows(input)); !slices.Equal(got, []string{"project/child"}) {
+	if got := modeRowQualifiedIDs(outliner.BuildTodayModeRows(input)); !slices.Equal(got, []string{"project/child"}) {
 		t.Fatalf("focused Today = %v, want only explicit child", got)
 	}
-	if got := modeRowQualifiedIDs(BuildNextModeRows(input)); !slices.Equal(got, []string{"project/child"}) {
+	if got := modeRowQualifiedIDs(outliner.BuildNextModeRows(input)); !slices.Equal(got, []string{"project/child"}) {
 		t.Fatalf("focused Next = %v, want only explicit child", got)
 	}
 }

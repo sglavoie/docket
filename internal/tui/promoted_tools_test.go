@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
 
@@ -33,7 +34,7 @@ func TestPromotedToolNotesScope(t *testing.T) {
 		{
 			name: "project focus",
 			configure: func(app *AppModel) {
-				app.crossOutliner.scope.projectID = workB.ID
+				app.crossOutliner.Scope.ProjectID = workB.ID
 			},
 			wantProjectIDs: []string{workB.ID},
 			wantScope:      route.AllNotesScope(),
@@ -41,8 +42,8 @@ func TestPromotedToolNotesScope(t *testing.T) {
 		{
 			name: "task row cursor",
 			configure: func(app *AppModel) {
-				app.crossOutliner.rows = []outlinerRow{
-					{task: &models.Task{ID: "t1"}, ProjectID: workA.ID},
+				app.crossOutliner.Rows = []outliner.OutlinerRow{
+					{Task: &models.Task{ID: "t1"}, ProjectID: workA.ID},
 				}
 				app.crossOutliner.Cursor = 0
 			},
@@ -52,7 +53,7 @@ func TestPromotedToolNotesScope(t *testing.T) {
 		{
 			name: "project header cursor",
 			configure: func(app *AppModel) {
-				app.crossOutliner.rows = []outlinerRow{
+				app.crossOutliner.Rows = []outliner.OutlinerRow{
 					{IsProjectHeader: true, ProjectID: workA.ID},
 					{IsProjectHeader: true, ProjectID: workB.ID},
 				}
@@ -65,9 +66,9 @@ func TestPromotedToolNotesScope(t *testing.T) {
 			name: "archived project header cursor",
 			configure: func(app *AppModel) {
 				setTestAppProjects(app, workA, workB, home, archived)
-				app.crossOutliner.population.projects = append(
-					app.crossOutliner.population.projects, archived)
-				app.crossOutliner.rows = []outlinerRow{
+				app.crossOutliner.Population.Projects = append(
+					app.crossOutliner.Population.Projects, archived)
+				app.crossOutliner.Rows = []outliner.OutlinerRow{
 					{IsProjectHeader: true, ProjectID: archived.ID},
 				}
 				app.crossOutliner.Cursor = 0
@@ -81,7 +82,7 @@ func TestPromotedToolNotesScope(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			app := newUITestApp()
 			setTestAppProjects(app, workA, workB, home)
-			app.crossOutliner.population.projects = []*models.Project{workA, workB, home}
+			app.crossOutliner.Population.Projects = []*models.Project{workA, workB, home}
 			test.configure(app)
 			app.operationRegistry = operation.NewOperationRegistry()
 			app.operationExecutor = operation.NewOperationExecutor(app.operationRegistry)

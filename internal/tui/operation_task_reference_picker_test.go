@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
 // This file holds the fixtures and helpers the reference-picker suite shares.
@@ -37,8 +38,8 @@ func referencePickerFixture(t *testing.T) (*AppModel, *models.Task, *models.Proj
 	home.BuildTaskTree()
 
 	setTestAppProjects(model, home, remote)
-	model.crossOutliner.population.projects = []*models.Project{home, remote}
-	model.crossOutliner.rows = []outlinerRow{{task: subject, ProjectID: home.ID}}
+	model.crossOutliner.Population.Projects = []*models.Project{home, remote}
+	model.crossOutliner.Rows = []outliner.OutlinerRow{{Task: subject, ProjectID: home.ID}}
 	return model, subject, home, remote
 }
 
@@ -170,9 +171,9 @@ func concurrentReferencePickerFixture(t *testing.T) (*AppModel, *models.Task, *m
 		project.BuildTaskTree()
 	}
 	setTestAppProjects(model, home, remote)
-	model.crossOutliner.population.projects = []*models.Project{home, remote}
+	model.crossOutliner.Population.Projects = []*models.Project{home, remote}
 	subject := home.GetTaskByID("subject")
-	model.crossOutliner.rows = []outlinerRow{{task: subject, ProjectID: home.ID}}
+	model.crossOutliner.Rows = []outliner.OutlinerRow{{Task: subject, ProjectID: home.ID}}
 	return model, subject, home
 }
 

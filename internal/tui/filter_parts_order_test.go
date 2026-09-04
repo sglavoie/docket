@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -81,23 +82,23 @@ func tagPartsFromCommonFilterParts(parts []string) []string {
 // clause, so the set is spelled as sorted $state chips.
 func TestOutlinerActiveFilterParts_StatesCanonicalOrder(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	ol := NewOutlinerModel(project, app.configManager, app.runtime)
-	ol.filter.SetStateFilter(testWorkflowStateSet(
+	ol := outliner.NewOutlinerModel(project, app.configManager, app.runtime)
+	ol.Filter.SetStateFilter(testWorkflowStateSet(
 		models.StateCanceled,
 		models.StateBacklog,
 		models.StateInbox,
 		models.StateWaiting,
 	))
-	ol.adoptFilterCarriers()
+	ol.AdoptFilterCarriers()
 
-	first := statePartsFromParts(ol.activeFilterParts())
+	first := statePartsFromParts(ol.ActiveFilterParts())
 	want := []string{"$backlog", "$canceled", "$inbox", "$waiting"}
 	if !slices.Equal(first, want) {
 		t.Errorf("state parts not in canonical order: got %v, want %v", first, want)
 	}
 
 	for i := range 50 {
-		got := statePartsFromParts(ol.activeFilterParts())
+		got := statePartsFromParts(ol.ActiveFilterParts())
 		if !slices.Equal(got, first) {
 			t.Fatalf("iteration %d: state parts changed across calls: got %v, want %v", i, got, first)
 		}

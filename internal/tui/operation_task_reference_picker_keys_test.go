@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -36,9 +37,9 @@ func TestReferencePickerRefusesOffATaskRow(t *testing.T) {
 
 	t.Run("a project header row resolves no target", func(t *testing.T) {
 		model, _, home, _ := referencePickerFixture(t)
-		model.crossOutliner.rows = append(
-			[]outlinerRow{{IsProjectHeader: true, ProjectID: home.ID, SectionName: home.Name}},
-			model.crossOutliner.rows...,
+		model.crossOutliner.Rows = append(
+			[]outliner.OutlinerRow{{IsProjectHeader: true, ProjectID: home.ID, SectionName: home.Name}},
+			model.crossOutliner.Rows...,
 		)
 		model.crossOutliner.Cursor = 0
 
@@ -101,10 +102,10 @@ func TestReferencePickerEditsAWholeSelectionTriState(t *testing.T) {
 	home.Tasks = append(home.Tasks, second)
 	home.BuildTaskTree()
 	setTestAppProjects(model, home, remote)
-	model.crossOutliner.population.projects = []*models.Project{home, remote}
-	model.crossOutliner.rows = []outlinerRow{
-		{task: subject, ProjectID: home.ID},
-		{task: second, ProjectID: home.ID},
+	model.crossOutliner.Population.Projects = []*models.Project{home, remote}
+	model.crossOutliner.Rows = []outliner.OutlinerRow{
+		{Task: subject, ProjectID: home.ID},
+		{Task: second, ProjectID: home.ID},
 	}
 	model.crossOutliner.ReplaceSelection([]taskref.TaskIdentity{
 		taskref.For(subject, home), taskref.For(second, home),

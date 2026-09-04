@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -222,7 +223,7 @@ func TestTaskLineEditRequestMapsValidatedPatch(t *testing.T) {
 		StateSet:     true,
 	}
 
-	req := taskLineEditRequest(taskref.TaskIdentity{ProjectID: "project", TaskID: task.ID}, result)
+	req := outliner.TaskLineEditRequest(taskref.TaskIdentity{ProjectID: "project", TaskID: task.ID}, result)
 	if req.Title != "Updated" || req.Priority == nil || *req.Priority != 1 {
 		t.Fatalf("request content = %+v", req)
 	}

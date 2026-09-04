@@ -1,0 +1,777 @@
+package outliner
+
+import (
+	"slices"
+	"sort"
+	"strings"
+	"time"
+
+	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/fuzzy"
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/notes"
+	"github.com/sglavoie/tt/internal/tui/query"
+	"github.com/sglavoie/tt/internal/tui/taskref"
+)
+
+// searchState is the whole of the Outliner's slash search: the frame a query was
+// typed in, the compiled reading of that query, the input's own suggestion pane
+// and recall ring, and the notes tier the query may reach. Four concerns, one
+// owner, because the query is what makes the other three mean anything — the
+// compilation is that query's reading, the pane describes the token being typed
+// into it, and the notes tier exists only for a query carrying no sigil.
+//
+// resetSearchCompilation is the evidence: dropping a query drops the pane, the
+// gate and the retained note payloads in one act, and it has to, or a pane
+// outlives the search it was describing and a note payload outlives the row that
+// named it.
+//
+// It is deliberately not the lens's narrowing query. A lens narrows its own
+// saved mode, facets and sort and keeps its compiled form in lensGate,
+// lensRemainder and lensNarrowRelaxed on the model, while ordinary search
+// replaces the whole projection and stays scope-wide. At most one of the two is
+// ever live, which is what lets activeNarrowingGate answer for both.
+//
+// The zero value is inert: no frame, no gate, an empty ring, and a nil index
+// accessor that reads as an absent tier rather than a missing dependency. That
+// is what keeps a struct-literal test model and the Project Hub's preview
+// painter working without a constructor.
+type searchState struct {
+	// The frame. projection is the navigation frame the query was typed in, and
+	// its presence is the same thing as saying the view holds a query. rankedList
+	// is the other presentation of that same query — one flat relevance-ordered
+	// list rather than the mode's own lanes — toggled deliberately, never entered
+	// by typing, and it dies with the query that gave it rows.
+	Projection *outlinerSearchSnapshot
+	rankedList bool
+
+	// The compiled query. remainder is the free text left after the sigil gate was
+	// lifted out of it and gate is that gate; scoring, smart case, highlighting and
+	// the work-mode predicate all read the remainder, so a predicate token is never
+	// scored or highlighted as prose. caseRelaxed records that the last rebuild
+	// found nothing under the query's smart-case reading and fell back to a
+	// case-insensitive pass, so what matched and what is shown can never disagree.
+	remainder   string
+	Gate        *query.SearchPredicates
+	caseRelaxed bool
+
+	// The input's own state. autocomplete is the suggestion pane, holding no cached
+	// vocabulary: every refresh reprojects the grammar and rereads the live
+	// candidates, so a mutation or a scope change cannot leave a stale value behind.
+	// history is the session-only ring of submitted queries, walked with Up and
+	// Down inside the input, never persisted, and unlike jump history not scoped to
+	// a projection: a query is worth recalling in whatever mode or scope the user
+	// reaches for it next.
+	Autocomplete outlinerSearchAutocomplete
+	history      outlinerSearchHistory
+
+	// The notes tier. noteIndex is the shell-injected accessor over the
+	// workspace-wide note index the tier ranks, so the Outliner never learns where
+	// notes live or when they are read; a nil accessor means the tier is simply
+	// absent. noteMatches is what the tier's rows are rendered from, keyed the way
+	// the Notes manager keys its own match map and held beside the rows rather than
+	// on them because a note row's render payload is wide and outlinerRow is copied
+	// for every row of every rebuild. noteCursorReseat is the note the cursor rested
+	// on when an accepted index refresh forced a rebuild, captured because that
+	// rebuild re-ranks the tier and the numeric cursor alone would silently name a
+	// different result.
+	noteIndex        func() []notes.LocatedNoteRow
+	noteMatches      map[notes.NoteRowIdentity]outlinerSearchNoteMatch
+	noteCursorReseat notes.NoteRowIdentity
+}
+
+// active reports that a search frame is open, which is the same thing as saying
+// the view holds a query. It says nothing about how that query is presented.
+func (s *searchState) Active() bool { return s.Projection != nil }
+
+// showsRanked reports that the held query is being presented as one flat
+// relevance-ordered list. A query alone never freezes an axis; this is what the
+// operations that reshape lanes, grouping, manual order and the zoom refuse on.
+func (s *searchState) showsRanked() bool { return s.rankedList && s.Projection != nil }
+
+// begin opens the frame over the presentation the caller captured. Taking the
+// snapshot by value is what guarantees the retained frame is the caller's
+// capture and not an alias of anything still being written.
+func (s *searchState) begin(snapshot outlinerSearchSnapshot) { s.Projection = &snapshot }
+
+// toggleRanked switches the held query between narrowing the mode and the flat
+// ranked list, and reports which presentation now stands. What else the switch
+// costs stays the caller's: the section zoom belongs to the projection rather
+// than to the query, so suspending it is a decision made outside here.
+func (s *searchState) toggleRanked() bool {
+	s.rankedList = !s.rankedList
+	return s.rankedList
+}
+
+// take hands back the frame to restore and puts the search frame down in one
+// act, so the restoration cannot be replayed by whatever opens next. The
+// compilation is not the frame's and stays for the caller's own reset.
+func (s *searchState) take() *outlinerSearchSnapshot {
+	projection := s.Projection
+	s.discard()
+	return projection
+}
+
+// discard puts the frame down. take above is the same act with the frame handed
+// back on the way out; the two clear paths differ in nothing else, because an
+// intentional navigation reset replaces the projection rather than dismissing
+// it and so leaves nobody to restore the frame onto.
+func (s *searchState) discard() {
+	s.Projection = nil
+	s.rankedList = false
+}
+
+// searchSnapshot is the part of this state a lens restoration point carries: the
+// frame ordinary search was itself holding and the presentation it stood under.
+// The compilation is absent because it is not state a frame owns but the last
+// rebuild's reading of a query, and the rebuild that follows a restore produces
+// its own; the suggestion pane and the recall ring are absent for the same
+// reason and because the ring is not scoped to a projection at all.
+type searchSnapshot struct {
+	Projection *outlinerSearchSnapshot
+	rankedList bool
+}
+
+// capture reads the frame out. The pointer is retained rather than copied
+// because begin already took the presentation by value, so what is shared here is
+// a frame nothing writes to again.
+func (s *searchState) capture() searchSnapshot {
+	if s == nil {
+		return searchSnapshot{}
+	}
+	return searchSnapshot{Projection: s.Projection, rankedList: s.rankedList}
+}
+
+// restore installs a captured frame and the presentation it stood under, then
+// drops the compilation the replaced query left behind. It is discard's inverse
+// on both counts: a lens restoration point carries search's own restoration
+// point, so handing it back has to hand back both axes together or the flat list
+// returns over a query that is no longer held, and a reading of the lens query
+// that is going away would badge and highlight rows the restored query never
+// matched.
+func (s *searchState) restore(snapshot searchSnapshot) {
+	if s == nil {
+		return
+	}
+	s.Projection = snapshot.Projection
+	s.rankedList = snapshot.rankedList
+	s.resetCompilation()
+}
+
+// resetCompilation drops everything derived from the query and nothing else.
+// Suggestions describe the query being compiled, so they die with it; the
+// retained note payloads hold every matched note's body and would otherwise
+// outlive the rows that named them.
+func (s *searchState) resetCompilation() {
+	if s == nil {
+		return
+	}
+	s.Autocomplete.clear()
+	s.setCompilation("", nil, false)
+	s.clearNoteMatches()
+}
+
+// setCompilation installs the reading of the query the visible result set was
+// produced under. The three are one act because they are one pass's answer: a
+// remainder without the gate it was lifted from would score the sigils as prose,
+// and a case reading without the pass that took it would highlight rows that
+// pass never matched.
+func (s *searchState) setCompilation(remainder string, gate *query.SearchPredicates, relaxed bool) {
+	s.remainder = remainder
+	s.Gate = gate
+	s.caseRelaxed = relaxed
+}
+
+// setCaseRelaxed records the case reading alone, for the pass that lifts the
+// gate out first and only learns whether it had to relax after scoring under it.
+func (s *searchState) setCaseRelaxed(relaxed bool) { s.caseRelaxed = relaxed }
+
+// setNoteIndex injects the shell's accessor over the workspace-wide note index.
+func (s *searchState) setNoteIndex(accessor func() []notes.LocatedNoteRow) { s.noteIndex = accessor }
+
+// setNoteMatches retains the payloads the tier's rows render from. The map is
+// replaced whole on every rebuild, so it can never describe a result set that is
+// no longer on screen.
+func (s *searchState) setNoteMatches(matches map[notes.NoteRowIdentity]outlinerSearchNoteMatch) {
+	s.noteMatches = matches
+}
+
+// clearNoteMatches drops those payloads for the passes that emit no notes tier
+// at all: only the flat list has one.
+func (s *searchState) clearNoteMatches() { s.noteMatches = nil }
+
+// captureNoteCursor records the note the cursor holds ahead of a rebuild that
+// will re-rank the tier underneath it.
+func (s *searchState) CaptureNoteCursor(identity notes.NoteRowIdentity) {
+	s.noteCursorReseat = identity
+}
+
+// takeNoteCursor hands that note back and spends the capture in one call, so
+// exactly one rebuild honors it and a later one reseats nothing.
+func (s *searchState) takeNoteCursor() notes.NoteRowIdentity {
+	identity := s.noteCursorReseat
+	s.noteCursorReseat = notes.NoteRowIdentity{}
+	return identity
+}
+
+// outlinerSearchSnapshot is the navigation frame a slash search was typed in.
+// Scope is deliberately not captured, because scope is a navigation frame rather
+// than a clause of the query: a search runs inside the frame it was typed in, a
+// lens moves the frame, and the frames stack. Changing scope under a held query
+// therefore re-answers that query in the new frame instead of editing it, while
+// mode, facets, folds, zoom, ordering, and viewport are the frame's own axes and
+// are restored when the query is dropped.
+type outlinerSearchSnapshot struct {
+	Mode               chrome.OutlinerModeID
+	filter             query.FilterState
+	Sort               query.SortState
+	treeSort           query.SortState
+	ExpandedNodes      map[taskref.TaskIdentity]bool
+	ExpandedChecklists map[taskref.TaskIdentity]bool
+	CollapsedSections  map[string]bool
+	focusStack         []FocusEntry
+	crossFocusStack    []CrossProjectFocusEntry
+	zoom               sectionZoom
+	cursor             modeCursorAnchor
+}
+
+// outlinerMatchSource names the field that produced a search hit. It is
+// transient presentation attribution carried on the projected row only: no
+// persisted task or project field records it, and an ordinary (non-search) row
+// keeps the zero value, which means "no cue".
+type MatchSource int
+
+const (
+	MatchSourceNone MatchSource = iota
+	MatchSourceTitle
+	MatchSourceDescription
+	MatchSourceChecklist
+	MatchSourceComment
+	MatchSourceTag
+	MatchSourceContext
+	MatchSourceAttachment
+	MatchSourceProject
+	MatchSourceDetails
+	// matchSourceNote attributes a row to the notes tier rather than to a field
+	// of a task. It is the one source whose row carries no task at all.
+	MatchSourceNote
+)
+
+// The deterministic free-text tiers. Rank is the primary sort key, so a lower
+// tier can never be outranked by a higher one regardless of fuzzy score, and
+// searchFieldRankDetails is evaluated only after every single-field tier fails.
+const (
+	searchFieldRankTitle = iota
+	searchFieldRankDescription
+	searchFieldRankChecklist
+	searchFieldRankComment
+	// Tags and context share one rank; the source retains which axis won.
+	searchFieldRankTagContext
+	searchFieldRankAttachment
+	searchFieldRankProject
+	searchFieldRankDetails
+	// Notes are the last tier: a task the query names is what the Outliner is
+	// for, so no note may outrank one however strongly it scored. It is also the
+	// only tier whose rows carry no task.
+	searchFieldRankNote
+)
+
+type outlinerSearchMatch struct {
+	task        *models.Task
+	project     *models.Project
+	fieldRank   int
+	fuzzyScore  int
+	source      MatchSource
+	sourceIndex int
+}
+
+// hasSearchProjection reports that a slash-search frame is open, which is the
+// same thing as saying the view holds a query. It says nothing about how that
+// query is presented: by default the query narrows the mode's own lanes, and
+// only showsRankedList reports the flat presentation.
+func (m *OutlinerModel) HasSearchProjection() bool {
+	return m != nil && m.Search.Active()
+}
+
+// showsRankedList reports that the held query is being presented as one flat
+// relevance-ordered list. It is the single test every consumer that cannot
+// survive a bypassed mode must ask: the ranked list has no lanes, no grouping,
+// no manual order, and no section the zoom or the folds gate, so the operations
+// that reshape those axes refuse here and nowhere else. A query alone never
+// freezes an axis.
+func (m *OutlinerModel) ShowsRankedList() bool {
+	return m != nil && m.Search.showsRanked()
+}
+
+// toggleRankedList switches the held query between narrowing the mode and the
+// flat ranked list. Entering suspends the section zoom, which gates emitters the
+// flat list does not run; leaving restores nothing else, because every other
+// axis stayed live under both presentations.
+func (m *OutlinerModel) ToggleRankedList() bool {
+	if !m.HasSearchProjection() {
+		return false
+	}
+	if m.Search.toggleRanked() {
+		m.clearSectionZoom()
+	}
+	m.Population.Invalidate()
+	RebuildOutlinerPreservingCursor(m)
+	return true
+}
+
+func CopyFilterState(src query.FilterState) query.FilterState {
+	return query.FilterState{CommonFilterState: *query.CopyCommonFilterState(&src.CommonFilterState)}
+}
+
+func (m *OutlinerModel) BeginSearchProjection() {
+	if m == nil || m.Search.Active() {
+		return
+	}
+	m.closeMenuBar()
+	m.Search.begin(m.capturePresentationSnapshot())
+	m.Population.Invalidate()
+	m.RebuildRows()
+}
+
+// ActivateSearch starts or resumes the one temporary search projection. A
+// second slash edits the existing query without replacing its restoration
+// snapshot. Under an active lens the same key edits that lens's narrowing query
+// instead: the lens already owns the projection, and replacing it with a
+// scope-wide result set is the one thing the key must not do there.
+func (m *OutlinerModel) ActivateSearch() tea.Cmd {
+	if m.HasActiveLens() && !m.HasSearchProjection() {
+		return m.beginLensQueryEdit()
+	}
+	m.BeginSearchProjection()
+	// Every open starts a fresh walk: the ring survives the input closing, the
+	// position in it does not, so the first Up always names the newest query.
+	m.Search.history.resetRecall()
+	return m.BaseSearchableView.ActivateSearch()
+}
+
+// SetSearchQuery retains the programmatic seam used by tests and navigation,
+// but gives it the same scope-wide projection semantics as slash search.
+func (m *OutlinerModel) SetSearchQuery(query string) {
+	if strings.TrimSpace(query) != "" {
+		m.BeginSearchProjection()
+	}
+	m.BaseSearchableView.SetSearchQuery(query)
+	if m.HasSearchProjection() {
+		m.Population.Invalidate()
+		RebuildOutlinerPreservingCursor(m)
+	}
+}
+
+// ClearSearch exits the temporary projection and restores the exact ordinary
+// Outliner state. If the original task vanished while search operations were
+// mutating data, focus falls back to the nearest surviving task row.
+func (m *OutlinerModel) ClearSearch() {
+	if m == nil || !m.Search.Active() {
+		m.Search.Autocomplete.clear()
+		m.BaseSearchableView.ClearSearch()
+		return
+	}
+	m.closeMenuBar()
+	snapshot := m.Search.take()
+	m.resetSearchCompilation()
+	m.BaseSearchableView.ClearSearch()
+	m.restorePresentationSnapshot(*snapshot)
+	m.Population.Invalidate()
+	m.RebuildRows()
+	m.restoreSearchCursor(snapshot.cursor)
+}
+
+// exitSearchOntoCursorTask dismisses the flat ranked list and lands the ordinary
+// projection on the result the cursor named, so a jump reached through it is not
+// a dead end. The restored projection can hide the result behind the mode it was
+// searched out of, so a hidden result forces All once before it reports that a
+// facet still excludes it. A query that is merely narrowing has nothing to exit:
+// its rows are already the mode's own, so the caller keeps the query.
+func (m *OutlinerModel) ExitSearchOntoCursorTask() (string, bool) {
+	if !m.ShowsRankedList() {
+		return "", true
+	}
+	identity := m.CurrentTaskIdentity()
+	m.ClearSearch()
+	if !identity.Valid() || m.landOnSearchResult(identity) {
+		return "", true
+	}
+	m.SelectOutlinerMode(chrome.ModeAll)
+	if m.landOnSearchResult(identity) {
+		return "", true
+	}
+	return "Task is hidden by the active facets", false
+}
+
+func (m *OutlinerModel) landOnSearchResult(identity taskref.TaskIdentity) bool {
+	task, project := m.TaskAndProjectForIdentity(identity)
+	if task == nil {
+		return false
+	}
+	if m.Project != nil {
+		m.NavigateToTask(task)
+	} else {
+		m.NavigateToTaskInProject(task, project)
+	}
+	if !m.MoveCursorToIdentity(identity) {
+		return false
+	}
+	// The navigation kernels report a hidden target themselves, and that sentence
+	// would outlive a landing the forced mode went on to make.
+	m.ClearStatus()
+	return true
+}
+
+func (m *OutlinerModel) restoreSearchCursor(anchor modeCursorAnchor) {
+	m.ViewScrollOffset = anchor.scrollOffset
+	if anchor.hasTask {
+		for index, row := range m.Rows {
+			if !row.IsTaskRow() || row.Task == nil || row.Task.ID != anchor.identity.TaskID {
+				continue
+			}
+			if m.Project == nil && row.ProjectID != anchor.identity.ProjectID {
+				continue
+			}
+			m.Cursor = index
+			return
+		}
+		m.moveCursorToNearestTask(anchor.prevCursor)
+		return
+	}
+	m.Cursor = anchor.prevCursor
+	m.ClampCursor()
+}
+
+// clearSearchProjectionWithoutRestore is reserved for intentional navigation
+// resets that replace the current projection rather than dismissing search.
+func (m *OutlinerModel) clearSearchProjectionWithoutRestore() {
+	if m == nil {
+		return
+	}
+	m.Search.discard()
+	m.resetSearchCompilation()
+	m.BaseSearchableView.ClearSearch()
+}
+
+// resetSearchCompilation is the model's name for dropping everything derived
+// from the held query. Both clear paths route here, so neither can leave a pane
+// open over no search; the restoration path reaches the same act through
+// searchState.restore, which owes it for the query it is replacing.
+func (m *OutlinerModel) resetSearchCompilation() {
+	m.Search.resetCompilation()
+}
+
+// searchTextQuery is the free-text remainder every consumer of the query must
+// read: scoring, smart case, highlighting, and the work-mode predicate. Reading
+// the raw query instead would score and highlight the sigils as prose.
+func (m *OutlinerModel) searchTextQuery() string {
+	if m == nil {
+		return ""
+	}
+	if m.HasSearchProjection() {
+		return m.Search.remainder
+	}
+	return strings.TrimSpace(m.SearchQuery())
+}
+
+// searchCaseSensitive reports the case mode the visible result set was actually
+// produced under, so highlighting and predicates never disagree with the rows.
+func (m *OutlinerModel) searchCaseSensitive() bool {
+	if m == nil || m.Search.caseRelaxed {
+		return false
+	}
+	return fuzzy.CaseSensitiveQuery(m.searchTextQuery())
+}
+
+func (m *OutlinerModel) buildSearchProjectionRows() {
+	projects := m.ProjectsInCatalogOrder(m.WorkModeScopeProjects())
+	candidates := m.SearchCandidateBoundary(projects)
+
+	query, predicates := m.compileSearchQuery(m.SearchQuery(), projects)
+	// The pass opens unrelaxed: the retry below is the only thing that can raise
+	// the case reading, and it has not run yet.
+	m.Search.setCompilation(query, predicates, false)
+
+	// The one place the notes tier is admitted or refused. A sigil compiles to an
+	// AND gate applied before scoring and a note satisfies no conjunct of it, so
+	// the tier is absent whole rather than exempted per conjunct. Deciding once
+	// here rather than inside the scorer is what makes the case-relaxed retry
+	// below behave identically for free: both passes read the same decision.
+	notesAdmitted := !predicates.Invalid() && !predicates.HasAnySigil()
+
+	matcher := fuzzy.SmartCase(query)
+	matches := searchProjectionMatchesWithin(projects, query, candidates, matcher, predicates)
+	notes := m.scoreNoteSearchTier(query, matcher, notesAdmitted)
+	// One query, one case reading: relaxation is decided over the whole result
+	// set, so a query that relaxes relaxes for tasks and notes together.
+	if len(matches) == 0 && len(notes) == 0 && matcher.CaseSensitive() {
+		relaxed := fuzzy.NewMatcher(false)
+		matches = searchProjectionMatchesWithin(projects, query, candidates, relaxed, predicates)
+		notes = m.scoreNoteSearchTier(query, relaxed, notesAdmitted)
+		m.Search.setCaseRelaxed(len(matches) > 0 || len(notes) > 0)
+	}
+	m.sortSearchMatchesWithinTier(matches)
+
+	// The task matches arrive ordered by rank, so the notes tier is seated at the
+	// first task match its own rank no longer outranks. Reading
+	// searchFieldRankNote here rather than appending blind keeps that constant the
+	// one statement of where the tier sits, so moving it up the ladder later moves
+	// the rows with it.
+	boundary := len(matches)
+	for index, match := range matches {
+		if match.fieldRank >= searchFieldRankNote {
+			boundary = index
+			break
+		}
+	}
+	m.appendSearchTaskRows(matches[:boundary])
+	m.appendSearchNoteRows(notes)
+	m.appendSearchTaskRows(matches[boundary:])
+}
+
+func (m *OutlinerModel) appendSearchTaskRows(matches []outlinerSearchMatch) {
+	for _, match := range matches {
+		row := m.outlinerRowFromModeRow(OutlinerModeRow{
+			Task:       match.task,
+			Project:    match.project,
+			Breadcrumb: taskAncestorBreadcrumb(match.task),
+		})
+		// Attribution is recomputed by this rebuild alongside membership, so a
+		// mutation that moves a hit from one field to another moves its cue too.
+		row.MatchSource = match.source
+		m.Rows = append(m.Rows, row)
+	}
+}
+
+// appendSearchNoteRows emits the notes tier and retains what rendering it needs.
+// The row carries the note's workspace identity alone, exactly as the Notes
+// manager keys its own match map, so the wide payload a render reads — the note,
+// its owner label, and the title positions that ranked it — stays off a struct
+// every projection copies per row. The map is replaced on every rebuild, so it
+// can never describe a result set that is no longer on screen.
+func (m *OutlinerModel) appendSearchNoteRows(matches []outlinerSearchNoteMatch) {
+	m.Search.clearNoteMatches()
+	if len(matches) == 0 {
+		return
+	}
+	payloads := make(map[notes.NoteRowIdentity]outlinerSearchNoteMatch, len(matches))
+	for _, note := range matches {
+		identity := note.row.Identity()
+		payloads[identity] = note
+		m.Rows = append(m.Rows, OutlinerRow{
+			IsNoteRow:   true,
+			NoteRow:     identity,
+			MatchSource: MatchSourceNote,
+		})
+	}
+	m.Search.setNoteMatches(payloads)
+}
+
+// sortSearchMatchesWithinTier reorders a resolved result set by the active sort
+// axis without ever crossing a relevance tier. In a search projection the tier
+// is the group, and a sort reorders tasks within their group only, so no
+// `· description` hit can float above a title hit. It runs here rather than
+// inside searchProjectionMatchesWithin so the lens call site keeps the saved
+// order the lens itself installs.
+func (m *OutlinerModel) sortSearchMatchesWithinTier(matches []outlinerSearchMatch) {
+	if m == nil || m.Sort.Field == query.SortByDefault || len(matches) < 2 {
+		return
+	}
+	field, ascending := m.Sort.Field, m.Sort.Ascending
+	sort.SliceStable(matches, func(i, j int) bool {
+		if matches[i].fieldRank != matches[j].fieldRank {
+			return matches[i].fieldRank < matches[j].fieldRank
+		}
+		return query.ApplySortDirection(query.CompareTasks(matches[i].task, matches[j].task, field), ascending)
+	})
+}
+
+// searchCandidateBoundary returns an authoritative per-project candidate set
+// whenever something other than the query itself bounds the result. Two things
+// do: task Focus, whose descendants-only branch search must never escape, and
+// the active common facets, which are an AND gate applied before scoring
+// exactly like the sigils. Search still ignores the current mode, sort, and
+// folds. With neither in force the nil return keeps the scope-wide behavior.
+//
+// The facets compose through this channel rather than inside
+// searchProjectionMatchesWithin because the lens path calls that function with
+// its own facets already applied, and checking them there would apply them twice.
+func (m *OutlinerModel) SearchCandidateBoundary(projects []*models.Project) map[string][]*models.Task {
+	if m == nil {
+		return nil
+	}
+	focused := m.Focus.Active()
+	faceted := query.HasActiveCommonFilters(&m.Filter.CommonFilterState)
+	if !focused && !faceted {
+		return nil
+	}
+	// buildCanonicalModeRows populates the open-child census above the search
+	// branch, so the hierarchy half of the facet gate reads a live count here.
+	facets := m.FacetPredicateAt(time.Now())
+	candidates := make(map[string][]*models.Task, len(projects))
+	for _, project := range projects {
+		if project == nil {
+			continue
+		}
+		tasks := project.Tasks
+		if focused {
+			tasks = flattenTaskPointers(m.primaryModeRoots(project))
+		}
+		admitted := make([]*models.Task, 0, len(tasks))
+		for _, task := range tasks {
+			if task != nil && facets(task, project) {
+				admitted = append(admitted, task)
+			}
+		}
+		candidates[project.ID] = admitted
+	}
+	return candidates
+}
+
+// compileSearchQuery hands the Outliner's own carriers to the shared gate. The
+// gate reads two things this model owns and nothing else does: the durable plan
+// that decides Today and Next membership, and the canonical filter query whose
+// facets open the terminal and deferred populations beside the sigils.
+//
+// A nil model still compiles: the sigils answer for themselves, and a view with
+// no plan and no facets neither names a planned task nor opens a population.
+func (m *OutlinerModel) compileSearchQuery(text string, projects []*models.Project) (string, *query.SearchPredicates) {
+	if m == nil {
+		return query.CompileSearchQuery(text, projects, nil, models.Query{})
+	}
+	return query.CompileSearchQuery(text, projects, outlinerPlanningMembership{outliner: m}, m.FilterQuery)
+}
+
+// outlinerPlanningMembership is the Outliner's answer to the gate's planning
+// question. It is a wrapper rather than a set of methods on the model itself so
+// the gate's contract stays the two memberships it names, not whatever else the
+// Outliner happens to expose.
+type outlinerPlanningMembership struct {
+	outliner *OutlinerModel
+}
+
+func (p outlinerPlanningMembership) TodayIdentities(projects []*models.Project) map[taskref.TaskIdentity]bool {
+	return p.outliner.resolveTodayIDs(projects)
+}
+
+func (p outlinerPlanningMembership) NextIdentities(projects []*models.Project) map[taskref.TaskIdentity]bool {
+	return resolveSearchNextIDs(p.outliner, projects)
+}
+
+// resolveSearchNextIDs reads Next membership from the durable plan, because Next
+// and Today both store Backlog tasks and a state compare cannot tell them apart.
+func resolveSearchNextIDs(m *OutlinerModel, projects []*models.Project) map[taskref.TaskIdentity]bool {
+	ids := make(map[taskref.TaskIdentity]bool)
+	if m == nil || m.Runtime == nil {
+		return ids
+	}
+	for _, item := range planningNextOrder(m.Runtime) {
+		for _, project := range projects {
+			if project == nil || project.ID != item.ProjectID {
+				continue
+			}
+			if task := project.GetTaskByID(item.TaskID); task != nil {
+				ids[taskref.For(task, project)] = true
+			}
+			break
+		}
+	}
+	return ids
+}
+
+// outlinerSearchNoteMatch is one scored note from the shell's index. It is the
+// note counterpart of outlinerSearchMatch and carries the same two things a
+// task match does: the subject and the evidence that ranked it.
+type outlinerSearchNoteMatch struct {
+	row   notes.LocatedNoteRow
+	match notes.NoteSearchMatch
+	// sourceIndex is the note's position in the in-scope index under the index's
+	// own order — location, then filename. It is the tier's tiebreak exactly as
+	// it is for tasks, and it is carried rather than recompared so that ordering
+	// is stated once, in sortNoteSearchIndexRows.
+	sourceIndex int
+}
+
+// setNoteSearchIndex injects the shell's note accessor. It is deliberately a
+// setter rather than a constructor parameter: NewOutlinerModel builds the Hub
+// preview painter too, and that surface must keep the nil accessor.
+func (m *OutlinerModel) SetNoteSearchIndex(accessor func() []notes.LocatedNoteRow) {
+	m.Search.setNoteIndex(accessor)
+}
+
+// noteSearchRowsInScope applies the Outliner's own project scope to the
+// workspace-wide index. A single-project scope yields that project's notes
+// alone — not Global — matching the way a scoped Outliner shows only that
+// project's work; unscoped yields Global plus every project the index carries.
+// Archived owners were already refused when the index was built, so there is
+// no archive test here.
+func (m *OutlinerModel) noteSearchRowsInScope() []notes.LocatedNoteRow {
+	if m == nil || m.Search.noteIndex == nil {
+		return nil
+	}
+	rows := m.Search.noteIndex()
+	scopeID := m.Scope.ProjectID
+	if m.Project != nil {
+		scopeID = m.Project.ID
+	}
+	if scopeID == "" {
+		return rows
+	}
+	scoped := make([]notes.LocatedNoteRow, 0, len(rows))
+	for _, row := range rows {
+		if row.Location.Scope == app.NoteScopeProject && row.Location.ProjectID == scopeID {
+			scoped = append(scoped, row)
+		}
+	}
+	return scoped
+}
+
+// scoreNoteSearchTier ranks the in-scope notes against the free-text remainder
+// under the matcher the task pass is using, so one query never relaxes its case
+// for tasks and not for notes. admitted is the caller's single decision about
+// whether the tier exists for this query at all; the scorer does not re-derive
+// it, which is what keeps the sigil rule stated in exactly one place.
+//
+// ScoreNoteSearch is reused as-is: the Notes manager and this tier must agree
+// about what a note matches and how strongly, or the same query would rank the
+// same note two ways on two surfaces.
+func (m *OutlinerModel) scoreNoteSearchTier(
+	query string,
+	matcher fuzzy.Matcher,
+	admitted bool,
+) []outlinerSearchNoteMatch {
+	if !admitted {
+		return nil
+	}
+	rows := m.noteSearchRowsInScope()
+	if len(rows) == 0 {
+		return nil
+	}
+	// The shell's index arrives in this order already and scoping filters it
+	// without reordering, so this is a no-op in production. It is applied here
+	// anyway because sourceIndex is what the projection's rows are tiebroken and
+	// seated by: a caller that hands the tier an unsorted snapshot must still get
+	// the one order notes.SortLocatedNoteRows names, not its slice's.
+	rows = slices.Clone(rows)
+	notes.SortLocatedNoteRows(rows)
+	matches := make([]outlinerSearchNoteMatch, 0, len(rows))
+	for sourceIndex, row := range rows {
+		match, ok := notes.ScoreNoteSearch(row.Note, query, matcher)
+		if !ok {
+			continue
+		}
+		matches = append(matches, outlinerSearchNoteMatch{
+			row: row, match: match, sourceIndex: sourceIndex,
+		})
+	}
+	sort.SliceStable(matches, func(i, j int) bool {
+		left, right := matches[i], matches[j]
+		if left.match.Score != right.match.Score {
+			return left.match.Score > right.match.Score
+		}
+		return left.sourceIndex < right.sourceIndex
+	})
+	return matches
+}

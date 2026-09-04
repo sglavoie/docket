@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -79,11 +80,11 @@ func diskPinOrder(t *testing.T, project *models.Project) []string {
 }
 
 // visibleTaskTitles returns the rendered task rows' titles in render order.
-func visibleTaskTitles(m *OutlinerModel) []string {
+func visibleTaskTitles(m *outliner.OutlinerModel) []string {
 	var titles []string
-	for _, row := range m.rows {
-		if row.isTaskRow() && row.task != nil {
-			titles = append(titles, row.task.Title)
+	for _, row := range m.Rows {
+		if row.IsTaskRow() && row.Task != nil {
+			titles = append(titles, row.Task.Title)
 		}
 	}
 	return titles
@@ -101,7 +102,7 @@ func TestOutlinerPinnedOrderJK(t *testing.T) {
 		m, cross, _ := newPlanningOrderApp(t, project)
 		cross.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 		enterCrossMode(cross, chrome.ModeAll)
-		if !cross.moveCursorToProjectTask(tasks["Alpha"].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks["Alpha"].ID, project.ID) {
 			t.Fatal("cursor did not land on Alpha")
 		}
 
@@ -127,7 +128,7 @@ func TestOutlinerPinnedOrderJK(t *testing.T) {
 		m, cross, _ := newPlanningOrderApp(t, project)
 		cross.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 		enterCrossMode(cross, chrome.ModeAll)
-		if !cross.moveCursorToProjectTask(tasks["Alpha"].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks["Alpha"].ID, project.ID) {
 			t.Fatal("cursor did not land on Alpha")
 		}
 
@@ -161,7 +162,7 @@ func TestOutlinerPinnedOrderJK(t *testing.T) {
 			config.ProjectTaskLocator{ProjectID: project.ID, TaskID: planned.ID},
 		)
 		enterCrossMode(cross, chrome.ModeToday)
-		if !cross.moveCursorToProjectTask(tasks["Alpha"].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks["Alpha"].ID, project.ID) {
 			t.Fatal("cursor did not land on Alpha in Today mode")
 		}
 
@@ -182,7 +183,7 @@ func TestOutlinerPinnedOrderJK(t *testing.T) {
 		m, cross, _ := newPlanningOrderApp(t, alpha, beta)
 		cross.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 		enterCrossMode(cross, chrome.ModeAll)
-		if !cross.moveCursorToProjectTask(alphaTasks["Alpha Two"].ID, alpha.ID) {
+		if !cross.MoveCursorToProjectTask(alphaTasks["Alpha Two"].ID, alpha.ID) {
 			t.Fatal("cursor did not land on Alpha Two")
 		}
 
@@ -204,7 +205,7 @@ func TestOutlinerPinnedOrderJK(t *testing.T) {
 		m, cross, _ := newPlanningOrderApp(t, project)
 		cross.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 		enterCrossMode(cross, chrome.ModeAll)
-		if !cross.moveCursorToProjectTask(tasks["First Child"].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks["First Child"].ID, project.ID) {
 			t.Fatal("cursor did not land on First Child")
 		}
 
@@ -224,7 +225,7 @@ func TestOutlinerPinnedOrderJK(t *testing.T) {
 		m, cross, _ := newPlanningOrderApp(t, project)
 		cross.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 		enterCrossMode(cross, chrome.ModeAll)
-		if !cross.moveCursorToProjectTask(tasks["Parent"].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks["Parent"].ID, project.ID) {
 			t.Fatal("cursor did not land on Parent")
 		}
 
@@ -244,13 +245,13 @@ func TestOutlinerPinnedOrderJK(t *testing.T) {
 		m, cross, _ := newPlanningOrderApp(t, project)
 		cross.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 		enterCrossMode(cross, chrome.ModeAll)
-		cross.folds.expandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: tasks["Parent"].ID}] = false
-		cross.population.invalidate()
-		cross.crossProjectRebuildRows()
+		cross.Folds.ExpandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: tasks["Parent"].ID}] = false
+		cross.Population.Invalidate()
+		cross.CrossProjectRebuildRows()
 		if got := visibleTaskTitles(cross); !slices.Equal(got, []string{"Other Root", "Parent"}) {
 			t.Fatalf("collapsed pinned rows = %v, want the child hidden", got)
 		}
-		if !cross.moveCursorToProjectTask(tasks["Other Root"].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks["Other Root"].ID, project.ID) {
 			t.Fatal("cursor did not land on Other Root")
 		}
 
@@ -274,7 +275,7 @@ func TestPinnedReorderIsUndoable(t *testing.T) {
 	m, cross, dataDir := newPlanningOrderApp(t, project)
 	cross.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 	enterCrossMode(cross, chrome.ModeAll)
-	if !cross.moveCursorToProjectTask(tasks["Alpha"].ID, project.ID) {
+	if !cross.MoveCursorToProjectTask(tasks["Alpha"].ID, project.ID) {
 		t.Fatal("cursor did not land on Alpha")
 	}
 	if !pressReorderKey(t, m, 'J') {

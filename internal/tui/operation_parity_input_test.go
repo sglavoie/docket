@@ -19,7 +19,7 @@ func TestDirectKeysHelpAndHandledKeysDeriveFromTheInputStrategy(t *testing.T) {
 	// while one is held. Holding one is the state its key is pressed in; a query
 	// on its own still freezes no other axis, so every other binding is audited
 	// exactly as before.
-	app.crossOutliner.beginSearchProjection()
+	app.crossOutliner.BeginSearchProjection()
 
 	strategy, ok := registry.InputStrategy(operation.InputStrategySimplified)
 	if !ok {

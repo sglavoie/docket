@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
 // taskReferenceRowID is the picker's stable row identity: the durable
@@ -141,7 +142,7 @@ func operationTaskReferenceListSource(tasks []*models.Task, projects []*models.P
 			// like every other stored row: nothing can be said about the target, but
 			// the reference itself is still the user's to drop.
 			item.PrimaryText = candidate.Locator.Reference().Locator()
-			item.SecondaryText = dependencyDetailUnavailable
+			item.SecondaryText = outliner.DependencyDetailUnavailable
 			items = append(items, item)
 			continue
 		}

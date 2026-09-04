@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskform"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -19,10 +20,10 @@ import (
 // snapshot it owns in production. Tests that point the loaded population at the
 // catalog objects cannot expose stale post-mutation rows because the mutation
 // updates the view's project pointer in place.
-func installDistinctOutlinerSnapshot(t *testing.T, model *AppModel, outliner *OutlinerModel) {
+func installDistinctOutlinerSnapshot(t *testing.T, model *AppModel, outlinerView *outliner.OutlinerModel) {
 	t.Helper()
 
-	_, projects, failed := LoadCrossScopeTasks(model.runtime, outliner.projectService, CrossScopeOpts{
+	_, projects, failed := outliner.LoadCrossScopeTasks(model.runtime, outlinerView.ProjectService, outliner.CrossScopeOpts{
 		ActiveOnly: true,
 	})
 	if len(failed) > 0 {
@@ -31,14 +32,14 @@ func installDistinctOutlinerSnapshot(t *testing.T, model *AppModel, outliner *Ou
 	if len(projects) == 0 {
 		t.Fatal("load Outliner snapshot: no active projects")
 	}
-	outliner.population.projects = projects
-	outliner.population.invalidate()
-	outliner.crossProjectRebuildRows()
+	outlinerView.Population.Projects = projects
+	outlinerView.Population.Invalidate()
+	outlinerView.CrossProjectRebuildRows()
 }
 
-func outlinerHasTask(outliner *OutlinerModel, projectID, taskID string) bool {
-	for _, row := range outliner.rows {
-		if row.isTaskRow() && row.ProjectID == projectID && row.task != nil && row.task.ID == taskID {
+func outlinerHasTask(outlinerView *outliner.OutlinerModel, projectID, taskID string) bool {
+	for _, row := range outlinerView.Rows {
+		if row.IsTaskRow() && row.ProjectID == projectID && row.Task != nil && row.Task.ID == taskID {
 			return true
 		}
 	}
@@ -62,17 +63,17 @@ func TestTaskLineEditCrossProjectRelocationRefreshesOutlinerSnapshot(t *testing.
 		t.Fatalf("save source fixture: %v", err)
 	}
 
-	model, outliner := newSession2OutlinerApp(t, dataDir, source, destination)
-	installDistinctOutlinerSnapshot(t, model, outliner)
+	model, outlinerView := newSession2OutlinerApp(t, dataDir, source, destination)
+	installDistinctOutlinerSnapshot(t, model, outlinerView)
 	sourceIdentity := taskref.TaskIdentity{ProjectID: source.ID, TaskID: moving.ID}
-	for index, row := range outliner.rows {
-		if row.isTaskRow() && row.ProjectID == source.ID && row.task.ID == moving.ID {
-			outliner.Cursor = index
+	for index, row := range outlinerView.Rows {
+		if row.IsTaskRow() && row.ProjectID == source.ID && row.Task.ID == moving.ID {
+			outlinerView.Cursor = index
 			break
 		}
 	}
-	outliner.syncJumpProjection()
-	capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{sourceIdentity})
+	outlinerView.SyncJumpProjection()
+	capture := outlinerView.CaptureOutlinerRelocation([]taskref.TaskIdentity{sourceIdentity})
 	if capture == nil {
 		t.Fatal("capture task-line relocation: nil")
 	}
@@ -104,7 +105,7 @@ func TestTaskLineEditCrossProjectRelocationRefreshesOutlinerSnapshot(t *testing.
 	if err := storage.SaveProject(committedDestination); err != nil {
 		t.Fatalf("save committed destination: %v", err)
 	}
-	if outlinerHasTask(outliner, destination.ID, moving.ID) {
+	if outlinerHasTask(outlinerView, destination.ID, moving.ID) {
 		t.Fatal("Outliner snapshot was pre-mutated before handler refresh")
 	}
 
@@ -121,19 +122,19 @@ func TestTaskLineEditCrossProjectRelocationRefreshesOutlinerSnapshot(t *testing.
 		Source:     sourceIdentity,
 		Relocation: capture,
 	})
-	if got := outliner.CurrentTaskIdentity(); got != finalIdentity {
+	if got := outlinerView.CurrentTaskIdentity(); got != finalIdentity {
 		t.Fatalf("post-edit cursor = %+v, want destination %+v", got, finalIdentity)
 	}
-	if len(outliner.relocationHistory.back) != 1 {
-		t.Fatalf("post-edit origin history = %d, want 1", len(outliner.relocationHistory.back))
+	if len(outlinerView.RelocationHistory.Back) != 1 {
+		t.Fatalf("post-edit origin history = %d, want 1", len(outlinerView.RelocationHistory.Back))
 	}
 
-	outliner.jumpBackward()
-	if got := outliner.CurrentTaskIdentity(); got != (taskref.TaskIdentity{ProjectID: source.ID, TaskID: neighbor.ID}) {
+	outlinerView.JumpBackward()
+	if got := outlinerView.CurrentTaskIdentity(); got != (taskref.TaskIdentity{ProjectID: source.ID, TaskID: neighbor.ID}) {
 		t.Fatalf("Ctrl+O destination = %+v, want origin neighbor", got)
 	}
-	outliner.jumpForward()
-	if got := outliner.CurrentTaskIdentity(); got != finalIdentity {
+	outlinerView.JumpForward()
+	if got := outlinerView.CurrentTaskIdentity(); got != finalIdentity {
 		t.Fatalf("Ctrl+I destination = %+v, want moved task", got)
 	}
 }
@@ -141,8 +142,8 @@ func TestTaskLineEditCrossProjectRelocationRefreshesOutlinerSnapshot(t *testing.
 func TestTaskCreatedRefreshesVisibleOutlinerSnapshot(t *testing.T) {
 	dataDir := t.TempDir()
 	project := newSession2Project(t, dataDir, "created refresh")
-	model, outliner := newSession2OutlinerApp(t, dataDir, project)
-	installDistinctOutlinerSnapshot(t, model, outliner)
+	model, outlinerView := newSession2OutlinerApp(t, dataDir, project)
+	installDistinctOutlinerSnapshot(t, model, outlinerView)
 
 	committed := &models.Project{
 		ID:   project.ID,
@@ -170,13 +171,13 @@ func TestTaskCreatedRefreshesVisibleOutlinerSnapshot(t *testing.T) {
 	_, cmd := model.Update(coordinator.TaskCreatedMsg{Result: &result})
 	runSession2AppCommand(t, model, cmd)
 
-	if outliner.population.loading {
+	if outlinerView.Population.Loading {
 		t.Fatal("Outliner reload did not settle")
 	}
-	if !outlinerHasTask(outliner, project.ID, task.ID) {
+	if !outlinerHasTask(outlinerView, project.ID, task.ID) {
 		t.Fatal("created task did not appear without navigating away")
 	}
-	if got := outliner.activeOutlinerMode(); got != chrome.ModeAll {
+	if got := outlinerView.ActiveOutlinerMode(); got != chrome.ModeAll {
 		t.Fatalf("Outliner mode changed to %q, want %q", got, chrome.ModeAll)
 	}
 }
@@ -192,16 +193,16 @@ func TestPlanningCaptureRefreshesRuntimeAndOutlinerSection(t *testing.T) {
 		t.Run(string(tc.destination), func(t *testing.T) {
 			dataDir := t.TempDir()
 			project := newSession2Project(t, dataDir, "planning capture "+string(tc.destination))
-			model, outliner := newSession2OutlinerApp(t, dataDir, project)
+			model, outlinerView := newSession2OutlinerApp(t, dataDir, project)
 			if err := model.configManager.CommitPlanning(config.NewPlanningState()); err != nil {
 				t.Fatalf("seed planning: %v", err)
 			}
 			if !model.refreshRuntime() {
 				t.Fatal("seeded planning snapshot did not refresh")
 			}
-			model.appService.WithPlanningArtifacts(planningReconcileArtifactBuilder(model.configManager))
+			model.appService.WithPlanningArtifacts(coordinator.ManagerPlanningArtifacts(model.configManager))
 			model.features = coordinator.NewFeatureCoordinators(model.appService)
-			installDistinctOutlinerSnapshot(t, model, outliner)
+			installDistinctOutlinerSnapshot(t, model, outlinerView)
 
 			composer := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{
 				Kind:        taskform.ComposerProject,
@@ -248,8 +249,8 @@ func TestPlanningCaptureRefreshesRuntimeAndOutlinerSection(t *testing.T) {
 			}
 
 			matches := 0
-			for _, row := range outliner.rows {
-				if !row.isTaskRow() || row.ProjectID != identity.ProjectID || row.task == nil || row.task.ID != identity.TaskID {
+			for _, row := range outlinerView.Rows {
+				if !row.IsTaskRow() || row.ProjectID != identity.ProjectID || row.Task == nil || row.Task.ID != identity.TaskID {
 					continue
 				}
 				matches++
@@ -259,8 +260,8 @@ func TestPlanningCaptureRefreshesRuntimeAndOutlinerSection(t *testing.T) {
 				if tc.group == models.StateGroupToday && !row.IsTodaySection {
 					t.Fatalf("created row is not in Today: %+v", row)
 				}
-				if row.task.State() != models.StateBacklog {
-					t.Fatalf("planning task state = %s, want backlog lifecycle", row.task.State())
+				if row.Task.State() != models.StateBacklog {
+					t.Fatalf("planning task state = %s, want backlog lifecycle", row.Task.State())
 				}
 			}
 			if matches != 1 {
@@ -275,13 +276,13 @@ func TestPlanningOrderMutationRefreshPreservesQualifiedCursorIdentity(t *testing
 	betaTask := primaryRowsTask("shared", models.StateBacklog)
 	alpha := primaryRowsProject("alpha", alphaTask)
 	beta := primaryRowsProject("beta", betaTask)
-	outliner, runtime := primaryRowsOutliner(alpha, beta)
+	outlinerView, runtime := primaryRowsOutliner(alpha, beta)
 	runtime.Planning().SetToday([]config.ProjectTaskLocator{
 		{ProjectID: alpha.ID, TaskID: alphaTask.ID},
 		{ProjectID: beta.ID, TaskID: betaTask.ID},
 	})
-	outliner.selectOutlinerMode(chrome.ModeToday)
-	if !outliner.moveCursorToProjectTask(betaTask.ID, beta.ID) {
+	outlinerView.SelectOutlinerMode(chrome.ModeToday)
+	if !outlinerView.MoveCursorToProjectTask(betaTask.ID, beta.ID) {
 		t.Fatal("cursor did not land on beta/shared")
 	}
 
@@ -289,20 +290,20 @@ func TestPlanningOrderMutationRefreshPreservesQualifiedCursorIdentity(t *testing
 		{ProjectID: beta.ID, TaskID: betaTask.ID},
 		{ProjectID: alpha.ID, TaskID: alphaTask.ID},
 	})
-	outliner.population.invalidate()
-	rebuildOutlinerPreservingCursor(outliner)
+	outlinerView.Population.Invalidate()
+	outliner.RebuildOutlinerPreservingCursor(outlinerView)
 
 	var got []string
-	for _, row := range outliner.rows {
-		if row.isTaskRow() && row.task != nil {
-			got = append(got, row.ProjectID+"/"+row.task.ID)
+	for _, row := range outlinerView.Rows {
+		if row.IsTaskRow() && row.Task != nil {
+			got = append(got, row.ProjectID+"/"+row.Task.ID)
 		}
 	}
 	want := []string{"alpha/shared", "beta/shared"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("refreshed Today rows = %v, want %v", got, want)
 	}
-	selectedTask, selectedProject := outliner.GetTaskRef()
+	selectedTask, selectedProject := outlinerView.GetTaskRef()
 	if selectedTask == nil || selectedProject == nil ||
 		selectedTask.ID != betaTask.ID || selectedProject.ID != beta.ID {
 		t.Fatalf("cursor after refresh = %v/%v, want beta/shared", selectedProject, selectedTask)

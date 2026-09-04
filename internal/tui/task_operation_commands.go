@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -23,7 +24,7 @@ import (
 func (m *AppModel) adoptChildrenCmd(
 	identity taskref.TaskIdentity,
 	childIDs []string,
-	relocation *outlinerRelocationCapture,
+	relocation *outliner.OutlinerRelocationCapture,
 ) tea.Cmd {
 	task, project := m.taskAndProjectForIdentity(identity)
 	if task == nil || project == nil {
@@ -37,7 +38,7 @@ func (m *AppModel) adoptChildrenCmd(
 		DestinationProjectID: identity.ProjectID,
 		Parent:               app.TaskLineParentPatch{Mode: app.TaskLineParentPreserve},
 		Action:               "Adopt Children",
-		PlanningArtifacts:    shellPlanningReconcileArtifactBuilder(m.runtime, m.configManager),
+		PlanningArtifacts:    coordinator.PlanningArtifacts(m.runtime, m.configManager),
 	}
 	for _, childID := range childIDs {
 		req.Children = append(req.Children, app.TaskLocator{
@@ -81,7 +82,7 @@ func (m *AppModel) setTaskReferencesCmd(identity taskref.TaskIdentity, value ope
 		Parent:               app.TaskLineParentPatch{Mode: app.TaskLineParentPreserve},
 		Dependencies:         patch,
 		Action:               "Set Dependencies",
-		PlanningArtifacts:    shellPlanningReconcileArtifactBuilder(m.runtime, m.configManager),
+		PlanningArtifacts:    coordinator.PlanningArtifacts(m.runtime, m.configManager),
 	}
 	return m.secondaryFeatures.TaskItem.EditTaskLine(req, nil)
 }
@@ -98,7 +99,7 @@ func (m *AppModel) setTaskReferencesCmd(identity taskref.TaskIdentity, value ope
 func (m *AppModel) moveTaskToProjectCmd(
 	identities []taskref.TaskIdentity,
 	projectID string,
-	relocation *outlinerRelocationCapture,
+	relocation *outliner.OutlinerRelocationCapture,
 ) tea.Cmd {
 	if len(identities) == 0 {
 		return func() tea.Msg {
@@ -114,7 +115,7 @@ func (m *AppModel) moveTaskToProjectCmd(
 func (m *AppModel) moveOneTaskToProjectCmd(
 	identity taskref.TaskIdentity,
 	projectID string,
-	relocation *outlinerRelocationCapture,
+	relocation *outliner.OutlinerRelocationCapture,
 ) tea.Cmd {
 	task, project := m.taskAndProjectForIdentity(identity)
 	if task == nil || project == nil {
@@ -127,7 +128,7 @@ func (m *AppModel) moveOneTaskToProjectCmd(
 		Title:                task.Title,
 		DestinationProjectID: projectID,
 		Action:               "Move to Project",
-		PlanningArtifacts:    shellStructuralPlanningArtifactBuilder(m.runtime, m.configManager),
+		PlanningArtifacts:    coordinator.StructuralPlanningArtifacts(m.runtime, m.configManager),
 	}
 	return m.secondaryFeatures.TaskItem.EditTaskLine(req, relocation)
 }
@@ -140,7 +141,7 @@ func (m *AppModel) moveOneTaskToProjectCmd(
 func (m *AppModel) moveTaskSelectionToProjectCmd(
 	identities []taskref.TaskIdentity,
 	projectID string,
-	relocation *outlinerRelocationCapture,
+	relocation *outliner.OutlinerRelocationCapture,
 ) tea.Cmd {
 	locators := make([]app.TaskLocator, 0, len(identities))
 	for _, identity := range identities {
@@ -152,7 +153,7 @@ func (m *AppModel) moveTaskSelectionToProjectCmd(
 		locators = append(locators, identity.Locator())
 	}
 	destination := m.moveDestinationName(projectID)
-	m.appService.WithPlanningArtifacts(shellStructuralPlanningArtifactBuilder(m.runtime, m.configManager))
+	m.appService.WithPlanningArtifacts(coordinator.StructuralPlanningArtifacts(m.runtime, m.configManager))
 	cmd := m.secondaryFeatures.Bulk.MoveToProjectLocators(locators, projectID, func(moved int) string {
 		return fmt.Sprintf("Moved %d task(s) to %s", moved, destination)
 	})

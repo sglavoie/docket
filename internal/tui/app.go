@@ -16,6 +16,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -115,14 +116,14 @@ type AppModel struct {
 
 	// Typed accessors for views that need direct access (e.g., for HasActiveSearch)
 	helpView      *help.HelpViewModel
-	crossOutliner *OutlinerModel
+	crossOutliner *outliner.OutlinerModel
 
 	// Focus view session state (persists across view navigation within a session)
-	nextOrder    []PlanningTask
+	nextOrder    []outliner.PlanningTask
 	nextOrderIDs map[taskref.TaskIdentity]bool
 
 	// Today session state (persists across view navigation within a session)
-	today    []PlanningTask
+	today    []outliner.PlanningTask
 	todayIDs map[taskref.TaskIdentity]bool
 
 	// workspacePulse caches the cross-project operational counts surfaced in the

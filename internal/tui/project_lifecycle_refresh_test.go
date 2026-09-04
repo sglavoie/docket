@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/help"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -17,7 +18,7 @@ import (
 
 type session4LifecycleFixture struct {
 	app     *AppModel
-	cross   *OutlinerModel
+	cross   *outliner.OutlinerModel
 	manager *config.Manager
 	dataDir string
 }
@@ -87,16 +88,16 @@ func newSession4LifecycleFixture(
 	}
 }
 
-func attachSession4CrossOutliner(t *testing.T, app *AppModel) *OutlinerModel {
+func attachSession4CrossOutliner(t *testing.T, app *AppModel) *outliner.OutlinerModel {
 	t.Helper()
-	cross := NewOutlinerModel(nil, app.configManager, app.runtime)
-	cross.selectOutlinerMode(chrome.ModeAll)
-	raw := cross.loadCrossProjectsCmd()()
-	loaded, ok := raw.(crossProjectsLoadedMsg)
+	cross := outliner.NewOutlinerModel(nil, app.configManager, app.runtime)
+	cross.SelectOutlinerMode(chrome.ModeAll)
+	raw := cross.LoadCrossProjectsCmd()()
+	loaded, ok := raw.(outliner.CrossProjectsLoadedMsg)
 	if !ok {
 		t.Fatalf("cross-project load returned %T", raw)
 	}
-	if cmd := cross.handleCrossProjectsLoaded(loaded); cmd != nil {
+	if cmd := cross.HandleCrossProjectsLoaded(loaded); cmd != nil {
 		runSession2AppCommand(t, app, cmd)
 	}
 	app.crossOutliner = cross
@@ -138,9 +139,9 @@ func newSession4EmptyProject(t *testing.T, dataDir, name string) *models.Project
 	return project
 }
 
-func session4LoadedProject(t *testing.T, cross *OutlinerModel, projectID string) *models.Project {
+func session4LoadedProject(t *testing.T, cross *outliner.OutlinerModel, projectID string) *models.Project {
 	t.Helper()
-	for _, project := range cross.population.projects {
+	for _, project := range cross.Population.Projects {
 		if project != nil && project.ID == projectID {
 			return project
 		}
@@ -149,8 +150,8 @@ func session4LoadedProject(t *testing.T, cross *OutlinerModel, projectID string)
 	return nil
 }
 
-func session4HasLoadedProject(cross *OutlinerModel, projectID string) bool {
-	for _, project := range cross.population.projects {
+func session4HasLoadedProject(cross *outliner.OutlinerModel, projectID string) bool {
+	for _, project := range cross.Population.Projects {
 		if project != nil && project.ID == projectID {
 			return true
 		}
@@ -158,9 +159,9 @@ func session4HasLoadedProject(cross *OutlinerModel, projectID string) bool {
 	return false
 }
 
-func session4HasTaskRow(cross *OutlinerModel, projectID, taskID string) bool {
-	for _, row := range cross.rows {
-		if row.isTaskRow() && row.ProjectID == projectID && row.task != nil && row.task.ID == taskID {
+func session4HasTaskRow(cross *outliner.OutlinerModel, projectID, taskID string) bool {
+	for _, row := range cross.Rows {
+		if row.IsTaskRow() && row.ProjectID == projectID && row.Task != nil && row.Task.ID == taskID {
 			return true
 		}
 	}
@@ -227,9 +228,9 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				project := newSession4Project(t, "Original")
 				fixture := newSession4LifecycleFixture(t, project)
 				live := fixture.app.projectByID(project.ID)
-				fixture.cross.pushProjectScope(project.ID)
+				fixture.cross.PushProjectScope(project.ID)
 				fixture.cross.Cursor = session2TaskRow(t, fixture.cross, project.ID, project.Tasks[0].ID)
-				modeBefore := fixture.cross.activeOutlinerMode()
+				modeBefore := fixture.cross.ActiveOutlinerMode()
 				live.Name = "Renamed Project"
 				live.Description = "office"
 				session4CommitCatalogProject(t, fixture.app, live)
@@ -251,15 +252,15 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				if !session4HasTaskRow(fixture.cross, project.ID, project.Tasks[0].ID) {
 					t.Fatal("renamed project task row disappeared")
 				}
-				if fixture.cross.activeOutlinerMode() != modeBefore {
+				if fixture.cross.ActiveOutlinerMode() != modeBefore {
 					t.Fatal("metadata reload changed the active mode")
 				}
-				if fixture.cross.scope.projectID != project.ID {
-					t.Fatalf("metadata reload changed valid scope to %q", fixture.cross.scope.projectID)
+				if fixture.cross.Scope.ProjectID != project.ID {
+					t.Fatalf("metadata reload changed valid scope to %q", fixture.cross.Scope.ProjectID)
 				}
-				cursorRow := fixture.cross.rows[fixture.cross.Cursor]
-				if !cursorRow.isTaskRow() || cursorRow.task == nil ||
-					cursorRow.ProjectID != project.ID || cursorRow.task.ID != project.Tasks[0].ID {
+				cursorRow := fixture.cross.Rows[fixture.cross.Cursor]
+				if !cursorRow.IsTaskRow() || cursorRow.Task == nil ||
+					cursorRow.ProjectID != project.ID || cursorRow.Task.ID != project.Tasks[0].ID {
 					t.Fatalf("metadata reload changed cursor identity: %#v", cursorRow)
 				}
 				disk := session4DiskProject(t, fixture.dataDir, project.ID)
@@ -274,7 +275,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				project := newSession4Project(t, "Archive Target")
 				fixture := newSession4LifecycleFixture(t, project)
 				live := fixture.app.projectByID(project.ID)
-				fixture.cross.pushProjectScope(live.ID)
+				fixture.cross.PushProjectScope(live.ID)
 
 				_, cmd := fixture.app.handleProjectMessages(projecthub.ProjectArchivedMsg{Project: live})
 				runSession2AppCommand(t, fixture.app, cmd)
@@ -282,8 +283,8 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				if fixture.app.currentView() != presentation.ViewCrossProjectOutliner {
 					t.Fatalf("archive popped the clean Outliner root to %s", fixture.app.currentView())
 				}
-				if fixture.cross.scope.projectID != "" {
-					t.Fatalf("archived scope was not reconciled: %q", fixture.cross.scope.projectID)
+				if fixture.cross.Scope.ProjectID != "" {
+					t.Fatalf("archived scope was not reconciled: %q", fixture.cross.Scope.ProjectID)
 				}
 				if session4HasLoadedProject(fixture.cross, project.ID) {
 					t.Fatal("archived project remained in the visible active-project cache")
@@ -321,7 +322,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				setTestPresentationPath(fixture.app, presentation.ViewUnknown, presentation.ViewCrossProjectOutliner, presentation.ViewHelp)
 
 				_, cmd := fixture.app.handleProjectMessages(projecthub.ProjectRestoredMsg{Project: live})
-				if fixture.cross.population.loading {
+				if fixture.cross.Population.Loading {
 					t.Fatal("covered mutation started an unroutable cross-project reload")
 				}
 				if session4HasLoadedProject(fixture.cross, project.ID) {

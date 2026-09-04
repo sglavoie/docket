@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -71,8 +72,8 @@ func TestPlanningHydrationKeepsDuplicateTaskIDsProjectQualified(t *testing.T) {
 		persister:    persister,
 		nextOrderIDs: make(map[taskref.TaskIdentity]bool),
 		todayIDs:     make(map[taskref.TaskIdentity]bool),
-		nextOrder:    []PlanningTask{},
-		today:        []PlanningTask{},
+		nextOrder:    []outliner.PlanningTask{},
+		today:        []outliner.PlanningTask{},
 	}
 
 	loads := make(map[string]error)
@@ -105,7 +106,7 @@ func TestPlanningWorkspacePulseDoesNotBleedAcrossDuplicateTaskIDs(t *testing.T) 
 	defer func() { storage.DefaultRepository = oldRepo }()
 
 	runtime := testConfigWithProjects(alpha, beta)
-	pulse := computeWorkspacePulse(runtime, map[taskref.TaskIdentity]bool{alphaID: true}, time.Now())
+	pulse := outliner.ComputeWorkspacePulse(runtime, map[taskref.TaskIdentity]bool{alphaID: true}, time.Now())
 	if pulse.Today != 1 {
 		t.Fatalf("Today workspace pulse = %d, want only alpha's qualified task", pulse.Today)
 	}

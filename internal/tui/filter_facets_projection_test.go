@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -47,20 +48,20 @@ func TestFilterFacetsComposeInCanonicalProjection(t *testing.T) {
 		filterFacetTask("not-deferred", models.StateBacklog, 2, commonTags, &today, nil),
 	)
 
-	outliner := scopeTestOutliner(work)
+	outlinerView := scopeTestOutliner(work)
 	states, err := models.NewWorkflowStateSet(models.StateBacklog, models.StateWaiting)
 	if err != nil {
 		t.Fatal(err)
 	}
-	outliner.filter.SetStateFilter(states)
-	outliner.filter.Priority = 3
-	outliner.filter.Tags = map[string]bool{"alpha": true, "beta": true}
-	outliner.filter.DueDate = query.DueDateToday
-	outliner.filter.Deferred = true
-	outliner.adoptFilterCarriers()
-	outliner.rebuildRows()
+	outlinerView.Filter.SetStateFilter(states)
+	outlinerView.Filter.Priority = 3
+	outlinerView.Filter.Tags = map[string]bool{"alpha": true, "beta": true}
+	outlinerView.Filter.DueDate = query.DueDateToday
+	outlinerView.Filter.Deferred = true
+	outlinerView.AdoptFilterCarriers()
+	outlinerView.RebuildRows()
 
-	visible := visibleOutlinerTaskIDs(outliner)
+	visible := visibleOutlinerTaskIDs(outlinerView)
 	for _, id := range []string{"ready-match", "waiting-match"} {
 		if !visible[id] {
 			t.Errorf("composed facets hid %q; visible = %v", id, visible)
@@ -99,19 +100,19 @@ func TestTagFacetDropsNonmatchingAncestorAcrossWorkflowSections(t *testing.T) {
 	)
 	child.ParentID = &parent.ID
 	project := primaryRowsProject("life-trail", parent, child)
-	outliner := scopeTestOutliner(project)
-	outliner.filter.Tags = map[string]bool{"bug": true}
-	outliner.adoptFilterCarriers()
-	outliner.rebuildRows()
+	outlinerView := scopeTestOutliner(project)
+	outlinerView.Filter.Tags = map[string]bool{"bug": true}
+	outlinerView.AdoptFilterCarriers()
+	outlinerView.RebuildRows()
 
-	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{child.ID}) {
+	if got := visibleTaskIDs(outlinerView); !slices.Equal(got, []string{child.ID}) {
 		t.Fatalf("#bug rows = %v, want only the tagged child", got)
 	}
-	row, ok := findPlanningTaskRow(outliner, child.ID)
+	row, ok := findPlanningTaskRow(outlinerView, child.ID)
 	if !ok || row.Breadcrumb != parent.Title+" ›" {
 		t.Fatalf("promoted child row = %+v found=%t, want parent breadcrumb", row, ok)
 	}
-	for _, row := range outliner.rows {
+	for _, row := range outlinerView.Rows {
 		if row.IsSectionHeader && row.StateGroup == models.StateGroupBacklog {
 			t.Fatalf("untagged parent left a Backlog section behind: %+v", row)
 		}
@@ -136,16 +137,16 @@ func TestHierarchicalModesPromoteMatchingChildPastFacetMismatch(t *testing.T) {
 			child := filterFacetTask("child", tc.state, 0, []string{"bug"}, nil, nil)
 			child.ParentID = &parent.ID
 			project := primaryRowsProject("project", parent, child)
-			outliner := scopeTestOutliner(project)
-			outliner.selectOutlinerMode(tc.mode)
-			outliner.filter.Tags = map[string]bool{"bug": true}
-			outliner.adoptFilterCarriers()
-			outliner.rebuildRows()
+			outlinerView := scopeTestOutliner(project)
+			outlinerView.SelectOutlinerMode(tc.mode)
+			outlinerView.Filter.Tags = map[string]bool{"bug": true}
+			outlinerView.AdoptFilterCarriers()
+			outlinerView.RebuildRows()
 
-			if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{child.ID}) {
+			if got := visibleTaskIDs(outlinerView); !slices.Equal(got, []string{child.ID}) {
 				t.Fatalf("%s #bug rows = %v, want only the tagged child", tc.mode, got)
 			}
-			row, ok := findPlanningTaskRow(outliner, child.ID)
+			row, ok := findPlanningTaskRow(outlinerView, child.ID)
 			if !ok || row.Breadcrumb != parent.Title+" ›" {
 				t.Fatalf("%s promoted child row = %+v found=%t, want parent breadcrumb", tc.mode, row, ok)
 			}
@@ -162,17 +163,17 @@ func TestPromotedFacetBreadcrumbStopsAtFocusBoundary(t *testing.T) {
 	match := filterFacetTask("match", models.StateBacklog, 0, []string{"bug"}, nil, nil)
 	match.ParentID = &hiddenParent.ID
 	project := primaryRowsProject("project", focusRoot, hiddenParent, match)
-	outliner := scopeTestOutliner(project)
-	outliner.selectOutlinerMode(chrome.ModeBacklog)
-	outliner.focus.crossStack = []CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: focusRoot.ID}}
-	outliner.filter.Tags = map[string]bool{"bug": true}
-	outliner.adoptFilterCarriers()
-	outliner.rebuildRows()
+	outlinerView := scopeTestOutliner(project)
+	outlinerView.SelectOutlinerMode(chrome.ModeBacklog)
+	outlinerView.Focus.CrossStack = []outliner.CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: focusRoot.ID}}
+	outlinerView.Filter.Tags = map[string]bool{"bug": true}
+	outlinerView.AdoptFilterCarriers()
+	outlinerView.RebuildRows()
 
-	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{match.ID}) {
+	if got := visibleTaskIDs(outlinerView); !slices.Equal(got, []string{match.ID}) {
 		t.Fatalf("focused #bug rows = %v, want only the tagged descendant", got)
 	}
-	row, ok := findPlanningTaskRow(outliner, match.ID)
+	row, ok := findPlanningTaskRow(outlinerView, match.ID)
 	if !ok || row.Breadcrumb != hiddenParent.Title+" ›" {
 		t.Fatalf("focused promoted row = %+v found=%t, want breadcrumb below focus boundary", row, ok)
 	}
@@ -193,23 +194,23 @@ func TestBacklogContextRowsMustSatisfyEveryActiveFacet(t *testing.T) {
 			child := filterFacetTask("child", models.StateBacklog, 1, []string{"bug"}, nil, nil)
 			child.ParentID = &parent.ID
 			project := primaryRowsProject("project", parent, child)
-			outliner := scopeTestOutliner(project)
-			outliner.selectOutlinerMode(chrome.ModeBacklog)
-			outliner.filter.Tags = map[string]bool{"bug": true}
-			outliner.filter.Priority = 1
-			outliner.adoptFilterCarriers()
-			outliner.rebuildRows()
+			outlinerView := scopeTestOutliner(project)
+			outlinerView.SelectOutlinerMode(chrome.ModeBacklog)
+			outlinerView.Filter.Tags = map[string]bool{"bug": true}
+			outlinerView.Filter.Priority = 1
+			outlinerView.AdoptFilterCarriers()
+			outlinerView.RebuildRows()
 
-			if got := visibleTaskIDs(outliner); !slices.Equal(got, tc.want) {
+			if got := visibleTaskIDs(outlinerView); !slices.Equal(got, tc.want) {
 				t.Fatalf("Backlog filtered rows = %v, want %v", got, tc.want)
 			}
-			for _, row := range outliner.rows {
-				if row.isTaskRow() && !passesCommonFilters(row.task, &outliner.filter.CommonFilterState) {
-					t.Fatalf("visible context row %q does not satisfy active facets", row.task.ID)
+			for _, row := range outlinerView.Rows {
+				if row.IsTaskRow() && !passesCommonFilters(row.Task, &outlinerView.Filter.CommonFilterState) {
+					t.Fatalf("visible context row %q does not satisfy active facets", row.Task.ID)
 				}
 			}
 			if tc.parentPriority > 1 {
-				row, ok := findPlanningTaskRow(outliner, child.ID)
+				row, ok := findPlanningTaskRow(outlinerView, child.ID)
 				if !ok || row.Breadcrumb != parent.Title+" ›" {
 					t.Fatalf("promoted Backlog child row = %+v found=%t, want parent breadcrumb", row, ok)
 				}
@@ -225,16 +226,16 @@ func TestExplicitTerminalStateFacetOverridesDefaultVisibility(t *testing.T) {
 		filterFacetTask("done", models.StateDone, 0, nil, nil, nil),
 		filterFacetTask("canceled", models.StateCanceled, 0, nil, nil, nil),
 	)
-	outliner := scopeTestOutliner(project)
+	outlinerView := scopeTestOutliner(project)
 	states, err := models.NewWorkflowStateSet(models.StateDone, models.StateCanceled)
 	if err != nil {
 		t.Fatal(err)
 	}
-	outliner.filter.SetStateFilter(states)
-	outliner.adoptFilterCarriers()
-	outliner.rebuildRows()
+	outlinerView.Filter.SetStateFilter(states)
+	outlinerView.AdoptFilterCarriers()
+	outlinerView.RebuildRows()
 
-	visible := visibleOutlinerTaskIDs(outliner)
+	visible := visibleOutlinerTaskIDs(outlinerView)
 	if !visible["done"] || !visible["canceled"] || visible["ready"] {
 		t.Fatalf("terminal state OR facet produced %v, want done+canceled only", visible)
 	}
@@ -330,12 +331,12 @@ func TestCompletionCleanupProjectionOpensOnTheCompletedClause(t *testing.T) {
 	invalidDone := filterFacetTask("done-invalid", models.StateDone, 0, nil, nil, nil)
 	ready := filterFacetTask("ready", models.StateBacklog, 0, nil, nil, nil)
 	project := primaryRowsProject("cleanup", doneOld, doneRecent, canceledOld, invalidDone, ready)
-	outliner := scopeTestOutliner(project)
-	outliner.filter.SetCompletionAgeFilter(query.CompletionAge30Days)
-	outliner.adoptFilterCarriers()
-	outliner.rebuildRows()
+	outlinerView := scopeTestOutliner(project)
+	outlinerView.Filter.SetCompletionAgeFilter(query.CompletionAge30Days)
+	outlinerView.AdoptFilterCarriers()
+	outlinerView.RebuildRows()
 
-	visible := visibleOutlinerTaskIDs(outliner)
+	visible := visibleOutlinerTaskIDs(outlinerView)
 	if !visible[doneOld.ID] || !visible[canceledOld.ID] || len(visible) != 2 {
 		t.Fatalf("the completion-age clause alone = %v, want both old terminal records", visible)
 	}
@@ -343,10 +344,10 @@ func TestCompletionCleanupProjectionOpensOnTheCompletedClause(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	outliner.filter.SetStateFilter(doneOnly)
-	outliner.adoptFilterCarriers()
-	outliner.rebuildRows()
-	visible = visibleOutlinerTaskIDs(outliner)
+	outlinerView.Filter.SetStateFilter(doneOnly)
+	outlinerView.AdoptFilterCarriers()
+	outlinerView.RebuildRows()
+	visible = visibleOutlinerTaskIDs(outlinerView)
 	if !visible[doneOld.ID] || len(visible) != 1 {
 		t.Fatalf("Done + 30-day cleanup projection = %v, want only old Done", visible)
 	}
@@ -354,10 +355,10 @@ func TestCompletionCleanupProjectionOpensOnTheCompletedClause(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	outliner.filter.SetStateFilter(both)
-	outliner.adoptFilterCarriers()
-	outliner.rebuildRows()
-	visible = visibleOutlinerTaskIDs(outliner)
+	outlinerView.Filter.SetStateFilter(both)
+	outlinerView.AdoptFilterCarriers()
+	outlinerView.RebuildRows()
+	visible = visibleOutlinerTaskIDs(outlinerView)
 	if !visible[doneOld.ID] || !visible[canceledOld.ID] || len(visible) != 2 {
 		t.Fatalf("Done+Canceled + 30-day cleanup projection = %v, want both old terminal tasks", visible)
 	}
@@ -366,88 +367,88 @@ func TestCompletionCleanupProjectionOpensOnTheCompletedClause(t *testing.T) {
 func TestFilterFacetsPersistAcrossModeAndProjectScopeChanges(t *testing.T) {
 	alpha := primaryRowsProject("alpha", filterFacetTask("alpha-task", models.StateBacklog, 1, []string{"alpha"}, nil, nil))
 	beta := primaryRowsProject("beta", filterFacetTask("beta-task", models.StateWaiting, 2, []string{"beta"}, nil, nil))
-	outliner := scopeTestOutliner(alpha, beta)
+	outlinerView := scopeTestOutliner(alpha, beta)
 
 	states, err := models.NewWorkflowStateSet(models.StateBacklog, models.StateWaiting)
 	if err != nil {
 		t.Fatal(err)
 	}
-	outliner.filter.SetStateFilter(states)
-	outliner.filter.Priority = 2
-	outliner.filter.Tags = map[string]bool{"alpha": true}
-	outliner.filter.DueDate = query.DueDateNone
-	outliner.filter.SetCompletionAgeFilter(query.CompletionAge30Days)
-	outliner.filter.Deferred = true
-	outliner.adoptFilterCarriers()
+	outlinerView.Filter.SetStateFilter(states)
+	outlinerView.Filter.Priority = 2
+	outlinerView.Filter.Tags = map[string]bool{"alpha": true}
+	outlinerView.Filter.DueDate = query.DueDateNone
+	outlinerView.Filter.SetCompletionAgeFilter(query.CompletionAge30Days)
+	outlinerView.Filter.Deferred = true
+	outlinerView.AdoptFilterCarriers()
 
-	outliner.selectOutlinerMode(chrome.ModeDue)
-	if outliner.filter.Priority != 2 || !outliner.filter.Deferred {
-		t.Fatalf("mode change reset facets: %+v", outliner.filter.CommonFilterState)
+	outlinerView.SelectOutlinerMode(chrome.ModeDue)
+	if outlinerView.Filter.Priority != 2 || !outlinerView.Filter.Deferred {
+		t.Fatalf("mode change reset facets: %+v", outlinerView.Filter.CommonFilterState)
 	}
 
-	outliner.pushProjectScope(alpha.ID)
-	if outliner.filter.Priority != 2 ||
-		!outliner.filter.Tags["alpha"] ||
-		!outliner.filter.States.Equal(states) ||
-		outliner.filter.DueDate != query.DueDateNone ||
-		!outliner.filter.HasCompletionAgeFilter() ||
-		outliner.filter.CompletionAge != query.CompletionAge30Days ||
-		!outliner.filter.Deferred {
-		t.Fatalf("project scope entry reset facets: %+v", outliner.filter.CommonFilterState)
+	outlinerView.PushProjectScope(alpha.ID)
+	if outlinerView.Filter.Priority != 2 ||
+		!outlinerView.Filter.Tags["alpha"] ||
+		!outlinerView.Filter.States.Equal(states) ||
+		outlinerView.Filter.DueDate != query.DueDateNone ||
+		!outlinerView.Filter.HasCompletionAgeFilter() ||
+		outlinerView.Filter.CompletionAge != query.CompletionAge30Days ||
+		!outlinerView.Filter.Deferred {
+		t.Fatalf("project scope entry reset facets: %+v", outlinerView.Filter.CommonFilterState)
 	}
 
 	// Facet edits made inside one project scope belong to the session-wide
 	// Outliner and must survive both focus replacement and the Esc-equivalent
 	// pop back to the base scope.
-	outliner.filter.Priority = models.PriorityMedium
-	outliner.filter.Tags = map[string]bool{"beta": true}
-	outliner.adoptFilterCarriers()
-	outliner.pushProjectScope(beta.ID)
-	if outliner.filter.Priority != models.PriorityMedium || !outliner.filter.Tags["beta"] {
-		t.Fatalf("project focus replacement reset facets: %+v", outliner.filter.CommonFilterState)
+	outlinerView.Filter.Priority = models.PriorityMedium
+	outlinerView.Filter.Tags = map[string]bool{"beta": true}
+	outlinerView.AdoptFilterCarriers()
+	outlinerView.PushProjectScope(beta.ID)
+	if outlinerView.Filter.Priority != models.PriorityMedium || !outlinerView.Filter.Tags["beta"] {
+		t.Fatalf("project focus replacement reset facets: %+v", outlinerView.Filter.CommonFilterState)
 	}
-	if !outliner.popProjectScope() {
+	if !outlinerView.PopProjectScope() {
 		t.Fatal("project scope did not pop")
 	}
-	if outliner.filter.Priority != models.PriorityMedium || !outliner.filter.Tags["beta"] {
-		t.Fatalf("project scope pop restored stale facets: %+v", outliner.filter.CommonFilterState)
+	if outlinerView.Filter.Priority != models.PriorityMedium || !outlinerView.Filter.Tags["beta"] {
+		t.Fatalf("project scope pop restored stale facets: %+v", outlinerView.Filter.CommonFilterState)
 	}
 }
 
 func TestFilterFacetsAreExcludedFromPersistedRouteState(t *testing.T) {
 	project := primaryRowsProject("project", filterFacetTask("task", models.StateBacklog, 1, nil, nil, nil))
-	outliner := scopeTestOutliner(project)
+	outlinerView := scopeTestOutliner(project)
 	liveStates, err := models.NewWorkflowStateSet(models.StateBacklog)
 	if err != nil {
 		t.Fatal(err)
 	}
-	outliner.filter.SetStateFilter(liveStates)
-	outliner.filter.Priority = 2
-	outliner.filter.Tags = map[string]bool{"live": true}
-	outliner.filter.SetCompletionAgeFilter(query.CompletionAge7Days)
-	outliner.adoptFilterCarriers()
+	outlinerView.Filter.SetStateFilter(liveStates)
+	outlinerView.Filter.Priority = 2
+	outlinerView.Filter.Tags = map[string]bool{"live": true}
+	outlinerView.Filter.SetCompletionAgeFilter(query.CompletionAge7Days)
+	outlinerView.AdoptFilterCarriers()
 
 	legacyStates, err := models.NewWorkflowStateSet(models.StateWaiting)
 	if err != nil {
 		t.Fatal(err)
 	}
-	outliner.applyOutlinerRouteState(config.OutlinerRouteState{
+	outlinerView.ApplyOutlinerRouteState(config.OutlinerRouteState{
 		Mode:           config.OutlinerModeDue,
 		FilterStates:   legacyStates,
 		FilterDeferred: true,
 		FilterPinned:   true,
 	})
-	if outliner.activeOutlinerMode() != chrome.ModeDue {
-		t.Fatalf("route mode = %s, want Due", outliner.activeOutlinerMode())
+	if outlinerView.ActiveOutlinerMode() != chrome.ModeDue {
+		t.Fatalf("route mode = %s, want Due", outlinerView.ActiveOutlinerMode())
 	}
-	if !outliner.filter.States.Equal(liveStates) ||
-		outliner.filter.Priority != 2 ||
-		!outliner.filter.Tags["live"] ||
-		!outliner.filter.HasCompletionAgeFilter() ||
-		outliner.filter.CompletionAge != query.CompletionAge7Days ||
-		outliner.filter.Deferred ||
-		outliner.filter.Pinned {
-		t.Fatalf("legacy route restored session-only facets: %+v", outliner.filter.CommonFilterState)
+	if !outlinerView.Filter.States.Equal(liveStates) ||
+		outlinerView.Filter.Priority != 2 ||
+		!outlinerView.Filter.Tags["live"] ||
+		!outlinerView.Filter.HasCompletionAgeFilter() ||
+		outlinerView.Filter.CompletionAge != query.CompletionAge7Days ||
+		outlinerView.Filter.Deferred ||
+		outlinerView.Filter.Pinned {
+		t.Fatalf("legacy route restored session-only facets: %+v", outlinerView.Filter.CommonFilterState)
 	}
 
 }

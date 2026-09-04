@@ -16,6 +16,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -43,7 +44,7 @@ func appendInlineTaskChain(project *models.Project, prefix string, firstShortID,
 // candidate per rule child completion has to apply. The edited task is still the
 // fixture's Child (#2), which sits at depth one under Parent (#1), so a candidate
 // subtree of height five overflows the limit and one of height four does not.
-func inlineEditorChildFixture(t *testing.T) (*OutlinerModel, *models.Project, *models.Task) {
+func inlineEditorChildFixture(t *testing.T) (*outliner.OutlinerModel, *models.Project, *models.Task) {
 	t.Helper()
 	out, project, _, child := inlineEditorFixture(t)
 	project.Tasks = append(project.Tasks,
@@ -53,9 +54,9 @@ func inlineEditorChildFixture(t *testing.T) (*OutlinerModel, *models.Project, *m
 	appendInlineTaskChain(project, "Tall", 10, 6)
 	appendInlineTaskChain(project, "Fits", 20, 5)
 	project.BuildTaskTree()
-	out.rebuildRows()
-	for index, row := range out.rows {
-		if row.task != nil && row.task.ID == child.ID && row.isTaskRow() {
+	out.RebuildRows()
+	for index, row := range out.Rows {
+		if row.Task != nil && row.Task.ID == child.ID && row.IsTaskRow() {
 			out.Cursor = index
 			break
 		}
@@ -231,19 +232,19 @@ func TestInlineRowEditorChildDraftRendersWithinMinimumWidth(t *testing.T) {
 	// hides; the row has to exist before the editor can be rendered into it.
 	child.DeferredUntil = nil
 	out.SetSize(chrome.MinTerminalWidth, 14)
-	out.rebuildRows()
-	for index, row := range out.rows {
-		if row.task != nil && row.task.ID == child.ID && row.isTaskRow() {
+	out.RebuildRows()
+	for index, row := range out.Rows {
+		if row.Task != nil && row.Task.ID == child.ID && row.IsTaskRow() {
 			out.Cursor = index
 			break
 		}
 	}
-	out.quickEdit.EnterWithContext(child, project, []*models.Project{project}, false)
-	out.quickEdit.Input.SetValue("Child <")
-	out.quickEdit.Input.CursorEnd()
-	out.quickEdit.RefreshDraft()
+	out.QuickEdit.EnterWithContext(child, project, []*models.Project{project}, false)
+	out.QuickEdit.Input.SetValue("Child <")
+	out.QuickEdit.Input.CursorEnd()
+	out.QuickEdit.RefreshDraft()
 
-	rendered := ansi.Strip(out.renderOutlinerTreeContent(chrome.MinTerminalWidth))
+	rendered := ansi.Strip(out.RenderOutlinerTreeContent(chrome.MinTerminalWidth))
 	if !strings.Contains(rendered, "EDIT TASK") || !strings.Contains(rendered, "Child <") {
 		t.Fatalf("minimum-width editor missing:\n%s", rendered)
 	}
@@ -264,9 +265,9 @@ func TestInlineRowEditorChildDraftRendersWithinMinimumWidth(t *testing.T) {
 // adoption owes the row editor: the draft is gone, the reloaded project nests
 // the adoptee under its new owner, the rebuilt rows show that nesting, and the
 // projection fingerprint is untouched so relocation jump history survives.
-func requireCommittedInlineAdoption(t *testing.T, m *AppModel, out *OutlinerModel, task, adoptee *models.Task, projection string) {
+func requireCommittedInlineAdoption(t *testing.T, m *AppModel, out *outliner.OutlinerModel, task, adoptee *models.Task, projection string) {
 	t.Helper()
-	if out.quickEdit.IsActive() {
+	if out.QuickEdit.IsActive() {
 		t.Fatal("successful adoption left the row editor active")
 	}
 	reloaded := m.currentProject.GetTaskByID(adoptee.ID)
@@ -277,22 +278,22 @@ func requireCommittedInlineAdoption(t *testing.T, m *AppModel, out *OutlinerMode
 	if !slices.ContainsFunc(owner.Children, func(candidate *models.Task) bool { return candidate.ID == adoptee.ID }) {
 		t.Fatalf("reloaded owner children = %+v, want the adopted task", owner.Children)
 	}
-	if got := out.jumpProjectionFingerprint(); got != projection {
+	if got := out.JumpProjectionFingerprint(); got != projection {
 		t.Fatalf("adoption changed projection state:\n before %s\n after  %s", projection, got)
 	}
 	ownerRow, adopteeRow := -1, -1
-	for index, row := range out.rows {
-		if row.task == nil || !row.isTaskRow() {
+	for index, row := range out.Rows {
+		if row.Task == nil || !row.IsTaskRow() {
 			continue
 		}
-		switch row.task.ID {
+		switch row.Task.ID {
 		case task.ID:
 			ownerRow = index
 		case adoptee.ID:
 			adopteeRow = index
 		}
 	}
-	if ownerRow < 0 || adopteeRow < ownerRow || len(out.rows[adopteeRow].prefix) <= len(out.rows[ownerRow].prefix) {
+	if ownerRow < 0 || adopteeRow < ownerRow || len(out.Rows[adopteeRow].Prefix) <= len(out.Rows[ownerRow].Prefix) {
 		t.Fatalf("rebuilt rows do not nest the adopted task under its new owner: owner=%d adoptee=%d", ownerRow, adopteeRow)
 	}
 }
@@ -305,30 +306,30 @@ func TestInlineRowEditorChildAdoptionCommitsRefreshesHierarchyAndUndoes(t *testi
 	m.currentProject.BuildTaskTree()
 	repo.seed(t)
 
-	out := NewOutlinerModel(m.currentProject, m.configManager, m.runtime)
+	out := outliner.NewOutlinerModel(m.currentProject, m.configManager, m.runtime)
 	out.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 	out.SetSize(100, 20)
-	out.rebuildRows()
-	out.folds.collapsedSections["unrelated"] = true
+	out.RebuildRows()
+	out.Folds.CollapsedSections["unrelated"] = true
 	m.crossOutliner = out
 	m.navigation.ResetRoot()
-	projection := out.jumpProjectionFingerprint()
+	projection := out.JumpProjectionFingerprint()
 
-	out.Update(StartTaskLineEditMsg{Task: task, Project: m.currentProject})
-	out.quickEdit.Input.SetValue(task.Title + " <")
-	out.quickEdit.Input.CursorEnd()
-	out.quickEdit.RefreshDraft()
-	if out.quickEdit.AC.Mode != grammar.ACModeChild {
-		t.Fatalf("child completion inactive in the live row editor: mode %d", out.quickEdit.AC.Mode)
+	out.Update(outliner.StartTaskLineEditMsg{Task: task, Project: m.currentProject})
+	out.QuickEdit.Input.SetValue(task.Title + " <")
+	out.QuickEdit.Input.CursorEnd()
+	out.QuickEdit.RefreshDraft()
+	if out.QuickEdit.AC.Mode != grammar.ACModeChild {
+		t.Fatalf("child completion inactive in the live row editor: mode %d", out.QuickEdit.AC.Mode)
 	}
-	out.handleQuickEditMode(tea.KeyPressMsg{Code: tea.KeyTab})
-	if got := out.quickEdit.Input.Value(); !strings.Contains(got, "<2 ") {
+	out.HandleQuickEditMode(tea.KeyPressMsg{Code: tea.KeyTab})
+	if got := out.QuickEdit.Input.Value(); !strings.Contains(got, "<2 ") {
 		t.Fatalf("accepted draft = %q, want the adopted short ID", got)
 	}
 
-	_, cmd := out.handleQuickEditMode(tea.KeyPressMsg{Code: tea.KeyEnter})
-	if cmd == nil || !out.quickEdit.Pending {
-		t.Fatalf("adoption commit did not retain a pending draft: cmd=%v pending=%t", cmd != nil, out.quickEdit.Pending)
+	_, cmd := out.HandleQuickEditMode(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if cmd == nil || !out.QuickEdit.Pending {
+		t.Fatalf("adoption commit did not retain a pending draft: cmd=%v pending=%t", cmd != nil, out.QuickEdit.Pending)
 	}
 	committed, ok := cmd().(coordinator.TaskLineEditedMsg)
 	if !ok || !committed.Result.Changed || committed.Result.TransactionID == "" {
@@ -352,20 +353,20 @@ func TestInlineRowEditorChildAdoptionCommitsRefreshesHierarchyAndUndoes(t *testi
 	}
 
 	live := m.currentProject.GetTaskByID(task.ID)
-	out.Update(StartTaskLineEditMsg{Task: live, Project: m.currentProject})
-	out.quickEdit.Input.SetValue(live.Title + " <2")
-	out.quickEdit.Input.CursorEnd()
-	out.quickEdit.RefreshDraft()
-	out.quickEdit.BeginCommit()
+	out.Update(outliner.StartTaskLineEditMsg{Task: live, Project: m.currentProject})
+	out.QuickEdit.Input.SetValue(live.Title + " <2")
+	out.QuickEdit.Input.CursorEnd()
+	out.QuickEdit.RefreshDraft()
+	out.QuickEdit.BeginCommit()
 	failure := errors.New("simulated revision conflict")
 	m.handleTaskLineEditFailed(coordinator.TaskLineEditFailedMsg{
 		Source: taskref.For(live, m.currentProject), Err: failure,
 	})
-	if !out.quickEdit.IsActive() || out.quickEdit.Pending || !strings.Contains(out.quickEdit.Input.Value(), "<2") {
+	if !out.QuickEdit.IsActive() || out.QuickEdit.Pending || !strings.Contains(out.QuickEdit.Input.Value(), "<2") {
 		t.Fatalf("failed adoption lost the draft: active=%t pending=%t value=%q",
-			out.quickEdit.IsActive(), out.quickEdit.Pending, out.quickEdit.Input.Value())
+			out.QuickEdit.IsActive(), out.QuickEdit.Pending, out.QuickEdit.Input.Value())
 	}
-	if !strings.Contains(out.quickEdit.GetPreviewError(), failure.Error()) {
-		t.Fatalf("inline adoption failure = %q, want %q", out.quickEdit.GetPreviewError(), failure)
+	if !strings.Contains(out.QuickEdit.GetPreviewError(), failure.Error()) {
+		t.Fatalf("inline adoption failure = %q, want %q", out.QuickEdit.GetPreviewError(), failure)
 	}
 }

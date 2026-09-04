@@ -124,8 +124,8 @@ func TestLensPickerColorSurvivesRenameAndFollowsReplacement(t *testing.T) {
 
 	// Replacing under the same UUID writes a new definition, which is exactly what
 	// the row must recompute from.
-	model.crossOutliner.filter.Pinned = true
-	model.crossOutliner.adoptFilterCarriers()
+	model.crossOutliner.Filter.Pinned = true
+	model.crossOutliner.AdoptFilterCarriers()
 	pressLens(t, model, "space")
 	pressLens(t, model, "j")
 	pressLens(t, model, "enter")

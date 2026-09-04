@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/textfit"
@@ -29,18 +30,18 @@ func backgroundParams(t *testing.T, c color.Color) string {
 	return strings.TrimPrefix(open, "\x1b[")
 }
 
-func cursorHighlightOutliner(t *testing.T, tasks ...*models.Task) (*OutlinerModel, *models.Project) {
+func cursorHighlightOutliner(t *testing.T, tasks ...*models.Task) (*outliner.OutlinerModel, *models.Project) {
 	t.Helper()
 	return cursorHighlightOutlinerTheme(t, "dark", tasks...)
 }
 
-func cursorHighlightOutlinerTheme(t *testing.T, themeName string, tasks ...*models.Task) (*OutlinerModel, *models.Project) {
+func cursorHighlightOutlinerTheme(t *testing.T, themeName string, tasks ...*models.Task) (*outliner.OutlinerModel, *models.Project) {
 	t.Helper()
 	theme.ApplyTheme(theme.ThemeConfig{Name: themeName})
 	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
 	project := renderFixtureProject(t, "project", "project", "Project", tasks)
-	return NewOutlinerModel(project, nil, newTestConfig()), project
+	return outliner.NewOutlinerModel(project, nil, newTestConfig()), project
 }
 
 // TestCursorTaskRowKeepsEveryColorItEarned is the inverse of what SelectedLine
@@ -55,10 +56,10 @@ func TestCursorTaskRowKeepsEveryColorItEarned(t *testing.T) {
 		Tags:          []string{"infra"},
 		WorkflowState: models.StateDoing,
 	}
-	outliner, project := cursorHighlightOutliner(t, task)
-	row := outlinerRow{task: task, ProjectID: project.ID}
+	outlinerView, project := cursorHighlightOutliner(t, task)
+	row := outliner.OutlinerRow{Task: task, ProjectID: project.ID}
 
-	line := outliner.renderOutlinerTaskRow(row, true, 80, 80, 0, nil)
+	line := outlinerView.RenderOutlinerTaskRow(row, true, 80, 80, 0, nil)
 
 	for name, want := range map[string]string{
 		"tag chip":    theme.TagChipStyle("infra").Render("#infra"),
@@ -76,11 +77,11 @@ func TestCursorTaskRowKeepsEveryColorItEarned(t *testing.T) {
 
 func TestCursorRowKeepsItsSearchMatchHighlight(t *testing.T) {
 	task := &models.Task{ID: "t1", ShortID: 1, Title: "Ship the release", Priority: 3}
-	outliner, project := cursorHighlightOutliner(t, task)
-	outliner.SetSearchQuery("release")
-	row := outlinerRow{task: task, ProjectID: project.ID}
+	outlinerView, project := cursorHighlightOutliner(t, task)
+	outlinerView.SetSearchQuery("release")
+	row := outliner.OutlinerRow{Task: task, ProjectID: project.ID}
 
-	line := outliner.renderOutlinerTaskRow(row, true, 80, 80, 0, nil)
+	line := outlinerView.RenderOutlinerTaskRow(row, true, 80, 80, 0, nil)
 
 	positions := query.SearchSubstringPositions(task.Title, "release", false)
 	if len(positions) == 0 {
@@ -103,26 +104,26 @@ func TestCursorRowIsExactlyRowWidth(t *testing.T) {
 		WorkflowState: models.StateBacklog,
 		Checklist:     []models.ChecklistItem{{Text: "Draft the notes"}},
 	}
-	outliner, project := cursorHighlightOutliner(t, task)
-	taskRow := outlinerRow{task: task, ProjectID: project.ID, prefix: "│   ├── "}
+	outlinerView, project := cursorHighlightOutliner(t, task)
+	taskRow := outliner.OutlinerRow{Task: task, ProjectID: project.ID, Prefix: "│   ├── "}
 	rows := map[string]func(width int) string{
 		"task": func(width int) string {
-			return outliner.renderOutlinerTaskRow(taskRow, true, width, width, 0, nil)
+			return outlinerView.RenderOutlinerTaskRow(taskRow, true, width, width, 0, nil)
 		},
 		"checklist": func(width int) string {
 			row := taskRow
 			row.IsChecklistItem = true
-			return outliner.renderOutlinerChecklistRow(row, true, width, 0)
+			return outlinerView.RenderOutlinerChecklistRow(row, true, width, 0)
 		},
 		"section header": func(width int) string {
-			return outliner.renderOutlinerSectionHeaderRow(outlinerRow{
+			return outlinerView.RenderOutlinerSectionHeaderRow(outliner.OutlinerRow{
 				IsSectionHeader: true,
 				SectionName:     "Backlog",
 				SectionCount:    3,
 			}, true, width, 0)
 		},
 		"project header": func(width int) string {
-			return outliner.renderOutlinerProjectHeaderRow(outlinerRow{
+			return outlinerView.RenderOutlinerProjectHeaderRow(outliner.OutlinerRow{
 				IsProjectHeader: true,
 				ProjectID:       project.ID,
 				SectionCount:    3,
@@ -148,10 +149,10 @@ func TestCursorRowContentReachingTheEdgeGainsNoFill(t *testing.T) {
 		ShortID: 1,
 		Title:   strings.Repeat("long title ", 12),
 	}
-	outliner, project := cursorHighlightOutliner(t, task)
-	row := outlinerRow{task: task, ProjectID: project.ID}
+	outlinerView, project := cursorHighlightOutliner(t, task)
+	row := outliner.OutlinerRow{Task: task, ProjectID: project.ID}
 
-	line := outliner.renderOutlinerTaskRow(row, true, 60, 60, 0, nil)
+	line := outlinerView.RenderOutlinerTaskRow(row, true, 60, 60, 0, nil)
 
 	if got := lipgloss.Width(line); got != 60 {
 		t.Fatalf("full-width cursor row rendered %d columns", got)
@@ -163,19 +164,19 @@ func TestCursorRowContentReachingTheEdgeGainsNoFill(t *testing.T) {
 
 // cursorRowsByType renders the same fixture as each of the four Outliner row
 // types, so an invariant about the mark is stated once against all of them.
-func cursorRowsByType(outliner *OutlinerModel, project *models.Project, task *models.Task) map[string]string {
-	checklistRow := outlinerRow{task: task, ProjectID: project.ID, IsChecklistItem: true}
+func cursorRowsByType(outlinerView *outliner.OutlinerModel, project *models.Project, task *models.Task) map[string]string {
+	checklistRow := outliner.OutlinerRow{Task: task, ProjectID: project.ID, IsChecklistItem: true}
 	task.Checklist = []models.ChecklistItem{{Text: "Draft the notes"}}
 	return map[string]string{
-		"task": outliner.renderOutlinerTaskRow(
-			outlinerRow{task: task, ProjectID: project.ID}, true, 80, 80, 0, nil),
-		"checklist": outliner.renderOutlinerChecklistRow(checklistRow, true, 80, 0),
-		"section header": outliner.renderOutlinerSectionHeaderRow(outlinerRow{
+		"task": outlinerView.RenderOutlinerTaskRow(
+			outliner.OutlinerRow{Task: task, ProjectID: project.ID}, true, 80, 80, 0, nil),
+		"checklist": outlinerView.RenderOutlinerChecklistRow(checklistRow, true, 80, 0),
+		"section header": outlinerView.RenderOutlinerSectionHeaderRow(outliner.OutlinerRow{
 			IsSectionHeader: true,
 			SectionName:     "Backlog",
 			SectionCount:    3,
 		}, true, 80, 0),
-		"project header": outliner.renderOutlinerProjectHeaderRow(outlinerRow{
+		"project header": outlinerView.RenderOutlinerProjectHeaderRow(outliner.OutlinerRow{
 			IsProjectHeader: true,
 			ProjectID:       project.ID,
 			SectionCount:    3,
@@ -191,14 +192,14 @@ func TestCursorRowMarksItsBarAndTrail(t *testing.T) {
 	for _, themeName := range []string{"dark", "light"} {
 		t.Run(themeName, func(t *testing.T) {
 			task := &models.Task{ID: "t1", ShortID: 1, Title: "Ship", WorkflowState: models.StateBacklog}
-			outliner, project := cursorHighlightOutlinerTheme(t, themeName, task)
+			outlinerView, project := cursorHighlightOutlinerTheme(t, themeName, task)
 			barBg := backgroundParams(t, theme.ColorCursorBarBg)
 			trailBg := backgroundParams(t, theme.ColorSelectedDimBg)
 			if barBg == trailBg {
 				t.Fatalf("the %s theme derived one color for both cursor regions: %q", themeName, barBg)
 			}
 
-			for name, line := range cursorRowsByType(outliner, project, task) {
+			for name, line := range cursorRowsByType(outlinerView, project, task) {
 				if !strings.Contains(line, barBg) {
 					t.Fatalf("%s cursor row did not paint its bar:\n%q", name, line)
 				}
@@ -216,7 +217,7 @@ func TestCursorRowMarksItsBarAndTrail(t *testing.T) {
 // second column is what made the mark compete with the row it points at.
 func TestCursorBarIsOneColumn(t *testing.T) {
 	task := &models.Task{ID: "t1", ShortID: 1, Title: "Ship", WorkflowState: models.StateBacklog}
-	outliner, project := cursorHighlightOutliner(t, task)
+	outlinerView, project := cursorHighlightOutliner(t, task)
 	barBg := backgroundParams(t, theme.ColorCursorBarBg)
 	column0 := map[string]string{
 		"task":           theme.RenderCursorPrefix(),
@@ -225,7 +226,7 @@ func TestCursorBarIsOneColumn(t *testing.T) {
 		"project header": " ",
 	}
 
-	for name, line := range cursorRowsByType(outliner, project, task) {
+	for name, line := range cursorRowsByType(outlinerView, project, task) {
 		bar := theme.CursorBarStyle.Render(column0[name])
 		if got := lipgloss.Width(bar); got != 1 {
 			t.Fatalf("%s cursor bar covers %d columns, want 1", name, got)
@@ -244,12 +245,12 @@ func TestCursorBarIsOneColumn(t *testing.T) {
 // they wear on every other row, so only the bar moves with the cursor.
 func TestCursorRowLeavesTheRestOfItsGutterOrdinary(t *testing.T) {
 	task := &models.Task{ID: "t1", ShortID: 1, Title: "Ship", WorkflowState: models.StateBacklog}
-	outliner, project := cursorHighlightOutliner(t, task)
+	outlinerView, project := cursorHighlightOutliner(t, task)
 	prefix := "│   ├── "
-	row := outlinerRow{task: task, ProjectID: project.ID, prefix: prefix}
-	outliner.ReplaceSelection([]taskref.TaskIdentity{outliner.taskIdentityForRow(row)})
+	row := outliner.OutlinerRow{Task: task, ProjectID: project.ID, Prefix: prefix}
+	outlinerView.ReplaceSelection([]taskref.TaskIdentity{outlinerView.TaskIdentityForRow(row)})
 
-	line := outliner.renderOutlinerTaskRow(row, true, 80, 80, 0, nil)
+	line := outlinerView.RenderOutlinerTaskRow(row, true, 80, 80, 0, nil)
 
 	for name, want := range map[string]string{
 		"multi-select box":  theme.SelectionCheckStyle.Render("[x]"),
@@ -291,9 +292,9 @@ func TestCursorRowKeepsItsRowTint(t *testing.T) {
 	}
 
 	for name, tc := range cases {
-		outliner, project := cursorHighlightOutliner(t, tc.task)
-		row := outlinerRow{task: tc.task, ProjectID: project.ID}
-		line := outliner.renderOutlinerTaskRow(row, true, 80, 80, 0, nil)
+		outlinerView, project := cursorHighlightOutliner(t, tc.task)
+		row := outliner.OutlinerRow{Task: tc.task, ProjectID: project.ID}
+		line := outlinerView.RenderOutlinerTaskRow(row, true, 80, 80, 0, nil)
 
 		if !strings.Contains(line, backgroundParams(t, tc.tint.GetBackground())) {
 			t.Fatalf("%s cursor row dropped its row tint:\n%q", name, line)
@@ -309,12 +310,12 @@ func TestCursorRowKeepsItsRowTint(t *testing.T) {
 // mark instead of a different one.
 func TestCursorFlashWidensTheMark(t *testing.T) {
 	task := &models.Task{ID: "t1", ShortID: 1, Title: "Ship", WorkflowState: models.StateBacklog}
-	outliner, project := cursorHighlightOutliner(t, task)
-	outliner.CursorFlash = true
+	outlinerView, project := cursorHighlightOutliner(t, task)
+	outlinerView.CursorFlash = true
 	prefix := "│   ├── "
-	row := outlinerRow{task: task, ProjectID: project.ID, prefix: prefix}
+	row := outliner.OutlinerRow{Task: task, ProjectID: project.ID, Prefix: prefix}
 
-	line := outliner.renderOutlinerTaskRow(row, true, 80, 80, 0, nil)
+	line := outlinerView.RenderOutlinerTaskRow(row, true, 80, 80, 0, nil)
 
 	flashBg := backgroundParams(t, theme.ColorFlashBg)
 	if got := strings.Count(line, flashBg); got < 2 {

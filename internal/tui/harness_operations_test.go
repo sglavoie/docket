@@ -18,6 +18,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -96,8 +97,8 @@ type harnessOperationSpec struct {
 func (m *AppModel) registerHarnessOperations() error {
 	specs := []harnessOperationSpec{
 		{operationHarnessNewProject, "new project", operation.OperationCategoryProject, func() tea.Msg { return projecthub.CreateProjectMsg{} }},
-		{operationHarnessOutliner, "outliner", operation.OperationCategoryNavigation, func() tea.Msg { return m.harnessOpenOutliner(OutlinerOpenOptions{}) }},
-		{operationHarnessOutlinerRoot, "outliner root", operation.OperationCategoryNavigation, func() tea.Msg { return m.harnessOpenOutliner(OutlinerOpenOptions{}) }},
+		{operationHarnessOutliner, "outliner", operation.OperationCategoryNavigation, func() tea.Msg { return m.harnessOpenOutliner(outliner.OutlinerOpenOptions{}) }},
+		{operationHarnessOutlinerRoot, "outliner root", operation.OperationCategoryNavigation, func() tea.Msg { return m.harnessOpenOutliner(outliner.OutlinerOpenOptions{}) }},
 		{operationHarnessReference, "reference", operation.OperationCategorySystem, func() tea.Msg {
 			return help.ShowHelpMsg{
 				ViewName: "Outliner",
@@ -106,10 +107,10 @@ func (m *AppModel) registerHarnessOperations() error {
 		}},
 		{operationHarnessScope, "choose scope", operation.OperationCategoryScope, func() tea.Msg { return projecthub.ShowProjectHubMsg{} }},
 		{operationHarnessInbox, "global inbox mode", operation.OperationCategoryMode, func() tea.Msg {
-			return m.harnessOpenOutliner(OutlinerOpenOptions{SetMode: true, Mode: chrome.ModeInbox})
+			return m.harnessOpenOutliner(outliner.OutlinerOpenOptions{SetMode: true, Mode: chrome.ModeInbox})
 		}},
 		{operationHarnessProjectInbox, "project inbox mode", operation.OperationCategoryMode, func() tea.Msg {
-			return m.harnessOpenOutliner(OutlinerOpenOptions{SetMode: true, Mode: chrome.ModeInbox})
+			return m.harnessOpenOutliner(outliner.OutlinerOpenOptions{SetMode: true, Mode: chrome.ModeInbox})
 		}},
 		{operationHarnessRenameProject, "rename project", operation.OperationCategoryProject, func() tea.Msg {
 			_, project := m.outlinerTarget()
@@ -144,7 +145,7 @@ func (m *AppModel) registerHarnessOperations() error {
 			// editor round trip, which no harness action can replay: editors are
 			// disabled and the `command` action carries no buffer payload. Scenarios
 			// therefore install it directly with a canned problem list.
-			m.showView(presentation.ViewOutlineErrors, NewOutlineErrorsViewModel(
+			m.showView(presentation.ViewOutlineErrors, outliner.NewOutlineErrorsViewModel(
 				"Rich Project",
 				harnessOutlineScenarioPath,
 				harnessOutlineProblems(),
@@ -388,7 +389,7 @@ func (m *AppModel) harnessTaskContentEdited(title string, retry bool) tea.Msg {
 	return msg
 }
 
-func (m *AppModel) harnessOpenOutliner(options OutlinerOpenOptions) tea.Msg {
+func (m *AppModel) harnessOpenOutliner(options outliner.OutlinerOpenOptions) tea.Msg {
 	presentationCmd := m.prepareCrossProjectOutliner()
 	m.crossOutliner.ApplyOpenOptions(options)
 	target, err := route.NewRoute(route.TaskWorkspace, route.TaskWorkspaceParams{Scope: route.AppEntityScope()})

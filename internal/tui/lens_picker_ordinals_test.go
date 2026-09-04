@@ -49,10 +49,10 @@ func TestLensPickerDigitAppliesTheNthListedLensAndCloses(t *testing.T) {
 	if model.lensPicker != nil {
 		t.Error("a digit apply left the picker mounted")
 	}
-	if !model.crossOutliner.hasActiveLens() {
+	if !model.crossOutliner.HasActiveLens() {
 		t.Fatal("a digit apply installed nothing")
 	}
-	if got := model.crossOutliner.lens.active.name; got != "Stale" {
+	if got := model.crossOutliner.Lens.Active.Name; got != "Stale" {
 		t.Errorf("active lens = %q, want the second listed lens Stale", got)
 	}
 }
@@ -99,8 +99,8 @@ func TestLensPickerNarrowedListRenumbersFromOneAndTheDigitAppliesIt(t *testing.T
 	if model.lensPicker != nil {
 		t.Error("a digit apply left the picker mounted")
 	}
-	if !model.crossOutliner.hasActiveLens() ||
-		model.crossOutliner.lens.active.lensID != waiting.ID {
+	if !model.crossOutliner.HasActiveLens() ||
+		model.crossOutliner.Lens.Active.LensID != waiting.ID {
 		t.Fatal("1 applied something other than the narrowed row")
 	}
 }
@@ -117,7 +117,7 @@ func TestLensPickerDigitsTypedIntoTheQueryStayLiteral(t *testing.T) {
 	if got := model.lensPicker.Query; got != "1" {
 		t.Fatalf("query = %q, want the literal digit", got)
 	}
-	if model.crossOutliner.hasActiveLens() {
+	if model.crossOutliner.HasActiveLens() {
 		t.Error("a digit typed into the query applied a lens")
 	}
 	rendered := ansi.Strip(model.lensPicker.Render(80))
@@ -141,7 +141,7 @@ func TestLensPickerOutOfRangeDigitRefusesAndMovesNothing(t *testing.T) {
 	if got := lensPickerCursorTitle(t, model); got != before {
 		t.Errorf("cursor moved to %q, want it left on %q", got, before)
 	}
-	if model.crossOutliner.hasActiveLens() {
+	if model.crossOutliner.HasActiveLens() {
 		t.Error("an out-of-range digit applied a lens")
 	}
 	if got := len(machineLenses(t, model)); got != len(config.StarterNamedLenses()) {
@@ -186,7 +186,7 @@ func TestLensPickerActionRowsAndTheTenthLensCarryNoOrdinal(t *testing.T) {
 	if model.lensPicker != nil {
 		t.Fatal("9 did not apply the ninth listed lens")
 	}
-	if got := model.crossOutliner.lens.active.name; got != "Lens 08" {
+	if got := model.crossOutliner.Lens.Active.Name; got != "Lens 08" {
 		t.Errorf("9 applied %q, want the ninth listed lens", got)
 	}
 }
@@ -269,7 +269,7 @@ func TestLensPickerDigitApplyFailsExactlyAsEnterDoes(t *testing.T) {
 	if got := lensPickerCursorTitle(t, byDigit); got != "Waiting" {
 		t.Errorf("cursor = %q, want the row the digit raised the reason from", got)
 	}
-	if byDigit.crossOutliner.hasActiveLens() {
+	if byDigit.crossOutliner.HasActiveLens() {
 		t.Error("a refused apply installed a lens")
 	}
 	if got := len(machineLenses(t, byDigit)); got != len(config.StarterNamedLenses())-1 {

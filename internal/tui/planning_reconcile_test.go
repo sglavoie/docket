@@ -70,7 +70,7 @@ func newPlanningReconcileEnv(t *testing.T) *planningReconcileEnv {
 	}
 
 	service := app.NewServiceWithArtifacts(repo, nil, nil, app.NewStorageWorkspaceNotePort(dataDir)).
-		WithPlanningArtifacts(planningReconcileArtifactBuilder(manager))
+		WithPlanningArtifacts(coordinator.ManagerPlanningArtifacts(manager))
 
 	return &planningReconcileEnv{
 		dataDir:       dataDir,
@@ -89,7 +89,7 @@ func newPlanningReconcileEnv(t *testing.T) *planningReconcileEnv {
 // planning commit, establishing Today membership as a precondition.
 func (e *planningReconcileEnv) seedToday(t *testing.T) {
 	t.Helper()
-	planning := clonePlanningState(e.runtime.Planning())
+	planning := coordinator.ClonePlanningState(e.runtime.Planning())
 	planning.Today = []config.ProjectTaskLocator{{TaskID: e.taskID, ProjectID: e.project.ID}}
 	if err := e.runtime.CommitPlanning(planning); err != nil {
 		t.Fatalf("seed daily plan: %v", err)
@@ -99,7 +99,7 @@ func (e *planningReconcileEnv) seedToday(t *testing.T) {
 // seedNextOrder commits a Next order entry for the env's task.
 func (e *planningReconcileEnv) seedNextOrder(t *testing.T) {
 	t.Helper()
-	planning := clonePlanningState(e.runtime.Planning())
+	planning := coordinator.ClonePlanningState(e.runtime.Planning())
 	planning.SetNext([]config.ProjectTaskLocator{{TaskID: e.taskID, ProjectID: e.project.ID}})
 	if err := e.runtime.CommitPlanning(planning); err != nil {
 		t.Fatalf("seed focus queue: %v", err)

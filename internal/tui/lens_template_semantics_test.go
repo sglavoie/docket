@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -33,7 +34,7 @@ func daysFromNow(days int) *time.Time {
 // against: dated work either side of today, tasks carrying the stored review flag
 // beside tasks that merely spell the word on the tag and context axes, and
 // terminal work either side of the ninety-day completion threshold.
-func lensSemanticsOutliner() *OutlinerModel {
+func lensSemanticsOutliner() *outliner.OutlinerModel {
 	overdueNear := lensSemanticsTask("overdue-near", models.StateBacklog)
 	overdueNear.DueDate = daysFromNow(-1)
 	overdueFar := lensSemanticsTask("overdue-far", models.StateBacklog)
@@ -81,8 +82,8 @@ func lensSemanticsOutliner() *OutlinerModel {
 	))
 }
 
-func sortedVisibleTaskIDs(outliner *OutlinerModel) []string {
-	ids := slices.Clone(searchVisibleTaskIDs(outliner))
+func sortedVisibleTaskIDs(outlinerView *outliner.OutlinerModel) []string {
+	ids := slices.Clone(searchVisibleTaskIDs(outlinerView))
 	sort.Strings(ids)
 	return ids
 }
@@ -92,25 +93,25 @@ func sortedVisibleTaskIDs(outliner *OutlinerModel) []string {
 // order the rows arrive in is Due mode's calendar order, not the manual sort the
 // definition still carries for whenever a tree-order mode reads it.
 func TestOverdueTemplateUsesDueModeFixedOrdering(t *testing.T) {
-	outliner := lensSemanticsOutliner()
+	outlinerView := lensSemanticsOutliner()
 	template := lensTemplateByName(t, "Overdue")
-	applyLensOrFatal(t, outliner, template)
+	applyLensOrFatal(t, outlinerView, template)
 
-	mode, ok := chrome.OutlinerModeByID(outliner.primaryMode)
-	if !ok || outliner.primaryMode != chrome.ModeDue {
-		t.Fatalf("mode = %v, want Due", outliner.primaryMode)
+	mode, ok := chrome.OutlinerModeByID(outlinerView.PrimaryMode)
+	if !ok || outlinerView.PrimaryMode != chrome.ModeDue {
+		t.Fatalf("mode = %v, want Due", outlinerView.PrimaryMode)
 	}
 	if !mode.FixedOrder() {
 		t.Fatal("Due must own a fixed order for the template to inherit one")
 	}
-	if outliner.sort != query.NewSortState() {
-		t.Fatalf("active sort = %+v, want a fixed-order mode's inactive default", outliner.sort)
+	if outlinerView.Sort != query.NewSortState() {
+		t.Fatalf("active sort = %+v, want a fixed-order mode's inactive default", outlinerView.Sort)
 	}
 
 	// Manual order in the project puts overdue-near first; the calendar order the
 	// mode imposes puts the earlier due date first instead. Terminal work is not
 	// overdue however far past its date it sits.
-	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{"overdue-far", "overdue-near"}) {
+	if got := searchVisibleTaskIDs(outlinerView); !slices.Equal(got, []string{"overdue-far", "overdue-near"}) {
 		t.Fatalf("rows = %v, want the overdue bucket in due-date order", got)
 	}
 }
@@ -120,20 +121,20 @@ func TestOverdueTemplateUsesDueModeFixedOrdering(t *testing.T) {
 // a tag narrows rather than broadens. The flag is its own axis, so a task whose
 // tag or context merely spells review is not in the queue.
 func TestReviewQueueTemplateIntersectsItsOtherFacets(t *testing.T) {
-	outliner := lensSemanticsOutliner()
-	applyLensOrFatal(t, outliner, lensTemplateByName(t, "Review Queue"))
+	outlinerView := lensSemanticsOutliner()
+	applyLensOrFatal(t, outlinerView, lensTemplateByName(t, "Review Queue"))
 
 	want := []string{"review-flagged", "review-urgent"}
-	if got := sortedVisibleTaskIDs(outliner); !slices.Equal(got, want) {
+	if got := sortedVisibleTaskIDs(outlinerView); !slices.Equal(got, want) {
 		t.Fatalf("rows = %v, want every task carrying the review flag %v", got, want)
 	}
 
 	// A tag intersects with the flag rather than joining it.
-	outliner.filter.Tags["urgent"] = true
-	outliner.adoptFilterCarriers()
-	outliner.population.invalidate()
-	outliner.crossProjectRebuildRows()
-	if got := sortedVisibleTaskIDs(outliner); !slices.Equal(got, []string{"review-urgent"}) {
+	outlinerView.Filter.Tags["urgent"] = true
+	outlinerView.AdoptFilterCarriers()
+	outlinerView.Population.Invalidate()
+	outlinerView.CrossProjectRebuildRows()
+	if got := sortedVisibleTaskIDs(outlinerView); !slices.Equal(got, []string{"review-urgent"}) {
 		t.Fatalf("rows under flag and tag = %v, want only the task carrying both", got)
 	}
 }
@@ -142,18 +143,18 @@ func TestReviewQueueTemplateIntersectsItsOtherFacets(t *testing.T) {
 // conjunction its two facets make. Terminal state and completion age are separate
 // predicates that both have to hold; neither is widened to carry the other.
 func TestCleanup90dTemplateCombinesItsTwoPredicates(t *testing.T) {
-	outliner := lensSemanticsOutliner()
-	applyLensOrFatal(t, outliner, lensTemplateByName(t, "Cleanup 90d"))
+	outlinerView := lensSemanticsOutliner()
+	applyLensOrFatal(t, outlinerView, lensTemplateByName(t, "Cleanup 90d"))
 
 	want := []string{"canceled-old", "done-old"}
-	if got := sortedVisibleTaskIDs(outliner); !slices.Equal(got, want) {
+	if got := sortedVisibleTaskIDs(outlinerView); !slices.Equal(got, want) {
 		t.Fatalf("rows = %v, want the terminal work older than the threshold %v", got, want)
 	}
 	// done-recent is terminal but young, and waiting-old is old but not terminal.
 	// Their absence above is the whole assertion; naming them here keeps the
 	// failure message honest about which predicate did the rejecting.
 	for _, rejected := range []string{"done-recent", "waiting-old", "overdue-done"} {
-		if slices.Contains(searchVisibleTaskIDs(outliner), rejected) {
+		if slices.Contains(searchVisibleTaskIDs(outlinerView), rejected) {
 			t.Errorf("Cleanup 90d admitted %q, so one of its two predicates was broadened", rejected)
 		}
 	}

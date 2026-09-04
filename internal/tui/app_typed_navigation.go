@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -92,7 +93,7 @@ func (m *AppModel) presentationForRoute(target route.Route) (presentation.Presen
 
 // outlinerPrimary resolves the canonical Task Workspace model beneath shell
 // overlays.
-func (m *AppModel) outlinerPrimary() (*OutlinerModel, bool) {
+func (m *AppModel) outlinerPrimary() (*outliner.OutlinerModel, bool) {
 	current := m.navigation.Primary.Current()
 	if current.ID() != route.TaskWorkspace {
 		return nil, false

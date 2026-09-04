@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -243,8 +244,8 @@ func (m *AppModel) wireSecondaryCoordinators(view route.View) {
 	if w, ok := view.(taskFormWireable); ok {
 		w.SetTaskFormCoordinator(m.features.TaskForm)
 	}
-	if outliner, ok := view.(*OutlinerModel); ok {
-		m.wireOutlinerOperationExecutor(outliner)
+	if outlinerView, ok := view.(*outliner.OutlinerModel); ok {
+		m.wireOutlinerOperationExecutor(outlinerView)
 	}
 }
 
@@ -253,14 +254,14 @@ func (m *AppModel) wireSecondaryCoordinators(view route.View) {
 // machine-local write that remembers which lens is live, the workspace conflict
 // count its status strip reports, and whether that strip carries ambient
 // advisories at all.
-func (m *AppModel) wireOutlinerOperationExecutor(outliner *OutlinerModel) {
-	if outliner == nil {
+func (m *AppModel) wireOutlinerOperationExecutor(outlinerView *outliner.OutlinerModel) {
+	if outlinerView == nil {
 		return
 	}
-	outliner.operationRegistry = m.operationRegistry
-	outliner.setPersistActiveLens(m.commitActiveLensPointer)
-	outliner.setOutstandingConflicts(m.outstandingConflictCount)
-	outliner.setAdvisoriesHidden(m.advisoriesHidden)
+	outlinerView.OperationRegistry = m.operationRegistry
+	outlinerView.SetPersistActiveLens(m.commitActiveLensPointer)
+	outlinerView.SetOutstandingConflicts(m.outstandingConflictCount)
+	outlinerView.SetAdvisoriesHidden(m.advisoriesHidden)
 }
 
 func (m *AppModel) showView(viewType presentation.PresentationID, view route.View) {
@@ -271,8 +272,8 @@ func (m *AppModel) showView(viewType presentation.PresentationID, view route.Vie
 	m.wireSecondaryCoordinators(view)
 	m.views.Register(viewType, view)
 	if viewType == presentation.ViewCrossProjectOutliner {
-		if outliner, ok := view.(*OutlinerModel); ok {
-			m.crossOutliner = outliner
+		if outlinerView, ok := view.(*outliner.OutlinerModel); ok {
+			m.crossOutliner = outlinerView
 		}
 	}
 	m.pushView(viewType)

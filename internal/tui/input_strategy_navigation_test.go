@@ -17,7 +17,7 @@ func TestProductionInputStrategyDefaultsToSimplified(t *testing.T) {
 	if app.operationRegistry == nil || app.operationExecutor == nil {
 		t.Fatal("default operation system is not initialized")
 	}
-	if app.crossOutliner == nil || app.crossOutliner.operationRegistry != app.operationRegistry {
+	if app.crossOutliner == nil || app.crossOutliner.OperationRegistry != app.operationRegistry {
 		t.Fatal("root Outliner is not wired to the operation registry")
 	}
 

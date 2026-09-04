@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/workspace"
@@ -82,7 +83,7 @@ func (m *AppModel) refreshProjectHubIfActive() {
 	hub.RefreshProjectHub()
 	hub.SetTaskCounts(m.projectHubTaskCounts())
 	if m.crossOutliner != nil {
-		hub.SetProjectFocus(m.crossOutliner.scope.projectID)
+		hub.SetProjectFocus(m.crossOutliner.Scope.ProjectID)
 	}
 }
 
@@ -103,13 +104,13 @@ func (m *AppModel) projectHubTaskCounts() map[string]projecthub.ProjectTaskTally
 	}
 	var loader *workspace.Loader
 	if m.crossOutliner != nil {
-		for _, project := range m.crossOutliner.population.projects {
+		for _, project := range m.crossOutliner.Population.Projects {
 			if project != nil {
 				counts[project.ID] = projecthub.ProjectTaskTallyOf(project)
 			}
 		}
-		if m.crossOutliner.projectService != nil {
-			loader = m.crossOutliner.projectService.WorkspaceLoader()
+		if m.crossOutliner.ProjectService != nil {
+			loader = m.crossOutliner.ProjectService.WorkspaceLoader()
 		}
 	}
 	if m.runtime == nil {
@@ -132,7 +133,7 @@ func (m *AppModel) projectHubTaskCounts() map[string]projecthub.ProjectTaskTally
 	if len(remainder) == 0 {
 		return counts
 	}
-	_, loaded, _ := loadCrossScopeSelection(remainder, loader)
+	_, loaded, _ := outliner.LoadCrossScopeSelection(remainder, loader)
 	for _, project := range loaded {
 		if project != nil {
 			counts[project.ID] = projecthub.ProjectTaskTallyOf(project)

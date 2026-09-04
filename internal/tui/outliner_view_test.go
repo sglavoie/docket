@@ -2,154 +2,28 @@ package tui
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
-	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
-
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/taskref"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 )
-
-func TestBuildTreePrefix(t *testing.T) {
-	tests := []struct {
-		name           string
-		ancestorIsLast []bool
-		isLast         bool
-		expected       string
-	}{
-		{"root non-last", nil, false, "├── "},
-		{"root last", nil, true, "└── "},
-		{"depth 1, parent not last, non-last", []bool{false}, false, "│   ├── "},
-		{"depth 1, parent not last, last", []bool{false}, true, "│   └── "},
-		{"depth 1, parent last, non-last", []bool{true}, false, "    ├── "},
-		{"depth 1, parent last, last", []bool{true}, true, "    └── "},
-		{"depth 3 mixed", []bool{false, true, false}, false, "│       │   ├── "},
-		{"depth 3 mixed last", []bool{false, true, false}, true, "│       │   └── "},
-		{"depth 5 all not last", []bool{false, false, false, false, false}, false, "│   │   │   │   │   ├── "},
-		{"depth 5 all last", []bool{true, true, true, true, true}, true, "                    └── "},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := buildTreePrefix(tt.ancestorIsLast, tt.isLast); got != tt.expected {
-				t.Errorf("buildTreePrefix(%v, %v)\ngot:  %q\nwant: %q", tt.ancestorIsLast, tt.isLast, got, tt.expected)
-			}
-		})
-	}
-}
-
-func TestRenderTaskPrefixKeepsLeafConnectorsCompact(t *testing.T) {
-	prefix, fold := renderTaskPrefix("├── ", "", nil)
-	if got, want := ansi.Strip(prefix), "├── "; got != want {
-		t.Fatalf("leaf connector = %q, want compact %q", got, want)
-	}
-	if fold != "" {
-		t.Fatalf("leaf connector should not add a filler segment, got %q", ansi.Strip(fold))
-	}
-}
-
-func TestOutlinerPersistentScrollKeepsFirstRowMovingUpWithinViewport(t *testing.T) {
-	for _, tt := range []struct {
-		name    string
-		project *models.Project
-	}{
-		{name: "single project", project: &models.Project{Name: "Single"}},
-		{name: "cross project", project: nil},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			rows := make([]outlinerRow, 10)
-			for i := range rows {
-				rows[i] = outlinerRow{task: &models.Task{
-					ID: fmt.Sprintf("task-%02d", i), ShortID: i + 1, Title: fmt.Sprintf("Task %02d", i),
-				}}
-			}
-			m := &OutlinerModel{
-				project: tt.project, rows: rows,
-				folds: foldState{collapsedSections: make(map[string]bool)},
-			}
-			m.SetSize(100, 6)
-
-			m.Cursor = 5
-			viewport := m.computeOutlinerViewport(100, 0)
-			start := viewport.startIdx
-			if start == 0 {
-				t.Fatal("expected initial viewport to scroll down")
-			}
-			firstTitle := m.rows[start].task.Title
-
-			m.Cursor = 4
-			viewport = m.computeOutlinerViewport(100, 0)
-			if viewport.startIdx != start {
-				t.Fatalf("moving up inside viewport changed first rendered row: start=%d want %d", viewport.startIdx, start)
-			}
-			if got := m.rows[viewport.startIdx].task.Title; got != firstTitle {
-				t.Fatalf("first rendered row = %q, want %q", got, firstTitle)
-			}
-		})
-	}
-}
-
-// TestViewportReservesTheTitleContinuationRows is the measurement-path contract:
-// the continuation sits outside the additive cap, so computeOutlinerViewport
-// must reserve those rows too or the list overflows the bottom of the terminal.
-func TestViewportReservesTheTitleContinuationRows(t *testing.T) {
-	const (
-		width  = 60
-		height = 20
-	)
-	long := &models.Task{
-		ID: "long", ShortID: 1, WorkflowState: models.StateBacklog,
-		Title: "Investigate intermittent timeout when syncing very large project " +
-			"archives over slow connections and report which retry policy the " +
-			"transport eventually settled on before the deadline",
-	}
-	short := &models.Task{ID: "short", ShortID: 2, Title: "Short", WorkflowState: models.StateBacklog}
-	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{long, short})
-	outliner := NewOutlinerModel(project, nil, newTestConfig())
-	outliner.SetSize(width, height)
-	outliner.rebuildRows()
-	outliner.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: long.ID})
-
-	outliner.peekMode = true
-	row := outliner.rows[outliner.Cursor]
-	indent := strings.Repeat(" ", lipgloss.Width(row.prefix)+4)
-	reserved := outliner.inlinePeekLineCount(row, width-1)
-	bare := len(inlinePeekLines(inlinePeekOptions{Task: long, Indent: indent, Width: width - 1}))
-	if reserved <= bare {
-		t.Fatalf("reserved %d Peek rows, want more than the %d the block holds without a continuation", reserved, bare)
-	}
-	if drawn := len(outliner.inlinePeekLinesForRow(row, indent, width, nil)); drawn > reserved {
-		t.Fatalf("render drew %d Peek rows, more than the %d reserved", drawn, reserved)
-	}
-
-	for lineNumber, line := range strings.Split(outliner.View().Content, "\n") {
-		if got := lipgloss.Width(line); got > width {
-			t.Fatalf("line %d overflowed to %d columns", lineNumber, got)
-		}
-	}
-	if got := lipgloss.Height(outliner.View().Content); got > height {
-		t.Fatalf("view height = %d, want <= %d", got, height)
-	}
-}
 
 // scrollAnchorApp seats a scrolled window and returns the app, its outliner, and
 // the half-open window the render drew.
-func scrollAnchorApp(t *testing.T) (*AppModel, *OutlinerModel, int, int) {
+func scrollAnchorApp(t *testing.T) (*AppModel, *outliner.OutlinerModel, int, int) {
 	t.Helper()
 	app := newUITestApp()
 	out := app.crossOutliner
-	out.rows = make([]outlinerRow, 40)
-	for i := range out.rows {
-		out.rows[i] = outlinerRow{task: &models.Task{
+	out.Rows = make([]outliner.OutlinerRow, 40)
+	for i := range out.Rows {
+		out.Rows[i] = outliner.OutlinerRow{Task: &models.Task{
 			ID: fmt.Sprintf("task-%02d", i), ShortID: i + 1, Title: fmt.Sprintf("Task %02d", i),
 		}}
 	}
 	out.SetSize(100, 12)
 	out.Cursor = 25
-	out.computeOutlinerViewport(100, 0)
-	start, end := out.visibleRowWindow()
+	out.ComputeOutlinerViewport(100, 0)
+	start, end := out.VisibleRowWindow()
 	if start == 0 || end-start < 3 {
 		t.Fatalf("window = [%d,%d), want a scrolled window holding three distinct anchors", start, end)
 	}
@@ -171,7 +45,7 @@ func TestScrollAnchorsMoveTheWindowAndLeaveTheCursor(t *testing.T) {
 	} {
 		out.Cursor = cursor
 		out.ViewScrollOffset = start
-		out.computeOutlinerViewport(100, 0)
+		out.ComputeOutlinerViewport(100, 0)
 
 		result := executeDirectPath(t, app, app.operationCommandContext(), []string{"z", tc.key})
 		if result.Err != nil {
@@ -188,7 +62,7 @@ func TestScrollAnchorsMoveTheWindowAndLeaveTheCursor(t *testing.T) {
 		}
 		// The written offset still contains the cursor, so the next render's
 		// clamp leaves it exactly where the key put it.
-		out.computeOutlinerViewport(100, 0)
+		out.ComputeOutlinerViewport(100, 0)
 		if out.ViewScrollOffset != tc.want {
 			t.Errorf("z%s scroll offset after render = %d, want %d", tc.key, out.ViewScrollOffset, tc.want)
 		}
@@ -198,18 +72,18 @@ func TestScrollAnchorsMoveTheWindowAndLeaveTheCursor(t *testing.T) {
 func TestScrollAnchorTopClampsAtTheLastRow(t *testing.T) {
 	app, out, start, end := scrollAnchorApp(t)
 	height := end - start
-	out.Cursor = len(out.rows) - 1
-	out.computeOutlinerViewport(100, 0)
+	out.Cursor = len(out.Rows) - 1
+	out.ComputeOutlinerViewport(100, 0)
 
 	if result := executeDirectPath(t, app, app.operationCommandContext(), []string{"z", "t"}); result.Err != nil {
 		t.Fatalf("zt: %v", result.Err)
 	}
-	want := len(out.rows) - height
+	want := len(out.Rows) - height
 	if out.ViewScrollOffset != want {
 		t.Fatalf("zt scroll offset = %d, want %d with the last row still visible", out.ViewScrollOffset, want)
 	}
-	if _, last := out.visibleRowWindow(); last != len(out.rows) {
-		t.Fatalf("window end = %d, want %d", last, len(out.rows))
+	if _, last := out.VisibleRowWindow(); last != len(out.Rows) {
+		t.Fatalf("window end = %d, want %d", last, len(out.Rows))
 	}
 }
 
@@ -220,7 +94,7 @@ func TestScrollAnchorMiddleSettlesOnASecondPress(t *testing.T) {
 	if result := executeDirectPath(t, app, ctx, []string{"z", "z"}); result.Err != nil {
 		t.Fatalf("zz: %v", result.Err)
 	}
-	out.computeOutlinerViewport(100, 0)
+	out.ComputeOutlinerViewport(100, 0)
 	offset := out.ViewScrollOffset
 
 	// The cursor already sits mid-window, so a second zz has nothing to move.
@@ -234,7 +108,7 @@ func TestScrollAnchorMiddleSettlesOnASecondPress(t *testing.T) {
 
 func TestScrollAnchorsLeaveAnEmptyWindowAlone(t *testing.T) {
 	app, out, _, _ := scrollAnchorApp(t)
-	out.rows = nil
+	out.Rows = nil
 	out.Cursor = 0
 	out.ViewScrollOffset = 0
 

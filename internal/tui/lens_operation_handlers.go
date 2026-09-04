@@ -72,7 +72,7 @@ func (m *AppModel) executeLensCreateOperation(invocation operation.OperationInvo
 	}
 	// A user lens mints its own UUID here, in canonical lowercase hyphenated
 	// form, which is the only spelling ValidateNamedLensID accepts.
-	minted := out.captureLensState().namedLens(uuid.NewString(), name)
+	minted := out.CaptureLensState().NamedLens(uuid.NewString(), name)
 	if err = minted.Validate(); err != nil {
 		return operation.OperationHandlerResult{Err: err}
 	}
@@ -187,7 +187,7 @@ func (m *AppModel) renameLensOperation(
 		return operation.OperationHandlerResult{Err: err}
 	}
 	if out := m.crossOutliner; out != nil {
-		out.lens.renameActive(existing.ID, name)
+		out.Lens.RenameActive(existing.ID, name)
 	}
 	return operation.OperationHandlerResult{Status: fmt.Sprintf("Renamed lens: %s → %s", existing.Name, name)}
 }
@@ -200,8 +200,8 @@ func (m *AppModel) replaceLensOperation(existing config.NamedLens) operation.Ope
 	if out == nil {
 		return operation.OperationHandlerResult{Err: errors.New("the Outliner is unavailable")}
 	}
-	state := out.captureLensState()
-	replacement := state.namedLens(existing.ID, existing.Name)
+	state := out.CaptureLensState()
+	replacement := state.NamedLens(existing.ID, existing.Name)
 	if err := replacement.Validate(); err != nil {
 		return operation.OperationHandlerResult{Err: err}
 	}
@@ -215,7 +215,7 @@ func (m *AppModel) replaceLensOperation(existing config.NamedLens) operation.Ope
 	}); err != nil {
 		return operation.OperationHandlerResult{Err: err}
 	}
-	out.lens.rebaseActive(replacement.ID, state.fingerprint())
+	out.Lens.RebaseActive(replacement.ID, state.Fingerprint())
 	return operation.OperationHandlerResult{Status: "Replaced lens: " + replacement.Name}
 }
 
@@ -231,8 +231,8 @@ func (m *AppModel) deleteLensOperation(existing config.NamedLens) operation.Oper
 	}); err != nil {
 		return operation.OperationHandlerResult{Err: err}
 	}
-	if out := m.crossOutliner; out != nil && out.lens.activeIs(existing.ID) {
-		out.restoreLensBaseline()
+	if out := m.crossOutliner; out != nil && out.Lens.ActiveIs(existing.ID) {
+		out.RestoreLensBaseline()
 	}
 	return operation.OperationHandlerResult{Status: "Deleted lens: " + existing.Name}
 }

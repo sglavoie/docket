@@ -57,10 +57,10 @@ func TestProjectHubSearchEnterSelectsImmediately(t *testing.T) {
 		t.Fatalf("search Enter emitted %#v, want beta", cmd())
 	}
 	app.handleViewActionMessages(selected)
-	if app.crossOutliner.scope.projectID != "beta" || app.CurrentRoute().ID() != route.TaskWorkspace {
+	if app.crossOutliner.Scope.ProjectID != "beta" || app.CurrentRoute().ID() != route.TaskWorkspace {
 		t.Fatalf(
 			"selection landed project=%q route=%s",
-			app.crossOutliner.scope.projectID,
+			app.crossOutliner.Scope.ProjectID,
 			app.CurrentRoute().ID(),
 		)
 	}

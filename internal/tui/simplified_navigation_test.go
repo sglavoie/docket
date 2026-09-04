@@ -10,21 +10,22 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/taskform"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
-func findTaskRow(rows []outlinerRow, taskID string) int {
+func findTaskRow(rows []outliner.OutlinerRow, taskID string) int {
 	for index, row := range rows {
-		if row.task != nil && row.task.ID == taskID {
+		if row.Task != nil && row.Task.ID == taskID {
 			return index
 		}
 	}
 	return -1
 }
 
-func simplifiedTreeOutliner(t *testing.T) (*OutlinerModel, *models.Project, *models.Task, *models.Task) {
+func simplifiedTreeOutliner(t *testing.T) (*outliner.OutlinerModel, *models.Project, *models.Task, *models.Task) {
 	t.Helper()
 	parent := &models.Task{
 		ID:            "parent",
@@ -46,39 +47,39 @@ func simplifiedTreeOutliner(t *testing.T) (*OutlinerModel, *models.Project, *mod
 	}
 	project.BuildTaskTree()
 	cfg := newTestConfig()
-	m := NewOutlinerModel(project, nil, testRuntimeAt(cfg.DataDir(), cfg))
-	m.selectOutlinerMode(chrome.ModeAll)
+	m := outliner.NewOutlinerModel(project, nil, testRuntimeAt(cfg.DataDir(), cfg))
+	m.SelectOutlinerMode(chrome.ModeAll)
 	return m, project, parent, child
 }
 
 func TestSimplifiedHorizontalNavigationCollapsesExpandsAndMovesToParent(t *testing.T) {
 	m, _, parent, child := simplifiedTreeOutliner(t)
-	parentRow := findTaskRow(m.rows, parent.ID)
-	childRow := findTaskRow(m.rows, child.ID)
-	if parentRow < 0 || childRow < 0 || !m.rows[parentRow].hasVisibleChildren {
-		t.Fatalf("tree rows not rendered as parent/child: parent=%d child=%d rows=%+v", parentRow, childRow, m.rows)
+	parentRow := findTaskRow(m.Rows, parent.ID)
+	childRow := findTaskRow(m.Rows, child.ID)
+	if parentRow < 0 || childRow < 0 || !m.Rows[parentRow].HasVisibleChildren {
+		t.Fatalf("tree rows not rendered as parent/child: parent=%d child=%d rows=%+v", parentRow, childRow, m.Rows)
 	}
 
 	m.Cursor = parentRow
-	if !m.collapseOrMoveToParent() {
+	if !m.CollapseOrMoveToParent() {
 		t.Fatal("h did not collapse the expanded parent")
 	}
-	if got := findTaskRow(m.rows, child.ID); got >= 0 {
+	if got := findTaskRow(m.Rows, child.ID); got >= 0 {
 		t.Fatalf("child remains visible at row %d after collapse", got)
 	}
 
-	if !m.expandAtCursor() {
+	if !m.ExpandAtCursor() {
 		t.Fatal("l did not expand the collapsed parent")
 	}
-	childRow = findTaskRow(m.rows, child.ID)
+	childRow = findTaskRow(m.Rows, child.ID)
 	if childRow < 0 {
 		t.Fatal("child did not become visible after expand")
 	}
 	m.Cursor = childRow
-	if !m.collapseOrMoveToParent() {
+	if !m.CollapseOrMoveToParent() {
 		t.Fatal("h on a leaf did not move to its parent")
 	}
-	if got := m.rows[m.Cursor].task; got == nil || got.ID != parent.ID {
+	if got := m.Rows[m.Cursor].Task; got == nil || got.ID != parent.ID {
 		t.Fatalf("cursor task after parent move = %v, want %s", got, parent.ID)
 	}
 }
@@ -99,23 +100,23 @@ func TestProjectHeadersCollapseAndExpandWithHorizontalNavigation(t *testing.T) {
 			app.projects[alpha.ID] = alpha
 			app.projects[beta.ID] = beta
 
-			outliner := app.crossOutliner
-			outliner.population.projects = []*models.Project{alpha, beta}
-			outliner.population.invalidate()
-			outliner.crossProjectRebuildRows()
+			outlinerView := app.crossOutliner
+			outlinerView.Population.Projects = []*models.Project{alpha, beta}
+			outlinerView.Population.Invalidate()
+			outlinerView.CrossProjectRebuildRows()
 
 			projectHeader := -1
-			for index, row := range outliner.rows {
+			for index, row := range outlinerView.Rows {
 				if row.IsProjectHeader && row.ProjectID == alpha.ID {
 					projectHeader = index
 					break
 				}
 			}
 			if projectHeader < 0 {
-				t.Fatalf("Alpha project header is missing from rows: %+v", outliner.rows)
+				t.Fatalf("Alpha project header is missing from rows: %+v", outlinerView.Rows)
 			}
-			outliner.Cursor = projectHeader
-			collapseKey := outliner.rows[projectHeader].effectiveCollapseKey()
+			outlinerView.Cursor = projectHeader
+			collapseKey := outlinerView.Rows[projectHeader].EffectiveCollapseKey()
 
 			collapseMsg, err := parseUITestKey(keys.collapse)
 			if err != nil {
@@ -124,13 +125,13 @@ func TestProjectHeadersCollapseAndExpandWithHorizontalNavigation(t *testing.T) {
 			if handled, _ := app.handleGlobalKeyPress(collapseMsg); !handled {
 				t.Fatalf("collapse key %q was not handled", keys.collapse)
 			}
-			if !outliner.folds.collapsedSections[collapseKey] {
+			if !outlinerView.Folds.CollapsedSections[collapseKey] {
 				t.Fatalf("collapse key %q was not recorded", collapseKey)
 			}
-			if findTaskRow(outliner.rows, "alpha-task") >= 0 {
+			if findTaskRow(outlinerView.Rows, "alpha-task") >= 0 {
 				t.Fatal("Alpha task remains visible after collapsing its project header")
 			}
-			if findTaskRow(outliner.rows, "beta-task") < 0 {
+			if findTaskRow(outlinerView.Rows, "beta-task") < 0 {
 				t.Fatal("collapsing Alpha also hid Beta's task")
 			}
 
@@ -141,10 +142,10 @@ func TestProjectHeadersCollapseAndExpandWithHorizontalNavigation(t *testing.T) {
 			if handled, _ := app.handleGlobalKeyPress(expandMsg); !handled {
 				t.Fatalf("expand key %q was not handled", keys.expand)
 			}
-			if outliner.folds.collapsedSections[collapseKey] {
+			if outlinerView.Folds.CollapsedSections[collapseKey] {
 				t.Fatalf("expand key %q did not clear collapse key %q", keys.expand, collapseKey)
 			}
-			if findTaskRow(outliner.rows, "alpha-task") < 0 {
+			if findTaskRow(outlinerView.Rows, "alpha-task") < 0 {
 				t.Fatal("Alpha task did not reappear after expanding its project header")
 			}
 		})
@@ -161,13 +162,13 @@ func TestSimplifiedShiftEnterPeekRendersAtEveryWidth(t *testing.T) {
 	project.Tasks = append(project.Tasks, child)
 	project.BuildTaskTree()
 	app.projects[project.ID] = project
-	app.crossOutliner.population.projects = []*models.Project{project}
-	app.crossOutliner.population.invalidate()
-	app.crossOutliner.crossProjectRebuildRows()
-	app.crossOutliner.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: task.ID})
+	app.crossOutliner.Population.Projects = []*models.Project{project}
+	app.crossOutliner.Population.Invalidate()
+	app.crossOutliner.CrossProjectRebuildRows()
+	app.crossOutliner.MoveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: task.ID})
 
 	for _, width := range []int{60, 99, 100, 160} {
-		app.crossOutliner.peekMode = false
+		app.crossOutliner.PeekMode = false
 		app.width = width
 		app.crossOutliner.SetSize(width, 22)
 		result := app.operationExecutor.Execute(operation.OperationExecutionRequest{
@@ -177,7 +178,7 @@ func TestSimplifiedShiftEnterPeekRendersAtEveryWidth(t *testing.T) {
 		if result.Err != nil || result.Message != nil {
 			t.Fatalf("width %d Ctrl+Enter result = message %T err %v", width, result.Message, result.Err)
 		}
-		if !app.crossOutliner.peekMode {
+		if !app.crossOutliner.PeekMode {
 			t.Fatalf("width %d Ctrl+Enter did not enable Peek", width)
 		}
 		plain := ansi.Strip(app.crossOutliner.View().Content)
@@ -185,7 +186,7 @@ func TestSimplifiedShiftEnterPeekRendersAtEveryWidth(t *testing.T) {
 			t.Fatalf("width %d Ctrl+Enter Peek missing selected task tags:\n%s", width, plain)
 		}
 	}
-	if len(app.crossOutliner.focus.crossStack) != 0 || len(app.crossOutliner.focus.stack) != 0 {
+	if len(app.crossOutliner.Focus.CrossStack) != 0 || len(app.crossOutliner.Focus.Stack) != 0 {
 		t.Fatal("Ctrl+Enter unexpectedly changed task Focus")
 	}
 }
@@ -198,14 +199,14 @@ func navigationAliasTestApp(t *testing.T) *AppModel {
 	project := scopeTestProject("project", "Project", "one")
 	app.projects[project.ID] = project
 	out := app.crossOutliner
-	out.population.projects = []*models.Project{project}
+	out.Population.Projects = []*models.Project{project}
 	out.SetSize(out.Width(), 11)
-	out.rows = make([]outlinerRow, 0, 12)
-	out.rows = append(out.rows, outlinerRow{IsSeparator: true})
+	out.Rows = make([]outliner.OutlinerRow, 0, 12)
+	out.Rows = append(out.Rows, outliner.OutlinerRow{IsSeparator: true})
 	for range 10 {
-		out.rows = append(out.rows, outlinerRow{task: project.Tasks[0], ProjectID: project.ID})
+		out.Rows = append(out.Rows, outliner.OutlinerRow{Task: project.Tasks[0], ProjectID: project.ID})
 	}
-	out.rows = append(out.rows, outlinerRow{IsSeparator: true})
+	out.Rows = append(out.Rows, outliner.OutlinerRow{IsSeparator: true})
 	return app
 }
 
@@ -263,42 +264,42 @@ func TestSimplifiedReorderEligibility(t *testing.T) {
 	project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{task}}
 	project.BuildTaskTree()
 
-	m := &OutlinerModel{
-		project: project,
-		rows:    []outlinerRow{{task: task}},
+	m := &outliner.OutlinerModel{
+		Project: project,
+		Rows:    []outliner.OutlinerRow{{Task: task}},
 	}
 	for _, mode := range []chrome.OutlinerModeID{chrome.ModeAll, chrome.ModeInbox, chrome.ModeNext, chrome.ModeBacklog} {
-		m.primaryMode = mode
-		if !m.simplifiedReorderEligible() {
+		m.PrimaryMode = mode
+		if !m.SimplifiedReorderEligible() {
 			t.Errorf("%s should allow project-focused reorder", mode)
 		}
 	}
-	m.primaryMode = chrome.ModeDue
-	if m.simplifiedReorderEligible() {
+	m.PrimaryMode = chrome.ModeDue
+	if m.SimplifiedReorderEligible() {
 		t.Fatal("computed Due mode allowed manual reorder")
 	}
 	// A pinned row carries its own manual order ahead of the mode's ordering.
-	m.primaryMode = chrome.ModeToday
-	m.rows[0].IsPinnedSection = true
-	if !m.simplifiedReorderEligible() {
+	m.PrimaryMode = chrome.ModeToday
+	m.Rows[0].IsPinnedSection = true
+	if !m.SimplifiedReorderEligible() {
 		t.Fatal("Pinned row in Today mode refused manual reorder")
 	}
-	m.rows[0].IsPinnedSection = false
+	m.Rows[0].IsPinnedSection = false
 
-	m.project = nil
-	m.primaryMode = chrome.ModeAll
-	m.population.projects = []*models.Project{project}
-	m.rows[0].ProjectID = project.ID
-	if !m.simplifiedReorderEligible() {
+	m.Project = nil
+	m.PrimaryMode = chrome.ModeAll
+	m.Population.Projects = []*models.Project{project}
+	m.Rows[0].ProjectID = project.ID
+	if !m.SimplifiedReorderEligible() {
 		t.Fatal("base all-project hierarchy did not allow same-project sibling reorder")
 	}
-	m.rows[0].IsPinnedSection = true
-	if !m.simplifiedReorderEligible() {
+	m.Rows[0].IsPinnedSection = true
+	if !m.SimplifiedReorderEligible() {
 		t.Fatal("cross-project Pinned row refused manual reorder")
 	}
-	m.rows[0].IsPinnedSection = false
+	m.Rows[0].IsPinnedSection = false
 	m.MultiSelectMode = true
-	if m.simplifiedReorderEligible() {
+	if m.SimplifiedReorderEligible() {
 		t.Fatal("visual selection allowed cursor-only reorder")
 	}
 }
@@ -308,9 +309,9 @@ func TestMutationRebuildPreservesCursorIdentityAndVisibleSelection(t *testing.T)
 	second := makeTask("second", "Second", "")
 	project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{first, second}}
 	project.BuildTaskTree()
-	m := NewOutlinerModel(project, nil, nil)
-	m.selectOutlinerMode(chrome.ModeAll)
-	m.Cursor = findTaskRow(m.rows, second.ID)
+	m := outliner.NewOutlinerModel(project, nil, nil)
+	m.SelectOutlinerMode(chrome.ModeAll)
+	m.Cursor = findTaskRow(m.Rows, second.ID)
 	if m.Cursor < 0 {
 		t.Fatal("second task is missing before rebuild")
 	}
@@ -320,7 +321,7 @@ func TestMutationRebuildPreservesCursorIdentityAndVisibleSelection(t *testing.T)
 
 	project.Tasks[0], project.Tasks[1] = project.Tasks[1], project.Tasks[0]
 	project.BuildTaskTree()
-	rebuildOutlinerPreservingCursor(m)
+	outliner.RebuildOutlinerPreservingCursor(m)
 
 	task, _ := m.GetTaskRef()
 	if task == nil || task.ID != second.ID {
@@ -338,9 +339,9 @@ func TestSimplifiedCaptureUsesSystemInboxAtBaseAndFocusedProjectInScope(t *testi
 	app.runtime.Catalog().SystemUnfiledProjectID = inbox.ID
 	app.projects[inbox.ID] = inbox
 	app.projects[project.ID] = project
-	app.crossOutliner.population.projects = []*models.Project{inbox, project}
-	app.crossOutliner.rows = []outlinerRow{{
-		task:      project.Tasks[0],
+	app.crossOutliner.Population.Projects = []*models.Project{inbox, project}
+	app.crossOutliner.Rows = []outliner.OutlinerRow{{
+		Task:      project.Tasks[0],
 		ProjectID: project.ID,
 	}}
 
@@ -352,7 +353,7 @@ func TestSimplifiedCaptureUsesSystemInboxAtBaseAndFocusedProjectInScope(t *testi
 		t.Fatalf("base capture project = %v, want system Inbox %v", base.Preset.Project, inbox)
 	}
 
-	app.crossOutliner.scope.projectID = project.ID
+	app.crossOutliner.Scope.ProjectID = project.ID
 	focused, ok := app.coreCaptureMessage().(taskform.ShowTaskComposerMsg)
 	if !ok || focused.Preset.Project != project {
 		t.Fatalf("focused capture = %#v, want project %v", focused, project)
@@ -369,10 +370,10 @@ func TestSimplifiedCaptureFollowsAProjectHeaderCursor(t *testing.T) {
 	app.runtime.Catalog().SystemUnfiledProjectID = inbox.ID
 	app.projects[inbox.ID] = inbox
 	app.projects[project.ID] = project
-	app.crossOutliner.population.projects = []*models.Project{inbox, project}
-	app.crossOutliner.rows = []outlinerRow{
+	app.crossOutliner.Population.Projects = []*models.Project{inbox, project}
+	app.crossOutliner.Rows = []outliner.OutlinerRow{
 		{IsProjectHeader: true, ProjectID: project.ID},
-		{task: project.Tasks[0], ProjectID: project.ID},
+		{Task: project.Tasks[0], ProjectID: project.ID},
 	}
 
 	app.crossOutliner.Cursor = 0
@@ -406,12 +407,12 @@ func TestSimplifiedCaptureFollowsTaskFocus(t *testing.T) {
 	shell.runtime.Catalog().SystemUnfiledProjectID = inbox.ID
 	shell.projects[inbox.ID] = inbox
 	shell.projects[project.ID] = project
-	shell.crossOutliner.population.projects = []*models.Project{inbox, project}
-	shell.crossOutliner.rows = []outlinerRow{
+	shell.crossOutliner.Population.Projects = []*models.Project{inbox, project}
+	shell.crossOutliner.Rows = []outliner.OutlinerRow{
 		{IsProjectHeader: true, ProjectID: inbox.ID},
 	}
 	shell.crossOutliner.Cursor = 0
-	shell.crossOutliner.focus.crossStack = []CrossProjectFocusEntry{
+	shell.crossOutliner.Focus.CrossStack = []outliner.CrossProjectFocusEntry{
 		{ProjectID: project.ID, TaskID: story.ID},
 	}
 
@@ -458,16 +459,16 @@ func TestResetToGlobalAllClearsInlineControls(t *testing.T) {
 		t.Fatal("fixture has no tasks")
 	}
 	m.Confirm.Show("delete", "Delete?")
-	m.quickEdit.Enter(tasks[0], false)
+	m.QuickEdit.Enter(tasks[0], false)
 
-	m.resetToGlobalAll()
+	m.ResetToGlobalAll()
 
 	if m.Confirm.IsActive() ||
-		m.quickEdit.IsActive() {
+		m.QuickEdit.IsActive() {
 		t.Fatalf(
 			"reset left inline state: confirm=%v edit=%v",
 			m.Confirm.IsActive(),
-			m.quickEdit.IsActive(),
+			m.QuickEdit.IsActive(),
 		)
 	}
 }

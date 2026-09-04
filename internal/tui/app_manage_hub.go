@@ -34,7 +34,7 @@ func (m *AppModel) ensureManageHub() *projecthub.ManageHubModel {
 			if m.crossOutliner == nil {
 				return ""
 			}
-			return m.crossOutliner.scope.projectID
+			return m.crossOutliner.Scope.ProjectID
 		},
 		TaskCounts:         m.projectHubTaskCounts,
 		OperationRegistry:  m.operationRegistry,

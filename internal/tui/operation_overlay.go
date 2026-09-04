@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -83,13 +84,13 @@ func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 		return true, m.applyNamedLensPickerResult(typed)
 	case lens.NamedLensActionsRequestMsg:
 		return true, m.openNamedLensActions(typed)
-	case SaveViewAsLensRequestMsg:
+	case outliner.SaveViewAsLensRequestMsg:
 		return true, m.saveViewAsLens()
-	case MenuBarActivateMsg:
+	case outliner.MenuBarActivateMsg:
 		// The menu named an operation and closed; running it is the shell's because
 		// the executor is.
 		return true, m.activateMenuBarEntry(typed.OperationID)
-	case QueryReadoutReloadRequestMsg:
+	case outliner.QueryReadoutReloadRequestMsg:
 		// The peel already wrote the population fields; only the reload the facet
 		// owes is left, and it is the shell's because the projects are.
 		return true, m.projectFilterReloadCmd(typed.Status)

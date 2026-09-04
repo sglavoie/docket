@@ -3,10 +3,11 @@ package tui
 import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/notes"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
 
-func (m *AppModel) activeOutliner() *OutlinerModel {
+func (m *AppModel) activeOutliner() *outliner.OutlinerModel {
 	if m == nil || m.navigation.Primary.Current().ID() != route.TaskWorkspace {
 		return nil
 	}
@@ -17,7 +18,7 @@ func (m *AppModel) activeOutliner() *OutlinerModel {
 // it rests on a project sub-header.
 func (m *AppModel) cursorProjectHeaderProject() *models.Project {
 	if out := m.activeOutliner(); out != nil {
-		return out.cursorProjectHeaderProject()
+		return out.CursorProjectHeaderProject()
 	}
 	return nil
 }
@@ -26,7 +27,7 @@ func (m *AppModel) cursorProjectHeaderProject() *models.Project {
 // grouping section header.
 func (m *AppModel) cursorNamesSectionHeader() bool {
 	if out := m.activeOutliner(); out != nil {
-		return out.cursorNamesSectionHeader()
+		return out.CursorNamesSectionHeader()
 	}
 	return false
 }
@@ -35,17 +36,17 @@ func (m *AppModel) cursorNamesSectionHeader() bool {
 // command context reads the same row kind the Outliner's own does.
 func (m *AppModel) cursorNoteIdentity() (notes.NoteRowIdentity, bool) {
 	if out := m.activeOutliner(); out != nil {
-		return out.cursorNoteIdentity()
+		return out.CursorNoteIdentity()
 	}
 	return notes.NoteRowIdentity{}, false
 }
 
 // cursorChecklistItem returns the checklist item the Outliner cursor names.
-func (m *AppModel) cursorChecklistItem() (checklistCursor, bool) {
+func (m *AppModel) cursorChecklistItem() (outliner.ChecklistCursor, bool) {
 	if out := m.activeOutliner(); out != nil {
-		return out.cursorChecklistItem()
+		return out.CursorChecklistItem()
 	}
-	return checklistCursor{}, false
+	return outliner.ChecklistCursor{}, false
 }
 
 // anchorOutlinerCursorAfterProjectPark points the cursor at the project header
@@ -57,11 +58,11 @@ func (m *AppModel) anchorOutlinerCursorAfterProjectPark(projectIDs ...string) {
 	if out == nil {
 		return
 	}
-	anchor, onScreen := out.projectHeaderAnchorAfterRemoval(projectIDs...)
+	anchor, onScreen := out.ProjectHeaderAnchorAfterRemoval(projectIDs...)
 	if !onScreen {
 		return
 	}
-	out.population.anchorReloadHeader(anchor)
+	out.Population.AnchorReloadHeader(anchor)
 }
 
 func (m *AppModel) outlinerTarget() (*models.Task, *models.Project) {

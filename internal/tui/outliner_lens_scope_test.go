@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
 // A lens scope names a project by ID, and NamedLens.Validate holds that ID to
@@ -39,38 +40,38 @@ func scopedWaitingLens(id, name, scope string) config.NamedLens {
 func TestScopedLensEntersItsProjectAndEscRestoresThePreLensScope(t *testing.T) {
 	alpha := lensScopeProject(lensScopeAlphaID)
 	beta := lensScopeProject(lensScopeBetaID)
-	outliner := scopeTestOutliner(alpha, beta)
+	outlinerView := scopeTestOutliner(alpha, beta)
 
 	lens := scopedWaitingLens(lensTestID(1), "Beta Waiting", lensScopeBetaID)
 	if err := lens.Validate(); err != nil {
 		t.Fatalf("scoped definition invalid: %v", err)
 	}
-	if cmd := applyLensOrFatal(t, outliner, lens); cmd != nil {
+	if cmd := applyLensOrFatal(t, outlinerView, lens); cmd != nil {
 		t.Fatal("a scoped application must need no population load")
 	}
-	if outliner.lens.pending != nil {
+	if outlinerView.Lens.Pending != nil {
 		t.Fatal("a scoped application armed a load the scope makes unnecessary")
 	}
-	if outliner.scope.projectID != lensScopeBetaID {
-		t.Fatalf("scope after applying = %q, want the lens's own %q", outliner.scope.projectID, lensScopeBetaID)
+	if outlinerView.Scope.ProjectID != lensScopeBetaID {
+		t.Fatalf("scope after applying = %q, want the lens's own %q", outlinerView.Scope.ProjectID, lensScopeBetaID)
 	}
 	// The axis was written through pushProjectScope, so the frame one Esc pops to
 	// exists exactly as it would after any other scope push.
-	if len(outliner.scope.stack) != 1 {
-		t.Fatalf("scope stack = %d frames, want the single base frame a push captures", len(outliner.scope.stack))
+	if len(outlinerView.Scope.Stack) != 1 {
+		t.Fatalf("scope stack = %d frames, want the single base frame a push captures", len(outlinerView.Scope.Stack))
 	}
-	if outliner.lensModified() {
+	if outlinerView.LensModified() {
 		t.Fatal("a lens read as modified in the very scope it named")
 	}
 
-	if !listsurface.RunEscCascade(outliner.escSteps()) {
+	if !listsurface.RunEscCascade(outlinerView.EscSteps()) {
 		t.Fatal("expected Esc to consume the lens")
 	}
-	if outliner.hasActiveLens() {
+	if outlinerView.HasActiveLens() {
 		t.Fatal("Esc left the lens live")
 	}
-	if outliner.scope.projectID != "" {
-		t.Fatalf("restored scope = %q, want the unscoped view the lens replaced", outliner.scope.projectID)
+	if outlinerView.Scope.ProjectID != "" {
+		t.Fatalf("restored scope = %q, want the unscoped view the lens replaced", outlinerView.Scope.ProjectID)
 	}
 }
 
@@ -80,23 +81,23 @@ func TestScopedLensEntersItsProjectAndEscRestoresThePreLensScope(t *testing.T) {
 func TestUnscopedLensLeavesTheScopeAloneAndMovingItMarksTheLensModified(t *testing.T) {
 	alpha := lensScopeProject(lensScopeAlphaID)
 	beta := lensScopeProject(lensScopeBetaID)
-	outliner := scopeTestOutliner(alpha, beta)
-	outliner.pushProjectScope(lensScopeAlphaID)
+	outlinerView := scopeTestOutliner(alpha, beta)
+	outlinerView.PushProjectScope(lensScopeAlphaID)
 
-	applyLensOrFatal(t, outliner, waitingLens(lensTestID(2), "Waiting", ""))
-	if outliner.scope.projectID != lensScopeAlphaID {
-		t.Fatalf("an unscoped lens moved the scope to %q", outliner.scope.projectID)
+	applyLensOrFatal(t, outlinerView, waitingLens(lensTestID(2), "Waiting", ""))
+	if outlinerView.Scope.ProjectID != lensScopeAlphaID {
+		t.Fatalf("an unscoped lens moved the scope to %q", outlinerView.Scope.ProjectID)
 	}
-	if outliner.lensModified() {
+	if outlinerView.LensModified() {
 		t.Fatal("an unowned scope axis reported a divergence from the scope it left alone")
 	}
 
-	outliner.pushProjectScope(lensScopeBetaID)
-	if !outliner.lensModified() {
+	outlinerView.PushProjectScope(lensScopeBetaID)
+	if !outlinerView.LensModified() {
 		t.Fatal("moving the scope under a live lens must mark it modified")
 	}
-	if !strings.HasSuffix(outliner.activeLensLabel(), "*") {
-		t.Fatalf("lens label = %q, want the modified marker", outliner.activeLensLabel())
+	if !strings.HasSuffix(outlinerView.ActiveLensLabel(), "*") {
+		t.Fatalf("lens label = %q, want the modified marker", outlinerView.ActiveLensLabel())
 	}
 }
 
@@ -121,10 +122,10 @@ func TestScopedLensRefusesAProjectTheBaseWorkspaceDoesNotAdmit(t *testing.T) {
 	}
 	for name, testCase := range cases {
 		t.Run(name, func(t *testing.T) {
-			outliner := scopeTestOutliner(archived, parked, live)
-			before := outliner.captureLensState().fingerprint()
+			outlinerView := scopeTestOutliner(archived, parked, live)
+			before := outlinerView.CaptureLensState().Fingerprint()
 
-			cmd, err := outliner.ApplyNamedLens(scopedWaitingLens(lensTestID(3), "Elsewhere", testCase.scope))
+			cmd, err := outlinerView.ApplyNamedLens(scopedWaitingLens(lensTestID(3), "Elsewhere", testCase.scope))
 			if err == nil {
 				t.Fatal("the application accepted a scope the base workspace does not admit")
 			}
@@ -134,10 +135,10 @@ func TestScopedLensRefusesAProjectTheBaseWorkspaceDoesNotAdmit(t *testing.T) {
 			if cmd != nil {
 				t.Fatal("a refusal started a load")
 			}
-			if outliner.hasActiveLens() || outliner.scope.projectID != "" {
+			if outlinerView.HasActiveLens() || outlinerView.Scope.ProjectID != "" {
 				t.Fatal("a refusal wrote an axis")
 			}
-			if outliner.captureLensState().fingerprint() != before {
+			if outlinerView.CaptureLensState().Fingerprint() != before {
 				t.Fatal("a refusal moved a lens-owned axis")
 			}
 		})
@@ -150,21 +151,21 @@ func TestScopedLensRefusesAProjectTheBaseWorkspaceDoesNotAdmit(t *testing.T) {
 func TestCapturingAScopeSkipsAParkedFocusAndTheSingleProjectView(t *testing.T) {
 	parked := lensScopeProject(lensScopeBetaID)
 	parked.Tags = []string{models.ParkedProjectTag}
-	outliner := scopeTestOutliner(lensScopeProject(lensScopeAlphaID), parked)
-	outliner.scope.projectID = lensScopeBetaID
-	outliner.scope.parkedProjectID = lensScopeBetaID
-	if scope := outliner.captureLensState().scopeProjectID; scope != "" {
+	outlinerView := scopeTestOutliner(lensScopeProject(lensScopeAlphaID), parked)
+	outlinerView.Scope.ProjectID = lensScopeBetaID
+	outlinerView.Scope.ParkedProjectID = lensScopeBetaID
+	if scope := outlinerView.CaptureLensState().ScopeProjectID; scope != "" {
 		t.Fatalf("captured scope = %q, want none for a parked focus", scope)
 	}
 
-	outliner.scope.projectID = lensScopeAlphaID
-	outliner.scope.parkedProjectID = ""
-	if scope := outliner.captureLensState().scopeProjectID; scope != lensScopeAlphaID {
+	outlinerView.Scope.ProjectID = lensScopeAlphaID
+	outlinerView.Scope.ParkedProjectID = ""
+	if scope := outlinerView.CaptureLensState().ScopeProjectID; scope != lensScopeAlphaID {
 		t.Fatalf("captured scope = %q, want the admissible %q", scope, lensScopeAlphaID)
 	}
 
-	single := NewOutlinerModel(lensScopeProject(lensScopeAlphaID), nil, nil)
-	if scope := single.captureLensState().scopeProjectID; scope != "" {
+	single := outliner.NewOutlinerModel(lensScopeProject(lensScopeAlphaID), nil, nil)
+	if scope := single.CaptureLensState().ScopeProjectID; scope != "" {
 		t.Fatalf("the single-project Outliner captured a scope %q", scope)
 	}
 }
@@ -175,21 +176,21 @@ func TestCapturingAScopeSkipsAParkedFocusAndTheSingleProjectView(t *testing.T) {
 func TestPublishingALensRecordsTheActivePointerAndDismissalClearsIt(t *testing.T) {
 	app := lensOperationApp(t)
 	app.wireOutlinerOperationExecutor(app.crossOutliner)
-	outliner := app.crossOutliner
+	outlinerView := app.crossOutliner
 
 	lens := waitingLens(lensTestID(4), "Waiting", "")
-	applyLensOrFatal(t, outliner, lens)
+	applyLensOrFatal(t, outlinerView, lens)
 	if got := app.runtime.Machine().ActiveLensID; got != lens.ID {
 		t.Fatalf("active lens pointer = %q, want the published %q", got, lens.ID)
 	}
 
-	outliner.restoreLensBaseline()
+	outlinerView.RestoreLensBaseline()
 	if got := app.runtime.Machine().ActiveLensID; got != "" {
 		t.Fatalf("restoring the baseline left the pointer at %q", got)
 	}
 
-	applyLensOrFatal(t, outliner, lens)
-	outliner.resetToGlobalAll()
+	applyLensOrFatal(t, outlinerView, lens)
+	outlinerView.ResetToGlobalAll()
 	if got := app.runtime.Machine().ActiveLensID; got != "" {
 		t.Fatalf("the global reset left the pointer at %q", got)
 	}
@@ -199,15 +200,15 @@ func TestPublishingALensRecordsTheActivePointerAndDismissalClearsIt(t *testing.T
 // already live by the time the write runs, so the failure is reported and the
 // application stands.
 func TestAFailedActiveLensPointerCommitLeavesTheLensApplied(t *testing.T) {
-	outliner := lensLifecycleOutliner()
-	outliner.lens.persist = func(string) error { return errors.New("machine-local state is unavailable") }
+	outlinerView := lensLifecycleOutliner()
+	outlinerView.Lens.Persist = func(string) error { return errors.New("machine-local state is unavailable") }
 
 	lens := waitingLens(lensTestID(5), "Waiting", "")
-	applyLensOrFatal(t, outliner, lens)
-	if !outliner.hasActiveLens() {
+	applyLensOrFatal(t, outlinerView, lens)
+	if !outlinerView.HasActiveLens() {
 		t.Fatal("a failed pointer commit abandoned the application it only annotates")
 	}
-	if !strings.Contains(outliner.StatusMessage, "Could not remember the active lens") {
-		t.Fatalf("status = %q, want the degraded pointer warning", outliner.StatusMessage)
+	if !strings.Contains(outlinerView.StatusMessage, "Could not remember the active lens") {
+		t.Fatalf("status = %q, want the degraded pointer warning", outlinerView.StatusMessage)
 	}
 }

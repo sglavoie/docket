@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -19,7 +20,7 @@ import (
 type inboxAsyncEnv struct {
 	env      *appBulkPickerEnv
 	model    *AppModel
-	outliner *OutlinerModel
+	outliner *outliner.OutlinerModel
 }
 
 func newInboxAsyncEnv(t *testing.T, taskGroups ...[]*models.Task) *inboxAsyncEnv {
@@ -37,14 +38,14 @@ func newInboxAsyncEnv(t *testing.T, taskGroups ...[]*models.Task) *inboxAsyncEnv
 		t.Fatalf("register task operations: %v", err)
 	}
 
-	outliner := NewOutlinerModel(nil, model.configManager, model.runtime)
-	outliner.population.projects = env.projects
-	outliner.population.invalidate()
-	outliner.selectOutlinerMode(chrome.ModeInbox)
-	model.crossOutliner = outliner
-	model.views.Register(presentation.ViewCrossProjectOutliner, outliner)
-	model.wireOutlinerOperationExecutor(outliner)
-	return &inboxAsyncEnv{env: env, model: model, outliner: outliner}
+	outlinerView := outliner.NewOutlinerModel(nil, model.configManager, model.runtime)
+	outlinerView.Population.Projects = env.projects
+	outlinerView.Population.Invalidate()
+	outlinerView.SelectOutlinerMode(chrome.ModeInbox)
+	model.crossOutliner = outlinerView
+	model.views.Register(presentation.ViewCrossProjectOutliner, outlinerView)
+	model.wireOutlinerOperationExecutor(outlinerView)
+	return &inboxAsyncEnv{env: env, model: model, outliner: outlinerView}
 }
 
 // commitState drives operationTaskSetState the way a $-chord does and returns
@@ -83,11 +84,11 @@ func (e *inboxAsyncEnv) applyReload(t *testing.T, saveCmd tea.Cmd) {
 		}
 		msg = batch[0]()
 	}
-	loaded, ok := msg.(crossProjectsLoadedMsg)
+	loaded, ok := msg.(outliner.CrossProjectsLoadedMsg)
 	if !ok {
 		t.Fatalf("nested reload command = %T, want crossProjectsLoadedMsg", msg)
 	}
-	e.outliner.handleCrossProjectsLoaded(loaded)
+	e.outliner.HandleCrossProjectsLoaded(loaded)
 }
 
 func (e *inboxAsyncEnv) identity(t *testing.T, projectIndex int, taskID string) taskref.TaskIdentity {
@@ -117,7 +118,7 @@ func TestInboxAsyncDoneAdvancesAcrossAProjectGroupHeader(t *testing.T) {
 
 	inboxCursorTo(t, async.outliner, alphaTwo.ID)
 	saveCmd := async.commitState(t, models.StateDone)
-	if async.outliner.relocationHistory.pending == nil {
+	if async.outliner.RelocationHistory.Pending == nil {
 		t.Fatal("committed async state update did not survive its own refresh")
 	}
 	async.applyReload(t, saveCmd)
@@ -182,7 +183,7 @@ func TestInboxAsyncCursorMoveAwayAndBackBeforeReloadVoidsAdvance(t *testing.T) {
 
 	inboxCursorTo(t, async.outliner, alphaTwo.ID)
 	saveCmd := async.commitState(t, models.StateDone)
-	pending := async.outliner.relocationHistory.pending
+	pending := async.outliner.RelocationHistory.Pending
 	if pending == nil {
 		t.Fatal("committed async state update did not survive its own refresh")
 	}
@@ -205,7 +206,7 @@ func TestInboxAsyncCursorMoveAwayAndBackBeforeReloadVoidsAdvance(t *testing.T) {
 
 	async.applyReload(t, saveCmd)
 
-	if async.outliner.relocationHistory.pending != nil {
+	if async.outliner.RelocationHistory.Pending != nil {
 		t.Fatal("a cursor move away and back left the relocation capture armed")
 	}
 	if got := async.outliner.CurrentTaskIdentity(); got != returned {
@@ -231,7 +232,7 @@ func TestInboxAsyncHeaderJumpAwayAndBackBeforeReloadVoidsAdvance(t *testing.T) {
 
 	inboxCursorTo(t, async.outliner, alphaTwo.ID)
 	saveCmd := async.commitState(t, models.StateDone)
-	pending := async.outliner.relocationHistory.pending
+	pending := async.outliner.RelocationHistory.Pending
 	if pending == nil {
 		t.Fatal("committed async state update did not survive its own refresh")
 	}
@@ -239,36 +240,36 @@ func TestInboxAsyncHeaderJumpAwayAndBackBeforeReloadVoidsAdvance(t *testing.T) {
 	if async.outliner.Cursor != settled {
 		t.Fatalf("cursor = %d, want the settled cursor %d", async.outliner.Cursor, settled)
 	}
-	if settled < 0 || settled >= len(async.outliner.rows) || !async.outliner.rows[settled].isHeaderRow() {
+	if settled < 0 || settled >= len(async.outliner.Rows) || !async.outliner.Rows[settled].IsHeaderRow() {
 		t.Fatalf("the fixture did not settle the cursor on a project header at row %d", settled)
 	}
 
 	// n then N while the disk refresh is still in flight: the header jump wraps to
 	// the other project header and back onto the settled one.
-	if _, moved := async.outliner.moveCursorToAdjacentHeader(1); !moved {
+	if _, moved := async.outliner.MoveCursorToAdjacentHeader(1); !moved {
 		t.Fatal("n found no header to jump to")
 	}
 	if async.outliner.Cursor == settled {
 		t.Fatal("the fixture did not actually move the cursor off the settled header")
 	}
-	if _, moved := async.outliner.moveCursorToAdjacentHeader(-1); !moved {
+	if _, moved := async.outliner.MoveCursorToAdjacentHeader(-1); !moved {
 		t.Fatal("N found no header to jump back to")
 	}
 	if async.outliner.Cursor != settled {
 		t.Fatalf("cursor = %d after jumping back, want the settled cursor %d", async.outliner.Cursor, settled)
 	}
-	returnedHeader := async.outliner.rows[settled].effectiveCollapseKey()
+	returnedHeader := async.outliner.Rows[settled].EffectiveCollapseKey()
 
 	async.applyReload(t, saveCmd)
 
-	if async.outliner.relocationHistory.pending != nil {
+	if async.outliner.RelocationHistory.Pending != nil {
 		t.Fatal("a header jump away and back left the relocation capture armed")
 	}
-	if async.outliner.Cursor < 0 || async.outliner.Cursor >= len(async.outliner.rows) {
+	if async.outliner.Cursor < 0 || async.outliner.Cursor >= len(async.outliner.Rows) {
 		t.Fatalf("cursor = %d is outside the reloaded projection", async.outliner.Cursor)
 	}
-	row := async.outliner.rows[async.outliner.Cursor]
-	if !row.isHeaderRow() || row.effectiveCollapseKey() != returnedHeader {
+	row := async.outliner.Rows[async.outliner.Cursor]
+	if !row.IsHeaderRow() || row.EffectiveCollapseKey() != returnedHeader {
 		t.Fatalf("cursor row = %+v, want the project header the user returned to %q", row, returnedHeader)
 	}
 }
@@ -298,7 +299,7 @@ func TestInboxAsyncCursorMoveBeforeTheReloadVoidsTheAdvance(t *testing.T) {
 
 	async.applyReload(t, saveCmd)
 
-	if async.outliner.relocationHistory.pending != nil {
+	if async.outliner.RelocationHistory.Pending != nil {
 		t.Fatal("a genuine cursor move left the relocation capture armed")
 	}
 	if got := async.outliner.CurrentTaskIdentity(); got != moved {

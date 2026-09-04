@@ -6,6 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -22,7 +23,7 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 		deletedProject := &models.Project{ID: "proj-deleted"}
 
 		// Populate in-memory lists with both valid and stale entries
-		app.nextOrder = []PlanningTask{
+		app.nextOrder = []outliner.PlanningTask{
 			{Task: task1, Project: project},
 			{Task: deletedTask, Project: deletedProject},
 			{Task: task2, Project: project},
@@ -32,7 +33,7 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 			taskref.For(deletedTask, deletedProject): true,
 			taskref.For(task2, project):              true,
 		}
-		app.today = []PlanningTask{
+		app.today = []outliner.PlanningTask{
 			{Task: deletedTask, Project: deletedProject},
 		}
 		app.todayIDs = map[taskref.TaskIdentity]bool{
@@ -82,7 +83,7 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 		addTestAppProject(app, otherProject)
 
 		// Put tasks from both projects in the focus queue
-		app.nextOrder = []PlanningTask{
+		app.nextOrder = []outliner.PlanningTask{
 			{Task: task1, Project: project},
 			{Task: otherTask, Project: otherProject},
 		}
@@ -90,7 +91,7 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 			taskref.For(task1, project):          true,
 			taskref.For(otherTask, otherProject): true,
 		}
-		app.today = []PlanningTask{}
+		app.today = []outliner.PlanningTask{}
 		app.todayIDs = map[taskref.TaskIdentity]bool{}
 		app.pruneDeletedTaskRefs()
 
@@ -113,9 +114,9 @@ func TestPruneDeletedTaskRefs(t *testing.T) {
 		app, project := newTestAppModelWithProject()
 		task1 := project.Tasks[0]
 
-		app.nextOrder = []PlanningTask{{Task: task1, Project: project}}
+		app.nextOrder = []outliner.PlanningTask{{Task: task1, Project: project}}
 		app.nextOrderIDs = map[taskref.TaskIdentity]bool{taskref.For(task1, project): true}
-		app.today = []PlanningTask{}
+		app.today = []outliner.PlanningTask{}
 		app.todayIDs = map[taskref.TaskIdentity]bool{}
 		app.pruneDeletedTaskRefs()
 

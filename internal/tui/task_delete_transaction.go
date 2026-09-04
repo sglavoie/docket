@@ -308,7 +308,7 @@ func (m *AppModel) confirmTaskDelete() tea.Cmd {
 	if len(roots) == 0 {
 		return nil
 	}
-	m.appService.WithPlanningArtifacts(shellStructuralPlanningArtifactBuilder(m.runtime, m.configManager))
+	m.appService.WithPlanningArtifacts(coordinator.StructuralPlanningArtifacts(m.runtime, m.configManager))
 
 	locators := taskLocatorsFromTaskRefs(roots)
 	cmd := m.secondaryFeatures.Bulk.DeleteLocators(locators)

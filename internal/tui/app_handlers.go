@@ -14,11 +14,11 @@ import (
 // Persist the canonical mode DTO for the active Outliner scope. Filter facets
 // are run-local and typed navigation continues to own scope and route hierarchy.
 func (m *AppModel) saveOutlinerFilterState() {
-	outliner := m.crossOutliner
-	if outliner == nil {
+	outlinerView := m.crossOutliner
+	if outlinerView == nil {
 		return
 	}
-	if err := outliner.persistActiveRouteState(); err != nil {
+	if err := outlinerView.PersistActiveRouteState(); err != nil {
 		logging.Warn("failed to persist Outliner route state: %v", err)
 	}
 }

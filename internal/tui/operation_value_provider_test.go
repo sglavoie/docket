@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -269,7 +270,7 @@ func TestBulkTagPickerRepresentsAllSomeNoneAndEmitsPatch(t *testing.T) {
 	for index, task := range []*models.Task{common, other} {
 		project := env.projects[index]
 		context.Selection.Tasks = append(context.Selection.Tasks, taskref.For(task, project))
-		context.Selection.Entities = append(context.Selection.Entities, taskOperationEntity(task, project))
+		context.Selection.Entities = append(context.Selection.Entities, outliner.TaskOperationEntity(task, project))
 	}
 	context.Entity = context.Selection.Entities[0]
 	request := operation.OperationExecutionRequest{
@@ -339,7 +340,7 @@ func TestBulkContextRowsReadIndeterminateAndWriteOnlyWhenPicked(t *testing.T) {
 	for index, task := range []*models.Task{first, second} {
 		project := env.projects[index]
 		context.Selection.Tasks = append(context.Selection.Tasks, taskref.For(task, project))
-		context.Selection.Entities = append(context.Selection.Entities, taskOperationEntity(task, project))
+		context.Selection.Entities = append(context.Selection.Entities, outliner.TaskOperationEntity(task, project))
 	}
 	context.Entity = context.Selection.Entities[0]
 	picker, err := model.newOperationValuePicker(

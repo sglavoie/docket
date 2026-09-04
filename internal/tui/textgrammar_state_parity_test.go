@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -32,9 +33,9 @@ func TestLifecycleDestinationsMapToCanonicalCreationStates(t *testing.T) {
 				t.Fatalf("edit state = %q (set=%v), want %q", edited.State, edited.StateSet, state)
 			}
 
-			outliner := scopeTestOutliner(project)
-			outliner.SetSearchQuery(input)
-			gate := outliner.search.gate
+			outlinerView := scopeTestOutliner(project)
+			outlinerView.SetSearchQuery(input)
+			gate := outlinerView.Search.Gate
 			searched, ok := gate.CompiledDestination()
 			if !ok || searched.WorkflowState() != state {
 				t.Fatalf("search destination = %q (set=%v), want state %q", searched, ok, state)
@@ -49,9 +50,9 @@ func TestLifecycleDestinationsMapToCanonicalCreationStates(t *testing.T) {
 func TestSearchPlanningDestinationsAreMembershipRatherThanState(t *testing.T) {
 	project := &models.Project{Name: "Grammar", ID: "grammar", Slug: "grammar"}
 	for _, name := range []string{"today", "next"} {
-		outliner := scopeTestOutliner(project)
-		outliner.SetSearchQuery("Task $" + name)
-		gate := outliner.search.gate
+		outlinerView := scopeTestOutliner(project)
+		outlinerView.SetSearchQuery("Task $" + name)
+		gate := outlinerView.Search.Gate
 		destination, ok := gate.CompiledDestination()
 		if !ok {
 			t.Fatalf("$%s produced no destination gate", name)
@@ -91,7 +92,7 @@ func TestDestinationGrammarDrivesCompletionHelpAndGuidance(t *testing.T) {
 		if err != nil {
 			t.Fatalf("quick-edit parse %q: %v", token, err)
 		}
-		req := taskLineEditRequest(taskref.TaskIdentity{ProjectID: project.ID, TaskID: task.ID}, result)
+		req := outliner.TaskLineEditRequest(taskref.TaskIdentity{ProjectID: project.ID, TaskID: task.ID}, result)
 		if req.Destination == nil || string(*req.Destination) != name {
 			t.Errorf("quick-edit request destination = %v, want %q", req.Destination, name)
 		}

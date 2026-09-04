@@ -8,13 +8,14 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // toggleToday adds or removes the focused task from the daily plan.
 // Returns a status timeout cmd on success, or nil if no task is available.
-func (m *AppModel) toggleToday(capture *outlinerRelocationCapture) tea.Cmd {
+func (m *AppModel) toggleToday(capture *outliner.OutlinerRelocationCapture) tea.Cmd {
 	view := m.activeView()
 	if view == nil {
 		return nil

@@ -6,12 +6,13 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
-func projectHeaderIndex(t *testing.T, outliner *OutlinerModel, projectID string) int {
+func projectHeaderIndex(t *testing.T, outlinerView *outliner.OutlinerModel, projectID string) int {
 	t.Helper()
-	for index, row := range outliner.rows {
+	for index, row := range outlinerView.Rows {
 		if row.IsProjectHeader && row.ProjectID == projectID {
 			return index
 		}
@@ -22,10 +23,10 @@ func projectHeaderIndex(t *testing.T, outliner *OutlinerModel, projectID string)
 
 // sectionHeaderAboveCursor names the section the cursor row belongs to, so a
 // fixture test can zoom into it without knowing the fixture's section labels.
-func sectionHeaderAboveCursor(t *testing.T, outliner *OutlinerModel) int {
+func sectionHeaderAboveCursor(t *testing.T, outlinerView *outliner.OutlinerModel) int {
 	t.Helper()
-	for index := outliner.Cursor; index >= 0; index-- {
-		row := outliner.rows[index]
+	for index := outlinerView.Cursor; index >= 0; index-- {
+		row := outlinerView.Rows[index]
 		if row.IsSectionHeader && !row.IsProjectHeader {
 			return index
 		}
@@ -40,48 +41,48 @@ func sectionHeaderAboveCursor(t *testing.T, outliner *OutlinerModel) int {
 func TestSectionZoomScopeRoundTripDropsAndRestoresTheZoom(t *testing.T) {
 	alpha := primaryRowsProject("alpha", primaryRowsTask("alpha-doing", models.StateDoing))
 	beta := primaryRowsProject("beta", primaryRowsTask("beta-doing", models.StateDoing))
-	outliner, _ := primaryRowsOutliner(alpha, beta)
-	outliner.selectOutlinerMode(chrome.ModeAll)
+	outlinerView, _ := primaryRowsOutliner(alpha, beta)
+	outlinerView.SelectOutlinerMode(chrome.ModeAll)
 
 	doingLabel := models.StateGroupDoing.Label()
-	zoomIntoSection(t, outliner, doingLabel)
-	zoomed := outliner.focus.zoom
+	zoomIntoSection(t, outlinerView, doingLabel)
+	zoomed := outlinerView.Focus.Zoom
 
-	headerIndex := projectHeaderIndex(t, outliner, beta.ID)
-	outliner.Cursor = headerIndex
-	if !outliner.activateGroupAtCursor() {
+	headerIndex := projectHeaderIndex(t, outlinerView, beta.ID)
+	outlinerView.Cursor = headerIndex
+	if !outlinerView.ActivateGroupAtCursor() {
 		t.Fatal("Enter on the project sub-header was refused")
 	}
-	if outliner.scope.projectID != beta.ID {
-		t.Fatalf("scoped project = %q, want %q", outliner.scope.projectID, beta.ID)
+	if outlinerView.Scope.ProjectID != beta.ID {
+		t.Fatalf("scoped project = %q, want %q", outlinerView.Scope.ProjectID, beta.ID)
 	}
-	if outliner.focus.zoom.active() {
-		t.Fatalf("the scope push kept the zoom %+v", outliner.focus.zoom)
+	if outlinerView.Focus.Zoom.Active() {
+		t.Fatalf("the scope push kept the zoom %+v", outlinerView.Focus.Zoom)
 	}
-	for _, row := range outliner.rows {
-		if row.isTaskRow() && row.ProjectID == alpha.ID {
+	for _, row := range outlinerView.Rows {
+		if row.IsTaskRow() && row.ProjectID == alpha.ID {
 			t.Fatal("the scoped projection still lists the other project's tasks")
 		}
 	}
 
-	if !outliner.popProjectScope() {
+	if !outlinerView.PopProjectScope() {
 		t.Fatal("Esc did not pop the project scope")
 	}
-	if outliner.focus.zoom != zoomed {
-		t.Fatalf("the popped scope restored zoom %+v, want %+v", outliner.focus.zoom, zoomed)
+	if outlinerView.Focus.Zoom != zoomed {
+		t.Fatalf("the popped scope restored zoom %+v, want %+v", outlinerView.Focus.Zoom, zoomed)
 	}
-	if outliner.Cursor != headerIndex {
-		t.Fatalf("restored cursor = %d, want the pre-push %d", outliner.Cursor, headerIndex)
+	if outlinerView.Cursor != headerIndex {
+		t.Fatalf("restored cursor = %d, want the pre-push %d", outlinerView.Cursor, headerIndex)
 	}
-	if names := sectionHeaderNames(outliner); len(names) != 1 || names[0] != doingLabel {
+	if names := sectionHeaderNames(outlinerView); len(names) != 1 || names[0] != doingLabel {
 		t.Fatalf("restored sections = %v, want the zoomed %q alone", names, doingLabel)
 	}
 
-	if !outliner.exitSectionZoom() {
+	if !outlinerView.ExitSectionZoom() {
 		t.Fatal("the second Esc did not leave the restored zoom")
 	}
-	if outliner.focus.zoom.active() || outliner.isProjectScoped() {
-		t.Fatalf("base state = zoom %+v scoped %t, want neither", outliner.focus.zoom, outliner.isProjectScoped())
+	if outlinerView.Focus.Zoom.Active() || outlinerView.IsProjectScoped() {
+		t.Fatalf("base state = zoom %+v scoped %t, want neither", outlinerView.Focus.Zoom, outlinerView.IsProjectScoped())
 	}
 }
 
@@ -89,18 +90,18 @@ func TestSectionZoomIsClearedByAModeChange(t *testing.T) {
 	doing := primaryRowsTask("doing", models.StateDoing)
 	backlog := primaryRowsTask("backlog", models.StateBacklog)
 	project := primaryRowsProject("alpha", doing, backlog)
-	outliner, _ := primaryRowsOutliner(project)
-	outliner.selectOutlinerMode(chrome.ModeAll)
+	outlinerView, _ := primaryRowsOutliner(project)
+	outlinerView.SelectOutlinerMode(chrome.ModeAll)
 
-	zoomIntoSection(t, outliner, models.StateGroupDoing.Label())
-	outliner.selectOutlinerMode(chrome.ModeBacklog)
+	zoomIntoSection(t, outlinerView, models.StateGroupDoing.Label())
+	outlinerView.SelectOutlinerMode(chrome.ModeBacklog)
 
-	if outliner.focus.zoom.active() {
-		t.Fatalf("the mode change kept the zoom %+v, which names a section Backlog never emits", outliner.focus.zoom)
+	if outlinerView.Focus.Zoom.Active() {
+		t.Fatalf("the mode change kept the zoom %+v, which names a section Backlog never emits", outlinerView.Focus.Zoom)
 	}
 	listed := false
-	for _, row := range outliner.rows {
-		if row.isTaskRow() && row.task.ID == backlog.ID {
+	for _, row := range outlinerView.Rows {
+		if row.IsTaskRow() && row.Task.ID == backlog.ID {
 			listed = true
 		}
 	}
@@ -113,23 +114,23 @@ func TestSectionZoomIsSuspendedForSearchAndRestoredOnClear(t *testing.T) {
 	doing := primaryRowsTask("doing", models.StateDoing)
 	backlog := primaryRowsTask("backlog", models.StateBacklog)
 	project := primaryRowsProject("alpha", doing, backlog)
-	outliner, _ := primaryRowsOutliner(project)
-	outliner.selectOutlinerMode(chrome.ModeAll)
+	outlinerView, _ := primaryRowsOutliner(project)
+	outlinerView.SelectOutlinerMode(chrome.ModeAll)
 
 	doingLabel := models.StateGroupDoing.Label()
-	zoomIntoSection(t, outliner, doingLabel)
-	zoomed := outliner.focus.zoom
+	zoomIntoSection(t, outlinerView, doingLabel)
+	zoomed := outlinerView.Focus.Zoom
 
-	searchRankedList(outliner, "backlog")
-	if outliner.focus.zoom.active() {
-		t.Fatalf("search left the zoom %+v live over rows no section gate builds", outliner.focus.zoom)
+	searchRankedList(outlinerView, "backlog")
+	if outlinerView.Focus.Zoom.Active() {
+		t.Fatalf("search left the zoom %+v live over rows no section gate builds", outlinerView.Focus.Zoom)
 	}
-	if names := sectionHeaderNames(outliner); len(names) != 0 {
+	if names := sectionHeaderNames(outlinerView); len(names) != 0 {
 		t.Fatalf("search rows carried section headers %v", names)
 	}
 	reached := false
-	for _, row := range outliner.rows {
-		if row.isTaskRow() && row.task.ID == backlog.ID {
+	for _, row := range outlinerView.Rows {
+		if row.IsTaskRow() && row.Task.ID == backlog.ID {
 			reached = true
 		}
 	}
@@ -137,11 +138,11 @@ func TestSectionZoomIsSuspendedForSearchAndRestoredOnClear(t *testing.T) {
 		t.Fatal("search stayed inside the suspended zoom instead of ranging over the scope")
 	}
 
-	outliner.ClearSearch()
-	if outliner.focus.zoom != zoomed {
-		t.Fatalf("ClearSearch restored zoom %+v, want %+v", outliner.focus.zoom, zoomed)
+	outlinerView.ClearSearch()
+	if outlinerView.Focus.Zoom != zoomed {
+		t.Fatalf("ClearSearch restored zoom %+v, want %+v", outlinerView.Focus.Zoom, zoomed)
 	}
-	if names := sectionHeaderNames(outliner); len(names) != 1 || names[0] != doingLabel {
+	if names := sectionHeaderNames(outlinerView); len(names) != 1 || names[0] != doingLabel {
 		t.Fatalf("restored sections = %v, want the zoomed %q alone", names, doingLabel)
 	}
 }
@@ -150,20 +151,20 @@ func TestSectionZoomIsClearedByResetToGlobalAll(t *testing.T) {
 	doing := primaryRowsTask("doing", models.StateDoing)
 	backlog := primaryRowsTask("backlog", models.StateBacklog)
 	project := primaryRowsProject("alpha", doing, backlog)
-	outliner, _ := primaryRowsOutliner(project)
-	outliner.selectOutlinerMode(chrome.ModeAll)
+	outlinerView, _ := primaryRowsOutliner(project)
+	outlinerView.SelectOutlinerMode(chrome.ModeAll)
 
-	zoomIntoSection(t, outliner, models.StateGroupDoing.Label())
-	outliner.resetToGlobalAll()
+	zoomIntoSection(t, outlinerView, models.StateGroupDoing.Label())
+	outlinerView.ResetToGlobalAll()
 
-	if outliner.focus.zoom.active() {
-		t.Fatalf("the global reset left the zoom %+v narrowing the root", outliner.focus.zoom)
+	if outlinerView.Focus.Zoom.Active() {
+		t.Fatalf("the global reset left the zoom %+v narrowing the root", outlinerView.Focus.Zoom)
 	}
-	if outliner.primaryMode != chrome.ModeAll {
-		t.Fatalf("reset mode = %q, want %q", outliner.primaryMode, chrome.ModeAll)
+	if outlinerView.PrimaryMode != chrome.ModeAll {
+		t.Fatalf("reset mode = %q, want %q", outlinerView.PrimaryMode, chrome.ModeAll)
 	}
-	if len(sectionHeaderNames(outliner)) < 2 {
-		t.Fatalf("reset sections = %v, want the whole mode back", sectionHeaderNames(outliner))
+	if len(sectionHeaderNames(outlinerView)) < 2 {
+		t.Fatalf("reset sections = %v, want the whole mode back", sectionHeaderNames(outlinerView))
 	}
 }
 
@@ -176,15 +177,15 @@ func TestSectionZoomThawsTheRecencyFreeze(t *testing.T) {
 		recentTask("touched-today", models.StateBacklog, 0),
 		recentTask("touched-yesterday", models.StateBacklog, 1),
 	)
-	outliner, _ := primaryRowsOutliner(project)
-	outliner.selectOutlinerMode(chrome.ModeRecent)
+	outlinerView, _ := primaryRowsOutliner(project)
+	outlinerView.SelectOutlinerMode(chrome.ModeRecent)
 
-	frozen := outliner.recency.projection
+	frozen := outlinerView.Recency.Projection
 	if frozen == "" {
 		t.Fatal("Recent froze no projection fingerprint to compare against")
 	}
-	zoomIntoSection(t, outliner, "Yesterday")
-	if outliner.recency.projection == frozen {
+	zoomIntoSection(t, outlinerView, "Yesterday")
+	if outlinerView.Recency.Projection == frozen {
 		t.Fatal("the zoom left the recency freeze intact")
 	}
 }
@@ -193,26 +194,26 @@ func TestSectionZoomThawsTheRecencyFreeze(t *testing.T) {
 // and forces All — two clears the jump must not have to think about.
 func TestSectionZoomIsClearedByGotoTaskProject(t *testing.T) {
 	driver := gotoProjectDriver(t)
-	outliner := gotoProjectOutliner(t, driver)
+	outlinerView := gotoProjectOutliner(t, driver)
 	beta := gotoProjectID(t, driver.App())
 
-	gotoProjectCursorOnTask(t, outliner)
-	headerIndex := sectionHeaderAboveCursor(t, outliner)
-	outliner.Cursor = headerIndex
-	if !outliner.enterSectionZoom(outliner.rows[headerIndex]) {
+	gotoProjectCursorOnTask(t, outlinerView)
+	headerIndex := sectionHeaderAboveCursor(t, outlinerView)
+	outlinerView.Cursor = headerIndex
+	if !outlinerView.EnterSectionZoom(outlinerView.Rows[headerIndex]) {
 		t.Fatal("the section header refused the zoom")
 	}
-	gotoProjectCursorOnTask(t, outliner)
+	gotoProjectCursorOnTask(t, outlinerView)
 
 	sortPressKeys(t, driver, "g", "p")
 
-	if outliner.focus.zoom.active() {
-		t.Fatalf("gp landed still zoomed to %+v", outliner.focus.zoom)
+	if outlinerView.Focus.Zoom.Active() {
+		t.Fatalf("gp landed still zoomed to %+v", outlinerView.Focus.Zoom)
 	}
-	if outliner.scope.projectID != beta || outliner.primaryMode != chrome.ModeAll {
+	if outlinerView.Scope.ProjectID != beta || outlinerView.PrimaryMode != chrome.ModeAll {
 		t.Fatalf(
 			"landing = scope %q mode %q, want %q and %q",
-			outliner.scope.projectID, outliner.primaryMode, beta, chrome.ModeAll,
+			outlinerView.Scope.ProjectID, outlinerView.PrimaryMode, beta, chrome.ModeAll,
 		)
 	}
 }
@@ -225,24 +226,24 @@ func TestEscCascadeUnwindsZoomBetweenFocusAndScope(t *testing.T) {
 	child := primaryRowsTask("child", models.StateDoing)
 	child.ParentID = &root.ID
 	project := primaryRowsProject("alpha", root, child)
-	outliner := scopeTestOutliner(project)
-	outliner.selectOutlinerMode(chrome.ModeAll)
-	outliner.pushProjectScope(project.ID)
+	outlinerView := scopeTestOutliner(project)
+	outlinerView.SelectOutlinerMode(chrome.ModeAll)
+	outlinerView.PushProjectScope(project.ID)
 
-	zoomIntoSection(t, outliner, models.StateGroupDoing.Label())
-	if !outliner.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) ||
-		!outliner.focusSubtreeAtCursor() {
+	zoomIntoSection(t, outlinerView, models.StateGroupDoing.Label())
+	if !outlinerView.MoveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) ||
+		!outlinerView.FocusSubtreeAtCursor() {
 		t.Fatal("could not seed task Focus inside the zoom")
 	}
-	outliner.peekMode = true
+	outlinerView.PeekMode = true
 
 	assertState := func(step string, peek bool, focusDepth int, zoomed, scoped bool) {
 		t.Helper()
-		if outliner.peekMode != peek || len(outliner.focus.crossStack) != focusDepth ||
-			outliner.focus.zoom.active() != zoomed || outliner.isProjectScoped() != scoped {
+		if outlinerView.PeekMode != peek || len(outlinerView.Focus.CrossStack) != focusDepth ||
+			outlinerView.Focus.Zoom.Active() != zoomed || outlinerView.IsProjectScoped() != scoped {
 			t.Fatalf("%s state = peek %t focus %d zoomed %t scoped %t",
-				step, outliner.peekMode, len(outliner.focus.crossStack),
-				outliner.focus.zoom.active(), outliner.isProjectScoped())
+				step, outlinerView.PeekMode, len(outlinerView.Focus.CrossStack),
+				outlinerView.Focus.Zoom.Active(), outlinerView.IsProjectScoped())
 		}
 	}
 	assertState("initial", true, 1, true, true)
@@ -257,7 +258,7 @@ func TestEscCascadeUnwindsZoomBetweenFocusAndScope(t *testing.T) {
 		{false, 0, false, true},
 		{false, 0, false, false},
 	} {
-		if !listsurface.RunEscCascade(outliner.escSteps()) {
+		if !listsurface.RunEscCascade(outlinerView.EscSteps()) {
 			t.Fatalf("Esc step %d was not handled", index+1)
 		}
 		assertState("after Esc", want.peek, want.focusDepth, want.zoomed, want.scoped)

@@ -56,15 +56,15 @@ func TestFullscreenWorkspacePulseTitleRendersZeroAndNonzeroStates(t *testing.T) 
 
 func TestTodayPaceReadoutIsTodayOnlyAndRequiresHistory(t *testing.T) {
 	project := scopeTestProject("alpha", "Alpha", "launch")
-	outliner := scopeTestOutliner(project)
-	outliner.SetWorkspacePulse(pulse.WorkspacePulse{Inbox: 3, Today: 9, Overdue: 1})
-	outliner.SetCompletionActivity(app.CompletionActivity{
+	outlinerView := scopeTestOutliner(project)
+	outlinerView.SetWorkspacePulse(pulse.WorkspacePulse{Inbox: 3, Today: 9, Overdue: 1})
+	outlinerView.SetCompletionActivity(app.CompletionActivity{
 		DailyCompletions: map[time.Time]int{time.Date(2026, time.August, 19, 0, 0, 0, 0, time.UTC): 1},
 	})
 
 	for _, mode := range chrome.OutlinerModeCatalog() {
-		outliner.primaryMode = mode.ID
-		plain := ansi.Strip(outliner.buildOutlinerTitleLine(160))
+		outlinerView.PrimaryMode = mode.ID
+		plain := ansi.Strip(outlinerView.BuildOutlinerTitleLine(160))
 		if mode.ID == chrome.ModeToday {
 			if !strings.Contains(plain, "today 9 · median 0/day (30d)") {
 				t.Fatalf("Today title missing pace readout: %q", plain)
@@ -79,9 +79,9 @@ func TestTodayPaceReadoutIsTodayOnlyAndRequiresHistory(t *testing.T) {
 		}
 	}
 
-	outliner.primaryMode = chrome.ModeToday
-	outliner.SetCompletionActivity(app.CompletionActivity{})
-	plain := ansi.Strip(outliner.buildOutlinerTitleLine(160))
+	outlinerView.PrimaryMode = chrome.ModeToday
+	outlinerView.SetCompletionActivity(app.CompletionActivity{})
+	plain := ansi.Strip(outlinerView.BuildOutlinerTitleLine(160))
 	if strings.Contains(plain, "median") || strings.Contains(plain, "(30d)") {
 		t.Fatalf("history-free workspace rendered a zero pace: %q", plain)
 	}
@@ -93,7 +93,7 @@ func TestAppViewUsesCachedCompletionActivityWithoutRenderTimeRead(t *testing.T) 
 		DailyCompletions: map[time.Time]int{time.Date(2026, time.August, 19, 0, 0, 0, 0, time.UTC): 1},
 	}}
 	model.features.Activity = coordinator.NewActivityCoordinator(reader)
-	model.crossOutliner.primaryMode = chrome.ModeToday
+	model.crossOutliner.PrimaryMode = chrome.ModeToday
 	model.refreshWorkspacePulseAt(time.Now())
 	model.crossOutliner.SetCompletionActivity(app.CompletionActivity{})
 

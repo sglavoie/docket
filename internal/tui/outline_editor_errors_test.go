@@ -9,9 +9,10 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
-func outlineErrorsFixture(count int) *OutlineErrorsViewModel {
+func outlineErrorsFixture(count int) *outliner.OutlineErrorsViewModel {
 	problems := make([]grammar.LineError, 0, count)
 	for i := range count {
 		problems = append(problems, grammar.LineError{
@@ -19,7 +20,7 @@ func outlineErrorsFixture(count int) *OutlineErrorsViewModel {
 			Message: fmt.Sprintf("indent jumps from level 0 to level 2 on problem %d; indent one level at a time", i+1),
 		})
 	}
-	return NewOutlineErrorsViewModel("Sonar", "/tmp/tt-outline-abc123.md", problems)
+	return outliner.NewOutlineErrorsViewModel("Sonar", "/tmp/tt-outline-abc123.md", problems)
 }
 
 func TestOutlineErrorsViewNamesEveryProblemAndKeepsTheBuffer(t *testing.T) {
@@ -108,7 +109,7 @@ func TestOutlineErrorsSubtitleDegradesInsteadOfClipping(t *testing.T) {
 		{budget: 12, want: "12 problems"},
 	}
 	for _, tt := range tests {
-		if got := m.subtitle(tt.budget); got != tt.want {
+		if got := m.Subtitle(tt.budget); got != tt.want {
 			t.Errorf("subtitle(%d) = %q, want %q", tt.budget, got, tt.want)
 		}
 	}

@@ -12,6 +12,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
 func newFilterChordTestApp(t *testing.T) *AppModel {
@@ -29,9 +30,9 @@ func newFilterChordTestApp(t *testing.T) *AppModel {
 	}
 	project.BuildTaskTree()
 	setTestAppProjects(app, project)
-	app.crossOutliner.population.projects = []*models.Project{project}
-	app.crossOutliner.population.invalidate()
-	app.crossOutliner.rebuildRows()
+	app.crossOutliner.Population.Projects = []*models.Project{project}
+	app.crossOutliner.Population.Invalidate()
+	app.crossOutliner.RebuildRows()
 	return app
 }
 
@@ -51,9 +52,9 @@ func pressFilterChord(t *testing.T, app *AppModel, keys string) tea.Cmd {
 	return cmd
 }
 
-func headerTargetProjectHeaderRow(t *testing.T, outliner *OutlinerModel) int {
+func headerTargetProjectHeaderRow(t *testing.T, outlinerView *outliner.OutlinerModel) int {
 	t.Helper()
-	for index, row := range outliner.rows {
+	for index, row := range outlinerView.Rows {
 		if row.IsProjectHeader {
 			return index
 		}
@@ -89,16 +90,16 @@ func parityAuditApp(t *testing.T) *AppModel {
 // sheet projection is evaluated against a real target instead of an empty one.
 func taskActionParityContext(t *testing.T, app *AppModel) operation.CommandContext {
 	t.Helper()
-	outliner := app.crossOutliner
-	if outliner == nil {
+	outlinerView := app.crossOutliner
+	if outlinerView == nil {
 		t.Fatal("fixture app has no Outliner")
 	}
-	for index, row := range outliner.rows {
-		if !row.isTaskRow() {
+	for index, row := range outlinerView.Rows {
+		if !row.IsTaskRow() {
 			continue
 		}
-		outliner.Cursor = index
-		ctx := outliner.operationCommandContext()
+		outlinerView.Cursor = index
+		ctx := outlinerView.OperationCommandContext()
 		if operation.CurrentTaskIdentity(ctx).Valid() {
 			return ctx
 		}

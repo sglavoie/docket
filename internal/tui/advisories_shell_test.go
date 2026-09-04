@@ -6,8 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
 // The shell half of the advisory coverage: the `--no-advisories` option, the
@@ -45,14 +44,14 @@ func TestHiddenAdvisoriesOptionSuppressesTheIndicatorEndToEnd(t *testing.T) {
 // is spent on this, so the View menu row is the only in-TUI route, and it writes
 // machine-local chrome state like the bar's own toggle does.
 func TestAdvisoriesMenuEntryTogglesAndPersists(t *testing.T) {
-	driver, outliner := menuBarDriver(t)
+	driver, outlinerView := menuBarDriver(t)
 
 	if driver.App().runtime.Machine().AdvisoriesHidden {
 		t.Fatal("the fixture launched with advisories already hidden")
 	}
 
 	pressMenuBarKey(t, driver, "ctrl+m")
-	view := menuWithID(t, openMenuBarMenusForTest(t, outliner), menuIDView)
+	view := menuWithID(t, openMenuBarMenusForTest(t, outlinerView), outliner.MenuIDView)
 	if !menuHasLabel(view, "Advisories") {
 		t.Fatalf("the View menu does not offer Advisories: %+v", view.Entries)
 	}
@@ -63,7 +62,7 @@ func TestAdvisoriesMenuEntryTogglesAndPersists(t *testing.T) {
 	if !driver.App().runtime.Machine().AdvisoriesHidden {
 		t.Fatal("hiding advisories did not reach machine state")
 	}
-	if !outliner.advisoriesSuppressed() {
+	if !outlinerView.AdvisoriesSuppressed() {
 		t.Fatal("the Outliner still reads advisories as shown after the toggle")
 	}
 
@@ -73,31 +72,7 @@ func TestAdvisoriesMenuEntryTogglesAndPersists(t *testing.T) {
 	if driver.App().runtime.Machine().AdvisoriesHidden {
 		t.Fatal("showing advisories again did not reach machine state")
 	}
-	if outliner.advisoriesSuppressed() {
+	if outlinerView.AdvisoriesSuppressed() {
 		t.Fatal("the Outliner still suppresses advisories after toggling back")
-	}
-}
-
-// TestAdvisoriesMenuRowCarriesLiveVisibility keeps the checkbox honest: it reads
-// shown, matching how the bar's own row reads, so the dropdown describes state
-// rather than an action.
-func TestAdvisoriesMenuRowCarriesLiveVisibility(t *testing.T) {
-	for _, visible := range []bool{false, true} {
-		var found bool
-		for _, entry := range viewMenuEntries(chrome.ModeAll, true, visible) {
-			if entry.OperationID != operation.OperationCoreToggleAdvisories {
-				continue
-			}
-			found = true
-			if entry.Checked == nil {
-				t.Fatal("the advisories row carries no checkbox state")
-			}
-			if *entry.Checked != visible {
-				t.Errorf("visible=%v resolved checked=%v", visible, *entry.Checked)
-			}
-		}
-		if !found {
-			t.Fatalf("visible=%v: the View menu does not offer the advisories toggle", visible)
-		}
 	}
 }

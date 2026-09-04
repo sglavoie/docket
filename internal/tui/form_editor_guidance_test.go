@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
 // The project creator and editor moved to internal/tui/projecthub with the
@@ -49,8 +50,8 @@ func TestFormEditorMinimumLayoutsBudgetRenderedGuidance(t *testing.T) {
 func TestQuickEditGuidanceOwnsGrammarAndLocalBarDoesNotDuplicateIt(t *testing.T) {
 	task := &models.Task{ID: "task", Title: "Task", WorkflowState: models.StateBacklog}
 	project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{task}}
-	out := NewOutlinerModel(project, nil, nil)
-	out.quickEdit.Enter(task, false)
+	out := outliner.NewOutlinerModel(project, nil, nil)
+	out.QuickEdit.Enter(task, false)
 
 	spec, ok := out.ContextualGuidance()
 	assertRequiredGuidance(t, "quick edit", spec, ok, "Enter save", "Esc cancel")

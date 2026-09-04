@@ -13,11 +13,12 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-func inlineEditorFixture(t *testing.T) (*OutlinerModel, *models.Project, *models.Task, *models.Task) {
+func inlineEditorFixture(t *testing.T) (*outliner.OutlinerModel, *models.Project, *models.Task, *models.Task) {
 	t.Helper()
 	parent := &models.Task{ID: "parent", ShortID: 1, Title: "Parent", WorkflowState: models.StateBacklog}
 	child := &models.Task{
@@ -30,11 +31,11 @@ func inlineEditorFixture(t *testing.T) (*OutlinerModel, *models.Project, *models
 	child.DueDate, child.DeferredUntil = &due, &deferUntil
 	project := &models.Project{ID: "project", Slug: "project", Name: "Project", Tasks: []*models.Task{parent, child}}
 	project.BuildTaskTree()
-	out := NewOutlinerModel(project, nil, nil)
+	out := outliner.NewOutlinerModel(project, nil, nil)
 	out.SetSize(120, 20)
-	out.rebuildRows()
-	for index, row := range out.rows {
-		if row.task != nil && row.task.ID == child.ID && row.isTaskRow() {
+	out.RebuildRows()
+	for index, row := range out.Rows {
+		if row.Task != nil && row.Task.ID == child.ID && row.IsTaskRow() {
 			out.Cursor = index
 			break
 		}
@@ -45,7 +46,7 @@ func inlineEditorFixture(t *testing.T) (*OutlinerModel, *models.Project, *models
 func TestInlineRowEditorStateMachineAcceptsAtCursorAndRetainsTokens(t *testing.T) {
 	out, project, _, child := inlineEditorFixture(t)
 	child.Tags = append(child.Tags, "urgent")
-	q := out.quickEdit
+	q := out.QuickEdit
 	q.EnterWithContext(child, project, []*models.Project{project}, false)
 	q.Input.SetValue("Renamed #ur $today")
 	q.Input.SetCursor(len([]rune("Renamed #ur")))
@@ -168,19 +169,19 @@ func TestInlineRowEditorCancelPasteAndValidationTransitions(t *testing.T) {
 
 func TestInlineRowEditorWideNarrowNestedAndErrorRendering(t *testing.T) {
 	out, project, _, child := inlineEditorFixture(t)
-	out.quickEdit.EnterWithContext(child, project, []*models.Project{project}, false)
-	out.quickEdit.Input.SetValue("Child revised $today #gamma")
-	out.quickEdit.Input.CursorEnd()
-	out.quickEdit.RefreshDraft()
-	row := out.rows[out.Cursor]
+	out.QuickEdit.EnterWithContext(child, project, []*models.Project{project}, false)
+	out.QuickEdit.Input.SetValue("Child revised $today #gamma")
+	out.QuickEdit.Input.CursorEnd()
+	out.QuickEdit.RefreshDraft()
+	row := out.Rows[out.Cursor]
 
-	wide := ansi.Strip(out.quickEditMetadataLine(row, project, 120))
+	wide := ansi.Strip(out.QuickEditMetadataLine(row, project, 120))
 	for _, want := range []string{"EDIT TASK", "[project] › Parent", "today", "!1", "@Jan 2", "pin", "#gamma"} {
 		if !strings.Contains(wide, want) {
 			t.Errorf("wide metadata missing %q: %q", want, wide)
 		}
 	}
-	narrow := ansi.Strip(out.quickEditMetadataLine(row, project, 46))
+	narrow := ansi.Strip(out.QuickEditMetadataLine(row, project, 46))
 	for _, want := range []string{"EDIT TASK", "[project]", "Parent", "today"} {
 		if !strings.Contains(narrow, want) {
 			t.Errorf("narrow metadata missing %q: %q", want, narrow)
@@ -195,7 +196,7 @@ func TestInlineRowEditorWideNarrowNestedAndErrorRendering(t *testing.T) {
 	parent := project.Tasks[0]
 	parent.Title = "Parent marker with a deliberately long descriptive title"
 	project.BuildTaskTree()
-	minimum := ansi.Strip(out.quickEditMetadataLine(row, project, chrome.MinTerminalWidth))
+	minimum := ansi.Strip(out.QuickEditMetadataLine(row, project, chrome.MinTerminalWidth))
 	for _, want := range []string{"EDIT TASK", "[project]", "Parent", "today"} {
 		if !strings.Contains(minimum, want) {
 			t.Errorf("minimum-width metadata missing mandatory segment %q: %q", want, minimum)
@@ -205,10 +206,10 @@ func TestInlineRowEditorWideNarrowNestedAndErrorRendering(t *testing.T) {
 		t.Errorf("minimum-width metadata is %d columns: %q", got, minimum)
 	}
 
-	out.quickEdit.Input.SetValue("Child !9")
-	out.quickEdit.Input.CursorEnd()
-	out.quickEdit.RefreshDraft()
-	errorLine := ansi.Strip(out.quickEditMetadataLine(row, project, 72))
+	out.QuickEdit.Input.SetValue("Child !9")
+	out.QuickEdit.Input.CursorEnd()
+	out.QuickEdit.RefreshDraft()
+	errorLine := ansi.Strip(out.QuickEditMetadataLine(row, project, 72))
 	for _, want := range []string{"EDIT TASK", "invalid priority", "[project]", "backlog"} {
 		if !strings.Contains(errorLine, want) {
 			t.Errorf("error metadata missing %q: %q", want, errorLine)
@@ -223,18 +224,18 @@ func TestInlineRowEditorKeepsSelectedCursorVisibleAtEveryPositionAndTheme(t *tes
 			t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
 			out, project, _, child := inlineEditorFixture(t)
-			out.quickEdit.EnterWithContext(child, project, []*models.Project{project}, false)
-			row := out.rows[out.Cursor]
+			out.QuickEdit.EnterWithContext(child, project, []*models.Project{project}, false)
+			row := out.Rows[out.Cursor]
 			positions := []int{0, len([]rune(child.Title)) / 2, len([]rune(child.Title))}
 
 			for _, position := range positions {
-				out.quickEdit.Input.SetCursor(position)
-				rendered := out.renderOutlinerQuickEditRow(row, 80)
+				out.QuickEdit.Input.SetCursor(position)
+				rendered := out.RenderOutlinerQuickEditRow(row, 80)
 				if !strings.Contains(rendered, "\x1b[7;") {
 					t.Errorf("cursor at position %d has no reverse-video block: %q", position, rendered)
 				}
 
-				styles := out.quickEdit.Input.Styles()
+				styles := out.QuickEdit.Input.Styles()
 				if styles.Cursor.Blink {
 					t.Errorf("cursor at position %d is blinking, want steady", position)
 				}
@@ -259,23 +260,23 @@ func TestInlineRowEditorAutocompleteIsBoundedAndViewportTracksResize(t *testing.
 	}
 	project := &models.Project{ID: "many", Slug: "many", Name: "Many", Tasks: tasks}
 	project.BuildTaskTree()
-	out := NewOutlinerModel(project, nil, nil)
+	out := outliner.NewOutlinerModel(project, nil, nil)
 	out.SetSize(60, 8)
-	out.rebuildRows()
-	for index, row := range out.rows {
-		if row.task != nil && row.task.ID == tasks[len(tasks)-1].ID {
+	out.RebuildRows()
+	for index, row := range out.Rows {
+		if row.Task != nil && row.Task.ID == tasks[len(tasks)-1].ID {
 			out.Cursor = index
 		}
 	}
-	out.quickEdit.EnterWithContext(tasks[len(tasks)-1], project, []*models.Project{project}, false)
-	out.quickEdit.Input.SetValue(tasks[len(tasks)-1].Title + " #")
-	out.quickEdit.Input.CursorEnd()
-	out.quickEdit.RefreshDraft()
-	if got := out.quickEdit.SuggestionLineCount(out.quickEditSuggestionBudget()); got != 5 {
+	out.QuickEdit.EnterWithContext(tasks[len(tasks)-1], project, []*models.Project{project}, false)
+	out.QuickEdit.Input.SetValue(tasks[len(tasks)-1].Title + " #")
+	out.QuickEdit.Input.CursorEnd()
+	out.QuickEdit.RefreshDraft()
+	if got := out.QuickEdit.SuggestionLineCount(out.QuickEditSuggestionBudget()); got != 5 {
 		t.Fatalf("suggestion rows=%d, want bounded five", got)
 	}
 
-	wide := ansi.Strip(out.renderOutlinerTreeContent(60))
+	wide := ansi.Strip(out.RenderOutlinerTreeContent(60))
 	if lipgloss.Height(wide) > 8 || !strings.Contains(wide, tasks[len(tasks)-1].Title+" #") {
 		t.Fatalf("scrolled editor escaped viewport height=%d:\n%s", lipgloss.Height(wide), wide)
 	}
@@ -284,7 +285,7 @@ func TestInlineRowEditorAutocompleteIsBoundedAndViewportTracksResize(t *testing.
 	}
 
 	out.SetSize(44, 7)
-	narrow := ansi.Strip(out.renderOutlinerTreeContent(44))
+	narrow := ansi.Strip(out.RenderOutlinerTreeContent(44))
 	if lipgloss.Height(narrow) > 7 || !strings.Contains(narrow, tasks[len(tasks)-1].Title+" #") {
 		t.Fatalf("resized editor escaped viewport height=%d:\n%s", lipgloss.Height(narrow), narrow)
 	}
@@ -292,15 +293,15 @@ func TestInlineRowEditorAutocompleteIsBoundedAndViewportTracksResize(t *testing.
 
 func TestInlineRowEditorRendersOnFoldedParentWithoutLeakingChildren(t *testing.T) {
 	out, project, parent, child := inlineEditorFixture(t)
-	out.folds.expandedNodes = map[taskref.TaskIdentity]bool{{ProjectID: project.ID, TaskID: parent.ID}: false}
-	out.rebuildRows()
-	for index, row := range out.rows {
-		if row.task != nil && row.task.ID == parent.ID {
+	out.Folds.ExpandedNodes = map[taskref.TaskIdentity]bool{{ProjectID: project.ID, TaskID: parent.ID}: false}
+	out.RebuildRows()
+	for index, row := range out.Rows {
+		if row.Task != nil && row.Task.ID == parent.ID {
 			out.Cursor = index
 		}
 	}
-	out.quickEdit.EnterWithContext(parent, project, []*models.Project{project}, false)
-	plain := ansi.Strip(out.renderOutlinerTreeContent(80))
+	out.QuickEdit.EnterWithContext(parent, project, []*models.Project{project}, false)
+	plain := ansi.Strip(out.RenderOutlinerTreeContent(80))
 	if !strings.Contains(plain, "EDIT TASK") || !strings.Contains(plain, parent.Title) {
 		t.Fatalf("folded parent editor missing:\n%s", plain)
 	}

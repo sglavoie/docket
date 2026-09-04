@@ -6,6 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/help"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/taskform"
@@ -62,7 +63,7 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd { //nolint:gocyclo
 			m.helpView = v.(*help.HelpViewModel)
 		}
 	case presentation.ViewCrossProjectOutliner:
-		if v, ok := m.views.Get(presentation.ViewCrossProjectOutliner).(*OutlinerModel); ok {
+		if v, ok := m.views.Get(presentation.ViewCrossProjectOutliner).(*outliner.OutlinerModel); ok {
 			m.crossOutliner = v
 		}
 	default:

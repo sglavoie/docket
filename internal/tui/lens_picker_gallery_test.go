@@ -27,8 +27,8 @@ func TestLensPickerCreateClosesEveryOverlayAndLeavesTheNewLensActive(t *testing.
 		t.Error("creating a lens left the overlay manager active")
 	}
 	saved := lensNamed(t, model, "Focus")
-	if !model.crossOutliner.hasActiveLens() ||
-		model.crossOutliner.lens.active.lensID != saved.ID {
+	if !model.crossOutliner.HasActiveLens() ||
+		model.crossOutliner.Lens.Active.LensID != saved.ID {
 		t.Error("the new lens is not the active one")
 	}
 }
@@ -149,7 +149,7 @@ func TestLensPickerAddTemplateCancelReturnsToTheMainPicker(t *testing.T) {
 	if got := len(machineLenses(t, model)); got != len(config.StarterNamedLenses()) {
 		t.Errorf("canceling wrote %d lenses", got)
 	}
-	if model.crossOutliner.hasActiveLens() {
+	if model.crossOutliner.HasActiveLens() {
 		t.Error("canceling the gallery applied a lens")
 	}
 	// The main picker is live again, so the same row still reaches the gallery.
@@ -178,8 +178,8 @@ func TestLensPickerAddTemplateClosesEveryOverlayAndLeavesTheAddedLensActive(t *t
 	if saved.ID != template.ID {
 		t.Errorf("the added record has ID %s, want the catalog's %s", saved.ID, template.ID)
 	}
-	if !model.crossOutliner.hasActiveLens() ||
-		model.crossOutliner.lens.active.lensID != template.ID {
+	if !model.crossOutliner.HasActiveLens() ||
+		model.crossOutliner.Lens.Active.LensID != template.ID {
 		t.Error("the added built-in view is not the active lens")
 	}
 }
@@ -210,7 +210,7 @@ func TestLensPickerAddTemplateFailureStaysOnThePickerWithTheReason(t *testing.T)
 	if got := lensNamed(t, model, template.Name); got.ID != lensTemplateForeignID {
 		t.Error("a refused add wrote the template record anyway")
 	}
-	if model.crossOutliner.hasActiveLens() {
+	if model.crossOutliner.HasActiveLens() {
 		t.Error("a refused add applied a lens")
 	}
 	// The reason is retained on the surface that raised it, so the same row is

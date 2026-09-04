@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
 func TestSimplifiedInputStrategyIsCollisionAndPrefixFree(t *testing.T) {
@@ -182,10 +183,10 @@ func TestSimplifiedCtrlEOpensCursorTaskInExternalEditor(t *testing.T) {
 	}
 	project.BuildTaskTree()
 	setTestAppProjects(app, project)
-	app.crossOutliner.population.projects = []*models.Project{project}
-	app.crossOutliner.rows = []outlinerRow{
-		{task: first, ProjectID: project.ID},
-		{task: selected, ProjectID: project.ID},
+	app.crossOutliner.Population.Projects = []*models.Project{project}
+	app.crossOutliner.Rows = []outliner.OutlinerRow{
+		{Task: first, ProjectID: project.ID},
+		{Task: selected, ProjectID: project.ID},
 	}
 	app.crossOutliner.Cursor = 1
 

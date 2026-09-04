@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -38,7 +39,7 @@ func TestParseQuickEditClearPriorityWithBangZero(t *testing.T) {
 	if !result.PrioritySet || result.Priority != models.PriorityUnset {
 		t.Fatalf("priority = %d set=%v, want Unset", result.Priority, result.PrioritySet)
 	}
-	req := taskLineEditRequest(taskref.TaskIdentity{ProjectID: "project", TaskID: task.ID}, result)
+	req := outliner.TaskLineEditRequest(taskref.TaskIdentity{ProjectID: "project", TaskID: task.ID}, result)
 	if req.Priority == nil || *req.Priority != models.PriorityUnset {
 		t.Fatalf("request priority = %v, want Unset", req.Priority)
 	}

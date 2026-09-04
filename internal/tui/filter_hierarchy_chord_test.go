@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -36,10 +37,54 @@ func newHierarchyFilterTestApp(t *testing.T) *AppModel {
 	}
 	project.BuildTaskTree()
 	setTestAppProjects(app, project)
-	app.crossOutliner.population.projects = []*models.Project{project}
-	app.crossOutliner.population.invalidate()
-	app.crossOutliner.rebuildRows()
+	app.crossOutliner.Population.Projects = []*models.Project{project}
+	app.crossOutliner.Population.Invalidate()
+	app.crossOutliner.RebuildRows()
 	return app
+}
+
+func TestHierarchyFilterBadgeCountAndClear(t *testing.T) {
+	app := newHierarchyFilterTestApp(t)
+	filter := &app.crossOutliner.Filter.CommonFilterState
+
+	result := app.operationExecutor.Execute(operation.OperationExecutionRequest{
+		ID:       operation.OperationFilterHierarchy,
+		Context:  simplifiedOperationContext(),
+		Value:    query.HierarchyLeaf,
+		HasValue: true,
+	})
+	if result.Err != nil {
+		t.Fatalf("hierarchy filter error: %v", result.Err)
+	}
+	if got := query.CommonFilterParts(filter); !slices.Equal(got, []string{"?leaf"}) {
+		t.Errorf("badge parts = %v, want the hierarchy facet alone", got)
+	}
+	if got := query.CommonFilterFacetCount(filter); got != 1 {
+		t.Errorf("facet count = %d, want 1", got)
+	}
+
+	pressFilterChord(t, app, "fx")
+	if filter.Hierarchy != query.HierarchyAll {
+		t.Errorf("fx left hierarchy = %v, want HierarchyAll", filter.Hierarchy)
+	}
+}
+
+// TestFilterOperationsStayChordOnly locks the direct-grammar contract: the
+// filter family refines the view in place through the f chords.
+func TestFilterOperationsStayChordOnly(t *testing.T) {
+	app := parityAuditApp(t)
+	registry := app.GetOperationRegistry()
+
+	descriptors := filterOperationDescriptors()
+	if len(descriptors) != 12 {
+		t.Fatalf("filter family declares %d operations, want 12", len(descriptors))
+	}
+	for _, declared := range descriptors {
+		_, ok := registry.Descriptor(declared.ID)
+		if !ok {
+			t.Fatalf("filter operation %s is not registered", declared.ID)
+		}
+	}
 }
 
 func TestHierarchyFilterReadsOpenChildCensus(t *testing.T) {
@@ -64,7 +109,7 @@ func TestHierarchyFilterReadsOpenChildCensus(t *testing.T) {
 			want:  map[string]bool{"open-leaf": true, "closed-parent": true, "solo": true},
 		},
 	} {
-		t.Run(hierarchyFilterLabel(tc.value), func(t *testing.T) {
+		t.Run(outliner.HierarchyFilterLabel(tc.value), func(t *testing.T) {
 			app := newHierarchyFilterTestApp(t)
 			result := app.operationExecutor.Execute(operation.OperationExecutionRequest{
 				ID:       operation.OperationFilterHierarchy,
@@ -75,7 +120,7 @@ func TestHierarchyFilterReadsOpenChildCensus(t *testing.T) {
 			if result.Err != nil {
 				t.Fatalf("hierarchy filter error: %v", result.Err)
 			}
-			want := "Filtering hierarchy: " + hierarchyFilterLabel(tc.value)
+			want := "Filtering hierarchy: " + outliner.HierarchyFilterLabel(tc.value)
 			if result.Status != want {
 				t.Errorf("Status = %q, want %q", result.Status, want)
 			}
@@ -83,32 +128,6 @@ func TestHierarchyFilterReadsOpenChildCensus(t *testing.T) {
 				t.Errorf("visible = %v, want %v", got, tc.want)
 			}
 		})
-	}
-}
-
-func TestHierarchyFilterBadgeCountAndClear(t *testing.T) {
-	app := newHierarchyFilterTestApp(t)
-	filter := &app.crossOutliner.filter.CommonFilterState
-
-	result := app.operationExecutor.Execute(operation.OperationExecutionRequest{
-		ID:       operation.OperationFilterHierarchy,
-		Context:  simplifiedOperationContext(),
-		Value:    query.HierarchyLeaf,
-		HasValue: true,
-	})
-	if result.Err != nil {
-		t.Fatalf("hierarchy filter error: %v", result.Err)
-	}
-	if got := query.CommonFilterParts(filter); !slices.Equal(got, []string{"?leaf"}) {
-		t.Errorf("badge parts = %v, want the hierarchy facet alone", got)
-	}
-	if got := query.CommonFilterFacetCount(filter); got != 1 {
-		t.Errorf("facet count = %d, want 1", got)
-	}
-
-	pressFilterChord(t, app, "fx")
-	if filter.Hierarchy != query.HierarchyAll {
-		t.Errorf("fx left hierarchy = %v, want HierarchyAll", filter.Hierarchy)
 	}
 }
 
@@ -123,24 +142,6 @@ func TestHierarchyFilterRejectsOutOfRangeValues(t *testing.T) {
 		})
 		if result.Err == nil {
 			t.Errorf("hierarchy value %d should be rejected", value)
-		}
-	}
-}
-
-// TestFilterOperationsStayChordOnly locks the direct-grammar contract: the
-// filter family refines the view in place through the f chords.
-func TestFilterOperationsStayChordOnly(t *testing.T) {
-	app := parityAuditApp(t)
-	registry := app.GetOperationRegistry()
-
-	descriptors := filterOperationDescriptors()
-	if len(descriptors) != 12 {
-		t.Fatalf("filter family declares %d operations, want 12", len(descriptors))
-	}
-	for _, declared := range descriptors {
-		_, ok := registry.Descriptor(declared.ID)
-		if !ok {
-			t.Fatalf("filter operation %s is not registered", declared.ID)
 		}
 	}
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -36,7 +37,7 @@ func TestParseQuickEditPinPatchesAndPreviews(t *testing.T) {
 			if result.Preview.Pinned != testCase.want {
 				t.Fatalf("preview.Pinned = %v, want %v", result.Preview.Pinned, testCase.want)
 			}
-			req := taskLineEditRequest(taskref.TaskIdentity{ProjectID: project.ID, TaskID: task.ID}, result)
+			req := outliner.TaskLineEditRequest(taskref.TaskIdentity{ProjectID: project.ID, TaskID: task.ID}, result)
 			if req.Pinned == nil || *req.Pinned != testCase.want {
 				t.Fatalf("request Pinned = %v, want %v", req.Pinned, testCase.want)
 			}
@@ -59,7 +60,7 @@ func TestParseQuickEditWithoutPinPreservesPinnedState(t *testing.T) {
 	if !result.Preview.Pinned {
 		t.Fatalf("preview.Pinned = false, want the task's own state carried through")
 	}
-	req := taskLineEditRequest(taskref.TaskIdentity{ProjectID: project.ID, TaskID: task.ID}, result)
+	req := outliner.TaskLineEditRequest(taskref.TaskIdentity{ProjectID: project.ID, TaskID: task.ID}, result)
 	if req.Pinned != nil {
 		t.Fatalf("request Pinned = %v, want nil", req.Pinned)
 	}

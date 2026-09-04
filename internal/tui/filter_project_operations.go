@@ -36,7 +36,7 @@ func (m *AppModel) executeProjectFilterOperation(invocation operation.OperationI
 	if out == nil {
 		return operation.OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
 	}
-	edit, err := out.populationFilterClauseEdit(invocation)
+	edit, err := out.PopulationFilterClauseEdit(invocation)
 	if err != nil {
 		return operation.OperationHandlerResult{Err: err}
 	}
@@ -53,9 +53,9 @@ func (m *AppModel) projectFilterReloadCmd(text string) tea.Cmd {
 	}
 	// The population is about to change underneath the cursor, so restoring the
 	// previous row would fight the facet the user just applied.
-	out.population.requestReloadFromTop()
+	out.Population.RequestReloadFromTop()
 	return tea.Batch(
-		out.reloadCrossProjects(),
+		out.ReloadCrossProjects(),
 		func() tea.Msg { return status.StatusMsg(text) },
 		status.DefaultStatusTimeout(),
 	)
@@ -118,7 +118,7 @@ func (m *AppModel) newFilterProjectTagsPicker(
 	}
 	selected := []listsurface.ListItemID(nil)
 	if m.crossOutliner != nil {
-		rows := query.ProjectFilterSelection(&m.crossOutliner.projectFilter)
+		rows := query.ProjectFilterSelection(&m.crossOutliner.ProjectFilter)
 		selected = make([]listsurface.ListItemID, 0, len(rows))
 		for _, row := range rows {
 			selected = append(selected, listsurface.ListItemID(row))

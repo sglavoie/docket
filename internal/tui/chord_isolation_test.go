@@ -86,8 +86,8 @@ func TestModifierKeyPressDoesNotAbandonAPendingChord(t *testing.T) {
 	if len(app.pendingChord) != 0 {
 		t.Fatalf("f!2 left pending prefix %v", app.pendingChord)
 	}
-	if out.filter.Priority != 2 {
-		t.Fatalf("Priority = %d after f!2 with a Shift press mid-chord, want 2", out.filter.Priority)
+	if out.Filter.Priority != 2 {
+		t.Fatalf("Priority = %d after f!2 with a Shift press mid-chord, want 2", out.Filter.Priority)
 	}
 }
 

@@ -9,106 +9,107 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 func TestSwitchingLensesRetainsTheOriginalBaseline(t *testing.T) {
-	outliner := lensLifecycleOutliner()
-	outliner.selectOutlinerMode(chrome.ModeInbox)
+	outlinerView := lensLifecycleOutliner()
+	outlinerView.SelectOutlinerMode(chrome.ModeInbox)
 
-	applyLensOrFatal(t, outliner, waitingLens(lensTestID(1), "Waiting", "needle"))
-	first := outliner.lens.active.origin
-	applyLensOrFatal(t, outliner, waitingLens(lensTestID(2), "Held", ""))
+	applyLensOrFatal(t, outlinerView, waitingLens(lensTestID(1), "Waiting", "needle"))
+	first := outlinerView.Lens.Active.Origin
+	applyLensOrFatal(t, outlinerView, waitingLens(lensTestID(2), "Held", ""))
 
-	if outliner.lens.active.name != "Held" {
-		t.Fatalf("active lens = %q, want Held", outliner.lens.active.name)
+	if outlinerView.Lens.Active.Name != "Held" {
+		t.Fatalf("active lens = %q, want Held", outlinerView.Lens.Active.Name)
 	}
-	if outliner.lens.active.origin.presentation.mode != first.presentation.mode {
+	if outlinerView.Lens.Active.Origin.Presentation.Mode != first.Presentation.Mode {
 		t.Fatal("a switch replaced the original restoration point")
 	}
-	if outliner.lens.query != "" {
-		t.Fatalf("switch kept the previous narrowing query %q", outliner.lens.query)
+	if outlinerView.Lens.Query != "" {
+		t.Fatalf("switch kept the previous narrowing query %q", outlinerView.Lens.Query)
 	}
 
-	if !listsurface.RunEscCascade(outliner.escSteps()) {
+	if !listsurface.RunEscCascade(outlinerView.EscSteps()) {
 		t.Fatal("expected Esc to consume the lens")
 	}
-	if outliner.hasActiveLens() {
+	if outlinerView.HasActiveLens() {
 		t.Fatal("one Esc must leave the lens entirely")
 	}
-	if outliner.primaryMode != chrome.ModeInbox {
-		t.Fatalf("restored mode = %v, want the pre-lens %v", outliner.primaryMode, chrome.ModeInbox)
+	if outlinerView.PrimaryMode != chrome.ModeInbox {
+		t.Fatalf("restored mode = %v, want the pre-lens %v", outlinerView.PrimaryMode, chrome.ModeInbox)
 	}
 }
 
 func TestApplyNamedLensFromAcceptedSearchRestoresThatSearch(t *testing.T) {
-	outliner := lensLifecycleOutliner()
-	outliner.SetSearchQuery("needle")
-	if !outliner.hasSearchProjection() {
+	outlinerView := lensLifecycleOutliner()
+	outlinerView.SetSearchQuery("needle")
+	if !outlinerView.HasSearchProjection() {
 		t.Fatal("expected an ordinary search projection")
 	}
-	searchRows := searchVisibleTaskIDs(outliner)
+	searchRows := searchVisibleTaskIDs(outlinerView)
 
-	applyLensOrFatal(t, outliner, waitingLens(lensTestID(1), "Waiting", ""))
-	if outliner.hasSearchProjection() {
+	applyLensOrFatal(t, outlinerView, waitingLens(lensTestID(1), "Waiting", ""))
+	if outlinerView.HasSearchProjection() {
 		t.Fatal("the lens must replace the ordinary search projection")
 	}
 
-	if !listsurface.RunEscCascade(outliner.escSteps()) {
+	if !listsurface.RunEscCascade(outlinerView.EscSteps()) {
 		t.Fatal("expected Esc to consume the lens")
 	}
-	if !outliner.hasSearchProjection() {
+	if !outlinerView.HasSearchProjection() {
 		t.Fatal("restoration did not hand the search projection back")
 	}
-	if outliner.SearchQuery() != "needle" {
-		t.Fatalf("restored search query = %q, want needle", outliner.SearchQuery())
+	if outlinerView.SearchQuery() != "needle" {
+		t.Fatalf("restored search query = %q, want needle", outlinerView.SearchQuery())
 	}
-	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, searchRows) {
+	if got := searchVisibleTaskIDs(outlinerView); !slices.Equal(got, searchRows) {
 		t.Fatalf("restored search rows = %v, want %v", got, searchRows)
 	}
 	// The search frame is whole again, so its own Esc still restores the ordinary
 	// projection underneath it.
-	if !listsurface.RunEscCascade(outliner.escSteps()) {
+	if !listsurface.RunEscCascade(outlinerView.EscSteps()) {
 		t.Fatal("expected Esc to consume the restored search projection")
 	}
-	if outliner.hasSearchProjection() {
+	if outlinerView.HasSearchProjection() {
 		t.Fatal("the restored search projection did not dismiss")
 	}
 }
 
 func TestLensModifiedTracksOwnedAxesOnly(t *testing.T) {
-	outliner := lensLifecycleOutliner()
-	applyLensOrFatal(t, outliner, waitingLens(lensTestID(1), "Waiting", "needle"))
+	outlinerView := lensLifecycleOutliner()
+	applyLensOrFatal(t, outlinerView, waitingLens(lensTestID(1), "Waiting", "needle"))
 
-	if outliner.lensModified() {
+	if outlinerView.LensModified() {
 		t.Fatal("a freshly applied lens is not modified")
 	}
-	if got := outliner.activeLensLabel(); got != "Lens: Waiting" {
+	if got := outlinerView.ActiveLensLabel(); got != "Lens: Waiting" {
 		t.Fatalf("label = %q, want %q", got, "Lens: Waiting")
 	}
 
 	// Navigation, folds, selection, and Peek are the view, not the lens.
-	outliner.Cursor = 0
-	outliner.folds.collapsedSections["some-section"] = true
-	outliner.peekMode = true
-	outliner.Selected[taskref.TaskIdentity{ProjectID: "alpha", TaskID: "waiting"}] = true
-	if outliner.lensModified() {
+	outlinerView.Cursor = 0
+	outlinerView.Folds.CollapsedSections["some-section"] = true
+	outlinerView.PeekMode = true
+	outlinerView.Selected[taskref.TaskIdentity{ProjectID: "alpha", TaskID: "waiting"}] = true
+	if outlinerView.LensModified() {
 		t.Fatal("cursor, folds, selection, and Peek must not mark a lens modified")
 	}
 
-	outliner.filter.Priority = int(models.PriorityHigh)
-	outliner.adoptFilterCarriers()
-	if !outliner.lensModified() {
+	outlinerView.Filter.Priority = int(models.PriorityHigh)
+	outlinerView.AdoptFilterCarriers()
+	if !outlinerView.LensModified() {
 		t.Fatal("a facet change must mark the lens modified")
 	}
-	if got := outliner.activeLensLabel(); got != "Lens: Waiting*" {
+	if got := outlinerView.ActiveLensLabel(); got != "Lens: Waiting*" {
 		t.Fatalf("label = %q, want %q", got, "Lens: Waiting*")
 	}
 
-	outliner.filter.Priority = 0
-	outliner.adoptFilterCarriers()
-	if outliner.lensModified() {
+	outlinerView.Filter.Priority = 0
+	outlinerView.AdoptFilterCarriers()
+	if outlinerView.LensModified() {
 		t.Fatal("reverting the facet must clear the marker")
 	}
 }
@@ -116,21 +117,23 @@ func TestLensModifiedTracksOwnedAxesOnly(t *testing.T) {
 func TestLensModifiedTracksModeQuerySortAndProjectFacets(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
-		modify func(*OutlinerModel)
+		modify func(*outliner.OutlinerModel)
 	}{
-		{"mode", func(o *OutlinerModel) { o.selectOutlinerMode(chrome.ModeInbox) }},
-		{"query", func(o *OutlinerModel) { o.setLensQuery("other") }},
-		{"sort", func(o *OutlinerModel) { o.treeSort = query.SortState{Field: query.SortByTitle, Ascending: true} }},
-		{"project facets", func(o *OutlinerModel) {
-			o.projectFilter.Untagged = true
-			o.adoptFilterCarriers()
+		{"mode", func(o *outliner.OutlinerModel) { o.SelectOutlinerMode(chrome.ModeInbox) }},
+		{"query", func(o *outliner.OutlinerModel) { o.SetLensQuery("other") }},
+		{"sort", func(o *outliner.OutlinerModel) {
+			o.TreeSort = query.SortState{Field: query.SortByTitle, Ascending: true}
+		}},
+		{"project facets", func(o *outliner.OutlinerModel) {
+			o.ProjectFilter.Untagged = true
+			o.AdoptFilterCarriers()
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			outliner := lensLifecycleOutliner()
-			applyLensOrFatal(t, outliner, waitingLens(lensTestID(1), "Waiting", "needle"))
-			tc.modify(outliner)
-			if !outliner.lensModified() {
+			outlinerView := lensLifecycleOutliner()
+			applyLensOrFatal(t, outlinerView, waitingLens(lensTestID(1), "Waiting", "needle"))
+			tc.modify(outlinerView)
+			if !outlinerView.LensModified() {
 				t.Fatalf("changing %s must mark the lens modified", tc.name)
 			}
 		})
@@ -138,23 +141,23 @@ func TestLensModifiedTracksModeQuerySortAndProjectFacets(t *testing.T) {
 }
 
 func TestOrdinaryFiltersAndSortRemainEditableUnderALensQuery(t *testing.T) {
-	outliner := lensLifecycleOutliner()
-	applyLensOrFatal(t, outliner, waitingLens(lensTestID(1), "Waiting", "needle"))
+	outlinerView := lensLifecycleOutliner()
+	applyLensOrFatal(t, outlinerView, waitingLens(lensTestID(1), "Waiting", "needle"))
 
-	outliner.filter.Priority = int(models.PriorityHigh)
-	outliner.adoptFilterCarriers()
-	outliner.treeSort = query.SortState{Field: query.SortByTitle, Ascending: true}
-	outliner.sort = outliner.treeSort
-	outliner.population.invalidate()
-	outliner.crossProjectRebuildRows()
+	outlinerView.Filter.Priority = int(models.PriorityHigh)
+	outlinerView.AdoptFilterCarriers()
+	outlinerView.TreeSort = query.SortState{Field: query.SortByTitle, Ascending: true}
+	outlinerView.Sort = outlinerView.TreeSort
+	outlinerView.Population.Invalidate()
+	outlinerView.CrossProjectRebuildRows()
 
-	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{"waiting"}) {
+	if got := searchVisibleTaskIDs(outlinerView); !slices.Equal(got, []string{"waiting"}) {
 		t.Fatalf("rows under lens query plus priority facet = %v, want [waiting]", got)
 	}
-	if outliner.lens.query != "needle" {
-		t.Fatalf("editing filters disturbed the narrowing query: %q", outliner.lens.query)
+	if outlinerView.Lens.Query != "needle" {
+		t.Fatalf("editing filters disturbed the narrowing query: %q", outlinerView.Lens.Query)
 	}
-	if !outliner.hasActiveLens() {
+	if !outlinerView.HasActiveLens() {
 		t.Fatal("editing filters must not dismiss the lens")
 	}
 }
@@ -179,24 +182,24 @@ func TestApplyNamedLensRefusesInvalidDefinitionsWithoutTouchingTheView(t *testin
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			outliner := lensLifecycleOutliner()
-			outliner.selectOutlinerMode(chrome.ModeInbox)
-			before := searchVisibleTaskIDs(outliner)
+			outlinerView := lensLifecycleOutliner()
+			outlinerView.SelectOutlinerMode(chrome.ModeInbox)
+			before := searchVisibleTaskIDs(outlinerView)
 
-			cmd, err := outliner.ApplyNamedLens(tc.lens())
+			cmd, err := outlinerView.ApplyNamedLens(tc.lens())
 			if err == nil {
 				t.Fatal("expected the definition to refuse")
 			}
 			if cmd != nil {
 				t.Fatal("a refusal must return no command")
 			}
-			if outliner.hasActiveLens() || outliner.lens.pending != nil {
+			if outlinerView.HasActiveLens() || outlinerView.Lens.Pending != nil {
 				t.Fatal("a refusal must leave no lens state behind")
 			}
-			if outliner.primaryMode != chrome.ModeInbox || outliner.lens.query != "" {
+			if outlinerView.PrimaryMode != chrome.ModeInbox || outlinerView.Lens.Query != "" {
 				t.Fatal("a refusal must leave the current projection untouched")
 			}
-			if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, before) {
+			if got := searchVisibleTaskIDs(outlinerView); !slices.Equal(got, before) {
 				t.Fatalf("rows = %v, want the untouched %v", got, before)
 			}
 		})

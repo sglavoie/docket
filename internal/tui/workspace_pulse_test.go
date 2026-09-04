@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -79,7 +80,7 @@ func TestWorkspacePulseCountsEligibleFlatTasksAtInjectedTime(t *testing.T) {
 		{ProjectID: active.ID, TaskID: "stale"}:        true,
 		{ProjectID: parked.ID, TaskID: "parked-inbox"}: true,
 	}
-	pulse := computeWorkspacePulse(runtime, todayIDs, now)
+	pulse := outliner.ComputeWorkspacePulse(runtime, todayIDs, now)
 
 	if pulse.Inbox != 2 {
 		t.Errorf("Inbox = %d, want parent and nested child exactly once", pulse.Inbox)
@@ -100,7 +101,7 @@ func TestWorkspacePulsePreservesPartialLoadResults(t *testing.T) {
 	base := installPulseRepository(t, loaded, failed)
 	storage.DefaultRepository = &selectivePulseRepository{MockRepository: base, failProjectID: failed.ID}
 
-	pulse := computeWorkspacePulse(runtime, nil, now)
+	pulse := outliner.ComputeWorkspacePulse(runtime, nil, now)
 	if pulse.Inbox != 1 {
 		t.Fatalf("Inbox = %d, want the successfully loaded project to survive a peer load failure", pulse.Inbox)
 	}
@@ -108,7 +109,7 @@ func TestWorkspacePulsePreservesPartialLoadResults(t *testing.T) {
 
 func TestWorkspacePulseNilRuntimeAndRefreshSeam(t *testing.T) {
 	now := time.Date(2026, time.August, 6, 12, 0, 0, 0, time.UTC)
-	if zero := computeWorkspacePulse(nil, nil, now); zero != (pulse.WorkspacePulse{}) {
+	if zero := outliner.ComputeWorkspacePulse(nil, nil, now); zero != (pulse.WorkspacePulse{}) {
 		t.Fatalf("nil runtime pulse = %+v, want zero", zero)
 	}
 
@@ -172,8 +173,8 @@ func TestPeriodicTickRefreshesActivityAcrossIdleLocalMidnight(t *testing.T) {
 	model.features.Activity = coordinator.NewActivityCoordinator(reader)
 	model.completionActivity = cached
 	model.workspacePulse.Done = cached.CompletedToday()
-	model.crossOutliner.population.forceRebuild = false
-	model.crossOutliner.nextDeferWake = tickAt.Add(-time.Minute)
+	model.crossOutliner.Population.ForceRebuild = false
+	model.crossOutliner.NextDeferWake = tickAt.Add(-time.Minute)
 
 	if handled, _ := model.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: tickAt}); !handled {
 		t.Fatal("periodicSaveMsg was not handled")
@@ -187,7 +188,7 @@ func TestPeriodicTickRefreshesActivityAcrossIdleLocalMidnight(t *testing.T) {
 	if model.workspacePulse.Done != 1 {
 		t.Fatalf("Done = %d, want the new local day's count rather than the previous day's 2", model.workspacePulse.Done)
 	}
-	if !model.crossOutliner.population.forceRebuild {
+	if !model.crossOutliner.Population.ForceRebuild {
 		t.Fatal("periodic tick did not use its supplied timestamp for the defer wake")
 	}
 

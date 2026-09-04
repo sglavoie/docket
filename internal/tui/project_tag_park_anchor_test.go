@@ -66,15 +66,15 @@ func TestProjectTagParkAllMembersAnchorsTheOutlinerCursorOnASurvivor(t *testing.
 	fixture := newSession4LifecycleFixture(t, first, survivor, second)
 
 	cmd := parkTagMembersThroughProjectTagVocabulary(t, fixture, "hold")
-	if got := fixture.cross.population.reloadHeaderProjectID; got != survivor.ID {
+	if got := fixture.cross.Population.ReloadHeaderProjectID; got != survivor.ID {
 		t.Fatalf("bulk park anchor = %q, want the surviving header %q", got, survivor.ID)
 	}
 	runSession2AppCommand(t, fixture.app, cmd)
 
-	if fixture.cross.Cursor < 0 || fixture.cross.Cursor >= len(fixture.cross.rows) {
-		t.Fatalf("post-park cursor %d is outside %d rows", fixture.cross.Cursor, len(fixture.cross.rows))
+	if fixture.cross.Cursor < 0 || fixture.cross.Cursor >= len(fixture.cross.Rows) {
+		t.Fatalf("post-park cursor %d is outside %d rows", fixture.cross.Cursor, len(fixture.cross.Rows))
 	}
-	row := fixture.cross.rows[fixture.cross.Cursor]
+	row := fixture.cross.Rows[fixture.cross.Cursor]
 	if !row.IsProjectHeader || row.ProjectID != survivor.ID {
 		t.Fatalf("post-park cursor row = %#v, want the surviving project header", row)
 	}
@@ -100,7 +100,7 @@ func TestProjectBulkParkFromTheProjectHubCapturesNoOutlinerAnchor(t *testing.T) 
 	if handled, _ := fixture.app.handleProjectMessages(projecthub.ProjectParkConfirmedMsg{}); !handled {
 		t.Fatal("park confirmation was not handled")
 	}
-	if got := fixture.cross.population.reloadHeaderProjectID; got != "" {
+	if got := fixture.cross.Population.ReloadHeaderProjectID; got != "" {
 		t.Fatalf("hub bulk park captured anchor %q, want none", got)
 	}
 }
@@ -112,10 +112,10 @@ func TestProjectTagParkAllMembersWithNoSurvivorLandsAtTheTopOfTheProjection(t *t
 	first := newSession4TaggedProject(t, "Sonar", "hold")
 	second := newSession4TaggedProject(t, "Keel", "hold")
 	fixture := newSession4LifecycleFixture(t, first, second)
-	fixture.cross.Cursor = len(fixture.cross.rows) - 1
+	fixture.cross.Cursor = len(fixture.cross.Rows) - 1
 
 	cmd := parkTagMembersThroughProjectTagVocabulary(t, fixture, "hold")
-	anchor := fixture.cross.population.reloadHeaderProjectID
+	anchor := fixture.cross.Population.ReloadHeaderProjectID
 	if anchor != first.ID && anchor != second.ID {
 		t.Fatalf("bulk park anchor = %q, want a departing project as the section-header sentinel", anchor)
 	}
@@ -124,7 +124,7 @@ func TestProjectTagParkAllMembersWithNoSurvivorLandsAtTheTopOfTheProjection(t *t
 	if fixture.cross.Cursor != 0 {
 		t.Fatalf("post-park cursor = %d, want the top of the projection", fixture.cross.Cursor)
 	}
-	for _, row := range fixture.cross.rows {
+	for _, row := range fixture.cross.Rows {
 		if row.IsProjectHeader && (row.ProjectID == first.ID || row.ProjectID == second.ID) {
 			t.Fatalf("parked project %q kept a header row", row.ProjectID)
 		}

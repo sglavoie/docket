@@ -285,11 +285,11 @@ func TestHeaderTargetKeyPressesReachTheRejection(t *testing.T) {
 	} {
 		t.Run(strings.Join(sequence, ""), func(t *testing.T) {
 			app := headerTargetAuditApp(t)
-			outliner := app.crossOutliner
-			if outliner == nil {
+			outlinerView := app.crossOutliner
+			if outlinerView == nil {
 				t.Fatal("fixture app has no Outliner")
 			}
-			outliner.Cursor = headerTargetProjectHeaderRow(t, outliner)
+			outlinerView.Cursor = headerTargetProjectHeaderRow(t, outlinerView)
 
 			var last tea.Cmd
 			for _, name := range sequence {
@@ -322,15 +322,15 @@ func TestHeaderTargetKeyPressesReachTheRejection(t *testing.T) {
 func headerTargetCursorContext(t *testing.T) operation.CommandContext {
 	t.Helper()
 	app := headerTargetAuditApp(t)
-	outliner := app.crossOutliner
-	if outliner == nil {
+	outlinerView := app.crossOutliner
+	if outlinerView == nil {
 		t.Fatal("fixture app has no Outliner")
 	}
-	for index, row := range outliner.rows {
+	for index, row := range outlinerView.Rows {
 		if !row.IsProjectHeader {
 			continue
 		}
-		outliner.Cursor = index
+		outlinerView.Cursor = index
 		ctx := app.operationCommandContext()
 		ctx.View = presentation.ViewCrossProjectOutliner
 		return ctx

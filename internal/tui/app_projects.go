@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/transaction"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
 // syncProjectCache reconciles catalog-owned metadata from RuntimeState while
@@ -94,7 +95,7 @@ func (m *AppModel) parkedOwnerLabel(project *models.Project) string {
 	if m == nil || project == nil || !models.ProjectTagsParked(project.Tags) {
 		return ""
 	}
-	return project.Name + scopeChromeSeparator + models.ParkedProjectTag
+	return project.Name + outliner.ScopeChromeSeparator + models.ParkedProjectTag
 }
 
 // ensureProjectColorSlots persists legacy catalog backfill once during startup.

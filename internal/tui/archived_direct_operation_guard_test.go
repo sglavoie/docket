@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
@@ -70,11 +71,11 @@ func newArchivedGuardEnv(t *testing.T) *archivedGuardEnv {
 	env := &archivedGuardEnv{workspace: workspace, driver: driver, active: active, archived: archived}
 	env.press(t, "F", "a")
 	out := env.outliner(t)
-	if out.projectFilter.ArchivedMode != query.ProjectPopulationInclude {
+	if out.ProjectFilter.ArchivedMode != query.ProjectPopulationInclude {
 		t.Fatal("Fa did not turn on the archived population facet")
 	}
 	if !visibleOutlinerTaskIDs(out)[env.taskID(t, archived, archivedGuardArchivedTaskTitle)] {
-		t.Fatalf("Fa showed no archived task rows (rows=%d)", len(out.rows))
+		t.Fatalf("Fa showed no archived task rows (rows=%d)", len(out.Rows))
 	}
 	return env
 }
@@ -89,7 +90,7 @@ func (env *archivedGuardEnv) press(t *testing.T, keys ...string) {
 	}
 }
 
-func (env *archivedGuardEnv) outliner(t *testing.T) *OutlinerModel {
+func (env *archivedGuardEnv) outliner(t *testing.T) *outliner.OutlinerModel {
 	t.Helper()
 	out, ok := env.driver.App().outlinerPrimary()
 	if !ok || out == nil {
@@ -115,7 +116,7 @@ func (env *archivedGuardEnv) taskID(t *testing.T, project *models.Project, title
 func (env *archivedGuardEnv) focusTask(t *testing.T, taskID string) {
 	t.Helper()
 	env.press(t, "home")
-	for range len(env.outliner(t).rows) + 1 {
+	for range len(env.outliner(t).Rows) + 1 {
 		if task, _ := env.driver.App().getCurrentCursorTaskAndProject(); task != nil && task.ID == taskID {
 			return
 		}
@@ -217,7 +218,7 @@ func TestArchivedTaskKeepsReadOnlyDirectKeys(t *testing.T) {
 	if err := env.driver.App().err; err != nil {
 		t.Fatalf("peek on an archived task failed: %v", err)
 	}
-	if !env.outliner(t).peekMode {
+	if !env.outliner(t).PeekMode {
 		t.Fatal("peek did not open over an archived task")
 	}
 }
@@ -256,7 +257,7 @@ func TestArchivedMixedSelectionRefusesBulkDirectKeys(t *testing.T) {
 // focusSelectionThrough extends an open visual selection down to the named task.
 func (env *archivedGuardEnv) focusSelectionThrough(t *testing.T, taskID string) {
 	t.Helper()
-	for range len(env.outliner(t).rows) + 1 {
+	for range len(env.outliner(t).Rows) + 1 {
 		if task, _ := env.driver.App().getCurrentCursorTaskAndProject(); task != nil && task.ID == taskID {
 			return
 		}

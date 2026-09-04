@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -34,7 +35,7 @@ func bulkTaskActionTestContext(project *models.Project, tasks ...*models.Task) o
 	context.Selection.Entities = make([]operation.EntityContext, 0, len(tasks))
 	for _, task := range tasks {
 		context.Selection.Tasks = append(context.Selection.Tasks, taskref.For(task, project))
-		context.Selection.Entities = append(context.Selection.Entities, taskOperationEntity(task, project))
+		context.Selection.Entities = append(context.Selection.Entities, outliner.TaskOperationEntity(task, project))
 	}
 	context.Entity = context.Selection.Entities[0]
 	return context
@@ -348,8 +349,8 @@ func TestSimplifiedSpaceOpensSelectedTaskActionSheet(t *testing.T) {
 	}
 	project.BuildTaskTree()
 	setTestAppProjects(app, project)
-	app.crossOutliner.population.projects = []*models.Project{project}
-	app.crossOutliner.rows = []outlinerRow{{task: task, ProjectID: project.ID}}
+	app.crossOutliner.Population.Projects = []*models.Project{project}
+	app.crossOutliner.Rows = []outliner.OutlinerRow{{Task: task, ProjectID: project.ID}}
 
 	handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: tea.KeySpace})
 	if !handled || cmd != nil {
@@ -373,10 +374,10 @@ func TestSimplifiedVisualSelectionKeysOpenBulkActionsAndEscFreezes(t *testing.T)
 	project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{first, second}}
 	project.BuildTaskTree()
 	setTestAppProjects(app, project)
-	app.crossOutliner.population.projects = []*models.Project{project}
-	app.crossOutliner.rows = []outlinerRow{
-		{task: first, ProjectID: project.ID},
-		{task: second, ProjectID: project.ID},
+	app.crossOutliner.Population.Projects = []*models.Project{project}
+	app.crossOutliner.Rows = []outliner.OutlinerRow{
+		{Task: first, ProjectID: project.ID},
+		{Task: second, ProjectID: project.ID},
 	}
 
 	send := func(msg tea.KeyPressMsg) {
@@ -431,12 +432,12 @@ func TestVisualSelectionRejectsPeekWithoutCursorFallback(t *testing.T) {
 	project := &models.Project{ID: "project", Name: "Project", Tasks: []*models.Task{first, second}}
 	project.BuildTaskTree()
 	setTestAppProjects(app, project)
-	app.crossOutliner.population.projects = []*models.Project{project}
-	app.crossOutliner.rows = []outlinerRow{
-		{task: first, ProjectID: project.ID},
-		{task: second, ProjectID: project.ID},
+	app.crossOutliner.Population.Projects = []*models.Project{project}
+	app.crossOutliner.Rows = []outliner.OutlinerRow{
+		{Task: first, ProjectID: project.ID},
+		{Task: second, ProjectID: project.ID},
 	}
-	app.crossOutliner.toggleCursorSelection()
+	app.crossOutliner.ToggleCursorSelection()
 	app.crossOutliner.Cursor = 1
 
 	result := app.operationExecutor.Execute(operation.OperationExecutionRequest{

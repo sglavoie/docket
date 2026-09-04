@@ -33,7 +33,7 @@ func openScopedProjectDrilldown(t *testing.T) (*UITestDriver, *models.Project) {
 	}
 
 	var targetProject *models.Project
-	for _, project := range cross.population.projects {
+	for _, project := range cross.Population.Projects {
 		if project != nil && len(project.Tasks) > 0 {
 			targetProject = project
 			break
@@ -45,15 +45,15 @@ func openScopedProjectDrilldown(t *testing.T) (*UITestDriver, *models.Project) {
 
 	// Push the project scope and reveal a task, mirroring the project-header
 	// scope entry (Enter on a project header / Ctrl+X scope picker).
-	cross.pushProjectScope(targetProject.ID)
+	cross.PushProjectScope(targetProject.ID)
 	cross.NavigateToTaskInProject(targetProject.Tasks[0], targetProject)
 	driver.drain()
 
 	if driver.App().currentView() != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("current view = %s, want CrossProjectOutliner", driver.App().currentView())
 	}
-	if !cross.isProjectScoped() || cross.scope.projectID != targetProject.ID {
-		t.Fatalf("outliner scope = %q (scoped=%v), want %q", cross.scope.projectID, cross.isProjectScoped(), targetProject.ID)
+	if !cross.IsProjectScoped() || cross.Scope.ProjectID != targetProject.ID {
+		t.Fatalf("outliner scope = %q (scoped=%v), want %q", cross.Scope.ProjectID, cross.IsProjectScoped(), targetProject.ID)
 	}
 	return driver, targetProject
 }
@@ -61,7 +61,7 @@ func openScopedProjectDrilldown(t *testing.T) (*UITestDriver, *models.Project) {
 func TestScopedDrilldownEscRestoresCrossProjectParent(t *testing.T) {
 	driver, _ := openScopedProjectDrilldown(t)
 	cross := driver.App().crossOutliner
-	if !cross.isProjectScoped() {
+	if !cross.IsProjectScoped() {
 		t.Fatal("setup should leave the outliner scoped to one project")
 	}
 	if _, err := driver.ApplyAction(UITestAction{Type: UITestActionKey, Key: "esc"}, ObserveOptions{}); err != nil {
@@ -70,7 +70,7 @@ func TestScopedDrilldownEscRestoresCrossProjectParent(t *testing.T) {
 	if got := driver.App().currentView(); got != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("current view after Esc = %s, want CrossProjectOutliner", got)
 	}
-	if cross.isProjectScoped() {
+	if cross.IsProjectScoped() {
 		t.Fatal("Esc should pop the project scope back to all projects")
 	}
 }
@@ -100,12 +100,12 @@ func TestScopedPinnedLeafCompletionKeepsProjectOutlinerVisible(t *testing.T) { /
 	if err := storage.SaveProject(project); err != nil {
 		t.Fatalf("persist pinned completion fixture: %v", err)
 	}
-	cross.population.invalidate()
-	cross.crossProjectRebuildRows()
+	cross.Population.Invalidate()
+	cross.CrossProjectRebuildRows()
 	cross.NavigateToTaskInProject(target, project)
 
-	row := cross.rows[cross.Cursor]
-	if !row.isTaskRow() || row.task == nil || row.task.ID != target.ID || !row.IsPinnedSection {
+	row := cross.Rows[cross.Cursor]
+	if !row.IsTaskRow() || row.Task == nil || row.Task.ID != target.ID || !row.IsPinnedSection {
 		t.Fatalf("completion target is not selected in the pinned section: %#v", row)
 	}
 	driver.SetDrainTimeout(750 * time.Millisecond)
@@ -133,10 +133,10 @@ func TestScopedPinnedLeafCompletionKeepsProjectOutlinerVisible(t *testing.T) { /
 	if got := app.currentView(); got != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("current view = %s, want CrossProjectOutliner", got)
 	}
-	if cross.scope.projectID != project.ID {
-		t.Fatalf("project scope = %q, want %q", cross.scope.projectID, project.ID)
+	if cross.Scope.ProjectID != project.ID {
+		t.Fatalf("project scope = %q, want %q", cross.Scope.ProjectID, project.ID)
 	}
-	if cross.population.loading {
+	if cross.Population.Loading {
 		t.Fatal("completion left the Outliner refresh pending")
 	}
 	if screen := driver.Render(); strings.Contains(screen, "Unknown view") || strings.Contains(screen, "internal error:") {
@@ -145,9 +145,9 @@ func TestScopedPinnedLeafCompletionKeepsProjectOutlinerVisible(t *testing.T) { /
 	if !outlinerHasTask(cross, project.ID, survivor.ID) {
 		t.Fatalf("surviving task %q disappeared from the scoped Outliner", survivor.ID)
 	}
-	if len(cross.rows) == 0 || cross.Cursor < 0 || cross.Cursor >= len(cross.rows) ||
-		!cross.rows[cross.Cursor].isTaskRow() || cross.rows[cross.Cursor].task == nil {
-		t.Fatalf("completion left the cursor off a task row: cursor=%d rows=%d", cross.Cursor, len(cross.rows))
+	if len(cross.Rows) == 0 || cross.Cursor < 0 || cross.Cursor >= len(cross.Rows) ||
+		!cross.Rows[cross.Cursor].IsTaskRow() || cross.Rows[cross.Cursor].Task == nil {
+		t.Fatalf("completion left the cursor off a task row: cursor=%d rows=%d", cross.Cursor, len(cross.Rows))
 	}
 
 	fresh := &models.Project{ID: project.ID, Name: project.Name, Slug: project.Slug, Path: project.Path}

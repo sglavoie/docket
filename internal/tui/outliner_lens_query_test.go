@@ -8,82 +8,83 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
 func TestLensQueryEditingNarrowsWithoutASearchProjection(t *testing.T) {
-	outliner := lensLifecycleOutliner()
-	applyLensOrFatal(t, outliner, waitingLens(lensTestID(1), "Waiting", ""))
+	outlinerView := lensLifecycleOutliner()
+	applyLensOrFatal(t, outlinerView, waitingLens(lensTestID(1), "Waiting", ""))
 
-	outliner.ActivateSearch()
-	if !outliner.editingLensQuery() {
+	outlinerView.ActivateSearch()
+	if !outlinerView.EditingLensQuery() {
 		t.Fatal("slash under a lens must edit the narrowing query")
 	}
-	if outliner.hasSearchProjection() {
+	if outlinerView.HasSearchProjection() {
 		t.Fatal("lens query editing must not create a search projection")
 	}
 
-	typeLensQuery(t, outliner, "beta")
-	if outliner.lens.query != "beta" {
-		t.Fatalf("lens query = %q, want beta", outliner.lens.query)
+	typeLensQuery(t, outlinerView, "beta")
+	if outlinerView.Lens.Query != "beta" {
+		t.Fatalf("lens query = %q, want beta", outlinerView.Lens.Query)
 	}
-	if outliner.SearchQuery() != "" {
-		t.Fatalf("the ordinary search query must stay empty, got %q", outliner.SearchQuery())
+	if outlinerView.SearchQuery() != "" {
+		t.Fatalf("the ordinary search query must stay empty, got %q", outlinerView.SearchQuery())
 	}
-	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{"beta-waiting"}) {
+	if got := searchVisibleTaskIDs(outlinerView); !slices.Equal(got, []string{"beta-waiting"}) {
 		t.Fatalf("narrowed rows = %v, want [beta-waiting]", got)
 	}
 
-	outliner.handleKeyMsg(tea.KeyPressMsg{Code: tea.KeyEnter})
-	if outliner.editingLensQuery() || outliner.IsSearchMode() {
+	outlinerView.HandleKeyMsg(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if outlinerView.EditingLensQuery() || outlinerView.IsSearchMode() {
 		t.Fatal("Enter did not leave the query editor")
 	}
-	if outliner.lens.query != "beta" {
-		t.Fatalf("Enter did not accept the query: %q", outliner.lens.query)
+	if outlinerView.Lens.Query != "beta" {
+		t.Fatalf("Enter did not accept the query: %q", outlinerView.Lens.Query)
 	}
-	if !outliner.lensModified() {
+	if !outlinerView.LensModified() {
 		t.Fatal("an accepted narrowing query must mark the lens modified")
 	}
 }
 
 func TestLensQueryEditingEscRestoresTheQueryItOpenedOn(t *testing.T) {
-	outliner := lensLifecycleOutliner()
-	applyLensOrFatal(t, outliner, waitingLens(lensTestID(1), "Waiting", "needle"))
+	outlinerView := lensLifecycleOutliner()
+	applyLensOrFatal(t, outlinerView, waitingLens(lensTestID(1), "Waiting", "needle"))
 
-	outliner.ActivateSearch()
-	typeLensQuery(t, outliner, "z")
-	outliner.handleKeyMsg(tea.KeyPressMsg{Code: tea.KeyEscape})
+	outlinerView.ActivateSearch()
+	typeLensQuery(t, outlinerView, "z")
+	outlinerView.HandleKeyMsg(tea.KeyPressMsg{Code: tea.KeyEscape})
 
-	if outliner.editingLensQuery() || outliner.IsSearchMode() {
+	if outlinerView.EditingLensQuery() || outlinerView.IsSearchMode() {
 		t.Fatal("Esc did not leave the query editor")
 	}
-	if outliner.lens.query != "needle" {
-		t.Fatalf("Esc left the query at %q, want the original needle", outliner.lens.query)
+	if outlinerView.Lens.Query != "needle" {
+		t.Fatalf("Esc left the query at %q, want the original needle", outlinerView.Lens.Query)
 	}
-	if !outliner.hasActiveLens() {
+	if !outlinerView.HasActiveLens() {
 		t.Fatal("abandoning the query edit must not dismiss the lens")
 	}
-	if outliner.lensModified() {
+	if outlinerView.LensModified() {
 		t.Fatal("an abandoned query edit must leave the lens unmodified")
 	}
 }
 
 func TestStartupAndGlobalResetRetainNoLensFrame(t *testing.T) {
-	fresh := NewOutlinerModel(nil, nil, testConfigWithProjects())
-	if fresh.hasActiveLens() || fresh.lens.pending != nil || fresh.lens.query != "" {
+	fresh := outliner.NewOutlinerModel(nil, nil, testConfigWithProjects())
+	if fresh.HasActiveLens() || fresh.Lens.Pending != nil || fresh.Lens.Query != "" {
 		t.Fatal("a fresh Outliner must open with no lens")
 	}
 
-	outliner := lensLifecycleOutliner()
-	applyLensOrFatal(t, outliner, waitingLens(lensTestID(1), "Waiting", "needle"))
-	outliner.resetToGlobalAll()
+	outlinerView := lensLifecycleOutliner()
+	applyLensOrFatal(t, outlinerView, waitingLens(lensTestID(1), "Waiting", "needle"))
+	outlinerView.ResetToGlobalAll()
 
-	if outliner.hasActiveLens() || outliner.lens.pending != nil {
+	if outlinerView.HasActiveLens() || outlinerView.Lens.Pending != nil {
 		t.Fatal("the global reset retained a lens frame")
 	}
-	if outliner.lens.query != "" {
-		t.Fatalf("the global reset retained the narrowing query %q", outliner.lens.query)
+	if outlinerView.Lens.Query != "" {
+		t.Fatalf("the global reset retained the narrowing query %q", outlinerView.Lens.Query)
 	}
-	if outliner.primaryMode != chrome.ModeAll || outliner.filter.HasStateFilter() {
+	if outlinerView.PrimaryMode != chrome.ModeAll || outlinerView.Filter.HasStateFilter() {
 		t.Fatal("the global reset did not clear the lens-installed axes")
 	}
 }
@@ -92,43 +93,43 @@ func TestStartupAndGlobalResetRetainNoLensFrame(t *testing.T) {
 // diverging an axis moves the capture and leaves the frame exactly where the
 // application put it, which is the whole of how the modified marker is decided.
 func TestTheActiveFrameKeepsTheInstalledIdentityAndFingerprint(t *testing.T) {
-	outliner := lensLifecycleOutliner()
+	outlinerView := lensLifecycleOutliner()
 	saved := waitingLens(lensTestID(1), "Waiting", "needle")
-	applyLensOrFatal(t, outliner, saved)
+	applyLensOrFatal(t, outlinerView, saved)
 
-	installed := outliner.lens.active.savedFingerprint
-	if outliner.lensModified() {
+	installed := outlinerView.Lens.Active.SavedFingerprint
+	if outlinerView.LensModified() {
 		t.Fatal("a freshly applied lens reported itself modified")
 	}
 
 	// Diverging the live view must not move the installed fingerprint.
-	outliner.filter.Priority = int(models.PriorityHigh)
-	outliner.adoptFilterCarriers()
+	outlinerView.Filter.Priority = int(models.PriorityHigh)
+	outlinerView.AdoptFilterCarriers()
 
-	if outliner.lens.active.lensID != saved.ID || outliner.lens.active.name != saved.Name {
+	if outlinerView.Lens.Active.LensID != saved.ID || outlinerView.Lens.Active.Name != saved.Name {
 		t.Fatalf("frame identity = %q/%q, want %q/%q",
-			outliner.lens.active.lensID, outliner.lens.active.name, saved.ID, saved.Name)
+			outlinerView.Lens.Active.LensID, outlinerView.Lens.Active.Name, saved.ID, saved.Name)
 	}
-	if outliner.lens.active.savedFingerprint != installed {
+	if outlinerView.Lens.Active.SavedFingerprint != installed {
 		t.Fatal("the installed fingerprint absorbed a live edit")
 	}
-	if !outliner.lensModified() {
+	if !outlinerView.LensModified() {
 		t.Fatal("a diverged view did not report itself modified")
 	}
 }
 
 // typeLensQuery drives the lens query editor one rune at a time through the
 // ordinary key path, so the test exercises the same input loop the user does.
-func typeLensQuery(t *testing.T, outliner *OutlinerModel, query string) {
+func typeLensQuery(t *testing.T, outlinerView *outliner.OutlinerModel, query string) {
 	t.Helper()
 	for _, r := range query {
-		outliner.handleKeyMsg(tea.KeyPressMsg{Code: r, Text: string(r)})
+		outlinerView.HandleKeyMsg(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 }
 
-func loadedProjectIDs(outliner *OutlinerModel) []string {
-	ids := make([]string, 0, len(outliner.population.projects))
-	for _, project := range outliner.population.projects {
+func loadedProjectIDs(outlinerView *outliner.OutlinerModel) []string {
+	ids := make([]string, 0, len(outlinerView.Population.Projects))
+	for _, project := range outlinerView.Population.Projects {
 		if project != nil {
 			ids = append(ids, project.ID)
 		}

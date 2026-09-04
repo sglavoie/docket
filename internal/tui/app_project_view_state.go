@@ -1,5 +1,7 @@
 package tui
 
+import "github.com/sglavoie/tt/internal/tui/outliner"
+
 // This file hosts the per-project primary-view (Outliner) lifecycle helpers.
 // They replace the retired ProjectTree equivalents; the Outliner is now the
 // sole per-project primary view, so every former ProjectTree entry point
@@ -17,7 +19,7 @@ func (m *AppModel) refreshProjectView() {
 	if m.crossOutliner == nil {
 		return
 	}
-	rebuildOutlinerPreservingCursor(m.crossOutliner)
+	outliner.RebuildOutlinerPreservingCursor(m.crossOutliner)
 }
 
 // refreshProjectViewInMemory is the in-memory-only refresh used as the safe

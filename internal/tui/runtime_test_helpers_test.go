@@ -19,7 +19,7 @@ func commitPlanningToRuntime(runtime *config.RuntimeState, mutate func(*config.P
 	if runtime == nil || runtime.DataDir() == "" {
 		return nil
 	}
-	planning := clonePlanningState(runtime.Planning())
+	planning := coordinator.ClonePlanningState(runtime.Planning())
 	mutate(planning)
 	return runtime.CommitPlanning(planning)
 }

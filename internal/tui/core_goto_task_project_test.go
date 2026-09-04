@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -20,38 +21,38 @@ func gotoProjectDriver(t *testing.T) *UITestDriver {
 	return driver
 }
 
-func gotoProjectOutliner(t *testing.T, driver *UITestDriver) *OutlinerModel {
+func gotoProjectOutliner(t *testing.T, driver *UITestDriver) *outliner.OutlinerModel {
 	t.Helper()
-	outliner := driver.App().crossOutliner
-	if outliner == nil {
+	outlinerView := driver.App().crossOutliner
+	if outlinerView == nil {
 		t.Fatal("the fixture app has no Outliner")
 	}
-	return outliner
+	return outlinerView
 }
 
 const gotoProjectTaskTitle = "Beta rollout checklist"
 
 // gotoProjectCursorOnTask parks the cursor on the row holding Client Beta's task.
-func gotoProjectCursorOnTask(t *testing.T, outliner *OutlinerModel) {
+func gotoProjectCursorOnTask(t *testing.T, outlinerView *outliner.OutlinerModel) {
 	t.Helper()
-	for index, row := range outliner.rows {
-		if row.isTaskRow() && row.task != nil && row.task.Title == gotoProjectTaskTitle {
-			outliner.Cursor = index
+	for index, row := range outlinerView.Rows {
+		if row.IsTaskRow() && row.Task != nil && row.Task.Title == gotoProjectTaskTitle {
+			outlinerView.Cursor = index
 			return
 		}
 	}
 	t.Fatalf("no row holds the task %q", gotoProjectTaskTitle)
 }
 
-func gotoProjectCursorTitle(outliner *OutlinerModel) string {
-	if outliner.Cursor < 0 || outliner.Cursor >= len(outliner.rows) {
+func gotoProjectCursorTitle(outlinerView *outliner.OutlinerModel) string {
+	if outlinerView.Cursor < 0 || outlinerView.Cursor >= len(outlinerView.Rows) {
 		return ""
 	}
-	row := outliner.rows[outliner.Cursor]
-	if !row.isTaskRow() || row.task == nil {
+	row := outlinerView.Rows[outlinerView.Cursor]
+	if !row.IsTaskRow() || row.Task == nil {
 		return ""
 	}
-	return row.task.Title
+	return row.Task.Title
 }
 
 const gotoProjectName = "Client Beta"
@@ -69,26 +70,26 @@ func gotoProjectID(t *testing.T, app *AppModel) string {
 
 func TestGotoTaskProjectScopesToTheCursorTaskAndForcesAll(t *testing.T) {
 	driver := gotoProjectDriver(t)
-	outliner := gotoProjectOutliner(t, driver)
+	outlinerView := gotoProjectOutliner(t, driver)
 	beta := gotoProjectID(t, driver.App())
-	gotoProjectCursorOnTask(t, outliner)
+	gotoProjectCursorOnTask(t, outlinerView)
 
 	sortPressKeys(t, driver, "g", "p")
 
-	if outliner.scope.projectID != beta {
-		t.Fatalf("scoped project = %q, want Client Beta %q", outliner.scope.projectID, beta)
+	if outlinerView.Scope.ProjectID != beta {
+		t.Fatalf("scoped project = %q, want Client Beta %q", outlinerView.Scope.ProjectID, beta)
 	}
-	if outliner.primaryMode != chrome.ModeAll {
-		t.Fatalf("mode = %q, want %q", outliner.primaryMode, chrome.ModeAll)
+	if outlinerView.PrimaryMode != chrome.ModeAll {
+		t.Fatalf("mode = %q, want %q", outlinerView.PrimaryMode, chrome.ModeAll)
 	}
-	if got := gotoProjectCursorTitle(outliner); got != gotoProjectTaskTitle {
+	if got := gotoProjectCursorTitle(outlinerView); got != gotoProjectTaskTitle {
 		t.Fatalf("cursor task = %q, want the task the jump was pressed from", got)
 	}
 	if status := driver.App().statusMessage; !strings.Contains(status, "Project: Client Beta") {
 		t.Fatalf("status = %q, want it to name the destination project", status)
 	}
-	for _, row := range outliner.rows {
-		if row.isTaskRow() && row.task != nil && row.task.Title == "Alpha migration kickoff" {
+	for _, row := range outlinerView.Rows {
+		if row.IsTaskRow() && row.Task != nil && row.Task.Title == "Alpha migration kickoff" {
 			t.Fatal("the scoped projection still lists another project's task")
 		}
 	}
@@ -98,28 +99,28 @@ func TestGotoTaskProjectScopesToTheCursorTaskAndForcesAll(t *testing.T) {
 // captures the frame Esc restores, so it must run before the All switch.
 func TestGotoTaskProjectEscRestoresTheOriginMode(t *testing.T) {
 	driver := gotoProjectDriver(t)
-	outliner := gotoProjectOutliner(t, driver)
+	outlinerView := gotoProjectOutliner(t, driver)
 	sortPressKeys(t, driver, "g", "b")
-	if outliner.primaryMode != chrome.ModeBacklog {
-		t.Fatalf("origin mode = %q, want %q", outliner.primaryMode, chrome.ModeBacklog)
+	if outlinerView.PrimaryMode != chrome.ModeBacklog {
+		t.Fatalf("origin mode = %q, want %q", outlinerView.PrimaryMode, chrome.ModeBacklog)
 	}
 	beta := gotoProjectID(t, driver.App())
-	gotoProjectCursorOnTask(t, outliner)
+	gotoProjectCursorOnTask(t, outlinerView)
 
 	sortPressKeys(t, driver, "g", "p")
-	if outliner.scope.projectID != beta || outliner.primaryMode != chrome.ModeAll {
+	if outlinerView.Scope.ProjectID != beta || outlinerView.PrimaryMode != chrome.ModeAll {
 		t.Fatalf(
 			"landing = scope %q mode %q, want %q and %q",
-			outliner.scope.projectID, outliner.primaryMode, beta, chrome.ModeAll,
+			outlinerView.Scope.ProjectID, outlinerView.PrimaryMode, beta, chrome.ModeAll,
 		)
 	}
 
 	sortPressKeys(t, driver, "esc")
-	if outliner.scope.projectID != "" {
-		t.Fatalf("Esc left the scope at %q, want the base scope", outliner.scope.projectID)
+	if outlinerView.Scope.ProjectID != "" {
+		t.Fatalf("Esc left the scope at %q, want the base scope", outlinerView.Scope.ProjectID)
 	}
-	if outliner.primaryMode != chrome.ModeBacklog {
-		t.Fatalf("Esc restored mode %q, want the origin %q", outliner.primaryMode, chrome.ModeBacklog)
+	if outlinerView.PrimaryMode != chrome.ModeBacklog {
+		t.Fatalf("Esc restored mode %q, want the origin %q", outlinerView.PrimaryMode, chrome.ModeBacklog)
 	}
 }
 
@@ -128,24 +129,24 @@ func TestGotoTaskProjectEscRestoresTheOriginMode(t *testing.T) {
 // status says why.
 func TestGotoTaskProjectKeepsTheOriginModeWhenAllOmitsTheTask(t *testing.T) {
 	driver := gotoProjectDriver(t)
-	outliner := gotoProjectOutliner(t, driver)
-	gotoProjectCursorOnTask(t, outliner)
+	outlinerView := gotoProjectOutliner(t, driver)
+	gotoProjectCursorOnTask(t, outlinerView)
 	sortPressKeys(t, driver, "$", "d")
 	driver.Wait(defaultWaitTimeout)
 
 	sortPressKeys(t, driver, "g", "r")
 	beta := gotoProjectID(t, driver.App())
-	gotoProjectCursorOnTask(t, outliner)
+	gotoProjectCursorOnTask(t, outlinerView)
 
 	sortPressKeys(t, driver, "g", "p")
 
-	if outliner.scope.projectID != beta {
-		t.Fatalf("scoped project = %q, want Client Beta %q", outliner.scope.projectID, beta)
+	if outlinerView.Scope.ProjectID != beta {
+		t.Fatalf("scoped project = %q, want Client Beta %q", outlinerView.Scope.ProjectID, beta)
 	}
-	if outliner.primaryMode != chrome.ModeRecent {
-		t.Fatalf("mode = %q, want the origin %q kept", outliner.primaryMode, chrome.ModeRecent)
+	if outlinerView.PrimaryMode != chrome.ModeRecent {
+		t.Fatalf("mode = %q, want the origin %q kept", outlinerView.PrimaryMode, chrome.ModeRecent)
 	}
-	if got := gotoProjectCursorTitle(outliner); got != gotoProjectTaskTitle {
+	if got := gotoProjectCursorTitle(outlinerView); got != gotoProjectTaskTitle {
 		t.Fatalf("cursor task = %q, want the task the jump was pressed from", got)
 	}
 	status := driver.App().statusMessage
@@ -157,8 +158,8 @@ func TestGotoTaskProjectKeepsTheOriginModeWhenAllOmitsTheTask(t *testing.T) {
 func TestGotoTaskProjectRefusesWithoutASingleTaskCursor(t *testing.T) {
 	t.Run("project header", func(t *testing.T) {
 		driver := gotoProjectDriver(t)
-		outliner := gotoProjectOutliner(t, driver)
-		outliner.Cursor = headerTargetProjectHeaderRow(t, outliner)
+		outlinerView := gotoProjectOutliner(t, driver)
+		outlinerView.Cursor = headerTargetProjectHeaderRow(t, outlinerView)
 
 		prefix, err := parseUITestKey("g")
 		if err != nil {
@@ -183,20 +184,20 @@ func TestGotoTaskProjectRefusesWithoutASingleTaskCursor(t *testing.T) {
 		if failure.Err.Error() != operation.OperationTargetRejectionMessage(operation.OperationCategoryTask) {
 			t.Fatalf("refusal reads %q, not the shared sentence", failure.Err.Error())
 		}
-		if outliner.scope.projectID != "" {
-			t.Fatalf("a refused press scoped to %q", outliner.scope.projectID)
+		if outlinerView.Scope.ProjectID != "" {
+			t.Fatalf("a refused press scoped to %q", outlinerView.Scope.ProjectID)
 		}
 	})
 
 	t.Run("visual selection", func(t *testing.T) {
 		driver := gotoProjectDriver(t)
-		outliner := gotoProjectOutliner(t, driver)
-		gotoProjectCursorOnTask(t, outliner)
+		outlinerView := gotoProjectOutliner(t, driver)
+		gotoProjectCursorOnTask(t, outlinerView)
 
 		sortPressKeys(t, driver, "v", "g", "p")
 
-		if outliner.scope.projectID != "" {
-			t.Fatalf("a visual selection still scoped to %q", outliner.scope.projectID)
+		if outlinerView.Scope.ProjectID != "" {
+			t.Fatalf("a visual selection still scoped to %q", outlinerView.Scope.ProjectID)
 		}
 	})
 
@@ -204,11 +205,11 @@ func TestGotoTaskProjectRefusesWithoutASingleTaskCursor(t *testing.T) {
 
 func TestGotoTaskProjectJumpsFromASearchResult(t *testing.T) {
 	driver := gotoProjectDriver(t)
-	outliner := gotoProjectOutliner(t, driver)
-	outliner.SetSearchQuery("Beta rollout")
-	gotoProjectCursorOnTask(t, outliner)
-	identity := outliner.CurrentTaskIdentity()
-	_, project := outliner.taskAndProjectForIdentity(identity)
+	outlinerView := gotoProjectOutliner(t, driver)
+	outlinerView.SetSearchQuery("Beta rollout")
+	gotoProjectCursorOnTask(t, outlinerView)
+	identity := outlinerView.CurrentTaskIdentity()
+	_, project := outlinerView.TaskAndProjectForIdentity(identity)
 	if project == nil {
 		t.Fatalf("search result %+v resolved no project", identity)
 	}
@@ -218,11 +219,11 @@ func TestGotoTaskProjectJumpsFromASearchResult(t *testing.T) {
 	ctx.View = presentation.ViewCrossProjectOutliner
 	executeDirectPath(t, app, ctx, []string{"g", "p"})
 
-	if outliner.hasSearchProjection() {
+	if outlinerView.HasSearchProjection() {
 		t.Fatal("the jump kept the temporary search projection")
 	}
-	if outliner.scope.projectID != project.ID {
-		t.Fatalf("scoped to %q, want the result's project %q", outliner.scope.projectID, project.ID)
+	if outlinerView.Scope.ProjectID != project.ID {
+		t.Fatalf("scoped to %q, want the result's project %q", outlinerView.Scope.ProjectID, project.ID)
 	}
 	if want := "Project: " + project.Name; app.statusMessage != want {
 		t.Fatalf("status = %q, want %q", app.statusMessage, want)

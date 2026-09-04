@@ -4,6 +4,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -20,7 +21,7 @@ type operationVisualSelectionProvider interface {
 }
 
 type operationSelectionCountsProvider interface {
-	selectionCounts() listsurface.SelectionCounts
+	SelectionCounts() listsurface.SelectionCounts
 }
 
 // operationCommandContext captures the active cursor, multi-selection, project
@@ -39,7 +40,7 @@ func (m *AppModel) operationCommandContext() operation.CommandContext {
 	checklist, onChecklistRow := m.cursorChecklistItem()
 	switch {
 	case onChecklistRow:
-		ctx.Entity = checklistOperationEntity(checklist)
+		ctx.Entity = outliner.ChecklistOperationEntity(checklist)
 	case task != nil && project != nil:
 		ctx.Entity = operation.EntityContext{
 			ProjectID: project.ID,
@@ -66,7 +67,7 @@ func (m *AppModel) operationCommandContext() operation.CommandContext {
 		ctx.Selection.Visual = visual.IsMultiSelectActive()
 	}
 	if classified, ok := m.activeView().(operationSelectionCountsProvider); ok {
-		counts := classified.selectionCounts()
+		counts := classified.SelectionCounts()
 		ctx.Selection.VisibleCount = counts.Visible
 		ctx.Selection.HiddenCount = counts.Hidden
 	}
@@ -85,14 +86,14 @@ func (m *AppModel) operationSelectionEntities(identities []taskref.TaskIdentity)
 		if task == nil || project == nil {
 			continue
 		}
-		entities = append(entities, taskOperationEntity(task, project))
+		entities = append(entities, outliner.TaskOperationEntity(task, project))
 	}
 	return entities
 }
 
 func (m *AppModel) operationScopeProjectIDs(cursorProject *models.Project) []string {
 	if out := m.activeOutliner(); out != nil {
-		projects := out.scopeProjects()
+		projects := out.ScopeProjects()
 		ids := make([]string, 0, len(projects))
 		for _, project := range projects {
 			if project != nil && project.ID != "" {
@@ -118,25 +119,4 @@ func (m *AppModel) operationScopeProjectIDs(cursorProject *models.Project) []str
 		}
 	}
 	return operation.NormalizedProjectIDs(ids)
-}
-
-// checklistOperationEntity names the checklist item under the cursor while
-// keeping the owner task and project filled, so the archived-project guard and
-// the checklist operations' own target resolution both keep working.
-func checklistOperationEntity(cursor checklistCursor) operation.EntityContext {
-	entity := taskOperationEntity(cursor.Task, cursor.Project)
-	entity.HasChecklistCursor = true
-	entity.ChecklistIndex = cursor.Index
-	return entity
-}
-
-func taskOperationEntity(task *models.Task, project *models.Project) operation.EntityContext {
-	if task == nil || project == nil {
-		return operation.EntityContext{}
-	}
-	return operation.EntityContext{
-		ProjectID: project.ID,
-		TaskID:    task.ID,
-		Archived:  project.Archived,
-	}
 }

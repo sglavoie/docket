@@ -32,10 +32,10 @@ func TestSearchDependencyAutocompleteOffersReferencedTargets(t *testing.T) {
 	}
 	project := primaryRowsProject("alpha", open, closed, holder, lonely)
 	project.Slug = "alpha"
-	outliner := searchACOutliner(project)
+	outlinerView := searchACOutliner(project)
 
-	typeSearchAC(outliner, "~")
-	values := searchACValues(outliner)
+	typeSearchAC(outlinerView, "~")
+	values := searchACValues(outlinerView)
 	for _, want := range []string{"1", "2", "ghost:vanished"} {
 		if !containsSearchACValue(values, want) {
 			t.Errorf("suggestions %v missing %q", values, want)
@@ -48,8 +48,8 @@ func TestSearchDependencyAutocompleteOffersReferencedTargets(t *testing.T) {
 
 	// A value already accepted on the line is not offered twice: the sigil is
 	// repeatable and the predicates AND.
-	typeSearchAC(outliner, "~1 ~")
-	if remaining := searchACValues(outliner); containsSearchACValue(remaining, "1") {
+	typeSearchAC(outlinerView, "~1 ~")
+	if remaining := searchACValues(outlinerView); containsSearchACValue(remaining, "1") {
 		t.Errorf("suggestions %v re-offered an accepted value", remaining)
 	}
 }

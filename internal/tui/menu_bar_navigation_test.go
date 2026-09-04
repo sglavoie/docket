@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
 // This file covers the sub-state a user drives: revealing the band, walking it,
@@ -16,7 +17,7 @@ import (
 // for it. One press has to reveal the band and drop its first menu, or the same
 // accelerator would mean "show" the first time and "open" the second.
 func TestOpeningTheMenuBarRevealsItAndDropsItsFirstMenu(t *testing.T) {
-	driver, outliner := menuBarDriver(t)
+	driver, outlinerView := menuBarDriver(t)
 
 	if err := driver.SendKey("ctrl+m"); err != nil {
 		t.Fatalf("press ctrl+m: %v", err)
@@ -24,16 +25,16 @@ func TestOpeningTheMenuBarRevealsItAndDropsItsFirstMenu(t *testing.T) {
 	if !driver.App().runtime.Machine().MenuBarVisible {
 		t.Error("opening a menu did not reveal the hidden bar")
 	}
-	if !outliner.menuBar.open {
+	if !outlinerView.MenuBar.Open {
 		t.Fatal("ctrl+m revealed the bar without opening a menu")
 	}
 
-	menus := openMenuBarMenusForTest(t, outliner)
-	if outliner.menuBar.menuIndex != 0 {
-		t.Errorf("opened on menu %d, want the leftmost", outliner.menuBar.menuIndex)
+	menus := openMenuBarMenusForTest(t, outlinerView)
+	if outlinerView.MenuBar.MenuIndex != 0 {
+		t.Errorf("opened on menu %d, want the leftmost", outlinerView.MenuBar.MenuIndex)
 	}
-	if menus[0].ID != menuIDTask {
-		t.Errorf("opened menu %s, want %s", menus[0].ID, menuIDTask)
+	if menus[0].ID != outliner.MenuIDTask {
+		t.Errorf("opened menu %s, want %s", menus[0].ID, outliner.MenuIDTask)
 	}
 	if len(menus[0].Entries) == 0 {
 		t.Fatal("the opened menu resolved to no entries at all")
@@ -47,7 +48,7 @@ func TestOpeningTheMenuBarRevealsItAndDropsItsFirstMenu(t *testing.T) {
 	if err := driver.SendKey("esc"); err != nil {
 		t.Fatalf("press esc: %v", err)
 	}
-	if outliner.menuBar.open {
+	if outlinerView.MenuBar.Open {
 		t.Error("esc left the menu open")
 	}
 	// Esc puts the menu away, not the bar: hiding the band is `M`'s alone, and it
@@ -64,12 +65,12 @@ func TestOpeningTheMenuBarRevealsItAndDropsItsFirstMenu(t *testing.T) {
 // dropdown lists is what pressing Enter on it would do. A visual selection is
 // the cheapest proof: it takes every single-task row away at once.
 func TestOpenMenuOmitsAnEntryTheCursorCannotRun(t *testing.T) {
-	driver, outliner := menuBarDriver(t)
+	driver, outlinerView := menuBarDriver(t)
 
 	if err := driver.SendKey("ctrl+m"); err != nil {
 		t.Fatalf("press ctrl+m: %v", err)
 	}
-	before := menuWithID(t, openMenuBarMenusForTest(t, outliner), menuIDTask)
+	before := menuWithID(t, openMenuBarMenusForTest(t, outlinerView), outliner.MenuIDTask)
 	if !menuHasLabel(before, "External Editor") {
 		t.Fatalf("the Task menu does not offer External Editor to begin with: %+v", before.Entries)
 	}
@@ -77,9 +78,9 @@ func TestOpenMenuOmitsAnEntryTheCursorCannotRun(t *testing.T) {
 		t.Errorf("the applicable entry is not drawn:\n%s", screen)
 	}
 
-	outliner.MultiSelectMode = true
+	outlinerView.MultiSelectMode = true
 
-	after := menuWithID(t, openMenuBarMenusForTest(t, outliner), menuIDTask)
+	after := menuWithID(t, openMenuBarMenusForTest(t, outlinerView), outliner.MenuIDTask)
 	if menuHasLabel(after, "External Editor") {
 		t.Errorf("External Editor survived a visual selection: %+v", after.Entries)
 	}
@@ -95,7 +96,7 @@ func TestOpenMenuOmitsAnEntryTheCursorCannotRun(t *testing.T) {
 // one rings around the menus that survived resolution — never around the specs,
 // which may hold a menu the bar is not drawing.
 func TestMenuNavigationSkipsSeparatorsAndRingsSurvivingMenus(t *testing.T) {
-	entries := []resolvedMenuEntry{
+	entries := []outliner.ResolvedMenuEntry{
 		{OperationID: "test.menu.a", Label: "A"},
 		{},
 		{OperationID: "test.menu.b", Label: "B"},
@@ -113,16 +114,16 @@ func TestMenuNavigationSkipsSeparatorsAndRingsSurvivingMenus(t *testing.T) {
 		{name: "backward off the top", index: 0, delta: -1, want: 0},
 	}
 	for _, tc := range steps {
-		if got := stepMenuBarItem(entries, tc.index, tc.delta); got != tc.want {
+		if got := outliner.StepMenuBarItem(entries, tc.index, tc.delta); got != tc.want {
 			t.Errorf("%s: stepped %d to %d, want %d", tc.name, tc.index, got, tc.want)
 		}
 	}
 
-	driver, outliner := menuBarDriver(t)
+	driver, outlinerView := menuBarDriver(t)
 	if err := driver.SendKey("ctrl+m"); err != nil {
 		t.Fatalf("press ctrl+m: %v", err)
 	}
-	menus := openMenuBarMenusForTest(t, outliner)
+	menus := openMenuBarMenusForTest(t, outlinerView)
 	if len(menus) < 2 {
 		t.Fatalf("the bar drew %d menus, too few to cycle", len(menus))
 	}
@@ -134,7 +135,7 @@ func TestMenuNavigationSkipsSeparatorsAndRingsSurvivingMenus(t *testing.T) {
 		if err := driver.SendKey("j"); err != nil {
 			t.Fatalf("press j: %v", err)
 		}
-		index := outliner.menuBar.itemIndex
+		index := outlinerView.MenuBar.ItemIndex
 		if index < 0 || index >= len(live) {
 			t.Fatalf("step %d left the highlight at %d, outside a menu of %d", step, index, len(live))
 		}
@@ -142,7 +143,7 @@ func TestMenuNavigationSkipsSeparatorsAndRingsSurvivingMenus(t *testing.T) {
 			t.Fatalf("step %d rested the highlight on the separator at %d", step, index)
 		}
 	}
-	if got := outliner.menuBar.itemIndex; got == 0 {
+	if got := outlinerView.MenuBar.ItemIndex; got == 0 {
 		t.Error("walking past the last entry rang back to the first")
 	}
 
@@ -150,19 +151,19 @@ func TestMenuNavigationSkipsSeparatorsAndRingsSurvivingMenus(t *testing.T) {
 		if err := driver.SendKey("l"); err != nil {
 			t.Fatalf("press l: %v", err)
 		}
-		if got, want := outliner.menuBar.menuIndex, step%len(menus); got != want {
+		if got, want := outlinerView.MenuBar.MenuIndex, step%len(menus); got != want {
 			t.Fatalf("l %d times opened menu %d, want %d", step, got, want)
 		}
 		// A new menu opens at its own top; carrying an offset across would land the
 		// highlight on whatever happened to sit at that depth.
-		if got := outliner.menuBar.itemIndex; got != 0 {
+		if got := outlinerView.MenuBar.ItemIndex; got != 0 {
 			t.Errorf("moving along the bar left the highlight at entry %d, want the top", got)
 		}
 	}
 	if err := driver.SendKey("h"); err != nil {
 		t.Fatalf("press h: %v", err)
 	}
-	if got, want := outliner.menuBar.menuIndex, len(menus)-1; got != want {
+	if got, want := outlinerView.MenuBar.MenuIndex, len(menus)-1; got != want {
 		t.Errorf("h from the leftmost menu opened %d, want the rightmost %d", got, want)
 	}
 }
@@ -172,11 +173,11 @@ func TestMenuNavigationSkipsSeparatorsAndRingsSurvivingMenus(t *testing.T) {
 // it against the entries this frame actually holds and writes the answer back,
 // which is what keeps the painted highlight and the row Enter runs the same row.
 func TestAStoredItemIndexReResolvesDuringRender(t *testing.T) {
-	driver, outliner := menuBarDriver(t)
+	driver, outlinerView := menuBarDriver(t)
 	if err := driver.SendKey("ctrl+m"); err != nil {
 		t.Fatalf("press ctrl+m: %v", err)
 	}
-	entries := openMenuBarMenusForTest(t, outliner)[0].Entries
+	entries := openMenuBarMenusForTest(t, outlinerView)[0].Entries
 
 	separator := -1
 	for index, entry := range entries {
@@ -198,9 +199,9 @@ func TestAStoredItemIndexReResolvesDuringRender(t *testing.T) {
 		{name: "before the start", index: -7},
 	}
 	for _, tc := range cases {
-		outliner.menuBar.itemIndex = tc.index
+		outlinerView.MenuBar.ItemIndex = tc.index
 		driver.Render()
-		got := outliner.menuBar.itemIndex
+		got := outlinerView.MenuBar.ItemIndex
 		if got < 0 || got >= len(entries) {
 			t.Errorf("%s: rendered at %d, outside a menu of %d", tc.name, got, len(entries))
 			continue
@@ -216,27 +217,27 @@ func TestAStoredItemIndexReResolvesDuringRender(t *testing.T) {
 // reaches. Choosing a mode proves the round trip without opening an overlay to
 // read it back through.
 func TestEnterRunsTheHighlightedEntryAndClosesTheMenu(t *testing.T) {
-	driver, outliner := menuBarDriver(t)
+	driver, outlinerView := menuBarDriver(t)
 	pressMenuBarKey(t, driver, "ctrl+m")
-	menus := openMenuBarMenusForTest(t, outliner)
-	if len(menus) < 2 || menus[1].ID != menuIDView {
-		t.Fatalf("the second menu is not %s: %+v", menuIDView, menus)
+	menus := openMenuBarMenusForTest(t, outlinerView)
+	if len(menus) < 2 || menus[1].ID != outliner.MenuIDView {
+		t.Fatalf("the second menu is not %s: %+v", outliner.MenuIDView, menus)
 	}
-	if outliner.primaryMode != chrome.ModeAll {
-		t.Fatalf("the fixture launched in %s, want the All the View menu checks", outliner.primaryMode)
+	if outlinerView.PrimaryMode != chrome.ModeAll {
+		t.Fatalf("the fixture launched in %s, want the All the View menu checks", outlinerView.PrimaryMode)
 	}
 
 	pressMenuBarKey(t, driver, "l", "j")
-	entry := menus[1].Entries[outliner.menuBar.itemIndex]
+	entry := menus[1].Entries[outlinerView.MenuBar.ItemIndex]
 	if got := operation.GotoModeOperations[entry.OperationID]; got != chrome.ModeToday {
 		t.Fatalf("the highlighted entry is %s, want the Today mode row", entry.OperationID)
 	}
 
 	pressMenuBarKey(t, driver, "enter")
-	if outliner.menuBar.open {
+	if outlinerView.MenuBar.Open {
 		t.Error("enter left the menu open")
 	}
-	if got := driver.App().crossOutliner.primaryMode; got != chrome.ModeToday {
+	if got := driver.App().crossOutliner.PrimaryMode; got != chrome.ModeToday {
 		t.Errorf("enter left the Outliner in %s, want Today", got)
 	}
 }
@@ -247,22 +248,22 @@ func TestEnterRunsTheHighlightedEntryAndClosesTheMenu(t *testing.T) {
 // closes and the key is re-emitted, which is why the whole root grammar stays
 // reachable one update later rather than being shadowed.
 func TestAnUnrecognizedKeyClosesTheMenuAndStillRuns(t *testing.T) {
-	driver, outliner := menuBarDriver(t)
+	driver, outlinerView := menuBarDriver(t)
 	pressMenuBarKey(t, driver, "ctrl+m")
-	if !outliner.menuBar.open {
+	if !outlinerView.MenuBar.Open {
 		t.Fatal("ctrl+m opened no menu")
 	}
-	if outliner.queryReadout.expanded {
+	if outlinerView.QueryReadout.Expanded {
 		t.Fatal("the fixture launched with the readout already open")
 	}
 
 	// Q is an accelerator the open Task menu says nothing about, which is exactly
 	// the case a modal sub-state would eat.
 	pressMenuBarKey(t, driver, "Q")
-	if outliner.menuBar.open {
+	if outlinerView.MenuBar.Open {
 		t.Error("an unrecognized key left the menu open")
 	}
-	if !outliner.queryReadout.expanded {
+	if !outlinerView.QueryReadout.Expanded {
 		t.Error("the re-emitted key never reached the root grammar")
 	}
 }

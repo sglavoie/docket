@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -43,7 +44,7 @@ func planningOrderProject(t *testing.T, dataDir, id, slug string, titles ...stri
 // with the cross-project Outliner installed as crossOutliner, so a J/K reorder can
 // be driven through the real keymap and its durable planning commit inspected on
 // disk. It returns the model, the cross Outliner, and the data dir.
-func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, *OutlinerModel, string) {
+func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, *outliner.OutlinerModel, string) {
 	t.Helper()
 	dataDir := t.TempDir()
 	for _, p := range projects {
@@ -61,7 +62,7 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 	runtime := testRuntimeAt(cfg.DataDir(), cfg)
 
 	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil).
-		WithPlanningArtifacts(planningReconcileArtifactBuilder(manager))
+		WithPlanningArtifacts(coordinator.ManagerPlanningArtifacts(manager))
 
 	projectMap := make(map[string]*models.Project, len(projects))
 	for _, p := range projects {
@@ -80,9 +81,9 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 		height:            40,
 		views:             route.NewViewRegistry(),
 		currentProject:    projects[0],
-		nextOrder:         []PlanningTask{},
+		nextOrder:         []outliner.PlanningTask{},
 		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),
-		today:             []PlanningTask{},
+		today:             []outliner.PlanningTask{},
 		todayIDs:          make(map[taskref.TaskIdentity]bool),
 		operationRegistry: operation.NewOperationRegistry(),
 		navigation:        route.NewNavigationState(),
@@ -90,10 +91,10 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 	m.operationExecutor = operation.NewOperationExecutor(m.operationRegistry)
 	m.rebuildPlanningFromRuntime()
 
-	cross := NewOutlinerModel(nil, manager, runtime)
-	cross.population.projects = projects
+	cross := outliner.NewOutlinerModel(nil, manager, runtime)
+	cross.Population.Projects = projects
 	if len(projects) == 1 {
-		cross.scope.projectID = projects[0].ID
+		cross.Scope.ProjectID = projects[0].ID
 	}
 	cross.SetSize(120, 40)
 	m.crossOutliner = cross
@@ -128,10 +129,10 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 
 // enterCrossMode selects a mode on the cross Outliner and rebuilds its
 // rows so the mode's live rows and flags are exactly what production renders.
-func enterCrossMode(cross *OutlinerModel, id chrome.OutlinerModeID) {
-	cross.selectOutlinerMode(id)
-	cross.population.invalidate()
-	cross.crossProjectRebuildRows()
+func enterCrossMode(cross *outliner.OutlinerModel, id chrome.OutlinerModeID) {
+	cross.SelectOutlinerMode(id)
+	cross.Population.Invalidate()
+	cross.CrossProjectRebuildRows()
 }
 
 // seedNextOrderOrder commits a workspace focus-queue order to disk so the global
@@ -238,11 +239,11 @@ func pressReorderMsg(t *testing.T, m *AppModel, key tea.KeyPressMsg) bool {
 
 // visibleTaskIDs returns the task IDs of the outliner's current task rows in
 // render order, ignoring headers and separators.
-func visibleTaskIDs(m *OutlinerModel) []string {
+func visibleTaskIDs(m *outliner.OutlinerModel) []string {
 	var ids []string
-	for _, row := range m.rows {
-		if row.isTaskRow() && row.task != nil {
-			ids = append(ids, row.task.ID)
+	for _, row := range m.Rows {
+		if row.IsTaskRow() && row.Task != nil {
+			ids = append(ids, row.Task.ID)
 		}
 	}
 	return ids

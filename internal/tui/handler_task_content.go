@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -157,15 +158,15 @@ func (m *AppModel) handleTaskContentEdited(msg TaskContentEditedMsg) (bool, tea.
 
 func (m *AppModel) commitTaskContentEdit(task *models.Task, project *models.Project, result *grammar.QuickEditResult, msg TaskContentEditedMsg) tea.Cmd {
 	source := taskref.For(task, project)
-	req := taskLineEditRequest(source, result)
+	req := outliner.TaskLineEditRequest(source, result)
 	req.Description = &msg.NewDescription
-	req.PlanningArtifacts = shellPlanningReconcileArtifactBuilder(m.runtime, m.configManager)
+	req.PlanningArtifacts = coordinator.PlanningArtifacts(m.runtime, m.configManager)
 	if req.DestinationProjectID != source.ProjectID {
-		req.PlanningArtifacts = shellStructuralPlanningArtifactBuilder(m.runtime, m.configManager)
+		req.PlanningArtifacts = coordinator.StructuralPlanningArtifacts(m.runtime, m.configManager)
 	}
-	var relocation *outlinerRelocationCapture
+	var relocation *outliner.OutlinerRelocationCapture
 	if out, ok := m.outlinerPrimary(); ok {
-		relocation = out.captureOutlinerRelocation([]taskref.TaskIdentity{source})
+		relocation = out.CaptureOutlinerRelocation([]taskref.TaskIdentity{source})
 	}
 
 	edited, err := m.appService.EditTaskLine(req)

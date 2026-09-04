@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
@@ -13,13 +14,13 @@ func TestQuickCaptureInterruptPreservesOutlinerContext(t *testing.T) {
 	driver, _, project := newQuickCaptureInterruptFixture(t)
 	openFixtureOutliner(t, driver, project)
 
-	outliner := driver.App().crossOutliner
-	outliner.Cursor = nthTaskRowIndex(t, outliner, 1)
+	outlinerView := driver.App().crossOutliner
+	outlinerView.Cursor = nthTaskRowIndex(t, outlinerView, 1)
 	before := driver.Observe(ObserveOptions{})
 	beforeStack := slices.Clone(before.ViewStack)
 	// The typed composer overlay parks the outliner; read its cursor directly
 	// instead of via the active-view snapshot.
-	beforeCursor := outliner.Cursor
+	beforeCursor := outlinerView.Cursor
 
 	driveUITestKeys(t, driver, "a")
 	assertQuickCaptureOpenOver(t, driver, presentation.ViewCrossProjectOutliner, beforeStack)
@@ -71,26 +72,26 @@ func openFixtureOutliner(t *testing.T, driver *UITestDriver, project *models.Pro
 	if cross == nil {
 		t.Fatal("cross-project outliner should be registered")
 	}
-	cross.pushProjectScope(project.ID)
+	cross.PushProjectScope(project.ID)
 	cross.NavigateToTaskInProject(project.Tasks[0], project)
 	driver.drain()
 	obs := driver.Observe(ObserveOptions{})
 	if obs.CurrentView != presentation.ViewCrossProjectOutliner.String() {
 		t.Fatalf("current view = %q, want %q", obs.CurrentView, presentation.ViewCrossProjectOutliner.String())
 	}
-	if cross.scope.projectID != project.ID {
-		t.Fatalf("expected project scope %q after selecting project, got %q", project.ID, cross.scope.projectID)
+	if cross.Scope.ProjectID != project.ID {
+		t.Fatalf("expected project scope %q after selecting project, got %q", project.ID, cross.Scope.ProjectID)
 	}
 }
 
-func nthTaskRowIndex(t *testing.T, outliner *OutlinerModel, n int) int {
+func nthTaskRowIndex(t *testing.T, outlinerView *outliner.OutlinerModel, n int) int {
 	t.Helper()
-	if outliner == nil {
+	if outlinerView == nil {
 		t.Fatal("outliner is nil")
 	}
 	seen := 0
-	for i, row := range outliner.rows {
-		if row.task == nil {
+	for i, row := range outlinerView.Rows {
+		if row.Task == nil {
 			continue
 		}
 		if seen == n {

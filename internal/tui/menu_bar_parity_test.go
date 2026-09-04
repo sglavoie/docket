@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
 // This file holds the parity rules themselves: the bar may only name operations
@@ -18,7 +19,7 @@ func TestEveryMenuEntryNamesARegisteredOperation(t *testing.T) {
 	registry := parityAuditApp(t).GetOperationRegistry()
 
 	named := 0
-	for _, spec := range outlinerMenuSpecs(chrome.ModeAll, false, true) {
+	for _, spec := range outliner.OutlinerMenuSpecs(chrome.ModeAll, false, true) {
 		for index, entry := range spec.Entries {
 			if entry.OperationID == "" {
 				if entry.Label != "" || entry.Checked != nil {
@@ -85,16 +86,16 @@ func TestMenuKeyHintsFollowTheStrategy(t *testing.T) {
 		}
 	}
 
-	menus, err := resolveMenuEntries(
+	menus, err := outliner.ResolveMenuEntries(
 		app.GetOperationRegistry(),
 		strategy,
 		menuBarCommandContext(),
-		outlinerMenuSpecs(chrome.ModeAll, false, true),
+		outliner.OutlinerMenuSpecs(chrome.ModeAll, false, true),
 	)
 	if err != nil {
 		t.Fatalf("resolve menus: %v", err)
 	}
-	help := menuWithID(t, menus, menuIDHelp)
+	help := menuWithID(t, menus, outliner.MenuIDHelp)
 	if len(help.Entries) != 1 || help.Entries[0].Key != "F1" {
 		t.Fatalf("help menu did not follow the rebinding: %+v", help.Entries)
 	}
@@ -102,7 +103,7 @@ func TestMenuKeyHintsFollowTheStrategy(t *testing.T) {
 
 func TestViewMenuCoversEveryOutlinerModeInCatalogOrder(t *testing.T) {
 	app := parityAuditApp(t)
-	view := menuWithID(t, resolveOutlinerMenus(t, app, chrome.ModeToday), menuIDView)
+	view := menuWithID(t, resolveOutlinerMenus(t, app, chrome.ModeToday), outliner.MenuIDView)
 
 	modes := make([]chrome.OutlinerModeID, 0, len(chrome.OutlinerModes))
 	checked := make([]chrome.OutlinerModeID, 0, 1)
@@ -160,7 +161,7 @@ func TestEveryMenuIsUniquelyIdentifiedAndInhabited(t *testing.T) {
 			}
 		}
 	}
-	for _, id := range []string{menuIDTask, menuIDView, menuIDGo, menuIDFind, menuIDHelp} {
+	for _, id := range []string{outliner.MenuIDTask, outliner.MenuIDView, outliner.MenuIDGo, outliner.MenuIDFind, outliner.MenuIDHelp} {
 		if !seen[id] {
 			t.Errorf("menu %s is missing from the bar", id)
 		}
@@ -196,7 +197,7 @@ func TestAMenuOnlyOperationIsNeverAnEntityOperation(t *testing.T) {
 	}
 
 	menuOnly := make([]operation.OperationID, 0, 1)
-	for _, spec := range outlinerMenuSpecs(chrome.ModeAll, false, true) {
+	for _, spec := range outliner.OutlinerMenuSpecs(chrome.ModeAll, false, true) {
 		for _, entry := range spec.Entries {
 			if entry.OperationID == "" || bound[entry.OperationID] {
 				continue
@@ -236,7 +237,7 @@ func TestAMenuOnlyOperationIsNeverAnEntityOperation(t *testing.T) {
 // three separate keys wrote is the proof: no key spells it, the View menu is the
 // only place it exists, and the tree is open afterwards.
 func TestTheKeylessFoldClearIsReachableOnlyFromTheMenu(t *testing.T) {
-	driver, outliner := menuBarDriver(t)
+	driver, outlinerView := menuBarDriver(t)
 	registry := driver.App().GetOperationRegistry()
 
 	for _, id := range productionInputStrategies {
@@ -251,16 +252,16 @@ func TestTheKeylessFoldClearIsReachableOnlyFromTheMenu(t *testing.T) {
 		}
 	}
 
-	if !outliner.toggleAllSubtrees() {
+	if !outlinerView.ToggleAllSubtrees() {
 		t.Fatal("the rich fixture has no subtree to fold, so the clear proves nothing")
 	}
-	if !outliner.anyTaskFoldCollapsed() {
+	if !outlinerView.AnyTaskFoldCollapsed() {
 		t.Fatal("folding every subtree left nothing folded")
 	}
-	outliner.folds.collapsedSections["_xp:pinned"] = true
+	outlinerView.Folds.CollapsedSections["_xp:pinned"] = true
 
 	pressMenuBarKey(t, driver, "ctrl+m", "l")
-	view := menuWithID(t, openMenuBarMenusForTest(t, outliner), menuIDView)
+	view := menuWithID(t, openMenuBarMenusForTest(t, outlinerView), outliner.MenuIDView)
 	if !menuHasLabel(view, "Clear All Folds") {
 		t.Fatalf("the View menu does not offer the keyless entry: %+v", view.Entries)
 	}
@@ -278,16 +279,16 @@ func TestTheKeylessFoldClearIsReachableOnlyFromTheMenu(t *testing.T) {
 		t.Fatal("the keyless entry resolved without its operation ID")
 	}
 
-	outliner.menuBar.itemIndex = index
+	outlinerView.MenuBar.ItemIndex = index
 	pressMenuBarKey(t, driver, "enter")
 
-	if outliner.menuBar.open {
+	if outlinerView.MenuBar.Open {
 		t.Error("running the keyless entry left the menu open")
 	}
-	if driver.App().crossOutliner.anyTaskFoldCollapsed() {
+	if driver.App().crossOutliner.AnyTaskFoldCollapsed() {
 		t.Error("the menu-only fold clear left a subtree folded")
 	}
-	for key, collapsed := range driver.App().crossOutliner.folds.collapsedSections {
+	for key, collapsed := range driver.App().crossOutliner.Folds.CollapsedSections {
 		if collapsed {
 			t.Errorf("the menu-only fold clear left section %s collapsed", key)
 		}

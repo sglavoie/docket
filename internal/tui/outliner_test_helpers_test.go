@@ -8,11 +8,9 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
-	"github.com/sglavoie/tt/internal/tui/grammar"
-	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
-	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // typedTestApp wires the same typed route, operation, and Outliner foundations
@@ -28,8 +26,8 @@ func typedTestApp(t *testing.T) *AppModel {
 	model.operationRegistry = operation.NewOperationRegistry()
 	model.operationExecutor = operation.NewOperationExecutor(model.operationRegistry)
 
-	model.crossOutliner = NewOutlinerModel(nil, model.configManager, model.runtime)
-	model.crossOutliner.population.projects = []*models.Project{project}
+	model.crossOutliner = outliner.NewOutlinerModel(nil, model.configManager, model.runtime)
+	model.crossOutliner.Population.Projects = []*models.Project{project}
 	model.crossOutliner.SetSize(model.width, model.height-2)
 	model.views.Register(presentation.ViewCrossProjectOutliner, model.crossOutliner)
 
@@ -101,20 +99,106 @@ func scopeTestProject(id, name string, taskIDs ...string) *models.Project {
 	return project
 }
 
-func taskRowProjectIDs(outliner *OutlinerModel) []string {
-	if outliner == nil {
+func taskRowProjectIDs(outlinerView *outliner.OutlinerModel) []string {
+	if outlinerView == nil {
 		return nil
 	}
 	seen := make(map[string]bool)
 	ids := make([]string, 0)
-	for _, row := range outliner.rows {
-		if !row.isTaskRow() || row.ProjectID == "" || seen[row.ProjectID] {
+	for _, row := range outlinerView.Rows {
+		if !row.IsTaskRow() || row.ProjectID == "" || seen[row.ProjectID] {
 			continue
 		}
 		seen[row.ProjectID] = true
 		ids = append(ids, row.ProjectID)
 	}
 	return ids
+}
+
+func scopeTestOutliner(projects ...*models.Project) *outliner.OutlinerModel {
+	runtime := testConfigWithProjects(projects...)
+	outlinerView := outliner.NewOutlinerModel(nil, nil, runtime)
+	outlinerView.Population.Projects = projects
+	outlinerView.Population.Invalidate()
+	outlinerView.CrossProjectRebuildRows()
+	return outlinerView
+}
+
+func findPlanningTaskRow(outlinerView *outliner.OutlinerModel, taskID string) (outliner.OutlinerRow, bool) {
+	for _, row := range outlinerView.Rows {
+		if row.IsTaskRow() && row.Task != nil && row.Task.ID == taskID {
+			return row, true
+		}
+	}
+	return outliner.OutlinerRow{}, false
+}
+
+func testProjectByID(t *testing.T, projects []*models.Project, projectID string) *models.Project {
+	t.Helper()
+	for _, project := range projects {
+		if project != nil && project.ID == projectID {
+			return project
+		}
+	}
+	t.Fatalf("project %q not found", projectID)
+	return nil
+}
+
+func visibleOutlinerTaskIDs(outlinerView *outliner.OutlinerModel) map[string]bool {
+	ids := make(map[string]bool)
+	for _, row := range outlinerView.Rows {
+		if row.IsTaskRow() && row.Task != nil {
+			ids[row.Task.ID] = true
+		}
+	}
+	return ids
+}
+
+func primaryRowsTask(id string, state models.WorkflowState) *models.Task {
+	return &models.Task{
+		ID:            id,
+		Title:         id,
+		WorkflowState: state,
+		UpdatedAt:     time.Now(),
+	}
+}
+
+func primaryRowsProject(id string, tasks ...*models.Task) *models.Project {
+	project := &models.Project{ID: id, Name: id, Slug: id, Tasks: tasks}
+	project.BuildTaskTree()
+	return project
+}
+
+func primaryRowsOutliner(projects ...*models.Project) (*outliner.OutlinerModel, *config.RuntimeState) {
+	runtime := testConfigWithProjects(projects...)
+	outlinerView := outliner.NewOutlinerModel(nil, nil, runtime)
+	outlinerView.Population.Projects = projects
+	return outlinerView, runtime
+}
+
+// searchRankedList holds a query and shows it as the flat ranked list. The tier,
+// score, and seating assertions are all about that presentation; a query alone
+// narrows the mode's own lanes instead, which the D7 tests cover separately.
+func searchRankedList(outlinerView *outliner.OutlinerModel, query string) {
+	outlinerView.SetSearchQuery(query)
+	if !outlinerView.ShowsRankedList() {
+		outlinerView.ToggleRankedList()
+	}
+}
+
+func searchVisibleTaskIDs(outlinerView *outliner.OutlinerModel) []string {
+	result := make([]string, 0)
+	for _, identity := range qualifiedVisibleTaskIDs(outlinerView) {
+		result = append(result, identity.TaskID)
+	}
+	return result
+}
+
+// recentTask seeds a task whose last activity is dayOffset days in the past.
+func recentTask(id string, state models.WorkflowState, dayOffset int) *models.Task {
+	task := primaryRowsTask(id, state)
+	task.UpdatedAt = time.Now().AddDate(0, 0, -dayOffset)
+	return task
 }
 
 func containsProject(ids []string, want string) bool {
@@ -124,34 +208,6 @@ func containsProject(ids []string, want string) bool {
 		}
 	}
 	return false
-}
-
-func scopeTestOutliner(projects ...*models.Project) *OutlinerModel {
-	runtime := testConfigWithProjects(projects...)
-	outliner := NewOutlinerModel(nil, nil, runtime)
-	outliner.population.projects = projects
-	outliner.population.invalidate()
-	outliner.crossProjectRebuildRows()
-	return outliner
-}
-
-func newCrossOutlinerFromEnv(env *crossProjectTestEnv) *OutlinerModel {
-	runtime := newTestConfigAt(env.dataDir)
-	setTestProjects(runtime, env.projects)
-	outliner := &OutlinerModel{
-		runtime:   testRuntimeAt(runtime.DataDir(), runtime),
-		quickEdit: grammar.NewQuickEditComponent(),
-		folds: foldState{
-			collapsedSections: make(map[string]bool),
-			expandedNodes:     make(map[taskref.TaskIdentity]bool),
-		},
-		MultiSelectState: listsurface.MultiSelectState{
-			Selected: make(map[taskref.TaskIdentity]bool),
-		},
-		population: populationState{projects: env.projects},
-	}
-	outliner.taskItem = env.taskItem
-	return outliner
 }
 
 func renderFixtureProject(t *testing.T, id, slug, name string, tasks []*models.Task) *models.Project {
@@ -182,100 +238,5 @@ func renderFixtureTask(
 	}
 	task.WorkflowState = legacyStateForStatusSection(status, string(section))
 	task.Priority = priority
-	return task
-}
-
-func findPlanningTaskRow(outliner *OutlinerModel, taskID string) (outlinerRow, bool) {
-	for _, row := range outliner.rows {
-		if row.isTaskRow() && row.task != nil && row.task.ID == taskID {
-			return row, true
-		}
-	}
-	return outlinerRow{}, false
-}
-
-func countTaskRows(outliner *OutlinerModel, taskID string) int {
-	count := 0
-	for _, row := range outliner.rows {
-		if row.isTaskRow() && row.task != nil && row.task.ID == taskID {
-			count++
-		}
-	}
-	return count
-}
-
-func testProjectByID(t *testing.T, projects []*models.Project, projectID string) *models.Project {
-	t.Helper()
-	for _, project := range projects {
-		if project != nil && project.ID == projectID {
-			return project
-		}
-	}
-	t.Fatalf("project %q not found", projectID)
-	return nil
-}
-
-func visibleOutlinerTaskIDs(outliner *OutlinerModel) map[string]bool {
-	ids := make(map[string]bool)
-	for _, row := range outliner.rows {
-		if row.isTaskRow() && row.task != nil {
-			ids[row.task.ID] = true
-		}
-	}
-	return ids
-}
-
-func primaryRowsTask(id string, state models.WorkflowState) *models.Task {
-	return &models.Task{
-		ID:            id,
-		Title:         id,
-		WorkflowState: state,
-		UpdatedAt:     time.Now(),
-	}
-}
-
-func primaryRowsProject(id string, tasks ...*models.Task) *models.Project {
-	project := &models.Project{ID: id, Name: id, Slug: id, Tasks: tasks}
-	project.BuildTaskTree()
-	return project
-}
-
-func primaryRowsOutliner(projects ...*models.Project) (*OutlinerModel, *config.RuntimeState) {
-	runtime := testConfigWithProjects(projects...)
-	outliner := NewOutlinerModel(nil, nil, runtime)
-	outliner.population.projects = projects
-	return outliner, runtime
-}
-
-// searchRankedList holds a query and shows it as the flat ranked list. The tier,
-// score, and seating assertions are all about that presentation; a query alone
-// narrows the mode's own lanes instead, which the D7 tests cover separately.
-func searchRankedList(outliner *OutlinerModel, query string) {
-	outliner.SetSearchQuery(query)
-	if !outliner.showsRankedList() {
-		outliner.toggleRankedList()
-	}
-}
-
-func searchVisibleTaskIDs(outliner *OutlinerModel) []string {
-	result := make([]string, 0)
-	for _, identity := range qualifiedVisibleTaskIDs(outliner) {
-		result = append(result, identity.TaskID)
-	}
-	return result
-}
-
-func searchMatchTaskIDs(matches []outlinerSearchMatch) []string {
-	result := make([]string, len(matches))
-	for i, match := range matches {
-		result[i] = match.task.ID
-	}
-	return result
-}
-
-// recentTask seeds a task whose last activity is dayOffset days in the past.
-func recentTask(id string, state models.WorkflowState, dayOffset int) *models.Task {
-	task := primaryRowsTask(id, state)
-	task.UpdatedAt = time.Now().AddDate(0, 0, -dayOffset)
 	return task
 }

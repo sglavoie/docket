@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
@@ -44,17 +45,17 @@ func menuBarCommandContext() operation.CommandContext {
 // resolveOutlinerMenus projects the production bar against the production
 // catalog, which is what makes these assertions audit the shipped specs rather
 // than a test-local subset of them.
-func resolveOutlinerMenus(t *testing.T, app *AppModel, activeMode chrome.OutlinerModeID) []resolvedMenu {
+func resolveOutlinerMenus(t *testing.T, app *AppModel, activeMode chrome.OutlinerModeID) []outliner.ResolvedMenu {
 	t.Helper()
 	strategy, ok := app.GetOperationRegistry().InputStrategy(operation.InputStrategySimplified)
 	if !ok {
 		t.Fatal("simplified input strategy is not registered")
 	}
-	menus, err := resolveMenuEntries(
+	menus, err := outliner.ResolveMenuEntries(
 		app.GetOperationRegistry(),
 		strategy,
 		menuBarCommandContext(),
-		outlinerMenuSpecs(activeMode, false, true),
+		outliner.OutlinerMenuSpecs(activeMode, false, true),
 	)
 	if err != nil {
 		t.Fatalf("resolve menus: %v", err)
@@ -62,7 +63,7 @@ func resolveOutlinerMenus(t *testing.T, app *AppModel, activeMode chrome.Outline
 	return menus
 }
 
-func menuWithID(t *testing.T, menus []resolvedMenu, id string) resolvedMenu {
+func menuWithID(t *testing.T, menus []outliner.ResolvedMenu, id string) outliner.ResolvedMenu {
 	t.Helper()
 	for _, menu := range menus {
 		if menu.ID == id {
@@ -70,32 +71,12 @@ func menuWithID(t *testing.T, menus []resolvedMenu, id string) resolvedMenu {
 		}
 	}
 	t.Fatalf("menu %s is missing from the bar", id)
-	return resolvedMenu{}
-}
-
-func registerMenuTestOperation(
-	t *testing.T,
-	registry *operation.OperationRegistry,
-	id operation.OperationID,
-	label string,
-	applicable bool,
-) {
-	t.Helper()
-	if err := registry.Register(operation.OperationDescriptor{
-		ID:                id,
-		Label:             label,
-		Category:          operation.OperationCategorySystem,
-		TargetCardinality: operation.TargetCardinalityNone,
-		Risk:              operation.OperationRiskReadOnly,
-		Applicability:     func(operation.CommandContext) bool { return applicable },
-	}); err != nil {
-		t.Fatalf("register %s: %v", id, err)
-	}
+	return outliner.ResolvedMenu{}
 }
 
 // menuBarDriver launches the rich fixture with the bar hidden, which is where
 // every open case starts: revealing the band is part of what opening it means.
-func menuBarDriver(t *testing.T) (*UITestDriver, *OutlinerModel) {
+func menuBarDriver(t *testing.T) (*UITestDriver, *outliner.OutlinerModel) {
 	t.Helper()
 	driver, workspace, err := NewFixtureDriver(FixtureRich, 100, 35)
 	if err != nil {
@@ -103,14 +84,14 @@ func menuBarDriver(t *testing.T) (*UITestDriver, *OutlinerModel) {
 	}
 	t.Cleanup(func() { _ = workspace.Cleanup() })
 
-	outliner := driver.App().crossOutliner
-	if outliner == nil {
+	outlinerView := driver.App().crossOutliner
+	if outlinerView == nil {
 		t.Fatal("the rich fixture launched without a cross-project Outliner")
 	}
 	if driver.App().runtime.Machine().MenuBarVisible {
 		t.Fatal("the fixture launched with the bar already shown, so opening it proves nothing")
 	}
-	return driver, outliner
+	return driver, outlinerView
 }
 
 // pressMenuBarKey sends a key and drains what it returned. A menu key that only
@@ -130,16 +111,16 @@ func pressMenuBarKey(t *testing.T, driver *UITestDriver, keys ...string) {
 // openMenuBarMenusForTest reads the resolution the dropdown and the keymap share,
 // which is the only honest way to ask what an open menu is offering: the specs
 // are not it, because filtering happens between them.
-func openMenuBarMenusForTest(t *testing.T, outliner *OutlinerModel) []resolvedMenu {
+func openMenuBarMenusForTest(t *testing.T, outlinerView *outliner.OutlinerModel) []outliner.ResolvedMenu {
 	t.Helper()
-	menus, ok := outliner.openMenuBarMenus()
+	menus, ok := outlinerView.OpenMenuBarMenus()
 	if !ok {
 		t.Fatal("no menu is open")
 	}
 	return menus
 }
 
-func menuHasLabel(menu resolvedMenu, label string) bool {
+func menuHasLabel(menu outliner.ResolvedMenu, label string) bool {
 	for _, entry := range menu.Entries {
 		if entry.OperationID != "" && entry.Label == label {
 			return true
@@ -148,59 +129,13 @@ func menuHasLabel(menu resolvedMenu, label string) bool {
 	return false
 }
 
-func TestResolveMenuEntriesRefusesAnUnregisteredOperation(t *testing.T) {
-	registry := operation.NewOperationRegistry()
-	registerMenuTestOperation(t, registry, "test.menu.present", "Present", true)
-
-	_, err := resolveMenuEntries(registry, operation.InputStrategy{}, menuBarCommandContext(), []menuSpec{{
-		ID:    "test",
-		Title: "Test",
-		Entries: []menuEntrySpec{
-			{OperationID: "test.menu.present"},
-			{OperationID: "test.menu.absent"},
-		},
-	}})
-	if err == nil {
-		t.Fatal("a menu naming an unregistered operation resolved without an error")
-	}
-}
-
-func TestResolveMenuEntriesRemovesRatherThanGreys(t *testing.T) {
-	registry := operation.NewOperationRegistry()
-	registerMenuTestOperation(t, registry, "test.menu.here", "Here", true)
-	registerMenuTestOperation(t, registry, "test.menu.gone", "Gone", false)
-
-	menus, err := resolveMenuEntries(registry, operation.InputStrategy{}, menuBarCommandContext(), []menuSpec{
-		{ID: "mixed", Title: "Mixed", Entries: []menuEntrySpec{
-			{OperationID: "test.menu.here"},
-			menuSeparator(),
-			{OperationID: "test.menu.gone"},
-		}},
-		{ID: "empty", Title: "Empty", Entries: []menuEntrySpec{
-			menuSeparator(),
-			{OperationID: "test.menu.gone"},
-			menuSeparator(),
-		}},
-	})
-	if err != nil {
-		t.Fatalf("resolve menus: %v", err)
-	}
-
-	if len(menus) != 1 || menus[0].ID != "mixed" {
-		t.Fatalf("resolved %d menus, want the one menu that kept an entry", len(menus))
-	}
-	if len(menus[0].Entries) != 1 || menus[0].Entries[0].Label != "Here" {
-		t.Fatalf("mixed menu resolved to %+v, want the applicable entry alone", menus[0].Entries)
-	}
-}
-
 // The specs carry live state, so a resolution that cached would show a stale
 // checkmark the moment the mode changed under it.
 func TestResolveMenuEntriesRebuildsOnEveryCall(t *testing.T) {
 	app := parityAuditApp(t)
 
-	inbox := menuWithID(t, resolveOutlinerMenus(t, app, chrome.ModeInbox), menuIDView)
-	recent := menuWithID(t, resolveOutlinerMenus(t, app, chrome.ModeRecent), menuIDView)
+	inbox := menuWithID(t, resolveOutlinerMenus(t, app, chrome.ModeInbox), outliner.MenuIDView)
+	recent := menuWithID(t, resolveOutlinerMenus(t, app, chrome.ModeRecent), outliner.MenuIDView)
 	if len(inbox.Entries) != len(recent.Entries) {
 		t.Fatalf("view menu changed shape between resolutions: %d then %d", len(inbox.Entries), len(recent.Entries))
 	}

@@ -162,7 +162,7 @@ func (m *AppModel) newOperationValuePicker(
 		for _, ref := range refs {
 			tasks = append(tasks, ref.Task)
 		}
-		source := operationTaskReferenceListSource(tasks, m.crossOutliner.dependencyDetailProjects())
+		source := operationTaskReferenceListSource(tasks, m.crossOutliner.DependencyDetailProjects())
 		picker, err := newOperationValuePickerModel(
 			request, provider, "Set Dependencies", subtitle, source, true, nil,
 		)

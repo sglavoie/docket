@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskdetail"
 	"github.com/sglavoie/tt/internal/tui/taskform"
 )
@@ -186,12 +187,12 @@ func TestTaskOperationExecutesAgainstFrozenTargetAfterCursorMove(t *testing.T) {
 
 	other := project.GetTaskByID("other")
 	out := model.crossOutliner
-	out.population.projects = []*models.Project{project}
-	out.rows = []outlinerRow{{task: other, ProjectID: project.ID}}
+	out.Population.Projects = []*models.Project{project}
+	out.Rows = []outliner.OutlinerRow{{Task: other, ProjectID: project.ID}}
 	out.Cursor = 0
 
 	edit := executeTaskOperationForTest(t, model, operation.OperationCoreEdit, context)
-	if got := edit.Message.(StartTaskLineEditMsg).Task; got != task {
+	if got := edit.Message.(outliner.StartTaskLineEditMsg).Task; got != task {
 		t.Errorf("edit target = %v, want the frozen task %v", got, task)
 	}
 	externalEdit := executeTaskOperationForTest(t, model, operation.OperationCoreExternalEditor, context)

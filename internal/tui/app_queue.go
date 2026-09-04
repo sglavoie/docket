@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -45,7 +46,7 @@ func (m *AppModel) queueToggleResultCmd() tea.Cmd {
 // (undoQueueToggle/redoQueueToggle) rather than a bespoke in-memory compensation,
 // so they survive a restart and honor LIFO ordering. Returns a status timeout cmd
 // on success, or nil if no task is available.
-func (m *AppModel) toggleQueue(capture *outlinerRelocationCapture) tea.Cmd {
+func (m *AppModel) toggleQueue(capture *outliner.OutlinerRelocationCapture) tea.Cmd {
 	view := m.activeView()
 	if view == nil {
 		return nil

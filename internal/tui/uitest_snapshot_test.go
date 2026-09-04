@@ -6,6 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
 // newSnapshotWorkspace builds an isolated workspace preloaded with the rich
@@ -58,15 +59,15 @@ func TestUITestSnapshotOutliner(t *testing.T) {
 	if err := storage.LoadProject(project); err != nil {
 		t.Fatalf("load project: %v", err)
 	}
-	m := NewOutlinerModel(project, ws.Manager, ws.Runtime)
+	m := outliner.NewOutlinerModel(project, ws.Manager, ws.Runtime)
 	// Rows are rebuilt on render; mirror the driver flow (Observe renders the
 	// active view before reading its snapshot) so the snapshot has rows.
 	m.SetSize(100, 30)
 	_ = m.View()
 	// Park the cursor on the first task row (row 0 is a section header) so the
 	// selected_task field is populated.
-	for i := range m.rows {
-		if m.rows[i].task != nil {
+	for i := range m.Rows {
+		if m.Rows[i].Task != nil {
 			m.Cursor = i
 			break
 		}

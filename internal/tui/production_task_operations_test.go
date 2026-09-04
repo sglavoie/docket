@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
@@ -178,7 +179,7 @@ func TestTaskDeleteOperationRoutesThroughCanonicalConfirmation(t *testing.T) {
 
 	context := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	context.Capabilities.Add(operation.CapabilitySimplifiedInput)
-	context.Entity = taskOperationEntity(e.parent, e.alpha)
+	context.Entity = outliner.TaskOperationEntity(e.parent, e.alpha)
 
 	result := m.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:      operation.OperationTaskDelete,

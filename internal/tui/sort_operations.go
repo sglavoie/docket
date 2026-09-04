@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -61,7 +62,7 @@ func (m *AppModel) registerSortOperations() error {
 		if descriptor.ID == operation.OperationSortRanked {
 			descriptor.Applicability = func(ctx operation.CommandContext) bool {
 				return operation.CoreOutlinerApplicability(ctx) &&
-					m.crossOutliner != nil && m.crossOutliner.hasSearchProjection()
+					m.crossOutliner != nil && m.crossOutliner.HasSearchProjection()
 			}
 		}
 		if err := m.registerOperation(descriptor, operation.OperationBinding{
@@ -86,10 +87,10 @@ func (m *AppModel) executeSortOperation(invocation operation.OperationInvocation
 		return operation.OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
 	}
 	if invocation.Descriptor.ID == operation.OperationSortRanked {
-		if !out.toggleRankedList() {
+		if !out.ToggleRankedList() {
 			return operation.OperationHandlerResult{Status: "Search for something first"}
 		}
-		if out.showsRankedList() {
+		if out.ShowsRankedList() {
 			return operation.OperationHandlerResult{Status: "Ranked list · one flat relevance order"}
 		}
 		return operation.OperationHandlerResult{Status: "Ranked list off · results narrow the mode"}
@@ -101,10 +102,10 @@ func (m *AppModel) executeSortOperation(invocation operation.OperationInvocation
 	}
 
 	if invocation.Descriptor.ID == operation.OperationSortClear {
-		out.sort.Reset()
-		out.treeSort.Reset()
-		out.population.invalidate()
-		rebuildOutlinerPreservingCursor(out)
+		out.Sort.Reset()
+		out.TreeSort.Reset()
+		out.Population.Invalidate()
+		outliner.RebuildOutlinerPreservingCursor(out)
 		return operation.OperationHandlerResult{Status: "Sort cleared"}
 	}
 
@@ -112,19 +113,19 @@ func (m *AppModel) executeSortOperation(invocation operation.OperationInvocation
 	// durable tree sort and the mode transition installs it on return. A search
 	// projection is flat and owns no mode order at all, so the mode underneath it
 	// is irrelevant there and the sort installs directly.
-	mode := out.activeOutlinerModeEntry()
-	if mode.FixedOrder() && !out.showsRankedList() {
-		out.treeSort.Toggle(field)
+	mode := out.ActiveOutlinerModeEntry()
+	if mode.FixedOrder() && !out.ShowsRankedList() {
+		out.TreeSort.Toggle(field)
 		return operation.OperationHandlerResult{Status: fmt.Sprintf(
 			"%s owns its order · sort applies in All, Inbox, Backlog", mode.Label)}
 	}
 
-	out.sort.Toggle(field)
-	out.treeSort = out.sort
-	out.population.invalidate()
-	rebuildOutlinerPreservingCursor(out)
-	status := "Sorting by " + sortStateLabel(out.sort)
-	if exempt := out.manualOrderSectionNames(); len(exempt) > 0 {
+	out.Sort.Toggle(field)
+	out.TreeSort = out.Sort
+	out.Population.Invalidate()
+	outliner.RebuildOutlinerPreservingCursor(out)
+	status := "Sorting by " + sortStateLabel(out.Sort)
+	if exempt := out.ManualOrderSectionNames(); len(exempt) > 0 {
 		status += " · " + strings.Join(exempt, ", ") + " keep manual order"
 	}
 	return operation.OperationHandlerResult{Status: status}

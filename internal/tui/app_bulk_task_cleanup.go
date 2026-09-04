@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -26,22 +27,22 @@ func (m *AppModel) clearBulkTaskSelectionsForLocators(locators []app.TaskLocator
 			set[identity] = true
 		}
 	}
-	clearOutliner := func(outliner *OutlinerModel) {
-		if outliner == nil {
+	clearOutliner := func(outlinerView *outliner.OutlinerModel) {
+		if outlinerView == nil {
 			return
 		}
 		for identity := range set {
-			delete(outliner.Selected, identity)
+			delete(outlinerView.Selected, identity)
 		}
-		if outliner.SelectedCount() == 0 {
-			outliner.clearMultiSelect()
+		if outlinerView.SelectedCount() == 0 {
+			outlinerView.ClearMultiSelect()
 		}
 	}
 	clearOutliner(m.crossOutliner)
 	if m.views != nil {
 		if view := m.views.Get(presentation.ViewCrossProjectOutliner); view != nil {
-			if outliner, ok := view.(*OutlinerModel); ok {
-				clearOutliner(outliner)
+			if outlinerView, ok := view.(*outliner.OutlinerModel); ok {
+				clearOutliner(outlinerView)
 			}
 		}
 	}
@@ -53,7 +54,7 @@ func (m *AppModel) clearBulkTaskSelectionsForTaskIDSet(selectedIDs map[string]bo
 	}
 
 	if m.crossOutliner != nil && multiSelectStateHasTaskID(&m.crossOutliner.MultiSelectState, selectedIDs) {
-		m.crossOutliner.clearMultiSelect()
+		m.crossOutliner.ClearMultiSelect()
 	}
 
 	m.clearViewBulkTaskSelectionForRefs(presentation.ViewCrossProjectOutliner, selectedIDs)
@@ -65,9 +66,9 @@ func (m *AppModel) clearViewBulkTaskSelectionForRefs(vt presentation.Presentatio
 	}
 	view := m.views.Get(vt)
 	switch v := view.(type) {
-	case *OutlinerModel:
+	case *outliner.OutlinerModel:
 		if multiSelectStateHasTaskID(&v.MultiSelectState, selectedIDs) {
-			v.clearMultiSelect()
+			v.ClearMultiSelect()
 		}
 	}
 }

@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
-
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -28,16 +28,16 @@ func readoutTestApp(t *testing.T) *AppModel {
 	}
 	project.BuildTaskTree()
 	setTestAppProjects(app, project)
-	app.crossOutliner.population.projects = []*models.Project{project}
-	app.crossOutliner.population.invalidate()
-	app.crossOutliner.rebuildRows()
+	app.crossOutliner.Population.Projects = []*models.Project{project}
+	app.crossOutliner.Population.Invalidate()
+	app.crossOutliner.RebuildRows()
 	return app
 }
 
 // readoutBodyText renders the stack the way the strip does and strips styling, so
 // an assertion reads the characters a user sees.
-func readoutBodyText(out *OutlinerModel, width int) string {
-	return ansi.Strip(out.queryReadoutBody(width))
+func readoutBodyText(out *outliner.OutlinerModel, width int) string {
+	return ansi.Strip(out.QueryReadoutBody(width))
 }
 
 // TestQueryReadoutNamesEveryActiveAxisAndNothingElse holds the readout to the one
@@ -51,25 +51,25 @@ func TestQueryReadoutNamesEveryActiveAxisAndNothingElse(t *testing.T) {
 
 	app := readoutTestApp(t)
 	out := app.crossOutliner
-	out.toggleQueryReadout()
+	out.ToggleQueryReadout()
 
 	if body := readoutBodyText(out, 80); !strings.Contains(body, "nothing: every axis is at its default") {
 		t.Fatalf("unnarrowed readout = %q, want the empty reading", body)
 	}
 
-	out.filter.Priority = models.PriorityHigh
-	out.filter.Tags = map[string]bool{"deep": true}
-	out.filter.Pinned = true
-	out.adoptFilterCarriers()
-	if _, _ = out.selectOutlinerMode(chrome.ModeBacklog); out.activeOutlinerModeEntry().ID != chrome.ModeBacklog {
+	out.Filter.Priority = models.PriorityHigh
+	out.Filter.Tags = map[string]bool{"deep": true}
+	out.Filter.Pinned = true
+	out.AdoptFilterCarriers()
+	if _, _ = out.SelectOutlinerMode(chrome.ModeBacklog); out.ActiveOutlinerModeEntry().ID != chrome.ModeBacklog {
 		t.Fatal("the test could not reach a non-All mode")
 	}
 
-	rows := out.queryReadoutRows()
+	rows := out.QueryReadoutRows()
 	if len(rows) != 4 {
 		t.Fatalf("rows = %d (%+v), want mode plus three facets", len(rows), rows)
 	}
-	if rows[0].axis != queryReadoutAxisMode {
+	if rows[0].Axis != outliner.QueryReadoutAxisMode {
 		t.Fatalf("first row = %+v, want the mode row above the facets", rows[0])
 	}
 	body := readoutBodyText(out, 80)
@@ -93,47 +93,47 @@ func TestQueryReadoutNamesEveryActiveAxisAndNothingElse(t *testing.T) {
 func TestQueryReadoutPeelRemovesOneAxisAndIsIdempotentAtZero(t *testing.T) {
 	app := readoutTestApp(t)
 	out := app.crossOutliner
-	out.filter.Priority = models.PriorityHigh
-	out.filter.Stale = true
-	out.adoptFilterCarriers()
-	out.toggleQueryReadout()
+	out.Filter.Priority = models.PriorityHigh
+	out.Filter.Stale = true
+	out.AdoptFilterCarriers()
+	out.ToggleQueryReadout()
 
-	before := out.queryReadoutRows()
+	before := out.QueryReadoutRows()
 	if len(before) != 2 {
 		t.Fatalf("rows = %d (%+v), want the two facets", len(before), before)
 	}
 
-	out.handleQueryReadoutKey("1")
-	after := out.queryReadoutRows()
+	out.HandleQueryReadoutKey("1")
+	after := out.QueryReadoutRows()
 	if len(after) != 1 {
 		t.Fatalf("rows after one peel = %d (%+v), want exactly one removed", len(after), after)
 	}
-	if out.filter.Priority != 0 {
-		t.Errorf("Priority = %d after peeling it, want cleared", out.filter.Priority)
+	if out.Filter.Priority != 0 {
+		t.Errorf("Priority = %d after peeling it, want cleared", out.Filter.Priority)
 	}
-	if !out.filter.Stale {
+	if !out.Filter.Stale {
 		t.Error("peeling the priority facet also cleared the stale facet")
 	}
-	if !out.queryReadout.expanded {
+	if !out.QueryReadout.Expanded {
 		t.Error("peeling closed the readout; the stack stays open so the next digit is honest")
 	}
 
-	out.handleQueryReadoutKey("9")
-	if len(out.queryReadoutRows()) != 1 {
-		t.Fatalf("a digit past the stack changed it: %+v", out.queryReadoutRows())
+	out.HandleQueryReadoutKey("9")
+	if len(out.QueryReadoutRows()) != 1 {
+		t.Fatalf("a digit past the stack changed it: %+v", out.QueryReadoutRows())
 	}
-	if !out.filter.Stale {
+	if !out.Filter.Stale {
 		t.Error("a digit past the stack cleared a facet")
 	}
 	if out.StatusMessage != "Nothing to peel there" {
 		t.Errorf("status = %q, want the idempotent reading", out.StatusMessage)
 	}
 
-	out.handleQueryReadoutKey("1")
-	if rows := out.queryReadoutRows(); len(rows) != 0 {
+	out.HandleQueryReadoutKey("1")
+	if rows := out.QueryReadoutRows(); len(rows) != 0 {
 		t.Fatalf("rows after peeling the last facet = %+v, want none", rows)
 	}
-	out.handleQueryReadoutKey("1")
+	out.HandleQueryReadoutKey("1")
 	if out.StatusMessage != "Nothing to peel there" {
 		t.Errorf("peeling an empty stack = %q, want the idempotent reading", out.StatusMessage)
 	}
@@ -145,22 +145,22 @@ func TestQueryReadoutPeelRemovesOneAxisAndIsIdempotentAtZero(t *testing.T) {
 func TestQueryReadoutPeelAllClearsEveryNarrowingAtOnce(t *testing.T) {
 	app := readoutTestApp(t)
 	out := app.crossOutliner
-	out.filter.Priority = models.PriorityHigh
-	out.filter.Tags = map[string]bool{"deep": true}
-	out.adoptFilterCarriers()
-	out.selectOutlinerMode(chrome.ModeBacklog)
+	out.Filter.Priority = models.PriorityHigh
+	out.Filter.Tags = map[string]bool{"deep": true}
+	out.AdoptFilterCarriers()
+	out.SelectOutlinerMode(chrome.ModeBacklog)
 	out.SetSearchQuery("one")
-	out.toggleQueryReadout()
+	out.ToggleQueryReadout()
 
-	if len(out.queryReadoutRows()) != 4 {
-		t.Fatalf("rows = %+v, want mode, query, and two facets", out.queryReadoutRows())
+	if len(out.QueryReadoutRows()) != 4 {
+		t.Fatalf("rows = %+v, want mode, query, and two facets", out.QueryReadoutRows())
 	}
-	out.handleQueryReadoutKey("x")
-	if rows := out.queryReadoutRows(); len(rows) != 0 {
+	out.HandleQueryReadoutKey("x")
+	if rows := out.QueryReadoutRows(); len(rows) != 0 {
 		t.Fatalf("rows after peel-all = %+v, want none", rows)
 	}
-	if out.SearchQuery() != "" || out.activeOutlinerModeEntry().ID != chrome.ModeAll {
-		t.Errorf("peel-all left query %q and mode %v", out.SearchQuery(), out.activeOutlinerModeEntry().ID)
+	if out.SearchQuery() != "" || out.ActiveOutlinerModeEntry().ID != chrome.ModeAll {
+		t.Errorf("peel-all left query %q and mode %v", out.SearchQuery(), out.ActiveOutlinerModeEntry().ID)
 	}
 	// Five, not four: clearing a search restores the presentation snapshot it was
 	// opened over, which brings the mode back, and the walk takes it away again.
@@ -176,9 +176,9 @@ func TestQueryReadoutPeelAllClearsEveryNarrowingAtOnce(t *testing.T) {
 func TestQueryReadoutOwnsInputWhileOpen(t *testing.T) {
 	app := readoutTestApp(t)
 	out := app.crossOutliner
-	out.filter.Stale = true
-	out.adoptFilterCarriers()
-	out.toggleQueryReadout()
+	out.Filter.Stale = true
+	out.AdoptFilterCarriers()
+	out.ToggleQueryReadout()
 
 	guidance, ok := out.ContextualGuidance()
 	if !ok {
@@ -193,15 +193,15 @@ func TestQueryReadoutOwnsInputWhileOpen(t *testing.T) {
 
 	// v opens a visual selection everywhere else in the Outliner; here it is an
 	// unlisted key, so it may only put the stack down.
-	if _, _ = out.handleQueryReadoutKey("v"); out.queryReadout.expanded {
+	if _, _ = out.HandleQueryReadoutKey("v"); out.QueryReadout.Expanded {
 		t.Error("an unlisted key left the readout open")
 	}
-	if out.selectionCounts().Total > 0 {
+	if out.SelectionCounts().Total > 0 {
 		t.Error("an unlisted key ran the act its root binding names")
 	}
 
-	out.toggleQueryReadout()
-	if _, cmd := out.handleQueryReadoutKey("esc"); cmd != nil || out.queryReadout.expanded {
+	out.ToggleQueryReadout()
+	if _, cmd := out.HandleQueryReadoutKey("esc"); cmd != nil || out.QueryReadout.Expanded {
 		t.Error("Esc did not close the readout on its own")
 	}
 }
@@ -215,17 +215,17 @@ func TestQueryReadoutSaveAsLensRoutesThroughTheShell(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := app.crossOutliner
-	out.toggleQueryReadout()
+	out.ToggleQueryReadout()
 
-	_, cmd := out.handleQueryReadoutKey("s")
+	_, cmd := out.HandleQueryReadoutKey("s")
 	if cmd == nil {
 		t.Fatal("s raised no save request")
 	}
-	if out.queryReadout.expanded {
+	if out.QueryReadout.Expanded {
 		t.Error("s left the readout open over the name prompt")
 	}
 	msg := cmd()
-	if _, ok := msg.(SaveViewAsLensRequestMsg); !ok {
+	if _, ok := msg.(outliner.SaveViewAsLensRequestMsg); !ok {
 		t.Fatalf("s raised %T, want SaveViewAsLensRequestMsg", msg)
 	}
 	handled, saveCmd := app.handleOperationOverlayMessage(msg)
@@ -247,18 +247,18 @@ func TestQueryReadoutGrowsTheStatusStripBelowTheConflictLine(t *testing.T) {
 	const width = 80
 	app := readoutTestApp(t)
 	out := app.crossOutliner
-	out.filter.Stale = true
-	out.adoptFilterCarriers()
-	out.setOutstandingConflicts(func() int { return 2 })
+	out.Filter.Stale = true
+	out.AdoptFilterCarriers()
+	out.SetOutstandingConflicts(func() int { return 2 })
 
-	collapsedHeight := out.statusStripHeight(width)
-	out.toggleQueryReadout()
-	expandedHeight := out.statusStripHeight(width)
+	collapsedHeight := out.StatusStripHeight(width)
+	out.ToggleQueryReadout()
+	expandedHeight := out.StatusStripHeight(width)
 	if expandedHeight <= collapsedHeight {
 		t.Fatalf("strip height = %d expanded and %d collapsed, want the stack reserved", expandedHeight, collapsedHeight)
 	}
 
-	lines := strings.Split(ansi.Strip(out.statusStripBody(width)), "\n")
+	lines := strings.Split(ansi.Strip(out.StatusStripBody(width)), "\n")
 	if !strings.Contains(lines[0], "2 unresolved merge conflicts") {
 		t.Fatalf("first strip line = %q, want the conflict count leading", lines[0])
 	}
@@ -279,23 +279,23 @@ func TestQueryReadoutGrowsTheStatusStripBelowTheConflictLine(t *testing.T) {
 func TestQueryReadoutPeelReloadsThePopulationThroughTheShell(t *testing.T) {
 	app := readoutTestApp(t)
 	out := app.crossOutliner
-	out.projectFilter.ArchivedMode = query.ProjectPopulationInclude
-	out.adoptFilterCarriers()
-	out.toggleQueryReadout()
+	out.ProjectFilter.ArchivedMode = query.ProjectPopulationInclude
+	out.AdoptFilterCarriers()
+	out.ToggleQueryReadout()
 
-	rows := out.queryReadoutRows()
-	if len(rows) != 1 || rows[0].label != "population" {
+	rows := out.QueryReadoutRows()
+	if len(rows) != 1 || rows[0].Label != "population" {
 		t.Fatalf("rows = %+v, want the one population row", rows)
 	}
-	cmd := out.peelQueryReadoutRow(0)
+	cmd := out.PeelQueryReadoutRow(0)
 	if cmd == nil {
 		t.Fatal("peeling a population facet raised no reload")
 	}
-	msg, ok := cmd().(QueryReadoutReloadRequestMsg)
+	msg, ok := cmd().(outliner.QueryReadoutReloadRequestMsg)
 	if !ok {
 		t.Fatalf("population peel raised %T, want a reload request", msg)
 	}
-	if out.projectFilter.ArchivedMode == query.ProjectPopulationInclude {
+	if out.ProjectFilter.ArchivedMode == query.ProjectPopulationInclude {
 		t.Error("the peel did not write the population fields before asking for the reload")
 	}
 	if handled, reload := app.handleOperationOverlayMessage(msg); !handled || reload == nil {

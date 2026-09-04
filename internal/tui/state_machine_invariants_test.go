@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -44,48 +45,48 @@ func (v *invariantQueueView) GetTaskRef() (*models.Task, *models.Project) {
 
 func TestTUIStateMachine_OutlinerEscOwnershipIsDeterministic(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	outliner := NewOutlinerModel(project, app.configManager, app.runtime)
-	outliner.rebuildRows()
-	outliner.MultiSelectMode = true
-	outliner.SelectTaskIdentity(taskref.For(project.Tasks[0], project))
-	outliner.focus.stack = []FocusEntry{{TaskID: project.Tasks[0].ID, CursorIndex: 0}}
-	outliner.SetSearchQuery(project.Tasks[0].Title)
-	app.showView(presentation.ViewCrossProjectOutliner, outliner)
-	wireInvariantSimplifiedOutliner(t, app, outliner)
+	outlinerView := outliner.NewOutlinerModel(project, app.configManager, app.runtime)
+	outlinerView.RebuildRows()
+	outlinerView.MultiSelectMode = true
+	outlinerView.SelectTaskIdentity(taskref.For(project.Tasks[0], project))
+	outlinerView.Focus.Stack = []outliner.FocusEntry{{TaskID: project.Tasks[0].ID, CursorIndex: 0}}
+	outlinerView.SetSearchQuery(project.Tasks[0].Title)
+	app.showView(presentation.ViewCrossProjectOutliner, outlinerView)
+	wireInvariantSimplifiedOutliner(t, app, outlinerView)
 
 	app = sendAppKey(app, syntheticSpecialKey(tea.KeyEsc))
 	if app.currentView() != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("multi-select esc should stay in outliner, got %v", app.currentView())
 	}
-	if outliner.MultiSelectMode {
+	if outlinerView.MultiSelectMode {
 		t.Fatal("first esc should exit multi-select mode")
 	}
-	if outliner.SearchQuery() == "" {
+	if outlinerView.SearchQuery() == "" {
 		t.Fatal("first esc should not clear search query")
 	}
-	if len(outliner.focus.stack) != 1 {
-		t.Fatalf("first esc should not change focus stack, got %d entries", len(outliner.focus.stack))
+	if len(outlinerView.Focus.Stack) != 1 {
+		t.Fatalf("first esc should not change focus stack, got %d entries", len(outlinerView.Focus.Stack))
 	}
 
 	app = sendAppKey(app, syntheticSpecialKey(tea.KeyEsc))
 	if app.currentView() != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("search esc should stay in outliner, got %v", app.currentView())
 	}
-	if outliner.SearchQuery() != "" {
-		t.Fatalf("second esc should clear search query, got %q", outliner.SearchQuery())
+	if outlinerView.SearchQuery() != "" {
+		t.Fatalf("second esc should clear search query, got %q", outlinerView.SearchQuery())
 	}
-	if len(outliner.focus.stack) != 1 {
-		t.Fatalf("second esc should not change focus stack, got %d entries", len(outliner.focus.stack))
+	if len(outlinerView.Focus.Stack) != 1 {
+		t.Fatalf("second esc should not change focus stack, got %d entries", len(outlinerView.Focus.Stack))
 	}
 
 	app = sendAppKey(app, syntheticSpecialKey(tea.KeyEsc))
 	if app.currentView() != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("focus esc should stay in outliner, got %v", app.currentView())
 	}
-	if len(outliner.focus.stack) != 0 {
-		t.Fatalf("third esc should clear focus stack, got %d entries", len(outliner.focus.stack))
+	if len(outlinerView.Focus.Stack) != 0 {
+		t.Fatalf("third esc should clear focus stack, got %d entries", len(outlinerView.Focus.Stack))
 	}
-	if outliner.ShouldCaptureEsc() {
+	if outlinerView.ShouldCaptureEsc() {
 		t.Fatal("outliner should release esc ownership once internal layers are cleared")
 	}
 
@@ -188,9 +189,9 @@ func TestNextMembershipConsumersUseExplicitPlanning(t *testing.T) {
 	setTestProjects(runtime, []*models.Project{project})
 
 	t.Run("outliner Next follows explicit eligible membership", func(t *testing.T) {
-		outliner := NewOutlinerModel(project, nil, runtime)
-		outliner.ApplyOpenOptions(OutlinerOpenOptions{Mode: chrome.ModeNext, SetMode: true})
-		visible := visibleOutlinerTaskIDs(outliner)
+		outlinerView := outliner.NewOutlinerModel(project, nil, runtime)
+		outlinerView.ApplyOpenOptions(outliner.OutlinerOpenOptions{Mode: chrome.ModeNext, SetMode: true})
+		visible := visibleOutlinerTaskIDs(outlinerView)
 		if !visible[indexedNext.ID] {
 			t.Fatal("Outliner Next omitted an explicit eligible member")
 		}
@@ -257,18 +258,18 @@ func TestTUIStateMachine_NonUndoableStatusInvalidatesUndoCallback(t *testing.T) 
 
 func wireInvariantSimplifiedRoot(t *testing.T, app *AppModel) {
 	t.Helper()
-	outliner := NewOutlinerModel(nil, app.configManager, app.runtime)
-	app.crossOutliner = outliner
-	app.views.Register(presentation.ViewCrossProjectOutliner, outliner)
-	wireInvariantSimplifiedOutliner(t, app, outliner)
+	outlinerView := outliner.NewOutlinerModel(nil, app.configManager, app.runtime)
+	app.crossOutliner = outlinerView
+	app.views.Register(presentation.ViewCrossProjectOutliner, outlinerView)
+	wireInvariantSimplifiedOutliner(t, app, outlinerView)
 }
 
-func wireInvariantSimplifiedOutliner(t *testing.T, app *AppModel, outliner *OutlinerModel) {
+func wireInvariantSimplifiedOutliner(t *testing.T, app *AppModel, outlinerView *outliner.OutlinerModel) {
 	t.Helper()
 	app.operationRegistry = operation.NewOperationRegistry()
 	app.operationExecutor = operation.NewOperationExecutor(app.operationRegistry)
-	app.crossOutliner = outliner
-	app.views.Register(presentation.ViewCrossProjectOutliner, outliner)
+	app.crossOutliner = outlinerView
+	app.views.Register(presentation.ViewCrossProjectOutliner, outlinerView)
 	if err := app.registerCoreInputOperations(); err != nil {
 		t.Fatalf("register core operations: %v", err)
 	}
@@ -293,7 +294,7 @@ func wireInvariantSimplifiedOutliner(t *testing.T, app *AppModel, outliner *Outl
 	if err := app.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		t.Fatalf("register simplified input strategy: %v", err)
 	}
-	app.wireOutlinerOperationExecutor(outliner)
+	app.wireOutlinerOperationExecutor(outlinerView)
 }
 
 func TestTUIStateMachine_OutlinerSelectionSurvivesVisibilityRebuilds(t *testing.T) {
@@ -309,44 +310,44 @@ func TestTUIStateMachine_OutlinerSelectionSurvivesVisibilityRebuilds(t *testing.
 
 	t.Run("single project", func(t *testing.T) {
 		app := newTestAppModel()
-		outliner := NewOutlinerModel(project, app.configManager, app.runtime)
-		outliner.rebuildRows()
-		outliner.MultiSelectMode = true
-		outliner.selectAllVisible()
+		outlinerView := outliner.NewOutlinerModel(project, app.configManager, app.runtime)
+		outlinerView.RebuildRows()
+		outlinerView.MultiSelectMode = true
+		outlinerView.SelectAllVisible()
 
-		if got := outliner.SelectedCount(); got != 2 {
+		if got := outlinerView.SelectedCount(); got != 2 {
 			t.Fatalf("selected count = %d, want 2", got)
 		}
 
-		outliner.filter.SetStateFilter(testWorkflowStateSet(models.StateBacklog))
-		outliner.adoptFilterCarriers()
-		outliner.rebuildRows()
+		outlinerView.Filter.SetStateFilter(testWorkflowStateSet(models.StateBacklog))
+		outlinerView.AdoptFilterCarriers()
+		outlinerView.RebuildRows()
 
-		if !outliner.MultiSelectMode || outliner.SelectedCount() != 2 {
-			t.Fatalf("single-project selection after filter = active %v count %d, want active/2", outliner.MultiSelectMode, outliner.SelectedCount())
+		if !outlinerView.MultiSelectMode || outlinerView.SelectedCount() != 2 {
+			t.Fatalf("single-project selection after filter = active %v count %d, want active/2", outlinerView.MultiSelectMode, outlinerView.SelectedCount())
 		}
 	})
 
 	t.Run("cross project", func(t *testing.T) {
 		app := newTestAppModel()
-		outliner := NewOutlinerModel(nil, app.configManager, app.runtime)
-		outliner.MultiSelectMode = true
-		outliner.population.projects = []*models.Project{project}
-		outliner.population.invalidate()
-		outliner.crossProjectRebuildRows()
-		outliner.selectAllVisible()
+		outlinerView := outliner.NewOutlinerModel(nil, app.configManager, app.runtime)
+		outlinerView.MultiSelectMode = true
+		outlinerView.Population.Projects = []*models.Project{project}
+		outlinerView.Population.Invalidate()
+		outlinerView.CrossProjectRebuildRows()
+		outlinerView.SelectAllVisible()
 
-		if got := outliner.SelectedCount(); got != 2 {
+		if got := outlinerView.SelectedCount(); got != 2 {
 			t.Fatalf("selected count = %d, want 2", got)
 		}
 
-		outliner.filter.SetStateFilter(testWorkflowStateSet(models.StateBacklog))
-		outliner.adoptFilterCarriers()
-		outliner.population.invalidate()
-		outliner.crossProjectRebuildRows()
+		outlinerView.Filter.SetStateFilter(testWorkflowStateSet(models.StateBacklog))
+		outlinerView.AdoptFilterCarriers()
+		outlinerView.Population.Invalidate()
+		outlinerView.CrossProjectRebuildRows()
 
-		if !outliner.MultiSelectMode || outliner.SelectedCount() != 2 {
-			t.Fatalf("cross-project selection after filter = active %v count %d, want active/2", outliner.MultiSelectMode, outliner.SelectedCount())
+		if !outlinerView.MultiSelectMode || outlinerView.SelectedCount() != 2 {
+			t.Fatalf("cross-project selection after filter = active %v count %d, want active/2", outlinerView.MultiSelectMode, outlinerView.SelectedCount())
 		}
 	})
 }
@@ -401,19 +402,19 @@ func newFocusToggleTestAppState(t *testing.T) (*AppModel, *models.Task) {
 		height:            24,
 		views:             route.NewViewRegistry(),
 		currentProject:    project,
-		nextOrder:         []PlanningTask{},
+		nextOrder:         []outliner.PlanningTask{},
 		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),
-		today:             []PlanningTask{},
+		today:             []outliner.PlanningTask{},
 		todayIDs:          make(map[taskref.TaskIdentity]bool),
 		operationRegistry: operation.NewOperationRegistry(),
 		navigation:        route.NewNavigationState(),
 	}
 	appModel.operationExecutor = operation.NewOperationExecutor(appModel.operationRegistry)
-	outliner := NewOutlinerModel(project, manager, runtime)
-	outliner.rebuildRows()
-	outliner.moveCursorToTask(task.ID)
-	appModel.crossOutliner = outliner
-	appModel.views.Register(presentation.ViewCrossProjectOutliner, outliner)
+	outlinerView := outliner.NewOutlinerModel(project, manager, runtime)
+	outlinerView.RebuildRows()
+	outlinerView.MoveCursorToTask(task.ID)
+	appModel.crossOutliner = outlinerView
+	appModel.views.Register(presentation.ViewCrossProjectOutliner, outlinerView)
 	if err := appModel.registerCoreInputOperations(); err != nil {
 		t.Fatalf("register core operations: %v", err)
 	}
@@ -438,7 +439,7 @@ func newFocusToggleTestAppState(t *testing.T) (*AppModel, *models.Task) {
 	if err := appModel.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
 		t.Fatalf("register simplified input: %v", err)
 	}
-	appModel.wireOutlinerOperationExecutor(outliner)
+	appModel.wireOutlinerOperationExecutor(outlinerView)
 	return appModel, task
 }
 
@@ -463,7 +464,7 @@ func assertExclusiveMembership(t *testing.T, app *AppModel, taskID string, inQue
 	}
 }
 
-func taskMembershipCount(tasks []PlanningTask, taskID string) int {
+func taskMembershipCount(tasks []outliner.PlanningTask, taskID string) int {
 	count := 0
 	for _, ft := range tasks {
 		if ft.Task != nil && ft.Task.ID == taskID {

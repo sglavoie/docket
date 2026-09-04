@@ -144,6 +144,16 @@ func (e *scenarioEnv) undo(t *testing.T) {
 	}
 }
 
+func seedTask(t *testing.T, shortID int, title string, state models.WorkflowState) *models.Task {
+	t.Helper()
+	task, err := models.NewGenericTask(uuid.New().String(), shortID, title)
+	if err != nil {
+		t.Fatalf("NewTask: %v", err)
+	}
+	task.ApplyWorkflowState(state)
+	return task
+}
+
 // runResult executes a coordinator command and asserts it produced a committed
 // transaction-result message, returning the application outcome.
 func runResult(t *testing.T, cmd tea.Cmd) app.TaskResult {
@@ -160,14 +170,4 @@ func runResult(t *testing.T, cmd tea.Cmd) app.TaskResult {
 		t.Fatalf("expected coordinator.TransactionResultMsg, got %T", msg)
 	}
 	return app.TaskResult{}
-}
-
-func seedTask(t *testing.T, shortID int, title string, state models.WorkflowState) *models.Task {
-	t.Helper()
-	task, err := models.NewGenericTask(uuid.New().String(), shortID, title)
-	if err != nil {
-		t.Fatalf("NewTask: %v", err)
-	}
-	task.ApplyWorkflowState(state)
-	return task
 }

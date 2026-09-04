@@ -256,6 +256,19 @@ func CompareNoteLocations(left, right app.NoteLocation) int {
 	return strings.Compare(left.ProjectID, right.ProjectID)
 }
 
+// SortLocatedNoteRows gives a note collection one deterministic order —
+// location, then filename — so a ranking tie resolves the same way on every
+// rebuild. It lives beside CompareNoteLocations because the order is the row
+// type's own, not a property of whichever surface happens to be listing it.
+func SortLocatedNoteRows(rows []LocatedNoteRow) {
+	sort.SliceStable(rows, func(i, j int) bool {
+		if order := CompareNoteLocations(rows[i].Location, rows[j].Location); order != 0 {
+			return order < 0
+		}
+		return rows[i].Note.Filename < rows[j].Note.Filename
+	})
+}
+
 func (m *NotesViewModel) selectedIdentity() (NoteRowIdentity, bool) {
 	row := m.CurrentRow()
 	if row == nil {

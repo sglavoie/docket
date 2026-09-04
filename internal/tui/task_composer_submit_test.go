@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -277,17 +278,17 @@ func TestTaskComposerCancellationFocusAndNarrowLayout(t *testing.T) {
 func TestDailyTaskEditsUseInlineTitleAndNarrowDescription(t *testing.T) {
 	appModel, project := newTestAppModelWithProject()
 	task := project.Tasks[0]
-	appModel.crossOutliner = NewOutlinerModel(nil, appModel.configManager, appModel.runtime)
-	appModel.crossOutliner.population.projects = []*models.Project{project}
+	appModel.crossOutliner = outliner.NewOutlinerModel(nil, appModel.configManager, appModel.runtime)
+	appModel.crossOutliner.Population.Projects = []*models.Project{project}
 	appModel.views.Register(presentation.ViewCrossProjectOutliner, appModel.crossOutliner)
 	appModel.navigation.ResetRoot()
 
-	appModel.Update(StartTaskLineEditMsg{Project: project, Task: task})
-	if appModel.currentView() != presentation.ViewCrossProjectOutliner || appModel.crossOutliner == nil || !appModel.crossOutliner.quickEdit.IsActive() {
+	appModel.Update(outliner.StartTaskLineEditMsg{Project: project, Task: task})
+	if appModel.currentView() != presentation.ViewCrossProjectOutliner || appModel.crossOutliner == nil || !appModel.crossOutliner.QuickEdit.IsActive() {
 		t.Fatalf("title edit did not remain in the inline Outliner: view=%v", appModel.currentView())
 	}
 
-	appModel.crossOutliner.quickEdit.Exit()
+	appModel.crossOutliner.QuickEdit.Exit()
 	appModel.Update(chrome.ShowTaskTextEditorMsg{
 		Task: task, Project: project, Operation: app.TaskOperationEditDescription,
 	})

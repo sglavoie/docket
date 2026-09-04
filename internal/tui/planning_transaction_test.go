@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -111,7 +112,7 @@ func newPlanningLedgerApp(t *testing.T, state models.WorkflowState) (*AppModel, 
 	runtime := testRuntimeAt(cfg.DataDir(), cfg)
 
 	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil).
-		WithPlanningArtifacts(planningReconcileArtifactBuilder(manager))
+		WithPlanningArtifacts(coordinator.ManagerPlanningArtifacts(manager))
 
 	appModel := &AppModel{
 		configManager:     manager,
@@ -125,9 +126,9 @@ func newPlanningLedgerApp(t *testing.T, state models.WorkflowState) (*AppModel, 
 		height:            24,
 		views:             route.NewViewRegistry(),
 		currentProject:    project,
-		nextOrder:         []PlanningTask{},
+		nextOrder:         []outliner.PlanningTask{},
 		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),
-		today:             []PlanningTask{},
+		today:             []outliner.PlanningTask{},
 		todayIDs:          make(map[taskref.TaskIdentity]bool),
 	}
 	appModel.showView(presentation.ViewCrossProjectOutliner, &invariantQueueView{taskID: task.ID, project: project})

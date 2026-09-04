@@ -17,7 +17,7 @@ import (
 func TestFilterChordPresetsCarryValuesAndStatuses(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	ctx := simplifiedOperationContext()
-	filter := &app.crossOutliner.filter.CommonFilterState
+	filter := &app.crossOutliner.Filter.CommonFilterState
 
 	presets := []struct {
 		path   []string
@@ -72,7 +72,7 @@ func TestFilterChordPresetsCarryValuesAndStatuses(t *testing.T) {
 func TestFilterChordClearResetsEveryFacet(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	out := app.crossOutliner
-	filter := &out.filter.CommonFilterState
+	filter := &out.Filter.CommonFilterState
 
 	filter.Priority = 2
 	filter.DueDate = query.DueDateToday
@@ -104,16 +104,16 @@ func TestFilterChordClearResetsEveryFacet(t *testing.T) {
 func TestFilteredEmptyStateAdvertisesWorkingClearChord(t *testing.T) {
 	app := newFilterChordTestApp(t)
 	out := app.crossOutliner
-	out.filter.Tags = map[string]bool{"missing": true}
-	out.adoptFilterCarriers()
-	out.population.invalidate()
-	out.rebuildRows()
+	out.Filter.Tags = map[string]bool{"missing": true}
+	out.AdoptFilterCarriers()
+	out.Population.Invalidate()
+	out.RebuildRows()
 
 	if visible := visibleOutlinerTaskIDs(out); len(visible) != 0 {
 		t.Fatalf("missing-tag filter left tasks visible: %v", visible)
 	}
 	const want = "No tasks match filters. Press fx to clear filters."
-	if got := out.outlinerEmptyMessage(); got != want {
+	if got := out.OutlinerEmptyMessage(); got != want {
 		t.Fatalf("filtered empty state = %q, want %q", got, want)
 	}
 
@@ -137,8 +137,8 @@ func TestFilterChordPriorityThresholdNarrowsRows(t *testing.T) {
 	if cmd := pressFilterChord(t, app, "f!2"); cmd == nil {
 		t.Fatal("f!2 produced no status command")
 	}
-	if out.filter.Priority != 2 {
-		t.Fatalf("Priority = %d, want 2", out.filter.Priority)
+	if out.Filter.Priority != 2 {
+		t.Fatalf("Priority = %d, want 2", out.Filter.Priority)
 	}
 	visible := visibleOutlinerTaskIDs(out)
 	if !visible["critical"] || !visible["medium"] {
@@ -149,16 +149,16 @@ func TestFilterChordPriorityThresholdNarrowsRows(t *testing.T) {
 	}
 
 	pressFilterChord(t, app, "f!3")
-	if out.filter.Priority != 3 {
-		t.Fatalf("Priority = %d, want 3", out.filter.Priority)
+	if out.Filter.Priority != 3 {
+		t.Fatalf("Priority = %d, want 3", out.Filter.Priority)
 	}
 	if visible := visibleOutlinerTaskIDs(out); !visible["low"] {
 		t.Errorf("f!3 should keep the low-priority task; visible = %v", visible)
 	}
 
 	pressFilterChord(t, app, "fx")
-	if out.filter.Priority != 0 {
-		t.Fatalf("Priority = %d after fx, want 0", out.filter.Priority)
+	if out.Filter.Priority != 0 {
+		t.Fatalf("Priority = %d after fx, want 0", out.Filter.Priority)
 	}
 	if visible := visibleOutlinerTaskIDs(out); !visible["low"] {
 		t.Errorf("fx should restore all tasks; visible = %v", visible)
@@ -170,7 +170,7 @@ func TestFilterChordPriorityThresholdNarrowsRows(t *testing.T) {
 // mutually exclusive: choosing one has to clear the other field.
 func TestFilterDuePickerDeferredRowOwnsTheDeferredFacet(t *testing.T) {
 	app := newFilterChordTestApp(t)
-	filter := &app.crossOutliner.filter.CommonFilterState
+	filter := &app.crossOutliner.Filter.CommonFilterState
 	filter.DueDate = query.DueDateToday
 
 	result := app.executeFilterOperation(operation.OperationInvocation{
@@ -207,8 +207,8 @@ func TestFilterDuePickerDeferredRowOwnsTheDeferredFacet(t *testing.T) {
 func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 	t.Run("f@ due date", func(t *testing.T) {
 		app := newFilterChordTestApp(t)
-		app.crossOutliner.filter.DueDate = query.DueDateThisWeek
-		app.crossOutliner.adoptFilterCarriers()
+		app.crossOutliner.Filter.DueDate = query.DueDateThisWeek
+		app.crossOutliner.AdoptFilterCarriers()
 
 		cmd := pressFilterChord(t, app, "f@")
 		if cmd == nil {
@@ -245,8 +245,8 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		app.crossOutliner.filter.SetStateFilter(set)
-		app.crossOutliner.adoptFilterCarriers()
+		app.crossOutliner.Filter.SetStateFilter(set)
+		app.crossOutliner.AdoptFilterCarriers()
 
 		cmd := pressFilterChord(t, app, "f$")
 		if cmd == nil {
@@ -264,8 +264,8 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 
 	t.Run("fa completion age", func(t *testing.T) {
 		app := newFilterChordTestApp(t)
-		app.crossOutliner.filter.SetCompletionAgeFilter(query.CompletionAge30Days)
-		app.crossOutliner.adoptFilterCarriers()
+		app.crossOutliner.Filter.SetCompletionAgeFilter(query.CompletionAge30Days)
+		app.crossOutliner.AdoptFilterCarriers()
 
 		cmd := pressFilterChord(t, app, "fa")
 		if cmd == nil {
@@ -297,8 +297,8 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 
 	t.Run("f# tags", func(t *testing.T) {
 		app := newFilterChordTestApp(t)
-		app.crossOutliner.filter.Tags = map[string]bool{"deep": true}
-		app.crossOutliner.adoptFilterCarriers()
+		app.crossOutliner.Filter.Tags = map[string]bool{"deep": true}
+		app.crossOutliner.AdoptFilterCarriers()
 
 		cmd := pressFilterChord(t, app, "f#")
 		if cmd == nil {
@@ -343,19 +343,19 @@ func TestFilterStatePickerShowsProspectiveCountsFromOtherActiveFilters(t *testin
 	}
 	project.BuildTaskTree()
 	setTestAppProjects(app, project)
-	outliner := app.crossOutliner
-	outliner.population.projects = []*models.Project{project}
-	outliner.filter.Priority = 2
-	outliner.filter.Tags = map[string]bool{"focus": true}
-	outliner.adoptFilterCarriers()
+	outlinerView := app.crossOutliner
+	outlinerView.Population.Projects = []*models.Project{project}
+	outlinerView.Filter.Priority = 2
+	outlinerView.Filter.Tags = map[string]bool{"focus": true}
+	outlinerView.AdoptFilterCarriers()
 	selectedStates, err := models.NewWorkflowStateSet(models.StateWaiting)
 	if err != nil {
 		t.Fatal(err)
 	}
-	outliner.filter.SetStateFilter(selectedStates)
-	outliner.adoptFilterCarriers()
-	outliner.population.invalidate()
-	outliner.rebuildRows()
+	outlinerView.Filter.SetStateFilter(selectedStates)
+	outlinerView.AdoptFilterCarriers()
+	outlinerView.Population.Invalidate()
+	outlinerView.RebuildRows()
 
 	picker, err := app.newFilterStatesPicker(operation.OperationExecutionRequest{})
 	if err != nil {
@@ -386,7 +386,7 @@ func TestFilterStatePickerShowsProspectiveCountsFromOtherActiveFilters(t *testin
 	if !strings.HasSuffix(waiting, "⋅ "+lightRedZero) {
 		t.Errorf("zero count is not rendered with the prospective zero style: %q", waiting)
 	}
-	if got := outliner.filter.States.Values(); len(got) != 1 || got[0] != models.StateWaiting {
+	if got := outlinerView.Filter.States.Values(); len(got) != 1 || got[0] != models.StateWaiting {
 		t.Errorf("building counts mutated active state filter to %v", got)
 	}
 

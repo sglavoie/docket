@@ -114,7 +114,7 @@ func (m *AppModel) executeChecklistStart(
 		return operation.OperationHandlerResult{Err: err}
 	}
 	if out, ok := m.outlinerPrimary(); ok && out != nil {
-		out.folds.setChecklist(identity, true)
+		out.Folds.SetChecklist(identity, true)
 	}
 	return checklistCommandResult(m.secondaryFeatures.Subview.AddChecklistItem(identity, text))
 }
@@ -237,7 +237,7 @@ func (m *AppModel) followReorderedChecklistItem(delta int) {
 		return
 	}
 	target := out.Cursor + delta
-	if target < 0 || target >= len(out.rows) || !out.rows[target].IsChecklistItem {
+	if target < 0 || target >= len(out.Rows) || !out.Rows[target].IsChecklistItem {
 		return
 	}
 	out.Cursor = target

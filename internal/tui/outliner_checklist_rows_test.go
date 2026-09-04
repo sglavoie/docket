@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -13,20 +14,20 @@ import (
 // through that predicate and would otherwise silently act on the owner. It stays
 // navigable because the cursor has to be able to land on it.
 func TestChecklistRowIsNotATaskRowButStaysNavigable(t *testing.T) {
-	owner := outlinerRow{task: &models.Task{}}
-	if !owner.isTaskRow() || !owner.isNavigable() {
+	owner := outliner.OutlinerRow{Task: &models.Task{}}
+	if !owner.IsTaskRow() || !owner.IsNavigable() {
 		t.Fatalf("owner row: isTaskRow=%v isNavigable=%v, want true/true",
-			owner.isTaskRow(), owner.isNavigable())
+			owner.IsTaskRow(), owner.IsNavigable())
 	}
 
 	item := owner
 	item.IsChecklistItem = true
 	item.ChecklistIndex = 1
 	item.ChecklistDone = true
-	if item.isTaskRow() {
+	if item.IsTaskRow() {
 		t.Fatal("checklist row reports isTaskRow, so task operations would target its owner")
 	}
-	if !item.isNavigable() {
+	if !item.IsNavigable() {
 		t.Fatal("checklist row is not navigable, so the cursor could never reach it")
 	}
 }
@@ -38,17 +39,17 @@ func TestChecklistFoldLadderExpandsAndCollapses(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
-	outliner := driver.App().crossOutliner
+	outlinerView := driver.App().crossOutliner
 	focusChecklistOwner(t, driver, checklistFixtureFoldTitle)
 
 	if screen := driver.Observe(ObserveOptions{}).PlainScreen; strings.Contains(screen, checklistFixtureFirstItem) {
 		t.Fatalf("checklist items render before any expansion:\n%s", screen)
 	}
 
-	if !outliner.expandAtCursor() {
+	if !outlinerView.ExpandAtCursor() {
 		t.Fatal("expandAtCursor did not expand a checklist-only task")
 	}
-	items := checklistRowTexts(outliner)
+	items := checklistRowTexts(outlinerView)
 	want := []string{checklistFixtureFirstItem, checklistFixtureSecondItem, checklistFixtureThirdItem}
 	if len(items) != len(want) {
 		t.Fatalf("checklist rows = %v, want %v", items, want)
@@ -58,14 +59,14 @@ func TestChecklistFoldLadderExpandsAndCollapses(t *testing.T) {
 			t.Fatalf("checklist row %d = %q, want %q", index, items[index], text)
 		}
 	}
-	if !outliner.rows[outliner.Cursor].isTaskRow() {
+	if !outlinerView.Rows[outlinerView.Cursor].IsTaskRow() {
 		t.Fatal("expanding moved the cursor off the owner task row")
 	}
 
-	if !outliner.collapseOrMoveToParent() {
+	if !outlinerView.CollapseOrMoveToParent() {
 		t.Fatal("collapseOrMoveToParent did not collapse the expanded checklist")
 	}
-	if got := checklistRowTexts(outliner); len(got) != 0 {
+	if got := checklistRowTexts(outlinerView); len(got) != 0 {
 		t.Fatalf("checklist rows survive collapse: %v", got)
 	}
 }
@@ -79,23 +80,23 @@ func TestChecklistRowCollapseReturnsToOwner(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
-	outliner := driver.App().crossOutliner
+	outlinerView := driver.App().crossOutliner
 	owner := focusChecklistOwner(t, driver, checklistFixtureFoldTitle)
-	if !outliner.expandAtCursor() {
+	if !outlinerView.ExpandAtCursor() {
 		t.Fatal("expandAtCursor did not expand the checklist")
 	}
 
-	outliner.Cursor++
-	if !outliner.rows[outliner.Cursor].IsChecklistItem {
-		t.Fatalf("row after the owner is not a checklist item: %+v", outliner.rows[outliner.Cursor])
+	outlinerView.Cursor++
+	if !outlinerView.Rows[outlinerView.Cursor].IsChecklistItem {
+		t.Fatalf("row after the owner is not a checklist item: %+v", outlinerView.Rows[outlinerView.Cursor])
 	}
-	if !outliner.collapseOrMoveToParent() {
+	if !outlinerView.CollapseOrMoveToParent() {
 		t.Fatal("collapseOrMoveToParent on a checklist row did not move the cursor")
 	}
-	if got := outliner.taskIdentityForRow(outliner.rows[outliner.Cursor]); got != owner {
+	if got := outlinerView.TaskIdentityForRow(outlinerView.Rows[outlinerView.Cursor]); got != owner {
 		t.Fatalf("cursor identity = %+v, want the owner %+v", got, owner)
 	}
-	if len(checklistRowTexts(outliner)) == 0 {
+	if len(checklistRowTexts(outlinerView)) == 0 {
 		t.Fatal("returning to the owner also collapsed the checklist")
 	}
 }
@@ -109,31 +110,31 @@ func TestChecklistFoldOrdersChildrenBeforeItems(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
-	outliner := driver.App().crossOutliner
+	outlinerView := driver.App().crossOutliner
 	identity := focusChecklistOwner(t, driver, checklistFixtureParentTitle)
-	if outliner.isExpanded(identity) {
-		outliner.collapseOrMoveToParent()
+	if outlinerView.IsExpanded(identity) {
+		outlinerView.CollapseOrMoveToParent()
 		focusChecklistOwner(t, driver, checklistFixtureParentTitle)
 	}
 
-	outliner.expandAtCursor()
-	if !outliner.isExpanded(identity) {
+	outlinerView.ExpandAtCursor()
+	if !outlinerView.IsExpanded(identity) {
 		t.Fatal("the first expansion did not open the child subtree")
 	}
-	if outliner.isChecklistExpanded(identity) {
+	if outlinerView.IsChecklistExpanded(identity) {
 		t.Fatal("the first expansion opened the checklist before the children")
 	}
-	outliner.expandAtCursor()
-	if !outliner.isChecklistExpanded(identity) {
+	outlinerView.ExpandAtCursor()
+	if !outlinerView.IsChecklistExpanded(identity) {
 		t.Fatal("the second expansion did not open the checklist")
 	}
 
-	outliner.collapseOrMoveToParent()
-	if !outliner.isExpanded(identity) || outliner.isChecklistExpanded(identity) {
+	outlinerView.CollapseOrMoveToParent()
+	if !outlinerView.IsExpanded(identity) || outlinerView.IsChecklistExpanded(identity) {
 		t.Fatal("the first collapse did not shed the checklist first")
 	}
-	outliner.collapseOrMoveToParent()
-	if outliner.isExpanded(identity) {
+	outlinerView.CollapseOrMoveToParent()
+	if outlinerView.IsExpanded(identity) {
 		t.Fatal("the second collapse did not close the child subtree")
 	}
 }
@@ -148,49 +149,49 @@ func TestChecklistRowsSuppressedDuringVisualSelection(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
-	outliner := driver.App().crossOutliner
+	outlinerView := driver.App().crossOutliner
 	owner := focusChecklistOwner(t, driver, checklistFixtureFoldTitle)
-	outliner.expandAtCursor()
-	outliner.Cursor++
-	if !outliner.rows[outliner.Cursor].IsChecklistItem {
+	outlinerView.ExpandAtCursor()
+	outlinerView.Cursor++
+	if !outlinerView.Rows[outlinerView.Cursor].IsChecklistItem {
 		t.Fatal("the cursor is not on a checklist row before entering selection")
 	}
 
-	outliner.toggleMultiSelectMode()
-	if got := checklistRowTexts(outliner); len(got) != 0 {
+	outlinerView.ToggleMultiSelectMode()
+	if got := checklistRowTexts(outlinerView); len(got) != 0 {
 		t.Fatalf("checklist rows survive visual selection: %v", got)
 	}
-	if !outliner.isChecklistExpanded(owner) {
+	if !outlinerView.IsChecklistExpanded(owner) {
 		t.Fatal("visual selection discarded the checklist fold state")
 	}
-	if got := outliner.taskIdentityForRow(outliner.rows[outliner.Cursor]); got != owner {
+	if got := outlinerView.TaskIdentityForRow(outlinerView.Rows[outlinerView.Cursor]); got != owner {
 		t.Fatalf("cursor identity = %+v, want the re-seated owner %+v", got, owner)
 	}
 
-	outliner.toggleMultiSelectMode()
-	if got := checklistRowTexts(outliner); len(got) != 3 {
+	outlinerView.ToggleMultiSelectMode()
+	if got := checklistRowTexts(outlinerView); len(got) != 3 {
 		t.Fatalf("leaving visual selection restored %v, want the three checklist rows", got)
 	}
 }
 
 func focusChecklistOwner(t *testing.T, driver *UITestDriver, title string) taskref.TaskIdentity {
 	t.Helper()
-	outliner := driver.App().crossOutliner
-	for index, row := range outliner.rows {
-		if row.isTaskRow() && row.task != nil && row.task.Title == title {
-			outliner.Cursor = index
-			return outliner.taskIdentityForRow(row)
+	outlinerView := driver.App().crossOutliner
+	for index, row := range outlinerView.Rows {
+		if row.IsTaskRow() && row.Task != nil && row.Task.Title == title {
+			outlinerView.Cursor = index
+			return outlinerView.TaskIdentityForRow(row)
 		}
 	}
 	t.Fatalf("checklist fixture has no visible task row titled %q", title)
 	return taskref.TaskIdentity{}
 }
 
-func checklistRowTexts(outliner *OutlinerModel) []string {
-	texts := make([]string, 0, len(outliner.rows))
-	for _, row := range outliner.rows {
-		if row.IsChecklistItem && row.task != nil {
-			texts = append(texts, row.task.Checklist[row.ChecklistIndex].Text)
+func checklistRowTexts(outlinerView *outliner.OutlinerModel) []string {
+	texts := make([]string, 0, len(outlinerView.Rows))
+	for _, row := range outlinerView.Rows {
+		if row.IsChecklistItem && row.Task != nil {
+			texts = append(texts, row.Task.Checklist[row.ChecklistIndex].Text)
 		}
 	}
 	return texts

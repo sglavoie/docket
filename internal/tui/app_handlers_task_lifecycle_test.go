@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskform"
 )
@@ -41,10 +42,10 @@ func TestHandleTaskMessagesCreateTaskWithParent(t *testing.T) {
 func TestHandleTaskMessagesEditTask(t *testing.T) {
 	_, project := newTestAppModelWithProject()
 	task := project.Tasks[0]
-	out := NewOutlinerModel(project, nil, nil)
+	out := outliner.NewOutlinerModel(project, nil, nil)
 
-	updated, _ := out.Update(StartTaskLineEditMsg{Project: project, Task: task})
-	if updated != out || !out.quickEdit.IsActive() || out.quickEdit.GetTask() != task {
+	updated, _ := out.Update(outliner.StartTaskLineEditMsg{Project: project, Task: task})
+	if updated != out || !out.QuickEdit.IsActive() || out.QuickEdit.GetTask() != task {
 		t.Fatalf("inline title edit was not activated for %s/%s", project.ID, task.ID)
 	}
 }

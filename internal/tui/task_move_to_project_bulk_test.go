@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -264,7 +265,7 @@ func TestMoveToProjectWithoutASelectionKeepsTheSingleTaskPath(t *testing.T) {
 	}
 
 	context := m.operationCommandContext()
-	context.Entity = taskOperationEntity(source, sourceProject)
+	context.Entity = outliner.TaskOperationEntity(source, sourceProject)
 	result := m.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationTaskMoveToProject,
 		Context:  context,

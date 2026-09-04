@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -23,20 +24,20 @@ func TestFrozenBulkTagPatchPreservesSelectionAcrossCursorMoveAndRebuild(t *testi
 	if err := model.registerTaskActionOperations(); err != nil {
 		t.Fatalf("registerTaskActionOperations: %v", err)
 	}
-	outliner := NewOutlinerModel(nil, model.configManager, model.runtime)
-	outliner.population.projects = env.projects
-	outliner.rows = []outlinerRow{
-		{task: first, ProjectID: env.projects[0].ID},
-		{task: second, ProjectID: env.projects[1].ID},
+	outlinerView := outliner.NewOutlinerModel(nil, model.configManager, model.runtime)
+	outlinerView.Population.Projects = env.projects
+	outlinerView.Rows = []outliner.OutlinerRow{
+		{Task: first, ProjectID: env.projects[0].ID},
+		{Task: second, ProjectID: env.projects[1].ID},
 	}
-	outliner.MultiSelectMode = true
-	outliner.SelectTaskIdentity(taskref.For(first, env.projects[0]))
-	outliner.SelectTaskIdentity(taskref.For(second, env.projects[1]))
-	model.crossOutliner = outliner
-	model.views.Register(presentation.ViewCrossProjectOutliner, outliner)
+	outlinerView.MultiSelectMode = true
+	outlinerView.SelectTaskIdentity(taskref.For(first, env.projects[0]))
+	outlinerView.SelectTaskIdentity(taskref.For(second, env.projects[1]))
+	model.crossOutliner = outlinerView
+	model.views.Register(presentation.ViewCrossProjectOutliner, outlinerView)
 
 	context := model.operationCommandContext()
-	outliner.Cursor = 1
+	outlinerView.Cursor = 1
 	result := model.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationTaskSetTags,
 		Context:  context,
@@ -59,8 +60,8 @@ func TestFrozenBulkTagPatchPreservesSelectionAcrossCursorMoveAndRebuild(t *testi
 	if got := env.reload(t, 1).GetTaskByID(second.ID).Tags; !reflect.DeepEqual(got, []string{"second-only", "first-only"}) {
 		t.Fatalf("second tags = %v, want preserved partial membership plus first-only", got)
 	}
-	if !outliner.MultiSelectMode || outliner.SelectedCount() != 2 {
-		t.Fatalf("selection after committed rebuild = active %v count %d, want active/2", outliner.MultiSelectMode, outliner.SelectedCount())
+	if !outlinerView.MultiSelectMode || outlinerView.SelectedCount() != 2 {
+		t.Fatalf("selection after committed rebuild = active %v count %d, want active/2", outlinerView.MultiSelectMode, outlinerView.SelectedCount())
 	}
 }
 
@@ -112,7 +113,7 @@ func TestBulkTaskValueOperationUsesQualifiedTargetsAndOneUndoEntry(t *testing.T)
 		)
 		context.Selection.Entities = append(
 			context.Selection.Entities,
-			taskOperationEntity(task, project),
+			outliner.TaskOperationEntity(task, project),
 		)
 	}
 	context.Entity = context.Selection.Entities[0]

@@ -95,7 +95,7 @@ func TestLensAddTemplateAsksForATemplateBeforeItWrites(t *testing.T) {
 func TestLensAddTemplatePersistsTheCatalogDefinitionAndAppliesIt(t *testing.T) {
 	model := lensOperationApp(t)
 	out := model.crossOutliner
-	out.selectOutlinerMode(chrome.ModeInbox)
+	out.SelectOutlinerMode(chrome.ModeInbox)
 	template := addableTemplate(t, model)
 	before := len(machineLenses(t, model))
 
@@ -119,17 +119,17 @@ func TestLensAddTemplatePersistsTheCatalogDefinitionAndAppliesIt(t *testing.T) {
 	if !reflect.DeepEqual(*saved, template) {
 		t.Fatalf("saved record = %+v, want the catalog definition %+v", *saved, template)
 	}
-	if !out.hasActiveLens() || out.lens.active.lensID != template.ID {
-		t.Fatalf("added template is not the live lens: %v", out.activeLensLabel())
+	if !out.HasActiveLens() || out.Lens.Active.LensID != template.ID {
+		t.Fatalf("added template is not the live lens: %v", out.ActiveLensLabel())
 	}
-	if out.lensModified() {
+	if out.LensModified() {
 		t.Fatal("a freshly added built-in view starts unmodified")
 	}
 	// One Esc still returns to the pre-lens view, so the application kept the
 	// baseline rather than stacking a new one.
-	out.restoreLensBaseline()
-	if out.hasActiveLens() || out.primaryMode != chrome.ModeInbox {
-		t.Fatalf("one restore left mode %v with lens=%v", out.primaryMode, out.hasActiveLens())
+	out.RestoreLensBaseline()
+	if out.HasActiveLens() || out.PrimaryMode != chrome.ModeInbox {
+		t.Fatalf("one restore left mode %v with lens=%v", out.PrimaryMode, out.HasActiveLens())
 	}
 	// Machine-local state rides no workspace transaction, so nothing here may
 	// reach the executor's undo ledger.
@@ -167,7 +167,7 @@ func TestLensAddTemplateRejectsMalformedAndUnknownPayloads(t *testing.T) {
 			if got := len(machineLenses(t, model)); got != before {
 				t.Fatalf("a refused add wrote %d records, want %d", got, before)
 			}
-			if model.crossOutliner.hasActiveLens() {
+			if model.crossOutliner.HasActiveLens() {
 				t.Fatal("a refused add applied a lens")
 			}
 		})
@@ -302,7 +302,7 @@ func TestAFailedAddTemplateCommitAppliesNothing(t *testing.T) {
 	if before.NamedLensByID(template.ID) != nil {
 		t.Fatal("a failed commit added the template to the cached snapshot")
 	}
-	if out.lens.active == nil || out.lens.active.lensID != starter.ID {
+	if out.Lens.Active == nil || out.Lens.Active.LensID != starter.ID {
 		t.Fatal("a failed commit applied the template anyway")
 	}
 }

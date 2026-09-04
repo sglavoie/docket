@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -19,22 +20,22 @@ func TestOutlinerQueuedPriorityTitlesUsePriorityStyle(t *testing.T) {
 		newPrimaryRowStyleTask(t, "outliner-p2", 2, "Outliner queued P2", 2),
 	}
 
-	m := NewOutlinerModel(newPrimaryRowStyleProject(t, "outliner-project", tasks), nil, nil)
+	m := outliner.NewOutlinerModel(newPrimaryRowStyleProject(t, "outliner-project", tasks), nil, nil)
 	m.SetSize(120, 20)
-	m.rebuildRows()
+	m.RebuildRows()
 
 	for _, task := range tasks {
-		rowIndex := findPrimaryRowStyleOutlinerRow(t, m.rows, task.ID)
-		line := m.renderOutlinerTaskRow(m.rows[rowIndex], false, 120, 120, rowIndex, nil)
+		rowIndex := findPrimaryRowStyleOutlinerRow(t, m.Rows, task.ID)
+		line := m.RenderOutlinerTaskRow(m.Rows[rowIndex], false, 120, 120, rowIndex, nil)
 		assertPrimaryRowTitleStyle(t, line, task)
-		assertPlanningMarkerColumnRemoved(t, line, m.rows[rowIndex], task)
+		assertPlanningMarkerColumnRemoved(t, line, m.Rows[rowIndex], task)
 	}
 }
 
 func TestOutlinerChromeUsesCompactLeftMargins(t *testing.T) {
-	m := NewOutlinerModel(nil, nil, nil)
+	m := outliner.NewOutlinerModel(nil, nil, nil)
 
-	section := ansi.Strip(m.renderOutlinerSectionHeaderRow(outlinerRow{
+	section := ansi.Strip(m.RenderOutlinerSectionHeaderRow(outliner.OutlinerRow{
 		IsSectionHeader: true,
 		SectionName:     "Ready",
 		SectionCount:    1,
@@ -43,7 +44,7 @@ func TestOutlinerChromeUsesCompactLeftMargins(t *testing.T) {
 		t.Fatalf("section header retained a left gutter: %q", section)
 	}
 
-	project := ansi.Strip(m.renderOutlinerProjectHeaderRow(outlinerRow{
+	project := ansi.Strip(m.RenderOutlinerProjectHeaderRow(outliner.OutlinerRow{
 		IsProjectHeader: true,
 		ProjectID:       "roadmap",
 	}, false, 120, 0))
@@ -78,11 +79,11 @@ func newPrimaryRowStyleProject(t *testing.T, id string, tasks []*models.Task) *m
 	return project
 }
 
-func findPrimaryRowStyleOutlinerRow(t *testing.T, rows []outlinerRow, taskID string) int {
+func findPrimaryRowStyleOutlinerRow(t *testing.T, rows []outliner.OutlinerRow, taskID string) int {
 	t.Helper()
 
 	for i, row := range rows {
-		if row.task != nil && row.task.ID == taskID {
+		if row.Task != nil && row.Task.ID == taskID {
 			return i
 		}
 	}
@@ -104,11 +105,11 @@ func assertPrimaryRowTitleStyle(t *testing.T, line string, task *models.Task) {
 	}
 }
 
-func assertPlanningMarkerColumnRemoved(t *testing.T, line string, row outlinerRow, task *models.Task) {
+func assertPlanningMarkerColumnRemoved(t *testing.T, line string, row outliner.OutlinerRow, task *models.Task) {
 	t.Helper()
 
 	plain := ansi.Strip(line)
-	wantPrefix := theme.RenderCursorPrefix() + row.prefix + task.State().Icon()
+	wantPrefix := theme.RenderCursorPrefix() + row.Prefix + task.State().Icon()
 	if !strings.HasPrefix(plain, wantPrefix) {
 		t.Fatalf("planned task row should place its state badge directly after the tree prefix; got:\n%s", plain)
 	}

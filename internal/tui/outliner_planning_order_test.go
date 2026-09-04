@@ -16,10 +16,10 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]), locatorOf(project, tasks[2]),
 		)
 		enterCrossMode(cross, chrome.ModeNext)
-		if cross.primaryMode != chrome.ModeNext {
+		if cross.PrimaryMode != chrome.ModeNext {
 			t.Fatal("ModeNext did not become the global Outliner mode")
 		}
-		if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks[0].ID, project.ID) {
 			t.Fatal("cursor did not land on Alpha")
 		}
 
@@ -46,7 +46,7 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]), locatorOf(project, tasks[2]),
 		)
 		enterCrossMode(cross, chrome.ModeNext)
-		if !cross.moveCursorToProjectTask(tasks[2].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks[2].ID, project.ID) {
 			t.Fatal("cursor did not land on Charlie")
 		}
 
@@ -68,7 +68,7 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 			locatorOf(p1, t1[0]), locatorOf(p2, t2[0]), locatorOf(p1, t1[1]), locatorOf(p2, t2[1]),
 		)
 		enterCrossMode(cross, chrome.ModeNext)
-		if !cross.moveCursorToProjectTask(t2[0].ID, p2.ID) {
+		if !cross.MoveCursorToProjectTask(t2[0].ID, p2.ID) {
 			t.Fatal("cursor did not land on B")
 		}
 
@@ -95,7 +95,7 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 		}
 		seedNextOrderOrder(t, m, seeded...)
 		enterCrossMode(cross, chrome.ModeNext)
-		if !cross.moveCursorToProjectTask(t2[0].ID, p2.ID) {
+		if !cross.MoveCursorToProjectTask(t2[0].ID, p2.ID) {
 			t.Fatal("cursor did not land on B")
 		}
 
@@ -117,7 +117,7 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]), locatorOf(project, tasks[2]),
 		)
 		enterCrossMode(cross, chrome.ModeToday)
-		if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks[0].ID, project.ID) {
 			t.Fatal("cursor did not land on Alpha")
 		}
 
@@ -135,10 +135,10 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 		m, cross, dataDir := newPlanningOrderApp(t, project)
 		seedNextOrderOrder(t, m, locatorOf(project, tasks[0]), locatorOf(project, tasks[1]))
 		enterCrossMode(cross, chrome.ModeAll)
-		if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks[0].ID, project.ID) {
 			t.Fatal("cursor did not land on Alpha")
 		}
-		if !cross.rows[cross.Cursor].IsNextSection {
+		if !cross.Rows[cross.Cursor].IsNextSection {
 			t.Fatal("All-mode Next row lost its planning-section identity")
 		}
 		if !pressReorderKey(t, m, 'J') {
@@ -158,7 +158,7 @@ func TestTodayPlanningReorderCrossesLifecycleStatesInDurableOrder(t *testing.T) 
 	enterCrossMode(cross, chrome.ModeToday)
 	assertOrder(t, "Today before cross-state reorder", visibleTaskIDs(cross),
 		[]string{tasks[0].ID, tasks[1].ID})
-	if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
+	if !cross.MoveCursorToProjectTask(tasks[0].ID, project.ID) {
 		t.Fatal("cursor did not land on Waiting")
 	}
 	if !pressReorderKey(t, m, 'J') {
@@ -169,7 +169,7 @@ func TestTodayPlanningReorderCrossesLifecycleStatesInDurableOrder(t *testing.T) 
 	if m.statusMessage != "Reordered planning list" {
 		t.Fatalf("status = %q, want reorder success", m.statusMessage)
 	}
-	cross.population.projects = []*models.Project{project}
+	cross.Population.Projects = []*models.Project{project}
 	enterCrossMode(cross, chrome.ModeToday)
 	assertOrder(t, "Today after rebuild", visibleTaskIDs(cross), want)
 	assertTreeUnchanged(t, project, []string{tasks[0].ID, tasks[1].ID})
@@ -191,14 +191,14 @@ func TestOutlinerPlanningOrderJKFilteredAndScoped(t *testing.T) {
 		)
 		tasks[0].Tags = []string{"keep"}
 		tasks[2].Tags = []string{"keep"}
-		cross.filter.Tags = map[string]bool{"keep": true}
-		cross.adoptFilterCarriers()
+		cross.Filter.Tags = map[string]bool{"keep": true}
+		cross.AdoptFilterCarriers()
 		enterCrossMode(cross, chrome.ModeNext)
 
 		if got := visibleTaskIDs(cross); len(got) != 2 {
 			t.Fatalf("filtered Next visible rows = %v, want 2 (hidden middle pruned)", got)
 		}
-		if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks[0].ID, project.ID) {
 			t.Fatal("cursor did not land on keep-one")
 		}
 
@@ -224,14 +224,14 @@ func TestOutlinerPlanningOrderJKFilteredAndScoped(t *testing.T) {
 		)
 		tasks[0].Tags = []string{"keep"}
 		tasks[2].Tags = []string{"keep"}
-		cross.filter.Tags = map[string]bool{"keep": true}
-		cross.adoptFilterCarriers()
+		cross.Filter.Tags = map[string]bool{"keep": true}
+		cross.AdoptFilterCarriers()
 		enterCrossMode(cross, chrome.ModeToday)
 
 		if got := visibleTaskIDs(cross); len(got) != 2 {
 			t.Fatalf("filtered Today visible rows = %v, want 2 (hidden middle pruned)", got)
 		}
-		if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks[0].ID, project.ID) {
 			t.Fatal("cursor did not land on keep-one")
 		}
 
@@ -254,13 +254,13 @@ func TestOutlinerPlanningOrderJKFilteredAndScoped(t *testing.T) {
 			locatorOf(p1, t1[0]), locatorOf(p2, t2[0]), locatorOf(p1, t1[1]), locatorOf(p2, t2[1]),
 		)
 		// Scope to project one: only A and C are visible.
-		cross.scope.projectID = p1.ID
+		cross.Scope.ProjectID = p1.ID
 		enterCrossMode(cross, chrome.ModeNext)
 
 		if got := visibleTaskIDs(cross); len(got) != 2 {
 			t.Fatalf("scoped Next visible rows = %v, want 2 (project one only)", got)
 		}
-		if !cross.moveCursorToProjectTask(t1[0].ID, p1.ID) {
+		if !cross.MoveCursorToProjectTask(t1[0].ID, p1.ID) {
 			t.Fatal("cursor did not land on A")
 		}
 
@@ -283,14 +283,14 @@ func TestOutlinerPlanningOrderJKFilteredAndScoped(t *testing.T) {
 			locatorOf(project, tasks[0]), locatorOf(project, tasks[1]), locatorOf(project, tasks[2]),
 		)
 		tasks[0].Tags = []string{"keep"}
-		cross.filter.Tags = map[string]bool{"keep": true}
-		cross.adoptFilterCarriers()
+		cross.Filter.Tags = map[string]bool{"keep": true}
+		cross.AdoptFilterCarriers()
 		enterCrossMode(cross, chrome.ModeNext)
 
 		if got := visibleTaskIDs(cross); len(got) != 1 {
 			t.Fatalf("filtered visible rows = %v, want 1", got)
 		}
-		if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
+		if !cross.MoveCursorToProjectTask(tasks[0].ID, project.ID) {
 			t.Fatal("cursor did not land on keep-one")
 		}
 
@@ -313,13 +313,13 @@ func TestHierarchicalReorderSwapsAdjacentVisibleQualifiedSiblings(t *testing.T) 
 	cross.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 	tasks[0].Tags = []string{"keep"}
 	tasks[2].Tags = []string{"keep"}
-	cross.filter.Tags = map[string]bool{"keep": true}
-	cross.adoptFilterCarriers()
+	cross.Filter.Tags = map[string]bool{"keep": true}
+	cross.AdoptFilterCarriers()
 	enterCrossMode(cross, chrome.ModeBacklog)
-	if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
+	if !cross.MoveCursorToProjectTask(tasks[0].ID, project.ID) {
 		t.Fatal("cursor did not land on keep-one")
 	}
-	if !cross.simplifiedReorderEligible() {
+	if !cross.SimplifiedReorderEligible() {
 		t.Fatal("hierarchical row was not reorder eligible")
 	}
 	if !pressReorderKey(t, m, 'J') {
@@ -328,14 +328,14 @@ func TestHierarchicalReorderSwapsAdjacentVisibleQualifiedSiblings(t *testing.T) 
 	if m.err != nil {
 		t.Fatalf("hierarchical reorder failed: %v", m.err)
 	}
-	if cross.population.reloadProjectID != project.ID || cross.population.reloadTaskID != firstID {
+	if cross.Population.ReloadProjectID != project.ID || cross.Population.ReloadTaskID != firstID {
 		t.Fatalf("reload cursor anchor = %s/%s, want %s/%s",
-			cross.population.reloadProjectID, cross.population.reloadTaskID, project.ID, firstID)
+			cross.Population.ReloadProjectID, cross.Population.ReloadTaskID, project.ID, firstID)
 	}
-	cross.population.projects = []*models.Project{project}
-	cross.population.invalidate()
-	cross.crossProjectRebuildRows()
-	cross.restoreCrossOutlinerCursorAfterReload(cross.Cursor, cross.ViewScrollOffset)
+	cross.Population.Projects = []*models.Project{project}
+	cross.Population.Invalidate()
+	cross.CrossProjectRebuildRows()
+	cross.RestoreCrossOutlinerCursorAfterReload(cross.Cursor, cross.ViewScrollOffset)
 	if task, selectedProject := cross.GetTaskRef(); task == nil || selectedProject == nil ||
 		task.ID != firstID || selectedProject.ID != "hierarchy" {
 		t.Fatalf("cursor after reorder = %v/%v, want hierarchy/%s", selectedProject, task, firstID)

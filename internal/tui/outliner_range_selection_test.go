@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -19,13 +20,13 @@ func rangeSelectionTestApp(t *testing.T) (*AppModel, *models.Project, []*models.
 	project := &models.Project{ID: "project", Name: "Project", Tasks: tasks}
 	project.BuildTaskTree()
 	setTestAppProjects(app, project)
-	app.crossOutliner.population.projects = []*models.Project{project}
-	app.crossOutliner.rows = []outlinerRow{
-		{task: tasks[0], ProjectID: project.ID},
+	app.crossOutliner.Population.Projects = []*models.Project{project}
+	app.crossOutliner.Rows = []outliner.OutlinerRow{
+		{Task: tasks[0], ProjectID: project.ID},
 		{IsSectionHeader: true, SectionName: "header"},
-		{task: tasks[1], ProjectID: project.ID},
+		{Task: tasks[1], ProjectID: project.ID},
 		{IsProjectHeader: true, ProjectID: project.ID},
-		{task: tasks[2], ProjectID: project.ID},
+		{Task: tasks[2], ProjectID: project.ID},
 	}
 	app.crossOutliner.Cursor = 0
 	return app, project, tasks
@@ -112,7 +113,7 @@ func TestCtrlAReplacesSelectionWithVisibleTaskRows(t *testing.T) {
 func TestOperationContextClassifiesHiddenSelectionAndBulkSheetNamesIt(t *testing.T) {
 	app, project, tasks := rangeSelectionTestApp(t)
 	out := app.crossOutliner
-	out.rows = out.rows[:1]
+	out.Rows = out.Rows[:1]
 	out.ReplaceSelection([]taskref.TaskIdentity{
 		taskref.For(tasks[0], project),
 		taskref.For(tasks[1], project),

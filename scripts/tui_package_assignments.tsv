@@ -18,6 +18,16 @@
 #     mode catalog is vocabulary that operation, route, lens, projecthub and
 #     query all read, so it cannot sit at L7.
 #
+# Session 4.10 merged the outliner rows rather than moving them one for one.
+# The Phase-2 state decomposition still left 93 files pinned to OutlinerModel
+# by their receivers, and the package had to land under 40, so cohesive
+# families were concatenated. The rows below name the 31 files that exist,
+# and `merged` is the basis for a file that is the union of several assigned
+# ones. The merge moved no code between packages; it only stopped a family of
+# methods on one type from being a file each. `outliner_mode_wiring.go`
+# carries the merged mode wiring under a name that does not collide with
+# chrome's `outliner_mode.go` catalog, which the note above is about.
+#
 # Thirteen rows were corrected while their package was being extracted:
 #   - due_date_today.go is coordinator, not chrome (Session 2.10). It declares
 #     DueDateIsToday alone, which no file in chrome reads; the callers are two
@@ -377,6 +387,36 @@
 # context.md keeps in the root shell.
 path	package	layer	basis
 advisories.go	outliner	L7	receiver:OutlinerModel
+cross_project.go	outliner	L7	merged
+dependency_detail.go	outliner	L7	receiver:OutlinerModel
+filter_operations_outliner.go	outliner	L7	receiver:OutlinerModel
+menu_bar.go	outliner	L7	merged
+operation_target_context_outliner.go	outliner	L7	receiver:OutlinerModel
+outline_editor_errors.go	outliner	L7	receiver:OutlineErrorsViewModel
+outliner.go	outliner	L7	receiver:OutlinerModel
+outliner_axis_state.go	outliner	L7	merged
+outliner_jump_history.go	outliner	L7	receiver:OutlinerModel
+outliner_keys.go	outliner	L7	receiver:OutlinerModel
+outliner_lens.go	outliner	L7	merged
+outliner_lens_state.go	outliner	L7	receiver:OutlinerModel
+outliner_mode_wiring.go	outliner	L7	merged
+outliner_navigation.go	outliner	L7	receiver:OutlinerModel
+outliner_planning_order.go	outliner	L7	receiver:OutlinerModel
+outliner_projection.go	outliner	L7	merged
+outliner_quick_edit_view.go	outliner	L7	receiver:OutlinerModel
+outliner_render.go	outliner	L7	receiver:OutlinerModel
+outliner_render_task_row.go	outliner	L7	receiver:OutlinerModel
+outliner_reorder.go	outliner	L7	receiver:OutlinerModel
+outliner_rows.go	outliner	L7	receiver:OutlinerModel
+outliner_scope.go	outliner	L7	receiver:OutlinerModel
+outliner_search.go	outliner	L7	merged
+outliner_search_suggestions.go	outliner	L7	merged
+outliner_sections.go	outliner	L7	merged
+outliner_selection.go	outliner	L7	receiver:OutlinerModel
+outliner_state.go	outliner	L7	receiver:OutlinerModel
+outliner_uitest_snapshot.go	outliner	L7	assigned
+query_readout.go	outliner	L7	receiver:OutlinerModel
+view_helpers.go	outliner	L7	assigned
 advisories_shell.go	tui	L8	receiver:AppModel
 app.go	tui	L8	assigned
 app_bulk_task_cleanup.go	tui	L8	receiver:AppModel
@@ -395,7 +435,6 @@ app_messages_footer_flash.go	tui	L8	assigned
 app_messages_notes.go	notes	L7	assigned
 app_messages_projects.go	projecthub	L7	assigned
 app_messages_task_detail.go	taskdetail	L7	assigned
-app_messages_task_line_edit.go	outliner	L7	assigned
 app_messages_tasks.go	taskform	L7	assigned
 app_messages_views.go	tui	L8	assigned
 app_navigation.go	tui	L8	receiver:AppModel
@@ -434,7 +473,6 @@ config_artifacts.go	tui	L8	assigned
 confirm_dialog.go	chrome	L1	receiver:ConfirmDialog
 conflict_browser.go	conflict	L7	receiver:ConflictBrowserModel
 conflict_browser_host.go	tui	L8	receiver:AppModel
-conflict_indicator.go	outliner	L7	receiver:OutlinerModel
 conflict_indicator_shell.go	tui	L8	receiver:AppModel
 contextual_action_sheet.go	listsurface	L5	receiver:ContextActionSheetModel
 core_input_descriptors.go	operation	L3	assigned
@@ -443,18 +481,10 @@ core_input_operations.go	tui	L8	receiver:AppModel
 core_input_view_actions.go	tui	L8	receiver:AppModel
 core_operation_ids.go	operation	L3	assigned
 cross_project_colors.go	theme	L0	assigned
-cross_project_cursor.go	outliner	L7	receiver:OutlinerModel
-cross_project_outliner.go	outliner	L7	receiver:OutlinerModel
-cross_project_outliner_mutations_actions.go	outliner	L7	receiver:OutlinerModel
-cross_project_outliner_mutations_common.go	outliner	L7	receiver:OutlinerModel
-cross_project_outliner_view.go	outliner	L7	receiver:OutlinerModel
-cross_project_render.go	outliner	L7	receiver:OutlinerModel
-cross_scope.go	outliner	L7	assigned
 cursor.go	chrome	L1	assigned
 date_add_shared.go	chrome	L1	receiver:DateAdder
 date_parse.go	grammar	L2	assigned
 dependency_autocomplete.go	grammar	L2	assigned
-dependency_detail.go	outliner	L7	receiver:OutlinerModel
 dependency_reference.go	grammar	L2	receiver:capturedDependencyRef
 due_date_today.go	coordinator	L1	assigned
 due_format.go	chrome	L1	assigned
@@ -466,13 +496,10 @@ feature_coordinator_task_item.go	coordinator	L1	receiver:TaskItemCoordinator
 feature_runtime.go	tui	L8	receiver:tuiAppRepository
 filter_operation_ids.go	operation	L3	assigned
 filter_operations.go	tui	L8	receiver:AppModel
-filter_operations_outliner.go	outliner	L7	receiver:OutlinerModel
 filter_pickers.go	tui	L8	receiver:AppModel
 filter_project_operations.go	tui	L8	receiver:AppModel
-filter_project_operations_outliner.go	outliner	L7	receiver:OutlinerModel
 filter_query.go	query	L2	assigned
 filter_query_state.go	query	L2	assigned
-filter_query_state_outliner.go	outliner	L7	receiver:OutlinerModel
 filter_shortcuts.go	query	L2	receiver:FilterShortcut
 filters_common.go	query	L2	receiver:CommonFilterState
 filters_project.go	query	L2	receiver:ProjectFilterState
@@ -521,7 +548,6 @@ help_view.go	help	L6	receiver:HelpViewModel
 help_view_keymap.go	help	L6	receiver:HelpViewModel
 hero_attribute.go	chrome	L1	assigned
 highlight.go	textfit	L0	assigned
-inline_preview.go	outliner	L7	receiver:OutlinerModel
 input_strategy.go	operation	L3	receiver:OperationKeyBinding
 input_strategy_lookup.go	operation	L3	receiver:OperationRegistry
 input_strategy_simplified.go	operation	L3	assigned
@@ -555,10 +581,6 @@ machine_domain_repair.go	tui	L8	assigned
 manage_hub.go	projecthub	L7	receiver:ManageHubModel
 markdown.go	textfit	L0	assigned
 menu_bar_activation.go	tui	L8	receiver:AppModel
-menu_bar_input.go	outliner	L7	receiver:OutlinerModel
-menu_bar_render.go	outliner	L7	receiver:OutlinerModel
-menu_bar_spec.go	tui	L8	receiver:AppModel
-menu_bar_view.go	outliner	L7	receiver:OutlinerModel
 messages.go	status	L0	assigned
 multiselect_state.go	listsurface	L5	receiver:MultiSelectState
 named_lens_semantic_color.go	lens	L7	assigned
@@ -592,7 +614,6 @@ operation_registry.go	operation	L3	receiver:OperationRegistry
 operation_registry_validation.go	operation	L3	assigned
 operation_target.go	operation	L3	receiver:ResolvedOperationTargets
 operation_target_context.go	tui	L8	receiver:AppModel
-operation_target_context_outliner.go	outliner	L7	receiver:OutlinerModel
 operation_task_reference_picker.go	tui	L8	assigned
 operation_text_prompt.go	tui	L8	receiver:OperationTextPromptModel
 operation_value_list_sources.go	tui	L8	receiver:moveProjectPickerItem
@@ -606,77 +627,17 @@ operation_value_provider_ids.go	operation	L3	receiver:ValueProviderID
 operational_title.go	pulse	L0	assigned
 outline_editor.go	tui	L8	receiver:AppModel
 outline_editor_apply.go	tui	L8	receiver:AppModel
-outline_editor_errors.go	outliner	L7	receiver:OutlineErrorsViewModel
 outline_editor_parse.go	grammar	L2	assigned
-outliner.go	outliner	L7	receiver:OutlinerModel
 outliner_app_helpers.go	tui	L8	receiver:AppModel
-outliner_breadcrumb.go	outliner	L7	receiver:OutlinerModel
-outliner_checklist_rows.go	outliner	L7	receiver:OutlinerModel
-outliner_computed_rows.go	outliner	L7	assigned
-outliner_cursor_project.go	outliner	L7	receiver:OutlinerModel
-outliner_focus.go	outliner	L7	receiver:OutlinerModel
-outliner_input_ownership.go	outliner	L7	receiver:OutlinerModel
-outliner_jump_history.go	outliner	L7	receiver:OutlinerModel
-outliner_keys.go	outliner	L7	receiver:OutlinerModel
-outliner_keys_actions.go	outliner	L7	receiver:OutlinerModel
-outliner_keys_helpers.go	outliner	L7	receiver:OutlinerModel
-outliner_keys_hints.go	outliner	L7	receiver:OutlinerModel
-outliner_keys_navigation.go	outliner	L7	receiver:OutlinerModel
-outliner_lens_lifecycle.go	outliner	L7	receiver:OutlinerModel
-outliner_lens_project_load.go	outliner	L7	receiver:OutlinerModel
-outliner_lens_projection.go	outliner	L7	receiver:OutlinerModel
-outliner_lens_state.go	outliner	L7	receiver:OutlinerModel
 outliner_mode.go	chrome	L1	assigned
-outliner_mode_rows.go	outliner	L7	receiver:OutlinerModeInput
-outliner_mode_selection.go	outliner	L7	receiver:OutlinerModel
 outliner_mode_style.go	chrome	L1	assigned
-outliner_mode_transition.go	outliner	L7	receiver:OutlinerModel
-outliner_mode_wiring.go	outliner	L7	receiver:OutlinerModel
-outliner_navigation.go	outliner	L7	receiver:OutlinerModel
-outliner_navigation_cursor.go	outliner	L7	receiver:OutlinerModel
-outliner_open_options.go	outliner	L7	receiver:OutlinerModel
-outliner_pinned_order.go	outliner	L7	receiver:OutlinerModel
-outliner_pinned_section.go	outliner	L7	receiver:OutlinerModel
-outliner_planning_order.go	outliner	L7	receiver:OutlinerModel
 outliner_planning_order_shell.go	tui	L8	receiver:AppModel
-outliner_planning_shared.go	outliner	L7	assigned
-outliner_primary_rows.go	outliner	L7	receiver:OutlinerModel
-outliner_primary_tree.go	outliner	L7	receiver:OutlinerModel
 outliner_project_action_sheet.go	tui	L8	receiver:AppModel
-outliner_projection_forest.go	outliner	L7	receiver:OutlinerModel
-outliner_quick_edit_view.go	outliner	L7	receiver:OutlinerModel
-outliner_relocation.go	outliner	L7	receiver:OutlinerModel
 outliner_relocation_shell.go	tui	L8	receiver:AppModel
-outliner_render.go	outliner	L7	receiver:OutlinerModel
-outliner_render_content.go	outliner	L7	receiver:OutlinerModel
-outliner_render_indicators.go	outliner	L7	receiver:OutlinerModel
-outliner_render_layout.go	outliner	L7	receiver:OutlinerModel
-outliner_render_rows.go	outliner	L7	receiver:OutlinerModel
-outliner_render_task_row.go	outliner	L7	receiver:OutlinerModel
-outliner_reorder.go	outliner	L7	receiver:OutlinerModel
-outliner_review_section.go	outliner	L7	receiver:OutlinerModel
-outliner_route_state.go	outliner	L7	receiver:OutlinerModel
-outliner_rows.go	outliner	L7	receiver:OutlinerModel
-outliner_scope.go	outliner	L7	receiver:OutlinerModel
 outliner_scope_actions.go	tui	L8	receiver:AppModel
-outliner_search_autocomplete.go	outliner	L7	receiver:OutlinerModel
-outliner_search_gate.go	outliner	L7	receiver:OutlinerModel
-outliner_search_history.go	outliner	L7	receiver:outlinerSearchHistory
-outliner_search_notes.go	outliner	L7	receiver:OutlinerModel
 outliner_search_predicate_admits.go	query	L2	receiver:SearchPredicates
 outliner_search_predicate_compile.go	query	L2	receiver:SearchPredicates
 outliner_search_predicates.go	query	L2	receiver:SearchPredicates
-outliner_search_projection.go	outliner	L7	receiver:OutlinerModel
-outliner_search_scoring.go	outliner	L7	assigned
-outliner_search_suggestion_values.go	outliner	L7	receiver:OutlinerModel
-outliner_section_forest.go	outliner	L7	receiver:sectionTaskForest
-outliner_selection.go	outliner	L7	receiver:OutlinerModel
-outliner_simplified_navigation.go	outliner	L7	receiver:OutlinerModel
-outliner_stale_section.go	outliner	L7	receiver:OutlinerModel
-outliner_state.go	outliner	L7	receiver:OutlinerModel
-outliner_today_section.go	outliner	L7	receiver:OutlinerModel
-outliner_view_rows.go	outliner	L7	receiver:OutlinerModel
-outliner_view_snapshot.go	outliner	L7	receiver:OutlinerModel
 overlay_popup.go	chrome	L1	assigned
 parent_selector.go	listsurface	L5	assigned
 picker_items.go	query	L2	receiver:TagInfo
@@ -711,7 +672,6 @@ project_service.go	coordinator	L1	assigned
 project_tag_explainer.go	projecthub	L7	assigned
 project_tag_vocabulary.go	tui	L8	receiver:AppModel
 project_tags_picker.go	tui	L8	receiver:AppModel
-query_readout.go	outliner	L7	receiver:OutlinerModel
 quick_capture_autocomplete.go	grammar	L2	receiver:quickCaptureInput
 quick_capture_input.go	grammar	L2	receiver:quickCaptureInput
 quick_capture_parser.go	grammar	L2	receiver:quickCaptureParser
@@ -742,7 +702,6 @@ shell.go	tui	L8	receiver:AppModel
 shell_deps.go	tui	L8	assigned
 sort_operation_ids.go	operation	L3	assigned
 sort_operations.go	tui	L8	receiver:AppModel
-sort_operations_outliner.go	outliner	L7	receiver:OutlinerModel
 sorting_common.go	query	L2	assigned
 spinner.go	chrome	L1	assigned
 styles_base.go	theme	L0	assigned
@@ -831,7 +790,7 @@ typed_route.go	route	L4	assigned
 undo_restore_status.go	status	L0	assigned
 view.go	route	L4	assigned
 view_accent.go	route	L4	assigned
-view_helpers.go	outliner	L7	assigned
 workflow_state_helpers.go	theme	L0	assigned
 workspace_ledger.go	tui	L8	assigned
 workspace_pulse.go	pulse	L0	assigned
+menu_bar_startup_validation.go	tui	L8	assigned

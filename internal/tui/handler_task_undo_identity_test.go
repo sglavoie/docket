@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
 func TestUndoReferenceRepairUsesProjectQualifiedTaskIdentity(t *testing.T) {
@@ -17,11 +18,11 @@ func TestUndoReferenceRepairUsesProjectQualifiedTaskIdentity(t *testing.T) {
 	newBeta := &models.Project{ID: "beta", Tasks: []*models.Task{newBetaTask}}
 
 	m := &AppModel{
-		nextOrder: []PlanningTask{
+		nextOrder: []outliner.PlanningTask{
 			{Task: oldAlphaTask, Project: oldAlpha},
 			{Task: oldBetaTask, Project: oldBeta},
 		},
-		today: []PlanningTask{{Task: oldBetaTask, Project: oldBeta}},
+		today: []outliner.PlanningTask{{Task: oldBetaTask, Project: oldBeta}},
 	}
 	m.rewireTaskProjectRefsAfterRestore([]*models.Project{newAlpha, newBeta})
 

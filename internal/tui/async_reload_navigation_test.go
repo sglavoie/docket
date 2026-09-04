@@ -12,22 +12,10 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
-
-func TestCrossProjectColdLoadAlwaysRendersLoadingFrame(t *testing.T) {
-	outliner := NewOutlinerModel(nil, nil, nil)
-	outliner.SetSize(100, 30)
-	if cmd := outliner.Init(); cmd == nil {
-		t.Fatal("cold Outliner did not start its initial load")
-	}
-
-	content := outliner.View().Content
-	if content == "" || !strings.Contains(content, "Loading projects") {
-		t.Fatalf("cold loading frame = %q, want non-empty loading state", content)
-	}
-}
 
 func newSession2Project(t *testing.T, dataDir, name string) *models.Project {
 	t.Helper()
@@ -53,7 +41,7 @@ func newSession2Project(t *testing.T, dataDir, name string) *models.Project {
 	return project
 }
 
-func newSession2OutlinerApp(t *testing.T, dataDir string, projects ...*models.Project) (*AppModel, *OutlinerModel) {
+func newSession2OutlinerApp(t *testing.T, dataDir string, projects ...*models.Project) (*AppModel, *outliner.OutlinerModel) {
 	t.Helper()
 	app := newTestAppModel()
 	seed := newTestConfigAt(dataDir)
@@ -65,11 +53,11 @@ func newSession2OutlinerApp(t *testing.T, dataDir string, projects ...*models.Pr
 	app.deps = newShellDeps(ledger)
 	setTestAppProjects(app, projects...)
 
-	cross := NewOutlinerModel(nil, app.configManager, app.runtime)
-	cross.population.projects = projects
-	cross.selectOutlinerMode(chrome.ModeAll)
-	cross.population.invalidate()
-	cross.crossProjectRebuildRows()
+	cross := outliner.NewOutlinerModel(nil, app.configManager, app.runtime)
+	cross.Population.Projects = projects
+	cross.SelectOutlinerMode(chrome.ModeAll)
+	cross.Population.Invalidate()
+	cross.CrossProjectRebuildRows()
 	app.crossOutliner = cross
 	app.views.Register(presentation.ViewCrossProjectOutliner, cross)
 	setTestPresentationPath(app, presentation.ViewUnknown, presentation.ViewCrossProjectOutliner)
@@ -103,10 +91,10 @@ func runSession2AppCommand(t *testing.T, app *AppModel, cmd tea.Cmd) {
 	}
 }
 
-func session2TaskRow(t *testing.T, cross *OutlinerModel, projectID, taskID string) int {
+func session2TaskRow(t *testing.T, cross *outliner.OutlinerModel, projectID, taskID string) int {
 	t.Helper()
-	for i, row := range cross.rows {
-		if row.isTaskRow() && row.ProjectID == projectID && row.task != nil && row.task.ID == taskID {
+	for i, row := range cross.Rows {
+		if row.IsTaskRow() && row.ProjectID == projectID && row.Task != nil && row.Task.ID == taskID {
 			return i
 		}
 	}
@@ -125,11 +113,11 @@ func TestHandleWithRefreshDefersCrossReloadWhileCovered(t *testing.T) {
 	if cmd != nil {
 		t.Fatal("covered Outliner reload should defer until it is revealed")
 	}
-	if cross.population.loading {
+	if cross.Population.Loading {
 		t.Fatal("covered Outliner must not start a load whose completion cannot be routed")
 	}
-	if len(cross.population.projects) != 1 {
-		t.Fatalf("covered Outliner cache changed before reveal: %d projects", len(cross.population.projects))
+	if len(cross.Population.Projects) != 1 {
+		t.Fatalf("covered Outliner cache changed before reveal: %d projects", len(cross.Population.Projects))
 	}
 }
 
@@ -153,17 +141,17 @@ func TestValidateCurrentProjectReturnsReloadCommand(t *testing.T) {
 	if app.currentView() != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("fallback view = %s, want %s", app.currentView(), presentation.ViewCrossProjectOutliner)
 	}
-	if !cross.population.loading {
+	if !cross.Population.Loading {
 		t.Fatal("fallback Outliner reload was not armed")
 	}
 
 	runSession2AppCommand(t, app, cmd)
 
-	if cross.population.loading {
+	if cross.Population.Loading {
 		t.Fatal("returned stale-project reload command did not settle")
 	}
-	if len(cross.population.projects) != 1 || cross.population.projects[0].ID != survivor.ID {
-		t.Fatalf("fallback loaded projects = %#v, want only survivor", cross.population.projects)
+	if len(cross.Population.Projects) != 1 || cross.Population.Projects[0].ID != survivor.ID {
+		t.Fatalf("fallback loaded projects = %#v, want only survivor", cross.Population.Projects)
 	}
 }
 
@@ -172,7 +160,7 @@ func TestBackMsgReturnsAppearanceReloadCommand(t *testing.T) {
 	project := newSession2Project(t, dataDir, "back")
 	app, cross := newSession2OutlinerApp(t, dataDir, project)
 	pushTestPresentationOverlay(app, presentation.ViewTaskComments)
-	generation := cross.population.loadGen
+	generation := cross.Population.LoadGen
 
 	_, cmd := app.Update(status.BackMsg{})
 	if cmd == nil {
@@ -184,11 +172,64 @@ func TestBackMsgReturnsAppearanceReloadCommand(t *testing.T) {
 
 	runSession2AppCommand(t, app, cmd)
 
-	if cross.population.loadGen != generation+1 {
-		t.Fatalf("Back reload generation = %d, want %d", cross.population.loadGen, generation+1)
+	if cross.Population.LoadGen != generation+1 {
+		t.Fatalf("Back reload generation = %d, want %d", cross.Population.LoadGen, generation+1)
 	}
-	if cross.population.loading {
+	if cross.Population.Loading {
 		t.Fatal("Back-triggered appearance reload did not settle")
+	}
+}
+
+func TestCoveredCrossProjectLoadCompletionSettlesAuthoritativeOutliner(t *testing.T) {
+	dataDir := t.TempDir()
+	project := newSession2Project(t, dataDir, "covered completion")
+	app, cross := newSession2OutlinerApp(t, dataDir, project)
+
+	_ = cross.ReloadCrossProjects()
+	generation := cross.Population.LoadGen
+	pushTestPresentationOverlay(app, presentation.ViewTaskComments)
+
+	raw := cross.LoadCrossProjectsCmd()()
+	loaded, ok := raw.(outliner.CrossProjectsLoadedMsg)
+	if !ok {
+		t.Fatalf("load command returned %T, want crossProjectsLoadedMsg", raw)
+	}
+	_, followup := app.Update(loaded)
+	if followup != nil {
+		runSession2AppCommand(t, app, followup)
+	}
+
+	if cross.Population.Loading {
+		t.Fatal("covered load completion left the authoritative Outliner loading")
+	}
+	if len(cross.Population.Projects) != 1 || cross.Population.Projects[0].ID != project.ID {
+		t.Fatalf("covered load completion did not update the Outliner cache: %#v", cross.Population.Projects)
+	}
+
+	_, popCmd := app.Update(status.BackMsg{})
+	if popCmd == nil {
+		t.Fatal("returning to the Outliner did not emit its appearance reload")
+	}
+	runSession2AppCommand(t, app, popCmd)
+
+	if cross.Population.LoadGen != generation+1 {
+		t.Fatalf("appearance reload generation = %d, want %d", cross.Population.LoadGen, generation+1)
+	}
+	if cross.Population.Loading {
+		t.Fatal("appearance reload after covered completion did not settle")
+	}
+}
+
+func TestCrossProjectColdLoadAlwaysRendersLoadingFrame(t *testing.T) {
+	outlinerView := outliner.NewOutlinerModel(nil, nil, nil)
+	outlinerView.SetSize(100, 30)
+	if cmd := outlinerView.Init(); cmd == nil {
+		t.Fatal("cold Outliner did not start its initial load")
+	}
+
+	content := outlinerView.View().Content
+	if content == "" || !strings.Contains(content, "Loading projects") {
+		t.Fatalf("cold loading frame = %q, want non-empty loading state", content)
 	}
 }
 
@@ -199,16 +240,16 @@ func TestViewDidAppearDoesNotSupersedePendingReloadAndPreservesCursor(t *testing
 	task := project.Tasks[0]
 	cross.Cursor = session2TaskRow(t, cross, project.ID, task.ID)
 
-	loadCmd := cross.reloadCrossProjects()
-	generation := cross.population.loadGen
+	loadCmd := cross.ReloadCrossProjects()
+	generation := cross.Population.LoadGen
 	savedCursor := cross.Cursor
 	_, duplicateCmd := app.Update(status.ViewDidAppearMsg{})
 
 	if duplicateCmd != nil {
 		t.Fatal("appearance signal should not launch a second load while one is pending")
 	}
-	if cross.population.loadGen != generation {
-		t.Fatalf("appearance signal advanced generation to %d, want %d", cross.population.loadGen, generation)
+	if cross.Population.LoadGen != generation {
+		t.Fatalf("appearance signal advanced generation to %d, want %d", cross.Population.LoadGen, generation)
 	}
 	if cross.Cursor != savedCursor {
 		t.Fatalf("pending reload cursor changed synchronously: got %d want %d", cross.Cursor, savedCursor)
@@ -216,11 +257,11 @@ func TestViewDidAppearDoesNotSupersedePendingReloadAndPreservesCursor(t *testing
 
 	runSession2AppCommand(t, app, loadCmd)
 
-	if cross.population.loading {
+	if cross.Population.Loading {
 		t.Fatal("pending reload did not settle")
 	}
-	row := cross.rows[cross.Cursor]
-	if !row.isTaskRow() || row.task == nil || row.ProjectID != project.ID || row.task.ID != task.ID {
+	row := cross.Rows[cross.Cursor]
+	if !row.IsTaskRow() || row.Task == nil || row.ProjectID != project.ID || row.Task.ID != task.ID {
 		t.Fatalf("cursor identity was not restored after reload: %#v", row)
 	}
 }
@@ -229,20 +270,20 @@ func TestCrossProjectRefreshKeepsAcceptedSnapshotVisible(t *testing.T) {
 	dataDir := t.TempDir()
 	project := newSession2Project(t, dataDir, "visible refresh")
 	app, cross := newSession2OutlinerApp(t, dataDir, project)
-	cross.population.snapshotReady = true
+	cross.Population.SnapshotReady = true
 	cross.SetSize(100, 30)
 	cross.Cursor = session2TaskRow(t, cross, project.ID, project.Tasks[0].ID)
 	cross.ViewScrollOffset = 1
-	projectsBefore := cross.population.projects
-	rowsBefore := len(cross.rows)
+	projectsBefore := cross.Population.Projects
+	rowsBefore := len(cross.Rows)
 
-	loadCmd := cross.reloadCrossProjects()
-	if loadCmd == nil || !cross.population.loading {
+	loadCmd := cross.ReloadCrossProjects()
+	if loadCmd == nil || !cross.Population.Loading {
 		t.Fatal("refresh did not start")
 	}
-	if len(cross.population.projects) != len(projectsBefore) || len(cross.rows) != rowsBefore ||
-		len(projectsBefore) > 0 && cross.population.projects[0] != projectsBefore[0] {
-		t.Fatalf("refresh cleared accepted content: projects=%d rows=%d", len(cross.population.projects), len(cross.rows))
+	if len(cross.Population.Projects) != len(projectsBefore) || len(cross.Rows) != rowsBefore ||
+		len(projectsBefore) > 0 && cross.Population.Projects[0] != projectsBefore[0] {
+		t.Fatalf("refresh cleared accepted content: projects=%d rows=%d", len(cross.Population.Projects), len(cross.Rows))
 	}
 	if cross.ViewScrollOffset != 1 {
 		t.Fatalf("refresh reset scroll offset to %d", cross.ViewScrollOffset)
@@ -252,8 +293,8 @@ func TestCrossProjectRefreshKeepsAcceptedSnapshotVisible(t *testing.T) {
 		t.Fatalf("refresh frame did not retain task content:\n%s", content)
 	}
 
-	_, spinnerCmd := cross.Update(crossSpinnerDelayMsg{})
-	if spinnerCmd != nil || cross.population.spinnerVisible {
+	_, spinnerCmd := cross.Update(outliner.CrossSpinnerDelayMsg{})
+	if spinnerCmd != nil || cross.Population.SpinnerVisible {
 		t.Fatal("background refresh replaced content with the initial-load spinner")
 	}
 	if content = app.View().Content; content == "" || strings.Contains(content, "Unknown view") {
@@ -265,7 +306,7 @@ func TestCrossProjectRefreshKeepsAcceptedSnapshotVisible(t *testing.T) {
 	// reload handler's preservation behavior.
 	cross.ViewScrollOffset = 1
 	runSession2AppCommand(t, app, loadCmd)
-	if cross.population.loading {
+	if cross.Population.Loading {
 		t.Fatal("refresh did not settle")
 	}
 	if cross.ViewScrollOffset != 1 {
@@ -275,71 +316,31 @@ func TestCrossProjectRefreshKeepsAcceptedSnapshotVisible(t *testing.T) {
 
 func TestCrossProjectReloadMissingCursorTaskPrefersFollowingTask(t *testing.T) {
 	original := scopeTestProject("alpha", "Alpha", "before", "removed", "after")
-	cross := NewOutlinerModel(nil, nil, nil)
-	cross.population.projects = []*models.Project{original}
-	cross.population.snapshotReady = true
-	cross.pushProjectScope(original.ID)
-	cross.population.invalidate()
-	cross.crossProjectRebuildRows()
+	cross := outliner.NewOutlinerModel(nil, nil, nil)
+	cross.Population.Projects = []*models.Project{original}
+	cross.Population.SnapshotReady = true
+	cross.PushProjectScope(original.ID)
+	cross.Population.Invalidate()
+	cross.CrossProjectRebuildRows()
 	cross.Cursor = session2TaskRow(t, cross, original.ID, "removed")
 	cross.ViewScrollOffset = 1
 
-	_ = cross.reloadCrossProjects()
-	generation := cross.population.loadGen
+	_ = cross.ReloadCrossProjects()
+	generation := cross.Population.LoadGen
 	replacement := scopeTestProject("alpha", "Alpha", "before", "after")
-	cross.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
-		projects:   []*models.Project{replacement},
-		generation: generation,
+	cross.HandleCrossProjectsLoaded(outliner.CrossProjectsLoadedMsg{
+		Projects:   []*models.Project{replacement},
+		Generation: generation,
 	})
 
-	if cross.Cursor < 0 || cross.Cursor >= len(cross.rows) {
-		t.Fatalf("cursor %d is outside %d rebuilt rows", cross.Cursor, len(cross.rows))
+	if cross.Cursor < 0 || cross.Cursor >= len(cross.Rows) {
+		t.Fatalf("cursor %d is outside %d rebuilt rows", cross.Cursor, len(cross.Rows))
 	}
-	row := cross.rows[cross.Cursor]
-	if !row.isTaskRow() || row.task == nil || row.task.ID != "after" {
+	row := cross.Rows[cross.Cursor]
+	if !row.IsTaskRow() || row.Task == nil || row.Task.ID != "after" {
 		t.Fatalf("fallback cursor = %#v, want following task", row)
 	}
 	if cross.ViewScrollOffset != 1 {
 		t.Fatalf("fallback changed scroll offset to %d", cross.ViewScrollOffset)
-	}
-}
-
-func TestCoveredCrossProjectLoadCompletionSettlesAuthoritativeOutliner(t *testing.T) {
-	dataDir := t.TempDir()
-	project := newSession2Project(t, dataDir, "covered completion")
-	app, cross := newSession2OutlinerApp(t, dataDir, project)
-
-	_ = cross.reloadCrossProjects()
-	generation := cross.population.loadGen
-	pushTestPresentationOverlay(app, presentation.ViewTaskComments)
-
-	raw := cross.loadCrossProjectsCmd()()
-	loaded, ok := raw.(crossProjectsLoadedMsg)
-	if !ok {
-		t.Fatalf("load command returned %T, want crossProjectsLoadedMsg", raw)
-	}
-	_, followup := app.Update(loaded)
-	if followup != nil {
-		runSession2AppCommand(t, app, followup)
-	}
-
-	if cross.population.loading {
-		t.Fatal("covered load completion left the authoritative Outliner loading")
-	}
-	if len(cross.population.projects) != 1 || cross.population.projects[0].ID != project.ID {
-		t.Fatalf("covered load completion did not update the Outliner cache: %#v", cross.population.projects)
-	}
-
-	_, popCmd := app.Update(status.BackMsg{})
-	if popCmd == nil {
-		t.Fatal("returning to the Outliner did not emit its appearance reload")
-	}
-	runSession2AppCommand(t, app, popCmd)
-
-	if cross.population.loadGen != generation+1 {
-		t.Fatalf("appearance reload generation = %d, want %d", cross.population.loadGen, generation+1)
-	}
-	if cross.population.loading {
-		t.Fatal("appearance reload after covered completion did not settle")
 	}
 }

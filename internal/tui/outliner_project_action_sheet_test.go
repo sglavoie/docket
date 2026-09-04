@@ -23,15 +23,15 @@ func projectHeaderCursorApp(t *testing.T) (*AppModel, *models.Project, operation
 	}
 	t.Cleanup(func() { _ = workspace.Cleanup() })
 	app := driver.App()
-	outliner := app.crossOutliner
-	if outliner == nil {
+	outlinerView := app.crossOutliner
+	if outlinerView == nil {
 		t.Fatal("fixture app has no Outliner")
 	}
-	for index, row := range outliner.rows {
+	for index, row := range outlinerView.Rows {
 		if !row.IsProjectHeader {
 			continue
 		}
-		outliner.Cursor = index
+		outlinerView.Cursor = index
 		context := app.operationCommandContext()
 		project := app.projectByID(row.ProjectID)
 		if project == nil {

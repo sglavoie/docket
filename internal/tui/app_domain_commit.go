@@ -10,17 +10,6 @@ import (
 // domain through RuntimeState. Each helper mutates a defensive copy and commits
 // it under the runtime's optimistic-concurrency check.
 
-// clonePlanningState returns a defensive copy of a planning snapshot whose
-// mutable slices are freshly allocated, so a mutation applied before a checked
-// commit can never alias and corrupt the cached RuntimeState snapshot.
-func clonePlanningState(p *config.PlanningState) *config.PlanningState {
-	cp := *p
-	cp.Next = append([]config.ProjectTaskLocator(nil), p.GetNext()...)
-	cp.Next = append([]config.ProjectTaskLocator(nil), cp.Next...)
-	cp.Today = append([]config.ProjectTaskLocator(nil), p.Today...)
-	return &cp
-}
-
 // commitPlanningToRuntime commits a planning mutation through a runtime snapshot
 // without touching the legacy config.Config facade. It is the view-level
 // counterpart to AppModel.commitPlanningMutation for the focus views, which hold
@@ -82,7 +71,7 @@ func cloneRuntimeDomains(runtime *config.RuntimeState) *config.Domains {
 	}
 	return &config.Domains{
 		Catalog:  coordinator.CloneWorkspaceCatalog(runtime.Catalog()),
-		Planning: clonePlanningState(runtime.Planning()),
+		Planning: coordinator.ClonePlanningState(runtime.Planning()),
 		Machine:  cloneMachineState(runtime.Machine()),
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -41,19 +42,19 @@ func TestOutlinerMultiSelectStatusFitsHeight(t *testing.T) {
 	}
 	project := renderFixtureProject(t, "proj-ms", "ms", "Multi Select", tasks)
 
-	m := NewOutlinerModel(project, nil, testRuntimeAt(cfg.DataDir(), cfg))
+	m := outliner.NewOutlinerModel(project, nil, testRuntimeAt(cfg.DataDir(), cfg))
 	// Terminal 72x20 leaves the sub-view 18 rows (2 rows go to the app status
 	// bar). Exercise the narrow split-pane tree width where the wrap bites.
 	const paneHeight = 18
 	m.SetSize(72, paneHeight)
-	m.rebuildRows()
+	m.RebuildRows()
 	m.MultiSelectMode = true
 	m.SetStatus("Multi-select: Space=toggle, a=all, A=deselect, D=delete, v/Esc=exit")
 
 	// 39 mirrors the ~55% tree pane width the split-pane layout allots at 72
 	// cols, which forces both the status line and the title badge to wrap.
 	const treeWidth = 39
-	rendered := m.renderOutlinerTreeContent(treeWidth)
+	rendered := m.RenderOutlinerTreeContent(treeWidth)
 	strip := m.ViewStatusStrip(treeWidth)
 
 	// The status line must actually wrap here, otherwise the test would pass

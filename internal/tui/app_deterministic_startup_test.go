@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -18,26 +19,26 @@ func TestLaunchResetsEveryPresentationAxisAndRelaunchPreservesOnlyTheme(t *testi
 	t.Cleanup(func() { _ = workspace.Cleanup() })
 
 	app := driver.App()
-	outliner := app.crossOutliner
+	outlinerView := app.crossOutliner
 	projects := app.taskWorkspaceProjects()
 	if len(projects) == 0 {
 		t.Fatal("rich fixture has no active project")
 	}
 
 	// Seed every launch-sensitive axis with stale in-session state.
-	outliner.selectOutlinerMode(chrome.ModeDue)
-	outliner.SetSearchActive(true)
-	outliner.SetSearchQuery("stale search")
-	outliner.scope.projectID = projects[0].ID
-	outliner.scope.stack = []outlinerScopeFrame{{}}
-	outliner.filter.Priority = 3
-	outliner.filter.Tags = map[string]bool{"stale": true}
-	outliner.adoptFilterCarriers()
-	outliner.Cursor = 7
-	outliner.folds.collapsedSections["stale"] = true
-	outliner.folds.expandedNodes[taskref.TaskIdentity{ProjectID: projects[0].ID, TaskID: "stale"}] = true
-	outliner.MultiSelectMode = true
-	outliner.Selected[taskref.TaskIdentity{ProjectID: projects[0].ID, TaskID: "stale"}] = true
+	outlinerView.SelectOutlinerMode(chrome.ModeDue)
+	outlinerView.SetSearchActive(true)
+	outlinerView.SetSearchQuery("stale search")
+	outlinerView.Scope.ProjectID = projects[0].ID
+	outlinerView.Scope.Stack = []outliner.OutlinerScopeFrame{{}}
+	outlinerView.Filter.Priority = 3
+	outlinerView.Filter.Tags = map[string]bool{"stale": true}
+	outlinerView.AdoptFilterCarriers()
+	outlinerView.Cursor = 7
+	outlinerView.Folds.CollapsedSections["stale"] = true
+	outlinerView.Folds.ExpandedNodes[taskref.TaskIdentity{ProjectID: projects[0].ID, TaskID: "stale"}] = true
+	outlinerView.MultiSelectMode = true
+	outlinerView.Selected[taskref.TaskIdentity{ProjectID: projects[0].ID, TaskID: "stale"}] = true
 	app.currentProject = projects[0]
 	pushTestPresentationOverlay(app, presentation.ViewHelp)
 
@@ -47,8 +48,8 @@ func TestLaunchResetsEveryPresentationAxisAndRelaunchPreservesOnlyTheme(t *testi
 	saved := config.StarterNamedLenses()[0]
 	saved.ID = deterministicStartupLensID
 	saved.Name = "Persisted Lens"
-	outliner.publishLens(saved, outliner.captureLensState(), nil, outliner.lensRestorationPoint())
-	if !outliner.hasActiveLens() {
+	outlinerView.PublishLens(saved, outlinerView.CaptureLensState(), nil, outlinerView.LensRestorationPoint())
+	if !outlinerView.HasActiveLens() {
 		t.Fatal("seeding failed to install an active lens")
 	}
 
@@ -120,26 +121,26 @@ func assertCleanLaunchRoot(t *testing.T, app *AppModel) {
 	if app.currentProject != nil || len(app.projectStack) != 0 {
 		t.Fatalf("launch retained project state: current=%v stack=%v", app.currentProject, app.projectStack)
 	}
-	outliner := app.crossOutliner
-	if outliner == nil {
+	outlinerView := app.crossOutliner
+	if outlinerView == nil {
 		t.Fatal("launch has no global Outliner")
 	}
-	if got := outliner.activeOutlinerMode(); got != chrome.ModeAll {
+	if got := outlinerView.ActiveOutlinerMode(); got != chrome.ModeAll {
 		t.Fatalf("launch mode = %q, want %q", got, chrome.ModeAll)
 	}
-	if outliner.scope.projectID != "" || len(outliner.scope.stack) != 0 {
-		t.Fatalf("launch retained scope: project=%q stack=%d", outliner.scope.projectID, len(outliner.scope.stack))
+	if outlinerView.Scope.ProjectID != "" || len(outlinerView.Scope.Stack) != 0 {
+		t.Fatalf("launch retained scope: project=%q stack=%d", outlinerView.Scope.ProjectID, len(outlinerView.Scope.Stack))
 	}
-	if outliner.HasActiveSearch() || outliner.SearchQuery() != "" || outliner.ActiveFilterCount() != 0 {
-		t.Fatalf("launch retained search/filter: active=%v query=%q filters=%d", outliner.HasActiveSearch(), outliner.SearchQuery(), outliner.ActiveFilterCount())
+	if outlinerView.HasActiveSearch() || outlinerView.SearchQuery() != "" || outlinerView.ActiveFilterCount() != 0 {
+		t.Fatalf("launch retained search/filter: active=%v query=%q filters=%d", outlinerView.HasActiveSearch(), outlinerView.SearchQuery(), outlinerView.ActiveFilterCount())
 	}
-	if outliner.Cursor != 0 || outliner.IsMultiSelectActive() || outliner.SelectedCount() != 0 {
-		t.Fatalf("launch retained cursor/selection: cursor=%d active=%v selected=%d", outliner.Cursor, outliner.IsMultiSelectActive(), outliner.SelectedCount())
+	if outlinerView.Cursor != 0 || outlinerView.IsMultiSelectActive() || outlinerView.SelectedCount() != 0 {
+		t.Fatalf("launch retained cursor/selection: cursor=%d active=%v selected=%d", outlinerView.Cursor, outlinerView.IsMultiSelectActive(), outlinerView.SelectedCount())
 	}
-	if outliner.hasActiveLens() || outliner.lens.query != "" || outliner.editingLensQuery() {
-		t.Fatalf("launch retained lens state: active=%v query=%q editing=%v", outliner.hasActiveLens(), outliner.lens.query, outliner.editingLensQuery())
+	if outlinerView.HasActiveLens() || outlinerView.Lens.Query != "" || outlinerView.EditingLensQuery() {
+		t.Fatalf("launch retained lens state: active=%v query=%q editing=%v", outlinerView.HasActiveLens(), outlinerView.Lens.Query, outlinerView.EditingLensQuery())
 	}
-	if len(outliner.folds.collapsedSections) != 0 || len(outliner.folds.expandedNodes) != 0 || len(outliner.focus.stack) != 0 || len(outliner.focus.crossStack) != 0 {
-		t.Fatalf("launch retained folds/focus: sections=%v nodes=%v focus=%v crossFocus=%v", outliner.folds.collapsedSections, outliner.folds.expandedNodes, outliner.focus.stack, outliner.focus.crossStack)
+	if len(outlinerView.Folds.CollapsedSections) != 0 || len(outlinerView.Folds.ExpandedNodes) != 0 || len(outlinerView.Focus.Stack) != 0 || len(outlinerView.Focus.CrossStack) != 0 {
+		t.Fatalf("launch retained folds/focus: sections=%v nodes=%v focus=%v crossFocus=%v", outlinerView.Folds.CollapsedSections, outlinerView.Folds.ExpandedNodes, outlinerView.Focus.Stack, outlinerView.Focus.CrossStack)
 	}
 }

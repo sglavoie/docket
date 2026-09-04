@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/help"
+	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -76,7 +77,7 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 		m.setInfoStatus(string(msg))
 		return true, status.DefaultStatusTimeout()
 
-	case OutlinerPlanningReorderMsg:
+	case outliner.OutlinerPlanningReorderMsg:
 		return true, m.handleOutlinerPlanningReorder(msg)
 	}
 

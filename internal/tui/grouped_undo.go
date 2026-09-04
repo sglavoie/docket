@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 )
 
 func tuiUndoProjectID(project *models.Project) string {
@@ -29,7 +30,7 @@ func repairRuntimeTaskRefsAfterRestore(runtime *config.RuntimeState) func([]*mod
 				}
 			}
 		}
-		planning := clonePlanningState(runtime.Planning())
+		planning := coordinator.ClonePlanningState(runtime.Planning())
 		planningChanged := false
 		for i := range planning.Next {
 			if id, ok := restoredTaskProject(taskProjects, planning.Next[i].TaskID, planning.Next[i].ProjectID); ok && planning.Next[i].ProjectID != id {

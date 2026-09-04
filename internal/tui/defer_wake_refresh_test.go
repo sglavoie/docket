@@ -42,23 +42,23 @@ func TestPeriodicTickWakesOnlyPastTheDeferWake(t *testing.T) {
 	out := app.crossOutliner
 	tickAt := time.Now()
 
-	out.population.forceRebuild = false
-	out.nextDeferWake = tickAt.Add(time.Hour)
+	out.Population.ForceRebuild = false
+	out.NextDeferWake = tickAt.Add(time.Hour)
 	if handled, _ := app.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: tickAt}); !handled {
 		t.Fatal("periodicSaveMsg was not handled")
 	}
-	if out.population.forceRebuild {
+	if out.Population.ForceRebuild {
 		t.Fatal("a tick short of nextDeferWake forced a rebuild")
 	}
 
-	out.nextDeferWake = tickAt.Add(-time.Minute)
+	out.NextDeferWake = tickAt.Add(-time.Minute)
 	if handled, _ := app.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: tickAt}); !handled {
 		t.Fatal("periodicSaveMsg was not handled")
 	}
-	if !out.population.forceRebuild {
+	if !out.Population.ForceRebuild {
 		t.Fatal("a tick past nextDeferWake did not force a rebuild")
 	}
-	if !out.nextDeferWake.IsZero() {
+	if !out.NextDeferWake.IsZero() {
 		t.Fatal("the consumed wake clock survived the rebuild it armed")
 	}
 }
@@ -95,13 +95,13 @@ func TestPeriodicTickRefreshesWorkspacePulseWhenDeferredTaskWakes(t *testing.T) 
 	}
 
 	pushTestPresentationOverlay(model, presentation.ViewTaskComments)
-	out.population.forceRebuild = false
-	out.nextDeferWake = wake
+	out.Population.ForceRebuild = false
+	out.NextDeferWake = wake
 	if handled, _ := model.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: tickAt}); !handled {
 		t.Fatal("periodicSaveMsg was not handled")
 	}
-	if out.population.forceRebuild || !out.nextDeferWake.Equal(wake) {
-		t.Fatalf("a refused wake changed its clock: rebuild %t, wake %s", out.population.forceRebuild, out.nextDeferWake)
+	if out.Population.ForceRebuild || !out.NextDeferWake.Equal(wake) {
+		t.Fatalf("a refused wake changed its clock: rebuild %t, wake %s", out.Population.ForceRebuild, out.NextDeferWake)
 	}
 	if model.workspacePulse != pending {
 		t.Fatalf("a refused wake refreshed the pulse to %+v", model.workspacePulse)
@@ -111,11 +111,11 @@ func TestPeriodicTickRefreshesWorkspacePulseWhenDeferredTaskWakes(t *testing.T) 
 	if handled, _ := model.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: tickAt}); !handled {
 		t.Fatal("second periodicSaveMsg was not handled")
 	}
-	if !out.population.forceRebuild {
+	if !out.Population.ForceRebuild {
 		t.Fatal("a safely consumed wake did not force the row rebuild")
 	}
-	if !out.nextDeferWake.IsZero() {
-		t.Fatalf("the consumed wake clock survived: %s", out.nextDeferWake)
+	if !out.NextDeferWake.IsZero() {
+		t.Fatalf("the consumed wake clock survived: %s", out.NextDeferWake)
 	}
 	woken := pulse.WorkspacePulse{Inbox: 1, Today: 1, Overdue: 1, Done: 1}
 	if model.workspacePulse != woken {
@@ -166,13 +166,13 @@ func TestPeriodicTickAcrossMidnightHoldsActionableCountsUntilTheWakeIsConsumed(t
 	reader.activity = refreshed
 
 	pushTestPresentationOverlay(model, presentation.ViewTaskComments)
-	out.population.forceRebuild = false
-	out.nextDeferWake = wake
+	out.Population.ForceRebuild = false
+	out.NextDeferWake = wake
 	if handled, _ := model.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: tickAt}); !handled {
 		t.Fatal("periodicSaveMsg was not handled")
 	}
-	if out.population.forceRebuild || !out.nextDeferWake.Equal(wake) {
-		t.Fatalf("a refused wake changed its clock: rebuild %t, wake %s", out.population.forceRebuild, out.nextDeferWake)
+	if out.Population.ForceRebuild || !out.NextDeferWake.Equal(wake) {
+		t.Fatalf("a refused wake changed its clock: rebuild %t, wake %s", out.Population.ForceRebuild, out.NextDeferWake)
 	}
 	if !model.completionActivity.IsCurrentLocalDay(tickAt) {
 		t.Fatal("the cross-midnight tick did not install the new local day's activity")
@@ -186,11 +186,11 @@ func TestPeriodicTickAcrossMidnightHoldsActionableCountsUntilTheWakeIsConsumed(t
 	if handled, _ := model.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: tickAt}); !handled {
 		t.Fatal("second periodicSaveMsg was not handled")
 	}
-	if !out.population.forceRebuild {
+	if !out.Population.ForceRebuild {
 		t.Fatal("a safely consumed wake did not force the row rebuild")
 	}
-	if !out.nextDeferWake.IsZero() {
-		t.Fatalf("the consumed wake clock survived: %s", out.nextDeferWake)
+	if !out.NextDeferWake.IsZero() {
+		t.Fatalf("the consumed wake clock survived: %s", out.NextDeferWake)
 	}
 	woken := pulse.WorkspacePulse{Inbox: 1, Today: 1, Overdue: 1, Done: 1}
 	if model.workspacePulse != woken {
@@ -207,17 +207,17 @@ func TestDeferWakeIsDeferredWhileTheUserIsMidOperation(t *testing.T) {
 		{"value picker", func(app *AppModel) { app.operationValuePicker = &OperationValuePickerModel{} }},
 		{"inline row editor", func(app *AppModel) {
 			out := app.crossOutliner
-			out.quickEdit.Enter(out.population.projects[0].Tasks[0], false)
+			out.QuickEdit.Enter(out.Population.Projects[0].Tasks[0], false)
 		}},
 		{"visual selection", func(app *AppModel) {
 			out := app.crossOutliner
-			project := out.population.projects[0]
+			project := out.Population.Projects[0]
 			out.ReplaceSelection([]taskref.TaskIdentity{taskref.For(project.Tasks[0], project)})
 		}},
 		{"ranked list", func(app *AppModel) {
 			out := app.crossOutliner
-			out.beginSearchProjection()
-			out.toggleRankedList()
+			out.BeginSearchProjection()
+			out.ToggleRankedList()
 		}},
 	}
 	for _, tc := range cases {
@@ -227,18 +227,18 @@ func TestDeferWakeIsDeferredWhileTheUserIsMidOperation(t *testing.T) {
 			out := app.crossOutliner
 
 			tc.arm(app)
-			out.population.forceRebuild = false
+			out.Population.ForceRebuild = false
 			lapsed := time.Now().Add(-time.Minute)
-			out.nextDeferWake = lapsed
+			out.NextDeferWake = lapsed
 
 			if handled, _ := app.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: time.Now()}); !handled {
 				t.Fatal("periodicSaveMsg was not handled")
 			}
-			if out.population.forceRebuild {
+			if out.Population.ForceRebuild {
 				t.Fatal("a lapsed deferral rebuilt the rows under a pending interaction")
 			}
-			if !out.nextDeferWake.Equal(lapsed) {
-				t.Fatalf("a refused wake dropped its clock: %s", out.nextDeferWake)
+			if !out.NextDeferWake.Equal(lapsed) {
+				t.Fatalf("a refused wake dropped its clock: %s", out.NextDeferWake)
 			}
 		})
 	}
@@ -251,14 +251,14 @@ func TestDeferWakeIsDeferredWhileTheUserIsMidOperation(t *testing.T) {
 		setTestPresentationPath(app, presentation.ViewCrossProjectOutliner)
 		out := app.crossOutliner
 
-		out.beginSearchProjection()
-		out.population.forceRebuild = false
-		out.nextDeferWake = time.Now().Add(-time.Minute)
+		out.BeginSearchProjection()
+		out.Population.ForceRebuild = false
+		out.NextDeferWake = time.Now().Add(-time.Minute)
 
 		if handled, _ := app.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: time.Now()}); !handled {
 			t.Fatal("periodicSaveMsg was not handled")
 		}
-		if !out.population.forceRebuild {
+		if !out.Population.ForceRebuild {
 			t.Fatal("a held query refused the wake, freezing an axis a query never owns")
 		}
 	})
@@ -268,7 +268,7 @@ func TestNextDeferWakeSurvivesTheSearchProjectionReturn(t *testing.T) {
 	app := typedTestApp(t)
 	setTestPresentationPath(app, presentation.ViewCrossProjectOutliner)
 	out := app.crossOutliner
-	project := out.population.projects[0]
+	project := out.Population.Projects[0]
 
 	wake := time.Now().Add(2 * time.Hour).Round(0)
 	project.Tasks = append(project.Tasks, &models.Task{
@@ -281,15 +281,15 @@ func TestNextDeferWakeSurvivesTheSearchProjectionReturn(t *testing.T) {
 	project.NextShortID++
 	project.BuildTaskTree()
 
-	out.population.invalidate()
-	out.crossProjectRebuildRows()
-	if !out.nextDeferWake.Equal(wake) {
-		t.Fatalf("ordinary rebuild wake = %s, want %s", out.nextDeferWake, wake)
+	out.Population.Invalidate()
+	out.CrossProjectRebuildRows()
+	if !out.NextDeferWake.Equal(wake) {
+		t.Fatalf("ordinary rebuild wake = %s, want %s", out.NextDeferWake, wake)
 	}
 
-	out.nextDeferWake = time.Time{}
-	out.beginSearchProjection()
-	if !out.nextDeferWake.Equal(wake) {
-		t.Fatalf("search-projection rebuild wake = %s, want %s", out.nextDeferWake, wake)
+	out.NextDeferWake = time.Time{}
+	out.BeginSearchProjection()
+	if !out.NextDeferWake.Equal(wake) {
+		t.Fatalf("search-projection rebuild wake = %s, want %s", out.NextDeferWake, wake)
 	}
 }

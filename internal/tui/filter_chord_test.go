@@ -50,7 +50,7 @@ func TestFilterChordWhichKeyHints(t *testing.T) {
 
 func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 	app := newFilterChordTestApp(t)
-	taskFilter := &app.crossOutliner.filter.CommonFilterState
+	taskFilter := &app.crossOutliner.Filter.CommonFilterState
 	taskFilter.Priority = models.PriorityHigh
 	taskFilter.Tags = map[string]bool{"triage": true, "deep": true}
 	taskFilter.Deferred = true
@@ -94,7 +94,7 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 	}
 
 	app.pendingChord = []string{"F"}
-	projectFilter := &app.crossOutliner.projectFilter
+	projectFilter := &app.crossOutliner.ProjectFilter
 	projectFilter.Tags = map[string]bool{"client": true}
 	projectFilter.Untagged = true
 	projectFilter.ParkedMode = query.ProjectPopulationInclude
@@ -126,7 +126,7 @@ func TestFilterChordWhichKeyHintsShowEffectiveValues(t *testing.T) {
 
 func TestReviewFilterChordTogglesTheStoredReviewFacet(t *testing.T) {
 	app := newFilterChordTestApp(t)
-	filter := &app.crossOutliner.filter.CommonFilterState
+	filter := &app.crossOutliner.Filter.CommonFilterState
 	pressFilterChord(t, app, "f=")
 	if !filter.Review {
 		t.Fatalf("f= filter = %v", filter.Review)
@@ -142,13 +142,13 @@ func TestReviewFilterChordTogglesTheStoredReviewFacet(t *testing.T) {
 
 func TestStaleFilterChordTogglesTouchAgeFacet(t *testing.T) {
 	app := newFilterChordTestApp(t)
-	filter := &app.crossOutliner.filter.CommonFilterState
+	filter := &app.crossOutliner.Filter.CommonFilterState
 	now := time.Now()
-	app.crossOutliner.population.projects[0].Tasks[0].UpdatedAt = now.AddDate(0, 0, -models.StaleTaskThresholdDays)
-	for _, task := range app.crossOutliner.population.projects[0].Tasks[1:] {
+	app.crossOutliner.Population.Projects[0].Tasks[0].UpdatedAt = now.AddDate(0, 0, -models.StaleTaskThresholdDays)
+	for _, task := range app.crossOutliner.Population.Projects[0].Tasks[1:] {
 		task.UpdatedAt = now
 	}
-	app.crossOutliner.rebuildRows()
+	app.crossOutliner.RebuildRows()
 
 	pressFilterChord(t, app, "fs")
 	if !filter.Stale {
