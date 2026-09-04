@@ -11,8 +11,10 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -20,11 +22,11 @@ import (
 // Returns true if the message was handled.
 func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
-	case CreateProjectMsg:
-		m.showView(presentation.ViewProjectCreator, NewProjectCreatorModel(m.runtime, m.configManager, m.appService))
+	case projecthub.CreateProjectMsg:
+		m.showView(presentation.ViewProjectCreator, projecthub.NewProjectCreatorModel(m.runtime, m.configManager, m.appService))
 		return true, nil
 
-	case ProjectCreatedMsg:
+	case projecthub.ProjectCreatedMsg:
 		popCmd := m.popView()
 		m.syncProjectCache()
 		m.refreshProjectHubIfActive()
@@ -37,31 +39,31 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		feedbackCmd := m.setRecoveryFeedback("Created "+projectName, msg.TransactionID, false)
 		return true, tea.Batch(popCmd, reloadCmd, notesCmd, feedbackCmd)
 
-	case ProjectArchiveRequestMsg:
+	case projecthub.ProjectArchiveRequestMsg:
 		if msg.Project != nil && m.runtime.IsSystemUnfiledProject(msg.Project.ID) {
 			return true, status.ErrorCmd("cannot archive the system Unfiled project")
 		}
 		return true, m.showProjectArchiveConfirm(msg.Project, msg.Archive)
 
-	case projectArchiveConfirmedMsg:
+	case projecthub.ProjectArchiveConfirmedMsg:
 		return true, m.confirmProjectArchive()
 
-	case ProjectArchivedMsg:
+	case projecthub.ProjectArchivedMsg:
 		return true, m.commitProjectArchive(msg.Project)
 
-	case ProjectDeleteRequestMsg:
+	case projecthub.ProjectDeleteRequestMsg:
 		if msg.Project != nil && m.runtime.IsSystemUnfiledProject(msg.Project.ID) {
 			return true, status.ErrorCmd("cannot delete the system Unfiled project")
 		}
 		return true, m.showProjectDeleteConfirm(msg.Project)
 
-	case projectDeleteConfirmedMsg:
+	case projecthub.ProjectDeleteConfirmedMsg:
 		return true, m.confirmProjectDelete()
 
-	case ProjectDeletedMsg:
+	case projecthub.ProjectDeletedMsg:
 		return true, m.commitProjectDelete(msg.Project)
 
-	case ProjectPinRequestMsg:
+	case projecthub.ProjectPinRequestMsg:
 		if msg.Project == nil {
 			return true, nil
 		}
@@ -82,7 +84,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			m.err = err
 			return true, nil
 		}
-		copyCatalogMetadata(msg.Project, &updated)
+		coordinator.CopyCatalogMetadata(msg.Project, &updated)
 		statusMsg := "Pinned"
 		if !msg.Pinned {
 			statusMsg = "Unpinned"
@@ -95,19 +97,19 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			feedbackCmd,
 		)
 
-	case SetProjectTagsMsg:
+	case projecthub.SetProjectTagsMsg:
 		return true, m.requestProjectTags(msg.Project, msg.Tags)
 
-	case ProjectBulkTagsMsg:
+	case projecthub.ProjectBulkTagsMsg:
 		return true, m.requestProjectBulkTags(msg)
 
-	case projectEditorParkRequestMsg:
-		return true, m.requestProjectEditorPark(msg.save)
+	case projecthub.ProjectEditorParkRequestMsg:
+		return true, m.requestProjectEditorPark(msg.Save)
 
-	case projectParkConfirmedMsg:
+	case projecthub.ProjectParkConfirmedMsg:
 		if save := m.pendingProjectEditorSave; save != nil {
 			m.clearPendingProjectTags()
-			return true, save.commit
+			return true, save.Commit
 		}
 		if edit := m.pendingProjectBulkTags; edit != nil {
 			m.clearPendingProjectTags()
@@ -117,12 +119,12 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		m.clearPendingProjectTags()
 		return true, m.commitProjectTags(project, tags)
 
-	case ProjectRestoredMsg:
+	case projecthub.ProjectRestoredMsg:
 		return true, m.commitProjectUnarchive(msg.Project)
 
-	case EditProjectMsg:
+	case projecthub.EditProjectMsg:
 		if msg.Project != nil {
-			m.showView(presentation.ViewProjectEditor, NewProjectEditorModel(
+			m.showView(presentation.ViewProjectEditor, projecthub.NewProjectEditorModel(
 				msg.Project,
 				m.configManager,
 				m.runtime,
@@ -132,7 +134,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		}
 		return true, nil
 
-	case ProjectUpdatedMsg:
+	case projecthub.ProjectUpdatedMsg:
 		if msg.Parked && msg.Project != nil {
 			// The anchor reads the rows the park is about to remove, so it runs
 			// before any cache the reload rebuilds from.
@@ -187,7 +189,7 @@ func (m *AppModel) showProjectArchiveConfirm(project *models.Project, archive bo
 	if !archive {
 		verb = "unarchive"
 	}
-	m.projectArchiveConfirm.Show(projectArchiveConfirmAction, fmt.Sprintf("Are you sure you want to %s this project?", verb))
+	m.projectArchiveConfirm.Show(projecthub.ProjectArchiveConfirmAction, fmt.Sprintf("Are you sure you want to %s this project?", verb))
 	return nil
 }
 
@@ -211,12 +213,12 @@ func (m *AppModel) confirmProjectArchive() tea.Cmd {
 
 	if archive {
 		return func() tea.Msg {
-			return ProjectArchivedMsg{Project: project}
+			return projecthub.ProjectArchivedMsg{Project: project}
 		}
 	}
 
 	return func() tea.Msg {
-		return ProjectRestoredMsg{Project: project}
+		return projecthub.ProjectRestoredMsg{Project: project}
 	}
 }
 
@@ -263,7 +265,7 @@ func (m *AppModel) commitProjectArchive(project *models.Project) tea.Cmd {
 		return nil
 	}
 
-	copyCatalogMetadata(project, &updated)
+	coordinator.CopyCatalogMetadata(project, &updated)
 	if m.currentProject != nil && m.currentProject.ID == updated.ID {
 		m.currentProject = nil
 	}
@@ -311,7 +313,7 @@ func (m *AppModel) showProjectDeleteConfirm(project *models.Project) tea.Cmd {
 	m.pendingProjectDelete = &loaded
 
 	m.projectDeleteConfirm.ShowWithDetail(
-		projectDeleteConfirmAction,
+		projecthub.ProjectDeleteConfirmAction,
 		fmt.Sprintf("Delete %s and everything it owns?", loaded.Name),
 		&chrome.ConfirmDetail{
 			CascadeNote: m.projectDeleteCascadeNote(&loaded),
@@ -374,7 +376,7 @@ func (m *AppModel) confirmProjectDelete() tea.Cmd {
 		return status.ErrorCmd("cannot delete the system Unfiled project")
 	}
 	return func() tea.Msg {
-		return ProjectDeletedMsg{Project: project}
+		return projecthub.ProjectDeletedMsg{Project: project}
 	}
 }
 
@@ -459,7 +461,7 @@ func (m *AppModel) commitProjectUnarchive(project *models.Project) tea.Cmd {
 		m.err = err
 		return nil
 	}
-	copyCatalogMetadata(project, &updated)
+	coordinator.CopyCatalogMetadata(project, &updated)
 	feedbackCmd := m.setRecoveryFeedback(fmt.Sprintf("Unarchived %s", updated.Name), transactionID, false)
 	m.refreshProjectHubIfActive()
 	return tea.Batch(

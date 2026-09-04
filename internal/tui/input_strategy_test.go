@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
 
@@ -47,7 +48,7 @@ func simplifiedTaskActionDescriptors() []operation.OperationDescriptor {
 	descriptors = append(descriptors, checklistRowOperationDescriptors()...)
 	descriptors = append(descriptors, (&AppModel{}).checklistStartOperationDescriptor())
 	descriptors = append(descriptors, projectActionSheetOperationDescriptor())
-	return append(descriptors, projectOperationDescriptors()...)
+	return append(descriptors, projecthub.ProjectOperationDescriptors()...)
 }
 
 func simplifiedOperationContext() operation.CommandContext {

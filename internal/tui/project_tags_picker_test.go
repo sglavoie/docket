@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -67,7 +68,7 @@ func TestProjectTagFilterPickerRowsWearTheSameColorsAsTheEditor(t *testing.T) {
 
 func TestBehavioralProjectTagExplainerWrapsEverySummaryInline(t *testing.T) {
 	for _, width := range []int{40, 49, 60} {
-		explainer := behavioralProjectTagExplainer(operation.ValueProviderProjectTags, width)
+		explainer := projecthub.BehavioralProjectTagExplainer(operation.ValueProviderProjectTags, width)
 		plain := ansi.Strip(explainer)
 		for _, line := range strings.Split(plain, "\n") {
 			if got := lipgloss.Width(line); got > width {
@@ -82,7 +83,7 @@ func TestBehavioralProjectTagExplainerWrapsEverySummaryInline(t *testing.T) {
 }
 
 func TestBehavioralProjectTagExplainerKeepsWideSummaryOnOneLine(t *testing.T) {
-	explainer := behavioralProjectTagExplainer(operation.ValueProviderProjectTags, 200)
+	explainer := projecthub.BehavioralProjectTagExplainer(operation.ValueProviderProjectTags, 200)
 	info := models.BehavioralProjectTags[models.ParkedProjectTag]
 	if got := ansi.Strip(explainer); got != info.Name+" "+info.Summary {
 		t.Fatalf("wide explainer = %q, want the full summary", got)
@@ -97,7 +98,7 @@ func TestBehavioralProjectTagExplainerIsSilentForOtherProviders(t *testing.T) {
 		operation.ValueProviderPriority,
 		operation.ValueProviderState,
 	} {
-		if got := behavioralProjectTagExplainer(provider, 60); got != "" {
+		if got := projecthub.BehavioralProjectTagExplainer(provider, 60); got != "" {
 			t.Fatalf("provider %q explainer = %q, want empty", provider, got)
 		}
 	}

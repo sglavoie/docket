@@ -4,6 +4,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -29,7 +30,7 @@ func (m *AppModel) operationCommandContext() operation.CommandContext {
 	view := m.currentView()
 	ctx := route.PresentationCommandContext(view)
 	ctx.Capabilities.Add(operation.CapabilitySimplifiedInput)
-	if manage, ok := m.activeView().(*ManageHubModel); ok {
+	if manage, ok := m.activeView().(*projecthub.ManageHubModel); ok {
 		ctx = manage.CommandContext()
 	}
 
@@ -100,7 +101,7 @@ func (m *AppModel) operationScopeProjectIDs(cursorProject *models.Project) []str
 		}
 		return operation.NormalizedProjectIDs(ids)
 	}
-	if manage, ok := m.activeView().(*ManageHubModel); ok {
+	if manage, ok := m.activeView().(*projecthub.ManageHubModel); ok {
 		return manage.ScopeProjectIDs()
 	}
 	if cursorProject != nil {

@@ -25,7 +25,7 @@ var outlinerProjectActionCategories = []listsurface.ListCategory{
 
 // outlinerProjectOperationManifest is the Outliner's project action list and the
 // source the project sheet groups and orders by. It is deliberately separate
-// from the Project Hub's projectOperationManifest: one-path is a per-surface
+// from the Project Hub's ProjectOperationManifest: one-path is a per-surface
 // rule, so the same operation is legitimately a direct key on one surface and a
 // menu row on the other. Edit project is the clearest case — `e` on the Hub,
 // menu row here, because the Outliner's `e` already edits a task.
@@ -152,7 +152,7 @@ func NewProjectActionSheetModel(
 // projection the sheet and its tests both read. Applicability is evaluated
 // against the frozen project, so a row the project's own state forbids — pinning
 // or archiving one that is already archived — drops out with no branching here:
-// projectOperationRequirements already decides it.
+// ProjectOperationRequirements already decides it.
 func ProjectActionSheetOperationIDs(
 	registry *operation.OperationRegistry,
 	context operation.CommandContext,

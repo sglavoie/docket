@@ -3,6 +3,7 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -72,7 +73,7 @@ func (m *AppModel) presentationForRoute(target route.Route) (presentation.Presen
 					return view, true
 				}
 			}
-			return manageModulePresentation(params)
+			return projecthub.ManageModulePresentation(params)
 		}
 	case route.Reference:
 		params, ok := target.Params().(route.ReferenceParams)
@@ -126,7 +127,7 @@ func (m *AppModel) activeManageHub() bool {
 
 // manageHubPrimary returns Manage beneath shell overlays so palette and
 // collection result handlers resolve the same embedded module as direct keys.
-func (m *AppModel) manageHubPrimary() (*ManageHubModel, route.ManageParams, bool) {
+func (m *AppModel) manageHubPrimary() (*projecthub.ManageHubModel, route.ManageParams, bool) {
 	if m.manageHub == nil {
 		return nil, route.ManageParams{}, false
 	}

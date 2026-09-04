@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/logging"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -48,7 +49,7 @@ func (m *AppModel) reloadCrossProjectOutlinerProject(projectID string) {
 			return
 		}
 		if m.runtime != nil {
-			copyCatalogMetadata(project, m.runtime.GetProject(projectID))
+			coordinator.CopyCatalogMetadata(project, m.runtime.GetProject(projectID))
 		}
 		m.crossOutliner.crossForceRebuild = true
 		m.crossOutliner.crossProjectRebuildRows()

@@ -1,4 +1,4 @@
-package tui
+package projecthub
 
 import (
 	"github.com/sglavoie/tt/internal/config"
@@ -13,10 +13,6 @@ import (
 type ShowProjectHubMsg struct {
 	Mode route.ProjectHubMode
 }
-
-// The operation ID predates the dedicated Project Hub and remains stable for
-// operation-catalog compatibility.
-const operationScopeCreateProject operation.OperationID = "tui.scope.create-project"
 
 const (
 	projectHubCategoryActive   listsurface.ListCategoryID = "project-hub:active"
@@ -106,10 +102,10 @@ type projectHubEntry struct {
 	Project *models.Project
 }
 
-// projectTaskTally pairs the tasks a project holds with the open subset.
+// ProjectTaskTally pairs the tasks a project holds with the open subset.
 // Both travel together because a total alone reads as pending work when
 // every task in it is finished.
-type projectTaskTally struct {
+type ProjectTaskTally struct {
 	Open  int
 	Total int
 	// Tasks retains the tree the counts were read from. The count pass already
@@ -120,8 +116,8 @@ type projectTaskTally struct {
 	Tasks []*models.Task
 }
 
-func projectTaskTallyOf(project *models.Project) projectTaskTally {
-	return projectTaskTally{
+func ProjectTaskTallyOf(project *models.Project) ProjectTaskTally {
+	return ProjectTaskTally{
 		Open:  project.CountActiveTasks(),
 		Total: project.CountTasks(),
 		Tasks: project.Tasks,
@@ -142,7 +138,7 @@ type ProjectHubModel struct {
 	listsurface.BaseSearchableView
 	runtime          *config.RuntimeState
 	mode             route.ProjectHubMode
-	taskCounts       map[string]projectTaskTally
+	taskCounts       map[string]ProjectTaskTally
 	surface          *listsurface.ListSurfaceModel
 	actions          *listsurface.ContextActionSheetModel
 	registry         *operation.OperationRegistry
@@ -155,4 +151,5 @@ type ProjectHubModel struct {
 	// Outliner only, so the Hub keeps its own one-key prefix.
 	pendingTopChord bool
 	preview         projectHubPreviewState
+	newPainter      NewPreviewTaskPainter
 }

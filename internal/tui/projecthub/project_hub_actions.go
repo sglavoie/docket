@@ -1,4 +1,4 @@
-package tui
+package projecthub
 
 import (
 	"slices"
@@ -9,11 +9,11 @@ import (
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
-// openProjectHubActions offers the cursor's project, or the whole selection
+// OpenProjectHubActions offers the cursor's project, or the whole selection
 // when one exists. The selection wins because it is the deliberate, visible
 // state: acting on the cursor while checkboxes are set would silently ignore
 // them.
-func (m *ProjectHubModel) openProjectHubActions() {
+func (m *ProjectHubModel) OpenProjectHubActions() {
 	if m.selectionCount() > 0 {
 		m.openProjectHubBulkActions()
 		return
@@ -116,7 +116,7 @@ func projectHubBulkOperationIDs(available []operation.OperationID) []operation.O
 }
 
 func projectHubActionCategory(descriptor operation.OperationDescriptor) listsurface.ListCategoryID {
-	for _, entry := range projectOperationManifest() {
+	for _, entry := range ProjectOperationManifest() {
 		if entry.ID == descriptor.ID {
 			return entry.Category
 		}

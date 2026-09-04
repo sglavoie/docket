@@ -132,6 +132,26 @@
 #     `chrome`/`theme`/`textfit` for the box, the guidance footer and the wrap,
 #     `keymap.Binding` for the three footer labels, and `status` for the refusal
 #     a vanished bundle raises. Removing nine edges can close no cycle.
+#   - `projecthub` lost `taskref,grammar,query` in Session 2.27, when the
+#     package was extracted and its row could be read off real imports rather
+#     than predicted. All three are task vocabulary, and the Hub chooses a
+#     project: its rows, its selection and its operation targets are project
+#     IDs, so no file names `taskref.TaskIdentity`; the creator and the editor
+#     take a name, a description and tags rather than a captured line, so
+#     `grammar` goes unread; and the browse query is the list surface's own
+#     scoring over project aliases rather than a compiled facet, with the bulk
+#     tag rows supplied by a delegated value provider, so `query` goes unread
+#     too. What remains is what a routed surface plus two project forms are
+#     written in: `route.View` and `presentation.PresentationID` for navigation,
+#     `listsurface` for the list, the preview and the action sheet, `operation`
+#     for the strategy, the descriptors and the manifest,
+#     `chrome`/`theme`/`textfit` for the render, `keymap.Binding` for the
+#     guidance footer, `status` for the notices, `help` because `?` raises the
+#     viewer from this surface, `coordinator` because a rename and a create
+#     commit through the shared mutation result, `pulse` for the base view the
+#     three surfaces embed, and `notes` because `Ctrl+N` opens a project's notes
+#     -- the one L7-internal edge this package holds. Removing three edges can
+#     close no cycle: all three are at or below L2 and neither reaches L7.
 #   - `textfit -> theme` is the first edge inside L0, added in Session 2.3 when
 #     the package was extracted. context.md gives `textfit` "Markdown,
 #     highlighting" and both are inherently styled: `markdown.go` picks the
@@ -161,6 +181,6 @@ taskdetail	L7	presentation,theme,textfit,taskref,status,keymap,chrome,coordinato
 taskform	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,listsurface
 lens	L7	presentation,theme,textfit,status,keymap,chrome,query,operation,route,listsurface
 conflict	L7	theme,textfit,status,keymap,chrome,listsurface
-projecthub	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help,notes
+projecthub	L7	presentation,theme,textfit,status,pulse,keymap,chrome,coordinator,operation,route,listsurface,help,notes
 outliner	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help,taskform,taskdetail,lens,projecthub
 tui	L8	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help,notes,taskdetail,taskform,lens,conflict,projecthub,outliner

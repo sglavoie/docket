@@ -1,4 +1,4 @@
-package tui
+package projecthub
 
 import (
 	"github.com/sglavoie/tt/internal/models"
@@ -29,10 +29,10 @@ type ProjectUpdatedMsg struct {
 	TransactionID string
 }
 
-// projectEditorParkRequestMsg hands a resolved project-editor save to the shell
+// ProjectEditorParkRequestMsg hands a resolved project-editor save to the shell
 // because its tag edit newly parks the project. Nothing is written until the
 // shared park confirmation is answered.
-type projectEditorParkRequestMsg struct{ save *projectEditorSave }
+type ProjectEditorParkRequestMsg struct{ Save *ProjectEditorSave }
 
 // ProjectArchivedMsg requests the checked commit of a confirmed archive.
 type ProjectArchivedMsg struct{ Project *models.Project }
@@ -46,9 +46,9 @@ type ProjectArchiveRequestMsg struct {
 	Archive bool
 }
 
-const projectArchiveConfirmAction = "project-archive"
+const ProjectArchiveConfirmAction = "project-archive"
 
-type projectArchiveConfirmedMsg struct{}
+type ProjectArchiveConfirmedMsg struct{}
 
 // ProjectDeleteRequestMsg requests a confirmed project delete. Deleting removes
 // the project's whole data directory alongside its catalog and planning
@@ -59,9 +59,9 @@ type ProjectDeleteRequestMsg struct{ Project *models.Project }
 // ProjectDeletedMsg requests the checked commit of a confirmed delete.
 type ProjectDeletedMsg struct{ Project *models.Project }
 
-const projectDeleteConfirmAction = "project-delete"
+const ProjectDeleteConfirmAction = "project-delete"
 
-type projectDeleteConfirmedMsg struct{}
+type ProjectDeleteConfirmedMsg struct{}
 
 // ProjectPinRequestMsg requests a durable project pin-state change.
 type ProjectPinRequestMsg struct {
@@ -99,6 +99,6 @@ type ProjectBulkTagsMsg struct {
 	Replacement string
 }
 
-const projectParkConfirmAction = "project-park"
+const ProjectParkConfirmAction = "project-park"
 
-type projectParkConfirmedMsg struct{}
+type ProjectParkConfirmedMsg struct{}

@@ -310,6 +310,68 @@
 #     read the same directory and share no code, so nothing is split by leaving
 #     them apart.
 #
+# Session 2.27 corrected one row, minted three files and made four
+# declaration-level moves:
+#   - operation_value_list_sources.go is tui, not projecthub. Session 1.5 read
+#     moveProjectPickerItem and put the file at L7, but the other three sources
+#     it declares are the date, parent and child picker rows, which name no
+#     project at all, and every production consumer of all four is the shell's
+#     operation_value_picker_factory.go. Moving it would export roughly fifteen
+#     names for zero in-package readers, and context.md's own second inversion
+#     puts a concrete picker factory in the root shell. This is
+#     task_operation_manifest.go's shape from Session 2.16.
+#   - project_hub_shell.go is new and tui. registerProjectHubOperations,
+#     executeProjectHubOperation, activeProjectHub, refreshProjectHubIfActive
+#     and projectHubTaskCounts left project_hub_view.go: all five are *AppModel
+#     methods, which Go pins to the shell, and the last two are the reads that
+#     need the live app rather than the surface.
+#   - project_hub_preview_painter.go is new and tui, and it is the one file the
+#     split needed a design for. project_hub_preview_tasks.go is pinned to
+#     ProjectHubModel but named NewOutlinerModel, OutlinerModel, outlinerRow and
+#     buildTreePrefix, and both projecthub -> outliner and projecthub -> tui are
+#     forbidden. The dependency is inverted instead: projecthub declares the
+#     PreviewTaskPainter interface and the NewPreviewTaskPainter factory it is
+#     handed, and this file supplies the Outliner-backed implementation together
+#     with projectPreviewTaskRows, which moved with it. CLAUDE.md still holds --
+#     Select Project's preview paints renderOutlinerTaskRow from the
+#     tally-retained tree over a cache rebuildProjectSurface invalidates -- but
+#     the Hub now reaches that renderer through a seam rather than by name.
+#   - project_tag_explainer.go is new and projecthub.
+#     behavioralProjectTagExplainer and behavioralProjectTagBadgeStyle left
+#     project_tags_picker.go, which is pinned to AppModel and stays in the
+#     shell. Both are read by the picker's rows, the picker's explainer strip and
+#     the project editor's tags field, and the editor is projecthub's, so the
+#     single authority CLAUDE.md requires had to sit where every reader reaches
+#     it. They cross as BehavioralProjectTagExplainer and
+#     BehavioralProjectTagBadgeStyle.
+#   - operationScopeCreateProject left project_hub_types.go (projecthub) for
+#     operation/project_operation_ids.go as OperationScopeCreateProject. It is
+#     the Hub's `a` and it predates the dedicated surface, which is why it was
+#     spelled Scope rather than ProjectHub; its five call sites span the Hub's
+#     guidance, its input strategy, the shell's view and the root parity test, so
+#     the identifier is the only half that could cross. Its eight siblings were
+#     already in that file from Session 2.16.
+#   - cloneWorkspaceCatalog, catalogDomainArtifact and copyCatalogMetadata left
+#     app_domain_commit.go, config_artifacts.go and app_projects.go (all tui) for
+#     coordinator/catalog_snapshot.go. All three are the catalog half of a
+#     project mutation, and the Hub's editor and creator each perform one, so
+#     leaving them in the shell would have forced projecthub -> tui. They cross
+#     as CloneWorkspaceCatalog, CatalogDomainArtifact and CopyCatalogMetadata;
+#     syncedDomainArtifacts stayed behind and inherited the doc comment the two
+#     artifact helpers shared.
+#   - taskReferenceProvider left app_update_keys.go (tui) for manage_hub.go
+#     (projecthub). Its only reader is ManageHubModel.GetTaskRef, so the
+#     interface follows the hub rather than being exported out of the shell.
+#   - project_bulk_operations_shell.go, project_operations_shell.go,
+#     project_tag_vocabulary.go and project_tags_picker.go stay tui, as this
+#     table has said since Session 1.5, and Session 2.27's completion contract
+#     naming project_tag*.go among the projecthub files does not change it: all
+#     four declare *AppModel methods, which Go pins to the shell. The same
+#     answer applies to project_service.go (coordinator) and
+#     project_note_commands.go (notes), which this table placed below L7 and
+#     Sessions 2.10 and 2.22 already moved. This is the 2.21-2.26 precedent that
+#     this table outranks a brief's prose.
+#
 # Test files are deliberately absent. They follow the production file they
 # audit, except the uitest harness and the registry-union parity tests, which
 # context.md keeps in the root shell.
@@ -533,7 +595,7 @@ operation_target_context.go	tui	L8	receiver:AppModel
 operation_target_context_outliner.go	outliner	L7	receiver:OutlinerModel
 operation_task_reference_picker.go	tui	L8	assigned
 operation_text_prompt.go	tui	L8	receiver:OperationTextPromptModel
-operation_value_list_sources.go	projecthub	L7	receiver:moveProjectPickerItem
+operation_value_list_sources.go	tui	L8	receiver:moveProjectPickerItem
 operation_value_membership.go	tui	L8	receiver:AppModel
 operation_value_payloads.go	operation	L3	receiver:ValueProviderID
 operation_value_picker_factory.go	tui	L8	receiver:AppModel
@@ -635,7 +697,9 @@ project_hub_actions.go	projecthub	L7	receiver:ProjectHubModel
 project_hub_empty_states.go	projecthub	L7	receiver:ProjectHubModel
 project_hub_guidance.go	projecthub	L7	receiver:ProjectHubModel
 project_hub_input_strategy.go	projecthub	L7	assigned
+project_hub_preview_painter.go	tui	L8	assigned
 project_hub_preview_tasks.go	projecthub	L7	receiver:ProjectHubModel
+project_hub_shell.go	tui	L8	receiver:AppModel
 project_hub_surface.go	projecthub	L7	receiver:ProjectHubModel
 project_hub_types.go	projecthub	L7	receiver:projectHubTaskFilter
 project_hub_view.go	projecthub	L7	receiver:ProjectHubModel
@@ -644,6 +708,7 @@ project_operation_ids.go	operation	L3	assigned
 project_operations.go	projecthub	L7	assigned
 project_operations_shell.go	tui	L8	receiver:AppModel
 project_service.go	coordinator	L1	assigned
+project_tag_explainer.go	projecthub	L7	assigned
 project_tag_vocabulary.go	tui	L8	receiver:AppModel
 project_tags_picker.go	tui	L8	receiver:AppModel
 query_readout.go	outliner	L7	receiver:OutlinerModel

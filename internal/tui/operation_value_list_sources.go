@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/grammar"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -248,7 +249,7 @@ func operationProjectListSource(projects []*models.Project, currentProjectID str
 // headers show, and the tag chips are what make a parked destination legible.
 func moveProjectRowSecondary(project *models.Project) string {
 	secondary := "[" + project.Slug + "]"
-	if chips := projectTagChips(project.Tags); chips != "" {
+	if chips := projecthub.ProjectTagChips(project.Tags); chips != "" {
 		secondary += " · " + chips
 	}
 	return secondary

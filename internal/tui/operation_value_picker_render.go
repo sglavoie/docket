@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/keymap"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -157,7 +158,7 @@ func (model *OperationValuePickerModel) RenderWithin(width, height int) string {
 	}
 	explainerWidth := operationValuePickerExplainerWidth(width)
 	explainers := make([]string, 0, 3)
-	if explainer := behavioralProjectTagExplainer(model.provider, explainerWidth); explainer != "" {
+	if explainer := projecthub.BehavioralProjectTagExplainer(model.provider, explainerWidth); explainer != "" {
 		explainers = append(explainers, explainer)
 	}
 	if explainer := semanticTaskTagExplainer(model.provider, explainerWidth); explainer != "" {

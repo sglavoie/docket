@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 )
 
 func newSession4TaggedProject(t *testing.T, name string, tags ...string) *models.Project {
@@ -44,14 +45,14 @@ func parkTagMembersThroughProjectTagVocabulary(
 	if result.Err != nil {
 		t.Fatalf("Park all members: %v", result.Err)
 	}
-	msg, ok := result.Message.(ProjectBulkTagsMsg)
+	msg, ok := result.Message.(projecthub.ProjectBulkTagsMsg)
 	if !ok {
 		t.Fatalf("Park all members emitted %#v, want a bulk tag request", result.Message)
 	}
 	if cmd := app.requestProjectBulkTags(msg); cmd != nil {
 		t.Fatalf("bulk park committed without confirmation: %#v", cmd())
 	}
-	handled, cmd := app.handleProjectMessages(projectParkConfirmedMsg{})
+	handled, cmd := app.handleProjectMessages(projecthub.ProjectParkConfirmedMsg{})
 	if !handled {
 		t.Fatal("park confirmation was not handled")
 	}
@@ -90,13 +91,13 @@ func TestProjectBulkParkFromTheProjectHubCapturesNoOutlinerAnchor(t *testing.T) 
 		t.Fatalf("push the Project Hub route: %v", err)
 	}
 
-	if cmd := fixture.app.requestProjectBulkTags(ProjectBulkTagsMsg{
+	if cmd := fixture.app.requestProjectBulkTags(projecthub.ProjectBulkTagsMsg{
 		ProjectIDs: []string{member.ID},
-		Action:     ProjectBulkTagPark,
+		Action:     projecthub.ProjectBulkTagPark,
 	}); cmd != nil {
 		t.Fatalf("bulk park committed without confirmation: %#v", cmd())
 	}
-	if handled, _ := fixture.app.handleProjectMessages(projectParkConfirmedMsg{}); !handled {
+	if handled, _ := fixture.app.handleProjectMessages(projecthub.ProjectParkConfirmedMsg{}); !handled {
 		t.Fatal("park confirmation was not handled")
 	}
 	if got := fixture.cross.crossReloadHeaderProjectID; got != "" {

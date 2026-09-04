@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/taskform"
 )
 
@@ -46,7 +47,7 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd { //nolint:gocyclo
 	}
 	if m.activeManageHub() {
 		updated, cmd := m.manageHub.Update(msg)
-		if hub, ok := updated.(*ManageHubModel); ok {
+		if hub, ok := updated.(*projecthub.ManageHubModel); ok {
 			m.manageHub = hub
 		}
 		return cmd

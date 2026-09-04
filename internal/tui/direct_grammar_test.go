@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 )
 
 // TestFinalDirectGrammarOwnsEveryDocumentedKeyOnce runs per strategy because
@@ -167,7 +168,7 @@ func assertStrategyOwnsEveryKeyOnce(t *testing.T, strategy operation.InputStrate
 // table as the presses beside it.
 func assertProjectHubOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	direct := map[string]operation.OperationID{
-		"/":      operationProjectHubSearch,
+		"/":      projecthub.OperationProjectHubSearch,
 		"j":      operation.OperationCoreCursorDown,
 		"down":   operation.OperationCoreCursorDown,
 		"k":      operation.OperationCoreCursorUp,
@@ -178,25 +179,25 @@ func assertProjectHubOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"end":    operation.OperationCoreCursorBottom,
 		"ctrl+d": operation.OperationCoreCursorPageDown,
 		"ctrl+u": operation.OperationCoreCursorPageUp,
-		"ctrl+f": operationProjectHubPreviewPageDown,
-		"ctrl+b": operationProjectHubPreviewPageUp,
-		"a":      operationScopeCreateProject,
+		"ctrl+f": projecthub.OperationProjectHubPreviewPageDown,
+		"ctrl+b": projecthub.OperationProjectHubPreviewPageUp,
+		"a":      operation.OperationScopeCreateProject,
 		"e":      operation.OperationScopeRenameProject,
 		"*":      operation.OperationScopePinProject,
 		"#":      operation.OperationProjectSetTags,
 		"ctrl+n": operation.OperationScopeOpenProjectNote,
-		"v":      operationProjectHubToggleSelection,
-		"ctrl+a": operationProjectHubSelectAll,
-		"space":  operationProjectHubActions,
+		"v":      projecthub.OperationProjectHubToggleSelection,
+		"ctrl+a": projecthub.OperationProjectHubSelectAll,
+		"space":  projecthub.OperationProjectHubActions,
 		"enter":  operation.OperationProjectOpen,
-		"ctrl+t": operationProjectHubTaskFilter,
+		"ctrl+t": projecthub.OperationProjectHubTaskFilter,
 		"u":      operation.OperationCoreUndo,
 		"ctrl+r": operation.OperationCoreRedo,
 		"?":      operation.OperationCoreHelp,
 		"esc":    operation.OperationCoreBack,
 	}
 
-	owners := assertStrategyOwnsEveryKeyOnce(t, ProjectHubInputStrategy(), direct)
+	owners := assertStrategyOwnsEveryKeyOnce(t, projecthub.ProjectHubInputStrategy(), direct)
 
 	// New is a, select-all is Ctrl+A, and g is the go-to prefix, so the three
 	// spellings they replaced resolve to nothing at all.

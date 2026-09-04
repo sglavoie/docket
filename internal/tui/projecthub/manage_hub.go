@@ -1,4 +1,4 @@
-package tui
+package projecthub
 
 import (
 	"fmt"
@@ -32,10 +32,13 @@ type ManageHubDependencies struct {
 	Wire               func(route.View)
 	ResolveProject     func(string) *models.Project
 	ActiveProjectFocus func() string
-	TaskCounts         func() map[string]projectTaskTally
+	TaskCounts         func() map[string]ProjectTaskTally
 	OperationRegistry  *operation.OperationRegistry
 	OperationExecutor  *operation.OperationExecutor
 	DispatchKey        operation.KeyDispatch
+	// PreviewTaskPainter is supplied by the shell because the Project Hub's
+	// preview pane paints Outliner rows and the Outliner is the Hub's sibling.
+	PreviewTaskPainter NewPreviewTaskPainter
 }
 
 // ManageHubModel is the sole live Manage destination for collection and log
@@ -62,6 +65,29 @@ func NewManageHubModel(deps ManageHubDependencies) *ManageHubModel {
 			NotesScope: route.AllNotesScope(),
 		},
 	}
+}
+
+// Rewire moves an existing hub onto the shell's current seams. Test and
+// embedding compositions may replace the optional service or ledger after
+// construction, and a hub retaining a stale history handle would commit against
+// it. Notes holds those seams inside a cached module, so its cache key is
+// dropped here; Projects reads live state at construction and needs no such
+// invalidation.
+func (m *ManageHubModel) Rewire(deps ManageHubDependencies) {
+	m.deps = deps
+	if m.params.Module == route.ManageNotes {
+		m.activeKey = ""
+	}
+}
+
+// MountModule installs a module view and the params that name it, the last step
+// of Activate. It is also the seam a composition outside the shell mounts a
+// prepared module through, which is why it is a method rather than three writes.
+func (m *ManageHubModel) MountModule(params route.ManageParams, view route.View) {
+	m.params = params
+	m.active = view
+	m.activeKey = manageModuleCacheKey(params)
+	m.prepareActiveView()
 }
 
 func (m *ManageHubModel) Init() tea.Cmd {
@@ -127,6 +153,7 @@ func (m *ManageHubModel) Activate(params route.ManageParams) error {
 	case route.ManageProjects:
 		hub := NewProjectHubModel(m.deps.Runtime, params.ProjectHubMode)
 		hub.SetOperationSystem(m.deps.OperationRegistry, m.deps.OperationExecutor, m.deps.DispatchKey)
+		hub.SetPreviewTaskPainter(m.deps.PreviewTaskPainter)
 		if m.deps.ActiveProjectFocus != nil {
 			hub.SetProjectFocus(m.deps.ActiveProjectFocus())
 		}
@@ -138,9 +165,7 @@ func (m *ManageHubModel) Activate(params route.ManageParams) error {
 		return fmt.Errorf("unsupported manage module %s", params.Module)
 	}
 
-	m.active = view
-	m.activeKey = key
-	m.prepareActiveView()
+	m.MountModule(params, view)
 	return nil
 }
 
@@ -268,6 +293,12 @@ func (m *ManageHubModel) ActiveFilterCount() int {
 	return 0
 }
 
+// taskReferenceProvider is the module capability the hub forwards. The shell
+// asks the hub, not the module, so the interface sits beside its only reader.
+type taskReferenceProvider interface {
+	GetTaskRef() (*models.Task, *models.Project)
+}
+
 func (m *ManageHubModel) GetTaskRef() (*models.Task, *models.Project) {
 	if provider, ok := m.active.(taskReferenceProvider); ok {
 		return provider.GetTaskRef()
@@ -341,10 +372,10 @@ func (m *ManageHubModel) ScopeProjectIDs() []string {
 // PresentationView exposes the active renderer identity for command discovery.
 // It never becomes a route identity.
 func (m *ManageHubModel) PresentationView() (presentation.PresentationID, bool) {
-	return manageModulePresentation(m.params)
+	return ManageModulePresentation(m.params)
 }
 
-func manageModulePresentation(params route.ManageParams) (presentation.PresentationID, bool) {
+func ManageModulePresentation(params route.ManageParams) (presentation.PresentationID, bool) {
 	switch params.Module {
 	case route.ManageNotes:
 		if params.NotesScope.Kind == route.NotesScopeProject {

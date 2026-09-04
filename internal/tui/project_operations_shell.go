@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
 
@@ -23,9 +24,9 @@ func (m *AppModel) projectOperationApplicability(
 	id operation.OperationID,
 	label string,
 ) operation.OperationApplicability {
-	requirement, gated := projectOperationRequirements[id]
+	requirement, gated := projecthub.ProjectOperationRequirements[id]
 	return func(ctx operation.CommandContext) bool {
-		if !projectOperationApplicable(ctx) {
+		if !projecthub.ProjectOperationApplicable(ctx) {
 			return false
 		}
 		project := m.projectByID(operation.CurrentEntityIdentity(ctx).ProjectID)
@@ -50,7 +51,7 @@ func (m *AppModel) registerProjectOperations() error {
 	if m.operationRegistry == nil || m.operationExecutor == nil {
 		return fmt.Errorf("operation registry and executor are required")
 	}
-	for _, descriptor := range projectOperationDescriptors() {
+	for _, descriptor := range projecthub.ProjectOperationDescriptors() {
 		descriptor.Applicability = m.projectOperationApplicability(descriptor.ID, descriptor.Label)
 		if err := m.registerOperation(descriptor, operation.OperationBinding{
 			SingleHandler:         m.executeProjectOperation,
@@ -84,7 +85,7 @@ func (m *AppModel) executeProjectOperation(
 		return operation.OperationHandlerResult{Err: err}
 	}
 	if invocation.Descriptor.ID == operation.OperationProjectSetTags {
-		return projectTagsOperationResult(invocation, project)
+		return projecthub.ProjectTagsOperationResult(invocation, project)
 	}
 	message := m.projectOperationMessage(invocation.Descriptor.ID, project)
 	if message == nil {
@@ -103,7 +104,7 @@ func (m *AppModel) projectOperationUnavailable(
 	project *models.Project,
 ) error {
 	return m.projectRequirementUnmet(
-		projectOperationRequirements[descriptor.ID],
+		projecthub.ProjectOperationRequirements[descriptor.ID],
 		descriptor.Label,
 		project,
 	)
@@ -113,16 +114,16 @@ func (m *AppModel) projectOperationUnavailable(
 // single decision both advertisement and execution read, so a sheet can never
 // offer an action the handler would refuse.
 func (m *AppModel) projectRequirementUnmet(
-	requirement projectOperationRequirement,
+	requirement projecthub.ProjectOperationRequirement,
 	label string,
 	project *models.Project,
 ) error {
 	switch {
-	case requirement.requireArchived && !project.Archived:
+	case requirement.RequireArchived && !project.Archived:
 		return fmt.Errorf("%s applies only to archived projects", label)
-	case requirement.requireActive && project.Archived:
+	case requirement.RequireActive && project.Archived:
 		return fmt.Errorf("%s is unavailable while %s is archived", label, project.Name)
-	case requirement.rejectSystemUnfiled && m.runtime.IsSystemUnfiledProject(project.ID):
+	case requirement.RejectSystemUnfiled && m.runtime.IsSystemUnfiledProject(project.ID):
 		return fmt.Errorf("%s is unavailable for the system Unfiled project", label)
 	}
 	return nil
@@ -134,15 +135,15 @@ func (m *AppModel) projectOperationMessage(id operation.OperationID, project *mo
 	case operation.OperationProjectOpen:
 		return ApplyProjectScopeMsg{ProjectID: project.ID}
 	case operation.OperationScopeRenameProject:
-		return EditProjectMsg{Project: project}
+		return projecthub.EditProjectMsg{Project: project}
 	case operation.OperationScopePinProject:
-		return ProjectPinRequestMsg{Project: project, Pinned: !project.Pinned}
+		return projecthub.ProjectPinRequestMsg{Project: project, Pinned: !project.Pinned}
 	case operation.OperationScopeArchiveProject:
-		return ProjectArchiveRequestMsg{Project: project, Archive: true}
+		return projecthub.ProjectArchiveRequestMsg{Project: project, Archive: true}
 	case operation.OperationScopeRestoreProject:
-		return ProjectArchiveRequestMsg{Project: project, Archive: false}
+		return projecthub.ProjectArchiveRequestMsg{Project: project, Archive: false}
 	case operation.OperationProjectDelete:
-		return ProjectDeleteRequestMsg{Project: project}
+		return projecthub.ProjectDeleteRequestMsg{Project: project}
 	case operation.OperationScopeOpenProjectNote:
 		return notes.ShowNotesManagerMsg{Scope: route.ProjectNotesScope(project.ID)}
 	default:

@@ -6,9 +6,11 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -17,9 +19,9 @@ func openProjectEditor(
 	fixture *session4LifecycleFixture,
 	project *models.Project,
 	identityProtected bool,
-) *ProjectEditorModel {
+) *projecthub.ProjectEditorModel {
 	t.Helper()
-	editor := NewProjectEditorModel(
+	editor := projecthub.NewProjectEditorModel(
 		project,
 		fixture.app.configManager,
 		fixture.app.runtime,
@@ -30,22 +32,39 @@ func openProjectEditor(
 	return editor
 }
 
-// typeProjectEditorTags walks to the Tags field with Tab and types the set one
-// rune at a time, so the test reaches the field the way a user does.
-func typeProjectEditorTags(t *testing.T, editor *ProjectEditorModel, tags string) {
+// projectEditorRowClearPresses is more Backspaces than any fixture row holds
+// characters, so one loop empties a row whatever it arrived carrying.
+const projectEditorRowClearPresses = 64
+
+// fillProjectEditor walks the editor's three rows in order with Tab and
+// replaces the text of each one it is given, so the test reaches every field
+// the way a user does rather than through the editor's internals. An empty
+// value leaves that row exactly as the project stored it.
+func fillProjectEditor(t *testing.T, editor *projecthub.ProjectEditorModel, name, description, tags string) {
 	t.Helper()
-	for editor.focusIndex != projectEditorFieldTags {
-		editor.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	for index, value := range []string{name, description, tags} {
+		if index > 0 {
+			editor.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+		}
+		if value == "" {
+			continue
+		}
+		for range projectEditorRowClearPresses {
+			editor.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
+		}
+		for _, r := range value {
+			editor.Update(syntheticKey(r))
+		}
 	}
-	for _, r := range tags {
-		editor.Update(syntheticKey(r))
-	}
-	if got := editor.tagsInput.Value(); got != tags {
-		t.Fatalf("tags field = %q, want %q", got, tags)
+	rendered := ansi.Strip(editor.View().Content)
+	for _, value := range []string{name, description, tags} {
+		if value != "" && !strings.Contains(rendered, value) {
+			t.Fatalf("editor rows do not carry %q:\n%s", value, rendered)
+		}
 	}
 }
 
-func pressProjectEditorSave(t *testing.T, editor *ProjectEditorModel) tea.Msg {
+func pressProjectEditorSave(t *testing.T, editor *projecthub.ProjectEditorModel) tea.Msg {
 	t.Helper()
 	_, cmd := editor.Update(syntheticCtrlKey('s'))
 	if cmd == nil {
@@ -83,9 +102,9 @@ func TestProjectEditorParkAsksTheSharedConfirmationBeforeWriting(t *testing.T) {
 	fixture.app.clearPendingProjectTags()
 
 	editor := openProjectEditor(t, fixture, live, false)
-	typeProjectEditorTags(t, editor, models.ParkedProjectTag)
+	fillProjectEditor(t, editor, "", "", models.ParkedProjectTag)
 	msg := pressProjectEditorSave(t, editor)
-	if _, ok := msg.(projectEditorParkRequestMsg); !ok {
+	if _, ok := msg.(projecthub.ProjectEditorParkRequestMsg); !ok {
 		t.Fatalf("parking save emitted %#v, want a park request", msg)
 	}
 	if _, cmd := fixture.app.Update(msg); cmd != nil {
@@ -113,9 +132,7 @@ func TestProjectEditorParkCancelLeavesEveryFieldUnchanged(t *testing.T) {
 	originalName, originalDescription := live.Name, live.Description
 
 	editor := openProjectEditor(t, fixture, live, false)
-	editor.nameInput.SetValue("Renamed Sonar")
-	editor.descriptionInput.SetValue("office")
-	typeProjectEditorTags(t, editor, models.ParkedProjectTag)
+	fillProjectEditor(t, editor, "Renamed Sonar", "office", models.ParkedProjectTag)
 	fixture.app.Update(pressProjectEditorSave(t, editor))
 
 	if msg := answerProjectParkConfirm(t, fixture.app, 'n'); msg != nil {
@@ -149,20 +166,18 @@ func TestProjectEditorParkConfirmCommitsTheWholeEditAtomically(t *testing.T) {
 	live := fixture.app.projectByID(project.ID)
 
 	editor := openProjectEditor(t, fixture, live, false)
-	editor.nameInput.SetValue("Renamed Sonar")
-	editor.descriptionInput.SetValue("office")
-	typeProjectEditorTags(t, editor, models.ParkedProjectTag)
+	fillProjectEditor(t, editor, "Renamed Sonar", "office", models.ParkedProjectTag)
 	fixture.app.Update(pressProjectEditorSave(t, editor))
 
 	confirmed := answerProjectParkConfirm(t, fixture.app, 'y')
-	if _, ok := confirmed.(projectParkConfirmedMsg); !ok {
+	if _, ok := confirmed.(projecthub.ProjectParkConfirmedMsg); !ok {
 		t.Fatalf("y emitted %#v, want the shared park confirmation", confirmed)
 	}
 	_, commitCmd := fixture.app.Update(confirmed)
 	if commitCmd == nil {
 		t.Fatal("confirmed park committed nothing")
 	}
-	updated, ok := commitCmd().(ProjectUpdatedMsg)
+	updated, ok := commitCmd().(projecthub.ProjectUpdatedMsg)
 	if !ok {
 		t.Fatalf("confirmed park emitted %#v, want ProjectUpdatedMsg", commitCmd())
 	}
@@ -197,9 +212,9 @@ func TestProjectEditorDescriptiveTagsSaveWithoutAPrompt(t *testing.T) {
 	live := fixture.app.projectByID(project.ID)
 
 	editor := openProjectEditor(t, fixture, live, false)
-	typeProjectEditorTags(t, editor, "Client-Acme, billable")
+	fillProjectEditor(t, editor, "", "", "Client-Acme, billable")
 	msg := pressProjectEditorSave(t, editor)
-	if _, ok := msg.(ProjectUpdatedMsg); !ok {
+	if _, ok := msg.(projecthub.ProjectUpdatedMsg); !ok {
 		t.Fatalf("descriptive tag save emitted %#v, want a committed update", msg)
 	}
 	if fixture.app.projectParkConfirm.IsActive() {
@@ -217,7 +232,7 @@ func TestProjectEditorRefusesToParkTheSystemUnfiledProject(t *testing.T) {
 	live := fixture.app.projectByID(project.ID)
 
 	editor := openProjectEditor(t, fixture, live, true)
-	typeProjectEditorTags(t, editor, models.ParkedProjectTag)
+	fillProjectEditor(t, editor, "", "", models.ParkedProjectTag)
 	msg := pressProjectEditorSave(t, editor)
 	errMsg, ok := msg.(status.ErrorMsg)
 	if !ok || !strings.Contains(errMsg.Err.Error(), "cannot park the system Unfiled project") {

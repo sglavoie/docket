@@ -1,15 +1,15 @@
-package tui
+package projecthub
 
 import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
-// projectOperationDescriptors is the authoritative catalog of project-targeted
+// ProjectOperationDescriptors is the authoritative catalog of project-targeted
 // operations. Every entry resolves one frozen project identity, so the same
 // descriptor serves the Scope Hub and any other host that names a
 // project row.
-func projectOperationDescriptors() []operation.OperationDescriptor {
+func ProjectOperationDescriptors() []operation.OperationDescriptor {
 	descriptor := func(
 		id operation.OperationID,
 		label string,
@@ -26,7 +26,7 @@ func projectOperationDescriptors() []operation.OperationDescriptor {
 			Category:          category,
 			TargetSource:      operation.OperationTargetCurrentEntity,
 			TargetCardinality: operation.TargetCardinalityOne,
-			Applicability:     projectOperationApplicable,
+			Applicability:     ProjectOperationApplicable,
 			Risk:              risk,
 		}
 	}
@@ -45,11 +45,11 @@ func projectOperationDescriptors() []operation.OperationDescriptor {
 	}
 }
 
-// projectOperationApplicable admits a project operation only when the context
+// ProjectOperationApplicable admits a project operation only when the context
 // names exactly one project. CurrentEntityIdentity degrades to the first scoped
 // project when nothing is focused, so a multi-project scope is refused rather
 // than allowed to borrow an unrelated project.
-func projectOperationApplicable(ctx operation.CommandContext) bool {
+func ProjectOperationApplicable(ctx operation.CommandContext) bool {
 	// A section header names a lane, not a project. The scope fallback below would
 	// hand it the sole scoped project, which is how a key meant for a project
 	// header reaches one from a row that never named it.
@@ -65,11 +65,11 @@ func projectOperationApplicable(ctx operation.CommandContext) bool {
 	return len(operation.NormalizedProjectIDs(ctx.ScopeProjectIDs)) == 1
 }
 
-// projectTagsOperationResult round-trips the project's own tag set through the
+// ProjectTagsOperationResult round-trips the project's own tag set through the
 // value picker: the first invocation asks for a set, the resumed one carries it.
 // The chosen set replaces the stored set wholesale, so an empty slice is a
 // legitimate value and only a missing one reopens the picker.
-func projectTagsOperationResult(
+func ProjectTagsOperationResult(
 	invocation operation.OperationInvocation,
 	project *models.Project,
 ) operation.OperationHandlerResult {
@@ -86,22 +86,22 @@ func projectTagsOperationResult(
 	return operation.OperationHandlerResult{Message: SetProjectTagsMsg{Project: project, Tags: tags}}
 }
 
-// projectOperationRequirement declares the project state one operation needs.
-type projectOperationRequirement struct {
-	requireArchived     bool
-	requireActive       bool
-	rejectSystemUnfiled bool
+// ProjectOperationRequirement declares the project state one operation needs.
+type ProjectOperationRequirement struct {
+	RequireArchived     bool
+	RequireActive       bool
+	RejectSystemUnfiled bool
 }
 
-var projectOperationRequirements = map[operation.OperationID]projectOperationRequirement{
-	operation.OperationProjectOpen:          {requireActive: true},
-	operation.OperationScopePinProject:      {requireActive: true},
-	operation.OperationScopeArchiveProject:  {requireActive: true, rejectSystemUnfiled: true},
-	operation.OperationScopeRestoreProject:  {requireArchived: true},
-	operation.OperationScopeOpenProjectNote: {requireActive: true},
-	operation.OperationProjectSetTags:       {requireActive: true},
+var ProjectOperationRequirements = map[operation.OperationID]ProjectOperationRequirement{
+	operation.OperationProjectOpen:          {RequireActive: true},
+	operation.OperationScopePinProject:      {RequireActive: true},
+	operation.OperationScopeArchiveProject:  {RequireActive: true, RejectSystemUnfiled: true},
+	operation.OperationScopeRestoreProject:  {RequireArchived: true},
+	operation.OperationScopeOpenProjectNote: {RequireActive: true},
+	operation.OperationProjectSetTags:       {RequireActive: true},
 	// Deleting carries no lifecycle requirement on purpose: an archived project
 	// stays deletable, so archiving is a step toward removal rather than a state
 	// that traps the project in the catalog.
-	operation.OperationProjectDelete: {rejectSystemUnfiled: true},
+	operation.OperationProjectDelete: {RejectSystemUnfiled: true},
 }

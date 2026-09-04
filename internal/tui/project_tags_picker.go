@@ -3,14 +3,11 @@ package tui
 import (
 	"fmt"
 	"sort"
-	"strings"
-
-	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/textfit"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -71,7 +68,7 @@ func (m *AppModel) projectTagListSource(project *models.Project) listsurface.Lis
 		// The row takes the same expression the explainer below the list renders
 		// the name with, so the row and the sentence explaining it cannot disagree
 		// about what parked looks like.
-		style := behavioralProjectTagBadgeStyle(info.BadgeRole)
+		style := projecthub.BehavioralProjectTagBadgeStyle(info.BadgeRole)
 		items = append(items, listsurface.ListItem{
 			ID:            listsurface.ListItemID("tag:" + name),
 			CategoryID:    projectTagBehavioralCategory,
@@ -114,40 +111,5 @@ func (m *AppModel) projectTagListSource(project *models.Project) listsurface.Lis
 			{ID: projectTagBehavioralCategory, Label: "Behavioral"},
 			{ID: tagDescriptiveCategory, Label: "Tags"},
 		},
-	}
-}
-
-// behavioralProjectTagExplainer restates every behavioral tag beneath the list.
-// The picker cannot show the effect by example the way a state change can, so
-// the sentence has to be on screen the whole time the choice is open. Each
-// complete entry wraps inline rather than sending a detached tail elsewhere.
-func behavioralProjectTagExplainer(provider operation.ValueProviderID, width int) string {
-	if provider != operation.ValueProviderProjectTags {
-		return ""
-	}
-	names := make([]string, 0, len(models.BehavioralProjectTags))
-	for name := range models.BehavioralProjectTags {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	lines := make([]string, 0, len(names))
-	for _, name := range names {
-		info := models.BehavioralProjectTags[name]
-		entry := behavioralProjectTagBadgeStyle(info.BadgeRole).Render(info.Name) +
-			" " + theme.MutedStyle.Render(info.Summary)
-		lines = append(lines, strings.Join(textfit.WrapStyled(entry, width), "\n"))
-	}
-	return strings.Join(lines, "\n")
-}
-
-// behavioralProjectTagBadgeStyle turns the metadata badge role into a palette
-// style. An unrecognized role renders muted so a tag is never hidden by a
-// missing style.
-func behavioralProjectTagBadgeStyle(role string) lipgloss.Style {
-	switch role {
-	case "warning":
-		return lipgloss.NewStyle().Foreground(theme.ColorWarning).Bold(true)
-	default:
-		return theme.MutedStyle
 	}
 }

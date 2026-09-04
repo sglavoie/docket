@@ -1,0 +1,104 @@
+package tui
+
+import (
+	"slices"
+
+	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
+)
+
+// The Project Hub's preview pane draws Outliner task rows, and the Outliner is
+// the Hub's sibling rather than its dependency. The Hub therefore declares the
+// painter it needs and the shell, which reaches both, supplies this one.
+
+// projectPreviewPainter paints one project's flattened tree with the Outliner's
+// own row renderer. The Outliner it holds is never mounted: it exists so the
+// pane's rows are the product's rows rather than a second row grammar that would
+// drift from them.
+type projectPreviewPainter struct {
+	rows    []outlinerRow
+	painter *OutlinerModel
+}
+
+func (p *projectPreviewPainter) RowCount() int { return len(p.rows) }
+
+func (p *projectPreviewPainter) RenderRow(index, width int) string {
+	if index < 0 || index >= len(p.rows) {
+		return ""
+	}
+	// rowWidth and width are the same pane column budget: the pane has no cursor,
+	// so no row ever opens Peek and the wider measure never applies. The nil column
+	// layout matches what the Outliner passes below its own alignment threshold,
+	// and the absolute row index keeps zebra striping anchored to the task rather
+	// than to the scroll position.
+	return p.painter.renderOutlinerTaskRow(p.rows[index], false, width, width, index, nil)
+}
+
+// newProjectPreviewPainter is the Hub's NewPreviewTaskPainter. Building one costs
+// a few maps and a text input, which is why the Hub caches the result.
+func newProjectPreviewPainter(
+	runtime *config.RuntimeState,
+	project *models.Project,
+	tasks []*models.Task,
+) projecthub.PreviewTaskPainter {
+	return &projectPreviewPainter{
+		rows:    projectPreviewTaskRows(project.ID, tasks),
+		painter: NewOutlinerModel(project, nil, runtime),
+	}
+}
+
+// projectPreviewTaskRows flattens a project's task tree into Outliner rows in
+// tree order. Every task is listed, done and canceled included: the state badge
+// already tells them apart, and a pane that hid them would disagree with the
+// total the header just claimed.
+//
+// Roots are the tasks no other task claims as a child rather than the tasks
+// reporting no parent, so a task whose parent reference dangles is still listed
+// once instead of disappearing between the two readings.
+func projectPreviewTaskRows(projectID string, tasks []*models.Task) []outlinerRow {
+	if len(tasks) == 0 {
+		return nil
+	}
+	claimed := make(map[string]bool, len(tasks))
+	for _, task := range tasks {
+		if task == nil {
+			continue
+		}
+		for _, child := range task.Children {
+			if child != nil {
+				claimed[child.ID] = true
+			}
+		}
+	}
+	roots := make([]*models.Task, 0, len(tasks))
+	for _, task := range tasks {
+		if task != nil && !claimed[task.ID] {
+			roots = append(roots, task)
+		}
+	}
+
+	rows := make([]outlinerRow, 0, len(tasks))
+	visited := make(map[string]bool, len(tasks))
+	var walk func(siblings []*models.Task, ancestorIsLast []bool)
+	walk = func(siblings []*models.Task, ancestorIsLast []bool) {
+		for index, task := range siblings {
+			if task == nil || visited[task.ID] {
+				continue
+			}
+			visited[task.ID] = true
+			isLast := index == len(siblings)-1
+			rows = append(rows, outlinerRow{
+				task:               task,
+				prefix:             buildTreePrefix(ancestorIsLast, isLast),
+				hasVisibleChildren: len(task.Children) > 0,
+				ProjectID:          projectID,
+			})
+			if len(task.Children) > 0 {
+				walk(task.Children, append(slices.Clone(ancestorIsLast), isLast))
+			}
+		}
+	}
+	walk(roots, nil)
+	return rows
+}

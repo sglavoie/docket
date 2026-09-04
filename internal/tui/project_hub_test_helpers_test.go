@@ -2,14 +2,23 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 	"testing"
+
+	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tui/listsurface"
-	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
+
+// The Project Hub's own coverage lives in internal/tui/projecthub, against a
+// fixture that reads the surface directly. What these helpers mount is the shell:
+// a real AppModel whose registry, executor, count pass and preview painter the
+// Hub is wired to. The Hub's cursor is its own, so a shell test steers it through
+// the browse grammar rather than reaching across the package boundary.
 
 // projectHubApp builds a two-project shell whose cross-project Outliner is
 // already populated, so hub rows carry real task counts.
@@ -32,20 +41,20 @@ func projectHubApp(t *testing.T) *AppModel {
 	return app
 }
 
-func openProjectHub(t *testing.T, app *AppModel, modes ...route.ProjectHubMode) *ProjectHubModel {
+func openProjectHub(t *testing.T, app *AppModel, modes ...route.ProjectHubMode) *projecthub.ProjectHubModel {
 	t.Helper()
 	mode := route.ProjectHubModeAll
 	if len(modes) > 0 {
 		mode = modes[0]
 	}
-	handled, cmd := app.handleProjectViewMessages(ShowProjectHubMsg{Mode: mode})
+	handled, cmd := app.handleProjectViewMessages(projecthub.ShowProjectHubMsg{Mode: mode})
 	if !handled {
 		t.Fatal("ShowProjectHubMsg was not handled")
 	}
 	if cmd != nil {
 		cmd()
 	}
-	hub, ok := app.manageHub.ActiveModuleView().(*ProjectHubModel)
+	hub, ok := app.manageHub.ActiveModuleView().(*projecthub.ProjectHubModel)
 	if !ok {
 		t.Fatalf("active Manage module view = %T, want *ProjectHubModel", app.manageHub.ActiveModuleView())
 	}
@@ -53,11 +62,43 @@ func openProjectHub(t *testing.T, app *AppModel, modes ...route.ProjectHubMode) 
 	return hub
 }
 
-func focusProjectHubItem(t *testing.T, hub *ProjectHubModel, id listsurface.ListItemID) {
+// focusProjectHubRow puts the Hub's cursor on the row naming one project the way
+// a user does: it searches for the name and browses the matches the query left.
+// The fixtures below name their projects distinctly enough for the query to land
+// on one row, and the assertion holds it to that.
+func focusProjectHubRow(t *testing.T, hub *projecthub.ProjectHubModel, name string) {
 	t.Helper()
-	if hub.surface == nil || !hub.surface.SetCursorToID(id) {
-		t.Fatalf("project hub omitted item %q", id)
+	hub.ClearSearch()
+	hub.Update(syntheticKey('/'))
+	for _, r := range strings.ToLower(name) {
+		hub.Update(syntheticKey(r))
 	}
+	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	if got := projectHubCursorRow(t, hub); !strings.Contains(got, name) {
+		t.Fatalf("searching %q left the Project Hub cursor on %q", name, got)
+	}
+}
+
+// projectHubCursorRow reads the row the Hub draws its cursor marker on, which is
+// the only place the rendered frame says where the cursor is.
+func projectHubCursorRow(t *testing.T, hub *projecthub.ProjectHubModel) string {
+	t.Helper()
+	rendered := hub.View().Content
+	for _, line := range strings.Split(rendered, "\n") {
+		if row, marked := strings.CutPrefix(ansi.Strip(line), "› "); marked {
+			return row
+		}
+	}
+	t.Fatalf("the Project Hub frame carries no cursor row:\n%s", rendered)
+	return ""
+}
+
+// projectHubSubtitleLine reads the Hub's header line, where the subtitle names
+// the narrowing the list is under. The footer hint names a filter too -- as the
+// state the next press produces -- so a whole-frame search cannot tell the two
+// apart.
+func projectHubSubtitleLine(hub *projecthub.ProjectHubModel) string {
+	return ansi.Strip(strings.SplitN(hub.View().Content, "\n", 2)[0])
 }
 
 // projectHubDiskApp roots the shell at a real data directory, so a cataloged
@@ -117,63 +158,4 @@ func finishProjectHubTasks(t *testing.T, project *models.Project, n int) {
 	if err := storage.SaveProject(project); err != nil {
 		t.Fatalf("SaveProject(%q): %v", project.ID, err)
 	}
-}
-
-func projectHubItem(t *testing.T, hub *ProjectHubModel, id listsurface.ListItemID) listsurface.ListItem {
-	t.Helper()
-	for _, item := range hub.surface.Items() {
-		if item.ID == id {
-			return item
-		}
-	}
-	t.Fatalf("project hub omitted item %q", id)
-	return listsurface.ListItem{}
-}
-
-// projectHubPreviewSummary reads the preview header's one muted meta line, which
-// carries the lifecycle, the tally, the slug, and a pin when there is one. The
-// five labeled fields it replaced spent six rows saying the same thing and left
-// the task pane below them nowhere to go.
-func projectHubPreviewSummary(t *testing.T, hub *ProjectHubModel, id listsurface.ListItemID) string {
-	t.Helper()
-	preview := projectHubItem(t, hub, id).Preview
-	if len(preview.Fields) > 0 {
-		t.Fatalf("project hub preview for %q carries %d labeled fields, want the meta line alone", id, len(preview.Fields))
-	}
-	return preview.Summary
-}
-
-// projectHubFilterApp catalogs a project the Outliner loaded with no tasks, so
-// the Hub holds a known zero for the Ctrl+T filter to hide. Its name shares the
-// "bet" prefix with Beta, so one query can match a counted and an empty row.
-func projectHubFilterApp(t *testing.T) *AppModel {
-	t.Helper()
-	app := projectHubApp(t)
-	empty := scopeTestProject("empty", "Beta Empty")
-	empty.Path = t.TempDir()
-	addTestAppProject(app, empty)
-	app.crossOutliner.loadedProjects = append(app.crossOutliner.loadedProjects, empty)
-	return app
-}
-
-func projectHubHasItem(hub *ProjectHubModel, id listsurface.ListItemID) bool {
-	for _, item := range hub.surface.Items() {
-		if item.ID == id {
-			return true
-		}
-	}
-	return false
-}
-
-func projectHubActionIDs(hub *ProjectHubModel) []operation.OperationID {
-	if hub.actions == nil || hub.actions.Surface == nil {
-		return nil
-	}
-	ids := make([]operation.OperationID, 0)
-	for _, item := range hub.actions.Surface.Items() {
-		if descriptor, ok := item.Data.(operation.OperationDescriptor); ok {
-			ids = append(ids, descriptor.ID)
-		}
-	}
-	return ids
 }

@@ -1,4 +1,4 @@
-package tui
+package projecthub
 
 import "github.com/sglavoie/tt/internal/tui/operation"
 
@@ -24,14 +24,14 @@ var projectBulkOperations = []operation.OperationID{
 	operationProjectBulkUnpark,
 }
 
-var projectBulkTagActions = map[operation.OperationID]ProjectBulkTagAction{
+var ProjectBulkTagActions = map[operation.OperationID]ProjectBulkTagAction{
 	operationProjectBulkAddTag:    ProjectBulkTagAdd,
 	operationProjectBulkRemoveTag: ProjectBulkTagRemove,
 	operationProjectBulkPark:      ProjectBulkTagPark,
 	operationProjectBulkUnpark:    ProjectBulkTagUnpark,
 }
 
-func projectBulkOperationDescriptors() []operation.OperationDescriptor {
+func ProjectBulkOperationDescriptors() []operation.OperationDescriptor {
 	descriptor := func(
 		id operation.OperationID,
 		label string,
@@ -47,7 +47,7 @@ func projectBulkOperationDescriptors() []operation.OperationDescriptor {
 			TargetSource:         operation.OperationTargetSelectedEntities,
 			TargetCardinality:    operation.TargetCardinalityOneOrMore,
 			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilityProjectHub),
-			Applicability:        projectBulkTagsApplicable,
+			Applicability:        ProjectBulkTagsApplicable,
 			Risk:                 operation.OperationRiskMutation,
 		}
 	}
@@ -65,11 +65,11 @@ func projectBulkOperationDescriptors() []operation.OperationDescriptor {
 	}
 }
 
-// projectBulkTagsApplicable admits a bulk tag action only when the context
+// ProjectBulkTagsApplicable admits a bulk tag action only when the context
 // carries an explicit project multi-selection. A single-row sheet therefore
 // never offers them, and no bulk action can borrow the cursor's project the way
 // a degrading target source would.
-func projectBulkTagsApplicable(ctx operation.CommandContext) bool {
+func ProjectBulkTagsApplicable(ctx operation.CommandContext) bool {
 	selected := operation.NormalizedEntityIdentities(ctx.Selection.EntityIdentities)
 	if len(selected) == 0 {
 		return false

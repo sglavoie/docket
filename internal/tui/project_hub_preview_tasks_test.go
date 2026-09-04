@@ -11,12 +11,16 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tui/listsurface"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 )
+
+// The pane's own scroll arithmetic moved into internal/tui/projecthub with the
+// preview. What stays here is what the pane draws through the Outliner's row
+// painter, which the Hub is handed rather than reaching for.
 
 // projectHubPreviewPane returns the right pane of the Hub's rendered frame, so a
 // test reads what the preview shows rather than the whole two-pane composition.
-func projectHubPreviewPane(t *testing.T, hub *ProjectHubModel) []string {
+func projectHubPreviewPane(t *testing.T, hub *projecthub.ProjectHubModel) []string {
 	t.Helper()
 	var pane []string
 	for _, line := range strings.Split(hub.View().Content, "\n") {
@@ -33,7 +37,7 @@ func projectHubPreviewPane(t *testing.T, hub *ProjectHubModel) []string {
 	return pane
 }
 
-func projectHubPreviewText(t *testing.T, hub *ProjectHubModel) string {
+func projectHubPreviewText(t *testing.T, hub *projecthub.ProjectHubModel) string {
 	t.Helper()
 	return strings.Join(projectHubPreviewPane(t, hub), "\n")
 }
@@ -68,7 +72,7 @@ func TestProjectHubPreviewListsEveryTaskInTreeOrder(t *testing.T) {
 	addTestAppProject(app, tree)
 
 	hub := openProjectHub(t, app)
-	focusProjectHubItem(t, hub, "project-hub:project:tree")
+	focusProjectHubRow(t, hub, "Tree")
 	pane := projectHubPreviewText(t, hub)
 
 	// Header first: name, then the one meta line, and no labeled fields at all.
@@ -120,74 +124,18 @@ func TestProjectHubPreviewNamesAnUnreadProjectRatherThanShowingItEmpty(t *testin
 	addTestAppProject(app, empty)
 
 	hub := openProjectHub(t, app)
-	focusProjectHubItem(t, hub, "project-hub:project:corrupt")
+	focusProjectHubRow(t, hub, "Corrupt")
 	if pane := projectHubPreviewText(t, hub); !strings.Contains(pane, "Tasks not loaded.") {
 		t.Fatalf("unreadable project preview does not say so:\n%s", pane)
 	}
 
-	focusProjectHubItem(t, hub, "project-hub:project:hollow")
+	focusProjectHubRow(t, hub, "Hollow")
 	pane := projectHubPreviewText(t, hub)
 	if !strings.Contains(pane, "No tasks.") {
 		t.Fatalf("empty project preview does not say so:\n%s", pane)
 	}
 	if strings.Contains(pane, "Tasks not loaded.") {
 		t.Fatalf("empty project preview reads as unread:\n%s", pane)
-	}
-}
-
-func TestProjectHubPreviewPagesWithCtrlFAndResetsOnAnotherProject(t *testing.T) {
-	app := projectHubDiskApp(t)
-	long := projectHubDiskProject(app, "long", "Long")
-	// Several panes' worth, so a page down lands mid-list rather than straight on
-	// the tail clamp.
-	writeProjectHubTasks(t, long, 120)
-	addTestAppProject(app, long)
-
-	hub := openProjectHub(t, app)
-	focusProjectHubItem(t, hub, "project-hub:project:long")
-	pane := projectHubPreviewText(t, hub)
-	if !strings.Contains(pane, "↓ ") {
-		t.Fatalf("a 120-task project fits the pane, so paging cannot be exercised:\n%s", pane)
-	}
-	page := hub.preview.pageSize
-	if page <= 0 {
-		t.Fatalf("render settled on page size %d, want the pane's row capacity", page)
-	}
-
-	hub.Update(syntheticCtrlKey('f'))
-	pane = projectHubPreviewText(t, hub)
-	if hub.preview.offset != page {
-		t.Fatalf("Ctrl+F moved to offset %d, want a full page of %d", hub.preview.offset, page)
-	}
-	if !strings.Contains(pane, "↑ ") {
-		t.Fatalf("paged pane carries no upper continuation:\n%s", pane)
-	}
-
-	hub.Update(syntheticCtrlKey('b'))
-	projectHubPreviewText(t, hub)
-	if hub.preview.offset != 0 {
-		t.Fatalf("Ctrl+B left offset %d, want the top", hub.preview.offset)
-	}
-
-	// The tail clamps: pressing past the end stops on the last full pane rather
-	// than scrolling into blank rows.
-	for range 20 {
-		hub.Update(syntheticCtrlKey('f'))
-		projectHubPreviewText(t, hub)
-	}
-	pane = projectHubPreviewText(t, hub)
-	if strings.Contains(pane, "↓ ") {
-		t.Fatalf("paging past the tail left a lower continuation:\n%s", pane)
-	}
-	if !strings.Contains(pane, "Task 120") {
-		t.Fatalf("tail of the pane omits the last task:\n%s", pane)
-	}
-
-	// Another project starts at its own top rather than inheriting the offset.
-	focusProjectHubItem(t, hub, "project-hub:project:alpha")
-	projectHubPreviewText(t, hub)
-	if hub.preview.offset != 0 {
-		t.Fatalf("moving to another project kept offset %d, want 0", hub.preview.offset)
 	}
 }
 
@@ -206,17 +154,17 @@ func TestProjectHubPreviewListsTasksOutsideTheBaseTaskWorkspace(t *testing.T) {
 	// Both reach the Hub as catalog records holding no tasks of their own, so the
 	// pane only fills if the tally retained the tree the count pass read.
 	for _, project := range []struct {
-		id    listsurface.ListItemID
+		name  string
 		tasks []string
 	}{
-		{id: "project-hub:project:parked", tasks: []string{"Task 1", "Task 2"}},
-		{id: "project-hub:archived:archived", tasks: []string{"Task 1", "Task 2", "Task 3"}},
+		{name: "Parked", tasks: []string{"Task 1", "Task 2"}},
+		{name: "Archived", tasks: []string{"Task 1", "Task 2", "Task 3"}},
 	} {
-		focusProjectHubItem(t, hub, project.id)
+		focusProjectHubRow(t, hub, project.name)
 		pane := projectHubPreviewText(t, hub)
 		for _, want := range project.tasks {
 			if !strings.Contains(pane, want) {
-				t.Fatalf("%s preview omitted %q:\n%s", project.id, want, pane)
+				t.Fatalf("%s preview omitted %q:\n%s", project.name, want, pane)
 			}
 		}
 	}

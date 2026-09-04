@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/notes"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskdetail"
@@ -118,13 +119,13 @@ func TestPresentationChromeEligibleFamiliesRenderWorkspacePulse(t *testing.T) {
 		view func(pulse.WorkspacePulse) string
 	}{
 		{name: "project creator", view: func(workspacePulse pulse.WorkspacePulse) string {
-			m := NewProjectCreatorModel(nil, nil, nil)
+			m := projecthub.NewProjectCreatorModel(nil, nil, nil)
 			m.SetSize(140, 30)
 			m.SetWorkspacePulse(workspacePulse)
 			return m.View().Content
 		}},
 		{name: "project editor", view: func(workspacePulse pulse.WorkspacePulse) string {
-			m := NewProjectEditorModel(project, nil, nil, nil, false)
+			m := projecthub.NewProjectEditorModel(project, nil, nil, nil, false)
 			m.SetSize(140, 30)
 			m.SetWorkspacePulse(workspacePulse)
 			return m.View().Content
@@ -166,7 +167,7 @@ func TestPresentationChromeEligibleFamiliesRenderWorkspacePulse(t *testing.T) {
 			return m.View().Content
 		}},
 		{name: "project hub", view: func(workspacePulse pulse.WorkspacePulse) string {
-			m := NewProjectHubModel(config.EmptyRuntimeState(""))
+			m := projecthub.NewProjectHubModel(config.EmptyRuntimeState(""))
 			m.SetSize(140, 30)
 			m.SetWorkspacePulse(workspacePulse)
 			return m.View().Content

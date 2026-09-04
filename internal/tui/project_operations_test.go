@@ -4,9 +4,11 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
 
@@ -18,15 +20,6 @@ func projectOperationContext(projectID string) operation.CommandContext {
 	return ctx
 }
 
-func containsOperationID(ids []operation.OperationID, want operation.OperationID) bool {
-	for _, id := range ids {
-		if id == want {
-			return true
-		}
-	}
-	return false
-}
-
 func executeProjectOperation(app *AppModel, id operation.OperationID, ctx operation.CommandContext) operation.OperationExecutionResult {
 	return app.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:      id,
@@ -34,21 +27,24 @@ func executeProjectOperation(app *AppModel, id operation.OperationID, ctx operat
 	})
 }
 
+// The Hub reaches the project handler by pressing its own key rather than by
+// building a context, so the test fails if the Hub's dispatch stops resolving
+// the row's project the way every other host resolves a frozen one.
 func TestProjectOperationsShareOneHandlerAcrossHosts(t *testing.T) {
 	app := projectHubApp(t)
 	hub := openProjectHub(t, app)
+	focusProjectHubRow(t, hub, "Beta")
 
-	fromHub := executeProjectOperation(
-		app,
-		operation.OperationScopeOpenProjectNote,
-		hub.projectHubCommandContext("beta"),
-	)
-	fromOtherHost := executeProjectOperation(app, operation.OperationScopeOpenProjectNote, projectOperationContext("beta"))
-
-	hubMsg, ok := fromHub.Message.(notes.ShowNotesManagerMsg)
-	if !ok || hubMsg.Scope != route.ProjectNotesScope("beta") {
-		t.Fatalf("Project Hub notes emitted %#v, want beta", fromHub.Message)
+	_, cmd := hub.Update(syntheticCtrlKey('n'))
+	if cmd == nil {
+		t.Fatal("Ctrl+N on a project row emitted no notes request")
 	}
+	hubMsg, ok := cmd().(notes.ShowNotesManagerMsg)
+	if !ok || hubMsg.Scope != route.ProjectNotesScope("beta") {
+		t.Fatalf("Project Hub notes emitted %#v, want beta", cmd())
+	}
+
+	fromOtherHost := executeProjectOperation(app, operation.OperationScopeOpenProjectNote, projectOperationContext("beta"))
 	otherHostMsg, ok := fromOtherHost.Message.(notes.ShowNotesManagerMsg)
 	if !ok || otherHostMsg != hubMsg {
 		t.Fatalf("other host notes emitted %#v, want the same project handler path", fromOtherHost.Message)
@@ -58,7 +54,7 @@ func TestProjectOperationsShareOneHandlerAcrossHosts(t *testing.T) {
 func TestProjectOperationsResolveTheProjectFreshAtExecution(t *testing.T) {
 	app := projectHubApp(t)
 	hub := openProjectHub(t, app)
-	focusProjectHubItem(t, hub, "project-hub:project:beta")
+	focusProjectHubRow(t, hub, "Beta")
 
 	// Pin beta after the row was built: the press freezes only the project ID, so
 	// the toggle must read the live project rather than the row's metadata.
@@ -69,7 +65,7 @@ func TestProjectOperationsResolveTheProjectFreshAtExecution(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("* emitted no pin request")
 	}
-	pin, ok := cmd().(ProjectPinRequestMsg)
+	pin, ok := cmd().(projecthub.ProjectPinRequestMsg)
 	if !ok || pin.Project == nil || pin.Project.ID != "beta" {
 		t.Fatalf("* emitted %#v, want a beta pin request", cmd())
 	}
@@ -84,7 +80,7 @@ func TestProjectOperationsRejectArchivedAndImmutableTargets(t *testing.T) {
 	archived.Archived = true
 	addTestAppProject(app, archived)
 
-	catalog := cloneWorkspaceCatalog(app.runtime.Catalog())
+	catalog := coordinator.CloneWorkspaceCatalog(app.runtime.Catalog())
 	catalog.SystemUnfiledProjectID = "alpha"
 	app.runtime.SetCatalogInMemory(catalog)
 
@@ -111,18 +107,15 @@ func TestProjectOperationsRejectArchivedAndImmutableTargets(t *testing.T) {
 	}
 }
 
+// TestOpenProjectNotesRejectsArchivedProject holds the refusal to the handler
+// every host shares, so no route to the operation reaches the Notes manager. The
+// sheet half -- that the Hub never offers the entry in the first place -- is
+// asserted inside internal/tui/projecthub, where the sheet lives.
 func TestOpenProjectNotesRejectsArchivedProject(t *testing.T) {
 	app := projectHubApp(t)
 	archived := scopeTestProject("archived", "Archived", "1")
 	archived.Archived = true
 	addTestAppProject(app, archived)
-
-	hub := openProjectHub(t, app)
-	focusProjectHubItem(t, hub, "project-hub:archived:archived")
-	hub.Update(syntheticKey(' '))
-	if got := projectHubActionIDs(hub); containsOperationID(got, operation.OperationScopeOpenProjectNote) {
-		t.Fatalf("archived project offered Open project notes: %v", got)
-	}
 
 	result := executeProjectOperation(app, operation.OperationScopeOpenProjectNote, projectOperationContext("archived"))
 	if result.Err == nil {
@@ -151,11 +144,11 @@ func TestOpenProjectNotesRejectsArchivedProject(t *testing.T) {
 func TestProjectOperationsRefuseAmbiguousMultiProjectScope(t *testing.T) {
 	ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.ScopeProjectIDs = []string{"alpha", "beta"}
-	if projectOperationApplicable(ctx) {
+	if projecthub.ProjectOperationApplicable(ctx) {
 		t.Fatal("a multi-project scope must not supply a project operation target")
 	}
 	ctx.ScopeProjectIDs = []string{"beta"}
-	if !projectOperationApplicable(ctx) {
+	if !projecthub.ProjectOperationApplicable(ctx) {
 		t.Fatal("a single-project scope names one unambiguous project")
 	}
 }
@@ -166,7 +159,7 @@ func TestProjectArchiveDelegatesToTheShellConfirmation(t *testing.T) {
 	if result.ConfirmationRequired != nil {
 		t.Fatal("project archive raised a second confirmation over the shell prompt")
 	}
-	request, ok := result.Message.(ProjectArchiveRequestMsg)
+	request, ok := result.Message.(projecthub.ProjectArchiveRequestMsg)
 	if !ok || request.Project == nil || request.Project.ID != "beta" || !request.Archive {
 		t.Fatalf("project archive emitted %#v, want a beta archive request", result.Message)
 	}
@@ -180,21 +173,6 @@ func TestProjectArchiveDelegatesToTheShellConfirmation(t *testing.T) {
 	}
 }
 
-// TestProjectHubActiveProjectOffersOnlyArchive holds the Space menu to what the
-// direct grammar cannot reach. Opening, editing, pinning, tagging and notes are
-// all one press away, so a single active row offers archiving alone; the four
-// bulk tag actions need a selection and drop out of a one-row sheet.
-func TestProjectHubActiveProjectOffersOnlyArchive(t *testing.T) {
-	hub := openProjectHub(t, projectHubApp(t))
-	focusProjectHubItem(t, hub, "project-hub:project:beta")
-	hub.Update(syntheticKey(' '))
-
-	got := projectHubActionIDs(hub)
-	if len(got) != 1 || !containsOperationID(got, operation.OperationScopeArchiveProject) {
-		t.Fatalf("active project actions = %v, want archive alone", got)
-	}
-}
-
 func TestProjectHubEnterSharesTheOpenProjectOperation(t *testing.T) {
 	app := projectHubApp(t)
 	archived := scopeTestProject("stale", "Stale", "1")
@@ -202,7 +180,7 @@ func TestProjectHubEnterSharesTheOpenProjectOperation(t *testing.T) {
 	addTestAppProject(app, archived)
 
 	hub := openProjectHub(t, app)
-	focusProjectHubItem(t, hub, "project-hub:project:beta")
+	focusProjectHubRow(t, hub, "Beta")
 
 	_, cmd := hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if cmd == nil {
@@ -213,11 +191,10 @@ func TestProjectHubEnterSharesTheOpenProjectOperation(t *testing.T) {
 		t.Fatalf("Enter emitted %#v, want a beta focus request", cmd())
 	}
 
-	focusProjectHubItem(t, hub, "project-hub:archived:stale")
+	// An archived row raises no scope at all. The notice the Hub shows instead is
+	// its own, and is asserted inside internal/tui/projecthub.
+	focusProjectHubRow(t, hub, "Stale")
 	if _, cmd := hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter}); cmd != nil {
 		t.Fatalf("opening an archived project emitted %#v", cmd())
-	}
-	if hub.notice == "" {
-		t.Fatal("opening an archived project gave no unavailable notice")
 	}
 }

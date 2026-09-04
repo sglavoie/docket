@@ -1,4 +1,4 @@
-package tui
+package projecthub
 
 import (
 	"fmt"
@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -242,15 +243,17 @@ func (m *ProjectEditorModel) focusCurrentField() {
 	}
 }
 
-// projectEditorSave is one editor save resolved down to the values it will
+// ProjectEditorSave is one editor save resolved down to the values it will
 // write. Resolving before anything commits is what lets the shell hold a parking
 // edit behind the shared confirmation and then commit the identical metadata.
-type projectEditorSave struct {
-	project      *models.Project
+type ProjectEditorSave struct {
+	// Project and Name are read by the shell's park confirmation, which names the
+	// project the edit is about to rename.
+	Project      *models.Project
+	Name         string
 	runtime      *config.RuntimeState
 	appService   *app.Service
 	originalName string
-	name         string
 	newSlug      string
 	description  string
 	tags         []string
@@ -266,15 +269,15 @@ func (m *ProjectEditorModel) saveProject() tea.Cmd {
 		// The park confirmation, its cursor anchor, and its recovery status are
 		// shell-owned, so a parking save is handed over whole instead of writing
 		// here and leaving the user to discover the disappearance.
-		return func() tea.Msg { return projectEditorParkRequestMsg{save: save} }
+		return func() tea.Msg { return ProjectEditorParkRequestMsg{Save: save} }
 	}
-	return save.commit
+	return save.Commit
 }
 
 // resolveSave validates every field the save depends on before anything is
 // written, so a parking edit raises the confirmation only once it is certain to
 // commit and a rejected edit never prompts at all.
-func (m *ProjectEditorModel) resolveSave() (*projectEditorSave, error) {
+func (m *ProjectEditorModel) resolveSave() (*ProjectEditorSave, error) {
 	name := strings.TrimSpace(m.nameInput.Value())
 	if name == "" {
 		return nil, fmt.Errorf("project name cannot be empty")
@@ -304,12 +307,12 @@ func (m *ProjectEditorModel) resolveSave() (*projectEditorSave, error) {
 			return nil, fmt.Errorf("project with slug '%s' already exists", newSlug)
 		}
 	}
-	return &projectEditorSave{
-		project:      m.project,
+	return &ProjectEditorSave{
+		Project:      m.project,
+		Name:         name,
 		runtime:      m.runtime,
 		appService:   m.appService,
 		originalName: m.originalName,
-		name:         name,
 		newSlug:      newSlug,
 		description:  strings.TrimSpace(m.descriptionInput.Value()),
 		tags:         tags,
@@ -317,14 +320,16 @@ func (m *ProjectEditorModel) resolveSave() (*projectEditorSave, error) {
 	}, nil
 }
 
-func (s *projectEditorSave) commit() tea.Msg {
-	project := s.project
+// Commit writes the resolved save. The shell calls it directly when a parking
+// edit clears its confirmation.
+func (s *ProjectEditorSave) Commit() tea.Msg {
+	project := s.Project
 	oldSlug := project.Slug
 
 	// Prepare on an isolated copy. Publication to the live project pointer
 	// happens only after the journal and workspace ledger both commit.
 	updated := *project
-	updated.Name = s.name
+	updated.Name = s.Name
 	updated.Slug = s.newSlug
 	updated.Description = s.description
 	updated.Tags = s.tags
@@ -341,14 +346,14 @@ func (s *projectEditorSave) commit() tea.Msg {
 		tasksExpectedRevision = expected
 	}
 
-	catalog := cloneWorkspaceCatalog(s.runtime.Catalog())
+	catalog := coordinator.CloneWorkspaceCatalog(s.runtime.Catalog())
 	if err := catalog.UpsertProject(&updated); err != nil {
 		return status.ErrorMsg{Err: fmt.Errorf("failed to update project catalog: %w", err)}
 	}
 
 	// One artifact set, one transaction: the directory move, the tasks.md
 	// rewrite, and the catalog record either all commit or none of them do.
-	configArts, err := catalogDomainArtifact(s.runtime, catalog)
+	configArts, err := coordinator.CatalogDomainArtifact(s.runtime, catalog)
 	if err != nil {
 		return status.ErrorMsg{Err: fmt.Errorf("failed to encode config: %w", err)}
 	}
@@ -371,7 +376,7 @@ func (s *projectEditorSave) commit() tea.Msg {
 		return status.ErrorMsg{Err: fmt.Errorf("failed to refresh project catalog: %w", err)}
 	}
 
-	copyCatalogMetadata(project, &updated)
+	coordinator.CopyCatalogMetadata(project, &updated)
 	return ProjectUpdatedMsg{Project: project, Parked: s.parks, TransactionID: transactionID}
 }
 
@@ -408,7 +413,7 @@ func (m *ProjectEditorModel) View() tea.View {
 	b.WriteString(chrome.RenderFormLabelShared("Tags:", int(projectEditorFieldTags), int(m.focusIndex)))
 	b.WriteString(m.tagsInput.View())
 	b.WriteString("\n")
-	if explainer := behavioralProjectTagExplainer(
+	if explainer := BehavioralProjectTagExplainer(
 		operation.ValueProviderProjectTags,
 		projectEditorExplainerWidth(m.width),
 	); explainer != "" {

@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/transaction"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 )
 
 // syncProjectCache reconciles catalog-owned metadata from RuntimeState while
@@ -33,7 +34,7 @@ func (m *AppModel) syncProjectCache() {
 		}
 		seen[fresh.ID] = true
 		if cached := m.projects[fresh.ID]; cached != nil {
-			copyCatalogMetadata(cached, fresh)
+			coordinator.CopyCatalogMetadata(cached, fresh)
 			continue
 		}
 		m.projects[fresh.ID] = fresh
@@ -96,24 +97,6 @@ func (m *AppModel) parkedOwnerLabel(project *models.Project) string {
 	return project.Name + scopeChromeSeparator + models.ParkedProjectTag
 }
 
-func copyCatalogMetadata(dst, src *models.Project) {
-	if dst == nil || src == nil {
-		return
-	}
-	dst.Slug = src.Slug
-	dst.Name = src.Name
-	dst.Description = src.Description
-	dst.Path = src.Path
-	dst.CreatedAt = src.CreatedAt
-	dst.UpdatedAt = src.UpdatedAt
-	dst.Archived = src.Archived
-	dst.ArchivedAt = src.ArchivedAt
-	dst.Pinned = src.Pinned
-	dst.PinnedAt = src.PinnedAt
-	dst.ColorSlot = src.ColorSlot
-	dst.Tags = src.Tags
-}
-
 // ensureProjectColorSlots persists legacy catalog backfill once during startup.
 // A failed checked commit leaves the runtime snapshot untouched so startup can
 // continue with the muted fallback and retry on the next catalog mutation.
@@ -121,7 +104,7 @@ func (m *AppModel) ensureProjectColorSlots() error {
 	if m == nil || m.runtime == nil {
 		return nil
 	}
-	catalog := cloneWorkspaceCatalog(m.runtime.Catalog())
+	catalog := coordinator.CloneWorkspaceCatalog(m.runtime.Catalog())
 	if !catalog.EnsureProjectColorSlots() {
 		return nil
 	}
@@ -266,7 +249,7 @@ func (m *AppModel) ensureSystemUnfiledProject() error {
 	machine := cloneMachineState(m.runtime.Machine())
 	artifacts := make([]storage.ArtifactChange, 0, 2)
 	if catalogChanged {
-		catalog := cloneWorkspaceCatalog(m.runtime.Catalog())
+		catalog := coordinator.CloneWorkspaceCatalog(m.runtime.Catalog())
 		if err := catalog.RepairSystemUnfiledProject(project); err != nil {
 			return err
 		}

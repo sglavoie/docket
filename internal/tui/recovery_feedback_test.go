@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/notes"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/taskdetail"
 )
 
@@ -124,7 +125,7 @@ func TestRemainingMutationFamiliesRequireMatchingLedgerTransaction(t *testing.T)
 	}
 	families := []familyCase{
 		{name: "project", fallback: "Updated project", deliver: func(model *AppModel, transactionID string) {
-			model.handleProjectMessages(ProjectUpdatedMsg{TransactionID: transactionID})
+			model.handleProjectMessages(projecthub.ProjectUpdatedMsg{TransactionID: transactionID})
 		}},
 		{name: "note", fallback: "Updated note", deliver: func(model *AppModel, transactionID string) {
 			model.reconcileNoteResult(notes.ProjectNoteMutationResultMsg{Result: app.NoteBatchResult{TransactionID: transactionID}, SuccessMessage: "Updated note"})

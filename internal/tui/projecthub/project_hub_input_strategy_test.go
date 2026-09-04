@@ -1,4 +1,4 @@
-package tui
+package projecthub
 
 import (
 	"testing"
@@ -10,7 +10,7 @@ import (
 // to the one-path rule the startup gate enforces: the six operations the browse
 // grammar reaches on press one are absent from the Space menu.
 func TestProjectHubOperationsCannotAppearInBothDirectGrammarAndMenu(t *testing.T) {
-	if err := operation.ValidateOperationOnePath(projectOperationManifest(), ProjectHubInputStrategy()); err != nil {
+	if err := operation.ValidateOperationOnePath(ProjectOperationManifest(), ProjectHubInputStrategy()); err != nil {
 		t.Fatalf("ValidateOperationOnePath() = %v, want nil", err)
 	}
 }

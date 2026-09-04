@@ -1,10 +1,9 @@
 package tui
 
 import (
-	"slices"
-
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 )
 
 // This file holds the shell-level helpers that commit one owning configuration
@@ -41,7 +40,7 @@ func (m *AppModel) commitCatalogProjectMutation(
 	if m.runtime == nil {
 		return "", nil
 	}
-	catalog := cloneWorkspaceCatalog(m.runtime.Catalog())
+	catalog := coordinator.CloneWorkspaceCatalog(m.runtime.Catalog())
 	if err := mutate(catalog); err != nil {
 		return "", err
 	}
@@ -50,7 +49,7 @@ func (m *AppModel) commitCatalogProjectMutation(
 		m.syncProjectCache()
 		return "", nil
 	}
-	artifacts, err := catalogDomainArtifact(m.runtime, catalog)
+	artifacts, err := coordinator.CatalogDomainArtifact(m.runtime, catalog)
 	if err != nil {
 		return "", err
 	}
@@ -77,23 +76,12 @@ func (m *AppModel) commitCatalogProjectMutation(
 // catalog-owned writes off it. A nil or non-writable runtime applies the
 // mutation in memory so runtime.Catalog() observes it; the caller's in-memory
 // shell state remains authoritative.
-// cloneWorkspaceCatalog returns a defensive copy of a catalog snapshot whose
-// project slice is freshly allocated, so a mutation applied before a checked
-// commit can never alias and corrupt the cached RuntimeState snapshot. A
-// CatalogProject's Tags slice is still shared, so a tag edit must replace the
-// whole slice rather than write through it.
-func cloneWorkspaceCatalog(c *config.WorkspaceCatalog) *config.WorkspaceCatalog {
-	cp := *c
-	cp.Projects = slices.Clone(c.Projects)
-	return &cp
-}
-
 func cloneRuntimeDomains(runtime *config.RuntimeState) *config.Domains {
 	if runtime == nil {
 		return nil
 	}
 	return &config.Domains{
-		Catalog:  cloneWorkspaceCatalog(runtime.Catalog()),
+		Catalog:  coordinator.CloneWorkspaceCatalog(runtime.Catalog()),
 		Planning: clonePlanningState(runtime.Planning()),
 		Machine:  cloneMachineState(runtime.Machine()),
 	}

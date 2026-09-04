@@ -5,38 +5,26 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/sglavoie/tt/internal/tui/listsurface"
-	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
+// The browse grammar itself moved to internal/tui/projecthub with the surface.
+// What stays here is every assertion that names the shell: the Esc rung that
+// closes the Hub, the scope a selection applies, and the production operation
+// system a mounted Hub dispatches through.
+
+// TestProjectHubEscKeepsFilterThenCloses holds the two Esc rungs apart. The Hub
+// answers the first one itself by leaving search; only the second reaches the
+// shell, and it closes the surface with the filter still standing.
 func TestProjectHubEscKeepsFilterThenCloses(t *testing.T) {
 	app := projectHubApp(t)
 	hub := openProjectHub(t, app)
-	if hub.HasActiveSearch() || hub.HasTextInput() || hub.ShouldCaptureEsc() {
-		t.Fatalf(
-			"the Hub opened searching: active=%v input=%v capture=%v",
-			hub.HasActiveSearch(),
-			hub.HasTextInput(),
-			hub.ShouldCaptureEsc(),
-		)
-	}
 	hub.Update(syntheticKey('/'))
-	if !hub.HasActiveSearch() || !hub.HasTextInput() || !hub.ShouldCaptureEsc() {
-		t.Fatalf(
-			"'/' did not open search: active=%v input=%v capture=%v",
-			hub.HasActiveSearch(),
-			hub.HasTextInput(),
-			hub.ShouldCaptureEsc(),
-		)
-	}
 	for _, r := range "bet" {
 		hub.Update(syntheticKey(r))
-	}
-	if hub.SearchQuery() != "bet" || len(hub.surface.Matches()) != 1 {
-		t.Fatalf("query=%q matches=%d, want beta only", hub.SearchQuery(), len(hub.surface.Matches()))
 	}
 
 	hub.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
@@ -45,9 +33,6 @@ func TestProjectHubEscKeepsFilterThenCloses(t *testing.T) {
 	}
 	if app.CurrentRoute().ID() != route.SecondaryTool || app.currentView() != presentation.ViewProjectHub {
 		t.Fatalf("first Esc closed Project Hub: %s/%s", app.CurrentRoute().ID(), app.currentView())
-	}
-	if len(hub.surface.Matches()) != 1 {
-		t.Fatalf("Esc left %d matches, want the filter intact", len(hub.surface.Matches()))
 	}
 
 	handled, _ := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: tea.KeyEscape})
@@ -78,51 +63,6 @@ func TestProjectHubSearchEnterSelectsImmediately(t *testing.T) {
 			app.crossOutliner.scopedProjectID,
 			app.CurrentRoute().ID(),
 		)
-	}
-}
-
-func TestProjectHubSearchNavigationSelectsHighlightedProject(t *testing.T) {
-	app := projectHubApp(t)
-	hub := openProjectHub(t, app)
-	hub.Update(syntheticKey('/'))
-	hub.Update(syntheticKey('a'))
-
-	assertCurrent := func(want listsurface.ListItemID) {
-		t.Helper()
-		current, ok := hub.surface.CurrentItem()
-		if !ok || current.ID != want {
-			t.Fatalf("current project = %q (present=%v), want %q", current.ID, ok, want)
-		}
-		if query := hub.SearchQuery(); query != "a" {
-			t.Fatalf("search navigation changed query to %q, want %q", query, "a")
-		}
-		if !hub.HasActiveSearch() {
-			t.Fatal("search navigation deactivated search")
-		}
-	}
-
-	assertCurrent("project-hub:project:alpha")
-	hub.Update(syntheticCtrlKey('j'))
-	assertCurrent("project-hub:project:beta")
-	hub.Update(syntheticCtrlKey('k'))
-	assertCurrent("project-hub:project:alpha")
-	hub.Update(syntheticSpecialKey(tea.KeyDown))
-	assertCurrent("project-hub:project:beta")
-	hub.Update(syntheticSpecialKey(tea.KeyUp))
-	assertCurrent("project-hub:project:alpha")
-	hub.Update(syntheticSpecialKey(tea.KeyDown))
-
-	_, cmd := hub.Update(syntheticSpecialKey(tea.KeyEnter))
-	if cmd == nil {
-		t.Fatal("Enter after search navigation emitted no selection")
-	}
-	selected, ok := cmd().(ApplyProjectScopeMsg)
-	if !ok || selected.ProjectID != "beta" {
-		t.Fatalf("Enter after search navigation emitted %#v, want beta", cmd())
-	}
-	spec, ok := hub.ContextualGuidance()
-	if help := guidanceEntryText(spec); !ok || !strings.Contains(help, "↑/↓ or Ctrl+J/K navigate") {
-		t.Fatalf("search guidance does not advertise navigation: %q", help)
 	}
 }
 
@@ -182,20 +122,28 @@ func TestProjectHubSearchPlainURemainsQueryInput(t *testing.T) {
 	}
 }
 
-func TestProjectHubArchivedEnterKeepsHubOpenWithNotice(t *testing.T) {
+// TestProjectHubTaskFilterReachesTheHubFromTheShell holds Ctrl+T to the surface
+// it was pressed on. The key belongs to the Hub, so no shell handler may claim it
+// while the Hub is mounted: the press has to arrive there, and the subtitle then
+// names the narrowing the list is under. Which projects that narrowing keeps is
+// asserted inside internal/tui/projecthub.
+func TestProjectHubTaskFilterReachesTheHubFromTheShell(t *testing.T) {
 	app := projectHubApp(t)
-	archived := scopeTestProject("archived", "Archived", "1")
-	archived.Archived = true
-	addTestAppProject(app, archived)
 	hub := openProjectHub(t, app)
-	focusProjectHubItem(t, hub, "project-hub:archived:archived")
-
-	_, cmd := hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	if cmd != nil {
-		t.Fatalf("archived Enter emitted %#v", cmd())
+	if got := projectHubSubtitleLine(hub); strings.Contains(got, "with open tasks") {
+		t.Fatalf("the Project Hub opened already under a task filter: %q", got)
 	}
-	if !strings.Contains(hub.notice, "unarchived") || app.currentView() != presentation.ViewProjectHub {
-		t.Fatalf("archived Enter notice=%q view=%s", hub.notice, app.currentView())
+
+	// No shell handler may claim the key, or the Hub would never see it.
+	if handled, cmd := app.handleGlobalKeyPress(syntheticCtrlKey('t')); handled || cmd != nil {
+		t.Fatalf("a shell handler claimed Ctrl+T over the mounted Hub: handled=%v cmd=%v", handled, cmd)
+	}
+	app.delegateToCurrentView(syntheticCtrlKey('t'))
+	if app.CurrentRoute().ID() != route.SecondaryTool || app.currentView() != presentation.ViewProjectHub {
+		t.Fatalf("Ctrl+T left the Project Hub: %s/%s", app.CurrentRoute().ID(), app.currentView())
+	}
+	if got := projectHubSubtitleLine(hub); !strings.Contains(got, "with open tasks") {
+		t.Fatalf("Ctrl+T did not reach the Hub's task filter: %q", got)
 	}
 }
 
@@ -206,40 +154,8 @@ func TestProjectHubBrowseACreatesProject(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("browse a emitted no project creation request")
 	}
-	if _, ok := cmd().(CreateProjectMsg); !ok {
+	if _, ok := cmd().(projecthub.CreateProjectMsg); !ok {
 		t.Fatalf("browse a emitted %T, want CreateProjectMsg", cmd())
-	}
-}
-
-// TestProjectHubRetiredKeysAreSilent pins the keys the browse grammar dropped.
-// n created a project, A cleared the selection, and a bare g jumped to the top;
-// each now belongs to another surface or to nothing, so a press must leave the
-// Hub untouched rather than act or complain.
-func TestProjectHubRetiredKeysAreSilent(t *testing.T) {
-	hub := openProjectHub(t, projectHubApp(t))
-	focusProjectHubItem(t, hub, "project-hub:project:beta")
-
-	for _, retired := range []rune{'n', 'A'} {
-		_, cmd := hub.Update(syntheticKey(retired))
-		if cmd != nil {
-			t.Fatalf("retired key %q emitted %#v", string(retired), cmd())
-		}
-		if hub.notice != "" {
-			t.Fatalf("retired key %q raised notice %q", string(retired), hub.notice)
-		}
-		if hub.selectionCount() != 0 {
-			t.Fatalf("retired key %q changed the selection", string(retired))
-		}
-	}
-
-	hub.Update(syntheticKey('g'))
-	current, ok := hub.surface.CurrentItem()
-	if !ok || current.ID != "project-hub:project:beta" {
-		t.Fatalf("a lone g moved the cursor to %q", current.ID)
-	}
-	hub.Update(syntheticKey('g'))
-	if current, _ = hub.surface.CurrentItem(); current.ID != "project-hub:project:alpha" {
-		t.Fatalf("gg landed on %q, want the first project", current.ID)
 	}
 }
 
@@ -268,40 +184,15 @@ func TestProjectHubReopensInBrowseWithoutTheOldQuery(t *testing.T) {
 	}
 }
 
-func TestProjectHubStaleProjectActionUsesProductionExecutorError(t *testing.T) {
-	app := projectHubApp(t)
-	hub := openProjectHub(t, app)
-	if hub.registry != app.operationRegistry || hub.executor != app.operationExecutor {
-		t.Fatal("Project Hub did not receive the production operation system")
-	}
-
-	focusProjectHubItem(t, hub, "project-hub:project:beta")
-	hub.Update(syntheticKey(' '))
-	if hub.actions == nil {
-		t.Fatal("Space did not freeze the project action target")
-	}
-	if !hub.actions.Surface.SetCursorToID(listsurface.ListItemID("project-hub-action:" + string(operation.OperationScopeArchiveProject))) {
-		t.Fatal("archive action was not selectable")
-	}
-
-	alpha := app.projectByID("alpha")
-	setTestAppProjects(app, alpha)
-	_, cmd := hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	if cmd != nil {
-		t.Fatalf("stale project action still emitted %#v", cmd())
-	}
-	if hub.notice != "project beta is no longer available" {
-		t.Fatalf("stale project action notice = %q, want production executor error", hub.notice)
-	}
-}
-
-// TestProjectHubStaleDirectKeyUsesProductionExecutorError proves the direct
-// grammar reaches the same executor as the menu: a key pressed on a row whose
-// project has since left the workspace refuses with the executor's own sentence.
+// TestProjectHubStaleDirectKeyUsesProductionExecutorError is what proves a
+// mounted Hub dispatches through the shell's own registry and executor rather
+// than one of its own: a key pressed on a row whose project has since left the
+// workspace refuses with the production executor's sentence, which no Hub-local
+// wiring would produce.
 func TestProjectHubStaleDirectKeyUsesProductionExecutorError(t *testing.T) {
 	app := projectHubApp(t)
 	hub := openProjectHub(t, app)
-	focusProjectHubItem(t, hub, "project-hub:project:beta")
+	focusProjectHubRow(t, hub, "Beta")
 
 	setTestAppProjects(app, app.projectByID("alpha"))
 	_, cmd := hub.Update(syntheticKey('e'))

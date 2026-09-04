@@ -4,9 +4,10 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 )
 
-// A section header names a lane, not a project. projectOperationApplicable ends
+// A section header names a lane, not a project. ProjectOperationApplicable ends
 // in a scope fallback, so in a single-project scope that row would otherwise
 // hand a project key the sole scoped project it never named — `*` silently
 // pinning it, `#` silently opening its tag picker. These cases pin the gate that
@@ -32,7 +33,7 @@ func TestProjectOperationsRefuseASectionHeaderCursor(t *testing.T) {
 			HasSectionHeaderCursor: true,
 		}),
 	} {
-		if projectOperationApplicable(ctx) {
+		if projecthub.ProjectOperationApplicable(ctx) {
 			t.Errorf("%s: a section header cursor admits a project operation", name)
 		}
 	}
@@ -40,7 +41,7 @@ func TestProjectOperationsRefuseASectionHeaderCursor(t *testing.T) {
 	// The positive control: the same single-project scope on a project header,
 	// which is the row that does name a project.
 	header := scoped(operation.EntityContext{ProjectID: "only-project", HasProjectHeaderCursor: true})
-	if !projectOperationApplicable(header) {
+	if !projecthub.ProjectOperationApplicable(header) {
 		t.Error("a project header cursor no longer admits a project operation")
 	}
 }

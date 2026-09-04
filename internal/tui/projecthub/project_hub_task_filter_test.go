@@ -1,28 +1,34 @@
-package tui
+package projecthub
 
 import (
-	"os"
 	"strings"
 	"testing"
 
-	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 )
 
+// newTaskFilterFixture catalogs a project the count pass read as empty beside
+// two holding open tasks, so one Ctrl+T press has something to hide. The empty
+// project's name shares the "bet" prefix with Beta, so one query can match a
+// counted and an empty row.
+func newTaskFilterFixture(t *testing.T) *projectHubFixture {
+	t.Helper()
+	return newProjectHubFixture(t,
+		scopeTestProject("alpha", "Alpha", "1", "2"),
+		scopeTestProject("beta", "Beta", "1"),
+		scopeTestProject("empty", "Beta Empty"),
+	)
+}
+
 func TestProjectHubTaskFilterCyclesThreeStates(t *testing.T) {
-	app := projectHubFilterApp(t)
-	hub := openProjectHub(t, app)
+	hub := newTaskFilterFixture(t).open()
 	if !projectHubHasItem(hub, "project-hub:project:empty") {
 		t.Fatal("fixture omitted the empty project before filtering")
 	}
 
-	// Routed as the shell routes it: nothing above the Hub may claim the key, so
-	// the global pass declines it and delegation lands it on the Hub.
-	if handled, _ := app.handleGlobalKeyPress(syntheticCtrlKey('t')); handled {
-		t.Fatal("a shell handler claimed Ctrl+T before the Project Hub")
-	}
-	app.delegateToCurrentView(syntheticCtrlKey('t'))
+	// Routed as the Hub routes it: the press resolves through the Hub's own
+	// strategy, so the registered task-filter operation is what runs.
+	hub.Update(syntheticCtrlKey('t'))
 	if hub.taskFilter != projectHubTaskFilterWithOpenTasks {
 		t.Fatalf("first Ctrl+T left filter=%v, want with open tasks", hub.taskFilter)
 	}
@@ -56,23 +62,21 @@ func TestProjectHubTaskFilterCyclesThreeStates(t *testing.T) {
 }
 
 func TestProjectHubTaskFilterKeepsParkedAndArchivedProjectsWithOpenTasks(t *testing.T) {
-	app := projectHubDiskApp(t)
-	parked := projectHubDiskProject(app, "parked", "Parked")
+	fixture := newProjectHubFixture(t,
+		scopeTestProject("alpha", "Alpha", "1", "2"),
+		scopeTestProject("beta", "Beta", "1"),
+	)
+	parked := scopeTestProject("parked", "Parked", "1", "2", "3")
 	parked.Tags = []string{"parked"}
-	writeProjectHubTasks(t, parked, 3)
-	addTestAppProject(app, parked)
-	archived := projectHubDiskProject(app, "archived", "Archived")
+	fixture.add(parked)
+	archived := scopeTestProject("archived", "Archived", "1", "2")
 	archived.Archived = true
-	writeProjectHubTasks(t, archived, 2)
-	addTestAppProject(app, archived)
-	stale := projectHubDiskProject(app, "stale", "Stale")
+	fixture.add(archived)
+	stale := scopeTestProject("stale", "Stale")
 	stale.Archived = true
-	if err := os.MkdirAll(stale.Path, 0o755); err != nil {
-		t.Fatalf("MkdirAll(%q): %v", stale.Path, err)
-	}
-	addTestAppProject(app, stale)
+	fixture.add(stale)
 
-	hub := openProjectHub(t, app)
+	hub := fixture.open()
 	hub.Update(syntheticCtrlKey('t'))
 	if !projectHubHasItem(hub, "project-hub:project:parked") {
 		t.Error("filter hid a parked project holding open tasks")
@@ -94,23 +98,16 @@ func TestProjectHubTaskFilterKeepsParkedAndArchivedProjectsWithOpenTasks(t *test
 }
 
 func TestProjectHubTaskFilterKeepsUnknownCounts(t *testing.T) {
-	app := projectHubDiskApp(t)
-	corrupt := projectHubDiskProject(app, "corrupt", "Corrupt")
-	if err := os.MkdirAll(corrupt.Path, 0o755); err != nil {
-		t.Fatalf("MkdirAll(%q): %v", corrupt.Path, err)
-	}
-	tasksPath := storage.TasksFilePath(corrupt.Path)
-	if err := os.WriteFile(tasksPath, []byte("this is not a task document\n"), 0o600); err != nil {
-		t.Fatalf("WriteFile(%q): %v", tasksPath, err)
-	}
-	addTestAppProject(app, corrupt)
-	empty := projectHubDiskProject(app, "empty", "Empty")
-	if err := os.MkdirAll(empty.Path, 0o755); err != nil {
-		t.Fatalf("MkdirAll(%q): %v", empty.Path, err)
-	}
-	addTestAppProject(app, empty)
+	fixture := newProjectHubFixture(t,
+		scopeTestProject("alpha", "Alpha", "1", "2"),
+		scopeTestProject("beta", "Beta", "1"),
+	)
+	// A project whose tasks.md failed to parse never reaches the counts map, so
+	// the Hub knows neither that it holds work nor that it holds none.
+	fixture.addUncounted(scopeTestProject("corrupt", "Corrupt"))
+	fixture.add(scopeTestProject("empty", "Empty"))
 
-	hub := openProjectHub(t, app)
+	hub := fixture.open()
 	hub.Update(syntheticCtrlKey('t'))
 	if !projectHubHasItem(hub, "project-hub:project:corrupt") {
 		t.Error("the with-tasks filter hid a project whose count could not be read")
@@ -129,7 +126,7 @@ func TestProjectHubTaskFilterKeepsUnknownCounts(t *testing.T) {
 }
 
 func TestProjectHubTaskFilterTogglesUnderActiveSearch(t *testing.T) {
-	hub := openProjectHub(t, projectHubFilterApp(t))
+	hub := newTaskFilterFixture(t).open()
 	hub.Update(syntheticKey('/'))
 	for _, r := range "bet" {
 		hub.Update(syntheticKey(r))
@@ -160,7 +157,7 @@ func TestProjectHubTaskFilterTogglesUnderActiveSearch(t *testing.T) {
 }
 
 func TestProjectHubTaskFilterIgnoredUnderActionSheet(t *testing.T) {
-	hub := openProjectHub(t, projectHubFilterApp(t))
+	hub := newTaskFilterFixture(t).open()
 	focusProjectHubItem(t, hub, "project-hub:project:empty")
 	hub.Update(syntheticKey(' '))
 	if hub.actions == nil {
@@ -180,7 +177,7 @@ func TestProjectHubTaskFilterIgnoredUnderActionSheet(t *testing.T) {
 }
 
 func TestProjectHubTaskFilterDropsHiddenProjectsFromSelection(t *testing.T) {
-	hub := openProjectHub(t, projectHubFilterApp(t))
+	hub := newTaskFilterFixture(t).open()
 	focusProjectHubItem(t, hub, "project-hub:project:beta")
 	hub.Update(syntheticKey('v'))
 	focusProjectHubItem(t, hub, "project-hub:project:empty")
@@ -206,12 +203,10 @@ func TestProjectHubTaskFilterDropsHiddenProjectsFromSelection(t *testing.T) {
 }
 
 func TestProjectHubTaskFilterEmptyCopyNamesTheToggle(t *testing.T) {
-	app := projectHubApp(t)
-	app.crossOutliner.loadedProjects = []*models.Project{
+	hub := newProjectHubFixture(t,
 		scopeTestProject("alpha", "Alpha"),
 		scopeTestProject("beta", "Beta"),
-	}
-	hub := openProjectHub(t, app)
+	).open()
 
 	hub.Update(syntheticCtrlKey('t'))
 	if got := hub.surface.Items(); len(got) != 0 {
@@ -233,7 +228,10 @@ func TestProjectHubTaskFilterEmptyCopyNamesTheToggle(t *testing.T) {
 }
 
 func TestProjectHubTaskFilterEmptyCopyNamesTheFullList(t *testing.T) {
-	hub := openProjectHub(t, projectHubApp(t))
+	hub := newProjectHubFixture(t,
+		scopeTestProject("alpha", "Alpha", "1", "2"),
+		scopeTestProject("beta", "Beta", "1"),
+	).open()
 	hub.Update(syntheticCtrlKey('t'))
 	hub.Update(syntheticCtrlKey('t'))
 	if got := hub.surface.Items(); len(got) != 0 {
@@ -250,14 +248,14 @@ func TestProjectHubTaskFilterEmptyCopyNamesTheFullList(t *testing.T) {
 }
 
 func TestProjectHubReopenClearsTaskFilter(t *testing.T) {
-	app := projectHubFilterApp(t)
-	hub := openProjectHub(t, app)
+	fixture := newTaskFilterFixture(t)
+	hub := fixture.open()
 	hub.Update(syntheticCtrlKey('t'))
 	if projectHubHasItem(hub, "project-hub:project:empty") {
 		t.Fatal("filter did not hide the empty project")
 	}
 
-	reopened := openProjectHub(t, app)
+	reopened := fixture.open()
 	if reopened == hub {
 		t.Fatal("reopening the Hub reused the filtered model")
 	}
@@ -267,7 +265,7 @@ func TestProjectHubReopenClearsTaskFilter(t *testing.T) {
 }
 
 func TestProjectHubSubtitleNamesTheTaskFilter(t *testing.T) {
-	hub := openProjectHub(t, projectHubFilterApp(t))
+	hub := newTaskFilterFixture(t).open()
 
 	counts := hub.subtitle()
 	if strings.Contains(counts, "with open tasks") {
@@ -300,12 +298,10 @@ func TestProjectHubSubtitleNamesTheTaskFilter(t *testing.T) {
 }
 
 func TestProjectHubTaskFilterHintSurvivesTheEmptiedList(t *testing.T) {
-	app := projectHubApp(t)
-	app.crossOutliner.loadedProjects = []*models.Project{
+	hub := newProjectHubFixture(t,
 		scopeTestProject("alpha", "Alpha"),
 		scopeTestProject("beta", "Beta"),
-	}
-	hub := openProjectHub(t, app)
+	).open()
 
 	spec, ok := hub.ContextualGuidance()
 	if help := guidanceEntryText(spec); !ok || !strings.Contains(help, "Ctrl+T with open tasks") {

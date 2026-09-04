@@ -1,6 +1,9 @@
 package tui
 
-import tea "charm.land/bubbletea/v2"
+import (
+	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
+)
 
 // handleConfirmDialog processes key input while a confirmation dialog is active.
 //
@@ -14,8 +17,8 @@ func (m *OutlinerModel) handleConfirmDialog(key string) (tea.Model, tea.Cmd) {
 	if confirmed, handled := m.HandleConfirmKey(key); handled {
 		if confirmed {
 			switch action {
-			case projectArchiveConfirmAction:
-				return m, func() tea.Msg { return projectArchiveConfirmedMsg{} }
+			case projecthub.ProjectArchiveConfirmAction:
+				return m, func() tea.Msg { return projecthub.ProjectArchiveConfirmedMsg{} }
 			}
 		}
 		return m, nil

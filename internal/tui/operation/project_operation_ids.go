@@ -7,6 +7,10 @@ package operation
 // the registry that owns the type while the Hub catalog and the Outliner sheet
 // that register them stay above it.
 const (
+	// OperationScopeCreateProject is the Hub's `a`. It predates the dedicated
+	// Project Hub and keeps its identity for the same reason its siblings do.
+	OperationScopeCreateProject OperationID = "tui.scope.create-project"
+
 	OperationScopeRenameProject   OperationID = "tui.scope.rename-project"
 	OperationScopePinProject      OperationID = "tui.scope.pin-project"
 	OperationScopeArchiveProject  OperationID = "tui.scope.archive-project"

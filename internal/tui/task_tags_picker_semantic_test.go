@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -231,7 +232,7 @@ func tagPickerRowColor(t *testing.T, item listsurface.ListItem) (lipgloss.Style,
 		if !ok {
 			t.Fatalf("behavioral row %q names no registry entry", item.ID)
 		}
-		return behavioralProjectTagBadgeStyle(info.BadgeRole), true
+		return projecthub.BehavioralProjectTagBadgeStyle(info.BadgeRole), true
 	case taskContextCategory, tagDescriptiveCategory:
 		// Both hold tag rows: CONTEXTS merely recategorizes a tag also carried as
 		// a context, and that row still toggles the tag.

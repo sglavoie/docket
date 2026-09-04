@@ -1,4 +1,4 @@
-package tui
+package projecthub
 
 import (
 	"fmt"
@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/textfit"
@@ -136,11 +137,11 @@ func (m *ProjectCreatorModel) createProject() tea.Cmd {
 			return status.ErrorMsg{Err: fmt.Errorf("failed to create data directory: %w", ensureErr)}
 		}
 
-		catalog := cloneWorkspaceCatalog(runtime.Catalog())
+		catalog := coordinator.CloneWorkspaceCatalog(runtime.Catalog())
 		if upsertErr := catalog.UpsertProject(project); upsertErr != nil {
 			return status.ErrorMsg{Err: fmt.Errorf("failed to update project catalog: %w", upsertErr)}
 		}
-		catalogArtifacts, err := catalogDomainArtifact(runtime, catalog)
+		catalogArtifacts, err := coordinator.CatalogDomainArtifact(runtime, catalog)
 		if err != nil {
 			return status.ErrorMsg{Err: fmt.Errorf("failed to encode project catalog: %w", err)}
 		}

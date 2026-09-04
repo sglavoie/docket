@@ -1,4 +1,4 @@
-package tui
+package projecthub
 
 import (
 	"fmt"
@@ -123,7 +123,7 @@ func (m *ProjectHubModel) projectHubItems() []listsurface.ListItem {
 			CategoryID:    projectHubCategoryArchived,
 			PrimaryText:   project.Name,
 			PrimaryMarker: projectPinnedMarker(project),
-			SecondaryText: strings.TrimSuffix("archived · "+projectTagChips(project.Tags), " · "),
+			SecondaryText: strings.TrimSuffix("archived · "+ProjectTagChips(project.Tags), " · "),
 			Aliases:       projectHubAliases(project, "archived project"),
 			Preview:       m.projectPreview(project, true),
 			OperationIDs: []operation.OperationID{
@@ -179,17 +179,17 @@ func (m *ProjectHubModel) projectPreview(project *models.Project, archived bool)
 // base task workspace is not loaded, and its rehydrated catalog record counts
 // zero tasks; reporting that zero would read as "empty" rather than "not
 // counted", so an unloaded project is never given a number.
-func (m *ProjectHubModel) projectTally(project *models.Project) (projectTaskTally, bool) {
+func (m *ProjectHubModel) projectTally(project *models.Project) (ProjectTaskTally, bool) {
 	if project == nil {
-		return projectTaskTally{}, false
+		return ProjectTaskTally{}, false
 	}
 	if tally, ok := m.taskCounts[project.ID]; ok {
 		return tally, true
 	}
 	if !project.IsLoaded() {
-		return projectTaskTally{}, false
+		return ProjectTaskTally{}, false
 	}
-	return projectTaskTallyOf(project), true
+	return ProjectTaskTallyOf(project), true
 }
 
 // projectSecondary carries the task tally and the project's own tag chips. Both
@@ -202,7 +202,7 @@ func (m *ProjectHubModel) projectTally(project *models.Project) (projectTaskTall
 // alongside every other active one.
 func (m *ProjectHubModel) projectSecondary(project *models.Project) string {
 	secondary := m.projectTaskPhrase(project)
-	if chips := projectTagChips(project.Tags); chips != "" {
+	if chips := ProjectTagChips(project.Tags); chips != "" {
 		secondary += " · " + chips
 	}
 	return secondary
@@ -222,7 +222,7 @@ func (m *ProjectHubModel) projectTaskPhrase(project *models.Project) string {
 	}
 }
 
-func projectTagChips(tags []string) string {
+func ProjectTagChips(tags []string) string {
 	if len(tags) == 0 {
 		return ""
 	}

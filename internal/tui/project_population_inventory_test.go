@@ -47,14 +47,15 @@ var projectPopulationInventory = map[string]string{
 	"internal/tui/handler_helpers.go:availableProjects":                "planning prune must not drop references owned by a parked project",
 	"internal/tui/handler_task_content.go:availableProjects":           "external-editor %project resolution matches inline edit",
 	"internal/tui/handler_view_notes.go:availableProjects":             "Notes owner refresh when reopening the manager",
-	"internal/tui/manage_hub.go:AvailableProjects":                     "Notes owners and project-note command scope",
+	"internal/tui/projecthub/manage_hub.go:AvailableProjects":          "Notes owners and project-note command scope",
 	"internal/tui/note_search_index.go:availableProjects":              "the Outliner note search index covers the same owners the Notes manager does, so a parked project's notes stay searchable",
 	"internal/tui/outline_editor.go:availableProjects":                 "outline ~task resolution matches inline edit, so a dependency on a parked project's task still round-trips",
 	"internal/tui/operation_target_context.go:taskWorkspaceProjects":   "operation command scope IDs follow the context scope",
 	"internal/tui/operation_value_picker_factory.go:AvailableProjects": "Move to Project destinations match %project, so a parked project stays reachable",
 	"internal/tui/outliner_scope.go:TaskWorkspaceProjects":             "a focus needs the parked exception only while the task projection excludes it",
-	"internal/tui/project_hub_surface.go:AvailableProjects":            "project administration rows",
-	"internal/tui/project_hub_view.go:AvailableProjects":               "project-level search subtitle counts",
+	"internal/tui/project_hub_shell.go:AvailableProjects":              "per-project task tallies must cover every project the Hub can list, parked ones included",
+	"internal/tui/projecthub/project_hub_surface.go:AvailableProjects": "project administration rows",
+	"internal/tui/projecthub/project_hub_view.go:AvailableProjects":    "project-level search subtitle counts",
 }
 
 // retiredProjectPopulationNames are accessor names collapsed into the named

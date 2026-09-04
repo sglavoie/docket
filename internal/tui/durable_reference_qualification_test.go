@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 )
 
 func TestTUIProjectArchiveCleanupPreservesDuplicateIDReferencesInOtherProject(t *testing.T) {
@@ -27,7 +28,7 @@ func TestTUIProjectArchiveCleanupPreservesDuplicateIDReferencesInOtherProject(t 
 	m := newTestAppModel()
 	m.runtime = config.NewRuntimeState("", domains)
 	setTestAppProjects(m, alpha, beta)
-	m.handleProjectMessages(ProjectArchivedMsg{Project: beta})
+	m.handleProjectMessages(projecthub.ProjectArchivedMsg{Project: beta})
 	if m.err != nil {
 		t.Fatalf("project archive cleanup: %v", m.err)
 	}

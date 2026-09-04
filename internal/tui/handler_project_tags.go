@@ -7,6 +7,8 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -30,7 +32,7 @@ func (m *AppModel) requestProjectTags(project *models.Project, tags []string) te
 	}
 	m.pendingProjectTags = project
 	m.pendingProjectTagsSet = normalized
-	m.projectParkConfirm.Show(projectParkConfirmAction, projectParkPrompt(project.Name, project))
+	m.projectParkConfirm.Show(projecthub.ProjectParkConfirmAction, projectParkPrompt(project.Name, project))
 	return nil
 }
 
@@ -38,15 +40,15 @@ func (m *AppModel) requestProjectTags(project *models.Project, tags []string) te
 // impact confirmation the tag picker raises. The editor resolved the edit but
 // wrote nothing, so a canceled prompt leaves every field of the project as it
 // was rather than committing the rename and description alone.
-func (m *AppModel) requestProjectEditorPark(save *projectEditorSave) tea.Cmd {
-	if save == nil || save.project == nil {
+func (m *AppModel) requestProjectEditorPark(save *projecthub.ProjectEditorSave) tea.Cmd {
+	if save == nil || save.Project == nil {
 		return nil
 	}
-	if m.runtime.IsSystemUnfiledProject(save.project.ID) {
+	if m.runtime.IsSystemUnfiledProject(save.Project.ID) {
 		return status.ErrorCmd("cannot park the system Unfiled project")
 	}
 	m.pendingProjectEditorSave = save
-	m.projectParkConfirm.Show(projectParkConfirmAction, projectParkPrompt(save.name, save.project))
+	m.projectParkConfirm.Show(projecthub.ProjectParkConfirmAction, projectParkPrompt(save.Name, save.Project))
 	return nil
 }
 
@@ -92,7 +94,7 @@ func (m *AppModel) commitProjectTags(project *models.Project, tags []string) tea
 	if parking {
 		m.anchorOutlinerCursorAfterProjectPark(updated.ID)
 	}
-	copyCatalogMetadata(project, &updated)
+	coordinator.CopyCatalogMetadata(project, &updated)
 	m.rebuildPlanningFromRuntime()
 	feedbackCmd := m.setRecoveryFeedback(projectTagStatus(&updated, parking, unparking), transactionID, false)
 	if parking {

@@ -19,6 +19,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskdetail"
@@ -94,7 +95,7 @@ type harnessOperationSpec struct {
 // links never appear in help, footers, or available-command output.
 func (m *AppModel) registerHarnessOperations() error {
 	specs := []harnessOperationSpec{
-		{operationHarnessNewProject, "new project", operation.OperationCategoryProject, func() tea.Msg { return CreateProjectMsg{} }},
+		{operationHarnessNewProject, "new project", operation.OperationCategoryProject, func() tea.Msg { return projecthub.CreateProjectMsg{} }},
 		{operationHarnessOutliner, "outliner", operation.OperationCategoryNavigation, func() tea.Msg { return m.harnessOpenOutliner(OutlinerOpenOptions{}) }},
 		{operationHarnessOutlinerRoot, "outliner root", operation.OperationCategoryNavigation, func() tea.Msg { return m.harnessOpenOutliner(OutlinerOpenOptions{}) }},
 		{operationHarnessReference, "reference", operation.OperationCategorySystem, func() tea.Msg {
@@ -103,7 +104,7 @@ func (m *AppModel) registerHarnessOperations() error {
 				Items:    m.coreInputHelpItems(),
 			}
 		}},
-		{operationHarnessScope, "choose scope", operation.OperationCategoryScope, func() tea.Msg { return ShowProjectHubMsg{} }},
+		{operationHarnessScope, "choose scope", operation.OperationCategoryScope, func() tea.Msg { return projecthub.ShowProjectHubMsg{} }},
 		{operationHarnessInbox, "global inbox mode", operation.OperationCategoryMode, func() tea.Msg {
 			return m.harnessOpenOutliner(OutlinerOpenOptions{SetMode: true, Mode: chrome.ModeInbox})
 		}},
@@ -115,7 +116,7 @@ func (m *AppModel) registerHarnessOperations() error {
 			if project == nil {
 				return nil
 			}
-			return EditProjectMsg{Project: project}
+			return projecthub.EditProjectMsg{Project: project}
 		}},
 		{operationHarnessTaskAttachments, "task attachments", operation.OperationCategoryTask, func() tea.Msg {
 			task, project := m.outlinerTarget()

@@ -3,13 +3,14 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
 
 // handleProjectViewMessages handles project tree and outliner view transitions.
 func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case ShowProjectHubMsg:
+	case projecthub.ShowProjectHubMsg:
 		return true, m.activateManageHub(route.ManageParams{
 			Module:         route.ManageProjects,
 			ProjectHubMode: msg.Mode,

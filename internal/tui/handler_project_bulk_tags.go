@@ -9,6 +9,8 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -26,7 +28,7 @@ type projectBulkTagUpdate struct {
 type projectBulkTagEdit struct {
 	tag         string
 	replacement string
-	action      ProjectBulkTagAction
+	action      projecthub.ProjectBulkTagAction
 	updates     []projectBulkTagUpdate
 	parking     []*models.Project
 	unparking   []*models.Project
@@ -36,7 +38,7 @@ type projectBulkTagEdit struct {
 // prompting first only when the edit newly parks something. The prompt is
 // decided by the resolved effect rather than by which action was chosen, so
 // typing the reserved tag into Add tag confirms exactly like Park does.
-func (m *AppModel) requestProjectBulkTags(msg ProjectBulkTagsMsg) tea.Cmd {
+func (m *AppModel) requestProjectBulkTags(msg projecthub.ProjectBulkTagsMsg) tea.Cmd {
 	edit, err := m.planProjectBulkTags(msg)
 	if err != nil {
 		return status.ErrorCmd("%v", err)
@@ -48,7 +50,7 @@ func (m *AppModel) requestProjectBulkTags(msg ProjectBulkTagsMsg) tea.Cmd {
 		return m.commitProjectBulkTags(edit)
 	}
 	m.pendingProjectBulkTags = &edit
-	m.projectParkConfirm.Show(projectParkConfirmAction, fmt.Sprintf(
+	m.projectParkConfirm.Show(projecthub.ProjectParkConfirmAction, fmt.Sprintf(
 		"Park %s? %s Active Projects.",
 		projectCountPhrase(len(edit.parking)),
 		projectBulkParkImpactClause(edit.parking),
@@ -59,7 +61,7 @@ func (m *AppModel) requestProjectBulkTags(msg ProjectBulkTagsMsg) tea.Cmd {
 // planProjectBulkTags resolves every named project and computes its replacement
 // tag set. Any project that cannot legally take the edit fails the whole
 // request, so a bulk action never silently applies to a subset.
-func (m *AppModel) planProjectBulkTags(msg ProjectBulkTagsMsg) (projectBulkTagEdit, error) {
+func (m *AppModel) planProjectBulkTags(msg projecthub.ProjectBulkTagsMsg) (projectBulkTagEdit, error) {
 	edit := projectBulkTagEdit{action: msg.Action}
 	tag, err := projectBulkTagName(msg)
 	if err != nil {
@@ -108,11 +110,11 @@ func (m *AppModel) planProjectBulkTags(msg ProjectBulkTagsMsg) (projectBulkTagEd
 
 // projectBulkTagName resolves the tag one bulk action edits. Park and unpark
 // name the reserved tag themselves so no caller has to spell it.
-func projectBulkTagName(msg ProjectBulkTagsMsg) (string, error) {
+func projectBulkTagName(msg projecthub.ProjectBulkTagsMsg) (string, error) {
 	switch msg.Action {
-	case ProjectBulkTagPark, ProjectBulkTagUnpark:
+	case projecthub.ProjectBulkTagPark, projecthub.ProjectBulkTagUnpark:
 		return models.ParkedProjectTag, nil
-	case ProjectBulkTagAdd, ProjectBulkTagRemove, ProjectBulkTagRename:
+	case projecthub.ProjectBulkTagAdd, projecthub.ProjectBulkTagRemove, projecthub.ProjectBulkTagRename:
 		tag, err := models.NormalizeTaskTag(msg.Tag)
 		if err != nil {
 			return "", err
@@ -126,9 +128,9 @@ func projectBulkTagName(msg ProjectBulkTagsMsg) (string, error) {
 // projectBulkTagReplacement validates the second tag an edit writes. A rename
 // needs one; a removal destination is optional because leaving the stranded
 // members untagged is a legitimate answer.
-func projectBulkTagReplacement(msg ProjectBulkTagsMsg) (string, error) {
+func projectBulkTagReplacement(msg projecthub.ProjectBulkTagsMsg) (string, error) {
 	if msg.Replacement == "" {
-		if msg.Action == ProjectBulkTagRename {
+		if msg.Action == projecthub.ProjectBulkTagRename {
 			return "", fmt.Errorf("a rename needs a new tag name")
 		}
 		return "", nil
@@ -142,26 +144,26 @@ func projectBulkTagReplacement(msg ProjectBulkTagsMsg) (string, error) {
 
 // projectBulkTagReplacementSet returns one project's replacement tag set.
 func projectBulkTagReplacementSet(
-	action ProjectBulkTagAction,
+	action projecthub.ProjectBulkTagAction,
 	tags []string,
 	tag string,
 	replacement string,
 ) []string {
-	adding := action == ProjectBulkTagAdd || action == ProjectBulkTagPark
+	adding := action == projecthub.ProjectBulkTagAdd || action == projecthub.ProjectBulkTagPark
 	edited := projectTagsEdited(tags, tag, adding)
 	carried := len(edited) < len(tags)
 	switch action {
-	case ProjectBulkTagRename:
+	case projecthub.ProjectBulkTagRename:
 		if carried {
 			edited = append(edited, replacement)
 		}
-	case ProjectBulkTagRemove:
+	case projecthub.ProjectBulkTagRemove:
 		// A member whose only tag was the removed one would keep no tags at all,
 		// so the destination the prompt collected takes its place.
 		if carried && replacement != "" && len(edited) == 0 {
 			edited = append(edited, replacement)
 		}
-	case ProjectBulkTagAdd, ProjectBulkTagPark, ProjectBulkTagUnpark:
+	case projecthub.ProjectBulkTagAdd, projecthub.ProjectBulkTagPark, projecthub.ProjectBulkTagUnpark:
 	}
 	return edited
 }
@@ -209,16 +211,16 @@ func (m *AppModel) commitProjectBulkTags(edit projectBulkTagEdit) tea.Cmd {
 		m.anchorOutlinerCursorAfterProjectPark(parked...)
 	}
 	for _, update := range edit.updates {
-		copyCatalogMetadata(update.project, update.updated)
+		coordinator.CopyCatalogMetadata(update.project, update.updated)
 	}
 	m.rebuildPlanningFromRuntime()
 	feedbackCmd := m.setRecoveryFeedback(projectBulkTagStatus(edit), transactionID, false)
 	switch {
 	case len(edit.parking) > 0:
 		m.appendRecoveryFeedbackDetail(projectBulkTaskCountPhrase(edit.parking) + " hidden · Fp to show")
-	case edit.action == ProjectBulkTagRename:
+	case edit.action == projecthub.ProjectBulkTagRename:
 		m.appendRecoveryFeedbackDetail("#" + edit.tag + " → #" + edit.replacement)
-	case edit.action == ProjectBulkTagRemove:
+	case edit.action == projecthub.ProjectBulkTagRemove:
 		m.appendRecoveryFeedbackDetail("#" + edit.tag)
 	default:
 		m.appendRecoveryFeedbackDetail("#" + edit.tag)
@@ -237,9 +239,9 @@ func projectBulkTagUndoAction(edit projectBulkTagEdit) string {
 		return "Park Projects"
 	case len(edit.unparking) > 0:
 		return "Unpark Projects"
-	case edit.action == ProjectBulkTagRename:
+	case edit.action == projecthub.ProjectBulkTagRename:
 		return "Rename Project Tag"
-	case edit.action == ProjectBulkTagRemove:
+	case edit.action == projecthub.ProjectBulkTagRemove:
 		return "Remove Project Tag"
 	default:
 		return "Add Project Tag"
@@ -263,14 +265,14 @@ func projectBulkTagStatus(edit projectBulkTagEdit) string {
 			"Unparked %s · back in Active Projects",
 			projectCountPhrase(len(edit.unparking)),
 		)
-	case edit.action == ProjectBulkTagRename:
+	case edit.action == projecthub.ProjectBulkTagRename:
 		return fmt.Sprintf(
 			"Renamed #%s to #%s on %s",
 			edit.tag,
 			edit.replacement,
 			changed,
 		)
-	case edit.action == ProjectBulkTagRemove:
+	case edit.action == projecthub.ProjectBulkTagRemove:
 		return fmt.Sprintf("Removed #%s from %s", edit.tag, changed)
 	default:
 		return fmt.Sprintf("Tagged %s #%s", changed, edit.tag)
@@ -282,11 +284,11 @@ func projectBulkTagStatus(edit projectBulkTagEdit) string {
 // from a failure and reads as one.
 func projectBulkTagNoChange(edit projectBulkTagEdit) string {
 	switch edit.action {
-	case ProjectBulkTagPark:
+	case projecthub.ProjectBulkTagPark:
 		return "every selected project is already parked"
-	case ProjectBulkTagUnpark:
+	case projecthub.ProjectBulkTagUnpark:
 		return "no selected project is parked"
-	case ProjectBulkTagRemove, ProjectBulkTagRename:
+	case projecthub.ProjectBulkTagRemove, projecthub.ProjectBulkTagRename:
 		return fmt.Sprintf("no selected project carries #%s", edit.tag)
 	default:
 		return fmt.Sprintf("every selected project already carries #%s", edit.tag)

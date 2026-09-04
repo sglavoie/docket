@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -276,9 +277,9 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 			message = commandMessage(out.ActivateSearch())
 		}
 	case operation.OperationCoreSelectProject:
-		message = ShowProjectHubMsg{}
+		message = projecthub.ShowProjectHubMsg{}
 	case operation.OperationCoreSelectPinned:
-		message = ShowProjectHubMsg{Mode: route.ProjectHubModePinned}
+		message = projecthub.ShowProjectHubMsg{Mode: route.ProjectHubModePinned}
 	case operation.OperationCoreMultiSelect:
 		if out, ok := m.outlinerPrimary(); ok {
 			out.toggleCursorSelection()

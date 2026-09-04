@@ -13,6 +13,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskdetail"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -99,7 +100,7 @@ func TestEverySurfaceManifestSatisfiesTheOnePathRule(t *testing.T) {
 		manifest []operation.OperationManifestEntry
 	}{
 		{"outliner", SimplifiedInputStrategy(), outlinerOperationDescriptorManifest()},
-		{"project hub", ProjectHubInputStrategy(), projectOperationManifest()},
+		{"project hub", projecthub.ProjectHubInputStrategy(), projecthub.ProjectOperationManifest()},
 		{"notes", notes.NotesInputStrategy(), notes.NotesOperationManifest()},
 		{"attachments", AttachmentsInputStrategy(), attachmentOperationManifest()},
 		{"comments", CommentsInputStrategy(), commentOperationManifest()},

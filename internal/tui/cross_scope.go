@@ -100,7 +100,7 @@ func loadCrossScopeSelection(selected []*models.Project, loader *workspace.Loade
 		}
 	}
 	for _, project := range projects {
-		copyCatalogMetadata(project, catalogByID[project.ID])
+		coordinator.CopyCatalogMetadata(project, catalogByID[project.ID])
 	}
 	return snap.Tasks(), projects, failed
 }

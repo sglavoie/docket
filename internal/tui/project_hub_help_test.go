@@ -3,10 +3,13 @@ package tui
 import (
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
+
 	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
@@ -89,22 +92,29 @@ func TestProjectHubHelpKeyRaisesTheHubGrammar(t *testing.T) {
 
 func TestShowProjectHubMsgOpensTheHubInBrowse(t *testing.T) {
 	app := projectHubApp(t)
-	handled, cmd := app.handleProjectViewMessages(ShowProjectHubMsg{})
+	handled, cmd := app.handleProjectViewMessages(projecthub.ShowProjectHubMsg{})
 	if !handled {
 		t.Fatal("ShowProjectHubMsg was not handled")
 	}
 	if cmd != nil {
 		cmd()
 	}
-	hub, ok := app.manageHub.ActiveModuleView().(*ProjectHubModel)
+	hub, ok := app.manageHub.ActiveModuleView().(*projecthub.ProjectHubModel)
 	if app.CurrentRoute().ID() != route.SecondaryTool || app.currentView() != presentation.ViewProjectHub || !ok {
 		t.Fatalf("Project Hub landed on %s/%s (%T)", app.CurrentRoute().ID(), app.currentView(), app.manageHub.ActiveModuleView())
 	}
 	if hub.HasActiveSearch() {
 		t.Fatal("the Project Hub opened into search instead of browse")
 	}
-	if _, ok := hub.selectedProjectHubEntry(); !ok {
+	// A live cursor is what makes the first Enter mean something, so the message
+	// it emits is the assertion rather than the Hub's own cursor field.
+	hub.SetSize(120, 30)
+	_, cmd = hub.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if cmd == nil {
 		t.Fatal("the Project Hub opened without a live cursor")
+	}
+	if selected, ok := cmd().(ApplyProjectScopeMsg); !ok || selected.ProjectID != "alpha" {
+		t.Fatalf("Enter on a freshly opened Hub emitted %#v, want the first project", cmd())
 	}
 }
 
@@ -123,7 +133,7 @@ func TestOutlinerProjectHubShortcutsChooseTheirExplicitModes(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			result := executeDirectPath(t, app, ctx, test.path)
-			message, ok := result.Message.(ShowProjectHubMsg)
+			message, ok := result.Message.(projecthub.ShowProjectHubMsg)
 			if !ok || message.Mode != test.mode {
 				t.Fatalf("path %v emitted %#v, want ShowProjectHubMsg mode %v", test.path, result.Message, test.mode)
 			}
@@ -135,7 +145,7 @@ func TestOutlinerProjectHubShortcutsChooseTheirExplicitModes(t *testing.T) {
 				cmd()
 			}
 			params := app.CurrentRoute().Params().(route.ManageParams)
-			hub, mounted := app.manageHub.ActiveModuleView().(*ProjectHubModel)
+			hub, mounted := app.manageHub.ActiveModuleView().(*projecthub.ProjectHubModel)
 			mountedMode := route.ProjectHubMode(255)
 			if mounted {
 				mountedMode = hub.Mode()

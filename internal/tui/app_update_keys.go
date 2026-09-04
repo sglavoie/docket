@@ -4,16 +4,13 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // currentViewAsModel returns the current view as a tea.Model for interface assertions.
 func (m *AppModel) currentViewAsModel() tea.Model {
 	return m.activeView()
-}
-
-type taskReferenceProvider interface {
-	GetTaskRef() (*models.Task, *models.Project)
 }
 
 func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { //nolint:gocyclo
@@ -117,7 +114,7 @@ func (m *AppModel) handleProjectArchiveConfirmKey(key string) (bool, tea.Cmd) {
 		return false, nil
 	}
 	if confirmed {
-		return true, func() tea.Msg { return projectArchiveConfirmedMsg{} }
+		return true, func() tea.Msg { return projecthub.ProjectArchiveConfirmedMsg{} }
 	}
 	switch key {
 	case "n", "N", "esc":
@@ -136,7 +133,7 @@ func (m *AppModel) handleProjectDeleteConfirmKey(key string) (bool, tea.Cmd) {
 		return false, nil
 	}
 	if confirmed {
-		return true, func() tea.Msg { return projectDeleteConfirmedMsg{} }
+		return true, func() tea.Msg { return projecthub.ProjectDeleteConfirmedMsg{} }
 	}
 	switch key {
 	case "n", "N", "esc":
@@ -155,7 +152,7 @@ func (m *AppModel) handleProjectParkConfirmKey(key string) (bool, tea.Cmd) {
 		return false, nil
 	}
 	if confirmed {
-		return true, func() tea.Msg { return projectParkConfirmedMsg{} }
+		return true, func() tea.Msg { return projecthub.ProjectParkConfirmedMsg{} }
 	}
 	switch key {
 	case "n", "N", "esc":

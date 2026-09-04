@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 )
 
 func (m *AppModel) registerProjectBulkOperations() error {
@@ -16,7 +17,7 @@ func (m *AppModel) registerProjectBulkOperations() error {
 	); err != nil {
 		return err
 	}
-	for _, descriptor := range projectBulkOperationDescriptors() {
+	for _, descriptor := range projecthub.ProjectBulkOperationDescriptors() {
 		if err := m.registerOperation(descriptor, operation.OperationBinding{
 			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilityProjectHub),
 			BulkHandler:          executeProjectBulkTags,
@@ -37,9 +38,9 @@ func executeProjectBulkTags(
 	invocation operation.OperationInvocation,
 	targets []operation.OperationTarget,
 ) operation.OperationHandlerResult {
-	message := ProjectBulkTagsMsg{
+	message := projecthub.ProjectBulkTagsMsg{
 		ProjectIDs: make([]string, 0, len(targets)),
-		Action:     projectBulkTagActions[invocation.Descriptor.ID],
+		Action:     projecthub.ProjectBulkTagActions[invocation.Descriptor.ID],
 	}
 	for _, target := range targets {
 		if target.Entity.Kind != operation.EntityKindProject || target.ProjectID == "" {

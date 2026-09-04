@@ -1,4 +1,4 @@
-package tui
+package projecthub
 
 import (
 	"sort"
@@ -120,7 +120,7 @@ func (m *ProjectHubModel) projectHubActionHints(state listsurface.ListGuidanceSt
 	case state.Profile == listsurface.ListGuidanceSearchEditing:
 		return m.soleRequiredHint(hints, operation.OperationProjectOpen)
 	case state.Profile == listsurface.ListGuidanceEmpty && state.Empty.Kind == listsurface.ListEmptySource:
-		return m.soleRequiredHint(hints, operationScopeCreateProject)
+		return m.soleRequiredHint(hints, operation.OperationScopeCreateProject)
 	}
 	return hints
 }

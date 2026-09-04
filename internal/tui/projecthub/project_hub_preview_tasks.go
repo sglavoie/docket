@@ -1,23 +1,44 @@
-package tui
+package projecthub
 
 import (
-	"slices"
-
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
+// PreviewTaskPainter paints one project's flattened task tree into the Hub's
+// preview pane. The pane draws the product's own task rows rather than a second
+// row grammar that would drift from them, and those rows are the Outliner's: the
+// row type, the tree prefix and the renderer are a type and methods on
+// OutlinerModel, which sits beside this package rather than below it. So the Hub
+// is handed a painter over one project's tasks instead of naming a renderer it
+// cannot reach.
+type PreviewTaskPainter interface {
+	// RowCount is how many task rows the previewed project flattened to.
+	RowCount() int
+	// RenderRow paints one row at the pane's column budget.
+	RenderRow(index, width int) string
+}
+
+// NewPreviewTaskPainter builds the painter for one project's tasks. Building one
+// costs a few maps and a text input, so the Hub caches the result rather than
+// calling this per frame.
+type NewPreviewTaskPainter func(
+	runtime *config.RuntimeState,
+	project *models.Project,
+	tasks []*models.Task,
+) PreviewTaskPainter
+
 // projectHubPreviewState is the preview pane's scroll position and paint cache
-// for one project. The painter is an Outliner built over the previewed project
-// and never mounted: the pane draws the product's own task rows rather than a
-// second row grammar that would drift from them, and the Outliner's renderer is
-// a method on that model. Building one costs a few maps and a text input, so the
-// cache exists to keep a per-frame allocation off the render path, not because
-// the construction is expensive.
+// for one project.
 type projectHubPreviewState struct {
 	projectID string
+	// built separates "no painter because the cache is cold" from "no painter
+	// because none could be made", so a Hub with no painter factory draws an empty
+	// pane instead of rebuilding the cache every frame.
+	built bool
 	// loaded distinguishes a project with no tasks from one whose tasks could not
 	// be read. Drawing both as an empty pane would report the second as the first.
 	loaded bool
@@ -26,8 +47,15 @@ type projectHubPreviewState struct {
 	// render knows how many rows the header left. The key handler would otherwise
 	// have to guess at a height it never sees.
 	pageSize int
-	rows     []outlinerRow
-	painter  *OutlinerModel
+	painter  PreviewTaskPainter
+}
+
+// rowCount reads the cache's row total through a painter that may be absent.
+func (s *projectHubPreviewState) rowCount() int {
+	if s.painter == nil {
+		return 0
+	}
+	return s.painter.RowCount()
 }
 
 // invalidate drops the cache so the next frame re-flattens. The Hub calls it
@@ -74,11 +102,11 @@ func (m *ProjectHubModel) renderProjectPreviewTasks(width, height int) []string 
 	if !m.preview.loaded {
 		return []string{theme.MutedStyle.Render(textfit.TruncateToVisualWidth("Tasks not loaded.", width))}
 	}
-	if len(m.preview.rows) == 0 {
+	if m.preview.rowCount() == 0 {
 		return []string{theme.MutedStyle.Render(textfit.TruncateToVisualWidth("No tasks.", width))}
 	}
 
-	start, count, above, below := listsurface.ListPreviewScrollWindow(len(m.preview.rows), m.preview.offset, height)
+	start, count, above, below := listsurface.ListPreviewScrollWindow(m.preview.rowCount(), m.preview.offset, height)
 	m.preview.offset = start
 	// A page is the row budget less both continuation rows, not the rows this
 	// frame happened to show. The visible count changes by one as continuations
@@ -91,17 +119,10 @@ func (m *ProjectHubModel) renderProjectPreviewTasks(width, height int) []string 
 		lines = append(lines, listsurface.RenderListContinuation("↑", start, width))
 	}
 	for index := start; index < start+count; index++ {
-		// rowWidth and width are the same pane column budget: the pane has no
-		// cursor, so no row ever opens Peek and the wider measure never applies. The
-		// nil column layout matches what the Outliner passes below its own alignment
-		// threshold, and the absolute row index keeps zebra striping anchored to the
-		// task rather than to the scroll position.
-		lines = append(lines, m.preview.painter.renderOutlinerTaskRow(
-			m.preview.rows[index], false, width, width, index, nil,
-		))
+		lines = append(lines, m.preview.painter.RenderRow(index, width))
 	}
 	if below {
-		lines = append(lines, listsurface.RenderListContinuation("↓", len(m.preview.rows)-start-count, width))
+		lines = append(lines, listsurface.RenderListContinuation("↓", m.preview.rowCount()-start-count, width))
 	}
 	return lines
 }
@@ -110,77 +131,24 @@ func (m *ProjectHubModel) renderProjectPreviewTasks(width, height int) []string 
 // and resets the scroll with it: an offset taken from the previous project's
 // length would open the new one part-way down for no reason the user can see.
 func (m *ProjectHubModel) syncProjectPreview(project *models.Project, tasks []*models.Task, loaded bool) {
-	if m.preview.projectID == project.ID && m.preview.painter != nil {
+	if m.preview.projectID == project.ID && m.preview.built {
 		return
 	}
 	m.preview = projectHubPreviewState{
 		projectID: project.ID,
+		built:     true,
 		loaded:    loaded,
-		rows:      projectPreviewTaskRows(project.ID, tasks),
-		painter:   NewOutlinerModel(project, nil, m.runtime),
+	}
+	if m.newPainter != nil {
+		m.preview.painter = m.newPainter(m.runtime, project, tasks)
 	}
 }
 
-// projectPreviewTaskRows flattens a project's task tree into Outliner rows in
-// tree order. Every task is listed, done and canceled included: the state badge
-// already tells them apart, and a pane that hid them would disagree with the
-// total the header just claimed.
-//
-// Roots are the tasks no other task claims as a child rather than the tasks
-// reporting no parent, so a task whose parent reference dangles is still listed
-// once instead of disappearing between the two readings.
-func projectPreviewTaskRows(projectID string, tasks []*models.Task) []outlinerRow {
-	if len(tasks) == 0 {
-		return nil
-	}
-	claimed := make(map[string]bool, len(tasks))
-	for _, task := range tasks {
-		if task == nil {
-			continue
-		}
-		for _, child := range task.Children {
-			if child != nil {
-				claimed[child.ID] = true
-			}
-		}
-	}
-	roots := make([]*models.Task, 0, len(tasks))
-	for _, task := range tasks {
-		if task != nil && !claimed[task.ID] {
-			roots = append(roots, task)
-		}
-	}
-
-	rows := make([]outlinerRow, 0, len(tasks))
-	visited := make(map[string]bool, len(tasks))
-	var walk func(siblings []*models.Task, ancestorIsLast []bool)
-	walk = func(siblings []*models.Task, ancestorIsLast []bool) {
-		for index, task := range siblings {
-			if task == nil || visited[task.ID] {
-				continue
-			}
-			visited[task.ID] = true
-			isLast := index == len(siblings)-1
-			rows = append(rows, outlinerRow{
-				task:               task,
-				prefix:             buildTreePrefix(ancestorIsLast, isLast),
-				hasVisibleChildren: len(task.Children) > 0,
-				ProjectID:          projectID,
-			})
-			if len(task.Children) > 0 {
-				walk(task.Children, append(slices.Clone(ancestorIsLast), isLast))
-			}
-		}
-	}
-	walk(roots, nil)
-	return rows
-}
-
-// pageProjectPreview moves the pane a full page, vim's Ctrl+F and Ctrl+B. Only
+// PageProjectPreview moves the pane a full page, vim's Ctrl+F and Ctrl+B. Only
 // the lower bound is applied here: the upper one needs the pane's row capacity,
 // which the render pass owns, so an offset past the tail is corrected there
 // rather than guessed at from a stale page size.
-func (m *ProjectHubModel) pageProjectPreview(direction int) {
+func (m *ProjectHubModel) PageProjectPreview(direction int) {
 	if direction == 0 {
 		return
 	}

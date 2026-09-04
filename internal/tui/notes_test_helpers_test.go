@@ -56,8 +56,7 @@ func (s *combinedNotesService) ApplyNoteBatch(request app.NoteBatchRequest) (app
 func mountNotesManager(t *testing.T, view *notes.NotesViewModel, scope route.NotesScope) *AppModel {
 	t.Helper()
 	model := typedTestApp(t)
-	model.manageHub.params = route.ManageParams{Module: route.ManageNotes, NotesScope: scope}
-	model.manageHub.active = view
+	model.manageHub.MountModule(route.ManageParams{Module: route.ManageNotes, NotesScope: scope}, view)
 	view.SetOperationSystem(model.GetOperationRegistry(), model.dispatchOperationKey)
 	return model
 }

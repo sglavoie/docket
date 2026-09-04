@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -92,7 +93,7 @@ func (m *AppModel) newFilterProjectTagsPicker(
 		if info, behavioral := models.BehavioralProjectTags[name]; behavioral {
 			item.CategoryID = projectTagBehavioralCategory
 			item.SecondaryText = info.Summary
-			style = behavioralProjectTagBadgeStyle(info.BadgeRole)
+			style = projecthub.BehavioralProjectTagBadgeStyle(info.BadgeRole)
 		}
 		item.PrimaryStyle = &style
 		items = append(items, item)

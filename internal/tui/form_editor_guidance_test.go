@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"errors"
 	"strings"
 	"testing"
 
@@ -12,17 +11,10 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
-func TestFormEditorGuidanceRequiresCommitAndCancelByState(t *testing.T) {
-	creator := &ProjectCreatorModel{}
-	assertRequiredGuidance(t, "project creator", creator.guidanceSpec(), true, "Enter create", "Esc cancel")
-	creator.ConfirmDiscard = true
-	assertRequiredGuidance(t, "project creator discard", creator.guidanceSpec(), true, "y confirm", "n/Esc cancel")
-
-	editor := &ProjectEditorModel{hasChanges: true}
-	assertRequiredGuidance(t, "dirty project editor", editor.guidanceSpec(), true, "Ctrl+S save", "Esc cancel")
-	editor.err = errors.New("invalid project")
-	assertRequiredGuidance(t, "invalid project editor", editor.guidanceSpec(), true, "Ctrl+S retry", "Esc cancel")
-
+// The project creator and editor moved to internal/tui/projecthub with the
+// forms themselves, so their guidance is asserted there; the text editor is
+// still the shell's, and its budget stays here.
+func TestTextEditorGuidanceRequiresCommitAndCancelByState(t *testing.T) {
 	textEditor := chrome.NewTextEditorModel("description", "")
 	assertRequiredGuidance(t, "text editor", textEditor.GuidanceSpec(), true, "Ctrl+S save", "Esc cancel")
 	textEditor.ExternalEdit = true
@@ -31,18 +23,12 @@ func TestFormEditorGuidanceRequiresCommitAndCancelByState(t *testing.T) {
 	}
 }
 
-func TestFormEditorGuidanceFitsNarrowBudgets(t *testing.T) {
-	specs := []chrome.GuidanceSpec{
-		(&ProjectCreatorModel{}).guidanceSpec(),
-		(&ProjectEditorModel{hasChanges: true}).guidanceSpec(),
-		chrome.NewTextEditorModel("description", "").GuidanceSpec(),
+func TestTextEditorGuidanceFitsNarrowBudgets(t *testing.T) {
+	spec := chrome.NewTextEditorModel("description", "").GuidanceSpec()
+	if spec.Rows != 2 {
+		t.Errorf("text editor row budget = %d, want 2", spec.Rows)
 	}
-	for index, spec := range specs {
-		if spec.Rows != 2 {
-			t.Errorf("spec %d row budget = %d, want 2", index, spec.Rows)
-		}
-		assertGuidanceFits(t, spec, 24)
-	}
+	assertGuidanceFits(t, spec, 24)
 }
 
 func TestFormEditorMinimumLayoutsBudgetRenderedGuidance(t *testing.T) {

@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -196,13 +197,13 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				fixture := newSession4LifecycleFixture(t)
 				created := newSession4EmptyProject(t, fixture.dataDir, "Created")
 				session4CommitCatalogProject(t, fixture.app, created)
-				fixture.app.showView(presentation.ViewProjectCreator, NewProjectCreatorModel(
+				fixture.app.showView(presentation.ViewProjectCreator, projecthub.NewProjectCreatorModel(
 					fixture.app.runtime,
 					fixture.app.configManager,
 					fixture.app.appService,
 				))
 
-				handled, cmd := fixture.app.handleProjectMessages(ProjectCreatedMsg{Project: created})
+				handled, cmd := fixture.app.handleProjectMessages(projecthub.ProjectCreatedMsg{Project: created})
 				if !handled || cmd == nil {
 					t.Fatalf("ProjectCreatedMsg handled=%v cmd=%v, want returned refresh chain", handled, cmd)
 				}
@@ -232,7 +233,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				live.Name = "Renamed Project"
 				live.Description = "office"
 				session4CommitCatalogProject(t, fixture.app, live)
-				fixture.app.showView(presentation.ViewProjectEditor, NewProjectEditorModel(
+				fixture.app.showView(presentation.ViewProjectEditor, projecthub.NewProjectEditorModel(
 					live,
 					fixture.app.configManager,
 					fixture.app.runtime,
@@ -240,7 +241,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 					false,
 				))
 
-				_, cmd := fixture.app.handleProjectMessages(ProjectUpdatedMsg{})
+				_, cmd := fixture.app.handleProjectMessages(projecthub.ProjectUpdatedMsg{})
 				runSession2AppCommand(t, fixture.app, cmd)
 
 				loaded := session4LoadedProject(t, fixture.cross, project.ID)
@@ -275,7 +276,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				live := fixture.app.projectByID(project.ID)
 				fixture.cross.pushProjectScope(live.ID)
 
-				_, cmd := fixture.app.handleProjectMessages(ProjectArchivedMsg{Project: live})
+				_, cmd := fixture.app.handleProjectMessages(projecthub.ProjectArchivedMsg{Project: live})
 				runSession2AppCommand(t, fixture.app, cmd)
 
 				if fixture.app.currentView() != presentation.ViewCrossProjectOutliner {
@@ -300,7 +301,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				fixture := newSession4LifecycleFixture(t, project)
 				live := fixture.app.projectByID(project.ID)
 
-				_, cmd := fixture.app.handleProjectMessages(ProjectRestoredMsg{Project: live})
+				_, cmd := fixture.app.handleProjectMessages(projecthub.ProjectRestoredMsg{Project: live})
 				runSession2AppCommand(t, fixture.app, cmd)
 
 				session4LoadedProject(t, fixture.cross, project.ID)
@@ -319,7 +320,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				fixture.app.views.Register(presentation.ViewHelp, help.NewHelpViewModel(nil, "Help"))
 				setTestPresentationPath(fixture.app, presentation.ViewUnknown, presentation.ViewCrossProjectOutliner, presentation.ViewHelp)
 
-				_, cmd := fixture.app.handleProjectMessages(ProjectRestoredMsg{Project: live})
+				_, cmd := fixture.app.handleProjectMessages(projecthub.ProjectRestoredMsg{Project: live})
 				if fixture.cross.crossLoading {
 					t.Fatal("covered mutation started an unroutable cross-project reload")
 				}

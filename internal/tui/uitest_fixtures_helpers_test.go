@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 )
 
 // uitestWorkspace is an isolated temp data directory plus its config/manager.
@@ -201,7 +202,7 @@ func (w *uitestWorkspace) addProject(name string, build func(*models.Project)) (
 	}
 	project.BuildTaskTree()
 
-	catalog := cloneWorkspaceCatalog(w.Runtime.Catalog())
+	catalog := coordinator.CloneWorkspaceCatalog(w.Runtime.Catalog())
 	if err := catalog.UpsertProject(project); err != nil {
 		return nil, fmt.Errorf("failed to catalog project %q: %w", name, err)
 	}
@@ -337,7 +338,7 @@ func (w *uitestWorkspace) persistNoteSeeds() error {
 
 func (w *uitestWorkspace) persistSyncedDomains() error {
 	store := config.NewDomainFileStore(w.DataDir)
-	catalog := cloneWorkspaceCatalog(w.Runtime.Catalog())
+	catalog := coordinator.CloneWorkspaceCatalog(w.Runtime.Catalog())
 	// A copied workspace already carries the fresh identity assigned by
 	// forkCopiedWorkspaceIdentity. Built-in fixtures start blank and mint once
 	// here before the remaining domains save.

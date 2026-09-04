@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 )
 
 // surfaceOperationGate names one entity surface and, once the surface manifests
@@ -21,7 +22,7 @@ type surfaceOperationGate struct {
 func surfaceOperationGates() []surfaceOperationGate {
 	return []surfaceOperationGate{
 		{strategy: SimplifiedInputStrategy(), validate: validateOutlinerOperationOnePath},
-		{strategy: ProjectHubInputStrategy(), validate: validateProjectOperationOnePath},
+		{strategy: projecthub.ProjectHubInputStrategy(), validate: projecthub.ValidateProjectOperationOnePath},
 		{strategy: notes.NotesInputStrategy(), validate: notes.ValidateNotesOperationOnePath},
 		{strategy: AttachmentsInputStrategy(), validate: validateAttachmentOperationOnePath},
 		{strategy: CommentsInputStrategy(), validate: validateCommentOperationOnePath},

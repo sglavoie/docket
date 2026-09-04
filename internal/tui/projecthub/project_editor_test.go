@@ -1,4 +1,4 @@
-package tui
+package projecthub
 
 import (
 	"strings"
@@ -18,7 +18,7 @@ const (
 
 func TestProjectEditorWrapsCompleteTagsExplainerAtMinimumWidth(t *testing.T) {
 	width := projectEditorExplainerWidth(projectEditorMinimumWidth)
-	body := ansi.Strip(behavioralProjectTagExplainer(
+	body := ansi.Strip(BehavioralProjectTagExplainer(
 		operation.ValueProviderProjectTags,
 		width,
 	))
@@ -34,7 +34,7 @@ func TestProjectEditorWrapsCompleteTagsExplainerAtMinimumWidth(t *testing.T) {
 }
 
 func TestProjectEditorKeepsWideTagsExplainerOnOneLine(t *testing.T) {
-	body := ansi.Strip(behavioralProjectTagExplainer(
+	body := ansi.Strip(BehavioralProjectTagExplainer(
 		operation.ValueProviderProjectTags,
 		projectEditorExplainerWidth(projectEditorWideWidth),
 	))

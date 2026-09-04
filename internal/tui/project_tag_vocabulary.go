@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
 
@@ -38,11 +39,11 @@ var projectTagVocabularyOperations = []operation.OperationID{
 	operationProjectTagUnparkAll,
 }
 
-var projectTagVocabularyActions = map[operation.OperationID]ProjectBulkTagAction{
-	operationProjectTagRenameAll: ProjectBulkTagRename,
-	operationProjectTagRemoveAll: ProjectBulkTagRemove,
-	operationProjectTagParkAll:   ProjectBulkTagPark,
-	operationProjectTagUnparkAll: ProjectBulkTagUnpark,
+var projectTagVocabularyActions = map[operation.OperationID]projecthub.ProjectBulkTagAction{
+	operationProjectTagRenameAll: projecthub.ProjectBulkTagRename,
+	operationProjectTagRemoveAll: projecthub.ProjectBulkTagRemove,
+	operationProjectTagParkAll:   projecthub.ProjectBulkTagPark,
+	operationProjectTagUnparkAll: projecthub.ProjectBulkTagUnpark,
 }
 
 // ProjectTagVocabularyActionsMsg opens the vocabulary sheet for one tag row.
@@ -58,7 +59,7 @@ func projectTagVocabularyDescriptors() []operation.OperationDescriptor {
 			TargetSource:         operation.OperationTargetSelectedEntities,
 			TargetCardinality:    operation.TargetCardinalityOneOrMore,
 			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
-			Applicability:        projectBulkTagsApplicable,
+			Applicability:        projecthub.ProjectBulkTagsApplicable,
 			Risk:                 operation.OperationRiskMutation,
 		}
 	}
@@ -111,7 +112,7 @@ func (m *AppModel) executeProjectTagVocabulary(
 	if m.projectTagActionSubject == "" {
 		return operation.OperationHandlerResult{Err: fmt.Errorf("no project tag is selected")}
 	}
-	message := ProjectBulkTagsMsg{
+	message := projecthub.ProjectBulkTagsMsg{
 		ProjectIDs: make([]string, 0, len(targets)),
 		Action:     projectTagVocabularyActions[invocation.Descriptor.ID],
 		Tag:        m.projectTagActionSubject,

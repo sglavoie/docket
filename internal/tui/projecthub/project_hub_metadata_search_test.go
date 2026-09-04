@@ -1,4 +1,4 @@
-package tui
+package projecthub
 
 import (
 	"sort"
@@ -20,42 +20,31 @@ const (
 	hubMetaRetiredDescription = "Shelved the kiosk pilot after the field trial."
 )
 
-// projectHubMetadataApp builds three projects whose descriptions and project
+// projectHubMetadataFixture builds three projects whose descriptions and project
 // tags are the only place their distinguishing words appear, plus tasks whose
 // titles, descriptions, tags, contexts, and comments carry words nothing else
 // does. One project is archived and one is pinned, so the same query can be put
-// to the active, archived, and pinned populations without rebuilding the shell.
-func projectHubMetadataApp(t *testing.T) *AppModel {
+// to the active, archived, and pinned populations without rebuilding the Hub.
+func projectHubMetadataFixture(t *testing.T) *projectHubFixture {
 	t.Helper()
-	app := typedTestApp(t)
 
 	ledger := scopeTestProject("ledger", "Sierra One")
-	ledger.Path = t.TempDir()
 	ledger.Description = hubMetaLedgerDescription
 	ledger.Tags = []string{"finance", "reporting"}
 	ledger.Tasks = []*models.Task{metadataFixtureTask()}
 	ledger.BuildTaskTree()
 
 	harbor := scopeTestProject("harbor", "Sierra Two")
-	harbor.Path = t.TempDir()
 	harbor.Description = hubMetaHarborDescription
 	harbor.Tags = []string{"infrastructure"}
 	harbor.Pinned = true
 
 	retired := scopeTestProject("retired", "Sierra Three")
-	retired.Path = t.TempDir()
 	retired.Description = hubMetaRetiredDescription
 	retired.Tags = []string{"hardware"}
 	retired.Archived = true
 
-	setTestAppProjects(app, ledger, harbor, retired)
-	app.currentProject = nil
-	app.crossOutliner = NewOutlinerModel(nil, app.configManager, app.runtime)
-	app.crossOutliner.SetSize(120, 40)
-	app.crossOutliner.loadedProjects = []*models.Project{ledger, harbor}
-	app.crossOutliner.crossForceRebuild = true
-	app.crossOutliner.rebuildRows()
-	return app
+	return newProjectHubFixture(t, ledger, harbor, retired)
 }
 
 // metadataFixtureTask wears every task-owned text channel at once, so a single
@@ -107,7 +96,7 @@ func assertProjectHubMatches(t *testing.T, hub *ProjectHubModel, query string, w
 // query shapes — a description word, a bare tag, and the `#`-prefixed tag the
 // row's own chips are written in — to the active and archived populations.
 func TestProjectHubSearchMatchesDescriptionsAndProjectTags(t *testing.T) {
-	hub := openProjectHub(t, projectHubMetadataApp(t))
+	hub := projectHubMetadataFixture(t).open()
 
 	assertProjectHubMatches(t, hub, "settlement ledger", "project-hub:project:ledger")
 	assertProjectHubMatches(t, hub, "telemetry broker", "project-hub:project:harbor")
@@ -126,7 +115,7 @@ func TestProjectHubSearchMatchesDescriptionsAndProjectTags(t *testing.T) {
 // answers its description and both tag spellings, and the unpinned projects stay
 // outside the population no matter which of their words is typed.
 func TestPinnedProjectHubSearchMatchesProjectMetadata(t *testing.T) {
-	hub := openProjectHub(t, projectHubMetadataApp(t), route.ProjectHubModePinned)
+	hub := projectHubMetadataFixture(t).open(route.ProjectHubModePinned)
 
 	for _, query := range []string{"telemetry broker", "infrastructure", "#infrastructure"} {
 		assertProjectHubMatches(t, hub, query, "project-hub:project:harbor")
@@ -141,9 +130,9 @@ func TestPinnedProjectHubSearchMatchesProjectMetadata(t *testing.T) {
 // project holds, and the Hub still reports no match: Select Project chooses a
 // project, and task text is the Outliner's `/` to search.
 func TestProjectHubSearchNeverMatchesTaskContent(t *testing.T) {
-	app := projectHubMetadataApp(t)
+	fixture := projectHubMetadataFixture(t)
 	for _, mode := range []route.ProjectHubMode{route.ProjectHubModeAll, route.ProjectHubModePinned} {
-		hub := openProjectHub(t, app, mode)
+		hub := fixture.open(mode)
 		for _, query := range []string{
 			"escrow packet",    // task title
 			"courier collects", // task description
@@ -160,7 +149,7 @@ func TestProjectHubSearchNeverMatchesTaskContent(t *testing.T) {
 // than the search result, so the alias vocabulary itself is pinned: the name,
 // the slug, the lifecycle phrase, the description, and each tag twice.
 func TestProjectHubAliasesCarryProjectMetadataOnly(t *testing.T) {
-	hub := openProjectHub(t, projectHubMetadataApp(t))
+	hub := projectHubMetadataFixture(t).open()
 
 	active := projectHubItem(t, hub, "project-hub:project:ledger").Aliases
 	want := []string{

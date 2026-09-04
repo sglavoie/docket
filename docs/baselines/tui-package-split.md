@@ -124,8 +124,9 @@ the pre-split tree and is consistently pessimistic.
 | `taskform` | 28 | 0 | 0 |
 | `lens` | 30 | 11 | 23 |
 | `conflict` | 4 | 1 | 1 |
+| `projecthub` | 61 | 30 | 30 |
 
-Running total against 631: **480**.
+Running total against 631: **510**.
 `grammar` contributes 58, not 154, because its two counted columns are on a
 different basis from every row above them:
 Session 2.11 counted 196 promoted names by including methods and struct fields,
@@ -1027,6 +1028,66 @@ dropped edges are the cost of being a routed surface, which is exactly what an
 overlay with no `PresentationID`, no `InputStrategy` and no manifest entry is
 not: `presentation`, `route` and `operation` go unread, and nothing raises
 `help` from a surface that registers no operation.
+
+`projecthub` is the last L7 package and the only one that had to invert a
+dependency to move at all. `project_hub_preview_tasks.go` is pinned to
+`ProjectHubModel`, so the TSV puts it in `projecthub`, but it named
+`NewOutlinerModel`, `OutlinerModel`, `outlinerRow` and `buildTreePrefix`, and
+both `projecthub -> outliner` and `projecthub -> tui` are forbidden edges. The
+package declares the `PreviewTaskPainter` interface and the
+`NewPreviewTaskPainter` factory it is handed instead, and the shell's new
+`project_hub_preview_painter.go` supplies the Outliner-backed implementation.
+CLAUDE.md's rule is unchanged — Select Project paints `renderOutlinerTaskRow`
+from the tally-retained tree over a cache `rebuildProjectSurface` invalidates —
+but the Hub now reaches that renderer through a seam rather than by name.
+**When a file the TSV assigns to a package names a sibling that package may not
+import, invert the edge rather than moving the file back: the receiver is what
+pins it, and a one-method interface is cheaper than a second row in the graph.**
+
+Thirty declarations and six methods were promoted, and the two export columns
+are equal because the production move and the test homing were one session. The
+six methods are the Hub acts the shell's own operation handler dispatches —
+`ToggleProjectHubSelection`, `SelectEveryMatchingProject`,
+`OpenProjectHubActions`, `CycleProjectHubTaskFilter`, `PageProjectPreview` — plus
+`ProjectEditorSave.Commit`, whose rename result the shell records in the
+recovery-feedback inventory by name.
+
+The Hub exposes no cursor setter, and none could be added: `scripts/dead_code.sh`
+runs `go run ./scripts/deadcodeaudit ./...`, which flags a declaration read only
+from `_test.go` files, so **exporting an internal purely so a sibling package's
+tests can drive it is not available on this repository — the test either moves
+into the package or finds a route through the public grammar.** Every hub-internal
+assertion moved into `internal/tui/projecthub` against a local `projectHubFixture`
+that mounts the Hub over a catalog and a tally map, which is the whole of what
+mounting supplies. What stayed at root is what names the shell: the count pass,
+the production registry and executor a mounted Hub dispatches through, the Esc
+rung that closes the surface, the scope a selection applies, and the real preview
+painter. Those root tests steer the cursor the way a user does — `focusProjectHubRow`
+types a query, browses the matches, and confirms the landing by reading the `› `
+marker off the rendered frame.
+
+`project_hub_test.go` declared no test of its own and was the file eleven others
+read their fixtures from, so it became `project_hub_test_helpers_test.go`, the
+shape `notes_test_helpers_test.go` set in session 2.22. A `-run` scope check over
+a file like that reports a false pass; verify it by symbol.
+
+Two root inventories are keyed on file paths and had to be rewritten by hand:
+`project_population_inventory_test.go` classifies every
+`TaskWorkspaceProjects`/`AvailableProjects` caller and
+`recovery_feedback_audit_test.go` classifies every ledger-producing gateway.
+Both fail closed in two directions — an unclassified caller *and* an inventory
+entry with no caller left — which is what makes them the reliable reminder that a
+path moved. The second also records the receiver method name, so
+`ProjectEditorSave.commit` becoming `Commit` is a second edit on the same line.
+
+`projecthub`'s real import set is thirteen of the sixteen the template row
+allowed, and the three it drops are all task vocabulary: `taskref`, because the
+Hub's rows, selection and operation targets are project IDs; `grammar`, because
+the creator and the editor take fields rather than a captured line; and `query`,
+because the browse search is the list surface's own scoring over project aliases
+and the bulk tag rows arrive through a delegated value provider. It is the one
+package holding an L7-internal edge of its own, `projecthub -> notes`, for the
+`Ctrl+N` that opens a project's notes.
 
 Reproduce the last column for one package with the oracle from session 2.4,
 which reports a clean boundary rather than a count:

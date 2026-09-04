@@ -302,8 +302,7 @@ func TestNotesBrowseKeysReachTheCopyOperations(t *testing.T) {
 		nil,
 		project,
 	)
-	model.manageHub.params = route.ManageParams{Module: route.ManageNotes, NotesScope: view.Scope}
-	model.manageHub.active = view
+	model.manageHub.MountModule(route.ManageParams{Module: route.ManageNotes, NotesScope: view.Scope}, view)
 	view.SetOperationSystem(model.GetOperationRegistry(), model.dispatchOperationKey)
 	view.SetSize(80, 24)
 	if len(view.VisibleRows) != 1 {

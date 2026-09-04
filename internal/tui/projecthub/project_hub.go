@@ -1,4 +1,4 @@
-package tui
+package projecthub
 
 import (
 	tea "charm.land/bubbletea/v2"
@@ -48,13 +48,21 @@ func (m *ProjectHubModel) SetProjectFocus(projectID string) {
 	m.rebuildProjectSurface(m.currentProjectHubItemID())
 }
 
-func (m *ProjectHubModel) SetTaskCounts(counts map[string]projectTaskTally) {
+func (m *ProjectHubModel) SetTaskCounts(counts map[string]ProjectTaskTally) {
 	if len(counts) == 0 {
 		m.taskCounts = nil
 	} else {
 		m.taskCounts = counts
 	}
 	m.rebuildProjectSurface(m.currentProjectHubItemID())
+}
+
+// SetPreviewTaskPainter installs the factory the preview pane paints its task
+// rows through. A Hub without one draws the pane's header and no rows, which is
+// what a construction outside the app gets.
+func (m *ProjectHubModel) SetPreviewTaskPainter(newPainter NewPreviewTaskPainter) {
+	m.newPainter = newPainter
+	m.preview.invalidate()
 }
 
 func (m *ProjectHubModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -181,15 +189,15 @@ func (m *ProjectHubModel) dispatchProjectHubKey(key string) tea.Cmd {
 	return cmd
 }
 
-func (m *ProjectHubModel) cycleProjectHubTaskFilter() {
+func (m *ProjectHubModel) CycleProjectHubTaskFilter() {
 	m.taskFilter = m.taskFilter.next()
 	m.rebuildProjectSurface(m.currentProjectHubItemID())
 }
 
-// toggleProjectHubSelection mirrors the Outliner's v: Enter already focuses a
+// ToggleProjectHubSelection mirrors the Outliner's v: Enter already focuses a
 // project and Space already opens actions, so selection needs its own key
 // rather than the Enter/Space toggle the standalone bulk editor used.
-func (m *ProjectHubModel) toggleProjectHubSelection() {
+func (m *ProjectHubModel) ToggleProjectHubSelection() {
 	if m.surface == nil {
 		return
 	}
@@ -198,7 +206,7 @@ func (m *ProjectHubModel) toggleProjectHubSelection() {
 	}
 }
 
-func (m *ProjectHubModel) selectEveryMatchingProject() {
+func (m *ProjectHubModel) SelectEveryMatchingProject() {
 	if m.surface == nil {
 		return
 	}

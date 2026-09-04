@@ -16,6 +16,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskform"
@@ -67,7 +68,7 @@ type AppModel struct {
 
 	// manageHub is the sole live Manage destination for scoped collections and
 	// contexts.
-	manageHub *ManageHubModel
+	manageHub *projecthub.ManageHubModel
 
 	// taskComposer is the sole live compact/expanded task mutation overlay.
 	// Capture/form presentation IDs remain observations for embedded modes.
@@ -206,7 +207,7 @@ type AppModel struct {
 	pendingProjectTags       *models.Project
 	pendingProjectTagsSet    []string
 	pendingProjectBulkTags   *projectBulkTagEdit
-	pendingProjectEditorSave *projectEditorSave
+	pendingProjectEditorSave *projecthub.ProjectEditorSave
 	projectParkConfirm       chrome.ConfirmDialog
 
 	// projectTagActionSubject is the tag the vocabulary sheet edits. It lives

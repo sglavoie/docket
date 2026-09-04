@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/taskform"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -476,7 +477,7 @@ func TestCtrlEscCancelsShellOwnedConfirmations(t *testing.T) {
 	project := scopeTestProject("project", "Project", "one")
 	app.pendingProjectArchive = project
 	app.pendingProjectArchiveArchive = true
-	app.projectArchiveConfirm.Show(projectArchiveConfirmAction, "Archive?")
+	app.projectArchiveConfirm.Show(projecthub.ProjectArchiveConfirmAction, "Archive?")
 	app.pendingTaskDelete = taskDeletePending{
 		roots: []TaskProjectRef{{Task: project.Tasks[0], Project: project}},
 	}

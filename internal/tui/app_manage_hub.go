@@ -6,11 +6,12 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/notes"
+	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
-func (m *AppModel) ensureManageHub() *ManageHubModel {
+func (m *AppModel) ensureManageHub() *projecthub.ManageHubModel {
 	runtime := m.runtime
 	if runtime == nil {
 		runtime = config.EmptyRuntimeState("")
@@ -23,7 +24,7 @@ func (m *AppModel) ensureManageHub() *ManageHubModel {
 	if m.appService != nil {
 		noteService = m.appService
 	}
-	deps := ManageHubDependencies{
+	deps := projecthub.ManageHubDependencies{
 		Runtime:        runtime,
 		NoteService:    noteService,
 		HistoryLedger:  historyLedger,
@@ -35,21 +36,16 @@ func (m *AppModel) ensureManageHub() *ManageHubModel {
 			}
 			return m.crossOutliner.scopedProjectID
 		},
-		TaskCounts:        m.projectHubTaskCounts,
-		OperationRegistry: m.operationRegistry,
-		OperationExecutor: m.operationExecutor,
-		DispatchKey:       m.dispatchOperationKey,
+		TaskCounts:         m.projectHubTaskCounts,
+		OperationRegistry:  m.operationRegistry,
+		OperationExecutor:  m.operationExecutor,
+		DispatchKey:        m.dispatchOperationKey,
+		PreviewTaskPainter: newProjectPreviewPainter,
 	}
 	if m.manageHub == nil {
-		m.manageHub = NewManageHubModel(deps)
+		m.manageHub = projecthub.NewManageHubModel(deps)
 	} else {
-		// Test and embedding compositions may replace the optional service or
-		// ledger after construction. Keep the hub on the shell's current seams
-		// rather than retaining a stale history handle.
-		m.manageHub.deps = deps
-		if m.manageHub.params.Module == route.ManageNotes {
-			m.manageHub.activeKey = ""
-		}
+		m.manageHub.Rewire(deps)
 	}
 	m.manageHub.SetSize(m.width, m.height-2)
 	return m.manageHub
@@ -113,7 +109,7 @@ func (m *AppModel) registerManageModulePresentation(params route.ManageParams, v
 	if m.views == nil || view == nil {
 		return
 	}
-	presentation, ok := manageModulePresentation(params)
+	presentation, ok := projecthub.ManageModulePresentation(params)
 	if !ok {
 		return
 	}
@@ -164,10 +160,10 @@ func (m *AppModel) refreshActiveNotesManager() tea.Cmd {
 		return nil
 	}
 
-	if m.currentProject != nil && m.currentProject.ID == m.manageHub.params.NotesScope.ProjectID {
+	if m.currentProject != nil && m.currentProject.ID == m.manageHub.Params().NotesScope.ProjectID {
 		m.currentProject = nil
 	}
-	params := m.manageHub.params
+	params := m.manageHub.Params()
 	params.NotesScope = route.AllNotesScope()
 	message := "Project is unavailable — showing All Notes"
 	m.setInfoStatus(message)

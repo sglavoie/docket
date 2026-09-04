@@ -25,7 +25,7 @@ func commitCatalogToRuntime(runtime *config.RuntimeState, mutate func(*config.Wo
 	if runtime == nil {
 		return nil
 	}
-	catalog := cloneWorkspaceCatalog(runtime.Catalog())
+	catalog := coordinator.CloneWorkspaceCatalog(runtime.Catalog())
 	if err := mutate(catalog); err != nil {
 		return err
 	}
