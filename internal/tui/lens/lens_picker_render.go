@@ -1,4 +1,4 @@
-package tui
+package lens
 
 import (
 	"strings"
@@ -15,9 +15,9 @@ import (
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-// namedLensPickerInnerWidth is the overlay box width the picker claims out of
+// NamedLensPickerInnerWidth is the overlay box width the picker claims out of
 // the terminal.
-func namedLensPickerInnerWidth(width int) int {
+func NamedLensPickerInnerWidth(width int) int {
 	return min(max(width*4/5, 46), max(width-6, 24))
 }
 
@@ -29,10 +29,10 @@ func (model *NamedLensPickerModel) Render(width int) string {
 // minimum-supported terminal drops list rows rather than losing the search line,
 // the state line, or the footer.
 func (model *NamedLensPickerModel) RenderWithin(width, height int) string {
-	if model == nil || model.surface == nil {
+	if model == nil || model.Surface == nil {
 		return ""
 	}
-	innerWidth := namedLensPickerInnerWidth(width)
+	innerWidth := NamedLensPickerInnerWidth(width)
 	contentWidth := max(innerWidth-4, 12)
 
 	header := make([]string, 0, 2)
@@ -41,31 +41,31 @@ func (model *NamedLensPickerModel) RenderWithin(width, height int) string {
 			textfit.TruncateToVisualWidth(model.notice, contentWidth),
 		))
 	}
-	if model.searching || model.query != "" {
+	if model.Searching || model.Query != "" {
 		cursor := ""
-		if model.searching {
+		if model.Searching {
 			cursor = "▏"
 		}
-		header = append(header, theme.MutedStyle.Render("Search: "+model.query+cursor))
+		header = append(header, theme.MutedStyle.Render("Search: "+model.Query+cursor))
 	}
-	if state := model.stateLine(); state != "" {
+	if state := model.StateLine(); state != "" {
 		header = append(header, theme.MutedStyle.Render(textfit.TruncateToVisualWidth(state, contentWidth)))
 	}
 
-	listHeight := min(max(len(model.surface.Rows()), 4), 14)
+	listHeight := min(max(len(model.Surface.Rows()), 4), 14)
 	if height > 0 {
 		// Halo, frame, title, the header block's separating row, and the footer
 		// consume nine rows before any header line of its own.
 		reserved := 9 + len(header)
 		listHeight = min(listHeight, max(height-reserved, 1))
 	}
-	content := listsurface.RenderCompactListSurface(model.surface, contentWidth, listHeight)
+	content := listsurface.RenderCompactListSurface(model.Surface, contentWidth, listHeight)
 	if len(header) > 0 {
 		content = strings.Join(header, "\n") + "\n\n" + content
 	}
 
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render("Named Lenses")
-	guidance := model.guidanceSpec()
+	guidance := model.GuidanceSpec()
 	return chrome.RenderOverlayBox(
 		content,
 		innerWidth,
@@ -75,27 +75,27 @@ func (model *NamedLensPickerModel) RenderWithin(width, height int) string {
 	)
 }
 
-// stateLine names an empty population or a query that matched none of it. Both
+// StateLine names an empty population or a query that matched none of it. Both
 // action rows are always listed, so the surface itself is never empty and cannot
 // carry this copy on the list's behalf.
-func (model *NamedLensPickerModel) stateLine() string {
+func (model *NamedLensPickerModel) StateLine() string {
 	switch {
 	case len(model.sorted) == 0:
 		return "No saved lenses yet — save this view or add a built-in."
-	case model.listed == 0:
+	case model.Listed == 0:
 		return "No matching lenses — Esc clears the search."
 	default:
 		return ""
 	}
 }
 
-// guidanceSpec returns the footer spec alone: this picker always draws a footer,
+// GuidanceSpec returns the footer spec alone: this picker always draws a footer,
 // so there is no "no guidance" case for a caller to branch on.
-func (model *NamedLensPickerModel) guidanceSpec() chrome.GuidanceSpec {
-	if model == nil || model.surface == nil {
+func (model *NamedLensPickerModel) GuidanceSpec() chrome.GuidanceSpec {
+	if model == nil || model.Surface == nil {
 		return chrome.GuidanceSpec{}
 	}
-	searching := model.searching
+	searching := model.Searching
 	onLens := func() bool {
 		_, ok := model.CurrentLens()
 		return ok
@@ -107,14 +107,14 @@ func (model *NamedLensPickerModel) guidanceSpec() chrome.GuidanceSpec {
 	case searching:
 		enterLabel = "apply search"
 	case model.cursorIs(lensPickerCreateItemID):
-		enterLabel = lensPickerCreateEnterLabel
-	case model.cursorIs(lensPickerAddTemplateItemID):
-		enterLabel = lensPickerAddTemplateEnterLabel
+		enterLabel = LensPickerCreateEnterLabel
+	case model.cursorIs(LensPickerAddTemplateItemID):
+		enterLabel = LensPickerAddTemplateEnterLabel
 	}
 	escapeLabel := "close"
 	if searching {
 		escapeLabel = "cancel search"
-		if model.query != "" {
+		if model.Query != "" {
 			escapeLabel = "clear search"
 		}
 	}
@@ -125,7 +125,7 @@ func (model *NamedLensPickerModel) guidanceSpec() chrome.GuidanceSpec {
 		keymap.Bind("enter", "Apply the current row", "Actions",
 			keymap.WithFooter(1, enterLabel, true), keymap.WithFooterKey("Enter")),
 		keymap.Bind("1", "Apply the numbered lens", "Actions",
-			keymap.WithGate(func() bool { return !searching && model.listed > 0 }),
+			keymap.WithGate(func() bool { return !searching && model.Listed > 0 }),
 			keymap.WithFooter(4, "apply by number", false), keymap.WithFooterKey("1-9")),
 		keymap.Bind("space", "Open lens actions", "Actions",
 			keymap.WithGate(func() bool { return !searching && onLens() }),
@@ -136,16 +136,16 @@ func (model *NamedLensPickerModel) guidanceSpec() chrome.GuidanceSpec {
 		keymap.Bind("esc", "Unwind the lens picker", "Navigation",
 			keymap.WithFooter(2, escapeLabel, true), keymap.WithFooterKey("Esc")),
 	}}
-	spec, _ := listsurface.ListSurfaceGuidanceSpec(model.surface.GuidanceState(searching), km, nil)
+	spec, _ := listsurface.ListSurfaceGuidanceSpec(model.Surface.GuidanceState(searching), km, nil)
 	return spec
 }
 
-// namedLensSummary renders one saved definition as a single compact line: the
+// NamedLensSummary renders one saved definition as a single compact line: the
 // mode it opens, the canonical clauses it narrows with, whatever prose the
 // canonical vocabulary cannot spell, and the manual sort it restores. An axis
 // left at its default contributes nothing, because a summary that names every
 // axis names nothing.
-func namedLensSummary(lens config.NamedLens) string {
+func NamedLensSummary(lens config.NamedLens) string {
 	parts := make([]string, 0, 12)
 	parts = append(parts, namedLensModeLabel(lens.Mode))
 	facets, remainder := models.PartitionQueryString(lens.Query)
@@ -164,7 +164,7 @@ func namedLensSummary(lens config.NamedLens) string {
 // namedLensModeLabel prefers the catalog label and degrades to the stored token,
 // so a machine file written by a newer build still names something.
 func namedLensModeLabel(token string) string {
-	id, err := lensModeAxis.value(token)
+	id, err := ModeAxis.Value(token)
 	if err != nil {
 		return token
 	}
@@ -175,7 +175,7 @@ func namedLensModeLabel(token string) string {
 }
 
 func namedLensSortLabel(sorted config.LensSort) string {
-	field, err := lensSortAxis.value(sorted.Field)
+	field, err := SortAxis.Value(sorted.Field)
 	if err != nil {
 		return "sort: " + sorted.Field
 	}

@@ -1,4 +1,4 @@
-package tui
+package lens
 
 import (
 	"fmt"
@@ -16,39 +16,39 @@ import (
 //
 //nolint:gocyclo // Key dispatch stays centralized so every picker state has one unwind path.
 func (model *NamedLensPickerModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
-	if model == nil || model.surface == nil {
+	if model == nil || model.Surface == nil {
 		return nil, true, NamedLensPickerClosedMsg{}
 	}
 	key := msg.String()
-	if model.searching {
+	if model.Searching {
 		switch key {
 		case "esc":
 			// One Esc clears a typed query; the next leaves search. Closing the
 			// picker is the third, and belongs to browse mode alone.
-			if model.query != "" {
+			if model.Query != "" {
 				model.setQuery("")
 				return nil, false, nil
 			}
-			model.searching = false
+			model.Searching = false
 			return nil, false, nil
 		case "enter":
-			model.searching = false
+			model.Searching = false
 			return nil, false, nil
 		case "backspace":
-			if model.query != "" {
-				_, size := utf8.DecodeLastRuneInString(model.query)
-				model.setQuery(model.query[:len(model.query)-size])
+			if model.Query != "" {
+				_, size := utf8.DecodeLastRuneInString(model.Query)
+				model.setQuery(model.Query[:len(model.Query)-size])
 			}
 			return nil, false, nil
 		case "up":
-			model.surface.MoveCursor(-1)
+			model.Surface.MoveCursor(-1)
 			return nil, false, nil
 		case "down":
-			model.surface.MoveCursor(1)
+			model.Surface.MoveCursor(1)
 			return nil, false, nil
 		default:
 			if msg.Text != "" {
-				model.setQuery(model.query + msg.Text)
+				model.setQuery(model.Query + msg.Text)
 			}
 			return nil, false, nil
 		}
@@ -58,19 +58,19 @@ func (model *NamedLensPickerModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool
 	case "esc":
 		return nil, true, NamedLensPickerClosedMsg{}
 	case "/":
-		model.searching = true
+		model.Searching = true
 	case "up", "k", "ctrl+p":
-		model.surface.MoveCursor(-1)
+		model.Surface.MoveCursor(-1)
 	case "down", "j", "ctrl+n":
-		model.surface.MoveCursor(1)
+		model.Surface.MoveCursor(1)
 	case "home", "g":
-		model.surface.MoveCursorToStart()
+		model.Surface.MoveCursorToStart()
 	case "end", "G":
-		model.surface.MoveCursorToEnd()
+		model.Surface.MoveCursorToEnd()
 	case "pgup":
-		model.surface.PageCursor(-1)
+		model.Surface.PageCursor(-1)
 	case "pgdown":
-		model.surface.PageCursor(1)
+		model.Surface.PageCursor(1)
 	case "enter":
 		return model.activateCursor()
 	case "space":
@@ -89,15 +89,15 @@ func (model *NamedLensPickerModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool
 // raised the reason, exactly as Enter would have. Out of range refuses in the
 // action rows' own vocabulary and moves nothing.
 func (model *NamedLensPickerModel) applyOrdinal(ordinal int) (tea.Cmd, bool, tea.Msg) {
-	if model == nil || model.surface == nil {
+	if model == nil || model.Surface == nil {
 		return nil, false, nil
 	}
-	if ordinal < 1 || ordinal > len(model.ordinals) {
-		model.notice = lensPickerOrdinalRefusal(len(model.ordinals))
+	if ordinal < 1 || ordinal > len(model.Ordinals) {
+		model.notice = lensPickerOrdinalRefusal(len(model.Ordinals))
 		return nil, false, status.StatusMsg(model.notice)
 	}
-	if !model.SelectLens(model.ordinals[ordinal-1]) {
-		model.notice = lensPickerOrdinalRefusal(len(model.ordinals))
+	if !model.SelectLens(model.Ordinals[ordinal-1]) {
+		model.notice = lensPickerOrdinalRefusal(len(model.Ordinals))
 		return nil, false, status.StatusMsg(model.notice)
 	}
 	return model.activateCursor()
@@ -110,7 +110,7 @@ func (model *NamedLensPickerModel) applyOrdinal(ordinal int) (tea.Cmd, bool, tea
 func lensPickerOrdinalRefusal(numbered int) string {
 	switch {
 	case numbered <= 0:
-		return lensPickerOrdinalEmptyRefusal
+		return LensPickerOrdinalEmptyRefusal
 	case numbered == 1:
 		return "Only 1 lens is numbered — press 1"
 	default:
@@ -123,7 +123,7 @@ func lensPickerOrdinalRefusal(numbered int) string {
 // applies and closes. Neither action row names a target, because the record each
 // one writes does not exist yet.
 func (model *NamedLensPickerModel) activateCursor() (tea.Cmd, bool, tea.Msg) {
-	item, ok := model.surface.CurrentItem()
+	item, ok := model.Surface.CurrentItem()
 	if !ok {
 		return nil, false, nil
 	}
@@ -136,7 +136,7 @@ func (model *NamedLensPickerModel) activateCursor() (tea.Cmd, bool, tea.Msg) {
 		model.notice = "That row is not a saved lens"
 		return nil, false, status.StatusMsg(model.notice)
 	}
-	result, dismissed := model.Execute(model.request(operationLensApply, operation.LensEntity(lens.ID)))
+	result, dismissed := model.Execute(model.request(OperationLensApply, operation.LensEntity(lens.ID)))
 	return nil, dismissed, NamedLensPickerResultMsg{Result: result}
 }
 
@@ -146,9 +146,9 @@ func (model *NamedLensPickerModel) activateCursor() (tea.Cmd, bool, tea.Msg) {
 func lensPickerActionOperation(id listsurface.ListItemID) (operation.OperationID, bool) {
 	switch id {
 	case lensPickerCreateItemID:
-		return operationLensCreate, true
-	case lensPickerAddTemplateItemID:
-		return operationLensAddTemplate, true
+		return OperationLensCreate, true
+	case LensPickerAddTemplateItemID:
+		return OperationLensAddTemplate, true
 	default:
 		return "", false
 	}
@@ -157,7 +157,7 @@ func lensPickerActionOperation(id listsurface.ListItemID) (operation.OperationID
 // openActionsForCursor is Space: the management sheet nests above the picker
 // rather than replacing it, so canceling anything inside it lands back here.
 func (model *NamedLensPickerModel) openActionsForCursor() (tea.Cmd, bool, tea.Msg) {
-	item, ok := model.surface.CurrentItem()
+	item, ok := model.Surface.CurrentItem()
 	if !ok {
 		return nil, false, nil
 	}
@@ -167,9 +167,9 @@ func (model *NamedLensPickerModel) openActionsForCursor() (tea.Cmd, bool, tea.Ms
 		// a target and neither has anything to rename, replace, or delete. The
 		// notice names that row's own act rather than a shared refusal, so Space is
 		// still a hint about where Enter goes.
-		model.notice = lensPickerCreateSpaceNotice
-		if item.ID == lensPickerAddTemplateItemID {
-			model.notice = lensPickerAddTemplateSpaceHint
+		model.notice = LensPickerCreateSpaceNotice
+		if item.ID == LensPickerAddTemplateItemID {
+			model.notice = LensPickerAddTemplateSpaceHint
 		}
 		return nil, false, status.StatusMsg(model.notice)
 	}

@@ -122,8 +122,9 @@ the pre-split tree and is consistently pessimistic.
 | `notes` | 32 | 41 | 37 |
 | `taskdetail` | 6 | 0 | 0 |
 | `taskform` | 28 | 0 | 0 |
+| `lens` | 30 | 11 | 23 |
 
-Running total against 631: **456**.
+Running total against 631: **479**.
 `grammar` contributes 58, not 154, because its two counted columns are on a
 different basis from every row above them:
 Session 2.11 counted 196 promoted names by including methods and struct fields,
@@ -937,6 +938,53 @@ exporting a draft struct and three of its fields for one assertion.
 `internal/tui/taskform/taskform_test_helpers_test.go` carries in-package copies
 of thirteen helpers, and the shell had to re-declare `assertFitsWithin`, which
 left it with `task_form_view_test.go`.
+
+`lens` is the first row whose last column is *larger* than its middle one, and
+the gap is the whole finding. The production move cost 11 declarations —
+`NamedLensActionSheetOperations`, `NamedLensSummary`, `NamedLensPrimaryStyle`,
+`ModeAxis`, `SortAxis` and the six `OperationLens*` IDs — plus one method,
+`NamedLensPickerModel.CommandContext`. Homing the tests cost twelve more:
+`NamedLensPickerInnerWidth`, the eleven `LensPicker*` labels, hints and ordinal
+constants, five `NamedLensPickerModel` fields (`Surface`, `Query`, `Searching`,
+`Listed`, `Ordinals`) and two of its methods (`StateLine`, `GuidanceSpec`).
+
+The reason the tests could not pay their own way down is that all five
+`lens_picker_*_test.go` files drive the picker through `AppModel` — they call
+`model.handleGlobalKeyPress`, drain the overlay protocol, and assert on nested
+prompts, galleries and action sheets — so the surface they exercise is the shell
+routing, not the picker. Only the three `named_lens_semantic_*_test.go` files
+were pure and moved down whole, plus the two `TestNamedLensSummary*` cases,
+which left `lens_picker_render_test.go` for
+`internal/tui/lens/lens_picker_summary_test.go`. **When a surface's tests drive
+it through the shell rather than through its own model, expect the test half of
+the export budget to exceed the production half; that is a property of how the
+tests were written, not of the extraction.**
+
+One assertion moved rather than promoted, the shape session 2.24 used for
+`TestTaskComposerExpandSingleAndRejectMultiline`:
+`TestLensPickerColorSurvivesRenameAndFollowsReplacement` compared
+`namedLensSemanticRole` before and after a replace to prove the row recomputes.
+Exporting the role ladder and its test-only `roleText` spelling for that one
+guard would have made the whole precedence ladder public; comparing
+`NamedLensPrimaryStyle` instead asserts the same divergence through the only
+part of the ladder a row can show.
+
+Two declaration-level moves went downward into `lens`, both recorded in the
+header of `scripts/tui_package_assignments.tsv`. The six `tui.lens.*` operation
+IDs left `lens_operations.go` for `lens_operation_ids.go`, which is session
+2.22's note rule again: the grammar that binds an ID sits below the registrar.
+And `lensAxis` with `lensModeAxis` and `lensSortAxis` left
+`outliner_lens_state.go` for `lens_axis.go`, because both readers of the durable
+token tables sit at or above `lens` and leaving them at L7-`outliner` would have
+forced the forbidden `lens -> outliner` edge. The generic type stayed
+unexported as `axis[T]`, so only the two vars and their `Token`/`Value` methods
+cross. `lens_operation_handlers.go` did *not* move, whatever the session brief's
+prose names: it declares `*AppModel` methods, and the TSV outranks the brief.
+
+`lens`'s real import set is ten of the fifteen the template row allowed:
+`presentation`, `theme`, `textfit`, `status`, `keymap`, `chrome`, `query`,
+`operation`, `route` and `listsurface`. It reaches neither `help` nor
+`coordinator`, `grammar`, `pulse` or `taskref`.
 
 Reproduce the last column for one package with the oracle from session 2.4,
 which reports a clean boundary rather than a count:

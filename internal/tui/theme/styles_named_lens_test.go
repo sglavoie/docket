@@ -12,7 +12,7 @@ import (
 // The lens accents are a palette, so what has to hold of them is a palette
 // property: each is a color and nothing else, no two read alike, and none lands
 // on a priority title color. Which definition earns which accent is the lens
-// layer's question and is asserted there, against namedLensPrimaryStyle.
+// layer's question and is asserted there, against lens.NamedLensPrimaryStyle.
 //
 // A mode borrows its group's accent and Today shares Backlog's the way their
 // badges already do, so the accents themselves — not the definitions that reach

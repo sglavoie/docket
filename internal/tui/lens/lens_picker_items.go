@@ -1,4 +1,4 @@
-package tui
+package lens
 
 import (
 	"strconv"
@@ -25,20 +25,20 @@ func (model *NamedLensPickerModel) items() []listsurface.ListItem {
 	items := make([]listsurface.ListItem, 0, len(model.sorted)+len(actions))
 	items = append(items, actions...)
 	listed := 0
-	model.ordinals = model.ordinals[:0]
+	model.Ordinals = model.Ordinals[:0]
 	for _, lens := range model.sorted {
-		if !namedLensMatchesQuery(lens, model.query) {
+		if !namedLensMatchesQuery(lens, model.Query) {
 			continue
 		}
 		listed++
 		ordinal := 0
-		if len(model.ordinals) < lensPickerMaxOrdinal {
-			model.ordinals = append(model.ordinals, lens.ID)
-			ordinal = len(model.ordinals)
+		if len(model.Ordinals) < LensPickerMaxOrdinal {
+			model.Ordinals = append(model.Ordinals, lens.ID)
+			ordinal = len(model.Ordinals)
 		}
 		items = append(items, namedLensPickerItem(lens, model.snapshot, ordinal))
 	}
-	model.listed = listed
+	model.Listed = listed
 	return items
 }
 
@@ -47,8 +47,8 @@ func (model *NamedLensPickerModel) items() []listsurface.ListItem {
 // so the number column stays put behind an action row, a tenth saved lens, and
 // either spelling of the active-lens dot alike.
 func lensPickerOrdinalMarker(ordinal int) string {
-	if ordinal < 1 || ordinal > lensPickerMaxOrdinal {
-		return strings.Repeat(" ", lensPickerOrdinalMarkerWidth)
+	if ordinal < 1 || ordinal > LensPickerMaxOrdinal {
+		return strings.Repeat(" ", LensPickerOrdinalMarkerWidth)
 	}
 	return theme.MutedStyle.Render(strconv.Itoa(ordinal)) + " "
 }
@@ -63,21 +63,21 @@ func lensPickerActionRows(snapshot NamedLensPickerSnapshot) []listsurface.ListIt
 	return []listsurface.ListItem{
 		{
 			ID:            lensPickerCreateItemID,
-			PrimaryText:   lensPickerCreateLabel,
+			PrimaryText:   LensPickerCreateLabel,
 			PrimaryMarker: lensPickerOrdinalMarker(0),
 			Aliases:       []string{"save", "new lens", "create lens"},
 			SecondaryText: snapshot.CurrentSummary,
-			OperationIDs:  []operation.OperationID{operationLensCreate},
+			OperationIDs:  []operation.OperationID{OperationLensCreate},
 		},
 		{
-			ID:            lensPickerAddTemplateItemID,
-			PrimaryText:   lensPickerAddTemplateLabel,
+			ID:            LensPickerAddTemplateItemID,
+			PrimaryText:   LensPickerAddTemplateLabel,
 			PrimaryMarker: lensPickerOrdinalMarker(0),
 			// The aliases are the words someone reaches for before they know what
 			// this product calls a lens, so the row answers to all three.
 			Aliases:       []string{"template", "preset", "built-in view"},
-			SecondaryText: lensPickerAddTemplateSecondary,
-			OperationIDs:  []operation.OperationID{operationLensAddTemplate},
+			SecondaryText: LensPickerAddTemplateSecondary,
+			OperationIDs:  []operation.OperationID{OperationLensAddTemplate},
 		},
 	}
 }
@@ -99,8 +99,8 @@ func namedLensPickerItem(
 		ID:            lensPickerItemID(lens.ID),
 		PrimaryText:   lens.Name,
 		PrimaryMarker: marker,
-		SecondaryText: namedLensSummary(lens),
-		OperationIDs:  append([]operation.OperationID{operationLensApply}, namedLensActionSheetOperations...),
+		SecondaryText: NamedLensSummary(lens),
+		OperationIDs:  append([]operation.OperationID{OperationLensApply}, NamedLensActionSheetOperations...),
 		Data:          lens,
 	}
 	// The accent is read from the definition every time a row is built, which is
@@ -108,7 +108,7 @@ func namedLensPickerItem(
 	// construction, a query change, and Refresh after rename, replace, create, or
 	// delete all rebuild through items(). A neutral definition sets no style at
 	// all, leaving the row the list's ordinary text.
-	if style, ok := namedLensPrimaryStyle(lens); ok {
+	if style, ok := NamedLensPrimaryStyle(lens); ok {
 		item.PrimaryStyle = &style
 	}
 	return item
@@ -126,5 +126,5 @@ func namedLensMatchesQuery(lens config.NamedLens, query string) bool {
 	if normalized == "" {
 		return true
 	}
-	return fuzzy.ScoreTerms(lens.Name+" "+namedLensSummary(lens), normalized) != 0
+	return fuzzy.ScoreTerms(lens.Name+" "+NamedLensSummary(lens), normalized) != 0
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
@@ -47,7 +48,7 @@ func TestAnAddedTemplateIsAnOrdinaryRecordAcrossRenameReplaceAndDelete(t *testin
 	}
 
 	if result := executeLens(
-		model, operationLensRename, operation.LensEntity(template.ID), "Due, mine", false,
+		model, lens.OperationLensRename, operation.LensEntity(template.ID), "Due, mine", false,
 	); result.Err != nil {
 		t.Fatalf("rename the added template: %v", result.Err)
 	}
@@ -71,7 +72,7 @@ func TestAnAddedTemplateIsAnOrdinaryRecordAcrossRenameReplaceAndDelete(t *testin
 	out.selectOutlinerMode(chrome.ModeInbox)
 	out.treeSort = query.SortState{Field: query.SortByTitle, Ascending: true}
 	if result := executeLens(
-		model, operationLensReplace, operation.LensEntity(template.ID), "", true,
+		model, lens.OperationLensReplace, operation.LensEntity(template.ID), "", true,
 	); result.Err != nil {
 		t.Fatalf("replace the added template: %v", result.Err)
 	}
@@ -90,7 +91,7 @@ func TestAnAddedTemplateIsAnOrdinaryRecordAcrossRenameReplaceAndDelete(t *testin
 	}
 
 	if result := executeLens(
-		model, operationLensDelete, operation.LensEntity(template.ID), "", true,
+		model, lens.OperationLensDelete, operation.LensEntity(template.ID), "", true,
 	); result.Err != nil {
 		t.Fatalf("delete the added template: %v", result.Err)
 	}

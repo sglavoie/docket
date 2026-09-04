@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
@@ -91,7 +92,7 @@ func selectGalleryRow(t *testing.T, model *AppModel, id string) {
 // second action row raises the value step, and the gallery opens above it.
 func openAddTemplateGalleryFromPicker(t *testing.T, model *AppModel) {
 	t.Helper()
-	if !model.lensPicker.surface.SetCursorToID(lensPickerAddTemplateItemID) {
+	if !model.lensPicker.Surface.SetCursorToID(lens.LensPickerAddTemplateItemID) {
 		t.Fatal("the picker has no Add built-in view row")
 	}
 	pressLens(t, model, "enter")
@@ -108,7 +109,7 @@ func TestLensPickerEnterOnTheAddRowOpensTheGalleryOverThePicker(t *testing.T) {
 
 	// One j from the opening cursor is the whole route to it.
 	pressLens(t, model, "j")
-	if got := lensPickerCursorTitle(t, model); got != lensPickerAddTemplateLabel {
+	if got := lensPickerCursorTitle(t, model); got != lens.LensPickerAddTemplateLabel {
 		t.Fatalf("cursor = %q, want the add row", got)
 	}
 	pressLens(t, model, "enter")
@@ -142,7 +143,7 @@ func TestLensPickerAddTemplateCancelReturnsToTheMainPicker(t *testing.T) {
 	if model.lensPicker == nil {
 		t.Fatal("canceling the gallery closed the picker beneath it")
 	}
-	if got := lensPickerCursorTitle(t, model); got != lensPickerAddTemplateLabel {
+	if got := lensPickerCursorTitle(t, model); got != lens.LensPickerAddTemplateLabel {
 		t.Errorf("cursor = %q, want the row the gallery was opened from", got)
 	}
 	if got := len(machineLenses(t, model)); got != len(config.StarterNamedLenses()) {
@@ -232,12 +233,12 @@ func TestLensPickerSpaceOnTheAddRowExplainsItself(t *testing.T) {
 	if model.lensPicker == nil {
 		t.Fatal("Space on the add row closed the picker")
 	}
-	if got := model.lensPicker.Notice(); got != lensPickerAddTemplateSpaceHint {
-		t.Errorf("add-row notice = %q, want %q", got, lensPickerAddTemplateSpaceHint)
+	if got := model.lensPicker.Notice(); got != lens.LensPickerAddTemplateSpaceHint {
+		t.Errorf("add-row notice = %q, want %q", got, lens.LensPickerAddTemplateSpaceHint)
 	}
 	// The Save row keeps its own wording rather than inheriting the neighbour's.
 	pressLens(t, model, "k", "space")
-	if got := model.lensPicker.Notice(); got != lensPickerCreateSpaceNotice {
-		t.Errorf("save-row notice = %q, want %q", got, lensPickerCreateSpaceNotice)
+	if got := model.lensPicker.Notice(); got != lens.LensPickerCreateSpaceNotice {
+		t.Errorf("save-row notice = %q, want %q", got, lens.LensPickerCreateSpaceNotice)
 	}
 }

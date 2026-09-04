@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/query"
@@ -67,9 +68,9 @@ func machineLenses(t *testing.T, model *AppModel) config.NamedLensList {
 
 func lensNamed(t *testing.T, model *AppModel, name string) config.NamedLens {
 	t.Helper()
-	for _, lens := range machineLenses(t, model) {
-		if lens.Name == name {
-			return lens
+	for _, saved := range machineLenses(t, model) {
+		if saved.Name == name {
+			return saved
 		}
 	}
 	t.Fatalf("no saved lens named %q in %v", name, lensNames(machineLenses(t, model)))
@@ -78,8 +79,8 @@ func lensNamed(t *testing.T, model *AppModel, name string) config.NamedLens {
 
 func lensNames(list config.NamedLensList) []string {
 	names := make([]string, 0, len(list))
-	for _, lens := range list {
-		names = append(names, lens.Name)
+	for _, saved := range list {
+		names = append(names, saved.Name)
 	}
 	return names
 }
@@ -101,12 +102,12 @@ func TestLensOperationsAreReachableOnlyFromTheLensPicker(t *testing.T) {
 	entity := operation.LensEntity(starterLensID(t))
 
 	for _, id := range []operation.OperationID{
-		operationLensApply,
-		operationLensCreate,
-		operationLensAddTemplate,
-		operationLensRename,
-		operationLensReplace,
-		operationLensDelete,
+		lens.OperationLensApply,
+		lens.OperationLensCreate,
+		lens.OperationLensAddTemplate,
+		lens.OperationLensRename,
+		lens.OperationLensReplace,
+		lens.OperationLensDelete,
 	} {
 		ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 		ctx.CurrentEntity = entity
@@ -128,10 +129,10 @@ func TestLensTargetedOperationsRefuseANonLensCursor(t *testing.T) {
 	task := operation.TaskEntity("alpha", "backlog")
 
 	for _, id := range []operation.OperationID{
-		operationLensApply,
-		operationLensRename,
-		operationLensReplace,
-		operationLensDelete,
+		lens.OperationLensApply,
+		lens.OperationLensRename,
+		lens.OperationLensReplace,
+		lens.OperationLensDelete,
 	} {
 		result := executeLens(model, id, task, "Anything", true)
 		if !errors.Is(result.Err, operation.ErrOperationUnavailable) {
@@ -140,13 +141,13 @@ func TestLensTargetedOperationsRefuseANonLensCursor(t *testing.T) {
 	}
 
 	// Create resolves no target at all, so the same cursor leaves it available.
-	if result := executeLens(model, operationLensCreate, task, "From a task row", false); result.Err != nil {
+	if result := executeLens(model, lens.OperationLensCreate, task, "From a task row", false); result.Err != nil {
 		t.Fatalf("create on a task cursor = %v, want success", result.Err)
 	}
 	// Adding a built-in view resolves no target either: the value names the
 	// template, so the cursor is nothing to it.
 	template := addableTemplate(t, model)
-	if result := executeLens(model, operationLensAddTemplate, task, template.ID, false); result.Err != nil {
+	if result := executeLens(model, lens.OperationLensAddTemplate, task, template.ID, false); result.Err != nil {
 		t.Fatalf("add template on a task cursor = %v, want success", result.Err)
 	}
 }
@@ -156,10 +157,10 @@ func TestLensOperationsRejectAStaleLensID(t *testing.T) {
 	missing := operation.LensEntity(lensTestID(42))
 
 	for _, id := range []operation.OperationID{
-		operationLensApply,
-		operationLensRename,
-		operationLensReplace,
-		operationLensDelete,
+		lens.OperationLensApply,
+		lens.OperationLensRename,
+		lens.OperationLensReplace,
+		lens.OperationLensDelete,
 	} {
 		result := executeLens(model, id, missing, "Anything", true)
 		if result.Err == nil || !strings.Contains(result.Err.Error(), "no longer available") {
@@ -178,7 +179,7 @@ func TestLensCreateSavesTheCurrentViewAndMakesItActive(t *testing.T) {
 	out.treeSort = query.SortState{Field: query.SortByTitle, Ascending: true}
 	before := len(machineLenses(t, model))
 
-	result := executeLens(model, operationLensCreate, operation.EntityIdentity{}, "Backlog by title", false)
+	result := executeLens(model, lens.OperationLensCreate, operation.EntityIdentity{}, "Backlog by title", false)
 	if result.Err != nil {
 		t.Fatalf("create lens: %v", result.Err)
 	}
@@ -221,7 +222,7 @@ func TestLensCreateRetainsAnExistingBaseline(t *testing.T) {
 	origin := out.captureOutlinerViewSnapshot()
 	applyLensOrFatal(t, out, waitingLens(lensTestID(1), "Waiting", "needle"))
 
-	if result := executeLens(model, operationLensCreate, operation.EntityIdentity{}, "Narrowed", false); result.Err != nil {
+	if result := executeLens(model, lens.OperationLensCreate, operation.EntityIdentity{}, "Narrowed", false); result.Err != nil {
 		t.Fatalf("create lens: %v", result.Err)
 	}
 	if out.activeLens.origin.presentation.mode != origin.presentation.mode {
@@ -241,7 +242,7 @@ func TestLensNamesAreNormalizedAndUniqueCaseInsensitively(t *testing.T) {
 	model := lensOperationApp(t)
 	existing := lensNamed(t, model, config.StarterNamedLenses()[0].Name)
 
-	result := executeLens(model, operationLensCreate, operation.EntityIdentity{}, "  "+strings.ToUpper(existing.Name)+"  ", false)
+	result := executeLens(model, lens.OperationLensCreate, operation.EntityIdentity{}, "  "+strings.ToUpper(existing.Name)+"  ", false)
 	if result.Err == nil || !strings.Contains(result.Err.Error(), "already exists") {
 		t.Fatalf("duplicate name = %v, want a name-collision refusal", result.Err)
 	}
@@ -249,7 +250,7 @@ func TestLensNamesAreNormalizedAndUniqueCaseInsensitively(t *testing.T) {
 		t.Fatalf("a refused create wrote %d records", got)
 	}
 
-	if result := executeLens(model, operationLensCreate, operation.EntityIdentity{}, "  Trimmed  ", false); result.Err != nil {
+	if result := executeLens(model, lens.OperationLensCreate, operation.EntityIdentity{}, "  Trimmed  ", false); result.Err != nil {
 		t.Fatalf("create with padding: %v", result.Err)
 	}
 	lensNamed(t, model, "Trimmed")
@@ -264,7 +265,7 @@ func TestLensRenamePreservesTheIDAndTheProjection(t *testing.T) {
 	mode := out.primaryMode
 	query := out.lensQuery
 
-	if result := executeLens(model, operationLensRename, operation.LensEntity(starter.ID), "Blocked", false); result.Err != nil {
+	if result := executeLens(model, lens.OperationLensRename, operation.LensEntity(starter.ID), "Blocked", false); result.Err != nil {
 		t.Fatalf("rename lens: %v", result.Err)
 	}
 
@@ -291,7 +292,7 @@ func TestLensRenameRefusesADuplicateNameWithoutTouchingAnything(t *testing.T) {
 	first := lensNamed(t, model, starters[0].Name)
 	applyLensOrFatal(t, out, first)
 
-	result := executeLens(model, operationLensRename, operation.LensEntity(first.ID), starters[1].Name, false)
+	result := executeLens(model, lens.OperationLensRename, operation.LensEntity(first.ID), starters[1].Name, false)
 	if result.Err == nil || !strings.Contains(result.Err.Error(), "already exists") {
 		t.Fatalf("duplicate rename = %v, want a name-collision refusal", result.Err)
 	}
@@ -314,7 +315,7 @@ func TestLensReplaceOverwritesUnderTheSameIDAndClearsTheModifiedMarker(t *testin
 		t.Fatal("expected the diverged view to mark the lens modified")
 	}
 
-	if result := executeLens(model, operationLensReplace, operation.LensEntity(starter.ID), "", true); result.Err != nil {
+	if result := executeLens(model, lens.OperationLensReplace, operation.LensEntity(starter.ID), "", true); result.Err != nil {
 		t.Fatalf("replace lens: %v", result.Err)
 	}
 
@@ -340,7 +341,7 @@ func TestLensDeleteRemovesTheDefinitionAndRestoresTheBaseline(t *testing.T) {
 	starter := lensNamed(t, model, config.StarterNamedLenses()[0].Name)
 	applyLensOrFatal(t, out, starter)
 
-	if result := executeLens(model, operationLensDelete, operation.LensEntity(starter.ID), "", true); result.Err != nil {
+	if result := executeLens(model, lens.OperationLensDelete, operation.LensEntity(starter.ID), "", true); result.Err != nil {
 		t.Fatalf("delete lens: %v", result.Err)
 	}
 	if model.runtime.Machine().NamedLensByID(starter.ID) != nil {

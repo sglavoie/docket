@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
@@ -20,19 +21,19 @@ func (m *AppModel) executeLensOperation(
 			Err: fmt.Errorf("%s needs a lens target, got %s", invocation.Descriptor.Label, target.Entity),
 		}
 	}
-	lens, err := m.resolveLensTarget(target.Entity)
+	saved, err := m.resolveLensTarget(target.Entity)
 	if err != nil {
 		return operation.OperationHandlerResult{Err: err}
 	}
 	switch invocation.Descriptor.ID {
-	case operationLensApply:
-		return m.applyLensOperation(lens)
-	case operationLensRename:
-		return m.renameLensOperation(invocation, lens)
-	case operationLensReplace:
-		return m.replaceLensOperation(lens)
-	case operationLensDelete:
-		return m.deleteLensOperation(lens)
+	case lens.OperationLensApply:
+		return m.applyLensOperation(saved)
+	case lens.OperationLensRename:
+		return m.renameLensOperation(invocation, saved)
+	case lens.OperationLensReplace:
+		return m.replaceLensOperation(saved)
+	case lens.OperationLensDelete:
+		return m.deleteLensOperation(saved)
 	default:
 		return operation.OperationHandlerResult{Err: fmt.Errorf("%w: %s", operation.ErrOperationHandler, invocation.Descriptor.ID)}
 	}
@@ -44,16 +45,16 @@ func (m *AppModel) executeLensOperation(
 // hint, not a record of the act, so a failed pointer commit degrades to a status
 // warning and the projection stands. ApplyNamedLens still decides every refusal
 // before it touches an axis.
-func (m *AppModel) applyLensOperation(lens config.NamedLens) operation.OperationHandlerResult {
+func (m *AppModel) applyLensOperation(saved config.NamedLens) operation.OperationHandlerResult {
 	out := m.crossOutliner
 	if out == nil {
 		return operation.OperationHandlerResult{Err: errors.New("the Outliner is unavailable")}
 	}
-	cmd, err := out.ApplyNamedLens(lens)
+	cmd, err := out.ApplyNamedLens(saved)
 	if err != nil {
 		return operation.OperationHandlerResult{Err: err}
 	}
-	return lensCommandResult(cmd, "Lens: "+lens.Name)
+	return lensCommandResult(cmd, "Lens: "+saved.Name)
 }
 
 // executeLensCreateOperation saves the current view under a new UUID and makes
@@ -71,26 +72,26 @@ func (m *AppModel) executeLensCreateOperation(invocation operation.OperationInvo
 	}
 	// A user lens mints its own UUID here, in canonical lowercase hyphenated
 	// form, which is the only spelling ValidateNamedLensID accepts.
-	lens := out.captureLensState().namedLens(uuid.NewString(), name)
-	if err = lens.Validate(); err != nil {
+	minted := out.captureLensState().namedLens(uuid.NewString(), name)
+	if err = minted.Validate(); err != nil {
 		return operation.OperationHandlerResult{Err: err}
 	}
 	if err = m.commitNamedLensMutation(func(machine *config.MachineState) error {
-		if namedLensNameTaken(machine.NamedLenses, lens.Name, "") {
-			return fmt.Errorf("a lens named %q already exists", lens.Name)
+		if namedLensNameTaken(machine.NamedLenses, minted.Name, "") {
+			return fmt.Errorf("a lens named %q already exists", minted.Name)
 		}
-		machine.NamedLenses = append(machine.NamedLenses, lens)
+		machine.NamedLenses = append(machine.NamedLenses, minted)
 		return nil
 	}); err != nil {
 		return operation.OperationHandlerResult{Err: err}
 	}
-	cmd, err := out.ApplyNamedLens(lens)
+	cmd, err := out.ApplyNamedLens(minted)
 	if err != nil {
 		return operation.OperationHandlerResult{
-			Err: fmt.Errorf("saved lens %q but could not apply it: %w", lens.Name, err),
+			Err: fmt.Errorf("saved lens %q but could not apply it: %w", minted.Name, err),
 		}
 	}
-	return lensCommandResult(cmd, "Saved lens: "+lens.Name)
+	return lensCommandResult(cmd, "Saved lens: "+minted.Name)
 }
 
 // resolveBuiltinLensTemplate reads the selected template out of the invocation
@@ -163,44 +164,44 @@ func (m *AppModel) executeLensAddTemplateOperation(invocation operation.Operatio
 // stays modified across the rename.
 func (m *AppModel) renameLensOperation(
 	invocation operation.OperationInvocation,
-	lens config.NamedLens,
+	existing config.NamedLens,
 ) operation.OperationHandlerResult {
 	name, err := config.NormalizeNamedLensName(operationStringValue(invocation))
 	if err != nil {
 		return operation.OperationHandlerResult{Err: err}
 	}
-	if name == lens.Name {
+	if name == existing.Name {
 		return operation.OperationHandlerResult{Status: "Rename canceled: same name"}
 	}
 	if err := m.commitNamedLensMutation(func(machine *config.MachineState) error {
-		if namedLensNameTaken(machine.NamedLenses, name, lens.ID) {
+		if namedLensNameTaken(machine.NamedLenses, name, existing.ID) {
 			return fmt.Errorf("a lens named %q already exists", name)
 		}
-		saved := machine.NamedLensByID(lens.ID)
+		saved := machine.NamedLensByID(existing.ID)
 		if saved == nil {
-			return fmt.Errorf("lens %s is no longer available; reopen the lens list", lens.ID)
+			return fmt.Errorf("lens %s is no longer available; reopen the lens list", existing.ID)
 		}
 		saved.Name = name
 		return nil
 	}); err != nil {
 		return operation.OperationHandlerResult{Err: err}
 	}
-	if out := m.crossOutliner; out != nil && out.activeLens != nil && out.activeLens.lensID == lens.ID {
+	if out := m.crossOutliner; out != nil && out.activeLens != nil && out.activeLens.lensID == existing.ID {
 		out.activeLens.name = name
 	}
-	return operation.OperationHandlerResult{Status: fmt.Sprintf("Renamed lens: %s → %s", lens.Name, name)}
+	return operation.OperationHandlerResult{Status: fmt.Sprintf("Renamed lens: %s → %s", existing.Name, name)}
 }
 
 // replaceLensOperation overwrites the saved definition with the live view under
 // the same identity. Replacing the active lens re-bases its frame, which is what
 // clears the modified marker: the view and the record now agree.
-func (m *AppModel) replaceLensOperation(lens config.NamedLens) operation.OperationHandlerResult {
+func (m *AppModel) replaceLensOperation(existing config.NamedLens) operation.OperationHandlerResult {
 	out := m.crossOutliner
 	if out == nil {
 		return operation.OperationHandlerResult{Err: errors.New("the Outliner is unavailable")}
 	}
 	state := out.captureLensState()
-	replacement := state.namedLens(lens.ID, lens.Name)
+	replacement := state.namedLens(existing.ID, existing.Name)
 	if err := replacement.Validate(); err != nil {
 		return operation.OperationHandlerResult{Err: err}
 	}
@@ -223,19 +224,19 @@ func (m *AppModel) replaceLensOperation(lens config.NamedLens) operation.Operati
 // deleteLensOperation drops the definition and, when it was the live one, hands
 // the pre-lens view back. The commit runs first so a delete that fails leaves
 // the user inside the lens they still have.
-func (m *AppModel) deleteLensOperation(lens config.NamedLens) operation.OperationHandlerResult {
+func (m *AppModel) deleteLensOperation(existing config.NamedLens) operation.OperationHandlerResult {
 	if err := m.commitNamedLensMutation(func(machine *config.MachineState) error {
-		if !machine.RemoveNamedLens(lens.ID) {
-			return fmt.Errorf("lens %s is no longer available; reopen the lens list", lens.ID)
+		if !machine.RemoveNamedLens(existing.ID) {
+			return fmt.Errorf("lens %s is no longer available; reopen the lens list", existing.ID)
 		}
 		return nil
 	}); err != nil {
 		return operation.OperationHandlerResult{Err: err}
 	}
-	if out := m.crossOutliner; out != nil && out.activeLens != nil && out.activeLens.lensID == lens.ID {
+	if out := m.crossOutliner; out != nil && out.activeLens != nil && out.activeLens.lensID == existing.ID {
 		out.restoreLensBaseline()
 	}
-	return operation.OperationHandlerResult{Status: "Deleted lens: " + lens.Name}
+	return operation.OperationHandlerResult{Status: "Deleted lens: " + existing.Name}
 }
 
 // lensCommandResult carries an application's follow-up load, if it started one.

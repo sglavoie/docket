@@ -4,6 +4,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -18,8 +19,8 @@ import (
 // namedLensPickerSnapshot reads the population and the live projection the
 // picker draws. The current-view summary is rendered from a throwaway
 // definition under no identity, which is exactly the record Save would write.
-func (m *AppModel) namedLensPickerSnapshot() NamedLensPickerSnapshot {
-	snapshot := NamedLensPickerSnapshot{}
+func (m *AppModel) namedLensPickerSnapshot() lens.NamedLensPickerSnapshot {
+	snapshot := lens.NamedLensPickerSnapshot{}
 	if m == nil {
 		return snapshot
 	}
@@ -29,7 +30,7 @@ func (m *AppModel) namedLensPickerSnapshot() NamedLensPickerSnapshot {
 		}
 	}
 	if out := m.crossOutliner; out != nil {
-		snapshot.CurrentSummary = namedLensSummary(out.captureLensState().namedLens("", ""))
+		snapshot.CurrentSummary = lens.NamedLensSummary(out.captureLensState().namedLens("", ""))
 		snapshot.Modified = out.lensModified()
 		if out.activeLens != nil {
 			snapshot.ActiveID = out.activeLens.lensID
@@ -45,7 +46,7 @@ func (m *AppModel) openNamedLensPicker() tea.Cmd {
 	if m == nil {
 		return nil
 	}
-	picker, err := NewNamedLensPickerModel(
+	picker, err := lens.NewNamedLensPickerModel(
 		m.operationExecutor,
 		m.currentView(),
 		m.namedLensPickerSnapshot(),
@@ -74,7 +75,7 @@ func (m *AppModel) saveViewAsLens() tea.Cmd {
 	ctx := route.PresentationCommandContext(m.currentView())
 	ctx.Capabilities.Add(operation.CapabilityLensPicker)
 	result := m.operationExecutor.Execute(operation.OperationExecutionRequest{
-		ID:      operationLensCreate,
+		ID:      lens.OperationLensCreate,
 		Context: ctx,
 	})
 	if result.ValueRequired != nil {
@@ -103,15 +104,15 @@ func (m *AppModel) refreshNamedLensPicker() {
 // openNamedLensActions mounts the management sheet above the picker. The picker
 // stays mounted underneath, which is what makes every cancel path inside the
 // sheet land back on the list rather than on the Outliner.
-func (m *AppModel) openNamedLensActions(msg NamedLensActionsRequestMsg) tea.Cmd {
+func (m *AppModel) openNamedLensActions(msg lens.NamedLensActionsRequestMsg) tea.Cmd {
 	if m == nil || m.lensPicker == nil {
 		return nil
 	}
 	sheet, err := listsurface.NewContextActionSheetModel(
 		m.operationRegistry,
 		m.operationExecutor,
-		m.lensPicker.commandContext(msg.Entity),
-		namedLensActionSheetOperations,
+		m.lensPicker.CommandContext(msg.Entity),
+		lens.NamedLensActionSheetOperations,
 		listsurface.ContextActionSheetConfig{
 			Host:         listsurface.ContextActionHostLensPicker,
 			Title:        "Lens actions",
@@ -134,7 +135,7 @@ func (m *AppModel) openNamedLensActions(msg NamedLensActionsRequestMsg) tea.Cmd 
 // opens above it, and a completion refreshes the list — except for Apply,
 // Create, and Add built-in view, whose whole point is the view behind the
 // overlays and which have already torn the stack down by the time this runs.
-func (m *AppModel) applyNamedLensPickerResult(msg NamedLensPickerResultMsg) tea.Cmd {
+func (m *AppModel) applyNamedLensPickerResult(msg lens.NamedLensPickerResultMsg) tea.Cmd {
 	switch {
 	case msg.Result.Err != nil:
 		return nil

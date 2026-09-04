@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
@@ -32,21 +33,16 @@ import (
 // with, written by publishLens after the projection is already live, so it has
 // no act to be ordered ahead of. Create, replace, rename, and delete all still
 // commit first.
-const (
-	operationLensApply       operation.OperationID = "tui.lens.apply"
-	operationLensCreate      operation.OperationID = "tui.lens.create"
-	operationLensAddTemplate operation.OperationID = "tui.lens.add-template"
-	operationLensRename      operation.OperationID = "tui.lens.rename"
-	operationLensReplace     operation.OperationID = "tui.lens.replace"
-	operationLensDelete      operation.OperationID = "tui.lens.delete"
-)
+//
+// The six operation IDs this file describes and registers are internal/tui/lens's,
+// because the picker names them on its rows.
 
 // lensOperationDescriptors is the authoritative catalog of named-lens
 // operations. Four of them target one saved lens by its UUID; Create and Add
 // built-in view resolve no target, because the record each writes does not
 // exist yet.
 func lensOperationDescriptors() []operation.OperationDescriptor {
-	lens := func(
+	targeted := func(
 		id operation.OperationID,
 		label string,
 		description string,
@@ -69,9 +65,9 @@ func lensOperationDescriptors() []operation.OperationDescriptor {
 		}
 	}
 	return []operation.OperationDescriptor{
-		lens(operationLensApply, "Apply lens", "Open this saved view", operation.OperationRiskReadOnly),
+		targeted(lens.OperationLensApply, "Apply lens", "Open this saved view", operation.OperationRiskReadOnly),
 		{
-			ID:                   operationLensCreate,
+			ID:                   lens.OperationLensCreate,
 			Label:                "Save current view",
 			Description:          "Save the current view as a new lens",
 			Category:             operation.OperationCategoryFilter,
@@ -85,7 +81,7 @@ func lensOperationDescriptors() []operation.OperationDescriptor {
 			// Adding a template writes an ordinary lens under the catalog's own
 			// stable UUID, so it resolves no target either: the value is which
 			// template, not which saved record.
-			ID:                   operationLensAddTemplate,
+			ID:                   lens.OperationLensAddTemplate,
 			Label:                "Add built-in view",
 			Description:          "Add one of the built-in views as a saved lens",
 			Category:             operation.OperationCategoryFilter,
@@ -96,21 +92,21 @@ func lensOperationDescriptors() []operation.OperationDescriptor {
 			ValueProviderID:      operation.ValueProviderLensTemplate,
 		},
 		operation.WithValueProvider(
-			lens(operationLensRename, "Rename lens", "Give this lens a new name", operation.OperationRiskMutation),
+			targeted(lens.OperationLensRename, "Rename lens", "Give this lens a new name", operation.OperationRiskMutation),
 			operation.ValueProviderLensName,
 		),
 		// Replace and Delete overwrite or drop a saved record with no undo entry
 		// behind them, so both carry destructive risk and fall through to the
 		// executor's own confirmation gate rather than prompting for themselves.
-		lens(
-			operationLensReplace,
+		targeted(
+			lens.OperationLensReplace,
 			// Named for the source rather than the target, because the sheet row
 			// sits under the lens's own name: what needs saying is which view wins.
 			"Replace from current view",
 			"Overwrite this lens with the current view",
 			operation.OperationRiskDestructive,
 		),
-		lens(operationLensDelete, "Delete lens", "Delete this saved lens", operation.OperationRiskDestructive),
+		targeted(lens.OperationLensDelete, "Delete lens", "Delete this saved lens", operation.OperationRiskDestructive),
 	}
 }
 
@@ -175,9 +171,9 @@ func (m *AppModel) registerLensOperations() error {
 // neighbor's handler.
 func (m *AppModel) zeroTargetLensHandler(id operation.OperationID) operation.OperationHandler {
 	switch id {
-	case operationLensCreate:
+	case lens.OperationLensCreate:
 		return m.executeLensCreateOperation
-	case operationLensAddTemplate:
+	case lens.OperationLensAddTemplate:
 		return m.executeLensAddTemplateOperation
 	default:
 		return nil
@@ -199,14 +195,14 @@ func (m *AppModel) resolveLensTarget(identity operation.EntityIdentity) (config.
 	if machine == nil {
 		return config.NamedLens{}, errors.New("machine-local state is unavailable")
 	}
-	lens := machine.NamedLensByID(identity.Name)
-	if lens == nil {
+	saved := machine.NamedLensByID(identity.Name)
+	if saved == nil {
 		return config.NamedLens{}, fmt.Errorf(
 			"lens %s is no longer available; reopen the lens list",
 			identity.Name,
 		)
 	}
-	return lens.Clone(), nil
+	return saved.Clone(), nil
 }
 
 // commitNamedLensMutation applies one lens edit to a deep clone of the machine
@@ -275,12 +271,12 @@ func (m *AppModel) restorePendingLaunchLens() tea.Cmd {
 	if m == nil || m.pendingLaunchLens == nil {
 		return nil
 	}
-	lens := *m.pendingLaunchLens
+	pending := *m.pendingLaunchLens
 	m.pendingLaunchLens = nil
 	if m.crossOutliner == nil {
 		return nil
 	}
-	cmd, err := m.crossOutliner.ApplyNamedLens(lens)
+	cmd, err := m.crossOutliner.ApplyNamedLens(pending)
 	if err != nil {
 		return nil
 	}
@@ -291,11 +287,11 @@ func (m *AppModel) restorePendingLaunchLens() tea.Cmd {
 // name. Uniqueness is case-insensitive, matching NamedLensList.Validate; this
 // check exists to name the offending lens rather than to add a second rule.
 func namedLensNameTaken(list config.NamedLensList, name string, exceptID string) bool {
-	for _, lens := range list {
-		if lens.ID == exceptID {
+	for _, saved := range list {
+		if saved.ID == exceptID {
 			continue
 		}
-		if strings.EqualFold(lens.Name, name) {
+		if strings.EqualFold(saved.Name, name) {
 			return true
 		}
 	}

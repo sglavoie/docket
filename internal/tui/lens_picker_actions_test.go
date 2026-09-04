@@ -9,29 +9,30 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/lens"
 )
 
 func TestLensPickerGuidanceNamesTheActUnderTheCursor(t *testing.T) {
 	model := lensPickerApp(t)
 	footerOf := func() string {
 		t.Helper()
-		guidance := model.lensPicker.guidanceSpec()
+		guidance := model.lensPicker.GuidanceSpec()
 		return ansi.Strip(chrome.RenderGuidanceText(guidance, 200))
 	}
 
-	if got := footerOf(); !strings.Contains(got, lensPickerCreateEnterLabel) {
-		t.Errorf("save-row guidance = %q, want %q", got, lensPickerCreateEnterLabel)
+	if got := footerOf(); !strings.Contains(got, lens.LensPickerCreateEnterLabel) {
+		t.Errorf("save-row guidance = %q, want %q", got, lens.LensPickerCreateEnterLabel)
 	}
 	pressLens(t, model, "j")
-	if got := footerOf(); !strings.Contains(got, lensPickerAddTemplateEnterLabel) {
-		t.Errorf("add-row guidance = %q, want %q", got, lensPickerAddTemplateEnterLabel)
+	if got := footerOf(); !strings.Contains(got, lens.LensPickerAddTemplateEnterLabel) {
+		t.Errorf("add-row guidance = %q, want %q", got, lens.LensPickerAddTemplateEnterLabel)
 	}
 	pressLens(t, model, "j")
 	got := footerOf()
 	if !strings.Contains(got, "apply") {
 		t.Errorf("lens-row guidance = %q, want apply", got)
 	}
-	if strings.Contains(got, lensPickerAddTemplateEnterLabel) {
+	if strings.Contains(got, lens.LensPickerAddTemplateEnterLabel) {
 		t.Errorf("lens-row guidance = %q, still names the add row's act", got)
 	}
 	// Space is a management key only on a saved lens, so it is advertised there
@@ -122,7 +123,7 @@ func TestLensRenameReturnsToThePickerWithTheSameLensSelected(t *testing.T) {
 		t.Fatal("a completed rename closed the picker")
 	}
 	want := []string{
-		lensPickerCreateLabel, lensPickerAddTemplateLabel,
+		lens.LensPickerCreateLabel, lens.LensPickerAddTemplateLabel,
 		"Blocked", "High Priority", "Stale",
 	}
 	if got := lensPickerRowTitles(t, model); !slices.Equal(got, want) {
@@ -256,7 +257,7 @@ func TestLensDeleteReturnsToTheNearestSurvivingRow(t *testing.T) {
 		t.Fatal("a completed delete closed the picker")
 	}
 	want := []string{
-		lensPickerCreateLabel, lensPickerAddTemplateLabel,
+		lens.LensPickerCreateLabel, lens.LensPickerAddTemplateLabel,
 		"High Priority", "Waiting",
 	}
 	if got := lensPickerRowTitles(t, model); !slices.Equal(got, want) {

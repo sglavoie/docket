@@ -1,4 +1,4 @@
-package tui
+package lens
 
 import (
 	"slices"
@@ -113,7 +113,7 @@ func namedLensSemanticRole(lens config.NamedLens) namedLensRole {
 		return namedLensRole{Kind: namedLensRoleWarning}
 	}
 
-	if mode, err := lensModeAxis.value(lens.Mode); err == nil && mode != chrome.ModeAll {
+	if mode, err := ModeAxis.Value(lens.Mode); err == nil && mode != chrome.ModeAll {
 		return namedLensRole{Kind: namedLensRoleMode, Mode: mode}
 	}
 
@@ -170,10 +170,10 @@ func namedLensPriority(query models.Query) int {
 	return priority
 }
 
-// namedLensPrimaryStyle is the one entry point a picker calls. It returns a
+// NamedLensPrimaryStyle is the one entry point a picker calls. It returns a
 // foreground-only style, or false for a definition with no recognized role, so
 // a neutral row keeps the list's ordinary text exactly as it is.
-func namedLensPrimaryStyle(lens config.NamedLens) (lipgloss.Style, bool) {
+func NamedLensPrimaryStyle(lens config.NamedLens) (lipgloss.Style, bool) {
 	return namedLensRoleStyle(namedLensSemanticRole(lens))
 }
 

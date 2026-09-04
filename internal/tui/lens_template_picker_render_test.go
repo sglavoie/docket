@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -87,7 +88,7 @@ func TestLensTemplateGalleryKeepsStyleOnUnavailableRows(t *testing.T) {
 // accent.
 func TestLensTemplateGalleryRendersUnavailableRowsMutedRatherThanColored(t *testing.T) {
 	waiting := lensTemplateByName(t, "Waiting")
-	accent, ok := namedLensPrimaryStyle(waiting)
+	accent, ok := lens.NamedLensPrimaryStyle(waiting)
 	if !ok {
 		t.Fatal("the Waiting template resolves no accent")
 	}

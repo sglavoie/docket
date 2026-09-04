@@ -13,7 +13,7 @@ import (
 // their chips so a lens name can wear one without becoming a badge.
 //
 // Every hue choice lives here alone. A picker that colors a lens asks
-// namedLensPrimaryStyle and never names a color, exactly as a task row asks
+// lens.NamedLensPrimaryStyle and never names a color, exactly as a task row asks
 // TagChipStyle and never names a chip.
 //
 // Each accent keeps its family's hue and moves only its lightness: on a dark

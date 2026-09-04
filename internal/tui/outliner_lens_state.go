@@ -1,21 +1,22 @@
 package tui
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
 // A named lens is a saved Outliner projection: the mode it opens, the narrowing
 // it applies, the project scope it may own, and the manual sort it restores.
-// This file owns the TUI-side representation of those axes and the only
-// conversion between them and the durable config tokens, so no other TUI code
-// reads a persisted spelling and no config code learns a TUI enum.
+// This file owns the Outliner-side representation of those axes and is the only
+// place the Outliner converts between them and a durable definition. The token
+// tables it converts through are internal/tui/lens's, so no other TUI code reads
+// a persisted spelling and no config code learns a TUI enum.
 //
 // The narrowing persists as one string holding both halves of it: the canonical
 // clauses models.Query owns, and whatever richer spelling the user-facing
@@ -53,72 +54,6 @@ type lensState struct {
 // lives here once instead of at each comparison.
 func (s lensState) projectFilterState() query.ProjectFilterState {
 	return query.ProjectFilterStateFromQuery(s.facets)
-}
-
-// lensAxis maps one TUI enum onto its durable token set. The table is the single
-// source of truth for that axis in both directions; the reverse lookup scans it
-// rather than duplicating it into a second map that could drift out of step.
-type lensAxis[T comparable] struct {
-	name   string
-	tokens map[T]string
-	// fallback is the value the empty token decodes to. config writes the empty
-	// string for an axis left at its default, so decoding must read it back as
-	// that default rather than as garbage.
-	fallback T
-	// requiresToken marks the one axis, mode, that has no default rendering: an
-	// empty token there is malformed rather than "left alone".
-	requiresToken bool
-}
-
-func (a lensAxis[T]) token(value T) string {
-	if token, ok := a.tokens[value]; ok {
-		return token
-	}
-	if a.requiresToken {
-		return ""
-	}
-	return a.tokens[a.fallback]
-}
-
-func (a lensAxis[T]) value(token string) (T, error) {
-	if token == "" && !a.requiresToken {
-		return a.fallback, nil
-	}
-	for value, candidate := range a.tokens {
-		if candidate == token {
-			return value, nil
-		}
-	}
-	var zero T
-	return zero, fmt.Errorf("lens %s %q is not a known value", a.name, token)
-}
-
-var lensModeAxis = lensAxis[chrome.OutlinerModeID]{
-	name: "mode",
-	tokens: map[chrome.OutlinerModeID]string{
-		chrome.ModeAll:     config.LensModeAll,
-		chrome.ModeInbox:   config.LensModeInbox,
-		chrome.ModeToday:   config.LensModeToday,
-		chrome.ModeNext:    config.LensModeNext,
-		chrome.ModeBacklog: config.LensModeBacklog,
-		chrome.ModeDue:     config.LensModeDue,
-		chrome.ModeRecent:  config.LensModeRecent,
-	},
-	fallback:      chrome.ModeAll,
-	requiresToken: true,
-}
-
-var lensSortAxis = lensAxis[query.SortField]{
-	name: "sort field",
-	tokens: map[query.SortField]string{
-		query.SortByDefault:   config.LensSortDefault,
-		query.SortByPriority:  config.LensSortPriority,
-		query.SortByDueDate:   config.LensSortDue,
-		query.SortByCreatedAt: config.LensSortCreated,
-		query.SortByUpdatedAt: config.LensSortUpdated,
-		query.SortByTitle:     config.LensSortTitle,
-	},
-	fallback: query.SortByDefault,
 }
 
 // captureLensState reads every lens-owned axis off the live Outliner. The
@@ -216,13 +151,13 @@ func (s lensState) namedLens(id, name string) config.NamedLens {
 	return config.NamedLens{
 		ID:   id,
 		Name: name,
-		Mode: lensModeAxis.token(s.mode),
+		Mode: lens.ModeAxis.Token(s.mode),
 		// Scope has no token table: it is a project ID, and the empty string is
 		// the unowned axis rather than a default the decoder has to name.
 		Scope: s.scopeProjectID,
 		Query: models.JoinQueryString(s.facets, s.query),
 		Sort: config.LensSort{
-			Field:     lensSortAxis.token(s.sort.Field),
+			Field:     lens.SortAxis.Token(s.sort.Field),
 			Ascending: s.sort.Ascending,
 		},
 	}
@@ -233,28 +168,28 @@ func (s lensState) namedLens(id, name string) config.NamedLens {
 // installing a projection nobody can name. The query is deliberately not parsed:
 // it compiles at projection time, where an unparseable one keeps the ordinary
 // invalid-query guidance instead of failing to load.
-func lensStateFromNamedLens(lens config.NamedLens) (lensState, error) {
-	if err := lens.Validate(); err != nil {
+func lensStateFromNamedLens(saved config.NamedLens) (lensState, error) {
+	if err := saved.Validate(); err != nil {
 		return lensState{}, err
 	}
-	mode, err := lensModeAxis.value(lens.Mode)
+	mode, err := lens.ModeAxis.Value(saved.Mode)
 	if err != nil {
 		return lensState{}, err
 	}
-	sortField, err := lensSortAxis.value(lens.Sort.Field)
+	sortField, err := lens.SortAxis.Value(saved.Sort.Field)
 	if err != nil {
 		return lensState{}, err
 	}
-	facets, remainder := models.PartitionQueryString(lens.Query)
+	facets, remainder := models.PartitionQueryString(saved.Query)
 	return lensState{
 		mode: mode,
 		// The scope is carried verbatim: Validate already held it to the canonical
 		// UUID spelling, and whether that project can still be entered is a runtime
 		// question ApplyNamedLens answers, never a decoding one.
-		scopeProjectID: lens.Scope,
+		scopeProjectID: saved.Scope,
 		facets:         facets,
 		query:          remainder,
-		sort:           query.SortState{Field: sortField, Ascending: lens.Sort.Ascending},
+		sort:           query.SortState{Field: sortField, Ascending: saved.Sort.Ascending},
 	}, nil
 }
 
@@ -266,12 +201,12 @@ func lensStateFromNamedLens(lens config.NamedLens) (lensState, error) {
 // appear here — an omitted one is silently unwatched, so an edit to it leaves
 // the lens reading as unmodified.
 func (s lensState) fingerprint() string {
-	lens := s.namedLens("", "")
+	saved := s.namedLens("", "")
 	return strings.Join([]string{
-		lens.Mode,
-		lens.Scope,
-		lens.Query,
-		lens.Sort.Field,
-		strconv.FormatBool(lens.Sort.Ascending),
+		saved.Mode,
+		saved.Scope,
+		saved.Query,
+		saved.Sort.Field,
+		strconv.FormatBool(saved.Sort.Ascending),
 	}, "\x1f")
 }

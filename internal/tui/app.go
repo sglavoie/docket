@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/help"
+	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/operation"
@@ -236,7 +237,7 @@ type AppModel struct {
 	// The named-lens picker sits below that flow rather than inside it: it is
 	// the surface an action sheet is opened *from*, so it stays mounted beneath
 	// the sheet, prompt, and confirmation a lens action nests above it.
-	lensPicker *NamedLensPickerModel
+	lensPicker *lens.NamedLensPickerModel
 
 	// The conflict browser sits beside the picker rather than inside that flow:
 	// it registers no operations, so nothing ever nests above it, and Esc is the

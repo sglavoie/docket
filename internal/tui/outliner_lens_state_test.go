@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -86,7 +87,7 @@ func TestLensStateRoundTripsEveryModeFacetPopulationAndSortAxis(t *testing.T) {
 		query.SortByDefault, query.SortByPriority, query.SortByDueDate, query.SortByCreatedAt, query.SortByUpdatedAt, query.SortByTitle,
 	} {
 		for _, ascending := range []bool{true, false} {
-			name := "sort:" + lensSortAxis.token(field)
+			name := "sort:" + lens.SortAxis.Token(field)
 			if !ascending {
 				name += ":desc"
 			}

@@ -1,4 +1,4 @@
-package tui
+package lens
 
 import (
 	"fmt"
@@ -63,7 +63,7 @@ func TestNamedLensPrimaryStyle(t *testing.T) {
 
 			for _, tc := range styled {
 				t.Run(tc.name, func(t *testing.T) {
-					style, ok := namedLensPrimaryStyle(tc.lens)
+					style, ok := NamedLensPrimaryStyle(tc.lens)
 					if !ok {
 						t.Fatalf("no style for a definition with a semantic role")
 					}
@@ -73,7 +73,7 @@ func TestNamedLensPrimaryStyle(t *testing.T) {
 
 			for _, tc := range neutral {
 				t.Run("neutral "+tc.name, func(t *testing.T) {
-					if style, ok := namedLensPrimaryStyle(tc.lens); ok {
+					if style, ok := NamedLensPrimaryStyle(tc.lens); ok {
 						t.Fatalf("neutral definition wears %v", style.GetForeground())
 					}
 				})
@@ -85,12 +85,12 @@ func TestNamedLensPrimaryStyle(t *testing.T) {
 		lens := namedLensQueryFixture("@overdue")
 
 		theme.ApplyTheme(theme.ThemeConfig{Name: "dark"})
-		dark, ok := namedLensPrimaryStyle(lens)
+		dark, ok := NamedLensPrimaryStyle(lens)
 		if !ok {
 			t.Fatalf("dark theme resolved no style")
 		}
 		theme.ApplyTheme(theme.ThemeConfig{Name: "light"})
-		light, ok := namedLensPrimaryStyle(lens)
+		light, ok := NamedLensPrimaryStyle(lens)
 		if !ok {
 			t.Fatalf("light theme resolved no style")
 		}
@@ -109,7 +109,7 @@ func TestNamedLensPrimaryStyle(t *testing.T) {
 			theme.ApplyTheme(theme.ThemeConfig{Name: themeName})
 
 			for _, priority := range []int{models.PriorityHigh, models.PriorityMedium, models.PriorityLow} {
-				style, ok := namedLensPrimaryStyle(
+				style, ok := NamedLensPrimaryStyle(
 					namedLensQueryFixture(fmt.Sprintf("!%d", priority)))
 				if !ok {
 					t.Fatalf("%s theme: priority %d definition resolved no style", themeName, priority)

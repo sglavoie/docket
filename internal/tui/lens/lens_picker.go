@@ -1,4 +1,4 @@
-package tui
+package lens
 
 import (
 	"fmt"
@@ -32,22 +32,22 @@ import (
 const (
 	lensPickerItemPrefix                               = "lens-picker:"
 	lensPickerCreateItemID      listsurface.ListItemID = lensPickerItemPrefix + "create"
-	lensPickerAddTemplateItemID listsurface.ListItemID = lensPickerItemPrefix + "add-template"
+	LensPickerAddTemplateItemID listsurface.ListItemID = lensPickerItemPrefix + "add-template"
 	lensPickerLensPrefix                               = lensPickerItemPrefix + "lens:"
 )
 
-// lensPickerCreateLabel and lensPickerAddTemplateLabel head every opening of the
+// LensPickerCreateLabel and LensPickerAddTemplateLabel head every opening of the
 // picker, including an empty one, in this order: saving what is on screen is the
 // act the picker was opened from, and browsing the catalog is the fallback for a
 // workspace that has nothing worth saving yet.
 const (
-	lensPickerCreateLabel           = "Save current view…"
-	lensPickerAddTemplateLabel      = "Add built-in view…"
-	lensPickerAddTemplateSecondary  = "Browse ready-made views"
-	lensPickerCreateSpaceNotice     = "Press Enter to save the current view"
-	lensPickerAddTemplateSpaceHint  = "Press Enter to browse built-in views"
-	lensPickerCreateEnterLabel      = "save view"
-	lensPickerAddTemplateEnterLabel = "browse built-ins"
+	LensPickerCreateLabel           = "Save current view…"
+	LensPickerAddTemplateLabel      = "Add built-in view…"
+	LensPickerAddTemplateSecondary  = "Browse ready-made views"
+	LensPickerCreateSpaceNotice     = "Press Enter to save the current view"
+	LensPickerAddTemplateSpaceHint  = "Press Enter to browse built-in views"
+	LensPickerCreateEnterLabel      = "save view"
+	LensPickerAddTemplateEnterLabel = "browse built-ins"
 )
 
 // The quick-apply ordinals number the listed saved lenses, one digit each, so
@@ -56,22 +56,22 @@ const (
 // every row — numbered or not — so the variable-width active-lens dot behind it
 // cannot bend it.
 const (
-	lensPickerMaxOrdinal         = 9
-	lensPickerOrdinalMarkerWidth = 2
+	LensPickerMaxOrdinal         = 9
+	LensPickerOrdinalMarkerWidth = 2
 	// The refusal for an empty population is a constant rather than a format,
 	// because "0 lenses are numbered" would be arithmetic where the picker
 	// already has an empty-state line saying what to do instead.
-	lensPickerOrdinalEmptyRefusal = "No lenses are listed to number"
+	LensPickerOrdinalEmptyRefusal = "No lenses are listed to number"
 )
 
-// namedLensActionSheetOperations is the Space menu over one saved lens: the
+// NamedLensActionSheetOperations is the Space menu over one saved lens: the
 // three management acts, in the order the product contract names them. Apply is
 // absent because Enter already is it, which is the one-path rule the entity
 // surfaces hold to.
-var namedLensActionSheetOperations = []operation.OperationID{
-	operationLensRename,
-	operationLensReplace,
-	operationLensDelete,
+var NamedLensActionSheetOperations = []operation.OperationID{
+	OperationLensRename,
+	OperationLensReplace,
+	OperationLensDelete,
 }
 
 // NamedLensPickerClosedMsg dismisses the picker without executing anything.
@@ -103,21 +103,21 @@ type NamedLensPickerSnapshot struct {
 
 // NamedLensPickerModel is the searchable projection of the saved lenses.
 type NamedLensPickerModel struct {
-	surface  *listsurface.ListSurfaceModel
+	Surface  *listsurface.ListSurfaceModel
 	executor *operation.OperationExecutor
 	// view is frozen at construction: the picker floats over the route that
 	// opened it, and its own presence must not change the context it builds.
 	view     presentation.PresentationID
 	snapshot NamedLensPickerSnapshot
 	sorted   config.NamedLensList
-	listed   int
-	// ordinals is the quick-apply assignment, saved lens IDs in listed order and
+	Listed   int
+	// Ordinals is the quick-apply assignment, saved lens IDs in listed order and
 	// capped at nine. It is rebuilt by items() in the same pass that counts
 	// listed, which is what keeps a printed digit and the row under it from ever
 	// naming different lenses.
-	ordinals  []string
-	query     string
-	searching bool
+	Ordinals  []string
+	Query     string
+	Searching bool
 	notice    string
 }
 
@@ -144,7 +144,7 @@ func NewNamedLensPickerModel(
 	if err != nil {
 		return nil, err
 	}
-	model.surface = surface
+	model.Surface = surface
 	model.selectActive()
 	return model, nil
 }
@@ -155,11 +155,11 @@ func NewNamedLensPickerModel(
 // order changes around it, and a delete drops the anchor so the clamped cursor
 // lands on the nearest surviving row.
 func (model *NamedLensPickerModel) Refresh(snapshot NamedLensPickerSnapshot) error {
-	if model == nil || model.surface == nil {
+	if model == nil || model.Surface == nil {
 		return nil
 	}
 	model.adopt(snapshot)
-	return model.surface.SetItems(model.items())
+	return model.Surface.SetItems(model.items())
 }
 
 func (model *NamedLensPickerModel) adopt(snapshot NamedLensPickerSnapshot) {
@@ -192,24 +192,24 @@ func (model *NamedLensPickerModel) selectActive() {
 	if model.snapshot.ActiveID == "" {
 		return
 	}
-	model.surface.SetCursorToID(lensPickerItemID(model.snapshot.ActiveID))
+	model.Surface.SetCursorToID(lensPickerItemID(model.snapshot.ActiveID))
 }
 
 // SelectLens moves the cursor onto one saved lens by UUID.
 func (model *NamedLensPickerModel) SelectLens(id string) bool {
-	if model == nil || model.surface == nil {
+	if model == nil || model.Surface == nil {
 		return false
 	}
-	return model.surface.SetCursorToID(lensPickerItemID(id))
+	return model.Surface.SetCursorToID(lensPickerItemID(id))
 }
 
 // CurrentLens returns the saved lens under the cursor. The Save row is not one,
 // which is what every caller distinguishing the two rows asks.
 func (model *NamedLensPickerModel) CurrentLens() (config.NamedLens, bool) {
-	if model == nil || model.surface == nil {
+	if model == nil || model.Surface == nil {
 		return config.NamedLens{}, false
 	}
-	item, ok := model.surface.CurrentItem()
+	item, ok := model.Surface.CurrentItem()
 	if !ok {
 		return config.NamedLens{}, false
 	}
@@ -221,10 +221,10 @@ func (model *NamedLensPickerModel) CurrentLens() (config.NamedLens, bool) {
 // query-exempt action rows are ever asked, since a saved lens is identified by
 // its record through CurrentLens instead.
 func (model *NamedLensPickerModel) cursorIs(id listsurface.ListItemID) bool {
-	if model == nil || model.surface == nil {
+	if model == nil || model.Surface == nil {
 		return false
 	}
-	item, ok := model.surface.CurrentItem()
+	item, ok := model.Surface.CurrentItem()
 	return ok && item.ID == id
 }
 
@@ -241,7 +241,7 @@ func (model *NamedLensPickerModel) Notice() string {
 // under. CapabilityLensPicker is granted here and, for Create alone, by
 // AppModel.saveViewAsLens; every operation that needs a record under the cursor
 // is reachable only through this one, because nothing else supplies the entity.
-func (model *NamedLensPickerModel) commandContext(entity operation.EntityIdentity) operation.CommandContext {
+func (model *NamedLensPickerModel) CommandContext(entity operation.EntityIdentity) operation.CommandContext {
 	ctx := route.PresentationCommandContext(model.view)
 	ctx.Capabilities.Add(operation.CapabilityLensPicker)
 	ctx.CurrentEntity = entity
@@ -252,7 +252,7 @@ func (model *NamedLensPickerModel) request(
 	id operation.OperationID,
 	entity operation.EntityIdentity,
 ) operation.OperationExecutionRequest {
-	return operation.OperationExecutionRequest{ID: id, Context: model.commandContext(entity)}
+	return operation.OperationExecutionRequest{ID: id, Context: model.CommandContext(entity)}
 }
 
 // Execute runs one request through the shared executor and reports whether the
@@ -287,9 +287,9 @@ func (model *NamedLensPickerModel) Execute(
 // setQuery re-narrows the saved rows. It is the picker's own filter, so the
 // surface never sees a query and the Save row never leaves the list.
 func (model *NamedLensPickerModel) setQuery(raw string) {
-	if model.query == raw {
+	if model.Query == raw {
 		return
 	}
-	model.query = raw
-	_ = model.surface.SetItems(model.items())
+	model.Query = raw
+	_ = model.Surface.SetItems(model.items())
 }

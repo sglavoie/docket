@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -143,7 +144,7 @@ func (m *AppModel) newOperationTextPrompt(
 		// current value. The request's own operation decides which, because the
 		// cursor names a lens in both cases.
 		current := ""
-		if request.ID == operationLensRename {
+		if request.ID == lens.OperationLensRename {
 			lens, err := m.resolveLensTarget(identity)
 			if err != nil {
 				return nil, err

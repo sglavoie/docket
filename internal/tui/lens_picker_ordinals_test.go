@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/lens"
 )
 
 // lensPickerOrdinalSlots returns the fixed-width number column of every row, in
@@ -22,15 +23,15 @@ func lensPickerOrdinalSlots(t *testing.T, model *AppModel) []string {
 	if model.lensPicker == nil {
 		t.Fatal("no lens picker is mounted")
 	}
-	items := model.lensPicker.surface.Items()
+	items := model.lensPicker.Surface.Items()
 	slots := make([]string, 0, len(items))
 	for _, item := range items {
 		plain := []rune(ansi.Strip(item.PrimaryMarker))
-		if len(plain) < lensPickerOrdinalMarkerWidth {
+		if len(plain) < lens.LensPickerOrdinalMarkerWidth {
 			t.Fatalf("row %q has no number column: %q", item.PrimaryText, string(plain))
 		}
-		slot := string(plain[:lensPickerOrdinalMarkerWidth])
-		if got := lipgloss.Width(slot); got != lensPickerOrdinalMarkerWidth {
+		slot := string(plain[:lens.LensPickerOrdinalMarkerWidth])
+		if got := lipgloss.Width(slot); got != lens.LensPickerOrdinalMarkerWidth {
 			t.Fatalf("row %q number column is %d columns: %q", item.PrimaryText, got, slot)
 		}
 		slots = append(slots, slot)
@@ -63,10 +64,10 @@ func TestLensPickerOrdinalsNumberOnlyTheListedSavedLenses(t *testing.T) {
 	if got := lensPickerOrdinalSlots(t, model); !slices.Equal(got, want) {
 		t.Fatalf("number columns = %q, want %q", got, want)
 	}
-	if got := model.lensPicker.ordinals; len(got) != 3 {
+	if got := model.lensPicker.Ordinals; len(got) != 3 {
 		t.Fatalf("ordinal assignment holds %d lenses, want 3", len(got))
 	}
-	if got := model.lensPicker.ordinals[0]; got != lensNamed(t, model, "High Priority").ID {
+	if got := model.lensPicker.Ordinals[0]; got != lensNamed(t, model, "High Priority").ID {
 		t.Errorf("ordinal 1 = %s, want the first listed lens", got)
 	}
 }
@@ -77,7 +78,7 @@ func TestLensPickerNarrowedListRenumbersFromOneAndTheDigitAppliesIt(t *testing.T
 
 	pressLens(t, model, "/")
 	typeLens(t, model, "wait")
-	want := []string{lensPickerCreateLabel, lensPickerAddTemplateLabel, "Waiting"}
+	want := []string{lens.LensPickerCreateLabel, lens.LensPickerAddTemplateLabel, "Waiting"}
 	if got := lensPickerRowTitles(t, model); !slices.Equal(got, want) {
 		t.Fatalf("filtered rows = %v, want %v", got, want)
 	}
@@ -90,8 +91,8 @@ func TestLensPickerNarrowedListRenumbersFromOneAndTheDigitAppliesIt(t *testing.T
 	// Enter leaves search with the query retained, so the digit acts on the
 	// narrowing that is still on screen.
 	pressLens(t, model, "enter")
-	if model.lensPicker.searching || model.lensPicker.query != "wait" {
-		t.Fatalf("leaving search dropped the query: %q", model.lensPicker.query)
+	if model.lensPicker.Searching || model.lensPicker.Query != "wait" {
+		t.Fatalf("leaving search dropped the query: %q", model.lensPicker.Query)
 	}
 	pressLens(t, model, "1")
 
@@ -113,7 +114,7 @@ func TestLensPickerDigitsTypedIntoTheQueryStayLiteral(t *testing.T) {
 	if model.lensPicker == nil {
 		t.Fatal("a digit typed into the query closed the picker")
 	}
-	if got := model.lensPicker.query; got != "1" {
+	if got := model.lensPicker.Query; got != "1" {
 		t.Fatalf("query = %q, want the literal digit", got)
 	}
 	if model.crossOutliner.hasActiveLens() {
@@ -176,8 +177,8 @@ func TestLensPickerActionRowsAndTheTenthLensCarryNoOrdinal(t *testing.T) {
 	if got := lensPickerOrdinalSlots(t, model); !slices.Equal(got, want) {
 		t.Fatalf("number columns = %q, want %q", got, want)
 	}
-	if got := len(model.lensPicker.ordinals); got != lensPickerMaxOrdinal {
-		t.Errorf("ordinal assignment holds %d lenses, want the %d cap", got, lensPickerMaxOrdinal)
+	if got := len(model.lensPicker.Ordinals); got != lens.LensPickerMaxOrdinal {
+		t.Errorf("ordinal assignment holds %d lenses, want the %d cap", got, lens.LensPickerMaxOrdinal)
 	}
 	// A digit past the cap is out of range even though the row is on screen, and
 	// says so in the numbering's own terms.
@@ -196,7 +197,7 @@ func TestLensPickerActiveDotDoesNotShiftTheNumberColumn(t *testing.T) {
 
 	unmarked := lensPickerOrdinalSlots(t, model)
 	for _, modified := range []bool{false, true} {
-		if err := model.lensPicker.Refresh(NamedLensPickerSnapshot{
+		if err := model.lensPicker.Refresh(lens.NamedLensPickerSnapshot{
 			Lenses:   machineLenses(t, model),
 			ActiveID: stale.ID,
 			Modified: modified,
@@ -223,7 +224,7 @@ func TestLensPickerActiveDotDoesNotShiftTheNumberColumn(t *testing.T) {
 	// The narrowest branch of contentWidth is 20, not the 42 a comfortable
 	// terminal reaches: the ordinal plus either dot must still fit there.
 	const narrowWidth = 30
-	if got := max(namedLensPickerInnerWidth(narrowWidth)-4, 12); got != 20 {
+	if got := max(lens.NamedLensPickerInnerWidth(narrowWidth)-4, 12); got != 20 {
 		t.Fatalf("contentWidth at %d columns = %d, want the narrow branch 20", narrowWidth, got)
 	}
 	for _, width := range []int{narrowWidth, chrome.MinTerminalWidth, 80} {
@@ -246,9 +247,9 @@ func TestLensPickerDigitApplyFailsExactlyAsEnterDoes(t *testing.T) {
 		// The picker still lists the row; the machine no longer holds it, which is
 		// the one refusal the read-only apply can raise.
 		survivors := make(config.NamedLensList, 0, 2)
-		for _, lens := range machineLenses(t, model) {
-			if lens.ID != waiting.ID {
-				survivors = append(survivors, lens)
+		for _, saved := range machineLenses(t, model) {
+			if saved.ID != waiting.ID {
+				survivors = append(survivors, saved)
 			}
 		}
 		setMachineLenses(t, model, survivors)
@@ -290,7 +291,7 @@ func TestLensPickerGuidanceAdvertisesTheOrdinalsOnlyWhenLensesAreListed(t *testi
 	model := lensPickerApp(t)
 	footerOf := func() string {
 		t.Helper()
-		return ansi.Strip(chrome.RenderGuidanceText(model.lensPicker.guidanceSpec(), 200))
+		return ansi.Strip(chrome.RenderGuidanceText(model.lensPicker.GuidanceSpec(), 200))
 	}
 
 	got := footerOf()
@@ -311,16 +312,16 @@ func TestLensPickerGuidanceAdvertisesTheOrdinalsOnlyWhenLensesAreListed(t *testi
 	// A query that matches nothing leaves nothing to number.
 	typeLens(t, model, "zzz")
 	pressLens(t, model, "enter")
-	if model.lensPicker.listed != 0 {
-		t.Fatalf("the no-match query still lists %d lenses", model.lensPicker.listed)
+	if model.lensPicker.Listed != 0 {
+		t.Fatalf("the no-match query still lists %d lenses", model.lensPicker.Listed)
 	}
 	if got := footerOf(); strings.Contains(got, "1-9") {
 		t.Errorf("no-match guidance = %q, advertises numbers no row carries", got)
 	}
 	// And the digit refuses in the empty population's own words.
 	pressLens(t, model, "1")
-	if got := model.lensPicker.Notice(); got != lensPickerOrdinalEmptyRefusal {
-		t.Errorf("empty-population refusal = %q, want %q", got, lensPickerOrdinalEmptyRefusal)
+	if got := model.lensPicker.Notice(); got != lens.LensPickerOrdinalEmptyRefusal {
+		t.Errorf("empty-population refusal = %q, want %q", got, lens.LensPickerOrdinalEmptyRefusal)
 	}
 }
 

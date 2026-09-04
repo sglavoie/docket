@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
@@ -56,7 +57,7 @@ func lensTemplateListSource(machine *config.MachineState) listsurface.ListSource
 	})
 	items := make([]listsurface.ListItem, 0, len(templates))
 	for _, template := range templates {
-		summary := namedLensSummary(template)
+		summary := lens.NamedLensSummary(template)
 		item := listsurface.ListItem{
 			ID:            lensTemplateItemID(template.ID),
 			PrimaryText:   template.Name,
@@ -77,7 +78,7 @@ func lensTemplateListSource(machine *config.MachineState) listsurface.ListSource
 		// touching it, and an unavailable row still renders muted: the renderer
 		// already drops a disabled row's color, because a template that cannot be
 		// added must not advertise one it cannot deliver.
-		if style, ok := namedLensPrimaryStyle(template); ok {
+		if style, ok := lens.NamedLensPrimaryStyle(template); ok {
 			item.PrimaryStyle = &style
 		}
 		items = append(items, item)

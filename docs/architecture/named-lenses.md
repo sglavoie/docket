@@ -186,7 +186,7 @@ committed is always the catalog's own rather than whatever a stale row carried.
 what routes it to a picker; its case in `newOperationValuePicker` returns before
 `operationTaskRefs`, so the gallery opens with no entity under the cursor.
 `lensTemplateListSource` is the whole of it: alphabetical rows whose `Aliases`
-carry both the name and the `namedLensSummary`, so search finds a template by the
+carry both the name and the `lens.NamedLensSummary`, so search finds a template by the
 facets it sets, and whose payload is the stable ID alone.
 `lensTemplateDisabledReason` asks the stable ID first and the case-insensitive
 name second — reusing `namedLensNameTaken` rather than minting a second
@@ -209,7 +209,7 @@ entry either.
 
 The nesting needs no routing of its own. `lensPickerActionRows` builds both
 query-exempt rows and `lensPickerActionOperation` dispatches them, so a saved-lens
-row falls through to `operationLensApply` exactly as before; row identity travels
+row falls through to `lens.OperationLensApply` exactly as before; row identity travels
 as the stable `lens-picker:add-template` rather than as `Data`, which keeps
 `CurrentLens` the single "is this a saved lens" test. Overlay key precedence is
 `operationTextPrompt` → `operationValuePicker` → `contextActionSheet` →

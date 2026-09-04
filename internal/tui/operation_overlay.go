@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -74,12 +75,12 @@ func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 	case listsurface.ContextActionSheetClosedMsg:
 		m.contextActionSheet = nil
 		return true, nil
-	case NamedLensPickerClosedMsg:
+	case lens.NamedLensPickerClosedMsg:
 		m.lensPicker = nil
 		return true, nil
-	case NamedLensPickerResultMsg:
+	case lens.NamedLensPickerResultMsg:
 		return true, m.applyNamedLensPickerResult(typed)
-	case NamedLensActionsRequestMsg:
+	case lens.NamedLensActionsRequestMsg:
 		return true, m.openNamedLensActions(typed)
 	case SaveViewAsLensRequestMsg:
 		return true, m.saveViewAsLens()
@@ -150,7 +151,7 @@ func (m *AppModel) resumeContextActionRequest(request operation.OperationExecuti
 			if dismissed {
 				m.closeNamedLensOverlays()
 			}
-			return m.applyNamedLensPickerResult(NamedLensPickerResultMsg{Result: result})
+			return m.applyNamedLensPickerResult(lens.NamedLensPickerResultMsg{Result: result})
 		}
 		return m.executeOperationOverlayRequest(request)
 	}

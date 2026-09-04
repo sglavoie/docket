@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 )
 
@@ -24,7 +25,7 @@ func lensPickerItemNamed(t *testing.T, model *AppModel, name string) listsurface
 	if model.lensPicker == nil {
 		t.Fatal("no lens picker is mounted")
 	}
-	for _, item := range model.lensPicker.surface.Items() {
+	for _, item := range model.lensPicker.Surface.Items() {
 		if item.PrimaryText == name {
 			return item
 		}
@@ -35,9 +36,9 @@ func lensPickerItemNamed(t *testing.T, model *AppModel, name string) listsurface
 
 // assertLensRowStyle holds one row to the style its own definition resolves to,
 // which is the whole contract: the picker never names a color, it asks.
-func assertLensRowStyle(t *testing.T, item listsurface.ListItem, lens config.NamedLens) {
+func assertLensRowStyle(t *testing.T, item listsurface.ListItem, saved config.NamedLens) {
 	t.Helper()
-	want, ok := namedLensPrimaryStyle(lens)
+	want, ok := lens.NamedLensPrimaryStyle(saved)
 	if !ok {
 		if item.PrimaryStyle != nil {
 			t.Fatalf("row %q wears %v for a neutral definition",
@@ -68,7 +69,7 @@ func TestLensPickerColorsSavedRowsAndLeavesActionRowsNeutral(t *testing.T) {
 			t.Errorf("row %q embeds styling in its primary text: %q", name, item.PrimaryText)
 		}
 	}
-	for _, item := range model.lensPicker.surface.Items() {
+	for _, item := range model.lensPicker.Surface.Items() {
 		if item.Data != nil {
 			continue
 		}
@@ -85,7 +86,7 @@ func TestLensPickerSearchKeepsSavedRowColorAndOrder(t *testing.T) {
 	pressLens(t, model, "/")
 	typeLens(t, model, "stal")
 
-	want := []string{lensPickerCreateLabel, lensPickerAddTemplateLabel, "Stale"}
+	want := []string{lens.LensPickerCreateLabel, lens.LensPickerAddTemplateLabel, "Stale"}
 	if got := lensPickerRowTitles(t, model); !slices.Equal(got, want) {
 		t.Fatalf("rows under a query = %v, want %v", got, want)
 	}
@@ -99,7 +100,7 @@ func TestLensPickerSearchKeepsSavedRowColorAndOrder(t *testing.T) {
 func TestLensPickerColorSurvivesRenameAndFollowsReplacement(t *testing.T) {
 	model := lensPickerApp(t)
 	before := selectLensRow(t, model, "Waiting")
-	beforeStyle, ok := namedLensPrimaryStyle(before)
+	beforeStyle, ok := lens.NamedLensPrimaryStyle(before)
 	if !ok {
 		t.Fatal("the Waiting fixture resolves no accent")
 	}
@@ -134,8 +135,12 @@ func TestLensPickerColorSurvivesRenameAndFollowsReplacement(t *testing.T) {
 	if replaced.ID != before.ID {
 		t.Fatal("the replace minted a new identity")
 	}
-	if got, was := namedLensSemanticRole(replaced), namedLensSemanticRole(before); got == was {
-		t.Fatalf("the replacement kept role %s, so recomputation is unobservable", roleText(got))
+	// The role ladder itself is lens-internal, so the divergence is asserted
+	// through the accent it resolves to, which is the only part of it a row shows.
+	got, gotOK := lens.NamedLensPrimaryStyle(replaced)
+	was, wasOK := lens.NamedLensPrimaryStyle(before)
+	if gotOK == wasOK && (!gotOK || got.GetForeground() == was.GetForeground()) {
+		t.Fatal("the replacement resolves the same accent, so recomputation is unobservable")
 	}
 	assertLensRowStyle(t, lensPickerItemNamed(t, model, "Blocked"), replaced)
 }
@@ -160,7 +165,7 @@ func TestLensPickerColorFollowsTheDefinitionNotTheBuiltinOrigin(t *testing.T) {
 		Query: "$" + string(models.StateWaiting),
 		Sort:  config.LensSort{Field: config.LensSortDefault},
 	}
-	if err := model.lensPicker.Refresh(NamedLensPickerSnapshot{
+	if err := model.lensPicker.Refresh(lens.NamedLensPickerSnapshot{
 		Lenses: config.NamedLensList{neutralBuiltin, custom},
 	}); err != nil {
 		t.Fatalf("refresh: %v", err)
@@ -179,7 +184,7 @@ func TestLensPickerColorFollowsTheDefinitionNotTheBuiltinOrigin(t *testing.T) {
 func TestLensPickerRenderColorsOrdinaryRowsAndYieldsUnderTheCursor(t *testing.T) {
 	model := lensPickerApp(t)
 	waiting := lensNamed(t, model, "Waiting")
-	style, ok := namedLensPrimaryStyle(waiting)
+	style, ok := lens.NamedLensPrimaryStyle(waiting)
 	if !ok {
 		t.Fatal("the Waiting fixture resolves no accent")
 	}
@@ -227,10 +232,10 @@ func TestLensPickerRendersEmptyNoMatchAndOversizedRows(t *testing.T) {
 		Query: "*pin ?stale ?deferred",
 		Sort:  config.LensSort{Field: config.LensSortDefault},
 	}
-	if _, ok := namedLensPrimaryStyle(oversized); !ok {
+	if _, ok := lens.NamedLensPrimaryStyle(oversized); !ok {
 		t.Fatal("the oversized fixture is neutral, so it cannot test a colored truncation")
 	}
-	snapshot := NamedLensPickerSnapshot{
+	snapshot := lens.NamedLensPickerSnapshot{
 		Lenses:         config.NamedLensList{oversized},
 		CurrentSummary: strings.Repeat("summary segment · ", 20),
 	}
@@ -259,7 +264,7 @@ func TestLensPickerRendersEmptyNoMatchAndOversizedRows(t *testing.T) {
 		t.Errorf("minimum-terminal render is %d lines, taller than %d", lines, chrome.MinTerminalHeight)
 	}
 
-	if err := model.lensPicker.Refresh(NamedLensPickerSnapshot{}); err != nil {
+	if err := model.lensPicker.Refresh(lens.NamedLensPickerSnapshot{}); err != nil {
 		t.Fatalf("refresh empty: %v", err)
 	}
 	empty := ansi.Strip(model.lensPicker.Render(80))
@@ -317,8 +322,8 @@ func TestLensPickerDoesNotSwallowQuit(t *testing.T) {
 	if !handled || cmd == nil {
 		t.Fatalf("ctrl+c handled=%v cmd=%v, want the quit command", handled, cmd)
 	}
-	if model.lensPicker.query != "st" {
-		t.Errorf("ctrl+c was typed into the search query: %q", model.lensPicker.query)
+	if model.lensPicker.Query != "st" {
+		t.Errorf("ctrl+c was typed into the search query: %q", model.lensPicker.Query)
 	}
 }
 
@@ -337,46 +342,6 @@ func TestLensPickerCountsAsAnActiveOverlayAndOwnsTextInput(t *testing.T) {
 	}
 }
 
-// --- summary ----------------------------------------------------------------
-
-func TestNamedLensSummaryNamesOnlyTheAxesTheLensSets(t *testing.T) {
-	summary := namedLensSummary(config.NamedLens{
-		Mode: config.LensModeAll,
-		Query: fmt.Sprintf("!%d #api $%s ?stale ?completed +#platform +parked freetext",
-			models.PriorityHigh, models.StateWaiting),
-		Sort: config.LensSort{Field: config.LensSortPriority, Ascending: true},
-	})
-
-	// Every clause the query names is spelled by the shared chip renderer, so the
-	// summary carries the sigils rather than a second vocabulary of its own. The
-	// unparseable tail follows them behind a single "/" marker.
-	for _, want := range []string{
-		"!1", "#api", "$waiting", "?stale", "?completed", "+#platform", "+parked",
-		"/freetext", "sort: ",
-	} {
-		if !strings.Contains(summary, want) {
-			t.Errorf("summary %q is missing %q", summary, want)
-		}
-	}
-	// An axis the query never names contributes nothing, so no defaulted facet
-	// can appear.
-	for _, unwanted := range []string{"@", "?deferred", "*pin", "+archived", "##"} {
-		if strings.Contains(summary, unwanted) {
-			t.Errorf("summary %q names an axis the query left out: %q", summary, unwanted)
-		}
-	}
-}
-
-func TestNamedLensSummaryOmitsTheDefaultSort(t *testing.T) {
-	summary := namedLensSummary(config.NamedLens{
-		Mode: config.LensModeAll,
-		Sort: config.LensSort{Field: config.LensSortDefault},
-	})
-	if strings.Contains(summary, "sort:") {
-		t.Errorf("summary %q names the default sort", summary)
-	}
-}
-
 // --- helpers ----------------------------------------------------------------
 
 // lensNamedErr reports whether one saved lens exists by name. Only presence is
@@ -386,8 +351,8 @@ func lensNamedErr(model *AppModel, name string) error {
 	if machine == nil {
 		return errors.New("machine-local state is unavailable")
 	}
-	for _, lens := range machine.NamedLenses {
-		if lens.Name == name {
+	for _, saved := range machine.NamedLenses {
+		if saved.Name == name {
 			return nil
 		}
 	}

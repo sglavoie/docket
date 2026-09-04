@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
@@ -17,7 +18,7 @@ import (
 // a value here, so it is named once rather than passed by every caller.
 func executeLensValue(model *AppModel, value any) operation.OperationExecutionResult {
 	return model.operationExecutor.Execute(operation.OperationExecutionRequest{
-		ID:       operationLensAddTemplate,
+		ID:       lens.OperationLensAddTemplate,
 		Context:  lensOperationContext(operation.EntityIdentity{}),
 		Value:    value,
 		HasValue: true,
@@ -41,7 +42,7 @@ func addableTemplate(t *testing.T, model *AppModel) config.NamedLens {
 
 func TestLensAddTemplateIsAZeroTargetPickedMutation(t *testing.T) {
 	model := lensOperationApp(t)
-	descriptor, ok := model.operationRegistry.Descriptor(operationLensAddTemplate)
+	descriptor, ok := model.operationRegistry.Descriptor(lens.OperationLensAddTemplate)
 	if !ok {
 		t.Fatal("the add-template operation is not registered")
 	}
@@ -82,7 +83,7 @@ func TestLensAddTemplateAsksForATemplateBeforeItWrites(t *testing.T) {
 	model := lensOperationApp(t)
 	before := len(machineLenses(t, model))
 
-	result := executeLens(model, operationLensAddTemplate, operation.EntityIdentity{}, "", false)
+	result := executeLens(model, lens.OperationLensAddTemplate, operation.EntityIdentity{}, "", false)
 	if result.ValueRequired == nil || result.ValueRequired.Provider != operation.ValueProviderLensTemplate {
 		t.Fatalf("add template ran without asking for a template: %#v", result.ValueRequired)
 	}
@@ -192,7 +193,7 @@ func TestLensAddTemplateRefusesATemplateTheLatestSnapshotAlreadyHolds(t *testing
 	}
 
 	if renamed := executeLens(
-		model, operationLensRename, operation.LensEntity(template.ID), "Renamed by hand", false,
+		model, lens.OperationLensRename, operation.LensEntity(template.ID), "Renamed by hand", false,
 	); renamed.Err != nil {
 		t.Fatalf("rename the added template: %v", renamed.Err)
 	}
@@ -207,7 +208,7 @@ func TestLensAddTemplateRefusesATemplateTheLatestSnapshotAlreadyHolds(t *testing
 	// With the stable ID freed, the template is addable again — an added record is
 	// an ordinary lens and nothing more.
 	if deleted := executeLens(
-		model, operationLensDelete, operation.LensEntity(template.ID), "", true,
+		model, lens.OperationLensDelete, operation.LensEntity(template.ID), "", true,
 	); deleted.Err != nil {
 		t.Fatalf("delete the added template: %v", deleted.Err)
 	}
@@ -223,7 +224,7 @@ func TestLensAddTemplateRefusesANameAnotherLensAlreadyAnswersTo(t *testing.T) {
 	// A user lens minted under its own UUID, wearing the template's name in a
 	// different case: uniqueness is case-insensitive, so the template cannot land.
 	if created := executeLens(
-		model, operationLensCreate, operation.EntityIdentity{}, strings.ToUpper(template.Name), false,
+		model, lens.OperationLensCreate, operation.EntityIdentity{}, strings.ToUpper(template.Name), false,
 	); created.Err != nil {
 		t.Fatalf("create the colliding lens: %v", created.Err)
 	}
@@ -252,13 +253,13 @@ func TestLensAddTemplateReportsTheIDCollisionAheadOfTheNameCollision(t *testing.
 		t.Fatalf("add built-in view: %v", result.Err)
 	}
 	if renamed := executeLens(
-		model, operationLensRename, operation.LensEntity(template.ID), "Renamed by hand", false,
+		model, lens.OperationLensRename, operation.LensEntity(template.ID), "Renamed by hand", false,
 	); renamed.Err != nil {
 		t.Fatalf("rename the added template: %v", renamed.Err)
 	}
 	// The template's own name is free again, so a user lens can take it.
 	if created := executeLens(
-		model, operationLensCreate, operation.EntityIdentity{}, template.Name, false,
+		model, lens.OperationLensCreate, operation.EntityIdentity{}, template.Name, false,
 	); created.Err != nil {
 		t.Fatalf("create the name-colliding lens: %v", created.Err)
 	}

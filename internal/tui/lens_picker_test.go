@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/lens"
 )
 
 // The picker is driven exclusively through key messages here, because the shell
@@ -85,7 +86,7 @@ func lensPickerRowTitles(t *testing.T, model *AppModel) []string {
 	if model.lensPicker == nil {
 		t.Fatal("no lens picker is mounted")
 	}
-	items := model.lensPicker.surface.Items()
+	items := model.lensPicker.Surface.Items()
 	titles := make([]string, 0, len(items))
 	for _, item := range items {
 		titles = append(titles, item.PrimaryText)
@@ -98,7 +99,7 @@ func lensPickerCursorTitle(t *testing.T, model *AppModel) string {
 	if model.lensPicker == nil {
 		t.Fatal("no lens picker is mounted")
 	}
-	item, ok := model.lensPicker.surface.CurrentItem()
+	item, ok := model.lensPicker.Surface.CurrentItem()
 	if !ok {
 		t.Fatal("the lens picker has no current row")
 	}
@@ -135,29 +136,29 @@ func TestLensPickerListsBothActionRowsFirstThenLensesAlphabetically(t *testing.T
 	model := lensPickerApp(t)
 
 	want := []string{
-		lensPickerCreateLabel, lensPickerAddTemplateLabel,
+		lens.LensPickerCreateLabel, lens.LensPickerAddTemplateLabel,
 		"High Priority", "Stale", "Waiting",
 	}
 	if got := lensPickerRowTitles(t, model); !slices.Equal(got, want) {
 		t.Fatalf("picker rows = %v, want %v", got, want)
 	}
-	if got := lensPickerCursorTitle(t, model); got != lensPickerCreateLabel {
+	if got := lensPickerCursorTitle(t, model); got != lens.LensPickerCreateLabel {
 		t.Errorf("opening cursor = %q, want the save row", got)
 	}
-	items := model.lensPicker.surface.Items()
-	if got := items[1].ID; got != lensPickerAddTemplateItemID {
-		t.Errorf("second row ID = %q, want %q", got, lensPickerAddTemplateItemID)
+	items := model.lensPicker.Surface.Items()
+	if got := items[1].ID; got != lens.LensPickerAddTemplateItemID {
+		t.Errorf("second row ID = %q, want %q", got, lens.LensPickerAddTemplateItemID)
 	}
-	if got := items[1].SecondaryText; got != lensPickerAddTemplateSecondary {
-		t.Errorf("add row secondary = %q, want %q", got, lensPickerAddTemplateSecondary)
+	if got := items[1].SecondaryText; got != lens.LensPickerAddTemplateSecondary {
+		t.Errorf("add row secondary = %q, want %q", got, lens.LensPickerAddTemplateSecondary)
 	}
 	for _, alias := range []string{"template", "preset", "built-in view"} {
 		if !containsString(items[1].Aliases, alias) {
 			t.Errorf("add row aliases = %v, want %q among them", items[1].Aliases, alias)
 		}
 	}
-	if got := items[1].OperationIDs; len(got) != 1 || got[0] != operationLensAddTemplate {
-		t.Errorf("add row operations = %v, want just %q", got, operationLensAddTemplate)
+	if got := items[1].OperationIDs; len(got) != 1 || got[0] != lens.OperationLensAddTemplate {
+		t.Errorf("add row operations = %v, want just %q", got, lens.OperationLensAddTemplate)
 	}
 }
 
@@ -174,7 +175,7 @@ func TestLensPickerOpensOnTheActiveLensAndMarksIt(t *testing.T) {
 	if got := lensPickerCursorTitle(t, model); got != "Waiting" {
 		t.Fatalf("cursor = %q, want the active lens", got)
 	}
-	item, _ := model.lensPicker.surface.CurrentItem()
+	item, _ := model.lensPicker.Surface.CurrentItem()
 	if !strings.Contains(ansi.Strip(item.PrimaryMarker), "●") {
 		t.Errorf("the active lens row carries no active marker: %q", ansi.Strip(item.PrimaryMarker))
 	}
@@ -188,7 +189,7 @@ func TestLensPickerNavigationKeysMoveTheCursor(t *testing.T) {
 	// One move down reaches the second action row, not the first saved lens:
 	// both fixed rows sit above the population.
 	pressLens(t, model, "j")
-	if got := lensPickerCursorTitle(t, model); got != lensPickerAddTemplateLabel {
+	if got := lensPickerCursorTitle(t, model); got != lens.LensPickerAddTemplateLabel {
 		t.Fatalf("after j cursor = %q", got)
 	}
 	pressLens(t, model, "down")
@@ -196,7 +197,7 @@ func TestLensPickerNavigationKeysMoveTheCursor(t *testing.T) {
 		t.Fatalf("after down cursor = %q", got)
 	}
 	pressLens(t, model, "k", "up")
-	if got := lensPickerCursorTitle(t, model); got != lensPickerCreateLabel {
+	if got := lensPickerCursorTitle(t, model); got != lens.LensPickerCreateLabel {
 		t.Fatalf("after k/up cursor = %q", got)
 	}
 	pressLens(t, model, "end")
@@ -204,15 +205,15 @@ func TestLensPickerNavigationKeysMoveTheCursor(t *testing.T) {
 		t.Fatalf("after end cursor = %q", got)
 	}
 	pressLens(t, model, "home")
-	if got := lensPickerCursorTitle(t, model); got != lensPickerCreateLabel {
+	if got := lensPickerCursorTitle(t, model); got != lens.LensPickerCreateLabel {
 		t.Fatalf("after home cursor = %q", got)
 	}
 	pressLens(t, model, "pgdown")
-	if got := lensPickerCursorTitle(t, model); got == lensPickerCreateLabel {
+	if got := lensPickerCursorTitle(t, model); got == lens.LensPickerCreateLabel {
 		t.Error("pgdown left the cursor on the save row")
 	}
 	pressLens(t, model, "pgup")
-	if got := lensPickerCursorTitle(t, model); got != lensPickerCreateLabel {
+	if got := lensPickerCursorTitle(t, model); got != lens.LensPickerCreateLabel {
 		t.Fatalf("after pgup cursor = %q", got)
 	}
 }
@@ -224,17 +225,17 @@ func TestLensPickerSearchNarrowsLensesAndKeepsBothActionRowsAvailable(t *testing
 
 	pressLens(t, model, "/")
 	typeLens(t, model, "stal")
-	want := []string{lensPickerCreateLabel, lensPickerAddTemplateLabel, "Stale"}
+	want := []string{lens.LensPickerCreateLabel, lens.LensPickerAddTemplateLabel, "Stale"}
 	if got := lensPickerRowTitles(t, model); !slices.Equal(got, want) {
 		t.Fatalf("filtered rows = %v, want %v", got, want)
 	}
 
 	typeLens(t, model, "zzz")
-	actions := []string{lensPickerCreateLabel, lensPickerAddTemplateLabel}
+	actions := []string{lens.LensPickerCreateLabel, lens.LensPickerAddTemplateLabel}
 	if got := lensPickerRowTitles(t, model); !slices.Equal(got, actions) {
 		t.Fatalf("no-match rows = %v, want the two action rows alone", got)
 	}
-	if state := model.lensPicker.stateLine(); !strings.Contains(state, "No matching lenses") {
+	if state := model.lensPicker.StateLine(); !strings.Contains(state, "No matching lenses") {
 		t.Errorf("no-match state line = %q", state)
 	}
 
@@ -253,15 +254,15 @@ func TestLensPickerEscapeClearsSearchThenLeavesSearchThenCloses(t *testing.T) {
 	if model.lensPicker == nil {
 		t.Fatal("the first Esc closed the picker instead of clearing the query")
 	}
-	if model.lensPicker.query != "" || !model.lensPicker.searching {
-		t.Fatalf("first Esc left query=%q searching=%v", model.lensPicker.query, model.lensPicker.searching)
+	if model.lensPicker.Query != "" || !model.lensPicker.Searching {
+		t.Fatalf("first Esc left query=%q searching=%v", model.lensPicker.Query, model.lensPicker.Searching)
 	}
 
 	pressLens(t, model, "esc")
 	if model.lensPicker == nil {
 		t.Fatal("the second Esc closed the picker instead of leaving search")
 	}
-	if model.lensPicker.searching {
+	if model.lensPicker.Searching {
 		t.Error("the second Esc left the picker in search mode")
 	}
 
@@ -279,8 +280,8 @@ func TestLensPickerSearchEnterOnSaveRowStillOpensTheNamePrompt(t *testing.T) {
 	// still in force and the save row is the only survivor — which is the whole
 	// point of exempting it from the filter.
 	pressLens(t, model, "enter")
-	if model.lensPicker.searching || model.lensPicker.query != "zzz" {
-		t.Fatalf("leaving search dropped the query: %q", model.lensPicker.query)
+	if model.lensPicker.Searching || model.lensPicker.Query != "zzz" {
+		t.Fatalf("leaving search dropped the query: %q", model.lensPicker.Query)
 	}
 	pressLens(t, model, "enter")
 

@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -24,7 +25,7 @@ const lensTemplateForeignID = "11111111-2222-4333-8444-555555555501"
 // names a task, which is the point — the catalog is global.
 func openLensTemplateGallery(t *testing.T, model *AppModel) *OperationValuePickerModel {
 	t.Helper()
-	result := executeLens(model, operationLensAddTemplate, operation.EntityIdentity{}, "", false)
+	result := executeLens(model, lens.OperationLensAddTemplate, operation.EntityIdentity{}, "", false)
 	if result.ValueRequired == nil {
 		t.Fatalf("add template did not ask for a value: %#v", result)
 	}
@@ -140,7 +141,7 @@ func TestLensTemplateGalleryListsEveryTemplateAlphabetically(t *testing.T) {
 	}
 	for _, template := range config.BuiltinNamedLensTemplates() {
 		row := galleryRow(t, picker, template.ID)
-		summary := namedLensSummary(template)
+		summary := lens.NamedLensSummary(template)
 		if row.SecondaryText != summary {
 			t.Errorf("%s secondary = %q, want %q", template.Name, row.SecondaryText, summary)
 		}
@@ -169,11 +170,11 @@ func TestLensTemplateGalleryDisablesTheSeededStartersAndOffersTheRest(t *testing
 	if len(picker.surface.Items()) != 9 {
 		t.Fatalf("the gallery hid rows: %d visible, want 9", len(picker.surface.Items()))
 	}
-	for _, lens := range seeded {
-		row := galleryRow(t, picker, lens.ID)
-		want := fmt.Sprintf("Already added as %q", lens.Name)
+	for _, saved := range seeded {
+		row := galleryRow(t, picker, saved.ID)
+		want := fmt.Sprintf("Already added as %q", saved.Name)
 		if row.DisabledReason != want {
-			t.Errorf("%s disabled reason = %q, want %q", lens.Name, row.DisabledReason, want)
+			t.Errorf("%s disabled reason = %q, want %q", saved.Name, row.DisabledReason, want)
 		}
 	}
 	added := 0
@@ -340,8 +341,8 @@ func TestLensTemplateGallerySelectsTheStableTemplateID(t *testing.T) {
 	if !ok {
 		t.Fatalf("selection message = %#v, want OperationValueSelectedMsg", msg)
 	}
-	if selected.Request.ID != operationLensAddTemplate {
-		t.Fatalf("resumed request = %q, want %q", selected.Request.ID, operationLensAddTemplate)
+	if selected.Request.ID != lens.OperationLensAddTemplate {
+		t.Fatalf("resumed request = %q, want %q", selected.Request.ID, lens.OperationLensAddTemplate)
 	}
 	payload, ok := selected.Value.(string)
 	if !ok || payload != overdue.ID {

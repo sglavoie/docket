@@ -274,6 +274,28 @@
 #     There is no combined_notes.go production file; combined_notes_test.go is
 #     the whole of that name and it was homed with the manager it exercises.
 #
+# Session 2.25 minted two files and left two rows standing:
+#   - The six tui.lens.* OperationID constants left lens_operations.go (tui) for
+#     lens_operation_ids.go (lens). This is Session 2.22's note rule exactly: the
+#     picker names four of them on its rows and dispatches two more from its
+#     action rows, so the grammar that binds them sits a package below the
+#     registrar. The descriptor catalog did not follow, because every descriptor
+#     here carries an Applicability closure the shell already owns and both
+#     zero-target handlers need the live AppModel.
+#   - lensAxis with lensModeAxis and lensSortAxis left outliner_lens_state.go
+#     (outliner) for lens_axis.go (lens). They are the only conversion between a
+#     TUI enum and the durable spelling a saved lens carries, and both readers
+#     sit at or above lens: the Outliner state a lens is applied to, and the
+#     summary and accent this package renders. Left at L7-outliner they would
+#     have forced lens -> outliner, which is the edge the graph forbids. The
+#     type stayed unexported as `axis[T]`, so only ModeAxis and SortAxis with
+#     their Token and Value methods cross.
+#   - lens_operation_handlers.go and lens_operations.go stay tui, as this table
+#     has said since Session 1.5, and Session 2.25's completion contract naming
+#     lens_operation_handlers.go among the lens package's files does not change
+#     it: both declare *AppModel methods, which Go pins to the shell. This is
+#     the 2.21-2.24 precedent that this table outranks a brief's prose.
+#
 # Test files are deliberately absent. They follow the production file they
 # audit, except the uitest harness and the registry-union parity tests, which
 # context.md keeps in the root shell.
@@ -433,7 +455,9 @@ interactive_view_state.go	listsurface	L5	receiver:InteractiveViewState
 keymap/help.go	keymap	L0	assigned
 keymap/types.go	keymap	L0	assigned
 layout_constants.go	chrome	L1	assigned
+lens_axis.go	lens	L7	assigned
 lens_operation_handlers.go	tui	L8	receiver:AppModel
+lens_operation_ids.go	lens	L7	assigned
 lens_operations.go	tui	L8	receiver:AppModel
 lens_picker.go	lens	L7	receiver:NamedLensPickerModel
 lens_picker_host.go	tui	L8	receiver:AppModel
