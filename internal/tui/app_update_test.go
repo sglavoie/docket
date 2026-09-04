@@ -31,7 +31,7 @@ func (v *panicOnCustomView) View() tea.View { return tea.NewView("") }
 
 func TestUpdatePanicRecoveryRestoresOutlinerRoot(t *testing.T) {
 	app := newTestAppModel()
-	app.views.Register(presentation.ViewCrossProjectOutliner, &panicOnCustomView{})
+	app.viewNav.views.Register(presentation.ViewCrossProjectOutliner, &panicOnCustomView{})
 
 	model, _ := app.Update(panicCustomMsg{})
 	if model == nil {
@@ -51,12 +51,12 @@ func TestUpdatePanicRecoveryCancelsPendingCrossProjectRefresh(t *testing.T) {
 	cross := outliner.NewOutlinerModel(nil, app.configManager, app.runtime)
 	cross.Population.Projects = []*models.Project{project}
 	cross.Population.SnapshotReady = true
-	cross.SetSize(app.width, app.height-2)
+	cross.SetSize(app.viewNav.viewSize())
 	cross.Population.Invalidate()
 	cross.CrossProjectRebuildRows()
 	app.crossOutliner = cross
-	app.views.Register(presentation.ViewCrossProjectOutliner, cross)
-	app.views.Register(presentation.ViewTaskComments, &panicOnCustomView{})
+	app.viewNav.views.Register(presentation.ViewCrossProjectOutliner, cross)
+	app.viewNav.views.Register(presentation.ViewTaskComments, &panicOnCustomView{})
 	pushTestPresentationOverlay(app, presentation.ViewTaskComments)
 
 	_ = cross.ReloadCrossProjects()

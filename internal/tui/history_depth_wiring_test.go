@@ -20,9 +20,9 @@ func TestAllNotesOpenPathsUseShellLedger(t *testing.T) {
 	project := shell.projectByID(shell.runtime.SystemUnfiledProject().ID)
 	assertLedger := func(name string, view presentation.PresentationID) {
 		t.Helper()
-		manager, ok := shell.views.Get(view).(*notes.NotesViewModel)
+		manager, ok := shell.viewNav.views.Get(view).(*notes.NotesViewModel)
 		if !ok {
-			t.Fatalf("%s view = %T", name, shell.views.Get(view))
+			t.Fatalf("%s view = %T", name, shell.viewNav.views.Get(view))
 		}
 		if manager.NoteLedger != ledger {
 			t.Fatalf("%s received a different workspace ledger", name)
@@ -51,9 +51,9 @@ func TestNilShellLedgerMakesHistoryUnavailableWithoutPanic(t *testing.T) {
 	if handled, _ := shell.handleNotesMessages(notes.ShowNotesManagerMsg{Scope: route.GlobalNotesScope()}); !handled {
 		t.Fatal("notes.ShowNotesManagerMsg was not handled")
 	}
-	manager, ok := shell.views.Get(presentation.ViewGlobalNotes).(*notes.NotesViewModel)
+	manager, ok := shell.viewNav.views.Get(presentation.ViewGlobalNotes).(*notes.NotesViewModel)
 	if !ok {
-		t.Fatalf("global manager view = %T", shell.views.Get(presentation.ViewGlobalNotes))
+		t.Fatalf("global manager view = %T", shell.viewNav.views.Get(presentation.ViewGlobalNotes))
 	}
 	if manager.NoteLedger != nil {
 		t.Fatal("isolated nil-ledger composition unexpectedly created history")

@@ -276,8 +276,8 @@ func parkedFocusLensApp(t *testing.T, extra ...*models.Project) (*AppModel, *out
 	outlinerView.Population.Invalidate()
 	outlinerView.CrossProjectRebuildRows()
 	app.crossOutliner = outlinerView
-	outlinerView.SetSize(app.width, app.height-2)
-	app.views.Register(presentation.ViewCrossProjectOutliner, outlinerView)
+	outlinerView.SetSize(app.viewNav.viewSize())
+	app.viewNav.views.Register(presentation.ViewCrossProjectOutliner, outlinerView)
 
 	everything := []*models.Project{alpha, beta, parked}
 	outlinerView.BeginParkedProjectFocus(parked.ID)

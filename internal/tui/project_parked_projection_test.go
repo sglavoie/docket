@@ -213,7 +213,7 @@ func TestParkedProjectLeavesOperationScopeAndWorkspacePulse(t *testing.T) {
 	shell := &AppModel{
 		runtime:  runtime,
 		projects: map[string]*models.Project{active.ID: active, parked.ID: parked},
-		views:    route.NewViewRegistry(),
+		viewNav:  viewNavigationController{views: route.NewViewRegistry()},
 	}
 	assertIDs(t, shell.operationScopeProjectIDs(nil), active.ID)
 

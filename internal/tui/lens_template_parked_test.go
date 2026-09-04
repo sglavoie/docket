@@ -34,8 +34,8 @@ func parkedTemplateApp(t *testing.T) (*AppModel, *outliner.OutlinerModel, []*mod
 	out.Population.Invalidate()
 	out.CrossProjectRebuildRows()
 	model.crossOutliner = out
-	out.SetSize(model.width, model.height-2)
-	model.views.Register(presentation.ViewCrossProjectOutliner, out)
+	out.SetSize(model.viewNav.viewSize())
+	model.viewNav.views.Register(presentation.ViewCrossProjectOutliner, out)
 	return model, out, []*models.Project{alpha, parkedOne, parkedTwo, archived}
 }
 

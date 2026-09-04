@@ -39,8 +39,8 @@ func (m *AppModel) clearBulkTaskSelectionsForLocators(locators []app.TaskLocator
 		}
 	}
 	clearOutliner(m.crossOutliner)
-	if m.views != nil {
-		if view := m.views.Get(presentation.ViewCrossProjectOutliner); view != nil {
+	if m.viewNav.views != nil {
+		if view := m.viewNav.views.Get(presentation.ViewCrossProjectOutliner); view != nil {
 			if outlinerView, ok := view.(*outliner.OutlinerModel); ok {
 				clearOutliner(outlinerView)
 			}
@@ -61,10 +61,10 @@ func (m *AppModel) clearBulkTaskSelectionsForTaskIDSet(selectedIDs map[string]bo
 }
 
 func (m *AppModel) clearViewBulkTaskSelectionForRefs(vt presentation.PresentationID, selectedIDs map[string]bool) {
-	if m.views == nil {
+	if m.viewNav.views == nil {
 		return
 	}
-	view := m.views.Get(vt)
+	view := m.viewNav.views.Get(vt)
 	switch v := view.(type) {
 	case *outliner.OutlinerModel:
 		if multiSelectStateHasTaskID(&v.MultiSelectState, selectedIDs) {

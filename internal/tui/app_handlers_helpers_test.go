@@ -26,10 +26,7 @@ func newTestAppModel() *AppModel {
 		deps:          newShellDeps(nil),
 		projects:      make(map[string]*models.Project),
 		persister:     coordinator.NewProjectService(),
-		navigation:    route.NewNavigationState(),
-		width:         80,
-		height:        24,
-		views:         route.NewViewRegistry(),
+		viewNav:       newViewNavigationController(),
 	}
 }
 
@@ -50,10 +47,7 @@ func newTestAppModelWithProject() (*AppModel, *models.Project) {
 		deps:           newShellDeps(nil),
 		projects:       map[string]*models.Project{project.ID: project},
 		persister:      coordinator.NewProjectService(),
-		navigation:     route.NewNavigationState(),
-		width:          80,
-		height:         24,
-		views:          route.NewViewRegistry(),
+		viewNav:        newViewNavigationController(),
 		currentProject: project,
 	}
 
@@ -65,19 +59,19 @@ func newTestAppModelWithProject() (*AppModel, *models.Project) {
 // overlay class, otherwise the typed Manage child the collection surfaces are
 // only ever reached through.
 func setTestPresentationPath(app *AppModel, views ...presentation.PresentationID) {
-	app.navigation = route.NewNavigationState()
+	app.viewNav.navigation = route.NewNavigationState()
 	for _, view := range views {
 		if view == presentation.ViewUnknown {
 			continue
 		}
 		if view == presentation.ViewCrossProjectOutliner {
-			app.navigation.ResetRoot()
+			app.viewNav.navigation.ResetRoot()
 			continue
 		}
 		if app.installTypedPresentation(view) {
 			continue
 		}
-		if err := app.navigation.PushChild(manageRouteForPresentation(view)); err != nil {
+		if err := app.viewNav.navigation.PushChild(manageRouteForPresentation(view)); err != nil {
 			panic(err)
 		}
 	}

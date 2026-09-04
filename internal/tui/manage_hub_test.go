@@ -125,8 +125,8 @@ func TestManageHubScopeUsesRouteParams(t *testing.T) {
 		manager.LocationPicker.SelectedItem().Location != apppkg.ProjectNoteLocation(project.ID) {
 		t.Fatalf("project scope creation picker = %#v, want project %q selected", manager.LocationPicker, project.ID)
 	}
-	if app.navigation.Primary.Depth() != 2 {
-		t.Fatalf("scope replacement depth = %d, want root plus one child", app.navigation.Primary.Depth())
+	if app.viewNav.navigation.Primary.Depth() != 2 {
+		t.Fatalf("scope replacement depth = %d, want root plus one child", app.viewNav.navigation.Primary.Depth())
 	}
 }
 

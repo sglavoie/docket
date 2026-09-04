@@ -115,8 +115,8 @@ func assertPersistedLensDefinitions(t *testing.T, app *AppModel) {
 
 func assertCleanLaunchRoot(t *testing.T, app *AppModel) {
 	t.Helper()
-	if app.currentView() != presentation.ViewCrossProjectOutliner || app.navigation.Primary.Depth() != 1 || app.navigation.Overlays.Active() {
-		t.Fatalf("launch navigation = view %s depth %d overlay %v", app.currentView(), app.navigation.Primary.Depth(), app.navigation.Overlays.Active())
+	if app.currentView() != presentation.ViewCrossProjectOutliner || app.viewNav.navigation.Primary.Depth() != 1 || app.viewNav.navigation.Overlays.Active() {
+		t.Fatalf("launch navigation = view %s depth %d overlay %v", app.currentView(), app.viewNav.navigation.Primary.Depth(), app.viewNav.navigation.Overlays.Active())
 	}
 	if app.currentProject != nil || len(app.projectStack) != 0 {
 		t.Fatalf("launch retained project state: current=%v stack=%v", app.currentProject, app.projectStack)

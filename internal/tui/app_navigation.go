@@ -41,7 +41,7 @@ func (m *AppModel) getActiveNotesView() *notes.NotesViewModel {
 			return nil
 		}
 	}
-	if v := m.views.Get(viewType); v != nil {
+	if v := m.viewNav.views.Get(viewType); v != nil {
 		if nv, ok := v.(*notes.NotesViewModel); ok {
 			return nv
 		}
@@ -63,7 +63,7 @@ func (m *AppModel) validateCurrentProject() (handled bool, cmd tea.Cmd) {
 	}
 	m.currentProject = nil
 	presentationCmd := m.prepareCrossProjectOutliner()
-	m.navigation.ResetRoot()
+	m.viewNav.navigation.ResetRoot()
 	routeCmd := m.activateTaskWorkspaceRoute(route.OutlinerRootRoute())
 	cmd = tea.Batch(presentationCmd, routeCmd)
 	m.setInfoStatus("Project was removed — returning to the Outliner")
@@ -105,7 +105,7 @@ func (m *AppModel) popView() tea.Cmd {
 	// commit or reconcile their mutations after the overlay has been dismissed.
 	// Update accent and resume the now-top view.
 	var resumeCmd tea.Cmd
-	if v := m.views.Get(cv); v != nil {
+	if v := m.viewNav.views.Get(cv); v != nil {
 		m.setAccentOnView(v)
 		if handler, ok := v.(route.ViewResumeHandler); popped && ok {
 			resumeCmd = handler.OnResume()
@@ -130,12 +130,11 @@ func (m *AppModel) handleEscKey() (bool, tea.Cmd) {
 	// unwind and must fall through to the view. There is something to close only
 	// when a primary secondary-tool child is stacked above the
 	// root or a transient overlay is open.
-	primaryCanClose := m.navigation.Primary.Depth() > 1 || m.navigation.Overlays.Active()
-	if primaryCanClose {
+	if !m.viewNav.atRoot() {
 		closingView := m.currentView()
 		// Capture the view label for the Esc undo hint before any state changes.
 		var closingLabel string
-		if view := m.views.Get(closingView); view != nil {
+		if view := m.viewNav.views.Get(closingView); view != nil {
 			if resetter, ok := view.(route.ViewExitResetter); ok {
 				resetter.OnExit()
 			}
@@ -181,7 +180,7 @@ func (m *AppModel) currentAccentColor() color.Color {
 			return c
 		}
 	}
-	if c := m.navigation.Primary.Current().Accent(); c != nil {
+	if c := m.viewNav.navigation.Primary.Current().Accent(); c != nil {
 		return c
 	}
 	return theme.ColorPrimary
@@ -268,9 +267,9 @@ func (m *AppModel) showView(viewType presentation.PresentationID, view route.Vie
 	// All views (including full-height ones) are sized to height-2. Register
 	// re-applies the registry's stored height-2, so a full-height SetSize here
 	// would be immediately clobbered anyway; this also matches handleWindowSize.
-	view.SetSize(m.width, m.height-2)
+	view.SetSize(m.viewNav.viewSize())
 	m.wireSecondaryCoordinators(view)
-	m.views.Register(viewType, view)
+	m.viewNav.views.Register(viewType, view)
 	if viewType == presentation.ViewCrossProjectOutliner {
 		if outlinerView, ok := view.(*outliner.OutlinerModel); ok {
 			m.crossOutliner = outlinerView

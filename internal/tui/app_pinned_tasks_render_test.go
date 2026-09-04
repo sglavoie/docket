@@ -30,7 +30,7 @@ func TestRenderPinnedTasksBar_CJKTitleVisualWidth(t *testing.T) {
 
 	m := newTestAppModel()
 	setTestAppProjects(m, project)
-	m.width = 80
+	m.viewNav.width = 80
 
 	const barWidth = 40
 	bar := m.renderPinnedTasksBar(barWidth)

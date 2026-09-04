@@ -234,9 +234,9 @@ func (m *AppModel) executeCommentOperation(invocation operation.OperationInvocat
 // A dispatched key already knows the panel is what it came from, so the lookup
 // keys on the current view rather than searching the whole stack.
 func (m *AppModel) activeCommentsPanel() *taskdetail.TaskCommentsModel {
-	if m == nil || m.views == nil || m.currentView() != presentation.ViewTaskComments {
+	if m == nil || m.viewNav.views == nil || m.currentView() != presentation.ViewTaskComments {
 		return nil
 	}
-	panel, _ := m.views.Get(presentation.ViewTaskComments).(*taskdetail.TaskCommentsModel)
+	panel, _ := m.viewNav.views.Get(presentation.ViewTaskComments).(*taskdetail.TaskCommentsModel)
 	return panel
 }

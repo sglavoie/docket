@@ -90,8 +90,8 @@ func (m *AppModel) finishParkedProjectFocus(focusProjectID string) tea.Cmd {
 // Outliner root without resetting the freshly applied project scope. Cancel uses
 // the ordinary one-pop path instead so it can restore the prior view.
 func (m *AppModel) returnToOutlinerAfterProjectScope() tea.Cmd {
-	m.navigation.ResetRoot()
-	if view := m.views.Get(m.currentView()); view != nil {
+	m.viewNav.navigation.ResetRoot()
+	if view := m.viewNav.views.Get(m.currentView()); view != nil {
 		m.setAccentOnView(view)
 	}
 	return func() tea.Msg { return status.ViewDidAppearMsg{} }

@@ -88,7 +88,7 @@ func (d *UITestDriver) Restart() error {
 	if d.relaunch == nil {
 		return errors.New("restart needs a workspace-owned driver")
 	}
-	width, height := d.app.width, d.app.height
+	width, height := d.app.viewNav.width, d.app.viewNav.height
 	app, err := d.relaunch()
 	if err != nil {
 		return err
@@ -184,7 +184,7 @@ func (d *UITestDriver) dispatch(msg tea.Msg) {
 
 // Render returns the current plain (ANSI-stripped) screen.
 func (d *UITestDriver) Render() string {
-	plain, _ := normalizeScreen(d.app.View().Content, d.app.width, d.app.height)
+	plain, _ := normalizeScreen(d.app.View().Content, d.app.viewNav.width, d.app.viewNav.height)
 	return plain
 }
 
@@ -199,14 +199,14 @@ func (d *UITestDriver) Observe(opts ObserveOptions) UITestObservation {
 	rawContent, auditIssues := withRenderAudit(func() string {
 		return d.app.View().Content
 	})
-	plain, issues := normalizeScreen(rawContent, d.app.width, d.app.height)
+	plain, issues := normalizeScreen(rawContent, d.app.viewNav.width, d.app.viewNav.height)
 	issues = append(issues, auditIssues...)
 
 	obs := UITestObservation{
 		CurrentView:  d.app.currentView().String(),
 		ViewStack:    d.viewStackNames(),
-		Width:        d.app.width,
-		Height:       d.app.height,
+		Width:        d.app.viewNav.width,
+		Height:       d.app.viewNav.height,
 		PlainScreen:  plain,
 		Status:       d.app.statusMessage,
 		StatusIsInfo: d.app.statusIsInfo,
@@ -221,7 +221,7 @@ func (d *UITestDriver) Observe(opts ObserveOptions) UITestObservation {
 	}
 
 	// Semantic snapshot from the active view when it supports inspection.
-	if view := d.app.views.Get(d.app.currentView()); view != nil {
+	if view := d.app.viewNav.views.Get(d.app.currentView()); view != nil {
 		if inspectable, ok := view.(TUITestInspectable); ok {
 			if snap := inspectable.UITestSnapshot(); len(snap) > 0 {
 				obs.Snapshot = snap
@@ -291,7 +291,7 @@ func newUITestApp() *AppModel {
 	app.operationExecutor = operation.NewOperationExecutor(app.operationRegistry)
 	o := outliner.NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner = o
-	app.views.Register(presentation.ViewCrossProjectOutliner, o)
+	app.viewNav.views.Register(presentation.ViewCrossProjectOutliner, o)
 	setTestPresentationPath(app, presentation.ViewCrossProjectOutliner)
 	if err := app.registerCoreInputOperations(); err != nil {
 		panic(err)

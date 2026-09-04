@@ -4,7 +4,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
@@ -14,10 +13,6 @@ import (
 
 // handleWindowSize updates dimensions for all views.
 func (m *AppModel) handleWindowSize(msg tea.WindowSizeMsg) {
-	m.width = msg.Width
-	m.height = msg.Height
-	m.tooNarrow = msg.Width < chrome.MinTerminalWidth
-	m.tooShort = msg.Height < chrome.MinTerminalHeight
 	// All views (including full-height ones) are sized to height-2, matching the
 	// open path: showView's full-height SetSize is immediately clobbered by
 	// ViewRegistry.Register re-applying the registry's stored height-2. Views
@@ -27,12 +22,15 @@ func (m *AppModel) handleWindowSize(msg tea.WindowSizeMsg) {
 	// overflowing views (such as Notes) that size against their budget
 	// rather than self-padding. Regression coverage: the *-resize-minimum-layout
 	// scenarios under docs/tui-testing/scenarios/ (run by TestExampleScenariosPass).
-	m.views.SetSize(msg.Width, msg.Height-2)
+	m.viewNav.resize(msg.Width, msg.Height)
+	// The hub and the composer are registry-external renderers, so the
+	// controller's registry sweep does not reach them.
+	viewWidth, viewHeight := m.viewNav.viewSize()
 	if m.manageHub != nil {
-		m.manageHub.SetSize(msg.Width, msg.Height-2)
+		m.manageHub.SetSize(viewWidth, viewHeight)
 	}
 	if m.taskComposer != nil {
-		m.taskComposer.SetSize(msg.Width, msg.Height-2)
+		m.taskComposer.SetSize(viewWidth, viewHeight)
 	}
 }
 
@@ -42,7 +40,7 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd { //nolint:gocyclo
 		updated, cmd := m.taskComposer.Update(msg)
 		if composer, ok := updated.(*taskform.TaskComposerModel); ok {
 			m.taskComposer = composer
-			m.views.Register(presentation.ViewTaskComposer, composer)
+			m.viewNav.views.Register(presentation.ViewTaskComposer, composer)
 		}
 		return cmd
 	}
@@ -54,16 +52,16 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd { //nolint:gocyclo
 		return cmd
 	}
 	currentView := m.currentView()
-	cmd := m.views.Update(currentView, msg)
+	cmd := m.viewNav.views.Update(currentView, msg)
 
 	// Keep typed pointers in sync for views that need direct access
 	switch currentView {
 	case presentation.ViewHelp:
-		if v := m.views.Get(presentation.ViewHelp); v != nil {
+		if v := m.viewNav.views.Get(presentation.ViewHelp); v != nil {
 			m.helpView = v.(*help.HelpViewModel)
 		}
 	case presentation.ViewCrossProjectOutliner:
-		if v, ok := m.views.Get(presentation.ViewCrossProjectOutliner).(*outliner.OutlinerModel); ok {
+		if v, ok := m.viewNav.views.Get(presentation.ViewCrossProjectOutliner).(*outliner.OutlinerModel); ok {
 			m.crossOutliner = v
 		}
 	default:

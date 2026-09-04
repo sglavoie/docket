@@ -108,7 +108,7 @@ func (m *AppModel) handleTaskCreated(msg coordinator.TaskCreatedMsg) (bool, tea.
 	feedbackCmd := m.setRecoveryFeedback(successMessage, transactionID, false)
 
 	// Delegate to the current view so it can reload its state
-	cmd := m.views.Update(m.currentView(), msg)
+	cmd := m.viewNav.views.Update(m.currentView(), msg)
 
 	// If open-after requested, re-lookup the task (stale after reload) and open
 	if msg.Task != nil && msg.OpenContent {

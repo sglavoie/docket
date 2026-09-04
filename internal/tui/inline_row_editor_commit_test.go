@@ -58,7 +58,7 @@ func TestInlineRowEditorAtomicCommitAndFailureLifecycle(t *testing.T) {
 	out.Folds.ExpandedNodes[taskref.For(task, m.currentProject)] = false
 	out.Folds.CollapsedSections["unrelated"] = true
 	m.crossOutliner = out
-	m.navigation.ResetRoot()
+	m.viewNav.navigation.ResetRoot()
 	projection := out.JumpProjectionFingerprint()
 
 	out.Update(outliner.StartTaskLineEditMsg{Task: task, Project: m.currentProject})
@@ -113,7 +113,7 @@ func TestInlineRowEditorUnchangedCommitCreatesNoUndoTransaction(t *testing.T) {
 	out.SetSize(100, 20)
 	out.RebuildRows()
 	m.crossOutliner = out
-	m.navigation.ResetRoot()
+	m.viewNav.navigation.ResetRoot()
 
 	before, err := m.deps.Ledger.UndoCount(storage.GlobalScope())
 	if err != nil {

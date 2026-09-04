@@ -30,7 +30,7 @@ func (v *testViewWithMetadata) SetSize(width, height int) {}
 
 func TestAppViewPreservesSubviewViewMetadata(t *testing.T) {
 	app := newTestAppModel()
-	app.views.Register(presentation.ViewCrossProjectOutliner, &testViewWithMetadata{})
+	app.viewNav.views.Register(presentation.ViewCrossProjectOutliner, &testViewWithMetadata{})
 
 	output := app.View()
 
@@ -81,8 +81,8 @@ func countFullWidthDividers(content string) int {
 // plus the single app-shell footer contract for the unified Task Composer.
 func TestAppViewQuickCaptureUsesAppShellFooter(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.width = 80
-	app.height = 24
+	app.viewNav.width = 80
+	app.viewNav.height = 24
 
 	handled, _ := app.handleViewMessages(app.captureComposerMessage(project, app.taskWorkspaceProjects()))
 	if !handled {

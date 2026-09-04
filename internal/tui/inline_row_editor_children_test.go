@@ -312,7 +312,7 @@ func TestInlineRowEditorChildAdoptionCommitsRefreshesHierarchyAndUndoes(t *testi
 	out.RebuildRows()
 	out.Folds.CollapsedSections["unrelated"] = true
 	m.crossOutliner = out
-	m.navigation.ResetRoot()
+	m.viewNav.navigation.ResetRoot()
 	projection := out.JumpProjectionFingerprint()
 
 	out.Update(outliner.StartTaskLineEditMsg{Task: task, Project: m.currentProject})

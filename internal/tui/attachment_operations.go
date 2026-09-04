@@ -276,9 +276,9 @@ func (m *AppModel) executeAttachmentOperation(invocation operation.OperationInvo
 // on. A dispatched key already knows the panel is what it came from, so the
 // lookup keys on the current view rather than searching the whole stack.
 func (m *AppModel) activeAttachmentsPanel() *taskdetail.TaskAttachmentsModel {
-	if m == nil || m.views == nil || m.currentView() != presentation.ViewTaskAttachments {
+	if m == nil || m.viewNav.views == nil || m.currentView() != presentation.ViewTaskAttachments {
 		return nil
 	}
-	panel, _ := m.views.Get(presentation.ViewTaskAttachments).(*taskdetail.TaskAttachmentsModel)
+	panel, _ := m.viewNav.views.Get(presentation.ViewTaskAttachments).(*taskdetail.TaskAttachmentsModel)
 	return panel
 }

@@ -35,8 +35,8 @@ func lensOperationApp(t *testing.T) *AppModel {
 		t.Fatalf("register lens operations: %v", err)
 	}
 	model.crossOutliner = lensLifecycleOutliner()
-	model.crossOutliner.SetSize(model.width, model.height-2)
-	model.views.Register(presentation.ViewCrossProjectOutliner, model.crossOutliner)
+	model.crossOutliner.SetSize(model.viewNav.viewSize())
+	model.viewNav.views.Register(presentation.ViewCrossProjectOutliner, model.crossOutliner)
 	return model
 }
 

@@ -12,9 +12,9 @@ import (
 func pickerStatusBarApp(t *testing.T) *AppModel {
 	t.Helper()
 	app := typedTestApp(t)
-	app.width = 100
-	app.height = 35
-	app.crossOutliner.SetSize(app.width, app.height-2)
+	app.viewNav.width = 100
+	app.viewNav.height = 35
+	app.crossOutliner.SetSize(app.viewNav.viewSize())
 	return app
 }
 

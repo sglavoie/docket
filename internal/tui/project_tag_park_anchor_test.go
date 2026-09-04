@@ -87,7 +87,7 @@ func TestProjectBulkParkFromTheProjectHubCapturesNoOutlinerAnchor(t *testing.T) 
 	sibling := newSession4Project(t, "Radar")
 	fixture := newSession4LifecycleFixture(t, member, sibling)
 	hub := manageRouteForPresentation(presentation.ViewProjectHub)
-	if err := fixture.app.navigation.Primary.PushChild(hub); err != nil {
+	if err := fixture.app.viewNav.navigation.Primary.PushChild(hub); err != nil {
 		t.Fatalf("push the Project Hub route: %v", err)
 	}
 

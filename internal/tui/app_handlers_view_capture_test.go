@@ -23,9 +23,9 @@ func TestHandleViewMessagesShowTaskComposer(t *testing.T) {
 	if app.currentView() != presentation.ViewTaskComposer {
 		t.Errorf("currentView should be TaskComposer after ShowTaskComposerMsg, got %v", app.currentView())
 	}
-	capture, ok := app.views.Get(presentation.ViewTaskComposer).(*taskform.TaskComposerModel)
+	capture, ok := app.viewNav.views.Get(presentation.ViewTaskComposer).(*taskform.TaskComposerModel)
 	if !ok {
-		t.Fatalf("composer view = %T, want *TaskComposerModel", app.views.Get(presentation.ViewTaskComposer))
+		t.Fatalf("composer view = %T, want *TaskComposerModel", app.viewNav.views.Get(presentation.ViewTaskComposer))
 	}
 	if capture.Preset.Project != project {
 		t.Fatalf("quick capture project = %v, want contextual project %v (system Inbox was %v)", capture.Preset.Project, project, inbox)
@@ -46,9 +46,9 @@ func TestTaskComposerCaptureDefaultsToSystemUnfiled(t *testing.T) {
 	if !handled {
 		t.Fatal("ShowTaskComposerMsg should be handled")
 	}
-	capture, ok := app.views.Get(presentation.ViewTaskComposer).(*taskform.TaskComposerModel)
+	capture, ok := app.viewNav.views.Get(presentation.ViewTaskComposer).(*taskform.TaskComposerModel)
 	if !ok {
-		t.Fatalf("composer view = %T, want *TaskComposerModel", app.views.Get(presentation.ViewTaskComposer))
+		t.Fatalf("composer view = %T, want *TaskComposerModel", app.viewNav.views.Get(presentation.ViewTaskComposer))
 	}
 	if capture.Preset.Project != inbox {
 		t.Fatalf("quick capture project = %v, want system Inbox %v", capture.Preset.Project, inbox)

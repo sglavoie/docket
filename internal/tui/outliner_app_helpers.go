@@ -8,7 +8,7 @@ import (
 )
 
 func (m *AppModel) activeOutliner() *outliner.OutlinerModel {
-	if m == nil || m.navigation.Primary.Current().ID() != route.TaskWorkspace {
+	if m == nil || m.viewNav.navigation.Primary.Current().ID() != route.TaskWorkspace {
 		return nil
 	}
 	return m.crossOutliner

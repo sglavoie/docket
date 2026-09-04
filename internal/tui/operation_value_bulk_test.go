@@ -34,7 +34,7 @@ func TestFrozenBulkTagPatchPreservesSelectionAcrossCursorMoveAndRebuild(t *testi
 	outlinerView.SelectTaskIdentity(taskref.For(first, env.projects[0]))
 	outlinerView.SelectTaskIdentity(taskref.For(second, env.projects[1]))
 	model.crossOutliner = outlinerView
-	model.views.Register(presentation.ViewCrossProjectOutliner, outlinerView)
+	model.viewNav.views.Register(presentation.ViewCrossProjectOutliner, outlinerView)
 
 	context := model.operationCommandContext()
 	outlinerView.Cursor = 1

@@ -16,7 +16,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
-	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -260,7 +259,7 @@ func wireInvariantSimplifiedRoot(t *testing.T, app *AppModel) {
 	t.Helper()
 	outlinerView := outliner.NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner = outlinerView
-	app.views.Register(presentation.ViewCrossProjectOutliner, outlinerView)
+	app.viewNav.views.Register(presentation.ViewCrossProjectOutliner, outlinerView)
 	wireInvariantSimplifiedOutliner(t, app, outlinerView)
 }
 
@@ -269,7 +268,7 @@ func wireInvariantSimplifiedOutliner(t *testing.T, app *AppModel, outlinerView *
 	app.operationRegistry = operation.NewOperationRegistry()
 	app.operationExecutor = operation.NewOperationExecutor(app.operationRegistry)
 	app.crossOutliner = outlinerView
-	app.views.Register(presentation.ViewCrossProjectOutliner, outlinerView)
+	app.viewNav.views.Register(presentation.ViewCrossProjectOutliner, outlinerView)
 	if err := app.registerCoreInputOperations(); err != nil {
 		t.Fatalf("register core operations: %v", err)
 	}
@@ -398,23 +397,20 @@ func newFocusToggleTestAppState(t *testing.T) (*AppModel, *models.Task) {
 		projects:          map[string]*models.Project{project.ID: project},
 		persister:         coordinator.NewProjectService(),
 		appService:        svc,
-		width:             80,
-		height:            24,
-		views:             route.NewViewRegistry(),
+		viewNav:           newViewNavigationController(),
 		currentProject:    project,
 		nextOrder:         []outliner.PlanningTask{},
 		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),
 		today:             []outliner.PlanningTask{},
 		todayIDs:          make(map[taskref.TaskIdentity]bool),
 		operationRegistry: operation.NewOperationRegistry(),
-		navigation:        route.NewNavigationState(),
 	}
 	appModel.operationExecutor = operation.NewOperationExecutor(appModel.operationRegistry)
 	outlinerView := outliner.NewOutlinerModel(project, manager, runtime)
 	outlinerView.RebuildRows()
 	outlinerView.MoveCursorToTask(task.ID)
 	appModel.crossOutliner = outlinerView
-	appModel.views.Register(presentation.ViewCrossProjectOutliner, outlinerView)
+	appModel.viewNav.views.Register(presentation.ViewCrossProjectOutliner, outlinerView)
 	if err := appModel.registerCoreInputOperations(); err != nil {
 		t.Fatalf("register core operations: %v", err)
 	}

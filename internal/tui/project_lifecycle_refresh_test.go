@@ -101,7 +101,7 @@ func attachSession4CrossOutliner(t *testing.T, app *AppModel) *outliner.Outliner
 		runSession2AppCommand(t, app, cmd)
 	}
 	app.crossOutliner = cross
-	app.views.Register(presentation.ViewCrossProjectOutliner, cross)
+	app.viewNav.views.Register(presentation.ViewCrossProjectOutliner, cross)
 	setTestPresentationPath(app, presentation.ViewUnknown, presentation.ViewCrossProjectOutliner)
 	return cross
 }
@@ -318,7 +318,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				project.Archive()
 				fixture := newSession4LifecycleFixture(t, project)
 				live := fixture.app.projectByID(project.ID)
-				fixture.app.views.Register(presentation.ViewHelp, help.NewHelpViewModel(nil, "Help"))
+				fixture.app.viewNav.views.Register(presentation.ViewHelp, help.NewHelpViewModel(nil, "Help"))
 				setTestPresentationPath(fixture.app, presentation.ViewUnknown, presentation.ViewCrossProjectOutliner, presentation.ViewHelp)
 
 				_, cmd := fixture.app.handleProjectMessages(projecthub.ProjectRestoredMsg{Project: live})

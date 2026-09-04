@@ -59,7 +59,7 @@ func newSession2OutlinerApp(t *testing.T, dataDir string, projects ...*models.Pr
 	cross.Population.Invalidate()
 	cross.CrossProjectRebuildRows()
 	app.crossOutliner = cross
-	app.views.Register(presentation.ViewCrossProjectOutliner, cross)
+	app.viewNav.views.Register(presentation.ViewCrossProjectOutliner, cross)
 	setTestPresentationPath(app, presentation.ViewUnknown, presentation.ViewCrossProjectOutliner)
 	return app, cross
 }

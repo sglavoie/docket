@@ -14,7 +14,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/presentation"
-	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -193,16 +192,13 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, tas
 		projects:          map[string]*models.Project{project.ID: project},
 		persister:         coordinator.NewProjectService(),
 		appService:        svc,
-		width:             80,
-		height:            24,
-		views:             route.NewViewRegistry(),
+		viewNav:           newViewNavigationController(),
 		currentProject:    project,
 		nextOrder:         []outliner.PlanningTask{},
 		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),
 		today:             []outliner.PlanningTask{},
 		todayIDs:          make(map[taskref.TaskIdentity]bool),
 		operationRegistry: operation.NewOperationRegistry(),
-		navigation:        route.NewNavigationState(),
 	}
 	appModel.operationExecutor = operation.NewOperationExecutor(appModel.operationRegistry)
 	outlinerView := outliner.NewOutlinerModel(project, manager, runtime)

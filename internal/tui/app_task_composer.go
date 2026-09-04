@@ -18,9 +18,9 @@ func (m *AppModel) openTaskComposer(preset taskform.TaskComposerPreset) tea.Cmd 
 	composer := taskform.NewTaskComposerModel(preset, m.runtime)
 	composer.SetCaptureCoordinator(m.features.Capture)
 	composer.SetTaskFormCoordinator(m.features.TaskForm)
-	composer.SetSize(m.width, m.height-2)
+	composer.SetSize(m.viewNav.viewSize())
 	m.taskComposer = composer
-	m.views.Register(presentation.ViewTaskComposer, composer)
+	m.viewNav.views.Register(presentation.ViewTaskComposer, composer)
 	m.pushTypedOverlay(route.OverlayComposer, taskComposerOverlayKey)
 	m.setAccentOnView(composer)
 	return composer.Init()
@@ -30,7 +30,7 @@ func (m *AppModel) activeTaskComposer() bool {
 	if m.taskComposer == nil {
 		return false
 	}
-	overlay, ok := m.navigation.Overlays.Current()
+	overlay, ok := m.viewNav.navigation.Overlays.Current()
 	if !ok || overlay.Kind() != route.OverlayComposer || overlay.Key() != taskComposerOverlayKey {
 		return false
 	}

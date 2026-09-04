@@ -77,16 +77,18 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 		persister:         coordinator.NewProjectService(),
 		appService:        svc,
 		secondaryFeatures: coordinator.NewSecondaryCoordinators(svc),
-		width:             120,
-		height:            40,
-		views:             route.NewViewRegistry(),
+		viewNav: viewNavigationController{
+			navigation: route.NewNavigationState(),
+			views:      route.NewViewRegistry(),
+			width:      120,
+			height:     40,
+		},
 		currentProject:    projects[0],
 		nextOrder:         []outliner.PlanningTask{},
 		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),
 		today:             []outliner.PlanningTask{},
 		todayIDs:          make(map[taskref.TaskIdentity]bool),
 		operationRegistry: operation.NewOperationRegistry(),
-		navigation:        route.NewNavigationState(),
 	}
 	m.operationExecutor = operation.NewOperationExecutor(m.operationRegistry)
 	m.rebuildPlanningFromRuntime()
@@ -98,7 +100,7 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 	}
 	cross.SetSize(120, 40)
 	m.crossOutliner = cross
-	m.views.Register(presentation.ViewCrossProjectOutliner, cross)
+	m.viewNav.views.Register(presentation.ViewCrossProjectOutliner, cross)
 	if err := m.registerCoreInputOperations(); err != nil {
 		t.Fatalf("register core operations: %v", err)
 	}

@@ -25,7 +25,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			if m.crossOutliner != nil {
 				m.crossOutliner.CancelCrossProjectLoad()
 			}
-			m.navigation.ResetRoot()
+			m.viewNav.navigation.ResetRoot()
 			m.contextActionSheet = nil
 			m.lensPicker = nil
 			m.clearOperationValueStep()

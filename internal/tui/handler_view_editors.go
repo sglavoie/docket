@@ -61,7 +61,7 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 		}
 		// Forward the message to the parent view (task creator or task editor)
 		// so it can update the title/description
-		cmd := m.views.Update(m.currentView(), msg)
+		cmd := m.viewNav.views.Update(m.currentView(), msg)
 		return true, cmd
 
 	case chrome.TextEditorExternalMsg:
@@ -70,7 +70,7 @@ func (m *AppModel) handleEditorMessages(msg tea.Msg) (bool, tea.Cmd) {
 	case chrome.TextEditorExternalDoneMsg:
 		m.clearStatus()
 		// Forward to text editor view to update its textarea
-		cmd := m.views.Update(m.currentView(), msg)
+		cmd := m.viewNav.views.Update(m.currentView(), msg)
 		return true, cmd
 
 	}

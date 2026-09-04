@@ -140,25 +140,25 @@ func (m *AppModel) renderStatusBar() string {
 	if !ok {
 		return footer
 	}
-	strip := provider.ViewStatusStrip(m.width)
+	strip := provider.ViewStatusStrip(m.viewNav.width)
 	if strip == "" {
 		return footer
 	}
 	// Deliberately static: the strip is view content, so it is neither one of
 	// the flash-capable dividers nor a taker of the footer content wash.
-	return chrome.RenderHorizontalDivider(m.width) + "\n" + strip + "\n" + footer
+	return chrome.RenderHorizontalDivider(m.viewNav.width) + "\n" + strip + "\n" + footer
 }
 
 func (m *AppModel) renderFooterChrome() string {
 	// Top border separator for visual distinction; tinted with current view accent.
-	separator := m.renderFooterDivider(m.width)
+	separator := m.renderFooterDivider(m.viewNav.width)
 	renderFooter := func(content string) string {
-		return separator + "\n" + m.renderFooterContent(content, m.width)
+		return separator + "\n" + m.renderFooterContent(content, m.viewNav.width)
 	}
 
 	// Helper to render left-aligned message with spacer.
 	renderLeftAlignedMsg := func(msg string) string {
-		width := m.width
+		width := m.viewNav.width
 		if width <= 0 {
 			width = 80
 		}
@@ -180,7 +180,7 @@ func (m *AppModel) renderFooterChrome() string {
 	// An unfinished chord owns the footer: the which-key row is live input
 	// feedback, so it outranks banners and transient status text.
 	if spec, ok := m.pendingChordGuidance(); ok {
-		return renderFooter(chrome.RenderGuidanceText(spec, m.width))
+		return renderFooter(chrome.RenderGuidanceText(spec, m.viewNav.width))
 	}
 
 	// Show temporary status message if present.
@@ -203,13 +203,13 @@ func (m *AppModel) renderFooterChrome() string {
 	if view := m.activeView(); view != nil {
 		if provider, ok := view.(route.ContextualGuidanceProvider); ok {
 			if spec, ok := provider.ContextualGuidance(); ok {
-				return renderFooter(chrome.RenderGuidanceText(spec, m.width))
+				return renderFooter(chrome.RenderGuidanceText(spec, m.viewNav.width))
 			}
 		}
 	}
 
 	// Show pinned tasks bar if any tasks are pinned.
-	if pinnedBar := m.renderPinnedTasksBar(m.width); pinnedBar != "" {
+	if pinnedBar := m.renderPinnedTasksBar(m.viewNav.width); pinnedBar != "" {
 		return renderFooter(pinnedBar)
 	}
 
@@ -230,7 +230,7 @@ func (m *AppModel) renderFooterChrome() string {
 			help = theme.HelpStyle.Render(hint)
 		} else {
 			help = strings.Join(
-				chrome.RenderGuidanceLines(chrome.EscapeGuidanceSpec(), m.width),
+				chrome.RenderGuidanceLines(chrome.EscapeGuidanceSpec(), m.viewNav.width),
 				theme.HelpStyle.Render(chrome.FooterHelpSeparator),
 			)
 		}
@@ -273,8 +273,8 @@ func (m *AppModel) renderFooterChrome() string {
 	}
 
 	right := help
-	left, right = fitStatusBarSegments(left, right, m.width)
-	gap := max(m.width-lipgloss.Width(left)-lipgloss.Width(right), 0)
+	left, right = fitStatusBarSegments(left, right, m.viewNav.width)
+	gap := max(m.viewNav.width-lipgloss.Width(left)-lipgloss.Width(right), 0)
 	spacer := lipgloss.NewStyle().
 		Width(gap).
 		Background(m.footerFlashBackgroundColor()).
@@ -346,14 +346,14 @@ func (m *AppModel) buildBreadcrumb() string {
 
 	crumb := strings.Join(parts, sep)
 	// Truncate total breadcrumb if it would crowd out the help text.
-	maxLen := max(m.width/2, 20)
+	maxLen := max(m.viewNav.width/2, 20)
 	if lipgloss.Width(crumb) > maxLen {
 		crumb = textfit.TruncateToVisualWidth(crumb, maxLen)
 	}
 
 	// Esc-preview: show what pressing Esc will return to. The Outliner is the
 	// sole root, so suppress the hint there.
-	atRoot := m.navigation.Primary.Depth() <= 1 && !m.navigation.Overlays.Active()
+	atRoot := m.viewNav.navigation.Primary.Depth() <= 1 && !m.viewNav.navigation.Overlays.Active()
 	if len(path) >= 2 && !atRoot {
 		prevVT := path[len(path)-2]
 		prevLabel := m.breadcrumbLabel(prevVT, maxProjectLen)
@@ -378,7 +378,7 @@ func (m *AppModel) breadcrumbLabel(vt presentation.PresentationID, maxProjectLen
 
 	// Use the registered view's StatusBarLabel when available.
 	if label == "" {
-		if view := m.views.Get(vt); view != nil {
+		if view := m.viewNav.views.Get(vt); view != nil {
 			if labeler, ok := view.(route.StatusBarLabeler); ok {
 				raw := labeler.StatusBarLabel()
 				// Strip "Project: " prefix from project tree label for compactness.

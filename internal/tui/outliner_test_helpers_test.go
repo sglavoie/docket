@@ -28,8 +28,8 @@ func typedTestApp(t *testing.T) *AppModel {
 
 	model.crossOutliner = outliner.NewOutlinerModel(nil, model.configManager, model.runtime)
 	model.crossOutliner.Population.Projects = []*models.Project{project}
-	model.crossOutliner.SetSize(model.width, model.height-2)
-	model.views.Register(presentation.ViewCrossProjectOutliner, model.crossOutliner)
+	model.crossOutliner.SetSize(model.viewNav.viewSize())
+	model.viewNav.views.Register(presentation.ViewCrossProjectOutliner, model.crossOutliner)
 
 	if err := model.registerCoreInputOperations(); err != nil {
 		t.Fatalf("register core input operations: %v", err)

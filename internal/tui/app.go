@@ -19,7 +19,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/pulse"
-	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskform"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -82,10 +81,10 @@ type AppModel struct {
 	// and ledger-undoable without a direct raw save.
 	appService *app.Service
 
-	// navigation is the sole live shell authority. PresentationID values attached
-	// to routes and overlays select renderers; they never form a second
-	// navigation stack.
-	navigation     route.NavigationState
+	// viewNav is the view and navigation cluster: the authoritative route and
+	// overlay stacks, the renderer registry, and the terminal geometry both are
+	// sized against. See view_navigation_controller.go.
+	viewNav        viewNavigationController
 	startupMessage tea.Msg
 
 	// pendingLaunchLens is the lens the machine-local active-lens pointer named
@@ -104,12 +103,6 @@ type AppModel struct {
 	noteIndexRows       []notes.LocatedNoteRow
 	noteIndexGeneration int
 	noteIndexOwners     string
-
-	width  int
-	height int
-
-	// View registry for centralized view management
-	views *route.ViewRegistry
 
 	operationRegistry *operation.OperationRegistry
 	operationExecutor *operation.OperationExecutor
@@ -161,10 +154,6 @@ type AppModel struct {
 	// When the project picker pushes a new project tree, the previous project ID
 	// is saved so it can be restored when navigating back.
 	projectStack []string
-
-	// Terminal too narrow or short to render properly
-	tooNarrow bool
-	tooShort  bool
 
 	// State
 	err             error

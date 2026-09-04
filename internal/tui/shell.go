@@ -18,12 +18,14 @@ import (
 //   - OverlayManager     — the transient global overlays (pickers, quick-note)
 //                          layered above the routed view stack.
 //
-// They are introduced as typed facades over the AppModel so the extraction is
-// behavior-preserving: no state moves, but the shell now exposes these concerns
-// through cohesive, testable APIs (and the overlay lifecycle is genuinely
-// centralized here — see OverlayManager.HasActiveTextInput / ClearAll, which the
-// AppModel now delegates to). Subsequent sessions migrate feature views onto
-// these facades and the route factories.
+// They are typed facades over the AppModel, so the concerns they name are
+// exposed through cohesive, testable APIs (and the overlay lifecycle is
+// genuinely centralized here — see OverlayManager.HasActiveTextInput /
+// ClearAll, which the AppModel now delegates to). Each facade reads through
+// whichever sub-state owns the field: ShellState's stack, route and geometry
+// come from the viewNav controller (view_navigation_controller.go), and
+// OverlayManager's overlay stack does too, while the per-overlay pointers it
+// clears are still AppModel fields.
 
 // ShellContext is the shared UI contract a feature view uses to interrogate the
 // shell without importing AppModel internals. It is deliberately read-only:
@@ -60,12 +62,10 @@ func (s ShellState) Stack() []presentation.PresentationID { return s.app.present
 func (s ShellState) Depth() int { return len(s.app.presentationPath()) }
 
 // AtRoot reports whether navigation is the bare Outliner root.
-func (s ShellState) AtRoot() bool {
-	return s.app.navigation.Primary.Depth() == 1 && !s.app.navigation.Overlays.Active()
-}
+func (s ShellState) AtRoot() bool { return s.app.viewNav.atRoot() }
 
 // Size returns the current terminal dimensions.
-func (s ShellState) Size() (int, int) { return s.app.width, s.app.height }
+func (s ShellState) Size() (int, int) { return s.app.viewNav.size() }
 
 // CurrentRoute returns the route instance for the topmost view.
 func (s ShellState) CurrentRoute() route.Route { return s.app.CurrentRoute() }
@@ -73,14 +73,14 @@ func (s ShellState) CurrentRoute() route.Route { return s.app.CurrentRoute() }
 // CurrentRoute returns the live primary route. Overlays are skipped because
 // they belong to the separate overlay stack.
 func (m *AppModel) CurrentRoute() route.Route {
-	return m.navigation.Primary.Current()
+	return m.viewNav.navigation.Primary.Current()
 }
 
 // CurrentView satisfies ShellContext.
 func (m *AppModel) CurrentView() presentation.PresentationID { return m.currentView() }
 
 // Size satisfies ShellContext.
-func (m *AppModel) Size() (int, int) { return m.width, m.height }
+func (m *AppModel) Size() (int, int) { return m.viewNav.size() }
 
 // WorkspaceSession is a facade over the runtime domains, manager, and currently
 // selected project the shell operates within.
@@ -131,7 +131,7 @@ func (o OverlayManager) HasActiveTextInput() bool {
 // Active reports whether any transient overlay is currently shown.
 func (o OverlayManager) Active() bool {
 	m := o.app
-	return m.navigation.Overlays.Active() ||
+	return m.viewNav.navigation.Overlays.Active() ||
 		m.contextActionSheet != nil ||
 		m.operationValuePicker != nil ||
 		m.operationTextPrompt != nil ||
@@ -142,7 +142,7 @@ func (o OverlayManager) Active() bool {
 // so no overlay outlives the route it was opened over.
 func (o OverlayManager) ClearAll() {
 	m := o.app
-	m.navigation.Overlays.CancelAll()
+	m.viewNav.navigation.Overlays.CancelAll()
 	m.contextActionSheet = nil
 	m.operationValuePicker = nil
 	m.operationTextPrompt = nil

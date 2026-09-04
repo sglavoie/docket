@@ -87,7 +87,7 @@ func (v *recordingAuditView) SetSize(width, height int) {
 
 func TestRenderAuditObserveIncludesAuditIssues(t *testing.T) {
 	app := newUITestApp()
-	app.views.Register(presentation.ViewCrossProjectOutliner, &recordingAuditView{})
+	app.viewNav.views.Register(presentation.ViewCrossProjectOutliner, &recordingAuditView{})
 	driver := NewUITestDriver(app, 100, 30)
 	obs := driver.Observe(ObserveOptions{})
 	if !hasIssueKind(obs.LayoutIssues, requiredTextTruncatedKind) {

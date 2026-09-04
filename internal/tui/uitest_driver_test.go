@@ -8,10 +8,10 @@ import (
 func TestUITestDriverResizeAndRender(t *testing.T) {
 	driver := NewUITestDriver(newUITestApp(), 100, 30)
 
-	if got := driver.App().width; got != 100 {
+	if got := driver.App().viewNav.width; got != 100 {
 		t.Fatalf("width = %d, want 100", got)
 	}
-	if got := driver.App().height; got != 30 {
+	if got := driver.App().viewNav.height; got != 30 {
 		t.Fatalf("height = %d, want 30", got)
 	}
 
@@ -24,17 +24,17 @@ func TestUITestDriverResizeAndRender(t *testing.T) {
 	}
 
 	driver.Resize(60, 20)
-	if driver.App().width != 60 || driver.App().height != 20 {
-		t.Fatalf("after resize got %dx%d, want 60x20", driver.App().width, driver.App().height)
+	if driver.App().viewNav.width != 60 || driver.App().viewNav.height != 20 {
+		t.Fatalf("after resize got %dx%d, want 60x20", driver.App().viewNav.width, driver.App().viewNav.height)
 	}
 }
 
 func TestUITestDriverTooSmall(t *testing.T) {
 	driver := NewUITestDriver(newUITestApp(), 40, 10)
 
-	if !driver.App().tooNarrow || !driver.App().tooShort {
+	if !driver.App().viewNav.tooNarrow || !driver.App().viewNav.tooShort {
 		t.Fatalf("expected tooNarrow/tooShort at 40x10, got tooNarrow=%v tooShort=%v",
-			driver.App().tooNarrow, driver.App().tooShort)
+			driver.App().viewNav.tooNarrow, driver.App().viewNav.tooShort)
 	}
 	if screen := driver.Render(); !strings.Contains(screen, "Terminal too small") {
 		t.Fatalf("expected too-small message, got %q", screen)

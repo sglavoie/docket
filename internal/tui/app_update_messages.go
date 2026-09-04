@@ -327,12 +327,12 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState, reloadCrossProject 
 			saveCmds = append(saveCmds, reloadCmd)
 		}
 	}
-	if m.views != nil {
+	if m.viewNav.views != nil {
 		for _, viewType := range []presentation.PresentationID{
 			presentation.ViewTaskComments,
 			presentation.ViewTaskAttachments,
 		} {
-			view := m.views.Get(viewType)
+			view := m.viewNav.views.Get(viewType)
 			refresher, ok := view.(interface{ RefreshAfterReload() bool })
 			if !ok {
 				continue

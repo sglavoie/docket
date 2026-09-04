@@ -153,7 +153,7 @@ func TestOutlinerProjectHubShortcutsChooseTheirExplicitModes(t *testing.T) {
 			if params.ProjectHubMode != test.mode || !mounted || mountedMode != test.mode {
 				t.Fatalf("path %v route/model mode = %v/%v (%T)", test.path, params.ProjectHubMode, mountedMode, app.manageHub.ActiveModuleView())
 			}
-			app.navigation.ResetRoot()
+			app.viewNav.navigation.ResetRoot()
 		})
 	}
 }

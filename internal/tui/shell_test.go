@@ -48,7 +48,7 @@ func TestCurrentRouteBinding(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewOverlay: %v", err)
 	}
-	app.navigation.Overlays.Push(overlay, nil)
+	app.viewNav.navigation.Overlays.Push(overlay, nil)
 	if got := app.CurrentRoute().ID(); got != route.TaskWorkspace {
 		t.Errorf("CurrentRoute under search = %s, want TaskWorkspace", got)
 	}
@@ -82,7 +82,7 @@ func TestShellStateFacade(t *testing.T) {
 	}
 	// A secondary tool stacks above the root.
 	child := manageRouteForPresentation(presentation.ViewProjectHub)
-	if err := app.navigation.Primary.PushChild(child); err != nil {
+	if err := app.viewNav.navigation.Primary.PushChild(child); err != nil {
 		t.Fatal(err)
 	}
 	if s.AtRoot() {

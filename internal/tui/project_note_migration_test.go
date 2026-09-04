@@ -69,7 +69,7 @@ func newProjectNoteTUIEnv(t *testing.T, titles ...string) *projectNoteTUIEnv {
 	views.Register(presentation.ViewNotes, view)
 	shell := &AppModel{
 		appService: svc,
-		views:      views,
+		viewNav:    viewNavigationController{views: views},
 	}
 	setTestPresentationPath(shell, presentation.ViewNotes)
 	return &projectNoteTUIEnv{dataDir: dataDir, ledger: ledger, svc: svc, project: project, view: view, shell: shell}

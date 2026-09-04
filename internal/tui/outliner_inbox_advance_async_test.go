@@ -43,7 +43,7 @@ func newInboxAsyncEnv(t *testing.T, taskGroups ...[]*models.Task) *inboxAsyncEnv
 	outlinerView.Population.Invalidate()
 	outlinerView.SelectOutlinerMode(chrome.ModeInbox)
 	model.crossOutliner = outlinerView
-	model.views.Register(presentation.ViewCrossProjectOutliner, outlinerView)
+	model.viewNav.views.Register(presentation.ViewCrossProjectOutliner, outlinerView)
 	model.wireOutlinerOperationExecutor(outlinerView)
 	return &inboxAsyncEnv{env: env, model: model, outliner: outlinerView}
 }

@@ -15,7 +15,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/outliner"
-	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -36,10 +35,7 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 		runtime:           runtime,
 		projects:          make(map[string]*models.Project),
 		persister:         coordinator.NewProjectService(),
-		navigation:        route.NewNavigationState(),
-		width:             80,
-		height:            24,
-		views:             route.NewViewRegistry(),
+		viewNav:           newViewNavigationController(),
 		operationRegistry: operation.NewOperationRegistry(),
 		nextOrder:         []outliner.PlanningTask{},
 		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),

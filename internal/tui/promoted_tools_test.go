@@ -136,9 +136,9 @@ func TestPromotedToolMessagesOpenTypedSecondaryChildren(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			app := newTestAppModel()
 			_, _ = app.Update(test.message)
-			current := app.navigation.Primary.Current()
-			if current.ID() != route.SecondaryTool || app.navigation.Primary.Depth() != 2 {
-				t.Fatalf("route = %s depth %d, want typed SecondaryTool child", current.ID(), app.navigation.Primary.Depth())
+			current := app.viewNav.navigation.Primary.Current()
+			if current.ID() != route.SecondaryTool || app.viewNav.navigation.Primary.Depth() != 2 {
+				t.Fatalf("route = %s depth %d, want typed SecondaryTool child", current.ID(), app.viewNav.navigation.Primary.Depth())
 			}
 			test.check(t, current.Params())
 		})

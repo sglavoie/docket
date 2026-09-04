@@ -166,7 +166,7 @@ func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) 
 	outlinerView.Population.Invalidate()
 	outlinerView.SelectOutlinerMode(chrome.ModeAll)
 	model.crossOutliner = outlinerView
-	model.views.Register(presentation.ViewCrossProjectOutliner, outlinerView)
+	model.viewNav.views.Register(presentation.ViewCrossProjectOutliner, outlinerView)
 	model.wireOutlinerOperationExecutor(outlinerView)
 
 	targetIdentity := taskref.For(target, env.projects[0])

@@ -47,7 +47,7 @@ func (m *AppModel) ensureManageHub() *projecthub.ManageHubModel {
 	} else {
 		m.manageHub.Rewire(deps)
 	}
-	m.manageHub.SetSize(m.width, m.height-2)
+	m.manageHub.SetSize(m.viewNav.viewSize())
 	return m.manageHub
 }
 
@@ -83,16 +83,16 @@ func (m *AppModel) activateManageHub(params route.ManageParams) tea.Cmd {
 
 	active := hub.ActiveModuleView()
 	if active != nil {
-		active.SetSize(m.width, m.height-2)
+		active.SetSize(m.viewNav.viewSize())
 		m.wireSecondaryCoordinators(active)
 		m.registerManageModulePresentation(params, active)
 	}
 
-	if m.navigation.Primary.Current().ID() == route.SecondaryTool {
-		m.navigation.Overlays.CancelAll()
-		err = m.navigation.Primary.ReplaceCurrentMode(target)
+	if m.viewNav.navigation.Primary.Current().ID() == route.SecondaryTool {
+		m.viewNav.navigation.Overlays.CancelAll()
+		err = m.viewNav.navigation.Primary.ReplaceCurrentMode(target)
 	} else {
-		err = m.navigation.PushChild(target)
+		err = m.viewNav.navigation.PushChild(target)
 	}
 	if err != nil {
 		return func() tea.Msg { return status.ErrorMsg{Err: err} }
@@ -106,14 +106,14 @@ func (m *AppModel) activateManageHub(params route.ManageParams) tea.Cmd {
 }
 
 func (m *AppModel) registerManageModulePresentation(params route.ManageParams, view route.View) {
-	if m.views == nil || view == nil {
+	if m.viewNav.views == nil || view == nil {
 		return
 	}
 	presentation, ok := projecthub.ManageModulePresentation(params)
 	if !ok {
 		return
 	}
-	m.views.Register(presentation, view)
+	m.viewNav.views.Register(presentation, view)
 }
 
 func (m *AppModel) handleManageHubMessages(msg tea.Msg) (bool, tea.Cmd) {

@@ -124,7 +124,7 @@ func assertQuickCaptureOpenOver(t *testing.T, driver *UITestDriver, view present
 	if !slices.Equal(obs.ViewStack, wantPath) {
 		t.Fatalf("renderer path under typed composer = %v, want %v", obs.ViewStack, wantPath)
 	}
-	overlay, ok := driver.App().navigation.Overlays.Current()
+	overlay, ok := driver.App().viewNav.navigation.Overlays.Current()
 	if !ok || overlay.Kind() != route.OverlayComposer || overlay.Key() != taskComposerOverlayKey {
 		t.Fatalf("typed composer overlay = %+v, open=%v", overlay, ok)
 	}

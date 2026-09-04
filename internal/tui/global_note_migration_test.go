@@ -63,7 +63,7 @@ func newGlobalNoteTUIEnv(t *testing.T, titles ...string) *globalNoteTUIEnv {
 	views.Register(presentation.ViewGlobalNotes, view)
 	shell := &AppModel{
 		appService: svc,
-		views:      views,
+		viewNav:    viewNavigationController{views: views},
 	}
 	setTestPresentationPath(shell, presentation.ViewGlobalNotes)
 	return &globalNoteTUIEnv{dataDir: dataDir, dir: dir, ledger: ledger, svc: svc, project: project, view: view, shell: shell}

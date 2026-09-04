@@ -82,8 +82,8 @@ func (m *AppModel) ledgerProjectByID(projectID string) *models.Project {
 	if m.currentProject != nil && tuiUndoProjectID(m.currentProject) == projectID {
 		return m.currentProject
 	}
-	if m.views != nil {
-		if view, ok := m.views.Get(presentation.ViewNotes).(*notes.NotesViewModel); ok {
+	if m.viewNav.views != nil {
+		if view, ok := m.viewNav.views.Get(presentation.ViewNotes).(*notes.NotesViewModel); ok {
 			if project := view.ProjectByID(projectID); project != nil {
 				return project
 			}

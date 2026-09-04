@@ -233,7 +233,7 @@ func TestTaskComposerUsesTypedOverlayWithoutLegacyRoute(t *testing.T) {
 	if !handled || !appModel.activeTaskComposer() {
 		t.Fatal("Task Composer message did not activate Task Composer")
 	}
-	overlay, ok := appModel.navigation.Overlays.Current()
+	overlay, ok := appModel.viewNav.navigation.Overlays.Current()
 	if !ok || overlay.Kind() != route.OverlayComposer || overlay.Key() != taskComposerOverlayKey {
 		t.Fatalf("overlay = %+v", overlay)
 	}
@@ -280,8 +280,8 @@ func TestDailyTaskEditsUseInlineTitleAndNarrowDescription(t *testing.T) {
 	task := project.Tasks[0]
 	appModel.crossOutliner = outliner.NewOutlinerModel(nil, appModel.configManager, appModel.runtime)
 	appModel.crossOutliner.Population.Projects = []*models.Project{project}
-	appModel.views.Register(presentation.ViewCrossProjectOutliner, appModel.crossOutliner)
-	appModel.navigation.ResetRoot()
+	appModel.viewNav.views.Register(presentation.ViewCrossProjectOutliner, appModel.crossOutliner)
+	appModel.viewNav.navigation.ResetRoot()
 
 	appModel.Update(outliner.StartTaskLineEditMsg{Project: project, Task: task})
 	if appModel.currentView() != presentation.ViewCrossProjectOutliner || appModel.crossOutliner == nil || !appModel.crossOutliner.QuickEdit.IsActive() {

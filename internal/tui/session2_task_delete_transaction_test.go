@@ -106,9 +106,7 @@ func (e *taskDeleteEnv) appModel() *AppModel {
 		persister:         coordinator.NewProjectService(),
 		appService:        e.svc,
 		secondaryFeatures: coordinator.NewSecondaryCoordinators(e.svc),
-		views:             route.NewViewRegistry(),
-		width:             80,
-		height:            24,
+		viewNav:           viewNavigationController{views: route.NewViewRegistry(), width: 80, height: 24},
 	}
 }
 

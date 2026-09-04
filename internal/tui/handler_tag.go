@@ -25,7 +25,7 @@ func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:goc
 			return true, m.applyTagsToTask(msg.Identity, msg.Task, msg.SelectedTags)
 		}
 		// Otherwise forward to the current view.
-		cmd := m.views.Update(m.currentView(), msg)
+		cmd := m.viewNav.views.Update(m.currentView(), msg)
 		return true, cmd
 
 	}

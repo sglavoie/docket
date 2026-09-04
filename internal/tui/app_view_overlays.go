@@ -3,7 +3,7 @@ package tui
 import "github.com/sglavoie/tt/internal/tui/chrome"
 
 // applyOverlays composites all popup/overlay layers onto the base content.
-// h is the overlay positioning height (m.height for full-height views,
+// h is the overlay positioning height (m.viewNav.height for full-height views,
 // targetContentHeight for views with an external status bar).
 //
 // Overlay visual contract:
@@ -12,14 +12,14 @@ import "github.com/sglavoie/tt/internal/tui/chrome"
 func (m *AppModel) applyOverlays(content string, h int) string {
 	// Overlay dimmed picker/note popups (all share the same nil-check + render pattern)
 	for _, renderer := range m.dimmedOverlayRenderers() {
-		if popup := renderOverlayWithin(renderer, m.width, h); popup != "" {
-			content = overlayPopupBelowPersistentTitle(content, popup, m.width, h)
+		if popup := renderOverlayWithin(renderer, m.viewNav.width, h); popup != "" {
+			content = overlayPopupBelowPersistentTitle(content, popup, m.viewNav.width, h)
 		}
 	}
 
 	// Overlay confirm dialog last so it renders on top of all other popups
 	if popup := m.renderConfirmDialogOverlay(); popup != "" {
-		content = overlayPopupBelowPersistentTitle(content, popup, m.width, h)
+		content = overlayPopupBelowPersistentTitle(content, popup, m.viewNav.width, h)
 	}
 
 	return content
@@ -83,22 +83,22 @@ func (m *AppModel) dimmedOverlayRenderers() []widthRenderer {
 // as a floating overlay box.
 func (m *AppModel) renderConfirmDialogOverlay() string {
 	if m.projectArchiveConfirm.IsActive() {
-		return m.projectArchiveConfirm.RenderOverlay(m.width)
+		return m.projectArchiveConfirm.RenderOverlay(m.viewNav.width)
 	}
 	if m.projectDeleteConfirm.IsActive() {
-		return m.projectDeleteConfirm.RenderOverlay(m.width)
+		return m.projectDeleteConfirm.RenderOverlay(m.viewNav.width)
 	}
 	if m.projectParkConfirm.IsActive() {
-		return m.projectParkConfirm.RenderOverlay(m.width)
+		return m.projectParkConfirm.RenderOverlay(m.viewNav.width)
 	}
 	if m.taskDeleteConfirm.IsActive() {
-		return m.taskDeleteConfirm.RenderOverlay(m.width)
+		return m.taskDeleteConfirm.RenderOverlay(m.viewNav.width)
 	}
 	if m.outlineDeleteConfirm.IsActive() {
-		return m.outlineDeleteConfirm.RenderOverlay(m.width)
+		return m.outlineDeleteConfirm.RenderOverlay(m.viewNav.width)
 	}
 	if m.operationConfirm.IsActive() {
-		return m.operationConfirm.RenderOverlay(m.width)
+		return m.operationConfirm.RenderOverlay(m.viewNav.width)
 	}
 
 	view := m.activeView()
@@ -113,5 +113,5 @@ func (m *AppModel) renderConfirmDialogOverlay() string {
 	if cd == nil || !cd.IsActive() {
 		return ""
 	}
-	return cd.RenderOverlay(m.width)
+	return cd.RenderOverlay(m.viewNav.width)
 }

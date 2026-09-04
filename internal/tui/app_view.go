@@ -33,12 +33,12 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 		return tea.NewView("")
 	}
 
-	if m.tooNarrow || m.tooShort {
+	if m.viewNav.tooSmall() {
 		msg := fmt.Sprintf("Terminal too small (need %d×%d, have %d×%d)",
-			chrome.MinTerminalWidth, chrome.MinTerminalHeight, m.width, m.height)
+			chrome.MinTerminalWidth, chrome.MinTerminalHeight, m.viewNav.width, m.viewNav.height)
 		style := lipgloss.NewStyle().
-			Width(m.width).
-			Height(m.height).
+			Width(m.viewNav.width).
+			Height(m.viewNav.height).
 			Align(lipgloss.Center, lipgloss.Center).
 			Foreground(theme.ColorMuted)
 		return tea.NewView(m.applyBackground(style.Render(msg)))
@@ -75,7 +75,7 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 			if !inZen && (m.statusMessage != "" || m.err != nil) {
 				content = replaceFooter(content, m.renderStatusBar())
 			}
-			content = m.applyOverlays(content, m.height)
+			content = m.applyOverlays(content, m.viewNav.height)
 			resultView.SetContent(m.applyBackground(content))
 			return resultView
 		}
@@ -87,7 +87,7 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 
 	// Pad content so the status bar is always at the bottom of the terminal
 	contentHeight := lipgloss.Height(content)
-	targetContentHeight := m.height - statusBarHeight
+	targetContentHeight := m.viewNav.height - statusBarHeight
 	if contentHeight > targetContentHeight {
 		content = clipContentHeight(content, targetContentHeight)
 		contentHeight = lipgloss.Height(content)

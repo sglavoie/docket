@@ -41,15 +41,15 @@ func (m *AppModel) applyBackground(content string) string {
 		patched := fillEsc + strings.ReplaceAll(line, "\x1b[m", "\x1b[m"+fillEsc)
 		patched = strings.ReplaceAll(patched, "\x1b[0m", "\x1b[0m"+fillEsc)
 		// Pad to full terminal width
-		pad := m.width - lipgloss.Width(line)
+		pad := m.viewNav.width - lipgloss.Width(line)
 		if pad > 0 {
 			patched += strings.Repeat(" ", pad)
 		}
 		lines[i] = patched + "\x1b[m"
 	}
 	// Fill remaining vertical space with background-colored empty lines
-	emptyLine := bgEsc + strings.Repeat(" ", m.width) + "\x1b[0m"
-	for len(lines) < m.height {
+	emptyLine := bgEsc + strings.Repeat(" ", m.viewNav.width) + "\x1b[0m"
+	for len(lines) < m.viewNav.height {
 		lines = append(lines, emptyLine)
 	}
 	return strings.Join(lines, "\n")

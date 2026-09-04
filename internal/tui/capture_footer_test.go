@@ -14,8 +14,8 @@ import (
 // present in the composed output.
 func TestCaptureFooterWrapsAt60ColumnsWithoutTruncation(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.width = 60
-	app.height = 20
+	app.viewNav.width = 60
+	app.viewNav.height = 20
 
 	handled, _ := app.handleViewMessages(app.captureComposerMessage(project, app.taskWorkspaceProjects()))
 	if !handled {
@@ -41,8 +41,8 @@ func TestCaptureFooterWrapsAt60ColumnsWithoutTruncation(t *testing.T) {
 // shows the capture actions rather than the pinned task strip.
 func TestCaptureFooterSurvivesPinnedTasks(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.width = 80
-	app.height = 24
+	app.viewNav.width = 80
+	app.viewNav.height = 24
 
 	const sentinel = "PINNED_SENTINEL_TASK"
 	project.Tasks[0].Title = sentinel
@@ -73,8 +73,8 @@ func TestCaptureFooterSurvivesPinnedTasks(t *testing.T) {
 // return.
 func TestCaptureFooterYieldsToTemporaryStatusThenReturns(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	app.width = 80
-	app.height = 24
+	app.viewNav.width = 80
+	app.viewNav.height = 24
 
 	handled, _ := app.handleViewMessages(app.captureComposerMessage(project, app.taskWorkspaceProjects()))
 	if !handled {

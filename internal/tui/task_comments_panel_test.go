@@ -160,8 +160,8 @@ func TestCommentsHelpKeyRaisesTheCommentsGrammar(t *testing.T) {
 	if got := driver.App().currentView(); got != presentation.ViewHelp {
 		t.Fatalf("? left the panel on %v, want the Help view", got)
 	}
-	if _, ok := driver.App().views.Get(presentation.ViewHelp).(*help.HelpViewModel); !ok {
-		t.Fatalf("the Help view is %T, want *help.HelpViewModel", driver.App().views.Get(presentation.ViewHelp))
+	if _, ok := driver.App().viewNav.views.Get(presentation.ViewHelp).(*help.HelpViewModel); !ok {
+		t.Fatalf("the Help view is %T, want *help.HelpViewModel", driver.App().viewNav.views.Get(presentation.ViewHelp))
 	}
 	// The grammar is read off the message the panel raises rather than out of the
 	// viewer it produced: ShowHelpMsg is what handler_view_core.go hands to
