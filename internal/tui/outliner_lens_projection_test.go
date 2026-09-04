@@ -193,25 +193,25 @@ func TestLensQueryAppliesSmartCaseAndTheRelaxedRetry(t *testing.T) {
 	if got := lensNarrowedIDs(outliner, "needle"); len(got) == 0 {
 		t.Fatal("lowercase lens query matched nothing")
 	}
-	if outliner.lensNarrowRelaxed || outliner.lensCaseSensitive() {
+	if outliner.lens.narrowRelaxed || outliner.lensCaseSensitive() {
 		t.Fatalf("lowercase lens relaxed=%v sensitive=%v, want an insensitive first pass",
-			outliner.lensNarrowRelaxed, outliner.lensCaseSensitive())
+			outliner.lens.narrowRelaxed, outliner.lensCaseSensitive())
 	}
 
 	if got := lensNarrowedIDs(outliner, "Beta"); !slices.Equal(got, []string{"beta-task"}) {
 		t.Fatalf("case-sensitive lens = %v, want the exact-case title", got)
 	}
-	if outliner.lensNarrowRelaxed || !outliner.lensCaseSensitive() {
+	if outliner.lens.narrowRelaxed || !outliner.lensCaseSensitive() {
 		t.Fatalf("capitalized lens relaxed=%v sensitive=%v, want a case-sensitive pass",
-			outliner.lensNarrowRelaxed, outliner.lensCaseSensitive())
+			outliner.lens.narrowRelaxed, outliner.lensCaseSensitive())
 	}
 
 	if got := lensNarrowedIDs(outliner, "NEEDLE"); len(got) == 0 {
 		t.Fatal("the case-relaxed retry admitted nothing")
 	}
-	if !outliner.lensNarrowRelaxed || outliner.lensCaseSensitive() {
+	if !outliner.lens.narrowRelaxed || outliner.lensCaseSensitive() {
 		t.Fatalf("fallback lens relaxed=%v sensitive=%v, want a relaxed pass",
-			outliner.lensNarrowRelaxed, outliner.lensCaseSensitive())
+			outliner.lens.narrowRelaxed, outliner.lensCaseSensitive())
 	}
 	if outliner.lensTextQuery() != "NEEDLE" {
 		t.Fatalf("lens remainder = %q, want the free text alone", outliner.lensTextQuery())

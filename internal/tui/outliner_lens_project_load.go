@@ -28,8 +28,8 @@ func (m *OutlinerModel) lensProjectLoadRequired(state lensState) bool {
 // case the live filter is one the population never answered to and the frame
 // holds the real provenance.
 func (m *OutlinerModel) loadedPopulationFingerprint() string {
-	if m.activeLens != nil && m.activeLens.projectFacetsAwaitingLoad {
-		return m.activeLens.loadedPopulationFingerprint
+	if fingerprint, owed := m.lens.awaitedPopulation(); owed {
+		return fingerprint
 	}
 	return query.ProjectFilterFingerprint(&m.projectFilter)
 }
@@ -43,11 +43,10 @@ func (m *OutlinerModel) loadedPopulationFingerprint() string {
 // the live filter can move is a route that reloads, and that reload settles this
 // again when it lands.
 func (m *OutlinerModel) recordLoadedPopulation(fingerprint string) {
-	if m == nil || m.activeLens == nil {
+	if m == nil {
 		return
 	}
-	m.activeLens.loadedPopulationFingerprint = fingerprint
-	m.activeLens.projectFacetsAwaitingLoad = fingerprint != query.ProjectFilterFingerprint(&m.projectFilter)
+	m.lens.recordPopulation(fingerprint, query.ProjectFilterFingerprint(&m.projectFilter))
 }
 
 // beginLensProjectLoad starts a load against the candidate filter without
@@ -78,7 +77,7 @@ func (m *OutlinerModel) beginLensScopeExit() (tea.Cmd, bool) {
 	if m == nil || m.project != nil || !m.isProjectScoped() {
 		return nil, false
 	}
-	if m.activeLens == nil || !m.activeLens.projectFacetsAwaitingLoad {
+	if _, owed := m.lens.awaitedPopulation(); !owed {
 		return nil, false
 	}
 	// Leaving the scope supersedes any parked focus still being requested: that
@@ -104,10 +103,7 @@ func (m *OutlinerModel) beginLensScopeExit() (tea.Cmd, bool) {
 func (m *OutlinerModel) startLensProjectLoad(pending *pendingLensApplication) tea.Cmd {
 	m.discardPendingLensApplication()
 	pending.generation = m.population.beginLoad()
-	m.pendingLens = pending
-	if m.activeLens != nil {
-		m.activeLens.pendingGeneration = pending.generation
-	}
+	m.lens.arm(pending)
 
 	generation := pending.generation
 	runtime := m.runtime
@@ -132,7 +128,7 @@ func (m *OutlinerModel) startLensProjectLoad(pending *pendingLensApplication) te
 // result. It reports whether the lens was published so the shell knows when the
 // snapshot it caches has actually been replaced.
 func (m *OutlinerModel) handleLensProjectsLoaded(msg lensProjectsLoadedMsg) (tea.Cmd, bool) {
-	pending := m.pendingLens
+	pending := m.lens.pending
 	if pending == nil || msg.generation != pending.generation {
 		// The result belongs to an application that is no longer the pending one,
 		// so whatever is pending now owns the loading state and must keep it.
@@ -140,7 +136,7 @@ func (m *OutlinerModel) handleLensProjectsLoaded(msg lensProjectsLoadedMsg) (tea
 		// the right one.
 		return nil, false
 	}
-	if msg.generation != m.population.loadGen || (m.activeLens != nil && m.activeLens.pendingGeneration != msg.generation) {
+	if msg.generation != m.population.loadGen || m.lens.supersededGeneration(msg.generation) {
 		// This application was superseded or dismissed while its load ran. It
 		// publishes nothing, but it is still the one holding the loading state, so
 		// settle that here rather than leaving the model armed for a result that

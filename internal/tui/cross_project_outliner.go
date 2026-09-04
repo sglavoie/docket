@@ -333,7 +333,7 @@ func (m *OutlinerModel) crossProjectRowsFingerprint() string {
 	fmt.Fprintf(&b, "ranked-list=%t|", m.showsRankedList())
 	// The lens query decides membership without changing any other guard input,
 	// so retyping it must be able to invalidate the memoized rows on its own.
-	fmt.Fprintf(&b, "lens=%q|", m.lensQuery)
+	fmt.Fprintf(&b, "lens=%q|", m.lens.query)
 	fmt.Fprintf(&b, "sort=%d:%t|", m.sort.Field, m.sort.Ascending)
 	fmt.Fprintf(&b, "common=%q|", strings.Join(commonParts, "\x1f"))
 	fmt.Fprintf(&b, "project-filter=%q|", query.ProjectFilterFingerprint(&m.projectFilter))

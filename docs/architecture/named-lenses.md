@@ -24,7 +24,7 @@ the global population. `capturedLensScope` decides what a save records — never
 the single-project Outliner, which is a scope no lens installs, and never a
 parked focus, which is an exception to the base workspace rather than a scope the
 base Outliner can be asked for. `captureLensState` reads the query axis through
-`capturedLensQuery`, which is `m.lensQuery` under a lens and the accepted
+`capturedLensQuery`, which is `m.lens.query` under a lens and the accepted
 `SearchQuery()` when an ordinary search query is narrowing the visible rows and
 its input is closed. Only that axis crosses over: the search carrier itself
 cannot survive underneath a lens, so `publishLens` calls
@@ -61,7 +61,7 @@ one `Esc` hands back the scope the user was in rather than the one the lens
 entered. Anything
 that supersedes the application settles it rather than leaving it armed — a
 synchronous lens, an ordinary reload, a cancelled refresh, and a restoration all
-clear `pendingLens`, the loading flag, and the spinner, so a late result finds
+clear `lens.pending`, the loading flag, and the spinner, so a late result finds
 nothing to publish into and leaves no half-armed chrome behind. Under a
 single-project scope no load is required at all: the scope already fixed the
 population, and the lens's project facets stay recorded but inert until it is
@@ -103,7 +103,7 @@ one of them would send the user to a key that cannot widen the list.
 
 Under an active lens `/` calls `beginLensQueryEdit` and the shared search input
 holds the lens's narrowing query instead of a scope-wide search: `Enter` commits
-it, `Esc` restores `lensQueryEditOrigin`, and `buildOutlinerSearchIndicator`
+it, `Esc` restores `lens.queryEditOrigin`, and `buildOutlinerSearchIndicator`
 reads the lens compilation rather than the search one for its badges, because
 those are the rows on screen. `renderTaskTitle` reads the same compilation for
 the same reason: `titleHighlightQuery` returns the search remainder and its case
@@ -144,10 +144,10 @@ carries `scopedProjectID` and `scopeStack`.
 `MachineState.ActiveLensID` is the machine-local pointer at whichever lens is
 live. `publishLens` writes it and `restoreLensBaseline` and
 `clearActiveLensWithoutRestore` clear it, all three through the nil-safe
-`persistActiveLens` seam the shell injects in `wireOutlinerOperationExecutor`;
-`commitActiveLensPointer` is the `AppModel` side, built on
-`commitNamedLensMutation` so it inherits the same clone→validate→commit path and
-the `DataDir() == ""` in-memory fallback. Writing it from `publishLens` rather
+`lens.persist` seam the shell injects through `setPersistActiveLens` in
+`wireOutlinerOperationExecutor`; `commitActiveLensPointer` is the `AppModel`
+side, built on `commitNamedLensMutation` so it inherits the same
+clone→validate→commit path and the `DataDir() == ""` in-memory fallback. Writing it from `publishLens` rather
 than from `ApplyNamedLens` is what keeps it honest: an asynchronous application
 superseded by a later generation publishes nothing, and persisting at the ask
 would have named a lens the user never saw. It is also the one lens write not

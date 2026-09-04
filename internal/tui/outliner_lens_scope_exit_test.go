@@ -27,10 +27,10 @@ func TestScopedEquivalentLensSwitchRetainsDeferredPopulationLoad(t *testing.T) {
 	first := waitingLens(lensTestID(1), "Waiting", "")
 	first = lensWithFacet(first, "+parked:only")
 	applyLensOrFatal(t, outliner, first)
-	if outliner.pendingLens != nil {
+	if outliner.lens.pending != nil {
 		t.Fatal("a scoped application must record its facets without loading")
 	}
-	frame := outliner.activeLens
+	frame := outliner.lens.active
 	if !frame.projectFacetsAwaitingLoad {
 		t.Fatal("the scoped application recorded no owed population load")
 	}
@@ -39,10 +39,10 @@ func TestScopedEquivalentLensSwitchRetainsDeferredPopulationLoad(t *testing.T) {
 	// Reapplying the very same definition under the scope: the live filter now
 	// equals the incoming one, and the population is still the pre-lens one.
 	applyLensOrFatal(t, outliner, first)
-	if outliner.pendingLens != nil {
+	if outliner.lens.pending != nil {
 		t.Fatal("reapplying a lens under a project scope loaded a population")
 	}
-	if !outliner.activeLens.projectFacetsAwaitingLoad {
+	if !outliner.lens.active.projectFacetsAwaitingLoad {
 		t.Fatal("reapplying the same lens under scope discarded the owed population load")
 	}
 
@@ -51,16 +51,16 @@ func TestScopedEquivalentLensSwitchRetainsDeferredPopulationLoad(t *testing.T) {
 	second := waitingLens(lensTestID(2), "Held", "")
 	second = lensWithFacet(second, "+parked:only")
 	applyLensOrFatal(t, outliner, second)
-	if outliner.pendingLens != nil {
+	if outliner.lens.pending != nil {
 		t.Fatal("switching lenses under a project scope loaded a population")
 	}
-	if outliner.activeLens.name != "Held" {
-		t.Fatalf("active lens = %q, want Held", outliner.activeLens.name)
+	if outliner.lens.active.name != "Held" {
+		t.Fatalf("active lens = %q, want Held", outliner.lens.active.name)
 	}
-	if !outliner.activeLens.projectFacetsAwaitingLoad {
+	if !outliner.lens.active.projectFacetsAwaitingLoad {
 		t.Fatal("an equivalent lens switch under scope discarded the owed population load")
 	}
-	if outliner.activeLens.origin.presentation.mode != origin.presentation.mode {
+	if outliner.lens.active.origin.presentation.mode != origin.presentation.mode {
 		t.Fatal("the switch replaced the original pre-lens restoration frame")
 	}
 	if ids := loadedProjectIDs(outliner); !slices.Equal(ids, baseline) {
@@ -71,7 +71,7 @@ func TestScopedEquivalentLensSwitchRetainsDeferredPopulationLoad(t *testing.T) {
 	if !handled {
 		t.Fatal("the Project Hub clear-scope route was not handled")
 	}
-	if cmd == nil || outliner.pendingLens == nil {
+	if cmd == nil || outliner.lens.pending == nil {
 		t.Fatal("the explicit exit skipped the population the live lens facets select")
 	}
 	if outliner.scope.projectID != "alpha" {
@@ -82,11 +82,11 @@ func TestScopedEquivalentLensSwitchRetainsDeferredPopulationLoad(t *testing.T) {
 	// lens, and the facets still owed a load.
 	if _, published := outliner.handleLensProjectsLoaded(lensProjectsLoadedMsg{
 		failedLoads: []projectLoadFailure{{ProjectID: "gamma", Detail: "failed to load project gamma: boom"}},
-		generation:  outliner.pendingLens.generation,
+		generation:  outliner.lens.pending.generation,
 	}); published {
 		t.Fatal("a wholly failed load published a scope exit")
 	}
-	if outliner.scope.projectID != "alpha" || !outliner.activeLens.projectFacetsAwaitingLoad {
+	if outliner.scope.projectID != "alpha" || !outliner.lens.active.projectFacetsAwaitingLoad {
 		t.Fatal("a wholly failed load did not leave the scope and the owed load as they were")
 	}
 
@@ -96,14 +96,14 @@ func TestScopedEquivalentLensSwitchRetainsDeferredPopulationLoad(t *testing.T) {
 	loaded := []*models.Project{primaryRowsProject("gamma", primaryRowsTask("gamma-waiting", models.StateWaiting))}
 	if _, published := outliner.handleLensProjectsLoaded(lensProjectsLoadedMsg{
 		projects:   loaded,
-		generation: outliner.pendingLens.generation,
+		generation: outliner.lens.pending.generation,
 	}); !published {
 		t.Fatal("the landed exit published nothing")
 	}
 	if outliner.isProjectScoped() {
 		t.Fatal("the landed exit left the scope in place")
 	}
-	if outliner.activeLens.projectFacetsAwaitingLoad {
+	if outliner.lens.active.projectFacetsAwaitingLoad {
 		t.Fatal("the landed exit left the population still owed")
 	}
 	if ids := loadedProjectIDs(outliner); !slices.Equal(ids, []string{"gamma"}) {
@@ -142,7 +142,7 @@ func TestScopedLensPopulationProvenanceTracksOrdinaryReloads(t *testing.T) {
 	parkedLens := waitingLens(lensTestID(1), "Parked", "")
 	parkedLens = lensWithFacet(parkedLens, "+parked")
 	applyLensOrFatal(t, outliner, parkedLens)
-	frame := outliner.activeLens
+	frame := outliner.lens.active
 	if !frame.projectFacetsAwaitingLoad {
 		t.Fatal("the scoped application recorded no owed population load")
 	}
@@ -157,7 +157,7 @@ func TestScopedLensPopulationProvenanceTracksOrdinaryReloads(t *testing.T) {
 		generation:          outliner.population.loadGen,
 		loadedProjectFilter: query.ProjectFilterFingerprint(&query.ProjectFilterState{}),
 	})
-	if !outliner.activeLens.projectFacetsAwaitingLoad {
+	if !outliner.lens.active.projectFacetsAwaitingLoad {
 		t.Fatal("a reload under the pre-lens filter paid the owed population load")
 	}
 
@@ -176,7 +176,7 @@ func TestScopedLensPopulationProvenanceTracksOrdinaryReloads(t *testing.T) {
 	result.projects = append(slices.Clone(base), parked)
 	result.failedLoads = nil
 	outliner.handleCrossProjectsLoaded(result)
-	if outliner.activeLens.projectFacetsAwaitingLoad {
+	if outliner.lens.active.projectFacetsAwaitingLoad {
 		t.Fatal("a reload under the lens's own facets left the population still owed")
 	}
 	if ids := loadedProjectIDs(outliner); !slices.Equal(ids, append(slices.Clone(baseline), "parked")) {
@@ -188,10 +188,10 @@ func TestScopedLensPopulationProvenanceTracksOrdinaryReloads(t *testing.T) {
 	// one, so the base population this lens selects is owed a load.
 	plain := waitingLens(lensTestID(2), "Plain", "")
 	applyLensOrFatal(t, outliner, plain)
-	if outliner.pendingLens != nil {
+	if outliner.lens.pending != nil {
 		t.Fatal("switching lenses under a project scope loaded a population")
 	}
-	if !outliner.activeLens.projectFacetsAwaitingLoad {
+	if !outliner.lens.active.projectFacetsAwaitingLoad {
 		t.Fatal("the switch cleared a population debt against a stale fingerprint")
 	}
 
@@ -199,7 +199,7 @@ func TestScopedLensPopulationProvenanceTracksOrdinaryReloads(t *testing.T) {
 	if !handled {
 		t.Fatal("the Project Hub clear-scope route was not handled")
 	}
-	if cmd == nil || outliner.pendingLens == nil {
+	if cmd == nil || outliner.lens.pending == nil {
 		t.Fatal("the explicit exit skipped the population the live lens facets select")
 	}
 
@@ -207,11 +207,11 @@ func TestScopedLensPopulationProvenanceTracksOrdinaryReloads(t *testing.T) {
 	// facets still owed a load.
 	if _, published := outliner.handleLensProjectsLoaded(lensProjectsLoadedMsg{
 		failedLoads: []projectLoadFailure{{ProjectID: "alpha", Detail: "failed to load project alpha: boom"}},
-		generation:  outliner.pendingLens.generation,
+		generation:  outliner.lens.pending.generation,
 	}); published {
 		t.Fatal("a wholly failed load published a scope exit")
 	}
-	if outliner.scope.projectID != "alpha" || !outliner.activeLens.projectFacetsAwaitingLoad {
+	if outliner.scope.projectID != "alpha" || !outliner.lens.active.projectFacetsAwaitingLoad {
 		t.Fatal("a wholly failed load did not leave the scope and the owed load as they were")
 	}
 	if ids := loadedProjectIDs(outliner); !slices.Equal(ids, append(slices.Clone(baseline), "parked")) {
@@ -223,20 +223,20 @@ func TestScopedLensPopulationProvenanceTracksOrdinaryReloads(t *testing.T) {
 	}
 	if _, published := outliner.handleLensProjectsLoaded(lensProjectsLoadedMsg{
 		projects:   base,
-		generation: outliner.pendingLens.generation,
+		generation: outliner.lens.pending.generation,
 	}); !published {
 		t.Fatal("the landed exit published nothing")
 	}
 	if outliner.isProjectScoped() {
 		t.Fatal("the landed exit left the scope in place")
 	}
-	if outliner.activeLens.projectFacetsAwaitingLoad {
+	if outliner.lens.active.projectFacetsAwaitingLoad {
 		t.Fatal("the landed exit left the population still owed")
 	}
 	if ids := loadedProjectIDs(outliner); !slices.Equal(ids, baseline) {
 		t.Fatalf("unscoped population = %v, want the %v the live lens selects", ids, baseline)
 	}
-	if outliner.activeLens.origin.presentation.mode != origin.presentation.mode {
+	if outliner.lens.active.origin.presentation.mode != origin.presentation.mode {
 		t.Fatal("the repaired provenance replaced the original pre-lens restoration frame")
 	}
 
@@ -332,10 +332,10 @@ func TestParkedScopedLensExitKeepsSelectedPopulation(t *testing.T) {
 			lens := waitingLens(lensTestID(1), "Waiting", "")
 			lens = lensWithFacet(lens, "+parked")
 			applyLensOrFatal(t, outliner, lens)
-			if outliner.pendingLens != nil {
+			if outliner.lens.pending != nil {
 				t.Fatal("a scoped application must record its facets without loading")
 			}
-			frame := outliner.activeLens
+			frame := outliner.lens.active
 			if !frame.projectFacetsAwaitingLoad {
 				t.Fatal("the scoped application recorded no owed population load")
 			}
@@ -343,12 +343,12 @@ func TestParkedScopedLensExitKeepsSelectedPopulation(t *testing.T) {
 			if handled, cmd := app.applyProjectScope(ApplyProjectScopeMsg{Clear: true}); !handled || cmd == nil {
 				t.Fatal("clearing a parked scope under a project-filtering lens started no population load")
 			}
-			if outliner.pendingLens == nil {
+			if outliner.lens.pending == nil {
 				t.Fatal("the exit armed no pending application")
 			}
 			ordering.settle(app, lensProjectsLoadedMsg{
 				projects:   everything,
-				generation: outliner.pendingLens.generation,
+				generation: outliner.lens.pending.generation,
 			})
 
 			if outliner.isProjectScoped() {
@@ -369,10 +369,10 @@ func TestParkedScopedLensExitKeepsSelectedPopulation(t *testing.T) {
 			if outliner.population.loading != ordering.loading {
 				t.Fatalf("population.loading = %t, want %t", outliner.population.loading, ordering.loading)
 			}
-			if !outliner.hasActiveLens() || outliner.activeLens != frame {
+			if !outliner.hasActiveLens() || outliner.lens.active != frame {
 				t.Fatal("the exit disturbed the active lens")
 			}
-			if outliner.activeLens.projectFacetsAwaitingLoad {
+			if outliner.lens.active.projectFacetsAwaitingLoad {
 				t.Fatal("the landed exit left the population still owed")
 			}
 		})
@@ -396,7 +396,7 @@ func TestParkedScopedLensExitShedsAProjectItsFacetsReject(t *testing.T) {
 	}
 	app.Update(lensProjectsLoadedMsg{
 		projects:   everything,
-		generation: outliner.pendingLens.generation,
+		generation: outliner.lens.pending.generation,
 	})
 
 	if outliner.isProjectScoped() {
@@ -425,7 +425,7 @@ func TestParkedScopedLensExitDoesNotLeakPendingFocus(t *testing.T) {
 	// projects.
 	lens := lensWithFacet(waitingLens(lensTestID(3), "Untagged", ""), "+#0")
 	applyLensOrFatal(t, outliner, lens)
-	frame := outliner.activeLens
+	frame := outliner.lens.active
 	if !frame.projectFacetsAwaitingLoad {
 		t.Fatal("the scoped application recorded no owed population load")
 	}
@@ -442,7 +442,7 @@ func TestParkedScopedLensExitDoesNotLeakPendingFocus(t *testing.T) {
 	if handled, cmd := app.applyProjectScope(ApplyProjectScopeMsg{Clear: true}); !handled || cmd == nil {
 		t.Fatal("clearing a parked scope under a project-filtering lens started no population load")
 	}
-	pending := outliner.pendingLens
+	pending := outliner.lens.pending
 	if pending == nil {
 		t.Fatal("the exit armed no pending application")
 	}
@@ -476,10 +476,10 @@ func TestParkedScopedLensExitDoesNotLeakPendingFocus(t *testing.T) {
 	if outliner.scope.parkedReloadPending {
 		t.Fatal("the exit armed a corrective reload no handler on this route claims")
 	}
-	if !outliner.hasActiveLens() || outliner.activeLens != frame {
+	if !outliner.hasActiveLens() || outliner.lens.active != frame {
 		t.Fatal("the exit disturbed the active lens")
 	}
-	if outliner.activeLens.projectFacetsAwaitingLoad {
+	if outliner.lens.active.projectFacetsAwaitingLoad {
 		t.Fatal("the landed exit left the population still owed")
 	}
 }

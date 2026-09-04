@@ -37,8 +37,8 @@ func TestLensCreateCapturesAcceptedSearchQuery(t *testing.T) {
 	if saved.Query != "needle" {
 		t.Fatalf("captured query = %q, want the accepted search query %q", saved.Query, "needle")
 	}
-	if !out.hasActiveLens() || out.lensQuery != "needle" {
-		t.Fatalf("applied lens query = %q with lens=%v", out.lensQuery, out.hasActiveLens())
+	if !out.hasActiveLens() || out.lens.query != "needle" {
+		t.Fatalf("applied lens query = %q with lens=%v", out.lens.query, out.hasActiveLens())
 	}
 	if out.hasSearchProjection() {
 		t.Fatal("a lens must not leave an ordinary search projection underneath it")
@@ -60,8 +60,8 @@ func TestLensCreateCapturesAcceptedSearchQuery(t *testing.T) {
 	if !listsurface.RunEscCascade(out.escSteps()) {
 		t.Fatal("expected the Esc cascade to consume the active lens")
 	}
-	if out.hasActiveLens() || out.lensQuery != "" {
-		t.Fatalf("Esc left lens=%v query=%q", out.hasActiveLens(), out.lensQuery)
+	if out.hasActiveLens() || out.lens.query != "" {
+		t.Fatalf("Esc left lens=%v query=%q", out.hasActiveLens(), out.lens.query)
 	}
 	if !out.hasSearchProjection() || out.SearchQuery() != "needle" {
 		t.Fatalf("restored search projection=%v query=%q", out.hasSearchProjection(), out.SearchQuery())
@@ -95,7 +95,7 @@ func TestDeletingAnInactiveLensLeavesTheActiveOneAlone(t *testing.T) {
 	if result := executeLens(model, lens.OperationLensDelete, operation.LensEntity(other.ID), "", true); result.Err != nil {
 		t.Fatalf("delete lens: %v", result.Err)
 	}
-	if !out.hasActiveLens() || out.activeLens.lensID != active.ID {
+	if !out.hasActiveLens() || out.lens.active.lensID != active.ID {
 		t.Fatal("deleting another lens dismissed the active one")
 	}
 }
@@ -121,7 +121,7 @@ func TestLensReplaceAndDeleteConfirmBeforeTheyWrite(t *testing.T) {
 		if saved.Mode != starter.Mode {
 			t.Fatalf("%s rewrote the saved record before confirmation", id)
 		}
-		if !out.hasActiveLens() || out.activeLens.lensID != starter.ID {
+		if !out.hasActiveLens() || out.lens.active.lensID != starter.ID {
 			t.Fatalf("%s changed the active lens before confirmation", id)
 		}
 	}

@@ -64,7 +64,7 @@ func TestParkedWorkCommitsBeforeItsPopulationLoads(t *testing.T) {
 		t.Fatalf("saved record = %+v, want the catalog definition %+v", *saved, template)
 	}
 	// Applied not at all.
-	if out.pendingLens == nil {
+	if out.lens.pending == nil {
 		t.Fatal("adding Parked Work started no population load")
 	}
 	if out.hasActiveLens() {
@@ -76,7 +76,7 @@ func TestParkedWorkCommitsBeforeItsPopulationLoads(t *testing.T) {
 
 	settleLensPopulationLoad(t, out, population...)
 
-	if !out.hasActiveLens() || out.activeLens.lensID != template.ID {
+	if !out.hasActiveLens() || out.lens.active.lensID != template.ID {
 		t.Fatal("the landed load did not publish the lens")
 	}
 	// Parked and active: the archived parked project is not a member of any
@@ -87,7 +87,7 @@ func TestParkedWorkCommitsBeforeItsPopulationLoads(t *testing.T) {
 	if ids := taskRowProjectIDs(out); !slices.Equal(ids, []string{"parked-one", "parked-two"}) {
 		t.Fatalf("rows = %v, want the parked, non-archived projects", ids)
 	}
-	if out.activeLens.projectFacetsAwaitingLoad {
+	if out.lens.active.projectFacetsAwaitingLoad {
 		t.Fatal("a landed load left the population facets still owed")
 	}
 	if out.population.loading {
@@ -113,7 +113,7 @@ func TestParkedWorkLoadFailuresKeepTheirExistingGuarantees(t *testing.T) {
 			failedLoads: []projectLoadFailure{
 				{ProjectID: "parked-one", Detail: "failed to load project parked-one: boom"},
 			},
-			generation: out.pendingLens.generation,
+			generation: out.lens.pending.generation,
 		})
 		if published {
 			t.Fatal("a wholly failed load published the lens")
@@ -151,12 +151,12 @@ func TestParkedWorkLoadFailuresKeepTheirExistingGuarantees(t *testing.T) {
 			failedLoads: []projectLoadFailure{
 				{ProjectID: "parked-two", Detail: "failed to load project parked-two: boom"},
 			},
-			generation: out.pendingLens.generation,
+			generation: out.lens.pending.generation,
 		})
 		if !published {
 			t.Fatal("a partial load must publish the projects that read")
 		}
-		if !out.hasActiveLens() || out.activeLens.lensID != template.ID {
+		if !out.hasActiveLens() || out.lens.active.lensID != template.ID {
 			t.Fatal("a partial load did not install the lens")
 		}
 		if ids := loadedProjectIDs(out); !slices.Equal(ids, []string{"parked-one"}) {
@@ -183,13 +183,13 @@ func TestParkedWorkFacetsStayInertUnderScopeAndSelectOnExit(t *testing.T) {
 	if result := executeLensValue(model, template.ID); result.Err != nil {
 		t.Fatalf("add Parked Work under a scope: %v", result.Err)
 	}
-	if out.pendingLens != nil {
+	if out.lens.pending != nil {
 		t.Fatal("a scoped application must record its facets without loading")
 	}
 	if !out.hasActiveLens() {
 		t.Fatal("a scoped application did not publish the lens it needed no load for")
 	}
-	frame := out.activeLens
+	frame := out.lens.active
 	if !frame.projectFacetsAwaitingLoad {
 		t.Fatal("the scoped application recorded no owed population load")
 	}
@@ -204,7 +204,7 @@ func TestParkedWorkFacetsStayInertUnderScopeAndSelectOnExit(t *testing.T) {
 	if !handled || cmd == nil {
 		t.Fatal("clearing the scope under Parked Work started no population load")
 	}
-	if out.pendingLens == nil {
+	if out.lens.pending == nil {
 		t.Fatal("the exit armed no pending application")
 	}
 	settleLensPopulationLoad(t, out, population...)
@@ -216,7 +216,7 @@ func TestParkedWorkFacetsStayInertUnderScopeAndSelectOnExit(t *testing.T) {
 		t.Fatalf("population after the exit = %v, want the parked, non-archived projects", ids)
 	}
 	// The exit publishes a population, never a definition.
-	if out.activeLens != frame {
+	if out.lens.active != frame {
 		t.Fatal("the exit replaced the frame the scoped application installed")
 	}
 	// Scope is lens-owned, so dropping the one the template was applied under is a

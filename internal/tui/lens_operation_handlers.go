@@ -186,8 +186,8 @@ func (m *AppModel) renameLensOperation(
 	}); err != nil {
 		return operation.OperationHandlerResult{Err: err}
 	}
-	if out := m.crossOutliner; out != nil && out.activeLens != nil && out.activeLens.lensID == existing.ID {
-		out.activeLens.name = name
+	if out := m.crossOutliner; out != nil {
+		out.lens.renameActive(existing.ID, name)
 	}
 	return operation.OperationHandlerResult{Status: fmt.Sprintf("Renamed lens: %s → %s", existing.Name, name)}
 }
@@ -215,9 +215,7 @@ func (m *AppModel) replaceLensOperation(existing config.NamedLens) operation.Ope
 	}); err != nil {
 		return operation.OperationHandlerResult{Err: err}
 	}
-	if out.activeLens != nil && out.activeLens.lensID == replacement.ID {
-		out.activeLens.savedFingerprint = state.fingerprint()
-	}
+	out.lens.rebaseActive(replacement.ID, state.fingerprint())
 	return operation.OperationHandlerResult{Status: "Replaced lens: " + replacement.Name}
 }
 
@@ -233,7 +231,7 @@ func (m *AppModel) deleteLensOperation(existing config.NamedLens) operation.Oper
 	}); err != nil {
 		return operation.OperationHandlerResult{Err: err}
 	}
-	if out := m.crossOutliner; out != nil && out.activeLens != nil && out.activeLens.lensID == existing.ID {
+	if out := m.crossOutliner; out != nil && out.lens.activeIs(existing.ID) {
 		out.restoreLensBaseline()
 	}
 	return operation.OperationHandlerResult{Status: "Deleted lens: " + existing.Name}

@@ -100,7 +100,7 @@ func (m *OutlinerModel) capturedLensQuery() string {
 	if !m.hasActiveLens() && m.hasSearchProjection() && !m.IsSearchMode() {
 		return m.SearchQuery()
 	}
-	return m.lensQuery
+	return m.lens.query
 }
 
 // lensTreeOrderPrev is the synthetic mode a lens is applied "out of". A lens

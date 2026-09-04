@@ -28,8 +28,8 @@ func TestApplyNamedLensInstallsSavedProjectionAndEscRestoresBaseline(t *testing.
 	if outliner.primaryMode != chrome.ModeAll {
 		t.Fatalf("lens mode = %v, want %v", outliner.primaryMode, chrome.ModeAll)
 	}
-	if outliner.lensQuery != "needle" {
-		t.Fatalf("lens query = %q, want %q", outliner.lensQuery, "needle")
+	if outliner.lens.query != "needle" {
+		t.Fatalf("lens query = %q, want %q", outliner.lens.query, "needle")
 	}
 	if !outliner.filter.HasStateFilter() {
 		t.Fatal("expected the lens state facet to be installed")
@@ -53,8 +53,8 @@ func TestApplyNamedLensInstallsSavedProjectionAndEscRestoresBaseline(t *testing.
 	if outliner.primaryMode != chrome.ModeInbox {
 		t.Fatalf("restored mode = %v, want %v", outliner.primaryMode, chrome.ModeInbox)
 	}
-	if outliner.lensQuery != "" {
-		t.Fatalf("restored lens query = %q, want empty", outliner.lensQuery)
+	if outliner.lens.query != "" {
+		t.Fatalf("restored lens query = %q, want empty", outliner.lens.query)
 	}
 	if outliner.filter.HasStateFilter() {
 		t.Fatal("restoration kept the lens state facet")
@@ -89,7 +89,7 @@ func TestApplyNamedLensRetainsScopeFocusAndCursorIdentity(t *testing.T) {
 	if len(outliner.focus.crossStack) != 1 {
 		t.Fatalf("focus stack depth = %d, want 1", len(outliner.focus.crossStack))
 	}
-	if outliner.pendingLens != nil {
+	if outliner.lens.pending != nil {
 		t.Fatal("a scoped application must not start a project load")
 	}
 }
@@ -134,7 +134,7 @@ func TestApplyNamedLensUnderScopeRecordsProjectFacetsInert(t *testing.T) {
 	if outliner.projectFilter.ParkedMode != query.ProjectPopulationInclude {
 		t.Fatal("the scoped application did not record the lens project facets")
 	}
-	if outliner.pendingLens != nil {
+	if outliner.lens.pending != nil {
 		t.Fatal("the recorded facets must stay inert under a scope: no load may start")
 	}
 	if ids := taskRowProjectIDs(outliner); len(ids) != 1 || ids[0] != "alpha" {
@@ -158,15 +158,15 @@ func TestScopedLensActivatesProjectFacetsOnExplicitScopeExit(t *testing.T) {
 	lens := waitingLens(lensTestID(1), "Waiting", "")
 	lens = lensWithFacet(lens, "+parked:only")
 	applyLensOrFatal(t, outliner, lens)
-	if outliner.pendingLens != nil {
+	if outliner.lens.pending != nil {
 		t.Fatal("a scoped application must record its facets without loading")
 	}
-	frame := outliner.activeLens
+	frame := outliner.lens.active
 	savedFingerprint := frame.savedFingerprint
 
 	// Replacing one project scope with another is not becoming unscoped.
 	outliner.pushProjectScope("beta")
-	if outliner.pendingLens != nil {
+	if outliner.lens.pending != nil {
 		t.Fatal("replacing a project scope activated the lens project facets")
 	}
 	if ids := loadedProjectIDs(outliner); !slices.Equal(ids, baseline) {
@@ -177,7 +177,7 @@ func TestScopedLensActivatesProjectFacetsOnExplicitScopeExit(t *testing.T) {
 	if !handled {
 		t.Fatal("the Project Hub clear-scope route was not handled")
 	}
-	if cmd == nil || outliner.pendingLens == nil {
+	if cmd == nil || outliner.lens.pending == nil {
 		t.Fatal("clearing the scope under a project-filtering lens must load the population it selects")
 	}
 	if outliner.scope.projectID != "beta" {
@@ -188,7 +188,7 @@ func TestScopedLensActivatesProjectFacetsOnExplicitScopeExit(t *testing.T) {
 	// population, same lens, and the facets still owed a load.
 	if _, published := outliner.handleLensProjectsLoaded(lensProjectsLoadedMsg{
 		failedLoads: []projectLoadFailure{{ProjectID: "gamma", Detail: "failed to load project gamma: boom"}},
-		generation:  outliner.pendingLens.generation,
+		generation:  outliner.lens.pending.generation,
 	}); published {
 		t.Fatal("a wholly failed load published a scope exit")
 	}
@@ -205,7 +205,7 @@ func TestScopedLensActivatesProjectFacetsOnExplicitScopeExit(t *testing.T) {
 	loaded := []*models.Project{primaryRowsProject("gamma", primaryRowsTask("gamma-waiting", models.StateWaiting))}
 	if _, published := outliner.handleLensProjectsLoaded(lensProjectsLoadedMsg{
 		projects:   loaded,
-		generation: outliner.pendingLens.generation,
+		generation: outliner.lens.pending.generation,
 	}); !published {
 		t.Fatal("the landed exit published nothing")
 	}
@@ -221,10 +221,10 @@ func TestScopedLensActivatesProjectFacetsOnExplicitScopeExit(t *testing.T) {
 
 	// The exit publishes a population, never a definition: the live lens keeps its
 	// identity, its saved fingerprint, and the pre-lens restoration point.
-	if !outliner.hasActiveLens() || outliner.activeLens.name != "Waiting" {
+	if !outliner.hasActiveLens() || outliner.lens.active.name != "Waiting" {
 		t.Fatal("the exit disturbed the active lens")
 	}
-	if outliner.activeLens.savedFingerprint != savedFingerprint {
+	if outliner.lens.active.savedFingerprint != savedFingerprint {
 		t.Fatal("the exit rewrote the saved definition the modified marker compares against")
 	}
 	// Scope is a lens-owned axis, so leaving one under a live lens is a genuine
@@ -234,7 +234,7 @@ func TestScopedLensActivatesProjectFacetsOnExplicitScopeExit(t *testing.T) {
 	if !outliner.lensModified() {
 		t.Fatal("leaving a project scope under a live lens must mark it modified")
 	}
-	if outliner.activeLens != frame {
+	if outliner.lens.active != frame {
 		t.Fatal("the exit replaced the original pre-lens restoration frame")
 	}
 	if !listsurface.RunEscCascade(outliner.escSteps()) {

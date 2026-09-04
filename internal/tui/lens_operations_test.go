@@ -129,8 +129,8 @@ func TestLensCreateSavesTheCurrentViewAndMakesItActive(t *testing.T) {
 	if !out.hasActiveLens() {
 		t.Fatal("expected the new lens to be active")
 	}
-	if out.activeLens.lensID != saved.ID {
-		t.Fatalf("active lens = %q, want the new record %q", out.activeLens.lensID, saved.ID)
+	if out.lens.active.lensID != saved.ID {
+		t.Fatalf("active lens = %q, want the new record %q", out.lens.active.lensID, saved.ID)
 	}
 	if out.lensModified() {
 		t.Fatal("a lens saved from the current view starts unmodified")
@@ -154,10 +154,10 @@ func TestLensCreateRetainsAnExistingBaseline(t *testing.T) {
 	if result := executeLens(model, lens.OperationLensCreate, operation.EntityIdentity{}, "Narrowed", false); result.Err != nil {
 		t.Fatalf("create lens: %v", result.Err)
 	}
-	if out.activeLens.origin.presentation.mode != origin.presentation.mode {
+	if out.lens.active.origin.presentation.mode != origin.presentation.mode {
 		t.Fatalf(
 			"baseline mode = %v, want the pre-lens %v",
-			out.activeLens.origin.presentation.mode,
+			out.lens.active.origin.presentation.mode,
 			origin.presentation.mode,
 		)
 	}
@@ -190,9 +190,9 @@ func TestLensRenamePreservesTheIDAndTheProjection(t *testing.T) {
 	out := model.crossOutliner
 	starter := lensNamed(t, model, config.StarterNamedLenses()[0].Name)
 	applyLensOrFatal(t, out, starter)
-	fingerprint := out.activeLens.savedFingerprint
+	fingerprint := out.lens.active.savedFingerprint
 	mode := out.primaryMode
-	query := out.lensQuery
+	query := out.lens.query
 
 	if result := executeLens(model, lens.OperationLensRename, operation.LensEntity(starter.ID), "Blocked", false); result.Err != nil {
 		t.Fatalf("rename lens: %v", result.Err)
@@ -202,11 +202,11 @@ func TestLensRenamePreservesTheIDAndTheProjection(t *testing.T) {
 	if renamed.ID != starter.ID {
 		t.Fatalf("rename changed the ID to %q, want %q", renamed.ID, starter.ID)
 	}
-	if out.activeLens == nil || out.activeLens.name != "Blocked" {
+	if out.lens.active == nil || out.lens.active.name != "Blocked" {
 		t.Fatalf("active label = %q, want the new name", out.activeLensLabel())
 	}
-	if out.activeLens.savedFingerprint != fingerprint ||
-		out.primaryMode != mode || out.lensQuery != query {
+	if out.lens.active.savedFingerprint != fingerprint ||
+		out.primaryMode != mode || out.lens.query != query {
 		t.Fatal("rename changed projection state")
 	}
 }
@@ -228,8 +228,8 @@ func TestLensRenameRefusesADuplicateNameWithoutTouchingAnything(t *testing.T) {
 	if got := lensNamed(t, model, starters[0].Name); got.ID != first.ID {
 		t.Fatal("a refused rename rewrote the saved record")
 	}
-	if out.activeLens.name != first.Name {
-		t.Fatalf("a refused rename relabeled the active lens to %q", out.activeLens.name)
+	if out.lens.active.name != first.Name {
+		t.Fatalf("a refused rename relabeled the active lens to %q", out.lens.active.name)
 	}
 }
 

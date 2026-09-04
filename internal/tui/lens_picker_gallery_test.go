@@ -28,7 +28,7 @@ func TestLensPickerCreateClosesEveryOverlayAndLeavesTheNewLensActive(t *testing.
 	}
 	saved := lensNamed(t, model, "Focus")
 	if !model.crossOutliner.hasActiveLens() ||
-		model.crossOutliner.activeLens.lensID != saved.ID {
+		model.crossOutliner.lens.active.lensID != saved.ID {
 		t.Error("the new lens is not the active one")
 	}
 }
@@ -179,7 +179,7 @@ func TestLensPickerAddTemplateClosesEveryOverlayAndLeavesTheAddedLensActive(t *t
 		t.Errorf("the added record has ID %s, want the catalog's %s", saved.ID, template.ID)
 	}
 	if !model.crossOutliner.hasActiveLens() ||
-		model.crossOutliner.activeLens.lensID != template.ID {
+		model.crossOutliner.lens.active.lensID != template.ID {
 		t.Error("the added built-in view is not the active lens")
 	}
 }

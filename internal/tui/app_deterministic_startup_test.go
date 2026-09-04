@@ -136,8 +136,8 @@ func assertCleanLaunchRoot(t *testing.T, app *AppModel) {
 	if outliner.Cursor != 0 || outliner.IsMultiSelectActive() || outliner.SelectedCount() != 0 {
 		t.Fatalf("launch retained cursor/selection: cursor=%d active=%v selected=%d", outliner.Cursor, outliner.IsMultiSelectActive(), outliner.SelectedCount())
 	}
-	if outliner.hasActiveLens() || outliner.lensQuery != "" || outliner.editingLensQuery() {
-		t.Fatalf("launch retained lens state: active=%v query=%q editing=%v", outliner.hasActiveLens(), outliner.lensQuery, outliner.editingLensQuery())
+	if outliner.hasActiveLens() || outliner.lens.query != "" || outliner.editingLensQuery() {
+		t.Fatalf("launch retained lens state: active=%v query=%q editing=%v", outliner.hasActiveLens(), outliner.lens.query, outliner.editingLensQuery())
 	}
 	if len(outliner.folds.collapsedSections) != 0 || len(outliner.folds.expandedNodes) != 0 || len(outliner.focus.stack) != 0 || len(outliner.focus.crossStack) != 0 {
 		t.Fatalf("launch retained folds/focus: sections=%v nodes=%v focus=%v crossFocus=%v", outliner.folds.collapsedSections, outliner.folds.expandedNodes, outliner.focus.stack, outliner.focus.crossStack)

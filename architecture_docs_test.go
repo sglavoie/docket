@@ -175,7 +175,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"Scope is the one axis\na lens may decline to own",
 		"A lens that owns a scope therefore installs it *before* the load decision",
 		"`lensModified` carves\nscope out of \"navigating\"",
-		"`persistActiveLens`",
+		"`setPersistActiveLens`",
 		"`activeLensFrame` is the one live lens; there is never a stack",
 		"switching lenses\nreplaces the definition while keeping the baseline",
 		"Under an active lens `/` calls `beginLensQueryEdit`",

@@ -124,7 +124,7 @@ func (m *OutlinerModel) captureOutlinerViewSnapshot() outlinerViewSnapshot {
 		searchQuery:          m.SearchQuery(),
 		searchInputValue:     m.SearchInputValue(),
 		searchInputActive:    m.IsSearchMode(),
-		lensQuery:            m.lensQuery,
+		lensQuery:            m.lens.query,
 		peekMode:             m.peekMode,
 		multiSelectMode:      m.MultiSelectMode,
 		selected:             copyBoolMap(m.Selected),

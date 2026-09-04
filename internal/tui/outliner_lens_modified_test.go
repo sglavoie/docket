@@ -18,17 +18,17 @@ func TestSwitchingLensesRetainsTheOriginalBaseline(t *testing.T) {
 	outliner.selectOutlinerMode(chrome.ModeInbox)
 
 	applyLensOrFatal(t, outliner, waitingLens(lensTestID(1), "Waiting", "needle"))
-	first := outliner.activeLens.origin
+	first := outliner.lens.active.origin
 	applyLensOrFatal(t, outliner, waitingLens(lensTestID(2), "Held", ""))
 
-	if outliner.activeLens.name != "Held" {
-		t.Fatalf("active lens = %q, want Held", outliner.activeLens.name)
+	if outliner.lens.active.name != "Held" {
+		t.Fatalf("active lens = %q, want Held", outliner.lens.active.name)
 	}
-	if outliner.activeLens.origin.presentation.mode != first.presentation.mode {
+	if outliner.lens.active.origin.presentation.mode != first.presentation.mode {
 		t.Fatal("a switch replaced the original restoration point")
 	}
-	if outliner.lensQuery != "" {
-		t.Fatalf("switch kept the previous narrowing query %q", outliner.lensQuery)
+	if outliner.lens.query != "" {
+		t.Fatalf("switch kept the previous narrowing query %q", outliner.lens.query)
 	}
 
 	if !listsurface.RunEscCascade(outliner.escSteps()) {
@@ -151,8 +151,8 @@ func TestOrdinaryFiltersAndSortRemainEditableUnderALensQuery(t *testing.T) {
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, []string{"waiting"}) {
 		t.Fatalf("rows under lens query plus priority facet = %v, want [waiting]", got)
 	}
-	if outliner.lensQuery != "needle" {
-		t.Fatalf("editing filters disturbed the narrowing query: %q", outliner.lensQuery)
+	if outliner.lens.query != "needle" {
+		t.Fatalf("editing filters disturbed the narrowing query: %q", outliner.lens.query)
 	}
 	if !outliner.hasActiveLens() {
 		t.Fatal("editing filters must not dismiss the lens")
@@ -190,10 +190,10 @@ func TestApplyNamedLensRefusesInvalidDefinitionsWithoutTouchingTheView(t *testin
 			if cmd != nil {
 				t.Fatal("a refusal must return no command")
 			}
-			if outliner.hasActiveLens() || outliner.pendingLens != nil {
+			if outliner.hasActiveLens() || outliner.lens.pending != nil {
 				t.Fatal("a refusal must leave no lens state behind")
 			}
-			if outliner.primaryMode != chrome.ModeInbox || outliner.lensQuery != "" {
+			if outliner.primaryMode != chrome.ModeInbox || outliner.lens.query != "" {
 				t.Fatal("a refusal must leave the current projection untouched")
 			}
 			if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, before) {

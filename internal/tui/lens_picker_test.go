@@ -192,7 +192,7 @@ func TestLensPickerEnterAppliesLensAndClosesThePicker(t *testing.T) {
 	if !model.crossOutliner.hasActiveLens() {
 		t.Fatal("applying a lens installed nothing")
 	}
-	if got := model.crossOutliner.activeLens.name; got != "Waiting" {
+	if got := model.crossOutliner.lens.active.name; got != "Waiting" {
 		t.Errorf("active lens = %q, want Waiting", got)
 	}
 }

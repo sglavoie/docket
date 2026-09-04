@@ -119,7 +119,7 @@ func TestLensAddTemplatePersistsTheCatalogDefinitionAndAppliesIt(t *testing.T) {
 	if !reflect.DeepEqual(*saved, template) {
 		t.Fatalf("saved record = %+v, want the catalog definition %+v", *saved, template)
 	}
-	if !out.hasActiveLens() || out.activeLens.lensID != template.ID {
+	if !out.hasActiveLens() || out.lens.active.lensID != template.ID {
 		t.Fatalf("added template is not the live lens: %v", out.activeLensLabel())
 	}
 	if out.lensModified() {
@@ -302,7 +302,7 @@ func TestAFailedAddTemplateCommitAppliesNothing(t *testing.T) {
 	if before.NamedLensByID(template.ID) != nil {
 		t.Fatal("a failed commit added the template to the cached snapshot")
 	}
-	if out.activeLens == nil || out.activeLens.lensID != starter.ID {
+	if out.lens.active == nil || out.lens.active.lensID != starter.ID {
 		t.Fatal("a failed commit applied the template anyway")
 	}
 }

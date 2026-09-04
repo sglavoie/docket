@@ -27,7 +27,7 @@ import (
 // applies synchronously, so a caller never has to know which kind it just added.
 func settleLensPopulationLoad(t *testing.T, outliner *OutlinerModel, sources ...*models.Project) {
 	t.Helper()
-	pending := outliner.pendingLens
+	pending := outliner.lens.pending
 	if pending == nil {
 		return
 	}
@@ -111,17 +111,17 @@ func TestEveryBuiltinTemplateInstallsItsExactProjection(t *testing.T) {
 				t.Fatalf("saved record = %+v, want the catalog definition %+v", *saved, template)
 			}
 
-			if !out.hasActiveLens() || out.activeLens.lensID != template.ID {
+			if !out.hasActiveLens() || out.lens.active.lensID != template.ID {
 				t.Fatalf("the added template is not the live lens: %v", out.activeLensLabel())
 			}
-			if out.activeLens.name != template.Name {
-				t.Fatalf("frame name = %q, want %q", out.activeLens.name, template.Name)
+			if out.lens.active.name != template.Name {
+				t.Fatalf("frame name = %q, want %q", out.lens.active.name, template.Name)
 			}
 			if out.primaryMode != want.mode {
 				t.Fatalf("mode = %v, want the template's %v", out.primaryMode, want.mode)
 			}
-			if out.lensQuery != "" {
-				t.Fatalf("narrowing query = %q, want the template's empty one", out.lensQuery)
+			if out.lens.query != "" {
+				t.Fatalf("narrowing query = %q, want the template's empty one", out.lens.query)
 			}
 			// The fingerprint is the canonical rendering of every lens-owned axis at
 			// once: filters, population facets, query, mode, and sort. Comparing it
@@ -130,7 +130,7 @@ func TestEveryBuiltinTemplateInstallsItsExactProjection(t *testing.T) {
 			if got := out.captureLensState().fingerprint(); got != want.fingerprint() {
 				t.Fatalf("live projection fingerprint = %q, want %q", got, want.fingerprint())
 			}
-			if out.activeLens.savedFingerprint != want.fingerprint() {
+			if out.lens.active.savedFingerprint != want.fingerprint() {
 				t.Fatal("the frame recorded a definition the template never carried")
 			}
 			if out.lensModified() {
@@ -148,7 +148,7 @@ func TestEveryBuiltinTemplateInstallsItsExactProjection(t *testing.T) {
 			} else if out.sort != query.NewSortState() {
 				t.Fatalf("active sort = %+v, want a fixed-order mode's inactive default", out.sort)
 			}
-			if out.pendingLens != nil {
+			if out.lens.pending != nil {
 				t.Fatal("the application left a load still armed")
 			}
 
@@ -198,15 +198,15 @@ func TestAddingTemplatesFromANormalViewKeepsOneRestorationPoint(t *testing.T) {
 	for i, name := range chain {
 		addTemplateAndSettle(t, model, lensTemplateByName(t, name))
 		if i == 0 {
-			origin = out.activeLens.origin
+			origin = out.lens.active.origin
 			continue
 		}
-		if out.activeLens.origin.presentation.mode != origin.presentation.mode {
+		if out.lens.active.origin.presentation.mode != origin.presentation.mode {
 			t.Fatalf("adding %q replaced the original restoration point", name)
 		}
 	}
-	if out.activeLens.name != "Parked Work" {
-		t.Fatalf("active lens = %q, want the last one added", out.activeLens.name)
+	if out.lens.active.name != "Parked Work" {
+		t.Fatalf("active lens = %q, want the last one added", out.lens.active.name)
 	}
 
 	if !listsurface.RunEscCascade(out.escSteps()) {
@@ -237,17 +237,17 @@ func TestAddingATemplateFromInsideALensKeepsThePreLensBaseline(t *testing.T) {
 
 	// A saved user lens first, so the template is added from inside an active one.
 	applyLensOrFatal(t, out, waitingLens(lensTestID(1), "Held", "needle"))
-	origin := out.activeLens.origin
+	origin := out.lens.active.origin
 	if origin.presentation.mode != chrome.ModeInbox {
 		t.Fatalf("pre-lens baseline mode = %v, want %v", origin.presentation.mode, chrome.ModeInbox)
 	}
 
 	addTemplateAndSettle(t, model, lensTemplateByName(t, "Parked Work"))
-	if out.activeLens.origin.presentation.mode != chrome.ModeInbox {
+	if out.lens.active.origin.presentation.mode != chrome.ModeInbox {
 		t.Fatal("adding a template from inside a lens rebased the restoration point onto that lens")
 	}
-	if out.lensQuery != "" {
-		t.Fatalf("the added template inherited the previous lens's query %q", out.lensQuery)
+	if out.lens.query != "" {
+		t.Fatalf("the added template inherited the previous lens's query %q", out.lens.query)
 	}
 
 	if !listsurface.RunEscCascade(out.escSteps()) {

@@ -139,8 +139,8 @@ func (m *OutlinerModel) buildOutlinerSearchIndicator(width int) string {
 		// The lens badge reads the lens compilation rather than the search one,
 		// because those are the rows on screen.
 		return m.appendLensQueryBadge(theme.MutedStyle.Render("Lens query: ")+m.SearchInputView(), width)
-	case m.hasActiveLens() && m.lensQuery != "":
-		return m.appendLensQueryBadge(theme.MutedStyle.Render(fmt.Sprintf("Lens query: %q", m.lensQuery)), width)
+	case m.hasActiveLens() && m.lens.query != "":
+		return m.appendLensQueryBadge(theme.MutedStyle.Render(fmt.Sprintf("Lens query: %q", m.lens.query)), width)
 	case m.IsSearchMode():
 		indicator = theme.MutedStyle.Render("Search: ") + m.SearchInputView()
 	case m.SearchQuery() != "":
@@ -164,7 +164,7 @@ func (m *OutlinerModel) appendLensQueryBadge(indicator string, width int) string
 	if guidance := m.lensGuidanceText(); guidance != "" {
 		return appendSearchBadge(indicator, " "+guidance, width)
 	}
-	if !m.lensNarrowRelaxed {
+	if !m.lens.narrowRelaxed {
 		return indicator
 	}
 	return appendSearchBadge(indicator, " (case ignored)", width)

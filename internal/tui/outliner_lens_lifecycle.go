@@ -13,73 +13,10 @@ import (
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
-// Applying a named lens is one atomic, reversible act. The frame below is what
-// makes it reversible: it holds the identity that was installed, the fingerprint
-// the modified marker compares against, and the single restoration
-// point Esc returns to. Switching lenses replaces the identity and keeps that
-// restoration point, so one Esc always lands on the view the user actually left
-// rather than on an intermediate lens they passed through.
-
-// activeLensFrame is the one live lens. There is never a stack of them.
-type activeLensFrame struct {
-	lensID string
-	name   string
-
-	// savedFingerprint is the canonical rendering of the definition as installed.
-	// The marker compares fingerprints rather than states so map iteration order
-	// can never report an unchanged lens as modified, and the fingerprint alone is
-	// what a comparison ever needs: the record itself lives in machine state.
-	savedFingerprint string
-
-	// origin is the view the first activation replaced. A switch carries it
-	// forward untouched; nothing else may write it.
-	origin outlinerViewSnapshot
-
-	// pendingGeneration is the load generation of an application that has not
-	// published yet, or zero. It exists so restoration can invalidate work still
-	// in flight instead of letting it land on a view that already moved on.
-	pendingGeneration int
-
-	// projectFacetsAwaitingLoad marks a lens published without loading the
-	// population its project facets select, which is what a scoped application
-	// does: the scope had already fixed the population to one project. Project
-	// facets are population selectors rather than row predicates, so those facets
-	// are recorded and inert, and this is what tells the explicit scope exit that
-	// it owes them a load before any unscoped row is shown.
-	projectFacetsAwaitingLoad bool
-
-	// loadedPopulationFingerprint names the project filter the live population was
-	// actually read under, which is the provenance an owed load has to be decided
-	// against. Equality between consecutive lens filters cannot decide it: a
-	// scoped application writes its filter without reading a population, so the
-	// next equivalent lens compares equal to a filter no population belongs to
-	// and would clear a debt nothing has paid. It is meaningful only while
-	// projectFacetsAwaitingLoad is set; a published population is its own
-	// provenance.
-	loadedPopulationFingerprint string
-}
-
-// pendingLensApplication is a lens whose project population is still loading.
-// Nothing on the live model has changed yet: the candidate filter travels with
-// the load, and the lens publishes only when its own generation comes back.
-type pendingLensApplication struct {
-	generation int
-	lens       config.NamedLens
-	state      lensState
-
-	// origin is the restoration point frozen when the load started, not when it
-	// landed. An asynchronous application owes Esc the view the user actually
-	// left, so navigating, searching, or filtering while the projects read must
-	// not rewrite the baseline the application is going to install.
-	origin outlinerViewSnapshot
-
-	// scopeExitFrom names the project scope an explicit exit is leaving. When it
-	// is set this application installs no lens: the one it belongs to is already
-	// live, and only its inert project facets are being honored, so the result
-	// publishes the population and drops that scope in one step. An empty string
-	// is an ordinary application that publishes a lens.
-	scopeExitFrom string
-}
+// Applying a named lens is one atomic, reversible act, and the routes below are
+// the whole of that act: applying, publishing, dismissing, and retyping the
+// narrowing query. The state they write lives in outlinerLensState, whose frame
+// is what makes the application reversible.
 
 // lensProjectsLoadedMsg carries the result of a load started for one lens
 // application. It is deliberately distinct from crossProjectsLoadedMsg: an
@@ -93,7 +30,7 @@ type lensProjectsLoadedMsg struct {
 
 // hasActiveLens reports whether a lens owns the current projection.
 func (m *OutlinerModel) hasActiveLens() bool {
-	return m != nil && m.activeLens != nil
+	return m != nil && m.lens.hasActive()
 }
 
 // ApplyNamedLens installs a saved projection, or refuses without touching the
@@ -224,14 +161,14 @@ func (m *OutlinerModel) publishLens(lens config.NamedLens, state lensState, proj
 	saved := state
 	saved.scopeProjectID = m.capturedLensScope()
 
-	m.activeLens = &activeLensFrame{
+	m.lens.setActive(&activeLensFrame{
 		lensID:                      lens.ID,
 		name:                        lens.Name,
 		savedFingerprint:            saved.fingerprint(),
 		origin:                      origin,
 		projectFacetsAwaitingLoad:   facetsAwaitingLoad,
 		loadedPopulationFingerprint: population,
-	}
+	})
 	m.population.invalidate()
 	m.rebuildRows()
 	m.restoreSearchCursor(anchor)
@@ -247,20 +184,30 @@ func (m *OutlinerModel) publishLens(lens config.NamedLens, state lensState, proj
 // installed, so a failed commit is reported and nothing else. The seam is
 // injected by the shell and a model without one simply remembers nothing.
 func (m *OutlinerModel) noteActiveLens(id string) {
-	if m == nil || m.persistActiveLens == nil {
+	if m == nil {
 		return
 	}
-	if err := m.persistActiveLens(id); err != nil {
+	if err := m.lens.remember(id); err != nil {
 		m.SetTransientStatus("Could not remember the active lens: " + err.Error())
 	}
+}
+
+// setPersistActiveLens injects the machine-local write the shell owns. It is one
+// of the four seams an Outliner cannot build for itself; see
+// wireOutlinerOperationExecutor.
+func (m *OutlinerModel) setPersistActiveLens(persist func(id string) error) {
+	if m == nil {
+		return
+	}
+	m.lens.persist = persist
 }
 
 // lensRestorationPoint returns the baseline the next Esc restores: the original
 // one when a lens is already live, a fresh capture otherwise. This is the whole
 // of the non-stacking rule.
 func (m *OutlinerModel) lensRestorationPoint() outlinerViewSnapshot {
-	if m.activeLens != nil {
-		return m.activeLens.origin
+	if m.lens.hasActive() {
+		return m.lens.active.origin
 	}
 	return m.captureOutlinerViewSnapshot()
 }
@@ -269,12 +216,11 @@ func (m *OutlinerModel) lensRestorationPoint() outlinerViewSnapshot {
 // application still in flight is invalidated first, so a load that lands after
 // this cannot reinstall a lens the user just left.
 func (m *OutlinerModel) restoreLensBaseline() {
-	if m == nil || m.activeLens == nil {
+	if m == nil || !m.lens.hasActive() {
 		return
 	}
 	m.closeMenuBar()
-	frame := m.activeLens
-	m.activeLens = nil
+	frame := m.lens.takeActive()
 	m.endLensQueryEdit()
 	m.discardPendingLensApplication()
 	m.restoreOutlinerViewSnapshot(frame.origin)
@@ -286,7 +232,7 @@ func (m *OutlinerModel) restoreLensBaseline() {
 // taken only when something is actually pending, so an ordinary reload in flight
 // beside it is left alone.
 func (m *OutlinerModel) discardPendingLensApplication() {
-	if m == nil || m.pendingLens == nil {
+	if m == nil || !m.lens.hasPending() {
 		return
 	}
 	m.population.supersede()
@@ -297,14 +243,11 @@ func (m *OutlinerModel) discardPendingLensApplication() {
 // bumping the generation. It is what a result that has already come back needs:
 // there is nothing left in flight to invalidate, only loading state to put down.
 func (m *OutlinerModel) settlePendingLensApplication() {
-	if m == nil || m.pendingLens == nil {
+	if m == nil || !m.lens.hasPending() {
 		return
 	}
-	m.pendingLens = nil
+	m.lens.clearPending()
 	m.population.settleLoad()
-	if m.activeLens != nil {
-		m.activeLens.pendingGeneration = 0
-	}
 }
 
 // clearActiveLensWithoutRestore drops the frame without returning to its
@@ -327,7 +270,7 @@ func (m *OutlinerModel) forgetActiveLensFrame() {
 	if m == nil {
 		return
 	}
-	m.activeLens = nil
+	m.lens.clearActive()
 	m.discardPendingLensApplication()
 	m.endLensQueryEdit()
 	m.setLensQuery("")
@@ -341,19 +284,19 @@ func (m *OutlinerModel) forgetActiveLensFrame() {
 // does mark it modified, and replacing the lens from the current view is what
 // adopts the scope the user moved to.
 func (m *OutlinerModel) lensModified() bool {
-	if m == nil || m.activeLens == nil {
+	if m == nil || !m.lens.hasActive() {
 		return false
 	}
-	return m.captureLensState().fingerprint() != m.activeLens.savedFingerprint
+	return m.captureLensState().fingerprint() != m.lens.active.savedFingerprint
 }
 
 // activeLensLabel is the operational-title segment: the lens name, marked when
 // the view has diverged from it.
 func (m *OutlinerModel) activeLensLabel() string {
-	if m == nil || m.activeLens == nil {
+	if m == nil || !m.lens.hasActive() {
 		return ""
 	}
-	label := "Lens: " + m.activeLens.name
+	label := "Lens: " + m.lens.active.name
 	if m.lensModified() {
 		label += "*"
 	}
@@ -363,23 +306,21 @@ func (m *OutlinerModel) activeLensLabel() string {
 // editingLensQuery reports whether the search input currently holds the lens's
 // narrowing query rather than an ordinary search query.
 func (m *OutlinerModel) editingLensQuery() bool {
-	return m != nil && m.lensQueryEditing && m.IsSearchMode()
+	return m != nil && m.lens.queryEditing && m.IsSearchMode()
 }
 
 // beginLensQueryEdit points `/` at the narrowing query. No search projection is
 // created: the lens keeps deciding the mode, facets, and order, and the query
 // only decides which of its rows survive.
 func (m *OutlinerModel) beginLensQueryEdit() tea.Cmd {
-	if m.lensQueryEditing {
+	if !m.lens.beginQueryEdit() {
 		return nil
 	}
-	m.lensQueryEditing = true
-	m.lensQueryEditOrigin = m.lensQuery
 	// Suggestions describe the ordinary search grammar's candidate set and its
 	// projection, neither of which exists here.
 	m.search.autocomplete.clear()
-	m.SetSearchInputValue(m.lensQuery)
-	m.SetSearchInputCursor(len([]rune(m.lensQuery)))
+	m.SetSearchInputValue(m.lens.query)
+	m.SetSearchInputCursor(len([]rune(m.lens.query)))
 	cmd := m.BaseSearchableView.ActivateSearch()
 	// The ordinary query stays empty throughout, so no consumer of it — scoring,
 	// the work-mode predicate, the empty-state cause — ever sees the lens's query
@@ -411,7 +352,7 @@ func (m *OutlinerModel) handleLensQueryKey(msg tea.KeyPressMsg) (tea.Model, tea.
 }
 
 func (m *OutlinerModel) commitLensQueryEdit() {
-	if !m.lensQueryEditing {
+	if !m.lens.queryEditing {
 		return
 	}
 	query := m.SearchInputValue()
@@ -422,10 +363,10 @@ func (m *OutlinerModel) commitLensQueryEdit() {
 }
 
 func (m *OutlinerModel) cancelLensQueryEdit() {
-	if !m.lensQueryEditing {
+	if !m.lens.queryEditing {
 		return
 	}
-	origin := m.lensQueryEditOrigin
+	origin := m.lens.queryEditOrigin
 	m.endLensQueryEdit()
 	m.setLensQuery(origin)
 	m.population.invalidate()
@@ -435,11 +376,9 @@ func (m *OutlinerModel) cancelLensQueryEdit() {
 // endLensQueryEdit leaves the input mode without deciding the query. Both the
 // commit and the cancel above name that decision themselves.
 func (m *OutlinerModel) endLensQueryEdit() {
-	if m == nil || !m.lensQueryEditing {
+	if m == nil || !m.lens.endQueryEdit() {
 		return
 	}
-	m.lensQueryEditing = false
-	m.lensQueryEditOrigin = ""
 	m.search.autocomplete.clear()
 	m.DeactivateSearch()
 }

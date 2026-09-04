@@ -52,7 +52,7 @@ func TestLensPickerDigitAppliesTheNthListedLensAndCloses(t *testing.T) {
 	if !model.crossOutliner.hasActiveLens() {
 		t.Fatal("a digit apply installed nothing")
 	}
-	if got := model.crossOutliner.activeLens.name; got != "Stale" {
+	if got := model.crossOutliner.lens.active.name; got != "Stale" {
 		t.Errorf("active lens = %q, want the second listed lens Stale", got)
 	}
 }
@@ -100,7 +100,7 @@ func TestLensPickerNarrowedListRenumbersFromOneAndTheDigitAppliesIt(t *testing.T
 		t.Error("a digit apply left the picker mounted")
 	}
 	if !model.crossOutliner.hasActiveLens() ||
-		model.crossOutliner.activeLens.lensID != waiting.ID {
+		model.crossOutliner.lens.active.lensID != waiting.ID {
 		t.Fatal("1 applied something other than the narrowed row")
 	}
 }
@@ -186,7 +186,7 @@ func TestLensPickerActionRowsAndTheTenthLensCarryNoOrdinal(t *testing.T) {
 	if model.lensPicker != nil {
 		t.Fatal("9 did not apply the ninth listed lens")
 	}
-	if got := model.crossOutliner.activeLens.name; got != "Lens 08" {
+	if got := model.crossOutliner.lens.active.name; got != "Lens 08" {
 		t.Errorf("9 applied %q, want the ninth listed lens", got)
 	}
 }

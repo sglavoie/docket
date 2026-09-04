@@ -250,11 +250,11 @@ func TestOneNarrowingQueryCompilesAtATime(t *testing.T) {
 	alpha := primaryRowsProject("alpha", needle, other)
 
 	outliner := scopeTestOutliner(alpha)
-	outliner.activeLens = &activeLensFrame{lensID: "lens", name: "Groundwork"}
+	outliner.lens.active = &activeLensFrame{lensID: "lens", name: "Groundwork"}
 	outliner.setLensQuery("needle")
 	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
-	if outliner.lensGate == nil {
+	if outliner.lens.gate == nil {
 		t.Fatal("the canonical path did not compile the lens narrowing")
 	}
 	if outliner.search.gate != nil {
@@ -266,11 +266,11 @@ func TestOneNarrowingQueryCompilesAtATime(t *testing.T) {
 
 	// Without a lens the same call site compiles the search query instead, and
 	// the rows are still the mode's own.
-	outliner.activeLens = nil
-	outliner.lensGate = nil
+	outliner.lens.active = nil
+	outliner.lens.gate = nil
 	outliner.setLensQuery("")
 	outliner.SetSearchQuery("beta")
-	if outliner.lensGate != nil {
+	if outliner.lens.gate != nil {
 		t.Fatal("a lens-free rebuild compiled a lens narrowing")
 	}
 	if outliner.search.gate == nil {
@@ -288,7 +288,7 @@ func TestSlashUnderALensEditsTheLensQueryRatherThanStartingASearch(t *testing.T)
 	task := primaryRowsTask("task", models.StateBacklog)
 	task.Title = "Needle groundwork"
 	outliner := scopeTestOutliner(primaryRowsProject("alpha", task))
-	outliner.activeLens = &activeLensFrame{lensID: "lens", name: "Groundwork"}
+	outliner.lens.active = &activeLensFrame{lensID: "lens", name: "Groundwork"}
 	outliner.setLensQuery("needle")
 
 	_ = outliner.ActivateSearch()

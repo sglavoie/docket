@@ -43,10 +43,7 @@ func (m *OutlinerModel) setLensQuery(query string) {
 	if m == nil {
 		return
 	}
-	m.lensQuery = strings.TrimSpace(query)
-	m.lensGate = nil
-	m.lensRemainder = ""
-	m.lensNarrowRelaxed = false
+	m.lens.setQuery(query)
 }
 
 // lensGuidanceText returns the refusal a recognized-but-unhonorable lens query
@@ -56,7 +53,7 @@ func (m *OutlinerModel) lensGuidanceText() string {
 	if m == nil {
 		return ""
 	}
-	return m.lensGate.GuidanceText()
+	return m.lens.gate.GuidanceText()
 }
 
 // lensTextQuery is the free-text remainder of the lens query, which is what
@@ -66,13 +63,13 @@ func (m *OutlinerModel) lensTextQuery() string {
 	if m == nil {
 		return ""
 	}
-	return m.lensRemainder
+	return m.lens.remainder
 }
 
 // lensCaseSensitive reports the case mode the visible rows were actually
 // produced under, so a highlight can never disagree with the narrowing.
 func (m *OutlinerModel) lensCaseSensitive() bool {
-	if m == nil || m.lensNarrowRelaxed {
+	if m == nil || m.lens.narrowRelaxed {
 		return false
 	}
 	return fuzzy.CaseSensitiveQuery(m.lensTextQuery())
@@ -89,9 +86,9 @@ func (m *OutlinerModel) compileActiveNarrowing(projects []*models.Project) query
 	if m == nil {
 		return queryNarrowing{}
 	}
-	if m.lensQuery != "" {
-		compiled := m.compileNarrowingQuery(m.lensQuery, projects)
-		m.lensRemainder, m.lensGate, m.lensNarrowRelaxed = compiled.remainder, compiled.gate, compiled.relaxed
+	if m.lens.query != "" {
+		compiled := m.compileNarrowingQuery(m.lens.query, projects)
+		m.lens.setCompilation(compiled.remainder, compiled.gate, compiled.relaxed)
 		return compiled.narrowing
 	}
 	query := ""

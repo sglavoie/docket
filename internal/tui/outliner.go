@@ -93,35 +93,14 @@ type OutlinerModel struct {
 	// m.search rather than by assigning each field they happen to remember.
 	search searchState
 
-	// lensQuery is the accepted narrowing query of the saved projection the view
-	// is showing, and lensGate, lensRemainder, and lensNarrowRelaxed are its
-	// compiled form. It is deliberately not the slash-search query: a lens query
-	// narrows its own saved mode, facets, and sort, while ordinary search
-	// replaces the whole projection and stays scope-wide.
-	lensQuery         string
-	lensGate          *query.SearchPredicates
-	lensRemainder     string
-	lensNarrowRelaxed bool
-
-	// activeLens is the one live named lens, and pendingLens an application whose
-	// project population is still loading. There is never a stack of either: a
-	// switch replaces the definition and keeps the original restoration point, so
-	// one Esc always returns to the view the user actually left. Neither survives
-	// a restart or a global reset.
-	activeLens  *activeLensFrame
-	pendingLens *pendingLensApplication
-
-	// persistActiveLens records which lens the Outliner should reopen with, or
-	// clears that pointer when passed the empty string. The shell injects it, so
-	// the Outliner never learns where machine-local state is committed; a nil seam
-	// is inert and simply remembers nothing.
-	persistActiveLens func(id string) error
-
-	// lensQueryEditing points the shared search input at the lens's narrowing
-	// query instead of the ordinary search query, and lensQueryEditOrigin is the
-	// query Esc restores when that edit is abandoned.
-	lensQueryEditing    bool
-	lensQueryEditOrigin string
+	// lens is the one live named lens, the application whose population is still
+	// loading behind it, the narrowing query that lens installs and the compiled
+	// reading of it, the shell seam that remembers which lens to reopen with, and
+	// the input mode that retypes that query. Like the search beside it, it is a
+	// named field rather than promoted ones — outliner_lens_view_state.go owns the
+	// cluster, and putting a lens down reaches every part of it through m.lens
+	// rather than by assigning each field the caller happens to remember.
+	lens outlinerLensState
 
 	// outstandingConflicts is the shell-injected count of recorded merge-conflict
 	// bundles the status strip reports. A nil accessor is inert, so a

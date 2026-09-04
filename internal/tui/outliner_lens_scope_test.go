@@ -48,7 +48,7 @@ func TestScopedLensEntersItsProjectAndEscRestoresThePreLensScope(t *testing.T) {
 	if cmd := applyLensOrFatal(t, outliner, lens); cmd != nil {
 		t.Fatal("a scoped application must need no population load")
 	}
-	if outliner.pendingLens != nil {
+	if outliner.lens.pending != nil {
 		t.Fatal("a scoped application armed a load the scope makes unnecessary")
 	}
 	if outliner.scope.projectID != lensScopeBetaID {
@@ -200,7 +200,7 @@ func TestPublishingALensRecordsTheActivePointerAndDismissalClearsIt(t *testing.T
 // application stands.
 func TestAFailedActiveLensPointerCommitLeavesTheLensApplied(t *testing.T) {
 	outliner := lensLifecycleOutliner()
-	outliner.persistActiveLens = func(string) error { return errors.New("machine-local state is unavailable") }
+	outliner.lens.persist = func(string) error { return errors.New("machine-local state is unavailable") }
 
 	lens := waitingLens(lensTestID(5), "Waiting", "")
 	applyLensOrFatal(t, outliner, lens)

@@ -207,7 +207,7 @@ func TestAddTemplateFailuresRetainThePickerAndChangeNothing(t *testing.T) {
 				if out.hasActiveLens() {
 					t.Error("a refused add applied a lens")
 				}
-				if out.pendingLens != nil {
+				if out.lens.pending != nil {
 					t.Error("a refused add left a population load armed")
 				}
 				if out.primaryMode != chrome.ModeInbox {

@@ -32,9 +32,7 @@ func (m *AppModel) namedLensPickerSnapshot() lens.NamedLensPickerSnapshot {
 	if out := m.crossOutliner; out != nil {
 		snapshot.CurrentSummary = lens.NamedLensSummary(out.captureLensState().namedLens("", ""))
 		snapshot.Modified = out.lensModified()
-		if out.activeLens != nil {
-			snapshot.ActiveID = out.activeLens.lensID
-		}
+		snapshot.ActiveID = out.lens.activeID()
 	}
 	return snapshot
 }

@@ -98,7 +98,7 @@ func TestAFailedLensCommitChangesNeitherMachineStateNorTheActiveLens(t *testing.
 	if before.NamedLensByID(starter.ID).Name != starter.Name {
 		t.Fatal("a failed commit rewrote the cached definition in place")
 	}
-	if out.activeLens == nil || out.activeLens.name != starter.Name {
+	if out.lens.active == nil || out.lens.active.name != starter.Name {
 		t.Fatal("a failed commit relabeled the active lens")
 	}
 }

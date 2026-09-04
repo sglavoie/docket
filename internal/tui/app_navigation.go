@@ -258,7 +258,7 @@ func (m *AppModel) wireOutlinerOperationExecutor(outliner *OutlinerModel) {
 		return
 	}
 	outliner.operationRegistry = m.operationRegistry
-	outliner.persistActiveLens = m.commitActiveLensPointer
+	outliner.setPersistActiveLens(m.commitActiveLensPointer)
 	outliner.setOutstandingConflicts(m.outstandingConflictCount)
 	outliner.setAdvisoriesHidden(m.advisoriesHidden)
 }

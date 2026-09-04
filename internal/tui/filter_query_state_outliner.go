@@ -92,7 +92,7 @@ func (m *OutlinerModel) activeNarrowingGate() *query.SearchPredicates {
 		return nil
 	}
 	if m.hasActiveLens() {
-		return m.lensGate
+		return m.lens.gate
 	}
 	return m.search.gate
 }

@@ -97,7 +97,7 @@ func (m *OutlinerModel) queryReadoutRows() []queryReadoutRow {
 	}
 	rows := make([]queryReadoutRow, 0, 8)
 	if m.hasActiveLens() {
-		value := m.activeLens.name
+		value := m.lens.active.name
 		if m.lensModified() {
 			value += " (modified)"
 		}
@@ -129,11 +129,11 @@ func (m *OutlinerModel) queryReadoutRows() []queryReadoutRow {
 	// different axes that can never both be live: slash search under a lens edits
 	// that lens's query rather than opening a projection of its own.
 	switch {
-	case m.hasActiveLens() && m.lensQuery != "":
+	case m.hasActiveLens() && m.lens.query != "":
 		rows = append(rows, queryReadoutRow{
 			axis:  queryReadoutAxisLensQuery,
 			label: "lens query",
-			value: m.lensQuery,
+			value: m.lens.query,
 		})
 	case m.SearchQuery() != "":
 		rows = append(rows, queryReadoutRow{

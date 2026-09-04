@@ -31,7 +31,7 @@ func TestLensProjectLoadPublishesOnlyOnTheMatchingGeneration(t *testing.T) {
 		t.Fatal("the live population changed before the load landed")
 	}
 
-	generation := outliner.pendingLens.generation
+	generation := outliner.lens.pending.generation
 	loaded := []*models.Project{primaryRowsProject("gamma", primaryRowsTask("gamma-task", models.StateWaiting))}
 
 	// A stale result from an earlier generation publishes nothing.
@@ -66,12 +66,12 @@ func TestLensProjectLoadIsSupersededByALaterRequest(t *testing.T) {
 	first := waitingLens(lensTestID(1), "Waiting", "")
 	first = lensWithFacet(first, "+parked:only")
 	applyLensOrFatal(t, outliner, first)
-	stale := outliner.pendingLens.generation
+	stale := outliner.lens.pending.generation
 
 	second := waitingLens(lensTestID(2), "Included", "")
 	second = lensWithFacet(second, "+parked")
 	applyLensOrFatal(t, outliner, second)
-	live := outliner.pendingLens.generation
+	live := outliner.lens.pending.generation
 	if live == stale {
 		t.Fatal("a superseding request must take its own generation")
 	}
@@ -87,8 +87,8 @@ func TestLensProjectLoadIsSupersededByALaterRequest(t *testing.T) {
 	}); !published {
 		t.Fatal("the newest request did not publish")
 	}
-	if outliner.activeLens.name != "Included" {
-		t.Fatalf("published lens = %q, want Included", outliner.activeLens.name)
+	if outliner.lens.active.name != "Included" {
+		t.Fatalf("published lens = %q, want Included", outliner.lens.active.name)
 	}
 }
 
@@ -102,7 +102,7 @@ func TestLensProjectLoadAbortsWhenNothingLoaded(t *testing.T) {
 
 	cmd, published := outliner.handleLensProjectsLoaded(lensProjectsLoadedMsg{
 		failedLoads: []projectLoadFailure{{ProjectID: "gamma", Detail: "failed to load project gamma: boom"}},
-		generation:  outliner.pendingLens.generation,
+		generation:  outliner.lens.pending.generation,
 	})
 	if published {
 		t.Fatal("a wholly failed load published a lens")
@@ -134,7 +134,7 @@ func TestLensProjectLoadPublishesPartialResultWithWarning(t *testing.T) {
 	cmd, published := outliner.handleLensProjectsLoaded(lensProjectsLoadedMsg{
 		projects:    []*models.Project{primaryRowsProject("gamma")},
 		failedLoads: []projectLoadFailure{{ProjectID: "delta", Detail: "failed to load project delta: boom"}},
-		generation:  outliner.pendingLens.generation,
+		generation:  outliner.lens.pending.generation,
 	})
 	if !published {
 		t.Fatal("a partial load must publish the projects that read")
@@ -165,7 +165,7 @@ func TestLensProjectLoadCapturesBaselineBeforeIO(t *testing.T) {
 	if cmd := applyLensOrFatal(t, outliner, lens); cmd == nil {
 		t.Fatal("a project-population change must start a load")
 	}
-	if got := outliner.pendingLens.origin.presentation.mode; got != chrome.ModeInbox {
+	if got := outliner.lens.pending.origin.presentation.mode; got != chrome.ModeInbox {
 		t.Fatalf("frozen baseline mode = %v, want %v", got, chrome.ModeInbox)
 	}
 
@@ -179,7 +179,7 @@ func TestLensProjectLoadCapturesBaselineBeforeIO(t *testing.T) {
 		projects: []*models.Project{
 			primaryRowsProject("gamma", primaryRowsTask("gamma-task", models.StateWaiting)),
 		},
-		generation: outliner.pendingLens.generation,
+		generation: outliner.lens.pending.generation,
 	}); !published {
 		t.Fatal("the matching generation did not publish")
 	}
@@ -218,7 +218,7 @@ func TestLensProjectLoadSupersededBySynchronousLensClearsPendingState(t *testing
 	if cmd := applyLensOrFatal(t, outliner, async); cmd == nil {
 		t.Fatal("a project-population change must start a load")
 	}
-	stale := outliner.pendingLens.generation
+	stale := outliner.lens.pending.generation
 	// The 200ms delay has elapsed, so the spinner is on screen when the
 	// synchronous lens supersedes the load.
 	outliner.population.spinnerVisible = true
@@ -226,13 +226,13 @@ func TestLensProjectLoadSupersededBySynchronousLensClearsPendingState(t *testing
 	if cmd := applyLensOrFatal(t, outliner, waitingLens(lensTestID(2), "Waiting", "")); cmd != nil {
 		t.Fatal("an unchanged population must not start a load")
 	}
-	if outliner.pendingLens != nil {
+	if outliner.lens.pending != nil {
 		t.Fatal("a synchronous lens left an application pending")
 	}
 	if outliner.population.loading || outliner.population.spinnerVisible {
 		t.Fatal("a synchronous lens left the loading state armed")
 	}
-	if outliner.activeLens.pendingGeneration != 0 {
+	if outliner.lens.active.pendingGeneration != 0 {
 		t.Fatal("the published frame still awaits a superseded generation")
 	}
 
@@ -241,10 +241,10 @@ func TestLensProjectLoadSupersededBySynchronousLensClearsPendingState(t *testing
 	}); published {
 		t.Fatal("the superseded request published")
 	}
-	if outliner.activeLens == nil || outliner.activeLens.name != "Waiting" {
+	if outliner.lens.active == nil || outliner.lens.active.name != "Waiting" {
 		t.Fatal("the late result replaced the lens that superseded it")
 	}
-	if outliner.pendingLens != nil || outliner.population.loading || outliner.population.spinnerVisible {
+	if outliner.lens.pending != nil || outliner.population.loading || outliner.population.spinnerVisible {
 		t.Fatal("the late result left pending or loading state armed")
 	}
 
@@ -266,10 +266,10 @@ func TestRestoringTheBaselineDiscardsAnUnpublishedApplication(t *testing.T) {
 	switchTo := waitingLens(lensTestID(2), "Included", "")
 	switchTo = lensWithFacet(switchTo, "+parked")
 	applyLensOrFatal(t, outliner, switchTo)
-	generation := outliner.pendingLens.generation
+	generation := outliner.lens.pending.generation
 
 	outliner.restoreLensBaseline()
-	if outliner.pendingLens != nil {
+	if outliner.lens.pending != nil {
 		t.Fatal("restoration left an application pending")
 	}
 
