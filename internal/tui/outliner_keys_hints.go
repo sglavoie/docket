@@ -313,13 +313,13 @@ func (m *OutlinerModel) classifyEmptyCause() outlinerEmptyCause {
 	// A zoom outranks the filter and focus causes below it: whatever else
 	// narrowed the list, Esc is the press that widens it back, and naming a
 	// filter would send the user to a key that leaves the section empty.
-	if m.zoom.active() {
+	if m.focus.zoom.active() {
 		return outlinerEmptySection
 	}
 	if query.HasActiveCommonFilters(&m.filter.CommonFilterState) {
 		return outlinerEmptyFiltered
 	}
-	if len(m.focusStack) > 0 || len(m.crossFocusStack) > 0 {
+	if m.focus.active() {
 		return outlinerEmptyFocus
 	}
 	if m.primaryMode != chrome.ModeAll {

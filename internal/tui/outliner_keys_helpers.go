@@ -11,8 +11,8 @@ import (
 // ensureExpandedNodes initializes the expanded nodes map if it's empty,
 // marking all parent tasks as expanded.
 func (m *OutlinerModel) ensureExpandedNodes() {
-	if len(m.expandedNodes) == 0 {
-		m.expandedNodes = make(map[taskref.TaskIdentity]bool)
+	if len(m.folds.expandedNodes) == 0 {
+		m.folds.resetNodes()
 		if m.project != nil {
 			m.markAllExpanded(m.project.ID, m.project.GetRootTasks())
 		} else {
@@ -39,10 +39,10 @@ func (m *OutlinerModel) markAllFolds(projectID string, tasks []*models.Task, exp
 			continue
 		}
 		identity := taskref.TaskIdentity{ProjectID: projectID, TaskID: task.ID}
-		if previous, known := m.expandedNodes[identity]; !known || previous != expanded {
+		if previous, known := m.folds.expandedNodes[identity]; !known || previous != expanded {
 			changed = true
 		}
-		m.expandedNodes[identity] = expanded
+		m.folds.setNode(identity, expanded)
 		if m.markAllFolds(projectID, task.Children, expanded) {
 			changed = true
 		}
@@ -58,7 +58,7 @@ func (m *OutlinerModel) anyTaskFoldCollapsed() bool {
 	if m == nil {
 		return false
 	}
-	return slices.Contains(slices.Collect(maps.Values(m.expandedNodes)), false)
+	return slices.Contains(slices.Collect(maps.Values(m.folds.expandedNodes)), false)
 }
 
 // setAllTaskFolds drives every task subtree to one fold state and reports
@@ -81,13 +81,10 @@ func (m *OutlinerModel) setAllTaskFolds(expanded bool) bool {
 		if !m.anyTaskFoldCollapsed() {
 			return false
 		}
-		m.expandedNodes = make(map[taskref.TaskIdentity]bool)
+		m.folds.resetNodes()
 		return true
 	}
 
-	if m.expandedNodes == nil {
-		m.expandedNodes = make(map[taskref.TaskIdentity]bool)
-	}
 	if m.project != nil {
 		return m.markAllFolds(m.project.ID, m.project.GetRootTasks(), false)
 	}

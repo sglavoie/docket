@@ -132,8 +132,7 @@ func (m *OutlinerModel) moveCursorToHeaderKey(key string) {
 }
 
 func (m *OutlinerModel) restoreSectionToggleFocus() bool {
-	anchor := m.sectionToggleRestore
-	m.sectionToggleRestore = nil
+	anchor := m.folds.takeSectionToggleAnchor()
 	if anchor == nil {
 		return false
 	}
@@ -164,7 +163,7 @@ func (m *OutlinerModel) clearAllFolds() bool {
 		return false
 	}
 	changed := m.setAllTaskFolds(true)
-	for _, collapsed := range m.collapsedSections {
+	for _, collapsed := range m.folds.collapsedSections {
 		if collapsed {
 			changed = true
 			break
@@ -173,8 +172,7 @@ func (m *OutlinerModel) clearAllFolds() bool {
 	if !changed {
 		return false
 	}
-	m.collapsedSections = make(map[string]bool)
-	m.sectionToggleRestore = nil
+	m.folds.clearSections()
 	anchor := m.captureModeCursor()
 	m.rebuildRows()
 	m.restoreModeCursor(anchor)
@@ -182,11 +180,7 @@ func (m *OutlinerModel) clearAllFolds() bool {
 }
 
 func (m *OutlinerModel) setSectionRowCollapsed(row outlinerRow, collapsed bool) {
-	key := row.effectiveCollapseKey()
-	if m.collapsedSections == nil {
-		m.collapsedSections = make(map[string]bool)
-	}
-	m.collapsedSections[key] = collapsed
+	m.folds.setSection(row.effectiveCollapseKey(), collapsed)
 }
 
 func (m *OutlinerModel) moveCursorToIdentity(identity taskref.TaskIdentity) bool {

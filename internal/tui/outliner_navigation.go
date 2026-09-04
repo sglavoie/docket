@@ -52,12 +52,12 @@ func (m *OutlinerModel) navigateToTask(task *models.Task) bool {
 	}
 
 	if bucket := theme.TaskStateGroupLabel(task); bucket != "" && m.project != nil {
-		delete(m.collapsedSections, bucket)
+		m.folds.clearSection(bucket)
 	}
 	m.clearSectionZoom()
 	m.ensureExpandedNodes()
 	for ancestor := task.Parent; ancestor != nil; ancestor = ancestor.Parent {
-		m.expandedNodes[taskref.TaskIdentity{ProjectID: projectID, TaskID: ancestor.ID}] = true
+		m.folds.setNode(taskref.TaskIdentity{ProjectID: projectID, TaskID: ancestor.ID}, true)
 	}
 	m.rebuildRows()
 
@@ -78,7 +78,7 @@ func (m *OutlinerModel) revealTask(task *models.Task) {
 		return
 	}
 
-	m.focusStack = nil
+	m.focus.clear()
 	m.clearSectionZoom()
 	m.clearSearchProjectionWithoutRestore()
 	// The row facets are replaced wholesale by what the target needs to be
@@ -138,12 +138,12 @@ func (m *OutlinerModel) NavigateToTaskInProject(task *models.Task, project *mode
 	}
 
 	section := effectiveDisplaySection(task)
-	delete(m.collapsedSections, "_xp:"+section)
-	m.crossFocusStack = nil
+	m.folds.clearSection("_xp:" + section)
+	m.focus.clearCross()
 	m.clearSectionZoom()
 	m.ensureExpandedNodes()
 	for ancestor := task.Parent; ancestor != nil; ancestor = ancestor.Parent {
-		m.expandedNodes[taskref.TaskIdentity{ProjectID: projectID, TaskID: ancestor.ID}] = true
+		m.folds.setNode(taskref.TaskIdentity{ProjectID: projectID, TaskID: ancestor.ID}, true)
 	}
 	m.rebuildRows()
 

@@ -15,10 +15,10 @@ const activeProjectsScopeLabel = "Active Projects"
 // crossProjectFocusContext returns the full project-qualified Focus path.
 // Width fitting belongs to the shared title renderer.
 func (m *OutlinerModel) crossProjectFocusContext() string {
-	if len(m.crossFocusStack) == 0 {
+	if len(m.focus.crossStack) == 0 {
 		return ""
 	}
-	top := m.crossFocusStack[len(m.crossFocusStack)-1]
+	top := m.focus.crossStack[len(m.focus.crossStack)-1]
 	project := m.crossResolveProject(top.ProjectID)
 	if project == nil {
 		return ""

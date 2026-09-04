@@ -28,12 +28,12 @@ func (m *OutlinerModel) capturePresentationSnapshot() outlinerSearchSnapshot {
 		filter:             copyFilterState(m.filter),
 		sort:               m.sort,
 		treeSort:           m.treeSort,
-		expandedNodes:      copyBoolMap(m.expandedNodes),
-		expandedChecklists: copyBoolMap(m.expandedChecklists),
-		collapsedSections:  copyBoolMap(m.collapsedSections),
-		focusStack:         slices.Clone(m.focusStack),
-		crossFocusStack:    slices.Clone(m.crossFocusStack),
-		zoom:               m.zoom,
+		expandedNodes:      copyBoolMap(m.folds.expandedNodes),
+		expandedChecklists: copyBoolMap(m.folds.expandedChecklists),
+		collapsedSections:  copyBoolMap(m.folds.collapsedSections),
+		focusStack:         slices.Clone(m.focus.stack),
+		crossFocusStack:    slices.Clone(m.focus.crossStack),
+		zoom:               m.focus.zoom,
 		cursor:             m.captureModeCursor(),
 	}
 }
@@ -48,12 +48,14 @@ func (m *OutlinerModel) restorePresentationSnapshot(snapshot outlinerSearchSnaps
 	m.filter = copyFilterState(snapshot.filter)
 	m.sort = snapshot.sort
 	m.treeSort = snapshot.treeSort
-	m.expandedNodes = copyBoolMap(snapshot.expandedNodes)
-	m.expandedChecklists = copyBoolMap(snapshot.expandedChecklists)
-	m.collapsedSections = copyBoolMap(snapshot.collapsedSections)
-	m.focusStack = slices.Clone(snapshot.focusStack)
-	m.crossFocusStack = slices.Clone(snapshot.crossFocusStack)
-	m.zoom = snapshot.zoom
+	m.folds.setNodes(copyBoolMap(snapshot.expandedNodes))
+	m.folds.setChecklists(copyBoolMap(snapshot.expandedChecklists))
+	m.folds.setSections(copyBoolMap(snapshot.collapsedSections))
+	m.focus.restore(
+		slices.Clone(snapshot.focusStack),
+		slices.Clone(snapshot.crossFocusStack),
+		snapshot.zoom,
+	)
 	// A captured frame is still carrier-shaped, so the restored facets enter
 	// through the one inverse lift and the narrowing predicate is rebuilt from
 	// them rather than left holding the frame that was replaced.

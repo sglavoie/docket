@@ -47,7 +47,7 @@ func TestToggleAllSubtreesFoldsEveryDescendantAndRestoresThem(t *testing.T) {
 	}
 
 	// A childless task has nothing to fold, so it never earns an entry.
-	if _, exists := outliner.expandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: tasks["loner"].ID}]; exists {
+	if _, exists := outliner.folds.expandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: tasks["loner"].ID}]; exists {
 		t.Error("a childless task gained a fold entry")
 	}
 
@@ -57,8 +57,8 @@ func TestToggleAllSubtreesFoldsEveryDescendantAndRestoresThem(t *testing.T) {
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{"parent", "child", "grandchild", "loner"}) {
 		t.Fatalf("restored rows = %v, want the whole tree back", got)
 	}
-	if len(outliner.expandedNodes) != 0 {
-		t.Errorf("the restoring press left %d fold entries, want the canonical empty map", len(outliner.expandedNodes))
+	if len(outliner.folds.expandedNodes) != 0 {
+		t.Errorf("the restoring press left %d fold entries, want the canonical empty map", len(outliner.folds.expandedNodes))
 	}
 }
 
@@ -69,7 +69,7 @@ func TestToggleAllSubtreesUnfoldsWhenAnySingleSubtreeIsFolded(t *testing.T) {
 
 	// Fold the inner node only, leaving its parent expanded — the mixed state a
 	// direction rule keyed on "all folded" would read the wrong way.
-	outliner.expandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: tasks["child"].ID}] = false
+	outliner.folds.expandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: tasks["child"].ID}] = false
 	outliner.rebuildRows()
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{"parent", "child", "loner"}) {
 		t.Fatalf("hand-folded rows = %v, want the grandchild hidden and the rest visible", got)
@@ -81,8 +81,8 @@ func TestToggleAllSubtreesUnfoldsWhenAnySingleSubtreeIsFolded(t *testing.T) {
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{"parent", "child", "grandchild", "loner"}) {
 		t.Fatalf("rows after the press = %v, want everything unfolded", got)
 	}
-	if len(outliner.expandedNodes) != 0 {
-		t.Errorf("unfolding left %d fold entries, want the canonical empty map", len(outliner.expandedNodes))
+	if len(outliner.folds.expandedNodes) != 0 {
+		t.Errorf("unfolding left %d fold entries, want the canonical empty map", len(outliner.folds.expandedNodes))
 	}
 }
 
@@ -120,7 +120,7 @@ func TestToggleAllSubtreesLeavesTheOtherFoldAxesAlone(t *testing.T) {
 	outliner, project, tasks := foldAllProject(t)
 
 	checklistOwner := taskref.TaskIdentity{ProjectID: project.ID, TaskID: tasks["parent"].ID}
-	outliner.setChecklistExpanded(checklistOwner, true)
+	outliner.folds.setChecklist(checklistOwner, true)
 	headers := outliner.visibleSectionHeaders()
 	if len(headers) == 0 {
 		t.Fatal("All mode emitted no section headers")
@@ -128,17 +128,17 @@ func TestToggleAllSubtreesLeavesTheOtherFoldAxesAlone(t *testing.T) {
 	outliner.setSectionRowCollapsed(headers[0], true)
 	outliner.rebuildRows()
 
-	sectionsBefore := maps.Clone(outliner.collapsedSections)
-	checklistsBefore := maps.Clone(outliner.expandedChecklists)
+	sectionsBefore := maps.Clone(outliner.folds.collapsedSections)
+	checklistsBefore := maps.Clone(outliner.folds.expandedChecklists)
 
 	outliner.toggleAllSubtrees()
 	outliner.toggleAllSubtrees()
 
-	if !maps.Equal(outliner.collapsedSections, sectionsBefore) {
-		t.Errorf("the subtree toggle rewrote sections: got %v, want %v", outliner.collapsedSections, sectionsBefore)
+	if !maps.Equal(outliner.folds.collapsedSections, sectionsBefore) {
+		t.Errorf("the subtree toggle rewrote sections: got %v, want %v", outliner.folds.collapsedSections, sectionsBefore)
 	}
-	if !maps.Equal(outliner.expandedChecklists, checklistsBefore) {
-		t.Errorf("the subtree toggle rewrote checklists: got %v, want %v", outliner.expandedChecklists, checklistsBefore)
+	if !maps.Equal(outliner.folds.expandedChecklists, checklistsBefore) {
+		t.Errorf("the subtree toggle rewrote checklists: got %v, want %v", outliner.folds.expandedChecklists, checklistsBefore)
 	}
 }
 
@@ -152,7 +152,7 @@ func TestToggleAllSubtreesReportsWithoutAFoldableSubtree(t *testing.T) {
 	if outliner.toggleAllSubtrees() {
 		t.Fatal("a flat view reported a subtree fold")
 	}
-	if len(outliner.expandedNodes) != 0 {
-		t.Errorf("a refused press wrote %d fold entries, want none", len(outliner.expandedNodes))
+	if len(outliner.folds.expandedNodes) != 0 {
+		t.Errorf("a refused press wrote %d fold entries, want none", len(outliner.folds.expandedNodes))
 	}
 }

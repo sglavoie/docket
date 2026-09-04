@@ -371,7 +371,7 @@ func TestPrimaryModeMembershipHierarchyOrderingAndQualifiedRows(t *testing.T) {
 		t.Fatalf("nested Next rows = parent %+v found=%t child %+v found=%t", parentRow, parentFound, childRow, childFound)
 	}
 
-	outliner.expandedNodes[taskref.TaskIdentity{ProjectID: alpha.ID, TaskID: alphaNext.ID}] = false
+	outliner.folds.expandedNodes[taskref.TaskIdentity{ProjectID: alpha.ID, TaskID: alphaNext.ID}] = false
 	outliner.rebuildRows()
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{alphaNext.ID, betaNext.ID}) {
 		t.Fatalf("collapsed Next rows = %v, want nested child hidden", got)

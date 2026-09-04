@@ -20,36 +20,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
-// FocusEntry is the retained internal focus-frame representation. It records
-// the complete viewport state needed to restore the parent view exactly.
-type FocusEntry struct {
-	TaskID       string // UUID of the task that was focused
-	CursorIndex  int    // Cursor position at the moment of focus
-	ScrollOffset int    // Persistent viewport offset at the moment of focus
-}
-
-// CrossProjectFocusEntry records the state at a single focus level for the
-// cross-project outliner. It extends FocusEntry with a ProjectID field to
-// scope focus resolution to the correct project, preventing UUID collisions
-// across projects from causing incorrect focus resolution.
-type CrossProjectFocusEntry struct {
-	TaskID       string // UUID of the task that was focused
-	ProjectID    string // ID of the project owning the task
-	CursorIndex  int    // Cursor position at the moment of focus
-	ScrollOffset int    // Persistent viewport offset at the moment of focus
-}
-
-// sectionZoom narrows the Outliner to one section of the active mode, plus the
-// viewport Esc restores. A zero value means no zoom.
-type sectionZoom struct {
-	key    string // Collapse key of the zoomed section
-	name   string // Display name, for chrome only
-	cursor int    // Cursor row the zoom was entered from
-	scroll int    // Persistent viewport offset the zoom was entered from
-}
-
-func (z sectionZoom) active() bool { return z.key != "" }
-
 // OutlinerModel is the outliner view for navigating tasks in a hierarchical,
 // focusable tree. It is the sole per-project primary view and implements the
 // View interface as a standalone struct, owning its own navigation semantics,
@@ -68,10 +38,12 @@ type OutlinerModel struct {
 
 	project *models.Project
 
-	focusStack      []FocusEntry             // Focus stack for single-project mode
-	crossFocusStack []CrossProjectFocusEntry // Focus stack for cross-project mode (m.project == nil)
-	focusNotice     string                   // Transient message shown when focus target is removed
-	zoom            sectionZoom              // Section the projection is narrowed to; zero when none
+	// focus is both focus stacks, the section zoom, and the one-shot notice a
+	// stack that stopped resolving leaves behind. Like the readout, the menu bar,
+	// the population and the search below it, it is a named field rather than
+	// promoted ones — outliner_focus_state.go owns the cluster, and the Esc
+	// ladder and every wholesale reset reach each narrowing through m.focus.
+	focus focusState
 
 	rows []outlinerRow // Flattened rows, rebuilt on each render
 	// lastViewport is the window the last render actually drew. zt/zz/zb read it
@@ -96,17 +68,12 @@ type OutlinerModel struct {
 	// clear the other, and a change here needs a reload rather than a rebuild.
 	projectFilter query.ProjectFilterState
 
-	expandedNodes     map[taskref.TaskIdentity]bool // Project-qualified fold state: true=expanded (default all expanded)
-	collapsedSections map[string]bool               // Section collapse state for All mode
-	// expandedChecklists is the project-qualified checklist fold state, and it
-	// defaults to collapsed: an absent key hides the owner's items. It is
-	// deliberately separate from expandedNodes, which defaults to expanded, and
-	// from collapsedSections, whose string keys are shared with grouping headers
-	// and are never cleared on a mode change.
-	expandedChecklists map[taskref.TaskIdentity]bool
-	// sectionToggleRestore preserves a task focus across one S-driven
-	// collapse/expand cycle. It is deliberately session-only.
-	sectionToggleRestore *sectionToggleRestoreAnchor
+	// folds is the three fold maps — task subtrees, sections and project groups,
+	// checklists — and the anchor an s-driven collapse leaves for the expansion
+	// that follows it. Their polarities and key spaces disagree deliberately, so
+	// outliner_fold_state.go names them together rather than merging them, and
+	// clearAllFolds is one act over three axes through m.folds.
+	folds foldState
 
 	// relocationHistory is a session-only Vim-style jump list for task updates
 	// that automatically move the followed task to another visible row.
@@ -244,15 +211,6 @@ type OutlinerModel struct {
 	// operationRegistry projects help, handled keys, and footer hints from the
 	// same operation metadata used by shell dispatch.
 	operationRegistry *operation.OperationRegistry
-
-	// workspacePulse mirrors AppModel.workspacePulse for the title-row
-	// operational counter.
-	workspacePulse pulse.WorkspacePulse
-}
-
-// SetWorkspacePulse injects the latest cross-project operational counts.
-func (m *OutlinerModel) SetWorkspacePulse(workspacePulse pulse.WorkspacePulse) {
-	m.workspacePulse = workspacePulse
 }
 
 func (m *OutlinerModel) resetViewScrollOffset() {
@@ -279,22 +237,20 @@ func (m *OutlinerModel) getCursorTask() *models.Task {
 // NewOutlinerModel creates a new OutlinerModel for the given project.
 func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runtime *config.RuntimeState) *OutlinerModel {
 	m := &OutlinerModel{
-		runtime:            runtime,
-		configManager:      cfgManager,
-		projectService:     coordinator.NewProjectService(),
-		quickEdit:          grammar.NewQuickEditComponent(),
-		project:            project,
-		primaryMode:        chrome.ModeAll,
-		expandedNodes:      make(map[taskref.TaskIdentity]bool),
-		collapsedSections:  make(map[string]bool),
-		expandedChecklists: make(map[taskref.TaskIdentity]bool),
-		filter:             query.NewFilterState(),
-		projectFilter:      query.NewProjectFilterState(),
-		sort:               query.NewSortState(),
-		treeSort:           query.NewSortState(),
-		MultiSelectState:   listsurface.MultiSelectState{Selected: make(map[taskref.TaskIdentity]bool)},
-		columnConfig:       listsurface.NewColumnConfig(nil, nil, listsurface.DefaultOutlinerColumns),
+		runtime:          runtime,
+		configManager:    cfgManager,
+		projectService:   coordinator.NewProjectService(),
+		quickEdit:        grammar.NewQuickEditComponent(),
+		project:          project,
+		primaryMode:      chrome.ModeAll,
+		filter:           query.NewFilterState(),
+		projectFilter:    query.NewProjectFilterState(),
+		sort:             query.NewSortState(),
+		treeSort:         query.NewSortState(),
+		MultiSelectState: listsurface.MultiSelectState{Selected: make(map[taskref.TaskIdentity]bool)},
+		columnConfig:     listsurface.NewColumnConfig(nil, nil, listsurface.DefaultOutlinerColumns),
 	}
+	m.folds.resetAll()
 	m.InitSearchInput("Search tasks...", 100, 30)
 	return m
 }

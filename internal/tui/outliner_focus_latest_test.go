@@ -92,18 +92,18 @@ func TestFocusLatestActivityOpensOnlyTheFoldsHidingTheTarget(t *testing.T) {
 
 	todayKey := canonicalModeCollapseKey(chrome.ModeRecent, "today")
 	yesterdayKey := canonicalModeCollapseKey(chrome.ModeRecent, "yesterday")
-	outliner.collapsedSections[todayKey] = true
-	outliner.collapsedSections[yesterdayKey] = true
+	outliner.folds.collapsedSections[todayKey] = true
+	outliner.folds.collapsedSections[yesterdayKey] = true
 
 	outliner.focusLatestActivity()
 
 	if got := cursorTaskID(outliner); got != today.ID {
 		t.Fatalf("cursor task = %q, want %q", got, today.ID)
 	}
-	if outliner.collapsedSections[todayKey] {
+	if outliner.folds.collapsedSections[todayKey] {
 		t.Error("the section hiding the newest task stayed collapsed")
 	}
-	if !outliner.collapsedSections[yesterdayKey] {
+	if !outliner.folds.collapsedSections[yesterdayKey] {
 		t.Error("a fold that hid nothing was opened")
 	}
 }

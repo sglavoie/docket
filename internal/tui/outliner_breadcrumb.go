@@ -10,10 +10,10 @@ import (
 // belongs to the operational-title renderer so pulse components can yield
 // before this active interaction context is shortened.
 func (m *OutlinerModel) projectFocusContext() string {
-	if len(m.focusStack) == 0 || m.project == nil {
+	if len(m.focus.stack) == 0 || m.project == nil {
 		return ""
 	}
-	task := m.project.GetTaskByID(m.focusStack[len(m.focusStack)-1].TaskID)
+	task := m.project.GetTaskByID(m.focus.stack[len(m.focus.stack)-1].TaskID)
 	if task == nil {
 		return ""
 	}

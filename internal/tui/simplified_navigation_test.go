@@ -124,7 +124,7 @@ func TestProjectHeadersCollapseAndExpandWithHorizontalNavigation(t *testing.T) {
 			if handled, _ := app.handleGlobalKeyPress(collapseMsg); !handled {
 				t.Fatalf("collapse key %q was not handled", keys.collapse)
 			}
-			if !outliner.collapsedSections[collapseKey] {
+			if !outliner.folds.collapsedSections[collapseKey] {
 				t.Fatalf("collapse key %q was not recorded", collapseKey)
 			}
 			if findTaskRow(outliner.rows, "alpha-task") >= 0 {
@@ -141,7 +141,7 @@ func TestProjectHeadersCollapseAndExpandWithHorizontalNavigation(t *testing.T) {
 			if handled, _ := app.handleGlobalKeyPress(expandMsg); !handled {
 				t.Fatalf("expand key %q was not handled", keys.expand)
 			}
-			if outliner.collapsedSections[collapseKey] {
+			if outliner.folds.collapsedSections[collapseKey] {
 				t.Fatalf("expand key %q did not clear collapse key %q", keys.expand, collapseKey)
 			}
 			if findTaskRow(outliner.rows, "alpha-task") < 0 {
@@ -185,7 +185,7 @@ func TestSimplifiedShiftEnterPeekRendersAtEveryWidth(t *testing.T) {
 			t.Fatalf("width %d Ctrl+Enter Peek missing selected task tags:\n%s", width, plain)
 		}
 	}
-	if len(app.crossOutliner.crossFocusStack) != 0 || len(app.crossOutliner.focusStack) != 0 {
+	if len(app.crossOutliner.focus.crossStack) != 0 || len(app.crossOutliner.focus.stack) != 0 {
 		t.Fatal("Ctrl+Enter unexpectedly changed task Focus")
 	}
 }
@@ -411,7 +411,7 @@ func TestSimplifiedCaptureFollowsTaskFocus(t *testing.T) {
 		{IsProjectHeader: true, ProjectID: inbox.ID},
 	}
 	shell.crossOutliner.Cursor = 0
-	shell.crossOutliner.crossFocusStack = []CrossProjectFocusEntry{
+	shell.crossOutliner.focus.crossStack = []CrossProjectFocusEntry{
 		{ProjectID: project.ID, TaskID: story.ID},
 	}
 

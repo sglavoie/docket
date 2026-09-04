@@ -244,7 +244,7 @@ func TestOutlinerPinnedOrderJK(t *testing.T) {
 		m, cross, _ := newPlanningOrderApp(t, project)
 		cross.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 		enterCrossMode(cross, chrome.ModeAll)
-		cross.expandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: tasks["Parent"].ID}] = false
+		cross.folds.expandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: tasks["Parent"].ID}] = false
 		cross.population.invalidate()
 		cross.crossProjectRebuildRows()
 		if got := visibleTaskTitles(cross); !slices.Equal(got, []string{"Other Root", "Parent"}) {

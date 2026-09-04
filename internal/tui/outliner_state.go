@@ -2,6 +2,7 @@ package tui
 
 import (
 	"maps"
+	"slices"
 
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -23,14 +24,14 @@ func (m *OutlinerModel) SaveToggleState() *OutlinerToggleState {
 	}
 
 	var focusCopy []FocusEntry
-	if len(m.focusStack) > 0 {
-		focusCopy = make([]FocusEntry, len(m.focusStack))
-		copy(focusCopy, m.focusStack)
+	if len(m.focus.stack) > 0 {
+		focusCopy = make([]FocusEntry, len(m.focus.stack))
+		copy(focusCopy, m.focus.stack)
 	}
 
 	return &OutlinerToggleState{
-		CollapsedSections: copyBoolMap(m.collapsedSections),
-		ExpandedNodes:     copyBoolMap(m.expandedNodes),
+		CollapsedSections: copyBoolMap(m.folds.collapsedSections),
+		ExpandedNodes:     copyBoolMap(m.folds.expandedNodes),
 		CursorTaskID:      cursorTaskID,
 		FocusStack:        focusCopy,
 	}
@@ -42,11 +43,10 @@ func (m *OutlinerModel) RestoreToggleState(state *OutlinerToggleState) {
 		return
 	}
 
-	m.collapsedSections = copyBoolMap(state.CollapsedSections)
-	m.expandedNodes = copyBoolMap(state.ExpandedNodes)
+	m.folds.setSections(copyBoolMap(state.CollapsedSections))
+	m.folds.setNodes(copyBoolMap(state.ExpandedNodes))
 	if len(state.FocusStack) > 0 {
-		m.focusStack = make([]FocusEntry, len(state.FocusStack))
-		copy(m.focusStack, state.FocusStack)
+		m.focus.setStack(slices.Clone(state.FocusStack))
 	}
 	m.rebuildRows()
 	if state.CursorTaskID != "" {

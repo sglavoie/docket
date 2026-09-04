@@ -96,10 +96,10 @@ func TestCrossProjectFocusShowsDescendantsAndRestoresNestedViewport(t *testing.T
 	if visible[root.ID] || visible[sibling.ID] || !visible[child.ID] || !visible[grandchild.ID] {
 		t.Fatalf("root Focus rows = %v, want descendants only", visible)
 	}
-	if len(out.crossFocusStack) != 1 || out.crossFocusStack[0].ProjectID != project.ID ||
-		out.crossFocusStack[0].TaskID != root.ID || out.crossFocusStack[0].CursorIndex != rootCursor ||
-		out.crossFocusStack[0].ScrollOffset != 4 {
-		t.Fatalf("root Focus frame = %+v", out.crossFocusStack)
+	if len(out.focus.crossStack) != 1 || out.focus.crossStack[0].ProjectID != project.ID ||
+		out.focus.crossStack[0].TaskID != root.ID || out.focus.crossStack[0].CursorIndex != rootCursor ||
+		out.focus.crossStack[0].ScrollOffset != 4 {
+		t.Fatalf("root Focus frame = %+v", out.focus.crossStack)
 	}
 	if got := out.crossProjectFocusContext(); got != "Focus: [Project] › Root" {
 		t.Fatalf("root Focus context = %q", got)
@@ -202,8 +202,8 @@ func TestFocusParentWidensOneLevelAndClimbsOutOfFocus(t *testing.T) {
 
 			assertStack := func(step string) {
 				t.Helper()
-				got := make([]string, 0, len(out.crossFocusStack))
-				for _, frame := range out.crossFocusStack {
+				got := make([]string, 0, len(out.focus.crossStack))
+				for _, frame := range out.focus.crossStack {
 					got = append(got, frame.TaskID)
 				}
 				if !slices.Equal(got, test.wantStack) {
@@ -226,8 +226,8 @@ func TestFocusParentWidensOneLevelAndClimbsOutOfFocus(t *testing.T) {
 			out.population.invalidate()
 			out.crossProjectRebuildRows()
 			assertStack("after rebuild")
-			if out.focusNotice != "" {
-				t.Fatalf("rebuild rejected the widened stack: %q", out.focusNotice)
+			if out.focus.notice != "" {
+				t.Fatalf("rebuild rejected the widened stack: %q", out.focus.notice)
 			}
 		})
 	}
@@ -249,8 +249,8 @@ func TestFocusParentClimbsTheAncestorChainAndLeavesFocus(t *testing.T) {
 		if !out.focusParentAtCursor() {
 			t.Fatalf("Focus Parent refused while climbing toward %v", want)
 		}
-		got := make([]string, 0, len(out.crossFocusStack))
-		for _, frame := range out.crossFocusStack {
+		got := make([]string, 0, len(out.focus.crossStack))
+		for _, frame := range out.focus.crossStack {
 			got = append(got, frame.TaskID)
 		}
 		if !slices.Equal(got, want) {
@@ -259,8 +259,8 @@ func TestFocusParentClimbsTheAncestorChainAndLeavesFocus(t *testing.T) {
 	}
 	// Leaving Focus restores the base projection, where the next press is an
 	// ordinary entry on the cursor's parent rather than a further climb.
-	if !out.focusParentAtCursor() || len(out.crossFocusStack) != 1 ||
-		out.crossFocusStack[0].TaskID != child.ID {
-		t.Fatalf("press after leaving Focus = %+v, want a fresh parent Focus", out.crossFocusStack)
+	if !out.focusParentAtCursor() || len(out.focus.crossStack) != 1 ||
+		out.focus.crossStack[0].TaskID != child.ID {
+		t.Fatalf("press after leaving Focus = %+v, want a fresh parent Focus", out.focus.crossStack)
 	}
 }

@@ -11,7 +11,7 @@ import (
 // sufficient: an inline edit can reparent a nested Focus root while leaving its
 // task ID alive, and keeping that frame would escape the branch above it.
 func (m *OutlinerModel) validateCrossFocusStack() {
-	if len(m.crossFocusStack) == 0 {
+	if len(m.focus.crossStack) == 0 {
 		return
 	}
 
@@ -22,10 +22,10 @@ func (m *OutlinerModel) validateCrossFocusStack() {
 		}
 	}
 
-	invalidIndex := len(m.crossFocusStack)
+	invalidIndex := len(m.focus.crossStack)
 	var previous *models.Task
 	previousProjectID := ""
-	for index, entry := range m.crossFocusStack {
+	for index, entry := range m.focus.crossStack {
 		project := projects[entry.ProjectID]
 		task := (*models.Task)(nil)
 		if project != nil {
@@ -39,27 +39,27 @@ func (m *OutlinerModel) validateCrossFocusStack() {
 		previous = task
 		previousProjectID = entry.ProjectID
 	}
-	if invalidIndex == len(m.crossFocusStack) {
+	if invalidIndex == len(m.focus.crossStack) {
 		return
 	}
 
-	restore := m.crossFocusStack[invalidIndex]
+	restore := m.focus.crossStack[invalidIndex]
 	m.Cursor = restore.CursorIndex
 	m.ViewScrollOffset = restore.ScrollOffset
-	m.crossFocusStack = m.crossFocusStack[:invalidIndex]
+	m.focus.truncateCross(invalidIndex)
 	m.setFocusRecoveryNotice(invalidIndex)
 }
 
 // validateFocusStack applies the same contiguous-branch rule to the
 // single-project stack.
 func (m *OutlinerModel) validateFocusStack() {
-	if m.project == nil || len(m.focusStack) == 0 {
+	if m.project == nil || len(m.focus.stack) == 0 {
 		return
 	}
 
-	invalidIndex := len(m.focusStack)
+	invalidIndex := len(m.focus.stack)
 	var previous *models.Task
-	for index, entry := range m.focusStack {
+	for index, entry := range m.focus.stack {
 		task := m.project.GetTaskByID(entry.TaskID)
 		if task == nil || (index > 0 && !focusTaskDescendsFrom(m.project, task, previous.ID)) {
 			invalidIndex = index
@@ -67,14 +67,14 @@ func (m *OutlinerModel) validateFocusStack() {
 		}
 		previous = task
 	}
-	if invalidIndex == len(m.focusStack) {
+	if invalidIndex == len(m.focus.stack) {
 		return
 	}
 
-	restore := m.focusStack[invalidIndex]
+	restore := m.focus.stack[invalidIndex]
 	m.Cursor = restore.CursorIndex
 	m.ViewScrollOffset = restore.ScrollOffset
-	m.focusStack = m.focusStack[:invalidIndex]
+	m.focus.truncate(invalidIndex)
 	m.setFocusRecoveryNotice(invalidIndex)
 }
 
@@ -104,7 +104,7 @@ func (m *OutlinerModel) setFocusRecoveryNotice(retainedDepth int) {
 	if retainedDepth > 0 {
 		destination = "parent"
 	}
-	m.focusNotice = "Focus target left this branch — returned to " + destination
+	m.focus.setNotice("Focus target left this branch — returned to " + destination)
 }
 
 // rebuildRows flattens the current task tree into the rows slice, applying the

@@ -191,7 +191,7 @@ func (m *OutlinerModel) appendPlanningModeRows(
 	// Today and Next render their planning body ungrouped, under no header of
 	// their own, so no zoom key can ever name it. Today's Pinned section is the
 	// one zoom reachable here and it must leave the body out entirely.
-	if m.zoom.active() {
+	if m.focus.zoom.active() {
 		return
 	}
 	var modeRows []OutlinerModeRow

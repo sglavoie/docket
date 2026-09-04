@@ -153,7 +153,7 @@ func TestPinnedProjectHeadersCollapseIndependently(t *testing.T) {
 	if !outliner.collapseOrMoveToParent() {
 		t.Fatal("left on Pinned project header did not collapse the group")
 	}
-	if !outliner.collapsedSections[collapseKey] {
+	if !outliner.folds.collapsedSections[collapseKey] {
 		t.Fatalf("Pinned group collapse key %q was not recorded", collapseKey)
 	}
 	if countTaskRowsForIdentity(outliner, taskref.TaskIdentity{ProjectID: alpha.ID, TaskID: alphaTask.ID}) != 0 {
@@ -166,7 +166,7 @@ func TestPinnedProjectHeadersCollapseIndependently(t *testing.T) {
 	if !outliner.expandAtCursor() {
 		t.Fatal("right on Pinned project header did not expand the group")
 	}
-	if outliner.collapsedSections[collapseKey] {
+	if outliner.folds.collapsedSections[collapseKey] {
 		t.Fatalf("Pinned group collapse key %q remained set after expansion", collapseKey)
 	}
 	if countTaskRowsForIdentity(outliner, taskref.TaskIdentity{ProjectID: alpha.ID, TaskID: alphaTask.ID}) != 1 {
@@ -203,7 +203,7 @@ func TestPinnedSectionRanksSubtreesByRootPinOrder(t *testing.T) {
 			parentRow, parentFound, childRow, childFound)
 	}
 
-	outliner.expandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: parent.ID}] = false
+	outliner.folds.expandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: parent.ID}] = false
 	outliner.rebuildRows()
 	if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{other.ID, parent.ID}) {
 		t.Fatalf("collapsed Pinned rows = %v, want nested child hidden", got)

@@ -68,14 +68,14 @@ func (m *OutlinerModel) focusParentAtCursor() bool {
 // owns, retaining the cursor and scroll offset Esc restores.
 func (m *OutlinerModel) pushFocusFrame(identity taskref.TaskIdentity, cursorIndex, scrollOffset int) {
 	if m.project != nil {
-		m.focusStack = append(m.focusStack, FocusEntry{
+		m.focus.push(FocusEntry{
 			TaskID:       identity.TaskID,
 			CursorIndex:  cursorIndex,
 			ScrollOffset: scrollOffset,
 		})
 		return
 	}
-	m.crossFocusStack = append(m.crossFocusStack, CrossProjectFocusEntry{
+	m.focus.pushCross(CrossProjectFocusEntry{
 		TaskID:       identity.TaskID,
 		ProjectID:    identity.ProjectID,
 		CursorIndex:  cursorIndex,
@@ -111,14 +111,10 @@ func (m *OutlinerModel) climbFocusLevel() {
 // viewport it retained. popFocusLevel is Esc's inverse of Enter and rebuilds;
 // the climb needs the frame gone before it decides what to push in its place.
 func (m *OutlinerModel) popFocusFrame() (cursorIndex, scrollOffset int) {
-	if len(m.focusStack) > 0 {
-		top := m.focusStack[len(m.focusStack)-1]
-		m.focusStack = m.focusStack[:len(m.focusStack)-1]
+	if top, popped := m.focus.pop(); popped {
 		return top.CursorIndex, top.ScrollOffset
 	}
-	if len(m.crossFocusStack) > 0 {
-		top := m.crossFocusStack[len(m.crossFocusStack)-1]
-		m.crossFocusStack = m.crossFocusStack[:len(m.crossFocusStack)-1]
+	if top, popped := m.focus.popCross(); popped {
 		m.population.invalidate()
 		return top.CursorIndex, top.ScrollOffset
 	}
@@ -134,11 +130,11 @@ func (m *OutlinerModel) focusRootIdentity() (taskref.TaskIdentity, bool) {
 	}
 	var identity taskref.TaskIdentity
 	switch {
-	case len(m.crossFocusStack) > 0:
-		top := m.crossFocusStack[len(m.crossFocusStack)-1]
+	case len(m.focus.crossStack) > 0:
+		top := m.focus.crossStack[len(m.focus.crossStack)-1]
 		identity = taskref.TaskIdentity{ProjectID: top.ProjectID, TaskID: top.TaskID}
-	case m.project != nil && len(m.focusStack) > 0:
-		top := m.focusStack[len(m.focusStack)-1]
+	case m.project != nil && len(m.focus.stack) > 0:
+		top := m.focus.stack[len(m.focus.stack)-1]
 		identity = taskref.TaskIdentity{ProjectID: m.project.ID, TaskID: top.TaskID}
 	default:
 		return taskref.TaskIdentity{}, false
@@ -152,17 +148,13 @@ func (m *OutlinerModel) popFocusLevel() bool {
 	if m == nil {
 		return false
 	}
-	if len(m.focusStack) > 0 {
-		top := m.focusStack[len(m.focusStack)-1]
-		m.focusStack = m.focusStack[:len(m.focusStack)-1]
+	if top, popped := m.focus.pop(); popped {
 		m.Cursor = top.CursorIndex
 		m.ViewScrollOffset = top.ScrollOffset
 		m.rebuildRows()
 		return true
 	}
-	if len(m.crossFocusStack) > 0 {
-		top := m.crossFocusStack[len(m.crossFocusStack)-1]
-		m.crossFocusStack = m.crossFocusStack[:len(m.crossFocusStack)-1]
+	if top, popped := m.focus.popCross(); popped {
 		m.Cursor = top.CursorIndex
 		m.ViewScrollOffset = top.ScrollOffset
 		m.population.invalidate()
@@ -183,15 +175,10 @@ func (m *OutlinerModel) enterSectionZoom(row outlinerRow) bool {
 		return false
 	}
 	key := row.effectiveCollapseKey()
-	if m.zoom.key == key {
+	if m.focus.zoom.key == key {
 		return true
 	}
-	m.zoom = sectionZoom{
-		key:    key,
-		name:   row.SectionName,
-		cursor: m.Cursor,
-		scroll: m.ViewScrollOffset,
-	}
+	m.focus.enterZoom(key, row.SectionName, m.Cursor, m.ViewScrollOffset)
 	m.peekMode = false
 	m.population.invalidate()
 	m.rebuildRows()
@@ -203,11 +190,10 @@ func (m *OutlinerModel) enterSectionZoom(row outlinerRow) bool {
 // was entered from. Work completed inside the zoom can have shortened the list
 // that cursor was taken against, so the restore clamps.
 func (m *OutlinerModel) exitSectionZoom() bool {
-	if m == nil || !m.zoom.active() {
+	if m == nil || !m.focus.zoom.active() {
 		return false
 	}
-	cursor, scroll := m.zoom.cursor, m.zoom.scroll
-	m.zoom = sectionZoom{}
+	cursor, scroll := m.focus.exitZoom()
 	m.Cursor = cursor
 	m.ViewScrollOffset = scroll
 	m.population.invalidate()
@@ -222,10 +208,10 @@ func (m *OutlinerModel) exitSectionZoom() bool {
 // set here rather than left to the fingerprint so every clear invalidates the
 // cross-project memoization guard the same way a scope push does.
 func (m *OutlinerModel) clearSectionZoom() {
-	if m == nil || !m.zoom.active() {
+	if m == nil || !m.focus.zoom.active() {
 		return
 	}
-	m.zoom = sectionZoom{}
+	m.focus.clearZoom()
 	m.population.invalidate()
 }
 

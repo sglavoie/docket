@@ -229,7 +229,10 @@ rather than writing one, which is what lets a collapsed section zoom open and
 stay collapsed after `Esc`, and is why `h` and `s` refuse on the zoomed header
 instead of persisting a fold with no visible effect. A zoom is a single
 snapshotted value, not a stack: `pushProjectScope` clears it exactly as it
-clears `crossFocusStack`, and the scope frame carries it back on the pop. An
+clears `focus.crossStack`, and the scope frame carries it back on the pop — one
+`focus.restore` writes both stacks and the zoom together, because unwinding one
+without the others would leave the view narrowed by a remnant of the frame it
+thought it had left. An
 emptied zoom is left standing, because auto-unwinding would move the world under
 a user who has just completed the last task they were looking at.
 

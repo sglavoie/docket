@@ -6,14 +6,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
-// sectionToggleRestoreAnchor identifies a task temporarily hidden by an
-// s-driven all-section collapse. The next s-driven expansion restores focus to
-// it when the task remains visible in the active view.
-type sectionToggleRestoreAnchor struct {
-	task       taskref.TaskIdentity
-	sectionKey string
-}
-
 // collapseOrMoveToParent gives h/Left one deterministic tree behavior: collapse
 // an expanded section, project header, checklist, or task first; otherwise move
 // to the visible parent task. A checklist row is one rung further down, so it
@@ -42,14 +34,14 @@ func (m *OutlinerModel) collapseOrMoveToParent() bool {
 
 	identity := m.taskIdentityForRow(row)
 	if m.isChecklistExpanded(identity) {
-		m.setChecklistExpanded(identity, false)
+		m.folds.setChecklist(identity, false)
 		m.rebuildRows()
 		m.moveCursorToIdentity(identity)
 		return true
 	}
 	if row.hasVisibleChildren && m.isExpanded(identity) {
 		m.ensureExpandedNodes()
-		m.expandedNodes[identity] = false
+		m.folds.setNode(identity, false)
 		m.rebuildRows()
 		m.moveCursorToIdentity(identity)
 		return true
@@ -96,7 +88,7 @@ func (m *OutlinerModel) expandAtCursor() bool {
 	identity := m.taskIdentityForRow(row)
 	if row.hasVisibleChildren && !m.isExpanded(identity) {
 		m.ensureExpandedNodes()
-		m.expandedNodes[identity] = true
+		m.folds.setNode(identity, true)
 		m.rebuildRows()
 		m.moveCursorToIdentity(identity)
 		return true
@@ -104,7 +96,7 @@ func (m *OutlinerModel) expandAtCursor() bool {
 	if len(row.task.Checklist) == 0 || m.isChecklistExpanded(identity) {
 		return false
 	}
-	m.setChecklistExpanded(identity, true)
+	m.folds.setChecklist(identity, true)
 	m.rebuildRows()
 	m.moveCursorToIdentity(identity)
 	return true
@@ -145,7 +137,7 @@ func (m *OutlinerModel) moveCursorToAdjacentHeader(delta int) (tea.Cmd, bool) {
 // its fold, so the bulk toggle refuses there instead of writing a fold nothing
 // shows.
 func (m *OutlinerModel) toggleVisibleSections() bool {
-	if m == nil || m.zoom.active() {
+	if m == nil || m.focus.zoom.active() {
 		return false
 	}
 	headers := m.visibleSectionHeaders()
@@ -169,13 +161,13 @@ func (m *OutlinerModel) toggleVisibleSections() bool {
 		selectedHeaderKey = m.rows[m.Cursor].effectiveCollapseKey()
 	}
 	if allExpanded {
-		m.sectionToggleRestore = nil
+		m.folds.setSectionToggleAnchor(nil)
 		if header, containsCursor := m.topLevelSectionAtCursor(headerKeys); containsCursor {
 			if row := m.rows[m.Cursor]; row.isTaskRow() && row.task != nil {
-				m.sectionToggleRestore = &sectionToggleRestoreAnchor{
+				m.folds.setSectionToggleAnchor(&sectionToggleRestoreAnchor{
 					task:       m.taskIdentityForRow(row),
 					sectionKey: header.effectiveCollapseKey(),
-				}
+				})
 			}
 			for _, section := range headers {
 				m.setSectionRowCollapsed(section, true)
@@ -216,7 +208,7 @@ func (m *OutlinerModel) toggleVisibleSections() bool {
 //
 // It diverges from toggleVisibleSections twice, deliberately:
 //
-// No zoom refusal. sectionCollapsed exempts only m.zoom.key, which is always a
+// No zoom refusal. sectionCollapsed exempts only m.focus.zoom.key, which is always a
 // section key, and an admitted section still emits its project headers — so
 // under a zoom p folds rows that are genuinely on screen. Refusing would be a
 // lie.

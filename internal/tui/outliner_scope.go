@@ -7,7 +7,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
-	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // outlinerScopeFrame captures the outliner state that a project-scope push
@@ -56,9 +55,9 @@ func (m *OutlinerModel) captureScopeFrame() outlinerScopeFrame {
 		primaryMode:      m.primaryMode,
 		sort:             m.sort,
 		treeSort:         m.treeSort,
-		focusStack:       slices.Clone(m.focusStack),
-		crossFocusStack:  slices.Clone(m.crossFocusStack),
-		zoom:             m.zoom,
+		focusStack:       slices.Clone(m.focus.stack),
+		crossFocusStack:  slices.Clone(m.focus.crossStack),
+		zoom:             m.focus.zoom,
 	}
 }
 
@@ -73,9 +72,7 @@ func (m *OutlinerModel) restoreScopeFrame(f outlinerScopeFrame) {
 	m.clearStaleForRecentMode()
 	m.sort = f.sort
 	m.treeSort = f.treeSort
-	m.focusStack = slices.Clone(f.focusStack)
-	m.crossFocusStack = slices.Clone(f.crossFocusStack)
-	m.zoom = f.zoom
+	m.focus.restore(slices.Clone(f.focusStack), slices.Clone(f.crossFocusStack), f.zoom)
 	m.population.invalidate()
 	m.crossProjectRebuildRows()
 	m.clampCursor()
@@ -272,7 +269,7 @@ func (m *OutlinerModel) pushProjectScope(projectID string) {
 		}
 	}
 	m.scopedProjectID = projectID
-	m.crossFocusStack = nil
+	m.focus.clearCross()
 	m.clearSectionZoom()
 	m.Cursor = 0
 	m.resetViewScrollOffset()
@@ -333,16 +330,13 @@ func (m *OutlinerModel) resetToGlobalAll() {
 	m.scopeStack = nil
 	m.scopedProjectID = ""
 	m.dropParkedProjectFocus()
-	m.focusStack = nil
-	m.crossFocusStack = nil
+	m.focus.clear()
+	m.focus.clearCross()
 	// Restated rather than left to the selectOutlinerMode(ModeAll) below, which
 	// also clears it: the reset names every axis it drops, the way it already
-	// restates the focus-stack nils.
+	// restates the focus-stack clears.
 	m.clearSectionZoom()
-	m.collapsedSections = make(map[string]bool)
-	m.expandedNodes = make(map[taskref.TaskIdentity]bool)
-	m.expandedChecklists = make(map[taskref.TaskIdentity]bool)
-	m.sectionToggleRestore = nil
+	m.folds.resetAll()
 	m.replaceFilterClauses(query.FilterQueryTaskFields(), nil)
 	m.sort.Reset()
 	m.treeSort.Reset()
@@ -390,8 +384,8 @@ func (m *OutlinerModel) resetToLaunchView() ([]string, bool) {
 	}
 	note(m.hasActiveLens(), "lens")
 	note(m.hasSearchProjection(), "query")
-	note(len(m.focusStack) > 0 || len(m.crossFocusStack) > 0, "focus")
-	note(m.zoom.active(), "zoom")
+	note(m.focus.active(), "focus")
+	note(m.focus.zoom.active(), "zoom")
 	note(m.isProjectScoped(), "scope")
 	note(query.CommonFilterFacetCount(&m.filter.CommonFilterState) > 0, "filters")
 	reload := note(query.ProjectFilterFacetCount(&m.projectFilter) > 0, "project filters")
@@ -450,7 +444,7 @@ func (m *OutlinerModel) reconcileProjectScope() (string, bool) {
 	}
 	// No captured frame remained; fall back to the active context base in place.
 	m.scopedProjectID = ""
-	m.crossFocusStack = nil
+	m.focus.clearCross()
 	m.clearSectionZoom()
 	m.Cursor = 0
 	m.resetViewScrollOffset()

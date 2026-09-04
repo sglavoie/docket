@@ -54,8 +54,8 @@ func TestInlineRowEditorAtomicCommitAndFailureLifecycle(t *testing.T) {
 	out.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 	out.SetSize(100, 20)
 	out.rebuildRows()
-	out.expandedNodes[taskref.For(task, m.currentProject)] = false
-	out.collapsedSections["unrelated"] = true
+	out.folds.expandedNodes[taskref.For(task, m.currentProject)] = false
+	out.folds.collapsedSections["unrelated"] = true
 	m.crossOutliner = out
 	m.navigation.ResetRoot()
 	projection := out.jumpProjectionFingerprint()

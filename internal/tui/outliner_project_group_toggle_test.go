@@ -176,10 +176,10 @@ func TestToggleVisibleProjectGroupsLeavesTheOtherFoldAxesAlone(t *testing.T) {
 	outliner.setSectionRowCollapsed(sections[0], true)
 	outliner.rebuildRows()
 
-	outliner.expandedNodes[taskref.TaskIdentity{ProjectID: alpha.ID, TaskID: parent.ID}] = false
+	outliner.folds.expandedNodes[taskref.TaskIdentity{ProjectID: alpha.ID, TaskID: parent.ID}] = false
 	outliner.rebuildRows()
 	sectionsBefore := sectionFoldStates(outliner)
-	nodesBefore := maps.Clone(outliner.expandedNodes)
+	nodesBefore := maps.Clone(outliner.folds.expandedNodes)
 
 	outliner.toggleVisibleProjectGroups()
 	outliner.toggleVisibleProjectGroups()
@@ -187,8 +187,8 @@ func TestToggleVisibleProjectGroupsLeavesTheOtherFoldAxesAlone(t *testing.T) {
 	if got := sectionFoldStates(outliner); !maps.Equal(got, sectionsBefore) {
 		t.Errorf("the project toggle rewrote sections: got %v, want %v", got, sectionsBefore)
 	}
-	if !maps.Equal(outliner.expandedNodes, nodesBefore) {
-		t.Errorf("the project toggle rewrote task folds: got %v, want %v", outliner.expandedNodes, nodesBefore)
+	if !maps.Equal(outliner.folds.expandedNodes, nodesBefore) {
+		t.Errorf("the project toggle rewrote task folds: got %v, want %v", outliner.folds.expandedNodes, nodesBefore)
 	}
 }
 
@@ -207,7 +207,7 @@ func TestToggleVisibleProjectGroupsReportsInsideAProjectScope(t *testing.T) {
 	if groups := outliner.visibleProjectGroupHeaders(); len(groups) != 0 {
 		t.Fatalf("project scope rendered %d redundant group headers", len(groups))
 	}
-	foldsBefore := maps.Clone(outliner.collapsedSections)
+	foldsBefore := maps.Clone(outliner.folds.collapsedSections)
 
 	handled, cmd := app.handleGlobalKeyPress(syntheticKey('p'))
 	if !handled || cmd == nil {
@@ -216,8 +216,8 @@ func TestToggleVisibleProjectGroupsReportsInsideAProjectScope(t *testing.T) {
 	if status, ok := cmd().(status.StatusMsg); !ok || string(status) != "No project groups here; P switches project" {
 		t.Fatalf("scoped p message = %#v, want the refusal that names P", cmd())
 	}
-	if !maps.Equal(outliner.collapsedSections, foldsBefore) {
-		t.Fatalf("scoped p wrote a fold: got %v, want %v", outliner.collapsedSections, foldsBefore)
+	if !maps.Equal(outliner.folds.collapsedSections, foldsBefore) {
+		t.Fatalf("scoped p wrote a fold: got %v, want %v", outliner.folds.collapsedSections, foldsBefore)
 	}
 }
 

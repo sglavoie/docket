@@ -220,7 +220,7 @@ func TestInboxAdvancePastACollapsedProjectGroup(t *testing.T) {
 	beta := primaryRowsProject("beta", betaOne)
 	gamma := primaryRowsProject("gamma", gammaOne)
 	outliner := inboxAdvanceOutliner(t, alpha, beta, gamma)
-	outliner.collapsedSections[modeProjectCollapseKey(chrome.ModeInbox, beta.ID)] = true
+	outliner.folds.collapsedSections[modeProjectCollapseKey(chrome.ModeInbox, beta.ID)] = true
 	inboxAdvanceRebuild(outliner)
 
 	if got := countTaskRows(outliner, betaOne.ID); got != 0 {

@@ -292,7 +292,7 @@ func TestInlineRowEditorAutocompleteIsBoundedAndViewportTracksResize(t *testing.
 
 func TestInlineRowEditorRendersOnFoldedParentWithoutLeakingChildren(t *testing.T) {
 	out, project, parent, child := inlineEditorFixture(t)
-	out.expandedNodes = map[taskref.TaskIdentity]bool{{ProjectID: project.ID, TaskID: parent.ID}: false}
+	out.folds.expandedNodes = map[taskref.TaskIdentity]bool{{ProjectID: project.ID, TaskID: parent.ID}: false}
 	out.rebuildRows()
 	for index, row := range out.rows {
 		if row.task != nil && row.task.ID == parent.ID {

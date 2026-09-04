@@ -57,7 +57,7 @@ func TestFullscreenWorkspacePulseTitleRendersZeroAndNonzeroStates(t *testing.T) 
 func TestTodayPaceReadoutIsTodayOnlyAndRequiresHistory(t *testing.T) {
 	project := scopeTestProject("alpha", "Alpha", "launch")
 	outliner := scopeTestOutliner(project)
-	outliner.workspacePulse = pulse.WorkspacePulse{Inbox: 3, Today: 9, Overdue: 1}
+	outliner.SetWorkspacePulse(pulse.WorkspacePulse{Inbox: 3, Today: 9, Overdue: 1})
 	outliner.SetCompletionActivity(app.CompletionActivity{
 		DailyCompletions: map[time.Time]int{time.Date(2026, time.August, 19, 0, 0, 0, 0, time.UTC): 1},
 	})

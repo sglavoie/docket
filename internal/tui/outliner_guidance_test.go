@@ -143,7 +143,7 @@ func TestOutlinerEmptyStatesAdvertiseCausalRecovery(t *testing.T) {
 			configure: func(out *OutlinerModel) {
 				out.project = project
 				out.population.projects = []*models.Project{project}
-				out.focusStack = []FocusEntry{{TaskID: "missing"}}
+				out.focus.stack = []FocusEntry{{TaskID: "missing"}}
 				out.rows = nil
 			},
 			wantMessage: "No tasks are visible in this Focus. Press Esc to return.",

@@ -38,8 +38,8 @@ func TestToggleVisibleSectionsCollapsesBuiltInsAndRestoresTaskFocus(t *testing.T
 	outliner.SelectTaskIdentity(focus)
 
 	parentIdentity := taskref.TaskIdentity{ProjectID: project.ID, TaskID: parent.ID}
-	outliner.expandedNodes[parentIdentity] = false
-	expandedBefore := maps.Clone(outliner.expandedNodes)
+	outliner.folds.expandedNodes[parentIdentity] = false
+	expandedBefore := maps.Clone(outliner.folds.expandedNodes)
 	projectHeaderKey := ""
 	for _, row := range outliner.rows {
 		if row.IsProjectHeader {
@@ -59,7 +59,7 @@ func TestToggleVisibleSectionsCollapsesBuiltInsAndRestoresTaskFocus(t *testing.T
 		t.Fatal("all-expanded sections did not collapse")
 	}
 	for _, header := range headers {
-		if !outliner.collapsedSections[header.effectiveCollapseKey()] {
+		if !outliner.folds.collapsedSections[header.effectiveCollapseKey()] {
 			t.Errorf("section %q did not collapse", header.SectionName)
 		}
 	}
@@ -68,11 +68,11 @@ func TestToggleVisibleSectionsCollapsesBuiltInsAndRestoresTaskFocus(t *testing.T
 			t.Errorf("collapsed view retained non-section row %+v", row)
 		}
 	}
-	if outliner.collapsedSections[projectHeaderKey] {
+	if outliner.folds.collapsedSections[projectHeaderKey] {
 		t.Fatal("bulk section toggle collapsed a project subheader")
 	}
-	if !maps.Equal(outliner.expandedNodes, expandedBefore) {
-		t.Fatalf("bulk section toggle changed task folds: got %v, want %v", outliner.expandedNodes, expandedBefore)
+	if !maps.Equal(outliner.folds.expandedNodes, expandedBefore) {
+		t.Fatalf("bulk section toggle changed task folds: got %v, want %v", outliner.folds.expandedNodes, expandedBefore)
 	}
 	if outliner.SelectedCount() != 1 || !outliner.IsTaskIdentitySelected(focus) {
 		t.Fatal("bulk section toggle changed the visual task selection")
@@ -85,15 +85,15 @@ func TestToggleVisibleSectionsCollapsesBuiltInsAndRestoresTaskFocus(t *testing.T
 		t.Fatal("collapsed sections did not expand")
 	}
 	for _, header := range outliner.visibleSectionHeaders() {
-		if outliner.collapsedSections[header.effectiveCollapseKey()] {
+		if outliner.folds.collapsedSections[header.effectiveCollapseKey()] {
 			t.Errorf("section %q remained collapsed", header.SectionName)
 		}
 	}
 	if task, _ := outliner.GetTaskRef(); task == nil || task.ID != doing.ID {
 		t.Fatalf("expanded cursor task = %v, want %s", task, doing.ID)
 	}
-	if !maps.Equal(outliner.expandedNodes, expandedBefore) {
-		t.Fatalf("expansion changed task folds: got %v, want %v", outliner.expandedNodes, expandedBefore)
+	if !maps.Equal(outliner.folds.expandedNodes, expandedBefore) {
+		t.Fatalf("expansion changed task folds: got %v, want %v", outliner.folds.expandedNodes, expandedBefore)
 	}
 }
 
@@ -118,7 +118,7 @@ func TestToggleVisibleSectionsExpandsMixedAndComputedModes(t *testing.T) {
 		t.Fatal("mixed computed sections did not expand")
 	}
 	for _, header := range outliner.visibleSectionHeaders() {
-		if outliner.collapsedSections[header.effectiveCollapseKey()] {
+		if outliner.folds.collapsedSections[header.effectiveCollapseKey()] {
 			t.Errorf("computed section %q remained collapsed", header.SectionName)
 		}
 	}
@@ -157,7 +157,7 @@ func TestToggleVisibleSectionsKeepsUnsectionedPrimaryTaskFocused(t *testing.T) {
 	if task, _ := outliner.GetTaskRef(); task == nil || task.ID != regular.ID {
 		t.Fatalf("cursor task after Pinned collapse = %v, want %s", task, regular.ID)
 	}
-	if outliner.sectionToggleRestore != nil {
+	if outliner.folds.sectionToggleRestore != nil {
 		t.Fatal("ungrouped Today task incorrectly received a hidden-task restore anchor")
 	}
 }
@@ -181,8 +181,8 @@ func TestToggleVisibleSectionsDispatchesLowercaseS(t *testing.T) {
 		t.Fatalf("s = handled %v, cmd %v; want handled with no command", handled, cmd)
 	}
 	headers := outliner.visibleSectionHeaders()
-	if len(headers) != 1 || !outliner.collapsedSections[headers[0].effectiveCollapseKey()] {
-		t.Fatalf("s did not collapse the visible section: headers=%+v collapsed=%v", headers, outliner.collapsedSections)
+	if len(headers) != 1 || !outliner.folds.collapsedSections[headers[0].effectiveCollapseKey()] {
+		t.Fatalf("s did not collapse the visible section: headers=%+v collapsed=%v", headers, outliner.folds.collapsedSections)
 	}
 	if row := outliner.rows[outliner.Cursor]; !row.IsSectionHeader {
 		t.Fatalf("cursor after s = %+v, want section header", row)
@@ -216,7 +216,7 @@ func TestToggleVisibleSectionsReportsInsideASectionZoom(t *testing.T) {
 	if !outliner.enterSectionZoom(headers[0]) {
 		t.Fatal("the section header refused a zoom")
 	}
-	foldsBefore := maps.Clone(outliner.collapsedSections)
+	foldsBefore := maps.Clone(outliner.folds.collapsedSections)
 
 	handled, cmd := app.handleGlobalKeyPress(syntheticKey('s'))
 	if !handled || cmd == nil {
@@ -225,7 +225,7 @@ func TestToggleVisibleSectionsReportsInsideASectionZoom(t *testing.T) {
 	if status, ok := cmd().(status.StatusMsg); !ok || string(status) != "No foldable sections here" {
 		t.Fatalf("zoomed s message = %#v, want the refusal status", cmd())
 	}
-	if !maps.Equal(outliner.collapsedSections, foldsBefore) {
-		t.Fatalf("zoomed s wrote a fold: got %v, want %v", outliner.collapsedSections, foldsBefore)
+	if !maps.Equal(outliner.folds.collapsedSections, foldsBefore) {
+		t.Fatalf("zoomed s wrote a fold: got %v, want %v", outliner.folds.collapsedSections, foldsBefore)
 	}
 }

@@ -61,8 +61,8 @@ func TestEnterZoomsSectionHeadersAndScopesProjectHeaders(t *testing.T) {
 	if !listsurface.RunEscCascade(out.escSteps()) {
 		t.Fatal("Esc did not leave the zoom")
 	}
-	if out.zoom.active() || len(out.rows) != fullRows {
-		t.Fatalf("unzoomed state = zoom %+v rows %d, want no zoom and the pre-zoom %d", out.zoom, len(out.rows), fullRows)
+	if out.focus.zoom.active() || len(out.rows) != fullRows {
+		t.Fatalf("unzoomed state = zoom %+v rows %d, want no zoom and the pre-zoom %d", out.focus.zoom, len(out.rows), fullRows)
 	}
 
 	out.Cursor = sectionHeaderIndex(t, out, sectionName)
@@ -74,8 +74,8 @@ func TestEnterZoomsSectionHeadersAndScopesProjectHeaders(t *testing.T) {
 	if !out.activateGroupAtCursor() || out.scopedProjectID != project.ID {
 		t.Fatalf("Enter on the project header scoped to %q, want %q", out.scopedProjectID, project.ID)
 	}
-	if out.zoom.active() {
-		t.Fatalf("the project header took a zoom %+v", out.zoom)
+	if out.focus.zoom.active() {
+		t.Fatalf("the project header took a zoom %+v", out.focus.zoom)
 	}
 	if ids := taskRowProjectIDs(out); len(ids) != 1 || ids[0] != project.ID {
 		t.Fatalf("scoped task rows = %v, want %q alone", ids, project.ID)
@@ -170,7 +170,7 @@ func TestFocusConstrainsModesFiltersSortFoldsAndSearch(t *testing.T) {
 		t.Fatalf("focused title sort escaped branch: %v", ordered)
 	}
 
-	out.expandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: insideBacklog.ID}] = false
+	out.folds.expandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: insideBacklog.ID}] = false
 	out.rebuildRows()
 	if visible := visibleOutlinerTaskIDs(out); visible[insideNested.ID] || visible[outsideBacklog.ID] {
 		t.Fatalf("focused fold rows = %v, want nested child hidden and outside task absent", visible)
@@ -189,8 +189,8 @@ func TestFocusConstrainsModesFiltersSortFoldsAndSearch(t *testing.T) {
 		t.Fatalf("exact search escaped Focus to %v", got)
 	}
 	out.ClearSearch()
-	if len(out.crossFocusStack) != 1 || out.crossFocusStack[0].TaskID != root.ID {
-		t.Fatalf("search restoration lost Focus: %+v", out.crossFocusStack)
+	if len(out.focus.crossStack) != 1 || out.focus.crossStack[0].TaskID != root.ID {
+		t.Fatalf("search restoration lost Focus: %+v", out.focus.crossStack)
 	}
 
 	insideInbox.WorkflowState = models.StateBacklog

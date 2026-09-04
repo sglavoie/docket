@@ -90,7 +90,7 @@ func TestLensModifiedTracksOwnedAxesOnly(t *testing.T) {
 
 	// Navigation, folds, selection, and Peek are the view, not the lens.
 	outliner.Cursor = 0
-	outliner.collapsedSections["some-section"] = true
+	outliner.folds.collapsedSections["some-section"] = true
 	outliner.peekMode = true
 	outliner.Selected[taskref.TaskIdentity{ProjectID: "alpha", TaskID: "waiting"}] = true
 	if outliner.lensModified() {

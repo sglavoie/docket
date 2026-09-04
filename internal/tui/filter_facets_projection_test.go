@@ -164,7 +164,7 @@ func TestPromotedFacetBreadcrumbStopsAtFocusBoundary(t *testing.T) {
 	project := primaryRowsProject("project", focusRoot, hiddenParent, match)
 	outliner := scopeTestOutliner(project)
 	outliner.selectOutlinerMode(chrome.ModeBacklog)
-	outliner.crossFocusStack = []CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: focusRoot.ID}}
+	outliner.focus.crossStack = []CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: focusRoot.ID}}
 	outliner.filter.Tags = map[string]bool{"bug": true}
 	outliner.adoptFilterCarriers()
 	outliner.rebuildRows()

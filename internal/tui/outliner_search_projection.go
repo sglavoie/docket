@@ -403,7 +403,7 @@ func (m *OutlinerModel) searchCandidateBoundary(projects []*models.Project) map[
 	if m == nil {
 		return nil
 	}
-	focused := len(m.focusStack) > 0 || len(m.crossFocusStack) > 0
+	focused := m.focus.active()
 	faceted := query.HasActiveCommonFilters(&m.filter.CommonFilterState)
 	if !focused && !faceted {
 		return nil

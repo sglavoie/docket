@@ -15,7 +15,7 @@ func TestApplyNamedLensInstallsSavedProjectionAndEscRestoresBaseline(t *testing.
 	outliner := lensLifecycleOutliner()
 	outliner.selectOutlinerMode(chrome.ModeInbox)
 	outliner.treeSort = query.SortState{Field: query.SortByTitle, Ascending: true}
-	outliner.collapsedSections["baseline-fold"] = true
+	outliner.folds.collapsedSections["baseline-fold"] = true
 	outliner.peekMode = true
 	outliner.Selected[taskref.TaskIdentity{ProjectID: "beta", TaskID: "beta-inbox"}] = true
 	baselineRows := searchVisibleTaskIDs(outliner)
@@ -62,7 +62,7 @@ func TestApplyNamedLensInstallsSavedProjectionAndEscRestoresBaseline(t *testing.
 	if outliner.treeSort.Field != query.SortByTitle || !outliner.treeSort.Ascending {
 		t.Fatalf("restored treeSort = %+v, want title ascending", outliner.treeSort)
 	}
-	if !outliner.collapsedSections["baseline-fold"] {
+	if !outliner.folds.collapsedSections["baseline-fold"] {
 		t.Fatal("restoration dropped the baseline fold state")
 	}
 	if !outliner.peekMode {
@@ -79,15 +79,15 @@ func TestApplyNamedLensInstallsSavedProjectionAndEscRestoresBaseline(t *testing.
 func TestApplyNamedLensRetainsScopeFocusAndCursorIdentity(t *testing.T) {
 	outliner := lensLifecycleOutliner()
 	outliner.pushProjectScope("alpha")
-	outliner.crossFocusStack = []CrossProjectFocusEntry{{TaskID: "backlog", ProjectID: "alpha"}}
+	outliner.focus.crossStack = []CrossProjectFocusEntry{{TaskID: "backlog", ProjectID: "alpha"}}
 
 	applyLensOrFatal(t, outliner, waitingLens(lensTestID(1), "Waiting", ""))
 
 	if outliner.scopedProjectID != "alpha" {
 		t.Fatalf("scoped project = %q, want alpha", outliner.scopedProjectID)
 	}
-	if len(outliner.crossFocusStack) != 1 {
-		t.Fatalf("focus stack depth = %d, want 1", len(outliner.crossFocusStack))
+	if len(outliner.focus.crossStack) != 1 {
+		t.Fatalf("focus stack depth = %d, want 1", len(outliner.focus.crossStack))
 	}
 	if outliner.pendingLens != nil {
 		t.Fatal("a scoped application must not start a project load")

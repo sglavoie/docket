@@ -145,15 +145,15 @@ func (m *OutlinerModel) escSteps() []listsurface.EscStep {
 		{Active: func() bool { return m.hasActiveLens() }, Clear: func() {
 			m.restoreLensBaseline()
 		}},
-		{Active: func() bool { return len(m.focusStack) > 0 }, Clear: func() {
+		{Active: func() bool { return len(m.focus.stack) > 0 }, Clear: func() {
 			m.popFocusLevel()
 		}},
-		{Active: func() bool { return len(m.crossFocusStack) > 0 }, Clear: func() {
+		{Active: func() bool { return len(m.focus.crossStack) > 0 }, Clear: func() {
 			m.popFocusLevel()
 		}},
 		// A zoom narrows one mode, so it unwinds after task focus and before the
 		// project scope that owns the mode.
-		{Active: func() bool { return m.zoom.active() }, Clear: func() {
+		{Active: func() bool { return m.focus.zoom.active() }, Clear: func() {
 			m.exitSectionZoom()
 		}},
 		// Task focus and section zoom both unwind before project scope: Esc pops

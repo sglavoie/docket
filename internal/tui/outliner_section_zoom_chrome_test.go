@@ -44,7 +44,7 @@ func TestZoomEmptiedUnderAFilterKeepsTheSectionCause(t *testing.T) {
 	if len(out.rows) != 0 {
 		t.Fatalf("the filtered zoom kept %d rows, want an empty projection", len(out.rows))
 	}
-	if !out.zoom.active() {
+	if !out.focus.zoom.active() {
 		t.Fatal("the emptied zoom unwound itself instead of staying put")
 	}
 	if out.Cursor != 0 {

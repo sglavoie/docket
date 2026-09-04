@@ -20,18 +20,18 @@ func (m *OutlinerModel) primaryModeRoots(project *models.Project) []*models.Task
 	}
 	roots := project.GetRootTasks()
 	if m.project != nil {
-		if len(m.focusStack) == 0 {
+		if len(m.focus.stack) == 0 {
 			return roots
 		}
-		if task := project.GetTaskByID(m.focusStack[len(m.focusStack)-1].TaskID); task != nil {
+		if task := project.GetTaskByID(m.focus.stack[len(m.focus.stack)-1].TaskID); task != nil {
 			return task.Children
 		}
 		return nil
 	}
-	if len(m.crossFocusStack) == 0 {
+	if len(m.focus.crossStack) == 0 {
 		return roots
 	}
-	top := m.crossFocusStack[len(m.crossFocusStack)-1]
+	top := m.focus.crossStack[len(m.focus.crossStack)-1]
 	if top.ProjectID != project.ID {
 		return nil
 	}
@@ -203,15 +203,15 @@ func (m *OutlinerModel) primaryModeFocusBoundary(project *models.Project) string
 		return ""
 	}
 	if m.project != nil {
-		if len(m.focusStack) > 0 && m.project.ID == project.ID {
-			return m.focusStack[len(m.focusStack)-1].TaskID
+		if len(m.focus.stack) > 0 && m.project.ID == project.ID {
+			return m.focus.stack[len(m.focus.stack)-1].TaskID
 		}
 		return ""
 	}
-	if len(m.crossFocusStack) == 0 {
+	if len(m.focus.crossStack) == 0 {
 		return ""
 	}
-	top := m.crossFocusStack[len(m.crossFocusStack)-1]
+	top := m.focus.crossStack[len(m.focus.crossStack)-1]
 	if top.ProjectID == project.ID {
 		return top.TaskID
 	}

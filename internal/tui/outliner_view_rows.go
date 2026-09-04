@@ -99,12 +99,12 @@ func (m *OutlinerModel) isSectionRowCollapsed(row outlinerRow) bool {
 // ignores its own fold so it can be zoomed without mutating the fold the user
 // set, and without the zoom having to write and restore it.
 func (m *OutlinerModel) sectionCollapsed(key string) bool {
-	return m.collapsedSections[key] && key != m.zoom.key
+	return m.folds.collapsedSections[key] && key != m.focus.zoom.key
 }
 
 // sectionZoomAdmits reports whether a section may emit rows at all.
 func (m *OutlinerModel) sectionZoomAdmits(key string) bool {
-	return !m.zoom.active() || m.zoom.key == key
+	return !m.focus.zoom.active() || m.focus.zoom.key == key
 }
 
 // cursorNamesSectionHeader is the one read of the cursor's row kind, shared by
@@ -138,7 +138,7 @@ func (m *OutlinerModel) cursorNoteIdentity() (notes.NoteRowIdentity, bool) {
 // h and s would otherwise persist a fold with no visible effect that Esc then
 // reveals.
 func (m *OutlinerModel) isZoomedSectionRow(row outlinerRow) bool {
-	return m.zoom.active() && row.IsSectionHeader && row.effectiveCollapseKey() == m.zoom.key
+	return m.focus.zoom.active() && row.IsSectionHeader && row.effectiveCollapseKey() == m.focus.zoom.key
 }
 
 // buildTreePrefix computes the connector prefix string from the ancestor
@@ -169,10 +169,10 @@ func buildTreePrefix(ancestorIsLast []bool, isLast bool) string {
 // isExpanded returns true if the node should show its children.
 // When the expandedNodes map is empty (default), all nodes are expanded.
 func (m *OutlinerModel) isExpanded(identity taskref.TaskIdentity) bool {
-	if len(m.expandedNodes) == 0 {
+	if len(m.folds.expandedNodes) == 0 {
 		return true
 	}
-	expanded, exists := m.expandedNodes[identity]
+	expanded, exists := m.folds.expandedNodes[identity]
 	if !exists {
 		return true // Default to expanded
 	}

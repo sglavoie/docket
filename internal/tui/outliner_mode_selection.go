@@ -201,11 +201,11 @@ func (m *OutlinerModel) revealRecentActivityLead(
 	identity taskref.TaskIdentity,
 	sectionKey string,
 ) {
-	delete(m.collapsedSections, sectionKey)
-	delete(m.collapsedSections, modeSectionProjectCollapseKey(sectionKey, identity.ProjectID))
+	m.folds.clearSection(sectionKey)
+	m.folds.clearSection(modeSectionProjectCollapseKey(sectionKey, identity.ProjectID))
 	m.ensureExpandedNodes()
 	for ancestor := task.Parent; ancestor != nil; ancestor = ancestor.Parent {
-		m.expandedNodes[taskref.TaskIdentity{ProjectID: identity.ProjectID, TaskID: ancestor.ID}] = true
+		m.folds.setNode(taskref.TaskIdentity{ProjectID: identity.ProjectID, TaskID: ancestor.ID}, true)
 	}
 }
 

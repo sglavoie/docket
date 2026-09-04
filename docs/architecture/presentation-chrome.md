@@ -64,6 +64,23 @@ nothing, so there is no application-layer policy for a port to hold. A nil
 accessor is inert, which is what keeps the Hub's preview painter and
 struct-literal test models indicator-free. Resolution stays in the CLI.
 
+The pulse the title row does carry has one home, and that is a correction rather
+than a restatement. `OutlinerModel` embeds `listsurface.BaseSearchableView`,
+which embeds `pulse.WorkspacePulseState`, so the promoted `SetWorkspacePulse`
+and `CurrentWorkspacePulse` already were the pair every other full-screen
+presentation uses. The Outliner nevertheless declared its own `workspacePulse`
+field and its own `SetWorkspacePulse` beside them, shadowing both: the shell's
+injection wrote the shadow, `buildOutlinerTitleLine` read the shadow, and the
+promoted `CurrentWorkspacePulse()` read an embedded copy nothing ever wrote. It
+was invisible only because no Outliner code path took the promoted route — the
+shadow was one accidental caller away from reading a zero pulse, and the two
+spellings could not be told apart at a call site. Removing the field and the
+method makes the injected value and the read value the same storage by
+construction, which is why the title still renders identically. The one
+mechanical consequence is that `OperationalTitleSpec.Pulse` is a pointer and an
+accessor has no address, so `buildOutlinerTitleLine` names the value in a local
+first; that local is the whole cost of not being able to shadow it again.
+
 `internal/tui/advisories.go` is the opt-out that count answers to, and it is
 deliberately a category rather than a switch on one line. An advisory is ambient
 workspace state — on screen because of what the workspace holds, not because of a

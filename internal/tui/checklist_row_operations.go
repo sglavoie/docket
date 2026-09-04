@@ -114,7 +114,7 @@ func (m *AppModel) executeChecklistStart(
 		return operation.OperationHandlerResult{Err: err}
 	}
 	if out, ok := m.outlinerPrimary(); ok && out != nil {
-		out.setChecklistExpanded(identity, true)
+		out.folds.setChecklist(identity, true)
 	}
 	return checklistCommandResult(m.secondaryFeatures.Subview.AddChecklistItem(identity, text))
 }

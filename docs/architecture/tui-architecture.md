@@ -141,6 +141,31 @@ a checklist cursor refuses `v`, `V`, and `Ctrl+A`, and entering selection from a
 task row suppresses any open checklist rows while leaving the map untouched,
 which is what lets `Esc` restore the same rows.
 
+Those three maps and the `sectionToggleRestoreAnchor` an s-driven collapse
+leaves behind are the model's `folds` field, whose `foldState` owns every write
+to them. Three maps rather than one is the point of naming them together rather
+than an accident the type inherited: their polarities disagree deliberately and
+their key spaces disagree too — two are project-qualified task identities and
+one is a string namespaced per grouping surface — so merging them would need a
+polarity per key. What the type buys is that `clearAllFolds` and the global
+reset are one act over three axes, and that `clearSections` drops the anchor
+with the folds it names, since an anchor pointing at a section key cannot
+outlive the collapse that made it necessary. Reads stay direct; the zero value
+is inert, and every map allocates on first write, so a struct-literal test model
+still opens all-open with no constructor.
+
+The two focus stacks, the section zoom, and the one-shot recovery notice are the
+model's `focus` field on the same terms. `Esc` is the argument for one owner:
+the unwind ladder walks task focus and then the zoom before it reaches project
+scope, and every wholesale reset takes all of them down together, so a caller
+that put one away and forgot another would leave the view narrowed by something
+no `Esc` can name. Two stacks rather than one because a cross-project frame
+carries the owning project and a single-project frame cannot, and which is live
+is `m.project`'s answer and never a field there. Whether a cross-stack write
+also needs `population.invalidate()` stays the call site's decision rather than
+the type's: the memoization guard is the population's, and the rebuild-time
+stack validation deliberately does not claim one.
+
 A checklist row owns nine operations of its own — Toggle Item, Edit Item, Move
 Item Down, Move Item Up, Move Item to Bottom, Move Item to Top, Add Item,
 Checklist Actions, and Delete Item — registered in

@@ -87,8 +87,8 @@ func (m *OutlinerModel) statusStripBody(width int) string {
 	if indicator := m.advisoryLine(m.conflictIndicator()); indicator != "" {
 		lines = append(lines, theme.PreviewWarningStyle.Width(width).Render(indicator))
 	}
-	if m.focusNotice != "" {
-		lines = append(lines, theme.PreviewWarningStyle.Width(width).Render(m.focusNotice))
+	if m.focus.notice != "" {
+		lines = append(lines, theme.PreviewWarningStyle.Width(width).Render(m.focus.notice))
 	}
 	if m.StatusMessage != "" {
 		lines = append(lines, theme.MutedStyle.Width(width).Render(m.StatusMessage))
@@ -117,7 +117,7 @@ func (m *OutlinerModel) statusStripHeight(width int) int {
 // reservation above and this call see the same inputs in the same frame.
 func (m *OutlinerModel) ViewStatusStrip(width int) string {
 	body := m.statusStripBody(width)
-	m.focusNotice = ""
+	m.focus.clearNotice()
 	return body
 }
 
@@ -228,18 +228,22 @@ func (m *OutlinerModel) buildOutlinerInteractionContext(width int) []string {
 	}
 	// Last, so that the one joined Context region loses the zoom before it loses
 	// a narrowing the user cannot leave with a single Esc.
-	if m.zoom.active() && m.zoom.name != "" {
-		context = append(context, theme.MutedStyle.Render("Section: "+m.zoom.name))
+	if m.focus.zoom.active() && m.focus.zoom.name != "" {
+		context = append(context, theme.MutedStyle.Render("Section: "+m.focus.zoom.name))
 	}
 	return context
 }
 
 // buildOutlinerTitleLine assembles the Outliner's one-row operational title.
 func (m *OutlinerModel) buildOutlinerTitleLine(width int) string {
+	// Read once into a local: the spec takes the pulse by pointer, and the reader
+	// is the promoted accessor rather than a field, so there is no address to
+	// take without naming the value first.
+	workspacePulse := m.CurrentWorkspacePulse()
 	var pace *pulse.TodayPaceReadout
 	if m.primaryMode == chrome.ModeToday && m.CompletionActivity.HasHistory() {
 		pace = &pulse.TodayPaceReadout{
-			OpenCount:    m.workspacePulse.Today,
+			OpenCount:    workspacePulse.Today,
 			MedianPerDay: m.CompletionActivity.MedianPerDay(),
 		}
 	}
@@ -248,7 +252,7 @@ func (m *OutlinerModel) buildOutlinerTitleLine(width int) string {
 		Mode:    chrome.OperationalTitleModeSegment(m.activeOutlinerModeEntry()),
 		Context: m.buildOutlinerInteractionContext(max(width, 1)),
 		Pace:    pace,
-		Pulse:   &m.workspacePulse,
+		Pulse:   &workspacePulse,
 	}, max(width, 1))
 }
 

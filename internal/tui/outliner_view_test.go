@@ -67,7 +67,7 @@ func TestOutlinerPersistentScrollKeepsFirstRowMovingUpWithinViewport(t *testing.
 			}
 			m := &OutlinerModel{
 				project: tt.project, rows: rows,
-				collapsedSections: make(map[string]bool),
+				folds: foldState{collapsedSections: make(map[string]bool)},
 			}
 			m.SetSize(100, 6)
 

@@ -257,7 +257,7 @@ func TestTheKeylessFoldClearIsReachableOnlyFromTheMenu(t *testing.T) {
 	if !outliner.anyTaskFoldCollapsed() {
 		t.Fatal("folding every subtree left nothing folded")
 	}
-	outliner.collapsedSections["_xp:pinned"] = true
+	outliner.folds.collapsedSections["_xp:pinned"] = true
 
 	pressMenuBarKey(t, driver, "ctrl+m", "l")
 	view := menuWithID(t, openMenuBarMenusForTest(t, outliner), menuIDView)
@@ -287,7 +287,7 @@ func TestTheKeylessFoldClearIsReachableOnlyFromTheMenu(t *testing.T) {
 	if driver.App().crossOutliner.anyTaskFoldCollapsed() {
 		t.Error("the menu-only fold clear left a subtree folded")
 	}
-	for key, collapsed := range driver.App().crossOutliner.collapsedSections {
+	for key, collapsed := range driver.App().crossOutliner.folds.collapsedSections {
 		if collapsed {
 			t.Errorf("the menu-only fold clear left section %s collapsed", key)
 		}

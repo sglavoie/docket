@@ -47,7 +47,7 @@ func TestTheRankedListLeavesModeAndFoldsButHonorsScopeAndFacets(t *testing.T) {
 	outliner := scopeTestOutliner(alpha, beta)
 	outliner.pushProjectScope(alpha.ID)
 	outliner.selectOutlinerMode(chrome.ModeBacklog)
-	outliner.expandedNodes[taskref.TaskIdentity{ProjectID: alpha.ID, TaskID: parent.ID}] = false
+	outliner.folds.expandedNodes[taskref.TaskIdentity{ProjectID: alpha.ID, TaskID: parent.ID}] = false
 	searchRankedList(outliner, "needle")
 
 	got := qualifiedVisibleTaskIDs(outliner)
@@ -130,8 +130,8 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 	outliner.selectOutlinerMode(chrome.ModeInbox)
 	outliner.filter.Tags = map[string]bool{"saved": true}
 	outliner.adoptFilterCarriers()
-	outliner.collapsedSections = map[string]bool{"saved-section": true}
-	outliner.expandedNodes = map[taskref.TaskIdentity]bool{{ProjectID: project.ID, TaskID: first.ID}: false}
+	outliner.folds.collapsedSections = map[string]bool{"saved-section": true}
+	outliner.folds.expandedNodes = map[taskref.TaskIdentity]bool{{ProjectID: project.ID, TaskID: first.ID}: false}
 	outliner.population.invalidate()
 	outliner.crossProjectRebuildRows()
 	if !outliner.moveCursorToProjectTask(second.ID, project.ID) {
@@ -139,8 +139,8 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 	}
 	outliner.ViewScrollOffset = 4
 	wantFilter := copyFilterState(outliner.filter)
-	wantCollapsed := maps.Clone(outliner.collapsedSections)
-	wantExpanded := maps.Clone(outliner.expandedNodes)
+	wantCollapsed := maps.Clone(outliner.folds.collapsedSections)
+	wantExpanded := maps.Clone(outliner.folds.expandedNodes)
 
 	searchRankedList(outliner, "needle")
 	filterResult := (&AppModel{crossOutliner: outliner}).executeFilterOperation(operation.OperationInvocation{
@@ -156,8 +156,8 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 	}
 	outliner.filter.Tags = map[string]bool{"changed": true}
 	outliner.adoptFilterCarriers()
-	outliner.collapsedSections["changed-section"] = true
-	outliner.expandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: third.ID}] = false
+	outliner.folds.collapsedSections["changed-section"] = true
+	outliner.folds.expandedNodes[taskref.TaskIdentity{ProjectID: project.ID, TaskID: third.ID}] = false
 	// The mode is a live axis under a held query, and it is also part of the
 	// frame the query was typed in, so moving it here is exactly what Esc has to
 	// put back below.
@@ -171,12 +171,12 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 	if outliner.primaryMode != chrome.ModeInbox ||
 		outliner.filter.Priority != wantFilter.Priority ||
 		!maps.Equal(outliner.filter.Tags, wantFilter.Tags) ||
-		!maps.Equal(outliner.collapsedSections, wantCollapsed) ||
-		!maps.Equal(outliner.expandedNodes, wantExpanded) ||
+		!maps.Equal(outliner.folds.collapsedSections, wantCollapsed) ||
+		!maps.Equal(outliner.folds.expandedNodes, wantExpanded) ||
 		outliner.ViewScrollOffset != 4 {
 		t.Fatalf("restored state differs: mode=%s filter=%v collapsed=%v expanded=%v scroll=%d",
-			outliner.primaryMode, outliner.filter.Tags, outliner.collapsedSections,
-			outliner.expandedNodes, outliner.ViewScrollOffset)
+			outliner.primaryMode, outliner.filter.Tags, outliner.folds.collapsedSections,
+			outliner.folds.expandedNodes, outliner.ViewScrollOffset)
 	}
 	if outliner.hasSearchProjection() || outliner.HasActiveSearch() || outliner.SearchQuery() != "" {
 		t.Fatalf("Esc left search active: projection=%v input=%v query=%q",

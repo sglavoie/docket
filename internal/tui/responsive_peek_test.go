@@ -184,12 +184,12 @@ func TestPeekOperationTogglesAndEscDismissesFirst(t *testing.T) {
 		t.Fatal("Ctrl+Enter did not disable Peek")
 	}
 	invokePeek()
-	outliner.crossFocusStack = append(outliner.crossFocusStack, CrossProjectFocusEntry{TaskID: "task"})
+	outliner.focus.crossStack = append(outliner.focus.crossStack, CrossProjectFocusEntry{TaskID: "task"})
 	_, _ = model.Update(syntheticSpecialKey(tea.KeyEsc))
 	if outliner.peekMode {
 		t.Fatal("Esc did not disable Peek")
 	}
-	if len(outliner.crossFocusStack) != 1 {
+	if len(outliner.focus.crossStack) != 1 {
 		t.Fatal("Esc unwound navigation instead of dismissing Peek first")
 	}
 }

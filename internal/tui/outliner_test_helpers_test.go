@@ -139,10 +139,12 @@ func newCrossOutlinerFromEnv(env *crossProjectTestEnv) *OutlinerModel {
 	runtime := newTestConfigAt(env.dataDir)
 	setTestProjects(runtime, env.projects)
 	outliner := &OutlinerModel{
-		runtime:           testRuntimeAt(runtime.DataDir(), runtime),
-		quickEdit:         grammar.NewQuickEditComponent(),
-		collapsedSections: make(map[string]bool),
-		expandedNodes:     make(map[taskref.TaskIdentity]bool),
+		runtime:   testRuntimeAt(runtime.DataDir(), runtime),
+		quickEdit: grammar.NewQuickEditComponent(),
+		folds: foldState{
+			collapsedSections: make(map[string]bool),
+			expandedNodes:     make(map[taskref.TaskIdentity]bool),
+		},
 		MultiSelectState: listsurface.MultiSelectState{
 			Selected: make(map[taskref.TaskIdentity]bool),
 		},

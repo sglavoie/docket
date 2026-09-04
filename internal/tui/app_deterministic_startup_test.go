@@ -34,8 +34,8 @@ func TestLaunchResetsEveryPresentationAxisAndRelaunchPreservesOnlyTheme(t *testi
 	outliner.filter.Tags = map[string]bool{"stale": true}
 	outliner.adoptFilterCarriers()
 	outliner.Cursor = 7
-	outliner.collapsedSections["stale"] = true
-	outliner.expandedNodes[taskref.TaskIdentity{ProjectID: projects[0].ID, TaskID: "stale"}] = true
+	outliner.folds.collapsedSections["stale"] = true
+	outliner.folds.expandedNodes[taskref.TaskIdentity{ProjectID: projects[0].ID, TaskID: "stale"}] = true
 	outliner.MultiSelectMode = true
 	outliner.Selected[taskref.TaskIdentity{ProjectID: projects[0].ID, TaskID: "stale"}] = true
 	app.currentProject = projects[0]
@@ -139,7 +139,7 @@ func assertCleanLaunchRoot(t *testing.T, app *AppModel) {
 	if outliner.hasActiveLens() || outliner.lensQuery != "" || outliner.editingLensQuery() {
 		t.Fatalf("launch retained lens state: active=%v query=%q editing=%v", outliner.hasActiveLens(), outliner.lensQuery, outliner.editingLensQuery())
 	}
-	if len(outliner.collapsedSections) != 0 || len(outliner.expandedNodes) != 0 || len(outliner.focusStack) != 0 || len(outliner.crossFocusStack) != 0 {
-		t.Fatalf("launch retained folds/focus: sections=%v nodes=%v focus=%v crossFocus=%v", outliner.collapsedSections, outliner.expandedNodes, outliner.focusStack, outliner.crossFocusStack)
+	if len(outliner.folds.collapsedSections) != 0 || len(outliner.folds.expandedNodes) != 0 || len(outliner.focus.stack) != 0 || len(outliner.focus.crossStack) != 0 {
+		t.Fatalf("launch retained folds/focus: sections=%v nodes=%v focus=%v crossFocus=%v", outliner.folds.collapsedSections, outliner.folds.expandedNodes, outliner.focus.stack, outliner.focus.crossStack)
 	}
 }

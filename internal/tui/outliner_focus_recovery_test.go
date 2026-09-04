@@ -46,15 +46,15 @@ func TestFocusRecoveryUnwindsMovedAndRemovedFramesWithOwningViewport(t *testing.
 	project.BuildTaskTree()
 	out.population.invalidate()
 	out.crossProjectRebuildRows()
-	if len(out.crossFocusStack) != 1 || out.crossFocusStack[0].TaskID != root.ID {
-		t.Fatalf("reparent recovery stack = %+v, want root frame", out.crossFocusStack)
+	if len(out.focus.crossStack) != 1 || out.focus.crossStack[0].TaskID != root.ID {
+		t.Fatalf("reparent recovery stack = %+v, want root frame", out.focus.crossStack)
 	}
 	if out.Cursor != min(childFrameCursor, len(out.rows)-1) || out.ViewScrollOffset != 3 {
 		t.Fatalf("reparent recovery viewport = cursor %d scroll %d, want cursor near %d scroll 3",
 			out.Cursor, out.ViewScrollOffset, childFrameCursor)
 	}
-	if out.focusNotice != "Focus target left this branch — returned to parent" {
-		t.Fatalf("reparent recovery notice = %q", out.focusNotice)
+	if out.focus.notice != "Focus target left this branch — returned to parent" {
+		t.Fatalf("reparent recovery notice = %q", out.focus.notice)
 	}
 	if visible := visibleOutlinerTaskIDs(out); !visible[remaining.ID] || visible[child.ID] || visible[duplicateChild.ID] {
 		t.Fatalf("reparent recovery rows = %v, want only surviving alpha branch descendants", visible)
@@ -64,11 +64,11 @@ func TestFocusRecoveryUnwindsMovedAndRemovedFramesWithOwningViewport(t *testing.
 	project.BuildTaskTree()
 	out.population.invalidate()
 	out.crossProjectRebuildRows()
-	if len(out.crossFocusStack) != 0 {
-		t.Fatalf("removed root retained Focus frames: %+v", out.crossFocusStack)
+	if len(out.focus.crossStack) != 0 {
+		t.Fatalf("removed root retained Focus frames: %+v", out.focus.crossStack)
 	}
-	if out.ViewScrollOffset != 6 || out.focusNotice != "Focus target left this branch — returned to root" {
-		t.Fatalf("root recovery = scroll %d notice %q", out.ViewScrollOffset, out.focusNotice)
+	if out.ViewScrollOffset != 6 || out.focus.notice != "Focus target left this branch — returned to root" {
+		t.Fatalf("root recovery = scroll %d notice %q", out.ViewScrollOffset, out.focus.notice)
 	}
 	if !visibleOutlinerTaskIDs(out)[duplicateRoot.ID] {
 		t.Fatal("duplicate task ID in beta should remain visible without satisfying alpha Focus ownership")
@@ -79,8 +79,8 @@ func TestFocusRecoveryUnwindsMovedAndRemovedFramesWithOwningViewport(t *testing.
 	project.BuildTaskTree()
 	out.population.invalidate()
 	out.crossProjectRebuildRows()
-	if len(out.crossFocusStack) != 0 {
-		t.Fatalf("undo-like restore silently re-entered Focus: %+v", out.crossFocusStack)
+	if len(out.focus.crossStack) != 0 {
+		t.Fatalf("undo-like restore silently re-entered Focus: %+v", out.focus.crossStack)
 	}
 }
 
@@ -109,16 +109,16 @@ func TestSingleProjectFocusSurvivesReloadedPointersAndRepairsReparenting(t *test
 	reloaded := primaryRowsProject(project.ID, reloadedRoot, reloadedChild, reloadedGrandchild)
 	out.project = reloaded
 	out.rebuildRows()
-	if len(out.focusStack) != 2 || out.projectFocusContext() != "Focus: [project] › Reloaded root › Reloaded child" {
-		t.Fatalf("reload recovery = stack %+v context %q", out.focusStack, out.projectFocusContext())
+	if len(out.focus.stack) != 2 || out.projectFocusContext() != "Focus: [project] › Reloaded root › Reloaded child" {
+		t.Fatalf("reload recovery = stack %+v context %q", out.focus.stack, out.projectFocusContext())
 	}
 
 	reloadedChild.ParentID = nil
 	reloaded.BuildTaskTree()
 	out.rebuildRows()
-	if len(out.focusStack) != 1 || out.focusStack[0].TaskID != reloadedRoot.ID ||
-		out.focusNotice != "Focus target left this branch — returned to parent" {
-		t.Fatalf("single-project reparent recovery = stack %+v notice %q", out.focusStack, out.focusNotice)
+	if len(out.focus.stack) != 1 || out.focus.stack[0].TaskID != reloadedRoot.ID ||
+		out.focus.notice != "Focus target left this branch — returned to parent" {
+		t.Fatalf("single-project reparent recovery = stack %+v notice %q", out.focus.stack, out.focus.notice)
 	}
 }
 
@@ -152,10 +152,10 @@ func TestFocusEscPriorityAndNarrowBreadcrumb(t *testing.T) {
 		t.Helper()
 		if out.peekMode != peek || out.IsRangeSelectionActive() != liveRange ||
 			out.MultiSelectMode != selection || out.hasSearchProjection() != search ||
-			len(out.crossFocusStack) != focusDepth || out.isProjectScoped() != scoped {
+			len(out.focus.crossStack) != focusDepth || out.isProjectScoped() != scoped {
 			t.Fatalf("%s state = peek %t range %t selection %t search %t focus %d scoped %t",
 				step, out.peekMode, out.IsRangeSelectionActive(), out.MultiSelectMode,
-				out.hasSearchProjection(), len(out.crossFocusStack), out.isProjectScoped())
+				out.hasSearchProjection(), len(out.focus.crossStack), out.isProjectScoped())
 		}
 	}
 	assertState("initial", true, true, true, true, 1, true)

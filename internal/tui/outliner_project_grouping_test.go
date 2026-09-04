@@ -210,7 +210,7 @@ func TestBacklogModeAndAllModeBacklogGroupFoldIndependently(t *testing.T) {
 		if want := modeProjectCollapseKey(chrome.ModeBacklog, alpha.ID); key != want {
 			t.Fatalf("Backlog project fold key = %q, want %q", key, want)
 		}
-		outliner.collapsedSections[key] = true
+		outliner.folds.collapsedSections[key] = true
 		outliner.rebuildRows()
 		if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{betaTask.ID}) {
 			t.Fatalf("folded Backlog rows = %v, want beta only", got)
@@ -229,7 +229,7 @@ func TestBacklogModeAndAllModeBacklogGroupFoldIndependently(t *testing.T) {
 		if want := projectSectionCollapseKey(alpha.ID, models.StateGroupBacklog); key != want {
 			t.Fatalf("All mode project fold key = %q, want %q", key, want)
 		}
-		outliner.collapsedSections[key] = true
+		outliner.folds.collapsedSections[key] = true
 		outliner.rebuildRows()
 		if got := visibleTaskIDs(outliner); !slices.Equal(got, []string{betaTask.ID}) {
 			t.Fatalf("folded All rows = %v, want beta only", got)

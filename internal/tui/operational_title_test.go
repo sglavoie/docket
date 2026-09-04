@@ -34,7 +34,7 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 
 	newOutliner := func() *OutlinerModel {
 		outliner := scopeTestOutliner(project)
-		outliner.workspacePulse = pulse.WorkspacePulse{Inbox: 12, Today: 3, Overdue: 4}
+		outliner.SetWorkspacePulse(pulse.WorkspacePulse{Inbox: 12, Today: 3, Overdue: 4})
 		return outliner
 	}
 
@@ -47,7 +47,7 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 		{name: "Active Projects", configure: func(*OutlinerModel) {}, wantNarrow: []string{activeProjectsScopeLabel}, wantWide: []string{activeProjectsScopeLabel, "All"}},
 		{name: "focused project", configure: func(m *OutlinerModel) { m.scopedProjectID = project.ID }, wantNarrow: []string{project.Name}, wantWide: []string{project.Name, "All"}},
 		{name: "focus", configure: func(m *OutlinerModel) {
-			m.crossFocusStack = []CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: task.ID}}
+			m.focus.crossStack = []CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: task.ID}}
 		}, wantNarrow: []string{"Focus:"}, wantWide: []string{"Focus: [Alpha] › " + task.Title}},
 		{name: "search", configure: func(m *OutlinerModel) { m.SetSearchQuery("needle") }, wantNarrow: []string{"Search:"}, wantWide: []string{"Search: \"needle\""}},
 		{name: "filters", configure: func(m *OutlinerModel) {
@@ -66,7 +66,7 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 			m.filter = query.NewFilterState()
 			m.filter.Priority = 1
 			m.adoptFilterCarriers()
-			m.crossFocusStack = []CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: task.ID}}
+			m.focus.crossStack = []CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: task.ID}}
 		}, wantNarrow: []string{"MULTI-SELECT"}, wantWide: []string{"MULTI-SELECT: 1 selected", "Search: \"needle\"", "Filters:", "Focus: [Alpha] › Launch"}},
 	}
 
@@ -161,7 +161,7 @@ func TestOutlinerFocusContextStaysOnHeaderRow(t *testing.T) {
 	project.BuildTaskTree()
 	m := scopeTestOutliner(project)
 	m.SetSize(100, 20)
-	m.crossFocusStack = []CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: "launch"}}
+	m.focus.crossStack = []CrossProjectFocusEntry{{ProjectID: project.ID, TaskID: "launch"}}
 	m.population.invalidate()
 	m.crossProjectRebuildRows()
 

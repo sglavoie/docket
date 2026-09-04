@@ -79,14 +79,14 @@ func TestSectionZoomNarrowsAllToOneSectionAndRestoresViewport(t *testing.T) {
 			t.Fatalf("zoomed projection kept %q, which lives outside Doing", row.task.ID)
 		}
 	}
-	if outliner.zoom.name != doingLabel {
-		t.Fatalf("zoom name = %q, want the section's display name", outliner.zoom.name)
+	if outliner.focus.zoom.name != doingLabel {
+		t.Fatalf("zoom name = %q, want the section's display name", outliner.focus.zoom.name)
 	}
 
 	if !outliner.exitSectionZoom() {
 		t.Fatal("an active zoom refused to exit")
 	}
-	if outliner.zoom.active() {
+	if outliner.focus.zoom.active() {
 		t.Fatal("the zoom stayed active after exiting")
 	}
 	if len(outliner.rows) != fullRows {
@@ -113,7 +113,7 @@ func TestSectionZoomOverridesTheSectionFoldWithoutWritingIt(t *testing.T) {
 	doingLabel := models.StateGroupDoing.Label()
 	outliner.setSectionRowCollapsed(outliner.rows[sectionHeaderIndex(t, outliner, doingLabel)], true)
 	outliner.rebuildRows()
-	foldsBefore := maps.Clone(outliner.collapsedSections)
+	foldsBefore := maps.Clone(outliner.folds.collapsedSections)
 
 	zoomIntoSection(t, outliner, doingLabel)
 	if len(outliner.rows) < 2 {
@@ -128,8 +128,8 @@ func TestSectionZoomOverridesTheSectionFoldWithoutWritingIt(t *testing.T) {
 	if outliner.toggleVisibleSections() {
 		t.Fatal("s folded the zoomed section")
 	}
-	if !maps.Equal(outliner.collapsedSections, foldsBefore) {
-		t.Fatalf("the zoom changed fold state: got %v, want %v", outliner.collapsedSections, foldsBefore)
+	if !maps.Equal(outliner.folds.collapsedSections, foldsBefore) {
+		t.Fatalf("the zoom changed fold state: got %v, want %v", outliner.folds.collapsedSections, foldsBefore)
 	}
 
 	if !outliner.exitSectionZoom() {
@@ -183,7 +183,7 @@ func TestSectionZoomNarrowsTodayPinnedToPinnedRows(t *testing.T) {
 	if ids := visibleOutlinerTaskIDs(outliner); !ids[pinned.ID] || !ids[plain.ID] {
 		t.Fatalf("pre-zoom Today rows = %v, want both the pinned and the ordinary task", ids)
 	}
-	folds := maps.Clone(outliner.collapsedSections)
+	folds := maps.Clone(outliner.folds.collapsedSections)
 
 	pinnedIndex := sectionHeaderIndex(t, outliner, pinnedSectionName)
 	outliner.Cursor = pinnedIndex
@@ -208,8 +208,8 @@ func TestSectionZoomNarrowsTodayPinnedToPinnedRows(t *testing.T) {
 	if !listsurface.RunEscCascade(outliner.escSteps()) {
 		t.Fatal("Esc did not leave the Today Pinned zoom")
 	}
-	if outliner.zoom.active() {
-		t.Fatalf("the zoom survived Esc: %+v", outliner.zoom)
+	if outliner.focus.zoom.active() {
+		t.Fatalf("the zoom survived Esc: %+v", outliner.focus.zoom)
 	}
 	if len(outliner.rows) != fullRows {
 		t.Fatalf("unzoomed Today rows = %d, want the pre-zoom %d", len(outliner.rows), fullRows)
@@ -223,8 +223,8 @@ func TestSectionZoomNarrowsTodayPinnedToPinnedRows(t *testing.T) {
 			outliner.Cursor, outliner.ViewScrollOffset, pinnedIndex,
 		)
 	}
-	if !maps.Equal(outliner.collapsedSections, folds) {
-		t.Fatalf("the Today zoom changed fold state: got %v, want %v", outliner.collapsedSections, folds)
+	if !maps.Equal(outliner.folds.collapsedSections, folds) {
+		t.Fatalf("the Today zoom changed fold state: got %v, want %v", outliner.folds.collapsedSections, folds)
 	}
 }
 
@@ -290,14 +290,14 @@ func TestReenteringTheSameSectionZoomKeepsTheRetainedViewport(t *testing.T) {
 		t.Fatal("the Doing header refused the zoom")
 	}
 
-	zoomBefore := outliner.zoom
+	zoomBefore := outliner.focus.zoom
 	rowsBefore := len(outliner.rows)
 	outliner.Cursor = 1
 	if !outliner.enterSectionZoom(outliner.rows[0]) {
 		t.Fatal("re-entering the active zoom was refused")
 	}
-	if outliner.zoom != zoomBefore {
-		t.Fatalf("re-entry replaced the retained viewport: got %+v, want %+v", outliner.zoom, zoomBefore)
+	if outliner.focus.zoom != zoomBefore {
+		t.Fatalf("re-entry replaced the retained viewport: got %+v, want %+v", outliner.focus.zoom, zoomBefore)
 	}
 	if outliner.Cursor != 1 || len(outliner.rows) != rowsBefore {
 		t.Fatalf(

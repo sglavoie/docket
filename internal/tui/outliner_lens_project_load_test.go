@@ -157,7 +157,7 @@ func TestLensProjectLoadPublishesPartialResultWithWarning(t *testing.T) {
 func TestLensProjectLoadCapturesBaselineBeforeIO(t *testing.T) {
 	outliner := lensLifecycleOutliner()
 	outliner.selectOutlinerMode(chrome.ModeInbox)
-	outliner.collapsedSections["baseline-fold"] = true
+	outliner.folds.collapsedSections["baseline-fold"] = true
 	baselineProjects := slices.Clone(outliner.population.projects)
 
 	lens := waitingLens(lensTestID(1), "Parked", "")
@@ -172,7 +172,7 @@ func TestLensProjectLoadCapturesBaselineBeforeIO(t *testing.T) {
 	// The user keeps navigating and searching while the projects read. None of it
 	// may rewrite the baseline the application already froze.
 	outliner.selectOutlinerMode(chrome.ModeBacklog)
-	delete(outliner.collapsedSections, "baseline-fold")
+	delete(outliner.folds.collapsedSections, "baseline-fold")
 	outliner.SetSearchQuery("needle")
 
 	if _, published := outliner.handleLensProjectsLoaded(lensProjectsLoadedMsg{
@@ -193,7 +193,7 @@ func TestLensProjectLoadCapturesBaselineBeforeIO(t *testing.T) {
 	if outliner.primaryMode != chrome.ModeInbox {
 		t.Fatalf("restored mode = %v, want the pre-load %v", outliner.primaryMode, chrome.ModeInbox)
 	}
-	if !outliner.collapsedSections["baseline-fold"] {
+	if !outliner.folds.collapsedSections["baseline-fold"] {
 		t.Fatal("restoration lost the fold the baseline held before the load")
 	}
 	if outliner.hasSearchProjection() {

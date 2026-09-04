@@ -274,13 +274,11 @@ func prospectiveOutlinerStateCounts(
 	projection.setFilterQuery(prospective)
 	projection.rows = nil
 	projection.OpenAtTask = nil
-	projection.expandedNodes = make(map[taskref.TaskIdentity]bool)
-	projection.collapsedSections = make(map[string]bool)
-	projection.expandedChecklists = make(map[taskref.TaskIdentity]bool)
-	projection.focusStack = append([]FocusEntry(nil), outliner.focusStack...)
-	projection.crossFocusStack = append(
-		[]CrossProjectFocusEntry(nil),
-		outliner.crossFocusStack...,
+	projection.folds.resetAll()
+	projection.focus.restore(
+		append([]FocusEntry(nil), outliner.focus.stack...),
+		append([]CrossProjectFocusEntry(nil), outliner.focus.crossStack...),
+		outliner.focus.zoom,
 	)
 	projection.population.invalidate()
 	projection.rebuildRows()

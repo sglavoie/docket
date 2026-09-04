@@ -186,10 +186,10 @@ func (m *OutlinerModel) jumpProjectionFingerprint() string {
 		m.hasSearchProjection(), m.showsRankedList(), m.SearchQuery(),
 		m.sort.Field, m.sort.Ascending, m.treeSort.Field, m.treeSort.Ascending)
 	fmt.Fprintf(&b, "filters=%q|", strings.Join(query.CommonFilterParts(&m.filter.CommonFilterState), "\x1f"))
-	fmt.Fprintf(&b, "zoom=%q|", m.zoom.key)
+	fmt.Fprintf(&b, "zoom=%q|", m.focus.zoom.key)
 
-	collapsed := make([]string, 0, len(m.collapsedSections))
-	for key, value := range m.collapsedSections {
+	collapsed := make([]string, 0, len(m.folds.collapsedSections))
+	for key, value := range m.folds.collapsedSections {
 		if value {
 			collapsed = append(collapsed, key)
 		}
@@ -197,8 +197,8 @@ func (m *OutlinerModel) jumpProjectionFingerprint() string {
 	sort.Strings(collapsed)
 	fmt.Fprintf(&b, "collapsed=%q|", strings.Join(collapsed, "\x1f"))
 
-	folded := make([]string, 0, len(m.expandedNodes))
-	for identity, expanded := range m.expandedNodes {
+	folded := make([]string, 0, len(m.folds.expandedNodes))
+	for identity, expanded := range m.folds.expandedNodes {
 		if !expanded {
 			folded = append(folded, identity.ProjectID+"\x1e"+identity.TaskID)
 		}
@@ -206,8 +206,8 @@ func (m *OutlinerModel) jumpProjectionFingerprint() string {
 	sort.Strings(folded)
 	fmt.Fprintf(&b, "folded=%q|", strings.Join(folded, "\x1f"))
 
-	checklists := make([]string, 0, len(m.expandedChecklists))
-	for identity, expanded := range m.expandedChecklists {
+	checklists := make([]string, 0, len(m.folds.expandedChecklists))
+	for identity, expanded := range m.folds.expandedChecklists {
 		if expanded {
 			checklists = append(checklists, identity.ProjectID+"\x1e"+identity.TaskID)
 		}
@@ -215,10 +215,10 @@ func (m *OutlinerModel) jumpProjectionFingerprint() string {
 	sort.Strings(checklists)
 	fmt.Fprintf(&b, "checklists=%q|", strings.Join(checklists, "\x1f"))
 
-	for _, entry := range m.focusStack {
+	for _, entry := range m.focus.stack {
 		fmt.Fprintf(&b, "focus=%s:%d:%d|", entry.TaskID, entry.CursorIndex, entry.ScrollOffset)
 	}
-	for _, entry := range m.crossFocusStack {
+	for _, entry := range m.focus.crossStack {
 		fmt.Fprintf(&b, "cross-focus=%s:%s:%d:%d|", entry.ProjectID, entry.TaskID, entry.CursorIndex, entry.ScrollOffset)
 	}
 	return b.String()

@@ -42,18 +42,7 @@ func (m *OutlinerModel) cursorChecklistItem() (checklistCursor, bool) {
 // their own rows. Absent means collapsed, so the default projection is exactly
 // the one that existed before checklist rows.
 func (m *OutlinerModel) isChecklistExpanded(identity taskref.TaskIdentity) bool {
-	return m != nil && m.expandedChecklists[identity]
-}
-
-func (m *OutlinerModel) setChecklistExpanded(identity taskref.TaskIdentity, expanded bool) {
-	if m.expandedChecklists == nil {
-		m.expandedChecklists = make(map[taskref.TaskIdentity]bool)
-	}
-	if expanded {
-		m.expandedChecklists[identity] = true
-		return
-	}
-	delete(m.expandedChecklists, identity)
+	return m != nil && m.folds.expandedChecklists[identity]
 }
 
 // expandChecklistRows splices each expanded task's checklist items in beneath
@@ -64,7 +53,7 @@ func (m *OutlinerModel) setChecklistExpanded(identity taskref.TaskIdentity, expa
 // cannot select a non-task row, but cursor movement during a live range would
 // still land on one.
 func (m *OutlinerModel) expandChecklistRows() {
-	if m == nil || len(m.expandedChecklists) == 0 || m.MultiSelectMode {
+	if m == nil || len(m.folds.expandedChecklists) == 0 || m.MultiSelectMode {
 		return
 	}
 	expanded := make([]outlinerRow, 0, len(m.rows))
@@ -116,7 +105,7 @@ func checklistRowPrefix(ownerPrefix string, last bool) string {
 // removes every checklist row the cursor may currently rest on and leaving it
 // puts them back.
 func (m *OutlinerModel) syncChecklistSelectionRows() {
-	if m == nil || len(m.expandedChecklists) == 0 {
+	if m == nil || len(m.folds.expandedChecklists) == 0 {
 		return
 	}
 	owner := taskref.TaskIdentity{}

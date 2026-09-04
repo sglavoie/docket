@@ -277,7 +277,7 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 		taskCount += len(proj.Tasks)
 	}
 	currentFingerprint := m.crossProjectRowsFingerprint()
-	currentFocusDepth := len(m.crossFocusStack)
+	currentFocusDepth := len(m.focus.crossStack)
 
 	// Short-circuit when all guard inputs match the previous call and no force
 	// rebuild has been requested. This prevents redundant rebuilds on no-op
@@ -298,7 +298,7 @@ func (m *OutlinerModel) crossProjectRebuildRows() {
 	m.validateCrossFocusStack()
 	// Validation may have shortened the stack after the guard captured its old
 	// depth. Record the repaired depth so the next render remains a no-op.
-	m.population.recordFocusDepth(len(m.crossFocusStack))
+	m.population.recordFocusDepth(len(m.focus.crossStack))
 	if len(m.population.projects) == 0 {
 		m.pruneInvisibleSelections()
 		m.clampCursor()
@@ -351,8 +351,8 @@ func (m *OutlinerModel) crossProjectRowsFingerprint() string {
 	fmt.Fprintf(&b, "loaded=%s|", loadedProjectIDsFingerprint(m.population.projects))
 	fmt.Fprintf(&b, "scope=%q|", m.scopedProjectID)
 	fmt.Fprintf(&b, "mode=%s|", m.primaryMode)
-	fmt.Fprintf(&b, "zoom=%q|", m.zoom.key)
-	fmt.Fprintf(&b, "today-fold=%t|next-fold=%t|", m.collapsedSections[todaySectionCollapseKey], m.collapsedSections[nextSectionCollapseKey])
+	fmt.Fprintf(&b, "zoom=%q|", m.focus.zoom.key)
+	fmt.Fprintf(&b, "today-fold=%t|next-fold=%t|", m.folds.collapsedSections[todaySectionCollapseKey], m.folds.collapsedSections[nextSectionCollapseKey])
 	b.WriteString("today-plan=")
 	if m.runtime != nil {
 		for _, item := range m.runtime.Planning().GetToday() {

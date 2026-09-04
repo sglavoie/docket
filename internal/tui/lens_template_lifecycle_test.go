@@ -190,7 +190,7 @@ func TestAddingTemplatesFromANormalViewKeepsOneRestorationPoint(t *testing.T) {
 	emptyTemplateMachine(t, model)
 	out := model.crossOutliner
 	out.selectOutlinerMode(chrome.ModeBacklog)
-	out.collapsedSections["pre-lens-fold"] = true
+	out.folds.collapsedSections["pre-lens-fold"] = true
 	baselineProjects := slices.Clone(out.population.projects)
 
 	chain := []string{"Overdue", "Active Work", "Parked Work"}
@@ -218,7 +218,7 @@ func TestAddingTemplatesFromANormalViewKeepsOneRestorationPoint(t *testing.T) {
 	if out.primaryMode != chrome.ModeBacklog {
 		t.Fatalf("restored mode = %v, want the pre-lens %v", out.primaryMode, chrome.ModeBacklog)
 	}
-	if !out.collapsedSections["pre-lens-fold"] {
+	if !out.folds.collapsedSections["pre-lens-fold"] {
 		t.Fatal("restoration lost the fold the pre-lens view held")
 	}
 	if !slices.Equal(out.population.projects, baselineProjects) {
