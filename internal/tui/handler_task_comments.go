@@ -2,19 +2,20 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/taskdetail"
 )
 
 // handleTaskCommentMessages handles task comment messages.
 // Returns true if the message was handled.
 func (m *AppModel) handleTaskCommentMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case CommentAddedMsg:
+	case taskdetail.CommentAddedMsg:
 		return m.handleCommentAdded(msg)
 
-	case CommentDeletedMsg:
+	case taskdetail.CommentDeletedMsg:
 		return m.handleCommentDeleted(msg)
 
-	case CommentEditedMsg:
+	case taskdetail.CommentEditedMsg:
 		return m.handleCommentEdited(msg)
 
 	}
@@ -32,7 +33,7 @@ func (m *AppModel) refreshAfterSubviewCommit() tea.Cmd {
 }
 
 // handleCommentAdded handles the CommentAddedMsg.
-func (m *AppModel) handleCommentAdded(msg CommentAddedMsg) (bool, tea.Cmd) {
+func (m *AppModel) handleCommentAdded(msg taskdetail.CommentAddedMsg) (bool, tea.Cmd) {
 	// Delegate to current view so it can refresh stale task data
 	// (outliner rows contain clones from tree projections)
 	viewCmd := m.delegateToCurrentView(msg)
@@ -40,11 +41,11 @@ func (m *AppModel) handleCommentAdded(msg CommentAddedMsg) (bool, tea.Cmd) {
 }
 
 // handleCommentDeleted handles the CommentDeletedMsg.
-func (m *AppModel) handleCommentDeleted(msg CommentDeletedMsg) (bool, tea.Cmd) {
+func (m *AppModel) handleCommentDeleted(msg taskdetail.CommentDeletedMsg) (bool, tea.Cmd) {
 	return true, tea.Batch(m.setRecoveryFeedback("Comment deleted", msg.TransactionID, false), m.refreshAfterSubviewCommit())
 }
 
 // handleCommentEdited handles the CommentEditedMsg.
-func (m *AppModel) handleCommentEdited(msg CommentEditedMsg) (bool, tea.Cmd) {
+func (m *AppModel) handleCommentEdited(msg taskdetail.CommentEditedMsg) (bool, tea.Cmd) {
 	return true, tea.Batch(m.setRecoveryFeedback("Comment updated", msg.TransactionID, false), m.refreshAfterSubviewCommit())
 }

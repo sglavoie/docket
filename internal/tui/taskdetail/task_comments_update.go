@@ -1,4 +1,4 @@
-package tui
+package taskdetail
 
 import (
 	"fmt"
@@ -16,13 +16,13 @@ import (
 
 func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch {
-	case m.expandedView:
+	case m.ExpandedView:
 		return m.updateExpandedView(msg)
 	case m.Confirm.IsActive():
 		return m.updateConfirmMode(msg)
-	case m.editMode:
+	case m.EditMode:
 		return m.updateEditMode(msg)
-	case m.addMode:
+	case m.AddMode:
 		return m.updateAddMode(msg)
 	default:
 		return m.updateNormalMode(msg)
@@ -34,7 +34,7 @@ func (m *TaskCommentsModel) updateExpandedView(msg tea.Msg) (tea.Model, tea.Cmd)
 	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc", "enter":
-			m.expandedView = false
+			m.ExpandedView = false
 		}
 	}
 
@@ -84,12 +84,12 @@ func (m *TaskCommentsModel) updateEditMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+e":
 			return m, m.editCommentInExternalEditorFromEditMode()
 		case "shift+enter":
-			m.editTextInput.InsertString("\n")
+			m.EditTextInput.InsertString("\n")
 			return m, nil
 		}
 	}
 
-	m.editTextInput, cmd = m.editTextInput.Update(msg)
+	m.EditTextInput, cmd = m.EditTextInput.Update(msg)
 	return m, cmd
 }
 
@@ -100,7 +100,7 @@ func (m *TaskCommentsModel) updateAddMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
-			if strings.TrimSpace(m.textInput.Value()) != "" {
+			if strings.TrimSpace(m.TextInput.Value()) != "" {
 				m.Confirm.Show("discard-add", "Discard comment?")
 				return m, nil
 			}
@@ -111,12 +111,12 @@ func (m *TaskCommentsModel) updateAddMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+e":
 			return m, m.addCommentInExternalEditor()
 		case "shift+enter":
-			m.textInput.InsertString("\n")
+			m.TextInput.InsertString("\n")
 			return m, nil
 		}
 	}
 
-	m.textInput, cmd = m.textInput.Update(msg)
+	m.TextInput, cmd = m.TextInput.Update(msg)
 	return m, cmd
 }
 
@@ -129,13 +129,13 @@ func (m *TaskCommentsModel) updateNormalMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.BaseView.SetSize(msg.Width, msg.Height)
 		return m, nil
 	case tea.KeyPressMsg:
-		return m, m.handleNormalKey(msg.String())
+		return m, m.HandleNormalKey(msg.String())
 	}
 
 	return m, nil
 }
 
-func (m *TaskCommentsModel) handleNormalKey(key string) tea.Cmd {
+func (m *TaskCommentsModel) HandleNormalKey(key string) tea.Cmd {
 	if m.completeCommentsTopChord(key) {
 		return nil
 	}
@@ -177,7 +177,7 @@ func (m *TaskCommentsModel) handleCommentsNavigationKey(key string) (tea.Cmd, bo
 		m.pendingTopChord = true
 		return nil, true
 	case "j", "down", "k", "up", "home", "G", "end":
-		_, cmd := listsurface.HandleListNavigation(key, &m.Cursor, len(m.task.Comments), m.Height(), &m.CursorFlash)
+		_, cmd := listsurface.HandleListNavigation(key, &m.Cursor, len(m.Task.Comments), m.Height(), &m.CursorFlash)
 		return cmd, true
 	default:
 		return nil, false
@@ -219,10 +219,10 @@ func (m *TaskCommentsModel) handleCommentsGrammarKey(key string) (tea.Cmd, bool)
 // dispatchCommentsKey resolves one browse key through the Comments grammar and
 // runs whatever operation it reaches.
 func (m *TaskCommentsModel) dispatchCommentsKey(key string) tea.Cmd {
-	if m.dispatch == nil {
+	if m.Dispatch == nil {
 		return nil
 	}
-	_, cmd := m.dispatch(operation.InputStrategyComments, []string{key}, m.commentsCommandContext())
+	_, cmd := m.Dispatch(operation.InputStrategyComments, []string{key}, m.commentsCommandContext())
 	return cmd
 }
 
@@ -236,61 +236,61 @@ func (m *TaskCommentsModel) commentsCommandContext() operation.CommandContext {
 }
 
 func (m *TaskCommentsModel) HandledKeys() []string {
-	return m.buildKeyMap().HandledKeys()
+	return m.BuildKeyMap().HandledKeys()
 }
 
-func (m *TaskCommentsModel) hasSelection() bool {
-	return len(m.task.Comments) > 0 && m.Cursor < len(m.task.Comments)
+func (m *TaskCommentsModel) HasSelection() bool {
+	return len(m.Task.Comments) > 0 && m.Cursor < len(m.Task.Comments)
 }
 
 func (m *TaskCommentsModel) hasUnsavedEditChanges() bool {
-	return m.editIndex < len(m.task.Comments) && strings.TrimSpace(m.editTextInput.Value()) != strings.TrimSpace(m.task.Comments[m.editIndex].Text)
+	return m.editIndex < len(m.Task.Comments) && strings.TrimSpace(m.EditTextInput.Value()) != strings.TrimSpace(m.Task.Comments[m.editIndex].Text)
 }
 
-func (m *TaskCommentsModel) beginAddMode() tea.Cmd {
-	m.addMode = true
-	m.textInput.Focus()
+func (m *TaskCommentsModel) BeginAddMode() tea.Cmd {
+	m.AddMode = true
+	m.TextInput.Focus()
 	return textarea.Blink
 }
 
-func (m *TaskCommentsModel) startEditSelectedComment() tea.Cmd {
-	if !m.hasSelection() {
+func (m *TaskCommentsModel) StartEditSelectedComment() tea.Cmd {
+	if !m.HasSelection() {
 		return nil
 	}
 	return m.startEditComment()
 }
 
-func (m *TaskCommentsModel) editSelectedCommentInExternalEditor() tea.Cmd {
-	if !m.hasSelection() {
+func (m *TaskCommentsModel) EditSelectedCommentInExternalEditor() tea.Cmd {
+	if !m.HasSelection() {
 		return nil
 	}
 	return m.editInExternalEditor()
 }
 
-func (m *TaskCommentsModel) copySelectedCommentText() {
-	if m.hasSelection() {
+func (m *TaskCommentsModel) CopySelectedCommentText() {
+	if m.HasSelection() {
 		m.copyCommentText()
 	}
 }
 
-func (m *TaskCommentsModel) confirmDeleteSelectedComment() {
-	if m.hasSelection() {
+func (m *TaskCommentsModel) ConfirmDeleteSelectedComment() {
+	if m.HasSelection() {
 		m.Confirm.Show("delete", fmt.Sprintf("Delete comment [%d]?", m.Cursor))
 	}
 }
 
-func (m *TaskCommentsModel) expandSelectedComment() {
-	if m.hasSelection() {
-		m.expandedView = true
+func (m *TaskCommentsModel) ExpandSelectedComment() {
+	if m.HasSelection() {
+		m.ExpandedView = true
 	}
 }
 
 func (m *TaskCommentsModel) cancelAddMode() {
-	m.addMode = false
-	m.textInput.Reset()
+	m.AddMode = false
+	m.TextInput.Reset()
 }
 
 func (m *TaskCommentsModel) cancelEditMode() {
-	m.editMode = false
-	m.editTextInput.Reset()
+	m.EditMode = false
+	m.EditTextInput.Reset()
 }

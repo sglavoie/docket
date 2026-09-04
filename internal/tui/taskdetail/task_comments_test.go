@@ -1,4 +1,4 @@
-package tui
+package taskdetail
 
 import (
 	"testing"
@@ -21,8 +21,8 @@ func TestTaskCommentsSaveCommentMutatesSynchronously(t *testing.T) {
 
 	model := NewTaskCommentsModel(task, project)
 	model.coordinator = newTestSecondaryCoordinators(project).Subview
-	model.addMode = true
-	model.textInput.SetValue("New comment")
+	model.AddMode = true
+	model.TextInput.SetValue("New comment")
 
 	cmd := model.saveComment()
 	if cmd == nil {
@@ -30,14 +30,14 @@ func TestTaskCommentsSaveCommentMutatesSynchronously(t *testing.T) {
 	}
 
 	// Verify state was mutated synchronously before cmd() runs
-	if model.addMode {
+	if model.AddMode {
 		t.Fatal("expected addMode to be false after saveComment()")
 	}
-	if len(model.task.Comments) != 1 {
-		t.Fatalf("expected 1 comment, got %d", len(model.task.Comments))
+	if len(model.Task.Comments) != 1 {
+		t.Fatalf("expected 1 comment, got %d", len(model.Task.Comments))
 	}
-	if model.task.Comments[0].Text != "New comment" {
-		t.Fatalf("expected comment text 'New comment', got %q", model.task.Comments[0].Text)
+	if model.Task.Comments[0].Text != "New comment" {
+		t.Fatalf("expected comment text 'New comment', got %q", model.Task.Comments[0].Text)
 	}
 	if model.Cursor != 0 {
 		t.Fatalf("expected cursor at 0, got %d", model.Cursor)
@@ -61,8 +61,8 @@ func TestTaskCommentsSaveCommentEmptyText(t *testing.T) {
 
 	model := NewTaskCommentsModel(task, project)
 	model.coordinator = newTestSecondaryCoordinators(project).Subview
-	model.addMode = true
-	model.textInput.SetValue("   ")
+	model.AddMode = true
+	model.TextInput.SetValue("   ")
 
 	cmd := model.saveComment()
 	if cmd != nil {
@@ -99,11 +99,11 @@ func TestTaskCommentsDeleteMutatesSynchronously(t *testing.T) {
 	}
 
 	// Verify state was mutated synchronously before cmd() runs
-	if len(model.task.Comments) != 1 {
-		t.Fatalf("expected 1 comment after delete, got %d", len(model.task.Comments))
+	if len(model.Task.Comments) != 1 {
+		t.Fatalf("expected 1 comment after delete, got %d", len(model.Task.Comments))
 	}
-	if model.task.Comments[0].Text != "comment 1" {
-		t.Fatalf("expected remaining comment to be 'comment 1', got %q", model.task.Comments[0].Text)
+	if model.Task.Comments[0].Text != "comment 1" {
+		t.Fatalf("expected remaining comment to be 'comment 1', got %q", model.Task.Comments[0].Text)
 	}
 	if model.Cursor != 0 {
 		t.Fatalf("expected cursor at 0 after deleting last comment, got %d", model.Cursor)
@@ -128,9 +128,9 @@ func TestTaskCommentsSaveEditMutatesSynchronously(t *testing.T) {
 
 	model := NewTaskCommentsModel(task, project)
 	model.coordinator = newTestSecondaryCoordinators(project).Subview
-	model.editMode = true
+	model.EditMode = true
 	model.editIndex = 0
-	model.editTextInput.SetValue("edited text")
+	model.EditTextInput.SetValue("edited text")
 
 	cmd := model.saveEditedComment()
 	if cmd == nil {
@@ -138,15 +138,15 @@ func TestTaskCommentsSaveEditMutatesSynchronously(t *testing.T) {
 	}
 
 	// Verify state was mutated synchronously before cmd() runs
-	if model.editMode {
+	if model.EditMode {
 		t.Fatal("expected editMode to be false after saveEditedComment()")
 	}
-	if model.task.Comments[0].Text != "edited text" {
-		t.Fatalf("expected comment text 'edited text', got %q", model.task.Comments[0].Text)
+	if model.Task.Comments[0].Text != "edited text" {
+		t.Fatalf("expected comment text 'edited text', got %q", model.Task.Comments[0].Text)
 	}
 	// Timestamp should be preserved
-	if !model.task.Comments[0].CreatedAt.Equal(created) {
-		t.Fatalf("expected timestamp to be preserved, got %v", model.task.Comments[0].CreatedAt)
+	if !model.Task.Comments[0].CreatedAt.Equal(created) {
+		t.Fatalf("expected timestamp to be preserved, got %v", model.Task.Comments[0].CreatedAt)
 	}
 	if model.Err != nil {
 		t.Fatalf("expected no error, got %v", model.Err)
@@ -174,12 +174,12 @@ func TestConvertedDecisionCommentIsFullyEditableThroughComments(t *testing.T) {
 	if cmd := model.startEditComment(); cmd == nil {
 		t.Fatal("converted comment did not enter edit mode")
 	}
-	if got := model.editTextInput.Value(); got != task.Comments[0].Text {
+	if got := model.EditTextInput.Value(); got != task.Comments[0].Text {
 		t.Fatalf("edit input = %q, want complete converted text %q", got, task.Comments[0].Text)
 	}
 
 	want := "Decision: Use SQLite\nRationale: Embedded deployment"
-	model.editTextInput.SetValue(want)
+	model.EditTextInput.SetValue(want)
 	cmd := model.saveEditedComment()
 	if cmd == nil {
 		t.Fatal("editing converted comment returned no commit command")
@@ -213,7 +213,7 @@ func TestTaskCommentsRenderEditModeOOB(t *testing.T) {
 
 	model := NewTaskCommentsModel(task, project)
 	model.coordinator = newTestSecondaryCoordinators(project).Subview
-	model.editMode = true
+	model.EditMode = true
 	model.editIndex = 0
 
 	// Simulate external deletion of all comments
@@ -243,7 +243,7 @@ func TestTaskCommentsEditExternalEditorFromEditModeOOB(t *testing.T) {
 
 	model := NewTaskCommentsModel(task, project)
 	model.coordinator = newTestSecondaryCoordinators(project).Subview
-	model.editMode = true
+	model.EditMode = true
 	model.editIndex = 0
 
 	// Simulate external deletion of all comments
@@ -254,7 +254,7 @@ func TestTaskCommentsEditExternalEditorFromEditModeOOB(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("expected non-nil error command when editIndex is out of bounds")
 	}
-	if model.editMode {
+	if model.EditMode {
 		t.Fatal("expected editMode to be canceled when comment was deleted externally")
 	}
 }
@@ -276,9 +276,9 @@ func TestTaskCommentsSaveEditOOBAfterExternalDeletion(t *testing.T) {
 
 	model := NewTaskCommentsModel(task, project)
 	model.coordinator = newTestSecondaryCoordinators(project).Subview
-	model.editMode = true
+	model.EditMode = true
 	model.editIndex = 0
-	model.editTextInput.SetValue("edited text")
+	model.EditTextInput.SetValue("edited text")
 
 	// Simulate external deletion of all comments
 	task.Comments = nil
@@ -288,7 +288,7 @@ func TestTaskCommentsSaveEditOOBAfterExternalDeletion(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("expected non-nil error command when editIndex is out of bounds")
 	}
-	if model.editMode {
+	if model.EditMode {
 		t.Fatal("expected editMode to be canceled when comment was deleted externally")
 	}
 }
@@ -311,10 +311,10 @@ func TestTaskCommentsHasUnsavedEditChangesIgnoresSurroundingWhitespace(t *testin
 
 	model := NewTaskCommentsModel(task, project)
 	model.coordinator = newTestSecondaryCoordinators(project).Subview
-	model.editMode = true
+	model.EditMode = true
 	model.editIndex = 0
 	// User opens edit; textarea is populated with the stored value but trims on input.
-	model.editTextInput.SetValue("hello world")
+	model.EditTextInput.SetValue("hello world")
 
 	if model.hasUnsavedEditChanges() {
 		t.Fatal("expected no unsaved changes when input differs from stored text only by surrounding whitespace")
@@ -338,7 +338,7 @@ func TestTaskCommentsLeanPanelHasNoResolvedControl(t *testing.T) {
 
 	model := NewTaskCommentsModel(task, project)
 	model.coordinator = newTestSecondaryCoordinators(project).Subview
-	if cmd := model.handleNormalKey("r"); cmd != nil {
+	if cmd := model.HandleNormalKey("r"); cmd != nil {
 		t.Fatalf("retired resolved key emitted command %#v", cmd())
 	}
 	for _, key := range model.HandledKeys() {

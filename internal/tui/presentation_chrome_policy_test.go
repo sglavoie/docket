@@ -16,6 +16,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/route"
+	"github.com/sglavoie/tt/internal/tui/taskdetail"
 )
 
 type staticCompletionActivityReader struct {
@@ -146,7 +147,7 @@ func TestPresentationChromeEligibleFamiliesRenderWorkspacePulse(t *testing.T) {
 			return m.View().Content
 		}},
 		{name: "task tool", view: func(workspacePulse pulse.WorkspacePulse) string {
-			m := NewTaskCommentsModel(task, project)
+			m := taskdetail.NewTaskCommentsModel(task, project)
 			m.SetSize(140, 30)
 			m.SetWorkspacePulse(workspacePulse)
 			return m.View().Content

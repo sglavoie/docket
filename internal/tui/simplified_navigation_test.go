@@ -320,7 +320,7 @@ func TestMutationRebuildPreservesCursorIdentityAndVisibleSelection(t *testing.T)
 	project.BuildTaskTree()
 	rebuildOutlinerPreservingCursor(m)
 
-	task, _ := m.getTaskRef()
+	task, _ := m.GetTaskRef()
 	if task == nil || task.ID != second.ID {
 		t.Fatalf("cursor target after rebuild = %v, want %s", task, second.ID)
 	}

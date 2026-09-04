@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/tt/internal/tui/taskdetail"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -177,11 +178,11 @@ func TestPanelFootersOnlyAdvertiseKeysTheStrategyBinds(t *testing.T) {
 		modal    []string
 	}{
 		{"notes", notes.NotesInputStrategy(), (&notes.NotesViewModel{}).BuildKeyMap(), nil},
-		{"attachments", AttachmentsInputStrategy(), (&TaskAttachmentsModel{}).buildKeyMap(), nil},
+		{"attachments", AttachmentsInputStrategy(), (&taskdetail.TaskAttachmentsModel{}).BuildKeyMap(), nil},
 		{
 			name:     "comments",
 			strategy: CommentsInputStrategy(),
-			keys:     (&TaskCommentsModel{}).buildKeyMap(),
+			keys:     (&taskdetail.TaskCommentsModel{}).BuildKeyMap(),
 			modal:    []string{"ctrl+s", "ctrl+e", "shift+enter"},
 		},
 	} {

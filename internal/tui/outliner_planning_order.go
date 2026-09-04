@@ -58,7 +58,7 @@ func (m *OutlinerModel) planningReorderMove(delta int) (tea.Model, tea.Cmd) {
 	if !m.isPlanningReorderMode() {
 		return m, nil
 	}
-	task, project := m.getTaskRef()
+	task, project := m.GetTaskRef()
 	if task == nil || project == nil {
 		return m, nil
 	}
@@ -154,7 +154,7 @@ func (m *OutlinerModel) planningReorderEdge(delta int) (tea.Model, tea.Cmd) {
 	if !m.isPlanningReorderMode() {
 		return m, nil
 	}
-	task, project := m.getTaskRef()
+	task, project := m.GetTaskRef()
 	if task == nil || project == nil {
 		return m, nil
 	}

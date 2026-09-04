@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskdetail"
 )
 
 // Attachment operation IDs. They name what the Attachments panel does to the
@@ -162,8 +163,8 @@ var attachmentActionSheetOperations = []operation.OperationID{
 // openAttachmentsActionSheet raises the shell-owned sheet over the panel. Every
 // row acts on the panel's cursor rather than on a named entity, so an empty list
 // or a cursor past its end names nothing and the sheet refuses to open.
-func (m *AppModel) openAttachmentsActionSheet(ctx operation.CommandContext, panel *TaskAttachmentsModel) error {
-	if !panel.hasSelection() {
+func (m *AppModel) openAttachmentsActionSheet(ctx operation.CommandContext, panel *taskdetail.TaskAttachmentsModel) error {
+	if !panel.HasSelection() {
 		return errors.New("select an attachment to open actions")
 	}
 	sheet, err := listsurface.NewContextActionSheetModel(
@@ -175,7 +176,7 @@ func (m *AppModel) openAttachmentsActionSheet(ctx operation.CommandContext, pane
 			Host:            listsurface.ContextActionHostAttachments,
 			Completion:      listsurface.ContextActionCompleteCloseSheet,
 			Title:           "Attachment Actions",
-			Subtitle:        panel.task.Attachments[panel.Cursor].Filename,
+			Subtitle:        panel.Task.Attachments[panel.Cursor].Filename,
 			ItemIDPrefix:    "attachment-action:",
 			SecondaryFor:    operationActionSecondaryText,
 			ImmediateFilter: true,
@@ -240,33 +241,33 @@ func (m *AppModel) executeAttachmentOperation(invocation operation.OperationInvo
 	}
 	switch invocation.Descriptor.ID {
 	case operationAttachmentAdd:
-		return command(panel.beginAddMode())
+		return command(panel.BeginAddMode())
 	case operationAttachmentOpen:
-		return command(panel.openSelectedAttachmentDefault())
+		return command(panel.OpenSelectedAttachmentDefault())
 	case operationAttachmentOpenInEditor:
-		return command(panel.openSelectedAttachmentInEditor())
+		return command(panel.OpenSelectedAttachmentInEditor())
 	case operationAttachmentOpenOriginalDirectory:
-		return command(panel.openSelectedOriginalPath())
+		return command(panel.OpenSelectedOriginalPath())
 	case operationAttachmentRevealOriginal:
-		return command(panel.revealSelectedOriginalFile())
+		return command(panel.RevealSelectedOriginalFile())
 	case operationAttachmentOpenFolder:
-		return command(panel.openAttachmentsDir())
+		return command(panel.OpenAttachmentsDir())
 	case operationAttachmentCopyPath:
-		return command(panel.copySelectedPath())
+		return command(panel.CopySelectedPath())
 	case operationAttachmentCopyPathWithLine:
-		return command(panel.copySelectedPathWithLine())
+		return command(panel.CopySelectedPathWithLine())
 	case operationAttachmentReorderUp:
-		return command(panel.moveSelectedAttachmentUp())
+		return command(panel.MoveSelectedAttachmentUp())
 	case operationAttachmentReorderDown:
-		return command(panel.moveSelectedAttachmentDown())
+		return command(panel.MoveSelectedAttachmentDown())
 	case operationAttachmentActions:
 		if err := m.openAttachmentsActionSheet(invocation.Context, panel); err != nil {
 			return operation.OperationHandlerResult{Err: err}
 		}
 	case operationAttachmentDelete:
-		panel.confirmDeleteSelectedAttachment()
+		panel.ConfirmDeleteSelectedAttachment()
 	case operationAttachmentUnlink:
-		panel.confirmUnlinkSelectedAttachment()
+		panel.ConfirmUnlinkSelectedAttachment()
 	}
 	return operation.OperationHandlerResult{}
 }
@@ -274,10 +275,10 @@ func (m *AppModel) executeAttachmentOperation(invocation operation.OperationInvo
 // activeAttachmentsPanel returns the mounted panel, or nil when the route moved
 // on. A dispatched key already knows the panel is what it came from, so the
 // lookup keys on the current view rather than searching the whole stack.
-func (m *AppModel) activeAttachmentsPanel() *TaskAttachmentsModel {
+func (m *AppModel) activeAttachmentsPanel() *taskdetail.TaskAttachmentsModel {
 	if m == nil || m.views == nil || m.currentView() != presentation.ViewTaskAttachments {
 		return nil
 	}
-	panel, _ := m.views.Get(presentation.ViewTaskAttachments).(*TaskAttachmentsModel)
+	panel, _ := m.views.Get(presentation.ViewTaskAttachments).(*taskdetail.TaskAttachmentsModel)
 	return panel
 }

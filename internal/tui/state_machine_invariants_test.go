@@ -33,7 +33,7 @@ func (v *invariantQueueView) Update(tea.Msg) (tea.Model, tea.Cmd) {
 
 func (v *invariantQueueView) View() tea.View { return tea.NewView("") }
 
-func (v *invariantQueueView) getTaskRef() (*models.Task, *models.Project) {
+func (v *invariantQueueView) GetTaskRef() (*models.Task, *models.Project) {
 	if v.project != nil {
 		if fresh := v.project.GetTaskByID(v.taskID); fresh != nil {
 			return fresh, v.project

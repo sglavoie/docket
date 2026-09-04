@@ -1,4 +1,4 @@
-package tui
+package taskdetail
 
 import (
 	"os"
@@ -44,8 +44,8 @@ func TestTaskAttachmentsDeleteDispatchesCoordinator(t *testing.T) {
 
 	// The view no longer mutates its own copy; the application layer commits
 	// and the shell reloads the project.
-	if len(model.task.Attachments) != 2 {
-		t.Fatalf("expected local attachments untouched before reload, got %d", len(model.task.Attachments))
+	if len(model.Task.Attachments) != 2 {
+		t.Fatalf("expected local attachments untouched before reload, got %d", len(model.Task.Attachments))
 	}
 	if len(fake.removals) != 1 || fake.removals[0].index != 1 || !fake.removals[0].deleteFile {
 		t.Fatalf("expected RemoveAttachment(index=1, deleteFile=true), got %+v", fake.removals)
@@ -83,8 +83,8 @@ func TestTaskAttachmentsDeleteOutOfBounds(t *testing.T) {
 	}
 
 	// Attachments should be unchanged and nothing dispatched
-	if len(model.task.Attachments) != 1 {
-		t.Fatalf("expected attachments to be unchanged, got %d", len(model.task.Attachments))
+	if len(model.Task.Attachments) != 1 {
+		t.Fatalf("expected attachments to be unchanged, got %d", len(model.Task.Attachments))
 	}
 	if len(fake.removals) != 0 {
 		t.Fatalf("expected no coordinator dispatch, got %+v", fake.removals)
@@ -137,8 +137,8 @@ func TestTaskAttachmentsAddURLDispatchesCoordinator(t *testing.T) {
 
 	attach, fake := newFakeAttachmentCoordinator()
 	model := NewTaskAttachmentsModel(task, project, nil, attach)
-	model.addMode = true
-	model.textInput.SetValue("https://example.com/design.pdf")
+	model.AddMode = true
+	model.TextInput.SetValue("https://example.com/design.pdf")
 
 	cmd := model.addAttachment()
 	if cmd == nil {
@@ -149,7 +149,7 @@ func TestTaskAttachmentsAddURLDispatchesCoordinator(t *testing.T) {
 	}
 
 	// Add mode exits before the transaction resolves.
-	if model.addMode {
+	if model.AddMode {
 		t.Fatal("expected addMode to be false after addAttachment()")
 	}
 	if len(fake.urls) != 1 || fake.urls[0] != "https://example.com/design.pdf" {
@@ -173,8 +173,8 @@ func TestTaskAttachmentsAddEmptyPath(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskAttachmentsModel(task, project, nil, coordinator.AttachmentCoordinator{})
-	model.addMode = true
-	model.textInput.SetValue("   ")
+	model.AddMode = true
+	model.TextInput.SetValue("   ")
 
 	cmd := model.addAttachment()
 	if cmd != nil {
@@ -216,8 +216,8 @@ func TestTaskAttachmentsAddNormalizesPastedPaths(t *testing.T) {
 
 			attach, _ := newFakeAttachmentCoordinator()
 			model := NewTaskAttachmentsModel(task, project, nil, attach)
-			model.addMode = true
-			model.textInput.SetValue(tc.input)
+			model.AddMode = true
+			model.TextInput.SetValue(tc.input)
 
 			cmd := model.addAttachment()
 			if cmd == nil {
@@ -226,7 +226,7 @@ func TestTaskAttachmentsAddNormalizesPastedPaths(t *testing.T) {
 			if model.Err != nil {
 				t.Fatalf("expected no error for input %q, got: %v", tc.input, model.Err)
 			}
-			if model.addMode {
+			if model.AddMode {
 				t.Fatal("expected addMode to be false after successful add")
 			}
 		})

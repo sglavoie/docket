@@ -1,4 +1,4 @@
-package tui
+package taskdetail
 
 import (
 	"fmt"
@@ -13,27 +13,27 @@ import (
 )
 
 func (m *TaskCommentsModel) View() tea.View {
-	if m.task == nil {
+	if m.Task == nil {
 		return tea.NewView("No task selected")
 	}
 
 	var b strings.Builder
 	b.WriteString(chrome.RenderTaskScopedFullscreenTitleWithPulse(
-		fmt.Sprintf("Comments · #%d: ", m.task.ShortID),
-		m.task,
+		fmt.Sprintf("Comments · #%d: ", m.Task.ShortID),
+		m.Task,
 		"",
 		m.CurrentWorkspacePulse(),
 		m.Width(),
 		m.AccentColor()))
 	b.WriteString("\n\n")
 
-	if m.expandedView && m.hasSelection() {
+	if m.ExpandedView && m.HasSelection() {
 		return m.renderExpandedView(&b)
 	}
-	if m.editMode {
+	if m.EditMode {
 		return m.renderEditMode(&b)
 	}
-	if m.addMode {
+	if m.AddMode {
 		return m.renderAddMode(&b)
 	}
 
@@ -51,7 +51,7 @@ func (m *TaskCommentsModel) View() tea.View {
 }
 
 func (m *TaskCommentsModel) renderExpandedView(b *strings.Builder) tea.View {
-	comment := m.task.Comments[m.Cursor]
+	comment := m.Task.Comments[m.Cursor]
 	timestamp := chrome.FormatTimestampBracket(comment.CreatedAt)
 	headerLabel := fmt.Sprintf("Comment [%d]", m.Cursor)
 
@@ -67,20 +67,20 @@ func (m *TaskCommentsModel) renderExpandedView(b *strings.Builder) tea.View {
 }
 
 func (m *TaskCommentsModel) renderEditMode(b *strings.Builder) tea.View {
-	if m.editIndex >= len(m.task.Comments) {
+	if m.editIndex >= len(m.Task.Comments) {
 		b.WriteString(theme.ValidationErrorStyle.Render("Comment was deleted externally."))
 		b.WriteString("\n\n")
 		spec, ok := m.guidanceSpec()
 		b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
 		return tea.NewView(b.String())
 	}
-	comment := m.task.Comments[m.editIndex]
+	comment := m.Task.Comments[m.editIndex]
 	b.WriteString(theme.FieldLabelFocusedStyle.Render(fmt.Sprintf("Edit Comment [%d]:", m.editIndex)))
 	b.WriteString("\n")
 	b.WriteString(theme.MutedStyle.Render(chrome.FormatTimestampLabeled("Created", comment.CreatedAt)))
 	b.WriteString("\n\n")
-	theme.ApplyThemedTextarea(&m.editTextInput)
-	b.WriteString(m.editTextInput.View())
+	theme.ApplyThemedTextarea(&m.EditTextInput)
+	b.WriteString(m.EditTextInput.View())
 	b.WriteString("\n\n")
 	spec, ok := m.guidanceSpec()
 	b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
@@ -90,8 +90,8 @@ func (m *TaskCommentsModel) renderEditMode(b *strings.Builder) tea.View {
 func (m *TaskCommentsModel) renderAddMode(b *strings.Builder) tea.View {
 	b.WriteString(theme.FieldLabelFocusedStyle.Render("Add Comment:"))
 	b.WriteString("\n")
-	theme.ApplyThemedTextarea(&m.textInput)
-	b.WriteString(m.textInput.View())
+	theme.ApplyThemedTextarea(&m.TextInput)
+	b.WriteString(m.TextInput.View())
 	b.WriteString("\n\n")
 	spec, ok := m.guidanceSpec()
 	b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
@@ -99,7 +99,7 @@ func (m *TaskCommentsModel) renderAddMode(b *strings.Builder) tea.View {
 }
 
 func (m *TaskCommentsModel) renderCommentsSummary(b *strings.Builder) {
-	b.WriteString(theme.MutedStyle.Render(fmt.Sprintf("%d comment(s)", len(m.task.Comments))))
+	b.WriteString(theme.MutedStyle.Render(fmt.Sprintf("%d comment(s)", len(m.Task.Comments))))
 	b.WriteString("\n\n")
 }
 
@@ -112,25 +112,25 @@ func (m *TaskCommentsModel) renderMessages(b *strings.Builder) {
 }
 
 func (m *TaskCommentsModel) renderCommentsList(b *strings.Builder, availableRows int) {
-	if len(m.task.Comments) == 0 {
+	if len(m.Task.Comments) == 0 {
 		b.WriteString(theme.MutedStyle.Render("No comments yet."))
 		b.WriteString("\n")
 		return
 	}
 
-	maxVisible := taskToolMaxVisible(len(m.task.Comments), availableRows, 4)
+	maxVisible := taskToolMaxVisible(len(m.Task.Comments), availableRows, 4)
 	if maxVisible == 0 {
 		return
 	}
 	scrollOffset := chrome.CalcScrollOffset(m.Cursor, maxVisible)
 	maxLen := max(m.Width()-12, 1)
 
-	for i := scrollOffset; i < len(m.task.Comments) && i < scrollOffset+maxVisible; i++ {
-		b.WriteString(m.renderCommentEntry(i, m.task.Comments[i], maxLen))
+	for i := scrollOffset; i < len(m.Task.Comments) && i < scrollOffset+maxVisible; i++ {
+		b.WriteString(m.renderCommentEntry(i, m.Task.Comments[i], maxLen))
 	}
 
-	if len(m.task.Comments) > maxVisible {
-		remaining := len(m.task.Comments) - scrollOffset - maxVisible
+	if len(m.Task.Comments) > maxVisible {
+		remaining := len(m.Task.Comments) - scrollOffset - maxVisible
 		if remaining > 0 {
 			b.WriteString(theme.MutedStyle.Render(fmt.Sprintf("  ... and %d more (use j/k to scroll)", remaining)))
 			b.WriteString("\n")

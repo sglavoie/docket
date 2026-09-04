@@ -7,13 +7,12 @@ import (
 	"testing"
 	"time"
 
-	tea "charm.land/bubbletea/v2"
-
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/notes"
+	"github.com/sglavoie/tt/internal/tui/taskdetail"
 )
 
 func newRecoveryFeedbackEnv(t *testing.T) (*AppModel, string) {
@@ -131,7 +130,7 @@ func TestRemainingMutationFamiliesRequireMatchingLedgerTransaction(t *testing.T)
 			model.reconcileNoteResult(notes.ProjectNoteMutationResultMsg{Result: app.NoteBatchResult{TransactionID: transactionID}, SuccessMessage: "Updated note"})
 		}},
 		{name: "comment", fallback: "Comment updated", deliver: func(model *AppModel, transactionID string) {
-			model.handleCommentEdited(CommentEditedMsg{TransactionID: transactionID})
+			model.handleCommentEdited(taskdetail.CommentEditedMsg{TransactionID: transactionID})
 		}},
 		{name: "attachment", fallback: "Attach File", deliver: func(model *AppModel, transactionID string) {
 			model.handleTransactionResult(coordinator.TransactionResultMsg{Action: "Attach File", Result: app.TaskResult{TransactionID: transactionID}})
@@ -155,28 +154,6 @@ func TestRemainingMutationFamiliesRequireMatchingLedgerTransaction(t *testing.T)
 			family.deliver(model, "mismatching-transaction")
 			if model.statusMessage != family.fallback || model.statusUndoCb != nil || model.statusTransactionID != "" {
 				t.Fatalf("mismatching %s result did not degrade: status=%q transaction=%q callback=%v", family.name, model.statusMessage, model.statusTransactionID, model.statusUndoCb != nil)
-			}
-		})
-	}
-}
-
-func TestSubviewAdapterPreservesTransactionCorrelation(t *testing.T) {
-	transactionID := "subview-transaction"
-	commit := func() tea.Msg {
-		return coordinator.TransactionResultMsg{Result: app.TaskResult{TransactionID: transactionID}}
-	}
-	tests := []struct {
-		name    string
-		success func() tea.Msg
-		id      func(tea.Msg) string
-	}{
-		{name: "comment", success: func() tea.Msg { return CommentAddedMsg{} }, id: func(msg tea.Msg) string { return msg.(CommentAddedMsg).TransactionID }},
-		{name: "comment edited", success: func() tea.Msg { return CommentEditedMsg{} }, id: func(msg tea.Msg) string { return msg.(CommentEditedMsg).TransactionID }},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			if got := test.id(adaptSubviewCommit(commit, test.success)()); got != transactionID {
-				t.Fatalf("transaction ID = %q, want %q", got, transactionID)
 			}
 		})
 	}

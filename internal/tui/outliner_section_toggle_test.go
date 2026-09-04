@@ -89,7 +89,7 @@ func TestToggleVisibleSectionsCollapsesBuiltInsAndRestoresTaskFocus(t *testing.T
 			t.Errorf("section %q remained collapsed", header.SectionName)
 		}
 	}
-	if task, _ := outliner.getTaskRef(); task == nil || task.ID != doing.ID {
+	if task, _ := outliner.GetTaskRef(); task == nil || task.ID != doing.ID {
 		t.Fatalf("expanded cursor task = %v, want %s", task, doing.ID)
 	}
 	if !maps.Equal(outliner.expandedNodes, expandedBefore) {
@@ -154,7 +154,7 @@ func TestToggleVisibleSectionsKeepsUnsectionedPrimaryTaskFocused(t *testing.T) {
 	if !outliner.toggleVisibleSections() {
 		t.Fatal("Pinned section did not collapse in Today mode")
 	}
-	if task, _ := outliner.getTaskRef(); task == nil || task.ID != regular.ID {
+	if task, _ := outliner.GetTaskRef(); task == nil || task.ID != regular.ID {
 		t.Fatalf("cursor task after Pinned collapse = %v, want %s", task, regular.ID)
 	}
 	if outliner.sectionToggleRestore != nil {
@@ -192,7 +192,7 @@ func TestToggleVisibleSectionsDispatchesLowercaseS(t *testing.T) {
 	if !handled || cmd != nil {
 		t.Fatalf("second s = handled %v, cmd %v; want handled with no command", handled, cmd)
 	}
-	if task, _ := outliner.getTaskRef(); task == nil || task.ID != "task" {
+	if task, _ := outliner.GetTaskRef(); task == nil || task.ID != "task" {
 		t.Fatalf("task after second s = %v, want task", task)
 	}
 }

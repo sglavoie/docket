@@ -1,20 +1,23 @@
-package tui
+package taskdetail
 
 import (
 	"strings"
 	"testing"
 
+	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 )
 
-// withFakeClipboard swaps copyTextToClipboard for the duration of the test,
+// withFakeClipboard swaps external.CopyText for the duration of the test,
 // capturing the copied text (or forcing an error) so clipboard-dependent code
-// paths are exercised without touching the real system clipboard.
+// paths are exercised without touching the real system clipboard. It mirrors
+// the shell's own copy in internal/tui/clipboard_test_helpers_test.go, which
+// the driver-level clipboard tests still need.
 func withFakeClipboard(t *testing.T, err error, captured *string) {
 	t.Helper()
-	orig := copyTextToClipboard
-	t.Cleanup(func() { copyTextToClipboard = orig })
-	copyTextToClipboard = func(text string) error {
+	orig := external.CopyText
+	t.Cleanup(func() { external.CopyText = orig })
+	external.CopyText = func(text string) error {
 		if captured != nil {
 			*captured = text
 		}
@@ -58,7 +61,7 @@ func TestCommentsCopyAllIncludesEveryRecord(t *testing.T) {
 		var captured string
 		withFakeClipboard(t, nil, &captured)
 		cm := NewTaskCommentsModelWithEditor(task, project, "", coords.Subview)
-		cm.copyAllCommentsText()
+		cm.CopyAllCommentsText()
 		want := strings.Join([]string{"1. first comment", "2. second comment"}, "\n")
 		if captured != want {
 			t.Fatalf("comments copy-all mismatch:\n got: %q\nwant: %q", captured, want)
@@ -73,12 +76,12 @@ func TestCommentsCopyAllEmptyNothingToCopy(t *testing.T) {
 	coords := newTestSecondaryCoordinators(project)
 
 	called := false
-	orig := copyTextToClipboard
-	t.Cleanup(func() { copyTextToClipboard = orig })
-	copyTextToClipboard = func(string) error { called = true; return nil }
+	orig := external.CopyText
+	t.Cleanup(func() { external.CopyText = orig })
+	external.CopyText = func(string) error { called = true; return nil }
 
 	cm := NewTaskCommentsModelWithEditor(task, project, "", coords.Subview)
-	cm.copyAllCommentsText()
+	cm.CopyAllCommentsText()
 	if called {
 		t.Fatal("empty comment list must not invoke the clipboard")
 	}

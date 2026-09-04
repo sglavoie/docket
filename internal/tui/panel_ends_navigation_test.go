@@ -30,7 +30,7 @@ func TestPanelEndKeysReachBothEndsOfTheList(t *testing.T) {
 
 	t.Run("comments", func(t *testing.T) {
 		_, panel, press := mountCommentsPanel(t)
-		if got := len(panel.task.Comments); got != 2 {
+		if got := len(panel.Task.Comments); got != 2 {
 			t.Fatalf("mounted comments = %d, want 2", got)
 		}
 		assertPanelReachesBothEnds(t, press, func() int { return panel.Cursor }, 2)
@@ -39,7 +39,7 @@ func TestPanelEndKeysReachBothEndsOfTheList(t *testing.T) {
 
 	t.Run("attachments", func(t *testing.T) {
 		_, panel, press := mountAttachmentsPanel(t)
-		if got := len(panel.task.Attachments); got != 2 {
+		if got := len(panel.Task.Attachments); got != 2 {
 			t.Fatalf("mounted attachments = %d, want 2", got)
 		}
 		assertPanelReachesBothEnds(t, press, func() int { return panel.Cursor }, 2)

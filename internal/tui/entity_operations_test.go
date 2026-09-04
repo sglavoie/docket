@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/external"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/notes"
@@ -276,7 +277,7 @@ func TestNoteCopyOperationsSurviveAMalformedNoteAndAFailedClipboard(t *testing.T
 		t.Fatal("copy title on a malformed note copied nothing, want the filename fallback title")
 	}
 
-	withFakeClipboard(t, errClipboardUnsupported, nil)
+	withFakeClipboard(t, external.ErrClipboardUnsupported, nil)
 	failed := executeEntityOperation(model, notes.OperationNoteCopyTitle, entity)
 	if failed.Err == nil {
 		t.Fatalf("a refusing clipboard emitted %#v, want an error", failed.Message)

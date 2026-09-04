@@ -143,7 +143,7 @@ route	L4	presentation,chrome,operation,theme
 listsurface	L5	route,operation,chrome,textfit,theme,keymap,presentation,taskref,query,status,pulse
 help	L6	listsurface,operation,chrome,keymap,route,theme,textfit,pulse
 notes	L7	presentation,theme,textfit,status,keymap,chrome,operation,route,listsurface,help
-taskdetail	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help
+taskdetail	L7	presentation,theme,textfit,taskref,status,keymap,chrome,coordinator,operation,route,listsurface,help
 taskform	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help
 lens	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help
 conflict	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help

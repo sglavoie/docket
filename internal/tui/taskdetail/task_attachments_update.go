@@ -1,4 +1,4 @@
-package tui
+package taskdetail
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //noli
 		return m.updateConfirmMode(msg)
 	}
 
-	if m.addMode {
+	if m.AddMode {
 		return m.updateAddMode(msg)
 	}
 
@@ -48,8 +48,8 @@ func (m *TaskAttachmentsModel) updateConfirmMode(msg tea.Msg) (tea.Model, tea.Cm
 				case "unlink":
 					return m, m.executeKeep()
 				case "discard-add":
-					m.addMode = false
-					m.textInput.Reset()
+					m.AddMode = false
+					m.TextInput.Reset()
 					return m, nil
 				}
 			}
@@ -68,19 +68,19 @@ func (m *TaskAttachmentsModel) updateAddMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "esc":
-			if strings.TrimSpace(m.textInput.Value()) != "" {
+			if strings.TrimSpace(m.TextInput.Value()) != "" {
 				m.Confirm.Show("discard-add", "Discard attachment?")
 				return m, nil
 			}
-			m.addMode = false
-			m.textInput.Reset()
+			m.AddMode = false
+			m.TextInput.Reset()
 			return m, nil
 		case "enter":
 			return m, m.addAttachment()
 		}
 	}
 
-	m.textInput, cmd = m.textInput.Update(msg)
+	m.TextInput, cmd = m.TextInput.Update(msg)
 	return m, cmd
 }
 
@@ -121,7 +121,7 @@ func (m *TaskAttachmentsModel) handleAttachmentsNavigationKey(key string) (tea.C
 		m.pendingTopChord = true
 		return nil, true
 	case "j", "down", "k", "up", "home", "G", "end":
-		_, cmd := listsurface.HandleListNavigation(key, &m.Cursor, len(m.task.Attachments), m.Height(), &m.CursorFlash)
+		_, cmd := listsurface.HandleListNavigation(key, &m.Cursor, len(m.Task.Attachments), m.Height(), &m.CursorFlash)
 		return cmd, true
 	default:
 		return nil, false
@@ -163,10 +163,10 @@ func (m *TaskAttachmentsModel) handleAttachmentsGrammarKey(key string) (tea.Cmd,
 // dispatchAttachmentsKey resolves one browse key through the Attachments grammar
 // and runs whatever operation it reaches.
 func (m *TaskAttachmentsModel) dispatchAttachmentsKey(key string) tea.Cmd {
-	if m.dispatch == nil {
+	if m.Dispatch == nil {
 		return nil
 	}
-	_, cmd := m.dispatch(operation.InputStrategyAttachments, []string{key}, m.attachmentsCommandContext())
+	_, cmd := m.Dispatch(operation.InputStrategyAttachments, []string{key}, m.attachmentsCommandContext())
 	return cmd
 }
 
@@ -180,83 +180,83 @@ func (m *TaskAttachmentsModel) attachmentsCommandContext() operation.CommandCont
 }
 
 func (m *TaskAttachmentsModel) HandledKeys() []string {
-	return m.buildKeyMap().HandledKeys()
+	return m.BuildKeyMap().HandledKeys()
 }
 
-func (m *TaskAttachmentsModel) beginAddMode() tea.Cmd {
-	m.addMode = true
-	m.textInput.Focus()
+func (m *TaskAttachmentsModel) BeginAddMode() tea.Cmd {
+	m.AddMode = true
+	m.TextInput.Focus()
 	return textinput.Blink
 }
 
-func (m *TaskAttachmentsModel) openSelectedAttachmentDefault() tea.Cmd {
-	if !m.hasSelection() {
+func (m *TaskAttachmentsModel) OpenSelectedAttachmentDefault() tea.Cmd {
+	if !m.HasSelection() {
 		return nil
 	}
 	return m.openAttachmentDefault()
 }
 
-func (m *TaskAttachmentsModel) openSelectedAttachmentInEditor() tea.Cmd {
-	if !m.hasSelection() {
+func (m *TaskAttachmentsModel) OpenSelectedAttachmentInEditor() tea.Cmd {
+	if !m.HasSelection() {
 		return nil
 	}
 	return m.openAttachmentInEditor()
 }
 
-func (m *TaskAttachmentsModel) confirmDeleteSelectedAttachment() {
-	if m.hasSelection() {
+func (m *TaskAttachmentsModel) ConfirmDeleteSelectedAttachment() {
+	if m.HasSelection() {
 		m.Confirm.Show("delete", fmt.Sprintf("Delete attachment [%d]?", m.Cursor))
 	}
 }
 
-func (m *TaskAttachmentsModel) confirmUnlinkSelectedAttachment() {
-	if m.hasSelection() {
+func (m *TaskAttachmentsModel) ConfirmUnlinkSelectedAttachment() {
+	if m.HasSelection() {
 		m.Confirm.Show("unlink", fmt.Sprintf("Unlink attachment [%d]?", m.Cursor))
 	}
 }
 
-func (m *TaskAttachmentsModel) copySelectedPath() tea.Cmd {
-	if !m.hasSelection() {
+func (m *TaskAttachmentsModel) CopySelectedPath() tea.Cmd {
+	if !m.HasSelection() {
 		return nil
 	}
 	return m.copyPath()
 }
 
-func (m *TaskAttachmentsModel) copySelectedPathWithLine() tea.Cmd {
-	if !m.hasSelection() {
+func (m *TaskAttachmentsModel) CopySelectedPathWithLine() tea.Cmd {
+	if !m.HasSelection() {
 		return nil
 	}
 	return m.copyPathWithLine()
 }
 
-func (m *TaskAttachmentsModel) openSelectedOriginalPath() tea.Cmd {
-	if !m.hasSelection() {
+func (m *TaskAttachmentsModel) OpenSelectedOriginalPath() tea.Cmd {
+	if !m.HasSelection() {
 		return nil
 	}
 	return m.openOriginalPath()
 }
 
-func (m *TaskAttachmentsModel) revealSelectedOriginalFile() tea.Cmd {
-	if !m.hasSelection() {
+func (m *TaskAttachmentsModel) RevealSelectedOriginalFile() tea.Cmd {
+	if !m.HasSelection() {
 		return nil
 	}
 	return m.revealOriginalFile()
 }
 
-func (m *TaskAttachmentsModel) moveSelectedAttachmentDown() tea.Cmd {
-	if len(m.task.Attachments) > 1 && m.Cursor < len(m.task.Attachments)-1 {
+func (m *TaskAttachmentsModel) MoveSelectedAttachmentDown() tea.Cmd {
+	if len(m.Task.Attachments) > 1 && m.Cursor < len(m.Task.Attachments)-1 {
 		return m.reorderAttachment(m.Cursor, m.Cursor+1)
 	}
 	return nil
 }
 
-func (m *TaskAttachmentsModel) moveSelectedAttachmentUp() tea.Cmd {
+func (m *TaskAttachmentsModel) MoveSelectedAttachmentUp() tea.Cmd {
 	if m.Cursor > 0 {
 		return m.reorderAttachment(m.Cursor, m.Cursor-1)
 	}
 	return nil
 }
 
-func (m *TaskAttachmentsModel) hasSelection() bool {
-	return len(m.task.Attachments) > 0 && m.Cursor < len(m.task.Attachments)
+func (m *TaskAttachmentsModel) HasSelection() bool {
+	return len(m.Task.Attachments) > 0 && m.Cursor < len(m.Task.Attachments)
 }

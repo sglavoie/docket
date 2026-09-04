@@ -135,8 +135,8 @@ func TestNoteRowIsNavigableButNeverATaskRow(t *testing.T) {
 	}
 
 	outliner.Cursor = noteIndexes[0]
-	if task, project := outliner.getTaskRef(); task != nil || project != nil {
-		t.Fatalf("getTaskRef on a note row = %v/%v, want nothing", task, project)
+	if task, project := outliner.GetTaskRef(); task != nil || project != nil {
+		t.Fatalf("GetTaskRef on a note row = %v/%v, want nothing", task, project)
 	}
 	if task := outliner.getCursorTask(); task != nil {
 		t.Fatalf("getCursorTask on a note row = %v, want nothing", task)

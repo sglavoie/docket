@@ -3,16 +3,17 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskdetail"
 )
 
 // handleViewSupportMessages handles attachment views.
 func (m *AppModel) handleViewSupportMessages(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case ShowTaskAttachmentsMsg:
+	case taskdetail.ShowTaskAttachmentsMsg:
 		if msg.Task == nil || msg.Project == nil {
 			return true, nil
 		}
-		view := NewTaskAttachmentsModel(
+		view := taskdetail.NewTaskAttachmentsModel(
 			msg.Task,
 			msg.Project,
 			m.runtime,

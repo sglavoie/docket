@@ -120,6 +120,7 @@ the pre-split tree and is consistently pessimistic.
 | `listsurface` | 29 | 26 | 23 |
 | `help` | 4 | 3 | 3 |
 | `notes` | 32 | 41 | 37 |
+| `taskdetail` | 6 | 0 | 0 |
 
 Running total against 631: **454**.
 `grammar` contributes 58, not 154, because its two counted columns are on a
@@ -821,6 +822,59 @@ promoting `NotesViewModel.setStatus` with a text-level rename also renamed
 recursed until the goroutine stack overflowed. Rename an unexported method with
 `gopls rename` rather than a regex whenever the exported name it forwards to
 already exists on the same receiver.
+
+`taskdetail` is the first row whose two count columns are honestly zero. Session
+2.23 moved thirteen production files — the attachments panel, the comments
+panel, their keymaps, updates, views and actions, `comment_helpers.go`,
+`app_messages_task_detail.go` and `task_tool_guidance.go` — and promoted **no
+package-level declaration at all**, because every constructor and message type
+the shell already called was exported before the move. The real cost is 40
+members: 28 methods and 12 struct fields. 27 of them have a shell *production*
+consumer; the other 13 exist only so the root driver tests can still reach the
+panels — `TaskAttachmentsModel.{BuildKeyMap, AddMode, Coordinator, Dispatch,
+TextInput}` and `TaskCommentsModel.{BuildKeyMap, HandleNormalKey, AddMode,
+Dispatch, TextInput, EditMode, EditTextInput, ExpandedView}`. Those thirteen are
+the price of keeping `uitest`-driven tests in the shell, and they are invisible
+to `deadcode` because exported *fields* are never reported and the two
+`BuildKeyMap`/`HandleNormalKey` methods have in-package production callers. One
+promotion was withdrawn in the same session:
+`TaskAttachmentsModel.SelectedAttachmentFilename` was added to keep `task`
+unexported, and deleted again once `Task` itself had to be exported, at which
+point `attachment_operations.go` went back to reading
+`panel.Task.Attachments[panel.Cursor].Filename` directly.
+
+The session's real finding is a hazard that no static check catches. **An
+unexported method name is package-qualified in a Go method set**, so a
+structural interface literal declared in the shell over a lowercase method can
+never be satisfied by a type that has moved to a sub-package — and the failure
+is a type assertion returning `ok == false` at runtime, not a compile error.
+`app_update_messages.go` asserted `view.(interface{ refreshAfterReload() bool
+})` to decide which mounted panel to refresh after a reload; once
+`TaskCommentsModel` and `TaskAttachmentsModel` lived in `taskdetail`, the
+assertion silently failed and a committed comment or attachment never appeared
+in the panel. `go build`, `go vet` and `golangci-lint run` were all green; only
+`./scripts/run_tui_scenarios.sh` caught it, through six scenarios and one shell
+test. The fix is to export the method (`RefreshAfterReload`). The systematic
+sweep that followed — enumerate every unexported method on each moved type, then
+grep the shell for that name inside an `interface{ ... }` literal — found the
+identical break for `getTaskRef` across `QueueToggleable`,
+`taskReferenceProvider` and an inline `taskRefProvider`, now `GetTaskRef`
+repo-wide. **Run that sweep before declaring any future extraction done.**
+
+Four test files moved down whole — `github_issue_render_test.go`,
+`task_tool_guidance_test.go`, `task_attachments_coordinator_test.go` and
+`task_comments_test.go` — and two were split, because each held one panel-local
+test inside a shell-wide file: `session1_regressions_test.go` gave up its three
+clipboard tests and was renamed `clipboard_test_helpers_test.go` for the
+`withFakeClipboard` helper two shell files still read, and
+`recovery_feedback_test.go` gave up
+`TestSubviewAdapterPreservesTransactionCorrelation` so `adaptSubviewCommit`
+could stay unexported. `internal/tui/taskdetail/taskdetail_test_helpers_test.go`
+carries in-package copies of eleven helpers from five shell files, on the
+`listsurface`/`notes` precedent. Deleting the shell's now-orphaned
+`newTestSecondaryCoordinators` was required: `./scripts/dead_code.sh` reports an
+unreferenced test helper, so a duplicated helper must be duplicated only where
+both copies are read.
 
 Reproduce the last column for one package with the oracle from session 2.4,
 which reports a clean boundary rather than a count:

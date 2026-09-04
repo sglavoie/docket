@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/taskdetail"
 )
 
 // auxiliaryTaskTestApp builds a registered app over one project holding a story
@@ -54,10 +55,10 @@ func TestTaskOperationAuxiliaryCatalogRoutesToProductionMessages(t *testing.T) {
 
 	checks := map[operation.OperationID]func(*testing.T, any){
 		operation.OperationTaskComments: func(t *testing.T, msg any) {
-			assertTaskMessageTarget(t, msg.(ShowTaskCommentsMsg).Task, task)
+			assertTaskMessageTarget(t, msg.(taskdetail.ShowTaskCommentsMsg).Task, task)
 		},
 		operation.OperationTaskAttachments: func(t *testing.T, msg any) {
-			assertTaskMessageTarget(t, msg.(ShowTaskAttachmentsMsg).Task, task)
+			assertTaskMessageTarget(t, msg.(taskdetail.ShowTaskAttachmentsMsg).Task, task)
 		},
 		operation.OperationTaskCopyTitle: func(t *testing.T, msg any) {
 			if msg.(operation.OperationCommandResultMsg).Cmd == nil {

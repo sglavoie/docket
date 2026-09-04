@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/tt/internal/tui/taskdetail"
 )
 
 // fakeAttachmentMutator records the application use cases the attachments view
@@ -66,7 +67,7 @@ func newFakeAttachmentCoordinator() (coordinator.AttachmentCoordinator, *fakeAtt
 
 // mountAttachmentsPanel opens the panel over a live shell on a task carrying two
 // file attachments, and returns the driver, the panel, and a key press helper.
-func mountAttachmentsPanel(t *testing.T) (*UITestDriver, *TaskAttachmentsModel, func(string)) {
+func mountAttachmentsPanel(t *testing.T) (*UITestDriver, *taskdetail.TaskAttachmentsModel, func(string)) {
 	t.Helper()
 	driver, workspace, err := NewFixtureDriver(FixtureFresh, 100, 30)
 	if err != nil {
@@ -88,12 +89,12 @@ func mountAttachmentsPanel(t *testing.T) (*UITestDriver, *TaskAttachmentsModel, 
 	}
 	project.Tasks = []*models.Task{task}
 
-	driver.dispatch(ShowTaskAttachmentsMsg{Task: task, Project: project})
+	driver.dispatch(taskdetail.ShowTaskAttachmentsMsg{Task: task, Project: project})
 	panel := driver.App().activeAttachmentsPanel()
 	if panel == nil {
 		t.Fatal("ShowTaskAttachmentsMsg did not mount the Attachments panel")
 	}
-	if panel.dispatch == nil {
+	if panel.Dispatch == nil {
 		t.Fatal("the mounted panel holds no dispatch seam, so every routed key resolves nothing")
 	}
 
@@ -123,7 +124,7 @@ func TestAttachmentsPanelKeysReachTheirOperations(t *testing.T) {
 	}
 
 	coordinator, fake := newFakeAttachmentCoordinator()
-	panel.coordinator = coordinator
+	panel.Coordinator = coordinator
 	press("J")
 	if driver.pendingCmd == nil {
 		t.Fatal("J did not reach tui.attachment.reorder-down")
@@ -147,7 +148,7 @@ func TestAttachmentsPanelKeysReachTheirOperations(t *testing.T) {
 	panel.ClearError()
 
 	press("a")
-	if !panel.addMode {
+	if !panel.AddMode {
 		t.Fatal("a did not reach tui.attachment.add")
 	}
 }
@@ -168,7 +169,7 @@ func TestAttachmentsRetiredKeysAreSilent(t *testing.T) {
 		if panel.Confirm.IsActive() {
 			t.Fatalf("retired key %q raised confirm %q", key, panel.Confirm.Action())
 		}
-		if panel.addMode {
+		if panel.AddMode {
 			t.Fatalf("retired key %q entered add mode", key)
 		}
 		if driver.App().contextActionSheet != nil {
@@ -212,7 +213,7 @@ func TestAttachmentsAddModeKeepsUAsTypedText(t *testing.T) {
 	driver, panel, press := mountAttachmentsPanel(t)
 
 	press("a")
-	if !panel.addMode {
+	if !panel.AddMode {
 		t.Fatal("a did not enter add mode")
 	}
 	press("u")
@@ -221,7 +222,7 @@ func TestAttachmentsAddModeKeepsUAsTypedText(t *testing.T) {
 			t.Fatal("u undid a transaction while the attachment path was being typed")
 		}
 	}
-	if got := panel.textInput.Value(); got != "u" {
+	if got := panel.TextInput.Value(); got != "u" {
 		t.Fatalf("add-mode input = %q, want %q", got, "u")
 	}
 }
@@ -262,7 +263,7 @@ func TestAttachmentsSpaceSheetReachesUnlink(t *testing.T) {
 	}
 
 	coordinator, fake := newFakeAttachmentCoordinator()
-	panel.coordinator = coordinator
+	panel.Coordinator = coordinator
 	press("y")
 	if driver.pendingCmd == nil {
 		t.Fatal("confirming Unlink produced no command")

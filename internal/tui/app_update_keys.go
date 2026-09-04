@@ -13,7 +13,7 @@ func (m *AppModel) currentViewAsModel() tea.Model {
 }
 
 type taskReferenceProvider interface {
-	getTaskRef() (*models.Task, *models.Project)
+	GetTaskRef() (*models.Task, *models.Project)
 }
 
 func (m *AppModel) handleGlobalKeyPress(msg tea.KeyPressMsg) (bool, tea.Cmd) { //nolint:gocyclo

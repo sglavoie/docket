@@ -4,13 +4,14 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskdetail"
 )
 
 func TestHandleTaskMessagesShowTaskComments(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	task := project.Tasks[0]
 
-	msg := ShowTaskCommentsMsg{Task: task, Project: project}
+	msg := taskdetail.ShowTaskCommentsMsg{Task: task, Project: project}
 	handled, _ := app.handleTaskMessages(msg)
 
 	if !handled {
@@ -25,7 +26,7 @@ func TestHandleTaskMessagesCloseTaskComments(t *testing.T) {
 	app := newTestAppModel()
 	app.pushView(presentation.ViewTaskComments)
 
-	app.Update(CloseTaskCommentsMsg{})
+	app.Update(taskdetail.CloseTaskCommentsMsg{})
 
 	if app.currentView() != presentation.ViewCrossProjectOutliner {
 		t.Errorf("currentView should be Outliner after closing comments, got %v", app.currentView())
@@ -35,7 +36,7 @@ func TestHandleTaskMessagesCloseTaskComments(t *testing.T) {
 func TestHandleTaskMessagesCommentAdded(t *testing.T) {
 	app := newTestAppModel()
 
-	msg := CommentAddedMsg{}
+	msg := taskdetail.CommentAddedMsg{}
 	handled, cmd := app.handleTaskMessages(msg)
 
 	if !handled {
@@ -52,7 +53,7 @@ func TestHandleTaskMessagesCommentAdded(t *testing.T) {
 func TestHandleTaskMessagesCommentDeleted(t *testing.T) {
 	app := newTestAppModel()
 
-	msg := CommentDeletedMsg{}
+	msg := taskdetail.CommentDeletedMsg{}
 	handled, cmd := app.handleTaskMessages(msg)
 
 	if !handled {
@@ -69,7 +70,7 @@ func TestHandleTaskMessagesCommentDeleted(t *testing.T) {
 func TestHandleTaskMessagesCommentEdited(t *testing.T) {
 	app := newTestAppModel()
 
-	msg := CommentEditedMsg{}
+	msg := taskdetail.CommentEditedMsg{}
 	handled, cmd := app.handleTaskMessages(msg)
 
 	if !handled {

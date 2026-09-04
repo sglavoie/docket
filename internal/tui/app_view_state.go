@@ -79,13 +79,13 @@ func (m *AppModel) delegateToCurrentView(msg tea.Msg) tea.Cmd { //nolint:gocyclo
 // pointer enables overlays that need project context.
 func (m *AppModel) getCurrentCursorTaskAndProject() (*models.Task, *models.Project) {
 	if hub, _, ok := m.manageHubPrimary(); ok && m.activeManageHub() {
-		return hub.getTaskRef()
+		return hub.GetTaskRef()
 	}
 	type taskRefProvider interface {
-		getTaskRef() (*models.Task, *models.Project)
+		GetTaskRef() (*models.Task, *models.Project)
 	}
 	if v, ok := m.currentViewAsModel().(taskRefProvider); ok {
-		return v.getTaskRef()
+		return v.GetTaskRef()
 	}
 	return nil, nil
 }

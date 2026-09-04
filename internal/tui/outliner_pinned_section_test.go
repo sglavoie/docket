@@ -319,7 +319,7 @@ func TestFilterRebuildKeepsQualifiedCursorIdentity(t *testing.T) {
 	if result.Err != nil {
 		t.Fatalf("apply priority filter: %v", result.Err)
 	}
-	task, project := outliner.getTaskRef()
+	task, project := outliner.GetTaskRef()
 	if task == nil || project == nil || task.ID != betaTask.ID || project.ID != beta.ID {
 		t.Fatalf("cursor after filter = %v/%v, want beta/shared", project, task)
 	}

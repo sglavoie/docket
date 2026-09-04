@@ -182,7 +182,7 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 		t.Fatalf("Esc left search active: projection=%v input=%v query=%q",
 			outliner.hasSearchProjection(), outliner.HasActiveSearch(), outliner.SearchQuery())
 	}
-	if task, selectedProject := outliner.getTaskRef(); task == nil || task.ID != second.ID || selectedProject != project {
+	if task, selectedProject := outliner.GetTaskRef(); task == nil || task.ID != second.ID || selectedProject != project {
 		t.Fatalf("restored cursor = %v/%v, want alpha/second", selectedProject, task)
 	}
 
@@ -190,7 +190,7 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 	project.Tasks = []*models.Task{first, third}
 	project.BuildTaskTree()
 	outliner.ClearSearch()
-	if task, _ := outliner.getTaskRef(); task == nil || task.ID != third.ID {
+	if task, _ := outliner.GetTaskRef(); task == nil || task.ID != third.ID {
 		t.Fatalf("deleted cursor fallback = %v, want nearest following task %s", task, third.ID)
 	}
 }

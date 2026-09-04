@@ -1,4 +1,4 @@
-package tui
+package taskdetail
 
 import (
 	"strings"
@@ -49,13 +49,13 @@ func TestCommentsGuidanceTracksBrowseEmptyInputExpandedAndConfirmation(t *testin
 		t.Fatalf("comments browse rows = %d, want 1", spec.Rows)
 	}
 
-	model.expandedView = true
+	model.ExpandedView = true
 	spec, ok = model.guidanceSpec()
 	assertRequiredGuidance(t, "comments expanded", spec, ok, "Enter close", "Esc close")
 	assertGuidanceExcludes(t, "comments expanded", spec, "add", "edit", "delete", "copy")
 
-	model.expandedView = false
-	model.addMode = true
+	model.ExpandedView = false
+	model.AddMode = true
 	spec, ok = model.guidanceSpec()
 	assertRequiredGuidance(t, "comments add", spec, ok, "Ctrl+S save", "Esc cancel")
 	assertGuidanceContains(t, "comments add", spec, ok, "Ctrl+E editor", "Shift+Enter newline")
@@ -65,7 +65,7 @@ func TestCommentsGuidanceTracksBrowseEmptyInputExpandedAndConfirmation(t *testin
 	assertRequiredGuidance(t, "comments confirmation", spec, ok, "y confirm", "n/Esc cancel")
 
 	model.Confirm.Cancel()
-	model.addMode = false
+	model.AddMode = false
 	task.Comments = nil
 	spec, ok = model.guidanceSpec()
 	assertGuidanceContains(t, "comments empty", spec, ok, "a add", "Esc close")
@@ -102,7 +102,7 @@ func TestAttachmentGuidanceTracksFileCodeURLAndEmptyVariants(t *testing.T) {
 	assertGuidanceContains(t, "attachments empty", spec, ok, "a add", "Esc close")
 	assertGuidanceExcludes(t, "attachments empty", spec, "open", "edit", "copy", "actions", "reorder", "navigate")
 
-	model.addMode = true
+	model.AddMode = true
 	spec, ok = model.guidanceSpec()
 	assertRequiredGuidance(t, "attachment add", spec, ok, "Enter add", "Esc cancel")
 }

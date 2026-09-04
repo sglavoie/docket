@@ -18,7 +18,7 @@ import (
 func (m *OutlinerModel) operationCommandContext() operation.CommandContext {
 	ctx := route.PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.Capabilities.Add(operation.CapabilitySimplifiedInput)
-	task, project := m.getTaskRef()
+	task, project := m.GetTaskRef()
 	header := m.cursorProjectHeaderProject()
 	if checklist, onChecklistRow := m.cursorChecklistItem(); onChecklistRow {
 		ctx.Entity = checklistOperationEntity(checklist)

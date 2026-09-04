@@ -14,7 +14,7 @@ import (
 
 // QueueToggleable is implemented by views that can provide a task for queue toggling.
 type QueueToggleable interface {
-	getTaskRef() (*models.Task, *models.Project)
+	GetTaskRef() (*models.Task, *models.Project)
 }
 
 // taskIsNext reports explicit project-qualified Next membership.
@@ -54,7 +54,7 @@ func (m *AppModel) toggleQueue(capture *outlinerRelocationCapture) tea.Cmd {
 	if !ok {
 		return nil
 	}
-	task, project := qt.getTaskRef()
+	task, project := qt.GetTaskRef()
 	if task == nil || project == nil {
 		return nil
 	}

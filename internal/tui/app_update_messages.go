@@ -332,11 +332,11 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState, reloadCrossProject 
 			presentation.ViewTaskAttachments,
 		} {
 			view := m.views.Get(viewType)
-			refresher, ok := view.(interface{ refreshAfterReload() bool })
+			refresher, ok := view.(interface{ RefreshAfterReload() bool })
 			if !ok {
 				continue
 			}
-			if !refresher.refreshAfterReload() && m.currentView() == viewType {
+			if !refresher.RefreshAfterReload() && m.currentView() == viewType {
 				saveCmds = append(saveCmds, func() tea.Msg { return status.BackMsg{} })
 			}
 		}

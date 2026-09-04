@@ -268,9 +268,9 @@ func (m *ManageHubModel) ActiveFilterCount() int {
 	return 0
 }
 
-func (m *ManageHubModel) getTaskRef() (*models.Task, *models.Project) {
+func (m *ManageHubModel) GetTaskRef() (*models.Task, *models.Project) {
 	if provider, ok := m.active.(taskReferenceProvider); ok {
-		return provider.getTaskRef()
+		return provider.GetTaskRef()
 	}
 	return nil, nil
 }

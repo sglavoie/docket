@@ -1,22 +1,22 @@
-package tui
+package taskdetail
 
 import (
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
-// buildKeyMap constructs the declarative KeyMap for TaskAttachmentsModel.
-func (m *TaskAttachmentsModel) buildKeyMap() *keymap.KeyMap {
-	inAddMode := func() bool { return m.addMode && !m.Confirm.IsActive() }
-	inBrowseMode := func() bool { return !m.addMode && !m.Confirm.IsActive() }
-	hasBrowseSelection := func() bool { return inBrowseMode() && m.hasSelection() }
+// BuildKeyMap constructs the declarative KeyMap for TaskAttachmentsModel.
+func (m *TaskAttachmentsModel) BuildKeyMap() *keymap.KeyMap {
+	inAddMode := func() bool { return m.AddMode && !m.Confirm.IsActive() }
+	inBrowseMode := func() bool { return !m.AddMode && !m.Confirm.IsActive() }
+	hasBrowseSelection := func() bool { return inBrowseMode() && m.HasSelection() }
 	hasMultipleAttachments := func() bool {
-		return hasBrowseSelection() && m.task != nil && len(m.task.Attachments) > 1
+		return hasBrowseSelection() && m.Task != nil && len(m.Task.Attachments) > 1
 	}
 	selectedIsURL := func() bool {
-		return hasBrowseSelection() && m.task.Attachments[m.Cursor].IsURL
+		return hasBrowseSelection() && m.Task.Attachments[m.Cursor].IsURL
 	}
 	selectedIsCodeRef := func() bool {
-		return hasBrowseSelection() && m.task.Attachments[m.Cursor].IsCodeRef
+		return hasBrowseSelection() && m.Task.Attachments[m.Cursor].IsCodeRef
 	}
 	addLabel := "add"
 	if m.Err != nil {

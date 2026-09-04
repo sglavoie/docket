@@ -23,7 +23,7 @@ func (m *AppModel) toggleToday(capture *outlinerRelocationCapture) tea.Cmd {
 	if !ok {
 		return nil
 	}
-	task, project := qt.getTaskRef()
+	task, project := qt.GetTaskRef()
 	if task == nil || project == nil {
 		return nil
 	}

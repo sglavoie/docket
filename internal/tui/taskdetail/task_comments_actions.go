@@ -1,4 +1,4 @@
-package tui
+package taskdetail
 
 import (
 	"errors"
@@ -60,17 +60,17 @@ func adaptSubviewCommit(commit tea.Cmd, success func() tea.Msg) tea.Cmd {
 // application layer, which re-applies it against a fresh snapshot and commits
 // one ChangeSet before the panel's own success message resolves.
 func (m *TaskCommentsModel) saveComment() tea.Cmd {
-	text := m.textInput.Value()
-	task, err := appendComment(m.project, m.task.ID, text)
+	text := m.TextInput.Value()
+	task, err := appendComment(m.project, m.Task.ID, text)
 	if err != nil {
 		m.Err = err
 		return nil
 	}
 
-	m.task = task
+	m.Task = task
 	m.cancelAddMode()
 	m.Err = nil
-	m.Cursor = len(m.task.Comments) - 1
+	m.Cursor = len(m.Task.Comments) - 1
 
 	return adaptSubviewCommit(
 		m.coordinator.AddComment(taskref.For(task, m.project), text),
@@ -81,59 +81,59 @@ func (m *TaskCommentsModel) saveComment() tea.Cmd {
 func (m *TaskCommentsModel) executeDelete() tea.Cmd {
 	m.refreshTaskReference()
 	index := m.Cursor
-	if !m.task.RemoveComment(index) {
+	if !m.Task.RemoveComment(index) {
 		return func() tea.Msg { return status.ErrorMsg{Err: errors.New("failed to remove comment")} }
 	}
-	if m.Cursor >= len(m.task.Comments) && m.Cursor > 0 {
+	if m.Cursor >= len(m.Task.Comments) && m.Cursor > 0 {
 		m.Cursor--
 	}
 
 	return adaptSubviewCommit(
-		m.coordinator.RemoveComment(taskref.For(m.task, m.project), index),
+		m.coordinator.RemoveComment(taskref.For(m.Task, m.project), index),
 		func() tea.Msg { return CommentDeletedMsg{} },
 	)
 }
 
 func (m *TaskCommentsModel) startEditComment() tea.Cmd {
-	comment := m.task.Comments[m.Cursor]
-	m.editMode = true
+	comment := m.Task.Comments[m.Cursor]
+	m.EditMode = true
 	m.editIndex = m.Cursor
-	m.editTextInput.SetValue(comment.Text)
-	m.editTextInput.Focus()
+	m.EditTextInput.SetValue(comment.Text)
+	m.EditTextInput.Focus()
 	return textarea.Blink
 }
 
 func (m *TaskCommentsModel) saveEditedComment() tea.Cmd {
 	// Mutate model state synchronously in Update() to avoid data races with View().
-	text := strings.TrimSpace(m.editTextInput.Value())
+	text := strings.TrimSpace(m.EditTextInput.Value())
 	if text == "" {
 		m.Err = fmt.Errorf("comment text cannot be empty")
 		return nil
 	}
 
 	m.refreshTaskReference()
-	if m.editIndex >= len(m.task.Comments) {
+	if m.editIndex >= len(m.Task.Comments) {
 		m.cancelEditMode()
 		return func() tea.Msg { return status.ErrorMsg{Err: fmt.Errorf("comment was deleted externally")} }
 	}
 
 	editIndex := m.editIndex
-	m.task.Comments[editIndex].Text = text
+	m.Task.Comments[editIndex].Text = text
 	m.cancelEditMode()
 	m.Err = nil
 
 	return adaptSubviewCommit(
-		m.coordinator.EditComment(taskref.For(m.task, m.project), editIndex, text),
+		m.coordinator.EditComment(taskref.For(m.Task, m.project), editIndex, text),
 		func() tea.Msg { return CommentEditedMsg{} },
 	)
 }
 
 func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
-	comment := m.task.Comments[m.Cursor]
+	comment := m.Task.Comments[m.Cursor]
 	editIndex := m.Cursor
-	content := fmt.Sprintf("# Comment %d on #%d: %s\n\n<!-- Edit the comment text below. The timestamp will be preserved. -->\n\n%s", editIndex, m.task.ShortID, m.task.Title, comment.Text)
+	content := fmt.Sprintf("# Comment %d on #%d: %s\n\n<!-- Edit the comment text below. The timestamp will be preserved. -->\n\n%s", editIndex, m.Task.ShortID, m.Task.Title, comment.Text)
 
-	task := m.task
+	task := m.Task
 	project := m.project
 	subview := m.coordinator
 	return m.editCommentWithExternalEditor(content, true, func(newText string) tea.Msg {
@@ -156,10 +156,10 @@ func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
 }
 
 func (m *TaskCommentsModel) addCommentInExternalEditor() tea.Cmd {
-	currentText := strings.TrimSpace(m.textInput.Value())
-	content := fmt.Sprintf("# New comment on #%d: %s\n\n<!-- Enter the comment text below. -->\n\n%s", m.task.ShortID, m.task.Title, currentText)
+	currentText := strings.TrimSpace(m.TextInput.Value())
+	content := fmt.Sprintf("# New comment on #%d: %s\n\n<!-- Enter the comment text below. -->\n\n%s", m.Task.ShortID, m.Task.Title, currentText)
 
-	task := m.task
+	task := m.Task
 	project := m.project
 	subview := m.coordinator
 	m.cancelAddMode()
@@ -181,16 +181,16 @@ func (m *TaskCommentsModel) addCommentInExternalEditor() tea.Cmd {
 }
 
 func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
-	if m.editIndex >= len(m.task.Comments) {
+	if m.editIndex >= len(m.Task.Comments) {
 		m.cancelEditMode()
 		return func() tea.Msg { return status.ErrorMsg{Err: fmt.Errorf("comment was deleted externally")} }
 	}
-	comment := m.task.Comments[m.editIndex]
+	comment := m.Task.Comments[m.editIndex]
 	editIndex := m.editIndex
-	currentText := strings.TrimSpace(m.editTextInput.Value())
-	content := fmt.Sprintf("# Comment %d on #%d: %s\n\n<!-- Edit the comment text below. The timestamp will be preserved. -->\n\n%s", editIndex, m.task.ShortID, m.task.Title, currentText)
+	currentText := strings.TrimSpace(m.EditTextInput.Value())
+	content := fmt.Sprintf("# Comment %d on #%d: %s\n\n<!-- Edit the comment text below. The timestamp will be preserved. -->\n\n%s", editIndex, m.Task.ShortID, m.Task.Title, currentText)
 
-	task := m.task
+	task := m.Task
 	project := m.project
 	subview := m.coordinator
 	originalText := comment.Text
@@ -216,10 +216,10 @@ func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 }
 
 func (m *TaskCommentsModel) copyCommentText() {
-	comment := m.task.Comments[m.Cursor]
+	comment := m.Task.Comments[m.Cursor]
 
-	if err := copyTextToClipboard(comment.Text); err != nil {
-		if errors.Is(err, errClipboardUnsupported) {
+	if err := external.CopyText(comment.Text); err != nil {
+		if errors.Is(err, external.ErrClipboardUnsupported) {
 			m.SetStatus(err.Error())
 			return
 		}
@@ -230,18 +230,18 @@ func (m *TaskCommentsModel) copyCommentText() {
 	m.SetStatus("Comment copied to clipboard")
 }
 
-func (m *TaskCommentsModel) copyAllCommentsText() {
-	if len(m.task.Comments) == 0 {
+func (m *TaskCommentsModel) CopyAllCommentsText() {
+	if len(m.Task.Comments) == 0 {
 		m.SetStatus("Nothing to copy")
 		return
 	}
-	texts := make([]string, len(m.task.Comments))
-	for i, c := range m.task.Comments {
+	texts := make([]string, len(m.Task.Comments))
+	for i, c := range m.Task.Comments {
 		texts[i] = c.Text
 	}
 
-	if err := copyTextToClipboard(formatNumberedMarkdownList(texts)); err != nil {
-		if errors.Is(err, errClipboardUnsupported) {
+	if err := external.CopyText(formatNumberedMarkdownList(texts)); err != nil {
+		if errors.Is(err, external.ErrClipboardUnsupported) {
 			m.SetStatus(err.Error())
 			return
 		}

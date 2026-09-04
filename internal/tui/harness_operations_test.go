@@ -21,6 +21,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/tt/internal/tui/taskdetail"
 	"github.com/sglavoie/tt/internal/util"
 )
 
@@ -121,14 +122,14 @@ func (m *AppModel) registerHarnessOperations() error {
 			if task == nil || project == nil {
 				return nil
 			}
-			return ShowTaskAttachmentsMsg{Task: task, Project: project}
+			return taskdetail.ShowTaskAttachmentsMsg{Task: task, Project: project}
 		}},
 		{operationHarnessTaskComments, "task comments", operation.OperationCategoryTask, func() tea.Msg {
 			task, project := m.outlinerTarget()
 			if task == nil || project == nil {
 				return nil
 			}
-			return ShowTaskCommentsMsg{Task: task, Project: project}
+			return taskdetail.ShowTaskCommentsMsg{Task: task, Project: project}
 		}},
 		{operationHarnessProjectNotes, "show notes", operation.OperationCategoryNote, func() tea.Msg {
 			_, project := m.outlinerTarget()

@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/taskdetail"
 )
 
 // Comment operation IDs. They name what the Comments panel does to the comment
@@ -131,8 +132,8 @@ var commentActionSheetOperations = []operation.OperationID{operationCommentDelet
 // openCommentsActionSheet raises the shell-owned sheet over the panel. Its row
 // acts on the panel's cursor rather than on a named entity, so an empty list or
 // a cursor past its end names nothing and the sheet refuses to open.
-func (m *AppModel) openCommentsActionSheet(ctx operation.CommandContext, panel *TaskCommentsModel) error {
-	if !panel.hasSelection() {
+func (m *AppModel) openCommentsActionSheet(ctx operation.CommandContext, panel *taskdetail.TaskCommentsModel) error {
+	if !panel.HasSelection() {
 		return errors.New("select a comment to open actions")
 	}
 	sheet, err := listsurface.NewContextActionSheetModel(
@@ -208,23 +209,23 @@ func (m *AppModel) executeCommentOperation(invocation operation.OperationInvocat
 	}
 	switch invocation.Descriptor.ID {
 	case operationCommentAdd:
-		return command(panel.beginAddMode())
+		return command(panel.BeginAddMode())
 	case operationCommentEdit:
-		return command(panel.startEditSelectedComment())
+		return command(panel.StartEditSelectedComment())
 	case operationCommentEditExternal:
-		return command(panel.editSelectedCommentInExternalEditor())
+		return command(panel.EditSelectedCommentInExternalEditor())
 	case operationCommentCopy:
-		panel.copySelectedCommentText()
+		panel.CopySelectedCommentText()
 	case operationCommentCopyAll:
-		panel.copyAllCommentsText()
+		panel.CopyAllCommentsText()
 	case operationCommentActions:
 		if err := m.openCommentsActionSheet(invocation.Context, panel); err != nil {
 			return operation.OperationHandlerResult{Err: err}
 		}
 	case operationCommentDelete:
-		panel.confirmDeleteSelectedComment()
+		panel.ConfirmDeleteSelectedComment()
 	case operationCommentExpand:
-		panel.expandSelectedComment()
+		panel.ExpandSelectedComment()
 	}
 	return operation.OperationHandlerResult{}
 }
@@ -232,10 +233,10 @@ func (m *AppModel) executeCommentOperation(invocation operation.OperationInvocat
 // activeCommentsPanel returns the mounted panel, or nil when the route moved on.
 // A dispatched key already knows the panel is what it came from, so the lookup
 // keys on the current view rather than searching the whole stack.
-func (m *AppModel) activeCommentsPanel() *TaskCommentsModel {
+func (m *AppModel) activeCommentsPanel() *taskdetail.TaskCommentsModel {
 	if m == nil || m.views == nil || m.currentView() != presentation.ViewTaskComments {
 		return nil
 	}
-	panel, _ := m.views.Get(presentation.ViewTaskComments).(*TaskCommentsModel)
+	panel, _ := m.views.Get(presentation.ViewTaskComments).(*taskdetail.TaskCommentsModel)
 	return panel
 }

@@ -1,4 +1,4 @@
-package tui
+package taskdetail
 
 import (
 	"github.com/sglavoie/tt/internal/models"

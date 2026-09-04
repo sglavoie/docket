@@ -17,6 +17,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/tt/internal/tui/taskdetail"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -390,7 +391,7 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.CursorFlash = false
 		return m, nil
 
-	case CommentAddedMsg:
+	case taskdetail.CommentAddedMsg:
 		// Rebuild rows so cloned tasks from tree projections pick up the
 		// in-place comment mutation on the original task.
 		m.rebuildRows()

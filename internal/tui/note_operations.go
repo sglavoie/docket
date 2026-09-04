@@ -179,7 +179,7 @@ func (m *AppModel) noteOperationResult(
 // a message, so the handler's Status is the whole outcome and the shell's status
 // strip is what confirms the copy on every host that lists a note row.
 func copyNoteValue(value string, status string) operation.OperationHandlerResult {
-	if err := copyTextToClipboard(value); err != nil {
+	if err := external.CopyText(value); err != nil {
 		return operation.OperationHandlerResult{Err: fmt.Errorf("copy failed: %w", err)}
 	}
 	return operation.OperationHandlerResult{Status: status}

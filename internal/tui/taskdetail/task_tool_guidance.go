@@ -1,4 +1,4 @@
-package tui
+package taskdetail
 
 import (
 	"image/color"
@@ -21,11 +21,11 @@ func taskToolGuidanceSpec(confirmActive bool, activeInteraction bool, km *keymap
 }
 
 func (m *TaskCommentsModel) guidanceSpec() (chrome.GuidanceSpec, bool) {
-	return taskToolGuidanceSpec(m.Confirm.IsActive(), m.addMode || m.editMode || m.expandedView, m.buildKeyMap())
+	return taskToolGuidanceSpec(m.Confirm.IsActive(), m.AddMode || m.EditMode || m.ExpandedView, m.BuildKeyMap())
 }
 
 func (m *TaskAttachmentsModel) guidanceSpec() (chrome.GuidanceSpec, bool) {
-	return taskToolGuidanceSpec(m.Confirm.IsActive(), m.addMode, m.buildKeyMap())
+	return taskToolGuidanceSpec(m.Confirm.IsActive(), m.AddMode, m.BuildKeyMap())
 }
 
 func renderTaskToolGuidance(spec chrome.GuidanceSpec, ok bool, width int, accent ...color.Color) string {

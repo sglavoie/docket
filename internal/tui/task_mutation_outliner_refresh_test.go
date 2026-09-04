@@ -301,7 +301,7 @@ func TestPlanningOrderMutationRefreshPreservesQualifiedCursorIdentity(t *testing
 	if !slices.Equal(got, want) {
 		t.Fatalf("refreshed Today rows = %v, want %v", got, want)
 	}
-	selectedTask, selectedProject := outliner.getTaskRef()
+	selectedTask, selectedProject := outliner.GetTaskRef()
 	if selectedTask == nil || selectedProject == nil ||
 		selectedTask.ID != betaTask.ID || selectedProject.ID != beta.ID {
 		t.Fatalf("cursor after refresh = %v/%v, want beta/shared", selectedProject, selectedTask)

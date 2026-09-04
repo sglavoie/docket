@@ -7,11 +7,12 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/status"
+	"github.com/sglavoie/tt/internal/tui/taskdetail"
 )
 
 // mountCommentsPanel opens the panel over a live shell on a task carrying two
 // comments, and returns the driver, the panel, and a key press helper.
-func mountCommentsPanel(t *testing.T) (*UITestDriver, *TaskCommentsModel, func(string)) {
+func mountCommentsPanel(t *testing.T) (*UITestDriver, *taskdetail.TaskCommentsModel, func(string)) {
 	t.Helper()
 	driver, workspace, err := NewFixtureDriver(FixtureFresh, 100, 30)
 	if err != nil {
@@ -33,12 +34,12 @@ func mountCommentsPanel(t *testing.T) (*UITestDriver, *TaskCommentsModel, func(s
 	}
 	project.Tasks = []*models.Task{task}
 
-	driver.dispatch(ShowTaskCommentsMsg{Task: task, Project: project})
+	driver.dispatch(taskdetail.ShowTaskCommentsMsg{Task: task, Project: project})
 	panel := driver.App().activeCommentsPanel()
 	if panel == nil {
 		t.Fatal("ShowTaskCommentsMsg did not mount the Comments panel")
 	}
-	if panel.dispatch == nil {
+	if panel.Dispatch == nil {
 		t.Fatal("the mounted panel holds no dispatch seam, so every routed key resolves nothing")
 	}
 
@@ -59,7 +60,7 @@ func TestCommentsPanelKeysReachTheirOperations(t *testing.T) {
 	driver, panel, press := mountCommentsPanel(t)
 
 	press("enter")
-	if !panel.expandedView {
+	if !panel.ExpandedView {
 		t.Fatal("Enter did not reach tui.comment.expand")
 	}
 	press("esc")
@@ -74,7 +75,7 @@ func TestCommentsPanelKeysReachTheirOperations(t *testing.T) {
 	}
 
 	press("e")
-	if !panel.editMode {
+	if !panel.EditMode {
 		t.Fatal("e did not reach tui.comment.edit")
 	}
 	press("esc")
@@ -91,7 +92,7 @@ func TestCommentsPanelKeysReachTheirOperations(t *testing.T) {
 	}
 
 	press("a")
-	if !panel.addMode {
+	if !panel.AddMode {
 		t.Fatal("a did not reach tui.comment.add")
 	}
 }
@@ -107,7 +108,7 @@ func TestCommentsRetiredKeysAreSilent(t *testing.T) {
 		if panel.Confirm.IsActive() {
 			t.Fatalf("retired key %q raised confirm %q", key, panel.Confirm.Action())
 		}
-		if panel.addMode {
+		if panel.AddMode {
 			t.Fatalf("retired key %q entered add mode", key)
 		}
 		if driver.App().contextActionSheet != nil {
@@ -159,31 +160,31 @@ func TestCommentsSubStatesKeepUAsTypedText(t *testing.T) {
 	}
 
 	press("a")
-	if !panel.addMode {
+	if !panel.AddMode {
 		t.Fatal("a did not enter add mode")
 	}
 	press("u")
 	refuseLedger("the add composer")
-	if got := panel.textInput.Value(); got != "u" {
+	if got := panel.TextInput.Value(); got != "u" {
 		t.Fatalf("add-mode input = %q, want %q", got, "u")
 	}
 	press("esc")
 	press("y")
 
 	press("e")
-	if !panel.editMode {
+	if !panel.EditMode {
 		t.Fatal("e did not enter edit mode")
 	}
 	press("u")
 	refuseLedger("the edit composer")
-	if got := panel.editTextInput.Value(); !strings.HasSuffix(got, "u") {
+	if got := panel.EditTextInput.Value(); !strings.HasSuffix(got, "u") {
 		t.Fatalf("edit-mode input = %q, want the typed u appended", got)
 	}
 	press("esc")
 	press("y")
 
 	press("enter")
-	if !panel.expandedView {
+	if !panel.ExpandedView {
 		t.Fatal("Enter did not open the expanded comment")
 	}
 	press("u")

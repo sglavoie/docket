@@ -10,7 +10,7 @@ import (
 
 // taskOpsView implementation for OutlinerModel.
 
-func (m *OutlinerModel) getTaskRef() (*models.Task, *models.Project) {
+func (m *OutlinerModel) GetTaskRef() (*models.Task, *models.Project) {
 	if len(m.rows) == 0 || m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return nil, nil
 	}
@@ -107,7 +107,7 @@ func (m *OutlinerModel) togglePeek() {
 		m.peekMode = false
 		return
 	}
-	if task, _ := m.getTaskRef(); task == nil {
+	if task, _ := m.GetTaskRef(); task == nil {
 		return
 	}
 	// Keep the scroll offset: the viewport clamp then scrolls the minimum needed

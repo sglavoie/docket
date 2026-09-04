@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/taskdetail"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -54,9 +55,9 @@ func (m *AppModel) executeAuxiliaryTaskOperation(
 	//nolint:exhaustive // Only auxiliary task operations reach this switch.
 	switch invocation.Descriptor.ID {
 	case operation.OperationTaskComments:
-		return message(ShowTaskCommentsMsg{Task: task, Project: project})
+		return message(taskdetail.ShowTaskCommentsMsg{Task: task, Project: project})
 	case operation.OperationTaskAttachments:
-		return message(ShowTaskAttachmentsMsg{Task: task, Project: project})
+		return message(taskdetail.ShowTaskAttachmentsMsg{Task: task, Project: project})
 	case operation.OperationTaskCopyTitle:
 		return message(CopyTaskTitleMsg{Task: task})
 	case operation.OperationTaskCopyDetails:

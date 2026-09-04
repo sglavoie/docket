@@ -111,7 +111,7 @@ func TestOutlinerPinnedOrderJK(t *testing.T) {
 
 		assertOrder(t, "pinned rows", visibleTaskTitles(cross), []string{"Bravo", "Alpha", "Charlie"})
 		assertOrder(t, "committed pin", diskPinOrder(t, project), []string{"Bravo", "Alpha", "Charlie"})
-		if task, _ := cross.getTaskRef(); task == nil || task.Title != "Alpha" {
+		if task, _ := cross.GetTaskRef(); task == nil || task.Title != "Alpha" {
 			t.Fatalf("cursor after reorder = %v, want Alpha", task)
 		}
 		if !strings.Contains(m.statusMessage, "Reorder Pinned") || !strings.Contains(m.statusMessage, "u undo") {

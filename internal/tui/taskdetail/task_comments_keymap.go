@@ -1,20 +1,20 @@
-package tui
+package taskdetail
 
 import (
 	"github.com/sglavoie/tt/internal/tui/keymap"
 )
 
-// buildKeyMap constructs the declarative KeyMap for TaskCommentsModel. It is the
+// BuildKeyMap constructs the declarative KeyMap for TaskCommentsModel. It is the
 // panel's help and footer source; CommentsInputStrategy is what the browse keys
 // actually resolve through, so the two must keep describing the same grammar.
-func (m *TaskCommentsModel) buildKeyMap() *keymap.KeyMap {
-	inInputMode := func() bool { return m.addMode || m.editMode || m.expandedView }
+func (m *TaskCommentsModel) BuildKeyMap() *keymap.KeyMap {
+	inInputMode := func() bool { return m.AddMode || m.EditMode || m.ExpandedView }
 	inBrowseMode := func() bool { return !inInputMode() }
-	hasBrowseSelection := func() bool { return inBrowseMode() && m.hasSelection() }
-	addMode := func() bool { return m.addMode && !m.Confirm.IsActive() }
-	editMode := func() bool { return m.editMode && !m.Confirm.IsActive() }
+	hasBrowseSelection := func() bool { return inBrowseMode() && m.HasSelection() }
+	addMode := func() bool { return m.AddMode && !m.Confirm.IsActive() }
+	editMode := func() bool { return m.EditMode && !m.Confirm.IsActive() }
 	inputMode := func() bool { return addMode() || editMode() }
-	expandedMode := func() bool { return m.expandedView && !m.Confirm.IsActive() }
+	expandedMode := func() bool { return m.ExpandedView && !m.Confirm.IsActive() }
 	saveLabel := "save"
 	if m.Err != nil {
 		saveLabel = "retry"

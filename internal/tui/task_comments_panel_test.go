@@ -26,8 +26,8 @@ func TestCommentsPanelWorkspaceUndoRedoRefreshesAndNamesTheLedgerEntry(t *testin
 		if panel == nil {
 			t.Fatal("the Comments panel left the route")
 		}
-		texts := make([]string, 0, len(panel.task.Comments))
-		for _, comment := range panel.task.Comments {
+		texts := make([]string, 0, len(panel.Task.Comments))
+		for _, comment := range panel.Task.Comments {
 			texts = append(texts, comment.Text)
 		}
 		return texts
@@ -136,8 +136,8 @@ func TestCommentsSpaceSheetReachesDelete(t *testing.T) {
 	}
 
 	press("y")
-	if len(panel.task.Comments) != 1 || panel.task.Comments[0].Text != "second comment" {
-		t.Fatalf("confirming the sheet's Delete left %d comment(s), want the first one removed", len(panel.task.Comments))
+	if len(panel.Task.Comments) != 1 || panel.Task.Comments[0].Text != "second comment" {
+		t.Fatalf("confirming the sheet's Delete left %d comment(s), want the first one removed", len(panel.Task.Comments))
 	}
 }
 
@@ -167,9 +167,9 @@ func TestCommentsHelpKeyRaisesTheCommentsGrammar(t *testing.T) {
 	// viewer it produced: ShowHelpMsg is what handler_view_core.go hands to
 	// NewHelpViewModel, so the two carry the same rows, and the message says them
 	// in the panel's own package.
-	raised, ok := panel.handleNormalKey("?")().(help.ShowHelpMsg)
+	raised, ok := panel.HandleNormalKey("?")().(help.ShowHelpMsg)
 	if !ok {
-		t.Fatalf("? raised %T, want help.ShowHelpMsg", panel.handleNormalKey("?")())
+		t.Fatalf("? raised %T, want help.ShowHelpMsg", panel.HandleNormalKey("?")())
 	}
 	if raised.ViewName != "Comments" {
 		t.Fatalf("help header = %q, want \"Comments\"", raised.ViewName)
@@ -206,12 +206,12 @@ func TestCommentsHelpKeyRaisesTheCommentsGrammar(t *testing.T) {
 	if got := driver.App().currentView(); got != presentation.ViewTaskComments {
 		t.Fatalf("? in add mode left the panel for %v", got)
 	}
-	if got := panel.textInput.Value(); got != "?" {
+	if got := panel.TextInput.Value(); got != "?" {
 		t.Fatalf("add-mode buffer after ? = %q, want a literal %q", got, "?")
 	}
 	press("esc")
 	press("y")
-	if panel.addMode {
+	if panel.AddMode {
 		t.Fatal("discarding the add buffer left add mode active")
 	}
 
@@ -220,14 +220,14 @@ func TestCommentsHelpKeyRaisesTheCommentsGrammar(t *testing.T) {
 	if got := driver.App().currentView(); got != presentation.ViewTaskComments {
 		t.Fatalf("? in edit mode left the panel for %v", got)
 	}
-	if got := panel.editTextInput.Value(); !strings.Contains(got, "?") {
+	if got := panel.EditTextInput.Value(); !strings.Contains(got, "?") {
 		t.Fatalf("edit-mode buffer after ? = %q, want a literal %q in it", got, "?")
 	}
 	press("esc")
 	press("y")
 
 	press("enter")
-	if !panel.expandedView {
+	if !panel.ExpandedView {
 		t.Fatal("Enter did not expand the comment under the cursor")
 	}
 	press("?")
@@ -258,7 +258,7 @@ func TestCommentsPanelUnboundKeysAreSilent(t *testing.T) {
 		if panel.Confirm.IsActive() {
 			t.Fatalf("unbound key %q raised confirm %q", key, panel.Confirm.Action())
 		}
-		if panel.addMode || panel.editMode || panel.expandedView {
+		if panel.AddMode || panel.EditMode || panel.ExpandedView {
 			t.Fatalf("unbound key %q changed the panel mode", key)
 		}
 		if driver.App().contextActionSheet != nil {

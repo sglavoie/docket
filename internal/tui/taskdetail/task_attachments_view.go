@@ -1,4 +1,4 @@
-package tui
+package taskdetail
 
 import (
 	"fmt"
@@ -15,21 +15,21 @@ import (
 )
 
 func (m *TaskAttachmentsModel) View() tea.View { //nolint:gocyclo
-	if m.task == nil {
+	if m.Task == nil {
 		return tea.NewView("No task selected")
 	}
 
 	var b strings.Builder
 	b.WriteString(chrome.RenderTaskScopedFullscreenTitleWithPulse(
-		fmt.Sprintf("Attachments for #%d: ", m.task.ShortID),
-		m.task,
-		fmt.Sprintf("%d attachment(s)", len(m.task.Attachments)),
+		fmt.Sprintf("Attachments for #%d: ", m.Task.ShortID),
+		m.Task,
+		fmt.Sprintf("%d attachment(s)", len(m.Task.Attachments)),
 		m.CurrentWorkspacePulse(),
 		m.Width(),
 		m.AccentColor()))
 	b.WriteString("\n\n")
 
-	if m.addMode {
+	if m.AddMode {
 		return m.renderAddMode(&b)
 	}
 
@@ -47,7 +47,7 @@ func (m *TaskAttachmentsModel) renderAddMode(b *strings.Builder) tea.View {
 	b.WriteString("\n")
 	b.WriteString(theme.MutedStyle.Render("Enter a file path or URL"))
 	b.WriteString("\n\n")
-	b.WriteString(m.textInput.View())
+	b.WriteString(m.TextInput.View())
 	b.WriteString("\n\n")
 	spec, ok := m.guidanceSpec()
 	b.WriteString(renderTaskToolGuidance(spec, ok, m.Width(), m.AccentColor()))
@@ -66,24 +66,24 @@ func (m *TaskAttachmentsModel) renderMessages(b *strings.Builder) {
 }
 
 func (m *TaskAttachmentsModel) renderAttachmentsList(b *strings.Builder, availableRows int) {
-	if len(m.task.Attachments) == 0 {
+	if len(m.Task.Attachments) == 0 {
 		b.WriteString(theme.MutedStyle.Render("No attachments yet."))
 		b.WriteString("\n")
 		return
 	}
 
-	maxVisible := taskToolMaxVisible(len(m.task.Attachments), availableRows, 4)
+	maxVisible := taskToolMaxVisible(len(m.Task.Attachments), availableRows, 4)
 	if maxVisible == 0 {
 		return
 	}
 	scrollOffset := chrome.CalcScrollOffset(m.Cursor, maxVisible)
 
-	for i := scrollOffset; i < len(m.task.Attachments) && i < scrollOffset+maxVisible; i++ {
-		b.WriteString(m.renderAttachmentEntry(i, m.task.Attachments[i]))
+	for i := scrollOffset; i < len(m.Task.Attachments) && i < scrollOffset+maxVisible; i++ {
+		b.WriteString(m.renderAttachmentEntry(i, m.Task.Attachments[i]))
 	}
 
-	if len(m.task.Attachments) > maxVisible {
-		remaining := len(m.task.Attachments) - scrollOffset - maxVisible
+	if len(m.Task.Attachments) > maxVisible {
+		remaining := len(m.Task.Attachments) - scrollOffset - maxVisible
 		if remaining > 0 {
 			b.WriteString(theme.MutedStyle.Render(fmt.Sprintf("  ... and %d more (use j/k to scroll)", remaining)))
 			b.WriteString("\n")
@@ -155,7 +155,7 @@ func (m *TaskAttachmentsModel) attachmentMeta(att models.Attachment) string {
 		return storage.FormatRelativeTime(att.AddedAt)
 	}
 
-	size := storage.GetAttachmentSize(m.project, m.task, &att)
+	size := storage.GetAttachmentSize(m.project, m.Task, &att)
 	sizeStr := "(missing)"
 	if size > 0 {
 		sizeStr = storage.FormatFileSize(size)

@@ -66,7 +66,7 @@ func (m *AppModel) anchorOutlinerCursorAfterProjectPark(projectIDs ...string) {
 
 func (m *AppModel) outlinerTarget() (*models.Task, *models.Project) {
 	if out := m.activeOutliner(); out != nil {
-		return out.getTaskRef()
+		return out.GetTaskRef()
 	}
 	return nil, nil
 }
