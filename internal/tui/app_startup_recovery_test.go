@@ -89,7 +89,7 @@ func TestNewAppModelRecoversTransactionsBeforeLoadingWorkspace(t *testing.T) {
 			if err != nil {
 				t.Fatalf("NewAppModel: %v", err)
 			}
-			if project := app.runtime.GetProject(projectID); project == nil {
+			if project := app.domain.runtime.GetProject(projectID); project == nil {
 				t.Fatalf("recovered catalog missing project %q", projectID)
 			}
 			if len(app.nextOrder) != 1 || app.nextOrder[0].Task.ID != taskID {

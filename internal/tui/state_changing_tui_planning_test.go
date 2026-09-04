@@ -59,20 +59,21 @@ func TestInlineProjectMoveAfterTodayMutationUsesFreshStructuralPlanning(t *testi
 		t.Fatalf("load runtime: %v", err)
 	}
 
+	domain := newDomainController(runtime, manager)
+	domain.service = env.svc
+	domain.projects = map[string]*models.Project{
+		source.ID:      source,
+		destination.ID: destination,
+	}
+
 	model := &AppModel{
-		configManager:     manager,
-		runtime:           runtime,
-		appService:        env.svc,
+		domain:            domain,
 		secondaryFeatures: coordinator.NewSecondaryCoordinators(env.svc),
-		projects: map[string]*models.Project{
-			source.ID:      source,
-			destination.ID: destination,
-		},
-		currentProject: source,
-		nextOrder:      []outliner.PlanningTask{},
-		nextOrderIDs:   make(map[taskref.TaskIdentity]bool),
-		today:          []outliner.PlanningTask{},
-		todayIDs:       make(map[taskref.TaskIdentity]bool),
+		currentProject:    source,
+		nextOrder:         []outliner.PlanningTask{},
+		nextOrderIDs:      make(map[taskref.TaskIdentity]bool),
+		today:             []outliner.PlanningTask{},
+		todayIDs:          make(map[taskref.TaskIdentity]bool),
 	}
 
 	// A live Today mutation installs the runtime-bound reconciliation builder as

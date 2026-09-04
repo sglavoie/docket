@@ -141,8 +141,10 @@ func TestParkedProjectLeavesPinnedProjections(t *testing.T) {
 	}
 
 	shell := &AppModel{
-		runtime:  runtime,
-		projects: map[string]*models.Project{active.ID: active, parked.ID: parked},
+		domain: domainController{
+			runtime:  runtime,
+			projects: map[string]*models.Project{active.ID: active, parked.ID: parked},
+		},
 	}
 	pinned := shell.collectPinnedTasks()
 	if len(pinned) != 1 || pinned[0].Task.ID != activePin.ID {
@@ -186,8 +188,10 @@ func TestParkedProjectLeavesSearchProjection(t *testing.T) {
 func TestParkedProjectLeavesTagFilterFacet(t *testing.T) {
 	runtime, active, parked := parkedWorkspace(t)
 	shell := &AppModel{
-		runtime:  runtime,
-		projects: map[string]*models.Project{active.ID: active, parked.ID: parked},
+		domain: domainController{
+			runtime:  runtime,
+			projects: map[string]*models.Project{active.ID: active, parked.ID: parked},
+		},
 	}
 
 	picker, err := shell.newFilterTagsPicker(operation.OperationExecutionRequest{})
@@ -211,9 +215,11 @@ func TestParkedProjectLeavesTagFilterFacet(t *testing.T) {
 func TestParkedProjectLeavesOperationScopeAndWorkspacePulse(t *testing.T) {
 	runtime, active, parked := parkedWorkspace(t)
 	shell := &AppModel{
-		runtime:  runtime,
-		projects: map[string]*models.Project{active.ID: active, parked.ID: parked},
-		viewNav:  viewNavigationController{views: route.NewViewRegistry()},
+		domain: domainController{
+			runtime:  runtime,
+			projects: map[string]*models.Project{active.ID: active, parked.ID: parked},
+		},
+		viewNav: viewNavigationController{views: route.NewViewRegistry()},
 	}
 	assertIDs(t, shell.operationScopeProjectIDs(nil), active.ID)
 
@@ -243,9 +249,11 @@ func TestParkedProjectPlanningReferencesDoNotHydrate(t *testing.T) {
 	persister.Projects[active.ID] = active
 	persister.Projects[parked.ID] = parked
 	shell := &AppModel{
-		runtime:      runtime,
-		persister:    persister,
-		projects:     map[string]*models.Project{active.ID: active, parked.ID: parked},
+		domain: domainController{
+			runtime:   runtime,
+			persister: persister,
+			projects:  map[string]*models.Project{active.ID: active, parked.ID: parked},
+		},
 		nextOrder:    []outliner.PlanningTask{},
 		nextOrderIDs: make(map[taskref.TaskIdentity]bool),
 		today:        []outliner.PlanningTask{},

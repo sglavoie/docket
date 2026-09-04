@@ -21,33 +21,33 @@ import (
 // fields. RuntimeState catalog reads intentionally return fresh pointers, but
 // long-lived views need stable project identities within one TUI session.
 func (m *AppModel) syncProjectCache() {
-	if m == nil || m.runtime == nil {
+	if m == nil || m.domain.runtime == nil {
 		return
 	}
-	if m.projects == nil {
-		m.projects = make(map[string]*models.Project)
+	if m.domain.projects == nil {
+		m.domain.projects = make(map[string]*models.Project)
 	}
 
 	seen := make(map[string]bool)
-	for _, fresh := range m.runtime.AllProjects() {
+	for _, fresh := range m.domain.runtime.AllProjects() {
 		if fresh == nil {
 			continue
 		}
 		seen[fresh.ID] = true
-		if cached := m.projects[fresh.ID]; cached != nil {
+		if cached := m.domain.projects[fresh.ID]; cached != nil {
 			coordinator.CopyCatalogMetadata(cached, fresh)
 			continue
 		}
-		m.projects[fresh.ID] = fresh
+		m.domain.projects[fresh.ID] = fresh
 	}
-	for id := range m.projects {
+	for id := range m.domain.projects {
 		if !seen[id] {
-			delete(m.projects, id)
+			delete(m.domain.projects, id)
 		}
 	}
 
 	if m.currentProject != nil {
-		if cached := m.projects[m.currentProject.ID]; cached != nil {
+		if cached := m.domain.projects[m.currentProject.ID]; cached != nil {
 			m.currentProject = cached
 		} else {
 			m.currentProject = nil
@@ -64,16 +64,16 @@ func (m *AppModel) adoptCrossProjectSnapshot(projects []*models.Project) {
 	if m == nil {
 		return
 	}
-	if m.projects == nil {
-		m.projects = make(map[string]*models.Project)
+	if m.domain.projects == nil {
+		m.domain.projects = make(map[string]*models.Project)
 	}
 	for index, loaded := range projects {
 		if loaded == nil || loaded.ID == "" {
 			continue
 		}
-		cached := m.projects[loaded.ID]
+		cached := m.domain.projects[loaded.ID]
 		if cached == nil {
-			m.projects[loaded.ID] = loaded
+			m.domain.projects[loaded.ID] = loaded
 			cached = loaded
 		} else if cached != loaded {
 			*cached = *loaded
@@ -102,19 +102,19 @@ func (m *AppModel) parkedOwnerLabel(project *models.Project) string {
 // A failed checked commit leaves the runtime snapshot untouched so startup can
 // continue with the muted fallback and retry on the next catalog mutation.
 func (m *AppModel) ensureProjectColorSlots() error {
-	if m == nil || m.runtime == nil {
+	if m == nil || m.domain.runtime == nil {
 		return nil
 	}
-	catalog := coordinator.CloneWorkspaceCatalog(m.runtime.Catalog())
+	catalog := coordinator.CloneWorkspaceCatalog(m.domain.runtime.Catalog())
 	if !catalog.EnsureProjectColorSlots() {
 		return nil
 	}
-	if m.runtime.DataDir() == "" {
-		m.runtime.SetCatalogInMemory(catalog)
+	if m.domain.runtime.DataDir() == "" {
+		m.domain.runtime.SetCatalogInMemory(catalog)
 		m.syncProjectCache()
 		return nil
 	}
-	if err := m.runtime.CommitCatalog(catalog); err != nil {
+	if err := m.domain.runtime.CommitCatalog(catalog); err != nil {
 		return err
 	}
 	m.syncProjectCache()
@@ -125,7 +125,7 @@ func (m *AppModel) projectByID(idOrSlug string) *models.Project {
 	if m == nil || idOrSlug == "" {
 		return nil
 	}
-	for _, project := range m.projects {
+	for _, project := range m.domain.projects {
 		if project != nil && (project.ID == idOrSlug || project.Slug == idOrSlug) {
 			return project
 		}
@@ -137,7 +137,7 @@ func (m *AppModel) activeProjectByID(projectID string) *models.Project {
 	if m == nil || projectID == "" {
 		return nil
 	}
-	project := m.projects[projectID]
+	project := m.domain.projects[projectID]
 	if project == nil || project.Archived {
 		return nil
 	}
@@ -150,7 +150,7 @@ func (m *AppModel) projectsInRuntimeOrder(projects []*models.Project) []*models.
 		if project == nil {
 			continue
 		}
-		if cached := m.projects[project.ID]; cached != nil {
+		if cached := m.domain.projects[project.ID]; cached != nil {
 			result = append(result, cached)
 		}
 	}
@@ -164,17 +164,17 @@ func (m *AppModel) projectsInRuntimeOrder(projects []*models.Project) []*models.
 // capture destinations, move targets, project administration — reads
 // availableProjects instead.
 func (m *AppModel) taskWorkspaceProjects() []*models.Project {
-	if m == nil || m.runtime == nil {
+	if m == nil || m.domain.runtime == nil {
 		return nil
 	}
-	return m.projectsInRuntimeOrder(m.runtime.TaskWorkspaceProjects())
+	return m.projectsInRuntimeOrder(m.domain.runtime.TaskWorkspaceProjects())
 }
 
 func (m *AppModel) availableProjects() []*models.Project {
-	if m == nil || m.runtime == nil {
+	if m == nil || m.domain.runtime == nil {
 		return nil
 	}
-	return m.projectsInRuntimeOrder(m.runtime.AvailableProjects())
+	return m.projectsInRuntimeOrder(m.domain.runtime.AvailableProjects())
 }
 
 // ensureSystemUnfiledProject installs the workspace-owned Unfiled project.
@@ -183,14 +183,14 @@ func (m *AppModel) availableProjects() []*models.Project {
 //
 //nolint:gocyclo // Bootstrap keeps catalog and filesystem recovery decisions in one transaction flow.
 func (m *AppModel) ensureSystemUnfiledProject() error {
-	if m == nil || m.runtime == nil || m.runtime.DataDir() == "" {
+	if m == nil || m.domain.runtime == nil || m.domain.runtime.DataDir() == "" {
 		return nil
 	}
 
-	project := m.runtime.SystemUnfiledProject()
+	project := m.domain.runtime.SystemUnfiledProject()
 	catalogChanged := project == nil
 	if project == nil {
-		for _, candidate := range m.runtime.AllProjects() {
+		for _, candidate := range m.domain.runtime.AllProjects() {
 			if candidate != nil && candidate.Slug == config.LegacyActionInboxSlug {
 				project = candidate
 				break
@@ -203,7 +203,7 @@ func (m *AppModel) ensureSystemUnfiledProject() error {
 			ID:          "system-unfiled-" + uuid.New().String(),
 			Slug:        config.SystemUnfiledSlug,
 			Name:        config.SystemUnfiledName,
-			Path:        m.runtime.ProjectPath(config.SystemUnfiledSlug),
+			Path:        m.domain.runtime.ProjectPath(config.SystemUnfiledSlug),
 			CreatedAt:   now,
 			UpdatedAt:   now,
 			Tasks:       []*models.Task{},
@@ -213,11 +213,11 @@ func (m *AppModel) ensureSystemUnfiledProject() error {
 
 	if project.Name != config.SystemUnfiledName || project.Slug != config.SystemUnfiledSlug ||
 		project.Archived || project.ArchivedAt != nil ||
-		m.runtime.Catalog().SystemUnfiledProjectID != project.ID {
+		m.domain.runtime.Catalog().SystemUnfiledProjectID != project.ID {
 		catalogChanged = true
 		project.Name = config.SystemUnfiledName
 		project.Slug = config.SystemUnfiledSlug
-		project.Path = m.runtime.ProjectPath(config.SystemUnfiledSlug)
+		project.Path = m.domain.runtime.ProjectPath(config.SystemUnfiledSlug)
 		project.Archived = false
 		project.ArchivedAt = nil
 		project.UpdatedAt = time.Now()
@@ -230,7 +230,7 @@ func (m *AppModel) ensureSystemUnfiledProject() error {
 		return fmt.Errorf("inspect system Unfiled tasks: %w", err)
 	}
 	var ops []transaction.Op
-	legacyPath := filepath.Join(config.InternalDir(m.runtime.DataDir()), config.LegacyActionInboxSlug)
+	legacyPath := filepath.Join(config.InternalDir(m.domain.runtime.DataDir()), config.LegacyActionInboxSlug)
 	if tasksMissing && project.Slug == config.LegacyActionInboxSlug {
 		if _, err := os.Stat(legacyPath); err == nil {
 			ops = append(ops, transaction.Op{Kind: transaction.OpMove, Source: legacyPath, Target: project.Path})
@@ -247,14 +247,14 @@ func (m *AppModel) ensureSystemUnfiledProject() error {
 	// machine-local in-memory state as well: the headless fresh-install harness
 	// intentionally does not persist machine.json, while a real workspace simply
 	// restores the same loaded snapshot.
-	machine := cloneMachineState(m.runtime.Machine())
+	machine := cloneMachineState(m.domain.runtime.Machine())
 	artifacts := make([]storage.ArtifactChange, 0, 2)
 	if catalogChanged {
-		catalog := coordinator.CloneWorkspaceCatalog(m.runtime.Catalog())
+		catalog := coordinator.CloneWorkspaceCatalog(m.domain.runtime.Catalog())
 		if err := catalog.RepairSystemUnfiledProject(project); err != nil {
 			return err
 		}
-		artifact, err := m.runtime.CheckedCatalogArtifact(catalog)
+		artifact, err := m.domain.runtime.CheckedCatalogArtifact(catalog)
 		if err != nil {
 			return err
 		}
@@ -274,13 +274,13 @@ func (m *AppModel) ensureSystemUnfiledProject() error {
 			Path: storage.TasksFilePath(project.Path), Data: []byte(content), ExpectedRevision: &requireAbsent,
 		})
 	}
-	if err := m.appService.CommitWorkspaceBootstrap(ops, artifacts...); err != nil {
+	if err := m.domain.service.CommitWorkspaceBootstrap(ops, artifacts...); err != nil {
 		return err
 	}
-	if err := m.runtime.RefreshAfterCommit(); err != nil {
+	if err := m.domain.runtime.RefreshAfterCommit(); err != nil {
 		return err
 	}
-	m.runtime.SetMachineInMemory(machine)
+	m.domain.runtime.SetMachineInMemory(machine)
 	m.syncProjectCache()
 	return nil
 }

@@ -19,8 +19,8 @@ import (
 func (m *AppModel) reconcileNoteLedgerRestore(entry storage.LedgerEntry) ([]tea.Cmd, error) {
 	var refreshErrs []error
 	runtimeReloaded := true
-	if m.runtime != nil && m.runtime.DataDir() != "" {
-		if err := m.runtime.RefreshAfterCommit(); err != nil {
+	if m.domain.runtime != nil && m.domain.runtime.DataDir() != "" {
+		if err := m.domain.runtime.RefreshAfterCommit(); err != nil {
 			runtimeReloaded = false
 			refreshErrs = append(refreshErrs, fmt.Errorf("reload runtime configuration: %w", err))
 		} else {

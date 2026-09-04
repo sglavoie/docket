@@ -114,13 +114,13 @@ func newPlanningLedgerApp(t *testing.T, state models.WorkflowState) (*AppModel, 
 	svc := app.NewServiceWithArtifacts(repo, nil, nil, nil).
 		WithPlanningArtifacts(coordinator.ManagerPlanningArtifacts(manager))
 
+	domain := newDomainController(runtime, manager)
+	domain.service = svc
+	domain.ledger = ledger
+	domain.projects = map[string]*models.Project{project.ID: project}
+
 	appModel := &AppModel{
-		configManager:     manager,
-		runtime:           runtime,
-		deps:              newShellDeps(ledger),
-		projects:          map[string]*models.Project{project.ID: project},
-		persister:         coordinator.NewProjectService(),
-		appService:        svc,
+		domain:            domain,
 		secondaryFeatures: coordinator.NewSecondaryCoordinators(svc),
 		viewNav:           viewNavigationController{views: route.NewViewRegistry(), width: 80, height: 24},
 		currentProject:    project,
@@ -135,7 +135,7 @@ func newPlanningLedgerApp(t *testing.T, state models.WorkflowState) (*AppModel, 
 
 func (m *AppModel) seedDiskNextOrder(t *testing.T, taskID, projectID string) {
 	t.Helper()
-	if err := commitPlanningToRuntime(m.runtime, func(p *config.PlanningState) {
+	if err := commitPlanningToRuntime(m.domain.runtime, func(p *config.PlanningState) {
 		p.SetNext([]config.ProjectTaskLocator{{TaskID: taskID, ProjectID: projectID}})
 	}); err != nil {
 		t.Fatalf("seed focus queue: %v", err)
@@ -144,7 +144,7 @@ func (m *AppModel) seedDiskNextOrder(t *testing.T, taskID, projectID string) {
 
 func (m *AppModel) seedDiskToday(t *testing.T, taskID, projectID string) {
 	t.Helper()
-	if err := commitPlanningToRuntime(m.runtime, func(p *config.PlanningState) {
+	if err := commitPlanningToRuntime(m.domain.runtime, func(p *config.PlanningState) {
 		p.SetToday([]config.ProjectTaskLocator{{TaskID: taskID, ProjectID: projectID}})
 	}); err != nil {
 		t.Fatalf("seed daily plan: %v", err)
@@ -283,7 +283,7 @@ func TestStateMovesPreservePlanningExclusivity(t *testing.T) {
 		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateBacklog)
 		m.seedDiskToday(t, task.ID, m.currentProject.ID)
 
-		if _, err := m.appService.ApplyPlanning(app.PlanningRequest{
+		if _, err := m.domain.service.ApplyPlanning(app.PlanningRequest{
 			Locator: app.TaskLocator{ProjectID: m.currentProject.ID, TaskID: task.ID},
 			Action:  app.PlanningAddNext,
 		}); err != nil {
@@ -304,7 +304,7 @@ func TestStateMovesPreservePlanningExclusivity(t *testing.T) {
 		m, _, task, dataDir := newPlanningLedgerApp(t, models.StateBacklog)
 		m.seedDiskNextOrder(t, task.ID, m.currentProject.ID)
 
-		if _, err := m.appService.Transition(app.StateRequest{Locator: app.TaskLocator{ProjectID: m.currentProject.ID, TaskID: task.ID}, Target: models.StateWaiting}); err != nil {
+		if _, err := m.domain.service.Transition(app.StateRequest{Locator: app.TaskLocator{ProjectID: m.currentProject.ID, TaskID: task.ID}, Target: models.StateWaiting}); err != nil {
 			t.Fatalf("Transition: %v", err)
 		}
 		if st := diskTaskState(t, m.currentProject, task.ID); st != models.StateWaiting {

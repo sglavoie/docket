@@ -16,7 +16,7 @@ func (m *AppModel) handleViewSupportMessages(msg tea.Msg) (bool, tea.Cmd) {
 		view := taskdetail.NewTaskAttachmentsModel(
 			msg.Task,
 			msg.Project,
-			m.runtime,
+			m.domain.runtime,
 			m.secondaryFeatures.Attachment,
 		)
 		view.SetOperationDispatch(m.dispatchOperationKey)

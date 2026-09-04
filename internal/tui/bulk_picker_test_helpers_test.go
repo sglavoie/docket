@@ -106,10 +106,11 @@ func (e *appBulkPickerEnv) appModel() *AppModel {
 	for _, project := range e.projects {
 		projects[project.ID] = project
 	}
+	domain := newDomainController(testRuntimeAt(e.cfg.DataDir(), e.cfg), e.mgr)
+	domain.projects = projects
+	domain.service = e.svc
 	return &AppModel{
-		configManager: e.mgr, runtime: testRuntimeAt(e.cfg.DataDir(), e.cfg),
-		deps:     newShellDeps(nil),
-		projects: projects, persister: coordinator.NewProjectService(), appService: e.svc,
+		domain:            domain,
 		secondaryFeatures: e.features, viewNav: newViewNavigationController(),
 	}
 }

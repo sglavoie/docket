@@ -24,7 +24,7 @@ func TestFrozenBulkTagPatchPreservesSelectionAcrossCursorMoveAndRebuild(t *testi
 	if err := model.registerTaskActionOperations(); err != nil {
 		t.Fatalf("registerTaskActionOperations: %v", err)
 	}
-	outlinerView := outliner.NewOutlinerModel(nil, model.configManager, model.runtime)
+	outlinerView := outliner.NewOutlinerModel(nil, model.domain.manager, model.domain.runtime)
 	outlinerView.Population.Projects = env.projects
 	outlinerView.Rows = []outliner.OutlinerRow{
 		{Task: first, ProjectID: env.projects[0].ID},

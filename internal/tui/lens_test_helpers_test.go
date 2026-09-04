@@ -70,7 +70,7 @@ func executeLens(
 
 func machineLenses(t *testing.T, model *AppModel) config.NamedLensList {
 	t.Helper()
-	machine := model.runtime.Machine()
+	machine := model.domain.runtime.Machine()
 	if machine == nil {
 		t.Fatal("machine-local state is unavailable")
 	}
@@ -182,12 +182,12 @@ func openLensTemplateGallery(t *testing.T, model *AppModel) *OperationValuePicke
 // same seam a commit publishes through.
 func setMachineLenses(t *testing.T, model *AppModel, lenses config.NamedLensList) {
 	t.Helper()
-	machine := cloneMachineState(model.runtime.Machine())
+	machine := cloneMachineState(model.domain.runtime.Machine())
 	machine.NamedLenses = lenses
 	if err := machine.Validate(); err != nil {
 		t.Fatalf("the test machine state is invalid: %v", err)
 	}
-	model.runtime.SetMachineInMemory(machine)
+	model.domain.runtime.SetMachineInMemory(machine)
 }
 
 func lensTemplateByName(t *testing.T, name string) config.NamedLens {

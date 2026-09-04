@@ -63,7 +63,7 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 			mutator := newLedgerUndoApp(t, dataDir, project, task.ID, true)
 			before := readTasksFile(t, project)
 
-			if err := tc.mutate(mutator.appService, app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}); err != nil {
+			if err := tc.mutate(mutator.domain.service, app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}); err != nil {
 				t.Fatalf("application mutation: %v", err)
 			}
 			after := readTasksFile(t, project)
@@ -97,16 +97,16 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 
 		// Seed the task into Today so a lifecycle transition to Waiting must drop
 		// the Today entry through the folded planning artifact.
-		seedTodayMembership(t, mutator.configManager, project.ID, task.ID)
-		if !planningTaskInToday(t, mutator.configManager, project.ID, task.ID) {
+		seedTodayMembership(t, mutator.domain.manager, project.ID, task.ID)
+		if !planningTaskInToday(t, mutator.domain.manager, project.ID, task.ID) {
 			t.Fatal("failed to seed Today membership")
 		}
 		before := readTasksFile(t, project)
 
-		if _, err := mutator.appService.Transition(app.StateRequest{Locator: app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}, Target: models.StateWaiting}); err != nil {
+		if _, err := mutator.domain.service.Transition(app.StateRequest{Locator: app.TaskLocator{ProjectID: project.ID, TaskID: task.ID}, Target: models.StateWaiting}); err != nil {
 			t.Fatalf("planning-aware transition: %v", err)
 		}
-		if planningTaskInToday(t, mutator.configManager, project.ID, task.ID) {
+		if planningTaskInToday(t, mutator.domain.manager, project.ID, task.ID) {
 			t.Fatal("transition into Next did not drop the Today entry on disk")
 		}
 		after := readTasksFile(t, project)
@@ -117,7 +117,7 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 		if got := readTasksFile(t, project); !bytes.Equal(got, before) {
 			t.Fatalf("undo did not restore exact tasks.md state\n before: %q\n after undo: %q", before, got)
 		}
-		if !planningTaskInToday(t, restarted.configManager, project.ID, task.ID) {
+		if !planningTaskInToday(t, restarted.domain.manager, project.ID, task.ID) {
 			t.Fatal("undo did not restore the Today (Daily Plan) entry on disk")
 		}
 		if fresh := restarted.currentProject.GetTaskByID(task.ID); fresh == nil || fresh.State() != models.StateBacklog {
@@ -128,7 +128,7 @@ func TestTUIWorkspaceLedgerUndoRedoForApplicationMutations(t *testing.T) {
 		if got := readTasksFile(t, project); !bytes.Equal(got, after) {
 			t.Fatalf("redo did not restore exact tasks.md state\n after: %q\n after redo: %q", after, got)
 		}
-		if planningTaskInToday(t, restarted.configManager, project.ID, task.ID) {
+		if planningTaskInToday(t, restarted.domain.manager, project.ID, task.ID) {
 			t.Fatal("redo did not re-drop the Today entry on disk")
 		}
 	})
@@ -184,13 +184,13 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, tas
 	// write.
 	svc.WithPlanningArtifacts(coordinator.ManagerPlanningArtifacts(manager))
 
+	domain := newDomainController(runtime, manager)
+	domain.service = svc
+	domain.ledger = ledger
+	domain.projects = map[string]*models.Project{project.ID: project}
+
 	appModel := &AppModel{
-		configManager:  manager,
-		runtime:        runtime,
-		deps:           newShellDeps(ledger),
-		projects:       map[string]*models.Project{project.ID: project},
-		persister:      coordinator.NewProjectService(),
-		appService:     svc,
+		domain:         domain,
 		viewNav:        newViewNavigationController(),
 		currentProject: project,
 		nextOrder:      []outliner.PlanningTask{},

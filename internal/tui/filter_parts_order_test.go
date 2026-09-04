@@ -82,7 +82,7 @@ func tagPartsFromCommonFilterParts(parts []string) []string {
 // clause, so the set is spelled as sorted $state chips.
 func TestOutlinerActiveFilterParts_StatesCanonicalOrder(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	ol := outliner.NewOutlinerModel(project, app.configManager, app.runtime)
+	ol := outliner.NewOutlinerModel(project, app.domain.manager, app.domain.runtime)
 	ol.Filter.SetStateFilter(testWorkflowStateSet(
 		models.StateCanceled,
 		models.StateBacklog,

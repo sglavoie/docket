@@ -35,10 +35,10 @@ func countOutstandingConflicts(dataDir string) int {
 // rest of the shell's workspace state is refreshed on; it arms no timer of its
 // own.
 func (m *AppModel) refreshOutstandingConflicts() {
-	if m == nil || m.runtime == nil {
+	if m == nil || m.domain.runtime == nil {
 		return
 	}
-	m.feedback.outstandingConflicts = countOutstandingConflicts(m.runtime.DataDir())
+	m.feedback.outstandingConflicts = countOutstandingConflicts(m.domain.runtime.DataDir())
 }
 
 // The count itself lives on the feedback cluster, which also supplies the

@@ -14,7 +14,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/outliner"
-	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -30,23 +29,20 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	dataDir := runtime.DataDir()
 
 	app := &AppModel{
-		configManager: manager,
-		runtime:       runtime,
-		projects:      make(map[string]*models.Project),
-		persister:     coordinator.NewProjectService(),
-		viewNav:       newViewNavigationController(),
-		operations:    newOperationController(),
-		nextOrder:     []outliner.PlanningTask{},
-		nextOrderIDs:  make(map[taskref.TaskIdentity]bool),
-		today:         []outliner.PlanningTask{},
-		todayIDs:      make(map[taskref.TaskIdentity]bool),
+		domain:       newDomainController(runtime, manager),
+		viewNav:      newViewNavigationController(),
+		operations:   newOperationController(),
+		nextOrder:    []outliner.PlanningTask{},
+		nextOrderIDs: make(map[taskref.TaskIdentity]bool),
+		today:        []outliner.PlanningTask{},
+		todayIDs:     make(map[taskref.TaskIdentity]bool),
 	}
 
 	// The machine-local advisory setting is read before the options run, so
 	// WithHiddenAdvisories (the `--no-advisories` flag) can only ever hide: a
 	// per-launch flag suppresses chrome for one run, it never re-enables what the
 	// machine file turned off.
-	if machine := runtime.Machine(); machine != nil {
+	if machine := app.domain.machine(); machine != nil {
 		app.feedback.hideAdvisories = machine.AdvisoriesHidden
 	}
 
@@ -71,12 +67,14 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	// switch state changes), so exclusivity holds regardless of the initiating
 	// adapter, matching the coordinator-driven view-local pickers.
 	appService.WithPlanningArtifacts(coordinator.ManagerPlanningArtifacts(manager))
-	app.appService = appService
+	app.domain.service = appService
 	app.features = coordinator.NewFeatureCoordinators(appService)
 	app.secondaryFeatures = coordinator.NewSecondaryCoordinators(appService)
 
-	// Assemble the domain-native dependency bundle shared by the shell and views.
-	app.deps = newShellDeps(ledger)
+	// Complete the domain cluster with the shared history handle. It is bound
+	// here, after the service, because both are built from the same workspace
+	// paths and neither can exist before them.
+	app.domain.ledger = ledger
 
 	if ensureErr := app.ensureSystemUnfiledProject(); ensureErr != nil {
 		logging.Warn("failed to ensure system Unfiled project: %v", ensureErr)
@@ -104,8 +102,8 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	// the population lands is what makes the order race-free without teaching the
 	// reset about a case it should not know.
 	app.lenses.pendingLaunch = runtime.Machine().ActiveNamedLens()
-	app.startupMessage = launchOutlinerMsg{}
-	if changed, reconcileErr := app.appService.ReconcilePlanning(); reconcileErr != nil {
+	app.lifecycle.startup = launchOutlinerMsg{}
+	if changed, reconcileErr := app.domain.service.ReconcilePlanning(); reconcileErr != nil {
 		logging.Warn("failed to reconcile startup planning state: %v", reconcileErr)
 	} else if changed {
 		app.refreshRuntime()
@@ -119,7 +117,7 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 		return nil, err
 	}
 
-	theme.ApplyTheme(theme.NewThemeConfig(runtime.Machine()))
+	theme.ApplyTheme(theme.NewThemeConfig(app.domain.machine()))
 
 	app.refreshWorkspacePulseAt(time.Now())
 	app.refreshOutstandingConflicts()
@@ -204,14 +202,14 @@ func (app *AppModel) loadStartupProject(project *models.Project, loaded map[stri
 	if err, ok := loaded[key]; ok {
 		return err
 	}
-	err := app.persister.Load(project)
+	err := app.domain.persister.Load(project)
 	loaded[key] = err
 	return err
 }
 
 // hydrateNextOrder rebuilds the in-memory Next membership/order from planning.
 func (m *AppModel) hydrateNextOrder(workspaceProjects []*models.Project, startupLoads map[string]error, allowReconcile bool) {
-	planning := m.runtime.Planning()
+	planning := m.domain.runtime.Planning()
 	if allowReconcile {
 		projectsByID := make(map[string]*models.Project, len(workspaceProjects))
 		for _, project := range workspaceProjects {
@@ -250,12 +248,12 @@ func (m *AppModel) hydrateNextOrder(workspaceProjects []*models.Project, startup
 			if app.ReconcilePlanningState(reconciled, app.PlanningReconcileRequest{
 				Targets: targets, Complete: true,
 			}) {
-				if m.runtime.DataDir() == "" {
+				if m.domain.runtime.DataDir() == "" {
 					planning = reconciled
-				} else if err := m.runtime.CommitPlanning(reconciled); err != nil {
+				} else if err := m.domain.runtime.CommitPlanning(reconciled); err != nil {
 					logging.Warn("failed to persist reconciled Next order: %v", err)
 				} else {
-					planning = m.runtime.Planning()
+					planning = m.domain.runtime.Planning()
 				}
 			}
 		}
@@ -284,7 +282,7 @@ func (m *AppModel) hydrateNextOrder(workspaceProjects []*models.Project, startup
 func (m *AppModel) hydrateToday(workspaceProjects []*models.Project, startupLoads map[string]error, reconcile ...bool) {
 	allowReconcile := len(reconcile) == 0 || reconcile[0]
 	planChanged := false
-	for _, item := range m.runtime.Planning().GetToday() {
+	for _, item := range m.domain.runtime.Planning().GetToday() {
 		var foundTask *models.Task
 		var foundProject *models.Project
 		for _, p := range workspaceProjects {
@@ -307,8 +305,8 @@ func (m *AppModel) hydrateToday(workspaceProjects []*models.Project, startupLoad
 		m.today = append(m.today, outliner.PlanningTask{Task: foundTask, Project: foundProject})
 		m.todayIDs[taskref.For(foundTask, foundProject)] = true
 	}
-	if planChanged && allowReconcile && m.appService != nil {
-		if _, err := m.appService.ReconcilePlanning(); err != nil {
+	if planChanged && allowReconcile && m.domain.service != nil {
+		if _, err := m.domain.service.ReconcilePlanning(); err != nil {
 			logging.Warn("failed to persist reconciled Today membership: %v", err)
 		} else {
 			m.refreshRuntime()
@@ -316,19 +314,10 @@ func (m *AppModel) hydrateToday(workspaceProjects []*models.Project, startupLoad
 	}
 }
 
-const periodicSaveInterval = 60 * time.Second
-
 func (m *AppModel) Init() tea.Cmd {
-	cmds := []tea.Cmd{
-		status.TickCmd(periodicSaveInterval, func(at time.Time) tea.Msg {
-			return status.PeriodicSaveMsg{At: at}
-		}),
-	}
-	if m.startupMessage != nil {
-		msg := m.startupMessage
-		cmds = append(cmds, func() tea.Msg {
-			return msg
-		})
+	cmds := []tea.Cmd{m.lifecycle.periodicSaveCmd()}
+	if startupCmd := m.lifecycle.startupCmd(); startupCmd != nil {
+		cmds = append(cmds, startupCmd)
 	}
 	// The note index is loaded off the launch path rather than in NewAppModel:
 	// nothing renders it before the first frame, and a synchronous read of every

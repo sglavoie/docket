@@ -228,9 +228,9 @@ func TestDirectThemeAndQuitOperationsUseTheirDescriptors(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = workspace.Cleanup() })
 	app := driver.App()
-	beforeTheme := app.runtime.Machine().Theme
+	beforeTheme := app.domain.runtime.Machine().Theme
 	t.Cleanup(func() {
-		theme.ApplyTheme(theme.NewThemeConfig(app.runtime.Machine()))
+		theme.ApplyTheme(theme.NewThemeConfig(app.domain.runtime.Machine()))
 	})
 
 	themeResult := executeDirectPath(
@@ -246,7 +246,7 @@ func TestDirectThemeAndQuitOperationsUseTheirDescriptors(t *testing.T) {
 	if !ok || timeout.Cmd == nil {
 		t.Fatalf("toggle theme message = %T, want a status timeout command", themeResult.Message)
 	}
-	if app.feedback.message != "Theme: "+app.runtime.Machine().Theme {
+	if app.feedback.message != "Theme: "+app.domain.runtime.Machine().Theme {
 		t.Fatalf("theme status = %q, want the active theme", app.feedback.message)
 	}
 	if handled, _ := app.handleViewMessages(status.StatusClearMsg{ScheduledAt: app.feedback.updatedAt.Add(time.Nanosecond)}); !handled {
@@ -255,7 +255,7 @@ func TestDirectThemeAndQuitOperationsUseTheirDescriptors(t *testing.T) {
 	if app.feedback.message != "" {
 		t.Fatalf("theme status = %q after timeout, want empty", app.feedback.message)
 	}
-	afterTheme := app.runtime.Machine().Theme
+	afterTheme := app.domain.runtime.Machine().Theme
 	if afterTheme == beforeTheme || (afterTheme != "dark" && afterTheme != "light") {
 		t.Fatalf("theme changed from %q to %q, want the opposite maintained variant", beforeTheme, afterTheme)
 	}

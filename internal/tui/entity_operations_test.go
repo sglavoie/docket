@@ -44,8 +44,8 @@ func entityOperationApp(t *testing.T, titles ...string) (*AppModel, *models.Proj
 		}
 	}
 
-	model.appService = app.NewServiceWithArtifacts(repo, nil, nil, app.NewStorageWorkspaceNotePort(dataDir))
-	model.runtime = testRuntimeAt(dataDir, testConfigWithProjects(project))
+	model.domain.service = app.NewServiceWithArtifacts(repo, nil, nil, app.NewStorageWorkspaceNotePort(dataDir))
+	model.domain.runtime = testRuntimeAt(dataDir, testConfigWithProjects(project))
 	setTestAppProjects(model, project)
 	return model, project
 }
@@ -61,7 +61,7 @@ func executeEntityOperation(app *AppModel, id operation.OperationID, entity oper
 
 func onlyNoteFilename(t *testing.T, model *AppModel, location app.NoteLocation) string {
 	t.Helper()
-	notes, err := model.appService.NotesAt(location)
+	notes, err := model.domain.service.NotesAt(location)
 	if err != nil {
 		t.Fatalf("NotesAt: %v", err)
 	}
@@ -190,7 +190,7 @@ func TestNoteCopyOperationsNameTheNoteInEitherCollection(t *testing.T) {
 	model, project := entityOperationApp(t, "Design log")
 	projectFile := onlyNoteFilename(t, model, app.ProjectNoteLocation(project.ID))
 
-	globalDir := storage.GlobalNotesDir(model.runtime.DataDir())
+	globalDir := storage.GlobalNotesDir(model.domain.runtime.DataDir())
 	globalNote := models.NewNote("Design log")
 	globalNote.Body = "Design log body"
 	if err := saveTestNote(globalDir, globalNote); err != nil {
@@ -296,9 +296,9 @@ func TestNotesBrowseKeysReachTheCopyOperations(t *testing.T) {
 	filename := onlyNoteFilename(t, model, app.ProjectNoteLocation(project.ID))
 
 	view := notes.NewNotesViewModelWithService(
-		storage.GlobalNotesDir(model.runtime.DataDir()),
+		storage.GlobalNotesDir(model.domain.runtime.DataDir()),
 		route.AllNotesScope(),
-		model.appService,
+		model.domain.service,
 		nil,
 		project,
 	)

@@ -88,7 +88,7 @@ func menuBarDriver(t *testing.T) (*UITestDriver, *outliner.OutlinerModel) {
 	if outlinerView == nil {
 		t.Fatal("the rich fixture launched without a cross-project Outliner")
 	}
-	if driver.App().runtime.Machine().MenuBarVisible {
+	if driver.App().domain.runtime.Machine().MenuBarVisible {
 		t.Fatal("the fixture launched with the bar already shown, so opening it proves nothing")
 	}
 	return driver, outlinerView

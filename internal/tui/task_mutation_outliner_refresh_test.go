@@ -23,7 +23,7 @@ import (
 func installDistinctOutlinerSnapshot(t *testing.T, model *AppModel, outlinerView *outliner.OutlinerModel) {
 	t.Helper()
 
-	_, projects, failed := outliner.LoadCrossScopeTasks(model.runtime, outlinerView.ProjectService, outliner.CrossScopeOpts{
+	_, projects, failed := outliner.LoadCrossScopeTasks(model.domain.runtime, outlinerView.ProjectService, outliner.CrossScopeOpts{
 		ActiveOnly: true,
 	})
 	if len(failed) > 0 {
@@ -194,14 +194,14 @@ func TestPlanningCaptureRefreshesRuntimeAndOutlinerSection(t *testing.T) {
 			dataDir := t.TempDir()
 			project := newSession2Project(t, dataDir, "planning capture "+string(tc.destination))
 			model, outlinerView := newSession2OutlinerApp(t, dataDir, project)
-			if err := model.configManager.CommitPlanning(config.NewPlanningState()); err != nil {
+			if err := model.domain.manager.CommitPlanning(config.NewPlanningState()); err != nil {
 				t.Fatalf("seed planning: %v", err)
 			}
 			if !model.refreshRuntime() {
 				t.Fatal("seeded planning snapshot did not refresh")
 			}
-			model.appService.WithPlanningArtifacts(coordinator.ManagerPlanningArtifacts(model.configManager))
-			model.features = coordinator.NewFeatureCoordinators(model.appService)
+			model.domain.service.WithPlanningArtifacts(coordinator.ManagerPlanningArtifacts(model.domain.manager))
+			model.features = coordinator.NewFeatureCoordinators(model.domain.service)
 			installDistinctOutlinerSnapshot(t, model, outlinerView)
 
 			composer := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{
@@ -211,7 +211,7 @@ func TestPlanningCaptureRefreshesRuntimeAndOutlinerSection(t *testing.T) {
 				Shared: taskform.TaskComposerSharedAttributes{
 					Destination: domainapp.CaptureDestinationInbox,
 				},
-			}, model.runtime)
+			}, model.domain.runtime)
 			composer.SetCaptureCoordinator(model.features.Capture)
 			composer.Input.SetValue("Planned task $" + string(tc.destination))
 
@@ -231,7 +231,7 @@ func TestPlanningCaptureRefreshesRuntimeAndOutlinerSection(t *testing.T) {
 			runSession2AppCommand(t, model, refreshCmd)
 
 			identity := taskref.TaskIdentity{ProjectID: project.ID, TaskID: created.Result.TaskID}
-			planning, err := model.configManager.DomainCoordinator().LoadPlanning()
+			planning, err := model.domain.manager.DomainCoordinator().LoadPlanning()
 			if err != nil {
 				t.Fatalf("load durable planning: %v", err)
 			}

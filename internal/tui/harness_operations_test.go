@@ -250,10 +250,10 @@ const harnessForeignMachineID = "f0e1d2c3b4a59687"
 // recovery must not look at the operation at all, so an unreachable staged path
 // is what proves the transaction was left alone rather than rolled forward.
 func (m *AppModel) harnessStageForeignTransaction() error {
-	if m == nil || m.runtime == nil {
+	if m == nil || m.domain.runtime == nil {
 		return fmt.Errorf("staging a transaction needs a workspace")
 	}
-	dir := config.TransactionsDir(m.runtime.DataDir())
+	dir := config.TransactionsDir(m.domain.runtime.DataDir())
 	if err := os.MkdirAll(dir, util.DirPermissions); err != nil {
 		return fmt.Errorf("creating transactions directory: %w", err)
 	}
@@ -268,7 +268,7 @@ func (m *AppModel) harnessStageForeignTransaction() error {
 		Heartbeat:     now.Format(time.RFC3339Nano),
 		Ops: []transaction.FileOp{{
 			Kind:   transaction.OpWrite,
-			Target: filepath.Join(m.runtime.DataDir(), "projects", "rich-project", "tasks.md"),
+			Target: filepath.Join(m.domain.runtime.DataDir(), "projects", "rich-project", "tasks.md"),
 			Staged: filepath.Join(dir, id+".staged"),
 			Hash:   strings.Repeat("0", 64),
 			Mode:   util.FilePermissions,

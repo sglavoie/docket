@@ -38,19 +38,19 @@ func (m *AppModel) requestCrossProjectOutlinerReload() tea.Cmd {
 // reloadCrossProjectOutlinerProject refreshes one project object already owned
 // by the sole cross-project Outliner.
 func (m *AppModel) reloadCrossProjectOutlinerProject(projectID string) {
-	if projectID == "" || m.crossOutliner == nil || m.persister == nil {
+	if projectID == "" || m.crossOutliner == nil || m.domain.persister == nil {
 		return
 	}
 	for _, project := range m.crossOutliner.Population.Projects {
 		if project == nil || project.ID != projectID {
 			continue
 		}
-		if err := m.persister.Load(project); err != nil {
+		if err := m.domain.persister.Load(project); err != nil {
 			logging.Warn("failed to reload cross-project copy %s: %v", project.Name, err)
 			return
 		}
-		if m.runtime != nil {
-			coordinator.CopyCatalogMetadata(project, m.runtime.GetProject(projectID))
+		if m.domain.runtime != nil {
+			coordinator.CopyCatalogMetadata(project, m.domain.runtime.GetProject(projectID))
 		}
 		m.crossOutliner.Population.Invalidate()
 		m.crossOutliner.CrossProjectRebuildRows()
@@ -84,7 +84,7 @@ func (m *AppModel) handleWithRefresh(popView, reload bool) tea.Cmd {
 		var currentProject *models.Project
 		if m.currentProject != nil {
 			currentProject = m.currentProject
-			_ = m.persister.Load(currentProject)
+			_ = m.domain.persister.Load(currentProject)
 		}
 	}
 	// Cross-project outliner has its own population cache that bypasses
@@ -179,7 +179,7 @@ func (m *AppModel) setRecoveryFeedback(successMessage, transactionID string, ori
 		m.setSuccessStatus(successMessage)
 		return status.DefaultStatusTimeout()
 	}
-	entry, ok, err := workspaceLedgerFromConfig(m.runtime).SelectNewestUndo(storage.GlobalScope())
+	entry, ok, err := workspaceLedgerFromConfig(m.domain.runtime).SelectNewestUndo(storage.GlobalScope())
 	if err != nil || !ok || entry.TransactionID != transactionID {
 		m.setSuccessStatus(successMessage)
 		return status.DefaultStatusTimeout()
@@ -219,7 +219,7 @@ func (m *AppModel) pruneDeletedTaskRefs() {
 	for _, p := range m.availableProjects() {
 		wasUnloaded := p.Tasks == nil
 		if wasUnloaded {
-			if err := m.persister.Load(p); err != nil {
+			if err := m.domain.persister.Load(p); err != nil {
 				logging.Warn("pruneDeletedTaskRefs: failed to load project %s: %v", p.Name, err)
 				// A transient load failure must not be treated as
 				// "project has zero tasks" — that would prune every
@@ -269,8 +269,8 @@ func (m *AppModel) pruneDeletedTaskRefs() {
 	m.today = m.today[:n]
 
 	if dirty {
-		if m.appService != nil {
-			if changed, err := m.appService.ReconcilePlanning(); err != nil {
+		if m.domain.service != nil {
+			if changed, err := m.domain.service.ReconcilePlanning(); err != nil {
 				logging.Warn("failed to reconcile deleted planning references: %v", err)
 			} else if changed {
 				m.refreshRuntime()
@@ -289,10 +289,10 @@ func (m *AppModel) pruneDeletedTaskRefs() {
 // derive caches from it can avoid rebuilding from known-stale state. A nil
 // snapshot (never loaded) is a no-op.
 func (m *AppModel) refreshRuntime() bool {
-	if m.runtime == nil || m.runtime.DataDir() == "" {
+	if m.domain.runtime == nil || m.domain.runtime.DataDir() == "" {
 		return false
 	}
-	if err := m.runtime.RefreshAfterCommit(); err != nil {
+	if err := m.domain.runtime.RefreshAfterCommit(); err != nil {
 		logging.Warn("failed to refresh runtime domain snapshot: %v", err)
 		return false
 	}

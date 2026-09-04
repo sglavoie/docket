@@ -24,8 +24,8 @@ func (m *AppModel) namedLensPickerSnapshot() lens.NamedLensPickerSnapshot {
 	if m == nil {
 		return snapshot
 	}
-	if m.runtime != nil {
-		if machine := m.runtime.Machine(); machine != nil {
+	if m.domain.runtime != nil {
+		if machine := m.domain.runtime.Machine(); machine != nil {
 			snapshot.Lenses = machine.NamedLenses.Clone()
 		}
 	}

@@ -24,7 +24,7 @@ import (
 // and gives isolated in-memory UI tests the same app-owned state/invariant logic
 // without manufacturing a filesystem repository.
 func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.PlanningAction) (*models.Task, *models.Project, string, error) {
-	if m.appService != nil && m.configManager != nil {
+	if m.domain.service != nil && m.domain.manager != nil {
 		stateChanged := false
 		if project := m.projectByID(projectID); project != nil {
 			if task := project.GetTaskByID(taskID); task != nil {
@@ -40,9 +40,9 @@ func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.
 				}
 			}
 		}
-		builder := coordinator.PlanningArtifacts(m.runtime, m.configManager)
-		m.appService.WithPlanningArtifacts(builder)
-		res, err := m.appService.ApplyPlanning(app.PlanningRequest{
+		builder := coordinator.PlanningArtifacts(m.domain.runtime, m.domain.manager)
+		m.domain.service.WithPlanningArtifacts(builder)
+		res, err := m.domain.service.ApplyPlanning(app.PlanningRequest{
 			Locator: app.TaskLocator{ProjectID: projectID, TaskID: taskID},
 			Action:  action,
 		})
@@ -83,8 +83,8 @@ func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.
 	if err != nil {
 		return nil, project, "", err
 	}
-	if m.runtime != nil {
-		app.ReconcilePlanningState(m.runtime.Planning(), app.PlanningReconcileRequest{
+	if m.domain.runtime != nil {
+		app.ReconcilePlanningState(m.domain.runtime.Planning(), app.PlanningReconcileRequest{
 			Targets: []app.PlanningReconcileTarget{target},
 		})
 		m.rebuildPlanningFromRuntime()
@@ -97,10 +97,10 @@ func (m *AppModel) applyTaskPlanningAction(taskID, projectID string, action app.
 // the loaded projects. It is called after a ledger restore repoints the durable
 // planning collections, so the open planning views reflect the restored state.
 func (m *AppModel) rebuildPlanningFromRuntime() {
-	if m.runtime == nil {
+	if m.domain.runtime == nil {
 		return
 	}
-	planning := m.runtime.Planning()
+	planning := m.domain.runtime.Planning()
 	m.nextOrder = m.nextOrder[:0]
 	if m.nextOrderIDs == nil {
 		m.nextOrderIDs = make(map[taskref.TaskIdentity]bool)
@@ -143,7 +143,7 @@ func (m *AppModel) rebuildPlanningFromRuntime() {
 // it reads the durable ledger rather than in-memory toggle history, the restore
 // survives a restart.
 func (m *AppModel) planningLedgerRestore(redo bool) tea.Cmd {
-	ledger := workspaceLedgerFromConfig(m.runtime)
+	ledger := workspaceLedgerFromConfig(m.domain.runtime)
 	scope := storage.GlobalScope()
 	restore := ledger.UndoWithEntry
 	verb := "Undone"
@@ -163,7 +163,7 @@ func (m *AppModel) planningLedgerRestore(redo bool) tea.Cmd {
 		m.reloadProjectByID(id)
 	}
 	m.refreshRuntime()
-	if changed, reconcileErr := m.appService.ReconcilePlanning(); reconcileErr != nil {
+	if changed, reconcileErr := m.domain.service.ReconcilePlanning(); reconcileErr != nil {
 		return status.ErrorCmd("%s", reconcileErr)
 	} else if changed {
 		m.refreshRuntime()

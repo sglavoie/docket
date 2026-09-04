@@ -69,7 +69,7 @@ func TestEnsureProjectColorSlotsCommitsStartupBackfillOnce(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadRuntimeState: %v", err)
 	}
-	app := &AppModel{runtime: runtime, projects: make(map[string]*models.Project)}
+	app := &AppModel{domain: domainController{runtime: runtime, projects: make(map[string]*models.Project)}}
 	if ensureErr := app.ensureProjectColorSlots(); ensureErr != nil {
 		t.Fatalf("ensureProjectColorSlots: %v", ensureErr)
 	}

@@ -123,7 +123,7 @@ func (m *AppModel) projectRequirementUnmet(
 		return fmt.Errorf("%s applies only to archived projects", label)
 	case requirement.RequireActive && project.Archived:
 		return fmt.Errorf("%s is unavailable while %s is archived", label, project.Name)
-	case requirement.RejectSystemUnfiled && m.runtime.IsSystemUnfiledProject(project.ID):
+	case requirement.RejectSystemUnfiled && m.domain.runtime.IsSystemUnfiledProject(project.ID):
 		return fmt.Errorf("%s is unavailable for the system Unfiled project", label)
 	}
 	return nil

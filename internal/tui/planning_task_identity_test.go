@@ -68,8 +68,7 @@ func TestPlanningHydrationKeepsDuplicateTaskIDsProjectQualified(t *testing.T) {
 	persister.Projects[alpha.ID] = alpha
 	persister.Projects[beta.ID] = beta
 	shell := &AppModel{
-		runtime:      runtime,
-		persister:    persister,
+		domain:       domainController{runtime: runtime, persister: persister},
 		nextOrderIDs: make(map[taskref.TaskIdentity]bool),
 		todayIDs:     make(map[taskref.TaskIdentity]bool),
 		nextOrder:    []outliner.PlanningTask{},

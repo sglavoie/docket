@@ -347,7 +347,7 @@ func TestLensPickerCountsAsAnActiveOverlayAndOwnsTextInput(t *testing.T) {
 // lensNamedErr reports whether one saved lens exists by name. Only presence is
 // ever asserted, so the record itself is deliberately not returned.
 func lensNamedErr(model *AppModel, name string) error {
-	machine := model.runtime.Machine()
+	machine := model.domain.runtime.Machine()
 	if machine == nil {
 		return errors.New("machine-local state is unavailable")
 	}

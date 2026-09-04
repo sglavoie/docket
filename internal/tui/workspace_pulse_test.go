@@ -116,7 +116,7 @@ func TestWorkspacePulseNilRuntimeAndRefreshSeam(t *testing.T) {
 	project := primaryRowsProject("refresh", primaryRowsTask("inbox", models.StateInbox))
 	runtime := testConfigWithProjects(project)
 	installPulseRepository(t, project)
-	shell := &AppModel{runtime: runtime}
+	shell := &AppModel{domain: domainController{runtime: runtime}}
 	shell.refreshWorkspacePulseAt(now)
 	if shell.workspacePulse.Inbox != 1 {
 		t.Fatalf("refreshed Inbox = %d, want 1", shell.workspacePulse.Inbox)
@@ -132,7 +132,7 @@ func TestWorkspacePulseRefreshUsesSameDayCompletionActivity(t *testing.T) {
 	installPulseRepository(t, project)
 	service := app.NewServiceWithArtifacts(newTestAppRepo(project), nil, nil, nil)
 	shell := &AppModel{
-		runtime: runtime,
+		domain: domainController{runtime: runtime},
 		features: coordinator.FeatureCoordinators{
 			Activity: coordinator.NewActivityCoordinator(service),
 		},
@@ -217,7 +217,7 @@ func TestWorkspacePulseRefreshPreservesValidSameDayActivityOnFailure(t *testing.
 	}
 	reader := &staticCompletionActivityReader{err: errors.New("injected activity failure")}
 	shell := &AppModel{
-		runtime:            runtime,
+		domain:             domainController{runtime: runtime},
 		completionActivity: cached,
 		features: coordinator.FeatureCoordinators{
 			Activity: coordinator.NewActivityCoordinator(reader),
@@ -250,7 +250,7 @@ func TestWorkspacePulseRefreshClearsCrossDayActivityOnFailureAndRetries(t *testi
 	}
 	reader := &staticCompletionActivityReader{err: errors.New("injected activity failure")}
 	shell := &AppModel{
-		runtime:            runtime,
+		domain:             domainController{runtime: runtime},
 		completionActivity: cached,
 		features: coordinator.FeatureCoordinators{
 			Activity: coordinator.NewActivityCoordinator(reader),

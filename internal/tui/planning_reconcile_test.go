@@ -197,7 +197,7 @@ func TestPlanningToggleUndoOrderingAndDurability(t *testing.T) {
 		app, task := newFocusToggleTestAppState(t)
 		// Precondition: the task is planned for Today, so the promotion must also
 		// prove the Today drop rides the same transaction.
-		if err := commitPlanningToRuntime(app.runtime, func(p *config.PlanningState) {
+		if err := commitPlanningToRuntime(app.domain.runtime, func(p *config.PlanningState) {
 			p.SetToday([]config.ProjectTaskLocator{{TaskID: task.ID, ProjectID: app.currentProject.ID}})
 		}); err != nil {
 			t.Fatalf("seed daily plan: %v", err)
@@ -208,7 +208,7 @@ func TestPlanningToggleUndoOrderingAndDurability(t *testing.T) {
 		assertQueueKeyFlow(t, app, task.ID, true)
 
 		// The move is one ledger transaction that captured state + planning.
-		dataDir := app.runtime.DataDir()
+		dataDir := app.domain.runtime.DataDir()
 		if got := diskNextOrderLen(t, dataDir); got != 1 {
 			t.Fatalf("committed Next order entries = %d, want 1", got)
 		}
@@ -245,7 +245,7 @@ func TestPlanningToggleUndoOrderingAndDurability(t *testing.T) {
 		assertQueueKeyFlow(t, app, task.ID, true)
 
 		// A newer, unrelated workspace-ledger mutation (transaction #2).
-		if _, err := app.appService.SetPriority(taskref.For(task, app.currentProject).Locator(), newPriority); err != nil {
+		if _, err := app.domain.service.SetPriority(taskref.For(task, app.currentProject).Locator(), newPriority); err != nil {
 			t.Fatalf("newer mutation (set priority): %v", err)
 		}
 		app.reloadProjectByID(app.currentProject.ID)
@@ -255,7 +255,7 @@ func TestPlanningToggleUndoOrderingAndDurability(t *testing.T) {
 		if st := diskTaskState(t, app.currentProject, task.ID); st != models.StateBacklog {
 			t.Fatalf("state after first undo = %s, want still next (priority undone first)", st)
 		}
-		if got := diskNextOrderLen(t, app.runtime.DataDir()); got != 1 {
+		if got := diskNextOrderLen(t, app.domain.runtime.DataDir()); got != 1 {
 			t.Fatalf("Next order after first undo = %d, want 1 (toggle not yet undone)", got)
 		}
 		if p := diskTaskPriority(t, app.currentProject, task.ID); p != origPriority {
@@ -267,7 +267,7 @@ func TestPlanningToggleUndoOrderingAndDurability(t *testing.T) {
 		if st := diskTaskState(t, app.currentProject, task.ID); st != models.StateBacklog {
 			t.Fatalf("state after second undo = %s, want ready (toggle undone)", st)
 		}
-		if got := diskNextOrderLen(t, app.runtime.DataDir()); got != 0 {
+		if got := diskNextOrderLen(t, app.domain.runtime.DataDir()); got != 0 {
 			t.Fatalf("Next order after second undo = %d, want 0 (toggle undone)", got)
 		}
 	})

@@ -52,7 +52,7 @@ func TestAnAddedTemplateIsAnOrdinaryRecordAcrossRenameReplaceAndDelete(t *testin
 	); result.Err != nil {
 		t.Fatalf("rename the added template: %v", result.Err)
 	}
-	renamed := model.runtime.Machine().NamedLensByID(template.ID)
+	renamed := model.domain.runtime.Machine().NamedLensByID(template.ID)
 	if renamed == nil {
 		t.Fatal("the rename moved the record off its stable ID")
 	}
@@ -76,7 +76,7 @@ func TestAnAddedTemplateIsAnOrdinaryRecordAcrossRenameReplaceAndDelete(t *testin
 	); result.Err != nil {
 		t.Fatalf("replace the added template: %v", result.Err)
 	}
-	replaced := model.runtime.Machine().NamedLensByID(template.ID)
+	replaced := model.domain.runtime.Machine().NamedLensByID(template.ID)
 	if replaced == nil {
 		t.Fatal("the replace moved the record off its stable ID")
 	}
@@ -102,7 +102,7 @@ func TestAnAddedTemplateIsAnOrdinaryRecordAcrossRenameReplaceAndDelete(t *testin
 	// Re-adding reads the catalog, never the record that was deleted: the
 	// definition that comes back is the original one, not the replaced one.
 	addTemplateAndSettle(t, model, template)
-	readded := model.runtime.Machine().NamedLensByID(template.ID)
+	readded := model.domain.runtime.Machine().NamedLensByID(template.ID)
 	if readded == nil {
 		t.Fatal("the re-add saved nothing under the template ID")
 	}
@@ -237,7 +237,7 @@ func TestAddTemplateDiskCommitFailureRetainsThePicker(t *testing.T) {
 	model := lensPickerAppInMode(t, chrome.ModeInbox)
 	dataDir := t.TempDir()
 	project := models.Project{ID: "alpha", Name: "alpha", Slug: "alpha"}
-	model.runtime = testRuntimeAt(dataDir, testConfigWithProjects(&project))
+	model.domain.runtime = testRuntimeAt(dataDir, testConfigWithProjects(&project))
 	template := addableTemplate(t, model)
 	openAddTemplateGalleryFromPicker(t, model)
 	selectGalleryRow(t, model, template.ID)
@@ -249,10 +249,10 @@ func TestAddTemplateDiskCommitFailureRetainsThePicker(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chmod(home, 0o700) })
 
-	before := model.runtime.Machine()
+	before := model.domain.runtime.Machine()
 	pressLens(t, model, "enter")
 
-	if model.runtime.Machine() != before {
+	if model.domain.runtime.Machine() != before {
 		t.Skip("the runtime root stayed writable; the failure path is untested here")
 	}
 	if model.operations.valuePicker != nil {

@@ -31,7 +31,7 @@ const (
 func (m *AppModel) newLensTemplatePicker(
 	request operation.OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
-	if m == nil || m.runtime == nil {
+	if m == nil || m.domain.runtime == nil {
 		return nil, errors.New("workspace runtime is unavailable")
 	}
 	return newOperationValuePickerModel(
@@ -39,7 +39,7 @@ func (m *AppModel) newLensTemplatePicker(
 		operation.ValueProviderLensTemplate,
 		lensTemplatePickerTitle,
 		lensTemplatePickerSubtitle,
-		lensTemplateListSource(m.runtime.Machine()),
+		lensTemplateListSource(m.domain.runtime.Machine()),
 		false,
 		nil,
 	)

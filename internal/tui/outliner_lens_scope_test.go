@@ -180,18 +180,18 @@ func TestPublishingALensRecordsTheActivePointerAndDismissalClearsIt(t *testing.T
 
 	lens := waitingLens(lensTestID(4), "Waiting", "")
 	applyLensOrFatal(t, outlinerView, lens)
-	if got := app.runtime.Machine().ActiveLensID; got != lens.ID {
+	if got := app.domain.runtime.Machine().ActiveLensID; got != lens.ID {
 		t.Fatalf("active lens pointer = %q, want the published %q", got, lens.ID)
 	}
 
 	outlinerView.RestoreLensBaseline()
-	if got := app.runtime.Machine().ActiveLensID; got != "" {
+	if got := app.domain.runtime.Machine().ActiveLensID; got != "" {
 		t.Fatalf("restoring the baseline left the pointer at %q", got)
 	}
 
 	applyLensOrFatal(t, outlinerView, lens)
 	outlinerView.ResetToGlobalAll()
-	if got := app.runtime.Machine().ActiveLensID; got != "" {
+	if got := app.domain.runtime.Machine().ActiveLensID; got != "" {
 		t.Fatalf("the global reset left the pointer at %q", got)
 	}
 }

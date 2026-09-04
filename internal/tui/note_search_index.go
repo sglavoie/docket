@@ -82,11 +82,11 @@ func noteSearchIndexCmd(
 // already absent here rather than filtered later.
 func (m *AppModel) noteSearchIndexOwners() []noteSearchIndexOwner {
 	global := noteSearchIndexOwner{Location: app.GlobalNoteLocation(), Label: "Global"}
-	if m == nil || m.runtime == nil {
+	if m == nil || m.domain.runtime == nil {
 		return []noteSearchIndexOwner{global}
 	}
 	catalog, projects := notes.NoteOwnerCatalog(
-		storage.GlobalNotesDir(m.runtime.DataDir()),
+		storage.GlobalNotesDir(m.domain.runtime.DataDir()),
 		m.availableProjects(),
 	)
 	owners := make([]noteSearchIndexOwner, 0, len(projects)+1)
@@ -119,8 +119,8 @@ func (m *AppModel) requestNoteSearchIndexLoad() tea.Cmd {
 	// A typed nil *app.Service would satisfy the interface without satisfying
 	// the nil check inside the command, so the seam is narrowed here.
 	var service notes.ProjectNoteService
-	if m.appService != nil {
-		service = m.appService
+	if m.domain.service != nil {
+		service = m.domain.service
 	}
 	return noteSearchIndexCmd(service, generation, owners)
 }

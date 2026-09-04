@@ -59,7 +59,7 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 	case status.QuitMsg:
 		m.saveProjectViewState()
 		m.saveOutlinerFilterState()
-		m.quitting = true
+		m.lifecycle.quitting = true
 		return true, tea.Quit
 	case outliner.CrossProjectsLoadedMsg:
 		// Cross-project loads belong to the sole authoritative Outliner, not to
@@ -141,9 +141,7 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 		// no local mutation can announce one; the periodic tick is what makes the
 		// indicator appear, and what clears it once the CLI resolves the last one.
 		m.refreshOutstandingConflicts()
-		return true, status.TickCmd(periodicSaveInterval, func(at time.Time) tea.Msg {
-			return status.PeriodicSaveMsg{At: at}
-		})
+		return true, m.lifecycle.periodicSaveCmd()
 	case status.SaveCompleteMsg:
 		return true, m.handleSaveComplete(msg)
 	case coordinator.TransactionResultMsg:
@@ -347,7 +345,7 @@ func (m *AppModel) refreshTaskViews(persistProjectTreeState, reloadCrossProject 
 
 func (m *AppModel) refreshWorkspacePulseAt(now time.Time) {
 	cachedActivityIsCurrent := m.completionActivity.IsCurrentLocalDay(now)
-	m.workspacePulse = outliner.ComputeWorkspacePulse(m.runtime, m.todayIDs, now)
+	m.workspacePulse = outliner.ComputeWorkspacePulse(m.domain.runtime, m.todayIDs, now)
 	activity, err := m.features.Activity.CompletionActivity()
 	if err != nil {
 		logging.Warn("refresh completion activity: %v", err)

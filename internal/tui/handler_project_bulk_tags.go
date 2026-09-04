@@ -91,7 +91,7 @@ func (m *AppModel) planProjectBulkTags(msg projecthub.ProjectBulkTagsMsg) (proje
 			continue
 		}
 		parks := models.ProjectTagsParked(tags) && !models.ProjectTagsParked(project.Tags)
-		if parks && m.runtime.IsSystemUnfiledProject(project.ID) {
+		if parks && m.domain.runtime.IsSystemUnfiledProject(project.ID) {
 			return edit, fmt.Errorf("cannot park the system Unfiled project")
 		}
 		updated := *project

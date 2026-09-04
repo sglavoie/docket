@@ -24,9 +24,9 @@ func (m *AppModel) handleOutlinerPlanningReorder(msg outliner.OutlinerPlanningRe
 	var err error
 	switch msg.Kind {
 	case outliner.ReorderNextOrder:
-		err = m.appService.ReorderNext(order)
+		err = m.domain.service.ReorderNext(order)
 	case outliner.ReorderToday:
-		err = m.appService.ReorderToday(order)
+		err = m.domain.service.ReorderToday(order)
 	}
 	if err != nil {
 		m.feedback.err = err

@@ -359,7 +359,7 @@ func TestTaskComposerExpandRefusesToDropAdoptedChildren(t *testing.T) {
 	composer := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{
 		Kind:    taskform.ComposerProject,
 		Project: project,
-	}, appModel.runtime)
+	}, appModel.domain.runtime)
 	composer.Input.SetValue("Adopter <1")
 
 	if cmd := composer.ExpandSingle(); cmd != nil {

@@ -34,7 +34,7 @@ func projectHubApp(t *testing.T) *AppModel {
 	beta.Path = t.TempDir()
 	setTestAppProjects(app, alpha, beta)
 	app.currentProject = nil
-	app.crossOutliner = outliner.NewOutlinerModel(nil, app.configManager, app.runtime)
+	app.crossOutliner = outliner.NewOutlinerModel(nil, app.domain.manager, app.domain.runtime)
 	app.crossOutliner.SetSize(120, 40)
 	app.crossOutliner.Population.Projects = []*models.Project{alpha, beta}
 	app.crossOutliner.Population.Invalidate()
@@ -107,12 +107,12 @@ func projectHubSubtitleLine(hub *projecthub.ProjectHubModel) string {
 func projectHubDiskApp(t *testing.T) *AppModel {
 	t.Helper()
 	app := typedTestApp(t)
-	app.runtime = testRuntimeAt(t.TempDir(), newTestConfig())
+	app.domain.runtime = testRuntimeAt(t.TempDir(), newTestConfig())
 	alpha := scopeTestProject("alpha", "Alpha", "1", "2")
 	beta := scopeTestProject("beta", "Beta", "1")
 	setTestAppProjects(app, alpha, beta)
 	app.currentProject = nil
-	app.crossOutliner = outliner.NewOutlinerModel(nil, app.configManager, app.runtime)
+	app.crossOutliner = outliner.NewOutlinerModel(nil, app.domain.manager, app.domain.runtime)
 	app.crossOutliner.SetSize(120, 40)
 	app.crossOutliner.Population.Projects = []*models.Project{alpha, beta}
 	app.crossOutliner.Population.Invalidate()
@@ -124,7 +124,7 @@ func projectHubDiskApp(t *testing.T) *AppModel {
 // slug, without cataloging it. The caller decides what reaches disk there.
 func projectHubDiskProject(app *AppModel, id, name string) *models.Project {
 	project := scopeTestProject(id, name)
-	project.Path = app.runtime.ProjectPath(project.Slug)
+	project.Path = app.domain.runtime.ProjectPath(project.Slug)
 	return project
 }
 

@@ -161,7 +161,7 @@ func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) 
 		t.Fatalf("register task operations: %v", err)
 	}
 
-	outlinerView := outliner.NewOutlinerModel(nil, model.configManager, model.runtime)
+	outlinerView := outliner.NewOutlinerModel(nil, model.domain.manager, model.domain.runtime)
 	outlinerView.Population.Projects = env.projects
 	outlinerView.Population.Invalidate()
 	outlinerView.SelectOutlinerMode(chrome.ModeAll)

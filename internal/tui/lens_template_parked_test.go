@@ -57,7 +57,7 @@ func TestParkedWorkCommitsBeforeItsPopulationLoads(t *testing.T) {
 	}
 
 	// Committed already.
-	saved := model.runtime.Machine().NamedLensByID(template.ID)
+	saved := model.domain.runtime.Machine().NamedLensByID(template.ID)
 	if saved == nil {
 		t.Fatal("the record was not committed before the load started")
 	}
@@ -133,7 +133,7 @@ func TestParkedWorkLoadFailuresKeepTheirExistingGuarantees(t *testing.T) {
 		}
 		// The record is durable either way: the commit succeeded, and only the
 		// application was abandoned.
-		if model.runtime.Machine().NamedLensByID(template.ID) == nil {
+		if model.domain.runtime.Machine().NamedLensByID(template.ID) == nil {
 			t.Fatal("the abandoned application rolled back a commit that had succeeded")
 		}
 	})

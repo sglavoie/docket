@@ -23,7 +23,7 @@ import (
 func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
 	case projecthub.CreateProjectMsg:
-		m.showView(presentation.ViewProjectCreator, projecthub.NewProjectCreatorModel(m.runtime, m.configManager, m.appService))
+		m.showView(presentation.ViewProjectCreator, projecthub.NewProjectCreatorModel(m.domain.runtime, m.domain.manager, m.domain.service))
 		return true, nil
 
 	case projecthub.ProjectCreatedMsg:
@@ -40,7 +40,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, tea.Batch(popCmd, reloadCmd, notesCmd, feedbackCmd)
 
 	case projecthub.ProjectArchiveRequestMsg:
-		if msg.Project != nil && m.runtime.IsSystemUnfiledProject(msg.Project.ID) {
+		if msg.Project != nil && m.domain.runtime.IsSystemUnfiledProject(msg.Project.ID) {
 			return true, status.ErrorCmd("cannot archive the system Unfiled project")
 		}
 		return true, m.showProjectArchiveConfirm(msg.Project, msg.Archive)
@@ -52,7 +52,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		return true, m.commitProjectArchive(msg.Project)
 
 	case projecthub.ProjectDeleteRequestMsg:
-		if msg.Project != nil && m.runtime.IsSystemUnfiledProject(msg.Project.ID) {
+		if msg.Project != nil && m.domain.runtime.IsSystemUnfiledProject(msg.Project.ID) {
 			return true, status.ErrorCmd("cannot delete the system Unfiled project")
 		}
 		return true, m.showProjectDeleteConfirm(msg.Project)
@@ -123,10 +123,10 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		if msg.Project != nil {
 			m.showView(presentation.ViewProjectEditor, projecthub.NewProjectEditorModel(
 				msg.Project,
-				m.configManager,
-				m.runtime,
-				m.appService,
-				m.runtime.IsSystemUnfiledProject(msg.Project.ID),
+				m.domain.manager,
+				m.domain.runtime,
+				m.domain.service,
+				m.domain.runtime.IsSystemUnfiledProject(msg.Project.ID),
 			))
 		}
 		return true, nil
@@ -174,7 +174,7 @@ func (m *AppModel) showProjectArchiveConfirm(project *models.Project, archive bo
 		m.project.clearArchive()
 		return nil
 	}
-	if m.runtime.IsSystemUnfiledProject(project.ID) {
+	if m.domain.runtime.IsSystemUnfiledProject(project.ID) {
 		m.project.clearArchive()
 		return status.ErrorCmd("cannot archive the system Unfiled project")
 	}
@@ -189,7 +189,7 @@ func (m *AppModel) confirmProjectArchive() tea.Cmd {
 	if project == nil {
 		return nil
 	}
-	if m.runtime.IsSystemUnfiledProject(project.ID) {
+	if m.domain.runtime.IsSystemUnfiledProject(project.ID) {
 		return status.ErrorCmd("cannot archive the system Unfiled project")
 	}
 
@@ -214,10 +214,10 @@ func (m *AppModel) commitProjectArchive(project *models.Project) tea.Cmd {
 	}
 	updated := *project
 	if updated.Tasks == nil {
-		if m.persister == nil {
+		if m.domain.persister == nil {
 			return status.ErrorCmd("cannot archive project: project storage is unavailable")
 		}
-		if err := m.persister.Load(&updated); err != nil {
+		if err := m.domain.persister.Load(&updated); err != nil {
 			return status.ErrorCmd("cannot archive project: %v", err)
 		}
 	}
@@ -233,7 +233,7 @@ func (m *AppModel) commitProjectArchive(project *models.Project) tea.Cmd {
 		}
 	}
 
-	domains := cloneRuntimeDomains(m.runtime)
+	domains := cloneRuntimeDomains(m.domain.runtime)
 	if err := domains.Catalog.UpsertProject(&updated); err != nil {
 		m.feedback.err = err
 		return nil
@@ -280,14 +280,14 @@ func (m *AppModel) showProjectDeleteConfirm(project *models.Project) tea.Cmd {
 		m.project.clearDelete()
 		return nil
 	}
-	if m.runtime.IsSystemUnfiledProject(project.ID) {
+	if m.domain.runtime.IsSystemUnfiledProject(project.ID) {
 		m.project.clearDelete()
 		return status.ErrorCmd("cannot delete the system Unfiled project")
 	}
 
 	loaded := *project
-	if loaded.Tasks == nil && m.persister != nil {
-		if err := m.persister.Load(&loaded); err != nil {
+	if loaded.Tasks == nil && m.domain.persister != nil {
+		if err := m.domain.persister.Load(&loaded); err != nil {
 			m.project.clearDelete()
 			return status.ErrorCmd("cannot delete project: %v", err)
 		}
@@ -315,8 +315,8 @@ func (m *AppModel) projectDeleteCascadeNote(project *models.Project) string {
 			attachments += len(task.Attachments)
 		}
 	}
-	if m.appService != nil {
-		if notes, err := m.appService.Notes(project.ID); err == nil && len(notes) > 0 {
+	if m.domain.service != nil {
+		if notes, err := m.domain.service.Notes(project.ID); err == nil && len(notes) > 0 {
 			parts = append(parts, fmt.Sprintf("%d %s", len(notes), listsurface.Pluralize(len(notes), "note", "notes")))
 		}
 	}
@@ -347,7 +347,7 @@ func (m *AppModel) confirmProjectDelete() tea.Cmd {
 	if project == nil {
 		return nil
 	}
-	if m.runtime.IsSystemUnfiledProject(project.ID) {
+	if m.domain.runtime.IsSystemUnfiledProject(project.ID) {
 		return status.ErrorCmd("cannot delete the system Unfiled project")
 	}
 	return func() tea.Msg {
@@ -363,15 +363,15 @@ func (m *AppModel) commitProjectDelete(project *models.Project) tea.Cmd {
 	if project == nil {
 		return nil
 	}
-	if m.runtime == nil || m.appService == nil {
+	if m.domain.runtime == nil || m.domain.service == nil {
 		return status.ErrorCmd("cannot delete project: project storage is unavailable")
 	}
 	updated := *project
 	if updated.Tasks == nil {
-		if m.persister == nil {
+		if m.domain.persister == nil {
 			return status.ErrorCmd("cannot delete project: project storage is unavailable")
 		}
-		if err := m.persister.Load(&updated); err != nil {
+		if err := m.domain.persister.Load(&updated); err != nil {
 			return status.ErrorCmd("cannot delete project: %v", err)
 		}
 	}
@@ -380,27 +380,27 @@ func (m *AppModel) commitProjectDelete(project *models.Project) tea.Cmd {
 	// any cache the reload rebuilds from.
 	m.anchorOutlinerCursorAfterProjectPark(updated.ID)
 
-	domains := cloneRuntimeDomains(m.runtime)
+	domains := cloneRuntimeDomains(m.domain.runtime)
 	if _, err := domains.RemoveProject(updated.ID, updated.Slug); err != nil {
 		m.feedback.err = err
 		return nil
 	}
-	artifacts, err := syncedDomainArtifacts(m.runtime, domains.Catalog, domains.Planning)
+	artifacts, err := syncedDomainArtifacts(m.domain.runtime, domains.Catalog, domains.Planning)
 	if err != nil {
 		m.feedback.err = err
 		return nil
 	}
-	transactionID, err := m.appService.DeleteProjectResult(app.DeleteProjectRequest{
+	transactionID, err := m.domain.service.DeleteProjectResult(app.DeleteProjectRequest{
 		Project:                &updated,
-		SystemUnfiledProjectID: m.runtime.Catalog().SystemUnfiledProjectID,
-		DataDir:                m.runtime.DataDir(),
+		SystemUnfiledProjectID: m.domain.runtime.Catalog().SystemUnfiledProjectID,
+		DataDir:                m.domain.runtime.DataDir(),
 		Config:                 artifacts,
 	})
 	if err != nil {
 		m.feedback.err = err
 		return nil
 	}
-	if err := m.runtime.RefreshAfterCommit(); err != nil {
+	if err := m.domain.runtime.RefreshAfterCommit(); err != nil {
 		m.feedback.err = err
 		return nil
 	}

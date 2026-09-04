@@ -79,7 +79,7 @@ func TestProjectHubTaskCountsOmitAnUnreadableProject(t *testing.T) {
 
 func TestPinnedProjectHubRecordsItsModeOnTheRoute(t *testing.T) {
 	app := projectHubApp(t)
-	app.projects["alpha"].Pinned = true
+	app.domain.projects["alpha"].Pinned = true
 
 	hub := openProjectHub(t, app, route.ProjectHubModePinned)
 	if hub.Mode() != route.ProjectHubModePinned {

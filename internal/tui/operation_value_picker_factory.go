@@ -195,7 +195,7 @@ func (m *AppModel) newOperationValuePicker(
 			provider,
 			"Move to Project",
 			subtitle,
-			operationProjectListSource(m.runtime.AvailableProjects(), commonTaskProjectID(refs)),
+			operationProjectListSource(m.domain.runtime.AvailableProjects(), commonTaskProjectID(refs)),
 			false,
 			nil,
 		)

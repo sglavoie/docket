@@ -306,7 +306,7 @@ func TestInlineRowEditorChildAdoptionCommitsRefreshesHierarchyAndUndoes(t *testi
 	m.currentProject.BuildTaskTree()
 	repo.seed(t)
 
-	out := outliner.NewOutlinerModel(m.currentProject, m.configManager, m.runtime)
+	out := outliner.NewOutlinerModel(m.currentProject, m.domain.manager, m.domain.runtime)
 	out.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 	out.SetSize(100, 20)
 	out.RebuildRows()
@@ -339,13 +339,13 @@ func TestInlineRowEditorChildAdoptionCommitsRefreshesHierarchyAndUndoes(t *testi
 
 	requireCommittedInlineAdoption(t, m, out, task, adoptee, projection)
 
-	if _, err := m.deps.Ledger.Undo(storage.GlobalScope()); err != nil {
+	if _, err := m.domain.ledger.Undo(storage.GlobalScope()); err != nil {
 		t.Fatalf("undo adoption: %v", err)
 	}
 	if parentID := diskTask(t, m.currentProject, adoptee.ID).ParentID; parentID != nil {
 		t.Fatalf("undo left the adoption on disk: %v", *parentID)
 	}
-	if _, err := m.deps.Ledger.Redo(storage.GlobalScope()); err != nil {
+	if _, err := m.domain.ledger.Redo(storage.GlobalScope()); err != nil {
 		t.Fatalf("redo adoption: %v", err)
 	}
 	if parentID := diskTask(t, m.currentProject, adoptee.ID).ParentID; parentID == nil || *parentID != task.ID {

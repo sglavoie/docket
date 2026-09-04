@@ -11,7 +11,7 @@ import (
 // beside the other AppOptions in app_init.go.
 func withPersister(p coordinator.Persister) AppOption {
 	return func(app *AppModel) {
-		app.persister = p
+		app.domain.persister = p
 	}
 }
 

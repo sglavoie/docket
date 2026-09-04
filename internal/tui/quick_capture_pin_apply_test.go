@@ -12,7 +12,7 @@ func TestTaskComposerExpandRefusesToDropPin(t *testing.T) {
 	composer := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{
 		Kind:    taskform.ComposerProject,
 		Project: project,
-	}, appModel.runtime)
+	}, appModel.domain.runtime)
 	composer.Input.SetValue("Ship release *pin")
 
 	if cmd := composer.ExpandSingle(); cmd != nil {

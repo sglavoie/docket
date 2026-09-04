@@ -68,13 +68,13 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 		projectMap[p.ID] = p
 	}
 
+	domain := newDomainController(runtime, manager)
+	domain.service = svc
+	domain.ledger = ledger
+	domain.projects = projectMap
+
 	m := &AppModel{
-		configManager:     manager,
-		runtime:           runtime,
-		deps:              newShellDeps(ledger),
-		projects:          projectMap,
-		persister:         coordinator.NewProjectService(),
-		appService:        svc,
+		domain:            domain,
 		secondaryFeatures: coordinator.NewSecondaryCoordinators(svc),
 		viewNav: viewNavigationController{
 			navigation: route.NewNavigationState(),
@@ -144,7 +144,7 @@ func seedNextOrderOrder(t *testing.T, m *AppModel, locators ...config.ProjectTas
 	for i, loc := range locators {
 		items[i] = config.ProjectTaskLocator{TaskID: loc.TaskID, ProjectID: loc.ProjectID}
 	}
-	if err := commitPlanningToRuntime(m.runtime, func(p *config.PlanningState) {
+	if err := commitPlanningToRuntime(m.domain.runtime, func(p *config.PlanningState) {
 		p.SetNext(items)
 	}); err != nil {
 		t.Fatalf("seed focus queue order: %v", err)
@@ -159,7 +159,7 @@ func seedTodayOrder(t *testing.T, m *AppModel, locators ...config.ProjectTaskLoc
 	for i, loc := range locators {
 		items[i] = config.ProjectTaskLocator{TaskID: loc.TaskID, ProjectID: loc.ProjectID}
 	}
-	if err := commitPlanningToRuntime(m.runtime, func(p *config.PlanningState) {
+	if err := commitPlanningToRuntime(m.domain.runtime, func(p *config.PlanningState) {
 		p.SetToday(items)
 	}); err != nil {
 		t.Fatalf("seed daily plan order: %v", err)

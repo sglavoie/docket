@@ -64,10 +64,10 @@ func TestTaskComposerCaptureDefaultsToSystemUnfiled(t *testing.T) {
 func installTestSystemInbox(app *AppModel, projects ...*models.Project) *models.Project {
 	inbox := testutil.NewTestProjectWithTasks("Unfiled")
 	setTestAppProjects(app, append(projects, inbox)...)
-	catalog := app.runtime.Catalog()
+	catalog := app.domain.runtime.Catalog()
 	catalog.SystemUnfiledProjectID = inbox.ID
 	catalog.SystemUnfiledProjectID = inbox.ID
-	app.runtime.SetCatalogInMemory(catalog)
+	app.domain.runtime.SetCatalogInMemory(catalog)
 	return inbox
 }
 

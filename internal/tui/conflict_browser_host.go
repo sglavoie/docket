@@ -21,10 +21,10 @@ import (
 // conflictStore is the workspace's bundle directory. It is nil only for a model
 // with no runtime, which is what the Hub's preview painter builds.
 func (m *AppModel) conflictStore() *storage.ConflictStore {
-	if m == nil || m.runtime == nil {
+	if m == nil || m.domain.runtime == nil {
 		return nil
 	}
-	return storage.NewConflictStore(config.ConflictsDir(m.runtime.DataDir()))
+	return storage.NewConflictStore(config.ConflictsDir(m.domain.runtime.DataDir()))
 }
 
 // openConflictBrowser lists the recorded bundles and mounts the overlay over the

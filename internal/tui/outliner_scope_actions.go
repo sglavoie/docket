@@ -55,14 +55,14 @@ func (m *AppModel) applyProjectScope(msg ApplyProjectScopeMsg) (bool, tea.Cmd) {
 // failure can report against the row the user chose instead of stranding them in
 // an Outliner that never gained the project.
 func (m *AppModel) startParkedProjectFocus(projectID string) (tea.Cmd, bool) {
-	if m.runtime == nil || projectID == "" {
+	if m.domain.runtime == nil || projectID == "" {
 		return nil, false
 	}
-	project := m.runtime.AvailableProject(projectID)
+	project := m.domain.runtime.AvailableProject(projectID)
 	if project == nil {
 		return nil, false
 	}
-	if m.runtime.TaskWorkspaceProject(projectID) != nil {
+	if m.domain.runtime.TaskWorkspaceProject(projectID) != nil {
 		// In the base workspace but absent from the snapshot: a failed or stale
 		// load, not a parked project. Leave the existing guidance in place.
 		return nil, false

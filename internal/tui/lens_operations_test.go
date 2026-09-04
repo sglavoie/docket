@@ -273,7 +273,7 @@ func TestLensDeleteRemovesTheDefinitionAndRestoresTheBaseline(t *testing.T) {
 	if result := executeLens(model, lens.OperationLensDelete, operation.LensEntity(starter.ID), "", true); result.Err != nil {
 		t.Fatalf("delete lens: %v", result.Err)
 	}
-	if model.runtime.Machine().NamedLensByID(starter.ID) != nil {
+	if model.domain.runtime.Machine().NamedLensByID(starter.ID) != nil {
 		t.Fatal("delete left the definition in place")
 	}
 	if out.HasActiveLens() {

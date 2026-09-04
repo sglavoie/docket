@@ -23,7 +23,7 @@ func TestHiddenAdvisoriesOptionSuppressesTheIndicatorEndToEnd(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = workspace.Cleanup() })
 
-	dataDir := driver.App().runtime.DataDir()
+	dataDir := driver.App().domain.runtime.DataDir()
 	store := storage.NewConflictStore(config.ConflictsDir(dataDir))
 	if _, err = store.Save(storage.ConflictRecord{ProjectName: "Alpha"}, nil, nil, nil); err != nil {
 		t.Fatalf("save conflict bundle: %v", err)
@@ -46,7 +46,7 @@ func TestHiddenAdvisoriesOptionSuppressesTheIndicatorEndToEnd(t *testing.T) {
 func TestAdvisoriesMenuEntryTogglesAndPersists(t *testing.T) {
 	driver, outlinerView := menuBarDriver(t)
 
-	if driver.App().runtime.Machine().AdvisoriesHidden {
+	if driver.App().domain.runtime.Machine().AdvisoriesHidden {
 		t.Fatal("the fixture launched with advisories already hidden")
 	}
 
@@ -59,7 +59,7 @@ func TestAdvisoriesMenuEntryTogglesAndPersists(t *testing.T) {
 	if err := driver.App().coreToggleAdvisories(); err != nil {
 		t.Fatalf("coreToggleAdvisories: %v", err)
 	}
-	if !driver.App().runtime.Machine().AdvisoriesHidden {
+	if !driver.App().domain.runtime.Machine().AdvisoriesHidden {
 		t.Fatal("hiding advisories did not reach machine state")
 	}
 	if !outlinerView.AdvisoriesSuppressed() {
@@ -69,7 +69,7 @@ func TestAdvisoriesMenuEntryTogglesAndPersists(t *testing.T) {
 	if err := driver.App().coreToggleAdvisories(); err != nil {
 		t.Fatalf("coreToggleAdvisories back: %v", err)
 	}
-	if driver.App().runtime.Machine().AdvisoriesHidden {
+	if driver.App().domain.runtime.Machine().AdvisoriesHidden {
 		t.Fatal("showing advisories again did not reach machine state")
 	}
 	if outlinerView.AdvisoriesSuppressed() {

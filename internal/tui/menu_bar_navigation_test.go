@@ -22,7 +22,7 @@ func TestOpeningTheMenuBarRevealsItAndDropsItsFirstMenu(t *testing.T) {
 	if err := driver.SendKey("ctrl+m"); err != nil {
 		t.Fatalf("press ctrl+m: %v", err)
 	}
-	if !driver.App().runtime.Machine().MenuBarVisible {
+	if !driver.App().domain.runtime.Machine().MenuBarVisible {
 		t.Error("opening a menu did not reveal the hidden bar")
 	}
 	if !outlinerView.MenuBar.Open {
@@ -53,7 +53,7 @@ func TestOpeningTheMenuBarRevealsItAndDropsItsFirstMenu(t *testing.T) {
 	}
 	// Esc puts the menu away, not the bar: hiding the band is `M`'s alone, and it
 	// is machine-local state rather than a sub-state.
-	if !driver.App().runtime.Machine().MenuBarVisible {
+	if !driver.App().domain.runtime.Machine().MenuBarVisible {
 		t.Error("closing the menu also hid the bar it revealed")
 	}
 	if closed := driver.Observe(ObserveOptions{}).PlainScreen; strings.Contains(closed, "Capture Child") {

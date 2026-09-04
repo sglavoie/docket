@@ -88,6 +88,3 @@ type AccentColorSetter interface {
 	SetAccentColor(c color.Color)
 	AccentColor() color.Color
 }
-
-// ViewContext provides shared state and dependencies to views.
-type ViewContext struct{}

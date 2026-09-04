@@ -208,19 +208,19 @@ func (m *AppModel) coreResetToLaunchView() operation.OperationHandlerResult {
 }
 
 func (m *AppModel) coreToggleTheme() error {
-	if m.runtime == nil || m.runtime.Machine() == nil {
+	if m.domain.runtime == nil || m.domain.runtime.Machine() == nil {
 		return fmt.Errorf("machine theme is unavailable")
 	}
-	machine := *m.runtime.Machine()
+	machine := *m.domain.runtime.Machine()
 	if machine.Theme == "light" {
 		machine.Theme = "dark"
 	} else {
 		machine.Theme = "light"
 	}
-	if err := m.runtime.CommitMachine(&machine); err != nil {
+	if err := m.domain.runtime.CommitMachine(&machine); err != nil {
 		return fmt.Errorf("save theme: %w", err)
 	}
-	theme.ApplyTheme(theme.NewThemeConfig(m.runtime.Machine()))
+	theme.ApplyTheme(theme.NewThemeConfig(m.domain.runtime.Machine()))
 	m.setInfoStatus("Theme: " + machine.Theme)
 	return nil
 }
@@ -234,12 +234,12 @@ func (m *AppModel) coreToggleTheme() error {
 // contentHeight is the one place that subtracts it, so the next render reads
 // the committed flag and every budget follows from that single definition.
 func (m *AppModel) coreToggleMenuBar() error {
-	if m.runtime == nil || m.runtime.Machine() == nil {
+	if m.domain.runtime == nil || m.domain.runtime.Machine() == nil {
 		return fmt.Errorf("machine chrome state is unavailable")
 	}
-	machine := *m.runtime.Machine()
+	machine := *m.domain.runtime.Machine()
 	machine.MenuBarVisible = !machine.MenuBarVisible
-	if err := m.runtime.CommitMachine(&machine); err != nil {
+	if err := m.domain.runtime.CommitMachine(&machine); err != nil {
 		return fmt.Errorf("save menu bar visibility: %w", err)
 	}
 	if machine.MenuBarVisible {
@@ -265,12 +265,12 @@ func (m *AppModel) coreOpenMenuBar() error {
 		return fmt.Errorf("the menu bar belongs to the Outliner")
 	}
 	if !out.MenuBarVisible() {
-		if m.runtime == nil || m.runtime.Machine() == nil {
+		if m.domain.runtime == nil || m.domain.runtime.Machine() == nil {
 			return fmt.Errorf("machine chrome state is unavailable")
 		}
-		machine := *m.runtime.Machine()
+		machine := *m.domain.runtime.Machine()
 		machine.MenuBarVisible = true
-		if err := m.runtime.CommitMachine(&machine); err != nil {
+		if err := m.domain.runtime.CommitMachine(&machine); err != nil {
 			return fmt.Errorf("save menu bar visibility: %w", err)
 		}
 	}

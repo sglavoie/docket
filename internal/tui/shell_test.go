@@ -105,7 +105,6 @@ func TestWorkspaceSessionFacade(t *testing.T) {
 	if !w.HasCurrentProject() || w.CurrentProject().ID != "p1" {
 		t.Error("expected current project p1")
 	}
-	_ = w.ViewContext()
 }
 
 // TestOverlayManagerLifecycle checks the centralized overlay lifecycle.

@@ -79,13 +79,13 @@ func (m *AppModel) coreCaptureMessage() tea.Msg {
 		// reference, then prefer the shell's loaded project pointer when it is
 		// available so capture never borrows the base cursor's project.
 		var unfiled *models.Project
-		if m.runtime != nil {
-			unfiled = m.runtime.SystemUnfiledProject()
+		if m.domain.runtime != nil {
+			unfiled = m.domain.runtime.SystemUnfiledProject()
 			if unfiled != nil {
 				if loaded := m.projectByID(unfiled.ID); loaded != nil {
 					unfiled = loaded
 				}
-			} else if id := m.runtime.Catalog().SystemUnfiledProjectID; id != "" {
+			} else if id := m.domain.runtime.Catalog().SystemUnfiledProjectID; id != "" {
 				unfiled = m.projectByID(id)
 			}
 		}

@@ -46,14 +46,14 @@ func newSession2OutlinerApp(t *testing.T, dataDir string, projects ...*models.Pr
 	app := newTestAppModel()
 	seed := newTestConfigAt(dataDir)
 	setTestProjects(seed, projects)
-	app.runtime = testRuntimeAt(dataDir, seed)
-	app.configManager = config.NewManager(config.ConfigPathForDataDir(dataDir))
-	ledger := workspaceLedgerFromConfig(app.runtime)
-	app.appService = newTUIAppService(dataDir, app.configManager.RuntimeDependencies(), ledger)
-	app.deps = newShellDeps(ledger)
+	app.domain.runtime = testRuntimeAt(dataDir, seed)
+	app.domain.manager = config.NewManager(config.ConfigPathForDataDir(dataDir))
+	ledger := workspaceLedgerFromConfig(app.domain.runtime)
+	app.domain.service = newTUIAppService(dataDir, app.domain.manager.RuntimeDependencies(), ledger)
+	app.domain.ledger = ledger
 	setTestAppProjects(app, projects...)
 
-	cross := outliner.NewOutlinerModel(nil, app.configManager, app.runtime)
+	cross := outliner.NewOutlinerModel(nil, app.domain.manager, app.domain.runtime)
 	cross.Population.Projects = projects
 	cross.SelectOutlinerMode(chrome.ModeAll)
 	cross.Population.Invalidate()

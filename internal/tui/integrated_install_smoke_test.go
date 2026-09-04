@@ -20,9 +20,9 @@ func TestFreshTemporaryWorkspacesRenderInBothThemes(t *testing.T) {
 			}
 			t.Cleanup(func() { _ = workspace.Cleanup() })
 
-			machine := driver.App().runtime.Machine()
+			machine := driver.App().domain.runtime.Machine()
 			machine.Theme = themeName
-			if err := driver.App().runtime.CommitMachine(machine); err != nil {
+			if err := driver.App().domain.runtime.CommitMachine(machine); err != nil {
 				t.Fatalf("commit fresh %s theme: %v", themeName, err)
 			}
 			theme.ApplyTheme(theme.ThemeConfig{Name: themeName})

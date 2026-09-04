@@ -62,8 +62,8 @@ func newGlobalNoteTUIEnv(t *testing.T, titles ...string) *globalNoteTUIEnv {
 	views := route.NewViewRegistry()
 	views.Register(presentation.ViewGlobalNotes, view)
 	shell := &AppModel{
-		appService: svc,
-		viewNav:    viewNavigationController{views: views},
+		domain:  domainController{service: svc},
+		viewNav: viewNavigationController{views: views},
 	}
 	setTestPresentationPath(shell, presentation.ViewGlobalNotes)
 	return &globalNoteTUIEnv{dataDir: dataDir, dir: dir, ledger: ledger, svc: svc, project: project, view: view, shell: shell}

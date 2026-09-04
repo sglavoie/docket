@@ -30,7 +30,7 @@ func executeLensValue(model *AppModel, value any) operation.OperationExecutionRe
 // wherever the catalog moves it, instead of freezing a second copy of it here.
 func addableTemplate(t *testing.T, model *AppModel) config.NamedLens {
 	t.Helper()
-	machine := model.runtime.Machine()
+	machine := model.domain.runtime.Machine()
 	for _, template := range config.BuiltinNamedLensTemplates() {
 		if machine.NamedLensByID(template.ID) == nil {
 			return template
@@ -110,7 +110,7 @@ func TestLensAddTemplatePersistsTheCatalogDefinitionAndAppliesIt(t *testing.T) {
 		t.Fatalf("saved list = %d records, want %d", got, before+1)
 	}
 
-	saved := model.runtime.Machine().NamedLensByID(template.ID)
+	saved := model.domain.runtime.Machine().NamedLensByID(template.ID)
 	if saved == nil {
 		t.Fatalf("no record saved under the template ID %q", template.ID)
 	}
@@ -237,7 +237,7 @@ func TestLensAddTemplateRefusesANameAnotherLensAlreadyAnswersTo(t *testing.T) {
 	if got := len(machineLenses(t, model)); got != before {
 		t.Fatalf("a refused add wrote %d records, want %d", got, before)
 	}
-	if model.runtime.Machine().NamedLensByID(template.ID) != nil {
+	if model.domain.runtime.Machine().NamedLensByID(template.ID) != nil {
 		t.Fatal("a refused add saved the template anyway")
 	}
 }
@@ -278,7 +278,7 @@ func TestAFailedAddTemplateCommitAppliesNothing(t *testing.T) {
 	out := model.crossOutliner
 	dataDir := t.TempDir()
 	project := models.Project{ID: "alpha", Name: "alpha", Slug: "alpha"}
-	model.runtime = testRuntimeAt(dataDir, testConfigWithProjects(&project))
+	model.domain.runtime = testRuntimeAt(dataDir, testConfigWithProjects(&project))
 	template := addableTemplate(t, model)
 
 	starter := lensNamed(t, model, config.StarterNamedLenses()[0].Name)
@@ -291,12 +291,12 @@ func TestAFailedAddTemplateCommitAppliesNothing(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chmod(home, 0o700) })
 
-	before := model.runtime.Machine()
+	before := model.domain.runtime.Machine()
 	result := executeLensValue(model, template.ID)
 	if result.Err == nil {
 		t.Skip("the runtime root stayed writable; the failure path is untested here")
 	}
-	if model.runtime.Machine() != before {
+	if model.domain.runtime.Machine() != before {
 		t.Fatal("a failed commit replaced the cached machine snapshot")
 	}
 	if before.NamedLensByID(template.ID) != nil {

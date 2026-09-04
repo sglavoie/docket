@@ -16,8 +16,8 @@ func TestAllNotesOpenPathsUseShellLedger(t *testing.T) {
 	t.Cleanup(func() { _ = workspace.Cleanup() })
 
 	shell := driver.App()
-	ledger := shell.deps.historyLedger()
-	project := shell.projectByID(shell.runtime.SystemUnfiledProject().ID)
+	ledger := shell.domain.historyLedger()
+	project := shell.projectByID(shell.domain.runtime.SystemUnfiledProject().ID)
 	assertLedger := func(name string, view presentation.PresentationID) {
 		t.Helper()
 		manager, ok := shell.viewNav.views.Get(view).(*notes.NotesViewModel)
@@ -45,8 +45,8 @@ func TestNilShellLedgerMakesHistoryUnavailableWithoutPanic(t *testing.T) {
 
 	shell := driver.App()
 	service := newTUIAppService(workspace.DataDir, workspace.Manager.RuntimeDependencies(), nil)
-	shell.appService = service
-	shell.deps = newShellDeps(nil)
+	shell.domain.service = service
+	shell.domain.ledger = nil
 
 	if handled, _ := shell.handleNotesMessages(notes.ShowNotesManagerMsg{Scope: route.GlobalNotesScope()}); !handled {
 		t.Fatal("notes.ShowNotesManagerMsg was not handled")

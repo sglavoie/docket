@@ -19,14 +19,14 @@ func typedTestApp(t *testing.T) *AppModel {
 	t.Helper()
 	model, project := newTestAppModelWithProject()
 	service := app.NewServiceWithArtifacts(newTestAppRepo(project), nil, nil, nil)
-	model.appService = service
+	model.domain.service = service
 	model.features = coordinator.NewFeatureCoordinators(service)
 	model.secondaryFeatures = coordinator.NewSecondaryCoordinators(service)
-	model.deps = newShellDeps(nil)
+	model.domain.ledger = nil
 	model.operations.registry = operation.NewOperationRegistry()
 	model.operations.executor = operation.NewOperationExecutor(model.operations.registry)
 
-	model.crossOutliner = outliner.NewOutlinerModel(nil, model.configManager, model.runtime)
+	model.crossOutliner = outliner.NewOutlinerModel(nil, model.domain.manager, model.domain.runtime)
 	model.crossOutliner.Population.Projects = []*models.Project{project}
 	model.crossOutliner.SetSize(model.viewNav.viewSize())
 	model.viewNav.views.Register(presentation.ViewCrossProjectOutliner, model.crossOutliner)

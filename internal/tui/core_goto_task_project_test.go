@@ -59,7 +59,7 @@ const gotoProjectName = "Client Beta"
 
 func gotoProjectID(t *testing.T, app *AppModel) string {
 	t.Helper()
-	for _, project := range app.projects {
+	for _, project := range app.domain.projects {
 		if project != nil && project.Name == gotoProjectName {
 			return project.ID
 		}

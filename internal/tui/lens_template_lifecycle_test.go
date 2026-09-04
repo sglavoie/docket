@@ -104,7 +104,7 @@ func TestEveryBuiltinTemplateInstallsItsExactProjection(t *testing.T) {
 
 			addTemplateAndSettle(t, model, template)
 
-			saved := model.runtime.Machine().NamedLensByID(template.ID)
+			saved := model.domain.runtime.Machine().NamedLensByID(template.ID)
 			if saved == nil {
 				t.Fatalf("no record saved under the template ID %q", template.ID)
 			}

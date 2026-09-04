@@ -147,8 +147,8 @@ func (w *uitestWorkspace) secondMachineDriver(machine string, width, height int)
 	driver := NewUITestDriver(app, width, height)
 	driver.relaunch = w.relaunchApp
 	driver.moveToFreshMachine = w.switchMachineHome
-	if app.startupMessage != nil {
-		driver.dispatch(app.startupMessage)
+	if app.lifecycle.startup != nil {
+		driver.dispatch(app.lifecycle.startup)
 		driver.drain()
 	}
 	driver.bootLaunchCommands()
@@ -252,8 +252,8 @@ func (w *uitestWorkspace) launch(width, height int) (*UITestDriver, error) {
 	driver := NewUITestDriver(app, width, height)
 	driver.relaunch = w.relaunchApp
 	driver.moveToFreshMachine = w.switchMachineHome
-	if app.startupMessage != nil {
-		driver.dispatch(app.startupMessage)
+	if app.lifecycle.startup != nil {
+		driver.dispatch(app.lifecycle.startup)
 		driver.drain()
 	}
 	driver.bootLaunchCommands()

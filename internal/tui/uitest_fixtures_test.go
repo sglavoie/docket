@@ -97,7 +97,7 @@ func TestUITestFixtureParkedSplitsTaskWorkspaceFromCatalog(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
-	runtime := driver.App().runtime
+	runtime := driver.App().domain.runtime
 	parked := projectByFixtureName(runtime.AvailableProjects(), parkedFixtureParkedName)
 	if parked == nil {
 		t.Fatalf("%q is not an available project", parkedFixtureParkedName)
@@ -142,14 +142,14 @@ func TestFreshFixtureBootstrapsStableVisibleSystemInbox(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
-	inbox := driver.App().runtime.SystemUnfiledProject()
+	inbox := driver.App().domain.runtime.SystemUnfiledProject()
 	if inbox == nil {
 		t.Fatal("fresh install has no system Inbox")
 	}
 	if inbox.Name != config.SystemUnfiledName || inbox.Archived {
 		t.Fatalf("system Inbox metadata = %+v", inbox)
 	}
-	active := driver.App().runtime.TaskWorkspaceProjects()
+	active := driver.App().domain.runtime.TaskWorkspaceProjects()
 	if len(active) != 1 || active[0].ID != inbox.ID {
 		t.Fatalf("fresh active projects = %+v, want visible system Inbox", active)
 	}
@@ -165,7 +165,7 @@ func TestFreshFixtureBootstrapsStableVisibleSystemInbox(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewAppModel: %v", err)
 	}
-	if got := relaunched.runtime.SystemUnfiledProject(); got == nil || got.ID != inbox.ID {
+	if got := relaunched.domain.runtime.SystemUnfiledProject(); got == nil || got.ID != inbox.ID {
 		t.Fatalf("system Inbox identity changed across launch: before=%q after=%v", inbox.ID, got)
 	}
 }
@@ -178,7 +178,7 @@ func TestContextualQuickCapturePersistsInOwningProject(t *testing.T) {
 	t.Cleanup(func() { _ = ws.Cleanup() })
 
 	target := driver.App().currentProject
-	inbox := driver.App().runtime.SystemUnfiledProject()
+	inbox := driver.App().domain.runtime.SystemUnfiledProject()
 	if target == nil || inbox == nil || target.ID == inbox.ID {
 		t.Fatalf("fixture projects: target=%v inbox=%v", target, inbox)
 	}
@@ -318,13 +318,13 @@ func TestUITestWorkspaceCopyIsIsolated(t *testing.T) {
 	if ws.DataDir == src.DataDir {
 		t.Fatal("copied workspace shares the source data dir")
 	}
-	if driver.App().runtime.DataDir() != ws.DataDir {
-		t.Fatalf("driver runtime DataDir = %q, want copied dir %q", driver.App().runtime.DataDir(), ws.DataDir)
+	if driver.App().domain.runtime.DataDir() != ws.DataDir {
+		t.Fatalf("driver runtime DataDir = %q, want copied dir %q", driver.App().domain.runtime.DataDir(), ws.DataDir)
 	}
-	if got := driver.App().runtime.Catalog().WorkspaceID; got == "" || got == sourceWorkspaceID {
+	if got := driver.App().domain.runtime.Catalog().WorkspaceID; got == "" || got == sourceWorkspaceID {
 		t.Fatalf("copied workspace ID = %q, want a fresh identity distinct from %q", got, sourceWorkspaceID)
 	}
-	if got, want := driver.App().runtime.Machine().Theme, config.NewMachineState().Theme; got != want {
+	if got, want := driver.App().domain.runtime.Machine().Theme, config.NewMachineState().Theme; got != want {
 		t.Fatalf("copied workspace machine theme = %q, want isolated default %q", got, want)
 	}
 

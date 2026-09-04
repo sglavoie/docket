@@ -41,7 +41,7 @@ func (m *AppModel) handleProjectViewMessages(msg tea.Msg) (bool, tea.Cmd) {
 
 func (m *AppModel) prepareCrossProjectOutliner() tea.Cmd {
 	if m.crossOutliner == nil {
-		m.crossOutliner = outliner.NewOutlinerModel(nil, m.configManager, m.runtime)
+		m.crossOutliner = outliner.NewOutlinerModel(nil, m.domain.manager, m.domain.runtime)
 		m.crossOutliner.SetSize(m.viewNav.viewSize())
 		m.wireSecondaryCoordinators(m.crossOutliner)
 		// The one live Outliner is the one surface that ranks notes. Every other

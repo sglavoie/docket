@@ -48,7 +48,7 @@ func TestUpdatePanicRecoveryRestoresOutlinerRoot(t *testing.T) {
 func TestUpdatePanicRecoveryCancelsPendingCrossProjectRefresh(t *testing.T) {
 	app := newTestAppModel()
 	project := scopeTestProject("alpha", "Alpha", "task")
-	cross := outliner.NewOutlinerModel(nil, app.configManager, app.runtime)
+	cross := outliner.NewOutlinerModel(nil, app.domain.manager, app.domain.runtime)
 	cross.Population.Projects = []*models.Project{project}
 	cross.Population.SnapshotReady = true
 	cross.SetSize(app.viewNav.viewSize())

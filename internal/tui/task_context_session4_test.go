@@ -76,7 +76,7 @@ func TestTaskComposerCarriesContextAndRefusesExpandedMode(t *testing.T) {
 		Kind:        taskform.ComposerProject,
 		Project:     project,
 		AllProjects: []*models.Project{project},
-	}, appModel.runtime)
+	}, appModel.domain.runtime)
 	composer.Input.SetValue("Ship release ##Client-Acme")
 
 	reqs, ok := composer.ParseCompactLines()

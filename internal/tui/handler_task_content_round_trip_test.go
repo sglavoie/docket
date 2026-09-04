@@ -24,7 +24,7 @@ func taskContentFixtureApp(t *testing.T, fixture string) *AppModel {
 
 func taskContentFixtureTask(t *testing.T, m *AppModel, title string) (*models.Task, *models.Project) {
 	t.Helper()
-	for _, project := range m.projects {
+	for _, project := range m.domain.projects {
 		for _, task := range project.Tasks {
 			if task != nil && task.Title == title {
 				return task, project
@@ -37,7 +37,7 @@ func taskContentFixtureTask(t *testing.T, m *AppModel, title string) (*models.Ta
 
 func taskContentFixtureProject(t *testing.T, m *AppModel, name string) *models.Project {
 	t.Helper()
-	for _, project := range m.projects {
+	for _, project := range m.domain.projects {
 		if project != nil && project.Name == name {
 			return project
 		}
@@ -124,7 +124,7 @@ func TestExternalEditorUnchangedTitleIsNeverParsed(t *testing.T) {
 	m := taskContentFixtureApp(t, FixtureRich)
 	task, project := taskContentFixtureTask(t, m, "Triage support inbox")
 	renamed := "Fix bug #123"
-	if _, err := m.appService.EditTaskLine(app.TaskLineEditRequest{
+	if _, err := m.domain.service.EditTaskLine(app.TaskLineEditRequest{
 		Source: app.TaskLocator{ProjectID: project.ID, TaskID: task.ID},
 		Title:  renamed,
 	}); err != nil {

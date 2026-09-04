@@ -23,9 +23,9 @@ func openProjectEditor(
 	t.Helper()
 	editor := projecthub.NewProjectEditorModel(
 		project,
-		fixture.app.configManager,
-		fixture.app.runtime,
-		fixture.app.appService,
+		fixture.app.domain.manager,
+		fixture.app.domain.runtime,
+		fixture.app.domain.service,
 		identityProtected,
 	)
 	fixture.app.showView(presentation.ViewProjectEditor, editor)
@@ -195,7 +195,7 @@ func TestProjectEditorParkConfirmCommitsTheWholeEditAtomically(t *testing.T) {
 		t.Fatalf("durable tags = %v, want the reserved tag", disk.Tags)
 	}
 	if session4HasLoadedProject(fixture.cross, project.ID) &&
-		slices.Contains(fixture.app.runtime.TaskWorkspaceProjects(), live) {
+		slices.Contains(fixture.app.domain.runtime.TaskWorkspaceProjects(), live) {
 		t.Fatal("parked project stayed in the base task workspace")
 	}
 	if got := fixture.cross.Population.ReloadHeaderProjectID; got != sibling.ID {

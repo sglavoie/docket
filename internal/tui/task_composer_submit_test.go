@@ -247,7 +247,7 @@ func TestTaskComposerUsesTypedOverlayWithoutLegacyRoute(t *testing.T) {
 
 func TestTaskComposerCancellationFocusAndNarrowLayout(t *testing.T) {
 	appModel, project := newTestAppModelWithProject()
-	composer := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{Kind: taskform.ComposerProject, Project: project}, appModel.runtime)
+	composer := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{Kind: taskform.ComposerProject, Project: project}, appModel.domain.runtime)
 	composer.SetSize(60, 18)
 	if !composer.Input.Focused() || !composer.HasTextInput() || !composer.ShouldCaptureEsc() {
 		t.Fatal("compact composer did not own initial text focus and cancellation")
@@ -267,7 +267,7 @@ func TestTaskComposerCancellationFocusAndNarrowLayout(t *testing.T) {
 		t.Fatal("dirty compact cancellation did not expose its confirmation")
 	}
 
-	expanded := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{Kind: taskform.ComposerProject, Project: project}, appModel.runtime)
+	expanded := taskform.NewTaskComposerModel(taskform.TaskComposerPreset{Kind: taskform.ComposerProject, Project: project}, appModel.domain.runtime)
 	expanded.ExpandRequest(app.CaptureRequest{ProjectID: project.ID})
 	expanded.SetSize(60, 18)
 	if !strings.Contains(expanded.View().Content, "Terminal too small") {
@@ -278,7 +278,7 @@ func TestTaskComposerCancellationFocusAndNarrowLayout(t *testing.T) {
 func TestDailyTaskEditsUseInlineTitleAndNarrowDescription(t *testing.T) {
 	appModel, project := newTestAppModelWithProject()
 	task := project.Tasks[0]
-	appModel.crossOutliner = outliner.NewOutlinerModel(nil, appModel.configManager, appModel.runtime)
+	appModel.crossOutliner = outliner.NewOutlinerModel(nil, appModel.domain.manager, appModel.domain.runtime)
 	appModel.crossOutliner.Population.Projects = []*models.Project{project}
 	appModel.viewNav.views.Register(presentation.ViewCrossProjectOutliner, appModel.crossOutliner)
 	appModel.viewNav.navigation.ResetRoot()

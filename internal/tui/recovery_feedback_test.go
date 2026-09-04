@@ -23,7 +23,7 @@ func newRecoveryFeedbackEnv(t *testing.T) (*AppModel, string) {
 	project := newLedgerUndoProject(t, dataDir, "recovery-feedback", task)
 	model := newLedgerUndoApp(t, dataDir, project, task.ID, true)
 	title := "Recovered title"
-	result, err := model.appService.Edit(app.EditRequest{
+	result, err := model.domain.service.Edit(app.EditRequest{
 		Locator: app.TaskLocator{ProjectID: project.ID, TaskID: task.ID},
 		Title:   &title,
 	})
@@ -66,7 +66,7 @@ func TestRecoveryFeedbackRequiresExactNewestTransactionID(t *testing.T) {
 		fresh := "Newer title"
 		projectID := model.currentProject.ID
 		taskID := model.currentProject.Tasks[0].ID
-		if _, err := model.appService.Edit(app.EditRequest{
+		if _, err := model.domain.service.Edit(app.EditRequest{
 			Locator: app.TaskLocator{ProjectID: projectID, TaskID: taskID},
 			Title:   &fresh,
 		}); err != nil {
@@ -80,7 +80,7 @@ func TestRecoveryFeedbackRequiresExactNewestTransactionID(t *testing.T) {
 
 	t.Run("missing ledger degrades", func(t *testing.T) {
 		model := newTestAppModel()
-		model.runtime = newTestConfigAt(t.TempDir())
+		model.domain.runtime = newTestConfigAt(t.TempDir())
 		model.setRecoveryFeedback("Saved task", "unrecorded-transaction", false)
 		if model.feedback.message != "Saved task" || model.feedback.undoCb != nil {
 			t.Fatalf("missing ledger advertised undo: status=%q callback=%v", model.feedback.message, model.feedback.undoCb != nil)
@@ -97,7 +97,7 @@ func TestRecoveryFeedbackRequiresExactNewestTransactionID(t *testing.T) {
 			t.Fatal(err)
 		}
 		model := newTestAppModel()
-		model.runtime = newTestConfigAt(dataDir)
+		model.domain.runtime = newTestConfigAt(dataDir)
 		model.setRecoveryFeedback("Saved task", "corrupt-ledger-transaction", false)
 		if model.feedback.message != "Saved task" || model.feedback.undoCb != nil {
 			t.Fatalf("unreadable ledger advertised undo: status=%q callback=%v", model.feedback.message, model.feedback.undoCb != nil)

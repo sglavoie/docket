@@ -27,7 +27,7 @@ func (m *AppModel) requestProjectTags(project *models.Project, tags []string) te
 	if !models.ProjectTagsParked(normalized) || models.ProjectTagsParked(project.Tags) {
 		return m.commitProjectTags(project, normalized)
 	}
-	if m.runtime.IsSystemUnfiledProject(project.ID) {
+	if m.domain.runtime.IsSystemUnfiledProject(project.ID) {
 		return status.ErrorCmd("cannot park the system Unfiled project")
 	}
 	m.project.armPark(
@@ -45,7 +45,7 @@ func (m *AppModel) requestProjectEditorPark(save *projecthub.ProjectEditorSave) 
 	if save == nil || save.Project == nil {
 		return nil
 	}
-	if m.runtime.IsSystemUnfiledProject(save.Project.ID) {
+	if m.domain.runtime.IsSystemUnfiledProject(save.Project.ID) {
 		return status.ErrorCmd("cannot park the system Unfiled project")
 	}
 	m.project.armPark(

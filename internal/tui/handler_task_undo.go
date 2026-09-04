@@ -15,7 +15,7 @@ import (
 // workspaceLedgerRestoreIsNewest reports whether the durable workspace ledger
 // holds a reversible transaction for the applicable action.
 func (m *AppModel) workspaceLedgerRestoreIsNewest(redo bool) bool {
-	ledger := workspaceLedgerFromConfig(m.runtime)
+	ledger := workspaceLedgerFromConfig(m.domain.runtime)
 	_, ok, err := ledgerNewestEntry(ledger, storage.GlobalScope(), redo)
 	return err == nil && ok
 }
@@ -43,7 +43,7 @@ func ledgerNewestEntry(ledger *storage.WorkspaceLedger, scope storage.LedgerScop
 // catalog-reading surfaces are therefore rebuilt from the restored snapshot on
 // the same terms every forward catalog mutation rebuilds them.
 func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
-	ledger := workspaceLedgerFromConfig(m.runtime)
+	ledger := workspaceLedgerFromConfig(m.domain.runtime)
 	restore := ledger.UndoWithEntry
 	verb, label := "Undid", "undo"
 	if redo {
@@ -81,7 +81,7 @@ func (m *AppModel) handleLedgerTaskUndoRedo(redo bool) tea.Cmd {
 }
 
 func (m *AppModel) repairTaskProjectRefsAfterRestore(projects []*models.Project) error {
-	runtimeErr := repairRuntimeTaskRefsAfterRestore(m.runtime)(projects)
+	runtimeErr := repairRuntimeTaskRefsAfterRestore(m.domain.runtime)(projects)
 	m.rewireTaskProjectRefsAfterRestore(projects)
 	return runtimeErr
 }

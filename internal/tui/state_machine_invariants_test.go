@@ -11,7 +11,6 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/outliner"
@@ -44,7 +43,7 @@ func (v *invariantQueueView) GetTaskRef() (*models.Task, *models.Project) {
 
 func TestTUIStateMachine_OutlinerEscOwnershipIsDeterministic(t *testing.T) {
 	app, project := newTestAppModelWithProject()
-	outlinerView := outliner.NewOutlinerModel(project, app.configManager, app.runtime)
+	outlinerView := outliner.NewOutlinerModel(project, app.domain.manager, app.domain.runtime)
 	outlinerView.RebuildRows()
 	outlinerView.MultiSelectMode = true
 	outlinerView.SelectTaskIdentity(taskref.For(project.Tasks[0], project))
@@ -257,7 +256,7 @@ func TestTUIStateMachine_NonUndoableStatusInvalidatesUndoCallback(t *testing.T) 
 
 func wireInvariantSimplifiedRoot(t *testing.T, app *AppModel) {
 	t.Helper()
-	outlinerView := outliner.NewOutlinerModel(nil, app.configManager, app.runtime)
+	outlinerView := outliner.NewOutlinerModel(nil, app.domain.manager, app.domain.runtime)
 	app.crossOutliner = outlinerView
 	app.viewNav.views.Register(presentation.ViewCrossProjectOutliner, outlinerView)
 	wireInvariantSimplifiedOutliner(t, app, outlinerView)
@@ -309,7 +308,7 @@ func TestTUIStateMachine_OutlinerSelectionSurvivesVisibilityRebuilds(t *testing.
 
 	t.Run("single project", func(t *testing.T) {
 		app := newTestAppModel()
-		outlinerView := outliner.NewOutlinerModel(project, app.configManager, app.runtime)
+		outlinerView := outliner.NewOutlinerModel(project, app.domain.manager, app.domain.runtime)
 		outlinerView.RebuildRows()
 		outlinerView.MultiSelectMode = true
 		outlinerView.SelectAllVisible()
@@ -329,7 +328,7 @@ func TestTUIStateMachine_OutlinerSelectionSurvivesVisibilityRebuilds(t *testing.
 
 	t.Run("cross project", func(t *testing.T) {
 		app := newTestAppModel()
-		outlinerView := outliner.NewOutlinerModel(nil, app.configManager, app.runtime)
+		outlinerView := outliner.NewOutlinerModel(nil, app.domain.manager, app.domain.runtime)
 		outlinerView.MultiSelectMode = true
 		outlinerView.Population.Projects = []*models.Project{project}
 		outlinerView.Population.Invalidate()
@@ -390,13 +389,13 @@ func newFocusToggleTestAppState(t *testing.T) (*AppModel, *models.Task) {
 	manager := config.NewManager(filepath.Join(dataDir, "tt.json"))
 	runtime := testRuntimeAt(cfg.DataDir(), cfg)
 
+	domain := newDomainController(runtime, manager)
+	domain.service = svc
+	domain.ledger = ledger
+	domain.projects = map[string]*models.Project{project.ID: project}
+
 	appModel := &AppModel{
-		configManager:  manager,
-		runtime:        runtime,
-		deps:           newShellDeps(ledger),
-		projects:       map[string]*models.Project{project.ID: project},
-		persister:      coordinator.NewProjectService(),
-		appService:     svc,
+		domain:         domain,
 		viewNav:        newViewNavigationController(),
 		currentProject: project,
 		nextOrder:      []outliner.PlanningTask{},

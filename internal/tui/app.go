@@ -3,10 +3,7 @@ package tui
 import (
 	"time"
 
-	tea "charm.land/bubbletea/v2"
-
 	"github.com/sglavoie/tt/internal/app"
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/conflict"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
@@ -20,31 +17,13 @@ import (
 
 // AppModel is the main TUI model.
 type AppModel struct {
-	configManager *config.Manager
-
-	// runtime is the startup-loaded snapshot of the three configuration domains
-	// (catalog, planning, machine), their load-time raw
-	// revisions, and the workspace data dir. It is the composition-root state the
-	// shell holds as the sole configuration state:
-	// views read domain data through its narrow accessors without render-time disk
-	// loads, config-bearing mutations commit only the changed domain(s) through its
-	// revision-checked commit seams, and each commit refreshes the snapshot so the views
-	// observe the committed state without a further disk load.
-	runtime *config.RuntimeState
-
-	// deps is the domain-native dependency bundle (RuntimeState + application
-	// service + config manager + workspace ledger) shared by the shell and
-	// feature groups.
-	deps *shellDeps
-
-	// projects preserves the loaded models.Project pointers used by open views.
-	// RuntimeState deliberately rehydrates fresh catalog models on every read;
-	// this shell-local cache keeps task trees stable while RuntimeState remains
-	// the only owner of persisted catalog metadata.
-	projects map[string]*models.Project
-
-	// Persister for project persistence operations (enables testing with mocks)
-	persister coordinator.Persister
+	// domain is the domain commit and configuration cluster: the startup-loaded
+	// snapshot of the catalog, planning and machine domains, the manager and
+	// application service every commit against them travels through, the workspace
+	// history handle those commits record into, and the session-stable project
+	// cache the loader fills beside them. Every committer stays an AppModel
+	// method. See domain_controller.go.
+	domain domainController
 
 	// features are the application-backed coordinators the primary feature views
 	// dispatch their mutations and queries through. They route persistence
@@ -69,18 +48,17 @@ type AppModel struct {
 	// Capture/form presentation IDs remain observations for embedded modes.
 	taskComposer *taskform.TaskComposerModel
 
-	// appService is the same application service the feature coordinators wrap,
-	// retained directly for the few AppModel-owned overlays that mutate
-	// synchronously in Update() and need the typed result inline. Routing through
-	// it keeps those mutations atomic
-	// and ledger-undoable without a direct raw save.
-	appService *app.Service
-
 	// viewNav is the view and navigation cluster: the authoritative route and
 	// overlay stacks, the renderer registry, and the terminal geometry both are
 	// sized against. See view_navigation_controller.go.
-	viewNav        viewNavigationController
-	startupMessage tea.Msg
+	viewNav viewNavigationController
+
+	// lifecycle is the session-lifecycle cluster: the message the composition
+	// root owes the first frame, the flag a quit sets so the final paint renders
+	// nothing, and the scheduling of the one recurring app timer. RunApp, the
+	// composition root, and teardown stay outside it, because none of them
+	// retains state. See lifecycle_controller.go.
+	lifecycle lifecycleController
 
 	// noteIndex is the notes cluster: the workspace-wide note snapshot the
 	// Outliner's search tier ranks, the generation that discards a superseded
@@ -140,9 +118,6 @@ type AppModel struct {
 	// When the project picker pushes a new project tree, the previous project ID
 	// is saved so it can be restored when navigating back.
 	projectStack []string
-
-	// State
-	quitting bool
 
 	// Pending narrow daily task edit. Stable identity is captured when the editor
 	// opens so cursor movement or a view rebuild cannot retarget the save.

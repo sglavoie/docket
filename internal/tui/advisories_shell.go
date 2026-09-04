@@ -29,12 +29,12 @@ func WithHiddenAdvisories() AppOption {
 // together. It mirrors coreToggleMenuBar: chrome follows the terminal you are
 // sitting at, so the durable home is machine.json rather than the workspace.
 func (m *AppModel) coreToggleAdvisories() error {
-	if m.runtime == nil || m.runtime.Machine() == nil {
+	if m.domain.runtime == nil || m.domain.runtime.Machine() == nil {
 		return fmt.Errorf("machine chrome state is unavailable")
 	}
-	machine := *m.runtime.Machine()
+	machine := *m.domain.runtime.Machine()
 	machine.AdvisoriesHidden = !m.feedback.hideAdvisories
-	if err := m.runtime.CommitMachine(&machine); err != nil {
+	if err := m.domain.runtime.CommitMachine(&machine); err != nil {
 		return fmt.Errorf("save advisory visibility: %w", err)
 	}
 	m.feedback.hideAdvisories = machine.AdvisoriesHidden

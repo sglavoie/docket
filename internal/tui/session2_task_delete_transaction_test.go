@@ -99,12 +99,12 @@ func newTaskDeleteEnv(t *testing.T) *taskDeleteEnv {
 }
 
 func (e *taskDeleteEnv) appModel() *AppModel {
+	domain := newDomainController(testRuntimeAt(e.cfg.DataDir(), e.cfg), e.mgr)
+	domain.service = e.svc
+	domain.projects = map[string]*models.Project{e.alpha.ID: e.alpha, e.beta.ID: e.beta}
+
 	return &AppModel{
-		configManager:     e.mgr,
-		runtime:           testRuntimeAt(e.cfg.DataDir(), e.cfg),
-		projects:          map[string]*models.Project{e.alpha.ID: e.alpha, e.beta.ID: e.beta},
-		persister:         coordinator.NewProjectService(),
-		appService:        e.svc,
+		domain:            domain,
 		secondaryFeatures: coordinator.NewSecondaryCoordinators(e.svc),
 		viewNav:           viewNavigationController{views: route.NewViewRegistry(), width: 80, height: 24},
 	}
@@ -246,7 +246,7 @@ func TestTaskDeleteConfirmSwallowsOtherKeys(t *testing.T) {
 func TestTaskDeleteSingleRootCommitsSubtreePlanningAndUndo(t *testing.T) {
 	e := newTaskDeleteEnv(t)
 	m := e.appModel()
-	runtime := m.runtime
+	runtime := m.domain.runtime
 
 	m.handleTaskDeleteRequested(TaskDeleteRequestedMsg{
 		Refs: []TaskProjectRef{{Task: e.parent, Project: e.alpha}},
@@ -443,10 +443,10 @@ func TestTUITaskDeletePreservesDuplicateIDReferencesInOtherProject(t *testing.T)
 	if e.reload(t, e.beta).GetTaskByID(e.lone.ID) != nil {
 		t.Fatal("beta/shared survived delete")
 	}
-	if got := m.runtime.Planning().Next; len(got) != 1 || got[0].ProjectID != e.alpha.ID {
+	if got := m.domain.runtime.Planning().Next; len(got) != 1 || got[0].ProjectID != e.alpha.ID {
 		t.Fatalf("delete cleaned wrong focus refs: %+v", got)
 	}
-	if got := m.runtime.Planning().Today; len(got) != 1 || got[0].ProjectID != e.alpha.ID {
+	if got := m.domain.runtime.Planning().Today; len(got) != 1 || got[0].ProjectID != e.alpha.ID {
 		t.Fatalf("delete cleaned wrong daily refs: %+v", got)
 	}
 }

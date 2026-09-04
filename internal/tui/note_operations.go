@@ -69,10 +69,10 @@ func (m *AppModel) resolveNoteTarget(identity operation.EntityIdentity) (resolve
 	default:
 		return resolvedNote{}, fmt.Errorf("note %s names no collection", identity)
 	}
-	if m.appService == nil {
+	if m.domain.service == nil {
 		return resolvedNote{}, fmt.Errorf("note service is unavailable")
 	}
-	collection, err := m.appService.NotesAt(resolved.Location)
+	collection, err := m.domain.service.NotesAt(resolved.Location)
 	if err != nil {
 		return resolvedNote{}, err
 	}
@@ -87,7 +87,7 @@ func (m *AppModel) resolveNoteTarget(identity operation.EntityIdentity) (resolve
 
 func (m *AppModel) noteOperationDir(resolved resolvedNote) string {
 	if resolved.Location.Scope == app.NoteScopeGlobal {
-		return storage.GlobalNotesDir(m.runtime.DataDir())
+		return storage.GlobalNotesDir(m.domain.runtime.DataDir())
 	}
 	return storage.NotesDir(resolved.Project)
 }
@@ -164,7 +164,7 @@ func (m *AppModel) noteOperationResult(
 		return copyNoteValue(m.noteOperationPath(resolved), "Note path copied to clipboard")
 
 	case notes.OperationNoteDelete:
-		return command(notes.NoteMutationCmd(m.appService, resolved.Location, app.NoteBatchRequest{
+		return command(notes.NoteMutationCmd(m.domain.service, resolved.Location, app.NoteBatchRequest{
 			Operations:  []app.NoteMutationRequest{{Kind: app.NoteDelete, Location: resolved.Location, Note: note}},
 			UndoAction:  "Delete Note",
 			UndoContext: note.Title,
@@ -200,7 +200,7 @@ func (m *AppModel) renameNoteOperation(
 		return operation.OperationHandlerResult{Status: "Rename canceled: same title"}
 	}
 	return operation.OperationHandlerResult{Message: operation.OperationCommandResultMsg{
-		Cmd: notes.NoteMutationCmd(m.appService, resolved.Location, app.NoteBatchRequest{
+		Cmd: notes.NoteMutationCmd(m.domain.service, resolved.Location, app.NoteBatchRequest{
 			Operations: []app.NoteMutationRequest{{
 				Kind:     app.NoteRename,
 				Location: resolved.Location,

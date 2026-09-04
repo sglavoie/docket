@@ -90,10 +90,10 @@ type WorkspaceSession struct{ app *AppModel }
 func (m *AppModel) Workspace() WorkspaceSession { return WorkspaceSession{app: m} }
 
 // Runtime returns the startup-loaded configuration domains.
-func (w WorkspaceSession) Runtime() *config.RuntimeState { return w.app.runtime }
+func (w WorkspaceSession) Runtime() *config.RuntimeState { return w.app.domain.runtime }
 
 // Manager returns the configuration manager.
-func (w WorkspaceSession) Manager() *config.Manager { return w.app.configManager }
+func (w WorkspaceSession) Manager() *config.Manager { return w.app.domain.manager }
 
 // CurrentProject returns the currently selected project, or nil.
 func (w WorkspaceSession) CurrentProject() *models.Project { return w.app.currentProject }
@@ -103,12 +103,6 @@ func (w WorkspaceSession) HasCurrentProject() bool { return w.app.currentProject
 
 // ProjectStack returns the stacked project ids for nested project trees.
 func (w WorkspaceSession) ProjectStack() []string { return w.app.projectStack }
-
-// ViewContext assembles the shared view construction context for the workspace,
-// sized to the shell's current geometry for view construction.
-func (w WorkspaceSession) ViewContext() route.ViewContext {
-	return route.ViewContext{}
-}
 
 // OverlayManager centralizes transient overlays layered above the routed view
 // stack. They float over the current route and are cleared together when

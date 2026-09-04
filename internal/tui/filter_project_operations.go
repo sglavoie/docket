@@ -142,13 +142,13 @@ func (m *AppModel) newFilterProjectTagsPicker(
 func (m *AppModel) projectTagVocabularyCounts() (map[string]int, int) {
 	counts := make(map[string]int)
 	untagged := 0
-	if m.runtime == nil {
+	if m.domain.runtime == nil {
 		return counts, untagged
 	}
 	for name := range models.BehavioralProjectTags {
 		counts[name] = 0
 	}
-	projects := append(m.availableProjects(), m.runtime.ArchivedProjects()...)
+	projects := append(m.availableProjects(), m.domain.runtime.ArchivedProjects()...)
 	for _, project := range projects {
 		if project == nil {
 			continue

@@ -166,7 +166,7 @@ func TestToggleVisibleSectionsKeepsUnsectionedPrimaryTaskFocused(t *testing.T) {
 func TestToggleVisibleSectionsDispatchesLowercaseS(t *testing.T) {
 	app := newUITestApp()
 	project := scopeTestProject("project", "Project", "task")
-	app.projects[project.ID] = project
+	app.domain.projects[project.ID] = project
 	outlinerView := app.crossOutliner
 	outlinerView.Population.Projects = []*models.Project{project}
 	outlinerView.Population.Invalidate()
@@ -204,7 +204,7 @@ func TestToggleVisibleSectionsDispatchesLowercaseS(t *testing.T) {
 func TestToggleVisibleSectionsReportsInsideASectionZoom(t *testing.T) {
 	app := newUITestApp()
 	project := scopeTestProject("project", "Project", "task")
-	app.projects[project.ID] = project
+	app.domain.projects[project.ID] = project
 	outlinerView := app.crossOutliner
 	outlinerView.Population.Projects = []*models.Project{project}
 	outlinerView.Population.Invalidate()

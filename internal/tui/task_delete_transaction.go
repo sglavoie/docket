@@ -286,7 +286,7 @@ func (m *AppModel) confirmTaskDelete() tea.Cmd {
 	if len(roots) == 0 {
 		return nil
 	}
-	m.appService.WithPlanningArtifacts(coordinator.StructuralPlanningArtifacts(m.runtime, m.configManager))
+	m.domain.service.WithPlanningArtifacts(coordinator.StructuralPlanningArtifacts(m.domain.runtime, m.domain.manager))
 
 	locators := taskLocatorsFromTaskRefs(roots)
 	cmd := m.secondaryFeatures.Bulk.DeleteLocators(locators)

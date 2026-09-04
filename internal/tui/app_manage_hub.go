@@ -4,7 +4,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/notes"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -12,17 +11,14 @@ import (
 )
 
 func (m *AppModel) ensureManageHub() *projecthub.ManageHubModel {
-	runtime := m.runtime
+	runtime := m.domain.runtime
 	if runtime == nil {
 		runtime = config.EmptyRuntimeState("")
 	}
-	var historyLedger *storage.WorkspaceLedger
-	if m.deps != nil {
-		historyLedger = m.deps.historyLedger()
-	}
+	historyLedger := m.domain.historyLedger()
 	var noteService notes.ProjectNoteService
-	if m.appService != nil {
-		noteService = m.appService
+	if m.domain.service != nil {
+		noteService = m.domain.service
 	}
 	deps := projecthub.ManageHubDependencies{
 		Runtime:        runtime,

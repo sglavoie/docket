@@ -80,9 +80,9 @@ func TestProjectOperationsRejectArchivedAndImmutableTargets(t *testing.T) {
 	archived.Archived = true
 	addTestAppProject(app, archived)
 
-	catalog := coordinator.CloneWorkspaceCatalog(app.runtime.Catalog())
+	catalog := coordinator.CloneWorkspaceCatalog(app.domain.runtime.Catalog())
 	catalog.SystemUnfiledProjectID = "alpha"
-	app.runtime.SetCatalogInMemory(catalog)
+	app.domain.runtime.SetCatalogInMemory(catalog)
 
 	cases := []struct {
 		name string

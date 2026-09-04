@@ -7,7 +7,6 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
-	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
@@ -21,12 +20,8 @@ func newTestAppModel() *AppModel {
 	runtime := testRuntimeAt(cfg.DataDir(), cfg)
 
 	return &AppModel{
-		configManager: manager,
-		runtime:       runtime,
-		deps:          newShellDeps(nil),
-		projects:      make(map[string]*models.Project),
-		persister:     coordinator.NewProjectService(),
-		viewNav:       newViewNavigationController(),
+		domain:  newDomainController(runtime, manager),
+		viewNav: newViewNavigationController(),
 	}
 }
 
@@ -41,12 +36,10 @@ func newTestAppModelWithProject() (*AppModel, *models.Project) {
 	manager := config.NewManager(configPath)
 	runtime := testRuntimeAt(cfg.DataDir(), cfg)
 
+	domain := newDomainController(runtime, manager)
+	domain.projects = map[string]*models.Project{project.ID: project}
 	app := &AppModel{
-		configManager:  manager,
-		runtime:        runtime,
-		deps:           newShellDeps(nil),
-		projects:       map[string]*models.Project{project.ID: project},
-		persister:      coordinator.NewProjectService(),
+		domain:         domain,
 		viewNav:        newViewNavigationController(),
 		currentProject: project,
 	}
@@ -108,7 +101,7 @@ func manageRouteForPresentation(view presentation.PresentationID) route.Route {
 
 func setTestAppProjects(app *AppModel, projects ...*models.Project) {
 	catalog := config.NewWorkspaceCatalog()
-	app.projects = make(map[string]*models.Project, len(projects))
+	app.domain.projects = make(map[string]*models.Project, len(projects))
 	for _, project := range projects {
 		if project == nil {
 			continue
@@ -116,12 +109,12 @@ func setTestAppProjects(app *AppModel, projects ...*models.Project) {
 		if err := catalog.UpsertProject(project); err != nil {
 			panic(err)
 		}
-		app.projects[project.ID] = project
+		app.domain.projects[project.ID] = project
 	}
-	app.runtime.SetCatalogInMemory(catalog)
+	app.domain.runtime.SetCatalogInMemory(catalog)
 }
 
 func addTestAppProject(app *AppModel, project *models.Project) {
-	projects := append(app.projectsInRuntimeOrder(app.runtime.AllProjects()), project)
+	projects := append(app.projectsInRuntimeOrder(app.domain.runtime.AllProjects()), project)
 	setTestAppProjects(app, projects...)
 }

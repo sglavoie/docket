@@ -95,7 +95,7 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 		if kind == app.NoteRename {
 			operation.NewTitle = updated.Title
 		}
-		return true, notes.NoteMutationCmd(m.appService, location, app.NoteBatchRequest{
+		return true, notes.NoteMutationCmd(m.domain.service, location, app.NoteBatchRequest{
 			Operations:  []app.NoteMutationRequest{operation},
 			UndoAction:  undoAction,
 			UndoContext: updated.Title,

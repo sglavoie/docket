@@ -242,7 +242,7 @@ func TestMoveToProjectPickerWithholdsOnlyASingleSourceSelectionsOwnProject(t *te
 	}
 
 	offered := make(map[string]bool)
-	for _, item := range operationProjectListSource(m.runtime.AvailableProjects(), commonTaskProjectID(spanning)).Items {
+	for _, item := range operationProjectListSource(m.domain.runtime.AvailableProjects(), commonTaskProjectID(spanning)).Items {
 		offered[item.PrimaryText] = true
 	}
 	for _, name := range []string{alphaProject.Name, errandProject.Name} {

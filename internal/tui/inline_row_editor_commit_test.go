@@ -51,7 +51,7 @@ func TestInlineRowEditorBuildsAtomicCrossProjectRequest(t *testing.T) {
 
 func TestInlineRowEditorAtomicCommitAndFailureLifecycle(t *testing.T) {
 	m, _, task, _ := newPlanningLedgerApp(t, models.StateBacklog)
-	out := outliner.NewOutlinerModel(m.currentProject, m.configManager, m.runtime)
+	out := outliner.NewOutlinerModel(m.currentProject, m.domain.manager, m.domain.runtime)
 	out.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 	out.SetSize(100, 20)
 	out.RebuildRows()
@@ -108,14 +108,14 @@ func TestInlineRowEditorAtomicCommitAndFailureLifecycle(t *testing.T) {
 
 func TestInlineRowEditorUnchangedCommitCreatesNoUndoTransaction(t *testing.T) {
 	m, _, task, _ := newPlanningLedgerApp(t, models.StateBacklog)
-	out := outliner.NewOutlinerModel(m.currentProject, m.configManager, m.runtime)
+	out := outliner.NewOutlinerModel(m.currentProject, m.domain.manager, m.domain.runtime)
 	out.SetTaskItemCoordinator(m.secondaryFeatures.TaskItem)
 	out.SetSize(100, 20)
 	out.RebuildRows()
 	m.crossOutliner = out
 	m.viewNav.navigation.ResetRoot()
 
-	before, err := m.deps.Ledger.UndoCount(storage.GlobalScope())
+	before, err := m.domain.ledger.UndoCount(storage.GlobalScope())
 	if err != nil {
 		t.Fatalf("undo count before unchanged edit: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestInlineRowEditorUnchangedCommitCreatesNoUndoTransaction(t *testing.T) {
 	if m.feedback.message != "No task changes" {
 		t.Fatalf("unchanged inline status = %q, want No task changes", m.feedback.message)
 	}
-	after, err := m.deps.Ledger.UndoCount(storage.GlobalScope())
+	after, err := m.domain.ledger.UndoCount(storage.GlobalScope())
 	if err != nil {
 		t.Fatalf("undo count after unchanged edit: %v", err)
 	}

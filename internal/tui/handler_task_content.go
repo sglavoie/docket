@@ -160,16 +160,16 @@ func (m *AppModel) commitTaskContentEdit(task *models.Task, project *models.Proj
 	source := taskref.For(task, project)
 	req := outliner.TaskLineEditRequest(source, result)
 	req.Description = &msg.NewDescription
-	req.PlanningArtifacts = coordinator.PlanningArtifacts(m.runtime, m.configManager)
+	req.PlanningArtifacts = coordinator.PlanningArtifacts(m.domain.runtime, m.domain.manager)
 	if req.DestinationProjectID != source.ProjectID {
-		req.PlanningArtifacts = coordinator.StructuralPlanningArtifacts(m.runtime, m.configManager)
+		req.PlanningArtifacts = coordinator.StructuralPlanningArtifacts(m.domain.runtime, m.domain.manager)
 	}
 	var relocation *outliner.OutlinerRelocationCapture
 	if out, ok := m.outlinerPrimary(); ok {
 		relocation = out.CaptureOutlinerRelocation([]taskref.TaskIdentity{source})
 	}
 
-	edited, err := m.appService.EditTaskLine(req)
+	edited, err := m.domain.service.EditTaskLine(req)
 	removeTaskContentBuffer(msg.Path)
 	if err != nil {
 		return m.handleTaskLineEditFailed(coordinator.TaskLineEditFailedMsg{Source: source, Err: err})

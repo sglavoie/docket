@@ -194,7 +194,7 @@ func TestNotesManagerMessageFocusIsLocationQualified(t *testing.T) {
 		nil,
 		nil,
 		&manageHubNotesPort{
-			WorkspaceNotePort: apppkg.NewStorageWorkspaceNotePort(app.runtime.DataDir()),
+			WorkspaceNotePort: apppkg.NewStorageWorkspaceNotePort(app.domain.runtime.DataDir()),
 			byLocation: map[apppkg.NoteLocation][]*models.Note{
 				apppkg.GlobalNoteLocation(): {
 					{Title: "Global duplicate", Filename: filename},
@@ -205,8 +205,8 @@ func TestNotesManagerMessageFocusIsLocationQualified(t *testing.T) {
 			},
 		},
 	)
-	app.appService = service
-	app.deps = newShellDeps(nil)
+	app.domain.service = service
+	app.domain.ledger = nil
 
 	focus := notes.NoteRowIdentity{
 		Location: apppkg.ProjectNoteLocation(project.ID),

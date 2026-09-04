@@ -699,7 +699,6 @@ shared_render_helpers.go	listsurface	L5	assigned
 shared_search.go	query	L2	assigned
 shared_secondary_ops_bulk.go	tui	L8	assigned
 shell.go	tui	L8	receiver:AppModel
-shell_deps.go	tui	L8	assigned
 sort_operation_ids.go	operation	L3	assigned
 sort_operations.go	tui	L8	receiver:AppModel
 sorting_common.go	query	L2	assigned

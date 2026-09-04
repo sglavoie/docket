@@ -64,14 +64,14 @@ func newSession4LifecycleFixture(
 	service := newTUIAppService(dataDir, manager.RuntimeDependencies(), ledger)
 
 	app := newTestAppModel()
-	app.configManager = manager
-	app.runtime = runtime
-	app.deps = newShellDeps(ledger)
-	app.appService = service
-	app.projects = make(map[string]*models.Project, len(projects))
+	app.domain.manager = manager
+	app.domain.runtime = runtime
+	app.domain.ledger = ledger
+	app.domain.service = service
+	app.domain.projects = make(map[string]*models.Project, len(projects))
 	app.syncProjectCache()
-	for _, project := range app.projects {
-		if err := app.persister.Load(project); err != nil {
+	for _, project := range app.domain.projects {
+		if err := app.domain.persister.Load(project); err != nil {
 			t.Fatalf("load lifecycle project %q: %v", project.ID, err)
 		}
 	}
@@ -90,7 +90,7 @@ func newSession4LifecycleFixture(
 
 func attachSession4CrossOutliner(t *testing.T, app *AppModel) *outliner.OutlinerModel {
 	t.Helper()
-	cross := outliner.NewOutlinerModel(nil, app.configManager, app.runtime)
+	cross := outliner.NewOutlinerModel(nil, app.domain.manager, app.domain.runtime)
 	cross.SelectOutlinerMode(chrome.ModeAll)
 	raw := cross.LoadCrossProjectsCmd()()
 	loaded, ok := raw.(outliner.CrossProjectsLoadedMsg)
@@ -170,7 +170,7 @@ func session4HasTaskRow(cross *outliner.OutlinerModel, projectID, taskID string)
 
 func session4CommitCatalogProject(t *testing.T, app *AppModel, project *models.Project) {
 	t.Helper()
-	if err := commitCatalogToRuntime(app.runtime, func(catalog *config.WorkspaceCatalog) error {
+	if err := commitCatalogToRuntime(app.domain.runtime, func(catalog *config.WorkspaceCatalog) error {
 		return catalog.UpsertProject(project)
 	}); err != nil {
 		t.Fatalf("commit project catalog metadata: %v", err)
@@ -199,9 +199,9 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				created := newSession4EmptyProject(t, fixture.dataDir, "Created")
 				session4CommitCatalogProject(t, fixture.app, created)
 				fixture.app.showView(presentation.ViewProjectCreator, projecthub.NewProjectCreatorModel(
-					fixture.app.runtime,
-					fixture.app.configManager,
-					fixture.app.appService,
+					fixture.app.domain.runtime,
+					fixture.app.domain.manager,
+					fixture.app.domain.service,
 				))
 
 				handled, cmd := fixture.app.handleProjectMessages(projecthub.ProjectCreatedMsg{Project: created})
@@ -236,9 +236,9 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				session4CommitCatalogProject(t, fixture.app, live)
 				fixture.app.showView(presentation.ViewProjectEditor, projecthub.NewProjectEditorModel(
 					live,
-					fixture.app.configManager,
-					fixture.app.runtime,
-					fixture.app.appService,
+					fixture.app.domain.manager,
+					fixture.app.domain.runtime,
+					fixture.app.domain.service,
 					false,
 				))
 

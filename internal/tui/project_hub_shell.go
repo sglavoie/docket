@@ -113,7 +113,7 @@ func (m *AppModel) projectHubTaskCounts() map[string]projecthub.ProjectTaskTally
 			loader = m.crossOutliner.ProjectService.WorkspaceLoader()
 		}
 	}
-	if m.runtime == nil {
+	if m.domain.runtime == nil {
 		return counts
 	}
 
@@ -121,7 +121,7 @@ func (m *AppModel) projectHubTaskCounts() map[string]projecthub.ProjectTaskTally
 	for id := range counts {
 		seen[id] = true
 	}
-	cataloged := append(m.runtime.AvailableProjects(), m.runtime.ArchivedProjects()...)
+	cataloged := append(m.domain.runtime.AvailableProjects(), m.domain.runtime.ArchivedProjects()...)
 	remainder := make([]*models.Project, 0, len(cataloged))
 	for _, project := range cataloged {
 		if project == nil || seen[project.ID] {

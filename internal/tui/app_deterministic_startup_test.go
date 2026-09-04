@@ -53,16 +53,16 @@ func TestLaunchResetsEveryPresentationAxisAndRelaunchPreservesOnlyTheme(t *testi
 		t.Fatal("seeding failed to install an active lens")
 	}
 
-	machine := app.runtime.Machine()
+	machine := app.domain.runtime.Machine()
 	machine.Theme = "light"
 	machine.NamedLenses = append(config.StarterNamedLenses(), saved)
-	if err := app.runtime.CommitMachine(machine); err != nil {
+	if err := app.domain.runtime.CommitMachine(machine); err != nil {
 		t.Fatalf("persist theme and lenses: %v", err)
 	}
 
 	driver.dispatch(launchOutlinerMsg{})
 	assertCleanLaunchRoot(t, app)
-	if got := app.runtime.Machine().Theme; got != "light" {
+	if got := app.domain.runtime.Machine().Theme; got != "light" {
 		t.Fatalf("theme after launch reset = %q, want light", got)
 	}
 	assertPersistedLensDefinitions(t, app)
@@ -78,7 +78,7 @@ func TestLaunchResetsEveryPresentationAxisAndRelaunchPreservesOnlyTheme(t *testi
 	relaunchDriver := NewUITestDriver(relaunched, 100, 35)
 	relaunchDriver.dispatch(launchOutlinerMsg{})
 	assertCleanLaunchRoot(t, relaunched)
-	if got := relaunched.runtime.Machine().Theme; got != "light" {
+	if got := relaunched.domain.runtime.Machine().Theme; got != "light" {
 		t.Fatalf("theme after process relaunch = %q, want light", got)
 	}
 	assertPersistedLensDefinitions(t, relaunched)
@@ -95,7 +95,7 @@ const deterministicStartupLensID = "4b7d2c19-8e35-4f60-9a11-7c2e5d840b3f"
 // saved records survive, and nothing about the frame the user left does.
 func assertPersistedLensDefinitions(t *testing.T, app *AppModel) {
 	t.Helper()
-	lenses := app.runtime.Machine().NamedLenses
+	lenses := app.domain.runtime.Machine().NamedLenses
 	if len(lenses) != len(config.StarterNamedLenses())+1 {
 		t.Fatalf("launch kept %d lens definitions, want the three starters plus one saved", len(lenses))
 	}

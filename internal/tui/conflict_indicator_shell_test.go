@@ -70,7 +70,7 @@ func TestOutstandingConflictCountTracksTheStore(t *testing.T) {
 // periodicSaveMsg it always did.
 func TestConflictIndicatorRefreshesOnThePeriodicTick(t *testing.T) {
 	dataDir := t.TempDir()
-	shell := &AppModel{runtime: testRuntimeAt(dataDir, newTestConfig())}
+	shell := &AppModel{domain: domainController{runtime: testRuntimeAt(dataDir, newTestConfig())}}
 
 	shell.refreshOutstandingConflicts()
 	if got := shell.feedback.outstandingConflictCount(); got != 0 {

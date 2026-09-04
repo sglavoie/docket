@@ -97,8 +97,8 @@ func TestProjectHeadersCollapseAndExpandWithHorizontalNavigation(t *testing.T) {
 			app := newUITestApp()
 			alpha := scopeTestProject("alpha", "Alpha", "alpha-task")
 			beta := scopeTestProject("beta", "Beta", "beta-task")
-			app.projects[alpha.ID] = alpha
-			app.projects[beta.ID] = beta
+			app.domain.projects[alpha.ID] = alpha
+			app.domain.projects[beta.ID] = beta
 
 			outlinerView := app.crossOutliner
 			outlinerView.Population.Projects = []*models.Project{alpha, beta}
@@ -161,7 +161,7 @@ func TestSimplifiedShiftEnterPeekRendersAtEveryWidth(t *testing.T) {
 	child.ParentID = &task.ID
 	project.Tasks = append(project.Tasks, child)
 	project.BuildTaskTree()
-	app.projects[project.ID] = project
+	app.domain.projects[project.ID] = project
 	app.crossOutliner.Population.Projects = []*models.Project{project}
 	app.crossOutliner.Population.Invalidate()
 	app.crossOutliner.CrossProjectRebuildRows()
@@ -197,7 +197,7 @@ func navigationAliasTestApp(t *testing.T) *AppModel {
 	t.Helper()
 	app := newUITestApp()
 	project := scopeTestProject("project", "Project", "one")
-	app.projects[project.ID] = project
+	app.domain.projects[project.ID] = project
 	out := app.crossOutliner
 	out.Population.Projects = []*models.Project{project}
 	out.SetSize(out.Width(), 11)
@@ -336,9 +336,9 @@ func TestSimplifiedCaptureUsesSystemInboxAtBaseAndFocusedProjectInScope(t *testi
 	app := newUITestApp()
 	inbox := scopeTestProject("inbox", "Inbox", "one")
 	project := scopeTestProject("project", "Project", "one")
-	app.runtime.Catalog().SystemUnfiledProjectID = inbox.ID
-	app.projects[inbox.ID] = inbox
-	app.projects[project.ID] = project
+	app.domain.runtime.Catalog().SystemUnfiledProjectID = inbox.ID
+	app.domain.projects[inbox.ID] = inbox
+	app.domain.projects[project.ID] = project
 	app.crossOutliner.Population.Projects = []*models.Project{inbox, project}
 	app.crossOutliner.Rows = []outliner.OutlinerRow{{
 		Task:      project.Tasks[0],
@@ -367,9 +367,9 @@ func TestSimplifiedCaptureFollowsAProjectHeaderCursor(t *testing.T) {
 	app := newUITestApp()
 	inbox := scopeTestProject("inbox", "Unfiled", "one")
 	project := scopeTestProject("project", "Project", "one")
-	app.runtime.Catalog().SystemUnfiledProjectID = inbox.ID
-	app.projects[inbox.ID] = inbox
-	app.projects[project.ID] = project
+	app.domain.runtime.Catalog().SystemUnfiledProjectID = inbox.ID
+	app.domain.projects[inbox.ID] = inbox
+	app.domain.projects[project.ID] = project
 	app.crossOutliner.Population.Projects = []*models.Project{inbox, project}
 	app.crossOutliner.Rows = []outliner.OutlinerRow{
 		{IsProjectHeader: true, ProjectID: project.ID},
@@ -404,9 +404,9 @@ func TestSimplifiedCaptureFollowsTaskFocus(t *testing.T) {
 	project := scopeTestProject("project", "Project", "story")
 	story := project.Tasks[0]
 	story.Title = "Launch platform"
-	shell.runtime.Catalog().SystemUnfiledProjectID = inbox.ID
-	shell.projects[inbox.ID] = inbox
-	shell.projects[project.ID] = project
+	shell.domain.runtime.Catalog().SystemUnfiledProjectID = inbox.ID
+	shell.domain.projects[inbox.ID] = inbox
+	shell.domain.projects[project.ID] = project
 	shell.crossOutliner.Population.Projects = []*models.Project{inbox, project}
 	shell.crossOutliner.Rows = []outliner.OutlinerRow{
 		{IsProjectHeader: true, ProjectID: inbox.ID},

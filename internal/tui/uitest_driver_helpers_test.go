@@ -102,8 +102,8 @@ func (d *UITestDriver) Restart() error {
 	d.pendingCmd = nil
 	d.pendingFutures = nil
 	d.Resize(width, height)
-	if app.startupMessage != nil {
-		d.dispatch(app.startupMessage)
+	if app.lifecycle.startup != nil {
+		d.dispatch(app.lifecycle.startup)
 		d.drain()
 	}
 	d.bootLaunchCommands()
@@ -289,7 +289,7 @@ func newUITestApp() *AppModel {
 	app := newTestAppModel()
 	app.operations.registry = operation.NewOperationRegistry()
 	app.operations.executor = operation.NewOperationExecutor(app.operations.registry)
-	o := outliner.NewOutlinerModel(nil, app.configManager, app.runtime)
+	o := outliner.NewOutlinerModel(nil, app.domain.manager, app.domain.runtime)
 	app.crossOutliner = o
 	app.viewNav.views.Register(presentation.ViewCrossProjectOutliner, o)
 	setTestPresentationPath(app, presentation.ViewCrossProjectOutliner)

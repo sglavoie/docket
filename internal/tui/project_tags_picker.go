@@ -47,8 +47,8 @@ func (m *AppModel) newProjectTagsPicker(
 // behavioral tag is always offered even when nothing uses it yet.
 func (m *AppModel) projectTagListSource(project *models.Project) listsurface.ListSource {
 	descriptive := make(map[string]bool)
-	if m.runtime != nil {
-		for _, tag := range m.runtime.AllProjectTags() {
+	if m.domain.runtime != nil {
+		for _, tag := range m.domain.runtime.AllProjectTags() {
 			descriptive[tag] = true
 		}
 	}

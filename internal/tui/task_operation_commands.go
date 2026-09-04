@@ -38,7 +38,7 @@ func (m *AppModel) adoptChildrenCmd(
 		DestinationProjectID: identity.ProjectID,
 		Parent:               app.TaskLineParentPatch{Mode: app.TaskLineParentPreserve},
 		Action:               "Adopt Children",
-		PlanningArtifacts:    coordinator.PlanningArtifacts(m.runtime, m.configManager),
+		PlanningArtifacts:    coordinator.PlanningArtifacts(m.domain.runtime, m.domain.manager),
 	}
 	for _, childID := range childIDs {
 		req.Children = append(req.Children, app.TaskLocator{
@@ -82,7 +82,7 @@ func (m *AppModel) setTaskReferencesCmd(identity taskref.TaskIdentity, value ope
 		Parent:               app.TaskLineParentPatch{Mode: app.TaskLineParentPreserve},
 		Dependencies:         patch,
 		Action:               "Set Dependencies",
-		PlanningArtifacts:    coordinator.PlanningArtifacts(m.runtime, m.configManager),
+		PlanningArtifacts:    coordinator.PlanningArtifacts(m.domain.runtime, m.domain.manager),
 	}
 	return m.secondaryFeatures.TaskItem.EditTaskLine(req, nil)
 }
@@ -128,7 +128,7 @@ func (m *AppModel) moveOneTaskToProjectCmd(
 		Title:                task.Title,
 		DestinationProjectID: projectID,
 		Action:               "Move to Project",
-		PlanningArtifacts:    coordinator.StructuralPlanningArtifacts(m.runtime, m.configManager),
+		PlanningArtifacts:    coordinator.StructuralPlanningArtifacts(m.domain.runtime, m.domain.manager),
 	}
 	return m.secondaryFeatures.TaskItem.EditTaskLine(req, relocation)
 }
@@ -153,7 +153,7 @@ func (m *AppModel) moveTaskSelectionToProjectCmd(
 		locators = append(locators, identity.Locator())
 	}
 	destination := m.moveDestinationName(projectID)
-	m.appService.WithPlanningArtifacts(coordinator.StructuralPlanningArtifacts(m.runtime, m.configManager))
+	m.domain.service.WithPlanningArtifacts(coordinator.StructuralPlanningArtifacts(m.domain.runtime, m.domain.manager))
 	cmd := m.secondaryFeatures.Bulk.MoveToProjectLocators(locators, projectID, func(moved int) string {
 		return fmt.Sprintf("Moved %d task(s) to %s", moved, destination)
 	})

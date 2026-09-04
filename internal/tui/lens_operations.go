@@ -188,10 +188,10 @@ func (m *AppModel) resolveLensTarget(identity operation.EntityIdentity) (config.
 	if identity.Kind != operation.EntityKindLens || !identity.Valid() {
 		return config.NamedLens{}, fmt.Errorf("%s is not a lens", identity)
 	}
-	if m == nil || m.runtime == nil {
+	if m == nil || m.domain.runtime == nil {
 		return config.NamedLens{}, errors.New("workspace runtime is unavailable")
 	}
-	machine := m.runtime.Machine()
+	machine := m.domain.runtime.Machine()
 	if machine == nil {
 		return config.NamedLens{}, errors.New("machine-local state is unavailable")
 	}
@@ -210,10 +210,10 @@ func (m *AppModel) resolveLensTarget(identity operation.EntityIdentity) (config.
 // mutate or validation failure returns before any commit, and a failed commit
 // leaves RuntimeState holding the state it already had.
 func (m *AppModel) commitNamedLensMutation(mutate func(*config.MachineState) error) error {
-	if m == nil || m.runtime == nil {
+	if m == nil || m.domain.runtime == nil {
 		return errors.New("workspace runtime is unavailable")
 	}
-	snapshot := m.runtime.Machine()
+	snapshot := m.domain.runtime.Machine()
 	if snapshot == nil {
 		return errors.New("machine-local state is unavailable")
 	}
@@ -224,14 +224,14 @@ func (m *AppModel) commitNamedLensMutation(mutate func(*config.MachineState) err
 	if err := machine.Validate(); err != nil {
 		return err
 	}
-	if m.runtime.DataDir() == "" {
+	if m.domain.runtime.DataDir() == "" {
 		// No writable workspace is rooted, so the in-memory seam is the whole
 		// commit: the runtime accessors observe the new list exactly as they would
 		// after a disk write.
-		m.runtime.SetMachineInMemory(machine)
+		m.domain.runtime.SetMachineInMemory(machine)
 		return nil
 	}
-	return m.runtime.CommitMachine(machine)
+	return m.domain.runtime.CommitMachine(machine)
 }
 
 // commitActiveLensPointer records which lens the Outliner should reopen with, or
@@ -242,10 +242,10 @@ func (m *AppModel) commitNamedLensMutation(mutate func(*config.MachineState) err
 // unchanged pointer is skipped so an ordinary Esc or global reset does not
 // rewrite identical bytes on every press.
 func (m *AppModel) commitActiveLensPointer(id string) error {
-	if m == nil || m.runtime == nil {
+	if m == nil || m.domain.runtime == nil {
 		return nil
 	}
-	machine := m.runtime.Machine()
+	machine := m.domain.runtime.Machine()
 	if machine == nil || machine.ActiveLensID == id {
 		return nil
 	}

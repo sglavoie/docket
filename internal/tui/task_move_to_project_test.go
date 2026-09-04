@@ -19,7 +19,7 @@ func TestMoveToProjectListsEveryAvailableProjectButTheCurrentOne(t *testing.T) {
 	_, project := taskContentFixtureTask(t, m, "Ship the delivery checklist")
 
 	primary := make(map[string]listsurface.ListItem)
-	for _, item := range operationProjectListSource(m.runtime.AvailableProjects(), project.ID).Items {
+	for _, item := range operationProjectListSource(m.domain.runtime.AvailableProjects(), project.ID).Items {
 		primary[item.PrimaryText] = item
 	}
 

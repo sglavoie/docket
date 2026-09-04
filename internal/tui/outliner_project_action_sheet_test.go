@@ -125,7 +125,7 @@ func TestProjectActionSheetDropsRowsTheProjectStateForbids(t *testing.T) {
 // from the row it was raised on.
 func TestProjectActionSheetRefusesTheSystemUnfiledDelete(t *testing.T) {
 	app, _, context := projectHeaderCursorApp(t)
-	unfiled := app.runtime.SystemUnfiledProject()
+	unfiled := app.domain.runtime.SystemUnfiledProject()
 	if unfiled == nil {
 		t.Fatal("fixture workspace has no system Unfiled project")
 	}

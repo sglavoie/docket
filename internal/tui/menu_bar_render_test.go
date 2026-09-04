@@ -139,7 +139,7 @@ func TestMenuBarCostsExactlyOneListRowAndPersists(t *testing.T) {
 	if err := driver.SendKey("M"); err != nil {
 		t.Fatalf("press M: %v", err)
 	}
-	if !driver.App().runtime.Machine().MenuBarVisible {
+	if !driver.App().domain.runtime.Machine().MenuBarVisible {
 		t.Fatal("M did not commit the machine-local visibility flag")
 	}
 	if got := outlinerView.ContentHeight(); got != hiddenHeight-1 {
@@ -175,7 +175,7 @@ func TestMenuBarCostsExactlyOneListRowAndPersists(t *testing.T) {
 	if err := driver.Restart(); err != nil {
 		t.Fatalf("restart: %v", err)
 	}
-	if !driver.App().runtime.Machine().MenuBarVisible {
+	if !driver.App().domain.runtime.Machine().MenuBarVisible {
 		t.Fatal("the bar did not survive a relaunch")
 	}
 	if reopened := driver.Observe(ObserveOptions{}).PlainScreen; !strings.Contains(reopened, "Find") {
@@ -185,7 +185,7 @@ func TestMenuBarCostsExactlyOneListRowAndPersists(t *testing.T) {
 	if err := driver.SendKey("M"); err != nil {
 		t.Fatalf("press M again: %v", err)
 	}
-	if driver.App().runtime.Machine().MenuBarVisible {
+	if driver.App().domain.runtime.Machine().MenuBarVisible {
 		t.Fatal("a second M did not hide the bar again")
 	}
 	if got := driver.App().crossOutliner.ContentHeight(); got != hiddenHeight {

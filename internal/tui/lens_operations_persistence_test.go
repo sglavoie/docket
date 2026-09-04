@@ -16,15 +16,15 @@ import (
 // the runtime accessors must observe it exactly as they would after a write.
 func TestLensOperationsUseTheInMemorySeamWithoutADataDir(t *testing.T) {
 	model := lensOperationApp(t)
-	if model.runtime.DataDir() != "" {
-		t.Fatalf("fixture rooted a data dir at %q", model.runtime.DataDir())
+	if model.domain.runtime.DataDir() != "" {
+		t.Fatalf("fixture rooted a data dir at %q", model.domain.runtime.DataDir())
 	}
-	before := model.runtime.Machine()
+	before := model.domain.runtime.Machine()
 
 	if result := executeLens(model, lens.OperationLensCreate, operation.EntityIdentity{}, "In memory", false); result.Err != nil {
 		t.Fatalf("create lens: %v", result.Err)
 	}
-	after := model.runtime.Machine()
+	after := model.domain.runtime.Machine()
 	if after == before {
 		t.Fatal("the in-memory seam must publish the clone, not mutate the cached snapshot")
 	}
@@ -42,7 +42,7 @@ func TestLensCreatePersistsToTheMachineLocalFile(t *testing.T) {
 	model := lensOperationApp(t)
 	dataDir := t.TempDir()
 	project := models.Project{ID: "alpha", Name: "alpha", Slug: "alpha"}
-	model.runtime = testRuntimeAt(dataDir, testConfigWithProjects(&project))
+	model.domain.runtime = testRuntimeAt(dataDir, testConfigWithProjects(&project))
 	manager := config.NewManager(filepath.Join(dataDir, ".tt.json"))
 	// testRuntimeAt seeds the catalog alone; a reload reads the split-domain set
 	// whole, so the planning file has to exist beside it.
@@ -74,7 +74,7 @@ func TestAFailedLensCommitChangesNeitherMachineStateNorTheActiveLens(t *testing.
 	out := model.crossOutliner
 	dataDir := t.TempDir()
 	project := models.Project{ID: "alpha", Name: "alpha", Slug: "alpha"}
-	model.runtime = testRuntimeAt(dataDir, testConfigWithProjects(&project))
+	model.domain.runtime = testRuntimeAt(dataDir, testConfigWithProjects(&project))
 
 	starter := lensNamed(t, model, config.StarterNamedLenses()[0].Name)
 	applyLensOrFatal(t, out, starter)
@@ -87,12 +87,12 @@ func TestAFailedLensCommitChangesNeitherMachineStateNorTheActiveLens(t *testing.
 	}
 	t.Cleanup(func() { _ = os.Chmod(home, 0o700) })
 
-	before := model.runtime.Machine()
+	before := model.domain.runtime.Machine()
 	result := executeLens(model, lens.OperationLensRename, operation.LensEntity(starter.ID), "Renamed", false)
 	if result.Err == nil {
 		t.Skip("the runtime root stayed writable; the failure path is untested here")
 	}
-	if model.runtime.Machine() != before {
+	if model.domain.runtime.Machine() != before {
 		t.Fatal("a failed commit replaced the cached machine snapshot")
 	}
 	if before.NamedLensByID(starter.ID).Name != starter.Name {

@@ -15,7 +15,7 @@ import (
 const taskComposerOverlayKey = "task-composer"
 
 func (m *AppModel) openTaskComposer(preset taskform.TaskComposerPreset) tea.Cmd {
-	composer := taskform.NewTaskComposerModel(preset, m.runtime)
+	composer := taskform.NewTaskComposerModel(preset, m.domain.runtime)
 	composer.SetCaptureCoordinator(m.features.Capture)
 	composer.SetTaskFormCoordinator(m.features.TaskForm)
 	composer.SetSize(m.viewNav.viewSize())
@@ -50,7 +50,7 @@ func (m *AppModel) captureComposerPreset(
 	}
 
 	if project == nil {
-		project = m.projectByID(m.runtime.Catalog().SystemUnfiledProjectID)
+		project = m.projectByID(m.domain.runtime.Catalog().SystemUnfiledProjectID)
 	}
 	if project == nil {
 		return taskform.TaskComposerPreset{}, false

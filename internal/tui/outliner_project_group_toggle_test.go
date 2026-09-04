@@ -199,7 +199,7 @@ func TestToggleVisibleProjectGroupsLeavesTheOtherFoldAxesAlone(t *testing.T) {
 func TestToggleVisibleProjectGroupsReportsInsideAProjectScope(t *testing.T) {
 	app := newUITestApp()
 	project := scopeTestProject("project", "Project", "task")
-	app.projects[project.ID] = project
+	app.domain.projects[project.ID] = project
 	outlinerView := app.crossOutliner
 	outlinerView.Population.Projects = []*models.Project{project}
 	outlinerView.Population.Invalidate()

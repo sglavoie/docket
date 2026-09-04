@@ -29,7 +29,7 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 		}
 	}()
 
-	if m.quitting {
+	if m.lifecycle.quitting {
 		return tea.NewView("")
 	}
 
