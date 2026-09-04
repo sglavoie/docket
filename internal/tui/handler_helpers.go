@@ -114,19 +114,13 @@ func (m *AppModel) handleWithRefresh(popView, reload bool) tea.Cmd {
 }
 
 // setSuccessStatus sets a status message with success styling (green checkmark).
-// A non-undoable status replaces any pending undo toast: leaving statusUndoCb
+// A non-undoable status replaces any pending undo toast: leaving the callback
 // armed would let a later `u` keypress silently invoke the previous
 // destructive action's undo while a different (non-undoable) message is on
-// screen.
+// screen. announce is what releases it.
 func (m *AppModel) setSuccessStatus(msg string) {
-	m.statusMessage = msg
-	m.statusIsInfo = false
-	m.statusUpdatedAt = time.Now()
-	m.statusUndoCb = nil
-	m.statusExpiresAt = time.Time{}
-	m.statusTransactionID = ""
-	m.statusRecoveryFallback = ""
-	m.recordStatusSeverity(flashSuccess)
+	m.feedback.announce(msg, false, time.Now())
+	m.feedback.recordSeverity(flashSuccess)
 	m.refreshWorkspacePulseAt(time.Now())
 }
 
@@ -134,36 +128,17 @@ func (m *AppModel) setSuccessStatus(msg string) {
 // Callers that want the message to be undoable must go through
 // setUndoableStatus, which re-installs the callback after this clears it.
 func (m *AppModel) setInfoStatus(msg string) {
-	m.statusMessage = msg
-	m.statusIsInfo = true
-	m.statusUpdatedAt = time.Now()
-	m.statusUndoCb = nil
-	m.statusExpiresAt = time.Time{}
-	m.statusTransactionID = ""
-	m.statusRecoveryFallback = ""
-	m.recordStatusSeverity(flashInfo)
+	m.feedback.announce(msg, true, time.Now())
+	m.feedback.recordSeverity(flashInfo)
 }
 
 // setWarningStatus sets a non-fatal warning while preserving the committed
 // operation's success semantics. Warnings use the neutral status surface.
 func (m *AppModel) setWarningStatus(msg string) {
-	m.statusMessage = msg
-	m.statusIsInfo = true
-	m.statusUpdatedAt = time.Now()
-	m.statusUndoCb = nil
-	m.statusExpiresAt = time.Time{}
-	m.statusTransactionID = ""
-	m.statusRecoveryFallback = ""
-	// Severity is a separate axis from statusIsInfo: the text keeps the neutral
-	// surface while the divider flash still distinguishes a warning.
-	m.recordStatusSeverity(flashWarning)
-}
-
-// recordStatusSeverity advances the status generation the footer flash arms on.
-// Only the setters call it, so a cleared status never flashes.
-func (m *AppModel) recordStatusSeverity(severity footerFlashSeverity) {
-	m.statusSeverity = severity
-	m.statusSeq++
+	m.feedback.announce(msg, true, time.Now())
+	// Severity is a separate axis from the neutral-surface flag: the text keeps
+	// the neutral surface while the divider flash still distinguishes a warning.
+	m.feedback.recordSeverity(flashWarning)
 }
 
 // UndoToastTimeout is how long a transient undo-available toast remains
@@ -188,8 +163,7 @@ func (m *AppModel) setUndoableStatus(msg string, undoCb func() tea.Cmd) tea.Cmd 
 		return status.DefaultStatusTimeout()
 	}
 	m.setInfoStatus(msg)
-	m.statusUndoCb = undoCb
-	m.statusExpiresAt = time.Now().Add(UndoToastTimeout)
+	m.feedback.armUndo(undoCb, time.Now().Add(UndoToastTimeout))
 	return status.TickCmd(UndoToastTimeout, func(time.Time) tea.Msg {
 		return status.UndoToastTimeoutMsg{}
 	})
@@ -212,8 +186,7 @@ func (m *AppModel) setRecoveryFeedback(successMessage, transactionID string, ori
 	}
 	undoCb := func() tea.Cmd { return m.handleLedgerTaskUndoRedo(false) }
 	cmd := m.setUndoableStatus(formatRecoveryFeedback(entry.Action, entry.Context, originRecorded), undoCb)
-	m.statusTransactionID = transactionID
-	m.statusRecoveryFallback = successMessage
+	m.feedback.correlate(transactionID, successMessage)
 	return cmd
 }
 
@@ -231,35 +204,9 @@ func formatRecoveryFeedback(action, context string, originRecorded bool) string 
 	return message
 }
 
-// appendRecoveryFeedbackDetail adds domain-specific consequence text while
-// keeping recovery controls in their canonical trailing order. It is a no-op
-// for ordinary fallback statuses because unverified feedback must not resemble
-// a correlated recovery toast.
-func (m *AppModel) appendRecoveryFeedbackDetail(detail string) {
-	detail = strings.TrimSpace(detail)
-	if detail == "" || m.statusUndoCb == nil {
-		return
-	}
-	origin := strings.HasSuffix(m.statusMessage, " · Ctrl+O origin")
-	m.statusMessage = strings.TrimSuffix(m.statusMessage, " · Ctrl+O origin")
-	m.statusMessage = strings.TrimSuffix(m.statusMessage, " · u undo")
-	m.statusMessage += " · " + detail + " · u undo"
-	if origin {
-		m.statusMessage += " · Ctrl+O origin"
-	}
-}
-
-// clearStatus clears the status message and resets the info flag.
+// clearStatus clears the status message, the error beside it, and the info flag.
 func (m *AppModel) clearStatus() {
-	m.statusMessage = ""
-	m.statusIsInfo = false
-	m.statusUpdatedAt = time.Time{}
-	m.statusUndoCb = nil
-	m.statusExpiresAt = time.Time{}
-	m.statusTransactionID = ""
-	m.statusRecoveryFallback = ""
-	m.statusSeverity = flashNone
-	m.err = nil
+	m.feedback.clear()
 }
 
 // pruneDeletedTaskRefs removes tasks that no longer exist in any active project

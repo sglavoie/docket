@@ -479,11 +479,11 @@ func TestTaskDeleteFailurePreservesStateNoSuccess(t *testing.T) {
 	}
 
 	// Routed through Update, the error sets the error banner, not a success status.
-	m.err = nil
+	m.feedback.err = nil
 	if handled, _ := m.handleGlobalSaveMessage(out); !handled {
 		t.Fatal("TransactionErrorMsg should be handled by the save-message path")
 	}
-	if m.err == nil {
+	if m.feedback.err == nil {
 		t.Error("failure should surface an error, not a success state")
 	}
 }

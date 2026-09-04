@@ -40,7 +40,7 @@ func TestUpdatePanicRecoveryRestoresOutlinerRoot(t *testing.T) {
 	if path := app.presentationPath(); len(path) != 1 || path[0] != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("expected navigation to recover at the Outliner root, got %#v", path)
 	}
-	if app.err == nil {
+	if app.feedback.err == nil {
 		t.Fatal("expected err to be set after panic recovery")
 	}
 }

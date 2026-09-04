@@ -81,7 +81,7 @@ func TestCaptureFooterYieldsToTemporaryStatusThenReturns(t *testing.T) {
 		t.Fatal("ShowTaskComposerMsg should be handled")
 	}
 
-	app.statusMessage = "task saved"
+	app.feedback.message = "task saved"
 	withStatus := ansi.Strip(app.renderStatusBar())
 	if !strings.Contains(withStatus, "task saved") {
 		t.Fatalf("expected temporary status message to show, got:\n%s", withStatus)
@@ -90,7 +90,7 @@ func TestCaptureFooterYieldsToTemporaryStatusThenReturns(t *testing.T) {
 		t.Fatalf("temporary status message must replace capture controls, got:\n%s", withStatus)
 	}
 
-	app.statusMessage = ""
+	app.feedback.message = ""
 	afterStatus := ansi.Strip(app.renderStatusBar())
 	if !strings.Contains(afterStatus, "Enter create") {
 		t.Fatalf("expected capture controls to return after status clears, got:\n%s", afterStatus)

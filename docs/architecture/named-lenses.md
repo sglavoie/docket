@@ -125,7 +125,7 @@ none survives an `Esc` to the root either.
 
 A launch nonetheless reopens the lens the pointer named, and the order is what
 makes that safe. `NewAppModel` reads `Machine().ActiveNamedLens()` into
-`pendingLaunchLens` before any message is dispatched, precisely because the
+`lenses.pendingLaunch` before any message is dispatched, precisely because the
 launch reset it is about to run clears that pointer; holding the value is what
 lets the reset stay ignorant of a case it should not know. The lens is drained in
 the `crossProjectsLoadedMsg` arm of `handleGlobalLifecycleMessage`, after the
@@ -213,7 +213,7 @@ row falls through to `lens.OperationLensApply` exactly as before; row identity t
 as the stable `lens-picker:add-template` rather than as `Data`, which keeps
 `CurrentLens` the single "is this a saved lens" test. Overlay key precedence is
 `operations.textPrompt` → `operations.valuePicker` → `operations.actionSheet` →
-`lensPicker`, so the gallery owns every key while it is open, and
+`lenses.picker`, so the gallery owns every key while it is open, and
 `resumeContextActionRequest` already hands a resumed no-sheet request back to the
 lens picker: a completed add therefore closes both overlays, a refusal is retained
 on the main picker, and `OperationValueCanceledMsg` clears only the value step,

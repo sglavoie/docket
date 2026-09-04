@@ -169,8 +169,8 @@ func openLensTemplateGallery(t *testing.T, model *AppModel) *OperationValuePicke
 	if cmd := model.openOperationValueStep(*result.ValueRequired); cmd != nil {
 		cmd()
 	}
-	if model.err != nil {
-		t.Fatalf("opening the gallery failed: %v", model.err)
+	if model.feedback.err != nil {
+		t.Fatalf("opening the gallery failed: %v", model.feedback.err)
 	}
 	if model.operations.valuePicker == nil {
 		t.Fatal("the gallery did not open")
@@ -220,8 +220,8 @@ func lensPickerApp(t *testing.T) *AppModel {
 	if cmd := model.openNamedLensPicker(); cmd != nil {
 		drainLensPickerCmd(t, model, cmd)
 	}
-	if model.lensPicker == nil {
-		t.Fatalf("openNamedLensPicker left no picker mounted: %v", model.err)
+	if model.lenses.picker == nil {
+		t.Fatalf("openNamedLensPicker left no picker mounted: %v", model.feedback.err)
 	}
 	return model
 }
@@ -280,10 +280,10 @@ func typeLens(t *testing.T, model *AppModel, text string) {
 
 func lensPickerRowTitles(t *testing.T, model *AppModel) []string {
 	t.Helper()
-	if model.lensPicker == nil {
+	if model.lenses.picker == nil {
 		t.Fatal("no lens picker is mounted")
 	}
-	items := model.lensPicker.Surface.Items()
+	items := model.lenses.picker.Surface.Items()
 	titles := make([]string, 0, len(items))
 	for _, item := range items {
 		titles = append(titles, item.PrimaryText)
@@ -293,10 +293,10 @@ func lensPickerRowTitles(t *testing.T, model *AppModel) []string {
 
 func lensPickerCursorTitle(t *testing.T, model *AppModel) string {
 	t.Helper()
-	if model.lensPicker == nil {
+	if model.lenses.picker == nil {
 		t.Fatal("no lens picker is mounted")
 	}
-	item, ok := model.lensPicker.Surface.CurrentItem()
+	item, ok := model.lenses.picker.Surface.CurrentItem()
 	if !ok {
 		t.Fatal("the lens picker has no current row")
 	}
@@ -321,7 +321,7 @@ func sheetRowTitles(t *testing.T, model *AppModel) []string {
 func selectLensRow(t *testing.T, model *AppModel, name string) config.NamedLens {
 	t.Helper()
 	lens := lensNamed(t, model, name)
-	if !model.lensPicker.SelectLens(lens.ID) {
+	if !model.lenses.picker.SelectLens(lens.ID) {
 		t.Fatalf("lens %q is not listed in the picker", name)
 	}
 	return lens

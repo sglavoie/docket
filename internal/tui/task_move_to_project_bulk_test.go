@@ -165,8 +165,8 @@ func TestBulkMoveToProjectCommitsASelectionSpanningSourceProjects(t *testing.T) 
 	// The status strip reads the ledger entry the batch wrote, so the undo label
 	// names the move and its scale once for the whole selection.
 	wantStatus := fmt.Sprintf("Move to Project: 3 task(s) → %s · u undo", destination.Slug)
-	if m.statusMessage != wantStatus {
-		t.Errorf("status strip = %q, want %q", m.statusMessage, wantStatus)
+	if m.feedback.message != wantStatus {
+		t.Errorf("status strip = %q, want %q", m.feedback.message, wantStatus)
 	}
 }
 

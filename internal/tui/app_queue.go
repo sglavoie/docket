@@ -65,7 +65,7 @@ func (m *AppModel) toggleQueue(capture *outliner.OutlinerRelocationCapture) tea.
 		// Removing from Next preserves lifecycle state.
 		fresh, _, transactionID, err := m.queueLedgerTransition(taskID, projectID, false)
 		if err != nil {
-			m.err = err
+			m.feedback.err = err
 			return status.ErrorCmd("%s", err)
 		}
 		title := taskTitleOrFallback(fresh, task)
@@ -78,7 +78,7 @@ func (m *AppModel) toggleQueue(capture *outliner.OutlinerRelocationCapture) tea.
 		// Adding to Next drops Today and appends one ordered membership.
 		fresh, _, transactionID, err := m.queueLedgerTransition(taskID, projectID, true)
 		if err != nil {
-			m.err = err
+			m.feedback.err = err
 			return status.ErrorCmd("%s", err)
 		}
 		title := taskTitleOrFallback(fresh, task)

@@ -29,7 +29,7 @@ func (m *AppModel) handleOutlinerPlanningReorder(msg outliner.OutlinerPlanningRe
 		err = m.appService.ReorderToday(order)
 	}
 	if err != nil {
-		m.err = err
+		m.feedback.err = err
 		return status.ErrorCmd("%s", err)
 	}
 

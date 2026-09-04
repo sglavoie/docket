@@ -81,7 +81,7 @@ func (m *AppModel) commitProjectTags(project *models.Project, tags []string) tea
 		return catalog.UpsertProject(&updated)
 	})
 	if err != nil {
-		m.err = err
+		m.feedback.err = err
 		return nil
 	}
 	if parking {
@@ -91,7 +91,7 @@ func (m *AppModel) commitProjectTags(project *models.Project, tags []string) tea
 	m.rebuildPlanningFromRuntime()
 	feedbackCmd := m.setRecoveryFeedback(projectTagStatus(&updated, parking, unparking), transactionID, false)
 	if parking {
-		m.appendRecoveryFeedbackDetail(projectTaskCountPhrase(&updated) + " hidden · Fp to show")
+		m.feedback.appendDetail(projectTaskCountPhrase(&updated) + " hidden · Fp to show")
 	}
 	m.refreshProjectHubIfActive()
 	return tea.Batch(

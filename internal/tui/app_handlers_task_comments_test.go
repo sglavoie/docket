@@ -42,8 +42,8 @@ func TestHandleTaskMessagesCommentAdded(t *testing.T) {
 	if !handled {
 		t.Error("CommentAddedMsg should be handled")
 	}
-	if app.statusMessage != "Comment added" {
-		t.Errorf("statusMessage should be 'Comment added', got %q", app.statusMessage)
+	if app.feedback.message != "Comment added" {
+		t.Errorf("statusMessage should be 'Comment added', got %q", app.feedback.message)
 	}
 	if cmd == nil {
 		t.Error("CommentAddedMsg should return a status timeout command")
@@ -59,8 +59,8 @@ func TestHandleTaskMessagesCommentDeleted(t *testing.T) {
 	if !handled {
 		t.Error("CommentDeletedMsg should be handled")
 	}
-	if app.statusMessage != "Comment deleted" {
-		t.Errorf("statusMessage should be 'Comment deleted', got %q", app.statusMessage)
+	if app.feedback.message != "Comment deleted" {
+		t.Errorf("statusMessage should be 'Comment deleted', got %q", app.feedback.message)
 	}
 	if cmd == nil {
 		t.Error("CommentDeletedMsg should return a status timeout command")
@@ -76,8 +76,8 @@ func TestHandleTaskMessagesCommentEdited(t *testing.T) {
 	if !handled {
 		t.Error("CommentEditedMsg should be handled")
 	}
-	if app.statusMessage != "Comment updated" {
-		t.Errorf("statusMessage should be 'Comment updated', got %q", app.statusMessage)
+	if app.feedback.message != "Comment updated" {
+		t.Errorf("statusMessage should be 'Comment updated', got %q", app.feedback.message)
 	}
 	if cmd == nil {
 		t.Error("CommentEditedMsg should return a status timeout command")

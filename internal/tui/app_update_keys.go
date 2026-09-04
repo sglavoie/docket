@@ -140,12 +140,12 @@ func (m *AppModel) handleActiveKeyOverlay(msg tea.KeyPressMsg) (bool, tea.Cmd) {
 		}
 		return true, cmd
 	}
-	if m.lensPicker != nil {
+	if m.lenses.mounted() {
 		// Last, because every overlay above nests over the picker rather than
 		// replacing it: the picker only sees a key once nothing is on top.
-		dismiss, cmd := dispatchOverlayKey(m.lensPicker, msg)
+		dismiss, cmd := dispatchOverlayKey(m.lenses.picker, msg)
 		if dismiss {
-			m.lensPicker = nil
+			m.lenses.close()
 		}
 		return true, cmd
 	}

@@ -59,10 +59,10 @@ func renderOverlayWithin(renderer widthRenderer, width, height int) string {
 // with OverlayPopupDimmed. Order matters: later entries render on top.
 func (m *AppModel) dimmedOverlayRenderers() []widthRenderer {
 	var out []widthRenderer
-	if m.lensPicker != nil {
+	if m.lenses.mounted() {
 		// First, so the sheet, prompt, and confirmation a lens action opens all
 		// paint above the picker that raised them.
-		out = append(out, m.lensPicker)
+		out = append(out, m.lenses.picker)
 	}
 	if m.operations.actionSheet != nil {
 		out = append(out, m.operations.actionSheet)

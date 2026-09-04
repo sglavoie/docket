@@ -85,7 +85,7 @@ func TestGotoTaskProjectScopesToTheCursorTaskAndForcesAll(t *testing.T) {
 	if got := gotoProjectCursorTitle(outlinerView); got != gotoProjectTaskTitle {
 		t.Fatalf("cursor task = %q, want the task the jump was pressed from", got)
 	}
-	if status := driver.App().statusMessage; !strings.Contains(status, "Project: Client Beta") {
+	if status := driver.App().feedback.message; !strings.Contains(status, "Project: Client Beta") {
 		t.Fatalf("status = %q, want it to name the destination project", status)
 	}
 	for _, row := range outlinerView.Rows {
@@ -149,7 +149,7 @@ func TestGotoTaskProjectKeepsTheOriginModeWhenAllOmitsTheTask(t *testing.T) {
 	if got := gotoProjectCursorTitle(outlinerView); got != gotoProjectTaskTitle {
 		t.Fatalf("cursor task = %q, want the task the jump was pressed from", got)
 	}
-	status := driver.App().statusMessage
+	status := driver.App().feedback.message
 	if !strings.Contains(status, "kept Recent") || !strings.Contains(status, "not listed in All") {
 		t.Fatalf("status = %q, want it to explain the kept mode", status)
 	}
@@ -225,7 +225,7 @@ func TestGotoTaskProjectJumpsFromASearchResult(t *testing.T) {
 	if outlinerView.Scope.ProjectID != project.ID {
 		t.Fatalf("scoped to %q, want the result's project %q", outlinerView.Scope.ProjectID, project.ID)
 	}
-	if want := "Project: " + project.Name; app.statusMessage != want {
-		t.Fatalf("status = %q, want %q", app.statusMessage, want)
+	if want := "Project: " + project.Name; app.feedback.message != want {
+		t.Fatalf("status = %q, want %q", app.feedback.message, want)
 	}
 }

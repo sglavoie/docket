@@ -166,8 +166,8 @@ func TestTodayPlanningReorderCrossesLifecycleStatesInDurableOrder(t *testing.T) 
 	}
 	want := []string{tasks[1].ID, tasks[0].ID}
 	assertOrder(t, "Today after cross-state reorder", diskTodayIDs(t, dataDir), want)
-	if m.statusMessage != "Reordered planning list" {
-		t.Fatalf("status = %q, want reorder success", m.statusMessage)
+	if m.feedback.message != "Reordered planning list" {
+		t.Fatalf("status = %q, want reorder success", m.feedback.message)
 	}
 	cross.Population.Projects = []*models.Project{project}
 	enterCrossMode(cross, chrome.ModeToday)
@@ -325,8 +325,8 @@ func TestHierarchicalReorderSwapsAdjacentVisibleQualifiedSiblings(t *testing.T) 
 	if !pressReorderKey(t, m, 'J') {
 		t.Fatal("J on a hierarchical row produced no reorder command")
 	}
-	if m.err != nil {
-		t.Fatalf("hierarchical reorder failed: %v", m.err)
+	if m.feedback.err != nil {
+		t.Fatalf("hierarchical reorder failed: %v", m.feedback.err)
 	}
 	if cross.Population.ReloadProjectID != project.ID || cross.Population.ReloadTaskID != firstID {
 		t.Fatalf("reload cursor anchor = %s/%s, want %s/%s",

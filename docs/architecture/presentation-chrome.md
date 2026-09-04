@@ -54,8 +54,9 @@ row. It is not part of `WorkspacePulse` — `workspacePulseLevel` is a contiguou
 ordinal ladder and `ComputeWorkspacePulse` takes no filesystem-derived input, so
 the ladder has no rung for it. The shell owns the count:
 `AppModel.refreshOutstandingConflicts` calls `ConflictStore.List` at launch and
-on the existing 60s `status.PeriodicSaveMsg` tick, caches the length on
-`outstandingConflicts`, and injects `outstandingConflictCount` into every
+on the existing 60s `status.PeriodicSaveMsg` tick, caches the length on the
+feedback cluster's `outstandingConflicts`, and injects that cluster's
+`outstandingConflictCount` accessor into every
 Outliner through `wireOutlinerOperationExecutor`, so no render reads the
 directory and no new timer is armed. The store is read directly rather than
 through an `internal/app` port, following the TUI's existing direct
@@ -92,7 +93,7 @@ View menu's toggle by using those helpers, with nothing to edit in the gate
 itself. `advisoryLine` returning the empty string is what makes the row's height
 reservation follow for free, since `statusStripHeight` measures the same body
 `statusStripBody` paints. Suppression is session state on the shell
-(`AppModel.hideAdvisories`, injected as `advisoriesHiddenAccessor` by
+(`AppModel.feedback.hideAdvisories`, injected as `advisoriesHiddenAccessor` by
 `wireOutlinerOperationExecutor`) rather than a per-render read of the machine
 file, because two inputs decide it: `MachineState.AdvisoriesHidden`, read once in
 `NewAppModel`, and `RunOptions.HideAdvisories`, which `RunApp` turns into
@@ -116,7 +117,7 @@ five strategies and `operation.ValidateOperationOnePath` — which iterates mani
 nothing new to check. `gc` opens it through the existing go-to chord on
 `SimplifiedInputStrategy`, which is why root `c` stays retired. The host port is
 `AppModel.openConflictBrowser`: it reads `ConflictStore.List` through the same
-direct-store access the indicator uses, settles `outstandingConflicts` from that
+direct-store access the indicator uses, settles `feedback.outstandingConflicts` from that
 read, and refuses with a status rather than mounting an empty box. Inspecting a
 row calls `ConflictStore.Load` instead of reusing the listed record, so a bundle
 the CLI resolved in another terminal refuses instead of painting a record that is

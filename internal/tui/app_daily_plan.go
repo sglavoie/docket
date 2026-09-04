@@ -33,7 +33,7 @@ func (m *AppModel) toggleToday(capture *outliner.OutlinerRelocationCapture) tea.
 	add := !m.todayIDs[identity]
 	fresh, _, transactionID, err := m.todayLedgerTransition(taskID, projectID, add)
 	if err != nil {
-		m.err = err
+		m.feedback.err = err
 		return status.ErrorCmd("%s", err)
 	}
 	successMessage := fmt.Sprintf("Added to today's plan: %s", taskTitleOrFallback(fresh, task))

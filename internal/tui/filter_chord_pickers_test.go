@@ -150,15 +150,15 @@ func TestFilterStaleChordAndHelpAreUnavailableInRecent(t *testing.T) {
 		t.Fatalf("Recent f which-key row retained Stale: %q", row)
 	}
 
-	app.statusMessage = ""
+	app.feedback.message = ""
 	if handled, _ := app.handleGlobalKeyPress(tea.KeyPressMsg{Code: 's', Text: "s"}); !handled {
 		t.Fatal("s after f was not consumed by the Outliner grammar")
 	}
 	if app.crossOutliner.Filter.Stale {
 		t.Fatal("fs enabled the Stale facet in Recent")
 	}
-	if want := "fs is not a filter action"; app.statusMessage != want {
-		t.Fatalf("Recent fs status = %q, want %q", app.statusMessage, want)
+	if want := "fs is not a filter action"; app.feedback.message != want {
+		t.Fatalf("Recent fs status = %q, want %q", app.feedback.message, want)
 	}
 }
 

@@ -248,7 +248,8 @@ disables color; the moving heavy glyph segment keeps the flash visible even then
 Non-interactive commands retain the inherited environment.
 
 The trigger is status text only. The three `AppModel` setters advance
-`statusSeq`, `m.err` is compared by text because it has no clock, and
+`feedback.seq`, the shell error beside it is compared by text because it has no
+clock, and
 `InteractiveViewState.setStatus` advances its own stamp; a breadcrumb, mode
 badge, or which-key change moves on nearly every keystroke and must never arm it.
 Cleared text arms nothing, because neither `clearStatus` nor the auto-clear

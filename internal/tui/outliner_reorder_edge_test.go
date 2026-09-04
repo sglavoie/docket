@@ -29,8 +29,8 @@ func TestHierarchicalReorderEdge(t *testing.T) {
 		if !pressReorderCtrlKey(t, m, 'j') {
 			t.Fatal("Ctrl+J on a hierarchical row produced no reorder command")
 		}
-		if m.err != nil {
-			t.Fatalf("hierarchical edge reorder failed: %v", m.err)
+		if m.feedback.err != nil {
+			t.Fatalf("hierarchical edge reorder failed: %v", m.feedback.err)
 		}
 		assertTreeUnchanged(t, project, []string{ids[0], ids[2], ids[3], ids[1]})
 	})

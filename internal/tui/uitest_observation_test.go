@@ -42,8 +42,8 @@ func TestUITestObservationIncludeANSI(t *testing.T) {
 
 func TestUITestObservationStatusAndError(t *testing.T) {
 	driver := NewUITestDriver(newUITestApp(), 100, 30)
-	driver.App().statusMessage = "saved"
-	driver.App().statusIsInfo = true
+	driver.App().feedback.message = "saved"
+	driver.App().feedback.info = true
 
 	obs := driver.Observe(ObserveOptions{})
 	if obs.Status != "saved" {
@@ -53,7 +53,7 @@ func TestUITestObservationStatusAndError(t *testing.T) {
 		t.Error("StatusIsInfo = false, want true")
 	}
 
-	driver.App().err = errors.New("boom")
+	driver.App().feedback.err = errors.New("boom")
 	obs = driver.Observe(ObserveOptions{})
 	if obs.Error != "boom" {
 		t.Errorf("Error = %q, want boom", obs.Error)

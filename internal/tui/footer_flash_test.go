@@ -31,13 +31,13 @@ func TestFooterFlashArmsOnShellStatusUpdate(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("expected a command batch carrying the first flash tick")
 	}
-	if got := app.footerFlash.severity; got != flashSuccess {
+	if got := app.feedback.flash.severity; got != flashSuccess {
 		t.Fatalf("severity = %v, want flashSuccess", got)
 	}
-	if app.footerFlash.frame != 0 {
-		t.Fatalf("frame = %d, want 0", app.footerFlash.frame)
+	if app.feedback.flash.frame != 0 {
+		t.Fatalf("frame = %d, want 0", app.feedback.flash.frame)
 	}
-	if app.footerFlash.seq == 0 {
+	if app.feedback.flash.seq == 0 {
 		t.Fatal("expected a non-zero flash generation")
 	}
 }
@@ -47,7 +47,7 @@ func TestFooterFlashArmsOnError(t *testing.T) {
 
 	app.Update(status.ErrorMsg{Err: errors.New("storage failed")})
 
-	if got := app.footerFlash.severity; got != flashError {
+	if got := app.feedback.flash.severity; got != flashError {
 		t.Fatalf("severity = %v, want flashError", got)
 	}
 }
@@ -55,15 +55,15 @@ func TestFooterFlashArmsOnError(t *testing.T) {
 func TestFooterFlashDoesNotArmOnStatusClear(t *testing.T) {
 	app := flashTestApp(t)
 	app.Update(status.StatusMsg("task saved"))
-	armedSeq := app.footerFlash.seq
+	armedSeq := app.feedback.flash.seq
 
 	app.Update(status.StatusClearMsg{})
 
-	if app.statusMessage != "" {
-		t.Fatalf("status not cleared: %q", app.statusMessage)
+	if app.feedback.message != "" {
+		t.Fatalf("status not cleared: %q", app.feedback.message)
 	}
-	if app.footerFlash.seq != armedSeq {
-		t.Fatalf("clearing status re-armed the flash: seq %d -> %d", armedSeq, app.footerFlash.seq)
+	if app.feedback.flash.seq != armedSeq {
+		t.Fatalf("clearing status re-armed the flash: seq %d -> %d", armedSeq, app.feedback.flash.seq)
 	}
 }
 
@@ -77,12 +77,12 @@ func TestFooterFlashAdvancesThroughFramesThenClears(t *testing.T) {
 
 	app := flashTestApp(t)
 	app.Update(status.StatusMsg("task saved"))
-	seq := app.footerFlash.seq
+	seq := app.feedback.flash.seq
 
 	for frame := 1; frame < footerFlashFrames; frame++ {
 		_, cmd := app.Update(FooterFlashTickMsg{Seq: seq})
-		if app.footerFlash.frame != frame {
-			t.Fatalf("frame = %d, want %d", app.footerFlash.frame, frame)
+		if app.feedback.flash.frame != frame {
+			t.Fatalf("frame = %d, want %d", app.feedback.flash.frame, frame)
 		}
 		if cmd == nil {
 			t.Fatalf("frame %d returned no follow-up tick", frame)
@@ -90,8 +90,8 @@ func TestFooterFlashAdvancesThroughFramesThenClears(t *testing.T) {
 	}
 
 	_, cmd := app.Update(FooterFlashTickMsg{Seq: seq})
-	if app.footerFlash.active() {
-		t.Fatalf("flash still active after %d frames: %+v", footerFlashFrames, app.footerFlash)
+	if app.feedback.flash.active() {
+		t.Fatalf("flash still active after %d frames: %+v", footerFlashFrames, app.feedback.flash)
 	}
 	if cmd != nil {
 		t.Fatal("expected no follow-up tick once the flash is spent")
@@ -101,12 +101,12 @@ func TestFooterFlashAdvancesThroughFramesThenClears(t *testing.T) {
 func TestFooterFlashIgnoresStaleTick(t *testing.T) {
 	app := flashTestApp(t)
 	app.Update(status.StatusMsg("task saved"))
-	seq := app.footerFlash.seq
+	seq := app.feedback.flash.seq
 
 	_, cmd := app.Update(FooterFlashTickMsg{Seq: seq - 1})
 
-	if app.footerFlash.frame != 0 {
-		t.Fatalf("stale tick advanced the frame to %d", app.footerFlash.frame)
+	if app.feedback.flash.frame != 0 {
+		t.Fatalf("stale tick advanced the frame to %d", app.feedback.flash.frame)
 	}
 	if cmd != nil {
 		t.Fatal("stale tick scheduled another frame")
@@ -116,24 +116,24 @@ func TestFooterFlashIgnoresStaleTick(t *testing.T) {
 func TestFooterFlashRestartsOnNewStatus(t *testing.T) {
 	app := flashTestApp(t)
 	app.Update(status.StatusMsg("task saved"))
-	firstSeq := app.footerFlash.seq
+	firstSeq := app.feedback.flash.seq
 	app.Update(FooterFlashTickMsg{Seq: firstSeq})
 
 	app.Update(status.InfoStatusMsg("filters cleared"))
 
-	if app.footerFlash.frame != 0 {
-		t.Fatalf("frame = %d, want the restart to reset to 0", app.footerFlash.frame)
+	if app.feedback.flash.frame != 0 {
+		t.Fatalf("frame = %d, want the restart to reset to 0", app.feedback.flash.frame)
 	}
-	if app.footerFlash.severity != flashInfo {
-		t.Fatalf("severity = %v, want flashInfo", app.footerFlash.severity)
+	if app.feedback.flash.severity != flashInfo {
+		t.Fatalf("severity = %v, want flashInfo", app.feedback.flash.severity)
 	}
-	if app.footerFlash.seq == firstSeq {
+	if app.feedback.flash.seq == firstSeq {
 		t.Fatal("expected a new flash generation to supersede the old ticks")
 	}
 
 	app.Update(FooterFlashTickMsg{Seq: firstSeq})
-	if app.footerFlash.frame != 0 {
-		t.Fatalf("superseded tick advanced the restarted flash to frame %d", app.footerFlash.frame)
+	if app.feedback.flash.frame != 0 {
+		t.Fatalf("superseded tick advanced the restarted flash to frame %d", app.feedback.flash.frame)
 	}
 }
 
@@ -147,7 +147,7 @@ func TestFooterFlashArmsOnViewStatusLine(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("expected the Outliner status line to arm a flash")
 	}
-	if got := app.footerFlash.severity; got != flashInfo {
+	if got := app.feedback.flash.severity; got != flashInfo {
 		t.Fatalf("severity = %v, want flashInfo", got)
 	}
 }
@@ -157,10 +157,10 @@ func TestSetWarningStatusRecordsWarningSeverity(t *testing.T) {
 
 	app.setWarningStatus("$q is not a workflow action")
 
-	if app.statusSeverity != flashWarning {
-		t.Fatalf("statusSeverity = %v, want flashWarning", app.statusSeverity)
+	if app.feedback.severity != flashWarning {
+		t.Fatalf("feedback.severity = %v, want flashWarning", app.feedback.severity)
 	}
-	if !app.statusIsInfo {
+	if !app.feedback.info {
 		t.Fatal("warning text must keep the neutral status surface")
 	}
 }
@@ -171,7 +171,7 @@ func TestFooterDividerAnimationPhases(t *testing.T) {
 
 	glyphsAt := func(frame int) []rune {
 		t.Helper()
-		app.footerFlash = footerFlashState{severity: flashError, seq: 1, frame: frame}
+		app.feedback.flash = footerFlashState{severity: flashError, seq: 1, frame: frame}
 		glyphs := []rune(ansi.Strip(app.renderFooterDivider(app.viewNav.width)))
 		if len(glyphs) != app.viewNav.width {
 			t.Fatalf("frame %d divider width = %d, want %d", frame, len(glyphs), app.viewNav.width)
@@ -188,7 +188,7 @@ func TestFooterDividerAnimationPhases(t *testing.T) {
 		return count
 	}
 
-	app.footerFlash = footerFlashState{}
+	app.feedback.flash = footerFlashState{}
 	idle := []rune(ansi.Strip(app.renderFooterDivider(app.viewNav.width)))
 	if countHeavy(idle) != 0 || idle[0] != footerDividerIdleGlyph || idle[len(idle)-1] != footerDividerIdleGlyph {
 		t.Fatalf("idle divider glyphs = %q, want all thin", string(idle))
@@ -231,7 +231,7 @@ func TestFooterDividerAnimationPhases(t *testing.T) {
 		t.Fatal("settle trail must stay anchored to the right edge")
 	}
 
-	app.footerFlash = footerFlashState{}
+	app.feedback.flash = footerFlashState{}
 	cleared := []rune(ansi.Strip(app.renderFooterDivider(app.viewNav.width)))
 	if countHeavy(cleared) != 0 {
 		t.Fatalf("cleared divider glyphs = %q, want all thin", string(cleared))
@@ -246,19 +246,19 @@ func TestFooterBackgroundFlashFadesBackToTheme(t *testing.T) {
 		t.Fatalf("idle background = %v, want theme background %v", got, background)
 	}
 
-	app.footerFlash = footerFlashState{severity: flashError, seq: 1}
+	app.feedback.flash = footerFlashState{severity: flashError, seq: 1}
 	wantImpact := blendColor(background, theme.ColorError, footerFlashBackgroundMix)
 	if got := app.footerFlashBackgroundColor(); !sameColor(got, wantImpact) {
 		t.Fatalf("impact background = %v, want %v", got, wantImpact)
 	}
 
-	app.footerFlash.frame = footerFlashFrames / 2
+	app.feedback.flash.frame = footerFlashFrames / 2
 	mid := app.footerFlashBackgroundColor()
 	if sameColor(mid, wantImpact) || sameColor(mid, background) {
 		t.Fatalf("midpoint background = %v, want a partial fade", mid)
 	}
 
-	app.footerFlash.frame = footerFlashFrames - 1
+	app.feedback.flash.frame = footerFlashFrames - 1
 	if got := app.footerFlashBackgroundColor(); !sameColor(got, background) {
 		t.Fatalf("final background = %v, want theme background %v", got, background)
 	}
@@ -267,7 +267,7 @@ func TestFooterBackgroundFlashFadesBackToTheme(t *testing.T) {
 func TestFooterBackgroundFlashFillsRowsAndSurvivesChildResets(t *testing.T) {
 	app := flashTestApp(t)
 	app.viewNav.width = 24
-	app.footerFlash = footerFlashState{severity: flashSuccess, seq: 1}
+	app.feedback.flash = footerFlashState{severity: flashSuccess, seq: 1}
 
 	content := theme.SuccessStyle.Render("saved") + " plain\n" + theme.HelpStyle.Render("Esc close")
 	got := app.renderFooterContent(content, app.viewNav.width)
@@ -292,7 +292,7 @@ func TestFooterBackgroundFlashFillsRowsAndSurvivesChildResets(t *testing.T) {
 
 func TestStatusBarDividerCarriesFlashAppearanceOnEveryPath(t *testing.T) {
 	app := flashTestApp(t)
-	app.footerFlash = footerFlashState{
+	app.feedback.flash = footerFlashState{
 		severity: flashError,
 		seq:      1,
 		frame:    footerFlashImpactFrames + footerFlashSweepFrames/2,
@@ -312,14 +312,14 @@ func TestStatusBarDividerCarriesFlashAppearanceOnEveryPath(t *testing.T) {
 		}
 	}
 
-	app.statusMessage = "task saved"
+	app.feedback.message = "task saved"
 	assertDivider("status message")
 
 	app.operations.chord = []string{"$"}
 	assertDivider("pending chord")
 	app.operations.chord = nil
 
-	app.statusMessage = ""
+	app.feedback.message = ""
 	assertDivider("contextual guidance")
 }
 

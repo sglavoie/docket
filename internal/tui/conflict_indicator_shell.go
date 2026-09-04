@@ -38,15 +38,8 @@ func (m *AppModel) refreshOutstandingConflicts() {
 	if m == nil || m.runtime == nil {
 		return
 	}
-	m.outstandingConflicts = countOutstandingConflicts(m.runtime.DataDir())
+	m.feedback.outstandingConflicts = countOutstandingConflicts(m.runtime.DataDir())
 }
 
-// outstandingConflictCount is the accessor injected into every Outliner, so the
-// strip reads one shell-owned count instead of touching the filesystem during a
-// render.
-func (m *AppModel) outstandingConflictCount() int {
-	if m == nil {
-		return 0
-	}
-	return m.outstandingConflicts
-}
+// The count itself lives on the feedback cluster, which also supplies the
+// accessor injected into every Outliner; see feedback_controller.go.

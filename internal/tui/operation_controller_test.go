@@ -8,26 +8,11 @@ import (
 	"go/printer"
 	"go/token"
 	"go/types"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
-
-// shellSourceFile resolves a file in this package by name. The boot order and
-// the cluster's field list are only stated in the source, so these assertions
-// read the source rather than a running model.
-func shellSourceFile(t *testing.T, name string) string {
-	t.Helper()
-
-	_, thisFile, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("resolve caller for package directory")
-	}
-	return filepath.Join(filepath.Dir(thisFile), name)
-}
 
 // TestOperationClusterHasOneHome pins the operation-wiring cluster to its
 // single named AppModel field. The registry is the descriptor authority and the

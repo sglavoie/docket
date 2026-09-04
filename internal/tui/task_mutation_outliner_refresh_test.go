@@ -225,8 +225,8 @@ func TestPlanningCaptureRefreshesRuntimeAndOutlinerSection(t *testing.T) {
 			}
 
 			_, refreshCmd := model.handleTaskCreated(created)
-			if want := "Add Task: #2 Planned task · u undo"; model.statusMessage != want {
-				t.Fatalf("status = %q, want %q", model.statusMessage, want)
+			if want := "Add Task: #2 Planned task · u undo"; model.feedback.message != want {
+				t.Fatalf("status = %q, want %q", model.feedback.message, want)
 			}
 			runSession2AppCommand(t, model, refreshCmd)
 

@@ -208,13 +208,13 @@ func (d *UITestDriver) Observe(opts ObserveOptions) UITestObservation {
 		Width:        d.app.viewNav.width,
 		Height:       d.app.viewNav.height,
 		PlainScreen:  plain,
-		Status:       d.app.statusMessage,
-		StatusIsInfo: d.app.statusIsInfo,
+		Status:       d.app.feedback.message,
+		StatusIsInfo: d.app.feedback.info,
 		LayoutIssues: issues,
 		PendingAsync: len(d.pendingFutures),
 	}
-	if d.app.err != nil {
-		obs.Error = d.app.err.Error()
+	if d.app.feedback.err != nil {
+		obs.Error = d.app.feedback.err.Error()
 	}
 	if opts.IncludeANSI {
 		obs.ANSIScreen = rawContent

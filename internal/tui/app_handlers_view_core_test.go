@@ -37,14 +37,14 @@ func TestHandleViewMessagesError(t *testing.T) {
 	if !handled {
 		t.Error("ErrorMsg should be handled")
 	}
-	if !errors.Is(app.err, testErr) {
-		t.Error("app.err should be set to the error from message")
+	if !errors.Is(app.feedback.err, testErr) {
+		t.Error("app.feedback.err should be set to the error from message")
 	}
 }
 
 func TestHandleViewMessagesStatusClear(t *testing.T) {
 	app := newTestAppModel()
-	app.statusMessage = "Some status"
+	app.feedback.message = "Some status"
 
 	msg := status.StatusClearMsg{}
 	handled, _ := app.handleViewMessages(msg)
@@ -52,8 +52,8 @@ func TestHandleViewMessagesStatusClear(t *testing.T) {
 	if !handled {
 		t.Error("StatusClearMsg should be handled")
 	}
-	if app.statusMessage != "" {
-		t.Errorf("statusMessage should be cleared, got %q", app.statusMessage)
+	if app.feedback.message != "" {
+		t.Errorf("statusMessage should be cleared, got %q", app.feedback.message)
 	}
 }
 
@@ -66,10 +66,10 @@ func TestHandleViewMessagesStatusMsg(t *testing.T) {
 	if !handled {
 		t.Error("StatusMsg should be handled")
 	}
-	if app.statusMessage != "Operation completed" {
-		t.Errorf("statusMessage should be 'Operation completed', got %q", app.statusMessage)
+	if app.feedback.message != "Operation completed" {
+		t.Errorf("statusMessage should be 'Operation completed', got %q", app.feedback.message)
 	}
-	if app.statusIsInfo {
+	if app.feedback.info {
 		t.Error("statusIsInfo should be false for StatusMsg")
 	}
 	if cmd == nil {
@@ -86,10 +86,10 @@ func TestHandleViewMessagesInfoStatusMsg(t *testing.T) {
 	if !handled {
 		t.Error("InfoStatusMsg should be handled")
 	}
-	if app.statusMessage != "Some info" {
-		t.Errorf("statusMessage should be 'Some info', got %q", app.statusMessage)
+	if app.feedback.message != "Some info" {
+		t.Errorf("statusMessage should be 'Some info', got %q", app.feedback.message)
 	}
-	if !app.statusIsInfo {
+	if !app.feedback.info {
 		t.Error("statusIsInfo should be true for InfoStatusMsg")
 	}
 	if cmd == nil {
@@ -99,8 +99,8 @@ func TestHandleViewMessagesInfoStatusMsg(t *testing.T) {
 
 func TestHandleViewMessagesStatusClearResetsInfoFlag(t *testing.T) {
 	app := newTestAppModel()
-	app.statusMessage = "Some status"
-	app.statusIsInfo = true
+	app.feedback.message = "Some status"
+	app.feedback.info = true
 
 	msg := status.StatusClearMsg{}
 	handled, _ := app.handleViewMessages(msg)
@@ -108,10 +108,10 @@ func TestHandleViewMessagesStatusClearResetsInfoFlag(t *testing.T) {
 	if !handled {
 		t.Error("StatusClearMsg should be handled")
 	}
-	if app.statusMessage != "" {
-		t.Errorf("statusMessage should be cleared, got %q", app.statusMessage)
+	if app.feedback.message != "" {
+		t.Errorf("statusMessage should be cleared, got %q", app.feedback.message)
 	}
-	if app.statusIsInfo {
+	if app.feedback.info {
 		t.Error("statusIsInfo should be cleared by StatusClearMsg")
 	}
 }
@@ -124,22 +124,22 @@ func TestSetUndoableStatusStoresCallbackAndExpiry(t *testing.T) {
 		return nil
 	})
 
-	if app.statusMessage == "" {
+	if app.feedback.message == "" {
 		t.Error("statusMessage should be set")
 	}
-	if !app.statusIsInfo {
+	if !app.feedback.info {
 		t.Error("undo toast should be info-styled")
 	}
-	if app.statusUndoCb == nil {
+	if app.feedback.undoCb == nil {
 		t.Error("statusUndoCb should be stored")
 	}
-	if !time.Now().Before(app.statusExpiresAt) {
+	if !time.Now().Before(app.feedback.expiresAt) {
 		t.Error("statusExpiresAt should be in the future")
 	}
 	if cmd == nil {
 		t.Error("setUndoableStatus should return a tick cmd")
 	}
-	app.statusUndoCb()
+	app.feedback.undoCb()
 	if !called {
 		t.Error("stored callback should be invokable")
 	}
@@ -149,16 +149,16 @@ func TestUndoToastTimeoutClearsExpiredToast(t *testing.T) {
 	app := newTestAppModel()
 	_ = app.setUndoableStatus("toast", func() tea.Cmd { return nil })
 	// Force the toast to look already-expired so the timeout handler clears it.
-	app.statusExpiresAt = time.Now().Add(-time.Second)
+	app.feedback.expiresAt = time.Now().Add(-time.Second)
 
 	handled, _ := app.handleViewMessages(status.UndoToastTimeoutMsg{})
 	if !handled {
 		t.Error("UndoToastTimeoutMsg should be handled")
 	}
-	if app.statusMessage != "" {
-		t.Errorf("expired toast should be cleared, got %q", app.statusMessage)
+	if app.feedback.message != "" {
+		t.Errorf("expired toast should be cleared, got %q", app.feedback.message)
 	}
-	if app.statusUndoCb != nil {
+	if app.feedback.undoCb != nil {
 		t.Error("statusUndoCb should be nil after timeout clear")
 	}
 }
@@ -167,11 +167,11 @@ func TestUndoToastTimeoutLeavesReplacedToastAlone(t *testing.T) {
 	app := newTestAppModel()
 	// First toast — its tick is still pending.
 	_ = app.setUndoableStatus("first", func() tea.Cmd { return nil })
-	firstExpiry := app.statusExpiresAt
+	firstExpiry := app.feedback.expiresAt
 	// Replacement toast extends the deadline.
 	_ = app.setUndoableStatus("second", func() tea.Cmd { return nil })
 
-	if !app.statusExpiresAt.After(firstExpiry) {
+	if !app.feedback.expiresAt.After(firstExpiry) {
 		t.Fatal("replacement toast should push expiresAt later")
 	}
 
@@ -180,8 +180,8 @@ func TestUndoToastTimeoutLeavesReplacedToastAlone(t *testing.T) {
 	if !handled {
 		t.Error("UndoToastTimeoutMsg should be handled")
 	}
-	if !strings.Contains(app.statusMessage, "second") {
-		t.Errorf("replacement toast should remain, got %q", app.statusMessage)
+	if !strings.Contains(app.feedback.message, "second") {
+		t.Errorf("replacement toast should remain, got %q", app.feedback.message)
 	}
 }
 
@@ -208,17 +208,17 @@ func TestStatusClearMsgPreservesActiveUndoToast(t *testing.T) {
 	if !handled {
 		t.Error("StatusClearMsg should be handled")
 	}
-	if app.statusMessage == "" {
+	if app.feedback.message == "" {
 		t.Fatal("stale StatusClearMsg cleared a live undo toast")
 	}
-	if app.statusUndoCb == nil {
+	if app.feedback.undoCb == nil {
 		t.Fatal("stale StatusClearMsg dropped the undo callback for a live toast")
 	}
-	if !strings.Contains(app.statusMessage, "destructive") {
-		t.Errorf("expected toast preserved, got %q", app.statusMessage)
+	if !strings.Contains(app.feedback.message, "destructive") {
+		t.Errorf("expected toast preserved, got %q", app.feedback.message)
 	}
 	// `u` must still invoke the toast callback.
-	app.statusUndoCb()
+	app.feedback.undoCb()
 	if !called {
 		t.Error("undo callback should still be invokable after stale StatusClearMsg")
 	}
@@ -234,22 +234,22 @@ func TestStatusClearMsgDoesNotReplaceNewerStatusWithFooter(t *testing.T) {
 	if !handled {
 		t.Fatal("StatusClearMsg should be handled")
 	}
-	if app.statusMessage != "newer guidance" {
-		t.Fatalf("stale clear replaced newer status with the contextual footer: %q", app.statusMessage)
+	if app.feedback.message != "newer guidance" {
+		t.Fatalf("stale clear replaced newer status with the contextual footer: %q", app.feedback.message)
 	}
 }
 
 func TestStatusClearMsgPreservesStatusWithSameTimestamp(t *testing.T) {
 	app := newTestAppModel()
 	app.setInfoStatus("coalesced-clock guidance")
-	scheduledAt := app.statusUpdatedAt
+	scheduledAt := app.feedback.updatedAt
 
 	handled, _ := app.handleViewMessages(status.StatusClearMsg{ScheduledAt: scheduledAt})
 	if !handled {
 		t.Fatal("StatusClearMsg should be handled")
 	}
-	if app.statusMessage != "coalesced-clock guidance" {
-		t.Fatalf("same-timestamp stale clear replaced newer status: %q", app.statusMessage)
+	if app.feedback.message != "coalesced-clock guidance" {
+		t.Fatalf("same-timestamp stale clear replaced newer status: %q", app.feedback.message)
 	}
 }
 
@@ -259,14 +259,14 @@ func TestStatusClearMsgPreservesStatusWithSameTimestamp(t *testing.T) {
 func TestStatusClearMsgClearsExpiredUndoToast(t *testing.T) {
 	app := newTestAppModel()
 	_ = app.setUndoableStatus("old", func() tea.Cmd { return nil })
-	app.statusExpiresAt = time.Now().Add(-time.Second)
+	app.feedback.expiresAt = time.Now().Add(-time.Second)
 
 	handled, _ := app.handleViewMessages(status.StatusClearMsg{})
 	if !handled {
 		t.Error("StatusClearMsg should be handled")
 	}
-	if app.statusMessage != "" {
-		t.Errorf("expired toast should be cleared by StatusClearMsg, got %q", app.statusMessage)
+	if app.feedback.message != "" {
+		t.Errorf("expired toast should be cleared by StatusClearMsg, got %q", app.feedback.message)
 	}
 }
 

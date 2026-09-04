@@ -82,7 +82,7 @@ func (env *stateTransitionFeedbackEnv) completeSelection(t *testing.T) {
 	}
 	env.driver.drain()
 	env.driver.Wait(stateTransitionFeedbackSettleTimeout)
-	if err := env.driver.App().err; err != nil {
+	if err := env.driver.App().feedback.err; err != nil {
 		t.Fatalf("$d failed: %v", err)
 	}
 }
@@ -95,11 +95,11 @@ func TestDirectStateTransitionFeedbackUsesResolvedTaskCardinality(t *testing.T) 
 		env.completeSelection(t)
 
 		const want = "Change State: Done · u undo"
-		if got := env.driver.App().statusMessage; got != want {
+		if got := env.driver.App().feedback.message; got != want {
 			t.Fatalf("status = %q, want %q", got, want)
 		}
-		if strings.Contains(env.driver.App().statusMessage, "Bulk") {
-			t.Fatalf("single-task feedback contains Bulk: %q", env.driver.App().statusMessage)
+		if strings.Contains(env.driver.App().feedback.message, "Bulk") {
+			t.Fatalf("single-task feedback contains Bulk: %q", env.driver.App().feedback.message)
 		}
 	})
 
@@ -115,7 +115,7 @@ func TestDirectStateTransitionFeedbackUsesResolvedTaskCardinality(t *testing.T) 
 		env.completeSelection(t)
 
 		const want = "Bulk Change State: Done · u undo"
-		if got := env.driver.App().statusMessage; got != want {
+		if got := env.driver.App().feedback.message; got != want {
 			t.Fatalf("status = %q, want %q", got, want)
 		}
 	})

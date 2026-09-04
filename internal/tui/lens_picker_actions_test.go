@@ -16,7 +16,7 @@ func TestLensPickerGuidanceNamesTheActUnderTheCursor(t *testing.T) {
 	model := lensPickerApp(t)
 	footerOf := func() string {
 		t.Helper()
-		guidance := model.lensPicker.GuidanceSpec()
+		guidance := model.lenses.picker.GuidanceSpec()
 		return ansi.Strip(chrome.RenderGuidanceText(guidance, 200))
 	}
 
@@ -57,7 +57,7 @@ func TestLensPickerSpaceOpensManagementActionsOverThePicker(t *testing.T) {
 	if model.operations.actionSheet == nil {
 		t.Fatal("Space raised no action sheet")
 	}
-	if model.lensPicker == nil {
+	if model.lenses.picker == nil {
 		t.Error("the picker must stay mounted beneath the action sheet")
 	}
 	want := []string{"Rename lens", "Replace from current view", "Delete lens"}
@@ -74,7 +74,7 @@ func TestLensPickerSpaceOnTheSaveRowRaisesNoSheet(t *testing.T) {
 	if model.operations.actionSheet != nil {
 		t.Error("the save row named a management target it does not have")
 	}
-	if model.lensPicker == nil {
+	if model.lenses.picker == nil {
 		t.Fatal("Space on the save row closed the picker")
 	}
 }
@@ -89,7 +89,7 @@ func TestLensPickerSheetEscapeReturnsToThePicker(t *testing.T) {
 	if model.operations.actionSheet != nil {
 		t.Error("Esc left the action sheet mounted")
 	}
-	if model.lensPicker == nil {
+	if model.lenses.picker == nil {
 		t.Fatal("Esc on the sheet closed the picker beneath it")
 	}
 	if got := lensPickerCursorTitle(t, model); got != "Stale" {
@@ -119,7 +119,7 @@ func TestLensRenameReturnsToThePickerWithTheSameLensSelected(t *testing.T) {
 	if model.operations.actionSheet != nil || model.operations.textPrompt != nil {
 		t.Error("a completed rename left a nested overlay mounted")
 	}
-	if model.lensPicker == nil {
+	if model.lenses.picker == nil {
 		t.Fatal("a completed rename closed the picker")
 	}
 	want := []string{
@@ -151,7 +151,7 @@ func TestLensRenameCancelReturnsToTheActionSheet(t *testing.T) {
 	if model.operations.actionSheet == nil {
 		t.Fatal("canceling the rename must return to the action sheet")
 	}
-	if model.lensPicker == nil {
+	if model.lenses.picker == nil {
 		t.Error("canceling the rename closed the picker")
 	}
 	if err := lensNamedErr(model, "Waiting"); err != nil {
@@ -202,7 +202,7 @@ func TestLensReplaceConfirmCancelReturnsToTheActionSheet(t *testing.T) {
 	if model.operations.actionSheet == nil {
 		t.Fatal("canceling the confirmation must return to the action sheet")
 	}
-	if model.lensPicker == nil {
+	if model.lenses.picker == nil {
 		t.Error("canceling the confirmation closed the picker")
 	}
 	if saved := lensNamed(t, model, "Waiting"); saved.Query != "$waiting" {
@@ -225,7 +225,7 @@ func TestLensReplaceConfirmedReturnsToTheRefreshedPicker(t *testing.T) {
 	if model.operations.actionSheet != nil || model.operations.confirm.IsActive() {
 		t.Error("a completed replace left a nested overlay mounted")
 	}
-	if model.lensPicker == nil {
+	if model.lenses.picker == nil {
 		t.Fatal("a completed replace closed the picker")
 	}
 	if got := lensPickerCursorTitle(t, model); got != "Waiting" {
@@ -253,7 +253,7 @@ func TestLensDeleteReturnsToTheNearestSurvivingRow(t *testing.T) {
 	}
 	pressLens(t, model, "y")
 
-	if model.lensPicker == nil {
+	if model.lenses.picker == nil {
 		t.Fatal("a completed delete closed the picker")
 	}
 	want := []string{
@@ -284,7 +284,7 @@ func TestLensDeleteOfTheActiveLensRestoresTheBaseBeneathThePicker(t *testing.T) 
 	pressLens(t, model, "enter")
 	pressLens(t, model, "y")
 
-	if model.lensPicker == nil {
+	if model.lenses.picker == nil {
 		t.Fatal("deleting the active lens closed the picker")
 	}
 	if model.crossOutliner.HasActiveLens() {

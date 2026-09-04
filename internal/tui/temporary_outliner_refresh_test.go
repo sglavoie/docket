@@ -127,8 +127,8 @@ func TestScopedPinnedLeafCompletionKeepsProjectOutlinerVisible(t *testing.T) { /
 	driver.drain()
 
 	app := driver.App()
-	if app.err != nil {
-		t.Fatalf("completion raised an internal error: %v", app.err)
+	if app.feedback.err != nil {
+		t.Fatalf("completion raised an internal error: %v", app.feedback.err)
 	}
 	if got := app.currentView(); got != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("current view = %s, want CrossProjectOutliner", got)
@@ -162,6 +162,6 @@ func TestScopedPinnedLeafCompletionKeepsProjectOutlinerVisible(t *testing.T) { /
 			visibleState = visible.State()
 		}
 		t.Fatalf("durable task state = %#v, visible state=%v status=%q pending=%d, want done",
-			completed, visibleState, app.statusMessage, len(driver.pendingFutures))
+			completed, visibleState, app.feedback.message, len(driver.pendingFutures))
 	}
 }

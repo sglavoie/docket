@@ -29,8 +29,8 @@ func TestTUIProjectArchiveCleanupPreservesDuplicateIDReferencesInOtherProject(t 
 	m.runtime = config.NewRuntimeState("", domains)
 	setTestAppProjects(m, alpha, beta)
 	m.handleProjectMessages(projecthub.ProjectArchivedMsg{Project: beta})
-	if m.err != nil {
-		t.Fatalf("project archive cleanup: %v", m.err)
+	if m.feedback.err != nil {
+		t.Fatalf("project archive cleanup: %v", m.feedback.err)
 	}
 
 	planning := m.runtime.Planning()

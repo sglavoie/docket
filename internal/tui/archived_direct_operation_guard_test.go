@@ -152,7 +152,7 @@ func (env *archivedGuardEnv) tasksFileBytes(t *testing.T, project *models.Projec
 // never started — before the assertions read the files back.
 func (env *archivedGuardEnv) act(t *testing.T, keys ...string) {
 	t.Helper()
-	env.driver.App().err = nil
+	env.driver.App().feedback.err = nil
 	env.driver.pendingFutures = nil
 	env.press(t, keys...)
 	env.driver.Wait(archivedGuardSettleTimeout)
@@ -160,9 +160,9 @@ func (env *archivedGuardEnv) act(t *testing.T, keys ...string) {
 
 func (env *archivedGuardEnv) archivedRejection(t *testing.T, label string) {
 	t.Helper()
-	err := env.driver.App().err
+	err := env.driver.App().feedback.err
 	if err == nil {
-		t.Fatalf("%s produced no rejection (status %q)", label, env.driver.App().statusMessage)
+		t.Fatalf("%s produced no rejection (status %q)", label, env.driver.App().feedback.message)
 	}
 	if !strings.Contains(err.Error(), "archived") {
 		t.Fatalf("%s rejection = %q, want the archived lifecycle refusal", label, err)
@@ -215,7 +215,7 @@ func TestArchivedTaskKeepsReadOnlyDirectKeys(t *testing.T) {
 
 	env.act(t, "ctrl+enter")
 
-	if err := env.driver.App().err; err != nil {
+	if err := env.driver.App().feedback.err; err != nil {
 		t.Fatalf("peek on an archived task failed: %v", err)
 	}
 	if !env.outliner(t).PeekMode {
@@ -275,7 +275,7 @@ func TestArchivedPopulationLeavesActiveTasksMutable(t *testing.T) {
 
 	env.act(t, "$", "i")
 
-	if err := env.driver.App().err; err != nil {
+	if err := env.driver.App().feedback.err; err != nil {
 		t.Fatalf("the active task refused a state change: %v", err)
 	}
 	loaded := env.reload(t, env.active)

@@ -29,8 +29,8 @@ func TestProjectBulkAddTagCommitsTheWholeSelectionAtOnce(t *testing.T) {
 			t.Fatalf("project %s tags = %v, want the normalized tag", projectID, project.Tags)
 		}
 	}
-	if !strings.Contains(app.statusMessage, "Tagged 2 projects #focus") {
-		t.Fatalf("bulk add status = %q", app.statusMessage)
+	if !strings.Contains(app.feedback.message, "Tagged 2 projects #focus") {
+		t.Fatalf("bulk add status = %q", app.feedback.message)
 	}
 }
 
@@ -64,8 +64,8 @@ func TestProjectBulkAddingTheReservedTagConfirmsBeforeCommitting(t *testing.T) {
 	if app.project.pendingPark.bulk != nil {
 		t.Fatal("confirmed bulk edit stayed pending")
 	}
-	if !strings.Contains(app.statusMessage, "Parked 2 projects") {
-		t.Fatalf("bulk park status = %q", app.statusMessage)
+	if !strings.Contains(app.feedback.message, "Parked 2 projects") {
+		t.Fatalf("bulk park status = %q", app.feedback.message)
 	}
 }
 
@@ -82,7 +82,7 @@ func TestProjectBulkTagNoChangeReportsInsteadOfWriting(t *testing.T) {
 	if !ok || !strings.Contains(msg.Err.Error(), "no selected project is parked") {
 		t.Fatalf("no-op bulk edit emitted %#v", cmd())
 	}
-	if app.statusMessage != "" {
-		t.Fatalf("no-op bulk edit reported success %q", app.statusMessage)
+	if app.feedback.message != "" {
+		t.Fatalf("no-op bulk edit reported success %q", app.feedback.message)
 	}
 }

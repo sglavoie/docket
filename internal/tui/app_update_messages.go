@@ -115,10 +115,10 @@ func (m *AppModel) handleGlobalLifecycleMessage(msg tea.Msg) (bool, tea.Cmd) {
 		m.handleNoteSearchIndexLoaded(msg)
 		return true, nil
 	case outliner.OutlinerOriginRecordedMsg:
-		if msg.TransactionID == "" || msg.TransactionID != m.statusTransactionID || m.statusUndoCb == nil || !time.Now().Before(m.statusExpiresAt) {
+		if !m.feedback.correlates(msg.TransactionID, time.Now()) {
 			return true, nil
 		}
-		return true, m.setRecoveryFeedback(m.statusRecoveryFallback, msg.TransactionID, true)
+		return true, m.setRecoveryFeedback(m.feedback.recoveryFallback, msg.TransactionID, true)
 	default:
 		return false, nil
 	}
@@ -151,7 +151,7 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 	case coordinator.BatchTransactionResultMsg:
 		return true, m.handleBatchTransactionResult(msg)
 	case coordinator.TransactionErrorMsg:
-		m.err = msg.Err
+		m.feedback.err = msg.Err
 		return true, status.StatusTimeout(5 * time.Second)
 	default:
 		return false, nil
@@ -254,7 +254,7 @@ func (m *AppModel) handleBatchTransactionResult(msg coordinator.BatchTransaction
 	}
 	successMessage := msg.SuccessMessage()
 	if successMessage == "" {
-		successMessage = m.statusMessage
+		successMessage = m.feedback.message
 	}
 	saveCmd := m.handleSaveComplete(status.SaveCompleteMsg{})
 	feedbackCmd := m.setRecoveryFeedback(successMessage, msg.TransactionID, false)

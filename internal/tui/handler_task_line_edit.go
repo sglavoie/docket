@@ -12,7 +12,7 @@ import (
 )
 
 func (m *AppModel) handleTaskLineEditFailed(msg coordinator.TaskLineEditFailedMsg) tea.Cmd {
-	m.err = msg.Err
+	m.feedback.err = msg.Err
 	message := "task edit failed"
 	if msg.Err != nil {
 		message = msg.Err.Error()
@@ -28,7 +28,7 @@ func (m *AppModel) handleTaskLineEditFailed(msg coordinator.TaskLineEditFailedMs
 }
 
 func (m *AppModel) handleTaskLineEdited(msg coordinator.TaskLineEditedMsg) tea.Cmd {
-	m.err = nil
+	m.feedback.err = nil
 	out, ok := m.outlinerPrimary()
 	if ok && out != nil && out.QuickEdit.IsActive() {
 		task := out.QuickEdit.GetTask()

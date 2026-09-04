@@ -14,20 +14,15 @@ import "fmt"
 // toggling back after a flagged launch persists "shown" — the state a user can
 // see is the state that was saved.
 
-// advisoriesHidden reports the shell's live setting. A nil model reads as
-// showing, so nothing here can turn a missing shell into a silent one.
-func (m *AppModel) advisoriesHidden() bool {
-	if m == nil {
-		return false
-	}
-	return m.hideAdvisories
-}
+// The session value itself lives on the feedback cluster beside the conflict
+// count, because both are ambient status-strip inputs and both travel into an
+// Outliner as the same kind of injected accessor; see feedback_controller.go.
 
 // WithHiddenAdvisories starts the session with advisories suppressed. RunApp
 // translates the `--no-advisories` flag into this option; the machine-local
 // setting is read in NewAppModel, and either one hiding is enough.
 func WithHiddenAdvisories() AppOption {
-	return func(m *AppModel) { m.hideAdvisories = true }
+	return func(m *AppModel) { m.feedback.hideAdvisories = true }
 }
 
 // coreToggleAdvisories flips the machine-local setting and the session value
@@ -38,12 +33,12 @@ func (m *AppModel) coreToggleAdvisories() error {
 		return fmt.Errorf("machine chrome state is unavailable")
 	}
 	machine := *m.runtime.Machine()
-	machine.AdvisoriesHidden = !m.hideAdvisories
+	machine.AdvisoriesHidden = !m.feedback.hideAdvisories
 	if err := m.runtime.CommitMachine(&machine); err != nil {
 		return fmt.Errorf("save advisory visibility: %w", err)
 	}
-	m.hideAdvisories = machine.AdvisoriesHidden
-	if m.hideAdvisories {
+	m.feedback.hideAdvisories = machine.AdvisoriesHidden
+	if m.feedback.hideAdvisories {
 		m.setInfoStatus("Advisories hidden")
 	} else {
 		m.setInfoStatus("Advisories shown")

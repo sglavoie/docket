@@ -60,9 +60,9 @@ func TestAdvisoryLineDropsTheStripRowAndItsHeight(t *testing.T) {
 // safe for the construction sites that own no shell — a missing accessor must
 // read as showing, so nothing here can turn a struct-literal model silent.
 func TestAdvisoryHelpersAreNilSafeAndDefaultToShowing(t *testing.T) {
-	var shell *AppModel
-	if shell.advisoriesHidden() {
-		t.Fatal("a nil shell reports advisories hidden")
+	var cluster *feedbackController
+	if cluster.advisoriesHidden() {
+		t.Fatal("a nil feedback cluster reports advisories hidden")
 	}
 
 	m := &outliner.OutlinerModel{}

@@ -97,7 +97,7 @@ func (m *AppModel) handleTaskCreated(msg coordinator.TaskCreatedMsg) (bool, tea.
 	if msg.CreatedCount > 1 {
 		m.setSuccessStatus(fmt.Sprintf("Created %d tasks", msg.CreatedCount))
 	}
-	successMessage := m.statusMessage
+	successMessage := m.feedback.message
 	if successMessage == "" {
 		successMessage = "Created task"
 	}

@@ -162,8 +162,8 @@ func (m *AppModel) coreReorderEdge(delta int) tea.Cmd {
 }
 
 func (m *AppModel) coreUndo() tea.Cmd {
-	if m.statusUndoCb != nil && time.Now().Before(m.statusExpiresAt) {
-		callback := m.statusUndoCb
+	if m.feedback.undoLive(time.Now()) {
+		callback := m.feedback.undoCb
 		m.clearStatus()
 		return callback()
 	}

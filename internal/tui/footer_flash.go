@@ -89,9 +89,9 @@ type viewStatusOwner interface {
 var _ viewStatusOwner = (*outliner.OutlinerModel)(nil)
 
 // footerFlashProbe is the status identity compared across one Update. The
-// shell's own message carries a sequence, but m.err has ~87 assignment sites
-// and no clock, so it is compared by text. The view stamp is only meaningful
-// alongside the view it came from, hence the presentation ID.
+// shell's own message carries a sequence, but the error beside it has ~87
+// assignment sites and no clock, so it is compared by text. The view stamp is
+// only meaningful alongside the view it came from, hence the presentation ID.
 type footerFlashProbe struct {
 	statusSeq     uint64
 	errText       string
@@ -101,11 +101,11 @@ type footerFlashProbe struct {
 
 func (m *AppModel) captureFooterFlashProbe() footerFlashProbe {
 	probe := footerFlashProbe{
-		statusSeq: m.statusSeq,
+		statusSeq: m.feedback.seq,
 		view:      m.currentView(),
 	}
-	if m.err != nil {
-		probe.errText = m.err.Error()
+	if m.feedback.err != nil {
+		probe.errText = m.feedback.err.Error()
 	}
 	if stamper, ok := m.activeView().(statusStamper); ok {
 		probe.viewStatusSeq = stamper.StatusStamp()
@@ -124,7 +124,7 @@ func (m *AppModel) armFooterFlashSince(before footerFlashProbe) tea.Cmd {
 	case after.errText != "" && after.errText != before.errText:
 		severity = flashError
 	case after.statusSeq != before.statusSeq:
-		severity = m.statusSeverity
+		severity = m.feedback.severity
 	case after.view == before.view && after.viewStatusSeq != before.viewStatusSeq:
 		severity = flashInfo
 	}
@@ -132,9 +132,7 @@ func (m *AppModel) armFooterFlashSince(before footerFlashProbe) tea.Cmd {
 		return nil
 	}
 
-	m.footerFlashSeq++
-	m.footerFlash = footerFlashState{severity: severity, seq: m.footerFlashSeq}
-	return footerFlashTick(m.footerFlashSeq)
+	return footerFlashTick(m.feedback.armFlash(severity))
 }
 
 // scheduleViewStatusExpiry arms the auto-clear for a view-owned status message
@@ -156,12 +154,7 @@ func (m *AppModel) scheduleViewStatusExpiry(before footerFlashProbe) tea.Cmd {
 // advanceFooterFlash steps one frame and reports the command that schedules the
 // next. A stale tick from a superseded flash is rejected by sequence.
 func (m *AppModel) advanceFooterFlash(seq uint64) tea.Cmd {
-	if !m.footerFlash.active() || m.footerFlash.seq != seq {
-		return nil
-	}
-	m.footerFlash.frame++
-	if m.footerFlash.frame >= footerFlashFrames {
-		m.footerFlash = footerFlashState{}
+	if !m.feedback.advanceFlash(seq) {
 		return nil
 	}
 	return footerFlashTick(seq)
@@ -224,12 +217,12 @@ func footerFlashSegmentWidth(width int) int {
 // to the theme background, leaving the moving divider as the dominant cue.
 func (m *AppModel) footerFlashBackgroundColor() color.Color {
 	background := theme.ColorBackground
-	if !m.footerFlash.active() {
+	if !m.feedback.flash.active() {
 		return background
 	}
 
-	frame := min(max(m.footerFlash.frame, 0), footerFlashFrames-1)
+	frame := min(max(m.feedback.flash.frame, 0), footerFlashFrames-1)
 	progress := float64(frame) / float64(footerFlashFrames-1)
 	mix := footerFlashBackgroundMix * (1 - easeInOutCubic(progress))
-	return blendColor(background, m.footerFlash.severity.color(), mix)
+	return blendColor(background, m.feedback.flash.severity.color(), mix)
 }

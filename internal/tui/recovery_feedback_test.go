@@ -40,13 +40,13 @@ func TestRecoveryFeedbackRequiresExactNewestTransactionID(t *testing.T) {
 	t.Run("matching transaction installs undo", func(t *testing.T) {
 		model, transactionID := newRecoveryFeedbackEnv(t)
 		cmd := model.setRecoveryFeedback("Updated task", transactionID, false)
-		if cmd == nil || model.statusUndoCb == nil {
+		if cmd == nil || model.feedback.undoCb == nil {
 			t.Fatal("matching newest transaction did not install recovery callback")
 		}
-		if model.statusMessage != "Edit Task · u undo" {
-			t.Fatalf("status = %q, want canonical recovery feedback", model.statusMessage)
+		if model.feedback.message != "Edit Task · u undo" {
+			t.Fatalf("status = %q, want canonical recovery feedback", model.feedback.message)
 		}
-		if model.statusTransactionID != transactionID || !time.Now().Before(model.statusExpiresAt) {
+		if model.feedback.transactionID != transactionID || !time.Now().Before(model.feedback.expiresAt) {
 			t.Fatal("matching recovery feedback did not retain its ID and six-second window")
 		}
 	})
@@ -56,8 +56,8 @@ func TestRecoveryFeedbackRequiresExactNewestTransactionID(t *testing.T) {
 		if cmd := model.setRecoveryFeedback("Updated task", "", false); cmd == nil {
 			t.Fatal("plain success did not receive its normal timeout")
 		}
-		if model.statusMessage != "Updated task" || model.statusUndoCb != nil || !model.statusExpiresAt.IsZero() {
-			t.Fatalf("missing-ID feedback did not degrade safely: status=%q callback=%v expiry=%v", model.statusMessage, model.statusUndoCb != nil, model.statusExpiresAt)
+		if model.feedback.message != "Updated task" || model.feedback.undoCb != nil || !model.feedback.expiresAt.IsZero() {
+			t.Fatalf("missing-ID feedback did not degrade safely: status=%q callback=%v expiry=%v", model.feedback.message, model.feedback.undoCb != nil, model.feedback.expiresAt)
 		}
 	})
 
@@ -73,8 +73,8 @@ func TestRecoveryFeedbackRequiresExactNewestTransactionID(t *testing.T) {
 			t.Fatalf("superseding Edit: %v", err)
 		}
 		model.setRecoveryFeedback("Older update", transactionID, false)
-		if model.statusMessage != "Older update" || model.statusUndoCb != nil {
-			t.Fatalf("superseded transaction advertised undo: status=%q callback=%v", model.statusMessage, model.statusUndoCb != nil)
+		if model.feedback.message != "Older update" || model.feedback.undoCb != nil {
+			t.Fatalf("superseded transaction advertised undo: status=%q callback=%v", model.feedback.message, model.feedback.undoCb != nil)
 		}
 	})
 
@@ -82,8 +82,8 @@ func TestRecoveryFeedbackRequiresExactNewestTransactionID(t *testing.T) {
 		model := newTestAppModel()
 		model.runtime = newTestConfigAt(t.TempDir())
 		model.setRecoveryFeedback("Saved task", "unrecorded-transaction", false)
-		if model.statusMessage != "Saved task" || model.statusUndoCb != nil {
-			t.Fatalf("missing ledger advertised undo: status=%q callback=%v", model.statusMessage, model.statusUndoCb != nil)
+		if model.feedback.message != "Saved task" || model.feedback.undoCb != nil {
+			t.Fatalf("missing ledger advertised undo: status=%q callback=%v", model.feedback.message, model.feedback.undoCb != nil)
 		}
 	})
 
@@ -99,8 +99,8 @@ func TestRecoveryFeedbackRequiresExactNewestTransactionID(t *testing.T) {
 		model := newTestAppModel()
 		model.runtime = newTestConfigAt(dataDir)
 		model.setRecoveryFeedback("Saved task", "corrupt-ledger-transaction", false)
-		if model.statusMessage != "Saved task" || model.statusUndoCb != nil {
-			t.Fatalf("unreadable ledger advertised undo: status=%q callback=%v", model.statusMessage, model.statusUndoCb != nil)
+		if model.feedback.message != "Saved task" || model.feedback.undoCb != nil {
+			t.Fatalf("unreadable ledger advertised undo: status=%q callback=%v", model.feedback.message, model.feedback.undoCb != nil)
 		}
 	})
 }
@@ -108,12 +108,12 @@ func TestRecoveryFeedbackRequiresExactNewestTransactionID(t *testing.T) {
 func TestRecoveryFeedbackAdvertisesOriginOnlyWhenRecorded(t *testing.T) {
 	model, transactionID := newRecoveryFeedbackEnv(t)
 	model.setRecoveryFeedback("Updated task", transactionID, false)
-	if strings.Contains(model.statusMessage, "origin") {
-		t.Fatalf("unrecorded relocation advertised origin: %q", model.statusMessage)
+	if strings.Contains(model.feedback.message, "origin") {
+		t.Fatalf("unrecorded relocation advertised origin: %q", model.feedback.message)
 	}
 	model.setRecoveryFeedback("Updated task", transactionID, true)
-	if model.statusMessage != "Edit Task · u undo · Ctrl+O origin" {
-		t.Fatalf("recorded relocation status = %q", model.statusMessage)
+	if model.feedback.message != "Edit Task · u undo · Ctrl+O origin" {
+		t.Fatalf("recorded relocation status = %q", model.feedback.message)
 	}
 }
 
@@ -146,15 +146,15 @@ func TestRemainingMutationFamiliesRequireMatchingLedgerTransaction(t *testing.T)
 		t.Run(family.name+" matching", func(t *testing.T) {
 			model, transactionID := newRecoveryFeedbackEnv(t)
 			family.deliver(model, transactionID)
-			if model.statusUndoCb == nil || model.statusTransactionID != transactionID {
-				t.Fatalf("matching %s result did not install correlated recovery: status=%q transaction=%q callback=%v", family.name, model.statusMessage, model.statusTransactionID, model.statusUndoCb != nil)
+			if model.feedback.undoCb == nil || model.feedback.transactionID != transactionID {
+				t.Fatalf("matching %s result did not install correlated recovery: status=%q transaction=%q callback=%v", family.name, model.feedback.message, model.feedback.transactionID, model.feedback.undoCb != nil)
 			}
 		})
 		t.Run(family.name+" mismatching", func(t *testing.T) {
 			model, _ := newRecoveryFeedbackEnv(t)
 			family.deliver(model, "mismatching-transaction")
-			if model.statusMessage != family.fallback || model.statusUndoCb != nil || model.statusTransactionID != "" {
-				t.Fatalf("mismatching %s result did not degrade: status=%q transaction=%q callback=%v", family.name, model.statusMessage, model.statusTransactionID, model.statusUndoCb != nil)
+			if model.feedback.message != family.fallback || model.feedback.undoCb != nil || model.feedback.transactionID != "" {
+				t.Fatalf("mismatching %s result did not degrade: status=%q transaction=%q callback=%v", family.name, model.feedback.message, model.feedback.transactionID, model.feedback.undoCb != nil)
 			}
 		})
 	}

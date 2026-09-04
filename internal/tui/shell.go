@@ -122,7 +122,7 @@ func (m *AppModel) Overlays() OverlayManager { return OverlayManager{app: m} }
 // input, which the shell uses to suppress global single-key shortcuts.
 func (o OverlayManager) HasActiveTextInput() bool {
 	m := o.app
-	return m.operations.overlayMounted() || m.lensPicker != nil
+	return m.operations.overlayMounted() || m.lenses.mounted()
 }
 
 // Active reports whether any transient overlay is currently shown.
@@ -130,7 +130,7 @@ func (o OverlayManager) Active() bool {
 	m := o.app
 	return m.viewNav.navigation.Overlays.Active() ||
 		m.operations.overlayMounted() ||
-		m.lensPicker != nil
+		m.lenses.mounted()
 }
 
 // ClearAll dismisses every transient overlay. Called when navigation collapses
@@ -139,5 +139,5 @@ func (o OverlayManager) ClearAll() {
 	m := o.app
 	m.viewNav.navigation.Overlays.CancelAll()
 	m.operations.clearOverlays()
-	m.lensPicker = nil
+	m.lenses.close()
 }

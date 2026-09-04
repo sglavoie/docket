@@ -219,10 +219,10 @@ func TestTUIStateMachine_LatestUndoToastWins(t *testing.T) {
 	if len(calls) != 1 || calls[0] != "second" {
 		t.Fatalf("undo calls = %v, want [second]", calls)
 	}
-	if app.statusMessage != "" {
-		t.Fatalf("undo toast should be cleared after inline undo, got %q", app.statusMessage)
+	if app.feedback.message != "" {
+		t.Fatalf("undo toast should be cleared after inline undo, got %q", app.feedback.message)
 	}
-	if app.statusUndoCb != nil {
+	if app.feedback.undoCb != nil {
 		t.Fatal("inline undo should clear the stored callback")
 	}
 }
@@ -250,7 +250,7 @@ func TestTUIStateMachine_NonUndoableStatusInvalidatesUndoCallback(t *testing.T) 
 	if called {
 		t.Fatal("pressing u after a non-undoable status replaced the toast should not invoke the previous undo callback")
 	}
-	if app.statusUndoCb != nil {
+	if app.feedback.undoCb != nil {
 		t.Fatal("non-undoable status should clear statusUndoCb")
 	}
 }

@@ -115,8 +115,8 @@ func TestOutlinerPinnedOrderJK(t *testing.T) {
 		if task, _ := cross.GetTaskRef(); task == nil || task.Title != "Alpha" {
 			t.Fatalf("cursor after reorder = %v, want Alpha", task)
 		}
-		if !strings.Contains(m.statusMessage, "Reorder Pinned") || !strings.Contains(m.statusMessage, "u undo") {
-			t.Fatalf("status = %q, want the pinned reorder confirmation with its undo affordance", m.statusMessage)
+		if !strings.Contains(m.feedback.message, "Reorder Pinned") || !strings.Contains(m.feedback.message, "u undo") {
+			t.Fatalf("status = %q, want the pinned reorder confirmation with its undo affordance", m.feedback.message)
 		}
 	})
 

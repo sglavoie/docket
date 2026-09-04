@@ -258,9 +258,9 @@ func (m *AppModel) wireOutlinerOperationExecutor(outlinerView *outliner.Outliner
 		return
 	}
 	outlinerView.OperationRegistry = m.operations.registry
-	outlinerView.SetPersistActiveLens(m.commitActiveLensPointer)
-	outlinerView.SetOutstandingConflicts(m.outstandingConflictCount)
-	outlinerView.SetAdvisoriesHidden(m.advisoriesHidden)
+	m.lenses.wireOutliner(outlinerView, m.commitActiveLensPointer)
+	outlinerView.SetOutstandingConflicts(m.feedback.outstandingConflictCount)
+	outlinerView.SetAdvisoriesHidden(m.feedback.advisoriesHidden)
 }
 
 func (m *AppModel) showView(viewType presentation.PresentationID, view route.View) {

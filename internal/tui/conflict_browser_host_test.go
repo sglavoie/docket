@@ -32,8 +32,8 @@ func TestOpenConflictBrowserReadsTheWorkspaceStore(t *testing.T) {
 	if app.conflictBrowser != nil {
 		t.Fatal("an empty workspace opened the conflict browser")
 	}
-	if !strings.Contains(app.statusMessage, conflict.ConflictBrowserEmptyStatus) {
-		t.Errorf("empty-store status = %q, want %q", app.statusMessage, conflict.ConflictBrowserEmptyStatus)
+	if !strings.Contains(app.feedback.message, conflict.ConflictBrowserEmptyStatus) {
+		t.Errorf("empty-store status = %q, want %q", app.feedback.message, conflict.ConflictBrowserEmptyStatus)
 	}
 
 	if err := app.harnessRecordConflict(); err != nil {
@@ -43,8 +43,8 @@ func TestOpenConflictBrowserReadsTheWorkspaceStore(t *testing.T) {
 	if app.conflictBrowser == nil {
 		t.Fatal("a recorded conflict did not open the browser")
 	}
-	if app.outstandingConflictCount() != 1 {
-		t.Errorf("outstanding conflicts = %d, want 1", app.outstandingConflictCount())
+	if app.feedback.outstandingConflictCount() != 1 {
+		t.Errorf("outstanding conflicts = %d, want 1", app.feedback.outstandingConflictCount())
 	}
 	record, ok := app.conflictBrowser.CurrentRecord()
 	if !ok {

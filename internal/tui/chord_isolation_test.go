@@ -80,7 +80,7 @@ func TestModifierKeyPressDoesNotAbandonAPendingChord(t *testing.T) {
 		}
 	}
 
-	if app.statusMessage == "fleftshift is not a filter action" {
+	if app.feedback.message == "fleftshift is not a filter action" {
 		t.Fatal("the bare Shift press was consumed as the chord's second key")
 	}
 	if len(app.operations.chord) != 0 {
@@ -123,7 +123,7 @@ func TestAbandonedChordNamesThePathItLeft(t *testing.T) {
 		{sequence: []string{"F", "q"}, want: "Fq is not a project filter action"},
 	} {
 		t.Run(strings.Join(testCase.sequence, ""), func(t *testing.T) {
-			app.statusMessage = ""
+			app.feedback.message = ""
 			for _, name := range testCase.sequence {
 				key, err := parseUITestKey(name)
 				if err != nil {
@@ -133,8 +133,8 @@ func TestAbandonedChordNamesThePathItLeft(t *testing.T) {
 					t.Fatalf("key %q was not consumed by the Outliner grammar", name)
 				}
 			}
-			if app.statusMessage != testCase.want {
-				t.Fatalf("chord miss status = %q, want %q", app.statusMessage, testCase.want)
+			if app.feedback.message != testCase.want {
+				t.Fatalf("chord miss status = %q, want %q", app.feedback.message, testCase.want)
 			}
 		})
 	}
@@ -161,7 +161,7 @@ func TestRetiredRootKeysStaySilentlyUnbound(t *testing.T) {
 					}
 				}
 			}
-			app.statusMessage = ""
+			app.feedback.message = ""
 			key, err := parseUITestKey(name)
 			if err != nil {
 				t.Fatalf("parse %q: %v", name, err)
@@ -169,8 +169,8 @@ func TestRetiredRootKeysStaySilentlyUnbound(t *testing.T) {
 			if handled, cmd := app.handleSimplifiedInputKey(key); !handled || cmd != nil {
 				t.Fatalf("unbound root key %q = handled %v, cmd %v; want consumed no-op", name, handled, cmd)
 			}
-			if app.statusMessage != "" {
-				t.Fatalf("unbound root key %q set status %q", name, app.statusMessage)
+			if app.feedback.message != "" {
+				t.Fatalf("unbound root key %q set status %q", name, app.feedback.message)
 			}
 		})
 	}

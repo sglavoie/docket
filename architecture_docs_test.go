@@ -182,7 +182,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"bound directly in `SimplifiedInputStrategy` with no\n`FooterRank`",
 		"`\\` stays a literal character everywhere text is being typed",
 		"`resetToGlobalAll` calls\n`clearActiveLensWithoutRestore`",
-		"`NewAppModel` reads `Machine().ActiveNamedLens()` into\n`pendingLaunchLens` before any message is dispatched",
+		"`NewAppModel` reads `Machine().ActiveNamedLens()` into\n`lenses.pendingLaunch` before any message is dispatched",
 		"drained in\nthe `crossProjectsLoadedMsg` arm",
 		"`restorePendingLaunchLens`\ntakes the value exactly once",
 		"`ActiveNamedLens()` validates the record it finds for shape alone and never\nreferentially",

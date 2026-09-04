@@ -122,8 +122,8 @@ func lensPickerAppInMode(t *testing.T, mode chrome.OutlinerModeID) *AppModel {
 	if cmd := model.openNamedLensPicker(); cmd != nil {
 		drainLensPickerCmd(t, model, cmd)
 	}
-	if model.lensPicker == nil {
-		t.Fatalf("openNamedLensPicker left no picker mounted: %v", model.err)
+	if model.lenses.picker == nil {
+		t.Fatalf("openNamedLensPicker left no picker mounted: %v", model.feedback.err)
 	}
 	return model
 }
@@ -194,10 +194,10 @@ func TestAddTemplateFailuresRetainThePickerAndChangeNothing(t *testing.T) {
 			if model.operations.valuePicker != nil {
 				t.Error("a refused add left the gallery mounted")
 			}
-			if model.lensPicker == nil {
+			if model.lenses.picker == nil {
 				t.Fatal("a refused add closed the main picker")
 			}
-			if notice := model.lensPicker.Notice(); !strings.Contains(notice, phase.want) {
+			if notice := model.lenses.picker.Notice(); !strings.Contains(notice, phase.want) {
 				t.Errorf("picker notice = %q, want it to name %q", notice, phase.want)
 			}
 			if got := lensNames(machineLenses(t, model)); !slices.Equal(got, before) {
@@ -258,10 +258,10 @@ func TestAddTemplateDiskCommitFailureRetainsThePicker(t *testing.T) {
 	if model.operations.valuePicker != nil {
 		t.Error("a failed commit left the gallery mounted")
 	}
-	if model.lensPicker == nil {
+	if model.lenses.picker == nil {
 		t.Fatal("a failed commit closed the main picker")
 	}
-	if model.lensPicker.Notice() == "" {
+	if model.lenses.picker.Notice() == "" {
 		t.Error("a failed commit reported nothing on the picker")
 	}
 	if before.NamedLensByID(template.ID) != nil {

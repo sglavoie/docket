@@ -31,12 +31,12 @@ func (m *AppModel) renderFooterDivider(width int) string {
 		width = 80
 	}
 	accent := m.currentAccentColor()
-	if !m.footerFlash.active() {
+	if !m.feedback.flash.active() {
 		return chrome.RenderHorizontalDivider(width, chrome.WithDividerColor(accent))
 	}
 
-	highlight := m.footerFlash.severity.color()
-	frame := min(max(m.footerFlash.frame, 0), footerFlashFrames-1)
+	highlight := m.feedback.flash.severity.color()
+	frame := min(max(m.feedback.flash.frame, 0), footerFlashFrames-1)
 	if frame < footerFlashImpactFrames {
 		return chrome.RenderHorizontalDivider(
 			width,
@@ -94,7 +94,7 @@ func writeFooterDividerRun(builder *strings.Builder, glyph rune, count int, fore
 // Child foreground and badge styles remain intact; after a child style resets,
 // the wash is restored so unstyled text and trailing cells do not develop holes.
 func (m *AppModel) renderFooterContent(content string, width int) string {
-	if !m.footerFlash.active() || content == "" {
+	if !m.feedback.flash.active() || content == "" {
 		return content
 	}
 	if width <= 0 {
@@ -172,8 +172,8 @@ func (m *AppModel) renderFooterChrome() string {
 	}
 
 	// Show error message if present.
-	if m.err != nil {
-		msg := theme.ErrorStatusStyle.Render(icons.Get("error") + " " + m.err.Error())
+	if m.feedback.err != nil {
+		msg := theme.ErrorStatusStyle.Render(icons.Get("error") + " " + m.feedback.err.Error())
 		return renderFooter(renderLeftAlignedMsg(msg))
 	}
 
@@ -184,12 +184,12 @@ func (m *AppModel) renderFooterChrome() string {
 	}
 
 	// Show temporary status message if present.
-	if m.statusMessage != "" {
+	if m.feedback.message != "" {
 		var msg string
-		if m.statusIsInfo {
-			msg = theme.InfoStatusStyle.Render("· " + m.statusMessage)
+		if m.feedback.info {
+			msg = theme.InfoStatusStyle.Render("· " + m.feedback.message)
 		} else {
-			msg = theme.SuccessStyle.Render(icons.Get("success") + " " + m.statusMessage)
+			msg = theme.SuccessStyle.Render(icons.Get("success") + " " + m.feedback.message)
 		}
 		return renderFooter(renderLeftAlignedMsg(msg))
 	}

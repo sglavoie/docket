@@ -73,7 +73,7 @@ func TestConflictIndicatorRefreshesOnThePeriodicTick(t *testing.T) {
 	shell := &AppModel{runtime: testRuntimeAt(dataDir, newTestConfig())}
 
 	shell.refreshOutstandingConflicts()
-	if got := shell.outstandingConflictCount(); got != 0 {
+	if got := shell.feedback.outstandingConflictCount(); got != 0 {
 		t.Fatalf("count before any conflict = %d, want 0", got)
 	}
 
@@ -87,7 +87,7 @@ func TestConflictIndicatorRefreshesOnThePeriodicTick(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("the periodic tick must re-arm itself")
 	}
-	if got := shell.outstandingConflictCount(); got != 1 {
+	if got := shell.feedback.outstandingConflictCount(); got != 1 {
 		t.Fatalf("count after the tick = %d, want 1", got)
 	}
 
@@ -97,17 +97,21 @@ func TestConflictIndicatorRefreshesOnThePeriodicTick(t *testing.T) {
 	if _, cmd = shell.handleGlobalSaveMessage(status.PeriodicSaveMsg{At: time.Now()}); cmd == nil {
 		t.Fatal("the periodic tick must re-arm itself after a resolution")
 	}
-	if got := shell.outstandingConflictCount(); got != 0 {
+	if got := shell.feedback.outstandingConflictCount(); got != 0 {
 		t.Fatalf("count after the conflict was resolved = %d, want 0", got)
 	}
 }
 
 // TestNilShellReportsNoOutstandingConflicts keeps the injected accessor safe for
-// the construction sites that never own a shell.
+// the construction sites that never own a shell. The count now lives on the
+// feedback cluster, so that is where the nil answer is pinned; the refresh stays
+// on AppModel and stays nil-safe beside it.
 func TestNilShellReportsNoOutstandingConflicts(t *testing.T) {
-	var shell *AppModel
-	if got := shell.outstandingConflictCount(); got != 0 {
-		t.Fatalf("nil shell count = %d, want 0", got)
+	var cluster *feedbackController
+	if got := cluster.outstandingConflictCount(); got != 0 {
+		t.Fatalf("nil feedback cluster count = %d, want 0", got)
 	}
+
+	var shell *AppModel
 	shell.refreshOutstandingConflicts()
 }

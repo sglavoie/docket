@@ -11,7 +11,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/conflict"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/help"
-	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/outliner"
 	"github.com/sglavoie/tt/internal/tui/projecthub"
 	"github.com/sglavoie/tt/internal/tui/pulse"
@@ -83,12 +82,6 @@ type AppModel struct {
 	viewNav        viewNavigationController
 	startupMessage tea.Msg
 
-	// pendingLaunchLens is the lens the machine-local active-lens pointer named
-	// when this session was constructed, held here because the launch reset
-	// clears that pointer before any message can read it. It is drained exactly
-	// once, after the launch population lands, and forgotten either way.
-	pendingLaunchLens *config.NamedLens
-
 	// noteIndex is the notes cluster: the workspace-wide note snapshot the
 	// Outliner's search tier ranks, the generation that discards a superseded
 	// read, and the owner-catalog fingerprint that decides whether an
@@ -123,17 +116,14 @@ type AppModel struct {
 	// other operational title state, then injected into the Outliner before paint.
 	// Keeping the snapshot out of View avoids render-time filesystem reads.
 	completionActivity app.CompletionActivity
-	// outstandingConflicts is how many bundles `.tt/conflicts/` holds. It is
-	// deliberately not part of WorkspacePulse: that ladder is a closed ordinal and
-	// ComputeWorkspacePulse has no seam for filesystem-derived state. The status
-	// strip carries this instead, off the same 60s tick, and the count is cached
-	// here so no render reads the directory.
-	outstandingConflicts int
-	// hideAdvisories suppresses every ambient advisory for this session: the
-	// conflict count and the load-failure notices alike. See advisories.go for
-	// what counts as one, and advisories_shell.go for how the machine-local
-	// setting and the `--no-advisories` flag both feed this value.
-	hideAdvisories bool
+
+	// feedback is the status and feedback cluster: the shell's own status line
+	// and error, the undo callback and transaction correlation a recovery toast
+	// carries, the footer divider flash a change to any of them arms, and the
+	// two ambient inputs the status strip reads — the outstanding-conflict count
+	// and whether advisories are shown at all. Every setter stays an AppModel
+	// method. See feedback_controller.go.
+	feedback feedbackController
 
 	lastToggleUndoKind toggleUndoKind
 	lastToggleRedoKind toggleUndoKind
@@ -152,22 +142,7 @@ type AppModel struct {
 	projectStack []string
 
 	// State
-	err             error
-	quitting        bool
-	statusMessage   string         // Temporary status message (auto-clears after timeout)
-	statusIsInfo    bool           // When true, render status with InfoStatusStyle instead of SuccessStyle
-	statusUpdatedAt time.Time      // Guards newer status text from stale clear timers
-	statusUndoCb    func() tea.Cmd // When non-nil and not expired, pressing `u` invokes this callback
-	statusExpiresAt time.Time      // Deadline after which statusUndoCb is no longer valid
-	// statusTransactionID correlates the active recovery toast with a committed
-	// workspace transaction so delayed origin-history feedback cannot decorate a
-	// newer status.
-	statusTransactionID    string
-	statusRecoveryFallback string
-	statusSeq              uint64              // Bumped by every status setter; drives the footer divider flash
-	statusSeverity         footerFlashSeverity // Severity of the newest status text
-	footerFlash            footerFlashState
-	footerFlashSeq         uint64
+	quitting bool
 
 	// Pending narrow daily task edit. Stable identity is captured when the editor
 	// opens so cursor movement or a view rebuild cannot retarget the save.
@@ -189,11 +164,13 @@ type AppModel struct {
 	// themselves stay on AppModel. See task_mutation_controller.go.
 	taskMutation taskMutationController
 
-	// The named-lens picker sits below the contextual action flow rather than
-	// inside it: it is
-	// the surface an action sheet is opened *from*, so it stays mounted beneath
-	// the sheet, prompt, and confirmation a lens action nests above it.
-	lensPicker *lens.NamedLensPickerModel
+	// lenses is the named-lens cluster: the picker, which sits below the
+	// contextual action flow rather than inside it because it is the surface an
+	// action sheet is opened *from*; the lens the machine-local pointer asked
+	// this session to reopen with; and the injection of the machine-local write
+	// that remembers which lens is live. The write itself stays an AppModel
+	// method. See lens_controller.go.
+	lenses lensController
 
 	// The conflict browser sits beside the picker rather than inside that flow:
 	// it registers no operations, so nothing ever nests above it, and Esc is the

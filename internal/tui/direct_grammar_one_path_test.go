@@ -246,14 +246,14 @@ func TestDirectThemeAndQuitOperationsUseTheirDescriptors(t *testing.T) {
 	if !ok || timeout.Cmd == nil {
 		t.Fatalf("toggle theme message = %T, want a status timeout command", themeResult.Message)
 	}
-	if app.statusMessage != "Theme: "+app.runtime.Machine().Theme {
-		t.Fatalf("theme status = %q, want the active theme", app.statusMessage)
+	if app.feedback.message != "Theme: "+app.runtime.Machine().Theme {
+		t.Fatalf("theme status = %q, want the active theme", app.feedback.message)
 	}
-	if handled, _ := app.handleViewMessages(status.StatusClearMsg{ScheduledAt: app.statusUpdatedAt.Add(time.Nanosecond)}); !handled {
+	if handled, _ := app.handleViewMessages(status.StatusClearMsg{ScheduledAt: app.feedback.updatedAt.Add(time.Nanosecond)}); !handled {
 		t.Fatal("theme status clear message was not handled")
 	}
-	if app.statusMessage != "" {
-		t.Fatalf("theme status = %q after timeout, want empty", app.statusMessage)
+	if app.feedback.message != "" {
+		t.Fatalf("theme status = %q after timeout, want empty", app.feedback.message)
 	}
 	afterTheme := app.runtime.Machine().Theme
 	if afterTheme == beforeTheme || (afterTheme != "dark" && afterTheme != "light") {

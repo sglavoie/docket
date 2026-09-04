@@ -45,7 +45,7 @@ func (m *AppModel) handleNotesMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:g
 				nv.SetStatus(fmt.Sprintf("%s: %s", verb, msg.Action))
 			}
 		} else if refreshErr != nil {
-			m.err = fmt.Errorf("%s completed, refresh failed: %w", ledgerRestoreLabel(msg.Redo), refreshErr)
+			m.feedback.err = fmt.Errorf("%s completed, refresh failed: %w", ledgerRestoreLabel(msg.Redo), refreshErr)
 			cmds = append(cmds, status.StatusTimeout(5*time.Second))
 		}
 		// A ledger restore rewrites note bytes without emitting a mutation

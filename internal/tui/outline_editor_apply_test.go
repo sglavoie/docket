@@ -50,11 +50,11 @@ func TestOutlineEditedCarriesTheDumpRevisionAndKeepsTheBufferWhenItIsStale(t *te
 		Project: project, Revision: "rev-1", ScopeTaskIDs: scope,
 		Path: "/tmp/tt-outline-stale.md", Buffer: buffer,
 	})
-	if !strings.Contains(model.statusMessage, "Workspace changed while the editor was open") {
-		t.Errorf("status = %q, want the stale-workspace refusal", model.statusMessage)
+	if !strings.Contains(model.feedback.message, "Workspace changed while the editor was open") {
+		t.Errorf("status = %q, want the stale-workspace refusal", model.feedback.message)
 	}
-	if !strings.Contains(model.statusMessage, "/tmp/tt-outline-stale.md") {
-		t.Errorf("status = %q, want the kept buffer named", model.statusMessage)
+	if !strings.Contains(model.feedback.message, "/tmp/tt-outline-stale.md") {
+		t.Errorf("status = %q, want the kept buffer named", model.feedback.message)
 	}
 	if model.currentView() == presentation.ViewOutlineErrors {
 		t.Error("a stale workspace opened the line-error surface")
@@ -135,8 +135,8 @@ func TestOutlineDeleteConfirmDeclineKeepsTheBufferAndChangesNothing(t *testing.T
 	if _, err := os.Stat(path); err != nil {
 		t.Errorf("the declined buffer was removed: %v", err)
 	}
-	if !strings.Contains(model.statusMessage, path) {
-		t.Errorf("status = %q, want the kept buffer named", model.statusMessage)
+	if !strings.Contains(model.feedback.message, path) {
+		t.Errorf("status = %q, want the kept buffer named", model.feedback.message)
 	}
 }
 

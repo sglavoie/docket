@@ -17,7 +17,7 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 		return true, m.popView()
 
 	case status.ErrorMsg:
-		m.err = msg.Err
+		m.feedback.err = msg.Err
 		return true, tea.Batch(m.delegateToCurrentView(msg), status.StatusTimeout(5*time.Second))
 
 	case help.ShowHelpMsg:
@@ -26,14 +26,14 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 		return true, nil
 
 	case status.StatusClearMsg:
-		if !msg.ScheduledAt.IsZero() && !m.statusUpdatedAt.Before(msg.ScheduledAt) {
+		if m.feedback.stale(msg.ScheduledAt) {
 			return true, nil
 		}
 		// A 2s plain-status tick may arrive after a newer setUndoableStatus
 		// has installed a still-live toast (6s window). Don't dismiss a toast
 		// that hasn't reached its own deadline yet — its dedicated
 		// UndoToastTimeoutMsg will clear it on time.
-		if m.statusUndoCb != nil && time.Now().Before(m.statusExpiresAt) {
+		if m.feedback.undoLive(time.Now()) {
 			return true, nil
 		}
 		m.clearStatus()
@@ -55,7 +55,7 @@ func (m *AppModel) handleViewCoreMessages(msg tea.Msg) (bool, tea.Cmd) { //nolin
 		// Only clear if the deadline that fired this tick is still the
 		// active one. A newer toast (with later expiresAt) may have
 		// replaced this one — leave its callback alone.
-		if m.statusUndoCb != nil && !time.Now().Before(m.statusExpiresAt) {
+		if m.feedback.undoLapsed(time.Now()) {
 			m.clearStatus()
 		}
 		return true, nil

@@ -42,8 +42,8 @@ func TestCommentsPanelWorkspaceUndoRedoRefreshesAndNamesTheLedgerEntry(t *testin
 	if got := comments(); len(got) != before+1 || got[len(got)-1] != added {
 		t.Fatalf("after the add the panel lists %v, want %q appended", got, added)
 	}
-	if !strings.Contains(driver.App().statusMessage, "u undo") {
-		t.Fatalf("the add left status %q, want the recovery toast that offers u", driver.App().statusMessage)
+	if !strings.Contains(driver.App().feedback.message, "u undo") {
+		t.Fatalf("the add left status %q, want the recovery toast that offers u", driver.App().feedback.message)
 	}
 
 	press("u")
@@ -54,7 +54,7 @@ func TestCommentsPanelWorkspaceUndoRedoRefreshesAndNamesTheLedgerEntry(t *testin
 	if got := comments(); len(got) != before || slices.Contains(got, added) {
 		t.Fatalf("after u the panel lists %v, want the added comment gone", got)
 	}
-	if got := driver.App().statusMessage; !strings.Contains(got, "Undid: Add Comment") {
+	if got := driver.App().feedback.message; !strings.Contains(got, "Undid: Add Comment") {
 		t.Fatalf("u left status %q, want it to name the restored transaction", got)
 	}
 
@@ -66,7 +66,7 @@ func TestCommentsPanelWorkspaceUndoRedoRefreshesAndNamesTheLedgerEntry(t *testin
 	if got := comments(); len(got) != before+1 || !slices.Contains(got, added) {
 		t.Fatalf("after Ctrl+R the panel lists %v, want the comment back", got)
 	}
-	if got := driver.App().statusMessage; !strings.Contains(got, "Redo: Add Comment") {
+	if got := driver.App().feedback.message; !strings.Contains(got, "Redo: Add Comment") {
 		t.Fatalf("Ctrl+R left status %q, want it to name the replayed transaction", got)
 	}
 

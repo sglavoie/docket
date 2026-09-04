@@ -171,7 +171,7 @@ func TestSortAxisRecordsTheChoiceInAFixedOrderMode(t *testing.T) {
 	if outlinerView.TreeSort.Field != query.SortByDueDate {
 		t.Fatalf("Today recorded tree sort field %v, want %v", outlinerView.TreeSort.Field, query.SortByDueDate)
 	}
-	if status := driver.App().statusMessage; !strings.Contains(status, "Today owns its order") {
+	if status := driver.App().feedback.message; !strings.Contains(status, "Today owns its order") {
 		t.Fatalf("status %q does not explain the fixed order", status)
 	}
 

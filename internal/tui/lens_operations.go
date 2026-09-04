@@ -268,11 +268,13 @@ func (m *AppModel) commitActiveLensPointer(id string) error {
 // user last expressed on this machine, not a record they are owed an error about,
 // and the reset already cleared it, so the next launch simply does not ask again.
 func (m *AppModel) restorePendingLaunchLens() tea.Cmd {
-	if m == nil || m.pendingLaunchLens == nil {
+	if m == nil {
 		return nil
 	}
-	pending := *m.pendingLaunchLens
-	m.pendingLaunchLens = nil
+	pending, ok := m.lenses.takePendingLaunch()
+	if !ok {
+		return nil
+	}
 	if m.crossOutliner == nil {
 		return nil
 	}

@@ -149,12 +149,12 @@ func TestNotesWorkspaceRefreshNormalizesInvalidScopeAndTypedRouteImmediately(t *
 			if shell.currentProject != nil {
 				t.Fatalf("invalid current project survived refresh: %#v", shell.currentProject)
 			}
-			if !shell.statusIsInfo || !strings.Contains(shell.statusMessage, "showing All Notes") ||
+			if !shell.feedback.info || !strings.Contains(shell.feedback.message, "showing All Notes") ||
 				!strings.Contains(manager.StatusMessage, "showing All Notes") {
 				t.Fatalf(
 					"scope fallback status = shell %q info=%t manager %q",
-					shell.statusMessage,
-					shell.statusIsInfo,
+					shell.feedback.message,
+					shell.feedback.info,
 					manager.StatusMessage,
 				)
 			}

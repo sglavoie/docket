@@ -44,7 +44,7 @@ func TestOpenPickerLeavesStatusBarWithTheActiveView(t *testing.T) {
 func TestTransientStatusMessageStillOwnsStatusBarWhilePickerIsOpen(t *testing.T) {
 	app := pickerStatusBarApp(t)
 	app.operations.valuePicker = newSemanticTagPickerForTest(t, nil, true)
-	app.statusMessage = "Tagged 1 task(s)"
+	app.feedback.message = "Tagged 1 task(s)"
 
 	statusBar := ansi.Strip(app.renderStatusBar())
 	if strings.Contains(statusBar, "colors its title.") {
@@ -73,19 +73,19 @@ func TestGuidancePreservesShellPrecedenceAndRestores(t *testing.T) {
 		}
 	}
 
-	app.err = errors.New("storage failed")
+	app.feedback.err = errors.New("storage failed")
 	assertOwnsStatus("error", "storage failed")
-	app.err = nil
+	app.feedback.err = nil
 
-	app.statusMessage = "task saved"
+	app.feedback.message = "task saved"
 	assertOwnsStatus("transient status", "task saved")
-	app.statusMessage = ""
+	app.feedback.message = ""
 
 	app.operations.chord = []string{"$"}
-	app.statusMessage = "hidden status"
+	app.feedback.message = "hidden status"
 	assertOwnsStatus("pending chord", "Esc cancel")
 	app.operations.chord = nil
-	app.statusMessage = ""
+	app.feedback.message = ""
 
 	if restored := ansi.Strip(app.renderStatusBar()); restored != baseline {
 		t.Fatalf("persistent guidance did not restore after shell overlays cleared:\n%s", restored)

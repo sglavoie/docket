@@ -17,12 +17,12 @@ func (m *AppModel) executeOperationOverlayRequest(
 	request operation.OperationExecutionRequest,
 ) tea.Cmd {
 	if m.operations.executor == nil {
-		m.err = fmt.Errorf("operation registry is unavailable")
+		m.feedback.err = fmt.Errorf("operation registry is unavailable")
 		return status.StatusTimeout(5 * time.Second)
 	}
 	result := m.operations.executor.Execute(request)
 	if result.Err != nil {
-		m.err = result.Err
+		m.feedback.err = result.Err
 		return status.StatusTimeout(5 * time.Second)
 	}
 	if result.ValueRequired != nil {
@@ -37,7 +37,7 @@ func (m *AppModel) openOperationValueStep(request operation.OperationValueReques
 	if request.Provider.TextEntry() {
 		prompt, err := m.newOperationTextPrompt(request.Request, request.Provider)
 		if err != nil {
-			m.err = err
+			m.feedback.err = err
 			return status.StatusTimeout(5 * time.Second)
 		}
 		m.operations.textPrompt = prompt
@@ -45,7 +45,7 @@ func (m *AppModel) openOperationValueStep(request operation.OperationValueReques
 	}
 	picker, err := m.newOperationValuePicker(request.Request, request.Provider)
 	if err != nil {
-		m.err = err
+		m.feedback.err = err
 		return status.StatusTimeout(5 * time.Second)
 	}
 	m.operations.valuePicker = picker
@@ -77,7 +77,7 @@ func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 		m.operations.actionSheet = nil
 		return true, nil
 	case lens.NamedLensPickerClosedMsg:
-		m.lensPicker = nil
+		m.lenses.close()
 		return true, nil
 	case lens.NamedLensPickerResultMsg:
 		return true, m.applyNamedLensPickerResult(typed)
@@ -147,7 +147,7 @@ func (m *AppModel) resumeContextActionRequest(request operation.OperationExecuti
 		// its value-taking action rows resume here — the name prompt behind Save
 		// and the template gallery behind Add built-in view — so a refused add is
 		// retained on the picker exactly as a refused save is.
-		if picker := m.lensPicker; picker != nil {
+		if picker := m.lenses.picker; picker != nil {
 			result, dismissed := picker.Execute(request)
 			if dismissed {
 				m.closeNamedLensOverlays()

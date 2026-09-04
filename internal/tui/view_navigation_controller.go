@@ -13,7 +13,7 @@ import (
 // than replacing it.
 //
 // It owns the machinery, not the renderers. The live view instances
-// (crossOutliner, helpView, manageHub, taskComposer, lensPicker,
+// (crossOutliner, helpView, manageHub, taskComposer, lenses.picker,
 // conflictBrowser) stay AppModel fields: foundation_invariants_test.go pins
 // "AppModel has exactly one field mentioning OutlinerModel" against the
 // AppModel struct itself, and a pointer to a view is not navigation state.

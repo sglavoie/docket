@@ -201,8 +201,8 @@ func TestProjectEditorParkConfirmCommitsTheWholeEditAtomically(t *testing.T) {
 	if got := fixture.cross.Population.ReloadHeaderProjectID; got != sibling.ID {
 		t.Fatalf("park anchor = %q, want the surviving sibling header %q", got, sibling.ID)
 	}
-	if !strings.Contains(fixture.app.statusMessage, "Fp to show · u undo") {
-		t.Fatalf("park status = %q, want both recovery routes", fixture.app.statusMessage)
+	if !strings.Contains(fixture.app.feedback.message, "Fp to show · u undo") {
+		t.Fatalf("park status = %q, want both recovery routes", fixture.app.feedback.message)
 	}
 }
 

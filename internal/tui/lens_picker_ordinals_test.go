@@ -20,10 +20,10 @@ import (
 // list draws around it, this is the two columns the digit owns.
 func lensPickerOrdinalSlots(t *testing.T, model *AppModel) []string {
 	t.Helper()
-	if model.lensPicker == nil {
+	if model.lenses.picker == nil {
 		t.Fatal("no lens picker is mounted")
 	}
-	items := model.lensPicker.Surface.Items()
+	items := model.lenses.picker.Surface.Items()
 	slots := make([]string, 0, len(items))
 	for _, item := range items {
 		plain := []rune(ansi.Strip(item.PrimaryMarker))
@@ -46,7 +46,7 @@ func TestLensPickerDigitAppliesTheNthListedLensAndCloses(t *testing.T) {
 	// saved lens rather than the second row.
 	pressLens(t, model, "2")
 
-	if model.lensPicker != nil {
+	if model.lenses.picker != nil {
 		t.Error("a digit apply left the picker mounted")
 	}
 	if !model.crossOutliner.HasActiveLens() {
@@ -64,10 +64,10 @@ func TestLensPickerOrdinalsNumberOnlyTheListedSavedLenses(t *testing.T) {
 	if got := lensPickerOrdinalSlots(t, model); !slices.Equal(got, want) {
 		t.Fatalf("number columns = %q, want %q", got, want)
 	}
-	if got := model.lensPicker.Ordinals; len(got) != 3 {
+	if got := model.lenses.picker.Ordinals; len(got) != 3 {
 		t.Fatalf("ordinal assignment holds %d lenses, want 3", len(got))
 	}
-	if got := model.lensPicker.Ordinals[0]; got != lensNamed(t, model, "High Priority").ID {
+	if got := model.lenses.picker.Ordinals[0]; got != lensNamed(t, model, "High Priority").ID {
 		t.Errorf("ordinal 1 = %s, want the first listed lens", got)
 	}
 }
@@ -91,12 +91,12 @@ func TestLensPickerNarrowedListRenumbersFromOneAndTheDigitAppliesIt(t *testing.T
 	// Enter leaves search with the query retained, so the digit acts on the
 	// narrowing that is still on screen.
 	pressLens(t, model, "enter")
-	if model.lensPicker.Searching || model.lensPicker.Query != "wait" {
-		t.Fatalf("leaving search dropped the query: %q", model.lensPicker.Query)
+	if model.lenses.picker.Searching || model.lenses.picker.Query != "wait" {
+		t.Fatalf("leaving search dropped the query: %q", model.lenses.picker.Query)
 	}
 	pressLens(t, model, "1")
 
-	if model.lensPicker != nil {
+	if model.lenses.picker != nil {
 		t.Error("a digit apply left the picker mounted")
 	}
 	if !model.crossOutliner.HasActiveLens() ||
@@ -111,16 +111,16 @@ func TestLensPickerDigitsTypedIntoTheQueryStayLiteral(t *testing.T) {
 	pressLens(t, model, "/")
 	typeLens(t, model, "1")
 
-	if model.lensPicker == nil {
+	if model.lenses.picker == nil {
 		t.Fatal("a digit typed into the query closed the picker")
 	}
-	if got := model.lensPicker.Query; got != "1" {
+	if got := model.lenses.picker.Query; got != "1" {
 		t.Fatalf("query = %q, want the literal digit", got)
 	}
 	if model.crossOutliner.HasActiveLens() {
 		t.Error("a digit typed into the query applied a lens")
 	}
-	rendered := ansi.Strip(model.lensPicker.Render(80))
+	rendered := ansi.Strip(model.lenses.picker.Render(80))
 	if !strings.Contains(rendered, "Search: 1") {
 		t.Errorf("the search line does not show the typed digit:\n%s", rendered)
 	}
@@ -132,10 +132,10 @@ func TestLensPickerOutOfRangeDigitRefusesAndMovesNothing(t *testing.T) {
 
 	pressLens(t, model, "7")
 
-	if model.lensPicker == nil {
+	if model.lenses.picker == nil {
 		t.Fatal("an out-of-range digit closed the picker")
 	}
-	if got := model.lensPicker.Notice(); got != "Only 3 lenses are numbered — press 1-3" {
+	if got := model.lenses.picker.Notice(); got != "Only 3 lenses are numbered — press 1-3" {
 		t.Errorf("refusal notice = %q", got)
 	}
 	if got := lensPickerCursorTitle(t, model); got != before {
@@ -169,7 +169,7 @@ func TestLensPickerActionRowsAndTheTenthLensCarryNoOrdinal(t *testing.T) {
 	// The population is installed in the machine as well as in the picker, so the
 	// digit below dispatches a real apply rather than a resolve failure.
 	setMachineLenses(t, model, lenses)
-	if err := model.lensPicker.Refresh(model.namedLensPickerSnapshot()); err != nil {
+	if err := model.lenses.picker.Refresh(model.namedLensPickerSnapshot()); err != nil {
 		t.Fatalf("refresh: %v", err)
 	}
 
@@ -177,13 +177,13 @@ func TestLensPickerActionRowsAndTheTenthLensCarryNoOrdinal(t *testing.T) {
 	if got := lensPickerOrdinalSlots(t, model); !slices.Equal(got, want) {
 		t.Fatalf("number columns = %q, want %q", got, want)
 	}
-	if got := len(model.lensPicker.Ordinals); got != lens.LensPickerMaxOrdinal {
+	if got := len(model.lenses.picker.Ordinals); got != lens.LensPickerMaxOrdinal {
 		t.Errorf("ordinal assignment holds %d lenses, want the %d cap", got, lens.LensPickerMaxOrdinal)
 	}
 	// A digit past the cap is out of range even though the row is on screen, and
 	// says so in the numbering's own terms.
 	pressLens(t, model, "9")
-	if model.lensPicker != nil {
+	if model.lenses.picker != nil {
 		t.Fatal("9 did not apply the ninth listed lens")
 	}
 	if got := model.crossOutliner.Lens.Active.Name; got != "Lens 08" {
@@ -197,7 +197,7 @@ func TestLensPickerActiveDotDoesNotShiftTheNumberColumn(t *testing.T) {
 
 	unmarked := lensPickerOrdinalSlots(t, model)
 	for _, modified := range []bool{false, true} {
-		if err := model.lensPicker.Refresh(lens.NamedLensPickerSnapshot{
+		if err := model.lenses.picker.Refresh(lens.NamedLensPickerSnapshot{
 			Lenses:   machineLenses(t, model),
 			ActiveID: stale.ID,
 			Modified: modified,
@@ -228,7 +228,7 @@ func TestLensPickerActiveDotDoesNotShiftTheNumberColumn(t *testing.T) {
 		t.Fatalf("contentWidth at %d columns = %d, want the narrow branch 20", narrowWidth, got)
 	}
 	for _, width := range []int{narrowWidth, chrome.MinTerminalWidth, 80} {
-		rendered := ansi.Strip(model.lensPicker.Render(width))
+		rendered := ansi.Strip(model.lenses.picker.Render(width))
 		assertNoLensPickerOverflow(t, rendered, width)
 		if !strings.Contains(rendered, "2 ●* Stale") {
 			t.Errorf("the numbered active row is not intact at width %d:\n%s", width, rendered)
@@ -254,10 +254,10 @@ func TestLensPickerDigitApplyFailsExactlyAsEnterDoes(t *testing.T) {
 		}
 		setMachineLenses(t, model, survivors)
 		pressLens(t, model, keys...)
-		if model.lensPicker == nil {
+		if model.lenses.picker == nil {
 			t.Fatal("a refused apply closed the picker")
 		}
-		return model, waiting.ID, model.lensPicker.Notice()
+		return model, waiting.ID, model.lenses.picker.Notice()
 	}
 
 	byDigit, _, digitNotice := refuse(t, "3")
@@ -277,11 +277,11 @@ func TestLensPickerDigitApplyFailsExactlyAsEnterDoes(t *testing.T) {
 	}
 
 	byEnter, waitingID, _ := refuse(t)
-	if !byEnter.lensPicker.SelectLens(waitingID) {
+	if !byEnter.lenses.picker.SelectLens(waitingID) {
 		t.Fatal("the picker no longer lists the row the digit named")
 	}
 	pressLens(t, byEnter, "enter")
-	if got := byEnter.lensPicker.Notice(); got != digitNotice {
+	if got := byEnter.lenses.picker.Notice(); got != digitNotice {
 		t.Errorf("Enter refusal = %q, digit refusal = %q; the two paths disagree",
 			got, digitNotice)
 	}
@@ -291,7 +291,7 @@ func TestLensPickerGuidanceAdvertisesTheOrdinalsOnlyWhenLensesAreListed(t *testi
 	model := lensPickerApp(t)
 	footerOf := func() string {
 		t.Helper()
-		return ansi.Strip(chrome.RenderGuidanceText(model.lensPicker.GuidanceSpec(), 200))
+		return ansi.Strip(chrome.RenderGuidanceText(model.lenses.picker.GuidanceSpec(), 200))
 	}
 
 	got := footerOf()
@@ -312,15 +312,15 @@ func TestLensPickerGuidanceAdvertisesTheOrdinalsOnlyWhenLensesAreListed(t *testi
 	// A query that matches nothing leaves nothing to number.
 	typeLens(t, model, "zzz")
 	pressLens(t, model, "enter")
-	if model.lensPicker.Listed != 0 {
-		t.Fatalf("the no-match query still lists %d lenses", model.lensPicker.Listed)
+	if model.lenses.picker.Listed != 0 {
+		t.Fatalf("the no-match query still lists %d lenses", model.lenses.picker.Listed)
 	}
 	if got := footerOf(); strings.Contains(got, "1-9") {
 		t.Errorf("no-match guidance = %q, advertises numbers no row carries", got)
 	}
 	// And the digit refuses in the empty population's own words.
 	pressLens(t, model, "1")
-	if got := model.lensPicker.Notice(); got != lens.LensPickerOrdinalEmptyRefusal {
+	if got := model.lenses.picker.Notice(); got != lens.LensPickerOrdinalEmptyRefusal {
 		t.Errorf("empty-population refusal = %q, want %q", got, lens.LensPickerOrdinalEmptyRefusal)
 	}
 }

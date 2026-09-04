@@ -149,7 +149,7 @@ func (m *AppModel) coreMoveToBacklogSingle(capture *outliner.OutlinerRelocationC
 	}
 	fresh, _, transactionID, err := m.applyTaskPlanningAction(task.ID, project.ID, app.PlanningBacklog)
 	if err != nil {
-		m.err = err
+		m.feedback.err = err
 		return status.ErrorCmd("%s", err)
 	}
 	successMessage := fmt.Sprintf("Moved to Backlog: %s", taskTitleOrFallback(fresh, task))

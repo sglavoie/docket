@@ -50,10 +50,10 @@ func (m *AppModel) openNamedLensPicker() tea.Cmd {
 		m.namedLensPickerSnapshot(),
 	)
 	if err != nil {
-		m.err = err
+		m.feedback.err = err
 		return status.StatusTimeout(5 * time.Second)
 	}
-	m.lensPicker = picker
+	m.lenses.open(picker)
 	return nil
 }
 
@@ -80,7 +80,7 @@ func (m *AppModel) saveViewAsLens() tea.Cmd {
 		return m.openOperationValueStep(*result.ValueRequired)
 	}
 	if result.Err != nil {
-		m.err = result.Err
+		m.feedback.err = result.Err
 		return status.StatusTimeout(5 * time.Second)
 	}
 	return operationResultCmd(result)
@@ -91,11 +91,11 @@ func (m *AppModel) saveViewAsLens() tea.Cmd {
 // contract: rename and replace keep the lens selected through any alphabetical
 // reordering, and delete drops the anchor and lands on the nearest survivor.
 func (m *AppModel) refreshNamedLensPicker() {
-	if m == nil || m.lensPicker == nil {
+	if m == nil || m.lenses.picker == nil {
 		return
 	}
-	if err := m.lensPicker.Refresh(m.namedLensPickerSnapshot()); err != nil {
-		m.err = err
+	if err := m.lenses.picker.Refresh(m.namedLensPickerSnapshot()); err != nil {
+		m.feedback.err = err
 	}
 }
 
@@ -103,13 +103,13 @@ func (m *AppModel) refreshNamedLensPicker() {
 // stays mounted underneath, which is what makes every cancel path inside the
 // sheet land back on the list rather than on the Outliner.
 func (m *AppModel) openNamedLensActions(msg lens.NamedLensActionsRequestMsg) tea.Cmd {
-	if m == nil || m.lensPicker == nil {
+	if m == nil || m.lenses.picker == nil {
 		return nil
 	}
 	sheet, err := listsurface.NewContextActionSheetModel(
 		m.operations.registry,
 		m.operations.executor,
-		m.lensPicker.CommandContext(msg.Entity),
+		m.lenses.picker.CommandContext(msg.Entity),
 		lens.NamedLensActionSheetOperations,
 		listsurface.ContextActionSheetConfig{
 			Host:         listsurface.ContextActionHostLensPicker,
@@ -121,7 +121,7 @@ func (m *AppModel) openNamedLensActions(msg lens.NamedLensActionsRequestMsg) tea
 		},
 	)
 	if err != nil {
-		m.err = err
+		m.feedback.err = err
 		return status.StatusTimeout(5 * time.Second)
 	}
 	m.operations.actionSheet = sheet
@@ -157,7 +157,7 @@ func (m *AppModel) closeNamedLensOverlays() {
 	if m == nil {
 		return
 	}
-	m.lensPicker = nil
+	m.lenses.close()
 	m.operations.actionSheet = nil
 	m.clearOperationValueStep()
 	m.operations.confirm.Cancel()

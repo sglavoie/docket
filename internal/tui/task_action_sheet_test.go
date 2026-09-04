@@ -68,8 +68,8 @@ func TestTaskActionSheetMissingSelectionSchedulesStatusClear(t *testing.T) {
 	if result.Err != nil {
 		t.Fatalf("open task actions: %v", result.Err)
 	}
-	if model.statusMessage != "select a task to open actions" {
-		t.Fatalf("status = %q, want missing-selection guidance", model.statusMessage)
+	if model.feedback.message != "select a task to open actions" {
+		t.Fatalf("status = %q, want missing-selection guidance", model.feedback.message)
 	}
 	timeout, ok := result.Message.(operation.OperationCommandResultMsg)
 	if !ok || timeout.Cmd == nil {

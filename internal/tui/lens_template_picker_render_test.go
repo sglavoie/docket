@@ -145,8 +145,8 @@ func TestLensTemplateGalleryAndSavedPickerAgreeOnIdenticalDefinitions(t *testing
 	if cmd := model.openNamedLensPicker(); cmd != nil {
 		drainLensPickerCmd(t, model, cmd)
 	}
-	if model.lensPicker == nil {
-		t.Fatalf("openNamedLensPicker left no picker mounted: %v", model.err)
+	if model.lenses.picker == nil {
+		t.Fatalf("openNamedLensPicker left no picker mounted: %v", model.feedback.err)
 	}
 	picker := openLensTemplateGallery(t, model)
 

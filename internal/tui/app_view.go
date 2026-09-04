@@ -72,7 +72,7 @@ func (m *AppModel) View() (result tea.View) { //nolint:gocyclo
 			if zenView, ok := currentView.(route.ZenModeView); ok {
 				inZen = zenView.IsZenMode()
 			}
-			if !inZen && (m.statusMessage != "" || m.err != nil) {
+			if !inZen && (m.feedback.message != "" || m.feedback.err != nil) {
 				content = replaceFooter(content, m.renderStatusBar())
 			}
 			content = m.applyOverlays(content, m.viewNav.height)

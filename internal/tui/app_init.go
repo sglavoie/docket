@@ -47,7 +47,7 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	// per-launch flag suppresses chrome for one run, it never re-enables what the
 	// machine file turned off.
 	if machine := runtime.Machine(); machine != nil {
-		app.hideAdvisories = machine.AdvisoriesHidden
+		app.feedback.hideAdvisories = machine.AdvisoriesHidden
 	}
 
 	// Apply functional options
@@ -103,7 +103,7 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	// because the reset itself clears it — reading it now and draining it after
 	// the population lands is what makes the order race-free without teaching the
 	// reset about a case it should not know.
-	app.pendingLaunchLens = runtime.Machine().ActiveNamedLens()
+	app.lenses.pendingLaunch = runtime.Machine().ActiveNamedLens()
 	app.startupMessage = launchOutlinerMsg{}
 	if changed, reconcileErr := app.appService.ReconcilePlanning(); reconcileErr != nil {
 		logging.Warn("failed to reconcile startup planning state: %v", reconcileErr)

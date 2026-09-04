@@ -20,14 +20,14 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 		if r := recover(); r != nil {
 			stack := debug.Stack()
 			logging.Warn("TUI panic in Update: %v\n%s", r, stack)
-			m.err = fmt.Errorf("internal error: %v", r)
+			m.feedback.err = fmt.Errorf("internal error: %v", r)
 			if m.crossOutliner != nil {
 				m.crossOutliner.CancelCrossProjectLoad()
 			}
 			m.viewNav.navigation.ResetRoot()
 			m.operations.clearOverlays()
-			m.lensPicker = nil
-			m.statusMessage = ""
+			m.lenses.close()
+			m.feedback.message = ""
 			outModel = m
 			outCmd = nil
 			// The recovery already rebuilt navigation; probing it again here

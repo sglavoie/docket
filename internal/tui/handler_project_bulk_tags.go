@@ -199,7 +199,7 @@ func (m *AppModel) commitProjectBulkTags(edit projectBulkTagEdit) tea.Cmd {
 		return nil
 	})
 	if err != nil {
-		m.err = err
+		m.feedback.err = err
 		return nil
 	}
 	if len(edit.parking) > 0 {
@@ -216,13 +216,13 @@ func (m *AppModel) commitProjectBulkTags(edit projectBulkTagEdit) tea.Cmd {
 	feedbackCmd := m.setRecoveryFeedback(projectBulkTagStatus(edit), transactionID, false)
 	switch {
 	case len(edit.parking) > 0:
-		m.appendRecoveryFeedbackDetail(projectBulkTaskCountPhrase(edit.parking) + " hidden · Fp to show")
+		m.feedback.appendDetail(projectBulkTaskCountPhrase(edit.parking) + " hidden · Fp to show")
 	case edit.action == projecthub.ProjectBulkTagRename:
-		m.appendRecoveryFeedbackDetail("#" + edit.tag + " → #" + edit.replacement)
+		m.feedback.appendDetail("#" + edit.tag + " → #" + edit.replacement)
 	case edit.action == projecthub.ProjectBulkTagRemove:
-		m.appendRecoveryFeedbackDetail("#" + edit.tag)
+		m.feedback.appendDetail("#" + edit.tag)
 	default:
-		m.appendRecoveryFeedbackDetail("#" + edit.tag)
+		m.feedback.appendDetail("#" + edit.tag)
 	}
 	m.refreshProjectHubIfActive()
 	return tea.Batch(

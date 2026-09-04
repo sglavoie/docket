@@ -81,7 +81,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 			return catalog.UpsertProject(&updated)
 		})
 		if err != nil {
-			m.err = err
+			m.feedback.err = err
 			return true, nil
 		}
 		coordinator.CopyCatalogMetadata(msg.Project, &updated)
@@ -160,7 +160,7 @@ func (m *AppModel) handleProjectMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint
 		}
 		feedbackCmd := m.setRecoveryFeedback(status, msg.TransactionID, false)
 		if msg.Parked && msg.Project != nil {
-			m.appendRecoveryFeedbackDetail(projectTaskCountPhrase(msg.Project) + " hidden · Fp to show")
+			m.feedback.appendDetail(projectTaskCountPhrase(msg.Project) + " hidden · Fp to show")
 		}
 		cmds = append(cmds, feedbackCmd)
 		return true, tea.Batch(cmds...)
@@ -235,7 +235,7 @@ func (m *AppModel) commitProjectArchive(project *models.Project) tea.Cmd {
 
 	domains := cloneRuntimeDomains(m.runtime)
 	if err := domains.Catalog.UpsertProject(&updated); err != nil {
-		m.err = err
+		m.feedback.err = err
 		return nil
 	}
 	if len(archivedLocators) > 0 {
@@ -243,7 +243,7 @@ func (m *AppModel) commitProjectArchive(project *models.Project) tea.Cmd {
 	}
 	result, err := m.commitRuntimeDomainsWithUndo(domains, "Archive Project", updated.Name, []string{updated.ID})
 	if err != nil {
-		m.err = err
+		m.feedback.err = err
 		return nil
 	}
 
@@ -260,8 +260,8 @@ func (m *AppModel) commitProjectArchive(project *models.Project) tea.Cmd {
 	}
 	feedbackCmd := m.setRecoveryFeedback(feedbackMessage, result.TransactionID, false)
 	if result.MachineErr != nil {
-		m.statusIsInfo = true
-		m.appendRecoveryFeedbackDetail("machine-state cleanup incomplete; retrying")
+		m.feedback.info = true
+		m.feedback.appendDetail("machine-state cleanup incomplete; retrying")
 	}
 	m.refreshProjectHubIfActive()
 	return tea.Batch(
@@ -382,12 +382,12 @@ func (m *AppModel) commitProjectDelete(project *models.Project) tea.Cmd {
 
 	domains := cloneRuntimeDomains(m.runtime)
 	if _, err := domains.RemoveProject(updated.ID, updated.Slug); err != nil {
-		m.err = err
+		m.feedback.err = err
 		return nil
 	}
 	artifacts, err := syncedDomainArtifacts(m.runtime, domains.Catalog, domains.Planning)
 	if err != nil {
-		m.err = err
+		m.feedback.err = err
 		return nil
 	}
 	transactionID, err := m.appService.DeleteProjectResult(app.DeleteProjectRequest{
@@ -397,11 +397,11 @@ func (m *AppModel) commitProjectDelete(project *models.Project) tea.Cmd {
 		Config:                 artifacts,
 	})
 	if err != nil {
-		m.err = err
+		m.feedback.err = err
 		return nil
 	}
 	if err := m.runtime.RefreshAfterCommit(); err != nil {
-		m.err = err
+		m.feedback.err = err
 		return nil
 	}
 	m.syncProjectCache()
@@ -433,7 +433,7 @@ func (m *AppModel) commitProjectUnarchive(project *models.Project) tea.Cmd {
 		return catalog.UpsertProject(&updated)
 	})
 	if err != nil {
-		m.err = err
+		m.feedback.err = err
 		return nil
 	}
 	coordinator.CopyCatalogMetadata(project, &updated)
