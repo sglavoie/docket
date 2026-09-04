@@ -10,32 +10,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
-// executeDirectPath resolves one strategy key path in ctx and runs it exactly as
-// handleSimplifiedInputKey does, so the preset the grammar declares is the value
-// the executor receives.
-func executeDirectPath(
-	t *testing.T,
-	model *AppModel,
-	ctx operation.CommandContext,
-	path []string,
-) operation.OperationExecutionResult {
-	t.Helper()
-	binding, descriptor, resolution := model.operationRegistry.InputBindingForSequence(
-		operation.InputStrategySimplified,
-		path,
-		ctx,
-	)
-	if resolution != operation.ChordTerminal {
-		t.Fatalf("key path %v resolution = %v, want terminal", path, resolution)
-	}
-	return model.operationExecutor.Execute(operation.OperationExecutionRequest{
-		ID:       descriptor.ID,
-		Context:  ctx,
-		Value:    binding.PresetValue,
-		HasValue: binding.HasPresetValue,
-	})
-}
-
 func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 	model := newUITestApp()
 	project := newTaskStructureTestProject()

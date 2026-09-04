@@ -317,27 +317,6 @@ func TestHeaderTargetKeyPressesReachTheRejection(t *testing.T) {
 	}
 }
 
-func headerTargetProjectHeaderRow(t *testing.T, outliner *OutlinerModel) int {
-	t.Helper()
-	for index, row := range outliner.rows {
-		if row.IsProjectHeader {
-			return index
-		}
-	}
-	t.Fatal("fixture Outliner exposed no project header row")
-	return 0
-}
-
-func headerTargetAuditApp(t *testing.T) *AppModel {
-	t.Helper()
-	driver, workspace, err := NewFixtureDriver(FixtureRich, 100, 35)
-	if err != nil {
-		t.Fatalf("fixture: %v", err)
-	}
-	t.Cleanup(func() { _ = workspace.Cleanup() })
-	return driver.App()
-}
-
 // headerTargetCursorContext parks the Outliner cursor on a project header row
 // and returns the context dispatch would build from it.
 func headerTargetCursorContext(t *testing.T) operation.CommandContext {

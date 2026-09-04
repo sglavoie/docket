@@ -1,81 +1,15 @@
 package tui
 
 import (
-	"fmt"
 	"slices"
-	"strings"
 	"testing"
 
-	tea "charm.land/bubbletea/v2"
-
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
-
-// lensLifecycleOutliner builds one two-project cross-project scope whose tasks
-// span the states, priorities, and titles the lifecycle assertions narrow on.
-func lensLifecycleOutliner() *OutlinerModel {
-	backlog := primaryRowsTask("backlog", models.StateBacklog)
-	backlog.Title = "Needle in the backlog"
-	doing := primaryRowsTask("doing", models.StateDoing)
-	doing.Title = "Unrelated in flight"
-	waiting := primaryRowsTask("waiting", models.StateWaiting)
-	waiting.Title = "Needle held up"
-	waiting.Priority = models.PriorityHigh
-	alpha := primaryRowsProject("alpha", backlog, doing, waiting)
-
-	betaWaiting := primaryRowsTask("beta-waiting", models.StateWaiting)
-	betaWaiting.Title = "Beta needle"
-	betaInbox := primaryRowsTask("beta-inbox", models.StateInbox)
-	betaInbox.Title = "Beta triage"
-	beta := primaryRowsProject("beta", betaWaiting, betaInbox)
-
-	return scopeTestOutliner(alpha, beta)
-}
-
-// waitingLens is the starter-shaped definition the lifecycle tests apply: a
-// named mode, a real facet, and a narrowing query.
-func waitingLens(id, name, narrowing string) config.NamedLens {
-	facets, err := models.ParseQuery("$" + string(models.StateWaiting))
-	if err != nil {
-		panic(err)
-	}
-	state := lensState{
-		mode:   chrome.ModeAll,
-		facets: facets,
-		query:  narrowing,
-		sort:   query.NewSortState(),
-	}
-	return state.namedLens(id, name)
-}
-
-// lensWithFacet adds one canonical token to a saved definition's narrowing. A
-// lens carries one query string rather than a filter struct, so a fixture names
-// an extra facet by spelling it rather than by writing a field.
-func lensWithFacet(lens config.NamedLens, token string) config.NamedLens {
-	lens.Query = strings.TrimSpace(lens.Query + " " + token)
-	return lens
-}
-
-// lensTestID mints the canonical lowercase hyphenated UUID form the config
-// layer is the sole judge of, so the lifecycle tests exercise the same identity
-// rule a persisted lens does.
-func lensTestID(n int) string {
-	return fmt.Sprintf("6f1a0c4e-0b2f-4a7d-9b3c-5d1e8a2f6d%02d", n)
-}
-
-func applyLensOrFatal(t *testing.T, outliner *OutlinerModel, lens config.NamedLens) tea.Cmd {
-	t.Helper()
-	cmd, err := outliner.ApplyNamedLens(lens)
-	if err != nil {
-		t.Fatalf("ApplyNamedLens(%q): %v", lens.Name, err)
-	}
-	return cmd
-}
 
 func TestApplyNamedLensInstallsSavedProjectionAndEscRestoresBaseline(t *testing.T) {
 	outliner := lensLifecycleOutliner()

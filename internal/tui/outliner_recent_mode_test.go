@@ -10,13 +10,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
-// recentTask seeds a task whose last activity is dayOffset days in the past.
-func recentTask(id string, state models.WorkflowState, dayOffset int) *models.Task {
-	task := primaryRowsTask(id, state)
-	task.UpdatedAt = time.Now().AddDate(0, 0, -dayOffset)
-	return task
-}
-
 func recentSectionNames(sections []OutlinerModeSection) []string {
 	names := make([]string, 0, len(sections))
 	for _, section := range sections {

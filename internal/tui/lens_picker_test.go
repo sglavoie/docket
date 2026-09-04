@@ -5,10 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui/lens"
 )
 
@@ -16,119 +14,6 @@ import (
 // routing, the nested overlays, and the retention rules only exist together: an
 // assertion made by calling the model's own methods would prove nothing about
 // which overlay a key actually reaches.
-
-func lensPickerApp(t *testing.T) *AppModel {
-	t.Helper()
-	model := lensOperationApp(t)
-	if cmd := model.openNamedLensPicker(); cmd != nil {
-		drainLensPickerCmd(t, model, cmd)
-	}
-	if model.lensPicker == nil {
-		t.Fatalf("openNamedLensPicker left no picker mounted: %v", model.err)
-	}
-	return model
-}
-
-// drainLensPickerCmd runs the overlay protocol to quiescence. Only messages the
-// operation-overlay plumbing owns are dispatched: a status or reload message is
-// the routed view's business and would drag unrelated machinery into a test
-// about overlay nesting.
-func drainLensPickerCmd(t *testing.T, model *AppModel, cmd tea.Cmd) {
-	t.Helper()
-	queue := []tea.Cmd{cmd}
-	for steps := 0; len(queue) > 0; steps++ {
-		if steps > 64 {
-			t.Fatal("lens overlay messages did not settle")
-		}
-		next := queue[0]
-		queue = queue[1:]
-		if next == nil {
-			continue
-		}
-		switch msg := next().(type) {
-		case nil:
-		case tea.BatchMsg:
-			queue = append(queue, []tea.Cmd(msg)...)
-		default:
-			if handled, follow := model.handleOperationOverlayMessage(msg); handled {
-				queue = append(queue, follow)
-			}
-		}
-	}
-}
-
-// pressLens sends each named key through the shell's global router, exactly as
-// a keystroke arrives in the running app.
-func pressLens(t *testing.T, model *AppModel, keys ...string) {
-	t.Helper()
-	for _, name := range keys {
-		key, err := parseUITestKey(name)
-		if err != nil {
-			t.Fatalf("parse key %q: %v", name, err)
-		}
-		handled, cmd := model.handleGlobalKeyPress(key)
-		if !handled {
-			t.Fatalf("key %q was not handled by any overlay", name)
-		}
-		drainLensPickerCmd(t, model, cmd)
-	}
-}
-
-func typeLens(t *testing.T, model *AppModel, text string) {
-	t.Helper()
-	for _, r := range text {
-		pressLens(t, model, string(r))
-	}
-}
-
-func lensPickerRowTitles(t *testing.T, model *AppModel) []string {
-	t.Helper()
-	if model.lensPicker == nil {
-		t.Fatal("no lens picker is mounted")
-	}
-	items := model.lensPicker.Surface.Items()
-	titles := make([]string, 0, len(items))
-	for _, item := range items {
-		titles = append(titles, item.PrimaryText)
-	}
-	return titles
-}
-
-func lensPickerCursorTitle(t *testing.T, model *AppModel) string {
-	t.Helper()
-	if model.lensPicker == nil {
-		t.Fatal("no lens picker is mounted")
-	}
-	item, ok := model.lensPicker.Surface.CurrentItem()
-	if !ok {
-		t.Fatal("the lens picker has no current row")
-	}
-	return item.PrimaryText
-}
-
-func sheetRowTitles(t *testing.T, model *AppModel) []string {
-	t.Helper()
-	if model.contextActionSheet == nil {
-		t.Fatal("no action sheet is mounted")
-	}
-	items := model.contextActionSheet.Surface.Items()
-	titles := make([]string, 0, len(items))
-	for _, item := range items {
-		titles = append(titles, item.PrimaryText)
-	}
-	return titles
-}
-
-// selectLensRow parks the picker cursor on one saved lens by name so a test can
-// name its target without depending on how many keys reach it.
-func selectLensRow(t *testing.T, model *AppModel, name string) config.NamedLens {
-	t.Helper()
-	lens := lensNamed(t, model, name)
-	if !model.lensPicker.SelectLens(lens.ID) {
-		t.Fatalf("lens %q is not listed in the picker", name)
-	}
-	return lens
-}
 
 // --- population and ordering ------------------------------------------------
 

@@ -8,6 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/operation"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -278,4 +279,46 @@ func (d *UITestDriver) viewStackNames() []string {
 		names = append(names, vt.String())
 	}
 	return names
+}
+
+// newUITestApp builds a minimal, fully-renderable AppModel (cross-project
+// Outliner registered) for driver tests, without the real-data side effects of
+// NewAppModel.
+func newUITestApp() *AppModel {
+	app := newTestAppModel()
+	app.operationRegistry = operation.NewOperationRegistry()
+	app.operationExecutor = operation.NewOperationExecutor(app.operationRegistry)
+	o := NewOutlinerModel(nil, app.configManager, app.runtime)
+	app.crossOutliner = o
+	app.views.Register(presentation.ViewCrossProjectOutliner, o)
+	setTestPresentationPath(app, presentation.ViewCrossProjectOutliner)
+	if err := app.registerCoreInputOperations(); err != nil {
+		panic(err)
+	}
+	if err := app.registerTaskActionOperations(); err != nil {
+		panic(err)
+	}
+	if err := app.registerFilterOperations(); err != nil {
+		panic(err)
+	}
+	if err := app.registerSortOperations(); err != nil {
+		panic(err)
+	}
+	if err := app.registerProjectOperations(); err != nil {
+		panic(err)
+	}
+	if err := app.registerProjectActionSheetOperation(); err != nil {
+		panic(err)
+	}
+	if err := app.registerHarnessOperations(); err != nil {
+		panic(err)
+	}
+	if err := app.registerChecklistRowOperations(); err != nil {
+		panic(err)
+	}
+	if err := app.operationRegistry.RegisterInputStrategy(SimplifiedInputStrategy()); err != nil {
+		panic(err)
+	}
+	app.wireOutlinerOperationExecutor(app.crossOutliner)
+	return app
 }

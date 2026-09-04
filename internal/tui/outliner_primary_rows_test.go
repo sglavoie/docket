@@ -12,28 +12,6 @@ import (
 	"github.com/sglavoie/tt/internal/util"
 )
 
-func primaryRowsTask(id string, state models.WorkflowState) *models.Task {
-	return &models.Task{
-		ID:            id,
-		Title:         id,
-		WorkflowState: state,
-		UpdatedAt:     time.Now(),
-	}
-}
-
-func primaryRowsProject(id string, tasks ...*models.Task) *models.Project {
-	project := &models.Project{ID: id, Name: id, Slug: id, Tasks: tasks}
-	project.BuildTaskTree()
-	return project
-}
-
-func primaryRowsOutliner(projects ...*models.Project) (*OutlinerModel, *config.RuntimeState) {
-	runtime := testConfigWithProjects(projects...)
-	outliner := NewOutlinerModel(nil, nil, runtime)
-	outliner.loadedProjects = projects
-	return outliner, runtime
-}
-
 func TestPrimaryAllUsesCanonicalGroupsAndDeduplicatesToday(t *testing.T) {
 	tasks := []*models.Task{
 		primaryRowsTask("in-progress", models.StateDoing),

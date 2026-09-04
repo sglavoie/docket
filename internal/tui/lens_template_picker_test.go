@@ -20,63 +20,6 @@ import (
 // sharing its stable identity.
 const lensTemplateForeignID = "11111111-2222-4333-8444-555555555501"
 
-// openLensTemplateGallery opens the gallery through the real path: the executor
-// asks for a value, and the shell's value step builds the overlay. Nothing here
-// names a task, which is the point — the catalog is global.
-func openLensTemplateGallery(t *testing.T, model *AppModel) *OperationValuePickerModel {
-	t.Helper()
-	result := executeLens(model, lens.OperationLensAddTemplate, operation.EntityIdentity{}, "", false)
-	if result.ValueRequired == nil {
-		t.Fatalf("add template did not ask for a value: %#v", result)
-	}
-	if cmd := model.openOperationValueStep(*result.ValueRequired); cmd != nil {
-		cmd()
-	}
-	if model.err != nil {
-		t.Fatalf("opening the gallery failed: %v", model.err)
-	}
-	if model.operationValuePicker == nil {
-		t.Fatal("the gallery did not open")
-	}
-	return model.operationValuePicker
-}
-
-// setMachineLenses replaces the machine-local saved list in memory, which is the
-// same seam a commit publishes through.
-func setMachineLenses(t *testing.T, model *AppModel, lenses config.NamedLensList) {
-	t.Helper()
-	machine := cloneMachineState(model.runtime.Machine())
-	machine.NamedLenses = lenses
-	if err := machine.Validate(); err != nil {
-		t.Fatalf("the test machine state is invalid: %v", err)
-	}
-	model.runtime.SetMachineInMemory(machine)
-}
-
-func lensTemplateByName(t *testing.T, name string) config.NamedLens {
-	t.Helper()
-	for _, template := range config.BuiltinNamedLensTemplates() {
-		if template.Name == name {
-			return template
-		}
-	}
-	t.Fatalf("no built-in template is named %q", name)
-	return config.NamedLens{}
-}
-
-// galleryRow finds one template's row by its stable ID rather than by position,
-// so an ordering change fails the ordering test alone.
-func galleryRow(t *testing.T, picker *OperationValuePickerModel, id string) listsurface.ListItem {
-	t.Helper()
-	for _, item := range picker.surface.Items() {
-		if item.ID == lensTemplateItemID(id) {
-			return item
-		}
-	}
-	t.Fatalf("the gallery has no row for template %s", id)
-	return listsurface.ListItem{}
-}
-
 func typeIntoGallery(picker *OperationValuePickerModel, query string) {
 	picker.HandleKey(tea.KeyPressMsg{Code: '/', Text: "/"})
 	for _, r := range query {

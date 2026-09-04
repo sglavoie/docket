@@ -8,19 +8,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
-// parityAuditApp builds the production catalog exactly as NewAppModel does, so
-// these invariants audit registerOperationCatalog itself rather than a
-// test-local subset of it.
-func parityAuditApp(t *testing.T) *AppModel {
-	t.Helper()
-	driver, workspace, err := NewFixtureDriver(FixtureRich, 100, 35)
-	if err != nil {
-		t.Fatalf("fixture: %v", err)
-	}
-	t.Cleanup(func() { _ = workspace.Cleanup() })
-	return driver.App()
-}
-
 func TestEveryRegisteredOperationHasOneCompatibleHandler(t *testing.T) {
 	app := parityAuditApp(t)
 	registry := app.GetOperationRegistry()
@@ -175,25 +162,3 @@ func TestHarnessAndRetiredOperationsStayOutOfProductionSurfaces(t *testing.T) {
 // the one grammar: no key path shadows another, presets match the value their
 // handler asserts, every chord reaches a compatible handler, and every prefix
 // can render a which-key row. It is quiet while the strategy declares no chord.
-
-// taskActionParityContext focuses the Outliner on the first live task so the
-// sheet projection is evaluated against a real target instead of an empty one.
-func taskActionParityContext(t *testing.T, app *AppModel) operation.CommandContext {
-	t.Helper()
-	outliner := app.crossOutliner
-	if outliner == nil {
-		t.Fatal("fixture app has no Outliner")
-	}
-	for index, row := range outliner.rows {
-		if !row.isTaskRow() {
-			continue
-		}
-		outliner.Cursor = index
-		ctx := outliner.operationCommandContext()
-		if operation.CurrentTaskIdentity(ctx).Valid() {
-			return ctx
-		}
-	}
-	t.Fatal("fixture Outliner exposed no task row")
-	return operation.CommandContext{}
-}

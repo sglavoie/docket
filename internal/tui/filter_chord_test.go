@@ -13,43 +13,6 @@ import (
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
-func newFilterChordTestApp(t *testing.T) *AppModel {
-	t.Helper()
-	app := newUITestApp()
-	project := &models.Project{
-		ID:   "project",
-		Name: "Project",
-		Slug: "project",
-		Tasks: []*models.Task{
-			{ID: "critical", ShortID: 1, Title: "Critical", WorkflowState: models.StateBacklog, Priority: 1},
-			{ID: "medium", ShortID: 2, Title: "Medium", WorkflowState: models.StateBacklog, Priority: 2, Review: true},
-			{ID: "low", ShortID: 3, Title: "Low", WorkflowState: models.StateWaiting, Priority: 3, Tags: []string{"deep"}},
-		},
-	}
-	project.BuildTaskTree()
-	setTestAppProjects(app, project)
-	app.crossOutliner.loadedProjects = []*models.Project{project}
-	app.crossOutliner.crossForceRebuild = true
-	app.crossOutliner.rebuildRows()
-	return app
-}
-
-func pressFilterChord(t *testing.T, app *AppModel, keys string) tea.Cmd {
-	t.Helper()
-	var cmd tea.Cmd
-	var handled bool
-	for _, key := range keys {
-		handled, cmd = app.handleGlobalKeyPress(tea.KeyPressMsg{Code: key, Text: string(key)})
-		if !handled {
-			t.Fatalf("key %q of chord %q was not handled", key, keys)
-		}
-	}
-	if len(app.pendingChord) != 0 {
-		t.Fatalf("chord %q left pending prefix %v", keys, app.pendingChord)
-	}
-	return cmd
-}
-
 func TestFilterChordWhichKeyHints(t *testing.T) {
 	app := newFilterChordTestApp(t)
 

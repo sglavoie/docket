@@ -1,9 +1,13 @@
 package tui
 
 import (
+	"testing"
+
+	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/coordinator"
 )
 
 // testAppRepo is a minimal app.Repository for isolated view tests, backed by
@@ -55,4 +59,30 @@ func (r *testAppRepo) Commit(changesets ...storage.ChangeSet) ([]*storage.Commit
 		results[i] = &storage.CommitResult{Revision: "test-revision", TransactionID: "test-transaction"}
 	}
 	return results, nil
+}
+
+// secondaryEnv extends scenarioEnv with the secondary coordinators bound to the
+// same application service.
+func newSecondaryEnv(t *testing.T, slug string, tasks ...*models.Task) (*scenarioEnv, coordinator.SecondaryCoordinators) {
+	t.Helper()
+	env := newScenarioEnv(t, slug, tasks...)
+	return env, coordinator.NewSecondaryCoordinators(env.svc)
+}
+
+// runBatchResult executes a coordinator command and asserts it produced a
+// committed batch-transaction message, returning it.
+func runBatchResult(t *testing.T, cmd tea.Cmd) coordinator.BatchTransactionResultMsg {
+	t.Helper()
+	if cmd == nil {
+		t.Fatal("coordinator returned a nil command")
+	}
+	switch msg := cmd().(type) {
+	case coordinator.BatchTransactionResultMsg:
+		return msg
+	case coordinator.TransactionErrorMsg:
+		t.Fatalf("expected a committed batch, got error: %v", msg.Err)
+	default:
+		t.Fatalf("expected coordinator.BatchTransactionResultMsg, got %T", msg)
+	}
+	return coordinator.BatchTransactionResultMsg{}
 }

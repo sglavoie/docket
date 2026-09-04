@@ -1096,3 +1096,119 @@ which reports a clean boundary rather than a count:
 go run ./scripts/tuirefs -o /tmp/refs.tsv
 go run ./scripts/tuiqualify -edges /tmp/refs.tsv -package taskref
 ```
+
+## Per-package file counts at the Phase 1 boundary (Session 3.1)
+
+Twenty-two packages, measured after the last Phase 1 extraction and this
+session's helper homing. Reproduce with:
+
+```sh
+for dir in internal/tui/ internal/tui/*/; do
+  printf '%s\t%s\t%s\n' "$dir" \
+    "$(ls "$dir"*.go 2>/dev/null | grep -vc '_test\.go$')" \
+    "$(ls "$dir"*_test.go 2>/dev/null | wc -l)"
+done
+```
+
+| package | production files | test files | production lines | test lines |
+| --- | --- | --- | --- | --- |
+| `chrome` | 24 | 13 | 2524 | 1500 |
+| `conflict` | 1 | 2 | 496 | 283 |
+| `coordinator` | 9 | 2 | 1394 | 269 |
+| `grammar` | 25 | 19 | 4935 | 2478 |
+| `help` | 7 | 5 | 986 | 350 |
+| `keymap` | 2 | 2 | 187 | 63 |
+| `lens` | 7 | 5 | 1174 | 805 |
+| `listsurface` | 21 | 11 | 4450 | 1386 |
+| `notes` | 15 | 9 | 2919 | 2629 |
+| `operation` | 24 | 2 | 4002 | 54 |
+| `presentation` | 3 | 2 | 68 | 75 |
+| `projecthub` | 16 | 13 | 3033 | 1880 |
+| `pulse` | 3 | 3 | 345 | 348 |
+| `query` | 13 | 8 | 2468 | 1003 |
+| `route` | 11 | 4 | 1116 | 365 |
+| `status` | 5 | 2 | 281 | 76 |
+| `taskdetail` | 13 | 8 | 2184 | 1196 |
+| `taskform` | 28 | 19 | 4136 | 2690 |
+| `taskref` | 2 | 2 | 53 | 163 |
+| `textfit` | 5 | 5 | 261 | 461 |
+| `theme` | 23 | 10 | 1959 | 1227 |
+| tui (root shell) | 206 | 315 | 35232 | 63714 |
+| **total** | **463** | **461** | **74203** | **83015** |
+
+Every extracted package is under the 40-file production target; `taskform` at 28
+is the largest. The shell is the whole remaining problem — 206 production files
+and 315 test files, 45% and 68% of the subtree — and it stays that way until
+Phase 2 decomposes `OutlinerModel` and `AppModel`. `operation` is the one row
+whose test column is not a story about the package: two files and 54 lines,
+because its registry, executor and strategy vocabulary is enumerated from the
+shell where the union of every registration lives.
+
+Production files rose from Phase 0's 439 to 463 and test files from 397 to 461.
+Neither is churn: an extraction adds one `main_test.go` per test-bearing package
+and splits files that a package boundary cut in two, and this session added the
+seven helper homes below.
+
+## Cross-package test residue at the Phase 1 boundary (Session 3.1)
+
+`context.md` counted **295 of 372** test files referencing code that would land
+in two or more packages. The residue is now zero in the only sense the compiler
+leaves open: no package's test files reach a sibling its own production code
+does not already import, so every test file is homed with the package it
+exercises and reads its dependencies as ordinary API.
+
+```sh
+go list -json ./internal/tui/... | python3 -c '
+import json, sys
+decoder = json.JSONDecoder(); text = sys.stdin.read(); at = 0
+while at < len(text):
+    while at < len(text) and text[at].isspace(): at += 1
+    if at >= len(text): break
+    pkg, at = decoder.raw_decode(text, at)
+    sib = lambda key: {p.split("internal/tui/")[-1] for p in pkg.get(key, []) if "/internal/tui/" in p}
+    extra = sorted((sib("TestImports") | sib("XTestImports")) - sib("Imports"))
+    print(pkg["ImportPath"], extra)
+'
+```
+
+The upward direction — a sub-package test importing the root shell, which is
+what "cross-cutting" meant before the split — is enforced rather than measured:
+`tui_layer_fitness_test.go` holds test files to the declared graph exactly as it
+holds production files, so a test that reaches up fails there. The three
+enumeration tests the plan named as unhomeable, `chord_isolation_test.go`,
+`state_machine_invariants_test.go` and `chrome_classification_test.go`, are root
+integration tests for that reason and stay there.
+
+## Shared test-helper homes (Session 3.1)
+
+A shared helper is invisible in the file that declares it: nothing about
+`outliner_primary_rows_test.go` said 50 other files read `primaryRowsProject`,
+and a filename-based move of that file breaks all 50 with no warning ahead of
+the compile. Session 3.1 moved every helper read by five or more other test
+files in its package into a file that declares no test, and
+`tui_shared_test_helper_home_test.go` now fails the build when a new one hides
+behind a test. Five is the bar because it is where the shell's distribution
+separates: the homed helpers run from 5 to 50 readers and everything left below
+the bar is read by four files or fewer.
+
+| home | receives | from |
+| --- | --- | --- |
+| `outliner_test_helpers_test.go` | `primaryRowsTask` `primaryRowsProject` `primaryRowsOutliner` `searchRankedList` `searchVisibleTaskIDs` `searchMatchTaskIDs` `recentTask` | `outliner_primary_rows_test.go`, `outliner_search_projection_test.go`, `outliner_recent_mode_test.go` |
+| `outliner_planning_order_support_test.go` | `visibleTaskIDs` `locatorOf` `assertTreeUnchanged` | `outliner_planning_order_test.go` |
+| `lens_test_helpers_test.go` (new) | `lensOperationApp` `lensOperationContext` `executeLens` `machineLenses` `lensNamed` `lensNames` `lensLifecycleOutliner` `waitingLens` `lensWithFacet` `lensTestID` `applyLensOrFatal` `openLensTemplateGallery` `setMachineLenses` `lensTemplateByName` `galleryRow` `lensPickerApp` `drainLensPickerCmd` `pressLens` `typeLens` `lensPickerRowTitles` `lensPickerCursorTitle` `sheetRowTitles` `selectLensRow` | `lens_operations_test.go`, `outliner_lens_lifecycle_test.go`, `lens_template_picker_test.go`, `lens_picker_test.go` |
+| `simplified_input_test_helpers_test.go` (new) | `registeredSimplifiedOperationRegistry` `simplifiedTaskActionDescriptors` `simplifiedOperationContext` `guidanceHintsText` | `input_strategy_test.go` |
+| `grammar_audit_test_helpers_test.go` (new) | `newFilterChordTestApp` `pressFilterChord` `headerTargetProjectHeaderRow` `headerTargetAuditApp` `parityAuditApp` `taskActionParityContext` `executeDirectPath` | `filter_chord_test.go`, `header_target_audit_test.go`, `operation_parity_test.go`, `direct_metadata_keys_test.go` |
+| `uitest_driver_helpers_test.go` | `newUITestApp` | `uitest_driver_test.go` |
+| `feature_coordinator_test_helpers_test.go` (new) | `scenarioRepo` `scenarioEnv` and their methods, `newScenarioRepo` `newScenarioEnv` `runResult` `seedTask` | `feature_coordinator_scenarios_test.go` |
+| `secondary_coordinator_helpers_test.go` | `newSecondaryEnv` `runBatchResult` | `feature_coordinator_secondary_scenarios_test.go` |
+| `outline_editor_test_helpers_test.go` (new) | `outlineTestProject` | `outline_editor_test.go` |
+
+The hazards table in `context.md` named ten symbols. Four were already homed
+before this session — `setTestAppProjects`, `scopeTestOutliner`, `testRuntimeAt`
+and `NewFixtureDriver` live in helper-only files their extraction sessions
+created, `syntheticKey`/`syntheticSpecialKey`/`syntheticCtrlKey` in
+`key_helpers_test.go`, and `cloneInputStrategy` is production code inside
+`internal/tui/operation`. The other five moved here. The sub-packages needed no
+work at all: every one of them already keeps its shared fixtures in a
+`*_test_helpers_test.go`, because each extraction session wrote that file when it
+homed its tests.

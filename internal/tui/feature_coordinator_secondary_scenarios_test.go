@@ -5,11 +5,8 @@ import (
 	"testing"
 	"time"
 
-	tea "charm.land/bubbletea/v2"
-
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -19,14 +16,6 @@ import (
 // ledger — the same mutation→reload→render→undo cycle the primary scenarios honor
 // against the retained task/artifact coordinator seam.
 
-// secondaryEnv extends scenarioEnv with the secondary coordinators bound to the
-// same application service.
-func newSecondaryEnv(t *testing.T, slug string, tasks ...*models.Task) (*scenarioEnv, coordinator.SecondaryCoordinators) {
-	t.Helper()
-	env := newScenarioEnv(t, slug, tasks...)
-	return env, coordinator.NewSecondaryCoordinators(env.svc)
-}
-
 // envLocators qualifies the named seed tasks with the environment's project, so
 // a scenario names bulk targets the same way the Outliner does.
 func envLocators(env *scenarioEnv, tasks ...*models.Task) []app.TaskLocator {
@@ -35,24 +24,6 @@ func envLocators(env *scenarioEnv, tasks ...*models.Task) []app.TaskLocator {
 		locators = append(locators, taskref.For(task, env.project).Locator())
 	}
 	return locators
-}
-
-// runBatchResult executes a coordinator command and asserts it produced a
-// committed batch-transaction message, returning it.
-func runBatchResult(t *testing.T, cmd tea.Cmd) coordinator.BatchTransactionResultMsg {
-	t.Helper()
-	if cmd == nil {
-		t.Fatal("coordinator returned a nil command")
-	}
-	switch msg := cmd().(type) {
-	case coordinator.BatchTransactionResultMsg:
-		return msg
-	case coordinator.TransactionErrorMsg:
-		t.Fatalf("expected a committed batch, got error: %v", msg.Err)
-	default:
-		t.Fatalf("expected coordinator.BatchTransactionResultMsg, got %T", msg)
-	}
-	return coordinator.BatchTransactionResultMsg{}
 }
 
 // TestAttachmentScenario covers the transactional attachment overlay: attaching a

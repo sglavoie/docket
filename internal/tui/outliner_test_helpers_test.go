@@ -2,8 +2,10 @@ package tui
 
 import (
 	"testing"
+	"time"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/grammar"
@@ -219,4 +221,59 @@ func visibleOutlinerTaskIDs(outliner *OutlinerModel) map[string]bool {
 		}
 	}
 	return ids
+}
+
+func primaryRowsTask(id string, state models.WorkflowState) *models.Task {
+	return &models.Task{
+		ID:            id,
+		Title:         id,
+		WorkflowState: state,
+		UpdatedAt:     time.Now(),
+	}
+}
+
+func primaryRowsProject(id string, tasks ...*models.Task) *models.Project {
+	project := &models.Project{ID: id, Name: id, Slug: id, Tasks: tasks}
+	project.BuildTaskTree()
+	return project
+}
+
+func primaryRowsOutliner(projects ...*models.Project) (*OutlinerModel, *config.RuntimeState) {
+	runtime := testConfigWithProjects(projects...)
+	outliner := NewOutlinerModel(nil, nil, runtime)
+	outliner.loadedProjects = projects
+	return outliner, runtime
+}
+
+// searchRankedList holds a query and shows it as the flat ranked list. The tier,
+// score, and seating assertions are all about that presentation; a query alone
+// narrows the mode's own lanes instead, which the D7 tests cover separately.
+func searchRankedList(outliner *OutlinerModel, query string) {
+	outliner.SetSearchQuery(query)
+	if !outliner.showsRankedList() {
+		outliner.toggleRankedList()
+	}
+}
+
+func searchVisibleTaskIDs(outliner *OutlinerModel) []string {
+	result := make([]string, 0)
+	for _, identity := range qualifiedVisibleTaskIDs(outliner) {
+		result = append(result, identity.TaskID)
+	}
+	return result
+}
+
+func searchMatchTaskIDs(matches []outlinerSearchMatch) []string {
+	result := make([]string, len(matches))
+	for i, match := range matches {
+		result[i] = match.task.ID
+	}
+	return result
+}
+
+// recentTask seeds a task whose last activity is dayOffset days in the past.
+func recentTask(id string, state models.WorkflowState, dayOffset int) *models.Task {
+	task := primaryRowsTask(id, state)
+	task.UpdatedAt = time.Now().AddDate(0, 0, -dayOffset)
+	return task
 }

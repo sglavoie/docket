@@ -291,29 +291,3 @@ func qualifiedVisibleTaskIDs(outliner *OutlinerModel) []taskref.TaskIdentity {
 	}
 	return result
 }
-
-// searchRankedList holds a query and shows it as the flat ranked list. The tier,
-// score, and seating assertions are all about that presentation; a query alone
-// narrows the mode's own lanes instead, which the D7 tests cover separately.
-func searchRankedList(outliner *OutlinerModel, query string) {
-	outliner.SetSearchQuery(query)
-	if !outliner.showsRankedList() {
-		outliner.toggleRankedList()
-	}
-}
-
-func searchVisibleTaskIDs(outliner *OutlinerModel) []string {
-	result := make([]string, 0)
-	for _, identity := range qualifiedVisibleTaskIDs(outliner) {
-		result = append(result, identity.TaskID)
-	}
-	return result
-}
-
-func searchMatchTaskIDs(matches []outlinerSearchMatch) []string {
-	result := make([]string, len(matches))
-	for i, match := range matches {
-		result[i] = match.task.ID
-	}
-	return result
-}

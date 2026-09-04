@@ -5,7 +5,6 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
-	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 )
 
@@ -346,38 +345,4 @@ func TestHierarchicalReorderSwapsAdjacentVisibleQualifiedSiblings(t *testing.T) 
 	// sibling. A model-adjacent MoveDown would incorrectly produce
 	// hide-me, keep-one, keep-two.
 	assertTreeUnchanged(t, project, []string{lastID, hiddenID, firstID})
-}
-
-// visibleTaskIDs returns the task IDs of the outliner's current task rows in
-// render order, ignoring headers and separators.
-func visibleTaskIDs(m *OutlinerModel) []string {
-	var ids []string
-	for _, row := range m.rows {
-		if row.isTaskRow() && row.task != nil {
-			ids = append(ids, row.task.ID)
-		}
-	}
-	return ids
-}
-
-// locatorOf builds a project-qualified locator for a seeded task.
-func locatorOf(project *models.Project, task *models.Task) config.ProjectTaskLocator {
-	return config.ProjectTaskLocator{ProjectID: project.ID, TaskID: task.ID}
-}
-
-// assertTreeUnchanged reloads the project from disk and asserts its root task IDs
-// still match wantRootIDs in order, proving a planning reorder never rewrote the
-// task hierarchy.
-func assertTreeUnchanged(t *testing.T, project *models.Project, wantRootIDs []string) {
-	t.Helper()
-	fresh := &models.Project{ID: project.ID, Name: project.Name, Slug: project.Slug, Path: project.Path}
-	if err := storage.LoadProject(fresh); err != nil {
-		t.Fatalf("reload project: %v", err)
-	}
-	roots := fresh.GetRootTasks()
-	got := make([]string, 0, len(roots))
-	for _, r := range roots {
-		got = append(got, r.ID)
-	}
-	assertOrder(t, "task tree roots", got, wantRootIDs)
 }
