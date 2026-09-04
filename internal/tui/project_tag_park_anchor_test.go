@@ -7,7 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/operation"
-	"github.com/sglavoie/tt/internal/tui/route"
+	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 func newSession4TaggedProject(t *testing.T, name string, tags ...string) *models.Project {
@@ -85,7 +85,7 @@ func TestProjectBulkParkFromTheProjectHubCapturesNoOutlinerAnchor(t *testing.T) 
 	member := newSession4TaggedProject(t, "Sonar", "hold")
 	sibling := newSession4Project(t, "Radar")
 	fixture := newSession4LifecycleFixture(t, member, sibling)
-	hub := mustRoute(t, route.SecondaryTool, route.ManageParams{Module: route.ManageProjects})
+	hub := manageRouteForPresentation(presentation.ViewProjectHub)
 	if err := fixture.app.navigation.Primary.PushChild(hub); err != nil {
 		t.Fatalf("push the Project Hub route: %v", err)
 	}

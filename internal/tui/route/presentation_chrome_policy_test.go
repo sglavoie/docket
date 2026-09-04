@@ -35,11 +35,11 @@ func TestPresentationChromePolicyClassifiesEveryPresentation(t *testing.T) {
 			t.Errorf("%s pulse eligibility = %t, want %t", view, got, wantPulse)
 		}
 		switch policy.guidance {
-		case PresentationGuidanceShell, PresentationGuidanceSurface, PresentationGuidanceOverlay:
+		case presentationGuidanceShell, presentationGuidanceSurface, presentationGuidanceOverlay:
 		default:
 			t.Errorf("%s has no shell, surface, or overlay guidance owner", view)
 		}
-		if transient[view] && policy.guidance != PresentationGuidanceOverlay {
+		if transient[view] && policy.guidance != presentationGuidanceOverlay {
 			t.Errorf("%s guidance owner = %v, want overlay", view, policy.guidance)
 		}
 	}
@@ -56,12 +56,12 @@ func TestPresentationGuidanceReachabilityNamesShellAndSurfaceOwners(t *testing.T
 	}
 	for _, view := range allPresentations() {
 		policy, ok := ChromePolicyForPresentation(view)
-		if !ok || policy.kind != PresentationChromeFullscreen {
+		if !ok || policy.kind != presentationChromeFullscreen {
 			continue
 		}
-		want := PresentationGuidanceSurface
+		want := presentationGuidanceSurface
 		if wantShell[view] {
-			want = PresentationGuidanceShell
+			want = presentationGuidanceShell
 		}
 		if policy.guidance != want {
 			t.Errorf("%s guidance owner = %v, want %v", view, policy.guidance, want)

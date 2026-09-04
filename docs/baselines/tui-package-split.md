@@ -116,9 +116,9 @@ the pre-split tree and is consistently pessimistic.
 | `grammar` | 59 | 196 | 154 |
 | `query` | 69 | 68 | 62 |
 | `operation` | 124 | 162 | 159 |
-| `route` | 14 | 16 | Session 2.18 |
+| `route` | 14 | 16 | 9 |
 
-Running total against 631: **381**, plus whatever `route` settles on.
+Running total against 631: **390**.
 `grammar` contributes 58, not 154, because its two counted columns are on a
 different basis from every row above them:
 Session 2.11 counted 196 promoted names by including methods and struct fields,
@@ -505,6 +505,42 @@ stays in the shell: it renders through `AppModel`, `coordinator` and `config`,
 which an L4 test file may not import. Moving those two is what kept `kind` and
 `guidance` unexported instead of adding two accessors `scripts/dead_code.sh`
 would then have called unreachable.
+
+Session 2.18 closes the row at 16 → 9, and it is the first row where the test
+half moves almost nothing. Two files move whole —
+`internal/tui/route/typed_route_test.go` and
+`internal/tui/route/navigation_state_test.go`, which carry `mustRoute` down with
+them — and the remaining route-using test files in the shell are homed exactly
+where they already are. That is a construction, not a survey: the layer fitness
+test holds a test file to the same import whitelist as a production file, so a
+`route` test may not name `AppModel`, `internal/app`, `internal/config` or
+`internal/models`, and every one of the 69 route-using files left at root names
+at least one of them. 69 is the type-resolved count, not the 52 a
+`grep -l 'route\.'` reports: a test reaching `.Depth()` or `.Params()` on a
+value the shell handed it consumes `route` without ever spelling the qualifier. `mustRoute`'s two shell call sites in `shell_test.go` and
+`project_tag_park_anchor_test.go` were not given a duplicate helper: both wanted
+the Project Hub route, which `manageRouteForPresentation(presentation.ViewProjectHub)`
+already builds through the production authority Session 2.17 minted for the
+navigation fixtures.
+
+The seven withdrawals are one family and they answer the question Session 2.17
+left open. `PresentationChromeKind`, `PresentationGuidanceOwner` and their five
+named constants have no consumer outside `route` once the exhaustiveness pair is
+inside it, and — the deciding fact — no exported `route` signature mentions
+them: the policy struct's `kind` and `guidance` fields are unexported,
+`WorkspacePulseEligible` returns `bool`, and `ChromePolicyForPresentation`
+returns the struct. So they withdraw whole while `PresentationChromePolicy`
+itself stays exported, because it is that function's return and `app_view.go`
+names it. An enum family and the struct that carries it are separable in exactly
+this case, which is what distinguishes it from the `query` row's
+`ProjectPopulationExclude`.
+
+`PopStyle` and `PopOne` read as two more candidates under the oracle and stay,
+for that `ProjectPopulationExclude` reason. `PopStyle` is the return type of the
+exported interface method `CloseViewMsg.ClosePopStyle`, which `app_update.go`
+calls and switches on against `route.PopToAnchor`; unexporting the type would
+make an exported interface method return an unexported one, and unexporting
+`PopOne` would half-export a two-member enum whose other member the shell reads.
 
 The shell's own navigation fixtures were rewritten rather than given a seam.
 `setTestPresentationPath` and `pushTestPresentationOverlay` used to write

@@ -2,43 +2,43 @@ package route
 
 import "github.com/sglavoie/tt/internal/tui/presentation"
 
-// PresentationChromeKind identifies which layer owns persistent presentation
+// presentationChromeKind identifies which layer owns persistent presentation
 // chrome. Full-screen presentations own the workspace pulse and their guidance;
 // transient selectors and pickers own only their local interaction guidance,
 // leaving persistent workspace chrome to the host beneath them.
-type PresentationChromeKind uint8
+type presentationChromeKind uint8
 
 const (
-	PresentationChromeFullscreen PresentationChromeKind = iota
-	PresentationChromeTransient
+	presentationChromeFullscreen presentationChromeKind = iota
+	presentationChromeTransient
 )
 
-// PresentationGuidanceOwner identifies the one layer responsible for guidance
+// presentationGuidanceOwner identifies the one layer responsible for guidance
 // whenever a production presentation is reachable.
-type PresentationGuidanceOwner uint8
+type presentationGuidanceOwner uint8
 
 const (
-	_ PresentationGuidanceOwner = iota
-	PresentationGuidanceShell
-	PresentationGuidanceSurface
-	PresentationGuidanceOverlay
+	_ presentationGuidanceOwner = iota
+	presentationGuidanceShell
+	presentationGuidanceSurface
+	presentationGuidanceOverlay
 )
 
 type PresentationChromePolicy struct {
-	kind     PresentationChromeKind
-	guidance PresentationGuidanceOwner
+	kind     presentationChromeKind
+	guidance presentationGuidanceOwner
 }
 
 func (p PresentationChromePolicy) WorkspacePulseEligible() bool {
-	return p.kind == PresentationChromeFullscreen
+	return p.kind == presentationChromeFullscreen
 }
 
 func (p PresentationChromePolicy) valid() bool {
 	switch p.kind {
-	case PresentationChromeFullscreen:
-		return p.guidance == PresentationGuidanceShell || p.guidance == PresentationGuidanceSurface
-	case PresentationChromeTransient:
-		return p.guidance == PresentationGuidanceOverlay
+	case presentationChromeFullscreen:
+		return p.guidance == presentationGuidanceShell || p.guidance == presentationGuidanceSurface
+	case presentationChromeTransient:
+		return p.guidance == presentationGuidanceOverlay
 	default:
 		return false
 	}
@@ -60,22 +60,22 @@ func ChromePolicyForPresentation(view presentation.PresentationID) (Presentation
 		presentation.ViewGlobalNotes,
 		presentation.ViewProjectHub:
 		policy = PresentationChromePolicy{
-			kind:     PresentationChromeFullscreen,
-			guidance: PresentationGuidanceSurface,
+			kind:     presentationChromeFullscreen,
+			guidance: presentationGuidanceSurface,
 		}
 	case presentation.ViewCrossProjectOutliner,
 		presentation.ViewTaskComposer:
 		policy = PresentationChromePolicy{
-			kind:     PresentationChromeFullscreen,
-			guidance: PresentationGuidanceShell,
+			kind:     presentationChromeFullscreen,
+			guidance: presentationGuidanceShell,
 		}
 	case presentation.ViewPriorityPicker,
 		presentation.ViewParentSelector,
 		presentation.ViewTagSelector,
 		presentation.ViewOutlineErrors:
 		policy = PresentationChromePolicy{
-			kind:     PresentationChromeTransient,
-			guidance: PresentationGuidanceOverlay,
+			kind:     presentationChromeTransient,
+			guidance: presentationGuidanceOverlay,
 		}
 	default:
 		return PresentationChromePolicy{}, false
