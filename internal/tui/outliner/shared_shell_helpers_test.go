@@ -57,18 +57,6 @@ func dependencyPresentationFixture(t *testing.T) (*models.Project, *models.Proje
 	return alpha, beta
 }
 
-// productionInputStrategies is every grammar a key can be pressed in. An
-// operation absent from all five has no key anywhere, which is what "menu-only"
-// means; reading them off surfaceOperationGates would only name the four entity
-// ones plus the Outliner, in a shape built for a different question.
-var productionInputStrategies = []operation.InputStrategyID{
-	operation.InputStrategySimplified,
-	operation.InputStrategyProjectHub,
-	operation.InputStrategyNotes,
-	operation.InputStrategyAttachments,
-	operation.InputStrategyComments,
-}
-
 // menuBarCommandContext is the launch context: the Outliner presentation with
 // the simplified grammar and a cursor that names nothing.
 func menuBarCommandContext() operation.CommandContext {
@@ -842,16 +830,6 @@ func mapKeys(values map[string]bool) []string {
 	}
 	slices.Sort(keys)
 	return keys
-}
-
-type appBulkPickerEnv struct {
-	dataDir  string
-	ledger   *storage.WorkspaceLedger
-	svc      *app.Service
-	features coordinator.SecondaryCoordinators
-	mgr      *config.Manager
-	cfg      *config.RuntimeState
-	projects []*models.Project
 }
 
 func newScenarioRepo(svc *storage.CommitService, projects ...*models.Project) *scenarioRepo {

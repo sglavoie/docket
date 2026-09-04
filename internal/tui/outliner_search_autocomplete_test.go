@@ -30,11 +30,13 @@ func searchACValues(outlinerView *outliner.OutlinerModel) []string {
 	return values
 }
 
-func searchACTask(id string, tags []string, context string) *models.Task {
+// searchACTask seeds one tagged autocomplete candidate. The shell's own
+// autocomplete tests exercise tag values only; the context axis is asserted by
+// the tests living beside the outliner, whose copy of this helper takes one.
+func searchACTask(id string, tags []string) *models.Task {
 	task := primaryRowsTask(id, models.StateBacklog)
 	task.Title = id
 	task.Tags = tags
-	task.Context = context
 	return task
 }
 

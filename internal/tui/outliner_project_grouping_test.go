@@ -9,18 +9,17 @@ import (
 	"github.com/sglavoie/tt/internal/tui/outliner"
 )
 
-// projectGroupHeaders returns the project sub-headers in render order plus each
-// one's declared count.
-func projectGroupHeaders(m *outliner.OutlinerModel) ([]string, map[string]int) {
+// projectGroupHeaders returns the project sub-headers in render order. The
+// outliner package's own copy also returns each header's declared count,
+// which only the tests living beside the renderer assert.
+func projectGroupHeaders(m *outliner.OutlinerModel) []string {
 	var ids []string
-	counts := make(map[string]int)
 	for _, row := range m.Rows {
 		if row.IsProjectHeader {
 			ids = append(ids, row.ProjectID)
-			counts[row.ProjectID] = row.SectionCount
 		}
 	}
-	return ids, counts
+	return ids
 }
 
 func newGroupingFixture(t *testing.T, mode chrome.OutlinerModeID) groupingFixture {
@@ -40,9 +39,9 @@ func newGroupingFixture(t *testing.T, mode chrome.OutlinerModeID) groupingFixtur
 		alphaTwo = groupingDueTask("alpha-two", -2)
 		betaOne = groupingDueTask("beta-one", -1)
 	case chrome.ModeRecent:
-		alphaOne = recentTask("alpha-one", models.StateBacklog, 3)
-		alphaTwo = recentTask("alpha-two", models.StateBacklog, 4)
-		betaOne = recentTask("beta-one", models.StateBacklog, 5)
+		alphaOne = recentTask("alpha-one", 3)
+		alphaTwo = recentTask("alpha-two", 4)
+		betaOne = recentTask("beta-one", 5)
 	default:
 		t.Fatalf("mode %q already grouped before this contract; no fixture defined", mode)
 		return groupingFixture{}

@@ -70,7 +70,7 @@ func TestOutlinerTabCyclingWrapsForwardAndBackwardAcrossSevenModes(t *testing.T)
 
 func TestEnteringRecentClearsOnlyStaleFacet(t *testing.T) {
 	const status = "Stale filter cleared: Recent only includes the last 30 days"
-	latest := recentTask("latest", models.StateBacklog, 0)
+	latest := recentTask("latest", 0)
 	latest.Priority = models.PriorityMedium
 	latest.Tags = []string{"deep"}
 	tests := []struct {
@@ -153,7 +153,7 @@ func TestEnteringRecentClearsOnlyStaleFacet(t *testing.T) {
 
 func TestProjectScopePopClearsStaleWhenRestoringRecent(t *testing.T) {
 	const status = "Stale filter cleared: Recent only includes the last 30 days"
-	project := primaryRowsProject("alpha", recentTask("latest", models.StateBacklog, 0))
+	project := primaryRowsProject("alpha", recentTask("latest", 0))
 	outlinerView, _ := primaryRowsOutliner(project)
 	outlinerView.SelectOutlinerMode(chrome.ModeRecent)
 

@@ -66,7 +66,7 @@ func sectionFoldStates(m *outliner.OutlinerModel) map[string]bool {
 func TestToggleVisibleProjectGroupsFoldsEveryHeaderAndRestoresThem(t *testing.T) {
 	outlinerView, tasks := projectGroupToggleFixture(t, chrome.ModeAll)
 
-	headers, _ := projectGroupHeaders(outlinerView)
+	headers := projectGroupHeaders(outlinerView)
 	if len(headers) != 2 {
 		t.Fatalf("seeded project headers = %v, want one per project", headers)
 	}
@@ -82,7 +82,7 @@ func TestToggleVisibleProjectGroupsFoldsEveryHeaderAndRestoresThem(t *testing.T)
 	if got := visibleTaskIDs(outlinerView); len(got) != 0 {
 		t.Fatalf("folded rows = %v, want no task rows", got)
 	}
-	if folded, _ := projectGroupHeaders(outlinerView); !slices.Equal(folded, headers) {
+	if folded := projectGroupHeaders(outlinerView); !slices.Equal(folded, headers) {
 		t.Fatalf("folded project headers = %v, want the same headers still rendered", folded)
 	}
 

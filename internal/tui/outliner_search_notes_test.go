@@ -67,8 +67,8 @@ func TestNoteSearchIndexCmdOrdersRowsAndLabelsOwners(t *testing.T) {
 }
 
 func TestNoteSearchIndexKeepsItsRowsAgainstStaleAndFailedReads(t *testing.T) {
-	live := []notes.LocatedNoteRow{noteIndexRow(app.GlobalNoteLocation(), "Global", "Live", "live.md")}
-	stale := []notes.LocatedNoteRow{noteIndexRow(app.GlobalNoteLocation(), "Global", "Stale", "stale.md")}
+	live := []notes.LocatedNoteRow{noteIndexRow(app.GlobalNoteLocation(), "Live", "live.md")}
+	stale := []notes.LocatedNoteRow{noteIndexRow(app.GlobalNoteLocation(), "Stale", "stale.md")}
 	model := &AppModel{noteIndexGeneration: 3, noteIndexRows: live}
 
 	model.handleNoteSearchIndexLoaded(noteSearchIndexLoadedMsg{generation: 2, rows: stale})
@@ -113,7 +113,7 @@ func TestNoteSearchIndexRefreshRebuildsOpenProjection(t *testing.T) {
 	}
 
 	refreshed := []notes.LocatedNoteRow{
-		noteIndexRow(app.GlobalNoteLocation(), "Global", "Widget rollout", "widget.md"),
+		noteIndexRow(app.GlobalNoteLocation(), "Widget rollout", "widget.md"),
 	}
 	model.handleNoteSearchIndexLoaded(noteSearchIndexLoadedMsg{generation: 4, rows: refreshed})
 
@@ -126,7 +126,7 @@ func TestNoteSearchIndexRefreshRebuildsOpenProjection(t *testing.T) {
 	// A stale generation and a failed read leave the displayed projection alone
 	// rather than replacing it with a superseded or empty answer.
 	superseded := []notes.LocatedNoteRow{
-		noteIndexRow(app.GlobalNoteLocation(), "Global", "Nothing here", "other.md"),
+		noteIndexRow(app.GlobalNoteLocation(), "Nothing here", "other.md"),
 	}
 	model.handleNoteSearchIndexLoaded(noteSearchIndexLoadedMsg{generation: 3, rows: superseded})
 	outlinerView.CrossProjectRebuildRows()
@@ -153,8 +153,8 @@ func TestNoteSearchIndexRefreshPreservesCursorIdentity(t *testing.T) {
 	// tiebreak is what decides order. Inserting "widget-a.md" then pushes every
 	// already-visible match down exactly one row.
 	rows := []notes.LocatedNoteRow{
-		noteIndexRow(global, "Global", "Widget notes", "widget-b.md"),
-		noteIndexRow(global, "Global", "Widget notes", "widget-c.md"),
+		noteIndexRow(global, "Widget notes", "widget-b.md"),
+		noteIndexRow(global, "Widget notes", "widget-c.md"),
 	}
 	outlinerView := scopeTestOutliner(alpha)
 	model := &AppModel{crossOutliner: outlinerView, noteIndexGeneration: 2, noteIndexRows: rows}
@@ -182,7 +182,7 @@ func TestNoteSearchIndexRefreshPreservesCursorIdentity(t *testing.T) {
 	}
 
 	inserted := []notes.LocatedNoteRow{
-		noteIndexRow(global, "Global", "Widget notes", "widget-a.md"),
+		noteIndexRow(global, "Widget notes", "widget-a.md"),
 		rows[0],
 		rows[1],
 	}
@@ -250,11 +250,14 @@ func TestNoteSearchIndexReloadsOnlyForAnOwnerCatalogChange(t *testing.T) {
 	}
 }
 
-func noteIndexRow(location app.NoteLocation, label, title, filename string) notes.LocatedNoteRow {
+// noteIndexRow seeds one global index row. The shell's tests only ever own the
+// index itself, so every row here is global; the project-owned rows and their
+// labels belong to the tests beside the outliner, whose copy takes a label.
+func noteIndexRow(location app.NoteLocation, title, filename string) notes.LocatedNoteRow {
 	return notes.LocatedNoteRow{
 		Note:       &models.Note{Title: title, Filename: filename},
 		Location:   location,
-		OwnerLabel: label,
+		OwnerLabel: "Global",
 	}
 }
 

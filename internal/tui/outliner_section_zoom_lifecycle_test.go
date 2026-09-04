@@ -174,8 +174,8 @@ func TestSectionZoomIsClearedByResetToGlobalAll(t *testing.T) {
 func TestSectionZoomThawsTheRecencyFreeze(t *testing.T) {
 	project := primaryRowsProject(
 		"alpha",
-		recentTask("touched-today", models.StateBacklog, 0),
-		recentTask("touched-yesterday", models.StateBacklog, 1),
+		recentTask("touched-today", 0),
+		recentTask("touched-yesterday", 1),
 	)
 	outlinerView, _ := primaryRowsOutliner(project)
 	outlinerView.SelectOutlinerMode(chrome.ModeRecent)

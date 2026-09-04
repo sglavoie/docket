@@ -194,9 +194,11 @@ func searchVisibleTaskIDs(outlinerView *outliner.OutlinerModel) []string {
 	return result
 }
 
-// recentTask seeds a task whose last activity is dayOffset days in the past.
-func recentTask(id string, state models.WorkflowState, dayOffset int) *models.Task {
-	task := primaryRowsTask(id, state)
+// recentTask seeds an open task whose last activity is dayOffset days in the
+// past. Recent's terminal-state admission is asserted beside the outliner,
+// whose copy of this helper takes a state.
+func recentTask(id string, dayOffset int) *models.Task {
+	task := primaryRowsTask(id, models.StateBacklog)
 	task.UpdatedAt = time.Now().AddDate(0, 0, -dayOffset)
 	return task
 }

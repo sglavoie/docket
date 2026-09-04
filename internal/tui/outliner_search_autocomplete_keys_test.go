@@ -13,9 +13,9 @@ import (
 // character untypeable.
 func TestSearchAutocompleteKeysClaimOnlyTheDropdownControls(t *testing.T) {
 	tasks := []*models.Task{
-		searchACTask("t1", []string{"alpha"}, ""),
-		searchACTask("t2", []string{"beta"}, ""),
-		searchACTask("t3", []string{"gamma"}, ""),
+		searchACTask("t1", []string{"alpha"}),
+		searchACTask("t2", []string{"beta"}),
+		searchACTask("t3", []string{"gamma"}),
 	}
 	outlinerView := searchACOutliner(primaryRowsProject("alpha", tasks...))
 	typeSearchAC(outlinerView, "#")
@@ -79,9 +79,9 @@ func TestSearchAutocompleteKeysClaimOnlyTheDropdownControls(t *testing.T) {
 // shared list navigation, and the search input it must not reach — is exercised.
 func TestSearchAutocompleteJKNavigateResultsWhilePaneOpen(t *testing.T) {
 	tasks := []*models.Task{
-		searchACTask("task-one", []string{"alpha"}, ""),
-		searchACTask("task-two", []string{"beta"}, ""),
-		searchACTask("task-three", []string{"gamma"}, ""),
+		searchACTask("task-one", []string{"alpha"}),
+		searchACTask("task-two", []string{"beta"}),
+		searchACTask("task-three", []string{"gamma"}),
 	}
 	outlinerView := searchACOutliner(primaryRowsProject("alpha", tasks...))
 	for _, key := range []string{"t", "a", "s", "k", "-", " ", "#"} {
@@ -147,7 +147,7 @@ func TestSearchAutocompleteJKNavigateResultsWhilePaneOpen(t *testing.T) {
 // must never intercept: Enter belongs to the search's own landing path, and an
 // open pane may not turn it into an acceptance.
 func TestSearchAutocompleteEnterStillLandsOnTheResult(t *testing.T) {
-	task := searchACTask("t1", []string{"infra"}, "")
+	task := searchACTask("t1", []string{"infra"})
 	outlinerView := searchACOutliner(primaryRowsProject("alpha", task))
 	typeSearchAC(outlinerView, "#inf")
 	if !outlinerView.Search.Autocomplete.Active() {
@@ -173,7 +173,7 @@ func TestSearchAutocompleteEnterStillLandsOnTheResult(t *testing.T) {
 // unwind: the first Esc gives back the rows the pane covered, the second gives
 // back the projection.
 func TestSearchAutocompleteEscCascadesSuggestionsThenSearch(t *testing.T) {
-	task := searchACTask("t1", []string{"infra"}, "")
+	task := searchACTask("t1", []string{"infra"})
 	outlinerView := searchACOutliner(primaryRowsProject("alpha", task))
 	typeSearchAC(outlinerView, "#")
 	if !outlinerView.Search.Autocomplete.Active() {
@@ -201,7 +201,7 @@ func TestSearchAutocompleteEscCascadesSuggestionsThenSearch(t *testing.T) {
 // close reason beside Esc and search ending: the token under the caret simply
 // runs out of candidates as more is typed.
 func TestSearchAutocompleteClosesWhenTheActiveTokenStopsOffering(t *testing.T) {
-	task := searchACTask("t1", []string{"infra"}, "")
+	task := searchACTask("t1", []string{"infra"})
 	outlinerView := searchACOutliner(primaryRowsProject("alpha", task))
 
 	typeSearchAC(outlinerView, "#in")
