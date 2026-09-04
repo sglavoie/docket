@@ -136,7 +136,7 @@ func noteTierFixtureApp(t *testing.T) (*AppModel, NoteRowIdentity) {
 		if !row.IsNoteRow {
 			continue
 		}
-		outliner.cursor = index
+		outliner.Cursor = index
 		return app, row.NoteRow
 	}
 	t.Fatal("the fixture search returned no note row")

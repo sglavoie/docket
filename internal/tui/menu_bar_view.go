@@ -6,6 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -70,7 +71,7 @@ func (m *OutlinerModel) renderOutlinerMenuDropdown(width int) string {
 		return ""
 	}
 	surface.SetCursorToID(menuBarDropdownItemID(cursor))
-	content := RenderCompactListSurface(surface, innerWidth-4, listHeight)
+	content := listsurface.RenderCompactListSurface(surface, innerWidth-4, listHeight)
 	box := chrome.RenderOverlayBox(content, innerWidth, "", "",
 		lipgloss.NewStyle().Foreground(theme.ColorPrimary))
 	box = chrome.FitOverlayPopupHeight(box, maxBoxRows)
@@ -141,7 +142,7 @@ func menuBarDropdownWidth(entries []resolvedMenuEntry, width int) int {
 		// flushed to, so a menu wide enough for that row truncates nothing.
 		row := marker + lipgloss.Width(entry.Label)
 		if entry.Key != "" {
-			row += lipgloss.Width(listTextGap) + lipgloss.Width(entry.Key)
+			row += lipgloss.Width(listsurface.ListTextGap) + lipgloss.Width(entry.Key)
 		}
 		longest = max(longest, row)
 	}
@@ -179,7 +180,7 @@ func menuBarDropdownChecks(entries []resolvedMenuEntry) bool {
 //
 // The menu owns its own navigation, so this surface never receives a cursor key:
 // separators are ordinary rows here because nothing in it can land on one.
-func newMenuBarDropdownSurface(entries []resolvedMenuEntry, contentWidth int) (*ListSurfaceModel, error) {
+func newMenuBarDropdownSurface(entries []resolvedMenuEntry, contentWidth int) (*listsurface.ListSurfaceModel, error) {
 	checked := menuBarDropdownChecks(entries)
 	// A rule starts where the labels start and ends where they end, so it wears
 	// the same marker they do and is measured against what the marker leaves.
@@ -188,9 +189,9 @@ func newMenuBarDropdownSurface(entries []resolvedMenuEntry, contentWidth int) (*
 		blank = strings.Repeat(" ", menuBarDropdownCheckColumn)
 	}
 	textWidth := max(contentWidth-menuBarDropdownMarkerWidth(entries), 1)
-	items := make([]ListItem, 0, len(entries))
+	items := make([]listsurface.ListItem, 0, len(entries))
 	for index, entry := range entries {
-		item := ListItem{ID: menuBarDropdownItemID(index), PrimaryMarker: blank}
+		item := listsurface.ListItem{ID: menuBarDropdownItemID(index), PrimaryMarker: blank}
 		if entry.OperationID == "" {
 			item.PrimaryText = strings.Repeat("─", textWidth)
 			items = append(items, item)
@@ -203,7 +204,7 @@ func newMenuBarDropdownSurface(entries []resolvedMenuEntry, contentWidth int) (*
 		}
 		items = append(items, item)
 	}
-	return NewListSurfaceModel(items, nil, ListSurfaceConfig{SelectionMode: ListSelectionSingle})
+	return listsurface.NewListSurfaceModel(items, nil, listsurface.ListSurfaceConfig{SelectionMode: listsurface.ListSelectionSingle})
 }
 
 // padMenuBarDropdownLabel pads a label out so its key hint lands flush against
@@ -219,7 +220,7 @@ func padMenuBarDropdownLabel(label, key string, textWidth int) string {
 	if key == "" {
 		return label
 	}
-	pad := textWidth - lipgloss.Width(label) - lipgloss.Width(listTextGap) - lipgloss.Width(key)
+	pad := textWidth - lipgloss.Width(label) - lipgloss.Width(listsurface.ListTextGap) - lipgloss.Width(key)
 	if pad <= 0 {
 		return label
 	}
@@ -229,6 +230,6 @@ func padMenuBarDropdownLabel(label, key string, textWidth int) string {
 // menuBarDropdownItemID names one row by its position in the resolution, which
 // is the only identity a menu entry has: two rows can name the same operation
 // with different wording, and a separator names none.
-func menuBarDropdownItemID(index int) ListItemID {
-	return ListItemID("menu-entry-" + strconv.Itoa(index))
+func menuBarDropdownItemID(index int) listsurface.ListItemID {
+	return listsurface.ListItemID("menu-entry-" + strconv.Itoa(index))
 }

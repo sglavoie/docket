@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -21,7 +22,7 @@ const (
 
 // OperationValuePickerModel is the shared ListSurface value-picker control.
 type OperationValuePickerModel struct {
-	surface   *ListSurfaceModel
+	surface   *listsurface.ListSurfaceModel
 	request   operation.OperationExecutionRequest
 	provider  operation.ValueProviderID
 	title     string
@@ -33,9 +34,9 @@ type OperationValuePickerModel struct {
 	// says now. Both the tag picker and the reference picker read them, because
 	// both edit a per-task set over a selection and both must emit a difference
 	// rather than a replacement.
-	membershipInitial map[ListItemID]operationValueMembership
-	membershipCurrent map[ListItemID]operationValueMembership
-	tagAdder          TagAdder
+	membershipInitial map[listsurface.ListItemID]operationValueMembership
+	membershipCurrent map[listsurface.ListItemID]operationValueMembership
+	tagAdder          listsurface.TagAdder
 	dateAdder         chrome.DateAdder
 	// dateDeferred records which section the inline date mode was opened from,
 	// so the typed value writes the same field the row under the cursor names.
@@ -45,7 +46,7 @@ type OperationValuePickerModel struct {
 	contextEntry bool
 	// contextInitial is the context row every target already agreed on. An empty
 	// ID means the targets disagreed, so any chosen row is a change.
-	contextInitial ListItemID
+	contextInitial listsurface.ListItemID
 }
 
 func newOperationValuePickerModel(
@@ -53,20 +54,20 @@ func newOperationValuePickerModel(
 	provider operation.ValueProviderID,
 	title string,
 	subtitle string,
-	source ListSource,
+	source listsurface.ListSource,
 	multi bool,
-	selected []ListItemID,
+	selected []listsurface.ListItemID,
 ) (*OperationValuePickerModel, error) {
-	mode := ListSelectionSingle
+	mode := listsurface.ListSelectionSingle
 	if multi {
-		mode = ListSelectionMulti
+		mode = listsurface.ListSelectionMulti
 	}
-	surface, err := source.NewModel(ListSurfaceConfig{
+	surface, err := source.NewModel(listsurface.ListSurfaceConfig{
 		SelectionMode: mode,
-		EmptyState: ListEmptyState{
+		EmptyState: listsurface.ListEmptyState{
 			Title: "No values available.",
 		},
-		NoMatchState: ListEmptyState{
+		NoMatchState: listsurface.ListEmptyState{
 			Title: "No matching values.",
 		},
 	})
@@ -91,7 +92,7 @@ func newOperationValuePickerModel(
 		multi:    multi,
 	}
 	if provider.TagEntry() {
-		model.tagAdder = NewTagAdder()
+		model.tagAdder = listsurface.NewTagAdder()
 	}
 	if provider.DateEntry() {
 		model.dateAdder = chrome.NewDateAdder()
@@ -105,25 +106,25 @@ func newOperationValuePickerModel(
 func (model *OperationValuePickerModel) dateSectionUnderCursor() (bool, error) {
 	item, ok := model.surface.CurrentItem()
 	if !ok {
-		return false, ErrListItemNotFound
+		return false, listsurface.ErrListItemNotFound
 	}
 	if !item.Enabled() {
-		return false, fmt.Errorf("%w: %s", ErrListItemDisabled, item.DisabledReason)
+		return false, fmt.Errorf("%w: %s", listsurface.ErrListItemDisabled, item.DisabledReason)
 	}
 	value, ok := item.Data.(operation.OperationDateValue)
 	if !ok {
-		return false, ErrListItemNotFound
+		return false, listsurface.ErrListItemNotFound
 	}
 	return value.Deferred, nil
 }
 
 //nolint:gocyclo // Centralized key dispatch preserves picker, freeform, and tag-input precedence.
-func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
+func (model *OperationValuePickerModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
 	if model == nil || model.surface == nil {
 		return nil, true, operation.OperationValueCanceledMsg{}
 	}
 	if model.provider.TagEntry() && model.tagAdder.AddTagMode {
-		handled, cmd := model.tagAdder.handleAddTagInputKey(msg, model.addOrSelectTag)
+		handled, cmd := model.tagAdder.HandleAddTagInputKey(msg, model.addOrSelectTag)
 		if handled {
 			return cmd, false, nil
 		}
@@ -261,7 +262,7 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 		}
 	default:
 		if model.provider == operation.ValueProviderPriority && len(key) == 1 && key[0] >= '0' && key[0] <= '3' {
-			if model.surface.SetCursorToID(ListItemID("priority:" + key)) {
+			if model.surface.SetCursorToID(listsurface.ListItemID("priority:" + key)) {
 				value, err := model.selectedValue()
 				if err == nil {
 					return nil, true, operation.OperationValueSelectedMsg{

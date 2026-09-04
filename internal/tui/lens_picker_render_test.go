@@ -13,11 +13,12 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 )
 
 // lensPickerItemNamed returns one built row by its primary text, which is how a
 // color assertion names its target without depending on the row's position.
-func lensPickerItemNamed(t *testing.T, model *AppModel, name string) ListItem {
+func lensPickerItemNamed(t *testing.T, model *AppModel, name string) listsurface.ListItem {
 	t.Helper()
 	if model.lensPicker == nil {
 		t.Fatal("no lens picker is mounted")
@@ -28,12 +29,12 @@ func lensPickerItemNamed(t *testing.T, model *AppModel, name string) ListItem {
 		}
 	}
 	t.Fatalf("no picker row named %q in %v", name, lensPickerRowTitles(t, model))
-	return ListItem{}
+	return listsurface.ListItem{}
 }
 
 // assertLensRowStyle holds one row to the style its own definition resolves to,
 // which is the whole contract: the picker never names a color, it asks.
-func assertLensRowStyle(t *testing.T, item ListItem, lens config.NamedLens) {
+func assertLensRowStyle(t *testing.T, item listsurface.ListItem, lens config.NamedLens) {
 	t.Helper()
 	want, ok := namedLensPrimaryStyle(lens)
 	if !ok {
@@ -190,7 +191,7 @@ func TestLensPickerRenderColorsOrdinaryRowsAndYieldsUnderTheCursor(t *testing.T)
 
 	// The cursor opens on the save row, so the active lens is an ordinary row:
 	// colored, and still carrying its active marker.
-	rendered := model.lensPicker.render(80)
+	rendered := model.lensPicker.Render(80)
 	if !strings.Contains(rendered, style.Render("Waiting")) {
 		t.Errorf("an ordinary saved row is not colored:\n%q", rendered)
 	}
@@ -203,7 +204,7 @@ func TestLensPickerRenderColorsOrdinaryRowsAndYieldsUnderTheCursor(t *testing.T)
 	if !model.lensPicker.SelectLens(waiting.ID) {
 		t.Fatal("the active lens is not listed")
 	}
-	cursored := model.lensPicker.render(80)
+	cursored := model.lensPicker.Render(80)
 	if strings.Contains(cursored, style.Render("Waiting")) {
 		t.Errorf("the cursor row kept its accent:\n%q", cursored)
 	}
@@ -241,7 +242,7 @@ func TestLensPickerRendersEmptyNoMatchAndOversizedRows(t *testing.T) {
 		t.Fatal("the oversized row carries no accent, so its truncation is untested")
 	}
 	for _, width := range []int{minTerminalWidth, 80, 200} {
-		rendered := ansi.Strip(model.lensPicker.render(width))
+		rendered := ansi.Strip(model.lensPicker.Render(width))
 		assertNoLensPickerOverflow(t, rendered, width)
 		// An accent is styling, never columns: the name survives truncation to the
 		// same visible text a neutral row would have shown.
@@ -251,7 +252,7 @@ func TestLensPickerRendersEmptyNoMatchAndOversizedRows(t *testing.T) {
 	}
 	// The minimum supported terminal must still show the modal's own chrome,
 	// which is what renderWithin's reservation buys.
-	rendered := ansi.Strip(model.lensPicker.renderWithin(minTerminalWidth, minTerminalHeight))
+	rendered := ansi.Strip(model.lensPicker.RenderWithin(minTerminalWidth, minTerminalHeight))
 	assertNoLensPickerOverflow(t, rendered, minTerminalWidth)
 	if lines := strings.Count(rendered, "\n") + 1; lines > minTerminalHeight {
 		t.Errorf("minimum-terminal render is %d lines, taller than %d", lines, minTerminalHeight)
@@ -260,7 +261,7 @@ func TestLensPickerRendersEmptyNoMatchAndOversizedRows(t *testing.T) {
 	if err := model.lensPicker.Refresh(NamedLensPickerSnapshot{}); err != nil {
 		t.Fatalf("refresh empty: %v", err)
 	}
-	empty := ansi.Strip(model.lensPicker.render(80))
+	empty := ansi.Strip(model.lensPicker.Render(80))
 	if !strings.Contains(empty, "No saved lenses yet") {
 		t.Errorf("empty render names no empty state:\n%s", empty)
 	}

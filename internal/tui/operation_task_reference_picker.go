@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
@@ -15,14 +16,14 @@ import (
 // `project-id:task-id` locator behind a prefix. A reference the task already
 // stores and the candidate row offering that same target therefore collapse to
 // one row, which is what lets the checked set be a diff rather than two lists.
-func taskReferenceRowID(locator app.TaskLocator) ListItemID {
-	return ListItemID("reference:" + locator.Reference().Locator())
+func taskReferenceRowID(locator app.TaskLocator) listsurface.ListItemID {
+	return listsurface.ListItemID("reference:" + locator.Reference().Locator())
 }
 
 // taskReferenceRowLocator is the inverse of taskReferenceRowID. Row identity is
 // the durable locator behind a prefix rather than an index into a population, so
 // reading a row back asks nothing of the list the row came from.
-func taskReferenceRowLocator(id ListItemID) (app.TaskLocator, bool) {
+func taskReferenceRowLocator(id listsurface.ListItemID) (app.TaskLocator, bool) {
 	value, prefixed := strings.CutPrefix(string(id), "reference:")
 	if !prefixed {
 		return app.TaskLocator{}, false
@@ -56,8 +57,8 @@ func storedTaskReferenceBaseline(task *models.Task) []app.TaskLocator {
 // carry N different baselines — is true of a replacement picker and false of
 // this one: an untouched row stays Some and is emitted by neither half, so the
 // tasks that disagree about it keep disagreeing.
-func taskReferenceMembership(tasks []*models.Task) map[ListItemID]operationValueMembership {
-	counts := make(map[ListItemID]int)
+func taskReferenceMembership(tasks []*models.Task) map[listsurface.ListItemID]operationValueMembership {
+	counts := make(map[listsurface.ListItemID]int)
 	selected := 0
 	for _, task := range tasks {
 		if task == nil {
@@ -68,7 +69,7 @@ func taskReferenceMembership(tasks []*models.Task) map[ListItemID]operationValue
 			counts[taskReferenceRowID(locator)]++
 		}
 	}
-	membership := make(map[ListItemID]operationValueMembership, len(counts))
+	membership := make(map[listsurface.ListItemID]operationValueMembership, len(counts))
 	for id, count := range counts {
 		if count >= selected {
 			membership[id] = operationValueAll
@@ -96,7 +97,7 @@ func taskReferenceMembership(tasks []*models.Task) map[ListItemID]operationValue
 //
 // Rows group into one category per project, so a filtered list stays
 // project-qualified without the label having to repeat the project name.
-func operationTaskReferenceListSource(tasks []*models.Task, projects []*models.Project) ListSource {
+func operationTaskReferenceListSource(tasks []*models.Task, projects []*models.Project) listsurface.ListSource {
 	stored := make(map[app.TaskLocator]bool)
 	subjects := make(map[string]bool, len(tasks))
 	candidates := make([]grammar.DependencyCandidate, 0, len(tasks))
@@ -111,7 +112,7 @@ func operationTaskReferenceListSource(tasks []*models.Task, projects []*models.P
 		candidates = append(candidates, grammar.DependencyRemovalCandidates(task, projects, nil)...)
 	}
 	if len(subjects) == 0 {
-		return ListSource{}
+		return listsurface.ListSource{}
 	}
 	for _, candidate := range grammar.DependencyAdditionCandidates(projects, "", stored) {
 		if candidate.Task != nil && subjects[candidate.Task.ID] {
@@ -120,16 +121,16 @@ func operationTaskReferenceListSource(tasks []*models.Task, projects []*models.P
 		candidates = append(candidates, candidate)
 	}
 
-	items := make([]ListItem, 0, len(candidates))
-	seen := make(map[ListItemID]bool, len(candidates))
-	grouped := make(map[ListCategoryID]bool, len(projects))
+	items := make([]listsurface.ListItem, 0, len(candidates))
+	seen := make(map[listsurface.ListItemID]bool, len(candidates))
+	grouped := make(map[listsurface.ListCategoryID]bool, len(projects))
 	for _, candidate := range candidates {
 		id := taskReferenceRowID(candidate.Locator)
 		if seen[id] {
 			continue
 		}
 		seen[id] = true
-		item := ListItem{
+		item := listsurface.ListItem{
 			ID:      id,
 			Aliases: []string{grammar.DependencyCandidateSearchText(candidate)},
 			Data:    candidate.Locator.Reference().Locator(),
@@ -147,25 +148,25 @@ func operationTaskReferenceListSource(tasks []*models.Task, projects []*models.P
 		item.PrimaryText = candidate.Task.Title
 		item.SecondaryText = fmt.Sprintf("%s #%d", candidate.Task.State().Icon(), candidate.Task.ShortID)
 		if candidate.Project != nil {
-			item.CategoryID = ListCategoryID(candidate.Project.ID)
+			item.CategoryID = listsurface.ListCategoryID(candidate.Project.ID)
 			grouped[item.CategoryID] = true
 		}
 		items = append(items, item)
 	}
 
-	categories := make([]ListCategory, 0, len(projects))
+	categories := make([]listsurface.ListCategory, 0, len(projects))
 	for _, project := range projects {
 		if project == nil {
 			continue
 		}
-		id := ListCategoryID(project.ID)
+		id := listsurface.ListCategoryID(project.ID)
 		if !grouped[id] {
 			continue
 		}
 		grouped[id] = false
-		categories = append(categories, ListCategory{ID: id, Label: project.Name})
+		categories = append(categories, listsurface.ListCategory{ID: id, Label: project.Name})
 	}
-	return ListSource{Items: items, Categories: categories}
+	return listsurface.ListSource{Items: items, Categories: categories}
 }
 
 // taskReferenceSelection is what the picker emits on Enter: the rows whose
@@ -179,7 +180,7 @@ func operationTaskReferenceListSource(tasks []*models.Task, projects []*models.P
 //
 // Both halves are sorted, so the emitted value never depends on the order rows
 // were ticked in or on map iteration.
-func taskReferenceSelection(initial, current map[ListItemID]operationValueMembership) operation.OperationTaskReferenceValue {
+func taskReferenceSelection(initial, current map[listsurface.ListItemID]operationValueMembership) operation.OperationTaskReferenceValue {
 	value := operation.OperationTaskReferenceValue{}
 	for id, state := range current {
 		locator, ok := taskReferenceRowLocator(id)

@@ -9,13 +9,14 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 // selectProjectHubRows selects each named row and reports the resulting count,
 // driving the public v key rather than the surface API so the test fails if the
 // browse grammar stops reaching selection.
-func selectProjectHubRows(t *testing.T, hub *ProjectHubModel, ids ...ListItemID) {
+func selectProjectHubRows(t *testing.T, hub *ProjectHubModel, ids ...listsurface.ListItemID) {
 	t.Helper()
 	for _, id := range ids {
 		focusProjectHubItem(t, hub, id)

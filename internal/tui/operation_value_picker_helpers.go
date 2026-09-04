@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -55,12 +56,12 @@ func (model *OperationValuePickerModel) contextRowUnderCursor() bool {
 func (model *OperationValuePickerModel) selectContextUnderCursor() error {
 	item, ok := model.surface.CurrentItem()
 	if !ok {
-		return ErrListItemNotFound
+		return listsurface.ErrListItemNotFound
 	}
 	if _, isContext := taskContextRowName(item); !isContext {
 		return fmt.Errorf("# sets a context: press c to jump to CONTEXTS")
 	}
-	selected := make([]ListItemID, 0, len(model.surface.SelectedIDs())+1)
+	selected := make([]listsurface.ListItemID, 0, len(model.surface.SelectedIDs())+1)
 	for _, id := range model.surface.SelectedIDs() {
 		if !isTaskContextRowID(id) {
 			selected = append(selected, id)
@@ -84,7 +85,7 @@ func (model *OperationValuePickerModel) selectContextUnderCursor() error {
 
 // selectedContextRow returns the chosen context row, if any. The clear row
 // answers with an empty name, which is what an empty context field means.
-func (model *OperationValuePickerModel) selectedContextRow() (ListItemID, string, bool) {
+func (model *OperationValuePickerModel) selectedContextRow() (listsurface.ListItemID, string, bool) {
 	for _, item := range model.surface.Items() {
 		name, isContext := taskContextRowName(item)
 		if isContext && model.surface.IsSelected(item.ID) {
@@ -126,7 +127,7 @@ func (model *OperationValuePickerModel) addOrSelectContext(raw string) error {
 		}
 	}
 	if !model.surface.SetCursorToID(id) {
-		return fmt.Errorf("%w: %s", ErrListItemNotFound, id)
+		return fmt.Errorf("%w: %s", listsurface.ErrListItemNotFound, id)
 	}
 	return model.selectContextUnderCursor()
 }
@@ -140,7 +141,7 @@ func (model *OperationValuePickerModel) addOrSelectTag(tag string) error {
 		// creates must already carry the spelling the catalog will store.
 		tag = strings.ToLower(tag)
 	}
-	id := ListItemID("tag:" + tag)
+	id := listsurface.ListItemID("tag:" + tag)
 	items := model.surface.Items()
 	for _, item := range items {
 		if item.ID == id {
@@ -149,7 +150,7 @@ func (model *OperationValuePickerModel) addOrSelectTag(tag string) error {
 		}
 	}
 
-	source := ListSourceFromTags([]query.TagInfo{{Name: tag}})
+	source := listsurface.ListSourceFromTags([]query.TagInfo{{Name: tag}})
 	if len(source.Items) != 1 {
 		return fmt.Errorf("building tag row for %q", tag)
 	}
@@ -182,7 +183,7 @@ func (model *OperationValuePickerModel) addOrSelectTag(tag string) error {
 	return model.selectTagForAll(id)
 }
 
-func (model *OperationValuePickerModel) selectTagForAll(id ListItemID) error {
+func (model *OperationValuePickerModel) selectTagForAll(id listsurface.ListItemID) error {
 	if model.membershipCurrent != nil {
 		model.membershipCurrent[id] = operationValueAll
 	}
@@ -199,7 +200,7 @@ func (model *OperationValuePickerModel) selectTagForAll(id ListItemID) error {
 		}
 	}
 	if !model.surface.SetCursorToID(id) {
-		return fmt.Errorf("%w: %s", ErrListItemNotFound, id)
+		return fmt.Errorf("%w: %s", listsurface.ErrListItemNotFound, id)
 	}
 	return nil
 }
@@ -214,7 +215,7 @@ func (model *OperationValuePickerModel) toggleCurrentMultiValue() error {
 	}
 	item, ok := model.surface.CurrentItem()
 	if !ok {
-		return ErrListItemNotFound
+		return listsurface.ErrListItemNotFound
 	}
 	if _, isContext := taskContextRowName(item); isContext {
 		return fmt.Errorf("a task holds one context: press # to set it")
@@ -237,13 +238,13 @@ func (model *OperationValuePickerModel) toggleCurrentMultiValue() error {
 }
 
 func (model *OperationValuePickerModel) configureValueMembership(
-	membership map[ListItemID]operationValueMembership,
+	membership map[listsurface.ListItemID]operationValueMembership,
 ) error {
 	if model == nil || model.surface == nil {
 		return nil
 	}
-	model.membershipInitial = make(map[ListItemID]operationValueMembership, len(membership))
-	model.membershipCurrent = make(map[ListItemID]operationValueMembership, len(membership))
+	model.membershipInitial = make(map[listsurface.ListItemID]operationValueMembership, len(membership))
+	model.membershipCurrent = make(map[listsurface.ListItemID]operationValueMembership, len(membership))
 	for id, state := range membership {
 		model.membershipInitial[id] = state
 		model.membershipCurrent[id] = state
@@ -251,7 +252,7 @@ func (model *OperationValuePickerModel) configureValueMembership(
 	// The checked set is built in row order rather than map order, so the
 	// preselection a picker opens with is the order the list already reads in.
 	items := model.surface.Items()
-	selected := make([]ListItemID, 0, len(membership))
+	selected := make([]listsurface.ListItemID, 0, len(membership))
 	for _, item := range items {
 		if membership[item.ID] == operationValueAll {
 			selected = append(selected, item.ID)
@@ -326,10 +327,10 @@ func (model *OperationValuePickerModel) selectedValue() (any, error) {
 	}
 	item, ok := model.surface.CurrentItem()
 	if !ok {
-		return nil, ErrListItemNotFound
+		return nil, listsurface.ErrListItemNotFound
 	}
 	if !item.Enabled() {
-		return nil, fmt.Errorf("%w: %s", ErrListItemDisabled, item.DisabledReason)
+		return nil, fmt.Errorf("%w: %s", listsurface.ErrListItemDisabled, item.DisabledReason)
 	}
 	return item.Data, nil
 }

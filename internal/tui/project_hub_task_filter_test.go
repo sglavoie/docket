@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 )
 
 func TestProjectHubTaskFilterCyclesThreeStates(t *testing.T) {
@@ -47,7 +48,7 @@ func TestProjectHubTaskFilterCyclesThreeStates(t *testing.T) {
 	if hub.taskFilter != projectHubTaskFilterAll {
 		t.Fatalf("third Ctrl+T left filter=%v, want every project", hub.taskFilter)
 	}
-	for _, id := range []ListItemID{"project-hub:project:empty", "project-hub:project:alpha"} {
+	for _, id := range []listsurface.ListItemID{"project-hub:project:empty", "project-hub:project:alpha"} {
 		if !projectHubHasItem(hub, id) {
 			t.Fatalf("the cleared axis omitted %q", id)
 		}
@@ -150,7 +151,7 @@ func TestProjectHubTaskFilterTogglesUnderActiveSearch(t *testing.T) {
 		hub.Update(syntheticKey(r))
 	}
 	context, ok := hub.surface.EmptyContext()
-	if !ok || context.Kind != ListEmptyNoMatches {
+	if !ok || context.Kind != listsurface.ListEmptyNoMatches {
 		t.Fatalf("no-match context = (%+v, %v)", context, ok)
 	}
 	if want := "Press Esc to clear the query, or Ctrl+T to show projects without open tasks."; context.State.Detail != want {
@@ -198,7 +199,7 @@ func TestProjectHubTaskFilterDropsHiddenProjectsFromSelection(t *testing.T) {
 	if hub.actions == nil {
 		t.Fatal("Space did not open the bulk action sheet")
 	}
-	identities := hub.actions.context.Selection.EntityIdentities
+	identities := hub.actions.Context.Selection.EntityIdentities
 	if len(identities) != 1 || identities[0].ProjectID != "beta" {
 		t.Fatalf("bulk targets = %+v, want beta alone", identities)
 	}
@@ -217,7 +218,7 @@ func TestProjectHubTaskFilterEmptyCopyNamesTheToggle(t *testing.T) {
 		t.Fatalf("filtered items = %d, want every project hidden", len(got))
 	}
 	context, ok := hub.surface.EmptyContext()
-	if !ok || context.Kind != ListEmptySource {
+	if !ok || context.Kind != listsurface.ListEmptySource {
 		t.Fatalf("empty context = (%+v, %v), want the source-empty kind", context, ok)
 	}
 	if context.State.Title != "No projects hold open tasks." ||
@@ -239,7 +240,7 @@ func TestProjectHubTaskFilterEmptyCopyNamesTheFullList(t *testing.T) {
 		t.Fatalf("without-open-tasks items = %d, want every project hidden", len(got))
 	}
 	context, ok := hub.surface.EmptyContext()
-	if !ok || context.Kind != ListEmptySource {
+	if !ok || context.Kind != listsurface.ListEmptySource {
 		t.Fatalf("empty context = (%+v, %v), want the source-empty kind", context, ok)
 	}
 	if context.State.Title != "Every project holds open tasks." ||

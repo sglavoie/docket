@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -17,7 +18,7 @@ import (
 // row one flat style cannot pass the distinctness guard below. `bug` is in the
 // fixture on purpose: this surface names tags, so a semantic tag wears its chip
 // here rather than the title color the `#` picker's SEMANTIC section previews.
-func newTagSelectorForTest(t *testing.T, currentTags ...string) *TagSelectorModel {
+func newTagSelectorForTest(t *testing.T, currentTags ...string) *listsurface.TagSelectorModel {
 	t.Helper()
 	project := &models.Project{
 		ID:   "project-alpha",
@@ -27,8 +28,8 @@ func newTagSelectorForTest(t *testing.T, currentTags ...string) *TagSelectorMode
 			{Title: "two", Tags: []string{"bug", "ux"}},
 		},
 	}
-	selector := NewTagSelectorModel(nil, project, currentTags)
-	if got := len(selector.surface.Items()); got != 3 {
+	selector := listsurface.NewTagSelectorModel(nil, project, currentTags)
+	if got := len(selector.Surface.Items()); got != 3 {
 		t.Fatalf("fixture built %d rows, want 3", got)
 	}
 	return selector
@@ -36,7 +37,7 @@ func newTagSelectorForTest(t *testing.T, currentTags ...string) *TagSelectorMode
 
 // assertTagSelectorRowWearsItsChip ties the row to the same authority every
 // other tag surface reads rather than to a hex, so a ramp edit moves both.
-func assertTagSelectorRowWearsItsChip(t *testing.T, item ListItem) {
+func assertTagSelectorRowWearsItsChip(t *testing.T, item listsurface.ListItem) {
 	t.Helper()
 	if item.PrimaryStyle == nil {
 		t.Fatalf("row %q has no color", item.ID)
@@ -47,7 +48,7 @@ func assertTagSelectorRowWearsItsChip(t *testing.T, item ListItem) {
 	}
 }
 
-func assertTagSelectorRowsAreChipColored(t *testing.T, items []ListItem) {
+func assertTagSelectorRowsAreChipColored(t *testing.T, items []listsurface.ListItem) {
 	t.Helper()
 	foregrounds := make(map[string]bool, len(items))
 	for _, item := range items {
@@ -64,7 +65,7 @@ func assertTagSelectorRowsAreChipColored(t *testing.T, items []ListItem) {
 // ListSourceFromPickerItems, which is the path that used to build them plain.
 func TestTagSelectorRowsWearTheirTagChipColor(t *testing.T) {
 	selector := newTagSelectorForTest(t)
-	assertTagSelectorRowsAreChipColored(t, selector.surface.Items())
+	assertTagSelectorRowsAreChipColored(t, selector.Surface.Items())
 }
 
 // TestTagSelectorMintedRowKeepsItsChipColorAfterReplaceItems walks the inline
@@ -85,7 +86,7 @@ func TestTagSelectorMintedRowKeepsItsChipColorAfterReplaceItems(t *testing.T) {
 		t.Fatalf("add-tag mode survived the commit: %q", selector.AddTagError)
 	}
 
-	items := selector.surface.Items()
+	items := selector.Surface.Items()
 	if len(items) != 4 {
 		t.Fatalf("selector holds %d rows after minting, want 4", len(items))
 	}
@@ -102,7 +103,7 @@ func TestTagSelectorMintedRowKeepsItsChipColorAfterReplaceItems(t *testing.T) {
 	}
 	// Minting still selects and targets the new row; color is added beside that
 	// behavior, not in place of it.
-	if !selector.surface.IsSelected("security") {
+	if !selector.Surface.IsSelected("security") {
 		t.Fatal("the minted tag is not selected")
 	}
 	if got := selector.SelectedItem().Name; got != "security" {
@@ -116,7 +117,7 @@ func TestTagSelectorMintedRowKeepsItsChipColorAfterReplaceItems(t *testing.T) {
 // reports the sorted selection.
 func TestTagSelectorKeepsSelectionAndFilteringWithColoredRows(t *testing.T) {
 	selector := newTagSelectorForTest(t, "ux")
-	if !selector.surface.IsSelected("ux") {
+	if !selector.Surface.IsSelected("ux") {
 		t.Fatal("the current tag is not preselected")
 	}
 
@@ -125,7 +126,7 @@ func TestTagSelectorKeepsSelectionAndFilteringWithColoredRows(t *testing.T) {
 	if len(matches) != 1 || matches[0].Name != "infra" {
 		t.Fatalf("filtering for %q matched %+v", "inf", matches)
 	}
-	for _, item := range selector.surface.Items() {
+	for _, item := range selector.Surface.Items() {
 		if item.ID == "infra" {
 			assertTagSelectorRowWearsItsChip(t, item)
 		}
@@ -141,7 +142,7 @@ func TestTagSelectorKeepsSelectionAndFilteringWithColoredRows(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("enter produced no message")
 	}
-	done, ok := cmd().(TagSelectorDoneMsg)
+	done, ok := cmd().(listsurface.TagSelectorDoneMsg)
 	if !ok {
 		t.Fatalf("enter emitted %T, want TagSelectorDoneMsg", cmd())
 	}
@@ -158,7 +159,7 @@ func TestTagSelectorDropsRowColorUnderTheCursorOnly(t *testing.T) {
 	selector.SetSize(80, 24)
 	selector.SetCursorToID("bug")
 
-	rendered := RenderTagSelectorView(
+	rendered := listsurface.RenderTagSelectorView(
 		selector.ListSurfaceAdapter, &selector.TagAdder, selector.Config.Title, 80, 24,
 	)
 	if strings.Contains(rendered, theme.TagChipStyle("bug").Render("bug")) {

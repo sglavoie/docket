@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -9,12 +10,12 @@ import (
 // Returns true if the message was handled.
 func (m *AppModel) handleTagMessages(msg tea.Msg) (bool, tea.Cmd) { //nolint:gocyclo
 	switch msg := msg.(type) {
-	case ShowTagSelectorMsg:
-		selector := NewTagSelectorModel(msg.Task, msg.Project, msg.CurrentTags)
+	case listsurface.ShowTagSelectorMsg:
+		selector := listsurface.NewTagSelectorModel(msg.Task, msg.Project, msg.CurrentTags)
 		m.showView(presentation.ViewTagSelector, selector)
 		return true, nil
 
-	case TagSelectorDoneMsg:
+	case listsurface.TagSelectorDoneMsg:
 		m.popView()
 		if msg.Canceled {
 			return true, nil

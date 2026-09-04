@@ -1,14 +1,13 @@
-package tui
+package listsurface
 
 import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
-	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
-// jumpCursor moves cursor by delta within [0, total-1].
-func jumpCursor(cursor *int, total, delta int) {
+// JumpCursor moves cursor by delta within [0, total-1].
+func JumpCursor(cursor *int, total, delta int) {
 	if total <= 0 {
 		*cursor = 0
 		return
@@ -22,8 +21,8 @@ func jumpCursor(cursor *int, total, delta int) {
 	}
 }
 
-// handleListNavigation handles standard direct list navigation keys.
-func handleListNavigation(key string, cursor *int, total, height int, flash *bool) (bool, tea.Cmd) {
+// HandleListNavigation handles standard direct list navigation keys.
+func HandleListNavigation(key string, cursor *int, total, height int, flash *bool) (bool, tea.Cmd) {
 	old := *cursor
 	switch key {
 	case "up", "k":
@@ -38,23 +37,23 @@ func handleListNavigation(key string, cursor *int, total, height int, flash *boo
 		return true, nil
 	case "home":
 		*cursor = 0
-		return true, flashIfJumped(old, *cursor, flash)
+		return true, FlashIfJumped(old, *cursor, flash)
 	case "G", "end":
 		if total > 0 {
 			*cursor = total - 1
 		}
-		return true, flashIfJumped(old, *cursor, flash)
+		return true, FlashIfJumped(old, *cursor, flash)
 	case "ctrl+u", "pgup":
-		jumpCursor(cursor, total, -chrome.HalfPage(height))
-		return true, flashIfJumped(old, *cursor, flash)
+		JumpCursor(cursor, total, -chrome.HalfPage(height))
+		return true, FlashIfJumped(old, *cursor, flash)
 	case "ctrl+d", "pgdown":
-		jumpCursor(cursor, total, chrome.HalfPage(height))
-		return true, flashIfJumped(old, *cursor, flash)
+		JumpCursor(cursor, total, chrome.HalfPage(height))
+		return true, FlashIfJumped(old, *cursor, flash)
 	}
 	return false, nil
 }
 
-func flashIfJumped(oldCursor, newCursor int, flash *bool) tea.Cmd {
+func FlashIfJumped(oldCursor, newCursor int, flash *bool) tea.Cmd {
 	delta := newCursor - oldCursor
 	if delta < 0 {
 		delta = -delta
@@ -118,10 +117,4 @@ func AnyEscStepActive(steps []EscStep) bool {
 		}
 	}
 	return false
-}
-
-func helpCmd(name string, items []operation.HelpItem) tea.Cmd {
-	return func() tea.Msg {
-		return ShowHelpMsg{ViewName: name, Items: items}
-	}
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -222,7 +223,7 @@ func inlinePeekAttachmentsLine(task *models.Task, width int) string {
 			parts = append(parts, fmt.Sprintf("+%d more", len(task.Attachments)-maxAttachments))
 			break
 		}
-		if name := strings.TrimSpace(attachmentDisplayName(attachment)); name != "" {
+		if name := strings.TrimSpace(listsurface.AttachmentDisplayName(attachment)); name != "" {
 			parts = append(parts, name)
 		}
 	}
@@ -267,7 +268,7 @@ func inlinePeekTagsLine(task *models.Task, width int) string {
 	}
 
 	chips := make([]string, 0, len(task.Tags))
-	for _, tag := range orderedTaskTags(task.Tags) {
+	for _, tag := range listsurface.OrderedTaskTags(task.Tags) {
 		if tag = strings.TrimSpace(tag); tag != "" {
 			chips = append(chips, theme.TagChipStyle(tag).Render("#"+tag))
 		}

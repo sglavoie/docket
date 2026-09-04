@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
@@ -16,7 +17,7 @@ import (
 func TestFilterDueChordPickerAppliesEveryPublicFacet(t *testing.T) {
 	tests := []struct {
 		name   string
-		itemID ListItemID
+		itemID listsurface.ListItemID
 		token  string
 		want   query.DueDateFilter
 	}{
@@ -45,7 +46,7 @@ func TestFilterDueChordPickerAppliesEveryPublicFacet(t *testing.T) {
 			if !ok || current.Data != test.token {
 				t.Fatalf("row %s carries %#v, want the token %q", test.itemID, current.Data, test.token)
 			}
-			_, dismissed, selected := picker.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+			_, dismissed, selected := picker.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 			if !dismissed {
 				t.Fatal("Enter did not finish the due-date picker")
 			}
@@ -202,7 +203,7 @@ func TestFilterCompletionAgeChordSelectsTerminalLifecycleStates(t *testing.T) {
 	if picker == nil || !picker.surface.SetCursorToID("filter-completion-age:90") {
 		t.Fatal("completion-age picker cannot select 90 days")
 	}
-	_, dismissed, selected := picker.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	_, dismissed, selected := picker.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if !dismissed {
 		t.Fatal("Enter did not finish the completion-age picker")
 	}

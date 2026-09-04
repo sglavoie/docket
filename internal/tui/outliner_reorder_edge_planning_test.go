@@ -109,7 +109,7 @@ func TestPlanningReorderEdge(t *testing.T) {
 		if !cross.moveCursorToProjectTask(tasks[1].ID, project.ID) {
 			t.Fatal("cursor did not land on Today Two")
 		}
-		if !cross.rows[cross.cursor].IsTodaySection {
+		if !cross.rows[cross.Cursor].IsTodaySection {
 			t.Fatal("the cursor row lost its Today section identity")
 		}
 

@@ -35,7 +35,7 @@ projects, which already contains every nested child, so no tree walk is needed.
 `wakeDeferredRows` compares that clock against the tick and, once it is past,
 clears it and sets `crossForceRebuild` and nothing else, leaving the render pass
 Bubble Tea runs next as the single rebuild authority and
-`computeOutlinerViewport` as sole owner of `viewScrollOffset`.
+`computeOutlinerViewport` as sole owner of `ViewScrollOffset`.
 `safeToRebuildForWake` refuses while an overlay, picker, inline row editor,
 visual selection, or the flat ranked list is live, because rebuilding underneath
 one of those moves ground the user is standing on. A query that is merely
@@ -195,11 +195,11 @@ Pinned section is built — and a filter-admitted terminal or deferred pinned ro
 inside All or Today all get the mark, while the lane's own rows stay bare
 because the section header above them already states it.
 
-A pinned *project* wears the same glyph, from the same `pinnedMarker()` helper,
+A pinned *project* wears the same glyph, from the same `PinnedMarker()` helper,
 on every surface that lists one: the Outliner project group header, the Select
 Project rows, and the `%` Move to Project picker. One vocabulary, so `*` writes
 what `*pin` names and what every list shows. It is a glyph rather than a color
-because `SelectedLine` strips styling and re-renders, and `renderListSurfaceRow`
+because `SelectedLine` strips styling and re-renders, and `RenderListSurfaceRow`
 skips `PrimaryStyle` on the cursor row outright — a style-only signal is
 invisible on exactly the row the user is on, while a character survives both.
 On the group header the marker leads the badge, so it lands in the column a
@@ -262,7 +262,7 @@ footer content wash. The breadcrumb keeps its plain foreground accent while its
 background participates in the footer wash.
 
 A view-owned status message is transient by default and expires like the
-shell's own. `setTransientStatus` marks it, `scheduleViewStatusExpiry` reads the
+shell's own. `SetTransientStatus` marks it, `scheduleViewStatusExpiry` reads the
 same before/after probe the flash arms on and batches a `ViewStatusClearMsg`
 inside that one deferred closure, and the handler clears only when the message's
 view and `StatusStamp` still match, so an older tick can never dismiss a newer

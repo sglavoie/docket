@@ -56,7 +56,7 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		// First because the readout owns input outright: every other profile below
 		// describes keys the stack is currently refusing.
 		return m.queryReadoutGuidance(), true
-	case m.confirm.IsActive():
+	case m.Confirm.IsActive():
 		return chrome.GuidanceSpec{Hints: chrome.RequiredGuidanceHints("Y confirm", "N/Esc cancel"), Rows: 2}, true
 	case m.quickEdit.IsActive():
 		hints := chrome.RequiredGuidanceHints("Enter save", "Esc cancel")
@@ -87,7 +87,7 @@ func (m *OutlinerModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 		return chrome.GuidanceSpec{Hints: hints, Rows: 2}, true
 	case len(m.rows) == 0:
 		return m.emptyGuidance(), true
-	case m.multiSelectMode:
+	case m.MultiSelectMode:
 		return m.multiSelectGuidance(), true
 	case m.peekMode:
 		peekKey := "Ctrl+Enter"
@@ -186,10 +186,10 @@ func (m *OutlinerModel) multiSelectGuidance() chrome.GuidanceSpec {
 }
 
 func (m *OutlinerModel) cursorNamesHeader() bool {
-	if m.cursor < 0 || m.cursor >= len(m.rows) {
+	if m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return false
 	}
-	return m.rows[m.cursor].isHeaderRow()
+	return m.rows[m.Cursor].isHeaderRow()
 }
 
 // headerGuidance names only the keys the header under the cursor can act on. On
@@ -204,7 +204,7 @@ func (m *OutlinerModel) cursorNamesHeader() bool {
 // exists for, so it must outlive the mode and search chrome when the terminal
 // narrows.
 func (m *OutlinerModel) headerGuidance() chrome.GuidanceSpec {
-	row := m.rows[m.cursor]
+	row := m.rows[m.Cursor]
 	zoomed := m.isZoomedSectionRow(row)
 	hints := make([]chrome.GuidanceHint, 0, 8)
 	if m.operationRegistry != nil {

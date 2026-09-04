@@ -57,7 +57,7 @@ func TestSimplifiedHorizontalNavigationCollapsesExpandsAndMovesToParent(t *testi
 		t.Fatalf("tree rows not rendered as parent/child: parent=%d child=%d rows=%+v", parentRow, childRow, m.rows)
 	}
 
-	m.cursor = parentRow
+	m.Cursor = parentRow
 	if !m.collapseOrMoveToParent() {
 		t.Fatal("h did not collapse the expanded parent")
 	}
@@ -72,11 +72,11 @@ func TestSimplifiedHorizontalNavigationCollapsesExpandsAndMovesToParent(t *testi
 	if childRow < 0 {
 		t.Fatal("child did not become visible after expand")
 	}
-	m.cursor = childRow
+	m.Cursor = childRow
 	if !m.collapseOrMoveToParent() {
 		t.Fatal("h on a leaf did not move to its parent")
 	}
-	if got := m.rows[m.cursor].task; got == nil || got.ID != parent.ID {
+	if got := m.rows[m.Cursor].task; got == nil || got.ID != parent.ID {
 		t.Fatalf("cursor task after parent move = %v, want %s", got, parent.ID)
 	}
 }
@@ -112,7 +112,7 @@ func TestProjectHeadersCollapseAndExpandWithHorizontalNavigation(t *testing.T) {
 			if projectHeader < 0 {
 				t.Fatalf("Alpha project header is missing from rows: %+v", outliner.rows)
 			}
-			outliner.cursor = projectHeader
+			outliner.Cursor = projectHeader
 			collapseKey := outliner.rows[projectHeader].effectiveCollapseKey()
 
 			collapseMsg, err := parseUITestKey(keys.collapse)
@@ -197,7 +197,7 @@ func navigationAliasTestApp(t *testing.T) *AppModel {
 	app.projects[project.ID] = project
 	out := app.crossOutliner
 	out.loadedProjects = []*models.Project{project}
-	out.height = 11
+	out.SetSize(out.Width(), 11)
 	out.rows = make([]outlinerRow, 0, 12)
 	out.rows = append(out.rows, outlinerRow{IsSeparator: true})
 	for range 10 {
@@ -223,7 +223,7 @@ func TestSingleOutlinerNavigationAliasesMatchTheirPairedKeys(t *testing.T) {
 		for _, spelling := range test.spellings {
 			t.Run(test.name+"/"+strings.Join(spelling, ""), func(t *testing.T) {
 				app := navigationAliasTestApp(t)
-				app.crossOutliner.cursor = test.start
+				app.crossOutliner.Cursor = test.start
 				for _, key := range spelling {
 					msg, err := parseUITestKey(key)
 					if err != nil {
@@ -233,7 +233,7 @@ func TestSingleOutlinerNavigationAliasesMatchTheirPairedKeys(t *testing.T) {
 						t.Fatalf("key %q was not handled", key)
 					}
 				}
-				if got := app.crossOutliner.cursor; got != test.want {
+				if got := app.crossOutliner.Cursor; got != test.want {
 					t.Fatalf("cursor after %v = %d, want %d", spelling, got, test.want)
 				}
 			})
@@ -243,7 +243,7 @@ func TestSingleOutlinerNavigationAliasesMatchTheirPairedKeys(t *testing.T) {
 
 func TestSingleOutlinerNavigationJumpsFlashTheCursor(t *testing.T) {
 	app := navigationAliasTestApp(t)
-	app.crossOutliner.cursor = 1
+	app.crossOutliner.Cursor = 1
 	msg, err := parseUITestKey("ctrl+d")
 	if err != nil {
 		t.Fatalf("parse ctrl+d: %v", err)
@@ -251,7 +251,7 @@ func TestSingleOutlinerNavigationJumpsFlashTheCursor(t *testing.T) {
 	if handled, cmd := app.handleGlobalKeyPress(msg); !handled || cmd == nil {
 		t.Fatalf("ctrl+d = handled %v cmd %v; want a cursor flash command", handled, cmd)
 	}
-	if !app.crossOutliner.cursorFlash {
+	if !app.crossOutliner.CursorFlash {
 		t.Fatal("half-page jump did not flash the cursor")
 	}
 }
@@ -295,7 +295,7 @@ func TestSimplifiedReorderEligibility(t *testing.T) {
 		t.Fatal("cross-project Pinned row refused manual reorder")
 	}
 	m.rows[0].IsPinnedSection = false
-	m.multiSelectMode = true
+	m.MultiSelectMode = true
 	if m.simplifiedReorderEligible() {
 		t.Fatal("visual selection allowed cursor-only reorder")
 	}
@@ -308,11 +308,11 @@ func TestMutationRebuildPreservesCursorIdentityAndVisibleSelection(t *testing.T)
 	project.BuildTaskTree()
 	m := NewOutlinerModel(project, nil, nil)
 	m.selectOutlinerMode(chrome.ModeAll)
-	m.cursor = findTaskRow(m.rows, second.ID)
-	if m.cursor < 0 {
+	m.Cursor = findTaskRow(m.rows, second.ID)
+	if m.Cursor < 0 {
 		t.Fatal("second task is missing before rebuild")
 	}
-	m.multiSelectMode = true
+	m.MultiSelectMode = true
 	m.SelectTaskIdentity(taskref.For(first, project))
 	m.SelectTaskIdentity(taskref.For(second, project))
 
@@ -324,8 +324,8 @@ func TestMutationRebuildPreservesCursorIdentityAndVisibleSelection(t *testing.T)
 	if task == nil || task.ID != second.ID {
 		t.Fatalf("cursor target after rebuild = %v, want %s", task, second.ID)
 	}
-	if !m.multiSelectMode || m.SelectedCount() != 2 {
-		t.Fatalf("visible selection after rebuild = active %v count %d, want active/2", m.multiSelectMode, m.SelectedCount())
+	if !m.MultiSelectMode || m.SelectedCount() != 2 {
+		t.Fatalf("visible selection after rebuild = active %v count %d, want active/2", m.MultiSelectMode, m.SelectedCount())
 	}
 }
 
@@ -373,7 +373,7 @@ func TestSimplifiedCaptureFollowsAProjectHeaderCursor(t *testing.T) {
 		{task: project.Tasks[0], ProjectID: project.ID},
 	}
 
-	app.crossOutliner.cursor = 0
+	app.crossOutliner.Cursor = 0
 	header, ok := app.coreCaptureMessage().(ShowTaskComposerMsg)
 	if !ok || header.Preset.Project != project {
 		t.Fatalf("header capture = %#v, want project %v", header, project)
@@ -382,7 +382,7 @@ func TestSimplifiedCaptureFollowsAProjectHeaderCursor(t *testing.T) {
 		t.Fatalf("header capture label = %q", header.Preset.HeaderLabel)
 	}
 
-	app.crossOutliner.cursor = 1
+	app.crossOutliner.Cursor = 1
 	task, ok := app.coreCaptureMessage().(ShowTaskComposerMsg)
 	if !ok || task.Preset.Project != inbox {
 		t.Fatalf("task-row capture = %#v, want system Inbox %v", task, inbox)
@@ -408,7 +408,7 @@ func TestSimplifiedCaptureFollowsTaskFocus(t *testing.T) {
 	shell.crossOutliner.rows = []outlinerRow{
 		{IsProjectHeader: true, ProjectID: inbox.ID},
 	}
-	shell.crossOutliner.cursor = 0
+	shell.crossOutliner.Cursor = 0
 	shell.crossOutliner.crossFocusStack = []CrossProjectFocusEntry{
 		{ProjectID: project.ID, TaskID: story.ID},
 	}
@@ -455,16 +455,16 @@ func TestResetToGlobalAllClearsInlineControls(t *testing.T) {
 	if len(tasks) == 0 {
 		t.Fatal("fixture has no tasks")
 	}
-	m.confirm.Show("delete", "Delete?")
+	m.Confirm.Show("delete", "Delete?")
 	m.quickEdit.Enter(tasks[0], false)
 
 	m.resetToGlobalAll()
 
-	if m.confirm.IsActive() ||
+	if m.Confirm.IsActive() ||
 		m.quickEdit.IsActive() {
 		t.Fatalf(
 			"reset left inline state: confirm=%v edit=%v",
-			m.confirm.IsActive(),
+			m.Confirm.IsActive(),
 			m.quickEdit.IsActive(),
 		)
 	}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
@@ -52,7 +53,7 @@ func openProjectHub(t *testing.T, app *AppModel, modes ...route.ProjectHubMode) 
 	return hub
 }
 
-func focusProjectHubItem(t *testing.T, hub *ProjectHubModel, id ListItemID) {
+func focusProjectHubItem(t *testing.T, hub *ProjectHubModel, id listsurface.ListItemID) {
 	t.Helper()
 	if hub.surface == nil || !hub.surface.SetCursorToID(id) {
 		t.Fatalf("project hub omitted item %q", id)
@@ -118,7 +119,7 @@ func finishProjectHubTasks(t *testing.T, project *models.Project, n int) {
 	}
 }
 
-func projectHubItem(t *testing.T, hub *ProjectHubModel, id ListItemID) ListItem {
+func projectHubItem(t *testing.T, hub *ProjectHubModel, id listsurface.ListItemID) listsurface.ListItem {
 	t.Helper()
 	for _, item := range hub.surface.Items() {
 		if item.ID == id {
@@ -126,14 +127,14 @@ func projectHubItem(t *testing.T, hub *ProjectHubModel, id ListItemID) ListItem 
 		}
 	}
 	t.Fatalf("project hub omitted item %q", id)
-	return ListItem{}
+	return listsurface.ListItem{}
 }
 
 // projectHubPreviewSummary reads the preview header's one muted meta line, which
 // carries the lifecycle, the tally, the slug, and a pin when there is one. The
 // five labeled fields it replaced spent six rows saying the same thing and left
 // the task pane below them nowhere to go.
-func projectHubPreviewSummary(t *testing.T, hub *ProjectHubModel, id ListItemID) string {
+func projectHubPreviewSummary(t *testing.T, hub *ProjectHubModel, id listsurface.ListItemID) string {
 	t.Helper()
 	preview := projectHubItem(t, hub, id).Preview
 	if len(preview.Fields) > 0 {
@@ -155,7 +156,7 @@ func projectHubFilterApp(t *testing.T) *AppModel {
 	return app
 }
 
-func projectHubHasItem(hub *ProjectHubModel, id ListItemID) bool {
+func projectHubHasItem(hub *ProjectHubModel, id listsurface.ListItemID) bool {
 	for _, item := range hub.surface.Items() {
 		if item.ID == id {
 			return true
@@ -165,11 +166,11 @@ func projectHubHasItem(hub *ProjectHubModel, id ListItemID) bool {
 }
 
 func projectHubActionIDs(hub *ProjectHubModel) []operation.OperationID {
-	if hub.actions == nil || hub.actions.surface == nil {
+	if hub.actions == nil || hub.actions.Surface == nil {
 		return nil
 	}
 	ids := make([]operation.OperationID, 0)
-	for _, item := range hub.actions.surface.Items() {
+	for _, item := range hub.actions.Surface.Items() {
 		if descriptor, ok := item.Data.(operation.OperationDescriptor); ok {
 			ids = append(ids, descriptor.ID)
 		}

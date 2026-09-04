@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
 
@@ -21,14 +22,14 @@ func TestProjectHubListsEveryProjectByLifecycle(t *testing.T) {
 	setTestAppProjects(app, app.projects["alpha"], app.projects["beta"], app.projects["parked"], app.projects["archived"])
 
 	hub := openProjectHub(t, app)
-	wantCategories := []ListCategory{
+	wantCategories := []listsurface.ListCategory{
 		{ID: projectHubCategoryActive, Label: "Active Projects"},
 		{ID: projectHubCategoryArchived, Label: "Archived Projects"},
 	}
 	if got := hub.surface.Categories(); !reflect.DeepEqual(got, wantCategories) {
 		t.Fatalf("project categories = %#v, want %#v", got, wantCategories)
 	}
-	for _, id := range []ListItemID{
+	for _, id := range []listsurface.ListItemID{
 		"project-hub:project:alpha",
 		"project-hub:project:beta",
 		"project-hub:archived:archived",
@@ -66,16 +67,16 @@ func TestPinnedProjectHubListsPinnedActiveAndParkedProjectsOnly(t *testing.T) {
 	if params := app.CurrentRoute().Params().(route.ManageParams); params.ProjectHubMode != route.ProjectHubModePinned {
 		t.Fatalf("pinned Hub route params = %+v", params)
 	}
-	wantCategories := []ListCategory{{ID: projectHubCategoryActive, Label: "Pinned Projects"}}
+	wantCategories := []listsurface.ListCategory{{ID: projectHubCategoryActive, Label: "Pinned Projects"}}
 	if got := hub.surface.Categories(); !reflect.DeepEqual(got, wantCategories) {
 		t.Fatalf("pinned categories = %#v, want %#v", got, wantCategories)
 	}
-	for _, id := range []ListItemID{"project-hub:project:alpha", "project-hub:project:parked"} {
+	for _, id := range []listsurface.ListItemID{"project-hub:project:alpha", "project-hub:project:parked"} {
 		if !projectHubHasItem(hub, id) {
 			t.Errorf("pinned Hub omitted %q", id)
 		}
 	}
-	for _, id := range []ListItemID{"project-hub:project:beta", "project-hub:archived:archived"} {
+	for _, id := range []listsurface.ListItemID{"project-hub:project:beta", "project-hub:archived:archived"} {
 		if projectHubHasItem(hub, id) {
 			t.Errorf("pinned Hub included %q", id)
 		}
@@ -109,7 +110,7 @@ func TestPinnedProjectHubSearchAndTaskFilterIntersectPinnedPopulation(t *testing
 	hub.SetSearchQuery("missing")
 	hub.applyProjectFilter()
 	context, ok := hub.surface.EmptyContext()
-	if !ok || context.Kind != ListEmptyNoMatches || context.State.Title != "No pinned projects match this search." {
+	if !ok || context.Kind != listsurface.ListEmptyNoMatches || context.State.Title != "No pinned projects match this search." {
 		t.Fatalf("pinned no-match context = (%+v, %v)", context, ok)
 	}
 }
@@ -130,7 +131,7 @@ func TestPinnedProjectHubRefreshPrunesRemovedCursorAndSelection(t *testing.T) {
 		t.Fatalf("removed pinned row left cursor=%d selection=%v", hub.surface.Cursor(), hub.surface.SelectedIDs())
 	}
 	context, ok := hub.surface.EmptyContext()
-	if !ok || context.Kind != ListEmptySource || context.State.Title != "No active projects are pinned." {
+	if !ok || context.Kind != listsurface.ListEmptySource || context.State.Title != "No active projects are pinned." {
 		t.Fatalf("last-row empty context = (%+v, %v)", context, ok)
 	}
 	if !strings.Contains(context.State.Detail, "Esc") || !strings.Contains(context.State.Detail, "P") {

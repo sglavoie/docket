@@ -39,15 +39,15 @@ func setJumpHistoryRows(outliner *OutlinerModel, tasks map[string]*models.Task, 
 func requireCurrentJumpTask(t *testing.T, outliner *OutlinerModel, want taskref.TaskIdentity) {
 	t.Helper()
 	if got := outliner.CurrentTaskIdentity(); got != want {
-		t.Fatalf("current task = %+v, want %+v (cursor=%d)", got, want, outliner.cursor)
+		t.Fatalf("current task = %+v, want %+v (cursor=%d)", got, want, outliner.Cursor)
 	}
 }
 
 func TestOutlinerRelocationJumpBackwardAndForward(t *testing.T) {
 	outliner, tasks := jumpHistoryFixture("before", "target", "after", "tail")
 	target := taskref.TaskIdentity{ProjectID: "alpha", TaskID: "target"}
-	outliner.cursor = 1
-	outliner.viewScrollOffset = 7
+	outliner.Cursor = 1
+	outliner.ViewScrollOffset = 7
 
 	capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 	if capture == nil {
@@ -61,7 +61,7 @@ func TestOutlinerRelocationJumpBackwardAndForward(t *testing.T) {
 	}
 
 	setJumpHistoryRows(outliner, tasks, "target", "before", "after", "tail")
-	outliner.cursor = 0 // The mutation refresh follows the relocated task.
+	outliner.Cursor = 0 // The mutation refresh follows the relocated task.
 	_, recorded := outliner.finishOutlinerRelocation(capture, true)
 	if !recorded {
 		t.Fatal("relocation moved rows but did not report recorded origin history")
@@ -74,8 +74,8 @@ func TestOutlinerRelocationJumpBackwardAndForward(t *testing.T) {
 
 	outliner.jumpBackward()
 	requireCurrentJumpTask(t, outliner, taskref.TaskIdentity{ProjectID: "alpha", TaskID: "after"})
-	if outliner.viewScrollOffset != 7 {
-		t.Fatalf("backward scroll offset = %d, want 7", outliner.viewScrollOffset)
+	if outliner.ViewScrollOffset != 7 {
+		t.Fatalf("backward scroll offset = %d, want 7", outliner.ViewScrollOffset)
 	}
 
 	outliner.jumpForward()
@@ -85,7 +85,7 @@ func TestOutlinerRelocationJumpBackwardAndForward(t *testing.T) {
 func TestOutlinerRelocationReportsNoOriginWhenRowDoesNotMove(t *testing.T) {
 	outliner, _ := jumpHistoryFixture("target", "after")
 	target := taskref.TaskIdentity{ProjectID: "alpha", TaskID: "target"}
-	outliner.cursor = 0
+	outliner.Cursor = 0
 	capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 	if _, recorded := outliner.finishOutlinerRelocation(capture, true); recorded {
 		t.Fatal("unchanged row advertised recorded origin history")
@@ -96,7 +96,7 @@ func TestOutlinerRelocationOriginFallsBackToPrecedingThenNearestRow(t *testing.T
 	t.Run("preceding", func(t *testing.T) {
 		outliner, tasks := jumpHistoryFixture("before", "target", "after")
 		target := taskref.TaskIdentity{ProjectID: "alpha", TaskID: "target"}
-		outliner.cursor = 1
+		outliner.Cursor = 1
 		capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 
 		setJumpHistoryRows(outliner, tasks, "target", "before")
@@ -108,7 +108,7 @@ func TestOutlinerRelocationOriginFallsBackToPrecedingThenNearestRow(t *testing.T
 	t.Run("numeric", func(t *testing.T) {
 		outliner, tasks := jumpHistoryFixture("before", "target", "after", "survivor")
 		target := taskref.TaskIdentity{ProjectID: "alpha", TaskID: "target"}
-		outliner.cursor = 1
+		outliner.Cursor = 1
 		capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 
 		setJumpHistoryRows(outliner, tasks, "target", "survivor")
@@ -128,7 +128,7 @@ func TestOutlinerRelocationUsesProjectQualifiedTaskAnchors(t *testing.T) {
 		{task: alpha.Tasks[1], ProjectID: alpha.ID},
 		{task: beta.Tasks[0], ProjectID: beta.ID},
 	}
-	outliner.cursor = 1
+	outliner.Cursor = 1
 	target := taskref.TaskIdentity{ProjectID: alpha.ID, TaskID: "target"}
 	capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 
@@ -145,7 +145,7 @@ func TestOutlinerRelocationUsesProjectQualifiedTaskAnchors(t *testing.T) {
 func TestOutlinerRelocationHistoryClearsOnProjectionChange(t *testing.T) {
 	outliner, tasks := jumpHistoryFixture("before", "target", "after")
 	target := taskref.TaskIdentity{ProjectID: "alpha", TaskID: "target"}
-	outliner.cursor = 1
+	outliner.Cursor = 1
 	capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 	setJumpHistoryRows(outliner, tasks, "target", "before", "after")
 	outliner.finishOutlinerRelocation(capture, true)
@@ -160,13 +160,13 @@ func TestOutlinerRelocationHistoryClearsOnProjectionChange(t *testing.T) {
 func TestOutlinerOrdinaryMotionPreservesForwardHistory(t *testing.T) {
 	outliner, tasks := jumpHistoryFixture("before", "target", "after", "tail")
 	target := taskref.TaskIdentity{ProjectID: "alpha", TaskID: "target"}
-	outliner.cursor = 1
+	outliner.Cursor = 1
 	capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 	setJumpHistoryRows(outliner, tasks, "target", "before", "after", "tail")
 	outliner.finishOutlinerRelocation(capture, true)
 	outliner.jumpBackward()
 
-	outliner.cursor = 3 // Ordinary j/k-style movement must not clear Ctrl+I.
+	outliner.Cursor = 3 // Ordinary j/k-style movement must not clear Ctrl+I.
 	outliner.jumpForward()
 	requireCurrentJumpTask(t, outliner, target)
 	outliner.jumpBackward()
@@ -187,7 +187,7 @@ func TestOutlinerRelocationHistoryIgnoresNoOpAndHiddenDestinations(t *testing.T)
 	t.Run("hidden", func(t *testing.T) {
 		outliner, tasks := jumpHistoryFixture("before", "target", "after")
 		target := taskref.TaskIdentity{ProjectID: "alpha", TaskID: "target"}
-		outliner.cursor = 1
+		outliner.Cursor = 1
 		capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 		setJumpHistoryRows(outliner, tasks, "before", "after")
 		outliner.finishOutlinerRelocation(capture, true)
@@ -213,7 +213,7 @@ func TestOutlinerRelocationHistoryIsBounded(t *testing.T) {
 func TestOutlinerAsyncRelocationCaptureOnlyArmsOnSuccessfulCurrentTarget(t *testing.T) {
 	outliner, tasks := jumpHistoryFixture("before", "target", "after")
 	target := taskref.TaskIdentity{ProjectID: "alpha", TaskID: "target"}
-	outliner.cursor = 1
+	outliner.Cursor = 1
 	capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 
 	wrapped := withOutlinerRelocationCapture(func() tea.Msg {
@@ -225,7 +225,7 @@ func TestOutlinerAsyncRelocationCaptureOnlyArmsOnSuccessfulCurrentTarget(t *test
 	}
 	outliner.armOutlinerRelocation(outlinerRelocationFrom(result.Relocation))
 	setJumpHistoryRows(outliner, tasks, "target", "before", "after")
-	outliner.cursor = 0
+	outliner.Cursor = 0
 	outliner.finishPendingOutlinerRelocation()
 	if len(outliner.relocationHistory.back) != 1 {
 		t.Fatalf("accepted async relocation recorded %d entries, want 1", len(outliner.relocationHistory.back))
@@ -237,19 +237,19 @@ func TestOutlinerAsyncRelocationCaptureOnlyArmsOnSuccessfulCurrentTarget(t *test
 	}
 
 	outliner2, _ := jumpHistoryFixture("before", "target", "after")
-	outliner2.cursor = 1
+	outliner2.Cursor = 1
 	capture2 := outliner2.captureOutlinerRelocation([]taskref.TaskIdentity{target})
-	outliner2.cursor = 2 // User moved while the mutation was in flight.
+	outliner2.Cursor = 2 // User moved while the mutation was in flight.
 	outliner2.armOutlinerRelocation(capture2)
 	if outliner2.relocationHistory.pending != nil {
 		t.Fatal("async relocation armed after the cursor left its target")
 	}
 
 	outliner3, _ := jumpHistoryFixture("before", "target", "after")
-	outliner3.cursor = 1
+	outliner3.Cursor = 1
 	capture3 := outliner3.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 	outliner3.armOutlinerRelocation(capture3)
-	outliner3.cursor = 2 // User moved after commit but before the reload completed.
+	outliner3.Cursor = 2 // User moved after commit but before the reload completed.
 	outliner3.crossLoadGen = 1
 	outliner3.handleCrossProjectsLoaded(crossProjectsLoadedMsg{
 		projects:   outliner3.loadedProjects,
@@ -260,14 +260,14 @@ func TestOutlinerAsyncRelocationCaptureOnlyArmsOnSuccessfulCurrentTarget(t *test
 	}
 
 	outliner4, tasks4 := jumpHistoryFixture("before", "target", "after")
-	outliner4.cursor = 1
+	outliner4.Cursor = 1
 	capture4 := outliner4.captureOutlinerRelocation([]taskref.TaskIdentity{target})
 	outliner4.armOutlinerRelocation(capture4)
 	// The committed mutation's own refresh took the target off the projection and
 	// left the cursor where it fell. That displacement is the mutation's doing, so
 	// the capture must survive to the reload that follows it.
 	setJumpHistoryRows(outliner4, tasks4, "before", "after")
-	outliner4.cursor = 1
+	outliner4.Cursor = 1
 	outliner4.settleRelocationCursor()
 	outliner4.discardDisplacedRelocationCapture()
 	if outliner4.relocationHistory.pending == nil {
@@ -276,7 +276,7 @@ func TestOutlinerAsyncRelocationCaptureOnlyArmsOnSuccessfulCurrentTarget(t *test
 	if got := outliner4.relocationHistory.pending.SettledCursor; got != 1 {
 		t.Fatalf("settled cursor = %d, want 1", got)
 	}
-	outliner4.cursor = 0 // A genuine j after the settle still voids it.
+	outliner4.Cursor = 0 // A genuine j after the settle still voids it.
 	outliner4.discardDisplacedRelocationCapture()
 	if outliner4.relocationHistory.pending != nil {
 		t.Fatal("a cursor move after the settle left the capture armed")
@@ -297,7 +297,7 @@ func TestCtrlOAndCtrlIDispatchThroughTheSimplifiedOperationPipeline(t *testing.T
 		{task: before, ProjectID: project.ID},
 		{task: after, ProjectID: project.ID},
 	}
-	outliner.cursor = 0
+	outliner.Cursor = 0
 	outliner.syncJumpProjection()
 	outliner.pushJumpBack(outlinerJumpPosition{
 		Following: taskref.TaskIdentity{ProjectID: project.ID, TaskID: after.ID},
@@ -340,7 +340,7 @@ func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) 
 	if !ok {
 		t.Fatal("initial All projection does not contain target")
 	}
-	outliner.cursor = targetRow
+	outliner.Cursor = targetRow
 	originRow := targetRow
 
 	result := model.operationExecutor.Execute(operation.OperationExecutionRequest{
@@ -368,7 +368,7 @@ func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) 
 	if got := outliner.CurrentTaskIdentity(); got != targetIdentity {
 		t.Fatalf("refresh cursor = %+v, want relocated target %+v", got, targetIdentity)
 	}
-	if outliner.cursor == originRow {
+	if outliner.Cursor == originRow {
 		t.Fatalf("Doing update left target at row %d; fixture did not exercise relocation", originRow)
 	}
 

@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
@@ -66,7 +67,7 @@ func TestReferencePickerKeepsUnreachableStoredTargetsEnabled(t *testing.T) {
 		"attic:relic",
 	)
 	membership := taskReferenceMembership([]*models.Task{subject})
-	preselected := make([]ListItemID, 0, len(membership))
+	preselected := make([]listsurface.ListItemID, 0, len(membership))
 	for _, id := range want {
 		if membership[id] != operationValueAll {
 			t.Fatalf("stored reference %s is not preselected; membership = %v", id, membership)
@@ -77,7 +78,7 @@ func TestReferencePickerKeepsUnreachableStoredTargetsEnabled(t *testing.T) {
 		t.Fatalf("preselection = %v, want every stored reference and nothing else", membership)
 	}
 	for _, id := range preselected {
-		index := slices.IndexFunc(source.Items, func(item ListItem) bool { return item.ID == id })
+		index := slices.IndexFunc(source.Items, func(item listsurface.ListItem) bool { return item.ID == id })
 		if index < 0 {
 			t.Fatalf("preselected row %s is not in the list source", id)
 		}
@@ -146,7 +147,7 @@ func TestReferencePickerQualifiesCrossProjectRows(t *testing.T) {
 		locator   string
 		project   *models.Project
 		taskID    string
-		category  ListCategoryID
+		category  listsurface.ListCategoryID
 		secondary string
 	}{
 		{locator: "remote:target", project: remote, taskID: "target", category: "remote", secondary: "⏳ #1"},
@@ -174,8 +175,8 @@ func TestReferencePickerQualifiesCrossProjectRows(t *testing.T) {
 	// Categories are emitted once per project that actually owns a row, in
 	// population order, and carry the project's display name — which is what lets
 	// the label itself stay unqualified.
-	labels := make(map[ListCategoryID]string, len(source.Categories))
-	order := make([]ListCategoryID, 0, len(source.Categories))
+	labels := make(map[listsurface.ListCategoryID]string, len(source.Categories))
+	order := make([]listsurface.ListCategoryID, 0, len(source.Categories))
 	for _, category := range source.Categories {
 		if _, seen := labels[category.ID]; seen {
 			t.Fatalf("category %q is emitted twice", category.ID)
@@ -183,10 +184,10 @@ func TestReferencePickerQualifiesCrossProjectRows(t *testing.T) {
 		labels[category.ID] = category.Label
 		order = append(order, category.ID)
 	}
-	if want := []ListCategoryID{"home", "remote", "attic"}; !slices.Equal(order, want) {
+	if want := []listsurface.ListCategoryID{"home", "remote", "attic"}; !slices.Equal(order, want) {
 		t.Errorf("categories = %v, want one per row-owning project in population order %v", order, want)
 	}
-	for id, want := range map[ListCategoryID]string{"home": "Home", "remote": "Remote", "attic": "Attic"} {
+	for id, want := range map[listsurface.ListCategoryID]string{"home": "Home", "remote": "Remote", "attic": "Attic"} {
 		if labels[id] != want {
 			t.Errorf("category %q label = %q, want %q", id, labels[id], want)
 		}

@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
@@ -13,14 +14,14 @@ import (
 // project-operation labels and applicability come from the operation registry.
 func (m *ProjectHubModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 	if m.actions != nil {
-		return m.actions.guidanceSpec()
+		return m.actions.GuidanceSpec()
 	}
 	if m.surface == nil {
 		return chrome.GuidanceSpec{}, false
 	}
 	state := m.surface.GuidanceState(m.HasActiveSearch())
 	km := m.projectHubGuidanceKeyMap(state)
-	spec, ok := listSurfaceGuidanceSpec(state, km, m.projectHubActionHints(state))
+	spec, ok := listsurface.ListSurfaceGuidanceSpec(state, km, m.projectHubActionHints(state))
 	// Registry-derived operations are appended by the shared list adapter. Sort
 	// the complete projection so required interaction controls precede optional
 	// browse actions regardless of which source supplied them.
@@ -41,13 +42,13 @@ func (m *ProjectHubModel) ContextualGuidance() (chrome.GuidanceSpec, bool) {
 // ledger's u and Ctrl+R, whose core descriptors answer to the Outliner, the Esc
 // unwind, which is no operation at all, and Ctrl+T, whose hint names the next
 // filter rather than the operation's fixed label.
-func (m *ProjectHubModel) projectHubGuidanceKeyMap(state ListGuidanceState) *keymap.KeyMap {
+func (m *ProjectHubModel) projectHubGuidanceKeyMap(state listsurface.ListGuidanceState) *keymap.KeyMap {
 	profile := state.Profile
 	hasRows := m.surface != nil && len(m.surface.Matches()) > 0
 	browseList := func() bool {
-		return hasRows && profile != ListGuidanceSearchEditing && profile != ListGuidanceEmpty
+		return hasRows && profile != listsurface.ListGuidanceSearchEditing && profile != listsurface.ListGuidanceEmpty
 	}
-	searchEditing := func() bool { return profile == ListGuidanceSearchEditing }
+	searchEditing := func() bool { return profile == listsurface.ListGuidanceSearchEditing }
 	// The hint names what the next press shows, so a three-state cycle is legible
 	// one press at a time.
 	filterFooterLabel := m.taskFilter.next().shortLabel()
@@ -107,7 +108,7 @@ func (m *ProjectHubModel) projectHubGuidanceKeyMap(state ListGuidanceState) *key
 // footer hints. Two states narrow that to the single press that resolves them:
 // while the query is being typed the browse keys are not live, and a list its
 // own source emptied cannot be searched or browsed at all.
-func (m *ProjectHubModel) projectHubActionHints(state ListGuidanceState) []chrome.GuidanceHint {
+func (m *ProjectHubModel) projectHubActionHints(state listsurface.ListGuidanceState) []chrome.GuidanceHint {
 	if m.registry == nil {
 		return nil
 	}
@@ -116,9 +117,9 @@ func (m *ProjectHubModel) projectHubActionHints(state ListGuidanceState) []chrom
 		m.projectHubCommandContext(m.cursorProjectID()),
 	)
 	switch {
-	case state.Profile == ListGuidanceSearchEditing:
+	case state.Profile == listsurface.ListGuidanceSearchEditing:
 		return m.soleRequiredHint(hints, operation.OperationProjectOpen)
-	case state.Profile == ListGuidanceEmpty && state.Empty.Kind == ListEmptySource:
+	case state.Profile == listsurface.ListGuidanceEmpty && state.Empty.Kind == listsurface.ListEmptySource:
 		return m.soleRequiredHint(hints, operationScopeCreateProject)
 	}
 	return hints

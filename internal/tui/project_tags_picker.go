@@ -8,14 +8,15 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 const (
-	projectTagBehavioralCategory ListCategoryID = "project-tag:behavioral"
-	tagDescriptiveCategory       ListCategoryID = "tag:other"
+	projectTagBehavioralCategory listsurface.ListCategoryID = "project-tag:behavioral"
+	tagDescriptiveCategory       listsurface.ListCategoryID = "tag:other"
 )
 
 // newProjectTagsPicker offers the project's own tag set. Behavioral tags are
@@ -29,9 +30,9 @@ func (m *AppModel) newProjectTagsPicker(
 	if project == nil {
 		return nil, fmt.Errorf("project tags need a project target")
 	}
-	selected := make([]ListItemID, 0, len(project.Tags))
+	selected := make([]listsurface.ListItemID, 0, len(project.Tags))
 	for _, tag := range project.Tags {
-		selected = append(selected, ListItemID("tag:"+tag))
+		selected = append(selected, listsurface.ListItemID("tag:"+tag))
 	}
 	return newOperationValuePickerModel(
 		request,
@@ -47,7 +48,7 @@ func (m *AppModel) newProjectTagsPicker(
 // projectTagListSource merges the workspace-wide project tag vocabulary with the
 // project's own set, so a tag only this project carries stays selectable and a
 // behavioral tag is always offered even when nothing uses it yet.
-func (m *AppModel) projectTagListSource(project *models.Project) ListSource {
+func (m *AppModel) projectTagListSource(project *models.Project) listsurface.ListSource {
 	descriptive := make(map[string]bool)
 	if m.runtime != nil {
 		for _, tag := range m.runtime.AllProjectTags() {
@@ -58,7 +59,7 @@ func (m *AppModel) projectTagListSource(project *models.Project) ListSource {
 		descriptive[tag] = true
 	}
 
-	items := make([]ListItem, 0, len(descriptive)+len(models.BehavioralProjectTags))
+	items := make([]listsurface.ListItem, 0, len(descriptive)+len(models.BehavioralProjectTags))
 	behavioral := make([]string, 0, len(models.BehavioralProjectTags))
 	for name := range models.BehavioralProjectTags {
 		behavioral = append(behavioral, name)
@@ -71,16 +72,16 @@ func (m *AppModel) projectTagListSource(project *models.Project) ListSource {
 		// the name with, so the row and the sentence explaining it cannot disagree
 		// about what parked looks like.
 		style := behavioralProjectTagBadgeStyle(info.BadgeRole)
-		items = append(items, ListItem{
-			ID:            ListItemID("tag:" + name),
+		items = append(items, listsurface.ListItem{
+			ID:            listsurface.ListItemID("tag:" + name),
 			CategoryID:    projectTagBehavioralCategory,
 			PrimaryText:   name,
 			SecondaryText: info.RowSummary,
 			Aliases:       []string{name, "#" + name},
 			PrimaryStyle:  &style,
-			Preview: ListPreview{
+			Preview: listsurface.ListPreview{
 				Title:  name,
-				Fields: []ListPreviewField{{Label: "Effect", Value: info.Summary}},
+				Fields: []listsurface.ListPreviewField{{Label: "Effect", Value: info.Summary}},
 			},
 			Data: name,
 		})
@@ -96,20 +97,20 @@ func (m *AppModel) projectTagListSource(project *models.Project) ListSource {
 		// same color as #infra on a task even though the two tag sets are
 		// otherwise unrelated.
 		style := theme.TagChipStyle(tag)
-		items = append(items, ListItem{
-			ID:           ListItemID("tag:" + tag),
+		items = append(items, listsurface.ListItem{
+			ID:           listsurface.ListItemID("tag:" + tag),
 			CategoryID:   tagDescriptiveCategory,
 			PrimaryText:  tag,
 			Aliases:      []string{tag, "#" + tag},
 			PrimaryStyle: &style,
-			Preview:      ListPreview{Title: tag},
+			Preview:      listsurface.ListPreview{Title: tag},
 			Data:         tag,
 		})
 	}
 
-	return ListSource{
+	return listsurface.ListSource{
 		Items: items,
-		Categories: []ListCategory{
+		Categories: []listsurface.ListCategory{
 			{ID: projectTagBehavioralCategory, Label: "Behavioral"},
 			{ID: tagDescriptiveCategory, Label: "Tags"},
 		},

@@ -7,14 +7,15 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
-// handleKey implements the shell's compact key-interceptor contract.
+// HandleKey implements the shell's compact key-interceptor contract.
 //
 //nolint:gocyclo // Key dispatch stays centralized so every picker state has one unwind path.
-func (model *NamedLensPickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
+func (model *NamedLensPickerModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
 	if model == nil || model.surface == nil {
 		return nil, true, NamedLensPickerClosedMsg{}
 	}
@@ -142,7 +143,7 @@ func (model *NamedLensPickerModel) activateCursor() (tea.Cmd, bool, tea.Msg) {
 // lensPickerActionOperation maps one query-exempt row onto the operation Enter
 // dispatches from it. A saved-lens row answers false, which is what keeps the
 // two act rows and the population rows on separate dispatch paths.
-func lensPickerActionOperation(id ListItemID) (operation.OperationID, bool) {
+func lensPickerActionOperation(id listsurface.ListItemID) (operation.OperationID, bool) {
 	switch id {
 	case lensPickerCreateItemID:
 		return operationLensCreate, true

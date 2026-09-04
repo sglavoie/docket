@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -101,17 +102,17 @@ func (model *OperationValuePickerModel) guidanceSpec() (chrome.GuidanceSpec, boo
 	if model.provider.DateEntry() {
 		add("a", "Type a specific date", "set date", 4, func() bool { return !searching })
 	}
-	return listSurfaceGuidanceSpec(model.surface.GuidanceState(searching), km, nil)
+	return listsurface.ListSurfaceGuidanceSpec(model.surface.GuidanceState(searching), km, nil)
 }
 
-func (model *OperationValuePickerModel) render(width int) string {
-	return model.renderWithin(width, 0)
+func (model *OperationValuePickerModel) Render(width int) string {
+	return model.RenderWithin(width, 0)
 }
 
-// renderWithin budgets the focusable list after reserving viewport rows for
+// RenderWithin budgets the focusable list after reserving viewport rows for
 // non-focusable explainers and modal chrome. A zero height keeps the natural
 // list height for isolated render callers.
-func (model *OperationValuePickerModel) renderWithin(width, height int) string {
+func (model *OperationValuePickerModel) RenderWithin(width, height int) string {
 	if model == nil || model.surface == nil {
 		return ""
 	}
@@ -188,7 +189,7 @@ func (model *OperationValuePickerModel) renderWithin(width, height int) string {
 		}
 		search = "Search: " + query + cursor
 	}
-	content := RenderCompactListSurface(model.surface, innerWidth-4, listHeight)
+	content := listsurface.RenderCompactListSurface(model.surface, innerWidth-4, listHeight)
 	if search != "" {
 		content = theme.MutedStyle.Render(search) + "\n\n" + content
 	}

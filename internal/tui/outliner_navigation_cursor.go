@@ -10,10 +10,10 @@ import (
 
 // through its owner so a fold started from one lands on the task it belongs to.
 func (m *OutlinerModel) cursorTaskIdentity() (taskref.TaskIdentity, bool) {
-	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
+	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return taskref.TaskIdentity{}, false
 	}
-	row := m.rows[m.cursor]
+	row := m.rows[m.Cursor]
 	if (!row.isTaskRow() && !row.IsChecklistItem) || row.task == nil {
 		return taskref.TaskIdentity{}, false
 	}
@@ -29,12 +29,12 @@ func (m *OutlinerModel) cursorAncestorIdentities() []taskref.TaskIdentity {
 	if !ok {
 		return nil
 	}
-	project := m.resolveProjectForRow(m.rows[m.cursor])
+	project := m.resolveProjectForRow(m.rows[m.Cursor])
 	if project == nil {
 		return nil
 	}
 	var ancestors []taskref.TaskIdentity
-	parentID := parentIDOf(m.rows[m.cursor].task)
+	parentID := parentIDOf(m.rows[m.Cursor].task)
 	for depth := 0; parentID != "" && depth <= models.MaxNestingDepth; depth++ {
 		ancestors = append(ancestors, taskref.TaskIdentity{ProjectID: identity.ProjectID, TaskID: parentID})
 		parent := project.GetTaskByID(parentID)
@@ -87,11 +87,11 @@ func (m *OutlinerModel) visibleProjectGroupHeaders() []outlinerRow {
 // Pinned content. A checklist row carries its owner's markers, so it answers
 // the same membership question its owner does.
 func (m *OutlinerModel) topLevelSectionAtCursor(sectionKeys map[string]bool) (outlinerRow, bool) {
-	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
+	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return outlinerRow{}, false
 	}
-	selected := m.rows[m.cursor]
-	for i := m.cursor; i >= 0; i-- {
+	selected := m.rows[m.Cursor]
+	for i := m.Cursor; i >= 0; i-- {
 		header := m.rows[i]
 		if !header.IsSectionHeader {
 			continue
@@ -124,7 +124,7 @@ func (m *OutlinerModel) topLevelSectionAtCursor(sectionKeys map[string]bool) (ou
 func (m *OutlinerModel) moveCursorToHeaderKey(key string) {
 	for i, row := range m.rows {
 		if row.isHeaderRow() && row.effectiveCollapseKey() == key {
-			m.cursor = i
+			m.Cursor = i
 			return
 		}
 	}
@@ -195,7 +195,7 @@ func (m *OutlinerModel) moveCursorToIdentity(identity taskref.TaskIdentity) bool
 			continue
 		}
 		if m.taskIdentityForRow(row) == identity {
-			m.cursor = i
+			m.Cursor = i
 			return true
 		}
 	}
@@ -212,22 +212,22 @@ func (m *OutlinerModel) crossSkipNonNavigableRows(previous int, cmd tea.Cmd) tea
 	if len(m.rows) == 0 {
 		return cmd
 	}
-	if m.cursor < previous {
-		for m.cursor > 0 && !m.rows[m.cursor].isNavigable() {
-			m.cursor--
+	if m.Cursor < previous {
+		for m.Cursor > 0 && !m.rows[m.Cursor].isNavigable() {
+			m.Cursor--
 		}
-		if !m.rows[m.cursor].isNavigable() {
-			for m.cursor < len(m.rows)-1 && !m.rows[m.cursor].isNavigable() {
-				m.cursor++
+		if !m.rows[m.Cursor].isNavigable() {
+			for m.Cursor < len(m.rows)-1 && !m.rows[m.Cursor].isNavigable() {
+				m.Cursor++
 			}
 		}
 	} else {
-		for m.cursor < len(m.rows)-1 && !m.rows[m.cursor].isNavigable() {
-			m.cursor++
+		for m.Cursor < len(m.rows)-1 && !m.rows[m.Cursor].isNavigable() {
+			m.Cursor++
 		}
-		if !m.rows[m.cursor].isNavigable() {
-			for m.cursor > 0 && !m.rows[m.cursor].isNavigable() {
-				m.cursor--
+		if !m.rows[m.Cursor].isNavigable() {
+			for m.Cursor > 0 && !m.rows[m.Cursor].isNavigable() {
+				m.Cursor--
 			}
 		}
 	}
@@ -239,13 +239,13 @@ func (m *OutlinerModel) crossSkipNonNavigableRows(previous int, cmd tea.Cmd) tea
 // Today and Next use durable planning order; All, Inbox, and Backlog use
 // same-project sibling order.
 func (m *OutlinerModel) simplifiedReorderEligible() bool {
-	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
+	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return false
 	}
-	if m.multiSelectMode {
+	if m.MultiSelectMode {
 		return false
 	}
-	row := m.rows[m.cursor]
+	row := m.rows[m.Cursor]
 	if !row.isTaskRow() || row.task == nil {
 		return false
 	}

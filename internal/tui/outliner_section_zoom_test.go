@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 )
 
 func sectionHeaderNames(outliner *OutlinerModel) []string {
@@ -33,8 +34,8 @@ func sectionHeaderIndex(t *testing.T, outliner *OutlinerModel, name string) int 
 
 func zoomIntoSection(t *testing.T, outliner *OutlinerModel, name string) {
 	t.Helper()
-	outliner.cursor = sectionHeaderIndex(t, outliner, name)
-	if !outliner.enterSectionZoom(outliner.rows[outliner.cursor]) {
+	outliner.Cursor = sectionHeaderIndex(t, outliner, name)
+	if !outliner.enterSectionZoom(outliner.rows[outliner.Cursor]) {
 		t.Fatalf("zoom into %q was refused", name)
 	}
 }
@@ -58,8 +59,8 @@ func TestSectionZoomNarrowsAllToOneSectionAndRestoresViewport(t *testing.T) {
 	fullRows := len(outliner.rows)
 	doingLabel := models.StateGroupDoing.Label()
 	doingIndex := sectionHeaderIndex(t, outliner, doingLabel)
-	outliner.cursor = doingIndex
-	outliner.viewScrollOffset = 3
+	outliner.Cursor = doingIndex
+	outliner.ViewScrollOffset = 3
 
 	if !outliner.enterSectionZoom(outliner.rows[doingIndex]) {
 		t.Fatal("the Doing header refused the zoom")
@@ -70,8 +71,8 @@ func TestSectionZoomNarrowsAllToOneSectionAndRestoresViewport(t *testing.T) {
 	if row := outliner.rows[0]; !row.IsSectionHeader || row.SectionCount != 1 {
 		t.Fatalf("zoomed row 0 = %+v, want the Doing header carrying its count", row)
 	}
-	if outliner.cursor != 0 {
-		t.Fatalf("zoomed cursor = %d, want the header the zoom was entered from", outliner.cursor)
+	if outliner.Cursor != 0 {
+		t.Fatalf("zoomed cursor = %d, want the header the zoom was entered from", outliner.Cursor)
 	}
 	for _, row := range outliner.rows {
 		if row.isTaskRow() && row.task.ID != doing.ID {
@@ -91,10 +92,10 @@ func TestSectionZoomNarrowsAllToOneSectionAndRestoresViewport(t *testing.T) {
 	if len(outliner.rows) != fullRows {
 		t.Fatalf("unzoomed row count = %d, want the pre-zoom %d", len(outliner.rows), fullRows)
 	}
-	if outliner.cursor != doingIndex || outliner.viewScrollOffset != 3 {
+	if outliner.Cursor != doingIndex || outliner.ViewScrollOffset != 3 {
 		t.Fatalf(
 			"unzoomed viewport = cursor %d scroll %d, want cursor %d scroll 3",
-			outliner.cursor, outliner.viewScrollOffset, doingIndex,
+			outliner.Cursor, outliner.ViewScrollOffset, doingIndex,
 		)
 	}
 	if outliner.exitSectionZoom() {
@@ -185,8 +186,8 @@ func TestSectionZoomNarrowsTodayPinnedToPinnedRows(t *testing.T) {
 	folds := maps.Clone(outliner.collapsedSections)
 
 	pinnedIndex := sectionHeaderIndex(t, outliner, pinnedSectionName)
-	outliner.cursor = pinnedIndex
-	outliner.viewScrollOffset = 2
+	outliner.Cursor = pinnedIndex
+	outliner.ViewScrollOffset = 2
 	if !outliner.zoomSectionAtCursor() {
 		t.Fatal("Enter on the Today Pinned header refused the zoom")
 	}
@@ -204,7 +205,7 @@ func TestSectionZoomNarrowsTodayPinnedToPinnedRows(t *testing.T) {
 		}
 	}
 
-	if !RunEscCascade(outliner.escSteps()) {
+	if !listsurface.RunEscCascade(outliner.escSteps()) {
 		t.Fatal("Esc did not leave the Today Pinned zoom")
 	}
 	if outliner.zoom.active() {
@@ -216,10 +217,10 @@ func TestSectionZoomNarrowsTodayPinnedToPinnedRows(t *testing.T) {
 	if ids := visibleOutlinerTaskIDs(outliner); !ids[pinned.ID] || !ids[plain.ID] {
 		t.Fatalf("unzoomed Today rows = %v, want the complete projection back", ids)
 	}
-	if outliner.cursor != pinnedIndex || outliner.viewScrollOffset != 2 {
+	if outliner.Cursor != pinnedIndex || outliner.ViewScrollOffset != 2 {
 		t.Fatalf(
 			"unzoomed viewport = cursor %d scroll %d, want cursor %d scroll 2",
-			outliner.cursor, outliner.viewScrollOffset, pinnedIndex,
+			outliner.Cursor, outliner.ViewScrollOffset, pinnedIndex,
 		)
 	}
 	if !maps.Equal(outliner.collapsedSections, folds) {
@@ -283,35 +284,35 @@ func TestReenteringTheSameSectionZoomKeepsTheRetainedViewport(t *testing.T) {
 
 	doingLabel := models.StateGroupDoing.Label()
 	doingIndex := sectionHeaderIndex(t, outliner, doingLabel)
-	outliner.cursor = doingIndex
-	outliner.viewScrollOffset = 5
+	outliner.Cursor = doingIndex
+	outliner.ViewScrollOffset = 5
 	if !outliner.enterSectionZoom(outliner.rows[doingIndex]) {
 		t.Fatal("the Doing header refused the zoom")
 	}
 
 	zoomBefore := outliner.zoom
 	rowsBefore := len(outliner.rows)
-	outliner.cursor = 1
+	outliner.Cursor = 1
 	if !outliner.enterSectionZoom(outliner.rows[0]) {
 		t.Fatal("re-entering the active zoom was refused")
 	}
 	if outliner.zoom != zoomBefore {
 		t.Fatalf("re-entry replaced the retained viewport: got %+v, want %+v", outliner.zoom, zoomBefore)
 	}
-	if outliner.cursor != 1 || len(outliner.rows) != rowsBefore {
+	if outliner.Cursor != 1 || len(outliner.rows) != rowsBefore {
 		t.Fatalf(
 			"re-entry moved the view: cursor %d rows %d, want cursor 1 rows %d",
-			outliner.cursor, len(outliner.rows), rowsBefore,
+			outliner.Cursor, len(outliner.rows), rowsBefore,
 		)
 	}
 
 	if !outliner.exitSectionZoom() {
 		t.Fatal("an active zoom refused to exit")
 	}
-	if outliner.cursor != doingIndex || outliner.viewScrollOffset != 5 {
+	if outliner.Cursor != doingIndex || outliner.ViewScrollOffset != 5 {
 		t.Fatalf(
 			"unzoomed viewport = cursor %d scroll %d, want cursor %d scroll 5",
-			outliner.cursor, outliner.viewScrollOffset, doingIndex,
+			outliner.Cursor, outliner.ViewScrollOffset, doingIndex,
 		)
 	}
 }

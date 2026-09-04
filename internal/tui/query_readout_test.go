@@ -125,8 +125,8 @@ func TestQueryReadoutPeelRemovesOneAxisAndIsIdempotentAtZero(t *testing.T) {
 	if !out.filter.Stale {
 		t.Error("a digit past the stack cleared a facet")
 	}
-	if out.statusMessage != "Nothing to peel there" {
-		t.Errorf("status = %q, want the idempotent reading", out.statusMessage)
+	if out.StatusMessage != "Nothing to peel there" {
+		t.Errorf("status = %q, want the idempotent reading", out.StatusMessage)
 	}
 
 	out.handleQueryReadoutKey("1")
@@ -134,8 +134,8 @@ func TestQueryReadoutPeelRemovesOneAxisAndIsIdempotentAtZero(t *testing.T) {
 		t.Fatalf("rows after peeling the last facet = %+v, want none", rows)
 	}
 	out.handleQueryReadoutKey("1")
-	if out.statusMessage != "Nothing to peel there" {
-		t.Errorf("peeling an empty stack = %q, want the idempotent reading", out.statusMessage)
+	if out.StatusMessage != "Nothing to peel there" {
+		t.Errorf("peeling an empty stack = %q, want the idempotent reading", out.StatusMessage)
 	}
 }
 
@@ -165,8 +165,8 @@ func TestQueryReadoutPeelAllClearsEveryNarrowingAtOnce(t *testing.T) {
 	// Five, not four: clearing a search restores the presentation snapshot it was
 	// opened over, which brings the mode back, and the walk takes it away again.
 	// The count reports acts performed rather than rows first seen.
-	if !strings.Contains(out.statusMessage, "Peeled 5") {
-		t.Errorf("status = %q, want the count it removed", out.statusMessage)
+	if !strings.Contains(out.StatusMessage, "Peeled 5") {
+		t.Errorf("status = %q, want the count it removed", out.StatusMessage)
 	}
 }
 

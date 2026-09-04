@@ -4,17 +4,18 @@ import (
 	"fmt"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 // taskOpsView implementation for OutlinerModel.
 
 func (m *OutlinerModel) getTaskRef() (*models.Task, *models.Project) {
-	if len(m.rows) == 0 || m.cursor < 0 || m.cursor >= len(m.rows) {
+	if len(m.rows) == 0 || m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return nil, nil
 	}
 
-	row := m.rows[m.cursor]
+	row := m.rows[m.Cursor]
 	if !row.isTaskRow() {
 		return nil, nil
 	}
@@ -35,10 +36,10 @@ func (m *OutlinerModel) getTaskRef() (*models.Task, *models.Project) {
 // task operations still find no task there and refuse with the shared sentence.
 // A section header names no project, however it groups its rows.
 func (m *OutlinerModel) cursorProjectHeaderProject() *models.Project {
-	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
+	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return nil
 	}
-	row := m.rows[m.cursor]
+	row := m.rows[m.Cursor]
 	if !row.IsProjectHeader || row.ProjectID == "" {
 		return nil
 	}
@@ -48,7 +49,7 @@ func (m *OutlinerModel) cursorProjectHeaderProject() *models.Project {
 	return m.crossResolveProject(row.ProjectID)
 }
 
-func (m *OutlinerModel) setStatus(msg string) { m.InteractiveViewState.setStatus(msg) }
+func (m *OutlinerModel) setStatus(msg string) { m.SetStatus(msg) }
 
 func (m *OutlinerModel) taskIdentityForRow(row outlinerRow) taskref.TaskIdentity {
 	if row.task == nil {
@@ -69,13 +70,13 @@ func (m *OutlinerModel) isRowSelected(row outlinerRow) bool {
 // name rows that are not adjacent. A live range is frozen first: otherwise the
 // next cursor move would recompute the range and discard the toggle.
 func (m *OutlinerModel) toggleCursorSelection() {
-	if m.cursor < 0 || m.cursor >= len(m.rows) || !m.rows[m.cursor].isTaskRow() {
+	if m.Cursor < 0 || m.Cursor >= len(m.rows) || !m.rows[m.Cursor].isTaskRow() {
 		return
 	}
 	m.FreezeRangeSelection()
 	m.peekMode = false
-	m.multiSelectMode = true
-	m.ToggleTaskIdentity(m.taskIdentityForRow(m.rows[m.cursor]))
+	m.MultiSelectMode = true
+	m.ToggleTaskIdentity(m.taskIdentityForRow(m.rows[m.Cursor]))
 	m.syncChecklistSelectionRows()
 	m.updateVisualSelectionStatus()
 }
@@ -89,17 +90,17 @@ func (m *OutlinerModel) startCursorRangeSelection() {
 		m.updateVisualSelectionStatus()
 		return
 	}
-	if m.cursor < 0 || m.cursor >= len(m.rows) || !m.rows[m.cursor].isTaskRow() {
+	if m.Cursor < 0 || m.Cursor >= len(m.rows) || !m.rows[m.Cursor].isTaskRow() {
 		return
 	}
 	m.peekMode = false
-	m.StartRangeSelection(m.taskIdentityForRow(m.rows[m.cursor]))
+	m.StartRangeSelection(m.taskIdentityForRow(m.rows[m.Cursor]))
 	m.syncChecklistSelectionRows()
 	m.updateVisualSelectionStatus()
 }
 
 func (m *OutlinerModel) togglePeek() {
-	if m == nil || m.multiSelectMode {
+	if m == nil || m.MultiSelectMode {
 		return
 	}
 	if m.peekMode {
@@ -116,11 +117,11 @@ func (m *OutlinerModel) togglePeek() {
 
 // toggleMultiSelectMode enters or exits multi-select mode.
 func (m *OutlinerModel) toggleMultiSelectMode() {
-	m.multiSelectMode = !m.multiSelectMode
-	if !m.multiSelectMode {
+	m.MultiSelectMode = !m.MultiSelectMode
+	if !m.MultiSelectMode {
 		m.ClearSelection()
 		m.syncChecklistSelectionRows()
-		m.clearStatus()
+		m.ClearStatus()
 		return
 	}
 
@@ -130,7 +131,7 @@ func (m *OutlinerModel) toggleMultiSelectMode() {
 }
 
 func (m *OutlinerModel) updateVisualSelectionStatus() {
-	if !m.multiSelectMode {
+	if !m.MultiSelectMode {
 		return
 	}
 	counts := m.selectionCounts()
@@ -168,7 +169,7 @@ func (m *OutlinerModel) visibleTaskIdentities() []taskref.TaskIdentity {
 	return visible
 }
 
-func (m *OutlinerModel) selectionCounts() SelectionCounts {
+func (m *OutlinerModel) selectionCounts() listsurface.SelectionCounts {
 	return m.ClassifySelection(m.visibleTaskIdentities())
 }
 
@@ -183,12 +184,12 @@ func (m *OutlinerModel) selectAllVisible() {
 // visible task rows only. Headers and separators may lie inside the row span
 // but never become selected targets.
 func (m *OutlinerModel) updateRangeSelection() {
-	if !m.IsRangeSelectionActive() || m.cursor < 0 || m.cursor >= len(m.rows) {
+	if !m.IsRangeSelectionActive() || m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return
 	}
 	anchorIndex := -1
 	for index, row := range m.rows {
-		if row.isTaskRow() && m.taskIdentityForRow(row) == m.rangeAnchor {
+		if row.isTaskRow() && m.taskIdentityForRow(row) == m.RangeAnchor {
 			anchorIndex = index
 			break
 		}
@@ -200,7 +201,7 @@ func (m *OutlinerModel) updateRangeSelection() {
 		m.updateVisualSelectionStatus()
 		return
 	}
-	start, end := anchorIndex, m.cursor
+	start, end := anchorIndex, m.Cursor
 	if start > end {
 		start, end = end, start
 	}
@@ -210,7 +211,7 @@ func (m *OutlinerModel) updateRangeSelection() {
 			identities = append(identities, m.taskIdentityForRow(row))
 		}
 	}
-	m.replaceSelection(identities)
+	m.SetSelection(identities)
 	m.updateVisualSelectionStatus()
 }
 
@@ -243,7 +244,7 @@ func (m *OutlinerModel) pruneSelectionsOutsideLoadedProjects() {
 			m.DeselectTaskIdentity(identity)
 		}
 	}
-	if m.IsRangeSelectionActive() && !admitted[m.rangeAnchor.ProjectID] {
+	if m.IsRangeSelectionActive() && !admitted[m.RangeAnchor.ProjectID] {
 		m.FreezeRangeSelection()
 	}
 }
@@ -251,5 +252,5 @@ func (m *OutlinerModel) pruneSelectionsOutsideLoadedProjects() {
 // clearMultiSelect exits multi-select mode and clears all selections.
 func (m *OutlinerModel) clearMultiSelect() {
 	m.ExitMultiSelect()
-	m.clearStatus()
+	m.ClearStatus()
 }

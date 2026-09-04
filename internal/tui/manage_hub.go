@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
@@ -43,7 +44,7 @@ type ManageHubDependencies struct {
 // their local/global variants are selected by typed route scope rather than by
 // independent navigation identities.
 type ManageHubModel struct {
-	BaseView
+	listsurface.BaseView
 	deps ManageHubDependencies
 
 	params    route.ManageParams
@@ -175,7 +176,7 @@ func (m *ManageHubModel) prepareActiveView() {
 	if m.active == nil {
 		return
 	}
-	m.active.SetSize(m.width, m.height)
+	m.active.SetSize(m.Width(), m.Height())
 	if setter, ok := m.active.(route.AccentColorSetter); ok {
 		setter.SetAccentColor(m.AccentColor())
 	}

@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -57,7 +58,7 @@ type outlinerOriginRecordedMsg struct{ TransactionID string }
 // captureOutlinerRelocation snapshots the cursor's old list neighborhood only
 // when the followed task is part of the mutation target set.
 func (m *OutlinerModel) captureOutlinerRelocation(targets []taskref.TaskIdentity) *outlinerRelocationCapture {
-	if m == nil || len(targets) == 0 || m.cursor < 0 || m.cursor >= len(m.rows) {
+	if m == nil || len(targets) == 0 || m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return nil
 	}
 	m.syncJumpProjection()
@@ -75,8 +76,8 @@ func (m *OutlinerModel) captureOutlinerRelocation(targets []taskref.TaskIdentity
 		return nil
 	}
 
-	origin := outlinerJumpPosition{RowIndex: m.cursor, ScrollOffset: m.viewScrollOffset}
-	for i := m.cursor + 1; i < len(m.rows); i++ {
+	origin := outlinerJumpPosition{RowIndex: m.Cursor, ScrollOffset: m.ViewScrollOffset}
+	for i := m.Cursor + 1; i < len(m.rows); i++ {
 		row := m.rows[i]
 		if !row.isTaskRow() || row.task == nil {
 			continue
@@ -87,7 +88,7 @@ func (m *OutlinerModel) captureOutlinerRelocation(targets []taskref.TaskIdentity
 			break
 		}
 	}
-	for i := m.cursor - 1; i >= 0; i-- {
+	for i := m.Cursor - 1; i >= 0; i-- {
 		row := m.rows[i]
 		if !row.isTaskRow() || row.task == nil {
 			continue
@@ -132,7 +133,7 @@ func (m *OutlinerModel) settleRelocationCursor() {
 		return
 	}
 	pending.Settled = true
-	pending.SettledCursor = m.cursor
+	pending.SettledCursor = m.Cursor
 }
 
 // voidRelocationCaptureAfterNavigation drops a pending capture the moment the
@@ -147,7 +148,7 @@ func (m *OutlinerModel) voidRelocationCaptureAfterNavigation(previous int) {
 	if m == nil || m.relocationHistory.pending == nil {
 		return
 	}
-	if m.cursor == previous {
+	if m.Cursor == previous {
 		return
 	}
 	m.relocationHistory.pending = nil
@@ -174,7 +175,7 @@ func (m *OutlinerModel) discardDisplacedRelocationCapture() {
 	if m.CurrentTaskIdentity() == pending.Task {
 		return
 	}
-	if pending.Settled && m.cursor == pending.SettledCursor {
+	if pending.Settled && m.Cursor == pending.SettledCursor {
 		return
 	}
 	m.relocationHistory.pending = nil
@@ -220,17 +221,17 @@ func (m *OutlinerModel) finishOutlinerRelocation(capture *outlinerRelocationCapt
 	if destination == capture.Origin.RowIndex {
 		return nil, false
 	}
-	oldCursor := m.cursor
-	m.cursor = destination
+	oldCursor := m.Cursor
+	m.Cursor = destination
 	m.pushJumpBack(capture.Origin)
 	m.relocationHistory.forward = nil
-	return flashIfJumped(oldCursor, destination, &m.cursorFlash), true
+	return listsurface.FlashIfJumped(oldCursor, destination, &m.CursorFlash), true
 }
 
 // advanceAfterDeparture carries the cursor onto the successor the relocation
 // capture already recorded, for the modes whose catalog entry asks for it. It
 // writes m.cursor and nothing else: computeOutlinerViewport remains the single
-// window authority, so no viewScrollOffset write belongs here. No projection
+// window authority, so no ViewScrollOffset write belongs here. No projection
 // check is needed either — every caller sits behind finishOutlinerRelocation's
 // projection guard, which already covers mode, scope, search, filters, sort,
 // zoom, collapsed sections, folds, and focus. No flash is emitted: the user's own
@@ -246,7 +247,7 @@ func (m *OutlinerModel) advanceAfterDeparture(capture *outlinerRelocationCapture
 	if !ok {
 		return
 	}
-	m.cursor = successor
+	m.Cursor = successor
 }
 
 // finishTaskLineEditRelocation resolves the final project-qualified identity
@@ -262,21 +263,21 @@ func (m *OutlinerModel) finishTaskLineEditRelocation(capture *outlinerRelocation
 		return nil, false
 	}
 	if destination, ok := m.rowIndexForTask(final); ok {
-		oldCursor := m.cursor
-		m.cursor = destination
+		oldCursor := m.Cursor
+		m.Cursor = destination
 		if destination == capture.Origin.RowIndex {
-			return flashIfJumped(oldCursor, destination, &m.cursorFlash), false
+			return listsurface.FlashIfJumped(oldCursor, destination, &m.CursorFlash), false
 		}
 		m.pushJumpBack(capture.Origin)
 		m.relocationHistory.forward = nil
-		return flashIfJumped(oldCursor, destination, &m.cursorFlash), true
+		return listsurface.FlashIfJumped(oldCursor, destination, &m.CursorFlash), true
 	}
 	nearest, ok := m.resolveJumpPosition(capture.Origin)
 	if !ok {
 		return nil, false
 	}
-	oldCursor := m.cursor
-	m.cursor = nearest
-	m.viewScrollOffset = capture.Origin.ScrollOffset
-	return flashIfJumped(oldCursor, nearest, &m.cursorFlash), false
+	oldCursor := m.Cursor
+	m.Cursor = nearest
+	m.ViewScrollOffset = capture.Origin.ScrollOffset
+	return listsurface.FlashIfJumped(oldCursor, nearest, &m.CursorFlash), false
 }

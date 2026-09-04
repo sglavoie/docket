@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -39,7 +40,7 @@ func TestReferencePickerRefusesOffATaskRow(t *testing.T) {
 			[]outlinerRow{{IsProjectHeader: true, ProjectID: home.ID, SectionName: home.Name}},
 			model.crossOutliner.rows...,
 		)
-		model.crossOutliner.cursor = 0
+		model.crossOutliner.Cursor = 0
 
 		ctx := model.operationCommandContext()
 		if !ctx.Entity.HasProjectHeaderCursor || ctx.Entity.TaskID != "" {
@@ -184,7 +185,7 @@ func TestReferencePickerOpensOnTildeWithTheStoredSetChecked(t *testing.T) {
 
 	storedRow := taskReferenceRowID(app.TaskLocator{ProjectID: remote.ID, TaskID: "target"})
 	candidateRow := taskReferenceRowID(app.TaskLocator{ProjectID: remote.ID, TaskID: "other"})
-	ids := make([]ListItemID, 0, len(picker.surface.Items()))
+	ids := make([]listsurface.ListItemID, 0, len(picker.surface.Items()))
 	for _, item := range picker.surface.Items() {
 		ids = append(ids, item.ID)
 	}
@@ -194,7 +195,7 @@ func TestReferencePickerOpensOnTildeWithTheStoredSetChecked(t *testing.T) {
 	if !slices.Contains(ids, candidateRow) {
 		t.Fatalf("the picker offers no addition candidate; rows = %v", ids)
 	}
-	if selected := picker.surface.SelectedIDs(); !slices.Equal(selected, []ListItemID{storedRow}) {
+	if selected := picker.surface.SelectedIDs(); !slices.Equal(selected, []listsurface.ListItemID{storedRow}) {
 		t.Errorf("checked rows = %v, want the stored reference alone", selected)
 	}
 }

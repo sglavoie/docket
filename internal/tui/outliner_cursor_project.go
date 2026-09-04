@@ -12,8 +12,8 @@ func (m *OutlinerModel) cursorProject() *models.Project {
 	if m == nil {
 		return nil
 	}
-	if m.cursor >= 0 && m.cursor < len(m.rows) {
-		if projectID := m.rows[m.cursor].ProjectID; projectID != "" {
+	if m.Cursor >= 0 && m.Cursor < len(m.rows) {
+		if projectID := m.rows[m.Cursor].ProjectID; projectID != "" {
 			if m.project != nil && m.project.ID == projectID {
 				return m.project
 			}

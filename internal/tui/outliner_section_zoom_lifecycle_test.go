@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -23,7 +24,7 @@ func projectHeaderIndex(t *testing.T, outliner *OutlinerModel, projectID string)
 // fixture test can zoom into it without knowing the fixture's section labels.
 func sectionHeaderAboveCursor(t *testing.T, outliner *OutlinerModel) int {
 	t.Helper()
-	for index := outliner.cursor; index >= 0; index-- {
+	for index := outliner.Cursor; index >= 0; index-- {
 		row := outliner.rows[index]
 		if row.IsSectionHeader && !row.IsProjectHeader {
 			return index
@@ -47,7 +48,7 @@ func TestSectionZoomScopeRoundTripDropsAndRestoresTheZoom(t *testing.T) {
 	zoomed := outliner.zoom
 
 	headerIndex := projectHeaderIndex(t, outliner, beta.ID)
-	outliner.cursor = headerIndex
+	outliner.Cursor = headerIndex
 	if !outliner.activateGroupAtCursor() {
 		t.Fatal("Enter on the project sub-header was refused")
 	}
@@ -69,8 +70,8 @@ func TestSectionZoomScopeRoundTripDropsAndRestoresTheZoom(t *testing.T) {
 	if outliner.zoom != zoomed {
 		t.Fatalf("the popped scope restored zoom %+v, want %+v", outliner.zoom, zoomed)
 	}
-	if outliner.cursor != headerIndex {
-		t.Fatalf("restored cursor = %d, want the pre-push %d", outliner.cursor, headerIndex)
+	if outliner.Cursor != headerIndex {
+		t.Fatalf("restored cursor = %d, want the pre-push %d", outliner.Cursor, headerIndex)
 	}
 	if names := sectionHeaderNames(outliner); len(names) != 1 || names[0] != doingLabel {
 		t.Fatalf("restored sections = %v, want the zoomed %q alone", names, doingLabel)
@@ -197,7 +198,7 @@ func TestSectionZoomIsClearedByGotoTaskProject(t *testing.T) {
 
 	gotoProjectCursorOnTask(t, outliner)
 	headerIndex := sectionHeaderAboveCursor(t, outliner)
-	outliner.cursor = headerIndex
+	outliner.Cursor = headerIndex
 	if !outliner.enterSectionZoom(outliner.rows[headerIndex]) {
 		t.Fatal("the section header refused the zoom")
 	}
@@ -256,7 +257,7 @@ func TestEscCascadeUnwindsZoomBetweenFocusAndScope(t *testing.T) {
 		{false, 0, false, true},
 		{false, 0, false, false},
 	} {
-		if !RunEscCascade(outliner.escSteps()) {
+		if !listsurface.RunEscCascade(outliner.escSteps()) {
 			t.Fatalf("Esc step %d was not handled", index+1)
 		}
 		assertState("after Esc", want.peek, want.focusDepth, want.zoomed, want.scoped)

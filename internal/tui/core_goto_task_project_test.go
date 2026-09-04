@@ -36,7 +36,7 @@ func gotoProjectCursorOnTask(t *testing.T, outliner *OutlinerModel) {
 	t.Helper()
 	for index, row := range outliner.rows {
 		if row.isTaskRow() && row.task != nil && row.task.Title == gotoProjectTaskTitle {
-			outliner.cursor = index
+			outliner.Cursor = index
 			return
 		}
 	}
@@ -44,10 +44,10 @@ func gotoProjectCursorOnTask(t *testing.T, outliner *OutlinerModel) {
 }
 
 func gotoProjectCursorTitle(outliner *OutlinerModel) string {
-	if outliner.cursor < 0 || outliner.cursor >= len(outliner.rows) {
+	if outliner.Cursor < 0 || outliner.Cursor >= len(outliner.rows) {
 		return ""
 	}
-	row := outliner.rows[outliner.cursor]
+	row := outliner.rows[outliner.Cursor]
 	if !row.isTaskRow() || row.task == nil {
 		return ""
 	}
@@ -158,7 +158,7 @@ func TestGotoTaskProjectRefusesWithoutASingleTaskCursor(t *testing.T) {
 	t.Run("project header", func(t *testing.T) {
 		driver := gotoProjectDriver(t)
 		outliner := gotoProjectOutliner(t, driver)
-		outliner.cursor = headerTargetProjectHeaderRow(t, outliner)
+		outliner.Cursor = headerTargetProjectHeaderRow(t, outliner)
 
 		prefix, err := parseUITestKey("g")
 		if err != nil {

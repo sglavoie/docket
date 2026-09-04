@@ -71,7 +71,7 @@ func pressConflictBrowserKey(
 	if err != nil {
 		t.Fatalf("parse key %q: %v", name, err)
 	}
-	_, dismissed, msg := browser.handleKey(key)
+	_, dismissed, msg := browser.HandleKey(key)
 	return dismissed, msg
 }
 
@@ -133,7 +133,7 @@ func TestConflictBrowserListsInspectsAndUnwinds(t *testing.T) {
 	second.ProjectName = "Second Project"
 	browser := newTestConflictBrowser(t, first, second)
 
-	list := browser.render(120)
+	list := browser.Render(120)
 	for _, want := range []string{
 		conflictBrowserTitle,
 		conflictBrowserReadOnlyLine,
@@ -154,7 +154,7 @@ func TestConflictBrowserListsInspectsAndUnwinds(t *testing.T) {
 	if !browser.inspecting() {
 		t.Fatal("Enter did not open the detail pane")
 	}
-	detail := browser.render(120)
+	detail := browser.Render(120)
 	if !strings.Contains(detail, "Conflict 11111111-2222-3333-4444-555555555555") {
 		t.Errorf("detail pane did not render the inspected record\n%s", detail)
 	}
@@ -187,7 +187,7 @@ func TestConflictBrowserScrollsTheDetailPane(t *testing.T) {
 
 	pressConflictBrowserKey(t, browser, "enter")
 	// Render inside a short terminal so the pane is genuinely windowed.
-	browser.renderWithin(120, 20)
+	browser.RenderWithin(120, 20)
 	if browser.detailHeight <= 0 {
 		t.Fatal("detail pane recorded no height")
 	}
@@ -197,7 +197,7 @@ func TestConflictBrowserScrollsTheDetailPane(t *testing.T) {
 	}
 
 	pressConflictBrowserKey(t, browser, "G")
-	tail := browser.renderWithin(120, 20)
+	tail := browser.RenderWithin(120, 20)
 	if !strings.Contains(tail, "Clear with: tt conflict resolve") {
 		t.Errorf("end of the detail pane did not reach the closing command\n%s", tail)
 	}
@@ -239,7 +239,7 @@ func TestConflictBrowserRefusesAResolvedBundle(t *testing.T) {
 	if !ok || !strings.Contains(string(status), "not found") {
 		t.Fatalf("refusal message = %#v, want a StatusMsg naming the missing bundle", msg)
 	}
-	if !strings.Contains(browser.render(120), "not found") {
+	if !strings.Contains(browser.Render(120), "not found") {
 		t.Error("the refusal was not retained on the overlay")
 	}
 }

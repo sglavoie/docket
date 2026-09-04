@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -21,13 +22,13 @@ func (m *AppModel) coreMoveCursor(key string) tea.Cmd {
 	if !ok || out == nil {
 		return nil
 	}
-	previous := out.cursor
-	handled, cmd := handleListNavigation(
+	previous := out.Cursor
+	handled, cmd := listsurface.HandleListNavigation(
 		key,
-		&out.cursor,
+		&out.Cursor,
 		len(out.rows),
 		out.contentHeight(),
-		&out.cursorFlash,
+		&out.CursorFlash,
 	)
 	if !handled {
 		return nil
@@ -66,7 +67,7 @@ func (m *AppModel) coreScrollCursorTo(anchor viewScrollAnchor) operation.Operati
 		return operation.OperationHandlerResult{}
 	}
 	height := end - start
-	desired := out.cursor
+	desired := out.Cursor
 	switch anchor {
 	case viewScrollAnchorMiddle:
 		desired -= windowMiddleIndex(height)
@@ -74,7 +75,7 @@ func (m *AppModel) coreScrollCursorTo(anchor viewScrollAnchor) operation.Operati
 		desired -= height - 1
 	case viewScrollAnchorTop:
 	}
-	out.viewScrollOffset = min(max(desired, 0), max(len(out.rows)-height, 0))
+	out.ViewScrollOffset = min(max(desired, 0), max(len(out.rows)-height, 0))
 	return operation.OperationHandlerResult{}
 }
 
@@ -99,7 +100,7 @@ func (m *AppModel) coreGotoTaskProject(targets operation.ResolvedOperationTarget
 		return operation.OperationHandlerResult{}
 	}
 	origin := out.activeOutlinerModeEntry()
-	previous := out.cursor
+	previous := out.Cursor
 
 	out.pushProjectScope(project.ID)
 	out.selectOutlinerMode(chrome.ModeAll)
@@ -114,7 +115,7 @@ func (m *AppModel) coreGotoTaskProject(targets operation.ResolvedOperationTarget
 	m.setInfoStatus(message)
 	return operation.OperationHandlerResult{
 		Message: commandMessage(tea.Batch(
-			flashIfJumped(previous, out.cursor, &out.cursorFlash),
+			listsurface.FlashIfJumped(previous, out.Cursor, &out.CursorFlash),
 			status.DefaultStatusTimeout(),
 		)),
 	}

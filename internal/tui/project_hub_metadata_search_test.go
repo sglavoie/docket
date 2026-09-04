@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
 
@@ -74,23 +75,23 @@ func metadataFixtureTask() *models.Task {
 
 // projectHubMatchIDs runs one query through the live surface and reports the
 // rows it kept, in match order.
-func projectHubMatchIDs(hub *ProjectHubModel, query string) []ListItemID {
+func projectHubMatchIDs(hub *ProjectHubModel, query string) []listsurface.ListItemID {
 	hub.SetSearchQuery(query)
 	hub.applyProjectFilter()
 	matches := hub.surface.Matches()
-	ids := make([]ListItemID, 0, len(matches))
+	ids := make([]listsurface.ListItemID, 0, len(matches))
 	for _, match := range matches {
 		ids = append(ids, match.Item.ID)
 	}
 	return ids
 }
 
-func assertProjectHubMatches(t *testing.T, hub *ProjectHubModel, query string, want ...ListItemID) {
+func assertProjectHubMatches(t *testing.T, hub *ProjectHubModel, query string, want ...listsurface.ListItemID) {
 	t.Helper()
 	got := projectHubMatchIDs(hub, query)
-	sorted := append([]ListItemID(nil), got...)
+	sorted := append([]listsurface.ListItemID(nil), got...)
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
-	expected := append([]ListItemID(nil), want...)
+	expected := append([]listsurface.ListItemID(nil), want...)
 	sort.Slice(expected, func(i, j int) bool { return expected[i] < expected[j] })
 	if len(sorted) != len(expected) {
 		t.Fatalf("query %q matched %v, want %v", query, got, want)

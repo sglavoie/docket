@@ -49,7 +49,7 @@ func TestAdvisoryLineDropsTheStripRowAndItsHeight(t *testing.T) {
 	}
 
 	hidden = false
-	m.clearStatus()
+	m.ClearStatus()
 	if got := m.statusStripHeight(width); got != shown {
 		t.Fatalf("strip height after showing again = %d, want the baseline %d", got, shown)
 	}

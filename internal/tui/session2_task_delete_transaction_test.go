@@ -14,6 +14,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
 
@@ -351,7 +352,7 @@ func TestTaskDeleteConfirmationReportsFrozenCountsAndAttachmentConsequences(t *t
 			{Task: e.parent, Project: e.alpha},
 			{Task: e.child, Project: e.alpha},
 		},
-		Selection: SelectionCounts{Total: 2, Visible: 1, Hidden: 1},
+		Selection: listsurface.SelectionCounts{Total: 2, Visible: 1, Hidden: 1},
 	})
 	detail := m.taskDeleteConfirm.Detail
 	if detail == nil {

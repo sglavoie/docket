@@ -1,10 +1,10 @@
 package tui
 
 func (m *OutlinerModel) preserveCrossOutlinerCursorForReload() {
-	if m.cursor < 0 || m.cursor >= len(m.rows) {
+	if m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return
 	}
-	row := m.rows[m.cursor]
+	row := m.rows[m.Cursor]
 	if !row.isTaskRow() || row.task == nil || row.ProjectID == "" || row.task.ID == "" {
 		return
 	}
@@ -23,18 +23,18 @@ func (m *OutlinerModel) restoreCrossOutlinerCursorAfterReload(fallbackCursor, fa
 	m.crossReloadProjectID = ""
 	m.crossReloadTaskID = ""
 	m.crossReloadHeaderProjectID = ""
-	m.viewScrollOffset = fallbackScrollOffset
+	m.ViewScrollOffset = fallbackScrollOffset
 	if headerProjectID != "" {
 		if !m.moveCursorToProjectHeader(headerProjectID) {
 			// The successor went away too, so the top of the projection — a section
 			// header — is the only landing spot left that still means something.
-			m.cursor = 0
+			m.Cursor = 0
 			m.clampCursor()
 		}
 		return
 	}
 	if projectID == "" || taskID == "" {
-		m.cursor = fallbackCursor
+		m.Cursor = fallbackCursor
 		m.clampCursor()
 		return
 	}
@@ -85,7 +85,7 @@ func (m *OutlinerModel) projectHeaderAnchorAfterRemoval(projectIDs ...string) (s
 func (m *OutlinerModel) moveCursorToProjectHeader(projectID string) bool {
 	for index, row := range m.rows {
 		if row.IsProjectHeader && row.ProjectID == projectID {
-			m.cursor = index
+			m.Cursor = index
 			m.clampCursor()
 			return true
 		}
@@ -95,7 +95,7 @@ func (m *OutlinerModel) moveCursorToProjectHeader(projectID string) bool {
 
 func (m *OutlinerModel) moveCursorToNearestTask(origin int) {
 	if len(m.rows) == 0 {
-		m.cursor = 0
+		m.Cursor = 0
 		return
 	}
 	if origin < 0 {
@@ -107,16 +107,16 @@ func (m *OutlinerModel) moveCursorToNearestTask(origin int) {
 	for distance := 0; distance < len(m.rows); distance++ {
 		next := origin + distance
 		if next < len(m.rows) && m.rows[next].isTaskRow() && m.rows[next].task != nil {
-			m.cursor = next
+			m.Cursor = next
 			return
 		}
 		previous := origin - distance
 		if distance > 0 && previous >= 0 && m.rows[previous].isTaskRow() && m.rows[previous].task != nil {
-			m.cursor = previous
+			m.Cursor = previous
 			return
 		}
 	}
-	m.cursor = origin
+	m.Cursor = origin
 	m.clampCursor()
 }
 

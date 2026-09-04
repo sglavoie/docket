@@ -6,20 +6,20 @@ import (
 
 // buildKeyMap constructs the declarative KeyMap for TaskAttachmentsModel.
 func (m *TaskAttachmentsModel) buildKeyMap() *keymap.KeyMap {
-	inAddMode := func() bool { return m.addMode && !m.confirm.IsActive() }
-	inBrowseMode := func() bool { return !m.addMode && !m.confirm.IsActive() }
+	inAddMode := func() bool { return m.addMode && !m.Confirm.IsActive() }
+	inBrowseMode := func() bool { return !m.addMode && !m.Confirm.IsActive() }
 	hasBrowseSelection := func() bool { return inBrowseMode() && m.hasSelection() }
 	hasMultipleAttachments := func() bool {
 		return hasBrowseSelection() && m.task != nil && len(m.task.Attachments) > 1
 	}
 	selectedIsURL := func() bool {
-		return hasBrowseSelection() && m.task.Attachments[m.cursor].IsURL
+		return hasBrowseSelection() && m.task.Attachments[m.Cursor].IsURL
 	}
 	selectedIsCodeRef := func() bool {
-		return hasBrowseSelection() && m.task.Attachments[m.cursor].IsCodeRef
+		return hasBrowseSelection() && m.task.Attachments[m.Cursor].IsCodeRef
 	}
 	addLabel := "add"
-	if m.err != nil {
+	if m.Err != nil {
 		addLabel = "retry"
 	}
 

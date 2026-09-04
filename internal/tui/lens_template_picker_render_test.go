@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -96,12 +97,12 @@ func TestLensTemplateGalleryRendersUnavailableRowsMutedRatherThanColored(t *test
 		row := galleryRow(t, openLensTemplateGallery(t, model), waiting.ID)
 		plain := row
 		plain.PrimaryStyle = nil
-		surfaceRow := ListSurfaceRow{Match: ListMatch{Item: row}}
-		plainRow := ListSurfaceRow{Match: ListMatch{Item: plain}}
+		surfaceRow := listsurface.ListSurfaceRow{Match: listsurface.ListMatch{Item: row}}
+		plainRow := listsurface.ListSurfaceRow{Match: listsurface.ListMatch{Item: plain}}
 		// The width is generous so the disabled reason survives truncation and the
 		// assertions below read the row rather than its ellipsis.
-		return renderListSurfaceRow(surfaceRow, ListSelectionSingle, 100),
-			renderListSurfaceRow(plainRow, ListSelectionSingle, 100)
+		return listsurface.RenderListSurfaceRow(surfaceRow, listsurface.ListSelectionSingle, 100),
+			listsurface.RenderListSurfaceRow(plainRow, listsurface.ListSelectionSingle, 100)
 	}
 
 	t.Run("unavailable", func(t *testing.T) {
@@ -201,7 +202,7 @@ func TestLensTemplateGalleryCancelsOnEscape(t *testing.T) {
 	before := len(machineLenses(t, model))
 	picker := openLensTemplateGallery(t, model)
 
-	_, dismissed, msg := picker.handleKey(tea.KeyPressMsg{Code: tea.KeyEscape})
+	_, dismissed, msg := picker.HandleKey(tea.KeyPressMsg{Code: tea.KeyEscape})
 	if !dismissed {
 		t.Fatal("Escape left the gallery open")
 	}

@@ -188,7 +188,7 @@ func (m *OutlinerModel) visibleSiblings(cursorIdx int) []*models.Task {
 func (m *OutlinerModel) moveCursorToTask(taskID string) {
 	for i, row := range m.rows {
 		if row.isTaskRow() && row.task != nil && row.task.ID == taskID {
-			m.cursor = i
+			m.Cursor = i
 			return
 		}
 	}

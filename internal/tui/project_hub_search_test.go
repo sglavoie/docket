@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -86,7 +87,7 @@ func TestProjectHubSearchNavigationSelectsHighlightedProject(t *testing.T) {
 	hub.Update(syntheticKey('/'))
 	hub.Update(syntheticKey('a'))
 
-	assertCurrent := func(want ListItemID) {
+	assertCurrent := func(want listsurface.ListItemID) {
 		t.Helper()
 		current, ok := hub.surface.CurrentItem()
 		if !ok || current.ID != want {
@@ -279,7 +280,7 @@ func TestProjectHubStaleProjectActionUsesProductionExecutorError(t *testing.T) {
 	if hub.actions == nil {
 		t.Fatal("Space did not freeze the project action target")
 	}
-	if !hub.actions.surface.SetCursorToID(ListItemID("project-hub-action:" + string(operation.OperationScopeArchiveProject))) {
+	if !hub.actions.Surface.SetCursorToID(listsurface.ListItemID("project-hub-action:" + string(operation.OperationScopeArchiveProject))) {
 		t.Fatal("archive action was not selectable")
 	}
 

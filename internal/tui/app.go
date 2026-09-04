@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -225,7 +226,7 @@ type AppModel struct {
 	// action sheet -> value step. The sheet is host-agnostic; the host it was
 	// opened for travels on every message it emits. The value step is a
 	// ListSurface picker, or a text prompt when the value is typed.
-	contextActionSheet   *ContextActionSheetModel
+	contextActionSheet   *listsurface.ContextActionSheetModel
 	operationValuePicker *OperationValuePickerModel
 	operationTextPrompt  *OperationTextPromptModel
 

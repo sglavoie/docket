@@ -161,7 +161,7 @@ func TestTaskLineEditRelocationFollowsVisibleResultAndFallsBackAtOrigin(t *testi
 		out.crossProjectRebuildRows()
 		for index, row := range out.rows {
 			if row.task != nil && row.task.ID == task.ID && row.ProjectID == source.ID {
-				out.cursor = index
+				out.Cursor = index
 			}
 		}
 		out.syncJumpProjection()
@@ -206,7 +206,7 @@ func longestVisibleSuffix(line, value string) int {
 func TestInlineRowEditorKeepsTypedTailAndCursorVisibleWhenTitleOverflows(t *testing.T) {
 	out, project, _, child := inlineEditorFixture(t)
 	out.quickEdit.EnterWithContext(child, project, []*models.Project{project}, false)
-	row := out.rows[out.cursor]
+	row := out.rows[out.Cursor]
 
 	// The first frame is what installs the row width, so the value has to land
 	// afterwards for the scroll window to be the one an editing session sees.

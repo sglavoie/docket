@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -71,7 +72,7 @@ func anchorPage(view *NotesViewModel) string {
 func wantAnchorOffset(t *testing.T, view *NotesViewModel, needle string) int {
 	t.Helper()
 	marker := renderedLineContaining(t, view, needle)
-	start, _, _, _ := listPreviewScrollWindow(len(view.preview.lines), max(marker-1, 0), anchorPaneHeight)
+	start, _, _, _ := listsurface.ListPreviewScrollWindow(len(view.preview.lines), max(marker-1, 0), anchorPaneHeight)
 	return start
 }
 

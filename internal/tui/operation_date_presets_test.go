@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -177,7 +178,7 @@ func TestRelativeDateSelectedIDRefusesToApproximateAnIntraDayDefer(t *testing.T)
 // deferral in the other.
 func TestDateListItemIDsSeparateTheTwoFields(t *testing.T) {
 	source := operationDateListSource("")
-	seen := make(map[ListItemID]bool, len(source.Items))
+	seen := make(map[listsurface.ListItemID]bool, len(source.Items))
 	deferredRows := 0
 	for _, item := range source.Items {
 		if seen[item.ID] {

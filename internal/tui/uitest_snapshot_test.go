@@ -67,7 +67,7 @@ func TestUITestSnapshotOutliner(t *testing.T) {
 	// selected_task field is populated.
 	for i := range m.rows {
 		if m.rows[i].task != nil {
-			m.cursor = i
+			m.Cursor = i
 			break
 		}
 	}

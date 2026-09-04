@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -17,7 +18,7 @@ func TestMoveToProjectListsEveryAvailableProjectButTheCurrentOne(t *testing.T) {
 	m := taskContentFixtureApp(t, FixtureParked)
 	_, project := taskContentFixtureTask(t, m, "Ship the delivery checklist")
 
-	primary := make(map[string]ListItem)
+	primary := make(map[string]listsurface.ListItem)
 	for _, item := range operationProjectListSource(m.runtime.AvailableProjects(), project.ID).Items {
 		primary[item.PrimaryText] = item
 	}

@@ -105,18 +105,18 @@ func TestSearchAutocompleteJKNavigateResultsWhilePaneOpen(t *testing.T) {
 	if suggestionCursor != 1 {
 		t.Fatalf("suggestion cursor = %d, want 1 after one Down", suggestionCursor)
 	}
-	resultCursor := outliner.cursor
+	resultCursor := outliner.Cursor
 
 	outliner.handleKeyMsg(syntheticKeyStr("j"))
-	if got, want := outliner.cursor, resultCursor+1; got != want {
+	if got, want := outliner.Cursor, resultCursor+1; got != want {
 		t.Errorf("j left the result cursor at %d, want %d", got, want)
 	}
 	outliner.handleKeyMsg(syntheticKeyStr("j"))
-	if got, want := outliner.cursor, resultCursor+2; got != want {
+	if got, want := outliner.Cursor, resultCursor+2; got != want {
 		t.Errorf("a second j left the result cursor at %d, want %d", got, want)
 	}
 	outliner.handleKeyMsg(syntheticKeyStr("k"))
-	if got, want := outliner.cursor, resultCursor+1; got != want {
+	if got, want := outliner.Cursor, resultCursor+1; got != want {
 		t.Errorf("k left the result cursor at %d, want %d", got, want)
 	}
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/util"
 )
@@ -72,20 +73,20 @@ func operationDateSecondaryText(value time.Time) string {
 // field. Both sections are always built from the same namespace, including in
 // the due-only projection, so one resolver answers either list.
 const (
-	dateListCategoryDue   ListCategoryID = "date-due"
-	dateListCategoryDefer ListCategoryID = "date-defer"
+	dateListCategoryDue   listsurface.ListCategoryID = "date-due"
+	dateListCategoryDefer listsurface.ListCategoryID = "date-defer"
 )
 
-func dateListItemID(deferred bool, presetID string) ListItemID {
+func dateListItemID(deferred bool, presetID string) listsurface.ListItemID {
 	if deferred {
-		return ListItemID("date:defer:" + presetID)
+		return listsurface.ListItemID("date:defer:" + presetID)
 	}
-	return ListItemID("date:due:" + presetID)
+	return listsurface.ListItemID("date:due:" + presetID)
 }
 
-func operationDateItems(deferred bool, categoryID ListCategoryID, disabledReason string) []ListItem {
+func operationDateItems(deferred bool, categoryID listsurface.ListCategoryID, disabledReason string) []listsurface.ListItem {
 	presets := operationDatePresets(deferred, time.Now())
-	items := make([]ListItem, 0, len(presets))
+	items := make([]listsurface.ListItem, 0, len(presets))
 	for _, preset := range presets {
 		var date *time.Time
 		secondary := "remove date"
@@ -94,7 +95,7 @@ func operationDateItems(deferred bool, categoryID ListCategoryID, disabledReason
 			date = &value
 			secondary = operationDateSecondaryText(value)
 		}
-		items = append(items, ListItem{
+		items = append(items, listsurface.ListItem{
 			ID:             dateListItemID(deferred, preset.id),
 			CategoryID:     categoryID,
 			PrimaryText:    preset.label,
@@ -111,12 +112,12 @@ func operationDateItems(deferred bool, categoryID ListCategoryID, disabledReason
 // because a deadline is the commoner answer, and deferReason disables the whole
 // defer section when a resolved task cannot be deferred, which leaves due
 // reachable on the same terminal task.
-func operationDateListSource(deferReason string) ListSource {
+func operationDateListSource(deferReason string) listsurface.ListSource {
 	items := operationDateItems(false, dateListCategoryDue, "")
 	items = append(items, operationDateItems(true, dateListCategoryDefer, deferReason)...)
-	return ListSource{
+	return listsurface.ListSource{
 		Items: items,
-		Categories: []ListCategory{
+		Categories: []listsurface.ListCategory{
 			{ID: dateListCategoryDue, Label: "Due"},
 			{ID: dateListCategoryDefer, Label: "Defer"},
 		},
@@ -126,22 +127,22 @@ func operationDateListSource(deferReason string) ListSource {
 // operationDueDateListSource is the due-only projection. The waiting check-back
 // chain is the one caller: that step asks for a deadline specifically, so a
 // defer section there would offer an answer to a question nobody asked.
-func operationDueDateListSource() ListSource {
-	return ListSource{Items: operationDateItems(false, "", "")}
+func operationDueDateListSource() listsurface.ListSource {
+	return listsurface.ListSource{Items: operationDateItems(false, "", "")}
 }
 
 // parentListNoneID is the row expressing the `>0` grammar: no parent, task at
 // the project root.
-const parentListNoneID ListItemID = "parent:none"
+const parentListNoneID listsurface.ListItemID = "parent:none"
 
 // operationParentListSource offers every structural candidate in the task's own
 // project, carrying the refusal reason on the row rather than behind Enter, so
 // a cycle, self-reference, or depth-six overflow reads as a disabled row.
 // Children resolve only in the effective project, exactly as `>parent` does.
-func operationParentListSource(task *models.Task, project *models.Project) ListSource {
+func operationParentListSource(task *models.Task, project *models.Project) listsurface.ListSource {
 	candidates := grammar.StructuralCandidates(project)
-	items := make([]ListItem, 0, len(candidates)+1)
-	items = append(items, ListItem{
+	items := make([]listsurface.ListItem, 0, len(candidates)+1)
+	items = append(items, listsurface.ListItem{
 		ID:            parentListNoneID,
 		PrimaryText:   "No parent (project root)",
 		SecondaryText: ">0",
@@ -151,8 +152,8 @@ func operationParentListSource(task *models.Task, project *models.Project) ListS
 	for _, candidate := range candidates {
 		id := candidate.ID
 		shortID := "#" + strconv.Itoa(candidate.ShortID)
-		items = append(items, ListItem{
-			ID:             ListItemID("parent:" + id),
+		items = append(items, listsurface.ListItem{
+			ID:             listsurface.ListItemID("parent:" + id),
 			PrimaryText:    candidate.Title,
 			SecondaryText:  shortID,
 			Aliases:        []string{shortID, strconv.Itoa(candidate.ShortID), candidate.Title},
@@ -160,7 +161,7 @@ func operationParentListSource(task *models.Task, project *models.Project) ListS
 			Data:           operation.OperationParentValue{ParentID: &id},
 		})
 	}
-	return ListSource{Items: items}
+	return listsurface.ListSource{Items: items}
 }
 
 // operationChildListSource offers every structural candidate in the task's own
@@ -168,9 +169,9 @@ func operationParentListSource(task *models.Task, project *models.Project) ListS
 // `<child` resolves against. Omitting the existing children is what keeps the
 // picker additive: with no row for a child the task already has, no selection
 // state can ask for a detach, which `<0` is not.
-func operationChildListSource(task *models.Task, project *models.Project) ListSource {
+func operationChildListSource(task *models.Task, project *models.Project) listsurface.ListSource {
 	candidates := grammar.StructuralCandidates(project)
-	items := make([]ListItem, 0, len(candidates))
+	items := make([]listsurface.ListItem, 0, len(candidates))
 	for _, candidate := range candidates {
 		if candidate.ID == task.ID {
 			continue
@@ -180,8 +181,8 @@ func operationChildListSource(task *models.Task, project *models.Project) ListSo
 		}
 		id := candidate.ID
 		shortID := "#" + strconv.Itoa(candidate.ShortID)
-		items = append(items, ListItem{
-			ID:             ListItemID("child:" + id),
+		items = append(items, listsurface.ListItem{
+			ID:             listsurface.ListItemID("child:" + id),
 			PrimaryText:    candidate.Title,
 			SecondaryText:  shortID,
 			Aliases:        []string{shortID, strconv.Itoa(candidate.ShortID), candidate.Title},
@@ -189,7 +190,7 @@ func operationChildListSource(task *models.Task, project *models.Project) ListSo
 			Data:           id,
 		})
 	}
-	return ListSource{Items: items}
+	return listsurface.ListSource{Items: items}
 }
 
 // moveProjectPickerItem adapts one destination project for the Move to Project
@@ -222,7 +223,7 @@ func (item moveProjectPickerItem) IsPinned() bool {
 // own, since a move to the current owner is not a move. The population is
 // AvailableProjects rather than the Outliner's TaskWorkspaceProjects, so a
 // parked project stays a destination exactly as it does for `%project`.
-func operationProjectListSource(projects []*models.Project, currentProjectID string) ListSource {
+func operationProjectListSource(projects []*models.Project, currentProjectID string) listsurface.ListSource {
 	items := make([]moveProjectPickerItem, 0, len(projects))
 	for _, project := range projects {
 		if project == nil || project.ID == currentProjectID {
@@ -230,7 +231,7 @@ func operationProjectListSource(projects []*models.Project, currentProjectID str
 		}
 		items = append(items, moveProjectPickerItem{project: project})
 	}
-	source := ListSourceFromPickerItems(items, false)
+	source := listsurface.ListSourceFromPickerItems(items, false)
 	for i := range source.Items {
 		project := items[i].project
 		source.Items[i].SecondaryText = moveProjectRowSecondary(project)
@@ -253,16 +254,16 @@ func moveProjectRowSecondary(project *models.Project) string {
 	return secondary
 }
 
-func parentSelectedID(task *models.Task) []ListItemID {
+func parentSelectedID(task *models.Task) []listsurface.ListItemID {
 	if task == nil || task.ParentID == nil {
-		return []ListItemID{parentListNoneID}
+		return []listsurface.ListItemID{parentListNoneID}
 	}
-	return []ListItemID{ListItemID("parent:" + *task.ParentID)}
+	return []listsurface.ListItemID{listsurface.ListItemID("parent:" + *task.ParentID)}
 }
 
-func dueDateSelectedID(date *time.Time) []ListItemID {
+func dueDateSelectedID(date *time.Time) []listsurface.ListItemID {
 	if date == nil {
-		return []ListItemID{dateListItemID(false, "clear")}
+		return []listsurface.ListItemID{dateListItemID(false, "clear")}
 	}
 	return relativeDateSelectedID(date, false)
 }
@@ -270,27 +271,27 @@ func dueDateSelectedID(date *time.Time) []ListItemID {
 // operationDateSelectedID highlights the row the task's own values name. Due
 // wins when both fields are set, because the cursor can only sit in one section
 // and the due section is the one the list opens on.
-func operationDateSelectedID(due, deferred *time.Time) []ListItemID {
+func operationDateSelectedID(due, deferred *time.Time) []listsurface.ListItemID {
 	if due != nil {
 		return relativeDateSelectedID(due, false)
 	}
 	if deferred != nil {
 		return relativeDateSelectedID(deferred, true)
 	}
-	return []ListItemID{dateListItemID(false, "clear")}
+	return []listsurface.ListItemID{dateListItemID(false, "clear")}
 }
 
 // relativeDateSelectedID highlights a preset only when the stored value is
 // reproducible from now alone, so the hour rows never match: four hours from
 // when some earlier picker opened is a different fact than four hours from now,
 // and a tolerance window would conflate the two.
-func relativeDateSelectedID(date *time.Time, deferred bool) []ListItemID {
+func relativeDateSelectedID(date *time.Time, deferred bool) []listsurface.ListItemID {
 	for _, preset := range operationDatePresets(deferred, time.Now()) {
 		if preset.clear {
 			continue
 		}
 		if preset.value().Equal(*date) {
-			return []ListItemID{dateListItemID(deferred, preset.id)}
+			return []listsurface.ListItemID{dateListItemID(deferred, preset.id)}
 		}
 	}
 	return nil

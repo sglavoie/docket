@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -116,7 +117,7 @@ func taskTagMembership(refs []TaskProjectRef) map[string]operationValueMembershi
 // taskContextMembership reports the context row every target already agrees on
 // and the per-row state the checkboxes render. Disagreement leaves the agreed
 // row empty, so any chosen row reads as a change.
-func taskContextMembership(refs []TaskProjectRef) (ListItemID, map[ListItemID]operationValueMembership) {
+func taskContextMembership(refs []TaskProjectRef) (listsurface.ListItemID, map[listsurface.ListItemID]operationValueMembership) {
 	counts := make(map[string]int)
 	for _, ref := range refs {
 		if ref.Task == nil {
@@ -124,8 +125,8 @@ func taskContextMembership(refs []TaskProjectRef) (ListItemID, map[ListItemID]op
 		}
 		counts[ref.Task.Context]++
 	}
-	states := make(map[ListItemID]operationValueMembership, len(counts))
-	agreed := ListItemID("")
+	states := make(map[listsurface.ListItemID]operationValueMembership, len(counts))
+	agreed := listsurface.ListItemID("")
 	for name, count := range counts {
 		id := taskContextRowID(name)
 		if count == len(refs) {

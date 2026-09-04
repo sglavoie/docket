@@ -43,7 +43,7 @@ func TestPromotedToolNotesScope(t *testing.T) {
 				app.crossOutliner.rows = []outlinerRow{
 					{task: &models.Task{ID: "t1"}, ProjectID: workA.ID},
 				}
-				app.crossOutliner.cursor = 0
+				app.crossOutliner.Cursor = 0
 			},
 			wantProjectIDs: []string{home.ID, workA.ID, workB.ID},
 			wantScope:      route.AllNotesScope(),
@@ -55,7 +55,7 @@ func TestPromotedToolNotesScope(t *testing.T) {
 					{IsProjectHeader: true, ProjectID: workA.ID},
 					{IsProjectHeader: true, ProjectID: workB.ID},
 				}
-				app.crossOutliner.cursor = 1
+				app.crossOutliner.Cursor = 1
 			},
 			wantProjectIDs: []string{home.ID, workA.ID, workB.ID},
 			wantScope:      route.ProjectNotesScope(workB.ID),
@@ -69,7 +69,7 @@ func TestPromotedToolNotesScope(t *testing.T) {
 				app.crossOutliner.rows = []outlinerRow{
 					{IsProjectHeader: true, ProjectID: archived.ID},
 				}
-				app.crossOutliner.cursor = 0
+				app.crossOutliner.Cursor = 0
 			},
 			wantProjectIDs: []string{home.ID, archived.ID, workA.ID, workB.ID},
 			wantScope:      route.AllNotesScope(),

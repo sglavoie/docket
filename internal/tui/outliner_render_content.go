@@ -6,6 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -88,8 +89,8 @@ func (m *OutlinerModel) statusStripBody(width int) string {
 	if m.focusNotice != "" {
 		lines = append(lines, theme.PreviewWarningStyle.Width(width).Render(m.focusNotice))
 	}
-	if m.statusMessage != "" {
-		lines = append(lines, theme.MutedStyle.Width(width).Render(m.statusMessage))
+	if m.StatusMessage != "" {
+		lines = append(lines, theme.MutedStyle.Width(width).Render(m.StatusMessage))
 	}
 	// The expanded stack changes this return value rather than painting outside
 	// it, so statusStripHeight reserves the rows it needs from the list.
@@ -207,7 +208,7 @@ func (m *OutlinerModel) buildOutlinerFilterContext() string {
 
 func (m *OutlinerModel) buildOutlinerInteractionContext(width int) []string {
 	context := make([]string, 0, 5)
-	if m.multiSelectMode {
+	if m.MultiSelectMode {
 		context = append(context, theme.SelectionCountStyle.Render(fmt.Sprintf("MULTI-SELECT: %d selected", m.SelectedCount())))
 	}
 	// The lens names the whole context the segments after it describe, so it is
@@ -263,7 +264,7 @@ func (m *OutlinerModel) writeOutlinerHeader(b *strings.Builder, width int) {
 // otherwise.
 //
 // Nothing here calls computeOutlinerViewport, deliberately. It is the single
-// window authority and the only writer of viewScrollOffset, so a frame that
+// window authority and the only writer of ViewScrollOffset, so a frame that
 // draws no rows must leave the window the last one drew exactly as it was: that
 // is the window the close redraws, and the window a key re-emitted through the
 // non-modal arm pages against.
@@ -311,7 +312,7 @@ func (m *OutlinerModel) outlinerEmptyMessage() string {
 	case outlinerEmptyLens:
 		return "No tasks match this lens. Press Esc to restore the view it replaced."
 	case outlinerEmptyFiltered:
-		return EmptyStateFiltered
+		return listsurface.EmptyStateFiltered
 	case outlinerEmptyFocus:
 		return "No tasks are visible in this Focus. Press Esc to return."
 	case outlinerEmptySection:
@@ -323,7 +324,7 @@ func (m *OutlinerModel) outlinerEmptyMessage() string {
 		}
 		return fmt.Sprintf("%s is empty. Press Tab or Shift+Tab to change modes.", mode.Label)
 	default:
-		return EmptyStateNoTasks
+		return listsurface.EmptyStateNoTasks
 	}
 }
 
@@ -334,15 +335,15 @@ func (m *OutlinerModel) computeOutlinerViewport(width int, extraFooterLines int)
 	// drive a negative window slice.
 	visibleRows := max(m.contentHeight()-extraFooterLines, 1)
 
-	if m.peekMode && m.cursor >= 0 && m.cursor < len(m.rows) && m.rows[m.cursor].isTaskRow() {
+	if m.peekMode && m.Cursor >= 0 && m.Cursor < len(m.rows) && m.rows[m.Cursor].isTaskRow() {
 		// The shell footer may wrap to three lines at minimum width while views
 		// retain the standard two-line size budget. Reserve one guard row so a
 		// Peek attached to the last visible task is never the line shell clipping
 		// removes.
-		visibleRows = max(visibleRows-m.inlinePeekLineCount(m.rows[m.cursor], width-1)-1, 1)
+		visibleRows = max(visibleRows-m.inlinePeekLineCount(m.rows[m.Cursor], width-1)-1, 1)
 	}
 
-	startIdx, endIdx := chrome.PersistentIndexWindow(m.cursor, len(m.rows), visibleRows, &m.viewScrollOffset)
+	startIdx, endIdx := chrome.PersistentIndexWindow(m.Cursor, len(m.rows), visibleRows, &m.ViewScrollOffset)
 	rowWidth := width
 	if len(m.rows) > visibleRows {
 		rowWidth = width - 1
@@ -359,12 +360,12 @@ func (m *OutlinerModel) computeOutlinerViewport(width int, extraFooterLines int)
 
 // visibleRowWindow returns the half-open row range the last render drew,
 // clamped to the current row count. computeOutlinerViewport is the single
-// window authority and mutates viewScrollOffset, so a key handler consumes its
+// window authority and mutates ViewScrollOffset, so a key handler consumes its
 // cached result here instead of calling it again.
 func (m *OutlinerModel) visibleRowWindow() (int, int) {
 	start, end := m.lastViewport.startIdx, m.lastViewport.endIdx
 	if m.lastViewport.visibleRows <= 0 {
-		start = m.viewScrollOffset
+		start = m.ViewScrollOffset
 		end = start + m.contentHeight()
 	}
 	start = min(max(start, 0), len(m.rows))

@@ -9,13 +9,13 @@ import (
 // task hierarchy or a durable planning list. A pinned row answers before the
 // active mode's own ordering, so Today's durable plan order does not claim it.
 func (m *OutlinerModel) isPinnedReorderRow() bool {
-	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
+	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return false
 	}
-	if m.multiSelectMode {
+	if m.MultiSelectMode {
 		return false
 	}
-	row := m.rows[m.cursor]
+	row := m.rows[m.Cursor]
 	if !row.isTaskRow() || row.task == nil || !row.IsPinnedSection {
 		return false
 	}
@@ -59,17 +59,17 @@ func (m *OutlinerModel) pinnedSectionParentAt(index int) taskref.TaskIdentity {
 // project header, separator, non-pinned row, or foreign project bounds the
 // search, so a move can never leave the cursor's project group.
 func (m *OutlinerModel) visiblePinnedSiblings(delta int) []int {
-	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
+	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return nil
 	}
 	step := 1
 	if delta < 0 {
 		step = -1
 	}
-	cursorRow := m.rows[m.cursor]
-	cursorParent := m.pinnedSectionParentAt(m.cursor)
+	cursorRow := m.rows[m.Cursor]
+	cursorParent := m.pinnedSectionParentAt(m.Cursor)
 	var siblings []int
-	for i := m.cursor + step; i >= 0 && i < len(m.rows); i += step {
+	for i := m.Cursor + step; i >= 0 && i < len(m.rows); i += step {
 		row := m.rows[i]
 		if !row.IsPinnedSection || !row.isTaskRow() ||
 			row.task == nil || row.ProjectID != cursorRow.ProjectID {
@@ -104,7 +104,7 @@ func (m *OutlinerModel) pinnedReorderMove(delta int) tea.Cmd {
 	if !ok {
 		return nil
 	}
-	cursor := m.taskIdentityForRow(m.rows[m.cursor])
+	cursor := m.taskIdentityForRow(m.rows[m.Cursor])
 	target := m.taskIdentityForRow(m.rows[targetIndex])
 	if !cursor.Valid() || !target.Valid() {
 		return nil
@@ -131,7 +131,7 @@ func (m *OutlinerModel) pinnedReorderEdge(delta int) tea.Cmd {
 	for _, index := range rows {
 		peers = append(peers, m.taskIdentityForRow(m.rows[index]))
 	}
-	moved := m.taskIdentityForRow(m.rows[m.cursor])
+	moved := m.taskIdentityForRow(m.rows[m.Cursor])
 	order := edgeMoveOrder(moved, peers, delta)
 	for _, identity := range order {
 		if !identity.Valid() {

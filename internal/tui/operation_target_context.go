@@ -2,6 +2,7 @@ package tui
 
 import (
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -18,7 +19,7 @@ type operationVisualSelectionProvider interface {
 }
 
 type operationSelectionCountsProvider interface {
-	selectionCounts() SelectionCounts
+	selectionCounts() listsurface.SelectionCounts
 }
 
 // operationCommandContext captures the active cursor, multi-selection, project

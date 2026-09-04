@@ -43,7 +43,7 @@ func (m *OutlinerModel) navigateToTask(task *models.Task) bool {
 	}
 	for i, row := range m.rows {
 		if row.task != nil && row.task.ID == task.ID && (m.project != nil || row.ProjectID == projectID) {
-			m.cursor = i
+			m.Cursor = i
 			return true
 		}
 	}
@@ -63,7 +63,7 @@ func (m *OutlinerModel) navigateToTask(task *models.Task) bool {
 
 	for i, row := range m.rows {
 		if row.task != nil && row.task.ID == task.ID && (m.project != nil || row.ProjectID == projectID) {
-			m.cursor = i
+			m.Cursor = i
 			return true
 		}
 	}
@@ -97,11 +97,11 @@ func (m *OutlinerModel) revealTask(task *models.Task) {
 	m.selectOutlinerMode(chrome.ModeAll)
 	for i, row := range m.rows {
 		if row.task != nil && row.task.ID == task.ID {
-			m.cursor = i
+			m.Cursor = i
 			return
 		}
 	}
-	m.setTransientStatus("Task is unavailable in this project")
+	m.SetTransientStatus("Task is unavailable in this project")
 }
 
 // NavigateToTaskInProject navigates to a task in the cross-project outliner.
@@ -129,7 +129,7 @@ func (m *OutlinerModel) NavigateToTaskInProject(task *models.Task, project *mode
 		}
 	}
 	if projectID == "" {
-		m.setTransientStatus("Task project not found")
+		m.SetTransientStatus("Task project not found")
 		return
 	}
 
@@ -148,14 +148,14 @@ func (m *OutlinerModel) NavigateToTaskInProject(task *models.Task, project *mode
 	m.rebuildRows()
 
 	if !m.moveCursorToProjectTask(task.ID, projectID) {
-		m.setTransientStatus("Task is hidden by current filters")
+		m.SetTransientStatus("Task is hidden by current filters")
 	}
 }
 
 func (m *OutlinerModel) moveCursorToProjectTask(taskID, projectID string) bool {
 	for i, row := range m.rows {
 		if row.task != nil && row.ProjectID == projectID && row.task.ID == taskID {
-			m.cursor = i
+			m.Cursor = i
 			return true
 		}
 	}

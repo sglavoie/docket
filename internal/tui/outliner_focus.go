@@ -6,11 +6,11 @@ import "github.com/sglavoie/tt/internal/tui/taskref"
 // selected task. Each frame retains the exact parent cursor and scroll offset,
 // so nested Focus levels unwind without moving the viewport.
 func (m *OutlinerModel) focusSubtreeAtCursor() bool {
-	if m == nil || m.multiSelectMode || m.showsRankedList() ||
-		m.cursor < 0 || m.cursor >= len(m.rows) {
+	if m == nil || m.MultiSelectMode || m.showsRankedList() ||
+		m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return false
 	}
-	row := m.rows[m.cursor]
+	row := m.rows[m.Cursor]
 	if !row.isTaskRow() || row.task == nil {
 		return false
 	}
@@ -20,10 +20,10 @@ func (m *OutlinerModel) focusSubtreeAtCursor() bool {
 		return false
 	}
 
-	m.pushFocusFrame(identity, m.cursor, m.viewScrollOffset)
+	m.pushFocusFrame(identity, m.Cursor, m.ViewScrollOffset)
 	m.peekMode = false
-	m.cursor = 0
-	m.viewScrollOffset = 0
+	m.Cursor = 0
+	m.ViewScrollOffset = 0
 	m.rebuildRows()
 	return true
 }
@@ -35,11 +35,11 @@ func (m *OutlinerModel) focusSubtreeAtCursor() bool {
 // would push a nested frame back down whenever the cursor sat deeper than a
 // direct child, and the next press would climb out of it again forever.
 func (m *OutlinerModel) focusParentAtCursor() bool {
-	if m == nil || m.multiSelectMode || m.showsRankedList() ||
-		m.cursor < 0 || m.cursor >= len(m.rows) {
+	if m == nil || m.MultiSelectMode || m.showsRankedList() ||
+		m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return false
 	}
-	row := m.rows[m.cursor]
+	row := m.rows[m.Cursor]
 	if !row.isTaskRow() || row.task == nil {
 		return false
 	}
@@ -54,8 +54,8 @@ func (m *OutlinerModel) focusParentAtCursor() bool {
 		}
 		m.pushFocusFrame(
 			taskref.TaskIdentity{ProjectID: origin.ProjectID, TaskID: parentID},
-			m.cursor,
-			m.viewScrollOffset,
+			m.Cursor,
+			m.ViewScrollOffset,
 		)
 	}
 	m.peekMode = false
@@ -95,7 +95,7 @@ func (m *OutlinerModel) climbFocusLevel() {
 	}
 	rootTask, _ := m.taskAndProjectForIdentity(root)
 	cursorIndex, scrollOffset := m.popFocusFrame()
-	m.cursor, m.viewScrollOffset = cursorIndex, scrollOffset
+	m.Cursor, m.ViewScrollOffset = cursorIndex, scrollOffset
 
 	parent := taskref.TaskIdentity{ProjectID: root.ProjectID, TaskID: parentIDOf(rootTask)}
 	if parent.TaskID == "" {
@@ -122,7 +122,7 @@ func (m *OutlinerModel) popFocusFrame() (cursorIndex, scrollOffset int) {
 		m.crossForceRebuild = true
 		return top.CursorIndex, top.ScrollOffset
 	}
-	return m.cursor, m.viewScrollOffset
+	return m.Cursor, m.ViewScrollOffset
 }
 
 // focusRootIdentity names the task the current Focus projection is rooted at.
@@ -155,16 +155,16 @@ func (m *OutlinerModel) popFocusLevel() bool {
 	if len(m.focusStack) > 0 {
 		top := m.focusStack[len(m.focusStack)-1]
 		m.focusStack = m.focusStack[:len(m.focusStack)-1]
-		m.cursor = top.CursorIndex
-		m.viewScrollOffset = top.ScrollOffset
+		m.Cursor = top.CursorIndex
+		m.ViewScrollOffset = top.ScrollOffset
 		m.rebuildRows()
 		return true
 	}
 	if len(m.crossFocusStack) > 0 {
 		top := m.crossFocusStack[len(m.crossFocusStack)-1]
 		m.crossFocusStack = m.crossFocusStack[:len(m.crossFocusStack)-1]
-		m.cursor = top.CursorIndex
-		m.viewScrollOffset = top.ScrollOffset
+		m.Cursor = top.CursorIndex
+		m.ViewScrollOffset = top.ScrollOffset
 		m.crossForceRebuild = true
 		m.rebuildRows()
 		return true
@@ -179,7 +179,7 @@ func (m *OutlinerModel) popFocusLevel() bool {
 // already zoomed to changes nothing, which keeps the retained viewport the
 // pre-zoom one.
 func (m *OutlinerModel) enterSectionZoom(row outlinerRow) bool {
-	if m == nil || m.multiSelectMode || m.showsRankedList() || !row.IsSectionHeader {
+	if m == nil || m.MultiSelectMode || m.showsRankedList() || !row.IsSectionHeader {
 		return false
 	}
 	key := row.effectiveCollapseKey()
@@ -189,8 +189,8 @@ func (m *OutlinerModel) enterSectionZoom(row outlinerRow) bool {
 	m.zoom = sectionZoom{
 		key:    key,
 		name:   row.SectionName,
-		cursor: m.cursor,
-		scroll: m.viewScrollOffset,
+		cursor: m.Cursor,
+		scroll: m.ViewScrollOffset,
 	}
 	m.peekMode = false
 	m.crossForceRebuild = true
@@ -208,8 +208,8 @@ func (m *OutlinerModel) exitSectionZoom() bool {
 	}
 	cursor, scroll := m.zoom.cursor, m.zoom.scroll
 	m.zoom = sectionZoom{}
-	m.cursor = cursor
-	m.viewScrollOffset = scroll
+	m.Cursor = cursor
+	m.ViewScrollOffset = scroll
 	m.crossForceRebuild = true
 	m.rebuildRows()
 	m.clampCursor()
@@ -232,19 +232,19 @@ func (m *OutlinerModel) clearSectionZoom() {
 // zoomSectionAtCursor narrows the Outliner to the section the cursor header
 // names.
 func (m *OutlinerModel) zoomSectionAtCursor() bool {
-	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
+	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return false
 	}
-	return m.enterSectionZoom(m.rows[m.cursor])
+	return m.enterSectionZoom(m.rows[m.Cursor])
 }
 
 // activateGroupAtCursor scopes the Outliner to the project the cursor sub-header
 // names. Enter on a section header is the separate zoom act.
 func (m *OutlinerModel) activateGroupAtCursor() bool {
-	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
+	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return false
 	}
-	row := m.rows[m.cursor]
+	row := m.rows[m.Cursor]
 	if !row.IsProjectHeader || row.ProjectID == "" {
 		return false
 	}

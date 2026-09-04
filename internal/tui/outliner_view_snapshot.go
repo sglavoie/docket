@@ -124,8 +124,8 @@ func (m *OutlinerModel) captureOutlinerViewSnapshot() outlinerViewSnapshot {
 		searchInputActive:    m.IsSearchMode(),
 		lensQuery:            m.lensQuery,
 		peekMode:             m.peekMode,
-		multiSelectMode:      m.multiSelectMode,
-		selected:             copyBoolMap(m.selectedTaskIdentities),
+		multiSelectMode:      m.MultiSelectMode,
+		selected:             copyBoolMap(m.Selected),
 		recencyProjection:    m.recencyProjection,
 	}
 	if m.recencyKeys != nil {
@@ -157,10 +157,10 @@ func (m *OutlinerModel) restoreOutlinerViewSnapshot(snapshot outlinerViewSnapsho
 	m.SetSearchActive(snapshot.searchInputActive)
 
 	m.peekMode = snapshot.peekMode
-	m.multiSelectMode = snapshot.multiSelectMode
-	m.selectedTaskIdentities = copyBoolMap(snapshot.selected)
-	if m.selectedTaskIdentities == nil {
-		m.selectedTaskIdentities = make(map[taskref.TaskIdentity]bool)
+	m.MultiSelectMode = snapshot.multiSelectMode
+	m.Selected = copyBoolMap(snapshot.selected)
+	if m.Selected == nil {
+		m.Selected = make(map[taskref.TaskIdentity]bool)
 	}
 	m.FreezeRangeSelection()
 

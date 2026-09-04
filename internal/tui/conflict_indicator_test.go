@@ -73,7 +73,7 @@ func TestConflictIndicatorRendersInTheStatusStrip(t *testing.T) {
 
 	// Resolving the last bundle clears the line and gives the rows back.
 	count = 0
-	m.clearStatus()
+	m.ClearStatus()
 	if body := m.statusStripBody(width); body != "" {
 		t.Fatalf("strip body after the conflicts were resolved = %q, want empty", body)
 	}

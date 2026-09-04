@@ -67,7 +67,7 @@ func TestPeekIndentDoesNotRenderTreeGlyphs(t *testing.T) {
 	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
 	outliner := NewOutlinerModel(project, nil, newTestConfig())
 	outliner.peekMode = true
-	outliner.cursor = 0
+	outliner.Cursor = 0
 
 	row := outlinerRow{
 		task:   task,
@@ -99,7 +99,7 @@ func TestPeekContinuationCompletesTheRowTitleAtEveryWidth(t *testing.T) {
 	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
 	outliner := NewOutlinerModel(project, nil, newTestConfig())
 	outliner.peekMode = true
-	outliner.cursor = 0
+	outliner.Cursor = 0
 
 	for _, width := range []int{60, 100} {
 		row := outlinerRow{task: task, ProjectID: project.ID}
@@ -141,7 +141,7 @@ func TestPeekRendersNoContinuationForAVisibleTitle(t *testing.T) {
 	project := renderFixtureProject(t, "project", "project", "Project", []*models.Task{task})
 	outliner := NewOutlinerModel(project, nil, newTestConfig())
 	outliner.peekMode = true
-	outliner.cursor = 0
+	outliner.Cursor = 0
 
 	row := outlinerRow{task: task, ProjectID: project.ID}
 	lines := strings.Split(ansi.Strip(outliner.renderOutlinerTaskRow(row, true, 120, 120, 0, nil)), "\n")
@@ -160,7 +160,7 @@ func TestPeekOperationTogglesAndEscDismissesFirst(t *testing.T) {
 	outliner.crossProjectRebuildRows()
 	for index, row := range outliner.rows {
 		if row.isTaskRow() {
-			outliner.cursor = index
+			outliner.Cursor = index
 			break
 		}
 	}
@@ -204,7 +204,7 @@ func TestEnteringMultiSelectDisablesPeek(t *testing.T) {
 	if outliner.peekMode {
 		t.Fatal("entering multi-select left Peek enabled")
 	}
-	if !outliner.multiSelectMode {
+	if !outliner.MultiSelectMode {
 		t.Fatal("multi-select did not activate")
 	}
 }

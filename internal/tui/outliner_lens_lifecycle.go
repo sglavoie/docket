@@ -251,7 +251,7 @@ func (m *OutlinerModel) noteActiveLens(id string) {
 		return
 	}
 	if err := m.persistActiveLens(id); err != nil {
-		m.setTransientStatus("Could not remember the active lens: " + err.Error())
+		m.SetTransientStatus("Could not remember the active lens: " + err.Error())
 	}
 }
 

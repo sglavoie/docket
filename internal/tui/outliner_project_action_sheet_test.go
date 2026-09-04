@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
@@ -30,7 +31,7 @@ func projectHeaderCursorApp(t *testing.T) (*AppModel, *models.Project, operation
 		if !row.IsProjectHeader {
 			continue
 		}
-		outliner.cursor = index
+		outliner.Cursor = index
 		context := app.operationCommandContext()
 		project := app.projectByID(row.ProjectID)
 		if project == nil {
@@ -76,7 +77,7 @@ func TestProjectActionSheetProjectsTheOutlinerProjectManifest(t *testing.T) {
 	}
 	// Danger holds exactly the two acts that end the project's presence, so the
 	// list a user arrows through looking for Edit never puts one under the cursor.
-	for id, want := range map[operation.OperationID]ListCategoryID{
+	for id, want := range map[operation.OperationID]listsurface.ListCategoryID{
 		operation.OperationScopeRenameProject:  outlinerProjectActionCategoryProject,
 		operation.OperationScopeArchiveProject: outlinerProjectActionCategoryDanger,
 		operation.OperationProjectDelete:       outlinerProjectActionCategoryDanger,

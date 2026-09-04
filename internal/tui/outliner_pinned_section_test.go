@@ -148,7 +148,7 @@ func TestPinnedProjectHeadersCollapseIndependently(t *testing.T) {
 	if alphaHeader < 0 {
 		t.Fatalf("Pinned project header is missing from rows: %+v", outliner.rows)
 	}
-	outliner.cursor = alphaHeader
+	outliner.Cursor = alphaHeader
 	collapseKey := outliner.rows[alphaHeader].effectiveCollapseKey()
 	if !outliner.collapseOrMoveToParent() {
 		t.Fatal("left on Pinned project header did not collapse the group")
@@ -289,7 +289,7 @@ func TestPinnedPromotionRebuildKeepsCrossProjectCursorIdentity(t *testing.T) {
 	betaTask.Pinned, betaTask.PinnedAt = true, &now
 	rebuildOutlinerPreservingCursor(outliner)
 
-	row := outliner.rows[outliner.cursor]
+	row := outliner.rows[outliner.Cursor]
 	if !row.IsPinnedSection || row.ProjectID != beta.ID || row.task == nil || row.task.ID != betaTask.ID {
 		t.Fatalf("cursor after promotion = %+v, want beta/shared in Pinned", row)
 	}
@@ -347,7 +347,7 @@ func TestPinnedSectionEndsWithSeparatorInEveryPromotingMode(t *testing.T) {
 			if !outliner.rows[boundary-1].IsPinnedSection || outliner.rows[boundary+1].IsPinnedSection {
 				t.Fatalf("separator at %d does not close Pinned: %+v", boundary, outliner.rows)
 			}
-			if outliner.rows[outliner.cursor].IsSeparator {
+			if outliner.rows[outliner.Cursor].IsSeparator {
 				t.Fatal("cursor settled on the separator")
 			}
 		})

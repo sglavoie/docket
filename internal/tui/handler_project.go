@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -333,11 +334,11 @@ func (m *AppModel) projectDeleteCascadeNote(project *models.Project) string {
 	}
 	if m.appService != nil {
 		if notes, err := m.appService.Notes(project.ID); err == nil && len(notes) > 0 {
-			parts = append(parts, fmt.Sprintf("%d %s", len(notes), pluralize(len(notes), "note", "notes")))
+			parts = append(parts, fmt.Sprintf("%d %s", len(notes), listsurface.Pluralize(len(notes), "note", "notes")))
 		}
 	}
 	if attachments > 0 {
-		parts = append(parts, fmt.Sprintf("%d %s", attachments, pluralize(attachments, "attachment", "attachments")))
+		parts = append(parts, fmt.Sprintf("%d %s", attachments, listsurface.Pluralize(attachments, "attachment", "attachments")))
 	}
 	return "Deletes " + joinWithAnd(parts) + ". This cannot be reopened, only undone."
 }

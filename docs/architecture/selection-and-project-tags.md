@@ -64,8 +64,8 @@ the whitespace-collapsed description when it has one, and every normalized
 project tag twice — bare and `#`-prefixed, because the chip the row draws is
 written `#parked` and a query that copies what it reads must match. A blank
 description is skipped rather than joined in, which would leave a stray
-separator in the haystack `listItemScore` scores against. Because
-`listItemScore` already folds `Aliases` into that haystack beside `PrimaryText`
+separator in the haystack `ListItemScore` scores against. Because
+`ListItemScore` already folds `Aliases` into that haystack beside `PrimaryText`
 and `SecondaryText`, widening the vocabulary needed no ranking change:
 `sortListMatches` still orders by score with `sourceIndex` as the stable
 tie-break, so pinned-first listing order survives a search.
@@ -148,7 +148,7 @@ it turns out to need. A page is `height-2`, both continuations always
 subtracted, so a page down and a page up land on the same offset whether or not
 a continuation happened to be showing; the price is one row of deliberate
 overlap. `previewTasksScrollable` gates the footer hint on the pane being on
-screen — `listSurfacePreviewGeometry` is the same width arithmetic the renderer
+screen — `ListSurfacePreviewGeometry` is the same width arithmetic the renderer
 runs — and on the cursor project holding tasks, never on a page count, which
 would be one frame stale in the very pass that settles it.
 
@@ -202,7 +202,7 @@ Those rows and the explainer line beneath them resolve one color through
 Their seeding is asymmetric on purpose: `#` offers all six whether or not any
 task carries them, because offering an unused tag is how it gets discovered,
 while `f#` stays usage-derived, because a filter row nothing carries can only
-empty the projection. The retained `internal/tui/tag_selector.go` path reached
+empty the projection. The retained `internal/tui/listsurface/tag_selector.go` path reached
 from `handler_tag.go` (`ShowTagSelectorMsg`) is the one tag surface that carries
 no semantic tier, because it never reads `taskTagListSource`; the obsolete
 bulk-selector message path has been removed.
@@ -234,7 +234,7 @@ on one. Do not engineer that ambiguity away by adding meaning to a slot.
 Which surfaces resolve through it splits in two. A surface that renders a tag
 *as itself* takes the chip: the task row chips, the Peek `Tags:` line, and every
 row of the retained tag selector, whose `TagInfo` payload answers
-`ListSurfacePrimaryStyle` (`internal/tui/list_surface_adapters.go`) so the
+`ListSurfacePrimaryStyle` (`internal/tui/listsurface/list_surface_adapters.go`) so the
 initial adaptation and each `ReplaceItems` land one color without either call
 site knowing. A picker row is an offer rather than a label, so it previews the
 color it is about to paint, which makes a colored chip and a colored row one
@@ -257,11 +257,11 @@ rather than a tag. The Project Hub is outside the split entirely:
 `projectTagChips` joins names into `ListItem.SecondaryText`, which has no
 per-tag style hook, so those tags render in the row's one secondary color.
 
-`orderedTaskTags` (`internal/tui/shared_render_helpers.go`) is the matching
+`OrderedTaskTags` (`internal/tui/listsurface/shared_render_helpers.go`) is the matching
 order authority over both chip surfaces: every non-semantic tag alphabetically,
 then every semantic tag, also alphabetically. Storage keeps tags in insertion
 order, so this is what makes the tag set rather than the typing history decide
-what a row shows. It is a pure permutation, which keeps `renderTruncatedTags`'
+what a row shows. It is a pure permutation, which keeps `RenderTruncatedTags`'
 `+N` overflow honest by construction and makes the row a strict prefix of the
 Peek line. Semantic tags are deprioritized, never excluded: the title color
 already carries that signal, so a row spends its two chips on what the title
@@ -381,11 +381,11 @@ owners remain outside the product. Editor resolution is
 
 The body preview is one more consumer of the shared list-surface layout rather
 than a second responsive grammar. `renderNotesContent` asks
-`listSurfacePreviewGeometry` for the split, so the pane appears at exactly the
+`ListSurfacePreviewGeometry` for the split, so the pane appears at exactly the
 72 columns every list surface widens at and the list renderer is handed the
 resolved pane width instead of reading the terminal's. The header goes through
-`renderListSurfacePreview` — title, owner label, and modification time — and its
-`PreviewBody` hook draws the note body; `joinListSurfacePanes` joins the two.
+`RenderListSurfacePreview` — title, owner label, and modification time — and its
+`PreviewBody` hook draws the note body; `JoinListSurfacePanes` joins the two.
 An empty list, a workspace error, or an open location picker has no note to
 preview and keeps the full-width list.
 
@@ -414,8 +414,8 @@ while a query is being edited, so refining a query and reading the note it lands
 on are one interaction, and the keys neither accept the draft nor reach the
 input. The render owns the
 tail clamp, because only it knows how many rows the header left:
-`listPreviewScrollWindow` converges on a window that reserves a row for each
-`renderListContinuation` it needs, the same accounting the Project Hub task pane
+`ListPreviewScrollWindow` converges on a window that reserves a row for each
+`RenderListContinuation` it needs, the same accounting the Project Hub task pane
 does through the same helper. A page is the budget less both continuation rows,
 so consecutive pages overlap by one line rather than drifting apart. A note
 whose `ParseError` is set renders that reason as a warning and never as

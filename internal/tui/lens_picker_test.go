@@ -110,7 +110,7 @@ func sheetRowTitles(t *testing.T, model *AppModel) []string {
 	if model.contextActionSheet == nil {
 		t.Fatal("no action sheet is mounted")
 	}
-	items := model.contextActionSheet.surface.Items()
+	items := model.contextActionSheet.Surface.Items()
 	titles := make([]string, 0, len(items))
 	for _, item := range items {
 		titles = append(titles, item.PrimaryText)

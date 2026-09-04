@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 )
 
 func TestTagSelectorKeepsSemanticTagsIndependent(t *testing.T) {
@@ -22,10 +23,10 @@ func TestTagSelectorKeepsSemanticTagsIndependent(t *testing.T) {
 	other.Tags = []string{"idea"}
 	project := &models.Project{Tasks: []*models.Task{task, other}}
 
-	selector := NewTagSelectorModel(task, project, task.Tags)
+	selector := listsurface.NewTagSelectorModel(task, project, task.Tags)
 	selector.SetCursorToID("idea")
 	updated, _ := selector.Update(tea.KeyPressMsg{Code: tea.KeySpace})
-	selector = updated.(*TagSelectorModel)
+	selector = updated.(*listsurface.TagSelectorModel)
 	selected := selector.SelectedIDs()
 	if !slices.Contains(selected, "idea") || !slices.Contains(selected, "keep") || !slices.Contains(selected, "bug") {
 		t.Fatalf("selected tags = %v, want bug+idea+keep", selected)

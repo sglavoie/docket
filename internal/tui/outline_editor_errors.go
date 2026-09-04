@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -133,7 +134,7 @@ func (m *OutlineErrorsViewModel) subtitle(budget int) string {
 	if scope == "" {
 		scope = "project"
 	}
-	count := fmt.Sprintf("%d problem%s", len(m.problems), pluralize(len(m.problems), "", "s"))
+	count := fmt.Sprintf("%d problem%s", len(m.problems), listsurface.Pluralize(len(m.problems), "", "s"))
 	for _, candidate := range []string{
 		scope + " · " + count + " · nothing was changed",
 		scope + " · " + count,

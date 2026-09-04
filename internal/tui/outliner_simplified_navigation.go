@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -20,10 +21,10 @@ type sectionToggleRestoreAnchor struct {
 // child of a focus root the parent has no row, so the ladder pops that one
 // frame to reach it.
 func (m *OutlinerModel) collapseOrMoveToParent() bool {
-	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
+	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return false
 	}
-	row := m.rows[m.cursor]
+	row := m.rows[m.Cursor]
 	if row.isHeaderRow() {
 		if m.isZoomedSectionRow(row) || m.isSectionRowCollapsed(row) {
 			return false
@@ -77,10 +78,10 @@ func (m *OutlinerModel) collapseOrMoveToParent() bool {
 // checklist row has nothing left to expand, so it is a no-op there.
 // Indent/outdent remain legacy-only until they move into the action sheet.
 func (m *OutlinerModel) expandAtCursor() bool {
-	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
+	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return false
 	}
-	row := m.rows[m.cursor]
+	row := m.rows[m.Cursor]
 	if row.isHeaderRow() {
 		if !m.isSectionRowCollapsed(row) {
 			return false
@@ -123,16 +124,16 @@ func (m *OutlinerModel) moveCursorToAdjacentHeader(delta int) (tea.Cmd, bool) {
 	if m == nil || len(m.rows) == 0 {
 		return nil, false
 	}
-	previous := m.cursor
+	previous := m.Cursor
 	for step := 1; step <= len(m.rows); step++ {
-		index := ((m.cursor+delta*step)%len(m.rows) + len(m.rows)) % len(m.rows)
+		index := ((m.Cursor+delta*step)%len(m.rows) + len(m.rows)) % len(m.rows)
 		if !m.rows[index].isHeaderRow() {
 			continue
 		}
-		m.cursor = index
+		m.Cursor = index
 		m.updateRangeSelection()
 		m.voidRelocationCaptureAfterNavigation(previous)
-		return flashIfJumped(previous, m.cursor, &m.cursorFlash), true
+		return listsurface.FlashIfJumped(previous, m.Cursor, &m.CursorFlash), true
 	}
 	return nil, false
 }
@@ -164,13 +165,13 @@ func (m *OutlinerModel) toggleVisibleSections() bool {
 
 	cursorAnchor := m.captureModeCursor()
 	selectedHeaderKey := ""
-	if m.cursor >= 0 && m.cursor < len(m.rows) && m.rows[m.cursor].IsSectionHeader {
-		selectedHeaderKey = m.rows[m.cursor].effectiveCollapseKey()
+	if m.Cursor >= 0 && m.Cursor < len(m.rows) && m.rows[m.Cursor].IsSectionHeader {
+		selectedHeaderKey = m.rows[m.Cursor].effectiveCollapseKey()
 	}
 	if allExpanded {
 		m.sectionToggleRestore = nil
 		if header, containsCursor := m.topLevelSectionAtCursor(headerKeys); containsCursor {
-			if row := m.rows[m.cursor]; row.isTaskRow() && row.task != nil {
+			if row := m.rows[m.Cursor]; row.isTaskRow() && row.task != nil {
 				m.sectionToggleRestore = &sectionToggleRestoreAnchor{
 					task:       m.taskIdentityForRow(row),
 					sectionKey: header.effectiveCollapseKey(),
@@ -242,8 +243,8 @@ func (m *OutlinerModel) toggleVisibleProjectGroups() bool {
 
 	cursorAnchor := m.captureModeCursor()
 	selectedHeaderKey := ""
-	if m.cursor >= 0 && m.cursor < len(m.rows) && m.rows[m.cursor].IsProjectHeader {
-		selectedHeaderKey = m.rows[m.cursor].effectiveCollapseKey()
+	if m.Cursor >= 0 && m.Cursor < len(m.rows) && m.rows[m.Cursor].IsProjectHeader {
+		selectedHeaderKey = m.rows[m.Cursor].effectiveCollapseKey()
 	}
 	for _, header := range headers {
 		m.setSectionRowCollapsed(header, allExpanded)

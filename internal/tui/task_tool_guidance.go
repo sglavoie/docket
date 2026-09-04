@@ -21,11 +21,11 @@ func taskToolGuidanceSpec(confirmActive bool, activeInteraction bool, km *keymap
 }
 
 func (m *TaskCommentsModel) guidanceSpec() (chrome.GuidanceSpec, bool) {
-	return taskToolGuidanceSpec(m.confirm.IsActive(), m.addMode || m.editMode || m.expandedView, m.buildKeyMap())
+	return taskToolGuidanceSpec(m.Confirm.IsActive(), m.addMode || m.editMode || m.expandedView, m.buildKeyMap())
 }
 
 func (m *TaskAttachmentsModel) guidanceSpec() (chrome.GuidanceSpec, bool) {
-	return taskToolGuidanceSpec(m.confirm.IsActive(), m.addMode, m.buildKeyMap())
+	return taskToolGuidanceSpec(m.Confirm.IsActive(), m.addMode, m.buildKeyMap())
 }
 
 func renderTaskToolGuidance(spec chrome.GuidanceSpec, ok bool, width int, accent ...color.Color) string {

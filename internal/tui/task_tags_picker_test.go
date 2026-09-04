@@ -9,13 +9,14 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-func taskTagRowIDs(items []ListItem, category ListCategoryID) []string {
+func taskTagRowIDs(items []listsurface.ListItem, category listsurface.ListCategoryID) []string {
 	ids := make([]string, 0, len(items))
 	for _, item := range items {
 		if item.CategoryID == category {
@@ -120,7 +121,7 @@ func TestTaskTagListSourceMintsNoDuplicateIDsWhenSeeding(t *testing.T) {
 		{Name: "backend", TaskCount: 3},
 	}, true)
 
-	seen := make(map[ListItemID]bool, len(source.Items))
+	seen := make(map[listsurface.ListItemID]bool, len(source.Items))
 	for _, item := range source.Items {
 		if seen[item.ID] {
 			t.Fatalf("duplicate item ID %q", item.ID)
@@ -176,7 +177,7 @@ func TestTaskTagListSourceGivesContextValuesTheirOwnSection(t *testing.T) {
 		if !slices.Contains(item.Aliases, "##platform") {
 			t.Fatalf("context row aliases = %v, want the ## sigil spelling", item.Aliases)
 		}
-		if !slices.ContainsFunc(item.Preview.Fields, func(field ListPreviewField) bool {
+		if !slices.ContainsFunc(item.Preview.Fields, func(field listsurface.ListPreviewField) bool {
 			return field.Label == "Context" && field.Value == "##platform"
 		}) {
 			t.Fatalf("context row preview = %v, want a Context field", item.Preview.Fields)
@@ -209,12 +210,12 @@ func TestOperationTagPickerJumpsBetweenSections(t *testing.T) {
 	// the last successful jump left behind.
 	for _, jump := range []struct {
 		key  string
-		want ListItemID
+		want listsurface.ListItemID
 	}{
 		{"t", "tag:backend"},
 		{"c", "tag:platform"},
 	} {
-		if _, dismissed, msg := picker.handleKey(keyPress(jump.key)); dismissed || msg != nil {
+		if _, dismissed, msg := picker.HandleKey(keyPress(jump.key)); dismissed || msg != nil {
 			t.Fatalf("jump %q dismissed = %v, msg = %#v", jump.key, dismissed, msg)
 		}
 		item, ok := picker.surface.CurrentItem()
@@ -223,7 +224,7 @@ func TestOperationTagPickerJumpsBetweenSections(t *testing.T) {
 		}
 	}
 
-	_, dismissed, msg := picker.handleKey(keyPress("s"))
+	_, dismissed, msg := picker.HandleKey(keyPress("s"))
 	if dismissed {
 		t.Fatal("a refused jump dismissed the picker")
 	}
@@ -241,7 +242,7 @@ func TestOperationTagPickerJumpKeysStayOutOfNonTagPickers(t *testing.T) {
 		operation.ValueProviderPriority,
 		"Set Priority",
 		"Task",
-		ListSourceFromPriorities([]chrome.PriorityInfo{
+		listsurface.ListSourceFromPriorities([]chrome.PriorityInfo{
 			{Priority: 0, Description: "Unset"},
 			{Priority: 1, Description: "High"},
 		}),
@@ -252,7 +253,7 @@ func TestOperationTagPickerJumpKeysStayOutOfNonTagPickers(t *testing.T) {
 		t.Fatalf("newOperationValuePickerModel: %v", err)
 	}
 	before, _ := picker.surface.CurrentItem()
-	if _, dismissed, msg := picker.handleKey(keyPress("c")); dismissed || msg != nil {
+	if _, dismissed, msg := picker.HandleKey(keyPress("c")); dismissed || msg != nil {
 		t.Fatalf("priority picker consumed a jump key: dismissed = %v, msg = %#v", dismissed, msg)
 	}
 	if after, _ := picker.surface.CurrentItem(); after.ID != before.ID {

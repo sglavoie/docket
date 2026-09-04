@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -183,7 +184,7 @@ func TestLensProjectLoadCapturesBaselineBeforeIO(t *testing.T) {
 		t.Fatal("the matching generation did not publish")
 	}
 
-	if !RunEscCascade(outliner.escSteps()) {
+	if !listsurface.RunEscCascade(outliner.escSteps()) {
 		t.Fatal("expected the Esc cascade to consume the active lens")
 	}
 	if outliner.hasActiveLens() {
@@ -247,7 +248,7 @@ func TestLensProjectLoadSupersededBySynchronousLensClearsPendingState(t *testing
 		t.Fatal("the late result left pending or loading state armed")
 	}
 
-	if !RunEscCascade(outliner.escSteps()) {
+	if !listsurface.RunEscCascade(outliner.escSteps()) {
 		t.Fatal("expected the Esc cascade to consume the active lens")
 	}
 	if outliner.primaryMode != chrome.ModeInbox {

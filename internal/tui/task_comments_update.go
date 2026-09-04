@@ -6,6 +6,7 @@ import (
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -16,7 +17,7 @@ func (m *TaskCommentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch {
 	case m.expandedView:
 		return m.updateExpandedView(msg)
-	case m.confirm.IsActive():
+	case m.Confirm.IsActive():
 		return m.updateConfirmMode(msg)
 	case m.editMode:
 		return m.updateEditMode(msg)
@@ -42,7 +43,7 @@ func (m *TaskCommentsModel) updateExpandedView(msg tea.Msg) (tea.Model, tea.Cmd)
 func (m *TaskCommentsModel) updateConfirmMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		action := m.confirm.Action()
+		action := m.Confirm.Action()
 		if confirmed, handled := m.HandleConfirmKey(msg.String()); handled {
 			if confirmed {
 				switch action {
@@ -72,7 +73,7 @@ func (m *TaskCommentsModel) updateEditMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "esc":
 			if m.hasUnsavedEditChanges() {
-				m.confirm.Show("discard-edit", "Discard changes?")
+				m.Confirm.Show("discard-edit", "Discard changes?")
 				return m, nil
 			}
 			m.cancelEditMode()
@@ -99,7 +100,7 @@ func (m *TaskCommentsModel) updateAddMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "esc":
 			if strings.TrimSpace(m.textInput.Value()) != "" {
-				m.confirm.Show("discard-add", "Discard comment?")
+				m.Confirm.Show("discard-add", "Discard comment?")
 				return m, nil
 			}
 			m.cancelAddMode()
@@ -121,7 +122,7 @@ func (m *TaskCommentsModel) updateAddMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *TaskCommentsModel) updateNormalMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case status.CursorFlashClearMsg:
-		m.cursorFlash = false
+		m.CursorFlash = false
 		return m, nil
 	case tea.WindowSizeMsg:
 		m.BaseView.SetSize(msg.Width, msg.Height)
@@ -163,7 +164,7 @@ func (m *TaskCommentsModel) handleNormalKey(key string) tea.Cmd {
 }
 
 // handleCommentsNavigationKey moves the panel's own cursor. The keys it names
-// are the panel's whole navigation grammar and handleListNavigation performs
+// are the panel's whole navigation grammar and HandleListNavigation performs
 // them, so listing them here rather than handing the helper every press is what
 // keeps the paging keys the panel never bound from arriving through the back
 // door.
@@ -175,7 +176,7 @@ func (m *TaskCommentsModel) handleCommentsNavigationKey(key string) (tea.Cmd, bo
 		m.pendingTopChord = true
 		return nil, true
 	case "j", "down", "k", "up", "home", "G", "end":
-		_, cmd := handleListNavigation(key, &m.cursor, len(m.task.Comments), m.height, &m.cursorFlash)
+		_, cmd := listsurface.HandleListNavigation(key, &m.Cursor, len(m.task.Comments), m.Height(), &m.CursorFlash)
 		return cmd, true
 	default:
 		return nil, false
@@ -193,7 +194,7 @@ func (m *TaskCommentsModel) completeCommentsTopChord(key string) bool {
 	if key != "g" {
 		return false
 	}
-	m.cursor = 0
+	m.Cursor = 0
 	return true
 }
 
@@ -238,7 +239,7 @@ func (m *TaskCommentsModel) HandledKeys() []string {
 }
 
 func (m *TaskCommentsModel) hasSelection() bool {
-	return len(m.task.Comments) > 0 && m.cursor < len(m.task.Comments)
+	return len(m.task.Comments) > 0 && m.Cursor < len(m.task.Comments)
 }
 
 func (m *TaskCommentsModel) hasUnsavedEditChanges() bool {
@@ -273,7 +274,7 @@ func (m *TaskCommentsModel) copySelectedCommentText() {
 
 func (m *TaskCommentsModel) confirmDeleteSelectedComment() {
 	if m.hasSelection() {
-		m.confirm.Show("delete", fmt.Sprintf("Delete comment [%d]?", m.cursor))
+		m.Confirm.Show("delete", fmt.Sprintf("Delete comment [%d]?", m.Cursor))
 	}
 }
 

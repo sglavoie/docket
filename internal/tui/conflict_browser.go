@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -67,7 +68,7 @@ type ConflictBrowserClosedMsg struct{}
 // stays a projection over whatever the host read and the detail pane can be
 // driven from a fixture in a test.
 type ConflictBrowserModel struct {
-	surface *ListSurfaceModel
+	surface *listsurface.ListSurfaceModel
 	records []storage.ConflictRecord
 	load    func(id string) (*storage.ConflictBundle, error)
 	// detail is the inspected bundle's rendered lines, unwrapped. A non-empty
@@ -97,9 +98,9 @@ func NewConflictBrowserModel(
 		records: append([]storage.ConflictRecord(nil), records...),
 		load:    load,
 	}
-	surface, err := NewListSurfaceModel(model.items(), nil, ListSurfaceConfig{
-		SelectionMode: ListSelectionSingle,
-		EmptyState: ListEmptyState{
+	surface, err := listsurface.NewListSurfaceModel(model.items(), nil, listsurface.ListSurfaceConfig{
+		SelectionMode: listsurface.ListSelectionSingle,
+		EmptyState: listsurface.ListEmptyState{
 			Title:  conflictBrowserEmptyTitle,
 			Detail: conflictBrowserEmptyDetail,
 		},
@@ -114,10 +115,10 @@ func NewConflictBrowserModel(
 // items renders one row per recorded bundle, in the store's own newest-first
 // order. There is no query and no ranking: the population is small and its order
 // is the only thing that makes "the one that just happened" findable.
-func (model *ConflictBrowserModel) items() []ListItem {
-	items := make([]ListItem, 0, len(model.records))
+func (model *ConflictBrowserModel) items() []listsurface.ListItem {
+	items := make([]listsurface.ListItem, 0, len(model.records))
 	for _, record := range model.records {
-		items = append(items, ListItem{
+		items = append(items, listsurface.ListItem{
 			ID:            conflictBrowserItemID(record.ID),
 			PrimaryText:   conflictBrowserRowTitle(record),
 			SecondaryText: conflictBrowserRowSummary(record),
@@ -127,8 +128,8 @@ func (model *ConflictBrowserModel) items() []ListItem {
 	return items
 }
 
-func conflictBrowserItemID(id string) ListItemID {
-	return ListItemID(conflictBrowserItemPrefix + id)
+func conflictBrowserItemID(id string) listsurface.ListItemID {
+	return listsurface.ListItemID(conflictBrowserItemPrefix + id)
 }
 
 // conflictBrowserShortID is the CLI's own id shortening, which `tt conflict
@@ -271,10 +272,10 @@ func (model *ConflictBrowserModel) Notice() string {
 	return model.notice
 }
 
-// handleKey implements the shell's compact key-interceptor contract. The two
+// HandleKey implements the shell's compact key-interceptor contract. The two
 // states are dispatched separately rather than through one switch with guards,
 // because they share no key whose meaning survives the state change.
-func (model *ConflictBrowserModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
+func (model *ConflictBrowserModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
 	if model == nil || model.surface == nil {
 		return nil, true, ConflictBrowserClosedMsg{}
 	}
@@ -372,14 +373,14 @@ func conflictBrowserInnerWidth(width int) int {
 	return min(max(width*4/5, 46), max(width-6, 24))
 }
 
-func (model *ConflictBrowserModel) render(width int) string {
-	return model.renderWithin(width, 0)
+func (model *ConflictBrowserModel) Render(width int) string {
+	return model.RenderWithin(width, 0)
 }
 
-// renderWithin budgets the body after reserving rows for the modal chrome, so a
+// RenderWithin budgets the body after reserving rows for the modal chrome, so a
 // minimum-supported terminal drops list rows or detail lines rather than losing
 // the title, the header block, or the footer.
-func (model *ConflictBrowserModel) renderWithin(width, height int) string {
+func (model *ConflictBrowserModel) RenderWithin(width, height int) string {
 	if model == nil || model.surface == nil {
 		return ""
 	}
@@ -428,7 +429,7 @@ func (model *ConflictBrowserModel) renderList(width, bodyHeight int) string {
 	if bodyHeight > 0 {
 		listHeight = min(listHeight, bodyHeight)
 	}
-	return RenderCompactListSurface(model.surface, width, listHeight)
+	return listsurface.RenderCompactListSurface(model.surface, width, listHeight)
 }
 
 // renderDetail wraps the pane at the box's width and paints one window of it.
@@ -479,6 +480,6 @@ func (model *ConflictBrowserModel) guidanceSpec() chrome.GuidanceSpec {
 		keymap.Bind("esc", "Unwind the conflict browser", "Navigation",
 			keymap.WithFooter(2, escapeLabel, true), keymap.WithFooterKey("Esc")),
 	}}
-	spec, _ := listSurfaceGuidanceSpec(model.surface.GuidanceState(false), km, nil)
+	spec, _ := listsurface.ListSurfaceGuidanceSpec(model.surface.GuidanceState(false), km, nil)
 	return spec
 }

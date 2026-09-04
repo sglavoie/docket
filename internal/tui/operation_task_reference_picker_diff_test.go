@@ -184,7 +184,7 @@ func TestReferencePickerPreservesConcurrentReferenceChanges(t *testing.T) {
 				t.Fatalf("the fresh task stores %v, want the republished %v", gotStored, testCase.republish)
 			}
 
-			_, done, msg := picker.handleKey(syntheticSpecialKey(tea.KeyEnter))
+			_, done, msg := picker.HandleKey(syntheticSpecialKey(tea.KeyEnter))
 			if !done {
 				t.Fatal("Enter did not close the picker")
 			}

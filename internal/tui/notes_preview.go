@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/fuzzy"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -183,7 +184,7 @@ func notesPreviewRevision(note *models.Note) string {
 // Height is irrelevant to the split and is passed only to satisfy the shared
 // config's normalization.
 func (m *NotesViewModel) notesPreviewGeometry(width int) (int, int) {
-	return listSurfacePreviewGeometry(ListSurfaceRenderConfig{
+	return listsurface.ListSurfacePreviewGeometry(listsurface.ListSurfaceRenderConfig{
 		Width:  max(width, 1),
 		Height: 1,
 	})
@@ -278,18 +279,18 @@ func (m *NotesViewModel) pageNotesPreview(direction int) {
 // frontmatter failed to parse reports only a reliable Filename, so it names the
 // file and leaves the title, owner-independent metadata, and body to the warning
 // the body hook draws.
-func notesPreviewHeader(row *LocatedNoteRow) ListPreview {
+func notesPreviewHeader(row *LocatedNoteRow) listsurface.ListPreview {
 	note := row.Note
 	if note.ParseError != "" {
-		return ListPreview{Title: note.Filename, Summary: row.OwnerLabel}
+		return listsurface.ListPreview{Title: note.Filename, Summary: row.OwnerLabel}
 	}
 	title := strings.TrimSpace(note.Title)
 	if title == "" {
 		title = note.Filename
 	}
-	preview := ListPreview{Title: title, Summary: row.OwnerLabel}
+	preview := listsurface.ListPreview{Title: title, Summary: row.OwnerLabel}
 	if !note.ModifiedAt.IsZero() {
-		preview.Fields = []ListPreviewField{{
+		preview.Fields = []listsurface.ListPreviewField{{
 			Label: "Modified",
 			Value: formatNotesPreviewTime(note.ModifiedAt),
 		}}
@@ -302,7 +303,7 @@ func formatNotesPreviewTime(t time.Time) string {
 }
 
 // renderNotesPreviewBody fills the rows the preview header left with the
-// selected note's Markdown. It is the renderListSurfacePreview body hook, so
+// selected note's Markdown. It is the RenderListSurfacePreview body hook, so
 // height is the pane's remaining capacity and this is the only place that knows
 // it: the scroll offset is clamped here rather than where Ctrl+F moved it, the
 // same arrangement the Project Hub preview and the list pane's own viewport
@@ -340,7 +341,7 @@ func (m *NotesViewModel) renderNotesPreviewBody(width, height int) []string {
 		return []string{theme.MutedStyle.Render(textfit.TruncateToVisualWidth("No body.", width))}
 	}
 
-	start, count, above, below := listPreviewScrollWindow(len(m.preview.lines), m.preview.offset, height)
+	start, count, above, below := listsurface.ListPreviewScrollWindow(len(m.preview.lines), m.preview.offset, height)
 	m.preview.offset = start
 	// A page is the row budget less both continuation rows, not the rows this
 	// frame happened to show. The visible count changes by one as continuations
@@ -350,13 +351,13 @@ func (m *NotesViewModel) renderNotesPreviewBody(width, height int) []string {
 	m.preview.pageSize = max(height-2, 1)
 	lines := make([]string, 0, height)
 	if above {
-		lines = append(lines, renderListContinuation("↑", start, width))
+		lines = append(lines, listsurface.RenderListContinuation("↑", start, width))
 	}
 	for index := start; index < start+count; index++ {
 		lines = append(lines, textfit.TruncateToVisualWidth(m.preview.lines[index], width))
 	}
 	if below {
-		lines = append(lines, renderListContinuation("↓", len(m.preview.lines)-start-count, width))
+		lines = append(lines, listsurface.RenderListContinuation("↓", len(m.preview.lines)-start-count, width))
 	}
 	return lines
 }

@@ -1,4 +1,4 @@
-package tui
+package listsurface
 
 import (
 	"fmt"
@@ -81,12 +81,12 @@ type ContextActionSheetConfig struct {
 // operations available to one frozen target set. It knows nothing about tasks,
 // Scope Hub or the Outliner: hosts supply identity, ordering, and decoration.
 type ContextActionSheetModel struct {
-	surface   *ListSurfaceModel
+	Surface   *ListSurfaceModel
 	executor  *operation.OperationExecutor
-	context   operation.CommandContext
-	config    ContextActionSheetConfig
-	notice    string
-	searching bool
+	Context   operation.CommandContext
+	Config    ContextActionSheetConfig
+	Notice    string
+	Searching bool
 }
 
 // NewContextActionSheetModel freezes ctx and projects operationIDs, in the
@@ -104,7 +104,7 @@ func NewContextActionSheetModel(
 		return nil, fmt.Errorf("contextual action sheet requires an operation registry")
 	}
 	config = normalizeContextActionSheetConfig(config)
-	frozen := cloneCommandContext(ctx)
+	frozen := operation.CloneCommandContext(ctx)
 
 	items := make([]ListItem, 0, len(operationIDs))
 	seen := make(map[operation.OperationID]bool, len(operationIDs))
@@ -129,10 +129,10 @@ func NewContextActionSheetModel(
 		return nil, err
 	}
 	return &ContextActionSheetModel{
-		surface:  surface,
+		Surface:  surface,
 		executor: executor,
-		context:  frozen,
-		config:   config,
+		Context:  frozen,
+		Config:   config,
 	}, nil
 }
 
@@ -186,12 +186,12 @@ func contextActionSheetItem(
 	return item
 }
 
-// operationIDs returns the available actions in host-supplied order.
-func (model *ContextActionSheetModel) operationIDs() []operation.OperationID {
-	if model == nil || model.surface == nil {
+// OperationIDs returns the available actions in host-supplied order.
+func (model *ContextActionSheetModel) OperationIDs() []operation.OperationID {
+	if model == nil || model.Surface == nil {
 		return nil
 	}
-	items := model.surface.Items()
+	items := model.Surface.Items()
 	ids := make([]operation.OperationID, 0, len(items))
 	for _, item := range items {
 		ids = append(ids, item.OperationIDs...)
@@ -204,9 +204,9 @@ func (model *ContextActionSheetModel) operationIDs() []operation.OperationID {
 func (model *ContextActionSheetModel) request(id operation.OperationID) operation.OperationExecutionRequest {
 	return operation.OperationExecutionRequest{
 		ID:       id,
-		Context:  cloneCommandContext(model.context),
-		Value:    model.config.Value,
-		HasValue: model.config.HasValue,
+		Context:  operation.CloneCommandContext(model.Context),
+		Value:    model.Config.Value,
+		HasValue: model.Config.HasValue,
 	}
 }
 
@@ -222,101 +222,101 @@ func (model *ContextActionSheetModel) Execute(
 	}
 	if model.executor == nil {
 		err := fmt.Errorf("contextual actions are unavailable")
-		model.notice = err.Error()
+		model.Notice = err.Error()
 		return operation.OperationExecutionResult{Err: err}, false
 	}
 	result := model.executor.Execute(request)
 	switch {
 	case result.Err != nil:
-		model.notice = result.Err.Error()
+		model.Notice = result.Err.Error()
 		return result, false
 	case result.ValueRequired != nil, result.ConfirmationRequired != nil:
-		model.notice = ""
+		model.Notice = ""
 		return result, false
 	default:
-		model.notice = ""
+		model.Notice = ""
 		return result, true
 	}
 }
 
-// handleKey implements the shell's compact key-interceptor contract.
+// HandleKey implements the shell's compact key-interceptor contract.
 //
 //nolint:gocyclo // Key dispatch stays centralized so every action-sheet state has one unwind path.
-func (model *ContextActionSheetModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
-	if model == nil || model.surface == nil {
+func (model *ContextActionSheetModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
+	if model == nil || model.Surface == nil {
 		return nil, true, ContextActionSheetClosedMsg{}
 	}
 	key := msg.String()
-	if model.config.ImmediateFilter {
+	if model.Config.ImmediateFilter {
 		switch key {
 		case "esc":
-			if model.surface.Query().Raw != "" {
-				model.surface.SetQuery("")
-				model.searching = false
+			if model.Surface.Query().Raw != "" {
+				model.Surface.SetQuery("")
+				model.Searching = false
 				return nil, false, nil
 			}
 			return nil, true, ContextActionSheetClosedMsg{}
 		case "backspace":
-			query := model.surface.Query().Raw
+			query := model.Surface.Query().Raw
 			if query != "" {
 				_, size := utf8.DecodeLastRuneInString(query)
-				model.surface.SetQuery(query[:len(query)-size])
+				model.Surface.SetQuery(query[:len(query)-size])
 			}
-			model.searching = model.surface.Query().Raw != ""
+			model.Searching = model.Surface.Query().Raw != ""
 			return nil, false, nil
 		case "/":
-			model.searching = true
+			model.Searching = true
 			return nil, false, nil
 		case "up", "ctrl+k":
-			model.surface.MoveCursor(-1)
+			model.Surface.MoveCursor(-1)
 			return nil, false, nil
 		case "down", "ctrl+j":
-			model.surface.MoveCursor(1)
+			model.Surface.MoveCursor(1)
 			return nil, false, nil
 		case "home":
-			model.surface.MoveCursorToStart()
+			model.Surface.MoveCursorToStart()
 			return nil, false, nil
 		case "end":
-			model.surface.MoveCursorToEnd()
+			model.Surface.MoveCursorToEnd()
 			return nil, false, nil
 		case "pgup":
-			model.surface.PageCursor(-1)
+			model.Surface.PageCursor(-1)
 			return nil, false, nil
 		case "pgdown":
-			model.surface.PageCursor(1)
+			model.Surface.PageCursor(1)
 			return nil, false, nil
 		case "enter":
 			return model.activateCursor()
 		default:
 			if msg.Text != "" {
-				model.surface.SetQuery(model.surface.Query().Raw + msg.Text)
-				model.searching = true
+				model.Surface.SetQuery(model.Surface.Query().Raw + msg.Text)
+				model.Searching = true
 			}
 			return nil, false, nil
 		}
 	}
-	if model.searching {
+	if model.Searching {
 		switch key {
 		case "esc":
-			if model.surface.Query().Raw != "" {
-				model.surface.SetQuery("")
+			if model.Surface.Query().Raw != "" {
+				model.Surface.SetQuery("")
 				return nil, false, nil
 			}
-			model.searching = false
+			model.Searching = false
 			return nil, false, nil
 		case "enter":
-			model.searching = false
+			model.Searching = false
 			return nil, false, nil
 		case "backspace":
-			query := model.surface.Query().Raw
+			query := model.Surface.Query().Raw
 			if query != "" {
 				_, size := utf8.DecodeLastRuneInString(query)
-				model.surface.SetQuery(query[:len(query)-size])
+				model.Surface.SetQuery(query[:len(query)-size])
 			}
 			return nil, false, nil
 		default:
 			if msg.Text != "" {
-				model.surface.SetQuery(model.surface.Query().Raw + msg.Text)
+				model.Surface.SetQuery(model.Surface.Query().Raw + msg.Text)
 			}
 			return nil, false, nil
 		}
@@ -326,19 +326,19 @@ func (model *ContextActionSheetModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, b
 	case "esc":
 		return nil, true, ContextActionSheetClosedMsg{}
 	case "/":
-		model.searching = true
+		model.Searching = true
 	case "up", "k", "ctrl+p":
-		model.surface.MoveCursor(-1)
+		model.Surface.MoveCursor(-1)
 	case "down", "j", "ctrl+n":
-		model.surface.MoveCursor(1)
+		model.Surface.MoveCursor(1)
 	case "home", "g":
-		model.surface.MoveCursorToStart()
+		model.Surface.MoveCursorToStart()
 	case "end", "G":
-		model.surface.MoveCursorToEnd()
+		model.Surface.MoveCursorToEnd()
 	case "pgup":
-		model.surface.PageCursor(-1)
+		model.Surface.PageCursor(-1)
 	case "pgdown":
-		model.surface.PageCursor(1)
+		model.Surface.PageCursor(1)
 	case "enter":
 		return model.activateCursor()
 	}
@@ -346,17 +346,17 @@ func (model *ContextActionSheetModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, b
 }
 
 func (model *ContextActionSheetModel) activateCursor() (tea.Cmd, bool, tea.Msg) {
-	item, ok := model.surface.CurrentItem()
+	item, ok := model.Surface.CurrentItem()
 	if !ok {
 		return nil, false, nil
 	}
 	if !item.Enabled() {
-		model.notice = item.DisabledReason
+		model.Notice = item.DisabledReason
 		return nil, false, status.StatusMsg(item.DisabledReason)
 	}
 	descriptor, ok := item.Data.(operation.OperationDescriptor)
 	if !ok {
-		model.notice = "Action is unavailable"
+		model.Notice = "Action is unavailable"
 		return nil, false, status.StatusMsg("Action is unavailable")
 	}
 	request := model.request(descriptor.ID)
@@ -366,20 +366,20 @@ func (model *ContextActionSheetModel) activateCursor() (tea.Cmd, bool, tea.Msg) 
 	}
 }
 
-func (model *ContextActionSheetModel) render(width int) string {
-	if model == nil || model.surface == nil {
+func (model *ContextActionSheetModel) Render(width int) string {
+	if model == nil || model.Surface == nil {
 		return ""
 	}
 	innerWidth := min(max(width*3/5, 48), max(width-6, 24))
-	listHeight := min(max(len(model.surface.Rows()), 7), 16)
-	query := model.surface.Query().Raw
+	listHeight := min(max(len(model.Surface.Rows()), 7), 16)
+	query := model.Surface.Query().Raw
 	search := ""
-	if model.config.ImmediateFilter {
+	if model.Config.ImmediateFilter {
 		search = "Search: "
 	}
-	if model.searching || query != "" {
+	if model.Searching || query != "" {
 		cursor := ""
-		if model.searching {
+		if model.Searching {
 			cursor = "▏"
 		}
 		search = "Search: " + query + cursor
@@ -388,41 +388,41 @@ func (model *ContextActionSheetModel) render(width int) string {
 	if search != "" {
 		header = theme.MutedStyle.Render(search)
 	}
-	if model.notice != "" {
-		notice := theme.ErrorStatusStyle.Render(textfit.TruncateToVisualWidth(model.notice, max(innerWidth-4, 12)))
+	if model.Notice != "" {
+		notice := theme.ErrorStatusStyle.Render(textfit.TruncateToVisualWidth(model.Notice, max(innerWidth-4, 12)))
 		if header == "" {
 			header = notice
 		} else {
 			header = notice + "\n" + header
 		}
 	}
-	content := RenderCompactListSurface(model.surface, innerWidth-4, listHeight)
+	content := RenderCompactListSurface(model.Surface, innerWidth-4, listHeight)
 	if header != "" {
 		content = header + "\n\n" + content
 	}
 
-	titleText := model.config.Title
-	if model.config.Bulk {
-		titleText = fmt.Sprintf("%s · %d selected", titleText, model.config.Targets)
+	titleText := model.Config.Title
+	if model.Config.Bulk {
+		titleText = fmt.Sprintf("%s · %d selected", titleText, model.Config.Targets)
 	}
-	if model.config.Subtitle != "" {
-		titleText += ": " + textfit.TruncateToVisualWidth(model.config.Subtitle, max(innerWidth-20, 12))
+	if model.Config.Subtitle != "" {
+		titleText += ": " + textfit.TruncateToVisualWidth(model.Config.Subtitle, max(innerWidth-20, 12))
 	}
 	title := lipgloss.NewStyle().Foreground(theme.ColorPrimary).Bold(true).Render(titleText)
-	guidance, _ := model.guidanceSpec()
+	guidance, _ := model.GuidanceSpec()
 	footer := chrome.RenderGuidanceText(guidance, max(innerWidth-4, 1))
 	return chrome.RenderOverlayBox(content, innerWidth, title, footer, lipgloss.NewStyle().Foreground(theme.ColorPrimary))
 }
 
-func (model *ContextActionSheetModel) guidanceSpec() (chrome.GuidanceSpec, bool) {
-	if model == nil || model.surface == nil {
+func (model *ContextActionSheetModel) GuidanceSpec() (chrome.GuidanceSpec, bool) {
+	if model == nil || model.Surface == nil {
 		return chrome.GuidanceSpec{}, false
 	}
-	query := model.surface.Query().Raw
-	searching := model.searching
-	immediate := model.config.ImmediateFilter
+	query := model.Surface.Query().Raw
+	searching := model.Searching
+	immediate := model.Config.ImmediateFilter
 	hasSelection := func() bool {
-		_, ok := model.surface.CurrentItem()
+		_, ok := model.Surface.CurrentItem()
 		return ok
 	}
 	browsing := func() bool { return !searching || immediate }
@@ -458,8 +458,8 @@ func (model *ContextActionSheetModel) guidanceSpec() (chrome.GuidanceSpec, bool)
 		keymap.Bind("esc", "Unwind action sheet", "Navigation",
 			keymap.WithFooter(2, escapeLabel, true), keymap.WithFooterKey("Esc")),
 	}}
-	state := model.surface.GuidanceState(searching && !immediate)
-	spec, ok := listSurfaceGuidanceSpec(state, km, nil)
+	state := model.Surface.GuidanceState(searching && !immediate)
+	spec, ok := ListSurfaceGuidanceSpec(state, km, nil)
 	if immediate && searching {
 		spec.Rows = 2
 	}

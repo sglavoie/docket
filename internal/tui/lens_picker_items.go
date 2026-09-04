@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/fuzzy"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -19,9 +20,9 @@ import (
 // filtered visible list: the digit is printed on the row, so numbering the
 // unfiltered population would put digits on screen that apply lenses nobody can
 // see. Unfiltered numbering stays one Esc away.
-func (model *NamedLensPickerModel) items() []ListItem {
+func (model *NamedLensPickerModel) items() []listsurface.ListItem {
 	actions := lensPickerActionRows(model.snapshot)
-	items := make([]ListItem, 0, len(model.sorted)+len(actions))
+	items := make([]listsurface.ListItem, 0, len(model.sorted)+len(actions))
 	items = append(items, actions...)
 	listed := 0
 	model.ordinals = model.ordinals[:0]
@@ -58,8 +59,8 @@ func lensPickerOrdinalMarker(ordinal int) string {
 // Both carry the blank ordinal slot: it shares the one text column with the
 // numbered rows below, and the empty slot is the statement that an act nobody
 // repeats is not worth a digit.
-func lensPickerActionRows(snapshot NamedLensPickerSnapshot) []ListItem {
-	return []ListItem{
+func lensPickerActionRows(snapshot NamedLensPickerSnapshot) []listsurface.ListItem {
+	return []listsurface.ListItem{
 		{
 			ID:            lensPickerCreateItemID,
 			PrimaryText:   lensPickerCreateLabel,
@@ -85,7 +86,7 @@ func namedLensPickerItem(
 	lens config.NamedLens,
 	snapshot NamedLensPickerSnapshot,
 	ordinal int,
-) ListItem {
+) listsurface.ListItem {
 	marker := lensPickerOrdinalMarker(ordinal)
 	if lens.ID == snapshot.ActiveID {
 		label := "●"
@@ -94,7 +95,7 @@ func namedLensPickerItem(
 		}
 		marker += theme.MutedStyle.Render(label) + " "
 	}
-	item := ListItem{
+	item := listsurface.ListItem{
 		ID:            lensPickerItemID(lens.ID),
 		PrimaryText:   lens.Name,
 		PrimaryMarker: marker,
@@ -113,8 +114,8 @@ func namedLensPickerItem(
 	return item
 }
 
-func lensPickerItemID(id string) ListItemID {
-	return ListItemID(lensPickerLensPrefix + id)
+func lensPickerItemID(id string) listsurface.ListItemID {
+	return listsurface.ListItemID(lensPickerLensPrefix + id)
 }
 
 // namedLensMatchesQuery scores a saved lens against the picker's own query. The

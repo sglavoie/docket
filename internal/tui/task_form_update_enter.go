@@ -3,6 +3,7 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -81,7 +82,7 @@ func (m *TaskFormModel) handleBasicsEnter() tea.Cmd {
 		tags := append([]string(nil), m.draft.tags...)
 		project := m.project
 		return func() tea.Msg {
-			return ShowTagSelectorMsg{
+			return listsurface.ShowTagSelectorMsg{
 				Task:        nil,
 				Project:     project,
 				CurrentTags: tags,

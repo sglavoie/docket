@@ -66,7 +66,7 @@ func TestTaskLineEditCrossProjectRelocationRefreshesOutlinerSnapshot(t *testing.
 	sourceIdentity := taskref.TaskIdentity{ProjectID: source.ID, TaskID: moving.ID}
 	for index, row := range outliner.rows {
 		if row.isTaskRow() && row.ProjectID == source.ID && row.task.ID == moving.ID {
-			outliner.cursor = index
+			outliner.Cursor = index
 			break
 		}
 	}

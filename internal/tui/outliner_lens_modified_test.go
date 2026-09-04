@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -30,7 +31,7 @@ func TestSwitchingLensesRetainsTheOriginalBaseline(t *testing.T) {
 		t.Fatalf("switch kept the previous narrowing query %q", outliner.lensQuery)
 	}
 
-	if !RunEscCascade(outliner.escSteps()) {
+	if !listsurface.RunEscCascade(outliner.escSteps()) {
 		t.Fatal("expected Esc to consume the lens")
 	}
 	if outliner.hasActiveLens() {
@@ -54,7 +55,7 @@ func TestApplyNamedLensFromAcceptedSearchRestoresThatSearch(t *testing.T) {
 		t.Fatal("the lens must replace the ordinary search projection")
 	}
 
-	if !RunEscCascade(outliner.escSteps()) {
+	if !listsurface.RunEscCascade(outliner.escSteps()) {
 		t.Fatal("expected Esc to consume the lens")
 	}
 	if !outliner.hasSearchProjection() {
@@ -68,7 +69,7 @@ func TestApplyNamedLensFromAcceptedSearchRestoresThatSearch(t *testing.T) {
 	}
 	// The search frame is whole again, so its own Esc still restores the ordinary
 	// projection underneath it.
-	if !RunEscCascade(outliner.escSteps()) {
+	if !listsurface.RunEscCascade(outliner.escSteps()) {
 		t.Fatal("expected Esc to consume the restored search projection")
 	}
 	if outliner.hasSearchProjection() {
@@ -88,10 +89,10 @@ func TestLensModifiedTracksOwnedAxesOnly(t *testing.T) {
 	}
 
 	// Navigation, folds, selection, and Peek are the view, not the lens.
-	outliner.cursor = 0
+	outliner.Cursor = 0
 	outliner.collapsedSections["some-section"] = true
 	outliner.peekMode = true
-	outliner.selectedTaskIdentities[taskref.TaskIdentity{ProjectID: "alpha", TaskID: "waiting"}] = true
+	outliner.Selected[taskref.TaskIdentity{ProjectID: "alpha", TaskID: "waiting"}] = true
 	if outliner.lensModified() {
 		t.Fatal("cursor, folds, selection, and Peek must not mark a lens modified")
 	}

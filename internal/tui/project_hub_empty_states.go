@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -18,9 +19,9 @@ func (m *ProjectHubModel) refreshProjectHubEmptyStates() {
 	m.surface.SetEmptyStates(m.projectHubEmptyState(), m.projectHubNoMatchState())
 }
 
-func (m *ProjectHubModel) projectHubEmptyState() ListEmptyState {
+func (m *ProjectHubModel) projectHubEmptyState() listsurface.ListEmptyState {
 	if m.mode == route.ProjectHubModePinned && m.pinnedActiveProjectCount() == 0 {
-		return ListEmptyState{
+		return listsurface.ListEmptyState{
 			Title:  "No active projects are pinned.",
 			Detail: "Press Esc to return to the Outliner; P opens the full Project Hub.",
 		}
@@ -28,16 +29,16 @@ func (m *ProjectHubModel) projectHubEmptyState() ListEmptyState {
 	switch m.taskFilter {
 	case projectHubTaskFilterWithOpenTasks:
 		if m.mode == route.ProjectHubModePinned {
-			return ListEmptyState{Title: "No pinned projects hold open tasks.", Detail: m.projectHubFilterAdvice()}
+			return listsurface.ListEmptyState{Title: "No pinned projects hold open tasks.", Detail: m.projectHubFilterAdvice()}
 		}
-		return ListEmptyState{Title: "No projects hold open tasks.", Detail: m.projectHubFilterAdvice()}
+		return listsurface.ListEmptyState{Title: "No projects hold open tasks.", Detail: m.projectHubFilterAdvice()}
 	case projectHubTaskFilterWithoutOpenTasks:
 		if m.mode == route.ProjectHubModePinned {
-			return ListEmptyState{Title: "Every pinned project holds open tasks.", Detail: m.projectHubFilterAdvice()}
+			return listsurface.ListEmptyState{Title: "Every pinned project holds open tasks.", Detail: m.projectHubFilterAdvice()}
 		}
-		return ListEmptyState{Title: "Every project holds open tasks.", Detail: m.projectHubFilterAdvice()}
+		return listsurface.ListEmptyState{Title: "Every project holds open tasks.", Detail: m.projectHubFilterAdvice()}
 	default:
-		return ListEmptyState{
+		return listsurface.ListEmptyState{
 			Title:  "No projects are available.",
 			Detail: "Press a to create a project.",
 		}
@@ -65,7 +66,7 @@ func (m *ProjectHubModel) projectHubNextFilterPhrase() string {
 	}
 }
 
-func (m *ProjectHubModel) projectHubNoMatchState() ListEmptyState {
+func (m *ProjectHubModel) projectHubNoMatchState() listsurface.ListEmptyState {
 	title := "No projects match this search."
 	browsePopulation := "every project"
 	if m.mode == route.ProjectHubModePinned {
@@ -76,7 +77,7 @@ func (m *ProjectHubModel) projectHubNoMatchState() ListEmptyState {
 	if m.taskFilter != projectHubTaskFilterAll {
 		detail = "Press Esc to clear the query, or Ctrl+T to show " + m.projectHubNextFilterPhrase() + "."
 	}
-	return ListEmptyState{
+	return listsurface.ListEmptyState{
 		Title:  title,
 		Detail: detail,
 	}

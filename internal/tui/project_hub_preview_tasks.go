@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -77,7 +78,7 @@ func (m *ProjectHubModel) renderProjectPreviewTasks(width, height int) []string 
 		return []string{theme.MutedStyle.Render(textfit.TruncateToVisualWidth("No tasks.", width))}
 	}
 
-	start, count, above, below := listPreviewScrollWindow(len(m.preview.rows), m.preview.offset, height)
+	start, count, above, below := listsurface.ListPreviewScrollWindow(len(m.preview.rows), m.preview.offset, height)
 	m.preview.offset = start
 	// A page is the row budget less both continuation rows, not the rows this
 	// frame happened to show. The visible count changes by one as continuations
@@ -87,7 +88,7 @@ func (m *ProjectHubModel) renderProjectPreviewTasks(width, height int) []string 
 	m.preview.pageSize = max(height-2, 1)
 	lines := make([]string, 0, height)
 	if above {
-		lines = append(lines, renderListContinuation("↑", start, width))
+		lines = append(lines, listsurface.RenderListContinuation("↑", start, width))
 	}
 	for index := start; index < start+count; index++ {
 		// rowWidth and width are the same pane column budget: the pane has no
@@ -100,7 +101,7 @@ func (m *ProjectHubModel) renderProjectPreviewTasks(width, height int) []string 
 		))
 	}
 	if below {
-		lines = append(lines, renderListContinuation("↓", len(m.preview.rows)-start-count, width))
+		lines = append(lines, listsurface.RenderListContinuation("↓", len(m.preview.rows)-start-count, width))
 	}
 	return lines
 }
@@ -194,7 +195,7 @@ func (m *ProjectHubModel) previewTasksScrollable() bool {
 	if m.surface == nil || m.actions != nil {
 		return false
 	}
-	if _, previewWidth := listSurfacePreviewGeometry(m.projectHubRenderConfig(0)); previewWidth <= 0 {
+	if _, previewWidth := listsurface.ListSurfacePreviewGeometry(m.projectHubRenderConfig(0)); previewWidth <= 0 {
 		return false
 	}
 	_, tasks, loaded := m.previewTaskSource()

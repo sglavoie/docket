@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -29,10 +30,10 @@ import (
 // lens_picker_keys.go, and the overlay chrome in lens_picker_render.go.
 
 const (
-	lensPickerItemPrefix                   = "lens-picker:"
-	lensPickerCreateItemID      ListItemID = lensPickerItemPrefix + "create"
-	lensPickerAddTemplateItemID ListItemID = lensPickerItemPrefix + "add-template"
-	lensPickerLensPrefix                   = lensPickerItemPrefix + "lens:"
+	lensPickerItemPrefix                               = "lens-picker:"
+	lensPickerCreateItemID      listsurface.ListItemID = lensPickerItemPrefix + "create"
+	lensPickerAddTemplateItemID listsurface.ListItemID = lensPickerItemPrefix + "add-template"
+	lensPickerLensPrefix                               = lensPickerItemPrefix + "lens:"
 )
 
 // lensPickerCreateLabel and lensPickerAddTemplateLabel head every opening of the
@@ -102,7 +103,7 @@ type NamedLensPickerSnapshot struct {
 
 // NamedLensPickerModel is the searchable projection of the saved lenses.
 type NamedLensPickerModel struct {
-	surface  *ListSurfaceModel
+	surface  *listsurface.ListSurfaceModel
 	executor *operation.OperationExecutor
 	// view is frozen at construction: the picker floats over the route that
 	// opened it, and its own presence must not change the context it builds.
@@ -137,8 +138,8 @@ func NewNamedLensPickerModel(
 		view:     view,
 	}
 	model.adopt(snapshot)
-	surface, err := NewListSurfaceModel(model.items(), nil, ListSurfaceConfig{
-		SelectionMode: ListSelectionSingle,
+	surface, err := listsurface.NewListSurfaceModel(model.items(), nil, listsurface.ListSurfaceConfig{
+		SelectionMode: listsurface.ListSelectionSingle,
 	})
 	if err != nil {
 		return nil, err
@@ -219,7 +220,7 @@ func (model *NamedLensPickerModel) CurrentLens() (config.NamedLens, bool) {
 // cursorIs reports whether one stable row owns the cursor. Only the two
 // query-exempt action rows are ever asked, since a saved lens is identified by
 // its record through CurrentLens instead.
-func (model *NamedLensPickerModel) cursorIs(id ListItemID) bool {
+func (model *NamedLensPickerModel) cursorIs(id listsurface.ListItemID) bool {
 	if model == nil || model.surface == nil {
 		return false
 	}

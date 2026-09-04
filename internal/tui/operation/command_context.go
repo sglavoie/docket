@@ -191,3 +191,20 @@ type CommandContext struct {
 	// depending on renderer models or palette-specific messages.
 	ScopeProjectIDs []string
 }
+
+// CloneCommandContext deep-copies the slices a CommandContext carries, so a
+// surface that freezes a context keeps acting on the selection it was opened
+// with even after the live view mutates its own. It lives beside the type it
+// copies rather than with any one sheet, because every sheet that freezes a
+// context needs the same copy.
+func CloneCommandContext(context CommandContext) CommandContext {
+	context.Capabilities = CloneCapabilitySet(context.Capabilities)
+	context.Selection.Tasks = append([]taskref.TaskIdentity(nil), context.Selection.Tasks...)
+	context.Selection.Entities = append([]EntityContext(nil), context.Selection.Entities...)
+	context.Selection.EntityIdentities = append(
+		[]EntityIdentity(nil),
+		context.Selection.EntityIdentities...,
+	)
+	context.ScopeProjectIDs = append([]string(nil), context.ScopeProjectIDs...)
+	return context
+}

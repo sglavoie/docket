@@ -1,4 +1,4 @@
-package tui
+package listsurface
 
 import (
 	"fmt"
@@ -23,7 +23,7 @@ func ListSourceFromPickerItems[T PickerItem](items []T, showCounts bool) ListSou
 		primary := item.DisplayText()
 		marker := ""
 		if pinnable, ok := any(item).(PinnablePickerItem); ok && pinnable.IsPinned() {
-			marker = pinnedMarker()
+			marker = PinnedMarker()
 		}
 		secondary := ""
 		if showCounts {

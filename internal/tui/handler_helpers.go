@@ -107,13 +107,13 @@ func (m *AppModel) handleWithRefresh(popView, reload bool) tea.Cmd {
 	crossInstance := m.crossOutliner
 	crossReload := reload && crossInstance != nil
 	if crossReload {
-		crossSavedCursor = crossInstance.cursor
+		crossSavedCursor = crossInstance.Cursor
 		crossReloadCmd = m.requestCrossProjectOutlinerReload()
 	}
 	m.refreshAllViews()
 	m.refreshLoadedTaskWorkspace()
 	if crossReloadCmd != nil {
-		crossInstance.cursor = crossSavedCursor
+		crossInstance.Cursor = crossSavedCursor
 	}
 	if crossReloadCmd != nil {
 		return tea.Batch(popCmd, crossReloadCmd)

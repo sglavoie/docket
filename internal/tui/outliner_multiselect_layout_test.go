@@ -47,7 +47,7 @@ func TestOutlinerMultiSelectStatusFitsHeight(t *testing.T) {
 	const paneHeight = 18
 	m.SetSize(72, paneHeight)
 	m.rebuildRows()
-	m.multiSelectMode = true
+	m.MultiSelectMode = true
 	m.setStatus("Multi-select: Space=toggle, a=all, A=deselect, D=delete, v/Esc=exit")
 
 	// 39 mirrors the ~55% tree pane width the split-pane layout allots at 72

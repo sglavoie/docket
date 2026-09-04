@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -54,12 +55,12 @@ func (m *TaskAttachmentsModel) renderAddMode(b *strings.Builder) tea.View {
 }
 
 func (m *TaskAttachmentsModel) renderMessages(b *strings.Builder) {
-	if m.err != nil {
-		b.WriteString(theme.ValidationErrorStyle.Render(m.err.Error()))
+	if m.Err != nil {
+		b.WriteString(theme.ValidationErrorStyle.Render(m.Err.Error()))
 		b.WriteString("\n\n")
 	}
-	if m.statusMessage != "" {
-		b.WriteString(theme.MutedStyle.Render(m.statusMessage))
+	if m.StatusMessage != "" {
+		b.WriteString(theme.MutedStyle.Render(m.StatusMessage))
 		b.WriteString("\n\n")
 	}
 }
@@ -75,7 +76,7 @@ func (m *TaskAttachmentsModel) renderAttachmentsList(b *strings.Builder, availab
 	if maxVisible == 0 {
 		return
 	}
-	scrollOffset := chrome.CalcScrollOffset(m.cursor, maxVisible)
+	scrollOffset := chrome.CalcScrollOffset(m.Cursor, maxVisible)
 
 	for i := scrollOffset; i < len(m.task.Attachments) && i < scrollOffset+maxVisible; i++ {
 		b.WriteString(m.renderAttachmentEntry(i, m.task.Attachments[i]))
@@ -94,7 +95,7 @@ func (m *TaskAttachmentsModel) renderAttachmentEntry(index int, att models.Attac
 	var entry strings.Builder
 	entry.WriteString("  ")
 
-	if index == m.cursor {
+	if index == m.Cursor {
 		entry.WriteString(theme.BoldStyle.Render(fmt.Sprintf("[%d] ", index)))
 		entry.WriteString(theme.FieldLabelFocusedStyle.Render(m.attachmentTypeLabel(att)))
 	} else {
@@ -133,7 +134,7 @@ func (m *TaskAttachmentsModel) renderAttachmentEntry(index int, att models.Attac
 }
 
 func (m *TaskAttachmentsModel) attachmentTypeLabel(att models.Attachment) string {
-	if _, ok := gitHubIssueAttachmentRef(att); ok {
+	if _, ok := listsurface.GitHubIssueAttachmentRef(att); ok {
 		return "GITHUB ISSUE"
 	}
 	if att.IsURL {
@@ -146,7 +147,7 @@ func (m *TaskAttachmentsModel) attachmentTypeLabel(att models.Attachment) string
 }
 
 func (m *TaskAttachmentsModel) attachmentDisplayName(att models.Attachment) string {
-	return attachmentDisplayName(att)
+	return listsurface.AttachmentDisplayName(att)
 }
 
 func (m *TaskAttachmentsModel) attachmentMeta(att models.Attachment) string {

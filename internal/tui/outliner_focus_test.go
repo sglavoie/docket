@@ -87,8 +87,8 @@ func TestCrossProjectFocusShowsDescendantsAndRestoresNestedViewport(t *testing.T
 	if !out.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) {
 		t.Fatal("root row is unavailable")
 	}
-	rootCursor := out.cursor
-	out.viewScrollOffset = 4
+	rootCursor := out.Cursor
+	out.ViewScrollOffset = 4
 	if !out.focusSubtreeAtCursor() {
 		t.Fatal("root did not enter Focus")
 	}
@@ -108,8 +108,8 @@ func TestCrossProjectFocusShowsDescendantsAndRestoresNestedViewport(t *testing.T
 	if !out.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: child.ID}) {
 		t.Fatal("child row is unavailable inside root Focus")
 	}
-	childCursor := out.cursor
-	out.viewScrollOffset = 2
+	childCursor := out.Cursor
+	out.ViewScrollOffset = 2
 	if !out.focusSubtreeAtCursor() {
 		t.Fatal("child did not enter nested Focus")
 	}
@@ -121,13 +121,13 @@ func TestCrossProjectFocusShowsDescendantsAndRestoresNestedViewport(t *testing.T
 		t.Fatalf("nested Focus context = %q", got)
 	}
 
-	if !out.popFocusLevel() || out.cursor != childCursor || out.viewScrollOffset != 2 ||
+	if !out.popFocusLevel() || out.Cursor != childCursor || out.ViewScrollOffset != 2 ||
 		out.CurrentTaskIdentity() != (taskref.TaskIdentity{ProjectID: project.ID, TaskID: child.ID}) {
-		t.Fatalf("first restore = cursor %d scroll %d task %+v", out.cursor, out.viewScrollOffset, out.CurrentTaskIdentity())
+		t.Fatalf("first restore = cursor %d scroll %d task %+v", out.Cursor, out.ViewScrollOffset, out.CurrentTaskIdentity())
 	}
-	if !out.popFocusLevel() || out.cursor != rootCursor || out.viewScrollOffset != 4 ||
+	if !out.popFocusLevel() || out.Cursor != rootCursor || out.ViewScrollOffset != 4 ||
 		out.CurrentTaskIdentity() != (taskref.TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) {
-		t.Fatalf("root restore = cursor %d scroll %d task %+v", out.cursor, out.viewScrollOffset, out.CurrentTaskIdentity())
+		t.Fatalf("root restore = cursor %d scroll %d task %+v", out.Cursor, out.ViewScrollOffset, out.CurrentTaskIdentity())
 	}
 }
 

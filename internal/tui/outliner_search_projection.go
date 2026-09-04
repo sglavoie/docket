@@ -222,12 +222,12 @@ func (m *OutlinerModel) landOnSearchResult(identity taskref.TaskIdentity) bool {
 	}
 	// The navigation kernels report a hidden target themselves, and that sentence
 	// would outlive a landing the forced mode went on to make.
-	m.clearStatus()
+	m.ClearStatus()
 	return true
 }
 
 func (m *OutlinerModel) restoreSearchCursor(anchor modeCursorAnchor) {
-	m.viewScrollOffset = anchor.scrollOffset
+	m.ViewScrollOffset = anchor.scrollOffset
 	if anchor.hasTask {
 		for index, row := range m.rows {
 			if !row.isTaskRow() || row.task == nil || row.task.ID != anchor.identity.TaskID {
@@ -236,13 +236,13 @@ func (m *OutlinerModel) restoreSearchCursor(anchor modeCursorAnchor) {
 			if m.project == nil && row.ProjectID != anchor.identity.ProjectID {
 				continue
 			}
-			m.cursor = index
+			m.Cursor = index
 			return
 		}
 		m.moveCursorToNearestTask(anchor.prevCursor)
 		return
 	}
-	m.cursor = anchor.prevCursor
+	m.Cursor = anchor.prevCursor
 	m.clampCursor()
 }
 

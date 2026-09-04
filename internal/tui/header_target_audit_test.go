@@ -289,7 +289,7 @@ func TestHeaderTargetKeyPressesReachTheRejection(t *testing.T) {
 			if outliner == nil {
 				t.Fatal("fixture app has no Outliner")
 			}
-			outliner.cursor = headerTargetProjectHeaderRow(t, outliner)
+			outliner.Cursor = headerTargetProjectHeaderRow(t, outliner)
 
 			var last tea.Cmd
 			for _, name := range sequence {
@@ -351,7 +351,7 @@ func headerTargetCursorContext(t *testing.T) operation.CommandContext {
 		if !row.IsProjectHeader {
 			continue
 		}
-		outliner.cursor = index
+		outliner.Cursor = index
 		ctx := app.operationCommandContext()
 		ctx.View = presentation.ViewCrossProjectOutliner
 		return ctx

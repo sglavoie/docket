@@ -1,4 +1,4 @@
-package tui
+package listsurface
 
 import (
 	"fmt"
@@ -44,7 +44,7 @@ type PickerConfig struct {
 type ListSurfaceAdapter[T PickerItem] struct {
 	BaseSearchableView
 	Config  PickerConfig
-	surface *ListSurfaceModel
+	Surface *ListSurfaceModel
 }
 
 func NewListSurfaceAdapter[T PickerItem](items []T, config PickerConfig) *ListSurfaceAdapter[T] {
@@ -60,30 +60,30 @@ func NewListSurfaceAdapter[T PickerItem](items []T, config PickerConfig) *ListSu
 	if err != nil {
 		panic(fmt.Sprintf("invalid list adapter source: %v", err))
 	}
-	adapter := &ListSurfaceAdapter[T]{Config: config, surface: surface}
+	adapter := &ListSurfaceAdapter[T]{Config: config, Surface: surface}
 	adapter.InitSearchInput("Type to filter...", 50, 30)
 	return adapter
 }
 
 func (adapter *ListSurfaceAdapter[T]) SetSize(width, height int) {
 	adapter.BaseSearchableView.SetSize(width, height)
-	adapter.surface.SetSize(width, height)
+	adapter.Surface.SetSize(width, height)
 }
 
 func (adapter *ListSurfaceAdapter[T]) Filter(query string) {
-	adapter.surface.SetQuery(query)
+	adapter.Surface.SetQuery(query)
 }
 
 func (adapter *ListSurfaceAdapter[T]) ReplaceItems(items []T) error {
-	return adapter.surface.SetItems(ListSourceFromPickerItems(items, adapter.Config.ShowCounts).Items)
+	return adapter.Surface.SetItems(ListSourceFromPickerItems(items, adapter.Config.ShowCounts).Items)
 }
 
 func (adapter *ListSurfaceAdapter[T]) SourceItems() []T {
-	return pickerPayloads[T](adapter.surface.Items())
+	return pickerPayloads[T](adapter.Surface.Items())
 }
 
 func (adapter *ListSurfaceAdapter[T]) FilteredItems() []T {
-	matches := adapter.surface.Matches()
+	matches := adapter.Surface.Matches()
 	items := make([]T, 0, len(matches))
 	for _, match := range matches {
 		if item, ok := match.Item.Data.(T); ok {
@@ -104,7 +104,7 @@ func pickerPayloads[T PickerItem](items []ListItem) []T {
 }
 
 func (adapter *ListSurfaceAdapter[T]) CursorIndex() int {
-	return adapter.surface.Cursor()
+	return adapter.Surface.Cursor()
 }
 
 func (adapter *ListSurfaceAdapter[T]) SetCursorIndex(index int) {
@@ -115,12 +115,12 @@ func (adapter *ListSurfaceAdapter[T]) SetCursorIndex(index int) {
 }
 
 func (adapter *ListSurfaceAdapter[T]) SelectedCount() int {
-	return len(adapter.surface.SelectedIDs())
+	return len(adapter.Surface.SelectedIDs())
 }
 
 func (adapter *ListSurfaceAdapter[T]) SelectionMap() map[string]bool {
 	selected := make(map[string]bool)
-	for _, id := range adapter.surface.SelectedIDs() {
+	for _, id := range adapter.Surface.SelectedIDs() {
 		selected[string(id)] = true
 	}
 	return selected
@@ -137,21 +137,21 @@ func (adapter *ListSurfaceAdapter[T]) HandleKeyMsg(msg tea.KeyPressMsg) (bool, t
 
 	switch msg.String() {
 	case "j", "down":
-		adapter.surface.MoveCursor(1)
+		adapter.Surface.MoveCursor(1)
 		return true, nil
 	case "k", "up":
-		adapter.surface.MoveCursor(-1)
+		adapter.Surface.MoveCursor(-1)
 		return true, nil
 	case "/":
 		return true, adapter.ActivateSearch()
 	case "space":
 		if adapter.Config.MultiSelect {
-			_, _ = adapter.surface.ToggleCurrentSelection()
+			_, _ = adapter.Surface.ToggleCurrentSelection()
 			return true, nil
 		}
 	case "c":
 		if adapter.Config.MultiSelect {
-			adapter.surface.ClearSelection()
+			adapter.Surface.ClearSelection()
 			return true, nil
 		}
 	}
@@ -160,7 +160,7 @@ func (adapter *ListSurfaceAdapter[T]) HandleKeyMsg(msg tea.KeyPressMsg) (bool, t
 
 func (adapter *ListSurfaceAdapter[T]) SelectedItem() T {
 	var zero T
-	item, ok := adapter.surface.CurrentItem()
+	item, ok := adapter.Surface.CurrentItem()
 	if !ok {
 		return zero
 	}
@@ -172,11 +172,11 @@ func (adapter *ListSurfaceAdapter[T]) SelectedItem() T {
 }
 
 func (adapter *ListSurfaceAdapter[T]) SelectedItems() []T {
-	return pickerPayloads[T](adapter.surface.SelectedItems())
+	return pickerPayloads[T](adapter.Surface.SelectedItems())
 }
 
 func (adapter *ListSurfaceAdapter[T]) SelectedIDs() []string {
-	ids := adapter.surface.SelectedIDs()
+	ids := adapter.Surface.SelectedIDs()
 	result := make([]string, 0, len(ids))
 	for _, id := range ids {
 		result = append(result, string(id))
@@ -185,11 +185,11 @@ func (adapter *ListSurfaceAdapter[T]) SelectedIDs() []string {
 }
 
 func (adapter *ListSurfaceAdapter[T]) IsSelected(item T) bool {
-	return adapter.surface.IsSelected(pickerItemListID(item))
+	return adapter.Surface.IsSelected(pickerItemListID(item))
 }
 
 func (adapter *ListSurfaceAdapter[T]) PreSelectByID(id string) {
-	ids := adapter.surface.SelectedIDs()
+	ids := adapter.Surface.SelectedIDs()
 	target := ListItemID(id)
 	for _, selected := range ids {
 		if selected == target {
@@ -197,15 +197,15 @@ func (adapter *ListSurfaceAdapter[T]) PreSelectByID(id string) {
 		}
 	}
 	ids = append(ids, target)
-	_ = adapter.surface.SetSelectedIDs(ids)
+	_ = adapter.Surface.SetSelectedIDs(ids)
 }
 
 func (adapter *ListSurfaceAdapter[T]) SetCursorToID(id string) {
 	if id == "" {
-		adapter.surface.SetCursorToID("picker:none")
+		adapter.Surface.SetCursorToID("picker:none")
 		return
 	}
-	adapter.surface.SetCursorToID(ListItemID(id))
+	adapter.Surface.SetCursorToID(ListItemID(id))
 }
 
 func (adapter *ListSurfaceAdapter[T]) RenderList(maxVisible int) string {
@@ -221,7 +221,7 @@ func (adapter *ListSurfaceAdapter[T]) RenderList(maxVisible int) string {
 		Height:   maxVisible,
 		Layout:   ListSurfaceLayoutCompact,
 		HideHelp: true,
-	}).Render(adapter.surface)
+	}).Render(adapter.Surface)
 	return rendered + "\n"
 }
 
@@ -233,7 +233,7 @@ func (adapter *ListSurfaceAdapter[T]) RenderSearchBar() string {
 }
 
 func (adapter *ListSurfaceAdapter[T]) guidanceSpec(extraHints ...chrome.GuidanceHint) (chrome.GuidanceSpec, bool) {
-	if adapter == nil || adapter.surface == nil {
+	if adapter == nil || adapter.Surface == nil {
 		return chrome.GuidanceSpec{}, false
 	}
 	searching := adapter.IsSearchMode()
@@ -272,14 +272,14 @@ func (adapter *ListSurfaceAdapter[T]) guidanceSpec(extraHints ...chrome.Guidance
 		keymap.Bind("esc", "Unwind picker", "Navigation",
 			keymap.WithFooter(2, escapeLabel, true), keymap.WithFooterKey("Esc")),
 	}}
-	return listSurfaceGuidanceSpec(adapter.surface.GuidanceState(searching), km, extraHints)
+	return ListSurfaceGuidanceSpec(adapter.Surface.GuidanceState(searching), km, extraHints)
 }
 
 func (adapter *ListSurfaceAdapter[T]) alwaysSearchGuidanceSpec(
 	selectLabel string,
 	extraHints ...chrome.GuidanceHint,
 ) (chrome.GuidanceSpec, bool) {
-	if adapter == nil || adapter.surface == nil {
+	if adapter == nil || adapter.Surface == nil {
 		return chrome.GuidanceSpec{}, false
 	}
 	count := len(adapter.FilteredItems())
@@ -297,11 +297,11 @@ func (adapter *ListSurfaceAdapter[T]) alwaysSearchGuidanceSpec(
 		keymap.Bind("esc", "Unwind picker", "Navigation",
 			keymap.WithFooter(2, escapeLabel, true), keymap.WithFooterKey("Esc")),
 	}}
-	spec, ok := listSurfaceGuidanceSpec(adapter.surface.GuidanceState(true), km, extraHints)
+	spec, ok := ListSurfaceGuidanceSpec(adapter.Surface.GuidanceState(true), km, extraHints)
 	if !ok {
 		return chrome.GuidanceSpec{}, false
 	}
-	spec.Supplemental = fmt.Sprintf("%d %s", count, pluralize(count, "item", "items"))
+	spec.Supplemental = fmt.Sprintf("%d %s", count, Pluralize(count, "item", "items"))
 	return spec, true
 }
 
@@ -337,7 +337,7 @@ func (adapter *ListSurfaceAdapter[T]) RenderInBox(titleContent, headerContent st
 	return content.String()
 }
 
-func pluralize(count int, singular, plural string) string {
+func Pluralize(count int, singular, plural string) string {
 	if count == 1 {
 		return singular
 	}

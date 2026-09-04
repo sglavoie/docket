@@ -1,4 +1,4 @@
-package tui
+package listsurface
 
 import (
 	"fmt"
@@ -138,18 +138,18 @@ func listSurfaceRenderLayout(
 	if !ok {
 		return ListSurfaceLayoutCompact, ListPreview{}
 	}
-	if _, previewWidth := listSurfacePreviewGeometry(config); previewWidth <= 0 {
+	if _, previewWidth := ListSurfacePreviewGeometry(config); previewWidth <= 0 {
 		return ListSurfaceLayoutCompact, ListPreview{}
 	}
 	return ListSurfaceLayoutWide, preview
 }
 
-// listSurfacePreviewGeometry is the one copy of the two-pane split. A preview
+// ListSurfacePreviewGeometry is the one copy of the two-pane split. A preview
 // width of zero means the terminal cannot satisfy both panes' minimums and the
 // layout falls back to the list alone, so a caller deciding whether to advertise
 // a key that only acts inside the preview asks this rather than re-deriving the
 // 55%/gap formula and drifting from what the renderer draws.
-func listSurfacePreviewGeometry(config ListSurfaceRenderConfig) (int, int) {
+func ListSurfacePreviewGeometry(config ListSurfaceRenderConfig) (int, int) {
 	config = normalizeListSurfaceRenderConfig(config, nil)
 	required := max(
 		config.WideMinWidth,
@@ -187,12 +187,12 @@ func renderWideListSurface(
 	config ListSurfaceRenderConfig,
 	preview ListPreview,
 ) string {
-	listWidth, previewWidth := listSurfacePreviewGeometry(config)
+	listWidth, previewWidth := ListSurfacePreviewGeometry(config)
 
 	showContinuations := sizeListSurfaceViewport(model, listWidth, config.Height)
 	listPane := renderListSurfacePane(model, listWidth, showContinuations)
-	previewPane := renderListSurfacePreview(preview, previewWidth, config.Height, config.PreviewBody)
-	content := joinListSurfacePanes(listPane, previewPane, listWidth, previewWidth)
+	previewPane := RenderListSurfacePreview(preview, previewWidth, config.Height, config.PreviewBody)
+	content := JoinListSurfacePanes(listPane, previewPane, listWidth, previewWidth)
 	if !config.HideHelp {
 		content = appendListSurfaceHelp(content, listSurfaceHelp(model, config.HelpText), config.Width)
 	}
@@ -238,14 +238,14 @@ func renderListSurfacePane(model *ListSurfaceModel, width int, showContinuations
 	viewport := model.Viewport()
 	lines := make([]string, 0, len(rows)+2)
 	if showContinuations && viewport.CanScrollUp {
-		lines = append(lines, renderListContinuation("↑", viewport.Offset, width))
+		lines = append(lines, RenderListContinuation("↑", viewport.Offset, width))
 	}
 	for _, row := range rows {
-		lines = append(lines, renderListSurfaceRow(row, model.Config().SelectionMode, width))
+		lines = append(lines, RenderListSurfaceRow(row, model.Config().SelectionMode, width))
 	}
 	if showContinuations && viewport.CanScrollDown {
 		remaining := max(viewport.TotalRows-viewport.Offset-len(rows), 0)
-		lines = append(lines, renderListContinuation("↓", remaining, width))
+		lines = append(lines, RenderListContinuation("↓", remaining, width))
 	}
 	return strings.Join(lines, "\n")
 }
@@ -269,7 +269,7 @@ func renderListSurfaceEmpty(empty ListEmptyContext, width int) string {
 	return strings.Join(lines, "\n")
 }
 
-func renderListSurfaceRow(
+func RenderListSurfaceRow(
 	row ListSurfaceRow,
 	selectionMode ListSelectionMode,
 	width int,
@@ -341,20 +341,20 @@ func renderListSurfaceRow(
 	return textfit.TruncateToVisualWidth(line, width)
 }
 
-func renderListContinuation(direction string, count, width int) string {
+func RenderListContinuation(direction string, count, width int) string {
 	label := fmt.Sprintf("%s %d more", direction, count)
 	return theme.MutedStyle.Render(textfit.TruncateToVisualWidth(label, width))
 }
 
-// listPreviewScrollWindow places the visible slice inside height rows, reserving
+// ListPreviewScrollWindow places the visible slice inside height rows, reserving
 // a row for each continuation it ends up needing. Reserving shrinks the
 // capacity, which can reveal a continuation that was not needed before, so it
 // converges instead of subtracting once — the same accounting
 // sizeListSurfaceViewport does, for the same reason. It sits beside
-// renderListContinuation because every pane that draws those rows must budget
+// RenderListContinuation because every pane that draws those rows must budget
 // for them identically; the Project Hub task pane and the Notes body pane are
 // both callers.
-func listPreviewScrollWindow(total, offset, height int) (start, count int, above, below bool) {
+func ListPreviewScrollWindow(total, offset, height int) (start, count int, above, below bool) {
 	if total <= 0 || height <= 0 {
 		return 0, 0, false, false
 	}
@@ -378,7 +378,7 @@ func listPreviewScrollWindow(total, offset, height int) (start, count int, above
 	}
 }
 
-func renderListSurfacePreview(
+func RenderListSurfacePreview(
 	preview ListPreview,
 	width, height int,
 	body func(width, height int) []string,
@@ -448,7 +448,7 @@ func renderListSurfacePreview(
 	return strings.Join(lines, "\n")
 }
 
-func joinListSurfacePanes(left, right string, leftWidth, rightWidth int) string {
+func JoinListSurfacePanes(left, right string, leftWidth, rightWidth int) string {
 	leftLines := strings.Split(left, "\n")
 	rightLines := strings.Split(right, "\n")
 	lineCount := max(len(leftLines), len(rightLines))

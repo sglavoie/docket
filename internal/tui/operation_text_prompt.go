@@ -49,7 +49,7 @@ func (model *OperationTextPromptModel) initCmd() tea.Cmd {
 	return textinput.Blink
 }
 
-func (model *OperationTextPromptModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
+func (model *OperationTextPromptModel) HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
 	if model == nil {
 		return nil, true, operation.OperationValueCanceledMsg{}
 	}
@@ -74,7 +74,7 @@ func (model *OperationTextPromptModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, 
 	}
 }
 
-func (model *OperationTextPromptModel) render(width int) string {
+func (model *OperationTextPromptModel) Render(width int) string {
 	if model == nil {
 		return ""
 	}

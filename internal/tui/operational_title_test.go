@@ -56,12 +56,12 @@ func TestOutlinerOperationalTitleScenariosFitSupportedWidths(t *testing.T) {
 			m.adoptFilterCarriers()
 		}, wantNarrow: []string{"Filters:"}, wantWide: []string{"Filters:", "!1+"}},
 		{name: "multiselect", configure: func(m *OutlinerModel) {
-			m.multiSelectMode = true
-			m.selectedTaskIdentities = map[taskref.TaskIdentity]bool{{ProjectID: project.ID, TaskID: task.ID}: true}
+			m.MultiSelectMode = true
+			m.Selected = map[taskref.TaskIdentity]bool{{ProjectID: project.ID, TaskID: task.ID}: true}
 		}, wantNarrow: []string{"MULTI-SELECT"}, wantWide: []string{"MULTI-SELECT: 1 selected"}},
 		{name: "combined interaction context", configure: func(m *OutlinerModel) {
-			m.multiSelectMode = true
-			m.selectedTaskIdentities = map[taskref.TaskIdentity]bool{{ProjectID: project.ID, TaskID: task.ID}: true}
+			m.MultiSelectMode = true
+			m.Selected = map[taskref.TaskIdentity]bool{{ProjectID: project.ID, TaskID: task.ID}: true}
 			m.SetSearchQuery("needle")
 			m.filter = query.NewFilterState()
 			m.filter.Priority = 1

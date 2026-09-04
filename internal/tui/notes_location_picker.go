@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
@@ -58,9 +59,9 @@ type notesLocationPickerResultMsg struct {
 // scope, note creation, and note moves. Purpose is retained in every result so
 // callers cannot accidentally apply a scope as a destination or vice versa.
 type notesLocationPicker struct {
-	*ListSurfaceAdapter[notesLocationPickerItem]
+	*listsurface.ListSurfaceAdapter[notesLocationPickerItem]
 	purpose      notesLocationPickerPurpose
-	alwaysSearch *alwaysSearchSinglePicker[notesLocationPickerItem]
+	alwaysSearch *listsurface.AlwaysSearchSinglePicker[notesLocationPickerItem]
 }
 
 func (picker *notesLocationPicker) contains(item notesLocationPickerItem) bool {
@@ -122,7 +123,7 @@ func newNotesLocationPicker(
 	if purpose == notesLocationPickerMove {
 		emptyMessage = "No move destinations available."
 	}
-	picker := NewListSurfaceAdapter(items, PickerConfig{
+	picker := listsurface.NewListSurfaceAdapter(items, listsurface.PickerConfig{
 		EmptyMessage:   emptyMessage,
 		NoMatchMessage: "No matching note locations.",
 		MultiSelect:    false,
@@ -132,9 +133,9 @@ func newNotesLocationPicker(
 		ListSurfaceAdapter: picker,
 		purpose:            purpose,
 	}
-	model.alwaysSearch = newAlwaysSearchSinglePicker(
+	model.alwaysSearch = listsurface.NewAlwaysSearchSinglePicker(
 		model.ListSurfaceAdapter,
-		alwaysSearchSinglePickerConfig[notesLocationPickerItem]{
+		listsurface.AlwaysSearchSinglePickerConfig[notesLocationPickerItem]{
 			CancelMsg: func() tea.Msg {
 				return notesLocationPickerResultMsg{Purpose: purpose}
 			},
@@ -182,7 +183,7 @@ func (picker *notesLocationPicker) Update(msg tea.Msg) (bool, tea.Cmd) {
 	// is present. That keeps the manager route intact and avoids requiring a
 	// second Esc that the shell could mistake for route navigation.
 	if key, ok := msg.(tea.KeyPressMsg); ok && key.String() == "esc" {
-		return true, picker.alwaysSearch.cancel()
+		return true, picker.alwaysSearch.Cancel()
 	}
 	return picker.alwaysSearch.Update(msg)
 }
@@ -206,12 +207,12 @@ func (picker *notesLocationPicker) View() tea.View {
 	guidance, _ := picker.guidanceSpec()
 	footer := chrome.RenderGuidance(guidance, width, picker.AccentColor())
 	contentHeight := chrome.FullscreenContentHeightForBlocks(height, header, footer)
-	content := NewListSurfaceRenderer(ListSurfaceRenderConfig{
+	content := listsurface.NewListSurfaceRenderer(listsurface.ListSurfaceRenderConfig{
 		Width:    width,
 		Height:   contentHeight,
-		Layout:   ListSurfaceLayoutCompact,
+		Layout:   listsurface.ListSurfaceLayoutCompact,
 		HideHelp: true,
-	}).Render(picker.surface)
+	}).Render(picker.Surface)
 	return tea.NewView(lipgloss.JoinVertical(
 		lipgloss.Left,
 		header,
@@ -239,11 +240,11 @@ func (picker *notesLocationPicker) guidanceSpec() (chrome.GuidanceSpec, bool) {
 		keymap.Bind("esc", "Cancel picker", "Navigation",
 			keymap.WithFooter(2, "cancel", true), keymap.WithFooterKey("Esc")),
 	}}
-	spec, ok := listSurfaceGuidanceSpec(picker.surface.GuidanceState(true), km, nil)
+	spec, ok := listsurface.ListSurfaceGuidanceSpec(picker.Surface.GuidanceState(true), km, nil)
 	if !ok {
 		return chrome.GuidanceSpec{}, false
 	}
-	spec.Supplemental = fmt.Sprintf("%d %s", count, pluralize(count, "location", "locations"))
+	spec.Supplemental = fmt.Sprintf("%d %s", count, listsurface.Pluralize(count, "location", "locations"))
 	return spec, true
 }
 

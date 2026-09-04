@@ -7,14 +7,15 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // TaskAttachmentsModel displays and manages attachments for a task.
 type TaskAttachmentsModel struct {
-	BaseView
-	InteractiveViewState
+	listsurface.BaseView
+	listsurface.InteractiveViewState
 	task    *models.Task
 	project *models.Project
 	// coordinator routes attachment mutations through the application layer
@@ -62,11 +63,11 @@ func (m *TaskAttachmentsModel) refreshAfterReload() bool {
 	if !m.resolveTask() {
 		return false
 	}
-	if m.cursor >= len(m.task.Attachments) {
-		m.cursor = len(m.task.Attachments) - 1
+	if m.Cursor >= len(m.task.Attachments) {
+		m.Cursor = len(m.task.Attachments) - 1
 	}
-	if m.cursor < 0 {
-		m.cursor = 0
+	if m.Cursor < 0 {
+		m.Cursor = 0
 	}
 	return true
 }

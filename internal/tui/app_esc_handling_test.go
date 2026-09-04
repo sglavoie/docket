@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/testutil"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
@@ -124,7 +125,7 @@ func TestParentSelectorEscClearsQueryBeforeClosing(t *testing.T) {
 	}
 
 	app := newTestAppModel()
-	selector := NewParentSelectorModel([]*models.Task{parentA, parentB}, nil, true, presentation.ViewCrossProjectOutliner)
+	selector := listsurface.NewParentSelectorModel([]*models.Task{parentA, parentB}, nil, true, presentation.ViewCrossProjectOutliner)
 	app.showView(presentation.ViewParentSelector, selector)
 	selector.Init()
 

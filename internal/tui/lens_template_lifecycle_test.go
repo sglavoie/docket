@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -152,7 +153,7 @@ func TestEveryBuiltinTemplateInstallsItsExactProjection(t *testing.T) {
 			}
 
 			// One Esc, whichever path the template took to get here.
-			if !RunEscCascade(out.escSteps()) {
+			if !listsurface.RunEscCascade(out.escSteps()) {
 				t.Fatal("expected Esc to consume the added lens")
 			}
 			if out.hasActiveLens() || out.primaryMode != chrome.ModeInbox {
@@ -208,7 +209,7 @@ func TestAddingTemplatesFromANormalViewKeepsOneRestorationPoint(t *testing.T) {
 		t.Fatalf("active lens = %q, want the last one added", out.activeLens.name)
 	}
 
-	if !RunEscCascade(out.escSteps()) {
+	if !listsurface.RunEscCascade(out.escSteps()) {
 		t.Fatal("expected Esc to consume the lens")
 	}
 	if out.hasActiveLens() {
@@ -249,7 +250,7 @@ func TestAddingATemplateFromInsideALensKeepsThePreLensBaseline(t *testing.T) {
 		t.Fatalf("the added template inherited the previous lens's query %q", out.lensQuery)
 	}
 
-	if !RunEscCascade(out.escSteps()) {
+	if !listsurface.RunEscCascade(out.escSteps()) {
 		t.Fatal("expected Esc to consume the lens")
 	}
 	if out.hasActiveLens() || out.primaryMode != chrome.ModeInbox {

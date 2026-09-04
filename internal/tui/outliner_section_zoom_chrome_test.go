@@ -47,8 +47,8 @@ func TestZoomEmptiedUnderAFilterKeepsTheSectionCause(t *testing.T) {
 	if !out.zoom.active() {
 		t.Fatal("the emptied zoom unwound itself instead of staying put")
 	}
-	if out.cursor != 0 {
-		t.Fatalf("clampCursor left the zero-row list at cursor %d", out.cursor)
+	if out.Cursor != 0 {
+		t.Fatalf("clampCursor left the zero-row list at cursor %d", out.Cursor)
 	}
 	if !query.HasActiveCommonFilters(&out.filter.CommonFilterState) {
 		t.Fatal("the fixture lost the filter this ordering is about")
@@ -80,7 +80,7 @@ func TestZoomedHeaderGuidanceOffersUnzoomInsteadOfDeadKeys(t *testing.T) {
 	out := app.crossOutliner
 	backlog := models.StateGroupBacklog.Label()
 
-	out.cursor = sectionHeaderIndex(t, out, backlog)
+	out.Cursor = sectionHeaderIndex(t, out, backlog)
 	spec, ok := out.ContextualGuidance()
 	if !ok {
 		t.Fatal("the unzoomed section header produced no guidance")
@@ -91,8 +91,8 @@ func TestZoomedHeaderGuidanceOffersUnzoomInsteadOfDeadKeys(t *testing.T) {
 	}
 
 	zoomIntoSection(t, out, backlog)
-	if !out.isZoomedSectionRow(out.rows[out.cursor]) {
-		t.Fatalf("cursor row %d is not the zoomed header", out.cursor)
+	if !out.isZoomedSectionRow(out.rows[out.Cursor]) {
+		t.Fatalf("cursor row %d is not the zoomed header", out.Cursor)
 	}
 	spec, ok = out.ContextualGuidance()
 	if !ok || spec.Rows != 1 {

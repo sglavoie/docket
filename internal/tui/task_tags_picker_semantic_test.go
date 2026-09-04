@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -70,7 +71,7 @@ func TestSemanticTaskTagExplainerWrapsCompleteTextAtNarrowWidths(t *testing.T) {
 
 func TestSemanticTagPickerReservesHeightForWrappedExplainer(t *testing.T) {
 	picker := newSemanticTagPickerForTest(t, []query.TagInfo{{Name: "urgent", TaskCount: 1}}, true)
-	rendered := picker.renderWithin(minTerminalWidth, minTerminalHeight)
+	rendered := picker.RenderWithin(minTerminalWidth, minTerminalHeight)
 	if got := lipgloss.Height(rendered); got > minTerminalHeight {
 		t.Fatalf("picker height = %d, want <= %d", got, minTerminalHeight)
 	}
@@ -141,8 +142,8 @@ func TestOperationTagPickerRoutesAMintedSemanticTagIntoTheSemanticSection(t *tes
 func TestSemanticTagPickerRowsWearTheTitleColorTheyApply(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
-		source ListSource
-		rows   map[ListCategoryID]int
+		source listsurface.ListSource
+		rows   map[listsurface.ListCategoryID]int
 	}{
 		{
 			name: "task tags picker",
@@ -151,7 +152,7 @@ func TestSemanticTagPickerRowsWearTheTitleColorTheyApply(t *testing.T) {
 				{Name: "platform", TaskCount: 1, ContextCount: 1},
 				{Name: "triage", TaskCount: 1},
 			}, true),
-			rows: map[ListCategoryID]int{
+			rows: map[listsurface.ListCategoryID]int{
 				taskTagSemanticCategory: len(models.SemanticTaskTags),
 				taskContextCategory:     1,
 				tagDescriptiveCategory:  2,
@@ -162,14 +163,14 @@ func TestSemanticTagPickerRowsWearTheTitleColorTheyApply(t *testing.T) {
 			source: (&AppModel{}).projectTagListSource(&models.Project{
 				Tags: []string{"infra", "ux"},
 			}),
-			rows: map[ListCategoryID]int{
+			rows: map[listsurface.ListCategoryID]int{
 				projectTagBehavioralCategory: len(models.BehavioralProjectTags),
 				tagDescriptiveCategory:       2,
 			},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			seen := make(map[ListCategoryID]int, len(tc.source.Categories))
+			seen := make(map[listsurface.ListCategoryID]int, len(tc.source.Categories))
 			for _, item := range tc.source.Items {
 				assertRowWearsTheColorItApplies(t, item)
 				seen[item.CategoryID]++
@@ -196,7 +197,7 @@ func TestSemanticTagPickerRowsWearTheTitleColorTheyApply(t *testing.T) {
 	// everything else into TAGS.
 	t.Run("minted rows", func(t *testing.T) {
 		picker := newSemanticTagPickerForTest(t, []query.TagInfo{{Name: "alpha", TaskCount: 1}}, false)
-		minted := map[ListItemID]bool{"tag:bug": true, "tag:brandnew": true}
+		minted := map[listsurface.ListItemID]bool{"tag:bug": true, "tag:brandnew": true}
 		for _, tag := range []string{"bug", "brandnew"} {
 			if err := picker.addOrSelectTag(tag); err != nil {
 				t.Fatalf("addOrSelectTag(%q): %v", tag, err)
@@ -218,7 +219,7 @@ func TestSemanticTagPickerRowsWearTheTitleColorTheyApply(t *testing.T) {
 // falls back to the chip its tag already wears on the task row. A section with
 // no case here answers false rather than a fallback color, which is what stops a
 // new one from shipping uncolored.
-func tagPickerRowColor(t *testing.T, item ListItem) (lipgloss.Style, bool) {
+func tagPickerRowColor(t *testing.T, item listsurface.ListItem) (lipgloss.Style, bool) {
 	t.Helper()
 	switch item.CategoryID {
 	case taskTagSemanticCategory:
@@ -242,7 +243,7 @@ func tagPickerRowColor(t *testing.T, item ListItem) (lipgloss.Style, bool) {
 // assertRowWearsTheColorItApplies ties the row to the style its effect resolves
 // through rather than to a hex constant, so the assertion means "the color this
 // row will appear" and a palette edit can never silently split the two.
-func assertRowWearsTheColorItApplies(t *testing.T, item ListItem) {
+func assertRowWearsTheColorItApplies(t *testing.T, item listsurface.ListItem) {
 	t.Helper()
 	want, ruled := tagPickerRowColor(t, item)
 	if !ruled {

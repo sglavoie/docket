@@ -77,7 +77,7 @@ func TestOpenMenuOmitsAnEntryTheCursorCannotRun(t *testing.T) {
 		t.Errorf("the applicable entry is not drawn:\n%s", screen)
 	}
 
-	outliner.multiSelectMode = true
+	outliner.MultiSelectMode = true
 
 	after := menuWithID(t, openMenuBarMenusForTest(t, outliner), menuIDTask)
 	if menuHasLabel(after, "External Editor") {

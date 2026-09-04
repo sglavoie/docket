@@ -105,7 +105,7 @@ func TestFocusParentRefusesATaskWithoutAParent(t *testing.T) {
 	rooted := false
 	for index, row := range out.rows {
 		if row.isTaskRow() && row.task != nil && row.task.ParentID == nil {
-			out.cursor = index
+			out.Cursor = index
 			rooted = true
 			break
 		}
@@ -134,11 +134,11 @@ func TestFocusLeafFeedbackAndSearchResultJump(t *testing.T) {
 	out.crossProjectRebuildRows()
 	for index, row := range out.rows {
 		if row.isTaskRow() && row.task != nil && len(row.task.Children) == 0 {
-			out.cursor = index
+			out.Cursor = index
 			break
 		}
 	}
-	leafTitle := out.rows[out.cursor].task.Title
+	leafTitle := out.rows[out.Cursor].task.Title
 
 	result := model.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:      operation.OperationCoreFocusSubtree,

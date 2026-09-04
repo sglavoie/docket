@@ -5,16 +5,17 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
 
-func (m *ProjectHubModel) rebuildProjectSurface(prefer ListItemID) {
+func (m *ProjectHubModel) rebuildProjectSurface(prefer listsurface.ListItemID) {
 	categories := m.projectHubCategories()
 	items := m.projectHubItems()
 	if m.surface == nil {
-		surface, err := NewListSurfaceModel(items, categories, ListSurfaceConfig{
-			SelectionMode: ListSelectionMulti,
+		surface, err := listsurface.NewListSurfaceModel(items, categories, listsurface.ListSurfaceConfig{
+			SelectionMode: listsurface.ListSelectionMulti,
 			EmptyState:    m.projectHubEmptyState(),
 			NoMatchState:  m.projectHubNoMatchState(),
 		})
@@ -39,11 +40,11 @@ func (m *ProjectHubModel) rebuildProjectSurface(prefer ListItemID) {
 
 // projectHubCategories orders the listing groups: the base task workspace
 // first, then the archived tail.
-func (m *ProjectHubModel) projectHubCategories() []ListCategory {
+func (m *ProjectHubModel) projectHubCategories() []listsurface.ListCategory {
 	if m.mode == route.ProjectHubModePinned {
-		return []ListCategory{{ID: projectHubCategoryActive, Label: "Pinned Projects"}}
+		return []listsurface.ListCategory{{ID: projectHubCategoryActive, Label: "Pinned Projects"}}
 	}
-	return []ListCategory{
+	return []listsurface.ListCategory{
 		{ID: projectHubCategoryActive, Label: "Active Projects"},
 		{ID: projectHubCategoryArchived, Label: "Archived Projects"},
 	}
@@ -57,7 +58,7 @@ func projectPinnedMarker(project *models.Project) string {
 	if project == nil || !project.Pinned {
 		return ""
 	}
-	return pinnedMarker()
+	return listsurface.PinnedMarker()
 }
 
 // projectHubAliases is the one alias vocabulary every Hub row is indexed under,
@@ -86,8 +87,8 @@ func projectHubAliases(project *models.Project, lifecycle string) []string {
 	return aliases
 }
 
-func (m *ProjectHubModel) projectHubItems() []ListItem {
-	items := make([]ListItem, 0, len(m.runtime.AllProjects()))
+func (m *ProjectHubModel) projectHubItems() []listsurface.ListItem {
+	items := make([]listsurface.ListItem, 0, len(m.runtime.AllProjects()))
 	for _, project := range m.runtime.AvailableProjects() {
 		if project == nil || (m.mode == route.ProjectHubModePinned && !project.Pinned) || m.projectHubFilterHides(project) {
 			continue
@@ -96,8 +97,8 @@ func (m *ProjectHubModel) projectHubItems() []ListItem {
 		if project.ID == m.focusedProjectID {
 			label += " (focused)"
 		}
-		items = append(items, ListItem{
-			ID:            ListItemID(projectHubItemPrefix + project.ID),
+		items = append(items, listsurface.ListItem{
+			ID:            listsurface.ListItemID(projectHubItemPrefix + project.ID),
 			CategoryID:    projectHubCategoryActive,
 			PrimaryText:   label,
 			PrimaryMarker: projectPinnedMarker(project),
@@ -117,8 +118,8 @@ func (m *ProjectHubModel) projectHubItems() []ListItem {
 		if project == nil || m.projectHubFilterHides(project) {
 			continue
 		}
-		items = append(items, ListItem{
-			ID:            ListItemID(projectHubArchivedItemPrefix + project.ID),
+		items = append(items, listsurface.ListItem{
+			ID:            listsurface.ListItemID(projectHubArchivedItemPrefix + project.ID),
 			CategoryID:    projectHubCategoryArchived,
 			PrimaryText:   project.Name,
 			PrimaryMarker: projectPinnedMarker(project),
@@ -158,7 +159,7 @@ func (m *ProjectHubModel) projectHubFilterHides(project *models.Project) bool {
 // to say what one muted line says, and `Pinned: false` said nothing at all: an
 // unpinned project is the ordinary case, so the marker appears only when it is
 // true.
-func (m *ProjectHubModel) projectPreview(project *models.Project, archived bool) ListPreview {
+func (m *ProjectHubModel) projectPreview(project *models.Project, archived bool) listsurface.ListPreview {
 	lifecycle := "Active"
 	if archived {
 		lifecycle = "Archived"
@@ -167,7 +168,7 @@ func (m *ProjectHubModel) projectPreview(project *models.Project, archived bool)
 	if project.Pinned {
 		meta += " · pinned"
 	}
-	return ListPreview{
+	return listsurface.ListPreview{
 		Title:   project.Name,
 		Summary: meta,
 		Body:    project.Description,

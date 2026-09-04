@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -41,7 +42,7 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 	var rowBuilder strings.Builder
 	for i := viewport.startIdx; i < viewport.endIdx; i++ {
 		row := m.rows[i]
-		selected := i == m.cursor
+		selected := i == m.Cursor
 
 		switch {
 		case row.IsSeparator:
@@ -71,14 +72,14 @@ func (m *OutlinerModel) renderOutlinerRows(viewport outlinerViewport) string {
 
 // cursorPaint decides how one row wears the cursor. One call answers both
 // whether a row is the cursor and whether it is mid-flash, so no renderer reads
-// m.cursorFlash on its own.
+// m.CursorFlash on its own.
 type cursorPaint struct {
 	marked bool
 	flash  bool
 }
 
 func (m *OutlinerModel) cursorPaintFor(selected bool) cursorPaint {
-	return cursorPaint{marked: selected, flash: selected && m.cursorFlash}
+	return cursorPaint{marked: selected, flash: selected && m.CursorFlash}
 }
 
 // bar renders the row's leftmost column, the whole of the resting mark. It is
@@ -156,6 +157,47 @@ func outlinerCursorRow(gutter, content string, rowWidth int, paint cursorPaint) 
 	return gutter + content + paint.trail().Render(strings.Repeat(" ", fill))
 }
 
+// sectionHeaderOpts configures the section header renderer below.
+type sectionHeaderOpts struct {
+	Name        string
+	Count       int
+	Collapsed   bool
+	AccentColor lipgloss.Style // applied to the name portion
+	Width       int            // if > 0, trailing ─ fill is added
+	Prefix      string         // inserted between indicator and name (e.g. "@ ")
+	Cursor      cursorPaint    // how this header wears the cursor; zero on an ordinary row
+}
+
+// renderSectionHeader renders a standardized collapsible section header:
+//
+//	▾ [prefix]Name (count) ─────
+//
+// It returns the leading fold gutter and the rest separately, so a caller
+// marking the cursor row can paint the gutter without repainting the name. This
+// is the one header whose first column is a glyph rather than a blank, so the
+// cursor bar reverses the fold arrow instead of a space.
+// AccentColor is applied to the name; indicator and count use MutedStyle.
+// When Width > 0 a trailing horizontal rule fills the remaining line width.
+// Callers are responsible for applying selection/zebra highlights on the
+// returned strings.
+func renderSectionHeader(opts sectionHeaderOpts) (gutter, content string) {
+	indicator := theme.IconExpanded
+	if opts.Collapsed {
+		indicator = theme.IconCollapsed
+	}
+	gutter = opts.Cursor.bar(theme.MutedStyle, indicator) + gutterSpace(opts.Cursor.gutterBg())
+	namePart := opts.AccentColor.Bold(true).Render(opts.Prefix + opts.Name)
+	content = namePart + " " + theme.MutedStyle.Render(fmt.Sprintf("(%d)", opts.Count))
+
+	if opts.Width > 0 {
+		visible := lipgloss.Width(gutter) + lipgloss.Width(content)
+		if opts.Width > visible+2 {
+			content += " " + theme.MutedStyle.Render(strings.Repeat("─", opts.Width-visible-1))
+		}
+	}
+	return gutter, content
+}
+
 func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected bool, rowWidth, rowIndex int) string {
 	displayName := row.SectionName
 	if displayName == "" {
@@ -175,7 +217,7 @@ func (m *OutlinerModel) renderOutlinerSectionHeaderRow(row outlinerRow, selected
 	}
 
 	paint := m.cursorPaintFor(selected)
-	gutter, content := renderSectionHeader(SectionHeaderOpts{
+	gutter, content := renderSectionHeader(sectionHeaderOpts{
 		Name:        displayName,
 		Count:       row.SectionCount,
 		Collapsed:   m.isSectionRowCollapsed(row),
@@ -263,7 +305,7 @@ func (m *OutlinerModel) renderOutlinerProjectHeaderRow(row outlinerRow, selected
 	// header pays nothing for it.
 	content := badge
 	if project != nil && project.Pinned {
-		content = pinnedMarker() + badge
+		content = listsurface.PinnedMarker() + badge
 	}
 	if row.SectionCount > 0 {
 		content += " " + theme.MutedStyle.Render(fmt.Sprintf("(%d)", row.SectionCount))
@@ -349,7 +391,7 @@ func (m *OutlinerModel) renderOutlinerNoteRow(
 	paint := m.cursorPaintFor(selected)
 	bg := paint.gutterBg()
 	gutter := paint.bar(lipgloss.NewStyle(), theme.RenderCursorPrefix())
-	if m.multiSelectMode {
+	if m.MultiSelectMode {
 		// A note is not selectable, so the checkbox column is held open rather than
 		// drawn: an empty box beside the task boxes would advertise a membership
 		// every selection operation refuses.

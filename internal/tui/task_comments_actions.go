@@ -63,14 +63,14 @@ func (m *TaskCommentsModel) saveComment() tea.Cmd {
 	text := m.textInput.Value()
 	task, err := appendComment(m.project, m.task.ID, text)
 	if err != nil {
-		m.err = err
+		m.Err = err
 		return nil
 	}
 
 	m.task = task
 	m.cancelAddMode()
-	m.err = nil
-	m.cursor = len(m.task.Comments) - 1
+	m.Err = nil
+	m.Cursor = len(m.task.Comments) - 1
 
 	return adaptSubviewCommit(
 		m.coordinator.AddComment(taskref.For(task, m.project), text),
@@ -80,12 +80,12 @@ func (m *TaskCommentsModel) saveComment() tea.Cmd {
 
 func (m *TaskCommentsModel) executeDelete() tea.Cmd {
 	m.refreshTaskReference()
-	index := m.cursor
+	index := m.Cursor
 	if !m.task.RemoveComment(index) {
 		return func() tea.Msg { return status.ErrorMsg{Err: errors.New("failed to remove comment")} }
 	}
-	if m.cursor >= len(m.task.Comments) && m.cursor > 0 {
-		m.cursor--
+	if m.Cursor >= len(m.task.Comments) && m.Cursor > 0 {
+		m.Cursor--
 	}
 
 	return adaptSubviewCommit(
@@ -95,9 +95,9 @@ func (m *TaskCommentsModel) executeDelete() tea.Cmd {
 }
 
 func (m *TaskCommentsModel) startEditComment() tea.Cmd {
-	comment := m.task.Comments[m.cursor]
+	comment := m.task.Comments[m.Cursor]
 	m.editMode = true
-	m.editIndex = m.cursor
+	m.editIndex = m.Cursor
 	m.editTextInput.SetValue(comment.Text)
 	m.editTextInput.Focus()
 	return textarea.Blink
@@ -107,7 +107,7 @@ func (m *TaskCommentsModel) saveEditedComment() tea.Cmd {
 	// Mutate model state synchronously in Update() to avoid data races with View().
 	text := strings.TrimSpace(m.editTextInput.Value())
 	if text == "" {
-		m.err = fmt.Errorf("comment text cannot be empty")
+		m.Err = fmt.Errorf("comment text cannot be empty")
 		return nil
 	}
 
@@ -120,7 +120,7 @@ func (m *TaskCommentsModel) saveEditedComment() tea.Cmd {
 	editIndex := m.editIndex
 	m.task.Comments[editIndex].Text = text
 	m.cancelEditMode()
-	m.err = nil
+	m.Err = nil
 
 	return adaptSubviewCommit(
 		m.coordinator.EditComment(taskref.For(m.task, m.project), editIndex, text),
@@ -129,8 +129,8 @@ func (m *TaskCommentsModel) saveEditedComment() tea.Cmd {
 }
 
 func (m *TaskCommentsModel) editInExternalEditor() tea.Cmd {
-	comment := m.task.Comments[m.cursor]
-	editIndex := m.cursor
+	comment := m.task.Comments[m.Cursor]
+	editIndex := m.Cursor
 	content := fmt.Sprintf("# Comment %d on #%d: %s\n\n<!-- Edit the comment text below. The timestamp will be preserved. -->\n\n%s", editIndex, m.task.ShortID, m.task.Title, comment.Text)
 
 	task := m.task
@@ -216,23 +216,23 @@ func (m *TaskCommentsModel) editCommentInExternalEditorFromEditMode() tea.Cmd {
 }
 
 func (m *TaskCommentsModel) copyCommentText() {
-	comment := m.task.Comments[m.cursor]
+	comment := m.task.Comments[m.Cursor]
 
 	if err := copyTextToClipboard(comment.Text); err != nil {
 		if errors.Is(err, errClipboardUnsupported) {
-			m.setStatus(err.Error())
+			m.SetStatus(err.Error())
 			return
 		}
-		m.err = fmt.Errorf("failed to copy to clipboard: %w", err)
+		m.Err = fmt.Errorf("failed to copy to clipboard: %w", err)
 		return
 	}
 
-	m.setStatus("Comment copied to clipboard")
+	m.SetStatus("Comment copied to clipboard")
 }
 
 func (m *TaskCommentsModel) copyAllCommentsText() {
 	if len(m.task.Comments) == 0 {
-		m.setStatus("Nothing to copy")
+		m.SetStatus("Nothing to copy")
 		return
 	}
 	texts := make([]string, len(m.task.Comments))
@@ -242,14 +242,14 @@ func (m *TaskCommentsModel) copyAllCommentsText() {
 
 	if err := copyTextToClipboard(formatNumberedMarkdownList(texts)); err != nil {
 		if errors.Is(err, errClipboardUnsupported) {
-			m.setStatus(err.Error())
+			m.SetStatus(err.Error())
 			return
 		}
-		m.err = fmt.Errorf("failed to copy to clipboard: %w", err)
+		m.Err = fmt.Errorf("failed to copy to clipboard: %w", err)
 		return
 	}
 
-	m.setStatus("All comments copied to clipboard")
+	m.SetStatus("All comments copied to clipboard")
 }
 
 // formatNumberedMarkdownList renders items as a numbered Markdown list in
@@ -274,7 +274,7 @@ func formatNumberedMarkdownList(items []string) string {
 func (m *TaskCommentsModel) editCommentWithExternalEditor(content string, emptyIsError bool, apply func(string) tea.Msg) tea.Cmd {
 	tmpPath, err := m.createCommentTempFile(content)
 	if err != nil {
-		m.err = err
+		m.Err = err
 		return nil
 	}
 

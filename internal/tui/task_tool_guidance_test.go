@@ -60,11 +60,11 @@ func TestCommentsGuidanceTracksBrowseEmptyInputExpandedAndConfirmation(t *testin
 	assertRequiredGuidance(t, "comments add", spec, ok, "Ctrl+S save", "Esc cancel")
 	assertGuidanceContains(t, "comments add", spec, ok, "Ctrl+E editor", "Shift+Enter newline")
 
-	model.confirm.Show("discard-add", "Discard comment?")
+	model.Confirm.Show("discard-add", "Discard comment?")
 	spec, ok = model.guidanceSpec()
 	assertRequiredGuidance(t, "comments confirmation", spec, ok, "y confirm", "n/Esc cancel")
 
-	model.confirm.Cancel()
+	model.Confirm.Cancel()
 	model.addMode = false
 	task.Comments = nil
 	spec, ok = model.guidanceSpec()
@@ -86,18 +86,18 @@ func TestAttachmentGuidanceTracksFileCodeURLAndEmptyVariants(t *testing.T) {
 		"Enter open", "E editor", "y copy", "Space actions", "J/K reorder", "Esc close")
 	assertGuidanceExcludes(t, "file attachment", spec, "copy path:line", "delete", "unlink", "original")
 
-	model.cursor = 1
+	model.Cursor = 1
 	spec, ok = model.guidanceSpec()
 	assertGuidanceContains(t, "code attachment", spec, ok, "Enter open", "E editor", "Y copy path:line", "J/K reorder")
 	assertGuidanceExcludes(t, "code attachment", spec, "original")
 
-	model.cursor = 2
+	model.Cursor = 2
 	spec, ok = model.guidanceSpec()
 	assertGuidanceContains(t, "URL attachment", spec, ok, "Enter open", "y copy", "Space actions")
 	assertGuidanceExcludes(t, "URL attachment", spec, "E editor", "original", "copy path:line", "delete", "unlink")
 
 	task.Attachments = nil
-	model.cursor = 0
+	model.Cursor = 0
 	spec, ok = model.guidanceSpec()
 	assertGuidanceContains(t, "attachments empty", spec, ok, "a add", "Esc close")
 	assertGuidanceExcludes(t, "attachments empty", spec, "open", "edit", "copy", "actions", "reorder", "navigate")
@@ -120,10 +120,10 @@ func TestTaskToolGuidanceFitsNarrowBudgetsAndViews(t *testing.T) {
 
 	comments := NewTaskCommentsModel(task, project)
 	comments.SetSize(36, 16)
-	comments.cursor = len(task.Comments) - 1
+	comments.Cursor = len(task.Comments) - 1
 	attachments := NewTaskAttachmentsModel(task, project, nil, coordinator.AttachmentCoordinator{})
 	attachments.SetSize(36, 16)
-	attachments.cursor = len(task.Attachments) - 1
+	attachments.Cursor = len(task.Attachments) - 1
 
 	for name, rendered := range map[string]string{
 		"comments":    comments.View().Content,

@@ -1,4 +1,4 @@
-package tui
+package listsurface
 
 // ListSurfaceModel owns reusable query, ranking, cursor, selection, category,
 // preview, action, and viewport behavior. It has no Bubble Tea dependencies.

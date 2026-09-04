@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -75,7 +76,7 @@ func TestTaskItemCoordinatorDuplicateIDsUseSelectedProject(t *testing.T) {
 		outliner := newCrossOutlinerFromEnv(env)
 		newParentID := parent.ID
 
-		_, cmd := outliner.handleCrossProjectReparent(ParentSelectedMsg{
+		_, cmd := outliner.handleCrossProjectReparent(listsurface.ParentSelectedMsg{
 			ParentID:     &newParentID,
 			Source:       presentation.ViewCrossProjectOutliner,
 			ReparentTask: taskref.For(beta, env.projects[1]),

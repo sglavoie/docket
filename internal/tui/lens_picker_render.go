@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/keymap"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -20,14 +21,14 @@ func namedLensPickerInnerWidth(width int) int {
 	return min(max(width*4/5, 46), max(width-6, 24))
 }
 
-func (model *NamedLensPickerModel) render(width int) string {
-	return model.renderWithin(width, 0)
+func (model *NamedLensPickerModel) Render(width int) string {
+	return model.RenderWithin(width, 0)
 }
 
-// renderWithin budgets the list after reserving rows for the modal chrome, so a
+// RenderWithin budgets the list after reserving rows for the modal chrome, so a
 // minimum-supported terminal drops list rows rather than losing the search line,
 // the state line, or the footer.
-func (model *NamedLensPickerModel) renderWithin(width, height int) string {
+func (model *NamedLensPickerModel) RenderWithin(width, height int) string {
 	if model == nil || model.surface == nil {
 		return ""
 	}
@@ -58,7 +59,7 @@ func (model *NamedLensPickerModel) renderWithin(width, height int) string {
 		reserved := 9 + len(header)
 		listHeight = min(listHeight, max(height-reserved, 1))
 	}
-	content := RenderCompactListSurface(model.surface, contentWidth, listHeight)
+	content := listsurface.RenderCompactListSurface(model.surface, contentWidth, listHeight)
 	if len(header) > 0 {
 		content = strings.Join(header, "\n") + "\n\n" + content
 	}
@@ -135,7 +136,7 @@ func (model *NamedLensPickerModel) guidanceSpec() chrome.GuidanceSpec {
 		keymap.Bind("esc", "Unwind the lens picker", "Navigation",
 			keymap.WithFooter(2, escapeLabel, true), keymap.WithFooterKey("Esc")),
 	}}
-	spec, _ := listSurfaceGuidanceSpec(model.surface.GuidanceState(searching), km, nil)
+	spec, _ := listsurface.ListSurfaceGuidanceSpec(model.surface.GuidanceState(searching), km, nil)
 	return spec
 }
 

@@ -122,7 +122,7 @@ func TestCommentsSpaceSheetReachesDelete(t *testing.T) {
 		t.Fatal("Space did not open the comment action sheet")
 	}
 	want := []operation.OperationID{operationCommentDelete}
-	if got := sheet.operationIDs(); !reflect.DeepEqual(got, want) {
+	if got := sheet.OperationIDs(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("comment sheet lists %v, want exactly %v", got, want)
 	}
 
@@ -130,8 +130,8 @@ func TestCommentsSpaceSheetReachesDelete(t *testing.T) {
 	if driver.App().contextActionSheet != nil {
 		t.Fatal("choosing Delete left the sheet open over the confirmation")
 	}
-	if !panel.confirm.IsActive() || panel.confirm.Action() != "delete" {
-		t.Fatalf("the sheet's Delete row raised confirm %q, want the delete prompt", panel.confirm.Action())
+	if !panel.Confirm.IsActive() || panel.Confirm.Action() != "delete" {
+		t.Fatalf("the sheet's Delete row raised confirm %q, want the delete prompt", panel.Confirm.Action())
 	}
 
 	press("y")
@@ -228,12 +228,12 @@ func TestCommentsHelpKeyRaisesTheCommentsGrammar(t *testing.T) {
 	}
 	press("esc")
 
-	panel.confirm.Show("delete", "Delete comment [0]?")
+	panel.Confirm.Show("delete", "Delete comment [0]?")
 	press("?")
 	if got := driver.App().currentView(); got != presentation.ViewTaskComments {
 		t.Fatalf("? under the delete confirmation left the panel for %v", got)
 	}
-	if !panel.confirm.IsActive() {
+	if !panel.Confirm.IsActive() {
 		t.Fatal("? answered the delete confirmation instead of being ignored")
 	}
 	press("n")
@@ -247,8 +247,8 @@ func TestCommentsPanelUnboundKeysAreSilent(t *testing.T) {
 
 	for _, key := range []string{"u", "o", "p", "%"} {
 		press(key)
-		if panel.confirm.IsActive() {
-			t.Fatalf("unbound key %q raised confirm %q", key, panel.confirm.Action())
+		if panel.Confirm.IsActive() {
+			t.Fatalf("unbound key %q raised confirm %q", key, panel.Confirm.Action())
 		}
 		if panel.addMode || panel.editMode || panel.expandedView {
 			t.Fatalf("unbound key %q changed the panel mode", key)

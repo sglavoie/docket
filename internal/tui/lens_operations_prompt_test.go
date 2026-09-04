@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
@@ -55,7 +56,7 @@ func TestLensCreateCapturesAcceptedSearchQuery(t *testing.T) {
 	}
 
 	// One Esc hands the pre-lens frame back exactly, search included.
-	if !RunEscCascade(out.escSteps()) {
+	if !listsurface.RunEscCascade(out.escSteps()) {
 		t.Fatal("expected the Esc cascade to consume the active lens")
 	}
 	if out.hasActiveLens() || out.lensQuery != "" {

@@ -172,7 +172,7 @@ func TestLensRenameFailureStaysOnTheActionSheet(t *testing.T) {
 	if model.contextActionSheet == nil {
 		t.Fatal("a refused rename closed the action sheet")
 	}
-	if notice := model.contextActionSheet.notice; !strings.Contains(notice, "already exists") {
+	if notice := model.contextActionSheet.Notice; !strings.Contains(notice, "already exists") {
 		t.Errorf("sheet notice = %q, want the duplicate-name reason", notice)
 	}
 	if err := lensNamedErr(model, "Waiting"); err != nil {

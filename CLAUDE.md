@@ -160,7 +160,7 @@ unavailable in Recent; entry clears only Stale: `Stale filter cleared: Recent
 only includes the last 30 days`.
 
 `computeOutlinerViewport` is the single window authority and the only place a
-render moves `viewScrollOffset`; the `zt`/`zz`/`zb` chord is the one key press
+render moves `ViewScrollOffset`; the `zt`/`zz`/`zb` chord is the one key press
 that may write it. Never recompute the window in a key handler.
 
 A preview pane splits through `listSurfacePreviewGeometry` and paints through

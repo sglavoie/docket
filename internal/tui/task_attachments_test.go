@@ -138,11 +138,11 @@ func TestAttachmentsPanelKeysReachTheirOperations(t *testing.T) {
 	// panel, resolves the path, and fails there. Anything that stopped short of
 	// the handler would leave the panel with no error at all.
 	press("E")
-	if panel.err == nil {
+	if panel.Err == nil {
 		t.Fatal("E did not reach tui.attachment.open-in-editor")
 	}
-	if !strings.Contains(panel.err.Error(), "file not found") {
-		t.Fatalf("E raised %v, want the editor's missing-file refusal", panel.err)
+	if !strings.Contains(panel.Err.Error(), "file not found") {
+		t.Fatalf("E raised %v, want the editor's missing-file refusal", panel.Err)
 	}
 	panel.ClearError()
 
@@ -165,8 +165,8 @@ func TestAttachmentsRetiredKeysAreSilent(t *testing.T) {
 
 	for _, key := range []string{"e", "d", "x", "o", "O", "ctrl+e", "ctrl+o"} {
 		press(key)
-		if panel.confirm.IsActive() {
-			t.Fatalf("retired key %q raised confirm %q", key, panel.confirm.Action())
+		if panel.Confirm.IsActive() {
+			t.Fatalf("retired key %q raised confirm %q", key, panel.Confirm.Action())
 		}
 		if panel.addMode {
 			t.Fatalf("retired key %q entered add mode", key)
@@ -245,7 +245,7 @@ func TestAttachmentsSpaceSheetReachesUnlink(t *testing.T) {
 		operationAttachmentUnlink,
 		operationAttachmentDelete,
 	}
-	if got := sheet.operationIDs(); !reflect.DeepEqual(got, want) {
+	if got := sheet.OperationIDs(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("attachment sheet lists %v, want exactly %v", got, want)
 	}
 
@@ -257,8 +257,8 @@ func TestAttachmentsSpaceSheetReachesUnlink(t *testing.T) {
 	if driver.App().contextActionSheet != nil {
 		t.Fatal("choosing Unlink left the sheet open over the confirmation")
 	}
-	if !panel.confirm.IsActive() || panel.confirm.Action() != "unlink" {
-		t.Fatalf("the sheet's Unlink row raised confirm %q, want the unlink prompt", panel.confirm.Action())
+	if !panel.Confirm.IsActive() || panel.Confirm.Action() != "unlink" {
+		t.Fatalf("the sheet's Unlink row raised confirm %q, want the unlink prompt", panel.Confirm.Action())
 	}
 
 	coordinator, fake := newFakeAttachmentCoordinator()

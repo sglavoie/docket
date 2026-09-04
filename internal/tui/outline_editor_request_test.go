@@ -103,7 +103,7 @@ func TestOutlineEditorRequestReadsTheProjectUnderEveryRowKind(t *testing.T) {
 		t.Fatalf("fixture exposed header=%d task=%d", header, task)
 	}
 
-	outliner.cursor = header
+	outliner.Cursor = header
 	fromHeader, _, refusal := app.outlineEditorRequest()
 	if refusal != "" {
 		t.Fatalf("a project header refused with %q", refusal)
@@ -115,7 +115,7 @@ func TestOutlineEditorRequestReadsTheProjectUnderEveryRowKind(t *testing.T) {
 		t.Errorf("header resolved %s, want %s", fromHeader.ID, outliner.rows[header].ProjectID)
 	}
 
-	outliner.cursor = task
+	outliner.Cursor = task
 	fromTask, _, refusal := app.outlineEditorRequest()
 	if refusal != "" {
 		t.Fatalf("a task row refused with %q", refusal)

@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/pulse"
 	"github.com/sglavoie/tt/internal/tui/query"
@@ -53,9 +54,9 @@ func (z sectionZoom) active() bool { return z.key != "" }
 // View interface as a standalone struct, owning its own navigation semantics,
 // sort modes, and focus-stack behavior.
 type OutlinerModel struct {
-	BaseSearchableView
-	InteractiveViewState
-	MultiSelectState
+	listsurface.BaseSearchableView
+	listsurface.InteractiveViewState
+	listsurface.MultiSelectState
 	pulse.TodayPaceState
 
 	runtime        *config.RuntimeState
@@ -74,7 +75,7 @@ type OutlinerModel struct {
 	rows []outlinerRow // Flattened rows, rebuilt on each render
 	// lastViewport is the window the last render actually drew. zt/zz/zb read it
 	// rather than recomputing the window, which would re-derive it from a
-	// different footer state and move viewScrollOffset.
+	// different footer state and move ViewScrollOffset.
 	lastViewport outlinerViewport
 	// primaryMode is the authoritative canonical row-strategy identity.
 	primaryMode chrome.OutlinerModeID
@@ -236,7 +237,7 @@ type OutlinerModel struct {
 	dependencyIndexCache *app.DependencyIndex
 
 	// Column visibility config (loaded from project view state)
-	columnConfig *ColumnConfig
+	columnConfig *listsurface.ColumnConfig
 
 	// Peek mode follows the cursor and shows additive task detail inline.
 	peekMode bool
@@ -325,7 +326,7 @@ func (m *OutlinerModel) SetWorkspacePulse(workspacePulse pulse.WorkspacePulse) {
 }
 
 func (m *OutlinerModel) resetViewScrollOffset() {
-	m.viewScrollOffset = 0
+	m.ViewScrollOffset = 0
 }
 
 // SetSize updates the view dimensions and resets the persisted scroll window
@@ -336,8 +337,8 @@ func (m *OutlinerModel) SetSize(width, height int) {
 }
 
 func (m *OutlinerModel) getCursorTask() *models.Task {
-	if len(m.rows) > 0 && m.cursor >= 0 && m.cursor < len(m.rows) {
-		row := m.rows[m.cursor]
+	if len(m.rows) > 0 && m.Cursor >= 0 && m.Cursor < len(m.rows) {
+		row := m.rows[m.Cursor]
 		if row.isTaskRow() {
 			return row.task
 		}
@@ -361,8 +362,8 @@ func NewOutlinerModel(project *models.Project, cfgManager *config.Manager, runti
 		projectFilter:      query.NewProjectFilterState(),
 		sort:               query.NewSortState(),
 		treeSort:           query.NewSortState(),
-		MultiSelectState:   MultiSelectState{selectedTaskIdentities: make(map[taskref.TaskIdentity]bool)},
-		columnConfig:       NewColumnConfig(nil, nil, DefaultOutlinerColumns),
+		MultiSelectState:   listsurface.MultiSelectState{Selected: make(map[taskref.TaskIdentity]bool)},
+		columnConfig:       listsurface.NewColumnConfig(nil, nil, listsurface.DefaultOutlinerColumns),
 	}
 	m.InitSearchInput("Search tasks...", 100, 30)
 	return m
@@ -385,7 +386,7 @@ func (m *OutlinerModel) Init() tea.Cmd {
 func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case status.CursorFlashClearMsg:
-		m.cursorFlash = false
+		m.CursorFlash = false
 		return m, nil
 
 	case CommentAddedMsg:
@@ -394,7 +395,7 @@ func (m *OutlinerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.rebuildRows()
 		return m, nil
 
-	case ParentSelectedMsg:
+	case listsurface.ParentSelectedMsg:
 		if !msg.ReparentTask.Valid() {
 			return m, nil
 		}

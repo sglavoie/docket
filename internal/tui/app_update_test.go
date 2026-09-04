@@ -7,13 +7,14 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 type panicCustomMsg struct{}
 
 type panicOnCustomView struct {
-	BaseView
+	listsurface.BaseView
 }
 
 func (v *panicOnCustomView) Init() tea.Cmd { return nil }

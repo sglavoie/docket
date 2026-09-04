@@ -25,7 +25,7 @@ import (
 func (m *TaskAttachmentsModel) addAttachment() tea.Cmd {
 	resolved, err := app.ResolveAttachmentInput(m.textInput.Value())
 	if err != nil {
-		m.err = err
+		m.Err = err
 		return nil
 	}
 
@@ -48,7 +48,7 @@ func (m *TaskAttachmentsModel) addURLAttachment(input string) tea.Cmd {
 
 func (m *TaskAttachmentsModel) addCodeReference(resolved app.ResolvedAttachmentInput) tea.Cmd {
 	if resolved.SourceMissing {
-		m.setStatus("Code reference added (file may not exist)")
+		m.SetStatus("Code reference added (file may not exist)")
 	}
 
 	m.finishOptimisticAdd()
@@ -66,27 +66,27 @@ func (m *TaskAttachmentsModel) addFileAttachment(absPath string) tea.Cmd {
 func (m *TaskAttachmentsModel) finishOptimisticAdd() {
 	m.addMode = false
 	m.textInput.Reset()
-	m.err = nil
-	m.cursor = len(m.task.Attachments)
+	m.Err = nil
+	m.Cursor = len(m.task.Attachments)
 }
 
 func (m *TaskAttachmentsModel) executeDelete() tea.Cmd {
 	m.resolveTask()
-	if m.cursor < 0 || m.cursor >= len(m.task.Attachments) {
+	if m.Cursor < 0 || m.Cursor >= len(m.task.Attachments) {
 		return func() tea.Msg { return status.ErrorMsg{Err: fmt.Errorf("attachment no longer exists")} }
 	}
 	// URL attachments have no bytes on disk; the file-backed ones delete their
 	// copied bytes in the same transaction (matching the old RemoveAttachmentFile).
-	deleteFile := !m.task.Attachments[m.cursor].IsURL
-	return m.coordinator.RemoveAttachment(taskref.For(m.task, m.project), m.cursor, deleteFile)
+	deleteFile := !m.task.Attachments[m.Cursor].IsURL
+	return m.coordinator.RemoveAttachment(taskref.For(m.task, m.project), m.Cursor, deleteFile)
 }
 
 func (m *TaskAttachmentsModel) executeKeep() tea.Cmd {
 	m.resolveTask()
-	if m.cursor < 0 || m.cursor >= len(m.task.Attachments) {
+	if m.Cursor < 0 || m.Cursor >= len(m.task.Attachments) {
 		return func() tea.Msg { return status.ErrorMsg{Err: fmt.Errorf("attachment no longer exists")} }
 	}
-	return m.coordinator.RemoveAttachment(taskref.For(m.task, m.project), m.cursor, false)
+	return m.coordinator.RemoveAttachment(taskref.For(m.task, m.project), m.Cursor, false)
 }
 
 func (m *TaskAttachmentsModel) reorderAttachment(from, to int) tea.Cmd {
@@ -94,13 +94,13 @@ func (m *TaskAttachmentsModel) reorderAttachment(from, to int) tea.Cmd {
 	// swap against a fresh snapshot and refreshAfterReload re-resolves the view.
 	m.resolveTask()
 	m.task.Attachments[from], m.task.Attachments[to] = m.task.Attachments[to], m.task.Attachments[from]
-	m.cursor = to
+	m.Cursor = to
 
 	return m.coordinator.Reorder(taskref.For(m.task, m.project), from, to)
 }
 
 func (m *TaskAttachmentsModel) openAttachmentDefault() tea.Cmd {
-	att := m.task.Attachments[m.cursor]
+	att := m.task.Attachments[m.Cursor]
 
 	if att.IsCodeRef {
 		return m.openCodeReference(att)
@@ -113,7 +113,7 @@ func (m *TaskAttachmentsModel) openAttachmentDefault() tea.Cmd {
 
 	openCmd, err := buildOpenCommand(target)
 	if err != nil {
-		m.err = err
+		m.Err = err
 		return nil
 	}
 
@@ -126,23 +126,23 @@ func (m *TaskAttachmentsModel) openAttachmentDefault() tea.Cmd {
 }
 
 func (m *TaskAttachmentsModel) openAttachmentInEditor() tea.Cmd {
-	att := m.task.Attachments[m.cursor]
+	att := m.task.Attachments[m.Cursor]
 
 	if att.IsCodeRef {
 		return m.openCodeReference(att)
 	}
 	if att.IsURL {
-		m.err = fmt.Errorf("cannot edit a URL in an editor")
+		m.Err = fmt.Errorf("cannot edit a URL in an editor")
 		return nil
 	}
 
 	target, err := storage.ResolveAttachmentPath(m.project, m.task, att.Filename)
 	if err != nil {
-		m.err = fmt.Errorf("invalid attachment path: %w", err)
+		m.Err = fmt.Errorf("invalid attachment path: %w", err)
 		return nil
 	}
 	if !storage.AttachmentExists(m.project, m.task, att.Filename) {
-		m.err = fmt.Errorf("file not found: %s", att.Filename)
+		m.Err = fmt.Errorf("file not found: %s", att.Filename)
 		return nil
 	}
 
@@ -166,7 +166,7 @@ func (m *TaskAttachmentsModel) openAttachmentsDir() tea.Cmd {
 
 	openCmd, err := buildDirectoryOpenCommand(dir)
 	if err != nil {
-		m.err = err
+		m.Err = err
 		return nil
 	}
 
@@ -179,59 +179,59 @@ func (m *TaskAttachmentsModel) openAttachmentsDir() tea.Cmd {
 }
 
 func (m *TaskAttachmentsModel) copyPath() tea.Cmd {
-	path := m.attachmentClipboardPath(m.task.Attachments[m.cursor], false)
+	path := m.attachmentClipboardPath(m.task.Attachments[m.Cursor], false)
 	if path == "" {
 		return nil
 	}
 	if err := copyToClipboard(path); err != nil {
-		m.err = err
+		m.Err = err
 		return nil
 	}
 
-	m.setStatus("Path copied to clipboard")
+	m.SetStatus("Path copied to clipboard")
 	return nil
 }
 
 func (m *TaskAttachmentsModel) copyPathWithLine() tea.Cmd {
-	att := m.task.Attachments[m.cursor]
+	att := m.task.Attachments[m.Cursor]
 	path := m.attachmentClipboardPath(att, true)
 	if path == "" {
 		return nil
 	}
 	if err := copyToClipboard(path); err != nil {
-		m.err = err
+		m.Err = err
 		return nil
 	}
 
 	if att.IsCodeRef && att.LineNumber > 0 {
-		m.setStatus("Path:line copied to clipboard")
+		m.SetStatus("Path:line copied to clipboard")
 	} else {
-		m.setStatus("Path copied to clipboard")
+		m.SetStatus("Path copied to clipboard")
 	}
 	return nil
 }
 
 func (m *TaskAttachmentsModel) openOriginalPath() tea.Cmd {
-	att := m.task.Attachments[m.cursor]
+	att := m.task.Attachments[m.Cursor]
 
 	if att.IsURL {
 		if err := copyToClipboard(att.OriginalPath); err != nil {
-			m.err = fmt.Errorf("failed to copy URL to clipboard: %w", err)
+			m.Err = fmt.Errorf("failed to copy URL to clipboard: %w", err)
 			return nil
 		}
-		m.setStatus("URL copied to clipboard")
+		m.SetStatus("URL copied to clipboard")
 		return nil
 	}
 
 	dir := filepath.Dir(att.OriginalPath)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		m.err = fmt.Errorf("original directory not found: %s", dir)
+		m.Err = fmt.Errorf("original directory not found: %s", dir)
 		return nil
 	}
 
 	openCmd, err := buildDirectoryOpenCommand(dir)
 	if err != nil {
-		m.err = err
+		m.Err = err
 		return nil
 	}
 
@@ -244,22 +244,22 @@ func (m *TaskAttachmentsModel) openOriginalPath() tea.Cmd {
 }
 
 func (m *TaskAttachmentsModel) revealOriginalFile() tea.Cmd {
-	att := m.task.Attachments[m.cursor]
+	att := m.task.Attachments[m.Cursor]
 
 	if att.IsURL {
-		m.err = fmt.Errorf("cannot reveal URL attachments in file manager")
+		m.Err = fmt.Errorf("cannot reveal URL attachments in file manager")
 		return nil
 	}
 
 	path := att.OriginalPath
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		m.err = fmt.Errorf("original file not found: %s", path)
+		m.Err = fmt.Errorf("original file not found: %s", path)
 		return nil
 	}
 
 	openCmd, err := buildRevealCommand(path)
 	if err != nil {
-		m.err = err
+		m.Err = err
 		return nil
 	}
 
@@ -273,14 +273,14 @@ func (m *TaskAttachmentsModel) revealOriginalFile() tea.Cmd {
 
 func (m *TaskAttachmentsModel) openCodeReference(att models.Attachment) tea.Cmd {
 	if !storage.CodeReferenceFileExists(att.OriginalPath) {
-		m.err = fmt.Errorf("code reference file not found: %s", att.OriginalPath)
+		m.Err = fmt.Errorf("code reference file not found: %s", att.OriginalPath)
 		return nil
 	}
 	if err := external.OpenCodeReference("", att.OriginalPath, att.LineNumber); err != nil {
-		m.err = fmt.Errorf("failed to open code reference: %w", err)
+		m.Err = fmt.Errorf("failed to open code reference: %w", err)
 		return nil
 	}
-	m.setStatus(fmt.Sprintf("Opened %s:%d", filepath.Base(att.OriginalPath), att.LineNumber))
+	m.SetStatus(fmt.Sprintf("Opened %s:%d", filepath.Base(att.OriginalPath), att.LineNumber))
 	return nil
 }
 
@@ -291,11 +291,11 @@ func (m *TaskAttachmentsModel) attachmentOpenTarget(att models.Attachment) strin
 
 	target, err := storage.ResolveAttachmentPath(m.project, m.task, att.Filename)
 	if err != nil {
-		m.err = fmt.Errorf("invalid attachment path: %w", err)
+		m.Err = fmt.Errorf("invalid attachment path: %w", err)
 		return ""
 	}
 	if !storage.AttachmentExists(m.project, m.task, att.Filename) {
-		m.err = fmt.Errorf("file not found: %s", att.Filename)
+		m.Err = fmt.Errorf("file not found: %s", att.Filename)
 		return ""
 	}
 	return target
@@ -303,11 +303,11 @@ func (m *TaskAttachmentsModel) attachmentOpenTarget(att models.Attachment) strin
 
 func (m *TaskAttachmentsModel) selectedAttachmentDir() string {
 	if m.hasSelection() {
-		att := m.task.Attachments[m.cursor]
+		att := m.task.Attachments[m.Cursor]
 		if att.IsCodeRef {
 			dir := filepath.Dir(att.OriginalPath)
 			if _, err := os.Stat(dir); os.IsNotExist(err) {
-				m.err = fmt.Errorf("directory not found: %s", dir)
+				m.Err = fmt.Errorf("directory not found: %s", dir)
 				return ""
 			}
 			return dir
@@ -315,12 +315,12 @@ func (m *TaskAttachmentsModel) selectedAttachmentDir() string {
 	}
 
 	if err := storage.EnsureTaskAttachmentsDir(m.project, m.task); err != nil {
-		m.err = fmt.Errorf("failed to create directory: %w", err)
+		m.Err = fmt.Errorf("failed to create directory: %w", err)
 		return ""
 	}
 	dir, err := storage.ResolveTaskAttachmentsDir(m.project, m.task)
 	if err != nil {
-		m.err = fmt.Errorf("invalid attachments directory: %w", err)
+		m.Err = fmt.Errorf("invalid attachments directory: %w", err)
 		return ""
 	}
 	return dir
@@ -338,7 +338,7 @@ func (m *TaskAttachmentsModel) attachmentClipboardPath(att models.Attachment, in
 	}
 	path, err := storage.ResolveAttachmentPath(m.project, m.task, att.Filename)
 	if err != nil {
-		m.err = fmt.Errorf("invalid attachment path: %w", err)
+		m.Err = fmt.Errorf("invalid attachment path: %w", err)
 		return ""
 	}
 	return path

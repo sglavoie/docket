@@ -1,4 +1,4 @@
-package tui
+package listsurface
 
 import (
 	"fmt"
@@ -187,11 +187,11 @@ func (model *ListSurfaceModel) GuidanceState(searchEditing bool) ListGuidanceSta
 	return state
 }
 
-// listSurfaceGuidanceSpec combines live gated navigation bindings with already
+// ListSurfaceGuidanceSpec combines live gated navigation bindings with already
 // applicable operation guidance. The list profile owns only row budgeting and
 // supplemental state; keys remain authoritative in the keymap or registry that
 // produced each hint.
-func listSurfaceGuidanceSpec(
+func ListSurfaceGuidanceSpec(
 	state ListGuidanceState,
 	km *keymap.KeyMap,
 	actionHints []chrome.GuidanceHint,

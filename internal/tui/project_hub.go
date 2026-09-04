@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -201,7 +202,7 @@ func (m *ProjectHubModel) selectEveryMatchingProject() {
 		return
 	}
 	matches := m.surface.Matches()
-	ids := make([]ListItemID, 0, len(matches))
+	ids := make([]listsurface.ListItemID, 0, len(matches))
 	for _, match := range matches {
 		ids = append(ids, match.Item.ID)
 	}
@@ -230,7 +231,7 @@ func (m *ProjectHubModel) moveProjectHubHalfPage(direction int) {
 	m.surface.MoveCursor(direction * chrome.HalfPage(m.surface.Viewport().Height))
 }
 
-func (m *ProjectHubModel) currentProjectHubItemID() ListItemID {
+func (m *ProjectHubModel) currentProjectHubItemID() listsurface.ListItemID {
 	if m.surface == nil {
 		return ""
 	}

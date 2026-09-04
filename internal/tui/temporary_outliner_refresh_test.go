@@ -104,7 +104,7 @@ func TestScopedPinnedLeafCompletionKeepsProjectOutlinerVisible(t *testing.T) { /
 	cross.crossProjectRebuildRows()
 	cross.NavigateToTaskInProject(target, project)
 
-	row := cross.rows[cross.cursor]
+	row := cross.rows[cross.Cursor]
 	if !row.isTaskRow() || row.task == nil || row.task.ID != target.ID || !row.IsPinnedSection {
 		t.Fatalf("completion target is not selected in the pinned section: %#v", row)
 	}
@@ -145,9 +145,9 @@ func TestScopedPinnedLeafCompletionKeepsProjectOutlinerVisible(t *testing.T) { /
 	if !outlinerHasTask(cross, project.ID, survivor.ID) {
 		t.Fatalf("surviving task %q disappeared from the scoped Outliner", survivor.ID)
 	}
-	if len(cross.rows) == 0 || cross.cursor < 0 || cross.cursor >= len(cross.rows) ||
-		!cross.rows[cross.cursor].isTaskRow() || cross.rows[cross.cursor].task == nil {
-		t.Fatalf("completion left the cursor off a task row: cursor=%d rows=%d", cross.cursor, len(cross.rows))
+	if len(cross.rows) == 0 || cross.Cursor < 0 || cross.Cursor >= len(cross.rows) ||
+		!cross.rows[cross.Cursor].isTaskRow() || cross.rows[cross.Cursor].task == nil {
+		t.Fatalf("completion left the cursor off a task row: cursor=%d rows=%d", cross.Cursor, len(cross.rows))
 	}
 
 	fresh := &models.Project{ID: project.ID, Name: project.Name, Slug: project.Slug, Path: project.Path}

@@ -39,11 +39,11 @@ func TestTaskCommentsSaveCommentMutatesSynchronously(t *testing.T) {
 	if model.task.Comments[0].Text != "New comment" {
 		t.Fatalf("expected comment text 'New comment', got %q", model.task.Comments[0].Text)
 	}
-	if model.cursor != 0 {
-		t.Fatalf("expected cursor at 0, got %d", model.cursor)
+	if model.Cursor != 0 {
+		t.Fatalf("expected cursor at 0, got %d", model.Cursor)
 	}
-	if model.err != nil {
-		t.Fatalf("expected no error, got %v", model.err)
+	if model.Err != nil {
+		t.Fatalf("expected no error, got %v", model.Err)
 	}
 }
 
@@ -68,7 +68,7 @@ func TestTaskCommentsSaveCommentEmptyText(t *testing.T) {
 	if cmd != nil {
 		t.Fatal("expected nil command for empty comment")
 	}
-	if model.err == nil {
+	if model.Err == nil {
 		t.Fatal("expected error for empty comment text")
 	}
 }
@@ -91,7 +91,7 @@ func TestTaskCommentsDeleteMutatesSynchronously(t *testing.T) {
 
 	model := NewTaskCommentsModel(task, project)
 	model.coordinator = newTestSecondaryCoordinators(project).Subview
-	model.cursor = 1
+	model.Cursor = 1
 
 	cmd := model.executeDelete()
 	if cmd == nil {
@@ -105,8 +105,8 @@ func TestTaskCommentsDeleteMutatesSynchronously(t *testing.T) {
 	if model.task.Comments[0].Text != "comment 1" {
 		t.Fatalf("expected remaining comment to be 'comment 1', got %q", model.task.Comments[0].Text)
 	}
-	if model.cursor != 0 {
-		t.Fatalf("expected cursor at 0 after deleting last comment, got %d", model.cursor)
+	if model.Cursor != 0 {
+		t.Fatalf("expected cursor at 0 after deleting last comment, got %d", model.Cursor)
 	}
 }
 
@@ -148,8 +148,8 @@ func TestTaskCommentsSaveEditMutatesSynchronously(t *testing.T) {
 	if !model.task.Comments[0].CreatedAt.Equal(created) {
 		t.Fatalf("expected timestamp to be preserved, got %v", model.task.Comments[0].CreatedAt)
 	}
-	if model.err != nil {
-		t.Fatalf("expected no error, got %v", model.err)
+	if model.Err != nil {
+		t.Fatalf("expected no error, got %v", model.Err)
 	}
 }
 

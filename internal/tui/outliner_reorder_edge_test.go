@@ -117,7 +117,7 @@ func TestHierarchicalReorderEdge(t *testing.T) {
 			t.Fatal("cursor did not land on Alpha")
 		}
 		cross.toggleMultiSelectMode()
-		if !cross.multiSelectMode {
+		if !cross.MultiSelectMode {
 			t.Fatal("visual selection did not open")
 		}
 

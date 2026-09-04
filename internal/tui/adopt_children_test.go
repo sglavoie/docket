@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -14,7 +15,7 @@ func TestAdoptChildrenPickerOmitsTheTasksItAlreadyParents(t *testing.T) {
 	m := taskContentFixtureApp(t, FixtureRich)
 	parent, project := taskContentFixtureTask(t, m, "User authentication")
 
-	primary := make(map[string]ListItem)
+	primary := make(map[string]listsurface.ListItem)
 	for _, item := range operationChildListSource(parent, project).Items {
 		primary[item.PrimaryText] = item
 	}

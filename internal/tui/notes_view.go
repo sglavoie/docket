@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -52,7 +53,7 @@ type noteCollectionFailure struct {
 // NotesViewModel displays and manages notes across the complete active
 // workspace.
 type NotesViewModel struct {
-	BaseView
+	listsurface.BaseView
 
 	notesDir    string
 	scope       route.NotesScope
@@ -146,7 +147,7 @@ func (m *NotesViewModel) initSearchInput() {
 	m.searchInput = textinput.New()
 	m.searchInput.Placeholder = "Search note titles and bodies..."
 	m.searchInput.CharLimit = 200
-	m.searchInput.SetWidth(SearchInputWidth(m.Width()))
+	m.searchInput.SetWidth(listsurface.SearchInputWidth(m.Width()))
 	theme.ApplyThemedTextInput(&m.searchInput)
 }
 
@@ -251,7 +252,7 @@ func (m *NotesViewModel) refreshLocationPicker() {
 	if query != "" {
 		picker.SetSearchInputValue(query)
 		picker.SetSearchQuery(query)
-		picker.alwaysSearch.fuzzyFilter(query)
+		picker.alwaysSearch.FuzzyFilter(query)
 	}
 	if selectedID != "" {
 		picker.SetCursorToID(selectedID)
@@ -331,7 +332,7 @@ func (m *NotesViewModel) Init() tea.Cmd {
 
 func (m *NotesViewModel) SetSize(width, height int) {
 	m.BaseView.SetSize(width, height)
-	m.searchInput.SetWidth(SearchInputWidth(width))
+	m.searchInput.SetWidth(listsurface.SearchInputWidth(width))
 	if m.locationPicker != nil {
 		m.locationPicker.SetSize(width, height)
 	}

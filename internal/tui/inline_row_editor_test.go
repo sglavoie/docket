@@ -34,7 +34,7 @@ func inlineEditorFixture(t *testing.T) (*OutlinerModel, *models.Project, *models
 	out.rebuildRows()
 	for index, row := range out.rows {
 		if row.task != nil && row.task.ID == child.ID && row.isTaskRow() {
-			out.cursor = index
+			out.Cursor = index
 			break
 		}
 	}
@@ -171,7 +171,7 @@ func TestInlineRowEditorWideNarrowNestedAndErrorRendering(t *testing.T) {
 	out.quickEdit.Input.SetValue("Child revised $today #gamma")
 	out.quickEdit.Input.CursorEnd()
 	out.quickEdit.RefreshDraft()
-	row := out.rows[out.cursor]
+	row := out.rows[out.Cursor]
 
 	wide := ansi.Strip(out.quickEditMetadataLine(row, project, 120))
 	for _, want := range []string{"EDIT TASK", "[project] › Parent", "today", "!1", "@Jan 2", "pin", "#gamma"} {
@@ -223,7 +223,7 @@ func TestInlineRowEditorKeepsSelectedCursorVisibleAtEveryPositionAndTheme(t *tes
 
 			out, project, _, child := inlineEditorFixture(t)
 			out.quickEdit.EnterWithContext(child, project, []*models.Project{project}, false)
-			row := out.rows[out.cursor]
+			row := out.rows[out.Cursor]
 			positions := []int{0, len([]rune(child.Title)) / 2, len([]rune(child.Title))}
 
 			for _, position := range positions {
@@ -263,7 +263,7 @@ func TestInlineRowEditorAutocompleteIsBoundedAndViewportTracksResize(t *testing.
 	out.rebuildRows()
 	for index, row := range out.rows {
 		if row.task != nil && row.task.ID == tasks[len(tasks)-1].ID {
-			out.cursor = index
+			out.Cursor = index
 		}
 	}
 	out.quickEdit.EnterWithContext(tasks[len(tasks)-1], project, []*models.Project{project}, false)
@@ -295,7 +295,7 @@ func TestInlineRowEditorRendersOnFoldedParentWithoutLeakingChildren(t *testing.T
 	out.rebuildRows()
 	for index, row := range out.rows {
 		if row.task != nil && row.task.ID == parent.ID {
-			out.cursor = index
+			out.Cursor = index
 		}
 	}
 	out.quickEdit.EnterWithContext(parent, project, []*models.Project{project}, false)

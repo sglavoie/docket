@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
@@ -134,24 +135,24 @@ func (m *AppModel) openCommentsActionSheet(ctx operation.CommandContext, panel *
 	if !panel.hasSelection() {
 		return errors.New("select a comment to open actions")
 	}
-	sheet, err := NewContextActionSheetModel(
+	sheet, err := listsurface.NewContextActionSheetModel(
 		m.GetOperationRegistry(),
 		m.operationExecutor,
 		ctx,
 		commentActionSheetOperations,
-		ContextActionSheetConfig{
-			Host:         ContextActionHostComments,
-			Completion:   ContextActionCompleteCloseSheet,
+		listsurface.ContextActionSheetConfig{
+			Host:         listsurface.ContextActionHostComments,
+			Completion:   listsurface.ContextActionCompleteCloseSheet,
 			Title:        "Comment Actions",
-			Subtitle:     fmt.Sprintf("Comment [%d]", panel.cursor),
+			Subtitle:     fmt.Sprintf("Comment [%d]", panel.Cursor),
 			ItemIDPrefix: "comment-action:",
 			SecondaryFor: operationActionSecondaryText,
 			Targets:      1,
-			EmptyState: ListEmptyState{
+			EmptyState: listsurface.ListEmptyState{
 				Title:  "No comment actions available.",
 				Detail: "Move the cursor to a comment.",
 			},
-			NoMatchState: ListEmptyState{
+			NoMatchState: listsurface.ListEmptyState{
 				Title:  "No matching actions.",
 				Detail: "Clear or change the search.",
 			},

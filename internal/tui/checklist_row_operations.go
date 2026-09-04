@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
@@ -235,11 +236,11 @@ func (m *AppModel) followReorderedChecklistItem(delta int) {
 	if !ok || out == nil {
 		return
 	}
-	target := out.cursor + delta
+	target := out.Cursor + delta
 	if target < 0 || target >= len(out.rows) || !out.rows[target].IsChecklistItem {
 		return
 	}
-	out.cursor = target
+	out.Cursor = target
 }
 
 func checklistCommandResult(cmd tea.Cmd) operation.OperationHandlerResult {
@@ -270,24 +271,24 @@ func (m *AppModel) openChecklistActionSheet(context operation.CommandContext) er
 	if !context.Entity.HasChecklistCursor {
 		return errors.New(operation.ChecklistRowRejectionMessage)
 	}
-	sheet, err := NewContextActionSheetModel(
+	sheet, err := listsurface.NewContextActionSheetModel(
 		m.GetOperationRegistry(),
 		m.operationExecutor,
 		context,
 		checklistActionSheetOperations,
-		ContextActionSheetConfig{
-			Host:         ContextActionHostOutliner,
-			Completion:   ContextActionCompleteCloseSheet,
+		listsurface.ContextActionSheetConfig{
+			Host:         listsurface.ContextActionHostOutliner,
+			Completion:   listsurface.ContextActionCompleteCloseSheet,
 			Title:        "Checklist Item",
 			Subtitle:     m.checklistItemTextForContext(context),
 			ItemIDPrefix: "checklist-action:",
 			SecondaryFor: operationActionSecondaryText,
 			Targets:      1,
-			EmptyState: ListEmptyState{
+			EmptyState: listsurface.ListEmptyState{
 				Title:  "No checklist actions available.",
 				Detail: "Move the cursor to a checklist item.",
 			},
-			NoMatchState: ListEmptyState{
+			NoMatchState: listsurface.ListEmptyState{
 				Title:  "No matching actions.",
 				Detail: "Clear or change the search.",
 			},

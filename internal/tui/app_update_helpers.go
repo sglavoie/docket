@@ -6,16 +6,19 @@ import (
 )
 
 // keyInterceptor is implemented by overlay widgets that intercept key presses
-// and return (inputCmd, dismissed, resultMsg).
+// and return (inputCmd, dismissed, resultMsg). The method is exported because
+// an overlay may live in a sub-package: an interface naming an unexported
+// method can only ever be satisfied from inside the package that declares it,
+// so the shell would silently stop seeing an overlay the moment it moved.
 type keyInterceptor interface {
-	handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg)
+	HandleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg)
 }
 
 // dispatchOverlayKey forwards a key to an overlay and assembles the resulting
 // tea.Cmd. The caller is responsible for nil-checking the overlay before
 // calling and for niling the field when dismiss is true.
 func dispatchOverlayKey(overlay keyInterceptor, msg tea.KeyPressMsg) (dismiss bool, cmd tea.Cmd) {
-	inputCmd, dismissed, resultMsg := overlay.handleKey(msg)
+	inputCmd, dismissed, resultMsg := overlay.HandleKey(msg)
 	var cmds []tea.Cmd
 	if inputCmd != nil {
 		cmds = append(cmds, inputCmd)

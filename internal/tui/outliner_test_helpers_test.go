@@ -7,6 +7,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -140,8 +141,8 @@ func newCrossOutlinerFromEnv(env *crossProjectTestEnv) *OutlinerModel {
 		quickEdit:         grammar.NewQuickEditComponent(),
 		collapsedSections: make(map[string]bool),
 		expandedNodes:     make(map[taskref.TaskIdentity]bool),
-		MultiSelectState: MultiSelectState{
-			selectedTaskIdentities: make(map[taskref.TaskIdentity]bool),
+		MultiSelectState: listsurface.MultiSelectState{
+			Selected: make(map[taskref.TaskIdentity]bool),
 		},
 		loadedProjects: env.projects,
 	}

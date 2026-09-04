@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -232,9 +233,9 @@ func TestUnavailableReferenceWordingIsSharedByEverySurface(t *testing.T) {
 		t.Fatalf("detail state = %q, want %q", detail.state, dependencyDetailUnavailable)
 	}
 
-	item := ListItem{}
+	item := listsurface.ListItem{}
 	for _, candidate := range operationTaskReferenceListSource([]*models.Task{source}, population).Items {
-		if candidate.ID == ListItemID("reference:"+unreadable.Locator()) {
+		if candidate.ID == listsurface.ListItemID("reference:"+unreadable.Locator()) {
 			item = candidate
 			break
 		}

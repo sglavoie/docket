@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 )
 
 func guidanceEntryText(spec chrome.GuidanceSpec) string {
@@ -30,7 +31,7 @@ func TestOutlinerGuidanceProfilesFollowInteractionState(t *testing.T) {
 	}
 
 	out.peekMode = false
-	out.multiSelectMode = true
+	out.MultiSelectMode = true
 	out.ReplaceSelection(out.visibleTaskIdentities()[:1])
 	spec, ok = out.ContextualGuidance()
 	if !ok || spec.Rows != 1 {
@@ -40,7 +41,7 @@ func TestOutlinerGuidanceProfilesFollowInteractionState(t *testing.T) {
 		t.Fatalf("selection guidance = %q", got)
 	}
 
-	out.multiSelectMode = false
+	out.MultiSelectMode = false
 	out.ClearSelection()
 	out.SetSearchQuery("critical")
 	out.SetSearchActive(true)
@@ -66,7 +67,7 @@ func TestOutlinerHeaderGuidanceDoesNotAdvertiseTaskWorkflow(t *testing.T) {
 	if header < 0 {
 		t.Fatal("fixture exposed no header row")
 	}
-	out.cursor = header
+	out.Cursor = header
 	spec, ok := out.ContextualGuidance()
 	if !ok || spec.Rows != 1 {
 		t.Fatalf("header guidance = (%+v, %v), want one-row profile", spec, ok)
@@ -123,7 +124,7 @@ func TestOutlinerEmptyStatesAdvertiseCausalRecovery(t *testing.T) {
 				out.adoptFilterCarriers()
 				out.rows = nil
 			},
-			wantMessage: EmptyStateFiltered,
+			wantMessage: listsurface.EmptyStateFiltered,
 			wantHint:    "fx clear filters",
 		},
 		{

@@ -187,7 +187,7 @@ func taskActionParityContext(t *testing.T, app *AppModel) operation.CommandConte
 		if !row.isTaskRow() {
 			continue
 		}
-		outliner.cursor = index
+		outliner.Cursor = index
 		ctx := outliner.operationCommandContext()
 		if operation.CurrentTaskIdentity(ctx).Valid() {
 			return ctx

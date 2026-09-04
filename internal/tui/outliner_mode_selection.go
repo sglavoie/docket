@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -30,7 +31,7 @@ func (m *OutlinerModel) clearStaleForRecentMode() {
 		return
 	}
 	m.replaceFilterClauses([]models.QueryField{models.QueryFieldStale}, nil)
-	m.setTransientStatus(recentStaleFilterClearedStatus)
+	m.SetTransientStatus(recentStaleFilterClearedStatus)
 }
 
 // activeOutlinerMode returns the sole mode identity owned by the Outliner.
@@ -62,9 +63,9 @@ type modeCursorAnchor struct {
 // (where task rows omit ProjectID) so restoreModeCursor can match on the same
 // key the cross-project view uses.
 func (m *OutlinerModel) captureModeCursor() modeCursorAnchor {
-	anchor := modeCursorAnchor{prevCursor: m.cursor, scrollOffset: m.viewScrollOffset}
-	if m.cursor >= 0 && m.cursor < len(m.rows) {
-		row := m.rows[m.cursor]
+	anchor := modeCursorAnchor{prevCursor: m.Cursor, scrollOffset: m.ViewScrollOffset}
+	if m.Cursor >= 0 && m.Cursor < len(m.rows) {
+		row := m.rows[m.Cursor]
 		if row.isTaskRow() && row.task != nil && row.task.ID != "" {
 			projectID := row.ProjectID
 			if m.project != nil {
@@ -85,7 +86,7 @@ func (m *OutlinerModel) captureModeCursor() modeCursorAnchor {
 // falls back deterministically to the nearest navigable row at the pre-transition
 // index, clamped into the (possibly differently shaped) new row list.
 func (m *OutlinerModel) restoreModeCursor(anchor modeCursorAnchor) {
-	m.viewScrollOffset = anchor.scrollOffset
+	m.ViewScrollOffset = anchor.scrollOffset
 	if anchor.hasTask {
 		for i, row := range m.rows {
 			if !row.isTaskRow() || row.task == nil || row.task.ID != anchor.identity.TaskID {
@@ -94,7 +95,7 @@ func (m *OutlinerModel) restoreModeCursor(anchor modeCursorAnchor) {
 			if m.project == nil && row.ProjectID != anchor.identity.ProjectID {
 				continue
 			}
-			m.cursor = i
+			m.Cursor = i
 			return
 		}
 	}
@@ -108,7 +109,7 @@ func (m *OutlinerModel) restoreModeCursor(anchor modeCursorAnchor) {
 	if idx < 0 {
 		idx = 0
 	}
-	m.cursor = idx
+	m.Cursor = idx
 	m.clampCursor()
 }
 
@@ -127,7 +128,7 @@ func (m *OutlinerModel) selectOutlinerMode(id chrome.OutlinerModeID) (tea.Model,
 	}
 	// A status naming the mode it was raised in would otherwise outlive the
 	// transition and misreport the new mode, up to a tick before it expires.
-	m.clearStatus()
+	m.ClearStatus()
 	// The mode decides which rows exist and which operations apply to them, so a
 	// menu resolved against the old one is describing a view that is about to stop
 	// being on screen.
@@ -163,7 +164,7 @@ func (m *OutlinerModel) focusLatestActivity() tea.Cmd {
 	task, project, sectionKey, ok := m.recentActivityLead()
 	if !ok {
 		if !staleWasCleared {
-			m.setTransientStatus("No activity in the last 30 days")
+			m.SetTransientStatus("No activity in the last 30 days")
 		}
 		return nil
 	}
@@ -174,22 +175,22 @@ func (m *OutlinerModel) focusLatestActivity() tea.Cmd {
 		m.rebuildRows()
 		if index, found = m.rowIndexForTask(identity); !found {
 			if !staleWasCleared {
-				m.setTransientStatus("Latest activity is unavailable in this projection")
+				m.SetTransientStatus("Latest activity is unavailable in this projection")
 			}
 			return nil
 		}
 	}
-	oldCursor := m.cursor
+	oldCursor := m.Cursor
 	// The mode transition carries the origin's scroll offset over, which would
 	// seat the lead against the viewport edge with the section and project
 	// headers naming it scrolled off. Recent puts the lead near the top, so
 	// reading the window from row zero keeps those headers on screen.
-	m.viewScrollOffset = 0
-	m.cursor = index
+	m.ViewScrollOffset = 0
+	m.Cursor = index
 	if !staleWasCleared {
-		m.setTransientStatus("Latest activity: " + task.Title)
+		m.SetTransientStatus("Latest activity: " + task.Title)
 	}
-	return flashIfJumped(oldCursor, index, &m.cursorFlash)
+	return listsurface.FlashIfJumped(oldCursor, index, &m.CursorFlash)
 }
 
 // revealRecentActivityLead opens the three things that can hide the lead: its
@@ -250,7 +251,7 @@ func isPrimaryOutlinerMode(mode chrome.OutlinerModeID) bool {
 // rows in the active mode.
 func (m *OutlinerModel) orderingUnavailableStatus() {
 	mode := m.activeOutlinerModeEntry()
-	m.setTransientStatus(fmt.Sprintf(
+	m.SetTransientStatus(fmt.Sprintf(
 		"Ordering is automatic in %s mode — J/K and Ctrl+J/Ctrl+K reorder hierarchical or planning rows only",
 		mode.Label,
 	))

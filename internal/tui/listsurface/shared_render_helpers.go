@@ -1,11 +1,9 @@
-package tui
+package listsurface
 
 import (
 	"fmt"
 	"slices"
 	"strings"
-
-	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/icons"
 	"github.com/sglavoie/tt/internal/models"
@@ -30,48 +28,7 @@ const EmptyStateFiltered = "No tasks match filters. Press fx to clear filters."
 // EmptyStateNoTasks is the standard message shown when a view has no tasks at all.
 const EmptyStateNoTasks = "No tasks yet. Press a to capture one."
 
-// SectionHeaderOpts configures the unified section header renderer.
-type SectionHeaderOpts struct {
-	Name        string
-	Count       int
-	Collapsed   bool
-	AccentColor lipgloss.Style // applied to the name portion
-	Width       int            // if > 0, trailing ─ fill is added
-	Prefix      string         // inserted between indicator and name (e.g. "@ ")
-	Cursor      cursorPaint    // how this header wears the cursor; zero on an ordinary row
-}
-
-// renderSectionHeader renders a standardized collapsible section header:
-//
-//	▾ [prefix]Name (count) ─────
-//
-// It returns the leading fold gutter and the rest separately, so a caller
-// marking the cursor row can paint the gutter without repainting the name. This
-// is the one header whose first column is a glyph rather than a blank, so the
-// cursor bar reverses the fold arrow instead of a space.
-// AccentColor is applied to the name; indicator and count use MutedStyle.
-// When Width > 0 a trailing horizontal rule fills the remaining line width.
-// Callers are responsible for applying selection/zebra highlights on the
-// returned strings.
-func renderSectionHeader(opts SectionHeaderOpts) (gutter, content string) {
-	indicator := theme.IconExpanded
-	if opts.Collapsed {
-		indicator = theme.IconCollapsed
-	}
-	gutter = opts.Cursor.bar(theme.MutedStyle, indicator) + gutterSpace(opts.Cursor.gutterBg())
-	namePart := opts.AccentColor.Bold(true).Render(opts.Prefix + opts.Name)
-	content = namePart + " " + theme.MutedStyle.Render(fmt.Sprintf("(%d)", opts.Count))
-
-	if opts.Width > 0 {
-		visible := lipgloss.Width(gutter) + lipgloss.Width(content)
-		if opts.Width > visible+2 {
-			content += " " + theme.MutedStyle.Render(strings.Repeat("─", opts.Width-visible-1))
-		}
-	}
-	return gutter, content
-}
-
-// orderedTaskTags is the one display order both tag surfaces render: every
+// OrderedTaskTags is the one display order both tag surfaces render: every
 // non-semantic tag first in alphabetical order, then every semantic tag, also
 // alphabetical. Storage keeps tags in insertion order (AddTag appends), so two
 // tasks tagged the same way could show different chips; this makes the tag set,
@@ -94,7 +51,7 @@ func renderSectionHeader(opts SectionHeaderOpts) (gutter, content string) {
 // hashes, so a tag's position and its color agree about what one tag is. The raw
 // spelling breaks a tie, which is what makes the result independent of insertion
 // order rather than merely stable under it.
-func orderedTaskTags(tags []string) []string {
+func OrderedTaskTags(tags []string) []string {
 	semantic := func(tag string) bool {
 		_, ok := models.SemanticTaskTagByName(tag)
 		return ok
@@ -115,17 +72,17 @@ func orderedTaskTags(tags []string) []string {
 	return ordered
 }
 
-// renderTruncatedTags renders a compact inline tag string with per-tag truncation
+// RenderTruncatedTags renders a compact inline tag string with per-tag truncation
 // and overflow count. Shows at most maxTags tags, each truncated to maxTagLen chars.
 // Each tag wears its own chip color from TagChipStyle; the +N overflow stays
 // muted because it counts tags rather than naming one.
 // Returns an empty string if there are no tags.
-func renderTruncatedTags(tags []string, maxTags, maxTagLen int) string {
+func RenderTruncatedTags(tags []string, maxTags, maxTagLen int) string {
 	if len(tags) == 0 {
 		return ""
 	}
 	var parts []string
-	for i, tag := range orderedTaskTags(tags) {
+	for i, tag := range OrderedTaskTags(tags) {
 		if i >= maxTags {
 			break
 		}
@@ -141,24 +98,24 @@ func renderTruncatedTags(tags []string, maxTags, maxTagLen int) string {
 	return result
 }
 
-// pinnedMarker is the one pin vocabulary every surface that lists a pinnable
+// PinnedMarker is the one pin vocabulary every surface that lists a pinnable
 // thing shares: the bold `*` the `*` key writes and the `*pin` sigil names. It
 // is a glyph rather than a color because SelectedLine strips styling from the
 // cursor row, so a colored name says nothing about the row the user is on.
-func pinnedMarker() string {
+func PinnedMarker() string {
 	return theme.PinnedMarkerStyle.Render("*") + " "
 }
 
-// renderCommentIndicator renders a compact comment count indicator.
-func renderCommentIndicator(task *models.Task) string {
+// RenderCommentIndicator renders a compact comment count indicator.
+func RenderCommentIndicator(task *models.Task) string {
 	if len(task.Comments) == 0 {
 		return ""
 	}
 	return theme.MutedStyle.Render(fmt.Sprintf("%s %d", theme.IconComment(), len(task.Comments)))
 }
 
-// renderAttachmentIndicator renders a compact attachment count indicator.
-func renderAttachmentIndicator(task *models.Task) string {
+// RenderAttachmentIndicator renders a compact attachment count indicator.
+func RenderAttachmentIndicator(task *models.Task) string {
 	if !task.HasAttachments() {
 		return ""
 	}
@@ -172,7 +129,7 @@ func formatGitHubIssueRef(ref models.GitHubIssueRef) string {
 	return fmt.Sprintf("%s %s/%s#%d", icons.Get("github_issue"), ref.Owner, ref.Repo, ref.Number)
 }
 
-func gitHubIssueAttachmentRef(att models.Attachment) (models.GitHubIssueRef, bool) {
+func GitHubIssueAttachmentRef(att models.Attachment) (models.GitHubIssueRef, bool) {
 	if !att.IsURL {
 		return models.GitHubIssueRef{}, false
 	}
@@ -185,8 +142,8 @@ func gitHubIssueAttachmentRef(att models.Attachment) (models.GitHubIssueRef, boo
 	return models.GitHubIssueRef{}, false
 }
 
-func attachmentDisplayName(att models.Attachment) string {
-	if ref, ok := gitHubIssueAttachmentRef(att); ok {
+func AttachmentDisplayName(att models.Attachment) string {
+	if ref, ok := GitHubIssueAttachmentRef(att); ok {
 		return formatGitHubIssueRef(ref)
 	}
 	if att.IsCodeRef {
@@ -195,8 +152,8 @@ func attachmentDisplayName(att models.Attachment) string {
 	return att.Filename
 }
 
-// renderChecklistIndicator renders a compact checklist progress indicator.
-func renderChecklistIndicator(task *models.Task) string {
+// RenderChecklistIndicator renders a compact checklist progress indicator.
+func RenderChecklistIndicator(task *models.Task) string {
 	if len(task.Checklist) == 0 {
 		return ""
 	}

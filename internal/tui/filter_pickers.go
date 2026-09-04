@@ -8,6 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -23,13 +24,13 @@ func (m *AppModel) newFilterDuePicker(
 	request operation.OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
 	shortcuts := query.DueFilterShortcuts()
-	items := make([]ListItem, 0, len(shortcuts))
-	byToken := make(map[string]ListItemID, len(shortcuts))
+	items := make([]listsurface.ListItem, 0, len(shortcuts))
+	byToken := make(map[string]listsurface.ListItemID, len(shortcuts))
 	for _, shortcut := range shortcuts {
-		id := ListItemID("filter-due:" + shortcut.ID)
+		id := listsurface.ListItemID("filter-due:" + shortcut.ID)
 		token := shortcut.Token()
 		byToken[token] = id
-		items = append(items, ListItem{
+		items = append(items, listsurface.ListItem{
 			ID:            id,
 			PrimaryText:   shortcut.Label,
 			SecondaryText: token + " · " + shortcut.Secondary,
@@ -37,14 +38,14 @@ func (m *AppModel) newFilterDuePicker(
 			Data:          token,
 		})
 	}
-	selected := []ListItemID(nil)
+	selected := []listsurface.ListItemID(nil)
 	if m.crossOutliner != nil {
 		active := query.DueFilterClauses(m.crossOutliner.filter.DueDate)
 		if m.crossOutliner.filter.Deferred {
 			active = query.FilterClauseList(models.QueryFieldDeferred, models.QueryOperatorPresent, "")
 		}
 		if id, ok := byToken[strings.Join(query.FilterClauseParts(active), " ")]; ok {
-			selected = []ListItemID{id}
+			selected = []listsurface.ListItemID{id}
 		}
 	}
 	return newOperationValuePickerModel(
@@ -52,7 +53,7 @@ func (m *AppModel) newFilterDuePicker(
 		operation.ValueProviderFilterDue,
 		"Filter by Due or Deferred",
 		"keep matching tasks",
-		ListSource{Items: items},
+		listsurface.ListSource{Items: items},
 		false,
 		selected,
 	)
@@ -66,13 +67,13 @@ func (m *AppModel) newFilterDependencyPicker(
 	request operation.OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
 	shortcuts := query.DependencyFilterShortcuts()
-	items := make([]ListItem, 0, len(shortcuts))
-	byToken := make(map[string]ListItemID, len(shortcuts))
+	items := make([]listsurface.ListItem, 0, len(shortcuts))
+	byToken := make(map[string]listsurface.ListItemID, len(shortcuts))
 	for _, shortcut := range shortcuts {
-		id := ListItemID("filter-dependency:" + shortcut.ID)
+		id := listsurface.ListItemID("filter-dependency:" + shortcut.ID)
 		token := shortcut.Token()
 		byToken[token] = id
-		items = append(items, ListItem{
+		items = append(items, listsurface.ListItem{
 			ID:            id,
 			PrimaryText:   shortcut.Label,
 			SecondaryText: token + " · " + shortcut.Secondary,
@@ -80,13 +81,13 @@ func (m *AppModel) newFilterDependencyPicker(
 			Data:          token,
 		})
 	}
-	selected := []ListItemID(nil)
+	selected := []listsurface.ListItemID(nil)
 	if m.crossOutliner != nil {
 		active := query.ClausesForField(m.crossOutliner.filterQuery, models.QueryFieldBlocked)
 		active = append(active,
 			query.ClausesForField(m.crossOutliner.filterQuery, models.QueryFieldBlocking)...)
 		if id, ok := byToken[strings.Join(query.FilterClauseParts(active), " ")]; ok {
-			selected = []ListItemID{id}
+			selected = []listsurface.ListItemID{id}
 		}
 	}
 	return newOperationValuePickerModel(
@@ -94,7 +95,7 @@ func (m *AppModel) newFilterDependencyPicker(
 		operation.ValueProviderFilterDependency,
 		"Filter by Dependency",
 		"keep matching tasks",
-		ListSource{Items: items},
+		listsurface.ListSource{Items: items},
 		false,
 		selected,
 	)
@@ -116,29 +117,29 @@ func (m *AppModel) newFilterHierarchyPicker(
 		{id: "root", label: "Root", secondary: "has no parent", value: query.HierarchyRoot},
 		{id: "leaf", label: "Leaf", secondary: "has no open children", value: query.HierarchyLeaf},
 	}
-	items := make([]ListItem, 0, len(options))
+	items := make([]listsurface.ListItem, 0, len(options))
 	for _, option := range options {
-		items = append(items, ListItem{
-			ID:            ListItemID("filter-hierarchy:" + option.id),
+		items = append(items, listsurface.ListItem{
+			ID:            listsurface.ListItemID("filter-hierarchy:" + option.id),
 			PrimaryText:   option.label,
 			SecondaryText: option.secondary,
 			Aliases:       []string{option.id, option.label, option.secondary},
 			Data:          option.value,
 		})
 	}
-	selected := []ListItemID(nil)
+	selected := []listsurface.ListItemID(nil)
 	if m.crossOutliner != nil {
 		switch m.crossOutliner.filter.Hierarchy {
 		case query.HierarchyAll:
 			selected = nil
 		case query.HierarchyParent:
-			selected = []ListItemID{"filter-hierarchy:parent"}
+			selected = []listsurface.ListItemID{"filter-hierarchy:parent"}
 		case query.HierarchyChild:
-			selected = []ListItemID{"filter-hierarchy:child"}
+			selected = []listsurface.ListItemID{"filter-hierarchy:child"}
 		case query.HierarchyRoot:
-			selected = []ListItemID{"filter-hierarchy:root"}
+			selected = []listsurface.ListItemID{"filter-hierarchy:root"}
 		case query.HierarchyLeaf:
-			selected = []ListItemID{"filter-hierarchy:leaf"}
+			selected = []listsurface.ListItemID{"filter-hierarchy:leaf"}
 		}
 	}
 	return newOperationValuePickerModel(
@@ -146,7 +147,7 @@ func (m *AppModel) newFilterHierarchyPicker(
 		operation.ValueProviderFilterHierarchy,
 		"Filter by Hierarchy",
 		"keep matching tasks",
-		ListSource{Items: items},
+		listsurface.ListSource{Items: items},
 		false,
 		selected,
 	)
@@ -168,17 +169,17 @@ func (m *AppModel) newFilterCompletionAgePicker(
 		{id: "30", label: "30+ days", secondary: "completed at least 30 local days ago", value: query.CompletionAge30Days},
 		{id: "90", label: "90+ days", secondary: "completed at least 90 local days ago", value: query.CompletionAge90Days},
 	}
-	items := make([]ListItem, 0, len(options))
+	items := make([]listsurface.ListItem, 0, len(options))
 	for _, option := range options {
-		items = append(items, ListItem{
-			ID:            ListItemID("filter-completion-age:" + option.id),
+		items = append(items, listsurface.ListItem{
+			ID:            listsurface.ListItemID("filter-completion-age:" + option.id),
 			PrimaryText:   option.label,
 			SecondaryText: option.secondary,
 			Aliases:       []string{option.id, option.label, option.secondary},
 			Data:          option.value,
 		})
 	}
-	selected := []ListItemID(nil)
+	selected := []listsurface.ListItemID(nil)
 	if m.crossOutliner != nil && m.crossOutliner.filter.HasCompletionAgeFilter() {
 		suffix := "all"
 		switch m.crossOutliner.filter.CompletionAge {
@@ -190,14 +191,14 @@ func (m *AppModel) newFilterCompletionAgePicker(
 			suffix = "90"
 		default:
 		}
-		selected = []ListItemID{ListItemID("filter-completion-age:" + suffix)}
+		selected = []listsurface.ListItemID{listsurface.ListItemID("filter-completion-age:" + suffix)}
 	}
 	return newOperationValuePickerModel(
 		request,
 		operation.ValueProviderFilterCompletionAge,
 		"Filter by Completion Age",
 		"includes done and canceled tasks",
-		ListSource{Items: items},
+		listsurface.ListSource{Items: items},
 		false,
 		selected,
 	)
@@ -208,7 +209,7 @@ func (m *AppModel) newFilterCompletionAgePicker(
 func (m *AppModel) newFilterStatesPicker(
 	request operation.OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
-	source := ListSourceFromWorkflowStates(models.AllWorkflowStates())
+	source := listsurface.ListSourceFromWorkflowStates(models.AllWorkflowStates())
 	counts := m.prospectiveStateFilterCounts()
 	for index := range source.Items {
 		if state, ok := source.Items[index].Data.(models.WorkflowState); ok {
@@ -216,10 +217,10 @@ func (m *AppModel) newFilterStatesPicker(
 			source.Items[index].Data = state.String()
 		}
 	}
-	selected := []ListItemID(nil)
+	selected := []listsurface.ListItemID(nil)
 	if m.crossOutliner != nil {
 		for _, state := range m.crossOutliner.filter.States.Values() {
-			selected = append(selected, ListItemID("state:"+state.String()))
+			selected = append(selected, listsurface.ListItemID("state:"+state.String()))
 		}
 	}
 	return newOperationValuePickerModel(
@@ -336,10 +337,10 @@ func (m *AppModel) newFilterTagsPicker(
 ) (*OperationValuePickerModel, error) {
 	tagList := query.BuildProjectsTagList(m.filterScopeProjects(), false)
 	source := taskTagListSource(tagList, false)
-	selected := []ListItemID(nil)
+	selected := []listsurface.ListItemID(nil)
 	if m.crossOutliner != nil {
 		for tag := range m.crossOutliner.filter.Tags {
-			selected = append(selected, ListItemID("tag:"+tag))
+			selected = append(selected, listsurface.ListItemID("tag:"+tag))
 		}
 	}
 	return newOperationValuePickerModel(
@@ -368,7 +369,7 @@ func (m *AppModel) filterScopeProjects() []*models.Project {
 // compose with OR because a task carries at most one context, and the leading
 // taskCountLabel is the census wording both context rows carry.
 func taskCountLabel(count int) string {
-	return fmt.Sprintf("%d %s", count, pluralize(count, "task", "tasks"))
+	return fmt.Sprintf("%d %s", count, listsurface.Pluralize(count, "task", "tasks"))
 }
 
 // no-context row names the tasks the vocabulary does not cover.
@@ -377,9 +378,9 @@ func (m *AppModel) newFilterContextsPicker(
 ) (*OperationValuePickerModel, error) {
 	projects := m.filterScopeProjects()
 	facets := query.BuildTagFacetList(projects, false)
-	items := make([]ListItem, 0, len(facets)+1)
-	items = append(items, ListItem{
-		ID:            ListItemID("filter-context:" + query.NoContextFilterKey),
+	items := make([]listsurface.ListItem, 0, len(facets)+1)
+	items = append(items, listsurface.ListItem{
+		ID:            listsurface.ListItemID("filter-context:" + query.NoContextFilterKey),
 		PrimaryText:   "No context",
 		SecondaryText: taskCountLabel(query.CountTasksWithoutContext(projects)),
 		Aliases:       []string{"no context", "none", "##0"},
@@ -389,22 +390,22 @@ func (m *AppModel) newFilterContextsPicker(
 		if facet.ContextCount == 0 {
 			continue
 		}
-		items = append(items, ListItem{
-			ID:            ListItemID("filter-context:" + facet.Name),
+		items = append(items, listsurface.ListItem{
+			ID:            listsurface.ListItemID("filter-context:" + facet.Name),
 			PrimaryText:   "##" + facet.Name,
 			SecondaryText: taskCountLabel(facet.ContextCount),
 			Aliases:       []string{facet.Name, "##" + facet.Name},
 			Data:          facet.Name,
 		})
 	}
-	selected := []ListItemID(nil)
+	selected := []listsurface.ListItemID(nil)
 	if m.crossOutliner != nil {
 		filter := &m.crossOutliner.filter.CommonFilterState
 		if filter.NoContext {
-			selected = append(selected, ListItemID("filter-context:"+query.NoContextFilterKey))
+			selected = append(selected, listsurface.ListItemID("filter-context:"+query.NoContextFilterKey))
 		}
 		for name := range filter.Contexts {
-			selected = append(selected, ListItemID("filter-context:"+name))
+			selected = append(selected, listsurface.ListItemID("filter-context:"+name))
 		}
 	}
 	return newOperationValuePickerModel(
@@ -412,7 +413,7 @@ func (m *AppModel) newFilterContextsPicker(
 		operation.ValueProviderFilterContexts,
 		"Filter by Context",
 		"keep matching tasks",
-		ListSource{Items: items},
+		listsurface.ListSource{Items: items},
 		true,
 		selected,
 	)

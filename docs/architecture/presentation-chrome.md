@@ -204,7 +204,7 @@ draws the bar row and the block alone: no operational title, no suggestion pane,
 no rows, and no `computeOutlinerViewport` call at all. The list is not shrunk to
 make room for a menu, which is what stops every row on screen from stepping down
 and back up once per press; skipping the window authority is what leaves
-`viewScrollOffset` and `lastViewport` holding the window the last list frame drew,
+`ViewScrollOffset` and `lastViewport` holding the window the last list frame drew,
 which is both the window the close redraws and the one a key re-emitted through
 the non-modal arm pages against. The branch is keyed on the drawn block rather
 than on `menuBarOpen`, since a dropdown that resolved to nothing must fall back

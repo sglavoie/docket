@@ -2,6 +2,7 @@ package tui
 
 import (
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -30,7 +31,7 @@ func (m *AppModel) clearBulkTaskSelectionsForLocators(locators []app.TaskLocator
 			return
 		}
 		for identity := range set {
-			delete(outliner.selectedTaskIdentities, identity)
+			delete(outliner.Selected, identity)
 		}
 		if outliner.SelectedCount() == 0 {
 			outliner.clearMultiSelect()
@@ -81,12 +82,12 @@ func taskIDSliceToSet(ids []string) map[string]bool {
 	return set
 }
 
-func multiSelectStateHasTaskID(state *MultiSelectState, selectedIDs map[string]bool) bool {
+func multiSelectStateHasTaskID(state *listsurface.MultiSelectState, selectedIDs map[string]bool) bool {
 	if state == nil {
 		return false
 	}
 	matchedProjects := make(map[string]string, len(selectedIDs))
-	for identity := range state.selectedTaskIdentities {
+	for identity := range state.Selected {
 		if !selectedIDs[identity.TaskID] {
 			continue
 		}

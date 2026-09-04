@@ -58,7 +58,7 @@ func TestChecklistFoldLadderExpandsAndCollapses(t *testing.T) {
 			t.Fatalf("checklist row %d = %q, want %q", index, items[index], text)
 		}
 	}
-	if !outliner.rows[outliner.cursor].isTaskRow() {
+	if !outliner.rows[outliner.Cursor].isTaskRow() {
 		t.Fatal("expanding moved the cursor off the owner task row")
 	}
 
@@ -85,14 +85,14 @@ func TestChecklistRowCollapseReturnsToOwner(t *testing.T) {
 		t.Fatal("expandAtCursor did not expand the checklist")
 	}
 
-	outliner.cursor++
-	if !outliner.rows[outliner.cursor].IsChecklistItem {
-		t.Fatalf("row after the owner is not a checklist item: %+v", outliner.rows[outliner.cursor])
+	outliner.Cursor++
+	if !outliner.rows[outliner.Cursor].IsChecklistItem {
+		t.Fatalf("row after the owner is not a checklist item: %+v", outliner.rows[outliner.Cursor])
 	}
 	if !outliner.collapseOrMoveToParent() {
 		t.Fatal("collapseOrMoveToParent on a checklist row did not move the cursor")
 	}
-	if got := outliner.taskIdentityForRow(outliner.rows[outliner.cursor]); got != owner {
+	if got := outliner.taskIdentityForRow(outliner.rows[outliner.Cursor]); got != owner {
 		t.Fatalf("cursor identity = %+v, want the owner %+v", got, owner)
 	}
 	if len(checklistRowTexts(outliner)) == 0 {
@@ -151,8 +151,8 @@ func TestChecklistRowsSuppressedDuringVisualSelection(t *testing.T) {
 	outliner := driver.App().crossOutliner
 	owner := focusChecklistOwner(t, driver, checklistFixtureFoldTitle)
 	outliner.expandAtCursor()
-	outliner.cursor++
-	if !outliner.rows[outliner.cursor].IsChecklistItem {
+	outliner.Cursor++
+	if !outliner.rows[outliner.Cursor].IsChecklistItem {
 		t.Fatal("the cursor is not on a checklist row before entering selection")
 	}
 
@@ -163,7 +163,7 @@ func TestChecklistRowsSuppressedDuringVisualSelection(t *testing.T) {
 	if !outliner.isChecklistExpanded(owner) {
 		t.Fatal("visual selection discarded the checklist fold state")
 	}
-	if got := outliner.taskIdentityForRow(outliner.rows[outliner.cursor]); got != owner {
+	if got := outliner.taskIdentityForRow(outliner.rows[outliner.Cursor]); got != owner {
 		t.Fatalf("cursor identity = %+v, want the re-seated owner %+v", got, owner)
 	}
 
@@ -178,7 +178,7 @@ func focusChecklistOwner(t *testing.T, driver *UITestDriver, title string) taskr
 	outliner := driver.App().crossOutliner
 	for index, row := range outliner.rows {
 		if row.isTaskRow() && row.task != nil && row.task.Title == title {
-			outliner.cursor = index
+			outliner.Cursor = index
 			return outliner.taskIdentityForRow(row)
 		}
 	}

@@ -11,12 +11,12 @@ func (m *TaskCommentsModel) buildKeyMap() *keymap.KeyMap {
 	inInputMode := func() bool { return m.addMode || m.editMode || m.expandedView }
 	inBrowseMode := func() bool { return !inInputMode() }
 	hasBrowseSelection := func() bool { return inBrowseMode() && m.hasSelection() }
-	addMode := func() bool { return m.addMode && !m.confirm.IsActive() }
-	editMode := func() bool { return m.editMode && !m.confirm.IsActive() }
+	addMode := func() bool { return m.addMode && !m.Confirm.IsActive() }
+	editMode := func() bool { return m.editMode && !m.Confirm.IsActive() }
 	inputMode := func() bool { return addMode() || editMode() }
-	expandedMode := func() bool { return m.expandedView && !m.confirm.IsActive() }
+	expandedMode := func() bool { return m.expandedView && !m.Confirm.IsActive() }
 	saveLabel := "save"
-	if m.err != nil {
+	if m.Err != nil {
 		saveLabel = "retry"
 	}
 

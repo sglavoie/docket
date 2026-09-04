@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -39,8 +40,8 @@ func (m *AppModel) executeTaskDeleteOperation(
 	}}
 }
 
-func deleteSelectionCounts(context operation.CommandContext, targetCount int) SelectionCounts {
-	counts := SelectionCounts{Total: targetCount, Visible: targetCount}
+func deleteSelectionCounts(context operation.CommandContext, targetCount int) listsurface.SelectionCounts {
+	counts := listsurface.SelectionCounts{Total: targetCount, Visible: targetCount}
 	if context.Selection.VisibleCount+context.Selection.HiddenCount == targetCount {
 		counts.Visible = context.Selection.VisibleCount
 		counts.Hidden = context.Selection.HiddenCount
@@ -58,7 +59,7 @@ func deleteSelectionCounts(context operation.CommandContext, targetCount int) Se
 // together.
 type TaskDeleteRequestedMsg struct {
 	Refs      []TaskProjectRef
-	Selection SelectionCounts
+	Selection listsurface.SelectionCounts
 }
 
 // taskDeletePending holds the canonicalized roots and origin for an in-flight
@@ -72,7 +73,7 @@ type taskDeleteImpact struct {
 	selectedRoots     int
 	descendants       int
 	totalTasks        int
-	selection         SelectionCounts
+	selection         listsurface.SelectionCounts
 	storedAttachments int
 	linkedAttachments int
 }
@@ -91,7 +92,7 @@ func (m *AppModel) handleTaskDeleteRequested(msg TaskDeleteRequestedMsg) {
 	roots := collapseNestedTaskDeleteRoots(requested)
 	selection := msg.Selection
 	if selection.Total != len(requested) || selection.Visible+selection.Hidden != selection.Total {
-		selection = SelectionCounts{Total: len(requested), Visible: len(requested)}
+		selection = listsurface.SelectionCounts{Total: len(requested), Visible: len(requested)}
 	}
 	impact := calculateTaskDeleteImpact(roots, selection)
 	m.pendingTaskDelete = taskDeletePending{
@@ -159,7 +160,7 @@ func collapseNestedTaskDeleteRoots(refs []TaskProjectRef) []TaskProjectRef {
 	return roots
 }
 
-func calculateTaskDeleteImpact(roots []TaskProjectRef, selection SelectionCounts) taskDeleteImpact {
+func calculateTaskDeleteImpact(roots []TaskProjectRef, selection listsurface.SelectionCounts) taskDeleteImpact {
 	rootSet := make(map[taskref.TaskIdentity]bool, len(roots))
 	projects := make(map[string]*models.Project)
 	for _, root := range roots {

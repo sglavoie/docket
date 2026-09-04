@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/query"
@@ -25,9 +26,9 @@ const (
 	operationProjectTagUnparkAll operation.OperationID = "tui.project-tag.unpark-all"
 )
 
-const projectTagActionCategory ListCategoryID = "project-tag-actions"
+const projectTagActionCategory listsurface.ListCategoryID = "project-tag-actions"
 
-var projectTagActionCategories = []ListCategory{{ID: projectTagActionCategory, Label: "Tag"}}
+var projectTagActionCategories = []listsurface.ListCategory{{ID: projectTagActionCategory, Label: "Tag"}}
 
 // projectTagVocabularyOperations is the closed, ordered sheet.
 var projectTagVocabularyOperations = []operation.OperationID{
@@ -158,26 +159,26 @@ func (m *AppModel) openProjectTagVocabularyActions(tag string) tea.Cmd {
 		)
 	}
 
-	sheet, err := NewContextActionSheetModel(
+	sheet, err := listsurface.NewContextActionSheetModel(
 		m.GetOperationRegistry(),
 		m.operationExecutor,
 		ctx,
 		projectTagVocabularyOperations,
-		ContextActionSheetConfig{
-			Host:         ContextActionHostOutliner,
-			Completion:   ContextActionCompleteCloseSheet,
+		listsurface.ContextActionSheetConfig{
+			Host:         listsurface.ContextActionHostOutliner,
+			Completion:   listsurface.ContextActionCompleteCloseSheet,
 			Title:        "Tag Actions",
 			Subtitle:     "#" + tag,
 			ItemIDPrefix: "project-tag-action:",
 			Categories:   projectTagActionCategories,
-			CategoryFor: func(operation.OperationDescriptor) ListCategoryID {
+			CategoryFor: func(operation.OperationDescriptor) listsurface.ListCategoryID {
 				return projectTagActionCategory
 			},
 			SecondaryFor: operationActionSecondaryText,
 			Bulk:         true,
 			Targets:      len(members),
-			EmptyState:   ListEmptyState{Title: "No tag actions available."},
-			NoMatchState: ListEmptyState{Title: "No matching actions.", Detail: "Clear or change the search."},
+			EmptyState:   listsurface.ListEmptyState{Title: "No tag actions available."},
+			NoMatchState: listsurface.ListEmptyState{Title: "No matching actions.", Detail: "Clear or change the search."},
 		},
 	)
 	if err != nil {
@@ -244,7 +245,7 @@ func (m *AppModel) newProjectTagDestinationPicker(
 	}
 	sort.Strings(names)
 
-	items := []ListItem{{
+	items := []listsurface.ListItem{{
 		ID:            "tag-destination:",
 		CategoryID:    tagDescriptiveCategory,
 		PrimaryText:   "Leave untagged",
@@ -253,8 +254,8 @@ func (m *AppModel) newProjectTagDestinationPicker(
 		Data:          "",
 	}}
 	for _, name := range names {
-		items = append(items, ListItem{
-			ID:            ListItemID("tag-destination:" + name),
+		items = append(items, listsurface.ListItem{
+			ID:            listsurface.ListItemID("tag-destination:" + name),
 			CategoryID:    tagDescriptiveCategory,
 			PrimaryText:   name,
 			SecondaryText: projectCountPhrase(counts[name]),
@@ -273,9 +274,9 @@ func (m *AppModel) newProjectTagDestinationPicker(
 		operation.ValueProviderProjectTagDestination,
 		"Remove #"+subject+" everywhere",
 		subtitle,
-		ListSource{
+		listsurface.ListSource{
 			Items:      items,
-			Categories: []ListCategory{{ID: tagDescriptiveCategory, Label: "Destination"}},
+			Categories: []listsurface.ListCategory{{ID: tagDescriptiveCategory, Label: "Destination"}},
 		},
 		false,
 		nil,
@@ -285,7 +286,7 @@ func (m *AppModel) newProjectTagDestinationPicker(
 // projectTagVocabularySelectableTag reports the tag a picker row names, or false
 // for the Untagged pseudo-row, which is a facet rather than a tag the catalog
 // could rename or remove.
-func projectTagVocabularySelectableTag(item ListItem) (string, bool) {
+func projectTagVocabularySelectableTag(item listsurface.ListItem) (string, bool) {
 	tag, ok := item.Data.(string)
 	if !ok || tag == "" || tag == query.UntaggedProjectFilterKey {
 		return "", false

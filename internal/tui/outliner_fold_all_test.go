@@ -99,7 +99,7 @@ func TestToggleAllSubtreesRidesTheCursorToAVisibleAncestor(t *testing.T) {
 	if !outliner.toggleAllSubtrees() {
 		t.Fatal("toggleAllSubtrees reported no change")
 	}
-	row := outliner.rows[outliner.cursor]
+	row := outliner.rows[outliner.Cursor]
 	if !row.isTaskRow() || row.task == nil || row.task.ID != tasks["parent"].ID {
 		t.Fatalf("cursor after fold = %+v, want the root ancestor", row)
 	}
@@ -108,7 +108,7 @@ func TestToggleAllSubtreesRidesTheCursorToAVisibleAncestor(t *testing.T) {
 	if !outliner.toggleAllSubtrees() {
 		t.Fatal("the restoring press reported no change")
 	}
-	if row := outliner.rows[outliner.cursor]; row.task == nil || row.task.ID != tasks["parent"].ID {
+	if row := outliner.rows[outliner.Cursor]; row.task == nil || row.task.ID != tasks["parent"].ID {
 		t.Fatalf("cursor after unfold = %+v, want the ancestor it rode to", row)
 	}
 }

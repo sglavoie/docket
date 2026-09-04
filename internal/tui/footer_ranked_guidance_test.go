@@ -74,7 +74,7 @@ func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 	outliner := app.crossOutliner
 	for index, row := range outliner.rows {
 		if row.isTaskRow() {
-			outliner.cursor = index
+			outliner.Cursor = index
 			break
 		}
 	}
@@ -117,7 +117,7 @@ func TestOutlinerFooterUsesApplicableRankedMetadataAtNarrowWidth(t *testing.T) {
 	// A visual selection makes cursor-only edit operations inapplicable. At a
 	// wide size they would otherwise be visible, so their absence proves the
 	// footer uses live descriptor applicability rather than a static key list.
-	outliner.multiSelectMode = true
+	outliner.MultiSelectMode = true
 	outliner.SetSize(240, minTerminalHeight-2)
 	spec, ok = outliner.ContextualGuidance()
 	if !ok {

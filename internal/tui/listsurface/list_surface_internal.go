@@ -1,4 +1,4 @@
-package tui
+package listsurface
 
 import (
 	"fmt"
@@ -12,10 +12,10 @@ import (
 	"github.com/sglavoie/tt/internal/tui/textfit"
 )
 
-// listTextGap is the one separator LayoutListText puts between primary and
+// ListTextGap is the one separator LayoutListText puts between primary and
 // secondary text. A caller that measures a row before handing it here must
 // charge this same width, so it is named once rather than spelled per site.
-const listTextGap = "  "
+const ListTextGap = "  "
 
 // LayoutListText fits primary and secondary text by terminal display cells.
 // Primary text gets preference; secondary text uses at most one third of a
@@ -33,7 +33,7 @@ func LayoutListText(primary, secondary string, width int) ListTextLayout {
 		return layout
 	}
 
-	const gap = listTextGap
+	const gap = ListTextGap
 	gapWidth := lipgloss.Width(gap)
 	if primaryWidth+gapWidth+secondaryWidth <= width {
 		layout.Primary = primary
@@ -154,7 +154,7 @@ func (model *ListSurfaceModel) rebuildMatches() {
 	}
 	buckets := make(map[ListCategoryID][]listSurfaceMatch, len(model.categories)+1)
 	for sourceIndex, item := range model.items {
-		score := listItemScore(item, model.query.Normalized)
+		score := ListItemScore(item, model.query.Normalized)
 		if score == 0 {
 			continue
 		}
@@ -176,7 +176,7 @@ func (model *ListSurfaceModel) rebuildMatches() {
 	model.matches = append(model.matches, uncategorized...)
 }
 
-func listItemScore(item ListItem, query string) int {
+func ListItemScore(item ListItem, query string) int {
 	if query == "" {
 		return 1
 	}

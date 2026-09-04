@@ -10,7 +10,7 @@ func (m *OutlinerModel) simplifiedInlineControlOwnsInput() bool {
 	}
 	if m.IsSearchMode() ||
 		m.quickEdit.IsActive() ||
-		m.confirm.IsActive() ||
+		m.Confirm.IsActive() ||
 		m.queryReadoutExpanded ||
 		// An open menu claims the key first even though most keys end up running
 		// their root operation anyway: it has to close before the accelerator

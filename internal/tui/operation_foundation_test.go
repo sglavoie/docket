@@ -352,7 +352,7 @@ func TestOperationRegistryValidatesCapabilities(t *testing.T) {
 
 func TestCommandContextCloneIsolatesTypedSelection(t *testing.T) {
 	ctx := foundationTestContext()
-	clone := cloneCommandContext(ctx)
+	clone := operation.CloneCommandContext(ctx)
 	clone.Selection.EntityIdentities[0] = operation.TaskEntity("project-z", "task-9")
 	clone.CurrentEntity = operation.ProjectEntity("project-z")
 

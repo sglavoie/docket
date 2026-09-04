@@ -185,12 +185,12 @@ Outliner rows omit short task IDs.
 alone, the one scroll family beside the list-relative `gg`/`G` and the half-page
 `Ctrl+U`/`Ctrl+D` that move the cursor instead. They read the window the last
 render drew, cached on `lastViewport` by `computeOutlinerViewport`, which is the
-single window authority and the one place a render moves `viewScrollOffset`: a
+single window authority and the one place a render moves `ViewScrollOffset`: a
 key handler that recomputed the window would re-derive it from a different
 footer state and scroll. `zz` reads `windowMiddleIndex` for its notion of
 "middle". The
 chord is the one key press outside `computeOutlinerViewport` that writes
-`viewScrollOffset`, and that is safe because the offset it writes still contains
+`ViewScrollOffset`, and that is safe because the offset it writes still contains
 the cursor: `adjustPersistentScrollOffset` clamps into range and then moves the
 offset only when the cursor falls outside the window, so the next render leaves
 the write standing. The handler clamps to `len(rows)-height` rather than
@@ -201,7 +201,7 @@ for a change already fully on screen.
 
 The `z` prefix is scroll alone: the bulk fold that once shared it moved to `t`,
 described with its two siblings under project grouping above, and writes
-`expandedNodes` rather than `viewScrollOffset`, so the one-writer rule stands
+`expandedNodes` rather than `ViewScrollOffset`, so the one-writer rule stands
 without qualification. After a fold the cursor rides up its `ParentID` chain to
 the nearest ancestor that still renders, since the row it sat on may now be
 under a fold.
@@ -216,7 +216,7 @@ descriptor rather than a branch inside the focus one: `EntityContext.HasSectionH
 is what makes the three applicabilities disjoint, and it is filled by both
 command-context builders so the key that dispatches and the footer that
 advertises it can never disagree. `enterSectionZoom` snapshots the pre-zoom
-cursor and `viewScrollOffset` into one `sectionZoom` value and `sectionZoomAdmits`
+cursor and `ViewScrollOffset` into one `sectionZoom` value and `sectionZoomAdmits`
 then lets exactly one section emit rows. The zoom overrides that section's fold
 rather than writing one, which is what lets a collapsed section zoom open and
 stay collapsed after `Esc`, and is why `h` and `s` refuse on the zoomed header

@@ -8,16 +8,16 @@ import (
 )
 
 func (m *OutlinerModel) reorderTask(delta int) tea.Cmd {
-	if len(m.rows) == 0 || m.cursor < 0 || m.cursor >= len(m.rows) {
+	if len(m.rows) == 0 || m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return nil
 	}
-	row := m.rows[m.cursor]
+	row := m.rows[m.Cursor]
 	if !row.isTaskRow() || row.task == nil {
 		return nil
 	}
 
 	task := row.task
-	siblings := m.visibleSiblings(m.cursor)
+	siblings := m.visibleSiblings(m.Cursor)
 	index := siblingIndex(siblings, task.ID)
 	target := index + delta
 	if index < 0 || target < 0 || target >= len(siblings) {
@@ -53,14 +53,14 @@ func (m *OutlinerModel) reorderTask(delta int) tea.Cmd {
 // the cursor to the edge is named and every sibling outside it — hidden by a
 // filter, a collapsed parent, or another section — keeps its own slot.
 func (m *OutlinerModel) reorderTaskEdge(delta int) tea.Cmd {
-	if len(m.rows) == 0 || m.cursor < 0 || m.cursor >= len(m.rows) {
+	if len(m.rows) == 0 || m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return nil
 	}
-	row := m.rows[m.cursor]
+	row := m.rows[m.Cursor]
 	if !row.isTaskRow() || row.task == nil {
 		return nil
 	}
-	siblings := m.visibleSiblings(m.cursor)
+	siblings := m.visibleSiblings(m.Cursor)
 	index := siblingIndex(siblings, row.task.ID)
 	if index < 0 {
 		return nil

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -68,9 +69,9 @@ func operationResultCmd(result operation.OperationExecutionResult) tea.Cmd {
 
 func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 	switch typed := msg.(type) {
-	case ContextActionSheetResultMsg:
+	case listsurface.ContextActionSheetResultMsg:
 		return true, m.applyContextActionSheetResult(typed)
-	case ContextActionSheetClosedMsg:
+	case listsurface.ContextActionSheetClosedMsg:
 		m.contextActionSheet = nil
 		return true, nil
 	case NamedLensPickerClosedMsg:
@@ -119,7 +120,7 @@ func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 // by one centralized sheet execution. A failure is already retained on the
 // sheet, a pending value or confirmation opens beneath it, and only a completed
 // action reports the host lifecycle.
-func (m *AppModel) applyContextActionSheetResult(msg ContextActionSheetResultMsg) tea.Cmd {
+func (m *AppModel) applyContextActionSheetResult(msg listsurface.ContextActionSheetResultMsg) tea.Cmd {
 	switch {
 	case msg.Result.Err != nil:
 		return nil
@@ -160,7 +161,7 @@ func (m *AppModel) resumeContextActionRequest(request operation.OperationExecuti
 		// acted on may have been renamed, rewritten, or removed underneath.
 		m.refreshNamedLensPicker()
 	}
-	return m.applyContextActionSheetResult(ContextActionSheetResultMsg{
+	return m.applyContextActionSheetResult(listsurface.ContextActionSheetResultMsg{
 		Result: result,
 	})
 }

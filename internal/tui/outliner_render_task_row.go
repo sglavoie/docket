@@ -7,6 +7,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -87,7 +88,7 @@ func (m *OutlinerModel) taskPinnedMarker(row outlinerRow) string {
 	if row.task == nil || !row.task.Pinned || row.IsPinnedSection {
 		return ""
 	}
-	return pinnedMarker()
+	return listsurface.PinnedMarker()
 }
 
 // matchSourceLabels is the one presentation vocabulary for search attribution:
@@ -138,8 +139,8 @@ func (m *OutlinerModel) buildTaskRowSegments(row outlinerRow, rowWidth int, colL
 		contextSegment = theme.TaskContextBadgeStyle(task).Render("["+display+"]") + " "
 	}
 	tagSegment := ""
-	if m.columnConfig.IsVisible(ColTags) {
-		if rendered := renderTruncatedTags(task.Tags, 2, 8); rendered != "" {
+	if m.columnConfig.IsVisible(listsurface.ColTags) {
+		if rendered := listsurface.RenderTruncatedTags(task.Tags, 2, 8); rendered != "" {
 			tagSegment = " " + rendered
 		}
 	}
@@ -219,7 +220,7 @@ func (m *OutlinerModel) renderOutlinerTaskRow(row outlinerRow, selected bool, ro
 
 	line := applyTaskRowLineStyle(segments.gutter(), segments.content(title), task, paint, rowWidth, rowIndex)
 
-	if m.peekMode && rowIndex == m.cursor {
+	if m.peekMode && rowIndex == m.Cursor {
 		var b strings.Builder
 		b.WriteString(line)
 		// Peek belongs to the selected task but is not another tree node. Preserve

@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 )
 
 // TestListSurfaceAdapterDataRowTruncationNoAudit verifies that a long picker data row is
@@ -11,7 +13,7 @@ import (
 // chrome is audited. Picker rows are data, not chrome.
 func TestListSurfaceAdapterDataRowTruncationNoAudit(t *testing.T) {
 	longRow := strings.Repeat("very-long-picker-row-content ", 8)
-	picker := NewListSurfaceAdapter([]testItem{{id: "1", text: longRow}}, PickerConfig{
+	picker := listsurface.NewListSurfaceAdapter([]testItem{{id: "1", text: longRow}}, listsurface.PickerConfig{
 		EmptyMessage:   "No items",
 		NoMatchMessage: "No matches",
 	})

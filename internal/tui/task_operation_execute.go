@@ -72,7 +72,7 @@ func withWaitingCheckBackStep(invocation operation.OperationInvocation, cmd tea.
 	checkBack := operation.OperationValueRequestMsg{
 		Request: operation.OperationExecutionRequest{
 			ID:      operation.OperationTaskSetDueDate,
-			Context: cloneCommandContext(invocation.Context),
+			Context: operation.CloneCommandContext(invocation.Context),
 		},
 		Provider: operation.ValueProviderDueDate,
 	}

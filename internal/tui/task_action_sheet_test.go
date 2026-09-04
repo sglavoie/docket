@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -163,10 +164,10 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTaskActionSheetModel: %v", err)
 	}
-	rows := sheet.surface.Rows()
-	seenCategories := make(map[ListCategoryID]bool)
+	rows := sheet.Surface.Rows()
+	seenCategories := make(map[listsurface.ListCategoryID]bool)
 	for _, row := range rows {
-		if row.Kind == ListRowCategory {
+		if row.Kind == listsurface.ListRowCategory {
 			seenCategories[row.Category.ID] = true
 		}
 	}
@@ -182,26 +183,26 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 	// Printable letters filter immediately. This query includes k, which is no
 	// longer a navigation alias inside the task menu.
 	for _, letter := range "task" {
-		_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: letter, Text: string(letter)})
+		_, _, _ = sheet.HandleKey(tea.KeyPressMsg{Code: letter, Text: string(letter)})
 	}
-	matches := sheet.surface.Matches()
-	wantAliasMatches := []ListItemID{ListItemID("task-action:" + string(operation.OperationTaskDelete))}
-	gotMatches := make([]ListItemID, 0, len(matches))
+	matches := sheet.Surface.Matches()
+	wantAliasMatches := []listsurface.ListItemID{listsurface.ListItemID("task-action:" + string(operation.OperationTaskDelete))}
+	gotMatches := make([]listsurface.ListItemID, 0, len(matches))
 	for _, match := range matches {
 		gotMatches = append(gotMatches, match.Item.ID)
 	}
 	if !slices.Equal(gotMatches, wantAliasMatches) {
 		t.Fatalf("immediate filter results = %v, want the alias matches %v", gotMatches, wantAliasMatches)
 	}
-	_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEscape})
-	_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: 'd', Text: "d"})
-	_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: 'e', Text: "e"})
-	_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: 'l', Text: "l"})
-	_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: 'e', Text: "e"})
-	_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: 't', Text: "t"})
-	_, _, _ = sheet.handleKey(tea.KeyPressMsg{Code: 'e', Text: "e"})
-	matches = sheet.surface.Matches()
-	wantDelete := ListItemID("task-action:" + string(operation.OperationTaskDelete))
+	_, _, _ = sheet.HandleKey(tea.KeyPressMsg{Code: tea.KeyEscape})
+	_, _, _ = sheet.HandleKey(tea.KeyPressMsg{Code: 'd', Text: "d"})
+	_, _, _ = sheet.HandleKey(tea.KeyPressMsg{Code: 'e', Text: "e"})
+	_, _, _ = sheet.HandleKey(tea.KeyPressMsg{Code: 'l', Text: "l"})
+	_, _, _ = sheet.HandleKey(tea.KeyPressMsg{Code: 'e', Text: "e"})
+	_, _, _ = sheet.HandleKey(tea.KeyPressMsg{Code: 't', Text: "t"})
+	_, _, _ = sheet.HandleKey(tea.KeyPressMsg{Code: 'e', Text: "e"})
+	matches = sheet.Surface.Matches()
+	wantDelete := listsurface.ListItemID("task-action:" + string(operation.OperationTaskDelete))
 	if len(matches) != 1 || matches[0].Item.ID != wantDelete {
 		t.Fatalf("search results = %+v, want only %s", matches, wantDelete)
 	}
@@ -219,35 +220,35 @@ func TestActionSheetMovesWithCtrlJAndCtrlK(t *testing.T) {
 		contextActionTestDescriptor("test.first", "First"),
 		contextActionTestDescriptor("test.second", "Second"),
 	}, nil)
-	sheet, err := NewContextActionSheetModel(
+	sheet, err := listsurface.NewContextActionSheetModel(
 		registry,
 		executor,
 		contextActionTestContext(),
 		[]operation.OperationID{"test.first", "test.second"},
-		ContextActionSheetConfig{Host: ContextActionHostOutliner, ImmediateFilter: true},
+		listsurface.ContextActionSheetConfig{Host: listsurface.ContextActionHostOutliner, ImmediateFilter: true},
 	)
 	if err != nil {
 		t.Fatalf("NewContextActionSheetModel: %v", err)
 	}
 
-	first, ok := sheet.surface.CurrentItem()
+	first, ok := sheet.Surface.CurrentItem()
 	if !ok {
 		t.Fatal("action sheet has no initial item")
 	}
-	_, _, _ = sheet.handleKey(syntheticCtrlKey('j'))
-	second, ok := sheet.surface.CurrentItem()
+	_, _, _ = sheet.HandleKey(syntheticCtrlKey('j'))
+	second, ok := sheet.Surface.CurrentItem()
 	if !ok || second.ID == first.ID {
 		t.Fatalf("Ctrl+J did not move down: first = %q, current = %q", first.ID, second.ID)
 	}
-	_, _, _ = sheet.handleKey(syntheticCtrlKey('k'))
-	current, ok := sheet.surface.CurrentItem()
+	_, _, _ = sheet.HandleKey(syntheticCtrlKey('k'))
+	current, ok := sheet.Surface.CurrentItem()
 	if !ok || current.ID != first.ID {
 		t.Fatalf("Ctrl+K did not move back up: current = %q, want %q", current.ID, first.ID)
 	}
-	if query := sheet.surface.Query().Raw; query != "" {
+	if query := sheet.Surface.Query().Raw; query != "" {
 		t.Fatalf("Ctrl+J/Ctrl+K changed the immediate-filter query to %q", query)
 	}
-	if view := sheet.render(100); !strings.Contains(ansi.Strip(view), "↑↓/Ctrl+j/k move") {
+	if view := sheet.Render(100); !strings.Contains(ansi.Strip(view), "↑↓/Ctrl+j/k move") {
 		t.Fatalf("action sheet footer does not advertise Ctrl+j/k navigation:\n%s", view)
 	}
 }
@@ -266,8 +267,8 @@ func TestTaskActionSheetOmitsDirectDateOperation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTaskActionSheetModel: %v", err)
 	}
-	for _, item := range sheet.surface.Items() {
-		if item.ID == ListItemID("task-action:"+string(operation.OperationTaskSetDueDate)) {
+	for _, item := range sheet.Surface.Items() {
+		if item.ID == listsurface.ListItemID("task-action:"+string(operation.OperationTaskSetDueDate)) {
 			t.Fatal("direct date operation is repeated in the task menu")
 		}
 	}
@@ -323,11 +324,11 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 	if err != nil {
 		t.Fatalf("NewTaskActionSheetModel: %v", err)
 	}
-	if !sheet.surface.SetCursorToID("task-action:" + ListItemID(operation.OperationTaskDelete)) {
+	if !sheet.Surface.SetCursorToID("task-action:" + listsurface.ListItemID(operation.OperationTaskDelete)) {
 		t.Fatal("delete action is missing from the bulk sheet")
 	}
-	_, _, result := sheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
-	_, ok := result.(ContextActionSheetResultMsg)
+	_, _, result := sheet.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	_, ok := result.(listsurface.ContextActionSheetResultMsg)
 	if !ok {
 		t.Fatalf("bulk Enter returned %T, want ContextActionSheetResultMsg", result)
 	}
@@ -360,7 +361,7 @@ func TestSimplifiedSpaceOpensSelectedTaskActionSheet(t *testing.T) {
 	if app.operationValuePicker != nil {
 		t.Fatal("Space skipped the action sheet and opened a value picker")
 	}
-	if got := len(app.contextActionSheet.surface.Items()); got == 0 {
+	if got := len(app.contextActionSheet.Surface.Items()); got == 0 {
 		t.Fatal("opened action sheet contains no applicable task actions")
 	}
 }
@@ -390,34 +391,34 @@ func TestSimplifiedVisualSelectionKeysOpenBulkActionsAndEscFreezes(t *testing.T)
 		t.Fatal("V did not anchor a fresh visual range at the cursor row")
 	}
 	send(tea.KeyPressMsg{Code: tea.KeyEscape})
-	if !app.crossOutliner.multiSelectMode || app.crossOutliner.SelectedCount() != 1 ||
+	if !app.crossOutliner.MultiSelectMode || app.crossOutliner.SelectedCount() != 1 ||
 		app.crossOutliner.IsRangeSelectionActive() {
 		t.Fatal("Esc did not freeze the visual range while preserving selection")
 	}
 
 	send(tea.KeyPressMsg{Code: tea.KeyEscape}) // drop the frozen selection
-	app.crossOutliner.cursor = 0
+	app.crossOutliner.Cursor = 0
 	send(tea.KeyPressMsg{Code: 'v', Text: "v"})
 	send(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	send(tea.KeyPressMsg{Code: 'v', Text: "v"}) // toggle the second row into the selection
 	send(tea.KeyPressMsg{Code: tea.KeySpace})
 	sheet := app.contextActionSheet
-	if sheet == nil || !sheet.config.Bulk || sheet.config.Targets != 2 {
+	if sheet == nil || !sheet.Config.Bulk || sheet.Config.Targets != 2 {
 		t.Fatalf("Space did not open a two-target bulk action sheet: %#v", sheet)
 	}
 	// Priority now belongs to the p chord, so the bulk sheet must not repeat it.
-	if sheet.surface.SetCursorToID(
-		ListItemID("task-action:" + string(operation.OperationTaskSetPriority)),
+	if sheet.Surface.SetCursorToID(
+		listsurface.ListItemID("task-action:" + string(operation.OperationTaskSetPriority)),
 	) {
 		t.Fatal("bulk action sheet still lists the direct-only set-priority action")
 	}
-	if sheet.surface.SetCursorToID(
-		ListItemID("task-action:" + string(operation.OperationTaskSetDueDate)),
+	if sheet.Surface.SetCursorToID(
+		listsurface.ListItemID("task-action:" + string(operation.OperationTaskSetDueDate)),
 	) {
 		t.Fatal("bulk action sheet repeats direct-only set-due-date")
 	}
-	if !sheet.surface.SetCursorToID(
-		ListItemID("task-action:" + string(operation.OperationTaskDelete)),
+	if !sheet.Surface.SetCursorToID(
+		listsurface.ListItemID("task-action:" + string(operation.OperationTaskDelete)),
 	) {
 		t.Fatal("bulk action sheet is missing delete")
 	}
@@ -436,7 +437,7 @@ func TestVisualSelectionRejectsPeekWithoutCursorFallback(t *testing.T) {
 		{task: second, ProjectID: project.ID},
 	}
 	app.crossOutliner.toggleCursorSelection()
-	app.crossOutliner.cursor = 1
+	app.crossOutliner.Cursor = 1
 
 	result := app.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:      operation.OperationCorePeek,

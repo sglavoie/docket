@@ -158,7 +158,7 @@ beneath an older parent and the top screen row is then not the newest task. The
 landing disturbs no folds — only when the target has no row does it open that
 row's section, its project group, and its ancestor chain, then rebuild and
 retry, the same try-reveal-retry shape as `NavigateToTaskInProject`. It does
-reset `viewScrollOffset`, because `restoreModeCursor` carries the origin mode's
+reset `ViewScrollOffset`, because `restoreModeCursor` carries the origin mode's
 offset across the transition and would seat the lead against the viewport edge
 with the section and project headers naming it scrolled off. An empty Recent
 reports the 30-day window and moves nothing.

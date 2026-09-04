@@ -9,6 +9,7 @@ import (
 
 	apppkg "github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -238,11 +239,11 @@ func TestManageHubCollectionGrammarAndProjectPickerFallback(t *testing.T) {
 	_, spaceCmd := app.manageHub.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	sheet := app.contextActionSheet
 	if spaceCmd != nil || len(notes.visibleRows) != 1 || sheet == nil ||
-		sheet.config.Bulk || sheet.config.Targets != 1 {
+		sheet.Config.Bulk || sheet.Config.Targets != 1 {
 		t.Fatalf("Space did not open a single-note action sheet: %#v", sheet)
 	}
-	if got := len(sheet.surface.Items()); got != 1 ||
-		!sheet.surface.SetCursorToID(ListItemID("note-action:"+string(operationNoteDelete))) {
+	if got := len(sheet.Surface.Items()); got != 1 ||
+		!sheet.Surface.SetCursorToID(listsurface.ListItemID("note-action:"+string(operationNoteDelete))) {
 		t.Fatalf("note action sheet holds %d rows, want Delete alone", got)
 	}
 	app.contextActionSheet = nil

@@ -110,10 +110,10 @@ func (m *OutlinerModel) sectionZoomAdmits(key string) bool {
 // the Outliner's own command context and the shell's, so the key that dispatches
 // and the footer that advertises it can never disagree.
 func (m *OutlinerModel) cursorNamesSectionHeader() bool {
-	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
+	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return false
 	}
-	return m.rows[m.cursor].IsSectionHeader
+	return m.rows[m.Cursor].IsSectionHeader
 }
 
 // cursorNoteIdentity names the note the cursor rests on, and is the second read
@@ -121,10 +121,10 @@ func (m *OutlinerModel) cursorNamesSectionHeader() bool {
 // project or task, so this identity is the only thing an operation acting on it
 // can resolve a target from.
 func (m *OutlinerModel) cursorNoteIdentity() (NoteRowIdentity, bool) {
-	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
+	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return NoteRowIdentity{}, false
 	}
-	row := m.rows[m.cursor]
+	row := m.rows[m.Cursor]
 	if !row.IsNoteRow || row.NoteRow.Filename == "" {
 		return NoteRowIdentity{}, false
 	}

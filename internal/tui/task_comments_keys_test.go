@@ -104,8 +104,8 @@ func TestCommentsRetiredKeysAreSilent(t *testing.T) {
 
 	for _, key := range []string{"n", "d", "x"} {
 		press(key)
-		if panel.confirm.IsActive() {
-			t.Fatalf("retired key %q raised confirm %q", key, panel.confirm.Action())
+		if panel.Confirm.IsActive() {
+			t.Fatalf("retired key %q raised confirm %q", key, panel.Confirm.Action())
 		}
 		if panel.addMode {
 			t.Fatalf("retired key %q entered add mode", key)
@@ -192,7 +192,7 @@ func TestCommentsSubStatesKeepUAsTypedText(t *testing.T) {
 
 	press("space")
 	press("enter")
-	if !panel.confirm.IsActive() {
+	if !panel.Confirm.IsActive() {
 		t.Fatal("the sheet's Delete row raised no confirmation")
 	}
 	press("u")

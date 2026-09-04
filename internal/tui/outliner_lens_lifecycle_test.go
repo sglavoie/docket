@@ -11,6 +11,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -82,7 +83,7 @@ func TestApplyNamedLensInstallsSavedProjectionAndEscRestoresBaseline(t *testing.
 	outliner.treeSort = query.SortState{Field: query.SortByTitle, Ascending: true}
 	outliner.collapsedSections["baseline-fold"] = true
 	outliner.peekMode = true
-	outliner.selectedTaskIdentities[taskref.TaskIdentity{ProjectID: "beta", TaskID: "beta-inbox"}] = true
+	outliner.Selected[taskref.TaskIdentity{ProjectID: "beta", TaskID: "beta-inbox"}] = true
 	baselineRows := searchVisibleTaskIDs(outliner)
 
 	applyLensOrFatal(t, outliner, waitingLens(lensTestID(1), "Waiting", "needle"))
@@ -109,7 +110,7 @@ func TestApplyNamedLensInstallsSavedProjectionAndEscRestoresBaseline(t *testing.
 	// closed here to prove restoration puts it back rather than merely leaving it.
 	outliner.peekMode = false
 
-	if !RunEscCascade(outliner.escSteps()) {
+	if !listsurface.RunEscCascade(outliner.escSteps()) {
 		t.Fatal("expected the Esc cascade to consume the active lens")
 	}
 	if outliner.hasActiveLens() {
@@ -133,7 +134,7 @@ func TestApplyNamedLensInstallsSavedProjectionAndEscRestoresBaseline(t *testing.
 	if !outliner.peekMode {
 		t.Fatal("restoration dropped Peek")
 	}
-	if !outliner.selectedTaskIdentities[taskref.TaskIdentity{ProjectID: "beta", TaskID: "beta-inbox"}] {
+	if !outliner.Selected[taskref.TaskIdentity{ProjectID: "beta", TaskID: "beta-inbox"}] {
 		t.Fatal("restoration dropped the baseline selection")
 	}
 	if got := searchVisibleTaskIDs(outliner); !slices.Equal(got, baselineRows) {
@@ -302,7 +303,7 @@ func TestScopedLensActivatesProjectFacetsOnExplicitScopeExit(t *testing.T) {
 	if outliner.activeLens != frame {
 		t.Fatal("the exit replaced the original pre-lens restoration frame")
 	}
-	if !RunEscCascade(outliner.escSteps()) {
+	if !listsurface.RunEscCascade(outliner.escSteps()) {
 		t.Fatal("expected Esc to consume the lens")
 	}
 	if outliner.scopedProjectID != "alpha" {

@@ -29,8 +29,8 @@ func (m *OutlinerModel) renderCrossLoadingState() string {
 		label = m.crossSpinner.View() + " " + label
 	}
 	centered := lipgloss.NewStyle().
-		Width(m.width).
-		Height(m.height).
+		Width(m.Width()).
+		Height(m.Height()).
 		Align(lipgloss.Center, lipgloss.Center).
 		Render(label)
 	return centered

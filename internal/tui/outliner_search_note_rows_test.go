@@ -133,7 +133,7 @@ func TestNoteRowIsNavigableButNeverATaskRow(t *testing.T) {
 		t.Fatal("a note row reported itself as a foldable header")
 	}
 
-	outliner.cursor = noteIndexes[0]
+	outliner.Cursor = noteIndexes[0]
 	if task, project := outliner.getTaskRef(); task != nil || project != nil {
 		t.Fatalf("getTaskRef on a note row = %v/%v, want nothing", task, project)
 	}

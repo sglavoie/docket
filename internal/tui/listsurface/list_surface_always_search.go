@@ -1,4 +1,4 @@
-package tui
+package listsurface
 
 import (
 	"slices"
@@ -14,7 +14,7 @@ func (p *ListSurfaceAdapter[T]) PrimeAlwaysSearch() {
 	p.searchInput.Focus()
 }
 
-type alwaysSearchSinglePickerConfig[T PickerItem] struct {
+type AlwaysSearchSinglePickerConfig[T PickerItem] struct {
 	UpKeys    []string
 	DownKeys  []string
 	PageSize  int
@@ -22,7 +22,7 @@ type alwaysSearchSinglePickerConfig[T PickerItem] struct {
 	SelectMsg func(cursor int, filtered []T) tea.Msg
 }
 
-type alwaysSearchSinglePicker[T PickerItem] struct {
+type AlwaysSearchSinglePicker[T PickerItem] struct {
 	picker    *ListSurfaceAdapter[T]
 	upKeys    []string
 	downKeys  []string
@@ -31,9 +31,9 @@ type alwaysSearchSinglePicker[T PickerItem] struct {
 	selectMsg func(cursor int, filtered []T) tea.Msg
 }
 
-func newAlwaysSearchSinglePicker[T PickerItem](
-	picker *ListSurfaceAdapter[T], cfg alwaysSearchSinglePickerConfig[T],
-) *alwaysSearchSinglePicker[T] {
+func NewAlwaysSearchSinglePicker[T PickerItem](
+	picker *ListSurfaceAdapter[T], cfg AlwaysSearchSinglePickerConfig[T],
+) *AlwaysSearchSinglePicker[T] {
 	if len(cfg.UpKeys) == 0 {
 		cfg.UpKeys = []string{"up", "ctrl+k"}
 	}
@@ -43,7 +43,7 @@ func newAlwaysSearchSinglePicker[T PickerItem](
 	if cfg.PageSize <= 0 {
 		cfg.PageSize = 10
 	}
-	return &alwaysSearchSinglePicker[T]{
+	return &AlwaysSearchSinglePicker[T]{
 		picker:    picker,
 		upKeys:    cfg.UpKeys,
 		downKeys:  cfg.DownKeys,
@@ -53,11 +53,11 @@ func newAlwaysSearchSinglePicker[T PickerItem](
 	}
 }
 
-func (p *alwaysSearchSinglePicker[T]) Init() tea.Cmd {
+func (p *AlwaysSearchSinglePicker[T]) Init() tea.Cmd {
 	return p.picker.ActivateSearch()
 }
 
-func (p *alwaysSearchSinglePicker[T]) Update(msg tea.Msg) (bool, tea.Cmd) {
+func (p *AlwaysSearchSinglePicker[T]) Update(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		p.picker.SetSize(msg.Width, msg.Height)
@@ -68,7 +68,7 @@ func (p *alwaysSearchSinglePicker[T]) Update(msg tea.Msg) (bool, tea.Cmd) {
 		p.picker.searchInput, cmd = p.picker.searchInput.Update(msg)
 		if value := p.picker.searchInput.Value(); value != oldValue {
 			p.picker.SetSearchQuery(value)
-			p.fuzzyFilter(value)
+			p.FuzzyFilter(value)
 		}
 		return true, cmd
 	case tea.KeyPressMsg:
@@ -78,17 +78,17 @@ func (p *alwaysSearchSinglePicker[T]) Update(msg tea.Msg) (bool, tea.Cmd) {
 	}
 }
 
-func (p *alwaysSearchSinglePicker[T]) handleKey(msg tea.KeyPressMsg) tea.Cmd {
+func (p *AlwaysSearchSinglePicker[T]) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 	key := msg.String()
 
 	switch {
 	case key == "esc":
 		if p.picker.IsSearchMode() && p.picker.SearchQuery() != "" {
 			p.picker.ClearSearch()
-			p.fuzzyFilter("")
+			p.FuzzyFilter("")
 			return nil
 		}
-		return p.cancel()
+		return p.Cancel()
 	case key == "enter":
 		return p.selectCurrent()
 	case keyMatches(key, p.upKeys):
@@ -106,7 +106,7 @@ func (p *alwaysSearchSinglePicker[T]) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 	default:
 		handled, cmd, valueChanged := p.picker.HandleSearchInput(msg)
 		if valueChanged {
-			p.fuzzyFilter(p.picker.SearchQuery())
+			p.FuzzyFilter(p.picker.SearchQuery())
 		}
 		if handled {
 			return cmd
@@ -115,18 +115,18 @@ func (p *alwaysSearchSinglePicker[T]) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 	}
 }
 
-func (p *alwaysSearchSinglePicker[T]) moveCursor(delta int) {
-	p.picker.surface.MoveCursor(delta)
+func (p *AlwaysSearchSinglePicker[T]) moveCursor(delta int) {
+	p.picker.Surface.MoveCursor(delta)
 }
 
-func (p *alwaysSearchSinglePicker[T]) fuzzyFilter(query string) {
+func (p *AlwaysSearchSinglePicker[T]) FuzzyFilter(query string) {
 	p.picker.Filter(query)
 	if query == "" {
-		p.picker.surface.MoveCursorToStart()
+		p.picker.Surface.MoveCursorToStart()
 	}
 }
 
-func (p *alwaysSearchSinglePicker[T]) selectCurrent() tea.Cmd {
+func (p *AlwaysSearchSinglePicker[T]) selectCurrent() tea.Cmd {
 	filtered := p.picker.FilteredItems()
 	cursor := p.picker.CursorIndex()
 	if p.selectMsg == nil || cursor < 0 || cursor >= len(filtered) {
@@ -137,7 +137,7 @@ func (p *alwaysSearchSinglePicker[T]) selectCurrent() tea.Cmd {
 	}
 }
 
-func (p *alwaysSearchSinglePicker[T]) cancel() tea.Cmd {
+func (p *AlwaysSearchSinglePicker[T]) Cancel() tea.Cmd {
 	if p.cancelMsg == nil {
 		return nil
 	}

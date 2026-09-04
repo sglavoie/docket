@@ -51,8 +51,8 @@ type outlinerScopeFrame struct {
 func (m *OutlinerModel) captureScopeFrame() outlinerScopeFrame {
 	return outlinerScopeFrame{
 		scopedProjectID:  m.scopedProjectID,
-		cursor:           m.cursor,
-		viewScrollOffset: m.viewScrollOffset,
+		cursor:           m.Cursor,
+		viewScrollOffset: m.ViewScrollOffset,
 		primaryMode:      m.primaryMode,
 		sort:             m.sort,
 		treeSort:         m.treeSort,
@@ -67,8 +67,8 @@ func (m *OutlinerModel) captureScopeFrame() outlinerScopeFrame {
 // the frame's snapshot.
 func (m *OutlinerModel) restoreScopeFrame(f outlinerScopeFrame) {
 	m.scopedProjectID = f.scopedProjectID
-	m.cursor = f.cursor
-	m.viewScrollOffset = f.viewScrollOffset
+	m.Cursor = f.cursor
+	m.ViewScrollOffset = f.viewScrollOffset
 	m.primaryMode = f.primaryMode
 	m.clearStaleForRecentMode()
 	m.sort = f.sort
@@ -274,7 +274,7 @@ func (m *OutlinerModel) pushProjectScope(projectID string) {
 	m.scopedProjectID = projectID
 	m.crossFocusStack = nil
 	m.clearSectionZoom()
-	m.cursor = 0
+	m.Cursor = 0
 	m.resetViewScrollOffset()
 	m.crossForceRebuild = true
 	m.crossProjectRebuildRows()
@@ -327,7 +327,7 @@ func (m *OutlinerModel) clearProjectScope() bool {
 // Ctrl+Esc restores as the single global reset, so no advertised clean reset can
 // leave the root silently narrowed by a stale filter, tag, or sort.
 func (m *OutlinerModel) resetToGlobalAll() {
-	m.confirm.Cancel()
+	m.Confirm.Cancel()
 	m.quickEdit.Exit()
 	m.closeMenuBar()
 	m.scopeStack = nil
@@ -346,16 +346,16 @@ func (m *OutlinerModel) resetToGlobalAll() {
 	m.replaceFilterClauses(query.FilterQueryTaskFields(), nil)
 	m.sort.Reset()
 	m.treeSort.Reset()
-	if m.multiSelectMode {
+	if m.MultiSelectMode {
 		m.clearMultiSelect()
-		m.multiSelectMode = false
+		m.MultiSelectMode = false
 	}
 	m.clearSearchProjectionWithoutRestore()
 	// The reset is replacing the whole projection, so the lens is dropped rather
 	// than restored: restoring its baseline would reinstate the narrowing this
 	// key exists to clear.
 	m.clearActiveLensWithoutRestore()
-	m.cursor = 0
+	m.Cursor = 0
 	m.resetViewScrollOffset()
 	m.selectOutlinerMode(chrome.ModeAll)
 	m.crossForceRebuild = true
@@ -452,7 +452,7 @@ func (m *OutlinerModel) reconcileProjectScope() (string, bool) {
 	m.scopedProjectID = ""
 	m.crossFocusStack = nil
 	m.clearSectionZoom()
-	m.cursor = 0
+	m.Cursor = 0
 	m.resetViewScrollOffset()
 	m.crossForceRebuild = true
 	m.crossProjectRebuildRows()

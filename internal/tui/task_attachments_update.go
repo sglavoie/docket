@@ -6,6 +6,7 @@ import (
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -13,7 +14,7 @@ import (
 )
 
 func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //nolint:gocyclo
-	if m.confirm.IsActive() {
+	if m.Confirm.IsActive() {
 		return m.updateConfirmMode(msg)
 	}
 
@@ -23,7 +24,7 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //noli
 
 	switch msg := msg.(type) {
 	case status.CursorFlashClearMsg:
-		m.cursorFlash = false
+		m.CursorFlash = false
 		return m, nil
 	case tea.WindowSizeMsg:
 		m.BaseView.SetSize(msg.Width, msg.Height)
@@ -37,7 +38,7 @@ func (m *TaskAttachmentsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) { //noli
 func (m *TaskAttachmentsModel) updateConfirmMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		action := m.confirm.Action()
+		action := m.Confirm.Action()
 		if confirmed, handled := m.HandleConfirmKey(msg.String()); handled {
 			if confirmed {
 				switch action {
@@ -67,7 +68,7 @@ func (m *TaskAttachmentsModel) updateAddMode(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "esc":
 			if strings.TrimSpace(m.textInput.Value()) != "" {
-				m.confirm.Show("discard-add", "Discard attachment?")
+				m.Confirm.Show("discard-add", "Discard attachment?")
 				return m, nil
 			}
 			m.addMode = false
@@ -107,7 +108,7 @@ func (m *TaskAttachmentsModel) updateNormalKey(key string) tea.Cmd {
 }
 
 // handleAttachmentsNavigationKey moves the panel's own cursor. The keys it names
-// are the panel's whole navigation grammar and handleListNavigation performs
+// are the panel's whole navigation grammar and HandleListNavigation performs
 // them, so listing them here rather than handing the helper every press is what
 // keeps the paging keys the panel never bound from arriving through the back
 // door.
@@ -119,7 +120,7 @@ func (m *TaskAttachmentsModel) handleAttachmentsNavigationKey(key string) (tea.C
 		m.pendingTopChord = true
 		return nil, true
 	case "j", "down", "k", "up", "home", "G", "end":
-		_, cmd := handleListNavigation(key, &m.cursor, len(m.task.Attachments), m.height, &m.cursorFlash)
+		_, cmd := listsurface.HandleListNavigation(key, &m.Cursor, len(m.task.Attachments), m.Height(), &m.CursorFlash)
 		return cmd, true
 	default:
 		return nil, false
@@ -137,7 +138,7 @@ func (m *TaskAttachmentsModel) completeAttachmentsTopChord(key string) bool {
 	if key != "g" {
 		return false
 	}
-	m.cursor = 0
+	m.Cursor = 0
 	return true
 }
 
@@ -203,13 +204,13 @@ func (m *TaskAttachmentsModel) openSelectedAttachmentInEditor() tea.Cmd {
 
 func (m *TaskAttachmentsModel) confirmDeleteSelectedAttachment() {
 	if m.hasSelection() {
-		m.confirm.Show("delete", fmt.Sprintf("Delete attachment [%d]?", m.cursor))
+		m.Confirm.Show("delete", fmt.Sprintf("Delete attachment [%d]?", m.Cursor))
 	}
 }
 
 func (m *TaskAttachmentsModel) confirmUnlinkSelectedAttachment() {
 	if m.hasSelection() {
-		m.confirm.Show("unlink", fmt.Sprintf("Unlink attachment [%d]?", m.cursor))
+		m.Confirm.Show("unlink", fmt.Sprintf("Unlink attachment [%d]?", m.Cursor))
 	}
 }
 
@@ -242,19 +243,19 @@ func (m *TaskAttachmentsModel) revealSelectedOriginalFile() tea.Cmd {
 }
 
 func (m *TaskAttachmentsModel) moveSelectedAttachmentDown() tea.Cmd {
-	if len(m.task.Attachments) > 1 && m.cursor < len(m.task.Attachments)-1 {
-		return m.reorderAttachment(m.cursor, m.cursor+1)
+	if len(m.task.Attachments) > 1 && m.Cursor < len(m.task.Attachments)-1 {
+		return m.reorderAttachment(m.Cursor, m.Cursor+1)
 	}
 	return nil
 }
 
 func (m *TaskAttachmentsModel) moveSelectedAttachmentUp() tea.Cmd {
-	if m.cursor > 0 {
-		return m.reorderAttachment(m.cursor, m.cursor-1)
+	if m.Cursor > 0 {
+		return m.reorderAttachment(m.Cursor, m.Cursor-1)
 	}
 	return nil
 }
 
 func (m *TaskAttachmentsModel) hasSelection() bool {
-	return len(m.task.Attachments) > 0 && m.cursor < len(m.task.Attachments)
+	return len(m.task.Attachments) > 0 && m.Cursor < len(m.task.Attachments)
 }

@@ -33,22 +33,26 @@ func overlayPopupBelowPersistentTitle(base, popup string, width, height int) str
 	return chrome.OverlayPopupDimmed(base, popup, width, height)
 }
 
-// widthRenderer is satisfied by all overlay pickers/popups that render given a width.
+// widthRenderer is satisfied by all overlay pickers/popups that render given a
+// width. Exported for the same reason as keyInterceptor.HandleKey.
 type widthRenderer interface {
-	render(width int) string
+	Render(width int) string
 }
 
 // viewportRenderer lets an overlay trade scrollable rows for required inline
 // content before generic popup fitting would need to remove interior rows.
+// It is selected by type assertion rather than by the compiler, so an
+// unexported method here would fail silently rather than loudly once an overlay
+// moved into a sub-package.
 type viewportRenderer interface {
-	renderWithin(width, height int) string
+	RenderWithin(width, height int) string
 }
 
 func renderOverlayWithin(renderer widthRenderer, width, height int) string {
 	if renderer, ok := renderer.(viewportRenderer); ok {
-		return renderer.renderWithin(width, height)
+		return renderer.RenderWithin(width, height)
 	}
-	return renderer.render(width)
+	return renderer.Render(width)
 }
 
 // dimmedOverlayRenderers returns the non-nil overlay renderers that are composited

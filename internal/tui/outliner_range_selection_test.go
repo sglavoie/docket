@@ -27,7 +27,7 @@ func rangeSelectionTestApp(t *testing.T) (*AppModel, *models.Project, []*models.
 		{IsProjectHeader: true, ProjectID: project.ID},
 		{task: tasks[2], ProjectID: project.ID},
 	}
-	app.crossOutliner.cursor = 0
+	app.crossOutliner.Cursor = 0
 	return app, project, tasks
 }
 
@@ -53,8 +53,8 @@ func TestVimRangeSelectionSkipsHeadersAndFreezes(t *testing.T) {
 	}
 
 	sendRangeSelectionKey(t, app, "j") // section header
-	if out.cursor != 1 || out.SelectedCount() != 1 {
-		t.Fatalf("range on header = cursor %d count %d, want 1/1", out.cursor, out.SelectedCount())
+	if out.Cursor != 1 || out.SelectedCount() != 1 {
+		t.Fatalf("range on header = cursor %d count %d, want 1/1", out.Cursor, out.SelectedCount())
 	}
 	sendRangeSelectionKey(t, app, "j") // second task
 	for _, task := range tasks[:2] {
@@ -76,15 +76,15 @@ func TestVimRangeSelectionSkipsHeadersAndFreezes(t *testing.T) {
 	}
 
 	// A new V starts a fresh range and replaces the prior selection.
-	out.cursor = 2
+	out.Cursor = 2
 	sendRangeSelectionKey(t, app, "V")
 	if !out.IsRangeSelectionActive() || out.SelectedCount() != 1 ||
 		!out.IsTaskIdentitySelected(taskref.For(tasks[1], project)) {
 		t.Fatalf("new range did not replace selection at second task: active=%v selected=%v", out.IsRangeSelectionActive(), out.SelectedTaskIdentities())
 	}
 	sendRangeSelectionKey(t, app, "esc")
-	if out.IsRangeSelectionActive() || !out.multiSelectMode || out.SelectedCount() != 1 {
-		t.Fatalf("Esc freeze = range %v multi %v count %d", out.IsRangeSelectionActive(), out.multiSelectMode, out.SelectedCount())
+	if out.IsRangeSelectionActive() || !out.MultiSelectMode || out.SelectedCount() != 1 {
+		t.Fatalf("Esc freeze = range %v multi %v count %d", out.IsRangeSelectionActive(), out.MultiSelectMode, out.SelectedCount())
 	}
 }
 
@@ -92,7 +92,7 @@ func TestCtrlAReplacesSelectionWithVisibleTaskRows(t *testing.T) {
 	app, project, tasks := rangeSelectionTestApp(t)
 	out := app.crossOutliner
 	hidden := taskref.TaskIdentity{ProjectID: "hidden-project", TaskID: "hidden-task"}
-	out.multiSelectMode = true
+	out.MultiSelectMode = true
 	out.SelectTaskIdentity(hidden)
 
 	sendRangeSelectionKey(t, app, "ctrl+a")
@@ -125,8 +125,8 @@ func TestOperationContextClassifiesHiddenSelectionAndBulkSheetNamesIt(t *testing
 	if err := app.openTaskActionSheet(context); err != nil {
 		t.Fatalf("open bulk action sheet: %v", err)
 	}
-	if app.contextActionSheet == nil || !strings.Contains(app.contextActionSheet.config.Subtitle, "2 tasks · 1 visible · 1 hidden") {
-		t.Fatalf("bulk subtitle = %q, want total/visible/hidden counts", app.contextActionSheet.config.Subtitle)
+	if app.contextActionSheet == nil || !strings.Contains(app.contextActionSheet.Config.Subtitle, "2 tasks · 1 visible · 1 hidden") {
+		t.Fatalf("bulk subtitle = %q, want total/visible/hidden counts", app.contextActionSheet.Config.Subtitle)
 	}
 
 	// Delete confirmation must be calculated from the complete selection, not
@@ -145,7 +145,7 @@ func TestEscAfterFrozenSelectionClearsOnSecondPress(t *testing.T) {
 	sendRangeSelectionKey(t, app, "V")
 	sendRangeSelectionKey(t, app, "esc")
 	sendRangeSelectionKey(t, app, "esc")
-	if app.crossOutliner.multiSelectMode || app.crossOutliner.SelectedCount() != 0 {
+	if app.crossOutliner.MultiSelectMode || app.crossOutliner.SelectedCount() != 0 {
 		t.Fatal("second Esc did not clear the frozen selection")
 	}
 }
@@ -175,7 +175,7 @@ func TestToggleSelectionBuildsNonContiguousSetWithoutARange(t *testing.T) {
 	if out.SelectedCount() != 1 || out.IsTaskIdentitySelected(taskref.For(tasks[2], project)) {
 		t.Fatalf("second v on the same row = %v, want it deselected", out.SelectedTaskIdentities())
 	}
-	if !out.multiSelectMode {
+	if !out.MultiSelectMode {
 		t.Fatal("deselecting a row left multi-select mode; only Esc may leave it")
 	}
 }

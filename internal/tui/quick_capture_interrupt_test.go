@@ -14,16 +14,16 @@ func TestQuickCaptureInterruptPreservesOutlinerContext(t *testing.T) {
 	openFixtureOutliner(t, driver, project)
 
 	outliner := driver.App().crossOutliner
-	outliner.cursor = nthTaskRowIndex(t, outliner, 1)
+	outliner.Cursor = nthTaskRowIndex(t, outliner, 1)
 	before := driver.Observe(ObserveOptions{})
 	beforeStack := slices.Clone(before.ViewStack)
 	// The typed composer overlay parks the outliner; read its cursor directly
 	// instead of via the active-view snapshot.
-	beforeCursor := outliner.cursor
+	beforeCursor := outliner.Cursor
 
 	driveUITestKeys(t, driver, "a")
 	assertQuickCaptureOpenOver(t, driver, presentation.ViewCrossProjectOutliner, beforeStack)
-	if got := driver.App().crossOutliner.cursor; got != beforeCursor {
+	if got := driver.App().crossOutliner.Cursor; got != beforeCursor {
 		t.Fatalf("outliner cursor while capture is open = %d, want %d", got, beforeCursor)
 	}
 
@@ -32,7 +32,7 @@ func TestQuickCaptureInterruptPreservesOutlinerContext(t *testing.T) {
 	// outliner beneath capture (cursor or view stack).
 	driveUITestKeys(t, driver, "?", "ctrl+j", "pgdown")
 	assertQuickCaptureOpenOver(t, driver, presentation.ViewCrossProjectOutliner, beforeStack)
-	if got := driver.App().crossOutliner.cursor; got != beforeCursor {
+	if got := driver.App().crossOutliner.Cursor; got != beforeCursor {
 		t.Fatalf("outliner cursor after syntax scroll = %d, want %d", got, beforeCursor)
 	}
 	// Close the guide so the single-Esc dismissal path below is unchanged.
@@ -46,7 +46,7 @@ func TestQuickCaptureInterruptPreservesOutlinerContext(t *testing.T) {
 	if !slices.Equal(after.ViewStack, beforeStack) {
 		t.Fatalf("view stack after capture dismiss = %v, want %v", after.ViewStack, beforeStack)
 	}
-	if got := driver.App().crossOutliner.cursor; got != beforeCursor {
+	if got := driver.App().crossOutliner.Cursor; got != beforeCursor {
 		t.Fatalf("outliner cursor after capture dismiss = %d, want %d", got, beforeCursor)
 	}
 }

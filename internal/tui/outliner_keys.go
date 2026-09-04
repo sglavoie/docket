@@ -81,7 +81,7 @@ func (m *OutlinerModel) handleKeyMsg(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Handle confirm dialog before anything else
-	if m.confirm.IsActive() {
+	if m.Confirm.IsActive() {
 		return m.handleConfirmDialog(key)
 	}
 

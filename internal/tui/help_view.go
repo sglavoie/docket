@@ -4,6 +4,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
@@ -165,13 +166,13 @@ func (m *HelpViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 		case "shift+left":
-			CycleTab(&m.activeTab, len(m.categories)+1, -1)
+			listsurface.CycleTab(&m.activeTab, len(m.categories)+1, -1)
 			m.filterItems()
 			m.viewport.SetContent(m.renderContent())
 			m.viewport.GotoTop()
 			return m, nil
 		case "shift+right":
-			CycleTab(&m.activeTab, len(m.categories)+1, 1)
+			listsurface.CycleTab(&m.activeTab, len(m.categories)+1, 1)
 			m.filterItems()
 			m.viewport.SetContent(m.renderContent())
 			m.viewport.GotoTop()
@@ -216,13 +217,13 @@ func (m *HelpViewModel) updateSearchMode(msg tea.KeyPressMsg) (tea.Model, tea.Cm
 		m.tabSearchInput.Focus()
 		return m, textinput.Blink
 	case "shift+left":
-		CycleTab(&m.activeTab, len(m.categories)+1, -1)
+		listsurface.CycleTab(&m.activeTab, len(m.categories)+1, -1)
 		m.filterItems()
 		m.viewport.SetContent(m.renderContent())
 		m.viewport.GotoTop()
 		return m, nil
 	case "shift+right":
-		CycleTab(&m.activeTab, len(m.categories)+1, 1)
+		listsurface.CycleTab(&m.activeTab, len(m.categories)+1, 1)
 		m.filterItems()
 		m.viewport.SetContent(m.renderContent())
 		m.viewport.GotoTop()

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
@@ -165,25 +166,25 @@ func (m *AppModel) openAttachmentsActionSheet(ctx operation.CommandContext, pane
 	if !panel.hasSelection() {
 		return errors.New("select an attachment to open actions")
 	}
-	sheet, err := NewContextActionSheetModel(
+	sheet, err := listsurface.NewContextActionSheetModel(
 		m.GetOperationRegistry(),
 		m.operationExecutor,
 		ctx,
 		attachmentActionSheetOperations,
-		ContextActionSheetConfig{
-			Host:            ContextActionHostAttachments,
-			Completion:      ContextActionCompleteCloseSheet,
+		listsurface.ContextActionSheetConfig{
+			Host:            listsurface.ContextActionHostAttachments,
+			Completion:      listsurface.ContextActionCompleteCloseSheet,
 			Title:           "Attachment Actions",
-			Subtitle:        panel.task.Attachments[panel.cursor].Filename,
+			Subtitle:        panel.task.Attachments[panel.Cursor].Filename,
 			ItemIDPrefix:    "attachment-action:",
 			SecondaryFor:    operationActionSecondaryText,
 			ImmediateFilter: true,
 			Targets:         1,
-			EmptyState: ListEmptyState{
+			EmptyState: listsurface.ListEmptyState{
 				Title:  "No attachment actions available.",
 				Detail: "Move the cursor to an attachment.",
 			},
-			NoMatchState: ListEmptyState{
+			NoMatchState: listsurface.ListEmptyState{
 				Title:  "No matching actions.",
 				Detail: "Clear or change the search.",
 			},

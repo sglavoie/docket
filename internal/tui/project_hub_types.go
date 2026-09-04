@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
@@ -18,12 +19,12 @@ type ShowProjectHubMsg struct {
 const operationScopeCreateProject operation.OperationID = "tui.scope.create-project"
 
 const (
-	projectHubCategoryActive   ListCategoryID = "project-hub:active"
-	projectHubCategoryArchived ListCategoryID = "project-hub:archived"
+	projectHubCategoryActive   listsurface.ListCategoryID = "project-hub:active"
+	projectHubCategoryArchived listsurface.ListCategoryID = "project-hub:archived"
 
-	projectHubActionCategoryProject  ListCategoryID = "project-hub-actions:project"
-	projectHubActionCategoryRecovery ListCategoryID = "project-hub-actions:recovery"
-	projectHubActionCategoryDanger   ListCategoryID = "project-hub-actions:danger"
+	projectHubActionCategoryProject  listsurface.ListCategoryID = "project-hub-actions:project"
+	projectHubActionCategoryRecovery listsurface.ListCategoryID = "project-hub-actions:recovery"
+	projectHubActionCategoryDanger   listsurface.ListCategoryID = "project-hub-actions:danger"
 )
 
 const (
@@ -31,7 +32,7 @@ const (
 	projectHubArchivedItemPrefix = "project-hub:archived:"
 )
 
-var projectHubActionCategories = []ListCategory{
+var projectHubActionCategories = []listsurface.ListCategory{
 	{ID: projectHubActionCategoryProject, Label: "Project"},
 	{ID: projectHubActionCategoryRecovery, Label: "Recovery"},
 	{ID: projectHubActionCategoryDanger, Label: "Danger"},
@@ -138,12 +139,12 @@ type projectHubActionTarget struct {
 // opens the query, so the Hub's project vocabulary answers immediately instead
 // of typing into a search input.
 type ProjectHubModel struct {
-	BaseSearchableView
+	listsurface.BaseSearchableView
 	runtime          *config.RuntimeState
 	mode             route.ProjectHubMode
 	taskCounts       map[string]projectTaskTally
-	surface          *ListSurfaceModel
-	actions          *ContextActionSheetModel
+	surface          *listsurface.ListSurfaceModel
+	actions          *listsurface.ContextActionSheetModel
 	registry         *operation.OperationRegistry
 	executor         *operation.OperationExecutor
 	dispatch         operationKeyDispatch

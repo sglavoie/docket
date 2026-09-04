@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -63,21 +64,21 @@ func TestContextActionSheetPreservesHostOrderAndDropsUnavailableOperations(t *te
 		blocked,
 	}, nil)
 
-	sheet, err := NewContextActionSheetModel(
+	sheet, err := listsurface.NewContextActionSheetModel(
 		registry,
 		executor,
 		contextActionTestContext(),
 		[]operation.OperationID{"test.zeta", "test.alpha", "test.zeta", "test.blocked", "test.missing"},
-		ContextActionSheetConfig{Host: ContextActionHostProjectHub},
+		listsurface.ContextActionSheetConfig{Host: listsurface.ContextActionHostProjectHub},
 	)
 	if err != nil {
 		t.Fatalf("NewContextActionSheetModel: %v", err)
 	}
 	want := []operation.OperationID{"test.zeta", "test.alpha"}
-	if got := sheet.operationIDs(); !slices.Equal(got, want) {
+	if got := sheet.OperationIDs(); !slices.Equal(got, want) {
 		t.Fatalf("sheet operations = %v, want host order %v", got, want)
 	}
-	if got := sheet.surface.Items()[0].ID; got != "project-hub-action:test.zeta" {
+	if got := sheet.Surface.Items()[0].ID; got != "project-hub-action:test.zeta" {
 		t.Fatalf("item ID = %q, want the host-namespaced default prefix", got)
 	}
 }
@@ -95,13 +96,13 @@ func TestContextActionSheetFreezesHostContextAndValue(t *testing.T) {
 
 	context := contextActionTestContext()
 	context.ScopeProjectIDs = []string{"project-a"}
-	sheet, err := NewContextActionSheetModel(
+	sheet, err := listsurface.NewContextActionSheetModel(
 		registry,
 		executor,
 		context,
 		[]operation.OperationID{"test.act"},
-		ContextActionSheetConfig{
-			Host:     ContextActionHostProjectHub,
+		listsurface.ContextActionSheetConfig{
+			Host:     listsurface.ContextActionHostProjectHub,
 			Value:    "frozen-row",
 			HasValue: true,
 		},
@@ -112,11 +113,11 @@ func TestContextActionSheetFreezesHostContextAndValue(t *testing.T) {
 	// A host that keeps moving beneath the modal must not retarget the sheet.
 	context.ScopeProjectIDs[0] = "project-b"
 
-	_, dismissed, raw := sheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	_, dismissed, raw := sheet.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if !dismissed {
 		t.Fatal("a completed action did not dismiss the sheet")
 	}
-	emitted, ok := raw.(ContextActionSheetResultMsg)
+	emitted, ok := raw.(listsurface.ContextActionSheetResultMsg)
 	if !ok {
 		t.Fatalf("Enter returned %T, want ContextActionSheetResultMsg", raw)
 	}
@@ -144,39 +145,39 @@ func TestContextActionSheetRetainsFailureAndClosesOnlyOnCompletion(t *testing.T)
 		},
 	})
 
-	sheet, err := NewContextActionSheetModel(
+	sheet, err := listsurface.NewContextActionSheetModel(
 		registry,
 		executor,
 		contextActionTestContext(),
 		[]operation.OperationID{"test.fail", "test.ok"},
-		ContextActionSheetConfig{Host: ContextActionHostOutliner},
+		listsurface.ContextActionSheetConfig{Host: listsurface.ContextActionHostOutliner},
 	)
 	if err != nil {
 		t.Fatalf("NewContextActionSheetModel: %v", err)
 	}
 
-	if !sheet.surface.SetCursorToID("outliner-action:test.fail") {
+	if !sheet.Surface.SetCursorToID("outliner-action:test.fail") {
 		t.Fatal("failing action is missing from the sheet")
 	}
-	_, dismissed, raw := sheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	_, dismissed, raw := sheet.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if dismissed {
 		t.Fatal("a failed action dismissed the sheet")
 	}
-	if emitted := raw.(ContextActionSheetResultMsg); emitted.Result.Err == nil {
+	if emitted := raw.(listsurface.ContextActionSheetResultMsg); emitted.Result.Err == nil {
 		t.Fatal("failed execution reported no error")
 	}
-	if sheet.notice == "" {
+	if sheet.Notice == "" {
 		t.Fatal("sheet did not retain the failure reason")
 	}
 
-	if !sheet.surface.SetCursorToID("outliner-action:test.ok") {
+	if !sheet.Surface.SetCursorToID("outliner-action:test.ok") {
 		t.Fatal("succeeding action is missing from the sheet")
 	}
-	if _, dismissed, _ = sheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter}); !dismissed {
+	if _, dismissed, _ = sheet.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter}); !dismissed {
 		t.Fatal("a completed action did not dismiss the sheet")
 	}
-	if sheet.notice != "" {
-		t.Fatalf("completed action kept a stale notice: %q", sheet.notice)
+	if sheet.Notice != "" {
+		t.Fatalf("completed action kept a stale notice: %q", sheet.Notice)
 	}
 }
 
@@ -191,21 +192,21 @@ func TestContextActionSheetEscReturnsToHostWithoutExecuting(t *testing.T) {
 		},
 	})
 
-	sheet, err := NewContextActionSheetModel(
+	sheet, err := listsurface.NewContextActionSheetModel(
 		registry,
 		executor,
 		contextActionTestContext(),
 		[]operation.OperationID{"test.act"},
-		ContextActionSheetConfig{Host: ContextActionHostProjectHub},
+		listsurface.ContextActionSheetConfig{Host: listsurface.ContextActionHostProjectHub},
 	)
 	if err != nil {
 		t.Fatalf("NewContextActionSheetModel: %v", err)
 	}
-	_, dismissed, raw := sheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEscape})
+	_, dismissed, raw := sheet.HandleKey(tea.KeyPressMsg{Code: tea.KeyEscape})
 	if !dismissed {
 		t.Fatal("Esc did not close the sheet")
 	}
-	if _, ok := raw.(ContextActionSheetClosedMsg); !ok {
+	if _, ok := raw.(listsurface.ContextActionSheetClosedMsg); !ok {
 		t.Fatalf("Esc returned %T, want ContextActionSheetClosedMsg", raw)
 	}
 	if executed {
@@ -215,7 +216,7 @@ func TestContextActionSheetEscReturnsToHostWithoutExecuting(t *testing.T) {
 
 func TestContextActionSheetSheetOnlyCompletionLeavesHostOpen(t *testing.T) {
 	app := newUITestApp()
-	if cmd := app.applyContextActionSheetResult(ContextActionSheetResultMsg{}); cmd != nil {
+	if cmd := app.applyContextActionSheetResult(listsurface.ContextActionSheetResultMsg{}); cmd != nil {
 		t.Fatalf("close-sheet completion asked the host to close: %T", cmd())
 	}
 }
@@ -238,19 +239,19 @@ func TestContextActionSheetConfirmationCancelReturnsToSheet(t *testing.T) {
 		t.Fatalf("bind: %v", err)
 	}
 
-	sheet, err := NewContextActionSheetModel(
+	sheet, err := listsurface.NewContextActionSheetModel(
 		app.operationRegistry,
 		app.operationExecutor,
 		contextActionTestContext(),
 		[]operation.OperationID{descriptor.ID},
-		ContextActionSheetConfig{Host: ContextActionHostOutliner},
+		listsurface.ContextActionSheetConfig{Host: listsurface.ContextActionHostOutliner},
 	)
 	if err != nil {
 		t.Fatalf("NewContextActionSheetModel: %v", err)
 	}
 	app.contextActionSheet = sheet
 
-	_, dismissed, raw := sheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	_, dismissed, raw := sheet.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if dismissed {
 		t.Fatal("a pending confirmation dismissed the sheet")
 	}
@@ -279,7 +280,7 @@ func TestContextActionSheetConfirmationCancelReturnsToSheet(t *testing.T) {
 	}
 
 	// Re-confirming from the retained sheet runs the frozen request exactly once.
-	_, _, raw = sheet.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	_, _, raw = sheet.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if handled, _ := app.handleOperationOverlayMessage(raw); !handled {
 		t.Fatal("second confirmation request was not handled")
 	}
@@ -300,7 +301,7 @@ func TestListActionStateIntersectionFeedsContextActionSheet(t *testing.T) {
 		contextActionTestDescriptor("test.only-first", "Only First"),
 	}, nil)
 
-	surface, err := NewListSurfaceModel([]ListItem{
+	surface, err := listsurface.NewListSurfaceModel([]listsurface.ListItem{
 		{
 			ID:           "row:first",
 			PrimaryText:  "First",
@@ -311,11 +312,11 @@ func TestListActionStateIntersectionFeedsContextActionSheet(t *testing.T) {
 			PrimaryText:  "Second",
 			OperationIDs: []operation.OperationID{"test.shared"},
 		},
-	}, nil, ListSurfaceConfig{SelectionMode: ListSelectionMulti})
+	}, nil, listsurface.ListSurfaceConfig{SelectionMode: listsurface.ListSelectionMulti})
 	if err != nil {
 		t.Fatalf("NewListSurfaceModel: %v", err)
 	}
-	if selectErr := surface.SetSelectedIDs([]ListItemID{"row:first", "row:second"}); selectErr != nil {
+	if selectErr := surface.SetSelectedIDs([]listsurface.ListItemID{"row:first", "row:second"}); selectErr != nil {
 		t.Fatalf("SetSelectedIDs: %v", selectErr)
 	}
 
@@ -323,13 +324,13 @@ func TestListActionStateIntersectionFeedsContextActionSheet(t *testing.T) {
 	if !state.Enabled() {
 		t.Fatalf("multi-row action state is disabled: %q", state.DisabledReason)
 	}
-	sheet, err := NewContextActionSheetModel(
+	sheet, err := listsurface.NewContextActionSheetModel(
 		registry,
 		executor,
 		contextActionTestContext(),
 		state.OperationIDs,
-		ContextActionSheetConfig{
-			Host:     ContextActionHostProjectHub,
+		listsurface.ContextActionSheetConfig{
+			Host:     listsurface.ContextActionHostProjectHub,
 			Targets:  len(state.ItemIDs),
 			Bulk:     true,
 			Value:    state.ItemIDs,
@@ -339,7 +340,7 @@ func TestListActionStateIntersectionFeedsContextActionSheet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewContextActionSheetModel: %v", err)
 	}
-	if got := sheet.operationIDs(); !slices.Equal(got, []operation.OperationID{"test.shared"}) {
+	if got := sheet.OperationIDs(); !slices.Equal(got, []operation.OperationID{"test.shared"}) {
 		t.Fatalf("sheet operations = %v, want only the intersection", got)
 	}
 }
@@ -358,11 +359,11 @@ func TestContextActionSheetTaskAdapterKeepsStableItemIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTaskActionSheetModel: %v", err)
 	}
-	if sheet.config.Host != ContextActionHostOutliner ||
-		sheet.config.Completion != ContextActionCompleteCloseSheet {
-		t.Fatalf("task sheet lifecycle = %+v", sheet.config)
+	if sheet.Config.Host != listsurface.ContextActionHostOutliner ||
+		sheet.Config.Completion != listsurface.ContextActionCompleteCloseSheet {
+		t.Fatalf("task sheet lifecycle = %+v", sheet.Config)
 	}
-	if !sheet.surface.SetCursorToID(ListItemID("task-action:" + string(operation.OperationTaskDelete))) {
+	if !sheet.Surface.SetCursorToID(listsurface.ListItemID("task-action:" + string(operation.OperationTaskDelete))) {
 		t.Fatal("task sheet lost its stable task-action item IDs")
 	}
 }

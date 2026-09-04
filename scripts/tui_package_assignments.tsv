@@ -222,6 +222,14 @@
 #     This table gives it to listsurface, and its two consumers are both in
 #     app_view_status.go, so that row is the listsurface session's to weigh.
 #
+# Session 2.19 weighed that row and corrected it:
+#   - pipeline_stage.go is tui, not listsurface. It declares pipelineStage and
+#     pipelineNextHint, which map a PresentationID to a footer string; neither
+#     names a list, a cursor or a row, and no file in the listsurface moving set
+#     reads either. Both consumers are in app_view_status.go, so leaving the
+#     file in the shell keeps two unexported helpers with their only caller
+#     instead of promoting them across a boundary for zero in-package readers.
+#
 # Test files are deliberately absent. They follow the production file they
 # audit, except the uitest harness and the registry-union parity tests, which
 # context.md keeps in the root shell.
@@ -528,7 +536,7 @@ outliner_view_snapshot.go	outliner	L7	receiver:OutlinerModel
 overlay_popup.go	chrome	L1	assigned
 parent_selector.go	listsurface	L5	assigned
 picker_items.go	query	L2	receiver:TagInfo
-pipeline_stage.go	listsurface	L5	assigned
+pipeline_stage.go	tui	L8	assigned
 planning_reconcile.go	tui	L8	receiver:AppModel
 presentation/names.go	presentation	L0	assigned
 presentation/types.go	presentation	L0	assigned

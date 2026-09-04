@@ -29,14 +29,14 @@ func TestFrozenBulkTagPatchPreservesSelectionAcrossCursorMoveAndRebuild(t *testi
 		{task: first, ProjectID: env.projects[0].ID},
 		{task: second, ProjectID: env.projects[1].ID},
 	}
-	outliner.multiSelectMode = true
+	outliner.MultiSelectMode = true
 	outliner.SelectTaskIdentity(taskref.For(first, env.projects[0]))
 	outliner.SelectTaskIdentity(taskref.For(second, env.projects[1]))
 	model.crossOutliner = outliner
 	model.views.Register(presentation.ViewCrossProjectOutliner, outliner)
 
 	context := model.operationCommandContext()
-	outliner.cursor = 1
+	outliner.Cursor = 1
 	result := model.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:       operation.OperationTaskSetTags,
 		Context:  context,
@@ -59,8 +59,8 @@ func TestFrozenBulkTagPatchPreservesSelectionAcrossCursorMoveAndRebuild(t *testi
 	if got := env.reload(t, 1).GetTaskByID(second.ID).Tags; !reflect.DeepEqual(got, []string{"second-only", "first-only"}) {
 		t.Fatalf("second tags = %v, want preserved partial membership plus first-only", got)
 	}
-	if !outliner.multiSelectMode || outliner.SelectedCount() != 2 {
-		t.Fatalf("selection after committed rebuild = active %v count %d, want active/2", outliner.multiSelectMode, outliner.SelectedCount())
+	if !outliner.MultiSelectMode || outliner.SelectedCount() != 2 {
+		t.Fatalf("selection after committed rebuild = active %v count %d, want active/2", outliner.MultiSelectMode, outliner.SelectedCount())
 	}
 }
 

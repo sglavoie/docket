@@ -380,7 +380,7 @@ func queryReadoutRowRequiresReload(row queryReadoutRow) bool {
 func (m *OutlinerModel) peelQueryReadoutRow(index int) tea.Cmd {
 	rows := m.queryReadoutRows()
 	if index < 0 || index >= len(rows) || index >= queryReadoutRowLimit {
-		m.setTransientStatus("Nothing to peel there")
+		m.SetTransientStatus("Nothing to peel there")
 		return status.DefaultStatusTimeout()
 	}
 	row := rows[index]
@@ -388,14 +388,14 @@ func (m *OutlinerModel) peelQueryReadoutRow(index int) tea.Cmd {
 	// snapshot that reload replaces, so it refuses here in the same words the f
 	// chord refuses in rather than reloading out from under the results.
 	if queryReadoutRowRequiresReload(row) && m.showsRankedList() {
-		m.setTransientStatus("Exit search before changing filters")
+		m.SetTransientStatus("Exit search before changing filters")
 		return status.DefaultStatusTimeout()
 	}
 	peeled := "Peeled " + row.label + ": " + row.value
 	if m.peelQueryReadoutAxis(row) {
 		return func() tea.Msg { return QueryReadoutReloadRequestMsg{Status: peeled} }
 	}
-	m.setTransientStatus(peeled)
+	m.SetTransientStatus(peeled)
 	return status.DefaultStatusTimeout()
 }
 
@@ -420,14 +420,14 @@ func (m *OutlinerModel) peelAllQueryReadoutRows() tea.Cmd {
 		peeled++
 	}
 	if peeled == 0 {
-		m.setTransientStatus("Nothing to peel")
+		m.SetTransientStatus("Nothing to peel")
 		return status.DefaultStatusTimeout()
 	}
 	summary := fmt.Sprintf("Peeled %d narrowing(s)", peeled)
 	if reload {
 		return func() tea.Msg { return QueryReadoutReloadRequestMsg{Status: summary} }
 	}
-	m.setTransientStatus(summary)
+	m.SetTransientStatus(summary)
 	return status.DefaultStatusTimeout()
 }
 

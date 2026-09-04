@@ -215,7 +215,7 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"`validateNotesOperationOnePath` holds them to the same direct-or-menu rule",
 		"Malformed notes remain available for raw editing and deletion",
 		"Note tags, task links, pins, bulk actions, and archived owners remain outside the product",
-		"`renderNotesContent` asks `listSurfacePreviewGeometry` for the split",
+		"`renderNotesContent` asks `ListSurfacePreviewGeometry` for the split",
 		"the list renderer is handed the resolved pane width instead of reading the terminal's",
 		"keyed on note identity, the Notes scope, the active query with the case mode that produced the visible rows, the revision, and that width together",
 		"while the whole key holds, the offset is the reader's and ordinary re-renders leave it alone",
@@ -223,8 +223,8 @@ func TestArchitectureDocumentationCoversFinalRuntimeContracts(t *testing.T) {
 		"only if no term is found that way does a per-line fuzzy pass run",
 		"they are claimed ahead of the search text input while a query is being edited",
 		"The render owns the tail clamp",
-		"`listPreviewScrollWindow` converges on a window that reserves a row for each " +
-			"`renderListContinuation` it needs",
+		"`ListPreviewScrollWindow` converges on a window that reserves a row for each " +
+			"`RenderListContinuation` it needs",
 		"consecutive pages overlap by one line rather than drifting apart",
 		"renders that reason as a warning and never as Markdown",
 		"paging is gated on `notesPreviewPageable` rather than on `notesPreviewVisible`",

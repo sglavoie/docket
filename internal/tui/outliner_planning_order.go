@@ -37,10 +37,10 @@ type OutlinerPlanningReorderMsg struct {
 // rather than task hierarchy. Dedicated Today/Next modes and their synthetic
 // All-mode groups share the same reorder path.
 func (m *OutlinerModel) isPlanningReorderMode() bool {
-	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
+	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return false
 	}
-	row := m.rows[m.cursor]
+	row := m.rows[m.Cursor]
 	if row.IsPinnedSection {
 		return false
 	}
@@ -65,7 +65,7 @@ func (m *OutlinerModel) planningReorderMove(delta int) (tea.Model, tea.Cmd) {
 
 	kind := reorderToday
 	order := m.globalTodayOrder()
-	row := m.rows[m.cursor]
+	row := m.rows[m.Cursor]
 	if m.primaryMode == chrome.ModeNext || row.IsNextSection {
 		kind = reorderNextOrder
 		order = m.globalNextOrder()
@@ -119,7 +119,7 @@ func (m *OutlinerModel) visiblePlanningMembers(
 		step = -1
 	}
 	var visible []config.ProjectTaskLocator
-	for i := m.cursor + step; i >= 0 && i < len(m.rows); i += step {
+	for i := m.Cursor + step; i >= 0 && i < len(m.rows); i += step {
 		row := m.rows[i]
 		if row.IsSectionHeader || row.IsSeparator || row.IsPinnedSection || row.IsProjectHeader {
 			break
@@ -161,7 +161,7 @@ func (m *OutlinerModel) planningReorderEdge(delta int) (tea.Model, tea.Cmd) {
 
 	kind := reorderToday
 	order := m.globalTodayOrder()
-	row := m.rows[m.cursor]
+	row := m.rows[m.Cursor]
 	if m.primaryMode == chrome.ModeNext || row.IsNextSection {
 		kind = reorderNextOrder
 		order = m.globalNextOrder()

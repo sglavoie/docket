@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -69,7 +70,7 @@ func TestRepeatedDeferralSurfacesIgnoreHiddenDeferColumn(t *testing.T) {
 	now := time.Date(2026, time.August, 10, 12, 0, 0, 0, time.UTC)
 	pending := now.Add(24 * time.Hour)
 	outliner := &OutlinerModel{
-		columnConfig: NewColumnConfig(map[string]bool{ColDefer: false}, nil, nil),
+		columnConfig: listsurface.NewColumnConfig(map[string]bool{listsurface.ColDefer: false}, nil, nil),
 	}
 
 	for _, tc := range []struct {

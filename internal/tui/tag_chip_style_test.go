@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -23,7 +24,7 @@ func TestRowAndPeekTagChipsWearOneColor(t *testing.T) {
 	if theme.TagChipStyle("infra").Render("x") == theme.TagChipStyle("ux").Render("x") {
 		t.Fatalf("fixture tags share one chip color; pick two that differ")
 	}
-	row := renderTruncatedTags(task.Tags, 2, 8)
+	row := listsurface.RenderTruncatedTags(task.Tags, 2, 8)
 	peek := inlinePeekTagsLine(task, 80)
 
 	for _, tag := range task.Tags {
@@ -52,7 +53,7 @@ func TestRenderTruncatedTagsClipsTheTextButNotTheColor(t *testing.T) {
 		{8, "#observa…"},
 		{20, "#observability"},
 	} {
-		rendered := renderTruncatedTags([]string{tag}, 2, tc.maxTagLen)
+		rendered := listsurface.RenderTruncatedTags([]string{tag}, 2, tc.maxTagLen)
 		if got := ansi.Strip(rendered); got != tc.want {
 			t.Errorf("chip at %d columns = %q, want %q", tc.maxTagLen, got, tc.want)
 		}
@@ -66,7 +67,7 @@ func TestRenderTruncatedTagsKeepsTheOverflowCountMuted(t *testing.T) {
 	theme.ApplyTheme(theme.ThemeConfig{Name: ""})
 	t.Cleanup(func() { theme.ApplyTheme(theme.ThemeConfig{}) })
 
-	rendered := renderTruncatedTags([]string{"billing", "ux", "refactor"}, 2, 8)
+	rendered := listsurface.RenderTruncatedTags([]string{"billing", "ux", "refactor"}, 2, 8)
 	if want := theme.MutedStyle.Render(" +1"); !strings.HasSuffix(rendered, want) {
 		t.Errorf("overflow suffix of %q is not the muted %q", rendered, want)
 	}
@@ -101,8 +102,8 @@ func TestOrderedTaskTagsSortsNonSemanticFirstThenSemantic(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := orderedTaskTags(tc.tags); !slices.Equal(got, tc.want) {
-				t.Fatalf("orderedTaskTags(%v) = %v, want %v", tc.tags, got, tc.want)
+			if got := listsurface.OrderedTaskTags(tc.tags); !slices.Equal(got, tc.want) {
+				t.Fatalf("OrderedTaskTags(%v) = %v, want %v", tc.tags, got, tc.want)
 			}
 		})
 	}
@@ -112,24 +113,24 @@ func TestOrderedTaskTagsIsIndependentOfInsertionOrder(t *testing.T) {
 	// AddTag appends, so these are the same tag set typed in three orders. The
 	// point of the helper is that the set, not the typing history, decides.
 	stored := []string{"ux", "bug", "billing", "infra"}
-	want := orderedTaskTags(stored)
+	want := listsurface.OrderedTaskTags(stored)
 
 	for _, permutation := range [][]string{
 		{"bug", "billing", "infra", "ux"},
 		{"infra", "ux", "bug", "billing"},
 		{"billing", "infra", "ux", "bug"},
 	} {
-		if got := orderedTaskTags(permutation); !slices.Equal(got, want) {
-			t.Errorf("orderedTaskTags(%v) = %v, want %v", permutation, got, want)
+		if got := listsurface.OrderedTaskTags(permutation); !slices.Equal(got, want) {
+			t.Errorf("OrderedTaskTags(%v) = %v, want %v", permutation, got, want)
 		}
 	}
 
 	// A permutation, not a filter: the caller's overflow count depends on it.
-	if got := orderedTaskTags(stored); len(got) != len(stored) {
-		t.Errorf("orderedTaskTags returned %d tags for %d stored", len(got), len(stored))
+	if got := listsurface.OrderedTaskTags(stored); len(got) != len(stored) {
+		t.Errorf("OrderedTaskTags returned %d tags for %d stored", len(got), len(stored))
 	}
 	if !slices.Equal(stored, []string{"ux", "bug", "billing", "infra"}) {
-		t.Errorf("orderedTaskTags mutated its argument: %v", stored)
+		t.Errorf("OrderedTaskTags mutated its argument: %v", stored)
 	}
 }
 
@@ -140,13 +141,13 @@ func TestOrderedTaskTagsDeprioritizesSemanticTagsWithoutDroppingThem(t *testing.
 	// Deprioritize, never exclude: with nothing else competing, the semantic tag
 	// still reaches the row. Under --no-color the title carries no semantic color
 	// at all, and no renderer can detect that, so the chip is the only signal.
-	if got := ansi.Strip(renderTruncatedTags([]string{"bug"}, 2, 8)); got != "#bug" {
+	if got := ansi.Strip(listsurface.RenderTruncatedTags([]string{"bug"}, 2, 8)); got != "#bug" {
 		t.Errorf("a bug-only task rendered %q, want #bug", got)
 	}
 
 	// With descriptive tags competing, the two row slots go to what the title
 	// color cannot say, and the dropped semantic tag is still counted.
-	rendered := renderTruncatedTags([]string{"bug", "ux", "billing"}, 2, 8)
+	rendered := listsurface.RenderTruncatedTags([]string{"bug", "ux", "billing"}, 2, 8)
 	if got, want := ansi.Strip(rendered), "#billing #ux +1"; got != want {
 		t.Errorf("row tags = %q, want %q", got, want)
 	}
@@ -163,7 +164,7 @@ func TestRenderTruncatedTagsOverflowCountSurvivesReordering(t *testing.T) {
 		{"ux", "bug", "infra", "billing", "story"},
 		{"infra", "billing", "story", "ux", "bug"},
 	} {
-		got := ansi.Strip(renderTruncatedTags(tags, 2, 8))
+		got := ansi.Strip(listsurface.RenderTruncatedTags(tags, 2, 8))
 		if want := "#billing #infra +3"; got != want {
 			t.Errorf("row tags for %v = %q, want %q", tags, got, want)
 		}
@@ -182,7 +183,7 @@ func TestRenderTruncatedTagsOverflowCountSurvivesReordering(t *testing.T) {
 		{2, "#billing #infra +3"},
 		{5, "#billing #infra #ux #bug #story"},
 	} {
-		if got := ansi.Strip(renderTruncatedTags(tags, tc.maxTags, 8)); got != tc.want {
+		if got := ansi.Strip(listsurface.RenderTruncatedTags(tags, tc.maxTags, 8)); got != tc.want {
 			t.Errorf("row tags at a budget of %d = %q, want %q", tc.maxTags, got, tc.want)
 		}
 	}
@@ -195,7 +196,7 @@ func TestRowAndPeekAgreeOnTagOrder(t *testing.T) {
 	// One helper serves both surfaces, so the row's two chips must be the Peek
 	// line's first two — a row is a prefix of Peek, never a different selection.
 	task := &models.Task{ID: "task", Tags: []string{"bug", "ux", "billing"}}
-	row := ansi.Strip(renderTruncatedTags(task.Tags, 2, 8))
+	row := ansi.Strip(listsurface.RenderTruncatedTags(task.Tags, 2, 8))
 	peek := ansi.Strip(inlinePeekTagsLine(task, 120))
 
 	if want := "Tags: #billing #ux #bug"; peek != want {

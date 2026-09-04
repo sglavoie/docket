@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -326,7 +327,7 @@ func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvoc
 		message = commandMessage(m.coreRedo())
 	case operation.OperationCoreBack:
 		if out, ok := m.outlinerPrimary(); ok {
-			RunEscCascade(out.escSteps())
+			listsurface.RunEscCascade(out.escSteps())
 			// Leaving a parked focus drops the project from the snapshot in place;
 			// the cascade cannot return a Cmd, so the reload is claimed here.
 			message = commandMessage(out.takeParkedFocusReload())

@@ -226,7 +226,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				fixture := newSession4LifecycleFixture(t, project)
 				live := fixture.app.projectByID(project.ID)
 				fixture.cross.pushProjectScope(project.ID)
-				fixture.cross.cursor = session2TaskRow(t, fixture.cross, project.ID, project.Tasks[0].ID)
+				fixture.cross.Cursor = session2TaskRow(t, fixture.cross, project.ID, project.Tasks[0].ID)
 				modeBefore := fixture.cross.activeOutlinerMode()
 				live.Name = "Renamed Project"
 				live.Description = "office"
@@ -255,7 +255,7 @@ func TestProjectLifecycleRefreshMatrix(t *testing.T) {
 				if fixture.cross.scopedProjectID != project.ID {
 					t.Fatalf("metadata reload changed valid scope to %q", fixture.cross.scopedProjectID)
 				}
-				cursorRow := fixture.cross.rows[fixture.cross.cursor]
+				cursorRow := fixture.cross.rows[fixture.cross.Cursor]
 				if !cursorRow.isTaskRow() || cursorRow.task == nil ||
 					cursorRow.ProjectID != project.ID || cursorRow.task.ID != project.Tasks[0].ID {
 					t.Fatalf("metadata reload changed cursor identity: %#v", cursorRow)

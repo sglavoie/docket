@@ -3,6 +3,7 @@ package tui
 import (
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/query"
@@ -160,14 +161,14 @@ func TestCtrlPRemainsOwnedByInlineOutlinerControls(t *testing.T) {
 	}
 	out.ClearSearch()
 
-	out.confirm.Show("test", "Confirm?")
+	out.Confirm.Show("test", "Confirm?")
 	if handled, cmd := app.handleSimplifiedInputKey(ctrlP); handled || cmd != nil {
 		t.Fatalf("active confirmation let Ctrl+P reach the Outliner grammar: handled=%v cmd=%v", handled, cmd)
 	}
 	if app.CurrentRoute().ID() != route.TaskWorkspace {
 		t.Fatal("Ctrl+P opened the Project Hub while confirmation owned input")
 	}
-	out.confirm.Cancel()
+	out.Confirm.Cancel()
 
 	app.operationTextPrompt = newOperationTextPromptModel(
 		operation.OperationExecutionRequest{}, "Name", "", "draft", "Name",
@@ -185,12 +186,12 @@ func TestCtrlPRemainsOwnedByInlineOutlinerControls(t *testing.T) {
 
 	descriptor := contextActionTestDescriptor("test.ctrl-p-owner", "Owner")
 	registry, executor := contextActionTestEngine(t, []operation.OperationDescriptor{descriptor}, nil)
-	sheet, err := NewContextActionSheetModel(
+	sheet, err := listsurface.NewContextActionSheetModel(
 		registry,
 		executor,
 		contextActionTestContext(),
 		[]operation.OperationID{descriptor.ID},
-		ContextActionSheetConfig{Host: ContextActionHostOutliner},
+		listsurface.ContextActionSheetConfig{Host: listsurface.ContextActionHostOutliner},
 	)
 	if err != nil {
 		t.Fatalf("NewContextActionSheetModel: %v", err)

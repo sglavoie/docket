@@ -117,8 +117,9 @@ the pre-split tree and is consistently pessimistic.
 | `query` | 69 | 68 | 62 |
 | `operation` | 124 | 162 | 159 |
 | `route` | 14 | 16 | 9 |
+| `listsurface` | 29 | 26 | Session 2.20 |
 
-Running total against 631: **390**.
+Running total against 631: **416**.
 `grammar` contributes 58, not 154, because its two counted columns are on a
 different basis from every row above them:
 Session 2.11 counted 196 promoted names by including methods and struct fields,
@@ -553,6 +554,81 @@ they are only ever reached through in production — so the fallback became a
 `manageRouteForPresentation` helper and the field writes disappeared. Exporting
 a constructor for a test would have failed the dead-code gate anyway, which is
 the same trap the `operation` session recorded one row above.
+
+`listsurface` is the second package after `chrome` whose production move and
+test move are two sessions, and the first where the `must export` column is
+actively misleading rather than merely pessimistic. Session 2.19 promoted 26
+package-level declarations against a projection of 29, and withdrew four more by
+step-3 relocation rather than exporting them, so on the column's own basis the
+row lands where the projection said it would. The column is still wrong about
+the size of the boundary: `listsurface` is four embeddable state structs, and 27
+of their members had to be promoted on top of the declarations — 11 methods and
+16 fields — which no row above this one comes close to. Do not size a struct-
+heavy package from `must export` alone.
+
+The four step-3 relocations are worth reading as a set, because two go up and
+two go down:
+
+- `SectionHeaderOpts` and `renderSectionHeader` left `shared_render_helpers.go`
+  for `outliner_render_rows.go`, their only consumer. That is also what removed
+  the `cursorPaint`, `cursorPaint.bar`, `cursorPaint.gutterBg` and `gutterSpace`
+  upward edges, all four of which existed only to serve those two. It is a
+  withdrawal as well as a move: `SectionHeaderOpts` was already exported and is
+  `sectionHeaderOpts` now.
+- `helpCmd` left `shared_navigation.go` for `help_messages.go`, beside the
+  `ShowHelpMsg` it constructs, under Session 2.6's rule. A surface asking for `?`
+  is asking the shell to push a view, not to move a cursor.
+- `cloneCommandContext` moved *down* into `operation` as `CloneCommandContext`.
+  It was declared in `contextual_action_sheet.go`, but three of its four
+  production consumers are shell files and what it copies is an `operation`
+  type, so it belongs beside the type rather than beside any one sheet that
+  freezes a context.
+- `ParentSelectedMsg` and `CloseParentSelectorMsg` moved down out of
+  `app_messages_tasks.go` into `listsurface/parent_selector.go`, under that same
+  2.6 rule. `OpenParentSelectorMsg` stays in the shell, which is what constructs
+  it.
+
+Two names cannot be exported by capitalising them, and this is a failure mode
+the recipe had not hit before: an accessor of the exact exported spelling
+already exists. `BaseView.width` and `BaseView.height` collide with `Width()`
+and `Height()`, so the external reads were rewritten to call the accessors and
+both fields stayed unexported. `MultiSelectState.selectedTaskIdentities`
+collides with `SelectedTaskIdentities()` and became `Selected`;
+`MultiSelectState.replaceSelection` collides with an unrelated exported
+`ReplaceSelection` and became `SetSelection`. Check for the accessor before
+planning a field promotion — a struct cannot carry a field and a method of the
+same name, and the rename that resolves it is a naming decision, not a
+mechanical one.
+
+The session's one general finding is the shell's overlay contract.
+`ContextActionSheetModel` is consumed by `dispatchOverlayKey` and
+`renderOverlayWithin` through three shell interfaces whose methods were all
+unexported — `keyInterceptor.handleKey`, `widthRenderer.render` and
+`viewportRenderer.renderWithin`. An interface naming an unexported method can
+only ever be satisfied from inside the package that declares it, so an overlay
+that moves into a sub-package silently stops being an overlay. All three method
+names are now exported, on all five implementers: `ContextActionSheetModel`
+inside `listsurface`, and `ConflictBrowserModel`, `NamedLensPickerModel`,
+`OperationTextPromptModel` and `OperationValuePickerModel` still in the shell,
+for 11 promoted methods the `listsurface` row does not count. `renderWithin` was
+not strictly forced this session and was exported anyway, because
+`renderOverlayWithin` selects it by *type assertion* rather than by the
+compiler: the next overlay to move would have lost its viewport rendering with a
+green build. The `task_form_*` pickers keep their unexported `render` and
+`handleKey`, which have different signatures and are rendered directly. This
+unblocks the `conflict` and `lens` L7 sessions, which the assignment table sends
+`conflict_browser.go` and `lens_picker_keys.go` into.
+
+Three facts to carry forward. The moving set has *zero* outbound references into
+the rest of `package tui`, which is why the extraction needed no relocation
+beyond the four above — check this before assuming a large package drags
+dependencies with it. The graph row needed four edges the whitelist did not
+have, `taskref`, `query`, `status` and `pulse`, all justified in the header of
+`scripts/tui_package_graph.tsv`. And `pipeline_stage.go` is `tui`, not
+`listsurface`: `pipelineStage` and `pipelineNextHint` map a `PresentationID` to
+a footer string, name no list, cursor or row, and are read only by
+`app_view_status.go`, so Session 2.17's invitation to weigh that row resolves
+against the move.
 
 Reproduce the last column for one package with the oracle from session 2.4,
 which reports a clean boundary rather than a count:

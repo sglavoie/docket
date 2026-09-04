@@ -30,7 +30,7 @@ func TestTaskAttachmentsDeleteDispatchesCoordinator(t *testing.T) {
 
 	attach, fake := newFakeAttachmentCoordinator()
 	model := NewTaskAttachmentsModel(task, project, nil, attach)
-	model.cursor = 1
+	model.Cursor = 1
 
 	cmd := model.executeDelete()
 	if cmd == nil {
@@ -69,7 +69,7 @@ func TestTaskAttachmentsDeleteOutOfBounds(t *testing.T) {
 
 	attach, fake := newFakeAttachmentCoordinator()
 	model := NewTaskAttachmentsModel(task, project, nil, attach)
-	model.cursor = 5 // Out of bounds
+	model.Cursor = 5 // Out of bounds
 
 	cmd := model.executeDelete()
 	if cmd == nil {
@@ -109,7 +109,7 @@ func TestTaskAttachmentsKeepDispatchesCoordinator(t *testing.T) {
 
 	attach, fake := newFakeAttachmentCoordinator()
 	model := NewTaskAttachmentsModel(task, project, nil, attach)
-	model.cursor = 0
+	model.Cursor = 0
 
 	cmd := model.executeKeep()
 	if cmd == nil {
@@ -155,8 +155,8 @@ func TestTaskAttachmentsAddURLDispatchesCoordinator(t *testing.T) {
 	if len(fake.urls) != 1 || fake.urls[0] != "https://example.com/design.pdf" {
 		t.Fatalf("expected AttachURL dispatch, got %+v", fake.urls)
 	}
-	if model.cursor != 0 {
-		t.Fatalf("expected cursor at 0, got %d", model.cursor)
+	if model.Cursor != 0 {
+		t.Fatalf("expected cursor at 0, got %d", model.Cursor)
 	}
 }
 
@@ -180,7 +180,7 @@ func TestTaskAttachmentsAddEmptyPath(t *testing.T) {
 	if cmd != nil {
 		t.Fatal("expected nil command for empty path")
 	}
-	if model.err == nil {
+	if model.Err == nil {
 		t.Fatal("expected error for empty path")
 	}
 }
@@ -223,8 +223,8 @@ func TestTaskAttachmentsAddNormalizesPastedPaths(t *testing.T) {
 			if cmd == nil {
 				t.Fatalf("expected non-nil command from addAttachment for input %q", tc.input)
 			}
-			if model.err != nil {
-				t.Fatalf("expected no error for input %q, got: %v", tc.input, model.err)
+			if model.Err != nil {
+				t.Fatalf("expected no error for input %q, got: %v", tc.input, model.Err)
 			}
 			if model.addMode {
 				t.Fatal("expected addMode to be false after successful add")
@@ -268,7 +268,7 @@ func TestOpenAttachmentInEditor_EmptyEditorUsesOSDefault(t *testing.T) {
 	project.Tasks = []*models.Task{task}
 
 	model := NewTaskAttachmentsModel(task, project, testRuntimeAt(cfg.DataDir(), cfg), coordinator.AttachmentCoordinator{})
-	model.cursor = 0
+	model.Cursor = 0
 
 	// openAttachmentInEditor should attempt
 	// buildOpenCommand (OS default). Since the file doesn't exist in the
@@ -276,13 +276,13 @@ func TestOpenAttachmentInEditor_EmptyEditorUsesOSDefault(t *testing.T) {
 	// NOT about "no editor configured" or "not found in PATH".
 	model.openAttachmentInEditor()
 
-	if model.err == nil {
+	if model.Err == nil {
 		// The attachment dir doesn't exist so we expect an error.
 		// If we got here with no error, the test environment has the file.
 		return
 	}
 
-	errMsg := model.err.Error()
+	errMsg := model.Err.Error()
 	if strings.Contains(errMsg, "no editor") || strings.Contains(errMsg, "not found in PATH") {
 		t.Errorf("empty attachment_editor should use OS default open, not text editor resolution; got: %s", errMsg)
 	}

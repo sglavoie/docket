@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
@@ -48,15 +49,15 @@ func (m *AppModel) newLensTemplatePicker(
 // declared in. Unavailable templates keep their row and carry a reason, because
 // a template that vanished when it was added would leave the gallery unable to
 // say why.
-func lensTemplateListSource(machine *config.MachineState) ListSource {
+func lensTemplateListSource(machine *config.MachineState) listsurface.ListSource {
 	templates := config.BuiltinNamedLensTemplates()
 	sort.SliceStable(templates, func(i, j int) bool {
 		return templates[i].Name < templates[j].Name
 	})
-	items := make([]ListItem, 0, len(templates))
+	items := make([]listsurface.ListItem, 0, len(templates))
 	for _, template := range templates {
 		summary := namedLensSummary(template)
-		item := ListItem{
+		item := listsurface.ListItem{
 			ID:            lensTemplateItemID(template.ID),
 			PrimaryText:   template.Name,
 			SecondaryText: summary,
@@ -81,7 +82,7 @@ func lensTemplateListSource(machine *config.MachineState) ListSource {
 		}
 		items = append(items, item)
 	}
-	return ListSource{Items: items}
+	return listsurface.ListSource{Items: items}
 }
 
 // lensTemplateDisabledReason names the one rule that blocks adding a template,
@@ -99,6 +100,6 @@ func lensTemplateDisabledReason(machine *config.MachineState, template config.Na
 	return ""
 }
 
-func lensTemplateItemID(id string) ListItemID {
-	return ListItemID(lensTemplatePickerPrefix + id)
+func lensTemplateItemID(id string) listsurface.ListItemID {
+	return listsurface.ListItemID(lensTemplatePickerPrefix + id)
 }

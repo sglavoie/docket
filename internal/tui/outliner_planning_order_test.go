@@ -139,7 +139,7 @@ func TestOutlinerPlanningOrderJK(t *testing.T) {
 		if !cross.moveCursorToProjectTask(tasks[0].ID, project.ID) {
 			t.Fatal("cursor did not land on Alpha")
 		}
-		if !cross.rows[cross.cursor].IsNextSection {
+		if !cross.rows[cross.Cursor].IsNextSection {
 			t.Fatal("All-mode Next row lost its planning-section identity")
 		}
 		if !pressReorderKey(t, m, 'J') {
@@ -336,7 +336,7 @@ func TestHierarchicalReorderSwapsAdjacentVisibleQualifiedSiblings(t *testing.T) 
 	cross.loadedProjects = []*models.Project{project}
 	cross.crossForceRebuild = true
 	cross.crossProjectRebuildRows()
-	cross.restoreCrossOutlinerCursorAfterReload(cross.cursor, cross.viewScrollOffset)
+	cross.restoreCrossOutlinerCursorAfterReload(cross.Cursor, cross.ViewScrollOffset)
 	if task, selectedProject := cross.getTaskRef(); task == nil || selectedProject == nil ||
 		task.ID != firstID || selectedProject.ID != "hierarchy" {
 		t.Fatalf("cursor after reorder = %v/%v, want hierarchy/%s", selectedProject, task, firstID)

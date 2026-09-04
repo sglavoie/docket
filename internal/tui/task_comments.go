@@ -6,14 +6,15 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
 // TaskCommentsModel displays and manages comments for a task.
 type TaskCommentsModel struct {
-	BaseView
-	InteractiveViewState
+	listsurface.BaseView
+	listsurface.InteractiveViewState
 	task        *models.Task
 	project     *models.Project
 	coordinator coordinator.SubviewCoordinator
@@ -91,8 +92,8 @@ func (m *TaskCommentsModel) refreshAfterReload() bool {
 		return false
 	}
 	m.task = task
-	if m.cursor >= len(m.task.Comments) {
-		m.cursor = max(len(m.task.Comments)-1, 0)
+	if m.Cursor >= len(m.task.Comments) {
+		m.Cursor = max(len(m.task.Comments)-1, 0)
 	}
 	return true
 }

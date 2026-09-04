@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 )
 
 // This file holds the fixtures and helpers the reference-picker suite shares.
@@ -90,30 +91,30 @@ func referenceSuiteWorkspace(t *testing.T) (subject *models.Task, projects []*mo
 	return subject, []*models.Project{home, remote, attic}
 }
 
-func referenceRowIDs(source ListSource) []ListItemID {
-	ids := make([]ListItemID, 0, len(source.Items))
+func referenceRowIDs(source listsurface.ListSource) []listsurface.ListItemID {
+	ids := make([]listsurface.ListItemID, 0, len(source.Items))
 	for _, item := range source.Items {
 		ids = append(ids, item.ID)
 	}
 	return ids
 }
 
-func referenceRow(t *testing.T, source ListSource, locator string) ListItem {
+func referenceRow(t *testing.T, source listsurface.ListSource, locator string) listsurface.ListItem {
 	t.Helper()
-	want := ListItemID("reference:" + locator)
+	want := listsurface.ListItemID("reference:" + locator)
 	for _, item := range source.Items {
 		if item.ID == want {
 			return item
 		}
 	}
 	t.Fatalf("the picker has no row for %s; rows = %v", locator, referenceRowIDs(source))
-	return ListItem{}
+	return listsurface.ListItem{}
 }
 
-func referenceIDsFor(locators ...string) []ListItemID {
-	ids := make([]ListItemID, 0, len(locators))
+func referenceIDsFor(locators ...string) []listsurface.ListItemID {
+	ids := make([]listsurface.ListItemID, 0, len(locators))
 	for _, locator := range locators {
-		ids = append(ids, ListItemID("reference:"+locator))
+		ids = append(ids, listsurface.ListItemID("reference:"+locator))
 	}
 	return ids
 }
@@ -122,14 +123,14 @@ func referenceIDsFor(locators ...string) []ListItemID {
 // left exactly `checked` ticked: every row the tasks opened with, moved to All
 // where it was checked and None where it was not.
 func referenceMembershipAfter(
-	initial map[ListItemID]operationValueMembership, checked []string,
-) map[ListItemID]operationValueMembership {
-	current := make(map[ListItemID]operationValueMembership, len(initial)+len(checked))
+	initial map[listsurface.ListItemID]operationValueMembership, checked []string,
+) map[listsurface.ListItemID]operationValueMembership {
+	current := make(map[listsurface.ListItemID]operationValueMembership, len(initial)+len(checked))
 	for id := range initial {
 		current[id] = operationValueNone
 	}
 	for _, locator := range checked {
-		current[ListItemID("reference:"+locator)] = operationValueAll
+		current[listsurface.ListItemID("reference:"+locator)] = operationValueAll
 	}
 	return current
 }

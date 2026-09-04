@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -25,7 +26,7 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = msg.Err
 		return m, nil
 
-	case ParentSelectedMsg:
+	case listsurface.ParentSelectedMsg:
 		if msg.Source == presentation.ViewTaskComposer {
 			m.draft.parentID = msg.ParentID
 			m.hasChanges = true
@@ -33,7 +34,7 @@ func (m *TaskFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case TagSelectorDoneMsg:
+	case listsurface.TagSelectorDoneMsg:
 		// Routed here from handler_tag.go via delegateToCurrentView when task is nil.
 		if !msg.Canceled {
 			m.draft.tags = msg.SelectedTags

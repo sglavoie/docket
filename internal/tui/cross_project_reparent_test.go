@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -36,7 +37,7 @@ func TestCrossProjectReparent(t *testing.T) {
 	m := newCrossOutlinerFromEnv(env)
 
 	newParentID := "alpha-epic-b"
-	_, cmd := m.handleCrossProjectReparent(ParentSelectedMsg{
+	_, cmd := m.handleCrossProjectReparent(listsurface.ParentSelectedMsg{
 		ReparentTask: taskref.TaskIdentity{ProjectID: env.projects[0].ID, TaskID: "alpha-leaf"},
 		ParentID:     &newParentID,
 		Source:       presentation.ViewCrossProjectOutliner,
@@ -77,7 +78,7 @@ func TestCrossProjectReparent_GenericTaskParent(t *testing.T) {
 	m := newCrossOutlinerFromEnv(env)
 
 	parentID := "leaf-b"
-	_, cmd := m.handleCrossProjectReparent(ParentSelectedMsg{
+	_, cmd := m.handleCrossProjectReparent(listsurface.ParentSelectedMsg{
 		ReparentTask: taskref.TaskIdentity{ProjectID: env.projects[0].ID, TaskID: "leaf-a"},
 		ParentID:     &parentID,
 		Source:       presentation.ViewCrossProjectOutliner,
@@ -105,7 +106,7 @@ func TestCrossProjectReparentToRoot(t *testing.T) {
 	env := newCrossProjectTestEnv(t, []*models.Task{epic, leaf})
 	m := newCrossOutlinerFromEnv(env)
 
-	_, cmd := m.handleCrossProjectReparent(ParentSelectedMsg{
+	_, cmd := m.handleCrossProjectReparent(listsurface.ParentSelectedMsg{
 		ReparentTask: taskref.TaskIdentity{ProjectID: env.projects[0].ID, TaskID: "leaf"},
 		ParentID:     nil,
 		Source:       presentation.ViewCrossProjectOutliner,

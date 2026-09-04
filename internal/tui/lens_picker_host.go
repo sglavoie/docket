@@ -4,6 +4,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -106,13 +107,13 @@ func (m *AppModel) openNamedLensActions(msg NamedLensActionsRequestMsg) tea.Cmd 
 	if m == nil || m.lensPicker == nil {
 		return nil
 	}
-	sheet, err := NewContextActionSheetModel(
+	sheet, err := listsurface.NewContextActionSheetModel(
 		m.operationRegistry,
 		m.operationExecutor,
 		m.lensPicker.commandContext(msg.Entity),
 		namedLensActionSheetOperations,
-		ContextActionSheetConfig{
-			Host:         ContextActionHostLensPicker,
+		listsurface.ContextActionSheetConfig{
+			Host:         listsurface.ContextActionHostLensPicker,
 			Title:        "Lens actions",
 			Subtitle:     msg.Name,
 			ItemIDPrefix: "lens-action:",

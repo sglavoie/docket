@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -73,15 +74,15 @@ func (m *AppModel) newFilterProjectTagsPicker(
 	}
 	sort.Strings(names)
 
-	items := make([]ListItem, 0, len(names)+1)
+	items := make([]listsurface.ListItem, 0, len(names)+1)
 	for _, name := range names {
 		// The facet rows name the same vocabulary the editor at # does, so they
 		// take the same two styles: a chip for a descriptive tag, the badge for a
 		// behavioral one. Otherwise parked would render plain on one project-tag
 		// surface and in warning on the other.
 		style := theme.TagChipStyle(name)
-		item := ListItem{
-			ID:            ListItemID("tag:" + name),
+		item := listsurface.ListItem{
+			ID:            listsurface.ListItemID("tag:" + name),
 			CategoryID:    tagDescriptiveCategory,
 			PrimaryText:   name,
 			SecondaryText: projectCountPhrase(counts[name]),
@@ -98,8 +99,8 @@ func (m *AppModel) newFilterProjectTagsPicker(
 	}
 	// The empty tag set is legal, so without this row a tag facet could never
 	// name the projects the vocabulary does not cover.
-	items = append(items, ListItem{
-		ID:            ListItemID("tag:" + query.UntaggedProjectFilterKey),
+	items = append(items, listsurface.ListItem{
+		ID:            listsurface.ListItemID("tag:" + query.UntaggedProjectFilterKey),
 		CategoryID:    tagDescriptiveCategory,
 		PrimaryText:   "Untagged",
 		SecondaryText: projectCountPhrase(untagged),
@@ -107,19 +108,19 @@ func (m *AppModel) newFilterProjectTagsPicker(
 		Data:          query.UntaggedProjectFilterKey,
 	})
 
-	source := ListSource{
+	source := listsurface.ListSource{
 		Items: items,
-		Categories: []ListCategory{
+		Categories: []listsurface.ListCategory{
 			{ID: projectTagBehavioralCategory, Label: "Behavioral"},
 			{ID: tagDescriptiveCategory, Label: "Tags"},
 		},
 	}
-	selected := []ListItemID(nil)
+	selected := []listsurface.ListItemID(nil)
 	if m.crossOutliner != nil {
 		rows := query.ProjectFilterSelection(&m.crossOutliner.projectFilter)
-		selected = make([]ListItemID, 0, len(rows))
+		selected = make([]listsurface.ListItemID, 0, len(rows))
 		for _, row := range rows {
-			selected = append(selected, ListItemID(row))
+			selected = append(selected, listsurface.ListItemID(row))
 		}
 	}
 	return newOperationValuePickerModel(

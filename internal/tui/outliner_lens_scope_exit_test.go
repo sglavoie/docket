@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/status"
@@ -109,7 +110,7 @@ func TestScopedEquivalentLensSwitchRetainsDeferredPopulationLoad(t *testing.T) {
 		t.Fatalf("unscoped population = %v, want the [gamma] the lens facets select", ids)
 	}
 
-	if !RunEscCascade(outliner.escSteps()) {
+	if !listsurface.RunEscCascade(outliner.escSteps()) {
 		t.Fatal("expected Esc to consume the lens")
 	}
 	if outliner.scopedProjectID != "alpha" {
@@ -239,7 +240,7 @@ func TestScopedLensPopulationProvenanceTracksOrdinaryReloads(t *testing.T) {
 		t.Fatal("the repaired provenance replaced the original pre-lens restoration frame")
 	}
 
-	if !RunEscCascade(outliner.escSteps()) {
+	if !listsurface.RunEscCascade(outliner.escSteps()) {
 		t.Fatal("expected Esc to consume the lens")
 	}
 	if outliner.scopedProjectID != "alpha" {

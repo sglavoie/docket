@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
@@ -23,7 +24,7 @@ func NewTaskStatePickerForTargets(
 	current []models.WorkflowState,
 	taskTitle string,
 ) (*TaskStatePickerModel, error) {
-	source := ListSourceFromWorkflowStates(models.AllWorkflowStates())
+	source := listsurface.ListSourceFromWorkflowStates(models.AllWorkflowStates())
 	for index := range source.Items {
 		state, ok := source.Items[index].Data.(models.WorkflowState)
 		if !ok {
@@ -61,7 +62,7 @@ func NewTaskStatePickerForTargets(
 			}
 		}
 		if uniform {
-			picker.surface.SetCursorToID(ListItemID("state:" + current[0].String()))
+			picker.surface.SetCursorToID(listsurface.ListItemID("state:" + current[0].String()))
 		}
 	}
 	return picker, nil

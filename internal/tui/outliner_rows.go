@@ -44,8 +44,8 @@ func (m *OutlinerModel) validateCrossFocusStack() {
 	}
 
 	restore := m.crossFocusStack[invalidIndex]
-	m.cursor = restore.CursorIndex
-	m.viewScrollOffset = restore.ScrollOffset
+	m.Cursor = restore.CursorIndex
+	m.ViewScrollOffset = restore.ScrollOffset
 	m.crossFocusStack = m.crossFocusStack[:invalidIndex]
 	m.setFocusRecoveryNotice(invalidIndex)
 }
@@ -72,8 +72,8 @@ func (m *OutlinerModel) validateFocusStack() {
 	}
 
 	restore := m.focusStack[invalidIndex]
-	m.cursor = restore.CursorIndex
-	m.viewScrollOffset = restore.ScrollOffset
+	m.Cursor = restore.CursorIndex
+	m.ViewScrollOffset = restore.ScrollOffset
 	m.focusStack = m.focusStack[:invalidIndex]
 	m.setFocusRecoveryNotice(invalidIndex)
 }
@@ -184,18 +184,18 @@ func (m *OutlinerModel) clampCursor() {
 	if len(m.rows) == 0 {
 		return
 	}
-	if m.rows[m.cursor].isNavigable() {
+	if m.rows[m.Cursor].isNavigable() {
 		return
 	}
-	for i := m.cursor + 1; i < len(m.rows); i++ {
+	for i := m.Cursor + 1; i < len(m.rows); i++ {
 		if m.rows[i].isNavigable() {
-			m.cursor = i
+			m.Cursor = i
 			return
 		}
 	}
-	for i := m.cursor - 1; i >= 0; i-- {
+	for i := m.Cursor - 1; i >= 0; i-- {
 		if m.rows[i].isNavigable() {
-			m.cursor = i
+			m.Cursor = i
 			return
 		}
 	}
@@ -210,7 +210,7 @@ func (m *OutlinerModel) clampCursor() {
 // reduced value: the window, the page size, and the suggestion budgets are all
 // measured against the list the bar leaves behind.
 func (m *OutlinerModel) contentHeight() int {
-	height := m.height - 1 - m.menuBarRows()
+	height := m.Height() - 1 - m.menuBarRows()
 	if height < 1 {
 		return 1
 	}

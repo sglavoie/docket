@@ -40,7 +40,7 @@ func (m *OutlinerModel) searchDependencySuggestions(
 		partial,
 		m.searchDependencyEffectiveProject(),
 		definition.Trigger,
-		max(m.width-25, 10),
+		max(m.Width()-25, 10),
 	)
 }
 

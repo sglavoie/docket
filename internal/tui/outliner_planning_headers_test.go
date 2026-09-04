@@ -66,7 +66,7 @@ func TestPlanningProjectHeadersCollapseAndDisappearInProjectScope(t *testing.T) 
 
 	for index, row := range outliner.rows {
 		if row.IsProjectHeader && row.IsNextSection && row.ProjectID == alpha.ID {
-			outliner.cursor = index
+			outliner.Cursor = index
 			break
 		}
 	}

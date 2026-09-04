@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -64,7 +65,7 @@ func lensTemplateByName(t *testing.T, name string) config.NamedLens {
 
 // galleryRow finds one template's row by its stable ID rather than by position,
 // so an ordering change fails the ordering test alone.
-func galleryRow(t *testing.T, picker *OperationValuePickerModel, id string) ListItem {
+func galleryRow(t *testing.T, picker *OperationValuePickerModel, id string) listsurface.ListItem {
 	t.Helper()
 	for _, item := range picker.surface.Items() {
 		if item.ID == lensTemplateItemID(id) {
@@ -72,13 +73,13 @@ func galleryRow(t *testing.T, picker *OperationValuePickerModel, id string) List
 		}
 	}
 	t.Fatalf("the gallery has no row for template %s", id)
-	return ListItem{}
+	return listsurface.ListItem{}
 }
 
 func typeIntoGallery(picker *OperationValuePickerModel, query string) {
-	picker.handleKey(tea.KeyPressMsg{Code: '/', Text: "/"})
+	picker.HandleKey(tea.KeyPressMsg{Code: '/', Text: "/"})
 	for _, r := range query {
-		picker.handleKey(tea.KeyPressMsg{Code: r, Text: string(r)})
+		picker.HandleKey(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 }
 
@@ -307,7 +308,7 @@ func TestLensTemplateGalleryRefusesADisabledRowAndStaysOpen(t *testing.T) {
 		t.Fatal("the cursor could not reach the seeded Waiting row")
 	}
 
-	_, dismissed, msg := picker.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	_, dismissed, msg := picker.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if dismissed {
 		t.Fatal("a refused row closed the gallery")
 	}
@@ -318,7 +319,7 @@ func TestLensTemplateGalleryRefusesADisabledRowAndStaysOpen(t *testing.T) {
 	if want := `Already added as "Waiting"`; !strings.Contains(string(status), want) {
 		t.Fatalf("refusal status = %q, want it to name %q", string(status), want)
 	}
-	if _, err := picker.selectedValue(); !errors.Is(err, ErrListItemDisabled) {
+	if _, err := picker.selectedValue(); !errors.Is(err, listsurface.ErrListItemDisabled) {
 		t.Fatalf("selectedValue error = %v, want ErrListItemDisabled", err)
 	}
 }
@@ -331,7 +332,7 @@ func TestLensTemplateGallerySelectsTheStableTemplateID(t *testing.T) {
 		t.Fatal("the cursor could not reach the Overdue row")
 	}
 
-	_, dismissed, msg := picker.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	_, dismissed, msg := picker.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	if !dismissed {
 		t.Fatal("selecting a template left the gallery open")
 	}

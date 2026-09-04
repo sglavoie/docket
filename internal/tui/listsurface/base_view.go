@@ -1,4 +1,4 @@
-package tui
+package listsurface
 
 import (
 	"image/color"
@@ -12,7 +12,7 @@ type BaseView struct {
 	pulse.WorkspacePulseState
 	width       int
 	height      int
-	err         error
+	Err         error
 	accentColor color.Color
 }
 
@@ -45,22 +45,22 @@ func (v *BaseView) Height() int {
 
 // SetError sets the current error.
 func (v *BaseView) SetError(err error) {
-	v.err = err
+	v.Err = err
 }
 
 // ClearError clears the current error.
 func (v *BaseView) ClearError() {
-	v.err = nil
+	v.Err = nil
 }
 
 // HasError returns true if there is an error.
 func (v *BaseView) HasError() bool {
-	return v.err != nil
+	return v.Err != nil
 }
 
 // Error returns the current error.
 func (v *BaseView) Error() error {
-	return v.err
+	return v.Err
 }
 
 // ShouldCaptureEsc returns false by default.

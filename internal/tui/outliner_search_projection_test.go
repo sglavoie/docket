@@ -137,7 +137,7 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 	if !outliner.moveCursorToProjectTask(second.ID, project.ID) {
 		t.Fatal("failed to seed cursor")
 	}
-	outliner.viewScrollOffset = 4
+	outliner.ViewScrollOffset = 4
 	wantFilter := copyFilterState(outliner.filter)
 	wantCollapsed := maps.Clone(outliner.collapsedSections)
 	wantExpanded := maps.Clone(outliner.expandedNodes)
@@ -173,10 +173,10 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 		!maps.Equal(outliner.filter.Tags, wantFilter.Tags) ||
 		!maps.Equal(outliner.collapsedSections, wantCollapsed) ||
 		!maps.Equal(outliner.expandedNodes, wantExpanded) ||
-		outliner.viewScrollOffset != 4 {
+		outliner.ViewScrollOffset != 4 {
 		t.Fatalf("restored state differs: mode=%s filter=%v collapsed=%v expanded=%v scroll=%d",
 			outliner.primaryMode, outliner.filter.Tags, outliner.collapsedSections,
-			outliner.expandedNodes, outliner.viewScrollOffset)
+			outliner.expandedNodes, outliner.ViewScrollOffset)
 	}
 	if outliner.hasSearchProjection() || outliner.HasActiveSearch() || outliner.SearchQuery() != "" {
 		t.Fatalf("Esc left search active: projection=%v input=%v query=%q",

@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -218,7 +219,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 			t.Fatalf("f@ did not open the due-date picker: %#v", app.operationValuePicker)
 		}
 		items := app.operationValuePicker.surface.Items()
-		wantIDs := []ListItemID{
+		wantIDs := []listsurface.ListItemID{
 			"filter-due:overdue",
 			"filter-due:today",
 			"filter-due:week",
@@ -275,7 +276,7 @@ func TestFilterChordPickersOpenSeededFromTheActiveFilter(t *testing.T) {
 			t.Fatalf("fa did not open the completion-age picker: %#v", app.operationValuePicker)
 		}
 		items := app.operationValuePicker.surface.Items()
-		wantIDs := []ListItemID{
+		wantIDs := []listsurface.ListItemID{
 			"filter-completion-age:all",
 			"filter-completion-age:7",
 			"filter-completion-age:30",
@@ -360,12 +361,12 @@ func TestFilterStatePickerShowsProspectiveCountsFromOtherActiveFilters(t *testin
 	if err != nil {
 		t.Fatalf("newFilterStatesPicker() error = %v", err)
 	}
-	items := make(map[ListItemID]ListItem)
+	items := make(map[listsurface.ListItemID]listsurface.ListItem)
 	for _, item := range picker.surface.Items() {
 		items[item.ID] = item
 	}
 
-	for id, want := range map[ListItemID]string{
+	for id, want := range map[listsurface.ListItemID]string{
 		"state:inbox":   "inbox ⋅ 2",
 		"state:backlog": "backlog ⋅ 1",
 		"state:waiting": "waiting ⋅ 0",
@@ -389,7 +390,7 @@ func TestFilterStatePickerShowsProspectiveCountsFromOtherActiveFilters(t *testin
 		t.Errorf("building counts mutated active state filter to %v", got)
 	}
 
-	rendered := ansi.Strip(picker.render(120))
+	rendered := ansi.Strip(picker.Render(120))
 	for _, want := range []string{"inbox ⋅ 2", "waiting ⋅ 0"} {
 		if !strings.Contains(rendered, want) {
 			t.Errorf("rendered state picker omitted %q:\n%s", want, rendered)

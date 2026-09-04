@@ -78,7 +78,7 @@ func projectTagsOperationResult(
 		return operation.OperationHandlerResult{Message: operation.OperationValueRequestMsg{
 			Request: operation.OperationExecutionRequest{
 				ID:      invocation.Descriptor.ID,
-				Context: cloneCommandContext(invocation.Context),
+				Context: operation.CloneCommandContext(invocation.Context),
 			},
 			Provider: operation.ValueProviderProjectTags,
 		}}

@@ -5,19 +5,20 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
 const (
-	taskActionCategoryPlan          ListCategoryID = "task-actions:plan"
-	taskActionCategoryOrganize      ListCategoryID = "task-actions:organize"
-	taskActionCategoryContent       ListCategoryID = "task-actions:content"
-	taskActionCategoryRelationships ListCategoryID = "task-actions:relationships"
-	taskActionCategoryDanger        ListCategoryID = "task-actions:danger"
+	taskActionCategoryPlan          listsurface.ListCategoryID = "task-actions:plan"
+	taskActionCategoryOrganize      listsurface.ListCategoryID = "task-actions:organize"
+	taskActionCategoryContent       listsurface.ListCategoryID = "task-actions:content"
+	taskActionCategoryRelationships listsurface.ListCategoryID = "task-actions:relationships"
+	taskActionCategoryDanger        listsurface.ListCategoryID = "task-actions:danger"
 )
 
-var taskActionCategories = []ListCategory{
+var taskActionCategories = []listsurface.ListCategory{
 	{ID: taskActionCategoryContent, Label: "Content"},
 	{ID: taskActionCategoryDanger, Label: "Danger"},
 }
@@ -31,7 +32,7 @@ func NewTaskActionSheetModel(
 	executor *operation.OperationExecutor,
 	context operation.CommandContext,
 	taskTitle string,
-) (*ContextActionSheetModel, error) {
+) (*listsurface.ContextActionSheetModel, error) {
 	descriptors := TaskActionSheetDescriptors(registry, context)
 	ids := make([]operation.OperationID, 0, len(descriptors))
 	for _, descriptor := range descriptors {
@@ -41,9 +42,9 @@ func NewTaskActionSheetModel(
 	if context.Selection.Visual {
 		title = "Bulk Actions"
 	}
-	return NewContextActionSheetModel(registry, executor, context, ids, ContextActionSheetConfig{
-		Host:         ContextActionHostOutliner,
-		Completion:   ContextActionCompleteCloseSheet,
+	return listsurface.NewContextActionSheetModel(registry, executor, context, ids, listsurface.ContextActionSheetConfig{
+		Host:         listsurface.ContextActionHostOutliner,
+		Completion:   listsurface.ContextActionCompleteCloseSheet,
 		Title:        title,
 		Subtitle:     strings.TrimSpace(taskTitle),
 		ItemIDPrefix: "task-action:",
@@ -56,11 +57,11 @@ func NewTaskActionSheetModel(
 		ImmediateFilter: true,
 		Targets:         taskActionTargetCount(context),
 		Bulk:            context.Selection.Visual,
-		EmptyState: ListEmptyState{
+		EmptyState: listsurface.ListEmptyState{
 			Title:  "No task actions available.",
 			Detail: "Select a task that can be acted on.",
 		},
-		NoMatchState: ListEmptyState{
+		NoMatchState: listsurface.ListEmptyState{
 			Title:  "No matching actions.",
 			Detail: "Clear or change the search.",
 		},
@@ -122,7 +123,7 @@ func taskActionDescriptorApplicableToEveryTarget(
 		return false
 	}
 	for _, entity := range context.Selection.Entities {
-		targetContext := cloneCommandContext(context)
+		targetContext := operation.CloneCommandContext(context)
 		targetContext.Entity = entity
 		if !descriptor.Applicable(targetContext) {
 			return false
@@ -139,7 +140,7 @@ func taskActionSheetEligible(descriptor operation.OperationDescriptor) bool {
 	return manifested && !entry.DirectOnly
 }
 
-func taskActionCategory(descriptor operation.OperationDescriptor) ListCategoryID {
+func taskActionCategory(descriptor operation.OperationDescriptor) listsurface.ListCategoryID {
 	if descriptor.Risk == operation.OperationRiskDestructive {
 		return taskActionCategoryDanger
 	}
@@ -176,7 +177,7 @@ func taskActionDisabledReason(
 // operations in their authoritative order ahead of any other action in the same
 // category.
 func sortTaskActionDescriptors(descriptors []operation.OperationDescriptor) {
-	categoryRank := func(id ListCategoryID) int {
+	categoryRank := func(id listsurface.ListCategoryID) int {
 		for index, category := range taskActionCategories {
 			if category.ID == id {
 				return index
@@ -202,18 +203,6 @@ func sortTaskActionDescriptors(descriptors []operation.OperationDescriptor) {
 		}
 		return left.ID < right.ID
 	})
-}
-
-func cloneCommandContext(context operation.CommandContext) operation.CommandContext {
-	context.Capabilities = operation.CloneCapabilitySet(context.Capabilities)
-	context.Selection.Tasks = append([]taskref.TaskIdentity(nil), context.Selection.Tasks...)
-	context.Selection.Entities = append([]operation.EntityContext(nil), context.Selection.Entities...)
-	context.Selection.EntityIdentities = append(
-		[]operation.EntityIdentity(nil),
-		context.Selection.EntityIdentities...,
-	)
-	context.ScopeProjectIDs = append([]string(nil), context.ScopeProjectIDs...)
-	return context
 }
 
 func (m *AppModel) openTaskActionSheet(context operation.CommandContext) error {

@@ -13,10 +13,10 @@ import (
 // cursorTaskID returns the task ID under the cursor, or "" when the cursor does
 // not name a task row.
 func cursorTaskID(m *OutlinerModel) string {
-	if m.cursor < 0 || m.cursor >= len(m.rows) {
+	if m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return ""
 	}
-	row := m.rows[m.cursor]
+	row := m.rows[m.Cursor]
 	if !row.isTaskRow() || row.task == nil {
 		return ""
 	}
@@ -53,12 +53,12 @@ func TestFocusLatestActivityReadsTheViewportFromTheTop(t *testing.T) {
 	newest := recentTask("newest", models.StateBacklog, 0)
 	project := primaryRowsProject("alpha", newest)
 	outliner, _ := primaryRowsOutliner(project)
-	outliner.viewScrollOffset = 12
+	outliner.ViewScrollOffset = 12
 
 	outliner.focusLatestActivity()
 
-	if outliner.viewScrollOffset != 0 {
-		t.Fatalf("scroll offset = %d, want 0 so the lead's headers stay on screen", outliner.viewScrollOffset)
+	if outliner.ViewScrollOffset != 0 {
+		t.Fatalf("scroll offset = %d, want 0 so the lead's headers stay on screen", outliner.ViewScrollOffset)
 	}
 	if got := cursorTaskID(outliner); got != newest.ID {
 		t.Fatalf("cursor task = %q, want %q", got, newest.ID)
@@ -118,7 +118,7 @@ func TestFocusLatestActivityReportsAnEmptyRecent(t *testing.T) {
 	if got := visibleTaskIDs(outliner); len(got) != 0 {
 		t.Fatalf("Recent rows = %v, want none past the cutoff", got)
 	}
-	if !strings.Contains(outliner.statusMessage, "No activity") {
-		t.Fatalf("status = %q, want it to report an empty Recent", outliner.statusMessage)
+	if !strings.Contains(outliner.StatusMessage, "No activity") {
+		t.Fatalf("status = %q, want it to report an empty Recent", outliner.StatusMessage)
 	}
 }

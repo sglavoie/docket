@@ -310,7 +310,7 @@ func TestCursorRowKeepsItsRowTint(t *testing.T) {
 func TestCursorFlashWidensTheMark(t *testing.T) {
 	task := &models.Task{ID: "t1", ShortID: 1, Title: "Ship", WorkflowState: models.StateBacklog}
 	outliner, project := cursorHighlightOutliner(t, task)
-	outliner.cursorFlash = true
+	outliner.CursorFlash = true
 	prefix := "│   ├── "
 	row := outlinerRow{task: task, ProjectID: project.ID, prefix: prefix}
 

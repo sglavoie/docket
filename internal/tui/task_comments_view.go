@@ -51,9 +51,9 @@ func (m *TaskCommentsModel) View() tea.View {
 }
 
 func (m *TaskCommentsModel) renderExpandedView(b *strings.Builder) tea.View {
-	comment := m.task.Comments[m.cursor]
+	comment := m.task.Comments[m.Cursor]
 	timestamp := chrome.FormatTimestampBracket(comment.CreatedAt)
-	headerLabel := fmt.Sprintf("Comment [%d]", m.cursor)
+	headerLabel := fmt.Sprintf("Comment [%d]", m.Cursor)
 
 	b.WriteString(theme.FieldLabelFocusedStyle.Render(headerLabel))
 	b.WriteString("\n")
@@ -104,10 +104,10 @@ func (m *TaskCommentsModel) renderCommentsSummary(b *strings.Builder) {
 }
 
 func (m *TaskCommentsModel) renderMessages(b *strings.Builder) {
-	if m.err == nil {
+	if m.Err == nil {
 		return
 	}
-	b.WriteString(theme.ValidationErrorStyle.Render(m.err.Error()))
+	b.WriteString(theme.ValidationErrorStyle.Render(m.Err.Error()))
 	b.WriteString("\n\n")
 }
 
@@ -122,7 +122,7 @@ func (m *TaskCommentsModel) renderCommentsList(b *strings.Builder, availableRows
 	if maxVisible == 0 {
 		return
 	}
-	scrollOffset := chrome.CalcScrollOffset(m.cursor, maxVisible)
+	scrollOffset := chrome.CalcScrollOffset(m.Cursor, maxVisible)
 	maxLen := max(m.Width()-12, 1)
 
 	for i := scrollOffset; i < len(m.task.Comments) && i < scrollOffset+maxVisible; i++ {
@@ -140,10 +140,10 @@ func (m *TaskCommentsModel) renderCommentsList(b *strings.Builder, availableRows
 }
 
 func (m *TaskCommentsModel) renderStatusMessage(b *strings.Builder) {
-	if m.statusMessage == "" {
+	if m.StatusMessage == "" {
 		return
 	}
-	b.WriteString(theme.MutedStyle.Render(m.statusMessage))
+	b.WriteString(theme.MutedStyle.Render(m.StatusMessage))
 	b.WriteString("\n")
 }
 
@@ -153,7 +153,7 @@ func (m *TaskCommentsModel) renderCommentEntry(index int, comment *models.Commen
 
 	timestamp := chrome.FormatTimestampBracket(comment.CreatedAt)
 
-	if index == m.cursor {
+	if index == m.Cursor {
 		entry.WriteString(theme.BoldStyle.Render(fmt.Sprintf("[%d] ", index)))
 		entry.WriteString(theme.FieldLabelFocusedStyle.Render(timestamp))
 	} else {

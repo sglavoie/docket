@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -31,12 +32,12 @@ func TestFocusRecoveryUnwindsMovedAndRemovedFramesWithOwningViewport(t *testing.
 	if !out.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: root.ID}) {
 		t.Fatal("root row unavailable")
 	}
-	out.viewScrollOffset = 6
+	out.ViewScrollOffset = 6
 	if !out.focusSubtreeAtCursor() || !out.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: child.ID}) {
 		t.Fatal("could not enter root Focus and select child")
 	}
-	childFrameCursor := out.cursor
-	out.viewScrollOffset = 3
+	childFrameCursor := out.Cursor
+	out.ViewScrollOffset = 3
 	if !out.focusSubtreeAtCursor() {
 		t.Fatal("could not enter nested child Focus")
 	}
@@ -48,9 +49,9 @@ func TestFocusRecoveryUnwindsMovedAndRemovedFramesWithOwningViewport(t *testing.
 	if len(out.crossFocusStack) != 1 || out.crossFocusStack[0].TaskID != root.ID {
 		t.Fatalf("reparent recovery stack = %+v, want root frame", out.crossFocusStack)
 	}
-	if out.cursor != min(childFrameCursor, len(out.rows)-1) || out.viewScrollOffset != 3 {
+	if out.Cursor != min(childFrameCursor, len(out.rows)-1) || out.ViewScrollOffset != 3 {
 		t.Fatalf("reparent recovery viewport = cursor %d scroll %d, want cursor near %d scroll 3",
-			out.cursor, out.viewScrollOffset, childFrameCursor)
+			out.Cursor, out.ViewScrollOffset, childFrameCursor)
 	}
 	if out.focusNotice != "Focus target left this branch — returned to parent" {
 		t.Fatalf("reparent recovery notice = %q", out.focusNotice)
@@ -66,8 +67,8 @@ func TestFocusRecoveryUnwindsMovedAndRemovedFramesWithOwningViewport(t *testing.
 	if len(out.crossFocusStack) != 0 {
 		t.Fatalf("removed root retained Focus frames: %+v", out.crossFocusStack)
 	}
-	if out.viewScrollOffset != 6 || out.focusNotice != "Focus target left this branch — returned to root" {
-		t.Fatalf("root recovery = scroll %d notice %q", out.viewScrollOffset, out.focusNotice)
+	if out.ViewScrollOffset != 6 || out.focusNotice != "Focus target left this branch — returned to root" {
+		t.Fatalf("root recovery = scroll %d notice %q", out.ViewScrollOffset, out.focusNotice)
 	}
 	if !visibleOutlinerTaskIDs(out)[duplicateRoot.ID] {
 		t.Fatal("duplicate task ID in beta should remain visible without satisfying alpha Focus ownership")
@@ -150,10 +151,10 @@ func TestFocusEscPriorityAndNarrowBreadcrumb(t *testing.T) {
 	assertState := func(step string, peek, liveRange, selection, search bool, focusDepth int, scoped bool) {
 		t.Helper()
 		if out.peekMode != peek || out.IsRangeSelectionActive() != liveRange ||
-			out.multiSelectMode != selection || out.hasSearchProjection() != search ||
+			out.MultiSelectMode != selection || out.hasSearchProjection() != search ||
 			len(out.crossFocusStack) != focusDepth || out.isProjectScoped() != scoped {
 			t.Fatalf("%s state = peek %t range %t selection %t search %t focus %d scoped %t",
-				step, out.peekMode, out.IsRangeSelectionActive(), out.multiSelectMode,
+				step, out.peekMode, out.IsRangeSelectionActive(), out.MultiSelectMode,
 				out.hasSearchProjection(), len(out.crossFocusStack), out.isProjectScoped())
 		}
 	}
@@ -171,7 +172,7 @@ func TestFocusEscPriorityAndNarrowBreadcrumb(t *testing.T) {
 		{false, false, false, false, 0, true},
 		{false, false, false, false, 0, false},
 	} {
-		if !RunEscCascade(out.escSteps()) {
+		if !listsurface.RunEscCascade(out.escSteps()) {
 			t.Fatalf("Esc step %d was not handled", index+1)
 		}
 		assertState("after Esc", want.peek, want.liveRange, want.selection, want.search, want.focusDepth, want.scoped)

@@ -3,7 +3,6 @@ package tui
 import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/presentation"
-	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -30,15 +29,9 @@ type OpenParentSelectorMsg struct {
 	ReparentTask taskref.TaskIdentity        // When valid, reparent this qualified task instead of updating a form field
 }
 
-// ParentSelectedMsg returns the selected parent from parent selector.
-type ParentSelectedMsg struct {
-	ParentID     *string                     // nil means "None"
-	Source       presentation.PresentationID // Which view to send result to
-	ReparentTask taskref.TaskIdentity        // Forwarded from OpenParentSelectorMsg for delayed reparent operations
-}
-
-// CloseParentSelectorMsg closes the parent selector without selection.
-type CloseParentSelectorMsg struct{ route.PopViewMsg }
+// The parent selector's own two outcome messages live with the selector that
+// constructs them; only the opening message is written here, because the shell
+// is what opens it.
 
 // ShowTaskComposerMsg opens the canonical typed composer preset directly.
 type ShowTaskComposerMsg struct {

@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
@@ -58,7 +59,7 @@ func TestFilterContextChordPickerLeadsWithTheGapThenTheVocabulary(t *testing.T) 
 	}
 
 	items := app.operationValuePicker.surface.Items()
-	wantIDs := []ListItemID{
+	wantIDs := []listsurface.ListItemID{
 		"filter-context:" + query.NoContextFilterKey,
 		"filter-context:deep",
 		"filter-context:errand",
@@ -102,7 +103,7 @@ func TestFilterContextChordPickerOpensSeededFromBothHalvesOfTheFacet(t *testing.
 
 	selected := app.operationValuePicker.surface.SelectedIDs()
 	slices.Sort(selected)
-	want := []ListItemID{"filter-context:errand", "filter-context:" + query.NoContextFilterKey}
+	want := []listsurface.ListItemID{"filter-context:errand", "filter-context:" + query.NoContextFilterKey}
 	slices.Sort(want)
 	if !slices.Equal(selected, want) {
 		t.Fatalf("seeded selection = %v, want %v", selected, want)

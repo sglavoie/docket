@@ -16,8 +16,8 @@ func TestChecklistReorderEdge(t *testing.T) {
 	if !outliner.expandAtCursor() {
 		t.Fatal("expandAtCursor did not expand the checklist")
 	}
-	outliner.cursor++
-	if !outliner.rows[outliner.cursor].IsChecklistItem {
+	outliner.Cursor++
+	if !outliner.rows[outliner.Cursor].IsChecklistItem {
 		t.Fatal("the cursor is not on the first checklist row")
 	}
 
@@ -25,9 +25,9 @@ func TestChecklistReorderEdge(t *testing.T) {
 	assertOrder(t, "checklist after Ctrl+J", checklistRowTexts(outliner), []string{
 		checklistFixtureSecondItem, checklistFixtureThirdItem, checklistFixtureFirstItem,
 	})
-	if !outliner.rows[outliner.cursor].IsChecklistItem ||
-		outliner.rows[outliner.cursor].ChecklistIndex != 2 {
-		t.Fatalf("cursor did not follow the moved item: %+v", outliner.rows[outliner.cursor])
+	if !outliner.rows[outliner.Cursor].IsChecklistItem ||
+		outliner.rows[outliner.Cursor].ChecklistIndex != 2 {
+		t.Fatalf("cursor did not follow the moved item: %+v", outliner.rows[outliner.Cursor])
 	}
 
 	// The item is already last, so a second Ctrl+J changes nothing.
@@ -40,8 +40,8 @@ func TestChecklistReorderEdge(t *testing.T) {
 	assertOrder(t, "checklist after Ctrl+K", checklistRowTexts(outliner), []string{
 		checklistFixtureFirstItem, checklistFixtureSecondItem, checklistFixtureThirdItem,
 	})
-	if outliner.rows[outliner.cursor].ChecklistIndex != 0 {
-		t.Fatalf("cursor did not follow the item back to the top: %+v", outliner.rows[outliner.cursor])
+	if outliner.rows[outliner.Cursor].ChecklistIndex != 0 {
+		t.Fatalf("cursor did not follow the item back to the top: %+v", outliner.rows[outliner.Cursor])
 	}
 }
 

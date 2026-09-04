@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
@@ -31,8 +32,8 @@ func TestPanelEndKeysReachBothEndsOfTheList(t *testing.T) {
 		if got := len(panel.task.Comments); got != 2 {
 			t.Fatalf("mounted comments = %d, want 2", got)
 		}
-		assertPanelReachesBothEnds(t, press, func() int { return panel.cursor }, 2)
-		assertLoneChordPrefixIsSilent(t, press, func() int { return panel.cursor }, panelNoise(&panel.BaseView, &panel.InteractiveViewState))
+		assertPanelReachesBothEnds(t, press, func() int { return panel.Cursor }, 2)
+		assertLoneChordPrefixIsSilent(t, press, func() int { return panel.Cursor }, panelNoise(&panel.BaseView, &panel.InteractiveViewState))
 	})
 
 	t.Run("attachments", func(t *testing.T) {
@@ -40,8 +41,8 @@ func TestPanelEndKeysReachBothEndsOfTheList(t *testing.T) {
 		if got := len(panel.task.Attachments); got != 2 {
 			t.Fatalf("mounted attachments = %d, want 2", got)
 		}
-		assertPanelReachesBothEnds(t, press, func() int { return panel.cursor }, 2)
-		assertLoneChordPrefixIsSilent(t, press, func() int { return panel.cursor }, panelNoise(&panel.BaseView, &panel.InteractiveViewState))
+		assertPanelReachesBothEnds(t, press, func() int { return panel.Cursor }, 2)
+		assertLoneChordPrefixIsSilent(t, press, func() int { return panel.Cursor }, panelNoise(&panel.BaseView, &panel.InteractiveViewState))
 	})
 }
 
@@ -156,12 +157,12 @@ func assertLoneChordPrefixIsSilent(t *testing.T, press func(string), cursor func
 
 // panelNoise reports whatever a panel would have shown the user, so the silent
 // abandon is checked against the panel's own voice rather than only its cursor.
-func panelNoise(base *BaseView, state *InteractiveViewState) func() string {
+func panelNoise(base *listsurface.BaseView, state *listsurface.InteractiveViewState) func() string {
 	return func() string {
-		if base.err != nil {
-			return base.err.Error()
+		if base.Err != nil {
+			return base.Err.Error()
 		}
-		return state.statusMessage
+		return state.StatusMessage
 	}
 }
 

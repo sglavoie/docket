@@ -119,7 +119,7 @@ func TestLensPickerDigitsTypedIntoTheQueryStayLiteral(t *testing.T) {
 	if model.crossOutliner.hasActiveLens() {
 		t.Error("a digit typed into the query applied a lens")
 	}
-	rendered := ansi.Strip(model.lensPicker.render(80))
+	rendered := ansi.Strip(model.lensPicker.Render(80))
 	if !strings.Contains(rendered, "Search: 1") {
 		t.Errorf("the search line does not show the typed digit:\n%s", rendered)
 	}
@@ -227,7 +227,7 @@ func TestLensPickerActiveDotDoesNotShiftTheNumberColumn(t *testing.T) {
 		t.Fatalf("contentWidth at %d columns = %d, want the narrow branch 20", narrowWidth, got)
 	}
 	for _, width := range []int{narrowWidth, minTerminalWidth, 80} {
-		rendered := ansi.Strip(model.lensPicker.render(width))
+		rendered := ansi.Strip(model.lensPicker.Render(width))
 		assertNoLensPickerOverflow(t, rendered, width)
 		if !strings.Contains(rendered, "2 ●* Stale") {
 			t.Errorf("the numbered active row is not intact at width %d:\n%s", width, rendered)

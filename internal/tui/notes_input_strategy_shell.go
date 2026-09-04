@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -18,24 +19,24 @@ func (m *AppModel) openNotesActionSheet(ctx operation.CommandContext) error {
 	if operation.CurrentEntityIdentity(ctx).Kind != operation.EntityKindNote {
 		return errors.New("select a note to open actions")
 	}
-	sheet, err := NewContextActionSheetModel(
+	sheet, err := listsurface.NewContextActionSheetModel(
 		m.GetOperationRegistry(),
 		m.operationExecutor,
 		ctx,
 		notesActionSheetOperations,
-		ContextActionSheetConfig{
-			Host:         ContextActionHostNotes,
-			Completion:   ContextActionCompleteCloseSheet,
+		listsurface.ContextActionSheetConfig{
+			Host:         listsurface.ContextActionHostNotes,
+			Completion:   listsurface.ContextActionCompleteCloseSheet,
 			Title:        "Note Actions",
 			Subtitle:     m.noteTitleForContext(ctx),
 			ItemIDPrefix: "note-action:",
 			SecondaryFor: operationActionSecondaryText,
 			Targets:      1,
-			EmptyState: ListEmptyState{
+			EmptyState: listsurface.ListEmptyState{
 				Title:  "No note actions available.",
 				Detail: "Move the cursor to a note.",
 			},
-			NoMatchState: ListEmptyState{
+			NoMatchState: listsurface.ListEmptyState{
 				Title:  "No matching actions.",
 				Detail: "Clear or change the search.",
 			},

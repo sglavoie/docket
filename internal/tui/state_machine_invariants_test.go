@@ -12,6 +12,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -19,7 +20,7 @@ import (
 )
 
 type invariantQueueView struct {
-	BaseView
+	listsurface.BaseView
 	taskID  string
 	project *models.Project
 }
@@ -45,7 +46,7 @@ func TestTUIStateMachine_OutlinerEscOwnershipIsDeterministic(t *testing.T) {
 	app, project := newTestAppModelWithProject()
 	outliner := NewOutlinerModel(project, app.configManager, app.runtime)
 	outliner.rebuildRows()
-	outliner.multiSelectMode = true
+	outliner.MultiSelectMode = true
 	outliner.SelectTaskIdentity(taskref.For(project.Tasks[0], project))
 	outliner.focusStack = []FocusEntry{{TaskID: project.Tasks[0].ID, CursorIndex: 0}}
 	outliner.SetSearchQuery(project.Tasks[0].Title)
@@ -56,7 +57,7 @@ func TestTUIStateMachine_OutlinerEscOwnershipIsDeterministic(t *testing.T) {
 	if app.currentView() != presentation.ViewCrossProjectOutliner {
 		t.Fatalf("multi-select esc should stay in outliner, got %v", app.currentView())
 	}
-	if outliner.multiSelectMode {
+	if outliner.MultiSelectMode {
 		t.Fatal("first esc should exit multi-select mode")
 	}
 	if outliner.SearchQuery() == "" {
@@ -310,7 +311,7 @@ func TestTUIStateMachine_OutlinerSelectionSurvivesVisibilityRebuilds(t *testing.
 		app := newTestAppModel()
 		outliner := NewOutlinerModel(project, app.configManager, app.runtime)
 		outliner.rebuildRows()
-		outliner.multiSelectMode = true
+		outliner.MultiSelectMode = true
 		outliner.selectAllVisible()
 
 		if got := outliner.SelectedCount(); got != 2 {
@@ -321,15 +322,15 @@ func TestTUIStateMachine_OutlinerSelectionSurvivesVisibilityRebuilds(t *testing.
 		outliner.adoptFilterCarriers()
 		outliner.rebuildRows()
 
-		if !outliner.multiSelectMode || outliner.SelectedCount() != 2 {
-			t.Fatalf("single-project selection after filter = active %v count %d, want active/2", outliner.multiSelectMode, outliner.SelectedCount())
+		if !outliner.MultiSelectMode || outliner.SelectedCount() != 2 {
+			t.Fatalf("single-project selection after filter = active %v count %d, want active/2", outliner.MultiSelectMode, outliner.SelectedCount())
 		}
 	})
 
 	t.Run("cross project", func(t *testing.T) {
 		app := newTestAppModel()
 		outliner := NewOutlinerModel(nil, app.configManager, app.runtime)
-		outliner.multiSelectMode = true
+		outliner.MultiSelectMode = true
 		outliner.loadedProjects = []*models.Project{project}
 		outliner.crossForceRebuild = true
 		outliner.crossProjectRebuildRows()
@@ -344,8 +345,8 @@ func TestTUIStateMachine_OutlinerSelectionSurvivesVisibilityRebuilds(t *testing.
 		outliner.crossForceRebuild = true
 		outliner.crossProjectRebuildRows()
 
-		if !outliner.multiSelectMode || outliner.SelectedCount() != 2 {
-			t.Fatalf("cross-project selection after filter = active %v count %d, want active/2", outliner.multiSelectMode, outliner.SelectedCount())
+		if !outliner.MultiSelectMode || outliner.SelectedCount() != 2 {
+			t.Fatalf("cross-project selection after filter = active %v count %d, want active/2", outliner.MultiSelectMode, outliner.SelectedCount())
 		}
 	})
 }

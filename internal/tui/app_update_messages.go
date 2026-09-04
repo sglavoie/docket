@@ -161,7 +161,7 @@ func (m *AppModel) handleGlobalSaveMessage(msg tea.Msg) (bool, tea.Cmd) {
 // past it, reporting whether it consumed the wake. It flips the memoization
 // bypass instead of rebuilding, so the render pass Bubble Tea runs right after
 // Update stays the single rebuild authority and computeOutlinerViewport keeps
-// sole ownership of viewScrollOffset. A refusal leaves nextDeferWake standing,
+// sole ownership of ViewScrollOffset. A refusal leaves nextDeferWake standing,
 // so the next tick retries.
 func (m *AppModel) wakeDeferredRows(now time.Time) bool {
 	if !m.deferWakeOwedAt(now) || !m.safeToRebuildForWake() {

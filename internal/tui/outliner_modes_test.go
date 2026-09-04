@@ -135,9 +135,9 @@ func TestEnteringRecentClearsOnlyStaleFacet(t *testing.T) {
 				outliner.projectFilter.ParkedMode != query.ProjectPopulationInclude {
 				t.Fatalf("Recent changed project filters: %+v", outliner.projectFilter)
 			}
-			if outliner.statusMessage != status || !outliner.StatusIsTransient() {
+			if outliner.StatusMessage != status || !outliner.StatusIsTransient() {
 				t.Fatalf("status = %q transient=%t, want transient %q",
-					outliner.statusMessage, outliner.StatusIsTransient(), status)
+					outliner.StatusMessage, outliner.StatusIsTransient(), status)
 			}
 			if test.wantEmpty && len(visibleTaskIDs(outliner)) != 0 {
 				t.Fatalf("Recent rows = %v, want an empty Ctrl+L result", visibleTaskIDs(outliner))
@@ -180,9 +180,9 @@ func TestProjectScopePopClearsStaleWhenRestoringRecent(t *testing.T) {
 	if outliner.filter.Stale {
 		t.Fatal("scope pop restored Recent with the Stale facet active")
 	}
-	if outliner.statusMessage != status || !outliner.StatusIsTransient() {
+	if outliner.StatusMessage != status || !outliner.StatusIsTransient() {
 		t.Fatalf("status = %q transient=%t, want transient %q",
-			outliner.statusMessage, outliner.StatusIsTransient(), status)
+			outliner.StatusMessage, outliner.StatusIsTransient(), status)
 	}
 }
 

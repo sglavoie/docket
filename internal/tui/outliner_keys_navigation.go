@@ -6,6 +6,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -122,8 +123,8 @@ func (m *OutlinerModel) taskLineEditRequest(source taskref.TaskIdentity, result 
 // escSteps defines the Esc dismissal cascade for Outliner, narrowest to widest:
 // Peek → active range → frozen selection → search query → active lens →
 // Focus stack → cross-project Focus stack → section zoom → project scope.
-func (m *OutlinerModel) escSteps() []EscStep {
-	return []EscStep{
+func (m *OutlinerModel) escSteps() []listsurface.EscStep {
+	return []listsurface.EscStep{
 		{Active: func() bool { return m.peekMode }, Clear: func() {
 			m.peekMode = false
 		}},
@@ -131,7 +132,7 @@ func (m *OutlinerModel) escSteps() []EscStep {
 			m.FreezeRangeSelection()
 			m.updateVisualSelectionStatus()
 		}},
-		{Active: func() bool { return m.multiSelectMode }, Clear: func() {
+		{Active: func() bool { return m.MultiSelectMode }, Clear: func() {
 			m.toggleMultiSelectMode()
 		}},
 		{Active: func() bool { return m.hasSearchProjection() }, Clear: func() {
@@ -167,14 +168,14 @@ func (m *OutlinerModel) escSteps() []EscStep {
 func (m *OutlinerModel) ShouldCaptureEsc() bool {
 	return m.DefaultShouldCaptureEsc() ||
 		m.SearchShouldCaptureEsc() ||
-		m.multiSelectMode ||
+		m.MultiSelectMode ||
 		m.quickEdit.IsActive() ||
 		m.queryReadoutExpanded ||
 		// An open menu is the innermost thing Esc can put down, so it has to claim
 		// the key before the shell's back cascade spends it unwinding a scope the
 		// user cannot even see the rows of.
 		m.menuBarOpen ||
-		AnyEscStepActive(m.escSteps())
+		listsurface.AnyEscStepActive(m.escSteps())
 }
 func (m *OutlinerModel) HasTextInput() bool {
 	return m.DefaultHasTextInput() || m.quickEdit.IsActive()

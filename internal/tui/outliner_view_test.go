@@ -71,7 +71,7 @@ func TestOutlinerPersistentScrollKeepsFirstRowMovingUpWithinViewport(t *testing.
 			}
 			m.SetSize(100, 6)
 
-			m.cursor = 5
+			m.Cursor = 5
 			viewport := m.computeOutlinerViewport(100, 0)
 			start := viewport.startIdx
 			if start == 0 {
@@ -79,7 +79,7 @@ func TestOutlinerPersistentScrollKeepsFirstRowMovingUpWithinViewport(t *testing.
 			}
 			firstTitle := m.rows[start].task.Title
 
-			m.cursor = 4
+			m.Cursor = 4
 			viewport = m.computeOutlinerViewport(100, 0)
 			if viewport.startIdx != start {
 				t.Fatalf("moving up inside viewport changed first rendered row: start=%d want %d", viewport.startIdx, start)
@@ -113,7 +113,7 @@ func TestViewportReservesTheTitleContinuationRows(t *testing.T) {
 	outliner.moveCursorToIdentity(taskref.TaskIdentity{ProjectID: project.ID, TaskID: long.ID})
 
 	outliner.peekMode = true
-	row := outliner.rows[outliner.cursor]
+	row := outliner.rows[outliner.Cursor]
 	indent := strings.Repeat(" ", lipgloss.Width(row.prefix)+4)
 	reserved := outliner.inlinePeekLineCount(row, width-1)
 	bare := len(inlinePeekLines(inlinePeekOptions{Task: long, Indent: indent, Width: width - 1}))
@@ -147,7 +147,7 @@ func scrollAnchorApp(t *testing.T) (*AppModel, *OutlinerModel, int, int) {
 		}}
 	}
 	out.SetSize(100, 12)
-	out.cursor = 25
+	out.Cursor = 25
 	out.computeOutlinerViewport(100, 0)
 	start, end := out.visibleRowWindow()
 	if start == 0 || end-start < 3 {
@@ -159,7 +159,7 @@ func scrollAnchorApp(t *testing.T) (*AppModel, *OutlinerModel, int, int) {
 func TestScrollAnchorsMoveTheWindowAndLeaveTheCursor(t *testing.T) {
 	app, out, start, end := scrollAnchorApp(t)
 	height := end - start
-	cursor := out.cursor
+	cursor := out.Cursor
 
 	for _, tc := range []struct {
 		key  string
@@ -169,8 +169,8 @@ func TestScrollAnchorsMoveTheWindowAndLeaveTheCursor(t *testing.T) {
 		{key: "z", want: cursor - windowMiddleIndex(height)},
 		{key: "b", want: cursor - height + 1},
 	} {
-		out.cursor = cursor
-		out.viewScrollOffset = start
+		out.Cursor = cursor
+		out.ViewScrollOffset = start
 		out.computeOutlinerViewport(100, 0)
 
 		result := executeDirectPath(t, app, app.operationCommandContext(), []string{"z", tc.key})
@@ -180,17 +180,17 @@ func TestScrollAnchorsMoveTheWindowAndLeaveTheCursor(t *testing.T) {
 		if result.Status != "" {
 			t.Errorf("z%s status = %q, want silence", tc.key, result.Status)
 		}
-		if out.cursor != cursor {
-			t.Errorf("z%s cursor = %d, want %d unchanged", tc.key, out.cursor, cursor)
+		if out.Cursor != cursor {
+			t.Errorf("z%s cursor = %d, want %d unchanged", tc.key, out.Cursor, cursor)
 		}
-		if out.viewScrollOffset != tc.want {
-			t.Errorf("z%s scroll offset = %d, want %d", tc.key, out.viewScrollOffset, tc.want)
+		if out.ViewScrollOffset != tc.want {
+			t.Errorf("z%s scroll offset = %d, want %d", tc.key, out.ViewScrollOffset, tc.want)
 		}
 		// The written offset still contains the cursor, so the next render's
 		// clamp leaves it exactly where the key put it.
 		out.computeOutlinerViewport(100, 0)
-		if out.viewScrollOffset != tc.want {
-			t.Errorf("z%s scroll offset after render = %d, want %d", tc.key, out.viewScrollOffset, tc.want)
+		if out.ViewScrollOffset != tc.want {
+			t.Errorf("z%s scroll offset after render = %d, want %d", tc.key, out.ViewScrollOffset, tc.want)
 		}
 	}
 }
@@ -198,15 +198,15 @@ func TestScrollAnchorsMoveTheWindowAndLeaveTheCursor(t *testing.T) {
 func TestScrollAnchorTopClampsAtTheLastRow(t *testing.T) {
 	app, out, start, end := scrollAnchorApp(t)
 	height := end - start
-	out.cursor = len(out.rows) - 1
+	out.Cursor = len(out.rows) - 1
 	out.computeOutlinerViewport(100, 0)
 
 	if result := executeDirectPath(t, app, app.operationCommandContext(), []string{"z", "t"}); result.Err != nil {
 		t.Fatalf("zt: %v", result.Err)
 	}
 	want := len(out.rows) - height
-	if out.viewScrollOffset != want {
-		t.Fatalf("zt scroll offset = %d, want %d with the last row still visible", out.viewScrollOffset, want)
+	if out.ViewScrollOffset != want {
+		t.Fatalf("zt scroll offset = %d, want %d with the last row still visible", out.ViewScrollOffset, want)
 	}
 	if _, last := out.visibleRowWindow(); last != len(out.rows) {
 		t.Fatalf("window end = %d, want %d", last, len(out.rows))
@@ -221,22 +221,22 @@ func TestScrollAnchorMiddleSettlesOnASecondPress(t *testing.T) {
 		t.Fatalf("zz: %v", result.Err)
 	}
 	out.computeOutlinerViewport(100, 0)
-	offset := out.viewScrollOffset
+	offset := out.ViewScrollOffset
 
 	// The cursor already sits mid-window, so a second zz has nothing to move.
 	if result := executeDirectPath(t, app, ctx, []string{"z", "z"}); result.Err != nil {
 		t.Fatalf("zz: %v", result.Err)
 	}
-	if out.viewScrollOffset != offset {
-		t.Errorf("second zz moved the offset to %d, want %d", out.viewScrollOffset, offset)
+	if out.ViewScrollOffset != offset {
+		t.Errorf("second zz moved the offset to %d, want %d", out.ViewScrollOffset, offset)
 	}
 }
 
 func TestScrollAnchorsLeaveAnEmptyWindowAlone(t *testing.T) {
 	app, out, _, _ := scrollAnchorApp(t)
 	out.rows = nil
-	out.cursor = 0
-	out.viewScrollOffset = 0
+	out.Cursor = 0
+	out.ViewScrollOffset = 0
 
 	result := executeDirectPath(t, app, app.operationCommandContext(), []string{"z", "b"})
 	if result.Err != nil {
@@ -245,7 +245,7 @@ func TestScrollAnchorsLeaveAnEmptyWindowAlone(t *testing.T) {
 	if result.Status != "" {
 		t.Errorf("zb status = %q, want silence", result.Status)
 	}
-	if out.cursor != 0 || out.viewScrollOffset != 0 {
-		t.Fatalf("cursor = %d offset = %d, want both left at 0", out.cursor, out.viewScrollOffset)
+	if out.Cursor != 0 || out.ViewScrollOffset != 0 {
+		t.Fatalf("cursor = %d offset = %d, want both left at 0", out.Cursor, out.ViewScrollOffset)
 	}
 }

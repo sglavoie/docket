@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -22,14 +23,14 @@ func (m *ProjectHubModel) openProjectHubActions() {
 		return
 	}
 	target := projectHubActionTarget{ProjectID: entry.Project.ID}
-	sheet, err := NewContextActionSheetModel(
+	sheet, err := listsurface.NewContextActionSheetModel(
 		m.registry,
 		m.executor,
 		m.projectHubCommandContext(target.ProjectID),
 		m.surface.ActionState().OperationIDs,
-		ContextActionSheetConfig{
-			Host:         ContextActionHostProjectHub,
-			Completion:   ContextActionCompleteCloseSheet,
+		listsurface.ContextActionSheetConfig{
+			Host:         listsurface.ContextActionHostProjectHub,
+			Completion:   listsurface.ContextActionCompleteCloseSheet,
 			Title:        "Actions",
 			Subtitle:     entry.Project.Name,
 			Categories:   projectHubActionCategories,
@@ -37,15 +38,15 @@ func (m *ProjectHubModel) openProjectHubActions() {
 			SecondaryFor: func(descriptor operation.OperationDescriptor) string { return string(descriptor.Risk) },
 			Value:        target,
 			HasValue:     true,
-			EmptyState:   ListEmptyState{Title: "No actions available."},
-			NoMatchState: ListEmptyState{Title: "No matching actions.", Detail: "Clear or change the search."},
+			EmptyState:   listsurface.ListEmptyState{Title: "No actions available."},
+			NoMatchState: listsurface.ListEmptyState{Title: "No matching actions.", Detail: "Clear or change the search."},
 		},
 	)
 	if err != nil {
 		m.notice = err.Error()
 		return
 	}
-	if len(sheet.operationIDs()) == 0 {
+	if len(sheet.OperationIDs()) == 0 {
 		m.notice = "No administration actions are available for this project"
 		return
 	}
@@ -71,29 +72,29 @@ func (m *ProjectHubModel) openProjectHubBulkActions() {
 	ctx := m.projectHubCommandContext("")
 	ctx.Selection.EntityIdentities = identities
 
-	sheet, err := NewContextActionSheetModel(
+	sheet, err := listsurface.NewContextActionSheetModel(
 		m.registry,
 		m.executor,
 		ctx,
 		projectHubBulkOperationIDs(m.surface.ActionState().OperationIDs),
-		ContextActionSheetConfig{
-			Host:         ContextActionHostProjectHub,
-			Completion:   ContextActionCompleteCloseSheet,
+		listsurface.ContextActionSheetConfig{
+			Host:         listsurface.ContextActionHostProjectHub,
+			Completion:   listsurface.ContextActionCompleteCloseSheet,
 			Title:        "Bulk Actions",
 			Categories:   projectHubActionCategories,
 			CategoryFor:  projectHubActionCategory,
 			SecondaryFor: func(descriptor operation.OperationDescriptor) string { return string(descriptor.Risk) },
 			Bulk:         true,
 			Targets:      len(identities),
-			EmptyState:   ListEmptyState{Title: "No bulk actions available."},
-			NoMatchState: ListEmptyState{Title: "No matching actions.", Detail: "Clear or change the search."},
+			EmptyState:   listsurface.ListEmptyState{Title: "No bulk actions available."},
+			NoMatchState: listsurface.ListEmptyState{Title: "No matching actions.", Detail: "Clear or change the search."},
 		},
 	)
 	if err != nil {
 		m.notice = err.Error()
 		return
 	}
-	if len(sheet.operationIDs()) == 0 {
+	if len(sheet.OperationIDs()) == 0 {
 		m.notice = "Bulk tag actions apply only to active projects"
 		return
 	}
@@ -114,7 +115,7 @@ func projectHubBulkOperationIDs(available []operation.OperationID) []operation.O
 	return ids
 }
 
-func projectHubActionCategory(descriptor operation.OperationDescriptor) ListCategoryID {
+func projectHubActionCategory(descriptor operation.OperationDescriptor) listsurface.ListCategoryID {
 	for _, entry := range projectOperationManifest() {
 		if entry.ID == descriptor.ID {
 			return entry.Category
@@ -124,18 +125,18 @@ func projectHubActionCategory(descriptor operation.OperationDescriptor) ListCate
 }
 
 func (m *ProjectHubModel) updateProjectHubActions(key tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	if !m.actions.searching && (key.String() == " " || key.String() == "space") {
+	if !m.actions.Searching && (key.String() == " " || key.String() == "space") {
 		key = tea.KeyPressMsg{Code: tea.KeyEnter}
 	}
-	cmd, dismissed, message := m.actions.handleKey(key)
+	cmd, dismissed, message := m.actions.HandleKey(key)
 	if dismissed {
 		m.actions = nil
 	}
 	switch typed := message.(type) {
-	case ContextActionSheetClosedMsg:
+	case listsurface.ContextActionSheetClosedMsg:
 		m.actions = nil
 		return m, cmd
-	case ContextActionSheetResultMsg:
+	case listsurface.ContextActionSheetResultMsg:
 		return m, m.applyProjectHubExecutionResult(typed.Result)
 	case status.StatusMsg:
 		m.notice = string(typed)

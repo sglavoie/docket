@@ -178,9 +178,9 @@ func (m *OutlinerModel) handleViewDidAppear() tea.Cmd {
 	if m.crossLoading {
 		return nil
 	}
-	savedCursor := m.cursor
+	savedCursor := m.Cursor
 	cmd := m.reloadCrossProjects()
-	m.cursor = savedCursor
+	m.Cursor = savedCursor
 	return cmd
 }
 
@@ -204,8 +204,8 @@ func (m *OutlinerModel) handleCrossProjectsLoaded(msg crossProjectsLoadedMsg) te
 			return func() tea.Msg { return status.ErrorMsg{Err: errors.New(detail)} }
 		}
 	}
-	fallbackCursor := m.cursor
-	fallbackScrollOffset := m.viewScrollOffset
+	fallbackCursor := m.Cursor
+	fallbackScrollOffset := m.ViewScrollOffset
 	m.discardDisplacedRelocationCapture()
 	m.crossLoading = false
 	m.crossSpinnerVisible = false
@@ -338,7 +338,7 @@ func (m *OutlinerModel) reseatNoteCursorAfterRebuild() {
 	}
 	for index, row := range m.rows {
 		if row.IsNoteRow && row.NoteRow == identity {
-			m.cursor = index
+			m.Cursor = index
 			return
 		}
 	}

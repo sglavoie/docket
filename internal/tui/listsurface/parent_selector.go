@@ -1,4 +1,4 @@
-package tui
+package listsurface
 
 import (
 	"fmt"
@@ -10,12 +10,23 @@ import (
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/presentation"
+	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
-const parentSelectorNoParentLabel = "No parent (top-level)"
+const ParentSelectorNoParentLabel = "No parent (top-level)"
+
+// ParentSelectedMsg returns the selected parent from parent selector.
+type ParentSelectedMsg struct {
+	ParentID     *string                     // nil means "None"
+	Source       presentation.PresentationID // Which view to send result to
+	ReparentTask taskref.TaskIdentity        // Forwarded from OpenParentSelectorMsg for delayed reparent operations
+}
+
+// CloseParentSelectorMsg closes the parent selector without selection.
+type CloseParentSelectorMsg struct{ route.PopViewMsg }
 
 // ParentPickerItem wraps a Task for parent selection with fuzzy scoring.
 type ParentPickerItem struct {
@@ -26,7 +37,7 @@ type ParentPickerItem struct {
 // FilterText returns searchable text for parent filtering.
 func (p ParentPickerItem) FilterText() string {
 	if p.None {
-		return parentSelectorNoParentLabel
+		return ParentSelectorNoParentLabel
 	}
 	return fmt.Sprintf("#%d %s", p.Task.ShortID, p.Task.Title)
 }
@@ -34,7 +45,7 @@ func (p ParentPickerItem) FilterText() string {
 // DisplayText returns the task title for display.
 func (p ParentPickerItem) DisplayText() string {
 	if p.None {
-		return parentSelectorNoParentLabel
+		return ParentSelectorNoParentLabel
 	}
 	return p.Task.Title
 }
@@ -58,8 +69,8 @@ type ParentSelectorModel struct {
 	allItems     []ParentPickerItem          // All valid parent candidates
 	allowNone    bool                        // Whether "None" is a valid option
 	source       presentation.PresentationID // Which view opened this selector
-	reparentTask taskref.TaskIdentity        // When valid, forwarded back in ParentSelectedMsg
-	alwaysSearch *alwaysSearchSinglePicker[ParentPickerItem]
+	ReparentTask taskref.TaskIdentity        // When valid, forwarded back in ParentSelectedMsg
+	alwaysSearch *AlwaysSearchSinglePicker[ParentPickerItem]
 }
 
 // NewParentSelectorModel creates a new parent selector.
@@ -92,7 +103,7 @@ func NewParentSelectorModel(validParents []*models.Task, currentID *string, allo
 		m.SetCursorToID(*currentID)
 	}
 
-	m.alwaysSearch = newAlwaysSearchSinglePicker(m.ListSurfaceAdapter, alwaysSearchSinglePickerConfig[ParentPickerItem]{
+	m.alwaysSearch = NewAlwaysSearchSinglePicker(m.ListSurfaceAdapter, AlwaysSearchSinglePickerConfig[ParentPickerItem]{
 		CancelMsg: func() tea.Msg {
 			return CloseParentSelectorMsg{}
 		},
@@ -108,7 +119,7 @@ func NewParentSelectorModel(validParents []*models.Task, currentID *string, allo
 			return ParentSelectedMsg{
 				ParentID:     parentID,
 				Source:       m.source,
-				ReparentTask: m.reparentTask,
+				ReparentTask: m.ReparentTask,
 			}
 		},
 	})
@@ -150,7 +161,7 @@ func (m *ParentSelectorModel) selectNoParent() tea.Cmd {
 		return ParentSelectedMsg{
 			ParentID:     nil,
 			Source:       m.source,
-			ReparentTask: m.reparentTask,
+			ReparentTask: m.ReparentTask,
 		}
 	}
 }
@@ -163,7 +174,7 @@ func (m *ParentSelectorModel) View() tea.View {
 	if m.allowNone {
 		parentCount--
 	}
-	subtitle := fmt.Sprintf("%d parent%s available", parentCount, pluralize(parentCount, "", "s"))
+	subtitle := fmt.Sprintf("%d parent%s available", parentCount, Pluralize(parentCount, "", "s"))
 	availableSubtitleWidth := max(m.Width()-lipgloss.Width(title)-2, 1)
 	subtitle = textfit.TruncateToVisualWidth(subtitle, availableSubtitleWidth)
 	b.WriteString(chrome.RenderFullscreenTitle(title, subtitle))
@@ -204,9 +215,9 @@ func (m *ParentSelectorModel) renderList() string {
 	for i, item := range m.FilteredItems() {
 		if i >= scrollOffset && i < scrollOffset+maxVisible {
 			if item.None {
-				line := theme.MutedStyle.Render(parentSelectorNoParentLabel)
+				line := theme.MutedStyle.Render(ParentSelectorNoParentLabel)
 				if m.CursorIndex() == i {
-					line = chrome.SelectedLine(parentSelectorNoParentLabel, m.Width())
+					line = chrome.SelectedLine(ParentSelectorNoParentLabel, m.Width())
 				}
 				b.WriteString(line)
 				b.WriteString("\n")

@@ -33,11 +33,11 @@ func TestLaunchResetsEveryPresentationAxisAndRelaunchPreservesOnlyTheme(t *testi
 	outliner.filter.Priority = 3
 	outliner.filter.Tags = map[string]bool{"stale": true}
 	outliner.adoptFilterCarriers()
-	outliner.cursor = 7
+	outliner.Cursor = 7
 	outliner.collapsedSections["stale"] = true
 	outliner.expandedNodes[taskref.TaskIdentity{ProjectID: projects[0].ID, TaskID: "stale"}] = true
-	outliner.multiSelectMode = true
-	outliner.selectedTaskIdentities[taskref.TaskIdentity{ProjectID: projects[0].ID, TaskID: "stale"}] = true
+	outliner.MultiSelectMode = true
+	outliner.Selected[taskref.TaskIdentity{ProjectID: projects[0].ID, TaskID: "stale"}] = true
 	app.currentProject = projects[0]
 	pushTestPresentationOverlay(app, presentation.ViewHelp)
 
@@ -133,8 +133,8 @@ func assertCleanLaunchRoot(t *testing.T, app *AppModel) {
 	if outliner.HasActiveSearch() || outliner.SearchQuery() != "" || outliner.ActiveFilterCount() != 0 {
 		t.Fatalf("launch retained search/filter: active=%v query=%q filters=%d", outliner.HasActiveSearch(), outliner.SearchQuery(), outliner.ActiveFilterCount())
 	}
-	if outliner.cursor != 0 || outliner.IsMultiSelectActive() || outliner.SelectedCount() != 0 {
-		t.Fatalf("launch retained cursor/selection: cursor=%d active=%v selected=%d", outliner.cursor, outliner.IsMultiSelectActive(), outliner.SelectedCount())
+	if outliner.Cursor != 0 || outliner.IsMultiSelectActive() || outliner.SelectedCount() != 0 {
+		t.Fatalf("launch retained cursor/selection: cursor=%d active=%v selected=%d", outliner.Cursor, outliner.IsMultiSelectActive(), outliner.SelectedCount())
 	}
 	if outliner.hasActiveLens() || outliner.lensQuery != "" || outliner.editingLensQuery() {
 		t.Fatalf("launch retained lens state: active=%v query=%q editing=%v", outliner.hasActiveLens(), outliner.lensQuery, outliner.editingLensQuery())

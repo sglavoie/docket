@@ -11,6 +11,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/route"
 )
 
@@ -108,7 +109,7 @@ func TestNotesPreviewUsesSharedGeometryAndChargesTheListPaneWidth(t *testing.T) 
 	view.SetSize(100, 20)
 
 	listWidth, previewWidth := view.notesPreviewGeometry(100)
-	sharedList, sharedPreview := listSurfacePreviewGeometry(ListSurfaceRenderConfig{Width: 100, Height: 20})
+	sharedList, sharedPreview := listsurface.ListSurfacePreviewGeometry(listsurface.ListSurfaceRenderConfig{Width: 100, Height: 20})
 	if listWidth != sharedList || previewWidth != sharedPreview {
 		t.Fatalf(
 			"Notes geometry = (%d, %d), shared list-surface geometry = (%d, %d)",

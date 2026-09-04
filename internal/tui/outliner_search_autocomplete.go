@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/textgrammar"
 	"github.com/sglavoie/tt/internal/tui/chrome"
 	"github.com/sglavoie/tt/internal/tui/grammar"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 )
 
@@ -273,11 +274,11 @@ func (m *OutlinerModel) handleSearchAutocompleteKey(key string) bool {
 // It reuses the shared list navigation and the Outliner's own non-navigable-row
 // skip, so a group header is stepped over here exactly as it is outside search,
 // and it touches neither the query nor the suggestion cursor. j and k move one
-// row, which is the one navigation case handleListNavigation arms no flash for,
+// row, which is the one navigation case HandleListNavigation arms no flash for,
 // so there is no command to lose on the way back through the key handler.
 func (m *OutlinerModel) moveSearchResultCursor(key string) {
-	previous := m.cursor
-	handled, _ := handleListNavigation(key, &m.cursor, len(m.rows), m.contentHeight(), &m.cursorFlash)
+	previous := m.Cursor
+	handled, _ := listsurface.HandleListNavigation(key, &m.Cursor, len(m.rows), m.contentHeight(), &m.CursorFlash)
 	if !handled {
 		return
 	}

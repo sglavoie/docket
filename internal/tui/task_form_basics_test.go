@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -81,7 +82,7 @@ func TestTaskForm_FlagsPicker_EscCancels(t *testing.T) {
 func TestTaskForm_ParentSelectedMsg_UpdatesDraft(t *testing.T) {
 	m := newTestTaskForm()
 	parentID := "some-parent-id"
-	m = sendFormMsg(m, ParentSelectedMsg{ParentID: &parentID, Source: presentation.ViewTaskComposer})
+	m = sendFormMsg(m, listsurface.ParentSelectedMsg{ParentID: &parentID, Source: presentation.ViewTaskComposer})
 	if m.draft.parentID == nil || *m.draft.parentID != parentID {
 		t.Errorf("expected draft.parentID=%q, got %v", parentID, m.draft.parentID)
 	}
@@ -93,7 +94,7 @@ func TestTaskForm_ParentSelectedMsg_UpdatesDraft(t *testing.T) {
 func TestTaskForm_ParentSelectedMsg_WrongSource_NoChange(t *testing.T) {
 	m := newTestTaskForm()
 	parentID := "some-parent-id"
-	m = sendFormMsg(m, ParentSelectedMsg{ParentID: &parentID, Source: presentation.ViewUnknown})
+	m = sendFormMsg(m, listsurface.ParentSelectedMsg{ParentID: &parentID, Source: presentation.ViewUnknown})
 	if m.draft.parentID != nil {
 		t.Error("wrong-source ParentSelectedMsg should not update draft")
 	}
@@ -102,7 +103,7 @@ func TestTaskForm_ParentSelectedMsg_WrongSource_NoChange(t *testing.T) {
 func TestTaskForm_TagSelectorDoneMsg_UpdatesDraft(t *testing.T) {
 	m := newTestTaskForm()
 	tags := []string{"go", "backend"}
-	m = sendFormMsg(m, TagSelectorDoneMsg{SelectedTags: tags, Canceled: false})
+	m = sendFormMsg(m, listsurface.TagSelectorDoneMsg{SelectedTags: tags, Canceled: false})
 	if len(m.draft.tags) != 2 || m.draft.tags[0] != "go" {
 		t.Errorf("expected draft.tags=%v, got %v", tags, m.draft.tags)
 	}
@@ -114,7 +115,7 @@ func TestTaskForm_TagSelectorDoneMsg_UpdatesDraft(t *testing.T) {
 func TestTaskForm_TagSelectorDoneMsg_Canceled_NoChange(t *testing.T) {
 	m := newTestTaskForm()
 	m.draft.tags = []string{"existing"}
-	m = sendFormMsg(m, TagSelectorDoneMsg{SelectedTags: []string{"new"}, Canceled: true})
+	m = sendFormMsg(m, listsurface.TagSelectorDoneMsg{SelectedTags: []string{"new"}, Canceled: true})
 	if len(m.draft.tags) != 1 || m.draft.tags[0] != "existing" {
 		t.Errorf("canceled tag selector should not update draft; got %v", m.draft.tags)
 	}

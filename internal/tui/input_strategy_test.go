@@ -232,7 +232,7 @@ func TestSimplifiedCtrlEOpensCursorTaskInExternalEditor(t *testing.T) {
 		{task: first, ProjectID: project.ID},
 		{task: selected, ProjectID: project.ID},
 	}
-	app.crossOutliner.cursor = 1
+	app.crossOutliner.Cursor = 1
 
 	handled, cmd := app.handleGlobalKeyPress(tea.KeyPressMsg{
 		Code: 'e',

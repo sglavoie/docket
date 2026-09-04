@@ -70,10 +70,10 @@ func TestProjectTagParkAllMembersAnchorsTheOutlinerCursorOnASurvivor(t *testing.
 	}
 	runSession2AppCommand(t, fixture.app, cmd)
 
-	if fixture.cross.cursor < 0 || fixture.cross.cursor >= len(fixture.cross.rows) {
-		t.Fatalf("post-park cursor %d is outside %d rows", fixture.cross.cursor, len(fixture.cross.rows))
+	if fixture.cross.Cursor < 0 || fixture.cross.Cursor >= len(fixture.cross.rows) {
+		t.Fatalf("post-park cursor %d is outside %d rows", fixture.cross.Cursor, len(fixture.cross.rows))
 	}
-	row := fixture.cross.rows[fixture.cross.cursor]
+	row := fixture.cross.rows[fixture.cross.Cursor]
 	if !row.IsProjectHeader || row.ProjectID != survivor.ID {
 		t.Fatalf("post-park cursor row = %#v, want the surviving project header", row)
 	}
@@ -111,7 +111,7 @@ func TestProjectTagParkAllMembersWithNoSurvivorLandsAtTheTopOfTheProjection(t *t
 	first := newSession4TaggedProject(t, "Sonar", "hold")
 	second := newSession4TaggedProject(t, "Keel", "hold")
 	fixture := newSession4LifecycleFixture(t, first, second)
-	fixture.cross.cursor = len(fixture.cross.rows) - 1
+	fixture.cross.Cursor = len(fixture.cross.rows) - 1
 
 	cmd := parkTagMembersThroughProjectTagVocabulary(t, fixture, "hold")
 	anchor := fixture.cross.crossReloadHeaderProjectID
@@ -120,8 +120,8 @@ func TestProjectTagParkAllMembersWithNoSurvivorLandsAtTheTopOfTheProjection(t *t
 	}
 	runSession2AppCommand(t, fixture.app, cmd)
 
-	if fixture.cross.cursor != 0 {
-		t.Fatalf("post-park cursor = %d, want the top of the projection", fixture.cross.cursor)
+	if fixture.cross.Cursor != 0 {
+		t.Fatalf("post-park cursor = %d, want the top of the projection", fixture.cross.Cursor)
 	}
 	for _, row := range fixture.cross.rows {
 		if row.IsProjectHeader && (row.ProjectID == first.ID || row.ProjectID == second.ID) {

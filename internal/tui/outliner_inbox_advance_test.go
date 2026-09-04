@@ -48,16 +48,16 @@ func departAfterCapture(t *testing.T, outliner *OutlinerModel, task *models.Task
 func requireCursorTask(t *testing.T, outliner *OutlinerModel, want taskref.TaskIdentity) {
 	t.Helper()
 	if got := outliner.CurrentTaskIdentity(); got != want {
-		t.Fatalf("cursor task = %+v, want %+v (cursor=%d)", got, want, outliner.cursor)
+		t.Fatalf("cursor task = %+v, want %+v (cursor=%d)", got, want, outliner.Cursor)
 	}
 }
 
 func requireCursorRow(t *testing.T, outliner *OutlinerModel, taskID string) {
 	t.Helper()
-	if outliner.cursor < 0 || outliner.cursor >= len(outliner.rows) {
-		t.Fatalf("cursor %d is outside %d rows", outliner.cursor, len(outliner.rows))
+	if outliner.Cursor < 0 || outliner.Cursor >= len(outliner.rows) {
+		t.Fatalf("cursor %d is outside %d rows", outliner.Cursor, len(outliner.rows))
 	}
-	row := outliner.rows[outliner.cursor]
+	row := outliner.rows[outliner.Cursor]
 	if !row.isTaskRow() || row.task == nil {
 		t.Fatalf("cursor landed on a non-task row %+v", row)
 	}
@@ -70,7 +70,7 @@ func inboxCursorTo(t *testing.T, outliner *OutlinerModel, taskID string) {
 	t.Helper()
 	for i, row := range outliner.rows {
 		if row.isTaskRow() && row.task != nil && row.task.ID == taskID {
-			outliner.cursor = i
+			outliner.Cursor = i
 			return
 		}
 	}
@@ -130,11 +130,11 @@ func TestInboxAdvanceStopsAtTheLastRow(t *testing.T) {
 	}
 	last.WorkflowState = models.StateBacklog
 	inboxAdvanceRebuild(outliner)
-	clamped := outliner.cursor
+	clamped := outliner.Cursor
 	outliner.finishOutlinerRelocation(capture, true)
 
-	if outliner.cursor != clamped {
-		t.Fatalf("cursor = %d after a successorless departure, want the clamp's %d", outliner.cursor, clamped)
+	if outliner.Cursor != clamped {
+		t.Fatalf("cursor = %d after a successorless departure, want the clamp's %d", outliner.Cursor, clamped)
 	}
 	requireCursorRow(t, outliner, first.ID)
 }
@@ -149,15 +149,15 @@ func TestInboxAdvanceIgnoresFailedMutations(t *testing.T) {
 	outliner := inboxAdvanceOutliner(t, alpha)
 
 	inboxCursorTo(t, outliner, one.ID)
-	before := outliner.cursor
+	before := outliner.Cursor
 	capture := outliner.captureOutlinerRelocation([]taskref.TaskIdentity{taskref.For(one, alpha)})
 	failure := coordinator.TransactionErrorMsg{Err: errors.New("commit refused")}
 	wrapped := withOutlinerRelocationCapture(func() tea.Msg { return failure }, capture)
 	if got, ok := wrapped().(coordinator.TransactionErrorMsg); !ok || got != failure {
 		t.Fatalf("failed mutation = %#v, want the bare TransactionErrorMsg", wrapped())
 	}
-	if outliner.cursor != before {
-		t.Fatalf("cursor = %d after a failed mutation, want %d", outliner.cursor, before)
+	if outliner.Cursor != before {
+		t.Fatalf("cursor = %d after a failed mutation, want %d", outliner.Cursor, before)
 	}
 	requireCursorRow(t, outliner, one.ID)
 }
@@ -173,15 +173,15 @@ func TestInboxAdvanceNeverFollowsAnUndo(t *testing.T) {
 	outliner := inboxAdvanceOutliner(t, alpha)
 
 	inboxCursorTo(t, outliner, one.ID)
-	before := outliner.cursor
+	before := outliner.Cursor
 	if outliner.relocationHistory.pending != nil {
 		t.Fatal("undo path armed a relocation capture")
 	}
 	if cmd := outliner.finishPendingOutlinerRelocation(); cmd != nil {
 		t.Fatal("finishing an unarmed relocation produced a command")
 	}
-	if outliner.cursor != before {
-		t.Fatalf("cursor = %d without a capture, want %d", outliner.cursor, before)
+	if outliner.Cursor != before {
+		t.Fatalf("cursor = %d without a capture, want %d", outliner.Cursor, before)
 	}
 	requireCursorRow(t, outliner, one.ID)
 }
@@ -260,13 +260,13 @@ func TestOutlinerDepartureDoesNotAdvanceOutsideInbox(t *testing.T) {
 			}
 			alphaTwo.WorkflowState = models.StateDone
 			inboxAdvanceRebuild(outliner)
-			clamped := outliner.cursor
+			clamped := outliner.Cursor
 			outliner.finishOutlinerRelocation(capture, true)
 
-			if outliner.cursor != clamped {
-				t.Fatalf("%s moved the cursor to %d on a departure, want the clamp's %d", mode, outliner.cursor, clamped)
+			if outliner.Cursor != clamped {
+				t.Fatalf("%s moved the cursor to %d on a departure, want the clamp's %d", mode, outliner.Cursor, clamped)
 			}
-			if got, ok := outliner.rowIndexForTask(successor); ok && outliner.cursor == got {
+			if got, ok := outliner.rowIndexForTask(successor); ok && outliner.Cursor == got {
 				t.Fatalf("%s advanced onto the successor at row %d", mode, got)
 			}
 		})

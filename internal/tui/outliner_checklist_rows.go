@@ -21,10 +21,10 @@ type checklistCursor struct {
 // row carries its owner's task pointer, so callers that only ask for a task
 // cannot tell the two apart; this is the one predicate that can.
 func (m *OutlinerModel) cursorChecklistItem() (checklistCursor, bool) {
-	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
+	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return checklistCursor{}, false
 	}
-	row := m.rows[m.cursor]
+	row := m.rows[m.Cursor]
 	if !row.IsChecklistItem || row.task == nil {
 		return checklistCursor{}, false
 	}
@@ -64,7 +64,7 @@ func (m *OutlinerModel) setChecklistExpanded(identity taskref.TaskIdentity, expa
 // cannot select a non-task row, but cursor movement during a live range would
 // still land on one.
 func (m *OutlinerModel) expandChecklistRows() {
-	if m == nil || len(m.expandedChecklists) == 0 || m.multiSelectMode {
+	if m == nil || len(m.expandedChecklists) == 0 || m.MultiSelectMode {
 		return
 	}
 	expanded := make([]outlinerRow, 0, len(m.rows))
@@ -120,8 +120,8 @@ func (m *OutlinerModel) syncChecklistSelectionRows() {
 		return
 	}
 	owner := taskref.TaskIdentity{}
-	if m.cursor >= 0 && m.cursor < len(m.rows) {
-		owner = m.taskIdentityForRow(m.rows[m.cursor])
+	if m.Cursor >= 0 && m.Cursor < len(m.rows) {
+		owner = m.taskIdentityForRow(m.rows[m.Cursor])
 	}
 	m.rebuildRows()
 	if owner.Valid() {

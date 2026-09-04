@@ -8,6 +8,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -24,7 +25,7 @@ func searchProjectionCursorOnTitle(t *testing.T, out *OutlinerModel, title strin
 	}
 	for index, row := range out.rows {
 		if row.isTaskRow() && row.task != nil && row.task.Title == title {
-			out.cursor = index
+			out.Cursor = index
 			return out.CurrentTaskIdentity()
 		}
 	}
@@ -48,7 +49,7 @@ func TestEnterZoomsSectionHeadersAndScopesProjectHeaders(t *testing.T) {
 	}
 	fullRows := len(out.rows)
 
-	out.cursor = sectionIndex
+	out.Cursor = sectionIndex
 	sectionName := out.rows[sectionIndex].SectionName
 	if !out.zoomSectionAtCursor() {
 		t.Fatal("Enter did not zoom into the selected section header")
@@ -57,19 +58,19 @@ func TestEnterZoomsSectionHeadersAndScopesProjectHeaders(t *testing.T) {
 		t.Fatalf("zoomed sections = %v, want %q alone", names, sectionName)
 	}
 
-	if !RunEscCascade(out.escSteps()) {
+	if !listsurface.RunEscCascade(out.escSteps()) {
 		t.Fatal("Esc did not leave the zoom")
 	}
 	if out.zoom.active() || len(out.rows) != fullRows {
 		t.Fatalf("unzoomed state = zoom %+v rows %d, want no zoom and the pre-zoom %d", out.zoom, len(out.rows), fullRows)
 	}
 
-	out.cursor = sectionHeaderIndex(t, out, sectionName)
+	out.Cursor = sectionHeaderIndex(t, out, sectionName)
 	if out.activateGroupAtCursor() {
 		t.Fatal("a section header still reached the project scope act")
 	}
 
-	out.cursor = projectHeaderIndex(t, out, project.ID)
+	out.Cursor = projectHeaderIndex(t, out, project.ID)
 	if !out.activateGroupAtCursor() || out.scopedProjectID != project.ID {
 		t.Fatalf("Enter on the project header scoped to %q, want %q", out.scopedProjectID, project.ID)
 	}

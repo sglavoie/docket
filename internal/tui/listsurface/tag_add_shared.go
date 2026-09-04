@@ -1,4 +1,4 @@
-package tui
+package listsurface
 
 import (
 	"fmt"
@@ -56,10 +56,10 @@ func (a *TagAdder) leaveAddMode() {
 	a.AddTagInput.Blur()
 }
 
-// handleAddTagInputKey owns the shared input lifecycle for every tag-creation
+// HandleAddTagInputKey owns the shared input lifecycle for every tag-creation
 // surface. The caller supplies picker-specific insertion and selection behavior
 // so each surface can retain its own stable IDs and selection semantics.
-func (a *TagAdder) handleAddTagInputKey(
+func (a *TagAdder) HandleAddTagInputKey(
 	msg tea.KeyPressMsg,
 	submit func(string) error,
 ) (bool, tea.Cmd) {
@@ -92,7 +92,7 @@ func (a *TagAdder) handleAddTagInputKey(
 // The picker parameter is used to manipulate the item list and selection.
 // Returns (handled, cmd). The caller should return (m, cmd) when handled is true.
 func (a *TagAdder) HandleAddTagKey(msg tea.KeyPressMsg, picker *ListSurfaceAdapter[query.TagInfo]) (bool, tea.Cmd) {
-	return a.handleAddTagInputKey(msg, func(tagName string) error {
+	return a.HandleAddTagInputKey(msg, func(tagName string) error {
 		// Check for duplicate
 		for _, item := range picker.SourceItems() {
 			if item.Name == tagName {
@@ -159,7 +159,7 @@ func RenderTagSelectorView(picker *ListSurfaceAdapter[query.TagInfo], adder *Tag
 	if selectedCount == 0 {
 		subtitle = "No tags selected"
 	} else {
-		subtitle = fmt.Sprintf("%d tag%s selected", selectedCount, pluralize(selectedCount, "", "s"))
+		subtitle = fmt.Sprintf("%d tag%s selected", selectedCount, Pluralize(selectedCount, "", "s"))
 	}
 
 	b.WriteString(chrome.RenderFullscreenTitle(title, subtitle))

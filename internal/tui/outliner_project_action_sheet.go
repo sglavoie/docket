@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -13,11 +14,11 @@ import (
 // in the workspace, so the destructive pair is never mixed into the list a user
 // arrows through looking for Edit.
 const (
-	outlinerProjectActionCategoryProject ListCategoryID = "outliner-project-actions:project"
-	outlinerProjectActionCategoryDanger  ListCategoryID = "outliner-project-actions:danger"
+	outlinerProjectActionCategoryProject listsurface.ListCategoryID = "outliner-project-actions:project"
+	outlinerProjectActionCategoryDanger  listsurface.ListCategoryID = "outliner-project-actions:danger"
 )
 
-var outlinerProjectActionCategories = []ListCategory{
+var outlinerProjectActionCategories = []listsurface.ListCategory{
 	{ID: outlinerProjectActionCategoryProject, Label: "Project"},
 	{ID: outlinerProjectActionCategoryDanger, Label: "Danger"},
 }
@@ -118,15 +119,15 @@ func NewProjectActionSheetModel(
 	executor *operation.OperationExecutor,
 	context operation.CommandContext,
 	projectName string,
-) (*ContextActionSheetModel, error) {
-	return NewContextActionSheetModel(
+) (*listsurface.ContextActionSheetModel, error) {
+	return listsurface.NewContextActionSheetModel(
 		registry,
 		executor,
 		context,
 		ProjectActionSheetOperationIDs(registry, context),
-		ContextActionSheetConfig{
-			Host:            ContextActionHostOutliner,
-			Completion:      ContextActionCompleteCloseSheet,
+		listsurface.ContextActionSheetConfig{
+			Host:            listsurface.ContextActionHostOutliner,
+			Completion:      listsurface.ContextActionCompleteCloseSheet,
 			Title:           "Project Actions",
 			Subtitle:        strings.TrimSpace(projectName),
 			ItemIDPrefix:    "project-action:",
@@ -135,11 +136,11 @@ func NewProjectActionSheetModel(
 			SecondaryFor:    operationActionSecondaryText,
 			ImmediateFilter: true,
 			Targets:         1,
-			EmptyState: ListEmptyState{
+			EmptyState: listsurface.ListEmptyState{
 				Title:  "No project actions available.",
 				Detail: "Move the cursor to a project header.",
 			},
-			NoMatchState: ListEmptyState{
+			NoMatchState: listsurface.ListEmptyState{
 				Title:  "No matching actions.",
 				Detail: "Clear or change the search.",
 			},
@@ -176,7 +177,7 @@ func ProjectActionSheetOperationIDs(
 	return ids
 }
 
-func outlinerProjectActionCategory(descriptor operation.OperationDescriptor) ListCategoryID {
+func outlinerProjectActionCategory(descriptor operation.OperationDescriptor) listsurface.ListCategoryID {
 	if entry, manifested := outlinerProjectOperationManifestEntryFor(descriptor.ID); manifested {
 		return entry.Category
 	}

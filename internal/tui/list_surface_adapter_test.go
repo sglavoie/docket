@@ -3,6 +3,7 @@ package tui
 import (
 	"testing"
 
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -14,7 +15,7 @@ type testItem struct {
 }
 
 // Compile-time interface satisfaction check.
-var _ PickerItem = testItem{}
+var _ listsurface.PickerItem = testItem{}
 
 func (t testItem) FilterText() string  { return t.text }
 func (t testItem) DisplayText() string { return t.text }
@@ -28,7 +29,7 @@ func TestNewListSurfaceAdapter(t *testing.T) {
 		{id: "3", text: "Gamma", count: 1},
 	}
 
-	picker := NewListSurfaceAdapter(items, PickerConfig{
+	picker := listsurface.NewListSurfaceAdapter(items, listsurface.PickerConfig{
 		Title:          "Test Picker",
 		EmptyMessage:   "No items",
 		NoMatchMessage: "No matches",
@@ -54,7 +55,7 @@ func TestListSurfaceAdapterFilter(t *testing.T) {
 		{id: "3", text: "Alphabet", count: 1},
 	}
 
-	picker := NewListSurfaceAdapter(items, PickerConfig{
+	picker := listsurface.NewListSurfaceAdapter(items, listsurface.PickerConfig{
 		Title:       "Test",
 		MultiSelect: false,
 	})
@@ -86,7 +87,7 @@ func TestListSurfaceAdapterNavigation(t *testing.T) {
 		{id: "3", text: "Gamma"},
 	}
 
-	picker := NewListSurfaceAdapter(items, PickerConfig{MultiSelect: false})
+	picker := listsurface.NewListSurfaceAdapter(items, listsurface.PickerConfig{MultiSelect: false})
 
 	tests := []struct {
 		key      string
@@ -116,7 +117,7 @@ func TestListSurfaceAdapterMultiSelect(t *testing.T) {
 		{id: "3", text: "Gamma"},
 	}
 
-	picker := NewListSurfaceAdapter(items, PickerConfig{MultiSelect: true})
+	picker := listsurface.NewListSurfaceAdapter(items, listsurface.PickerConfig{MultiSelect: true})
 
 	// Toggle first item
 	picker.HandleKeyMsg(syntheticKey(' '))
@@ -150,7 +151,7 @@ func TestListSurfaceAdapterSingleSelect(t *testing.T) {
 		{id: "2", text: "Beta"},
 	}
 
-	picker := NewListSurfaceAdapter(items, PickerConfig{MultiSelect: false})
+	picker := listsurface.NewListSurfaceAdapter(items, listsurface.PickerConfig{MultiSelect: false})
 
 	// Space should not toggle in single-select mode
 	picker.HandleKeyMsg(syntheticKey(' '))
@@ -178,7 +179,7 @@ func TestListSurfaceAdapterPreSelect(t *testing.T) {
 		{id: "3", text: "Gamma"},
 	}
 
-	picker := NewListSurfaceAdapter(items, PickerConfig{MultiSelect: true})
+	picker := listsurface.NewListSurfaceAdapter(items, listsurface.PickerConfig{MultiSelect: true})
 
 	picker.PreSelectByID("2")
 	picker.PreSelectByID("3")
@@ -198,7 +199,7 @@ func TestListSurfaceAdapterSetCursorToID(t *testing.T) {
 		{id: "3", text: "Gamma"},
 	}
 
-	picker := NewListSurfaceAdapter(items, PickerConfig{})
+	picker := listsurface.NewListSurfaceAdapter(items, listsurface.PickerConfig{})
 
 	picker.SetCursorToID("2")
 	if picker.CursorIndex() != 1 {
@@ -224,7 +225,7 @@ func TestListSurfaceAdapterFilterResetsCursor(t *testing.T) {
 		{id: "3", text: "Gamma"},
 	}
 
-	picker := NewListSurfaceAdapter(items, PickerConfig{})
+	picker := listsurface.NewListSurfaceAdapter(items, listsurface.PickerConfig{})
 	picker.SetCursorIndex(2)
 
 	// Filter that returns fewer items than cursor position
@@ -241,7 +242,7 @@ func TestListSurfaceAdapterSelectedIDs(t *testing.T) {
 		{id: "c", text: "Gamma"},
 	}
 
-	picker := NewListSurfaceAdapter(items, PickerConfig{MultiSelect: true})
+	picker := listsurface.NewListSurfaceAdapter(items, listsurface.PickerConfig{MultiSelect: true})
 	picker.PreSelectByID("a")
 	picker.PreSelectByID("c")
 
@@ -262,7 +263,7 @@ func TestListSurfaceAdapterSelectedIDs(t *testing.T) {
 
 func TestListSurfaceAdapterRenderInBoxFitsTitleHeaderToWidth(t *testing.T) {
 	items := []testItem{{id: "1", text: "Alpha"}}
-	picker := NewListSurfaceAdapter(items, PickerConfig{
+	picker := listsurface.NewListSurfaceAdapter(items, listsurface.PickerConfig{
 		EmptyMessage:   "No items",
 		NoMatchMessage: "No matches",
 	})
@@ -292,9 +293,9 @@ func TestPluralize(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		result := pluralize(tt.count, tt.singular, tt.plural)
+		result := listsurface.Pluralize(tt.count, tt.singular, tt.plural)
 		if result != tt.expected {
-			t.Errorf("pluralize(%d, %q, %q) = %q, expected %q",
+			t.Errorf("Pluralize(%d, %q, %q) = %q, expected %q",
 				tt.count, tt.singular, tt.plural, result, tt.expected)
 		}
 	}

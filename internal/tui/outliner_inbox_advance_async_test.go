@@ -187,19 +187,19 @@ func TestInboxAsyncCursorMoveAwayAndBackBeforeReloadVoidsAdvance(t *testing.T) {
 		t.Fatal("committed async state update did not survive its own refresh")
 	}
 	settled := pending.SettledCursor
-	if async.outliner.cursor != settled {
-		t.Fatalf("cursor = %d, want the settled cursor %d", async.outliner.cursor, settled)
+	if async.outliner.Cursor != settled {
+		t.Fatalf("cursor = %d, want the settled cursor %d", async.outliner.Cursor, settled)
 	}
 
 	// j then k while the disk refresh is still in flight: the cursor ends up back
 	// on the settled row, so only the navigation itself can void the capture.
 	async.model.coreMoveCursor("j")
-	if async.outliner.cursor == settled {
+	if async.outliner.Cursor == settled {
 		t.Fatal("the fixture did not actually move the cursor off the settled row")
 	}
 	async.model.coreMoveCursor("k")
-	if async.outliner.cursor != settled {
-		t.Fatalf("cursor = %d after moving back, want the settled cursor %d", async.outliner.cursor, settled)
+	if async.outliner.Cursor != settled {
+		t.Fatalf("cursor = %d after moving back, want the settled cursor %d", async.outliner.Cursor, settled)
 	}
 	returned := async.outliner.CurrentTaskIdentity()
 
@@ -236,8 +236,8 @@ func TestInboxAsyncHeaderJumpAwayAndBackBeforeReloadVoidsAdvance(t *testing.T) {
 		t.Fatal("committed async state update did not survive its own refresh")
 	}
 	settled := pending.SettledCursor
-	if async.outliner.cursor != settled {
-		t.Fatalf("cursor = %d, want the settled cursor %d", async.outliner.cursor, settled)
+	if async.outliner.Cursor != settled {
+		t.Fatalf("cursor = %d, want the settled cursor %d", async.outliner.Cursor, settled)
 	}
 	if settled < 0 || settled >= len(async.outliner.rows) || !async.outliner.rows[settled].isHeaderRow() {
 		t.Fatalf("the fixture did not settle the cursor on a project header at row %d", settled)
@@ -248,14 +248,14 @@ func TestInboxAsyncHeaderJumpAwayAndBackBeforeReloadVoidsAdvance(t *testing.T) {
 	if _, moved := async.outliner.moveCursorToAdjacentHeader(1); !moved {
 		t.Fatal("n found no header to jump to")
 	}
-	if async.outliner.cursor == settled {
+	if async.outliner.Cursor == settled {
 		t.Fatal("the fixture did not actually move the cursor off the settled header")
 	}
 	if _, moved := async.outliner.moveCursorToAdjacentHeader(-1); !moved {
 		t.Fatal("N found no header to jump back to")
 	}
-	if async.outliner.cursor != settled {
-		t.Fatalf("cursor = %d after jumping back, want the settled cursor %d", async.outliner.cursor, settled)
+	if async.outliner.Cursor != settled {
+		t.Fatalf("cursor = %d after jumping back, want the settled cursor %d", async.outliner.Cursor, settled)
 	}
 	returnedHeader := async.outliner.rows[settled].effectiveCollapseKey()
 
@@ -264,10 +264,10 @@ func TestInboxAsyncHeaderJumpAwayAndBackBeforeReloadVoidsAdvance(t *testing.T) {
 	if async.outliner.relocationHistory.pending != nil {
 		t.Fatal("a header jump away and back left the relocation capture armed")
 	}
-	if async.outliner.cursor < 0 || async.outliner.cursor >= len(async.outliner.rows) {
-		t.Fatalf("cursor = %d is outside the reloaded projection", async.outliner.cursor)
+	if async.outliner.Cursor < 0 || async.outliner.Cursor >= len(async.outliner.rows) {
+		t.Fatalf("cursor = %d is outside the reloaded projection", async.outliner.Cursor)
 	}
-	row := async.outliner.rows[async.outliner.cursor]
+	row := async.outliner.rows[async.outliner.Cursor]
 	if !row.isHeaderRow() || row.effectiveCollapseKey() != returnedHeader {
 		t.Fatalf("cursor row = %+v, want the project header the user returned to %q", row, returnedHeader)
 	}
@@ -290,7 +290,7 @@ func TestInboxAsyncCursorMoveBeforeTheReloadVoidsTheAdvance(t *testing.T) {
 
 	// One j while the disk refresh is still in flight.
 	moved := async.outliner.CurrentTaskIdentity()
-	async.outliner.cursor++
+	async.outliner.Cursor++
 	if async.outliner.CurrentTaskIdentity() == moved {
 		t.Fatal("the fixture did not actually move the cursor")
 	}

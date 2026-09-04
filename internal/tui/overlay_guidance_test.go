@@ -8,6 +8,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/route"
@@ -66,35 +67,35 @@ func TestContextActionSheetGuidanceTracksBrowseSearchEmptyAndFailure(t *testing.
 	registry, executor := contextActionTestEngine(t, []operation.OperationDescriptor{
 		contextActionTestDescriptor("test.act", "Act"),
 	}, nil)
-	sheet, err := NewContextActionSheetModel(
+	sheet, err := listsurface.NewContextActionSheetModel(
 		registry, executor, contextActionTestContext(), []operation.OperationID{"test.act"},
-		ContextActionSheetConfig{Host: ContextActionHostOutliner},
+		listsurface.ContextActionSheetConfig{Host: listsurface.ContextActionHostOutliner},
 	)
 	if err != nil {
 		t.Fatalf("NewContextActionSheetModel: %v", err)
 	}
 
-	spec, ok := sheet.guidanceSpec()
+	spec, ok := sheet.GuidanceSpec()
 	assertSession8Guidance(t, "browse", spec, ok, "Enter run", "/ search", "Esc close")
 
-	sheet.searching = true
-	spec, ok = sheet.guidanceSpec()
+	sheet.Searching = true
+	spec, ok = sheet.GuidanceSpec()
 	assertSession8Guidance(t, "search", spec, ok, "Enter apply search", "Esc cancel search")
 	if spec.Rows != 2 {
 		t.Fatalf("search rows = %d, want 2", spec.Rows)
 	}
 
-	sheet.searching = false
-	sheet.surface.SetQuery("missing")
-	spec, ok = sheet.guidanceSpec()
+	sheet.Searching = false
+	sheet.Surface.SetQuery("missing")
+	spec, ok = sheet.GuidanceSpec()
 	assertSession8Guidance(t, "no matches", spec, ok, "/ search", "Esc clear search")
 	if strings.Contains(session8GuidanceText(spec), "Enter run") {
 		t.Fatalf("empty action sheet advertises a missing selection: %s", session8GuidanceText(spec))
 	}
 
-	sheet.notice = "selected target is no longer available"
-	rendered := ansi.Strip(sheet.render(80))
-	if !strings.Contains(rendered, sheet.notice) || !strings.Contains(rendered, "Esc clear search") {
+	sheet.Notice = "selected target is no longer available"
+	rendered := ansi.Strip(sheet.Render(80))
+	if !strings.Contains(rendered, sheet.Notice) || !strings.Contains(rendered, "Esc clear search") {
 		t.Fatalf("stale-target sheet lost notice or recovery guidance:\n%s", rendered)
 	}
 }
@@ -142,8 +143,8 @@ func TestOperationOverlaysRenderLocalGuidanceWithoutWorkspacePulse(t *testing.T)
 		text string
 		want []string
 	}{
-		{name: "text prompt", text: prompt.render(80), want: []string{"Enter apply", "Esc back"}},
-		{name: "value picker", text: picker.render(80), want: []string{"Enter apply", "Esc back"}},
+		{name: "text prompt", text: prompt.Render(80), want: []string{"Enter apply", "Esc back"}},
+		{name: "value picker", text: picker.Render(80), want: []string{"Enter apply", "Esc back"}},
 	}
 	for _, test := range rendered {
 		t.Run(test.name, func(t *testing.T) {
@@ -210,8 +211,8 @@ func TestTransientSelectorsRenderGuidanceWithoutWorkspacePulse(t *testing.T) {
 		name string
 		view route.View
 	}{
-		{name: "tag selector", view: NewTagSelectorModel(task, source, nil)},
-		{name: "parent selector", view: NewParentSelectorModel([]*models.Task{parent}, nil, true, presentation.ViewCrossProjectOutliner)},
+		{name: "tag selector", view: listsurface.NewTagSelectorModel(task, source, nil)},
+		{name: "parent selector", view: listsurface.NewParentSelectorModel([]*models.Task{parent}, nil, true, presentation.ViewCrossProjectOutliner)},
 	}
 	for _, test := range views {
 		t.Run(test.name, func(t *testing.T) {
@@ -229,7 +230,7 @@ func TestTransientSelectorsRenderGuidanceWithoutWorkspacePulse(t *testing.T) {
 
 func TestTagSelectorSearchControlsMatchGuidanceBeforeCommitOrCancel(t *testing.T) {
 	t.Run("single tag selector", func(t *testing.T) {
-		model := NewTagSelectorModel(nil, &models.Project{ID: "project", Name: "Project"}, nil)
+		model := listsurface.NewTagSelectorModel(nil, &models.Project{ID: "project", Name: "Project"}, nil)
 		model.Update(syntheticKeyStr("/"))
 		model.Update(syntheticKey('a'))
 		if model.AddTagMode || model.SearchQuery() != "a" {

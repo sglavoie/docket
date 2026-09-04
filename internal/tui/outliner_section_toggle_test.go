@@ -34,7 +34,7 @@ func TestToggleVisibleSectionsCollapsesBuiltInsAndRestoresTaskFocus(t *testing.T
 	if !outliner.moveCursorToIdentity(focus) {
 		t.Fatal("Doing task is missing before the bulk toggle")
 	}
-	outliner.multiSelectMode = true
+	outliner.MultiSelectMode = true
 	outliner.SelectTaskIdentity(focus)
 
 	parentIdentity := taskref.TaskIdentity{ProjectID: project.ID, TaskID: parent.ID}
@@ -77,7 +77,7 @@ func TestToggleVisibleSectionsCollapsesBuiltInsAndRestoresTaskFocus(t *testing.T
 	if outliner.SelectedCount() != 1 || !outliner.IsTaskIdentitySelected(focus) {
 		t.Fatal("bulk section toggle changed the visual task selection")
 	}
-	if row := outliner.rows[outliner.cursor]; !row.IsSectionHeader || row.StateGroup != models.StateGroupDoing {
+	if row := outliner.rows[outliner.Cursor]; !row.IsSectionHeader || row.StateGroup != models.StateGroupDoing {
 		t.Fatalf("collapsed cursor row = %+v, want Doing section header", row)
 	}
 
@@ -184,7 +184,7 @@ func TestToggleVisibleSectionsDispatchesLowercaseS(t *testing.T) {
 	if len(headers) != 1 || !outliner.collapsedSections[headers[0].effectiveCollapseKey()] {
 		t.Fatalf("s did not collapse the visible section: headers=%+v collapsed=%v", headers, outliner.collapsedSections)
 	}
-	if row := outliner.rows[outliner.cursor]; !row.IsSectionHeader {
+	if row := outliner.rows[outliner.Cursor]; !row.IsSectionHeader {
 		t.Fatalf("cursor after s = %+v, want section header", row)
 	}
 

@@ -10,6 +10,7 @@ import (
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/textfit"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -74,7 +75,7 @@ type taskIndicatorSegments struct {
 }
 
 func (segments taskIndicatorSegments) render() string {
-	rendered := JoinGroupParts(
+	rendered := listsurface.JoinGroupParts(
 		segments.recency,
 		segments.waiting,
 		segments.doing,
@@ -127,12 +128,12 @@ func (m *OutlinerModel) renderTaskIndicatorSegments(row outlinerRow) taskIndicat
 		return segments
 	}
 	now := time.Now()
-	if m.primaryMode == chrome.ModeRecent && m.columnConfig.IsVisible(ColRecency) {
+	if m.primaryMode == chrome.ModeRecent && m.columnConfig.IsVisible(listsurface.ColRecency) {
 		segments.recency = query.FormatRecencyChip(m.rowRecencyKey(row), now)
 	}
 	if task.IsInState(models.StateWaiting) {
 		segments.waiting = formatWaitingAgeIndicator(task, now)
-		if m.columnConfig.IsVisible(ColDueDate) {
+		if m.columnConfig.IsVisible(listsurface.ColDueDate) {
 			segments.check = formatCheckBackIndicator(task, now)
 		}
 	}
@@ -141,10 +142,10 @@ func (m *OutlinerModel) renderTaskIndicatorSegments(row outlinerRow) taskIndicat
 	}
 	// A waiting task's due date is its check-back date, so the countdown replaces
 	// the plain date rather than restating it beside itself.
-	if segments.check == "" && m.columnConfig.IsVisible(ColDueDate) {
+	if segments.check == "" && m.columnConfig.IsVisible(listsurface.ColDueDate) {
 		segments.due = query.FormatDueDate(task)
 	}
-	if m.columnConfig.IsVisible(ColDefer) {
+	if m.columnConfig.IsVisible(listsurface.ColDefer) {
 		if task.DeferredUntil != nil {
 			segments.deferred = formatDeferIndicator(task, now)
 		}
@@ -154,14 +155,14 @@ func (m *OutlinerModel) renderTaskIndicatorSegments(row outlinerRow) taskIndicat
 	// locks the split: hiding the defer column hides the pending instant and the
 	// wake marker, while the count survives at or above the threshold.
 	segments.deferCount = formatDeferCountIndicator(task)
-	if m.columnConfig.IsVisible(ColChecklist) {
-		segments.checklist = renderChecklistIndicator(task)
+	if m.columnConfig.IsVisible(listsurface.ColChecklist) {
+		segments.checklist = listsurface.RenderChecklistIndicator(task)
 	}
-	if m.columnConfig.IsVisible(ColComments) {
-		segments.comments = renderCommentIndicator(task)
+	if m.columnConfig.IsVisible(listsurface.ColComments) {
+		segments.comments = listsurface.RenderCommentIndicator(task)
 	}
-	if m.columnConfig.IsVisible(ColAttachments) {
-		segments.attachments = renderAttachmentIndicator(task)
+	if m.columnConfig.IsVisible(listsurface.ColAttachments) {
+		segments.attachments = listsurface.RenderAttachmentIndicator(task)
 	}
 	// Deliberately ungated by a column: a reference count is not a column the
 	// user can hide, and naming one would put a dependency back in the column
@@ -294,7 +295,7 @@ func (m *OutlinerModel) renderTaskPrioritySegment(task *models.Task, colLayout *
 }
 
 func (m *OutlinerModel) renderTaskCheckbox(row outlinerRow, bg color.Color) string {
-	if !m.multiSelectMode {
+	if !m.MultiSelectMode {
 		return ""
 	}
 	if m.isRowSelected(row) {

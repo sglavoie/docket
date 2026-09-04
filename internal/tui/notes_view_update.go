@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/app"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/status"
 	"github.com/sglavoie/tt/internal/tui/theme"
@@ -90,11 +91,11 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case "ctrl+j":
 					navKey = "down"
 				}
-				_, cmd := handleListNavigation(
+				_, cmd := listsurface.HandleListNavigation(
 					navKey,
 					&m.cursor,
 					len(m.visibleRows),
-					m.height,
+					m.Height(),
 					&m.cursorFlash,
 				)
 				return m, cmd
@@ -109,7 +110,7 @@ func (m *NotesViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		switch key {
 		case "j", "down", "k", "up", "G", "end", "ctrl+u", "pgup", "ctrl+d", "pgdown":
-			_, cmd := handleListNavigation(key, &m.cursor, len(m.visibleRows), m.height, &m.cursorFlash)
+			_, cmd := listsurface.HandleListNavigation(key, &m.cursor, len(m.visibleRows), m.Height(), &m.cursorFlash)
 			return m, cmd
 		case "g":
 			m.pendingTopChord = true

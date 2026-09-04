@@ -16,12 +16,12 @@ package tui
 func (m *OutlinerModel) UITestSnapshot() map[string]any {
 	snap := map[string]any{
 		"row_count":     len(m.rows),
-		"cursor":        m.cursor,
+		"cursor":        m.Cursor,
 		"mode":          string(m.activeOutlinerMode()),
 		"cross_project": m.project == nil,
 	}
-	if m.cursor >= 0 && m.cursor < len(m.rows) && m.rows[m.cursor].task != nil {
-		snap["selected_task"] = m.rows[m.cursor].task.Title
+	if m.Cursor >= 0 && m.Cursor < len(m.rows) && m.rows[m.Cursor].task != nil {
+		snap["selected_task"] = m.rows[m.Cursor].task.Title
 	}
 	if q := m.SearchQuery(); q != "" {
 		snap["search_query"] = q

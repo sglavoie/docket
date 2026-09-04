@@ -55,7 +55,7 @@ func inlineEditorChildFixture(t *testing.T) (*OutlinerModel, *models.Project, *m
 	out.rebuildRows()
 	for index, row := range out.rows {
 		if row.task != nil && row.task.ID == child.ID && row.isTaskRow() {
-			out.cursor = index
+			out.Cursor = index
 			break
 		}
 	}
@@ -233,7 +233,7 @@ func TestInlineRowEditorChildDraftRendersWithinMinimumWidth(t *testing.T) {
 	out.rebuildRows()
 	for index, row := range out.rows {
 		if row.task != nil && row.task.ID == child.ID && row.isTaskRow() {
-			out.cursor = index
+			out.Cursor = index
 			break
 		}
 	}

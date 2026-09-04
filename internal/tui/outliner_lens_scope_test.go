@@ -7,6 +7,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 )
 
 // A lens scope names a project by ID, and NamedLens.Validate holds that ID to
@@ -62,7 +63,7 @@ func TestScopedLensEntersItsProjectAndEscRestoresThePreLensScope(t *testing.T) {
 		t.Fatal("a lens read as modified in the very scope it named")
 	}
 
-	if !RunEscCascade(outliner.escSteps()) {
+	if !listsurface.RunEscCascade(outliner.escSteps()) {
 		t.Fatal("expected Esc to consume the lens")
 	}
 	if outliner.hasActiveLens() {
@@ -206,7 +207,7 @@ func TestAFailedActiveLensPointerCommitLeavesTheLensApplied(t *testing.T) {
 	if !outliner.hasActiveLens() {
 		t.Fatal("a failed pointer commit abandoned the application it only annotates")
 	}
-	if !strings.Contains(outliner.statusMessage, "Could not remember the active lens") {
-		t.Fatalf("status = %q, want the degraded pointer warning", outliner.statusMessage)
+	if !strings.Contains(outliner.StatusMessage, "Could not remember the active lens") {
+		t.Fatalf("status = %q, want the degraded pointer warning", outliner.StatusMessage)
 	}
 }

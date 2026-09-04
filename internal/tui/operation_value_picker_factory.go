@@ -6,6 +6,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
@@ -82,21 +83,21 @@ func (m *AppModel) newOperationValuePicker(
 			{Priority: 2, Description: "Medium"},
 			{Priority: 3, Description: "Low"},
 		}
-		selected := []ListItemID(nil)
+		selected := []listsurface.ListItemID(nil)
 		if priority, ok := commonTaskPriority(refs); ok {
-			selected = []ListItemID{ListItemID("priority:" + strconv.Itoa(priority))}
+			selected = []listsurface.ListItemID{listsurface.ListItemID("priority:" + strconv.Itoa(priority))}
 		}
 		return newOperationValuePickerModel(
 			request,
 			provider,
 			"Set Priority",
 			subtitle,
-			ListSourceFromPriorities(priorities),
+			listsurface.ListSourceFromPriorities(priorities),
 			false,
 			selected,
 		)
 	case operation.ValueProviderDate:
-		selected := []ListItemID(nil)
+		selected := []listsurface.ListItemID(nil)
 		due, dueShared := commonTaskDate(refs, false)
 		deferred, deferShared := commonTaskDate(refs, true)
 		if dueShared && deferShared {
@@ -112,7 +113,7 @@ func (m *AppModel) newOperationValuePicker(
 			selected,
 		)
 	case operation.ValueProviderDueDate:
-		selected := []ListItemID(nil)
+		selected := []listsurface.ListItemID(nil)
 		if date, ok := commonTaskDate(refs, false); ok {
 			selected = dueDateSelectedID(date)
 		}
@@ -175,7 +176,7 @@ func (m *AppModel) newOperationValuePicker(
 		// commit diffs against rather than something merely displayed: the overlay
 		// outlives the snapshot it was built from, and the difference is what
 		// survives that.
-		byID := make(map[ListItemID]operationValueMembership, len(source.Items))
+		byID := make(map[listsurface.ListItemID]operationValueMembership, len(source.Items))
 		for _, item := range source.Items {
 			byID[item.ID] = operationValueNone
 		}
@@ -219,12 +220,12 @@ func (m *AppModel) newOperationValuePicker(
 		// Membership is configured at every cardinality, so the picker always
 		// emits the patch payload the context field rides on. For one task the
 		// patch and a replacement describe the same edit.
-		byID := make(map[ListItemID]operationValueMembership, len(source.Items))
+		byID := make(map[listsurface.ListItemID]operationValueMembership, len(source.Items))
 		for _, item := range source.Items {
 			byID[item.ID] = operationValueNone
 		}
 		for tag, state := range taskTagMembership(refs) {
-			id := ListItemID("tag:" + tag)
+			id := listsurface.ListItemID("tag:" + tag)
 			if _, ok := byID[id]; ok {
 				byID[id] = state
 			}

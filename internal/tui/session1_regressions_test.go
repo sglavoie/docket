@@ -82,7 +82,7 @@ func TestCommentsCopyAllEmptyNothingToCopy(t *testing.T) {
 	if called {
 		t.Fatal("empty comment list must not invoke the clipboard")
 	}
-	if cm.statusMessage != "Nothing to copy" {
-		t.Fatalf("expected 'Nothing to copy', got %q", cm.statusMessage)
+	if cm.StatusMessage != "Nothing to copy" {
+		t.Fatalf("expected 'Nothing to copy', got %q", cm.StatusMessage)
 	}
 }

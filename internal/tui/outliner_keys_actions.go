@@ -8,7 +8,7 @@ import tea "charm.land/bubbletea/v2"
 // project archive confirmation.
 func (m *OutlinerModel) handleConfirmDialog(key string) (tea.Model, tea.Cmd) {
 	// Capture action before HandleKey clears it on confirm/cancel.
-	action := m.confirm.Action()
+	action := m.Confirm.Action()
 
 	// Standard y/n handling
 	if confirmed, handled := m.HandleConfirmKey(key); handled {

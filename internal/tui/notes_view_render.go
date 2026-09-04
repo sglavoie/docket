@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/app"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/textfit"
@@ -65,7 +66,7 @@ func (m *NotesViewModel) View() tea.View {
 }
 
 // renderNotesContent chooses between the shared two-pane layout and the list
-// alone. The split comes from listSurfacePreviewGeometry rather than a Notes
+// alone. The split comes from ListSurfacePreviewGeometry rather than a Notes
 // copy of the 72-column rule, so this surface widens and narrows exactly when
 // every other list surface does. An empty list, a workspace error, or an open
 // picker has no note to preview, so those states keep the full width the way the
@@ -77,13 +78,13 @@ func (m *NotesViewModel) renderNotesContent(width, height int) string {
 		return m.renderListPane(width, height)
 	}
 	listPane := strings.TrimRight(m.renderListPane(listWidth, height), "\n")
-	previewPane := renderListSurfacePreview(
+	previewPane := listsurface.RenderListSurfacePreview(
 		notesPreviewHeader(row),
 		previewWidth,
 		height,
 		m.renderNotesPreviewBody,
 	)
-	return joinListSurfacePanes(listPane, previewPane, listWidth, previewWidth)
+	return listsurface.JoinListSurfacePanes(listPane, previewPane, listWidth, previewWidth)
 }
 
 // renderListPane draws the note rows inside the pane width it is given. The
@@ -180,7 +181,7 @@ func (m *NotesViewModel) renderCollectionErrors() string {
 		summary := fmt.Sprintf(
 			"! %d more %s unavailable",
 			remaining,
-			pluralize(remaining, "owner", "owners"),
+			listsurface.Pluralize(remaining, "owner", "owners"),
 		)
 		lines = append(lines, theme.WarningIconStyle.Render(textfit.TruncateToVisualWidth(summary, width)))
 	}

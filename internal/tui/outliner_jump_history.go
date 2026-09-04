@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/query"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
@@ -32,10 +33,10 @@ type outlinerRelocationHistory struct {
 }
 
 func (m *OutlinerModel) CurrentTaskIdentity() taskref.TaskIdentity {
-	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) {
+	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.rows) {
 		return taskref.TaskIdentity{}
 	}
-	row := m.rows[m.cursor]
+	row := m.rows[m.Cursor]
 	if !row.isTaskRow() || row.task == nil {
 		return taskref.TaskIdentity{}
 	}
@@ -43,13 +44,13 @@ func (m *OutlinerModel) CurrentTaskIdentity() taskref.TaskIdentity {
 }
 
 func (m *OutlinerModel) currentJumpPosition() (outlinerJumpPosition, bool) {
-	if m == nil || m.cursor < 0 || m.cursor >= len(m.rows) || !m.rows[m.cursor].isNavigable() {
+	if m == nil || m.Cursor < 0 || m.Cursor >= len(m.rows) || !m.rows[m.Cursor].isNavigable() {
 		return outlinerJumpPosition{}, false
 	}
 	return outlinerJumpPosition{
 		Task:         m.CurrentTaskIdentity(),
-		RowIndex:     m.cursor,
-		ScrollOffset: m.viewScrollOffset,
+		RowIndex:     m.Cursor,
+		ScrollOffset: m.ViewScrollOffset,
 	}, true
 }
 
@@ -155,11 +156,11 @@ func (m *OutlinerModel) jumpForward() tea.Cmd {
 }
 
 func (m *OutlinerModel) moveToJumpPosition(position outlinerJumpPosition, index int) tea.Cmd {
-	oldCursor := m.cursor
-	m.cursor = index
-	m.viewScrollOffset = position.ScrollOffset
+	oldCursor := m.Cursor
+	m.Cursor = index
+	m.ViewScrollOffset = position.ScrollOffset
 	m.voidRelocationCaptureAfterNavigation(oldCursor)
-	return flashIfJumped(oldCursor, index, &m.cursorFlash)
+	return listsurface.FlashIfJumped(oldCursor, index, &m.CursorFlash)
 }
 
 // syncJumpProjection invalidates history as soon as presentation state changes,

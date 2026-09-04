@@ -10,6 +10,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 )
 
 // projectHubPreviewPane returns the right pane of the Hub's rendered frame, so a
@@ -204,7 +205,7 @@ func TestProjectHubPreviewListsTasksOutsideTheBaseTaskWorkspace(t *testing.T) {
 	// Both reach the Hub as catalog records holding no tasks of their own, so the
 	// pane only fills if the tally retained the tree the count pass read.
 	for _, project := range []struct {
-		id    ListItemID
+		id    listsurface.ListItemID
 		tasks []string
 	}{
 		{id: "project-hub:project:parked", tasks: []string{"Task 1", "Task 2"}},

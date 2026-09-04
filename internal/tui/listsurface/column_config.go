@@ -1,4 +1,4 @@
-package tui
+package listsurface
 
 // Column name constants for configurable column visibility.
 const (

@@ -9,6 +9,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/route"
 	"github.com/sglavoie/tt/internal/tui/textfit"
@@ -17,8 +18,8 @@ import (
 )
 
 func (m *ProjectHubModel) View() tea.View {
-	width := max(m.width, 1)
-	height := max(m.height, 1)
+	width := max(m.Width(), 1)
+	height := max(m.Height(), 1)
 	title := m.renderProjectHubTitle(width)
 	header := title
 	if search := m.renderSearchBar(); search != "" {
@@ -33,9 +34,9 @@ func (m *ProjectHubModel) View() tea.View {
 	contentHeight := chrome.FullscreenContentHeightForBlocks(height, header, footer)
 	var content string
 	if m.actions != nil {
-		content = m.actions.render(width)
+		content = m.actions.Render(width)
 	} else {
-		content = NewListSurfaceRenderer(m.projectHubRenderConfig(contentHeight)).Render(m.surface)
+		content = listsurface.NewListSurfaceRenderer(m.projectHubRenderConfig(contentHeight)).Render(m.surface)
 	}
 	if notice := m.notice; notice != "" {
 		content = lipgloss.JoinVertical(
@@ -56,11 +57,11 @@ func (m *ProjectHubModel) View() tea.View {
 // the footer gate asking whether a preview pane fits reads the same widths the
 // frame is about to draw. Height is the caller's because only the render pass
 // has measured the header and footer around the list.
-func (m *ProjectHubModel) projectHubRenderConfig(height int) ListSurfaceRenderConfig {
-	return ListSurfaceRenderConfig{
-		Width:       max(m.width, 1),
+func (m *ProjectHubModel) projectHubRenderConfig(height int) listsurface.ListSurfaceRenderConfig {
+	return listsurface.ListSurfaceRenderConfig{
+		Width:       max(m.Width(), 1),
 		Height:      height,
-		Layout:      ListSurfaceLayoutAuto,
+		Layout:      listsurface.ListSurfaceLayoutAuto,
 		ShowPreview: true,
 		HideHelp:    true,
 		PreviewBody: m.renderProjectPreviewTasks,
@@ -169,9 +170,9 @@ func (m *ProjectHubModel) GetHelpItems() []operation.HelpItem {
 }
 
 // guidanceState reads the list state both the footer and `?` help project.
-func (m *ProjectHubModel) guidanceState() ListGuidanceState {
+func (m *ProjectHubModel) guidanceState() listsurface.ListGuidanceState {
 	if m.surface == nil {
-		return ListGuidanceState{}
+		return listsurface.ListGuidanceState{}
 	}
 	return m.surface.GuidanceState(m.HasActiveSearch())
 }
