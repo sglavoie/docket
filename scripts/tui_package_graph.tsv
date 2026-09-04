@@ -118,6 +118,20 @@
 #     `keymap.Binding` for the help projection, `status` for the notice, and
 #     `help` because `?` raises the viewer from this surface. Removing five
 #     edges can close no cycle.
+#   - `conflict` lost `presentation,taskref,pulse,coordinator,grammar,query,
+#     operation,route,help` in Session 2.26, when the package was extracted and
+#     its row could be read off real imports rather than predicted. Nine of the
+#     fifteen predicted edges were the cost of being a routed surface, and the
+#     browser is not one: it is an overlay with no `PresentationID` and no
+#     `InputStrategy`, so `presentation`, `route` and `operation` go unread, and
+#     it registers no operation of its own, so nothing raises `help` from it.
+#     It reads a `storage.ConflictRecord` rather than a task, so `taskref` and
+#     `query` go unread too, and it asks `coordinator` no question because
+#     nothing on the surface mutates. What remains is what a read-only overlay
+#     is written in: `listsurface` for the list and its compact render,
+#     `chrome`/`theme`/`textfit` for the box, the guidance footer and the wrap,
+#     `keymap.Binding` for the three footer labels, and `status` for the refusal
+#     a vanished bundle raises. Removing nine edges can close no cycle.
 #   - `textfit -> theme` is the first edge inside L0, added in Session 2.3 when
 #     the package was extracted. context.md gives `textfit` "Markdown,
 #     highlighting" and both are inherently styled: `markdown.go` picks the
@@ -146,7 +160,7 @@ notes	L7	presentation,theme,textfit,status,keymap,chrome,operation,route,listsur
 taskdetail	L7	presentation,theme,textfit,taskref,status,keymap,chrome,coordinator,operation,route,listsurface,help
 taskform	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,listsurface
 lens	L7	presentation,theme,textfit,status,keymap,chrome,query,operation,route,listsurface
-conflict	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help
+conflict	L7	theme,textfit,status,keymap,chrome,listsurface
 projecthub	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help,notes
 outliner	L7	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help,taskform,taskdetail,lens,projecthub
 tui	L8	presentation,theme,textfit,taskref,status,pulse,keymap,chrome,coordinator,grammar,query,operation,route,listsurface,help,notes,taskdetail,taskform,lens,conflict,projecthub,outliner

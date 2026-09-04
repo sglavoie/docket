@@ -123,8 +123,9 @@ the pre-split tree and is consistently pessimistic.
 | `taskdetail` | 6 | 0 | 0 |
 | `taskform` | 28 | 0 | 0 |
 | `lens` | 30 | 11 | 23 |
+| `conflict` | 4 | 1 | 1 |
 
-Running total against 631: **479**.
+Running total against 631: **480**.
 `grammar` contributes 58, not 154, because its two counted columns are on a
 different basis from every row above them:
 Session 2.11 counted 196 promoted names by including methods and struct fields,
@@ -985,6 +986,47 @@ prose names: it declares `*AppModel` methods, and the TSV outranks the brief.
 `presentation`, `theme`, `textfit`, `status`, `keymap`, `chrome`, `query`,
 `operation`, `route` and `listsurface`. It reaches neither `help` nor
 `coordinator`, `grammar`, `pulse` or `taskref`.
+
+`conflict` is the cheapest L7 row and the reason is structural rather than
+lucky: the browser is an overlay, not a routed surface. One production file
+moved, `conflict_browser.go`, and exactly one declaration was promoted —
+`ConflictBrowserEmptyStatus`, because the empty-store case is the one the shell
+decides *not* to mount the overlay for, so that line has to be said from outside
+the surface that owns it. Everything else the shell touches was already exported
+before the move: `ConflictBrowserModel`, `NewConflictBrowserModel`,
+`ConflictBrowserClosedMsg`, and the `HandleKey` / `Render` / `RenderWithin` /
+`CurrentRecord` members the `keyInterceptor`, `widthRenderer` and
+`viewportRenderer` interfaces read. Those three interfaces name only exported
+methods, so the 2.23 hazard — a shell interface literal over a lowercase method
+that silently stops matching once the type moves — does not arise here.
+
+`conflict_browser_test.go` split rather than moved: six model tests went down
+whole and the two that drive the shell — `TestOpenConflictBrowserReadsTheWorkspaceStore`,
+which launches the uitest driver, and `TestConflictBrowserOpensFromTheGoToChord`,
+which reads the operation registry — stayed as
+`internal/tui/conflict_browser_host_test.go`. The moved half needed no shell
+helper except `parseUITestKey`, and the five keys it presses are cheaper to
+build directly, so the package carries in-package `syntheticKey` /
+`syntheticSpecialKey` and `pressConflictBrowserKey` now takes a
+`tea.KeyPressMsg` instead of a name.
+
+`conflict_indicator.go` did *not* move, whatever the session brief's prose
+names, and unlike `lens_operation_handlers.go` the reason is not only the
+receiver. Two of its three declarations are `*OutlinerModel` methods, which Go
+pins to the outliner; the third, `conflictIndicatorText`, is pure and *could*
+have moved down. Moving it would have made the status strip's line an
+`outliner -> conflict` import, and `scripts/tui_package_graph.tsv` forbids that
+edge by name: `conflict` is a sibling of `outliner`, not a dependency of it,
+because `gc` is a shell-owned overlay. **A brief that names two files for one
+package is not always naming one package's worth of work — check the graph
+before assuming a pure function is free to follow its filename.**
+
+`conflict`'s real import set is six of the fifteen the template row allowed:
+`theme`, `textfit`, `status`, `keymap`, `chrome` and `listsurface`. Nine of the
+dropped edges are the cost of being a routed surface, which is exactly what an
+overlay with no `PresentationID`, no `InputStrategy` and no manifest entry is
+not: `presentation`, `route` and `operation` go unread, and nothing raises
+`help` from a surface that registers no operation.
 
 Reproduce the last column for one package with the oracle from session 2.4,
 which reports a clean boundary rather than a count:

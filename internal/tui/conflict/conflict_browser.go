@@ -1,4 +1,10 @@
-package tui
+// Package conflict is the read-only merge-conflict browser the `gc` chord
+// raises. It holds the overlay alone: reading the store and mounting it are the
+// shell's, in conflict_browser_host.go, and the status strip's outstanding count
+// is the outliner's, in conflict_indicator.go. That split is why this package is
+// a sibling of `outliner` rather than a dependency of it — the shell owns the
+// edge, and the strip's line never imports the browser.
+package conflict
 
 import (
 	"fmt"
@@ -42,9 +48,14 @@ const (
 	// conflictBrowserTimeFormat is the CLI's recorded-at format. The list drops
 	// the seconds the detail pane keeps, because a row is a locator and the pane
 	// is the record.
-	conflictBrowserTimeFormat     = "2006-01-02 15:04:05"
-	conflictBrowserRowTimeFormat  = "2006-01-02 15:04"
-	conflictBrowserEmptyStatus    = "No unresolved merge conflicts"
+	conflictBrowserTimeFormat    = "2006-01-02 15:04:05"
+	conflictBrowserRowTimeFormat = "2006-01-02 15:04"
+	// ConflictBrowserEmptyStatus is the refusal the shell sets when `gc` finds an
+	// empty store. It is exported because the host decides not to mount the
+	// overlay at all in that case, so the line has to be said from outside the
+	// surface that owns it.
+	ConflictBrowserEmptyStatus = "No unresolved merge conflicts"
+
 	conflictBrowserEmptyTitle     = "No unresolved merge conflicts"
 	conflictBrowserEmptyDetail    = "A conflict is recorded when a project changed under a mutation."
 	conflictBrowserMissingRecord  = "That row is not a recorded conflict"

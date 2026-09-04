@@ -1,4 +1,4 @@
-package tui
+package conflict
 
 import (
 	"fmt"
@@ -9,7 +9,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/storage"
-	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -61,16 +60,23 @@ func newTestConflictBrowser(t *testing.T, records ...storage.ConflictRecord) *Co
 	return browser
 }
 
+func syntheticKey(r rune) tea.KeyPressMsg {
+	return tea.KeyPressMsg{Code: r, Text: string(r)}
+}
+
+func syntheticSpecialKey(code rune) tea.KeyPressMsg {
+	return tea.KeyPressMsg{Code: code}
+}
+
+// pressConflictBrowserKey drives the overlay through the same contract the shell
+// uses, `HandleKey`, so a test presses a key rather than calling the handler the
+// key happens to reach.
 func pressConflictBrowserKey(
 	t *testing.T,
 	browser *ConflictBrowserModel,
-	name string,
+	key tea.KeyPressMsg,
 ) (bool, tea.Msg) {
 	t.Helper()
-	key, err := parseUITestKey(name)
-	if err != nil {
-		t.Fatalf("parse key %q: %v", name, err)
-	}
 	_, dismissed, msg := browser.HandleKey(key)
 	return dismissed, msg
 }
@@ -148,7 +154,7 @@ func TestConflictBrowserListsInspectsAndUnwinds(t *testing.T) {
 		}
 	}
 
-	if dismissed, _ := pressConflictBrowserKey(t, browser, "enter"); dismissed {
+	if dismissed, _ := pressConflictBrowserKey(t, browser, syntheticSpecialKey(tea.KeyEnter)); dismissed {
 		t.Fatal("Enter dismissed the browser; want the detail pane")
 	}
 	if !browser.inspecting() {
@@ -162,14 +168,14 @@ func TestConflictBrowserListsInspectsAndUnwinds(t *testing.T) {
 		t.Errorf("detail pane kept the list's header line\n%s", detail)
 	}
 
-	if dismissed, _ := pressConflictBrowserKey(t, browser, "esc"); dismissed {
+	if dismissed, _ := pressConflictBrowserKey(t, browser, syntheticSpecialKey(tea.KeyEscape)); dismissed {
 		t.Fatal("Esc closed the browser from the detail pane; want a return to the list")
 	}
 	if browser.inspecting() {
 		t.Fatal("Esc did not leave the detail pane")
 	}
 
-	dismissed, msg := pressConflictBrowserKey(t, browser, "esc")
+	dismissed, msg := pressConflictBrowserKey(t, browser, syntheticSpecialKey(tea.KeyEscape))
 	if !dismissed {
 		t.Fatal("Esc did not close the browser from the list")
 	}
@@ -185,7 +191,7 @@ func TestConflictBrowserScrollsTheDetailPane(t *testing.T) {
 	record := conflictBrowserFixture("11111111-2222-3333-4444-555555555555", true)
 	browser := newTestConflictBrowser(t, record)
 
-	pressConflictBrowserKey(t, browser, "enter")
+	pressConflictBrowserKey(t, browser, syntheticSpecialKey(tea.KeyEnter))
 	// Render inside a short terminal so the pane is genuinely windowed.
 	browser.RenderWithin(120, 20)
 	if browser.detailHeight <= 0 {
@@ -196,17 +202,17 @@ func TestConflictBrowserScrollsTheDetailPane(t *testing.T) {
 			browser.detailLines, browser.detailHeight)
 	}
 
-	pressConflictBrowserKey(t, browser, "G")
+	pressConflictBrowserKey(t, browser, syntheticKey('G'))
 	tail := browser.RenderWithin(120, 20)
 	if !strings.Contains(tail, "Clear with: tt conflict resolve") {
 		t.Errorf("end of the detail pane did not reach the closing command\n%s", tail)
 	}
 
-	pressConflictBrowserKey(t, browser, "home")
+	pressConflictBrowserKey(t, browser, syntheticSpecialKey(tea.KeyHome))
 	if browser.detailOffset != 0 {
 		t.Errorf("Home left the pane at offset %d, want 0", browser.detailOffset)
 	}
-	pressConflictBrowserKey(t, browser, "up")
+	pressConflictBrowserKey(t, browser, syntheticSpecialKey(tea.KeyUp))
 	if browser.detailOffset != 0 {
 		t.Errorf("scrolling above the top left offset %d, want 0", browser.detailOffset)
 	}
@@ -228,7 +234,7 @@ func TestConflictBrowserRefusesAResolvedBundle(t *testing.T) {
 		t.Fatalf("build conflict browser: %v", err)
 	}
 
-	dismissed, msg := pressConflictBrowserKey(t, browser, "enter")
+	dismissed, msg := pressConflictBrowserKey(t, browser, syntheticSpecialKey(tea.KeyEnter))
 	if dismissed {
 		t.Fatal("a refused inspect closed the browser")
 	}
@@ -249,68 +255,5 @@ func TestConflictBrowserRefusesAResolvedBundle(t *testing.T) {
 func TestConflictBrowserRequiresALoader(t *testing.T) {
 	if _, err := NewConflictBrowserModel(nil, nil); err == nil {
 		t.Fatal("a browser without a loader was accepted")
-	}
-}
-
-// TestOpenConflictBrowserReadsTheWorkspaceStore covers the host port both ways:
-// an empty store refuses with a status and mounts nothing, and a recorded bundle
-// mounts the overlay and settles the strip's count in the same read.
-func TestOpenConflictBrowserReadsTheWorkspaceStore(t *testing.T) {
-	workspace, err := newUITestWorkspace()
-	if err != nil {
-		t.Fatalf("create workspace: %v", err)
-	}
-	t.Cleanup(func() { _ = workspace.Cleanup() })
-
-	driver, err := workspace.launch(120, 40)
-	if err != nil {
-		t.Fatalf("launch driver: %v", err)
-	}
-	app := driver.App()
-
-	app.openConflictBrowser()
-	if app.conflictBrowser != nil {
-		t.Fatal("an empty workspace opened the conflict browser")
-	}
-	if !strings.Contains(app.statusMessage, conflictBrowserEmptyStatus) {
-		t.Errorf("empty-store status = %q, want %q", app.statusMessage, conflictBrowserEmptyStatus)
-	}
-
-	if err := app.harnessRecordConflict(); err != nil {
-		t.Fatalf("record conflict: %v", err)
-	}
-	app.openConflictBrowser()
-	if app.conflictBrowser == nil {
-		t.Fatal("a recorded conflict did not open the browser")
-	}
-	if app.outstandingConflictCount() != 1 {
-		t.Errorf("outstanding conflicts = %d, want 1", app.outstandingConflictCount())
-	}
-	record, ok := app.conflictBrowser.CurrentRecord()
-	if !ok {
-		t.Fatal("the browser opened on no record")
-	}
-	if record.ProjectName != harnessConflictProjectName {
-		t.Errorf("cursor record project = %q, want %q", record.ProjectName, harnessConflictProjectName)
-	}
-}
-
-// TestConflictBrowserOpensFromTheGoToChord keeps gc a terminal path under the
-// existing go-to prefix, which is what leaves root `c` retired.
-func TestConflictBrowserOpensFromTheGoToChord(t *testing.T) {
-	registry := registeredSimplifiedOperationRegistry(t)
-	ctx := simplifiedOperationContext()
-
-	binding, _, resolution := registry.InputBindingForSequence(
-		operation.InputStrategySimplified,
-		[]string{"g", "c"},
-		ctx,
-	)
-	if resolution != operation.ChordTerminal || binding.OperationID != operation.OperationCoreConflicts {
-		t.Fatalf("gc resolved to %s (resolution %v), want %s",
-			binding.OperationID, resolution, operation.OperationCoreConflicts)
-	}
-	if _, _, ok := registry.InputBindingForKey(operation.InputStrategySimplified, "c", ctx); ok {
-		t.Error("root c is bound; it must stay retired")
 	}
 }

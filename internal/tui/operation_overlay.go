@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/conflict"
 	"github.com/sglavoie/tt/internal/tui/lens"
 	"github.com/sglavoie/tt/internal/tui/listsurface"
 	"github.com/sglavoie/tt/internal/tui/operation"
@@ -92,7 +93,7 @@ func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 		// The peel already wrote the population fields; only the reload the facet
 		// owes is left, and it is the shell's because the projects are.
 		return true, m.projectFilterReloadCmd(typed.Status)
-	case ConflictBrowserClosedMsg:
+	case conflict.ConflictBrowserClosedMsg:
 		m.conflictBrowser = nil
 		return true, nil
 	case operation.OperationConfirmationRequestMsg:

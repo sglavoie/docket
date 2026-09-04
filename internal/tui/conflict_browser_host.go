@@ -5,6 +5,7 @@ import (
 
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/storage"
+	"github.com/sglavoie/tt/internal/tui/conflict"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
@@ -44,10 +45,10 @@ func (m *AppModel) openConflictBrowser() tea.Msg {
 	// both rather than leaving the strip a tick behind what the user just read.
 	m.outstandingConflicts = len(records)
 	if len(records) == 0 {
-		m.setInfoStatus(conflictBrowserEmptyStatus)
+		m.setInfoStatus(conflict.ConflictBrowserEmptyStatus)
 		return commandMessage(status.DefaultStatusTimeout())
 	}
-	browser, err := NewConflictBrowserModel(records, store.Load)
+	browser, err := conflict.NewConflictBrowserModel(records, store.Load)
 	if err != nil {
 		m.err = err
 		return commandMessage(status.DefaultStatusTimeout())

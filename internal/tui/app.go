@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/conflict"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
 	"github.com/sglavoie/tt/internal/tui/help"
 	"github.com/sglavoie/tt/internal/tui/lens"
@@ -242,7 +243,7 @@ type AppModel struct {
 	// The conflict browser sits beside the picker rather than inside that flow:
 	// it registers no operations, so nothing ever nests above it, and Esc is the
 	// whole of its lifecycle.
-	conflictBrowser *ConflictBrowserModel
+	conflictBrowser *conflict.ConflictBrowserModel
 
 	// A destructive contextual action prompts here and keeps its frozen request
 	// so cancellation returns to the sheet with nothing executed.

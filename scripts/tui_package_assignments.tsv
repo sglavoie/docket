@@ -296,6 +296,20 @@
 #     it: both declare *AppModel methods, which Go pins to the shell. This is
 #     the 2.21-2.24 precedent that this table outranks a brief's prose.
 #
+# Session 2.26 left three rows standing:
+#   - conflict_browser_host.go and conflict_indicator_shell.go stay tui, as this
+#     table has said since Session 1.5: both declare *AppModel methods.
+#   - conflict_indicator.go stays outliner, and Session 2.26's completion
+#     contract naming it among the conflict package's files does not change it.
+#     Two of its three declarations are *OutlinerModel methods, which Go pins to
+#     wherever that struct lands, and the third is the pure conflictIndicatorText
+#     they both reach through. Moving that one function down would have made the
+#     strip's line an outliner -> conflict import, and this graph forbids that
+#     edge by name: `conflict` is a sibling of `outliner`, not a dependency of
+#     it, because `gc` is a shell-owned overlay. The indicator and the browser
+#     read the same directory and share no code, so nothing is split by leaving
+#     them apart.
+#
 # Test files are deliberately absent. They follow the production file they
 # audit, except the uitest harness and the registry-union parity tests, which
 # context.md keeps in the root shell.
