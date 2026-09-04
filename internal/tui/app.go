@@ -205,18 +205,11 @@ type AppModel struct {
 	// overwrites that value on its way back to the executor.
 	projectTagActionSubject string
 
-	// Pending shell-owned task deletion confirmation. The canonical
-	// TaskDeleteRequestedMsg path stores the de-duplicated root refs plus the
-	// originating presentation here, prompts through taskDeleteConfirm, and only
-	// executes the atomic BulkCoordinator.DeleteLocators transaction on confirmation.
-	pendingTaskDelete taskDeletePending
-	taskDeleteConfirm chrome.ConfirmDialog
-
-	// Pending outline apply held while its deletions await confirmation. The
-	// buffer is parsed and the removals counted before the prompt opens, so the
-	// numbers on screen are the ones the transaction will act on.
-	pendingOutlineApply  outlineApplyPending
-	outlineDeleteConfirm chrome.ConfirmDialog
+	// taskMutation is the task-mutation cluster: the shell-owned task deletion
+	// and outline-apply confirmations, each holding the pending value its
+	// transaction is submitted from once the user confirms. The transactions
+	// themselves stay on AppModel. See task_mutation_controller.go.
+	taskMutation taskMutationController
 
 	// The contextual action flow is the only generic two-level overlay:
 	// action sheet -> value step. The sheet is host-agnostic; the host it was

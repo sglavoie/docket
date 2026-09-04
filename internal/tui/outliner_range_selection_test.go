@@ -136,7 +136,7 @@ func TestOperationContextClassifiesHiddenSelectionAndBulkSheetNamesIt(t *testing
 		{Task: tasks[0], Project: project},
 		{Task: tasks[1], Project: project},
 	}})
-	if got := app.taskDeleteConfirm.Prompt(); got != "Delete 2 tasks?" {
+	if got := app.taskMutation.deleteConfirm.Prompt(); got != "Delete 2 tasks?" {
 		t.Fatalf("hidden-target delete prompt = %q, want complete two-target count", got)
 	}
 }

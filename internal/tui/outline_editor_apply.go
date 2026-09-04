@@ -104,27 +104,9 @@ func (m *AppModel) handleOutlineEdited(msg OutlineEditedMsg) tea.Cmd {
 	// The counts are read here, from the project the buffer was dumped from, and
 	// the apply refuses any revision that moved since. What the prompt names is
 	// therefore still exactly what the commit removes.
-	m.pendingOutlineApply = pending
-	m.outlineDeleteConfirm.ShowWithDetail(
-		outlineDeleteConfirmAction,
-		outlineDeletePrompt(pending.project, pending.deletions),
-		outlineDeleteConfirmDetail(pending.deletions),
-	)
+	m.taskMutation.armOutlineApply(pending)
 	return nil
 }
-
-// outlineApplyPending is one parsed buffer held while its deletions await
-// confirmation. It carries the path so a declined apply can still name the file.
-type outlineApplyPending struct {
-	project      *models.Project
-	revision     string
-	path         string
-	scopeTaskIDs []string
-	lines        []app.OutlinePlanLine
-	deletions    []*models.Task
-}
-
-const outlineDeleteConfirmAction = "outline-delete"
 
 // applyOutlineBuffer submits one parsed buffer. Both routes into it — a buffer
 // that deleted nothing and a confirmed deletion — run this same code, so the
@@ -161,34 +143,21 @@ func (m *AppModel) applyOutlineBuffer(pending outlineApplyPending) tea.Cmd {
 // priority as the canonical task delete: while it is active it consumes every
 // key, so nothing leaks into the Outliner underneath.
 func (m *AppModel) handleOutlineDeleteConfirmKey(key string) (bool, tea.Cmd) {
-	if !m.outlineDeleteConfirm.IsActive() {
-		return false, nil
-	}
-	confirmed, handled := m.outlineDeleteConfirm.HandleKey(key)
-	if !handled {
-		return false, nil
-	}
-	if confirmed {
-		pending := m.pendingOutlineApply
-		m.clearPendingOutlineApply()
-		return true, m.applyOutlineBuffer(pending)
-	}
-	switch key {
-	case "n", "N", "esc":
-		path := m.pendingOutlineApply.path
-		m.clearPendingOutlineApply()
+	switch m.taskMutation.resolveOutlineKey(key) {
+	case confirmAnswerConfirmed:
+		return true, m.applyOutlineBuffer(m.taskMutation.takeOutlineApply())
+	case confirmAnswerCanceled:
 		// Declining cancels the whole apply, edits included: a buffer that half
 		// landed would leave the user guessing which half. The file stays, so the
 		// same edits can be resubmitted after the removals are put back.
-		m.setWarningStatus("Outline not applied · buffer kept at " + path)
+		m.setWarningStatus("Outline not applied · buffer kept at " + m.taskMutation.takeOutlineApply().path)
 		return true, status.DefaultStatusTimeout()
+	case confirmAnswerSwallowed:
+		return true, nil
+	case confirmAnswerUnarmed:
+		return false, nil
 	}
-	return true, nil
-}
-
-func (m *AppModel) clearPendingOutlineApply() {
-	m.pendingOutlineApply = outlineApplyPending{}
-	m.outlineDeleteConfirm.Cancel()
+	return false, nil
 }
 
 // outlineDeletedTasks names the dumped tasks no line claims, in dump order.

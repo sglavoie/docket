@@ -77,13 +77,13 @@ func TestOutlineEditedArmsTheDeleteConfirmBeforeApplying(t *testing.T) {
 	if stub.calls != 0 {
 		t.Fatalf("the apply ran before the prompt (%d calls)", stub.calls)
 	}
-	if !model.outlineDeleteConfirm.IsActive() {
+	if !model.taskMutation.outlineConfirm.IsActive() {
 		t.Fatal("a removed line did not arm the confirmation")
 	}
-	if got, want := model.outlineDeleteConfirm.Prompt(), "Delete task #4 from Sonar?"; got != want {
+	if got, want := model.taskMutation.outlineConfirm.Prompt(), "Delete task #4 from Sonar?"; got != want {
 		t.Errorf("prompt = %q, want %q", got, want)
 	}
-	detail := model.outlineDeleteConfirm.Detail
+	detail := model.taskMutation.outlineConfirm.Detail
 	if detail == nil || detail.TotalCount != 1 || !detail.UndoHint {
 		t.Fatalf("detail = %+v, want one task with the undo hint", detail)
 	}
@@ -126,10 +126,10 @@ func TestOutlineDeleteConfirmDeclineKeepsTheBufferAndChangesNothing(t *testing.T
 	if stub.calls != 0 {
 		t.Fatalf("a declined confirmation still applied the buffer (%d calls)", stub.calls)
 	}
-	if model.outlineDeleteConfirm.IsActive() {
+	if model.taskMutation.outlineConfirm.IsActive() {
 		t.Error("the confirmation survived the decline")
 	}
-	if model.pendingOutlineApply.project != nil {
+	if model.taskMutation.pendingOutline.project != nil {
 		t.Error("the pending apply survived the decline")
 	}
 	if _, err := os.Stat(path); err != nil {
@@ -176,7 +176,7 @@ func TestOutlineDeleteConfirmCommitsEditsAndDeletesTogether(t *testing.T) {
 	if req.Lines[0].Title != "Ship auth rewrite v2" {
 		t.Errorf("the edit beside the deletion was lost: %q", req.Lines[0].Title)
 	}
-	if model.outlineDeleteConfirm.IsActive() || model.pendingOutlineApply.project != nil {
+	if model.taskMutation.outlineConfirm.IsActive() || model.taskMutation.pendingOutline.project != nil {
 		t.Error("the pending apply outlived the commit")
 	}
 }
@@ -194,7 +194,7 @@ func TestOutlineEditedAppliesWithoutAConfirmWhenNothingIsAbsent(t *testing.T) {
 		Buffer: strings.Replace(buffer, "Retry budget", "Retry budget v2", 1),
 	})
 
-	if model.outlineDeleteConfirm.IsActive() {
+	if model.taskMutation.outlineConfirm.IsActive() {
 		t.Fatal("a buffer that deleted nothing armed the confirmation")
 	}
 	if stub.calls != 1 {
@@ -221,10 +221,10 @@ func TestOutlineEditedEmptiedBufferDeletesEveryTask(t *testing.T) {
 	if model.currentView() == presentation.ViewOutlineErrors {
 		t.Fatal("an emptied buffer was still rejected as a syntax error")
 	}
-	if !model.outlineDeleteConfirm.IsActive() {
+	if !model.taskMutation.outlineConfirm.IsActive() {
 		t.Fatal("an emptied buffer did not arm the confirmation")
 	}
-	if got, want := model.outlineDeleteConfirm.Prompt(), "Delete 4 tasks from Sonar?"; got != want {
+	if got, want := model.taskMutation.outlineConfirm.Prompt(), "Delete 4 tasks from Sonar?"; got != want {
 		t.Errorf("prompt = %q, want %q", got, want)
 	}
 
@@ -260,7 +260,7 @@ func TestOutlineEditedRefusesAnEmptyBufferThatDeletesNothing(t *testing.T) {
 	if model.currentView() != presentation.ViewOutlineErrors {
 		t.Fatalf("view = %v, want the errors surface", model.currentView())
 	}
-	if model.outlineDeleteConfirm.IsActive() {
+	if model.taskMutation.outlineConfirm.IsActive() {
 		t.Error("a buffer that deletes nothing armed the confirmation")
 	}
 	if stub.calls != 0 {

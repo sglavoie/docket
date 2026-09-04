@@ -479,10 +479,10 @@ func TestCtrlEscCancelsShellOwnedConfirmations(t *testing.T) {
 	app.pendingProjectArchive = project
 	app.pendingProjectArchiveArchive = true
 	app.projectArchiveConfirm.Show(projecthub.ProjectArchiveConfirmAction, "Archive?")
-	app.pendingTaskDelete = taskDeletePending{
+	app.taskMutation.pendingDelete = taskDeletePending{
 		roots: []TaskProjectRef{{Task: project.Tasks[0], Project: project}},
 	}
-	app.taskDeleteConfirm.Show(taskDeleteConfirmAction, "Delete?")
+	app.taskMutation.deleteConfirm.Show(taskDeleteConfirmAction, "Delete?")
 
 	jumpToOutlinerRootForTest(app)
 
@@ -491,7 +491,7 @@ func TestCtrlEscCancelsShellOwnedConfirmations(t *testing.T) {
 		app.pendingProjectArchiveArchive {
 		t.Fatal("Ctrl+Esc left a project archive confirmation pending")
 	}
-	if app.taskDeleteConfirm.IsActive() || len(app.pendingTaskDelete.roots) != 0 {
+	if app.taskMutation.deleteConfirm.IsActive() || len(app.taskMutation.pendingDelete.roots) != 0 {
 		t.Fatal("Ctrl+Esc left a task delete confirmation pending")
 	}
 }

@@ -62,13 +62,6 @@ type TaskDeleteRequestedMsg struct {
 	Selection listsurface.SelectionCounts
 }
 
-// taskDeletePending holds the canonicalized roots and origin for an in-flight
-// shell-owned task deletion awaiting confirmation.
-type taskDeletePending struct {
-	roots    []TaskProjectRef
-	selected []TaskProjectRef
-}
-
 type taskDeleteImpact struct {
 	selectedRoots     int
 	descendants       int
@@ -77,8 +70,6 @@ type taskDeleteImpact struct {
 	storedAttachments int
 	linkedAttachments int
 }
-
-const taskDeleteConfirmAction = "task-delete"
 
 // handleTaskDeleteRequested canonicalizes the requested roots, resolves the
 // confirmation prompt, and arms the shell-owned confirm dialog. It never mutates
@@ -95,14 +86,7 @@ func (m *AppModel) handleTaskDeleteRequested(msg TaskDeleteRequestedMsg) {
 		selection = listsurface.SelectionCounts{Total: len(requested), Visible: len(requested)}
 	}
 	impact := calculateTaskDeleteImpact(roots, selection)
-	m.pendingTaskDelete = taskDeletePending{
-		roots: roots, selected: requested,
-	}
-	m.taskDeleteConfirm.ShowWithDetail(
-		taskDeleteConfirmAction,
-		taskDeletePrompt(roots),
-		taskDeleteConfirmDetail(roots, impact),
-	)
+	m.taskMutation.armDelete(roots, requested, impact)
 }
 
 // canonicalizeTaskDeleteRoots drops refs with a nil task/project or blank ID and
@@ -276,21 +260,15 @@ func taskDeletePrompt(roots []TaskProjectRef) string {
 // leaks into the underlying view. It returns handled=false only when no delete
 // confirmation is pending.
 func (m *AppModel) handleTaskDeleteConfirmKey(key string) (bool, tea.Cmd) {
-	if !m.taskDeleteConfirm.IsActive() {
-		return false, nil
-	}
-	confirmed, handled := m.taskDeleteConfirm.HandleKey(key)
-	if !handled {
-		return false, nil
-	}
-	if confirmed {
+	switch m.taskMutation.resolveDeleteKey(key) {
+	case confirmAnswerConfirmed:
 		return true, m.confirmTaskDelete()
+	case confirmAnswerCanceled, confirmAnswerSwallowed:
+		return true, nil
+	case confirmAnswerUnarmed:
+		return false, nil
 	}
-	switch key {
-	case "n", "N", "esc":
-		m.clearPendingTaskDelete()
-	}
-	return true, nil
+	return false, nil
 }
 
 // confirmTaskDelete executes the canonical deletion transaction for the pending
@@ -302,9 +280,9 @@ func (m *AppModel) handleTaskDeleteConfirmKey(key string) (bool, tea.Cmd) {
 // through untouched, leaving state intact on failure). An artifact-build error
 // aborts before any mutation and preserves the pending selection's task data.
 func (m *AppModel) confirmTaskDelete() tea.Cmd {
-	roots := m.pendingTaskDelete.roots
-	selected := m.pendingTaskDelete.selected
-	m.clearPendingTaskDelete()
+	pending := m.taskMutation.takeDelete()
+	roots := pending.roots
+	selected := pending.selected
 	if len(roots) == 0 {
 		return nil
 	}
@@ -316,12 +294,4 @@ func (m *AppModel) confirmTaskDelete() tea.Cmd {
 		selected = roots
 	}
 	return coordinator.FinalizeStaleSelectionBatchResult(cmd, taskLocatorsFromTaskRefs(selected))
-}
-
-// clearPendingTaskDelete discards the pending roots and dismisses the confirm
-// dialog. It runs on cancellation and after the transaction is dispatched so the
-// shell never re-prompts for a stale selection.
-func (m *AppModel) clearPendingTaskDelete() {
-	m.pendingTaskDelete = taskDeletePending{}
-	m.taskDeleteConfirm.Cancel()
 }

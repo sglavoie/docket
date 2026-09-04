@@ -174,10 +174,10 @@ func TestHandleTaskDeleteRequestedArmsConfirmWithoutMutating(t *testing.T) {
 	m.handleTaskDeleteRequested(TaskDeleteRequestedMsg{
 		Refs: []TaskProjectRef{{Task: e.parent, Project: e.alpha}},
 	})
-	if !m.taskDeleteConfirm.IsActive() {
+	if !m.taskMutation.deleteConfirm.IsActive() {
 		t.Fatal("confirm dialog should be active after request")
 	}
-	if got := m.taskDeleteConfirm.Prompt(); got != "Delete task #1?" {
+	if got := m.taskMutation.deleteConfirm.Prompt(); got != "Delete task #1?" {
 		t.Errorf("prompt = %q, want %q", got, "Delete task #1?")
 	}
 	if m.renderConfirmDialogOverlay() == "" {
@@ -191,7 +191,7 @@ func TestHandleTaskDeleteRequestedArmsConfirmWithoutMutating(t *testing.T) {
 	// An empty/invalid request is a no-op that leaves nothing armed.
 	m2 := e.appModel()
 	m2.handleTaskDeleteRequested(TaskDeleteRequestedMsg{Refs: []TaskProjectRef{{Task: nil, Project: nil}}})
-	if m2.taskDeleteConfirm.IsActive() {
+	if m2.taskMutation.deleteConfirm.IsActive() {
 		t.Error("empty request must not arm the confirm")
 	}
 }
@@ -213,7 +213,7 @@ func TestTaskDeleteCancelViaNAndEscKeepsData(t *testing.T) {
 		if cmd != nil {
 			t.Errorf("%q cancel should not dispatch a delete command", key)
 		}
-		if m.taskDeleteConfirm.IsActive() || len(m.pendingTaskDelete.roots) != 0 {
+		if m.taskMutation.deleteConfirm.IsActive() || len(m.taskMutation.pendingDelete.roots) != 0 {
 			t.Errorf("%q should clear the pending deletion", key)
 		}
 		if reloaded := e.reload(t, e.alpha); reloaded.GetTaskByID(e.parent.ID) == nil {
@@ -233,7 +233,7 @@ func TestTaskDeleteConfirmSwallowsOtherKeys(t *testing.T) {
 	if !handled {
 		t.Fatal("modal confirm must swallow unrelated keys")
 	}
-	if !m.taskDeleteConfirm.IsActive() {
+	if !m.taskMutation.deleteConfirm.IsActive() {
 		t.Fatal("prompt should remain active after an unrelated key")
 	}
 	if reloaded := e.reload(t, e.alpha); reloaded.GetTaskByID(e.parent.ID) == nil {
@@ -256,7 +256,7 @@ func TestTaskDeleteSingleRootCommitsSubtreePlanningAndUndo(t *testing.T) {
 	if !handled || cmd == nil {
 		t.Fatal("y should confirm and dispatch the delete transaction")
 	}
-	if m.taskDeleteConfirm.IsActive() {
+	if m.taskMutation.deleteConfirm.IsActive() {
 		t.Error("confirm should be dismissed once the transaction is dispatched")
 	}
 
@@ -317,7 +317,7 @@ func TestTaskDeleteNestedRootsPromptAndRemoval(t *testing.T) {
 			{Task: e.child, Project: e.alpha},
 		},
 	})
-	if got := m.taskDeleteConfirm.Prompt(); got != "Delete task #1?" {
+	if got := m.taskMutation.deleteConfirm.Prompt(); got != "Delete task #1?" {
 		t.Errorf("nested-root prompt = %q, want canonical root prompt %q", got, "Delete task #1?")
 	}
 
@@ -352,7 +352,7 @@ func TestTaskDeleteConfirmationReportsFrozenCountsAndAttachmentConsequences(t *t
 		},
 		Selection: listsurface.SelectionCounts{Total: 2, Visible: 1, Hidden: 1},
 	})
-	detail := m.taskDeleteConfirm.Detail
+	detail := m.taskMutation.deleteConfirm.Detail
 	if detail == nil {
 		t.Fatal("delete confirmation omitted rich impact detail")
 	}
@@ -371,7 +371,7 @@ func TestTaskDeleteConfirmationReportsFrozenCountsAndAttachmentConsequences(t *t
 	if !detail.UndoHint {
 		t.Error("delete confirmation omitted undo availability")
 	}
-	if rendered := ansi.Strip(m.taskDeleteConfirm.RenderOverlay(180)); !strings.Contains(rendered, "Undo available (u)") {
+	if rendered := ansi.Strip(m.taskMutation.deleteConfirm.RenderOverlay(180)); !strings.Contains(rendered, "Undo available (u)") {
 		t.Errorf("rendered delete confirmation omitted undo hint:\n%s", rendered)
 	}
 }
@@ -388,7 +388,7 @@ func TestTaskDeleteCrossProjectSelection(t *testing.T) {
 			{Task: e.lone, Project: e.beta},
 		},
 	})
-	if got := m.taskDeleteConfirm.Prompt(); got != "Delete 2 tasks?" {
+	if got := m.taskMutation.deleteConfirm.Prompt(); got != "Delete 2 tasks?" {
 		t.Errorf("prompt = %q, want %q", got, "Delete 2 tasks?")
 	}
 

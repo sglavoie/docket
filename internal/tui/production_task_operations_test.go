@@ -203,7 +203,7 @@ func TestTaskDeleteOperationRoutesThroughCanonicalConfirmation(t *testing.T) {
 	}
 
 	m.handleTaskDeleteRequested(request)
-	if got := m.taskDeleteConfirm.Prompt(); got != "Delete task #1?" {
+	if got := m.taskMutation.deleteConfirm.Prompt(); got != "Delete task #1?" {
 		t.Fatalf("prompt = %q, want the canonical single-root grammar", got)
 	}
 	handled, cmd := m.handleGlobalKeyPress(keyPress("y"))

@@ -91,11 +91,8 @@ func (m *AppModel) renderConfirmDialogOverlay() string {
 	if m.projectParkConfirm.IsActive() {
 		return m.projectParkConfirm.RenderOverlay(m.viewNav.width)
 	}
-	if m.taskDeleteConfirm.IsActive() {
-		return m.taskDeleteConfirm.RenderOverlay(m.viewNav.width)
-	}
-	if m.outlineDeleteConfirm.IsActive() {
-		return m.outlineDeleteConfirm.RenderOverlay(m.viewNav.width)
+	if overlay, armed := m.taskMutation.confirmOverlay(m.viewNav.width); armed {
+		return overlay
 	}
 	if m.operationConfirm.IsActive() {
 		return m.operationConfirm.RenderOverlay(m.viewNav.width)
