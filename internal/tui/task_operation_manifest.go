@@ -25,10 +25,10 @@ func taskDirectOperationManifest() []operation.OperationManifestEntry {
 	return []operation.OperationManifestEntry{
 		{ID: operationTaskAttachments, Label: "Attachments", Aliases: []string{"add attachment"}, Category: taskActionCategoryContent, Risk: operation.OperationRiskMutation, DirectOnly: true},
 		{ID: operationTaskComments, Label: "Comments", Aliases: []string{"add comment"}, Category: taskActionCategoryContent, Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: operationTaskSetState, Label: "Set State", Aliases: []string{"workflow state", "status"}, Provider: operation.ValueProviderState, Category: taskActionCategoryPlan, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
-		{ID: operationTaskSetPriority, Label: "Set Priority", Aliases: []string{"importance"}, Provider: operation.ValueProviderPriority, Category: taskActionCategoryPlan, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
-		{ID: operationTaskSetDueDate, Label: "Set Due or Defer", Aliases: []string{"deadline", "due date", "defer", "hide until"}, Provider: operation.ValueProviderDate, Category: taskActionCategoryPlan, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
-		{ID: operationTaskSetTags, Label: "Set Tags & Context", Aliases: []string{"labels", "context"}, Provider: operation.ValueProviderTags, Category: taskActionCategoryOrganize, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
+		{ID: operation.OperationTaskSetState, Label: "Set State", Aliases: []string{"workflow state", "status"}, Provider: operation.ValueProviderState, Category: taskActionCategoryPlan, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
+		{ID: operation.OperationTaskSetPriority, Label: "Set Priority", Aliases: []string{"importance"}, Provider: operation.ValueProviderPriority, Category: taskActionCategoryPlan, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
+		{ID: operation.OperationTaskSetDueDate, Label: "Set Due or Defer", Aliases: []string{"deadline", "due date", "defer", "hide until"}, Provider: operation.ValueProviderDate, Category: taskActionCategoryPlan, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
+		{ID: operation.OperationTaskSetTags, Label: "Set Tags & Context", Aliases: []string{"labels", "context"}, Provider: operation.ValueProviderTags, Category: taskActionCategoryOrganize, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operationTaskTogglePin, Label: "Toggle Pin", Aliases: []string{"pin task", "unpin task", "keep on top"}, Category: taskActionCategoryOrganize, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
 		{ID: operation.OperationCoreEdit, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
 		{ID: operation.OperationCoreEditDescription, Category: taskActionCategoryContent, Core: true, DirectOnly: true},
@@ -36,17 +36,17 @@ func taskDirectOperationManifest() []operation.OperationManifestEntry {
 		{ID: operationTaskCopyTitle, Label: "Copy Title", Aliases: []string{"yank title", "clipboard title"}, Category: taskActionCategoryContent, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
 		{ID: operationTaskCopyTitleDescription, Label: "Copy Title and Description", Aliases: []string{"copy with description", "yank title and description"}, Category: taskActionCategoryContent, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
 		{ID: operationTaskCopyDetails, Label: "Copy Description", Aliases: []string{"yank description", "clipboard description"}, Category: taskActionCategoryContent, Risk: operation.OperationRiskReadOnly, DirectOnly: true},
-		{ID: operationTaskSetParent, Label: "Set Parent", Aliases: []string{"reparent", "move under", "detach from parent"}, Provider: operation.ValueProviderParent, Category: taskActionCategoryRelationships, Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: operationTaskAdoptChildren, Label: "Adopt Children", Aliases: []string{"adopt", "add children", "nest tasks under this one"}, Provider: operation.ValueProviderChild, Category: taskActionCategoryRelationships, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operation.OperationTaskSetParent, Label: "Set Parent", Aliases: []string{"reparent", "move under", "detach from parent"}, Provider: operation.ValueProviderParent, Category: taskActionCategoryRelationships, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operation.OperationTaskAdoptChildren, Label: "Adopt Children", Aliases: []string{"adopt", "add children", "nest tasks under this one"}, Provider: operation.ValueProviderChild, Category: taskActionCategoryRelationships, Risk: operation.OperationRiskMutation, DirectOnly: true},
 		// Bulk, because the preselection is tri-state rather than a checked list:
 		// N tasks carrying N different stored sets is an objection to a replacement
 		// picker, not to this one, and the tags editor already answers it the same
 		// way. A row nobody agreed on stays indeterminate and is emitted by neither
 		// half of the patch, so the tasks that disagree keep disagreeing.
-		{ID: operationTaskReferences, Label: "Set Dependencies", Aliases: []string{"depends on", "references", "link tasks", "soft reference"}, Provider: operation.ValueProviderTaskReference, Category: taskActionCategoryRelationships, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
-		{ID: operationTaskMoveToProject, Label: "Move to Project", Aliases: []string{"move project", "change project", "relocate task"}, Provider: operation.ValueProviderProject, Category: taskActionCategoryRelationships, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
-		{ID: operationTaskIndent, Label: "Indent", Aliases: []string{"nest under previous task"}, Category: taskActionCategoryRelationships, Risk: operation.OperationRiskMutation, DirectOnly: true},
-		{ID: operationTaskOutdent, Label: "Outdent", Aliases: []string{"move to parent level"}, Category: taskActionCategoryRelationships, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operation.OperationTaskReferences, Label: "Set Dependencies", Aliases: []string{"depends on", "references", "link tasks", "soft reference"}, Provider: operation.ValueProviderTaskReference, Category: taskActionCategoryRelationships, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
+		{ID: operation.OperationTaskMoveToProject, Label: "Move to Project", Aliases: []string{"move project", "change project", "relocate task"}, Provider: operation.ValueProviderProject, Category: taskActionCategoryRelationships, Risk: operation.OperationRiskMutation, Bulk: true, DirectOnly: true},
+		{ID: operation.OperationTaskIndent, Label: "Indent", Aliases: []string{"nest under previous task"}, Category: taskActionCategoryRelationships, Risk: operation.OperationRiskMutation, DirectOnly: true},
+		{ID: operation.OperationTaskOutdent, Label: "Outdent", Aliases: []string{"move to parent level"}, Category: taskActionCategoryRelationships, Risk: operation.OperationRiskMutation, DirectOnly: true},
 		{ID: operationTaskNewChild, Label: "New Child Task", Aliases: []string{"create child task", "add child", "new subtask"}, Category: taskActionCategoryRelationships, Risk: operation.OperationRiskMutation, DirectOnly: true},
 	}
 }

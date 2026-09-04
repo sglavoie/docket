@@ -26,8 +26,8 @@ func contextActionTestDescriptor(id operation.OperationID, label string) operati
 func contextActionTestEngine(
 	t *testing.T,
 	descriptors []operation.OperationDescriptor,
-	handlers map[operation.OperationID]OperationHandler,
-) (*operation.OperationRegistry, *OperationExecutor) {
+	handlers map[operation.OperationID]operation.OperationHandler,
+) (*operation.OperationRegistry, *operation.OperationExecutor) {
 	t.Helper()
 	registry := operation.NewOperationRegistry()
 	for _, descriptor := range descriptors {
@@ -35,9 +35,9 @@ func contextActionTestEngine(
 			t.Fatalf("register %s: %v", descriptor.ID, err)
 		}
 	}
-	executor := NewOperationExecutor(registry)
+	executor := operation.NewOperationExecutor(registry)
 	for id, handler := range handlers {
-		if err := executor.Register(OperationBinding{
+		if err := executor.Register(operation.OperationBinding{
 			OperationID: id,
 			Handler:     handler,
 		}); err != nil {
@@ -82,13 +82,13 @@ func TestContextActionSheetPreservesHostOrderAndDropsUnavailableOperations(t *te
 }
 
 func TestContextActionSheetFreezesHostContextAndValue(t *testing.T) {
-	var invocation OperationInvocation
+	var invocation operation.OperationInvocation
 	registry, executor := contextActionTestEngine(t, []operation.OperationDescriptor{
 		contextActionTestDescriptor("test.act", "Act"),
-	}, map[operation.OperationID]OperationHandler{
-		"test.act": func(got OperationInvocation) OperationHandlerResult {
+	}, map[operation.OperationID]operation.OperationHandler{
+		"test.act": func(got operation.OperationInvocation) operation.OperationHandlerResult {
 			invocation = got
-			return OperationHandlerResult{Status: "acted"}
+			return operation.OperationHandlerResult{Status: "acted"}
 		},
 	})
 
@@ -134,12 +134,12 @@ func TestContextActionSheetRetainsFailureAndClosesOnlyOnCompletion(t *testing.T)
 	registry, executor := contextActionTestEngine(t, []operation.OperationDescriptor{
 		contextActionTestDescriptor("test.fail", "Fail"),
 		contextActionTestDescriptor("test.ok", "Ok"),
-	}, map[operation.OperationID]OperationHandler{
-		"test.fail": func(OperationInvocation) OperationHandlerResult {
-			return OperationHandlerResult{Err: errors.New("handler refused")}
+	}, map[operation.OperationID]operation.OperationHandler{
+		"test.fail": func(operation.OperationInvocation) operation.OperationHandlerResult {
+			return operation.OperationHandlerResult{Err: errors.New("handler refused")}
 		},
-		"test.ok": func(OperationInvocation) OperationHandlerResult {
-			return OperationHandlerResult{Status: "done"}
+		"test.ok": func(operation.OperationInvocation) operation.OperationHandlerResult {
+			return operation.OperationHandlerResult{Status: "done"}
 		},
 	})
 
@@ -183,10 +183,10 @@ func TestContextActionSheetEscReturnsToHostWithoutExecuting(t *testing.T) {
 	executed := false
 	registry, executor := contextActionTestEngine(t, []operation.OperationDescriptor{
 		contextActionTestDescriptor("test.act", "Act"),
-	}, map[operation.OperationID]OperationHandler{
-		"test.act": func(OperationInvocation) OperationHandlerResult {
+	}, map[operation.OperationID]operation.OperationHandler{
+		"test.act": func(operation.OperationInvocation) operation.OperationHandlerResult {
 			executed = true
-			return OperationHandlerResult{}
+			return operation.OperationHandlerResult{}
 		},
 	})
 
@@ -227,11 +227,11 @@ func TestContextActionSheetConfirmationCancelReturnsToSheet(t *testing.T) {
 	if err := app.operationRegistry.Register(descriptor); err != nil {
 		t.Fatalf("register: %v", err)
 	}
-	if err := app.operationExecutor.Register(OperationBinding{
+	if err := app.operationExecutor.Register(operation.OperationBinding{
 		OperationID: descriptor.ID,
-		Handler: func(OperationInvocation) OperationHandlerResult {
+		Handler: func(operation.OperationInvocation) operation.OperationHandlerResult {
 			executed = true
-			return OperationHandlerResult{Status: "destroyed"}
+			return operation.OperationHandlerResult{Status: "destroyed"}
 		},
 	}); err != nil {
 		t.Fatalf("bind: %v", err)
@@ -350,7 +350,7 @@ func TestContextActionSheetTaskAdapterKeepsStableItemIdentity(t *testing.T) {
 	}
 	sheet, err := NewTaskActionSheetModel(
 		registry,
-		NewOperationExecutor(registry),
+		operation.NewOperationExecutor(registry),
 		taskActionTestContext(),
 		"Selected task",
 	)

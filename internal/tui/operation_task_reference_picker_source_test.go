@@ -87,7 +87,7 @@ func TestReferencePickerKeepsUnreachableStoredTargetsEnabled(t *testing.T) {
 	}
 
 	picker, err := newOperationValuePickerModel(
-		OperationExecutionRequest{},
+		operation.OperationExecutionRequest{},
 		operation.ValueProviderTaskReference,
 		"Set Dependencies",
 		"",

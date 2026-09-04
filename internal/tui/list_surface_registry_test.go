@@ -104,18 +104,18 @@ func TestListSurfacePreviewAndActionsUseOperationRegistryAndExecutor(t *testing.
 		t.Fatalf("action descriptors = %+v, want inspect", descriptors)
 	}
 
-	executor := NewOperationExecutor(registry)
-	var invocation OperationInvocation
-	if err := executor.Register(OperationBinding{
+	executor := operation.NewOperationExecutor(registry)
+	var invocation operation.OperationInvocation
+	if err := executor.Register(operation.OperationBinding{
 		OperationID: inspectID,
-		Handler: func(got OperationInvocation) OperationHandlerResult {
+		Handler: func(got operation.OperationInvocation) operation.OperationHandlerResult {
 			invocation = got
-			return OperationHandlerResult{Status: "inspected"}
+			return operation.OperationHandlerResult{Status: "inspected"}
 		},
 	}); err != nil {
 		t.Fatalf("register executor binding: %v", err)
 	}
-	result := model.ExecuteAction(executor, OperationExecutionRequest{
+	result := model.ExecuteAction(executor, operation.OperationExecutionRequest{
 		ID:      inspectID,
 		Context: operation.CommandContext{},
 	})
@@ -126,7 +126,7 @@ func TestListSurfacePreviewAndActionsUseOperationRegistryAndExecutor(t *testing.
 		t.Fatalf("executor invocation = %+v", invocation)
 	}
 
-	result = model.ExecuteAction(executor, OperationExecutionRequest{
+	result = model.ExecuteAction(executor, operation.OperationExecutionRequest{
 		ID:      shareID,
 		Context: operation.CommandContext{},
 	})

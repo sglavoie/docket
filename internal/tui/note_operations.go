@@ -94,7 +94,7 @@ func (m *AppModel) registerNoteOperations() error {
 		return err
 	}
 	for _, descriptor := range noteOperationDescriptors() {
-		if err := m.registerOperation(descriptor, OperationBinding{
+		if err := m.registerOperation(descriptor, operation.OperationBinding{
 			SingleHandler:       m.executeNoteOperation,
 			DelegateTransaction: true,
 		}); err != nil {
@@ -163,20 +163,20 @@ func (m *AppModel) noteOperationPath(resolved resolvedNote) string {
 }
 
 func (m *AppModel) executeNoteOperation(
-	invocation OperationInvocation,
+	invocation operation.OperationInvocation,
 	target operation.OperationTarget,
-) OperationHandlerResult {
+) operation.OperationHandlerResult {
 	if target.Entity.Kind != operation.EntityKindNote {
-		return OperationHandlerResult{
+		return operation.OperationHandlerResult{
 			Err: fmt.Errorf("%s needs a note target, got %s", invocation.Descriptor.Label, target.Entity),
 		}
 	}
 	resolved, err := m.resolveNoteTarget(target.Entity)
 	if err != nil {
-		return OperationHandlerResult{Err: err}
+		return operation.OperationHandlerResult{Err: err}
 	}
 	if resolved.Note.ParseError != "" && noteOperationsUnavailableWithParseError[invocation.Descriptor.ID] {
-		return OperationHandlerResult{
+		return operation.OperationHandlerResult{
 			Err: fmt.Errorf(
 				"%s is unavailable while %s has a parse error; edit the note to repair it",
 				invocation.Descriptor.Label,
@@ -189,19 +189,19 @@ func (m *AppModel) executeNoteOperation(
 
 //nolint:gocyclo,exhaustive // One auditable switch keeps the note catalog in a single place.
 func (m *AppModel) noteOperationResult(
-	invocation OperationInvocation,
+	invocation operation.OperationInvocation,
 	resolved resolvedNote,
-) OperationHandlerResult {
+) operation.OperationHandlerResult {
 	note := resolved.Note
-	command := func(cmd tea.Cmd) OperationHandlerResult {
-		return OperationHandlerResult{Message: OperationCommandResultMsg{Cmd: cmd}}
+	command := func(cmd tea.Cmd) operation.OperationHandlerResult {
+		return operation.OperationHandlerResult{Message: operation.OperationCommandResultMsg{Cmd: cmd}}
 	}
 
 	switch invocation.Descriptor.ID {
 	case operationNoteOpen:
 		editor, err := external.ResolveNoteEditor()
 		if err != nil {
-			return OperationHandlerResult{Err: err}
+			return operation.OperationHandlerResult{Err: err}
 		}
 		return command(noteEditCmd(note, resolved.Location, m.noteOperationDir(resolved), editor))
 
@@ -209,7 +209,7 @@ func (m *AppModel) noteOperationResult(
 		return m.renameNoteOperation(invocation, resolved)
 
 	case operationNoteMove:
-		return OperationHandlerResult{Message: ShowNotesManagerMsg{
+		return operation.OperationHandlerResult{Message: ShowNotesManagerMsg{
 			Scope: AllNotesScope(),
 			Focus: NoteRowIdentity{
 				Location: resolved.Location,
@@ -232,35 +232,35 @@ func (m *AppModel) noteOperationResult(
 		}, "Deleted: "+note.Title))
 
 	default:
-		return OperationHandlerResult{Err: fmt.Errorf("%w: %s", ErrOperationHandler, invocation.Descriptor.ID)}
+		return operation.OperationHandlerResult{Err: fmt.Errorf("%w: %s", operation.ErrOperationHandler, invocation.Descriptor.ID)}
 	}
 }
 
 // copyNoteValue is the one clipboard seam both note copies share. Neither carries
 // a message, so the handler's Status is the whole outcome and the shell's status
 // strip is what confirms the copy on every host that lists a note row.
-func copyNoteValue(value string, status string) OperationHandlerResult {
+func copyNoteValue(value string, status string) operation.OperationHandlerResult {
 	if err := copyTextToClipboard(value); err != nil {
-		return OperationHandlerResult{Err: fmt.Errorf("copy failed: %w", err)}
+		return operation.OperationHandlerResult{Err: fmt.Errorf("copy failed: %w", err)}
 	}
-	return OperationHandlerResult{Status: status}
+	return operation.OperationHandlerResult{Status: status}
 }
 
 // renameNoteOperation renames through the same atomic create/delete note
 // mutation the Notes manager uses. The new title arrives as the invocation
 // value because the host owns the prompt.
 func (m *AppModel) renameNoteOperation(
-	invocation OperationInvocation,
+	invocation operation.OperationInvocation,
 	resolved resolvedNote,
-) OperationHandlerResult {
+) operation.OperationHandlerResult {
 	title := strings.TrimSpace(operationStringValue(invocation))
 	if title == "" {
-		return OperationHandlerResult{Err: fmt.Errorf("%s requires a new title", invocation.Descriptor.Label)}
+		return operation.OperationHandlerResult{Err: fmt.Errorf("%s requires a new title", invocation.Descriptor.Label)}
 	}
 	if title == resolved.Note.Title {
-		return OperationHandlerResult{Status: "Rename canceled: same title"}
+		return operation.OperationHandlerResult{Status: "Rename canceled: same title"}
 	}
-	return OperationHandlerResult{Message: OperationCommandResultMsg{
+	return operation.OperationHandlerResult{Message: operation.OperationCommandResultMsg{
 		Cmd: noteMutationCmd(m.appService, resolved.Location, app.NoteBatchRequest{
 			Operations: []app.NoteMutationRequest{{
 				Kind:     app.NoteRename,
@@ -276,7 +276,7 @@ func (m *AppModel) renameNoteOperation(
 
 // operationStringValue reads a trimmed string invocation value, which is how
 // hosts hand a prompted name to a rename operation.
-func operationStringValue(invocation OperationInvocation) string {
+func operationStringValue(invocation operation.OperationInvocation) string {
 	if !invocation.HasValue {
 		return ""
 	}

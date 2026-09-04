@@ -176,7 +176,7 @@ func TestChordBindingsStayPrefixFreeExecutableAndLabeled(t *testing.T) {
 			t.Errorf("binding %v references unregistered operation %s", binding.DisplayKey, binding.OperationID)
 			continue
 		}
-		if len(executor.bindings[binding.OperationID]) == 0 {
+		if len(executor.Bindings(binding.OperationID)) == 0 {
 			t.Errorf("key %s binds unexecutable operation %s", binding.DisplayKey, binding.OperationID)
 		}
 		if !binding.HasPresetValue {

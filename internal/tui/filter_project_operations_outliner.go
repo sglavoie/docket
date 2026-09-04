@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -14,7 +15,7 @@ import (
 // the population claiming different things. Like the row facets, it mutates
 // nothing: applyFilterClauseEdit in filter_operations.go is the one writer.
 func (m *OutlinerModel) populationFilterClauseEdit(
-	invocation OperationInvocation,
+	invocation operation.OperationInvocation,
 ) (filterClauseEdit, error) {
 	switch invocation.Descriptor.ID {
 	case operationFilterProjectTags:

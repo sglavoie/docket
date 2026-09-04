@@ -93,7 +93,7 @@ func outlinerMenuSpecs(activeMode chrome.OutlinerModeID, menuBarVisible, advisor
 				menuSeparator(),
 				{OperationID: operationTaskAttachments},
 				{OperationID: operationTaskComments},
-				{OperationID: operationTaskReferences},
+				{OperationID: operation.OperationTaskReferences},
 				menuSeparator(),
 				{OperationID: operationTaskCopyTitle},
 				{OperationID: operationTaskCopyDetails},

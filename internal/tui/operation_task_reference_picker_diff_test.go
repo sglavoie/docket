@@ -188,7 +188,7 @@ func TestReferencePickerPreservesConcurrentReferenceChanges(t *testing.T) {
 			if !done {
 				t.Fatal("Enter did not close the picker")
 			}
-			selected, ok := msg.(OperationValueSelectedMsg)
+			selected, ok := msg.(operation.OperationValueSelectedMsg)
 			if !ok {
 				t.Fatalf("Enter emitted %T, want a value selection", msg)
 			}

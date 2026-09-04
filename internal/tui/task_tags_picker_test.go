@@ -237,7 +237,7 @@ func TestOperationTagPickerJumpsBetweenSections(t *testing.T) {
 
 func TestOperationTagPickerJumpKeysStayOutOfNonTagPickers(t *testing.T) {
 	picker, err := newOperationValuePickerModel(
-		OperationExecutionRequest{ID: operationTaskSetPriority},
+		operation.OperationExecutionRequest{ID: operation.OperationTaskSetPriority},
 		operation.ValueProviderPriority,
 		"Set Priority",
 		"Task",

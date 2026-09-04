@@ -170,27 +170,27 @@ func (m *AppModel) moveDestinationName(projectID string) string {
 }
 
 func (m *AppModel) executeBulkTaskValueOperation(
-	invocation OperationInvocation,
-) OperationHandlerResult {
+	invocation operation.OperationInvocation,
+) operation.OperationHandlerResult {
 	identities := make([]taskref.TaskIdentity, 0, len(invocation.Targets.Targets))
 	locators := make([]app.TaskLocator, 0, len(invocation.Targets.Targets))
 	for _, target := range invocation.Targets.Targets {
 		if !target.Task.Valid() {
-			return OperationHandlerResult{Err: fmt.Errorf("operation %s resolved an invalid task", invocation.Descriptor.ID)}
+			return operation.OperationHandlerResult{Err: fmt.Errorf("operation %s resolved an invalid task", invocation.Descriptor.ID)}
 		}
 		identities = append(identities, target.Task)
 		locators = append(locators, target.Task.Locator())
 	}
-	cmdResult := func(cmd tea.Cmd) OperationHandlerResult {
-		return OperationHandlerResult{Message: OperationCommandResultMsg{Cmd: cmd}}
+	cmdResult := func(cmd tea.Cmd) operation.OperationHandlerResult {
+		return operation.OperationHandlerResult{Message: operation.OperationCommandResultMsg{Cmd: cmd}}
 	}
 	count := len(locators)
 
 	switch invocation.Descriptor.ID {
-	case operationTaskSetState:
+	case operation.OperationTaskSetState:
 		state, ok := invocation.Value.(models.WorkflowState)
 		if !ok || !state.IsValid() {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid state value")}
+			return operation.OperationHandlerResult{Err: fmt.Errorf("invalid state value")}
 		}
 		return cmdResult(m.secondaryFeatures.Bulk.TransitionLocators(
 			locators,
@@ -199,16 +199,16 @@ func (m *AppModel) executeBulkTaskValueOperation(
 				return fmt.Sprintf("Changed %d task(s) to %s", changed, state)
 			},
 		))
-	case operationTaskSetPriority:
+	case operation.OperationTaskSetPriority:
 		priority, ok := invocation.Value.(int)
 		if !ok || priority < 0 || priority > models.PriorityMax {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid priority value")}
+			return operation.OperationHandlerResult{Err: fmt.Errorf("invalid priority value")}
 		}
 		return cmdResult(m.secondaryFeatures.Bulk.SetPriorityLocators(locators, priority))
-	case operationTaskSetDueDate:
+	case operation.OperationTaskSetDueDate:
 		value, ok := invocation.Value.(operation.OperationDateValue)
 		if !ok {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid date value")}
+			return operation.OperationHandlerResult{Err: fmt.Errorf("invalid date value")}
 		}
 		if value.Deferred {
 			return cmdResult(m.secondaryFeatures.Bulk.DeferLocators(locators, cloneOperationDate(value.Date)))
@@ -220,10 +220,10 @@ func (m *AppModel) executeBulkTaskValueOperation(
 			locators,
 			*cloneOperationDate(value.Date),
 		))
-	case operationTaskMoveToProject:
+	case operation.OperationTaskMoveToProject:
 		projectID, ok := invocation.Value.(string)
 		if !ok || strings.TrimSpace(projectID) == "" {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid project value")}
+			return operation.OperationHandlerResult{Err: fmt.Errorf("invalid project value")}
 		}
 		return cmdResult(m.moveTaskToProjectCmd(
 			identities,
@@ -231,7 +231,7 @@ func (m *AppModel) executeBulkTaskValueOperation(
 			m.captureOutlinerRelocationForTargets(invocation.Targets),
 		))
 	default:
-		return OperationHandlerResult{
+		return operation.OperationHandlerResult{
 			Err: fmt.Errorf("operation %s is not available for %d selected tasks", invocation.Descriptor.ID, count),
 		}
 	}

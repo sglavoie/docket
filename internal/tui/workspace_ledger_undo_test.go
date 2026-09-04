@@ -202,7 +202,7 @@ func newLedgerUndoApp(t *testing.T, dataDir string, project *models.Project, tas
 		operationRegistry: operation.NewOperationRegistry(),
 		navigation:        NewNavigationState(),
 	}
-	appModel.operationExecutor = NewOperationExecutor(appModel.operationRegistry)
+	appModel.operationExecutor = operation.NewOperationExecutor(appModel.operationRegistry)
 	outliner := NewOutlinerModel(project, manager, runtime)
 	outliner.rebuildRows()
 	outliner.moveCursorToTask(taskID)

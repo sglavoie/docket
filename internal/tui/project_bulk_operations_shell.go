@@ -17,7 +17,7 @@ func (m *AppModel) registerProjectBulkOperations() error {
 		return err
 	}
 	for _, descriptor := range projectBulkOperationDescriptors() {
-		if err := m.registerOperation(descriptor, OperationBinding{
+		if err := m.registerOperation(descriptor, operation.OperationBinding{
 			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilityProjectHub),
 			BulkHandler:          executeProjectBulkTags,
 			// The replacement tag sets are computed against freshly resolved
@@ -34,16 +34,16 @@ func (m *AppModel) registerProjectBulkOperations() error {
 }
 
 func executeProjectBulkTags(
-	invocation OperationInvocation,
+	invocation operation.OperationInvocation,
 	targets []operation.OperationTarget,
-) OperationHandlerResult {
+) operation.OperationHandlerResult {
 	message := ProjectBulkTagsMsg{
 		ProjectIDs: make([]string, 0, len(targets)),
 		Action:     projectBulkTagActions[invocation.Descriptor.ID],
 	}
 	for _, target := range targets {
 		if target.Entity.Kind != operation.EntityKindProject || target.ProjectID == "" {
-			return OperationHandlerResult{Err: fmt.Errorf(
+			return operation.OperationHandlerResult{Err: fmt.Errorf(
 				"%s needs project targets, got %s",
 				invocation.Descriptor.Label,
 				target.Entity,
@@ -52,15 +52,15 @@ func executeProjectBulkTags(
 		message.ProjectIDs = append(message.ProjectIDs, target.ProjectID)
 	}
 	if invocation.Descriptor.ValueProviderID == "" {
-		return OperationHandlerResult{Message: message}
+		return operation.OperationHandlerResult{Message: message}
 	}
 	tag, ok := invocation.Value.(string)
 	if !ok {
-		return OperationHandlerResult{Err: fmt.Errorf(
+		return operation.OperationHandlerResult{Err: fmt.Errorf(
 			"%s needs a tag name",
 			invocation.Descriptor.Label,
 		)}
 	}
 	message.Tag = tag
-	return OperationHandlerResult{Message: message}
+	return operation.OperationHandlerResult{Message: message}
 }

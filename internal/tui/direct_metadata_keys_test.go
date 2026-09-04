@@ -18,7 +18,7 @@ func executeDirectPath(
 	model *AppModel,
 	ctx operation.CommandContext,
 	path []string,
-) OperationExecutionResult {
+) operation.OperationExecutionResult {
 	t.Helper()
 	binding, descriptor, resolution := model.operationRegistry.InputBindingForSequence(
 		operation.InputStrategySimplified,
@@ -28,7 +28,7 @@ func executeDirectPath(
 	if resolution != operation.ChordTerminal {
 		t.Fatalf("key path %v resolution = %v, want terminal", path, resolution)
 	}
-	return model.operationExecutor.Execute(OperationExecutionRequest{
+	return model.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:       descriptor.ID,
 		Context:  ctx,
 		Value:    binding.PresetValue,
@@ -47,16 +47,16 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 		want  operation.OperationID
 		value any
 	}{
-		{path: []string{"!", "0"}, want: operationTaskSetPriority, value: 0},
-		{path: []string{"!", "1"}, want: operationTaskSetPriority, value: 1},
-		{path: []string{"!", "3"}, want: operationTaskSetPriority, value: 3},
-		{path: []string{"$", "i"}, want: operationTaskSetState, value: models.StateInbox},
-		{path: []string{"$", "g"}, want: operationTaskSetState, value: models.StateDoing},
-		{path: []string{"$", "w"}, want: operationTaskSetState, value: models.StateWaiting},
-		{path: []string{"$", "p"}, want: operationTaskSetState, value: models.StatePaused},
-		{path: []string{"$", "m"}, want: operationTaskSetState, value: models.StateSomeday},
-		{path: []string{"$", "d"}, want: operationTaskSetState, value: models.StateDone},
-		{path: []string{"$", "c"}, want: operationTaskSetState, value: models.StateCanceled},
+		{path: []string{"!", "0"}, want: operation.OperationTaskSetPriority, value: 0},
+		{path: []string{"!", "1"}, want: operation.OperationTaskSetPriority, value: 1},
+		{path: []string{"!", "3"}, want: operation.OperationTaskSetPriority, value: 3},
+		{path: []string{"$", "i"}, want: operation.OperationTaskSetState, value: models.StateInbox},
+		{path: []string{"$", "g"}, want: operation.OperationTaskSetState, value: models.StateDoing},
+		{path: []string{"$", "w"}, want: operation.OperationTaskSetState, value: models.StateWaiting},
+		{path: []string{"$", "p"}, want: operation.OperationTaskSetState, value: models.StatePaused},
+		{path: []string{"$", "m"}, want: operation.OperationTaskSetState, value: models.StateSomeday},
+		{path: []string{"$", "d"}, want: operation.OperationTaskSetState, value: models.StateDone},
+		{path: []string{"$", "c"}, want: operation.OperationTaskSetState, value: models.StateCanceled},
 	}
 
 	for _, preset := range presets {
@@ -126,8 +126,8 @@ func TestDirectMetadataKeysCarryTheirPresetsAndOpenTheirPickers(t *testing.T) {
 		want     operation.OperationID
 		provider operation.ValueProviderID
 	}{
-		{key: "@", want: operationTaskSetDueDate, provider: operation.ValueProviderDate},
-		{key: "#", want: operationTaskSetTags, provider: operation.ValueProviderTags},
+		{key: "@", want: operation.OperationTaskSetDueDate, provider: operation.ValueProviderDate},
+		{key: "#", want: operation.OperationTaskSetTags, provider: operation.ValueProviderTags},
 	} {
 		ctx := taskOperationTestContext(loose, project)
 		result := executeDirectPath(t, model, ctx, []string{picker.key})

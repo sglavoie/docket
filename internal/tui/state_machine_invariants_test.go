@@ -264,7 +264,7 @@ func wireInvariantSimplifiedRoot(t *testing.T, app *AppModel) {
 func wireInvariantSimplifiedOutliner(t *testing.T, app *AppModel, outliner *OutlinerModel) {
 	t.Helper()
 	app.operationRegistry = operation.NewOperationRegistry()
-	app.operationExecutor = NewOperationExecutor(app.operationRegistry)
+	app.operationExecutor = operation.NewOperationExecutor(app.operationRegistry)
 	app.crossOutliner = outliner
 	app.views.Register(presentation.ViewCrossProjectOutliner, outliner)
 	if err := app.registerCoreInputOperations(); err != nil {
@@ -406,7 +406,7 @@ func newFocusToggleTestAppState(t *testing.T) (*AppModel, *models.Task) {
 		operationRegistry: operation.NewOperationRegistry(),
 		navigation:        NewNavigationState(),
 	}
-	appModel.operationExecutor = NewOperationExecutor(appModel.operationRegistry)
+	appModel.operationExecutor = operation.NewOperationExecutor(appModel.operationRegistry)
 	outliner := NewOutlinerModel(project, manager, runtime)
 	outliner.rebuildRows()
 	outliner.moveCursorToTask(task.ID)

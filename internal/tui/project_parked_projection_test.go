@@ -9,6 +9,7 @@ import (
 	"github.com/sglavoie/tt/internal/storage"
 	"github.com/sglavoie/tt/internal/testutil"
 	"github.com/sglavoie/tt/internal/tui/chrome"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -187,7 +188,7 @@ func TestParkedProjectLeavesTagFilterFacet(t *testing.T) {
 		projects: map[string]*models.Project{active.ID: active, parked.ID: parked},
 	}
 
-	picker, err := shell.newFilterTagsPicker(OperationExecutionRequest{})
+	picker, err := shell.newFilterTagsPicker(operation.OperationExecutionRequest{})
 	if err != nil {
 		t.Fatalf("newFilterTagsPicker: %v", err)
 	}

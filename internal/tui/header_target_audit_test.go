@@ -248,7 +248,7 @@ func TestHeaderTargetCoreOperationsRefuseInsteadOfNoOp(t *testing.T) {
 			t.Errorf("operation %s is not registered", id)
 			continue
 		}
-		result := app.executeCoreInputOperation(OperationInvocation{Descriptor: descriptor, Context: ctx})
+		result := app.executeCoreInputOperation(operation.OperationInvocation{Descriptor: descriptor, Context: ctx})
 		if result.Err == nil {
 			t.Errorf("core operation %s silently did nothing from a project header cursor", id)
 			continue

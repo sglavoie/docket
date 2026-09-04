@@ -47,10 +47,10 @@ func entityOperationApp(t *testing.T, titles ...string) (*AppModel, *models.Proj
 	return model, project
 }
 
-func executeEntityOperation(app *AppModel, id operation.OperationID, entity operation.EntityIdentity) OperationExecutionResult {
+func executeEntityOperation(app *AppModel, id operation.OperationID, entity operation.EntityIdentity) operation.OperationExecutionResult {
 	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 	ctx.CurrentEntity = entity
-	return app.operationExecutor.Execute(OperationExecutionRequest{
+	return app.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:      id,
 		Context: ctx,
 	})
@@ -76,7 +76,7 @@ func TestNoteOperationsResolveTheNoteAtExecution(t *testing.T) {
 	filename := onlyNoteFilename(t, model, app.ProjectNoteLocation(project.ID))
 
 	result := executeEntityOperation(model, operationNoteOpen, operation.ProjectNoteEntity(project.ID, filename))
-	open, ok := result.Message.(OperationCommandResultMsg)
+	open, ok := result.Message.(operation.OperationCommandResultMsg)
 	if !ok || open.Cmd == nil {
 		t.Fatalf("open note emitted %#v, want an external-editor command", result.Message)
 	}
@@ -157,7 +157,7 @@ func TestNoteDeleteRunsOnlyAfterConfirmation(t *testing.T) {
 	}
 
 	confirmed := model.operationExecutor.Execute(result.ConfirmationRequired.Request)
-	command, ok := confirmed.Message.(OperationCommandResultMsg)
+	command, ok := confirmed.Message.(operation.OperationCommandResultMsg)
 	if !ok || command.Cmd == nil {
 		t.Fatalf("confirmed note delete emitted %#v, want a mutation command", confirmed.Message)
 	}

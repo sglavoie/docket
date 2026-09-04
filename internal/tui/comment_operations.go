@@ -178,7 +178,7 @@ func validateCommentOperationOnePath(strategy operation.InputStrategy) error {
 // subview coordinator's transaction.
 func (m *AppModel) registerCommentOperations() error {
 	for _, descriptor := range commentOperationDescriptors() {
-		if err := m.registerOperation(descriptor, OperationBinding{
+		if err := m.registerOperation(descriptor, operation.OperationBinding{
 			RequiredCapabilities:     operation.NewCapabilitySet(operation.CapabilityCommentsPanel),
 			Handler:                  m.executeCommentOperation,
 			DelegateTargetResolution: true,
@@ -197,13 +197,13 @@ func (m *AppModel) registerCommentOperations() error {
 // mounted panel rather than rebuilding one.
 //
 //nolint:exhaustive // Only the Comments grammar's operations are registered with this handler.
-func (m *AppModel) executeCommentOperation(invocation OperationInvocation) OperationHandlerResult {
+func (m *AppModel) executeCommentOperation(invocation operation.OperationInvocation) operation.OperationHandlerResult {
 	panel := m.activeCommentsPanel()
 	if panel == nil {
-		return OperationHandlerResult{Err: fmt.Errorf("the Comments panel is not open")}
+		return operation.OperationHandlerResult{Err: fmt.Errorf("the Comments panel is not open")}
 	}
-	command := func(cmd tea.Cmd) OperationHandlerResult {
-		return OperationHandlerResult{Message: OperationCommandResultMsg{Cmd: cmd}}
+	command := func(cmd tea.Cmd) operation.OperationHandlerResult {
+		return operation.OperationHandlerResult{Message: operation.OperationCommandResultMsg{Cmd: cmd}}
 	}
 	switch invocation.Descriptor.ID {
 	case operationCommentAdd:
@@ -218,14 +218,14 @@ func (m *AppModel) executeCommentOperation(invocation OperationInvocation) Opera
 		panel.copyAllCommentsText()
 	case operationCommentActions:
 		if err := m.openCommentsActionSheet(invocation.Context, panel); err != nil {
-			return OperationHandlerResult{Err: err}
+			return operation.OperationHandlerResult{Err: err}
 		}
 	case operationCommentDelete:
 		panel.confirmDeleteSelectedComment()
 	case operationCommentExpand:
 		panel.expandSelectedComment()
 	}
-	return OperationHandlerResult{}
+	return operation.OperationHandlerResult{}
 }
 
 // activeCommentsPanel returns the mounted panel, or nil when the route moved on.

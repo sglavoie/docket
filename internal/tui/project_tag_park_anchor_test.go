@@ -37,7 +37,7 @@ func parkTagMembersThroughProjectTagVocabulary(
 	}
 	app.projectTagActionSubject = tag
 	result := app.executeProjectTagVocabulary(
-		OperationInvocation{Descriptor: operation.OperationDescriptor{ID: operationProjectTagParkAll}},
+		operation.OperationInvocation{Descriptor: operation.OperationDescriptor{ID: operationProjectTagParkAll}},
 		targets,
 	)
 	if result.Err != nil {

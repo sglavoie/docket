@@ -115,7 +115,7 @@ the pre-split tree and is consistently pessimistic.
 | `coordinator` | 5 | 3 | 3 |
 | `grammar` | 59 | 196 | 154 |
 | `query` | 69 | 68 | 62 |
-| `operation` | 124 | 106 so far (Session 2.14 of three) | — |
+| `operation` | 124 | 116 so far (Sessions 2.14–2.15 of three) | — |
 
 Running total against 631: **222**. `grammar` contributes 58, not 154, because
 its two counted columns are on a different basis from every row above them:
@@ -317,10 +317,14 @@ executor, or a list-surface identifier, so `internal/tui/operation` has no test
 files and no `main_test.go` until 2.16. The running total above therefore stays
 at 222 for two more sessions.
 
-106 of the projected 124 are package-level declarations, plus six members the
+116 of the projected 124 are package-level declarations, plus six members the
 column does not count: `OperationKeyBinding.Paths`, `OperationRegistry.Register`
 and the four `ValueProviderID` predicates `TextEntry`, `TagEntry`, `DateEntry`
-and `AcceptsPresetValue`. Exactly one promotion was withdrawn under step 3 —
+and `AcceptsPresetValue`. Session 2.15 spends ten of the 116, all of them the
+`operationTask*` `OperationID` block promoted to `OperationTask*`; the executor
+itself promotes nothing, because every type it names was already exported for
+the shell registrars that build them. Exactly one promotion was withdrawn under
+step 3 —
 `cloneInputStrategy`, which `input_strategy_lookup.go` still calls inside the
 package and whose only consumer outside it was
 `direct_grammar_one_path_test.go`, which now declares the four-line
@@ -350,6 +354,30 @@ judgement call:
 shell: every entry names a surface strategy and a surface validator, and both
 live above `operation`. `ValidateOperationOnePath` moves down with the manifest
 it reads; `surfaceOperationGates()` does not.
+
+Session 2.15's third is the smallest of the three and mints no file at all.
+`operation_executor.go`, `operation_executor_types.go` and
+`operation_value_provider.go` each moved whole, exactly as the assignment table
+reads them, and `(*AppModel).registerOperation` stayed in
+`operation_executor_shell.go` where Session 1.4 had already put it — the
+dual-receiver split done a phase early is what made the executor half a move
+rather than a carve. 765 references across 112 files were requalified, and the
+only unexported declarations the boundary crossed were the ten `operationTask*`
+`OperationID` constants, promoted on Session 2.14's `OperationCore*` precedent.
+`operation_value_provider.go` now holds those ten identifiers and the two value
+messages and nothing that provides a value; the concrete picker factories are in
+the shell by `context.md`'s second inversion, so the filename is left over from
+what the file used to be rather than a description of what it is.
+
+One declaration is new rather than promoted, and it is the `coordinator` trap
+again: `OperationExecutor.Bindings` is what the root registry-union parity
+audits read instead of the unexported `bindings` map, and those three tests
+cannot move down, because only the shell holds every registration in one place.
+Added as a bare accessor it would be a production-unreachable exported method
+and `scripts/dead_code.sh` would say so, so `bindingFor` selects through it —
+the same fix `NewActivityCoordinator` and `NewAttachmentCoordinator` needed. It
+returns a copy, which costs one slice allocation per `Execute` and matches the
+defensive copies `Register` already makes of `Views` and `RequiredCapabilities`.
 
 Two graph edges the whitelist did not have, both recorded in
 `scripts/tui_package_graph.tsv`. `operation` needs `query`, because

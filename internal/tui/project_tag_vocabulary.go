@@ -86,7 +86,7 @@ func (m *AppModel) registerProjectTagVocabularyOperations() error {
 		return err
 	}
 	for _, descriptor := range projectTagVocabularyDescriptors() {
-		if err := m.registerOperation(descriptor, OperationBinding{
+		if err := m.registerOperation(descriptor, operation.OperationBinding{
 			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
 			BulkHandler:          m.executeProjectTagVocabulary,
 			// The bulk tag pipeline already owns the park prompt, the single
@@ -104,11 +104,11 @@ func (m *AppModel) registerProjectTagVocabularyOperations() error {
 // tag request. The subject tag comes from the shell rather than the frozen sheet
 // value because a nested value step overwrites that value on its way back.
 func (m *AppModel) executeProjectTagVocabulary(
-	invocation OperationInvocation,
+	invocation operation.OperationInvocation,
 	targets []operation.OperationTarget,
-) OperationHandlerResult {
+) operation.OperationHandlerResult {
 	if m.projectTagActionSubject == "" {
-		return OperationHandlerResult{Err: fmt.Errorf("no project tag is selected")}
+		return operation.OperationHandlerResult{Err: fmt.Errorf("no project tag is selected")}
 	}
 	message := ProjectBulkTagsMsg{
 		ProjectIDs: make([]string, 0, len(targets)),
@@ -117,7 +117,7 @@ func (m *AppModel) executeProjectTagVocabulary(
 	}
 	for _, target := range targets {
 		if target.Entity.Kind != operation.EntityKindProject || target.ProjectID == "" {
-			return OperationHandlerResult{Err: fmt.Errorf(
+			return operation.OperationHandlerResult{Err: fmt.Errorf(
 				"%s needs project targets, got %s",
 				invocation.Descriptor.Label,
 				target.Entity,
@@ -128,7 +128,7 @@ func (m *AppModel) executeProjectTagVocabulary(
 	if invocation.Descriptor.ValueProviderID != "" {
 		replacement, ok := invocation.Value.(string)
 		if !ok {
-			return OperationHandlerResult{Err: fmt.Errorf(
+			return operation.OperationHandlerResult{Err: fmt.Errorf(
 				"%s needs a tag name",
 				invocation.Descriptor.Label,
 			)}
@@ -136,7 +136,7 @@ func (m *AppModel) executeProjectTagVocabulary(
 		message.Replacement = replacement
 	}
 	m.projectTagActionSubject = ""
-	return OperationHandlerResult{Message: message}
+	return operation.OperationHandlerResult{Message: message}
 }
 
 // openProjectTagVocabularyActions freezes the tag's member projects into the
@@ -204,11 +204,11 @@ func (m *AppModel) projectTagMembers(tag string) []*models.Project {
 // projectTagDestinationValue skips the destination prompt unless removing the
 // tag would leave a member carrying no tags at all. Only a stranded project has
 // a question to answer; everything else keeps the tags it already has.
-func (m *AppModel) projectTagDestinationValue(OperationInvocation) OperationValueProviderResult {
+func (m *AppModel) projectTagDestinationValue(operation.OperationInvocation) operation.OperationValueProviderResult {
 	if len(m.strandedProjectTagMembers()) == 0 {
-		return OperationValueProviderResult{Value: "", HasValue: true}
+		return operation.OperationValueProviderResult{Value: "", HasValue: true}
 	}
-	return OperationValueProviderResult{}
+	return operation.OperationValueProviderResult{}
 }
 
 func (m *AppModel) strandedProjectTagMembers() []*models.Project {
@@ -229,7 +229,7 @@ func (m *AppModel) strandedProjectTagMembers() []*models.Project {
 // Leaving them untagged is a legitimate answer, so it is a row rather than a
 // cancellation.
 func (m *AppModel) newProjectTagDestinationPicker(
-	request OperationExecutionRequest,
+	request operation.OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
 	subject := m.projectTagActionSubject
 	if subject == "" {

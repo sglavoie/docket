@@ -101,16 +101,16 @@ func (m *AppModel) checklistStartApplicable(ctx operation.CommandContext) bool {
 // row grammar uses, then expands the checklist so the item it just created is
 // visible and the row keys take over from here.
 func (m *AppModel) executeChecklistStart(
-	invocation OperationInvocation,
-) OperationHandlerResult {
+	invocation operation.OperationInvocation,
+) operation.OperationHandlerResult {
 	identity := operation.CurrentTaskIdentity(invocation.Context)
 	task, _ := m.taskAndProjectForIdentity(identity)
 	if task == nil {
-		return OperationHandlerResult{Err: errors.New("task is no longer available")}
+		return operation.OperationHandlerResult{Err: errors.New("task is no longer available")}
 	}
 	text, err := checklistItemText(invocation)
 	if err != nil {
-		return OperationHandlerResult{Err: err}
+		return operation.OperationHandlerResult{Err: err}
 	}
 	if out, ok := m.outlinerPrimary(); ok && out != nil {
 		out.setChecklistExpanded(identity, true)
@@ -129,7 +129,7 @@ func (m *AppModel) registerChecklistRowOperations() error {
 		return err
 	}
 	for _, descriptor := range checklistRowOperationDescriptors() {
-		if err := m.registerOperation(descriptor, OperationBinding{
+		if err := m.registerOperation(descriptor, operation.OperationBinding{
 			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
 			Applicability:        descriptor.Applicability,
 			Handler:              m.executeChecklistRowOperation,
@@ -141,7 +141,7 @@ func (m *AppModel) registerChecklistRowOperations() error {
 		}
 	}
 	start := m.checklistStartOperationDescriptor()
-	return m.registerOperation(start, OperationBinding{
+	return m.registerOperation(start, operation.OperationBinding{
 		RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
 		Applicability:        start.Applicability,
 		Handler:              m.executeChecklistStart,
@@ -154,20 +154,20 @@ func (m *AppModel) registerChecklistRowOperations() error {
 // through the command context the invocation carries, so a row rebuild between
 // the key press and a nested value step cannot retarget the action.
 func (m *AppModel) executeChecklistRowOperation(
-	invocation OperationInvocation,
-) OperationHandlerResult {
+	invocation operation.OperationInvocation,
+) operation.OperationHandlerResult {
 	entity := invocation.Context.Entity
 	if !entity.HasChecklistCursor {
-		return OperationHandlerResult{Err: errors.New(operation.ChecklistRowRejectionMessage)}
+		return operation.OperationHandlerResult{Err: errors.New(operation.ChecklistRowRejectionMessage)}
 	}
 	identity := operation.CurrentTaskIdentity(invocation.Context)
 	task, _ := m.taskAndProjectForIdentity(identity)
 	if task == nil {
-		return OperationHandlerResult{Err: errors.New("task is no longer available")}
+		return operation.OperationHandlerResult{Err: errors.New("task is no longer available")}
 	}
 	index := entity.ChecklistIndex
 	if index < 0 || index >= len(task.Checklist) {
-		return OperationHandlerResult{Err: errors.New("checklist item is no longer available")}
+		return operation.OperationHandlerResult{Err: errors.New("checklist item is no longer available")}
 	}
 
 	coordinator := m.secondaryFeatures.Subview
@@ -177,49 +177,49 @@ func (m *AppModel) executeChecklistRowOperation(
 	case operation.OperationChecklistEditItem:
 		text, err := checklistItemText(invocation)
 		if err != nil {
-			return OperationHandlerResult{Err: err}
+			return operation.OperationHandlerResult{Err: err}
 		}
 		return checklistCommandResult(coordinator.EditChecklistItem(identity, index, text))
 	case operation.OperationChecklistDeleteItem:
 		return checklistCommandResult(coordinator.RemoveChecklistItem(identity, index))
 	case operation.OperationChecklistMoveDown:
 		if index == len(task.Checklist)-1 {
-			return OperationHandlerResult{Err: errors.New("this item is already last")}
+			return operation.OperationHandlerResult{Err: errors.New("this item is already last")}
 		}
 		m.followReorderedChecklistItem(1)
 		return checklistCommandResult(coordinator.ReorderChecklistItem(identity, index, index+1))
 	case operation.OperationChecklistMoveUp:
 		if index == 0 {
-			return OperationHandlerResult{Err: errors.New("this item is already first")}
+			return operation.OperationHandlerResult{Err: errors.New("this item is already first")}
 		}
 		m.followReorderedChecklistItem(-1)
 		return checklistCommandResult(coordinator.ReorderChecklistItem(identity, index, index-1))
 	case operation.OperationChecklistMoveBottom:
 		last := len(task.Checklist) - 1
 		if index == last {
-			return OperationHandlerResult{Err: errors.New("this item is already last")}
+			return operation.OperationHandlerResult{Err: errors.New("this item is already last")}
 		}
 		m.followReorderedChecklistItem(last - index)
 		return checklistCommandResult(coordinator.MoveChecklistItem(identity, index, last))
 	case operation.OperationChecklistMoveTop:
 		if index == 0 {
-			return OperationHandlerResult{Err: errors.New("this item is already first")}
+			return operation.OperationHandlerResult{Err: errors.New("this item is already first")}
 		}
 		m.followReorderedChecklistItem(-index)
 		return checklistCommandResult(coordinator.MoveChecklistItem(identity, index, 0))
 	case operation.OperationChecklistAddItem:
 		text, err := checklistItemText(invocation)
 		if err != nil {
-			return OperationHandlerResult{Err: err}
+			return operation.OperationHandlerResult{Err: err}
 		}
 		return checklistCommandResult(coordinator.AddChecklistItem(identity, text))
 	case operation.OperationChecklistActions:
 		if err := m.openChecklistActionSheet(invocation.Context); err != nil {
-			return OperationHandlerResult{Err: err}
+			return operation.OperationHandlerResult{Err: err}
 		}
-		return OperationHandlerResult{}
+		return operation.OperationHandlerResult{}
 	default:
-		return OperationHandlerResult{
+		return operation.OperationHandlerResult{
 			Err: fmt.Errorf("operation %s has no checklist handler", invocation.Descriptor.ID),
 		}
 	}
@@ -242,11 +242,11 @@ func (m *AppModel) followReorderedChecklistItem(delta int) {
 	out.cursor = target
 }
 
-func checklistCommandResult(cmd tea.Cmd) OperationHandlerResult {
-	return OperationHandlerResult{Message: OperationCommandResultMsg{Cmd: cmd}}
+func checklistCommandResult(cmd tea.Cmd) operation.OperationHandlerResult {
+	return operation.OperationHandlerResult{Message: operation.OperationCommandResultMsg{Cmd: cmd}}
 }
 
-func checklistItemText(invocation OperationInvocation) (string, error) {
+func checklistItemText(invocation operation.OperationInvocation) (string, error) {
 	text, ok := invocation.Value.(string)
 	if !ok {
 		return "", fmt.Errorf("operation %s requires item text", invocation.Descriptor.ID)

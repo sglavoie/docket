@@ -1,10 +1,9 @@
-package tui
+package operation
 
 import (
 	"errors"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
@@ -17,8 +16,8 @@ var (
 
 // OperationExecutionRequest is the complete input to centralized execution.
 type OperationExecutionRequest struct {
-	ID        operation.OperationID
-	Context   operation.CommandContext
+	ID        OperationID
+	Context   CommandContext
 	Value     any
 	HasValue  bool
 	Confirmed bool
@@ -26,9 +25,9 @@ type OperationExecutionRequest struct {
 
 // OperationInvocation is the validated handler input.
 type OperationInvocation struct {
-	Descriptor operation.OperationDescriptor
-	Context    operation.CommandContext
-	Targets    operation.ResolvedOperationTargets
+	Descriptor OperationDescriptor
+	Context    CommandContext
+	Targets    ResolvedOperationTargets
 	Value      any
 	HasValue   bool
 }
@@ -44,19 +43,19 @@ type OperationHandlerResult struct {
 }
 
 type OperationHandler func(OperationInvocation) OperationHandlerResult
-type SingleOperationHandler func(OperationInvocation, operation.OperationTarget) OperationHandlerResult
-type BulkOperationHandler func(OperationInvocation, []operation.OperationTarget) OperationHandlerResult
+type SingleOperationHandler func(OperationInvocation, OperationTarget) OperationHandlerResult
+type BulkOperationHandler func(OperationInvocation, []OperationTarget) OperationHandlerResult
 
 // OperationBinding binds one descriptor to context-specific execution. Legacy
 // command adapters delegate policies that their existing message flow already
 // owns; new bindings use centralized target/value/confirmation/transaction
 // policy by default.
 type OperationBinding struct {
-	OperationID operation.OperationID
+	OperationID OperationID
 	Views       []presentation.PresentationID
 
-	RequiredCapabilities operation.CapabilitySet
-	Applicability        operation.OperationApplicability
+	RequiredCapabilities CapabilitySet
+	Applicability        OperationApplicability
 
 	Handler       OperationHandler
 	SingleHandler SingleOperationHandler
@@ -102,14 +101,14 @@ type OperationStatusReporter func(OperationStatusEvent)
 type OperationConfirmationRequestMsg struct {
 	Request OperationExecutionRequest
 	Label   string
-	Targets operation.ResolvedOperationTargets
+	Targets ResolvedOperationTargets
 }
 
 // OperationValueRequestMsg is returned when a registered provider needs UI
 // input but did not supply its own generic prompt message.
 type OperationValueRequestMsg struct {
 	Request  OperationExecutionRequest
-	Provider operation.ValueProviderID
+	Provider ValueProviderID
 }
 
 // OperationExecutionResult is the adapter-facing outcome. Status holds the

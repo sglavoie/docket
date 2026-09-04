@@ -54,7 +54,7 @@ func (m *AppModel) registerCoreInputOperations() error {
 					(m.crossOutliner == nil || !m.crossOutliner.showsRankedList())
 			}
 		}
-		if err := m.registerOperation(descriptor, OperationBinding{
+		if err := m.registerOperation(descriptor, operation.OperationBinding{
 			RequiredCapabilities:     operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
 			Applicability:            descriptor.Applicability,
 			DelegateTargetResolution: true,
@@ -92,11 +92,11 @@ func coreInputOperationRequiresTask(id operation.OperationID) bool {
 }
 
 //nolint:gocyclo // The direct-key dispatcher keeps the final key grammar in one auditable switch.
-func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) OperationHandlerResult {
+func (m *AppModel) executeCoreInputOperation(invocation operation.OperationInvocation) operation.OperationHandlerResult {
 	if coreInputOperationRequiresTask(invocation.Descriptor.ID) &&
 		!invocation.Context.Selection.Visual &&
 		!operation.CurrentTaskIdentity(invocation.Context).Valid() {
-		return OperationHandlerResult{Err: operation.OperationTargetRejection(invocation.Descriptor)}
+		return operation.OperationHandlerResult{Err: operation.OperationTargetRejection(invocation.Descriptor)}
 	}
 
 	var message tea.Msg
@@ -183,7 +183,7 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 		if out, ok := m.outlinerPrimary(); ok {
 			cmd, moved := out.moveCursorToAdjacentHeader(delta)
 			if !moved {
-				return OperationHandlerResult{Status: "No sections to jump between"}
+				return operation.OperationHandlerResult{Status: "No sections to jump between"}
 			}
 			message = commandMessage(cmd)
 		}
@@ -216,19 +216,19 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 	case operation.OperationCoreToggleSections:
 		if out, ok := m.outlinerPrimary(); ok {
 			if !out.toggleVisibleSections() {
-				return OperationHandlerResult{Status: "No foldable sections here"}
+				return operation.OperationHandlerResult{Status: "No foldable sections here"}
 			}
 		}
 	case operation.OperationCoreToggleProjectGroup:
 		if out, ok := m.outlinerPrimary(); ok {
 			if !out.toggleVisibleProjectGroups() {
-				return OperationHandlerResult{Status: "No project groups here; P switches project"}
+				return operation.OperationHandlerResult{Status: "No project groups here; P switches project"}
 			}
 		}
 	case operation.OperationCoreToggleSubtrees:
 		if out, ok := m.outlinerPrimary(); ok {
 			if !out.toggleAllSubtrees() {
-				return OperationHandlerResult{Status: "No foldable subtrees here"}
+				return operation.OperationHandlerResult{Status: "No foldable subtrees here"}
 			}
 		}
 	// The one operation reached only from the menu bar reports both ways, unlike
@@ -238,9 +238,9 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 	case operation.OperationCoreClearFolds:
 		if out, ok := m.outlinerPrimary(); ok {
 			if !out.clearAllFolds() {
-				return OperationHandlerResult{Status: "Nothing is folded"}
+				return operation.OperationHandlerResult{Status: "Nothing is folded"}
 			}
-			return OperationHandlerResult{Status: "All folds cleared"}
+			return operation.OperationHandlerResult{Status: "All folds cleared"}
 		}
 	case operation.OperationCoreReorderDown:
 		message = commandMessage(m.coreReorder(1))
@@ -253,19 +253,19 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 	case operation.OperationCoreFocusSubtree:
 		if out, ok := m.outlinerPrimary(); ok {
 			if status, landed := out.exitSearchOntoCursorTask(); !landed {
-				return OperationHandlerResult{Status: status}
+				return operation.OperationHandlerResult{Status: status}
 			}
 			if !out.focusSubtreeAtCursor() {
-				return OperationHandlerResult{Status: "No children to focus"}
+				return operation.OperationHandlerResult{Status: "No children to focus"}
 			}
 		}
 	case operation.OperationCoreFocusParent:
 		if out, ok := m.outlinerPrimary(); ok {
 			if status, landed := out.exitSearchOntoCursorTask(); !landed {
-				return OperationHandlerResult{Status: status}
+				return operation.OperationHandlerResult{Status: status}
 			}
 			if !out.focusParentAtCursor() {
-				return OperationHandlerResult{Status: "No parent to focus"}
+				return operation.OperationHandlerResult{Status: "No parent to focus"}
 			}
 		}
 	case operation.OperationCoreZoomSection:
@@ -376,5 +376,5 @@ func (m *AppModel) executeCoreInputOperation(invocation OperationInvocation) Ope
 			}
 		}
 	}
-	return OperationHandlerResult{Message: message, Err: err}
+	return operation.OperationHandlerResult{Message: message, Err: err}
 }

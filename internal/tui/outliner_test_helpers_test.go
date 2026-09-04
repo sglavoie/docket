@@ -23,7 +23,7 @@ func typedTestApp(t *testing.T) *AppModel {
 	model.secondaryFeatures = coordinator.NewSecondaryCoordinators(service)
 	model.deps = newShellDeps(nil)
 	model.operationRegistry = operation.NewOperationRegistry()
-	model.operationExecutor = NewOperationExecutor(model.operationRegistry)
+	model.operationExecutor = operation.NewOperationExecutor(model.operationRegistry)
 
 	model.crossOutliner = NewOutlinerModel(nil, model.configManager, model.runtime)
 	model.crossOutliner.loadedProjects = []*models.Project{project}

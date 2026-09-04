@@ -40,7 +40,7 @@ func TestNotesOperationCatalogMatchesDirectActions(t *testing.T) {
 		if !ok || registered.Label != descriptor.Label {
 			t.Errorf("note operation %s registry descriptor = %#v, want label %q", descriptor.ID, registered, descriptor.Label)
 		}
-		if len(app.operationExecutor.bindings[descriptor.ID]) == 0 {
+		if len(app.operationExecutor.Bindings(descriptor.ID)) == 0 {
 			t.Errorf("note operation %s has no executable binding", descriptor.ID)
 		}
 	}
@@ -62,7 +62,7 @@ func TestSpaceProjectionUsesTheDeclaredTaskManifest(t *testing.T) {
 			t.Errorf("Space sheet lists %s twice", descriptor.ID)
 		}
 		seen[descriptor.ID] = true
-		if len(executor.bindings[descriptor.ID]) == 0 {
+		if len(executor.Bindings(descriptor.ID)) == 0 {
 			t.Errorf("Space sheet lists unexecutable operation %s", descriptor.ID)
 		}
 		entry, manifested := taskOperationManifestEntryFor(descriptor.ID)

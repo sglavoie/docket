@@ -69,7 +69,7 @@ func (m *AppModel) noteTitleForContext(ctx operation.CommandContext) string {
 // registerNoteOperations is what the executor selects for them here.
 func (m *AppModel) registerNotesSurfaceOperations() error {
 	for _, descriptor := range notesSurfaceOperationDescriptors() {
-		if err := m.registerOperation(descriptor, OperationBinding{
+		if err := m.registerOperation(descriptor, operation.OperationBinding{
 			RequiredCapabilities:     operation.NewCapabilitySet(operation.CapabilityNotesManager),
 			Handler:                  m.executeNotesSurfaceOperation,
 			DelegateTargetResolution: true,
@@ -81,7 +81,7 @@ func (m *AppModel) registerNotesSurfaceOperations() error {
 		}
 	}
 	for _, id := range notesHostedNoteOperations() {
-		if err := m.operationExecutor.Register(OperationBinding{
+		if err := m.operationExecutor.Register(operation.OperationBinding{
 			OperationID:              id,
 			Views:                    []presentation.PresentationID{presentation.ViewNotes, presentation.ViewGlobalNotes},
 			RequiredCapabilities:     operation.NewCapabilitySet(operation.CapabilityNotesManager),
@@ -102,13 +102,13 @@ func (m *AppModel) registerNotesSurfaceOperations() error {
 // reaches for the mounted module rather than rebuilding one.
 //
 //nolint:exhaustive // Only the Notes grammar's operations are registered with this handler.
-func (m *AppModel) executeNotesSurfaceOperation(invocation OperationInvocation) OperationHandlerResult {
+func (m *AppModel) executeNotesSurfaceOperation(invocation operation.OperationInvocation) operation.OperationHandlerResult {
 	notes := m.activeNotesManager()
 	if notes == nil {
-		return OperationHandlerResult{Err: fmt.Errorf("the Notes manager is not open")}
+		return operation.OperationHandlerResult{Err: fmt.Errorf("the Notes manager is not open")}
 	}
-	command := func(cmd tea.Cmd) OperationHandlerResult {
-		return OperationHandlerResult{Message: OperationCommandResultMsg{Cmd: cmd}}
+	command := func(cmd tea.Cmd) operation.OperationHandlerResult {
+		return operation.OperationHandlerResult{Message: operation.OperationCommandResultMsg{Cmd: cmd}}
 	}
 	switch invocation.Descriptor.ID {
 	case operationNotesCreate:
@@ -119,7 +119,7 @@ func (m *AppModel) executeNotesSurfaceOperation(invocation OperationInvocation) 
 		return command(notes.beginScopePicker())
 	case operationNotesActions:
 		if err := m.openNotesActionSheet(invocation.Context); err != nil {
-			return OperationHandlerResult{Err: err}
+			return operation.OperationHandlerResult{Err: err}
 		}
 	case operationNoteOpen:
 		return command(notes.editCurrentNote())
@@ -130,7 +130,7 @@ func (m *AppModel) executeNotesSurfaceOperation(invocation OperationInvocation) 
 	case operationNoteDelete:
 		notes.deleteCurrentNote()
 	}
-	return OperationHandlerResult{}
+	return operation.OperationHandlerResult{}
 }
 
 // activeNotesManager returns the hub-mounted Notes manager, or nil when Manage

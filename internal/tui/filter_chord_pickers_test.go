@@ -236,7 +236,7 @@ func TestFilterOperationsApplyPickerValues(t *testing.T) {
 	ctx := simplifiedOperationContext()
 	filter := &app.crossOutliner.filter.CommonFilterState
 
-	states := app.operationExecutor.Execute(OperationExecutionRequest{
+	states := app.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:       operationFilterStates,
 		Context:  ctx,
 		Value:    []string{"done", "waiting"},
@@ -252,7 +252,7 @@ func TestFilterOperationsApplyPickerValues(t *testing.T) {
 		t.Errorf("state filter = %v, want done+waiting", filter.States.Values())
 	}
 
-	cleared := app.operationExecutor.Execute(OperationExecutionRequest{
+	cleared := app.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:       operationFilterStates,
 		Context:  ctx,
 		Value:    []string{},
@@ -268,7 +268,7 @@ func TestFilterOperationsApplyPickerValues(t *testing.T) {
 		t.Error("state filter should be inactive after selecting no states")
 	}
 
-	invalid := app.operationExecutor.Execute(OperationExecutionRequest{
+	invalid := app.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:       operationFilterStates,
 		Context:  ctx,
 		Value:    []string{"not-a-state"},
@@ -278,7 +278,7 @@ func TestFilterOperationsApplyPickerValues(t *testing.T) {
 		t.Error("an unknown workflow state should be rejected")
 	}
 
-	tags := app.operationExecutor.Execute(OperationExecutionRequest{
+	tags := app.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:       operationFilterTags,
 		Context:  ctx,
 		Value:    []string{"deep"},

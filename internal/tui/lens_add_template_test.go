@@ -15,8 +15,8 @@ import (
 // hands back an ID, and the malformed-payload cases need to deliver something
 // that is not a string at all. Add built-in view is the one operation that takes
 // a value here, so it is named once rather than passed by every caller.
-func executeLensValue(model *AppModel, value any) OperationExecutionResult {
-	return model.operationExecutor.Execute(OperationExecutionRequest{
+func executeLensValue(model *AppModel, value any) operation.OperationExecutionResult {
+	return model.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:       operationLensAddTemplate,
 		Context:  lensOperationContext(operation.EntityIdentity{}),
 		Value:    value,

@@ -69,7 +69,7 @@ func TestTaskOperationsCannotAppearInBothDirectGrammarAndMenu(t *testing.T) {
 	t.Run("unreachable direct-only operation", func(t *testing.T) {
 		candidate := mutableInputStrategy(strategy)
 		candidate.Bindings = slices.DeleteFunc(candidate.Bindings, func(binding operation.OperationKeyBinding) bool {
-			return binding.OperationID == operationTaskSetDueDate
+			return binding.OperationID == operation.OperationTaskSetDueDate
 		})
 		err := validateOutlinerOperationOnePath(candidate)
 		if err == nil || !strings.Contains(err.Error(), "direct-only but has no direct binding") {
@@ -239,7 +239,7 @@ func TestDirectThemeAndQuitOperationsUseTheirDescriptors(t *testing.T) {
 	if themeResult.Err != nil {
 		t.Fatalf("toggle theme: %v", themeResult.Err)
 	}
-	timeout, ok := themeResult.Message.(OperationCommandResultMsg)
+	timeout, ok := themeResult.Message.(operation.OperationCommandResultMsg)
 	if !ok || timeout.Cmd == nil {
 		t.Fatalf("toggle theme message = %T, want a status timeout command", themeResult.Message)
 	}

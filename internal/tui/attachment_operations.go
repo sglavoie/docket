@@ -210,7 +210,7 @@ func validateAttachmentOperationOnePath(strategy operation.InputStrategy) error 
 // attachment coordinator's transaction.
 func (m *AppModel) registerAttachmentOperations() error {
 	for _, descriptor := range attachmentOperationDescriptors() {
-		if err := m.registerOperation(descriptor, OperationBinding{
+		if err := m.registerOperation(descriptor, operation.OperationBinding{
 			RequiredCapabilities:     operation.NewCapabilitySet(operation.CapabilityAttachmentsPanel),
 			Handler:                  m.executeAttachmentOperation,
 			DelegateTargetResolution: true,
@@ -229,13 +229,13 @@ func (m *AppModel) registerAttachmentOperations() error {
 // mounted panel rather than rebuilding one.
 //
 //nolint:exhaustive // Only the Attachments grammar's operations are registered with this handler.
-func (m *AppModel) executeAttachmentOperation(invocation OperationInvocation) OperationHandlerResult {
+func (m *AppModel) executeAttachmentOperation(invocation operation.OperationInvocation) operation.OperationHandlerResult {
 	panel := m.activeAttachmentsPanel()
 	if panel == nil {
-		return OperationHandlerResult{Err: fmt.Errorf("the Attachments panel is not open")}
+		return operation.OperationHandlerResult{Err: fmt.Errorf("the Attachments panel is not open")}
 	}
-	command := func(cmd tea.Cmd) OperationHandlerResult {
-		return OperationHandlerResult{Message: OperationCommandResultMsg{Cmd: cmd}}
+	command := func(cmd tea.Cmd) operation.OperationHandlerResult {
+		return operation.OperationHandlerResult{Message: operation.OperationCommandResultMsg{Cmd: cmd}}
 	}
 	switch invocation.Descriptor.ID {
 	case operationAttachmentAdd:
@@ -260,14 +260,14 @@ func (m *AppModel) executeAttachmentOperation(invocation OperationInvocation) Op
 		return command(panel.moveSelectedAttachmentDown())
 	case operationAttachmentActions:
 		if err := m.openAttachmentsActionSheet(invocation.Context, panel); err != nil {
-			return OperationHandlerResult{Err: err}
+			return operation.OperationHandlerResult{Err: err}
 		}
 	case operationAttachmentDelete:
 		panel.confirmDeleteSelectedAttachment()
 	case operationAttachmentUnlink:
 		panel.confirmUnlinkSelectedAttachment()
 	}
-	return OperationHandlerResult{}
+	return operation.OperationHandlerResult{}
 }
 
 // activeAttachmentsPanel returns the mounted panel, or nil when the route moved

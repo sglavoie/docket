@@ -85,20 +85,20 @@ func projectOperationApplicable(ctx operation.CommandContext) bool {
 // The chosen set replaces the stored set wholesale, so an empty slice is a
 // legitimate value and only a missing one reopens the picker.
 func projectTagsOperationResult(
-	invocation OperationInvocation,
+	invocation operation.OperationInvocation,
 	project *models.Project,
-) OperationHandlerResult {
+) operation.OperationHandlerResult {
 	tags, ok := invocation.Value.([]string)
 	if !invocation.HasValue || !ok {
-		return OperationHandlerResult{Message: OperationValueRequestMsg{
-			Request: OperationExecutionRequest{
+		return operation.OperationHandlerResult{Message: operation.OperationValueRequestMsg{
+			Request: operation.OperationExecutionRequest{
 				ID:      invocation.Descriptor.ID,
 				Context: cloneCommandContext(invocation.Context),
 			},
 			Provider: operation.ValueProviderProjectTags,
 		}}
 	}
-	return OperationHandlerResult{Message: SetProjectTagsMsg{Project: project, Tags: tags}}
+	return operation.OperationHandlerResult{Message: SetProjectTagsMsg{Project: project, Tags: tags}}
 }
 
 // projectOperationRequirement declares the project state one operation needs.

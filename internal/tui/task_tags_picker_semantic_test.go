@@ -16,7 +16,7 @@ import (
 func newFilterTagPickerForTest(t *testing.T, tags []query.TagInfo) *OperationValuePickerModel {
 	t.Helper()
 	picker, err := newOperationValuePickerModel(
-		OperationExecutionRequest{},
+		operation.OperationExecutionRequest{},
 		operation.ValueProviderFilterTags,
 		"Filter by Tags",
 		"keep matching tasks",
@@ -88,7 +88,7 @@ func TestSemanticTagPickerReservesHeightForWrappedExplainer(t *testing.T) {
 func newSemanticTagPickerForTest(t *testing.T, tags []query.TagInfo, seedUnused bool) *OperationValuePickerModel {
 	t.Helper()
 	picker, err := newOperationValuePickerModel(
-		OperationExecutionRequest{ID: operationTaskSetTags},
+		operation.OperationExecutionRequest{ID: operation.OperationTaskSetTags},
 		operation.ValueProviderTags,
 		"Set Tags",
 		"Task",

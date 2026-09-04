@@ -18,7 +18,7 @@ func TestFrozenBulkTagPatchPreservesSelectionAcrossCursorMoveAndRebuild(t *testi
 	env := newAppBulkPickerEnv(t, []*models.Task{first}, []*models.Task{second})
 	model := env.appModel()
 	model.operationRegistry = operation.NewOperationRegistry()
-	model.operationExecutor = NewOperationExecutor(model.operationRegistry)
+	model.operationExecutor = operation.NewOperationExecutor(model.operationRegistry)
 	if err := model.registerTaskActionOperations(); err != nil {
 		t.Fatalf("registerTaskActionOperations: %v", err)
 	}
@@ -36,8 +36,8 @@ func TestFrozenBulkTagPatchPreservesSelectionAcrossCursorMoveAndRebuild(t *testi
 
 	context := model.operationCommandContext()
 	outliner.cursor = 1
-	result := model.operationExecutor.Execute(OperationExecutionRequest{
-		ID:       operationTaskSetTags,
+	result := model.operationExecutor.Execute(operation.OperationExecutionRequest{
+		ID:       operation.OperationTaskSetTags,
 		Context:  context,
 		Value:    operation.OperationTagsValue{Add: []string{"first-only"}, Remove: []string{"common"}},
 		HasValue: true,
@@ -45,7 +45,7 @@ func TestFrozenBulkTagPatchPreservesSelectionAcrossCursorMoveAndRebuild(t *testi
 	if result.Err != nil {
 		t.Fatalf("execute frozen tag patch: %v", result.Err)
 	}
-	command, ok := result.Message.(OperationCommandResultMsg)
+	command, ok := result.Message.(operation.OperationCommandResultMsg)
 	if !ok {
 		t.Fatalf("result message = %T, want OperationCommandResultMsg", result.Message)
 	}
@@ -66,13 +66,13 @@ func TestFrozenBulkTagPatchPreservesSelectionAcrossCursorMoveAndRebuild(t *testi
 func TestTaskActionNativeOperationRequestsOneListSurfaceValue(t *testing.T) {
 	model := newUITestApp()
 	model.operationRegistry = operation.NewOperationRegistry()
-	model.operationExecutor = NewOperationExecutor(model.operationRegistry)
+	model.operationExecutor = operation.NewOperationExecutor(model.operationRegistry)
 	if err := model.registerTaskActionOperations(); err != nil {
 		t.Fatalf("registerTaskActionOperations: %v", err)
 	}
 	context := taskActionTestContext()
-	result := model.operationExecutor.Execute(OperationExecutionRequest{
-		ID:      operationTaskSetState,
+	result := model.operationExecutor.Execute(operation.OperationExecutionRequest{
+		ID:      operation.OperationTaskSetState,
 		Context: context,
 	})
 	if result.Err != nil {
@@ -96,7 +96,7 @@ func TestBulkTaskValueOperationUsesQualifiedTargetsAndOneUndoEntry(t *testing.T)
 	env := newAppBulkPickerEnv(t, []*models.Task{taskA}, []*models.Task{taskB})
 	model := env.appModel()
 	model.operationRegistry = operation.NewOperationRegistry()
-	model.operationExecutor = NewOperationExecutor(model.operationRegistry)
+	model.operationExecutor = operation.NewOperationExecutor(model.operationRegistry)
 	if err := model.registerTaskActionOperations(); err != nil {
 		t.Fatalf("registerTaskActionOperations: %v", err)
 	}
@@ -116,8 +116,8 @@ func TestBulkTaskValueOperationUsesQualifiedTargetsAndOneUndoEntry(t *testing.T)
 	}
 	context.Entity = context.Selection.Entities[0]
 
-	result := model.operationExecutor.Execute(OperationExecutionRequest{
-		ID:       operationTaskSetPriority,
+	result := model.operationExecutor.Execute(operation.OperationExecutionRequest{
+		ID:       operation.OperationTaskSetPriority,
 		Context:  context,
 		Value:    1,
 		HasValue: true,
@@ -125,7 +125,7 @@ func TestBulkTaskValueOperationUsesQualifiedTargetsAndOneUndoEntry(t *testing.T)
 	if result.Err != nil {
 		t.Fatalf("Execute: %v", result.Err)
 	}
-	command, ok := result.Message.(OperationCommandResultMsg)
+	command, ok := result.Message.(operation.OperationCommandResultMsg)
 	if !ok {
 		t.Fatalf("result message = %T, want OperationCommandResultMsg", result.Message)
 	}

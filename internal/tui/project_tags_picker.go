@@ -23,7 +23,7 @@ const (
 // change what the project does, and the explainer beneath the list says what
 // that change is before the user commits to it.
 func (m *AppModel) newProjectTagsPicker(
-	request OperationExecutionRequest,
+	request operation.OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
 	project := m.projectByID(operation.CurrentEntityIdentity(request.Context).ProjectID)
 	if project == nil {

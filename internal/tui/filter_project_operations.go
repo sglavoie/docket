@@ -41,14 +41,14 @@ func projectFilterOperationDescriptors() []operation.OperationDescriptor {
 // rebuild in place, but a project this facet admits or drops was never in the
 // snapshot at all, so applyFilterClauseEdit reloads instead — an obligation it
 // reads off the population fields themselves.
-func (m *AppModel) executeProjectFilterOperation(invocation OperationInvocation) OperationHandlerResult {
+func (m *AppModel) executeProjectFilterOperation(invocation operation.OperationInvocation) operation.OperationHandlerResult {
 	out := m.crossOutliner
 	if out == nil {
-		return OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
+		return operation.OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
 	}
 	edit, err := out.populationFilterClauseEdit(invocation)
 	if err != nil {
-		return OperationHandlerResult{Err: err}
+		return operation.OperationHandlerResult{Err: err}
 	}
 	return m.applyFilterClauseEdit(invocation.Descriptor.ID, edit)
 }
@@ -76,7 +76,7 @@ func (m *AppModel) projectFilterReloadCmd(text string) tea.Cmd {
 // so a facet can still name a tag whose only projects the current facets exclude
 // — otherwise a filter could never be widened back out from inside the picker.
 func (m *AppModel) newFilterProjectTagsPicker(
-	request OperationExecutionRequest,
+	request operation.OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
 	counts, untagged := m.projectTagVocabularyCounts()
 	names := make([]string, 0, len(counts))

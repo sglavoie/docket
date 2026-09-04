@@ -178,7 +178,7 @@ func TestOpenNoteIsTheFourthEnterActOnANoteRow(t *testing.T) {
 	if !found {
 		t.Fatal("Open Note is not registered")
 	}
-	result := model.executeCoreInputOperation(OperationInvocation{Descriptor: descriptor, Context: ctx})
+	result := model.executeCoreInputOperation(operation.OperationInvocation{Descriptor: descriptor, Context: ctx})
 	if result.Err != nil {
 		t.Fatalf("Open Note refused a note row: %v", result.Err)
 	}

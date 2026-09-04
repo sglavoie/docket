@@ -335,7 +335,7 @@ func TestLensTemplateGallerySelectsTheStableTemplateID(t *testing.T) {
 	if !dismissed {
 		t.Fatal("selecting a template left the gallery open")
 	}
-	selected, ok := msg.(OperationValueSelectedMsg)
+	selected, ok := msg.(operation.OperationValueSelectedMsg)
 	if !ok {
 		t.Fatalf("selection message = %#v, want OperationValueSelectedMsg", msg)
 	}

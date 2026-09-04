@@ -43,7 +43,7 @@ func TestProjectTagFilterPickerRowsWearTheSameColorsAsTheEditor(t *testing.T) {
 		&models.Project{ID: "bare", Name: "Bare", Slug: "bare"},
 	)
 	picker, err := app.newFilterProjectTagsPicker(
-		OperationExecutionRequest{ID: operationFilterProjectTags},
+		operation.OperationExecutionRequest{ID: operationFilterProjectTags},
 	)
 	if err != nil {
 		t.Fatalf("newFilterProjectTagsPicker: %v", err)

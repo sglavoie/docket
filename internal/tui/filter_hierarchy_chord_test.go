@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -65,7 +66,7 @@ func TestHierarchyFilterReadsOpenChildCensus(t *testing.T) {
 	} {
 		t.Run(hierarchyFilterLabel(tc.value), func(t *testing.T) {
 			app := newHierarchyFilterTestApp(t)
-			result := app.operationExecutor.Execute(OperationExecutionRequest{
+			result := app.operationExecutor.Execute(operation.OperationExecutionRequest{
 				ID:       operationFilterHierarchy,
 				Context:  simplifiedOperationContext(),
 				Value:    tc.value,
@@ -89,7 +90,7 @@ func TestHierarchyFilterBadgeCountAndClear(t *testing.T) {
 	app := newHierarchyFilterTestApp(t)
 	filter := &app.crossOutliner.filter.CommonFilterState
 
-	result := app.operationExecutor.Execute(OperationExecutionRequest{
+	result := app.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:       operationFilterHierarchy,
 		Context:  simplifiedOperationContext(),
 		Value:    query.HierarchyLeaf,
@@ -114,7 +115,7 @@ func TestHierarchyFilterBadgeCountAndClear(t *testing.T) {
 func TestHierarchyFilterRejectsOutOfRangeValues(t *testing.T) {
 	app := newHierarchyFilterTestApp(t)
 	for _, value := range []query.HierarchyFilter{query.HierarchyAll, query.HierarchyLeaf + 1} {
-		result := app.operationExecutor.Execute(OperationExecutionRequest{
+		result := app.operationExecutor.Execute(operation.OperationExecutionRequest{
 			ID:       operationFilterHierarchy,
 			Context:  simplifiedOperationContext(),
 			Value:    value,

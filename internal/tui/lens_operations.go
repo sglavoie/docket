@@ -141,7 +141,7 @@ func (m *AppModel) registerLensOperations() error {
 		return err
 	}
 	for _, descriptor := range lensOperationDescriptors() {
-		binding := OperationBinding{
+		binding := operation.OperationBinding{
 			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilityLensPicker),
 			Applicability:        descriptor.Applicability,
 			// Machine-local state lives outside the synced workspace set, so no
@@ -173,7 +173,7 @@ func (m *AppModel) registerLensOperations() error {
 // values, so each dispatches to its own handler rather than sharing one branch.
 // An unmapped zero-target descriptor fails registration instead of borrowing a
 // neighbor's handler.
-func (m *AppModel) zeroTargetLensHandler(id operation.OperationID) OperationHandler {
+func (m *AppModel) zeroTargetLensHandler(id operation.OperationID) operation.OperationHandler {
 	switch id {
 	case operationLensCreate:
 		return m.executeLensCreateOperation

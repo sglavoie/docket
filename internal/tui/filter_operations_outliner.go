@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/query"
 )
 
@@ -15,7 +16,7 @@ import (
 // in filter_operations.go.
 //
 //nolint:gocyclo // One constructor per facet, kept together so the set is auditable.
-func (m *OutlinerModel) rowFilterClauseEdit(invocation OperationInvocation) (filterClauseEdit, error) {
+func (m *OutlinerModel) rowFilterClauseEdit(invocation operation.OperationInvocation) (filterClauseEdit, error) {
 	switch invocation.Descriptor.ID {
 	case operationFilterPriority:
 		threshold, ok := invocation.Value.(int)

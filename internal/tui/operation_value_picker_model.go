@@ -22,7 +22,7 @@ const (
 // OperationValuePickerModel is the shared ListSurface value-picker control.
 type OperationValuePickerModel struct {
 	surface   *ListSurfaceModel
-	request   OperationExecutionRequest
+	request   operation.OperationExecutionRequest
 	provider  operation.ValueProviderID
 	title     string
 	subtitle  string
@@ -49,7 +49,7 @@ type OperationValuePickerModel struct {
 }
 
 func newOperationValuePickerModel(
-	request OperationExecutionRequest,
+	request operation.OperationExecutionRequest,
 	provider operation.ValueProviderID,
 	title string,
 	subtitle string,
@@ -120,7 +120,7 @@ func (model *OperationValuePickerModel) dateSectionUnderCursor() (bool, error) {
 //nolint:gocyclo // Centralized key dispatch preserves picker, freeform, and tag-input precedence.
 func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
 	if model == nil || model.surface == nil {
-		return nil, true, OperationValueCanceledMsg{}
+		return nil, true, operation.OperationValueCanceledMsg{}
 	}
 	if model.provider.TagEntry() && model.tagAdder.AddTagMode {
 		handled, cmd := model.tagAdder.handleAddTagInputKey(msg, model.addOrSelectTag)
@@ -137,7 +137,7 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 		// A typed date carries the same payload the preset rows carry, so the
 		// executor, the single handler, and the bulk handler stay untouched.
 		if chosen != nil {
-			return nil, true, OperationValueSelectedMsg{
+			return nil, true, operation.OperationValueSelectedMsg{
 				Request: model.request,
 				Value:   operation.OperationDateValue{Date: chosen, Deferred: model.dateDeferred},
 			}
@@ -180,7 +180,7 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 
 	switch key {
 	case "esc":
-		return nil, true, OperationValueCanceledMsg{}
+		return nil, true, operation.OperationValueCanceledMsg{}
 	case "/":
 		model.searching = true
 	case "a":
@@ -243,7 +243,7 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 		if err != nil {
 			return nil, false, status.StatusMsg(err.Error())
 		}
-		return nil, true, OperationValueSelectedMsg{
+		return nil, true, operation.OperationValueSelectedMsg{
 			Request: model.request,
 			Value:   value,
 		}
@@ -264,7 +264,7 @@ func (model *OperationValuePickerModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd,
 			if model.surface.SetCursorToID(ListItemID("priority:" + key)) {
 				value, err := model.selectedValue()
 				if err == nil {
-					return nil, true, OperationValueSelectedMsg{
+					return nil, true, operation.OperationValueSelectedMsg{
 						Request: model.request, Value: value,
 					}
 				}

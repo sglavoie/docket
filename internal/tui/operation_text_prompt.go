@@ -17,7 +17,7 @@ import (
 // rather than chosen from a list. It sits at the same overlay depth as the value
 // picker and returns the same selection and cancellation messages.
 type OperationTextPromptModel struct {
-	request  OperationExecutionRequest
+	request  operation.OperationExecutionRequest
 	input    textinput.Model
 	title    string
 	subtitle string
@@ -25,7 +25,7 @@ type OperationTextPromptModel struct {
 }
 
 func newOperationTextPromptModel(
-	request OperationExecutionRequest,
+	request operation.OperationExecutionRequest,
 	title string,
 	subtitle string,
 	current string,
@@ -51,18 +51,18 @@ func (model *OperationTextPromptModel) initCmd() tea.Cmd {
 
 func (model *OperationTextPromptModel) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool, tea.Msg) {
 	if model == nil {
-		return nil, true, OperationValueCanceledMsg{}
+		return nil, true, operation.OperationValueCanceledMsg{}
 	}
 	switch msg.String() {
 	case "esc":
-		return nil, true, OperationValueCanceledMsg{}
+		return nil, true, operation.OperationValueCanceledMsg{}
 	case "enter":
 		value := strings.TrimSpace(model.input.Value())
 		if value == "" {
 			model.notice = "Enter a name to continue."
 			return nil, false, nil
 		}
-		return nil, true, OperationValueSelectedMsg{
+		return nil, true, operation.OperationValueSelectedMsg{
 			Request: model.request,
 			Value:   value,
 		}
@@ -109,7 +109,7 @@ func (model *OperationTextPromptModel) render(width int) string {
 // newOperationTextPrompt builds the prompt from the frozen target identity, so a
 // target that already vanished fails here instead of after the user types.
 func (m *AppModel) newOperationTextPrompt(
-	request OperationExecutionRequest,
+	request operation.OperationExecutionRequest,
 	provider operation.ValueProviderID,
 ) (*OperationTextPromptModel, error) {
 	identity := operation.CurrentEntityIdentity(request.Context)
@@ -158,6 +158,6 @@ func (m *AppModel) newOperationTextPrompt(
 
 // pendingTextValueProvider registers a text provider with the executor without
 // supplying a value, so the shell opens the prompt for it.
-func pendingTextValueProvider(OperationInvocation) OperationValueProviderResult {
-	return OperationValueProviderResult{}
+func pendingTextValueProvider(operation.OperationInvocation) operation.OperationValueProviderResult {
+	return operation.OperationValueProviderResult{}
 }

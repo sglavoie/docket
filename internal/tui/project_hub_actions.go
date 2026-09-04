@@ -143,7 +143,7 @@ func (m *ProjectHubModel) updateProjectHubActions(key tea.KeyPressMsg) (tea.Mode
 	return m, cmd
 }
 
-func (m *ProjectHubModel) applyProjectHubExecutionResult(result OperationExecutionResult) tea.Cmd {
+func (m *ProjectHubModel) applyProjectHubExecutionResult(result operation.OperationExecutionResult) tea.Cmd {
 	if result.Err != nil {
 		m.notice = result.Err.Error()
 		return nil

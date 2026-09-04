@@ -29,7 +29,7 @@ func (m *ProjectHubModel) Mode() ProjectHubMode { return m.mode }
 
 func (m *ProjectHubModel) SetOperationSystem(
 	registry *operation.OperationRegistry,
-	executor *OperationExecutor,
+	executor *operation.OperationExecutor,
 	dispatch operationKeyDispatch,
 ) {
 	m.registry = registry

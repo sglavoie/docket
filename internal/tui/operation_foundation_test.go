@@ -376,22 +376,22 @@ func TestOperationExecutorRejectsTargetHandlersForTargetFreeOperations(t *testin
 	if err := registry.Register(descriptor); err != nil {
 		t.Fatalf("Register descriptor: %v", err)
 	}
-	executor := NewOperationExecutor(registry)
+	executor := operation.NewOperationExecutor(registry)
 
-	if err := executor.Register(OperationBinding{
+	if err := executor.Register(operation.OperationBinding{
 		OperationID: descriptor.ID,
-		SingleHandler: func(OperationInvocation, operation.OperationTarget) OperationHandlerResult {
-			return OperationHandlerResult{}
+		SingleHandler: func(operation.OperationInvocation, operation.OperationTarget) operation.OperationHandlerResult {
+			return operation.OperationHandlerResult{}
 		},
 	}); err == nil || !strings.Contains(err.Error(), "target-free handler") {
 		t.Fatalf("single handler binding error = %v, want a target-free rejection", err)
 	}
 
-	if err := executor.Register(OperationBinding{
+	if err := executor.Register(operation.OperationBinding{
 		OperationID:          descriptor.ID,
 		RequiredCapabilities: operation.NewCapabilitySet("bogus"),
-		Handler: func(OperationInvocation) OperationHandlerResult {
-			return OperationHandlerResult{}
+		Handler: func(operation.OperationInvocation) operation.OperationHandlerResult {
+			return operation.OperationHandlerResult{}
 		},
 	}); err == nil || !strings.Contains(err.Error(), "capability") {
 		t.Fatalf("unknown binding capability error = %v, want a capability rejection", err)
@@ -408,16 +408,16 @@ func TestOperationExecutorPassesTypedIdentitiesToHandlers(t *testing.T) {
 	if err := registry.Register(descriptor); err != nil {
 		t.Fatalf("Register descriptor: %v", err)
 	}
-	executor := NewOperationExecutor(registry)
+	executor := operation.NewOperationExecutor(registry)
 
 	var received []operation.EntityIdentity
-	if err := executor.Register(OperationBinding{
+	if err := executor.Register(operation.OperationBinding{
 		OperationID: descriptor.ID,
-		BulkHandler: func(_ OperationInvocation, targets []operation.OperationTarget) OperationHandlerResult {
+		BulkHandler: func(_ operation.OperationInvocation, targets []operation.OperationTarget) operation.OperationHandlerResult {
 			for _, target := range targets {
 				received = append(received, target.Entity)
 			}
-			return OperationHandlerResult{Status: "renamed"}
+			return operation.OperationHandlerResult{Status: "renamed"}
 		},
 	}); err != nil {
 		t.Fatalf("Register binding: %v", err)
@@ -428,7 +428,7 @@ func TestOperationExecutorPassesTypedIdentitiesToHandlers(t *testing.T) {
 		ProjectTagEntity("project-a", "#api"),
 		WorkspaceTagEntity("review"),
 	}
-	result := executor.Execute(OperationExecutionRequest{ID: descriptor.ID, Context: ctx})
+	result := executor.Execute(operation.OperationExecutionRequest{ID: descriptor.ID, Context: ctx})
 	if result.Err != nil {
 		t.Fatalf("Execute: %v", result.Err)
 	}

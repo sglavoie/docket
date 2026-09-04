@@ -152,7 +152,7 @@ func TestLensNamePromptPrefillsTheRenameTargetAndRefusesAStaleOne(t *testing.T) 
 	model := lensOperationApp(t)
 	starter := lensNamed(t, model, config.StarterNamedLenses()[0].Name)
 
-	prompt, err := model.newOperationTextPrompt(OperationExecutionRequest{
+	prompt, err := model.newOperationTextPrompt(operation.OperationExecutionRequest{
 		ID:      operationLensRename,
 		Context: lensOperationContext(operation.LensEntity(starter.ID)),
 	}, operation.ValueProviderLensName)
@@ -163,7 +163,7 @@ func TestLensNamePromptPrefillsTheRenameTargetAndRefusesAStaleOne(t *testing.T) 
 		t.Fatalf("rename prompt prefilled %q, want %q", prompt.input.Value(), starter.Name)
 	}
 
-	create, err := model.newOperationTextPrompt(OperationExecutionRequest{
+	create, err := model.newOperationTextPrompt(operation.OperationExecutionRequest{
 		ID:      operationLensCreate,
 		Context: lensOperationContext(operation.EntityIdentity{}),
 	}, operation.ValueProviderLensName)
@@ -174,7 +174,7 @@ func TestLensNamePromptPrefillsTheRenameTargetAndRefusesAStaleOne(t *testing.T) 
 		t.Fatalf("create prompt prefilled %q, want an empty buffer", create.input.Value())
 	}
 
-	if _, err := model.newOperationTextPrompt(OperationExecutionRequest{
+	if _, err := model.newOperationTextPrompt(operation.OperationExecutionRequest{
 		ID:      operationLensRename,
 		Context: lensOperationContext(operation.LensEntity(lensTestID(42))),
 	}, operation.ValueProviderLensName); err == nil {

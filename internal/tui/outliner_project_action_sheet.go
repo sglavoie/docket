@@ -103,16 +103,16 @@ func (m *AppModel) registerProjectActionSheetOperation() error {
 	if m.operationRegistry == nil || m.operationExecutor == nil {
 		return fmt.Errorf("operation registry and executor are required")
 	}
-	return m.registerOperation(projectActionSheetOperationDescriptor(), OperationBinding{
+	return m.registerOperation(projectActionSheetOperationDescriptor(), operation.OperationBinding{
 		SingleHandler: func(
-			invocation OperationInvocation,
+			invocation operation.OperationInvocation,
 			_ operation.OperationTarget,
-		) OperationHandlerResult {
+		) operation.OperationHandlerResult {
 			if err := m.openProjectActionSheet(invocation.Context); err != nil {
 				m.setInfoStatus(err.Error())
-				return OperationHandlerResult{Message: commandMessage(status.DefaultStatusTimeout())}
+				return operation.OperationHandlerResult{Message: commandMessage(status.DefaultStatusTimeout())}
 			}
-			return OperationHandlerResult{}
+			return operation.OperationHandlerResult{}
 		},
 	})
 }
@@ -122,7 +122,7 @@ func (m *AppModel) registerProjectActionSheetOperation() error {
 // a cursor move beneath the modal cannot retarget the eventual operation.
 func NewProjectActionSheetModel(
 	registry *operation.OperationRegistry,
-	executor *OperationExecutor,
+	executor *operation.OperationExecutor,
 	context operation.CommandContext,
 	projectName string,
 ) (*ContextActionSheetModel, error) {

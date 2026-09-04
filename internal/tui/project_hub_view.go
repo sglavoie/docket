@@ -232,7 +232,7 @@ func projectHubOperationDescriptors() []operation.OperationDescriptor {
 
 func (m *AppModel) registerProjectHubOperations() error {
 	for _, descriptor := range projectHubOperationDescriptors() {
-		if err := m.registerOperation(descriptor, OperationBinding{
+		if err := m.registerOperation(descriptor, operation.OperationBinding{
 			RequiredCapabilities:     operation.NewCapabilitySet(operation.CapabilityProjectHub),
 			Handler:                  m.executeProjectHubOperation,
 			DelegateTargetResolution: true,
@@ -252,17 +252,17 @@ func (m *AppModel) registerProjectHubOperations() error {
 // module rather than rebuilding one.
 //
 //nolint:exhaustive // Only Project Hub surface operations are registered with this handler.
-func (m *AppModel) executeProjectHubOperation(invocation OperationInvocation) OperationHandlerResult {
+func (m *AppModel) executeProjectHubOperation(invocation operation.OperationInvocation) operation.OperationHandlerResult {
 	if invocation.Descriptor.ID == operationScopeCreateProject {
-		return OperationHandlerResult{Message: CreateProjectMsg{}}
+		return operation.OperationHandlerResult{Message: CreateProjectMsg{}}
 	}
 	hub := m.activeProjectHub()
 	if hub == nil {
-		return OperationHandlerResult{Err: fmt.Errorf("the Project Hub is not open")}
+		return operation.OperationHandlerResult{Err: fmt.Errorf("the Project Hub is not open")}
 	}
 	switch invocation.Descriptor.ID {
 	case operationProjectHubSearch:
-		return OperationHandlerResult{Message: commandMessage(hub.ActivateSearch())}
+		return operation.OperationHandlerResult{Message: commandMessage(hub.ActivateSearch())}
 	case operationProjectHubToggleSelection:
 		hub.toggleProjectHubSelection()
 	case operationProjectHubSelectAll:
@@ -276,7 +276,7 @@ func (m *AppModel) executeProjectHubOperation(invocation OperationInvocation) Op
 	case operationProjectHubPreviewPageUp:
 		hub.pageProjectPreview(-1)
 	}
-	return OperationHandlerResult{}
+	return operation.OperationHandlerResult{}
 }
 
 // activeProjectHub returns the mounted Project Hub, or nil when Manage is on

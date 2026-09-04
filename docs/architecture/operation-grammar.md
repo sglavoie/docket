@@ -134,7 +134,8 @@ One operation may chain into a second one by following its committed command wit
 an `OperationValueRequestMsg`, which is how `$w` asks for the check-back date it
 has just made relevant. `withWaitingCheckBackStep` runs the set-state command,
 and only a committed result — the `transactionCommitted` gate — is followed
-through `tea.Sequence` by the value request for `operationTaskSetDueDate`. That
+through `tea.Sequence` by the value request for
+`operation.OperationTaskSetDueDate`. That
 request names `ValueProviderDueDate` rather than the combined list `@` opens,
 because the step is asking for a deadline and a defer section would answer a
 different question. A

@@ -107,7 +107,7 @@ func deferRefusalReason(refs []TaskProjectRef) string {
 // authoritative "no longer available" error instead of the row vanishing.
 func (m *AppModel) taskStructureAllowsOperation(id operation.OperationID, entity operation.EntityContext) bool {
 	switch id {
-	case operationTaskIndent, operationTaskOutdent:
+	case operation.OperationTaskIndent, operation.OperationTaskOutdent:
 	default:
 		return true
 	}
@@ -119,14 +119,14 @@ func (m *AppModel) taskStructureAllowsOperation(id operation.OperationID, entity
 		return true
 	}
 	switch id {
-	case operationTaskIndent:
+	case operation.OperationTaskIndent:
 		above := project.GetTaskAbove(task)
 		if above == nil {
 			return false
 		}
 		allowed, _ := task.CanIndent(above)
 		return allowed
-	case operationTaskOutdent:
+	case operation.OperationTaskOutdent:
 		allowed, _ := task.CanOutdent()
 		return allowed
 	default:
@@ -138,8 +138,8 @@ func (m *AppModel) taskStructureAllowsOperation(id operation.OperationID, entity
 // without supplying a value, so the shell constructs the provider's ListSurface
 // picker from the frozen request instead. It is the picker counterpart of
 // pendingTextValueProvider.
-func pendingPickedValueProvider(OperationInvocation) OperationValueProviderResult {
-	return OperationValueProviderResult{}
+func pendingPickedValueProvider(operation.OperationInvocation) operation.OperationValueProviderResult {
+	return operation.OperationValueProviderResult{}
 }
 
 func (m *AppModel) registerTaskActionOperations() error {
@@ -163,7 +163,7 @@ func (m *AppModel) registerTaskActionOperations() error {
 		}
 	}
 	for _, descriptor := range m.taskActionOperationDescriptors() {
-		if err := m.registerOperation(descriptor, OperationBinding{
+		if err := m.registerOperation(descriptor, operation.OperationBinding{
 			RequiredCapabilities: operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
 			Applicability:        descriptor.Applicability,
 			Handler:              m.executeTaskOperation,

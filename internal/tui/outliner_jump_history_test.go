@@ -322,7 +322,7 @@ func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) 
 	env := newAppBulkPickerEnv(t, []*models.Task{before, target, after})
 	model := env.appModel()
 	model.operationRegistry = operation.NewOperationRegistry()
-	model.operationExecutor = NewOperationExecutor(model.operationRegistry)
+	model.operationExecutor = operation.NewOperationExecutor(model.operationRegistry)
 	if err := model.registerTaskActionOperations(); err != nil {
 		t.Fatalf("register task operations: %v", err)
 	}
@@ -343,8 +343,8 @@ func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) 
 	outliner.cursor = targetRow
 	originRow := targetRow
 
-	result := model.operationExecutor.Execute(OperationExecutionRequest{
-		ID:       operationTaskSetState,
+	result := model.operationExecutor.Execute(operation.OperationExecutionRequest{
+		ID:       operation.OperationTaskSetState,
 		Context:  model.operationCommandContext(),
 		Value:    models.StateDoing,
 		HasValue: true,
@@ -352,7 +352,7 @@ func TestDirectStateMutationRecordsRelocationAfterCommittedReload(t *testing.T) 
 	if result.Err != nil {
 		t.Fatalf("execute wg state update: %v", result.Err)
 	}
-	command, ok := result.Message.(OperationCommandResultMsg)
+	command, ok := result.Message.(operation.OperationCommandResultMsg)
 	if !ok {
 		t.Fatalf("state result = %T, want OperationCommandResultMsg", result.Message)
 	}

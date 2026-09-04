@@ -59,7 +59,7 @@ func NewAppModel(runtime *config.RuntimeState, manager *config.Manager, opts ...
 	for _, opt := range opts {
 		opt(app)
 	}
-	app.operationExecutor = NewOperationExecutor(app.operationRegistry)
+	app.operationExecutor = operation.NewOperationExecutor(app.operationRegistry)
 
 	// Bind the primary feature coordinators to the application service. The
 	// service is built once per session over the storage-backed repository so a

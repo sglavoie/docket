@@ -103,7 +103,7 @@ type AppModel struct {
 	views *ViewRegistry
 
 	operationRegistry *operation.OperationRegistry
-	operationExecutor *OperationExecutor
+	operationExecutor *operation.OperationExecutor
 
 	// Typed accessors for views that need direct access (e.g., for HasActiveSearch)
 	helpView      *HelpViewModel
@@ -241,7 +241,7 @@ type AppModel struct {
 	// A destructive contextual action prompts here and keeps its frozen request
 	// so cancellation returns to the sheet with nothing executed.
 	operationConfirm        chrome.ConfirmDialog
-	pendingOperationRequest OperationExecutionRequest
+	pendingOperationRequest operation.OperationExecutionRequest
 
 	// Keys already pressed toward an unfinished chord. A non-empty prefix owns
 	// the footer as a which-key row until the chord completes or is abandoned.

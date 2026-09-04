@@ -74,7 +74,7 @@ func (m *AppModel) registerSortOperations() error {
 					m.crossOutliner != nil && m.crossOutliner.hasSearchProjection()
 			}
 		}
-		if err := m.registerOperation(descriptor, OperationBinding{
+		if err := m.registerOperation(descriptor, operation.OperationBinding{
 			RequiredCapabilities:     operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
 			Applicability:            descriptor.Applicability,
 			Handler:                  m.executeSortOperation,
@@ -90,24 +90,24 @@ func (m *AppModel) registerSortOperations() error {
 	return nil
 }
 
-func (m *AppModel) executeSortOperation(invocation OperationInvocation) OperationHandlerResult {
+func (m *AppModel) executeSortOperation(invocation operation.OperationInvocation) operation.OperationHandlerResult {
 	out := m.crossOutliner
 	if out == nil {
-		return OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
+		return operation.OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
 	}
 	if invocation.Descriptor.ID == operationSortRanked {
 		if !out.toggleRankedList() {
-			return OperationHandlerResult{Status: "Search for something first"}
+			return operation.OperationHandlerResult{Status: "Search for something first"}
 		}
 		if out.showsRankedList() {
-			return OperationHandlerResult{Status: "Ranked list · one flat relevance order"}
+			return operation.OperationHandlerResult{Status: "Ranked list · one flat relevance order"}
 		}
-		return OperationHandlerResult{Status: "Ranked list off · results narrow the mode"}
+		return operation.OperationHandlerResult{Status: "Ranked list off · results narrow the mode"}
 	}
 
 	field, known := sortFieldOperations[invocation.Descriptor.ID]
 	if !known {
-		return OperationHandlerResult{Err: fmt.Errorf("unknown sort operation %s", invocation.Descriptor.ID)}
+		return operation.OperationHandlerResult{Err: fmt.Errorf("unknown sort operation %s", invocation.Descriptor.ID)}
 	}
 
 	if invocation.Descriptor.ID == operationSortClear {
@@ -115,7 +115,7 @@ func (m *AppModel) executeSortOperation(invocation OperationInvocation) Operatio
 		out.treeSort.Reset()
 		out.crossForceRebuild = true
 		rebuildOutlinerPreservingCursor(out)
-		return OperationHandlerResult{Status: "Sort cleared"}
+		return operation.OperationHandlerResult{Status: "Sort cleared"}
 	}
 
 	// A fixed-order mode owns its ordering, so the key records the choice on the
@@ -125,7 +125,7 @@ func (m *AppModel) executeSortOperation(invocation OperationInvocation) Operatio
 	mode := out.activeOutlinerModeEntry()
 	if mode.FixedOrder() && !out.showsRankedList() {
 		out.treeSort.Toggle(field)
-		return OperationHandlerResult{Status: fmt.Sprintf(
+		return operation.OperationHandlerResult{Status: fmt.Sprintf(
 			"%s owns its order · sort applies in All, Inbox, Backlog", mode.Label)}
 	}
 
@@ -137,7 +137,7 @@ func (m *AppModel) executeSortOperation(invocation OperationInvocation) Operatio
 	if exempt := out.manualOrderSectionNames(); len(exempt) > 0 {
 		status += " · " + strings.Join(exempt, ", ") + " keep manual order"
 	}
-	return OperationHandlerResult{Status: status}
+	return operation.OperationHandlerResult{Status: status}
 }
 
 func sortStateLabel(state query.SortState) string {

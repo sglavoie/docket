@@ -58,7 +58,7 @@ func registerTaskActionTestDescriptor(
 
 func TestTaskActionSheetMissingSelectionSchedulesStatusClear(t *testing.T) {
 	model := newUITestApp()
-	result := model.executeCoreInputOperation(OperationInvocation{
+	result := model.executeCoreInputOperation(operation.OperationInvocation{
 		Descriptor: operation.OperationDescriptor{ID: operation.OperationCoreActions},
 	})
 
@@ -68,7 +68,7 @@ func TestTaskActionSheetMissingSelectionSchedulesStatusClear(t *testing.T) {
 	if model.statusMessage != "select a task to open actions" {
 		t.Fatalf("status = %q, want missing-selection guidance", model.statusMessage)
 	}
-	timeout, ok := result.Message.(OperationCommandResultMsg)
+	timeout, ok := result.Message.(operation.OperationCommandResultMsg)
 	if !ok || timeout.Cmd == nil {
 		t.Fatalf("result message = %T, want a status timeout command", result.Message)
 	}
@@ -128,15 +128,15 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 		operation.OperationCoreCapture,
 		operation.OperationCoreMultiSelect,
 		operation.OperationCoreCursorDown,
-		operationTaskSetState,
-		operationTaskSetPriority,
-		operationTaskSetDueDate,
-		operationTaskSetTags,
+		operation.OperationTaskSetState,
+		operation.OperationTaskSetPriority,
+		operation.OperationTaskSetDueDate,
+		operation.OperationTaskSetTags,
 		operationTaskTogglePin,
-		operationTaskSetParent,
-		operationTaskAdoptChildren,
-		operationTaskIndent,
-		operationTaskOutdent,
+		operation.OperationTaskSetParent,
+		operation.OperationTaskAdoptChildren,
+		operation.OperationTaskIndent,
+		operation.OperationTaskOutdent,
 		operation.OperationCoreEdit,
 		operation.OperationCoreEditDescription,
 		operation.OperationCoreExternalEditor,
@@ -155,7 +155,7 @@ func TestTaskActionSheetProjectsTheProductionSelectedTaskCatalog(t *testing.T) {
 
 	sheet, err := NewTaskActionSheetModel(
 		registry,
-		NewOperationExecutor(registry),
+		operation.NewOperationExecutor(registry),
 		context,
 		"Selected task",
 	)
@@ -258,7 +258,7 @@ func TestTaskActionSheetOmitsDirectDateOperation(t *testing.T) {
 	}
 	sheet, err := NewTaskActionSheetModel(
 		registry,
-		NewOperationExecutor(registry),
+		operation.NewOperationExecutor(registry),
 		taskActionTestContext(),
 		"Active task",
 	)
@@ -266,7 +266,7 @@ func TestTaskActionSheetOmitsDirectDateOperation(t *testing.T) {
 		t.Fatalf("NewTaskActionSheetModel: %v", err)
 	}
 	for _, item := range sheet.surface.Items() {
-		if item.ID == ListItemID("task-action:"+string(operationTaskSetDueDate)) {
+		if item.ID == ListItemID("task-action:"+string(operation.OperationTaskSetDueDate)) {
 			t.Fatal("direct date operation is repeated in the task menu")
 		}
 	}
@@ -293,14 +293,14 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 	}
 	for _, excluded := range []operation.OperationID{
 		// The four metadata operations reach a selection through their direct key.
-		operationTaskSetState,
-		operationTaskSetPriority,
-		operationTaskSetDueDate,
-		operationTaskSetTags,
-		operationTaskSetParent,
-		operationTaskAdoptChildren,
-		operationTaskIndent,
-		operationTaskOutdent,
+		operation.OperationTaskSetState,
+		operation.OperationTaskSetPriority,
+		operation.OperationTaskSetDueDate,
+		operation.OperationTaskSetTags,
+		operation.OperationTaskSetParent,
+		operation.OperationTaskAdoptChildren,
+		operation.OperationTaskIndent,
+		operation.OperationTaskOutdent,
 		operation.OperationCoreEdit,
 		operation.OperationCorePeek,
 		operationTaskCopyTitle,
@@ -318,7 +318,7 @@ func TestBulkActionSheetIntersectsApplicableOperationsForEverySelectedTask(t *te
 		}
 	}
 
-	sheet, err := NewTaskActionSheetModel(registry, NewOperationExecutor(registry), context, "2 tasks")
+	sheet, err := NewTaskActionSheetModel(registry, operation.NewOperationExecutor(registry), context, "2 tasks")
 	if err != nil {
 		t.Fatalf("NewTaskActionSheetModel: %v", err)
 	}
@@ -406,12 +406,12 @@ func TestSimplifiedVisualSelectionKeysOpenBulkActionsAndEscFreezes(t *testing.T)
 	}
 	// Priority now belongs to the p chord, so the bulk sheet must not repeat it.
 	if sheet.surface.SetCursorToID(
-		ListItemID("task-action:" + string(operationTaskSetPriority)),
+		ListItemID("task-action:" + string(operation.OperationTaskSetPriority)),
 	) {
 		t.Fatal("bulk action sheet still lists the direct-only set-priority action")
 	}
 	if sheet.surface.SetCursorToID(
-		ListItemID("task-action:" + string(operationTaskSetDueDate)),
+		ListItemID("task-action:" + string(operation.OperationTaskSetDueDate)),
 	) {
 		t.Fatal("bulk action sheet repeats direct-only set-due-date")
 	}
@@ -437,11 +437,11 @@ func TestVisualSelectionRejectsPeekWithoutCursorFallback(t *testing.T) {
 	app.crossOutliner.toggleCursorSelection()
 	app.crossOutliner.cursor = 1
 
-	result := app.operationExecutor.Execute(OperationExecutionRequest{
+	result := app.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:      operation.OperationCorePeek,
 		Context: app.operationCommandContext(),
 	})
-	if !errors.Is(result.Err, ErrOperationUnavailable) {
+	if !errors.Is(result.Err, operation.ErrOperationUnavailable) {
 		t.Fatalf("visual-selection Peek error = %v, want unavailable", result.Err)
 	}
 	if result.Message != nil || app.contextActionSheet != nil {

@@ -210,14 +210,14 @@ func (m *AppModel) registerHarnessOperations() error {
 			RequiredCapabilities: operation.NewCapabilitySet(CapabilityHarness),
 			Risk:                 operation.OperationRiskReadOnly,
 		}
-		if err := m.registerOperation(descriptor, OperationBinding{
+		if err := m.registerOperation(descriptor, operation.OperationBinding{
 			RequiredCapabilities:     operation.NewCapabilitySet(CapabilityHarness),
 			DelegateTargetResolution: true,
 			DelegateValueProvider:    true,
 			DelegateConfirmation:     true,
 			DelegateTransaction:      true,
-			Handler: func(OperationInvocation) OperationHandlerResult {
-				return OperationHandlerResult{Message: spec.message()}
+			Handler: func(operation.OperationInvocation) operation.OperationHandlerResult {
+				return operation.OperationHandlerResult{Message: spec.message()}
 			},
 		}); err != nil {
 			return fmt.Errorf("%s: %w", spec.id, err)
@@ -390,5 +390,5 @@ func (m *AppModel) harnessOpenOutliner(options OutlinerOpenOptions) tea.Msg {
 	if err != nil {
 		return status.ErrorMsg{Err: err}
 	}
-	return OperationCommandResultMsg{Cmd: tea.Batch(m.activateTaskWorkspaceRoute(route), presentationCmd)}
+	return operation.OperationCommandResultMsg{Cmd: tea.Batch(m.activateTaskWorkspaceRoute(route), presentationCmd)}
 }

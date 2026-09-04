@@ -45,7 +45,7 @@ type ContextActionSheetClosedMsg struct{}
 // ContextActionSheetResultMsg reports one centralized execution attempt and the
 // lifecycle its host must apply.
 type ContextActionSheetResultMsg struct {
-	Result OperationExecutionResult
+	Result operation.OperationExecutionResult
 }
 
 // ContextActionSheetConfig is the complete host-supplied description of one
@@ -82,7 +82,7 @@ type ContextActionSheetConfig struct {
 // Scope Hub or the Outliner: hosts supply identity, ordering, and decoration.
 type ContextActionSheetModel struct {
 	surface   *ListSurfaceModel
-	executor  *OperationExecutor
+	executor  *operation.OperationExecutor
 	context   operation.CommandContext
 	config    ContextActionSheetConfig
 	notice    string
@@ -95,7 +95,7 @@ type ContextActionSheetModel struct {
 // only ever offers actions its host really has.
 func NewContextActionSheetModel(
 	registry *operation.OperationRegistry,
-	executor *OperationExecutor,
+	executor *operation.OperationExecutor,
 	ctx operation.CommandContext,
 	operationIDs []operation.OperationID,
 	config ContextActionSheetConfig,
@@ -201,8 +201,8 @@ func (model *ContextActionSheetModel) operationIDs() []operation.OperationID {
 
 // request builds the frozen execution request for one operation. The cloned
 // context makes later host cursor movement unable to retarget it.
-func (model *ContextActionSheetModel) request(id operation.OperationID) OperationExecutionRequest {
-	return OperationExecutionRequest{
+func (model *ContextActionSheetModel) request(id operation.OperationID) operation.OperationExecutionRequest {
+	return operation.OperationExecutionRequest{
 		ID:       id,
 		Context:  cloneCommandContext(model.context),
 		Value:    model.config.Value,
@@ -215,15 +215,15 @@ func (model *ContextActionSheetModel) request(id operation.OperationID) Operatio
 // sheet open beneath its nested step, a failure keeps it open with the reason,
 // and only a completed action dismisses it.
 func (model *ContextActionSheetModel) Execute(
-	request OperationExecutionRequest,
-) (OperationExecutionResult, bool) {
+	request operation.OperationExecutionRequest,
+) (operation.OperationExecutionResult, bool) {
 	if model == nil {
-		return OperationExecutionResult{}, false
+		return operation.OperationExecutionResult{}, false
 	}
 	if model.executor == nil {
 		err := fmt.Errorf("contextual actions are unavailable")
 		model.notice = err.Error()
-		return OperationExecutionResult{Err: err}, false
+		return operation.OperationExecutionResult{Err: err}, false
 	}
 	result := model.executor.Execute(request)
 	switch {

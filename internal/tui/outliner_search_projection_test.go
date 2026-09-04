@@ -143,7 +143,7 @@ func TestScopeWideSearchRestoresProjectionExactlyAndFallsBackAfterDeletion(t *te
 	wantExpanded := maps.Clone(outliner.expandedNodes)
 
 	searchRankedList(outliner, "needle")
-	filterResult := (&AppModel{crossOutliner: outliner}).executeFilterOperation(OperationInvocation{
+	filterResult := (&AppModel{crossOutliner: outliner}).executeFilterOperation(operation.OperationInvocation{
 		Descriptor: operation.OperationDescriptor{ID: operationFilterPriority},
 		Value:      models.PriorityHigh,
 	})

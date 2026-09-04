@@ -16,7 +16,7 @@ func commandMessage(cmd tea.Cmd) tea.Msg {
 	if cmd == nil {
 		return nil
 	}
-	return OperationCommandResultMsg{Cmd: cmd}
+	return operation.OperationCommandResultMsg{Cmd: cmd}
 }
 
 // coreNotesScope keeps Ctrl+N on All Notes everywhere except a project header

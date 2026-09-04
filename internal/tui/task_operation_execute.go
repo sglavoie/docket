@@ -14,13 +14,13 @@ import (
 )
 
 func (m *AppModel) executeTaskOperation(
-	invocation OperationInvocation,
-) OperationHandlerResult {
+	invocation operation.OperationInvocation,
+) operation.OperationHandlerResult {
 	if len(invocation.Targets.Targets) == 0 {
-		return OperationHandlerResult{Err: fmt.Errorf("operation %s requires at least one task", invocation.Descriptor.ID)}
+		return operation.OperationHandlerResult{Err: fmt.Errorf("operation %s requires at least one task", invocation.Descriptor.ID)}
 	}
 	if invocation.Descriptor.ValueProviderID != "" && !invocation.HasValue {
-		return OperationHandlerResult{Err: fmt.Errorf("operation %s requires a value", invocation.Descriptor.ID)}
+		return operation.OperationHandlerResult{Err: fmt.Errorf("operation %s requires a value", invocation.Descriptor.ID)}
 	}
 	// Deletion takes every resolved target at once because one atomic
 	// transaction removes single and multi-root selections alike.
@@ -32,10 +32,10 @@ func (m *AppModel) executeTaskOperation(
 	}
 	if request, action, summary, handled, err := applicationTaskOperationRequest(invocation); handled {
 		if err != nil {
-			return OperationHandlerResult{Err: err}
+			return operation.OperationHandlerResult{Err: err}
 		}
 		capture := m.captureOutlinerRelocationForTargets(invocation.Targets)
-		return OperationHandlerResult{Message: OperationCommandResultMsg{
+		return operation.OperationHandlerResult{Message: operation.OperationCommandResultMsg{
 			Cmd: withWaitingCheckBackStep(invocation, withOutlinerRelocationCapture(
 				m.secondaryFeatures.TaskItem.ExecuteOperation(request, action, summary),
 				capture,
@@ -48,7 +48,7 @@ func (m *AppModel) executeTaskOperation(
 	target := invocation.Targets.Targets[0]
 	identity := target.Task
 	if !identity.Valid() {
-		return OperationHandlerResult{Err: fmt.Errorf("operation %s resolved an invalid task", invocation.Descriptor.ID)}
+		return operation.OperationHandlerResult{Err: fmt.Errorf("operation %s resolved an invalid task", invocation.Descriptor.ID)}
 	}
 	return m.executeSingleTaskOperation(invocation, identity)
 }
@@ -62,16 +62,16 @@ func (m *AppModel) executeTaskOperation(
 // committed on a task that never reached Waiting. On the success path the state
 // transition has already committed when the picker opens, so Esc there cancels
 // the date alone and the Waiting move stands.
-func withWaitingCheckBackStep(invocation OperationInvocation, cmd tea.Cmd) tea.Cmd {
-	if invocation.Descriptor.ID != operationTaskSetState {
+func withWaitingCheckBackStep(invocation operation.OperationInvocation, cmd tea.Cmd) tea.Cmd {
+	if invocation.Descriptor.ID != operation.OperationTaskSetState {
 		return cmd
 	}
 	if state, ok := invocation.Value.(models.WorkflowState); !ok || state != models.StateWaiting {
 		return cmd
 	}
-	checkBack := OperationValueRequestMsg{
-		Request: OperationExecutionRequest{
-			ID:      operationTaskSetDueDate,
+	checkBack := operation.OperationValueRequestMsg{
+		Request: operation.OperationExecutionRequest{
+			ID:      operation.OperationTaskSetDueDate,
 			Context: cloneCommandContext(invocation.Context),
 		},
 		Provider: operation.ValueProviderDueDate,
@@ -106,21 +106,21 @@ func transactionCommitted(msg tea.Msg) bool {
 // it pins all of them. The application operation validates and commits the
 // project-qualified set atomically.
 func (m *AppModel) executeTaskTogglePinOperation(
-	invocation OperationInvocation,
-) OperationHandlerResult {
+	invocation operation.OperationInvocation,
+) operation.OperationHandlerResult {
 	capture := m.captureOutlinerRelocationForTargets(invocation.Targets)
 	locators := make([]app.TaskLocator, 0, len(invocation.Targets.Targets))
 	allPinned := true
 	for _, target := range invocation.Targets.Targets {
 		if !target.Task.Valid() {
-			return OperationHandlerResult{Err: fmt.Errorf(
+			return operation.OperationHandlerResult{Err: fmt.Errorf(
 				"operation %s resolved an invalid task",
 				invocation.Descriptor.ID,
 			)}
 		}
 		task, _ := m.taskAndProjectForIdentity(target.Task)
 		if task == nil {
-			return OperationHandlerResult{Err: fmt.Errorf("task is no longer available")}
+			return operation.OperationHandlerResult{Err: fmt.Errorf("task is no longer available")}
 		}
 		allPinned = allPinned && task.Pinned
 		locators = append(locators, target.Task.Locator())
@@ -130,7 +130,7 @@ func (m *AppModel) executeTaskTogglePinOperation(
 	if !pinned {
 		action, verb = "Unpin Task", "Unpinned"
 	}
-	return OperationHandlerResult{Message: OperationCommandResultMsg{
+	return operation.OperationHandlerResult{Message: operation.OperationCommandResultMsg{
 		Cmd: withOutlinerRelocationCapture(m.secondaryFeatures.TaskItem.ExecuteOperation(
 			app.TaskOperationRequest{
 				Operation: app.TaskOperationSetPinned,
@@ -144,7 +144,7 @@ func (m *AppModel) executeTaskTogglePinOperation(
 }
 
 func applicationTaskOperationRequest(
-	invocation OperationInvocation,
+	invocation operation.OperationInvocation,
 ) (app.TaskOperationRequest, string, string, bool, error) {
 	locators := make([]app.TaskLocator, 0, len(invocation.Targets.Targets))
 	for _, target := range invocation.Targets.Targets {
@@ -160,7 +160,7 @@ func applicationTaskOperationRequest(
 	count := len(locators)
 
 	switch invocation.Descriptor.ID {
-	case operationTaskSetState:
+	case operation.OperationTaskSetState:
 		state, ok := invocation.Value.(models.WorkflowState)
 		if !ok || !state.IsValid() {
 			return request, "", "", true, fmt.Errorf("invalid state value")
@@ -170,7 +170,7 @@ func applicationTaskOperationRequest(
 		return request, "Change State",
 			fmt.Sprintf("Change State · Changed %d task(s) to %s", count, state), true, nil
 
-	case operationTaskSetPriority:
+	case operation.OperationTaskSetPriority:
 		priority, ok := invocation.Value.(int)
 		if !ok || priority < 0 || priority > models.PriorityMax {
 			return request, "", "", true, fmt.Errorf("invalid priority value")
@@ -180,7 +180,7 @@ func applicationTaskOperationRequest(
 		return request, "Set Priority",
 			fmt.Sprintf("Set Priority · Set priority on %d task(s)", count), true, nil
 
-	case operationTaskSetDueDate:
+	case operation.OperationTaskSetDueDate:
 		value, ok := invocation.Value.(operation.OperationDateValue)
 		if !ok {
 			return request, "", "", true, fmt.Errorf("invalid date value")
@@ -204,7 +204,7 @@ func applicationTaskOperationRequest(
 		return request, "Set Due Date",
 			fmt.Sprintf("Set Due Date · %s %d task(s)", verb, count), true, nil
 
-	case operationTaskSetTags:
+	case operation.OperationTaskSetTags:
 		switch value := invocation.Value.(type) {
 		case []string:
 			request.Tags = append([]string(nil), value...)
@@ -229,7 +229,7 @@ func applicationTaskOperationRequest(
 		return request, "Set Tags",
 			fmt.Sprintf("Set Tags · Tagged %d task(s)", count), true, nil
 
-	case operationTaskReferences:
+	case operation.OperationTaskReferences:
 		// Cardinality chooses the transaction, not the meaning, exactly as it does
 		// for a move: one target is left to the task-line edit the `~task` sigil
 		// writes, so a selection-free `~` stays byte-for-byte the edit it always
@@ -264,76 +264,76 @@ func applicationTaskOperationRequest(
 }
 
 func (m *AppModel) executeSingleTaskOperation(
-	invocation OperationInvocation,
+	invocation operation.OperationInvocation,
 	identity taskref.TaskIdentity,
-) OperationHandlerResult {
-	cmdResult := func(cmd tea.Cmd) OperationHandlerResult {
-		return OperationHandlerResult{Message: OperationCommandResultMsg{Cmd: cmd}}
+) operation.OperationHandlerResult {
+	cmdResult := func(cmd tea.Cmd) operation.OperationHandlerResult {
+		return operation.OperationHandlerResult{Message: operation.OperationCommandResultMsg{Cmd: cmd}}
 	}
-	relocationResult := func(cmd tea.Cmd) OperationHandlerResult {
+	relocationResult := func(cmd tea.Cmd) operation.OperationHandlerResult {
 		capture := m.captureOutlinerRelocationForTargets(invocation.Targets)
 		return cmdResult(withOutlinerRelocationCapture(cmd, capture))
 	}
 
 	switch invocation.Descriptor.ID {
-	case operationTaskSetState:
+	case operation.OperationTaskSetState:
 		state, ok := invocation.Value.(models.WorkflowState)
 		if !ok || !state.IsValid() {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid state value")}
+			return operation.OperationHandlerResult{Err: fmt.Errorf("invalid state value")}
 		}
 		return cmdResult(m.secondaryFeatures.TaskItem.Transition(identity, state))
-	case operationTaskSetPriority:
+	case operation.OperationTaskSetPriority:
 		priority, ok := invocation.Value.(int)
 		if !ok || priority < 0 || priority > models.PriorityMax {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid priority value")}
+			return operation.OperationHandlerResult{Err: fmt.Errorf("invalid priority value")}
 		}
 		return cmdResult(m.secondaryFeatures.TaskItem.SetPriority(identity, priority))
-	case operationTaskSetDueDate:
+	case operation.OperationTaskSetDueDate:
 		value, ok := invocation.Value.(operation.OperationDateValue)
 		if !ok {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid date value")}
+			return operation.OperationHandlerResult{Err: fmt.Errorf("invalid date value")}
 		}
 		if value.Deferred {
 			return cmdResult(m.secondaryFeatures.TaskItem.Defer(identity, cloneOperationDate(value.Date)))
 		}
 		return cmdResult(m.secondaryFeatures.TaskItem.SetDueDate(identity, cloneOperationDate(value.Date)))
-	case operationTaskSetParent:
+	case operation.OperationTaskSetParent:
 		value, ok := invocation.Value.(operation.OperationParentValue)
 		if !ok {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid parent value")}
+			return operation.OperationHandlerResult{Err: fmt.Errorf("invalid parent value")}
 		}
 		return relocationResult(m.secondaryFeatures.TaskItem.Reparent(identity, value.ParentID))
-	case operationTaskAdoptChildren:
+	case operation.OperationTaskAdoptChildren:
 		children, ok := invocation.Value.([]string)
 		if !ok {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid child value")}
+			return operation.OperationHandlerResult{Err: fmt.Errorf("invalid child value")}
 		}
 		return cmdResult(m.adoptChildrenCmd(
 			identity,
 			children,
 			m.captureOutlinerRelocationForTargets(invocation.Targets),
 		))
-	case operationTaskReferences:
+	case operation.OperationTaskReferences:
 		// No relocation capture: a reference edit records a soft link and moves no
 		// row, so there is no destination for the outliner to follow.
 		value, ok := invocation.Value.(operation.OperationTaskReferenceValue)
 		if !ok {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid dependency value")}
+			return operation.OperationHandlerResult{Err: fmt.Errorf("invalid dependency value")}
 		}
 		return cmdResult(m.setTaskReferencesCmd(identity, value))
-	case operationTaskMoveToProject:
+	case operation.OperationTaskMoveToProject:
 		projectID, ok := invocation.Value.(string)
 		if !ok || strings.TrimSpace(projectID) == "" {
-			return OperationHandlerResult{Err: fmt.Errorf("invalid project value")}
+			return operation.OperationHandlerResult{Err: fmt.Errorf("invalid project value")}
 		}
 		return cmdResult(m.moveTaskToProjectCmd(
 			[]taskref.TaskIdentity{identity},
 			projectID,
 			m.captureOutlinerRelocationForTargets(invocation.Targets),
 		))
-	case operationTaskIndent:
+	case operation.OperationTaskIndent:
 		return relocationResult(m.secondaryFeatures.TaskItem.Indent(identity))
-	case operationTaskOutdent:
+	case operation.OperationTaskOutdent:
 		return relocationResult(m.secondaryFeatures.TaskItem.Outdent(identity))
 	default:
 		return m.executeAuxiliaryTaskOperation(invocation, identity)

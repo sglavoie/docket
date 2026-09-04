@@ -13,7 +13,7 @@ import (
 // than in operation_executor.go beside the type-level pipeline.
 func (m *AppModel) registerOperation(
 	descriptor operation.OperationDescriptor,
-	binding OperationBinding,
+	binding operation.OperationBinding,
 ) error {
 	if m == nil || m.operationRegistry == nil || m.operationExecutor == nil {
 		return fmt.Errorf("operation registry and executor are required")

@@ -20,7 +20,7 @@ import (
 // the grammar does not already carry, and the seeding compares canonical
 // spellings rather than the filter cache's enums.
 func (m *AppModel) newFilterDuePicker(
-	request OperationExecutionRequest,
+	request operation.OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
 	shortcuts := query.DueFilterShortcuts()
 	items := make([]ListItem, 0, len(shortcuts))
@@ -63,7 +63,7 @@ func (m *AppModel) newFilterDuePicker(
 // built the same way the f@ picker is, from rows that are their own canonical
 // tokens.
 func (m *AppModel) newFilterDependencyPicker(
-	request OperationExecutionRequest,
+	request operation.OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
 	shortcuts := query.DependencyFilterShortcuts()
 	items := make([]ListItem, 0, len(shortcuts))
@@ -103,7 +103,7 @@ func (m *AppModel) newFilterDependencyPicker(
 // newFilterHierarchyPicker is the fh single-select picker over the four
 // hierarchy positions, seeded from the active facet when one is set.
 func (m *AppModel) newFilterHierarchyPicker(
-	request OperationExecutionRequest,
+	request operation.OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
 	options := []struct {
 		id        string
@@ -155,7 +155,7 @@ func (m *AppModel) newFilterHierarchyPicker(
 // newFilterCompletionAgePicker is the fc single-select picker. Applying a
 // completion-age filter also selects both terminal workflow states.
 func (m *AppModel) newFilterCompletionAgePicker(
-	request OperationExecutionRequest,
+	request operation.OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
 	options := []struct {
 		id        string
@@ -206,7 +206,7 @@ func (m *AppModel) newFilterCompletionAgePicker(
 // newFilterStatesPicker is the f$ multi-select picker over the canonical
 // workflow states, seeded from the active state filter facet.
 func (m *AppModel) newFilterStatesPicker(
-	request OperationExecutionRequest,
+	request operation.OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
 	source := ListSourceFromWorkflowStates(models.AllWorkflowStates())
 	counts := m.prospectiveStateFilterCounts()
@@ -332,7 +332,7 @@ func renderProspectiveFilterCount(count int) string {
 // axis on fc, so the census here reads tags alone and the picker's CONTEXTS
 // section drops out with them.
 func (m *AppModel) newFilterTagsPicker(
-	request OperationExecutionRequest,
+	request operation.OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
 	tagList := query.BuildProjectsTagList(m.filterScopeProjects(), false)
 	source := taskTagListSource(tagList, false)
@@ -373,7 +373,7 @@ func taskCountLabel(count int) string {
 
 // no-context row names the tasks the vocabulary does not cover.
 func (m *AppModel) newFilterContextsPicker(
-	request OperationExecutionRequest,
+	request operation.OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
 	projects := m.filterScopeProjects()
 	facets := query.BuildTagFacetList(projects, false)

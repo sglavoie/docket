@@ -29,8 +29,8 @@ func TestStateValueProviderAcceptsOnlyCanonicalPresets(t *testing.T) {
 }
 
 func TestTaskStatePickerContainsExactCanonicalStatesAndTransitionReasons(t *testing.T) {
-	request := OperationExecutionRequest{
-		ID:      operationTaskSetState,
+	request := operation.OperationExecutionRequest{
+		ID:      operation.OperationTaskSetState,
 		Context: taskActionTestContext(),
 	}
 	picker, err := NewTaskStatePickerForTargets(request, []models.WorkflowState{models.StateDone}, "Completed task")
@@ -65,7 +65,7 @@ func newOperationTagPickerForTest(t *testing.T, tags ...string) *OperationValueP
 		source.Items[index].Data = source.Items[index].PrimaryText
 	}
 	picker, err := newOperationValuePickerModel(
-		OperationExecutionRequest{ID: operationTaskSetTags},
+		operation.OperationExecutionRequest{ID: operation.OperationTaskSetTags},
 		operation.ValueProviderTags,
 		"Set Tags",
 		"Task",
@@ -114,7 +114,7 @@ func TestOperationTagPickerCreatesSelectsAndAppliesNewTag(t *testing.T) {
 	if !dismissed {
 		t.Fatal("Enter did not apply the completed tag selection")
 	}
-	selected, ok := result.(OperationValueSelectedMsg)
+	selected, ok := result.(operation.OperationValueSelectedMsg)
 	if !ok {
 		t.Fatalf("result = %T, want OperationValueSelectedMsg", result)
 	}
@@ -156,7 +156,7 @@ func TestOperationTagPickerValidatesInputAndEscapesBackToPicker(t *testing.T) {
 	if !dismissed {
 		t.Fatal("second Esc did not dismiss Set Tags")
 	}
-	if _, ok := result.(OperationValueCanceledMsg); !ok {
+	if _, ok := result.(operation.OperationValueCanceledMsg); !ok {
 		t.Fatalf("second Esc result = %T, want OperationValueCanceledMsg", result)
 	}
 }
@@ -232,7 +232,7 @@ func TestOperationValuePickerMultiSelectionReturnsStableValues(t *testing.T) {
 		{ID: "tag:a", PrimaryText: "a", Data: "a"},
 	}}
 	picker, err := newOperationValuePickerModel(
-		OperationExecutionRequest{ID: operationTaskSetTags},
+		operation.OperationExecutionRequest{ID: operation.OperationTaskSetTags},
 		operation.ValueProviderTags,
 		"Set Tags",
 		"Task",
@@ -247,7 +247,7 @@ func TestOperationValuePickerMultiSelectionReturnsStableValues(t *testing.T) {
 	if !dismissed {
 		t.Fatal("Enter did not dismiss a completed multi picker")
 	}
-	selected, ok := result.(OperationValueSelectedMsg)
+	selected, ok := result.(operation.OperationValueSelectedMsg)
 	if !ok {
 		t.Fatalf("result = %T, want OperationValueSelectedMsg", result)
 	}
@@ -270,8 +270,8 @@ func TestBulkTagPickerRepresentsAllSomeNoneAndEmitsPatch(t *testing.T) {
 		context.Selection.Entities = append(context.Selection.Entities, taskOperationEntity(task, project))
 	}
 	context.Entity = context.Selection.Entities[0]
-	request := OperationExecutionRequest{
-		ID:      operationTaskSetTags,
+	request := operation.OperationExecutionRequest{
+		ID:      operation.OperationTaskSetTags,
 		Context: context,
 	}
 	picker, err := model.newOperationValuePicker(request, operation.ValueProviderTags)
@@ -341,7 +341,7 @@ func TestBulkContextRowsReadIndeterminateAndWriteOnlyWhenPicked(t *testing.T) {
 	}
 	context.Entity = context.Selection.Entities[0]
 	picker, err := model.newOperationValuePicker(
-		OperationExecutionRequest{ID: operationTaskSetTags, Context: context},
+		operation.OperationExecutionRequest{ID: operation.OperationTaskSetTags, Context: context},
 		operation.ValueProviderTags,
 	)
 	if err != nil {

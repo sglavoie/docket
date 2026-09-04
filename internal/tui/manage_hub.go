@@ -45,7 +45,7 @@ type ManageHubDependencies struct {
 	ActiveProjectFocus func() string
 	TaskCounts         func() map[string]projectTaskTally
 	OperationRegistry  *operation.OperationRegistry
-	OperationExecutor  *OperationExecutor
+	OperationExecutor  *operation.OperationExecutor
 	DispatchKey        operationKeyDispatch
 }
 

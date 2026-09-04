@@ -26,7 +26,7 @@ func TestEveryRegisteredOperationHasOneCompatibleHandler(t *testing.T) {
 	executor := app.operationExecutor
 
 	for _, descriptor := range registry.All() {
-		bindings := executor.bindings[descriptor.ID]
+		bindings := executor.Bindings(descriptor.ID)
 		if len(bindings) == 0 {
 			t.Errorf("operation %s has a descriptor but no executable binding", descriptor.ID)
 			continue
@@ -82,7 +82,7 @@ func TestEveryDestructiveOperationPromptsBeforeItWrites(t *testing.T) {
 		}
 		destructive++
 		reason, exempt := delegatedDestructiveConfirmations[descriptor.ID]
-		for _, binding := range executor.bindings[descriptor.ID] {
+		for _, binding := range executor.Bindings(descriptor.ID) {
 			if !binding.DelegateConfirmation {
 				continue
 			}

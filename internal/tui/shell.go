@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/sglavoie/tt/internal/config"
 	"github.com/sglavoie/tt/internal/models"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
@@ -146,5 +147,5 @@ func (o OverlayManager) ClearAll() {
 	m.operationTextPrompt = nil
 	m.lensPicker = nil
 	m.operationConfirm.Cancel()
-	m.pendingOperationRequest = OperationExecutionRequest{}
+	m.pendingOperationRequest = operation.OperationExecutionRequest{}
 }

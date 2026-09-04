@@ -160,14 +160,14 @@ func TestOutlinerProjectOperationManifestIsRegisteredApplicableAndExecutable(t *
 			t.Errorf("manifest operation %s is not applicable on a project header", entry.ID)
 			continue
 		}
-		result := app.operationExecutor.Execute(OperationExecutionRequest{
+		result := app.operationExecutor.Execute(operation.OperationExecutionRequest{
 			ID:      entry.ID,
 			Context: context,
 		})
 		for _, sentinel := range []error{
-			ErrOperationNotRegistered,
-			ErrOperationUnavailable,
-			ErrOperationHandler,
+			operation.ErrOperationNotRegistered,
+			operation.ErrOperationUnavailable,
+			operation.ErrOperationHandler,
 		} {
 			if errors.Is(result.Err, sentinel) {
 				t.Errorf("%s on a project header: %v", entry.ID, result.Err)

@@ -71,7 +71,7 @@ func (m *AppModel) saveViewAsLens() tea.Cmd {
 	}
 	ctx := PresentationCommandContext(m.currentView())
 	ctx.Capabilities.Add(operation.CapabilityLensPicker)
-	result := m.operationExecutor.Execute(OperationExecutionRequest{
+	result := m.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:      operationLensCreate,
 		Context: ctx,
 	})
@@ -160,5 +160,5 @@ func (m *AppModel) closeNamedLensOverlays() {
 	m.contextActionSheet = nil
 	m.clearOperationValueStep()
 	m.operationConfirm.Cancel()
-	m.pendingOperationRequest = OperationExecutionRequest{}
+	m.pendingOperationRequest = operation.OperationExecutionRequest{}
 }

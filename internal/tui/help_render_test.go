@@ -11,12 +11,12 @@ import (
 
 func TestHelpRenderKeepsSetStateChordOnOneLine(t *testing.T) {
 	strategy := SimplifiedInputStrategy()
-	key := operation.DisplayKeysForOperation(strategy, operationTaskSetState)
+	key := operation.DisplayKeysForOperation(strategy, operation.OperationTaskSetState)
 	if !strings.HasPrefix(key, "$") {
 		t.Fatalf("Set State key = %q, want the $ chord prefix", key)
 	}
 	for _, binding := range strategy.Bindings {
-		if binding.OperationID != operationTaskSetState || len(binding.Sequence) != 2 {
+		if binding.OperationID != operation.OperationTaskSetState || len(binding.Sequence) != 2 {
 			continue
 		}
 		if letter := binding.Sequence[1]; !strings.Contains(key, letter) {

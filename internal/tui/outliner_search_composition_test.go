@@ -21,7 +21,7 @@ func applyFilterForComposition(
 	value any,
 ) string {
 	t.Helper()
-	result := (&AppModel{crossOutliner: outliner}).executeFilterOperation(OperationInvocation{
+	result := (&AppModel{crossOutliner: outliner}).executeFilterOperation(operation.OperationInvocation{
 		Descriptor: operation.OperationDescriptor{ID: id},
 		Value:      value,
 	})
@@ -160,7 +160,7 @@ func TestSearchSortReordersWithinRelevanceTiersOnly(t *testing.T) {
 		t.Fatalf("unsorted search = %v, want both title hits ranked above the description hit", baseline)
 	}
 
-	result := app.executeSortOperation(OperationInvocation{
+	result := app.executeSortOperation(operation.OperationInvocation{
 		Descriptor: operation.OperationDescriptor{ID: operationSortPriority},
 	})
 	if result.Err != nil {
@@ -176,7 +176,7 @@ func TestSearchSortReordersWithinRelevanceTiersOnly(t *testing.T) {
 		t.Fatalf("sorted search = %v, want a within-tier reorder that never crosses a tier", got)
 	}
 
-	result = app.executeSortOperation(OperationInvocation{
+	result = app.executeSortOperation(operation.OperationInvocation{
 		Descriptor: operation.OperationDescriptor{ID: operationSortClear},
 	})
 	if result.Status != "Sort cleared" {
@@ -225,7 +225,7 @@ func TestPopulationFacetsRefuseOnlyUnderTheRankedList(t *testing.T) {
 		t.Fatalf("f# resolution under search = %v, want a terminal chord", resolution)
 	}
 
-	result := app.executeProjectFilterOperation(OperationInvocation{
+	result := app.executeProjectFilterOperation(operation.OperationInvocation{
 		Descriptor: operation.OperationDescriptor{ID: operationFilterProjectTags},
 		Value:      []string{"backend"},
 	})

@@ -116,7 +116,7 @@ func TestFilterContextOperationAppliesOrSemanticsAcrossNamesAndTheGap(t *testing
 	ctx := simplifiedOperationContext()
 	filter := &app.crossOutliner.filter.CommonFilterState
 
-	both := app.operationExecutor.Execute(OperationExecutionRequest{
+	both := app.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:       operationFilterContexts,
 		Context:  ctx,
 		Value:    []string{"errand", "deep"},
@@ -138,7 +138,7 @@ func TestFilterContextOperationAppliesOrSemanticsAcrossNamesAndTheGap(t *testing
 		t.Errorf("a task carrying neither context should be hidden: %v", visible)
 	}
 
-	gap := app.operationExecutor.Execute(OperationExecutionRequest{
+	gap := app.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:       operationFilterContexts,
 		Context:  ctx,
 		Value:    []string{query.NoContextFilterKey},
@@ -161,7 +161,7 @@ func TestFilterContextOperationAppliesOrSemanticsAcrossNamesAndTheGap(t *testing
 		t.Errorf("the gap should exclude tasks carrying a context: %v", visible)
 	}
 
-	cleared := app.operationExecutor.Execute(OperationExecutionRequest{
+	cleared := app.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:       operationFilterContexts,
 		Context:  ctx,
 		Value:    []string{},

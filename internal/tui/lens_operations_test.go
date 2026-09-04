@@ -42,8 +42,8 @@ func executeLens(
 	entity operation.EntityIdentity,
 	value string,
 	confirmed bool,
-) OperationExecutionResult {
-	request := OperationExecutionRequest{
+) operation.OperationExecutionResult {
+	request := operation.OperationExecutionRequest{
 		ID:        id,
 		Context:   lensOperationContext(entity),
 		Confirmed: confirmed,
@@ -109,14 +109,14 @@ func TestLensOperationsAreReachableOnlyFromTheLensPicker(t *testing.T) {
 	} {
 		ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
 		ctx.CurrentEntity = entity
-		result := model.operationExecutor.Execute(OperationExecutionRequest{
+		result := model.operationExecutor.Execute(operation.OperationExecutionRequest{
 			ID:        id,
 			Context:   ctx,
 			Value:     "Anything",
 			HasValue:  true,
 			Confirmed: true,
 		})
-		if !errors.Is(result.Err, ErrOperationUnavailable) {
+		if !errors.Is(result.Err, operation.ErrOperationUnavailable) {
 			t.Fatalf("%s without the picker capability = %v, want unavailable", id, result.Err)
 		}
 	}
@@ -133,7 +133,7 @@ func TestLensTargetedOperationsRefuseANonLensCursor(t *testing.T) {
 		operationLensDelete,
 	} {
 		result := executeLens(model, id, task, "Anything", true)
-		if !errors.Is(result.Err, ErrOperationUnavailable) {
+		if !errors.Is(result.Err, operation.ErrOperationUnavailable) {
 			t.Fatalf("%s on a task cursor = %v, want unavailable", id, result.Err)
 		}
 	}

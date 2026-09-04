@@ -1,31 +1,30 @@
-package tui
+package operation
 
 import (
 	"errors"
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/presentation"
 )
 
 // OperationExecutor resolves descriptors, targets, values, risk policy,
 // transactions, status, and undo/redo before invoking one handler.
 type OperationExecutor struct {
-	registry           *operation.OperationRegistry
-	resolver           operation.OperationTargetResolver
-	bindings           map[operation.OperationID][]OperationBinding
-	valueProviders     map[operation.ValueProviderID]OperationValueProvider
+	registry           *OperationRegistry
+	resolver           OperationTargetResolver
+	bindings           map[OperationID][]OperationBinding
+	valueProviders     map[ValueProviderID]OperationValueProvider
 	transactionFactory OperationTransactionFactory
 	reporter           OperationStatusReporter
 	history            *OperationHistory
 }
 
-func NewOperationExecutor(registry *operation.OperationRegistry) *OperationExecutor {
+func NewOperationExecutor(registry *OperationRegistry) *OperationExecutor {
 	return &OperationExecutor{
 		registry:       registry,
-		bindings:       make(map[operation.OperationID][]OperationBinding),
-		valueProviders: make(map[operation.ValueProviderID]OperationValueProvider),
+		bindings:       make(map[OperationID][]OperationBinding),
+		valueProviders: make(map[ValueProviderID]OperationValueProvider),
 		history:        &OperationHistory{},
 	}
 }
@@ -47,7 +46,7 @@ func (executor *OperationExecutor) History() *OperationHistory {
 
 // RegisterValueProvider registers one shared value source.
 func (executor *OperationExecutor) RegisterValueProvider(
-	id operation.ValueProviderID,
+	id ValueProviderID,
 	provider OperationValueProvider,
 ) error {
 	if id == "" || provider == nil {
@@ -72,10 +71,10 @@ func (executor *OperationExecutor) Register(binding OperationBinding) error {
 	if !ok {
 		return fmt.Errorf("%w: %s", ErrOperationNotRegistered, binding.OperationID)
 	}
-	if err := operation.ValidateOperationCapabilities(binding.OperationID, binding.RequiredCapabilities); err != nil {
+	if err := ValidateOperationCapabilities(binding.OperationID, binding.RequiredCapabilities); err != nil {
 		return err
 	}
-	if descriptor.TargetCardinality == operation.TargetCardinalityNone &&
+	if descriptor.TargetCardinality == TargetCardinalityNone &&
 		(binding.SingleHandler != nil || binding.BulkHandler != nil) {
 		return fmt.Errorf(
 			"operation %s resolves no targets and requires a target-free handler",
@@ -96,7 +95,7 @@ func (executor *OperationExecutor) Register(binding OperationBinding) error {
 		return fmt.Errorf("operation %s requires exactly one handler kind", binding.OperationID)
 	}
 	binding.Views = append([]presentation.PresentationID(nil), binding.Views...)
-	binding.RequiredCapabilities = operation.CloneCapabilitySet(binding.RequiredCapabilities)
+	binding.RequiredCapabilities = CloneCapabilitySet(binding.RequiredCapabilities)
 	executor.bindings[binding.OperationID] = append(executor.bindings[binding.OperationID], binding)
 	return nil
 }
@@ -110,7 +109,7 @@ func (executor *OperationExecutor) Execute(request OperationExecutionRequest) Op
 	// Refused ahead of availability so any route into an operation the checklist
 	// cursor turned off reports the one sentence rather than the generic
 	// unavailable error.
-	if err := operation.ChecklistCursorRejection(descriptor, request.Context); err != nil {
+	if err := ChecklistCursorRejection(descriptor, request.Context); err != nil {
 		return executor.failure(err)
 	}
 	binding, ok := executor.bindingFor(request.ID, request.Context)
@@ -126,7 +125,7 @@ func (executor *OperationExecutor) Execute(request OperationExecutionRequest) Op
 	}
 	// Refused before resolution so delegated bindings, which swallow resolver
 	// errors, cannot reach a handler with an archived task.
-	if err := operation.ArchivedTaskTargetRejection(descriptor, request.Context); err != nil {
+	if err := ArchivedTaskTargetRejection(descriptor, request.Context); err != nil {
 		return executor.failure(err)
 	}
 
@@ -135,7 +134,7 @@ func (executor *OperationExecutor) Execute(request OperationExecutionRequest) Op
 		return executor.failure(err)
 	}
 	if err != nil {
-		targets = operation.ResolvedOperationTargets{Source: descriptor.TargetSource}
+		targets = ResolvedOperationTargets{Source: descriptor.TargetSource}
 	}
 	invocation := OperationInvocation{
 		Descriptor: descriptor,
@@ -173,7 +172,7 @@ func (executor *OperationExecutor) Execute(request OperationExecutionRequest) Op
 		}
 	}
 
-	if descriptor.Risk == operation.OperationRiskDestructive &&
+	if descriptor.Risk == OperationRiskDestructive &&
 		!request.Confirmed &&
 		!binding.DelegateConfirmation {
 		confirmation := &OperationConfirmationRequestMsg{
@@ -187,7 +186,7 @@ func (executor *OperationExecutor) Execute(request OperationExecutionRequest) Op
 	}
 
 	var transaction OperationTransaction
-	if descriptor.Risk != operation.OperationRiskReadOnly &&
+	if descriptor.Risk != OperationRiskReadOnly &&
 		!binding.DelegateTransaction &&
 		executor.transactionFactory != nil {
 		transaction, err = executor.transactionFactory(invocation)
@@ -216,7 +215,7 @@ func (executor *OperationExecutor) Execute(request OperationExecutionRequest) Op
 	if recorded == "" {
 		recorded = descriptor.Label
 	}
-	if descriptor.Risk != operation.OperationRiskReadOnly {
+	if descriptor.Risk != OperationRiskReadOnly {
 		executor.history.record(operationUndoEntry{
 			status: recorded,
 			undo:   handlerResult.Undo,
@@ -258,14 +257,26 @@ func (executor *OperationExecutor) Redo() OperationExecutionResult {
 	)
 }
 
+// Bindings returns the executable behavior registered against one descriptor.
+// It is the single read path onto the binding table: bindingFor selects through
+// it, and the shell's registry-union parity audits enumerate through it, since
+// only the shell holds every registration in one place.
+func (executor *OperationExecutor) Bindings(id OperationID) []OperationBinding {
+	if executor == nil {
+		return nil
+	}
+	return append([]OperationBinding(nil), executor.bindings[id]...)
+}
+
 func (executor *OperationExecutor) bindingFor(
-	id operation.OperationID,
-	ctx operation.CommandContext,
+	id OperationID,
+	ctx CommandContext,
 ) (OperationBinding, bool) {
 	var global *OperationBinding
 	var scoped *OperationBinding
-	for i := range executor.bindings[id] {
-		binding := &executor.bindings[id][i]
+	candidates := executor.Bindings(id)
+	for i := range candidates {
+		binding := &candidates[i]
 		if !ctx.Capabilities.HasAll(binding.RequiredCapabilities) {
 			continue
 		}
@@ -304,7 +315,7 @@ func executeOperationBinding(
 	case binding.SingleHandler != nil && len(invocation.Targets.Targets) == 1:
 		return binding.SingleHandler(invocation, invocation.Targets.Targets[0])
 	case binding.BulkHandler != nil && len(invocation.Targets.Targets) > 0:
-		return binding.BulkHandler(invocation, append([]operation.OperationTarget(nil), invocation.Targets.Targets...))
+		return binding.BulkHandler(invocation, append([]OperationTarget(nil), invocation.Targets.Targets...))
 	default:
 		return OperationHandlerResult{Err: fmt.Errorf("%w: %s", ErrOperationHandler, invocation.Descriptor.ID)}
 	}

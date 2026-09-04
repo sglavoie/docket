@@ -36,7 +36,7 @@ func TestFinalPriorityChordUsesBangPrefix(t *testing.T) {
 	strategy := SimplifiedInputStrategy()
 	got := make(map[string]any)
 	for _, binding := range strategy.Bindings {
-		if binding.OperationID != operationTaskSetPriority ||
+		if binding.OperationID != operation.OperationTaskSetPriority ||
 			len(binding.Sequence) != 2 ||
 			binding.Sequence[0] != "!" {
 			continue
@@ -53,7 +53,7 @@ func TestFinalPriorityChordUsesBangPrefix(t *testing.T) {
 		}
 	}
 	for _, binding := range strategy.Bindings {
-		if binding.OperationID == operationTaskSetPriority &&
+		if binding.OperationID == operation.OperationTaskSetPriority &&
 			len(binding.Sequence) > 0 &&
 			binding.Sequence[0] == "p" {
 			t.Errorf("retired priority prefix remains registered: %v", binding.Sequence)
@@ -86,16 +86,16 @@ func TestFinalStateChordOwnsEveryStateAndPlanningAction(t *testing.T) {
 	}
 	const stateSpelling = "$i/g/w/p/m/d/c"
 	want := map[string]terminal{
-		"i": {operation: operationTaskSetState, value: models.StateInbox, hasValue: true, display: stateSpelling},
+		"i": {operation: operation.OperationTaskSetState, value: models.StateInbox, hasValue: true, display: stateSpelling},
 		"b": {operation: operation.OperationCoreBacklog, display: "$b"},
 		"n": {operation: operation.OperationCoreNext, display: "$n"},
 		"t": {operation: operation.OperationCoreToday, display: "$t"},
-		"g": {operation: operationTaskSetState, value: models.StateDoing, hasValue: true, display: stateSpelling},
-		"w": {operation: operationTaskSetState, value: models.StateWaiting, hasValue: true, display: stateSpelling},
-		"p": {operation: operationTaskSetState, value: models.StatePaused, hasValue: true, display: stateSpelling},
-		"m": {operation: operationTaskSetState, value: models.StateSomeday, hasValue: true, display: stateSpelling},
-		"d": {operation: operationTaskSetState, value: models.StateDone, hasValue: true, display: stateSpelling},
-		"c": {operation: operationTaskSetState, value: models.StateCanceled, hasValue: true, display: stateSpelling},
+		"g": {operation: operation.OperationTaskSetState, value: models.StateDoing, hasValue: true, display: stateSpelling},
+		"w": {operation: operation.OperationTaskSetState, value: models.StateWaiting, hasValue: true, display: stateSpelling},
+		"p": {operation: operation.OperationTaskSetState, value: models.StatePaused, hasValue: true, display: stateSpelling},
+		"m": {operation: operation.OperationTaskSetState, value: models.StateSomeday, hasValue: true, display: stateSpelling},
+		"d": {operation: operation.OperationTaskSetState, value: models.StateDone, hasValue: true, display: stateSpelling},
+		"c": {operation: operation.OperationTaskSetState, value: models.StateCanceled, hasValue: true, display: stateSpelling},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("state chord terminals = %v, want %v", got, want)

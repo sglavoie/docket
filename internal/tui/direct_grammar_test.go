@@ -228,11 +228,11 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"p": operation.OperationCoreToggleProjectGroup,
 		"t": operation.OperationCoreToggleSubtrees,
 		"n": operation.OperationCoreNextHeader, "N": operation.OperationCorePreviousHeader,
-		"[": operationTaskOutdent, "]": operationTaskIndent,
-		">":           operationTaskSetParent,
-		"<":           operationTaskAdoptChildren,
-		"~":           operationTaskReferences,
-		"%":           operationTaskMoveToProject,
+		"[": operation.OperationTaskOutdent, "]": operation.OperationTaskIndent,
+		">":           operation.OperationTaskSetParent,
+		"<":           operation.OperationTaskAdoptChildren,
+		"~":           operation.OperationTaskReferences,
+		"%":           operation.OperationTaskMoveToProject,
 		"&":           operationTaskAttachments,
 		";":           operationTaskComments,
 		"shift+enter": operation.OperationCoreFocusParent,
@@ -248,7 +248,7 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 		"u": operation.OperationCoreUndo, "ctrl+r": operation.OperationCoreRedo,
 		"esc": operation.OperationCoreBack, "?": operation.OperationCoreHelp, "ctrl+c": operation.OperationCoreQuit,
 		"tab": operation.OperationCoreNextWorkMode, "shift+tab": operation.OperationCorePreviousWorkMode,
-		"@": operationTaskSetDueDate,
+		"@": operation.OperationTaskSetDueDate,
 		"y": operationTaskCopyTitle, "Y": operationTaskCopyDetails,
 		"ctrl+y": operationTaskCopyTitleDescription,
 		// The digit row: 0 returns to the launch view and 1-7 are the seven modes
@@ -267,7 +267,7 @@ func assertOutlinerOwnsEveryDocumentedKeyOnce(t *testing.T) {
 	// checklist item, and the checklist meaning is listed first because resolution
 	// takes the first applicable binding.
 	shared := map[string][]operation.OperationID{
-		"#":      {operationTaskSetTags, operationProjectSetTags},
+		"#":      {operation.OperationTaskSetTags, operationProjectSetTags},
 		"*":      {operationTaskTogglePin, operationScopePinProject},
 		"e":      {operation.OperationChecklistEditItem, operation.OperationCoreEdit},
 		"A":      {operation.OperationChecklistAddItem, operationTaskNewChild},

@@ -172,7 +172,7 @@ func TestFilterDuePickerDeferredRowOwnsTheDeferredFacet(t *testing.T) {
 	filter := &app.crossOutliner.filter.CommonFilterState
 	filter.DueDate = query.DueDateToday
 
-	result := app.executeFilterOperation(OperationInvocation{
+	result := app.executeFilterOperation(operation.OperationInvocation{
 		Descriptor: operation.OperationDescriptor{ID: operationFilterDue},
 		Value:      "?deferred",
 	})
@@ -186,7 +186,7 @@ func TestFilterDuePickerDeferredRowOwnsTheDeferredFacet(t *testing.T) {
 		t.Fatalf("DueDate = %v, want the due-date facet cleared", filter.DueDate)
 	}
 
-	result = app.executeFilterOperation(OperationInvocation{
+	result = app.executeFilterOperation(operation.OperationInvocation{
 		Descriptor: operation.OperationDescriptor{ID: operationFilterDue},
 		Value:      "@overdue",
 	})
@@ -356,7 +356,7 @@ func TestFilterStatePickerShowsProspectiveCountsFromOtherActiveFilters(t *testin
 	outliner.crossForceRebuild = true
 	outliner.rebuildRows()
 
-	picker, err := app.newFilterStatesPicker(OperationExecutionRequest{})
+	picker, err := app.newFilterStatesPicker(operation.OperationExecutionRequest{})
 	if err != nil {
 		t.Fatalf("newFilterStatesPicker() error = %v", err)
 	}

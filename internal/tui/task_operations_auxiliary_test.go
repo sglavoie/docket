@@ -36,9 +36,9 @@ func executeTaskOperationForTest(
 	model *AppModel,
 	id operation.OperationID,
 	context operation.CommandContext,
-) OperationExecutionResult {
+) operation.OperationExecutionResult {
 	t.Helper()
-	result := model.operationExecutor.Execute(OperationExecutionRequest{
+	result := model.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:      id,
 		Context: context,
 	})
@@ -60,17 +60,17 @@ func TestTaskOperationAuxiliaryCatalogRoutesToProductionMessages(t *testing.T) {
 			assertTaskMessageTarget(t, msg.(ShowTaskAttachmentsMsg).Task, task)
 		},
 		operationTaskCopyTitle: func(t *testing.T, msg any) {
-			if msg.(OperationCommandResultMsg).Cmd == nil {
+			if msg.(operation.OperationCommandResultMsg).Cmd == nil {
 				t.Error("copy title produced no application operation command")
 			}
 		},
 		operationTaskCopyDetails: func(t *testing.T, msg any) {
-			if msg.(OperationCommandResultMsg).Cmd == nil {
+			if msg.(operation.OperationCommandResultMsg).Cmd == nil {
 				t.Error("copy description produced no application operation command")
 			}
 		},
 		operationTaskCopyTitleDescription: func(t *testing.T, msg any) {
-			if msg.(OperationCommandResultMsg).Cmd == nil {
+			if msg.(operation.OperationCommandResultMsg).Cmd == nil {
 				t.Error("copy title and description produced no application operation command")
 			}
 		},
@@ -79,7 +79,7 @@ func TestTaskOperationAuxiliaryCatalogRoutesToProductionMessages(t *testing.T) {
 			assertTaskMessageTarget(t, create.ParentTask, task)
 		},
 		operationTaskTogglePin: func(t *testing.T, msg any) {
-			if msg.(OperationCommandResultMsg).Cmd == nil {
+			if msg.(operation.OperationCommandResultMsg).Cmd == nil {
 				t.Error("toggle pin produced no coordinator command")
 			}
 		},
@@ -197,7 +197,7 @@ func TestTaskOperationExecutesAgainstFrozenTargetAfterCursorMove(t *testing.T) {
 		t.Errorf("external editor target = %v, want the frozen task %v", got, task)
 	}
 	copied := executeTaskOperationForTest(t, model, operationTaskCopyTitle, context)
-	if copied.Message.(OperationCommandResultMsg).Cmd == nil {
+	if copied.Message.(operation.OperationCommandResultMsg).Cmd == nil {
 		t.Error("copy produced no application operation command")
 	}
 }
@@ -276,7 +276,7 @@ func TestTaskChildActionOnDeletedParentLeavesHierarchyUnchanged(t *testing.T) {
 	project.BuildTaskTree()
 	before := len(project.Tasks)
 
-	result := model.operationExecutor.Execute(OperationExecutionRequest{
+	result := model.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:      operationTaskNewChild,
 		Context: context,
 	})
@@ -297,7 +297,7 @@ func TestTaskOperationStaleFrozenTargetReportsUnavailable(t *testing.T) {
 	project.Tasks = []*models.Task{project.GetTaskByID("other")}
 	project.BuildTaskTree()
 
-	result := model.operationExecutor.Execute(OperationExecutionRequest{
+	result := model.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:      operationTaskComments,
 		Context: context,
 	})

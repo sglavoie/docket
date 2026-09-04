@@ -27,7 +27,7 @@ const (
 // again inside executeLensAddTemplateOperation against the snapshot the commit
 // actually sees. This copy is what greys the row; that copy is what refuses.
 func (m *AppModel) newLensTemplatePicker(
-	request OperationExecutionRequest,
+	request operation.OperationExecutionRequest,
 ) (*OperationValuePickerModel, error) {
 	if m == nil || m.runtime == nil {
 		return nil, errors.New("workspace runtime is unavailable")

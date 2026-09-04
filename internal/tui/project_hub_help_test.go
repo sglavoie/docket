@@ -169,7 +169,7 @@ func TestCtrlPRemainsOwnedByInlineOutlinerControls(t *testing.T) {
 	out.confirm.Cancel()
 
 	app.operationTextPrompt = newOperationTextPromptModel(
-		OperationExecutionRequest{}, "Name", "", "draft", "Name",
+		operation.OperationExecutionRequest{}, "Name", "", "draft", "Name",
 	)
 	if handled, _ := app.handleGlobalKeyPress(ctrlP); !handled || app.operationTextPrompt == nil {
 		t.Fatalf("text prompt did not retain Ctrl+P: handled=%v prompt=%v", handled, app.operationTextPrompt != nil)

@@ -50,15 +50,15 @@ func taskAcceptsDeeperChild(task *models.Task) bool {
 //
 //nolint:gocyclo // One auditable switch keeps the auxiliary catalog in a single place.
 func (m *AppModel) executeAuxiliaryTaskOperation(
-	invocation OperationInvocation,
+	invocation operation.OperationInvocation,
 	identity taskref.TaskIdentity,
-) OperationHandlerResult {
+) operation.OperationHandlerResult {
 	task, project := m.taskAndProjectForIdentity(identity)
 	if task == nil || project == nil {
-		return OperationHandlerResult{Err: fmt.Errorf("task is no longer available")}
+		return operation.OperationHandlerResult{Err: fmt.Errorf("task is no longer available")}
 	}
-	message := func(msg any) OperationHandlerResult {
-		return OperationHandlerResult{Message: msg}
+	message := func(msg any) operation.OperationHandlerResult {
+		return operation.OperationHandlerResult{Message: msg}
 	}
 
 	//nolint:exhaustive // Only auxiliary task operations reach this switch.
@@ -76,7 +76,7 @@ func (m *AppModel) executeAuxiliaryTaskOperation(
 	case operationTaskNewChild:
 		return message(CreateTaskMsg{ParentTask: task, Project: project})
 	default:
-		return OperationHandlerResult{Err: fmt.Errorf("%w: %s", ErrOperationHandler, invocation.Descriptor.ID)}
+		return operation.OperationHandlerResult{Err: fmt.Errorf("%w: %s", operation.ErrOperationHandler, invocation.Descriptor.ID)}
 	}
 }
 

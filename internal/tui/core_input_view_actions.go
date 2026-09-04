@@ -56,14 +56,14 @@ const (
 // the cursor, which is exactly what adjustPersistentScrollOffset leaves
 // untouched on the next render. Success is silent: a status here would arm the
 // footer flash for a change already fully visible on screen.
-func (m *AppModel) coreScrollCursorTo(anchor viewScrollAnchor) OperationHandlerResult {
+func (m *AppModel) coreScrollCursorTo(anchor viewScrollAnchor) operation.OperationHandlerResult {
 	out, ok := m.outlinerPrimary()
 	if !ok || out == nil {
-		return OperationHandlerResult{}
+		return operation.OperationHandlerResult{}
 	}
 	start, end := out.visibleRowWindow()
 	if start >= end {
-		return OperationHandlerResult{}
+		return operation.OperationHandlerResult{}
 	}
 	height := end - start
 	desired := out.cursor
@@ -75,7 +75,7 @@ func (m *AppModel) coreScrollCursorTo(anchor viewScrollAnchor) OperationHandlerR
 	case viewScrollAnchorTop:
 	}
 	out.viewScrollOffset = min(max(desired, 0), max(len(out.rows)-height, 0))
-	return OperationHandlerResult{}
+	return operation.OperationHandlerResult{}
 }
 
 // coreGotoTaskProject is the task-row counterpart to Enter on a project header:
@@ -85,10 +85,10 @@ func (m *AppModel) coreScrollCursorTo(anchor viewScrollAnchor) OperationHandlerR
 // Esc would return to All instead of the mode the jump was pressed from. A mode
 // that lists the task where All does not (a Done task reached from Recent) keeps
 // the origin instead, and says so.
-func (m *AppModel) coreGotoTaskProject(targets operation.ResolvedOperationTargets) OperationHandlerResult {
+func (m *AppModel) coreGotoTaskProject(targets operation.ResolvedOperationTargets) operation.OperationHandlerResult {
 	out, ok := m.outlinerPrimary()
 	if !ok || out == nil {
-		return OperationHandlerResult{}
+		return operation.OperationHandlerResult{}
 	}
 	// Search is dismissed before the origin mode is read and before the scope
 	// push, since that push captures the frame Esc restores and it must be the
@@ -96,7 +96,7 @@ func (m *AppModel) coreGotoTaskProject(targets operation.ResolvedOperationTarget
 	out.ClearSearch()
 	task, project := m.taskAndProjectForTargets(targets)
 	if task == nil || project == nil {
-		return OperationHandlerResult{}
+		return operation.OperationHandlerResult{}
 	}
 	origin := out.activeOutlinerModeEntry()
 	previous := out.cursor
@@ -112,7 +112,7 @@ func (m *AppModel) coreGotoTaskProject(targets operation.ResolvedOperationTarget
 		message += " — kept " + origin.Label + ", the task is not listed in All"
 	}
 	m.setInfoStatus(message)
-	return OperationHandlerResult{
+	return operation.OperationHandlerResult{
 		Message: commandMessage(tea.Batch(
 			flashIfJumped(previous, out.cursor, &out.cursorFlash),
 			status.DefaultStatusTimeout(),
@@ -187,22 +187,22 @@ func (m *AppModel) coreRedo() tea.Cmd {
 // population reload the F-chord facets owe whenever it cleared one of them,
 // through the same command Fx raises, so the projects on screen are the Active
 // Projects the launch view names rather than the wider set a facet had opened.
-func (m *AppModel) coreResetToLaunchView() OperationHandlerResult {
+func (m *AppModel) coreResetToLaunchView() operation.OperationHandlerResult {
 	out, ok := m.outlinerPrimary()
 	if !ok || out == nil {
-		return OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
+		return operation.OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
 	}
 	cleared, reload := out.resetToLaunchView()
 	if len(cleared) == 0 {
-		return OperationHandlerResult{Status: "Already at the launch view"}
+		return operation.OperationHandlerResult{Status: "Already at the launch view"}
 	}
 	status := "Launch view restored · cleared " + strings.Join(cleared, ", ")
 	if reload {
-		return OperationHandlerResult{
-			Message: OperationCommandResultMsg{Cmd: m.projectFilterReloadCmd(status)},
+		return operation.OperationHandlerResult{
+			Message: operation.OperationCommandResultMsg{Cmd: m.projectFilterReloadCmd(status)},
 		}
 	}
-	return OperationHandlerResult{Status: status}
+	return operation.OperationHandlerResult{Status: status}
 }
 
 func (m *AppModel) coreToggleTheme() error {

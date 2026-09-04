@@ -25,8 +25,8 @@ func containsOperationID(ids []operation.OperationID, want operation.OperationID
 	return false
 }
 
-func executeProjectOperation(app *AppModel, id operation.OperationID, ctx operation.CommandContext) OperationExecutionResult {
-	return app.operationExecutor.Execute(OperationExecutionRequest{
+func executeProjectOperation(app *AppModel, id operation.OperationID, ctx operation.CommandContext) operation.OperationExecutionResult {
+	return app.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:      id,
 		Context: ctx,
 	})
@@ -135,7 +135,7 @@ func TestOpenProjectNotesRejectsArchivedProject(t *testing.T) {
 		t.Fatal("Open project notes operation is not registered")
 	}
 	handlerResult := app.executeProjectOperation(
-		OperationInvocation{Descriptor: descriptor},
+		operation.OperationInvocation{Descriptor: descriptor},
 		operation.OperationTargetFor(operation.ProjectEntity("archived")),
 	)
 	if handlerResult.Err == nil || handlerResult.Err.Error() != "Open project notes is unavailable while Archived is archived" {

@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/sglavoie/tt/internal/logging"
+	"github.com/sglavoie/tt/internal/tui/operation"
 )
 
 func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //nolint:gocyclo
@@ -28,7 +29,7 @@ func (m *AppModel) Update(msg tea.Msg) (outModel tea.Model, outCmd tea.Cmd) { //
 			m.lensPicker = nil
 			m.clearOperationValueStep()
 			m.operationConfirm.Cancel()
-			m.pendingOperationRequest = OperationExecutionRequest{}
+			m.pendingOperationRequest = operation.OperationExecutionRequest{}
 			m.statusMessage = ""
 			outModel = m
 			outCmd = nil

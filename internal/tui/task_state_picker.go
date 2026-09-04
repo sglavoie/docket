@@ -19,7 +19,7 @@ type TaskStatePickerModel = OperationValuePickerModel
 // valid for every frozen target. Mixed-state visual selections therefore never
 // offer a transition that would silently apply to only a subset.
 func NewTaskStatePickerForTargets(
-	request OperationExecutionRequest,
+	request operation.OperationExecutionRequest,
 	current []models.WorkflowState,
 	taskTitle string,
 ) (*TaskStatePickerModel, error) {

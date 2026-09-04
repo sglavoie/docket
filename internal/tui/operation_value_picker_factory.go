@@ -24,7 +24,7 @@ func (m *AppModel) taskAndProjectForIdentity(identity taskref.TaskIdentity) (*mo
 
 //nolint:gocyclo // One factory exhaustively maps typed operation values to their picker contracts.
 func (m *AppModel) newOperationValuePicker(
-	request OperationExecutionRequest,
+	request operation.OperationExecutionRequest,
 	provider operation.ValueProviderID,
 ) (*OperationValuePickerModel, error) {
 	// Filter pickers refine the whole view, so they must open without any task

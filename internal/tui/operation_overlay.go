@@ -5,11 +5,12 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/status"
 )
 
 func (m *AppModel) executeOperationOverlayRequest(
-	request OperationExecutionRequest,
+	request operation.OperationExecutionRequest,
 ) tea.Cmd {
 	if m.operationExecutor == nil {
 		m.err = fmt.Errorf("operation registry is unavailable")
@@ -28,7 +29,7 @@ func (m *AppModel) executeOperationOverlayRequest(
 
 // openOperationValueStep opens the value overlay one provider needs: a typed
 // prompt for text values, the ListSurface picker for everything else.
-func (m *AppModel) openOperationValueStep(request OperationValueRequestMsg) tea.Cmd {
+func (m *AppModel) openOperationValueStep(request operation.OperationValueRequestMsg) tea.Cmd {
 	if request.Provider.TextEntry() {
 		prompt, err := m.newOperationTextPrompt(request.Request, request.Provider)
 		if err != nil {
@@ -54,11 +55,11 @@ func (m *AppModel) clearOperationValueStep() {
 
 // operationResultCmd converts a completed execution outcome into the Bubble Tea
 // command seam.
-func operationResultCmd(result OperationExecutionResult) tea.Cmd {
+func operationResultCmd(result operation.OperationExecutionResult) tea.Cmd {
 	switch typed := result.AsMessage().(type) {
 	case nil:
 		return nil
-	case OperationCommandResultMsg:
+	case operation.OperationCommandResultMsg:
 		return typed.Cmd
 	default:
 		return func() tea.Msg { return typed }
@@ -92,18 +93,18 @@ func (m *AppModel) handleOperationOverlayMessage(msg tea.Msg) (bool, tea.Cmd) {
 	case ConflictBrowserClosedMsg:
 		m.conflictBrowser = nil
 		return true, nil
-	case OperationConfirmationRequestMsg:
+	case operation.OperationConfirmationRequestMsg:
 		m.showOperationConfirmation(typed)
 		return true, nil
-	case OperationValueRequestMsg:
+	case operation.OperationValueRequestMsg:
 		return true, m.openOperationValueStep(typed)
-	case OperationValueSelectedMsg:
+	case operation.OperationValueSelectedMsg:
 		m.clearOperationValueStep()
 		request := typed.Request
 		request.Value = typed.Value
 		request.HasValue = true
 		return true, m.resumeContextActionRequest(request)
-	case OperationValueCanceledMsg:
+	case operation.OperationValueCanceledMsg:
 		m.clearOperationValueStep()
 		return true, nil
 	case ProjectTagVocabularyActionsMsg:
@@ -134,7 +135,7 @@ func (m *AppModel) applyContextActionSheetResult(msg ContextActionSheetResultMsg
 // resumeContextActionRequest re-enters the executor after a nested value or
 // confirmation step. An open sheet keeps ownership of the outcome so a failure
 // stays visible on it and only a completed action dismisses it.
-func (m *AppModel) resumeContextActionRequest(request OperationExecutionRequest) tea.Cmd {
+func (m *AppModel) resumeContextActionRequest(request operation.OperationExecutionRequest) tea.Cmd {
 	sheet := m.contextActionSheet
 	if sheet == nil {
 		// The lens picker is the one surface an operation can be raised from
@@ -168,7 +169,7 @@ const operationConfirmAction = "contextual-operation"
 
 // showOperationConfirmation prompts for a destructive contextual action and
 // freezes the executor-supplied request, which already carries Confirmed.
-func (m *AppModel) showOperationConfirmation(request OperationConfirmationRequestMsg) {
+func (m *AppModel) showOperationConfirmation(request operation.OperationConfirmationRequestMsg) {
 	m.pendingOperationRequest = request.Request
 	prompt := request.Label + "?"
 	if count := len(request.Targets.Entities()); count > 1 {
@@ -190,12 +191,12 @@ func (m *AppModel) handleOperationConfirmKey(key string) (bool, tea.Cmd) {
 	}
 	if confirmed {
 		request := m.pendingOperationRequest
-		m.pendingOperationRequest = OperationExecutionRequest{}
+		m.pendingOperationRequest = operation.OperationExecutionRequest{}
 		return true, m.resumeContextActionRequest(request)
 	}
 	switch key {
 	case "n", "N", "esc":
-		m.pendingOperationRequest = OperationExecutionRequest{}
+		m.pendingOperationRequest = operation.OperationExecutionRequest{}
 	}
 	return true, nil
 }

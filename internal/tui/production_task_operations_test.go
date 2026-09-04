@@ -89,14 +89,14 @@ func TestProductionTaskOperationManifestIsRegisteredApplicableAndExecutable(t *t
 				continue
 			}
 			applicable = true
-			result := model.operationExecutor.Execute(OperationExecutionRequest{
+			result := model.operationExecutor.Execute(operation.OperationExecutionRequest{
 				ID:      entry.ID,
 				Context: context,
 			})
 			for _, sentinel := range []error{
-				ErrOperationNotRegistered,
-				ErrOperationUnavailable,
-				ErrOperationHandler,
+				operation.ErrOperationNotRegistered,
+				operation.ErrOperationUnavailable,
+				operation.ErrOperationHandler,
 			} {
 				if errors.Is(result.Err, sentinel) {
 					t.Errorf("%s on a %s: %v", entry.ID, shape.name, result.Err)
@@ -132,16 +132,16 @@ func TestProductionTaskOperationBulkEntriesExecuteAcrossEverySelectedTask(t *tes
 	)
 
 	values := map[operation.OperationID]any{
-		operationTaskSetState:    models.StateBacklog,
-		operationTaskSetPriority: 2,
-		operationTaskSetDueDate:  operation.OperationDateValue{},
-		operationTaskSetTags:     []string{"release"},
+		operation.OperationTaskSetState:    models.StateBacklog,
+		operation.OperationTaskSetPriority: 2,
+		operation.OperationTaskSetDueDate:  operation.OperationDateValue{},
+		operation.OperationTaskSetTags:     []string{"release"},
 	}
 	for _, entry := range taskOperationManifest() {
 		if !entry.Bulk {
 			continue
 		}
-		request := OperationExecutionRequest{
+		request := operation.OperationExecutionRequest{
 			ID:      entry.ID,
 			Context: context,
 		}
@@ -170,7 +170,7 @@ func TestTaskDeleteOperationRoutesThroughCanonicalConfirmation(t *testing.T) {
 	e := newTaskDeleteEnv(t)
 	m := e.appModel()
 	m.operationRegistry = operation.NewOperationRegistry()
-	m.operationExecutor = NewOperationExecutor(m.operationRegistry)
+	m.operationExecutor = operation.NewOperationExecutor(m.operationRegistry)
 	if err := m.registerTaskActionOperations(); err != nil {
 		t.Fatalf("registerTaskActionOperations: %v", err)
 	}
@@ -179,7 +179,7 @@ func TestTaskDeleteOperationRoutesThroughCanonicalConfirmation(t *testing.T) {
 	context.Capabilities.Add(operation.CapabilitySimplifiedInput)
 	context.Entity = taskOperationEntity(e.parent, e.alpha)
 
-	result := m.operationExecutor.Execute(OperationExecutionRequest{
+	result := m.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:      operationTaskDelete,
 		Context: context,
 	})

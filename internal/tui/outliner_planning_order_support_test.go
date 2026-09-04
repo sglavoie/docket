@@ -86,7 +86,7 @@ func newPlanningOrderApp(t *testing.T, projects ...*models.Project) (*AppModel, 
 		operationRegistry: operation.NewOperationRegistry(),
 		navigation:        NewNavigationState(),
 	}
-	m.operationExecutor = NewOperationExecutor(m.operationRegistry)
+	m.operationExecutor = operation.NewOperationExecutor(m.operationRegistry)
 	m.rebuildPlanningFromRuntime()
 
 	cross := NewOutlinerModel(nil, manager, runtime)

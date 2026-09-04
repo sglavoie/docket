@@ -78,7 +78,7 @@ type NamedLensPickerClosedMsg struct{}
 // NamedLensPickerResultMsg reports one execution attempt raised by the picker
 // itself — applying a saved lens, or saving the current view.
 type NamedLensPickerResultMsg struct {
-	Result OperationExecutionResult
+	Result operation.OperationExecutionResult
 }
 
 // NamedLensActionsRequestMsg asks the shell to open the management sheet over
@@ -102,7 +102,7 @@ type NamedLensPickerSnapshot struct {
 // NamedLensPickerModel is the searchable projection of the saved lenses.
 type NamedLensPickerModel struct {
 	surface  *ListSurfaceModel
-	executor *OperationExecutor
+	executor *operation.OperationExecutor
 	// view is frozen at construction: the picker floats over the route that
 	// opened it, and its own presence must not change the context it builds.
 	view     presentation.PresentationID
@@ -124,7 +124,7 @@ type NamedLensPickerModel struct {
 // would otherwise hold a second reference to, so the picker names only the seam
 // it actually dispatches through.
 func NewNamedLensPickerModel(
-	executor *OperationExecutor,
+	executor *operation.OperationExecutor,
 	view presentation.PresentationID,
 	snapshot NamedLensPickerSnapshot,
 ) (*NamedLensPickerModel, error) {
@@ -249,8 +249,8 @@ func (model *NamedLensPickerModel) commandContext(entity operation.EntityIdentit
 func (model *NamedLensPickerModel) request(
 	id operation.OperationID,
 	entity operation.EntityIdentity,
-) OperationExecutionRequest {
-	return OperationExecutionRequest{ID: id, Context: model.commandContext(entity)}
+) operation.OperationExecutionRequest {
+	return operation.OperationExecutionRequest{ID: id, Context: model.commandContext(entity)}
 }
 
 // Execute runs one request through the shared executor and reports whether the
@@ -258,15 +258,15 @@ func (model *NamedLensPickerModel) request(
 // nested step, a failure keeps it open carrying the reason, and only a completed
 // action dismisses it.
 func (model *NamedLensPickerModel) Execute(
-	request OperationExecutionRequest,
-) (OperationExecutionResult, bool) {
+	request operation.OperationExecutionRequest,
+) (operation.OperationExecutionResult, bool) {
 	if model == nil {
-		return OperationExecutionResult{}, false
+		return operation.OperationExecutionResult{}, false
 	}
 	if model.executor == nil {
 		err := fmt.Errorf("lens actions are unavailable")
 		model.notice = err.Error()
-		return OperationExecutionResult{Err: err}, false
+		return operation.OperationExecutionResult{Err: err}, false
 	}
 	result := model.executor.Execute(request)
 	switch {

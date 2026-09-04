@@ -14,7 +14,7 @@ import (
 func newUITestApp() *AppModel {
 	app := newTestAppModel()
 	app.operationRegistry = operation.NewOperationRegistry()
-	app.operationExecutor = NewOperationExecutor(app.operationRegistry)
+	app.operationExecutor = operation.NewOperationExecutor(app.operationRegistry)
 	o := NewOutlinerModel(nil, app.configManager, app.runtime)
 	app.crossOutliner = o
 	app.views.Register(presentation.ViewCrossProjectOutliner, o)

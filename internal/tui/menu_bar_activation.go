@@ -17,7 +17,7 @@ func (m *AppModel) activateMenuBarEntry(id operation.OperationID) tea.Cmd {
 	}
 	ctx := m.operationCommandContext()
 	ctx.View = m.currentView()
-	return operationResultCmd(m.operationExecutor.Execute(OperationExecutionRequest{
+	return operationResultCmd(m.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:      id,
 		Context: ctx,
 	}))

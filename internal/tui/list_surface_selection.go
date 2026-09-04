@@ -165,11 +165,11 @@ func (model *ListSurfaceModel) ActionState() ListActionState {
 // ExecuteAction enforces item-declared action availability, then delegates all
 // execution policy to the centralized OperationExecutor.
 func (model *ListSurfaceModel) ExecuteAction(
-	executor *OperationExecutor,
-	request OperationExecutionRequest,
-) OperationExecutionResult {
+	executor *operation.OperationExecutor,
+	request operation.OperationExecutionRequest,
+) operation.OperationExecutionResult {
 	if executor == nil {
-		return OperationExecutionResult{
+		return operation.OperationExecutionResult{
 			Err: fmt.Errorf("%w: operation executor is nil", ErrListActionUnavailable),
 		}
 	}
@@ -179,7 +179,7 @@ func (model *ListSurfaceModel) ExecuteAction(
 		if state.DisabledReason != "" {
 			detail = state.DisabledReason
 		}
-		return OperationExecutionResult{
+		return operation.OperationExecutionResult{
 			Err: fmt.Errorf("%w: %s", ErrListActionUnavailable, detail),
 		}
 	}

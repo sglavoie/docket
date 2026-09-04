@@ -193,7 +193,7 @@ func (d *UITestDriver) runCommand(name string) error {
 	ctx := d.app.operationCommandContext()
 	ctx.View = view
 	ctx.Capabilities.Add(CapabilityHarness)
-	result := d.app.operationExecutor.Execute(OperationExecutionRequest{
+	result := d.app.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:      match.ID,
 		Context: ctx,
 	})
@@ -204,7 +204,7 @@ func (d *UITestDriver) runCommand(name string) error {
 	switch m := msg.(type) {
 	case nil:
 		d.pendingCmd = nil
-	case OperationCommandResultMsg:
+	case operation.OperationCommandResultMsg:
 		// The handler deferred its real work into a tea.Cmd; drain that instead
 		// of routing the wrapper as a message.
 		d.pendingCmd = m.Cmd

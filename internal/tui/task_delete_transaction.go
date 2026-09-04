@@ -20,22 +20,22 @@ const operationTaskDelete operation.OperationID = "tui.task.delete"
 // which is why the binding delegates confirmation instead of adding a second,
 // generic prompt in front of the canonical one.
 func (m *AppModel) executeTaskDeleteOperation(
-	invocation OperationInvocation,
-) OperationHandlerResult {
+	invocation operation.OperationInvocation,
+) operation.OperationHandlerResult {
 	refs := make([]TaskProjectRef, 0, len(invocation.Targets.Targets))
 	for _, target := range invocation.Targets.Targets {
 		task, project := m.taskAndProjectForIdentity(target.Task)
 		if task == nil || project == nil {
-			return OperationHandlerResult{Err: fmt.Errorf("task is no longer available")}
+			return operation.OperationHandlerResult{Err: fmt.Errorf("task is no longer available")}
 		}
 		refs = append(refs, TaskProjectRef{Task: task, Project: project})
 	}
 	if len(refs) == 0 {
-		return OperationHandlerResult{
+		return operation.OperationHandlerResult{
 			Err: fmt.Errorf("operation %s requires at least one task", invocation.Descriptor.ID),
 		}
 	}
-	return OperationHandlerResult{Message: TaskDeleteRequestedMsg{
+	return operation.OperationHandlerResult{Message: TaskDeleteRequestedMsg{
 		Refs:      refs,
 		Selection: deleteSelectionCounts(invocation.Context, len(refs)),
 	}}

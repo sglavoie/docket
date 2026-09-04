@@ -77,7 +77,7 @@ func (m *AppModel) dispatchOperationKey(
 	}
 	m.pendingChord = nil
 
-	result := m.operationExecutor.Execute(OperationExecutionRequest{
+	result := m.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:       binding.OperationID,
 		Context:  ctx,
 		Value:    binding.PresetValue,
@@ -87,7 +87,7 @@ func (m *AppModel) dispatchOperationKey(
 	switch typed := message.(type) {
 	case nil:
 		return true, nil
-	case OperationCommandResultMsg:
+	case operation.OperationCommandResultMsg:
 		return true, typed.Cmd
 	default:
 		return true, func() tea.Msg { return typed }
@@ -151,14 +151,14 @@ func (m *AppModel) executeSimplifiedGlobalKey(key string) (bool, tea.Cmd) {
 	if !ok {
 		return false, nil
 	}
-	result := m.operationExecutor.Execute(OperationExecutionRequest{
+	result := m.operationExecutor.Execute(operation.OperationExecutionRequest{
 		ID:      binding.OperationID,
 		Context: ctx,
 	})
 	switch message := result.AsMessage().(type) {
 	case nil:
 		return true, nil
-	case OperationCommandResultMsg:
+	case operation.OperationCommandResultMsg:
 		return true, message.Cmd
 	default:
 		return true, func() tea.Msg { return message }

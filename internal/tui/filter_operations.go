@@ -58,8 +58,8 @@ func (m *AppModel) registerFilterOperations() error {
 	// Priority is the only preset-only facet: each f!0-3 binding carries its
 	// threshold, so reaching the provider means a caller bypassed the grammar.
 	if err := m.operationExecutor.RegisterValueProvider(operation.ValueProviderFilterPriority,
-		func(OperationInvocation) OperationValueProviderResult {
-			return OperationValueProviderResult{
+		func(operation.OperationInvocation) operation.OperationValueProviderResult {
+			return operation.OperationValueProviderResult{
 				Err: fmt.Errorf("this filter takes its value from the f!0-3 chord"),
 			}
 		}); err != nil {
@@ -76,10 +76,10 @@ func (m *AppModel) registerFilterOperations() error {
 		operation.ValueProviderFilterProjectTags,
 	} {
 		if err := m.operationExecutor.RegisterValueProvider(provider,
-			func(OperationInvocation) OperationValueProviderResult {
+			func(operation.OperationInvocation) operation.OperationValueProviderResult {
 				// Returning no immediate value asks the shell to open the provider's
 				// picker seeded from the current filter.
-				return OperationValueProviderResult{}
+				return operation.OperationValueProviderResult{}
 			}); err != nil {
 			return err
 		}
@@ -88,7 +88,7 @@ func (m *AppModel) registerFilterOperations() error {
 	// projection is not declared here: it is read off the clause fields the
 	// operation writes, so a key is advertised exactly when its handler will
 	// accept it.
-	register := func(descriptors []operation.OperationDescriptor, handler OperationHandler) error {
+	register := func(descriptors []operation.OperationDescriptor, handler operation.OperationHandler) error {
 		for _, descriptor := range descriptors {
 			stale := descriptor.ID == operationFilterStale
 			refusesSearchProjection := filterOperationRequiresReload(descriptor.ID)
@@ -103,7 +103,7 @@ func (m *AppModel) registerFilterOperations() error {
 				return !stale || m.crossOutliner == nil ||
 					m.crossOutliner.activeOutlinerMode() != chrome.ModeRecent
 			}
-			if err := m.registerOperation(descriptor, OperationBinding{
+			if err := m.registerOperation(descriptor, operation.OperationBinding{
 				RequiredCapabilities:     operation.NewCapabilitySet(operation.CapabilitySimplifiedInput),
 				Applicability:            descriptor.Applicability,
 				Handler:                  handler,
@@ -209,37 +209,37 @@ type filterClauseEdit struct {
 // the top of a freshly loaded scope. That same obligation is why it refuses under
 // a search projection: the projection is scored over the snapshot the reload
 // replaces.
-func (m *AppModel) applyFilterClauseEdit(id operation.OperationID, edit filterClauseEdit) OperationHandlerResult {
+func (m *AppModel) applyFilterClauseEdit(id operation.OperationID, edit filterClauseEdit) operation.OperationHandlerResult {
 	out := m.crossOutliner
 	if out == nil {
-		return OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
+		return operation.OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
 	}
 	reload := filterOperationRequiresReload(id)
 	if reload && out.showsRankedList() {
-		return OperationHandlerResult{Status: "Exit search before changing filters"}
+		return operation.OperationHandlerResult{Status: "Exit search before changing filters"}
 	}
 	if edit.declined {
-		return OperationHandlerResult{Status: edit.status}
+		return operation.OperationHandlerResult{Status: edit.status}
 	}
 	out.replaceFilterClauses(filterOperationFields(id), edit.clauses)
 	if reload {
-		return OperationHandlerResult{
-			Message: OperationCommandResultMsg{Cmd: m.projectFilterReloadCmd(edit.status)},
+		return operation.OperationHandlerResult{
+			Message: operation.OperationCommandResultMsg{Cmd: m.projectFilterReloadCmd(edit.status)},
 		}
 	}
 	out.crossForceRebuild = true
 	rebuildOutlinerPreservingCursor(out)
-	return OperationHandlerResult{Status: edit.status}
+	return operation.OperationHandlerResult{Status: edit.status}
 }
 
-func (m *AppModel) executeFilterOperation(invocation OperationInvocation) OperationHandlerResult {
+func (m *AppModel) executeFilterOperation(invocation operation.OperationInvocation) operation.OperationHandlerResult {
 	out := m.crossOutliner
 	if out == nil {
-		return OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
+		return operation.OperationHandlerResult{Err: fmt.Errorf("the Outliner is unavailable")}
 	}
 	edit, err := out.rowFilterClauseEdit(invocation)
 	if err != nil {
-		return OperationHandlerResult{Err: err}
+		return operation.OperationHandlerResult{Err: err}
 	}
 	return m.applyFilterClauseEdit(invocation.Descriptor.ID, edit)
 }

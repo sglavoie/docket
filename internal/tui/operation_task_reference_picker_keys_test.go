@@ -26,7 +26,7 @@ import (
 func TestReferencePickerRefusesOffATaskRow(t *testing.T) {
 	descriptorFor := func(t *testing.T, model *AppModel) operation.OperationDescriptor {
 		t.Helper()
-		descriptor, ok := model.operationRegistry.Descriptor(operationTaskReferences)
+		descriptor, ok := model.operationRegistry.Descriptor(operation.OperationTaskReferences)
 		if !ok {
 			t.Fatal("tui.task.references is not registered")
 		}

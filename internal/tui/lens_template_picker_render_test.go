@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/sglavoie/tt/internal/config"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/theme"
 )
 
@@ -204,7 +205,7 @@ func TestLensTemplateGalleryCancelsOnEscape(t *testing.T) {
 	if !dismissed {
 		t.Fatal("Escape left the gallery open")
 	}
-	if _, ok := msg.(OperationValueCanceledMsg); !ok {
+	if _, ok := msg.(operation.OperationValueCanceledMsg); !ok {
 		t.Fatalf("cancel message = %#v, want OperationValueCanceledMsg", msg)
 	}
 	if got := len(machineLenses(t, model)); got != before {

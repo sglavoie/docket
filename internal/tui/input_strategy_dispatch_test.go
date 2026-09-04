@@ -15,7 +15,7 @@ func TestPendingChordStoresHintsExecutesAndClears(t *testing.T) {
 		t.Helper()
 		app := newUITestApp()
 		app.operationRegistry = operation.NewOperationRegistry()
-		app.operationExecutor = NewOperationExecutor(app.operationRegistry)
+		app.operationExecutor = operation.NewOperationExecutor(app.operationRegistry)
 		if err := app.registerCoreInputOperations(); err != nil {
 			t.Fatalf("registerCoreInputOperations: %v", err)
 		}
@@ -87,7 +87,7 @@ func TestPendingChordStoresHintsExecutesAndClears(t *testing.T) {
 func TestSimplifiedDispatchConsumesLegacyKeysAndDefersInlineSearch(t *testing.T) {
 	app := newUITestApp()
 	app.operationRegistry = operation.NewOperationRegistry()
-	app.operationExecutor = NewOperationExecutor(app.operationRegistry)
+	app.operationExecutor = operation.NewOperationExecutor(app.operationRegistry)
 	if err := app.registerCoreInputOperations(); err != nil {
 		t.Fatalf("registerCoreInputOperations: %v", err)
 	}

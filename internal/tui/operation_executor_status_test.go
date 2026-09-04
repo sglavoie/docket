@@ -14,22 +14,22 @@ import (
 
 func TestOperationExecutionResultStatusDeliveryPrecedence(t *testing.T) {
 	failure := errors.New("copy failed")
-	confirmation := &OperationConfirmationRequestMsg{Label: "Delete note"}
-	value := &OperationValueRequestMsg{Provider: operation.ValueProviderNoteTitle}
+	confirmation := &operation.OperationConfirmationRequestMsg{Label: "Delete note"}
+	value := &operation.OperationValueRequestMsg{Provider: operation.ValueProviderNoteTitle}
 
 	tests := []struct {
 		name   string
-		result OperationExecutionResult
+		result operation.OperationExecutionResult
 		want   tea.Msg
 	}{
 		{
 			name:   "status only",
-			result: OperationExecutionResult{Status: "Copied title to clipboard"},
+			result: operation.OperationExecutionResult{Status: "Copied title to clipboard"},
 			want:   status.StatusMsg("Copied title to clipboard"),
 		},
 		{
 			name: "message outranks status",
-			result: OperationExecutionResult{
+			result: operation.OperationExecutionResult{
 				Message: operationTestMsg("executed"),
 				Status:  "Destroyed 2 tasks",
 			},
@@ -37,27 +37,27 @@ func TestOperationExecutionResultStatusDeliveryPrecedence(t *testing.T) {
 		},
 		{
 			name:   "error outranks status",
-			result: OperationExecutionResult{Status: "Copied title to clipboard", Err: failure},
+			result: operation.OperationExecutionResult{Status: "Copied title to clipboard", Err: failure},
 			want:   status.ErrorMsg{Err: failure},
 		},
 		{
 			name:   "confirmation outranks status",
-			result: OperationExecutionResult{Status: "Deleted", ConfirmationRequired: confirmation},
+			result: operation.OperationExecutionResult{Status: "Deleted", ConfirmationRequired: confirmation},
 			want:   *confirmation,
 		},
 		{
 			name:   "pending value outranks status",
-			result: OperationExecutionResult{Status: "Renamed", ValueRequired: value},
+			result: operation.OperationExecutionResult{Status: "Renamed", ValueRequired: value},
 			want:   *value,
 		},
 		{
 			name:   "reported status is not delivered twice",
-			result: OperationExecutionResult{Status: "Copied title to clipboard", StatusReported: true},
+			result: operation.OperationExecutionResult{Status: "Copied title to clipboard", StatusReported: true},
 			want:   nil,
 		},
 		{
 			name:   "silent outcome stays silent",
-			result: OperationExecutionResult{},
+			result: operation.OperationExecutionResult{},
 			want:   nil,
 		},
 	}
@@ -93,26 +93,26 @@ func TestOperationExecutorStatusOnlyResultReachesTheMessageSeam(t *testing.T) {
 			t.Fatalf("Register(%s): %v", descriptor.ID, err)
 		}
 	}
-	executor := NewOperationExecutor(registry)
-	if err := executor.Register(OperationBinding{
+	executor := operation.NewOperationExecutor(registry)
+	if err := executor.Register(operation.OperationBinding{
 		OperationID: reporting.ID,
-		Handler: func(OperationInvocation) OperationHandlerResult {
-			return OperationHandlerResult{Status: "Copied title to clipboard"}
+		Handler: func(operation.OperationInvocation) operation.OperationHandlerResult {
+			return operation.OperationHandlerResult{Status: "Copied title to clipboard"}
 		},
 	}); err != nil {
 		t.Fatalf("Register reporting binding: %v", err)
 	}
-	if err := executor.Register(OperationBinding{
+	if err := executor.Register(operation.OperationBinding{
 		OperationID: silent.ID,
-		Handler: func(OperationInvocation) OperationHandlerResult {
-			return OperationHandlerResult{}
+		Handler: func(operation.OperationInvocation) operation.OperationHandlerResult {
+			return operation.OperationHandlerResult{}
 		},
 	}); err != nil {
 		t.Fatalf("Register silent binding: %v", err)
 	}
 
 	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
-	copied := executor.Execute(OperationExecutionRequest{ID: reporting.ID, Context: ctx})
+	copied := executor.Execute(operation.OperationExecutionRequest{ID: reporting.ID, Context: ctx})
 	if copied.Err != nil || copied.Message != nil {
 		t.Fatalf("copy result = %#v, want a status-only outcome", copied)
 	}
@@ -120,20 +120,20 @@ func TestOperationExecutorStatusOnlyResultReachesTheMessageSeam(t *testing.T) {
 		t.Fatalf("copy message = %#v, want the handler status", got)
 	}
 
-	quiet := executor.Execute(OperationExecutionRequest{ID: silent.ID, Context: ctx})
+	quiet := executor.Execute(operation.OperationExecutionRequest{ID: silent.ID, Context: ctx})
 	if quiet.Status != "" || quiet.AsMessage() != nil {
 		t.Fatalf("silent result = %#v, want no user-visible feedback", quiet)
 	}
 
-	var events []OperationStatusEvent
-	executor.SetStatusReporter(func(event OperationStatusEvent) {
+	var events []operation.OperationStatusEvent
+	executor.SetStatusReporter(func(event operation.OperationStatusEvent) {
 		events = append(events, event)
 	})
-	reported := executor.Execute(OperationExecutionRequest{ID: reporting.ID, Context: ctx})
+	reported := executor.Execute(operation.OperationExecutionRequest{ID: reporting.ID, Context: ctx})
 	if !reported.StatusReported || reported.AsMessage() != nil {
 		t.Fatalf("reported result = %#v, want the reporter to own delivery", reported)
 	}
-	if executor.Execute(OperationExecutionRequest{ID: silent.ID, Context: ctx}).AsMessage() != nil {
+	if executor.Execute(operation.OperationExecutionRequest{ID: silent.ID, Context: ctx}).AsMessage() != nil {
 		t.Fatal("a silent operation produced a message once a reporter was installed")
 	}
 	if len(events) != 4 {
@@ -162,11 +162,11 @@ func TestOperationExecutorMessageAndStatusWithInstalledReporterDeliverOnce(t *te
 			t.Fatalf("Register(%s): %v", descriptor.ID, err)
 		}
 	}
-	executor := NewOperationExecutor(registry)
-	if err := executor.Register(OperationBinding{
+	executor := operation.NewOperationExecutor(registry)
+	if err := executor.Register(operation.OperationBinding{
 		OperationID: speaking.ID,
-		Handler: func(OperationInvocation) OperationHandlerResult {
-			return OperationHandlerResult{
+		Handler: func(operation.OperationInvocation) operation.OperationHandlerResult {
+			return operation.OperationHandlerResult{
 				Message: operationTestMsg("completed"),
 				Status:  "Completed 1 task",
 			}
@@ -174,24 +174,24 @@ func TestOperationExecutorMessageAndStatusWithInstalledReporterDeliverOnce(t *te
 	}); err != nil {
 		t.Fatalf("Register message binding: %v", err)
 	}
-	if err := executor.Register(OperationBinding{
+	if err := executor.Register(operation.OperationBinding{
 		OperationID: statusOnly.ID,
-		Handler: func(OperationInvocation) OperationHandlerResult {
-			return OperationHandlerResult{Status: "Copied title to clipboard"}
+		Handler: func(operation.OperationInvocation) operation.OperationHandlerResult {
+			return operation.OperationHandlerResult{Status: "Copied title to clipboard"}
 		},
 	}); err != nil {
 		t.Fatalf("Register status binding: %v", err)
 	}
 
 	shown := 0
-	executor.SetStatusReporter(func(event OperationStatusEvent) {
+	executor.SetStatusReporter(func(event operation.OperationStatusEvent) {
 		if event.OwnsUserFeedback {
 			shown++
 		}
 	})
 
 	ctx := PresentationCommandContext(presentation.ViewCrossProjectOutliner)
-	both := executor.Execute(OperationExecutionRequest{ID: speaking.ID, Context: ctx})
+	both := executor.Execute(operation.OperationExecutionRequest{ID: speaking.ID, Context: ctx})
 	if got := both.AsMessage(); got != operationTestMsg("completed") {
 		t.Fatalf("message seam = %#v, want the handler message", got)
 	}
@@ -202,7 +202,7 @@ func TestOperationExecutorMessageAndStatusWithInstalledReporterDeliverOnce(t *te
 		t.Fatalf("reporter showed %d statuses, want the message to own delivery", shown)
 	}
 
-	copied := executor.Execute(OperationExecutionRequest{ID: statusOnly.ID, Context: ctx})
+	copied := executor.Execute(operation.OperationExecutionRequest{ID: statusOnly.ID, Context: ctx})
 	if !copied.StatusReported || copied.AsMessage() != nil {
 		t.Fatalf("status-only result = %#v, want the reporter to own delivery", copied)
 	}
@@ -224,22 +224,22 @@ func TestOperationExecutorRollsBackFailedHandler(t *testing.T) {
 	if err := registry.Register(descriptor); err != nil {
 		t.Fatalf("Register descriptor: %v", err)
 	}
-	executor := NewOperationExecutor(registry)
+	executor := operation.NewOperationExecutor(registry)
 	transaction := &operationTestTransaction{}
-	executor.SetTransactionFactory(func(OperationInvocation) (OperationTransaction, error) {
+	executor.SetTransactionFactory(func(operation.OperationInvocation) (operation.OperationTransaction, error) {
 		return transaction, nil
 	})
 	handlerErr := errors.New("mutation failed")
-	if err := executor.Register(OperationBinding{
+	if err := executor.Register(operation.OperationBinding{
 		OperationID: descriptor.ID,
-		Handler: func(OperationInvocation) OperationHandlerResult {
-			return OperationHandlerResult{Err: handlerErr}
+		Handler: func(operation.OperationInvocation) operation.OperationHandlerResult {
+			return operation.OperationHandlerResult{Err: handlerErr}
 		},
 	}); err != nil {
 		t.Fatalf("Register binding: %v", err)
 	}
 
-	result := executor.Execute(OperationExecutionRequest{
+	result := executor.Execute(operation.OperationExecutionRequest{
 		ID:      descriptor.ID,
 		Context: PresentationCommandContext(presentation.ViewUnknown),
 	})
@@ -268,19 +268,19 @@ func TestOperationExecutorSupportsSingleAndBulkHandlers(t *testing.T) {
 			t.Fatalf("Register(%s): %v", descriptor.ID, err)
 		}
 	}
-	executor := NewOperationExecutor(registry)
-	if err := executor.Register(OperationBinding{
+	executor := operation.NewOperationExecutor(registry)
+	if err := executor.Register(operation.OperationBinding{
 		OperationID: singleDescriptor.ID,
-		SingleHandler: func(_ OperationInvocation, target operation.OperationTarget) OperationHandlerResult {
-			return OperationHandlerResult{Message: operationTestMsg(target.Task.TaskID)}
+		SingleHandler: func(_ operation.OperationInvocation, target operation.OperationTarget) operation.OperationHandlerResult {
+			return operation.OperationHandlerResult{Message: operationTestMsg(target.Task.TaskID)}
 		},
 	}); err != nil {
 		t.Fatalf("Register single: %v", err)
 	}
-	if err := executor.Register(OperationBinding{
+	if err := executor.Register(operation.OperationBinding{
 		OperationID: bulkDescriptor.ID,
-		BulkHandler: func(_ OperationInvocation, targets []operation.OperationTarget) OperationHandlerResult {
-			return OperationHandlerResult{Message: operationTestMsg("2")}
+		BulkHandler: func(_ operation.OperationInvocation, targets []operation.OperationTarget) operation.OperationHandlerResult {
+			return operation.OperationHandlerResult{Message: operationTestMsg("2")}
 		},
 	}); err != nil {
 		t.Fatalf("Register bulk: %v", err)
@@ -292,10 +292,10 @@ func TestOperationExecutorSupportsSingleAndBulkHandlers(t *testing.T) {
 		{ProjectID: "project", TaskID: "one"},
 		{ProjectID: "project", TaskID: "two"},
 	}
-	if got := executor.Execute(OperationExecutionRequest{ID: singleDescriptor.ID, Context: ctx}).Message; got != operationTestMsg("current") {
+	if got := executor.Execute(operation.OperationExecutionRequest{ID: singleDescriptor.ID, Context: ctx}).Message; got != operationTestMsg("current") {
 		t.Fatalf("single message = %#v, want current", got)
 	}
-	if got := executor.Execute(OperationExecutionRequest{ID: bulkDescriptor.ID, Context: ctx}).Message; got != operationTestMsg("2") {
+	if got := executor.Execute(operation.OperationExecutionRequest{ID: bulkDescriptor.ID, Context: ctx}).Message; got != operationTestMsg("2") {
 		t.Fatalf("bulk message = %#v, want 2", got)
 	}
 }

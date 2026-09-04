@@ -152,19 +152,19 @@ func TestOperationExecutorCentralizesValueConfirmationTransactionStatusAndUndo(t
 	if err := registry.Register(descriptor); err != nil {
 		t.Fatalf("Register descriptor: %v", err)
 	}
-	executor := NewOperationExecutor(registry)
+	executor := operation.NewOperationExecutor(registry)
 
 	providerCalls := 0
-	if err := executor.RegisterValueProvider(operation.ValueProviderState, func(OperationInvocation) OperationValueProviderResult {
+	if err := executor.RegisterValueProvider(operation.ValueProviderState, func(operation.OperationInvocation) operation.OperationValueProviderResult {
 		providerCalls++
-		return OperationValueProviderResult{Value: "done", HasValue: true}
+		return operation.OperationValueProviderResult{Value: "done", HasValue: true}
 	}); err != nil {
 		t.Fatalf("RegisterValueProvider: %v", err)
 	}
 
 	transaction := &operationTestTransaction{}
 	transactionBegins := 0
-	executor.SetTransactionFactory(func(invocation OperationInvocation) (OperationTransaction, error) {
+	executor.SetTransactionFactory(func(invocation operation.OperationInvocation) (operation.OperationTransaction, error) {
 		transactionBegins++
 		if got := invocation.Targets.Count(); got != 2 {
 			t.Fatalf("transaction target count = %d, want 2", got)
@@ -173,16 +173,16 @@ func TestOperationExecutorCentralizesValueConfirmationTransactionStatusAndUndo(t
 	})
 
 	reportedEvents := 0
-	executor.SetStatusReporter(func(OperationStatusEvent) {
+	executor.SetStatusReporter(func(operation.OperationStatusEvent) {
 		reportedEvents++
 	})
 
 	handlerCalls := 0
 	undoCalls := 0
 	redoCalls := 0
-	if err := executor.Register(OperationBinding{
+	if err := executor.Register(operation.OperationBinding{
 		OperationID: descriptor.ID,
-		BulkHandler: func(invocation OperationInvocation, targets []operation.OperationTarget) OperationHandlerResult {
+		BulkHandler: func(invocation operation.OperationInvocation, targets []operation.OperationTarget) operation.OperationHandlerResult {
 			handlerCalls++
 			if len(targets) != 2 {
 				t.Fatalf("bulk targets = %d, want 2", len(targets))
@@ -190,7 +190,7 @@ func TestOperationExecutorCentralizesValueConfirmationTransactionStatusAndUndo(t
 			if !invocation.HasValue || invocation.Value != "done" {
 				t.Fatalf("value = (%v, %v), want (done, true)", invocation.Value, invocation.HasValue)
 			}
-			return OperationHandlerResult{
+			return operation.OperationHandlerResult{
 				Message: operationTestMsg("executed"),
 				Status:  "Destroyed 2 tasks",
 				Undo: func() tea.Msg {
@@ -212,7 +212,7 @@ func TestOperationExecutorCentralizesValueConfirmationTransactionStatusAndUndo(t
 		{ProjectID: "project-b", TaskID: "task-2"},
 		{ProjectID: "project-a", TaskID: "task-1"},
 	}
-	first := executor.Execute(OperationExecutionRequest{
+	first := executor.Execute(operation.OperationExecutionRequest{
 		ID:      descriptor.ID,
 		Context: ctx,
 	})

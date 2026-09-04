@@ -153,7 +153,7 @@ type ProjectHubModel struct {
 	surface          *ListSurfaceModel
 	actions          *ContextActionSheetModel
 	registry         *operation.OperationRegistry
-	executor         *OperationExecutor
+	executor         *operation.OperationExecutor
 	dispatch         operationKeyDispatch
 	focusedProjectID string
 	notice           string

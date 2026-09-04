@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/sglavoie/tt/internal/tui/coordinator"
+	"github.com/sglavoie/tt/internal/tui/operation"
 	"github.com/sglavoie/tt/internal/tui/taskref"
 )
 
@@ -37,8 +38,8 @@ func bulkMoveSelection(t *testing.T, m *AppModel, titles ...string) []TaskProjec
 // the move instead of refusing it.
 func executeBulkMoveToProject(t *testing.T, m *AppModel, destinationID string) tea.Msg {
 	t.Helper()
-	result := m.operationExecutor.Execute(OperationExecutionRequest{
-		ID:       operationTaskMoveToProject,
+	result := m.operationExecutor.Execute(operation.OperationExecutionRequest{
+		ID:       operation.OperationTaskMoveToProject,
 		Context:  m.operationCommandContext(),
 		Value:    destinationID,
 		HasValue: true,
@@ -46,7 +47,7 @@ func executeBulkMoveToProject(t *testing.T, m *AppModel, destinationID string) t
 	if result.Err != nil {
 		t.Fatalf("execute Move to Project: %v", result.Err)
 	}
-	command, ok := result.Message.(OperationCommandResultMsg)
+	command, ok := result.Message.(operation.OperationCommandResultMsg)
 	if !ok {
 		t.Fatalf("Move to Project produced %T, want an operation command", result.Message)
 	}
@@ -264,8 +265,8 @@ func TestMoveToProjectWithoutASelectionKeepsTheSingleTaskPath(t *testing.T) {
 
 	context := m.operationCommandContext()
 	context.Entity = taskOperationEntity(source, sourceProject)
-	result := m.operationExecutor.Execute(OperationExecutionRequest{
-		ID:       operationTaskMoveToProject,
+	result := m.operationExecutor.Execute(operation.OperationExecutionRequest{
+		ID:       operation.OperationTaskMoveToProject,
 		Context:  context,
 		Value:    destination.ID,
 		HasValue: true,
@@ -273,7 +274,7 @@ func TestMoveToProjectWithoutASelectionKeepsTheSingleTaskPath(t *testing.T) {
 	if result.Err != nil {
 		t.Fatalf("execute Move to Project: %v", result.Err)
 	}
-	command, ok := result.Message.(OperationCommandResultMsg)
+	command, ok := result.Message.(operation.OperationCommandResultMsg)
 	if !ok {
 		t.Fatalf("Move to Project produced %T, want an operation command", result.Message)
 	}

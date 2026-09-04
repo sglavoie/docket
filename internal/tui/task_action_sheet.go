@@ -28,7 +28,7 @@ var taskActionCategories = []ListCategory{
 // operation.
 func NewTaskActionSheetModel(
 	registry *operation.OperationRegistry,
-	executor *OperationExecutor,
+	executor *operation.OperationExecutor,
 	context operation.CommandContext,
 	taskTitle string,
 ) (*ContextActionSheetModel, error) {

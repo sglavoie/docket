@@ -50,7 +50,7 @@ func (m *AppModel) registerProjectOperations() error {
 	}
 	for _, descriptor := range projectOperationDescriptors() {
 		descriptor.Applicability = m.projectOperationApplicability(descriptor.ID, descriptor.Label)
-		if err := m.registerOperation(descriptor, OperationBinding{
+		if err := m.registerOperation(descriptor, operation.OperationBinding{
 			SingleHandler:         m.executeProjectOperation,
 			DelegateValueProvider: true,
 			DelegateTransaction:   true,
@@ -64,33 +64,33 @@ func (m *AppModel) registerProjectOperations() error {
 }
 
 func (m *AppModel) executeProjectOperation(
-	invocation OperationInvocation,
+	invocation operation.OperationInvocation,
 	target operation.OperationTarget,
-) OperationHandlerResult {
+) operation.OperationHandlerResult {
 	if target.Entity.Kind != operation.EntityKindProject || target.ProjectID == "" {
-		return OperationHandlerResult{
+		return operation.OperationHandlerResult{
 			Err: fmt.Errorf("%s needs a project target, got %s", invocation.Descriptor.Label, target.Entity),
 		}
 	}
 	project := m.projectByID(target.ProjectID)
 	if project == nil {
-		return OperationHandlerResult{
+		return operation.OperationHandlerResult{
 			Err: fmt.Errorf("project %s is no longer available", target.ProjectID),
 		}
 	}
 	if err := m.projectOperationUnavailable(invocation.Descriptor, project); err != nil {
-		return OperationHandlerResult{Err: err}
+		return operation.OperationHandlerResult{Err: err}
 	}
 	if invocation.Descriptor.ID == operationProjectSetTags {
 		return projectTagsOperationResult(invocation, project)
 	}
 	message := m.projectOperationMessage(invocation.Descriptor.ID, project)
 	if message == nil {
-		return OperationHandlerResult{
+		return operation.OperationHandlerResult{
 			Err: fmt.Errorf("project operation %s has no action", invocation.Descriptor.ID),
 		}
 	}
-	return OperationHandlerResult{Message: message}
+	return operation.OperationHandlerResult{Message: message}
 }
 
 // projectOperationUnavailable checks the freshly reloaded project rather than
